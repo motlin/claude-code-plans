@@ -5,7 +5,8 @@ import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {SessionWorkflowRunsResponse} from "../src/lib/api/session-workflow-runs";
 import {collectJsonlFiles, scanByteCount, scanTimeoutMilliseconds, selectFilesForScan} from "./jsonl-corpus";
-import {
+import
+{
 	WorkflowAgentMetaSchema,
 	WorkflowJournalEventSchema,
 	WorkflowLaunchResultSchema,
@@ -23,33 +24,59 @@ let projectDir: string;
 let sessionDir: string;
 let transcriptPath: string;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	projectsDir = mkdtempSync(join(tmpdir(), "workflow-runs-"));
 	projectDir = join(projectsDir, "-Users-alice-projects-outline");
 	sessionDir = join(projectDir, SESSION);
 	transcriptPath = join(projectDir, `${SESSION}.jsonl`);
-	mkdirSync(sessionDir, {recursive: true});
+	mkdirSync(
+		sessionDir,
+		{
+			recursive: true,
+		},
+	);
 });
 
-afterEach(() => {
-	rmSync(projectsDir, {recursive: true, force: true});
+afterEach(() =>
+{
+	rmSync(
+		projectsDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-function writeTranscript(records: readonly unknown[]): void {
+function writeTranscript(records: readonly unknown[]): void
+{
 	writeFileSync(transcriptPath, records.map((record) => JSON.stringify(record)).join("\n") + "\n");
 }
 
-function launch(toolUseId: string, taskId: string, timestamp: string, runId = RUN): Record<string, unknown> {
+function launch(toolUseId: string, taskId: string, timestamp: string, runId = RUN): Record<string, unknown>
+{
 	return {
 		type: "user",
 		timestamp,
-		message: {
+		message:
+		{
 			role: "user",
 			content: [
-				{tool_use_id: toolUseId, type: "tool_result", content: [{type: "text", text: "Workflow launched"}]},
+				{
+					tool_use_id: toolUseId,
+					type: "tool_result",
+					content: [
+						{
+							type: "text",
+							text: "Workflow launched",
+						},
+					],
+				},
 			],
 		},
-		toolUseResult: {
+		toolUseResult:
+		{
 			status: "async_launched",
 			taskId,
 			taskType: "local_workflow",
@@ -62,7 +89,8 @@ function launch(toolUseId: string, taskId: string, timestamp: string, runId = RU
 	};
 }
 
-function notificationText(taskId: string, toolUseId: string, status: string, summary: string): string {
+function notificationText(taskId: string, toolUseId: string, status: string, summary: string): string
+{
 	return [
 		"<task-notification>",
 		`<task-id>${taskId}</task-id>`,
@@ -75,23 +103,50 @@ function notificationText(taskId: string, toolUseId: string, status: string, sum
 	].join("\n");
 }
 
-function queuedNotification(text: string): Record<string, unknown> {
-	return {type: "queue-operation", operation: "enqueue", timestamp: "2026-10-01T12:10:00.000Z", content: text};
+function queuedNotification(text: string): Record<string, unknown>
+{
+	return {
+		type: "queue-operation",
+		operation: "enqueue",
+		timestamp: "2026-10-01T12:10:00.000Z",
+		content: text,
+	};
 }
 
-function userNotification(text: string): Record<string, unknown> {
-	return {type: "user", timestamp: "2026-10-01T12:10:01.000Z", message: {role: "user", content: text}};
+function userNotification(text: string): Record<string, unknown>
+{
+	return {
+		type: "user",
+		timestamp: "2026-10-01T12:10:01.000Z",
+		message:
+		{
+			role: "user",
+			content: text,
+		},
+	};
 }
 
-function writeRunFile(run: Record<string, unknown>): void {
-	mkdirSync(join(sessionDir, "workflows"), {recursive: true});
+function writeRunFile(run: Record<string, unknown>): void
+{
+	mkdirSync(
+		join(sessionDir, "workflows"),
+		{
+			recursive: true,
+		},
+	);
 	writeFileSync(join(sessionDir, "workflows", `${RUN}.json`), JSON.stringify(run));
 }
 
 const transcriptDir = (): string => join(sessionDir, "subagents", "workflows", RUN);
 
-function writeJournal(events: readonly unknown[]): void {
-	mkdirSync(transcriptDir(), {recursive: true});
+function writeJournal(events: readonly unknown[]): void
+{
+	mkdirSync(
+		transcriptDir(),
+		{
+			recursive: true,
+		},
+	);
 	writeFileSync(
 		join(transcriptDir(), "journal.jsonl"),
 		events.map((event) => JSON.stringify(event)).join("\n") + "\n",
@@ -103,7 +158,8 @@ function writeAgent(
 	meta: Record<string, unknown>,
 	startedAtMs: number,
 	lastProgressAtMs: number,
-): void {
+): void
+{
 	const metaPath = join(transcriptDir(), `agent-${agentId}.meta.json`);
 	const jsonlPath = join(transcriptDir(), `agent-${agentId}.jsonl`);
 	writeFileSync(metaPath, JSON.stringify(meta));
@@ -112,7 +168,8 @@ function writeAgent(
 	utimesSync(jsonlPath, lastProgressAtMs / 1000, lastProgressAtMs / 1000);
 }
 
-const launchFields = () => ({
+const launchFields = () => (
+{
 	runId: RUN,
 	workflowName: "outline-upstream-sync",
 	scriptPath: join(sessionDir, "workflows", "scripts", `outline-upstream-sync-${RUN}.js`),
@@ -120,8 +177,10 @@ const launchFields = () => ({
 	description: "Feature-by-feature parity investigation",
 });
 
-describe("readWorkflowRuns", () => {
-	it("reads a completed run's progress, duration and tokens from workflows/<runId>.json", () => {
+describe("readWorkflowRuns", () =>
+{
+	it("reads a completed run's progress, duration and tokens from workflows/<runId>.json", () =>
+	{
 		writeTranscript([
 			launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z"),
 			userNotification(
@@ -133,42 +192,56 @@ describe("readWorkflowRuns", () => {
 				),
 			),
 		]);
-		writeRunFile({
-			runId: RUN,
-			timestamp: "2026-10-01T12:10:00.000Z",
-			taskId: "wxkmbdj52",
-			script: "export const meta = {name: 'outline-upstream-sync'}",
-			scriptPath: join(sessionDir, "workflows", "scripts", `outline-upstream-sync-${RUN}.js`),
-			result: {investigated: 2},
-			agentCount: 1,
-			logs: ["started"],
-			durationMs: 600_000,
-			summary: "Feature-by-feature parity investigation",
-			workflowName: "outline-upstream-sync",
-			status: "completed",
-			startTime: 1_790_971_610_323,
-			phases: [{title: "Broad", detail: "inventory"}],
-			defaultModel: "claude-opus-5-5",
-			workflowProgress: [
-				{type: "workflow_phase", index: 1, title: "Broad"},
+		writeRunFile(
+			{
+				runId: RUN,
+				timestamp: "2026-10-01T12:10:00.000Z",
+				taskId: "wxkmbdj52",
+				script: "export const meta = {name: 'outline-upstream-sync'}",
+				scriptPath: join(sessionDir, "workflows", "scripts", `outline-upstream-sync-${RUN}.js`),
+				result:
 				{
-					type: "workflow_agent",
-					index: 1,
-					label: "local-inventory",
-					phaseIndex: 1,
-					phaseTitle: "Broad",
-					agentId: "ae56daa7cd7cf957b",
-					model: "claude-opus-5-5",
-					state: "done",
-					startedAt: 1_790_971_610_335,
-					lastProgressAt: 1_790_971_610_335,
-					tokens: 1200,
-					durationMs: 5000,
+					investigated: 2,
 				},
-			],
-			totalTokens: 198_800,
-			totalToolCalls: 12,
-		});
+				agentCount: 1,
+				logs: ["started"],
+				durationMs: 600_000,
+				summary: "Feature-by-feature parity investigation",
+				workflowName: "outline-upstream-sync",
+				status: "completed",
+				startTime: 1_790_971_610_323,
+				phases: [
+					{
+						title: "Broad",
+						detail: "inventory",
+					},
+				],
+				defaultModel: "claude-opus-5-5",
+				workflowProgress: [
+					{
+						type: "workflow_phase",
+						index: 1,
+						title: "Broad",
+					},
+					{
+						type: "workflow_agent",
+						index: 1,
+						label: "local-inventory",
+						phaseIndex: 1,
+						phaseTitle: "Broad",
+						agentId: "ae56daa7cd7cf957b",
+						model: "claude-opus-5-5",
+						state: "done",
+						startedAt: 1_790_971_610_335,
+						lastProgressAt: 1_790_971_610_335,
+						tokens: 1200,
+						durationMs: 5000,
+					},
+				],
+				totalTokens: 198_800,
+				totalToolCalls: 12,
+			},
+		);
 
 		expect(readWorkflowRuns(transcriptPath)).toStrictEqual<WorkflowRun[]>([
 			{
@@ -182,7 +255,11 @@ describe("readWorkflowRuns", () => {
 				durationMs: 600_000,
 				totalTokens: 198_800,
 				progress: [
-					{type: "workflow_phase", index: 1, title: "Broad"},
+					{
+						type: "workflow_phase",
+						index: 1,
+						title: "Broad",
+					},
 					{
 						type: "workflow_agent",
 						index: 1,
@@ -202,13 +279,35 @@ describe("readWorkflowRuns", () => {
 		]);
 	});
 
-	it("synthesizes a running run's progress from its journal and agent files", () => {
+	it("synthesizes a running run's progress from its journal and agent files", () =>
+	{
 		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
 		writeJournal([
-			{type: "launched"},
-			{type: "started", key: "v2:aa", agentId: "a1", label: "ours:sidebar", phase: "Inventory"},
-			{type: "started", key: "v2:bb", agentId: "a2"},
-			{type: "result", key: "v2:aa", agentId: "a1", result: {file: "/tmp/sidebar.json", count: 3}},
+			{
+				type: "launched",
+			},
+			{
+				type: "started",
+				key: "v2:aa",
+				agentId: "a1",
+				label: "ours:sidebar",
+				phase: "Inventory",
+			},
+			{
+				type: "started",
+				key: "v2:bb",
+				agentId: "a2",
+			},
+			{
+				type: "result",
+				key: "v2:aa",
+				agentId: "a1",
+				result:
+				{
+					file: "/tmp/sidebar.json",
+					count: 3,
+				},
+			},
 		]);
 		writeAgent(
 			"a1",
@@ -250,8 +349,16 @@ describe("readWorkflowRuns", () => {
 				durationMs: null,
 				totalTokens: null,
 				progress: [
-					{type: "workflow_phase", index: 1, title: "Inventory"},
-					{type: "workflow_phase", index: 2, title: "Diff"},
+					{
+						type: "workflow_phase",
+						index: 1,
+						title: "Inventory",
+					},
+					{
+						type: "workflow_phase",
+						index: 2,
+						title: "Diff",
+					},
 					{
 						type: "workflow_agent",
 						index: 1,
@@ -280,11 +387,20 @@ describe("readWorkflowRuns", () => {
 		]);
 	});
 
-	it("falls back to an agent meta's pickedEffortModel when it names no model", () => {
+	it("falls back to an agent meta's pickedEffortModel when it names no model", () =>
+	{
 		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
 		writeJournal([
-			{type: "launched"},
-			{type: "started", key: "v2:aa", agentId: "a1", label: "probe", phase: "Inventory"},
+			{
+				type: "launched",
+			},
+			{
+				type: "started",
+				key: "v2:aa",
+				agentId: "a1",
+				label: "probe",
+				phase: "Inventory",
+			},
 		]);
 		writeAgent(
 			"a1",
@@ -300,7 +416,11 @@ describe("readWorkflowRuns", () => {
 		);
 
 		expect(readWorkflowRuns(transcriptPath)[0]?.progress).toStrictEqual([
-			{type: "workflow_phase", index: 1, title: "Inventory"},
+			{
+				type: "workflow_phase",
+				index: 1,
+				title: "Inventory",
+			},
 			{
 				type: "workflow_agent",
 				index: 1,
@@ -316,16 +436,35 @@ describe("readWorkflowRuns", () => {
 		]);
 	});
 
-	it("carries a journal result's toolsUsed onto a running run's agent entry", () => {
+	it("carries a journal result's toolsUsed onto a running run's agent entry", () =>
+	{
 		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
 		writeJournal([
-			{type: "launched"},
-			{type: "started", key: "v2:aa", agentId: "a1", label: "probe", phase: "Inventory"},
-			{type: "result", key: "v2:aa", agentId: "a1", result: null, toolsUsed: ["Bash", "StructuredOutput"]},
+			{
+				type: "launched",
+			},
+			{
+				type: "started",
+				key: "v2:aa",
+				agentId: "a1",
+				label: "probe",
+				phase: "Inventory",
+			},
+			{
+				type: "result",
+				key: "v2:aa",
+				agentId: "a1",
+				result: null,
+				toolsUsed: ["Bash", "StructuredOutput"],
+			},
 		]);
 
 		expect(readWorkflowRuns(transcriptPath)[0]?.progress).toStrictEqual([
-			{type: "workflow_phase", index: 1, title: "Inventory"},
+			{
+				type: "workflow_phase",
+				index: 1,
+				title: "Inventory",
+			},
 			{
 				type: "workflow_agent",
 				index: 1,
@@ -339,55 +478,121 @@ describe("readWorkflowRuns", () => {
 		]);
 	});
 
-	it("carries a journal result's toolsUsed onto a completed run's agent entry by agent id", () => {
+	it("carries a journal result's toolsUsed onto a completed run's agent entry by agent id", () =>
+	{
 		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
-		writeRunFile({
-			runId: RUN,
-			timestamp: "2026-10-01T12:10:00.000Z",
-			taskId: "wxkmbdj52",
-			script: "",
-			scriptPath: join(sessionDir, "workflows", "scripts", `outline-upstream-sync-${RUN}.js`),
-			result: null,
-			agentCount: 2,
-			logs: [],
-			durationMs: 600_000,
-			summary: "Feature-by-feature parity investigation",
-			workflowName: "outline-upstream-sync",
-			status: "completed",
-			startTime: 1_790_971_610_323,
-			phases: [],
-			defaultModel: "claude-opus-5-5",
-			workflowProgress: [
-				{type: "workflow_agent", index: 1, label: "one", agentId: "a1", state: "done"},
-				{type: "workflow_agent", index: 2, label: "two", agentId: "a2", state: "done"},
-			],
-			totalTokens: 0,
-			totalToolCalls: 0,
-		});
+		writeRunFile(
+			{
+				runId: RUN,
+				timestamp: "2026-10-01T12:10:00.000Z",
+				taskId: "wxkmbdj52",
+				script: "",
+				scriptPath: join(sessionDir, "workflows", "scripts", `outline-upstream-sync-${RUN}.js`),
+				result: null,
+				agentCount: 2,
+				logs: [],
+				durationMs: 600_000,
+				summary: "Feature-by-feature parity investigation",
+				workflowName: "outline-upstream-sync",
+				status: "completed",
+				startTime: 1_790_971_610_323,
+				phases: [],
+				defaultModel: "claude-opus-5-5",
+				workflowProgress: [
+					{
+						type: "workflow_agent",
+						index: 1,
+						label: "one",
+						agentId: "a1",
+						state: "done",
+					},
+					{
+						type: "workflow_agent",
+						index: 2,
+						label: "two",
+						agentId: "a2",
+						state: "done",
+					},
+				],
+				totalTokens: 0,
+				totalToolCalls: 0,
+			},
+		);
 		writeJournal([
-			{type: "launched"},
-			{type: "started", key: "v2:aa", agentId: "a1"},
-			{type: "result", key: "v2:aa", agentId: "a1", result: null, toolsUsed: ["Read"]},
-			{type: "started", key: "v2:bb", agentId: "a2"},
-			{type: "result", key: "v2:bb", agentId: "a2", result: null},
+			{
+				type: "launched",
+			},
+			{
+				type: "started",
+				key: "v2:aa",
+				agentId: "a1",
+			},
+			{
+				type: "result",
+				key: "v2:aa",
+				agentId: "a1",
+				result: null,
+				toolsUsed: ["Read"],
+			},
+			{
+				type: "started",
+				key: "v2:bb",
+				agentId: "a2",
+			},
+			{
+				type: "result",
+				key: "v2:bb",
+				agentId: "a2",
+				result: null,
+			},
 		]);
 
 		expect(readWorkflowRuns(transcriptPath)[0]?.progress).toStrictEqual([
-			{type: "workflow_agent", index: 1, label: "one", agentId: "a1", state: "done", toolsUsed: ["Read"]},
-			{type: "workflow_agent", index: 2, label: "two", agentId: "a2", state: "done"},
+			{
+				type: "workflow_agent",
+				index: 1,
+				label: "one",
+				agentId: "a1",
+				state: "done",
+				toolsUsed: ["Read"],
+			},
+			{
+				type: "workflow_agent",
+				index: 2,
+				label: "two",
+				agentId: "a2",
+				state: "done",
+			},
 		]);
 	});
 
-	it("marks failed journal agents as errors", () => {
+	it("marks failed journal agents as errors", () =>
+	{
 		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
 		writeJournal([
-			{type: "launched"},
-			{type: "started", key: "v2:aa", agentId: "a1", label: "probe", phase: "Inventory"},
-			{type: "failed", key: "v2:aa", agentId: "a1"},
+			{
+				type: "launched",
+			},
+			{
+				type: "started",
+				key: "v2:aa",
+				agentId: "a1",
+				label: "probe",
+				phase: "Inventory",
+			},
+			{
+				type: "failed",
+				key: "v2:aa",
+				agentId: "a1",
+			},
 		]);
 
 		expect(readWorkflowRuns(transcriptPath)[0]?.progress).toStrictEqual([
-			{type: "workflow_phase", index: 1, title: "Inventory"},
+			{
+				type: "workflow_phase",
+				index: 1,
+				title: "Inventory",
+			},
 			{
 				type: "workflow_agent",
 				index: 1,
@@ -400,7 +605,8 @@ describe("readWorkflowRuns", () => {
 		]);
 	});
 
-	it("reads a stopped run's status and summary from its task-notification", () => {
+	it("reads a stopped run's status and summary from its task-notification", () =>
+	{
 		writeTranscript([
 			launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z"),
 			queuedNotification(
@@ -427,29 +633,43 @@ describe("readWorkflowRuns", () => {
 		]);
 	});
 
-	it("reads a failed run's status and error from workflows/<runId>.json when no task-notification arrived", () => {
+	it("reads a failed run's status and error from workflows/<runId>.json when no task-notification arrived", () =>
+	{
 		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
-		writeRunFile({
-			runId: RUN,
-			timestamp: "2026-10-01T12:10:00.000Z",
-			taskId: "wxkmbdj52",
-			script: "export const meta = {name: 'outline-upstream-sync'}",
-			scriptPath: join(sessionDir, "workflows", "scripts", `outline-upstream-sync-${RUN}.js`),
-			result: null,
-			error: "TelemetrySafeError: WorktreeCreate hook failed",
-			agentCount: 1,
-			logs: [],
-			durationMs: 1_709_896,
-			summary: "Feature-by-feature parity investigation",
-			workflowName: "outline-upstream-sync",
-			status: "failed",
-			startTime: 1_790_971_610_323,
-			phases: [{title: "Broad", detail: "inventory"}],
-			defaultModel: "claude-opus-5-5",
-			workflowProgress: [{type: "workflow_phase", index: 1, title: "Broad"}],
-			totalTokens: 0,
-			totalToolCalls: 0,
-		});
+		writeRunFile(
+			{
+				runId: RUN,
+				timestamp: "2026-10-01T12:10:00.000Z",
+				taskId: "wxkmbdj52",
+				script: "export const meta = {name: 'outline-upstream-sync'}",
+				scriptPath: join(sessionDir, "workflows", "scripts", `outline-upstream-sync-${RUN}.js`),
+				result: null,
+				error: "TelemetrySafeError: WorktreeCreate hook failed",
+				agentCount: 1,
+				logs: [],
+				durationMs: 1_709_896,
+				summary: "Feature-by-feature parity investigation",
+				workflowName: "outline-upstream-sync",
+				status: "failed",
+				startTime: 1_790_971_610_323,
+				phases: [
+					{
+						title: "Broad",
+						detail: "inventory",
+					},
+				],
+				defaultModel: "claude-opus-5-5",
+				workflowProgress: [
+					{
+						type: "workflow_phase",
+						index: 1,
+						title: "Broad",
+					},
+				],
+				totalTokens: 0,
+				totalToolCalls: 0,
+			},
+		);
 
 		expect(readWorkflowRuns(transcriptPath)).toStrictEqual<WorkflowRun[]>([
 			{
@@ -462,12 +682,19 @@ describe("readWorkflowRuns", () => {
 				startedAt: 1_790_971_610_323,
 				durationMs: 1_709_896,
 				totalTokens: 0,
-				progress: [{type: "workflow_phase", index: 1, title: "Broad"}],
+				progress: [
+					{
+						type: "workflow_phase",
+						index: 1,
+						title: "Broad",
+					},
+				],
 			},
 		]);
 	});
 
-	it("keeps one run per runId and lets the latest launch of a resumed run win", () => {
+	it("keeps one run per runId and lets the latest launch of a resumed run win", () =>
+	{
 		writeTranscript([
 			launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z"),
 			userNotification(notificationText("wxkmbdj52", "toolu_A", "completed", "first")),
@@ -476,27 +703,45 @@ describe("readWorkflowRuns", () => {
 			launch("toolu_C", "wmyxatopy", "2026-10-01T14:00:00.000Z"),
 		]);
 		// The run file still describes the first launch: it must not settle the third.
-		writeRunFile({
-			runId: RUN,
-			timestamp: "2026-10-01T12:10:00.000Z",
-			taskId: "wxkmbdj52",
-			script: "",
-			scriptPath: "",
-			result: null,
-			agentCount: 0,
-			logs: [],
-			durationMs: 600_000,
-			summary: "Feature-by-feature parity investigation",
-			workflowName: "outline-upstream-sync",
-			status: "completed",
-			startTime: 1,
-			phases: [],
-			defaultModel: "claude-opus-5-5",
-			workflowProgress: [{type: "workflow_phase", index: 1, title: "Old"}],
-			totalTokens: 5,
-			totalToolCalls: 0,
-		});
-		writeJournal([{type: "launched"}, {type: "started", key: "v2:aa", agentId: "a1", label: "probe"}]);
+		writeRunFile(
+			{
+				runId: RUN,
+				timestamp: "2026-10-01T12:10:00.000Z",
+				taskId: "wxkmbdj52",
+				script: "",
+				scriptPath: "",
+				result: null,
+				agentCount: 0,
+				logs: [],
+				durationMs: 600_000,
+				summary: "Feature-by-feature parity investigation",
+				workflowName: "outline-upstream-sync",
+				status: "completed",
+				startTime: 1,
+				phases: [],
+				defaultModel: "claude-opus-5-5",
+				workflowProgress: [
+					{
+						type: "workflow_phase",
+						index: 1,
+						title: "Old",
+					},
+				],
+				totalTokens: 5,
+				totalToolCalls: 0,
+			},
+		);
+		writeJournal([
+			{
+				type: "launched",
+			},
+			{
+				type: "started",
+				key: "v2:aa",
+				agentId: "a1",
+				label: "probe",
+			},
+		]);
 
 		expect(readWorkflowRuns(transcriptPath)).toStrictEqual<WorkflowRun[]>([
 			{
@@ -509,20 +754,39 @@ describe("readWorkflowRuns", () => {
 				startedAt: Date.parse("2026-10-01T14:00:00.000Z"),
 				durationMs: null,
 				totalTokens: null,
-				progress: [{type: "workflow_agent", index: 1, label: "probe", agentId: "a1", state: "progress"}],
+				progress: [
+					{
+						type: "workflow_agent",
+						index: 1,
+						label: "probe",
+						agentId: "a1",
+						state: "progress",
+					},
+				],
 			},
 		]);
 	});
 
 	it.each([
-		{name: "an is_error tool_result", isError: true},
-		{name: "no is_error flag", isError: false},
-	])("builds no run from a compile-failed launch with $name", ({isError}) => {
+		{
+			name: "an is_error tool_result",
+			isError: true,
+		},
+		{
+			name: "no is_error flag",
+			isError: false,
+		},
+	])("builds no run from a compile-failed launch with $name", ({isError}) =>
+	{
 		const failed = launch("toolu_A", "w5", "2026-10-01T12:00:00.000Z");
-		const message = failed["message"] as {content: Record<string, unknown>[]};
+		const message = failed["message"] as
+		{
+			content: Record<string, unknown>[];
+		};
 		const block = message.content[0];
 		if (isError && block !== undefined) block["is_error"] = true;
-		failed["toolUseResult"] = {
+		failed["toolUseResult"] =
+		{
 			...(failed["toolUseResult"] as Record<string, unknown>),
 			error: "SyntaxError: Unexpected token (3:4)",
 		};
@@ -531,23 +795,34 @@ describe("readWorkflowRuns", () => {
 		expect(readWorkflowRuns(transcriptPath)).toStrictEqual([]);
 	});
 
-	it("returns runs the API response schema accepts unchanged", () => {
+	it("returns runs the API response schema accepts unchanged", () =>
+	{
 		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
 		writeJournal([
-			{type: "launched"},
-			{type: "started", key: "v2:aa", agentId: "a1", label: "probe", phase: "Inventory"},
+			{
+				type: "launched",
+			},
+			{
+				type: "started",
+				key: "v2:aa",
+				agentId: "a1",
+				label: "probe",
+				phase: "Inventory",
+			},
 		]);
 		const runs = readWorkflowRuns(transcriptPath);
 
 		expect(SessionWorkflowRunsResponse.parse(runs)).toStrictEqual(runs);
 	});
 
-	it("returns no runs for a missing transcript", () => {
+	it("returns no runs for a missing transcript", () =>
+	{
 		expect(readWorkflowRuns(join(projectDir, "missing.jsonl"))).toStrictEqual([]);
 	});
 });
 
-describe("workflowSessionIdForPath", () => {
+describe("workflowSessionIdForPath", () =>
+{
 	it.each([
 		["<p>/<s>/workflows/wf_1.json", SESSION],
 		["<p>/<s>/subagents/workflows/wf_1/journal.jsonl", SESSION],
@@ -557,7 +832,8 @@ describe("workflowSessionIdForPath", () => {
 		["<p>/<s>/subagents/agent-a1.jsonl", null],
 		["<p>/<s>.jsonl", null],
 		["/elsewhere/<s>/workflows/wf_1.json", null],
-	] as const)("%s → %s", (template, expected) => {
+	] as const)("%s → %s", (template, expected) =>
+	{
 		const path = template
 			.replace("<p>", join(projectsDir, "-Users-alice-projects-outline"))
 			.replace("<s>", SESSION);
@@ -565,11 +841,13 @@ describe("workflowSessionIdForPath", () => {
 	});
 });
 
-describe("workflow schemas", () => {
+describe("workflow schemas", () =>
+{
 	it.each([
 		{
 			name: "remote launch",
-			result: {
+			result:
+			{
 				status: "remote_launched",
 				taskId: "r9k2",
 				taskType: "remote_agent",
@@ -581,7 +859,8 @@ describe("workflow schemas", () => {
 		},
 		{
 			name: "compile-failed launch",
-			result: {
+			result:
+			{
 				status: "async_launched",
 				taskId: "w5",
 				taskType: "local_workflow",
@@ -591,30 +870,55 @@ describe("workflow schemas", () => {
 				error: "SyntaxError: Unexpected token (3:4)",
 			},
 		},
-		{name: "pre-field launch", result: {status: "async_launched", taskId: "w6"}},
-	])("accepts a $name toolUseResult", ({result}) => {
+		{
+			name: "pre-field launch",
+			result:
+			{
+				status: "async_launched",
+				taskId: "w6",
+			},
+		},
+	])("accepts a $name toolUseResult", ({result}) =>
+	{
 		expect(WorkflowLaunchResultSchema.parse(result)).toStrictEqual(result);
 	});
 
-	it("rejects an unknown key on a launch toolUseResult", () => {
+	it("rejects an unknown key on a launch toolUseResult", () =>
+	{
 		const full = launch("toolu_A", "w1", "2026-10-01T12:00:00.000Z")["toolUseResult"] as Record<string, unknown>;
 		expect(WorkflowLaunchResultSchema.parse(full)).toStrictEqual(full);
-		expect(WorkflowLaunchResultSchema.safeParse({...full, extra: 1}).success).toBe(false);
+		expect(
+			WorkflowLaunchResultSchema.safeParse(
+				{
+					...full,
+					extra: 1,
+				},
+			).success,
+		).toBe(false);
 	});
 
-	it("accepts a result journal event with toolsUsed", () => {
-		const event = {
+	it("accepts a result journal event with toolsUsed", () =>
+	{
+		const event =
+		{
 			type: "result",
 			key: "v2:f1ec",
 			agentId: "a9fc1c85cc36d863d",
-			result: {none: false, head: "7b529a88", clean: true},
+			result:
+			{
+				none: false,
+				head: "7b529a88",
+				clean: true,
+			},
 			toolsUsed: ["Bash", "StructuredOutput"],
 		};
 		expect(WorkflowJournalEventSchema.parse(event)).toStrictEqual(event);
 	});
 
-	it("accepts an agent meta file with isBuiltIn", () => {
-		const meta = {
+	it("accepts an agent meta file with isBuiltIn", () =>
+	{
+		const meta =
+		{
 			agentType: "workflow-subagent",
 			isBuiltIn: true,
 			description: "task-1",
@@ -627,8 +931,10 @@ describe("workflow schemas", () => {
 		expect(WorkflowAgentMetaSchema.parse(meta)).toStrictEqual(meta);
 	});
 
-	it("accepts an agent meta file with pickedEffortModel", () => {
-		const meta = {
+	it("accepts an agent meta file with pickedEffortModel", () =>
+	{
+		const meta =
+		{
 			agentType: "general-purpose",
 			isBuiltIn: true,
 			description: "task-1",
@@ -643,12 +949,17 @@ describe("workflow schemas", () => {
 });
 
 /** The paths `pick` selects for every ~/.claude/projects/<project>/<session> entry. */
-function diskFiles(pick: (sessionDir: string) => string[]): string[] {
+function diskFiles(pick: (sessionDir: string) => string[]): string[]
+{
 	const root = join(homedir(), ".claude", "projects");
-	const list = (dir: string): string[] => {
-		try {
+	const list = (dir: string): string[] =>
+	{
+		try
+		{
 			return readdirSync(dir);
-		} catch {
+		}
+		catch
+		{
 			return [];
 		}
 	};
@@ -657,12 +968,16 @@ function diskFiles(pick: (sessionDir: string) => string[]): string[] {
 	);
 }
 
-function listDir(dir: string, suffix: string): string[] {
-	try {
+function listDir(dir: string, suffix: string): string[]
+{
+	try
+	{
 		return readdirSync(dir)
 			.filter((file) => file.endsWith(suffix))
 			.map((file) => join(dir, file));
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 }
@@ -686,32 +1001,50 @@ const launchFiles = selectFilesForScan(
 	300,
 ).files;
 
-describe("workflow schemas against disk", () => {
+describe("workflow schemas against disk", () =>
+{
 	it(
 		"validates every Workflow launch toolUseResult",
-		async () => {
+		async () =>
+		{
 			const failures: string[] = [];
-			for (const file of launchFiles) {
+			for (const file of launchFiles)
+			{
 				const start = tailBytes === undefined ? 0 : Math.max(0, file.sizeBytes - tailBytes);
 				let text: string;
-				try {
+				try
+				{
 					const handle = await open(file.path, "r");
-					try {
+					try
+					{
 						const buffer = Buffer.alloc(file.sizeBytes - start);
 						await handle.read(buffer, 0, buffer.length, start);
 						text = buffer.toString("utf8");
-					} finally {
+					}
+					finally
+					{
 						await handle.close();
 					}
-				} catch {
+				}
+				catch
+				{
 					continue;
 				}
-				text.split("\n").forEach((line, i) => {
+				text.split("\n").forEach((line, i) =>
+				{
 					if (!line.includes('"local_workflow"') && !line.includes('"remote_launched"')) return;
 					let result: unknown;
-					try {
-						result = (JSON.parse(line) as {toolUseResult?: unknown}).toolUseResult;
-					} catch {
+					try
+					{
+						result = (
+							JSON.parse(line) as
+							{
+								toolUseResult?: unknown;
+							}
+						).toolUseResult;
+					}
+					catch
+					{
 						return;
 					}
 					if (typeof result !== "object" || result === null) return;
@@ -725,26 +1058,32 @@ describe("workflow schemas against disk", () => {
 		scanTimeoutMilliseconds(scanByteCount(launchFiles, tailBytes)),
 	);
 
-	it("validates every workflows/<runId>.json run file", () => {
-		const failures = diskFiles((session) => listDir(join(session, "workflows"), ".json")).flatMap((file) => {
+	it("validates every workflows/<runId>.json run file", () =>
+	{
+		const failures = diskFiles((session) => listDir(join(session, "workflows"), ".json")).flatMap((file) =>
+		{
 			const result = WorkflowRunFileSchema.safeParse(JSON.parse(readFileSync(file, "utf8")));
 			return result.success ? [] : [`${file}: ${result.error.message}`];
 		});
 		expect(failures).toStrictEqual([]);
 	});
 
-	it("validates every workflow journal event and agent meta file", () => {
-		const failures = diskFiles((session) => runTranscriptDirs(session)).flatMap((dir) => {
+	it("validates every workflow journal event and agent meta file", () =>
+	{
+		const failures = diskFiles((session) => runTranscriptDirs(session)).flatMap((dir) =>
+		{
 			const journal = listDir(dir, "journal.jsonl").flatMap((file) =>
 				readFileSync(file, "utf8")
 					.split("\n")
 					.filter((line) => line !== "")
-					.flatMap((line, i) => {
+					.flatMap((line, i) =>
+					{
 						const result = WorkflowJournalEventSchema.safeParse(JSON.parse(line));
 						return result.success ? [] : [`${file}:${i + 1}: ${result.error.message}`];
 					}),
 			);
-			const metas = listDir(dir, ".meta.json").flatMap((file) => {
+			const metas = listDir(dir, ".meta.json").flatMap((file) =>
+			{
 				const result = WorkflowAgentMetaSchema.safeParse(JSON.parse(readFileSync(file, "utf8")));
 				return result.success ? [] : [`${file}: ${result.error.message}`];
 			});

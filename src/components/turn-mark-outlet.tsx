@@ -1,4 +1,5 @@
-import {
+import
+{
 	createContext,
 	useContext,
 	useEffect,
@@ -17,17 +18,21 @@ import {moveInto, TurnMarkOutletStore, type OpenOutlet} from "../lib/turn-mark-o
 
 const TurnMarkOutletContext = createContext<TurnMarkOutletStore | null>(null);
 
-const noSubscribe = () => () => {};
+const noSubscribe = () => () =>
+{
+};
 const noOutlet = () => null;
 const notUnderPlan = () => false;
 const noOwner = () => undefined;
 
 /** Upstream `tf`: one turn-mark store per session, with any pending late-close notice cancelled on unmount. */
-export function TurnMarkOutletProvider({sessionId, children}: {sessionId: string; children: ReactNode}) {
+export function TurnMarkOutletProvider({sessionId, children}: {sessionId: string; children: ReactNode})
+{
 	// oxlint-disable-next-line react-hooks/exhaustive-deps -- a new session gets a fresh store
 	const store: TurnMarkOutletStore = useMemo(() => new TurnMarkOutletStore(), [sessionId]);
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			store.cancelPendingClose();
 		},
 		[store],
@@ -36,17 +41,21 @@ export function TurnMarkOutletProvider({sessionId, children}: {sessionId: string
 }
 
 /** Upstream `hf`: the element below a docked card (or plan box) that marked rows are carried into. */
-export function TurnMarkOutlet({className, underPlan = false}: {className?: string; underPlan?: boolean}) {
+export function TurnMarkOutlet({className, underPlan = false}: {className?: string; underPlan?: boolean})
+{
 	const store = useContext(TurnMarkOutletContext);
 	const ref = useRef<HTMLDivElement>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		store?.setOutletUnderPlan(underPlan);
 	}, [store, underPlan]);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const el = ref.current;
 		if (store === null || el === null) return undefined;
 		store.openOutlet(el);
-		return () => {
+		return () =>
+		{
 			store.closeOutlet(el);
 		};
 	}, [store]);
@@ -73,8 +82,10 @@ function BoxPlacer({
 	box: HTMLElement;
 	outlet: OpenOutlet | null;
 	homeRef: RefObject<HTMLDivElement | null>;
-}) {
-	useLayoutEffect(() => {
+})
+{
+	useLayoutEffect(() =>
+	{
 		const parent = (outlet?.el.isConnected === true ? outlet.el : null) ?? homeRef.current;
 		if (parent !== null) moveInto(box, parent);
 	}, [box, outlet, homeRef]);
@@ -93,7 +104,8 @@ export function TurnMarkCarrier({
 	holds: boolean;
 	inFlight?: boolean;
 	children: ReactNode;
-}): ReactNode {
+}): ReactNode
+{
 	const store = useContext(TurnMarkOutletContext);
 	const id = useId();
 	const [box, setBox] = useState<HTMLElement | null>(null);
@@ -117,17 +129,20 @@ export function TurnMarkCarrier({
 	);
 	const target = active && (!underPlan || (claims && (owner === undefined || owner === id))) ? outlet : null;
 	const homeRef = useRef<HTMLDivElement>(null);
-	if (box === null && target !== null) {
+	if (box === null && target !== null)
+	{
 		const created = target.el.ownerDocument.createElement("div");
 		created.className = "contents";
 		created.setAttribute("data-turn-mark-box", id);
 		created.setAttribute("data-find-omitted", "");
 		setBox(created);
 	}
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (box === null) return undefined;
 		const release = store?.carry(box, () => homeRef.current);
-		return () => {
+		return () =>
+		{
 			release?.();
 			box.remove();
 		};

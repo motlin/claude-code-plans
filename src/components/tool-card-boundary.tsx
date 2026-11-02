@@ -7,7 +7,8 @@ import {RenderErrorBoundary} from "./render-error-boundary";
 export const PART_CRASHED_COPY = "Couldn’t load this.";
 
 /** Upstream `aW`: a crashed tool card's whole box, header included, becomes this one line. */
-export function ToolCardCrashed() {
+export function ToolCardCrashed()
+{
 	return (
 		<div className="px-md py-xs text-center" data-testid="tool-card-crashed">
 			<span className="text-body text-secondary">{PART_CRASHED_COPY}</span>
@@ -15,7 +16,8 @@ export function ToolCardCrashed() {
 	);
 }
 
-function reportToolCard(error: unknown) {
+function reportToolCard(error: unknown)
+{
 	console.error("[tool-card]", error);
 }
 
@@ -31,7 +33,8 @@ export function ToolCardBoundary({
 	resetOn: ToolCardStage;
 	fallback?: ReactNode;
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<RenderErrorBoundary resetOn={resetOn} fallback={fallback ?? <ToolCardCrashed />} report={reportToolCard}>
 			{children}

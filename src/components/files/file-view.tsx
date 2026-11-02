@@ -1,6 +1,7 @@
 import {useQuery} from "@tanstack/react-query";
 import {Code, Eye, FileX} from "lucide-react";
-import {
+import
+{
 	type KeyboardEvent,
 	type MouseEvent,
 	type ReactNode,
@@ -45,7 +46,8 @@ import {useMarkdownEdit} from "./markdown-edit";
  */
 const SIBLING_MD_BASE = "/__file-sibling";
 
-export interface FileViewProps {
+export interface FileViewProps
+{
 	/** Absolute path of the file. */
 	path: string;
 	/** Working directory; paths inside it show and copy relative to it. */
@@ -66,32 +68,37 @@ export interface FileViewProps {
 	onDirtyChange?: ((dirty: boolean) => void) | undefined;
 }
 
-function displayPath(path: string, cwd: string | undefined): string {
+function displayPath(path: string, cwd: string | undefined): string
+{
 	if (cwd === undefined) return path;
 	const prefix = `${cwd.replace(/\/+$/, "")}/`;
 	return path.startsWith(prefix) ? path.slice(prefix.length) : path;
 }
 
-function directoryOf(path: string): string {
+function directoryOf(path: string): string
+{
 	return path.slice(0, path.lastIndexOf("/"));
 }
 
 /** The subheader's `dir / dir / name` breadcrumb, which copies the path when clicked. */
-function Breadcrumb({path}: {path: string}) {
+function Breadcrumb({path}: {path: string})
+{
 	const copy = useCopyToClipboard();
 	const segments = path.split("/");
 	return (
 		<button
 			type="button"
 			aria-label={`Copy path ${path}`}
-			onClick={() => {
+			onClick={() =>
+			{
 				copy(path);
 			}}
 			className="-mx-0.75 flex min-w-0 flex-1 cursor-pointer rounded-r3 text-left text-pane text-secondary hover:bg-fill-ghost-hover"
 		>
 			<span className="-mx-1 -my-1 flex min-w-0 overflow-x-auto px-1 py-1 whitespace-nowrap [direction:rtl] [scrollbar-width:none]">
 				<span dir="ltr" className="flex min-w-full shrink-0 items-baseline">
-					{segments.map((segment, index) => {
+					{segments.map((segment, index) =>
+					{
 						const isName = index === segments.length - 1;
 						return (
 							<span key={index} className="flex shrink-0 items-baseline">
@@ -130,7 +137,8 @@ function LinkedMarkdown({
 	path: string;
 	cwd: string | undefined;
 	onOpenFile: (path: string) => void;
-}) {
+})
+{
 	const texts = useMemo(() => fileRefTexts(markdown), [markdown]);
 	const refs = useResolvedFileRefs(texts, NO_SESSION_PATHS, [directoryOf(path), cwd]);
 	return (
@@ -138,7 +146,8 @@ function LinkedMarkdown({
 			markdown={markdown}
 			mdLinkBase={SIBLING_MD_BASE}
 			fileRefs={refs.size === 0 ? undefined : refs}
-			onFileRef={(ref) => {
+			onFileRef={(ref) =>
+			{
 				onOpenFile(ref.path);
 			}}
 		/>
@@ -155,7 +164,8 @@ function ViewerMessage({
 	detail?: string;
 	fileName?: string;
 	children?: ReactNode;
-}) {
+})
+{
 	return (
 		<div className="flex h-full flex-col items-center justify-center gap-3 px-4 py-4 text-center">
 			{fileName === undefined ? (
@@ -184,9 +194,11 @@ function ViewerMessage({
 const MESSAGE_BUTTON =
 	"inline-flex h-7 cursor-pointer items-center rounded-r5 border border-strong px-2.5 text-footnote text-primary hover:bg-fill-ghost-hover";
 
-function ImageView({path}: {path: string}) {
+function ImageView({path}: {path: string})
+{
 	const [failed, setFailed] = useState(false);
-	if (failed) {
+	if (failed)
+	{
 		return (
 			<ViewerMessage
 				title="This image couldn’t be loaded. It may be too large, or it may have been deleted or moved."
@@ -199,7 +211,8 @@ function ImageView({path}: {path: string}) {
 			<img
 				alt={path.slice(path.lastIndexOf("/") + 1)}
 				src={fileContentUrl(path)}
-				onError={() => {
+				onError={() =>
+				{
 					setFailed(true);
 				}}
 				className="max-h-full max-w-full object-contain"
@@ -208,7 +221,8 @@ function ImageView({path}: {path: string}) {
 	);
 }
 
-function lineNumberOf(node: Node): number | null {
+function lineNumberOf(node: Node): number | null
+{
 	const element = node instanceof Element ? node : node.parentElement;
 	const row = element?.closest<HTMLElement>('[role="row"][id^="L"]');
 	if (row === null || row === undefined) return null;
@@ -226,7 +240,8 @@ function selectionAttachment(
 	path: string,
 	cwd: string | undefined,
 	content: string | undefined,
-): ContextAttachment | null {
+): ContextAttachment | null
+{
 	const selection = window.getSelection();
 	if (container === null || selection === null || selection.rangeCount === 0) return null;
 	const range = selection.getRangeAt(0);
@@ -234,11 +249,16 @@ function selectionAttachment(
 	const mention = mentionPath(path, cwd);
 	const start = lineNumberOf(range.startContainer);
 	const end = lineNumberOf(range.endContainer);
-	if (start !== null && end !== null && content !== undefined) {
+	if (start !== null && end !== null && content !== undefined)
+	{
 		return {
 			kind: "selection",
 			path: mention,
-			range: {start, end},
+			range:
+			{
+				start,
+				end,
+			},
 			text: content
 				.split("\n")
 				.slice(start - 1, end)
@@ -248,15 +268,22 @@ function selectionAttachment(
 	}
 	const text = selection.toString();
 	if (text.trim() === "") return null;
-	return {kind: "selection", path: mention, text, language: null};
+	return {
+		kind: "selection",
+		path: mention,
+		text,
+		language: null,
+	};
 }
 
-function errorTitle(error: unknown): string {
+function errorTitle(error: unknown): string
+{
 	if (error instanceof ApiResponseError && error.status === 404) return "Couldn’t find this file";
 	return "Can’t read this file";
 }
 
-function isFindShortcut(event: KeyboardEvent): boolean {
+function isFindShortcut(event: KeyboardEvent): boolean
+{
 	const mod = isMacPlatform() ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
 	return mod && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "f";
 }
@@ -281,7 +308,8 @@ function useFindInFile({
 	sourceMode: boolean;
 	line: number | undefined;
 	findQuery: string | undefined;
-}) {
+})
+{
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [activeState, setActiveState] = useState(0);
@@ -293,13 +321,31 @@ function useFindInFile({
 	const [focusRequest, setFocusRequest] = useState(0);
 
 	// A content search hit opens the bar prefilled, on the match at its line.
-	const [seenTarget, setSeenTarget] = useState<{findQuery?: string; line?: number}>({});
-	if (seenTarget.findQuery !== findQuery || seenTarget.line !== line) {
-		setSeenTarget({
-			...(findQuery === undefined ? {} : {findQuery}),
-			...(line === undefined ? {} : {line}),
-		});
-		if (findQuery !== undefined && findQuery !== "") {
+	const [seenTarget, setSeenTarget] = useState<
+	{
+		findQuery?: string;
+		line?: number;
+	}>({});
+	if (seenTarget.findQuery !== findQuery || seenTarget.line !== line)
+	{
+		setSeenTarget(
+			{
+				...(findQuery === undefined
+					? {}
+					:
+						{
+							findQuery,
+						}),
+				...(line === undefined
+					? {}
+					:
+						{
+							line,
+						}),
+			},
+		);
+		if (findQuery !== undefined && findQuery !== "")
+		{
 			setOpen(true);
 			setQuery(findQuery);
 			setActiveState(0);
@@ -318,79 +364,105 @@ function useFindInFile({
 	const active = total === 0 ? 0 : Math.min(anchored, total - 1);
 	const revealLine = sourceMatches !== null && total > 0 ? lineOfMatch(sourceMatches.offsets, active) : undefined;
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const root = viewerRef.current;
 		if (!open || root === null) return undefined;
-		const apply = () => {
+		const apply = () =>
+		{
 			const blocks = collectFindBlocks(root, query);
 			const ranges: Range[] = [];
 			let activeRange = null as Range | null;
-			for (const {block, ranges: blockRanges} of blocks) {
+			for (const {block, ranges: blockRanges} of blocks)
+			{
 				const lineNumber = sourceMatches === null ? null : Number(block.id.slice(1));
 				const base = lineNumber === null ? ranges.length : (sourceMatches?.offsets[lineNumber - 1] ?? -1);
-				blockRanges.forEach((range, index) => {
+				blockRanges.forEach((range, index) =>
+				{
 					if (base + index === active) activeRange = range;
 					ranges.push(range);
 				});
 			}
 			if (sourceMatches === null) setDomTotal(ranges.length);
 			paintFindHighlights(ranges, activeRange);
-			if (scrolledRef.current !== scrollRequest && activeRange !== null) {
+			if (scrolledRef.current !== scrollRequest && activeRange !== null)
+			{
 				scrolledRef.current = scrollRequest;
-				activeRange.startContainer.parentElement?.scrollIntoView({
-					block: "center",
-					inline: "nearest",
-				});
+				activeRange.startContainer.parentElement?.scrollIntoView(
+					{
+						block: "center",
+						inline: "nearest",
+					},
+				);
 			}
 		};
 		apply();
 		const observer = new MutationObserver(apply);
-		observer.observe(root, {childList: true, subtree: true, characterData: true});
-		return () => {
+		observer.observe(
+			root,
+			{
+				childList: true,
+				subtree: true,
+				characterData: true,
+			},
+		);
+		return () =>
+		{
 			observer.disconnect();
 			clearFindHighlights();
 		};
 	}, [viewerRef, open, query, active, sourceMatches, scrollRequest]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (focusRequest === 0) return;
 		inputRef.current?.focus();
 		inputRef.current?.select();
 	}, [focusRequest]);
 
-	const openBar = () => {
+	const openBar = () =>
+	{
 		setOpen(true);
 		setFocusRequest((request) => request + 1);
 	};
 
 	useEffect(
 		() =>
-			registerFindInFile(path, () => {
+			registerFindInFile(path, () =>
+			{
 				setOpen(true);
 				setFocusRequest((request) => request + 1);
 			}),
 		[path],
 	);
 
-	const close = () => {
+	const close = () =>
+	{
 		setOpen(false);
-		viewerRef.current?.focus({preventScroll: true});
+		viewerRef.current?.focus(
+			{
+				preventScroll: true,
+			},
+		);
 	};
 
-	const changeQuery = (next: string) => {
+	const changeQuery = (next: string) =>
+	{
 		setQuery(next);
 		setActiveState(0);
 		setAnchorLine(null);
 		setScrollRequest((request) => request + 1);
 	};
 
-	const step = (direction: 1 | -1) => {
+	const step = (direction: 1 | -1) =>
+	{
 		setActiveState(stepMatch(active, total, direction));
 		setAnchorLine(null);
 		setScrollRequest((request) => request + 1);
 	};
 
-	const handlePaneKeyDown = (event: KeyboardEvent) => {
+	const handlePaneKeyDown = (event: KeyboardEvent) =>
+	{
 		if (!isFindShortcut(event)) return;
 		event.preventDefault();
 		event.stopPropagation();
@@ -431,44 +503,58 @@ export function FileView({
 	onAttachContext,
 	onEditStart,
 	onDirtyChange,
-}: FileViewProps) {
+}: FileViewProps)
+{
 	const {settings} = useSettings();
 	const [forceText, setForceText] = useState(false);
 	const [showSource, setShowSource] = useState(false);
 	const isImage = imageContentType(path) !== null;
 	const markdown = isMarkdownPath(path);
-	const file = useQuery({...fileViewQueryOptions(path, forceText), enabled: !isImage});
+	const file = useQuery(
+		{
+			...fileViewQueryOptions(path, forceText),
+			enabled: !isImage,
+		},
+	);
 	const viewerRef = useRef<HTMLDivElement>(null);
 	const [menuSelection, setMenuSelection] = useState<ContextAttachment | null>(null);
 	const attachKeys = useShortcutKeys("attach_selection");
 	const content = file.data?.kind === "text" ? file.data.content : undefined;
-	const edit = useMarkdownEdit({
-		path,
-		target: markdown && content !== undefined ? editableMarkdownTarget(path) : null,
-		onEditStart,
-		onDirtyChange,
-	});
-	const find = useFindInFile({
-		path,
-		viewerRef,
-		content,
-		sourceMode: content !== undefined && content !== "" && (!markdown || showSource),
-		line,
-		findQuery,
-	});
+	const edit = useMarkdownEdit(
+		{
+			path,
+			target: markdown && content !== undefined ? editableMarkdownTarget(path) : null,
+			onEditStart,
+			onDirtyChange,
+		},
+	);
+	const find = useFindInFile(
+		{
+			path,
+			viewerRef,
+			content,
+			sourceMode: content !== undefined && content !== "" && (!markdown || showSource),
+			line,
+			findQuery,
+		},
+	);
 
 	useShortcut(
 		"attach_selection",
-		() => {
+		() =>
+		{
 			const attachment = selectionAttachment(viewerRef.current, path, cwd, content);
 			if (attachment === null) return false;
 			onAttachContext?.(attachment);
 			return true;
 		},
-		{disabled: onAttachContext === undefined},
+		{
+			disabled: onAttachContext === undefined,
+		},
 	);
 
-	const openSiblingLink = (event: MouseEvent<HTMLDivElement>) => {
+	const openSiblingLink = (event: MouseEvent<HTMLDivElement>) =>
+	{
 		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
 		const anchor = event.target instanceof Element ? event.target.closest("a") : null;
 		const href = anchor?.getAttribute("href");
@@ -478,19 +564,22 @@ export function FileView({
 		onOpenFile(`${directoryOf(path)}/${fromMdSlug(slug)}`);
 	};
 
-	const body = (): ReactNode => {
+	const body = (): ReactNode =>
+	{
 		if (edit.editor !== null) return edit.editor;
 		if (isImage) return <ImageView path={path} />;
 		if (file.isPending) return <ViewerMessage title="Loading file" />;
 		if (file.isError) return <ViewerMessage title={errorTitle(file.error)} detail={path} fileName={path} />;
 		const data = file.data;
-		if (data.kind === "binary") {
+		if (data.kind === "binary")
+		{
 			return (
 				<ViewerMessage title="This file looks like binary data and can’t be previewed as text." fileName={path}>
 					<button
 						type="button"
 						className={MESSAGE_BUTTON}
-						onClick={() => {
+						onClick={() =>
+						{
 							setForceText(true);
 						}}
 					>
@@ -499,21 +588,32 @@ export function FileView({
 				</ViewerMessage>
 			);
 		}
-		if (data.kind === "too-large") {
+		if (data.kind === "too-large")
+		{
 			return (
 				<ViewerMessage
 					title={`${data.type} · ${formatFileSize(data.size)}`}
 					detail="It’s too large to preview here."
 					fileName={path}
 				>
-					<a href={fileContentUrl(path, {download: true})} download className={MESSAGE_BUTTON}>
+					<a
+						href={fileContentUrl(
+							path,
+							{
+								download: true,
+							},
+						)}
+						download
+						className={MESSAGE_BUTTON}
+					>
 						Download
 					</a>
 				</ViewerMessage>
 			);
 		}
 		if (data.content === "") return <ViewerMessage title="This file is empty." />;
-		if (markdown && !showSource) {
+		if (markdown && !showSource)
+		{
 			return (
 				// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- delegates clicks from the rendered links inside it, which are keyboard-reachable themselves
 				<div className="p-4" onClick={openSiblingLink}>
@@ -547,7 +647,8 @@ export function FileView({
 		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- catches the editor and find shortcuts bubbling up from the focused pane content
 		<div
 			className="flex min-h-0 flex-1 flex-col"
-			onKeyDown={(event) => {
+			onKeyDown={(event) =>
+			{
 				edit.handleKeyDown(event);
 				find.handlePaneKeyDown(event);
 			}}
@@ -561,7 +662,8 @@ export function FileView({
 						<button
 							type="button"
 							aria-label={showSource ? "Preview" : "View source"}
-							onClick={() => {
+							onClick={() =>
+							{
 								setShowSource((shown) => !shown);
 							}}
 							className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
@@ -584,7 +686,8 @@ export function FileView({
 						data-file-viewer="true"
 						data-find-query={findQuery}
 						className="min-h-0 flex-1 overflow-auto outline-none select-text"
-						onContextMenu={() => {
+						onContextMenu={() =>
+						{
 							setMenuSelection(selectionAttachment(viewerRef.current, path, cwd, content));
 						}}
 					>
@@ -596,7 +699,13 @@ export function FileView({
 							cwd={cwd}
 							content={content}
 							line={line ?? 1}
-							attachment={() => menuSelection ?? {kind: "file", path: mentionPath(path, cwd)}}
+							attachment={() =>
+								menuSelection ??
+								{
+									kind: "file",
+									path: mentionPath(path, cwd),
+								}
+							}
 							onAttachContext={onAttachContext}
 							attachShortcut={attachKeys.keys}
 						/>

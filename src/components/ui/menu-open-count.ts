@@ -7,20 +7,24 @@ import {useEffect, useSyncExternalStore} from "react";
 let openMenuCount = 0;
 const openMenuListeners = new Set<() => void>();
 
-function setMenuOpen(delta: 1 | -1) {
+function setMenuOpen(delta: 1 | -1)
+{
 	openMenuCount += delta;
 	for (const listener of openMenuListeners) listener();
 }
 
-function subscribeOpenMenus(listener: () => void): () => void {
+function subscribeOpenMenus(listener: () => void): () => void
+{
 	openMenuListeners.add(listener);
-	return () => {
+	return () =>
+	{
 		openMenuListeners.delete(listener);
 	};
 }
 
 /** Whether any Menu or ContextMenu in the window is open. */
-export function useAnyMenuOpen(): boolean {
+export function useAnyMenuOpen(): boolean
+{
 	return useSyncExternalStore(
 		subscribeOpenMenus,
 		() => openMenuCount > 0,
@@ -29,11 +33,14 @@ export function useAnyMenuOpen(): boolean {
 }
 
 /** Counts this root in the window's open menus while it is open. */
-export function useOpenMenuCount(open: boolean) {
-	useEffect(() => {
+export function useOpenMenuCount(open: boolean)
+{
+	useEffect(() =>
+	{
 		if (!open) return undefined;
 		setMenuOpen(1);
-		return () => {
+		return () =>
+		{
 			setMenuOpen(-1);
 		};
 	}, [open]);

@@ -20,7 +20,8 @@ type ToolInput = Record<string, unknown>;
  * the session's flat `Subagent[]` list so the chat view can show the spawned
  * agent's type/status, link straight to its session, and flag parallel batches.
  */
-export interface SubagentInlineInfo {
+export interface SubagentInlineInfo
+{
 	agentId: string;
 	agentType: string | null;
 	slug: string | null;
@@ -40,7 +41,8 @@ export interface SubagentInlineInfo {
  * ClientToolCall is the flattened shape passed to individual tool renderers.
  * Built at render time from raw JSONL block + decorations + tool result info.
  */
-export interface ClientToolCall {
+export interface ClientToolCall
+{
 	id: string;
 	name: string;
 	input: ToolInput;
@@ -86,13 +88,15 @@ export interface ClientToolCall {
  * Whether the call renders as an artifact card: a successful publish or open
  * whose output names a claude.ai artifact.
  */
-export function isArtifactCard(call: ClientToolCall): boolean {
+export function isArtifactCard(call: ClientToolCall): boolean
+{
 	return (
 		call.name === "Artifact" && call.artifact !== undefined && isArtifactCardCall(call.input, call.isError === true)
 	);
 }
 
-export interface ToolRendererProps {
+export interface ToolRendererProps
+{
 	toolCall: ClientToolCall;
 	/**
 	 * True when the row is nested inside a grouped tool card, which already draws
@@ -111,21 +115,25 @@ export interface ToolRendererProps {
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
-function isParallelGroup(entry: SubagentTreeEntry): entry is ParallelSubagentGroup {
+function isParallelGroup(entry: SubagentTreeEntry): entry is ParallelSubagentGroup
+{
 	return "type" in entry && entry.type === "parallel";
 }
 
-function statusForAgent(agent: {finishedAt: string | null}): "running" | "done" | "error" {
+function statusForAgent(agent: {finishedAt: string | null}): "running" | "done" | "error"
+{
 	if (!agent.finishedAt) return "running";
 	return "done";
 }
 
-export interface SubagentLookup {
+export interface SubagentLookup
+{
 	byBareId: Map<string, SubagentInlineInfo>;
 	byTypeAndDescription: Map<string, SubagentInlineInfo>;
 }
 
-function lookupKey(agentType: string | null, description: string | null): string {
+function lookupKey(agentType: string | null, description: string | null): string
+{
 	return `${agentType ?? ""}::${description ?? ""}`;
 }
 
@@ -136,14 +144,17 @@ function lookupKey(agentType: string | null, description: string | null): string
  * `parallel ×N` batches. Depth is irrelevant to the inline decoration, so the
  * tree is flattened back out here.
  */
-export function buildSubagentLookup(agents: Subagent[]): SubagentLookup {
+export function buildSubagentLookup(agents: Subagent[]): SubagentLookup
+{
 	const byBareId = new Map<string, SubagentInlineInfo>();
 	const byTypeAndDescription = new Map<string, SubagentInlineInfo>();
 	let parallelCounter = 0;
 
-	function addNode(node: SubagentTreeNode, parallelKey?: string, parallelSize?: number): void {
+	function addNode(node: SubagentTreeNode, parallelKey?: string, parallelSize?: number): void
+	{
 		const bareId = node.agent.id.replace(/^agent-/, "");
-		const entry: SubagentInlineInfo = {
+		const entry: SubagentInlineInfo =
+		{
 			agentId: node.agent.id,
 			agentType: node.agent.agentType,
 			slug: node.agent.slug,
@@ -157,30 +168,42 @@ export function buildSubagentLookup(agents: Subagent[]): SubagentLookup {
 		if (parallelKey !== undefined) entry.parallelGroupKey = parallelKey;
 		if (parallelSize !== undefined) entry.parallelGroupSize = parallelSize;
 		byBareId.set(bareId, entry);
-		if (node.agent.description) {
+		if (node.agent.description)
+		{
 			byTypeAndDescription.set(lookupKey(node.agent.agentType, node.agent.description), entry);
 		}
 		walk(node.children);
 	}
 
-	function walk(entries: SubagentTreeEntry[]): void {
-		for (const entry of entries) {
-			if (isParallelGroup(entry)) {
+	function walk(entries: SubagentTreeEntry[]): void
+	{
+		for (const entry of entries)
+		{
+			if (isParallelGroup(entry))
+			{
 				const key = `pg-${parallelCounter++}`;
 				const size = entry.children.length;
-				for (const child of entry.children) {
+				for (const child of entry.children)
+				{
 					addNode(child, key, size);
 				}
-			} else if ("type" in entry) {
+			}
+			else if ("type" in entry)
+			{
 				for (const phase of entry.phases) walk(phase.agents);
-			} else {
+			}
+			else
+			{
 				addNode(entry);
 			}
 		}
 	}
 
 	walk(buildSubagentTree(agents));
-	return {byBareId, byTypeAndDescription};
+	return {
+		byBareId,
+		byTypeAndDescription,
+	};
 }
 
 function resolveSubagentInfo(
@@ -189,24 +212,30 @@ function resolveSubagentInfo(
 	result: string | undefined,
 	isError: boolean | undefined,
 	subagentLookup: SubagentLookup,
-): SubagentInlineInfo | undefined {
+): SubagentInlineInfo | undefined
+{
 	if (name !== "Agent") return undefined;
 
 	let info: SubagentInlineInfo | undefined;
-	if (result) {
+	if (result)
+	{
 		const match = AGENT_ID_RE.exec(result);
-		if (match?.[1]) {
+		if (match?.[1])
+		{
 			info = subagentLookup.byBareId.get(match[1]);
 		}
 	}
-	if (!info) {
+	if (!info)
+	{
 		const inputAgentType = getAgentTypeOrNull(input);
 		const inputDescription = inputString(input, "description") ?? null;
-		if (inputDescription) {
+		if (inputDescription)
+		{
 			info = subagentLookup.byTypeAndDescription.get(lookupKey(inputAgentType, inputDescription));
 		}
 	}
-	if (info) {
+	if (info)
+	{
 		return {
 			...info,
 			status: isError ? "error" : info.status,
@@ -220,7 +249,8 @@ function resolveSubagentInfo(
  * by tool_use_id in the caller's map. Lets the session view mark a tool call
  * as errored before the failure shows up in the JSONL (~2s after the hook).
  */
-export interface LiveToolFailure {
+export interface LiveToolFailure
+{
 	toolUseId: string;
 	error: string;
 }
@@ -243,12 +273,14 @@ export function buildClientToolCall(
 	liveFailures?: Map<string, LiveToolFailure>,
 	subagentLookup?: SubagentLookup,
 	invalidInput = false,
-): ClientToolCall {
+): ClientToolCall
+{
 	const id = block.id;
 	const name = block.name;
 	const input = block.input as ToolInput;
 
-	const call: ClientToolCall = {
+	const call: ClientToolCall =
+	{
 		id,
 		name,
 		input,
@@ -259,7 +291,8 @@ export function buildClientToolCall(
 
 	// Attach tool result info from pairing map
 	const resultInfo = toolResultMap.get(id);
-	if (resultInfo) {
+	if (resultInfo)
+	{
 		call.result = resultInfo.result;
 		if (resultInfo.isError) call.isError = true;
 		if (resultInfo.stopped === true) call.stopped = true;
@@ -283,13 +316,15 @@ export function buildClientToolCall(
 	// Live failure override: if SSE told us this tool_use_id failed but the
 	// JSONL hasn't been re-read yet, surface the error immediately.
 	const liveFailure = liveFailures?.get(id);
-	if (liveFailure && !call.isError) {
+	if (liveFailure && !call.isError)
+	{
 		call.isError = true;
 		call.result = nonEmpty(call.result) ?? liveFailure.error;
 	}
 
 	// Resolve inline subagent info client-side from the session's subagent list.
-	if (subagentLookup) {
+	if (subagentLookup)
+	{
 		const subagentInfo = resolveSubagentInfo(name, block.input, call.result, call.isError, subagentLookup);
 		if (subagentInfo) call.subagentInfo = subagentInfo;
 	}
@@ -297,7 +332,8 @@ export function buildClientToolCall(
 	return call;
 }
 
-function truncate(value: string, maxLength = 60): string {
+function truncate(value: string, maxLength = 60): string
+{
 	return value.length > maxLength ? value.slice(0, maxLength) + "..." : value;
 }
 
@@ -306,14 +342,16 @@ function truncate(value: string, maxLength = 60): string {
  * param (Bash and friends). Null when the param comes from somewhere else --
  * a file path, a query, a pattern.
  */
-export function getToolDescription(name: string, input: Record<string, unknown>): string | null {
+export function getToolDescription(name: string, input: Record<string, unknown>): string | null
+{
 	if (name === "ToolSearch" || name === "TaskCreate") return null;
 	if (typeof input["file_path"] === "string") return null;
 	if (typeof input["description"] !== "string") return null;
 	return truncate(input["description"]);
 }
 
-function getToolParam(name: string, input: Record<string, unknown>): string {
+function getToolParam(name: string, input: Record<string, unknown>): string
+{
 	if (name === "ToolSearch") return typeof input["query"] === "string" ? truncate(input["query"]) : "";
 	if (name === "TaskCreate") return truncate(getTaskCreateDisplaySubject(input));
 	// The schedule, not the prompt, is what "Scheduled ..." reads as upstream.

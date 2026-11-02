@@ -1,7 +1,8 @@
 import {describe, expect, it} from "vite-plus/test";
 
 import {bindingsFor} from "../src/lib/shortcuts/match";
-import {
+import
+{
 	SHORTCUT_IDS,
 	SHORTCUTS,
 	type Binding,
@@ -13,16 +14,20 @@ import {
 const BROWSER_RESERVED = new Set(["l", "t", "w", "n"]);
 const DIGIT_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
-function chord(binding: Binding): string {
+function chord(binding: Binding): string
+{
 	return bindingToKeys(binding);
 }
 
-describe("shortcut registry", () => {
-	it("lists the 43 upstream web entries plus the page-scoped and Settings ⌘F searches, the desktop-only ⌥⌘F and the six local herdr terminal keys", () => {
+describe("shortcut registry", () =>
+{
+	it("lists the 43 upstream web entries plus the page-scoped and Settings ⌘F searches, the desktop-only ⌥⌘F and the six local herdr terminal keys", () =>
+	{
 		expect(SHORTCUT_IDS).toHaveLength(52);
 	});
 
-	it("binds the local herdr terminal keys as ⌥⌘ chords on mac and Ctrl+Alt elsewhere, in their own Terminals group", () => {
+	it("binds the local herdr terminal keys as ⌥⌘ chords on mac and Ctrl+Alt elsewhere, in their own Terminals group", () =>
+	{
 		const ids = [
 			"split_terminal_right",
 			"split_terminal_down",
@@ -45,116 +50,157 @@ describe("shortcut registry", () => {
 					},
 				]),
 			),
-		).toStrictEqual({
-			split_terminal_right: {
-				description: "Split terminal right",
-				group: "terminals",
-				enabled: true,
-				mac: ["cmd+alt+d"],
-				windows: ["ctrl+alt+d"],
-				linux: ["ctrl+alt+d"],
+		).toStrictEqual(
+			{
+				split_terminal_right:
+				{
+					description: "Split terminal right",
+					group: "terminals",
+					enabled: true,
+					mac: ["cmd+alt+d"],
+					windows: ["ctrl+alt+d"],
+					linux: ["ctrl+alt+d"],
+				},
+				split_terminal_down:
+				{
+					description: "Split terminal down",
+					group: "terminals",
+					enabled: true,
+					mac: ["cmd+alt+shift+d"],
+					windows: ["ctrl+alt+shift+d"],
+					linux: ["ctrl+alt+shift+d"],
+				},
+				close_terminal_pane:
+				{
+					description: "Close terminal pane",
+					group: "terminals",
+					enabled: true,
+					mac: ["cmd+alt+\\"],
+					windows: ["ctrl+alt+\\"],
+					linux: ["ctrl+alt+\\"],
+				},
+				rename_terminal_tab:
+				{
+					description: "Rename terminal tab",
+					group: "terminals",
+					enabled: true,
+					mac: ["cmd+alt+e"],
+					windows: ["ctrl+alt+e"],
+					linux: ["ctrl+alt+e"],
+				},
+				next_terminal_pane:
+				{
+					description: "Next pane in terminal tab",
+					group: "terminals",
+					enabled: true,
+					mac: ["cmd+alt+]"],
+					windows: ["ctrl+alt+]"],
+					linux: ["ctrl+alt+]"],
+				},
+				prev_terminal_pane:
+				{
+					description: "Previous pane in terminal tab",
+					group: "terminals",
+					enabled: true,
+					mac: ["cmd+alt+["],
+					windows: ["ctrl+alt+["],
+					linux: ["ctrl+alt+["],
+				},
 			},
-			split_terminal_down: {
-				description: "Split terminal down",
-				group: "terminals",
-				enabled: true,
-				mac: ["cmd+alt+shift+d"],
-				windows: ["ctrl+alt+shift+d"],
-				linux: ["ctrl+alt+shift+d"],
-			},
-			close_terminal_pane: {
-				description: "Close terminal pane",
-				group: "terminals",
-				enabled: true,
-				mac: ["cmd+alt+\\"],
-				windows: ["ctrl+alt+\\"],
-				linux: ["ctrl+alt+\\"],
-			},
-			rename_terminal_tab: {
-				description: "Rename terminal tab",
-				group: "terminals",
-				enabled: true,
-				mac: ["cmd+alt+e"],
-				windows: ["ctrl+alt+e"],
-				linux: ["ctrl+alt+e"],
-			},
-			next_terminal_pane: {
-				description: "Next pane in terminal tab",
-				group: "terminals",
-				enabled: true,
-				mac: ["cmd+alt+]"],
-				windows: ["ctrl+alt+]"],
-				linux: ["ctrl+alt+]"],
-			},
-			prev_terminal_pane: {
-				description: "Previous pane in terminal tab",
-				group: "terminals",
-				enabled: true,
-				mac: ["cmd+alt+["],
-				windows: ["ctrl+alt+["],
-				linux: ["ctrl+alt+["],
-			},
-		});
+		);
 	});
 
-	it("binds upstream's Settings ⌘F search, sharing the page ⌘F and kept out of the ⌘/ dialog", () => {
-		expect({
-			definition: getShortcut("settings_search"),
-			mac: bindingsFor("settings_search", true).map(bindingToKeys),
-			windows: bindingsFor("settings_search", false, true).map(bindingToKeys),
-		}).toStrictEqual({
-			definition: {
-				description: "Search settings",
-				group: "general",
-				bindings: [
-					{key: "f", modifiers: ["cmd"], platform: "mac"},
-					{key: "f", modifiers: ["ctrl"], platform: "non-mac"},
-				],
-				ownerSlug: "settings-search-popover",
-				enabled: true,
-				hiddenFromDialog: true,
-				sharesBindingWith: "page_search",
+	it("binds upstream's Settings ⌘F search, sharing the page ⌘F and kept out of the ⌘/ dialog", () =>
+	{
+		expect(
+			{
+				definition: getShortcut("settings_search"),
+				mac: bindingsFor("settings_search", true).map(bindingToKeys),
+				windows: bindingsFor("settings_search", false, true).map(bindingToKeys),
 			},
-			mac: ["cmd+f"],
-			windows: ["ctrl+f"],
-		});
+		).toStrictEqual(
+			{
+				definition:
+				{
+					description: "Search settings",
+					group: "general",
+					bindings: [
+						{
+							key: "f",
+							modifiers: ["cmd"],
+							platform: "mac",
+						},
+						{
+							key: "f",
+							modifiers: ["ctrl"],
+							platform: "non-mac",
+						},
+					],
+					ownerSlug: "settings-search-popover",
+					enabled: true,
+					hiddenFromDialog: true,
+					sharesBindingWith: "page_search",
+				},
+				mac: ["cmd+f"],
+				windows: ["ctrl+f"],
+			},
+		);
 	});
 
-	it("binds upstream's desktop-only ⌥⌘F Toggle fast mode, kept out of the web ⌘/ dialog", () => {
-		expect({
-			definition: getShortcut("toggle_fast_mode"),
-			mac: bindingsFor("toggle_fast_mode", true).map(bindingToKeys),
-			windows: bindingsFor("toggle_fast_mode", false, true).map(bindingToKeys),
-		}).toStrictEqual({
-			definition: {
-				description: "Toggle fast mode",
-				group: "composer",
-				bindings: [
-					{key: "f", code: "KeyF", modifiers: ["cmd", "alt"], platform: "mac"},
-					{key: "f", code: "KeyF", modifiers: ["ctrl", "alt"], platform: "non-mac"},
-				],
-				ownerSlug: "fast-mode-toggle",
-				enabled: true,
-				hiddenFromDialog: true,
+	it("binds upstream's desktop-only ⌥⌘F Toggle fast mode, kept out of the web ⌘/ dialog", () =>
+	{
+		expect(
+			{
+				definition: getShortcut("toggle_fast_mode"),
+				mac: bindingsFor("toggle_fast_mode", true).map(bindingToKeys),
+				windows: bindingsFor("toggle_fast_mode", false, true).map(bindingToKeys),
 			},
-			mac: ["cmd+alt+f"],
-			windows: ["ctrl+alt+f"],
-		});
+		).toStrictEqual(
+			{
+				definition:
+				{
+					description: "Toggle fast mode",
+					group: "composer",
+					bindings: [
+						{
+							key: "f",
+							code: "KeyF",
+							modifiers: ["cmd", "alt"],
+							platform: "mac",
+						},
+						{
+							key: "f",
+							code: "KeyF",
+							modifiers: ["ctrl", "alt"],
+							platform: "non-mac",
+						},
+					],
+					ownerSlug: "fast-mode-toggle",
+					enabled: true,
+					hiddenFromDialog: true,
+				},
+				mac: ["cmd+alt+f"],
+				windows: ["ctrl+alt+f"],
+			},
+		);
 	});
 
-	it.each(SHORTCUT_IDS)("%s has mac and Windows bindings", (id) => {
+	it.each(SHORTCUT_IDS)("%s has mac and Windows bindings", (id) =>
+	{
 		expect(bindingsFor(id, true).length).toBeGreaterThan(0);
 		expect(bindingsFor(id, false, true).length).toBeGreaterThan(0);
 	});
 
-	it("binds every entry on Linux except the environment pickers, which upstream skips on Linux web", () => {
+	it("binds every entry on Linux except the environment pickers, which upstream skips on Linux web", () =>
+	{
 		expect(SHORTCUT_IDS.filter((id) => bindingsFor(id, false, false).length === 0)).toStrictEqual([
 			"select_environment",
 			"new_environment",
 		]);
 	});
 
-	it("never binds browser-reserved ⌘L / ⌘T / ⌘W / ⌘N", () => {
+	it("never binds browser-reserved ⌘L / ⌘T / ⌘W / ⌘N", () =>
+	{
 		const offenders = SHORTCUT_IDS.flatMap((id) =>
 			SHORTCUTS[id].bindings
 				.filter(
@@ -168,14 +214,18 @@ describe("shortcut registry", () => {
 		expect(offenders).toEqual([]);
 	});
 
-	it("never gives two enabled entries the same binding on a platform, unless they declare sharesBindingWith", () => {
+	it("never gives two enabled entries the same binding on a platform, unless they declare sharesBindingWith", () =>
+	{
 		const sharesWith = (a: ShortcutId, b: ShortcutId) =>
 			getShortcut(a).sharesBindingWith === b || getShortcut(b).sharesBindingWith === a;
-		for (const isMac of [true, false]) {
+		for (const isMac of [true, false])
+		{
 			const seen = new Map<string, ShortcutId>();
 			const duplicates: string[] = [];
-			for (const id of SHORTCUT_IDS.filter((i) => SHORTCUTS[i].enabled)) {
-				for (const b of bindingsFor(id, isMac)) {
+			for (const id of SHORTCUT_IDS.filter((i) => SHORTCUTS[i].enabled))
+			{
+				for (const b of bindingsFor(id, isMac))
+				{
 					const key = chord(b);
 					const prior = seen.get(key);
 					if (prior !== undefined && !sharesWith(prior, id)) duplicates.push(`${prior} and ${id}: ${key}`);
@@ -186,9 +236,11 @@ describe("shortcut registry", () => {
 		}
 	});
 
-	it("lets only Settings search share ⌘F with page search, Rewind share Esc with Stop, and Queue for later share ⌘⏎ with Send and stay", () => {
+	it("lets only Settings search share ⌘F with page search, Rewind share Esc with Stop, and Queue for later share ⌘⏎ with Send and stay", () =>
+	{
 		expect(
-			SHORTCUT_IDS.flatMap((id) => {
+			SHORTCUT_IDS.flatMap((id) =>
+			{
 				const other = getShortcut(id).sharesBindingWith;
 				return other === undefined ? [] : [[id, other]];
 			}),
@@ -199,7 +251,8 @@ describe("shortcut registry", () => {
 		]);
 	});
 
-	it("registers the 2026-10 upstream entries with upstream's bindings", () => {
+	it("registers the 2026-10 upstream entries with upstream's bindings", () =>
+	{
 		const mac = (id: ShortcutId) => bindingsFor(id, true).map(bindingToKeys);
 		const windows = (id: ShortcutId) => bindingsFor(id, false, true).map(bindingToKeys);
 		const linux = (id: ShortcutId) => bindingsFor(id, false, false).map(bindingToKeys);
@@ -227,74 +280,90 @@ describe("shortcut registry", () => {
 					},
 				]),
 			),
-		).toStrictEqual({
-			select_environment: {
-				description: "Select environment",
-				mac: DIGIT_KEYS.map((d) => `cmd+alt+${d}`),
-				windows: DIGIT_KEYS.map((d) => `alt+${d}`),
-				linux: [],
-				displayKeys: {mac: "cmd+alt+1…9", nonMac: "alt+1…9"},
+		).toStrictEqual(
+			{
+				select_environment:
+				{
+					description: "Select environment",
+					mac: DIGIT_KEYS.map((d) => `cmd+alt+${d}`),
+					windows: DIGIT_KEYS.map((d) => `alt+${d}`),
+					linux: [],
+					displayKeys:
+					{
+						mac: "cmd+alt+1…9",
+						nonMac: "alt+1…9",
+					},
+				},
+				new_environment:
+				{
+					description: "New environment",
+					mac: ["cmd+alt+0"],
+					windows: ["alt+0"],
+					linux: [],
+					displayKeys: undefined,
+				},
+				rewind_session:
+				{
+					description: "Rewind the session to an earlier message",
+					mac: ["escape"],
+					windows: ["escape"],
+					linux: ["escape"],
+					displayKeys: "esc esc",
+				},
+				next_change:
+				{
+					description: "Next change in changes",
+					mac: ["alt+f5", "f7"],
+					windows: ["alt+f5", "f7"],
+					linux: ["f7"],
+					displayKeys: undefined,
+				},
+				prev_change:
+				{
+					description: "Previous change in changes",
+					mac: ["shift+alt+f5", "shift+f7"],
+					windows: ["shift+alt+f5", "shift+f7"],
+					linux: ["shift+f7"],
+					displayKeys: undefined,
+				},
+				queue_for_later:
+				{
+					description: "Queue for later (while Claude is working)",
+					mac: ["cmd+enter"],
+					windows: ["ctrl+enter"],
+					linux: ["ctrl+enter"],
+					displayKeys: undefined,
+				},
+				send_and_stay:
+				{
+					description: "Send and stay on the new session page",
+					mac: ["cmd+enter"],
+					windows: ["ctrl+enter"],
+					linux: ["ctrl+enter"],
+					displayKeys: undefined,
+				},
+				toggle_preview:
+				{
+					description: "Toggle Browser",
+					mac: ["cmd+alt+p"],
+					windows: ["ctrl+alt+p"],
+					linux: ["ctrl+alt+p"],
+					displayKeys: undefined,
+				},
+				select_element_in_preview:
+				{
+					description: "Select element in Browser",
+					mac: ["cmd+shift+s"],
+					windows: ["ctrl+shift+s"],
+					linux: ["ctrl+shift+s"],
+					displayKeys: undefined,
+				},
 			},
-			new_environment: {
-				description: "New environment",
-				mac: ["cmd+alt+0"],
-				windows: ["alt+0"],
-				linux: [],
-				displayKeys: undefined,
-			},
-			rewind_session: {
-				description: "Rewind the session to an earlier message",
-				mac: ["escape"],
-				windows: ["escape"],
-				linux: ["escape"],
-				displayKeys: "esc esc",
-			},
-			next_change: {
-				description: "Next change in changes",
-				mac: ["alt+f5", "f7"],
-				windows: ["alt+f5", "f7"],
-				linux: ["f7"],
-				displayKeys: undefined,
-			},
-			prev_change: {
-				description: "Previous change in changes",
-				mac: ["shift+alt+f5", "shift+f7"],
-				windows: ["shift+alt+f5", "shift+f7"],
-				linux: ["shift+f7"],
-				displayKeys: undefined,
-			},
-			queue_for_later: {
-				description: "Queue for later (while Claude is working)",
-				mac: ["cmd+enter"],
-				windows: ["ctrl+enter"],
-				linux: ["ctrl+enter"],
-				displayKeys: undefined,
-			},
-			send_and_stay: {
-				description: "Send and stay on the new session page",
-				mac: ["cmd+enter"],
-				windows: ["ctrl+enter"],
-				linux: ["ctrl+enter"],
-				displayKeys: undefined,
-			},
-			toggle_preview: {
-				description: "Toggle Browser",
-				mac: ["cmd+alt+p"],
-				windows: ["ctrl+alt+p"],
-				linux: ["ctrl+alt+p"],
-				displayKeys: undefined,
-			},
-			select_element_in_preview: {
-				description: "Select element in Browser",
-				mac: ["cmd+shift+s"],
-				windows: ["ctrl+shift+s"],
-				linux: ["ctrl+shift+s"],
-				displayKeys: undefined,
-			},
-		});
+		);
 	});
 
-	it("only enables the shortcuts wired today", () => {
+	it("only enables the shortcuts wired today", () =>
+	{
 		expect(SHORTCUT_IDS.filter((id) => SHORTCUTS[id].enabled)).toEqual([
 			"search_or_start",
 			"search",
@@ -347,48 +416,135 @@ describe("shortcut registry", () => {
 		]);
 	});
 
-	it("binds F6 (plus ⌘F6 / Ctrl+F6) forward and ⇧F6 (plus ⇧⌘F6 / Ctrl+⇧F6) backward", () => {
-		expect({
-			nextMac: bindingsFor("focus_next_region", true),
-			nextNonMac: bindingsFor("focus_next_region", false),
-			previousMac: bindingsFor("focus_previous_region", true),
-			previousNonMac: bindingsFor("focus_previous_region", false),
-		}).toStrictEqual({
-			nextMac: [
-				{key: "f6", code: "F6", modifiers: []},
-				{key: "f6", code: "F6", modifiers: ["cmd"], platform: "mac"},
-			],
-			nextNonMac: [
-				{key: "f6", code: "F6", modifiers: []},
-				{key: "f6", code: "F6", modifiers: ["ctrl"], platform: "non-mac"},
-			],
-			previousMac: [
-				{key: "f6", code: "F6", modifiers: ["shift"]},
-				{key: "f6", code: "F6", modifiers: ["cmd", "shift"], platform: "mac"},
-			],
-			previousNonMac: [
-				{key: "f6", code: "F6", modifiers: ["shift"]},
-				{key: "f6", code: "F6", modifiers: ["ctrl", "shift"], platform: "non-mac"},
-			],
-		});
+	it("binds F6 (plus ⌘F6 / Ctrl+F6) forward and ⇧F6 (plus ⇧⌘F6 / Ctrl+⇧F6) backward", () =>
+	{
+		expect(
+			{
+				nextMac: bindingsFor("focus_next_region", true),
+				nextNonMac: bindingsFor("focus_next_region", false),
+				previousMac: bindingsFor("focus_previous_region", true),
+				previousNonMac: bindingsFor("focus_previous_region", false),
+			},
+		).toStrictEqual(
+			{
+				nextMac: [
+					{
+						key: "f6",
+						code: "F6",
+						modifiers: [],
+					},
+					{
+						key: "f6",
+						code: "F6",
+						modifiers: ["cmd"],
+						platform: "mac",
+					},
+				],
+				nextNonMac: [
+					{
+						key: "f6",
+						code: "F6",
+						modifiers: [],
+					},
+					{
+						key: "f6",
+						code: "F6",
+						modifiers: ["ctrl"],
+						platform: "non-mac",
+					},
+				],
+				previousMac: [
+					{
+						key: "f6",
+						code: "F6",
+						modifiers: ["shift"],
+					},
+					{
+						key: "f6",
+						code: "F6",
+						modifiers: ["cmd", "shift"],
+						platform: "mac",
+					},
+				],
+				previousNonMac: [
+					{
+						key: "f6",
+						code: "F6",
+						modifiers: ["shift"],
+					},
+					{
+						key: "f6",
+						code: "F6",
+						modifiers: ["ctrl", "shift"],
+						platform: "non-mac",
+					},
+				],
+			},
+		);
 	});
 
-	it("binds ⌥⌘↑ / ⌥⌘↓ on mac and Alt+↑ / Alt+↓ elsewhere", () => {
-		expect({
-			prevMac: bindingsFor("jump_prev_prompt", true),
-			prevNonMac: bindingsFor("jump_prev_prompt", false),
-			nextMac: bindingsFor("jump_next_prompt", true),
-			nextNonMac: bindingsFor("jump_next_prompt", false),
-		}).toStrictEqual({
-			prevMac: [{key: "arrowup", code: "ArrowUp", modifiers: ["cmd", "alt"], platform: "mac"}],
-			prevNonMac: [{key: "arrowup", code: "ArrowUp", modifiers: ["alt"], platform: "non-mac"}],
-			nextMac: [{key: "arrowdown", code: "ArrowDown", modifiers: ["cmd", "alt"], platform: "mac"}],
-			nextNonMac: [{key: "arrowdown", code: "ArrowDown", modifiers: ["alt"], platform: "non-mac"}],
-		});
+	it("binds ⌥⌘↑ / ⌥⌘↓ on mac and Alt+↑ / Alt+↓ elsewhere", () =>
+	{
+		expect(
+			{
+				prevMac: bindingsFor("jump_prev_prompt", true),
+				prevNonMac: bindingsFor("jump_prev_prompt", false),
+				nextMac: bindingsFor("jump_next_prompt", true),
+				nextNonMac: bindingsFor("jump_next_prompt", false),
+			},
+		).toStrictEqual(
+			{
+				prevMac: [
+					{
+						key: "arrowup",
+						code: "ArrowUp",
+						modifiers: ["cmd", "alt"],
+						platform: "mac",
+					},
+				],
+				prevNonMac: [
+					{
+						key: "arrowup",
+						code: "ArrowUp",
+						modifiers: ["alt"],
+						platform: "non-mac",
+					},
+				],
+				nextMac: [
+					{
+						key: "arrowdown",
+						code: "ArrowDown",
+						modifiers: ["cmd", "alt"],
+						platform: "mac",
+					},
+				],
+				nextNonMac: [
+					{
+						key: "arrowdown",
+						code: "ArrowDown",
+						modifiers: ["alt"],
+						platform: "non-mac",
+					},
+				],
+			},
+		);
 	});
 
-	it("binds ⌘K strictly on mac and Ctrl+K elsewhere", () => {
-		expect(bindingsFor("search_or_start", true)).toEqual([{key: "k", modifiers: ["cmd"], platform: "mac"}]);
-		expect(bindingsFor("search_or_start", false)).toEqual([{key: "k", modifiers: ["ctrl"], platform: "non-mac"}]);
+	it("binds ⌘K strictly on mac and Ctrl+K elsewhere", () =>
+	{
+		expect(bindingsFor("search_or_start", true)).toEqual([
+			{
+				key: "k",
+				modifiers: ["cmd"],
+				platform: "mac",
+			},
+		]);
+		expect(bindingsFor("search_or_start", false)).toEqual([
+			{
+				key: "k",
+				modifiers: ["ctrl"],
+				platform: "non-mac",
+			},
+		]);
 	});
 });

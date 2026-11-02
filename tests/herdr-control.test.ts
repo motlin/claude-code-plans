@@ -2,7 +2,8 @@ import {EventEmitter} from "node:events";
 import {PassThrough} from "node:stream";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {TerminalStreamQuerySchema} from "../src/lib/terminal-stream-query";
-import {
+import
+{
 	authorizeTerminalControl,
 	controlHerdrSession,
 	startTerminalController,
@@ -11,7 +12,8 @@ import {
 import {__testing} from "../src/lib/herdr/terminal-observer";
 import type {HerdrTerminalRecord} from "../src/lib/herdr/terminal-protocol";
 
-function frame(sequence: number, full: boolean): HerdrTerminalRecord {
+function frame(sequence: number, full: boolean): HerdrTerminalRecord
+{
 	return {
 		type: "terminal.frame",
 		seq: sequence,
@@ -23,23 +25,28 @@ function frame(sequence: number, full: boolean): HerdrTerminalRecord {
 	};
 }
 
-function createFakeChild() {
+function createFakeChild()
+{
 	const emitter = new EventEmitter();
 	const stdin = new PassThrough();
 	const written: string[] = [];
 	stdin.on("data", (chunk: Buffer) => written.push(chunk.toString()));
-	return Object.assign(emitter, {
-		stdin,
-		written,
-		stdout: new PassThrough(),
-		stderr: new PassThrough(),
-		exitCode: null,
-		signalCode: null,
-		kill: vi.fn<(signal?: NodeJS.Signals) => boolean>(() => true),
-	});
+	return Object.assign(
+		emitter,
+		{
+			stdin,
+			written,
+			stdout: new PassThrough(),
+			stderr: new PassThrough(),
+			exitCode: null,
+			signalCode: null,
+			kill: vi.fn<(signal?: NodeJS.Signals) => boolean>(() => true),
+		},
+	);
 }
 
-function createSocket() {
+function createSocket()
+{
 	return {
 		send: vi.fn<(message: string) => void>(),
 		close: vi.fn<(code?: number, reason?: string) => void>(),
@@ -48,163 +55,349 @@ function createSocket() {
 
 type SpawnController = TerminalControllerDependencies["spawnController"];
 
-async function flushStreams(): Promise<void> {
-	await new Promise((resolve) => {
+async function flushStreams(): Promise<void>
+{
+	await new Promise((resolve) =>
+	{
 		setImmediate(resolve);
 	});
 }
 
-function upgradeRequest(headers: Record<string, string>): Request {
-	return new Request("http://localhost:7526/api/herdr/control?sessionId=a&columns=80&rows=24", {
-		headers,
-	});
+function upgradeRequest(headers: Record<string, string>): Request
+{
+	return new Request(
+		"http://localhost:7526/api/herdr/control?sessionId=a&columns=80&rows=24",
+		{
+			headers,
+		},
+	);
 }
 
-describe("herdr terminal control stream", () => {
+describe("herdr terminal control stream", () =>
+{
 	// terminal-observer tracks every live stream in a module-level set that other files in the worker see.
-	afterEach(() => {
+	afterEach(() =>
+	{
 		expect(__testing.activeObserverCount()).toBe(0);
 	});
 
-	it("spawns control without takeover and writes data and resize frames to stdin", async () => {
+	it("spawns control without takeover and writes data and resize frames to stdin", async () =>
+	{
 		const child = createFakeChild();
 		const spawnController = vi.fn<(...args: Parameters<SpawnController>) => typeof child>(() => child);
 		const socket = createSocket();
 
 		const controller = startTerminalController(
-			{target: "terminal-test-100", columns: 120, rows: 40},
+			{
+				target: "terminal-test-100",
+				columns: 120,
+				rows: 40,
+			},
 			socket,
 			spawnController as unknown as SpawnController,
 		);
 		child.stdout.write(`${JSON.stringify(frame(100, true))}\n`);
-		controller.input(JSON.stringify({type: "data", data: "Alice types\r"}));
-		controller.input(JSON.stringify({type: "resize", cols: 100, rows: 30}));
+		controller.input(
+			JSON.stringify(
+				{
+					type: "data",
+					data: "Alice types\r",
+				},
+			),
+		);
+		controller.input(
+			JSON.stringify(
+				{
+					type: "resize",
+					cols: 100,
+					rows: 30,
+				},
+			),
+		);
 		await flushStreams();
 
-		expect({
-			spawnCalls: spawnController.mock.calls,
-			stdin: child.written.join(""),
-			sent: socket.send.mock.calls,
-			closed: socket.close.mock.calls,
-		}).toStrictEqual({
-			spawnCalls: [
-				[
-					"herdr",
-					["terminal", "session", "control", "terminal-test-100", "--cols", "120", "--rows", "40"],
-					{stdio: ["pipe", "pipe", "pipe"]},
+		expect(
+			{
+				spawnCalls: spawnController.mock.calls,
+				stdin: child.written.join(""),
+				sent: socket.send.mock.calls,
+				closed: socket.close.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				spawnCalls: [
+					[
+						"herdr",
+						["terminal", "session", "control", "terminal-test-100", "--cols", "120", "--rows", "40"],
+						{
+							stdio: ["pipe", "pipe", "pipe"],
+						},
+					],
 				],
-			],
-			stdin:
-				`${JSON.stringify({type: "terminal.input", text: "Alice types\r"})}\n` +
-				`${JSON.stringify({type: "terminal.resize", cols: 100, rows: 30})}\n`,
-			sent: [[JSON.stringify(frame(100, true))]],
-			closed: [],
-		});
+				stdin:
+					`${JSON.stringify(
+						{
+							type: "terminal.input",
+							text: "Alice types\r",
+						},
+					)}\n` +
+					`${JSON.stringify(
+						{
+							type: "terminal.resize",
+							cols: 100,
+							rows: 30,
+						},
+					)}\n`,
+				sent: [[JSON.stringify(frame(100, true))]],
+				closed: [],
+			},
+		);
 		controller.stop();
 	});
 
-	it("rejects a malformed client frame and stops the child", async () => {
+	it("rejects a malformed client frame and stops the child", async () =>
+	{
 		const child = createFakeChild();
 		const socket = createSocket();
 
 		const controller = startTerminalController(
-			{target: "terminal-test-100", columns: 80, rows: 24},
+			{
+				target: "terminal-test-100",
+				columns: 80,
+				rows: 24,
+			},
 			socket,
 			(() => child) as unknown as SpawnController,
 		);
-		controller.input(JSON.stringify({type: "resize", cols: 0, rows: 24}));
-		controller.input(JSON.stringify({type: "data", data: "ignored after failure"}));
+		controller.input(
+			JSON.stringify(
+				{
+					type: "resize",
+					cols: 0,
+					rows: 24,
+				},
+			),
+		);
+		controller.input(
+			JSON.stringify(
+				{
+					type: "data",
+					data: "ignored after failure",
+				},
+			),
+		);
 		await flushStreams();
 
-		expect({
-			stdin: child.written,
-			sent: socket.send.mock.calls,
-			closed: socket.close.mock.calls,
-			killed: child.kill.mock.calls,
-		}).toStrictEqual({
-			stdin: [],
-			sent: [[JSON.stringify({type: "observer.error", message: "invalid terminal control frame"})]],
-			closed: [[1008, "invalid terminal control frame"]],
-			killed: [["SIGTERM"]],
-		});
+		expect(
+			{
+				stdin: child.written,
+				sent: socket.send.mock.calls,
+				closed: socket.close.mock.calls,
+				killed: child.kill.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				stdin: [],
+				sent: [
+					[
+						JSON.stringify(
+							{
+								type: "observer.error",
+								message: "invalid terminal control frame",
+							},
+						),
+					],
+				],
+				closed: [[1008, "invalid terminal control frame"]],
+				killed: [["SIGTERM"]],
+			},
+		);
 	});
 
-	it("resolves the session's herdr terminal before spawning control", async () => {
+	it("resolves the session's herdr terminal before spawning control", async () =>
+	{
 		const child = createFakeChild();
 		const spawnController = vi.fn<(...args: Parameters<SpawnController>) => typeof child>(() => child);
 		const resolveTarget = vi.fn<TerminalControllerDependencies["resolveTarget"]>(async () =>
 			Promise.resolve("terminal-test-200"),
 		);
 
-		const controller = await controlHerdrSession("session-test-100", 90, 30, createSocket(), {
-			resolveTarget,
-			spawnController: spawnController as unknown as SpawnController,
-		});
+		const controller = await controlHerdrSession(
+			"session-test-100",
+			90,
+			30,
+			createSocket(),
+			{
+				resolveTarget,
+				spawnController: spawnController as unknown as SpawnController,
+			},
+		);
 
-		expect({
-			resolved: resolveTarget.mock.calls,
-			spawnArguments: spawnController.mock.calls.map((call) => call[1]),
-		}).toStrictEqual({
-			resolved: [["session-test-100"]],
-			spawnArguments: [["terminal", "session", "control", "terminal-test-200", "--cols", "90", "--rows", "30"]],
-		});
+		expect(
+			{
+				resolved: resolveTarget.mock.calls,
+				spawnArguments: spawnController.mock.calls.map((call) => call[1]),
+			},
+		).toStrictEqual(
+			{
+				resolved: [["session-test-100"]],
+				spawnArguments: [
+					["terminal", "session", "control", "terminal-test-200", "--cols", "90", "--rows", "30"],
+				],
+			},
+		);
 		controller.stop();
 	});
 });
 
-describe("herdr terminal control authorization", () => {
-	it("rejects cross-site upgrades before checking the writes setting", async () => {
+describe("herdr terminal control authorization", () =>
+{
+	it("rejects cross-site upgrades before checking the writes setting", async () =>
+	{
 		const writesEnabled = vi.fn<() => boolean>(() => true);
 		const response = authorizeTerminalControl(
-			upgradeRequest({Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site"}),
-			{writesEnabled},
+			upgradeRequest(
+				{
+					Origin: "https://evil.example",
+					"Sec-Fetch-Site": "cross-site",
+				},
+			),
+			{
+				writesEnabled,
+			},
 		);
 
-		expect({
-			status: response?.status,
-			body: await response?.json(),
-			checkedWrites: writesEnabled.mock.calls.length,
-		}).toStrictEqual({status: 403, body: {error: "Forbidden"}, checkedWrites: 0});
+		expect(
+			{
+				status: response?.status,
+				body: await response?.json(),
+				checkedWrites: writesEnabled.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				status: 403,
+				body:
+				{
+					error: "Forbidden",
+				},
+				checkedWrites: 0,
+			},
+		);
 	});
 
-	it("returns 403 when herdr writes are disabled", async () => {
+	it("returns 403 when herdr writes are disabled", async () =>
+	{
 		const response = authorizeTerminalControl(
-			upgradeRequest({Origin: "http://localhost:7526", "Sec-Fetch-Site": "same-origin"}),
-			{writesEnabled: () => false},
+			upgradeRequest(
+				{
+					Origin: "http://localhost:7526",
+					"Sec-Fetch-Site": "same-origin",
+				},
+			),
+			{
+				writesEnabled: () => false,
+			},
 		);
 
-		expect({status: response?.status, body: await response?.json()}).toStrictEqual({
-			status: 403,
-			body: {error: "herdr writes are disabled"},
-		});
+		expect(
+			{
+				status: response?.status,
+				body: await response?.json(),
+			},
+		).toStrictEqual(
+			{
+				status: 403,
+				body:
+				{
+					error: "herdr writes are disabled",
+				},
+			},
+		);
 	});
 
-	it("allows same-origin upgrades when herdr writes are enabled", () => {
+	it("allows same-origin upgrades when herdr writes are enabled", () =>
+	{
 		expect(
 			authorizeTerminalControl(
-				upgradeRequest({Origin: "http://localhost:7526", "Sec-Fetch-Site": "same-origin"}),
-				{writesEnabled: () => true},
+				upgradeRequest(
+					{
+						Origin: "http://localhost:7526",
+						"Sec-Fetch-Site": "same-origin",
+					},
+				),
+				{
+					writesEnabled: () => true,
+				},
 			),
 		).toBeNull();
 	});
 });
 
-describe("terminal stream query", () => {
-	it("targets a Claude session or a herdr pane, exactly one of them", () => {
-		const parse = (query: Record<string, string>) => {
+describe("terminal stream query", () =>
+{
+	it("targets a Claude session or a herdr pane, exactly one of them", () =>
+	{
+		const parse = (query: Record<string, string>) =>
+		{
 			const parsed = TerminalStreamQuerySchema.safeParse(query);
 			return parsed.success ? parsed.data : "invalid";
 		};
-		expect({
-			session: parse({sessionId: "alice-session", columns: "80", rows: "24"}),
-			pane: parse({paneId: "w1:p3@later", columns: "80", rows: "24"}),
-			both: parse({sessionId: "alice-session", paneId: "w1:p3", columns: "80", rows: "24"}),
-			neither: parse({columns: "80", rows: "24"}),
-		}).toStrictEqual({
-			session: {target: {kind: "session", sessionId: "alice-session"}, columns: 80, rows: 24},
-			pane: {target: {kind: "pane", paneId: "w1:p3@later"}, columns: 80, rows: 24},
-			both: "invalid",
-			neither: "invalid",
-		});
+		expect(
+			{
+				session: parse(
+					{
+						sessionId: "alice-session",
+						columns: "80",
+						rows: "24",
+					},
+				),
+				pane: parse(
+					{
+						paneId: "w1:p3@later",
+						columns: "80",
+						rows: "24",
+					},
+				),
+				both: parse(
+					{
+						sessionId: "alice-session",
+						paneId: "w1:p3",
+						columns: "80",
+						rows: "24",
+					},
+				),
+				neither: parse(
+					{
+						columns: "80",
+						rows: "24",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				session:
+				{
+					target:
+					{
+						kind: "session",
+						sessionId: "alice-session",
+					},
+					columns: 80,
+					rows: 24,
+				},
+				pane:
+				{
+					target:
+					{
+						kind: "pane",
+						paneId: "w1:p3@later",
+					},
+					columns: 80,
+					rows: 24,
+				},
+				both: "invalid",
+				neither: "invalid",
+			},
+		);
 	});
 });

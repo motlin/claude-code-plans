@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRouter,
@@ -26,7 +27,8 @@ import {ToastProvider} from "../src/components/toast";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {type PlanDetail, planQueryOptions} from "../src/lib/api/plans";
-import {
+import
+{
 	recentSessionsInfiniteQueryOptions,
 	sessionDetailQueryOptions,
 	sessionOpenInQueryOptions,
@@ -43,11 +45,13 @@ import {installLocalStorage} from "./fake-storage";
 import {findWaitingCard} from "../src/lib/question-landing";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadSessionPageChunks();
 });
 
-vi.mock(import("../src/lib/hmr-persist"), async (importOriginal) => ({
+vi.mock(import("../src/lib/hmr-persist"), async (importOriginal) => (
+{
 	...(await importOriginal()),
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
@@ -58,7 +62,8 @@ const TITLE = "Sync fork with upstream";
 const SUMMARY = "Rebased the fork onto upstream and resolved three conflicts.";
 const PROJECT_PATH = "/Users/alice/projects/avalonlogs";
 
-const detail: SessionDetailData = {
+const detail: SessionDetailData =
+{
 	title: TITLE,
 	projectName: "avalonlogs",
 	projectId: "-Users-alice-projects-avalonlogs",
@@ -73,7 +78,8 @@ const detail: SessionDetailData = {
 	gitClean: null,
 	messageCount: 1,
 	pendingTaskCount: 0,
-	viewedState: {
+	viewedState:
+	{
 		currentMessageIndex: 0,
 		lastViewedMessageIndex: 0,
 		reviewTargetMessageIndex: 0,
@@ -84,7 +90,8 @@ const detail: SessionDetailData = {
 	},
 };
 
-function subagent(id: string): Subagent {
+function subagent(id: string): Subagent
+{
 	return {
 		id,
 		sessionId: SESSION_ID,
@@ -100,48 +107,86 @@ function subagent(id: string): Subagent {
 	};
 }
 
-class TestResizeObserver {
-	observe(): void {}
-	unobserve(): void {}
-	disconnect(): void {}
+class TestResizeObserver
+{
+	observe(): void
+	{
+	}
+	unobserve(): void
+	{
+	}
+	disconnect(): void
+	{
+	}
 }
 
-class TestEventSource extends EventTarget {
+class TestEventSource extends EventTarget
+{
 	readonly close = vi.fn<() => void>();
 	onerror: ((event: Event) => void) | null = null;
 }
 
-class TestIntersectionObserver {
-	observe(): void {}
-	unobserve(): void {}
-	disconnect(): void {}
-	takeRecords(): IntersectionObserverEntry[] {
+class TestIntersectionObserver
+{
+	observe(): void
+	{
+	}
+	unobserve(): void
+	{
+	}
+	disconnect(): void
+	{
+	}
+	takeRecords(): IntersectionObserverEntry[]
+	{
 		return [];
 	}
 }
 
-async function flush() {
-	await act(async () => {
-		await new Promise((resolve) => {
+async function flush()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-function newQueryClient(): QueryClient {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+function newQueryClient(): QueryClient
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
-	queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
-		cwd: PROJECT_PATH,
-		bridgeSessionId: null,
-		remoteControl: null,
-		remoteHistory: null,
-		githubUrl: null,
-	});
+	);
+	queryClient.setQueryData(
+		herdrPanesQueryOptions.queryKey,
+		{
+			panes: [],
+			writesEnabled: false,
+		},
+	);
+	queryClient.setQueryData(
+		sessionOpenInQueryOptions(SESSION_ID).queryKey,
+		{
+			cwd: PROJECT_PATH,
+			bridgeSessionId: null,
+			remoteControl: null,
+			remoteHistory: null,
+			githubUrl: null,
+		},
+	);
 	return queryClient;
 }
 
@@ -149,22 +194,31 @@ async function renderInRouter(
 	queryClient: QueryClient,
 	content: ReactNode | (() => ReactNode),
 	initialSessionId: string = SESSION_ID,
-) {
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<SettingsProvider>
-					<ClaudeEventsProvider>
-						<ToastProvider>{typeof content === "function" ? content() : content}</ToastProvider>
-					</ClaudeEventsProvider>
-				</SettingsProvider>
-			</QueryClientProvider>
-		),
-	});
-	const router = createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: [`/session/${initialSessionId}`]}),
-	});
+)
+{
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<SettingsProvider>
+						<ClaudeEventsProvider>
+							<ToastProvider>{typeof content === "function" ? content() : content}</ToastProvider>
+						</ClaudeEventsProvider>
+					</SettingsProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: [`/session/${initialSessionId}`],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	await screen.findByTestId("session-titlebar");
@@ -177,44 +231,58 @@ function seedSession(
 	data: SessionDetailData,
 	subagents: Subagent[],
 	extraRecords: Record<string, unknown>[] = [],
-) {
-	queryClient.setQueryData(sessionOpenInQueryOptions(sessionId).queryKey, {
-		cwd: PROJECT_PATH,
-		bridgeSessionId: null,
-		remoteControl: null,
-		remoteHistory: null,
-		githubUrl: null,
-	});
+)
+{
+	queryClient.setQueryData(
+		sessionOpenInQueryOptions(sessionId).queryKey,
+		{
+			cwd: PROJECT_PATH,
+			bridgeSessionId: null,
+			remoteControl: null,
+			remoteHistory: null,
+			githubUrl: null,
+		},
+	);
 	queryClient.setQueryData(sessionDetailQueryOptions(sessionId).queryKey, data);
-	queryClient.setQueryData(transcriptQueryOptions(sessionId).queryKey, {
-		records: [
-			{
-				type: "user",
-				uuid: "u1",
-				sessionId,
-				timestamp: "2026-09-28T10:00:00.000Z",
-				message: {role: "user", content: "Fabricated prompt: sync the fork"},
-			},
-			...extraRecords,
-		],
-		byteOffset: 0,
-		startIndex: 0,
-		precedingMessageCount: 0,
-		hiddenUuids: [],
-		cuts: [],
-		chainVersion: "v1",
-		chapters: [],
-	});
+	queryClient.setQueryData(
+		transcriptQueryOptions(sessionId).queryKey,
+		{
+			records: [
+				{
+					type: "user",
+					uuid: "u1",
+					sessionId,
+					timestamp: "2026-09-28T10:00:00.000Z",
+					message:
+					{
+						role: "user",
+						content: "Fabricated prompt: sync the fork",
+					},
+				},
+				...extraRecords,
+			],
+			byteOffset: 0,
+			startIndex: 0,
+			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
+			chapters: [],
+		},
+	);
 	queryClient.setQueryData(sessionSubagentsQueryOptions(sessionId).queryKey, subagents);
 }
 
 async function renderSessionPage(
 	data: SessionDetailData,
 	subagents: Subagent[],
-	seed: (queryClient: QueryClient) => void = () => {},
+	seed: (queryClient: QueryClient) => void = () =>
+	{
+	},
 	extraRecords: Record<string, unknown>[] = [],
 	requestedPane?: PaneKind,
-) {
+)
+{
 	const queryClient = newQueryClient();
 	seed(queryClient);
 	seedSession(queryClient, SESSION_ID, data, subagents, extraRecords);
@@ -222,17 +290,27 @@ async function renderSessionPage(
 }
 
 /** The session route's shape: one SessionPage instance that follows the URL's id, beside a sidebar row link. */
-function RoutedSessionPage({rowSessionId, rowTitle}: {rowSessionId: string; rowTitle: string}) {
-	const sessionId = useRouterState({select: (state) => state.location.pathname.replace("/session/", "")});
+function RoutedSessionPage({rowSessionId, rowTitle}: {rowSessionId: string; rowTitle: string})
+{
+	const sessionId = useRouterState(
+		{
+			select: (state) => state.location.pathname.replace("/session/", ""),
+		},
+	);
 	const navigate = useNavigate();
 	return (
 		<>
 			<nav aria-label="Sessions">
 				<a
 					href={`/session/${rowSessionId}`}
-					onClick={(event) => {
+					onClick={(event) =>
+					{
 						event.preventDefault();
-						void navigate({to: `/session/${rowSessionId}` as never});
+						void navigate(
+							{
+								to: `/session/${rowSessionId}` as never,
+							},
+						);
 					}}
 				>
 					{rowTitle}
@@ -243,7 +321,8 @@ function RoutedSessionPage({rowSessionId, rowTitle}: {rowSessionId: string; rowT
 	);
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	sessionStorage.clear();
 	Element.prototype.scrollIntoView = vi.fn<Element["scrollIntoView"]>();
@@ -258,169 +337,319 @@ beforeEach(() => {
 	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	__unreadStoreTesting.reset();
 });
 
-describe("AI summary placement", () => {
-	it("renders the summary once, as the first transcript row and the title's description", async () => {
+describe("AI summary placement", () =>
+{
+	it("renders the summary once, as the first transcript row and the title's description", async () =>
+	{
 		await renderSessionPage(detail, []);
 
 		const rows = screen.getAllByText(SUMMARY);
 		const row = rows[0];
 		const transcript = row?.parentElement;
-		const titleButton = screen.getByRole("button", {name: `${TITLE}, rename session`});
+		const titleButton = screen.getByRole(
+			"button",
+			{
+				name: `${TITLE}, rename session`,
+			},
+		);
 		const header = screen.getByTestId("session-titlebar").parentElement;
 
-		expect({
-			count: rows.length,
-			rowIsFirstInTranscript: transcript?.firstElementChild === row,
-			rowFollowedByMessages: row?.nextElementSibling?.textContent.includes("sync the fork"),
-			inHeader: header?.contains(row ?? null),
-			tooltip: titleButton.getAttribute("title"),
-			description: titleButton.getAttribute("aria-description"),
-		}).toStrictEqual({
-			count: 1,
-			rowIsFirstInTranscript: true,
-			rowFollowedByMessages: true,
-			inHeader: false,
-			tooltip: null,
-			description: SUMMARY,
-		});
+		expect(
+			{
+				count: rows.length,
+				rowIsFirstInTranscript: transcript?.firstElementChild === row,
+				rowFollowedByMessages: row?.nextElementSibling?.textContent.includes("sync the fork"),
+				inHeader: header?.contains(row ?? null),
+				tooltip: titleButton.getAttribute("title"),
+				description: titleButton.getAttribute("aria-description"),
+			},
+		).toStrictEqual(
+			{
+				count: 1,
+				rowIsFirstInTranscript: true,
+				rowFollowedByMessages: true,
+				inHeader: false,
+				tooltip: null,
+				description: SUMMARY,
+			},
+		);
 	});
 
-	it("offers Generate AI summary only in the chevron menu", async () => {
-		await renderSessionPage({...detail, summary: null}, []);
+	it("offers Generate AI summary only in the chevron menu", async () =>
+	{
+		await renderSessionPage(
+			{
+				...detail,
+				summary: null,
+			},
+			[],
+		);
 
-		const headerButton = screen.queryByRole("button", {name: "Generate AI summary"});
-		fireEvent.click(screen.getByRole("button", {name: `More options for ${TITLE}`}));
+		const headerButton = screen.queryByRole(
+			"button",
+			{
+				name: "Generate AI summary",
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: `More options for ${TITLE}`,
+				},
+			),
+		);
 		await flush();
 
-		expect({
-			headerButton,
-			menuItem: screen.getByRole("menuitem", {name: "Generate AI summary"}).textContent,
-			summaryRow: screen.queryByTestId("session-summary-row"),
-			tooltip: screen.getByRole("button", {name: `${TITLE}, rename session`}).getAttribute("title"),
-		}).toStrictEqual({
-			headerButton: null,
-			menuItem: "Generate AI summary",
-			summaryRow: null,
-			tooltip: null,
-		});
+		expect(
+			{
+				headerButton,
+				menuItem: screen.getByRole(
+					"menuitem",
+					{
+						name: "Generate AI summary",
+					},
+				).textContent,
+				summaryRow: screen.queryByTestId("session-summary-row"),
+				tooltip: screen
+					.getByRole(
+						"button",
+						{
+							name: `${TITLE}, rename session`,
+						},
+					)
+					.getAttribute("title"),
+			},
+		).toStrictEqual(
+			{
+				headerButton: null,
+				menuItem: "Generate AI summary",
+				summaryRow: null,
+				tooltip: null,
+			},
+		);
 	});
 });
 
-describe("subagents placement", () => {
-	it("moves the subagent count out of the titlebar into the Background tasks pane", async () => {
+describe("subagents placement", () =>
+{
+	it("moves the subagent count out of the titlebar into the Background tasks pane", async () =>
+	{
 		await renderSessionPage(detail, [subagent("a1"), subagent("a2")]);
 
 		const pill = screen.getByTestId("session-titlebar").querySelector('[data-origin-pill="subagents"]');
-		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
 		await flush();
-		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Background tasks"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Background tasks",
+				},
+			),
+		);
 		await flush();
-		const link = await screen.findByRole("link", {name: "2 subagents"});
+		const link = await screen.findByRole(
+			"link",
+			{
+				name: "2 subagents",
+			},
+		);
 
-		expect({
-			pill,
-			href: link.getAttribute("href"),
-			activeBox: screen.queryByRole("region", {name: "Active subagents"}),
-			links: screen.getAllByText(/subagents?$/).length,
-		}).toStrictEqual({
-			pill: null,
-			href: `/session/${SESSION_ID}/subagents`,
-			activeBox: null,
-			links: 1,
-		});
+		expect(
+			{
+				pill,
+				href: link.getAttribute("href"),
+				activeBox: screen.queryByRole(
+					"region",
+					{
+						name: "Active subagents",
+					},
+				),
+				links: screen.getAllByText(/subagents?$/).length,
+			},
+		).toStrictEqual(
+			{
+				pill: null,
+				href: `/session/${SESSION_ID}/subagents`,
+				activeBox: null,
+				links: 1,
+			},
+		);
 	});
 });
 
-describe("plan pane", () => {
-	async function openViewOptions() {
-		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+describe("plan pane", () =>
+{
+	async function openViewOptions()
+	{
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
 		await flush();
 	}
 
-	it("offers no Plan item when the session has no plan", async () => {
+	it("offers no Plan item when the session has no plan", async () =>
+	{
 		await renderSessionPage(detail, []);
 		await openViewOptions();
 
-		expect(screen.queryByRole("menuitemcheckbox", {name: "Plan"})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"menuitemcheckbox",
+				{
+					name: "Plan",
+				},
+			),
+		).toBeNull();
 	});
 
-	it("offers Plan without a plan file when the transcript has ExitPlanMode plan text or todos, as upstream", async () => {
+	it("offers Plan without a plan file when the transcript has ExitPlanMode plan text or todos, as upstream", async () =>
+	{
 		await renderSessionPage(detail, [], () => {}, [
 			{
 				type: "assistant",
 				uuid: "a-plan",
 				sessionId: SESSION_ID,
 				timestamp: "2026-09-28T10:00:01.000Z",
-				message: {
+				message:
+				{
 					role: "assistant",
 					content: [
 						{
 							type: "tool_use",
 							id: "toolu_plan",
 							name: "ExitPlanMode",
-							input: {plan: "Rebase onto upstream first."},
+							input:
+							{
+								plan: "Rebase onto upstream first.",
+							},
 						},
 						{
 							type: "tool_use",
 							id: "toolu_todos",
 							name: "TodoWrite",
-							input: {todos: [{content: "Rebase", status: "in_progress", activeForm: "Rebasing"}]},
+							input:
+							{
+								todos: [
+									{
+										content: "Rebase",
+										status: "in_progress",
+										activeForm: "Rebasing",
+									},
+								],
+							},
 						},
 					],
 				},
 			},
 		]);
 		await openViewOptions();
-		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Plan"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Plan",
+				},
+			),
+		);
 		await flush();
 		const pane = screen.getByTestId("session-plan-pane");
 
-		expect({
-			plan: within(pane).getByText("Rebase onto upstream first.").tagName,
-			todos: within(pane)
-				.getAllByRole("listitem")
-				.map((item) => [item.textContent, item.getAttribute("data-todo-status")]),
-		}).toStrictEqual({plan: "P", todos: [["in progressRebase", "in_progress"]]});
+		expect(
+			{
+				plan: within(pane).getByText("Rebase onto upstream first.").tagName,
+				todos: within(pane)
+					.getAllByRole("listitem")
+					.map((item) => [item.textContent, item.getAttribute("data-todo-status")]),
+			},
+		).toStrictEqual(
+			{
+				plan: "P",
+				todos: [["in progressRebase", "in_progress"]],
+			},
+		);
 	});
 
-	it("renders the linked plan's markdown verbatim beside the transcript, as upstream renders plan content", async () => {
-		const plan: PlanDetail = {
+	it("renders the linked plan's markdown verbatim beside the transcript, as upstream renders plan content", async () =>
+	{
+		const plan: PlanDetail =
+		{
 			markdown: "# Fabricated sync plan\n\nRebase the fabricated fork onto upstream.",
 			mtime: "2026-09-28T10:00:00.000Z",
 			title: "Fabricated sync plan",
 		};
-		await renderSessionPage({...detail, planFilename: "fabricated-sync-plan.md"}, [], (qc) => {
-			qc.setQueryData(planQueryOptions("fabricated-sync-plan").queryKey, plan);
-		});
+		await renderSessionPage(
+			{
+				...detail,
+				planFilename: "fabricated-sync-plan.md",
+			},
+			[],
+			(qc) =>
+			{
+				qc.setQueryData(planQueryOptions("fabricated-sync-plan").queryKey, plan);
+			},
+		);
 		await openViewOptions();
-		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Plan"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Plan",
+				},
+			),
+		);
 		await flush();
 		const pane = screen.getByTestId("session-plan-pane");
 
-		expect({
-			headings: within(pane)
-				.getAllByRole("heading")
-				.map((heading) => [heading.tagName, heading.textContent]),
-			body: within(pane).getByText("Rebase the fabricated fork onto upstream.").tagName,
-			links: within(pane).queryAllByRole("link"),
-		}).toStrictEqual({
-			headings: [["H1", "Fabricated sync plan"]],
-			body: "P",
-			links: [],
-		});
+		expect(
+			{
+				headings: within(pane)
+					.getAllByRole("heading")
+					.map((heading) => [heading.tagName, heading.textContent]),
+				body: within(pane).getByText("Rebase the fabricated fork onto upstream.").tagName,
+				links: within(pane).queryAllByRole("link"),
+			},
+		).toStrictEqual(
+			{
+				headings: [["H1", "Fabricated sync plan"]],
+				body: "P",
+				links: [],
+			},
+		);
 	});
 
-	it("opens the requested Plan pane on a planless session with upstream's header and empty state", async () => {
+	it("opens the requested Plan pane on a planless session with upstream's header and empty state", async () =>
+	{
 		await renderSessionPage(detail, [], () => {}, [], "plan");
-		const pane = screen.getByRole("region", {name: "Plan"});
-		const before = {
+		const pane = screen.getByRole(
+			"region",
+			{
+				name: "Plan",
+			},
+		);
+		const before =
+		{
 			title: pane.querySelector("[data-pane-title]")?.textContent,
 			buttons: within(pane)
 				.getAllByRole("button")
@@ -429,38 +658,74 @@ describe("plan pane", () => {
 				.getAllByRole("paragraph")
 				.map((p) => p.textContent),
 		};
-		fireEvent.click(within(pane).getByRole("button", {name: "Expand"}));
+		fireEvent.click(
+			within(pane).getByRole(
+				"button",
+				{
+					name: "Expand",
+				},
+			),
+		);
 		await flush();
-		const expanded = within(screen.getByRole("region", {name: "Plan"}))
+		const expanded = within(
+			screen.getByRole(
+				"region",
+				{
+					name: "Plan",
+				},
+			),
+		)
 			.getAllByRole("button")
 			.map((button) => button.getAttribute("aria-label"));
 
-		expect({before, expanded}).toStrictEqual({
-			before: {
-				title: "Plan",
-				buttons: ["Expand", "Close", "Move"],
-				empty: ["No plan yet", "Claude writes the plan here as it explores. Keep chatting."],
+		expect(
+			{
+				before,
+				expanded,
 			},
-			expanded: ["Collapse", "Close"],
-		});
+		).toStrictEqual(
+			{
+				before:
+				{
+					title: "Plan",
+					buttons: ["Expand", "Close", "Move"],
+					empty: ["No plan yet", "Claude writes the plan here as it explores. Keep chatting."],
+				},
+				expanded: ["Collapse", "Close"],
+			},
+		);
 	});
 });
 
-describe("SessionPage dock composition", () => {
-	const pr = {number: 100, url: "https://github.com/alice/example-repo/pull/100", repository: "alice/example-repo"};
-	function seedUsage(queryClient: QueryClient) {
+describe("SessionPage dock composition", () =>
+{
+	const pr =
+	{
+		number: 100,
+		url: "https://github.com/alice/example-repo/pull/100",
+		repository: "alice/example-repo",
+	};
+	function seedUsage(queryClient: QueryClient)
+	{
 		const now = Date.UTC(2000, 0, 1);
 		queryClient.setQueryData(
 			usageQueryOptions.queryKey,
 			{
 				fiveHour: null,
-				sevenDay: {usedPct: 50, resetsAt: now / 1000 + 6 * 24 * 3600},
+				sevenDay:
+				{
+					usedPct: 50,
+					resetsAt: now / 1000 + 6 * 24 * 3600,
+				},
 				updatedAt: new Date(now).toISOString(),
 			},
-			{updatedAt: now},
+			{
+				updatedAt: now,
+			},
 		);
 	}
-	function dockContents() {
+	function dockContents()
+	{
 		return [
 			...document.querySelectorAll(
 				"[data-session-footer] [data-branch-strip], [data-session-footer] [role=status]:not([data-skill-arg-hint-sr]):not([data-fast-mode-status]), [data-session-footer] [data-composer-card], [data-session-footer] [data-approval-card-root]",
@@ -480,53 +745,135 @@ describe("SessionPage dock composition", () => {
 		);
 	}
 	it.each([
-		{name: "linked PR", fields: {pr}, order: ["pr", "usage", "composer"]},
 		{
-			name: "status-only PR",
-			fields: {prStatus: {number: 100, state: "open" as const}},
+			name: "linked PR",
+			fields:
+			{
+				pr,
+			},
 			order: ["pr", "usage", "composer"],
 		},
-		{name: "no PR", fields: {}, order: ["usage", "composer"]},
-	])("renders $name dock parts exactly once in their actual production order", async ({fields, order}) => {
-		await renderSessionPage({...detail, ...fields}, [], seedUsage);
+		{
+			name: "status-only PR",
+			fields:
+			{
+				prStatus:
+				{
+					number: 100,
+					state: "open" as const,
+				},
+			},
+			order: ["pr", "usage", "composer"],
+		},
+		{
+			name: "no PR",
+			fields: {},
+			order: ["usage", "composer"],
+		},
+	])("renders $name dock parts exactly once in their actual production order", async ({fields, order}) =>
+	{
+		await renderSessionPage(
+			{
+				...detail,
+				...fields,
+			},
+			[],
+			seedUsage,
+		);
 		expect(dockContents()).toStrictEqual(order);
 	});
-	it("renders the working-copy changes strip above the usage chip when the setting is on", async () => {
+	it("renders the working-copy changes strip above the usage chip when the setting is on", async () =>
+	{
 		localStorage.setItem(STORAGE_KEYS.showChangesStrip, "true");
 		await renderSessionPage(detail, [], seedUsage);
 		expect(dockContents()).toStrictEqual(["branch", "usage", "composer"]);
 	});
 	it.each([
-		{name: "linked PR", fields: {pr}, order: ["pr", "usage", "composer"]},
-		{name: "no PR", fields: {}, order: ["usage", "composer"]},
+		{
+			name: "linked PR",
+			fields:
+			{
+				pr,
+			},
+			order: ["pr", "usage", "composer"],
+		},
+		{
+			name: "no PR",
+			fields: {},
+			order: ["usage", "composer"],
+		},
 	])(
 		"says a $name session needs input only on the working line, docking no waiting notice, as upstream does",
-		async ({fields, order}) => {
-			await renderSessionPage({...detail, ...fields}, [], (queryClient) => {
-				seedUsage(queryClient);
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
-					pageParams: [null],
-				} as never);
-			});
-			expect({
-				dock: dockContents(),
-				turnStatus: document
-					.querySelector('[data-testid="code-working-line"] [data-cds="TurnStatus"]')
-					?.getAttribute("title"),
-			}).toStrictEqual({dock: order, turnStatus: "Needs your input"});
+		async ({fields, order}) =>
+		{
+			await renderSessionPage(
+				{
+					...detail,
+					...fields,
+				},
+				[],
+				(queryClient) =>
+				{
+					seedUsage(queryClient);
+					queryClient.setQueryData(
+						recentSessionsInfiniteQueryOptions().queryKey,
+						{
+							pages: [
+								{
+									sessions: [
+										{
+											id: SESSION_ID,
+											state: "waiting",
+										},
+									],
+									nextCursor: null,
+								},
+							],
+							pageParams: [null],
+						} as never,
+					);
+				},
+			);
+			expect(
+				{
+					dock: dockContents(),
+					turnStatus: document
+						.querySelector('[data-testid="code-working-line"] [data-cds="TurnStatus"]')
+						?.getAttribute("title"),
+				},
+			).toStrictEqual(
+				{
+					dock: order,
+					turnStatus: "Needs your input",
+				},
+			);
 		},
 	);
-	it("draws no Needs your input line under a transcript question card when the session is not hook-active", async () => {
+	it("draws no Needs your input line under a transcript question card when the session is not hook-active", async () =>
+	{
 		await renderSessionPage(
 			detail,
 			[],
-			(queryClient) => {
+			(queryClient) =>
+			{
 				seedUsage(queryClient);
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
-					pageParams: [null],
-				} as never);
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions().queryKey,
+					{
+						pages: [
+							{
+								sessions: [
+									{
+										id: SESSION_ID,
+										state: "waiting",
+									},
+								],
+								nextCursor: null,
+							},
+						],
+						pageParams: [null],
+					} as never,
+				);
 			},
 			[
 				{
@@ -534,37 +881,83 @@ describe("SessionPage dock composition", () => {
 					uuid: "a1",
 					sessionId: SESSION_ID,
 					timestamp: "2026-09-28T10:00:01.000Z",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "toolu_question",
 								name: "AskUserQuestion",
-								input: {questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}]},
+								input:
+								{
+									questions: [
+										{
+											question: "Ship it?",
+											options: [
+												{
+													label: "Yes",
+												},
+												{
+													label: "No",
+												},
+											],
+										},
+									],
+								},
 							},
 						],
 					},
 				},
 			],
 		);
-		expect({
-			card: screen.queryByRole("group", {name: "Ship it?"}) !== null,
-			blocked: document.querySelector('[data-testid="code-working-line"] [data-state="blocked"]') !== null,
-		}).toStrictEqual({card: true, blocked: false});
+		expect(
+			{
+				card:
+					screen.queryByRole(
+						"group",
+						{
+							name: "Ship it?",
+						},
+					) !== null,
+				blocked: document.querySelector('[data-testid="code-working-line"] [data-state="blocked"]') !== null,
+			},
+		).toStrictEqual(
+			{
+				card: true,
+				blocked: false,
+			},
+		);
 	});
-	it("draws the permission card inline after the transcript, as upstream's inline approvals, leaving the dock to the PR chip, usage chip and composer", async () => {
+	it("draws the permission card inline after the transcript, as upstream's inline approvals, leaving the dock to the PR chip, usage chip and composer", async () =>
+	{
 		await renderSessionPage(
-			{...detail, pr},
+			{
+				...detail,
+				pr,
+			},
 			[],
-			(queryClient) => {
+			(queryClient) =>
+			{
 				seedUsage(queryClient);
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [
-						{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}], nextCursor: null},
-					],
-					pageParams: [null],
-				} as never);
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions().queryKey,
+					{
+						pages: [
+							{
+								sessions: [
+									{
+										id: SESSION_ID,
+										state: "waiting",
+										awaitingPermission: true,
+									},
+								],
+								nextCursor: null,
+							},
+						],
+						pageParams: [null],
+					} as never,
+				);
 			},
 			[
 				{
@@ -572,47 +965,86 @@ describe("SessionPage dock composition", () => {
 					uuid: "a1",
 					sessionId: SESSION_ID,
 					timestamp: "2026-09-28T10:00:01.000Z",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "toolu_waiting",
 								name: "Bash",
-								input: {command: "gh pr create --draft", description: "Open the draft PR"},
+								input:
+								{
+									command: "gh pr create --draft",
+									description: "Open the draft PR",
+								},
 							},
 						],
 					},
 				},
 			],
 		);
-		const card = screen.getByRole("group", {name: "Permission request: run this command"});
-		expect({
-			dock: dockContents(),
-			inline: card.closest("[data-inline-permission]") !== null,
-			presentation: card.getAttribute("data-approval-presentation"),
-		}).toStrictEqual({dock: ["pr", "usage", "composer"], inline: true, presentation: "card"});
+		const card = screen.getByRole(
+			"group",
+			{
+				name: "Permission request: run this command",
+			},
+		);
+		expect(
+			{
+				dock: dockContents(),
+				inline: card.closest("[data-inline-permission]") !== null,
+				presentation: card.getAttribute("data-approval-presentation"),
+			},
+		).toStrictEqual(
+			{
+				dock: ["pr", "usage", "composer"],
+				inline: true,
+				presentation: "card",
+			},
+		);
 	});
-	it("previews a pending Edit's change inside the inline permission card", async () => {
+	it("previews a pending Edit's change inside the inline permission card", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async (input: RequestInfo | URL) =>
 				String(input).startsWith("/api/file/")
-					? Response.json({error: "File not found"}, {status: 404})
+					? Response.json(
+							{
+								error: "File not found",
+							},
+							{
+								status: 404,
+							},
+						)
 					: new Promise<Response>(() => {}),
 			),
 		);
 		await renderSessionPage(
 			detail,
 			[],
-			(queryClient) => {
+			(queryClient) =>
+			{
 				seedUsage(queryClient);
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [
-						{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}], nextCursor: null},
-					],
-					pageParams: [null],
-				} as never);
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions().queryKey,
+					{
+						pages: [
+							{
+								sessions: [
+									{
+										id: SESSION_ID,
+										state: "waiting",
+										awaitingPermission: true,
+									},
+								],
+								nextCursor: null,
+							},
+						],
+						pageParams: [null],
+					} as never,
+				);
 			},
 			[
 				{
@@ -620,14 +1052,16 @@ describe("SessionPage dock composition", () => {
 					uuid: "a1",
 					sessionId: SESSION_ID,
 					timestamp: "2026-09-28T10:00:01.000Z",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "toolu_waiting",
 								name: "Edit",
-								input: {
+								input:
+								{
 									file_path: "/repo/src/a.ts",
 									old_string: "const a = 1;",
 									new_string: "const a = 2;",
@@ -638,44 +1072,94 @@ describe("SessionPage dock composition", () => {
 				},
 			],
 		);
-		const card = screen.getByRole("group", {name: "Permission request: edit"});
-		const code = await within(card).findByRole("group", {name: "Code"});
-		expect({
-			inline: card.closest("[data-inline-permission]") !== null,
-			diff: code.querySelector("[data-cds=FileDiff]") !== null,
-		}).toStrictEqual({inline: true, diff: true});
+		const card = screen.getByRole(
+			"group",
+			{
+				name: "Permission request: edit",
+			},
+		);
+		const code = await within(card).findByRole(
+			"group",
+			{
+				name: "Code",
+			},
+		);
+		expect(
+			{
+				inline: card.closest("[data-inline-permission]") !== null,
+				diff: code.querySelector("[data-cds=FileDiff]") !== null,
+			},
+		).toStrictEqual(
+			{
+				inline: true,
+				diff: true,
+			},
+		);
 	});
-	it("nests the working line under the last assistant reply, as upstream's last AssistantMessage column", async () => {
+	it("nests the working line under the last assistant reply, as upstream's last AssistantMessage column", async () =>
+	{
 		await renderSessionPage(detail, [], seedUsage, [
 			{
 				type: "assistant",
 				uuid: "a1",
 				sessionId: SESSION_ID,
 				timestamp: "2026-09-28T10:00:01.000Z",
-				message: {role: "assistant", content: [{type: "text", text: "Fabricated reply: rebased cleanly."}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "Fabricated reply: rebased cleanly.",
+						},
+					],
+				},
 			},
 		]);
 		const line = document.querySelector('[data-testid="code-working-line"]');
 		const lastRow = screen.getAllByTestId("transcript-row").at(-1);
-		expect({
-			lines: document.querySelectorAll('[data-testid="code-working-line"]').length,
-			rowKind: lastRow?.getAttribute("data-perf-row"),
-			lastChildHoldsLine: lastRow?.lastElementChild?.firstElementChild === line,
-			slotClass: lastRow?.lastElementChild?.className,
-		}).toStrictEqual({lines: 1, rowKind: "assistant_text", lastChildHoldsLine: true, slotClass: "-mt-1"});
+		expect(
+			{
+				lines: document.querySelectorAll('[data-testid="code-working-line"]').length,
+				rowKind: lastRow?.getAttribute("data-perf-row"),
+				lastChildHoldsLine: lastRow?.lastElementChild?.firstElementChild === line,
+				slotClass: lastRow?.lastElementChild?.className,
+			},
+		).toStrictEqual(
+			{
+				lines: 1,
+				rowKind: "assistant_text",
+				lastChildHoldsLine: true,
+				slotClass: "-mt-1",
+			},
+		);
 	});
-	it("keeps the working line after an inline permission card, outside the transcript rows", async () => {
+	it("keeps the working line after an inline permission card, outside the transcript rows", async () =>
+	{
 		await renderSessionPage(
 			detail,
 			[],
-			(queryClient) => {
+			(queryClient) =>
+			{
 				seedUsage(queryClient);
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [
-						{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}], nextCursor: null},
-					],
-					pageParams: [null],
-				} as never);
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions().queryKey,
+					{
+						pages: [
+							{
+								sessions: [
+									{
+										id: SESSION_ID,
+										state: "waiting",
+										awaitingPermission: true,
+									},
+								],
+								nextCursor: null,
+							},
+						],
+						pageParams: [null],
+					} as never,
+				);
 			},
 			[
 				{
@@ -683,14 +1167,19 @@ describe("SessionPage dock composition", () => {
 					uuid: "a1",
 					sessionId: SESSION_ID,
 					timestamp: "2026-09-28T10:00:01.000Z",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "toolu_waiting",
 								name: "Bash",
-								input: {command: "gh pr create --draft", description: "Open the draft PR"},
+								input:
+								{
+									command: "gh pr create --draft",
+									description: "Open the draft PR",
+								},
 							},
 						],
 					},
@@ -699,46 +1188,77 @@ describe("SessionPage dock composition", () => {
 		);
 		const line = document.querySelector('[data-testid="code-working-line"]');
 		const card = document.querySelector("[data-inline-permission]");
-		expect({
-			lines: document.querySelectorAll('[data-testid="code-working-line"]').length,
-			inRow: line?.closest('[data-testid="transcript-row"]') !== null,
-			followsCard:
-				card !== null &&
-				line !== null &&
-				(card.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-		}).toStrictEqual({lines: 1, inRow: false, followsCard: true});
+		expect(
+			{
+				lines: document.querySelectorAll('[data-testid="code-working-line"]').length,
+				inRow: line?.closest('[data-testid="transcript-row"]') !== null,
+				followsCard:
+					card !== null &&
+					line !== null &&
+					(card.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+			},
+		).toStrictEqual(
+			{
+				lines: 1,
+				inRow: false,
+				followsCard: true,
+			},
+		);
 	});
-	function waitingBashRecords(): Record<string, unknown>[] {
+	function waitingBashRecords(): Record<string, unknown>[]
+	{
 		return [
 			{
 				type: "assistant",
 				uuid: "a1",
 				sessionId: SESSION_ID,
 				timestamp: "2026-09-28T10:00:01.000Z",
-				message: {
+				message:
+				{
 					role: "assistant",
 					content: [
 						{
 							type: "tool_use",
 							id: "toolu_waiting",
 							name: "Bash",
-							input: {command: "gh pr create --draft", description: "Open the draft PR"},
+							input:
+							{
+								command: "gh pr create --draft",
+								description: "Open the draft PR",
+							},
 						},
 					],
 				},
 			},
 		];
 	}
-	function seedWaiting(awaitingPermission: boolean) {
-		return (queryClient: QueryClient) => {
+	function seedWaiting(awaitingPermission: boolean)
+	{
+		return (queryClient: QueryClient) =>
+		{
 			seedUsage(queryClient);
-			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-				pages: [{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission}], nextCursor: null}],
-				pageParams: [null],
-			} as never);
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions().queryKey,
+				{
+					pages: [
+						{
+							sessions: [
+								{
+									id: SESSION_ID,
+									state: "waiting",
+									awaitingPermission,
+								},
+							],
+							nextCursor: null,
+						},
+					],
+					pageParams: [null],
+				} as never,
+			);
 		};
 	}
-	it("carries the running row into upstream's turn-mark outlet below the docked permission card", async () => {
+	it("carries the running row into upstream's turn-mark outlet below the docked permission card", async () =>
+	{
 		await renderSessionPage(detail, [], seedWaiting(true), waitingBashRecords());
 		await flush();
 		const card = document.querySelector("[data-inline-permission]");
@@ -747,102 +1267,201 @@ describe("SessionPage dock composition", () => {
 		const grid = outlet?.parentElement;
 		const chrome = grid?.parentElement;
 		const home = document.querySelector('[data-testid="transcript-row"] [data-turn-mark-home]');
-		expect({
-			cardFirst:
-				card !== null &&
-				outlet !== null &&
-				(card.compareDocumentPosition(outlet) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-			cardClass: card?.className,
-			carried:
-				outlet?.querySelector("[data-turn-mark-box] [data-standalone-tool-row] [data-cds=WorkingMark]") !==
-				null,
-			homeEmpty: home?.childElementCount,
-			lineBesideOutlet: line?.parentElement === grid,
-			gridClass: grid?.className,
-			chrome: [chrome?.hasAttribute("data-transcript-tail-chrome"), chrome?.className],
-		}).toStrictEqual({
-			cardFirst: true,
-			cardClass: "chat-column empty:hidden",
-			carried: true,
-			homeEmpty: 0,
-			lineBesideOutlet: true,
-			gridClass:
-				"grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]",
-			chrome: [
-				true,
-				"chat-column flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] empty:hidden",
-			],
-		});
+		expect(
+			{
+				cardFirst:
+					card !== null &&
+					outlet !== null &&
+					(card.compareDocumentPosition(outlet) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+				cardClass: card?.className,
+				carried:
+					outlet?.querySelector("[data-turn-mark-box] [data-standalone-tool-row] [data-cds=WorkingMark]") !==
+					null,
+				homeEmpty: home?.childElementCount,
+				lineBesideOutlet: line?.parentElement === grid,
+				gridClass: grid?.className,
+				chrome: [chrome?.hasAttribute("data-transcript-tail-chrome"), chrome?.className],
+			},
+		).toStrictEqual(
+			{
+				cardFirst: true,
+				cardClass: "chat-column empty:hidden",
+				carried: true,
+				homeEmpty: 0,
+				lineBesideOutlet: true,
+				gridClass:
+					"grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]",
+				chrome: [
+					true,
+					"chat-column flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] empty:hidden",
+				],
+			},
+		);
 	});
-	it("keeps the running row in the transcript, with no outlet, while no card is docked", async () => {
+	it("keeps the running row in the transcript, with no outlet, while no card is docked", async () =>
+	{
 		await renderSessionPage(detail, [], seedWaiting(false), waitingBashRecords());
 		await flush();
-		expect({
-			outlets: document.querySelectorAll("[data-turn-mark-outlet]").length,
-			homes: document.querySelectorAll("[data-turn-mark-home]").length,
-			rowInTranscript:
-				document.querySelector('[data-testid="transcript-row"] [data-standalone-tool-row]') !== null,
-		}).toStrictEqual({outlets: 0, homes: 0, rowInTranscript: true});
+		expect(
+			{
+				outlets: document.querySelectorAll("[data-turn-mark-outlet]").length,
+				homes: document.querySelectorAll("[data-turn-mark-home]").length,
+				rowInTranscript:
+					document.querySelector('[data-testid="transcript-row"] [data-standalone-tool-row]') !== null,
+			},
+		).toStrictEqual(
+			{
+				outlets: 0,
+				homes: 0,
+				rowInTranscript: true,
+			},
+		);
 	});
-	function seedWorking(queryClient: QueryClient) {
+	function seedWorking(queryClient: QueryClient)
+	{
 		seedUsage(queryClient);
-		queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-			pages: [{sessions: [{id: SESSION_ID, state: "working"}], nextCursor: null}],
-			pageParams: [null],
-		} as never);
+		queryClient.setQueryData(
+			recentSessionsInfiniteQueryOptions().queryKey,
+			{
+				pages: [
+					{
+						sessions: [
+							{
+								id: SESSION_ID,
+								state: "working",
+							},
+						],
+						nextCursor: null,
+					},
+				],
+				pageParams: [null],
+			} as never,
+		);
 	}
-	function pendingCallRecords(name: string, input: Record<string, unknown>): Record<string, unknown>[] {
+	function pendingCallRecords(name: string, input: Record<string, unknown>): Record<string, unknown>[]
+	{
 		return [
 			{
 				type: "user",
 				uuid: "u1",
 				sessionId: SESSION_ID,
 				timestamp: "2026-09-28T10:00:00.000Z",
-				message: {role: "user", content: "Fabricated prompt: survey the repo."},
+				message:
+				{
+					role: "user",
+					content: "Fabricated prompt: survey the repo.",
+				},
 			},
 			{
 				type: "assistant",
 				uuid: "a1",
 				sessionId: SESSION_ID,
 				timestamp: "2026-09-28T10:00:01.000Z",
-				message: {role: "assistant", content: [{type: "tool_use", id: "toolu_running", name, input}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_running",
+							name,
+							input,
+						},
+					],
+				},
 			},
 		];
 	}
 	it.each([
-		{name: "Bash", input: {command: "ls", description: "List files"}},
-		{name: "Agent", input: {description: "Survey the repo", prompt: "Look around", subagent_type: "Explore"}},
+		{
+			name: "Bash",
+			input:
+			{
+				command: "ls",
+				description: "List files",
+			},
+		},
+		{
+			name: "Agent",
+			input:
+			{
+				description: "Survey the repo",
+				prompt: "Look around",
+				subagent_type: "Explore",
+			},
+		},
 	])(
 		"marks a pending top-level $name row and quiets the working line, as upstream's marked step",
-		async ({name, input}) => {
+		async ({name, input}) =>
+		{
 			await renderSessionPage(detail, [], seedWorking, pendingCallRecords(name, input));
 			await flush();
 			const row = [...document.querySelectorAll('[data-testid="transcript-row"] [data-tool-row]')].at(-1);
 			const line = document.querySelector('[data-testid="code-working-line"]');
-			expect({
-				rowMark: row?.querySelector("[data-cds=WorkingMark]") !== null,
-				quiet: line?.getAttribute("data-quiet"),
-			}).toStrictEqual({rowMark: true, quiet: "true"});
+			expect(
+				{
+					rowMark: row?.querySelector("[data-cds=WorkingMark]") !== null,
+					quiet: line?.getAttribute("data-quiet"),
+				},
+			).toStrictEqual(
+				{
+					rowMark: true,
+					quiet: "true",
+				},
+			);
 		},
 	);
-	it("draws the stored question once, inline in the transcript, not a permission card, when the registry's permission wait is really a question", async () => {
+	it("draws the stored question once, inline in the transcript, not a permission card, when the registry's permission wait is really a question", async () =>
+	{
 		await renderSessionPage(
-			{...detail, pr},
+			{
+				...detail,
+				pr,
+			},
 			[],
-			(queryClient) => {
+			(queryClient) =>
+			{
 				seedUsage(queryClient);
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [
-						{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}], nextCursor: null},
-					],
-					pageParams: [null],
-				} as never);
-				queryClient.setQueryData(pendingQuestionQueryOptions(SESSION_ID).queryKey, {
-					pendingQuestion: {
-						toolUseId: "toolu_question",
-						questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}],
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions().queryKey,
+					{
+						pages: [
+							{
+								sessions: [
+									{
+										id: SESSION_ID,
+										state: "waiting",
+										awaitingPermission: true,
+									},
+								],
+								nextCursor: null,
+							},
+						],
+						pageParams: [null],
+					} as never,
+				);
+				queryClient.setQueryData(
+					pendingQuestionQueryOptions(SESSION_ID).queryKey,
+					{
+						pendingQuestion:
+						{
+							toolUseId: "toolu_question",
+							questions: [
+								{
+									question: "Ship it?",
+									options: [
+										{
+											label: "Yes",
+										},
+										{
+											label: "No",
+										},
+									],
+								},
+							],
+						},
 					},
-				});
+				);
 			},
 			[
 				{
@@ -850,28 +1469,59 @@ describe("SessionPage dock composition", () => {
 					uuid: "a1",
 					sessionId: SESSION_ID,
 					timestamp: "2026-09-28T10:00:01.000Z",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "toolu_question",
 								name: "AskUserQuestion",
-								input: {questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}]},
+								input:
+								{
+									questions: [
+										{
+											question: "Ship it?",
+											options: [
+												{
+													label: "Yes",
+												},
+												{
+													label: "No",
+												},
+											],
+										},
+									],
+								},
 							},
 						],
 					},
 				},
 			],
 		);
-		expect({
-			footer: document.querySelectorAll("[data-session-footer] [data-approval-card-root]").length,
-			cards: screen.getAllByRole("group", {name: "Ship it?"}).length,
-			tail: document.querySelector("[data-hook-question]"),
-		}).toStrictEqual({footer: 0, cards: 1, tail: null});
+		expect(
+			{
+				footer: document.querySelectorAll("[data-session-footer] [data-approval-card-root]").length,
+				cards: screen.getAllByRole(
+					"group",
+					{
+						name: "Ship it?",
+					},
+				).length,
+				tail: document.querySelector("[data-hook-question]"),
+			},
+		).toStrictEqual(
+			{
+				footer: 0,
+				cards: 1,
+				tail: null,
+			},
+		);
 	});
-	describe("answering the stored question", () => {
-		const herdrPane = {
+	describe("answering the stored question", () =>
+	{
+		const herdrPane =
+		{
 			host: "herdr" as const,
 			paneId: "w100:p100",
 			terminalId: "terminal-test-100",
@@ -890,7 +1540,8 @@ describe("SessionPage dock composition", () => {
 			viewedState: detail.viewedState,
 		};
 
-		afterEach(() => {
+		afterEach(() =>
+		{
 			// The sent store is module state: an answer sent in one test must not leave the next one a receipt.
 			clearSentQuestionCard("toolu_question");
 			clearComposerQueues();
@@ -899,73 +1550,213 @@ describe("SessionPage dock composition", () => {
 
 		function seedWaitingQuestion(
 			queryClient: QueryClient,
-			herdr: {panes: (typeof herdrPane)[]; writesEnabled: boolean},
-		) {
+			herdr:
+			{
+				panes: (typeof herdrPane)[];
+				writesEnabled: boolean;
+			},
+		)
+		{
 			seedUsage(queryClient);
 			queryClient.setQueryData(herdrPanesQueryOptions.queryKey, herdr);
-			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-				pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
-				pageParams: [null],
-			} as never);
-			queryClient.setQueryData(pendingQuestionQueryOptions(SESSION_ID).queryKey, {
-				pendingQuestion: {
-					toolUseId: "toolu_question",
-					questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}],
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions().queryKey,
+				{
+					pages: [
+						{
+							sessions: [
+								{
+									id: SESSION_ID,
+									state: "waiting",
+								},
+							],
+							nextCursor: null,
+						},
+					],
+					pageParams: [null],
+				} as never,
+			);
+			queryClient.setQueryData(
+				pendingQuestionQueryOptions(SESSION_ID).queryKey,
+				{
+					pendingQuestion:
+					{
+						toolUseId: "toolu_question",
+						questions: [
+							{
+								question: "Ship it?",
+								options: [
+									{
+										label: "Yes",
+									},
+									{
+										label: "No",
+									},
+								],
+							},
+						],
+					},
 				},
-			});
+			);
 		}
 
-		async function renderWaitingQuestion(herdr: {panes: (typeof herdrPane)[]; writesEnabled: boolean}) {
-			await renderSessionPage({...detail, pr}, [], (queryClient) => {
-				seedWaitingQuestion(queryClient, herdr);
-			});
-			const card = screen.getByRole("group", {name: "Ship it?"});
+		async function renderWaitingQuestion(herdr: {panes: (typeof herdrPane)[]; writesEnabled: boolean})
+		{
+			await renderSessionPage(
+				{
+					...detail,
+					pr,
+				},
+				[],
+				(queryClient) =>
+				{
+					seedWaitingQuestion(queryClient, herdr);
+				},
+			);
+			const card = screen.getByRole(
+				"group",
+				{
+					name: "Ship it?",
+				},
+			);
 			expect(card.closest("[data-hook-question]")).not.toBeNull();
 			return within(card);
 		}
 
-		it("lets a session in a writable live herdr pane answer, posting the choice to the pane's question endpoint", async () => {
+		it("lets a session in a writable live herdr pane answer, posting the choice to the pane's question endpoint", async () =>
+		{
 			const fetchMock = vi.fn<typeof fetch>(async (input) =>
-				String(input) === "/api/herdr/question" ? Response.json({ok: true}) : new Promise<Response>(() => {}),
+				String(input) === "/api/herdr/question"
+					? Response.json(
+							{
+								ok: true,
+							},
+						)
+					: new Promise<Response>(() => {}),
 			);
 			vi.stubGlobal("fetch", fetchMock);
-			const card = await renderWaitingQuestion({panes: [herdrPane], writesEnabled: true});
+			const card = await renderWaitingQuestion(
+				{
+					panes: [herdrPane],
+					writesEnabled: true,
+				},
+			);
 
-			fireEvent.click(card.getByRole("button", {name: /^No/}));
-			fireEvent.click(card.getByRole("button", {name: /^Submit/}));
+			fireEvent.click(
+				card.getByRole(
+					"button",
+					{
+						name: /^No/,
+					},
+				),
+			);
+			fireEvent.click(
+				card.getByRole(
+					"button",
+					{
+						name: /^Submit/,
+					},
+				),
+			);
 			await flush();
 
-			expect({
-				footnote: card.queryByText("Answer in the terminal"),
-				receipt: document.querySelector("[data-hook-question] [data-question-receipt]")?.textContent,
-				posts: fetchMock.mock.calls
-					.filter(([input]) => String(input) === "/api/herdr/question")
-					.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
-			}).toStrictEqual({
-				footnote: null,
-				receipt: "Ship it?No",
-				posts: [{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}],
-			});
+			expect(
+				{
+					footnote: card.queryByText("Answer in the terminal"),
+					receipt: document.querySelector("[data-hook-question] [data-question-receipt]")?.textContent,
+					posts: fetchMock.mock.calls
+						.filter(([input]) => String(input) === "/api/herdr/question")
+						.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
+				},
+			).toStrictEqual(
+				{
+					footnote: null,
+					receipt: "Ship it?No",
+					posts: [
+						{
+							sessionId: SESSION_ID,
+							toolUseId: "toolu_question",
+							answers: [
+								{
+									selected: [1],
+								},
+							],
+						},
+					],
+				},
+			);
 		});
 
 		it.each([
 			["the page body", () => document.body],
-			["the card root", () => screen.getByRole("group", {name: "Ship it?"})],
-			["an answer button", () => screen.getByRole("button", {name: /^No/})],
-			["the empty composer", () => screen.getByRole("textbox", {name: "Prompt"})],
-		])("sends the picked answer on ⌘⏎ with focus on %s", async (_where, focusTarget) => {
+			[
+				"the card root",
+				() =>
+					screen.getByRole(
+						"group",
+						{
+							name: "Ship it?",
+						},
+					),
+			],
+			[
+				"an answer button",
+				() =>
+					screen.getByRole(
+						"button",
+						{
+							name: /^No/,
+						},
+					),
+			],
+			[
+				"the empty composer",
+				() =>
+					screen.getByRole(
+						"textbox",
+						{
+							name: "Prompt",
+						},
+					),
+			],
+		])("sends the picked answer on ⌘⏎ with focus on %s", async (_where, focusTarget) =>
+		{
 			const fetchMock = vi.fn<typeof fetch>(async (input) =>
-				String(input) === "/api/herdr/question" ? Response.json({ok: true}) : new Promise<Response>(() => {}),
+				String(input) === "/api/herdr/question"
+					? Response.json(
+							{
+								ok: true,
+							},
+						)
+					: new Promise<Response>(() => {}),
 			);
 			vi.stubGlobal("fetch", fetchMock);
 			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
-			const card = await renderWaitingQuestion({panes: [herdrPane], writesEnabled: true});
-			fireEvent.click(card.getByRole("button", {name: /^No/}));
+			const card = await renderWaitingQuestion(
+				{
+					panes: [herdrPane],
+					writesEnabled: true,
+				},
+			);
+			fireEvent.click(
+				card.getByRole(
+					"button",
+					{
+						name: /^No/,
+					},
+				),
+			);
 			const target = focusTarget();
 			if (target === document.body) (document.activeElement as HTMLElement | null)?.blur();
 			else target.focus();
 			now.mockReturnValue(5000);
-			fireEvent.keyDown(target, {key: "Enter", metaKey: true});
+			fireEvent.keyDown(
+				target,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 			await flush();
 			now.mockRestore();
 
@@ -973,177 +1764,451 @@ describe("SessionPage dock composition", () => {
 				fetchMock.mock.calls
 					.filter(([input]) => String(input) === "/api/herdr/question")
 					.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
-			).toStrictEqual([{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}]);
+			).toStrictEqual([
+				{
+					sessionId: SESSION_ID,
+					toolUseId: "toolu_question",
+					answers: [
+						{
+							selected: [1],
+						},
+					],
+				},
+			]);
 		});
 
-		it("focuses the opened session's composer when a sidebar row switches to it, so ⌘⏎ answers its waiting card", async () => {
+		it("focuses the opened session's composer when a sidebar row switches to it, so ⌘⏎ answers its waiting card", async () =>
+		{
 			const fetchMock = vi.fn<typeof fetch>(async (input) =>
-				String(input) === "/api/herdr/question" ? Response.json({ok: true}) : new Promise<Response>(() => {}),
+				String(input) === "/api/herdr/question"
+					? Response.json(
+							{
+								ok: true,
+							},
+						)
+					: new Promise<Response>(() => {}),
 			);
 			vi.stubGlobal("fetch", fetchMock);
 			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 			const queryClient = newQueryClient();
-			seedWaitingQuestion(queryClient, {panes: [herdrPane], writesEnabled: true});
-			seedSession(queryClient, SESSION_ID, {...detail, pr}, []);
-			seedSession(queryClient, OTHER_SESSION_ID, {...detail, title: "Fabricated other session"}, []);
+			seedWaitingQuestion(
+				queryClient,
+				{
+					panes: [herdrPane],
+					writesEnabled: true,
+				},
+			);
+			seedSession(
+				queryClient,
+				SESSION_ID,
+				{
+					...detail,
+					pr,
+				},
+				[],
+			);
+			seedSession(
+				queryClient,
+				OTHER_SESSION_ID,
+				{
+					...detail,
+					title: "Fabricated other session",
+				},
+				[],
+			);
 			await renderInRouter(
 				queryClient,
 				() => <RoutedSessionPage rowSessionId={SESSION_ID} rowTitle={TITLE} />,
 				OTHER_SESSION_ID,
 			);
 
-			const row = screen.getByRole("link", {name: TITLE});
+			const row = screen.getByRole(
+				"link",
+				{
+					name: TITLE,
+				},
+			);
 			row.focus();
 			fireEvent.click(row);
 			await flush();
-			const card = within(await screen.findByRole("group", {name: "Ship it?"}));
+			const card = within(
+				await screen.findByRole(
+					"group",
+					{
+						name: "Ship it?",
+					},
+				),
+			);
 			await flush();
 			const focused = document.activeElement;
-			fireEvent.click(card.getByRole("button", {name: /^No/}));
+			fireEvent.click(
+				card.getByRole(
+					"button",
+					{
+						name: /^No/,
+					},
+				),
+			);
 			now.mockReturnValue(5000);
-			fireEvent.keyDown(document.activeElement ?? document.body, {key: "Enter", metaKey: true});
+			fireEvent.keyDown(
+				document.activeElement ?? document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 			await flush();
 			now.mockRestore();
 
-			expect({
-				focused: focused === screen.getByRole("textbox", {name: "Prompt"}),
-				posts: fetchMock.mock.calls
-					.filter(([input]) => String(input) === "/api/herdr/question")
-					.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
-			}).toStrictEqual({
-				focused: true,
-				posts: [{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}],
-			});
+			expect(
+				{
+					focused:
+						focused ===
+						screen.getByRole(
+							"textbox",
+							{
+								name: "Prompt",
+							},
+						),
+					posts: fetchMock.mock.calls
+						.filter(([input]) => String(input) === "/api/herdr/question")
+						.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
+				},
+			).toStrictEqual(
+				{
+					focused: true,
+					posts: [
+						{
+							sessionId: SESSION_ID,
+							toolUseId: "toolu_question",
+							answers: [
+								{
+									selected: [1],
+								},
+							],
+						},
+					],
+				},
+			);
 		});
 
-		it("stops gating the composer and working line once the answer is sending, holding a typed prompt instead of a second key stream", async () => {
+		it("stops gating the composer and working line once the answer is sending, holding a typed prompt instead of a second key stream", async () =>
+		{
 			const fetchMock = vi.fn<typeof fetch>(async () => new Promise<Response>(() => {}));
 			vi.stubGlobal("fetch", fetchMock);
-			const card = await renderWaitingQuestion({panes: [herdrPane], writesEnabled: true});
+			const card = await renderWaitingQuestion(
+				{
+					panes: [herdrPane],
+					writesEnabled: true,
+				},
+			);
 
-			fireEvent.click(card.getByRole("button", {name: /^No/}));
-			fireEvent.click(card.getByRole("button", {name: /^Submit/}));
+			fireEvent.click(
+				card.getByRole(
+					"button",
+					{
+						name: /^No/,
+					},
+				),
+			);
+			fireEvent.click(
+				card.getByRole(
+					"button",
+					{
+						name: /^Submit/,
+					},
+				),
+			);
 			await flush();
-			const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-			fireEvent.change(textarea, {target: {value: "hi"}});
-			fireEvent.keyDown(textarea, {key: "Enter"});
+			const textarea = screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value: "hi",
+					},
+				},
+			);
+			fireEvent.keyDown(
+				textarea,
+				{
+					key: "Enter",
+				},
+			);
 			await flush();
 
 			const posts = (path: string) =>
 				fetchMock.mock.calls
 					.filter(([input]) => String(input) === path)
 					.map(([, init]) => JSON.parse(String(init?.body)) as unknown);
-			expect({
-				questionPosts: posts("/api/herdr/question"),
-				promptPosts: posts("/api/herdr/prompt"),
-				heldSteer: screen.queryAllByText("hi").length,
-				workingLine: document.querySelector(
-					'[data-testid="code-working-line"] [data-cds="TurnStatus"][data-state="busy"]',
-				)?.textContent,
-			}).toStrictEqual({
-				questionPosts: [{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}],
-				promptPosts: [],
-				heldSteer: 1,
-				// The answered session is working again at once; this fixture's turn has no reply yet.
-				workingLine: "Waiting for Clauderunning",
-			});
+			expect(
+				{
+					questionPosts: posts("/api/herdr/question"),
+					promptPosts: posts("/api/herdr/prompt"),
+					heldSteer: screen.queryAllByText("hi").length,
+					workingLine: document.querySelector(
+						'[data-testid="code-working-line"] [data-cds="TurnStatus"][data-state="busy"]',
+					)?.textContent,
+				},
+			).toStrictEqual(
+				{
+					questionPosts: [
+						{
+							sessionId: SESSION_ID,
+							toolUseId: "toolu_question",
+							answers: [
+								{
+									selected: [1],
+								},
+							],
+						},
+					],
+					promptPosts: [],
+					heldSteer: 1,
+					// The answered session is working again at once; this fixture's turn has no reply yet.
+					workingLine: "Waiting for Clauderunning",
+				},
+			);
 		});
 
-		it("draws a hook-only plan inline in the transcript's trailing slot, as upstream's card presentation, not docked", async () => {
+		it("draws a hook-only plan inline in the transcript's trailing slot, as upstream's card presentation, not docked", async () =>
+		{
 			vi.stubGlobal(
 				"fetch",
 				vi.fn<typeof fetch>(async (input) =>
 					String(input).startsWith("/api/herdr/plan")
-						? Response.json({dialog: {forwardMode: "auto", manual: true}})
+						? Response.json(
+								{
+									dialog:
+									{
+										forwardMode: "auto",
+										manual: true,
+									},
+								},
+							)
 						: new Promise<Response>(() => {}),
 				),
 			);
-			await renderSessionPage({...detail, pr}, [], (queryClient) => {
-				seedUsage(queryClient);
-				queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [herdrPane], writesEnabled: true});
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
-					pageParams: [null],
-				} as never);
-				queryClient.setQueryData(pendingPlanQueryOptions(SESSION_ID).queryKey, {
-					pendingPlan: {toolUseId: "toolu_plan", plan: "# Plan: ship it"},
-				});
-			});
-			await screen.findByRole("button", {name: /^Accept and use auto mode/});
+			await renderSessionPage(
+				{
+					...detail,
+					pr,
+				},
+				[],
+				(queryClient) =>
+				{
+					seedUsage(queryClient);
+					queryClient.setQueryData(
+						herdrPanesQueryOptions.queryKey,
+						{
+							panes: [herdrPane],
+							writesEnabled: true,
+						},
+					);
+					queryClient.setQueryData(
+						recentSessionsInfiniteQueryOptions().queryKey,
+						{
+							pages: [
+								{
+									sessions: [
+										{
+											id: SESSION_ID,
+											state: "waiting",
+										},
+									],
+									nextCursor: null,
+								},
+							],
+							pageParams: [null],
+						} as never,
+					);
+					queryClient.setQueryData(
+						pendingPlanQueryOptions(SESSION_ID).queryKey,
+						{
+							pendingPlan:
+							{
+								toolUseId: "toolu_plan",
+								plan: "# Plan: ship it",
+							},
+						},
+					);
+				},
+			);
+			await screen.findByRole(
+				"button",
+				{
+					name: /^Accept and use auto mode/,
+				},
+			);
 
-			expect({
-				inline: document.querySelectorAll("[data-inline-plan] [data-approval-presentation=card]").length,
-				docked: document.querySelectorAll("[data-docked-plan]").length,
-				inComposerDock:
-					document
-						.querySelector('[data-focus-region="composer"]')
-						?.parentElement?.querySelector("[data-inline-plan]") ?? null,
-				waitingCard: findWaitingCard(document)?.closest("[data-inline-plan]") !== null,
-			}).toStrictEqual({inline: 1, docked: 0, inComposerDock: null, waitingCard: true});
+			expect(
+				{
+					inline: document.querySelectorAll("[data-inline-plan] [data-approval-presentation=card]").length,
+					docked: document.querySelectorAll("[data-docked-plan]").length,
+					inComposerDock:
+						document
+							.querySelector('[data-focus-region="composer"]')
+							?.parentElement?.querySelector("[data-inline-plan]") ?? null,
+					waitingCard: findWaitingCard(document)?.closest("[data-inline-plan]") !== null,
+				},
+			).toStrictEqual(
+				{
+					inline: 1,
+					docked: 0,
+					inComposerDock: null,
+					waitingCard: true,
+				},
+			);
 		});
 
-		it("drops an answered hook plan's card while the hook still reports it and the session still waits", async () => {
-			const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
-				if (String(input).startsWith("/api/herdr/plan")) {
+		it("drops an answered hook plan's card while the hook still reports it and the session still waits", async () =>
+		{
+			const fetchMock = vi.fn<typeof fetch>(async (input, init) =>
+			{
+				if (String(input).startsWith("/api/herdr/plan"))
+				{
 					return init?.method === "POST"
-						? Response.json({ok: true})
-						: Response.json({dialog: {forwardMode: "auto", manual: true}});
+						? Response.json(
+								{
+									ok: true,
+								},
+							)
+						: Response.json(
+								{
+									dialog:
+									{
+										forwardMode: "auto",
+										manual: true,
+									},
+								},
+							);
 				}
 				return new Promise<Response>(() => {});
 			});
 			vi.stubGlobal("fetch", fetchMock);
-			await renderSessionPage({...detail, pr}, [], (queryClient) => {
-				seedUsage(queryClient);
-				queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [herdrPane], writesEnabled: true});
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
-					pageParams: [null],
-				} as never);
-				queryClient.setQueryData(pendingPlanQueryOptions(SESSION_ID).queryKey, {
-					pendingPlan: {toolUseId: "toolu_plan", plan: "# Plan: ship it"},
-				});
-			});
-			const accept = await screen.findByRole("button", {name: /^Accept and use auto mode/});
+			await renderSessionPage(
+				{
+					...detail,
+					pr,
+				},
+				[],
+				(queryClient) =>
+				{
+					seedUsage(queryClient);
+					queryClient.setQueryData(
+						herdrPanesQueryOptions.queryKey,
+						{
+							panes: [herdrPane],
+							writesEnabled: true,
+						},
+					);
+					queryClient.setQueryData(
+						recentSessionsInfiniteQueryOptions().queryKey,
+						{
+							pages: [
+								{
+									sessions: [
+										{
+											id: SESSION_ID,
+											state: "waiting",
+										},
+									],
+									nextCursor: null,
+								},
+							],
+							pageParams: [null],
+						} as never,
+					);
+					queryClient.setQueryData(
+						pendingPlanQueryOptions(SESSION_ID).queryKey,
+						{
+							pendingPlan:
+							{
+								toolUseId: "toolu_plan",
+								plan: "# Plan: ship it",
+							},
+						},
+					);
+				},
+			);
+			const accept = await screen.findByRole(
+				"button",
+				{
+					name: /^Accept and use auto mode/,
+				},
+			);
 			const before = document.querySelectorAll("[data-inline-plan]").length;
-			await act(async () => {
+			await act(async () =>
+			{
 				fireEvent.click(accept);
 				return Promise.resolve();
 			});
 			const after = document.querySelectorAll("[data-inline-plan]").length;
 			clearApprovalAnswered(SESSION_ID, "toolu_plan");
 
-			expect({
-				before,
-				after,
-				posts: fetchMock.mock.calls
-					.filter(([, init]) => init?.method === "POST")
-					.map(([input]) => String(input)),
-			}).toStrictEqual({before: 1, after: 0, posts: ["/api/herdr/plan"]});
+			expect(
+				{
+					before,
+					after,
+					posts: fetchMock.mock.calls
+						.filter(([, init]) => init?.method === "POST")
+						.map(([input]) => String(input)),
+				},
+			).toStrictEqual(
+				{
+					before: 1,
+					after: 0,
+					posts: ["/api/herdr/plan"],
+				},
+			);
 		});
 
-		it("flips the working line from Needs your input to Working… at the permission click, before the server says so", async () => {
+		it("flips the working line from Needs your input to Working… at the permission click, before the server says so", async () =>
+		{
 			vi.stubGlobal(
 				"fetch",
 				vi.fn<typeof fetch>(async () => new Promise<Response>(() => {})),
 			);
 			await renderSessionPage(
-				{...detail, pr},
+				{
+					...detail,
+					pr,
+				},
 				[],
-				(queryClient) => {
+				(queryClient) =>
+				{
 					seedUsage(queryClient);
-					queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {
-						panes: [herdrPane],
-						writesEnabled: true,
-					});
-					queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-						pages: [
-							{
-								sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}],
-								nextCursor: null,
-							},
-						],
-						pageParams: [null],
-					} as never);
+					queryClient.setQueryData(
+						herdrPanesQueryOptions.queryKey,
+						{
+							panes: [herdrPane],
+							writesEnabled: true,
+						},
+					);
+					queryClient.setQueryData(
+						recentSessionsInfiniteQueryOptions().queryKey,
+						{
+							pages: [
+								{
+									sessions: [
+										{
+											id: SESSION_ID,
+											state: "waiting",
+											awaitingPermission: true,
+										},
+									],
+									nextCursor: null,
+								},
+							],
+							pageParams: [null],
+						} as never,
+					);
 				},
 				[
 					{
@@ -1151,15 +2216,34 @@ describe("SessionPage dock composition", () => {
 						uuid: "a1",
 						sessionId: SESSION_ID,
 						timestamp: "2026-09-28T10:00:01.000Z",
-						message: {
+						message:
+						{
 							role: "assistant",
-							content: [{type: "tool_use", id: "toolu_waiting", name: "Bash", input: {command: "ls"}}],
+							content: [
+								{
+									type: "tool_use",
+									id: "toolu_waiting",
+									name: "Bash",
+									input:
+									{
+										command: "ls",
+									},
+								},
+							],
 						},
 					},
 				],
 			);
-			const card = within(screen.getByRole("group", {name: "Permission request: run this command"}));
-			const line = () => {
+			const card = within(
+				screen.getByRole(
+					"group",
+					{
+						name: "Permission request: run this command",
+					},
+				),
+			);
+			const line = () =>
+			{
 				const root = document.querySelector('[data-testid="code-working-line"]');
 				return {
 					working: root?.getAttribute("data-turn-working"),
@@ -1168,48 +2252,152 @@ describe("SessionPage dock composition", () => {
 				};
 			};
 			const before = line();
-			act(() => {
-				fireEvent.click(card.getByRole("button", {name: /^Allow/}));
+			act(() =>
+			{
+				fireEvent.click(
+					card.getByRole(
+						"button",
+						{
+							name: /^Allow/,
+						},
+					),
+				);
 			});
 			const answered = line();
 
 			// The pending Bash call then draws its own running row, so the line itself goes quiet, as upstream's.
-			expect({before, answered}).toStrictEqual({
-				before: {working: "false", status: undefined, blocked: false},
-				answered: {working: "true", status: "Working…", blocked: false},
-			});
+			expect(
+				{
+					before,
+					answered,
+				},
+			).toStrictEqual(
+				{
+					before:
+					{
+						working: "false",
+						status: undefined,
+						blocked: false,
+					},
+					answered:
+					{
+						working: "true",
+						status: "Working…",
+						blocked: false,
+					},
+				},
+			);
 		});
 
-		it("keeps the hook copy's receipt when the summary flips to working before the record lands", async () => {
+		it("keeps the hook copy's receipt when the summary flips to working before the record lands", async () =>
+		{
 			vi.stubGlobal(
 				"fetch",
 				vi.fn<typeof fetch>(async () => new Promise<Response>(() => {})),
 			);
 			let client: QueryClient | undefined;
-			await renderSessionPage({...detail, pr}, [], (queryClient) => {
-				client = queryClient;
-				seedUsage(queryClient);
-				queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [herdrPane], writesEnabled: true});
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
-					pageParams: [null],
-				} as never);
-				queryClient.setQueryData(pendingQuestionQueryOptions(SESSION_ID).queryKey, {
-					pendingQuestion: {
-						toolUseId: "toolu_question",
-						questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}],
+			await renderSessionPage(
+				{
+					...detail,
+					pr,
+				},
+				[],
+				(queryClient) =>
+				{
+					client = queryClient;
+					seedUsage(queryClient);
+					queryClient.setQueryData(
+						herdrPanesQueryOptions.queryKey,
+						{
+							panes: [herdrPane],
+							writesEnabled: true,
+						},
+					);
+					queryClient.setQueryData(
+						recentSessionsInfiniteQueryOptions().queryKey,
+						{
+							pages: [
+								{
+									sessions: [
+										{
+											id: SESSION_ID,
+											state: "waiting",
+										},
+									],
+									nextCursor: null,
+								},
+							],
+							pageParams: [null],
+						} as never,
+					);
+					queryClient.setQueryData(
+						pendingQuestionQueryOptions(SESSION_ID).queryKey,
+						{
+							pendingQuestion:
+							{
+								toolUseId: "toolu_question",
+								questions: [
+									{
+										question: "Ship it?",
+										options: [
+											{
+												label: "Yes",
+											},
+											{
+												label: "No",
+											},
+										],
+									},
+								],
+							},
+						},
+					);
+				},
+			);
+			const card = within(
+				screen.getByRole(
+					"group",
+					{
+						name: "Ship it?",
 					},
-				});
-			});
-			const card = within(screen.getByRole("group", {name: "Ship it?"}));
-			fireEvent.click(card.getByRole("button", {name: /^No/}));
-			fireEvent.click(card.getByRole("button", {name: /^Submit/}));
+				),
+			);
+			fireEvent.click(
+				card.getByRole(
+					"button",
+					{
+						name: /^No/,
+					},
+				),
+			);
+			fireEvent.click(
+				card.getByRole(
+					"button",
+					{
+						name: /^Submit/,
+					},
+				),
+			);
 			await flush();
-			act(() => {
-				client?.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [{sessions: [{id: SESSION_ID, state: "working"}], nextCursor: null}],
-					pageParams: [null],
-				} as never);
+			act(() =>
+			{
+				client?.setQueryData(
+					recentSessionsInfiniteQueryOptions().queryKey,
+					{
+						pages: [
+							{
+								sessions: [
+									{
+										id: SESSION_ID,
+										state: "working",
+									},
+								],
+								nextCursor: null,
+							},
+						],
+						pageParams: [null],
+					} as never,
+				);
 			});
 			await flush();
 
@@ -1219,36 +2407,104 @@ describe("SessionPage dock composition", () => {
 		});
 
 		it.each([
-			{name: "herdr writes are off", herdr: {panes: [herdrPane], writesEnabled: false}},
-			{name: "the session has no live herdr pane", herdr: {panes: [], writesEnabled: true}},
-		])("keeps the card read-only when $name", async ({herdr}) => {
+			{
+				name: "herdr writes are off",
+				herdr:
+				{
+					panes: [herdrPane],
+					writesEnabled: false,
+				},
+			},
+			{
+				name: "the session has no live herdr pane",
+				herdr:
+				{
+					panes: [],
+					writesEnabled: true,
+				},
+			},
+		])("keeps the card read-only when $name", async ({herdr}) =>
+		{
 			const card = await renderWaitingQuestion(herdr);
 
-			expect({
-				footnote: card.queryByText("Answer in the terminal") !== null,
-				option: card.getByRole<HTMLButtonElement>("button", {name: /^No/}).disabled,
-			}).toStrictEqual({footnote: true, option: true});
+			expect(
+				{
+					footnote: card.queryByText("Answer in the terminal") !== null,
+					option: card.getByRole<HTMLButtonElement>(
+						"button",
+						{
+							name: /^No/,
+						},
+					).disabled,
+				},
+			).toStrictEqual(
+				{
+					footnote: true,
+					option: true,
+				},
+			);
 		});
 	});
-	it("suppresses PR, usage, and composer when the session has neither a project path nor a cwd", async () => {
-		await renderSessionPage({...detail, pr, projectPath: null, cwd: null}, [], seedUsage);
+	it("suppresses PR, usage, and composer when the session has neither a project path nor a cwd", async () =>
+	{
+		await renderSessionPage(
+			{
+				...detail,
+				pr,
+				projectPath: null,
+				cwd: null,
+			},
+			[],
+			seedUsage,
+		);
 		expect(dockContents()).toStrictEqual([]);
 	});
-	it("hides and restores the PR dock with session chrome", async () => {
-		await renderSessionPage({...detail, pr}, [], seedUsage);
-		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+	it("hides and restores the PR dock with session chrome", async () =>
+	{
+		await renderSessionPage(
+			{
+				...detail,
+				pr,
+			},
+			[],
+			seedUsage,
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
 		await flush();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Expand chat"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Expand chat",
+				},
+			),
+		);
 		await flush();
 		expect(dockContents()).toStrictEqual([]);
-		fireEvent.click(screen.getByRole("button", {name: "Show chrome"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show chrome",
+				},
+			),
+		);
 		await flush();
 		expect(dockContents()).toStrictEqual(["pr", "usage", "composer"]);
 	});
 });
 
-describe("the inline permission card's dialog shape, as upstream's ask flags", () => {
-	const herdrPane = {
+describe("the inline permission card's dialog shape, as upstream's ask flags", () =>
+{
+	const herdrPane =
+	{
 		host: "herdr" as const,
 		paneId: "w100:p100",
 		terminalId: "terminal-test-100",
@@ -1268,7 +2524,8 @@ describe("the inline permission card's dialog shape, as upstream's ask flags", (
 	};
 	const DIALOG_URL = `/api/herdr/permission?sessionId=${encodeURIComponent(SESSION_ID)}`;
 
-	async function renderWaitingPermission(dialog: (() => Promise<Response>) | null) {
+	async function renderWaitingPermission(dialog: (() => Promise<Response>) | null)
+	{
 		const fetchMock = vi.fn<typeof fetch>(async (input) =>
 			String(input) === DIALOG_URL && dialog !== null ? dialog() : new Promise<Response>(() => {}),
 		);
@@ -1276,14 +2533,33 @@ describe("the inline permission card's dialog shape, as upstream's ask flags", (
 		await renderSessionPage(
 			detail,
 			[],
-			(queryClient) => {
-				queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [herdrPane], writesEnabled: true});
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [
-						{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}], nextCursor: null},
-					],
-					pageParams: [null],
-				} as never);
+			(queryClient) =>
+			{
+				queryClient.setQueryData(
+					herdrPanesQueryOptions.queryKey,
+					{
+						panes: [herdrPane],
+						writesEnabled: true,
+					},
+				);
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions().queryKey,
+					{
+						pages: [
+							{
+								sessions: [
+									{
+										id: SESSION_ID,
+										state: "waiting",
+										awaitingPermission: true,
+									},
+								],
+								nextCursor: null,
+							},
+						],
+						pageParams: [null],
+					} as never,
+				);
 			},
 			[
 				{
@@ -1291,14 +2567,19 @@ describe("the inline permission card's dialog shape, as upstream's ask flags", (
 					uuid: "a1",
 					sessionId: SESSION_ID,
 					timestamp: "2026-09-28T10:00:01.000Z",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "toolu_waiting",
 								name: "Bash",
-								input: {command: "npm run build", description: "Build the project"},
+								input:
+								{
+									command: "npm run build",
+									description: "Build the project",
+								},
 							},
 						],
 					},
@@ -1306,7 +2587,14 @@ describe("the inline permission card's dialog shape, as upstream's ask flags", (
 			],
 		);
 		await flush();
-		const card = within(screen.getByRole("group", {name: "Permission request: run this command"}));
+		const card = within(
+			screen.getByRole(
+				"group",
+				{
+					name: "Permission request: run this command",
+				},
+			),
+		);
 		return {
 			dialogReads: fetchMock.mock.calls.filter(([input]) => String(input) === DIALOG_URL).length,
 			primary: card
@@ -1316,23 +2604,63 @@ describe("the inline permission card's dialog shape, as upstream's ask flags", (
 		};
 	}
 
-	it("draws Deny primary while the terminal's dialog is being read, as upstream's askFlagsUnknown", async () => {
-		expect(await renderWaitingPermission(null)).toStrictEqual({dialogReads: 1, primary: ["Deny"]});
+	it("draws Deny primary while the terminal's dialog is being read, as upstream's askFlagsUnknown", async () =>
+	{
+		expect(await renderWaitingPermission(null)).toStrictEqual(
+			{
+				dialogReads: 1,
+				primary: ["Deny"],
+			},
+		);
 	});
 
-	it("draws Deny primary when the terminal's dialog is deny-first", async () => {
+	it("draws Deny primary when the terminal's dialog is deny-first", async () =>
+	{
 		expect(
 			await renderWaitingPermission(async () =>
-				Promise.resolve(Response.json({dialog: {denyFirst: true, persistent: false, auto: false}})),
+				Promise.resolve(
+					Response.json(
+						{
+							dialog:
+							{
+								denyFirst: true,
+								persistent: false,
+								auto: false,
+							},
+						},
+					),
+				),
 			),
-		).toStrictEqual({dialogReads: 1, primary: ["Deny"]});
+		).toStrictEqual(
+			{
+				dialogReads: 1,
+				primary: ["Deny"],
+			},
+		);
 	});
 
-	it("draws Allow once primary once the terminal's dialog reads as an ordinary ask", async () => {
+	it("draws Allow once primary once the terminal's dialog reads as an ordinary ask", async () =>
+	{
 		expect(
 			await renderWaitingPermission(async () =>
-				Promise.resolve(Response.json({dialog: {denyFirst: false, persistent: false, auto: false}})),
+				Promise.resolve(
+					Response.json(
+						{
+							dialog:
+							{
+								denyFirst: false,
+								persistent: false,
+								auto: false,
+							},
+						},
+					),
+				),
 			),
-		).toStrictEqual({dialogReads: 1, primary: ["Allow onceCtrl⏎Enter"]});
+		).toStrictEqual(
+			{
+				dialogReads: 1,
+				primary: ["Allow onceCtrl⏎Enter"],
+			},
+		);
 	});
 });

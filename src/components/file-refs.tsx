@@ -12,7 +12,8 @@ import {RenderErrorBoundary} from "./render-error-boundary";
 import {useFocusSlot} from "./use-focus-slot";
 import {usePaneHost} from "./panes/pane-host-context";
 import {FileRefsContext, FileRefsProvider} from "./file-refs-context";
-import {
+import
+{
 	type FileRefButtonProps,
 	fileRefButtonProps,
 	useCheckedOpen,
@@ -35,18 +36,29 @@ export function SessionFileRefs({
 	cwd: string | undefined;
 	sessionFiles: SessionFiles;
 	children: ReactNode;
-}) {
+})
+{
 	const host = usePaneHost();
 	const {openPane} = host;
 	const sessionPaths = useMemo(() => sessionFiles.files.map((file) => file.absolutePath), [sessionFiles]);
 	const open = useCallback(
-		(ref: FileRef) => {
+		(ref: FileRef) =>
+		{
 			requestFileOpen(sessionId, ref);
 			openPane("files");
 		},
 		[sessionId, openPane],
 	);
-	const value = useMemo(() => ({sessionId, cwd, sessionPaths, open}), [sessionId, cwd, sessionPaths, open]);
+	const value = useMemo(
+		() => (
+		{
+			sessionId,
+			cwd,
+			sessionPaths,
+			open,
+		}),
+		[sessionId, cwd, sessionPaths, open],
+	);
 	return <FileRefsProvider value={value}>{children}</FileRefsProvider>;
 }
 
@@ -62,7 +74,8 @@ function ResolvedFileRefTarget({
 	open: (ref: FileRef) => void;
 	render: RenderFileRef;
 	wrapBlocked: boolean;
-}): ReactNode {
+}): ReactNode
+{
 	const texts = useMemo(() => [path], [path]);
 	const ref = useFileRefs(texts).get(path);
 	const openDefaultApp = useDefaultAppOpen();
@@ -90,7 +103,8 @@ export function FileRefTarget({
 	path: string;
 	render: RenderFileRef;
 	wrapBlocked?: boolean;
-}): ReactNode {
+}): ReactNode
+{
 	const open = useOpenFileRef();
 	return open === null ? (
 		render(null)
@@ -99,17 +113,21 @@ export function FileRefTarget({
 	);
 }
 
-function artifactTitlesById(artifacts: ArtifactSummary[]): ReadonlyMap<string, string> {
+function artifactTitlesById(artifacts: ArtifactSummary[]): ReadonlyMap<string, string>
+{
 	return new Map(artifacts.map((artifact) => [artifact.id, artifact.title]));
 }
 
 /** Indexed artifact titles, fetched only when the prose links to an artifact. */
-function useArtifactTitles(markdown: string): ReadonlyMap<string, string> | undefined {
-	const {data} = useQuery({
-		...artifactsQueryOptions,
-		enabled: mentionsArtifactUrl(markdown),
-		select: artifactTitlesById,
-	});
+function useArtifactTitles(markdown: string): ReadonlyMap<string, string> | undefined
+{
+	const {data} = useQuery(
+		{
+			...artifactsQueryOptions,
+			enabled: mentionsArtifactUrl(markdown),
+			select: artifactTitlesById,
+		},
+	);
 	return data;
 }
 
@@ -125,7 +143,8 @@ function LinkedProseMarkdown({
 	open: (ref: FileRef) => void;
 	smartQuotes: boolean;
 	diagrams: boolean;
-}) {
+})
+{
 	const texts = useMemo(() => fileRefTexts(markdown), [markdown]);
 	const refs = useFileRefs(texts, true);
 	const checkedOpen = useCheckedOpen(sessionId, open);
@@ -159,7 +178,8 @@ export function ProseMarkdown({
 	markdown: string;
 	smartQuotes?: boolean;
 	diagrams?: boolean;
-}) {
+})
+{
 	const context = useContext(FileRefsContext);
 	// Upstream's ChatText boundary (`bS`): a markdown crash falls back to the plain text until the text changes.
 	return (
@@ -188,6 +208,7 @@ export function ProseMarkdown({
 	);
 }
 
-function reportProseCrash(error: unknown) {
+function reportProseCrash(error: unknown)
+{
 	console.error("[chat-text]", error);
 }

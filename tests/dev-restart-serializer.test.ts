@@ -5,26 +5,42 @@ import {afterEach, describe, expect, it} from "vite-plus/test";
 import {createServer, type Plugin, type ViteDevServer} from "vite-plus";
 import {newRestartQueue, serializeDevServerRestarts, serializeRestarts} from "../src/lib/dev-restart-serializer";
 
-async function sleep(ms: number): Promise<void> {
-	await new Promise((resolve) => {
+async function sleep(ms: number): Promise<void>
+{
+	await new Promise((resolve) =>
+	{
 		setTimeout(resolve, ms);
 	});
 }
 
-function deferred(): {promise: Promise<void>; resolve: () => void} {
-	let resolve: () => void = () => {};
-	const promise = new Promise<void>((done) => {
+function deferred():
+{
+	promise: Promise<void>;
+	resolve: () => void;
+}
+{
+	let resolve: () => void = () =>
+	{
+	};
+	const promise = new Promise<void>((done) =>
+	{
 		resolve = done;
 	});
-	return {promise, resolve};
+	return {
+		promise,
+		resolve,
+	};
 }
 
-describe("serializeRestarts", () => {
-	it("runs one follow-up restart for every request made while a restart is in flight", async () => {
+describe("serializeRestarts", () =>
+{
+	it("runs one follow-up restart for every request made while a restart is in flight", async () =>
+	{
 		const log: string[] = [];
 		const gates = [deferred(), deferred()];
 		let calls = 0;
-		const restart = serializeRestarts(async (forceOptimize) => {
+		const restart = serializeRestarts(async (forceOptimize) =>
+		{
 			const call = calls++;
 			log.push(`start ${call} ${String(forceOptimize)}`);
 			await gates[call]?.promise;
@@ -45,16 +61,19 @@ describe("serializeRestarts", () => {
 		expect(log).toStrictEqual(["start 0 false", "end 0", "start 1 true", "end 1"]);
 	});
 
-	it("shares one queue between the wrappers of an old server and the server its restart is creating", async () => {
+	it("shares one queue between the wrappers of an old server and the server its restart is creating", async () =>
+	{
 		const log: string[] = [];
 		const gate = deferred();
 		const queue = newRestartQueue();
-		const oldServer = serializeRestarts(async () => {
+		const oldServer = serializeRestarts(async () =>
+		{
 			log.push("old start");
 			await gate.promise;
 			log.push("old end");
 		}, queue);
-		const newServer = serializeRestarts(async () => {
+		const newServer = serializeRestarts(async () =>
+		{
 			log.push("new start");
 			await Promise.resolve();
 			log.push("new end");
@@ -68,10 +87,12 @@ describe("serializeRestarts", () => {
 		expect(log).toStrictEqual(["old start", "old end", "new start", "new end"]);
 	});
 
-	it("still runs the follow-up when the restart in flight fails", async () => {
+	it("still runs the follow-up when the restart in flight fails", async () =>
+	{
 		const log: string[] = [];
 		let calls = 0;
-		const restart = serializeRestarts(async () => {
+		const restart = serializeRestarts(async () =>
+		{
 			const call = calls++;
 			log.push(`start ${call}`);
 			await Promise.resolve();
@@ -87,10 +108,19 @@ describe("serializeRestarts", () => {
 	});
 });
 
-describe("serializeDevServerRestarts with a real dev server", () => {
+describe("serializeDevServerRestarts with a real dev server", () =>
+{
 	const roots: string[] = [];
-	afterEach(() => {
-		for (const root of roots.splice(0)) rmSync(root, {recursive: true, force: true});
+	afterEach(() =>
+	{
+		for (const root of roots.splice(0))
+			rmSync(
+				root,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
 	});
 
 	// A burst of config edits (a git checkout) asks for a restart again while one is under way, sometimes from the
@@ -102,7 +132,8 @@ describe("serializeDevServerRestarts with a real dev server", () => {
 	// makes it slower.
 	it.each(["new", "current"] as const)(
 		"keeps serving when the %s server asks for a restart during a restart",
-		async (asker) => {
+		async (asker) =>
+		{
 			const root = mkdtempSync(path.join(tmpdir(), "ccp-restart-"));
 			roots.push(root);
 			const errors: unknown[] = [];
@@ -111,37 +142,45 @@ describe("serializeDevServerRestarts with a real dev server", () => {
 			let current: ViteDevServer | undefined;
 			let followUp: Promise<void> | undefined;
 			// Ordered after the serializer, so the server's restart is already wrapped when this asks for one.
-			const burst: Plugin = {
+			const burst: Plugin =
+			{
 				name: "config-edit-burst",
-				configureServer(server) {
+				configureServer(server)
+				{
 					configured++;
 					if (configured !== 2) return;
 					const target = asker === "new" ? server : current;
-					followUp = target?.restart().catch((error: unknown) => {
+					followUp = target?.restart().catch((error: unknown) =>
+					{
 						errors.push(error);
 					});
 				},
-				async buildEnd() {
+				async buildEnd()
+				{
 					// Closing the old server takes a while in the real app (nitro's worker), which widens the race.
 					closed++;
 					if (closed <= 2) await sleep(100);
 				},
 			};
-			current = await createServer({
-				root,
-				configFile: false,
-				logLevel: "silent",
-				server: {
-					// Port 0 lets the OS pick a free port on every listen, so parallel runs never collide.
-					port: 0,
-					strictPort: true,
-					host: "127.0.0.1",
-					watch: null,
+			current = await createServer(
+				{
+					root,
+					configFile: false,
+					logLevel: "silent",
+					server:
+					{
+						// Port 0 lets the OS pick a free port on every listen, so parallel runs never collide.
+						port: 0,
+						strictPort: true,
+						host: "127.0.0.1",
+						watch: null,
+					},
+					plugins: [serializeDevServerRestarts(), burst],
 				},
-				plugins: [serializeDevServerRestarts(), burst],
-			});
+			);
 			await current.listen();
-			await current.restart().catch((error: unknown) => {
+			await current.restart().catch((error: unknown) =>
+			{
 				errors.push(error);
 			});
 			const requested = followUp !== undefined;
@@ -151,12 +190,21 @@ describe("serializeDevServerRestarts with a real dev server", () => {
 			const status = url === undefined ? undefined : (await fetch(`${url}@vite/client`)).status;
 			await current.close();
 
-			expect({errors: errors.map(String), requested, configured, status}).toStrictEqual({
-				errors: [],
-				requested: true,
-				configured: 3,
-				status: 200,
-			});
+			expect(
+				{
+					errors: errors.map(String),
+					requested,
+					configured,
+					status,
+				},
+			).toStrictEqual(
+				{
+					errors: [],
+					requested: true,
+					configured: 3,
+					status: 200,
+				},
+			);
 		},
 		60_000,
 	);

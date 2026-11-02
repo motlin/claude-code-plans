@@ -5,45 +5,72 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-		configurable: true,
-		value: vi.fn<HTMLElement["scrollIntoView"]>(),
-	});
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: vi.fn<HTMLElement["scrollIntoView"]>(),
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
 
-function renderRecords(records: unknown[], showCompactSummaries = true): HTMLElement {
+function renderRecords(records: unknown[], showCompactSummaries = true): HTMLElement
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
@@ -63,68 +90,112 @@ function renderRecords(records: unknown[], showCompactSummaries = true): HTMLEle
  * heading from the enclosing `[data-transcript-row]`, as upstream's does. A wrapper whose
  * first element child is not a heading contributes `null`, so a missing heading fails loudly.
  */
-function turnHeadings(container: HTMLElement): (readonly [string, string] | null)[] {
-	return Array.from(container.querySelectorAll("[class*='group/msg']")).map((wrapper) => {
+function turnHeadings(container: HTMLElement): (readonly [string, string] | null)[]
+{
+	return Array.from(container.querySelectorAll("[class*='group/msg']")).map((wrapper) =>
+	{
 		const first = (wrapper.hasAttribute("data-user-scope") ? wrapper.parentElement : wrapper)?.firstElementChild;
 		if (!(first instanceof HTMLHeadingElement)) return null;
 		return [first.className, first.textContent] as const;
 	});
 }
 
-function heading(text: string): readonly [string, string] {
+function heading(text: string): readonly [string, string]
+{
 	return ["sr-only select-none", text] as const;
 }
 
-const USER_TEXT = {
+const USER_TEXT =
+{
 	type: "user",
 	uuid: "user-1",
-	message: {role: "user", content: "Fabricated user message"},
+	message:
+	{
+		role: "user",
+		content: "Fabricated user message",
+	},
 };
 
-const ASSISTANT_TEXT = {
+const ASSISTANT_TEXT =
+{
 	type: "assistant",
 	uuid: "assistant-1",
-	message: {
+	message:
+	{
 		role: "assistant",
-		content: [{type: "text", text: "Fabricated assistant response"}],
+		content: [
+			{
+				type: "text",
+				text: "Fabricated assistant response",
+			},
+		],
 	},
 };
 
-const TOOL_CALL = {
+const TOOL_CALL =
+{
 	type: "assistant",
 	uuid: "assistant-tool-1",
-	message: {
+	message:
+	{
 		role: "assistant",
-		content: [{type: "tool_use", id: "t1", name: "Read", input: {file_path: "/a.ts"}}],
+		content: [
+			{
+				type: "tool_use",
+				id: "t1",
+				name: "Read",
+				input:
+				{
+					file_path: "/a.ts",
+				},
+			},
+		],
 	},
 };
 
-const STOP_HOOK_FEEDBACK = {
+const STOP_HOOK_FEEDBACK =
+{
 	type: "user",
 	uuid: "user-meta-1",
 	isMeta: true,
-	message: {role: "user", content: "Stop hook feedback: fabricated"},
+	message:
+	{
+		role: "user",
+		content: "Stop hook feedback: fabricated",
+	},
 };
 
-const COMMAND_INVOCATION = {
+const COMMAND_INVOCATION =
+{
 	type: "user",
 	uuid: "user-command-1",
-	message: {
+	message:
+	{
 		role: "user",
 		content: "<command-name>/fabricated</command-name><command-args>--dry-run</command-args>",
 	},
 };
 
-const COMPACT_SUMMARY = {
+const COMPACT_SUMMARY =
+{
 	type: "user",
 	uuid: "user-compact-1",
 	isCompactSummary: true,
-	message: {role: "user", content: "Fabricated compact summary"},
+	message:
+	{
+		role: "user",
+		content: "Fabricated compact summary",
+	},
 };
 
-describe("SessionChat turn headings", () => {
+describe("SessionChat turn headings", () =>
+{
 	it.each([
-		{record: USER_TEXT, expectedHeading: "You said: Fabricated user message", firstAction: "Read by Claude"},
+		{
+			record: USER_TEXT,
+			expectedHeading: "You said: Fabricated user message",
+			firstAction: "Read by Claude",
+		},
 		{
 			record: ASSISTANT_TEXT,
 			expectedHeading: "Claude responded: Fabricated assistant response",
@@ -136,70 +207,124 @@ describe("SessionChat turn headings", () => {
 			expectedHeading: "Claude responded",
 			firstAction: "Copy: This message has no text to copy.",
 		},
-		{record: COMMAND_INVOCATION, expectedHeading: "You said: /fabricated --dry-run", firstAction: "Read by Claude"},
-		{record: COMPACT_SUMMARY, expectedHeading: "You said: Compacted conversation", firstAction: "Copy"},
 		{
-			record: {...USER_TEXT, message: {role: "user", content: `${"word ".repeat(10)}\n\n${"x".repeat(100)}`}},
+			record: COMMAND_INVOCATION,
+			expectedHeading: "You said: /fabricated --dry-run",
+			firstAction: "Read by Claude",
+		},
+		{
+			record: COMPACT_SUMMARY,
+			expectedHeading: "You said: Compacted conversation",
+			firstAction: "Copy",
+		},
+		{
+			record:
+			{
+				...USER_TEXT,
+				message:
+				{
+					role: "user",
+					content: `${"word ".repeat(10)}\n\n${"x".repeat(100)}`,
+				},
+			},
 			expectedHeading: `You said: ${"word ".repeat(10)}${"x".repeat(30)}`,
 			firstAction: "Read by Claude",
 		},
 	])(
 		"names the action reveal for its heading and focuses $firstAction: $expectedHeading",
-		({record, expectedHeading, firstAction}) => {
+		({record, expectedHeading, firstAction}) =>
+		{
 			const container = renderRecords([record], false);
 			if (record === COMPACT_SUMMARY)
-				fireEvent.click(within(container).getByRole("button", {name: "Compacted conversation"}));
-			const reveal = within(container).getByRole("button", {name: `Show message actions for ${expectedHeading}`});
+				fireEvent.click(
+					within(container).getByRole(
+						"button",
+						{
+							name: "Compacted conversation",
+						},
+					),
+				);
+			const reveal = within(container).getByRole(
+				"button",
+				{
+					name: `Show message actions for ${expectedHeading}`,
+				},
+			);
 			fireEvent.click(reveal);
-			expect({
-				heading: within(container).getByRole("heading", {level: 2}).textContent,
-				name: reveal.getAttribute("aria-label"),
-				focused: (document.activeElement?.closest("[data-cds-disabled-reason-wrapper]")
-					? document.activeElement.querySelector("button")
-					: document.activeElement
-				)?.getAttribute("aria-label"),
-			}).toStrictEqual({
-				heading: expectedHeading,
-				name: `Show message actions for ${expectedHeading}`,
-				focused: firstAction,
-			});
+			expect(
+				{
+					heading: within(container).getByRole(
+						"heading",
+						{
+							level: 2,
+						},
+					).textContent,
+					name: reveal.getAttribute("aria-label"),
+					focused: (document.activeElement?.closest("[data-cds-disabled-reason-wrapper]")
+						? document.activeElement.querySelector("button")
+						: document.activeElement
+					)?.getAttribute("aria-label"),
+				},
+			).toStrictEqual(
+				{
+					heading: expectedHeading,
+					name: `Show message actions for ${expectedHeading}`,
+					focused: firstAction,
+				},
+			);
 		},
 	);
 
-	it("opens the user and assistant turns with upstream's screen-reader headings", () => {
+	it("opens the user and assistant turns with upstream's screen-reader headings", () =>
+	{
 		expect(turnHeadings(renderRecords([USER_TEXT, ASSISTANT_TEXT]))).toStrictEqual([
 			heading("You said: Fabricated user message"),
 			heading("Claude responded: Fabricated assistant response"),
 		]);
 	});
 
-	it("labels a tool-only assistant turn as Claude", () => {
+	it("labels a tool-only assistant turn as Claude", () =>
+	{
 		expect(turnHeadings(renderRecords([TOOL_CALL]))).toStrictEqual([heading("Claude responded")]);
 	});
 
-	it("quotes only the first 80 characters of the turn, whitespace collapsed", () => {
+	it("quotes only the first 80 characters of the turn, whitespace collapsed", () =>
+	{
 		const long = `${"word ".repeat(10)}\n\n${"x".repeat(100)}`;
-		const record = {...USER_TEXT, message: {role: "user", content: long}};
+		const record =
+		{
+			...USER_TEXT,
+			message:
+			{
+				role: "user",
+				content: long,
+			},
+		};
 		expect(turnHeadings(renderRecords([record]))).toStrictEqual([
 			heading(`You said: ${"word ".repeat(10)}${"x".repeat(30)}`),
 		]);
 	});
 
-	it("labels every user-side entry variant as You said, leaving the assistant-column stop-hook marker unheaded", () => {
+	it("labels every user-side entry variant as You said, leaving the assistant-column stop-hook marker unheaded", () =>
+	{
 		const collapsedCompact = renderRecords([COMPACT_SUMMARY], false);
 		const expandedCompact = renderRecords([COMPACT_SUMMARY], false);
 		fireEvent.click(expandedCompact.querySelector("button")!);
 
-		expect({
-			stopHookFeedback: turnHeadings(renderRecords([STOP_HOOK_FEEDBACK])),
-			command: turnHeadings(renderRecords([COMMAND_INVOCATION])),
-			collapsedCompactSummary: turnHeadings(collapsedCompact),
-			expandedCompactSummary: turnHeadings(expandedCompact),
-		}).toStrictEqual({
-			stopHookFeedback: [],
-			command: [heading("You said: /fabricated --dry-run")],
-			collapsedCompactSummary: [heading("You said: Compacted conversation")],
-			expandedCompactSummary: [heading("You said: Compacted conversation")],
-		});
+		expect(
+			{
+				stopHookFeedback: turnHeadings(renderRecords([STOP_HOOK_FEEDBACK])),
+				command: turnHeadings(renderRecords([COMMAND_INVOCATION])),
+				collapsedCompactSummary: turnHeadings(collapsedCompact),
+				expandedCompactSummary: turnHeadings(expandedCompact),
+			},
+		).toStrictEqual(
+			{
+				stopHookFeedback: [],
+				command: [heading("You said: /fabricated --dry-run")],
+				collapsedCompactSummary: [heading("You said: Compacted conversation")],
+				expandedCompactSummary: [heading("You said: Compacted conversation")],
+			},
+		);
 	});
 });

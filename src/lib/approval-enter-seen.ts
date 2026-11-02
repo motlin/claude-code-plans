@@ -7,30 +7,42 @@ const STORAGE_PREFIX = "approval-enter-seen:";
 
 const memory = new Set<string>();
 
-function browserSessionStorage(): Storage | null {
+function browserSessionStorage(): Storage | null
+{
 	if (typeof window === "undefined") return null;
-	try {
+	try
+	{
 		return window.sessionStorage;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-export function approvalEnterSeen(key: string): boolean {
+export function approvalEnterSeen(key: string): boolean
+{
 	if (memory.has(key)) return true;
-	try {
+	try
+	{
 		const storage = browserSessionStorage();
 		return storage !== null && storage.getItem(STORAGE_PREFIX + key) !== null;
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
 
-export function markApprovalEnterSeen(key: string): void {
+export function markApprovalEnterSeen(key: string): void
+{
 	memory.add(key);
-	try {
+	try
+	{
 		browserSessionStorage()?.setItem(STORAGE_PREFIX + key, "1");
-	} catch {
+	}
+	catch
+	{
 		// Quota or denied storage: the in-memory set still covers remounts.
 	}
 }

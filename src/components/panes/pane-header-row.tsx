@@ -31,7 +31,8 @@ export function PaneHeaderRow({
 	rowRef?: Ref<HTMLDivElement>;
 	/** Pane-specific hooks on the corner row, such as `data-files-header`. */
 	rowAttributes?: Readonly<Record<`data-${string}`, string>>;
-}) {
+})
+{
 	const roving = useRovingToolbar(TOOLBAR_ROVING_OPTIONS);
 	return (
 		<div ref={rowRef} data-pane-corner-row="" {...rowAttributes} className="relative shrink-0">

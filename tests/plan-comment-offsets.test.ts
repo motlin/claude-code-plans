@@ -4,18 +4,21 @@ import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {flattenOffsets, rangeFromOffsets} from "../src/lib/plan-comment-offsets";
 
-afterEach(() => {
+afterEach(() =>
+{
 	document.body.innerHTML = "";
 });
 
-function mount(html: string): HTMLElement {
+function mount(html: string): HTMLElement
+{
 	const root = document.createElement("div");
 	root.innerHTML = html;
 	document.body.append(root);
 	return root;
 }
 
-function textNode(root: Element, selector: string): Text {
+function textNode(root: Element, selector: string): Text
+{
 	const node = root.querySelector(selector)?.firstChild;
 	if (!(node instanceof Text)) throw new Error(`no text in ${selector}`);
 	return node;
@@ -23,17 +26,26 @@ function textNode(root: Element, selector: string): Text {
 
 const HTML = "<p>ab<code>c</code></p><div data-plan-comment-skip><pre>x</pre></div><p id='de'>de</p>";
 
-describe("flattenOffsets", () => {
-	it("counts offsets over the root's text, skipping code blocks", () => {
+describe("flattenOffsets", () =>
+{
+	it("counts offsets over the root's text, skipping code blocks", () =>
+	{
 		const root = mount(HTML);
 		const range = document.createRange();
 		range.setStart(textNode(root, "p"), 1);
 		range.setEnd(textNode(root, "#de"), 1);
 
-		expect(flattenOffsets(root, range)).toStrictEqual({start: 1, end: 4, text: "bcd"});
+		expect(flattenOffsets(root, range)).toStrictEqual(
+			{
+				start: 1,
+				end: 4,
+				text: "bcd",
+			},
+		);
 	});
 
-	it("returns null for a selection only inside a skipped block", () => {
+	it("returns null for a selection only inside a skipped block", () =>
+	{
 		const root = mount(HTML);
 		const range = document.createRange();
 		range.selectNodeContents(textNode(root, "pre"));
@@ -41,16 +53,24 @@ describe("flattenOffsets", () => {
 		expect(flattenOffsets(root, range)).toBeNull();
 	});
 
-	it("skips a bare pre the renderer did not wrap", () => {
+	it("skips a bare pre the renderer did not wrap", () =>
+	{
 		const root = mount("<p>ab</p><pre>xyz</pre><p id='de'>de</p>");
 		const range = document.createRange();
 		range.setStart(textNode(root, "p"), 0);
 		range.setEnd(textNode(root, "#de"), 2);
 
-		expect(flattenOffsets(root, range)).toStrictEqual({start: 0, end: 4, text: "abde"});
+		expect(flattenOffsets(root, range)).toStrictEqual(
+			{
+				start: 0,
+				end: 4,
+				text: "abde",
+			},
+		);
 	});
 
-	it("clips a range that runs past the root to the root's end", () => {
+	it("clips a range that runs past the root to the root's end", () =>
+	{
 		const root = mount("<p>abc</p>");
 		const after = document.createElement("p");
 		after.textContent = "outside";
@@ -59,18 +79,32 @@ describe("flattenOffsets", () => {
 		range.setStart(textNode(root, "p"), 1);
 		range.setEnd(after.firstChild as Text, 3);
 
-		expect(flattenOffsets(root, range)).toStrictEqual({start: 1, end: 3, text: "bc"});
+		expect(flattenOffsets(root, range)).toStrictEqual(
+			{
+				start: 1,
+				end: 3,
+				text: "bc",
+			},
+		);
 	});
 
-	it("skips the whitespace between table rows, as upstream's marks do", () => {
+	it("skips the whitespace between table rows, as upstream's marks do", () =>
+	{
 		const root = mount("<table>\n<tbody>\n<tr>\n<td>a</td>\n</tr>\n</tbody>\n</table><p id='b'>b</p>");
 		const range = document.createRange();
 		range.selectNodeContents(textNode(root, "#b"));
 
-		expect(flattenOffsets(root, range)).toStrictEqual({start: 1, end: 2, text: "b"});
+		expect(flattenOffsets(root, range)).toStrictEqual(
+			{
+				start: 1,
+				end: 2,
+				text: "b",
+			},
+		);
 	});
 
-	it("returns null for a blank selection", () => {
+	it("returns null for a blank selection", () =>
+	{
 		const root = mount("<p>a  b</p>");
 		const range = document.createRange();
 		range.setStart(textNode(root, "p"), 1);
@@ -80,22 +114,31 @@ describe("flattenOffsets", () => {
 	});
 });
 
-describe("rangeFromOffsets", () => {
-	it("maps flattened offsets back to a DOM range", () => {
+describe("rangeFromOffsets", () =>
+{
+	it("maps flattened offsets back to a DOM range", () =>
+	{
 		const root = mount(HTML);
 		const range = rangeFromOffsets(root, 1, 4);
 
 		expect(
 			range === null
 				? null
-				: {
+				:
+					{
 						start: [range.startContainer.textContent, range.startOffset],
 						end: [range.endContainer.textContent, range.endOffset],
 					},
-		).toStrictEqual({start: ["ab", 1], end: ["de", 1]});
+		).toStrictEqual(
+			{
+				start: ["ab", 1],
+				end: ["de", 1],
+			},
+		);
 	});
 
-	it("returns null for offsets past the text", () => {
+	it("returns null for offsets past the text", () =>
+	{
 		const root = mount(HTML);
 
 		expect(rangeFromOffsets(root, 2, 99)).toBeNull();

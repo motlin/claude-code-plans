@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	SSE_EVENTS,
 	HERDR_EVENTS,
 	DOMAIN_EVENTS,
@@ -9,165 +10,251 @@ import {
 	diffEntityMaps,
 } from "../src/lib/hook-events";
 
-describe("HERDR_EVENTS", () => {
-	it("defines the herdr bridge event namespace", () => {
-		expect(HERDR_EVENTS).toStrictEqual({
-			PANES_SNAPSHOT: "herdr:panes-snapshot",
-			PANE_CREATED: "herdr:pane-created",
-			PANE_CLOSED: "herdr:pane-closed",
-			PANE_UPDATED: "herdr:pane-updated",
-			PANE_MOVED: "herdr:pane-moved",
-			PANE_EXITED: "herdr:pane-exited",
-			PANE_AGENT_DETECTED: "herdr:pane-agent-detected",
-			PANE_AGENT_STATUS_CHANGED: "herdr:pane-agent-status-changed",
-			CONNECTION_CHANGED: "herdr:connection-changed",
-			TABS_CHANGED: "herdr:tabs-changed",
-		});
+describe("HERDR_EVENTS", () =>
+{
+	it("defines the herdr bridge event namespace", () =>
+	{
+		expect(HERDR_EVENTS).toStrictEqual(
+			{
+				PANES_SNAPSHOT: "herdr:panes-snapshot",
+				PANE_CREATED: "herdr:pane-created",
+				PANE_CLOSED: "herdr:pane-closed",
+				PANE_UPDATED: "herdr:pane-updated",
+				PANE_MOVED: "herdr:pane-moved",
+				PANE_EXITED: "herdr:pane-exited",
+				PANE_AGENT_DETECTED: "herdr:pane-agent-detected",
+				PANE_AGENT_STATUS_CHANGED: "herdr:pane-agent-status-changed",
+				CONNECTION_CHANGED: "herdr:connection-changed",
+				TABS_CHANGED: "herdr:tabs-changed",
+			},
+		);
 	});
 });
 
-describe("SessionLinesAppendedPayloadSchema", () => {
-	const payload = {
+describe("SessionLinesAppendedPayloadSchema", () =>
+{
+	const payload =
+	{
 		sessionId: "abc123",
-		lines: [{type: "user", message: {content: "hi"}}],
+		lines: [
+			{
+				type: "user",
+				message:
+				{
+					content: "hi",
+				},
+			},
+		],
 		writtenAt: 1_790_000_000_123,
 	};
 
-	it("carries the appended lines and the JSONL mtime they were written at, in integer epoch ms", () => {
+	it("carries the appended lines and the JSONL mtime they were written at, in integer epoch ms", () =>
+	{
 		expect(SessionLinesAppendedPayloadSchema.parse(payload)).toStrictEqual(payload);
 	});
 
-	it("rejects a payload without writtenAt, with a fractional or negative one, or with unknown keys", () => {
+	it("rejects a payload without writtenAt, with a fractional or negative one, or with unknown keys", () =>
+	{
 		const {writtenAt: _writtenAt, ...withoutWrittenAt} = payload;
 		expect(
 			[
 				withoutWrittenAt,
-				{...payload, writtenAt: 1_790_000_000_123.5},
-				{...payload, writtenAt: -1},
-				{...payload, extra: true},
+				{
+					...payload,
+					writtenAt: 1_790_000_000_123.5,
+				},
+				{
+					...payload,
+					writtenAt: -1,
+				},
+				{
+					...payload,
+					extra: true,
+				},
 			].map((candidate) => SessionLinesAppendedPayloadSchema.safeParse(candidate).success),
 		).toStrictEqual([false, false, false, false]);
 	});
 });
 
-describe("SessionTranscriptRewrittenPayloadSchema", () => {
-	it("carries only the session id", () => {
-		expect(SessionTranscriptRewrittenPayloadSchema.parse({sessionId: "abc123"})).toStrictEqual({
-			sessionId: "abc123",
-		});
+describe("SessionTranscriptRewrittenPayloadSchema", () =>
+{
+	it("carries only the session id", () =>
+	{
+		expect(
+			SessionTranscriptRewrittenPayloadSchema.parse(
+				{
+					sessionId: "abc123",
+				},
+			),
+		).toStrictEqual(
+			{
+				sessionId: "abc123",
+			},
+		);
 	});
 
-	it("rejects a payload without a session id or with unknown keys", () => {
+	it("rejects a payload without a session id or with unknown keys", () =>
+	{
 		expect(
-			[{}, {sessionId: "abc123", lines: []}].map(
-				(candidate) => SessionTranscriptRewrittenPayloadSchema.safeParse(candidate).success,
-			),
+			[
+				{},
+				{
+					sessionId: "abc123",
+					lines: [],
+				},
+			].map((candidate) => SessionTranscriptRewrittenPayloadSchema.safeParse(candidate).success),
 		).toStrictEqual([false, false]);
 	});
 });
 
-describe("HookEventEnvelope", () => {
-	const baseEnvelope = {
+describe("HookEventEnvelope", () =>
+{
+	const baseEnvelope =
+	{
 		session_id: "abc123",
 		transcript_path: "/Users/user/.claude/projects/-Users-user-project/abc123.jsonl",
 		cwd: "/home/user/project",
 	};
 
-	it("parses SessionStart event", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "SessionStart",
-			model: "claude-sonnet-4-6",
-			source: "startup",
-		});
+	it("parses SessionStart event", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "SessionStart",
+				model: "claude-sonnet-4-6",
+				source: "startup",
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses SessionStart event with claude_env metadata", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "SessionStart",
-			source: "resume",
-			claude_env: {
-				CLAUDE_CODE_ENTRYPOINT: "cli",
-				CLAUDE_CODE_EXECPATH: "/Users/user/.local/share/claude/versions/2.1.119",
-				CLAUDECODE: "1",
-				CLAUDE_EFFORT: "high",
-				CLAUDE_CODE_TASK_LIST_ID: "my-project",
+	it("parses SessionStart event with claude_env metadata", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "SessionStart",
+				source: "resume",
+				claude_env:
+				{
+					CLAUDE_CODE_ENTRYPOINT: "cli",
+					CLAUDE_CODE_EXECPATH: "/Users/user/.local/share/claude/versions/2.1.119",
+					CLAUDECODE: "1",
+					CLAUDE_EFFORT: "high",
+					CLAUDE_CODE_TASK_LIST_ID: "my-project",
+				},
 			},
-		});
+		);
 		expect(result.success).toBe(true);
-		if (result.success && result.data.hook_event_name === "SessionStart") {
+		if (result.success && result.data.hook_event_name === "SessionStart")
+		{
 			expect(result.data.claude_env?.["CLAUDE_CODE_ENTRYPOINT"]).toBe("cli");
 			expect(result.data.claude_env?.["CLAUDE_EFFORT"]).toBe("high");
 		}
 	});
 
-	it("requires source on SessionStart", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "SessionStart",
-		});
+	it("requires source on SessionStart", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "SessionStart",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("parses PostToolUse event for Write tool", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name: "Write",
-			tool_input: {file_path: "/tmp/test.ts", content: "hello"},
-		});
+	it("parses PostToolUse event for Write tool", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "Write",
+				tool_input:
+				{
+					file_path: "/tmp/test.ts",
+					content: "hello",
+				},
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses PostToolUse event for Bash tool with tool_response", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name: "Bash",
-			tool_input: {command: "ls"},
-			tool_response: {
-				stdout: "a.txt\nb.txt",
-				stderr: "",
-				dangerouslyDisableSandbox: true,
+	it("parses PostToolUse event for Bash tool with tool_response", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "Bash",
+				tool_input:
+				{
+					command: "ls",
+				},
+				tool_response:
+				{
+					stdout: "a.txt\nb.txt",
+					stderr: "",
+					dangerouslyDisableSandbox: true,
+				},
 			},
-		});
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses PostToolUse for an MCP tool with content-block response", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name: "mcp__claude-in-chrome__javascript_tool",
-			tool_input: {
-				action: "javascript_exec",
-				text: "return 1 + 1",
-				tabId: 100,
+	it("parses PostToolUse for an MCP tool with content-block response", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "mcp__claude-in-chrome__javascript_tool",
+				tool_input:
+				{
+					action: "javascript_exec",
+					text: "return 1 + 1",
+					tabId: 100,
+				},
+				tool_response: [
+					{
+						type: "text",
+						text: "2",
+					},
+					{
+						type: "text",
+						text: "Script finished successfully",
+					},
+				],
 			},
-			tool_response: [
-				{type: "text", text: "2"},
-				{type: "text", text: "Script finished successfully"},
-			],
-		});
+		);
 		expect(result.success).toBe(true);
 	});
 
 	it.each([
 		{
 			tool_name: "SubagentHandback",
-			tool_input: {message: "Implemented the example and committed it."},
-			tool_response: {success: true, message: "Report delivered to your caller."},
+			tool_input:
+			{
+				message: "Implemented the example and committed it.",
+			},
+			tool_response:
+			{
+				success: true,
+				message: "Report delivered to your caller.",
+			},
 		},
 		{
 			tool_name: "Agent",
-			tool_input: {
+			tool_input:
+			{
 				description: "Inspect the example project",
 				prompt: "Report the example project's module structure.",
 				subagent_type: "Explore",
 			},
-			tool_response: {
+			tool_response:
+			{
 				isAsync: true,
 				status: "async_launched",
 				agentId: "agent-100",
@@ -180,8 +267,13 @@ describe("HookEventEnvelope", () => {
 		},
 		{
 			tool_name: "ToolSearch",
-			tool_input: {query: "select:Bash", max_results: 1},
-			tool_response: {
+			tool_input:
+			{
+				query: "select:Bash",
+				max_results: 1,
+			},
+			tool_response:
+			{
 				matches: ["Bash"],
 				query: "select:Bash",
 				total_deferred_tools: 100,
@@ -189,12 +281,22 @@ describe("HookEventEnvelope", () => {
 		},
 		{
 			tool_name: "TaskUpdate",
-			tool_input: {taskId: "100", subject: "Update the example task"},
-			tool_response: {success: true, taskId: "100", updatedFields: ["subject"]},
+			tool_input:
+			{
+				taskId: "100",
+				subject: "Update the example task",
+			},
+			tool_response:
+			{
+				success: true,
+				taskId: "100",
+				updatedFields: ["subject"],
+			},
 		},
 		{
 			tool_name: "ReportFindings",
-			tool_input: {
+			tool_input:
+			{
 				level: "high",
 				findings: [
 					{
@@ -208,7 +310,8 @@ describe("HookEventEnvelope", () => {
 					},
 				],
 			},
-			tool_response: {
+			tool_response:
+			{
 				count: 1,
 				level: "high",
 				findings: [
@@ -224,22 +327,29 @@ describe("HookEventEnvelope", () => {
 				],
 			},
 		},
-	])("parses PostToolUse for the observed $tool_name tool", ({tool_name, tool_input, tool_response}) => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name,
-			tool_input,
-			tool_response,
-		});
+	])("parses PostToolUse for the observed $tool_name tool", ({tool_name, tool_input, tool_response}) =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name,
+				tool_input,
+				tool_response,
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
 	it.each([
 		{
 			tool_name: "Skill",
-			tool_input: {skill: "code:code-quality"},
-			tool_response: {
+			tool_input:
+			{
+				skill: "code:code-quality",
+			},
+			tool_response:
+			{
 				success: true,
 				commandName: "code:code-quality",
 				allowedTools: ["Read", "Edit"],
@@ -248,14 +358,29 @@ describe("HookEventEnvelope", () => {
 		},
 		{
 			tool_name: "TaskCreate",
-			tool_input: {subject: "Inspect the example"},
-			tool_response: {task: {id: "100", subject: "Inspect the example"}},
+			tool_input:
+			{
+				subject: "Inspect the example",
+			},
+			tool_response:
+			{
+				task:
+				{
+					id: "100",
+					subject: "Inspect the example",
+				},
+			},
 		},
 		{
 			tool_name: "TaskGet",
-			tool_input: {taskId: "100"},
-			tool_response: {
-				task: {
+			tool_input:
+			{
+				taskId: "100",
+			},
+			tool_response:
+			{
+				task:
+				{
 					id: "100",
 					subject: "Inspect the example",
 					description: "Inspect the example implementation.",
@@ -268,7 +393,8 @@ describe("HookEventEnvelope", () => {
 		{
 			tool_name: "TaskList",
 			tool_input: {},
-			tool_response: {
+			tool_response:
+			{
 				tasks: [
 					{
 						id: "100",
@@ -282,20 +408,38 @@ describe("HookEventEnvelope", () => {
 		},
 		{
 			tool_name: "SendMessage",
-			tool_input: {to: "alice", message: "Inspect the example."},
-			tool_response: {
+			tool_input:
+			{
+				to: "alice",
+				message: "Inspect the example.",
+			},
+			tool_response:
+			{
 				success: true,
 				message: "Message queued.",
-				routing: {sender: "team-lead", target: "alice"},
+				routing:
+				{
+					sender: "team-lead",
+					target: "alice",
+				},
 				msg_id: "message-100",
-				pin: {id: "agent-100", name: "alice", ref: "abc123"},
+				pin:
+				{
+					id: "agent-100",
+					name: "alice",
+					ref: "abc123",
+				},
 				resumedAgentId: "agent-100",
 			},
 		},
 		{
 			tool_name: "TaskStop",
-			tool_input: {task_id: "task-100"},
-			tool_response: {
+			tool_input:
+			{
+				task_id: "task-100",
+			},
+			tool_response:
+			{
 				message: "Successfully stopped task: task-100",
 				task_id: "task-100",
 				task_type: "local_bash",
@@ -304,10 +448,16 @@ describe("HookEventEnvelope", () => {
 		},
 		{
 			tool_name: "TaskOutput",
-			tool_input: {task_id: "task-100", block: true},
-			tool_response: {
+			tool_input:
+			{
+				task_id: "task-100",
+				block: true,
+			},
+			tool_response:
+			{
 				retrieval_status: "complete",
-				task: {
+				task:
+				{
 					description: "Run the example server",
 					exitCode: 0,
 					isRawTranscript: false,
@@ -322,18 +472,31 @@ describe("HookEventEnvelope", () => {
 		},
 		{
 			tool_name: "WebSearch",
-			tool_input: {query: "example query"},
-			tool_response: {
+			tool_input:
+			{
 				query: "example query",
-				results: [{tool_use_id: "search-100", content: []}],
+			},
+			tool_response:
+			{
+				query: "example query",
+				results: [
+					{
+						tool_use_id: "search-100",
+						content: [],
+					},
+				],
 				durationSeconds: 0.5,
 				searchCount: 1,
 			},
 		},
 		{
 			tool_name: "ExitPlanMode",
-			tool_input: {plan: "Example plan"},
-			tool_response: {
+			tool_input:
+			{
+				plan: "Example plan",
+			},
+			tool_response:
+			{
 				plan: "Example plan",
 				isAgent: false,
 				filePath: "/tmp/example-plan.md",
@@ -343,8 +506,13 @@ describe("HookEventEnvelope", () => {
 		},
 		{
 			tool_name: "WebFetch",
-			tool_input: {url: "https://example.com", prompt: "Summarize the example."},
-			tool_response: {
+			tool_input:
+			{
+				url: "https://example.com",
+				prompt: "Summarize the example.",
+			},
+			tool_response:
+			{
 				url: "https://example.com",
 				bytes: 100,
 				code: 200,
@@ -355,8 +523,12 @@ describe("HookEventEnvelope", () => {
 		},
 		{
 			tool_name: "EnterWorktree",
-			tool_input: {name: "example"},
-			tool_response: {
+			tool_input:
+			{
+				name: "example",
+			},
+			tool_response:
+			{
 				worktreePath: "/tmp/example-worktree",
 				worktreeBranch: "worktree-example",
 				message: "Created worktree.",
@@ -365,69 +537,106 @@ describe("HookEventEnvelope", () => {
 		{
 			tool_name: "EnterPlanMode",
 			tool_input: {},
-			tool_response: {message: "Entered plan mode."},
+			tool_response:
+			{
+				message: "Entered plan mode.",
+			},
 		},
-	])("parses PostToolUse for the authored $tool_name response schema", ({tool_name, tool_input, tool_response}) => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name,
-			tool_input,
-			tool_response,
-		});
+	])("parses PostToolUse for the authored $tool_name response schema", ({tool_name, tool_input, tool_response}) =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name,
+				tool_input,
+				tool_response,
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses PostToolUseFailure with interruption and duration metadata", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUseFailure",
-			tool_name: "Bash",
-			tool_input: {command: "exit 1"},
-			error: "Command exited with status 1",
-			is_interrupt: false,
-			duration_ms: 120017,
-		});
+	it("parses PostToolUseFailure with interruption and duration metadata", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUseFailure",
+				tool_name: "Bash",
+				tool_input:
+				{
+					command: "exit 1",
+				},
+				error: "Command exited with status 1",
+				is_interrupt: false,
+				duration_ms: 120017,
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses PostToolUse for AskUserQuestion with its resumed response", () => {
+	it("parses PostToolUse for AskUserQuestion with its resumed response", () =>
+	{
 		const questions = [
 			{
 				question: "Which example should run?",
 				header: "Example",
 				options: [
-					{label: "Alice", description: "Run Alice's example."},
-					{label: "Bob", description: "Run Bob's example."},
+					{
+						label: "Alice",
+						description: "Run Alice's example.",
+					},
+					{
+						label: "Bob",
+						description: "Run Bob's example.",
+					},
 				],
 				multiSelect: false,
 			},
 		];
-		const answers = {"Which example should run?": "Alice"};
-		const annotations = {
-			"Which example should run?": {preview: "Alice's example"},
+		const answers =
+		{
+			"Which example should run?": "Alice",
 		};
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name: "AskUserQuestion",
-			tool_input: {questions, answers, annotations},
-			tool_response: {
-				questions,
-				answers,
-				annotations,
+		const annotations =
+		{
+			"Which example should run?":
+			{
+				preview: "Alice's example",
 			},
-		});
+		};
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "AskUserQuestion",
+				tool_input:
+				{
+					questions,
+					answers,
+					annotations,
+				},
+				tool_response:
+				{
+					questions,
+					answers,
+					annotations,
+				},
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses PostToolUse for AskUserQuestion with array-valued response answers", () => {
-		const payload = {
+	it("parses PostToolUse for AskUserQuestion with array-valued response answers", () =>
+	{
+		const payload =
+		{
 			...baseEnvelope,
 			hook_event_name: "PostToolUse" as const,
 			tool_name: "AskUserQuestion" as const,
 			tool_input: {},
-			tool_response: {
+			tool_response:
+			{
 				answers: [
 					{
 						question: "Which example should run?",
@@ -437,372 +646,510 @@ describe("HookEventEnvelope", () => {
 			},
 		};
 
-		expect(HookEventEnvelope.safeParse(payload)).toStrictEqual({
-			success: true,
-			data: payload,
-		});
-	});
-
-	it("parses PostToolUse for Write with an unmodified new file response", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name: "Write",
-			tool_input: {file_path: "/tmp/test/example.ts", content: "export const example = true;"},
-			tool_response: {
-				type: "create",
-				filePath: "/tmp/test/example.ts",
-				content: "export const example = true;",
-				structuredPatch: [],
-				originalFile: null,
-				userModified: false,
+		expect(HookEventEnvelope.safeParse(payload)).toStrictEqual(
+			{
+				success: true,
+				data: payload,
 			},
-		});
-		expect(result.success).toBe(true);
+		);
 	});
 
-	it("parses PostToolUse for a background Bash task response", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name: "Bash",
-			tool_input: {command: "example-server", run_in_background: true},
-			tool_response: {
-				stdout: "",
-				stderr: "",
-				interrupted: false,
-				isImage: false,
-				noOutputExpected: false,
-				backgroundTaskId: "task-100",
-				backgroundCwdHint: "/tmp/test",
+	it("parses PostToolUse for Write with an unmodified new file response", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "Write",
+				tool_input:
+				{
+					file_path: "/tmp/test/example.ts",
+					content: "export const example = true;",
+				},
+				tool_response:
+				{
+					type: "create",
+					filePath: "/tmp/test/example.ts",
+					content: "export const example = true;",
+					structuredPatch: [],
+					originalFile: null,
+					userModified: false,
+				},
 			},
-		});
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses PostToolUse for Bash with a bare-string response", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name: "Bash",
-			tool_input: {command: "echo example"},
-			tool_response: "Example command completed.",
-		});
+	it("parses PostToolUse for a background Bash task response", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "Bash",
+				tool_input:
+				{
+					command: "example-server",
+					run_in_background: true,
+				},
+				tool_response:
+				{
+					stdout: "",
+					stderr: "",
+					interrupted: false,
+					isImage: false,
+					noOutputExpected: false,
+					backgroundTaskId: "task-100",
+					backgroundCwdHint: "/tmp/test",
+				},
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("rejects PostToolUse with unknown tool_name", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name: "NotARealTool",
-			tool_input: {anything: 1},
-		});
+	it("parses PostToolUse for Bash with a bare-string response", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "Bash",
+				tool_input:
+				{
+					command: "echo example",
+				},
+				tool_response: "Example command completed.",
+			},
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it("rejects PostToolUse with unknown tool_name", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "NotARealTool",
+				tool_input:
+				{
+					anything: 1,
+				},
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("rejects PostToolUse with extra top-level fields", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUse",
-			tool_name: "Write",
-			tool_input: {file_path: "/tmp/test.ts", content: "hello"},
-			brand_new_field: "surprise",
-		});
+	it("rejects PostToolUse with extra top-level fields", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUse",
+				tool_name: "Write",
+				tool_input:
+				{
+					file_path: "/tmp/test.ts",
+					content: "hello",
+				},
+				brand_new_field: "surprise",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("parses PreToolUse event", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PreToolUse",
-			tool_name: "Read",
-			tool_input: {file_path: "/etc/hosts"},
-		});
+	it("parses PreToolUse event", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PreToolUse",
+				tool_name: "Read",
+				tool_input:
+				{
+					file_path: "/etc/hosts",
+				},
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses PostToolUseFailure event with error and hook_specific_output", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUseFailure",
-			tool_name: "Bash",
-			tool_use_id: "toolu_abc",
-			tool_input: {command: "exit 1"},
-			error: "Command exited with status 1",
-			hook_specific_output: {
-				hookEventName: "PostToolUseFailure",
-				additionalContext: "context",
-				systemMessage: "Bash failed",
+	it("parses PostToolUseFailure event with error and hook_specific_output", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUseFailure",
+				tool_name: "Bash",
+				tool_use_id: "toolu_abc",
+				tool_input:
+				{
+					command: "exit 1",
+				},
+				error: "Command exited with status 1",
+				hook_specific_output:
+				{
+					hookEventName: "PostToolUseFailure",
+					additionalContext: "context",
+					systemMessage: "Bash failed",
+				},
 			},
-		});
+		);
 		expect(result.success).toBe(true);
-		if (result.success && result.data.hook_event_name === "PostToolUseFailure") {
+		if (result.success && result.data.hook_event_name === "PostToolUseFailure")
+		{
 			expect(result.data.tool_name).toBe("Bash");
 			expect(result.data.error).toBe("Command exited with status 1");
 		}
 	});
 
-	it("rejects PostToolUseFailure with unknown top-level field", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostToolUseFailure",
-			tool_name: "Bash",
-			tool_input: {command: "ls"},
-			surprise: "field",
-		});
+	it("rejects PostToolUseFailure with unknown top-level field", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostToolUseFailure",
+				tool_name: "Bash",
+				tool_input:
+				{
+					command: "ls",
+				},
+				surprise: "field",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("parses UserPromptSubmit event", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "UserPromptSubmit",
-			prompt: "fix the login bug",
-		});
-		expect(result.success).toBe(true);
-	});
-
-	it("parses UserPromptSubmit event with session_title", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "UserPromptSubmit",
-			prompt: "fix the login bug",
-			session_title: "Fix the login bug",
-		});
-		expect(result.success).toBe(true);
-	});
-
-	it("parses Notification event", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "Notification",
-			message: "Claude is waiting for your input",
-		});
-		expect(result.success).toBe(true);
-	});
-
-	it("parses SubagentStop event", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "SubagentStop",
-		});
-		expect(result.success).toBe(true);
-	});
-
-	it("parses SubagentStart event with agent_type, agent_id, and agent_config", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "SubagentStart",
-			agent_type: "general-purpose",
-			agent_id: "sub-456",
-			agent_config: {
-				model: "claude-sonnet-4-6",
-				system_prompt: "you are focused",
-				tools: ["Read", "Grep"],
-				description: "research",
+	it("parses UserPromptSubmit event", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "UserPromptSubmit",
+				prompt: "fix the login bug",
 			},
-			hook_specific_output: {
-				hookEventName: "SubagentStart",
-				additionalContext: "use absolute paths",
-			},
-		});
+		);
 		expect(result.success).toBe(true);
-		if (result.success && result.data.hook_event_name === "SubagentStart") {
+	});
+
+	it("parses UserPromptSubmit event with session_title", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "UserPromptSubmit",
+				prompt: "fix the login bug",
+				session_title: "Fix the login bug",
+			},
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it("parses Notification event", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "Notification",
+				message: "Claude is waiting for your input",
+			},
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it("parses SubagentStop event", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "SubagentStop",
+			},
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it("parses SubagentStart event with agent_type, agent_id, and agent_config", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "SubagentStart",
+				agent_type: "general-purpose",
+				agent_id: "sub-456",
+				agent_config:
+				{
+					model: "claude-sonnet-4-6",
+					system_prompt: "you are focused",
+					tools: ["Read", "Grep"],
+					description: "research",
+				},
+				hook_specific_output:
+				{
+					hookEventName: "SubagentStart",
+					additionalContext: "use absolute paths",
+				},
+			},
+		);
+		expect(result.success).toBe(true);
+		if (result.success && result.data.hook_event_name === "SubagentStart")
+		{
 			expect(result.data.agent_type).toBe("general-purpose");
 			expect(result.data.agent_id).toBe("sub-456");
 			expect(result.data.agent_config?.model).toBe("claude-sonnet-4-6");
 		}
 	});
 
-	it("parses SubagentStart event with no optional fields", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "SubagentStart",
-		});
+	it("parses SubagentStart event with no optional fields", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "SubagentStart",
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("rejects SubagentStart with unknown top-level field", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "SubagentStart",
-			agent_type: "general-purpose",
-			surprise: "field",
-		});
+	it("rejects SubagentStart with unknown top-level field", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "SubagentStart",
+				agent_type: "general-purpose",
+				surprise: "field",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("rejects SubagentStart with unknown agent_config field", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "SubagentStart",
-			agent_config: {model: "x", brand_new: "field"},
-		});
+	it("rejects SubagentStart with unknown agent_config field", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "SubagentStart",
+				agent_config:
+				{
+					model: "x",
+					brand_new: "field",
+				},
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("parses PreCompact event", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PreCompact",
-			trigger: "auto",
-		});
+	it("parses PreCompact event", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PreCompact",
+				trigger: "auto",
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses PostCompact event with reason and tokens_removed", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostCompact",
-			reason: "auto",
-			tokens_removed: 5000,
-		});
+	it("parses PostCompact event with reason and tokens_removed", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostCompact",
+				reason: "auto",
+				tokens_removed: 5000,
+			},
+		);
 		expect(result.success).toBe(true);
-		if (result.success && result.data.hook_event_name === "PostCompact") {
+		if (result.success && result.data.hook_event_name === "PostCompact")
+		{
 			expect(result.data.reason).toBe("auto");
 			expect(result.data.tokens_removed).toBe(5000);
 		}
 	});
 
-	it("parses PostCompact event with no optional fields", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostCompact",
-		});
+	it("parses PostCompact event with no optional fields", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostCompact",
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("rejects PostCompact with unknown top-level field", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "PostCompact",
-			reason: "manual",
-			surprise: "field",
-		});
+	it("rejects PostCompact with unknown top-level field", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "PostCompact",
+				reason: "manual",
+				surprise: "field",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("parses TaskCompleted event", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "TaskCompleted",
-			task_id: "task-001",
-			task_subject: "Build auth",
-		});
+	it("parses TaskCompleted event", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "TaskCompleted",
+				task_id: "task-001",
+				task_subject: "Build auth",
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses TaskCreated event with task_id, task_subject, task_description", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "TaskCreated",
-			task_id: "task-002",
-			task_subject: "Ship feature",
-			task_description: "Implement the new feature end-to-end.",
-		});
+	it("parses TaskCreated event with task_id, task_subject, task_description", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "TaskCreated",
+				task_id: "task-002",
+				task_subject: "Ship feature",
+				task_description: "Implement the new feature end-to-end.",
+			},
+		);
 		expect(result.success).toBe(true);
-		if (result.success && result.data.hook_event_name === "TaskCreated") {
+		if (result.success && result.data.hook_event_name === "TaskCreated")
+		{
 			expect(result.data.task_id).toBe("task-002");
 			expect(result.data.task_subject).toBe("Ship feature");
 			expect(result.data.task_description).toBe("Implement the new feature end-to-end.");
 		}
 	});
 
-	it("parses TaskCreated event with no optional fields", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "TaskCreated",
-		});
+	it("parses TaskCreated event with no optional fields", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "TaskCreated",
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("rejects TaskCreated with unknown top-level field", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "TaskCreated",
-			task_id: "task-002",
-			surprise: "field",
-		});
+	it("rejects TaskCreated with unknown top-level field", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "TaskCreated",
+				task_id: "task-002",
+				surprise: "field",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("parses WorktreeRemove event with worktree_path", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "WorktreeRemove",
-			worktree_path: "/Users/u/projects/app-wt-foo",
-		});
+	it("parses WorktreeRemove event with worktree_path", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "WorktreeRemove",
+				worktree_path: "/Users/u/projects/app-wt-foo",
+			},
+		);
 		expect(result.success).toBe(true);
-		if (result.success && result.data.hook_event_name === "WorktreeRemove") {
+		if (result.success && result.data.hook_event_name === "WorktreeRemove")
+		{
 			expect(result.data.worktree_path).toBe("/Users/u/projects/app-wt-foo");
 		}
 	});
 
-	it("parses WorktreeRemove event with no optional fields", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "WorktreeRemove",
-		});
+	it("parses WorktreeRemove event with no optional fields", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "WorktreeRemove",
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("rejects WorktreeRemove with unknown top-level field", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "WorktreeRemove",
-			worktree_path: "/x/y",
-			surprise: "field",
-		});
+	it("rejects WorktreeRemove with unknown top-level field", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "WorktreeRemove",
+				worktree_path: "/x/y",
+				surprise: "field",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("parses CwdChanged event with old_cwd and new_cwd", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "CwdChanged",
-			old_cwd: "/Users/u/projects/app",
-			new_cwd: "/Users/u/projects/other-app",
-		});
+	it("parses CwdChanged event with old_cwd and new_cwd", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "CwdChanged",
+				old_cwd: "/Users/u/projects/app",
+				new_cwd: "/Users/u/projects/other-app",
+			},
+		);
 		expect(result.success).toBe(true);
-		if (result.success && result.data.hook_event_name === "CwdChanged") {
+		if (result.success && result.data.hook_event_name === "CwdChanged")
+		{
 			expect(result.data.old_cwd).toBe("/Users/u/projects/app");
 			expect(result.data.new_cwd).toBe("/Users/u/projects/other-app");
 		}
 	});
 
-	it("rejects CwdChanged missing required old_cwd / new_cwd", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "CwdChanged",
-		});
+	it("rejects CwdChanged missing required old_cwd / new_cwd", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "CwdChanged",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("rejects CwdChanged with unknown top-level field", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "CwdChanged",
-			old_cwd: "/a",
-			new_cwd: "/b",
-			surprise: "field",
-		});
+	it("rejects CwdChanged with unknown top-level field", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "CwdChanged",
+				old_cwd: "/a",
+				new_cwd: "/b",
+				surprise: "field",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("parses InstructionsLoaded event with full optional payload", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "InstructionsLoaded",
-			file_path: "/Users/u/projects/app/CLAUDE.md",
-			memory_type: "project",
-			load_reason: "session_start",
-			globs: ["**/*.ts"],
-			trigger_file_path: "/Users/u/projects/app/CLAUDE.md",
-			parent_file_path: "/Users/u/projects/app/CLAUDE.md",
-		});
+	it("parses InstructionsLoaded event with full optional payload", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "InstructionsLoaded",
+				file_path: "/Users/u/projects/app/CLAUDE.md",
+				memory_type: "project",
+				load_reason: "session_start",
+				globs: ["**/*.ts"],
+				trigger_file_path: "/Users/u/projects/app/CLAUDE.md",
+				parent_file_path: "/Users/u/projects/app/CLAUDE.md",
+			},
+		);
 		expect(result.success).toBe(true);
-		if (result.success && result.data.hook_event_name === "InstructionsLoaded") {
+		if (result.success && result.data.hook_event_name === "InstructionsLoaded")
+		{
 			expect(result.data.file_path).toBe("/Users/u/projects/app/CLAUDE.md");
 			expect(result.data.memory_type).toBe("project");
 			expect(result.data.load_reason).toBe("session_start");
@@ -810,169 +1157,238 @@ describe("HookEventEnvelope", () => {
 		}
 	});
 
-	it("parses InstructionsLoaded event with only required file_path", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "InstructionsLoaded",
-			file_path: "/Users/u/.claude/CLAUDE.md",
-		});
+	it("parses InstructionsLoaded event with only required file_path", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "InstructionsLoaded",
+				file_path: "/Users/u/.claude/CLAUDE.md",
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("rejects InstructionsLoaded missing required file_path", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "InstructionsLoaded",
-		});
+	it("rejects InstructionsLoaded missing required file_path", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "InstructionsLoaded",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("rejects InstructionsLoaded with unknown load_reason", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "InstructionsLoaded",
-			file_path: "/x/CLAUDE.md",
-			load_reason: "not_a_reason",
-		});
+	it("rejects InstructionsLoaded with unknown load_reason", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "InstructionsLoaded",
+				file_path: "/x/CLAUDE.md",
+				load_reason: "not_a_reason",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("rejects InstructionsLoaded with unknown top-level field", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "InstructionsLoaded",
-			file_path: "/x/CLAUDE.md",
-			surprise: "field",
-		});
+	it("rejects InstructionsLoaded with unknown top-level field", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "InstructionsLoaded",
+				file_path: "/x/CLAUDE.md",
+				surprise: "field",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("rejects unknown event types", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			hook_event_name: "Unknown",
-		});
+	it("rejects unknown event types", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				hook_event_name: "Unknown",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("requires transcript_path on every event", () => {
-		const result = HookEventEnvelope.safeParse({
-			session_id: "abc123",
-			cwd: "/home/user/project",
-			hook_event_name: "Stop",
-		});
+	it("requires transcript_path on every event", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				session_id: "abc123",
+				cwd: "/home/user/project",
+				hook_event_name: "Stop",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("requires cwd on every event", () => {
-		const result = HookEventEnvelope.safeParse({
-			session_id: "abc123",
-			transcript_path: "/x/y.jsonl",
-			hook_event_name: "Stop",
-		});
+	it("requires cwd on every event", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				session_id: "abc123",
+				transcript_path: "/x/y.jsonl",
+				hook_event_name: "Stop",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
 	// Turn-scoped envelope fields Claude Code began sending on every event.
 	// Rejecting them fails the whole envelope, which drops the session out of
 	// the active-session store and empties every terminal-placement view.
-	describe("turn-scoped envelope fields", () => {
-		it("parses prompt_id and permission_mode on UserPromptSubmit", () => {
-			const result = HookEventEnvelope.safeParse({
-				...baseEnvelope,
-				prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
-				permission_mode: "auto",
-				hook_event_name: "UserPromptSubmit",
-				prompt: "just dev",
-			});
-			expect(result.success).toBe(true);
-		});
-
-		it("parses effort on a tool-use event", () => {
-			const result = HookEventEnvelope.safeParse({
-				...baseEnvelope,
-				prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
-				permission_mode: "auto",
-				effort: {level: "high"},
-				hook_event_name: "PreToolUse",
-				tool_name: "Bash",
-				tool_use_id: "toolu_01",
-				tool_input: {command: "ls", description: "List files"},
-			});
-			expect(result.success).toBe(true);
-		});
-
-		it("parses noOutputExpected on a Bash tool_response", () => {
-			const result = HookEventEnvelope.safeParse({
-				...baseEnvelope,
-				hook_event_name: "PostToolUse",
-				tool_name: "Bash",
-				tool_input: {command: "ls", description: "List files"},
-				tool_response: {
-					stdout: "a\nb",
-					stderr: "",
-					interrupted: false,
-					isImage: false,
-					noOutputExpected: false,
+	describe("turn-scoped envelope fields", () =>
+	{
+		it("parses prompt_id and permission_mode on UserPromptSubmit", () =>
+		{
+			const result = HookEventEnvelope.safeParse(
+				{
+					...baseEnvelope,
+					prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
+					permission_mode: "auto",
+					hook_event_name: "UserPromptSubmit",
+					prompt: "just dev",
 				},
-			});
+			);
 			expect(result.success).toBe(true);
 		});
 
-		it("parses duration_ms on PostToolUse", () => {
-			const result = HookEventEnvelope.safeParse({
-				...baseEnvelope,
-				hook_event_name: "PostToolUse",
-				tool_name: "Bash",
-				tool_input: {command: "ls"},
-				tool_response: {stdout: "a\nb", stderr: "", interrupted: false, isImage: false},
-				duration_ms: 812,
-			});
+		it("parses effort on a tool-use event", () =>
+		{
+			const result = HookEventEnvelope.safeParse(
+				{
+					...baseEnvelope,
+					prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
+					permission_mode: "auto",
+					effort:
+					{
+						level: "high",
+					},
+					hook_event_name: "PreToolUse",
+					tool_name: "Bash",
+					tool_use_id: "toolu_01",
+					tool_input:
+					{
+						command: "ls",
+						description: "List files",
+					},
+				},
+			);
 			expect(result.success).toBe(true);
 		});
 
-		it("accepts an unrecognized permission_mode rather than dropping the event", () => {
-			const result = HookEventEnvelope.safeParse({
-				...baseEnvelope,
-				permission_mode: "someFutureMode",
-				hook_event_name: "Stop",
-			});
+		it("parses noOutputExpected on a Bash tool_response", () =>
+		{
+			const result = HookEventEnvelope.safeParse(
+				{
+					...baseEnvelope,
+					hook_event_name: "PostToolUse",
+					tool_name: "Bash",
+					tool_input:
+					{
+						command: "ls",
+						description: "List files",
+					},
+					tool_response:
+					{
+						stdout: "a\nb",
+						stderr: "",
+						interrupted: false,
+						isImage: false,
+						noOutputExpected: false,
+					},
+				},
+			);
+			expect(result.success).toBe(true);
+		});
+
+		it("parses duration_ms on PostToolUse", () =>
+		{
+			const result = HookEventEnvelope.safeParse(
+				{
+					...baseEnvelope,
+					hook_event_name: "PostToolUse",
+					tool_name: "Bash",
+					tool_input:
+					{
+						command: "ls",
+					},
+					tool_response:
+					{
+						stdout: "a\nb",
+						stderr: "",
+						interrupted: false,
+						isImage: false,
+					},
+					duration_ms: 812,
+				},
+			);
+			expect(result.success).toBe(true);
+		});
+
+		it("accepts an unrecognized permission_mode rather than dropping the event", () =>
+		{
+			const result = HookEventEnvelope.safeParse(
+				{
+					...baseEnvelope,
+					permission_mode: "someFutureMode",
+					hook_event_name: "Stop",
+				},
+			);
 			expect(result.success).toBe(true);
 		});
 	});
 
-	it("parses Stop event with last_assistant_message, background_tasks, session_crons", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
-			permission_mode: "auto",
-			effort: {level: "high"},
-			hook_event_name: "Stop",
-			stop_hook_active: false,
-			last_assistant_message: "Server fine.",
-			background_tasks: [],
-			session_crons: [],
-		});
+	it("parses Stop event with last_assistant_message, background_tasks, session_crons", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
+				permission_mode: "auto",
+				effort:
+				{
+					level: "high",
+				},
+				hook_event_name: "Stop",
+				stop_hook_active: false,
+				last_assistant_message: "Server fine.",
+				background_tasks: [],
+				session_crons: [],
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses streaming MessageDisplay event", () => {
-		const result = HookEventEnvelope.safeParse({
-			...baseEnvelope,
-			prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
-			hook_event_name: "MessageDisplay",
-			turn_id: "bd966670-87bf-424f-af2c-a8f3d8e9ba0a",
-			message_id: "d8a4970e-43d3-48c6-8f2f-bc66a407b26e",
-			index: 0,
-			final: false,
-			delta: "Server fine. ",
-		});
+	it("parses streaming MessageDisplay event", () =>
+	{
+		const result = HookEventEnvelope.safeParse(
+			{
+				...baseEnvelope,
+				prompt_id: "361e5b4d-c597-42b1-b7cc-97498dddc938",
+				hook_event_name: "MessageDisplay",
+				turn_id: "bd966670-87bf-424f-af2c-a8f3d8e9ba0a",
+				message_id: "d8a4970e-43d3-48c6-8f2f-bc66a407b26e",
+				index: 0,
+				final: false,
+				delta: "Server fine. ",
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 });
 
-describe("DOMAIN_EVENTS", () => {
-	it("exposes the new domain-level event vocabulary", () => {
+describe("DOMAIN_EVENTS", () =>
+{
+	it("exposes the new domain-level event vocabulary", () =>
+	{
 		expect(DOMAIN_EVENTS.SESSION_ADDED).toBe("session:added");
 		expect(DOMAIN_EVENTS.SESSION_REMOVED).toBe("session:removed");
 		expect(DOMAIN_EVENTS.SESSION_UPDATED).toBe("session:updated");
@@ -992,7 +1408,8 @@ describe("DOMAIN_EVENTS", () => {
 		expect(DOMAIN_EVENTS.INSTRUCTIONS_LOADED).toBe("instructions:loaded");
 	});
 
-	it("remains distinct from the surviving SSE_EVENTS lifecycle signals", () => {
+	it("remains distinct from the surviving SSE_EVENTS lifecycle signals", () =>
+	{
 		// The surviving SESSION_START / SESSION_END lifecycle signals must stay
 		// distinct from the new added / removed / updated domain deltas.
 		expect(DOMAIN_EVENTS.SESSION_ADDED).not.toBe(SSE_EVENTS.SESSION_START);
@@ -1002,68 +1419,180 @@ describe("DOMAIN_EVENTS", () => {
 	});
 });
 
-describe("diffEntityMaps", () => {
-	type Entity = {id: string; version: number};
+describe("diffEntityMaps", () =>
+{
+	type Entity =
+	{
+		id: string;
+		version: number;
+	};
 	const equals = (a: Entity, b: Entity) => a.version === b.version;
 
-	it("detects added entries present in next but not previous", () => {
+	it("detects added entries present in next but not previous", () =>
+	{
 		const previous = new Map<string, Entity>();
-		const next = new Map([["a", {id: "a", version: 1}]]);
+		const next = new Map([
+			[
+				"a",
+				{
+					id: "a",
+					version: 1,
+				},
+			],
+		]);
 
-		expect(diffEntityMaps(previous, next, equals)).toStrictEqual({
-			added: [{id: "a", version: 1}],
-			removed: [],
-			updated: [],
-		});
+		expect(diffEntityMaps(previous, next, equals)).toStrictEqual(
+			{
+				added: [
+					{
+						id: "a",
+						version: 1,
+					},
+				],
+				removed: [],
+				updated: [],
+			},
+		);
 	});
 
-	it("detects removed entries present in previous but not next", () => {
-		const previous = new Map([["a", {id: "a", version: 1}]]);
+	it("detects removed entries present in previous but not next", () =>
+	{
+		const previous = new Map([
+			[
+				"a",
+				{
+					id: "a",
+					version: 1,
+				},
+			],
+		]);
 		const next = new Map<string, Entity>();
 
-		expect(diffEntityMaps(previous, next, equals)).toStrictEqual({
-			added: [],
-			removed: ["a"],
-			updated: [],
-		});
+		expect(diffEntityMaps(previous, next, equals)).toStrictEqual(
+			{
+				added: [],
+				removed: ["a"],
+				updated: [],
+			},
+		);
 	});
 
-	it("detects updated entries whose value differs by the custom comparator", () => {
-		const previous = new Map([["a", {id: "a", version: 1}]]);
-		const next = new Map([["a", {id: "a", version: 2}]]);
-
-		expect(diffEntityMaps(previous, next, equals)).toStrictEqual({
-			added: [],
-			removed: [],
-			updated: [{id: "a", version: 2}],
-		});
-	});
-
-	it("treats equal entries as unchanged", () => {
-		const previous = new Map([["a", {id: "a", version: 1}]]);
-		const next = new Map([["a", {id: "a", version: 1}]]);
-
-		expect(diffEntityMaps(previous, next, equals)).toStrictEqual({
-			added: [],
-			removed: [],
-			updated: [],
-		});
-	});
-
-	it("handles mixed adds, removes, and updates in a single pass", () => {
+	it("detects updated entries whose value differs by the custom comparator", () =>
+	{
 		const previous = new Map([
-			["a", {id: "a", version: 1}],
-			["b", {id: "b", version: 1}],
+			[
+				"a",
+				{
+					id: "a",
+					version: 1,
+				},
+			],
 		]);
 		const next = new Map([
-			["b", {id: "b", version: 2}],
-			["c", {id: "c", version: 1}],
+			[
+				"a",
+				{
+					id: "a",
+					version: 2,
+				},
+			],
 		]);
 
-		expect(diffEntityMaps(previous, next, equals)).toStrictEqual({
-			added: [{id: "c", version: 1}],
-			removed: ["a"],
-			updated: [{id: "b", version: 2}],
-		});
+		expect(diffEntityMaps(previous, next, equals)).toStrictEqual(
+			{
+				added: [],
+				removed: [],
+				updated: [
+					{
+						id: "a",
+						version: 2,
+					},
+				],
+			},
+		);
+	});
+
+	it("treats equal entries as unchanged", () =>
+	{
+		const previous = new Map([
+			[
+				"a",
+				{
+					id: "a",
+					version: 1,
+				},
+			],
+		]);
+		const next = new Map([
+			[
+				"a",
+				{
+					id: "a",
+					version: 1,
+				},
+			],
+		]);
+
+		expect(diffEntityMaps(previous, next, equals)).toStrictEqual(
+			{
+				added: [],
+				removed: [],
+				updated: [],
+			},
+		);
+	});
+
+	it("handles mixed adds, removes, and updates in a single pass", () =>
+	{
+		const previous = new Map([
+			[
+				"a",
+				{
+					id: "a",
+					version: 1,
+				},
+			],
+			[
+				"b",
+				{
+					id: "b",
+					version: 1,
+				},
+			],
+		]);
+		const next = new Map([
+			[
+				"b",
+				{
+					id: "b",
+					version: 2,
+				},
+			],
+			[
+				"c",
+				{
+					id: "c",
+					version: 1,
+				},
+			],
+		]);
+
+		expect(diffEntityMaps(previous, next, equals)).toStrictEqual(
+			{
+				added: [
+					{
+						id: "c",
+						version: 1,
+					},
+				],
+				removed: ["a"],
+				updated: [
+					{
+						id: "b",
+						version: 2,
+					},
+				],
+			},
+		);
 	});
 });

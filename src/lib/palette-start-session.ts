@@ -1,10 +1,12 @@
-export interface StartProject {
+export interface StartProject
+{
 	id: string;
 	name: string;
 	projectPath: string;
 }
 
-interface ProjectCandidate {
+interface ProjectCandidate
+{
 	id: string;
 	name: string;
 	projectPath: string | null;
@@ -20,22 +22,42 @@ export function startSessionProjects(
 	projects: readonly ProjectCandidate[],
 	recentProjectIds: readonly string[],
 	currentProjectId: string | undefined,
-): StartProject[] {
+): StartProject[]
+{
 	const launchable = projects
 		.flatMap(({id, name, projectPath, lastActivity}) =>
-			projectPath === null ? [] : [{id, name, projectPath, lastActivity}],
+			projectPath === null
+				? []
+				: [
+						{
+							id,
+							name,
+							projectPath,
+							lastActivity,
+						},
+					],
 		)
 		.toSorted((a, b) => Date.parse(b.lastActivity) - Date.parse(a.lastActivity));
 	const rank = new Map<string, number>();
 	const leading = currentProjectId === undefined ? recentProjectIds : [currentProjectId, ...recentProjectIds];
 	for (const id of leading) if (!rank.has(id)) rank.set(id, rank.size);
 	return launchable
-		.map((project, index) => ({project, order: rank.get(project.id) ?? rank.size + index}))
+		.map((project, index) => (
+		{
+			project,
+			order: rank.get(project.id) ?? rank.size + index,
+		}))
 		.toSorted((a, b) => a.order - b.order)
-		.map(({project: {id, name, projectPath}}) => ({id, name, projectPath}));
+		.map(({project: {id, name, projectPath}}) => (
+		{
+			id,
+			name,
+			projectPath,
+		}));
 }
 
-export interface PendingLaunch {
+export interface PendingLaunch
+{
 	cwd: string;
 	/** Client clock when the launch began; SessionStart events are stamped with the same clock. */
 	since: number;
@@ -43,13 +65,15 @@ export interface PendingLaunch {
 	sessionId: string | null;
 }
 
-interface StartedSession {
+interface StartedSession
+{
 	sessionId: string;
 	cwd: string;
 	startedAt: number;
 }
 
-function withoutTrailingSlash(path: string): string {
+function withoutTrailingSlash(path: string): string
+{
 	return path.length > 1 ? path.replace(/\/+$/, "") : path;
 }
 
@@ -57,13 +81,16 @@ function withoutTrailingSlash(path: string): string {
  * The session a pending launch produced: herdr's id when known, else a fresh SessionStart in that cwd
  * or in a worktree the CLI's `--worktree` made under it (`<cwd>/.claude/worktrees/<name>`).
  */
-export function findLaunchedSession(sessions: Iterable<StartedSession>, launch: PendingLaunch): string | null {
+export function findLaunchedSession(sessions: Iterable<StartedSession>, launch: PendingLaunch): string | null
+{
 	const cwd = withoutTrailingSlash(launch.cwd);
 	const worktreePrefix = `${cwd === "/" ? "" : cwd}/.claude/worktrees/`;
-	for (const session of sessions) {
+	for (const session of sessions)
+	{
 		if (session.startedAt < launch.since) continue;
 		const sessionCwd = withoutTrailingSlash(session.cwd);
-		if (session.sessionId === launch.sessionId || sessionCwd === cwd || sessionCwd.startsWith(worktreePrefix)) {
+		if (session.sessionId === launch.sessionId || sessionCwd === cwd || sessionCwd.startsWith(worktreePrefix))
+		{
 			return session.sessionId;
 		}
 	}

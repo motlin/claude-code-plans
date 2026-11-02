@@ -1,4 +1,5 @@
-export const baseFields = {
+export const baseFields =
+{
 	uuid: "uuid-test",
 	timestamp: "1999-12-31T00:00:00.000Z",
 	sessionId: "sess-123",

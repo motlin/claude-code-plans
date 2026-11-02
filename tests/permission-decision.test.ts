@@ -1,27 +1,65 @@
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	permissionDecisionLabel,
 	permissionDecisionTitle,
 	type PermissionDecision,
 } from "../src/lib/permission-decision";
 
-function labels(decisions: readonly PermissionDecision[]): (string | null)[] {
+function labels(decisions: readonly PermissionDecision[]): (string | null)[]
+{
 	return decisions.map(permissionDecisionLabel);
 }
 
-describe("permissionDecisionLabel", () => {
-	it("names what allowed an accepted call", () => {
+describe("permissionDecisionLabel", () =>
+{
+	it("names what allowed an accepted call", () =>
+	{
 		expect(
 			labels([
-				{decision: "accept", source: "config", reasonType: "classifier"},
-				{decision: "accept", source: "config", reasonType: "mode"},
-				{decision: "accept", source: "config", reasonType: "rule"},
-				{decision: "accept", source: "config", reasonType: "subcommandResults"},
-				{decision: "accept", source: "config", reasonType: "other"},
-				{decision: "accept", source: "config"},
-				{decision: "accept", source: "hook", reasonType: "hook"},
-				{decision: "accept", source: "user_temporary"},
-				{decision: "accept", source: "user_permanent", reasonType: "rule"},
+				{
+					decision: "accept",
+					source: "config",
+					reasonType: "classifier",
+				},
+				{
+					decision: "accept",
+					source: "config",
+					reasonType: "mode",
+				},
+				{
+					decision: "accept",
+					source: "config",
+					reasonType: "rule",
+				},
+				{
+					decision: "accept",
+					source: "config",
+					reasonType: "subcommandResults",
+				},
+				{
+					decision: "accept",
+					source: "config",
+					reasonType: "other",
+				},
+				{
+					decision: "accept",
+					source: "config",
+				},
+				{
+					decision: "accept",
+					source: "hook",
+					reasonType: "hook",
+				},
+				{
+					decision: "accept",
+					source: "user_temporary",
+				},
+				{
+					decision: "accept",
+					source: "user_permanent",
+					reasonType: "rule",
+				},
 			]),
 		).toStrictEqual([
 			"Allowed by auto mode",
@@ -36,32 +74,69 @@ describe("permissionDecisionLabel", () => {
 		]);
 	});
 
-	it("names what blocked a rejected call", () => {
+	it("names what blocked a rejected call", () =>
+	{
 		expect(
 			labels([
-				{decision: "reject", source: "hook", reasonType: "hook"},
-				{decision: "reject", source: "config", reasonType: "classifier"},
-				{decision: "reject", source: "config", reasonType: "safetyCheck"},
-				{decision: "reject", source: "config", reasonType: "rule"},
+				{
+					decision: "reject",
+					source: "hook",
+					reasonType: "hook",
+				},
+				{
+					decision: "reject",
+					source: "config",
+					reasonType: "classifier",
+				},
+				{
+					decision: "reject",
+					source: "config",
+					reasonType: "safetyCheck",
+				},
+				{
+					decision: "reject",
+					source: "config",
+					reasonType: "rule",
+				},
 			]),
 		).toStrictEqual(["Blocked by hook", "Blocked by auto mode", "Blocked by safety check", "Blocked by rule"]);
 	});
 
-	it("says nothing when the user rejected or aborted the call, which the row already reports", () => {
+	it("says nothing when the user rejected or aborted the call, which the row already reports", () =>
+	{
 		expect(
 			labels([
-				{decision: "reject", source: "user_reject"},
-				{decision: "reject", source: "user_abort"},
+				{
+					decision: "reject",
+					source: "user_reject",
+				},
+				{
+					decision: "reject",
+					source: "user_abort",
+				},
 			]),
 		).toStrictEqual([null, null]);
 	});
 
-	it("names the background-agent, sandbox and working-directory reasons", () => {
+	it("names the background-agent, sandbox and working-directory reasons", () =>
+	{
 		expect(
 			labels([
-				{decision: "reject", source: "config", reasonType: "asyncAgent"},
-				{decision: "accept", source: "config", reasonType: "sandboxOverride"},
-				{decision: "reject", source: "config", reasonType: "workingDir"},
+				{
+					decision: "reject",
+					source: "config",
+					reasonType: "asyncAgent",
+				},
+				{
+					decision: "accept",
+					source: "config",
+					reasonType: "sandboxOverride",
+				},
+				{
+					decision: "reject",
+					source: "config",
+					reasonType: "workingDir",
+				},
 			]),
 		).toStrictEqual([
 			"Blocked by no approval prompt",
@@ -71,15 +146,36 @@ describe("permissionDecisionLabel", () => {
 	});
 });
 
-describe("permissionDecisionLabel grant scope", () => {
-	it("says how far a temporary approval reaches", () => {
+describe("permissionDecisionLabel grant scope", () =>
+{
+	it("says how far a temporary approval reaches", () =>
+	{
 		expect(
 			labels([
-				{decision: "accept", source: "user_temporary", grantScope: "once"},
-				{decision: "accept", source: "user_temporary", grantScope: "session"},
-				{decision: "reject", source: "user_temporary", grantScope: "once"},
-				{decision: "reject", source: "user_temporary", grantScope: "session"},
-				{decision: "accept", source: "user_temporary"},
+				{
+					decision: "accept",
+					source: "user_temporary",
+					grantScope: "once",
+				},
+				{
+					decision: "accept",
+					source: "user_temporary",
+					grantScope: "session",
+				},
+				{
+					decision: "reject",
+					source: "user_temporary",
+					grantScope: "once",
+				},
+				{
+					decision: "reject",
+					source: "user_temporary",
+					grantScope: "session",
+				},
+				{
+					decision: "accept",
+					source: "user_temporary",
+				},
 			]),
 		).toStrictEqual([
 			"Approved once",
@@ -91,23 +187,50 @@ describe("permissionDecisionLabel grant scope", () => {
 	});
 });
 
-describe("permissionDecisionLabel classifier source", () => {
-	it("names the classifier when it allowed or blocked the call", () => {
+describe("permissionDecisionLabel classifier source", () =>
+{
+	it("names the classifier when it allowed or blocked the call", () =>
+	{
 		expect(
 			labels([
-				{decision: "accept", source: "classifier", reasonType: "classifier"},
-				{decision: "reject", source: "classifier"},
+				{
+					decision: "accept",
+					source: "classifier",
+					reasonType: "classifier",
+				},
+				{
+					decision: "reject",
+					source: "classifier",
+				},
 			]),
 		).toStrictEqual(["Allowed by classifier", "Blocked by classifier"]);
 	});
 });
 
-describe("permissionDecisionTitle", () => {
-	it("spells out the raw decision, source and reason", () => {
+describe("permissionDecisionTitle", () =>
+{
+	it("spells out the raw decision, source and reason", () =>
+	{
 		expect([
-			permissionDecisionTitle({decision: "accept", source: "config", reasonType: "classifier"}),
-			permissionDecisionTitle({decision: "accept", source: "user_temporary"}),
-			permissionDecisionTitle({decision: "reject", source: "user_abort"}),
+			permissionDecisionTitle(
+				{
+					decision: "accept",
+					source: "config",
+					reasonType: "classifier",
+				},
+			),
+			permissionDecisionTitle(
+				{
+					decision: "accept",
+					source: "user_temporary",
+				},
+			),
+			permissionDecisionTitle(
+				{
+					decision: "reject",
+					source: "user_abort",
+				},
+			),
 		]).toStrictEqual([
 			"Permission: Accepted · Configuration · Classifier",
 			"Permission: Accepted · User (once)",
@@ -116,22 +239,34 @@ describe("permissionDecisionTitle", () => {
 	});
 });
 
-describe("permissionDecisionTitle rule source", () => {
-	it("names the settings layer a rule-based decision came from", () => {
+describe("permissionDecisionTitle rule source", () =>
+{
+	it("names the settings layer a rule-based decision came from", () =>
+	{
 		expect([
-			permissionDecisionTitle({
-				decision: "accept",
-				source: "config",
-				reasonType: "rule",
-				ruleSource: "userSettings",
-			}),
-			permissionDecisionTitle({
-				decision: "reject",
-				source: "config",
-				reasonType: "rule",
-				ruleSource: "policySettings",
-			}),
-			permissionDecisionTitle({decision: "accept", source: "config", reasonType: "rule"}),
+			permissionDecisionTitle(
+				{
+					decision: "accept",
+					source: "config",
+					reasonType: "rule",
+					ruleSource: "userSettings",
+				},
+			),
+			permissionDecisionTitle(
+				{
+					decision: "reject",
+					source: "config",
+					reasonType: "rule",
+					ruleSource: "policySettings",
+				},
+			),
+			permissionDecisionTitle(
+				{
+					decision: "accept",
+					source: "config",
+					reasonType: "rule",
+				},
+			),
 		]).toStrictEqual([
 			"Permission: Accepted · Configuration · Permission rule (User settings)",
 			"Permission: Rejected · Configuration · Permission rule (Managed policy)",
@@ -140,28 +275,42 @@ describe("permissionDecisionTitle rule source", () => {
 	});
 });
 
-describe("permissionDecisionTitle classifier and safety-check details", () => {
-	it("says which classifier category or safety check decided the call", () => {
+describe("permissionDecisionTitle classifier and safety-check details", () =>
+{
+	it("says which classifier category or safety check decided the call", () =>
+	{
 		expect([
-			permissionDecisionTitle({
-				decision: "reject",
-				source: "config",
-				reasonType: "classifier",
-				classifierCategory: "git_destructive",
-			}),
-			permissionDecisionTitle({
-				decision: "reject",
-				source: "classifier",
-				reasonType: "classifier",
-				classifierCategory: "unrequested_commit_in_a_connected_app",
-			}),
-			permissionDecisionTitle({
-				decision: "reject",
-				source: "config",
-				reasonType: "safetyCheck",
-				circuitBreaker: "dangerousRemoval",
-			}),
-			permissionDecisionTitle({decision: "reject", source: "config", reasonType: "safetyCheck"}),
+			permissionDecisionTitle(
+				{
+					decision: "reject",
+					source: "config",
+					reasonType: "classifier",
+					classifierCategory: "git_destructive",
+				},
+			),
+			permissionDecisionTitle(
+				{
+					decision: "reject",
+					source: "classifier",
+					reasonType: "classifier",
+					classifierCategory: "unrequested_commit_in_a_connected_app",
+				},
+			),
+			permissionDecisionTitle(
+				{
+					decision: "reject",
+					source: "config",
+					reasonType: "safetyCheck",
+					circuitBreaker: "dangerousRemoval",
+				},
+			),
+			permissionDecisionTitle(
+				{
+					decision: "reject",
+					source: "config",
+					reasonType: "safetyCheck",
+				},
+			),
 		]).toStrictEqual([
 			"Permission: Rejected · Configuration · Classifier (Git destructive)",
 			"Permission: Rejected · Classifier · Classifier (Unrequested commit in a connected app)",

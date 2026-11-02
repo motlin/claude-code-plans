@@ -28,68 +28,107 @@ export function useChapterJump(
 	requestMessageJump: (uuid: string) => void,
 	/** The record index of the first loaded record. */
 	windowStartIndex: number,
-): (chapter: SessionChapter) => void {
+): (chapter: SessionChapter) => void
+{
 	const stopPending = useRef<(() => void) | undefined>(undefined);
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			stopPending.current?.();
 		},
 		[],
 	);
 
 	return useCallback(
-		(chapter: SessionChapter) => {
+		(chapter: SessionChapter) =>
+		{
 			stopPending.current?.();
 			stopPending.current = undefined;
 			const scroller = scrollRef.current;
 			if (scroller === null) return;
 			releaseEndFollow(scroller);
 
-			if (chapter.source === "session") {
-				scroller.scrollTo({top: 0, behavior: "smooth"});
-				const stop = () => {
+			if (chapter.source === "session")
+			{
+				scroller.scrollTo(
+					{
+						top: 0,
+						behavior: "smooth",
+					},
+				);
+				const stop = () =>
+				{
 					window.clearTimeout(timeout);
 					scroller.removeEventListener("wheel", stop);
 					scroller.removeEventListener("touchmove", stop);
 					if (stopPending.current === stop) stopPending.current = undefined;
 				};
-				const timeout = window.setTimeout(() => {
+				const timeout = window.setTimeout(() =>
+				{
 					stop();
 					if (scroller.scrollTop > 0) scroller.scrollTop = 0;
 				}, TOP_SETTLE_MS);
-				scroller.addEventListener("wheel", stop, {passive: true});
-				scroller.addEventListener("touchmove", stop, {passive: true});
+				scroller.addEventListener(
+					"wheel",
+					stop,
+					{
+						passive: true,
+					},
+				);
+				scroller.addEventListener(
+					"touchmove",
+					stop,
+					{
+						passive: true,
+					},
+				);
 				stopPending.current = stop;
 				return;
 			}
 
 			const anchorId = chapterAnchorId(chapter.id);
-			const mountedHeading = (): HTMLElement | null => {
+			const mountedHeading = (): HTMLElement | null =>
+			{
 				const heading = document.getElementById(anchorId);
 				return heading !== null && scroller.contains(heading) ? heading : null;
 			};
 			const mounted = mountedHeading();
-			if (mounted !== null) {
-				mounted.scrollIntoView({block: "start", behavior: "smooth"});
+			if (mounted !== null)
+			{
+				mounted.scrollIntoView(
+					{
+						block: "start",
+						behavior: "smooth",
+					},
+				);
 				return;
 			}
 
 			let frame = 0;
-			const observer = new MutationObserver(() => {
+			const observer = new MutationObserver(() =>
+			{
 				if (frame !== 0 || mountedHeading() === null) return;
 				observer.disconnect();
 				// Two frames, so this lands after the transcript jump's own centring scroll, a frame after it mounts the row.
-				frame = requestAnimationFrame(() => {
-					frame = requestAnimationFrame(() => {
+				frame = requestAnimationFrame(() =>
+				{
+					frame = requestAnimationFrame(() =>
+					{
 						frame = 0;
 						stop();
 						// The transcript jump flashes the row it revealed; upstream's chapter jump has no flash.
 						clearJumpFlash(scroller);
-						mountedHeading()?.scrollIntoView({block: "start", behavior: "smooth"});
+						mountedHeading()?.scrollIntoView(
+							{
+								block: "start",
+								behavior: "smooth",
+							},
+						);
 					});
 				});
 			});
-			const stop = () => {
+			const stop = () =>
+			{
 				observer.disconnect();
 				window.clearTimeout(timeout);
 				if (frame !== 0) cancelAnimationFrame(frame);
@@ -97,13 +136,27 @@ export function useChapterJump(
 			};
 			const timeout = window.setTimeout(stop, HEADING_WAIT_MS);
 			stopPending.current = stop;
-			observer.observe(scroller, {childList: true, subtree: true});
+			observer.observe(
+				scroller,
+				{
+					childList: true,
+					subtree: true,
+				},
+			);
 
-			if (chapter.recordIndex >= windowStartIndex) {
+			if (chapter.recordIndex >= windowStartIndex)
+			{
 				window.dispatchEvent(
-					new CustomEvent<number>(TRANSCRIPT_JUMP_REQUEST_EVENT, {detail: chapter.recordIndex}),
+					new CustomEvent<number>(
+						TRANSCRIPT_JUMP_REQUEST_EVENT,
+						{
+							detail: chapter.recordIndex,
+						},
+					),
 				);
-			} else {
+			}
+			else
+			{
 				requestMessageJump(chapter.uuid);
 			}
 		},

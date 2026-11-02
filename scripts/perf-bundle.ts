@@ -13,17 +13,19 @@ import {ratchet} from "../tests/perf/ratchet";
  */
 
 const ManifestChunkSchema = z
-	.object({
-		file: z.string().min(1),
-		name: z.string().optional(),
-		src: z.string().optional(),
-		isEntry: z.boolean().optional(),
-		isDynamicEntry: z.boolean().optional(),
-		imports: z.array(z.string()).optional(),
-		dynamicImports: z.array(z.string()).optional(),
-		css: z.array(z.string()).optional(),
-		assets: z.array(z.string()).optional(),
-	})
+	.object(
+		{
+			file: z.string().min(1),
+			name: z.string().optional(),
+			src: z.string().optional(),
+			isEntry: z.boolean().optional(),
+			isDynamicEntry: z.boolean().optional(),
+			imports: z.array(z.string()).optional(),
+			dynamicImports: z.array(z.string()).optional(),
+			css: z.array(z.string()).optional(),
+			assets: z.array(z.string()).optional(),
+		},
+	)
 	.strict();
 
 const ManifestSchema = z.record(z.string().min(1), ManifestChunkSchema);
@@ -36,31 +38,38 @@ const MANIFEST_PATH = join(PUBLIC_DIR, ".vite", "manifest.json");
 
 const CLIENT_ENTRY = "src/client.tsx";
 
-const ROUTES: Record<string, string[]> = {
+const ROUTES: Record<string, string[]> =
+{
 	home: [CLIENT_ENTRY, "src/routes/index.tsx?tsr-split=component"],
 	session: [CLIENT_ENTRY, "src/routes/session.$id.tsx?tsr-split=component"],
 };
 
 const SHA_PLACEHOLDER = "0000000";
 
-export function coldLoadFiles(manifest: ViteManifest, entryKeys: string[]): string[] {
+export function coldLoadFiles(manifest: ViteManifest, entryKeys: string[]): string[]
+{
 	const visited = new Set<string>();
 	const files = new Set<string>();
-	const visit = (key: string): void => {
-		if (visited.has(key)) {
+	const visit = (key: string): void =>
+	{
+		if (visited.has(key))
+		{
 			return;
 		}
 		const chunk = manifest[key];
-		if (chunk === undefined) {
+		if (chunk === undefined)
+		{
 			throw new Error(`${key} is not in the Vite client manifest`);
 		}
 		visited.add(key);
 		files.add(chunk.file);
-		for (const imported of chunk.imports ?? []) {
+		for (const imported of chunk.imports ?? [])
+		{
 			visit(imported);
 		}
 	};
-	for (const key of entryKeys) {
+	for (const key of entryKeys)
+	{
 		visit(key);
 	}
 	return [...files].toSorted();
@@ -70,12 +79,15 @@ export function measureBundles(
 	manifest: ViteManifest,
 	routes: Record<string, string[]>,
 	readChunk: (file: string) => string,
-): Record<string, number> {
+): Record<string, number>
+{
 	const measured: Record<string, number> = {};
-	for (const [name, entries] of Object.entries(routes).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+	for (const [name, entries] of Object.entries(routes).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+	{
 		let raw = 0;
 		let gzip = 0;
-		for (const file of coldLoadFiles(manifest, entries)) {
+		for (const file of coldLoadFiles(manifest, entries))
+		{
 			const source = Buffer.from(readChunk(file));
 			raw += source.byteLength;
 			gzip += gzipSync(source).byteLength;
@@ -91,8 +103,10 @@ export function measureBundles(
  * repo's object count, and differs in a shallow CI clone) would move the byte counts, so it is swapped for a fixed
  * placeholder before measuring.
  */
-export function normalizeBuildSha(source: string, buildSha: string): string {
-	if (!/^[0-9a-f]{4,40}$/.test(buildSha)) {
+export function normalizeBuildSha(source: string, buildSha: string): string
+{
+	if (!/^[0-9a-f]{4,40}$/.test(buildSha))
+	{
 		return source;
 	}
 	return source.replaceAll(buildSha, SHA_PLACEHOLDER);
@@ -106,7 +120,8 @@ const HASH_SUFFIX = /[\w-]{8}(\.[a-z0-9]+)$/;
  * one) still rewrites the hash its cold-load importers reference. Same length, different bytes: raw stays put but gzip
  * drifts. Zeroing the hash in every reference to a manifest file keeps the counts tied to the code itself.
  */
-export function normalizeChunkHashes(source: string, manifest: ViteManifest): string {
+export function normalizeChunkHashes(source: string, manifest: ViteManifest): string
+{
 	const names = new Set(
 		Object.values(manifest)
 			.flatMap((chunk) => [chunk.file, ...(chunk.css ?? []), ...(chunk.assets ?? [])])
@@ -115,35 +130,53 @@ export function normalizeChunkHashes(source: string, manifest: ViteManifest): st
 	return source.replace(HASHED_NAME, (name) => (names.has(name) ? name.replace(HASH_SUFFIX, "00000000$1") : name));
 }
 
-function currentBuildSha(): string {
-	try {
-		return execFileSync("git", ["rev-parse", "--short", "HEAD"], {cwd: ROOT, encoding: "utf8"}).trim();
-	} catch {
+function currentBuildSha(): string
+{
+	try
+	{
+		return execFileSync(
+			"git",
+			["rev-parse", "--short", "HEAD"],
+			{
+				cwd: ROOT,
+				encoding: "utf8",
+			},
+		).trim();
+	}
+	catch
+	{
 		return "unknown";
 	}
 }
 
-function main(): void {
+function main(): void
+{
 	const manifest = ManifestSchema.parse(JSON.parse(readFileSync(MANIFEST_PATH, "utf8")));
 	const buildSha = currentBuildSha();
 	const measured = measureBundles(manifest, ROUTES, (file) =>
 		normalizeChunkHashes(normalizeBuildSha(readFileSync(join(PUBLIC_DIR, file), "utf8"), buildSha), manifest),
 	);
 	const failures: string[] = [];
-	for (const [id, value] of Object.entries(measured)) {
+	for (const [id, value] of Object.entries(measured))
+	{
 		console.log(`${id}: ${value}`);
-		try {
+		try
+		{
 			ratchet(id, value);
-		} catch (error) {
+		}
+		catch (error)
+		{
 			failures.push(error instanceof Error ? error.message : String(error));
 		}
 	}
-	if (failures.length > 0) {
+	if (failures.length > 0)
+	{
 		console.error(failures.join("\n"));
 		process.exitCode = 1;
 	}
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+{
 	main();
 }

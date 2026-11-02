@@ -4,13 +4,26 @@ import {listProjectsFromDb} from "../db/queries";
 import {listSkills} from "./skills";
 
 /** Every skill for the indexed projects (personal, project and plugin). */
-export async function listIndexedSkills(): Promise<SkillSummary[]> {
+export async function listIndexedSkills(): Promise<SkillSummary[]>
+{
 	const projects = listProjectsFromDb(getDb().index).flatMap(({id, projectPath}) =>
-		projectPath === null ? [] : [{id, projectPath}],
+		projectPath === null
+			? []
+			: [
+					{
+						id,
+						projectPath,
+					},
+				],
 	);
-	return listSkills({projects});
+	return listSkills(
+		{
+			projects,
+		},
+	);
 }
 
-export async function findIndexedSkill(id: string): Promise<SkillSummary | undefined> {
+export async function findIndexedSkill(id: string): Promise<SkillSummary | undefined>
+{
 	return (await listIndexedSkills()).find((skill) => skill.id === id);
 }

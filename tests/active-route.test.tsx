@@ -15,18 +15,35 @@ import {__unreadStoreTesting as unreadTesting, syncUnseenFromSummaries} from "..
 import {Route as ActiveRoute} from "../src/routes/active";
 import {installLocalStorage} from "./fake-storage";
 
-const pushedActiveSessions = new Map<string, {cwd: string; startedAt: number; lastActivity: number}>();
+const pushedActiveSessions = new Map<
+	string,
+	{
+		cwd: string;
+		startedAt: number;
+		lastActivity: number;
+	}
+>();
 
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({activeSessions: pushedActiveSessions}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		activeSessions: pushedActiveSessions,
+	}),
 }));
 
-beforeEach(() => {
-	vi.useFakeTimers({toFake: ["Date"]});
+beforeEach(() =>
+{
+	vi.useFakeTimers(
+		{
+			toFake: ["Date"],
+		},
+	);
 	vi.setSystemTime(Date.parse("2026-09-29T12:00:00.000Z"));
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	pushedActiveSessions.clear();
 	vi.useRealTimers();
@@ -54,7 +71,8 @@ function activeSession({
 	projectName?: string;
 	state?: ActivityState;
 	title?: string;
-}) {
+})
+{
 	const now = Date.now();
 	return {
 		sessionId: `session-test-${number}`,
@@ -69,65 +87,108 @@ function activeSession({
 	};
 }
 
-async function renderActivePage(sessions: ReturnType<typeof activeSession>[]) {
+async function renderActivePage(sessions: ReturnType<typeof activeSession>[])
+{
 	const ActivePage = ActiveRoute.options.component;
 	if (!ActivePage) throw new Error("Expected the Active route component");
 
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, sessions);
-	const rootRoute = createRootRoute({
-		component: () => <QueryClientProvider client={queryClient}>{createElement(ActivePage)}</QueryClientProvider>,
-	});
-	const router = createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/active"]}),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>{createElement(ActivePage)}</QueryClientProvider>
+			),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/active"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 }
 
-function rowFor(title: string): Element {
-	const row = screen.getByRole("link", {
-		name: `Open session transcript for ${title}`,
-	}).parentElement;
+function rowFor(title: string): Element
+{
+	const row = screen.getByRole(
+		"link",
+		{
+			name: `Open session transcript for ${title}`,
+		},
+	).parentElement;
 	if (!row) throw new Error(`Expected an active-session row for ${title}`);
 	return row;
 }
 
-describe("ActivePage rows", () => {
-	let persistCalls: Array<{sessionId: string; action: "reviewed" | "unreviewed"}>;
+describe("ActivePage rows", () =>
+{
+	let persistCalls: Array<
+	{
+		sessionId: string;
+		action: "reviewed" | "unreviewed";
+	}>;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		installLocalStorage();
 		unreadTesting.reset();
 		persistCalls = [];
-		unreadTesting.setPersist(async (sessionId, action) => {
-			persistCalls.push({sessionId, action});
+		unreadTesting.setPersist(async (sessionId, action) =>
+		{
+			persistCalls.push(
+				{
+					sessionId,
+					action,
+				},
+			);
 			return Promise.resolve();
 		});
 	});
 
-	it("gives every row the same fixed columns so only the title is variable-width", async () => {
+	it("gives every row the same fixed columns so only the title is variable-width", async () =>
+	{
 		await renderActivePage([
-			activeSession({
-				minutesSinceModified: 0,
-				number: 100,
-				projectName: "claude-code-plans",
-				state: "working",
-				title: "Render active like herdr",
-			}),
-			activeSession({
-				blockedSince: new Date(Date.now() - 40 * MINUTE_MS).toISOString(),
-				minutesSinceModified: 3,
-				number: 200,
-				projectName: "kalshi",
-				state: "waiting",
-				title: "Approve the plan",
-			}),
+			activeSession(
+				{
+					minutesSinceModified: 0,
+					number: 100,
+					projectName: "claude-code-plans",
+					state: "working",
+					title: "Render active like herdr",
+				},
+			),
+			activeSession(
+				{
+					blockedSince: new Date(Date.now() - 40 * MINUTE_MS).toISOString(),
+					minutesSinceModified: 3,
+					number: 200,
+					projectName: "kalshi",
+					state: "waiting",
+					title: "Approve the plan",
+				},
+			),
 		]);
 
 		expect(
-			["Render active like herdr", "Approve the plan"].map((title) => {
+			["Render active like herdr", "Approve the plan"].map((title) =>
+			{
 				const row = rowFor(title);
 				const [transcript, status, review, modified, action] = Array.from(row.children);
 				const [titleCell, projectCell] = Array.from(transcript?.children ?? []);
@@ -172,25 +233,37 @@ describe("ActivePage rows", () => {
 		]);
 	});
 
-	it("keeps heating the status word the longer a waiting session stays blocked", async () => {
+	it("keeps heating the status word the longer a waiting session stays blocked", async () =>
+	{
 		await renderActivePage([
-			activeSession({
-				blockedSince: new Date(Date.now() - 40 * MINUTE_MS).toISOString(),
-				number: 100,
-				state: "waiting",
-				title: "Blocked for ages",
-			}),
-			activeSession({
-				blockedSince: new Date(Date.now() - 15 * MINUTE_MS).toISOString(),
-				number: 200,
-				state: "waiting",
-				title: "Blocked a while",
-			}),
-			activeSession({number: 300, state: "working", title: "Not blocked"}),
+			activeSession(
+				{
+					blockedSince: new Date(Date.now() - 40 * MINUTE_MS).toISOString(),
+					number: 100,
+					state: "waiting",
+					title: "Blocked for ages",
+				},
+			),
+			activeSession(
+				{
+					blockedSince: new Date(Date.now() - 15 * MINUTE_MS).toISOString(),
+					number: 200,
+					state: "waiting",
+					title: "Blocked a while",
+				},
+			),
+			activeSession(
+				{
+					number: 300,
+					state: "working",
+					title: "Not blocked",
+				},
+			),
 		]);
 
 		expect(
-			["Blocked for ages", "Blocked a while", "Not blocked"].map((title) => {
+			["Blocked for ages", "Blocked a while", "Not blocked"].map((title) =>
+			{
 				const status = Array.from(rowFor(title).children)[1];
 				return {
 					icon: status?.firstElementChild?.firstElementChild?.getAttribute("data-kind"),
@@ -198,72 +271,145 @@ describe("ActivePage rows", () => {
 				};
 			}),
 		).toStrictEqual([
-			{icon: "awaiting", word: "truncate text-red-500"},
-			{icon: "awaiting", word: "truncate text-amber-600"},
-			{icon: "running", word: "truncate text-green-500"},
+			{
+				icon: "awaiting",
+				word: "truncate text-red-500",
+			},
+			{
+				icon: "awaiting",
+				word: "truncate text-amber-600",
+			},
+			{
+				icon: "running",
+				word: "truncate text-green-500",
+			},
 		]);
 	});
 
-	it("marks an unseen session reviewed from the row without leaving reviewed chrome behind", async () => {
-		syncUnseenFromSummaries([{id: "session-test-100", unseen: true}]);
+	it("marks an unseen session reviewed from the row without leaving reviewed chrome behind", async () =>
+	{
+		syncUnseenFromSummaries([
+			{
+				id: "session-test-100",
+				unseen: true,
+			},
+		]);
 		await renderActivePage([
-			activeSession({number: 100, state: "idle", title: "Finished while I was away"}),
-			activeSession({number: 200, state: "idle", title: "Already seen"}),
+			activeSession(
+				{
+					number: 100,
+					state: "idle",
+					title: "Finished while I was away",
+				},
+			),
+			activeSession(
+				{
+					number: 200,
+					state: "idle",
+					title: "Already seen",
+				},
+			),
 		]);
 
 		const unseenRow = rowFor("Finished while I was away");
 		const seenRow = rowFor("Already seen");
-		expect({
-			unseenMarker: Array.from(unseenRow.children)[2]?.textContent,
-			unseenAction: unseenRow.querySelector("button")?.textContent,
-			seenMarker: Array.from(seenRow.children)[2]?.textContent,
-			seenAction: seenRow.querySelector("button"),
-		}).toStrictEqual({
-			unseenMarker: "Needs review",
-			unseenAction: "Mark reviewed",
-			seenMarker: "",
-			seenAction: null,
-		});
+		expect(
+			{
+				unseenMarker: Array.from(unseenRow.children)[2]?.textContent,
+				unseenAction: unseenRow.querySelector("button")?.textContent,
+				seenMarker: Array.from(seenRow.children)[2]?.textContent,
+				seenAction: seenRow.querySelector("button"),
+			},
+		).toStrictEqual(
+			{
+				unseenMarker: "Needs review",
+				unseenAction: "Mark reviewed",
+				seenMarker: "",
+				seenAction: null,
+			},
+		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Mark reviewed"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Mark reviewed",
+				},
+			),
+		);
 
-		await waitFor(() => {
-			expect({
-				marker: screen.queryByText(/Needs review/),
-				action: screen.queryByRole("button", {name: "Mark reviewed"}),
-				persistCalls,
-			}).toStrictEqual({
-				marker: null,
-				action: null,
-				persistCalls: [{sessionId: "session-test-100", action: "reviewed"}],
-			});
+		await waitFor(() =>
+		{
+			expect(
+				{
+					marker: screen.queryByText(/Needs review/),
+					action: screen.queryByRole(
+						"button",
+						{
+							name: "Mark reviewed",
+						},
+					),
+					persistCalls,
+				},
+			).toStrictEqual(
+				{
+					marker: null,
+					action: null,
+					persistCalls: [
+						{
+							sessionId: "session-test-100",
+							action: "reviewed",
+						},
+					],
+				},
+			);
 		});
 	});
 
-	it("renders a session the SSE reducer knows about before the loader refetches it", async () => {
-		pushedActiveSessions.set("session-test-900", {
-			cwd: "/tmp/test/just-started",
-			startedAt: Date.now() - MINUTE_MS,
-			lastActivity: Date.now() - MINUTE_MS,
-		});
-		await renderActivePage([activeSession({number: 100, title: "Already loaded"})]);
+	it("renders a session the SSE reducer knows about before the loader refetches it", async () =>
+	{
+		pushedActiveSessions.set(
+			"session-test-900",
+			{
+				cwd: "/tmp/test/just-started",
+				startedAt: Date.now() - MINUTE_MS,
+				lastActivity: Date.now() - MINUTE_MS,
+			},
+		);
+		await renderActivePage([
+			activeSession(
+				{
+					number: 100,
+					title: "Already loaded",
+				},
+			),
+		]);
 
 		const pushedRow = rowFor("session-test-900");
 		const [transcript, status] = Array.from(pushedRow.children);
 		const [titleCell, projectCell] = Array.from(transcript?.children ?? []);
-		expect({
-			title: titleCell?.textContent,
-			project: projectCell?.textContent,
-			status: status?.getAttribute("aria-label"),
-			href: transcript?.getAttribute("href"),
-			rowCount: screen.getAllByRole("link", {name: /^Open session transcript for/}).length,
-		}).toStrictEqual({
-			title: "session-test-900",
-			project: "just-started",
-			status: "Session status: unknown",
-			href: "/session/session-test-900",
-			rowCount: 2,
-		});
+		expect(
+			{
+				title: titleCell?.textContent,
+				project: projectCell?.textContent,
+				status: status?.getAttribute("aria-label"),
+				href: transcript?.getAttribute("href"),
+				rowCount: screen.getAllByRole(
+					"link",
+					{
+						name: /^Open session transcript for/,
+					},
+				).length,
+			},
+		).toStrictEqual(
+			{
+				title: "session-test-900",
+				project: "just-started",
+				status: "Session status: unknown",
+				href: "/session/session-test-900",
+				rowCount: 2,
+			},
+		);
 	});
 });
 
@@ -272,26 +418,31 @@ describe("ActivePage rows", () => {
  * when herdr is not installed or not running. Sharing row chrome with /herdr is
  * only safe while the shared pieces stay herdr-free.
  */
-describe("ActivePage independence from herdr", () => {
+describe("ActivePage independence from herdr", () =>
+{
 	const srcRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "src");
 
-	function resolveRelativeImport(fromFile: string, specifier: string): string | null {
+	function resolveRelativeImport(fromFile: string, specifier: string): string | null
+	{
 		const base = resolve(dirname(fromFile), specifier);
 		const candidates = [base, `${base}.ts`, `${base}.tsx`, join(base, "index.ts")];
 		return candidates.find((path) => existsSync(path) && statSync(path).isFile()) ?? null;
 	}
 
-	it("reaches no herdr module from the /active route", () => {
+	it("reaches no herdr module from the /active route", () =>
+	{
 		const entry = join(srcRoot, "routes", "active.tsx");
 		const visited = new Set<string>();
 		const queue = [entry];
 
-		while (queue.length > 0) {
+		while (queue.length > 0)
+		{
 			const file = queue.pop();
 			if (file === undefined || visited.has(file)) continue;
 			visited.add(file);
 			const source = readFileSync(file, "utf8");
-			for (const match of source.matchAll(/from\s+["'](\.[^"']*)["']/g)) {
+			for (const match of source.matchAll(/from\s+["'](\.[^"']*)["']/g))
+			{
 				const specifier = match[1];
 				if (specifier === undefined) continue;
 				const resolved = resolveRelativeImport(file, specifier);

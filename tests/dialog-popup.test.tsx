@@ -10,12 +10,14 @@ import {PanelsOff} from "./fizzy-lake-off";
 import {mockTallWindow} from "./tall-window";
 
 let restore: (() => void) | undefined;
-afterEach(() => {
+afterEach(() =>
+{
 	restore?.();
 	restore = undefined;
 });
 
-function popupFor(ref?: React.Ref<HTMLDivElement>, panelsOff = false) {
+function popupFor(ref?: React.Ref<HTMLDivElement>, panelsOff = false)
+{
 	const node = (
 		<Dialog.Root open>
 			<Dialog.Portal>
@@ -28,29 +30,60 @@ function popupFor(ref?: React.Ref<HTMLDivElement>, panelsOff = false) {
 	render(panelsOff ? <PanelsOff>{node}</PanelsOff> : node);
 }
 
-describe("DialogPopup (upstream styled cds Dialog.Popup js + lZ)", () => {
-	it("marks the popup data-cds and data-cds-fizzy under panels, tracks the tall window and forwards its ref", async () => {
+describe("DialogPopup (upstream styled cds Dialog.Popup js + lZ)", () =>
+{
+	it("marks the popup data-cds and data-cds-fizzy under panels, tracks the tall window and forwards its ref", async () =>
+	{
 		restore = mockTallWindow(true).restore;
 		const ref = createRef<HTMLDivElement>();
 		popupFor(ref);
-		const popup = await screen.findByRole("dialog", {name: "p"});
-		expect({
-			cds: popup.getAttribute("data-cds"),
-			fizzy: popup.getAttribute("data-cds-fizzy"),
-			tall: popup.getAttribute("data-cds-tall-window"),
-			className: popup.className,
-			ref: ref.current === popup,
-		}).toStrictEqual({cds: "Dialog", fizzy: "", tall: "", className: "c", ref: true});
+		const popup = await screen.findByRole(
+			"dialog",
+			{
+				name: "p",
+			},
+		);
+		expect(
+			{
+				cds: popup.getAttribute("data-cds"),
+				fizzy: popup.getAttribute("data-cds-fizzy"),
+				tall: popup.getAttribute("data-cds-tall-window"),
+				className: popup.className,
+				ref: ref.current === popup,
+			},
+		).toStrictEqual(
+			{
+				cds: "Dialog",
+				fizzy: "",
+				tall: "",
+				className: "c",
+				ref: true,
+			},
+		);
 	});
 
-	it("drops data-cds-fizzy with panels off and the tall-window mark in a short window", async () => {
+	it("drops data-cds-fizzy with panels off and the tall-window mark in a short window", async () =>
+	{
 		restore = mockTallWindow(false).restore;
 		popupFor(undefined, true);
-		const popup = await screen.findByRole("dialog", {name: "p"});
-		expect({
-			cds: popup.getAttribute("data-cds"),
-			fizzy: popup.getAttribute("data-cds-fizzy"),
-			tall: popup.getAttribute("data-cds-tall-window"),
-		}).toStrictEqual({cds: "Dialog", fizzy: null, tall: null});
+		const popup = await screen.findByRole(
+			"dialog",
+			{
+				name: "p",
+			},
+		);
+		expect(
+			{
+				cds: popup.getAttribute("data-cds"),
+				fizzy: popup.getAttribute("data-cds-fizzy"),
+				tall: popup.getAttribute("data-cds-tall-window"),
+			},
+		).toStrictEqual(
+			{
+				cds: "Dialog",
+				fizzy: null,
+				tall: null,
+			},
+		);
 	});
 });

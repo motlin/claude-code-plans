@@ -3,8 +3,10 @@
 import {describe, expect, it} from "vite-plus/test";
 import {DIFF_RAILS_CSS, adoptDiffSheet, adoptRails, markRailRuns} from "../src/components/changes/diff-rails";
 
-describe("DIFF_RAILS_CSS", () => {
-	it("is upstream ca9e46d28 q, built from the same parts", () => {
+describe("DIFF_RAILS_CSS", () =>
+{
+	it("is upstream ca9e46d28 q, built from the same parts", () =>
+	{
 		const N = ":is([data-line],[data-no-newline])";
 		const P = `[data-indicators="classic"] ${N}`;
 		const F = ':is([data-column-number],[data-gutter-buffer="metadata"])';
@@ -50,12 +52,14 @@ describe("DIFF_RAILS_CSS", () => {
 			"padding-left:max(2ch + 5px,6px + 2px + 1rem + 1px)",
 			"min-width:calc(6px + 3px)",
 			"calc(var(--diffs-line-height,20px) / 4)",
-		]) {
+		])
+		{
 			expect(DIFF_RAILS_CSS).toContain(part);
 		}
 	});
 
-	it("keeps the forced-colors / prefers-contrast fallback", () => {
+	it("keeps the forced-colors / prefers-contrast fallback", () =>
+	{
 		expect(DIFF_RAILS_CSS).toContain(
 			'@media (forced-colors:active),(prefers-contrast:more){[data-indicators="classic"] :is([data-line],[data-no-newline]){padding-inline-start:2ch}',
 		);
@@ -65,16 +69,30 @@ describe("DIFF_RAILS_CSS", () => {
 	});
 });
 
-function shadowHost(): {host: HTMLElement; root: ShadowRoot} {
+function shadowHost():
+{
+	host: HTMLElement;
+	root: ShadowRoot;
+}
+{
 	const host = document.createElement("div");
-	const root = host.attachShadow({mode: "open"});
+	const root = host.attachShadow(
+		{
+			mode: "open",
+		},
+	);
 	// Browsers start every shadow root with an empty list; jsdom leaves it undefined until assigned (pierre assigns it).
 	root.adoptedStyleSheets = [];
-	return {host, root};
+	return {
+		host,
+		root,
+	};
 }
 
-describe("adoptDiffSheet", () => {
-	it("appends one sheet per window, once per shadow root", () => {
+describe("adoptDiffSheet", () =>
+{
+	it("appends one sheet per window, once per shadow root", () =>
+	{
 		const base = new CSSStyleSheet();
 		const a = shadowHost();
 		a.root.adoptedStyleSheets = [base];
@@ -82,15 +100,25 @@ describe("adoptDiffSheet", () => {
 		adoptRails(a.host);
 		const b = shadowHost();
 		adoptRails(b.host);
-		expect({
-			length: a.root.adoptedStyleSheets.length,
-			baseKept: a.root.adoptedStyleSheets[0] === base,
-			shared: a.root.adoptedStyleSheets[1] === b.root.adoptedStyleSheets[0],
-			bLength: b.root.adoptedStyleSheets.length,
-		}).toStrictEqual({length: 2, baseKept: true, shared: true, bLength: 1});
+		expect(
+			{
+				length: a.root.adoptedStyleSheets.length,
+				baseKept: a.root.adoptedStyleSheets[0] === base,
+				shared: a.root.adoptedStyleSheets[1] === b.root.adoptedStyleSheets[0],
+				bLength: b.root.adoptedStyleSheets.length,
+			},
+		).toStrictEqual(
+			{
+				length: 2,
+				baseKept: true,
+				shared: true,
+				bLength: 1,
+			},
+		);
 	});
 
-	it("fills the sheet with its css", () => {
+	it("fills the sheet with its css", () =>
+	{
 		const adopt = adoptDiffSheet(":host{color:red}");
 		const {host, root} = shadowHost();
 		adopt(host);
@@ -99,13 +127,16 @@ describe("adoptDiffSheet", () => {
 		expect([...sheet.cssRules].map((rule) => rule.cssText)).toStrictEqual([":host { color: red; }"]);
 	});
 
-	it("is a no-op for a host with no shadow root", () => {
-		expect(() => {
+	it("is a no-op for a host with no shadow root", () =>
+	{
+		expect(() =>
+		{
 			adoptRails(document.createElement("div"));
 		}).not.toThrow();
 	});
 
-	it("setDisabled flips every sheet it made", () => {
+	it("setDisabled flips every sheet it made", () =>
+	{
 		const adopt = adoptDiffSheet(":host{color:red}");
 		const {host, root} = shadowHost();
 		adopt(host);
@@ -113,20 +144,36 @@ describe("adoptDiffSheet", () => {
 		const disabledAfterFlip = root.adoptedStyleSheets[0]?.disabled;
 		const other = shadowHost();
 		adopt(other.host);
-		expect({disabledAfterFlip, newSheet: other.root.adoptedStyleSheets[0]?.disabled}).toStrictEqual({
-			disabledAfterFlip: true,
-			newSheet: true,
-		});
+		expect(
+			{
+				disabledAfterFlip,
+				newSheet: other.root.adoptedStyleSheets[0]?.disabled,
+			},
+		).toStrictEqual(
+			{
+				disabledAfterFlip: true,
+				newSheet: true,
+			},
+		);
 	});
 });
 
-describe("markRailRuns", () => {
-	function gutterHost(types: string[]): {host: HTMLElement; rows: HTMLElement[]; split: HTMLElement[]} {
+describe("markRailRuns", () =>
+{
+	function gutterHost(types: string[]):
+	{
+		host: HTMLElement;
+		rows: HTMLElement[];
+		split: HTMLElement[];
+	}
+	{
 		const {host, root} = shadowHost();
-		const build = (): HTMLElement[] => {
+		const build = (): HTMLElement[] =>
+		{
 			const gutter = document.createElement("div");
 			gutter.setAttribute("data-gutter", "");
-			const rows = types.map((type) => {
+			const rows = types.map((type) =>
+			{
 				const row = document.createElement("div");
 				row.setAttribute("data-line-type", type);
 				gutter.append(row);
@@ -135,12 +182,17 @@ describe("markRailRuns", () => {
 			root.append(gutter);
 			return rows;
 		};
-		return {host, rows: build(), split: build()};
+		return {
+			host,
+			rows: build(),
+			split: build(),
+		};
 	}
 	const marks = (rows: HTMLElement[]): boolean[][] =>
 		rows.map((row) => [row.hasAttribute("data-rail-start"), row.hasAttribute("data-rail-end")]);
 
-	it("marks the first and last row of each change run, in every gutter", () => {
+	it("marks the first and last row of each change run, in every gutter", () =>
+	{
 		const {host, rows, split} = gutterHost([
 			"context",
 			"change-deletion",
@@ -158,10 +210,21 @@ describe("markRailRuns", () => {
 			[true, true],
 			[false, false],
 		];
-		expect({rows: marks(rows), split: marks(split)}).toStrictEqual({rows: expected, split: expected});
+		expect(
+			{
+				rows: marks(rows),
+				split: marks(split),
+			},
+		).toStrictEqual(
+			{
+				rows: expected,
+				split: expected,
+			},
+		);
 	});
 
-	it("re-marks after rows change, dropping stale attributes", () => {
+	it("re-marks after rows change, dropping stale attributes", () =>
+	{
 		const {host, rows} = gutterHost([
 			"context",
 			"change-deletion",
@@ -183,8 +246,10 @@ describe("markRailRuns", () => {
 		]);
 	});
 
-	it("is a no-op for a host with no shadow root", () => {
-		expect(() => {
+	it("is a no-op for a host with no shadow root", () =>
+	{
+		expect(() =>
+		{
 			markRailRuns(document.createElement("div"));
 		}).not.toThrow();
 	});

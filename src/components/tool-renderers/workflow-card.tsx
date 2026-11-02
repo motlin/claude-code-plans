@@ -1,7 +1,8 @@
 import {useNow} from "../../hooks/use-now";
 import {ChevronRight} from "lucide-react";
 import {formatPaddedElapsed} from "../../lib/working-marker";
-import {
+import
+{
 	agentCells,
 	buildWorkflowProgress,
 	type WorkflowProgressCounts,
@@ -11,7 +12,16 @@ import {ShimmerText} from "../shimmer-text";
 import {WorkflowAgentCells} from "../workflow-agent-cells";
 
 /** Upstream `Bme`: the counts of a run with no progress yet. */
-const NO_AGENTS: WorkflowProgressCounts = {done: 0, running: 0, stalled: 0, error: 0, stopped: 0, pending: 0, total: 0};
+const NO_AGENTS: WorkflowProgressCounts =
+{
+	done: 0,
+	running: 0,
+	stalled: 0,
+	error: 0,
+	stopped: 0,
+	pending: 0,
+	total: 0,
+};
 
 /** Upstream `Vme`'s card cell grid: up to 8 wrapped rows. */
 const CARD_MAX_ROWS = 8;
@@ -21,7 +31,8 @@ const CARD_SHELL =
 	"group/tool my-[6px] relative isolate flex self-start min-w-[318px] max-w-[318px] items-start gap-g5 rounded-r6 ps-3 py-2.5 text-start text-pretty";
 
 /** Upstream `V$`: "N agent(s)" with the number in secondary ink, unless muted. */
-export function AgentCount({total, muted = false}: {total: number; muted?: boolean}) {
+export function AgentCount({total, muted = false}: {total: number; muted?: boolean})
+{
 	return (
 		<span className="whitespace-nowrap">
 			{muted ? total : <span className="text-secondary">{total}</span>} {total === 1 ? "agent" : "agents"}
@@ -48,14 +59,23 @@ export function WorkflowCard({
 	startedAt?: number | undefined;
 	progress: readonly WorkflowProgressEntry[];
 	onOpen?: (() => void) | undefined;
-}) {
+})
+{
 	const now = useNow();
-	const model = buildWorkflowProgress(progress, {now, settled: false});
+	const model = buildWorkflowProgress(
+		progress,
+		{
+			now,
+			settled: false,
+		},
+	);
 	const counts = model?.counts ?? NO_AGENTS;
 	const agents = model
 		? agentCells(
 				model.phases.flatMap((phase) => phase.agents),
-				{now},
+				{
+					now,
+				},
 			)
 		: undefined;
 	const hasName = name !== "";
@@ -65,7 +85,10 @@ export function WorkflowCard({
 			{hasName && <ShimmerText className="min-w-0 truncate text-body text-primary">{name}</ShimmerText>}
 			<span
 				className={`flex min-w-0 items-center gap-2 text-footnote text-ink-muted tabular-nums${hasName ? "" : " pb-0.75"}`}
-				style={{minHeight: "var(--text-body--line-height)"}}
+				style={
+				{
+					minHeight: "var(--text-body--line-height)",
+				}}
 			>
 				<ShimmerText active={!hasName} className="shrink-0 text-secondary">
 					{label}
@@ -95,7 +118,8 @@ export function WorkflowCard({
 			className="card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover"
 		/>
 	);
-	if (onOpen === undefined) {
+	if (onOpen === undefined)
+	{
 		return (
 			<div className={`${CARD_SHELL} pe-4`}>
 				{surface}
@@ -115,7 +139,10 @@ export function WorkflowCard({
 			{content}
 			<span
 				className="flex shrink-0 items-center self-start text-ink-muted"
-				style={{height: "var(--text-body--line-height)"}}
+				style={
+				{
+					height: "var(--text-body--line-height)",
+				}}
 			>
 				<ChevronRight size={16} aria-hidden="true" />
 			</span>

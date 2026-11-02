@@ -16,12 +16,14 @@ export type RefusalOptOutView = "hidden" | "offer" | "off";
  * `patch({switchModelsOnFlag:false})`) and stays pending until the write lands; a refused write
  * toasts the error and returns to the offer. `openSettings` opens the matching Settings row.
  */
-export function useRefusalOptOut(sessionId: string): {
+export function useRefusalOptOut(sessionId: string):
+{
 	view: RefusalOptOutView;
 	pending: boolean;
 	optOut: () => void;
 	openSettings: () => void;
-} {
+}
+{
 	const setting = useClaudeCodeSetting("switchModelsOnFlag");
 	const toast = useToast();
 	const open = useOpenSettings();
@@ -35,18 +37,32 @@ export function useRefusalOptOut(sessionId: string): {
 	else if (fileValue === false || wroteFor === sessionId) view = "off";
 
 	const {save} = setting;
-	const optOut = () => {
+	const optOut = () =>
+	{
 		if (pending) return;
 		setPending(true);
-		void save(false).then((saved) => {
+		void save(false).then((saved) =>
+		{
 			setPending(false);
 			if (saved) setWroteFor(sessionId);
-			else toast({kind: "error", message: REFUSAL_OPT_OUT_FAILED});
+			else
+				toast(
+					{
+						kind: "error",
+						message: REFUSAL_OPT_OUT_FAILED,
+					},
+				);
 		});
 	};
-	const openSettings = useCallback(() => {
+	const openSettings = useCallback(() =>
+	{
 		open("claude-code", "switch-models-local");
 	}, [open]);
 
-	return {view, pending, optOut, openSettings};
+	return {
+		view,
+		pending,
+		optOut,
+		openSettings,
+	};
 }

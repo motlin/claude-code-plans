@@ -15,27 +15,31 @@ export {JsonValueSchema} from "./json-value-schema";
 // ---------------------------------------------------------------------------
 
 export const SessionIndexEntrySchema = z
-	.object({
-		sessionId: z.string(),
-		fullPath: z.string(),
-		fileMtime: z.number(),
-		firstPrompt: z.string().optional(),
-		summary: z.string().optional(),
-		messageCount: z.number().optional(),
-		created: z.string().optional(),
-		modified: z.string().optional(),
-		gitBranch: z.string().optional(),
-		projectPath: z.string().optional(),
-		isSidechain: z.boolean().optional(),
-	})
+	.object(
+		{
+			sessionId: z.string(),
+			fullPath: z.string(),
+			fileMtime: z.number(),
+			firstPrompt: z.string().optional(),
+			summary: z.string().optional(),
+			messageCount: z.number().optional(),
+			created: z.string().optional(),
+			modified: z.string().optional(),
+			gitBranch: z.string().optional(),
+			projectPath: z.string().optional(),
+			isSidechain: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 export const SessionsIndexSchema = z
-	.object({
-		version: z.number(),
-		entries: z.array(SessionIndexEntrySchema),
-		originalPath: z.string().optional(),
-	})
+	.object(
+		{
+			version: z.number(),
+			entries: z.array(SessionIndexEntrySchema),
+			originalPath: z.string().optional(),
+		},
+	)
 	.strict();
 
 // ---------------------------------------------------------------------------
@@ -43,63 +47,79 @@ export const SessionsIndexSchema = z
 // ---------------------------------------------------------------------------
 
 export const TextBlockSchema = z
-	.object({
-		type: z.literal("text"),
-		text: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("text"),
+			text: z.string(),
+		},
+	)
 	.strict();
 
 export const ToolUseBlockSchema = z
-	.object({
-		type: z.literal("tool_use"),
-		id: z.string(),
-		name: z.string(),
-		input: z.record(z.string(), JsonValueSchema),
-		caller: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-	})
+	.object(
+		{
+			type: z.literal("tool_use"),
+			id: z.string(),
+			name: z.string(),
+			input: z.record(z.string(), JsonValueSchema),
+			caller: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+		},
+	)
 	.strict();
 
 export const ThinkingBlockSchema = z
-	.object({
-		type: z.literal("thinking"),
-		thinking: z.string(),
-		signature: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("thinking"),
+			thinking: z.string(),
+			signature: z.string().optional(),
+		},
+	)
 	.strict();
 
 export const ToolResultBlockSchema = z
-	.object({
-		type: z.literal("tool_result"),
-		tool_use_id: z.string(),
-		content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
-		is_error: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("tool_result"),
+			tool_use_id: z.string(),
+			content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
+			is_error: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const ImageBlockSchema = z
-	.object({
-		type: z.literal("image"),
-		source: z
-			.object({
-				type: z.string(),
-				media_type: z.string(),
-				data: z.string(),
-			})
-			.strict(),
-	})
+	.object(
+		{
+			type: z.literal("image"),
+			source: z
+				.object(
+					{
+						type: z.string(),
+						media_type: z.string(),
+						data: z.string(),
+					},
+				)
+				.strict(),
+		},
+	)
 	.strict();
 
 const DocumentBlockSchema = z
-	.object({
-		type: z.literal("document"),
-		source: z
-			.object({
-				type: z.string(),
-				media_type: z.string(),
-				data: z.string(),
-			})
-			.strict(),
-	})
+	.object(
+		{
+			type: z.literal("document"),
+			source: z
+				.object(
+					{
+						type: z.string(),
+						media_type: z.string(),
+						data: z.string(),
+					},
+				)
+				.strict(),
+		},
+	)
 	.strict();
 
 export const ContentBlockSchema = z
@@ -111,7 +131,8 @@ export const ContentBlockSchema = z
 		ImageBlockSchema,
 		DocumentBlockSchema,
 	])
-	.superRefine((block, ctx) => {
+	.superRefine((block, ctx) =>
+	{
 		if (block.type !== "tool_use") return;
 
 		const {name, input} = block;
@@ -122,12 +143,16 @@ export const ContentBlockSchema = z
 		if (!schema) return;
 
 		const result = schema.safeParse(input);
-		if (!result.success) {
-			for (const issue of result.error.issues) {
-				ctx.addIssue({
-					...issue,
-					path: ["input", ...issue.path],
-				});
+		if (!result.success)
+		{
+			for (const issue of result.error.issues)
+			{
+				ctx.addIssue(
+					{
+						...issue,
+						path: ["input", ...issue.path],
+					},
+				);
 			}
 		}
 	});
@@ -138,13 +163,15 @@ export const ContentBlockSchema = z
 
 /** One hunk of the `structuredPatch` the file-edit tools report. */
 export const StructuredPatchHunkSchema = z
-	.object({
-		oldStart: z.number(),
-		oldLines: z.number(),
-		newStart: z.number(),
-		newLines: z.number(),
-		lines: z.array(z.string()),
-	})
+	.object(
+		{
+			oldStart: z.number(),
+			oldLines: z.number(),
+			newStart: z.number(),
+			newLines: z.number(),
+			lines: z.array(z.string()),
+		},
+	)
 	.strict();
 
 /**
@@ -152,51 +179,59 @@ export const StructuredPatchHunkSchema = z
  * kept no snapshot (e.g. `contentNotInModelContext`).
  */
 const EditToolUseResultSchema = z
-	.object({
-		filePath: z.string(),
-		oldString: z.string(),
-		newString: z.string(),
-		originalFile: z.union([z.string(), z.null()]).optional(),
-		structuredPatch: z.array(StructuredPatchHunkSchema),
-		userModified: z.boolean().optional(),
-		replaceAll: z.boolean().optional(),
-		contentNotInModelContext: z.boolean().optional(),
-		memdirStamped: z.boolean().optional(),
-		staleRecovered: z.boolean().optional(),
-	})
+	.object(
+		{
+			filePath: z.string(),
+			oldString: z.string(),
+			newString: z.string(),
+			originalFile: z.union([z.string(), z.null()]).optional(),
+			structuredPatch: z.array(StructuredPatchHunkSchema),
+			userModified: z.boolean().optional(),
+			replaceAll: z.boolean().optional(),
+			contentNotInModelContext: z.boolean().optional(),
+			memdirStamped: z.boolean().optional(),
+			staleRecovered: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const MultiEditToolUseResultSchema = z
-	.object({
-		filePath: z.string(),
-		edits: z.array(
-			z
-				.object({
-					old_string: z.string(),
-					new_string: z.string(),
-					replace_all: z.boolean().optional(),
-				})
-				.strict(),
-		),
-		originalFileContents: z.union([z.string(), z.null()]).optional(),
-		structuredPatch: z.array(StructuredPatchHunkSchema),
-		userModified: z.boolean().optional(),
-	})
+	.object(
+		{
+			filePath: z.string(),
+			edits: z.array(
+				z
+					.object(
+						{
+							old_string: z.string(),
+							new_string: z.string(),
+							replace_all: z.boolean().optional(),
+						},
+					)
+					.strict(),
+			),
+			originalFileContents: z.union([z.string(), z.null()]).optional(),
+			structuredPatch: z.array(StructuredPatchHunkSchema),
+			userModified: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 export const WriteToolUseResultTypeSchema = z.enum(["create", "update"]);
 
 /** `originalFile` is null for a created file (and for an unsnapshotted update). */
 const WriteToolUseResultSchema = z
-	.object({
-		type: WriteToolUseResultTypeSchema,
-		filePath: z.string(),
-		content: z.string(),
-		structuredPatch: z.array(StructuredPatchHunkSchema).optional(),
-		originalFile: z.union([z.string(), z.null()]).optional(),
-		userModified: z.boolean().optional(),
-		memdirStamped: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: WriteToolUseResultTypeSchema,
+			filePath: z.string(),
+			content: z.string(),
+			structuredPatch: z.array(StructuredPatchHunkSchema).optional(),
+			originalFile: z.union([z.string(), z.null()]).optional(),
+			userModified: z.boolean().optional(),
+			memdirStamped: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 export const FileEditToolUseResultSchema = z.union([
@@ -215,15 +250,47 @@ export const GitBranchActionSchema = z.enum(["rebased", "merged"]);
 export const GitPrActionSchema = z.enum(["created", "edited", "commented", "ready", "merged", "closed"]);
 
 export const GitOperationSchema = z
-	.object({
-		commit: z
-			.object({sha: z.string(), kind: GitCommitKindSchema, branch: z.string().optional()})
-			.strict()
-			.optional(),
-		push: z.object({branch: z.string()}).strict().optional(),
-		branch: z.object({ref: z.string(), action: GitBranchActionSchema}).strict().optional(),
-		pr: z.object({number: z.number(), url: z.string().optional(), action: GitPrActionSchema}).strict().optional(),
-	})
+	.object(
+		{
+			commit: z
+				.object(
+					{
+						sha: z.string(),
+						kind: GitCommitKindSchema,
+						branch: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			push: z
+				.object(
+					{
+						branch: z.string(),
+					},
+				)
+				.strict()
+				.optional(),
+			branch: z
+				.object(
+					{
+						ref: z.string(),
+						action: GitBranchActionSchema,
+					},
+				)
+				.strict()
+				.optional(),
+			pr: z
+				.object(
+					{
+						number: z.number(),
+						url: z.string().optional(),
+						action: GitPrActionSchema,
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 export type GitOperation = z.infer<typeof GitOperationSchema>;
@@ -236,11 +303,17 @@ export type GitOperation = z.infer<typeof GitOperationSchema>;
 // used a bare parent session id; the CLI now writes `{sessionId, messageUuid}`.
 export const ForkedFromSchema = z.union([
 	z.string(),
-	z.strictObject({sessionId: z.string(), messageUuid: z.string().optional()}),
+	z.strictObject(
+		{
+			sessionId: z.string(),
+			messageUuid: z.string().optional(),
+		},
+	),
 ]);
 
 // Shared fields present on most JSONL records (user, assistant, progress, system, attachment)
-const BaseRecordFields = {
+const BaseRecordFields =
+{
 	uuid: z.string().optional(),
 	timestamp: z.string().optional(),
 	sessionId: z.string().optional(),
@@ -419,175 +492,204 @@ export const PermissionDecisionClassifierCategorySchema = z.enum([
 
 // How the tool call answered by this tool_result was permitted or denied.
 const PermissionDecisionSchema = z
-	.object({
-		decision: PermissionDecisionDecisionSchema,
-		source: PermissionDecisionSourceSchema,
-		reasonType: PermissionDecisionReasonTypeSchema.optional(),
-		ruleSource: PermissionDecisionRuleSourceSchema.optional(),
-		grantScope: PermissionDecisionGrantScopeSchema.optional(),
-		// What decided the call, composed by the CLI: "unknown", "rule:<source>", "mode:<mode>", "hook:<event>", "bashMiss:<kind>", …
-		reasonCode: z.string().min(1).optional(),
-		circuitBreaker: PermissionDecisionCircuitBreakerSchema.optional(),
-		classifierCategory: PermissionDecisionClassifierCategorySchema.optional(),
-	})
+	.object(
+		{
+			decision: PermissionDecisionDecisionSchema,
+			source: PermissionDecisionSourceSchema,
+			reasonType: PermissionDecisionReasonTypeSchema.optional(),
+			ruleSource: PermissionDecisionRuleSourceSchema.optional(),
+			grantScope: PermissionDecisionGrantScopeSchema.optional(),
+			// What decided the call, composed by the CLI: "unknown", "rule:<source>", "mode:<mode>", "hook:<event>", "bashMiss:<kind>", …
+			reasonCode: z.string().min(1).optional(),
+			circuitBreaker: PermissionDecisionCircuitBreakerSchema.optional(),
+			classifierCategory: PermissionDecisionClassifierCategorySchema.optional(),
+		},
+	)
 	.strict();
 
 const GitRemoteVisibilitySchema = z
-	.object({
-		name: z.string().optional(),
-		host: z.string().optional(),
-		remote: z.string().optional(),
-		visibility: z.string().optional(),
-	})
+	.object(
+		{
+			name: z.string().optional(),
+			host: z.string().optional(),
+			remote: z.string().optional(),
+			visibility: z.string().optional(),
+		},
+	)
 	.strict();
 
 // Git repository state the permission classifier sees.
 const ClassifierGitStateSchema = z
-	.object({
-		cwd: z.string().optional(),
-		root: z.union([z.string(), z.null()]).optional(),
-		branch: z.union([z.string(), z.null()]).optional(),
-		default_branch: z.union([z.string(), z.null()]).optional(),
-		status: z
-			.union([
-				z
-					.object({
-						clean: z.boolean().optional(),
-						counts: z
-							.object({
-								staged: z.number().optional(),
-								modified: z.number().optional(),
-								untracked: z.null().optional(),
-								untracked_normal: z.number().optional(),
-							})
-							.strict()
-							.optional(),
-						porcelain: z.null().optional(),
-						truncated: z.boolean().optional(),
-					})
-					.strict(),
-				z.null(),
-			])
-			.optional(),
-		visibility: z
-			.union([
-				z
-					.object({
-						origin: z.union([GitRemoteVisibilitySchema, z.null()]).optional(),
-						push_remote: z.union([z.string(), z.null()]).optional(),
-						remotes: z.array(GitRemoteVisibilitySchema).optional(),
-						visibility_cache: z.array(GitRemoteVisibilitySchema).optional(),
-					})
-					.strict(),
-				z.null(),
-			])
-			.optional(),
-		error: z.string().optional(),
-	})
+	.object(
+		{
+			cwd: z.string().optional(),
+			root: z.union([z.string(), z.null()]).optional(),
+			branch: z.union([z.string(), z.null()]).optional(),
+			default_branch: z.union([z.string(), z.null()]).optional(),
+			status: z
+				.union([
+					z
+						.object(
+							{
+								clean: z.boolean().optional(),
+								counts: z
+									.object(
+										{
+											staged: z.number().optional(),
+											modified: z.number().optional(),
+											untracked: z.null().optional(),
+											untracked_normal: z.number().optional(),
+										},
+									)
+									.strict()
+									.optional(),
+								porcelain: z.null().optional(),
+								truncated: z.boolean().optional(),
+							},
+						)
+						.strict(),
+					z.null(),
+				])
+				.optional(),
+			visibility: z
+				.union([
+					z
+						.object(
+							{
+								origin: z.union([GitRemoteVisibilitySchema, z.null()]).optional(),
+								push_remote: z.union([z.string(), z.null()]).optional(),
+								remotes: z.array(GitRemoteVisibilitySchema).optional(),
+								visibility_cache: z.array(GitRemoteVisibilitySchema).optional(),
+							},
+						)
+						.strict(),
+					z.null(),
+				])
+				.optional(),
+			error: z.string().optional(),
+		},
+	)
 	.strict();
 
 // Git and platform context the permission classifier sees for a turn.
 const ClassifierTurnContextSchema = z
-	.object({
-		git_state: ClassifierGitStateSchema.optional(),
-		live_cwd: z.string().optional(),
-		platform: z.string().optional(),
-	})
+	.object(
+		{
+			git_state: ClassifierGitStateSchema.optional(),
+			live_cwd: z.string().optional(),
+			platform: z.string().optional(),
+		},
+	)
 	.strict();
 
 // Git and platform context the server-side permission classifier saw for a turn.
 const ServerClassifierContextSchema = z
-	.object({
-		request: z.string().optional(),
-		context: ClassifierTurnContextSchema.optional(),
-	})
+	.object(
+		{
+			request: z.string().optional(),
+			context: ClassifierTurnContextSchema.optional(),
+		},
+	)
 	.strict();
 
 export const UserRecordSchema = z
-	.object({
-		type: z.literal("user"),
-		...BaseRecordFields,
-		message: z
-			.object({
-				role: z.literal("user"),
-				content: z.union([z.string(), z.array(ContentBlockSchema)]),
-			})
-			.strict(),
-		toolUseResult: JsonValueSchema.optional(),
-		toolDenialKind: z.string().optional(),
-		sourceToolAssistantUUID: z.string().optional(),
-		sourceToolUseID: z.string().optional(),
-		toolEndsTurn: z.boolean().optional(),
-		promptId: z.string().optional(),
-		permissionMode: z.string().optional(),
-		promptSource: PromptSourceSchema.optional(),
-		queuePriority: z.literal("later").optional(),
-		imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
-		isMeta: z.boolean().optional(),
-		isCompactSummary: z.boolean().optional(),
-		isVisibleInTranscriptOnly: z.boolean().optional(),
-		mcpMeta: z.record(z.string(), JsonValueSchema).optional(),
-		origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-		interruptedMessageId: z.string().optional(),
-		interruptedByShutdown: z.boolean().optional(),
-		interruptedBySendNow: z.boolean().optional(),
-		userFeedback: z.string().optional(),
-		turnOrigin: TurnOriginSchema.optional(),
-		// Producer details for a queued notification, e.g. an Artifact watch that ended.
-		queueOrigin: z
-			.object({
-				kind: QueueOriginKindSchema,
-				source: QueueOriginSourceSchema,
-				slug: z.string(),
-				displayName: z.string(),
-				watchEnded: z.boolean().optional(),
-			})
-			.strict()
-			.optional(),
-		turnPosition: z
-			.object({promptIndex: z.number().optional(), turnIndex: z.number().optional()})
-			.strict()
-			.optional(),
-		// Groups the records of one prompt's turn for attribution (observed on sdk-origin prompts).
-		turnAttributionKey: z.string().optional(),
-		turnCompanion: z.boolean().optional(),
-		// On a meta retry prompt: uuids of earlier messages (e.g. a failed tool-call
-		// response) the CLI logically withdrew. The lines stay in the file.
-		retractedMessageUuids: z.array(z.string()).optional(),
-		queueSkipAttachments: z.boolean().optional(),
-		queueSkipSlashCommands: z.boolean().optional(),
-		// The prompt text was not typed by the user (e.g. pasted or injected into the queue).
-		textNotTyped: z.boolean().optional(),
-		// Parallel arrays, one entry per background-task notice joined into this message.
-		joinedNoticeLengths: z.array(z.number()).optional(),
-		joinedNoticeOwn: z.array(z.boolean()).optional(),
-		joinedNoticeRunIds: z.array(z.union([z.string(), z.null()])).optional(),
-		queueTranscriptOnly: z.boolean().optional(),
-		scheduledTaskId: z.string().optional(),
-		scheduledFireId: z.string().optional(),
-		wakeupSource: WakeupSourceSchema.optional(),
-		classifierMetaLines: z.string().optional(),
-		serverClassifierContext: ServerClassifierContextSchema.optional(),
-		permissionDecision: PermissionDecisionSchema.optional(),
-		// Whether the Bash call answered by this tool_result ran inside the sandbox.
-		sandboxed: z.boolean().optional(),
-		// Safety-classifier stop notice: the id of the assistant message that was withheld.
-		refusedMessageId: z.string().optional(),
-		// Prompt uuids of the earlier turns this record summarizes.
-		summarizedTurnPromptUuids: z.array(z.string()).optional(),
-	})
+	.object(
+		{
+			type: z.literal("user"),
+			...BaseRecordFields,
+			message: z
+				.object(
+					{
+						role: z.literal("user"),
+						content: z.union([z.string(), z.array(ContentBlockSchema)]),
+					},
+				)
+				.strict(),
+			toolUseResult: JsonValueSchema.optional(),
+			toolDenialKind: z.string().optional(),
+			sourceToolAssistantUUID: z.string().optional(),
+			sourceToolUseID: z.string().optional(),
+			toolEndsTurn: z.boolean().optional(),
+			promptId: z.string().optional(),
+			permissionMode: z.string().optional(),
+			promptSource: PromptSourceSchema.optional(),
+			queuePriority: z.literal("later").optional(),
+			imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
+			isMeta: z.boolean().optional(),
+			isCompactSummary: z.boolean().optional(),
+			isVisibleInTranscriptOnly: z.boolean().optional(),
+			mcpMeta: z.record(z.string(), JsonValueSchema).optional(),
+			origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+			interruptedMessageId: z.string().optional(),
+			interruptedByShutdown: z.boolean().optional(),
+			interruptedBySendNow: z.boolean().optional(),
+			userFeedback: z.string().optional(),
+			turnOrigin: TurnOriginSchema.optional(),
+			// Producer details for a queued notification, e.g. an Artifact watch that ended.
+			queueOrigin: z
+				.object(
+					{
+						kind: QueueOriginKindSchema,
+						source: QueueOriginSourceSchema,
+						slug: z.string(),
+						displayName: z.string(),
+						watchEnded: z.boolean().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			turnPosition: z
+				.object(
+					{
+						promptIndex: z.number().optional(),
+						turnIndex: z.number().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			// Groups the records of one prompt's turn for attribution (observed on sdk-origin prompts).
+			turnAttributionKey: z.string().optional(),
+			turnCompanion: z.boolean().optional(),
+			// On a meta retry prompt: uuids of earlier messages (e.g. a failed tool-call
+			// response) the CLI logically withdrew. The lines stay in the file.
+			retractedMessageUuids: z.array(z.string()).optional(),
+			queueSkipAttachments: z.boolean().optional(),
+			queueSkipSlashCommands: z.boolean().optional(),
+			// The prompt text was not typed by the user (e.g. pasted or injected into the queue).
+			textNotTyped: z.boolean().optional(),
+			// Parallel arrays, one entry per background-task notice joined into this message.
+			joinedNoticeLengths: z.array(z.number()).optional(),
+			joinedNoticeOwn: z.array(z.boolean()).optional(),
+			joinedNoticeRunIds: z.array(z.union([z.string(), z.null()])).optional(),
+			queueTranscriptOnly: z.boolean().optional(),
+			scheduledTaskId: z.string().optional(),
+			scheduledFireId: z.string().optional(),
+			wakeupSource: WakeupSourceSchema.optional(),
+			classifierMetaLines: z.string().optional(),
+			serverClassifierContext: ServerClassifierContextSchema.optional(),
+			permissionDecision: PermissionDecisionSchema.optional(),
+			// Whether the Bash call answered by this tool_result ran inside the sandbox.
+			sandboxed: z.boolean().optional(),
+			// Safety-classifier stop notice: the id of the assistant message that was withheld.
+			refusedMessageId: z.string().optional(),
+			// Prompt uuids of the earlier turns this record summarizes.
+			summarizedTurnPromptUuids: z.array(z.string()).optional(),
+		},
+	)
 	.strict();
 
 // Rate-limit window attached to a synthetic usage-limit assistant message.
 const RateLimitInfoSchema = z
-	.object({
-		status: z.string(),
-		resetsAt: z.number(),
-		rateLimitType: z.string(),
-		overageStatus: z.string(),
-		overageDisabledReason: z.string(),
-		isUsingOverage: z.boolean(),
-	})
+	.object(
+		{
+			status: z.string(),
+			resetsAt: z.number(),
+			rateLimitType: z.string(),
+			overageStatus: z.string(),
+			overageDisabledReason: z.string(),
+			isUsingOverage: z.boolean(),
+		},
+	)
 	.strict();
 
 // How the assistant's thinking was surfaced: streamed as `updates`, or `omitted` (empty thinking text).
@@ -600,165 +702,216 @@ export const PromptCacheTtlSchema = z.enum(["5m", "1h"]);
 export const StreamCutCauseSchema = z.enum(["stream_suspended"]);
 
 export const AssistantRecordSchema = z
-	.object({
-		type: z.literal("assistant"),
-		...BaseRecordFields,
-		requestId: z.string().optional(),
-		// `id` of the `api-request` record that produced this message.
-		requestRef: z.string().optional(),
-		requestedModel: z.string().optional(),
-		promptCacheRequested: PromptCacheTtlSchema.optional(),
-		effort: z.string().optional(),
-		message: z
-			.object({
-				role: z.literal("assistant"),
-				model: z.string().optional(),
-				id: z.string().optional(),
-				type: z.string().optional(),
-				content: z.union([z.string(), z.array(ContentBlockSchema)]),
-				stop_reason: z.union([z.string(), z.null()]).optional(),
-				stop_sequence: z.union([z.string(), z.null()]).optional(),
-				usage: z.record(z.string(), JsonValueSchema).optional(),
-				stop_details: z.union([z.record(z.string(), JsonValueSchema), z.null()]).optional(),
-				container: z.union([z.record(z.string(), JsonValueSchema), z.null()]).optional(),
-				context_management: z.union([z.record(z.string(), JsonValueSchema), z.null()]).optional(),
-				diagnostics: z
-					.union([z.array(JsonValueSchema), z.record(z.string(), JsonValueSchema), z.null()])
-					.optional(),
-				input_transformations: z
-					.array(
-						z
-							.object({
-								type: z.string(),
-								path: z.string().optional(),
-								reason: z.string().optional(),
-							})
-							.strict(),
-					)
-					.optional(),
-				safeguard_results: z
-					.array(
-						z
-							.object({
-								type: z.string(),
-								status: z
-									.object({
-										type: z.string(),
-										tool_uses: z
-											.record(
-												z.string(),
-												z.object({type: z.string(), outcome: z.string().optional()}).strict(),
-											)
-											.optional(),
-									})
-									.strict()
-									.optional(),
-							})
-							.strict(),
-					)
-					.optional(),
-			})
-			.strict(),
-		isApiErrorMessage: z.boolean().optional(),
-		// Synthetic API-error record: the failed response carried no tool call.
-		failedResponseHadNoToolCall: z.boolean().optional(),
-		apiErrorStatus: z.union([z.number(), z.string()]).optional(),
-		apiError: z.string().optional(),
-		apiErrorParams: z.object({rate_limit_info: RateLimitInfoSchema}).strict().optional(),
-		quotaLimits: RateLimitInfoSchema.extend({
-			unifiedRateLimitFallbackAvailable: z.boolean(),
-			upgradePaths: z.array(z.string()),
-		})
-			.strict()
-			.optional(),
-		error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-		attributionSkill: z.string().optional(),
-		attributionPlugin: z.string().optional(),
-		attributionMcpServer: z.string().optional(),
-		attributionMcpTool: z.string().optional(),
-		errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-		healsDistinctCarrier: z.boolean().optional(),
-		isAbortedMidStream: z.boolean().optional(),
-		streamCutCause: StreamCutCauseSchema.optional(),
-		advisorModel: z.string().optional(),
-		apiBlockIndex: z.number().optional(),
-		perTurnEffort: z.union([z.string(), z.null()]).optional(),
-		serverClassifierRequest: z.string().optional(),
-		thinkingDisplay: ThinkingDisplaySchema.optional(),
-		// Safety-classifier stop: the id of the withheld assistant message.
-		refusedMessageId: z.string().optional(),
-		// Uuids of the earlier assistant messages this one replaces.
-		supersedesUuids: z.array(z.string()).optional(),
-		thinkingDurationMs: z.number().optional(),
-		// Milliseconds spent streaming tool-call input.
-		toolInputStreamMs: z.number().optional(),
-		truncatedAfterOutput: z.boolean().optional(),
-		// Keyed by tool_use id: the working directory each tool call ran in.
-		wireIngestContext: z.record(z.string(), z.object({cwd: z.string().optional()}).strict()).optional(),
-		// Keyed by tool_use id: the tool input exactly as sent over the wire.
-		wireToolInputs: z.record(z.string(), z.record(z.string(), JsonValueSchema)).optional(),
-	})
+	.object(
+		{
+			type: z.literal("assistant"),
+			...BaseRecordFields,
+			requestId: z.string().optional(),
+			// `id` of the `api-request` record that produced this message.
+			requestRef: z.string().optional(),
+			requestedModel: z.string().optional(),
+			promptCacheRequested: PromptCacheTtlSchema.optional(),
+			effort: z.string().optional(),
+			message: z
+				.object(
+					{
+						role: z.literal("assistant"),
+						model: z.string().optional(),
+						id: z.string().optional(),
+						type: z.string().optional(),
+						content: z.union([z.string(), z.array(ContentBlockSchema)]),
+						stop_reason: z.union([z.string(), z.null()]).optional(),
+						stop_sequence: z.union([z.string(), z.null()]).optional(),
+						usage: z.record(z.string(), JsonValueSchema).optional(),
+						stop_details: z.union([z.record(z.string(), JsonValueSchema), z.null()]).optional(),
+						container: z.union([z.record(z.string(), JsonValueSchema), z.null()]).optional(),
+						context_management: z.union([z.record(z.string(), JsonValueSchema), z.null()]).optional(),
+						diagnostics: z
+							.union([z.array(JsonValueSchema), z.record(z.string(), JsonValueSchema), z.null()])
+							.optional(),
+						input_transformations: z
+							.array(
+								z
+									.object(
+										{
+											type: z.string(),
+											path: z.string().optional(),
+											reason: z.string().optional(),
+										},
+									)
+									.strict(),
+							)
+							.optional(),
+						safeguard_results: z
+							.array(
+								z
+									.object(
+										{
+											type: z.string(),
+											status: z
+												.object(
+													{
+														type: z.string(),
+														tool_uses: z
+															.record(
+																z.string(),
+																z
+																	.object(
+																		{
+																			type: z.string(),
+																			outcome: z.string().optional(),
+																		},
+																	)
+																	.strict(),
+															)
+															.optional(),
+													},
+												)
+												.strict()
+												.optional(),
+										},
+									)
+									.strict(),
+							)
+							.optional(),
+					},
+				)
+				.strict(),
+			isApiErrorMessage: z.boolean().optional(),
+			// Synthetic API-error record: the failed response carried no tool call.
+			failedResponseHadNoToolCall: z.boolean().optional(),
+			apiErrorStatus: z.union([z.number(), z.string()]).optional(),
+			apiError: z.string().optional(),
+			apiErrorParams: z
+				.object(
+					{
+						rate_limit_info: RateLimitInfoSchema,
+					},
+				)
+				.strict()
+				.optional(),
+			quotaLimits: RateLimitInfoSchema.extend(
+				{
+					unifiedRateLimitFallbackAvailable: z.boolean(),
+					upgradePaths: z.array(z.string()),
+				},
+			)
+				.strict()
+				.optional(),
+			error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+			attributionSkill: z.string().optional(),
+			attributionPlugin: z.string().optional(),
+			attributionMcpServer: z.string().optional(),
+			attributionMcpTool: z.string().optional(),
+			errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+			healsDistinctCarrier: z.boolean().optional(),
+			isAbortedMidStream: z.boolean().optional(),
+			streamCutCause: StreamCutCauseSchema.optional(),
+			advisorModel: z.string().optional(),
+			apiBlockIndex: z.number().optional(),
+			perTurnEffort: z.union([z.string(), z.null()]).optional(),
+			serverClassifierRequest: z.string().optional(),
+			thinkingDisplay: ThinkingDisplaySchema.optional(),
+			// Safety-classifier stop: the id of the withheld assistant message.
+			refusedMessageId: z.string().optional(),
+			// Uuids of the earlier assistant messages this one replaces.
+			supersedesUuids: z.array(z.string()).optional(),
+			thinkingDurationMs: z.number().optional(),
+			// Milliseconds spent streaming tool-call input.
+			toolInputStreamMs: z.number().optional(),
+			truncatedAfterOutput: z.boolean().optional(),
+			// Keyed by tool_use id: the working directory each tool call ran in.
+			wireIngestContext: z
+				.record(
+					z.string(),
+					z
+						.object(
+							{
+								cwd: z.string().optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+			// Keyed by tool_use id: the tool input exactly as sent over the wire.
+			wireToolInputs: z.record(z.string(), z.record(z.string(), JsonValueSchema)).optional(),
+		},
+	)
 	.strict();
 
 export const CustomTitleRecordSchema = z
-	.object({
-		type: z.literal("custom-title"),
-		customTitle: z.string(),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("custom-title"),
+			customTitle: z.string(),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 // `<projectDir>/<sessionId>/custom-title.json`, written by the CLI when a
 // session is renamed outside the transcript.
 export const CustomTitleSidecarSchema = z
-	.object({
-		customTitle: z.string(),
-	})
+	.object(
+		{
+			customTitle: z.string(),
+		},
+	)
 	.strict();
 
 export const FileHistorySnapshotSchema = z
-	.object({
-		type: z.literal("file-history-snapshot"),
-		messageId: z.string().optional(),
-		isSnapshotUpdate: z.boolean().optional(),
-		snapshot: z
-			.object({
-				messageId: z.string().optional(),
-				timestamp: z.string().optional(),
-				trackedFileBackups: z.record(z.string(), JsonValueSchema),
-			})
-			.strict(),
-	})
+	.object(
+		{
+			type: z.literal("file-history-snapshot"),
+			messageId: z.string().optional(),
+			isSnapshotUpdate: z.boolean().optional(),
+			snapshot: z
+				.object(
+					{
+						messageId: z.string().optional(),
+						timestamp: z.string().optional(),
+						trackedFileBackups: z.record(z.string(), JsonValueSchema),
+					},
+				)
+				.strict(),
+		},
+	)
 	.strict();
 
 /** One tracked file's backup, written incrementally instead of a whole file-history-snapshot. */
 export const FileHistoryDeltaRecordSchema = z
-	.object({
-		type: z.literal("file-history-delta"),
-		messageId: z.string(),
-		snapshotMessageId: z.string(),
-		trackingPath: z.string(),
-		timestamp: z.string(),
-		backup: z
-			.object({
-				// Null when the file did not exist yet at backup time.
-				backupFileName: z.string().nullable(),
-				version: z.number().int(),
-				backupTime: z.string(),
-				realParentDir: z.string(),
-			})
-			.strict(),
-	})
+	.object(
+		{
+			type: z.literal("file-history-delta"),
+			messageId: z.string(),
+			snapshotMessageId: z.string(),
+			trackingPath: z.string(),
+			timestamp: z.string(),
+			backup: z
+				.object(
+					{
+						// Null when the file did not exist yet at backup time.
+						backupFileName: z.string().nullable(),
+						version: z.number().int(),
+						backupTime: z.string(),
+						realParentDir: z.string(),
+					},
+				)
+				.strict(),
+		},
+	)
 	.strict();
 
 const ForkContextRefRecordSchema = z
-	.object({
-		type: z.literal("fork-context-ref"),
-		agentId: z.string(),
-		parentSessionId: z.string(),
-		parentLastUuid: z.string(),
-		contextLength: z.number().int().nonnegative(),
-	})
+	.object(
+		{
+			type: z.literal("fork-context-ref"),
+			agentId: z.string(),
+			parentSessionId: z.string(),
+			parentLastUuid: z.string(),
+			contextLength: z.number().int().nonnegative(),
+		},
+	)
 	.strict();
 
 // ---------------------------------------------------------------------------
@@ -766,556 +919,734 @@ const ForkContextRefRecordSchema = z
 // ---------------------------------------------------------------------------
 
 const PlanModeAttachmentPayload = z
-	.object({
-		type: z.literal("plan_mode"),
-		planFilePath: z.string().optional(),
-		reminderType: z.string().optional(),
-		isSubAgent: z.boolean().optional(),
-		planExists: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("plan_mode"),
+			planFilePath: z.string().optional(),
+			reminderType: z.string().optional(),
+			isSubAgent: z.boolean().optional(),
+			planExists: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const PlanModeExitAttachmentPayload = z
-	.object({
-		type: z.literal("plan_mode_exit"),
-		planFilePath: z.string().optional(),
-		planExists: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("plan_mode_exit"),
+			planFilePath: z.string().optional(),
+			planExists: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const PlanModeReentryAttachmentPayload = z
-	.object({
-		type: z.literal("plan_mode_reentry"),
-		planFilePath: z.string().optional(),
-		planExists: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("plan_mode_reentry"),
+			planFilePath: z.string().optional(),
+			planExists: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 // Fields shared by all hook attachment payloads
-const HookBaseFields = {
+const HookBaseFields =
+{
 	hookName: z.string(),
 	toolUseID: z.string().optional(),
 	hookEvent: z.string(),
 };
 
 const HookSuccessAttachmentPayload = z
-	.object({
-		type: z.literal("hook_success"),
-		...HookBaseFields,
-		content: z.string().optional(),
-		stdout: z.string().optional(),
-		stderr: z.string().optional(),
-		exitCode: z.number().optional(),
-		command: z.string().optional(),
-		durationMs: z.number().optional(),
-		// Whether this hook run belonged to an account-memory batch (observed false on PostToolBatch).
-		accountMemoryBatch: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("hook_success"),
+			...HookBaseFields,
+			content: z.string().optional(),
+			stdout: z.string().optional(),
+			stderr: z.string().optional(),
+			exitCode: z.number().optional(),
+			command: z.string().optional(),
+			durationMs: z.number().optional(),
+			// Whether this hook run belonged to an account-memory batch (observed false on PostToolBatch).
+			accountMemoryBatch: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const HookNonBlockingErrorAttachmentPayload = z
-	.object({
-		type: z.literal("hook_non_blocking_error"),
-		...HookBaseFields,
-		stderr: z.string().optional(),
-		stdout: z.string().optional(),
-		exitCode: z.number().optional(),
-		command: z.string().optional(),
-		durationMs: z.number().optional(),
-	})
+	.object(
+		{
+			type: z.literal("hook_non_blocking_error"),
+			...HookBaseFields,
+			stderr: z.string().optional(),
+			stdout: z.string().optional(),
+			exitCode: z.number().optional(),
+			command: z.string().optional(),
+			durationMs: z.number().optional(),
+		},
+	)
 	.strict();
 
 const HookBlockingErrorAttachmentPayload = z
-	.object({
-		type: z.literal("hook_blocking_error"),
-		...HookBaseFields,
-		blockingError: z.record(z.string(), JsonValueSchema).optional(),
-		command: z.string().optional(),
-		durationMs: z.number().optional(),
-	})
+	.object(
+		{
+			type: z.literal("hook_blocking_error"),
+			...HookBaseFields,
+			blockingError: z.record(z.string(), JsonValueSchema).optional(),
+			command: z.string().optional(),
+			durationMs: z.number().optional(),
+		},
+	)
 	.strict();
 
 const HookCancelledAttachmentPayload = z
-	.object({
-		type: z.literal("hook_cancelled"),
-		...HookBaseFields,
-		command: z.string().optional(),
-		durationMs: z.number().optional(),
-		timedOut: z.boolean().optional(),
-		timeoutMs: z.number().optional(),
-	})
+	.object(
+		{
+			type: z.literal("hook_cancelled"),
+			...HookBaseFields,
+			command: z.string().optional(),
+			durationMs: z.number().optional(),
+			timedOut: z.boolean().optional(),
+			timeoutMs: z.number().optional(),
+		},
+	)
 	.strict();
 
 const HookSystemMessageAttachmentPayload = z
-	.object({
-		type: z.literal("hook_system_message"),
-		...HookBaseFields,
-		content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
-	})
+	.object(
+		{
+			type: z.literal("hook_system_message"),
+			...HookBaseFields,
+			content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
+		},
+	)
 	.strict();
 
 const HookAdditionalContextAttachmentPayload = z
-	.object({
-		type: z.literal("hook_additional_context"),
-		...HookBaseFields,
-		content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
-	})
+	.object(
+		{
+			type: z.literal("hook_additional_context"),
+			...HookBaseFields,
+			content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
+		},
+	)
 	.strict();
 
 const AsyncHookResponseAttachmentPayload = z
-	.object({
-		type: z.literal("async_hook_response"),
-		processId: z.string(),
-		hookName: z.string(),
-		hookEvent: z.string(),
-		response: z.record(z.string(), JsonValueSchema).optional(),
-		stdout: z.string().optional(),
-		stderr: z.string().optional(),
-		exitCode: z.number().optional(),
-	})
+	.object(
+		{
+			type: z.literal("async_hook_response"),
+			processId: z.string(),
+			hookName: z.string(),
+			hookEvent: z.string(),
+			response: z.record(z.string(), JsonValueSchema).optional(),
+			stdout: z.string().optional(),
+			stderr: z.string().optional(),
+			exitCode: z.number().optional(),
+		},
+	)
 	.strict();
 
 const ToolDefinitionSchema = z
-	.object({
-		name: z.string(),
-		description: z.string().optional(),
-		input_schema: z.record(z.string(), JsonValueSchema).optional(),
-		eager_input_streaming: z.boolean().optional(),
-		defer_loading: z.boolean().optional(),
-	})
+	.object(
+		{
+			name: z.string(),
+			description: z.string().optional(),
+			input_schema: z.record(z.string(), JsonValueSchema).optional(),
+			eager_input_streaming: z.boolean().optional(),
+			defer_loading: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 /** A surfaced tool either carries its full definition or, via `sameAs`, points at the uuid of the earlier record that did. */
 const SurfacedToolDefinitionSchema = z.union([
-	z.object({name: z.string(), listing: z.string(), definition: ToolDefinitionSchema}).strict(),
-	z.object({name: z.string(), listing: z.string(), sameAs: z.string()}).strict(),
+	z
+		.object(
+			{
+				name: z.string(),
+				listing: z.string(),
+				definition: ToolDefinitionSchema,
+			},
+		)
+		.strict(),
+	z
+		.object(
+			{
+				name: z.string(),
+				listing: z.string(),
+				sameAs: z.string(),
+			},
+		)
+		.strict(),
 ]);
 
 const DeferredToolsDeltaAttachmentPayload = z
-	.object({
-		type: z.literal("deferred_tools_delta"),
-		addedNames: z.array(z.string()).optional(),
-		addedLines: z.array(z.string()).optional(),
-		removedNames: z.array(z.string()).optional(),
-		readdedNames: z.array(z.string()).optional(),
-		runsAgainNames: z.array(z.string()).optional(),
-		pendingMcpServers: z.array(z.string()).optional(),
-		needsAuthMcpServers: z.array(z.string()).optional(),
-		wireHiddenNames: z.array(z.string()).optional(),
-		surfacedNames: z.array(z.string()).optional(),
-		removedByBlock: z.array(z.string()).optional(),
-		surfacedDefinitions: z.array(SurfacedToolDefinitionSchema).optional(),
-		restoredNames: z.array(z.string()).optional(),
-		loadedNames: z.array(z.string()).optional(),
-		retractedTools: z.array(z.object({name: z.string(), cause: z.string().optional()}).strict()).optional(),
-		failedMcpServers: z
-			.array(
-				z
-					.object({
-						name: z.string(),
-						errorCode: z.string().optional(),
-						error: z.string().optional(),
-					})
-					.strict(),
-			)
-			.optional(),
-	})
+	.object(
+		{
+			type: z.literal("deferred_tools_delta"),
+			addedNames: z.array(z.string()).optional(),
+			addedLines: z.array(z.string()).optional(),
+			removedNames: z.array(z.string()).optional(),
+			readdedNames: z.array(z.string()).optional(),
+			runsAgainNames: z.array(z.string()).optional(),
+			pendingMcpServers: z.array(z.string()).optional(),
+			needsAuthMcpServers: z.array(z.string()).optional(),
+			wireHiddenNames: z.array(z.string()).optional(),
+			surfacedNames: z.array(z.string()).optional(),
+			removedByBlock: z.array(z.string()).optional(),
+			surfacedDefinitions: z.array(SurfacedToolDefinitionSchema).optional(),
+			restoredNames: z.array(z.string()).optional(),
+			loadedNames: z.array(z.string()).optional(),
+			retractedTools: z
+				.array(
+					z
+						.object(
+							{
+								name: z.string(),
+								cause: z.string().optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+			failedMcpServers: z
+				.array(
+					z
+						.object(
+							{
+								name: z.string(),
+								errorCode: z.string().optional(),
+								error: z.string().optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+		},
+	)
 	.strict();
 
 const AgentListingDeltaAttachmentPayload = z
-	.object({
-		type: z.literal("agent_listing_delta"),
-		addedTypes: z.array(z.string()).optional(),
-		addedLines: z.array(z.string()).optional(),
-		removedTypes: z.array(z.string()).optional(),
-		builtInTypes: z.array(z.string()).optional(),
-		builtInPluginTypes: z.array(z.string()).optional(),
-		isInitial: z.boolean().optional(),
-		showConcurrencyNote: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("agent_listing_delta"),
+			addedTypes: z.array(z.string()).optional(),
+			addedLines: z.array(z.string()).optional(),
+			removedTypes: z.array(z.string()).optional(),
+			builtInTypes: z.array(z.string()).optional(),
+			builtInPluginTypes: z.array(z.string()).optional(),
+			isInitial: z.boolean().optional(),
+			showConcurrencyNote: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const McpInstructionsDeltaAttachmentPayload = z
-	.object({
-		type: z.literal("mcp_instructions_delta"),
-		addedNames: z.array(z.string()).optional(),
-		addedBlocks: z.array(z.string()).optional(),
-		removedNames: z.array(z.string()).optional(),
-	})
+	.object(
+		{
+			type: z.literal("mcp_instructions_delta"),
+			addedNames: z.array(z.string()).optional(),
+			addedBlocks: z.array(z.string()).optional(),
+			removedNames: z.array(z.string()).optional(),
+		},
+	)
 	.strict();
 
 const SkillListingAttachmentPayload = z
-	.object({
-		type: z.literal("skill_listing"),
-		content: z.string().optional(),
-		skillCount: z.number().optional(),
-		isInitial: z.boolean().optional(),
-		names: z.array(z.string()).optional(),
-		// Parallel to `names`: a content digest per listed skill.
-		digests: z.array(z.string()).optional(),
-	})
+	.object(
+		{
+			type: z.literal("skill_listing"),
+			content: z.string().optional(),
+			skillCount: z.number().optional(),
+			isInitial: z.boolean().optional(),
+			names: z.array(z.string()).optional(),
+			// Parallel to `names`: a content digest per listed skill.
+			digests: z.array(z.string()).optional(),
+		},
+	)
 	.strict();
 
 const DynamicSkillAttachmentPayload = z
-	.object({
-		type: z.literal("dynamic_skill"),
-		skillDir: z.string().optional(),
-		skillNames: z.array(z.string()).optional(),
-		displayPath: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("dynamic_skill"),
+			skillDir: z.string().optional(),
+			skillNames: z.array(z.string()).optional(),
+			displayPath: z.string().optional(),
+		},
+	)
 	.strict();
 
 // Fields shared by task/todo reminder payloads
-const ReminderBaseFields = {
+const ReminderBaseFields =
+{
 	content: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
 	itemCount: z.number().optional(),
 };
 
-const TaskReminderAttachmentPayload = z.object({type: z.literal("task_reminder"), ...ReminderBaseFields}).strict();
-
-const TaskStatusAttachmentPayload = z
-	.object({
-		type: z.literal("task_status"),
-		taskId: z.string(),
-		taskType: z.string().optional(),
-		description: z.string().optional(),
-		status: z.string(),
-		deltaSummary: z.union([z.string(), z.null()]).optional(),
-		outputFilePath: z.string().optional(),
-		canContinueAgent: z.boolean().optional(),
-		shell: z
-			.object({
-				command: z.string().optional(),
-				kind: z.string().optional(),
-				toolUseId: z.string().optional(),
-			})
-			.strict()
-			.optional(),
-	})
+const TaskReminderAttachmentPayload = z
+	.object(
+		{
+			type: z.literal("task_reminder"),
+			...ReminderBaseFields,
+		},
+	)
 	.strict();
 
-const TodoReminderAttachmentPayload = z.object({type: z.literal("todo_reminder"), ...ReminderBaseFields}).strict();
+const TaskStatusAttachmentPayload = z
+	.object(
+		{
+			type: z.literal("task_status"),
+			taskId: z.string(),
+			taskType: z.string().optional(),
+			description: z.string().optional(),
+			status: z.string(),
+			deltaSummary: z.union([z.string(), z.null()]).optional(),
+			outputFilePath: z.string().optional(),
+			canContinueAgent: z.boolean().optional(),
+			shell: z
+				.object(
+					{
+						command: z.string().optional(),
+						kind: z.string().optional(),
+						toolUseId: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
+	.strict();
+
+const TodoReminderAttachmentPayload = z
+	.object(
+		{
+			type: z.literal("todo_reminder"),
+			...ReminderBaseFields,
+		},
+	)
+	.strict();
 
 const TotalTokensReminderAttachmentPayload = z
-	.object({
-		type: z.literal("total_tokens_reminder"),
-		text: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("total_tokens_reminder"),
+			text: z.string(),
+		},
+	)
 	.strict();
 
 /** The context window's token budget: `used` of `total`, with `remaining` left. */
 const TokenUsageAttachmentPayload = z
-	.object({
-		type: z.literal("token_usage"),
-		used: z.number().int(),
-		total: z.number().int(),
-		remaining: z.number().int(),
-	})
+	.object(
+		{
+			type: z.literal("token_usage"),
+			used: z.number().int(),
+			total: z.number().int(),
+			remaining: z.number().int(),
+		},
+	)
 	.strict();
 
 const EditedTextFileAttachmentPayload = z
-	.object({
-		type: z.literal("edited_text_file"),
-		filename: z.string(),
-		snippet: z.string().optional(),
-		displayPath: z.string().optional(),
-		rereadEntry: z
-			.object({
-				timestamp: z.number(),
-				contentHash: z.string(),
-				contentLength: z.number().int(),
-				isPartialView: z.boolean().optional(),
-			})
-			.strict()
-			.optional(),
-	})
+	.object(
+		{
+			type: z.literal("edited_text_file"),
+			filename: z.string(),
+			snippet: z.string().optional(),
+			displayPath: z.string().optional(),
+			rereadEntry: z
+				.object(
+					{
+						timestamp: z.number(),
+						contentHash: z.string(),
+						contentLength: z.number().int(),
+						isPartialView: z.boolean().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 const FileAttachmentPayload = z
-	.object({
-		type: z.literal("file"),
-		filename: z.string(),
-		content: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-		displayPath: z.string().optional(),
-		readNotes: z.object({memoryNote: z.string().optional()}).strict().optional(),
-		// How a saved copy of the file was framed when attached.
-		savedCopyFraming: z.object({enveloped: z.boolean()}).strict().optional(),
-	})
+	.object(
+		{
+			type: z.literal("file"),
+			filename: z.string(),
+			content: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+			displayPath: z.string().optional(),
+			readNotes: z
+				.object(
+					{
+						memoryNote: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			// How a saved copy of the file was framed when attached.
+			savedCopyFraming: z
+				.object(
+					{
+						enveloped: z.boolean(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 const AlreadyReadFileAttachmentPayload = z
-	.object({
-		type: z.literal("already_read_file"),
-		filename: z.string(),
-		content: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-		displayPath: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("already_read_file"),
+			filename: z.string(),
+			content: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+			displayPath: z.string().optional(),
+		},
+	)
 	.strict();
 
 const DirectoryAttachmentPayload = z
-	.object({
-		type: z.literal("directory"),
-		path: z.string().optional(),
-		content: z.string().optional(),
-		displayPath: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("directory"),
+			path: z.string().optional(),
+			content: z.string().optional(),
+			displayPath: z.string().optional(),
+		},
+	)
 	.strict();
 
 const CompactFileReferenceAttachmentPayload = z
-	.object({
-		type: z.literal("compact_file_reference"),
-		filename: z.string().optional(),
-		displayPath: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("compact_file_reference"),
+			filename: z.string().optional(),
+			displayPath: z.string().optional(),
+		},
+	)
 	.strict();
 
 const ReadTruncationNoticeAttachmentPayload = z
-	.object({
-		type: z.literal("read_truncation_notice"),
-		banner: z.string(),
-		toolUseID: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("read_truncation_notice"),
+			banner: z.string(),
+			toolUseID: z.string().optional(),
+		},
+	)
 	.strict();
 
 const DateChangeAttachmentPayload = z
-	.object({
-		type: z.literal("date_change"),
-		newDate: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("date_change"),
+			newDate: z.string(),
+		},
+	)
 	.strict();
 
 const CommandPermissionsAttachmentPayload = z
-	.object({
-		type: z.literal("command_permissions"),
-		allowedTools: z.array(JsonValueSchema).optional(),
-		model: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("command_permissions"),
+			allowedTools: z.array(JsonValueSchema).optional(),
+			model: z.string().optional(),
+		},
+	)
 	.strict();
 
 const DiagnosticsAttachmentPayload = z
-	.object({
-		type: z.literal("diagnostics"),
-		files: z.array(JsonValueSchema).optional(),
-		isNew: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("diagnostics"),
+			files: z.array(JsonValueSchema).optional(),
+			isNew: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const QueuedCommandAttachmentPayload = z
-	.object({
-		type: z.literal("queued_command"),
-		prompt: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
-		commandMode: z.string().optional(),
-		imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
-		origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-		timestamp: z.string().optional(),
-		isMeta: z.boolean().optional(),
-		source_uuid: z.string().optional(),
-		delivery_id: z.string().optional(),
-		reminderId: z.string().optional(),
-		humanTurn: z.boolean().optional(),
-		runId: z.string().optional(),
-		toolsUsedDelta: z.array(z.string()).optional(),
-		usage: z
-			.object({
-				totalTokens: z.number().optional(),
-				toolUses: z.number().optional(),
-				durationMs: z.number().optional(),
-			})
-			.strict()
-			.optional(),
-	})
+	.object(
+		{
+			type: z.literal("queued_command"),
+			prompt: z.union([z.string(), z.array(JsonValueSchema)]).optional(),
+			commandMode: z.string().optional(),
+			imagePasteIds: z.array(z.union([z.string(), z.number()])).optional(),
+			origin: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+			timestamp: z.string().optional(),
+			isMeta: z.boolean().optional(),
+			source_uuid: z.string().optional(),
+			delivery_id: z.string().optional(),
+			reminderId: z.string().optional(),
+			humanTurn: z.boolean().optional(),
+			runId: z.string().optional(),
+			toolsUsedDelta: z.array(z.string()).optional(),
+			usage: z
+				.object(
+					{
+						totalTokens: z.number().optional(),
+						toolUses: z.number().optional(),
+						durationMs: z.number().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 const SelectedLinesInIdeAttachmentPayload = z
-	.object({
-		type: z.literal("selected_lines_in_ide"),
-		ideName: z.string().optional(),
-		lineStart: z.number().optional(),
-		lineEnd: z.number().optional(),
-		filename: z.string().optional(),
-		content: z.string().optional(),
-		displayPath: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("selected_lines_in_ide"),
+			ideName: z.string().optional(),
+			lineStart: z.number().optional(),
+			lineEnd: z.number().optional(),
+			filename: z.string().optional(),
+			content: z.string().optional(),
+			displayPath: z.string().optional(),
+		},
+	)
 	.strict();
 
 const OpenedFileInIdeAttachmentPayload = z
-	.object({
-		type: z.literal("opened_file_in_ide"),
-		filename: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("opened_file_in_ide"),
+			filename: z.string().optional(),
+		},
+	)
 	.strict();
 
 const CompanionIntroAttachmentPayload = z
-	.object({
-		type: z.literal("companion_intro"),
-		name: z.string().optional(),
-		species: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("companion_intro"),
+			name: z.string().optional(),
+			species: z.string().optional(),
+		},
+	)
 	.strict();
 
 const InvokedSkillsAttachmentPayload = z
-	.object({
-		type: z.literal("invoked_skills"),
-		skills: z.array(JsonValueSchema).optional(),
-	})
+	.object(
+		{
+			type: z.literal("invoked_skills"),
+			skills: z.array(JsonValueSchema).optional(),
+		},
+	)
 	.strict();
 
 const UltrathinkEffortAttachmentPayload = z
-	.object({
-		type: z.literal("ultrathink_effort"),
-		level: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("ultrathink_effort"),
+			level: z.string().optional(),
+		},
+	)
 	.strict();
 
 const MaxTurnsReachedAttachmentPayload = z
-	.object({
-		type: z.literal("max_turns_reached"),
-		maxTurns: z.number().optional(),
-		turnCount: z.number().optional(),
-	})
+	.object(
+		{
+			type: z.literal("max_turns_reached"),
+			maxTurns: z.number().optional(),
+			turnCount: z.number().optional(),
+		},
+	)
 	.strict();
 
 const AutoModeAttachmentPayload = z
-	.object({
-		type: z.literal("auto_mode"),
-		reminderType: z.string().optional(),
-		autoModeConsentFlow: z.boolean().optional(),
-		finishExposedWork: z.boolean().optional(),
-		bashFirst: z.boolean().optional(),
-		steerOnly: z.boolean().optional(),
-		bypass: z.boolean().optional(),
-		bashFirstSteer: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("auto_mode"),
+			reminderType: z.string().optional(),
+			autoModeConsentFlow: z.boolean().optional(),
+			finishExposedWork: z.boolean().optional(),
+			bashFirst: z.boolean().optional(),
+			steerOnly: z.boolean().optional(),
+			bypass: z.boolean().optional(),
+			bashFirstSteer: z.string().optional(),
+		},
+	)
 	.strict();
 
 const WorkflowKeywordRequestAttachmentPayload = z
-	.object({
-		type: z.literal("workflow_keyword_request"),
-	})
+	.object(
+		{
+			type: z.literal("workflow_keyword_request"),
+		},
+	)
 	.strict();
 
 const AutoModeExitAttachmentPayload = z
-	.object({
-		type: z.literal("auto_mode_exit"),
-		bashFirst: z.boolean().optional(),
-		steerOnly: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("auto_mode_exit"),
+			bashFirst: z.boolean().optional(),
+			steerOnly: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const PlanFileReferenceAttachmentPayload = z
-	.object({
-		type: z.literal("plan_file_reference"),
-		planFilePath: z.string().optional(),
-		planContent: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("plan_file_reference"),
+			planFilePath: z.string().optional(),
+			planContent: z.string().optional(),
+		},
+	)
 	.strict();
 
 const NestedMemoryAttachmentPayload = z
-	.object({
-		type: z.literal("nested_memory"),
-		path: z.string().optional(),
-		content: z.record(z.string(), JsonValueSchema).optional(),
-		displayPath: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("nested_memory"),
+			path: z.string().optional(),
+			content: z.record(z.string(), JsonValueSchema).optional(),
+			displayPath: z.string().optional(),
+		},
+	)
 	.strict();
 
 const TeamContextAttachmentPayload = z
-	.object({
-		type: z.literal("team_context"),
-		agentId: z.string().optional(),
-		agentName: z.string().optional(),
-		teamName: z.string().optional(),
-		teamConfigPath: z.string().optional(),
-		taskListPath: z.string().optional(),
-		hasTaskListTools: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("team_context"),
+			agentId: z.string().optional(),
+			agentName: z.string().optional(),
+			teamName: z.string().optional(),
+			teamConfigPath: z.string().optional(),
+			taskListPath: z.string().optional(),
+			hasTaskListTools: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const BashOutputAudienceNoteAttachmentPayload = z
-	.object({
-		type: z.literal("bash_output_audience_note"),
-		toolUseID: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("bash_output_audience_note"),
+			toolUseID: z.string().optional(),
+		},
+	)
 	.strict();
 
 const BatchingReminderSentAttachmentPayload = z
-	.object({
-		type: z.literal("batching_reminder_sent"),
-		text: z.string().optional(),
-		model: z.string().optional(),
-		clearAt: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("batching_reminder_sent"),
+			text: z.string().optional(),
+			model: z.string().optional(),
+			clearAt: z.string().optional(),
+		},
+	)
 	.strict();
 
 const CredentialOrgAttachmentPayload = z
-	.object({
-		type: z.literal("credential_org"),
-		organizationUuid: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("credential_org"),
+			organizationUuid: z.string().optional(),
+		},
+	)
 	.strict();
 
 const DateAttachmentPayload = z
-	.object({
-		type: z.literal("date"),
-		date: z.string().optional(),
-		changed: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("date"),
+			date: z.string().optional(),
+			changed: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const DeferredToolsRecordAttachmentPayload = z
-	.object({
-		type: z.literal("deferred_tools_record"),
-		entries: z.array(ToolDefinitionSchema).optional(),
-		toolInputCopies: z.array(z.object({id: z.string(), copy: z.string().optional()}).strict()).optional(),
-		nameOnlyAnnouncements: z.array(z.string()).optional(),
-	})
+	.object(
+		{
+			type: z.literal("deferred_tools_record"),
+			entries: z.array(ToolDefinitionSchema).optional(),
+			toolInputCopies: z
+				.array(
+					z
+						.object(
+							{
+								id: z.string(),
+								copy: z.string().optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+			nameOnlyAnnouncements: z.array(z.string()).optional(),
+		},
+	)
 	.strict();
 
 const EnvironmentAttachmentPayload = z
-	.object({
-		type: z.literal("environment"),
-		snapshot: z
-			.object({
-				workingDirectory: z.string().optional(),
-				isWorktree: z.boolean().optional(),
-				isGitRepo: z.boolean().optional(),
-				additionalWorkingDirectories: z.array(z.string()).optional(),
-				platform: z.string().optional(),
-				shell: z.string().optional(),
-				osVersion: z.string().optional(),
-				scratchpadDirectory: z.string().optional(),
-			})
-			.strict()
-			.optional(),
-		changes: z
-			.array(
-				z
-					.object({
-						field: z.string(),
-						from: z.string().optional(),
-						added: z.array(z.string()).optional(),
-						removed: z.array(z.string()).optional(),
-					})
-					.strict(),
-			)
-			.optional(),
-	})
+	.object(
+		{
+			type: z.literal("environment"),
+			snapshot: z
+				.object(
+					{
+						workingDirectory: z.string().optional(),
+						isWorktree: z.boolean().optional(),
+						isGitRepo: z.boolean().optional(),
+						additionalWorkingDirectories: z.array(z.string()).optional(),
+						platform: z.string().optional(),
+						shell: z.string().optional(),
+						osVersion: z.string().optional(),
+						scratchpadDirectory: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			changes: z
+				.array(
+					z
+						.object(
+							{
+								field: z.string(),
+								from: z.string().optional(),
+								added: z.array(z.string()).optional(),
+								removed: z.array(z.string()).optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+		},
+	)
 	.strict();
 
 const ForkBriefingAttachmentPayload = z
-	.object({
-		type: z.literal("fork_briefing"),
-		text: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("fork_briefing"),
+			text: z.string().optional(),
+		},
+	)
 	.strict();
 
 const HookPermissionDecisionAttachmentPayload = z
-	.object({
-		type: z.literal("hook_permission_decision"),
-		decision: z.string().optional(),
-		toolUseID: z.string().optional(),
-		hookEvent: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("hook_permission_decision"),
+			decision: z.string().optional(),
+			toolUseID: z.string().optional(),
+			hookEvent: z.string().optional(),
+		},
+	)
 	.strict();
 
 /**
@@ -1340,201 +1671,264 @@ export const ContextRefreshReasonSchema = z.enum([
 ]);
 
 const InstructionsAttachmentPayload = z
-	.object({
-		type: z.literal("instructions"),
-		files: z
-			.array(
-				z
-					.object({
-						path: z.string(),
-						type: z.string().optional(),
-						content: z.string().optional(),
-					})
-					.strict(),
-			)
-			.optional(),
-		changed: z.boolean().optional(),
-		reason: ContextRefreshReasonSchema.optional(),
-		removed: z.array(z.string()).optional(),
-	})
+	.object(
+		{
+			type: z.literal("instructions"),
+			files: z
+				.array(
+					z
+						.object(
+							{
+								path: z.string(),
+								type: z.string().optional(),
+								content: z.string().optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+			changed: z.boolean().optional(),
+			reason: ContextRefreshReasonSchema.optional(),
+			removed: z.array(z.string()).optional(),
+		},
+	)
 	.strict();
 
 const ModelAttachmentPayload = z
-	.object({
-		type: z.literal("model"),
-		identity: z
-			.object({
-				modelId: z.string().optional(),
-				// Null when the CLI does not recognize the --model id.
-				marketingName: z.string().nullable().optional(),
-				knowledgeCutoff: z.string().nullable().optional(),
-			})
-			.strict()
-			.optional(),
-		text: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("model"),
+			identity: z
+				.object(
+					{
+						modelId: z.string().optional(),
+						// Null when the CLI does not recognize the --model id.
+						marketingName: z.string().nullable().optional(),
+						knowledgeCutoff: z.string().nullable().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			text: z.string().optional(),
+		},
+	)
 	.strict();
 
 const OutputStyleAttachmentPayload = z
-	.object({
-		type: z.literal("output_style"),
-		style: z.string().optional(),
-		turnReminder: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("output_style"),
+			style: z.string().optional(),
+			turnReminder: z.string().optional(),
+		},
+	)
 	.strict();
 
 const OutputStyleInstructionsAttachmentPayload = z
-	.object({
-		type: z.literal("output_style_instructions"),
-		style: z.object({name: z.string().optional(), prompt: z.string().optional()}).strict().optional(),
-	})
+	.object(
+		{
+			type: z.literal("output_style_instructions"),
+			style: z
+				.object(
+					{
+						name: z.string().optional(),
+						prompt: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 const PromptSnapshotAttachmentPayload = z
-	.object({
-		type: z.literal("prompt_snapshot"),
-		systemPrompt: z.array(z.string()).optional(),
-		reminderFold: z.boolean().optional(),
-		echoWireToolInputs: z.boolean().optional(),
-		contextRendering: z.string().optional(),
-		tools: z
-			.array(
-				z
-					.object({
-						name: z.string(),
-						description: z.string().optional(),
-						schema: z.record(z.string(), JsonValueSchema).optional(),
-					})
-					.strict(),
-			)
-			.optional(),
-		cliPrefix: z.string().optional(),
-		systemTurns: z.boolean().optional(),
-		toolChangeHeader: z.boolean().optional(),
-		inlineTools: z.boolean().optional(),
-		keptReminders: z.boolean().optional(),
-		hostPrompt: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("prompt_snapshot"),
+			systemPrompt: z.array(z.string()).optional(),
+			reminderFold: z.boolean().optional(),
+			echoWireToolInputs: z.boolean().optional(),
+			contextRendering: z.string().optional(),
+			tools: z
+				.array(
+					z
+						.object(
+							{
+								name: z.string(),
+								description: z.string().optional(),
+								schema: z.record(z.string(), JsonValueSchema).optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+			cliPrefix: z.string().optional(),
+			systemTurns: z.boolean().optional(),
+			toolChangeHeader: z.boolean().optional(),
+			inlineTools: z.boolean().optional(),
+			keptReminders: z.boolean().optional(),
+			hostPrompt: z.string().optional(),
+		},
+	)
 	.strict();
 
 const RemoteSessionChangeAttachmentPayload = z
-	.object({
-		type: z.literal("remote_session_change"),
-		url: z.union([z.string(), z.null()]).optional(),
-		commit: z.string().optional(),
-		pr: z.string().optional(),
-		sendUserFileHint: z.boolean().optional(),
-		managedCommit: z.boolean().optional(),
-		managedPr: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("remote_session_change"),
+			url: z.union([z.string(), z.null()]).optional(),
+			commit: z.string().optional(),
+			pr: z.string().optional(),
+			sendUserFileHint: z.boolean().optional(),
+			managedCommit: z.boolean().optional(),
+			managedPr: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const SessionContextAttachmentPayload = z
-	.object({
-		type: z.literal("session_context"),
-		context: z.object({userEmail: z.string().optional(), gitStatus: z.string().optional()}).strict().optional(),
-		changed: z.boolean().optional(),
-		reason: ContextRefreshReasonSchema.optional(),
-	})
+	.object(
+		{
+			type: z.literal("session_context"),
+			context: z
+				.object(
+					{
+						userEmail: z.string().optional(),
+						gitStatus: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			changed: z.boolean().optional(),
+			reason: ContextRefreshReasonSchema.optional(),
+		},
+	)
 	.strict();
 
 const SkillMentionAttachmentPayload = z
-	.object({
-		type: z.literal("skill_mention"),
-		skillName: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("skill_mention"),
+			skillName: z.string().optional(),
+		},
+	)
 	.strict();
 
 // Session-scoped cron tasks carried over into a resumed session.
 const SessionCronCarryAttachmentPayload = z
-	.object({
-		type: z.literal("session_cron_carry"),
-		tasks: z.array(
-			z
-				.object({
-					id: z.string(),
-					cron: z.string(),
-					prompt: z.string(),
-					createdAt: z.number(),
-					recurring: z.boolean(),
-				})
-				.strict(),
-		),
-	})
+	.object(
+		{
+			type: z.literal("session_cron_carry"),
+			tasks: z.array(
+				z
+					.object(
+						{
+							id: z.string(),
+							cron: z.string(),
+							prompt: z.string(),
+							createdAt: z.number(),
+							recurring: z.boolean(),
+						},
+					)
+					.strict(),
+			),
+		},
+	)
 	.strict();
 
 const InlinedImagePathsAttachmentPayload = z
-	.object({
-		type: z.literal("inlined_image_paths"),
-		paths: z.array(z.string()),
-	})
+	.object(
+		{
+			type: z.literal("inlined_image_paths"),
+			paths: z.array(z.string()),
+		},
+	)
 	.strict();
 
 const CriticalSystemReminderAttachmentPayload = z
-	.object({
-		type: z.literal("critical_system_reminder"),
-		content: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("critical_system_reminder"),
+			content: z.string().optional(),
+		},
+	)
 	.strict();
 
 const SilentTurnReminderAttachmentPayload = z
-	.object({
-		type: z.literal("silent_turn_reminder"),
-		text: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("silent_turn_reminder"),
+			text: z.string().optional(),
+		},
+	)
 	.strict();
 
 const ThinkingBlockPositionSchema = z
-	.object({messageIndex: z.number().optional(), blockIndex: z.number().optional()})
+	.object(
+		{
+			messageIndex: z.number().optional(),
+			blockIndex: z.number().optional(),
+		},
+	)
 	.strict();
 
 const ThinkingDropAttachmentPayload = z
-	.object({
-		type: z.literal("thinking_drop"),
-		requestId: z.string().optional(),
-		model: z.string().optional(),
-		querySource: z.string().optional(),
-		thinkingBlocksSent: z.number().optional(),
-		thinkingTurnsSent: z.number().optional(),
-		newlyDropped: z
-			.object({
-				blockCount: z.number().optional(),
-				turnCount: z.number().optional(),
-				reason: z.string().optional(),
-				first: ThinkingBlockPositionSchema.optional(),
-				last: ThinkingBlockPositionSchema.optional(),
-				reasonCounts: z.record(z.string(), z.number()).optional(),
-			})
-			.strict()
-			.optional(),
-		blockHashes: z.array(z.string()).optional(),
-		firstReportForThreadInProcess: z.boolean().optional(),
-		clientChange: z
-			.object({
-				kinds: z.string().optional(),
-				firstChangedMessageIndex: z.number().optional(),
-				baseline: z.string().optional(),
-				callNumber: z.number().optional(),
-			})
-			.strict()
-			.optional(),
-	})
+	.object(
+		{
+			type: z.literal("thinking_drop"),
+			requestId: z.string().optional(),
+			model: z.string().optional(),
+			querySource: z.string().optional(),
+			thinkingBlocksSent: z.number().optional(),
+			thinkingTurnsSent: z.number().optional(),
+			newlyDropped: z
+				.object(
+					{
+						blockCount: z.number().optional(),
+						turnCount: z.number().optional(),
+						reason: z.string().optional(),
+						first: ThinkingBlockPositionSchema.optional(),
+						last: ThinkingBlockPositionSchema.optional(),
+						reasonCounts: z.record(z.string(), z.number()).optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			blockHashes: z.array(z.string()).optional(),
+			firstReportForThreadInProcess: z.boolean().optional(),
+			clientChange: z
+				.object(
+					{
+						kinds: z.string().optional(),
+						firstChangedMessageIndex: z.number().optional(),
+						baseline: z.string().optional(),
+						callNumber: z.number().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 const ThinkingStrippedAttachmentPayload = z
-	.object({
-		type: z.literal("thinking_stripped"),
-		scope: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("thinking_stripped"),
+			scope: z.string().optional(),
+		},
+	)
 	.strict();
 
 // The StructuredOutput tool's result; `data` follows the output schema the caller supplied.
 const StructuredOutputAttachmentPayload = z
-	.object({
-		type: z.literal("structured_output"),
-		toolUseID: z.string(),
-		data: z.record(z.string(), JsonValueSchema),
-	})
+	.object(
+		{
+			type: z.literal("structured_output"),
+			toolUseID: z.string(),
+			data: z.record(z.string(), JsonValueSchema),
+		},
+	)
 	.strict();
 
 export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
@@ -1605,7 +1999,13 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 	StructuredOutputAttachmentPayload,
 ]);
 
-const RenderedAttachmentContentSchema = z.object({content: z.string()}).strict();
+const RenderedAttachmentContentSchema = z
+	.object(
+		{
+			content: z.string(),
+		},
+	)
+	.strict();
 
 export const RenderedRoleSchema = z.enum(["system", "user"]);
 
@@ -1614,56 +2014,77 @@ export const RenderedRoleSchema = z.enum(["system", "user"]);
  * for all the different attachment payloads.
  */
 export const AttachmentRecordSchema = z
-	.object({
-		type: z.literal("attachment"),
-		...BaseRecordFields,
-		attachment: AttachmentPayloadSchema,
-		// The system-reminder text each attachment rendered into the model context.
-		rendered: z.array(RenderedAttachmentContentSchema).optional(),
-		renderedInHumanTurn: z.array(RenderedAttachmentContentSchema).optional(),
-		// Which turn role the rendered text was injected as.
-		renderedRole: RenderedRoleSchema.optional(),
-		renderedBesideToolResult: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("attachment"),
+			...BaseRecordFields,
+			attachment: AttachmentPayloadSchema,
+			// The system-reminder text each attachment rendered into the model context.
+			rendered: z.array(RenderedAttachmentContentSchema).optional(),
+			renderedInHumanTurn: z.array(RenderedAttachmentContentSchema).optional(),
+			// Which turn role the rendered text was injected as.
+			renderedRole: RenderedRoleSchema.optional(),
+			renderedBesideToolResult: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 export const ProgressRecordSchema = z
-	.object({
-		type: z.literal("progress"),
-		...BaseRecordFields,
-		data: z.record(z.string(), JsonValueSchema).optional(),
-		toolUseID: z.string().optional(),
-		parentToolUseID: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("progress"),
+			...BaseRecordFields,
+			data: z.record(z.string(), JsonValueSchema).optional(),
+			toolUseID: z.string().optional(),
+			parentToolUseID: z.string().optional(),
+		},
+	)
 	.strict();
 
 export const CompactMetadataSchema = z
-	.object({
-		trigger: z.enum(["auto", "manual"]),
-		preTokens: z.number(),
-		postTokens: z.number().optional(),
-		durationMs: z.number().optional(),
-		precomputed: z.boolean().optional(),
-		preCompactDiscoveredTools: z.array(z.string()).optional(),
-		preCompactArtifactReadVersions: z.array(z.object({slug: z.string(), ver: z.string()}).strict()).optional(),
-		cumulativeDroppedTokens: z.number().optional(),
-		preservedSegment: z
-			.object({
-				headUuid: z.string(),
-				anchorUuid: z.string(),
-				tailUuid: z.string(),
-			})
-			.strict()
-			.optional(),
-		preservedMessages: z
-			.object({
-				anchorUuid: z.string(),
-				uuids: z.array(z.string()),
-				allUuids: z.array(z.string()),
-			})
-			.strict()
-			.optional(),
-	})
+	.object(
+		{
+			trigger: z.enum(["auto", "manual"]),
+			preTokens: z.number(),
+			postTokens: z.number().optional(),
+			durationMs: z.number().optional(),
+			precomputed: z.boolean().optional(),
+			preCompactDiscoveredTools: z.array(z.string()).optional(),
+			preCompactArtifactReadVersions: z
+				.array(
+					z
+						.object(
+							{
+								slug: z.string(),
+								ver: z.string(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+			cumulativeDroppedTokens: z.number().optional(),
+			preservedSegment: z
+				.object(
+					{
+						headUuid: z.string(),
+						anchorUuid: z.string(),
+						tailUuid: z.string(),
+					},
+				)
+				.strict()
+				.optional(),
+			preservedMessages: z
+				.object(
+					{
+						anchorUuid: z.string(),
+						uuids: z.array(z.string()),
+						allUuids: z.array(z.string()),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 export const ContextUsageCategoryKindSchema = z.enum(["used", "free", "buffer", "deferred"]);
@@ -1671,34 +2092,81 @@ export const ContextUsageOverLimitKindSchema = z.enum(["hard_limit", "compaction
 
 /** Snake_case twin of the CLI's context usage that a `/context` run persists on its `system/local_command` entry. */
 export const ContextUsageTwinSchema = z
-	.object({
-		model: z.string(),
-		total_tokens: z.number().int(),
-		raw_max_tokens: z.number().int(),
-		percentage: z.number(),
-		over_limit: z
-			.object({tokens_over: z.number().int(), kind: ContextUsageOverLimitKindSchema})
-			.strict()
-			.optional(),
-		categories: z.array(
-			z.object({name: z.string(), tokens: z.number(), kind: ContextUsageCategoryKindSchema}).strict(),
-		),
-		mcp_tools: z.array(z.object({name: z.string(), server_name: z.string(), tokens: z.number()}).strict()),
-		memory_files: z.array(z.object({path: z.string(), type: z.string(), tokens: z.number()}).strict()),
-		agents: z.array(z.object({agent_type: z.string(), source: z.string(), tokens: z.number()}).strict()),
-		skills: z
-			.array(
+	.object(
+		{
+			model: z.string(),
+			total_tokens: z.number().int(),
+			raw_max_tokens: z.number().int(),
+			percentage: z.number(),
+			over_limit: z
+				.object(
+					{
+						tokens_over: z.number().int(),
+						kind: ContextUsageOverLimitKindSchema,
+					},
+				)
+				.strict()
+				.optional(),
+			categories: z.array(
 				z
-					.object({
-						name: z.string(),
-						source: z.string(),
-						plugin_name: z.string().optional(),
-						tokens: z.number(),
-					})
+					.object(
+						{
+							name: z.string(),
+							tokens: z.number(),
+							kind: ContextUsageCategoryKindSchema,
+						},
+					)
 					.strict(),
-			)
-			.optional(),
-	})
+			),
+			mcp_tools: z.array(
+				z
+					.object(
+						{
+							name: z.string(),
+							server_name: z.string(),
+							tokens: z.number(),
+						},
+					)
+					.strict(),
+			),
+			memory_files: z.array(
+				z
+					.object(
+						{
+							path: z.string(),
+							type: z.string(),
+							tokens: z.number(),
+						},
+					)
+					.strict(),
+			),
+			agents: z.array(
+				z
+					.object(
+						{
+							agent_type: z.string(),
+							source: z.string(),
+							tokens: z.number(),
+						},
+					)
+					.strict(),
+			),
+			skills: z
+				.array(
+					z
+						.object(
+							{
+								name: z.string(),
+								source: z.string(),
+								plugin_name: z.string().optional(),
+								tokens: z.number(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+		},
+	)
 	.strict();
 
 export type ContextUsageTwin = z.infer<typeof ContextUsageTwinSchema>;
@@ -1716,12 +2184,14 @@ export const ContextWindowSourceSchema = z.enum([
 
 /** The CLI's `ModelUsage`: the four token counts of one API response. */
 const ContextApiUsageSchema = z
-	.object({
-		input_tokens: z.number(),
-		output_tokens: z.number(),
-		cache_read_input_tokens: z.number(),
-		cache_creation_input_tokens: z.number(),
-	})
+	.object(
+		{
+			input_tokens: z.number(),
+			output_tokens: z.number(),
+			cache_read_input_tokens: z.number(),
+			cache_creation_input_tokens: z.number(),
+		},
+	)
 	.strict();
 
 /**
@@ -1729,63 +2199,106 @@ const ContextApiUsageSchema = z
  * `context.breakdown` (the SDK's `get_context_usage` shape) less its `gridRows`.
  */
 export const ContextMirrorFileSchema = z
-	.object({
-		sessionId: z.string(),
-		fetchedAt: z.string(),
-		breakdown: z
-			.object({
-				categories: z.array(
-					z
-						.object({
-							name: z.string(),
-							tokens: z.number(),
-							color: z.string(),
-							isDeferred: z.boolean(),
-							kind: ContextUsageCategoryKindSchema,
-						})
-						.strict(),
-				),
-				totalTokens: z.number(),
-				maxTokens: z.number(),
-				rawMaxTokens: z.number(),
-				autocompactSource: ContextWindowSourceSchema,
-				percentage: z.number(),
-				model: z.string(),
-				memoryFiles: z.array(z.object({path: z.string(), type: z.string(), tokens: z.number()}).strict()),
-				mcpTools: z.array(
-					z
-						.object({name: z.string(), serverName: z.string(), tokens: z.number(), isLoaded: z.boolean()})
-						.strict(),
-				),
-				agents: z.array(z.object({agentType: z.string(), source: z.string(), tokens: z.number()}).strict()),
-				slashCommands: z
-					.object({totalCommands: z.number(), includedCommands: z.number(), tokens: z.number()})
-					.strict()
-					.optional(),
-				skills: z
-					.object({
-						totalSkills: z.number(),
-						includedSkills: z.number(),
-						tokens: z.number(),
-						skillFrontmatter: z.array(
+	.object(
+		{
+			sessionId: z.string(),
+			fetchedAt: z.string(),
+			breakdown: z
+				.object(
+					{
+						categories: z.array(
 							z
-								.object({
-									name: z.string(),
-									source: z.string(),
-									pluginName: z.string().optional(),
-									tokens: z.number(),
-								})
+								.object(
+									{
+										name: z.string(),
+										tokens: z.number(),
+										color: z.string(),
+										isDeferred: z.boolean(),
+										kind: ContextUsageCategoryKindSchema,
+									},
+								)
 								.strict(),
 						),
-					})
-					.strict()
-					.optional(),
-				autoCompactThreshold: z.number().optional(),
-				isAutoCompactEnabled: z.boolean(),
-				apiUsage: ContextApiUsageSchema.nullable(),
-			})
-			.strict(),
-	})
+						totalTokens: z.number(),
+						maxTokens: z.number(),
+						rawMaxTokens: z.number(),
+						autocompactSource: ContextWindowSourceSchema,
+						percentage: z.number(),
+						model: z.string(),
+						memoryFiles: z.array(
+							z
+								.object(
+									{
+										path: z.string(),
+										type: z.string(),
+										tokens: z.number(),
+									},
+								)
+								.strict(),
+						),
+						mcpTools: z.array(
+							z
+								.object(
+									{
+										name: z.string(),
+										serverName: z.string(),
+										tokens: z.number(),
+										isLoaded: z.boolean(),
+									},
+								)
+								.strict(),
+						),
+						agents: z.array(
+							z
+								.object(
+									{
+										agentType: z.string(),
+										source: z.string(),
+										tokens: z.number(),
+									},
+								)
+								.strict(),
+						),
+						slashCommands: z
+							.object(
+								{
+									totalCommands: z.number(),
+									includedCommands: z.number(),
+									tokens: z.number(),
+								},
+							)
+							.strict()
+							.optional(),
+						skills: z
+							.object(
+								{
+									totalSkills: z.number(),
+									includedSkills: z.number(),
+									tokens: z.number(),
+									skillFrontmatter: z.array(
+										z
+											.object(
+												{
+													name: z.string(),
+													source: z.string(),
+													pluginName: z.string().optional(),
+													tokens: z.number(),
+												},
+											)
+											.strict(),
+									),
+								},
+							)
+							.strict()
+							.optional(),
+						autoCompactThreshold: z.number().optional(),
+						isAutoCompactEnabled: z.boolean(),
+						apiUsage: ContextApiUsageSchema.nullable(),
+					},
+				)
+				.strict(),
+		},
+	)
 	.strict();
 
 export type ContextMirrorFile = z.infer<typeof ContextMirrorFileSchema>;
@@ -1800,234 +2313,299 @@ export const ModelRefusalFallbackScopeSchema = z.enum(["session", "local"]);
  * `prompt_submit_outcome`); upstream web never reads it.
  */
 export const PromptSubmitEndingSchema = z
-	.object({
-		ending: z.discriminatedUnion("kind", [
-			z.object({kind: z.literal("stopped_by_hook"), reason: z.string().optional()}).strict(),
-			z.object({kind: z.literal("blocked_by_hook"), reason: z.string().optional()}).strict(),
-			z.object({kind: z.literal("no_verdict"), noVerdictKind: z.string()}).strict(),
-		]),
-		promptKept: z.boolean(),
-	})
+	.object(
+		{
+			ending: z.discriminatedUnion("kind", [
+				z
+					.object(
+						{
+							kind: z.literal("stopped_by_hook"),
+							reason: z.string().optional(),
+						},
+					)
+					.strict(),
+				z
+					.object(
+						{
+							kind: z.literal("blocked_by_hook"),
+							reason: z.string().optional(),
+						},
+					)
+					.strict(),
+				z
+					.object(
+						{
+							kind: z.literal("no_verdict"),
+							noVerdictKind: z.string(),
+						},
+					)
+					.strict(),
+			]),
+			promptKept: z.boolean(),
+		},
+	)
 	.strict();
 
 export const SystemRecordSchema = z
-	.object({
-		type: z.literal("system"),
-		...BaseRecordFields,
-		subtype: z.string().optional(),
-		durationMs: z.number().optional(),
-		content: z.string().optional(),
-		level: z.string().optional(),
-		isMeta: z.boolean().optional(),
-		toolUseID: z.string().optional(),
-		sourceToolUseID: z.string().optional(),
-		hookCount: z.number().optional(),
-		hookInfos: z.array(JsonValueSchema).optional(),
-		hookErrors: z.array(JsonValueSchema).optional(),
-		hookAdditionalContext: z.array(JsonValueSchema).optional(),
-		preventedContinuation: z.boolean().optional(),
-		preventContinuation: z.boolean().optional(),
-		stopReason: z.string().optional(),
-		promptSubmitEnding: PromptSubmitEndingSchema.optional(),
-		hasOutput: z.boolean().optional(),
-		error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-		messageCount: z.number().optional(),
-		pendingBackgroundAgentCount: z.number().optional(),
-		pendingWorkflowCount: z.number().optional(),
-		promptId: z.string().optional(),
-		permissionMode: z.string().optional(),
-		logicalParentUuid: z.string().optional(),
-		cause: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-		compactMetadata: CompactMetadataSchema.optional(),
-		retryAttempt: z.number().optional(),
-		retryInMs: z.number().optional(),
-		maxRetries: z.number().optional(),
-		source: z.string().optional(),
-		commandRun: z.object({command: z.string(), args: z.string().optional()}).strict().optional(),
-		contextUsage: ContextUsageTwinSchema.optional(),
-		url: z.string().optional(),
-		taskId: z.string().optional(),
-		cron: z.string().optional(),
-		prompt: z.string().optional(),
-		taskKind: z.string().optional(),
-		cronKind: z.string().optional(),
-		noOpStreak: z.number().optional(),
-		streakStartedAt: z.string().optional(),
-		foldedUuids: z.array(z.string()).optional(),
-		// `model_refusal_no_fallback`: the API refused the request and no fallback model ran.
-		// `model_refusal_fallback`: a refusal moved the session to `fallbackModel`; the refusal
-		// fields are null when the switch was a revert rather than a fresh refusal.
-		originalModel: z.string().optional(),
-		requestId: z.string().nullable().optional(),
-		apiRefusalCategory: z.string().nullable().optional(),
-		apiRefusalExplanation: z.string().nullable().optional(),
-		refusedUserMessageUuid: z.string().nullable().optional(),
-		trigger: z.literal("refusal").optional(),
-		direction: ModelRefusalFallbackDirectionSchema.optional(),
-		scope: ModelRefusalFallbackScopeSchema.optional(),
-		fallbackModel: z.string().optional(),
-		retractedMessageUuids: z.array(z.string()).optional(),
-		// `memory_saved`: the memory files extractMemories/autoDream wrote, how many of
-		// them are team memories, and the verb ("Improved") autoDream labels them with.
-		writtenPaths: z.array(z.string()).optional(),
-		teamCount: z.number().optional(),
-		verb: z.string().optional(),
-		// `model_consent_fallback`: the usage-credit gate switched `originalModel` to
-		// `fallbackModel`; `choice` is the user's pick and `persistedAsDefault` whether
-		// the switch became the default model rather than this session's only.
-		choice: z.string().optional(),
-		originalModelName: z.string().optional(),
-		persistedAsDefault: z.boolean().optional(),
-		// `informational` "Started in the background: …": the background agent it launched.
-		launchedAgentId: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("system"),
+			...BaseRecordFields,
+			subtype: z.string().optional(),
+			durationMs: z.number().optional(),
+			content: z.string().optional(),
+			level: z.string().optional(),
+			isMeta: z.boolean().optional(),
+			toolUseID: z.string().optional(),
+			sourceToolUseID: z.string().optional(),
+			hookCount: z.number().optional(),
+			hookInfos: z.array(JsonValueSchema).optional(),
+			hookErrors: z.array(JsonValueSchema).optional(),
+			hookAdditionalContext: z.array(JsonValueSchema).optional(),
+			preventedContinuation: z.boolean().optional(),
+			preventContinuation: z.boolean().optional(),
+			stopReason: z.string().optional(),
+			promptSubmitEnding: PromptSubmitEndingSchema.optional(),
+			hasOutput: z.boolean().optional(),
+			error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+			messageCount: z.number().optional(),
+			pendingBackgroundAgentCount: z.number().optional(),
+			pendingWorkflowCount: z.number().optional(),
+			promptId: z.string().optional(),
+			permissionMode: z.string().optional(),
+			logicalParentUuid: z.string().optional(),
+			cause: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
+			compactMetadata: CompactMetadataSchema.optional(),
+			retryAttempt: z.number().optional(),
+			retryInMs: z.number().optional(),
+			maxRetries: z.number().optional(),
+			source: z.string().optional(),
+			commandRun: z
+				.object(
+					{
+						command: z.string(),
+						args: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			contextUsage: ContextUsageTwinSchema.optional(),
+			url: z.string().optional(),
+			taskId: z.string().optional(),
+			cron: z.string().optional(),
+			prompt: z.string().optional(),
+			taskKind: z.string().optional(),
+			cronKind: z.string().optional(),
+			noOpStreak: z.number().optional(),
+			streakStartedAt: z.string().optional(),
+			foldedUuids: z.array(z.string()).optional(),
+			// `model_refusal_no_fallback`: the API refused the request and no fallback model ran.
+			// `model_refusal_fallback`: a refusal moved the session to `fallbackModel`; the refusal
+			// fields are null when the switch was a revert rather than a fresh refusal.
+			originalModel: z.string().optional(),
+			requestId: z.string().nullable().optional(),
+			apiRefusalCategory: z.string().nullable().optional(),
+			apiRefusalExplanation: z.string().nullable().optional(),
+			refusedUserMessageUuid: z.string().nullable().optional(),
+			trigger: z.literal("refusal").optional(),
+			direction: ModelRefusalFallbackDirectionSchema.optional(),
+			scope: ModelRefusalFallbackScopeSchema.optional(),
+			fallbackModel: z.string().optional(),
+			retractedMessageUuids: z.array(z.string()).optional(),
+			// `memory_saved`: the memory files extractMemories/autoDream wrote, how many of
+			// them are team memories, and the verb ("Improved") autoDream labels them with.
+			writtenPaths: z.array(z.string()).optional(),
+			teamCount: z.number().optional(),
+			verb: z.string().optional(),
+			// `model_consent_fallback`: the usage-credit gate switched `originalModel` to
+			// `fallbackModel`; `choice` is the user's pick and `persistedAsDefault` whether
+			// the switch became the default model rather than this session's only.
+			choice: z.string().optional(),
+			originalModelName: z.string().optional(),
+			persistedAsDefault: z.boolean().optional(),
+			// `informational` "Started in the background: …": the background agent it launched.
+			launchedAgentId: z.string().optional(),
+		},
+	)
 	.strict();
 
 export const AiTitleRecordSchema = z
-	.object({
-		type: z.literal("ai-title"),
-		aiTitle: z.string(),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("ai-title"),
+			aiTitle: z.string(),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 export const LastPromptRecordSchema = z
-	.object({
-		type: z.literal("last-prompt"),
-		lastPrompt: z.string().optional(),
-		/** `null` withdraws a checkpoint (CLI 2.1.316 `J2o`). */
-		leafUuid: z.string().nullable().optional(),
-		explicit: z.boolean().optional(),
-		/** A terminal rewind's anchor checkpoint (CLI 2.1.316 `nF`). */
-		rewound: z.boolean().optional(),
-		/** The first message the rewind removed. */
-		cutUuid: z.string().optional(),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("last-prompt"),
+			lastPrompt: z.string().optional(),
+			/** `null` withdraws a checkpoint (CLI 2.1.316 `J2o`). */
+			leafUuid: z.string().nullable().optional(),
+			explicit: z.boolean().optional(),
+			/** A terminal rewind's anchor checkpoint (CLI 2.1.316 `nF`). */
+			rewound: z.boolean().optional(),
+			/** The first message the rewind removed. */
+			cutUuid: z.string().optional(),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 export const QueueOperationRecordSchema = z
-	.object({
-		type: z.literal("queue-operation"),
-		operation: z.string(),
-		timestamp: z.string().optional(),
-		sessionId: z.string().optional(),
-		content: z.string().optional(),
-		reason: z.string().optional(),
-		commandUuid: z.string().optional(),
-		deliveryId: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("queue-operation"),
+			operation: z.string(),
+			timestamp: z.string().optional(),
+			sessionId: z.string().optional(),
+			content: z.string().optional(),
+			reason: z.string().optional(),
+			commandUuid: z.string().optional(),
+			deliveryId: z.string().optional(),
+		},
+	)
 	.strict();
 
 const AgentNameRecordSchema = z
-	.object({
-		type: z.literal("agent-name"),
-		agentName: z.string(),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("agent-name"),
+			agentName: z.string(),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 const AgentSettingRecordSchema = z
-	.object({
-		type: z.literal("agent-setting"),
-		agentSetting: z.string(),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("agent-setting"),
+			agentSetting: z.string(),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 const AgentColorRecordSchema = z
-	.object({
-		type: z.literal("agent-color"),
-		agentColor: z.string(),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("agent-color"),
+			agentColor: z.string(),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 const PermissionModeRecordSchema = z
-	.object({
-		type: z.literal("permission-mode"),
-		permissionMode: z.string(),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("permission-mode"),
+			permissionMode: z.string(),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 const WorktreeSessionSchema = z
-	.object({
-		originalCwd: z.string(),
-		preEnterOriginalCwd: z.string().optional(),
-		worktreePath: z.string(),
-		worktreeName: z.string(),
-		worktreeBranch: z.string().optional(),
-		sessionId: z.string(),
-		originalBranch: z.string().optional(),
-		originalHeadCommit: z.string().optional(),
-		enteredExisting: z.boolean().optional(),
-		hookBased: z.boolean().optional(),
-	})
+	.object(
+		{
+			originalCwd: z.string(),
+			preEnterOriginalCwd: z.string().optional(),
+			worktreePath: z.string(),
+			worktreeName: z.string(),
+			worktreeBranch: z.string().optional(),
+			sessionId: z.string(),
+			originalBranch: z.string().optional(),
+			originalHeadCommit: z.string().optional(),
+			enteredExisting: z.boolean().optional(),
+			hookBased: z.boolean().optional(),
+		},
+	)
 	.strict()
-	.superRefine((session, context) => {
-		if (session.worktreeBranch === undefined && session.hookBased !== true) {
-			context.addIssue({
-				code: "custom",
-				path: ["worktreeBranch"],
-				message: "Required for non-hook worktree sessions",
-			});
+	.superRefine((session, context) =>
+	{
+		if (session.worktreeBranch === undefined && session.hookBased !== true)
+		{
+			context.addIssue(
+				{
+					code: "custom",
+					path: ["worktreeBranch"],
+					message: "Required for non-hook worktree sessions",
+				},
+			);
 		}
 	});
 
 const RelocatedRecordSchema = z
-	.object({
-		type: z.literal("relocated"),
-		sessionId: z.string(),
-		relocatedCwd: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("relocated"),
+			sessionId: z.string(),
+			relocatedCwd: z.string(),
+		},
+	)
 	.strict();
 
 const WorktreeStateRecordSchema = z
-	.object({
-		type: z.literal("worktree-state"),
-		worktreeSession: z.union([WorktreeSessionSchema, z.null()]).optional(),
-		sessionId: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("worktree-state"),
+			worktreeSession: z.union([WorktreeSessionSchema, z.null()]).optional(),
+			sessionId: z.string().optional(),
+		},
+	)
 	.strict();
 
 export const PrLinkRecordSchema = z
-	.object({
-		type: z.literal("pr-link"),
-		prUrl: z.string(),
-		prNumber: z.number(),
-		prRepository: z.string(),
-		sessionId: z.string(),
-		timestamp: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("pr-link"),
+			prUrl: z.string(),
+			prNumber: z.number(),
+			prRepository: z.string(),
+			sessionId: z.string(),
+			timestamp: z.string().optional(),
+		},
+	)
 	.strict();
 
 const ModeRecordSchema = z
-	.object({
-		type: z.literal("mode"),
-		mode: z.string(),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("mode"),
+			mode: z.string(),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 const AtisLatchRecordSchema = z
-	.object({
-		type: z.literal("atis-latch"),
-		atis: z.string().optional(),
-		sessionId: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("atis-latch"),
+			atis: z.string().optional(),
+			sessionId: z.string().optional(),
+		},
+	)
 	.strict();
 
 export const BridgeSessionRecordSchema = z
-	.object({
-		type: z.literal("bridge-session"),
-		sessionId: z.string().optional(),
-		bridgeSessionId: z.string().optional(),
-		lastSequenceNum: z.number().optional(),
-		ownerAccountUuid: z.string().optional(),
-		ownerOrganizationUuid: z.string().optional(),
-		noHistoryBackfill: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("bridge-session"),
+			sessionId: z.string().optional(),
+			bridgeSessionId: z.string().optional(),
+			lastSequenceNum: z.number().optional(),
+			ownerAccountUuid: z.string().optional(),
+			ownerOrganizationUuid: z.string().optional(),
+			noHistoryBackfill: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 /** Why the CLI suppressed syncing this session's history to a remote bridge. */
@@ -2039,95 +2617,111 @@ export const HistorySuppressionCauseSchema = z.enum([
 ]);
 
 export const HistorySuppressionRecordSchema = z
-	.object({
-		type: z.literal("history-suppression"),
-		sessionId: z.string(),
-		cause: HistorySuppressionCauseSchema,
-		vetoedAgainstAccountUuid: z.string().optional(),
-		ts: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("history-suppression"),
+			sessionId: z.string(),
+			cause: HistorySuppressionCauseSchema,
+			vetoedAgainstAccountUuid: z.string().optional(),
+			ts: z.string(),
+		},
+	)
 	.strict();
 
 const ModelCostUsageSchema = z
-	.object({
-		inputTokens: z.number().optional(),
-		outputTokens: z.number().optional(),
-		thinkingTokens: z.number().optional(),
-		cacheReadInputTokens: z.number().optional(),
-		cacheCreationInputTokens: z.number().optional(),
-		cacheCreationEphemeral5mInputTokens: z.number().optional(),
-		cacheCreationEphemeral1hInputTokens: z.number().optional(),
-		webSearchRequests: z.number().optional(),
-		costUSD: z.number().optional(),
-	})
+	.object(
+		{
+			inputTokens: z.number().optional(),
+			outputTokens: z.number().optional(),
+			thinkingTokens: z.number().optional(),
+			cacheReadInputTokens: z.number().optional(),
+			cacheCreationInputTokens: z.number().optional(),
+			cacheCreationEphemeral5mInputTokens: z.number().optional(),
+			cacheCreationEphemeral1hInputTokens: z.number().optional(),
+			webSearchRequests: z.number().optional(),
+			costUSD: z.number().optional(),
+		},
+	)
 	.strict();
 
 export const CostStateRecordSchema = z
-	.object({
-		type: z.literal("cost-state"),
-		sessionId: z.string().optional(),
-		totalCostUSD: z.number().optional(),
-		totalAPIDuration: z.number().optional(),
-		totalAPIDurationWithoutRetries: z.number().optional(),
-		totalToolDuration: z.number().optional(),
-		totalLinesAdded: z.number().optional(),
-		totalLinesRemoved: z.number().optional(),
-		totalDuration: z.number().optional(),
-		startTime: z.number().optional(),
-		// Keyed by model id, e.g. "claude-opus-5-5[1m]".
-		modelUsage: z.record(z.string(), ModelCostUsageSchema).optional(),
-		hasUnknownModelCost: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.literal("cost-state"),
+			sessionId: z.string().optional(),
+			totalCostUSD: z.number().optional(),
+			totalAPIDuration: z.number().optional(),
+			totalAPIDurationWithoutRetries: z.number().optional(),
+			totalToolDuration: z.number().optional(),
+			totalLinesAdded: z.number().optional(),
+			totalLinesRemoved: z.number().optional(),
+			totalDuration: z.number().optional(),
+			startTime: z.number().optional(),
+			// Keyed by model id, e.g. "claude-opus-5-5[1m]".
+			modelUsage: z.record(z.string(), ModelCostUsageSchema).optional(),
+			hasUnknownModelCost: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const FrameLinkRecordSchema = z
-	.object({
-		type: z.literal("frame-link"),
-		sessionId: z.string().optional(),
-		path: z.string().optional(),
-		frameUrl: z.string().optional(),
-		title: z.string().optional(),
-		artifactCount: z.number().optional(),
-		timestamp: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.literal("frame-link"),
+			sessionId: z.string().optional(),
+			path: z.string().optional(),
+			frameUrl: z.string().optional(),
+			title: z.string().optional(),
+			artifactCount: z.number().optional(),
+			timestamp: z.string().optional(),
+		},
+	)
 	.strict();
 
 // Points at the per-session folder holding the session's development mods.
 const DevModsRecordSchema = z
-	.object({
-		type: z.literal("dev-mods"),
-		folder: z.string(),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("dev-mods"),
+			folder: z.string(),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 // Records the account and organization that own a session.
 const SessionOwnerRecordSchema = z
-	.object({
-		type: z.literal("session-owner"),
-		accountUuid: z.string(),
-		organizationUuid: z.string(),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("session-owner"),
+			accountUuid: z.string(),
+			organizationUuid: z.string(),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 // Points a session at the session it was continued in.
 const ContinuedInRecordSchema = z
-	.object({
-		type: z.literal("continued-in"),
-		timestamp: z.string(),
-		sessionId: z.string(),
-		continuedInSessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("continued-in"),
+			timestamp: z.string(),
+			sessionId: z.string(),
+			continuedInSessionId: z.string(),
+		},
+	)
 	.strict();
 
 // Names the tools a session has used so far.
 const ToolsUsedRecordSchema = z
-	.object({
-		type: z.literal("tools-used"),
-		tools: z.array(z.string()),
-		sessionId: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("tools-used"),
+			tools: z.array(z.string()),
+			sessionId: z.string(),
+		},
+	)
 	.strict();
 
 // ---------------------------------------------------------------------------
@@ -2141,68 +2735,82 @@ const ToolsUsedRecordSchema = z
 // ---------------------------------------------------------------------------
 
 export const ApiRequestShapeRecordSchema = z
-	.object({
-		type: z.literal("api-request-shape"),
-		sessionId: z.string(),
-		// Set on records in a subagent transcript: that subagent's id.
-		agentId: z.string().optional(),
-		timestamp: z.string(),
-		version: z.string(),
-		shapeHash: z.string(),
-		shape: z
-			.object({
-				system: z.array(TextBlockSchema),
-				tools: z.array(
-					z.union([
-						ToolDefinitionSchema,
-						// Server tools, e.g. {type: "advisor_20260301", name: "advisor"}.
-						z
-							.object({
-								type: z.string(),
-								name: z.string(),
-								model: z.string(),
-								defer_loading: z.boolean().optional(),
-							})
-							.strict(),
-					]),
-				),
-			})
-			.strict(),
-	})
+	.object(
+		{
+			type: z.literal("api-request-shape"),
+			sessionId: z.string(),
+			// Set on records in a subagent transcript: that subagent's id.
+			agentId: z.string().optional(),
+			timestamp: z.string(),
+			version: z.string(),
+			shapeHash: z.string(),
+			shape: z
+				.object(
+					{
+						system: z.array(TextBlockSchema),
+						tools: z.array(
+							z.union([
+								ToolDefinitionSchema,
+								// Server tools, e.g. {type: "advisor_20260301", name: "advisor"}.
+								z
+									.object(
+										{
+											type: z.string(),
+											name: z.string(),
+											model: z.string(),
+											defer_loading: z.boolean().optional(),
+										},
+									)
+									.strict(),
+							]),
+						),
+					},
+				)
+				.strict(),
+		},
+	)
 	.strict();
 
 // A tool added mid-conversation: either its full definition, or just its name
 // when the definition was already sent.
 const ToolReferenceSchema = z
-	.object({
-		type: z.literal("tool_reference"),
-		name: z.string(),
-	})
+	.object(
+		{
+			type: z.literal("tool_reference"),
+			name: z.string(),
+		},
+	)
 	.strict();
 
 export const ToolAdditionToolSchema = z.discriminatedUnion("type", [
 	z
-		.object({
-			type: z.literal("tool_definition"),
-			definition: ToolDefinitionSchema,
-		})
+		.object(
+			{
+				type: z.literal("tool_definition"),
+				definition: ToolDefinitionSchema,
+			},
+		)
 		.strict(),
 	ToolReferenceSchema,
 ]);
 
 const ToolAdditionBlockSchema = z
-	.object({
-		type: z.literal("tool_addition"),
-		tool: ToolAdditionToolSchema,
-	})
+	.object(
+		{
+			type: z.literal("tool_addition"),
+			tool: ToolAdditionToolSchema,
+		},
+	)
 	.strict();
 
 // A tool removed mid-conversation, named by reference.
 const ToolRemovalBlockSchema = z
-	.object({
-		type: z.literal("tool_removal"),
-		tool: ToolReferenceSchema,
-	})
+	.object(
+		{
+			type: z.literal("tool_removal"),
+			tool: ToolReferenceSchema,
+		},
+	)
 	.strict();
 
 export const ApiRequestBlobRoleSchema = z.enum(["user", "assistant", "system"]);
@@ -2218,21 +2826,32 @@ export const ApiRequestBlobContentBlockSchema = z.discriminatedUnion("type", [
 ]);
 
 export const ApiRequestBlobRecordSchema = z
-	.object({
-		type: z.literal("api-request-blob"),
-		sessionId: z.string(),
-		// Set on records in a subagent transcript: that subagent's id.
-		agentId: z.string().optional(),
-		hash: z.string(),
-		message: z
-			.object({
-				role: ApiRequestBlobRoleSchema,
-				content: z.union([z.string(), z.array(ApiRequestBlobContentBlockSchema)]),
-				output_config: z.object({effort: z.string()}).strict().optional(),
-				clear_at: z.literal("next_user_message").optional(),
-			})
-			.strict(),
-	})
+	.object(
+		{
+			type: z.literal("api-request-blob"),
+			sessionId: z.string(),
+			// Set on records in a subagent transcript: that subagent's id.
+			agentId: z.string().optional(),
+			hash: z.string(),
+			message: z
+				.object(
+					{
+						role: ApiRequestBlobRoleSchema,
+						content: z.union([z.string(), z.array(ApiRequestBlobContentBlockSchema)]),
+						output_config: z
+							.object(
+								{
+									effort: z.string(),
+								},
+							)
+							.strict()
+							.optional(),
+						clear_at: z.literal("next_user_message").optional(),
+					},
+				)
+				.strict(),
+		},
+	)
 	.strict();
 
 /** How the current account holds an artifact the session touched; only the owner's view is observed so far. */
@@ -2246,244 +2865,349 @@ export const ClassifierArtifactAttestationSchema = z.enum(["first_party_type"]);
 
 /** The classifier's cached share/permission probe for one artifact, keyed by artifact id in `artifacts.by_slug`. */
 const ClassifierArtifactSchema = z
-	.object({
-		// Set on an artifact trusted without a share probe; `share` is then absent.
-		attested: ClassifierArtifactAttestationSchema.optional(),
-		// Absent on an attested artifact.
-		share: z
-			.object({
-				mode: ClassifierArtifactShareModeSchema,
-				// Whether the artifact is currently shared live with other viewers.
-				is_shared_live: z.boolean(),
-				// Absent on a share recorded at publish time without a probe.
-				role: ClassifierArtifactShareRoleSchema.optional(),
-				// Set when the share probe was attempted but failed; only `true` is observed.
-				probe_failed: z.literal(true).optional(),
-				// Whether the share state was actually fetched, and against the current account.
-				probed: z.boolean(),
-				probe_current_account: z.boolean(),
-				// Whether the artifact is locked to its Artifact type.
-				type_lock: z.boolean().optional(),
-				// Published paths open for live editing.
-				live_paths: z.array(z.string()),
-				// Runtime capabilities the page declares.
-				// Absent after a failed share probe.
-				capabilities: ArtifactCapabilitiesSchema.optional(),
-				// Whether a capability grant was seen for this artifact in the session.
-				grant_observed: z.boolean(),
-			})
-			.strict()
-			.optional(),
-		// Set when the session published this artifact.
-		published_env: ClassifierArtifactPublishEnvSchema.optional(),
-	})
+	.object(
+		{
+			// Set on an artifact trusted without a share probe; `share` is then absent.
+			attested: ClassifierArtifactAttestationSchema.optional(),
+			// Absent on an attested artifact.
+			share: z
+				.object(
+					{
+						mode: ClassifierArtifactShareModeSchema,
+						// Whether the artifact is currently shared live with other viewers.
+						is_shared_live: z.boolean(),
+						// Absent on a share recorded at publish time without a probe.
+						role: ClassifierArtifactShareRoleSchema.optional(),
+						// Set when the share probe was attempted but failed; only `true` is observed.
+						probe_failed: z.literal(true).optional(),
+						// Whether the share state was actually fetched, and against the current account.
+						probed: z.boolean(),
+						probe_current_account: z.boolean(),
+						// Whether the artifact is locked to its Artifact type.
+						type_lock: z.boolean().optional(),
+						// Published paths open for live editing.
+						live_paths: z.array(z.string()),
+						// Runtime capabilities the page declares.
+						// Absent after a failed share probe.
+						capabilities: ArtifactCapabilitiesSchema.optional(),
+						// Whether a capability grant was seen for this artifact in the session.
+						grant_observed: z.boolean(),
+					},
+				)
+				.strict()
+				.optional(),
+			// Set when the session published this artifact.
+			published_env: ClassifierArtifactPublishEnvSchema.optional(),
+		},
+	)
 	.strict();
 
 const ClassifierRuleSchema = z
-	.object({
-		rule: z.string(),
-		source: z.string(),
-		pattern: z.string().optional(),
-		root: z.union([z.string(), z.null()]).optional(),
-	})
+	.object(
+		{
+			rule: z.string(),
+			source: z.string(),
+			pattern: z.string().optional(),
+			root: z.union([z.string(), z.null()]).optional(),
+		},
+	)
 	.strict();
 
 // What the dangerous-tool-use safeguard's classifier is told about the session.
 // The z.never() arrays and empty objects have only ever been observed empty.
 const DangerousToolUseClassifierContextSchema = z
-	.object({
-		v: z.number(),
-		permission_mode: z.string(),
-		platform: z.string(),
-		live_cwd: z.string(),
-		home_dir: z.string(),
-		// Keyed by settings source, e.g. "userSettings".
-		rule_roots: z.record(z.string(), z.string()),
-		trusted_directories: z
-			.object({
-				primary: z.object({path: z.string(), resolved: z.array(z.string())}).strict(),
-				additional: z.array(z.never()),
-				network: z.array(z.never()),
-				block_reads_outside_working_directories: z.boolean(),
-			})
-			.strict(),
-		rules: z
-			.object({
-				allow: z.array(ClassifierRuleSchema),
-				deny: z.array(ClassifierRuleSchema),
-				ask: z.array(ClassifierRuleSchema),
-			})
-			.strict(),
-		auto_mode: z
-			.object({
-				// Permission-rule strings; "$defaults" stands in for the built-in list.
-				allow: z.array(z.string()),
-				soft_deny: z.array(z.string()),
-				hard_deny: z.array(z.string()),
-				environment: z.array(z.string()),
-			})
-			.strict(),
-		artifact_consent_holdback: z.boolean(),
-		case_insensitive_paths: z.boolean(),
-		restricted: z.boolean(),
-		is_remote_mode: z.boolean(),
-		classify_all_shell: z.boolean(),
-		user_identity: z.string(),
-		dropped: z.object({allow: z.number()}).strict(),
-		git_state: ClassifierGitStateSchema,
-		artifacts: z
-			.object({
-				by_slug: z.record(z.string(), ClassifierArtifactSchema),
-				// Keyed by local file path; maps each published file to its artifact id.
-				by_path: z.record(z.string(), z.object({slug: z.string()}).strict()),
-				// The session's most recent publish.
-				last_publish: z.object({slug: z.string(), env: ClassifierArtifactPublishEnvSchema}).strict().optional(),
-				live_docs: z.array(z.never()),
-				room_armed: z.array(z.never()),
-				type_reads: z.object({}).strict(),
-				session: z
-					.object({
-						frame_env: z.string(),
-						viewer_origin: z.string(),
-						short_links: z.boolean(),
-						ant_build: z.boolean(),
-						comments_in_schema: z.boolean(),
-						handlers: z.boolean(),
-						room_client: z.boolean(),
-						eval_stub: z.boolean(),
-						scratchpad_dir: z.string(),
-						tool_results_dir: z.string(),
-						toolset: z.boolean(),
-						live_edit: z.boolean(),
-						live_doc_stream: z.boolean(),
-						live_paths_schema: z.boolean(),
-						copy_from: z.boolean(),
-						db_str_replace: z.boolean(),
-						types_on: z.boolean(),
-						five_class_asks: z.boolean(),
-						watch_rail: z.string(),
-						auto_react: z.boolean(),
-					})
-					.strict(),
-			})
-			.strict()
-			.optional(),
-		// Ids of system reminders injected into the transcript, and who sent each.
-		system_reminders: z.array(z.object({id: z.string(), provenance: z.string()}).strict()).optional(),
-		prior_turn_context: z
-			.array(
-				z
-					.object({
-						tool_use_ids: z.array(z.string()),
-						context: ClassifierTurnContextSchema,
-					})
-					.strict(),
-			)
-			.optional(),
-	})
+	.object(
+		{
+			v: z.number(),
+			permission_mode: z.string(),
+			platform: z.string(),
+			live_cwd: z.string(),
+			home_dir: z.string(),
+			// Keyed by settings source, e.g. "userSettings".
+			rule_roots: z.record(z.string(), z.string()),
+			trusted_directories: z
+				.object(
+					{
+						primary: z
+							.object(
+								{
+									path: z.string(),
+									resolved: z.array(z.string()),
+								},
+							)
+							.strict(),
+						additional: z.array(z.never()),
+						network: z.array(z.never()),
+						block_reads_outside_working_directories: z.boolean(),
+					},
+				)
+				.strict(),
+			rules: z
+				.object(
+					{
+						allow: z.array(ClassifierRuleSchema),
+						deny: z.array(ClassifierRuleSchema),
+						ask: z.array(ClassifierRuleSchema),
+					},
+				)
+				.strict(),
+			auto_mode: z
+				.object(
+					{
+						// Permission-rule strings; "$defaults" stands in for the built-in list.
+						allow: z.array(z.string()),
+						soft_deny: z.array(z.string()),
+						hard_deny: z.array(z.string()),
+						environment: z.array(z.string()),
+					},
+				)
+				.strict(),
+			artifact_consent_holdback: z.boolean(),
+			case_insensitive_paths: z.boolean(),
+			restricted: z.boolean(),
+			is_remote_mode: z.boolean(),
+			classify_all_shell: z.boolean(),
+			user_identity: z.string(),
+			dropped: z
+				.object(
+					{
+						allow: z.number(),
+					},
+				)
+				.strict(),
+			git_state: ClassifierGitStateSchema,
+			artifacts: z
+				.object(
+					{
+						by_slug: z.record(z.string(), ClassifierArtifactSchema),
+						// Keyed by local file path; maps each published file to its artifact id.
+						by_path: z.record(
+							z.string(),
+							z
+								.object(
+									{
+										slug: z.string(),
+									},
+								)
+								.strict(),
+						),
+						// The session's most recent publish.
+						last_publish: z
+							.object(
+								{
+									slug: z.string(),
+									env: ClassifierArtifactPublishEnvSchema,
+								},
+							)
+							.strict()
+							.optional(),
+						live_docs: z.array(z.never()),
+						room_armed: z.array(z.never()),
+						type_reads: z.object({}).strict(),
+						session: z
+							.object(
+								{
+									frame_env: z.string(),
+									viewer_origin: z.string(),
+									short_links: z.boolean(),
+									ant_build: z.boolean(),
+									comments_in_schema: z.boolean(),
+									handlers: z.boolean(),
+									room_client: z.boolean(),
+									eval_stub: z.boolean(),
+									scratchpad_dir: z.string(),
+									tool_results_dir: z.string(),
+									toolset: z.boolean(),
+									live_edit: z.boolean(),
+									live_doc_stream: z.boolean(),
+									live_paths_schema: z.boolean(),
+									copy_from: z.boolean(),
+									db_str_replace: z.boolean(),
+									types_on: z.boolean(),
+									five_class_asks: z.boolean(),
+									watch_rail: z.string(),
+									auto_react: z.boolean(),
+								},
+							)
+							.strict(),
+					},
+				)
+				.strict()
+				.optional(),
+			// Ids of system reminders injected into the transcript, and who sent each.
+			system_reminders: z
+				.array(
+					z
+						.object(
+							{
+								id: z.string(),
+								provenance: z.string(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+			prior_turn_context: z
+				.array(
+					z
+						.object(
+							{
+								tool_use_ids: z.array(z.string()),
+								context: ClassifierTurnContextSchema,
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+		},
+	)
 	.strict();
 
 export const ApiRequestRecordSchema = z
-	.object({
-		type: z.literal("api-request"),
-		sessionId: z.string(),
-		// Set on records in a subagent transcript: that subagent's id.
-		agentId: z.string().optional(),
-		id: z.string(),
-		timestamp: z.string(),
-		version: z.string(),
-		querySource: z.string(),
-		shapeHash: z.string(),
-		// `id` of the earlier `api-request` whose first `keep` messages this one reuses.
-		base: z.string().optional(),
-		params: z
-			.object({
-				model: z.string(),
-				betas: z.array(z.string()),
-				max_tokens: z.number(),
-				thinking: z.object({type: z.string(), display: z.string()}).strict(),
-				context_management: z
-					.object({edits: z.array(z.object({type: z.string(), keep: z.string()}).strict())})
-					.strict(),
-				safeguards: z
-					.array(
-						z
-							.object({
-								type: z.literal("dangerous_tool_use"),
-								classifier_context: DangerousToolUseClassifierContextSchema,
-							})
+	.object(
+		{
+			type: z.literal("api-request"),
+			sessionId: z.string(),
+			// Set on records in a subagent transcript: that subagent's id.
+			agentId: z.string().optional(),
+			id: z.string(),
+			timestamp: z.string(),
+			version: z.string(),
+			querySource: z.string(),
+			shapeHash: z.string(),
+			// `id` of the earlier `api-request` whose first `keep` messages this one reuses.
+			base: z.string().optional(),
+			params: z
+				.object(
+					{
+						model: z.string(),
+						betas: z.array(z.string()),
+						max_tokens: z.number(),
+						thinking: z
+							.object(
+								{
+									type: z.string(),
+									display: z.string(),
+								},
+							)
 							.strict(),
-					)
-					.optional(),
-				output_config: z.object({effort: z.string()}).strict(),
-			})
-			.strict(),
-		keep: z.number(),
-		// Message hashes appended after the kept `base` prefix.
-		tail: z.array(z.string()),
-		cacheControl: z.array(
-			z
-				.object({
-					// JSON path into the request body, e.g. ["messages", 31, "content", 0].
-					path: z.array(z.union([z.string(), z.number()])),
-					value: z
-						.object({
-							type: z.literal("ephemeral"),
-							ttl: z.string().optional(),
-							scope: z.string().optional(),
-						})
-						.strict(),
-				})
+						context_management: z
+							.object(
+								{
+									edits: z.array(
+										z
+											.object(
+												{
+													type: z.string(),
+													keep: z.string(),
+												},
+											)
+											.strict(),
+									),
+								},
+							)
+							.strict(),
+						safeguards: z
+							.array(
+								z
+									.object(
+										{
+											type: z.literal("dangerous_tool_use"),
+											classifier_context: DangerousToolUseClassifierContextSchema,
+										},
+									)
+									.strict(),
+							)
+							.optional(),
+						output_config: z
+							.object(
+								{
+									effort: z.string(),
+								},
+							)
+							.strict(),
+					},
+				)
 				.strict(),
-		),
-		requestDigest: z.string(),
-	})
+			keep: z.number(),
+			// Message hashes appended after the kept `base` prefix.
+			tail: z.array(z.string()),
+			cacheControl: z.array(
+				z
+					.object(
+						{
+							// JSON path into the request body, e.g. ["messages", 31, "content", 0].
+							path: z.array(z.union([z.string(), z.number()])),
+							value: z
+								.object(
+									{
+										type: z.literal("ephemeral"),
+										ttl: z.string().optional(),
+										scope: z.string().optional(),
+									},
+								)
+								.strict(),
+						},
+					)
+					.strict(),
+			),
+			requestDigest: z.string(),
+		},
+	)
 	.strict();
 
 // `artifacts` is keyed by artifact URL.
 const ArtifactCommentMonitorRecordSchema = z
-	.object({
-		type: z.literal("artifact-comment-monitor"),
-		v: z.number().optional(),
-		sessionId: z.string().optional(),
-		artifacts: z
-			.record(
-				z.string(),
-				z
-					.object({
-						state: z.string().optional(),
-						writtenAtMs: z.number().optional(),
-						title: z.string().optional(),
-					})
-					.strict(),
-			)
-			.optional(),
-	})
+	.object(
+		{
+			type: z.literal("artifact-comment-monitor"),
+			v: z.number().optional(),
+			sessionId: z.string().optional(),
+			artifacts: z
+				.record(
+					z.string(),
+					z
+						.object(
+							{
+								state: z.string().optional(),
+								writtenAtMs: z.number().optional(),
+								title: z.string().optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+		},
+	)
 	.strict();
 
 const ArtifactAutoreactLedgerRecordSchema = z
-	.object({
-		type: z.literal("artifact-autoreact-ledger"),
-		v: z.number().optional(),
-		sessionId: z.string().optional(),
-		accountUuid: z.string().optional(),
-		artifacts: z
-			.record(
-				z.string(),
-				z
-					.object({
-						savedAt: z.number().optional(),
-						stampHighWater: z.union([z.string(), z.null()]).optional(),
-						everBaselined: z.boolean().optional(),
-						everHadThreads: z.boolean().optional(),
-						turnTimestamps: z.array(JsonValueSchema).optional(),
-						threads: z.array(JsonValueSchema).optional(),
-						interrupted: z.boolean().optional(),
-					})
-					.strict(),
-			)
-			.optional(),
-	})
+	.object(
+		{
+			type: z.literal("artifact-autoreact-ledger"),
+			v: z.number().optional(),
+			sessionId: z.string().optional(),
+			accountUuid: z.string().optional(),
+			artifacts: z
+				.record(
+					z.string(),
+					z
+						.object(
+							{
+								savedAt: z.number().optional(),
+								stampHighWater: z.union([z.string(), z.null()]).optional(),
+								everBaselined: z.boolean().optional(),
+								everHadThreads: z.boolean().optional(),
+								turnTimestamps: z.array(JsonValueSchema).optional(),
+								threads: z.array(JsonValueSchema).optional(),
+								interrupted: z.boolean().optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+		},
+	)
 	.strict();
 
 /**
@@ -2534,17 +3258,19 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
 export const TaskStatusSchema = z.enum(["pending", "in_progress", "completed"]);
 
 export const TaskFileSchema = z
-	.object({
-		id: z.string(),
-		subject: z.string(),
-		description: z.string(),
-		status: TaskStatusSchema,
-		blocks: z.array(z.string()),
-		blockedBy: z.array(z.string()),
-		activeForm: z.string().optional(),
-		owner: z.string().optional(),
-		metadata: z.record(z.string(), JsonValueSchema).optional(),
-	})
+	.object(
+		{
+			id: z.string(),
+			subject: z.string(),
+			description: z.string(),
+			status: TaskStatusSchema,
+			blocks: z.array(z.string()),
+			blockedBy: z.array(z.string()),
+			activeForm: z.string().optional(),
+			owner: z.string().optional(),
+			metadata: z.record(z.string(), JsonValueSchema).optional(),
+		},
+	)
 	.strict();
 
 // ---------------------------------------------------------------------------
@@ -2560,47 +3286,60 @@ export const TaskFileSchema = z
 export const SessionRegistryStatusSchema = z.enum(["idle", "busy", "waiting", "shell"]);
 
 export const SessionRegistryFileSchema = z
-	.object({
-		pid: z.number().int().positive(),
-		sessionId: z.string(),
-		cwd: z.string(),
-		startedAt: z.number(),
-		/** The process start time as `ps -o lstart` prints it in UTC. */
-		procStart: z.string(),
-		version: z.string(),
-		peerProtocol: z.number().optional(),
-		peerFeatures: z.array(z.string()).optional(),
-		kind: z.string(),
-		entrypoint: z.string(),
-		pidDomain: z.string().optional(),
-		/** Set when the session runs as a background job: that job's id. */
-		jobId: z.string().optional(),
-		messagingSocketPath: z.string().optional(),
-		name: z.string().optional(),
-		nameSource: z.string().optional(),
-		nameSince: z.number().optional(),
-		/** Earlier names, each with `until`, the epoch ms it was replaced, and the session id that held it then. */
-		formerNames: z
-			.array(z.object({name: z.string(), until: z.number(), sessionId: z.string().optional()}).strict())
-			.optional(),
-		/** Absent from the first write a starting CLI makes; its first status update adds it with both timestamps. */
-		status: SessionRegistryStatusSchema.optional(),
-		/** Why a `waiting` session waits, e.g. "input needed". */
-		waitingFor: z.string().optional(),
-		updatedAt: z.number().optional(),
-		statusUpdatedAt: z.number().optional(),
-		/** `null` once the Remote Control bridge is torn down. */
-		bridgeSessionId: z.string().nullable().optional(),
-		/** `null` until the session has answered whether it asks for converted skills. */
-		asksForConvertedSkills: z.boolean().nullable().optional(),
-	})
+	.object(
+		{
+			pid: z.number().int().positive(),
+			sessionId: z.string(),
+			cwd: z.string(),
+			startedAt: z.number(),
+			/** The process start time as `ps -o lstart` prints it in UTC. */
+			procStart: z.string(),
+			version: z.string(),
+			peerProtocol: z.number().optional(),
+			peerFeatures: z.array(z.string()).optional(),
+			kind: z.string(),
+			entrypoint: z.string(),
+			pidDomain: z.string().optional(),
+			/** Set when the session runs as a background job: that job's id. */
+			jobId: z.string().optional(),
+			messagingSocketPath: z.string().optional(),
+			name: z.string().optional(),
+			nameSource: z.string().optional(),
+			nameSince: z.number().optional(),
+			/** Earlier names, each with `until`, the epoch ms it was replaced, and the session id that held it then. */
+			formerNames: z
+				.array(
+					z
+						.object(
+							{
+								name: z.string(),
+								until: z.number(),
+								sessionId: z.string().optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+			/** Absent from the first write a starting CLI makes; its first status update adds it with both timestamps. */
+			status: SessionRegistryStatusSchema.optional(),
+			/** Why a `waiting` session waits, e.g. "input needed". */
+			waitingFor: z.string().optional(),
+			updatedAt: z.number().optional(),
+			statusUpdatedAt: z.number().optional(),
+			/** `null` once the Remote Control bridge is torn down. */
+			bridgeSessionId: z.string().nullable().optional(),
+			/** `null` until the session has answered whether it asks for converted skills. */
+			asksForConvertedSkills: z.boolean().nullable().optional(),
+		},
+	)
 	.strict();
 
 // ---------------------------------------------------------------------------
 // Claude Code Settings (~/.claude/settings.json, settings.local.json)
 // ---------------------------------------------------------------------------
 
-const HookCommonFields = {
+const HookCommonFields =
+{
 	if: z.string().optional(),
 	timeout: z.number().optional(),
 	statusMessage: z.string().optional(),
@@ -2609,101 +3348,123 @@ const HookCommonFields = {
 
 const HookEntrySchema = z.discriminatedUnion("type", [
 	z
-		.object({
-			type: z.literal("command"),
-			command: z.string(),
-			args: z.array(z.string()).optional(),
-			async: z.boolean().optional(),
-			asyncRewake: z.boolean().optional(),
-			shell: z.enum(["bash", "powershell"]).optional(),
-			...HookCommonFields,
-		})
+		.object(
+			{
+				type: z.literal("command"),
+				command: z.string(),
+				args: z.array(z.string()).optional(),
+				async: z.boolean().optional(),
+				asyncRewake: z.boolean().optional(),
+				shell: z.enum(["bash", "powershell"]).optional(),
+				...HookCommonFields,
+			},
+		)
 		.strict(),
 	z
-		.object({
-			type: z.literal("http"),
-			url: z.string(),
-			headers: z.record(z.string(), z.string()).optional(),
-			allowedEnvVars: z.array(z.string()).optional(),
-			...HookCommonFields,
-		})
+		.object(
+			{
+				type: z.literal("http"),
+				url: z.string(),
+				headers: z.record(z.string(), z.string()).optional(),
+				allowedEnvVars: z.array(z.string()).optional(),
+				...HookCommonFields,
+			},
+		)
 		.strict(),
 ]);
 
 const HookMatcherSchema = z
-	.object({
-		matcher: z.string().optional(),
-		hooks: z.array(HookEntrySchema),
-	})
+	.object(
+		{
+			matcher: z.string().optional(),
+			hooks: z.array(HookEntrySchema),
+		},
+	)
 	.strict();
 
 const HooksSchema = z.record(z.string(), z.array(HookMatcherSchema));
 
 /** A plugin's hooks/hooks.json: the settings.json `hooks` map plus a description. */
 export const PluginHooksFileSchema = z
-	.object({
-		description: z.string().optional(),
-		hooks: HooksSchema,
-	})
+	.object(
+		{
+			description: z.string().optional(),
+			hooks: HooksSchema,
+		},
+	)
 	.strict();
 
 const PermissionsSchema = z
-	.object({
-		allow: z.array(z.string()).optional(),
-		deny: z.array(z.string()).optional(),
-		ask: z.array(z.string()).optional(),
-		defaultMode: z.string().optional(),
-		additionalDirectories: z.array(z.string()).optional(),
-		disableBypassPermissionsMode: z.string().optional(),
-	})
+	.object(
+		{
+			allow: z.array(z.string()).optional(),
+			deny: z.array(z.string()).optional(),
+			ask: z.array(z.string()).optional(),
+			defaultMode: z.string().optional(),
+			additionalDirectories: z.array(z.string()).optional(),
+			disableBypassPermissionsMode: z.string().optional(),
+		},
+	)
 	.strict();
 
 const StatusLineSchema = z
-	.object({
-		type: z.string().optional(),
-		command: z.string().optional(),
-		padding: z.number().optional(),
-		refreshInterval: z.number().min(1).optional(),
-		hideVimModeIndicator: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.string().optional(),
+			command: z.string().optional(),
+			padding: z.number().optional(),
+			refreshInterval: z.number().min(1).optional(),
+			hideVimModeIndicator: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const MarketplaceSourceSchema = z
-	.object({
-		source: z.string(),
-		repo: z.string().optional(),
-		path: z.string().optional(),
-		url: z.string().optional(),
-	})
+	.object(
+		{
+			source: z.string(),
+			repo: z.string().optional(),
+			path: z.string().optional(),
+			url: z.string().optional(),
+		},
+	)
 	.strict();
 
 const MarketplaceEntrySchema = z
-	.object({
-		source: MarketplaceSourceSchema,
-		autoUpdate: z.boolean().optional(),
-		url: z.string().optional(),
-	})
+	.object(
+		{
+			source: MarketplaceSourceSchema,
+			autoUpdate: z.boolean().optional(),
+			url: z.string().optional(),
+		},
+	)
 	.strict();
 
 const SandboxSchema = z
-	.object({
-		enabled: z.boolean().optional(),
-		autoAllowBashIfSandboxed: z.boolean().optional(),
-		excludedCommands: z.array(z.string()).optional(),
-	})
+	.object(
+		{
+			enabled: z.boolean().optional(),
+			autoAllowBashIfSandboxed: z.boolean().optional(),
+			excludedCommands: z.array(z.string()).optional(),
+		},
+	)
 	.strict();
 
 const RemoteSchema = z
-	.object({
-		defaultEnvironmentId: z.string().optional(),
-	})
+	.object(
+		{
+			defaultEnvironmentId: z.string().optional(),
+		},
+	)
 	.strict();
 
 const WorktreeSettingsSchema = z
-	.object({
-		baseRef: z.string().optional(),
-		bgIsolation: z.string().optional(),
-	})
+	.object(
+		{
+			baseRef: z.string().optional(),
+			bgIsolation: z.string().optional(),
+		},
+	)
 	.strict();
 
 export {SkillOverrideValueSchema} from "./skill-override-value";
@@ -2712,68 +3473,81 @@ export {SkillOverrideValueSchema} from "./skill-override-value";
 export const AskUserQuestionTimeoutSchema = z.enum(["60s", "5m", "10m", "never"]);
 
 export const ClaudeSettingsSchema = z
-	.object({
-		$schema: z.string().optional(),
-		model: z.string().optional(),
-		theme: z.string().optional(),
-		tui: z.string().optional(),
-		verbose: z.boolean().optional(),
-		includeCoAuthoredBy: z.boolean().optional(),
-		includeGitInstructions: z.boolean().optional(),
-		alwaysThinkingEnabled: z.boolean().optional(),
-		autoCompactEnabled: z.boolean().optional(),
-		voiceEnabled: z.boolean().optional(),
-		cleanupPeriodDays: z.number().optional(),
-		fileCheckpointingEnabled: z.boolean().optional(),
-		autoUpdatesChannel: z.string().optional(),
-		enableAllProjectMcpServers: z.boolean().optional(),
-		enabledMcpjsonServers: z.array(z.string()).optional(),
-		skipDangerousModePermissionPrompt: z.boolean().optional(),
-		skipAutoPermissionPrompt: z.boolean().optional(),
-		skipWorkflowUsageWarning: z.boolean().optional(),
-		enableWorkflows: z.boolean().optional(),
-		disableWorkflows: z.boolean().optional(),
-		teammateMode: z.string().optional(),
-		askUserQuestionTimeout: AskUserQuestionTimeoutSchema.optional(),
-		preferredNotifChannel: z.string().optional(),
-		outputStyle: z.string().optional(),
-		spinnerTipsEnabled: z.boolean().optional(),
-		skillOverrides: z.record(z.string(), SkillOverrideValueSchema).optional(),
-		effortLevel: z.string().optional(),
-		env: z.record(z.string(), z.string()).optional(),
-		permissions: PermissionsSchema.optional(),
-		hooks: HooksSchema.optional(),
-		statusLine: StatusLineSchema.optional(),
-		sandbox: SandboxSchema.optional(),
-		remote: RemoteSchema.optional(),
-		worktree: WorktreeSettingsSchema.optional(),
-		additionalDirectories: z.array(z.string()).optional(),
-		enabledPlugins: z.record(z.string(), z.boolean()).optional(),
-		extraKnownMarketplaces: z.record(z.string(), MarketplaceEntrySchema).optional(),
-		spinnerVerbs: z
-			.object({
-				mode: z.string().optional(),
-				verbs: z.array(z.string()).optional(),
-			})
-			.strict()
-			.optional(),
-		attribution: z.object({sessionUrl: z.boolean().optional()}).strict().optional(),
-		remoteControlAtStartup: z.boolean().optional(),
-		agentPushNotifEnabled: z.boolean().optional(),
-		switchModelsOnFlag: z.boolean().optional(),
-		fastMode: z.boolean().optional(),
-		/** Fast mode does not persist across sessions: each one starts off. */
-		fastModePerSessionOptIn: z.boolean().optional(),
-		autoMode: z
-			.object({
-				// Permission-rule strings; "$defaults" stands in for the built-in list.
-				allow: z.array(z.string()).optional(),
-				soft_deny: z.array(z.string()).optional(),
-				environment: z.array(z.string()).optional(),
-			})
-			.strict()
-			.optional(),
-	})
+	.object(
+		{
+			$schema: z.string().optional(),
+			model: z.string().optional(),
+			theme: z.string().optional(),
+			tui: z.string().optional(),
+			verbose: z.boolean().optional(),
+			includeCoAuthoredBy: z.boolean().optional(),
+			includeGitInstructions: z.boolean().optional(),
+			alwaysThinkingEnabled: z.boolean().optional(),
+			autoCompactEnabled: z.boolean().optional(),
+			voiceEnabled: z.boolean().optional(),
+			cleanupPeriodDays: z.number().optional(),
+			fileCheckpointingEnabled: z.boolean().optional(),
+			autoUpdatesChannel: z.string().optional(),
+			enableAllProjectMcpServers: z.boolean().optional(),
+			enabledMcpjsonServers: z.array(z.string()).optional(),
+			skipDangerousModePermissionPrompt: z.boolean().optional(),
+			skipAutoPermissionPrompt: z.boolean().optional(),
+			skipWorkflowUsageWarning: z.boolean().optional(),
+			enableWorkflows: z.boolean().optional(),
+			disableWorkflows: z.boolean().optional(),
+			teammateMode: z.string().optional(),
+			askUserQuestionTimeout: AskUserQuestionTimeoutSchema.optional(),
+			preferredNotifChannel: z.string().optional(),
+			outputStyle: z.string().optional(),
+			spinnerTipsEnabled: z.boolean().optional(),
+			skillOverrides: z.record(z.string(), SkillOverrideValueSchema).optional(),
+			effortLevel: z.string().optional(),
+			env: z.record(z.string(), z.string()).optional(),
+			permissions: PermissionsSchema.optional(),
+			hooks: HooksSchema.optional(),
+			statusLine: StatusLineSchema.optional(),
+			sandbox: SandboxSchema.optional(),
+			remote: RemoteSchema.optional(),
+			worktree: WorktreeSettingsSchema.optional(),
+			additionalDirectories: z.array(z.string()).optional(),
+			enabledPlugins: z.record(z.string(), z.boolean()).optional(),
+			extraKnownMarketplaces: z.record(z.string(), MarketplaceEntrySchema).optional(),
+			spinnerVerbs: z
+				.object(
+					{
+						mode: z.string().optional(),
+						verbs: z.array(z.string()).optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			attribution: z
+				.object(
+					{
+						sessionUrl: z.boolean().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			remoteControlAtStartup: z.boolean().optional(),
+			agentPushNotifEnabled: z.boolean().optional(),
+			switchModelsOnFlag: z.boolean().optional(),
+			fastMode: z.boolean().optional(),
+			/** Fast mode does not persist across sessions: each one starts off. */
+			fastModePerSessionOptIn: z.boolean().optional(),
+			autoMode: z
+				.object(
+					{
+						// Permission-rule strings; "$defaults" stands in for the built-in list.
+						allow: z.array(z.string()).optional(),
+						soft_deny: z.array(z.string()).optional(),
+						environment: z.array(z.string()).optional(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 // ---------------------------------------------------------------------------
@@ -2781,25 +3555,29 @@ export const ClaudeSettingsSchema = z
 // ---------------------------------------------------------------------------
 
 const McpServerEntrySchema = z
-	.object({
-		type: z.string().optional(),
-		command: z.string().optional(),
-		args: z.array(z.string()).optional(),
-		env: z.record(z.string(), z.string()).optional(),
-		cwd: z.string().optional(),
-		url: z.string().optional(),
-		headers: z.record(z.string(), z.string()).optional(),
-		timeout: z.number().optional(),
-		tool_timeout_sec: z.number().optional(),
-	})
+	.object(
+		{
+			type: z.string().optional(),
+			command: z.string().optional(),
+			args: z.array(z.string()).optional(),
+			env: z.record(z.string(), z.string()).optional(),
+			cwd: z.string().optional(),
+			url: z.string().optional(),
+			headers: z.record(z.string(), z.string()).optional(),
+			timeout: z.number().optional(),
+			tool_timeout_sec: z.number().optional(),
+		},
+	)
 	.strict();
 
 export const McpServersSchema = z.record(z.string(), McpServerEntrySchema);
 
 export const McpConfigSchema = z
-	.object({
-		mcpServers: McpServersSchema,
-	})
+	.object(
+		{
+			mcpServers: McpServersSchema,
+		},
+	)
 	.strict();
 
 /**
@@ -2809,27 +3587,33 @@ export const McpConfigSchema = z
  */
 export const McpNeedsAuthCacheSchema = z.record(
 	z.string(),
-	z.strictObject({
-		timestamp: z.number(),
-		id: z.string().optional(),
-	}),
+	z.strictObject(
+		{
+			timestamp: z.number(),
+			id: z.string().optional(),
+		},
+	),
 );
 
 // ~/.claude.json holds hundreds of unrelated, churning keys. Callers pick the
 // MCP-related keys out first, then parse that projection strictly.
 export const ClaudeJsonMcpSchema = z
-	.object({
-		mcpServers: McpServersSchema.optional(),
-	})
+	.object(
+		{
+			mcpServers: McpServersSchema.optional(),
+		},
+	)
 	.strict();
 
 export const ClaudeJsonProjectMcpSchema = z
-	.object({
-		mcpServers: McpServersSchema.optional(),
-		disabledMcpServers: z.array(z.string()).optional(),
-		enabledMcpjsonServers: z.array(z.string()).optional(),
-		disabledMcpjsonServers: z.array(z.string()).optional(),
-	})
+	.object(
+		{
+			mcpServers: McpServersSchema.optional(),
+			disabledMcpServers: z.array(z.string()).optional(),
+			enabledMcpjsonServers: z.array(z.string()).optional(),
+			disabledMcpjsonServers: z.array(z.string()).optional(),
+		},
+	)
 	.strict();
 
 // ---------------------------------------------------------------------------
@@ -2838,98 +3622,120 @@ export const ClaudeJsonProjectMcpSchema = z
 
 export const PluginCatalogSourceKindSchema = z.enum(["url", "git-subdir"]);
 
-const PluginCatalogCharsSchema = z.strictObject({
-	always_on: z.number(),
-	on_invoke: z.number(),
-});
+const PluginCatalogCharsSchema = z.strictObject(
+	{
+		always_on: z.number(),
+		on_invoke: z.number(),
+	},
+);
 
-const PluginCatalogComponentSchema = z.strictObject({
-	name: z.string(),
-	chars: PluginCatalogCharsSchema,
-});
+const PluginCatalogComponentSchema = z.strictObject(
+	{
+		name: z.string(),
+		chars: PluginCatalogCharsSchema,
+	},
+);
 
-const PluginCatalogLspServerSchema = z.strictObject({
-	command: z.string(),
-	args: z.array(z.string()).optional(),
-	extensionToLanguage: z.record(z.string(), z.string()),
-	startupTimeout: z.number().optional(),
-});
+const PluginCatalogLspServerSchema = z.strictObject(
+	{
+		command: z.string(),
+		args: z.array(z.string()).optional(),
+		extensionToLanguage: z.record(z.string(), z.string()),
+		startupTimeout: z.number().optional(),
+	},
+);
 
-const PluginCatalogMarketplaceEntrySchema = z.strictObject({
-	name: z.string(),
-	displayName: z.string().optional(),
-	description: z.string(),
-	version: z.string().optional(),
-	author: z
-		.strictObject({
-			name: z.string(),
-			email: z.string().optional(),
-			url: z.string().optional(),
-		})
-		.optional(),
-	category: z.string().optional(),
-	tags: z.array(z.string()).optional(),
-	keywords: z.array(z.string()).optional(),
-	homepage: z.string().optional(),
-	strict: z.boolean().optional(),
-	skills: z.array(z.string()).optional(),
-	lspServers: z.record(z.string(), PluginCatalogLspServerSchema).optional(),
-	source: z.union([
-		z.string(),
-		z.strictObject({
-			source: PluginCatalogSourceKindSchema,
-			url: z.string(),
-			path: z.string().optional(),
-			ref: z.string().optional(),
-			sha: z.string().optional(),
-		}),
-	]),
-});
+const PluginCatalogMarketplaceEntrySchema = z.strictObject(
+	{
+		name: z.string(),
+		displayName: z.string().optional(),
+		description: z.string(),
+		version: z.string().optional(),
+		author: z
+			.strictObject(
+				{
+					name: z.string(),
+					email: z.string().optional(),
+					url: z.string().optional(),
+				},
+			)
+			.optional(),
+		category: z.string().optional(),
+		tags: z.array(z.string()).optional(),
+		keywords: z.array(z.string()).optional(),
+		homepage: z.string().optional(),
+		strict: z.boolean().optional(),
+		skills: z.array(z.string()).optional(),
+		lspServers: z.record(z.string(), PluginCatalogLspServerSchema).optional(),
+		source: z.union([
+			z.string(),
+			z.strictObject(
+				{
+					source: PluginCatalogSourceKindSchema,
+					url: z.string(),
+					path: z.string().optional(),
+					ref: z.string().optional(),
+					sha: z.string().optional(),
+				},
+			),
+		]),
+	},
+);
 
-const PluginCatalogPluginSchema = z.strictObject({
-	plugin: z.string(),
-	tokens: z.record(z.string(), PluginCatalogCharsSchema),
-	components: z.strictObject({
-		commands: z.array(PluginCatalogComponentSchema),
-		agents: z.array(PluginCatalogComponentSchema),
-		skills: z.array(PluginCatalogComponentSchema),
-		hooks: z.array(z.string()),
-		mcpServers: z.array(z.string()),
-		lspServers: z.array(z.string()),
-	}),
-	unique_installs: z.number().optional(),
-	last_updated: z.string(),
-	marketplace_entry: PluginCatalogMarketplaceEntrySchema,
-	version: z.string().optional(),
-	source: z.string(),
-	/** Null for plugins that live inside the marketplace repo (a string `source`). */
-	sha: z.string().nullable(),
-	source_sha: z.string(),
-});
+const PluginCatalogPluginSchema = z.strictObject(
+	{
+		plugin: z.string(),
+		tokens: z.record(z.string(), PluginCatalogCharsSchema),
+		components: z.strictObject(
+			{
+				commands: z.array(PluginCatalogComponentSchema),
+				agents: z.array(PluginCatalogComponentSchema),
+				skills: z.array(PluginCatalogComponentSchema),
+				hooks: z.array(z.string()),
+				mcpServers: z.array(z.string()),
+				lspServers: z.array(z.string()),
+			},
+		),
+		unique_installs: z.number().optional(),
+		last_updated: z.string(),
+		marketplace_entry: PluginCatalogMarketplaceEntrySchema,
+		version: z.string().optional(),
+		source: z.string(),
+		/** Null for plugins that live inside the marketplace repo (a string `source`). */
+		sha: z.string().nullable(),
+		source_sha: z.string(),
+	},
+);
 
 /** The CLI's cached copy of the official plugin directory, keyed `<name>@<marketplace>`. */
-export const PluginCatalogCacheSchema = z.strictObject({
-	version: z.number(),
-	fetchedAt: z.string(),
-	catalog: z.strictObject({
-		generated_at: z.string(),
-		installs_generated_at: z.string(),
-		marketplace_sha: z.string(),
-		models: z.array(z.string()),
-		plugins: z.record(z.string(), PluginCatalogPluginSchema),
-	}),
-});
+export const PluginCatalogCacheSchema = z.strictObject(
+	{
+		version: z.number(),
+		fetchedAt: z.string(),
+		catalog: z.strictObject(
+			{
+				generated_at: z.string(),
+				installs_generated_at: z.string(),
+				marketplace_sha: z.string(),
+				models: z.array(z.string()),
+				plugins: z.record(z.string(), PluginCatalogPluginSchema),
+			},
+		),
+	},
+);
 
 // The identity keys picked out of ~/.claude.json `oauthAccount`. Plan fields stay
 // plain strings so an unfamiliar plan still yields a name and email.
 export const ClaudeJsonOauthAccountSchema = z
-	.object({
-		displayName: z.string().optional(),
-		fullName: z.string().optional(),
-		emailAddress: z.string().optional(),
-		organizationType: z.string().optional(),
-		organizationRateLimitTier: z.string().optional(),
-	})
+	.object(
+		{
+			displayName: z.string().optional(),
+			fullName: z.string().optional(),
+			emailAddress: z.string().optional(),
+			organizationType: z.string().optional(),
+			organizationRateLimitTier: z.string().optional(),
+		},
+	)
 	.strict();
 
 // ---------------------------------------------------------------------------
@@ -2948,14 +3754,18 @@ export type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
  * Parse a single JSONL line into a typed record.
  * Returns null for empty/malformed lines.
  */
-export function parseJsonlRecord(line: string): JsonlRecord | null {
+export function parseJsonlRecord(line: string): JsonlRecord | null
+{
 	const trimmed = line.trim();
 	if (!trimmed) return null;
 
 	let obj: unknown;
-	try {
+	try
+	{
 		obj = JSON.parse(trimmed);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 

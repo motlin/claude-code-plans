@@ -5,14 +5,16 @@ import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
 import type {ActiveSessionEntry, PendingPermissionRequest} from "./active-session-store";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
-import {
+import
+{
 	persistentAllowKind,
 	persistentAllowSaves,
 	type PersistentAllowKind,
 	type PersistentAllowSave,
 } from "./permission-suggestions";
 import {outsideReadDialogKind, readHasSeenOutsideReadPrompt} from "./outside-read-prompt";
-import {
+import
+{
 	DOMAIN_EVENTS,
 	SSE_EVENTS,
 	isSubagentScopedEvent,
@@ -42,7 +44,8 @@ import {
 	type ReviewOfferedPayload,
 } from "./hook-events";
 import {buildSessionSummaryPayloadFromDb, toActiveSessionPayload} from "./session-summary";
-import {
+import
+{
 	addNotification,
 	broadcastNotificationsCleared,
 	clearPermissionPromptsForSession,
@@ -63,7 +66,8 @@ import {expirePendingApprovalForSession, resumePendingApprovalsForSession} from 
 import {nonEmpty} from "./non-empty";
 import {defined} from "./defined";
 import {asRecord} from "./narrow";
-import {
+import
+{
 	clearPendingQuestion,
 	getPendingQuestion,
 	pendingQuestionFromToolInput,
@@ -71,7 +75,8 @@ import {
 } from "./pending-question-store";
 import {clearPendingPlan, getPendingPlan, pendingPlanFromToolInput, setPendingPlan} from "./pending-plan-store";
 import {forgetHookContext, recordHookContext} from "./hook-context-store";
-import {
+import
+{
 	addPendingElicitation,
 	clearPendingElicitations,
 	getPendingElicitations,
@@ -103,11 +108,26 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
  * an interface so tests can substitute a fake without loading the real
  * HMR-persisted singleton.
  */
-interface ActiveSessionStore {
-	markSessionActive(sessionId: string, meta: {cwd: string; model?: string; claudeEnv?: Record<string, string>}): void;
+interface ActiveSessionStore
+{
+	markSessionActive(
+		sessionId: string,
+		meta:
+		{
+			cwd: string;
+			model?: string;
+			claudeEnv?: Record<string, string>;
+		},
+	): void;
 	markSessionEnded(sessionId: string): void;
 	setSessionState(sessionId: string, state: ActivityState): void;
-	touchSession(sessionId: string, meta?: {claudeEnv?: Record<string, string>}): void;
+	touchSession(
+		sessionId: string,
+		meta?:
+		{
+			claudeEnv?: Record<string, string>;
+		},
+	): void;
 	touchSubagentActivity(sessionId: string, agentId: string): void;
 	setBackgroundTasks(sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]): void;
 	setSessionCrons(sessionId: string, sessionCrons: HookSessionCronPayload[]): void;
@@ -121,7 +141,8 @@ interface ActiveSessionStore {
  * The route handler at `src/routes/api/hook.ts` is responsible for filling
  * these in from the process environment.
  */
-export interface HookDispatchDirs {
+export interface HookDispatchDirs
+{
 	projectsDir: string;
 	plansDir: string;
 	tasksDir: string;
@@ -135,11 +156,13 @@ export interface HookDispatchDirs {
  * Omitted in production, where the dispatcher advances `sharedJsonlOffsets`,
  * the same map the watcher reads from; tests supply a fresh map.
  */
-export interface HookDispatchState {
+export interface HookDispatchState
+{
 	jsonlOffsets: Map<string, number>;
 }
 
-interface DispatchHookEventArgs {
+interface DispatchHookEventArgs
+{
 	event: HookEvent;
 	db: IndexDb;
 	store: ActiveSessionStore;
@@ -160,11 +183,21 @@ interface DispatchHookEventArgs {
 function broadcastHookContext(
 	event: HookEvent,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
-	options?: {clearPausedWork?: boolean; clearTurnContext?: boolean; sessionTitle?: string},
-): void {
-	const payload: SessionHookContextPayload = {sessionId: event.session_id};
+	options?:
+	{
+		clearPausedWork?: boolean;
+		clearTurnContext?: boolean;
+		sessionTitle?: string;
+	},
+): void
+{
+	const payload: SessionHookContextPayload =
+	{
+		sessionId: event.session_id,
+	};
 	if (options?.sessionTitle !== undefined) payload.sessionTitle = options.sessionTitle;
-	if (options?.clearTurnContext === true) {
+	if (options?.clearTurnContext === true)
+	{
 		payload.promptId = "";
 		payload.permissionMode = "";
 		payload.effortLevel = "";
@@ -172,20 +205,33 @@ function broadcastHookContext(
 	if (event.prompt_id !== undefined) payload.promptId = event.prompt_id;
 	if (event.permission_mode !== undefined) payload.permissionMode = event.permission_mode;
 	if (event.effort !== undefined) payload.effortLevel = event.effort.level;
-	if (options?.clearPausedWork === true) {
+	if (options?.clearPausedWork === true)
+	{
 		payload.backgroundTasks = [];
 		payload.sessionCrons = [];
 	}
 	if (Object.keys(payload).length === 1) return;
 	recordHookContext(payload);
-	broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, {...payload});
+	broadcast(
+		DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+		{
+			...payload,
+		},
+	);
 }
 
 /**
  * Whether a tool hook belongs to the pending call: its tool_use_id matches,
  * or either side lacks one to compare (a plan stored from its PermissionRequest).
  */
-function sameToolCall(event: {tool_use_id?: string | undefined}, pendingToolUseId: string | undefined): boolean {
+function sameToolCall(
+	event:
+	{
+		tool_use_id?: string | undefined;
+	},
+	pendingToolUseId: string | undefined,
+): boolean
+{
 	return (
 		event.tool_use_id === undefined ||
 		pendingToolUseId === undefined ||
@@ -195,8 +241,10 @@ function sameToolCall(event: {tool_use_id?: string | undefined}, pendingToolUseI
 }
 
 /** Hooks after which the session no longer waits on its AskUserQuestion. */
-function resolvesPendingQuestion(event: HookEvent): boolean {
-	switch (event.hook_event_name) {
+function resolvesPendingQuestion(event: HookEvent): boolean
+{
+	switch (event.hook_event_name)
+	{
 		case "PostToolUse":
 		case "PostToolUseFailure":
 			return (
@@ -221,24 +269,32 @@ function resolvesPendingQuestion(event: HookEvent): boolean {
 function trackPendingQuestion(
 	event: HookEvent,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
-): boolean {
+): boolean
+{
 	let pendingQuestion: PendingQuestion | null = null;
-	if (event.hook_event_name === "PreToolUse" && event.tool_name === "AskUserQuestion") {
+	if (event.hook_event_name === "PreToolUse" && event.tool_name === "AskUserQuestion")
+	{
 		pendingQuestion = pendingQuestionFromToolInput(event.tool_use_id ?? "", event.tool_input);
 		if (pendingQuestion === null) return false;
 		setPendingQuestion(event.session_id, pendingQuestion);
-	} else if (!resolvesPendingQuestion(event) || !clearPendingQuestion(event.session_id)) {
+	}
+	else if (!resolvesPendingQuestion(event) || !clearPendingQuestion(event.session_id))
+	{
 		return false;
 	}
-	broadcast(DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED, {
-		sessionId: event.session_id,
-		pendingQuestion,
-	} satisfies SessionPendingQuestionChangedPayload);
+	broadcast(
+		DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED,
+		{
+			sessionId: event.session_id,
+			pendingQuestion,
+		} satisfies SessionPendingQuestionChangedPayload,
+	);
 	return pendingQuestion === null;
 }
 
 /** `dirs` with every root in the canonical (symlink-resolved) form the watcher reports. */
-function canonicalHookDirs(dirs: HookDispatchDirs): HookDispatchDirs {
+function canonicalHookDirs(dirs: HookDispatchDirs): HookDispatchDirs
+{
 	return {
 		projectsDir: canonicalPath(dirs.projectsDir),
 		plansDir: canonicalPath(dirs.plansDir),
@@ -250,7 +306,8 @@ function canonicalHookDirs(dirs: HookDispatchDirs): HookDispatchDirs {
 }
 
 /** True when `candidate` is the same as `dir` or a descendant. */
-function isUnder(candidate: string, dir: string): boolean {
+function isUnder(candidate: string, dir: string): boolean
+{
 	if (!dir) return false;
 	return candidate === dir || candidate.startsWith(dir + "/");
 }
@@ -260,7 +317,8 @@ function isUnder(candidate: string, dir: string): boolean {
  * a transcript path of the form `<projectsDir>/<projectId>/<sessionId>.jsonl`.
  * Returns undefined if `transcriptPath` does not fall under `projectsDir`.
  */
-function projectIdFromTranscriptPath(transcriptPath: string, projectsDir: string): string | undefined {
+function projectIdFromTranscriptPath(transcriptPath: string, projectsDir: string): string | undefined
+{
 	if (!isUnder(transcriptPath, projectsDir)) return undefined;
 	const relative = transcriptPath.slice(projectsDir.length + 1);
 	const parts = relative.split("/");
@@ -268,7 +326,8 @@ function projectIdFromTranscriptPath(transcriptPath: string, projectsDir: string
 }
 
 /** Session id derived from a JSONL transcript filename. */
-function sessionIdFromTranscriptPath(transcriptPath: string): string {
+function sessionIdFromTranscriptPath(transcriptPath: string): string
+{
 	return basename(transcriptPath, ".jsonl");
 }
 
@@ -279,9 +338,11 @@ function sessionIdFromTranscriptPath(transcriptPath: string): string {
  * discriminated union — TypeScript widens `tool_name` and `tool_input`
  * independently, so we read `file_path` defensively at runtime.
  */
-function extractEditedFilePath(event: HookEvent): string | undefined {
+function extractEditedFilePath(event: HookEvent): string | undefined
+{
 	if (event.hook_event_name !== "PostToolUse") return undefined;
-	if (event.tool_name !== "Edit" && event.tool_name !== "MultiEdit" && event.tool_name !== "Write") {
+	if (event.tool_name !== "Edit" && event.tool_name !== "MultiEdit" && event.tool_name !== "Write")
+	{
 		return undefined;
 	}
 	const filePath = asRecord(event.tool_input)?.["file_path"];
@@ -298,10 +359,12 @@ function broadcastPlanChangedFromDb(
 	db: IndexDb,
 	filename: string,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
-): void {
+): void
+{
 	const row = db.select().from(schema.plans).where(eq(schema.plans.filename, filename)).get();
 	if (!row) return;
-	const payload: PlanSummaryPayload = {
+	const payload: PlanSummaryPayload =
+	{
 		filename,
 		title: row.title,
 		mtime: new Date(row.mtimeMs).toISOString(),
@@ -312,7 +375,12 @@ function broadcastPlanChangedFromDb(
 	// integer here keeps both paths in agreement.
 	const key = `${DOMAIN_EVENTS.PLAN_CHANGED}:${filename}:${Math.floor(row.mtimeMs)}`;
 	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
-	broadcast(DOMAIN_EVENTS.PLAN_CHANGED, {plan: payload});
+	broadcast(
+		DOMAIN_EVENTS.PLAN_CHANGED,
+		{
+			plan: payload,
+		},
+	);
 }
 
 /**
@@ -324,10 +392,12 @@ function broadcastTaskChangedFromDb(
 	db: IndexDb,
 	filePath: string,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
-): void {
+): void
+{
 	const row = db.select().from(schema.tasks).where(eq(schema.tasks.filePath, filePath)).get();
 	if (!row) return;
-	const payload: TaskSummaryPayload = {
+	const payload: TaskSummaryPayload =
+	{
 		taskId: row.taskId,
 		projectDir: row.projectDir,
 		subject: row.subject,
@@ -340,12 +410,21 @@ function broadcastTaskChangedFromDb(
 	};
 	const taskKey = `${DOMAIN_EVENTS.TASK_CHANGED}:${filePath}:${row.status}`;
 	if (recentlyBroadcast(taskKey, DEDUPE_TTL_MS)) return;
-	broadcast(DOMAIN_EVENTS.TASK_CHANGED, {task: payload});
-	if (row.status === "completed") {
-		broadcast(DOMAIN_EVENTS.TASK_COMPLETED, {
-			taskId: row.taskId,
-			subject: row.subject,
-		});
+	broadcast(
+		DOMAIN_EVENTS.TASK_CHANGED,
+		{
+			task: payload,
+		},
+	);
+	if (row.status === "completed")
+	{
+		broadcast(
+			DOMAIN_EVENTS.TASK_COMPLETED,
+			{
+				taskId: row.taskId,
+				subject: row.subject,
+			},
+		);
 	}
 }
 
@@ -358,11 +437,13 @@ async function broadcastMemoryChangedFromDb(
 	db: IndexDb,
 	filePath: string,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
-): Promise<void> {
+): Promise<void>
+{
 	const row = db.select().from(schema.memories).where(eq(schema.memories.filePath, filePath)).get();
 	if (!row) return;
 	const projectName = await resolveProjectName(row.projectId);
-	const payload: MemorySummaryPayload = {
+	const payload: MemorySummaryPayload =
+	{
 		filename: row.filename,
 		title: row.title,
 		mtime: new Date(row.mtimeMs).toISOString(),
@@ -373,7 +454,12 @@ async function broadcastMemoryChangedFromDb(
 	// for the precision-mismatch rationale shared with the watcher.
 	const key = `${DOMAIN_EVENTS.MEMORY_CHANGED}:${filePath}:${Math.floor(row.mtimeMs)}`;
 	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
-	broadcast(DOMAIN_EVENTS.MEMORY_CHANGED, {memory: payload});
+	broadcast(
+		DOMAIN_EVENTS.MEMORY_CHANGED,
+		{
+			memory: payload,
+		},
+	);
 }
 
 /**
@@ -389,23 +475,27 @@ async function handlePostToolUseFileEdit(
 	filePath: string,
 	dirs: HookDispatchDirs,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
-): Promise<void> {
+): Promise<void>
+{
 	// Tasks: ~/.claude/tasks/{projectDir}/{taskId}.json
-	if (isUnder(filePath, dirs.tasksDir) && filePath.endsWith(".json")) {
+	if (isUnder(filePath, dirs.tasksDir) && filePath.endsWith(".json"))
+	{
 		await indexFile(db, filePath, dirs.projectsDir, dirs.plansDir);
 		broadcastTaskChangedFromDb(db, filePath, broadcast);
 		return;
 	}
 
 	// Plans: ~/.claude/plans/{filename}.md
-	if (isUnder(filePath, dirs.plansDir) && filePath.endsWith(".md")) {
+	if (isUnder(filePath, dirs.plansDir) && filePath.endsWith(".md"))
+	{
 		await indexFile(db, filePath, dirs.projectsDir, dirs.plansDir);
 		broadcastPlanChangedFromDb(db, basename(filePath), broadcast);
 		return;
 	}
 
 	// Memory markdown files: {projectsDir}/{project}/memory/{filename}.md
-	if (isUnder(filePath, dirs.projectsDir) && filePath.endsWith(".md")) {
+	if (isUnder(filePath, dirs.projectsDir) && filePath.endsWith(".md"))
+	{
 		await indexFile(db, filePath, dirs.projectsDir, dirs.plansDir);
 		await broadcastMemoryChangedFromDb(db, filePath, broadcast);
 		return;
@@ -418,7 +508,8 @@ async function handlePostToolUseFileEdit(
 		isUnder(filePath, dirs.commandsDir) ||
 		isUnder(filePath, dirs.pluginsDir) ||
 		isUnder(filePath, dirs.statuslineDir)
-	) {
+	)
+	{
 		broadcast(SSE_EVENTS.CONTENT_UPDATED, {});
 	}
 }
@@ -435,28 +526,44 @@ async function appendTranscriptLines(
 	projectsDir: string,
 	state: HookDispatchState | undefined,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
-): Promise<void> {
+): Promise<void>
+{
 	const project = projectIdFromTranscriptPath(transcriptPath, projectsDir);
 	if (!project) return;
 
 	const sessionId = sessionIdFromTranscriptPath(transcriptPath);
-	try {
+	try
+	{
 		const read = await readAppendedJsonlLines(db, transcriptPath, state?.jsonlOffsets ?? sharedJsonlOffsets);
 		await broadcastAppendedJsonl(transcriptPath, sessionId, read, broadcast, DEDUPE_TTL_MS);
-	} catch {
+	}
+	catch
+	{
 		// transient read error — chokidar will retry
 	}
 
-	try {
-		await indexJsonlFile(db, transcriptPath, project, {cache: liveJsonlIndexCache});
-	} catch {
+	try
+	{
+		await indexJsonlFile(
+			db,
+			transcriptPath,
+			project,
+			{
+				cache: liveJsonlIndexCache,
+			},
+		);
+	}
+	catch
+	{
 		// transient index error — chokidar will retry
 	}
 }
 
 /** Hooks after which the session no longer waits on its ExitPlanMode approval. */
-function resolvesPendingPlan(event: HookEvent): boolean {
-	switch (event.hook_event_name) {
+function resolvesPendingPlan(event: HookEvent): boolean
+{
+	switch (event.hook_event_name)
+	{
 		case "PostToolUse":
 		case "PostToolUseFailure":
 		case "PermissionDenied":
@@ -480,30 +587,46 @@ function resolvesPendingPlan(event: HookEvent): boolean {
  * plan approval the JSONL lacks. The PermissionRequest carries no tool_use_id,
  * so it keeps the one an earlier PreToolUse gave.
  */
-function trackPendingPlan(event: HookEvent, broadcast: (type: string, data: Record<string, unknown>) => void): void {
+function trackPendingPlan(event: HookEvent, broadcast: (type: string, data: Record<string, unknown>) => void): void
+{
 	let pendingPlan: PendingPlan | null = null;
 	if (
 		(event.hook_event_name === "PreToolUse" || event.hook_event_name === "PermissionRequest") &&
 		event.tool_name === "ExitPlanMode"
-	) {
+	)
+	{
 		const known = getPendingPlan(event.session_id);
 		const toolUseId = event.hook_event_name === "PreToolUse" ? (event.tool_use_id ?? "") : (known?.toolUseId ?? "");
 		pendingPlan = pendingPlanFromToolInput(toolUseId, event.tool_input);
 		if (pendingPlan === null) return;
 		if (known !== null && JSON.stringify(known) === JSON.stringify(pendingPlan)) return;
 		setPendingPlan(event.session_id, pendingPlan);
-	} else if (!resolvesPendingPlan(event) || !clearPendingPlan(event.session_id)) {
+	}
+	else if (!resolvesPendingPlan(event) || !clearPendingPlan(event.session_id))
+	{
 		return;
 	}
-	broadcast(DOMAIN_EVENTS.SESSION_PENDING_PLAN_CHANGED, {
-		sessionId: event.session_id,
-		pendingPlan,
-	} satisfies SessionPendingPlanChangedPayload);
+	broadcast(
+		DOMAIN_EVENTS.SESSION_PENDING_PLAN_CHANGED,
+		{
+			sessionId: event.session_id,
+			pendingPlan,
+		} satisfies SessionPendingPlanChangedPayload,
+	);
 }
 
 /** The pending entry an `Elicitation` hook describes; `mode` defaults to the MCP's "form". */
-function pendingElicitationFrom(event: Extract<HookEvent, {hook_event_name: "Elicitation"}>): PendingElicitation {
-	const entry: PendingElicitation = {
+function pendingElicitationFrom(
+	event: Extract<
+		HookEvent,
+		{
+			hook_event_name: "Elicitation";
+		}
+	>,
+): PendingElicitation
+{
+	const entry: PendingElicitation =
+	{
 		serverName: event.mcp_server_name,
 		message: event.message,
 		mode: event.mode ?? "form",
@@ -523,16 +646,26 @@ function pendingElicitationFrom(event: Extract<HookEvent, {hook_event_name: "Eli
 function trackPendingElicitations(
 	event: HookEvent,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
-): void {
-	switch (event.hook_event_name) {
+): void
+{
+	switch (event.hook_event_name)
+	{
 		case "Elicitation":
 			addPendingElicitation(event.session_id, pendingElicitationFrom(event));
 			break;
-		case "ElicitationResult": {
+		case "ElicitationResult":
+		{
 			const result =
 				event.elicitation_id === undefined
-					? {serverName: event.mcp_server_name}
-					: {serverName: event.mcp_server_name, elicitationId: event.elicitation_id};
+					?
+						{
+							serverName: event.mcp_server_name,
+						}
+					:
+						{
+							serverName: event.mcp_server_name,
+							elicitationId: event.elicitation_id,
+						};
 			if (!resolvePendingElicitation(event.session_id, result)) return;
 			break;
 		}
@@ -544,10 +677,13 @@ function trackPendingElicitations(
 		default:
 			return;
 	}
-	broadcast(DOMAIN_EVENTS.SESSION_ELICITATION_CHANGED, {
-		sessionId: event.session_id,
-		pendingElicitations: getPendingElicitations(event.session_id),
-	} satisfies SessionElicitationChangedPayload);
+	broadcast(
+		DOMAIN_EVENTS.SESSION_ELICITATION_CHANGED,
+		{
+			sessionId: event.session_id,
+			pendingElicitations: getPendingElicitations(event.session_id),
+		} satisfies SessionElicitationChangedPayload,
+	);
 }
 
 /**
@@ -561,14 +697,28 @@ function broadcastHookSessionSummary(
 	db: IndexDb,
 	store: ActiveSessionStore,
 	broadcast: DispatchHookEventArgs["broadcast"],
-): void {
+): void
+{
 	const now = Date.now();
-	const summary = buildSessionSummaryPayloadFromDb(db, sessionId, (id) => {
+	const summary = buildSessionSummaryPayloadFromDb(db, sessionId, (id) =>
+	{
 		const entry = store.getActiveSessionEntry(id);
-		return entry === null ? null : {...entry, lastActivity: Math.max(entry.lastActivity, now)};
+		return entry === null
+			? null
+			:
+				{
+					...entry,
+					lastActivity: Math.max(entry.lastActivity, now),
+				};
 	});
-	if (summary && !recentlyBroadcast(sessionUpdatedDedupeKey(summary), DEDUPE_TTL_MS)) {
-		broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+	if (summary && !recentlyBroadcast(sessionUpdatedDedupeKey(summary), DEDUPE_TTL_MS))
+	{
+		broadcast(
+			DOMAIN_EVENTS.SESSION_UPDATED,
+			{
+				session: summary,
+			},
+		);
 	}
 }
 
@@ -589,16 +739,20 @@ export async function dispatchHookEvent({
 	reportHerdrState,
 	isSessionVisible = isSessionVisibleInBrowser,
 	readHasSeenOutsideReadPrompt: readHasSeen = readHasSeenOutsideReadPrompt,
-}: DispatchHookEventArgs): Promise<void> {
+}: DispatchHookEventArgs): Promise<void>
+{
 	const entryBeforeDispatch = store.getActiveSessionEntry(event.session_id);
 	// Subagent hooks carry the root session_id plus agent_id. They describe the
 	// subagent, so they must not flip an idle root back to working (or to
 	// waiting on a subagent AskUserQuestion), nor clear the root's pending
 	// notifications — a subagent permission prompt still reaches the root via
 	// the Notification path below.
-	if (isSubagentScopedEvent(event)) {
+	if (isSubagentScopedEvent(event))
+	{
 		store.touchSubagentActivity(event.session_id, event.agent_id);
-	} else {
+	}
+	else
+	{
 		const nextState = stateForEvent(event);
 		if (nextState !== null) store.setSessionState(event.session_id, nextState);
 		// A session that resumes working no longer needs its "waiting for input" /
@@ -615,7 +769,8 @@ export async function dispatchHookEvent({
 			event.hook_event_name === "PermissionDenied";
 		if (permissionPromptGone) clearPermissionPromptsForSession(event.session_id);
 		// Either way the permission dialog the PermissionRequest hook described is gone.
-		if ((nextState === "working" || permissionPromptGone) && entryBeforeDispatch?.pendingPermissionRequest) {
+		if ((nextState === "working" || permissionPromptGone) && entryBeforeDispatch?.pendingPermissionRequest)
+		{
 			store.setPendingPermissionRequest(event.session_id, null);
 		}
 		// Only a session the store tracks records the new state, so only its change is news.
@@ -630,7 +785,8 @@ export async function dispatchHookEvent({
 		// The summary no longer waits on what was cleared. Send it before
 		// notification:cleared so a client never holds "no notification, still
 		// awaiting" while the working hook's own summary is still in flight.
-		if (clearedNotificationIds.length > 0 || questionCleared || (stateChanged && nextState === "working")) {
+		if (clearedNotificationIds.length > 0 || questionCleared || (stateChanged && nextState === "working"))
+		{
 			broadcastHookSessionSummary(event.session_id, db, store, broadcast);
 		}
 		broadcastNotificationsCleared(clearedNotificationIds);
@@ -639,105 +795,210 @@ export async function dispatchHookEvent({
 	// A subagent's MCP server can ask the user too, so this runs for both scopes.
 	trackPendingElicitations(event, broadcast);
 
-	switch (event.hook_event_name) {
-		case "SessionStart": {
+	switch (event.hook_event_name)
+	{
+		case "SessionStart":
+		{
 			resumePendingApprovalsForSession(event.session_id);
-			const meta: {
+			const meta:
+			{
 				cwd: string;
 				model?: string;
 				claudeEnv?: Record<string, string>;
-			} = {
+			} =
+			{
 				cwd: event.cwd,
 			};
-			if (event.model !== undefined) {
+			if (event.model !== undefined)
+			{
 				meta.model = event.model;
 			}
-			if (event.claude_env !== undefined) {
+			if (event.claude_env !== undefined)
+			{
 				meta.claudeEnv = event.claude_env;
 			}
 			store.markSessionActive(event.session_id, meta);
-			broadcastHookContext(event, broadcast, {
-				clearPausedWork: true,
-				clearTurnContext: true,
-				...(event.session_title === undefined ? {} : {sessionTitle: event.session_title}),
-			});
+			broadcastHookContext(
+				event,
+				broadcast,
+				{
+					clearPausedWork: true,
+					clearTurnContext: true,
+					...(event.session_title === undefined
+						? {}
+						:
+							{
+								sessionTitle: event.session_title,
+							}),
+				},
+			);
 
 			// Lifecycle signal for the active-session indicator.
-			broadcast(SSE_EVENTS.SESSION_START, {
-				sessionId: event.session_id,
-				cwd: event.cwd,
-				model: event.model ?? "",
-			});
+			broadcast(
+				SSE_EVENTS.SESSION_START,
+				{
+					sessionId: event.session_id,
+					cwd: event.cwd,
+					model: event.model ?? "",
+				},
+			);
 
 			// Enriched domain events
 			const active = store.getActiveSessionEntry(event.session_id);
-			if (active) {
-				broadcast(DOMAIN_EVENTS.SESSION_STARTED, {
-					session: toActiveSessionPayload(active),
-				});
+			if (active)
+			{
+				broadcast(
+					DOMAIN_EVENTS.SESSION_STARTED,
+					{
+						session: toActiveSessionPayload(active),
+					},
+				);
 			}
 			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
 				store.getActiveSessionEntry(sessionId),
 			);
-			if (summary) {
+			if (summary)
+			{
 				const key = `${DOMAIN_EVENTS.SESSION_ADDED}:${summary.id}:${summary.mtime}`;
-				if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
-					broadcast(DOMAIN_EVENTS.SESSION_ADDED, {session: summary});
+				if (!recentlyBroadcast(key, DEDUPE_TTL_MS))
+				{
+					broadcast(
+						DOMAIN_EVENTS.SESSION_ADDED,
+						{
+							session: summary,
+						},
+					);
 				}
 			}
 			break;
 		}
 
-		case "SessionEnd": {
+		case "SessionEnd":
+		{
 			expirePendingApprovalForSession(event.session_id);
 			store.markSessionEnded(event.session_id);
 			forgetHookContext(event.session_id);
-			broadcast(SSE_EVENTS.SESSION_END, {sessionId: event.session_id});
-			broadcast(DOMAIN_EVENTS.SESSION_ENDED, {sessionId: event.session_id});
+			broadcast(
+				SSE_EVENTS.SESSION_END,
+				{
+					sessionId: event.session_id,
+				},
+			);
+			broadcast(
+				DOMAIN_EVENTS.SESSION_ENDED,
+				{
+					sessionId: event.session_id,
+				},
+			);
 			break;
 		}
 
-		case "Stop": {
+		case "Stop":
+		{
 			expirePendingApprovalForSession(event.session_id);
 			store.touchSession(event.session_id);
-			const backgroundTasks: HookBackgroundTaskPayload[] | undefined = event.background_tasks?.map((task) => ({
+			const backgroundTasks: HookBackgroundTaskPayload[] | undefined = event.background_tasks?.map((task) => (
+			{
 				id: task.id,
 				type: task.type,
 				status: task.status,
 				description: task.description,
-				...(task.command === undefined ? {} : {command: task.command}),
-				...(task.agent_type === undefined ? {} : {agentType: task.agent_type}),
-				...(task.server === undefined ? {} : {server: task.server}),
-				...(task.tool === undefined ? {} : {tool: task.tool}),
-				...(task.name === undefined ? {} : {name: task.name}),
+				...(task.command === undefined
+					? {}
+					:
+						{
+							command: task.command,
+						}),
+				...(task.agent_type === undefined
+					? {}
+					:
+						{
+							agentType: task.agent_type,
+						}),
+				...(task.server === undefined
+					? {}
+					:
+						{
+							server: task.server,
+						}),
+				...(task.tool === undefined
+					? {}
+					:
+						{
+							tool: task.tool,
+						}),
+				...(task.name === undefined
+					? {}
+					:
+						{
+							name: task.name,
+						}),
 			}));
 			store.setBackgroundTasks(event.session_id, backgroundTasks ?? []);
-			if (event.session_crons !== undefined) {
+			if (event.session_crons !== undefined)
+			{
 				store.setSessionCrons(event.session_id, event.session_crons);
 			}
-			const context: SessionHookContextPayload = {
+			const context: SessionHookContextPayload =
+			{
 				sessionId: event.session_id,
-				...(backgroundTasks === undefined ? {} : {backgroundTasks}),
-				...(event.session_crons === undefined ? {} : {sessionCrons: event.session_crons}),
-				...(event.prompt_id === undefined ? {} : {promptId: event.prompt_id}),
-				...(event.permission_mode === undefined ? {} : {permissionMode: event.permission_mode}),
-				...(event.effort === undefined ? {} : {effortLevel: event.effort.level}),
+				...(backgroundTasks === undefined
+					? {}
+					:
+						{
+							backgroundTasks,
+						}),
+				...(event.session_crons === undefined
+					? {}
+					:
+						{
+							sessionCrons: event.session_crons,
+						}),
+				...(event.prompt_id === undefined
+					? {}
+					:
+						{
+							promptId: event.prompt_id,
+						}),
+				...(event.permission_mode === undefined
+					? {}
+					:
+						{
+							permissionMode: event.permission_mode,
+						}),
+				...(event.effort === undefined
+					? {}
+					:
+						{
+							effortLevel: event.effort.level,
+						}),
 			};
-			if (Object.keys(context).length > 1) {
+			if (Object.keys(context).length > 1)
+			{
 				recordHookContext(context);
-				broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, {...context});
+				broadcast(
+					DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+					{
+						...context,
+					},
+				);
 			}
 			// Agents still running in the background outlive the main turn's Stop.
-			for (const node of reconcileStoredLiveSubagents(event.session_id, backgroundTasks)) {
-				broadcast(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
-					sessionId: node.sessionId,
-					agentType: node.agentType,
-					agentId: node.agentId,
-					endedAt: defined(node.endedAt, "a stopped subagent has an end time"),
-				} satisfies SubagentStoppedPayload);
+			for (const node of reconcileStoredLiveSubagents(event.session_id, backgroundTasks))
+			{
+				broadcast(
+					DOMAIN_EVENTS.SUBAGENT_STOPPED,
+					{
+						sessionId: node.sessionId,
+						agentType: node.agentType,
+						agentId: node.agentId,
+						endedAt: defined(node.endedAt, "a stopped subagent has an end time"),
+					} satisfies SubagentStoppedPayload,
+				);
 			}
 			// The finished turn is unseen work unless a browser is already showing it.
-			if (!isSessionVisible(event.session_id)) {
+			if (!isSessionVisible(event.session_id))
+			{
 				markSessionCompletionUnreviewed(
 					db,
 					event.session_id,
@@ -747,21 +1008,33 @@ export async function dispatchHookEvent({
 			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
 				store.getActiveSessionEntry(sessionId),
 			);
-			if (summary) {
+			if (summary)
+			{
 				const key = sessionUpdatedDedupeKey(summary);
-				if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
-					broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+				if (!recentlyBroadcast(key, DEDUPE_TTL_MS))
+				{
+					broadcast(
+						DOMAIN_EVENTS.SESSION_UPDATED,
+						{
+							session: summary,
+						},
+					);
 				}
-				if (event.claude_env?.["CLAUDE_CCP_REVIEW_RUN"] !== "1") {
-					broadcast(DOMAIN_EVENTS.REVIEW_OFFERED, {
-						sessionId: event.session_id,
-					} satisfies ReviewOfferedPayload);
+				if (event.claude_env?.["CLAUDE_CCP_REVIEW_RUN"] !== "1")
+				{
+					broadcast(
+						DOMAIN_EVENTS.REVIEW_OFFERED,
+						{
+							sessionId: event.session_id,
+						} satisfies ReviewOfferedPayload,
+					);
 				}
 			}
 			break;
 		}
 
-		case "PostToolUse": {
+		case "PostToolUse":
+		{
 			store.touchSession(event.session_id);
 
 			// Fast-path: LLM edits to plan / task / memory / commands / plugins /
@@ -772,10 +1045,14 @@ export async function dispatchHookEvent({
 			// reports real paths. Index both under the real path so one file keeps
 			// one indexed_files row, session filePath and memory row.
 			const canonicalDirs = dirs ? canonicalHookDirs(dirs) : undefined;
-			if (canonicalDirs && editedFilePath) {
-				try {
+			if (canonicalDirs && editedFilePath)
+			{
+				try
+				{
 					await handlePostToolUseFileEdit(db, canonicalPath(editedFilePath), canonicalDirs, broadcast);
-				} catch {
+				}
+				catch
+				{
 					// transient indexing error — chokidar will retry
 				}
 			}
@@ -783,7 +1060,8 @@ export async function dispatchHookEvent({
 			// Any tool that carries a transcript_path lets us emit
 			// SESSION_LINES_APPENDED without waiting for chokidar to re-read
 			// the JSONL on a 2s debounce.
-			if (canonicalDirs && event.transcript_path) {
+			if (canonicalDirs && event.transcript_path)
+			{
 				await appendTranscriptLines(
 					db,
 					canonicalPath(event.transcript_path),
@@ -795,23 +1073,30 @@ export async function dispatchHookEvent({
 			break;
 		}
 
-		case "SubagentStop": {
+		case "SubagentStop":
+		{
 			store.touchSession(event.session_id);
 			const liveSubagent = endLiveSubagent(event.session_id);
-			if (liveSubagent) {
-				broadcast(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
-					sessionId: liveSubagent.sessionId,
-					agentType: liveSubagent.agentType,
-					agentId: liveSubagent.agentId,
-					endedAt: defined(liveSubagent.endedAt, "an ended subagent has an end time"),
-				} satisfies SubagentStoppedPayload);
+			if (liveSubagent)
+			{
+				broadcast(
+					DOMAIN_EVENTS.SUBAGENT_STOPPED,
+					{
+						sessionId: liveSubagent.sessionId,
+						agentType: liveSubagent.agentType,
+						agentId: liveSubagent.agentId,
+						endedAt: defined(liveSubagent.endedAt, "an ended subagent has an end time"),
+					} satisfies SubagentStoppedPayload,
+				);
 			}
 			const subagent = db
-				.select({
-					id: schema.subagents.id,
-					sessionId: schema.subagents.sessionId,
-					agentType: schema.subagents.agentType,
-				})
+				.select(
+					{
+						id: schema.subagents.id,
+						sessionId: schema.subagents.sessionId,
+						agentType: schema.subagents.agentType,
+					},
+				)
 				.from(schema.subagents)
 				.where(
 					or(
@@ -820,119 +1105,180 @@ export async function dispatchHookEvent({
 					),
 				)
 				.get();
-			if (subagent && !liveSubagent) {
-				broadcast(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
-					sessionId: subagent.sessionId,
-					agentType: subagent.agentType ?? "",
-					agentId: subagent.id,
-				} satisfies SubagentStoppedPayload);
+			if (subagent && !liveSubagent)
+			{
+				broadcast(
+					DOMAIN_EVENTS.SUBAGENT_STOPPED,
+					{
+						sessionId: subagent.sessionId,
+						agentType: subagent.agentType ?? "",
+						agentId: subagent.id,
+					} satisfies SubagentStoppedPayload,
+				);
 			}
 			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
 				store.getActiveSessionEntry(sessionId),
 			);
-			if (summary) {
+			if (summary)
+			{
 				const key = sessionUpdatedDedupeKey(summary);
-				if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
-					broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+				if (!recentlyBroadcast(key, DEDUPE_TTL_MS))
+				{
+					broadcast(
+						DOMAIN_EVENTS.SESSION_UPDATED,
+						{
+							session: summary,
+						},
+					);
 				}
 			}
 			break;
 		}
 
-		case "SubagentStart": {
+		case "SubagentStart":
+		{
 			// Symmetric with SubagentStop. The viewer is a passive observer — we
 			// touch the parent session so the active-indicator stays alive, emit a
 			// SUBAGENT_STARTED delta, and re-broadcast the parent session summary
 			// if it is already indexed.
 			store.touchSession(event.session_id);
-			const liveSubagent = addLiveSubagent({
-				parentSessionId: event.session_id,
-				agentType: event.agent_type ?? "",
-				agentId: event.agent_id ?? "",
-				description: event.agent_config?.description ?? "",
-			});
-			if (liveSubagent) {
-				broadcast(DOMAIN_EVENTS.SUBAGENT_STARTED, {
-					sessionId: liveSubagent.sessionId,
-					parentAgentId: liveSubagent.parentAgentId,
-					agentType: liveSubagent.agentType,
-					agentId: liveSubagent.agentId,
-					description: liveSubagent.description,
-					startedAt: liveSubagent.startedAt,
-					endedAt: null,
-				} satisfies SubagentStartedPayload);
+			const liveSubagent = addLiveSubagent(
+				{
+					parentSessionId: event.session_id,
+					agentType: event.agent_type ?? "",
+					agentId: event.agent_id ?? "",
+					description: event.agent_config?.description ?? "",
+				},
+			);
+			if (liveSubagent)
+			{
+				broadcast(
+					DOMAIN_EVENTS.SUBAGENT_STARTED,
+					{
+						sessionId: liveSubagent.sessionId,
+						parentAgentId: liveSubagent.parentAgentId,
+						agentType: liveSubagent.agentType,
+						agentId: liveSubagent.agentId,
+						description: liveSubagent.description,
+						startedAt: liveSubagent.startedAt,
+						endedAt: null,
+					} satisfies SubagentStartedPayload,
+				);
 			}
 			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
 				store.getActiveSessionEntry(sessionId),
 			);
-			if (summary) {
+			if (summary)
+			{
 				const key = sessionUpdatedDedupeKey(summary);
-				if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
-					broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+				if (!recentlyBroadcast(key, DEDUPE_TTL_MS))
+				{
+					broadcast(
+						DOMAIN_EVENTS.SESSION_UPDATED,
+						{
+							session: summary,
+						},
+					);
 				}
 			}
 			break;
 		}
 
-		case "UserPromptSubmit": {
+		case "UserPromptSubmit":
+		{
 			// Re-stamp the tmux pane/socket every prompt so the mapping survives a
 			// `claude --resume` into a new pane. Only pass claude_env when present so
 			// the store keeps any prior mapping rather than clobbering it with "".
 			store.touchSession(
 				event.session_id,
-				event.claude_env === undefined ? undefined : {claudeEnv: event.claude_env},
+				event.claude_env === undefined
+					? undefined
+					:
+						{
+							claudeEnv: event.claude_env,
+						},
 			);
-			broadcastHookContext(event, broadcast, {clearPausedWork: true, clearTurnContext: true});
-			broadcast(DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED, {
-				sessionId: event.session_id,
-				prompt: event.prompt,
-				ts: new Date().toISOString(),
-			} satisfies SessionPromptSubmittedPayload);
+			broadcastHookContext(
+				event,
+				broadcast,
+				{
+					clearPausedWork: true,
+					clearTurnContext: true,
+				},
+			);
+			broadcast(
+				DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED,
+				{
+					sessionId: event.session_id,
+					prompt: event.prompt,
+					ts: new Date().toISOString(),
+				} satisfies SessionPromptSubmittedPayload,
+			);
 			// A new prompt brings an archived session back, matching claude.ai/code.
-			if (isSessionArchived(db, event.session_id)) {
+			if (isSessionArchived(db, event.session_id))
+			{
 				setSessionArchived(db, event.session_id, false);
 				const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
 					store.getActiveSessionEntry(sessionId),
 				);
-				if (summary) broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+				if (summary)
+					broadcast(
+						DOMAIN_EVENTS.SESSION_UPDATED,
+						{
+							session: summary,
+						},
+					);
 			}
 			break;
 		}
 
-		case "PreToolUse": {
+		case "PreToolUse":
+		{
 			store.touchSession(event.session_id);
 			broadcastHookContext(event, broadcast);
-			broadcast(DOMAIN_EVENTS.SESSION_TOOL_PENDING, {
-				sessionId: event.session_id,
-				toolName: event.tool_name,
-				toolUseId: event.tool_use_id ?? "",
-			} satisfies SessionToolPendingPayload);
+			broadcast(
+				DOMAIN_EVENTS.SESSION_TOOL_PENDING,
+				{
+					sessionId: event.session_id,
+					toolName: event.tool_name,
+					toolUseId: event.tool_use_id ?? "",
+				} satisfies SessionToolPendingPayload,
+			);
 			break;
 		}
 
-		case "PostToolUseFailure": {
+		case "PostToolUseFailure":
+		{
 			store.touchSession(event.session_id);
-			broadcast(DOMAIN_EVENTS.SESSION_TOOL_FAILED, {
-				sessionId: event.session_id,
-				toolName: event.tool_name,
-				toolUseId: event.tool_use_id ?? "",
-				error: event.error ?? "",
-			} satisfies SessionToolFailedPayload);
+			broadcast(
+				DOMAIN_EVENTS.SESSION_TOOL_FAILED,
+				{
+					sessionId: event.session_id,
+					toolName: event.tool_name,
+					toolUseId: event.tool_use_id ?? "",
+					error: event.error ?? "",
+				} satisfies SessionToolFailedPayload,
+			);
 			break;
 		}
 
-		case "Notification": {
+		case "Notification":
+		{
 			store.touchSession(event.session_id);
-			broadcast(DOMAIN_EVENTS.NOTIFICATION, {
-				sessionId: event.session_id,
-				message: event.message,
-				title: event.title,
-			} satisfies NotificationPayload);
+			broadcast(
+				DOMAIN_EVENTS.NOTIFICATION,
+				{
+					sessionId: event.session_id,
+					message: event.message,
+					title: event.title,
+				} satisfies NotificationPayload,
+			);
 			// Persist into the server-side notifications store so the notification
 			// is queryable via /api/notifications and survives page reloads. The
 			// store resolves projectId/projectName and broadcasts NOTIFICATION_ADDED
 			// itself, so no extra broadcast is needed here.
-			const notificationInput: {
+			const notificationInput:
+			{
 				sessionId: string;
 				cwd: string;
 				message: string;
@@ -940,22 +1286,26 @@ export async function dispatchHookEvent({
 				notificationType: string;
 				persistentAllow?: PersistentAllowKind;
 				persistentAllowSaves?: PersistentAllowSave[];
-			} = {
+			} =
+			{
 				sessionId: event.session_id,
 				cwd: event.cwd,
 				message: event.message,
 				notificationType: event.notification_type ?? "",
 			};
-			if (event.title !== undefined) {
+			if (event.title !== undefined)
+			{
 				notificationInput.title = event.title;
 			}
-			if (notificationInput.notificationType === PERMISSION_PROMPT_NOTIFICATION) {
+			if (notificationInput.notificationType === PERMISSION_PROMPT_NOTIFICATION)
+			{
 				// Auto mode's first outside-read prompt has no session-grant row, so its card offers none.
 				const entry = store.getActiveSessionEntry(event.session_id);
 				const request = entry?.pendingPermissionRequest;
 				const dialogKind = await outsideReadDialogKind(request, entry?.claudeEnv ?? {}, readHasSeen);
 				const persistentAllow = dialogKind === "generic" ? persistentAllowKind(request?.suggestions) : null;
-				if (persistentAllow !== null) {
+				if (persistentAllow !== null)
+				{
 					notificationInput.persistentAllow = persistentAllow;
 					notificationInput.persistentAllowSaves = persistentAllowSaves(request?.suggestions ?? []);
 				}
@@ -964,12 +1314,14 @@ export async function dispatchHookEvent({
 			break;
 		}
 
-		case "PermissionRequest": {
+		case "PermissionRequest":
+		{
 			// The CLI is about to show its permission dialog. Remember which
 			// persistent option it offers so the inline card can show it and the
 			// answer handler knows "2" is that option rather than "No".
 			store.touchSession(event.session_id);
-			const pendingRequest: PendingPermissionRequest = {
+			const pendingRequest: PendingPermissionRequest =
+			{
 				toolName: event.tool_name,
 				suggestions: event.permission_suggestions ?? [],
 			};
@@ -978,86 +1330,115 @@ export async function dispatchHookEvent({
 			break;
 		}
 
-		case "PreCompact": {
+		case "PreCompact":
+		{
 			store.touchSession(event.session_id);
-			broadcast(DOMAIN_EVENTS.SESSION_COMPACTING, {
-				sessionId: event.session_id,
-				trigger: event.trigger,
-			} satisfies SessionCompactingPayload);
+			broadcast(
+				DOMAIN_EVENTS.SESSION_COMPACTING,
+				{
+					sessionId: event.session_id,
+					trigger: event.trigger,
+				} satisfies SessionCompactingPayload,
+			);
 			break;
 		}
 
-		case "PostCompact": {
+		case "PostCompact":
+		{
 			// Symmetric with PreCompact. The viewer broadcasts SESSION_COMPACTED so
 			// the UI can clear the in-progress compacting indicator that PreCompact
 			// set without waiting for the next transcript line to arrive.
 			store.touchSession(event.session_id);
-			broadcast(DOMAIN_EVENTS.SESSION_COMPACTED, {
-				sessionId: event.session_id,
-				reason: event.reason,
-				tokensRemoved: event.tokens_removed,
-			} satisfies SessionCompactedPayload);
+			broadcast(
+				DOMAIN_EVENTS.SESSION_COMPACTED,
+				{
+					sessionId: event.session_id,
+					reason: event.reason,
+					tokensRemoved: event.tokens_removed,
+				} satisfies SessionCompactedPayload,
+			);
 			break;
 		}
 
-		case "TaskCreated": {
+		case "TaskCreated":
+		{
 			// Symmetric with TaskCompleted. The viewer is a passive observer — the
 			// existing handlePostToolUseFileEdit path already covers indexing the
 			// ~/.claude/tasks/ JSON write. This event exists so the tasks page can
 			// optimistically render the new row before that file write lands.
-			broadcast(DOMAIN_EVENTS.TASK_CREATED, {
-				taskId: event.task_id ?? "",
-				subject: event.task_subject ?? "",
-			});
+			broadcast(
+				DOMAIN_EVENTS.TASK_CREATED,
+				{
+					taskId: event.task_id ?? "",
+					subject: event.task_subject ?? "",
+				},
+			);
 			store.touchSession(event.session_id);
 			break;
 		}
 
-		case "TaskCompleted": {
-			broadcast(DOMAIN_EVENTS.TASK_COMPLETED, {
-				taskId: event.task_id ?? "",
-				subject: event.task_subject ?? "",
-			});
+		case "TaskCompleted":
+		{
+			broadcast(
+				DOMAIN_EVENTS.TASK_COMPLETED,
+				{
+					taskId: event.task_id ?? "",
+					subject: event.task_subject ?? "",
+				},
+			);
 			store.touchSession(event.session_id);
 			break;
 		}
 
-		case "WorktreeCreate": {
-			broadcast(SSE_EVENTS.WORKTREE_CREATED, {
-				sessionId: event.session_id,
-				name: event.name ?? "",
-			});
+		case "WorktreeCreate":
+		{
+			broadcast(
+				SSE_EVENTS.WORKTREE_CREATED,
+				{
+					sessionId: event.session_id,
+					name: event.name ?? "",
+				},
+			);
 			break;
 		}
 
-		case "WorktreeRemove": {
-			broadcast(SSE_EVENTS.WORKTREE_REMOVED, {
-				sessionId: event.session_id,
-				worktreePath: event.worktree_path ?? "",
-			});
+		case "WorktreeRemove":
+		{
+			broadcast(
+				SSE_EVENTS.WORKTREE_REMOVED,
+				{
+					sessionId: event.session_id,
+					worktreePath: event.worktree_path ?? "",
+				},
+			);
 			break;
 		}
 
-		case "InstructionsLoaded": {
+		case "InstructionsLoaded":
+		{
 			// Observability-only. The viewer is a passive observer — record the load
 			// event so a future per-session "context loaded" panel can populate from
 			// the SSE stream without polling. We touch the session so the
 			// active-session indicator stays alive while a fresh load is happening
 			// (compactions can fire InstructionsLoaded long after SessionStart).
 			store.touchSession(event.session_id);
-			broadcast(DOMAIN_EVENTS.INSTRUCTIONS_LOADED, {
-				sessionId: event.session_id,
-				filePath: event.file_path,
-				memoryType: event.memory_type,
-				loadReason: event.load_reason,
-				globs: event.globs,
-				triggerFilePath: event.trigger_file_path,
-				parentFilePath: event.parent_file_path,
-			} satisfies InstructionsLoadedPayload);
+			broadcast(
+				DOMAIN_EVENTS.INSTRUCTIONS_LOADED,
+				{
+					sessionId: event.session_id,
+					filePath: event.file_path,
+					memoryType: event.memory_type,
+					loadReason: event.load_reason,
+					globs: event.globs,
+					triggerFilePath: event.trigger_file_path,
+					parentFilePath: event.parent_file_path,
+				} satisfies InstructionsLoadedPayload,
+			);
 			break;
 		}
 
-		case "ConfigChange": {
+		case "ConfigChange":
+		{
 			// Settings file changed mid-session. Broadcast CONFIG_CHANGED so any
 			// settings-aware UI can react; when the changed layer is `skills`
 			// (plugin manifests) also emit CONTENT_UPDATED so the plugins view
@@ -1066,18 +1447,23 @@ export async function dispatchHookEvent({
 			// uses. The viewer is a passive observer — the event is not acted on
 			// beyond the broadcast.
 			store.touchSession(event.session_id);
-			broadcast(DOMAIN_EVENTS.CONFIG_CHANGED, {
-				sessionId: event.session_id,
-				configSource: event.config_source,
-				changedFields: event.changed_fields ?? [],
-			} satisfies ConfigChangedPayload);
-			if (event.config_source === "skills") {
+			broadcast(
+				DOMAIN_EVENTS.CONFIG_CHANGED,
+				{
+					sessionId: event.session_id,
+					configSource: event.config_source,
+					changedFields: event.changed_fields ?? [],
+				} satisfies ConfigChangedPayload,
+			);
+			if (event.config_source === "skills")
+			{
 				broadcast(SSE_EVENTS.CONTENT_UPDATED, {});
 			}
 			break;
 		}
 
-		case "MessageDisplay": {
+		case "MessageDisplay":
+		{
 			// Fires while assistant message text streams to the terminal — other
 			// hooks can transform or hide the displayed text via
 			// `hookSpecificOutput.displayContent`. The viewer is a passive observer:
@@ -1086,80 +1472,112 @@ export async function dispatchHookEvent({
 			// surface hook-hidden text. Touch the session to keep the
 			// active-session indicator alive while a message streams.
 			store.touchSession(event.session_id);
-			broadcast(DOMAIN_EVENTS.MESSAGE_DISPLAYED, {
-				sessionId: event.session_id,
-				// Newer Claude Code streams the text as `delta` batches instead of a
-				// whole-`message` snapshot; prefer whichever this build sends.
-				message: event.message ?? event.delta,
-				messageId: event.message_id,
-			} satisfies MessageDisplayedPayload);
+			broadcast(
+				DOMAIN_EVENTS.MESSAGE_DISPLAYED,
+				{
+					sessionId: event.session_id,
+					// Newer Claude Code streams the text as `delta` batches instead of a
+					// whole-`message` snapshot; prefer whichever this build sends.
+					message: event.message ?? event.delta,
+					messageId: event.message_id,
+				} satisfies MessageDisplayedPayload,
+			);
 			break;
 		}
 
-		case "StopFailure": {
+		case "StopFailure":
+		{
 			// The turn ended on an API error instead of a Stop. The state change
 			// and permission-prompt cleanup above already ran; persist the error
 			// so a rate limit or auth failure is visible after the fact.
 			expirePendingApprovalForSession(event.session_id);
 			store.touchSession(event.session_id);
-			addNotification(db, {
-				sessionId: event.session_id,
-				cwd: event.cwd,
-				message: nonEmpty(event.last_assistant_message) ?? nonEmpty(event.error_details) ?? event.error,
-				title: `Turn failed: ${event.error}`,
-				notificationType: TURN_FAILED_NOTIFICATION,
-			});
+			addNotification(
+				db,
+				{
+					sessionId: event.session_id,
+					cwd: event.cwd,
+					message: nonEmpty(event.last_assistant_message) ?? nonEmpty(event.error_details) ?? event.error,
+					title: `Turn failed: ${event.error}`,
+					notificationType: TURN_FAILED_NOTIFICATION,
+				},
+			);
 			break;
 		}
 
-		case "PermissionDenied": {
+		case "PermissionDenied":
+		{
 			// The auto-mode classifier denied the call; the pending permission
 			// request and prompt notification were dropped above.
 			store.touchSession(event.session_id);
 			break;
 		}
 
-		case "PostModelSwitch": {
+		case "PostModelSwitch":
+		{
 			store.touchSession(event.session_id);
-			const context: SessionHookContextPayload = {sessionId: event.session_id, model: event.to_model};
+			const context: SessionHookContextPayload =
+			{
+				sessionId: event.session_id,
+				model: event.to_model,
+			};
 			recordHookContext(context);
-			broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, {...context});
+			broadcast(
+				DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+				{
+					...context,
+				},
+			);
 			break;
 		}
 
-		case "Elicitation": {
+		case "Elicitation":
+		{
 			// An MCP server waits on the user. The waiting state was set above;
 			// the notification is cleared by the next working-state event, which
 			// ElicitationResult is.
 			store.touchSession(event.session_id);
-			addNotification(db, {
-				sessionId: event.session_id,
-				cwd: event.cwd,
-				message: event.message,
-				title: `${event.mcp_server_name} needs input`,
-				notificationType: MCP_ELICITATION_NOTIFICATION,
-			});
+			addNotification(
+				db,
+				{
+					sessionId: event.session_id,
+					cwd: event.cwd,
+					message: event.message,
+					title: `${event.mcp_server_name} needs input`,
+					notificationType: MCP_ELICITATION_NOTIFICATION,
+				},
+			);
 			break;
 		}
 
-		case "ElicitationResult": {
+		case "ElicitationResult":
+		{
 			store.touchSession(event.session_id);
 			break;
 		}
 
-		case "CwdChanged": {
+		case "CwdChanged":
+		{
 			// Sessions in this viewer are keyed by project (cwd), so a mid-session
 			// cwd change must re-home the session in the active-session store
 			// before the active-session sidebar query is invalidated. Reusing
 			// markSessionActive mirrors the SessionStart path: it updates `cwd` on
 			// an existing entry and refreshes lastActivity, leaving startedAt
 			// untouched so the session keeps its original start time.
-			store.markSessionActive(event.session_id, {cwd: event.new_cwd});
-			broadcast(DOMAIN_EVENTS.SESSION_CWD_CHANGED, {
-				sessionId: event.session_id,
-				oldCwd: event.old_cwd,
-				newCwd: event.new_cwd,
-			} satisfies SessionCwdChangedPayload);
+			store.markSessionActive(
+				event.session_id,
+				{
+					cwd: event.new_cwd,
+				},
+			);
+			broadcast(
+				DOMAIN_EVENTS.SESSION_CWD_CHANGED,
+				{
+					sessionId: event.session_id,
+					oldCwd: event.old_cwd,
+					newCwd: event.new_cwd,
+				} satisfies SessionCwdChangedPayload,
+			);
 			break;
 		}
 

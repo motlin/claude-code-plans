@@ -20,9 +20,10 @@ const PALETTES: ReadonlyArray<readonly [prefix: string, palette: Record<string, 
 	["--fti-vscode-", vscode.palette],
 ];
 
-export function fileTypeIconsCss(): string {
+export function fileTypeIconsCss(): string
+{
 	const block = (selector: string, index: 0 | 1) =>
-		`${selector} {\n${PALETTES.flatMap(([prefix, palette]) =>
+		`${selector}\n{\n${PALETTES.flatMap(([prefix, palette]) =>
 			Object.entries(palette).map(([name, colors]) => `\t${prefix}${name}: ${colors[index]};\n`),
 		).join("")}}\n`;
 	return [
@@ -32,6 +33,7 @@ export function fileTypeIconsCss(): string {
 	].join("\n");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] === fileURLToPath(import.meta.url))
+{
 	writeFileSync(join(import.meta.dirname, "../src/styles/file-type-icons.css"), fileTypeIconsCss());
 }

@@ -9,29 +9,50 @@ import {SubagentSequence} from "../components/subagent-sequence";
 import {SubagentTree} from "../components/subagent-tree";
 import {useSettings} from "../components/settings-context";
 
-export const Route = createFileRoute("/project/$id_/subagents")({
-	component: ProjectSubagentsPage,
-	loader: async ({context: {queryClient}, params}) => {
-		const [detail] = await Promise.all([
-			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
-			queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
-			queryClient.query({...projectSubagentsQueryOptions(params.id), staleTime: "static"}),
-		]);
-		return detail;
+export const Route = createFileRoute("/project/$id_/subagents")(
+	{
+		component: ProjectSubagentsPage,
+		loader: async ({context: {queryClient}, params}) =>
+		{
+			const [detail] = await Promise.all([
+				queryClient.query(
+					{
+						...projectDetailQueryOptions(params.id),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...projectsQueryOptions(),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...projectSubagentsQueryOptions(params.id),
+						staleTime: "static",
+					},
+				),
+			]);
+			return detail;
+		},
+		head: ({loaderData}) => (
+		{
+			meta: [pageTitle(loaderData ? `${loaderData.name} subagents` : "Project Not Found")],
+		}),
 	},
-	head: ({loaderData}) => ({
-		meta: [pageTitle(loaderData ? `${loaderData.name} subagents` : "Project Not Found")],
-	}),
-});
+);
 
-function ProjectSubagentsPage() {
+function ProjectSubagentsPage()
+{
 	const {id} = Route.useParams();
 	const {data: project} = useSuspenseQuery(projectDetailQueryOptions(id));
 	const {data: agents} = useSuspenseQuery(projectSubagentsQueryOptions(id));
 	const {settings} = useSettings();
 	const subagentView = settings.defaultSubagentView;
 
-	if (!project) {
+	if (!project)
+	{
 		return <NotFoundContent />;
 	}
 

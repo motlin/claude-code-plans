@@ -3,12 +3,14 @@ import type {BackgroundTaskStatus} from "./background-tasks";
 /** Upstream's noun kinds for a background task notification. */
 export type NoticeKind = "shell" | "agent" | "workflow" | "monitor" | "task";
 
-export interface NoticeEntry {
+export interface NoticeEntry
+{
 	status: BackgroundTaskStatus;
 	kind: NoticeKind;
 }
 
-export interface NoticePart {
+export interface NoticePart
+{
 	key: BackgroundTaskStatus;
 	text: string;
 	/** Upstream draws the failed part in danger ink. */
@@ -16,7 +18,8 @@ export interface NoticePart {
 }
 
 /** Each kind's singular and plural noun. */
-export const NOTICE_NOUNS = {
+export const NOTICE_NOUNS =
+{
 	shell: ["command", "commands"],
 	agent: ["agent", "agents"],
 	workflow: ["workflow", "workflows"],
@@ -31,17 +34,25 @@ const PART_ORDER = ["completed", "failed", "stopped", "running"] as const satisf
  * completed, 1 stopped". Parts run completed, failed, stopped, running, each only when present;
  * only the first names the noun (singular for a count of 1), the shared kind or "task" for a mix.
  */
-export function backgroundNoticeSummary(entries: readonly NoticeEntry[]): NoticePart[] {
+export function backgroundNoticeSummary(entries: readonly NoticeEntry[]): NoticePart[]
+{
 	const kinds = new Set(entries.map((entry) => entry.kind));
 	const [kind] = kinds.size === 1 ? [...kinds] : ["task" as const];
 	const [singular, plural] = NOTICE_NOUNS[kind ?? "task"];
 	const parts: NoticePart[] = [];
-	for (const key of PART_ORDER) {
+	for (const key of PART_ORDER)
+	{
 		const count = entries.filter((entry) => entry.status === key).length;
 		if (count === 0) continue;
 		const text =
 			parts.length === 0 ? `${count} background ${count === 1 ? singular : plural} ${key}` : `${count} ${key}`;
-		parts.push({key, text, danger: key === "failed"});
+		parts.push(
+			{
+				key,
+				text,
+				danger: key === "failed",
+			},
+		);
 	}
 	return parts;
 }

@@ -13,22 +13,29 @@ const gitVariablesAtLoad = Object.fromEntries(Object.entries(process.env).filter
 
 // Builds the sentinel without the helper under test, so a broken helper can never
 // create or touch anything but the sentinel's own temporary directory.
-function sentinelGit(cwd: string, arguments_: string[]): string {
+function sentinelGit(cwd: string, arguments_: string[]): string
+{
 	const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")));
-	return execFileSync("git", ["-c", "core.fsmonitor=false", ...arguments_], {
-		cwd,
-		env,
-		encoding: "utf8",
-		stdio: "pipe",
-	}).trim();
+	return execFileSync(
+		"git",
+		["-c", "core.fsmonitor=false", ...arguments_],
+		{
+			cwd,
+			env,
+			encoding: "utf8",
+			stdio: "pipe",
+		},
+	).trim();
 }
 
-describe("test suite git isolation", () => {
+describe("test suite git isolation", () =>
+{
 	let fixtureDirectory: string;
 	let sentinelDirectory: string;
 	let savedGitEnvironment: [string, string | undefined][];
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		fixtureDirectory = mkdtempSync(join(tmpdir(), "git-isolation-test-"));
 		sentinelDirectory = join(fixtureDirectory, "sentinel");
 		sentinelGit(fixtureDirectory, ["init", "--quiet", "--initial-branch=main", sentinelDirectory]);
@@ -48,24 +55,37 @@ describe("test suite git isolation", () => {
 		]);
 	});
 
-	afterEach(() => {
-		for (const [name, value] of savedGitEnvironment) {
+	afterEach(() =>
+	{
+		for (const [name, value] of savedGitEnvironment)
+		{
 			if (value === undefined) Reflect.deleteProperty(process.env, name);
 			else process.env[name] = value;
 		}
-		rmSync(fixtureDirectory, {recursive: true, force: true});
+		rmSync(
+			fixtureDirectory,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("starts every test file with only the pinned git config in its GIT_* variables", () => {
-		expect(gitVariablesAtLoad).toStrictEqual({
-			GIT_CONFIG_COUNT: "1",
-			GIT_CONFIG_KEY_0: "core.fsmonitor",
-			GIT_CONFIG_VALUE_0: "false",
-		});
+	it("starts every test file with only the pinned git config in its GIT_* variables", () =>
+	{
+		expect(gitVariablesAtLoad).toStrictEqual(
+			{
+				GIT_CONFIG_COUNT: "1",
+				GIT_CONFIG_KEY_0: "core.fsmonitor",
+				GIT_CONFIG_VALUE_0: "false",
+			},
+		);
 	});
 
-	it("removes every GIT_* variable from an environment", () => {
-		const environment: NodeJS.ProcessEnv = {
+	it("removes every GIT_* variable from an environment", () =>
+	{
+		const environment: NodeJS.ProcessEnv =
+		{
 			GIT_DIR: "/somewhere/.git",
 			GIT_INDEX_FILE: "/somewhere/.git/index",
 			HOME: "/home/alice",
@@ -74,11 +94,18 @@ describe("test suite git isolation", () => {
 
 		scrubGitEnvironment(environment);
 
-		expect(environment).toStrictEqual({HOME: "/home/alice", PATH: "/usr/bin"});
+		expect(environment).toStrictEqual(
+			{
+				HOME: "/home/alice",
+				PATH: "/usr/bin",
+			},
+		);
 	});
 
-	it("replaces every GIT_* variable in an environment with the pinned git config", () => {
-		const environment: NodeJS.ProcessEnv = {
+	it("replaces every GIT_* variable in an environment with the pinned git config", () =>
+	{
+		const environment: NodeJS.ProcessEnv =
+		{
 			GIT_CONFIG_COUNT: "2",
 			GIT_CONFIG_KEY_1: "core.fsmonitor",
 			GIT_CONFIG_VALUE_1: "true",
@@ -88,15 +115,18 @@ describe("test suite git isolation", () => {
 
 		isolateGitEnvironment(environment);
 
-		expect(environment).toStrictEqual({
-			GIT_CONFIG_COUNT: "1",
-			GIT_CONFIG_KEY_0: "core.fsmonitor",
-			GIT_CONFIG_VALUE_0: "false",
-			HOME: "/home/alice",
-		});
+		expect(environment).toStrictEqual(
+			{
+				GIT_CONFIG_COUNT: "1",
+				GIT_CONFIG_KEY_0: "core.fsmonitor",
+				GIT_CONFIG_VALUE_0: "false",
+				HOME: "/home/alice",
+			},
+		);
 	});
 
-	it("keeps the git test helper off a repository named by an inherited GIT_DIR", () => {
+	it("keeps the git test helper off a repository named by an inherited GIT_DIR", () =>
+	{
 		const sentinelGitDirectory = join(sentinelDirectory, ".git");
 		const configBefore = readFileSync(join(sentinelGitDirectory, "config"), "utf8");
 		const refsBefore = sentinelGit(sentinelDirectory, ["for-each-ref"]);
@@ -105,34 +135,54 @@ describe("test suite git isolation", () => {
 		process.env["GIT_DIR"] = sentinelGitDirectory;
 		process.env["GIT_WORK_TREE"] = sentinelDirectory;
 		process.env["GIT_INDEX_FILE"] = join(sentinelGitDirectory, "index");
-		try {
+		try
+		{
 			runGit(fixtureDirectory, ["init", "--quiet", "--initial-branch=main", otherRepository]);
 			runGit(otherRepository, ["config", "core.bare", "true"]);
 			runGit(otherRepository, ["config", "user.name", "Bob"]);
 			runGit(otherRepository, ["update-ref", "refs/heads/intruder", "HEAD"]);
-		} catch {
+		}
+		catch
+		{
 			// A failing helper call is fine; only the sentinel's state matters.
-		} finally {
+		}
+		finally
+		{
 			delete process.env["GIT_DIR"];
 			delete process.env["GIT_WORK_TREE"];
 			delete process.env["GIT_INDEX_FILE"];
 		}
 
-		expect({
-			config: readFileSync(join(sentinelGitDirectory, "config"), "utf8"),
-			refs: sentinelGit(sentinelDirectory, ["for-each-ref"]),
-		}).toStrictEqual({config: configBefore, refs: refsBefore});
+		expect(
+			{
+				config: readFileSync(join(sentinelGitDirectory, "config"), "utf8"),
+				refs: sentinelGit(sentinelDirectory, ["for-each-ref"]),
+			},
+		).toStrictEqual(
+			{
+				config: configBefore,
+				refs: refsBefore,
+			},
+		);
 		expect(sentinelGit(sentinelDirectory, ["config", "--get", "core.bare"])).toBe("false");
 	});
 });
 
-describe("test suite database isolation", () => {
-	const dbHolder = hmrPersist<{db: AppDb | null}>("appDbHolder", () => ({db: null}));
+describe("test suite database isolation", () =>
+{
+	const dbHolder = hmrPersist<
+	{
+		db: AppDb | null;
+	}>("appDbHolder", () => (
+	{
+		db: null,
+	}));
 	let savedDb: AppDb | null;
 	let savedCacheHome: string | undefined;
 	let cacheHome: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		savedDb = dbHolder.db;
 		dbHolder.db = null;
 		savedCacheHome = process.env["XDG_CACHE_HOME"];
@@ -140,34 +190,62 @@ describe("test suite database isolation", () => {
 		process.env["XDG_CACHE_HOME"] = cacheHome;
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		dbHolder.db = savedDb;
 		if (savedCacheHome === undefined) delete process.env["XDG_CACHE_HOME"];
 		else process.env["XDG_CACHE_HOME"] = savedCacheHome;
-		rmSync(cacheHome, {recursive: true, force: true});
+		rmSync(
+			cacheHome,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("throws when getDb() is called without an injected test database", () => {
+	it("throws when getDb() is called without an injected test database", () =>
+	{
 		expect(() => getDb()).toThrow(/must pass an explicit cacheDir/);
 	});
 
-	it("refuses to open the user cache directory even when it is passed explicitly", () => {
-		expect(() => openAppDb({cacheDir: getCacheDir()})).toThrow(/user cache directory/);
+	it("refuses to open the user cache directory even when it is passed explicitly", () =>
+	{
+		expect(() =>
+			openAppDb(
+				{
+					cacheDir: getCacheDir(),
+				},
+			),
+		).toThrow(/user cache directory/);
 	});
 });
 
-describe("test suite git fsmonitor isolation", () => {
+describe("test suite git fsmonitor isolation", () =>
+{
 	let fixtureDirectory: string;
 	let repository: string;
 	let savedEnvironment: [string, string | undefined][];
 
 	// Asks git directly, with only the developer-style HOME config, whether a daemon watches `cwd`.
-	function fsmonitorDaemonIsWatching(cwd: string): boolean {
+	function fsmonitorDaemonIsWatching(cwd: string): boolean
+	{
 		const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")));
-		return spawnSync("git", ["fsmonitor--daemon", "status"], {cwd, env, stdio: "ignore"}).status === 0;
+		return (
+			spawnSync(
+				"git",
+				["fsmonitor--daemon", "status"],
+				{
+					cwd,
+					env,
+					stdio: "ignore",
+				},
+			).status === 0
+		);
 	}
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		fixtureDirectory = mkdtempSync(join(tmpdir(), "git-fsmonitor-test-"));
 		repository = join(fixtureDirectory, "repository");
 		const home = join(fixtureDirectory, "home");
@@ -179,23 +257,47 @@ describe("test suite git fsmonitor isolation", () => {
 		process.env["XDG_CONFIG_HOME"] = join(home, ".config");
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		// Stops only the daemon this fixture could have started, never anyone else's.
 		const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")));
-		spawnSync("git", ["fsmonitor--daemon", "stop"], {cwd: repository, env, stdio: "ignore"});
-		for (const [name, value] of savedEnvironment) {
+		spawnSync(
+			"git",
+			["fsmonitor--daemon", "stop"],
+			{
+				cwd: repository,
+				env,
+				stdio: "ignore",
+			},
+		);
+		for (const [name, value] of savedEnvironment)
+		{
 			if (value === undefined) Reflect.deleteProperty(process.env, name);
 			else process.env[name] = value;
 		}
-		rmSync(fixtureDirectory, {recursive: true, force: true});
+		rmSync(
+			fixtureDirectory,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("leaves no fsmonitor daemon watching a fixture repository after git commands", () => {
+	it("leaves no fsmonitor daemon watching a fixture repository after git commands", () =>
+	{
 		runGit(fixtureDirectory, ["init", "--quiet", "--initial-branch=main", repository]);
 		writeFileSync(join(repository, "file.txt"), "content\n");
 		runGit(repository, ["status", "--porcelain"]);
 		// Code under test spawns git with the inherited process environment.
-		execFileSync("git", ["status", "--porcelain"], {cwd: repository, stdio: "ignore"});
+		execFileSync(
+			"git",
+			["status", "--porcelain"],
+			{
+				cwd: repository,
+				stdio: "ignore",
+			},
+		);
 
 		expect(fsmonitorDaemonIsWatching(repository)).toBe(false);
 	});

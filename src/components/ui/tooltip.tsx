@@ -1,4 +1,5 @@
-import {
+import
+{
 	cloneElement,
 	type CSSProperties,
 	type PointerEvent,
@@ -18,7 +19,8 @@ import {loadShrinkwrapEngine} from "../../lib/shrinkwrap-loader";
 
 import {ViewportPortal} from "../viewport-portal";
 import {Shortcut} from "./shortcut";
-import {
+import
+{
 	ACTION_ROWS_TOOLTIP_CLASS,
 	MULTILINE_TOOLTIP_CLASS,
 	OPEN_DELAY_MS,
@@ -34,7 +36,8 @@ import {TooltipGroupContext, type TooltipGroupValue} from "./tooltip-group-conte
 import {TooltipPortalContext} from "./tooltip-portal-context";
 
 /** The side classes' 4px gap widened to upstream's `sideOffset 8` (the @ mention row path tip). */
-function widenOffset(sideClass: string): string {
+function widenOffset(sideClass: string): string
+{
 	return sideClass.replace(/\b(m[lrtb])-1\b/, "$1-2");
 }
 
@@ -48,7 +51,8 @@ const DISPLAY_CLASS =
 	/^!?(?:block|inline-block|inline|flex|inline-flex|grid|inline-grid|contents|flow-root|table|hidden)!?$/;
 
 /** The anchor's classes: `relative inline-flex` plus the caller's, dropping `inline-flex` when the caller sets its own display. */
-function anchorClass(className: string | undefined): string {
+function anchorClass(className: string | undefined): string
+{
 	if (!className) return "relative inline-flex";
 	const ownDisplay = className.split(/\s+/).some((token) => DISPLAY_CLASS.test(token));
 	return ownDisplay ? `relative ${className}` : `relative inline-flex ${className}`;
@@ -58,15 +62,19 @@ function anchorClass(className: string | undefined): string {
  * Keeps at most one tooltip under it open, as Base UI's delay group does: a nested trigger's tip (a StackedMeter
  * segment) replaces its parent's (the whole meter) instead of drawing over it.
  */
-export function TooltipGroup({closeDelay = 0, children}: {closeDelay?: number; children: ReactNode}) {
-	const [value] = useState<TooltipGroupValue>(() => {
+export function TooltipGroup({closeDelay = 0, children}: {closeDelay?: number; children: ReactNode})
+{
+	const [value] = useState<TooltipGroupValue>(() =>
+	{
 		let current: (() => void) | null = null;
 		return {
-			claim: (hide) => {
+			claim: (hide) =>
+			{
 				if (current !== null && current !== hide) current();
 				current = hide;
 			},
-			release: (hide) => {
+			release: (hide) =>
+			{
 				if (current === hide) current = null;
 			},
 			closeDelay,
@@ -76,7 +84,8 @@ export function TooltipGroup({closeDelay = 0, children}: {closeDelay?: number; c
 }
 
 /** One action row of a multi-action tooltip: its label and keyboard shortcut. */
-interface TooltipRow {
+interface TooltipRow
+{
 	content: string;
 	shortcut: string;
 }
@@ -85,7 +94,8 @@ interface TooltipRow {
  * Whether the anchored trigger's menu or popover is open (`aria-expanded="true"`). Base UI puts focus guards
  * beside an open popup's trigger, so this looks for the expanded child rather than the first one.
  */
-function popupOpen(anchor: HTMLElement): boolean {
+function popupOpen(anchor: HTMLElement): boolean
+{
 	return anchor.querySelector(':scope > [aria-expanded="true"]') !== null;
 }
 
@@ -184,8 +194,13 @@ export function Tooltip({
 	className?: string;
 	/** Inline style for the anchor, e.g. a StackedMeter segment's position and width. */
 	style?: CSSProperties | undefined;
-	children: ReactElement<{"aria-describedby"?: string; "data-popup-open"?: string}>;
-}) {
+	children: ReactElement<
+	{
+		"aria-describedby"?: string;
+		"data-popup-open"?: string;
+	}>;
+})
+{
 	const secondaryRows: readonly TooltipRow[] =
 		secondary === undefined ? [] : "content" in secondary ? [secondary] : secondary;
 	const secondaryKey = secondaryRows.map((row) => `${row.content}\u0000${row.shortcut}`).join("\u0001");
@@ -193,7 +208,8 @@ export function Tooltip({
 	const group = useContext(TooltipGroupContext);
 	/** A stable closer for the group to call, since `hide` is redefined each render. */
 	const hideRef = useRef<() => void>(() => {});
-	const [groupHide] = useState(() => () => {
+	const [groupHide] = useState(() => () =>
+	{
 		hideRef.current();
 	});
 	const portal = portalProp ?? inheritedPortal;
@@ -205,9 +221,14 @@ export function Tooltip({
 	const anchorRef = useRef<HTMLSpanElement>(null);
 	const tipRef = useRef<HTMLSpanElement>(null);
 	/** Upstream's `an({immediate: true})`: hug the wrapped text before placement measures the tip. */
-	const fitTip = useLazyShrinkwrap({immediate: true});
+	const fitTip = useLazyShrinkwrap(
+		{
+			immediate: true,
+		},
+	);
 	const tipCallbackRef = useCallback(
-		(el: HTMLSpanElement | null) => {
+		(el: HTMLSpanElement | null) =>
+		{
 			tipRef.current = el;
 			fitTip(el);
 		},
@@ -225,20 +246,27 @@ export function Tooltip({
 	const pointerPressed = useRef(false);
 
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			clearTimeout(timer.current);
 		},
 		[],
 	);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const anchor = anchorRef.current;
 		const tip = tipRef.current;
-		if (!open || anchor === null || tip === null) {
+		if (!open || anchor === null || tip === null)
+		{
 			setPlacement(undefined);
 			return;
 		}
-		const size = {width: tip.offsetWidth, height: tip.offsetHeight};
+		const size =
+		{
+			width: tip.offsetWidth,
+			height: tip.offsetHeight,
+		};
 		// Unlaid-out tooltips (no layout engine) keep their requested side.
 		if (size.width === 0 && size.height === 0) return;
 		setPlacement(
@@ -255,10 +283,12 @@ export function Tooltip({
 		);
 	}, [open, side, align, content, description, secondaryKey]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const anchor = anchorRef.current;
 		const tip = tipRef.current;
-		if (!open || cursorY === undefined || anchor === null || tip === null) {
+		if (!open || cursorY === undefined || anchor === null || tip === null)
+		{
 			setTrackedTop(undefined);
 			return;
 		}
@@ -271,16 +301,26 @@ export function Tooltip({
 	}, [open, cursorY]);
 
 	// Upstream suppresses a trigger's tooltip while its popup is open, so it never draws beside the open menu.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const anchor = anchorRef.current;
 		if ((!open && !suppressAfterPopup) || anchor === null) return undefined;
-		const observer = new MutationObserver(() => {
+		const observer = new MutationObserver(() =>
+		{
 			if (!popupOpen(anchor)) return;
 			if (suppressAfterPopup) suppressed.current = true;
 			hideRef.current();
 		});
-		observer.observe(anchor, {attributes: true, attributeFilter: ["aria-expanded"], subtree: true});
-		return () => {
+		observer.observe(
+			anchor,
+			{
+				attributes: true,
+				attributeFilter: ["aria-expanded"],
+				subtree: true,
+			},
+		);
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [open, suppressAfterPopup]);
@@ -289,7 +329,8 @@ export function Tooltip({
 	const baseSideClass = (align === "start" || trackedTop !== undefined ? START_SIDE_CLASS : SIDE_CLASS)[placedSide];
 	const sideClass = sideOffset === 8 ? widenOffset(baseSideClass) : baseSideClass;
 
-	function show(openDelay = delay, byFocus = false) {
+	function show(openDelay = delay, byFocus = false)
+	{
 		clearTimeout(timer.current);
 		// Usually loaded at idle already; otherwise the hover delay covers the download before the tip fits.
 		loadShrinkwrapEngine().catch(() => {});
@@ -297,11 +338,20 @@ export function Tooltip({
 		if (suppressed.current) return;
 		if (anchor !== null && popupOpen(anchor)) return;
 		if (openWhen !== undefined && (anchor === null || !openWhen(anchor))) return;
-		const reveal = () => {
+		const reveal = () =>
+		{
 			if (anchor !== null && popupOpen(anchor)) return;
-			if (portal && anchor !== null) {
+			if (portal && anchor !== null)
+			{
 				const {left, top, width, height} = anchor.getBoundingClientRect();
-				setAnchorBox({left, top, width, height});
+				setAnchorBox(
+					{
+						left,
+						top,
+						width,
+						height,
+					},
+				);
 			}
 			if (byFocus) setOpenedByFocus(true);
 			group?.claim(groupHide);
@@ -311,11 +361,13 @@ export function Tooltip({
 		else timer.current = setTimeout(reveal, openDelay);
 	}
 
-	function trackPointer(event: PointerEvent<HTMLSpanElement>) {
+	function trackPointer(event: PointerEvent<HTMLSpanElement>)
+	{
 		setCursorY(event.clientY);
 	}
 
-	function hide() {
+	function hide()
+	{
 		clearTimeout(timer.current);
 		group?.release(groupHide);
 		setOpen(false);
@@ -325,11 +377,13 @@ export function Tooltip({
 	hideRef.current = hide;
 
 	/** Leaving the anchor lifts the suppression, unless the popup is still open, and closes after the group's delay. */
-	function leave() {
+	function leave()
+	{
 		const anchor = anchorRef.current;
 		suppressed.current = suppressAfterPopup && anchor !== null && popupOpen(anchor);
 		const closeDelay = group?.closeDelay ?? 0;
-		if (closeDelay === 0 || !open) {
+		if (closeDelay === 0 || !open)
+		{
 			hide();
 			return;
 		}
@@ -413,7 +467,8 @@ export function Tooltip({
 			ref={anchorRef}
 			className={anchorClass(className)}
 			style={style}
-			onPointerEnter={(event) => {
+			onPointerEnter={(event) =>
+			{
 				// Upstream's cds Tooltip never starts its open timer for a touch pointer.
 				if (event.pointerType === "touch") return;
 				if (trackCursor === "y") trackPointer(event);
@@ -421,13 +476,16 @@ export function Tooltip({
 			}}
 			onPointerMove={trackCursor === "y" ? trackPointer : undefined}
 			onPointerLeave={leave}
-			onPointerDown={() => {
+			onPointerDown={() =>
+			{
 				pointerPressed.current = true;
 			}}
-			onFocus={() => {
+			onFocus={() =>
+			{
 				if (!pointerPressed.current) show(0, true);
 			}}
-			onBlur={() => {
+			onBlur={() =>
+			{
 				pointerPressed.current = false;
 				leave();
 			}}
@@ -435,19 +493,33 @@ export function Tooltip({
 				closeOnClick
 					? hide
 					: openOnClick
-						? () => {
+						? () =>
+							{
 								show(0);
 							}
 						: undefined
 			}
 		>
 			{open && (variant !== "reason" || markOpen)
-				? cloneElement(children, {
-						...(variant === "reason"
-							? {}
-							: {"aria-describedby": [children.props["aria-describedby"], id].filter(Boolean).join(" ")}),
-						...(markOpen ? {"data-popup-open": ""} : {}),
-					})
+				? cloneElement(
+						children,
+						{
+							...(variant === "reason"
+								? {}
+								:
+									{
+										"aria-describedby": [children.props["aria-describedby"], id]
+											.filter(Boolean)
+											.join(" "),
+									}),
+							...(markOpen
+								?
+									{
+										"data-popup-open": "",
+									}
+								: {}),
+						},
+					)
 				: children}
 			{open &&
 				(portal ? (
@@ -467,18 +539,32 @@ export function Tooltip({
  * Moves the tooltip by its placement shift with `transform`, which composes with the side classes' Tailwind 4
  * `translate` property and leaves their margins (the 4px offset) intact.
  */
-function shiftStyle(placement: TooltipPlacement | undefined): CSSProperties | undefined {
+function shiftStyle(placement: TooltipPlacement | undefined): CSSProperties | undefined
+{
 	if (placement === undefined || (placement.shiftX === 0 && placement.shiftY === 0)) return undefined;
-	return {transform: `translate(${placement.shiftX}px, ${placement.shiftY}px)`};
+	return {
+		transform: `translate(${placement.shiftX}px, ${placement.shiftY}px)`,
+	};
 }
 
 /** A cursor-tracking tip's top, keeping only the horizontal placement shift since the pointer sets its Y. */
-function trackedStyle(top: number, placement: TooltipPlacement | undefined): CSSProperties {
+function trackedStyle(top: number, placement: TooltipPlacement | undefined): CSSProperties
+{
 	const shiftX = placement?.shiftX ?? 0;
-	return shiftX === 0 ? {top: `${top}px`} : {top: `${top}px`, transform: `translateX(${shiftX}px)`};
+	return shiftX === 0
+		?
+			{
+				top: `${top}px`,
+			}
+		:
+			{
+				top: `${top}px`,
+				transform: `translateX(${shiftX}px)`,
+			};
 }
 
-function TooltipShortcut({keys}: {keys: string}) {
+function TooltipShortcut({keys}: {keys: string})
+{
 	return (
 		<Shortcut
 			keys={keys}

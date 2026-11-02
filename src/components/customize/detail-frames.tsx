@@ -1,7 +1,8 @@
 import {useQuery} from "@tanstack/react-query";
 import {SquareSlash} from "lucide-react";
 import type {ReactElement, ReactNode} from "react";
-import {
+import
+{
 	customizeMcpServerDetailQueryOptions,
 	customizePluginDetailQueryOptions,
 	customizeSkillDetailQueryOptions,
@@ -20,7 +21,8 @@ import {userCommandFileQueryOptions} from "../../lib/api/plugins";
 /** Where a detail renders: a /customize page, or the Settings dialog's fixed-header pane. */
 export type DetailLayout = "page" | "dialog";
 
-interface DetailShellProps {
+interface DetailShellProps
+{
 	layout: DetailLayout;
 	/** The back link, title row and tabs; null for the loading and not-found states. */
 	header: ReactNode;
@@ -34,8 +36,10 @@ interface DetailShellProps {
  * detail frame: the header and tabs stay put (`shrink-0`) and only the body
  * scrolls, both in a `max-w-5xl` column inset by `px-xl` (comfortable 24px).
  */
-function DetailShell({layout, header, pageClassName, children}: DetailShellProps): ReactElement {
-	if (layout === "page") {
+function DetailShell({layout, header, pageClassName, children}: DetailShellProps): ReactElement
+{
+	if (layout === "page")
+	{
 		return header === null ? (
 			<>{children}</>
 		) : (
@@ -63,7 +67,8 @@ function DetailShell({layout, header, pageClassName, children}: DetailShellProps
 	);
 }
 
-interface FrameState {
+interface FrameState
+{
 	layout: DetailLayout;
 	isPending: boolean;
 	loading: string;
@@ -73,8 +78,10 @@ interface FrameState {
 }
 
 /** The loading (while pending) or not-found body, in the layout's frame. */
-function pendingOrMissing({layout, isPending, loading, notFound, back}: FrameState): ReactElement {
-	if (isPending) {
+function pendingOrMissing({layout, isPending, loading, notFound, back}: FrameState): ReactElement
+{
+	if (isPending)
+	{
 		return (
 			<DetailShell layout={layout} header={null} pageClassName="">
 				<p className="text-body text-t6">{loading}</p>
@@ -101,21 +108,25 @@ export function SkillDetailFrame({
 	skillId: string;
 	layout?: DetailLayout;
 	children: (detail: SkillDetail) => ReactNode;
-}): ReactElement {
+}): ReactElement
+{
 	const {data, isPending, isError} = useQuery(customizeSkillDetailQueryOptions(skillId));
-	if (isPending || isError) {
-		return pendingOrMissing({
-			layout,
-			isPending,
-			loading: "Loading skill…",
-			back: <CustomizeBackLink section="skills">Your skills</CustomizeBackLink>,
-			notFound: (
-				<CustomizeNotice
-					title="Skill not found"
-					body="It may have been removed or renamed since the list was loaded."
-				/>
-			),
-		});
+	if (isPending || isError)
+	{
+		return pendingOrMissing(
+			{
+				layout,
+				isPending,
+				loading: "Loading skill…",
+				back: <CustomizeBackLink section="skills">Your skills</CustomizeBackLink>,
+				notFound: (
+					<CustomizeNotice
+						title="Skill not found"
+						body="It may have been removed or renamed since the list was loaded."
+					/>
+				),
+			},
+		);
 	}
 	return (
 		<DetailShell layout={layout} header={<SkillDetailHeader detail={data} />} pageClassName="flex flex-col gap-6">
@@ -133,21 +144,25 @@ export function PluginDetailFrame({
 	pluginId: string;
 	layout?: DetailLayout;
 	children: (detail: PluginDetail) => ReactNode;
-}): ReactElement {
+}): ReactElement
+{
 	const {data, isPending, isError} = useQuery(customizePluginDetailQueryOptions(pluginId));
-	if (isPending || isError) {
-		return pendingOrMissing({
-			layout,
-			isPending,
-			loading: "Loading plugin…",
-			back: <CustomizeBackLink section="plugins">Plugins</CustomizeBackLink>,
-			notFound: (
-				<CustomizeNotice
-					title="Plugin not found"
-					body="It may have been uninstalled since the list was loaded."
-				/>
-			),
-		});
+	if (isPending || isError)
+	{
+		return pendingOrMissing(
+			{
+				layout,
+				isPending,
+				loading: "Loading plugin…",
+				back: <CustomizeBackLink section="plugins">Plugins</CustomizeBackLink>,
+				notFound: (
+					<CustomizeNotice
+						title="Plugin not found"
+						body="It may have been uninstalled since the list was loaded."
+					/>
+				),
+			},
+		);
 	}
 	return (
 		<DetailShell layout={layout} header={<PluginDetailHeader detail={data} />} pageClassName="flex flex-col gap-6">
@@ -163,22 +178,26 @@ export function ConnectorDetailFrame({
 }: {
 	serverId: string;
 	layout?: DetailLayout;
-}): ReactElement {
+}): ReactElement
+{
 	const query = customizeMcpServerDetailQueryOptions(serverId);
 	const {data, isPending, isError} = useQuery(query);
-	if (isPending || isError) {
-		return pendingOrMissing({
-			layout,
-			isPending,
-			loading: "Loading connector…",
-			back: <CustomizeBackLink section="connectors">Your connectors</CustomizeBackLink>,
-			notFound: (
-				<CustomizeNotice
-					title="Connector not found"
-					body="It may have been removed or renamed since the list was loaded."
-				/>
-			),
-		});
+	if (isPending || isError)
+	{
+		return pendingOrMissing(
+			{
+				layout,
+				isPending,
+				loading: "Loading connector…",
+				back: <CustomizeBackLink section="connectors">Your connectors</CustomizeBackLink>,
+				notFound: (
+					<CustomizeNotice
+						title="Connector not found"
+						body="It may have been removed or renamed since the list was loaded."
+					/>
+				),
+			},
+		);
 	}
 	return (
 		<DetailShell layout={layout} header={<ConnectorDetailHeader detail={data} />} pageClassName="flex flex-col">
@@ -196,21 +215,25 @@ export function CommandDetailFrame({
 	source: string;
 	filename: string;
 	layout?: DetailLayout;
-}): ReactElement {
+}): ReactElement
+{
 	const {data, isPending, isError} = useQuery(userCommandFileQueryOptions(source, filename));
-	if (isPending || isError || data === null) {
-		return pendingOrMissing({
-			layout,
-			isPending,
-			loading: "Loading command…",
-			back: <CustomizeBackLink section="skills">Your skills</CustomizeBackLink>,
-			notFound: (
-				<CustomizeNotice
-					title="Command not found"
-					body="It may have been removed or renamed since the list was loaded."
-				/>
-			),
-		});
+	if (isPending || isError || data === null)
+	{
+		return pendingOrMissing(
+			{
+				layout,
+				isPending,
+				loading: "Loading command…",
+				back: <CustomizeBackLink section="skills">Your skills</CustomizeBackLink>,
+				notFound: (
+					<CustomizeNotice
+						title="Command not found"
+						body="It may have been removed or renamed since the list was loaded."
+					/>
+				),
+			},
+		);
 	}
 	const header = (
 		<header className="flex flex-col gap-4">

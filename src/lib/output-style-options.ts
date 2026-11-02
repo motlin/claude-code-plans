@@ -5,13 +5,16 @@ import {z} from "zod";
  * server-only imports so the Settings dialog can use them.
  */
 
-export const OutputStylesSchema = z.strictObject({
-	builtIns: z.array(z.string()),
-	customs: z.array(z.string()),
-});
+export const OutputStylesSchema = z.strictObject(
+	{
+		builtIns: z.array(z.string()),
+		customs: z.array(z.string()),
+	},
+);
 export type OutputStyles = z.infer<typeof OutputStylesSchema>;
 
-export interface OutputStyleOption {
+export interface OutputStyleOption
+{
 	value: string;
 	label: string;
 	disabled?: true;
@@ -28,18 +31,44 @@ export const DEFAULT_OUTPUT_STYLE = "";
 export function outputStyleOptions(
 	styles: OutputStyles | undefined,
 	current: string,
-): {value: string; options: OutputStyleOption[]} {
+):
+{
+	value: string;
+	options: OutputStyleOption[];
+}
+{
 	const value = current.toLowerCase() === "default" ? DEFAULT_OUTPUT_STYLE : current;
-	const options: OutputStyleOption[] = [{value: DEFAULT_OUTPUT_STYLE, label: "Default"}];
+	const options: OutputStyleOption[] = [
+		{
+			value: DEFAULT_OUTPUT_STYLE,
+			label: "Default",
+		},
+	];
 	const seen = new Set(["default"]);
-	for (const name of [...(styles?.builtIns ?? []), ...(styles?.customs ?? [])]) {
+	for (const name of [...(styles?.builtIns ?? []), ...(styles?.customs ?? [])])
+	{
 		const folded = name.toLowerCase();
 		if (name.length === 0 || seen.has(folded)) continue;
 		seen.add(folded);
-		options.push({value: name, label: name});
+		options.push(
+			{
+				value: name,
+				label: name,
+			},
+		);
 	}
-	if (value !== DEFAULT_OUTPUT_STYLE && !options.some((option) => option.value === value)) {
-		options.push({value, label: value, disabled: true});
+	if (value !== DEFAULT_OUTPUT_STYLE && !options.some((option) => option.value === value))
+	{
+		options.push(
+			{
+				value,
+				label: value,
+				disabled: true,
+			},
+		);
 	}
-	return {value, options};
+	return {
+		value,
+		options,
+	};
 }

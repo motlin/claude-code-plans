@@ -10,7 +10,8 @@ import type {SessionLine} from "../../lib/transcript";
 import {JumpChips} from "../jump-chips";
 import {JumpTargetProvider, type JumpTargetWindow} from "../jump-target-context";
 import {useSettings} from "../settings-context";
-import {
+import
+{
 	type SessionLinkDisplay,
 	useExtractedSessionLinks,
 	useGroupedSessionLinks,
@@ -18,13 +19,15 @@ import {
 	useSessionLinkDisplay,
 } from "./session-link-display";
 
-interface LinkRowProps {
+interface LinkRowProps
+{
 	entry: LinkEntry;
 	copied: boolean;
 	onCopy: (url: string) => Promise<void>;
 }
 
-function LinkRow({entry, copied, onCopy}: LinkRowProps) {
+function LinkRow({entry, copied, onCopy}: LinkRowProps)
+{
 	return (
 		<li className="border-b border-subtle px-4 py-3 last:border-b-0">
 			<div className="flex items-center gap-2">
@@ -58,13 +61,15 @@ function LinkRow({entry, copied, onCopy}: LinkRowProps) {
 	);
 }
 
-interface DevServerLink {
+interface DevServerLink
+{
 	url: string;
 	name?: string | undefined;
 	live: boolean;
 }
 
-function DevServersSection({servers}: {servers: readonly DevServerLink[]}) {
+function DevServersSection({servers}: {servers: readonly DevServerLink[]})
+{
 	return (
 		<section aria-labelledby="links-dev-servers">
 			<h3
@@ -76,7 +81,8 @@ function DevServersSection({servers}: {servers: readonly DevServerLink[]}) {
 				<span>{servers.length}</span>
 			</h3>
 			<ul>
-				{servers.map((server) => {
+				{servers.map((server) =>
+				{
 					const host = server.url.replace(/^https?:\/\//, "");
 					return (
 						<li
@@ -110,7 +116,8 @@ function DevServersSection({servers}: {servers: readonly DevServerLink[]}) {
 	);
 }
 
-interface LinksPaneViewProps {
+interface LinksPaneViewProps
+{
 	display: SessionLinkDisplay;
 	/** Loopback dev servers the session declared or printed. */
 	devServers?: readonly DevServerLink[];
@@ -128,7 +135,8 @@ export function LinksPaneView({
 	unscannedRecordCount = 0,
 	includeToolsAndThinking,
 	onIncludeToolsAndThinkingChange,
-}: LinksPaneViewProps) {
+}: LinksPaneViewProps)
+{
 	const [filterText, setFilterText] = useState("");
 	const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
 	const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
@@ -139,41 +147,56 @@ export function LinksPaneView({
 		() =>
 			query === ""
 				? display.groups
-				: display.groups.flatMap((group) => {
+				: display.groups.flatMap((group) =>
+					{
 						const entries = group.entries.filter(
 							(entry) =>
 								entry.url.toLowerCase().includes(query) || entry.label.toLowerCase().includes(query),
 						);
-						return entries.length === 0 ? [] : [{...group, entries}];
+						return entries.length === 0
+							? []
+							: [
+									{
+										...group,
+										entries,
+									},
+								];
 					}),
 		[display.groups, query],
 	);
 
 	useEffect(
-		() => () => {
-			if (copiedTimeoutReference.current !== undefined) {
+		() => () =>
+		{
+			if (copiedTimeoutReference.current !== undefined)
+			{
 				window.clearTimeout(copiedTimeoutReference.current);
 			}
 		},
 		[],
 	);
 
-	const copyUrl = useCallback(async (url: string) => {
+	const copyUrl = useCallback(async (url: string) =>
+	{
 		setCopiedUrl(null);
 		const succeeded = await writeClipboardText(url);
 		if (!succeeded) return;
 
 		setCopiedUrl(url);
-		if (copiedTimeoutReference.current !== undefined) {
+		if (copiedTimeoutReference.current !== undefined)
+		{
 			window.clearTimeout(copiedTimeoutReference.current);
 		}
-		copiedTimeoutReference.current = window.setTimeout(() => {
+		copiedTimeoutReference.current = window.setTimeout(() =>
+		{
 			setCopiedUrl(null);
 		}, 1_500);
 	}, []);
 
-	function toggleCategory(categoryId: string): void {
-		setCollapsed((current) => {
+	function toggleCategory(categoryId: string): void
+	{
+		setCollapsed((current) =>
+		{
 			const next = new Set(current);
 			if (next.has(categoryId)) next.delete(categoryId);
 			else next.add(categoryId);
@@ -181,7 +204,8 @@ export function LinksPaneView({
 		});
 	}
 
-	function handleFilterChange(event: ChangeEvent<HTMLInputElement>): void {
+	function handleFilterChange(event: ChangeEvent<HTMLInputElement>): void
+	{
 		setFilterText(event.target.value);
 	}
 
@@ -203,7 +227,8 @@ export function LinksPaneView({
 					<input
 						type="checkbox"
 						checked={includeToolsAndThinking}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							onIncludeToolsAndThinkingChange(event.target.checked);
 						}}
 						className="size-3.5 shrink-0 accent-accent-100"
@@ -253,7 +278,8 @@ export function LinksPaneView({
 				{filteredGroups.length === 0 ? (
 					<p className="px-4 py-8 text-center text-xs text-t6">{emptyMessage}</p>
 				) : (
-					filteredGroups.map((group) => {
+					filteredGroups.map((group) =>
+					{
 						const isCollapsed = query === "" && collapsed.has(group.categoryId);
 						return (
 							<section key={group.categoryId} aria-labelledby={`links-${group.categoryId}`}>
@@ -261,7 +287,8 @@ export function LinksPaneView({
 									type="button"
 									id={`links-${group.categoryId}`}
 									aria-expanded={!isCollapsed}
-									onClick={() => {
+									onClick={() =>
+									{
 										toggleCategory(group.categoryId);
 									}}
 									className="sticky top-[57px] z-10 flex w-full items-center gap-2 border-b border-border bg-surface-2 px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-secondary hover:bg-fill-ghost-hover"
@@ -295,7 +322,8 @@ export function LinksPaneView({
 	);
 }
 
-export interface LinksPaneProps {
+export interface LinksPaneProps
+{
 	sessionId: string;
 	/** The loaded transcript window, whose links stand in until the full-session scan lands. */
 	lines: SessionLine[];
@@ -304,10 +332,12 @@ export interface LinksPaneProps {
 	jumpTargetWindow: JumpTargetWindow;
 }
 
-export function LinksPane({sessionId, lines, windowStartIndex, jumpTargetWindow}: LinksPaneProps) {
+export function LinksPane({sessionId, lines, windowStartIndex, jumpTargetWindow}: LinksPaneProps)
+{
 	const {settings} = useSettings();
 	const [currentHost, setCurrentHost] = useState<string | undefined>(undefined);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		setCurrentHost(window.location.hostname);
 	}, []);
 	const [includeToolsAndThinking, setIncludeToolsAndThinking] = useIncludeToolsAndThinking();

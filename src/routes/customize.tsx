@@ -4,23 +4,36 @@ import {CustomizeHeader} from "../components/customize/customize-header";
 import {routeOptions} from "../components/customize/customize-navigation";
 import {CustomizeUnifiedSearch} from "../components/customize/customize-unified-search";
 import {prefetchUnifiedSearch} from "../components/customize/section-prefetch";
-import {
+import
+{
 	type CustomizeSearch,
 	customizeSearchSchema,
 	dropEmpty,
 	sectionForPathname,
 } from "../components/customize/sections";
 
-export const Route = createFileRoute("/customize")({
-	component: CustomizeLayout,
-	validateSearch: customizeSearchSchema,
-	loaderDeps: ({search}) => ({searching: search.q !== undefined && search.q !== ""}),
-	loader: ({context: {queryClient}, deps: {searching}}) => {
-		if (searching) prefetchUnifiedSearch(queryClient);
+export const Route = createFileRoute("/customize")(
+	{
+		component: CustomizeLayout,
+		validateSearch: customizeSearchSchema,
+		loaderDeps: ({search}) => (
+		{
+			searching: search.q !== undefined && search.q !== "",
+		}),
+		loader: ({context: {queryClient}, deps: {searching}}) =>
+		{
+			if (searching) prefetchUnifiedSearch(queryClient);
+		},
+		head: () => (
+		{
+			meta: [pageTitle("Customize")],
+		}),
+		staticData:
+		{
+			pageGutter: "tight",
+		},
 	},
-	head: () => ({meta: [pageTitle("Customize")]}),
-	staticData: {pageGutter: "tight"},
-});
+);
 
 /**
  * Shell for every `/customize/<section>` page: the shared header (tabs,
@@ -28,18 +41,31 @@ export const Route = createFileRoute("/customize")({
  * `<Outlet />` for the section routes nested under it, except while `?q=` holds a
  * query: then every section and view shows upstream's unified results instead.
  */
-function CustomizeLayout() {
-	const pathname = useLocation({select: (location) => location.pathname});
+function CustomizeLayout()
+{
+	const pathname = useLocation(
+		{
+			select: (location) => location.pathname,
+		},
+	);
 	const search = Route.useSearch();
 	const section = sectionForPathname(pathname);
 	const navigate = useNavigate();
 	const updateSearch = (patch: Partial<CustomizeSearch>) =>
-		void navigate({
-			from: Route.fullPath,
-			to: section.to,
-			search: (previous: CustomizeSearch) => dropEmpty({...previous, ...patch}),
-			replace: true,
-		});
+		void navigate(
+			{
+				from: Route.fullPath,
+				to: section.to,
+				search: (previous: CustomizeSearch) =>
+					dropEmpty(
+						{
+							...previous,
+							...patch,
+						},
+					),
+				replace: true,
+			},
+		);
 
 	return (
 		<div data-testid="customize-page" className="flex w-full flex-col bg-surface-1 text-body text-primary">
@@ -60,9 +86,11 @@ function CustomizeLayout() {
 					<CustomizeUnifiedSearch
 						q={search.q}
 						surface="page"
-						onOpen={(hit) => {
+						onOpen={(hit) =>
+						{
 							if (hit.open === null) return;
-							if (hit.open.kind === "external") {
+							if (hit.open.kind === "external")
+							{
 								window.open(hit.open.href, "_blank", "noopener,noreferrer");
 								return;
 							}

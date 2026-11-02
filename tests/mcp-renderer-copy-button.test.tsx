@@ -9,8 +9,10 @@ import {PlaywrightRenderer} from "../src/components/tool-renderers/playwright-re
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 
-function toolCall(name: string, input: Record<string, unknown>, result: string, isError?: boolean): ClientToolCall {
-	const call: ClientToolCall = {
+function toolCall(name: string, input: Record<string, unknown>, result: string, isError?: boolean): ClientToolCall
+{
+	const call: ClientToolCall =
+	{
 		id: "tool-call-1",
 		name,
 		input,
@@ -65,14 +67,24 @@ const CASES = [
 
 afterEach(cleanup);
 
-describe("custom MCP renderers expose the shared copy button", () => {
-	for (const {label, element, result} of CASES) {
-		it(`copies the ${label} result text on click`, () => {
+describe("custom MCP renderers expose the shared copy button", () =>
+{
+	for (const {label, element, result} of CASES)
+	{
+		it(`copies the ${label} result text on click`, () =>
+		{
 			const writeText = vi.fn<Clipboard["writeText"]>();
-			Object.defineProperty(navigator, "clipboard", {
-				configurable: true,
-				value: {writeText},
-			});
+			Object.defineProperty(
+				navigator,
+				"clipboard",
+				{
+					configurable: true,
+					value:
+					{
+						writeText,
+					},
+				},
+			);
 
 			render(element);
 			fireEvent.click(screen.getByLabelText("Copy"));
@@ -80,19 +92,23 @@ describe("custom MCP renderers expose the shared copy button", () => {
 			expect(writeText.mock.calls).toStrictEqual([[result]]);
 		});
 
-		it(`reveals the ${label} copy button on body hover only`, () => {
+		it(`reveals the ${label} copy button on body hover only`, () =>
+		{
 			render(element);
 
 			expect(screen.getByLabelText("Copy").closest("div")?.className).toBe(HOVER_REVEAL_CLASS);
 		});
 	}
 
-	it("keeps the copy button outside the recolored body of a failed call", () => {
+	it("keeps the copy button outside the recolored body of a failed call", () =>
+	{
 		render(
 			<PlaywrightRenderer
 				toolCall={toolCall(
 					"mcp__plugin_playwright_playwright__browser_click",
-					{element: "Submit"},
+					{
+						element: "Submit",
+					},
 					"Element not found",
 					true,
 				)}

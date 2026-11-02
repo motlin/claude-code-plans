@@ -10,7 +10,8 @@ import {type FinalFocus, useDialogFinalFocus} from "../src/components/ui/use-dia
 import {overlayAttrs} from "../src/lib/overlay";
 import {registerOpenerReturn} from "../src/lib/overlay-focus";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	document.body.replaceChildren();
 	vi.restoreAllMocks();
@@ -21,23 +22,33 @@ afterEach(() => {
  * setTimeout(0). Wait for those signals, not a wall-clock delay: jsdom starts its frame timer only when a frame is
  * requested, so a frame requested after a fixed timer started can fire after it on a loaded machine.
  */
-async function settle() {
-	await act(async () => {
+async function settle()
+{
+	await act(async () =>
+	{
 		// Let the microtask that requests the focus frame run, so the frame below is queued after it.
 		await Promise.resolve();
-		await new Promise<void>((resolve) => {
-			requestAnimationFrame(() => {
+		await new Promise<void>((resolve) =>
+		{
+			requestAnimationFrame(() =>
+			{
 				resolve();
 			});
 		});
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-function HookPopup({label, children}: {label: string; children?: ReactNode}) {
-	const {finalFocus, popupRef} = useDialogFinalFocus({open: true});
+function HookPopup({label, children}: {label: string; children?: ReactNode})
+{
+	const {finalFocus, popupRef} = useDialogFinalFocus(
+		{
+			open: true,
+		},
+	);
 	return (
 		<Dialog.Popup {...overlayAttrs} ref={popupRef} finalFocus={finalFocus} aria-label={label}>
 			<button type="button">{`inside ${label}`}</button>
@@ -56,7 +67,8 @@ function Controlled({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	children?: ReactNode;
-}) {
+})
+{
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
@@ -66,21 +78,25 @@ function Controlled({
 	);
 }
 
-async function openFrom(button: HTMLElement) {
+async function openFrom(button: HTMLElement)
+{
 	button.focus();
-	act(() => {
+	act(() =>
+	{
 		fireEvent.click(button);
 	});
 	await settle();
 }
 
-function Plain() {
+function Plain()
+{
 	const [open, setOpen] = useState(false);
 	return (
 		<>
 			<button
 				type="button"
-				onClick={() => {
+				onClick={() =>
+				{
 					setOpen(true);
 				}}
 			>
@@ -92,23 +108,49 @@ function Plain() {
 	);
 }
 
-describe("useDialogFinalFocus (upstream Eo)", () => {
-	it("(a) returns focus to the opener on a plain close", async () => {
+describe("useDialogFinalFocus (upstream Eo)", () =>
+{
+	it("(a) returns focus to the opener on a plain close", async () =>
+	{
 		render(<Plain />);
-		const opener = screen.getByRole("button", {name: "opener"});
+		const opener = screen.getByRole(
+			"button",
+			{
+				name: "opener",
+			},
+		);
 		await openFrom(opener);
-		expect(document.activeElement).toBe(screen.getByRole("button", {name: "inside A"}));
-		act(() => {
-			fireEvent.keyDown(document.activeElement ?? document.body, {key: "Escape"});
+		expect(document.activeElement).toBe(
+			screen.getByRole(
+				"button",
+				{
+					name: "inside A",
+				},
+			),
+		);
+		act(() =>
+		{
+			fireEvent.keyDown(
+				document.activeElement ?? document.body,
+				{
+					key: "Escape",
+				},
+			);
 		});
 		await settle();
 		expect(document.activeElement).toBe(opener);
 	});
 
-	it("(b) hands A's return target to B when A closes with focus in B, then B's close lands on A's opener", async () => {
-		let setA: (open: boolean) => void = () => {};
-		let setB: (open: boolean) => void = () => {};
-		function Stacked() {
+	it("(b) hands A's return target to B when A closes with focus in B, then B's close lands on A's opener", async () =>
+	{
+		let setA: (open: boolean) => void = () =>
+		{
+		};
+		let setB: (open: boolean) => void = () =>
+		{
+		};
+		function Stacked()
+		{
 			const [a, setAState] = useState(false);
 			const [b, setBState] = useState(false);
 			setA = setAState;
@@ -117,7 +159,8 @@ describe("useDialogFinalFocus (upstream Eo)", () => {
 				<>
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							setAState(true);
 						}}
 					>
@@ -126,7 +169,8 @@ describe("useDialogFinalFocus (upstream Eo)", () => {
 					<Controlled label="A" open={a} onOpenChange={setAState}>
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								setBState(true);
 							}}
 						>
@@ -138,48 +182,80 @@ describe("useDialogFinalFocus (upstream Eo)", () => {
 			);
 		}
 		render(<Stacked />);
-		const opener = screen.getByRole("button", {name: "opener"});
+		const opener = screen.getByRole(
+			"button",
+			{
+				name: "opener",
+			},
+		);
 		await openFrom(opener);
-		await openFrom(screen.getByRole("button", {name: "open B"}));
-		const insideB = screen.getByRole("button", {name: "inside B"});
+		await openFrom(
+			screen.getByRole(
+				"button",
+				{
+					name: "open B",
+				},
+			),
+		);
+		const insideB = screen.getByRole(
+			"button",
+			{
+				name: "inside B",
+			},
+		);
 		expect(document.activeElement).toBe(insideB);
-		act(() => {
+		act(() =>
+		{
 			setA(false);
 		});
 		await settle();
 		expect(document.activeElement).toBe(insideB);
-		act(() => {
+		act(() =>
+		{
 			setB(false);
 		});
 		await settle();
 		expect(document.activeElement).toBe(opener);
 	});
 
-	describe("a confirm opened from a menu item inside a parent dialog", () => {
-		let setConfirm: (open: boolean) => void = () => {};
-		let setThird: (open: boolean) => void = () => {};
-		let removeTrigger: () => void = () => {};
-		let closeMenu: () => void = () => {};
+	describe("a confirm opened from a menu item inside a parent dialog", () =>
+	{
+		let setConfirm: (open: boolean) => void = () =>
+		{
+		};
+		let setThird: (open: boolean) => void = () =>
+		{
+		};
+		let removeTrigger: () => void = () =>
+		{
+		};
+		let closeMenu: () => void = () =>
+		{
+		};
 
-		function MenuInParent() {
+		function MenuInParent()
+		{
 			const [parent, setParent] = useState(false);
 			const [confirm, setConfirmState] = useState(false);
 			const [third, setThirdState] = useState(false);
 			const [trigger, setTrigger] = useState(true);
 			const [menu, setMenu] = useState(false);
-			closeMenu = () => {
+			closeMenu = () =>
+			{
 				setMenu(false);
 			};
 			setConfirm = setConfirmState;
 			setThird = setThirdState;
-			removeTrigger = () => {
+			removeTrigger = () =>
+			{
 				setTrigger(false);
 			};
 			return (
 				<>
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							setParent(true);
 						}}
 					>
@@ -194,7 +270,8 @@ describe("useDialogFinalFocus (upstream Eo)", () => {
 										<MenuPopupWithOpener>
 											<Menu.Item
 												closeOnClick={false}
-												onClick={() => {
+												onClick={() =>
+												{
 													setConfirmState(true);
 												}}
 											>
@@ -213,14 +290,22 @@ describe("useDialogFinalFocus (upstream Eo)", () => {
 		}
 
 		/** Stands in for task 4's menu registration: the popup's opener is its trigger. */
-		function MenuPopupWithOpener({children}: {children: ReactNode}) {
+		function MenuPopupWithOpener({children}: {children: ReactNode})
+		{
 			return (
 				<Menu.Popup
 					{...overlayAttrs}
-					ref={(element) => {
+					ref={(element) =>
+					{
 						if (element === null) return;
-						registerOpenerReturn(element, () => {
-							const trigger = screen.queryByRole("button", {name: "more"});
+						registerOpenerReturn(element, () =>
+						{
+							const trigger = screen.queryByRole(
+								"button",
+								{
+									name: "more",
+								},
+							);
 							return trigger?.isConnected === true ? trigger : null;
 						});
 					}}
@@ -230,80 +315,157 @@ describe("useDialogFinalFocus (upstream Eo)", () => {
 			);
 		}
 
-		async function openConfirmFromMenu() {
+		async function openConfirmFromMenu()
+		{
 			render(<MenuInParent />);
-			await openFrom(screen.getByRole("button", {name: "settings"}));
-			await openFrom(screen.getByRole("button", {name: "more"}));
-			const item = await screen.findByRole("menuitem", {name: "Delete"});
+			await openFrom(
+				screen.getByRole(
+					"button",
+					{
+						name: "settings",
+					},
+				),
+			);
+			await openFrom(
+				screen.getByRole(
+					"button",
+					{
+						name: "more",
+					},
+				),
+			);
+			const item = await screen.findByRole(
+				"menuitem",
+				{
+					name: "Delete",
+				},
+			);
 			item.focus();
-			act(() => {
+			act(() =>
+			{
 				fireEvent.click(item);
 			});
 			await settle();
 			// A browser keeps the item mounted through the menu's exit animation; jsdom has none, so close it after.
-			act(() => {
+			act(() =>
+			{
 				closeMenu();
 			});
 			await settle();
-			expect(screen.queryByRole("menuitem", {name: "Delete"})).toBe(null);
-			expect(document.activeElement).toBe(screen.getByRole("button", {name: "inside Confirm"}));
+			expect(
+				screen.queryByRole(
+					"menuitem",
+					{
+						name: "Delete",
+					},
+				),
+			).toBe(null);
+			expect(document.activeElement).toBe(
+				screen.getByRole(
+					"button",
+					{
+						name: "inside Confirm",
+					},
+				),
+			);
 		}
 
-		it("(c) lands on the menu trigger once the menu item is gone", async () => {
+		it("(c) lands on the menu trigger once the menu item is gone", async () =>
+		{
 			await openConfirmFromMenu();
-			act(() => {
+			act(() =>
+			{
 				setConfirm(false);
 			});
 			await settle();
-			expect(document.activeElement).toBe(screen.getByRole("button", {name: "more"}));
+			expect(document.activeElement).toBe(
+				screen.getByRole(
+					"button",
+					{
+						name: "more",
+					},
+				),
+			);
 		});
 
-		it("(d) falls back to the parent dialog popup when the menu trigger is gone too", async () => {
+		it("(d) falls back to the parent dialog popup when the menu trigger is gone too", async () =>
+		{
 			await openConfirmFromMenu();
-			act(() => {
+			act(() =>
+			{
 				removeTrigger();
 			});
-			act(() => {
+			act(() =>
+			{
 				setConfirm(false);
 			});
 			await settle();
-			expect(document.activeElement).toBe(screen.getByRole("dialog", {name: "Parent"}));
+			expect(document.activeElement).toBe(
+				screen.getByRole(
+					"dialog",
+					{
+						name: "Parent",
+					},
+				),
+			);
 		});
 
-		it("(e) defers the parent refocus while a later overlay is open, then refocuses the parent when it closes", async () => {
+		it("(e) defers the parent refocus while a later overlay is open, then refocuses the parent when it closes", async () =>
+		{
 			await openConfirmFromMenu();
-			act(() => {
+			act(() =>
+			{
 				removeTrigger();
 			});
-			act(() => {
+			act(() =>
+			{
 				setThird(true);
 			});
 			await settle();
-			const insideThird = screen.getByRole("button", {name: "inside Third"});
+			const insideThird = screen.getByRole(
+				"button",
+				{
+					name: "inside Third",
+				},
+			);
 			insideThird.focus();
-			act(() => {
+			act(() =>
+			{
 				setConfirm(false);
 			});
 			await settle();
 			expect(document.activeElement).toBe(insideThird);
-			act(() => {
+			act(() =>
+			{
 				setThird(false);
 			});
 			await settle();
-			expect(document.activeElement).toBe(screen.getByRole("dialog", {name: "Parent"}));
+			expect(document.activeElement).toBe(
+				screen.getByRole(
+					"dialog",
+					{
+						name: "Parent",
+					},
+				),
+			);
 		});
 	});
 
-	it("(f) never steals focus from an outside input", async () => {
-		let setOpenOuter: (open: boolean) => void = () => {};
-		function WithField() {
+	it("(f) never steals focus from an outside input", async () =>
+	{
+		let setOpenOuter: (open: boolean) => void = () =>
+		{
+		};
+		function WithField()
+		{
 			const [open, setOpen] = useState(false);
 			setOpenOuter = setOpen;
 			return (
 				<>
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							setOpen(true);
 						}}
 					>
@@ -320,20 +482,39 @@ describe("useDialogFinalFocus (upstream Eo)", () => {
 			);
 		}
 		render(<WithField />);
-		await openFrom(screen.getByRole("button", {name: "opener"}));
-		const field = screen.getByRole("textbox", {name: "field"});
+		await openFrom(
+			screen.getByRole(
+				"button",
+				{
+					name: "opener",
+				},
+			),
+		);
+		const field = screen.getByRole(
+			"textbox",
+			{
+				name: "field",
+			},
+		);
 		field.focus();
-		act(() => {
+		act(() =>
+		{
 			setOpenOuter(false);
 		});
 		await settle();
 		expect(document.activeElement).toBe(field);
 	});
 
-	it("(g) focuses the opener focus-visibly in the microtask when the holder overlay is gone after a keyboard close", async () => {
+	it("(g) focuses the opener focus-visibly in the microtask when the holder overlay is gone after a keyboard close", async () =>
+	{
 		let captured: FinalFocus | undefined;
-		function Capture() {
-			const {finalFocus, popupRef} = useDialogFinalFocus({open: true});
+		function Capture()
+		{
+			const {finalFocus, popupRef} = useDialogFinalFocus(
+				{
+					open: true,
+				},
+			);
 			captured = finalFocus;
 			return (
 				<Dialog.Popup {...overlayAttrs} ref={popupRef} finalFocus={false} aria-label="A">
@@ -341,13 +522,15 @@ describe("useDialogFinalFocus (upstream Eo)", () => {
 				</Dialog.Popup>
 			);
 		}
-		function Host() {
+		function Host()
+		{
 			const [open, setOpen] = useState(false);
 			return (
 				<>
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							setOpen(true);
 						}}
 					>
@@ -362,7 +545,12 @@ describe("useDialogFinalFocus (upstream Eo)", () => {
 			);
 		}
 		render(<Host />);
-		const opener = screen.getByRole("button", {name: "opener"});
+		const opener = screen.getByRole(
+			"button",
+			{
+				name: "opener",
+			},
+		);
 		await openFrom(opener);
 		const holder = document.createElement("div");
 		holder.setAttribute("data-cds-overlay", "");
@@ -374,13 +562,29 @@ describe("useDialogFinalFocus (upstream Eo)", () => {
 		const focus = vi.spyOn(opener, "focus");
 		const result = captured?.("keyboard");
 		holder.remove();
-		await act(async () => {
+		await act(async () =>
+		{
 			await Promise.resolve();
 		});
-		expect({result, active: document.activeElement, calls: focus.mock.calls}).toStrictEqual({
-			result: false,
-			active: opener,
-			calls: [[{preventScroll: true, focusVisible: true}]],
-		});
+		expect(
+			{
+				result,
+				active: document.activeElement,
+				calls: focus.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				result: false,
+				active: opener,
+				calls: [
+					[
+						{
+							preventScroll: true,
+							focusVisible: true,
+						},
+					],
+				],
+			},
+		);
 	});
 });

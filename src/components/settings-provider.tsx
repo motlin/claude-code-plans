@@ -5,7 +5,8 @@ import {codeFontFamily, codeFontSizeCssVars} from "../lib/code-themes";
 import {FIZZY_LAKE_TYPE} from "../lib/fizzy-lake";
 import {objectKeys} from "../lib/narrow";
 import {usePrefersReducedMotion} from "../lib/reduced-motion";
-import {
+import
+{
 	DEFAULTS,
 	detectVerbosity,
 	dropRetiredSettings,
@@ -20,24 +21,33 @@ import {
 	writeStoredValue,
 } from "./settings-context";
 
-export function SettingsProvider({children}: {children: React.ReactNode}) {
+export function SettingsProvider({children}: {children: React.ReactNode})
+{
 	const [settings, setSettings] = useState<Settings>(DEFAULTS);
 	const [loaded, setLoaded] = useState(false);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		migrateLegacyNotificationSetting(localStorage);
 		dropRetiredSettings(localStorage);
-		const loaded = {...DEFAULTS};
-		for (const key of objectKeys(DEFAULTS)) {
+		const loaded =
+		{
+			...DEFAULTS,
+		};
+		for (const key of objectKeys(DEFAULTS))
+		{
 			const stored = readStoredValue(key);
-			if (stored !== undefined) {
+			if (stored !== undefined)
+			{
 				(loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = stored;
 			}
 		}
 		const rawVerbosity = localStorage.getItem(STORAGE_KEYS.verbosity);
-		if (rawVerbosity === "minimal") {
+		if (rawVerbosity === "minimal")
+		{
 			const normalPreset = VERBOSITY_PRESETS.normal;
-			for (const key of objectKeys(normalPreset)) {
+			for (const key of objectKeys(normalPreset))
+			{
 				const value = normalPreset[key];
 				if (value === undefined) continue;
 				(loaded as Record<keyof Settings, Settings[keyof Settings]>)[key] = value;
@@ -54,61 +64,85 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 	// setting or the OS query), written after hydration and never written as "false".
 	const osReducedMotion = usePrefersReducedMotion();
 	const reduceMotion = settings.motion === "reduced" || osReducedMotion;
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const root = document.documentElement;
 		if (reduceMotion) root.dataset["reduceMotion"] = "true";
 		else delete root.dataset["reduceMotion"];
-		return () => {
+		return () =>
+		{
 			delete root.dataset["reduceMotion"];
 		};
 	}, [reduceMotion]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const root = document.documentElement;
 		if (settings.interfaceFont === "sans") delete root.dataset["interfaceFont"];
 		else root.dataset["interfaceFont"] = settings.interfaceFont;
 	}, [settings.interfaceFont]);
 
-	useEffect(() => {
-		applyReplyFace(document.documentElement, settings.responseFont, {type: FIZZY_LAKE_TYPE});
+	useEffect(() =>
+	{
+		applyReplyFace(
+			document.documentElement,
+			settings.responseFont,
+			{
+				type: FIZZY_LAKE_TYPE,
+			},
+		);
 	}, [settings.responseFont]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const style = document.documentElement.style;
 		const family = codeFontFamily(settings.codeFont);
 		if (family === null) style.removeProperty("--font-mono");
 		else style.setProperty("--font-mono", family);
 	}, [settings.codeFont]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const root = document.documentElement;
 		if (settings.codeFontSize === null) delete root.dataset["codeFontSize"];
 		else root.dataset["codeFontSize"] = String(settings.codeFontSize);
 		const style = root.style;
-		for (const [name, value] of Object.entries(codeFontSizeCssVars(settings.codeFontSize))) {
+		for (const [name, value] of Object.entries(codeFontSizeCssVars(settings.codeFontSize)))
+		{
 			if (value === null) style.removeProperty(name);
 			else style.setProperty(name, value);
 		}
 	}, [settings.codeFontSize]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const style = document.documentElement.style;
-		const vars = appearanceCssVars({
-			interfaceFont: settings.interfaceFont,
-			transcriptTextSize: settings.transcriptTextSize,
-			transcriptWidth: settings.transcriptWidth,
-		});
-		for (const [name, value] of Object.entries(vars)) {
+		const vars = appearanceCssVars(
+			{
+				interfaceFont: settings.interfaceFont,
+				transcriptTextSize: settings.transcriptTextSize,
+				transcriptWidth: settings.transcriptWidth,
+			},
+		);
+		for (const [name, value] of Object.entries(vars))
+		{
 			if (value === null) style.removeProperty(name);
 			else style.setProperty(name, value);
 		}
 	}, [settings.interfaceFont, settings.transcriptTextSize, settings.transcriptWidth]);
 
-	const setSetting = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
-		setSettings((previous) => {
-			const next = {...previous, [key]: value};
+	const setSetting = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) =>
+	{
+		setSettings((previous) =>
+		{
+			const next =
+			{
+				...previous,
+				[key]: value,
+			};
 			writeStoredValue(key, value);
-			if (VERBOSITY_KEYS.includes(key)) {
+			if (VERBOSITY_KEYS.includes(key))
+			{
 				next.verbosity = detectVerbosity(next);
 				writeStoredValue("verbosity", next.verbosity);
 			}
@@ -116,11 +150,19 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		});
 	}, []);
 
-	const setVerbosity = useCallback((verbosity: Verbosity) => {
-		setSettings((previous) => {
+	const setVerbosity = useCallback((verbosity: Verbosity) =>
+	{
+		setSettings((previous) =>
+		{
 			const preset = VERBOSITY_PRESETS[verbosity];
-			const next = {...previous, ...preset, verbosity};
-			for (const key of objectKeys(preset)) {
+			const next =
+			{
+				...previous,
+				...preset,
+				verbosity,
+			};
+			for (const key of objectKeys(preset))
+			{
 				writeStoredValue(key, next[key]);
 			}
 			writeStoredValue("verbosity", verbosity);
@@ -128,15 +170,24 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		});
 	}, []);
 
-	const resetAll = useCallback(() => {
-		for (const key of objectKeys(STORAGE_KEYS)) {
+	const resetAll = useCallback(() =>
+	{
+		for (const key of objectKeys(STORAGE_KEYS))
+		{
 			localStorage.removeItem(STORAGE_KEYS[key]);
 		}
 		setSettings(DEFAULTS);
 	}, []);
 
 	const value = useMemo(
-		() => ({settings, loaded, setSetting, setVerbosity, resetAll}),
+		() => (
+		{
+			settings,
+			loaded,
+			setSetting,
+			setVerbosity,
+			resetAll,
+		}),
 		[settings, loaded, setSetting, setVerbosity, resetAll],
 	);
 

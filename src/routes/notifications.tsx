@@ -3,7 +3,8 @@ import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery, useQuery} from "@tanstack/react-query";
 import {useMemo} from "react";
 import {CheckCircle2, Info, MessageCircleQuestion, X} from "lucide-react";
-import {
+import
+{
 	notificationsQueryOptions,
 	useClearNotifications,
 	useDismissNotification,
@@ -15,21 +16,32 @@ import {formatRelativeTimeFromIso} from "../lib/relative-time";
 import {TOUCH_REVEAL} from "../lib/touch-reveal";
 import {ListPageHeader} from "../components/list-page-header";
 
-export const Route = createFileRoute("/notifications")({
-	component: NotificationsPage,
-	loader: async ({context: {queryClient}}) =>
-		queryClient.query({...notificationsQueryOptions(), staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Notifications")],
-	}),
-});
+export const Route = createFileRoute("/notifications")(
+	{
+		component: NotificationsPage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...notificationsQueryOptions(),
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Notifications")],
+		}),
+	},
+);
 
-function TypeIcon({notificationType}: {notificationType: string}) {
+function TypeIcon({notificationType}: {notificationType: string})
+{
 	const className = "size-4 shrink-0";
-	if (notificationType === "agent_needs_input") {
+	if (notificationType === "agent_needs_input")
+	{
 		return <MessageCircleQuestion className={`${className} text-accent-100`} />;
 	}
-	if (notificationType === "agent_completed") {
+	if (notificationType === "agent_completed")
+	{
 		return <CheckCircle2 className={`${className} text-green-500`} />;
 	}
 	return <Info className={`${className} text-t6`} />;
@@ -41,7 +53,8 @@ function TypeIcon({notificationType}: {notificationType: string}) {
  * rescanning `~/.claude`, so an install with that hook missing shows an empty
  * page forever — say so and link to the installer instead of looking broken.
  */
-function EmptyNotifications() {
+function EmptyNotifications()
+{
 	const {data: hookStatus} = useQuery(hookStatusQueryOptions);
 	const notificationHookMissing = hookStatus?.missingEvents.includes("Notification") === true;
 	const notificationHookOutdated = hookStatus?.outdatedEvents.includes("Notification") === true;
@@ -76,7 +89,8 @@ function EmptyNotifications() {
 	);
 }
 
-function NotificationsPage() {
+function NotificationsPage()
+{
 	const {data} = useSuspenseQuery(notificationsQueryOptions());
 	const notifications = data.notifications;
 
@@ -97,7 +111,8 @@ function NotificationsPage() {
 					notifications.length > 0 ? (
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								clearAll.mutate();
 							}}
 							className="text-xs text-t6 hover:text-primary"
@@ -112,7 +127,8 @@ function NotificationsPage() {
 				<EmptyNotifications />
 			) : (
 				<ul className="mt-4 space-y-1">
-					{notifications.map((notification: Notification) => {
+					{notifications.map((notification: Notification) =>
+					{
 						const sessionTitle = titles[notification.sessionId] ?? notification.sessionId;
 						const heading = notification.title ?? notification.message;
 
@@ -120,7 +136,10 @@ function NotificationsPage() {
 							<li key={notification.id} className="group relative">
 								<Link
 									to="/session/$id"
-									params={{id: notification.sessionId}}
+									params={
+									{
+										id: notification.sessionId,
+									}}
 									className="block rounded-md border border-border p-3 pr-10 no-underline transition-colors hover:bg-surface-0"
 								>
 									<div className="flex items-center gap-2">
@@ -138,7 +157,8 @@ function NotificationsPage() {
 								<button
 									type="button"
 									aria-label="Dismiss notification"
-									onClick={() => {
+									onClick={() =>
+									{
 										dismiss.mutate(notification.id);
 									}}
 									className={`absolute right-2 top-2 rounded p-1 text-t6 opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 ${TOUCH_REVEAL}`}

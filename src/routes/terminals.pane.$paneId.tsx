@@ -7,10 +7,15 @@ import {herdrPanesQueryOptions} from "../lib/api/herdr";
 import {herdrTerminalsQueryOptions} from "../lib/api/herdr-terminals";
 import {findTerminalPane, paneAfterClose} from "../lib/herdr/terminal-tab-nav";
 
-export const Route = createFileRoute("/terminals/pane/$paneId")({
-	component: PaneTerminalPage,
-	head: () => ({meta: [pageTitle("Live terminal")]}),
-});
+export const Route = createFileRoute("/terminals/pane/$paneId")(
+	{
+		component: PaneTerminalPage,
+		head: () => (
+		{
+			meta: [pageTitle("Live terminal")],
+		}),
+	},
+);
 
 /**
  * Any herdr pane's live terminal by pane id: a plain shell, another agent, or
@@ -23,7 +28,8 @@ export const Route = createFileRoute("/terminals/pane/$paneId")({
  * The header switches between the panes of the pane's tab and, while Live
  * terminal input is on, splits, renames the tab and closes the pane.
  */
-function PaneTerminalPage() {
+function PaneTerminalPage()
+{
 	const {paneId} = Route.useParams();
 	const terminals = useQuery(herdrTerminalsQueryOptions);
 	const workspaces = terminals.data?.workspaces;
@@ -55,8 +61,17 @@ function PaneTerminalPage() {
 						pane={pane}
 						writesEnabled={writesEnabled}
 						nextPaneAfterClose={tab === null ? null : paneAfterClose(tab, paneId)}
-						onNavigate={(target) => {
-							void navigate({to: "/terminals/pane/$paneId", params: {paneId: target}});
+						onNavigate={(target) =>
+						{
+							void navigate(
+								{
+									to: "/terminals/pane/$paneId",
+									params:
+									{
+										paneId: target,
+									},
+								},
+							);
 						}}
 					/>
 				</div>

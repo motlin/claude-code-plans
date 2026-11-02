@@ -11,7 +11,8 @@ import {getProjectNamesByIds, getSessionTitlesByIds} from "./db/queries";
 import {getUnseenSessionIds} from "./db/viewed-state";
 import {isLiveSessionState, resolveMainState, type ActivityState} from "./session-state";
 
-export interface ActiveSession {
+export interface ActiveSession
+{
 	sessionId: string;
 	projectDir: string;
 	projectName: string;
@@ -28,7 +29,8 @@ export interface ActiveSession {
 /** Scan result before the DB title and viewed-state lookups join in. */
 type ActiveSessionCandidate = Omit<ActiveSession, "title" | "unseen">;
 
-export async function scanActiveSessions(activeTimeoutMs = ACTIVE_SESSION_WINDOW_MS): Promise<ActiveSession[]> {
+export async function scanActiveSessions(activeTimeoutMs = ACTIVE_SESSION_WINDOW_MS): Promise<ActiveSession[]>
+{
 	// Build both views and union them: the hook-driven store (accurate liveness,
 	// richer project/cwd info) and the filesystem mtime scan (catches sessions
 	// whose hooks never registered, e.g. the current one). Either alone is lossy,
@@ -41,29 +43,40 @@ export async function scanActiveSessions(activeTimeoutMs = ACTIVE_SESSION_WINDOW
 	// Dedup by sessionId, keeping the entry with the fresher lastModified. Store
 	// entries are visited first, so on a tie they win (richer project/cwd info).
 	const bySessionId = new Map<string, ActiveSessionCandidate>();
-	for (const session of [...storeSessions, ...fsSessions]) {
+	for (const session of [...storeSessions, ...fsSessions])
+	{
 		const existing = bySessionId.get(session.sessionId);
-		if (!existing) {
+		if (!existing)
+		{
 			bySessionId.set(session.sessionId, session);
 			continue;
 		}
 
 		const fresher = session.lastModified > existing.lastModified ? session : existing;
 		const state = session.state === "unknown" ? existing.state : session.state;
-		bySessionId.set(session.sessionId, {
-			...fresher,
-			createdAt: Math.min(existing.createdAt, session.createdAt),
-			state,
-			blockedSince: null,
-		});
+		bySessionId.set(
+			session.sessionId,
+			{
+				...fresher,
+				createdAt: Math.min(existing.createdAt, session.createdAt),
+				state,
+				blockedSince: null,
+			},
+		);
 	}
 
 	// The CLI's live registry knows each running session's status outright,
 	// including a quiet one waiting on input whose transcript left the window.
 	const registryIds = new Set<string>();
 	const nameCache = new Map<string, string>();
-	for (const live of getRegistrySessionStates()) {
-		const main = resolveMainState({hook: getActiveSessionEntry(live.sessionId), registry: live});
+	for (const live of getRegistrySessionStates())
+	{
+		const main = resolveMainState(
+			{
+				hook: getActiveSessionEntry(live.sessionId),
+				registry: live,
+			},
+		);
 		if (!isLiveSessionState(main.state)) continue;
 		registryIds.add(live.sessionId);
 		const blockedSince =
@@ -71,35 +84,50 @@ export async function scanActiveSessions(activeTimeoutMs = ACTIVE_SESSION_WINDOW
 				? new Date(live.statusUpdatedAt).toISOString()
 				: null;
 		const existing = bySessionId.get(live.sessionId);
-		if (existing) {
-			bySessionId.set(live.sessionId, {...existing, state: main.state, blockedSince});
+		if (existing)
+		{
+			bySessionId.set(
+				live.sessionId,
+				{
+					...existing,
+					state: main.state,
+					blockedSince,
+				},
+			);
 			continue;
 		}
 		const projectDir = await findProjectDirForCwd(live.cwd);
 		if (!projectDir) continue;
-		bySessionId.set(live.sessionId, {
-			sessionId: live.sessionId,
-			projectDir,
-			projectName: await resolveProjectNameCached(nameCache, projectDir),
-			createdAt: live.startedAt,
-			lastModified: live.statusUpdatedAt,
-			state: main.state,
-			blockedSince,
-		});
+		bySessionId.set(
+			live.sessionId,
+			{
+				sessionId: live.sessionId,
+				projectDir,
+				projectName: await resolveProjectNameCached(nameCache, projectDir),
+				createdAt: live.startedAt,
+				lastModified: live.statusUpdatedAt,
+				state: main.state,
+				blockedSince,
+			},
+		);
 	}
 
 	// Heal entries the watcher never got an event for before reading them.
 	await revalidatePendingApprovals(getDb().index);
 	const approvals = new Map(getPendingApprovals().map((approval) => [approval.sessionId, approval] as const));
-	for (const [sessionId, session] of bySessionId) {
+	for (const [sessionId, session] of bySessionId)
+	{
 		const approval = approvals.get(sessionId);
 		// The CLI flushes a question only once answered, so a registry-tracked session's open one is an orphan.
 		if (!approval || registryIds.has(sessionId)) continue;
-		bySessionId.set(sessionId, {
-			...session,
-			state: "waiting",
-			blockedSince: approval.blockedSince,
-		});
+		bySessionId.set(
+			sessionId,
+			{
+				...session,
+				state: "waiting",
+				blockedSince: approval.blockedSince,
+			},
+		);
 	}
 
 	const candidates = [...bySessionId.values()].toSorted((a, b) => b.lastModified - a.lastModified);
@@ -111,7 +139,8 @@ export async function scanActiveSessions(activeTimeoutMs = ACTIVE_SESSION_WINDOW
 	const projectNames = getProjectNamesByIds(getDb().index, [
 		...new Set(candidates.map((candidate) => candidate.projectDir)),
 	]);
-	return candidates.map((candidate) => ({
+	return candidates.map((candidate) => (
+	{
 		...candidate,
 		projectName: projectNames.get(candidate.projectDir) ?? candidate.projectName,
 		title: titles[candidate.sessionId] ?? candidate.sessionId,
@@ -121,30 +150,35 @@ export async function scanActiveSessions(activeTimeoutMs = ACTIVE_SESSION_WINDOW
 
 async function getActiveSessionsFromStore(
 	entries: ReturnType<typeof getActiveSessionEntries>,
-): Promise<ActiveSessionCandidate[]> {
+): Promise<ActiveSessionCandidate[]>
+{
 	const sorted = entries.toSorted((a, b) => b.lastActivity - a.lastActivity);
 	const nameCache = new Map<string, string>();
 	const result: ActiveSessionCandidate[] = [];
 
-	for (const entry of sorted) {
+	for (const entry of sorted)
+	{
 		// Resolve project dir from cwd — look for matching project dirs
 		const projectDir = await findProjectDirForCwd(entry.cwd);
 		if (!projectDir) continue;
 
-		result.push({
-			sessionId: entry.sessionId,
-			projectDir,
-			projectName: await resolveProjectNameCached(nameCache, projectDir),
-			createdAt: entry.startedAt,
-			lastModified: entry.lastActivity,
-			state: entry.state,
-			blockedSince: null,
-		});
+		result.push(
+			{
+				sessionId: entry.sessionId,
+				projectDir,
+				projectName: await resolveProjectNameCached(nameCache, projectDir),
+				createdAt: entry.startedAt,
+				lastModified: entry.lastActivity,
+				state: entry.state,
+				blockedSince: null,
+			},
+		);
 	}
 	return result;
 }
 
-async function resolveProjectNameCached(cache: Map<string, string>, projectDir: string): Promise<string> {
+async function resolveProjectNameCached(cache: Map<string, string>, projectDir: string): Promise<string>
+{
 	const cached = cache.get(projectDir);
 	if (cached) return cached;
 	const name = await resolveProjectName(projectDir);
@@ -152,61 +186,81 @@ async function resolveProjectNameCached(cache: Map<string, string>, projectDir: 
 	return name;
 }
 
-async function findProjectDirForCwd(cwd: string): Promise<string | null> {
+async function findProjectDirForCwd(cwd: string): Promise<string | null>
+{
 	if (!cwd) return null;
 	const projectsDir = join(homedir(), ".claude", "projects");
 	let dirs: string[];
-	try {
+	try
+	{
 		dirs = readdirSync(projectsDir);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 	// The project dir name is an encoded form of the cwd path
 	// Try to find a dir whose decoded name matches the cwd
-	for (const dir of dirs) {
+	for (const dir of dirs)
+	{
 		const decoded = await resolveProjectName(dir);
 		if (decoded === cwd || cwd.endsWith(decoded)) return dir;
 	}
 	return null;
 }
 
-async function getActiveSessionsFromFilesystem(activeThresholdMs: number): Promise<ActiveSessionCandidate[]> {
+async function getActiveSessionsFromFilesystem(activeThresholdMs: number): Promise<ActiveSessionCandidate[]>
+{
 	const projectsDir = join(homedir(), ".claude", "projects");
 	const now = Date.now();
 	const active: Array<Omit<ActiveSessionCandidate, "projectName">> = [];
 
 	let projectDirs: string[];
-	try {
+	try
+	{
 		projectDirs = readdirSync(projectsDir);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 
-	for (const dir of projectDirs) {
+	for (const dir of projectDirs)
+	{
 		const projectPath = join(projectsDir, dir);
 		let files: string[];
-		try {
+		try
+		{
 			files = readdirSync(projectPath);
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 
-		for (const file of files) {
+		for (const file of files)
+		{
 			if (!file.endsWith(".jsonl")) continue;
 			const filePath = join(projectPath, file);
-			try {
+			try
+			{
 				const st = statSync(filePath);
-				if (now - st.mtimeMs < activeThresholdMs) {
-					active.push({
-						sessionId: file.replace(/\.jsonl$/, ""),
-						projectDir: dir,
-						createdAt: st.birthtimeMs > 0 ? st.birthtimeMs : st.mtimeMs,
-						lastModified: st.mtimeMs,
-						state: "unknown",
-						blockedSince: null,
-					});
+				if (now - st.mtimeMs < activeThresholdMs)
+				{
+					active.push(
+						{
+							sessionId: file.replace(/\.jsonl$/, ""),
+							projectDir: dir,
+							createdAt: st.birthtimeMs > 0 ? st.birthtimeMs : st.mtimeMs,
+							lastModified: st.mtimeMs,
+							state: "unknown",
+							blockedSince: null,
+						},
+					);
 				}
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 		}
@@ -216,8 +270,14 @@ async function getActiveSessionsFromFilesystem(activeThresholdMs: number): Promi
 
 	const nameCache = new Map<string, string>();
 	const result: ActiveSessionCandidate[] = [];
-	for (const s of active) {
-		result.push({...s, projectName: await resolveProjectNameCached(nameCache, s.projectDir)});
+	for (const s of active)
+	{
+		result.push(
+			{
+				...s,
+				projectName: await resolveProjectNameCached(nameCache, s.projectDir),
+			},
+		);
 	}
 	return result;
 }

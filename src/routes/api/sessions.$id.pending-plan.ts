@@ -9,7 +9,8 @@ import {registrySessionAtPrompt} from "../../lib/session-registry-store";
  * process has since gone back to its prompt without a hook saying so. A plan
  * this process saw proposed stays until its own hooks resolve it.
  */
-function currentPendingPlan(sessionId: string) {
+function currentPendingPlan(sessionId: string)
+{
 	const pending = getPendingPlan(sessionId);
 	if (pending === null) return null;
 	if (!pendingPlanWasReloaded(sessionId) || !registrySessionAtPrompt(sessionId)) return pending;
@@ -17,16 +18,37 @@ function currentPendingPlan(sessionId: string) {
 	return null;
 }
 
-export function handlePendingPlanRequest(sessionId: string): Response {
-	return Response.json({pendingPlan: currentPendingPlan(sessionId)} satisfies PendingPlanData, {
-		headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
-	});
+export function handlePendingPlanRequest(sessionId: string): Response
+{
+	return Response.json(
+		{
+			pendingPlan: currentPendingPlan(sessionId),
+		} satisfies PendingPlanData,
+		{
+			headers:
+			{
+				"Cache-Control": "private, max-age=0, must-revalidate",
+			},
+		},
+	);
 }
 
-export const Route = createFileRoute("/api/sessions/$id/pending-plan")({
-	server: {
-		handlers: withMethodNotAllowed({
-			GET: ({params}: {params: {id: string}}) => handlePendingPlanRequest(params.id),
-		}),
+export const Route = createFileRoute("/api/sessions/$id/pending-plan")(
+	{
+		server:
+		{
+			handlers: withMethodNotAllowed(
+				{
+					GET: ({
+						params,
+					}: {
+						params:
+						{
+							id: string;
+						};
+					}) => handlePendingPlanRequest(params.id),
+				},
+			),
+		},
 	},
-});
+);

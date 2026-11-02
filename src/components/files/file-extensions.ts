@@ -8,12 +8,14 @@ const IMAGE_EXTENSIONS: ReadonlySet<string> = new Set(["png", "jpg", "jpeg", "gi
 /** Upstream `fT` (shared-28): files the Files pane can preview. */
 export const FILES_PANE_EXTENSION = /\.(html?|svg|pdf|mp4|webm|m4v|mov|ogv)$/i;
 
-function extension(path: string): string {
+function extension(path: string): string
+{
 	const dot = path.lastIndexOf(".");
 	return dot < 0 ? "" : path.slice(dot + 1).toLowerCase();
 }
 
 /** Upstream `p3`: a file an editor can open (not binary/office/archive/media, not an image). */
-export function isEditableText(path: string): boolean {
+export function isEditableText(path: string): boolean
+{
 	return !NON_EDITOR_EXTENSION.test(path) && !IMAGE_EXTENSIONS.has(extension(path));
 }

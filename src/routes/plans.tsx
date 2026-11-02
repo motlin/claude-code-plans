@@ -7,15 +7,25 @@ import {DebugLink} from "../components/debug-link";
 import {ListPageHeader} from "../components/list-page-header";
 import {ListItemDate} from "../components/list-item-date";
 
-export const Route = createFileRoute("/plans")({
-	component: PlansPage,
-	loader: async ({context: {queryClient}}) => queryClient.query({...plansQueryOptions(), staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Claude Plans")],
-	}),
-});
+export const Route = createFileRoute("/plans")(
+	{
+		component: PlansPage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...plansQueryOptions(),
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Claude Plans")],
+		}),
+	},
+);
 
-function PlansPage() {
+function PlansPage()
+{
 	const {data: plans} = useSuspenseQuery(plansQueryOptions());
 	const now = Date.now();
 	const count = plans.length;
@@ -28,13 +38,17 @@ function PlansPage() {
 				<p className="mt-4 text-t6">No plans found.</p>
 			) : (
 				<ul className="mt-4 space-y-2">
-					{plans.map((plan, index) => {
+					{plans.map((plan, index) =>
+					{
 						const ageHours = (now - new Date(plan.mtime).getTime()) / 3600000;
 						return (
 							<li key={plan.filename} className="relative">
 								<Link
 									to="/plan/$filename"
-									params={{filename: toMdSlug(plan.filename)}}
+									params={
+									{
+										filename: toMdSlug(plan.filename),
+									}}
 									preload={index < 2 ? "render" : "intent"}
 									className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0"
 								>

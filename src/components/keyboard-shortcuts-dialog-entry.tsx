@@ -2,7 +2,8 @@ import {useSyncExternalStore} from "react";
 import {useShortcut} from "../hooks/use-shortcut";
 import {deferredComponent} from "./deferred-component";
 import {keyboardShortcutsDialogModule} from "./keyboard-shortcuts-dialog-module";
-import {
+import
+{
 	getKeyboardShortcutsOpen,
 	getServerKeyboardShortcutsOpen,
 	setKeyboardShortcutsOpen,
@@ -15,7 +16,8 @@ const KeyboardShortcutsDialog = deferredComponent(keyboardShortcutsDialogModule,
  * Binds ⌘/ and mounts the Keyboard shortcuts dialog from its first open on; until then a closed dialog renders
  * nothing. Once mounted, the dialog binds ⌘/ itself.
  */
-export function DeferredKeyboardShortcutsDialog() {
+export function DeferredKeyboardShortcutsDialog()
+{
 	const open = useSyncExternalStore(
 		subscribeKeyboardShortcutsOpen,
 		getKeyboardShortcutsOpen,
@@ -24,12 +26,16 @@ export function DeferredKeyboardShortcutsDialog() {
 	const mounted = open || keyboardShortcutsDialogModule.loaded() !== undefined;
 	useShortcut(
 		"shortcuts_modal",
-		(event) => {
+		(event) =>
+		{
 			event.stopImmediatePropagation();
 			event.stopPropagation();
 			setKeyboardShortcutsOpen(true);
 		},
-		{allowInModal: true, disabled: mounted},
+		{
+			allowInModal: true,
+			disabled: mounted,
+		},
 	);
 	return mounted ? <KeyboardShortcutsDialog /> : null;
 }

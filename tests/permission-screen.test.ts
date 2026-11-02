@@ -1,14 +1,16 @@
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	parseOutsideReadFirstPrompt,
 	parsePermissionDialog,
 	permissionDialogSteps,
 	showsPermissionQuestion,
 	type PermissionDialogRows,
 } from "../src/lib/herdr/permission-screen";
-import {
+import
+{
 	BASH_ASK_RULE,
 	BASH_COMPOUND_ADD_DIR,
 	BASH_FULL,
@@ -32,67 +34,169 @@ import {
 
 const PLAN_DIALOG = readFileSync(join(import.meta.dirname, "fixtures/plan-approval-dialog.txt"), "utf8");
 
-const YES = {kind: "yes", label: "Yes"} as const;
-const NO = {kind: "no", label: "No"} as const;
-const AUTO = {kind: "auto", label: "Yes, and switch to auto mode"} as const;
-const NPM_PREFIX = {kind: "persistent", label: "Yes, and don’t ask again for: npm run *"} as const;
-const ACCEPT_EDITS = {
+const YES =
+{
+	kind: "yes",
+	label: "Yes",
+} as const;
+const NO =
+{
+	kind: "no",
+	label: "No",
+} as const;
+const AUTO =
+{
+	kind: "auto",
+	label: "Yes, and switch to auto mode",
+} as const;
+const NPM_PREFIX =
+{
+	kind: "persistent",
+	label: "Yes, and don’t ask again for: npm run *",
+} as const;
+const ACCEPT_EDITS =
+{
 	kind: "persistent",
 	label: "Yes, and switch to accept edits (auto-approve file edits and common file commands) for this session (shift+tab)",
 } as const;
 
-function bashFull(focused: number, no: {kind: "no"; label: string} = NO): PermissionDialogRows {
-	return {indexed: true, focused, rows: [YES, NPM_PREFIX, AUTO, no]};
+function bashFull(
+	focused: number,
+	no:
+	{
+		kind: "no";
+		label: string;
+	} = NO,
+): PermissionDialogRows
+{
+	return {
+		indexed: true,
+		focused,
+		rows: [YES, NPM_PREFIX, AUTO, no],
+	};
 }
 
-const YES_NO: PermissionDialogRows = {indexed: true, focused: 0, rows: [YES, NO]};
-const ACCEPT_EDITS_DIALOG: PermissionDialogRows = {indexed: true, focused: 0, rows: [YES, ACCEPT_EDITS, NO]};
+const YES_NO: PermissionDialogRows =
+{
+	indexed: true,
+	focused: 0,
+	rows: [YES, NO],
+};
+const ACCEPT_EDITS_DIALOG: PermissionDialogRows =
+{
+	indexed: true,
+	focused: 0,
+	rows: [YES, ACCEPT_EDITS, NO],
+};
 
-describe("parsePermissionDialog", () => {
+describe("parsePermissionDialog", () =>
+{
 	it.each([
-		{name: "BASH_FULL", screen: BASH_FULL, expected: bashFull(0)},
-		{name: "BASH_FULL_FOCUS_PREFIX_ROW", screen: BASH_FULL_FOCUS_PREFIX_ROW, expected: bashFull(1)},
-		{name: "BASH_FULL_FOCUS_NO", screen: BASH_FULL_FOCUS_NO, expected: bashFull(3)},
+		{
+			name: "BASH_FULL",
+			screen: BASH_FULL,
+			expected: bashFull(0),
+		},
+		{
+			name: "BASH_FULL_FOCUS_PREFIX_ROW",
+			screen: BASH_FULL_FOCUS_PREFIX_ROW,
+			expected: bashFull(1),
+		},
+		{
+			name: "BASH_FULL_FOCUS_NO",
+			screen: BASH_FULL_FOCUS_NO,
+			expected: bashFull(3),
+		},
 		{
 			name: "BASH_FULL_NO_INPUT_MODE",
 			screen: BASH_FULL_NO_INPUT_MODE,
-			expected: bashFull(3, {kind: "no", label: "No, and tell Claude what to do differently"}),
+			expected: bashFull(
+				3,
+				{
+					kind: "no",
+					label: "No, and tell Claude what to do differently",
+				},
+			),
 		},
 		{
 			name: "BASH_FULL_NO_FEEDBACK_TYPED",
 			screen: BASH_FULL_NO_FEEDBACK_TYPED,
-			expected: bashFull(3, {kind: "no", label: "No, try x"}),
+			expected: bashFull(
+				3,
+				{
+					kind: "no",
+					label: "No, try x",
+				},
+			),
 		},
-		{name: "BASH_ASK_RULE", screen: BASH_ASK_RULE, expected: YES_NO},
-		{name: "BASH_HOOK_ASK", screen: BASH_HOOK_ASK, expected: YES_NO},
-		{name: "BASH_WITHHELD", screen: BASH_WITHHELD, expected: YES_NO},
-		{name: "EDIT_CLAUDE_MD", screen: EDIT_CLAUDE_MD, expected: YES_NO},
+		{
+			name: "BASH_ASK_RULE",
+			screen: BASH_ASK_RULE,
+			expected: YES_NO,
+		},
+		{
+			name: "BASH_HOOK_ASK",
+			screen: BASH_HOOK_ASK,
+			expected: YES_NO,
+		},
+		{
+			name: "BASH_WITHHELD",
+			screen: BASH_WITHHELD,
+			expected: YES_NO,
+		},
+		{
+			name: "EDIT_CLAUDE_MD",
+			screen: EDIT_CLAUDE_MD,
+			expected: YES_NO,
+		},
 		{
 			name: "BASH_UNICODE_WHITESPACE",
 			screen: BASH_UNICODE_WHITESPACE,
-			expected: {indexed: true, focused: 0, rows: [YES, AUTO, NO]},
+			expected:
+			{
+				indexed: true,
+				focused: 0,
+				rows: [YES, AUTO, NO],
+			},
 		},
 		{
 			name: "BASH_COMPOUND_ADD_DIR",
 			screen: BASH_COMPOUND_ADD_DIR,
-			expected: {
+			expected:
+			{
 				indexed: true,
 				focused: 0,
 				rows: [
 					YES,
-					{kind: "persistent", label: "Yes, allow reading from /private/tmp from this project"},
+					{
+						kind: "persistent",
+						label: "Yes, allow reading from /private/tmp from this project",
+					},
 					AUTO,
 					NO,
 				],
 			},
 		},
-		{name: "EDIT_ACCEPT_EDITS_ROW", screen: EDIT_ACCEPT_EDITS_ROW, expected: ACCEPT_EDITS_DIALOG},
-		{name: "EDIT_HOOK_ASK", screen: EDIT_HOOK_ASK, expected: ACCEPT_EDITS_DIALOG},
-		{name: "WRITE_CREATE", screen: WRITE_CREATE, expected: ACCEPT_EDITS_DIALOG},
+		{
+			name: "EDIT_ACCEPT_EDITS_ROW",
+			screen: EDIT_ACCEPT_EDITS_ROW,
+			expected: ACCEPT_EDITS_DIALOG,
+		},
+		{
+			name: "EDIT_HOOK_ASK",
+			screen: EDIT_HOOK_ASK,
+			expected: ACCEPT_EDITS_DIALOG,
+		},
+		{
+			name: "WRITE_CREATE",
+			screen: WRITE_CREATE,
+			expected: ACCEPT_EDITS_DIALOG,
+		},
 		{
 			name: "READ_OUTSIDE_SESSION_DIR",
 			screen: READ_OUTSIDE_SESSION_DIR,
-			expected: {
+			expected:
+			{
 				indexed: true,
 				focused: 0,
 				rows: [
@@ -108,41 +212,67 @@ describe("parsePermissionDialog", () => {
 		{
 			name: "WEBFETCH",
 			screen: WEBFETCH,
-			expected: {
+			expected:
+			{
 				indexed: true,
 				focused: 0,
 				rows: [
 					YES,
-					{kind: "persistent", label: "Yes, and don't ask again for example.com"},
-					{kind: "no", label: "No, and tell Claude what to do differently"},
+					{
+						kind: "persistent",
+						label: "Yes, and don't ask again for example.com",
+					},
+					{
+						kind: "no",
+						label: "No, and tell Claude what to do differently",
+					},
 				],
 			},
 		},
 		{
 			name: "WEBFETCH_FOCUS_NO",
 			screen: WEBFETCH_FOCUS_NO,
-			expected: {
+			expected:
+			{
 				indexed: true,
 				focused: 2,
 				rows: [
 					YES,
-					{kind: "persistent", label: "Yes, and don't ask again for example.com"},
-					{kind: "no", label: "No, and tell Claude what to do differently"},
+					{
+						kind: "persistent",
+						label: "Yes, and don't ask again for example.com",
+					},
+					{
+						kind: "no",
+						label: "No, and tell Claude what to do differently",
+					},
 				],
 			},
 		},
 		{
 			name: "CLASSIFIER_FALLBACK",
 			screen: CLASSIFIER_FALLBACK,
-			expected: {indexed: false, focused: 0, rows: [NO, YES]},
+			expected:
+			{
+				indexed: false,
+				focused: 0,
+				rows: [NO, YES],
+			},
 		},
-	])("reads $name", ({screen, expected}) => {
+	])("reads $name", ({screen, expected}) =>
+	{
 		expect(parsePermissionDialog(screen)).toStrictEqual(expected);
 	});
 
 	it.each([
-		{name: "the plan approval dialog", screen: PLAN_DIALOG},
-		{name: "BASH_FULL without its footer", screen: BASH_FULL.replace(" Esc to cancel · Tab to amend\n", "")},
+		{
+			name: "the plan approval dialog",
+			screen: PLAN_DIALOG,
+		},
+		{
+			name: "BASH_FULL without its footer",
+			screen: BASH_FULL.replace(" Esc to cancel · Tab to amend\n", ""),
+		},
 		{
 			name: "the auto-mode outside-read first prompt, which has its own shape",
 			screen: READ_OUTSIDE_AUTO_FIRST_PROMPT,
@@ -152,7 +282,12 @@ describe("parsePermissionDialog", () => {
 			screen: [
 				" Do you want to proceed?",
 				" ❯ 1. Yes",
-				...Array.from({length: 8}, (_, index) => `   ${index + 2}. Yes, option ${index + 2}`),
+				...Array.from(
+					{
+						length: 8,
+					},
+					(_, index) => `   ${index + 2}. Yes, option ${index + 2}`,
+				),
 				"   10. No",
 				"",
 				" Esc to cancel",
@@ -170,28 +305,48 @@ describe("parsePermissionDialog", () => {
 			name: "two persistent rows",
 			screen: " Do you want to proceed?\n ❯ 1. Yes\n   2. Yes, a\n   3. Yes, b\n   4. No\n\n Esc to cancel",
 		},
-	])("refuses $name", ({screen}) => {
+	])("refuses $name", ({screen}) =>
+	{
 		expect(parsePermissionDialog(screen)).toBeNull();
 	});
 });
 
-describe("parseOutsideReadFirstPrompt", () => {
-	it("reads the four rows of auto mode's first outside-read prompt by label", () => {
-		expect(parseOutsideReadFirstPrompt(READ_OUTSIDE_AUTO_FIRST_PROMPT)).toStrictEqual({
-			kind: "outsideReadFirstPrompt",
-			rows: {keepAllowing: 1, blockFromNowOn: 2, noAskAgain: 3, yesAskAgain: 4},
-		});
+describe("parseOutsideReadFirstPrompt", () =>
+{
+	it("reads the four rows of auto mode's first outside-read prompt by label", () =>
+	{
+		expect(parseOutsideReadFirstPrompt(READ_OUTSIDE_AUTO_FIRST_PROMPT)).toStrictEqual(
+			{
+				kind: "outsideReadFirstPrompt",
+				rows:
+				{
+					keepAllowing: 1,
+					blockFromNowOn: 2,
+					noAskAgain: 3,
+					yesAskAgain: 4,
+				},
+			},
+		);
 	});
 
-	it("takes each digit from its label, wherever the row sits", () => {
+	it("takes each digit from its label, wherever the row sits", () =>
+	{
 		const swapped = READ_OUTSIDE_AUTO_FIRST_PROMPT.replace(
 			"3. No, and ask again next time\n   4. Yes, but ask again next time",
 			"3. Yes, but ask again next time\n   4. No, and ask again next time",
 		);
-		expect(parseOutsideReadFirstPrompt(swapped)).toStrictEqual({
-			kind: "outsideReadFirstPrompt",
-			rows: {keepAllowing: 1, blockFromNowOn: 2, noAskAgain: 4, yesAskAgain: 3},
-		});
+		expect(parseOutsideReadFirstPrompt(swapped)).toStrictEqual(
+			{
+				kind: "outsideReadFirstPrompt",
+				rows:
+				{
+					keepAllowing: 1,
+					blockFromNowOn: 2,
+					noAskAgain: 4,
+					yesAskAgain: 3,
+				},
+			},
+		);
 	});
 
 	it.each([
@@ -207,43 +362,118 @@ describe("parseOutsideReadFirstPrompt", () => {
 			name: "the rows without their question",
 			screen: READ_OUTSIDE_AUTO_FIRST_PROMPT.replace(" Allow this read outside the working directories?\n", ""),
 		},
-		{name: "the default-mode outside-read dialog", screen: READ_OUTSIDE_SESSION_DIR},
-		{name: "BASH_FULL", screen: BASH_FULL},
-		{name: "a bare shell", screen: "$ "},
-	])("refuses $name", ({screen}) => {
+		{
+			name: "the default-mode outside-read dialog",
+			screen: READ_OUTSIDE_SESSION_DIR,
+		},
+		{
+			name: "BASH_FULL",
+			screen: BASH_FULL,
+		},
+		{
+			name: "a bare shell",
+			screen: "$ ",
+		},
+	])("refuses $name", ({screen}) =>
+	{
 		expect(parseOutsideReadFirstPrompt(screen)).toBeNull();
 	});
 });
 
-describe("showsPermissionQuestion", () => {
+describe("showsPermissionQuestion", () =>
+{
 	it.each([
-		{name: "BASH_FULL", screen: BASH_FULL, expected: true},
-		{name: "WEBFETCH", screen: WEBFETCH, expected: true},
+		{
+			name: "BASH_FULL",
+			screen: BASH_FULL,
+			expected: true,
+		},
+		{
+			name: "WEBFETCH",
+			screen: WEBFETCH,
+			expected: true,
+		},
 		{
 			name: "BASH_FULL without its footer",
 			screen: BASH_FULL.replace(" Esc to cancel · Tab to amend\n", ""),
 			expected: true,
 		},
-		{name: "the plan approval dialog", screen: PLAN_DIALOG, expected: false},
-		{name: "the auto-mode outside-read first prompt", screen: READ_OUTSIDE_AUTO_FIRST_PROMPT, expected: false},
-	])("is $expected for $name", ({screen, expected}) => {
+		{
+			name: "the plan approval dialog",
+			screen: PLAN_DIALOG,
+			expected: false,
+		},
+		{
+			name: "the auto-mode outside-read first prompt",
+			screen: READ_OUTSIDE_AUTO_FIRST_PROMPT,
+			expected: false,
+		},
+	])("is $expected for $name", ({screen, expected}) =>
+	{
 		expect(showsPermissionQuestion(screen)).toStrictEqual(expected);
 	});
 });
 
-describe("permissionDialogSteps", () => {
-	const unicode: PermissionDialogRows = {indexed: true, focused: 0, rows: [YES, AUTO, NO]};
-	const hidden: PermissionDialogRows = {indexed: false, focused: 0, rows: [NO, YES]};
+describe("permissionDialogSteps", () =>
+{
+	const unicode: PermissionDialogRows =
+	{
+		indexed: true,
+		focused: 0,
+		rows: [YES, AUTO, NO],
+	};
+	const hidden: PermissionDialogRows =
+	{
+		indexed: false,
+		focused: 0,
+		rows: [NO, YES],
+	};
 
 	it.each([
-		{name: "allow on BASH_FULL", rows: bashFull(0), decision: "allow", expected: [["1"]]},
-		{name: "always on BASH_FULL", rows: bashFull(0), decision: "always", expected: [["2"]]},
-		{name: "deny on BASH_FULL", rows: bashFull(0), decision: "deny", expected: [["esc"]]},
-		{name: "always without a persistent row", rows: unicode, decision: "always", expected: null},
-		{name: "allow on the hidden form", rows: hidden, decision: "allow", expected: [["down"], ["enter"]]},
-		{name: "always on the hidden form", rows: hidden, decision: "always", expected: null},
-		{name: "deny on the hidden form", rows: hidden, decision: "deny", expected: [["esc"]]},
-	] as const)("$name", ({rows, decision, expected}) => {
+		{
+			name: "allow on BASH_FULL",
+			rows: bashFull(0),
+			decision: "allow",
+			expected: [["1"]],
+		},
+		{
+			name: "always on BASH_FULL",
+			rows: bashFull(0),
+			decision: "always",
+			expected: [["2"]],
+		},
+		{
+			name: "deny on BASH_FULL",
+			rows: bashFull(0),
+			decision: "deny",
+			expected: [["esc"]],
+		},
+		{
+			name: "always without a persistent row",
+			rows: unicode,
+			decision: "always",
+			expected: null,
+		},
+		{
+			name: "allow on the hidden form",
+			rows: hidden,
+			decision: "allow",
+			expected: [["down"], ["enter"]],
+		},
+		{
+			name: "always on the hidden form",
+			rows: hidden,
+			decision: "always",
+			expected: null,
+		},
+		{
+			name: "deny on the hidden form",
+			rows: hidden,
+			decision: "deny",
+			expected: [["esc"]],
+		},
+	] as const)("$name", ({rows, decision, expected}) =>
+	{
 		expect(permissionDialogSteps(rows, decision)).toStrictEqual(expected);
 	});
 });

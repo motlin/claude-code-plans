@@ -10,7 +10,8 @@ export type ConsentMode = "auto" | "bypassPermissions";
 
 export const PERMISSION_SECURITY_GUIDE_URL = "https://code.claude.com/docs/en/security";
 
-export interface ConsentState {
+export interface ConsentState
+{
 	/** The workspace's bypass acks, `${workspace}:bypassPermissions`. */
 	acks: readonly string[];
 	/** The one Auto consent. */
@@ -18,21 +19,39 @@ export interface ConsentState {
 }
 
 /** Upstream `Lm`: Bypass always asks; Auto asks unless it's already the default. */
-export function needsConsent(mode: LaunchPermissionMode, {autoIsDefault}: {autoIsDefault: boolean}): boolean {
+export function needsConsent(
+	mode: LaunchPermissionMode,
+	{
+		autoIsDefault,
+	}:
+	{
+		autoIsDefault: boolean;
+	},
+): boolean
+{
 	return mode === "bypassPermissions" || (mode === "auto" && !autoIsDefault);
 }
 
 /** Upstream `Hm`: a local folder's absolute path, with a trailing worktree stripped so it shares its repo's ack. */
-export function consentWorkspaceKey(cwd: string | undefined): string {
+export function consentWorkspaceKey(cwd: string | undefined): string
+{
 	return (cwd ?? "").replace(/\/\.claude\/worktrees\/[^/]+$/u, "");
 }
 
-function bypassAckKey(workspace: string): string {
+function bypassAckKey(workspace: string): string
+{
 	return `${workspace}:bypassPermissions`;
 }
 
 /** Upstream `qm`'s `isAcked`: no workspace can ever hold a Bypass ack. */
-export function isAcked(mode: ConsentMode, state: ConsentState & {workspace: string}): boolean {
+export function isAcked(
+	mode: ConsentMode,
+	state: ConsentState &
+	{
+		workspace: string;
+	},
+): boolean
+{
 	if (mode === "auto") return state.autoConsented;
 	return state.workspace !== "" && state.acks.includes(bypassAckKey(state.workspace));
 }
@@ -43,13 +62,30 @@ export function recordAck({
 	workspace,
 	acks,
 	autoConsented,
-}: ConsentState & {mode: ConsentMode; workspace: string}): {acks: string[]; autoConsented: boolean} {
-	if (mode === "auto") return {acks: [...acks], autoConsented: true};
+}: ConsentState &
+{
+	mode: ConsentMode;
+	workspace: string;
+}):
+{
+	acks: string[];
+	autoConsented: boolean;
+}
+{
+	if (mode === "auto")
+		return {
+			acks: [...acks],
+			autoConsented: true,
+		};
 	const key = bypassAckKey(workspace);
-	return {acks: workspace === "" || acks.includes(key) ? [...acks] : [...acks, key], autoConsented};
+	return {
+		acks: workspace === "" || acks.includes(key) ? [...acks] : [...acks, key],
+		autoConsented,
+	};
 }
 
-export interface ConsentCopy {
+export interface ConsentCopy
+{
 	title: string;
 	description: string;
 	confirmLabel: string;
@@ -66,7 +102,8 @@ export function consentCopy({
 	mode: ConsentMode;
 	workspace: string;
 	asksEveryTime: boolean;
-}): ConsentCopy {
+}): ConsentCopy
+{
 	const bypass = mode === "bypassPermissions";
 	const footnoteLead =
 		asksEveryTime || (bypass && workspace === "")
@@ -75,14 +112,16 @@ export function consentCopy({
 				? "You won’t be asked again for this workspace. Read our "
 				: "You won’t be asked again. Read our ";
 	return bypass
-		? {
+		?
+			{
 				title: "Bypass all permissions?",
 				description:
 					"Claude will read, edit, and execute files without asking — including potentially destructive commands. Only use this in isolated or disposable environments.",
 				confirmLabel: "Bypass permissions",
 				footnoteLead,
 			}
-		: {
+		:
+			{
 				title: "Enable auto mode?",
 				description:
 					"Claude will decide which actions are safe to run without asking. Longer tasks run uninterrupted, with extra safeguards against prompt injection.",

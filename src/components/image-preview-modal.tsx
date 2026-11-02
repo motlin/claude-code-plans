@@ -28,7 +28,8 @@ const BUTTON_CLASS =
 const GHOST_BUTTON_CLASS = `${BUTTON_CLASS} hover:bg-fill-ghost-hover`;
 const ON_CONTENT_BUTTON_CLASS = `${BUTTON_CLASS} bg-black/55 hover:bg-black/70`;
 
-function focusedElement(): HTMLElement | null {
+function focusedElement(): HTMLElement | null
+{
 	return typeof document !== "undefined" &&
 		document.activeElement instanceof HTMLElement &&
 		document.activeElement !== document.body
@@ -36,16 +37,19 @@ function focusedElement(): HTMLElement | null {
 		: null;
 }
 
-function stopPropagation(event: MouseEvent) {
+function stopPropagation(event: MouseEvent)
+{
 	event.stopPropagation();
 }
 
-function preventDrag(event: DragEvent) {
+function preventDrag(event: DragEvent)
+{
 	event.preventDefault();
 }
 
 /** Seeds the morph's radius keyframes: the tile's corner radius into the preview's 6px. */
-function setMorphRadii(origin: HTMLElement | null, target: HTMLElement | null) {
+function setMorphRadii(origin: HTMLElement | null, target: HTMLElement | null)
+{
 	const style = document.documentElement.style;
 	const source = origin === null ? "" : getComputedStyle(origin).borderRadius;
 	const targetRadius = target === null ? "" : getComputedStyle(target).borderRadius;
@@ -54,14 +58,16 @@ function setMorphRadii(origin: HTMLElement | null, target: HTMLElement | null) {
 	style.setProperty("--vt-image-preview-target-radius", targetRadius === "" ? DEFAULT_TARGET_RADIUS : targetRadius);
 }
 
-function markTransition(origin: HTMLElement | null, closing: boolean) {
+function markTransition(origin: HTMLElement | null, closing: boolean)
+{
 	const classes = document.documentElement.classList;
 	classes.add(ACTIVE_CLASS);
 	if (closing) classes.add(CLOSING_CLASS);
 	if (origin === null) classes.add(CROSSFADE_CLASS);
 }
 
-function clearTransition() {
+function clearTransition()
+{
 	document.documentElement.classList.remove(ACTIVE_CLASS, CLOSING_CLASS, CROSSFADE_CLASS);
 }
 
@@ -86,7 +92,8 @@ export function ImagePreviewModal({
 	/** The tile image that opened the preview: the morph's other end. */
 	origin: HTMLElement | null;
 	onClose: () => void;
-}) {
+})
+{
 	const narrow = useMediaQuery(PHONE_SHEET_QUERY);
 	const closeRef = useRef<HTMLButtonElement>(null);
 	const imgRef = useRef<HTMLImageElement>(null);
@@ -94,12 +101,26 @@ export function ImagePreviewModal({
 	const generationRef = useRef(0);
 	const pendingFocusRef = useRef<HTMLElement | null>(null);
 	const [popup, setPopup] = useState<HTMLDivElement | null>(null);
-	const [session, setSession] = useState<{returnFocus: HTMLElement | null} | null>(() =>
-		open ? {returnFocus: focusedElement()} : null,
+	const [session, setSession] = useState<
+	{
+		returnFocus: HTMLElement | null;
+	} | null>(() =>
+		open
+			?
+				{
+					returnFocus: focusedElement(),
+				}
+			: null,
 	);
-	if (open && session === null) setSession({returnFocus: focusedElement()});
+	if (open && session === null)
+		setSession(
+			{
+				returnFocus: focusedElement(),
+			},
+		);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (popup === null) return;
 		const generation = ++generationRef.current;
 		const img = origin === null ? null : imgRef.current;
@@ -108,11 +129,13 @@ export function ImagePreviewModal({
 		setMorphName(origin, true, MORPH_NAME);
 		// Transparent rather than hidden, so the dialog's initial focus still lands while the snapshot is taken.
 		popup.style.opacity = "0";
-		const finish = () => {
+		const finish = () =>
+		{
 			setMorphName(img, false, MORPH_NAME);
 			if (generationRef.current === generation) clearTransition();
 		};
-		const started = morph(() => {
+		const started = morph(() =>
+		{
 			setMorphName(origin, false, MORPH_NAME);
 			if (origin !== null) origin.style.visibility = "hidden";
 			popup.style.opacity = "";
@@ -121,25 +144,30 @@ export function ImagePreviewModal({
 		if (!started) finish();
 	}, [popup, origin]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (open || session === null) return;
 		const generation = ++generationRef.current;
 		const morphBack = origin !== null;
 		markTransition(origin, true);
 		setMorphName(imgRef.current, morphBack, MORPH_NAME);
 		let synchronous = true;
-		const finish = () => {
+		const finish = () =>
+		{
 			setMorphName(origin, false, MORPH_NAME);
 			if (generationRef.current === generation) clearTransition();
 		};
-		const started = morph(() => {
+		const started = morph(() =>
+		{
 			pendingFocusRef.current = session.returnFocus;
 			if (synchronous) setSession(null);
 			else
-				flushSync(() => {
+				flushSync(() =>
+				{
 					setSession(null);
 				});
-			if (origin !== null) {
+			if (origin !== null)
+			{
 				origin.style.visibility = "";
 				setMorphName(origin, morphBack, MORPH_NAME);
 			}
@@ -148,15 +176,22 @@ export function ImagePreviewModal({
 		if (!started) finish();
 	}, [open, session, origin]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (session !== null) return;
 		const target = pendingFocusRef.current;
 		pendingFocusRef.current = null;
-		if (target?.isConnected === true) target.focus({preventScroll: true});
+		if (target?.isConnected === true)
+			target.focus(
+				{
+					preventScroll: true,
+				},
+			);
 	}, [session]);
 
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			if (origin !== null) origin.style.visibility = "";
 		},
 		[origin],
@@ -164,10 +199,12 @@ export function ImagePreviewModal({
 
 	if (session === null) return null;
 
-	const requestClose = () => {
+	const requestClose = () =>
+	{
 		if (open) onClose();
 	};
-	const closeFromImage = (event: MouseEvent) => {
+	const closeFromImage = (event: MouseEvent) =>
+	{
 		event.preventDefault();
 		event.stopPropagation();
 		requestClose();
@@ -176,7 +213,8 @@ export function ImagePreviewModal({
 	return (
 		<Dialog.Root
 			open
-			onOpenChange={(next) => {
+			onOpenChange={(next) =>
+			{
 				if (!next) requestClose();
 			}}
 		>
@@ -219,7 +257,10 @@ export function ImagePreviewModal({
 									<div
 										ref={wrapperRef}
 										className="w-fit rounded-md overflow-hidden"
-										style={{boxShadow: IMAGE_SHADOW}}
+										style={
+										{
+											boxShadow: IMAGE_SHADOW,
+										}}
 										onClick={closeFromImage}
 									>
 										{/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- only cancels native image dragging */}

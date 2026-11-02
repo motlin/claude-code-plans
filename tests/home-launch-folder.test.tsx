@@ -10,10 +10,28 @@ import {HomeLaunchFolderProvider} from "../src/components/home/launch-folder-pro
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 
-function withQueries(children: ReactNode) {
-	const client = new QueryClient({defaultOptions: {queries: {retry: false, staleTime: Infinity}}});
+function withQueries(children: ReactNode)
+{
+	const client = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+				},
+			},
+		},
+	);
 	client.setQueryData(projectsQueryOptions().queryKey, []);
-	client.setQueryData(recentSessionsQueryOptions(HOME_RECENT_LIMIT).queryKey, {sessions: [], nextCursor: null});
+	client.setQueryData(
+		recentSessionsQueryOptions(HOME_RECENT_LIMIT).queryKey,
+		{
+			sessions: [],
+			nextCursor: null,
+		},
+	);
 	return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
@@ -22,23 +40,38 @@ type ConsumerName = "composer" | "card";
 let setters: Partial<Record<ConsumerName, (launching: boolean) => void>> = {};
 
 /** Stands in for the composer (sets launching) and the start card (reads it). */
-function Consumer({name}: Readonly<{name: ConsumerName}>) {
+function Consumer({
+	name,
+}: Readonly<
+{
+	name: ConsumerName;
+}>)
+{
 	const {launching, setLaunching} = useHomeLaunchFolder();
 	setters[name] = setLaunching;
 	return <output aria-label={name}>{String(launching)}</output>;
 }
 
-function launchingOf(name: ConsumerName) {
-	return screen.getByRole("status", {name}).textContent;
+function launchingOf(name: ConsumerName)
+{
+	return screen.getByRole(
+		"status",
+		{
+			name,
+		},
+	).textContent;
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	setters = {};
 });
 
-describe("useHomeLaunchFolder launching", () => {
-	it("shares the composer's launching flag with every consumer under the provider", () => {
+describe("useHomeLaunchFolder launching", () =>
+{
+	it("shares the composer's launching flag with every consumer under the provider", () =>
+	{
 		render(
 			withQueries(
 				<HomeLaunchFolderProvider>
@@ -56,7 +89,8 @@ describe("useHomeLaunchFolder launching", () => {
 		expect([launchingOf("composer"), launchingOf("card")]).toStrictEqual(["false", "false"]);
 	});
 
-	it("keeps launching local to each consumer outside a provider", () => {
+	it("keeps launching local to each consumer outside a provider", () =>
+	{
 		render(
 			withQueries(
 				<>

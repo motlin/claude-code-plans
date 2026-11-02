@@ -7,7 +7,8 @@
  * fields we expect to see on the wire so the round-trip test catches any
  * schema drift Claude Code ships.
  */
-export const messageDisplayFixture = {
+export const messageDisplayFixture =
+{
 	session_id: "abc-123",
 	transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
 	cwd: "/Users/u/projects/app",

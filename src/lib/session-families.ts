@@ -1,6 +1,7 @@
 import type {SessionBucket} from "./session-state";
 
-export interface FamilyRow {
+export interface FamilyRow
+{
 	sessionId: string;
 	forkedFromSessionId?: string | undefined;
 	bucket: SessionBucket;
@@ -8,7 +9,8 @@ export interface FamilyRow {
 }
 
 /** A head session plus every descendant, flattened one visual level deep. */
-export interface SessionFamily<Row extends FamilyRow> {
+export interface SessionFamily<Row extends FamilyRow>
+{
 	head: Row;
 	/** Spawn-tree pre-order: each row follows its direct parent; siblings keep input order. */
 	children: Row[];
@@ -17,7 +19,8 @@ export interface SessionFamily<Row extends FamilyRow> {
 }
 
 /** Upstream family urgency (`sM` by `XL`): Needs input < Working < Ready for review < Idle. */
-const BUCKET_URGENCY = {
+const BUCKET_URGENCY =
+{
 	blocked: 0,
 	working: 1,
 	review: 2,
@@ -30,12 +33,14 @@ const BUCKET_URGENCY = {
  * active row. Cycles are cut at the cycle member that comes first in `rows`.
  * Families come out in the input order of their heads.
  */
-export function resolveFamilies<Row extends FamilyRow>(rows: readonly Row[]): SessionFamily<Row>[] {
+export function resolveFamilies<Row extends FamilyRow>(rows: readonly Row[]): SessionFamily<Row>[]
+{
 	const byId = new Map(rows.map((row) => [row.sessionId, row]));
 	const position = new Map(rows.map((row, index) => [row.sessionId, index]));
 
 	const parentOf = new Map<string, string>();
-	for (const row of rows) {
+	for (const row of rows)
+	{
 		const parent = row.forkedFromSessionId === undefined ? undefined : byId.get(row.forkedFromSessionId);
 		if (parent === undefined || parent === row) continue;
 		if (parent.archived && !row.archived) continue;
@@ -44,7 +49,8 @@ export function resolveFamilies<Row extends FamilyRow>(rows: readonly Row[]): Se
 	cutCycles(rows, parentOf, position);
 
 	const childrenOf = new Map<string, Row[]>();
-	for (const row of rows) {
+	for (const row of rows)
+	{
 		const parentId = parentOf.get(row.sessionId);
 		if (parentId === undefined) continue;
 		const siblings = childrenOf.get(parentId);
@@ -54,16 +60,23 @@ export function resolveFamilies<Row extends FamilyRow>(rows: readonly Row[]): Se
 
 	return rows
 		.filter((row) => !parentOf.has(row.sessionId))
-		.map((head) => {
+		.map((head) =>
+		{
 			const children: Row[] = [];
-			const visit = (parentId: string): void => {
-				for (const child of childrenOf.get(parentId) ?? []) {
+			const visit = (parentId: string): void =>
+			{
+				for (const child of childrenOf.get(parentId) ?? [])
+				{
 					children.push(child);
 					visit(child.sessionId);
 				}
 			};
 			visit(head.sessionId);
-			return {head, children, bucket: mostUrgentBucket([head, ...children])};
+			return {
+				head,
+				children,
+				bucket: mostUrgentBucket([head, ...children]),
+			};
 		});
 }
 
@@ -71,14 +84,18 @@ function cutCycles(
 	rows: readonly FamilyRow[],
 	parentOf: Map<string, string>,
 	position: ReadonlyMap<string, number>,
-): void {
+): void
+{
 	const settled = new Set<string>();
-	for (const row of rows) {
+	for (const row of rows)
+	{
 		const path: string[] = [];
 		const onPath = new Set<string>();
 		let current: string | undefined = row.sessionId;
-		while (current !== undefined && !settled.has(current)) {
-			if (onPath.has(current)) {
+		while (current !== undefined && !settled.has(current))
+		{
+			if (onPath.has(current))
+			{
 				const cycle = path.slice(path.indexOf(current));
 				const first = cycle.reduce((best, id) =>
 					(position.get(id) ?? 0) < (position.get(best) ?? 0) ? id : best,
@@ -94,7 +111,8 @@ function cutCycles(
 	}
 }
 
-function mostUrgentBucket(rows: readonly FamilyRow[]): SessionBucket {
+function mostUrgentBucket(rows: readonly FamilyRow[]): SessionBucket
+{
 	return rows.reduce<SessionBucket>(
 		(best, row) => (BUCKET_URGENCY[row.bucket] < BUCKET_URGENCY[best] ? row.bucket : best),
 		"done",

@@ -15,13 +15,15 @@ export type WorkflowAgentState = "done" | "failed" | "running" | "ended";
 /** Upstream shows only the final launch's agents; earlier attempts of a resumed run are superseded. */
 export type WorkflowAttempt = "final" | "superseded";
 
-export interface WorkflowAgentStatus {
+export interface WorkflowAgentStatus
+{
 	state: WorkflowAgentState;
 	attempt: WorkflowAttempt;
 }
 
 /** The run file's `workflowProgress` agents and when it was written. */
-export interface WorkflowRunFile {
+export interface WorkflowRunFile
+{
 	agentIds: ReadonlySet<string>;
 	writtenAt: string;
 }
@@ -37,14 +39,19 @@ export function workflowAgentStatuses(
 	journalText: string,
 	runFile: WorkflowRunFile | null,
 	startedAt: ReadonlyMap<string, string> = new Map(),
-): Map<string, WorkflowAgentStatus> {
+): Map<string, WorkflowAgentStatus>
+{
 	const lastEvent = new Map<string, "started" | "result" | "failed">();
-	for (const line of journalText.split("\n")) {
+	for (const line of journalText.split("\n"))
+	{
 		if (line === "") continue;
 		let event: unknown;
-		try {
+		try
+		{
 			event = JSON.parse(line);
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 		if (!isRecord(event)) continue;
@@ -55,52 +62,72 @@ export function workflowAgentStatuses(
 	}
 	const writtenAtMs = runFile === null ? Number.NaN : Date.parse(runFile.writtenAt);
 	const statuses = new Map<string, WorkflowAgentStatus>();
-	for (const [agentId, type] of lastEvent) {
+	for (const [agentId, type] of lastEvent)
+	{
 		const started = startedAt.get(agentId);
 		const judgedByRunFile =
 			runFile !== null && !(started !== undefined && Date.parse(started) > writtenAtMs) ? runFile : null;
 		const unfinished: WorkflowAgentState = judgedByRunFile === null ? "running" : "ended";
-		statuses.set(agentId, {
-			state: type === "result" ? "done" : type === "failed" ? "failed" : unfinished,
-			attempt: judgedByRunFile === null || judgedByRunFile.agentIds.has(agentId) ? "final" : "superseded",
-		});
+		statuses.set(
+			agentId,
+			{
+				state: type === "result" ? "done" : type === "failed" ? "failed" : unfinished,
+				attempt: judgedByRunFile === null || judgedByRunFile.agentIds.has(agentId) ? "final" : "superseded",
+			},
+		);
 	}
 	return statuses;
 }
 
-function readText(path: string): string | null {
-	try {
+function readText(path: string): string | null
+{
+	try
+	{
 		return readFileSync(path, "utf8");
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
 /** The run file's agents and its `timestamp`, falling back to the file's mtime. */
-function parseRunFile(text: string, path: string): WorkflowRunFile | null {
+function parseRunFile(text: string, path: string): WorkflowRunFile | null
+{
 	let run: unknown;
-	try {
+	try
+	{
 		run = JSON.parse(text);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 	const record = asRecord(run);
 	const progress = record?.["workflowProgress"];
 	if (!Array.isArray(progress)) return null;
 	const ids = new Set<string>();
-	for (const raw of progress) {
+	for (const raw of progress)
+	{
 		const entry = RuntimeWorkflowProgressEntrySchema.safeParse(raw);
 		if (entry.success && entry.data.type === "workflow_agent" && entry.data.agentId !== undefined)
 			ids.add(entry.data.agentId);
 	}
 	const timestamp = record?.["timestamp"];
-	return {agentIds: ids, writtenAt: typeof timestamp === "string" ? timestamp : fileMtime(path)};
+	return {
+		agentIds: ids,
+		writtenAt: typeof timestamp === "string" ? timestamp : fileMtime(path),
+	};
 }
 
-function fileMtime(path: string): string {
-	try {
+function fileMtime(path: string): string
+{
+	try
+	{
 		return statSync(path).mtime.toISOString();
-	} catch {
+	}
+	catch
+	{
 		return new Date(0).toISOString();
 	}
 }
@@ -113,7 +140,8 @@ export function readWorkflowAgentStatuses(
 	sessionDir: string,
 	runId: string,
 	startedAt: ReadonlyMap<string, string>,
-): Map<string, WorkflowAgentStatus> {
+): Map<string, WorkflowAgentStatus>
+{
 	const journal = readText(join(sessionDir, "subagents", "workflows", runId, "journal.jsonl"));
 	if (journal === null) return new Map();
 	const runFilePath = join(sessionDir, "workflows", `${runId}.json`);

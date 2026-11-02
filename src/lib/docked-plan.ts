@@ -16,7 +16,8 @@ export function dockedHookPlan({
 	hookPlan: PendingPlan | null | undefined;
 	state: SessionSummaryState | null;
 	records: readonly unknown[];
-}): PendingPlan | null {
+}): PendingPlan | null
+{
 	if (hookPlan === null || hookPlan === undefined || state !== "waiting") return null;
 	if (hookPlan.toolUseId !== "" && toolUseProgress(records, hookPlan.toolUseId) !== "absent") return null;
 	return findLastPendingToolUse(records)?.name === "ExitPlanMode" ? null : hookPlan;
@@ -29,6 +30,7 @@ export function dockedHookPlan({
 export function inlinePlanToolUseId(
 	state: SessionSummaryState | null,
 	pendingCall: PendingToolUse | null,
-): string | null {
+): string | null
+{
 	return state === "waiting" && pendingCall?.name === "ExitPlanMode" ? pendingCall.id : null;
 }

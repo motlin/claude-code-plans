@@ -9,8 +9,10 @@ let fileTypeIconLoad: Promise<FileTypeIconModule> | undefined;
 const fileTypeIconListeners = new Set<() => void>();
 
 /** Starts loading the file-type icon set; the composer calls it on mount so the first `@` already has it. */
-export async function preloadFileTypeIcons(): Promise<FileTypeIconModule> {
-	fileTypeIconLoad ??= import("./file-type-icon").then((module) => {
+export async function preloadFileTypeIcons(): Promise<FileTypeIconModule>
+{
+	fileTypeIconLoad ??= import("./file-type-icon").then((module) =>
+	{
 		fileTypeIconModule = module;
 		for (const listener of fileTypeIconListeners) listener();
 		return module;
@@ -18,10 +20,12 @@ export async function preloadFileTypeIcons(): Promise<FileTypeIconModule> {
 	return fileTypeIconLoad;
 }
 
-function subscribeFileTypeIcons(listener: () => void): () => void {
+function subscribeFileTypeIcons(listener: () => void): () => void
+{
 	fileTypeIconListeners.add(listener);
 	void preloadFileTypeIcons();
-	return () => {
+	return () =>
+	{
 		fileTypeIconListeners.delete(listener);
 	};
 }
@@ -30,6 +34,7 @@ const loadedFileTypeIcons = () => fileTypeIconModule;
 const serverFileTypeIcons = () => undefined;
 
 /** The loaded `file-type-icon` module, or `undefined` until it arrives (always during SSR); subscribing starts the load. */
-export function useFileTypeIcons(): FileTypeIconModule | undefined {
+export function useFileTypeIcons(): FileTypeIconModule | undefined
+{
 	return useSyncExternalStore(subscribeFileTypeIcons, loadedFileTypeIcons, serverFileTypeIcons);
 }

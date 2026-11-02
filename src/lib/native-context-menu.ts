@@ -12,27 +12,52 @@ import type {MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent} f
 const SLOP = 2;
 
 /** Either caret hit test may be missing: Safari before 18.4 has only `caretRangeFromPoint`, jsdom neither. */
-interface CaretDocument {
+interface CaretDocument
+{
 	caretPositionFromPoint?: (x: number, y: number) => CaretPosition | null;
 	caretRangeFromPoint?: (x: number, y: number) => Range | null;
 }
 
-function caretAt(document: CaretDocument, x: number, y: number): {node: Node; offset: number} | null {
+function caretAt(
+	document: CaretDocument,
+	x: number,
+	y: number,
+):
+{
+	node: Node;
+	offset: number;
+} | null
+{
 	const position = document.caretPositionFromPoint?.(x, y);
-	if (position) return {node: position.offsetNode, offset: position.offset};
+	if (position)
+		return {
+			node: position.offsetNode,
+			offset: position.offset,
+		};
 	const range = document.caretRangeFromPoint?.(x, y);
-	return range ? {node: range.startContainer, offset: range.startOffset} : null;
+	return range
+		?
+			{
+				node: range.startContainer,
+				offset: range.startOffset,
+			}
+		: null;
 }
 
-function pointInRange(range: Range, node: Node, offset: number): boolean {
-	try {
+function pointInRange(range: Range, node: Node, offset: number): boolean
+{
+	try
+	{
 		return range.isPointInRange(node, offset);
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
 
-function inRect(rect: DOMRect | undefined, x: number, y: number, slop: number): boolean {
+function inRect(rect: DOMRect | undefined, x: number, y: number, slop: number): boolean
+{
 	return (
 		rect !== undefined &&
 		x >= rect.left - slop &&
@@ -43,17 +68,21 @@ function inRect(rect: DOMRect | undefined, x: number, y: number, slop: number): 
 }
 
 /** Upstream `wx`: the press at `x`,`y` lands inside a non-blank selection. */
-function pressOnSelection(window: Window, x: number, y: number): boolean {
+function pressOnSelection(window: Window, x: number, y: number): boolean
+{
 	const selection = window.getSelection();
 	if (selection === null || selection.isCollapsed) return false;
 	const caret = caretAt(window.document, x, y);
-	for (let index = 0; index < selection.rangeCount; index++) {
+	for (let index = 0; index < selection.rangeCount; index++)
+	{
 		const range = selection.getRangeAt(index);
-		if (caret !== null) {
+		if (caret !== null)
+		{
 			if (pointInRange(range, caret.node, caret.offset)) return selection.toString().trim() !== "";
 			continue;
 		}
-		for (const rect of range.getClientRects()) {
+		for (const rect of range.getClientRects())
+		{
 			if (inRect(rect, x, y, 0)) return selection.toString().trim() !== "";
 		}
 	}
@@ -61,11 +90,13 @@ function pressOnSelection(window: Window, x: number, y: number): boolean {
 }
 
 /** Upstream `Mx`: one of `text`'s line boxes holds the point, with half the leading as vertical slop. */
-function pointOnTextBox(window: Window, text: Node, parent: Element, x: number, y: number): boolean {
+function pointOnTextBox(window: Window, text: Node, parent: Element, x: number, y: number): boolean
+{
 	const range = window.document.createRange();
 	range.selectNodeContents(text);
 	let lineHeight: number | undefined;
-	for (const rect of range.getClientRects()) {
+	for (const rect of range.getClientRects())
+	{
 		if (x < rect.left - SLOP || x > rect.right + SLOP) continue;
 		lineHeight ??= Number.parseFloat(window.getComputedStyle(parent).lineHeight);
 		const slop =
@@ -76,10 +107,12 @@ function pointOnTextBox(window: Window, text: Node, parent: Element, x: number, 
 }
 
 /** Upstream `Px`: the text is selectable (not inside a link or button in `root`, nor `user-select: none`). */
-function selectable(window: Window, element: Element, root: Element): boolean {
+function selectable(window: Window, element: Element, root: Element): boolean
+{
 	const control = element.closest("a[href], button");
 	if (control !== null && root.contains(control)) return false;
-	for (let node: Element | null = element; node !== null; node = node.parentElement) {
+	for (let node: Element | null = element; node !== null; node = node.parentElement)
+	{
 		const style = window.getComputedStyle(node);
 		const userSelect = style.userSelect || style.getPropertyValue("-webkit-user-select");
 		if (userSelect === "none") return false;
@@ -89,7 +122,8 @@ function selectable(window: Window, element: Element, root: Element): boolean {
 }
 
 /** Upstream `Ex`: the press at `x`,`y` lands on selectable text inside `root`. */
-function pressOnText(window: Window, x: number, y: number, root: Element): boolean {
+function pressOnText(window: Window, x: number, y: number, root: Element): boolean
+{
 	const node = caretAt(window.document, x, y)?.node;
 	if (node?.nodeType !== Node.TEXT_NODE) return false;
 	const parent = node.parentElement;
@@ -102,11 +136,14 @@ function pressOnText(window: Window, x: number, y: number, root: Element): boole
 }
 
 /** Upstream `Nx`: the press at `x`,`y` lands within `SLOP` of a selection box. */
-function pressNearSelection(window: Window, x: number, y: number): boolean {
+function pressNearSelection(window: Window, x: number, y: number): boolean
+{
 	const selection = window.getSelection();
 	if (!selection || selection.isCollapsed) return false;
-	for (let index = 0; index < selection.rangeCount; index++) {
-		for (const rect of selection.getRangeAt(index).getClientRects()) {
+	for (let index = 0; index < selection.rangeCount; index++)
+	{
+		for (const rect of selection.getRangeAt(index).getClientRects())
+		{
 			if (inRect(rect, x, y, SLOP)) return true;
 		}
 	}
@@ -114,10 +151,12 @@ function pressNearSelection(window: Window, x: number, y: number): boolean {
 }
 
 /** Upstream `Rx`: a non-blank selection reaches into `element`. */
-function selectionTouches(element: Element): boolean {
+function selectionTouches(element: Element): boolean
+{
 	const selection = element.ownerDocument.getSelection();
 	if (!selection || selection.isCollapsed || selection.toString().trim() === "") return false;
-	for (let index = 0; index < selection.rangeCount; index++) {
+	for (let index = 0; index < selection.rangeCount; index++)
+	{
 		if (selection.getRangeAt(index).intersectsNode(element)) return true;
 	}
 	return false;
@@ -126,7 +165,8 @@ function selectionTouches(element: Element): boolean {
 /** Upstream `Lx`: how long a recorded right press stays paired with its contextmenu, in ms. */
 const PRESS_PAIRING_MS = 10_000;
 
-interface RecordedPress {
+interface RecordedPress
+{
 	onSelection: boolean;
 	at: number;
 }
@@ -141,16 +181,19 @@ const pressOnSelectionByEvent = new WeakMap<Event, boolean>();
  * browser can move the selection) whether it landed on the selection, and
  * pairs that answer with the contextmenu that follows.
  */
-export interface PressRecorder {
+export interface PressRecorder
+{
 	onPointerDown: (event: ReactPointerEvent) => void;
 	onPointerUp: (event: ReactPointerEvent) => void;
 	onContextMenuCapture: (event: ReactMouseEvent) => void;
 }
 
-export function createPressRecorder(): PressRecorder {
+export function createPressRecorder(): PressRecorder
+{
 	let press: RecordedPress | null = null;
 	return {
-		onPointerDown(event: ReactPointerEvent) {
+		onPointerDown(event: ReactPointerEvent)
+		{
 			const window = event.currentTarget.ownerDocument.defaultView;
 			const rightPress = event.button === 2 || event.ctrlKey || event.nativeEvent.pointerType !== "mouse";
 			press =
@@ -159,25 +202,33 @@ export function createPressRecorder(): PressRecorder {
 				!recordedPointerDowns.has(event.nativeEvent) &&
 				event.target instanceof Node &&
 				event.currentTarget.contains(event.target)
-					? {onSelection: pressOnSelection(window, event.clientX, event.clientY), at: event.timeStamp}
+					?
+						{
+							onSelection: pressOnSelection(window, event.clientX, event.clientY),
+							at: event.timeStamp,
+						}
 					: null;
 			recordedPointerDowns.add(event.nativeEvent);
 		},
-		onPointerUp(event: ReactPointerEvent) {
+		onPointerUp(event: ReactPointerEvent)
+		{
 			if (event.button !== 2) press = null;
 		},
-		onContextMenuCapture(event: ReactMouseEvent) {
+		onContextMenuCapture(event: ReactMouseEvent)
+		{
 			const recorded = press;
 			press = null;
 			const elapsed = recorded === null ? -1 : event.timeStamp - recorded.at;
-			if (recorded !== null && elapsed >= 0 && elapsed < PRESS_PAIRING_MS) {
+			if (recorded !== null && elapsed >= 0 && elapsed < PRESS_PAIRING_MS)
+			{
 				pressOnSelectionByEvent.set(event.nativeEvent, recorded.onSelection);
 			}
 		},
 	};
 }
 
-function pointerTypeOf(event: ReactMouseEvent): string | undefined {
+function pointerTypeOf(event: ReactMouseEvent): string | undefined
+{
 	return (event.nativeEvent as Partial<PointerEvent>).pointerType;
 }
 
@@ -185,7 +236,8 @@ function pointerTypeOf(event: ReactMouseEvent): string | undefined {
  * Upstream `eS`: the contextmenu is over the selection — by its recorded right
  * press, or, from the keyboard (no pointer type), when the selection touches the row.
  */
-function contextMenuOnSelection(event: ReactMouseEvent): boolean {
+function contextMenuOnSelection(event: ReactMouseEvent): boolean
+{
 	const pointerType = pointerTypeOf(event);
 	const recorded = pressOnSelectionByEvent.get(event.nativeEvent);
 	if (recorded !== undefined && pointerType !== "") return recorded;
@@ -193,7 +245,8 @@ function contextMenuOnSelection(event: ReactMouseEvent): boolean {
 }
 
 /** Upstream `$x`: a touch lands on selectable text or on the selection, which the browser handles. */
-export function touchOnTextOrSelection(element: Element, x: number, y: number): boolean {
+export function touchOnTextOrSelection(element: Element, x: number, y: number): boolean
+{
 	const window = element.ownerDocument.defaultView;
 	return window !== null && (pressOnText(window, x, y, element) || pressNearSelection(window, x, y));
 }
@@ -203,9 +256,11 @@ export function touchOnTextOrSelection(element: Element, x: number, y: number): 
  * barrel button) on text or the selection, or a mouse right-click on the
  * selection of a row that cannot attach it as context.
  */
-export function wantsNativeContextMenu(event: ReactMouseEvent, canAttachAsContext: boolean): boolean {
+export function wantsNativeContextMenu(event: ReactMouseEvent, canAttachAsContext: boolean): boolean
+{
 	const pointerType = pointerTypeOf(event);
-	if (pointerType === "touch" || (pointerType === "pen" && event.button !== 2)) {
+	if (pointerType === "touch" || (pointerType === "pen" && event.button !== 2))
+	{
 		return touchOnTextOrSelection(event.currentTarget, event.clientX, event.clientY);
 	}
 	return contextMenuOnSelection(event) && !canAttachAsContext;
@@ -217,7 +272,8 @@ export function wantsNativeContextMenu(event: ReactMouseEvent, canAttachAsContex
  */
 
 /** Upstream `qw`/`xT`/`Yi`/`ki`: a right-click anywhere inside the popup never shows the browser menu. */
-export function preventNativeContextMenu(event: {preventDefault: () => void}): void {
+export function preventNativeContextMenu(event: {preventDefault: () => void}): void
+{
 	event.preventDefault();
 }
 
@@ -230,14 +286,23 @@ export const NATIVE_MENU_TARGETS =
  * prevented, when `root` is off the native path (it only reached the handler through a React portal), when it
  * started on (or inside) a native-menu target, or when a non-blank selection touches `root`.
  */
-export function suppressesNativeMenu(event: {defaultPrevented: boolean; nativeEvent: Event}, root: Element): boolean {
+export function suppressesNativeMenu(
+	event:
+	{
+		defaultPrevented: boolean;
+		nativeEvent: Event;
+	},
+	root: Element,
+): boolean
+{
 	if (event.defaultPrevented) return false;
 	const path = event.nativeEvent.composedPath();
 	const rootIndex = path.indexOf(root);
 	if (
 		rootIndex === -1 ||
 		path.slice(0, rootIndex + 1).some((target) => target instanceof Element && target.matches(NATIVE_MENU_TARGETS))
-	) {
+	)
+	{
 		return false;
 	}
 	const selection = root.ownerDocument.getSelection();
@@ -250,6 +315,7 @@ export function suppressesNativeMenu(event: {defaultPrevented: boolean; nativeEv
 }
 
 /** Upstream `I0`: suppress the browser menu in a popover unless the press is on a native target or selected text. */
-export function preventNativeMenuOutsideText(event: ReactMouseEvent): void {
+export function preventNativeMenuOutsideText(event: ReactMouseEvent): void
+{
 	if (suppressesNativeMenu(event, event.currentTarget)) event.preventDefault();
 }

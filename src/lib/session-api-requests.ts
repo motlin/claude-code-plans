@@ -9,39 +9,57 @@ import {parseTranscriptLine, transcriptFilePath} from "./structured-transcript";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-const EMPTY_LOG: ApiRequestLog = {requests: {}, shapes: {}};
+const EMPTY_LOG: ApiRequestLog =
+{
+	requests: {},
+	shapes: {},
+};
 
 /**
  * The whole session's API request log. The transcript window may start after
  * the shape a request was sent with, so a Request disclosure asks for this
  * one full pass instead of resolving against the records it holds.
  */
-export function readSessionApiRequestLog(db: IndexDb, id: string): ApiRequestLog {
+export function readSessionApiRequestLog(db: IndexDb, id: string): ApiRequestLog
+{
 	const filePath = transcriptFilePath(db, id);
 	if (!filePath) return EMPTY_LOG;
-	try {
+	try
+	{
 		const records = trackedReadFileSync(filePath)
 			.split("\n")
-			.flatMap((line) => {
+			.flatMap((line) =>
+			{
 				if (!mightBeApiRequestLogLine(line)) return [];
 				const record = parseTranscriptLine(line);
 				return record ? [record] : [];
 			});
 		return buildApiRequestLog(records);
-	} catch {
+	}
+	catch
+	{
 		return EMPTY_LOG;
 	}
 }
 
-const NO_MESSAGES: ApiRequestMessages = {found: false, messages: [], missing: []};
+const NO_MESSAGES: ApiRequestMessages =
+{
+	found: false,
+	messages: [],
+	missing: [],
+};
 
 /** The messages one request appended after its kept prefix, read by hash from the session's blobs. */
-export function readSessionApiRequestMessages(db: IndexDb, id: string, requestId: string): ApiRequestMessages {
+export function readSessionApiRequestMessages(db: IndexDb, id: string, requestId: string): ApiRequestMessages
+{
 	const filePath = transcriptFilePath(db, id);
 	if (!filePath) return NO_MESSAGES;
-	try {
+	try
+	{
 		return collectApiRequestMessages(trackedReadFileSync(filePath).split("\n"), requestId);
-	} catch {
+	}
+	catch
+	{
 		return NO_MESSAGES;
 	}
 }

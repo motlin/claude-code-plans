@@ -9,26 +9,47 @@ import {ProjectPage, ProjectPageHeader} from "../components/project-page-header"
 import {DebugLink} from "../components/debug-link";
 import {ListItemDate} from "../components/list-item-date";
 
-export const Route = createFileRoute("/project/$id_/memories")({
-	component: ProjectMemoriesPage,
-	loader: async ({context: {queryClient}, params}) => {
-		const [memories] = await Promise.all([
-			queryClient.query({...projectMemoriesQueryOptions(params.id), staleTime: "static"}),
-			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
-			queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
-		]);
-		return memories;
+export const Route = createFileRoute("/project/$id_/memories")(
+	{
+		component: ProjectMemoriesPage,
+		loader: async ({context: {queryClient}, params}) =>
+		{
+			const [memories] = await Promise.all([
+				queryClient.query(
+					{
+						...projectMemoriesQueryOptions(params.id),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...projectDetailQueryOptions(params.id),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...projectsQueryOptions(),
+						staleTime: "static",
+					},
+				),
+			]);
+			return memories;
+		},
+		head: ({loaderData}) => (
+		{
+			meta: [pageTitle(loaderData ? `${loaderData.project.name} memories` : "Project Not Found")],
+		}),
 	},
-	head: ({loaderData}) => ({
-		meta: [pageTitle(loaderData ? `${loaderData.project.name} memories` : "Project Not Found")],
-	}),
-});
+);
 
-function ProjectMemoriesPage() {
+function ProjectMemoriesPage()
+{
 	const {id} = Route.useParams();
 	const {data} = useSuspenseQuery(projectMemoriesQueryOptions(id));
 
-	if (!data) {
+	if (!data)
+	{
 		return <NotFoundContent />;
 	}
 
@@ -46,7 +67,11 @@ function ProjectMemoriesPage() {
 						<li key={mem.filename} className="relative">
 							<Link
 								to="/memory/$project/$filename"
-								params={{project: mem.project, filename: toMdSlug(mem.filename)}}
+								params={
+								{
+									project: mem.project,
+									filename: toMdSlug(mem.filename),
+								}}
 								className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0"
 							>
 								<span className="text-sm font-medium">{mem.title}</span>

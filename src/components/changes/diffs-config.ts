@@ -22,7 +22,8 @@ registerCustomTheme("vscode-dark", async () => loadCodeTheme("vscode-dark"));
  * below read. Custom properties inherit through the `<diffs-container>` shadow boundary, so setting
  * them on the host reaches both the library's stylesheet and the `@layer unsafe` block.
  */
-export const DIFFS_STYLE_OVERRIDES = {
+export const DIFFS_STYLE_OVERRIDES =
+{
 	"--diffs-font-family": "var(--font-mono)",
 	"--diffs-header-font-family": "var(--font-sans)",
 	"--diffs-font-size": "var(--upstream-text-code)",
@@ -108,7 +109,8 @@ export function diffsInjectedCss({
 	disableFileHeader: boolean;
 	gutterUtility: boolean;
 	panels: boolean;
-}): string {
+}): string
+{
 	return [
 		disableFileHeader ? SA : "",
 		gutterUtility ? CA : "",
@@ -137,7 +139,8 @@ const NAMED_SURFACES = new Set([
 ]);
 
 /** Upstream ca7ba268c `La`: a caller's backgroundColor as the host's `--cds-filediff-bg`. */
-export function filediffBg(backgroundColor: string | undefined): string {
+export function filediffBg(backgroundColor: string | undefined): string
+{
 	if (backgroundColor === undefined) return "var(--cds-surface-1)";
 	if (backgroundColor === "transparent") return "transparent";
 	return NAMED_SURFACES.has(backgroundColor) ? `var(--cds-${backgroundColor})` : backgroundColor;
@@ -148,7 +151,8 @@ export function filediffBg(backgroundColor: string | undefined): string {
  * Scroll mode leaves them unset so `[data-code]` keeps `overflow: scroll clip`
  * and long lines stay reachable.
  */
-export const DIFFS_WRAP_STYLE = {
+export const DIFFS_WRAP_STYLE =
+{
 	"--diffs-overflow-override": "clip",
 	"--diffs-scrollbar-gutter-override": "0px",
 } as CSSProperties;
@@ -158,7 +162,8 @@ export const DIFFS_WRAP_STYLE = {
  * unless the caller passes metrics.lineHeight (ca7ba268c za), so rows follow the scope density (17/12 compact,
  * 19/13 comfortable); `--code-size` / `--code-leading` carry Settings ▸ Code font size inside the hook classes.
  */
-export const INLINE_DIFFS_STYLE_OVERRIDES = {
+export const INLINE_DIFFS_STYLE_OVERRIDES =
+{
 	...DIFFS_STYLE_OVERRIDES,
 	...DIFFS_WRAP_STYLE,
 	"--cds-filediff-bg": filediffBg(undefined),
@@ -167,7 +172,11 @@ export const INLINE_DIFFS_STYLE_OVERRIDES = {
 } as CSSProperties;
 
 /** Upstream ca7ba268c `ga`: the code leading per cds density, the JS twin of `--cds-leading-code`. */
-export const DIFF_DENSITY_LINE_HEIGHT = {compact: 17, comfortable: 19} as const;
+export const DIFF_DENSITY_LINE_HEIGHT =
+{
+	compact: 17,
+	comfortable: 19,
+} as const;
 
 /** Pierre's virtual file metrics (`{hunkLineCount: 50, lineHeight: 20, diffHeaderHeight: 44, spacing: 8}`). */
 export const DEFAULT_DIFF_METRICS: Readonly<VirtualFileMetrics> = DEFAULT_VIRTUAL_FILE_METRICS;
@@ -185,27 +194,49 @@ export function diffMetrics({
 	density: Density;
 	metrics?: Partial<VirtualFileMetrics>;
 	disableFileHeader?: boolean;
-}): VirtualFileMetrics {
-	const merged: VirtualFileMetrics = {
+}): VirtualFileMetrics
+{
+	const merged: VirtualFileMetrics =
+	{
 		...DEFAULT_DIFF_METRICS,
 		lineHeight: DIFF_DENSITY_LINE_HEIGHT[density],
 		...metrics,
 	};
 	if (!disableFileHeader) return merged;
-	const headerless: VirtualFileMetrics = {...merged, diffHeaderHeight: 0};
+	const headerless: VirtualFileMetrics =
+	{
+		...merged,
+		diffHeaderHeight: 0,
+	};
 	headerless.paddingTop = merged.paddingTop ?? merged.spacing;
 	return headerless;
 }
 
 /** Upstream za: only a caller's lineHeight writes the inline `--diffs-line-height`; otherwise the token stays. */
-export function diffLineHeightStyle(metrics: Partial<VirtualFileMetrics> | undefined): CSSProperties {
-	return metrics?.lineHeight === undefined ? {} : {"--diffs-line-height": `${metrics.lineHeight}px`};
+export function diffLineHeightStyle(metrics: Partial<VirtualFileMetrics> | undefined): CSSProperties
+{
+	return metrics?.lineHeight === undefined
+		? {}
+		:
+			{
+				"--diffs-line-height": `${metrics.lineHeight}px`,
+			};
 }
 
 /**
  * Upstream c82eca2bd `c()` for the Changes pane: comfortable defaults whatever the scope density,
  * ×1.5 rows from Settings ▸ Code font size, and the 32px custom header (c44d00c7f).
  */
-export function changesDiffMetrics(size: CodeFontSize | null): VirtualFileMetrics {
-	return diffMetrics({density: "comfortable", metrics: {lineHeight: codeRowLeadingPx(size), diffHeaderHeight: 32}});
+export function changesDiffMetrics(size: CodeFontSize | null): VirtualFileMetrics
+{
+	return diffMetrics(
+		{
+			density: "comfortable",
+			metrics:
+			{
+				lineHeight: codeRowLeadingPx(size),
+				diffHeaderHeight: 32,
+			},
+		},
+	);
 }

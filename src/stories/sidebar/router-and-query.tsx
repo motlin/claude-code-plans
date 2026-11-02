@@ -4,30 +4,49 @@ import type {Decorator} from "@storybook/react-vite";
 
 import {ToastProvider} from "../../components/toast";
 
-export function createStoryRouter(initialPath = "/") {
+export function createStoryRouter(initialPath = "/")
+{
 	const rootRoute = createRootRoute();
-	const catchAllRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/$",
-		component: () => null,
-	});
+	const catchAllRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/$",
+			component: () => null,
+		},
+	);
 	rootRoute.addChildren([catchAllRoute]);
 
-	return createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: [initialPath]}),
-	});
+	return createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: [initialPath],
+				},
+			),
+		},
+	);
 }
 
-export function createStoryQueryClient(options?: {enabled: boolean}) {
-	const queries: Record<string, unknown> = {
+export function createStoryQueryClient(options?: {enabled: boolean})
+{
+	const queries: Record<string, unknown> =
+	{
 		retry: false,
 		staleTime: Infinity,
 	};
-	if (options) {
+	if (options)
+	{
 		queries["enabled"] = options.enabled;
 	}
-	return new QueryClient({defaultOptions: {queries}});
+	return new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries,
+			},
+		},
+	);
 }
 
 /**
@@ -35,7 +54,8 @@ export function createStoryQueryClient(options?: {enabled: boolean}) {
  * Components using `Link`, `useNavigate`, `useMatches`, or `useQuery`
  * need this wrapper to render in Storybook.
  */
-export const withRouterAndQuery: Decorator = (Story) => {
+export const withRouterAndQuery: Decorator = (Story) =>
+{
 	const router = createStoryRouter();
 	const queryClient = createStoryQueryClient();
 

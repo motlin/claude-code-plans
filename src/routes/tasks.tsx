@@ -14,21 +14,32 @@ import {filterTasks} from "../lib/task-search";
 import {TOUCH_HIT} from "../lib/touch-reveal";
 import {ORPHANED_TASKS_DESCRIPTION, ORPHANED_TASKS_PROJECT_ID} from "../lib/task-groups";
 
-export const Route = createFileRoute("/tasks")({
-	component: TasksPage,
-	loader: async ({context: {queryClient}}) => queryClient.query({...tasksQueryOptions, staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Tasks")],
-	}),
-});
+export const Route = createFileRoute("/tasks")(
+	{
+		component: TasksPage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...tasksQueryOptions,
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Tasks")],
+		}),
+	},
+);
 
-const statusBadgeClasses: Record<string, string> = {
+const statusBadgeClasses: Record<string, string> =
+{
 	pending: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
 	in_progress: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400",
 	completed: "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400",
 };
 
-const statusLabel: Record<string, string> = {
+const statusLabel: Record<string, string> =
+{
 	pending: "Pending",
 	in_progress: "In Progress",
 	completed: "Completed",
@@ -36,7 +47,8 @@ const statusLabel: Record<string, string> = {
 
 type View = "list" | "graph";
 
-function TasksPage() {
+function TasksPage()
+{
 	const {data: groups} = useSuspenseQuery(tasksQueryOptions);
 	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 	const [view, setView] = useState<View>("list");
@@ -45,7 +57,8 @@ function TasksPage() {
 	const visibleGroups = useMemo(
 		() =>
 			groups
-				.map((group) => {
+				.map((group) =>
+				{
 					const tasks = filterTasks(group.tasks, searchQuery);
 					return {
 						...group,
@@ -57,12 +70,23 @@ function TasksPage() {
 				.filter((group) => group.tasks.length > 0),
 		[groups, searchQuery],
 	);
-	const visibleProjects = useMemo(() => {
-		const projectMap = new Map<string, {projectId: string; projectName: string; sessions: typeof visibleGroups}>();
-		for (const group of visibleGroups) {
+	const visibleProjects = useMemo(() =>
+	{
+		const projectMap = new Map<
+			string,
+			{
+				projectId: string;
+				projectName: string;
+				sessions: typeof visibleGroups;
+			}
+		>();
+		for (const group of visibleGroups)
+		{
 			let project = projectMap.get(group.projectId);
-			if (!project) {
-				project = {
+			if (!project)
+			{
+				project =
+				{
 					projectId: group.projectId,
 					projectName: group.projectName,
 					sessions: [],
@@ -74,12 +98,17 @@ function TasksPage() {
 		return [...projectMap.values()];
 	}, [visibleGroups]);
 
-	function toggleGroup(projectDir: string) {
-		setCollapsed((prev) => {
+	function toggleGroup(projectDir: string)
+	{
+		setCollapsed((prev) =>
+		{
 			const next = new Set(prev);
-			if (next.has(projectDir)) {
+			if (next.has(projectDir))
+			{
 				next.delete(projectDir);
-			} else {
+			}
+			else
+			{
 				next.add(projectDir);
 			}
 			return next;
@@ -96,7 +125,8 @@ function TasksPage() {
 					<div className="flex items-center gap-1 rounded-md border border-strong p-0.5">
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								setView("list");
 							}}
 							className={`rounded px-2 py-1 text-xs transition-colors ${view === "list" ? "bg-surface-0 text-primary" : "text-t6 hover:text-secondary"}`}
@@ -106,7 +136,8 @@ function TasksPage() {
 						</button>
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								setView("graph");
 							}}
 							className={`rounded px-2 py-1 text-xs transition-colors ${view === "graph" ? "bg-surface-0 text-primary" : "text-t6 hover:text-secondary"}`}
@@ -121,7 +152,8 @@ function TasksPage() {
 			<input
 				type="search"
 				value={searchQuery}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					setSearchQuery(event.target.value);
 				}}
 				placeholder="Search tasks by title, description, active form, or owner..."
@@ -146,7 +178,8 @@ function TasksPage() {
 								<p className="mt-1 text-xs text-t6">{ORPHANED_TASKS_DESCRIPTION}</p>
 							)}
 							<div className="mt-2 space-y-4">
-								{project.sessions.map((group) => {
+								{project.sessions.map((group) =>
+								{
 									const isCollapsed = collapsed.has(group.projectDir);
 									return (
 										<div key={group.projectDir}>
@@ -155,14 +188,16 @@ function TasksPage() {
 													type="button"
 													aria-expanded={!isCollapsed}
 													aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.sessionTitle}`}
-													onClick={() => {
+													onClick={() =>
+													{
 														toggleGroup(group.projectDir);
 													}}
 													className={`cursor-pointer ${TOUCH_HIT}`}
 												>
 													<ChevronRight
 														className="h-3 w-3 text-t6 transition-transform motion-reduce:transition-none duration-200"
-														style={{
+														style={
+														{
 															transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
 														}}
 													/>
@@ -174,7 +209,10 @@ function TasksPage() {
 												) : (
 													<Link
 														to="/session/$id"
-														params={{id: group.sessionId}}
+														params={
+														{
+															id: group.sessionId,
+														}}
 														className="text-sm font-semibold text-primary no-underline hover:text-accent-100"
 													>
 														{group.sessionTitle}

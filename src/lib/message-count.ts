@@ -22,7 +22,8 @@ import {chainSkeleton, computeAbandoned} from "./transcript-chain";
  *
  * Isomorphic: no Node-specific imports, usable in browser and server code.
  */
-export function isCountableMessageRecord(record: unknown): boolean {
+export function isCountableMessageRecord(record: unknown): boolean
+{
 	if (!isRecord(record)) return false;
 	if (record["type"] !== "user" && record["type"] !== "assistant") return false;
 	if (record["isSidechain"] === true) return false;
@@ -31,7 +32,8 @@ export function isCountableMessageRecord(record: unknown): boolean {
 	if (!isRecord(message)) return false;
 	const content = message["content"];
 	if (typeof content === "string") return true;
-	if (Array.isArray(content)) {
+	if (Array.isArray(content))
+	{
 		return content.some((block: unknown) => isRecord(block) && block["type"] !== "tool_result");
 	}
 	return false;
@@ -58,11 +60,13 @@ const COUNTABLE_TYPE_PATTERN = /"type"\s*:\s*"(?:user|assistant)"/;
  * Validated against every session JSONL on disk: 1,052,787 records, zero
  * countable records rejected.
  */
-export function mightBeCountableMessageLine(line: string): boolean {
+export function mightBeCountableMessageLine(line: string): boolean
+{
 	return COUNTABLE_TYPE_PATTERN.test(line);
 }
 
-function uuidOf(record: unknown): string | undefined {
+function uuidOf(record: unknown): string | undefined
+{
 	const uuid = isRecord(record) ? record["uuid"] : undefined;
 	return typeof uuid === "string" ? uuid : undefined;
 }
@@ -71,9 +75,11 @@ function uuidOf(record: unknown): string | undefined {
  * Count the messages in a sequence of parsed JSONL transcript records, leaving
  * out any whose uuid is in `hidden` (a transcript window's abandoned rows).
  */
-export function countMessageRecords(records: Iterable<unknown>, hidden?: ReadonlySet<string>): number {
+export function countMessageRecords(records: Iterable<unknown>, hidden?: ReadonlySet<string>): number
+{
 	let count = 0;
-	for (const record of records) {
+	for (const record of records)
+	{
 		if (!isCountableMessageRecord(record)) continue;
 		const uuid = hidden === undefined ? undefined : uuidOf(record);
 		if (uuid !== undefined && hidden?.has(uuid) === true) continue;
@@ -88,18 +94,21 @@ export function countMessageRecords(records: Iterable<unknown>, hidden?: Readonl
  * prompt can abandon an earlier branch), so it keeps each record's small
  * `chainSkeleton` and the countable records' uuids, and resolves on `count()`.
  */
-export class ActiveChainMessageCounter {
+export class ActiveChainMessageCounter
+{
 	private readonly skeletons: Record<string, unknown>[] = [];
 	/** The uuid of each countable record so far; undefined when it has none. */
 	private readonly countable: (string | undefined)[] = [];
 
-	add(record: unknown): void {
+	add(record: unknown): void
+	{
 		if (!isRecord(record)) return;
 		this.skeletons.push(chainSkeleton(record));
 		if (isCountableMessageRecord(record)) this.countable.push(uuidOf(record));
 	}
 
-	count(): number {
+	count(): number
+	{
 		const {hidden} = computeAbandoned(this.skeletons);
 		if (hidden.size === 0) return this.countable.length;
 		return this.countable.filter((uuid) => uuid === undefined || !hidden.has(uuid)).length;
@@ -107,7 +116,8 @@ export class ActiveChainMessageCounter {
 }
 
 /** Count the messages of a whole transcript that sit on its active chain. */
-export function countActiveChainMessages(records: Iterable<unknown>): number {
+export function countActiveChainMessages(records: Iterable<unknown>): number
+{
 	const counter = new ActiveChainMessageCounter();
 	for (const record of records) counter.add(record);
 	return counter.count();

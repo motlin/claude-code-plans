@@ -5,7 +5,8 @@ import {ApprovalActionButton} from "./approval-card";
  * Upstream's archived-session stand-in: a neutral `role="note"` band that replaces the composer
  * with "This session is archived…" and an Unarchive button (busy while the request runs).
  */
-export function ArchivedComposerNote({sessionId}: {sessionId: string}) {
+export function ArchivedComposerNote({sessionId}: {sessionId: string})
+{
 	const {unarchive, pending} = useUnarchiveSession(sessionId);
 	return (
 		<div

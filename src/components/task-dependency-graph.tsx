@@ -2,28 +2,77 @@ import {useMemo, useState, useCallback} from "react";
 import {useResolvedTheme} from "./theme-context";
 import {layoutGraph, type GraphTask, NODE_H, NODE_W, type NodePos} from "./task-dependency-graph-layout";
 
-export interface TaskGraphGroup {
+export interface TaskGraphGroup
+{
 	projectDir: string;
 	tasks: GraphTask[];
 }
 
-const statusColors: Record<string, {bg: string; border: string; text: string}> = {
-	pending: {bg: "#f3f4f6", border: "#d1d5db", text: "#4b5563"},
-	in_progress: {bg: "#dbeafe", border: "#93c5fd", text: "#2563eb"},
-	completed: {bg: "#dcfce7", border: "#86efac", text: "#16a34a"},
+const statusColors: Record<
+	string,
+	{
+		bg: string;
+		border: string;
+		text: string;
+	}
+> =
+{
+	pending:
+	{
+		bg: "#f3f4f6",
+		border: "#d1d5db",
+		text: "#4b5563",
+	},
+	in_progress:
+	{
+		bg: "#dbeafe",
+		border: "#93c5fd",
+		text: "#2563eb",
+	},
+	completed:
+	{
+		bg: "#dcfce7",
+		border: "#86efac",
+		text: "#16a34a",
+	},
 };
 
-const statusColorsDark: Record<string, {bg: string; border: string; text: string}> = {
-	pending: {bg: "#1f2937", border: "#4b5563", text: "#9ca3af"},
-	in_progress: {bg: "#1e3a5f", border: "#3b82f6", text: "#93c5fd"},
-	completed: {bg: "#14532d", border: "#22c55e", text: "#86efac"},
+const statusColorsDark: Record<
+	string,
+	{
+		bg: string;
+		border: string;
+		text: string;
+	}
+> =
+{
+	pending:
+	{
+		bg: "#1f2937",
+		border: "#4b5563",
+		text: "#9ca3af",
+	},
+	in_progress:
+	{
+		bg: "#1e3a5f",
+		border: "#3b82f6",
+		text: "#93c5fd",
+	},
+	completed:
+	{
+		bg: "#14532d",
+		border: "#22c55e",
+		text: "#86efac",
+	},
 };
 
-function truncate(text: string, max: number): string {
+function truncate(text: string, max: number): string
+{
 	return text.length > max ? text.slice(0, max - 1) + "\u2026" : text;
 }
 
-export function TaskDependencyGraph({groups}: {groups: TaskGraphGroup[]}) {
+export function TaskDependencyGraph({groups}: {groups: TaskGraphGroup[]})
+{
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
 	const isDark = useResolvedTheme() === "dark";
 
@@ -34,21 +83,42 @@ export function TaskDependencyGraph({groups}: {groups: TaskGraphGroup[]}) {
 
 	const colors = isDark ? statusColorsDark : statusColors;
 	const fallback = isDark
-		? {bg: "#1f2937", border: "#4b5563", text: "#9ca3af"}
-		: {bg: "#f3f4f6", border: "#d1d5db", text: "#4b5563"};
+		?
+			{
+				bg: "#1f2937",
+				border: "#4b5563",
+				text: "#9ca3af",
+			}
+		:
+			{
+				bg: "#f3f4f6",
+				border: "#d1d5db",
+				text: "#4b5563",
+			};
 
 	// Edges: from dependency to dependent (blockedBy → task)
-	const edges = useMemo(() => {
-		const result: {from: NodePos; to: NodePos; key: string}[] = [];
-		for (const node of nodes) {
-			for (const depId of node.task.blockedBy) {
+	const edges = useMemo(() =>
+	{
+		const result:
+		{
+			from: NodePos;
+			to: NodePos;
+			key: string;
+		}[] = [];
+		for (const node of nodes)
+		{
+			for (const depId of node.task.blockedBy)
+			{
 				const dep = nodeMap.get(depId);
-				if (dep) {
-					result.push({
-						from: dep,
-						to: node,
-						key: `${depId}->${node.task.taskId}`,
-					});
+				if (dep)
+				{
+					result.push(
+						{
+							from: dep,
+							to: node,
+							key: `${depId}->${node.task.taskId}`,
+						},
+					);
 				}
 			}
 		}
@@ -56,25 +126,31 @@ export function TaskDependencyGraph({groups}: {groups: TaskGraphGroup[]}) {
 	}, [nodes, nodeMap]);
 
 	// Highlight connected edges on hover
-	const highlightedEdges = useMemo(() => {
+	const highlightedEdges = useMemo(() =>
+	{
 		if (!hoveredId) return new Set<string>();
 		const set = new Set<string>();
-		for (const e of edges) {
-			if (e.from.task.taskId === hoveredId || e.to.task.taskId === hoveredId) {
+		for (const e of edges)
+		{
+			if (e.from.task.taskId === hoveredId || e.to.task.taskId === hoveredId)
+			{
 				set.add(e.key);
 			}
 		}
 		return set;
 	}, [hoveredId, edges]);
 
-	const handleMouseEnter = useCallback((id: string) => {
+	const handleMouseEnter = useCallback((id: string) =>
+	{
 		setHoveredId(id);
 	}, []);
-	const handleMouseLeave = useCallback(() => {
+	const handleMouseLeave = useCallback(() =>
+	{
 		setHoveredId(null);
 	}, []);
 
-	if (allTasks.length === 0) {
+	if (allTasks.length === 0)
+	{
 		return <p className="mt-4 text-t6">No tasks to display.</p>;
 	}
 
@@ -112,7 +188,8 @@ export function TaskDependencyGraph({groups}: {groups: TaskGraphGroup[]}) {
 				</defs>
 
 				{/* Edges */}
-				{edges.map((e) => {
+				{edges.map((e) =>
+				{
 					const x1 = e.from.x + NODE_W;
 					const y1 = e.from.y + NODE_H / 2;
 					const x2 = e.to.x;
@@ -128,13 +205,17 @@ export function TaskDependencyGraph({groups}: {groups: TaskGraphGroup[]}) {
 							strokeWidth={highlighted ? 2 : 1.5}
 							markerEnd={`url(#${highlighted ? arrowHighlightId : arrowId})`}
 							opacity={hoveredId && !highlighted ? 0.2 : 1}
-							style={{transition: "opacity 0.15s, stroke 0.15s"}}
+							style={
+							{
+								transition: "opacity 0.15s, stroke 0.15s",
+							}}
 						/>
 					);
 				})}
 
 				{/* Nodes */}
-				{nodes.map((n) => {
+				{nodes.map((n) =>
+				{
 					const c = colors[n.task.status] ?? fallback;
 					const dimmed =
 						hoveredId !== null &&
@@ -144,11 +225,13 @@ export function TaskDependencyGraph({groups}: {groups: TaskGraphGroup[]}) {
 					return (
 						<g
 							key={n.task.taskId}
-							onMouseEnter={() => {
+							onMouseEnter={() =>
+							{
 								handleMouseEnter(n.task.taskId);
 							}}
 							onMouseLeave={handleMouseLeave}
-							style={{
+							style={
+							{
 								cursor: "default",
 								opacity: dimmed ? 0.3 : 1,
 								transition: "opacity 0.15s",

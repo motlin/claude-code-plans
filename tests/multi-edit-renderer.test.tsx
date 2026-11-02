@@ -8,7 +8,8 @@ import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 import {summarizeToolCallStats} from "../src/lib/session-utils";
 
-vi.mock("../src/components/tool-renderers/inline-diff", async () => {
+vi.mock("../src/components/tool-renderers/inline-diff", async () =>
+{
 	const {buildUnifiedHunk} = await import("../src/lib/diff-utils");
 	return {
 		InlineDiff: ({filePath, oldStr, newStr}: {filePath: string; oldStr: string; newStr: string}) => (
@@ -17,21 +18,41 @@ vi.mock("../src/components/tool-renderers/inline-diff", async () => {
 	};
 });
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false}}),
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+		},
+	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class NoopResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords(): ResizeObserverEntry[] {
+class NoopResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords(): ResizeObserverEntry[]
+	{
 		return [];
 	}
 }
@@ -44,18 +65,26 @@ const FILE_PATH = "/Users/craig/projects/app/src/cache.ts";
 
 /** Two edits to one file: +1/-1 on the first, +3/-2 on the second. */
 const EDITS = [
-	{old_string: "const a = 1;", new_string: "const a = 2;"},
+	{
+		old_string: "const a = 1;",
+		new_string: "const a = 2;",
+	},
 	{
 		old_string: "const b = 1;\nconst c = 1;",
 		new_string: "const b = 2;\nconst c = 2;\nconst d = 3;",
 	},
 ];
 
-function multiEditCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall {
+function multiEditCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall
+{
 	return {
 		id: "tool-multiedit-1",
 		name: "MultiEdit",
-		input: {file_path: FILE_PATH, edits: EDITS},
+		input:
+		{
+			file_path: FILE_PATH,
+			edits: EDITS,
+		},
 		param: FILE_PATH,
 		result: "Applied 2 edits to /Users/craig/projects/app/src/cache.ts",
 		sourceUuid: "uuid-multiedit-1",
@@ -63,12 +92,15 @@ function multiEditCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall 
 	};
 }
 
-function diffTexts(container: HTMLElement): string[] {
+function diffTexts(container: HTMLElement): string[]
+{
 	return [...container.querySelectorAll('[data-testid="diff-view"]')].map((node) => node.textContent);
 }
 
-describe("MultiEdit rendering", () => {
-	it("renders one diff per edit instead of dumping the raw result", () => {
+describe("MultiEdit rendering", () =>
+{
+	it("renders one diff per edit instead of dumping the raw result", () =>
+	{
 		const {container} = render(<EditRenderer toolCall={multiEditCall()} />);
 
 		const diffs = diffTexts(container);
@@ -79,7 +111,8 @@ describe("MultiEdit rendering", () => {
 		expect(container.querySelector("pre")).toBe(null);
 	});
 
-	it("gives every edit its own file-path header and copy button", () => {
+	it("gives every edit its own file-path header and copy button", () =>
+	{
 		const {container} = render(<EditRenderer toolCall={multiEditCall()} />);
 
 		const headers = [...container.querySelectorAll(`[title="${FILE_PATH}"]`)];
@@ -88,26 +121,41 @@ describe("MultiEdit rendering", () => {
 		expect(container.querySelectorAll("button").length).toBe(2);
 	});
 
-	it("still renders exactly one diff for a single-edit Edit call", () => {
+	it("still renders exactly one diff for a single-edit Edit call", () =>
+	{
 		const {container} = render(
 			<EditRenderer
-				toolCall={multiEditCall({
-					name: "Edit",
-					input: {file_path: FILE_PATH, old_string: "const a = 1;", new_string: "const a = 2;"},
-				})}
+				toolCall={multiEditCall(
+					{
+						name: "Edit",
+						input:
+						{
+							file_path: FILE_PATH,
+							old_string: "const a = 1;",
+							new_string: "const a = 2;",
+						},
+					},
+				)}
 			/>,
 		);
 
 		expect(diffTexts(container).length).toBe(1);
 	});
 
-	it("falls back to the raw result when a MultiEdit call carries no edits", () => {
+	it("falls back to the raw result when a MultiEdit call carries no edits", () =>
+	{
 		const {container} = render(
 			<EditRenderer
-				toolCall={multiEditCall({
-					input: {file_path: FILE_PATH, edits: []},
-					result: "File has not been read yet",
-				})}
+				toolCall={multiEditCall(
+					{
+						input:
+						{
+							file_path: FILE_PATH,
+							edits: [],
+						},
+						result: "File has not been read yet",
+					},
+				)}
 			/>,
 		);
 
@@ -116,20 +164,27 @@ describe("MultiEdit rendering", () => {
 	});
 });
 
-describe("MultiEdit diff stats", () => {
-	it("shows aggregate +added/-removed on the collapsed tool row", () => {
+describe("MultiEdit diff stats", () =>
+{
+	it("shows aggregate +added/-removed on the collapsed tool row", () =>
+	{
 		const {lines, toolResultMap} = processTranscript([
 			{
 				type: "assistant",
 				uuid: "a1",
-				message: {
+				message:
+				{
 					role: "assistant",
 					content: [
 						{
 							type: "tool_use",
 							id: "t1",
 							name: "MultiEdit",
-							input: {file_path: FILE_PATH, edits: EDITS},
+							input:
+							{
+								file_path: FILE_PATH,
+								edits: EDITS,
+							},
 						},
 					],
 				},
@@ -138,9 +193,16 @@ describe("MultiEdit diff stats", () => {
 				type: "user",
 				uuid: "r1",
 				parentUuid: "a1",
-				message: {
+				message:
+				{
 					role: "user",
-					content: [{type: "tool_result", tool_use_id: "t1", content: "Applied 2 edits"}],
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "t1",
+							content: "Applied 2 edits",
+						},
+					],
 				},
 			},
 		]);
@@ -162,16 +224,38 @@ describe("MultiEdit diff stats", () => {
 		expect(removed?.textContent).toBe("−3");
 	});
 
-	it("aggregates MultiEdit stats into the collapsed turn summary", () => {
+	it("aggregates MultiEdit stats into the collapsed turn summary", () =>
+	{
 		expect(
-			summarizeToolCallStats([{name: "MultiEdit", input: {file_path: FILE_PATH, edits: EDITS}}]),
-		).toStrictEqual({
-			segments: [{verb: "Edited", rest: "cache.ts", file: {path: FILE_PATH, preferDiff: true}}],
-			trailing: null,
-			added: 4,
-			removed: 3,
-			failed: 0,
-			blocked: 0,
-		});
+			summarizeToolCallStats([
+				{
+					name: "MultiEdit",
+					input:
+					{
+						file_path: FILE_PATH,
+						edits: EDITS,
+					},
+				},
+			]),
+		).toStrictEqual(
+			{
+				segments: [
+					{
+						verb: "Edited",
+						rest: "cache.ts",
+						file:
+						{
+							path: FILE_PATH,
+							preferDiff: true,
+						},
+					},
+				],
+				trailing: null,
+				added: 4,
+				removed: 3,
+				failed: 0,
+				blocked: 0,
+			},
+		);
 	});
 });

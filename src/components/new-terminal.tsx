@@ -3,34 +3,46 @@ import {useCallback, useState} from "react";
 import {useStartHerdrTerminal} from "../hooks/use-herdr-terminal";
 import {ApprovalActionButton} from "./approval-card";
 
-interface OpenHerdrTerminal {
+interface OpenHerdrTerminal
+{
 	open: (cwd: string | null) => Promise<void>;
 	pending: boolean;
 	error: string;
 }
 
 /** `useStartHerdrTerminal` with its pending state and failure message, for a button to show. */
-function useOpenHerdrTerminal(): OpenHerdrTerminal {
+function useOpenHerdrTerminal(): OpenHerdrTerminal
+{
 	const start = useStartHerdrTerminal();
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState("");
 
 	const open = useCallback(
-		async (cwd: string | null) => {
+		async (cwd: string | null) =>
+		{
 			setPending(true);
 			setError("");
-			try {
+			try
+			{
 				await start(cwd);
-			} catch (cause) {
+			}
+			catch (cause)
+			{
 				setError(cause instanceof Error ? cause.message : String(cause));
-			} finally {
+			}
+			finally
+			{
 				setPending(false);
 			}
 		},
 		[start],
 	);
 
-	return {open, pending, error};
+	return {
+		open,
+		pending,
+		error,
+	};
 }
 
 const DIRECTORY_INPUT =
@@ -40,17 +52,20 @@ const DIRECTORY_INPUT =
  * The Terminals page's "New terminal": a directory field (blank for the home
  * directory) and Start, which opens a login shell there in a new herdr tab.
  */
-export function NewTerminalControl() {
+export function NewTerminalControl()
+{
 	const [expanded, setExpanded] = useState(false);
 	const [directory, setDirectory] = useState("");
 	const {open, pending, error} = useOpenHerdrTerminal();
 
-	if (!expanded) {
+	if (!expanded)
+	{
 		return (
 			<ApprovalActionButton
 				variant="secondary"
 				size="sm"
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded(true);
 				}}
 			>
@@ -60,7 +75,8 @@ export function NewTerminalControl() {
 		);
 	}
 
-	const start = (): void => {
+	const start = (): void =>
+	{
 		const cwd = directory.trim();
 		void open(cwd === "" ? null : cwd);
 	};
@@ -69,7 +85,8 @@ export function NewTerminalControl() {
 		<form
 			aria-label="New terminal"
 			className="flex w-full flex-wrap items-center gap-2 sm:w-auto"
-			onSubmit={(event) => {
+			onSubmit={(event) =>
+			{
 				event.preventDefault();
 				start();
 			}}
@@ -82,7 +99,8 @@ export function NewTerminalControl() {
 				// oxlint-disable-next-line jsx-a11y/no-autofocus -- the field is what "New terminal" just revealed
 				autoFocus
 				spellCheck={false}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					setDirectory(event.target.value);
 				}}
 				className={`${DIRECTORY_INPUT} sm:w-64`}
@@ -99,7 +117,8 @@ export function NewTerminalControl() {
 			<ApprovalActionButton
 				variant="secondary"
 				size="sm"
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded(false);
 				}}
 			>
@@ -115,7 +134,8 @@ export function NewTerminalControl() {
 }
 
 /** "Open terminal here": a login shell in a new herdr tab at `cwd`, opened in its live terminal. */
-export function OpenTerminalHereButton({cwd}: {cwd: string}) {
+export function OpenTerminalHereButton({cwd}: {cwd: string})
+{
 	const {open, pending, error} = useOpenHerdrTerminal();
 	return (
 		<div className="flex items-center gap-2">

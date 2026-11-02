@@ -4,7 +4,8 @@ import {useRestInk} from "../lib/fizzy-lake";
 import {useReducedMotion} from "../lib/reduced-motion";
 import {useTypeRowCut} from "../lib/use-row-cut";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
-import {
+import
+{
 	clockHidden,
 	maskWorkingLabel,
 	CONNECTING_PHASE_LABEL,
@@ -33,7 +34,13 @@ const NEEDS_INPUT_LABEL = "Needs your input";
 const WARNING_BADGE_CLASS =
 	"inline-flex h-5 min-w-0 max-w-full items-center gap-1 whitespace-nowrap rounded-full px-2 align-middle font-sans text-caption font-medium bg-[var(--warning-tint)] text-upstream-warning";
 
-function BlockedStatus({reduceMotion}: Readonly<{reduceMotion: boolean}>) {
+function BlockedStatus({
+	reduceMotion,
+}: Readonly<
+{
+	reduceMotion: boolean;
+}>)
+{
 	return (
 		<div
 			data-cds="TurnStatus"
@@ -62,30 +69,50 @@ function BlockedStatus({reduceMotion}: Readonly<{reduceMotion: boolean}>) {
 }
 
 /** Upstream's `g8`: a phase word appears or clears at once, but swapping for another waits out the settle. */
-function useSettledPhase(target: string | null): string | null {
+function useSettledPhase(target: string | null): string | null
+{
 	const [shown, setShown] = useState(target);
 	const immediate = target === null || shown === null;
 	if (immediate && shown !== target) setShown(target);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (target === shown || target === null || shown === null) return undefined;
-		const timer = setTimeout(() => {
+		const timer = setTimeout(() =>
+		{
 			setShown(target);
 		}, PHASE_SETTLE_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 		};
 	}, [target, shown]);
 	return immediate ? target : shown;
 }
 
-function waitingPhase(state: WorkingMarkerState, sending: boolean): string | null {
-	if (state.status === "working") return phaseLabel({sending, promptSeen: true, firstAssistantSeen: state.replied});
-	if (state.status === "idle") return phaseLabel({sending, promptSeen: false, firstAssistantSeen: false});
+function waitingPhase(state: WorkingMarkerState, sending: boolean): string | null
+{
+	if (state.status === "working")
+		return phaseLabel(
+			{
+				sending,
+				promptSeen: true,
+				firstAssistantSeen: state.replied,
+			},
+		);
+	if (state.status === "idle")
+		return phaseLabel(
+			{
+				sending,
+				promptSeen: false,
+				firstAssistantSeen: false,
+			},
+		);
 	return null;
 }
 
 /** Upstream's `le`: while the stream is (re)connecting, an active waiting phase reads "Connecting…". */
-function useLinePhase(state: WorkingMarkerState, sending: boolean, waitingOnUser: boolean): string | null {
+function useLinePhase(state: WorkingMarkerState, sending: boolean, waitingOnUser: boolean): string | null
+{
 	const phase = waitingOnUser ? null : waitingPhase(state, sending);
 	const streamConnecting = useEventStreamConnecting(phase !== null);
 	return streamConnecting ? CONNECTING_PHASE_LABEL : phase;
@@ -95,7 +122,13 @@ function useLinePhase(state: WorkingMarkerState, sending: boolean, waitingOnUser
  * Upstream's busy phase label: the bare word as ShimmerText in a `group/morph` slot keyed
  * `busy|<word>`, so a later morph can swap it.
  */
-function PhaseWord({word}: Readonly<{word: string}>) {
+function PhaseWord({
+	word,
+}: Readonly<
+{
+	word: string;
+}>)
+{
 	const rowCut = useTypeRowCut(word);
 	return (
 		<span className="group/morph inline-grid items-center justify-items-start min-w-0 max-w-full">
@@ -115,7 +148,8 @@ function PhaseWord({word}: Readonly<{word: string}>) {
 	);
 }
 
-function StatDot() {
+function StatDot()
+{
 	return (
 		<span aria-hidden className={`shrink-0 select-none ${useRestInk()} tabular-nums`}>
 			·
@@ -145,7 +179,8 @@ export function WorkingMarker({
 	tokens = 0,
 	toolLabel = null,
 	toolLabelEndedAt = null,
-}: Readonly<{
+}: Readonly<
+{
 	state: WorkingMarkerState;
 	runningTasks?: number;
 	quiet?: boolean;
@@ -162,19 +197,33 @@ export function WorkingMarker({
 	toolLabel?: WorkingLineToolLabel | null;
 	/** When the last handed-off words cleared; the clock stays hidden for 2s after. */
 	toolLabelEndedAt?: number | null;
-}>) {
+}>)
+{
 	const reduceMotion = useReducedMotion();
 	const restInk = useRestInk();
 	const phase = useSettledPhase(useLinePhase(state, sending, waitingOnUser));
 	// Upstream draws no mark while the turn waits on the user.
 	const turnWorking = !waitingOnUser && (phase !== null || (state.status !== "idle" && state.status !== "waiting"));
-	const source = workingLineLabelSource({state, phase, toolLabel});
+	const source = workingLineLabelSource(
+		{
+			state,
+			phase,
+			toolLabel,
+		},
+	);
 	const tool = source === "tool" && state.status === "working" ? toolLabel : null;
 	// Holding a row's words, the line holds the mark itself and is never quiet.
 	const lineQuiet = quiet && tool === null;
 	const busy = turnWorking && !lineQuiet;
 	const now = "turnStartedAt" in state ? state.turnStartedAt + state.elapsedSeconds * 1000 : null;
-	const showClock = now === null || !clockHidden({now, endedAt: toolLabelEndedAt});
+	const showClock =
+		now === null ||
+		!clockHidden(
+			{
+				now,
+				endedAt: toolLabelEndedAt,
+			},
+		);
 	const parts = workingLineParts(state, tokens, showClock);
 	const phaseWord = phase === null ? null : stripTrailingEllipsis(phase);
 	const toolWords = tool === null ? null : maskWorkingLabel(tool.words);
@@ -195,14 +244,25 @@ export function WorkingMarker({
 		<div
 			data-testid="code-working-line"
 			data-turn-working={turnWorking ? "true" : "false"}
-			{...(lineQuiet && turnWorking ? {"data-quiet": "true", "aria-hidden": true} : {})}
+			{...(lineQuiet && turnWorking
+				?
+					{
+						"data-quiet": "true",
+						"aria-hidden": true,
+					}
+				: {})}
 			className={`${lineQuiet && turnWorking ? "invisible " : ""}flex min-h-6 flex-col comfortable:min-h-8`}
 		>
 			{waitingOnUser && <BlockedStatus reduceMotion={reduceMotion} />}
 			{busy && (
 				<div data-cds="TurnStatus" data-state="busy" className="group/status flex w-full min-w-0 flex-col">
 					<div
-						{...(rowTitle === undefined ? {} : {title: rowTitle})}
+						{...(rowTitle === undefined
+							? {}
+							:
+								{
+									title: rowTitle,
+								})}
 						data-cds-row=""
 						className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5"
 					>

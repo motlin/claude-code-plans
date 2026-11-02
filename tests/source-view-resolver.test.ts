@@ -1,7 +1,8 @@
 import {writeFileSync, mkdirSync, rmSync, statSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
-import {
+import
+{
 	resolveSourcePath,
 	readSourceFile,
 	buildSourceConfig,
@@ -11,155 +12,212 @@ import {
 
 const testRoot = join(tmpdir(), "claude-source-view-test-" + process.pid);
 
-const mdConfig: SourceKindConfig = {
+const mdConfig: SourceKindConfig =
+{
 	root: testRoot,
 	extension: ".md",
 	language: "markdown",
 };
 
-const jsonConfig: SourceKindConfig = {
+const jsonConfig: SourceKindConfig =
+{
 	root: testRoot,
 	extension: ".json",
 	language: "json",
 };
 
-beforeEach(() => {
-	mkdirSync(testRoot, {recursive: true});
+beforeEach(() =>
+{
+	mkdirSync(
+		testRoot,
+		{
+			recursive: true,
+		},
+	);
 });
 
-afterEach(() => {
-	rmSync(testRoot, {recursive: true, force: true});
+afterEach(() =>
+{
+	rmSync(
+		testRoot,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("resolveSourcePath", () => {
-	it("resolves a single-level filename inside root", () => {
+describe("resolveSourcePath", () =>
+{
+	it("resolves a single-level filename inside root", () =>
+	{
 		const result = resolveSourcePath(mdConfig, "plan.md");
 		expect(result).toBe(join(testRoot, "plan.md"));
 	});
 
-	it("resolves nested paths inside root", () => {
+	it("resolves nested paths inside root", () =>
+	{
 		const result = resolveSourcePath(jsonConfig, "project-a/42.json");
 		expect(result).toBe(join(testRoot, "project-a", "42.json"));
 	});
 
-	it("rejects empty string", () => {
+	it("rejects empty string", () =>
+	{
 		expect(resolveSourcePath(mdConfig, "")).toBe(null);
 	});
 
-	it("rejects path traversal with ..", () => {
+	it("rejects path traversal with ..", () =>
+	{
 		expect(resolveSourcePath(mdConfig, "../etc/passwd.md")).toBe(null);
 	});
 
-	it("rejects nested path traversal", () => {
+	it("rejects nested path traversal", () =>
+	{
 		expect(resolveSourcePath(mdConfig, "sub/../../etc/passwd.md")).toBe(null);
 	});
 
-	it("rejects absolute paths", () => {
+	it("rejects absolute paths", () =>
+	{
 		expect(resolveSourcePath(mdConfig, "/etc/passwd.md")).toBe(null);
 	});
 
-	it("rejects wrong extension", () => {
+	it("rejects wrong extension", () =>
+	{
 		expect(resolveSourcePath(mdConfig, "note.txt")).toBe(null);
 		expect(resolveSourcePath(jsonConfig, "note.md")).toBe(null);
 	});
 
-	it("rejects empty path segments", () => {
+	it("rejects empty path segments", () =>
+	{
 		expect(resolveSourcePath(mdConfig, "sub//file.md")).toBe(null);
 	});
 
-	it('rejects "." segments', () => {
+	it('rejects "." segments', () =>
+	{
 		expect(resolveSourcePath(mdConfig, "./file.md")).toBe(null);
 	});
 });
 
-describe("readSourceFile", () => {
-	it("reads a markdown file", async () => {
+describe("readSourceFile", () =>
+{
+	it("reads a markdown file", async () =>
+	{
 		writeFileSync(join(testRoot, "plan.md"), "# Hello\n");
 		const file = await readSourceFile("plan", mdConfig, "plan.md");
 		if (!file) throw new Error("Expected non-null file");
 		const fileStat = statSync(join(testRoot, "plan.md"));
-		expect(file).toStrictEqual({
-			kind: "plan",
-			absolutePath: join(testRoot, "plan.md"),
-			content: "# Hello\n",
-			language: "markdown",
-			relativePath: "plan.md",
-			version: {mtimeMs: fileStat.mtimeMs, size: 8},
-		});
+		expect(file).toStrictEqual(
+			{
+				kind: "plan",
+				absolutePath: join(testRoot, "plan.md"),
+				content: "# Hello\n",
+				language: "markdown",
+				relativePath: "plan.md",
+				version:
+				{
+					mtimeMs: fileStat.mtimeMs,
+					size: 8,
+				},
+			},
+		);
 	});
 
-	it("reads a JSON task file", async () => {
+	it("reads a JSON task file", async () =>
+	{
 		mkdirSync(join(testRoot, "proj"));
 		writeFileSync(join(testRoot, "proj", "1.json"), '{"id":"1"}');
 		const file = await readSourceFile("task", jsonConfig, "proj/1.json");
 		if (!file) throw new Error("Expected non-null file");
 		const fileStat = statSync(join(testRoot, "proj", "1.json"));
-		expect(file).toStrictEqual({
-			kind: "task",
-			absolutePath: join(testRoot, "proj", "1.json"),
-			content: '{"id":"1"}',
-			language: "json",
-			relativePath: "proj/1.json",
-			version: {mtimeMs: fileStat.mtimeMs, size: 10},
-		});
+		expect(file).toStrictEqual(
+			{
+				kind: "task",
+				absolutePath: join(testRoot, "proj", "1.json"),
+				content: '{"id":"1"}',
+				language: "json",
+				relativePath: "proj/1.json",
+				version:
+				{
+					mtimeMs: fileStat.mtimeMs,
+					size: 10,
+				},
+			},
+		);
 	});
 
-	it("returns null for non-existent file", async () => {
+	it("returns null for non-existent file", async () =>
+	{
 		expect(await readSourceFile("plan", mdConfig, "missing.md")).toBe(null);
 	});
 
-	it("returns null for traversal attempts", async () => {
+	it("returns null for traversal attempts", async () =>
+	{
 		expect(await readSourceFile("plan", mdConfig, "../etc/passwd.md")).toBe(null);
 	});
 
-	it("returns null for wrong extension", async () => {
+	it("returns null for wrong extension", async () =>
+	{
 		writeFileSync(join(testRoot, "evil.txt"), "bad");
 		expect(await readSourceFile("plan", mdConfig, "evil.txt")).toBe(null);
 	});
 });
 
-describe("buildSourceConfig", () => {
-	it("returns plans config for kind=plan", () => {
+describe("buildSourceConfig", () =>
+{
+	it("returns plans config for kind=plan", () =>
+	{
 		const cfg = buildSourceConfig("plan", "/home/u/.claude");
-		expect(cfg).toStrictEqual({
-			root: "/home/u/.claude/plans",
-			extension: ".md",
-			language: "markdown",
-		});
+		expect(cfg).toStrictEqual(
+			{
+				root: "/home/u/.claude/plans",
+				extension: ".md",
+				language: "markdown",
+			},
+		);
 	});
 
-	it("returns memory config for kind=memory", () => {
+	it("returns memory config for kind=memory", () =>
+	{
 		const cfg = buildSourceConfig("memory", "/home/u/.claude");
-		expect(cfg).toStrictEqual({
-			root: "/home/u/.claude/projects",
-			extension: ".md",
-			language: "markdown",
-		});
+		expect(cfg).toStrictEqual(
+			{
+				root: "/home/u/.claude/projects",
+				extension: ".md",
+				language: "markdown",
+			},
+		);
 	});
 
-	it("returns tasks config for kind=task", () => {
+	it("returns tasks config for kind=task", () =>
+	{
 		const cfg = buildSourceConfig("task", "/home/u/.claude");
-		expect(cfg).toStrictEqual({
-			root: "/home/u/.claude/tasks",
-			extension: ".json",
-			language: "json",
-		});
+		expect(cfg).toStrictEqual(
+			{
+				root: "/home/u/.claude/tasks",
+				extension: ".json",
+				language: "json",
+			},
+		);
 	});
 
-	it("returns null for kind=command", () => {
+	it("returns null for kind=command", () =>
+	{
 		expect(buildSourceConfig("command", "/home/u/.claude")).toBe(null);
 	});
 });
 
-describe("isValidSourceKind", () => {
-	it("accepts known kinds", () => {
+describe("isValidSourceKind", () =>
+{
+	it("accepts known kinds", () =>
+	{
 		expect(isValidSourceKind("plan")).toBe(true);
 		expect(isValidSourceKind("memory")).toBe(true);
 		expect(isValidSourceKind("task")).toBe(true);
 		expect(isValidSourceKind("command")).toBe(true);
 	});
 
-	it("rejects unknown kinds", () => {
+	it("rejects unknown kinds", () =>
+	{
 		expect(isValidSourceKind("session")).toBe(false);
 		expect(isValidSourceKind("")).toBe(false);
 		expect(isValidSourceKind("plans")).toBe(false);

@@ -1,11 +1,13 @@
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
-export function McpRenderer({toolCall}: ToolRendererProps) {
+export function McpRenderer({toolCall}: ToolRendererProps)
+{
 	const {input, result, isError} = toolCall;
 	const entries = Object.entries(input).filter(([k]) => k !== "type");
 
-	const params = entries.map(([key, value]) => ({
+	const params = entries.map(([key, value]) => (
+	{
 		key,
 		value: typeof value === "string" ? value : JSON.stringify(value),
 	}));

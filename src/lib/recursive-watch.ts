@@ -12,7 +12,8 @@ const PROBE_PREFIX = ".claude-code-browser-watch-probe-";
 const PROBE_RETRY_MS = 25;
 const PROBE_TIMEOUT_MS = 1000;
 
-export interface RecursiveWatcher {
+export interface RecursiveWatcher
+{
 	once(event: "ready", listener: () => void): this;
 	/**
 	 * Settles once the watcher is delivering events, or once it closes first: a wait on a watcher that a restarted
@@ -23,7 +24,8 @@ export interface RecursiveWatcher {
 	close(): Promise<void>;
 }
 
-function hasErrorCode(error: unknown, code: string): boolean {
+function hasErrorCode(error: unknown, code: string): boolean
+{
 	return error instanceof Error && "code" in error && typeof error.code === "string" && error.code === code;
 }
 
@@ -31,48 +33,61 @@ function hasErrorCode(error: unknown, code: string): boolean {
  * Prefer a git-ignored directory for the probe so a repository root never shows
  * the sentinel as an untracked file, even for the milliseconds it exists.
  */
-async function resolveProbeDirectory(root: string): Promise<string> {
+async function resolveProbeDirectory(root: string): Promise<string>
+{
 	const gitDirectory = join(root, ".git");
-	try {
+	try
+	{
 		if ((await stat(gitDirectory)).isDirectory()) return gitDirectory;
-	} catch {
+	}
+	catch
+	{
 		// A watched root does not have to be a git repository.
 	}
 	return root;
 }
 
-class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
+class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher
+{
 	private readonly debounceByPath = new Map<string, ReturnType<typeof setTimeout>>();
 	private readonly nativeWatchers = new Map<string, NativeWatcher>();
 	private readonly probeObservers = new Map<string, () => void>();
 	private readonly probeTimers = new Set<ReturnType<typeof setTimeout>>();
 	private closed = false;
-	private settleReady: () => void = () => {};
-	private readonly ready = new Promise<void>((resolve) => {
+	private settleReady: () => void = () =>
+	{
+	};
+	private readonly ready = new Promise<void>((resolve) =>
+	{
 		this.settleReady = resolve;
 	});
 
 	constructor(
 		roots: readonly string[],
 		private readonly ignored: (path: string, stats?: Stats) => boolean,
-	) {
+	)
+	{
 		super();
 		void this.start(roots);
 	}
 
-	override once(event: "ready", listener: () => void): this {
+	override once(event: "ready", listener: () => void): this
+	{
 		return super.once(event, listener);
 	}
 
-	override on(event: "add" | "change" | "unlink", listener: (path: string) => void): this {
+	override on(event: "add" | "change" | "unlink", listener: (path: string) => void): this
+	{
 		return super.on(event, listener);
 	}
 
-	async whenReady(): Promise<void> {
+	async whenReady(): Promise<void>
+	{
 		return this.ready;
 	}
 
-	async close(): Promise<void> {
+	async close(): Promise<void>
+	{
 		if (this.closed) return Promise.resolve();
 		this.closed = true;
 
@@ -91,22 +106,36 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 		return Promise.resolve();
 	}
 
-	private async start(roots: readonly string[]): Promise<void> {
+	private async start(roots: readonly string[]): Promise<void>
+	{
 		const resolvedRoots = await resolveDirectoryRoots(roots, new Set(), "widest");
 		if (this.closed) return;
 
 		const attachedRoots: string[] = [];
-		for (const root of resolvedRoots) {
-			try {
-				const watcher = watchNative(root, {recursive: true, persistent: true}, (_event, relativePath) => {
-					this.handleNativeEvent(root, relativePath);
-				});
-				watcher.on("error", (error) => {
+		for (const root of resolvedRoots)
+		{
+			try
+			{
+				const watcher = watchNative(
+					root,
+					{
+						recursive: true,
+						persistent: true,
+					},
+					(_event, relativePath) =>
+					{
+						this.handleNativeEvent(root, relativePath);
+					},
+				);
+				watcher.on("error", (error) =>
+				{
 					this.handleNativeError(root, watcher, error);
 				});
 				this.nativeWatchers.set(root, watcher);
 				attachedRoots.push(root);
-			} catch (error) {
+			}
+			catch (error)
+			{
 				console.error(`Recursive watcher failed for root ${root}:`, error);
 			}
 		}
@@ -123,39 +152,57 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 	 * `watch()` returns can be dropped. Announce readiness only once the watcher
 	 * has reported a sentinel of our own back to us.
 	 */
-	private async waitUntilArmed(root: string): Promise<void> {
+	private async waitUntilArmed(root: string): Promise<void>
+	{
 		const probePath = join(await resolveProbeDirectory(root), `${PROBE_PREFIX}${process.pid}-${randomUUID()}`);
-		const observed = new Promise<void>((resolve) => {
+		const observed = new Promise<void>((resolve) =>
+		{
 			this.probeObservers.set(probePath, resolve);
 		});
 		const deadline = Date.now() + PROBE_TIMEOUT_MS;
 
-		try {
-			while (!this.closed) {
+		try
+		{
+			while (!this.closed)
+			{
 				await writeFile(probePath, "", "utf8");
 				if (await this.raceProbe(observed)) return;
-				if (Date.now() >= deadline) {
+				if (Date.now() >= deadline)
+				{
 					console.error(`Recursive watcher could not confirm event delivery for root ${root}`);
 					return;
 				}
 			}
-		} catch {
+		}
+		catch
+		{
 			// A root we cannot write into cannot be probed; trust the native watcher.
-		} finally {
+		}
+		finally
+		{
 			this.probeObservers.delete(probePath);
-			await rm(probePath, {force: true}).catch(() => {});
+			await rm(
+				probePath,
+				{
+					force: true,
+				},
+			).catch(() => {});
 		}
 	}
 
 	/** Resolve true when the probe came back, false when it is time to rewrite it. */
-	private async raceProbe(observed: Promise<void>): Promise<boolean> {
-		return new Promise((resolve) => {
-			const timer = setTimeout(() => {
+	private async raceProbe(observed: Promise<void>): Promise<boolean>
+	{
+		return new Promise((resolve) =>
+		{
+			const timer = setTimeout(() =>
+			{
 				this.probeTimers.delete(timer);
 				resolve(false);
 			}, PROBE_RETRY_MS);
 			this.probeTimers.add(timer);
-			void observed.then(() => {
+			void observed.then(() =>
+			{
 				clearTimeout(timer);
 				this.probeTimers.delete(timer);
 				resolve(true);
@@ -163,11 +210,13 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 		});
 	}
 
-	private handleNativeEvent(root: string, relativePath: string | Buffer | null): void {
+	private handleNativeEvent(root: string, relativePath: string | Buffer | null): void
+	{
 		if (this.closed || typeof relativePath !== "string") return;
 
 		const path = join(root, relativePath);
-		if (basename(path).startsWith(PROBE_PREFIX)) {
+		if (basename(path).startsWith(PROBE_PREFIX))
+		{
 			this.probeObservers.get(path)?.();
 			return;
 		}
@@ -181,30 +230,40 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 		if (existingTimer !== undefined) clearTimeout(existingTimer);
 		this.debounceByPath.set(
 			path,
-			setTimeout(() => {
+			setTimeout(() =>
+			{
 				this.debounceByPath.delete(path);
 				void this.classifyAndEmit(path, describesRootItself);
 			}, DEBOUNCE_MS),
 		);
 	}
 
-	private async classifyAndEmit(path: string, describesRootItself: boolean): Promise<void> {
-		try {
+	private async classifyAndEmit(path: string, describesRootItself: boolean): Promise<void>
+	{
+		try
+		{
 			const stats = await stat(path);
-			if (!this.closed && stats.isFile() && !this.ignored(path, stats)) {
+			if (!this.closed && stats.isFile() && !this.ignored(path, stats))
+			{
 				this.emit("change", path);
 			}
-		} catch (error) {
-			if (!this.closed && hasErrorCode(error, "ENOENT")) {
+		}
+		catch (error)
+		{
+			if (!this.closed && hasErrorCode(error, "ENOENT"))
+			{
 				if (describesRootItself) return;
 				this.emit("unlink", path);
-			} else if (!this.closed) {
+			}
+			else if (!this.closed)
+			{
 				console.error(`Recursive watcher could not classify ${path}:`, error);
 			}
 		}
 	}
 
-	private handleNativeError(root: string, watcher: NativeWatcher, error: Error): void {
+	private handleNativeError(root: string, watcher: NativeWatcher, error: Error): void
+	{
 		if (this.closed || this.nativeWatchers.get(root) !== watcher) return;
 		console.error(`Recursive watcher failed for root ${root}:`, error);
 		watcher.close();
@@ -215,6 +274,7 @@ class RecursiveWatcherImpl extends EventEmitter implements RecursiveWatcher {
 export function createRecursiveWatcher(
 	roots: readonly string[],
 	ignored: (path: string, stats?: Stats) => boolean,
-): RecursiveWatcher {
+): RecursiveWatcher
+{
 	return new RecursiveWatcherImpl(roots, ignored);
 }

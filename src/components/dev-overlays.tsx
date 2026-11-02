@@ -9,7 +9,8 @@ import {usePhoneSheet} from "../lib/use-phone-sheet";
  * Neither mounts on a phone, where they sit over the composer's + and send buttons. The toolbar gets
  * its endpoint only once a health probe succeeds, since with an endpoint it polls `/health` every 10s.
  */
-export function DevOverlays() {
+export function DevOverlays()
+{
 	const phone = usePhoneSheet();
 	const endpoint = useHealthyAgentationEndpoint(
 		typeof window === "undefined" ? AGENTATION_ENDPOINT : agentationEndpoint(window.location),
@@ -18,7 +19,14 @@ export function DevOverlays() {
 	return (
 		<>
 			<ReactQueryDevtools buttonPosition="bottom-left" />
-			<Agentation {...(endpoint === undefined ? {} : {endpoint})} />
+			<Agentation
+				{...(endpoint === undefined
+					? {}
+					:
+						{
+							endpoint,
+						})}
+			/>
 		</>
 	);
 }

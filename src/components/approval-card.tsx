@@ -29,19 +29,39 @@ export function ApprovalActionButton({
 	children,
 	onClick,
 	...props
-}: {variant: ApprovalActionVariant; size?: ApprovalActionSize; busy?: boolean; busyLabel?: string} & Omit<
-	ButtonHTMLAttributes<HTMLButtonElement>,
-	"className" | "type" | "aria-busy" | "aria-disabled"
->) {
+}:
+{
+	variant: ApprovalActionVariant;
+	size?: ApprovalActionSize;
+	busy?: boolean;
+	busyLabel?: string;
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "type" | "aria-busy" | "aria-disabled">)
+{
 	return (
 		<button
 			type="button"
 			{...props}
 			onClick={busy ? undefined : onClick}
 			data-approval-variant={variant}
-			{...(size === "sm" ? {"data-size": "sm"} : {})}
-			{...(busy ? {"aria-busy": true, "aria-disabled": true} : {})}
-			{...(busy && busyLabel !== undefined ? {"aria-label": busyLabel} : {})}
+			{...(size === "sm"
+				?
+					{
+						"data-size": "sm",
+					}
+				: {})}
+			{...(busy
+				?
+					{
+						"aria-busy": true,
+						"aria-disabled": true,
+					}
+				: {})}
+			{...(busy && busyLabel !== undefined
+				?
+					{
+						"aria-label": busyLabel,
+					}
+				: {})}
 			className={cdsButtonClass(variant, size)}
 		>
 			{busy ? (
@@ -73,11 +93,13 @@ export const STACK_ACTIONS =
 
 const ROAM_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
 
-function enabledButtons(actions: HTMLElement | null): HTMLButtonElement[] {
+function enabledButtons(actions: HTMLElement | null): HTMLButtonElement[]
+{
 	return actions === null ? [] : [...actions.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
 }
 
-function isPrimary(button: HTMLButtonElement): boolean {
+function isPrimary(button: HTMLButtonElement): boolean
+{
 	return button.matches("[data-approval-primary]") || button.querySelector("[data-approval-primary]") !== null;
 }
 
@@ -86,12 +108,14 @@ function isPrimary(button: HTMLButtonElement): boolean {
  * action buttons, wrapping and mirrored in RTL. Enter on the root itself focuses the primary
  * (else the last button), and a repeated Enter on an action is swallowed.
  */
-function onApprovalRootKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+function onApprovalRootKeyDown(event: KeyboardEvent<HTMLDivElement>)
+{
 	const root = event.currentTarget;
 	const actions = root.querySelector<HTMLElement>("[data-approval-card-actions]");
 	const target = event.target instanceof Element ? event.target : null;
 	const fromActions = target !== null && actions?.contains(target) === true;
-	if (ROAM_KEYS.has(event.key)) {
+	if (ROAM_KEYS.has(event.key))
+	{
 		if (target !== root && !fromActions) return;
 		const buttons = enabledButtons(actions);
 		if (buttons.length === 0) return;
@@ -106,7 +130,8 @@ function onApprovalRootKeyDown(event: KeyboardEvent<HTMLDivElement>) {
 		return;
 	}
 	if (event.key !== "Enter") return;
-	if (event.repeat && fromActions) {
+	if (event.repeat && fromActions)
+	{
 		event.preventDefault();
 		event.stopPropagation();
 		return;
@@ -121,7 +146,8 @@ function onApprovalRootKeyDown(event: KeyboardEvent<HTMLDivElement>) {
 }
 
 /** Upstream swallows file drags on the card so a drop never reaches the composer's attach target. */
-function swallowFileDrag(event: DragEvent<HTMLDivElement>) {
+function swallowFileDrag(event: DragEvent<HTMLDivElement>)
+{
 	if (!event.dataTransfer.types.includes("Files")) return;
 	event.preventDefault();
 	event.stopPropagation();
@@ -182,7 +208,8 @@ export function ApprovalCardShell({
 	roam?: boolean;
 	/** Runs before the root's own keys; a handler that calls preventDefault keeps that key from them. */
 	onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
-}) {
+})
+{
 	// Inline, upstream's card is at most 480px wide with 24px gaps; the dock keeps its 12px rhythm.
 	// Docked, it paints upstream's backdrop `bg-surface-panel shadow-panel-sm` (c2d1aeb56 `y()`); surface-panel = surface-2.
 	const look =
@@ -201,8 +228,18 @@ export function ApprovalCardShell({
 	// inline card's to pad-lg (16px comfortable, 12px compact). Title band and body bleed to the same inset.
 	const inset =
 		presentation === "card"
-			? {pad: "p-lg", bleed: "-mx-pad-lg", px: "px-lg"}
-			: {pad: "p-3", bleed: "-mx-3", px: "px-3"};
+			?
+				{
+					pad: "p-lg",
+					bleed: "-mx-pad-lg",
+					px: "px-lg",
+				}
+			:
+				{
+					pad: "p-3",
+					bleed: "-mx-3",
+					px: "px-3",
+				};
 	return (
 		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
 			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions -- upstream's focusable card root: arrows roam its action buttons, Enter focuses the primary, and clicks stop short of the transcript */}
@@ -217,12 +254,19 @@ export function ApprovalCardShell({
 				// (c2d1aeb56 `J`) never themes: the permission, plan and elicitation cards all carry it. Its only reader is a
 				// desktop-glass background rule, so on the web it is DOM parity.
 				data-approval-prompt=""
-				{...(enter ? {} : {"data-skip-approval-enter": ""})}
+				{...(enter
+					? {}
+					:
+						{
+							"data-skip-approval-enter": "",
+						})}
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}
 				tabIndex={roam ? 0 : undefined}
-				onKeyDown={(event) => {
-					if (onKeyDown !== undefined) {
+				onKeyDown={(event) =>
+				{
+					if (onKeyDown !== undefined)
+					{
 						onKeyDown(event);
 						if (event.defaultPrevented) return;
 					}
@@ -232,7 +276,8 @@ export function ApprovalCardShell({
 				onDragOver={swallowFileDrag}
 				onDragLeave={swallowFileDrag}
 				onDrop={swallowFileDrag}
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					event.stopPropagation();
 				}}
 				className={`@container relative isolate flex ${frame} flex-col rounded-card ${inset.pad} text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
@@ -275,7 +320,12 @@ const TERMINAL_FOOTNOTE = "Answer in the terminal running this session.";
 export function WaitingForInputNotice({
 	title = "Waiting for your input",
 	message,
-}: {title?: string; message?: string} = {}) {
+}:
+{
+	title?: string;
+	message?: string;
+} = {})
+{
 	return (
 		<div
 			role="status"
@@ -308,10 +358,14 @@ export const URL_OPEN_LOADING_REASON = "Reading the terminal dialog…";
 export const URL_OPEN_UNAVAILABLE_REASON = "Claude Code won't open this URL from here. Check it in the terminal.";
 
 /** The URL's host as upstream's link card names it; empty for text that isn't a URL. */
-function urlHost(url: string): string {
-	try {
+function urlHost(url: string): string
+{
+	try
+	{
 		return new URL(url).host;
-	} catch {
+	}
+	catch
+	{
 		return "";
 	}
 }
@@ -345,7 +399,8 @@ export function UrlElicitationCard({
 	url: string;
 	dialogFocus: ElicitationFocus | null | undefined;
 	onDecision: (decision: "allow" | "deny") => Promise<void>;
-}) {
+})
+{
 	const [sent, setSent] = useState<"allow" | "deny" | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const title = `${serverName.trim() || "An unknown server"} wants to open a URL`;
@@ -356,12 +411,16 @@ export function UrlElicitationCard({
 				? null
 				: URL_OPEN_UNAVAILABLE_REASON;
 
-	const decide = async (decision: "allow" | "deny") => {
+	const decide = async (decision: "allow" | "deny") =>
+	{
 		setError(null);
 		setSent(decision);
-		try {
+		try
+		{
 			await onDecision(decision);
-		} catch (err) {
+		}
+		catch (err)
+		{
 			setError(err instanceof Error ? err.message : "Failed to answer the URL request");
 			setSent(null);
 		}

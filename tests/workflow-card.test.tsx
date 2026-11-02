@@ -2,7 +2,8 @@
 
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {
+import
+{
 	BackgroundTasksOpenerProvider,
 	type BackgroundTasksFocus,
 } from "../src/components/background-tasks-opener-context";
@@ -12,29 +13,52 @@ import {processTranscript} from "../src/lib/transcript";
 import type {WorkflowProgressEntry} from "../src/lib/workflow-progress";
 import type {WorkflowRun} from "../src/lib/workflow-runs";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false}}),
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+		},
+	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class NoopResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords(): ResizeObserverEntry[] {
+class NoopResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords(): ResizeObserverEntry[]
+	{
 		return [];
 	}
 }
 
 globalThis.ResizeObserver = NoopResizeObserver;
-Element.prototype.scrollIntoView = () => {};
+Element.prototype.scrollIntoView = () =>
+{
+};
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.useRealTimers();
 });
@@ -48,7 +72,8 @@ const STARTED_AT = Date.parse("2026-10-19T12:00:00.000Z");
 const CARD_CLASS =
 	"group/tool my-[6px] relative isolate flex self-start min-w-[318px] max-w-[318px] items-start gap-g5 rounded-r6 ps-3 py-2.5 text-start text-pretty group/btn outline-none hide-focus-ring focus-visible:ring-focus pe-2";
 
-function agent(index: number, state: "start" | "progress" | "done"): WorkflowProgressEntry {
+function agent(index: number, state: "start" | "progress" | "done"): WorkflowProgressEntry
+{
 	return {
 		type: "workflow_agent",
 		index,
@@ -64,13 +89,18 @@ function agent(index: number, state: "start" | "progress" | "done"): WorkflowPro
 
 /** The live "1 of 3 agents done, 2 running" state. */
 const RUNNING_PROGRESS: WorkflowProgressEntry[] = [
-	{type: "workflow_phase", index: 0, title: "Explore"},
+	{
+		type: "workflow_phase",
+		index: 0,
+		title: "Explore",
+	},
 	agent(0, "done"),
 	agent(1, "progress"),
 	agent(2, "progress"),
 ];
 
-function run(overrides: Partial<WorkflowRun> = {}): WorkflowRun {
+function run(overrides: Partial<WorkflowRun> = {}): WorkflowRun
+{
 	return {
 		runId: "wf_test-1",
 		taskId: TASK_ID,
@@ -90,14 +120,31 @@ function run(overrides: Partial<WorkflowRun> = {}): WorkflowRun {
 	};
 }
 
-const INPUT = {scriptPath: `/Users/alice/.claude/workflows/${NAME}.js`, description: "Explore and review"};
+const INPUT =
+{
+	scriptPath: `/Users/alice/.claude/workflows/${NAME}.js`,
+	description: "Explore and review",
+};
 
-function records(launched: boolean): unknown[] {
-	const call = {
+function records(launched: boolean): unknown[]
+{
+	const call =
+	{
 		type: "assistant",
 		uuid: "a1",
 		timestamp: "2026-10-19T11:59:59.000Z",
-		message: {role: "assistant", content: [{type: "tool_use", id: TOOL_USE_ID, name: "Workflow", input: INPUT}]},
+		message:
+		{
+			role: "assistant",
+			content: [
+				{
+					type: "tool_use",
+					id: TOOL_USE_ID,
+					name: "Workflow",
+					input: INPUT,
+				},
+			],
+		},
 	};
 	if (!launched) return [call];
 	return [
@@ -106,7 +153,8 @@ function records(launched: boolean): unknown[] {
 			type: "user",
 			uuid: "u1",
 			timestamp: "2026-10-19T12:00:00.000Z",
-			toolUseResult: {
+			toolUseResult:
+			{
 				status: "async_launched",
 				taskId: TASK_ID,
 				taskType: "local_workflow",
@@ -116,9 +164,16 @@ function records(launched: boolean): unknown[] {
 				transcriptDir: "/tmp/wf",
 				scriptPath: INPUT.scriptPath,
 			},
-			message: {
+			message:
+			{
 				role: "user",
-				content: [{type: "tool_result", tool_use_id: TOOL_USE_ID, content: "Workflow launched in background."}],
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: TOOL_USE_ID,
+						content: "Workflow launched in background.",
+					},
+				],
 			},
 		},
 	];
@@ -128,10 +183,17 @@ function chat(
 	transcript: unknown[],
 	workflowRuns: WorkflowRun[],
 	open = vi.fn<(focus?: BackgroundTasksFocus) => void>(),
-) {
+)
+{
 	const {lines, toolResultMap} = processTranscript(transcript);
 	return (
-		<BackgroundTasksOpenerProvider value={{open, running: new Map()}}>
+		<BackgroundTasksOpenerProvider
+			value={
+			{
+				open,
+				running: new Map(),
+			}}
+		>
 			<SessionChat
 				sessionId="test-session"
 				lines={lines}
@@ -148,40 +210,76 @@ function renderChat(
 	launched: boolean,
 	workflowRuns: WorkflowRun[],
 	open = vi.fn<(focus?: BackgroundTasksFocus) => void>(),
-) {
-	return {...render(chat(records(launched), workflowRuns, open)), open};
+)
+{
+	return {
+		...render(chat(records(launched), workflowRuns, open)),
+		open,
+	};
 }
 
-function cells(container: HTMLElement): string[] {
+function cells(container: HTMLElement): string[]
+{
 	return [...container.querySelectorAll("[data-cell]")].map((cell) => cell.className);
 }
 
-describe("WorkflowCard", () => {
-	it("shows a pre-launch card as Starting workflow with only the ghost cell", () => {
-		const {container} = render(<WorkflowCard name={NAME} preLaunch progress={[]} onOpen={() => {}} />);
-		const card = screen.getByRole("button", {name: `View workflow: ${NAME}`});
+describe("WorkflowCard", () =>
+{
+	it("shows a pre-launch card as Starting workflow with only the ghost cell", () =>
+	{
+		const {container} = render(
+			<WorkflowCard
+				name={NAME}
+				preLaunch
+				progress={[]}
+				onOpen={() =>
+				{
+				}}
+			/>,
+		);
+		const card = screen.getByRole(
+			"button",
+			{
+				name: `View workflow: ${NAME}`,
+			},
+		);
 
-		expect({
-			className: card.className,
-			text: card.textContent,
-			cells: cells(container),
-			summary: container.querySelector('[role="img"]')?.getAttribute("aria-label"),
-			surface: card.querySelector('span[aria-hidden="true"]')?.className,
-		}).toStrictEqual({
-			className: CARD_CLASS,
-			text: `${NAME}Starting workflow`,
-			cells: ["epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--ghost"],
-			summary: "Waiting for agents to start",
-			surface:
-				"card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover",
-		});
+		expect(
+			{
+				className: card.className,
+				text: card.textContent,
+				cells: cells(container),
+				summary: container.querySelector('[role="img"]')?.getAttribute("aria-label"),
+				surface: card.querySelector('span[aria-hidden="true"]')?.className,
+			},
+		).toStrictEqual(
+			{
+				className: CARD_CLASS,
+				text: `${NAME}Starting workflow`,
+				cells: ["epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--ghost"],
+				summary: "Waiting for agents to start",
+				surface:
+					"card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover",
+			},
+		);
 	});
 
-	it("keeps the Workflow label a mounted, inactive default-variant ShimmerText once the card has a name", () => {
-		const labelFacts = (name: string) => {
-			const {container} = render(<WorkflowCard name={name} progress={[]} onOpen={() => {}} />);
+	it("keeps the Workflow label a mounted, inactive default-variant ShimmerText once the card has a name", () =>
+	{
+		const labelFacts = (name: string) =>
+		{
+			const {container} = render(
+				<WorkflowCard
+					name={name}
+					progress={[]}
+					onOpen={() =>
+					{
+					}}
+				/>,
+			);
 			const label = container.querySelector(".text-footnote > [data-cds=ShimmerText]");
-			const facts = {
+			const facts =
+			{
 				text: label?.textContent,
 				className: label?.className,
 				shimmering: label?.getAttribute("data-shimmering"),
@@ -190,125 +288,266 @@ describe("WorkflowCard", () => {
 			cleanup();
 			return facts;
 		};
-		expect({named: labelFacts(NAME), unnamed: labelFacts("")}).toStrictEqual({
-			named: {text: "Workflow", className: "shrink-0 text-secondary", shimmering: "false", variant: null},
-			unnamed: {text: "Workflow", className: "shrink-0 text-secondary", shimmering: "true", variant: null},
-		});
+		expect(
+			{
+				named: labelFacts(NAME),
+				unnamed: labelFacts(""),
+			},
+		).toStrictEqual(
+			{
+				named:
+				{
+					text: "Workflow",
+					className: "shrink-0 text-secondary",
+					shimmering: "false",
+					variant: null,
+				},
+				unnamed:
+				{
+					text: "Workflow",
+					className: "shrink-0 text-secondary",
+					shimmering: "true",
+					variant: null,
+				},
+			},
+		);
 	});
 
-	it("shows a running card's agent count, elapsed time and 3+1 cells", () => {
-		vi.useFakeTimers({now: NOW, toFake: ["Date"]});
+	it("shows a running card's agent count, elapsed time and 3+1 cells", () =>
+	{
+		vi.useFakeTimers(
+			{
+				now: NOW,
+				toFake: ["Date"],
+			},
+		);
 		const {container} = render(
-			<WorkflowCard name={NAME} startedAt={STARTED_AT} progress={RUNNING_PROGRESS} onOpen={() => {}} />,
+			<WorkflowCard
+				name={NAME}
+				startedAt={STARTED_AT}
+				progress={RUNNING_PROGRESS}
+				onOpen={() =>
+				{
+				}}
+			/>,
 		);
 		const meta = container.querySelector(".text-footnote");
 
-		expect({
-			meta: meta?.textContent,
-			metaClass: meta?.className,
-			count: meta?.querySelector(".whitespace-nowrap")?.innerHTML,
-			cells: cells(container),
-			summary: container.querySelector('[role="img"]')?.getAttribute("aria-label"),
-		}).toStrictEqual({
-			meta: "Workflow3 agents13s",
-			metaClass: "flex min-w-0 items-center gap-2 text-footnote text-ink-muted tabular-nums",
-			count: '<span class="text-secondary">3</span> agents',
-			cells: [
-				"epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--done",
-				"epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--running",
-				"epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--running",
-				"epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--ghost",
-			],
-			summary: "1 of 3 agents done, 2 running, 0 stalled, 0 failed",
-		});
+		expect(
+			{
+				meta: meta?.textContent,
+				metaClass: meta?.className,
+				count: meta?.querySelector(".whitespace-nowrap")?.innerHTML,
+				cells: cells(container),
+				summary: container.querySelector('[role="img"]')?.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				meta: "Workflow3 agents13s",
+				metaClass: "flex min-w-0 items-center gap-2 text-footnote text-ink-muted tabular-nums",
+				count: '<span class="text-secondary">3</span> agents',
+				cells: [
+					"epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--done",
+					"epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--running",
+					"epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--running",
+					"epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--ghost",
+				],
+				summary: "1 of 3 agents done, 2 running, 0 stalled, 0 failed",
+			},
+		);
 	});
 
-	it("says View workflow when there is no name", () => {
-		render(<WorkflowCard name="" preLaunch progress={[]} onOpen={() => {}} />);
+	it("says View workflow when there is no name", () =>
+	{
+		render(
+			<WorkflowCard
+				name=""
+				preLaunch
+				progress={[]}
+				onOpen={() =>
+				{
+				}}
+			/>,
+		);
 
 		expect(screen.getByRole("button").getAttribute("aria-label")).toBe("View workflow");
 	});
 
-	it("renders a non-clickable div without a chevron when no pane can open", () => {
+	it("renders a non-clickable div without a chevron when no pane can open", () =>
+	{
 		const {container} = render(<WorkflowCard name={NAME} preLaunch progress={[]} />);
 
-		expect({
-			buttons: screen.queryAllByRole("button").length,
-			className: (container.firstElementChild as HTMLElement).className,
-			svgs: container.querySelectorAll("svg").length,
-		}).toStrictEqual({
-			buttons: 0,
-			className:
-				"group/tool my-[6px] relative isolate flex self-start min-w-[318px] max-w-[318px] items-start gap-g5 rounded-r6 ps-3 py-2.5 text-start text-pretty pe-4",
-			svgs: 0,
-		});
+		expect(
+			{
+				buttons: screen.queryAllByRole("button").length,
+				className: (container.firstElementChild as HTMLElement).className,
+				svgs: container.querySelectorAll("svg").length,
+			},
+		).toStrictEqual(
+			{
+				buttons: 0,
+				className:
+					"group/tool my-[6px] relative isolate flex self-start min-w-[318px] max-w-[318px] items-start gap-g5 rounded-r6 ps-3 py-2.5 text-start text-pretty pe-4",
+				svgs: 0,
+			},
+		);
 	});
 });
 
-describe("Workflow call in the session transcript", () => {
-	it("draws a pre-launch call as the Starting workflow card", async () => {
+describe("Workflow call in the session transcript", () =>
+{
+	it("draws a pre-launch call as the Starting workflow card", async () =>
+	{
 		renderChat(false, []);
-		const card = await screen.findByRole("button", {name: `View workflow: ${NAME}`});
+		const card = await screen.findByRole(
+			"button",
+			{
+				name: `View workflow: ${NAME}`,
+			},
+		);
 
 		expect(card.textContent).toBe(`${NAME}Starting workflow`);
 	});
 
-	it("draws a running launch as the card and opens the Background tasks pane at its task", async () => {
+	it("draws a running launch as the card and opens the Background tasks pane at its task", async () =>
+	{
 		const {open, container} = renderChat(true, [run()]);
-		fireEvent.click(await screen.findByRole("button", {name: `View workflow: ${NAME}`}));
+		fireEvent.click(
+			await screen.findByRole(
+				"button",
+				{
+					name: `View workflow: ${NAME}`,
+				},
+			),
+		);
 
-		expect({
-			anchor: container.querySelector(`[data-tool-anchor="${TOOL_USE_ID}"]`)?.className,
-			calls: open.mock.calls,
-		}).toStrictEqual({anchor: "contents", calls: [[{taskId: TASK_ID}]]});
+		expect(
+			{
+				anchor: container.querySelector(`[data-tool-anchor="${TOOL_USE_ID}"]`)?.className,
+				calls: open.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				anchor: "contents",
+				calls: [
+					[
+						{
+							taskId: TASK_ID,
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("keeps a call that was live at mount a Starting workflow card until its run record arrives, as upstream's Rw latch", async () => {
-		vi.useFakeTimers({now: NOW, toFake: ["Date"]});
+	it("keeps a call that was live at mount a Starting workflow card until its run record arrives, as upstream's Rw latch", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				now: NOW,
+				toFake: ["Date"],
+			},
+		);
 		const {rerender} = render(chat(records(false), []));
-		await screen.findByRole("button", {name: `View workflow: ${NAME}`});
+		await screen.findByRole(
+			"button",
+			{
+				name: `View workflow: ${NAME}`,
+			},
+		);
 		rerender(chat(records(true), []));
-		const launched = screen.queryByRole("button", {name: `View workflow: ${NAME}`})?.textContent;
+		const launched = screen.queryByRole(
+			"button",
+			{
+				name: `View workflow: ${NAME}`,
+			},
+		)?.textContent;
 		rerender(chat(records(true), [run()]));
 
-		expect({
-			launched,
-			running: screen.queryByRole("button", {name: `View workflow: ${NAME}`})?.textContent,
-		}).toStrictEqual({
-			launched: `${NAME}Starting workflow`,
-			running: `${NAME}Workflow3 agents13s`,
-		});
+		expect(
+			{
+				launched,
+				running: screen.queryByRole(
+					"button",
+					{
+						name: `View workflow: ${NAME}`,
+					},
+				)?.textContent,
+			},
+		).toStrictEqual(
+			{
+				launched: `${NAME}Starting workflow`,
+				running: `${NAME}Workflow3 agents13s`,
+			},
+		);
 	});
 
-	it("draws a call already completed at mount with no run record as the row", async () => {
+	it("draws a call already completed at mount with no run record as the row", async () =>
+	{
 		renderChat(true, []);
 		await screen.findByText("Ran workflow");
 
-		expect(screen.queryByRole("button", {name: `View workflow: ${NAME}`})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: `View workflow: ${NAME}`,
+				},
+			),
+		).toBeNull();
 	});
 
-	it("draws a completed launch as a row, not a card", async () => {
-		renderChat(true, [run({status: "completed"})]);
+	it("draws a completed launch as a row, not a card", async () =>
+	{
+		renderChat(true, [
+			run(
+				{
+					status: "completed",
+				},
+			),
+		]);
 		await screen.findByText("Ran workflow");
 
-		expect(screen.queryByRole("button", {name: `View workflow: ${NAME}`})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: `View workflow: ${NAME}`,
+				},
+			),
+		).toBeNull();
 	});
 });
 
 const LAUNCH_TEXT = `Workflow launched in background. Task ID: ${TASK_ID}\nSummary: Explore and review\nRun ID: wf_test-1`;
 
-function settledRecords(extra: unknown[]): unknown[] {
-	const [call, launch] = records(true) as [unknown, {message: {content: Array<Record<string, unknown>>}}];
-	launch.message.content[0] = {...launch.message.content[0], content: LAUNCH_TEXT};
+function settledRecords(extra: unknown[]): unknown[]
+{
+	const [call, launch] = records(true) as [
+		unknown,
+		{
+			message:
+			{
+				content: Array<Record<string, unknown>>;
+			};
+		},
+	];
+	launch.message.content[0] =
+	{
+		...launch.message.content[0],
+		content: LAUNCH_TEXT,
+	};
 	return [call, launch, ...extra];
 }
 
-function workflowNotification(status: string, summary: string): unknown {
+function workflowNotification(status: string, summary: string): unknown
+{
 	return {
 		type: "user",
 		uuid: "u-note",
 		timestamp: "2026-10-19T12:01:00.000Z",
-		message: {
+		message:
+		{
 			role: "user",
 			content: [
 				"<task-notification>",
@@ -327,29 +566,50 @@ const TASK_STOP_RECORDS: unknown[] = [
 		type: "assistant",
 		uuid: "a2",
 		timestamp: "2026-10-19T12:00:30.000Z",
-		message: {
+		message:
+		{
 			role: "assistant",
-			content: [{type: "tool_use", id: "toolu_stop", name: "TaskStop", input: {task_id: TASK_ID}}],
+			content: [
+				{
+					type: "tool_use",
+					id: "toolu_stop",
+					name: "TaskStop",
+					input:
+					{
+						task_id: TASK_ID,
+					},
+				},
+			],
 		},
 	},
 	{
 		type: "user",
 		uuid: "u2",
 		timestamp: "2026-10-19T12:00:31.000Z",
-		message: {
+		message:
+		{
 			role: "user",
 			content: [
-				{type: "tool_result", tool_use_id: "toolu_stop", content: `Successfully stopped task: ${TASK_ID}`},
+				{
+					type: "tool_result",
+					tool_use_id: "toolu_stop",
+					content: `Successfully stopped task: ${TASK_ID}`,
+				},
 			],
 		},
 	},
 ];
 
-function renderSettled(extra: unknown[], workflowRuns: WorkflowRun[] = []) {
+function renderSettled(extra: unknown[], workflowRuns: WorkflowRun[] = [])
+{
 	const {lines, toolResultMap} = processTranscript(settledRecords(extra));
 	return render(
 		<BackgroundTasksOpenerProvider
-			value={{open: vi.fn<(focus?: BackgroundTasksFocus) => void>(), running: new Map()}}
+			value={
+			{
+				open: vi.fn<(focus?: BackgroundTasksFocus) => void>(),
+				running: new Map(),
+			}}
 		>
 			<SessionChat
 				sessionId="test-session"
@@ -363,7 +623,8 @@ function renderSettled(extra: unknown[], workflowRuns: WorkflowRun[] = []) {
 	);
 }
 
-function launchRow(container: HTMLElement): HTMLElement {
+function launchRow(container: HTMLElement): HTMLElement
+{
 	const row = [...container.querySelectorAll<HTMLElement>("[data-tool-row]")].find((element) =>
 		element.textContent.startsWith("Ran workflow"),
 	);
@@ -371,27 +632,49 @@ function launchRow(container: HTMLElement): HTMLElement {
 	return row;
 }
 
-describe("settled Workflow row", () => {
-	it("reads Ran workflow and the name, with no disclosure or body", async () => {
-		const {container} = renderSettled([], [run({status: "completed"})]);
+describe("settled Workflow row", () =>
+{
+	it("reads Ran workflow and the name, with no disclosure or body", async () =>
+	{
+		const {container} = renderSettled(
+			[],
+			[
+				run(
+					{
+						status: "completed",
+					},
+				),
+			],
+		);
 		await screen.findByText("Ran workflow");
 		const row = launchRow(container);
 
-		expect({
-			text: row.textContent,
-			disclosures: row.querySelectorAll("[aria-expanded]").length,
-			name: [...row.querySelectorAll("span")].find((span) => span.textContent === NAME)?.className,
-		}).toStrictEqual({
-			text: `Ran workflow${NAME}Ran workflow ${NAME}`,
-			disclosures: 0,
-			name: "truncate min-w-0 text-body text-secondary",
-		});
+		expect(
+			{
+				text: row.textContent,
+				disclosures: row.querySelectorAll("[aria-expanded]").length,
+				name: [...row.querySelectorAll("span")].find((span) => span.textContent === NAME)?.className,
+			},
+		).toStrictEqual(
+			{
+				text: `Ran workflow${NAME}Ran workflow ${NAME}`,
+				disclosures: 0,
+				name: "truncate min-w-0 text-body text-secondary",
+			},
+		);
 	});
 
-	it("gives a failed run's status a summary tooltip and a coarse-pointer inline summary", async () => {
+	it("gives a failed run's status a summary tooltip and a coarse-pointer inline summary", async () =>
+	{
 		const {container} = renderSettled(
 			[workflowNotification("failed", `Workflow "${NAME}" failed: agent crashed\nwhile exploring`)],
-			[run({status: "failed"})],
+			[
+				run(
+					{
+						status: "failed",
+					},
+				),
+			],
 		);
 		await screen.findByText("Ran workflow");
 		const row = launchRow(container);
@@ -400,56 +683,90 @@ describe("settled Workflow row", () => {
 		fireEvent.focus(status);
 		const tooltip = await screen.findByRole("tooltip");
 
-		expect({
-			text: status.textContent,
-			tabIndex: status.tabIndex,
-			statusClass: status.className,
-			tooltip: tooltip.querySelector(".line-clamp-3")?.outerHTML,
-			coarse: row.querySelector(".hidden")?.outerHTML,
-		}).toStrictEqual({
-			text: "Failed",
-			tabIndex: 0,
-			statusClass:
-				"shrink-0 text-body outline-none hide-focus-ring focus-visible:ring-focus rounded-r2 text-danger",
-			tooltip: '<span class="line-clamp-3 whitespace-pre-wrap">Agent crashed\nwhile exploring</span>',
-			coarse: '<span class="hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0">Agent crashed\nwhile exploring</span>',
-		});
+		expect(
+			{
+				text: status.textContent,
+				tabIndex: status.tabIndex,
+				statusClass: status.className,
+				tooltip: tooltip.querySelector(".line-clamp-3")?.outerHTML,
+				coarse: row.querySelector(".hidden")?.outerHTML,
+			},
+		).toStrictEqual(
+			{
+				text: "Failed",
+				tabIndex: 0,
+				statusClass:
+					"shrink-0 text-body outline-none hide-focus-ring focus-visible:ring-focus rounded-r2 text-danger",
+				tooltip: '<span class="line-clamp-3 whitespace-pre-wrap">Agent crashed\nwhile exploring</span>',
+				coarse: '<span class="hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0">Agent crashed\nwhile exploring</span>',
+			},
+		);
 	});
 
-	it("draws the settled row in upstream's 3px-gap rounded-sm shell with no hover recolour", async () => {
-		const {container} = renderSettled([], [run({status: "completed"})]);
+	it("draws the settled row in upstream's 3px-gap rounded-sm shell with no hover recolour", async () =>
+	{
+		const {container} = renderSettled(
+			[],
+			[
+				run(
+					{
+						status: "completed",
+					},
+				),
+			],
+		);
 		await screen.findByText("Ran workflow");
 		const row = launchRow(container);
 
-		expect({
-			root: row.firstElementChild?.className,
-			label: row.querySelector('[id$="-label"]')?.className,
-		}).toStrictEqual({
-			root: "relative flex self-start max-w-full items-center py-0 gap-0.75 text-start rounded-sm",
-			label: "shrink-0 text-body text-secondary",
-		});
+		expect(
+			{
+				root: row.firstElementChild?.className,
+				label: row.querySelector('[id$="-label"]')?.className,
+			},
+		).toStrictEqual(
+			{
+				root: "relative flex self-start max-w-full items-center py-0 gap-0.75 text-start rounded-sm",
+				label: "shrink-0 text-body text-secondary",
+			},
+		);
 	});
 
-	it("draws a failed run's label in danger ink", async () => {
+	it("draws a failed run's label in danger ink", async () =>
+	{
 		const {container} = renderSettled(
 			[workflowNotification("failed", `Workflow "${NAME}" failed: agent crashed`)],
-			[run({status: "failed"})],
+			[
+				run(
+					{
+						status: "failed",
+					},
+				),
+			],
 		);
 		await screen.findByText("Ran workflow");
 
 		expect(launchRow(container).querySelector('[id$="-label"]')?.className).toBe("shrink-0 text-body text-danger");
 	});
 
-	it("marks the row Stopped when a TaskStop ended its task", async () => {
-		const {container} = renderSettled(TASK_STOP_RECORDS, [run({status: "completed"})]);
+	it("marks the row Stopped when a TaskStop ended its task", async () =>
+	{
+		const {container} = renderSettled(TASK_STOP_RECORDS, [
+			run(
+				{
+					status: "completed",
+				},
+			),
+		]);
 		await screen.findByText("Ran workflow");
 
 		expect(launchRow(container).textContent).toBe(`Ran workflow${NAME}StoppedRan workflow ${NAME} Stopped`);
 	});
 });
 
-describe("errored Workflow call", () => {
-	it("reads Running workflow with the name and a Failed status, as upstream's failed step", async () => {
+describe("errored Workflow call", () =>
+{
+	it("reads Running workflow with the name and a Failed status, as upstream's failed step", async () =>
+	{
 		const [call] = records(false);
 		const {container} = render(
 			chat(
@@ -460,7 +777,8 @@ describe("errored Workflow call", () => {
 						uuid: "u1",
 						timestamp: "2026-10-19T12:00:00.000Z",
 						toolUseResult: "Error: Workflow script not found",
-						message: {
+						message:
+						{
 							role: "user",
 							content: [
 								{
@@ -481,16 +799,25 @@ describe("errored Workflow call", () => {
 			element.textContent.startsWith("Running workflow"),
 		);
 
-		expect({
-			cards: screen.queryAllByRole("button", {name: `View workflow: ${NAME}`}).length,
-			label: row?.querySelector('[id$="-label"]')?.textContent,
-			meta: row?.querySelector('[id$="-meta"]')?.textContent,
-			outcome: row?.querySelector('[id$="-outcome"]')?.textContent ?? null,
-		}).toStrictEqual({
-			cards: 0,
-			label: "Running workflow",
-			meta: NAME,
-			outcome: "Failed",
-		});
+		expect(
+			{
+				cards: screen.queryAllByRole(
+					"button",
+					{
+						name: `View workflow: ${NAME}`,
+					},
+				).length,
+				label: row?.querySelector('[id$="-label"]')?.textContent,
+				meta: row?.querySelector('[id$="-meta"]')?.textContent,
+				outcome: row?.querySelector('[id$="-outcome"]')?.textContent ?? null,
+			},
+		).toStrictEqual(
+			{
+				cards: 0,
+				label: "Running workflow",
+				meta: NAME,
+				outcome: "Failed",
+			},
+		);
 	});
 });

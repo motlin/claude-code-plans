@@ -8,27 +8,48 @@ import {ProjectPage, ProjectPageHeader} from "../components/project-page-header"
 import {DebugLink} from "../components/debug-link";
 import {ListItemDate} from "../components/list-item-date";
 
-export const Route = createFileRoute("/project/$id_/plans")({
-	component: ProjectPlansPage,
-	loader: async ({context: {queryClient}, params}) => {
-		const [detail] = await Promise.all([
-			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
-			queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
-			queryClient.query({...projectPlansQueryOptions(params.id), staleTime: "static"}),
-		]);
-		return detail;
+export const Route = createFileRoute("/project/$id_/plans")(
+	{
+		component: ProjectPlansPage,
+		loader: async ({context: {queryClient}, params}) =>
+		{
+			const [detail] = await Promise.all([
+				queryClient.query(
+					{
+						...projectDetailQueryOptions(params.id),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...projectsQueryOptions(),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...projectPlansQueryOptions(params.id),
+						staleTime: "static",
+					},
+				),
+			]);
+			return detail;
+		},
+		head: ({loaderData}) => (
+		{
+			meta: [pageTitle(loaderData ? `${loaderData.name} plans` : "Project Not Found")],
+		}),
 	},
-	head: ({loaderData}) => ({
-		meta: [pageTitle(loaderData ? `${loaderData.name} plans` : "Project Not Found")],
-	}),
-});
+);
 
-function ProjectPlansPage() {
+function ProjectPlansPage()
+{
 	const {id} = Route.useParams();
 	const {data: project} = useSuspenseQuery(projectDetailQueryOptions(id));
 	const {data: plans} = useSuspenseQuery(projectPlansQueryOptions(id));
 
-	if (!project) {
+	if (!project)
+	{
 		return <NotFoundContent />;
 	}
 
@@ -46,7 +67,10 @@ function ProjectPlansPage() {
 						<li key={plan.filename} className="relative">
 							<Link
 								to="/plan/$filename"
-								params={{filename: toMdSlug(plan.filename)}}
+								params={
+								{
+									filename: toMdSlug(plan.filename),
+								}}
 								className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0"
 							>
 								<span className="text-sm font-medium">{plan.title}</span>

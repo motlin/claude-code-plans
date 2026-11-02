@@ -14,7 +14,8 @@ export type PendingApprovalToolName = z.infer<typeof PendingApprovalToolNameSche
 
 const STALE_APPROVAL_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-export interface PendingApproval {
+export interface PendingApproval
+{
 	sessionId: string;
 	projectId: string;
 	projectName: string;
@@ -27,7 +28,8 @@ export interface PendingApproval {
 	questionOptions: string[];
 }
 
-interface PendingEntry {
+interface PendingEntry
+{
 	sessionId: string;
 	toolName: PendingApprovalToolName;
 	toolUseId: string;
@@ -37,7 +39,8 @@ interface PendingEntry {
 	questionOptions: string[];
 }
 
-function extractPlanFilename(input: Record<string, unknown> | undefined): string | null {
+function extractPlanFilename(input: Record<string, unknown> | undefined): string | null
+{
 	if (!input) return null;
 	const candidate =
 		(typeof input["planFilePath"] === "string" && input["planFilePath"]) ||
@@ -49,14 +52,17 @@ function extractPlanFilename(input: Record<string, unknown> | undefined): string
 	return basename(candidate);
 }
 
-function extractQuestionPreview(input: Record<string, unknown> | undefined): string | null {
+function extractQuestionPreview(input: Record<string, unknown> | undefined): string | null
+{
 	if (!input) return null;
 	const direct = input["question"];
 	if (typeof direct === "string" && direct.trim()) return direct.trim();
 	const questions = input["questions"];
-	if (Array.isArray(questions) && questions.length > 0) {
+	if (Array.isArray(questions) && questions.length > 0)
+	{
 		const first: unknown = questions[0];
-		if (isRecord(first)) {
+		if (isRecord(first))
+		{
 			const text = first["question"];
 			if (typeof text === "string" && text.trim()) return text.trim();
 		}
@@ -65,11 +71,14 @@ function extractQuestionPreview(input: Record<string, unknown> | undefined): str
 	return null;
 }
 
-function optionLabels(options: unknown): string[] {
+function optionLabels(options: unknown): string[]
+{
 	if (!Array.isArray(options)) return [];
 	const labels: string[] = [];
-	for (const option of options) {
-		if (isRecord(option)) {
+	for (const option of options)
+	{
+		if (isRecord(option))
+		{
 			const label = option["label"];
 			if (typeof label === "string" && label.trim()) labels.push(label.trim());
 		}
@@ -77,7 +86,8 @@ function optionLabels(options: unknown): string[] {
 	return labels;
 }
 
-function extractQuestionOptions(input: Record<string, unknown> | undefined): string[] {
+function extractQuestionOptions(input: Record<string, unknown> | undefined): string[]
+{
 	if (!input) return [];
 	if (typeof input["question"] === "string") return optionLabels(input["options"]);
 	const questions = input["questions"];
@@ -88,23 +98,34 @@ function extractQuestionOptions(input: Record<string, unknown> | undefined): str
 }
 
 /** The tool calls still waiting on an answer, folded one transcript line at a time. */
-export interface PendingApprovalScanState {
+export interface PendingApprovalScanState
+{
 	pending: Map<string, PendingEntry>;
 	sessionId: string;
 }
 
-const pendingApprovalFold: JsonlFold<PendingApprovalScanState> = {
-	create: () => ({pending: new Map(), sessionId: ""}),
-	add(state, line) {
+const pendingApprovalFold: JsonlFold<PendingApprovalScanState> =
+{
+	create: () => (
+	{
+		pending: new Map(),
+		sessionId: "",
+	}),
+	add(state, line)
+	{
 		let obj: unknown;
-		try {
+		try
+		{
 			obj = JSON.parse(line);
-		} catch {
+		}
+		catch
+		{
 			return;
 		}
 		if (!isRecord(obj)) return;
 
-		if (typeof obj["sessionId"] === "string" && obj["sessionId"]) {
+		if (typeof obj["sessionId"] === "string" && obj["sessionId"])
+		{
 			state.sessionId = obj["sessionId"];
 		}
 
@@ -119,8 +140,10 @@ const pendingApprovalFold: JsonlFold<PendingApprovalScanState> = {
 
 		const timestamp = typeof obj["timestamp"] === "string" ? obj["timestamp"] : "";
 
-		if (type === "assistant") {
-			for (const block of content) {
+		if (type === "assistant")
+		{
+			for (const block of content)
+			{
 				if (!isRecord(block) || block["type"] !== "tool_use") continue;
 				const name = block["name"];
 				// Claude exposes no permission-request hook, so plain tool permission
@@ -130,18 +153,24 @@ const pendingApprovalFold: JsonlFold<PendingApprovalScanState> = {
 				const id = typeof block["id"] === "string" ? block["id"] : "";
 				if (!id) continue;
 				const input = asRecord(block["input"]);
-				state.pending.set(id, {
-					sessionId: state.sessionId,
-					toolName: name,
-					toolUseId: id,
-					blockedSince: timestamp,
-					planFilename: name === "ExitPlanMode" ? extractPlanFilename(input) : null,
-					questionPreview: name === "AskUserQuestion" ? extractQuestionPreview(input) : null,
-					questionOptions: name === "AskUserQuestion" ? extractQuestionOptions(input) : [],
-				});
+				state.pending.set(
+					id,
+					{
+						sessionId: state.sessionId,
+						toolName: name,
+						toolUseId: id,
+						blockedSince: timestamp,
+						planFilename: name === "ExitPlanMode" ? extractPlanFilename(input) : null,
+						questionPreview: name === "AskUserQuestion" ? extractQuestionPreview(input) : null,
+						questionOptions: name === "AskUserQuestion" ? extractQuestionOptions(input) : [],
+					},
+				);
 			}
-		} else {
-			for (const block of content) {
+		}
+		else
+		{
+			for (const block of content)
+			{
 				if (!isRecord(block) || block["type"] !== "tool_result") continue;
 				const id = typeof block["tool_use_id"] === "string" ? block["tool_use_id"] : "";
 				if (!id) continue;
@@ -157,14 +186,16 @@ export type PendingApprovalScanCache = IncrementalJsonlCache<PendingApprovalScan
 /** Each entry holds only the unanswered tool calls of one transcript, so many fit. */
 const PENDING_APPROVAL_SCAN_CACHE_ENTRIES = 64;
 
-export function createPendingApprovalScanCache(): PendingApprovalScanCache {
+export function createPendingApprovalScanCache(): PendingApprovalScanCache
+{
 	return new IncrementalJsonlCache(PENDING_APPROVAL_SCAN_CACHE_ENTRIES);
 }
 
 export async function scanPendingApproval(
 	filePath: string,
 	cache?: PendingApprovalScanCache,
-): Promise<PendingApproval | null> {
+): Promise<PendingApproval | null>
+{
 	if (cache !== undefined) return cache.exclusive(filePath, async () => scanPendingApprovalUnlocked(filePath, cache));
 	return scanPendingApprovalUnlocked(filePath);
 }
@@ -172,12 +203,15 @@ export async function scanPendingApproval(
 async function scanPendingApprovalUnlocked(
 	filePath: string,
 	cache?: PendingApprovalScanCache,
-): Promise<PendingApproval | null> {
+): Promise<PendingApproval | null>
+{
 	const state = await foldJsonl(filePath, pendingApprovalFold, cache);
 
 	let latest: PendingEntry | null = null;
-	for (const entry of state.pending.values()) {
-		if (!latest || entry.blockedSince > latest.blockedSince) {
+	for (const entry of state.pending.values())
+	{
+		if (!latest || entry.blockedSince > latest.blockedSince)
+		{
 			latest = entry;
 		}
 	}
@@ -197,46 +231,66 @@ async function scanPendingApprovalUnlocked(
 }
 
 /** Returns what it found so far once `signal` aborts, before touching the (possibly closed) DB again. */
-export async function scanAllPendingApprovals(db: IndexDb, signal?: AbortSignal): Promise<PendingApproval[]> {
+export async function scanAllPendingApprovals(db: IndexDb, signal?: AbortSignal): Promise<PendingApproval[]>
+{
 	const sessionRows = db
-		.select({
-			id: schema.sessions.id,
-			projectId: schema.sessions.projectId,
-			filePath: schema.sessions.filePath,
-		})
+		.select(
+			{
+				id: schema.sessions.id,
+				projectId: schema.sessions.projectId,
+				filePath: schema.sessions.filePath,
+			},
+		)
 		.from(schema.sessions)
 		.all();
 
-	const projectRows = db.select({id: schema.projects.id, name: schema.projects.name}).from(schema.projects).all();
+	const projectRows = db
+		.select(
+			{
+				id: schema.projects.id,
+				name: schema.projects.name,
+			},
+		)
+		.from(schema.projects)
+		.all();
 	const projectNames = new Map(projectRows.map((r) => [r.id, r.name]));
 
 	const staleCutoff = Date.now() - STALE_APPROVAL_THRESHOLD_MS;
 	const results: PendingApproval[] = [];
-	for (const row of sessionRows) {
+	for (const row of sessionRows)
+	{
 		let mtimeMs: number;
-		try {
+		try
+		{
 			mtimeMs = statSync(row.filePath).mtimeMs;
-		} catch {
+		}
+		catch
+		{
 			continue; // file deleted since indexing
 		}
 		if (mtimeMs < staleCutoff) continue; // session untouched for >7 days
 
 		let approval: PendingApproval | null;
-		try {
+		try
+		{
 			approval = await scanPendingApproval(row.filePath);
-		} catch {
+		}
+		catch
+		{
 			continue; // session file deleted since indexing; initial scan will prune the row
 		}
 		if (signal?.aborted) break;
 		if (!approval) continue;
 		const planFilename = approval.planFilename ?? getPlanFilenameForSession(db, approval.sessionId || row.id);
-		results.push({
-			...approval,
-			sessionId: approval.sessionId || row.id,
-			projectId: row.projectId,
-			projectName: projectNames.get(row.projectId) ?? row.projectId,
-			planFilename,
-		});
+		results.push(
+			{
+				...approval,
+				sessionId: approval.sessionId || row.id,
+				projectId: row.projectId,
+				projectName: projectNames.get(row.projectId) ?? row.projectId,
+				planFilename,
+			},
+		);
 	}
 
 	results.sort((a, b) => a.blockedSince.localeCompare(b.blockedSince));

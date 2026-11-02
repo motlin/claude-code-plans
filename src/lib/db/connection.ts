@@ -9,9 +9,13 @@ import {instrumentDatabase} from "../perf/server-scope";
 import {nonEmpty} from "../non-empty";
 import {z} from "zod";
 
-type SchemaDb = BetterSQLite3Database<typeof schema> & {$client: Database.Database};
+type SchemaDb = BetterSQLite3Database<typeof schema> &
+{
+	$client: Database.Database;
+};
 
-export interface AppDb {
+export interface AppDb
+{
 	index: SchemaDb;
 	summaries: SchemaDb;
 	close(): void;
@@ -452,14 +456,21 @@ CREATE TABLE IF NOT EXISTS generated_titles (
 `;
 
 const SchemaObjectRowsSchema = z.array(
-	z.strictObject({type: z.enum(["table", "view", "trigger"]), name: z.string(), sql: z.string().nullable()}),
+	z.strictObject(
+		{
+			type: z.enum(["table", "view", "trigger"]),
+			name: z.string(),
+			sql: z.string().nullable(),
+		},
+	),
 );
 
 // A schema version or DDL fingerprint mismatch wipes the whole index database,
 // user-state tables included, and recreates it from CREATE_TABLES_SQL +
 // CREATE_FTS_SQL. There is no migration chain: DDL edits rebuild by themselves;
 // bump SCHEMA_VERSION for an indexed-data change that leaves the DDL alone.
-function dropAllObjects(sqlite: Database.Database): void {
+function dropAllObjects(sqlite: Database.Database): void
+{
 	const rows = sqlite
 		.prepare(
 			`SELECT type, name, sql FROM sqlite_master
@@ -475,7 +486,8 @@ function dropAllObjects(sqlite: Database.Database): void {
 		...objects.filter((object) => object.type === "table" && isVirtual(object)),
 		...objects.filter((object) => object.type === "table" && !isVirtual(object)),
 	];
-	for (const {type, name} of ordered) {
+	for (const {type, name} of ordered)
+	{
 		sqlite.exec(`DROP ${type.toUpperCase()} IF EXISTS "${name.replaceAll('"', '""')}"`);
 	}
 }
@@ -489,9 +501,14 @@ export const INDEX_SCHEMA_FINGERPRINT = createHash("sha256")
 	.update(CREATE_FTS_SQL)
 	.digest("hex");
 
-const MetadataValueRowSchema = z.strictObject({value: z.string()});
+const MetadataValueRowSchema = z.strictObject(
+	{
+		value: z.string(),
+	},
+);
 
-function readMetadata(sqlite: Database.Database, key: string): string | null {
+function readMetadata(sqlite: Database.Database, key: string): string | null
+{
 	const metadataExists = sqlite
 		.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='metadata'")
 		.get();
@@ -503,15 +520,18 @@ function readMetadata(sqlite: Database.Database, key: string): string | null {
 	return row?.value ?? null;
 }
 
-function initIndexDb(sqlite: Database.Database): void {
+function initIndexDb(sqlite: Database.Database): void
+{
 	sqlite.pragma("journal_mode = WAL");
 	sqlite.pragma("foreign_keys = ON");
 
 	if (
 		readMetadata(sqlite, "schema_version") !== schema.SCHEMA_VERSION ||
 		readMetadata(sqlite, "schema_fingerprint") !== INDEX_SCHEMA_FINGERPRINT
-	) {
-		sqlite.transaction(() => {
+	)
+	{
+		sqlite.transaction(() =>
+		{
 			dropAllObjects(sqlite);
 		})();
 	}
@@ -522,7 +542,8 @@ function initIndexDb(sqlite: Database.Database): void {
 	stamp.run("schema_version", schema.SCHEMA_VERSION);
 	stamp.run("schema_fingerprint", INDEX_SCHEMA_FINGERPRINT);
 }
-function initSummariesDb(sqlite: Database.Database): void {
+function initSummariesDb(sqlite: Database.Database): void
+{
 	sqlite.pragma("journal_mode = WAL");
 	sqlite.exec(CREATE_SUMMARIES_SQL);
 }
@@ -543,42 +564,71 @@ const BUSY_TIMEOUT_MS = 250;
  * timeout, whenever another connection holds the write lock. BEGIN IMMEDIATE
  * takes the write lock up front, where the busy timeout applies.
  */
-function openDrizzle(sqlite: Database.Database): SchemaDb {
-	const db = drizzle(sqlite, {schema});
+function openDrizzle(sqlite: Database.Database): SchemaDb
+{
+	const db = drizzle(
+		sqlite,
+		{
+			schema,
+		},
+	);
 	const beginTransaction = db.transaction.bind(db);
-	db.transaction = (transaction, config) => beginTransaction(transaction, {behavior: "immediate", ...config});
+	db.transaction = (transaction, config) =>
+		beginTransaction(
+			transaction,
+			{
+				behavior: "immediate",
+				...config,
+			},
+		);
 	return db;
 }
 
-function openSqlite(filename: string): Database.Database {
-	return new Database(filename, {timeout: BUSY_TIMEOUT_MS});
+function openSqlite(filename: string): Database.Database
+{
+	return new Database(
+		filename,
+		{
+			timeout: BUSY_TIMEOUT_MS,
+		},
+	);
 }
 
-export function getCacheDir(): string {
+export function getCacheDir(): string
+{
 	const xdg = process.env["XDG_CACHE_HOME"];
 	const base = nonEmpty(xdg) ?? join(homedir(), ".cache");
 	return join(base, "claude-code-plans");
 }
 
-function isUserCacheDir(cacheDir: string): boolean {
+function isUserCacheDir(cacheDir: string): boolean
+{
 	const candidate = resolve(cacheDir);
 	return candidate === resolve(getCacheDir()) || candidate === resolve(homedir(), ".cache", "claude-code-plans");
 }
 
-export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
+export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb
+{
 	// Under vitest, refuse to fall back to the production cache dir. Doing so
 	// opens the real index.db and contends for its write lock with a running
 	// dev/prod server — a failure that only surfaces when the app happens to
 	// be running. Force tests to be explicit (openTestDb or a temp dir).
 	const underVitest = Boolean(process.env["VITEST"]);
-	if (underVitest && !opts?.cacheDir) {
+	if (underVitest && !opts?.cacheDir)
+	{
 		throw new Error("openAppDb: tests must pass an explicit cacheDir (use openTestDb or a temp dir)");
 	}
-	if (underVitest && opts?.cacheDir && isUserCacheDir(opts.cacheDir)) {
+	if (underVitest && opts?.cacheDir && isUserCacheDir(opts.cacheDir))
+	{
 		throw new Error(`openAppDb: tests must not open the user cache directory ${opts.cacheDir}`);
 	}
 	const cacheDir = opts?.cacheDir ?? getCacheDir();
-	mkdirSync(cacheDir, {recursive: true});
+	mkdirSync(
+		cacheDir,
+		{
+			recursive: true,
+		},
+	);
 
 	const indexSqlite = openSqlite(join(cacheDir, "index.db"));
 	initIndexDb(indexSqlite);
@@ -593,14 +643,16 @@ export function openAppDb(opts?: {cacheDir?: string | undefined}): AppDb {
 	return {
 		index: indexDb,
 		summaries: summariesDb,
-		close() {
+		close()
+		{
 			indexSqlite.close();
 			summariesSqlite.close();
 		},
 	};
 }
 
-export function openTestDb(): AppDb {
+export function openTestDb(): AppDb
+{
 	const indexSqlite = openSqlite(":memory:");
 	initIndexDb(indexSqlite);
 	instrumentDatabase(indexSqlite);
@@ -614,7 +666,8 @@ export function openTestDb(): AppDb {
 	return {
 		index: indexDb,
 		summaries: summariesDb,
-		close() {
+		close()
+		{
 			indexSqlite.close();
 			summariesSqlite.close();
 		},

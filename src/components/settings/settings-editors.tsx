@@ -6,7 +6,8 @@ import {useTimedFlag} from "../../hooks/use-timed-flag";
 import {useSaveSettingsFile} from "../../lib/api/settings";
 import {asRecord, errorMessage} from "../../lib/narrow";
 import {withoutKey} from "../../lib/without-key";
-import {
+import
+{
 	DEDICATED_EDITOR_KEYS,
 	FIELD_DEFINITIONS,
 	type FieldDefinition,
@@ -15,57 +16,86 @@ import {
 	SECTIONS_ORDER,
 } from "../../lib/settings-fields";
 
-const FILE_LABELS: Record<string, string> = {
+const FILE_LABELS: Record<string, string> =
+{
 	"settings.json": "Global Settings",
 	"settings.local.json": "Local Settings",
 };
 
-const FILE_DESCRIPTIONS: Record<string, string> = {
+const FILE_DESCRIPTIONS: Record<string, string> =
+{
 	"settings.json": "Shared across machines, checked into dotfiles.",
 	"settings.local.json": "Machine-specific overrides, not shared.",
 };
 
-type Feedback = {type: "success" | "error"; text: string};
+type Feedback =
+{
+	type: "success" | "error";
+	text: string;
+};
 
 type SettingsFilename = "settings.json" | "settings.local.json";
 
-function isSettingsFilename(filename: string): filename is SettingsFilename {
+function isSettingsFilename(filename: string): filename is SettingsFilename
+{
 	return filename === "settings.json" || filename === "settings.local.json";
 }
 
 /** A settings value as a list, or empty when it is not one. */
-function listOf(value: unknown): unknown[] {
+function listOf(value: unknown): unknown[]
+{
 	return Array.isArray(value) ? value : [];
 }
 
-interface StringSlot {
+interface StringSlot
+{
 	value: string;
 	/** Position in the raw list, so edits leave the entries around it untouched. */
 	index: number;
 }
 
 /** The string entries of a settings list with their raw positions; other entries stay in the list but are not edited. */
-function stringSlots(list: readonly unknown[]): StringSlot[] {
-	return list.flatMap((value, index) => (typeof value === "string" ? [{value, index}] : []));
+function stringSlots(list: readonly unknown[]): StringSlot[]
+{
+	return list.flatMap((value, index) =>
+		typeof value === "string"
+			? [
+					{
+						value,
+						index,
+					},
+				]
+			: [],
+	);
 }
 
-function isString(value: unknown): value is string {
+function isString(value: unknown): value is string
+{
 	return typeof value === "string";
 }
 
-function isBoolean(value: unknown): value is boolean {
+function isBoolean(value: unknown): value is boolean
+{
 	return typeof value === "boolean";
 }
 
-function isOptional(value: unknown, isValue: (entry: unknown) => boolean): boolean {
+function isOptional(value: unknown, isValue: (entry: unknown) => boolean): boolean
+{
 	return value === undefined || isValue(value);
 }
 
-function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
+function HighlightedLine({tokens}: {tokens: ThemedToken[]})
+{
 	return (
 		<>
 			{tokens.map((token, index) => (
-				<span key={index} style={{color: token.color}}>
+				<span
+					key={index}
+					style={
+					{
+						color: token.color,
+					}}
+				>
 					{token.content}
 				</span>
 			))}
@@ -73,7 +103,8 @@ function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
 	);
 }
 
-export function JsonEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string}) {
+export function JsonEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string})
+{
 	const draftRef = useRef(initialContent);
 	const [editorValue, setEditorValue] = useState(initialContent);
 	const [savedContent, setSavedContent] = useState(initialContent);
@@ -83,20 +114,26 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 	const saveMutation = useSaveSettingsFile();
 	const saving = saveMutation.isPending;
 
-	const validate = useCallback((text: string): string | null => {
-		try {
+	const validate = useCallback((text: string): string | null =>
+	{
+		try
+		{
 			const parsed: unknown = JSON.parse(text);
-			if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+			if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+			{
 				return "Settings must be a JSON object, not an array or primitive.";
 			}
 			return null;
-		} catch (error) {
+		}
+		catch (error)
+		{
 			return errorMessage(error);
 		}
 	}, []);
 
 	const handleChange = useCallback(
-		(event: React.ChangeEvent<HTMLTextAreaElement>) => {
+		(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+		{
 			const value = event.target.value;
 			draftRef.current = value;
 			setEditorValue(value);
@@ -106,43 +143,72 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 		[validate],
 	);
 
-	const handleSave = useCallback(async () => {
+	const handleSave = useCallback(async () =>
+	{
 		const content = draftRef.current;
 		const error = validate(content);
-		if (error) {
+		if (error)
+		{
 			setValidationError(error);
 			return;
 		}
 
-		if (!isSettingsFilename(filename)) {
-			setFeedback({type: "error", text: `Cannot save ${filename}`});
+		if (!isSettingsFilename(filename))
+		{
+			setFeedback(
+				{
+					type: "error",
+					text: `Cannot save ${filename}`,
+				},
+			);
 			return;
 		}
 		setFeedback(null);
-		try {
-			const result = await saveMutation.mutateAsync({filename, content});
-			setFeedback({type: "success", text: `Saved to ${result.path}`});
+		try
+		{
+			const result = await saveMutation.mutateAsync(
+				{
+					filename,
+					content,
+				},
+			);
+			setFeedback(
+				{
+					type: "success",
+					text: `Saved to ${result.path}`,
+				},
+			);
 			const pretty = JSON.stringify(JSON.parse(content), null, 2);
 			draftRef.current = pretty;
 			setEditorValue(pretty);
 			setSavedContent(pretty);
 			setValidationError(null);
-		} catch (error) {
-			setFeedback({type: "error", text: errorMessage(error)});
+		}
+		catch (error)
+		{
+			setFeedback(
+				{
+					type: "error",
+					text: errorMessage(error),
+				},
+			);
 		}
 	}, [filename, validate, saveMutation]);
 
-	const handleReset = useCallback(() => {
+	const handleReset = useCallback(() =>
+	{
 		draftRef.current = savedContent;
 		setEditorValue(savedContent);
 		setValidationError(null);
 		setFeedback(null);
 	}, [savedContent]);
 
-	const handleFormat = useCallback(() => {
+	const handleFormat = useCallback(() =>
+	{
 		const content = draftRef.current;
 		const error = validate(content);
-		if (error) {
+		if (error)
+		{
 			setValidationError(error);
 			return;
 		}
@@ -161,19 +227,23 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 	const highlightRef = useRef<HTMLDivElement>(null);
 
 	// Synchronize scroll position between textarea and highlight layer.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const textarea = textareaRef.current;
 		const highlight = highlightRef.current;
 		if (!textarea || !highlight) return undefined;
 
-		function handleScroll(): void {
-			if (highlight && textarea) {
+		function handleScroll(): void
+		{
+			if (highlight && textarea)
+			{
 				highlight.scrollTop = textarea.scrollTop;
 				highlight.scrollLeft = textarea.scrollLeft;
 			}
 		}
 		textarea.addEventListener("scroll", handleScroll);
-		return () => {
+		return () =>
+		{
 			textarea.removeEventListener("scroll", handleScroll);
 		};
 	}, []);
@@ -243,7 +313,8 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 			<div className="flex items-center gap-2">
 				<button
 					type="button"
-					onClick={() => {
+					onClick={() =>
+					{
 						void handleSave();
 					}}
 					disabled={saving || validationError !== null || !isDirty}
@@ -278,16 +349,22 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 	);
 }
 
-function groupFieldsBySection(): Map<string, FieldDefinition[]> {
+function groupFieldsBySection(): Map<string, FieldDefinition[]>
+{
 	const groups = new Map<string, FieldDefinition[]>();
-	for (const section of SECTIONS_ORDER) {
+	for (const section of SECTIONS_ORDER)
+	{
 		groups.set(section, []);
 	}
-	for (const field of FIELD_DEFINITIONS) {
+	for (const field of FIELD_DEFINITIONS)
+	{
 		const existing = groups.get(field.section);
-		if (existing) {
+		if (existing)
+		{
 			existing.push(field);
-		} else {
+		}
+		else
+		{
 			groups.set(field.section, [field]);
 		}
 	}
@@ -306,7 +383,8 @@ function FormToggle({
 	id?: string;
 	labelledBy?: string;
 	label?: string;
-}) {
+})
+{
 	return (
 		<button
 			type="button"
@@ -315,7 +393,8 @@ function FormToggle({
 			aria-labelledby={labelledBy}
 			aria-label={label}
 			aria-checked={checked}
-			onClick={() => {
+			onClick={() =>
+			{
 				onChange(!checked);
 			}}
 			className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
@@ -339,7 +418,8 @@ function FormField({
 	field: FieldDefinition;
 	value: unknown;
 	onChange: (key: string, value: unknown) => void;
-}) {
+})
+{
 	const controlId = useId();
 	const labelId = `${controlId}-label`;
 	const descriptionId = `${controlId}-description`;
@@ -353,8 +433,10 @@ function FormField({
 			</div>
 		</div>
 	);
-	switch (field.type) {
-		case "boolean": {
+	switch (field.type)
+	{
+		case "boolean":
+		{
 			return (
 				<div className="flex items-center justify-between gap-4 py-2">
 					{labelBlock}
@@ -362,14 +444,16 @@ function FormField({
 						id={controlId}
 						labelledBy={labelId}
 						checked={value === true}
-						onChange={(checked) => {
+						onChange={(checked) =>
+						{
 							onChange(field.key, checked);
 						}}
 					/>
 				</div>
 			);
 		}
-		case "enum": {
+		case "enum":
+		{
 			return (
 				<div className="flex items-center justify-between gap-4 py-2">
 					{labelBlock}
@@ -377,7 +461,8 @@ function FormField({
 						id={controlId}
 						aria-describedby={descriptionId}
 						value={typeof value === "string" ? value : ""}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							onChange(field.key, event.target.value);
 						}}
 						className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -396,7 +481,8 @@ function FormField({
 				</div>
 			);
 		}
-		case "number": {
+		case "number":
+		{
 			return (
 				<div className="flex items-center justify-between gap-4 py-2">
 					{labelBlock}
@@ -407,9 +493,11 @@ function FormField({
 						value={typeof value === "number" ? value : ""}
 						min={field.min}
 						max={field.max}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							const parsed = Number(event.target.value);
-							if (Number.isFinite(parsed)) {
+							if (Number.isFinite(parsed))
+							{
 								onChange(field.key, parsed);
 							}
 						}}
@@ -418,7 +506,8 @@ function FormField({
 				</div>
 			);
 		}
-		case "string": {
+		case "string":
+		{
 			return (
 				<div className="flex items-center justify-between gap-4 py-2">
 					{labelBlock}
@@ -427,7 +516,8 @@ function FormField({
 						id={controlId}
 						aria-describedby={descriptionId}
 						value={typeof value === "string" ? value : ""}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							onChange(field.key, event.target.value);
 						}}
 						className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -450,38 +540,56 @@ function EnvEditor({
 }: {
 	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
-}) {
+})
+{
 	// Non-string values are not editable here but stay in `value`, so saving keeps them.
 	const entries = Object.entries(value).filter((entry): entry is [string, string] => isString(entry[1]));
 	const [newKey, setNewKey] = useState("");
 	const [newValue, setNewValue] = useState("");
 
 	const handleEntryChange = useCallback(
-		(oldKey: string, field: "key" | "value", fieldValue: string) => {
-			if (field === "key") {
+		(oldKey: string, field: "key" | "value", fieldValue: string) =>
+		{
+			if (field === "key")
+			{
 				const currentValue = value[oldKey];
 				const updated = withoutKey(value, oldKey);
-				if (fieldValue) {
+				if (fieldValue)
+				{
 					updated[fieldValue] = currentValue;
 				}
 				onChange("env", updated);
-			} else {
-				onChange("env", {...value, [oldKey]: fieldValue});
+			}
+			else
+			{
+				onChange(
+					"env",
+					{
+						...value,
+						[oldKey]: fieldValue,
+					},
+				);
 			}
 		},
 		[value, onChange],
 	);
 
 	const handleRemove = useCallback(
-		(key: string) => {
+		(key: string) =>
+		{
 			onChange("env", withoutKey(value, key));
 		},
 		[value, onChange],
 	);
 
-	const handleAdd = useCallback(() => {
+	const handleAdd = useCallback(() =>
+	{
 		if (!newKey.trim()) return;
-		const updated = {...value, [newKey.trim()]: newValue};
+		const updated =
+		{
+			...value,
+			[newKey.trim()]: newValue,
+		};
 		onChange("env", updated);
 		setNewKey("");
 		setNewValue("");
@@ -500,7 +608,8 @@ function EnvEditor({
 							type="text"
 							aria-label={`Name of environment variable ${entryKey}`}
 							value={entryKey}
-							onChange={(event) => {
+							onChange={(event) =>
+							{
 								handleEntryChange(entryKey, "key", event.target.value);
 							}}
 							className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -511,7 +620,8 @@ function EnvEditor({
 							type="text"
 							aria-label={`Value of environment variable ${entryKey}`}
 							value={entryValue}
-							onChange={(event) => {
+							onChange={(event) =>
+							{
 								handleEntryChange(entryKey, "value", event.target.value);
 							}}
 							className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -519,7 +629,8 @@ function EnvEditor({
 						/>
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								handleRemove(entryKey);
 							}}
 							className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
@@ -534,10 +645,12 @@ function EnvEditor({
 						type="text"
 						aria-label="New environment variable name"
 						value={newKey}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							setNewKey(event.target.value);
 						}}
-						onKeyDown={(event) => {
+						onKeyDown={(event) =>
+						{
 							if (event.key === "Enter") handleAdd();
 						}}
 						className="w-48 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -548,10 +661,12 @@ function EnvEditor({
 						type="text"
 						aria-label="New environment variable value"
 						value={newValue}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							setNewValue(event.target.value);
 						}}
-						onKeyDown={(event) => {
+						onKeyDown={(event) =>
+						{
 							if (event.key === "Enter") handleAdd();
 						}}
 						className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -582,26 +697,30 @@ function PermissionListEditor({
 	description: string;
 	entries: unknown;
 	onUpdate: (updated: unknown[]) => void;
-}) {
+})
+{
 	const [newEntry, setNewEntry] = useState("");
 	const list = listOf(entries);
 	const slots = stringSlots(list);
 
 	const handleRemove = useCallback(
-		(index: number) => {
+		(index: number) =>
+		{
 			onUpdate(list.filter((_, i) => i !== index));
 		},
 		[list, onUpdate],
 	);
 
-	const handleAdd = useCallback(() => {
+	const handleAdd = useCallback(() =>
+	{
 		if (!newEntry.trim()) return;
 		onUpdate([...list, newEntry.trim()]);
 		setNewEntry("");
 	}, [list, onUpdate, newEntry]);
 
 	const handleChange = useCallback(
-		(index: number, value: string) => {
+		(index: number, value: string) =>
+		{
 			onUpdate(list.map((entry, i) => (i === index ? value : entry)));
 		},
 		[list, onUpdate],
@@ -620,14 +739,16 @@ function PermissionListEditor({
 							type="text"
 							aria-label={`${label} entry ${position + 1}`}
 							value={entry}
-							onChange={(event) => {
+							onChange={(event) =>
+							{
 								handleChange(index, event.target.value);
 							}}
 							className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 						/>
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								handleRemove(index);
 							}}
 							className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
@@ -642,10 +763,12 @@ function PermissionListEditor({
 						type="text"
 						aria-label={`New ${label} entry`}
 						value={newEntry}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							setNewEntry(event.target.value);
 						}}
-						onKeyDown={(event) => {
+						onKeyDown={(event) =>
+						{
 							if (event.key === "Enter") handleAdd();
 						}}
 						className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -672,13 +795,21 @@ function PermissionsEditor({
 }: {
 	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
-}) {
+})
+{
 	const defaultMode = typeof value["defaultMode"] === "string" ? value["defaultMode"] : "";
 	const defaultModeId = useId();
 
 	const updateList = useCallback(
-		(listKey: string, updated: unknown[]) => {
-			onChange("permissions", {...value, [listKey]: updated});
+		(listKey: string, updated: unknown[]) =>
+		{
+			onChange(
+				"permissions",
+				{
+					...value,
+					[listKey]: updated,
+				},
+			);
 		},
 		[value, onChange],
 	);
@@ -689,7 +820,8 @@ function PermissionsEditor({
 				label="Allow"
 				description="Tools and patterns always permitted without prompting"
 				entries={value["allow"]}
-				onUpdate={(updated) => {
+				onUpdate={(updated) =>
+				{
 					updateList("allow", updated);
 				}}
 			/>
@@ -697,7 +829,8 @@ function PermissionsEditor({
 				label="Deny"
 				description="Tools and patterns that are blocked"
 				entries={value["deny"]}
-				onUpdate={(updated) => {
+				onUpdate={(updated) =>
+				{
 					updateList("deny", updated);
 				}}
 			/>
@@ -705,7 +838,8 @@ function PermissionsEditor({
 				label="Ask"
 				description="Tools and patterns that require confirmation"
 				entries={value["ask"]}
-				onUpdate={(updated) => {
+				onUpdate={(updated) =>
+				{
 					updateList("ask", updated);
 				}}
 			/>
@@ -719,11 +853,15 @@ function PermissionsEditor({
 				<select
 					id={defaultModeId}
 					value={defaultMode}
-					onChange={(event) => {
-						onChange("permissions", {
-							...value,
-							defaultMode: event.target.value || undefined,
-						});
+					onChange={(event) =>
+					{
+						onChange(
+							"permissions",
+							{
+								...value,
+								defaultMode: event.target.value || undefined,
+							},
+						);
 					}}
 					className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 				>
@@ -742,15 +880,23 @@ function StatusLineEditor({
 }: {
 	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
-}) {
+})
+{
 	const statusType = typeof value["type"] === "string" ? value["type"] : "";
 	const command = typeof value["command"] === "string" ? value["command"] : "";
 	const padding = typeof value["padding"] === "number" ? value["padding"] : 0;
 	const idPrefix = useId();
 
 	const update = useCallback(
-		(field: string, fieldValue: unknown) => {
-			onChange("statusLine", {...value, [field]: fieldValue});
+		(field: string, fieldValue: unknown) =>
+		{
+			onChange(
+				"statusLine",
+				{
+					...value,
+					[field]: fieldValue,
+				},
+			);
 		},
 		[value, onChange],
 	);
@@ -769,7 +915,8 @@ function StatusLineEditor({
 					<select
 						id={`${idPrefix}-type`}
 						value={statusType}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							update("type", event.target.value || undefined);
 						}}
 						className="rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -786,7 +933,8 @@ function StatusLineEditor({
 						type="text"
 						id={`${idPrefix}-command`}
 						value={command}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							update("command", event.target.value || undefined);
 						}}
 						className="flex-1 max-w-sm rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -802,7 +950,8 @@ function StatusLineEditor({
 						id={`${idPrefix}-padding`}
 						value={padding}
 						min={0}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							const parsed = Number(event.target.value);
 							if (Number.isFinite(parsed)) update("padding", parsed);
 						}}
@@ -815,7 +964,8 @@ function StatusLineEditor({
 }
 
 /** A settings entry this form has no editor for, shown as JSON and saved back unchanged. */
-function RawSetting({value}: {value: unknown}) {
+function RawSetting({value}: {value: unknown})
+{
 	return (
 		<pre className="flex-1 overflow-auto rounded-md border border-subtle bg-surface-2 px-2 py-1 font-mono text-xs text-t6">
 			{JSON.stringify(value, null, 2)}
@@ -832,15 +982,18 @@ function HookBody({
 	hook: unknown;
 	label: string;
 	onCommandChange: (command: string) => void;
-}) {
+})
+{
 	const record = asRecord(hook);
 	const command = record?.["command"];
-	if (isString(command)) {
+	if (isString(command))
+	{
 		return (
 			<textarea
 				aria-label={label}
 				value={command}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					onCommandChange(event.target.value);
 				}}
 				className="flex-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100 resize-y"
@@ -850,7 +1003,8 @@ function HookBody({
 		);
 	}
 	const prompt = record?.["prompt"];
-	if (record?.["type"] === "prompt" && isString(prompt)) {
+	if (record?.["type"] === "prompt" && isString(prompt))
+	{
 		return (
 			<div className="flex-1 rounded-md border border-subtle bg-surface-2 px-2 py-1 text-xs text-secondary">
 				<span className="text-t6">Prompt: </span>
@@ -867,7 +1021,8 @@ function HooksEditor({
 }: {
 	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
-}) {
+})
+{
 	const events = Object.keys(value);
 	const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
 	const [newEventName, setNewEventName] = useState("");
@@ -885,15 +1040,23 @@ function HooksEditor({
 	];
 	const availableEvents = EVENT_OPTIONS.filter((e) => !events.includes(e));
 
-	const handleAddEvent = useCallback(() => {
+	const handleAddEvent = useCallback(() =>
+	{
 		if (!newEventName) return;
-		onChange("hooks", {...value, [newEventName]: []});
+		onChange(
+			"hooks",
+			{
+				...value,
+				[newEventName]: [],
+			},
+		);
 		setNewEventName("");
 		setExpandedEvent(newEventName);
 	}, [value, onChange, newEventName]);
 
 	const handleRemoveEvent = useCallback(
-		(eventName: string) => {
+		(eventName: string) =>
+		{
 			onChange("hooks", withoutKey(value, eventName));
 			if (expandedEvent === eventName) setExpandedEvent(null);
 		},
@@ -901,55 +1064,104 @@ function HooksEditor({
 	);
 
 	// Every edit rewrites only the entry it targets; entries this editor does not understand are copied through as-is.
-	const updateMatchers = (eventName: string, update: (matchers: unknown[]) => unknown[]) => {
-		onChange("hooks", {...value, [eventName]: update(listOf(value[eventName]))});
+	const updateMatchers = (eventName: string, update: (matchers: unknown[]) => unknown[]) =>
+	{
+		onChange(
+			"hooks",
+			{
+				...value,
+				[eventName]: update(listOf(value[eventName])),
+			},
+		);
 	};
 
 	const updateMatcher = (
 		eventName: string,
 		matcherIndex: number,
 		update: (matcher: Record<string, unknown>) => Record<string, unknown>,
-	) => {
+	) =>
+	{
 		updateMatchers(eventName, (matchers) =>
-			matchers.map((entry, i) => {
+			matchers.map((entry, i) =>
+			{
 				const matcher = asRecord(entry);
 				return i === matcherIndex && matcher !== undefined ? update(matcher) : entry;
 			}),
 		);
 	};
 
-	const updateHooks = (eventName: string, matcherIndex: number, update: (hooks: unknown[]) => unknown[]) => {
-		updateMatcher(eventName, matcherIndex, (matcher) => ({...matcher, hooks: update(listOf(matcher["hooks"]))}));
+	const updateHooks = (eventName: string, matcherIndex: number, update: (hooks: unknown[]) => unknown[]) =>
+	{
+		updateMatcher(eventName, matcherIndex, (matcher) => (
+		{
+			...matcher,
+			hooks: update(listOf(matcher["hooks"])),
+		}));
 	};
 
-	const handleAddMatcher = (eventName: string) => {
-		updateMatchers(eventName, (matchers) => [...matchers, {hooks: [{type: "command", command: ""}]}]);
+	const handleAddMatcher = (eventName: string) =>
+	{
+		updateMatchers(eventName, (matchers) => [
+			...matchers,
+			{
+				hooks: [
+					{
+						type: "command",
+						command: "",
+					},
+				],
+			},
+		]);
 	};
 
-	const handleRemoveMatcher = (eventName: string, matcherIndex: number) => {
+	const handleRemoveMatcher = (eventName: string, matcherIndex: number) =>
+	{
 		updateMatchers(eventName, (matchers) => matchers.filter((_, i) => i !== matcherIndex));
 	};
 
-	const handleMatcherFieldChange = (eventName: string, matcherIndex: number, fieldValue: string) => {
+	const handleMatcherFieldChange = (eventName: string, matcherIndex: number, fieldValue: string) =>
+	{
 		updateMatcher(eventName, matcherIndex, (matcher) =>
-			fieldValue ? {...matcher, matcher: fieldValue} : withoutKey(matcher, "matcher"),
+			fieldValue
+				?
+					{
+						...matcher,
+						matcher: fieldValue,
+					}
+				: withoutKey(matcher, "matcher"),
 		);
 	};
 
-	const handleHookCommandChange = (eventName: string, matcherIndex: number, hookIndex: number, command: string) => {
+	const handleHookCommandChange = (eventName: string, matcherIndex: number, hookIndex: number, command: string) =>
+	{
 		updateHooks(eventName, matcherIndex, (hooks) =>
-			hooks.map((entry, i) => {
+			hooks.map((entry, i) =>
+			{
 				const hook = asRecord(entry);
-				return i === hookIndex && hook !== undefined ? {...hook, command} : entry;
+				return i === hookIndex && hook !== undefined
+					?
+						{
+							...hook,
+							command,
+						}
+					: entry;
 			}),
 		);
 	};
 
-	const handleAddHookCommand = (eventName: string, matcherIndex: number) => {
-		updateHooks(eventName, matcherIndex, (hooks) => [...hooks, {type: "command", command: ""}]);
+	const handleAddHookCommand = (eventName: string, matcherIndex: number) =>
+	{
+		updateHooks(eventName, matcherIndex, (hooks) => [
+			...hooks,
+			{
+				type: "command",
+				command: "",
+			},
+		]);
 	};
 
-	const handleRemoveHookCommand = (eventName: string, matcherIndex: number, hookIndex: number) => {
+	const handleRemoveHookCommand = (eventName: string, matcherIndex: number, hookIndex: number) =>
+	{
 		updateHooks(eventName, matcherIndex, (hooks) => hooks.filter((_, i) => i !== hookIndex));
 	};
 
@@ -962,7 +1174,8 @@ function HooksEditor({
 				</div>
 			</div>
 			<div className="space-y-2">
-				{events.map((eventName) => {
+				{events.map((eventName) =>
+				{
 					const matchers = listOf(value[eventName]);
 					const isExpanded = expandedEvent === eventName;
 					return (
@@ -970,7 +1183,8 @@ function HooksEditor({
 							<div className="flex items-center justify-between px-3 py-2">
 								<button
 									type="button"
-									onClick={() => {
+									onClick={() =>
+									{
 										setExpandedEvent(isExpanded ? null : eventName);
 									}}
 									className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-accent-100"
@@ -987,7 +1201,8 @@ function HooksEditor({
 								</button>
 								<button
 									type="button"
-									onClick={() => {
+									onClick={() =>
+									{
 										handleRemoveEvent(eventName);
 									}}
 									className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
@@ -998,9 +1213,11 @@ function HooksEditor({
 							</div>
 							{isExpanded && (
 								<div className="border-t border-border px-3 py-2 space-y-3">
-									{matchers.map((entry, matcherIndex) => {
+									{matchers.map((entry, matcherIndex) =>
+									{
 										const matcher = asRecord(entry);
-										if (matcher === undefined) {
+										if (matcher === undefined)
+										{
 											return <RawSetting key={matcherIndex} value={entry} />;
 										}
 										return (
@@ -1019,7 +1236,8 @@ function HooksEditor({
 															value={
 																isString(matcher["matcher"]) ? matcher["matcher"] : ""
 															}
-															onChange={(event) => {
+															onChange={(event) =>
+															{
 																handleMatcherFieldChange(
 																	eventName,
 																	matcherIndex,
@@ -1032,7 +1250,8 @@ function HooksEditor({
 													</div>
 													<button
 														type="button"
-														onClick={() => {
+														onClick={() =>
+														{
 															handleRemoveMatcher(eventName, matcherIndex);
 														}}
 														className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
@@ -1048,7 +1267,8 @@ function HooksEditor({
 															<HookBody
 																hook={hookEntry}
 																label={`${eventName} rule ${matcherIndex + 1} command ${hookIndex + 1}`}
-																onCommandChange={(command) => {
+																onCommandChange={(command) =>
+																{
 																	handleHookCommandChange(
 																		eventName,
 																		matcherIndex,
@@ -1059,7 +1279,8 @@ function HooksEditor({
 															/>
 															<button
 																type="button"
-																onClick={() => {
+																onClick={() =>
+																{
 																	handleRemoveHookCommand(
 																		eventName,
 																		matcherIndex,
@@ -1075,7 +1296,8 @@ function HooksEditor({
 													))}
 													<button
 														type="button"
-														onClick={() => {
+														onClick={() =>
+														{
 															handleAddHookCommand(eventName, matcherIndex);
 														}}
 														className="flex items-center gap-1 text-xs text-secondary hover:text-accent-100"
@@ -1089,7 +1311,8 @@ function HooksEditor({
 									})}
 									<button
 										type="button"
-										onClick={() => {
+										onClick={() =>
+										{
 											handleAddMatcher(eventName);
 										}}
 										className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-secondary transition-colors hover:bg-surface-0"
@@ -1107,7 +1330,8 @@ function HooksEditor({
 						<select
 							aria-label="New hook event"
 							value={newEventName}
-							onChange={(event) => {
+							onChange={(event) =>
+							{
 								setNewEventName(event.target.value);
 							}}
 							className="rounded-md border border-border bg-surface-1 px-2 py-1 text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1141,7 +1365,8 @@ function PluginsEditor({
 }: {
 	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
-}) {
+})
+{
 	// Non-boolean values are not editable here but stay in `value`, so saving keeps them.
 	const entries = Object.entries(value)
 		.filter((entry): entry is [string, boolean] => isBoolean(entry[1]))
@@ -1149,22 +1374,37 @@ function PluginsEditor({
 	const [newPlugin, setNewPlugin] = useState("");
 
 	const handleToggle = useCallback(
-		(pluginName: string, enabled: boolean) => {
-			onChange("enabledPlugins", {...value, [pluginName]: enabled});
+		(pluginName: string, enabled: boolean) =>
+		{
+			onChange(
+				"enabledPlugins",
+				{
+					...value,
+					[pluginName]: enabled,
+				},
+			);
 		},
 		[value, onChange],
 	);
 
 	const handleRemove = useCallback(
-		(pluginName: string) => {
+		(pluginName: string) =>
+		{
 			onChange("enabledPlugins", withoutKey(value, pluginName));
 		},
 		[value, onChange],
 	);
 
-	const handleAdd = useCallback(() => {
+	const handleAdd = useCallback(() =>
+	{
 		if (!newPlugin.trim()) return;
-		onChange("enabledPlugins", {...value, [newPlugin.trim()]: true});
+		onChange(
+			"enabledPlugins",
+			{
+				...value,
+				[newPlugin.trim()]: true,
+			},
+		);
 		setNewPlugin("");
 	}, [value, onChange, newPlugin]);
 
@@ -1182,13 +1422,15 @@ function PluginsEditor({
 							<FormToggle
 								label={pluginName}
 								checked={enabled}
-								onChange={(checked) => {
+								onChange={(checked) =>
+								{
 									handleToggle(pluginName, checked);
 								}}
 							/>
 							<button
 								type="button"
-								onClick={() => {
+								onClick={() =>
+								{
 									handleRemove(pluginName);
 								}}
 								className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
@@ -1204,10 +1446,12 @@ function PluginsEditor({
 						type="text"
 						aria-label="New plugin"
 						value={newPlugin}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							setNewPlugin(event.target.value);
 						}}
-						onKeyDown={(event) => {
+						onKeyDown={(event) =>
+						{
 							if (event.key === "Enter") handleAdd();
 						}}
 						className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1242,13 +1486,15 @@ export function StringListEditor({
 	entries: unknown;
 	onChange: (key: string, value: unknown) => void;
 	placeholder?: string;
-}) {
+})
+{
 	const [newEntry, setNewEntry] = useState("");
 	const list = listOf(entries);
 	const slots = stringSlots(list);
 
 	const handleRemove = useCallback(
-		(index: number) => {
+		(index: number) =>
+		{
 			onChange(
 				fieldKey,
 				list.filter((_, i) => i !== index),
@@ -1257,14 +1503,16 @@ export function StringListEditor({
 		[list, onChange, fieldKey],
 	);
 
-	const handleAdd = useCallback(() => {
+	const handleAdd = useCallback(() =>
+	{
 		if (!newEntry.trim()) return;
 		onChange(fieldKey, [...list, newEntry.trim()]);
 		setNewEntry("");
 	}, [list, onChange, fieldKey, newEntry]);
 
 	const handleChange = useCallback(
-		(index: number, value: string) => {
+		(index: number, value: string) =>
+		{
 			onChange(
 				fieldKey,
 				list.map((entry, i) => (i === index ? value : entry)),
@@ -1286,14 +1534,16 @@ export function StringListEditor({
 							type="text"
 							aria-label={`${label} entry ${position + 1}`}
 							value={entry}
-							onChange={(event) => {
+							onChange={(event) =>
+							{
 								handleChange(index, event.target.value);
 							}}
 							className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 						/>
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								handleRemove(index);
 							}}
 							className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
@@ -1308,10 +1558,12 @@ export function StringListEditor({
 						type="text"
 						aria-label={`New ${label} entry`}
 						value={newEntry}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							setNewEntry(event.target.value);
 						}}
-						onKeyDown={(event) => {
+						onKeyDown={(event) =>
+						{
 							if (event.key === "Enter") handleAdd();
 						}}
 						className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1332,7 +1584,8 @@ export function StringListEditor({
 	);
 }
 
-function ObjectSummary({label, value}: {label: string; value: unknown}) {
+function ObjectSummary({label, value}: {label: string; value: unknown})
+{
 	const [expanded, setExpanded] = useState(false);
 
 	if (value === undefined || value === null) return null;
@@ -1348,7 +1601,8 @@ function ObjectSummary({label, value}: {label: string; value: unknown}) {
 		<div className="py-2">
 			<button
 				type="button"
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded(!expanded);
 				}}
 				className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-accent-100"
@@ -1374,16 +1628,25 @@ export function ObjectFieldsEditor({
 	def: ObjectEditorDef;
 	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
-}) {
+})
+{
 	const update = useCallback(
-		(subKey: string, subValue: unknown) => {
-			onChange(def.key, {...value, [subKey]: subValue});
+		(subKey: string, subValue: unknown) =>
+		{
+			onChange(
+				def.key,
+				{
+					...value,
+					[subKey]: subValue,
+				},
+			);
 		},
 		[def.key, value, onChange],
 	);
 
 	const clear = useCallback(
-		(subKey: string) => {
+		(subKey: string) =>
+		{
 			onChange(def.key, withoutKey(value, subKey));
 		},
 		[def.key, value, onChange],
@@ -1397,11 +1660,14 @@ export function ObjectFieldsEditor({
 				<div className="text-xs text-t6">{def.description}</div>
 			</div>
 			<div className="space-y-2">
-				{def.fields.map((subField) => {
+				{def.fields.map((subField) =>
+				{
 					const subValue = value[subField.key];
 					const controlId = `${idPrefix}-${subField.key}`;
-					switch (subField.type) {
-						case "boolean": {
+					switch (subField.type)
+					{
+						case "boolean":
+						{
 							return (
 								<div key={subField.key} className="flex items-center justify-between gap-4">
 									<label
@@ -1415,14 +1681,16 @@ export function ObjectFieldsEditor({
 										id={controlId}
 										labelledBy={`${controlId}-label`}
 										checked={subValue === true}
-										onChange={(checked) => {
+										onChange={(checked) =>
+										{
 											update(subField.key, checked);
 										}}
 									/>
 								</div>
 							);
 						}
-						case "number": {
+						case "number":
+						{
 							return (
 								<div key={subField.key} className="flex items-center justify-between gap-4">
 									<label
@@ -1436,9 +1704,11 @@ export function ObjectFieldsEditor({
 										type="number"
 										id={controlId}
 										value={typeof subValue === "number" ? subValue : ""}
-										onChange={(event) => {
+										onChange={(event) =>
+										{
 											const raw = event.target.value;
-											if (raw === "") {
+											if (raw === "")
+											{
 												clear(subField.key);
 												return;
 											}
@@ -1450,7 +1720,8 @@ export function ObjectFieldsEditor({
 								</div>
 							);
 						}
-						case "stringList": {
+						case "stringList":
+						{
 							return (
 								<StringListEditor
 									key={subField.key}
@@ -1462,7 +1733,8 @@ export function ObjectFieldsEditor({
 								/>
 							);
 						}
-						case "string": {
+						case "string":
+						{
 							return (
 								<div key={subField.key} className="flex items-center justify-between gap-4">
 									<label
@@ -1476,11 +1748,15 @@ export function ObjectFieldsEditor({
 										type="text"
 										id={controlId}
 										value={typeof subValue === "string" ? subValue : ""}
-										onChange={(event) => {
+										onChange={(event) =>
+										{
 											const raw = event.target.value;
-											if (raw === "") {
+											if (raw === "")
+											{
 												clear(subField.key);
-											} else {
+											}
+											else
+											{
 												update(subField.key, raw);
 											}
 										}}
@@ -1498,20 +1774,23 @@ export function ObjectFieldsEditor({
 	);
 }
 
-interface MarketplaceSource {
+interface MarketplaceSource
+{
 	source: string;
 	repo?: string;
 	path?: string;
 	url?: string;
 }
 
-interface MarketplaceEntry {
+interface MarketplaceEntry
+{
 	source: MarketplaceSource;
 	autoUpdate?: boolean;
 	url?: string;
 }
 
-function isMarketplaceSource(value: unknown): value is MarketplaceSource {
+function isMarketplaceSource(value: unknown): value is MarketplaceSource
+{
 	const source = asRecord(value);
 	return (
 		source !== undefined &&
@@ -1522,7 +1801,8 @@ function isMarketplaceSource(value: unknown): value is MarketplaceSource {
 	);
 }
 
-function isMarketplaceEntry(value: unknown): value is MarketplaceEntry {
+function isMarketplaceEntry(value: unknown): value is MarketplaceEntry
+{
 	const entry = asRecord(value);
 	return (
 		entry !== undefined &&
@@ -1538,7 +1818,8 @@ export function MarketplacesEditor({
 }: {
 	value: Record<string, unknown>;
 	onChange: (key: string, value: unknown) => void;
-}) {
+})
+{
 	// Unrecognized entries are not editable here but stay in `value`, so saving keeps them.
 	const entries = Object.entries(value).filter((entry): entry is [string, MarketplaceEntry] =>
 		isMarketplaceEntry(entry[1]),
@@ -1547,19 +1828,30 @@ export function MarketplacesEditor({
 	const [newName, setNewName] = useState("");
 	const idPrefix = useId();
 
-	const handleAdd = useCallback(() => {
+	const handleAdd = useCallback(() =>
+	{
 		const name = newName.trim();
 		if (!name) return;
-		onChange("extraKnownMarketplaces", {
-			...value,
-			[name]: {source: {source: "github"}},
-		});
+		onChange(
+			"extraKnownMarketplaces",
+			{
+				...value,
+				[name]:
+				{
+					source:
+					{
+						source: "github",
+					},
+				},
+			},
+		);
 		setNewName("");
 		setExpanded(name);
 	}, [value, onChange, newName]);
 
 	const handleRemove = useCallback(
-		(name: string) => {
+		(name: string) =>
+		{
 			onChange("extraKnownMarketplaces", withoutKey(value, name));
 			if (expanded === name) setExpanded(null);
 		},
@@ -1567,39 +1859,84 @@ export function MarketplacesEditor({
 	);
 
 	const updateSourceField = useCallback(
-		(name: string, field: keyof MarketplaceSource, fieldValue: string) => {
+		(name: string, field: keyof MarketplaceSource, fieldValue: string) =>
+		{
 			const entry = value[name];
 			if (!isMarketplaceEntry(entry)) return;
-			const source: MarketplaceSource = {...entry.source};
-			if (field === "source") {
+			const source: MarketplaceSource =
+			{
+				...entry.source,
+			};
+			if (field === "source")
+			{
 				source.source = fieldValue;
-			} else if (fieldValue) {
+			}
+			else if (fieldValue)
+			{
 				source[field] = fieldValue;
-			} else {
+			}
+			else
+			{
 				Reflect.deleteProperty(source, field);
 			}
-			onChange("extraKnownMarketplaces", {...value, [name]: {...entry, source}});
+			onChange(
+				"extraKnownMarketplaces",
+				{
+					...value,
+					[name]:
+					{
+						...entry,
+						source,
+					},
+				},
+			);
 		},
 		[value, onChange],
 	);
 
 	const updateAutoUpdate = useCallback(
-		(name: string, autoUpdate: boolean) => {
+		(name: string, autoUpdate: boolean) =>
+		{
 			const entry = value[name];
 			if (!isMarketplaceEntry(entry)) return;
-			onChange("extraKnownMarketplaces", {...value, [name]: {...entry, autoUpdate}});
+			onChange(
+				"extraKnownMarketplaces",
+				{
+					...value,
+					[name]:
+					{
+						...entry,
+						autoUpdate,
+					},
+				},
+			);
 		},
 		[value, onChange],
 	);
 
 	const updateUrl = useCallback(
-		(name: string, url: string) => {
+		(name: string, url: string) =>
+		{
 			const entry = value[name];
 			if (!isMarketplaceEntry(entry)) return;
-			onChange("extraKnownMarketplaces", {
-				...value,
-				[name]: url ? {...entry, url} : withoutKey({...entry}, "url"),
-			});
+			onChange(
+				"extraKnownMarketplaces",
+				{
+					...value,
+					[name]: url
+						?
+							{
+								...entry,
+								url,
+							}
+						: withoutKey(
+								{
+									...entry,
+								},
+								"url",
+							),
+				},
+			);
 		},
 		[value, onChange],
 	);
@@ -1611,7 +1948,8 @@ export function MarketplacesEditor({
 				<div className="text-xs text-t6">Extra known plugin marketplaces</div>
 			</div>
 			<div className="space-y-2">
-				{entries.map(([name, entry], entryIndex) => {
+				{entries.map(([name, entry], entryIndex) =>
+				{
 					const isExpanded = expanded === name;
 					const entryId = `${idPrefix}-${entryIndex}`;
 					return (
@@ -1619,7 +1957,8 @@ export function MarketplacesEditor({
 							<div className="flex items-center justify-between px-3 py-2">
 								<button
 									type="button"
-									onClick={() => {
+									onClick={() =>
+									{
 										setExpanded(isExpanded ? null : name);
 									}}
 									className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-accent-100"
@@ -1633,7 +1972,8 @@ export function MarketplacesEditor({
 								</button>
 								<button
 									type="button"
-									onClick={() => {
+									onClick={() =>
+									{
 										handleRemove(name);
 									}}
 									className="rounded p-1 text-t6 hover:bg-surface-0 hover:text-danger-000"
@@ -1656,7 +1996,8 @@ export function MarketplacesEditor({
 											type="text"
 											id={`${entryId}-source`}
 											value={entry.source.source}
-											onChange={(event) => {
+											onChange={(event) =>
+											{
 												updateSourceField(name, "source", event.target.value);
 											}}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1675,7 +2016,8 @@ export function MarketplacesEditor({
 											type="text"
 											id={`${entryId}-repo`}
 											value={entry.source.repo ?? ""}
-											onChange={(event) => {
+											onChange={(event) =>
+											{
 												updateSourceField(name, "repo", event.target.value);
 											}}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1694,7 +2036,8 @@ export function MarketplacesEditor({
 											type="text"
 											id={`${entryId}-path`}
 											value={entry.source.path ?? ""}
-											onChange={(event) => {
+											onChange={(event) =>
+											{
 												updateSourceField(name, "path", event.target.value);
 											}}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1713,7 +2056,8 @@ export function MarketplacesEditor({
 											type="text"
 											id={`${entryId}-source-url`}
 											value={entry.source.url ?? ""}
-											onChange={(event) => {
+											onChange={(event) =>
+											{
 												updateSourceField(name, "url", event.target.value);
 											}}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1732,7 +2076,8 @@ export function MarketplacesEditor({
 											id={`${entryId}-auto-update`}
 											labelledBy={`${entryId}-auto-update-label`}
 											checked={entry.autoUpdate === true}
-											onChange={(checked) => {
+											onChange={(checked) =>
+											{
 												updateAutoUpdate(name, checked);
 											}}
 										/>
@@ -1749,7 +2094,8 @@ export function MarketplacesEditor({
 											type="text"
 											id={`${entryId}-url`}
 											value={entry.url ?? ""}
-											onChange={(event) => {
+											onChange={(event) =>
+											{
 												updateUrl(name, event.target.value);
 											}}
 											className="w-48 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1766,10 +2112,12 @@ export function MarketplacesEditor({
 						type="text"
 						aria-label="New marketplace name"
 						value={newName}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							setNewName(event.target.value);
 						}}
-						onKeyDown={(event) => {
+						onKeyDown={(event) =>
+						{
 							if (event.key === "Enter") handleAdd();
 						}}
 						className="flex-1 rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-xs text-secondary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -1791,16 +2139,22 @@ export function MarketplacesEditor({
 }
 
 /** An empty array or empty plain object, which the dedicated editors leave behind and saving drops. */
-function isEmptyContainer(val: unknown): boolean {
+function isEmptyContainer(val: unknown): boolean
+{
 	if (Array.isArray(val)) return val.length === 0;
 	return typeof val === "object" && val !== null && Object.keys(val).length === 0;
 }
 
-export function FormEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string}) {
-	const [data, setData] = useState<Record<string, unknown>>(() => {
-		try {
+export function FormEditor({filename, initialContent, path}: {filename: string; initialContent: string; path: string})
+{
+	const [data, setData] = useState<Record<string, unknown>>(() =>
+	{
+		try
+		{
 			return asRecord(JSON.parse(initialContent)) ?? {};
-		} catch {
+		}
+		catch
+		{
 			return {};
 		}
 	});
@@ -1811,32 +2165,71 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 
 	const isDirty = JSON.stringify(data) !== JSON.stringify(savedData);
 
-	const handleFieldChange = useCallback((key: string, value: unknown) => {
-		setData((previous) => ({...previous, [key]: value}));
+	const handleFieldChange = useCallback((key: string, value: unknown) =>
+	{
+		setData((previous) => (
+		{
+			...previous,
+			[key]: value,
+		}));
 		setFeedback(null);
 	}, []);
 
-	const handleSave = useCallback(async () => {
+	const handleSave = useCallback(async () =>
+	{
 		setFeedback(null);
-		try {
+		try
+		{
 			const cleaned = Object.fromEntries(
 				Object.entries(data).filter(([key, val]) => !DEDICATED_EDITOR_KEYS.has(key) || !isEmptyContainer(val)),
 			);
 			const content = JSON.stringify(cleaned, null, 2);
-			if (!isSettingsFilename(filename)) {
-				setFeedback({type: "error", text: `Cannot save ${filename}`});
+			if (!isSettingsFilename(filename))
+			{
+				setFeedback(
+					{
+						type: "error",
+						text: `Cannot save ${filename}`,
+					},
+				);
 				return;
 			}
-			const result = await saveMutation.mutateAsync({filename, content});
-			setFeedback({type: "success", text: `Saved to ${result.path}`});
-			setSavedData({...data});
-		} catch (error) {
-			setFeedback({type: "error", text: errorMessage(error)});
+			const result = await saveMutation.mutateAsync(
+				{
+					filename,
+					content,
+				},
+			);
+			setFeedback(
+				{
+					type: "success",
+					text: `Saved to ${result.path}`,
+				},
+			);
+			setSavedData(
+				{
+					...data,
+				},
+			);
+		}
+		catch (error)
+		{
+			setFeedback(
+				{
+					type: "error",
+					text: errorMessage(error),
+				},
+			);
 		}
 	}, [data, filename, saveMutation]);
 
-	const handleReset = useCallback(() => {
-		setData({...savedData});
+	const handleReset = useCallback(() =>
+	{
+		setData(
+			{
+				...savedData,
+			},
+		);
 		setFeedback(null);
 	}, [savedData]);
 
@@ -1856,7 +2249,8 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 			</div>
 
 			<div className="space-y-6">
-				{Array.from(sectionGroups.entries()).map(([section, fields]) => {
+				{Array.from(sectionGroups.entries()).map(([section, fields]) =>
+				{
 					const relevantFields = fields.filter((f) => data[f.key] !== undefined);
 					if (relevantFields.length === 0) return null;
 					return (
@@ -1968,7 +2362,8 @@ export function FormEditor({filename, initialContent, path}: {filename: string; 
 			<div className="flex items-center gap-2">
 				<button
 					type="button"
-					onClick={() => {
+					onClick={() =>
+					{
 						void handleSave();
 					}}
 					disabled={saving || !isDirty}

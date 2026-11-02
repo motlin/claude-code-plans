@@ -7,7 +7,8 @@ import {useOptionalPaneHost} from "../panes/pane-host-context";
 import {railFit, railFits, type RailFit} from "./rail-fit";
 
 /** The chat tile's measured width and the raised overlay it falls back to when the rail doesn't fit. */
-export interface SessionRailFit {
+export interface SessionRailFit
+{
 	/** The tile's fit band, undefined until measured with a laid-out width (so SSR docks by the pref alone). */
 	band: RailFit | undefined;
 	measureRef: (node: HTMLElement | null) => void;
@@ -27,13 +28,15 @@ export interface SessionRailFit {
 export const SessionRailFitContext = createContext<SessionRailFit | null>(null);
 
 /** Owns one chat tile's fit state; attach `measureRef` to the tile root and provide the result. */
-export function useSessionRailFitState(): SessionRailFit {
+export function useSessionRailFitState(): SessionRailFit
+{
 	const panels = useFizzyLake("panels");
 	const [band, setBand] = useState<RailFit>();
 	const [raised, setRaisedState] = useState(false);
 	const [focusOnOpen, setFocusOnOpen] = useState(true);
 	const [commandRaised, setCommandRaised] = useState(false);
-	const setRaised = useCallback((next: boolean, focus = true) => {
+	const setRaised = useCallback((next: boolean, focus = true) =>
+	{
 		setRaisedState(next);
 		if (next) setFocusOnOpen(focus);
 	}, []);
@@ -41,11 +44,13 @@ export function useSessionRailFitState(): SessionRailFit {
 	const toggleRef = useRef<HTMLButtonElement>(null);
 	const observer = useRef<ResizeObserver>(null);
 	const measureRef = useCallback(
-		(node: HTMLElement | null) => {
+		(node: HTMLElement | null) =>
+		{
 			observer.current?.disconnect();
 			observer.current = null;
 			if (node === null || typeof ResizeObserver === "undefined") return;
-			const measure = () => {
+			const measure = () =>
+			{
 				// Only the band is state, so resizing within one doesn't re-render the tile.
 				const {width} = node.getBoundingClientRect();
 				setBand(width > 0 ? railFit(width, panels) : undefined);
@@ -57,7 +62,8 @@ export function useSessionRailFitState(): SessionRailFit {
 		[panels],
 	);
 	return useMemo(
-		() => ({
+		() => (
+		{
 			band,
 			measureRef,
 			raised,
@@ -77,7 +83,8 @@ export function useSessionRailFitState(): SessionRailFit {
  * 640px, or 800px beside a pane), so the toggle raises an overlay instead; null while it
  * docks by the pref, unmeasured, or on a phone, where the pref floats it over the transcript.
  */
-export function useSessionRailRaise(): SessionRailFit | null {
+export function useSessionRailRaise(): SessionRailFit | null
+{
 	const fit = useContext(SessionRailFitContext);
 	const host = useOptionalPaneHost();
 	const phone = usePhoneSheet();
@@ -90,7 +97,8 @@ export function useSessionRailRaise(): SessionRailFit | null {
  * Unmeasured or on a phone, a pane and the rail share the right side, so the pane swaps the
  * rail out.
  */
-function useSessionRailBesidePanes(): boolean {
+function useSessionRailBesidePanes(): boolean
+{
 	const fit = useContext(SessionRailFitContext);
 	const host = useOptionalPaneHost();
 	const phone = usePhoneSheet();
@@ -98,24 +106,28 @@ function useSessionRailBesidePanes(): boolean {
 }
 
 /** Whether the rail shows: toggled on and not swapped out by an open pane it doesn't fit beside. */
-export function useSessionRailVisible(): boolean {
+export function useSessionRailVisible(): boolean
+{
 	const shown = useSessionRailShown();
 	const besidePanes = useSessionRailBesidePanes();
 	return shown && besidePanes;
 }
 
 /** Shows or hides the persisted rail, closing the panes it would otherwise be swapped out by. */
-export function useSetSessionRailShown(): (shown: boolean) => void {
+export function useSetSessionRailShown(): (shown: boolean) => void
+{
 	const besidePanes = useSessionRailBesidePanes();
 	const host = useOptionalPaneHost();
-	return (shown) => {
+	return (shown) =>
+	{
 		if (shown && !besidePanes) for (const kind of host?.openKinds ?? []) host?.closePane(kind);
 		setSessionRailShown(shown);
 	};
 }
 
 /** Whether the rail docks beside the chat: visible, fitting the tile, and not on a phone (where it floats instead). */
-export function useSessionRailDocked(): boolean {
+export function useSessionRailDocked(): boolean
+{
 	const visible = useSessionRailVisible();
 	const raise = useSessionRailRaise();
 	const phone = usePhoneSheet();

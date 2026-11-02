@@ -19,7 +19,8 @@ let projectsDir: string;
 let filePath: string;
 let db: AppDb;
 
-function userRecord(index: number): Record<string, unknown> {
+function userRecord(index: number): Record<string, unknown>
+{
 	return {
 		type: "user",
 		uuid: `u-${index}`,
@@ -27,115 +28,227 @@ function userRecord(index: number): Record<string, unknown> {
 		sessionId: SESSION_ID,
 		timestamp: `2026-09-30T00:00:${String(index).padStart(2, "0")}.000Z`,
 		cwd: "/tmp/tracked-fs-project",
-		message: {role: "user", content: `message ${index}`},
+		message:
+		{
+			role: "user",
+			content: `message ${index}`,
+		},
 	};
 }
 
-function writeTranscript(count: number): number {
-	const records = Array.from({length: count}, (_, i) => JSON.stringify(userRecord(i)));
+function writeTranscript(count: number): number
+{
+	const records = Array.from(
+		{
+			length: count,
+		},
+		(_, i) => JSON.stringify(userRecord(i)),
+	);
 	writeFileSync(filePath, records.join("\n") + "\n");
 	return statSync(filePath).size;
 }
 
-async function jsonlCounters<T>(fn: () => T | Promise<T>): Promise<{bytesRead: number; fullScans: number}> {
-	return withPerfScope("tracked-fs-test", async () => {
+async function jsonlCounters<T>(fn: () => T | Promise<T>): Promise<
+{
+	bytesRead: number;
+	fullScans: number;
+}>
+{
+	return withPerfScope("tracked-fs-test", async () =>
+	{
 		await fn();
 		const counters = currentPerfCounters();
-		return {...counters!.jsonl};
+		return {
+			...counters!.jsonl,
+		};
 	});
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	tempDir = mkdtempSync(join(tmpdir(), "tracked-fs-test-"));
 	projectsDir = join(tempDir, "projects");
-	mkdirSync(join(projectsDir, PROJECT), {recursive: true});
+	mkdirSync(
+		join(projectsDir, PROJECT),
+		{
+			recursive: true,
+		},
+	);
 	filePath = join(projectsDir, PROJECT, `${SESSION_ID}.jsonl`);
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(tempDir, {recursive: true, force: true});
+	rmSync(
+		tempDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("tracked read helpers", () => {
-	it("trackedReadFileSync counts every byte and one full scan", async () => {
+describe("tracked read helpers", () =>
+{
+	it("trackedReadFileSync counts every byte and one full scan", async () =>
+	{
 		const size = writeTranscript(3);
 		let text = "";
-		const counters = await jsonlCounters(() => {
+		const counters = await jsonlCounters(() =>
+		{
 			text = trackedReadFileSync(filePath);
 		});
-		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
+		expect(counters).toStrictEqual(
+			{
+				bytesRead: size,
+				fullScans: 1,
+			},
+		);
 		expect(Buffer.byteLength(text)).toBe(size);
 	});
 
-	it("trackedCreateReadStream from a mid-file offset counts only the tail and no full scan", async () => {
+	it("trackedCreateReadStream from a mid-file offset counts only the tail and no full scan", async () =>
+	{
 		const size = writeTranscript(3);
-		const counters = await jsonlCounters(async () => {
-			const stream = trackedCreateReadStream(filePath, {encoding: "utf-8", start: 10});
-			for await (const _chunk of stream) {
+		const counters = await jsonlCounters(async () =>
+		{
+			const stream = trackedCreateReadStream(
+				filePath,
+				{
+					encoding: "utf-8",
+					start: 10,
+				},
+			);
+			for await (const _chunk of stream)
+			{
 				// drain
 			}
 		});
-		expect(counters).toStrictEqual({bytesRead: size - 10, fullScans: 0});
+		expect(counters).toStrictEqual(
+			{
+				bytesRead: size - 10,
+				fullScans: 0,
+			},
+		);
 	});
 
-	it("does nothing outside a perf scope", () => {
+	it("does nothing outside a perf scope", () =>
+	{
 		writeTranscript(3);
 		expect(trackedReadFileSync(filePath).length).toBeGreaterThan(0);
 		expect(currentPerfCounters()).toBeUndefined();
 	});
 });
 
-describe("JSONL read sites", () => {
-	it("readSession reads the whole file once", async () => {
+describe("JSONL read sites", () =>
+{
+	it("readSession reads the whole file once", async () =>
+	{
 		const size = writeTranscript(5);
 		const counters = await jsonlCounters(async () => readSession(projectsDir, SESSION_ID));
-		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
+		expect(counters).toStrictEqual(
+			{
+				bytesRead: size,
+				fullScans: 1,
+			},
+		);
 	});
 
-	it("readSessionRawWindow scanning to EOF counts a full scan", async () => {
+	it("readSessionRawWindow scanning to EOF counts a full scan", async () =>
+	{
 		const size = writeTranscript(5);
 		const counters = await jsonlCounters(async () => readSessionRawWindow(projectsDir, SESSION_ID, "missing-uuid"));
-		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
+		expect(counters).toStrictEqual(
+			{
+				bytesRead: size,
+				fullScans: 1,
+			},
+		);
 	});
 
-	it("readNewJsonlLines from offset 0 counts a full scan", async () => {
+	it("readNewJsonlLines from offset 0 counts a full scan", async () =>
+	{
 		const size = writeTranscript(5);
 		const counters = await jsonlCounters(async () => readNewJsonlLines(filePath, 0));
-		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
+		expect(counters).toStrictEqual(
+			{
+				bytesRead: size,
+				fullScans: 1,
+			},
+		);
 	});
 
-	it("readNewJsonlLines from a mid-file offset counts only the tail bytes", async () => {
+	it("readNewJsonlLines from a mid-file offset counts only the tail bytes", async () =>
+	{
 		writeTranscript(3);
 		const offset = statSync(filePath).size;
 		const records = [3, 4].map((i) => JSON.stringify(userRecord(i)));
-		writeFileSync(filePath, records.join("\n") + "\n", {flag: "a"});
+		writeFileSync(
+			filePath,
+			records.join("\n") + "\n",
+			{
+				flag: "a",
+			},
+		);
 		const size = statSync(filePath).size;
 
 		const counters = await jsonlCounters(async () => readNewJsonlLines(filePath, offset));
-		expect(counters).toStrictEqual({bytesRead: size - offset, fullScans: 0});
+		expect(counters).toStrictEqual(
+			{
+				bytesRead: size - offset,
+				fullScans: 0,
+			},
+		);
 	});
 
-	it("readStructuredTranscript reads the whole file once", async () => {
+	it("readStructuredTranscript reads the whole file once", async () =>
+	{
 		const size = writeTranscript(5);
 		db.index
 			.insert(schema.sessions)
-			.values({id: SESSION_ID, projectId: PROJECT, title: SESSION_ID, createdAt: 0, mtimeMs: 0, filePath})
+			.values(
+				{
+					id: SESSION_ID,
+					projectId: PROJECT,
+					title: SESSION_ID,
+					createdAt: 0,
+					mtimeMs: 0,
+					filePath,
+				},
+			)
 			.run();
 		const counters = await jsonlCounters(() => readStructuredTranscript(db.index, SESSION_ID));
-		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
+		expect(counters).toStrictEqual(
+			{
+				bytesRead: size,
+				fullScans: 1,
+			},
+		);
 	});
 
-	it("indexJsonlFile reads the whole file once", async () => {
+	it("indexJsonlFile reads the whole file once", async () =>
+	{
 		const size = writeTranscript(5);
 		const counters = await jsonlCounters(async () => indexJsonlFile(db.index, filePath, PROJECT));
-		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
+		expect(counters).toStrictEqual(
+			{
+				bytesRead: size,
+				fullScans: 1,
+			},
+		);
 	});
 
-	it("scanPendingApproval reads the whole file once", async () => {
+	it("scanPendingApproval reads the whole file once", async () =>
+	{
 		const size = writeTranscript(5);
 		const counters = await jsonlCounters(async () => scanPendingApproval(filePath));
-		expect(counters).toStrictEqual({bytesRead: size, fullScans: 1});
+		expect(counters).toStrictEqual(
+			{
+				bytesRead: size,
+				fullScans: 1,
+			},
+		);
 	});
 });

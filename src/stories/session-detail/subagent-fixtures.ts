@@ -1,6 +1,12 @@
 import type {Subagent} from "../../lib/subagents";
 
-export function makeAgent(overrides: Partial<Subagent> & {id: string}): Subagent {
+export function makeAgent(
+	overrides: Partial<Subagent> &
+	{
+		id: string;
+	},
+): Subagent
+{
 	return {
 		sessionId: "session-1",
 		projectId: "project-1",

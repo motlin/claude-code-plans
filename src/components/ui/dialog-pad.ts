@@ -6,8 +6,13 @@ import {useFizzyLake} from "../../lib/fizzy-lake";
  * `p-xl` (24 comfortable, 20 default, which the compact main column's epitaxy-root dialogs used).
  * Local has no --cds-pad-* variables, so each value is a literal class Tailwind can see.
  */
-export interface DialogPad {
-	popup: {"data-cds": "Dialog"; "data-cds-fizzy": "" | undefined};
+export interface DialogPad
+{
+	popup:
+	{
+		"data-cds": "Dialog";
+		"data-cds-fizzy": "" | undefined;
+	};
 	p: string;
 	mx: string;
 	mb: string;
@@ -20,7 +25,8 @@ export interface DialogPad {
 
 type PadSet = Omit<DialogPad, "popup">;
 
-const PAD_16: PadSet = {
+const PAD_16: PadSet =
+{
 	p: "p-4",
 	mx: "-mx-4",
 	mb: "-mb-4",
@@ -31,7 +37,8 @@ const PAD_16: PadSet = {
 	maxHList: "max-h-[calc(50vh+16px)]",
 };
 
-const PAD_20: PadSet = {
+const PAD_20: PadSet =
+{
 	p: "p-5",
 	mx: "-mx-5",
 	mb: "-mb-5",
@@ -42,7 +49,8 @@ const PAD_20: PadSet = {
 	maxHList: "max-h-[calc(50vh+20px)]",
 };
 
-const PAD_24: PadSet = {
+const PAD_24: PadSet =
+{
 	p: "p-6",
 	mx: "-mx-6",
 	mb: "-mb-6",
@@ -54,10 +62,23 @@ const PAD_24: PadSet = {
 };
 
 /** The popup markers and `--cds-pad-xl` classes of a styled dialog; `compactOrigin` is the pre-rollout 20px. */
-export function useDialogPad({compactOrigin = false}: {compactOrigin?: boolean} = {}): DialogPad {
+export function useDialogPad({
+	compactOrigin = false,
+}:
+{
+	compactOrigin?: boolean;
+} = {}): DialogPad
+{
 	const panels = useFizzyLake("panels");
 	const set = panels ? PAD_16 : compactOrigin ? PAD_20 : PAD_24;
-	return {popup: {"data-cds": "Dialog", "data-cds-fizzy": panels ? "" : undefined}, ...set};
+	return {
+		popup:
+		{
+			"data-cds": "Dialog",
+			"data-cds-fizzy": panels ? "" : undefined,
+		},
+		...set,
+	};
 }
 
 /** Upstream `RQ` (Dialog.Footer): `mt-pad-lg` (16px comfortable), not gated on panels. */

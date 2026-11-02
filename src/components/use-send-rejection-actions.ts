@@ -10,12 +10,10 @@ import type {SendRejection} from "./use-live-herdr-prompt";
  * rejected prompt, and otherwise focuses it. Dismiss (`Kx`) clears and focuses.
  * Neither changes the composer text.
  */
-export function useSendRejectionActions(
-	sessionId: string,
-	rejection: SendRejection | null,
-	clearRejection: () => void,
-) {
-	const retryRejection = useCallback(() => {
+export function useSendRejectionActions(sessionId: string, rejection: SendRejection | null, clearRejection: () => void)
+{
+	const retryRejection = useCallback(() =>
+	{
 		clearRejection();
 		const rejectedPrompt = rejection === null || rejection.nonResendable ? null : rejection.prompt;
 		const action = rejectedRetryAction(rejectedPrompt, getComposerText(sessionId) ?? "");
@@ -23,10 +21,14 @@ export function useSendRejectionActions(
 		focusComposer(sessionId);
 	}, [clearRejection, rejection, sessionId]);
 
-	const dismissRejection = useCallback(() => {
+	const dismissRejection = useCallback(() =>
+	{
 		clearRejection();
 		focusComposer(sessionId);
 	}, [clearRejection, sessionId]);
 
-	return {retryRejection, dismissRejection};
+	return {
+		retryRejection,
+		dismissRejection,
+	};
 }

@@ -4,130 +4,160 @@ import {apiFetch} from "./client";
 import {JsonValueSchema} from "../json-value-schema";
 import {SessionsByIdsResponse} from "./sessions";
 
-const ProjectListItemSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	projectPath: z.string().nullable(),
-	sessionCount: z.number(),
-	memoryCount: z.number(),
-	planCount: z.number(),
-	taskCount: z.number(),
-	activeCount: z.number(),
-	lastActivity: z.string(),
-});
-export const ProjectListResponse = z.array(ProjectListItemSchema);
-
-export const projectsQueryOptions = () =>
-	queryOptions({
-		queryKey: ["projects"] as const,
-		queryFn: async () => apiFetch("/api/projects", ProjectListResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
-
-export const ProjectDetailResponse = z
-	.object({
+const ProjectListItemSchema = z.object(
+	{
 		id: z.string(),
 		name: z.string(),
 		projectPath: z.string().nullable(),
-		subagentCount: z.number(),
-	})
+		sessionCount: z.number(),
+		memoryCount: z.number(),
+		planCount: z.number(),
+		taskCount: z.number(),
+		activeCount: z.number(),
+		lastActivity: z.string(),
+	},
+);
+export const ProjectListResponse = z.array(ProjectListItemSchema);
+
+export const projectsQueryOptions = () =>
+	queryOptions(
+		{
+			queryKey: ["projects"] as const,
+			queryFn: async () => apiFetch("/api/projects", ProjectListResponse),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
+
+export const ProjectDetailResponse = z
+	.object(
+		{
+			id: z.string(),
+			name: z.string(),
+			projectPath: z.string().nullable(),
+			subagentCount: z.number(),
+		},
+	)
 	.nullable();
 
 export const projectDetailQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ["projects", id] as const,
-		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}`, ProjectDetailResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: ["projects", id] as const,
+			queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}`, ProjectDetailResponse),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
 /** A project's sessions, as the same summary rows every other session list draws. */
 export const ProjectSessionListResponse = SessionsByIdsResponse;
 
 export const projectSessionsQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ["projects", id, "sessions"] as const,
-		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/sessions`, ProjectSessionListResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: ["projects", id, "sessions"] as const,
+			queryFn: async () =>
+				apiFetch(`/api/projects/${encodeURIComponent(id)}/sessions`, ProjectSessionListResponse),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
-const BranchItemSchema = z.object({
-	branch: z.string(),
-	sessionCount: z.number(),
-	lastActivity: z.string(),
-});
+const BranchItemSchema = z.object(
+	{
+		branch: z.string(),
+		sessionCount: z.number(),
+		lastActivity: z.string(),
+	},
+);
 export const ProjectBranchListResponse = z.array(BranchItemSchema);
 
-const ProjectSubagentSchema = z.object({
-	id: z.string(),
-	sessionId: z.string(),
-	projectId: z.string(),
-	parentAgentId: z.string().nullable(),
-	agentType: z.string().nullable(),
-	attributionAgent: z.string().nullable(),
-	slug: z.string().nullable(),
-	description: z.string().nullable(),
-	model: z.string().nullable(),
-	startedAt: z.string().nullable(),
-	finishedAt: z.string().nullable(),
-});
+const ProjectSubagentSchema = z.object(
+	{
+		id: z.string(),
+		sessionId: z.string(),
+		projectId: z.string(),
+		parentAgentId: z.string().nullable(),
+		agentType: z.string().nullable(),
+		attributionAgent: z.string().nullable(),
+		slug: z.string().nullable(),
+		description: z.string().nullable(),
+		model: z.string().nullable(),
+		startedAt: z.string().nullable(),
+		finishedAt: z.string().nullable(),
+	},
+);
 export const ProjectSubagentsResponse = z.array(ProjectSubagentSchema);
 
 export const projectSubagentsQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ["projects", id, "subagents"] as const,
-		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/subagents`, ProjectSubagentsResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: ["projects", id, "subagents"] as const,
+			queryFn: async () =>
+				apiFetch(`/api/projects/${encodeURIComponent(id)}/subagents`, ProjectSubagentsResponse),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
-const ProjectPlanItemSchema = z.object({
-	filename: z.string(),
-	title: z.string(),
-	mtime: z.string().nullable(),
-	sessionId: z.string(),
-});
+const ProjectPlanItemSchema = z.object(
+	{
+		filename: z.string(),
+		title: z.string(),
+		mtime: z.string().nullable(),
+		sessionId: z.string(),
+	},
+);
 export const ProjectPlanListResponse = z.array(ProjectPlanItemSchema);
 
 export const projectPlansQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ["projects", id, "plans"] as const,
-		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/plans`, ProjectPlanListResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: ["projects", id, "plans"] as const,
+			queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/plans`, ProjectPlanListResponse),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
-const TaskItemSchema = z.object({
-	taskId: z.string(),
-	projectDir: z.string(),
-	subject: z.string(),
-	description: z.string(),
-	status: z.string(),
-	activeForm: z.string().nullable(),
-	owner: z.string().nullable(),
-	blocks: z.array(z.string()),
-	blockedBy: z.array(z.string()),
-	metadata: z.record(z.string(), JsonValueSchema),
-});
+const TaskItemSchema = z.object(
+	{
+		taskId: z.string(),
+		projectDir: z.string(),
+		subject: z.string(),
+		description: z.string(),
+		status: z.string(),
+		activeForm: z.string().nullable(),
+		owner: z.string().nullable(),
+		blocks: z.array(z.string()),
+		blockedBy: z.array(z.string()),
+		metadata: z.record(z.string(), JsonValueSchema),
+	},
+);
 
-const TaskCountsSchema = z.object({
-	total: z.number(),
-	pending: z.number(),
-	inProgress: z.number(),
-	completed: z.number(),
-});
+const TaskCountsSchema = z.object(
+	{
+		total: z.number(),
+		pending: z.number(),
+		inProgress: z.number(),
+		completed: z.number(),
+	},
+);
 
-export const ProjectTasksResponse = z.object({
-	todos: z.array(TaskItemSchema),
-	todoCounts: TaskCountsSchema,
-});
+export const ProjectTasksResponse = z.object(
+	{
+		todos: z.array(TaskItemSchema),
+		todoCounts: TaskCountsSchema,
+	},
+);
 
 export const projectTasksQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: ["projects", id, "tasks"] as const,
-		queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/tasks`, ProjectTasksResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: ["projects", id, "tasks"] as const,
+			queryFn: async () => apiFetch(`/api/projects/${encodeURIComponent(id)}/tasks`, ProjectTasksResponse),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);

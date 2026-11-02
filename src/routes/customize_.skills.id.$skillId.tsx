@@ -4,17 +4,27 @@ import {createFileRoute, Outlet} from "@tanstack/react-router";
 import {SkillDetailFrame} from "../components/customize/detail-frames";
 import {customizeSkillDetailQueryOptions} from "../lib/api/customize";
 
-export const Route = createFileRoute("/customize_/skills/id/$skillId")({
-	component: SkillDetailLayout,
-	loader: ({context: {queryClient}, params}) => {
-		void queryClient.query(customizeSkillDetailQueryOptions(params.skillId)).catch(noop);
+export const Route = createFileRoute("/customize_/skills/id/$skillId")(
+	{
+		component: SkillDetailLayout,
+		loader: ({context: {queryClient}, params}) =>
+		{
+			void queryClient.query(customizeSkillDetailQueryOptions(params.skillId)).catch(noop);
+		},
+		head: () => (
+		{
+			meta: [pageTitle("Skill · Customize")],
+		}),
+		staticData:
+		{
+			pageGutter: "tight",
+		},
 	},
-	head: () => ({meta: [pageTitle("Skill · Customize")]}),
-	staticData: {pageGutter: "tight"},
-});
+);
 
 /** Skill detail shell: header and Overview · Contents tabs over the active tab. */
-function SkillDetailLayout() {
+function SkillDetailLayout()
+{
 	const {skillId} = Route.useParams();
 	return (
 		<div className="flex w-full flex-col bg-surface-1 text-body text-primary">

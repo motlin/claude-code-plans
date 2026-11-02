@@ -3,7 +3,8 @@ import {HookEventEnvelope, ToolUseUnion} from "../src/lib/hook-events";
 import {McpServerDetailResponse, McpServerListResponse, SkillListResponse} from "../src/lib/api/customize";
 import {FileRefStatusSchema} from "../src/lib/api/file-refs";
 import {PluginFileSchema, PluginListResponse} from "../src/lib/api/plugins";
-import {
+import
+{
 	UnifiedSearchDateSchema,
 	UnifiedSearchKindSchema,
 	UnifiedSearchParamsSchema,
@@ -11,7 +12,8 @@ import {
 	UnifiedSearchTypeSchema,
 } from "../src/lib/api/search";
 import {SessionSummaryStateSchema} from "../src/lib/api/sessions";
-import {
+import
+{
 	RemoteControlStateSchema,
 	PullRequestStateSchema,
 	SessionBucketReasonSchema,
@@ -19,7 +21,8 @@ import {
 	SessionStateKindSchema,
 } from "../src/lib/session-state";
 import {SourceFileResponse} from "../src/lib/api/source";
-import {
+import
+{
 	ArtifactActionSchema,
 	ArtifactAccessLevelSchema,
 	ArtifactAutoOpenSchema,
@@ -35,7 +38,8 @@ import {CodeThemeDarkSchema, CodeThemeLightSchema} from "../src/lib/code-themes"
 import {InterfaceFontSchema, ResponseFontSchema} from "../src/lib/appearance";
 import {GroupColorSchema, GroupIconSchema} from "../src/lib/group-appearance";
 import {EffortLevelSchema, LaunchPermissionModeSchema, LiveOptionChangeSchema} from "../src/lib/launch-options";
-import {
+import
+{
 	JobChildKindSchema,
 	JobFanKindSchema,
 	JobNameSourceSchema,
@@ -53,14 +57,16 @@ import {PendingApprovalToolNameSchema} from "../src/lib/domain-event-payload-sch
 import {GhCheckRunConclusionSchema, GhStatusContextStateSchema} from "../src/lib/pr-details";
 import {GhPrReviewDecisionSchema, GhPrStateSchema, GhPrStatusCacheStateSchema} from "../src/lib/pr-status";
 import {RecentsHistorySchema} from "../src/lib/recents-history";
-import {
+import
+{
 	RoutineKindSchema,
 	RoutineScheduleFilterSchema,
 	RoutineSortSchema,
 	RoutineStatusFilterSchema,
 	RoutineStatusSchema,
 } from "../src/lib/routines";
-import {
+import
+{
 	notificationTypePresentation,
 	notificationTypePresentations,
 	schemaChoiceRegistry,
@@ -68,13 +74,15 @@ import {
 import {SessionListPrefsSchema} from "../src/lib/session-groups";
 import {SidebarSectionSchema} from "../src/lib/sidebar-sections";
 import {SessionMenuItemIdSchema} from "../src/lib/session-menu-items";
-import {
+import
+{
 	CustomizeDetailTabSchema,
 	CustomizeSectionSchema,
 	CustomizeViewSchema,
 	SettingsTabSchema,
 } from "../src/lib/settings-hash";
-import {
+import
+{
 	AttachmentPayloadSchema,
 	ClassifierArtifactAttestationSchema,
 	ClassifierArtifactPublishEnvSchema,
@@ -95,7 +103,8 @@ import {
 	TaskStatusSchema,
 	UserRecordSchema,
 } from "../src/lib/schemas";
-import {
+import
+{
 	ExitWorktreeActionSchema,
 	RemoteTriggerActionSchema,
 	ReportFindingsVerdictSchema,
@@ -229,13 +238,22 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["UnifiedSearchResponse", UnifiedSearchResponse],
 ];
 
-interface DefLike {
+interface DefLike
+{
 	type: string;
 	innerType?: unknown;
 	discriminator?: unknown;
 	values?: unknown[];
-	checks?: Array<{
-		_zod?: {def?: {format?: string; prefix?: string}};
+	checks?: Array<
+	{
+		_zod?:
+		{
+			def?:
+			{
+				format?: string;
+				prefix?: string;
+			};
+		};
 	}>;
 	element?: unknown;
 	valueType?: unknown;
@@ -245,23 +263,43 @@ interface DefLike {
 	right?: unknown;
 }
 
-function defOf(schema: unknown): DefLike {
-	return (schema as {def: DefLike}).def;
+function defOf(schema: unknown): DefLike
+{
+	return (
+		schema as
+		{
+			def: DefLike;
+		}
+	).def;
 }
 
-function shapeOf(schema: unknown): Record<string, unknown> {
-	return (schema as {shape: Record<string, unknown>}).shape;
+function shapeOf(schema: unknown): Record<string, unknown>
+{
+	return (
+		schema as
+		{
+			shape: Record<string, unknown>;
+		}
+	).shape;
 }
 
-function optionsOf(schema: unknown): unknown[] {
-	return (schema as {options: unknown[]}).options;
+function optionsOf(schema: unknown): unknown[]
+{
+	return (
+		schema as
+		{
+			options: unknown[];
+		}
+	).options;
 }
 
 /** Strips optional/nullable/default wrappers. */
-function unwrap(schema: unknown): unknown {
+function unwrap(schema: unknown): unknown
+{
 	let current = schema;
 	let def = defOf(current);
-	while (def.innerType !== undefined) {
+	while (def.innerType !== undefined)
+	{
 		current = def.innerType;
 		def = defOf(current);
 	}
@@ -269,13 +307,18 @@ function unwrap(schema: unknown): unknown {
 }
 
 /** Flattens nested unions into their object arms (unwrapping wrappers). */
-function flattenUnionArms(schema: unknown): unknown[] {
+function flattenUnionArms(schema: unknown): unknown[]
+{
 	const arms: unknown[] = [];
-	for (const option of optionsOf(schema)) {
+	for (const option of optionsOf(schema))
+	{
 		const inner = unwrap(option);
-		if (defOf(inner).type === "union") {
+		if (defOf(inner).type === "union")
+		{
 			arms.push(...flattenUnionArms(inner));
-		} else {
+		}
+		else
+		{
 			arms.push(inner);
 		}
 	}
@@ -283,17 +326,21 @@ function flattenUnionArms(schema: unknown): unknown[] {
 }
 
 /** Literal or enum values of a variant's discriminator field. */
-function tagsOfVariant(variant: unknown, discriminator: string): string[] {
+function tagsOfVariant(variant: unknown, discriminator: string): string[]
+{
 	const field = unwrap(shapeOf(variant)[discriminator]);
 	const def = defOf(field);
-	if (def.type === "literal") {
+	if (def.type === "literal")
+	{
 		return (def.values ?? []).map(String);
 	}
-	if (def.type === "enum") {
+	if (def.type === "enum")
+	{
 		return optionsOf(field).map(String);
 	}
 	const startsWith = def.checks?.find((check) => check._zod?.def?.format === "starts_with")?._zod?.def?.prefix;
-	if (def.type === "string" && startsWith !== undefined) {
+	if (def.type === "string" && startsWith !== undefined)
+	{
 		return [`${startsWith}*`];
 	}
 	throw new Error(`Discriminator "${discriminator}" is neither literal nor enum`);
@@ -307,15 +354,19 @@ function tagsOfVariant(variant: unknown, discriminator: string): string[] {
  * every arm has hook_event_name="PreToolUse", so tool_name is the real
  * discriminator. Returns undefined when no common literal field exists.
  */
-function defactoDiscriminator(schema: unknown): string | undefined {
+function defactoDiscriminator(schema: unknown): string | undefined
+{
 	const arms = flattenUnionArms(schema);
-	if (arms.length === 0 || arms.some((arm) => defOf(arm).type !== "object")) {
+	if (arms.length === 0 || arms.some((arm) => defOf(arm).type !== "object"))
+	{
 		return undefined;
 	}
 	let candidates: string[] | undefined;
-	for (const arm of arms) {
+	for (const arm of arms)
+	{
 		const literalKeys = Object.entries(shapeOf(arm))
-			.filter(([, field]) => {
+			.filter(([, field]) =>
+			{
 				const def = defOf(unwrap(field));
 				return def.type === "literal" || def.checks?.some((check) => check._zod?.def?.format === "starts_with");
 			})
@@ -326,17 +377,21 @@ function defactoDiscriminator(schema: unknown): string | undefined {
 	return candidates?.toSorted().toSorted((a, b) => distinctValues(b) - distinctValues(a))[0];
 }
 
-function collectChoices(): Map<string, string[]> {
+function collectChoices(): Map<string, string[]>
+{
 	const found = new Map<string, string[]>();
 	const visited = new Set<unknown>();
 
-	function record(path: string, values: string[]): void {
+	function record(path: string, values: string[]): void
+	{
 		found.set(path, [...new Set(values)].toSorted());
 	}
 
-	function walkUnion(schema: unknown, path: string, discriminator: string): void {
+	function walkUnion(schema: unknown, path: string, discriminator: string): void
+	{
 		const tags: string[] = [];
-		for (const option of optionsOf(schema)) {
+		for (const option of optionsOf(schema))
+		{
 			const inner = unwrap(option);
 			const innerDef = defOf(inner);
 			const optionTags =
@@ -349,28 +404,36 @@ function collectChoices(): Map<string, string[]> {
 		record(path, tags);
 	}
 
-	function walk(schema: unknown, path: string): void {
+	function walk(schema: unknown, path: string): void
+	{
 		if (visited.has(schema)) return;
 		visited.add(schema);
 		const def = defOf(schema);
-		switch (def.type) {
+		switch (def.type)
+		{
 			case "enum":
 				record(path, optionsOf(schema).map(String));
 				return;
-			case "union": {
+			case "union":
+			{
 				const discriminator =
 					typeof def.discriminator === "string" ? def.discriminator : defactoDiscriminator(schema);
-				if (discriminator === undefined) {
-					for (const [index, option] of optionsOf(schema).entries()) {
+				if (discriminator === undefined)
+				{
+					for (const [index, option] of optionsOf(schema).entries())
+					{
 						walk(option, `${path}|${index}`);
 					}
-				} else {
+				}
+				else
+				{
 					walkUnion(schema, path, discriminator);
 				}
 				return;
 			}
 			case "object":
-				for (const [key, field] of Object.entries(shapeOf(schema))) {
+				for (const [key, field] of Object.entries(shapeOf(schema)))
+				{
 					walk(field, `${path}.${key}`);
 				}
 				return;
@@ -389,7 +452,8 @@ function collectChoices(): Map<string, string[]> {
 				walk(def.getter?.(), path);
 				return;
 			case "tuple":
-				for (const [index, item] of (def.items ?? []).entries()) {
+				for (const [index, item] of (def.items ?? []).entries())
+				{
 					walk(item, `${path}.${index}`);
 				}
 				return;
@@ -403,30 +467,37 @@ function collectChoices(): Map<string, string[]> {
 		}
 	}
 
-	for (const [name, schema] of ROOTS) {
+	for (const [name, schema] of ROOTS)
+	{
 		walk(schema, name);
 	}
 	return found;
 }
 
-describe("schema choice registry", () => {
+describe("schema choice registry", () =>
+{
 	const found = collectChoices();
 
-	it("discovers choice nodes in the schema trees", () => {
+	it("discovers choice nodes in the schema trees", () =>
+	{
 		expect(found.size).toBeGreaterThan(0);
 	});
 
-	it("registers every choice node found in the schemas", () => {
+	it("registers every choice node found in the schemas", () =>
+	{
 		const problems: string[] = [];
 		const sortedEntries = [...found.entries()].toSorted(([a], [b]) => a.localeCompare(b));
-		for (const [path, values] of sortedEntries) {
+		for (const [path, values] of sortedEntries)
+		{
 			const entry = schemaChoiceRegistry[path];
-			if (entry === undefined) {
+			if (entry === undefined)
+			{
 				problems.push(`UNREGISTERED ${path}: [${values.join(", ")}]`);
 				continue;
 			}
 			const registered = Object.keys(entry).toSorted();
-			if (JSON.stringify(registered) !== JSON.stringify(values)) {
+			if (JSON.stringify(registered) !== JSON.stringify(values))
+			{
 				problems.push(
 					`MISMATCH ${path}: schema has [${values.join(", ")}] but registry has [${registered.join(", ")}]`,
 				);
@@ -435,38 +506,44 @@ describe("schema choice registry", () => {
 		expect(problems).toEqual([]);
 	});
 
-	it("has no stale registry entries for removed choice nodes", () => {
+	it("has no stale registry entries for removed choice nodes", () =>
+	{
 		const stale = Object.keys(schemaChoiceRegistry).filter((path) => !found.has(path));
 		expect(stale, `Registry paths no longer found in any schema: ${stale.join(", ")}`).toEqual([]);
 	});
 });
 
-describe("notification type presentations", () => {
-	it("classifies every notification_type the CLI 2.1.307 emits, plus the local ones", () => {
-		expect(notificationTypePresentations).toStrictEqual({
-			permission_prompt: "permission",
-			idle_prompt: "needs_input",
-			auth_success: "info",
-			elicitation_dialog: "elicitation",
-			agent_needs_input: "needs_input",
-			agent_completed: "completed",
-			elicitation_url_dialog: "elicitation",
-			worker_permission_prompt: "permission",
-			push_notification: "info",
-			computer_use_enter: "info",
-			computer_use_exit: "info",
-			quota_auto_resume_fired: "info",
-			quota_auto_resume_stale: "info",
-			quota_auto_resume_disabled: "info",
-			model_refusal_fallback: "info",
-			auth_storage_failure: "info",
-			plugin_notification: "info",
-			mcp_elicitation: "elicitation",
-			turn_failed: "info",
-		});
+describe("notification type presentations", () =>
+{
+	it("classifies every notification_type the CLI 2.1.307 emits, plus the local ones", () =>
+	{
+		expect(notificationTypePresentations).toStrictEqual(
+			{
+				permission_prompt: "permission",
+				idle_prompt: "needs_input",
+				auth_success: "info",
+				elicitation_dialog: "elicitation",
+				agent_needs_input: "needs_input",
+				agent_completed: "completed",
+				elicitation_url_dialog: "elicitation",
+				worker_permission_prompt: "permission",
+				push_notification: "info",
+				computer_use_enter: "info",
+				computer_use_exit: "info",
+				quota_auto_resume_fired: "info",
+				quota_auto_resume_stale: "info",
+				quota_auto_resume_disabled: "info",
+				model_refusal_fallback: "info",
+				auth_storage_failure: "info",
+				plugin_notification: "info",
+				mcp_elicitation: "elicitation",
+				turn_failed: "info",
+			},
+		);
 	});
 
-	it("maps the CLI elicitation dialogs to the elicitation presentation and unknown types to info", () => {
+	it("maps the CLI elicitation dialogs to the elicitation presentation and unknown types to info", () =>
+	{
 		expect(
 			["elicitation_dialog", "elicitation_url_dialog", "mcp_elicitation", "some_future_type", ""].map(
 				notificationTypePresentation,

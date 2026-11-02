@@ -1,31 +1,34 @@
 import {useState} from "react";
 
-function useRetryableAction(onAction: () => Promise<unknown>, failureMessage: string) {
+function useRetryableAction(onAction: () => Promise<unknown>, failureMessage: string)
+{
 	const [error, setError] = useState<string | null>(null);
 
-	const run = async () => {
+	const run = async () =>
+	{
 		setError(null);
-		try {
+		try
+		{
 			await onAction();
-		} catch {
+		}
+		catch
+		{
 			setError(failureMessage);
 		}
 	};
 
-	return {error, run};
+	return {
+		error,
+		run,
+	};
 }
 
 /**
  * Always renders its span so the marker keeps its grid cell on reviewed rows and
  * the columns to its right stay aligned down the whole list.
  */
-export function NeedsReviewMarker({
-	needsReview,
-	newMessageCount = 0,
-}: {
-	needsReview: boolean;
-	newMessageCount?: number;
-}) {
+export function NeedsReviewMarker({needsReview, newMessageCount = 0}: {needsReview: boolean; newMessageCount?: number})
+{
 	return (
 		<span className="truncate text-xs text-warning-000">
 			{needsReview ? `Needs review${newMessageCount > 0 ? ` · ${newMessageCount} new` : ""}` : null}
@@ -33,7 +36,8 @@ export function NeedsReviewMarker({
 	);
 }
 
-export function SessionReviewAction({onReview}: {onReview: () => Promise<unknown>}) {
+export function SessionReviewAction({onReview}: {onReview: () => Promise<unknown>})
+{
 	const {error, run} = useRetryableAction(onReview, "Failed to mark reviewed");
 
 	return (
@@ -45,7 +49,8 @@ export function SessionReviewAction({onReview}: {onReview: () => Promise<unknown
 			)}
 			<button
 				type="button"
-				onClick={() => {
+				onClick={() =>
+				{
 					void run();
 				}}
 				className={`cursor-pointer rounded-md border px-2 py-1 text-xs font-medium transition-colors ${

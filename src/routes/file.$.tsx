@@ -5,27 +5,36 @@ import {FileView} from "../components/files/file-view";
 import {decodeFilePath, encodeFilePath, fileViewQueryOptions} from "../lib/api/file";
 import {imageContentType} from "../lib/file-preview";
 
-export const Route = createFileRoute("/file/$")({
-	component: FileViewerPage,
-	loader: async ({context: {queryClient}, params}) => {
-		const path = decodeFilePath(params._splat ?? "");
-		if (path !== null && imageContentType(path) === null) {
-			await queryClient.query(fileViewQueryOptions(path)).catch(noop);
-		}
+export const Route = createFileRoute("/file/$")(
+	{
+		component: FileViewerPage,
+		loader: async ({context: {queryClient}, params}) =>
+		{
+			const path = decodeFilePath(params._splat ?? "");
+			if (path !== null && imageContentType(path) === null)
+			{
+				await queryClient.query(fileViewQueryOptions(path)).catch(noop);
+			}
+		},
+		head: ({params}) =>
+		{
+			const path = decodeFilePath(params._splat ?? "");
+			const filename = path?.split("/").at(-1) ?? "Invalid path";
+			return {
+				meta: [pageTitle(`File: ${filename}`)],
+			};
+		},
 	},
-	head: ({params}) => {
-		const path = decodeFilePath(params._splat ?? "");
-		const filename = path?.split("/").at(-1) ?? "Invalid path";
-		return {meta: [pageTitle(`File: ${filename}`)]};
-	},
-});
+);
 
-function FileViewerPage() {
+function FileViewerPage()
+{
 	const {_splat: pathToken = ""} = Route.useParams();
 	const navigate = useNavigate();
 	const path = decodeFilePath(pathToken);
 
-	if (path === null) {
+	if (path === null)
+	{
 		return <main className="p-6 text-body text-primary">A valid encoded file path is required.</main>;
 	}
 	return (
@@ -34,7 +43,17 @@ function FileViewerPage() {
 				key={path}
 				path={path}
 				hashNavigation
-				onOpenFile={(sibling) => void navigate({to: "/file/$", params: {_splat: encodeFilePath(sibling)}})}
+				onOpenFile={(sibling) =>
+					void navigate(
+						{
+							to: "/file/$",
+							params:
+							{
+								_splat: encodeFilePath(sibling),
+							},
+						},
+					)
+				}
 			/>
 		</main>
 	);

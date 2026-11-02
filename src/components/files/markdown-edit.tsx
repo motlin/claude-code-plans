@@ -12,9 +12,16 @@ import {Tooltip} from "../ui/tooltip";
 import {LazyMarkdownEditor} from "./lazy-markdown-editor";
 
 type EditState =
-	| {phase: "viewing"}
-	| {phase: "loading"}
-	| {
+	|
+	  {
+			phase: "viewing";
+	  }
+	|
+	  {
+			phase: "loading";
+	  }
+	|
+	  {
 			phase: "editing";
 			/** What the editor was seeded with; kept fixed so saving never resets it. */
 			initial: string;
@@ -29,12 +36,14 @@ type EditState =
 /* Upstream's Cancel and Save are cds Buttons, so a disabled one takes its disabled look. */
 const TEXT_BUTTON = `inline-flex h-6 shrink-0 cursor-pointer items-center rounded-r5 px-2 text-footnote ${CDS_BUTTON_DISABLED}`;
 
-function isSaveShortcut(event: KeyboardEvent): boolean {
+function isSaveShortcut(event: KeyboardEvent): boolean
+{
 	const mod = isMacPlatform() ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
 	return mod && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "s";
 }
 
-function baseName(path: string): string {
+function baseName(path: string): string
+{
 	return path.slice(path.lastIndexOf("/") + 1) || path;
 }
 
@@ -54,8 +63,13 @@ export function useMarkdownEdit({
 	target: EditableMarkdownTarget | null;
 	onEditStart: (() => void) | undefined;
 	onDirtyChange: ((dirty: boolean) => void) | undefined;
-}) {
-	const [state, setState] = useState<EditState>({phase: "viewing"});
+})
+{
+	const [state, setState] = useState<EditState>(
+		{
+			phase: "viewing",
+		},
+	);
 	const queryClient = useQueryClient();
 	const toast = useToast();
 	const name = baseName(path);
@@ -63,76 +77,153 @@ export function useMarkdownEdit({
 
 	const onDirtyChangeRef = useRef(onDirtyChange);
 	const reportedDirty = useRef(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		onDirtyChangeRef.current = onDirtyChange;
 	}, [onDirtyChange]);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (reportedDirty.current === dirty) return;
 		reportedDirty.current = dirty;
 		onDirtyChangeRef.current?.(dirty);
 	}, [dirty]);
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			if (reportedDirty.current) onDirtyChangeRef.current?.(false);
 		},
 		[],
 	);
 
-	const refresh = () => {
-		void queryClient.invalidateQueries({queryKey: ["file", path]});
-		void queryClient.invalidateQueries({
-			predicate: (query) => query.queryKey[0] === "plans" || query.queryKey[2] === "memories",
-		});
+	const refresh = () =>
+	{
+		void queryClient.invalidateQueries(
+			{
+				queryKey: ["file", path],
+			},
+		);
+		void queryClient.invalidateQueries(
+			{
+				predicate: (query) => query.queryKey[0] === "plans" || query.queryKey[2] === "memories",
+			},
+		);
 	};
 
-	const start = async () => {
+	const start = async () =>
+	{
 		if (target === null || state.phase !== "viewing") return;
 		onEditStart?.();
-		setState({phase: "loading"});
-		try {
+		setState(
+			{
+				phase: "loading",
+			},
+		);
+		try
+		{
 			const {markdown, etag} = await loadEditableMarkdown(target);
-			setState({
-				phase: "editing",
-				initial: markdown,
-				draft: markdown,
-				saved: markdown,
-				etag,
-				saving: false,
-				conflict: false,
-			});
-		} catch {
-			setState({phase: "viewing"});
-			toast({kind: "error", message: `Couldn’t open ${name} for editing.`});
+			setState(
+				{
+					phase: "editing",
+					initial: markdown,
+					draft: markdown,
+					saved: markdown,
+					etag,
+					saving: false,
+					conflict: false,
+				},
+			);
+		}
+		catch
+		{
+			setState(
+				{
+					phase: "viewing",
+				},
+			);
+			toast(
+				{
+					kind: "error",
+					message: `Couldn’t open ${name} for editing.`,
+				},
+			);
 		}
 	};
 
-	const save = async (override: boolean) => {
+	const save = async (override: boolean) =>
+	{
 		if (target === null || state.phase !== "editing" || state.saving) return;
 		const {draft, etag} = state;
-		setState({...state, saving: true, conflict: false});
-		try {
+		setState(
+			{
+				...state,
+				saving: true,
+				conflict: false,
+			},
+		);
+		try
+		{
 			const nextEtag = await saveEditableMarkdown(target, draft, override ? null : etag);
 			setState((current) =>
-				current.phase === "editing" ? {...current, saving: false, saved: draft, etag: nextEtag} : current,
+				current.phase === "editing"
+					?
+						{
+							...current,
+							saving: false,
+							saved: draft,
+							etag: nextEtag,
+						}
+					: current,
 			);
 			refresh();
-		} catch (error) {
+		}
+		catch (error)
+		{
 			const conflict = error instanceof FileConflictError;
-			setState((current) => (current.phase === "editing" ? {...current, saving: false, conflict} : current));
-			if (!conflict) toast({kind: "error", message: `Couldn’t save ${name}.`});
+			setState((current) =>
+				current.phase === "editing"
+					?
+						{
+							...current,
+							saving: false,
+							conflict,
+						}
+					: current,
+			);
+			if (!conflict)
+				toast(
+					{
+						kind: "error",
+						message: `Couldn’t save ${name}.`,
+					},
+				);
 		}
 	};
 
-	const exit = () => {
-		setState({phase: "viewing"});
+	const exit = () =>
+	{
+		setState(
+			{
+				phase: "viewing",
+			},
+		);
 		refresh();
 	};
 
-	const change = (markdown: string) => {
-		setState((current) => (current.phase === "editing" ? {...current, draft: markdown} : current));
+	const change = (markdown: string) =>
+	{
+		setState((current) =>
+			current.phase === "editing"
+				?
+					{
+						...current,
+						draft: markdown,
+					}
+				: current,
+		);
 	};
 
-	const handleKeyDown = (event: KeyboardEvent) => {
+	const handleKeyDown = (event: KeyboardEvent) =>
+	{
 		if (state.phase !== "editing" || !isSaveShortcut(event)) return;
 		event.preventDefault();
 		event.stopPropagation();
@@ -192,9 +283,19 @@ export function useMarkdownEdit({
 	const dialog: ReactNode = (
 		<ConfirmDialog
 			open={state.phase === "editing" && state.conflict}
-			onOpenChange={(open) => {
-				if (!open) {
-					setState((current) => (current.phase === "editing" ? {...current, conflict: false} : current));
+			onOpenChange={(open) =>
+			{
+				if (!open)
+				{
+					setState((current) =>
+						current.phase === "editing"
+							?
+								{
+									...current,
+									conflict: false,
+								}
+							: current,
+					);
 				}
 			}}
 			title={FILE_CONFLICT_MESSAGE}
@@ -205,5 +306,12 @@ export function useMarkdownEdit({
 		/>
 	);
 
-	return {editing: state.phase !== "viewing", editButton, toolbar, editor, dialog, handleKeyDown};
+	return {
+		editing: state.phase !== "viewing",
+		editButton,
+		toolbar,
+		editor,
+		dialog,
+		handleKeyDown,
+	};
 }

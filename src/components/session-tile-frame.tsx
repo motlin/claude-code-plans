@@ -39,20 +39,30 @@ export function SessionTileFrame({
 	railDocked?: boolean;
 	/** The tile root, which the session rail measures to decide whether it fits. */
 	tileRef?: Ref<HTMLDivElement> | undefined;
-}) {
+})
+{
 	const router = useRouter();
 	const gutterAttributes = useChatGutterAttributes();
 	// The session composer's attach, registered through ChatFileDropContext; none while archived or chrome-hidden.
-	const [chatDrop, setChatDrop] = useState<{handler: ChatFileDropHandler} | null>(null);
-	const registerChatDrop = useCallback((handler: ChatFileDropHandler) => {
-		const entry = {handler};
+	const [chatDrop, setChatDrop] = useState<
+	{
+		handler: ChatFileDropHandler;
+	} | null>(null);
+	const registerChatDrop = useCallback((handler: ChatFileDropHandler) =>
+	{
+		const entry =
+		{
+			handler,
+		};
 		setChatDrop(entry);
-		return () => {
+		return () =>
+		{
 			setChatDrop((current) => (current === entry ? null : current));
 		};
 	}, []);
 	const dropIntoComposer = useCallback(
-		(files: readonly File[]) => {
+		(files: readonly File[]) =>
+		{
 			chatDrop?.handler(files);
 		},
 		[chatDrop],
@@ -63,12 +73,14 @@ export function SessionTileFrame({
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	useScrollGutterVar(scrollerRef);
 	const geometryReady = useRef<string | undefined>(undefined);
-	const restoredHost = useRef<{
+	const restoredHost = useRef<
+	{
 		node: HTMLDivElement;
 		visitKey: string;
 	} | null>(null);
 	const pendingFrame = useRef<number | undefined>(undefined);
-	const restoreGeometry = useCallback(() => {
+	const restoreGeometry = useCallback(() =>
+	{
 		geometryReady.current = visitKey;
 		const scroller = scrollerRef.current;
 		if (
@@ -78,9 +90,16 @@ export function SessionTileFrame({
 			(restoredHost.current?.node === scroller && restoredHost.current.visitKey === visitKey)
 		)
 			return;
-		if (restoredScrollY === undefined) {
-			restoredHost.current = {node: scroller, visitKey};
-		} else {
+		if (restoredScrollY === undefined)
+		{
+			restoredHost.current =
+			{
+				node: scroller,
+				visitKey,
+			};
+		}
+		else
+		{
 			// A pending navigation can change the router location while this departing
 			// visit is still painted. Only schedule a cold restore for our own visit.
 			const location = router.state.location;
@@ -89,8 +108,10 @@ export function SessionTileFrame({
 			// Warm routes restore in the router's rendered pass. A cold identity/data
 			// mount missed that pass, so apply its captured snapshot once afterward.
 			// Geometry can commit while the router still resolves the previous location.
-			const scheduleFallback = () => {
-				pendingFrame.current = requestAnimationFrame(() => {
+			const scheduleFallback = () =>
+			{
+				pendingFrame.current = requestAnimationFrame(() =>
+				{
 					pendingFrame.current = undefined;
 					if (
 						scrollerRef.current !== scroller ||
@@ -98,13 +119,18 @@ export function SessionTileFrame({
 					)
 						return;
 					if (scroller.scrollTop !== restoredScrollY) scroller.scrollTop = restoredScrollY;
-					restoredHost.current = {node: scroller, visitKey};
+					restoredHost.current =
+					{
+						node: scroller,
+						visitKey,
+					};
 				});
 			};
 			const resolved = router.state.resolvedLocation;
 			if ((resolved?.state.__TSR_key ?? resolved?.href) === locationKey) scheduleFallback();
 			else
-				pendingRendered.current = router.subscribe("onRendered", ({toLocation}) => {
+				pendingRendered.current = router.subscribe("onRendered", ({toLocation}) =>
+				{
 					if ((toLocation.state.__TSR_key ?? toLocation.href) !== locationKey) return;
 					pendingRendered.current?.();
 					pendingRendered.current = undefined;
@@ -112,23 +138,31 @@ export function SessionTileFrame({
 				});
 		}
 	}, [visitKey, restoredScrollY, router, sessionId]);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (geometryReady.current === visitKey) restoreGeometry();
-		return () => {
+		return () =>
+		{
 			pendingRendered.current?.();
 			pendingRendered.current = undefined;
 			if (pendingFrame.current !== undefined) cancelAnimationFrame(pendingFrame.current);
 			pendingFrame.current = undefined;
 		};
 	}, [visitKey, restoreGeometry]);
-	const cancelPendingRestore = () => {
+	const cancelPendingRestore = () =>
+	{
 		if (pendingFrame.current === undefined && pendingRendered.current === undefined) return;
 		pendingRendered.current?.();
 		pendingRendered.current = undefined;
 		if (pendingFrame.current !== undefined) cancelAnimationFrame(pendingFrame.current);
 		pendingFrame.current = undefined;
 		const node = scrollerRef.current;
-		if (node) restoredHost.current = {node, visitKey};
+		if (node)
+			restoredHost.current =
+			{
+				node,
+				visitKey,
+			};
 	};
 
 	return (
@@ -137,7 +171,12 @@ export function SessionTileFrame({
 			data-session-tile
 			className={SESSION_TILE_CLASS}
 			{...gutterAttributes}
-			{...(railDocked ? {"data-session-rail-docked": ""} : {})}
+			{...(railDocked
+				?
+					{
+						"data-session-rail-docked": "",
+					}
+				: {})}
 		>
 			<ChatFileDropContext.Provider value={registerChatDrop}>
 				{/* Upstream wraps the chat column in its FileDropZone; inside the card so the badge clips to its corners. */}
@@ -157,7 +196,8 @@ export function SessionTileFrame({
 							onWheelCapture={cancelPendingRestore}
 							onTouchMoveCapture={cancelPendingRestore}
 							onPointerDownCapture={cancelPendingRestore}
-							onKeyDownCapture={(event) => {
+							onKeyDownCapture={(event) =>
+							{
 								if (
 									["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(
 										event.key,

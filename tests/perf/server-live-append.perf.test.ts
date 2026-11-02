@@ -6,7 +6,8 @@ import type {AppDb} from "../../src/lib/db/connection";
 import type {PerfCounters} from "../../src/lib/perf/server-scope";
 import {indexJsonlFile} from "../../src/lib/db/indexer";
 import {generateTranscript, PERF_SHAPES, perfShapes, seedFixtureDb} from "./fixtures/generate-transcript";
-import {
+import
+{
 	LIVE_APPEND_MULTI_PREFIX,
 	LIVE_APPEND_SIZES,
 	type LiveAppendMetric,
@@ -35,11 +36,17 @@ let sseBroadcast: typeof import("../../src/lib/sse-broadcast");
 const offsets = new Map<string, number>();
 const files = new Map<string, string>();
 
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	root = mkdtempSync(join(tmpdir(), "perf-live-append-"));
 	const home = join(root, "home");
 	projectsDir = join(home, ".claude", "projects");
-	mkdirSync(join(projectsDir, PROJECT), {recursive: true});
+	mkdirSync(
+		join(projectsDir, PROJECT),
+		{
+			recursive: true,
+		},
+	);
 	vi.stubEnv("HOME", home);
 	vi.stubEnv("XDG_CONFIG_HOME", join(root, "config"));
 
@@ -47,7 +54,8 @@ beforeAll(async () => {
 	vi.resetModules();
 	const {openTestDb} = await import("../../src/lib/db/connection");
 	db = openTestDb();
-	vi.doMock("../../src/lib/db", () => ({
+	vi.doMock("../../src/lib/db", () => (
+	{
 		getDb: () => db,
 		awaitInitialScan: async () => Promise.resolve(),
 		awaitInitialIndexScan: async () => Promise.resolve(),
@@ -57,7 +65,8 @@ beforeAll(async () => {
 	sseBroadcast = await import("../../src/lib/sse-broadcast");
 
 	// Copies, not symlinks: the test appends to these files.
-	for (const shape of perfShapes()) {
+	for (const shape of perfShapes())
+	{
 		const cached = await generateTranscript(shape);
 		const file = join(projectsDir, PROJECT, basename(cached));
 		copyFileSync(cached, file);
@@ -66,65 +75,101 @@ beforeAll(async () => {
 	await seedFixtureDb(db, [...files.values()]);
 }, 600_000);
 
-afterAll(() => {
+afterAll(() =>
+{
 	db.close();
-	rmSync(root, {recursive: true, force: true});
+	rmSync(
+		root,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 	vi.doUnmock("../../src/lib/db");
 	vi.unstubAllEnvs();
 	vi.resetModules();
 });
 
-function appendedLines(sessionId: string, count: number, batch: number): string {
+function appendedLines(sessionId: string, count: number, batch: number): string
+{
 	let text = "";
-	for (let index = 0; index < count; index++) {
+	for (let index = 0; index < count; index++)
+	{
 		const turn = `${batch}-${index}`;
-		text += `${JSON.stringify({
-			type: "user",
-			sessionId,
-			uuid: `live-append-${turn}`,
-			parentUuid: null,
-			// A live append is happening now, and sessions are dated by their last record.
-			timestamp: new Date().toISOString(),
-			message: {role: "user", content: `Live append ${turn}: keep going with the next step.`},
-		})}\n`;
+		text += `${JSON.stringify(
+			{
+				type: "user",
+				sessionId,
+				uuid: `live-append-${turn}`,
+				parentUuid: null,
+				// A live append is happening now, and sessions are dated by their last record.
+				timestamp: new Date().toISOString(),
+				message:
+				{
+					role: "user",
+					content: `Live append ${turn}: keep going with the next step.`,
+				},
+			},
+		)}\n`;
 	}
 	return text;
 }
 
-async function fire(file: string): Promise<{counters: PerfCounters; payloadBytes: number}> {
-	return serverScope.withPerfScope("live-append", async () => {
+async function fire(file: string): Promise<
+{
+	counters: PerfCounters;
+	payloadBytes: number;
+}>
+{
+	return serverScope.withPerfScope("live-append", async () =>
+	{
 		let payloadBytes = 0;
 		await watcher.processJsonlAppend(
 			db.index,
 			file,
 			offsets,
-			(type, data) => {
+			(type, data) =>
+			{
 				// Same framing as broadcastTyped; drop the temp root so the size is the same on every machine.
 				const frame = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
 				payloadBytes += Buffer.byteLength(frame.replaceAll(root, ""));
 			},
-			{projectsDir, plansDir: ""},
+			{
+				projectsDir,
+				plansDir: "",
+			},
 		);
-		return {counters: structuredClone(serverScope.currentPerfCounters()!), payloadBytes};
+		return {
+			counters: structuredClone(serverScope.currentPerfCounters()!),
+			payloadBytes,
+		};
 	});
 }
 
 /** Checks every count before failing, so one run records all of them in results.json for `just perf-ceilings`. */
-function ratchetAll(values: Record<string, number>): void {
+function ratchetAll(values: Record<string, number>): void
+{
 	const failures: string[] = [];
-	for (const [id, value] of Object.entries(values)) {
-		try {
+	for (const [id, value] of Object.entries(values))
+	{
+		try
+		{
 			ratchet(id, value);
-		} catch (error) {
+		}
+		catch (error)
+		{
 			failures.push((error as Error).message);
 		}
 	}
 	if (failures.length > 0) throw new Error(failures.join("\n"));
 }
 
-describe("server lab: live append to one session", () => {
-	for (const shape of perfShapes()) {
-		it(shape.name, async () => {
+describe("server lab: live append to one session", () =>
+{
+	for (const shape of perfShapes())
+	{
+		it(shape.name, async () =>
+		{
 			const file = files.get(shape.name)!;
 			const sessionId = basename(file, ".jsonl");
 			// Steady state: the watcher has caught up with the file and snapshotted the project's sessions.
@@ -132,18 +177,22 @@ describe("server lab: live append to one session", () => {
 			await fire(file);
 
 			const values: Record<string, number> = {};
-			for (const [batch, count] of LIVE_APPEND_SIZES.entries()) {
+			for (const [batch, count] of LIVE_APPEND_SIZES.entries())
+			{
 				const text = appendedLines(sessionId, count, batch);
 				appendFileSync(file, text);
 				const {counters, payloadBytes} = await fire(file);
 				Object.assign(
 					values,
-					metricIds<LiveAppendMetric>(liveAppendPrefix(shape.name, count), {
-						readAmplification: Math.round(counters.jsonl.bytesRead / Buffer.byteLength(text)),
-						"jsonl.fullScans": counters.jsonl.fullScans,
-						"sql.count": counters.sql.count,
-						"sse.payloadBytes": payloadBytes,
-					}),
+					metricIds<LiveAppendMetric>(
+						liveAppendPrefix(shape.name, count),
+						{
+							readAmplification: Math.round(counters.jsonl.bytesRead / Buffer.byteLength(text)),
+							"jsonl.fullScans": counters.jsonl.fullScans,
+							"sql.count": counters.sql.count,
+							"sse.payloadBytes": payloadBytes,
+						},
+					),
 				);
 			}
 			ratchetAll(values);
@@ -159,57 +208,82 @@ const MULTI_ROUNDS = 4;
 /** Open tabs, each an SSE client that receives every broadcast. */
 const MULTI_TABS = 3;
 
-describe("server lab: live append to five sessions at once", () => {
+describe("server lab: live append to five sessions at once", () =>
+{
 	const multiFiles: string[] = [];
 	const tabs: ReadableStreamDefaultController[] = [];
 
-	beforeAll(async () => {
-		mkdirSync(join(projectsDir, MULTI_PROJECT), {recursive: true});
-		for (const seed of MULTI_SEEDS) {
+	beforeAll(async () =>
+	{
+		mkdirSync(
+			join(projectsDir, MULTI_PROJECT),
+			{
+				recursive: true,
+			},
+		);
+		for (const seed of MULTI_SEEDS)
+		{
 			const cached = await generateTranscript(PERF_SHAPES.small, seed);
 			const file = join(projectsDir, MULTI_PROJECT, basename(cached));
 			copyFileSync(cached, file);
 			await indexJsonlFile(db.index, file, MULTI_PROJECT);
 			multiFiles.push(file);
 		}
-		for (let tab = 0; tab < MULTI_TABS; tab++) {
-			const controller = {enqueue: () => {}} as unknown as ReadableStreamDefaultController;
+		for (let tab = 0; tab < MULTI_TABS; tab++)
+		{
+			const controller =
+			{
+				enqueue: () =>
+				{
+				},
+			} as unknown as ReadableStreamDefaultController;
 			tabs.push(controller);
 			sseBroadcast.addClient(controller);
 		}
 	}, 600_000);
 
-	afterAll(() => {
+	afterAll(() =>
+	{
 		for (const controller of tabs) sseBroadcast.removeClient(controller);
 		sseBroadcast.resetSseStats();
 	});
 
-	it("interleaved appends within one throttle window", async () => {
+	it("interleaved appends within one throttle window", async () =>
+	{
 		// Steady state: the watcher has caught up with every file and snapshotted the project's sessions.
-		for (const file of multiFiles) {
+		for (const file of multiFiles)
+		{
 			offsets.set(file, statSync(file).size);
 			await fire(file);
 		}
 
-		for (let round = 0; round < MULTI_ROUNDS; round++) {
-			for (const file of multiFiles) {
+		for (let round = 0; round < MULTI_ROUNDS; round++)
+		{
+			for (const file of multiFiles)
+			{
 				appendFileSync(file, appendedLines(basename(file, ".jsonl"), 1, round));
 			}
 		}
 
 		// The throttle collapses each file's appends in the window into one trailing fire per file.
 		sseBroadcast.resetSseStats();
-		const counters = await serverScope.withPerfScope("live-append-multi", async () => {
-			for (const file of multiFiles) {
+		const counters = await serverScope.withPerfScope("live-append-multi", async () =>
+		{
+			for (const file of multiFiles)
+			{
 				await watcher.processJsonlAppend(
 					db.index,
 					file,
 					offsets,
-					(type, data) => {
+					(type, data) =>
+					{
 						// Drop the temp root so the delivered size is the same on every machine.
 						sseBroadcast.broadcastTyped(type, JSON.parse(JSON.stringify(data).replaceAll(root, "")));
 					},
-					{projectsDir, plansDir: ""},
+					{
+						projectsDir,
+						plansDir: "",
+					},
 				);
 			}
 			return structuredClone(serverScope.currentPerfCounters()!);
@@ -220,11 +294,14 @@ describe("server lab: live append to five sessions at once", () => {
 		);
 
 		ratchetAll(
-			metricIds<LiveAppendMultiMetric>(LIVE_APPEND_MULTI_PREFIX, {
-				"jsonl.bytesRead": counters.jsonl.bytesRead,
-				"jsonl.fullScans": counters.jsonl.fullScans,
-				"sse.deliveredBytes": deliveredBytes,
-			}),
+			metricIds<LiveAppendMultiMetric>(
+				LIVE_APPEND_MULTI_PREFIX,
+				{
+					"jsonl.bytesRead": counters.jsonl.bytesRead,
+					"jsonl.fullScans": counters.jsonl.fullScans,
+					"sse.deliveredBytes": deliveredBytes,
+				},
+			),
 		);
 	});
 });

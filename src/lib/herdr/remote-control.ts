@@ -28,13 +28,15 @@ const DISCONNECT = "Disconnect this session";
 const ROW = /^\s*(❯\s+)?(\S.*\S|\S)\s*$/;
 
 /** The open Remote Control dialog: its selected row, and the arrow presses (negative is up) to Disconnect. */
-export interface RemoteControlDialog {
+export interface RemoteControlDialog
+{
 	selected: string;
 	movesToDisconnect: number;
 }
 
 /** The Remote Control dialog drawn on screen, or null when it is not. */
-export function parseRemoteControlDialog(screen: string): RemoteControlDialog | null {
+export function parseRemoteControlDialog(screen: string): RemoteControlDialog | null
+{
 	const lines = screen.split("\n");
 	const start = lines.findLastIndex((line) => line.trim() === DIALOG_TITLE);
 	if (start < 0) return null;
@@ -45,16 +47,22 @@ export function parseRemoteControlDialog(screen: string): RemoteControlDialog | 
 	const selectedIndex = rows.findIndex((match) => match?.[1] !== undefined);
 	const disconnectIndex = rows.findIndex((match) => match?.[2] === DISCONNECT);
 	if (selectedIndex < 0 || disconnectIndex < 0) return null;
-	return {selected: rows[selectedIndex]?.[2] ?? "", movesToDisconnect: disconnectIndex - selectedIndex};
+	return {
+		selected: rows[selectedIndex]?.[2] ?? "",
+		movesToDisconnect: disconnectIndex - selectedIndex,
+	};
 }
 
-const HerdrRemoteControlSchema = z.strictObject({
-	sessionId: z.string().min(1),
-	/** The state the switch asks for. */
-	on: z.boolean(),
-});
+const HerdrRemoteControlSchema = z.strictObject(
+	{
+		sessionId: z.string().min(1),
+		/** The state the switch asks for. */
+		on: z.boolean(),
+	},
+);
 
-export interface HerdrRemoteControlDependencies {
+export interface HerdrRemoteControlDependencies
+{
 	rejectRequest: (request: Request) => Response | null;
 	writesEnabled: () => boolean;
 	/** Whether the session is idle with no question or permission dialog open, per the hook store. */
@@ -74,10 +82,12 @@ const STEP_PAUSE_MS = 80;
 /** Screen reads before giving up on the CLI drawing the next step (about 2 s at the step pause). */
 const SCREEN_ATTEMPTS = 25;
 
-export const defaultHerdrRemoteControlDependencies: HerdrRemoteControlDependencies = {
+export const defaultHerdrRemoteControlDependencies: HerdrRemoteControlDependencies =
+{
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
-	ready: (sessionId) => {
+	ready: (sessionId) =>
+	{
 		const entry = getActiveSessionEntry(sessionId);
 		return (
 			entry?.state === "idle" &&
@@ -91,22 +101,34 @@ export const defaultHerdrRemoteControlDependencies: HerdrRemoteControlDependenci
 	request: herdrRequest,
 	createRequestId: () => `ccp:remote-control:${crypto.randomUUID()}`,
 	pause: async () =>
-		new Promise((resolve) => {
+		new Promise((resolve) =>
+		{
 			setTimeout(resolve, STEP_PAUSE_MS);
 		}),
 };
 
 const CANT_TOGGLE = "Couldn’t toggle Remote Control. Try again.";
 
-function errorResponse(error: string, status: number): Response {
-	return Response.json({error}, {status});
+function errorResponse(error: string, status: number): Response
+{
+	return Response.json(
+		{
+			error,
+		},
+		{
+			status,
+		},
+	);
 }
 
-function promptFailureStatus(code: string): number {
+function promptFailureStatus(code: string): number
+{
 	return code === "agent_not_ready" || code === "agent_prompt_stalled" ? 409 : 502;
 }
 
-class ToggleAborted extends Error {}
+class ToggleAborted extends Error
+{
+}
 
 /**
  * POST `{sessionId, on}`: turn the session's Remote Control bridge on or off
@@ -117,7 +139,8 @@ class ToggleAborted extends Error {}
 export async function handleHerdrRemoteControl(
 	request: Request,
 	dependencies: HerdrRemoteControlDependencies = defaultHerdrRemoteControlDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;
 	if (!dependencies.writesEnabled()) return errorResponse("herdr writes are disabled", 403);
@@ -127,29 +150,68 @@ export async function handleHerdrRemoteControl(
 
 	const current = dependencies.currentState(sessionId);
 	if (current === null) return errorResponse("Remote Control isn’t available for this session.", 409);
-	if ((current === "on") === on) return Response.json({ok: true});
-	if (!dependencies.ready(sessionId)) {
+	if ((current === "on") === on)
+		return Response.json(
+			{
+				ok: true,
+			},
+		);
+	if (!dependencies.ready(sessionId))
+	{
 		return errorResponse("Remote Control can’t be changed while Claude is working", 409);
 	}
 	const target = await dependencies.resolveTarget(sessionId);
-	if (!target.ok) return Response.json({error: target.message, code: target.code}, {status: 502});
+	if (!target.ok)
+		return Response.json(
+			{
+				error: target.message,
+				code: target.code,
+			},
+			{
+				status: 502,
+			},
+		);
 	const {paneId} = target.value;
 
-	const read = async (): Promise<{text: string; input: string | null}> => {
+	const read = async (): Promise<
+	{
+		text: string;
+		input: string | null;
+	}> =>
+	{
 		const screen = await dependencies.readScreen(sessionId, paneId);
 		if (!screen.ok) throw new ToggleAborted(screen.message);
-		return {text: visibleText(screen.value), input: readComposerInput(visibleText(screen.value, {dropDim: true}))};
+		return {
+			text: visibleText(screen.value),
+			input: readComposerInput(
+				visibleText(
+					screen.value,
+					{
+						dropDim: true,
+					},
+				),
+			),
+		};
 	};
-	const press = async (key: string): Promise<void> => {
-		const response = await dependencies.request({
-			id: dependencies.createRequestId(),
-			method: "agent.send_keys",
-			params: {target: paneId, keys: [key]},
-		});
+	const press = async (key: string): Promise<void> =>
+	{
+		const response = await dependencies.request(
+			{
+				id: dependencies.createRequestId(),
+				method: "agent.send_keys",
+				params:
+				{
+					target: paneId,
+					keys: [key],
+				},
+			},
+		);
 		if (!response.ok) throw new ToggleAborted(response.message);
 	};
-	const waitFor = async <T>(accept: (screen: string) => T | null): Promise<T> => {
-		for (let attempt = 0; attempt < SCREEN_ATTEMPTS; attempt++) {
+	const waitFor = async <T>(accept: (screen: string) => T | null): Promise<T> =>
+	{
+		for (let attempt = 0; attempt < SCREEN_ATTEMPTS; attempt++)
+		{
 			if (attempt > 0) await dependencies.pause();
 			const value = accept((await read()).text);
 			if (value !== null) return value;
@@ -157,34 +219,57 @@ export async function handleHerdrRemoteControl(
 		throw new ToggleAborted("the terminal did not show the expected Remote Control step");
 	};
 
-	try {
-		if ((await read()).input !== "") {
+	try
+	{
+		if ((await read()).input !== "")
+		{
 			return errorResponse("Clear the terminal’s input before changing Remote Control", 409);
 		}
-	} catch (error) {
+	}
+	catch (error)
+	{
 		if (!(error instanceof ToggleAborted)) throw error;
 		return errorResponse(CANT_TOGGLE, 409);
 	}
 
-	const prompted = await dependencies.request({
-		id: dependencies.createRequestId(),
-		method: "agent.prompt",
-		params: {target: paneId, text: COMMAND},
-	});
-	if (!prompted.ok) {
+	const prompted = await dependencies.request(
+		{
+			id: dependencies.createRequestId(),
+			method: "agent.prompt",
+			params:
+			{
+				target: paneId,
+				text: COMMAND,
+			},
+		},
+	);
+	if (!prompted.ok)
+	{
 		return Response.json(
-			{error: prompted.message, code: prompted.code},
-			{status: promptFailureStatus(prompted.code)},
+			{
+				error: prompted.message,
+				code: prompted.code,
+			},
+			{
+				status: promptFailureStatus(prompted.code),
+			},
 		);
 	}
-	if (on) return Response.json({ok: true});
+	if (on)
+		return Response.json(
+			{
+				ok: true,
+			},
+		);
 
 	let dialogOpened = false;
-	try {
+	try
+	{
 		let dialog = await waitFor(parseRemoteControlDialog);
 		dialogOpened = true;
 		// One arrow per screen read, so a selection that does not move is caught before Enter.
-		for (let step = 0; step < 10 && dialog.movesToDisconnect !== 0; step++) {
+		for (let step = 0; step < 10 && dialog.movesToDisconnect !== 0; step++)
+		{
 			await press(dialog.movesToDisconnect < 0 ? "up" : "down");
 			await dependencies.pause();
 			dialog = await waitFor(parseRemoteControlDialog);
@@ -192,28 +277,42 @@ export async function handleHerdrRemoteControl(
 		if (dialog.selected !== DISCONNECT) throw new ToggleAborted("the selection did not reach Disconnect");
 		await press("enter");
 		await waitFor((screen) => (parseRemoteControlDialog(screen) === null ? true : null));
-	} catch (error) {
+	}
+	catch (error)
+	{
 		if (!(error instanceof ToggleAborted)) throw error;
 		if (dialogOpened) await backOut(read, press, dependencies.pause);
 		return errorResponse(CANT_TOGGLE, 409);
 	}
-	return Response.json({ok: true});
+	return Response.json(
+		{
+			ok: true,
+		},
+	);
 }
 
 /** Escape ("Esc to continue", which keeps the bridge), again while the dialog is still drawn (at most twice more). */
 async function backOut(
-	read: () => Promise<{text: string}>,
+	read: () => Promise<
+	{
+		text: string;
+	}>,
 	press: (key: string) => Promise<void>,
 	pause: () => Promise<void>,
-): Promise<void> {
-	try {
+): Promise<void>
+{
+	try
+	{
 		await press("esc");
-		for (let extra = 0; extra < 2; extra++) {
+		for (let extra = 0; extra < 2; extra++)
+		{
 			await pause();
 			if (parseRemoteControlDialog((await read()).text) === null) return;
 			await press("esc");
 		}
-	} catch (error) {
+	}
+	catch (error)
+	{
 		if (!(error instanceof ToggleAborted)) throw error;
 	}
 }

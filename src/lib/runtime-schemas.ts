@@ -8,7 +8,8 @@
  * strict schema imported from `schemas.ts` instead of one of these.
  */
 import {toLenient} from "./lenient-schema";
-import {
+import
+{
 	AiTitleRecordSchema as StrictAiTitleRecordSchema,
 	ApiRequestBlobRecordSchema as StrictApiRequestBlobRecordSchema,
 	ApiRequestRecordSchema as StrictApiRequestRecordSchema,

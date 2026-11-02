@@ -13,15 +13,18 @@ import {type FileTypeIconSetName, loadFileTypeIconSet} from "../src/lib/file-typ
 afterEach(cleanup);
 
 /** Renders inside a Files/Changes-pane icon set, pierre unless named. */
-function render(ui: ReactNode, set: FileTypeIconSetName = "pierre") {
+function render(ui: ReactNode, set: FileTypeIconSetName = "pierre")
+{
 	return renderBare(<FileTypeIconSetContext value={set}>{ui}</FileTypeIconSetContext>);
 }
 
-function iconSvg(container: HTMLElement): SVGSVGElement | null {
+function iconSvg(container: HTMLElement): SVGSVGElement | null
+{
 	return container.querySelector<SVGSVGElement>("svg[data-file-type-icon]");
 }
 
-function describeSvg(svg: SVGSVGElement) {
+function describeSvg(svg: SVGSVGElement)
+{
 	return {
 		ariaHidden: svg.getAttribute("aria-hidden"),
 		viewBox: svg.getAttribute("viewBox"),
@@ -29,43 +32,64 @@ function describeSvg(svg: SVGSVGElement) {
 		className: svg.getAttribute("class"),
 		width: svg.style.width,
 		height: svg.style.height,
-		paths: [...svg.querySelectorAll("path")].map((path) => ({
+		paths: [...svg.querySelectorAll("path")].map((path) => (
+		{
 			fill: path.getAttribute("fill"),
 			opacity: path.getAttribute("opacity"),
 		})),
 	};
 }
 
-describe("FileTypeIcon", () => {
-	it("draws README.md at xs with the markdown palette variable", () => {
+describe("FileTypeIcon", () =>
+{
+	it("draws README.md at xs with the markdown palette variable", () =>
+	{
 		const {container} = render(<FileTypeIcon fileName="docs/README.md" size="xs" className="text-ink-muted" />);
 		const svg = iconSvg(container);
-		expect(svg && describeSvg(svg)).toEqual({
-			ariaHidden: "true",
-			viewBox: "0 0 16 16",
-			fill: "none",
-			className: "shrink-0 text-ink-muted",
-			width: "12px",
-			height: "12px",
-			paths: [
-				{fill: "var(--fti-markdown)", opacity: ".4"},
-				{fill: "var(--fti-markdown)", opacity: null},
-			],
-		});
+		expect(svg && describeSvg(svg)).toEqual(
+			{
+				ariaHidden: "true",
+				viewBox: "0 0 16 16",
+				fill: "none",
+				className: "shrink-0 text-ink-muted",
+				width: "12px",
+				height: "12px",
+				paths: [
+					{
+						fill: "var(--fti-markdown)",
+						opacity: ".4",
+					},
+					{
+						fill: "var(--fti-markdown)",
+						opacity: null,
+					},
+				],
+			},
+		);
 		expect(container.querySelectorAll("svg")).toHaveLength(1);
 	});
 
-	it("keeps fill-rule and clip-rule as React-mapped attributes", () => {
+	it("keeps fill-rule and clip-rule as React-mapped attributes", () =>
+	{
 		const {container} = render(<FileTypeIcon fileName="README.md" size="xs" />);
 		const first = container.querySelector("path");
-		expect({
-			fillRule: first?.getAttribute("fill-rule"),
-			clipRule: first?.getAttribute("clip-rule"),
-		}).toEqual({fillRule: "evenodd", clipRule: "evenodd"});
+		expect(
+			{
+				fillRule: first?.getAttribute("fill-rule"),
+				clipRule: first?.getAttribute("clip-rule"),
+			},
+		).toEqual(
+			{
+				fillRule: "evenodd",
+				clipRule: "evenodd",
+			},
+		);
 	});
 
-	it("maps sizes sm, md and xl to 16, 20 and 28 px", () => {
-		const sizes = (["sm", "md", "xl"] as const).map((size) => {
+	it("maps sizes sm, md and xl to 16, 20 and 28 px", () =>
+	{
+		const sizes = (["sm", "md", "xl"] as const).map((size) =>
+		{
 			const {container} = render(<FileTypeIcon fileName="x.ts" size={size} />);
 			const svg = iconSvg(container);
 			return [svg?.style.width, svg?.style.height];
@@ -77,7 +101,8 @@ describe("FileTypeIcon", () => {
 		]);
 	});
 
-	it("draws literal currentColor fills unchanged (font has no palette)", () => {
+	it("draws literal currentColor fills unchanged (font has no palette)", () =>
+	{
 		const {container} = render(<FileTypeIcon fileName="x.woff2" size="xs" />);
 		const fills = [...container.querySelectorAll("svg[data-file-type-icon] path")].map((path) =>
 			path.getAttribute("fill"),
@@ -85,37 +110,51 @@ describe("FileTypeIcon", () => {
 		expect(fills).toEqual(["currentColor"]);
 	});
 
-	it("draws the grey default icon for an unknown doc-like name", () => {
+	it("draws the grey default icon for an unknown doc-like name", () =>
+	{
 		const {container} = render(<FileTypeIcon fileName="notes.xyz" size="xs" />);
 		const svg = iconSvg(container);
 		expect(svg && describeSvg(svg).paths).toEqual([
-			{fill: "var(--fti-default)", opacity: ".4"},
-			{fill: "var(--fti-default)", opacity: null},
+			{
+				fill: "var(--fti-default)",
+				opacity: ".4",
+			},
+			{
+				fill: "var(--fti-default)",
+				opacity: null,
+			},
 		]);
 	});
 
-	it("draws upstream's monochrome cds Code Icon for an unresolved code file", () => {
+	it("draws upstream's monochrome cds Code Icon for an unresolved code file", () =>
+	{
 		const {container} = render(<FileTypeIcon fileName="Main.java" size="xs" className="text-ink-muted" />);
 		const svg = container.querySelector("svg");
-		expect({
-			coloured: iconSvg(container) !== null,
-			className: svg?.getAttribute("class"),
-			cds: svg?.getAttribute("data-cds"),
-			stroke: svg?.getAttribute("stroke-width"),
-			width: svg?.style.width,
-			height: svg?.style.height,
-		}).toEqual({
-			coloured: false,
-			className: "lucide lucide-code-xml shrink-0 text-ink-muted",
-			cds: "Icon",
-			stroke: "2",
-			width: "12px",
-			height: "12px",
-		});
+		expect(
+			{
+				coloured: iconSvg(container) !== null,
+				className: svg?.getAttribute("class"),
+				cds: svg?.getAttribute("data-cds"),
+				stroke: svg?.getAttribute("stroke-width"),
+				width: svg?.style.width,
+				height: svg?.style.height,
+			},
+		).toEqual(
+			{
+				coloured: false,
+				className: "lucide lucide-code-xml shrink-0 text-ink-muted",
+				cds: "Icon",
+				stroke: "2",
+				width: "12px",
+				height: "12px",
+			},
+		);
 	});
 
-	it("picks the lucide stand-in per glyph kind", () => {
-		const classes = ["data.parquet", "a/SKILL.md.bak", "x.mermaid"].map((name) => {
+	it("picks the lucide stand-in per glyph kind", () =>
+	{
+		const classes = ["data.parquet", "a/SKILL.md.bak", "x.mermaid"].map((name) =>
+		{
 			const {container} = render(<FileTypeIcon fileName={name} size="xs" />);
 			return container.querySelector("svg")?.getAttribute("class");
 		});
@@ -126,111 +165,165 @@ describe("FileTypeIcon", () => {
 		]);
 	});
 
-	it("renders the fallback instead of a stand-in glyph when given", () => {
+	it("renders the fallback instead of a stand-in glyph when given", () =>
+	{
 		const {container} = render(<FileTypeIcon fileName="Main.java" size="xs" fallback={<span data-x="" />} />);
 		expect(container.innerHTML).toBe('<span data-x=""></span>');
 	});
 
-	it("draws the monochrome glyph, never the coloured svg, outside an icon-set provider", () => {
+	it("draws the monochrome glyph, never the coloured svg, outside an icon-set provider", () =>
+	{
 		const {container} = renderBare(<FileTypeIcon fileName="README.md" size="xs" />);
-		expect({
-			coloured: iconSvg(container) !== null,
-			className: container.querySelector("svg")?.getAttribute("class"),
-		}).toStrictEqual({coloured: false, className: "lucide lucide-sticky-note shrink-0"});
+		expect(
+			{
+				coloured: iconSvg(container) !== null,
+				className: container.querySelector("svg")?.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				coloured: false,
+				className: "lucide lucide-sticky-note shrink-0",
+			},
+		);
 	});
 
-	it("renders the fallback outside an icon-set provider when given", () => {
+	it("renders the fallback outside an icon-set provider when given", () =>
+	{
 		const {container} = renderBare(<FileTypeIcon fileName="x.ts" size="xs" fallback={<span data-x="" />} />);
 		expect(container.innerHTML).toBe('<span data-x=""></span>');
 	});
 
-	it("draws the Seti set with overflow-visible and its own palette variables", async () => {
+	it("draws the Seti set with overflow-visible and its own palette variables", async () =>
+	{
 		await loadFileTypeIconSet("vscode");
 		const {container} = render(<FileTypeIcon fileName="tsconfig.app.json" size="xs" className="x" />, "vscode");
 		const svg = iconSvg(container);
-		expect({
-			className: svg?.getAttribute("class"),
-			fills: [...(svg?.querySelectorAll("path") ?? [])].map((path) => path.getAttribute("fill")),
-		}).toStrictEqual({className: "shrink-0 overflow-visible x", fills: ["var(--fti-vscode-_json)"]});
+		expect(
+			{
+				className: svg?.getAttribute("class"),
+				fills: [...(svg?.querySelectorAll("path") ?? [])].map((path) => path.getAttribute("fill")),
+			},
+		).toStrictEqual(
+			{
+				className: "shrink-0 overflow-visible x",
+				fills: ["var(--fti-vscode-_json)"],
+			},
+		);
 	});
 
-	it("draws the Catppuccin _file icon for an unresolved code file", async () => {
+	it("draws the Catppuccin _file icon for an unresolved code file", async () =>
+	{
 		await loadFileTypeIconSet("catppuccin");
 		const {container} = render(<FileTypeIcon fileName="Code.gs" size="xs" />, "catppuccin");
 		const svg = iconSvg(container);
-		expect({
-			className: svg?.getAttribute("class"),
-			paths: [...(svg?.querySelectorAll("path") ?? [])].map((path) => ({
-				fill: path.getAttribute("fill"),
-				stroke: path.getAttribute("stroke"),
-				strokeLinecap: path.getAttribute("stroke-linecap"),
-			})),
-		}).toStrictEqual({
-			className: "shrink-0",
-			paths: [{fill: "none", stroke: "var(--fti-catppuccin-text)", strokeLinecap: "round"}],
-		});
+		expect(
+			{
+				className: svg?.getAttribute("class"),
+				paths: [...(svg?.querySelectorAll("path") ?? [])].map((path) => (
+				{
+					fill: path.getAttribute("fill"),
+					stroke: path.getAttribute("stroke"),
+					strokeLinecap: path.getAttribute("stroke-linecap"),
+				})),
+			},
+		).toStrictEqual(
+			{
+				className: "shrink-0",
+				paths: [
+					{
+						fill: "none",
+						stroke: "var(--fti-catppuccin-text)",
+						strokeLinecap: "round",
+					},
+				],
+			},
+		);
 	});
 
-	it("draws CLAUDE.md from the pierre set under another set", async () => {
+	it("draws CLAUDE.md from the pierre set under another set", async () =>
+	{
 		await loadFileTypeIconSet("vscode");
 		const {container} = render(<FileTypeIcon fileName="CLAUDE.md" size="xs" />, "vscode");
 		const svg = iconSvg(container);
-		expect({
-			className: svg?.getAttribute("class"),
-			fill: svg?.querySelector("path")?.getAttribute("fill"),
-		}).toStrictEqual({className: "shrink-0", fill: "var(--fti-claude)"});
+		expect(
+			{
+				className: svg?.getAttribute("class"),
+				fill: svg?.querySelector("path")?.getAttribute("fill"),
+			},
+		).toStrictEqual(
+			{
+				className: "shrink-0",
+				fill: "var(--fti-claude)",
+			},
+		);
 	});
 
-	it("ignores the fallback when a coloured icon resolves", () => {
+	it("ignores the fallback when a coloured icon resolves", () =>
+	{
 		const {container} = render(<FileTypeIcon fileName="x.ts" size="xs" fallback={<span data-x="" />} />);
-		expect({
-			coloured: iconSvg(container) !== null,
-			fallback: container.querySelector("[data-x]") !== null,
-		}).toEqual({coloured: true, fallback: false});
+		expect(
+			{
+				coloured: iconSvg(container) !== null,
+				fallback: container.querySelector("[data-x]") !== null,
+			},
+		).toEqual(
+			{
+				coloured: true,
+				fallback: false,
+			},
+		);
 	});
 });
 
-describe("file-type-icons.css", () => {
+describe("file-type-icons.css", () =>
+{
 	const css = readFileSync(join(import.meta.dirname, "../src/styles/file-type-icons.css"), "utf8");
 
-	it("matches the generator output", () => {
+	it("matches the generator output", () =>
+	{
 		expect(css).toBe(fileTypeIconsCss());
 	});
 
-	it("defines light values on :root and dark values under .dark", () => {
-		const [light, dark] = css.split(".dark {");
-		expect({
-			lightMarkdown: light?.includes("--fti-markdown: #199f43;"),
-			darkMarkdown: dark?.includes("--fti-markdown: #5ecc71;"),
-			lightDefault: light?.includes("--fti-default: #84848a;"),
-			darkDefault: dark?.includes("--fti-default: #adadb1;"),
-			lightC: light?.includes("--fti-c:"),
-			darkC: dark?.includes("--fti-c:"),
-			lightCpp: light?.includes("--fti-cpp:"),
-			darkCpp: dark?.includes("--fti-cpp:"),
-			lightCatppuccinBlue: light?.includes("--fti-catppuccin-blue: #1e66f5;"),
-			darkCatppuccinBlue: dark?.includes("--fti-catppuccin-blue: #89b4fa;"),
-			lightSetiR: light?.includes("--fti-vscode-_R: #498ba7;"),
-			darkSetiR: dark?.includes("--fti-vscode-_R: #519aba;"),
-			paletteEntries: css.match(/--fti-[\w-]+:/g)?.length,
-		}).toEqual({
-			lightMarkdown: true,
-			darkMarkdown: true,
-			lightDefault: true,
-			darkDefault: true,
-			lightC: true,
-			darkC: true,
-			lightCpp: true,
-			darkCpp: true,
-			lightCatppuccinBlue: true,
-			darkCatppuccinBlue: true,
-			lightSetiR: true,
-			darkSetiR: true,
-			paletteEntries: (53 + 16 + 191) * 2,
-		});
+	it("defines light values on :root and dark values under .dark", () =>
+	{
+		const [light, dark] = css.split(/\.dark\s*\{/);
+		expect(
+			{
+				lightMarkdown: light?.includes("--fti-markdown: #199f43;"),
+				darkMarkdown: dark?.includes("--fti-markdown: #5ecc71;"),
+				lightDefault: light?.includes("--fti-default: #84848a;"),
+				darkDefault: dark?.includes("--fti-default: #adadb1;"),
+				lightC: light?.includes("--fti-c:"),
+				darkC: dark?.includes("--fti-c:"),
+				lightCpp: light?.includes("--fti-cpp:"),
+				darkCpp: dark?.includes("--fti-cpp:"),
+				lightCatppuccinBlue: light?.includes("--fti-catppuccin-blue: #1e66f5;"),
+				darkCatppuccinBlue: dark?.includes("--fti-catppuccin-blue: #89b4fa;"),
+				lightSetiR: light?.includes("--fti-vscode-_R: #498ba7;"),
+				darkSetiR: dark?.includes("--fti-vscode-_R: #519aba;"),
+				paletteEntries: css.match(/--fti-[\w-]+:/g)?.length,
+			},
+		).toEqual(
+			{
+				lightMarkdown: true,
+				darkMarkdown: true,
+				lightDefault: true,
+				darkDefault: true,
+				lightC: true,
+				darkC: true,
+				lightCpp: true,
+				darkCpp: true,
+				lightCatppuccinBlue: true,
+				darkCatppuccinBlue: true,
+				lightSetiR: true,
+				darkSetiR: true,
+				paletteEntries: (53 + 16 + 191) * 2,
+			},
+		);
 	});
 
-	it("is imported from globals.css", () => {
+	it("is imported from globals.css", () =>
+	{
 		const globals = readFileSync(join(import.meta.dirname, "../src/styles/globals.css"), "utf8");
 		expect(globals).toContain('@import "./file-type-icons.css";');
 	});

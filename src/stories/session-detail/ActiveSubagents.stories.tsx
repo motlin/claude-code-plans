@@ -2,7 +2,8 @@ import type {Meta, StoryObj} from "@storybook/react-vite";
 import {ActiveSubagents} from "../../components/active-subagents";
 import {withRouterAndQuery} from "../sidebar/router-and-query";
 
-const meta = {
+const meta =
+{
 	title: "Session Detail/Subagents/ActiveSubagents",
 	component: ActiveSubagents,
 	decorators: [withRouterAndQuery],
@@ -11,8 +12,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const OneActive: Story = {
-	args: {
+export const OneActive: Story =
+{
+	args:
+	{
 		agents: [
 			{
 				key: "session-test:agent-active",
@@ -25,8 +28,10 @@ export const OneActive: Story = {
 	},
 };
 
-export const SeveralActive: Story = {
-	args: {
+export const SeveralActive: Story =
+{
+	args:
+	{
 		agents: [
 			{
 				key: "session-test:agent-active-a",

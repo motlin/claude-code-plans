@@ -53,27 +53,38 @@ const IconNodeSchema: z.ZodType<FileTypeIconNode> = z.lazy(() =>
 
 const IconTreeSchema = z
 	.string()
-	.transform((text, ctx): unknown => {
-		try {
+	.transform((text, ctx): unknown =>
+	{
+		try
+		{
 			return JSON.parse(text);
-		} catch {
-			ctx.addIssue({code: "custom", message: "icon is not valid JSON"});
+		}
+		catch
+		{
+			ctx.addIssue(
+				{
+					code: "custom",
+					message: "icon is not valid JSON",
+				},
+			);
 			return z.NEVER;
 		}
 	})
 	.pipe(z.array(IconNodeSchema));
 
-export const FileTypeIconSetSchema = z.strictObject({
-	source: z.string(),
-	license: z.string(),
-	defaultIcon: z.string(),
-	defaultForEveryFile: z.boolean().optional(),
-	palette: z.record(z.string(), z.tuple([z.string(), z.string()])),
-	fileNames: z.record(z.string(), z.string()),
-	filePatterns: z.record(z.string(), z.string()).optional(),
-	fileExtensions: z.record(z.string(), z.string()),
-	icons: z.record(z.string(), IconTreeSchema),
-});
+export const FileTypeIconSetSchema = z.strictObject(
+	{
+		source: z.string(),
+		license: z.string(),
+		defaultIcon: z.string(),
+		defaultForEveryFile: z.boolean().optional(),
+		palette: z.record(z.string(), z.tuple([z.string(), z.string()])),
+		fileNames: z.record(z.string(), z.string()),
+		filePatterns: z.record(z.string(), z.string()).optional(),
+		fileExtensions: z.record(z.string(), z.string()),
+		icons: z.record(z.string(), IconTreeSchema),
+	},
+);
 
 export type FileTypeIconSet = z.infer<typeof FileTypeIconSetSchema>;
 
@@ -89,12 +100,20 @@ const THEMED_ICON_SETS = ["catppuccin", "pierre", "vscode"] as const satisfies r
  * for Claude Light and Claude Dark; otherwise the set whose name prefixes the
  * theme, else pierre.
  */
-export function iconSetForCodeTheme(theme: string): FileTypeIconSetName | null {
+export function iconSetForCodeTheme(theme: string): FileTypeIconSetName | null
+{
 	if (theme === "claude-light" || theme === "claude-dark") return null;
 	return THEMED_ICON_SETS.find((name) => theme.startsWith(`${name}-`)) ?? "pierre";
 }
 
-const ICON_SET_IMPORTS: Record<Exclude<FileTypeIconSetName, "pierre">, () => Promise<{default: unknown}>> = {
+const ICON_SET_IMPORTS: Record<
+	Exclude<FileTypeIconSetName, "pierre">,
+	() => Promise<
+	{
+		default: unknown;
+	}>
+> =
+{
 	catppuccin: async () => import("./file-type-icon-sets/catppuccin.json"),
 	vscode: async () => import("./file-type-icon-sets/vscode.json"),
 };
@@ -104,18 +123,22 @@ const iconSetLoads = new Map<FileTypeIconSetName, Promise<FileTypeIconSet>>();
 const iconSetListeners = new Set<() => void>();
 
 /** The set when it has loaded (pierre always has), else undefined. */
-export function loadedFileTypeIconSet(name: FileTypeIconSetName): FileTypeIconSet | undefined {
+export function loadedFileTypeIconSet(name: FileTypeIconSetName): FileTypeIconSet | undefined
+{
 	return loadedIconSets.get(name);
 }
 
 /** Upstream `D`/`E`: loads a set once, telling subscribers when it arrives; a failed load can be retried. */
-export async function loadFileTypeIconSet(name: FileTypeIconSetName): Promise<FileTypeIconSet> {
+export async function loadFileTypeIconSet(name: FileTypeIconSetName): Promise<FileTypeIconSet>
+{
 	const loaded = loadedIconSets.get(name);
 	if (loaded !== undefined) return loaded;
 	if (name === "pierre") return fileTypeIconSet;
 	let load = iconSetLoads.get(name);
-	if (load === undefined) {
-		load = ICON_SET_IMPORTS[name]().then(({default: raw}) => {
+	if (load === undefined)
+	{
+		load = ICON_SET_IMPORTS[name]().then(({default: raw}) =>
+		{
 			const set = FileTypeIconSetSchema.parse(raw);
 			loadedIconSets.set(name, set);
 			for (const listener of iconSetListeners) listener();
@@ -128,34 +151,40 @@ export async function loadFileTypeIconSet(name: FileTypeIconSetName): Promise<Fi
 }
 
 /** Calls `listener` whenever another set finishes loading. */
-export function subscribeFileTypeIconSets(listener: () => void): () => void {
+export function subscribeFileTypeIconSets(listener: () => void): () => void
+{
 	iconSetListeners.add(listener);
-	return () => {
+	return () =>
+	{
 		iconSetListeners.delete(listener);
 	};
 }
 
 /** Upstream `m5`: the last path segment, ignoring one trailing slash. */
-function baseName(path: string): string {
+function baseName(path: string): string
+{
 	const trimmed = path.replace(/[\\/]$/, "");
 	const slash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
 	return slash === -1 ? trimmed : trimmed.slice(slash + 1);
 }
 
 /** Upstream `k`: CLAUDE.md always draws from the pierre set. */
-export function fileTypeIconSetFor(path: string, name: FileTypeIconSetName): FileTypeIconSetName {
+export function fileTypeIconSetFor(path: string, name: FileTypeIconSetName): FileTypeIconSetName
+{
 	return baseName(path).toLowerCase() === "claude.md" ? "pierre" : name;
 }
 
 /** Upstream `A`: a `filePatterns` glob, split on `*`, against a lowercased name. */
-function matchesFilePattern(name: string, pattern: string): boolean {
+function matchesFilePattern(name: string, pattern: string): boolean
+{
 	const [first = "", ...middle] = pattern.split("*");
 	const last = middle.pop();
 	if (last === undefined) return name === first;
 	const end = name.length - last.length;
 	let at = first.length;
 	if (!name.startsWith(first) || !name.endsWith(last) || at > end) return false;
-	for (const piece of middle) {
+	for (const piece of middle)
+	{
 		const found = name.indexOf(piece, at);
 		if (found === -1 || found + piece.length > end) return false;
 		at = found + piece.length;
@@ -164,12 +193,15 @@ function matchesFilePattern(name: string, pattern: string): boolean {
 }
 
 /** Upstream `j`: exact file name, then file patterns, then compound extensions from the first dot. */
-function lookUpFileTypeIcon(set: FileTypeIconSet, name: string): string | null {
+function lookUpFileTypeIcon(set: FileTypeIconSet, name: string): string | null
+{
 	if (Object.hasOwn(set.fileNames, name)) return set.fileNames[name] ?? null;
-	for (const [pattern, id] of Object.entries(set.filePatterns ?? {})) {
+	for (const [pattern, id] of Object.entries(set.filePatterns ?? {}))
+	{
 		if (matchesFilePattern(name, pattern)) return id;
 	}
-	for (let dot = name.indexOf("."); dot !== -1; dot = name.indexOf(".", dot + 1)) {
+	for (let dot = name.indexOf("."); dot !== -1; dot = name.indexOf(".", dot + 1))
+	{
 		const extension = name.slice(dot + 1);
 		if (Object.hasOwn(set.fileExtensions, extension)) return set.fileExtensions[extension] ?? null;
 	}
@@ -181,14 +213,16 @@ function lookUpFileTypeIcon(set: FileTypeIconSet, name: string): string | null {
  * given), else the set's default icon when it covers every file, else null
  * when only a fallback glyph applies.
  */
-export function resolveFileTypeIcon(path: string, set: FileTypeIconSet = fileTypeIconSet): string | null {
+export function resolveFileTypeIcon(path: string, set: FileTypeIconSet = fileTypeIconSet): string | null
+{
 	const id = lookUpFileTypeIcon(set, baseName(path).toLowerCase());
 	if (id !== null && Object.hasOwn(set.icons, id)) return id;
 	return set.defaultForEveryFile === true ? fileTypeIconDefault(set) : null;
 }
 
 /** Upstream `N`: the set's default icon, when the set draws it. */
-export function fileTypeIconDefault(set: FileTypeIconSet): string | null {
+export function fileTypeIconDefault(set: FileTypeIconSet): string | null
+{
 	return Object.hasOwn(set.icons, set.defaultIcon) ? set.defaultIcon : null;
 }
 
@@ -249,13 +283,15 @@ const LANGUAGE_NAMES =
 	);
 
 /** Upstream `N9`: the lowercased last extension, or "" when there is no dot. */
-function lastExtension(name: string): string {
+function lastExtension(name: string): string
+{
 	const extension = name.split(".").pop()?.toLowerCase() ?? "";
 	return extension === name.toLowerCase() ? "" : extension;
 }
 
 /** Upstream `fK`, reduced to the cases `sd` reads after its own sets miss. */
-function artifactKind(extension: string): FileKind | null {
+function artifactKind(extension: string): FileKind | null
+{
 	if (extension === "skill" || extension === "plugin") return "skill";
 	if (["csv", "tsv", "xls", "xlsx"].includes(extension)) return "sheet";
 	if (extension === "pptx") return "preso";
@@ -266,7 +302,8 @@ function artifactKind(extension: string): FileKind | null {
 }
 
 /** Upstream `sd`. */
-function extensionKind(extension: string): FileKind | null {
+function extensionKind(extension: string): FileKind | null
+{
 	if (!extension) return null;
 	if (extension === "skill" || extension === "plugin") return "skill";
 	if (ARCHIVE_EXTENSIONS.has(extension)) return "archive";
@@ -279,7 +316,8 @@ function extensionKind(extension: string): FileKind | null {
 	return artifactKind(extension);
 }
 
-const EXTENSION_GLYPHS: Readonly<Record<string, FileTypeGlyph>> = {
+const EXTENSION_GLYPHS: Readonly<Record<string, FileTypeGlyph>> =
+{
 	md: "note",
 	markdown: "note",
 	html: "globe",
@@ -291,7 +329,8 @@ const EXTENSION_GLYPHS: Readonly<Record<string, FileTypeGlyph>> = {
  * Upstream `yg`: the monochrome cds glyph for a path when no coloured icon
  * resolves. Only `"doc"` (cds `File`) falls through to the coloured default icon.
  */
-export function fileTypeGlyph(path: string): FileTypeGlyph {
+export function fileTypeGlyph(path: string): FileTypeGlyph
+{
 	const name = baseName(path);
 	if (name.includes("SKILL.md")) return "skill";
 	const extension = lastExtension(name);

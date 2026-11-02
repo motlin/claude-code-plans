@@ -1,32 +1,87 @@
 import {describe, expect, it} from "vite-plus/test";
 import {classifyApiError, errorCopy, refusalPassthrough, type ApiErrorInput} from "../src/lib/api-error-category";
 
-const VIEWER = {canRewind: false, canRetry: false, hasComposer: false} as const;
+const VIEWER =
+{
+	canRewind: false,
+	canRetry: false,
+	hasComposer: false,
+} as const;
 
-function classify(input: Partial<ApiErrorInput>) {
-	return classifyApiError({text: "", ...input});
+function classify(input: Partial<ApiErrorInput>)
+{
+	return classifyApiError(
+		{
+			text: "",
+			...input,
+		},
+	);
 }
 
-describe("classifyApiError", () => {
-	it("reads every local JSONL specimen into upstream's category", () => {
+describe("classifyApiError", () =>
+{
+	it("reads every local JSONL specimen into upstream's category", () =>
+	{
 		expect([
-			classify({
-				text: "API Error: 529 Overloaded. This is a server-side issue, usually temporary — try again in a moment.",
-			}),
-			classify({text: "Can't reach the API server — check your internet connection, VPN, or proxy (ENOTFOUND)"}),
-			classify({text: "API Error: Connection lost mid-response · check your network"}),
-			classify({text: "API Error: Your computer went to sleep mid-response · send a message to retry"}),
-			classify({text: "API Error: The response stopped arriving · retry in a moment"}),
-			classify({text: "Login expired · Please run /login", code: "authentication_failed", status: 401}),
-			classify({text: "", stopReason: "refusal"}),
-			classify({
-				text: 'API Error: 413 {"type":"error","error":{"type":"request_too_large","message":"Request too large"}}',
-			}),
-			classify({
-				text: "API Error: 400 messages.0.content.1.image.source.base64.data: At least one of the image dimensions exceed max allowed size: 2576 pixels exceeds the dimension limit of 2000 pixels",
-			}),
-			classify({text: "Something odd happened", status: 500}),
-			classify({text: "Something odd happened"}),
+			classify(
+				{
+					text: "API Error: 529 Overloaded. This is a server-side issue, usually temporary — try again in a moment.",
+				},
+			),
+			classify(
+				{
+					text: "Can't reach the API server — check your internet connection, VPN, or proxy (ENOTFOUND)",
+				},
+			),
+			classify(
+				{
+					text: "API Error: Connection lost mid-response · check your network",
+				},
+			),
+			classify(
+				{
+					text: "API Error: Your computer went to sleep mid-response · send a message to retry",
+				},
+			),
+			classify(
+				{
+					text: "API Error: The response stopped arriving · retry in a moment",
+				},
+			),
+			classify(
+				{
+					text: "Login expired · Please run /login",
+					code: "authentication_failed",
+					status: 401,
+				},
+			),
+			classify(
+				{
+					text: "",
+					stopReason: "refusal",
+				},
+			),
+			classify(
+				{
+					text: 'API Error: 413 {"type":"error","error":{"type":"request_too_large","message":"Request too large"}}',
+				},
+			),
+			classify(
+				{
+					text: "API Error: 400 messages.0.content.1.image.source.base64.data: At least one of the image dimensions exceed max allowed size: 2576 pixels exceeds the dimension limit of 2000 pixels",
+				},
+			),
+			classify(
+				{
+					text: "Something odd happened",
+					status: 500,
+				},
+			),
+			classify(
+				{
+					text: "Something odd happened",
+				},
+			),
 		]).toStrictEqual([
 			"overloaded",
 			"network",
@@ -42,24 +97,101 @@ describe("classifyApiError", () => {
 		]);
 	});
 
-	it("follows upstream's MQ order: refusal, usage-limit text, the He codes, the text table, the code map, then the status", () => {
+	it("follows upstream's MQ order: refusal, usage-limit text, the He codes, the text table, the code map, then the status", () =>
+	{
 		expect([
-			classify({text: "API Error: 529 Overloaded", stopReason: "refusal"}),
-			classify({text: "You've hit your weekly limit · resets Oct 20 at 4am", code: "overloaded_error"}),
-			classify({text: "Request too large", code: "overloaded_error"}),
-			classify({text: "Request too large", code: "server_error"}),
-			classify({text: "nothing recognisable", code: "billing_error", status: 500}),
-			classify({text: "nothing recognisable", code: "verification_required"}),
-			classify({text: "API Error: 429 nothing recognisable"}),
-			classify({text: "nothing recognisable", status: 403}),
-			classify({text: "nothing recognisable", status: 413}),
-			classify({text: "nothing recognisable", status: 422}),
-			classify({text: "nothing recognisable", status: 402}),
-			classify({text: "nothing recognisable", status: 529}),
-			classify({text: "HTTP 503 nothing recognisable"}),
-			classify({text: '{"type":"error","error":{"type":"invalid_request_error"}}'}),
-			classify({text: "Prompt is too long"}),
-			classify({text: "Claude Code returned an error result: exceeded the 32000 output token maximum"}),
+			classify(
+				{
+					text: "API Error: 529 Overloaded",
+					stopReason: "refusal",
+				},
+			),
+			classify(
+				{
+					text: "You've hit your weekly limit · resets Oct 20 at 4am",
+					code: "overloaded_error",
+				},
+			),
+			classify(
+				{
+					text: "Request too large",
+					code: "overloaded_error",
+				},
+			),
+			classify(
+				{
+					text: "Request too large",
+					code: "server_error",
+				},
+			),
+			classify(
+				{
+					text: "nothing recognisable",
+					code: "billing_error",
+					status: 500,
+				},
+			),
+			classify(
+				{
+					text: "nothing recognisable",
+					code: "verification_required",
+				},
+			),
+			classify(
+				{
+					text: "API Error: 429 nothing recognisable",
+				},
+			),
+			classify(
+				{
+					text: "nothing recognisable",
+					status: 403,
+				},
+			),
+			classify(
+				{
+					text: "nothing recognisable",
+					status: 413,
+				},
+			),
+			classify(
+				{
+					text: "nothing recognisable",
+					status: 422,
+				},
+			),
+			classify(
+				{
+					text: "nothing recognisable",
+					status: 402,
+				},
+			),
+			classify(
+				{
+					text: "nothing recognisable",
+					status: 529,
+				},
+			),
+			classify(
+				{
+					text: "HTTP 503 nothing recognisable",
+				},
+			),
+			classify(
+				{
+					text: '{"type":"error","error":{"type":"invalid_request_error"}}',
+				},
+			),
+			classify(
+				{
+					text: "Prompt is too long",
+				},
+			),
+			classify(
+				{
+					text: "Claude Code returned an error result: exceeded the 32000 output token maximum",
+				},
+			),
 		]).toStrictEqual([
 			"usage_policy",
 			"rate_limit",
@@ -81,18 +213,40 @@ describe("classifyApiError", () => {
 	});
 });
 
-describe("upstream's effort cap and model version gate", () => {
+describe("upstream's effort cap and model version gate", () =>
+{
 	const EFFORT =
 		'API Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Invalid effort level: max"}}';
 	const VERSION = "API Error: 400 Claude Code 2.1.0 does not support this model; version 2.2.0 or newer is required";
 
-	it("classifies a 400 whose message starts with Invalid effort level, or with the version gate", () => {
+	it("classifies a 400 whose message starts with Invalid effort level, or with the version gate", () =>
+	{
 		expect([
-			classify({text: EFFORT}),
-			classify({text: "API Error: 400 Invalid effort level: max"}),
-			classify({text: VERSION}),
-			classify({text: "API Error: 500 Invalid effort level: max"}),
-			classify({text: "API Error: 400 Something mentions Invalid effort level"}),
+			classify(
+				{
+					text: EFFORT,
+				},
+			),
+			classify(
+				{
+					text: "API Error: 400 Invalid effort level: max",
+				},
+			),
+			classify(
+				{
+					text: VERSION,
+				},
+			),
+			classify(
+				{
+					text: "API Error: 500 Invalid effort level: max",
+				},
+			),
+			classify(
+				{
+					text: "API Error: 400 Something mentions Invalid effort level",
+				},
+			),
 		]).toStrictEqual([
 			"effort_cap_exceeded",
 			"effort_cap_exceeded",
@@ -102,10 +256,17 @@ describe("upstream's effort cap and model version gate", () => {
 		]);
 	});
 
-	it("gives each upstream's headline and hint", () => {
+	it("gives each upstream's headline and hint", () =>
+	{
 		expect([
 			errorCopy("effort_cap_exceeded", VIEWER),
-			errorCopy("model_version_unsupported", {...VIEWER, text: VERSION}),
+			errorCopy(
+				"model_version_unsupported",
+				{
+					...VIEWER,
+					text: VERSION,
+				},
+			),
 		]).toStrictEqual([
 			{
 				headline: "Your organization limits effort for this model",
@@ -125,8 +286,10 @@ describe("upstream's effort cap and model version gate", () => {
 	});
 });
 
-describe("errorCopy", () => {
-	it("gives the viewer upstream's no-rewind, no-composer copy for each specimen category", () => {
+describe("errorCopy", () =>
+{
+	it("gives the viewer upstream's no-rewind, no-composer copy for each specimen category", () =>
+	{
 		expect([
 			errorCopy("overloaded", VIEWER),
 			errorCopy("network", VIEWER),
@@ -205,16 +368,52 @@ describe("errorCopy", () => {
 		]);
 	});
 
-	it("picks the retry, without-retry, or no-rewind hint the way upstream's card does", () => {
+	it("picks the retry, without-retry, or no-rewind hint the way upstream's card does", () =>
+	{
 		expect([
-			errorCopy("network", {canRewind: false, canRetry: true, hasComposer: true}).hint,
-			errorCopy("network", {canRewind: false, canRetry: false, hasComposer: true}).hint,
-			errorCopy("server_rate_limit", {canRewind: false, canRetry: false, hasComposer: true}).hint,
+			errorCopy(
+				"network",
+				{
+					canRewind: false,
+					canRetry: true,
+					hasComposer: true,
+				},
+			).hint,
+			errorCopy(
+				"network",
+				{
+					canRewind: false,
+					canRetry: false,
+					hasComposer: true,
+				},
+			).hint,
+			errorCopy(
+				"server_rate_limit",
+				{
+					canRewind: false,
+					canRetry: false,
+					hasComposer: true,
+				},
+			).hint,
 			errorCopy("server_rate_limit", VIEWER).markerLabel,
 			errorCopy("context_length", VIEWER).markerLabel,
 			errorCopy("context_length", VIEWER).hint,
-			errorCopy("context_length", {canRewind: true, canRetry: false, hasComposer: true}).hint,
-			errorCopy("auth", {canRewind: false, canRetry: false, hasComposer: true}).hint,
+			errorCopy(
+				"context_length",
+				{
+					canRewind: true,
+					canRetry: false,
+					hasComposer: true,
+				},
+			).hint,
+			errorCopy(
+				"auth",
+				{
+					canRewind: false,
+					canRetry: false,
+					hasComposer: true,
+				},
+			).hint,
 		]).toStrictEqual([
 			"Check your internet connection, VPN, or proxy and try again.",
 			"Check your internet connection, VPN, or proxy, then send a message to try again.",
@@ -228,25 +427,33 @@ describe("errorCopy", () => {
 	});
 });
 
-describe("refusalPassthrough", () => {
-	it("strips upstream's API Error prefix, the Request and Message ID trailer, and the Details category", () => {
+describe("refusalPassthrough", () =>
+{
+	it("strips upstream's API Error prefix, the Request and Message ID trailer, and the Details category", () =>
+	{
 		expect(
 			refusalPassthrough(
 				"API Error: Opus 5.5's safeguards flagged this message.\n\nDouble press esc to edit your last message.\n\nDetails: `[reasoning_extraction]`\n\nRequest ID: req_011Cg3aaz5pqLrbAkP1N2VfL\n\nMessage ID: msg_011Cg3aazSfAjcBCjdnsHbjz",
 			),
-		).toStrictEqual({
-			body: "Opus 5.5's safeguards flagged this message.\n\nDouble press esc to edit your last message.",
-			category: "reasoning_extraction",
-		});
+		).toStrictEqual(
+			{
+				body: "Opus 5.5's safeguards flagged this message.\n\nDouble press esc to edit your last message.",
+				category: "reasoning_extraction",
+			},
+		);
 	});
 
-	it("keeps the whole body when there is no Details line", () => {
-		expect(refusalPassthrough("API Error Claude's safeguards flagged this message.")).toStrictEqual({
-			body: "Claude's safeguards flagged this message.",
-		});
+	it("keeps the whole body when there is no Details line", () =>
+	{
+		expect(refusalPassthrough("API Error Claude's safeguards flagged this message.")).toStrictEqual(
+			{
+				body: "Claude's safeguards flagged this message.",
+			},
+		);
 	});
 
-	it("is undefined for a blank text", () => {
+	it("is undefined for a blank text", () =>
+	{
 		expect(refusalPassthrough("API Error:  ")).toBeUndefined();
 	});
 });

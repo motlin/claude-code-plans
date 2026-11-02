@@ -2,8 +2,10 @@ import {describe, expect, test} from "vite-plus/test";
 
 import {unexpectedBuildLines} from "./check-build-output.mjs";
 
-describe("unexpectedBuildLines", () => {
-	test("passes a clean build's own progress lines", () => {
+describe("unexpectedBuildLines", () =>
+{
+	test("passes a clean build's own progress lines", () =>
+	{
 		const log = [
 			"note: You are running `vp build` as a Vite+ built-in command. If you meant to run the build npm script, use `vpr build` instead.",
 			"\u001b[36m[nitro]\u001b[39m ◐ Building [Nitro] (preset: node-server, compatibility: 2026-11-05)",
@@ -21,7 +23,8 @@ describe("unexpectedBuildLines", () => {
 		expect(unexpectedBuildLines(log)).toStrictEqual([]);
 	});
 
-	test("names every warning line, whatever its wording", () => {
+	test("names every warning line, whatever its wording", () =>
+	{
 		const log = [
 			"[nitro] ✔ Generated public .output/public",
 			"Found 7 warnings while optimizing generated CSS:",

@@ -38,12 +38,14 @@ const RENAMED_NAV_SECTIONS: ReadonlyMap<unknown, NavSection> = new Map([
  * A saved pin on a renamed section carries over to its successor (once, even if both were pinned; other duplicates stay invalid);
  * retired sections are dropped. Either way the config stays valid.
  */
-export function renameLegacyNavSections(value: unknown): unknown {
+export function renameLegacyNavSections(value: unknown): unknown
+{
 	if (!Array.isArray(value)) return value;
 	const sections: unknown[] = value;
 	const kept = sections.filter((section) => !RETIRED_NAV_SECTIONS.has(section));
 	const result: unknown[] = [];
-	for (const section of kept) {
+	for (const section of kept)
+	{
 		const successor = RENAMED_NAV_SECTIONS.get(section);
 		if (successor === undefined) result.push(section);
 		else if (!kept.includes(successor) && !result.includes(successor)) result.push(successor);
@@ -60,7 +62,8 @@ export const DEFAULT_VISIBLE_NAV_SECTIONS: readonly NavSection[] = [
 	"customize",
 ];
 
-function inNavOrder(sections: ReadonlySet<NavSection>): NavSection[] {
+function inNavOrder(sections: ReadonlySet<NavSection>): NavSection[]
+{
 	return NAV_SECTIONS.filter((section) => sections.has(section));
 }
 
@@ -68,14 +71,16 @@ function inNavOrder(sections: ReadonlySet<NavSection>): NavSection[] {
 export function migrateLegacyNavFlags(legacy: {
 	showHerdrSection?: boolean | undefined;
 	showTmuxSection?: boolean | undefined;
-}): NavSection[] {
+}): NavSection[]
+{
 	const visible = new Set<NavSection>(DEFAULT_VISIBLE_NAV_SECTIONS);
 	if (legacy.showHerdrSection === true || legacy.showTmuxSection === true) visible.add("herdr");
 	return inNavOrder(visible);
 }
 
 /** Toggle one section, keeping nav order. */
-export function toggleNavSection(visible: readonly NavSection[], section: NavSection, pinned: boolean): NavSection[] {
+export function toggleNavSection(visible: readonly NavSection[], section: NavSection, pinned: boolean): NavSection[]
+{
 	const next = new Set(visible);
 	if (pinned) next.add(section);
 	else next.delete(section);

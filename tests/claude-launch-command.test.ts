@@ -1,26 +1,37 @@
 import {describe, expect, it} from "vite-plus/test";
 import {buildClaudeCopyCommand, validateClaudeLaunchArgs} from "../src/lib/claude-launch-command";
 
-describe("buildClaudeCopyCommand", () => {
+describe("buildClaudeCopyCommand", () =>
+{
 	it.each([
 		{
 			name: "no directory",
-			input: {prompt: "/skill-creator"},
+			input:
+			{
+				prompt: "/skill-creator",
+			},
 			expected: "claude '/skill-creator'",
 		},
 		{
 			name: "bare launch",
-			input: {cwd: "/Users/alice/project"},
+			input:
+			{
+				cwd: "/Users/alice/project",
+			},
 			expected: "cd '/Users/alice/project' && claude",
 		},
 		{
 			name: "directory with a single quote and spaces",
-			input: {cwd: "/Users/alice/bob's project"},
+			input:
+			{
+				cwd: "/Users/alice/bob's project",
+			},
 			expected: "cd '/Users/alice/bob'\\''s project' && claude",
 		},
 		{
 			name: "prompt with quotes, command substitution and newlines",
-			input: {
+			input:
+			{
 				cwd: "/Users/alice/project",
 				prompt: `it's "quoted" $(rm -rf ~) \`id\`\nsecond line`,
 			},
@@ -28,7 +39,8 @@ describe("buildClaudeCopyCommand", () => {
 		},
 		{
 			name: "fork with model, effort and permission mode",
-			input: {
+			input:
+			{
 				cwd: "/Users/alice/project",
 				args: [
 					"--resume",
@@ -48,46 +60,129 @@ describe("buildClaudeCopyCommand", () => {
 		},
 		{
 			name: "worktree launch",
-			input: {cwd: "/p", args: ["--worktree"], prompt: "hi"},
+			input:
+			{
+				cwd: "/p",
+				args: ["--worktree"],
+				prompt: "hi",
+			},
 			expected: "cd '/p' && claude --worktree 'hi'",
 		},
-	])("builds the $name command", ({input, expected}) => {
+	])("builds the $name command", ({input, expected}) =>
+	{
 		expect(buildClaudeCopyCommand(input)).toBe(expected);
 	});
 });
 
-describe("validateClaudeLaunchArgs", () => {
+describe("validateClaudeLaunchArgs", () =>
+{
 	it.each([
-		{args: [], expected: null},
-		{args: ["--resume", "session-test-100", "--fork-session"], expected: null},
-		{args: ["--model", "claude-opus-5-5", "--effort", "max"], expected: null},
-		{args: ["--effort", "ultracode"], expected: "invalid value for --effort"},
-		{args: ["--settings", '{"ultracode":true}'], expected: null},
-		{args: ["--settings", '{"fastMode":true,"ultracode":true}'], expected: null},
-		{args: ["--permission-mode", "acceptEdits"], expected: null},
-		{args: ["--dangerously-skip-permissions"], expected: "unsupported claude argument"},
-		{args: ["--model"], expected: "--model requires a value"},
-		{args: ["--model", "--effort"], expected: "invalid value for --model"},
-		{args: ["--effort", "extreme"], expected: "invalid value for --effort"},
-		{args: ["--permission-mode", "yolo"], expected: "invalid value for --permission-mode"},
-		{args: ["--resume", "$(id)"], expected: "invalid value for --resume"},
-		{args: ["--fork-session"], expected: "--fork-session requires --resume"},
-		{args: ["--resume", "session-test-100", "--resume-session-at", "message-test-7"], expected: null},
+		{
+			args: [],
+			expected: null,
+		},
+		{
+			args: ["--resume", "session-test-100", "--fork-session"],
+			expected: null,
+		},
+		{
+			args: ["--model", "claude-opus-5-5", "--effort", "max"],
+			expected: null,
+		},
+		{
+			args: ["--effort", "ultracode"],
+			expected: "invalid value for --effort",
+		},
+		{
+			args: ["--settings", '{"ultracode":true}'],
+			expected: null,
+		},
+		{
+			args: ["--settings", '{"fastMode":true,"ultracode":true}'],
+			expected: null,
+		},
+		{
+			args: ["--permission-mode", "acceptEdits"],
+			expected: null,
+		},
+		{
+			args: ["--dangerously-skip-permissions"],
+			expected: "unsupported claude argument",
+		},
+		{
+			args: ["--model"],
+			expected: "--model requires a value",
+		},
+		{
+			args: ["--model", "--effort"],
+			expected: "invalid value for --model",
+		},
+		{
+			args: ["--effort", "extreme"],
+			expected: "invalid value for --effort",
+		},
+		{
+			args: ["--permission-mode", "yolo"],
+			expected: "invalid value for --permission-mode",
+		},
+		{
+			args: ["--resume", "$(id)"],
+			expected: "invalid value for --resume",
+		},
+		{
+			args: ["--fork-session"],
+			expected: "--fork-session requires --resume",
+		},
+		{
+			args: ["--resume", "session-test-100", "--resume-session-at", "message-test-7"],
+			expected: null,
+		},
 		{
 			args: ["--resume", "session-test-100", "--resume-session-at", "$(id)"],
 			expected: "invalid value for --resume-session-at",
 		},
-		{args: ["--resume-session-at", "message-test-7"], expected: "--resume-session-at requires --resume"},
-		{args: ["--effort", "low", "--effort", "high"], expected: "duplicate claude argument"},
-		{args: ["--worktree"], expected: null},
-		{args: ["--model", "opus", "--settings", '{"fastMode":true}'], expected: null},
-		{args: ["--settings", '{"fastMode":false}'], expected: "invalid value for --settings"},
-		{args: ["--settings", '{"fastMode":true,"apiKeyHelper":"id"}'], expected: "invalid value for --settings"},
-		{args: ["--settings", "/tmp/settings.json"], expected: "invalid value for --settings"},
-		{args: ["--model", "opus", "--worktree"], expected: null},
-		{args: ["--worktree", "--worktree"], expected: "duplicate claude argument"},
-		{args: ["--resume", "abc", "--worktree"], expected: "--worktree cannot be used with --resume"},
-	])("returns $expected for $args", ({args, expected}) => {
+		{
+			args: ["--resume-session-at", "message-test-7"],
+			expected: "--resume-session-at requires --resume",
+		},
+		{
+			args: ["--effort", "low", "--effort", "high"],
+			expected: "duplicate claude argument",
+		},
+		{
+			args: ["--worktree"],
+			expected: null,
+		},
+		{
+			args: ["--model", "opus", "--settings", '{"fastMode":true}'],
+			expected: null,
+		},
+		{
+			args: ["--settings", '{"fastMode":false}'],
+			expected: "invalid value for --settings",
+		},
+		{
+			args: ["--settings", '{"fastMode":true,"apiKeyHelper":"id"}'],
+			expected: "invalid value for --settings",
+		},
+		{
+			args: ["--settings", "/tmp/settings.json"],
+			expected: "invalid value for --settings",
+		},
+		{
+			args: ["--model", "opus", "--worktree"],
+			expected: null,
+		},
+		{
+			args: ["--worktree", "--worktree"],
+			expected: "duplicate claude argument",
+		},
+		{
+			args: ["--resume", "abc", "--worktree"],
+			expected: "--worktree cannot be used with --resume",
+		},
+	])("returns $expected for $args", ({args, expected}) =>
+	{
 		expect(validateClaudeLaunchArgs(args)).toBe(expected);
 	});
 });

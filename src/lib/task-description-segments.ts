@@ -1,7 +1,8 @@
 import {normalizeArtifactUrl} from "./artifact-output";
 
 /** The word "artifact" or "artifacts" a task description links to an artifact URL. */
-export interface ArtifactWordLink {
+export interface ArtifactWordLink
+{
 	word: string;
 	href: string;
 }
@@ -26,26 +27,34 @@ const PLAIN_TASK_TYPES = new Set(["local_bash"]);
 export function taskDescriptionSegments(
 	description: string,
 	taskType: string | null,
-): TaskDescriptionSegment[] | undefined {
+): TaskDescriptionSegment[] | undefined
+{
 	if ((taskType !== null && PLAIN_TASK_TYPES.has(taskType)) || !description.includes("://")) return undefined;
 	let segments: TaskDescriptionSegment[] | undefined;
 	let pending = "";
 	let cursor = 0;
-	for (const match of description.matchAll(URL_PATTERN)) {
+	for (const match of description.matchAll(URL_PATTERN))
+	{
 		const url = match[0].replace(TRAILING_PUNCTUATION, "");
 		const artifact = normalizeArtifactUrl(url);
 		if (artifact === undefined) continue;
 		pending += description.slice(cursor, match.index);
 		cursor = match.index + url.length;
 		const word = ARTIFACT_WORD_BEFORE.exec(pending);
-		if (word === null) {
+		if (word === null)
+		{
 			pending += url;
 			continue;
 		}
 		segments ??= [];
 		const before = pending.slice(0, word.index);
 		if (before !== "") segments.push(before);
-		segments.push({word: word[1] ?? "", href: url});
+		segments.push(
+			{
+				word: word[1] ?? "",
+				href: url,
+			},
+		);
 		pending = "";
 	}
 	if (segments === undefined) return undefined;

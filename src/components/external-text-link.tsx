@@ -4,7 +4,8 @@ import {type ComponentProps, useId} from "react";
  * Upstream cds `bg`: the "(opens in new tab)" hint for an external TextLink. It is `hidden`, so it never joins the
  * link's accessible name; the link references it through `aria-describedby`, making it the accessible description.
  */
-export function ExternalLinkHint({id}: {id: string}) {
+export function ExternalLinkHint({id}: {id: string})
+{
 	return (
 		<span id={id} hidden className="sr-only">
 			(opens in new tab)
@@ -12,7 +13,10 @@ export function ExternalLinkHint({id}: {id: string}) {
 	);
 }
 
-type ExternalTextLinkProps = ComponentProps<"a"> & {href: string};
+type ExternalTextLinkProps = ComponentProps<"a"> &
+{
+	href: string;
+};
 
 /**
  * Upstream cds `TextLink` with `external`: opens in a new tab and appends the hidden hint as the last child, with its
@@ -24,7 +28,8 @@ export function ExternalTextLink({
 	className = "cds-reset text-link inline cursor-pointer",
 	"aria-describedby": describedBy,
 	...rest
-}: ExternalTextLinkProps) {
+}: ExternalTextLinkProps)
+{
 	const id = useId();
 	return (
 		<a

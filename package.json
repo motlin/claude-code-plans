@@ -3,7 +3,8 @@
 	"version": "1.0.0",
 	"description": "Claude Code Browser: a persistent HTTP server that browses your Claude Code data with syntax highlighting and real-time updates",
 	"type": "module",
-	"scripts": {
+	"scripts":
+	{
 		"preinstall": "npx only-allow pnpm",
 		"dev": "vp dev",
 		"preview": "vp preview",
@@ -11,8 +12,8 @@
 		"build": "vp build",
 		"oxlint": "vp lint . --fix",
 		"oxlint:ci": "vp lint . --format github",
-		"fmt": "vp fmt",
-		"fmt:ci": "vp fmt --check",
+		"fmt": "oxfmt-next-line",
+		"fmt:ci": "oxfmt-next-line --check",
 		"fallow": "fallow fix --yes --no-create-config",
 		"fallow:ci": "fallow dead-code",
 		"mcp": "tsx mcp-server/index.ts",
@@ -22,7 +23,8 @@
 		"build-storybook": "storybook build",
 		"prepare": "VITE_GIT_HOOKS=0 vp config"
 	},
-	"dependencies": {
+	"dependencies":
+	{
 		"@base-ui/react": "^1.8.0",
 		"@codemirror/commands": "6.11.0",
 		"@codemirror/state": "6.7.4",
@@ -60,7 +62,8 @@
 		"tailwindcss": "^4.3.3",
 		"zod": "^4.4.3"
 	},
-	"devDependencies": {
+	"devDependencies":
+	{
 		"@base-ui/utils": "0.4.0",
 		"@chromatic-com/storybook": "^5.6.0",
 		"@storybook/addon-a11y": "^10.6.4",

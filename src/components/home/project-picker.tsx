@@ -38,7 +38,8 @@ const CHOOSE_CLASS =
 const CHOOSE_CARET_CLASS =
 	"size-3 shrink-0 text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary";
 
-interface ProjectPickerProps {
+interface ProjectPickerProps
+{
 	projects: readonly StartProject[];
 	selected: StartProject | undefined;
 	onSelect: (projectId: string) => void;
@@ -49,12 +50,14 @@ interface ProjectPickerProps {
 }
 
 /** Restore focus to the trigger on close unless the selection handler already moved it elsewhere. */
-function keepFocusInPopup(popup: HTMLElement | null): boolean {
+function keepFocusInPopup(popup: HTMLElement | null): boolean
+{
 	const active = document.activeElement;
 	return active === null || active === document.body || popup?.contains(active) === true;
 }
 
-export function ProjectPicker({projects, selected, onSelect, variant = "chip", triggerRef}: ProjectPickerProps) {
+export function ProjectPicker({projects, selected, onSelect, variant = "chip", triggerRef}: ProjectPickerProps)
+{
 	const baseId = useId();
 	const popupRef = useRef<HTMLDivElement>(null);
 	const listboxId = `${baseId}-listbox`;
@@ -74,8 +77,10 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 	const active = filtered[activeIndex];
 	const activeDescendant = active === undefined ? undefined : `${baseId}-${active.id}`;
 
-	const handleOpenChange = (next: boolean) => {
-		if (next) {
+	const handleOpenChange = (next: boolean) =>
+	{
+		if (next)
+		{
 			setQuery("");
 			setActiveIndex(
 				Math.max(
@@ -90,20 +95,26 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 	// Upstream's ⌥⌘0 "New environment"; locally it opens the start card's Choose environment picker.
 	useShortcut(
 		"new_environment",
-		() => {
+		() =>
+		{
 			handleOpenChange(true);
 		},
-		{disabled: variant !== "choose"},
+		{
+			disabled: variant !== "choose",
+		},
 	);
 
-	const choose = (project: StartProject | undefined) => {
+	const choose = (project: StartProject | undefined) =>
+	{
 		if (project === undefined) return;
 		onSelect(project.id);
 		setOpen(false);
 	};
 
-	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-		switch (event.key) {
+	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) =>
+	{
+		switch (event.key)
+		{
 			case "ArrowDown":
 				event.preventDefault();
 				setActiveIndex((index) => Math.min(lastIndex, index + 1));
@@ -175,7 +186,8 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 							aria-activedescendant={activeDescendant}
 							placeholder="Search projects…"
 							value={query}
-							onChange={(event) => {
+							onChange={(event) =>
+							{
 								setQuery(event.target.value);
 								setActiveIndex(0);
 							}}
@@ -191,7 +203,8 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 							{filtered.length === 0 ? (
 								<p className="px-2 py-1 text-ink-muted">No matching projects</p>
 							) : (
-								filtered.map((p, index) => {
+								filtered.map((p, index) =>
+								{
 									const isSelected = p.id === selected?.id;
 									return (
 										// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
@@ -202,13 +215,16 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 											aria-selected={isSelected}
 											title={p.projectPath}
 											data-highlighted={index === activeIndex ? "" : undefined}
-											onMouseEnter={() => {
+											onMouseEnter={() =>
+											{
 												setActiveIndex(index);
 											}}
-											onMouseDown={(event) => {
+											onMouseDown={(event) =>
+											{
 												event.preventDefault();
 											}}
-											onClick={() => {
+											onClick={() =>
+											{
 												choose(p);
 											}}
 											className={OPTION_CLASS}

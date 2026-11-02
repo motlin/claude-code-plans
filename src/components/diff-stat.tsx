@@ -2,16 +2,23 @@ import {useCountTween} from "../hooks/use-count-tween";
 import {pluralize} from "../lib/pluralize";
 
 const numberFormat = new Intl.NumberFormat("en-US");
-const unitList = new Intl.ListFormat("en-US", {type: "unit"});
+const unitList = new Intl.ListFormat(
+	"en-US",
+	{
+		type: "unit",
+	},
+);
 
-function srCounts(added: number, removed: number): string {
+function srCounts(added: number, removed: number): string
+{
 	return unitList.format([
 		`${numberFormat.format(added)} ${pluralize(added, "addition")}`,
 		`${numberFormat.format(removed)} ${pluralize(removed, "deletion")}`,
 	]);
 }
 
-interface DiffStatProps {
+interface DiffStatProps
+{
 	added: number;
 	removed: number;
 	className?: string | undefined;
@@ -27,10 +34,12 @@ function DiffStatView({
 	shownAdded,
 	shownRemoved,
 	className,
-}: DiffStatProps & {
+}: DiffStatProps &
+{
 	shownAdded: number;
 	shownRemoved: number;
-}) {
+})
+{
 	return (
 		<span dir="ltr" className={className === undefined ? "tabular-nums" : `tabular-nums ${className}`}>
 			<span className="sr-only">{srCounts(added, removed)}</span>
@@ -43,14 +52,16 @@ function DiffStatView({
 }
 
 /** Upstream's static `$e`: settled stats (turn changes card, settled tool rows). */
-export function DiffStat({added, removed, className}: DiffStatProps) {
+export function DiffStat({added, removed, className}: DiffStatProps)
+{
 	return (
 		<DiffStatView added={added} removed={removed} shownAdded={added} shownRemoved={removed} className={className} />
 	);
 }
 
 /** Upstream's `Qe`: live stats whose visible digits ease to each new count (two independent tweens). */
-export function AnimatedDiffStat({added, removed, className}: DiffStatProps) {
+export function AnimatedDiffStat({added, removed, className}: DiffStatProps)
+{
 	const shownAdded = useCountTween(added);
 	const shownRemoved = useCountTween(removed);
 	return (

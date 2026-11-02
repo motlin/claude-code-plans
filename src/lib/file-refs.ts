@@ -17,19 +17,22 @@ export const DISABLED_REASON_WRAPPER_ATTR = "data-cds-disabled-reason-wrapper";
 export const DISABLED_REASON_ATTR = "data-cds-disabled-reason";
 
 /** Upstream's `ir()` reason copy for each block. */
-export const FILE_REF_BLOCK_REASONS = {
+export const FILE_REF_BLOCK_REASONS =
+{
 	outside_roots: "This file is outside this session’s folders, so it can’t be opened here.",
 	missing: "Couldn’t find this file, so it can’t be opened. You can ask Claude to create it or check the path.",
 } as const satisfies Record<FileRefBlock, string>;
 
 /** A stable id for a reason element: the same path and block always share one, and they say the same thing. */
-export function fileRefReasonId(path: string, block: FileRefBlock): string {
+export function fileRefReasonId(path: string, block: FileRefBlock): string
+{
 	let hash = 5381;
 	for (const char of `${block}\0${path}`) hash = (Math.imul(hash, 33) ^ (char.codePointAt(0) ?? 0)) >>> 0;
 	return `file-ref-reason-${hash.toString(36)}`;
 }
 
-export interface FileRef {
+export interface FileRef
+{
 	/** Absolute path of the confirmed file, or of the blocked path. */
 	path: string;
 	line?: number;
@@ -38,7 +41,8 @@ export interface FileRef {
 	block?: FileRefBlock;
 }
 
-export interface ParsedFileRefText {
+export interface ParsedFileRefText
+{
 	/** The path as written, without a leading `./` or a line suffix. */
 	target: string;
 	line?: number;
@@ -58,13 +62,37 @@ const FILE_REF_PATTERN = new RegExp(
 const MAX_PATH_LENGTH = 1024;
 
 /** Upstream's line-range rule `H`: equal ends collapse, reversed ranges swap. */
-function lineRange(start: string | undefined, end: string | undefined): {line?: number; endLine?: number} {
+function lineRange(
+	start: string | undefined,
+	end: string | undefined,
+):
+{
+	line?: number;
+	endLine?: number;
+}
+{
 	if (start === undefined) return {};
 	const line = Number(start);
-	if (end === undefined) return {line};
+	if (end === undefined)
+		return {
+			line,
+		};
 	const endLine = Number(end);
-	if (endLine === line) return {line};
-	return endLine < line ? {line: endLine, endLine: line} : {line, endLine};
+	if (endLine === line)
+		return {
+			line,
+		};
+	return endLine < line
+		?
+			{
+				line: endLine,
+				endLine: line,
+			}
+		:
+			{
+				line,
+				endLine,
+			};
 }
 
 /**
@@ -72,7 +100,8 @@ function lineRange(start: string | undefined, end: string | undefined): {line?: 
  * the text doesn't match upstream's file-ref grammar. Like upstream
  * (c19e90103 `Ke(path).length>0`), a path holding a secret is never a ref.
  */
-export function parseFileRefText(text: string): ParsedFileRefText | null {
+export function parseFileRefText(text: string): ParsedFileRefText | null
+{
 	if (text.length > MAX_PATH_LENGTH) return null;
 	if (findSecrets(text).length > 0) return null;
 	const match = FILE_REF_PATTERN.exec(text);
@@ -81,15 +110,21 @@ export function parseFileRefText(text: string): ParsedFileRefText | null {
 	// Upstream's `W` rejects a file directly under the filesystem root.
 	if (/^\/[^/]+$/.test(target)) return null;
 	while (target.startsWith("./")) target = target.slice(2);
-	return {target, ...lineRange(match[2], match[3])};
+	return {
+		target,
+		...lineRange(match[2], match[3]),
+	};
 }
 
 /** Join and normalize `.`/`..` segments; null if `..` climbs above the root. */
-function joinPath(base: string, relativePath: string): string | null {
+function joinPath(base: string, relativePath: string): string | null
+{
 	const segments: string[] = [];
-	for (const segment of `${base}/${relativePath}`.split("/")) {
+	for (const segment of `${base}/${relativePath}`.split("/"))
+	{
 		if (segment === "" || segment === ".") continue;
-		if (segment === "..") {
+		if (segment === "..")
+		{
 			if (segments.pop() === undefined) return null;
 			continue;
 		}
@@ -103,19 +138,24 @@ function joinPath(base: string, relativePath: string): string | null {
  * itself when absolute, otherwise relative to the working directory, then any
  * session path ending in it.
  */
-function candidatePaths(target: string, sessionPaths: readonly string[], cwd: string | undefined): string[] {
-	if (target.startsWith("/")) {
+function candidatePaths(target: string, sessionPaths: readonly string[], cwd: string | undefined): string[]
+{
+	if (target.startsWith("/"))
+	{
 		const normalized = joinPath("/", target);
 		return normalized === null ? [] : [normalized];
 	}
 	const candidates: string[] = [];
-	if (cwd !== undefined) {
+	if (cwd !== undefined)
+	{
 		const joined = joinPath(cwd, target);
 		if (joined !== null) candidates.push(joined);
 	}
-	if (!target.split("/").includes("..")) {
+	if (!target.split("/").includes(".."))
+	{
 		const suffix = `/${target}`;
-		for (const path of sessionPaths) {
+		for (const path of sessionPaths)
+		{
 			if (path.endsWith(suffix) && !candidates.includes(path)) candidates.push(path);
 		}
 	}
@@ -127,9 +167,11 @@ export function fileRefStatCandidates(
 	inlineCodes: Iterable<string>,
 	sessionPaths: readonly string[],
 	cwd: string | undefined,
-): string[] {
+): string[]
+{
 	const seen = new Set<string>();
-	for (const text of inlineCodes) {
+	for (const text of inlineCodes)
+	{
 		const parsed = parseFileRefText(text);
 		if (parsed === null) continue;
 		for (const path of candidatePaths(parsed.target, sessionPaths, cwd)) seen.add(path);
@@ -142,7 +184,8 @@ function resolveTarget(
 	known: readonly string[],
 	knownSet: ReadonlySet<string>,
 	cwd: string | undefined,
-): string | null {
+): string | null
+{
 	// Suffix candidates come from `known` itself, so only the first needs a check.
 	const candidates = candidatePaths(target, known, cwd);
 	const [first, ...rest] = candidates;
@@ -153,8 +196,12 @@ function resolveTarget(
 	return suffixMatches.length === 1 ? (suffixMatches[0] ?? null) : null;
 }
 
-function refFor(parsed: ParsedFileRefText, path: string): FileRef {
-	const ref: FileRef = {path};
+function refFor(parsed: ParsedFileRefText, path: string): FileRef
+{
+	const ref: FileRef =
+	{
+		path,
+	};
 	if (parsed.line !== undefined) ref.line = parsed.line;
 	if (parsed.endLine !== undefined) ref.endLine = parsed.endLine;
 	return ref;
@@ -176,7 +223,8 @@ export function resolveFileRefs(
 	cwd: string | undefined,
 	outsidePaths: Iterable<string> = [],
 	missingPaths: Iterable<string> = [],
-): Map<string, FileRef> {
+): Map<string, FileRef>
+{
 	const known = [...knownPaths];
 	const knownSet = new Set(known);
 	const outside = [...outsidePaths];
@@ -184,18 +232,27 @@ export function resolveFileRefs(
 	const missing = [...missingPaths];
 	const missingSet = new Set(missing);
 	const refs = new Map<string, FileRef>();
-	for (const text of inlineCodes) {
+	for (const text of inlineCodes)
+	{
 		if (refs.has(text)) continue;
 		const parsed = parseFileRefText(text);
 		if (parsed === null) continue;
 		const path = resolveTarget(parsed.target, known, knownSet, cwd);
-		if (path !== null) {
+		if (path !== null)
+		{
 			refs.set(text, refFor(parsed, path));
 			continue;
 		}
 		const blocked = outside.length === 0 ? null : resolveTarget(parsed.target, outside, outsideSet, cwd);
-		if (blocked !== null) {
-			refs.set(text, {...refFor(parsed, blocked), block: "outside_roots"});
+		if (blocked !== null)
+		{
+			refs.set(
+				text,
+				{
+					...refFor(parsed, blocked),
+					block: "outside_roots",
+				},
+			);
 			continue;
 		}
 		const optimistic = missing.length === 0 ? null : resolveTarget(parsed.target, missing, missingSet, cwd);

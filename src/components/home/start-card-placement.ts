@@ -19,11 +19,13 @@ const PROMPT_CLEARANCE_REM = 2.75;
 const ALLOWANCE_PX = 2;
 
 /** Upstream's `kZ(1, hasList)`: one env card's allowance in rem, 0.75rem more when it shows. */
-function allowanceRem(hasList: boolean): number {
+function allowanceRem(hasList: boolean): number
+{
 	return 2.5 + (hasList ? 0.75 : 0);
 }
 
-export interface StartCardPlacementInput {
+export interface StartCardPlacementInput
+{
 	/** The scroller's height. */
 	room: number;
 	/** From the scroller's top to the composer's bottom edge less 2.75rem. */
@@ -46,17 +48,23 @@ export interface StartCardPlacementInput {
  * Upstream's `AZ`: centre only the env card (plus an allowance) in the space above the composer, so Next steps
  * hangs below it, and hide Next steps when the card plus Next steps plus the foot would overflow the scroller.
  */
-export function placeStartCard({room, rest, list, rem, environments, setup, foot, hidden}: StartCardPlacementInput): {
+export function placeStartCard({room, rest, list, rem, environments, setup, foot, hidden}: StartCardPlacementInput):
+{
 	top: number;
 	setupFits: boolean;
-} {
+}
+{
 	const allow = list + ALLOWANCE_PX + allowanceRem(list > 0) * rem;
 	const top = Math.max(0, (rest - allow) / 2);
-	return {top, setupFits: top + environments + setup + foot + (hidden ? 1 : 0) <= room};
+	return {
+		top,
+		setupFits: top + environments + setup + foot + (hidden ? 1 : 0) <= room,
+	};
 }
 
 /** Upstream's `NZ`: a card's height plus the gap above it. */
-function stackedHeight(total: number, card: HTMLElement): number {
+function stackedHeight(total: number, card: HTMLElement): number
+{
 	const previous = card.previousElementSibling;
 	return (
 		total +
@@ -68,21 +76,24 @@ function stackedHeight(total: number, card: HTMLElement): number {
  * Upstream's `MZ`: watch the scroller (the wrapper's parent), the card slot (its second child) and the env card, and
  * on every resize set the spacer's (its first child's) max-height and toggle {@link START_CARD_SETUP_HIDDEN}.
  */
-function observeStartCardPlacement(wrapper: HTMLElement): (() => void) | undefined {
+function observeStartCardPlacement(wrapper: HTMLElement): (() => void) | undefined
+{
 	const scroller = wrapper.parentElement;
 	const [spacer, slot] = wrapper.children;
 	const view = wrapper.ownerDocument.defaultView;
 	if (!scroller || !(spacer instanceof HTMLElement) || !(slot instanceof HTMLElement) || !view) return undefined;
 	const observer =
 		typeof view.ResizeObserver === "function"
-			? new view.ResizeObserver(() => {
+			? new view.ResizeObserver(() =>
+				{
 					place();
 				})
 			: undefined;
 	// Hidden cards measure 0, so the last visible measurement is kept while they are hidden.
 	let setup = 0;
 	let list: Element | null = null;
-	const place = () => {
+	const place = () =>
+	{
 		const composer = wrapper.ownerDocument.querySelector("[data-home-composer] [data-composer-card]");
 		const cards = [...slot.querySelectorAll<HTMLElement>(`[${START_CARD_SETUP}]`)];
 		const visible = cards.some((card) => card.offsetHeight > 0);
@@ -95,38 +106,44 @@ function observeStartCardPlacement(wrapper: HTMLElement): (() => void) | undefin
 		const clearance =
 			PROMPT_CLEARANCE_REM * rem * (Number.parseFloat(style.getPropertyValue("--cds-rem-scale")) || 1);
 		const environments = slot.querySelector(`[${START_CARD_ENVIRONMENTS}]`);
-		if (environments !== list) {
+		if (environments !== list)
+		{
 			if (list) observer?.unobserve(list);
 			if (environments) observer?.observe(environments);
 			list = environments;
 		}
 		const foot = Number.parseFloat(style.paddingBottom);
-		const {top, setupFits} = placeStartCard({
-			room: box.height,
-			rest: composer ? composer.getBoundingClientRect().bottom - clearance - box.top : box.height,
-			list: environments?.getBoundingClientRect().height ?? 0,
-			rem,
-			environments: slot.getBoundingClientRect().height - (visible ? setup : 0),
-			setup,
-			foot: Number.isNaN(foot) ? 0 : foot,
-			hidden: wrapper.hasAttribute(START_CARD_SETUP_HIDDEN),
-		});
+		const {top, setupFits} = placeStartCard(
+			{
+				room: box.height,
+				rest: composer ? composer.getBoundingClientRect().bottom - clearance - box.top : box.height,
+				list: environments?.getBoundingClientRect().height ?? 0,
+				rem,
+				environments: slot.getBoundingClientRect().height - (visible ? setup : 0),
+				setup,
+				foot: Number.isNaN(foot) ? 0 : foot,
+				hidden: wrapper.hasAttribute(START_CARD_SETUP_HIDDEN),
+			},
+		);
 		spacer.style.maxHeight = `${top}px`;
 		wrapper.toggleAttribute(START_CARD_SETUP_HIDDEN, !setupFits);
 	};
 	// jsdom has no ResizeObserver; the one placement below is all it gets.
-	if (observer) {
+	if (observer)
+	{
 		observer.observe(scroller);
 		observer.observe(slot);
 	}
 	place();
-	return () => {
+	return () =>
+	{
 		observer?.disconnect();
 	};
 }
 
 /** A ref for the start card wrapper that keeps it centred above the composer (upstream's `SG`). */
-export function useStartCardPlacement(): RefCallback<HTMLDivElement> {
+export function useStartCardPlacement(): RefCallback<HTMLDivElement>
+{
 	return useCallback(
 		(wrapper: HTMLDivElement | null) => (wrapper ? observeStartCardPlacement(wrapper) : undefined),
 		[],

@@ -2,23 +2,40 @@ import {describe, expect, it} from "vite-plus/test";
 import {assistantTurnDetails, userTurnDetails} from "../src/lib/turn-metadata";
 import type {MessageSessionLine} from "../src/lib/transcript";
 
-function assistantLine(extra: Partial<MessageSessionLine>, message: Record<string, unknown> = {}): MessageSessionLine {
+function assistantLine(extra: Partial<MessageSessionLine>, message: Record<string, unknown> = {}): MessageSessionLine
+{
 	return {
 		type: "assistant",
 		lineIndex: 0,
-		message: {role: "assistant", content: [{type: "text", text: "hi"}], ...message},
+		message:
+		{
+			role: "assistant",
+			content: [
+				{
+					type: "text",
+					text: "hi",
+				},
+			],
+			...message,
+		},
 		...extra,
 	};
 }
 
-const VERBOSE = {verbose: true};
+const VERBOSE =
+{
+	verbose: true,
+};
 
-describe("assistantTurnDetails", () => {
-	it("has nothing to say about a turn without usage, effort, advisor, transformations, or safeguards", () => {
+describe("assistantTurnDetails", () =>
+{
+	it("has nothing to say about a turn without usage, effort, advisor, transformations, or safeguards", () =>
+	{
 		expect(assistantTurnDetails(assistantLine({}), VERBOSE)).toStrictEqual([]);
 	});
 
-	it("says nothing about evaluated safeguards that flagged nothing", () => {
+	it("says nothing about evaluated safeguards that flagged nothing", () =>
+	{
 		const line = assistantLine(
 			{},
 			{
@@ -26,9 +43,17 @@ describe("assistantTurnDetails", () => {
 				safeguard_results: [
 					{
 						type: "dangerous_tool_use",
-						status: {
+						status:
+						{
 							type: "available",
-							tool_uses: {toolu_1: {type: "evaluated", outcome: "not_flagged"}},
+							tool_uses:
+							{
+								toolu_1:
+								{
+									type: "evaluated",
+									outcome: "not_flagged",
+								},
+							},
 						},
 					},
 				],
@@ -37,44 +62,70 @@ describe("assistantTurnDetails", () => {
 		expect(assistantTurnDetails(line, VERBOSE)).toStrictEqual([]);
 	});
 
-	it("lists token usage, truncation, per-turn effort and the advisor model", () => {
+	it("lists token usage, truncation, per-turn effort and the advisor model", () =>
+	{
 		expect(
 			assistantTurnDetails(
-				assistantLine({
-					usage: {
-						input_tokens: 800,
-						cache_read_input_tokens: 595_000,
-						cache_creation_input_tokens: 0,
-						output_tokens: 595,
+				assistantLine(
+					{
+						usage:
+						{
+							input_tokens: 800,
+							cache_read_input_tokens: 595_000,
+							cache_creation_input_tokens: 0,
+							output_tokens: 595,
+						},
+						stopReason: "max_tokens",
+						perTurnEffort: "high",
+						advisorModel: "claude-opus-5-5",
 					},
-					stopReason: "max_tokens",
-					perTurnEffort: "high",
-					advisorModel: "claude-opus-5-5",
-				}),
+				),
 				VERBOSE,
 			),
 		).toStrictEqual(["595.8k in / 595 out", "Truncated at max tokens", "high effort", "advisor Opus 5.5"]);
 	});
 
-	it("names the requested model when a different one answered", () => {
+	it("names the requested model when a different one answered", () =>
+	{
 		expect(
 			assistantTurnDetails(
-				assistantLine({modelMismatch: {requested: "claude-opus-5-5", actual: "claude-sonnet-5-5"}}),
+				assistantLine(
+					{
+						modelMismatch:
+						{
+							requested: "claude-opus-5-5",
+							actual: "claude-sonnet-5-5",
+						},
+					},
+				),
 				VERBOSE,
 			),
 		).toStrictEqual(["requested Opus 5.5, answered by Sonnet 5.5"]);
 	});
 
-	it("counts dropped thinking blocks with their reasons", () => {
+	it("counts dropped thinking blocks with their reasons", () =>
+	{
 		expect(
 			assistantTurnDetails(
 				assistantLine(
 					{},
 					{
 						input_transformations: [
-							{type: "thinking_dropped", path: "messages.2.content.0", reason: "model_binding_mismatch"},
-							{type: "thinking_dropped", path: "messages.5.content.0", reason: "model_binding_mismatch"},
-							{type: "thinking_dropped", path: "messages.8.content.0", reason: "prefix_binding_mismatch"},
+							{
+								type: "thinking_dropped",
+								path: "messages.2.content.0",
+								reason: "model_binding_mismatch",
+							},
+							{
+								type: "thinking_dropped",
+								path: "messages.5.content.0",
+								reason: "model_binding_mismatch",
+							},
+							{
+								type: "thinking_dropped",
+								path: "messages.8.content.0",
+								reason: "prefix_binding_mismatch",
+							},
 						],
 					},
 				),
@@ -83,15 +134,34 @@ describe("assistantTurnDetails", () => {
 		).toStrictEqual(["3 thinking blocks dropped (model_binding_mismatch ×2, prefix_binding_mismatch ×1)"]);
 	});
 
-	it("leaves dropped thinking blocks out of Normal mode", () => {
+	it("leaves dropped thinking blocks out of Normal mode", () =>
+	{
 		const line = assistantLine(
-			{perTurnEffort: "high"},
-			{input_transformations: [{type: "thinking_dropped", path: "messages.2.content.0", reason: "x"}]},
+			{
+				perTurnEffort: "high",
+			},
+			{
+				input_transformations: [
+					{
+						type: "thinking_dropped",
+						path: "messages.2.content.0",
+						reason: "x",
+					},
+				],
+			},
 		);
-		expect(assistantTurnDetails(line, {verbose: false})).toStrictEqual(["high effort"]);
+		expect(
+			assistantTurnDetails(
+				line,
+				{
+					verbose: false,
+				},
+			),
+		).toStrictEqual(["high effort"]);
 	});
 
-	it("flags safeguard outcomes other than not_flagged and unavailable safeguards", () => {
+	it("flags safeguard outcomes other than not_flagged and unavailable safeguards", () =>
+	{
 		expect(
 			assistantTurnDetails(
 				assistantLine(
@@ -100,15 +170,31 @@ describe("assistantTurnDetails", () => {
 						safeguard_results: [
 							{
 								type: "dangerous_tool_use",
-								status: {
+								status:
+								{
 									type: "available",
-									tool_uses: {
-										toolu_1: {type: "evaluated", outcome: "flagged"},
-										toolu_2: {type: "evaluated", outcome: "not_flagged"},
+									tool_uses:
+									{
+										toolu_1:
+										{
+											type: "evaluated",
+											outcome: "flagged",
+										},
+										toolu_2:
+										{
+											type: "evaluated",
+											outcome: "not_flagged",
+										},
 									},
 								},
 							},
-							{type: "prompt_injection", status: {type: "unavailable"}},
+							{
+								type: "prompt_injection",
+								status:
+								{
+									type: "unavailable",
+								},
+							},
 						],
 					},
 				),
@@ -120,75 +206,152 @@ describe("assistantTurnDetails", () => {
 	});
 });
 
-describe("userTurnDetails", () => {
-	it("has nothing to say about an ordinary typed prompt", () => {
-		expect(userTurnDetails({type: "user", lineIndex: 0})).toStrictEqual([]);
+describe("userTurnDetails", () =>
+{
+	it("has nothing to say about an ordinary typed prompt", () =>
+	{
+		expect(
+			userTurnDetails(
+				{
+					type: "user",
+					lineIndex: 0,
+				},
+			),
+		).toStrictEqual([]);
 	});
 
-	it("names a scheduled origin, the prompt source and a queued-for-later turn", () => {
+	it("names a scheduled origin, the prompt source and a queued-for-later turn", () =>
+	{
 		expect(
-			userTurnDetails({
-				type: "user",
-				lineIndex: 0,
-				turnOrigin: "scheduled",
-				scheduledTaskId: "ecc5631f",
-				queuePriority: "later",
-			}),
+			userTurnDetails(
+				{
+					type: "user",
+					lineIndex: 0,
+					turnOrigin: "scheduled",
+					scheduledTaskId: "ecc5631f",
+					queuePriority: "later",
+				},
+			),
 		).toStrictEqual(["Scheduled task ecc5631f · queued for later"]);
 	});
 
-	it("names the wakeup source of a scheduled turn", () => {
-		expect({
-			loop: userTurnDetails({
-				type: "user",
-				lineIndex: 0,
-				turnOrigin: "scheduled",
-				scheduledTaskId: "e56aacad",
-				wakeupSource: "loop_wakeup",
-				promptSource: "system",
-				queuePriority: "later",
-			}),
-			schedule: userTurnDetails({
-				type: "user",
-				lineIndex: 0,
-				turnOrigin: "scheduled",
-				wakeupSource: "schedule_wakeup",
-			}),
-		}).toStrictEqual({
-			loop: ["Scheduled task e56aacad (Loop wakeup) · System prompt · queued for later"],
-			schedule: ["Scheduled task (Schedule wakeup)"],
-		});
-	});
-
-	it("names a peer origin and a non-typed prompt source", () => {
-		expect({
-			peer: userTurnDetails({type: "user", lineIndex: 0, turnOrigin: "peer"}),
-			harness: userTurnDetails({type: "user", lineIndex: 0, turnOrigin: "system", promptSource: "system"}),
-			sdk: userTurnDetails({type: "user", lineIndex: 0, turnOrigin: "sdk", promptSource: "sdk"}),
-			suggestion: userTurnDetails({type: "user", lineIndex: 0, promptSource: "suggestion_accepted"}),
-			system: userTurnDetails({type: "user", lineIndex: 0, promptSource: "system", queuePriority: "later"}),
-		}).toStrictEqual({
-			peer: ["From another session"],
-			harness: ["System notice · System prompt"],
-			sdk: ["From the SDK · SDK prompt"],
-			suggestion: ["Suggestion accepted prompt"],
-			system: ["System prompt · queued for later"],
-		});
-	});
-
-	it("gives the classifier's branch with the live cwd and platform", () => {
+	it("names the wakeup source of a scheduled turn", () =>
+	{
 		expect(
-			userTurnDetails({
-				type: "user",
-				lineIndex: 0,
-				classifierContext: {liveCwd: "/repo/sub", branch: "feature", platform: "macos"},
-			}),
+			{
+				loop: userTurnDetails(
+					{
+						type: "user",
+						lineIndex: 0,
+						turnOrigin: "scheduled",
+						scheduledTaskId: "e56aacad",
+						wakeupSource: "loop_wakeup",
+						promptSource: "system",
+						queuePriority: "later",
+					},
+				),
+				schedule: userTurnDetails(
+					{
+						type: "user",
+						lineIndex: 0,
+						turnOrigin: "scheduled",
+						wakeupSource: "schedule_wakeup",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				loop: ["Scheduled task e56aacad (Loop wakeup) · System prompt · queued for later"],
+				schedule: ["Scheduled task (Schedule wakeup)"],
+			},
+		);
+	});
+
+	it("names a peer origin and a non-typed prompt source", () =>
+	{
+		expect(
+			{
+				peer: userTurnDetails(
+					{
+						type: "user",
+						lineIndex: 0,
+						turnOrigin: "peer",
+					},
+				),
+				harness: userTurnDetails(
+					{
+						type: "user",
+						lineIndex: 0,
+						turnOrigin: "system",
+						promptSource: "system",
+					},
+				),
+				sdk: userTurnDetails(
+					{
+						type: "user",
+						lineIndex: 0,
+						turnOrigin: "sdk",
+						promptSource: "sdk",
+					},
+				),
+				suggestion: userTurnDetails(
+					{
+						type: "user",
+						lineIndex: 0,
+						promptSource: "suggestion_accepted",
+					},
+				),
+				system: userTurnDetails(
+					{
+						type: "user",
+						lineIndex: 0,
+						promptSource: "system",
+						queuePriority: "later",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				peer: ["From another session"],
+				harness: ["System notice · System prompt"],
+				sdk: ["From the SDK · SDK prompt"],
+				suggestion: ["Suggestion accepted prompt"],
+				system: ["System prompt · queued for later"],
+			},
+		);
+	});
+
+	it("gives the classifier's branch with the live cwd and platform", () =>
+	{
+		expect(
+			userTurnDetails(
+				{
+					type: "user",
+					lineIndex: 0,
+					classifierContext:
+					{
+						liveCwd: "/repo/sub",
+						branch: "feature",
+						platform: "macos",
+					},
+				},
+			),
 		).toStrictEqual(["Branch feature (/repo/sub · macos)"]);
 	});
 
-	it("falls back to the live cwd when there is no branch", () => {
-		expect(userTurnDetails({type: "user", lineIndex: 0, classifierContext: {liveCwd: "/tmp"}})).toStrictEqual([
-			"Directory /tmp",
-		]);
+	it("falls back to the live cwd when there is no branch", () =>
+	{
+		expect(
+			userTurnDetails(
+				{
+					type: "user",
+					lineIndex: 0,
+					classifierContext:
+					{
+						liveCwd: "/tmp",
+					},
+				},
+			),
+		).toStrictEqual(["Directory /tmp"]);
 	});
 });

@@ -16,7 +16,8 @@ export const SettingsTabSchema = z.enum([
 
 export type SettingsTab = z.infer<typeof SettingsTabSchema>;
 
-export interface SettingsLocation {
+export interface SettingsLocation
+{
 	tab: SettingsTab;
 	row: string | null;
 }
@@ -24,17 +25,22 @@ export interface SettingsLocation {
 const SETTINGS_HASH = /^#?settings\/([^/]+)(?:\/([a-z0-9-]*))?$/;
 
 /** Parse a location hash (with or without the leading `#`) into a Settings tab and row. */
-export function parseSettingsHash(hash: string): SettingsLocation | null {
+export function parseSettingsHash(hash: string): SettingsLocation | null
+{
 	const match = SETTINGS_HASH.exec(hash);
 	if (match === null) return null;
 	const tab = SettingsTabSchema.safeParse(match[1]);
 	if (!tab.success) return null;
 	const row = match[2];
-	return {tab: tab.data, row: row === undefined || row === "" ? null : row};
+	return {
+		tab: tab.data,
+		row: row === undefined || row === "" ? null : row,
+	};
 }
 
 /** The hash (without `#`) that opens Settings on `tab`, optionally at `row`. */
-export function settingsHash(tab: SettingsTab, row?: string): string {
+export function settingsHash(tab: SettingsTab, row?: string): string
+{
 	return row === undefined ? `settings/${tab}` : `settings/${tab}/${row}`;
 }
 
@@ -49,7 +55,8 @@ export type CustomizeView = z.infer<typeof CustomizeViewSchema>;
 export const CustomizeDetailTabSchema = z.enum(["contents", "skills", "connectors", "agents", "commands", "hooks"]);
 export type CustomizeDetailTab = z.infer<typeof CustomizeDetailTabSchema>;
 
-export interface CustomizeLocation {
+export interface CustomizeLocation
+{
 	section: CustomizeSection;
 	view: CustomizeView;
 	/** The decoded skill id, plugin id or connector slug of an open detail, or null on the list. */
@@ -61,16 +68,21 @@ export interface CustomizeLocation {
 
 const CUSTOMIZE_HASH = /^#?customize\/([a-z]+)(?:\/([a-z]+)(?:\/id\/([^/]+)(?:\/([a-z]+)(?:\/([^/]+))?)?)?)?$/;
 
-function decodeSegment(segment: string): string | null {
-	try {
+function decodeSegment(segment: string): string | null
+{
+	try
+	{
 		return decodeURIComponent(segment);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
 /** Parse `#customize/<section>[/(yours|discover)][/id/<id>[/<tab>[/<file>]]]`, with `<id>` and `<file>` URI-encoded. */
-export function parseCustomizeHash(hash: string): CustomizeLocation | null {
+export function parseCustomizeHash(hash: string): CustomizeLocation | null
+{
 	const match = CUSTOMIZE_HASH.exec(hash);
 	if (match === null) return null;
 	const [, rawSection, rawView, rawId, rawTab, rawFile] = match;
@@ -88,10 +100,17 @@ export function parseCustomizeHash(hash: string): CustomizeLocation | null {
 	if (tabValue !== null && !detailTabAllowed(section.data, tabValue)) return null;
 	const file = rawFile === undefined ? null : decodeSegment(rawFile);
 	if (rawFile !== undefined && (file === null || section.data !== "plugins" || tabValue !== "contents")) return null;
-	return {section: section.data, view: view.data, id, tab: tabValue, file};
+	return {
+		section: section.data,
+		view: view.data,
+		id,
+		tab: tabValue,
+		file,
+	};
 }
 
-function detailTabAllowed(section: CustomizeSection, tab: CustomizeDetailTab): boolean {
+function detailTabAllowed(section: CustomizeSection, tab: CustomizeDetailTab): boolean
+{
 	if (section === "plugins") return true;
 	return section === "skills" && tab === "contents";
 }
@@ -106,7 +125,11 @@ export function customizeHash({
 	id = null,
 	tab = null,
 	file = null,
-}: {section: CustomizeSection} & Partial<Omit<CustomizeLocation, "section">>): string {
+}:
+{
+	section: CustomizeSection;
+} & Partial<Omit<CustomizeLocation, "section">>): string
+{
 	if (id === null) return view === "discover" ? `customize/${section}` : `customize/${section}/${view}`;
 	let hash = `customize/${section}/${view}`;
 	hash += `/id/${encodeURIComponent(id)}`;

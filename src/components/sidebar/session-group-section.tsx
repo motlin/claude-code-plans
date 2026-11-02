@@ -1,7 +1,8 @@
 import {sectionHoverWithinProps} from "../../lib/section-hover-within";
 import {Link, useNavigate} from "@tanstack/react-router";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
-import {
+import
+{
 	Fragment,
 	useCallback,
 	useEffect,
@@ -30,7 +31,8 @@ import type {GroupAppearance} from "../../lib/group-appearance";
 import {useProjectAppearance} from "../../lib/project-appearance-store";
 import {setPendingLaunchGroup, useSessionGroups} from "../../lib/session-group-store";
 import {assertNever} from "../../lib/assert-never";
-import {
+import
+{
 	customGroupIdOfKey,
 	customGroupLaunchTarget,
 	GROUP_PAGE_SIZE,
@@ -38,7 +40,8 @@ import {
 	type SessionGroup,
 	type SessionListPrefs,
 } from "../../lib/session-groups";
-import {
+import
+{
 	familyKey,
 	setFamiliesCollapsed,
 	toggleFamilyCollapsed,
@@ -68,14 +71,16 @@ import {ROVING_ITEM_PROPS} from "./use-roving-focus";
 const NO_FAMILY_HEAD_IDS: readonly string[] = [];
 
 /** The section's unarchived sessions, family members included, for Archive all. */
-function archivableIds(group: SessionGroup<SidebarSessionRow>): string[] {
+function archivableIds(group: SessionGroup<SidebarSessionRow>): string[]
+{
 	return allRows(group)
 		.filter((row) => !row.archived)
 		.map((row) => row.sessionId);
 }
 
 /** The section's rows with each family's nested sessions after its head. */
-function allRows(group: SessionGroup<SidebarSessionRow>): SidebarSessionRow[] {
+function allRows(group: SessionGroup<SidebarSessionRow>): SidebarSessionRow[]
+{
 	return group.rows.flatMap((row) => [row, ...(group.nested.get(row.sessionId) ?? [])]);
 }
 
@@ -94,7 +99,8 @@ const DESCRIBED_ROW_CLASS =
  * or keyboard focus (always on touch, and while its menu is open), then a folder or manual section's
  * own +. Upstream's hub-rail sidebar puts no generic New session + on any header: the New nav row has it.
  */
-function HeaderControls({filterSlot, trailing}: {filterSlot: ReactNode; trailing?: ReactNode}) {
+function HeaderControls({filterSlot, trailing}: {filterSlot: ReactNode; trailing?: ReactNode})
+{
 	const hasFilter = filterSlot !== undefined && filterSlot !== null;
 	if (!hasFilter && trailing === undefined) return null;
 	return (
@@ -115,16 +121,27 @@ function HeaderControls({filterSlot, trailing}: {filterSlot: ReactNode; trailing
  * and focus the composer. "Other" and a project whose folder is gone have nowhere to start one, so
  * they get null.
  */
-function useProjectNewSession(group: SessionGroup<SidebarSessionRow>, isProject: boolean): (() => void) | null {
+function useProjectNewSession(group: SessionGroup<SidebarSessionRow>, isProject: boolean): (() => void) | null
+{
 	const navigate = useNavigate();
-	const {data: projects} = useQuery({...projectsQueryOptions(), enabled: isProject});
+	const {data: projects} = useQuery(
+		{
+			...projectsQueryOptions(),
+			enabled: isProject,
+		},
+	);
 	const projectId = allRows(group)[0]?.session.project;
 	const project = projects?.find((candidate) => candidate.id === projectId);
 	if (!isProject || typeof project?.projectPath !== "string") return null;
-	return () => {
+	return () =>
+	{
 		setPendingLaunchGroup(null);
 		requestHomeLaunchFolder(project.id);
-		void navigate({to: "/"}).then(requestHomeComposerFocus);
+		void navigate(
+			{
+				to: "/",
+			},
+		).then(requestHomeComposerFocus);
 	};
 }
 
@@ -135,21 +152,37 @@ function useProjectNewSession(group: SessionGroup<SidebarSessionRow>, isProject:
 function useCustomGroupNewSession(
 	group: SessionGroup<SidebarSessionRow>,
 	customGroupId: string | null,
-): {target: string | null; onNewSession: () => void} | null {
+):
+{
+	target: string | null;
+	onNewSession: () => void;
+} | null
+{
 	const navigate = useNavigate();
-	const {data: projects} = useQuery({...projectsQueryOptions(), enabled: customGroupId !== null});
+	const {data: projects} = useQuery(
+		{
+			...projectsQueryOptions(),
+			enabled: customGroupId !== null,
+		},
+	);
 	if (customGroupId === null) return null;
-	const launchRows = allRows(group).map((row) => ({
+	const launchRows = allRows(group).map((row) => (
+	{
 		projectId: row.session.project,
 		lastActivityAt: row.lastActivityAt,
 	}));
 	const {projectId, folderName} = customGroupLaunchTarget(launchRows, projects ?? []);
 	return {
 		target: folderName,
-		onNewSession: () => {
+		onNewSession: () =>
+		{
 			setPendingLaunchGroup(customGroupId);
 			if (projectId !== null) requestHomeLaunchFolder(projectId);
-			void navigate({to: "/"}).then(requestHomeComposerFocus);
+			void navigate(
+				{
+					to: "/",
+				},
+			).then(requestHomeComposerFocus);
 		},
 	};
 }
@@ -157,10 +190,16 @@ function useCustomGroupNewSession(
 /** The section's own +: a custom group's (with its folder target), else a project's, else none. */
 function sectionNewSessionButton(
 	groupLabel: string,
-	custom: {target: string | null; onNewSession: () => void} | null,
+	custom:
+	{
+		target: string | null;
+		onNewSession: () => void;
+	} | null,
 	project: (() => void) | null,
-): ReactNode {
-	if (custom !== null) {
+): ReactNode
+{
+	if (custom !== null)
+	{
 		return (
 			<GroupNewSessionButton groupLabel={groupLabel} target={custom.target} onNewSession={custom.onNewSession} />
 		);
@@ -181,23 +220,28 @@ function useCollapsedBadgeKind(
 	group: SessionGroup<SidebarSessionRow>,
 	collapsed: boolean,
 	openKeys: readonly string[],
-): SessionStateKind | null {
+): SessionStateKind | null
+{
 	const {settings} = useSettings();
 	const showPrStatus = settings.sessionListPrefs.showPrStatus;
-	const getSnapshot = useCallback((): SessionStateKind | null => {
+	const getSnapshot = useCallback((): SessionStateKind | null =>
+	{
 		if (!collapsed) return null;
 		let best: number = BADGE_KIND_RANK.length;
-		for (const row of allRows(group)) {
+		for (const row of allRows(group))
+		{
 			if (openKeys.includes(row.sessionId)) continue;
 			const {session} = row;
-			const kind = sessionRowIconKind({
-				bucket: session.bucket,
-				unseen: hasUnseenWork(session.id),
-				serverUnseen: session.unseen,
-				unseenError: session.unseenError === true,
-				prStatus: session.prStatus,
-				showPrStatus,
-			});
+			const kind = sessionRowIconKind(
+				{
+					bucket: session.bucket,
+					unseen: hasUnseenWork(session.id),
+					serverUnseen: session.unseen,
+					unseenError: session.unseenError === true,
+					prStatus: session.prStatus,
+					showPrStatus,
+				},
+			);
 			const rank = BADGE_KIND_RANK.indexOf(kind);
 			if (rank !== -1 && rank < best) best = rank;
 		}
@@ -206,7 +250,9 @@ function useCollapsedBadgeKind(
 	return useSyncExternalStore(subscribeUnseenWork, getSnapshot, getSnapshot);
 }
 
-const NO_SHOW_MORE = () => {};
+const NO_SHOW_MORE = () =>
+{
+};
 
 /** A collapsible sidebar group: label row (caret on hover), session rows, "Show more" / "Show less". */
 export function GroupSection({
@@ -265,7 +311,8 @@ export function GroupSection({
 	dropHot?: boolean;
 	/** Every section shown in the list, for the header menu's Collapse all / Expand all; defaults to this one. */
 	sectionKeys?: readonly string[];
-}) {
+})
+{
 	const customGroupId = customGroupIdOfKey(group.key);
 	const isProject = isProjectGroupKey(group.key);
 	const projectNewSession = useProjectNewSession(group, isProject);
@@ -274,7 +321,8 @@ export function GroupSection({
 	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
 	const envGlyph = pinnedIds === undefined && !isProject;
 	const {settings} = useSettings();
-	const place: RowPlace = {
+	const place: RowPlace =
+	{
 		heading: group.label,
 		underStatusHeading: groupBy === "state",
 		metadata: showMetadata ?? settings.sessionListPrefs.showMetadata,
@@ -286,15 +334,17 @@ export function GroupSection({
 	// Upstream `sP` (`Me`): open rows stay visible under a collapsed header.
 	const openRows = expanded ? [] : rows.filter((row) => openKeys.includes(row.sessionId));
 	const badgeKind = useCollapsedBadgeKind(group, !expanded, openKeys);
-	useOpenRowAutoExpand({
-		groupBy,
-		groupKey: group.key,
-		rowKeys,
-		openKeys,
-		collapsed: !expanded,
-		customGroup: customGroupId !== null,
-		sectionRef: sectionElement,
-	});
+	useOpenRowAutoExpand(
+		{
+			groupBy,
+			groupKey: group.key,
+			rowKeys,
+			openKeys,
+			collapsed: !expanded,
+			customGroup: customGroupId !== null,
+			sectionRef: sectionElement,
+		},
+	);
 	useSectionFocusRescue(group.key, sectionElement);
 	const [announcement, setAnnouncement] = useState("");
 	const heldHintId = useId();
@@ -319,7 +369,8 @@ export function GroupSection({
 				{...ROVING_ITEM_PROPS}
 				data-group-toggle
 				aria-expanded={expanded}
-				onClick={() => {
+				onClick={() =>
+				{
 					toggleSidebarGroup(group.key);
 				}}
 				className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1.25 rounded-[var(--sb-radius)] py-1 pl-1 text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
@@ -340,7 +391,10 @@ export function GroupSection({
 					name="CaretRightFilled"
 					customSize={14}
 					data-group-caret="stays"
-					style={{translate: "0 0.5px"}}
+					style={
+					{
+						translate: "0 0.5px",
+					}}
 					className={`size-3.5 shrink-0 transition-transform duration-[60ms] motion-reduce:transition-none ${
 						expanded ? "rotate-90 " : ""
 					}group-data-[hover-within]/section:opacity-100 group-focus-visible/label:opacity-100 opacity-100`}
@@ -350,7 +404,12 @@ export function GroupSection({
 						<SessionStateIcon
 							kind={badgeKind}
 							live={false}
-							{...(badgeKind === "ready" ? {label: "Unread response"} : {})}
+							{...(badgeKind === "ready"
+								?
+									{
+										label: "Unread response",
+									}
+								: {})}
 						/>
 					</span>
 				)}
@@ -359,7 +418,8 @@ export function GroupSection({
 	);
 	return (
 		<div
-			ref={(element) => {
+			ref={(element) =>
+			{
 				sectionElement.current = element;
 				sectionRef?.(element);
 			}}
@@ -401,7 +461,12 @@ export function GroupSection({
 						groupKey={group.key}
 						label={group.label}
 						archivableIds={archivableIds(group)}
-						onNewSession={customNewSession?.onNewSession ?? (() => {})}
+						onNewSession={
+							customNewSession?.onNewSession ??
+							(() =>
+							{
+							})
+						}
 					>
 						{toggle}
 					</CustomGroupHeader>
@@ -422,7 +487,8 @@ export function GroupSection({
 			{subgroups === null ? (
 				<div ref={rowsRef} data-group-rows hidden={!expanded} className={expanded ? ROWS_CLASS : "hidden"}>
 					{(expanded ? group.rows : group.rows.filter((row) => !openKeys.includes(row.sessionId))).map(
-						(row) => {
+						(row) =>
+						{
 							const nested = group.nested.get(row.sessionId);
 							return (
 								<Fragment key={row.sessionId}>
@@ -458,13 +524,19 @@ export function GroupSection({
 						},
 					)}
 					{loadingMore ? (
-						<OverflowRow disabled onClick={() => {}}>
+						<OverflowRow
+							disabled
+							onClick={() =>
+							{
+							}}
+						>
 							Loading…
 						</OverflowRow>
 					) : group.hiddenCount > 0 ? (
 						<OverflowRow
 							ariaLabel={`Show ${Math.min(GROUP_PAGE_SIZE, group.hiddenCount)} more in ${group.label}`}
-							onClick={() => {
+							onClick={() =>
+							{
 								setAnnouncement(
 									`Showing ${Math.min(GROUP_PAGE_SIZE, group.hiddenCount)} more in ${group.label}`,
 								);
@@ -479,7 +551,8 @@ export function GroupSection({
 							<OverflowRow
 								ariaLabel={`Show less in ${group.label}`}
 								held={showLessHeld ? heldHintId : undefined}
-								onClick={() => {
+								onClick={() =>
+								{
 									setAnnouncement(`Showing less in ${group.label}`);
 									onShowLess();
 								}}
@@ -504,10 +577,20 @@ export function GroupSection({
 							expanded={collapsedKeys?.has(subgroup.key) !== true}
 							activeItemId={activeItemId}
 							filterSlot={undefined}
-							{...(showMetadata === undefined ? {} : {showMetadata})}
+							{...(showMetadata === undefined
+								? {}
+								:
+									{
+										showMetadata,
+									})}
 							onShowMore={NO_SHOW_MORE}
 							onShowLess={NO_SHOW_MORE}
-							{...(dragRowProps === undefined ? {} : {dragRowProps})}
+							{...(dragRowProps === undefined
+								? {}
+								:
+									{
+										dragRowProps,
+									})}
 							familyHeadIds={familyHeadIds}
 							sectionKeys={sectionKeys ?? [group.key]}
 						/>
@@ -541,13 +624,26 @@ export function GroupSection({
 
 /** Which of upstream's empty sidebar lists to show: nothing yet, filtered to nothing, or a failed load. */
 export type EmptyListReason =
-	| {kind: "none"}
-	| {kind: "filtered"; onShowAll: () => void}
-	| {kind: "failed"; onRetry: () => void};
+	|
+	  {
+			kind: "none";
+	  }
+	|
+	  {
+			kind: "filtered";
+			onShowAll: () => void;
+	  }
+	|
+	  {
+			kind: "failed";
+			onRetry: () => void;
+	  };
 
 /** Upstream's empty sidebar list bodies, centered under the header. */
-function EmptyListBody({reason}: {reason: EmptyListReason}) {
-	switch (reason.kind) {
+function EmptyListBody({reason}: {reason: EmptyListReason})
+{
+	switch (reason.kind)
+	{
 		case "none":
 			return (
 				<div
@@ -600,7 +696,8 @@ export function EmptyGroupSection({
 	label: string;
 	filterSlot: ReactNode;
 	reason: EmptyListReason;
-}) {
+})
+{
 	return (
 		<div data-group-key="empty" className="group/section relative isolate flex flex-col pb-[var(--sb-group-pb)]">
 			<div
@@ -634,7 +731,8 @@ function OverflowRow({
 	held?: string | undefined;
 	awaiting?: boolean;
 	children: ReactNode;
-}) {
+})
+{
 	const inert = disabled || held !== undefined;
 	return (
 		<>
@@ -646,7 +744,8 @@ function OverflowRow({
 				aria-disabled={inert ? true : undefined}
 				aria-describedby={held}
 				data-held={held === undefined ? undefined : ""}
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					if (inert || event.detail > 1) return;
 					onClick();
 				}}
@@ -673,7 +772,8 @@ function useSectionAppearance(
 	key: string,
 	customGroupId: string | null,
 	isProject: boolean,
-): GroupAppearance | undefined {
+): GroupAppearance | undefined
+{
 	const {groups} = useSessionGroups();
 	const projects = useProjectAppearance();
 	if (customGroupId !== null) return groups.find((entry) => entry.id === customGroupId);
@@ -704,14 +804,16 @@ function SessionFamily({
 	place: RowPlace;
 	/** The section's shared quick-reply hint, describing its Needs input rows. */
 	awaitingHintId: string;
-}) {
+})
+{
 	const {collapsedFamilies} = useSidebarState();
 	const collapsed = collapsedFamilies.includes(familyKey(head.sessionId));
 	const [hot, setHot] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
 	const focusFirstChild = useRef(false);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (collapsed || !focusFirstChild.current) return;
 		focusFirstChild.current = false;
 		ref.current?.querySelector<HTMLElement>("[data-family-child] a[data-row-main-button]")?.focus();
@@ -733,13 +835,16 @@ function SessionFamily({
 					tabIndex={-1}
 					aria-expanded={!collapsed}
 					aria-label={label}
-					onPointerEnter={() => {
+					onPointerEnter={() =>
+					{
 						setHot(true);
 					}}
-					onPointerLeave={() => {
+					onPointerLeave={() =>
+					{
 						setHot(false);
 					}}
-					onClick={(event) => {
+					onClick={(event) =>
+					{
 						if (event.altKey) setFamiliesCollapsed(familyHeadIds, !collapsed);
 						else toggleFamilyCollapsed(head.sessionId);
 					}}
@@ -750,14 +855,16 @@ function SessionFamily({
 				<div className="pl-5">
 					<FamilyStub
 						nested={nested}
-						onExpand={() => {
+						onExpand={() =>
+						{
 							focusFirstChild.current = true;
 							toggleFamilyCollapsed(head.sessionId);
 						}}
 					/>
 				</div>
 			) : (
-				nested.map((child) => {
+				nested.map((child) =>
+				{
 					const parentTitle =
 						child.forkedFromSessionId === undefined ? undefined : titles.get(child.forkedFromSessionId);
 					return (
@@ -786,12 +893,14 @@ function SessionFamily({
 	);
 }
 
-function nestedSessions(count: number): string {
+function nestedSessions(count: number): string
+{
 	return `${count} nested session${count === 1 ? "" : "s"}`;
 }
 
 /** A collapsed family's "{n} nested sessions · ● {unread} · {working}" row. */
-function FamilyStub({nested, onExpand}: {nested: readonly SidebarSessionRow[]; onExpand: () => void}) {
+function FamilyStub({nested, onExpand}: {nested: readonly SidebarSessionRow[]; onExpand: () => void})
+{
 	const unread = nested.filter((row) => row.session.unseen).length;
 	const working = nested.filter((row) => row.bucket === "working").length;
 	const blocked = nested.filter((row) => row.bucket === "blocked").length;
@@ -852,7 +961,8 @@ function SessionRowLink({
 	lineage?: string;
 	/** The section's shared quick-reply hint, describing a Needs input row. */
 	awaitingHintId: string;
-}) {
+})
+{
 	const queryClient = useQueryClient();
 	const selection = useSidebarSelection();
 	const multiSelected = selection?.selectedIds.includes(row.sessionId) === true;
@@ -908,11 +1018,19 @@ function SessionRowLink({
 				// Upstream's row shell owns the background. The selected tint keys off the link's data-selected
 				// (which nav-scroll and roving focus watch), so switching rows mutates no extra attribute.
 				className="rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[context-menu-open=true]:bg-[var(--sb-hover)] has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)] hover:has-[[data-row-main-button][data-selected=focused]]:bg-[var(--selected-hover,var(--sb-session-selected))]"
-				{...(pinnedIds === undefined ? {} : {pinnedIds})}
+				{...(pinnedIds === undefined
+					? {}
+					:
+						{
+							pinnedIds,
+						})}
 			>
 				<Link
 					to="/session/$id"
-					params={{id: row.sessionId}}
+					params={
+					{
+						id: row.sessionId,
+					}}
 					{...ROVING_ITEM_PROPS}
 					data-row-main-button
 					aria-describedby={blocked ? awaitingHintId : undefined}
@@ -924,10 +1042,12 @@ function SessionRowLink({
 					}
 					data-selected={selected ? "focused" : undefined}
 					data-multi-selected={multiSelected ? "" : undefined}
-					onPointerDown={(event) => {
+					onPointerDown={(event) =>
+					{
 						startSessionSwitchJourney(event.nativeEvent, row.sessionId, queryClient);
 					}}
-					onClick={(event) => {
+					onClick={(event) =>
+					{
 						if (selection?.onRowClick(row.sessionId, event) === true) event.preventDefault();
 					}}
 					className={`${rowClass} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
@@ -972,21 +1092,25 @@ function FadeLabel({
 	text: string;
 	attention?: RowAttention | undefined;
 	children?: ReactNode;
-}) {
+})
+{
 	const ref = useRef<HTMLSpanElement>(null);
 	const [overflowing, setOverflowing] = useState(false);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const element = ref.current;
 		if (element === null) return undefined;
-		const measure = () => {
+		const measure = () =>
+		{
 			setOverflowing(element.scrollWidth > element.clientWidth);
 		};
 		measure();
 		if (typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [text]);
@@ -1002,7 +1126,8 @@ function FadeLabel({
 }
 
 /** Where a row sits: its section heading, and whether that heading names a status. */
-interface RowPlace {
+interface RowPlace
+{
 	heading: string;
 	/** The section is a state grouping's, so its heading already says the row's status. */
 	underStatusHeading: boolean;
@@ -1011,27 +1136,37 @@ interface RowPlace {
 }
 
 /** A row's described second line (Show ▸ Metadata), or undefined for a one-line row. */
-function useRowMetaLine(row: SidebarSessionRow, enabled: boolean, place: RowPlace): SessionMetaLine | undefined {
+function useRowMetaLine(row: SidebarSessionRow, enabled: boolean, place: RowPlace): SessionMetaLine | undefined
+{
 	const status = metaStatus(row.session);
 	const blocked = status === "blocked";
-	const {data: toolName} = useQuery({
-		...approvalsQueryOptions(),
-		enabled: enabled && blocked,
-		select: (data) => data.approvals.find((approval) => approval.sessionId === row.sessionId)?.toolName,
-	});
+	const {data: toolName} = useQuery(
+		{
+			...approvalsQueryOptions(),
+			enabled: enabled && blocked,
+			select: (data) => data.approvals.find((approval) => approval.sessionId === row.sessionId)?.toolName,
+		},
+	);
 	if (!enabled) return undefined;
-	return sessionMetaLine({
-		status,
-		underStatusHeading: place.underStatusHeading,
-		reason: blocked ? blockedReason(toolName, row.session.awaitingPermission === true) : undefined,
-		message: sessionMetaMessage(row.session, status),
-		place: {text: row.session.projectName, spoken: true},
-		heading: place.heading,
-	});
+	return sessionMetaLine(
+		{
+			status,
+			underStatusHeading: place.underStatusHeading,
+			reason: blocked ? blockedReason(toolName, row.session.awaitingPermission === true) : undefined,
+			message: sessionMetaMessage(row.session, status),
+			place:
+			{
+				text: row.session.projectName,
+				spoken: true,
+			},
+			heading: place.heading,
+		},
+	);
 }
 
 /** Why a blocked row waits, only when a pending approval or permission prompt says so (upstream `p9`). */
-function blockedReason(toolName: string | undefined, awaitingPermission: boolean): string | undefined {
+function blockedReason(toolName: string | undefined, awaitingPermission: boolean): string | undefined
+{
 	if (toolName !== undefined) return blockedDetail(toolName);
 	return awaitingPermission ? "Needs permission" : undefined;
 }

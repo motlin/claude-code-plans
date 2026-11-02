@@ -7,7 +7,8 @@ export type ActivityState = "idle" | "working" | "waiting" | "unknown";
 
 export type SessionSummaryState = ActivityState | "ended";
 
-export function isLiveSessionState(state: SessionSummaryState): state is ActivityState {
+export function isLiveSessionState(state: SessionSummaryState): state is ActivityState
+{
 	return state !== "ended";
 }
 
@@ -18,7 +19,8 @@ export type WaitHeat = "" | "warm" | "hot";
 const WAIT_WARM_MS = 10 * 60 * 1000;
 const WAIT_HOT_MS = 30 * 60 * 1000;
 
-export const STATE_RANK: Record<DisplayState, number> = {
+export const STATE_RANK: Record<DisplayState, number> =
+{
 	waiting: 0,
 	review: 1,
 	working: 2,
@@ -26,30 +28,36 @@ export const STATE_RANK: Record<DisplayState, number> = {
 	unknown: 4,
 };
 
-export function displayState(state: ActivityState, hasUnseenWork: boolean): DisplayState {
+export function displayState(state: ActivityState, hasUnseenWork: boolean): DisplayState
+{
 	return state === "idle" && hasUnseenWork ? "review" : state;
 }
 
-export interface UrgencySortableSession {
+export interface UrgencySortableSession
+{
 	state: DisplayState;
 	lastModified: number;
 }
 
-export interface StableSortableSession {
+export interface StableSortableSession
+{
 	sessionId: string;
 	createdAt: number;
 }
 
-export function compareByUrgency(first: UrgencySortableSession, second: UrgencySortableSession): number {
+export function compareByUrgency(first: UrgencySortableSession, second: UrgencySortableSession): number
+{
 	return STATE_RANK[first.state] - STATE_RANK[second.state] || second.lastModified - first.lastModified;
 }
 
 /** Keep stable mode independent from changing activity timestamps. */
-export function compareByStableCreation(first: StableSortableSession, second: StableSortableSession): number {
+export function compareByStableCreation(first: StableSortableSession, second: StableSortableSession): number
+{
 	return first.createdAt - second.createdAt || first.sessionId.localeCompare(second.sessionId);
 }
 
-export function waitHeat(displayState: DisplayState, blockedSince: string | null, now: number): WaitHeat {
+export function waitHeat(displayState: DisplayState, blockedSince: string | null, now: number): WaitHeat
+{
 	if (displayState !== "waiting" || blockedSince === null) return "";
 
 	const elapsed = now - Date.parse(blockedSince);
@@ -58,8 +66,10 @@ export function waitHeat(displayState: DisplayState, blockedSince: string | null
 	return "";
 }
 
-export function stateForEvent(event: HookEvent): ActivityState | null {
-	switch (event.hook_event_name) {
+export function stateForEvent(event: HookEvent): ActivityState | null
+{
+	switch (event.hook_event_name)
+	{
 		case "UserPromptSubmit":
 			return "working";
 		case "PreToolUse":
@@ -91,7 +101,8 @@ export function stateForEvent(event: HookEvent): ActivityState | null {
 type SessionRegistryStatus = z.infer<typeof SessionRegistryStatusSchema>;
 
 /** The CLI registry's `status` as an activity state; upstream reads busy as running. */
-const REGISTRY_ACTIVITY_STATES = {
+const REGISTRY_ACTIVITY_STATES =
+{
 	idle: "idle",
 	busy: "working",
 	waiting: "waiting",
@@ -99,16 +110,26 @@ const REGISTRY_ACTIVITY_STATES = {
 	shell: "idle",
 } as const satisfies Record<SessionRegistryStatus, ActivityState>;
 
-export interface MainStateSources {
+export interface MainStateSources
+{
 	/** The hook-driven active-session entry, or null when no hook has registered the session. */
-	hook: {state: ActivityState; lastActivity: number} | null;
+	hook:
+	{
+		state: ActivityState;
+		lastActivity: number;
+	} | null;
 	/** The live `~/.claude/sessions/<pid>.json` entry, or null when no live process runs the session. */
-	registry: {status: SessionRegistryStatus; statusUpdatedAt: number} | null;
+	registry:
+	{
+		status: SessionRegistryStatus;
+		statusUpdatedAt: number;
+	} | null;
 	/** When the transcript last recorded a turn ending (turn_duration, stop hooks, away summary), if ever. */
 	turnEndedAt?: number | null;
 }
 
-export interface MainStateResolution {
+export interface MainStateResolution
+{
 	state: SessionSummaryState;
 	source: "hook" | "registry" | null;
 }
@@ -118,17 +139,29 @@ export interface MainStateResolution {
  * Whichever was written last wins (the registry on a tie, and over a hook entry
  * that never learned a state); neither means the session has ended.
  */
-export function resolveMainState({hook, registry, turnEndedAt = null}: MainStateSources): MainStateResolution {
+export function resolveMainState({hook, registry, turnEndedAt = null}: MainStateSources): MainStateResolution
+{
 	if (
 		registry !== null &&
 		(hook === null || hook.state === "unknown" || registry.statusUpdatedAt >= hook.lastActivity)
-	) {
+	)
+	{
 		// The CLI can leave "busy" behind after the turn it described has ended.
 		const stale = registry.status === "busy" && turnEndedAt !== null && turnEndedAt > registry.statusUpdatedAt;
-		return {state: stale ? "idle" : REGISTRY_ACTIVITY_STATES[registry.status], source: "registry"};
+		return {
+			state: stale ? "idle" : REGISTRY_ACTIVITY_STATES[registry.status],
+			source: "registry",
+		};
 	}
-	if (hook !== null) return {state: hook.state, source: "hook"};
-	return {state: "ended", source: null};
+	if (hook !== null)
+		return {
+			state: hook.state,
+			source: "hook",
+		};
+	return {
+		state: "ended",
+		source: null,
+	};
 }
 
 /**
@@ -142,7 +175,8 @@ export function sessionProcessLive({
 }: {
 	hookActive: boolean;
 	summaryState: SessionSummaryState | null;
-}): boolean {
+}): boolean
+{
 	return hookActive || (summaryState !== null && isLiveSessionState(summaryState));
 }
 
@@ -157,7 +191,8 @@ export type SessionBucket = z.infer<typeof SessionBucketSchema>;
 export const SessionStateKindSchema = z.enum(["awaiting", "running", "ready", "error", "idle"]);
 export type SessionStateKind = z.infer<typeof SessionStateKindSchema>;
 
-const DISPLAY_STATE_KINDS = {
+const DISPLAY_STATE_KINDS =
+{
 	waiting: "awaiting",
 	working: "running",
 	review: "ready",
@@ -165,7 +200,8 @@ const DISPLAY_STATE_KINDS = {
 	unknown: "idle",
 } as const satisfies Record<DisplayState, SessionStateKind>;
 
-export function sessionStateKind(state: DisplayState): SessionStateKind {
+export function sessionStateKind(state: DisplayState): SessionStateKind
+{
 	return DISPLAY_STATE_KINDS[state];
 }
 
@@ -191,7 +227,8 @@ export type SessionBucketReason = z.infer<typeof SessionBucketReasonSchema>;
 export const PullRequestStateSchema = z.enum(["open", "draft", "merged", "closed"]);
 export type PullRequestState = z.infer<typeof PullRequestStateSchema>;
 
-export interface SessionBucketSignals {
+export interface SessionBucketSignals
+{
 	/** Main-thread state from hooks without `agent_id`; "ended" after SessionEnd or timeout. */
 	mainState: SessionSummaryState;
 	/** Bridged to claude.ai/code by Remote Control (upstream `environment_kind: "bridge"`). */
@@ -203,7 +240,10 @@ export interface SessionBucketSignals {
 	unseenError: boolean;
 	liveAgentCount: number;
 	/** Entries from the last Stop's `background_tasks`. */
-	backgroundTasks: readonly {status: string}[];
+	backgroundTasks: readonly
+	{
+		status: string;
+	}[];
 	lastSubagentActivityAt: number | null;
 	herdrStatus: string | null;
 	prState: PullRequestState | null;
@@ -215,7 +255,8 @@ export interface SessionBucketSignals {
 	now: number;
 }
 
-export interface SessionBucketResolution {
+export interface SessionBucketResolution
+{
 	bucket: SessionBucket;
 	reason: SessionBucketReason;
 }
@@ -224,7 +265,8 @@ export interface SessionBucketResolution {
 const RECENT_ACTIVITY_MS = 60 * 1000;
 const TERMINAL_BACKGROUND_TASK_STATUSES = new Set(["completed", "failed", "killed"]);
 
-export function isRunningBackgroundTask(task: {status: string}): boolean {
+export function isRunningBackgroundTask(task: {status: string}): boolean
+{
 	return !TERMINAL_BACKGROUND_TASK_STATUSES.has(task.status);
 }
 
@@ -234,44 +276,107 @@ export function isRunningBackgroundTask(task: {status: string}): boolean {
  * has stopped, except a Remote Control bridged one: upstream `sk()` sets
  * `hasBackgroundWork: environment_kind !== "bridge"`.
  */
-export function resolveSessionBucket(signals: SessionBucketSignals): SessionBucketResolution {
+export function resolveSessionBucket(signals: SessionBucketSignals): SessionBucketResolution
+{
 	const {mainState, now} = signals;
 	const pendingInput = signals.pendingInput || signals.awaitingPermission;
 	// Upstream `Ea()`: an unread session whose worker is not mid-turn waits when its last turn's verdict
 	// says so, including a bridged session whose process has ended.
 	const verdictWaits = signals.unseen && signals.verdictNeedsInput && mainState !== "working";
-	if (pendingInput) return {bucket: "blocked", reason: "pending-input"};
-	if (mainState === "ended" && !verdictWaits) return {bucket: "done", reason: "ended"};
-	if (mainState === "waiting") return {bucket: "blocked", reason: "waiting"};
-	if (signals.unseenError) return {bucket: "blocked", reason: "error"};
-	if (verdictWaits) return {bucket: "blocked", reason: "verdict-needs-input"};
+	if (pendingInput)
+		return {
+			bucket: "blocked",
+			reason: "pending-input",
+		};
+	if (mainState === "ended" && !verdictWaits)
+		return {
+			bucket: "done",
+			reason: "ended",
+		};
+	if (mainState === "waiting")
+		return {
+			bucket: "blocked",
+			reason: "waiting",
+		};
+	if (signals.unseenError)
+		return {
+			bucket: "blocked",
+			reason: "error",
+		};
+	if (verdictWaits)
+		return {
+			bucket: "blocked",
+			reason: "verdict-needs-input",
+		};
 
-	if (mainState === "working") return {bucket: "working", reason: "main-working"};
-	if (!signals.bridged) {
-		if (signals.liveAgentCount > 0) return {bucket: "working", reason: "live-agents"};
-		if (signals.backgroundTasks.some(isRunningBackgroundTask)) {
-			return {bucket: "working", reason: "background-tasks"};
+	if (mainState === "working")
+		return {
+			bucket: "working",
+			reason: "main-working",
+		};
+	if (!signals.bridged)
+	{
+		if (signals.liveAgentCount > 0)
+			return {
+				bucket: "working",
+				reason: "live-agents",
+			};
+		if (signals.backgroundTasks.some(isRunningBackgroundTask))
+		{
+			return {
+				bucket: "working",
+				reason: "background-tasks",
+			};
 		}
-		if (signals.lastSubagentActivityAt !== null && now - signals.lastSubagentActivityAt < RECENT_ACTIVITY_MS) {
-			return {bucket: "working", reason: "subagent-activity"};
+		if (signals.lastSubagentActivityAt !== null && now - signals.lastSubagentActivityAt < RECENT_ACTIVITY_MS)
+		{
+			return {
+				bucket: "working",
+				reason: "subagent-activity",
+			};
 		}
 	}
-	if (signals.herdrStatus === "working") return {bucket: "working", reason: "herdr-working"};
-	if (mainState === "unknown") {
+	if (signals.herdrStatus === "working")
+		return {
+			bucket: "working",
+			reason: "herdr-working",
+		};
+	if (mainState === "unknown")
+	{
 		return now - signals.fileMtime < RECENT_ACTIVITY_MS
-			? {bucket: "working", reason: "recent-file"}
-			: {bucket: "done", reason: "stale-file"};
+			?
+				{
+					bucket: "working",
+					reason: "recent-file",
+				}
+			:
+				{
+					bucket: "done",
+					reason: "stale-file",
+				};
 	}
 
-	if (signals.prState === "open" || signals.prState === "draft") {
-		return {bucket: "review", reason: "pull-request"};
+	if (signals.prState === "open" || signals.prState === "draft")
+	{
+		return {
+			bucket: "review",
+			reason: "pull-request",
+		};
 	}
 	// Upstream `HV`: review means an open PR; an unread finished session stays in Completed.
-	if (signals.unseen) return {bucket: "done", reason: "unseen"};
-	return {bucket: "done", reason: "idle"};
+	if (signals.unseen)
+		return {
+			bucket: "done",
+			reason: "unseen",
+		};
+	return {
+		bucket: "done",
+		reason: "idle",
+	};
 }
 
-export interface SessionRowIconInput {
+export interface SessionRowIconInput
+{
 	bucket: SessionBucket;
 	/** The local unseen flag, which leads the server bucket after a manual toggle. */
 	unseen: boolean;
@@ -279,7 +384,12 @@ export interface SessionRowIconInput {
 	serverUnseen: boolean;
 	/** The bucket is blocked on an unseen errored turn (`reason: "error"`). */
 	unseenError: boolean;
-	prStatus: {state: PullRequestState} | undefined;
+	prStatus:
+		|
+		  {
+				state: PullRequestState;
+		  }
+		| undefined;
 	showPrStatus: boolean;
 }
 
@@ -295,7 +405,8 @@ export function sessionRowIconKind({
 	unseenError,
 	prStatus,
 	showPrStatus,
-}: SessionRowIconInput): SessionStateKind {
+}: SessionRowIconInput): SessionStateKind
+{
 	if (bucket === "blocked") return unseenError ? "error" : "awaiting";
 	if (bucket === "working") return "running";
 	if (unseen) return "ready";

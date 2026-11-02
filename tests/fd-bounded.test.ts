@@ -1,5 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import fs, {
+import fs,
+{
 	appendFileSync,
 	fstatSync,
 	lstatSync,
@@ -21,9 +22,11 @@ const SESSION_COUNT = 8;
 const APPENDS_PER_SESSION = 4;
 
 /** Every file and directory in `root`'s tree, keyed by device and inode, which is how an open descriptor names it. */
-function treeByIdentity(root: string): Map<string, string> {
+function treeByIdentity(root: string): Map<string, string>
+{
 	const tree = new Map<string, string>();
-	const visit = (path: string) => {
+	const visit = (path: string) =>
+	{
 		const stats = lstatSync(path);
 		tree.set(`${stats.dev}:${stats.ino}`, path);
 		if (stats.isDirectory()) for (const entry of readdirSync(path)) visit(join(path, entry));
@@ -40,16 +43,21 @@ function treeByIdentity(root: string): Map<string, string> {
  * from lsof: a synchronous lsof blocks the event loop for as long as the kernel keeps it waiting, and under load
  * that ran past a minute, failing the test on its timeout after the work under test had already finished.
  */
-function openPathsUnder(root: string): string[] {
+function openPathsUnder(root: string): string[]
+{
 	const tree = treeByIdentity(root);
 	const descriptorDir = process.platform === "linux" ? "/proc/self/fd" : "/dev/fd";
 	return readdirSync(descriptorDir)
-		.flatMap((fd) => {
-			try {
+		.flatMap((fd) =>
+		{
+			try
+			{
 				const stats = fstatSync(Number(fd));
 				const path = tree.get(`${stats.dev}:${stats.ino}`);
 				return path === undefined ? [] : [path];
-			} catch {
+			}
+			catch
+			{
 				// The descriptor readdirSync listed the directory with is already closed.
 				return [];
 			}
@@ -61,13 +69,21 @@ function openPathsUnder(root: string): string[] {
  * Holds every `fs.close` back by `delayMs`, as a libuv threadpool busy with other work does, and counts the closes
  * still in flight. File streams close their descriptor through the `fs` module object.
  */
-function delayDescriptorCloses(delayMs: number): {inFlight: () => number; restore: () => void} {
+function delayDescriptorCloses(delayMs: number):
+{
+	inFlight: () => number;
+	restore: () => void;
+}
+{
 	const close = fs.close;
 	let inFlight = 0;
-	fs.close = ((fd: number, callback?: (error: NodeJS.ErrnoException | null) => void) => {
+	fs.close = ((fd: number, callback?: (error: NodeJS.ErrnoException | null) => void) =>
+	{
 		inFlight++;
-		setTimeout(() => {
-			close(fd, (error) => {
+		setTimeout(() =>
+		{
+			close(fd, (error) =>
+			{
 				inFlight--;
 				callback?.(error);
 			});
@@ -75,137 +91,250 @@ function delayDescriptorCloses(delayMs: number): {inFlight: () => number; restor
 	}) as typeof fs.close;
 	return {
 		inFlight: () => inFlight,
-		restore: () => {
+		restore: () =>
+		{
 			fs.close = close;
 		},
 	};
 }
 
 /** Native fs.watch handles held by this process. */
-function activeWatchers(): number {
+function activeWatchers(): number
+{
 	return process.getActiveResourcesInfo().filter((resource) => resource === "FSEventWrap").length;
 }
 
-function record(sessionId: string, index: number, content: string): string {
-	return `${JSON.stringify({
-		type: index % 2 === 0 ? "user" : "assistant",
-		uuid: `${sessionId}-${index}`,
-		sessionId,
-		timestamp: new Date(Date.UTC(2000, 0, 1, 0, 0, index)).toISOString(),
-		message: {role: index % 2 === 0 ? "user" : "assistant", content},
-	})}\n`;
+function record(sessionId: string, index: number, content: string): string
+{
+	return `${JSON.stringify(
+		{
+			type: index % 2 === 0 ? "user" : "assistant",
+			uuid: `${sessionId}-${index}`,
+			sessionId,
+			timestamp: new Date(Date.UTC(2000, 0, 1, 0, 0, index)).toISOString(),
+			message:
+			{
+				role: index % 2 === 0 ? "user" : "assistant",
+				content,
+			},
+		},
+	)}\n`;
 }
 
 /** A transcript well past one 64 KiB read-stream chunk, so a reader that stops early leaves bytes unread. */
-function largeTranscript(sessionId: string): string {
+function largeTranscript(sessionId: string): string
+{
 	let text = "";
 	for (let index = 0; index < 400; index++) text += record(sessionId, index, `line ${index} ${"x".repeat(400)}`);
 	return text;
 }
 
-describe("file descriptors stay bounded while indexing and tailing many transcripts", () => {
+describe("file descriptors stay bounded while indexing and tailing many transcripts", () =>
+{
 	let root: string;
 	let db: AppDb;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		root = mkdtempSync(join(tmpdir(), "ccp-fd-bounded-"));
 		db = openTestDb();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		db.close();
-		rmSync(root, {recursive: true, force: true});
+		rmSync(
+			root,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("closes every transcript it opens across a full scan and repeated appends", async () => {
+	it("closes every transcript it opens across a full scan and repeated appends", async () =>
+	{
 		const projectsDir = join(root, "projects");
 		const plansDir = join(root, "plans");
 		const tasksDir = join(root, "tasks");
 		const projectDir = join(projectsDir, "-Users-alice-projects-many");
-		mkdirSync(projectDir, {recursive: true});
-		mkdirSync(plansDir, {recursive: true});
-		mkdirSync(tasksDir, {recursive: true});
-		const paths = Array.from({length: SESSION_COUNT}, (_, index) => {
-			const sessionId = `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
-			const path = join(projectDir, `${sessionId}.jsonl`);
-			writeFileSync(path, largeTranscript(sessionId));
-			return {sessionId, path};
-		});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			plansDir,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			tasksDir,
+			{
+				recursive: true,
+			},
+		);
+		const paths = Array.from(
+			{
+				length: SESSION_COUNT,
+			},
+			(_, index) =>
+			{
+				const sessionId = `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
+				const path = join(projectDir, `${sessionId}.jsonl`);
+				writeFileSync(path, largeTranscript(sessionId));
+				return {
+					sessionId,
+					path,
+				};
+			},
+		);
 
 		await fullScan(db.index, db.summaries, projectsDir, tasksDir, plansDir);
 
 		const offsets = new Map<string, number>();
-		const ignoreBroadcast = () => {};
-		for (let round = 0; round < APPENDS_PER_SESSION; round++) {
-			for (const {sessionId, path} of paths) {
+		const ignoreBroadcast = () =>
+		{
+		};
+		for (let round = 0; round < APPENDS_PER_SESSION; round++)
+		{
+			for (const {sessionId, path} of paths)
+			{
 				appendFileSync(path, record(sessionId, 1000 + round, `appended ${round}`));
 				// An unterminated tail is what a transcript looks like mid-write.
 				if (round % 2 === 1) appendFileSync(path, '{"type":"user","partial');
-				await processJsonlAppend(db.index, path, offsets, ignoreBroadcast, {projectsDir, plansDir});
+				await processJsonlAppend(
+					db.index,
+					path,
+					offsets,
+					ignoreBroadcast,
+					{
+						projectsDir,
+						plansDir,
+					},
+				);
 			}
 		}
 
 		expect(openPathsUnder(root)).toStrictEqual([]);
 	});
 
-	it("resolves a transcript read only once its descriptor has closed, however long the close takes", async () => {
+	it("resolves a transcript read only once its descriptor has closed, however long the close takes", async () =>
+	{
 		const sessionId = "00000000-0000-4000-8000-000000000000";
 		const path = join(root, `${sessionId}.jsonl`);
 		writeFileSync(path, `${largeTranscript(sessionId)}{"type":"user","partial`);
 		const closes = delayDescriptorCloses(100);
-		try {
+		try
+		{
 			const inFlightAfterTail = await readNewJsonlLines(path, 0).then(() => closes.inFlight());
 			const inFlightAfterEarlyExit = await readFirstUserMessage(path).then(() => closes.inFlight());
-			expect({inFlightAfterTail, inFlightAfterEarlyExit}).toStrictEqual({
-				inFlightAfterTail: 0,
-				inFlightAfterEarlyExit: 0,
-			});
-		} finally {
+			expect(
+				{
+					inFlightAfterTail,
+					inFlightAfterEarlyExit,
+				},
+			).toStrictEqual(
+				{
+					inFlightAfterTail: 0,
+					inFlightAfterEarlyExit: 0,
+				},
+			);
+		}
+		finally
+		{
 			closes.restore();
 		}
 	});
 });
 
-describe("the recursive watcher", () => {
+describe("the recursive watcher", () =>
+{
 	let root: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		root = mkdtempSync(join(tmpdir(), "ccp-watch-bounded-"));
 	});
 
-	afterEach(() => {
-		rmSync(root, {recursive: true, force: true});
+	afterEach(() =>
+	{
+		rmSync(
+			root,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("holds descriptors per watched directory rather than per file, and releases them all on close", async () => {
+	it("holds descriptors per watched directory rather than per file, and releases them all on close", async () =>
+	{
 		const projectsDir = join(root, "projects");
 		const directories = 3;
-		for (let directory = 0; directory < directories; directory++) {
+		for (let directory = 0; directory < directories; directory++)
+		{
 			const projectDir = join(projectsDir, `project-${directory}`);
-			mkdirSync(projectDir, {recursive: true});
+			mkdirSync(
+				projectDir,
+				{
+					recursive: true,
+				},
+			);
 			for (let file = 0; file < 200; file++) writeFileSync(join(projectDir, `session-${file}.jsonl`), "{}\n");
 		}
 		const baselineWatchers = activeWatchers();
 
 		const watcher = createRecursiveWatcher([projectsDir], () => false);
-		await new Promise<void>((resolve) => {
+		await new Promise<void>((resolve) =>
+		{
 			watcher.once("ready", resolve);
 		});
-		const whileWatching = {descriptors: openPathsUnder(root).length, watchers: activeWatchers() - baselineWatchers};
+		const whileWatching =
+		{
+			descriptors: openPathsUnder(root).length,
+			watchers: activeWatchers() - baselineWatchers,
+		};
 
 		await watcher.close();
 		// Native watch handles finish closing on a later tick, so wait for them rather than for a fixed time.
-		await expect.poll(() => activeWatchers() - baselineWatchers, {timeout: 10_000}).toBe(0);
+		await expect
+			.poll(
+				() => activeWatchers() - baselineWatchers,
+				{
+					timeout: 10_000,
+				},
+			)
+			.toBe(0);
 
-		expect({
-			whileWatching: {
-				perDirectory: whileWatching.descriptors <= directories + 1,
-				watching: whileWatching.watchers > 0,
+		expect(
+			{
+				whileWatching:
+				{
+					perDirectory: whileWatching.descriptors <= directories + 1,
+					watching: whileWatching.watchers > 0,
+				},
+				afterClose:
+				{
+					descriptors: openPathsUnder(root),
+					watchers: activeWatchers() - baselineWatchers,
+				},
 			},
-			afterClose: {descriptors: openPathsUnder(root), watchers: activeWatchers() - baselineWatchers},
-		}).toStrictEqual({
-			whileWatching: {perDirectory: true, watching: true},
-			afterClose: {descriptors: [], watchers: 0},
-		});
+		).toStrictEqual(
+			{
+				whileWatching:
+				{
+					perDirectory: true,
+					watching: true,
+				},
+				afterClose:
+				{
+					descriptors: [],
+					watchers: 0,
+				},
+			},
+		);
 	});
 });

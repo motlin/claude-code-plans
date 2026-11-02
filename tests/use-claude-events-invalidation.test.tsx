@@ -10,7 +10,8 @@ import {sessionQueryKeys, transcriptQueryOptions, type TranscriptData} from "../
 import {herdrConnectionQueryOptions} from "../src/lib/api/herdr-connection";
 import {DOMAIN_EVENTS, HERDR_EVENTS, type SessionSummaryPayload} from "../src/lib/hook-events";
 
-class TestEventSource extends EventTarget {
+class TestEventSource extends EventTarget
+{
 	static current: TestEventSource | null = null;
 
 	static all: TestEventSource[] = [];
@@ -19,44 +20,73 @@ class TestEventSource extends EventTarget {
 	readyState = 0;
 	onerror: ((event: Event) => void) | null = null;
 
-	constructor(readonly url: string | URL) {
+	constructor(readonly url: string | URL)
+	{
 		super();
 		TestEventSource.current = this;
 		TestEventSource.all.push(this);
 	}
 
-	emit(type: string, data: Record<string, unknown> = {}): void {
-		this.dispatchEvent(new MessageEvent(type, {data: JSON.stringify(data)}));
+	emit(type: string, data: Record<string, unknown> = {}): void
+	{
+		this.dispatchEvent(
+			new MessageEvent(
+				type,
+				{
+					data: JSON.stringify(data),
+				},
+			),
+		);
 	}
 
 	/** A dropped connection followed by the browser's automatic reconnect. */
-	reconnect(): void {
+	reconnect(): void
+	{
 		this.onerror?.(new Event("error"));
 		this.dispatchEvent(new Event("open"));
 	}
 
 	/** A 503 while the dev server restarts: the browser closes the stream for good. */
-	fail(): void {
+	fail(): void
+	{
 		this.readyState = 2;
 		this.onerror?.(new Event("error"));
 	}
 }
 
-function RemovalProbe({onRemoved}: {onRemoved: (sessionId: string) => void}): null {
+function RemovalProbe({onRemoved}: {onRemoved: (sessionId: string) => void}): null
+{
 	const subscribe = useSubscribeSessionRemovals();
 	useEffect(() => subscribe(onRemoved), [subscribe, onRemoved]);
 	return null;
 }
 
-function renderProvider(children: ReactNode = <div />): {
+function renderProvider(children: ReactNode = <div />):
+{
 	client: QueryClient;
 	eventSource: TestEventSource;
-} {
-	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+}
+{
+	const client = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	client.setQueryData(["terminal", "placements"], []);
 	client.setQueryData(["herdr", "panes"], []);
 	client.setQueryData(["herdr", "workspaces"], []);
-	client.setQueryData(["herdr", "terminals"], {workspaces: []});
+	client.setQueryData(
+		["herdr", "terminals"],
+		{
+			workspaces: [],
+		},
+	);
 
 	render(
 		<QueryClientProvider client={client}>
@@ -66,10 +96,14 @@ function renderProvider(children: ReactNode = <div />): {
 
 	const eventSource = TestEventSource.current;
 	if (eventSource === null) throw new Error("Expected ClaudeEventsProvider to open EventSource");
-	return {client, eventSource};
+	return {
+		client,
+		eventSource,
+	};
 }
 
-function invalidationState(client: QueryClient) {
+function invalidationState(client: QueryClient)
+{
 	return {
 		herdrPanes: client.getQueryState(["herdr", "panes"])?.isInvalidated,
 		herdrWorkspaces: client.getQueryState(["herdr", "workspaces"])?.isInvalidated,
@@ -78,70 +112,93 @@ function invalidationState(client: QueryClient) {
 	};
 }
 
-describe("ClaudeEventsProvider terminal placement invalidation", () => {
-	beforeEach(() => {
+describe("ClaudeEventsProvider terminal placement invalidation", () =>
+{
+	beforeEach(() =>
+	{
 		TestEventSource.current = null;
 		vi.stubGlobal("EventSource", TestEventSource);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
 
-	it("invalidates terminal placements when a prompt is submitted", () => {
+	it("invalidates terminal placements when a prompt is submitted", () =>
+	{
 		const {client, eventSource} = renderProvider();
 
-		act(() => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED, {
-				sessionId: "session-test-100",
-			});
+		act(() =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED,
+				{
+					sessionId: "session-test-100",
+				},
+			);
 		});
 
-		expect(invalidationState(client)).toStrictEqual({
-			herdrPanes: false,
-			herdrWorkspaces: false,
-			herdrTerminals: false,
-			terminalPlacements: true,
-		});
+		expect(invalidationState(client)).toStrictEqual(
+			{
+				herdrPanes: false,
+				herdrWorkspaces: false,
+				herdrTerminals: false,
+				terminalPlacements: true,
+			},
+		);
 	});
 
-	it("invalidates terminal placements on session lifecycle events", () => {
+	it("invalidates terminal placements on session lifecycle events", () =>
+	{
 		const {client, eventSource} = renderProvider();
 
-		act(() => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_STARTED, {
-				sessionId: "session-test-100",
-			});
+		act(() =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_STARTED,
+				{
+					sessionId: "session-test-100",
+				},
+			);
 		});
 
-		expect(invalidationState(client)).toStrictEqual({
-			herdrPanes: false,
-			herdrWorkspaces: false,
-			herdrTerminals: false,
-			terminalPlacements: true,
-		});
+		expect(invalidationState(client)).toStrictEqual(
+			{
+				herdrPanes: false,
+				herdrWorkspaces: false,
+				herdrTerminals: false,
+				terminalPlacements: true,
+			},
+		);
 	});
 
-	it("invalidates terminal placements and every Herdr read model on Herdr events", () => {
+	it("invalidates terminal placements and every Herdr read model on Herdr events", () =>
+	{
 		const {client, eventSource} = renderProvider();
 
-		act(() => {
+		act(() =>
+		{
 			eventSource.emit(HERDR_EVENTS.PANE_CREATED);
 		});
 
-		expect(invalidationState(client)).toStrictEqual({
-			herdrPanes: true,
-			herdrWorkspaces: true,
-			herdrTerminals: true,
-			terminalPlacements: true,
-		});
+		expect(invalidationState(client)).toStrictEqual(
+			{
+				herdrPanes: true,
+				herdrWorkspaces: true,
+				herdrTerminals: true,
+				terminalPlacements: true,
+			},
+		);
 	});
 
-	it("refetches only the session lists that carry terminal hosts on Herdr events, not the open session's queries", () => {
+	it("refetches only the session lists that carry terminal hosts on Herdr events, not the open session's queries", () =>
+	{
 		const {client, eventSource} = renderProvider();
-		const keys = {
+		const keys =
+		{
 			recent: sessionQueryKeys.recent(20),
 			recentInfinite: sessionQueryKeys.recentInfinite(),
 			grouped: sessionQueryKeys.grouped(),
@@ -160,8 +217,10 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 		};
 		for (const key of Object.values(keys)) client.setQueryData(key, {});
 
-		act(() => {
-			for (const type of [HERDR_EVENTS.PANE_UPDATED, HERDR_EVENTS.PANE_AGENT_STATUS_CHANGED]) {
+		act(() =>
+		{
+			for (const type of [HERDR_EVENTS.PANE_UPDATED, HERDR_EVENTS.PANE_AGENT_STATUS_CHANGED])
+			{
 				eventSource.emit(type);
 			}
 		});
@@ -170,73 +229,105 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 			Object.fromEntries(
 				Object.entries(keys).map(([name, key]) => [name, client.getQueryState(key)?.isInvalidated]),
 			),
-		).toStrictEqual({
-			recent: true,
-			recentInfinite: true,
-			grouped: true,
-			byIds: true,
-			active: false,
-			titles: false,
-			identity: false,
-			detail: false,
-			transcript: false,
-			resources: false,
-			apiRequests: false,
-			subagents: false,
-			workflows: false,
-			contextBreakdown: false,
-			openIn: false,
-		});
+		).toStrictEqual(
+			{
+				recent: true,
+				recentInfinite: true,
+				grouped: true,
+				byIds: true,
+				active: false,
+				titles: false,
+				identity: false,
+				detail: false,
+				transcript: false,
+				resources: false,
+				apiRequests: false,
+				subagents: false,
+				workflows: false,
+				contextBreakdown: false,
+				openIn: false,
+			},
+		);
 	});
 
-	it("stores the herdr connection's reconnect state from its event without refetching the Herdr read models", () => {
+	it("stores the herdr connection's reconnect state from its event without refetching the Herdr read models", () =>
+	{
 		const {client, eventSource} = renderProvider();
 
-		act(() => {
-			eventSource.emit(HERDR_EVENTS.CONNECTION_CHANGED, {reconnecting: true});
+		act(() =>
+		{
+			eventSource.emit(
+				HERDR_EVENTS.CONNECTION_CHANGED,
+				{
+					reconnecting: true,
+				},
+			);
 		});
 
-		expect({
-			connection: client.getQueryData(herdrConnectionQueryOptions.queryKey),
-			invalidation: invalidationState(client),
-		}).toStrictEqual({
-			connection: {reconnecting: true},
-			invalidation: {herdrPanes: false, herdrWorkspaces: false, herdrTerminals: false, terminalPlacements: false},
-		});
+		expect(
+			{
+				connection: client.getQueryData(herdrConnectionQueryOptions.queryKey),
+				invalidation: invalidationState(client),
+			},
+		).toStrictEqual(
+			{
+				connection:
+				{
+					reconnecting: true,
+				},
+				invalidation:
+				{
+					herdrPanes: false,
+					herdrWorkspaces: false,
+					herdrTerminals: false,
+					terminalPlacements: false,
+				},
+			},
+		);
 	});
 
-	it("tells session-removal subscribers which session the index dropped", () => {
+	it("tells session-removal subscribers which session the index dropped", () =>
+	{
 		const removed: string[] = [];
 		const {eventSource} = renderProvider(<RemovalProbe onRemoved={(sessionId) => removed.push(sessionId)} />);
 
-		act(() => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_REMOVED, {
-				sessionId: "session-test-100",
-				projectDir: "-Users-test-project",
-			});
+		act(() =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_REMOVED,
+				{
+					sessionId: "session-test-100",
+					projectDir: "-Users-test-project",
+				},
+			);
 		});
 
 		expect(removed).toStrictEqual(["session-test-100"]);
 	});
 });
 
-describe("ClaudeEventsProvider SSE reconnect", () => {
+describe("ClaudeEventsProvider SSE reconnect", () =>
+{
 	const SESSION_ID = "session-test-100";
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		TestEventSource.current = null;
 		vi.stubGlobal("EventSource", TestEventSource);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
 
-	it("invalidates only the queries an event could have changed while disconnected", async () => {
+	it("invalidates only the queries an event could have changed while disconnected", async () =>
+	{
 		const {client, eventSource} = renderProvider();
-		const keys = {
+		const keys =
+		{
 			groupedSessions: sessionQueryKeys.grouped(5),
 			recentSessions: sessionQueryKeys.recent(50),
 			activeSessions: sessionQueryKeys.active(300_000),
@@ -254,51 +345,75 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 		} as const;
 		for (const key of Object.values(keys)) client.setQueryData(key, {});
 
-		act(() => {
+		act(() =>
+		{
 			eventSource.reconnect();
 		});
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(
 				Object.fromEntries(
 					Object.entries(keys).map(([name, key]) => [name, client.getQueryState(key)?.isInvalidated]),
 				),
-			).toStrictEqual({
-				groupedSessions: true,
-				recentSessions: true,
-				activeSessions: true,
-				sessionDetail: true,
-				sessionIdentity: true,
-				transcript: true,
-				approvals: true,
-				notifications: true,
-				subagents: false,
-				artifacts: false,
-				plans: false,
-				localAccount: false,
-				applicationSettings: false,
-				herdrPanes: false,
-			});
+			).toStrictEqual(
+				{
+					groupedSessions: true,
+					recentSessions: true,
+					activeSessions: true,
+					sessionDetail: true,
+					sessionIdentity: true,
+					transcript: true,
+					approvals: true,
+					notifications: true,
+					subagents: false,
+					artifacts: false,
+					plans: false,
+					localAccount: false,
+					applicationSettings: false,
+					herdrPanes: false,
+				},
+			);
 		});
 	});
 
 	it.each([DOMAIN_EVENTS.SESSION_ADDED, DOMAIN_EVENTS.SESSION_UPDATED, DOMAIN_EVENTS.SESSION_REMOVED])(
 		"invalidates all cached aliases after %s, including another session's potential collision",
-		async (event) => {
+		async (event) =>
+		{
 			const {client, eventSource} = renderProvider();
 			const aliases = [
 				sessionQueryKeys.identity("session_alice_100"),
 				sessionQueryKeys.identity("session_charlie_100"),
 			];
-			for (const key of aliases) client.setQueryData(key, {sessionId: "session-alice"});
-			client.setQueryData(sessionQueryKeys.transcript("session-alice"), {records: [], byteOffset: 0});
-			act(() => {
+			for (const key of aliases)
+				client.setQueryData(
+					key,
+					{
+						sessionId: "session-alice",
+					},
+				);
+			client.setQueryData(
+				sessionQueryKeys.transcript("session-alice"),
+				{
+					records: [],
+					byteOffset: 0,
+				},
+			);
+			act(() =>
+			{
 				eventSource.emit(
 					event,
 					event === DOMAIN_EVENTS.SESSION_REMOVED
-						? {sessionId: "session-bob", projectDir: "example-project"}
-						: {
-								session: {
+						?
+							{
+								sessionId: "session-bob",
+								projectDir: "example-project",
+							}
+						:
+							{
+								session:
+								{
 									id: "session-bob",
 									title: "Example Bob session",
 									summary: undefined,
@@ -318,52 +433,88 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 							},
 				);
 			});
-			await waitFor(() => {
-				expect({
-					aliases: aliases.map((key) => client.getQueryState(key)?.isInvalidated),
-					transcript: client.getQueryState(sessionQueryKeys.transcript("session-alice"))?.isInvalidated,
-				}).toStrictEqual({aliases: [true, true], transcript: false});
+			await waitFor(() =>
+			{
+				expect(
+					{
+						aliases: aliases.map((key) => client.getQueryState(key)?.isInvalidated),
+						transcript: client.getQueryState(sessionQueryKeys.transcript("session-alice"))?.isInvalidated,
+					},
+				).toStrictEqual(
+					{
+						aliases: [true, true],
+						transcript: false,
+					},
+				);
 			});
 		},
 	);
 
-	it("does not resolve identity from transcript lines emitted before indexing commits", () => {
+	it("does not resolve identity from transcript lines emitted before indexing commits", () =>
+	{
 		const {client, eventSource} = renderProvider();
 		const key = sessionQueryKeys.identity("session_alice_100");
-		client.setQueryData(key, {sessionId: "session-alice"});
-		act(() => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
-				sessionId: "session-bob",
-				lines: [
-					{
-						type: "bridge-session",
-						sessionId: "session-bob",
-						bridgeSessionId: "cse_alice_100",
-						lastSequenceNum: 0,
-					},
-				],
-			});
+		client.setQueryData(
+			key,
+			{
+				sessionId: "session-alice",
+			},
+		);
+		act(() =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+				{
+					sessionId: "session-bob",
+					lines: [
+						{
+							type: "bridge-session",
+							sessionId: "session-bob",
+							bridgeSessionId: "cse_alice_100",
+							lastSequenceNum: 0,
+						},
+					],
+				},
+			);
 		});
-		expect({
-			identity: client.getQueryData(key),
-			invalidated: client.getQueryState(key)?.isInvalidated,
-		}).toStrictEqual({identity: {sessionId: "session-alice"}, invalidated: false});
+		expect(
+			{
+				identity: client.getQueryData(key),
+				invalidated: client.getQueryState(key)?.isInvalidated,
+			},
+		).toStrictEqual(
+			{
+				identity:
+				{
+					sessionId: "session-alice",
+				},
+				invalidated: false,
+			},
+		);
 	});
 
-	it("does not invalidate anything on the first open", () => {
+	it("does not invalidate anything on the first open", () =>
+	{
 		const {client, eventSource} = renderProvider();
 		client.setQueryData(sessionQueryKeys.transcript(SESSION_ID), {});
 
-		act(() => {
+		act(() =>
+		{
 			eventSource.dispatchEvent(new Event("open"));
 		});
 
 		expect(client.getQueryState(sessionQueryKeys.transcript(SESSION_ID))?.isInvalidated).toBe(false);
 	});
 
-	it("catches the open transcript up on lines appended while disconnected", async () => {
-		const record = (uuid: string) => ({uuid, type: "assistant"});
-		const cached: TranscriptData = {
+	it("catches the open transcript up on lines appended while disconnected", async () =>
+	{
+		const record = (uuid: string) => (
+		{
+			uuid,
+			type: "assistant",
+		});
+		const cached: TranscriptData =
+		{
 			records: [record("uuid-0"), record("uuid-1")],
 			byteOffset: 0,
 			startIndex: 0,
@@ -373,7 +524,8 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 			chainVersion: "v1",
 			chapters: [],
 		};
-		const tail: TranscriptData = {
+		const tail: TranscriptData =
+		{
 			records: [record("uuid-1"), record("uuid-2")],
 			byteOffset: 0,
 			startIndex: 1,
@@ -386,12 +538,23 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(tail)));
 		vi.stubGlobal("fetch", fetchMock);
 
-		function TranscriptProbe(): null {
+		function TranscriptProbe(): null
+		{
 			useQuery(transcriptQueryOptions(SESSION_ID));
 			return null;
 		}
 
-		const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		const client = new QueryClient(
+			{
+				defaultOptions:
+				{
+					queries:
+					{
+						retry: false,
+					},
+				},
+			},
+		);
 		client.setQueryData(sessionQueryKeys.transcript(SESSION_ID), cached);
 		render(
 			<QueryClientProvider client={client}>
@@ -402,21 +565,25 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 		);
 		expect(fetchMock).not.toHaveBeenCalled();
 
-		act(() => {
+		act(() =>
+		{
 			TestEventSource.current!.reconnect();
 		});
 
-		await waitFor(() => {
-			expect(client.getQueryData(sessionQueryKeys.transcript(SESSION_ID))).toStrictEqual({
-				records: [record("uuid-0"), record("uuid-1"), record("uuid-2")],
-				byteOffset: 0,
-				startIndex: 0,
-				precedingMessageCount: 0,
-				hiddenUuids: [],
-				cuts: [],
-				chainVersion: "v1",
-				chapters: [],
-			});
+		await waitFor(() =>
+		{
+			expect(client.getQueryData(sessionQueryKeys.transcript(SESSION_ID))).toStrictEqual(
+				{
+					records: [record("uuid-0"), record("uuid-1"), record("uuid-2")],
+					byteOffset: 0,
+					startIndex: 0,
+					precedingMessageCount: 0,
+					hiddenUuids: [],
+					cuts: [],
+					chainVersion: "v1",
+					chapters: [],
+				},
+			);
 		});
 		expect(fetchMock.mock.calls.map(([url]) => String(url))).toStrictEqual([
 			expect.stringContaining(`/api/sessions/${SESSION_ID}/transcript`),
@@ -424,11 +591,13 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 	});
 });
 
-describe("ClaudeEventsProvider lines appended to a session", () => {
+describe("ClaudeEventsProvider lines appended to a session", () =>
+{
 	const NOW = Date.parse("2026-09-30T12:00:00.000Z");
 	const ACTIVE_KEY = sessionQueryKeys.active(300_000);
 
-	function activeSession(sessionId: string, lastModified: number) {
+	function activeSession(sessionId: string, lastModified: number)
+	{
 		return {
 			sessionId,
 			projectDir: "-Users-test-project",
@@ -442,7 +611,8 @@ describe("ClaudeEventsProvider lines appended to a session", () => {
 		};
 	}
 
-	function listItem(id: string) {
+	function listItem(id: string)
+	{
 		return {
 			id,
 			title: `Session ${id}`,
@@ -460,79 +630,125 @@ describe("ClaudeEventsProvider lines appended to a session", () => {
 		};
 	}
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		TestEventSource.current = null;
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.spyOn(Date, "now").mockReturnValue(NOW);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
 
-	it("moves an already active session to the top with a fresh activity time instead of refetching", () => {
+	it("moves an already active session to the top with a fresh activity time instead of refetching", () =>
+	{
 		const {client, eventSource} = renderProvider();
 		client.setQueryData(ACTIVE_KEY, [
 			activeSession("session-a", NOW - 1_000),
 			activeSession("session-b", NOW - 9_000),
 		]);
 
-		act(() => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
-				sessionId: "session-b",
-				lines: [{type: "assistant"}],
-			});
+		act(() =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+				{
+					sessionId: "session-b",
+					lines: [
+						{
+							type: "assistant",
+						},
+					],
+				},
+			);
 		});
 
-		expect({
-			data: client.getQueryData(ACTIVE_KEY),
-			invalidated: client.getQueryState(ACTIVE_KEY)?.isInvalidated,
-		}).toStrictEqual({
-			data: [activeSession("session-b", NOW), activeSession("session-a", NOW - 1_000)],
-			invalidated: false,
-		});
+		expect(
+			{
+				data: client.getQueryData(ACTIVE_KEY),
+				invalidated: client.getQueryState(ACTIVE_KEY)?.isInvalidated,
+			},
+		).toStrictEqual(
+			{
+				data: [activeSession("session-b", NOW), activeSession("session-a", NOW - 1_000)],
+				invalidated: false,
+			},
+		);
 	});
 
-	it("adds a newly active session from its cached list row so the sidebar shows it without a refetch", () => {
+	it("adds a newly active session from its cached list row so the sidebar shows it without a refetch", () =>
+	{
 		const {client, eventSource} = renderProvider();
 		client.setQueryData(ACTIVE_KEY, [activeSession("session-a", NOW - 1_000)]);
-		client.setQueryData(sessionQueryKeys.recent(50), {sessions: [listItem("session-new")], nextCursor: null});
+		client.setQueryData(
+			sessionQueryKeys.recent(50),
+			{
+				sessions: [listItem("session-new")],
+				nextCursor: null,
+			},
+		);
 
-		act(() => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId: "session-new", lines: [{type: "user"}]});
-		});
-
-		expect({
-			data: client.getQueryData(ACTIVE_KEY),
-			invalidated: client.getQueryState(ACTIVE_KEY)?.isInvalidated,
-		}).toStrictEqual({
-			data: [
+		act(() =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_LINES_APPENDED,
 				{
 					sessionId: "session-new",
-					projectDir: "-Users-test-project",
-					projectName: "/Users/test/project",
-					title: "Session session-new",
-					createdAt: Date.parse("2026-09-29T11:00:00.000Z"),
-					lastModified: NOW,
-					state: "unknown",
-					unseen: true,
-					blockedSince: null,
+					lines: [
+						{
+							type: "user",
+						},
+					],
 				},
-				activeSession("session-a", NOW - 1_000),
-			],
-			invalidated: false,
+			);
 		});
+
+		expect(
+			{
+				data: client.getQueryData(ACTIVE_KEY),
+				invalidated: client.getQueryState(ACTIVE_KEY)?.isInvalidated,
+			},
+		).toStrictEqual(
+			{
+				data: [
+					{
+						sessionId: "session-new",
+						projectDir: "-Users-test-project",
+						projectName: "/Users/test/project",
+						title: "Session session-new",
+						createdAt: Date.parse("2026-09-29T11:00:00.000Z"),
+						lastModified: NOW,
+						state: "unknown",
+						unseen: true,
+						blockedSince: null,
+					},
+					activeSession("session-a", NOW - 1_000),
+				],
+				invalidated: false,
+			},
+		);
 	});
 
-	it("finds a newly active session's row in the grouped and infinite recent lists too", () => {
+	it("finds a newly active session's row in the grouped and infinite recent lists too", () =>
+	{
 		const {client, eventSource} = renderProvider();
 		client.setQueryData(ACTIVE_KEY, []);
-		client.setQueryData(sessionQueryKeys.recentInfinite(), {
-			pages: [{sessions: [listItem("session-paged")], nextCursor: null}],
-			pageParams: [null],
-		});
+		client.setQueryData(
+			sessionQueryKeys.recentInfinite(),
+			{
+				pages: [
+					{
+						sessions: [listItem("session-paged")],
+						nextCursor: null,
+					},
+				],
+				pageParams: [null],
+			},
+		);
 		client.setQueryData(sessionQueryKeys.grouped(5), [
 			{
 				project: "-Users-test-project",
@@ -542,86 +758,150 @@ describe("ClaudeEventsProvider lines appended to a session", () => {
 			},
 		]);
 
-		act(() => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId: "session-paged", lines: []});
-			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId: "session-grouped", lines: []});
+		act(() =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+				{
+					sessionId: "session-paged",
+					lines: [],
+				},
+			);
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+				{
+					sessionId: "session-grouped",
+					lines: [],
+				},
+			);
 		});
 
-		expect({
-			ids: client.getQueryData<Array<{sessionId: string}>>(ACTIVE_KEY)?.map((session) => session.sessionId),
-			invalidated: client.getQueryState(ACTIVE_KEY)?.isInvalidated,
-		}).toStrictEqual({ids: ["session-grouped", "session-paged"], invalidated: false});
+		expect(
+			{
+				ids: client
+					.getQueryData<
+						Array<
+						{
+							sessionId: string;
+						}>
+					>(ACTIVE_KEY)
+					?.map((session) => session.sessionId),
+				invalidated: client.getQueryState(ACTIVE_KEY)?.isInvalidated,
+			},
+		).toStrictEqual(
+			{
+				ids: ["session-grouped", "session-paged"],
+				invalidated: false,
+			},
+		);
 	});
 
-	it("refetches the active sessions when no cached list knows the newly active session", () => {
+	it("refetches the active sessions when no cached list knows the newly active session", () =>
+	{
 		const {client, eventSource} = renderProvider();
 		client.setQueryData(ACTIVE_KEY, [activeSession("session-a", NOW - 1_000)]);
 
-		act(() => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId: "session-unknown", lines: []});
+		act(() =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+				{
+					sessionId: "session-unknown",
+					lines: [],
+				},
+			);
 		});
 
 		expect(client.getQueryState(ACTIVE_KEY)?.isInvalidated).toBe(true);
 	});
 });
 
-describe("ClaudeEventsProvider SSE stream refused while the dev server restarts", () => {
-	beforeEach(() => {
+describe("ClaudeEventsProvider SSE stream refused while the dev server restarts", () =>
+{
+	beforeEach(() =>
+	{
 		TestEventSource.current = null;
 		TestEventSource.all = [];
 		vi.stubGlobal("EventSource", TestEventSource);
-		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.useRealTimers();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
 
-	it("opens a fresh stream after a 503 closes it, then catches up and handles its events", () => {
+	it("opens a fresh stream after a 503 closes it, then catches up and handles its events", () =>
+	{
 		const {client, eventSource} = renderProvider();
 		client.setQueryData(["approvals"], {});
 
-		act(() => {
+		act(() =>
+		{
 			eventSource.fail();
 			// The first reopen waits 1s jittered by ×[0.75, 1.25].
 			vi.advanceTimersByTime(1250);
 		});
 		const reopened = TestEventSource.current!;
-		act(() => {
+		act(() =>
+		{
 			reopened.dispatchEvent(new Event("open"));
 		});
 		const caughtUp = client.getQueryState(["approvals"])?.isInvalidated;
-		act(() => {
+		act(() =>
+		{
 			reopened.emit(HERDR_EVENTS.PANE_CREATED);
 		});
 
-		expect({
-			streams: TestEventSource.all.length,
-			firstClosed: eventSource.close.mock.calls.length > 0,
-			caughtUp,
-			handledAfterReopen: invalidationState(client).herdrPanes,
-		}).toStrictEqual({streams: 2, firstClosed: true, caughtUp: true, handledAfterReopen: true});
+		expect(
+			{
+				streams: TestEventSource.all.length,
+				firstClosed: eventSource.close.mock.calls.length > 0,
+				caughtUp,
+				handledAfterReopen: invalidationState(client).herdrPanes,
+			},
+		).toStrictEqual(
+			{
+				streams: 2,
+				firstClosed: true,
+				caughtUp: true,
+				handledAfterReopen: true,
+			},
+		);
 	});
 });
 
-describe("ClaudeEventsProvider transcript rewritten", () => {
-	beforeEach(() => {
+describe("ClaudeEventsProvider transcript rewritten", () =>
+{
+	beforeEach(() =>
+	{
 		TestEventSource.current = null;
 		vi.stubGlobal("EventSource", TestEventSource);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
 
-	it("replaces the cached transcript with a fresh tail when the CLI rewrote the file", async () => {
-		const window = (uuids: string[], startIndex: number): TranscriptData => ({
-			records: uuids.map((uuid) => ({type: "user", uuid})),
+	it("replaces the cached transcript with a fresh tail when the CLI rewrote the file", async () =>
+	{
+		const window = (uuids: string[], startIndex: number): TranscriptData => (
+		{
+			records: uuids.map((uuid) => (
+			{
+				type: "user",
+				uuid,
+			})),
 			byteOffset: 100 + startIndex,
 			startIndex,
 			precedingMessageCount: startIndex,
@@ -633,17 +913,33 @@ describe("ClaudeEventsProvider transcript rewritten", () => {
 		const fresh = window(["u-2", "u-4"], 2);
 		vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
 			Promise.resolve(
-				new Response(JSON.stringify(fresh), {status: 200, headers: {"Content-Type": "application/json"}}),
+				new Response(
+					JSON.stringify(fresh),
+					{
+						status: 200,
+						headers:
+						{
+							"Content-Type": "application/json",
+						},
+					},
+				),
 			),
 		);
 		const {client, eventSource} = renderProvider();
 		client.setQueryData(sessionQueryKeys.transcript("session-r"), window(["u-0", "u-1", "u-2", "u-3"], 0));
 
-		act(() => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN, {sessionId: "session-r"});
+		act(() =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN,
+				{
+					sessionId: "session-r",
+				},
+			);
 		});
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(client.getQueryData(sessionQueryKeys.transcript("session-r"))).toStrictEqual(fresh);
 		});
 	});

@@ -3,14 +3,18 @@ import {createFileRoute} from "@tanstack/react-router";
 import {CodePageHeader} from "../components/code-page-header";
 import {HookSetup} from "../components/hook-setup";
 
-export const Route = createFileRoute("/setup")({
-	component: SetupPage,
-	head: () => ({
-		meta: [pageTitle("Setup")],
-	}),
-});
+export const Route = createFileRoute("/setup")(
+	{
+		component: SetupPage,
+		head: () => (
+		{
+			meta: [pageTitle("Setup")],
+		}),
+	},
+);
 
-function SetupPage() {
+function SetupPage()
+{
 	return (
 		<div className="max-w-3xl">
 			<CodePageHeader

@@ -1,8 +1,10 @@
 import {errnoCode} from "../narrow";
 
 /** True for SQLITE_BUSY and its extended codes, including when drizzle wraps the SqliteError as the cause. */
-export function isBusyError(err: unknown): boolean {
-	for (let current = err; current instanceof Error; current = current.cause) {
+export function isBusyError(err: unknown): boolean
+{
+	for (let current = err; current instanceof Error; current = current.cause)
+	{
 		if (errnoCode(current)?.startsWith("SQLITE_BUSY")) return true;
 	}
 	return false;
@@ -16,14 +18,20 @@ const RETRY_DELAYS_MS = [100, 250, 500, 1000, 2000, 4000, 8000];
  * by sleeping the thread, so the connection's busy timeout is kept short and longer waits happen here, where the
  * event loop keeps serving requests. `step` must be safe to repeat from the start.
  */
-export async function retryWhileBusy<T>(step: () => T | Promise<T>, signal?: AbortSignal): Promise<T> {
-	for (let attempt = 0; ; attempt++) {
-		try {
+export async function retryWhileBusy<T>(step: () => T | Promise<T>, signal?: AbortSignal): Promise<T>
+{
+	for (let attempt = 0; ; attempt++)
+	{
+		try
+		{
 			return await step();
-		} catch (err) {
+		}
+		catch (err)
+		{
 			const delayMs = RETRY_DELAYS_MS[attempt];
 			if (delayMs === undefined || !isBusyError(err) || signal?.aborted) throw err;
-			await new Promise((resolve) => {
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, delayMs);
 			});
 		}

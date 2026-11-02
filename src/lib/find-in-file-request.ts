@@ -9,26 +9,32 @@ type FindHandler = (path: string) => boolean;
 const handlers = new Set<FindHandler>();
 let pending: string | null = null;
 
-export function requestFindInFile(path: string): void {
+export function requestFindInFile(path: string): void
+{
 	pending = path;
-	for (const handler of handlers) {
+	for (const handler of handlers)
+	{
 		if (handler(path)) pending = null;
 	}
 }
 
 /** Registers a viewer; it takes a pending request for its file straight away. */
-export function registerFindInFile(path: string, open: () => void): () => void {
-	if (pending === path) {
+export function registerFindInFile(path: string, open: () => void): () => void
+{
+	if (pending === path)
+	{
 		pending = null;
 		open();
 	}
-	const handler: FindHandler = (requested) => {
+	const handler: FindHandler = (requested) =>
+	{
 		if (requested !== path) return false;
 		open();
 		return true;
 	};
 	handlers.add(handler);
-	return () => {
+	return () =>
+	{
 		handlers.delete(handler);
 	};
 }

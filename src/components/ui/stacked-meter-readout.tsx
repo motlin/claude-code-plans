@@ -4,7 +4,8 @@ import {readoutLabelParts} from "../../lib/stacked-meter-layout";
 
 /* Upstream's lazy lg StackedMeter readout card (c6b47b88e ReadoutCard on the cddbfc1b6 positioner, frame and rows). */
 
-export interface StackedMeterReadoutRow {
+export interface StackedMeterReadoutRow
+{
 	id: string;
 	label: string;
 	paint: string;
@@ -21,11 +22,24 @@ const OFFSET_PX = 8;
  */
 function placeCard(
 	bar: DOMRect,
-	card: {width: number; height: number},
+	card:
+	{
+		width: number;
+		height: number;
+	},
 	x: number,
 	above: boolean,
-	viewport: {width: number; height: number},
-): {left: number; top: number} {
+	viewport:
+	{
+		width: number;
+		height: number;
+	},
+):
+{
+	left: number;
+	top: number;
+}
+{
 	const maxLeft = viewport.width - card.width - OFFSET_PX;
 	const left = Math.max(OFFSET_PX, Math.min(bar.left + x - card.width / 2, maxLeft));
 	const before = bar.top - card.height - OFFSET_PX;
@@ -33,15 +47,25 @@ function placeCard(
 	const fitsBefore = before >= OFFSET_PX;
 	const fitsAfter = after + card.height <= viewport.height - OFFSET_PX;
 	const top = above ? (fitsBefore || !fitsAfter ? before : after) : fitsAfter || !fitsBefore ? after : before;
-	return {left, top};
+	return {
+		left,
+		top,
+	};
 }
 
 /** Upstream's readout label `G`: truncates, keeping a long label's last 8 graphemes visible. */
-function ReadoutLabel({label, emphasized}: {label: string; emphasized: boolean}) {
+function ReadoutLabel({label, emphasized}: {label: string; emphasized: boolean})
+{
 	const {head, tail} = readoutLabelParts(label);
 	const base = `max-w-[240px] justify-self-start text-footnote ${emphasized ? "text-primary" : "text-secondary"}`;
-	const mark = emphasized ? {"data-emphasized": true} : {};
-	if (tail === "") {
+	const mark = emphasized
+		?
+			{
+				"data-emphasized": true,
+			}
+		: {};
+	if (tail === "")
+	{
 		return (
 			<span dir="auto" {...mark} className={`truncate ${base}`}>
 				{label}
@@ -78,50 +102,67 @@ export function StackedMeterReadoutCard({
 	above: boolean;
 	onDismiss: () => void;
 	onDisplaced: () => void;
-}) {
+})
+{
 	const card = useRef<HTMLDivElement>(null);
 	const shown = useRef(false);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const doc = barRef.current?.ownerDocument;
-		const onKeyDown = (event: KeyboardEvent) => {
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			if (event.key !== "Escape" || event.isComposing) return;
 			event.preventDefault();
 			event.stopPropagation();
 			onDismiss();
 		};
 		doc?.addEventListener("keydown", onKeyDown, true);
-		return () => {
+		return () =>
+		{
 			doc?.removeEventListener("keydown", onKeyDown, true);
 		};
 	}, [barRef, onDismiss]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const element = card.current;
 		const bar = barRef.current;
 		if (element === null || bar === null) return undefined;
-		const place = (jump: boolean) => {
-			if (!shown.current) {
-				try {
+		const place = (jump: boolean) =>
+		{
+			if (!shown.current)
+			{
+				try
+				{
 					element.showPopover();
 					element.style.position = "fixed";
-				} catch {
+				}
+				catch
+				{
 					// No popover support: the absolute card still draws in the meter.
 				}
 			}
 			const root = element.ownerDocument.documentElement;
 			const barBox = bar.getBoundingClientRect();
 			// A meter scrolled out of the viewport takes its card with it (upstream's onDisplaced).
-			if (barBox.height > 0 && (barBox.bottom < 0 || barBox.top > root.clientHeight)) {
+			if (barBox.height > 0 && (barBox.bottom < 0 || barBox.top > root.clientHeight))
+			{
 				onDisplaced();
 				return;
 			}
 			const {left, top} = placeCard(
 				barBox,
-				{width: element.offsetWidth, height: element.offsetHeight},
+				{
+					width: element.offsetWidth,
+					height: element.offsetHeight,
+				},
 				x,
 				above,
-				{width: root.clientWidth, height: root.clientHeight},
+				{
+					width: root.clientWidth,
+					height: root.clientHeight,
+				},
 			);
 			// Upstream springs the card (stiffness 950, damping 55, mass 0.85) and jumps it on first show.
 			element.style.transition =
@@ -131,13 +172,28 @@ export function StackedMeterReadoutCard({
 		};
 		place(false);
 		const view = element.ownerDocument.defaultView ?? window;
-		const jump = () => {
+		const jump = () =>
+		{
 			place(true);
 		};
-		view.addEventListener("scroll", jump, {capture: true, passive: true});
+		view.addEventListener(
+			"scroll",
+			jump,
+			{
+				capture: true,
+				passive: true,
+			},
+		);
 		view.addEventListener("resize", jump);
-		return () => {
-			view.removeEventListener("scroll", jump, {capture: true});
+		return () =>
+		{
+			view.removeEventListener(
+				"scroll",
+				jump,
+				{
+					capture: true,
+				},
+			);
 			view.removeEventListener("resize", jump);
 		};
 	}, [barRef, x, above, width, thickness, rows, onDisplaced]);
@@ -164,13 +220,15 @@ export function StackedMeterReadoutCard({
 }
 
 /** Upstream's row `Z`: swatch, amount, share and label cells in the card's 4-column grid. */
-function ReadoutRow({row, emphasized}: {row: StackedMeterReadoutRow; emphasized: boolean}) {
+function ReadoutRow({row, emphasized}: {row: StackedMeterReadoutRow; emphasized: boolean})
+{
 	return (
 		<>
 			<span
 				aria-hidden
 				className="shrink-0 forced-color-adjust-none"
-				style={{
+				style={
+				{
 					width: 10,
 					height: 10,
 					borderRadius: 2,

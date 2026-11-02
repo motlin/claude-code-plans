@@ -5,38 +5,74 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
 let scrollHeight = 0;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {configurable: true, value: vi.fn<() => void>()});
-	Object.defineProperty(HTMLElement.prototype, "scrollHeight", {configurable: true, get: () => scrollHeight});
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: vi.fn<() => void>(),
+		},
+	);
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollHeight",
+		{
+			configurable: true,
+			get: () => scrollHeight,
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
@@ -44,9 +80,18 @@ afterEach(() => {
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
 });
 
-function renderPrompt(content: string): HTMLElement {
+function renderPrompt(content: string): HTMLElement
+{
 	const {lines, toolResultMap} = processTranscript([
-		{type: "user", uuid: "user-long-1", message: {role: "user", content}},
+		{
+			type: "user",
+			uuid: "user-long-1",
+			message:
+			{
+				role: "user",
+				content,
+			},
+		},
 	]);
 	return render(
 		<SessionChat
@@ -61,37 +106,78 @@ function renderPrompt(content: string): HTMLElement {
 	).container;
 }
 
-function toggles(container: HTMLElement): {text: string | null; expanded: string | null}[] {
+function toggles(container: HTMLElement):
+{
+	text: string | null;
+	expanded: string | null;
+}[]
+{
 	return within(container)
-		.queryAllByRole("button", {name: /^Show (more|less)$/})
-		.map((button) => ({text: button.textContent, expanded: button.getAttribute("aria-expanded")}));
+		.queryAllByRole(
+			"button",
+			{
+				name: /^Show (more|less)$/,
+			},
+		)
+		.map((button) => (
+		{
+			text: button.textContent,
+			expanded: button.getAttribute("aria-expanded"),
+		}));
 }
 
-describe("SessionChat long-bubble Show more toggle", () => {
-	it("renders one ghost toggle that flips aria-expanded and its label", () => {
+describe("SessionChat long-bubble Show more toggle", () =>
+{
+	it("renders one ghost toggle that flips aria-expanded and its label", () =>
+	{
 		scrollHeight = 400;
 		const container = renderPrompt("a long prompt");
 		const collapsed = toggles(container);
-		const button = within(container).getByRole("button", {name: "Show more"});
+		const button = within(container).getByRole(
+			"button",
+			{
+				name: "Show more",
+			},
+		);
 		fireEvent.click(button);
 		const expanded = toggles(container);
 		fireEvent.click(button);
 
-		expect({
-			collapsed,
-			expanded,
-			recollapsed: toggles(container),
-			className: button.className,
-		}).toEqual({
-			collapsed: [{text: "Show more", expanded: "false"}],
-			expanded: [{text: "Show less", expanded: "true"}],
-			recollapsed: [{text: "Show more", expanded: "false"}],
-			className:
-				"self-start h-5 cursor-pointer rounded-r4 px-1.5 text-caption font-normal text-primary transition-colors hover:bg-alpha-1",
-		});
+		expect(
+			{
+				collapsed,
+				expanded,
+				recollapsed: toggles(container),
+				className: button.className,
+			},
+		).toEqual(
+			{
+				collapsed: [
+					{
+						text: "Show more",
+						expanded: "false",
+					},
+				],
+				expanded: [
+					{
+						text: "Show less",
+						expanded: "true",
+					},
+				],
+				recollapsed: [
+					{
+						text: "Show more",
+						expanded: "false",
+					},
+				],
+				className:
+					"self-start h-5 cursor-pointer rounded-r4 px-1.5 text-caption font-normal text-primary transition-colors hover:bg-alpha-1",
+			},
+		);
 	});
 
-	it("renders no toggle when the content fits within 256px", () => {
+	it("renders no toggle when the content fits within 256px", () =>
+	{
 		scrollHeight = 256;
 
 		expect(toggles(renderPrompt("short"))).toEqual([]);

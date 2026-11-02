@@ -4,7 +4,8 @@ import * as schema from "./schema";
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
 /** Every stored Bypass ack, oldest first. */
-export function getPermissionModeAcks(db: IndexDb): string[] {
+export function getPermissionModeAcks(db: IndexDb): string[]
+{
 	return db
 		.select()
 		.from(schema.permissionModeAcks)
@@ -14,6 +15,15 @@ export function getPermissionModeAcks(db: IndexDb): string[] {
 }
 
 /** Store an ack once; a repeat keeps its first time. */
-export function addPermissionModeAck(db: IndexDb, key: string, now: number = Date.now()): void {
-	db.insert(schema.permissionModeAcks).values({key, ackedAt: now}).onConflictDoNothing().run();
+export function addPermissionModeAck(db: IndexDb, key: string, now: number = Date.now()): void
+{
+	db.insert(schema.permissionModeAcks)
+		.values(
+			{
+				key,
+				ackedAt: now,
+			},
+		)
+		.onConflictDoNothing()
+		.run();
 }

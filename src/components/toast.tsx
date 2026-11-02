@@ -1,5 +1,6 @@
 import {CircleAlert, Info, TriangleAlert} from "lucide-react";
-import {
+import
+{
 	type CSSProperties,
 	type ReactNode,
 	type RefObject,
@@ -14,7 +15,8 @@ import {
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {ToastContext, type ToastKind, type ToastOptions} from "./toast-context";
 
-interface ToastEntry extends ToastOptions {
+interface ToastEntry extends ToastOptions
+{
 	id: number;
 	/** How many identical toasts this one stands for; upstream appends " (×N)" past one. */
 	count: number;
@@ -35,7 +37,8 @@ const DECK_SCALE_STEP = 0.04;
 type ToastVariant = "neutral" | "warning" | "danger";
 
 /** Upstream `GY`: addError, addApiError and addWarning all store `toastType: "warning"`. */
-const VARIANT_OF = {
+const VARIANT_OF =
+{
 	success: "neutral",
 	warning: "warning",
 	error: "warning",
@@ -46,7 +49,8 @@ const VARIANT_OF = {
 const STACKS_CARD = "bg-surface-popover text-primary shadow-panel-md";
 
 /** Upstream `Zq` + `V9` without fizzy color: the card is tinted, ringed and inked by its variant. */
-const PRE_FIZZY_CARD = {
+const PRE_FIZZY_CARD =
+{
 	neutral: STACKS_CARD,
 	warning:
 		"bg-[color-mix(in_srgb,var(--color-warning-100)_10%,var(--color-surface-popover))] text-warning-000 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-warning-100)_35%,transparent),var(--shadow-panel-md)]",
@@ -54,26 +58,30 @@ const PRE_FIZZY_CARD = {
 } as const satisfies Record<ToastVariant, string>;
 
 /** Upstream `TQ`: the icon wrap's ink; without fizzy color warning/danger inherit the card ink. */
-function iconInk(variant: ToastVariant, fizzyColor: boolean): string {
+function iconInk(variant: ToastVariant, fizzyColor: boolean): string
+{
 	if (variant === "neutral") return "text-secondary";
 	if (!fizzyColor) return "";
 	return variant === "warning" ? "text-fill-warning" : "text-fill-danger";
 }
 
 /** Upstream `yx`'s content identity; a keyed toast has a key identity and never folds. */
-function sameToast(a: ToastOptions, b: ToastOptions): boolean {
+function sameToast(a: ToastOptions, b: ToastOptions): boolean
+{
 	if (a.uniqueKey !== undefined || b.uniqueKey !== undefined) return false;
 	return VARIANT_OF[a.kind] === VARIANT_OF[b.kind] && a.message === b.message && a.description === b.description;
 }
 
-function durationFor(entry: ToastEntry): number | null {
+function durationFor(entry: ToastEntry): number | null
+{
 	if (entry.durationMs !== undefined) return entry.durationMs;
 	if (entry.action !== undefined) return null;
 	return VARIANT_OF[entry.kind] === "neutral" ? NEUTRAL_DURATION_MS : ALERT_DURATION_MS;
 }
 
 /** Base UI's `visuallyHidden` style, which its Toast viewport uses for the danger announcer. */
-const VISUALLY_HIDDEN: CSSProperties = {
+const VISUALLY_HIDDEN: CSSProperties =
+{
 	clipPath: "inset(50%)",
 	overflow: "hidden",
 	whiteSpace: "nowrap",
@@ -95,21 +103,26 @@ const VIEWPORT_CLASS =
 const REGION_CLASS = "pointer-events-auto relative outline-none focus-visible:outline-hidden";
 
 /** Tracks the front toast's height, as Base UI sizes its viewport to the frontmost toast. */
-function useFrontHeight(region: RefObject<HTMLElement | null>, frontId: number | undefined): number {
+function useFrontHeight(region: RefObject<HTMLElement | null>, frontId: number | undefined): number
+{
 	const [height, setHeight] = useState(0);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const front = region.current?.querySelector<HTMLElement>("[data-toast]") ?? null;
-		if (frontId === undefined || front === null) {
+		if (frontId === undefined || front === null)
+		{
 			setHeight(0);
 			return undefined;
 		}
 		setHeight(front.offsetHeight);
 		if (typeof ResizeObserver === "undefined") return undefined;
-		const observer = new ResizeObserver(() => {
+		const observer = new ResizeObserver(() =>
+		{
 			setHeight(front.offsetHeight);
 		});
 		observer.observe(front);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [region, frontId]);
@@ -117,18 +130,23 @@ function useFrontHeight(region: RefObject<HTMLElement | null>, frontId: number |
 }
 
 /** Window blur pauses every toast timer and window focus resumes them, as Base UI's ToastProvider. */
-function useWindowFocused(): boolean {
+function useWindowFocused(): boolean
+{
 	const [focused, setFocused] = useState(true);
-	useEffect(() => {
-		const onBlur = () => {
+	useEffect(() =>
+	{
+		const onBlur = () =>
+		{
 			setFocused(false);
 		};
-		const onFocus = () => {
+		const onFocus = () =>
+		{
 			setFocused(true);
 		};
 		window.addEventListener("blur", onBlur);
 		window.addEventListener("focus", onFocus);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("blur", onBlur);
 			window.removeEventListener("focus", onFocus);
 		};
@@ -145,7 +163,13 @@ function useWindowFocused(): boolean {
  * alertdialog stays aria-hidden and is announced by a visually hidden role=alert until the region
  * takes focus.
  */
-export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
+export function ToastProvider({
+	children,
+}: Readonly<
+{
+	children: ReactNode;
+}>)
+{
 	const [toasts, setToasts] = useState<ToastEntry[]>([]);
 	const nextId = useRef(0);
 	const fizzyColor = useFizzyLake("color");
@@ -156,15 +180,18 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 	/** Base UI `prevFocusElement`: where focus came from before it entered the deck. */
 	const prevFocus = useRef<HTMLElement | null>(null);
 
-	const dismiss = useCallback((id: number) => {
+	const dismiss = useCallback((id: number) =>
+	{
 		setToasts((current) => current.filter((t) => t.id !== id));
 	}, []);
 
 	/** Base UI `handleFocusManagement`: focus the next older toast, else the newer one, else the pre-deck element. */
 	const close = useCallback(
-		(id: number, root: HTMLElement) => {
+		(id: number, root: HTMLElement) =>
+		{
 			const viewportRegion = root.parentElement;
-			if (viewportRegion?.contains(document.activeElement) === true) {
+			if (viewportRegion?.contains(document.activeElement) === true)
+			{
 				const roots = [...viewportRegion.children].filter((el) => el.hasAttribute("data-toast"));
 				const index = roots.indexOf(root);
 				const next = roots[index + 1] ?? roots[index - 1];
@@ -176,33 +203,60 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 		[dismiss],
 	);
 
-	const toast = useCallback((options: ToastOptions) => {
+	const toast = useCallback((options: ToastOptions) =>
+	{
 		const {signal} = options;
 		if (signal?.aborted === true) return;
-		setToasts((current) => {
-			if (options.uniqueKey !== undefined) {
+		setToasts((current) =>
+		{
+			if (options.uniqueKey !== undefined)
+			{
 				// Upstream `ta`: close the same-key card (its action never runs) and add a new one at the front.
 				nextId.current += 1;
 				return [
 					...current.filter((entry) => entry.uniqueKey !== options.uniqueKey),
-					{...options, id: nextId.current, count: 1, repeat: 0},
+					{
+						...options,
+						id: nextId.current,
+						count: 1,
+						repeat: 0,
+					},
 				];
 			}
 			const open = current.find((entry) => sameToast(entry, options));
-			if (open !== undefined) {
+			if (open !== undefined)
+			{
 				return current.map((entry) =>
-					entry === open ? {...entry, count: entry.count + 1, repeat: entry.repeat + 1} : entry,
+					entry === open
+						?
+							{
+								...entry,
+								count: entry.count + 1,
+								repeat: entry.repeat + 1,
+							}
+						: entry,
 				);
 			}
 			nextId.current += 1;
-			return [...current, {...options, id: nextId.current, count: 1, repeat: 0}];
+			return [
+				...current,
+				{
+					...options,
+					id: nextId.current,
+					count: 1,
+					repeat: 0,
+				},
+			];
 		});
 		signal?.addEventListener(
 			"abort",
-			() => {
+			() =>
+			{
 				setToasts((current) => current.filter((t) => t.signal !== signal));
 			},
-			{once: true},
+			{
+				once: true,
+			},
 		);
 	}, []);
 
@@ -214,7 +268,15 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 	return (
 		<ToastContext.Provider value={toast}>
 			{children}
-			<div data-cds="Toast" data-position="bottom-right" style={{zIndex: 100}} className={VIEWPORT_CLASS}>
+			<div
+				data-cds="Toast"
+				data-position="bottom-right"
+				style={
+				{
+					zIndex: 100,
+				}}
+				className={VIEWPORT_CLASS}
+			>
 				{/* Upstream `KS`: the pinned client-health notice slot, kept empty locally. */}
 				<div role="status" aria-live="polite" className="sr-only" />
 				{/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Base UI Toast.Viewport: hover/focus expand the deck, Shift+Tab on the region restores the pre-F6 element */}
@@ -226,30 +288,45 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 					aria-atomic={false}
 					aria-relevant="additions text"
 					aria-label="Notifications"
-					{...(toasts.length > 0 ? {"data-focus-region": "notifications"} : {})}
+					{...(toasts.length > 0
+						?
+							{
+								"data-focus-region": "notifications",
+							}
+						: {})}
 					data-expanded={expanded ? "" : undefined}
 					className={REGION_CLASS}
-					style={{height: frontHeight}}
-					onMouseEnter={() => {
+					style={
+					{
+						height: frontHeight,
+					}}
+					onMouseEnter={() =>
+					{
 						setHovered(true);
 					}}
-					onMouseLeave={() => {
+					onMouseLeave={() =>
+					{
 						setHovered(false);
 					}}
-					onFocus={(event) => {
+					onFocus={(event) =>
+					{
 						const from = event.relatedTarget;
-						if (from instanceof HTMLElement && !event.currentTarget.contains(from)) {
+						if (from instanceof HTMLElement && !event.currentTarget.contains(from))
+						{
 							prevFocus.current = from;
 						}
 						setRegionFocused(true);
 					}}
-					onBlur={(event) => {
+					onBlur={(event) =>
+					{
 						const to = event.relatedTarget;
 						if (to instanceof Node && event.currentTarget.contains(to)) return;
 						setRegionFocused(false);
 					}}
-					onKeyDown={(event) => {
-						if (event.key === "Tab" && event.shiftKey && event.target === event.currentTarget) {
+					onKeyDown={(event) =>
+					{
+						if (event.key === "Tab" && event.shiftKey && event.target === event.currentTarget)
+						{
 							event.preventDefault();
 							prevFocus.current?.focus();
 						}
@@ -288,7 +365,8 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
  * Upstream `b_` / `P6`: Info (U+E08F), Warning (U+F082 filled under KH()) and WarningCircle
  * (U+F081 filled under KH()), each a 20px glyph; see dumps/toast-adderror-warning-variant-live-2026-11-07.txt.
  */
-function WarningFilledIcon() {
+function WarningFilledIcon()
+{
 	return (
 		<svg data-toast-icon="warning" data-filled="" aria-hidden="true" width={20} height={20} viewBox="0 0 20 20">
 			<path
@@ -300,7 +378,8 @@ function WarningFilledIcon() {
 	);
 }
 
-function WarningCircleFilledIcon() {
+function WarningCircleFilledIcon()
+{
 	return (
 		<svg data-toast-icon="danger" data-filled="" aria-hidden="true" width={20} height={20} viewBox="0 0 20 20">
 			<path
@@ -312,8 +391,10 @@ function WarningCircleFilledIcon() {
 	);
 }
 
-function ToastGlyph({variant, fizzyColor}: {variant: ToastVariant; fizzyColor: boolean}) {
-	switch (variant) {
+function ToastGlyph({variant, fizzyColor}: {variant: ToastVariant; fizzyColor: boolean})
+{
+	switch (variant)
+	{
 		case "danger":
 			return fizzyColor ? (
 				<WarningCircleFilledIcon />
@@ -331,7 +412,8 @@ function ToastGlyph({variant, fizzyColor}: {variant: ToastVariant; fizzyColor: b
 	}
 }
 
-function ToastIcon({variant, fizzyColor}: {variant: ToastVariant; fizzyColor: boolean}) {
+function ToastIcon({variant, fizzyColor}: {variant: ToastVariant; fizzyColor: boolean})
+{
 	const ink = iconInk(variant, fizzyColor);
 	return (
 		<span className={ink === "" ? "shrink-0" : `shrink-0 ${ink}`}>
@@ -369,7 +451,8 @@ function ToastItem({
 	onDismiss: (id: number) => void;
 	/** A user close (Escape, Dismiss, action): hand focus off, then drop the toast. */
 	onClose: (id: number, root: HTMLElement) => void;
-}) {
+})
+{
 	const {id, message, description, kind, action, count, repeat} = entry;
 	const titleId = useId();
 	const descriptionId = useId();
@@ -379,24 +462,29 @@ function ToastItem({
 	const remaining = useRef(duration);
 	const appliedRepeat = useRef(repeat);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		// A repeat keeps the toast up at least REPEAT_MIN_MS from now; the cleanup already took off the elapsed time.
-		if (repeat !== appliedRepeat.current) {
+		if (repeat !== appliedRepeat.current)
+		{
 			appliedRepeat.current = repeat;
 			if (remaining.current !== null) remaining.current = Math.max(remaining.current, REPEAT_MIN_MS);
 		}
 		if (paused || remaining.current === null) return undefined;
 		const startedAt = Date.now();
-		const timer = setTimeout(() => {
+		const timer = setTimeout(() =>
+		{
 			onDismiss(id);
 		}, remaining.current);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 			if (remaining.current !== null) remaining.current -= Date.now() - startedAt;
 		};
 	}, [paused, id, onDismiss, repeat]);
 
-	const close = () => {
+	const close = () =>
+	{
 		if (rootRef.current !== null) onClose(id, rootRef.current);
 	};
 	const behind = depth > 0;
@@ -416,12 +504,14 @@ function ToastItem({
 			aria-labelledby={titleId}
 			aria-describedby={description === undefined ? undefined : descriptionId}
 			aria-hidden={variant === "danger" && !regionFocused ? true : undefined}
-			style={{
+			style={
+			{
 				transform: `translateY(${depth * -DECK_OFFSET_PX}px) scale(${1 - depth * DECK_SCALE_STEP})`,
 				zIndex: 100 - depth,
 			}}
 			className={`${CARD_CLASS} ${fizzyColor ? STACKS_CARD : PRE_FIZZY_CARD[variant]}`}
-			onKeyDown={(event) => {
+			onKeyDown={(event) =>
+			{
 				if (event.key === "Escape" && event.currentTarget.contains(document.activeElement)) close();
 			}}
 		>
@@ -446,7 +536,8 @@ function ToastItem({
 					<button
 						type="button"
 						className="shrink-0 rounded-md border border-border px-2 py-0.5 text-sm font-medium hover:bg-fill-ghost-hover"
-						onClick={() => {
+						onClick={() =>
+						{
 							close();
 							action.onAction();
 						}}
@@ -460,10 +551,12 @@ function ToastItem({
 					aria-hidden={!expanded && !closeFocused ? true : undefined}
 					data-type={variant}
 					className="flex size-5 shrink-0 items-center justify-center rounded-lg p-1 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
-					onFocus={() => {
+					onFocus={() =>
+					{
 						setCloseFocused(true);
 					}}
-					onBlur={() => {
+					onBlur={() =>
+					{
 						setCloseFocused(false);
 					}}
 					onClick={close}

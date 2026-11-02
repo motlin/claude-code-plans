@@ -13,7 +13,8 @@ const COPIED_FEEDBACK_MS = 1500;
  * HTML, so the buttons cannot carry React handlers of their own; put this on the
  * container instead.
  */
-export function handleCodeCopyClick(event: MouseEvent<HTMLElement>): void {
+export function handleCodeCopyClick(event: MouseEvent<HTMLElement>): void
+{
 	const target = event.target;
 	if (!(target instanceof Element)) return;
 	if (handleSecretRevealClick(event)) return;
@@ -23,17 +24,20 @@ export function handleCodeCopyClick(event: MouseEvent<HTMLElement>): void {
 	const pre = button.closest(`.${CODEBLOCK_CLASS}`)?.querySelector("pre");
 	if (!pre) return;
 
-	void writeClipboardText(pre.textContent).then((copied) => {
+	void writeClipboardText(pre.textContent).then((copied) =>
+	{
 		if (!copied) return;
 		button.innerHTML = CHECK_ICON_SVG;
-		setTimeout(() => {
+		setTimeout(() =>
+		{
 			button.innerHTML = COPY_ICON_SVG;
 		}, COPIED_FEEDBACK_MS);
 	});
 }
 
 /** Swap the nodes a secret template stands in for with the template's content. */
-function swapWithTemplate(shown: readonly ChildNode[], template: HTMLTemplateElement): void {
+function swapWithTemplate(shown: readonly ChildNode[], template: HTMLTemplateElement): void
+{
 	const hidden = [...template.content.childNodes];
 	const anchor = shown[0];
 	if (anchor === undefined) return;
@@ -48,12 +52,14 @@ function swapWithTemplate(shown: readonly ChildNode[], template: HTMLTemplateEle
  * while masked; state lives in the DOM only and a re-render masks again. Returns whether it handled
  * the click.
  */
-function handleSecretRevealClick(event: MouseEvent<HTMLElement>): boolean {
+function handleSecretRevealClick(event: MouseEvent<HTMLElement>): boolean
+{
 	const target = event.target;
 	if (!(target instanceof Element)) return false;
 
 	const blockButton = target.closest(`[${SECRET_REVEAL_ATTR}]`);
-	if (blockButton instanceof HTMLElement) {
+	if (blockButton instanceof HTMLElement)
+	{
 		const block = blockButton.closest(`.${CODEBLOCK_CLASS}`);
 		const pre = block?.querySelector(":scope > pre");
 		const template = block?.querySelector(`:scope > template[${SECRET_RAW_ATTR}]`);

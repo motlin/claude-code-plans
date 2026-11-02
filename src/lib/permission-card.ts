@@ -8,7 +8,8 @@ import {markerEventsFromRecords} from "./working-marker";
 
 export type PermissionDecision = PermissionDialogDecision;
 
-export interface PermissionNotification {
+export interface PermissionNotification
+{
 	id: string;
 	sessionId: string;
 	notificationType: string;
@@ -23,9 +24,19 @@ export interface PermissionNotification {
  * Upstream's card title: "Allow Claude to <action> <meta>?" for a tool call, or
  * the notification's own text when no call in the transcript describes it.
  */
-export type PermissionTitle = {action: string; meta: string | null} | {heading: string};
+export type PermissionTitle =
+	|
+	  {
+			action: string;
+			meta: string | null;
+	  }
+	|
+	  {
+			heading: string;
+	  };
 
-export interface PendingPermission {
+export interface PendingPermission
+{
 	notificationId: string;
 	/** The transcript's tool call the prompt holds, shared by every signal; null when none describes it. */
 	toolUseId: string | null;
@@ -64,7 +75,8 @@ export interface PendingPermission {
 /** Tools with their own docked card, which never show the permission card. */
 const OWN_CARD_TOOLS = new Set(["AskUserQuestion", "ExitPlanMode"]);
 
-function stringInput(input: Record<string, unknown>, key: string): string | null {
+function stringInput(input: Record<string, unknown>, key: string): string | null
+{
 	const value = input[key];
 	return typeof value === "string" && value.trim() !== "" ? value : null;
 }
@@ -72,7 +84,8 @@ function stringInput(input: Record<string, unknown>, key: string): string | null
 function findPermissionNotification(
 	sessionId: string,
 	notifications: readonly PermissionNotification[],
-): PermissionNotification | undefined {
+): PermissionNotification | undefined
+{
 	return notifications.find(
 		(candidate) =>
 			candidate.sessionId === sessionId && candidate.notificationType === PERMISSION_PROMPT_NOTIFICATION,
@@ -84,19 +97,22 @@ function findPermissionNotification(
  * names (same tool, deep-equal input), else the first, since the CLI asks a
  * serial batch's tools in order and a parallel ask's siblings may have finished.
  */
-function findAskedToolUse(records: readonly unknown[], ask: PermissionAsk | undefined): PendingToolUse | null {
+function findAskedToolUse(records: readonly unknown[], ask: PermissionAsk | undefined): PendingToolUse | null
+{
 	const pending = findPendingToolUses(records);
 	return (ask === undefined ? null : matchPendingToolUse(pending, ask)) ?? pending[0] ?? null;
 }
 
 /** The call the prompt asks about, unless a later turn end (Stop or interrupt) closed it. */
-function findWaitingToolUse(records: readonly unknown[], ask: PermissionAsk | undefined): PendingToolUse | null {
+function findWaitingToolUse(records: readonly unknown[], ask: PermissionAsk | undefined): PendingToolUse | null
+{
 	const toolUse = findAskedToolUse(records, ask);
 	if (toolUse === null || OWN_CARD_TOOLS.has(toolUse.name)) return null;
 	return markerEventsFromRecords(records).at(-1)?.kind === "stop" ? null : toolUse;
 }
 
-interface PermissionSignals {
+interface PermissionSignals
+{
 	sessionId: string;
 	notifications: readonly PermissionNotification[];
 	records: readonly unknown[];
@@ -114,7 +130,8 @@ interface PermissionSignals {
  * unanswered and the hook state still holds a `permission_prompt`
  * notification, or the session reports the wait itself. Upstream treats this as live however old the transcript is.
  */
-export function isAwaitingPermission(signals: PermissionSignals): boolean {
+export function isAwaitingPermission(signals: PermissionSignals): boolean
+{
 	return permissionWaitToolUseId(signals) !== null;
 }
 
@@ -125,7 +142,8 @@ export function permissionWaitToolUseId({
 	records,
 	awaitingPermission = false,
 	ask,
-}: PermissionSignals): string | null {
+}: PermissionSignals): string | null
+{
 	const prompted = awaitingPermission || findPermissionNotification(sessionId, notifications) !== undefined;
 	return prompted ? (findWaitingToolUse(records, ask)?.id ?? null) : null;
 }
@@ -144,21 +162,30 @@ export function findPendingPermission({
 	records,
 	awaitingPermission = false,
 	ask,
-}: PermissionSignals & {isActive: boolean}): PendingPermission | null {
+}: PermissionSignals &
+{
+	isActive: boolean;
+}): PendingPermission | null
+{
 	const notification = findPermissionNotification(sessionId, notifications);
-	if (notification === undefined) {
+	if (notification === undefined)
+	{
 		// Without a notification only the waiting call can describe the prompt.
 		const waiting = awaitingPermission ? findWaitingToolUse(records, ask) : null;
 		return waiting === null ? null : permissionFor(waiting.id, waiting);
 	}
 	const toolUse = isActive ? findAskedToolUse(records, ask) : findWaitingToolUse(records, ask);
-	if (toolUse === null) {
+	if (toolUse === null)
+	{
 		return isActive
 			? withPersistentAllow(
 					{
 						notificationId: notification.id,
 						toolUseId: null,
-						title: {heading: notification.message},
+						title:
+						{
+							heading: notification.message,
+						},
 						detail: null,
 					},
 					notification,
@@ -170,14 +197,16 @@ export function findPendingPermission({
 }
 
 /** The `verdict` property's enum values, or null when the schema has no such enum. */
-function verdictEnum(schema: unknown): readonly unknown[] | null {
+function verdictEnum(schema: unknown): readonly unknown[] | null
+{
 	const verdict = asRecord(asRecord(asRecord(schema)?.["properties"])?.["verdict"]);
 	const values = verdict?.["enum"];
 	return Array.isArray(values) ? values : null;
 }
 
 /** Upstream's `Xr`: a permission-style elicitation, whose `verdict` enum offers both "allow" and "deny". */
-export function isVerdictSchema(schema: unknown): boolean {
+export function isVerdictSchema(schema: unknown): boolean
+{
 	const values = verdictEnum(schema);
 	return values !== null && values.includes("allow") && values.includes("deny");
 }
@@ -187,13 +216,19 @@ export function isVerdictSchema(schema: unknown): boolean {
  * to use {server}?" with the message below, and Always allow only when the
  * verdict enum offers "always_allow" (upstream's `NH`). Forms and url asks get no card.
  */
-export function findPendingElicitationPermission(entries: readonly PendingElicitation[]): PendingPermission | null {
+export function findPendingElicitationPermission(entries: readonly PendingElicitation[]): PendingPermission | null
+{
 	const entry = entries.find((candidate) => candidate.mode === "form" && isVerdictSchema(candidate.requestedSchema));
 	if (entry === undefined) return null;
-	const permission: PendingPermission = {
+	const permission: PendingPermission =
+	{
 		notificationId: elicitationKey(entry),
 		toolUseId: null,
-		title: {action: `use ${entry.serverName}`, meta: null},
+		title:
+		{
+			action: `use ${entry.serverName}`,
+			meta: null,
+		},
 		detail: null,
 		description: entry.message,
 	};
@@ -202,7 +237,8 @@ export function findPendingElicitationPermission(entries: readonly PendingElicit
 }
 
 /** The oldest form or url elicitation: one the CLI's terminal dialog answers, not a verdict card. */
-function oldestTerminalElicitation(entries: readonly PendingElicitation[]): PendingElicitation | undefined {
+function oldestTerminalElicitation(entries: readonly PendingElicitation[]): PendingElicitation | undefined
+{
 	return entries.find((candidate) => candidate.mode === "url" || !isVerdictSchema(candidate.requestedSchema));
 }
 
@@ -214,9 +250,12 @@ const ELICITATION_MESSAGE_MAX = 4000;
  * upstream's form-card heading "{server} requests your input" and its message.
  * Verdict elicitations draw a permission card instead, so they are skipped.
  */
-export function findElicitationWaitingNotice(
-	entries: readonly PendingElicitation[],
-): {title: string; message: string} | null {
+export function findElicitationWaitingNotice(entries: readonly PendingElicitation[]):
+{
+	title: string;
+	message: string;
+} | null
+{
 	const entry = oldestTerminalElicitation(entries);
 	if (entry === undefined) return null;
 	return {
@@ -226,7 +265,8 @@ export function findElicitationWaitingNotice(
 }
 
 /** A url elicitation the dock can answer: Open presses the CLI dialog's Accept, Decline its Decline. */
-export interface UrlElicitationCardModel {
+export interface UrlElicitationCardModel
+{
 	/** Stable per elicitation: its id, else server and arrival. */
 	key: string;
 	serverName: string;
@@ -238,7 +278,8 @@ export interface UrlElicitationCardModel {
  * The url elicitation the CLI shows now, as a card: the oldest form or url
  * elicitation (the order the CLI shows them in), when it is a url ask with a url.
  */
-export function findUrlElicitationCard(entries: readonly PendingElicitation[]): UrlElicitationCardModel | null {
+export function findUrlElicitationCard(entries: readonly PendingElicitation[]): UrlElicitationCardModel | null
+{
 	const entry = oldestTerminalElicitation(entries);
 	if (entry?.mode !== "url" || entry.url === undefined) return null;
 	return {
@@ -249,27 +290,49 @@ export function findUrlElicitationCard(entries: readonly PendingElicitation[]): 
 	};
 }
 
-function elicitationKey(entry: PendingElicitation): string {
+function elicitationKey(entry: PendingElicitation): string
+{
 	return `elicitation:${entry.elicitationId ?? `${entry.serverName}:${entry.receivedAt}`}`;
 }
 
-function withPersistentAllow(permission: PendingPermission, notification: PermissionNotification): PendingPermission {
+function withPersistentAllow(permission: PendingPermission, notification: PermissionNotification): PendingPermission
+{
 	const {persistentAllow, persistentAllowSaves} = notification;
 	if (persistentAllow === undefined) return permission;
 	return persistentAllowSaves === undefined
-		? {...permission, persistentAllow}
-		: {...permission, persistentAllow, persistentAllowSaves};
+		?
+			{
+				...permission,
+				persistentAllow,
+			}
+		:
+			{
+				...permission,
+				persistentAllow,
+				persistentAllowSaves,
+			};
 }
 
-function permissionFor(notificationId: string, toolUse: PendingToolUse): PendingPermission {
+function permissionFor(notificationId: string, toolUse: PendingToolUse): PendingPermission
+{
 	const {action, meta = null, detail = null, ...extras} = withRowsBudget(permissionCopy(toolUse));
 	return {
 		notificationId,
 		toolUseId: toolUse.id,
-		title: {action, meta},
+		title:
+		{
+			action,
+			meta,
+		},
 		detail,
 		...extras,
-		...(extras.fileChange === undefined ? {} : {toolName: toolUse.name, toolInput: toolUse.input}),
+		...(extras.fileChange === undefined
+			? {}
+			:
+				{
+					toolName: toolUse.name,
+					toolInput: toolUse.input,
+				}),
 	};
 }
 
@@ -277,14 +340,16 @@ function permissionFor(notificationId: string, toolUse: PendingToolUse): Pending
  * The key a prompt is answered and drawn under: its tool call, which the hook
  * notification and the registry wait share, else the notification or elicitation id.
  */
-export function permissionAnswerKey(permission: PendingPermission): string {
+export function permissionAnswerKey(permission: PendingPermission): string
+{
 	return permission.toolUseId ?? permission.notificationId;
 }
 
 /** The highlighter language of a command detail: upstream's `detailLang`. */
 export type PermissionDetailLang = "bash" | "powershell";
 
-interface PermissionCopy {
+interface PermissionCopy
+{
 	action: string;
 	meta?: string | null;
 	detail?: string | null;
@@ -310,14 +375,16 @@ export const FILE_CHANGE_PREVIEW_MAX_CHARS = 200_000;
  * Upstream's `Dv`: whether a Write/Edit/MultiEdit call can preview its change. Nothing without a string
  * path or when a changed string isn't a string; "too_large" once any string passes the cap.
  */
-function fileChangeKind(name: string, input: Record<string, unknown>): Pick<PermissionCopy, "fileChange"> {
+function fileChangeKind(name: string, input: Record<string, unknown>): Pick<PermissionCopy, "fileChange">
+{
 	if (typeof input["file_path"] !== "string") return {};
 	let strings: unknown[];
 	const edits = input["edits"];
 	if (name === "Write") strings = [input["content"]];
 	else if (name === "Edit") strings = [input["old_string"], input["new_string"]];
 	else if (Array.isArray(edits) && edits.length > 0)
-		strings = edits.flatMap((edit: unknown) => {
+		strings = edits.flatMap((edit: unknown) =>
+		{
 			const record = asRecord(edit);
 			return record === undefined ? [undefined] : [record["old_string"], record["new_string"]];
 		});
@@ -329,7 +396,8 @@ function fileChangeKind(name: string, input: Record<string, unknown>): Pick<Perm
 }
 
 /** Upstream's `xh`: the edit replaces every match, at the top level or in any of its edits. */
-function replacesEveryMatch(input: Record<string, unknown>): boolean {
+function replacesEveryMatch(input: Record<string, unknown>): boolean
+{
 	const edits = input["edits"];
 	return (
 		input["replace_all"] === true ||
@@ -337,23 +405,38 @@ function replacesEveryMatch(input: Record<string, unknown>): boolean {
 	);
 }
 
-function numberInput(input: Record<string, unknown>, key: string): number | null {
+function numberInput(input: Record<string, unknown>, key: string): number | null
+{
 	const value = input[key];
 	return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 /** Joins the notes that apply, or yields nothing when none does. */
-function notes(parts: readonly (string | null)[], separator = " "): {detailNote?: string} {
+function notes(
+	parts: readonly (string | null)[],
+	separator = " ",
+):
+{
+	detailNote?: string;
+}
+{
 	const detailNote = parts.filter((part) => part !== null).join(separator);
-	return detailNote === "" ? {} : {detailNote};
+	return detailNote === ""
+		? {}
+		:
+			{
+				detailNote,
+			};
 }
 
-function plural(count: number, unit: string): string {
+function plural(count: number, unit: string): string
+{
 	return `${count} ${unit}${count === 1 ? "" : "s"}`;
 }
 
 /** Upstream's "Time limit: {n} seconds." note, in minutes when the limit is a whole number of them. */
-function timeLimitNote(timeout: number | null): string | null {
+function timeLimitNote(timeout: number | null): string | null
+{
 	if (timeout === null || timeout <= 0) return null;
 	const seconds = Math.round(timeout / 1000);
 	return seconds % 60 === 0
@@ -365,7 +448,8 @@ function timeLimitNote(timeout: number | null): string | null {
  * Upstream's Bash copy: "run this command" with the command as a highlighted detail,
  * the description in the body unless it repeats the command, and the sandbox, background and time-limit notes.
  */
-function commandCopy(input: Record<string, unknown>, detailLang: PermissionDetailLang): PermissionCopy {
+function commandCopy(input: Record<string, unknown>, detailLang: PermissionDetailLang): PermissionCopy
+{
 	const command = stringInput(input, "command");
 	const description = stringInput(input, "description");
 	return {
@@ -373,7 +457,12 @@ function commandCopy(input: Record<string, unknown>, detailLang: PermissionDetai
 		detail: command,
 		detailLang,
 		clampTitle: true,
-		...(description === null || description === command ? {} : {description}),
+		...(description === null || description === command
+			? {}
+			:
+				{
+					description,
+				}),
 		...notes([
 			input["dangerouslyDisableSandbox"] === true ? "Runs outside Claude’s sandbox." : null,
 			input["run_in_background"] === true ? "Keeps running in the background." : null,
@@ -383,7 +472,8 @@ function commandCopy(input: Record<string, unknown>, detailLang: PermissionDetai
 }
 
 /** Upstream's Workflow copy: its args other than the script (and the name it is titled by) as gated trail rows. */
-function workflowCopy(input: Record<string, unknown>): PermissionCopy {
+function workflowCopy(input: Record<string, unknown>): PermissionCopy
+{
 	const name = stringInput(input, "name");
 	const description = stringInput(input, "description");
 	const args = Object.fromEntries(
@@ -392,28 +482,50 @@ function workflowCopy(input: Record<string, unknown>): PermissionCopy {
 	return {
 		action: name === null ? "run a workflow" : "run the workflow",
 		meta: name,
-		...(description === null ? {} : {description}),
+		...(description === null
+			? {}
+			:
+				{
+					description,
+				}),
 		tokenWarning: true,
 		...gatedTrail(inputRows(args)),
 	};
 }
 
 /** A file tool names the file in the title and shows its full path below. */
-function fileCopy(action: string, path: string | null): PermissionCopy {
-	return path === null ? {action} : {action, meta: path.replace(/^.*[\\/]/, ""), detail: path};
+function fileCopy(action: string, path: string | null): PermissionCopy
+{
+	return path === null
+		?
+			{
+				action,
+			}
+		:
+			{
+				action,
+				meta: path.replace(/^.*[\\/]/, ""),
+				detail: path,
+			};
 }
 
 /** Upstream's Read range note: the line range, then the page range, comma-joined. */
-function readNote(input: Record<string, unknown>): string | null {
+function readNote(input: Record<string, unknown>): string | null
+{
 	const offset = numberInput(input, "offset");
 	const limit = numberInput(input, "limit");
 	const pages = stringInput(input, "pages");
 	let lines: string | null = null;
-	if (offset !== null && limit !== null) {
+	if (offset !== null && limit !== null)
+	{
 		lines = limit === 1 ? `Line ${offset}` : `Lines ${offset} to ${offset + limit - 1}`;
-	} else if (offset !== null) {
+	}
+	else if (offset !== null)
+	{
 		lines = `From line ${offset}`;
-	} else if (limit !== null) {
+	}
+	else if (limit !== null)
+	{
 		lines = `First ${plural(limit, "line")}`;
 	}
 	const page =
@@ -429,13 +541,24 @@ function readNote(input: Record<string, unknown>): string | null {
 const PAGE_LIST = /^ *\d[\d ,-]{0,39}$/;
 
 /** Upstream's Read rows: a `pages` value that isn't a plain page list, as a bare row. */
-function readRows(input: Record<string, unknown>): Pick<PermissionCopy, "rows"> {
+function readRows(input: Record<string, unknown>): Pick<PermissionCopy, "rows">
+{
 	const pages = input["pages"];
-	return typeof pages === "string" && pages !== "" && !PAGE_LIST.test(pages) ? {rows: inputRows({pages})} : {};
+	return typeof pages === "string" && pages !== "" && !PAGE_LIST.test(pages)
+		?
+			{
+				rows: inputRows(
+					{
+						pages,
+					},
+				),
+			}
+		: {};
 }
 
 /** Upstream's NotebookEdit notes: what happens to which cell, then its type. */
-function notebookNote(input: Record<string, unknown>): string | null {
+function notebookNote(input: Record<string, unknown>): string | null
+{
 	const cell = stringInput(input, "cell_id");
 	const cellType = stringInput(input, "cell_type");
 	const mode = stringInput(input, "edit_mode") ?? "replace";
@@ -449,7 +572,8 @@ function notebookNote(input: Record<string, unknown>): string | null {
 }
 
 /** Upstream's `Mm` map: tools with a dedicated verb and nothing else to name in the title. */
-const TOOL_VERBS: Readonly<Record<string, string>> = {
+const TOOL_VERBS: Readonly<Record<string, string>> =
+{
 	TaskCreate: "create a task",
 	TaskUpdate: "update a task",
 	TaskGet: "read a task",
@@ -477,8 +601,10 @@ const TOOL_VERBS: Readonly<Record<string, string>> = {
 const GATED_VERB_TOOLS = new Set(["REPL", "JavaScript", "SendMessage", "ScheduleWakeup", "TaskCreate", "TaskUpdate"]);
 
 /** Upstream's `yh`: a SendMessage input without the fields its message summary repeats. */
-function sendMessageInput(input: Record<string, unknown>): Record<string, unknown> {
-	const summary: Record<string, unknown> = {
+function sendMessageInput(input: Record<string, unknown>): Record<string, unknown>
+{
+	const summary: Record<string, unknown> =
+	{
 		type: "message",
 		recipient: input["to"],
 		recipient_kind: "name",
@@ -490,7 +616,8 @@ function sendMessageInput(input: Record<string, unknown>): Record<string, unknow
 }
 
 /** Upstream's `bh`: the input without a string description, which the body already shows. */
-function withoutDescription(input: Record<string, unknown>): Record<string, unknown> {
+function withoutDescription(input: Record<string, unknown>): Record<string, unknown>
+{
 	return Object.fromEntries(
 		Object.entries(input).filter(([key, value]) => key !== "description" || typeof value !== "string"),
 	);
@@ -503,71 +630,149 @@ function withoutDescription(input: Record<string, unknown>): Record<string, unkn
 function withRows(
 	input: Record<string, unknown>,
 	mainKey?: string,
-): Pick<PermissionCopy, "detail" | "detailFirst" | "rows"> {
+): Pick<PermissionCopy, "detail" | "detailFirst" | "rows">
+{
 	const main = mainKey === undefined ? undefined : input[mainKey];
 	const detail = typeof main === "string" ? main : undefined;
 	const rows = inputRows(
 		Object.fromEntries(Object.entries(input).filter(([key]) => detail === undefined || key !== mainKey)),
 	);
 	return {
-		...(detail === undefined ? {} : {detail, detailFirst: true as const}),
-		...(rows.length > 0 ? {rows} : {}),
+		...(detail === undefined
+			? {}
+			:
+				{
+					detail,
+					detailFirst: true as const,
+				}),
+		...(rows.length > 0
+			?
+				{
+					rows,
+				}
+			: {}),
 	};
 }
 
 /** Rows in the trail panel behind upstream's loose read gate (`b`), when there are any. */
-function gatedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail" | "rowsGate"> {
-	return rows.length > 0 ? {rows, rowsTrail: true, rowsGate: true} : {};
+function gatedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail" | "rowsGate">
+{
+	return rows.length > 0
+		?
+			{
+				rows,
+				rowsTrail: true,
+				rowsGate: true,
+			}
+		: {};
 }
 
 /** Rows in the trail panel, clamped to 6 lines and ungated (upstream's `te(P())`). */
-function clampedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail"> {
-	return rows.length > 0 ? {rows: clampRows(rows), rowsTrail: true} : {};
+function clampedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail">
+{
+	return rows.length > 0
+		?
+			{
+				rows: clampRows(rows),
+				rowsTrail: true,
+			}
+		: {};
 }
 
 /** Upstream's `te` over `jv`: bare rows clamped to 6 lines. */
-function clampedBare(copy: PermissionCopy): PermissionCopy {
-	return copy.rows === undefined ? copy : {...copy, rows: clampRows(copy.rows)};
+function clampedBare(copy: PermissionCopy): PermissionCopy
+{
+	return copy.rows === undefined
+		? copy
+		:
+			{
+				...copy,
+				rows: clampRows(copy.rows),
+			};
 }
 
 /** Gates a copy's trail rows when it has rows (upstream spreads `b` whether or not rows exist). */
-function gateRows(copy: PermissionCopy): PermissionCopy {
-	return copy.rows === undefined ? copy : {...copy, rowsTrail: true, rowsGate: true};
+function gateRows(copy: PermissionCopy): PermissionCopy
+{
+	return copy.rows === undefined
+		? copy
+		:
+			{
+				...copy,
+				rowsTrail: true,
+				rowsGate: true,
+			};
 }
 
 /** Upstream's post-pass `N_`: ungated rows beyond the budget move to the trail panel behind the loose gate. */
-function withRowsBudget(copy: PermissionCopy): PermissionCopy {
-	if (copy.rows === undefined || copy.rows.length === 0 || copy.rowsGate === true || rowsFitBudget(copy.rows)) {
+function withRowsBudget(copy: PermissionCopy): PermissionCopy
+{
+	if (copy.rows === undefined || copy.rows.length === 0 || copy.rowsGate === true || rowsFitBudget(copy.rows))
+	{
 		return copy;
 	}
-	return {...copy, rowsTrail: true, rowsGate: true};
+	return {
+		...copy,
+		rowsTrail: true,
+		rowsGate: true,
+	};
 }
 
-function hostOf(url: string): string | null {
-	try {
+function hostOf(url: string): string | null
+{
+	try
+	{
 		const host = new URL(url).hostname;
 		return host === "" ? null : host;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
 /** Upstream's WebFetch copy: "fetch {host}" with the url leading, and a non-blank prompt as a gated trail row. */
-function webFetchCopy(input: Record<string, unknown>): PermissionCopy {
+function webFetchCopy(input: Record<string, unknown>): PermissionCopy
+{
 	const url = stringInput(input, "url");
 	const host = url === null ? null : hostOf(url);
 	const prompt = stringInput(input, "prompt");
 	return {
-		...(host === null ? {action: "fetch a web page"} : {action: "fetch", meta: host}),
-		...(url === null ? {} : {detail: url, detailFirst: true}),
-		...gatedTrail(prompt === null ? [] : inputRows({prompt})),
+		...(host === null
+			?
+				{
+					action: "fetch a web page",
+				}
+			:
+				{
+					action: "fetch",
+					meta: host,
+				}),
+		...(url === null
+			? {}
+			:
+				{
+					detail: url,
+					detailFirst: true,
+				}),
+		...gatedTrail(
+			prompt === null
+				? []
+				: inputRows(
+						{
+							prompt,
+						},
+					),
+		),
 	};
 }
 
 /** Upstream's per-tool action, meta and detail (claude.ai/code's permission copy builder). */
-function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
+function permissionCopy({name, input}: PendingToolUse): PermissionCopy
+{
 	const text = (key: string) => stringInput(input, key);
-	switch (name) {
+	switch (name)
+	{
 		case "Bash":
 		case "BashTool":
 			return commandCopy(input, "bash");
@@ -595,40 +800,84 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
 				...notes([replacesEveryMatch(input) ? "Replaces every match in the file." : null]),
 			};
 		case "NotebookEdit":
-			return {...fileCopy("edit", text("notebook_path")), ...notes([notebookNote(input)])};
+			return {
+				...fileCopy("edit", text("notebook_path")),
+				...notes([notebookNote(input)]),
+			};
 		case "Glob":
-			return clampedBare({action: "find files", ...withRows(input, "pattern")});
+			return clampedBare(
+				{
+					action: "find files",
+					...withRows(input, "pattern"),
+				},
+			);
 		case "Grep":
-			return clampedBare({action: "search files", ...withRows(input, "pattern")});
+			return clampedBare(
+				{
+					action: "search files",
+					...withRows(input, "pattern"),
+				},
+			);
 		case "WebFetch":
 			return webFetchCopy(input);
 		case "WebSearch":
-			return clampedBare({action: "search the web", ...withRows(input, "query")});
-		case "Skill": {
+			return clampedBare(
+				{
+					action: "search the web",
+					...withRows(input, "query"),
+				},
+			);
+		case "Skill":
+		{
 			const skill = text("skill");
-			return {action: "run skill", meta: skill === null ? null : `/${skill}`, detail: text("args")};
+			return {
+				action: "run skill",
+				meta: skill === null ? null : `/${skill}`,
+				detail: text("args"),
+			};
 		}
 		case "Task":
-		case "Agent": {
+		case "Agent":
+		{
 			const description = text("description");
 			return {
 				action: "run an agent",
-				...(description === null ? {} : {description}),
+				...(description === null
+					? {}
+					:
+						{
+							description,
+						}),
 				...gatedTrail(inputRows(withoutDescription(input))),
 			};
 		}
 		case "Workflow":
 			return workflowCopy(input);
-		case "Monitor": {
+		case "Monitor":
+		{
 			const rows = withRows(withoutDescription(input), "command");
 			return gateRows(
 				rows.detail === undefined
-					? {action: "open and watch a connection", ...rows}
-					: {action: "run and watch a command", ...rows, detailLang: "bash"},
+					?
+						{
+							action: "open and watch a connection",
+							...rows,
+						}
+					:
+						{
+							action: "run and watch a command",
+							...rows,
+							detailLang: "bash",
+						},
 			);
 		}
 		case "CronCreate":
-			return gateRows({action: "schedule a prompt", ...withRows(input, "prompt")});
+			return gateRows(
+				{
+					action: "schedule a prompt",
+					...withRows(input, "prompt"),
+				},
+			);
 		case "EnterWorktree":
 			return {
 				action: text("path") === null ? "create a worktree" : "move to a worktree",
@@ -639,16 +888,25 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
 				action: text("action") === "remove" ? "delete the worktree and its branch" : "leave the worktree",
 				...clampedTrail(inputRows(input)),
 			};
-		default: {
+		default:
+		{
 			const verb = TOOL_VERBS[name];
-			if (verb === undefined) return {action: `use ${name}`, ...gatedTrail(inputRows(input))};
+			if (verb === undefined)
+				return {
+					action: `use ${name}`,
+					...gatedTrail(inputRows(input)),
+				};
 			const rows = inputRows(name === "SendMessage" ? sendMessageInput(input) : input);
-			return {action: verb, ...(GATED_VERB_TOOLS.has(name) ? gatedTrail(rows) : clampedTrail(rows))};
+			return {
+				action: verb,
+				...(GATED_VERB_TOOLS.has(name) ? gatedTrail(rows) : clampedTrail(rows)),
+			};
 		}
 	}
 }
 
-export interface PermissionKeyEvent {
+export interface PermissionKeyEvent
+{
 	key: string;
 	metaKey: boolean;
 	ctrlKey: boolean;
@@ -660,9 +918,11 @@ export interface PermissionKeyEvent {
  * Upstream's inline card keys: Esc denies, ⌘⏎ allows once and ⇧⌘⏎ grants the persistent option.
  * Digits are dock-only upstream, so the inline card binds none, and ⌘⏎ yields to alt.
  */
-export function permissionDecisionForKey(event: PermissionKeyEvent): PermissionDecision | null {
+export function permissionDecisionForKey(event: PermissionKeyEvent): PermissionDecision | null
+{
 	if (event.altKey) return null;
-	if (event.metaKey || event.ctrlKey) {
+	if (event.metaKey || event.ctrlKey)
+	{
 		if (event.key !== "Enter") return null;
 		return event.shiftKey ? "always" : "allow";
 	}

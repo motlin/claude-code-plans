@@ -16,36 +16,48 @@ let base: string;
 let root: string;
 let outside: string;
 
-function write(path: string, content = ""): void {
+function write(path: string, content = ""): void
+{
 	writeFileSync(join(root, path), content);
 }
 
-function insertSession(cwd: string | null): void {
+function insertSession(cwd: string | null): void
+{
 	db.index
 		.insert(schema.projects)
-		.values({id: "project-files-100", name: "example", projectPath: "/example", updatedAt: 0})
+		.values(
+			{
+				id: "project-files-100",
+				name: "example",
+				projectPath: "/example",
+				updatedAt: 0,
+			},
+		)
 		.run();
 	db.index
 		.insert(schema.sessions)
-		.values({
-			id: SESSION_ID,
-			projectId: "project-files-100",
-			title: "Files example",
-			firstPrompt: null,
-			summary: null,
-			customTitle: null,
-			messageCount: 1,
-			gitBranch: null,
-			cwd,
-			isSidechain: 0,
-			createdAt: 946_598_400_000,
-			mtimeMs: 946_684_800_000,
-			filePath: `/transcripts/${SESSION_ID}.jsonl`,
-		})
+		.values(
+			{
+				id: SESSION_ID,
+				projectId: "project-files-100",
+				title: "Files example",
+				firstPrompt: null,
+				summary: null,
+				customTitle: null,
+				messageCount: 1,
+				gitBranch: null,
+				cwd,
+				isSidechain: 0,
+				createdAt: 946_598_400_000,
+				mtimeMs: 946_684_800_000,
+				filePath: `/transcripts/${SESSION_ID}.jsonl`,
+			},
+		)
 		.run();
 }
 
-function dependencies(allowedRoots: string[] = [root]): SessionFilesHandlerDependencies {
+function dependencies(allowedRoots: string[] = [root]): SessionFilesHandlerDependencies
+{
 	return {
 		index: db.index,
 		allowedRoots: async () => Promise.resolve(allowedRoots),
@@ -56,16 +68,25 @@ function dependencies(allowedRoots: string[] = [root]): SessionFilesHandlerDepen
 async function request(
 	parameters: Record<string, string>,
 	allowedRoots?: string[],
-): Promise<{status: number; body: unknown}> {
+): Promise<
+{
+	status: number;
+	body: unknown;
+}>
+{
 	const response = await handleSessionFilesRequest(
 		SESSION_ID,
 		new URLSearchParams(parameters),
 		dependencies(allowedRoots),
 	);
-	return {status: response.status, body: await response.json()};
+	return {
+		status: response.status,
+		body: await response.json(),
+	};
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	db = openTestDb();
 	base = realpathSync(mkdtempSync(join(tmpdir(), "session-files-")));
 	root = join(base, "workspace");
@@ -79,7 +100,12 @@ beforeEach(() => {
 	write("alpha.ts");
 	write("Beta.ts");
 	mkdirSync(join(root, "docs"));
-	mkdirSync(join(root, "src", "nested"), {recursive: true});
+	mkdirSync(
+		join(root, "src", "nested"),
+		{
+			recursive: true,
+		},
+	);
 	write("src/index.ts");
 	write("src/nested/deep-file.ts");
 	symlinkSync("src/index.ts", join(root, "link-inside"));
@@ -89,84 +115,176 @@ beforeEach(() => {
 	symlinkSync("missing.txt", join(root, "link-broken"));
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(base, {recursive: true, force: true});
+	rmSync(
+		base,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
 const ROOT_ENTRIES = [
-	{name: "docs", relPath: "docs", isDirectory: true},
+	{
+		name: "docs",
+		relPath: "docs",
+		isDirectory: true,
+	},
 	{
 		name: "link-dir",
 		relPath: "link-dir",
 		isDirectory: true,
-		symlink: {target: "src", outside: false, broken: false},
+		symlink:
+		{
+			target: "src",
+			outside: false,
+			broken: false,
+		},
 	},
 	{
 		name: "link-outside-dir",
 		relPath: "link-outside-dir",
 		isDirectory: true,
-		symlink: {target: "<outside>", outside: true, broken: false},
+		symlink:
+		{
+			target: "<outside>",
+			outside: true,
+			broken: false,
+		},
 	},
-	{name: "src", relPath: "src", isDirectory: true},
-	{name: ".envrc", relPath: ".envrc", isDirectory: false},
-	{name: "alpha.ts", relPath: "alpha.ts", isDirectory: false},
-	{name: "Beta.ts", relPath: "Beta.ts", isDirectory: false},
+	{
+		name: "src",
+		relPath: "src",
+		isDirectory: true,
+	},
+	{
+		name: ".envrc",
+		relPath: ".envrc",
+		isDirectory: false,
+	},
+	{
+		name: "alpha.ts",
+		relPath: "alpha.ts",
+		isDirectory: false,
+	},
+	{
+		name: "Beta.ts",
+		relPath: "Beta.ts",
+		isDirectory: false,
+	},
 	{
 		name: "link-broken",
 		relPath: "link-broken",
 		isDirectory: false,
-		symlink: {target: "missing.txt", outside: false, broken: true},
+		symlink:
+		{
+			target: "missing.txt",
+			outside: false,
+			broken: true,
+		},
 	},
 	{
 		name: "link-inside",
 		relPath: "link-inside",
 		isDirectory: false,
-		symlink: {target: "src/index.ts", outside: false, broken: false},
+		symlink:
+		{
+			target: "src/index.ts",
+			outside: false,
+			broken: false,
+		},
 	},
 	{
 		name: "link-outside",
 		relPath: "link-outside",
 		isDirectory: false,
-		symlink: {target: "<outside>/secret.txt", outside: true, broken: false},
+		symlink:
+		{
+			target: "<outside>/secret.txt",
+			outside: true,
+			broken: false,
+		},
 	},
-	{name: "README.md", relPath: "README.md", isDirectory: false},
+	{
+		name: "README.md",
+		relPath: "README.md",
+		isDirectory: false,
+	},
 ];
 
-function rootEntries(): unknown[] {
+function rootEntries(): unknown[]
+{
 	return ROOT_ENTRIES.map((entry) =>
 		"symlink" in entry
-			? {
+			?
+				{
 					...entry,
-					symlink: {...entry.symlink, target: entry.symlink.target.replace("<outside>", outside)},
+					symlink:
+					{
+						...entry.symlink,
+						target: entry.symlink.target.replace("<outside>", outside),
+					},
 				}
 			: entry,
 	);
 }
 
-describe("listDir", () => {
-	it("lists hidden entries and symlinks, dirs first, case-insensitively sorted", async () => {
-		expect(await listDir(root, "")).toStrictEqual({entries: rootEntries(), partial: false});
+describe("listDir", () =>
+{
+	it("lists hidden entries and symlinks, dirs first, case-insensitively sorted", async () =>
+	{
+		expect(await listDir(root, "")).toStrictEqual(
+			{
+				entries: rootEntries(),
+				partial: false,
+			},
+		);
 	});
 
-	it("lists a nested directory with root-relative paths", async () => {
-		expect(await listDir(root, "src")).toStrictEqual({
-			entries: [
-				{name: "nested", relPath: "src/nested", isDirectory: true},
-				{name: "index.ts", relPath: "src/index.ts", isDirectory: false},
-			],
-			partial: false,
-		});
+	it("lists a nested directory with root-relative paths", async () =>
+	{
+		expect(await listDir(root, "src")).toStrictEqual(
+			{
+				entries: [
+					{
+						name: "nested",
+						relPath: "src/nested",
+						isDirectory: true,
+					},
+					{
+						name: "index.ts",
+						relPath: "src/index.ts",
+						isDirectory: false,
+					},
+				],
+				partial: false,
+			},
+		);
 	});
 
-	it("marks the listing partial when it exceeds the cap", async () => {
-		expect(await listDir(root, "", {cap: 3})).toStrictEqual({
-			entries: rootEntries().slice(0, 3),
-			partial: true,
-		});
+	it("marks the listing partial when it exceeds the cap", async () =>
+	{
+		expect(
+			await listDir(
+				root,
+				"",
+				{
+					cap: 3,
+				},
+			),
+		).toStrictEqual(
+			{
+				entries: rootEntries().slice(0, 3),
+				partial: true,
+			},
+		);
 	});
 
-	it("refuses traversal, absolute paths, and symlinks that leave the root", async () => {
+	it("refuses traversal, absolute paths, and symlinks that leave the root", async () =>
+	{
 		await expect(listDir(root, "../..")).rejects.toStrictEqual(
 			new WorkspacePathError("A relative path inside the working directory is required", 403),
 		);
@@ -185,124 +303,260 @@ describe("listDir", () => {
 	});
 });
 
-describe("walkWorkspace", () => {
-	it("walks breadth-first without following symlinks", async () => {
-		expect(await walkWorkspace(root, "")).toStrictEqual({
-			entries: [
-				...rootEntries(),
-				{name: "nested", relPath: "src/nested", isDirectory: true},
-				{name: "index.ts", relPath: "src/index.ts", isDirectory: false},
-				{name: "deep-file.ts", relPath: "src/nested/deep-file.ts", isDirectory: false},
-			],
-			partial: false,
-		});
+describe("walkWorkspace", () =>
+{
+	it("walks breadth-first without following symlinks", async () =>
+	{
+		expect(await walkWorkspace(root, "")).toStrictEqual(
+			{
+				entries: [
+					...rootEntries(),
+					{
+						name: "nested",
+						relPath: "src/nested",
+						isDirectory: true,
+					},
+					{
+						name: "index.ts",
+						relPath: "src/index.ts",
+						isDirectory: false,
+					},
+					{
+						name: "deep-file.ts",
+						relPath: "src/nested/deep-file.ts",
+						isDirectory: false,
+					},
+				],
+				partial: false,
+			},
+		);
 	});
 
-	it("stops at the cap and marks the walk partial", async () => {
-		expect(await walkWorkspace(root, "", {cap: 2})).toStrictEqual({
-			entries: rootEntries().slice(0, 2),
-			partial: true,
-		});
+	it("stops at the cap and marks the walk partial", async () =>
+	{
+		expect(
+			await walkWorkspace(
+				root,
+				"",
+				{
+					cap: 2,
+				},
+			),
+		).toStrictEqual(
+			{
+				entries: rootEntries().slice(0, 2),
+				partial: true,
+			},
+		);
 	});
 });
 
-describe("fuzzyFilePaths", () => {
-	it("ranks subsequence matches and caps the result", () => {
-		expect(fuzzyFilePaths("tst", ["tslib.js", "test/", "src/a.ts", "test-games.js"], 1)).toStrictEqual({
-			paths: ["test-games.js"],
-			partial: true,
-		});
+describe("fuzzyFilePaths", () =>
+{
+	it("ranks subsequence matches and caps the result", () =>
+	{
+		expect(fuzzyFilePaths("tst", ["tslib.js", "test/", "src/a.ts", "test-games.js"], 1)).toStrictEqual(
+			{
+				paths: ["test-games.js"],
+				partial: true,
+			},
+		);
 	});
 
-	it("keeps every match under the cap", () => {
-		expect(fuzzyFilePaths("idx", ["src/index.ts", "README.md"])).toStrictEqual({
-			paths: ["src/index.ts"],
-			partial: false,
-		});
+	it("keeps every match under the cap", () =>
+	{
+		expect(fuzzyFilePaths("idx", ["src/index.ts", "README.md"])).toStrictEqual(
+			{
+				paths: ["src/index.ts"],
+				partial: false,
+			},
+		);
 	});
 });
 
-describe("GET /api/sessions/$id/files", () => {
-	it("lists the working directory root", async () => {
+describe("GET /api/sessions/$id/files", () =>
+{
+	it("lists the working directory root", async () =>
+	{
 		insertSession(root);
-		expect(await request({})).toStrictEqual({
-			status: 200,
-			body: {kind: "listing", dir: "", entries: rootEntries(), partial: false},
-		});
-	});
-
-	it("lists a subdirectory named in the query string", async () => {
-		insertSession(root);
-		expect(await request({dir: "src/nested"})).toStrictEqual({
-			status: 200,
-			body: {
-				kind: "listing",
-				dir: "src/nested",
-				entries: [{name: "deep-file.ts", relPath: "src/nested/deep-file.ts", isDirectory: false}],
-				partial: false,
+		expect(await request({})).toStrictEqual(
+			{
+				status: 200,
+				body:
+				{
+					kind: "listing",
+					dir: "",
+					entries: rootEntries(),
+					partial: false,
+				},
 			},
-		});
+		);
 	});
 
-	it("fuzzy-searches the whole workspace", async () => {
+	it("lists a subdirectory named in the query string", async () =>
+	{
 		insertSession(root);
-		expect(await request({q: "deepf"})).toStrictEqual({
-			status: 200,
-			body: {
-				kind: "search",
-				dir: "",
-				query: "deepf",
-				results: [{name: "deep-file.ts", relPath: "src/nested/deep-file.ts", isDirectory: false}],
-				partial: false,
-				capped: false,
+		expect(
+			await request(
+				{
+					dir: "src/nested",
+				},
+			),
+		).toStrictEqual(
+			{
+				status: 200,
+				body:
+				{
+					kind: "listing",
+					dir: "src/nested",
+					entries: [
+						{
+							name: "deep-file.ts",
+							relPath: "src/nested/deep-file.ts",
+							isDirectory: false,
+						},
+					],
+					partial: false,
+				},
 			},
-		});
+		);
 	});
 
-	it("refuses traversal with 403", async () => {
+	it("fuzzy-searches the whole workspace", async () =>
+	{
 		insertSession(root);
-		expect(await request({dir: "../.."})).toStrictEqual({
-			status: 403,
-			body: {error: "A relative path inside the working directory is required"},
-		});
+		expect(
+			await request(
+				{
+					q: "deepf",
+				},
+			),
+		).toStrictEqual(
+			{
+				status: 200,
+				body:
+				{
+					kind: "search",
+					dir: "",
+					query: "deepf",
+					results: [
+						{
+							name: "deep-file.ts",
+							relPath: "src/nested/deep-file.ts",
+							isDirectory: false,
+						},
+					],
+					partial: false,
+					capped: false,
+				},
+			},
+		);
 	});
 
-	it("reports a session without a working directory", async () => {
+	it("refuses traversal with 403", async () =>
+	{
+		insertSession(root);
+		expect(
+			await request(
+				{
+					dir: "../..",
+				},
+			),
+		).toStrictEqual(
+			{
+				status: 403,
+				body:
+				{
+					error: "A relative path inside the working directory is required",
+				},
+			},
+		);
+	});
+
+	it("reports a session without a working directory", async () =>
+	{
 		insertSession(null);
-		expect(await request({})).toStrictEqual({status: 200, body: {kind: "no-cwd"}});
+		expect(await request({})).toStrictEqual(
+			{
+				status: 200,
+				body:
+				{
+					kind: "no-cwd",
+				},
+			},
+		);
 	});
 
-	it("reports a working directory that no longer exists", async () => {
+	it("reports a working directory that no longer exists", async () =>
+	{
 		insertSession(join(base, "gone"));
-		expect(await request({})).toStrictEqual({status: 200, body: {kind: "no-cwd"}});
+		expect(await request({})).toStrictEqual(
+			{
+				status: 200,
+				body:
+				{
+					kind: "no-cwd",
+				},
+			},
+		);
 	});
 
-	it("refuses a working directory outside the allowed roots", async () => {
+	it("refuses a working directory outside the allowed roots", async () =>
+	{
 		insertSession(root);
-		expect(await request({}, [outside])).toStrictEqual({
-			status: 403,
-			body: {error: "Working directory is not allowed"},
-		});
+		expect(await request({}, [outside])).toStrictEqual(
+			{
+				status: 403,
+				body:
+				{
+					error: "Working directory is not allowed",
+				},
+			},
+		);
 	});
 
-	it("returns 404 for an unknown session", async () => {
+	it("returns 404 for an unknown session", async () =>
+	{
 		const response = await handleSessionFilesRequest("missing", new URLSearchParams(), dependencies());
-		expect({status: response.status, body: await response.json()}).toStrictEqual({
-			status: 404,
-			body: {error: "Session not found"},
-		});
+		expect(
+			{
+				status: response.status,
+				body: await response.json(),
+			},
+		).toStrictEqual(
+			{
+				status: 404,
+				body:
+				{
+					error: "Session not found",
+				},
+			},
+		);
 	});
 
-	it("hides gitignored entries only when asked", async () => {
+	it("hides gitignored entries only when asked", async () =>
+	{
 		runGit(root, ["init", "--quiet"]);
 		runGit(root, ["config", "core.excludesFile", "/dev/null"]);
 		write(".gitignore", "docs/\nalpha.ts\n");
 		write("docs/guide.md");
 		insertSession(root);
 
-		const hidden = await request({hideIgnored: "1"});
+		const hidden = await request(
+			{
+				hideIgnored: "1",
+			},
+		);
 		expect(hidden.status).toBe(200);
-		const names = (hidden.body as {entries: {name: string}[]}).entries.map((e) => e.name);
+		const names = (
+			hidden.body as
+			{
+				entries:
+				{
+					name: string;
+				}[];
+			}
+		).entries.map((e) => e.name);
 		expect(names).toStrictEqual([
 			".git",
 			"link-dir",
@@ -317,138 +571,283 @@ describe("GET /api/sessions/$id/files", () => {
 			"README.md",
 		]);
 
-		const search = await request({q: "guide", hideIgnored: "1"});
-		expect(search.body).toStrictEqual({
-			kind: "search",
-			dir: "",
-			query: "guide",
-			results: [],
-			partial: false,
-			capped: false,
-		});
+		const search = await request(
+			{
+				q: "guide",
+				hideIgnored: "1",
+			},
+		);
+		expect(search.body).toStrictEqual(
+			{
+				kind: "search",
+				dir: "",
+				query: "guide",
+				results: [],
+				partial: false,
+				capped: false,
+			},
+		);
 
-		const shown = await request({q: "guide"});
-		expect(shown.body).toStrictEqual({
-			kind: "search",
-			dir: "",
-			query: "guide",
-			results: [{name: "guide.md", relPath: "docs/guide.md", isDirectory: false}],
-			partial: false,
-			capped: false,
-		});
+		const shown = await request(
+			{
+				q: "guide",
+			},
+		);
+		expect(shown.body).toStrictEqual(
+			{
+				kind: "search",
+				dir: "",
+				query: "guide",
+				results: [
+					{
+						name: "guide.md",
+						relPath: "docs/guide.md",
+						isDirectory: false,
+					},
+				],
+				partial: false,
+				capped: false,
+			},
+		);
 	});
 
-	it("marks gitignored entries when asked", async () => {
+	it("marks gitignored entries when asked", async () =>
+	{
 		runGit(root, ["init", "--quiet"]);
 		runGit(root, ["config", "core.excludesFile", "/dev/null"]);
 		write(".gitignore", "docs/\nalpha.ts\n");
 		write("docs/guide.md");
 		insertSession(root);
 
-		const listing = await request({markIgnored: "1"});
-		const ignored = (listing.body as {entries: {name: string; ignored?: boolean}[]}).entries
+		const listing = await request(
+			{
+				markIgnored: "1",
+			},
+		);
+		const ignored = (
+			listing.body as
+			{
+				entries:
+				{
+					name: string;
+					ignored?: boolean;
+				}[];
+			}
+		).entries
 			.filter((entry) => entry.ignored === true)
 			.map((entry) => entry.name);
-		const search = await request({q: "guide", markIgnored: "1"});
-
-		expect({ignored, search: search.body}).toStrictEqual({
-			ignored: ["docs", "alpha.ts"],
-			search: {
-				kind: "search",
-				dir: "",
-				query: "guide",
-				results: [{name: "guide.md", relPath: "docs/guide.md", isDirectory: false, ignored: true}],
-				partial: false,
-				capped: false,
+		const search = await request(
+			{
+				q: "guide",
+				markIgnored: "1",
 			},
-		});
+		);
+
+		expect(
+			{
+				ignored,
+				search: search.body,
+			},
+		).toStrictEqual(
+			{
+				ignored: ["docs", "alpha.ts"],
+				search:
+				{
+					kind: "search",
+					dir: "",
+					query: "guide",
+					results: [
+						{
+							name: "guide.md",
+							relPath: "docs/guide.md",
+							isDirectory: false,
+							ignored: true,
+						},
+					],
+					partial: false,
+					capped: false,
+				},
+			},
+		);
 	});
 
-	it("ranks tracked search results above gitignored ones when marking", async () => {
+	it("ranks tracked search results above gitignored ones when marking", async () =>
+	{
 		runGit(root, ["init", "--quiet"]);
 		runGit(root, ["config", "core.excludesFile", "/dev/null"]);
 		write(".gitignore", "node_modules/\n");
-		mkdirSync(join(root, "node_modules/x"), {recursive: true});
+		mkdirSync(
+			join(root, "node_modules/x"),
+			{
+				recursive: true,
+			},
+		);
 		write("node_modules/x/kill.js");
 		mkdirSync(join(root, "skills"));
 		write("skills/a.md");
 		insertSession(root);
 
-		const search = await request({q: "skill", markIgnored: "1"});
+		const search = await request(
+			{
+				q: "skill",
+				markIgnored: "1",
+			},
+		);
 
-		expect(search.body).toStrictEqual({
-			kind: "search",
-			dir: "",
-			query: "skill",
-			results: [
-				{name: "skills", relPath: "skills", isDirectory: true},
-				{name: "a.md", relPath: "skills/a.md", isDirectory: false},
-				{name: "kill.js", relPath: "node_modules/x/kill.js", isDirectory: false, ignored: true},
-			],
-			partial: false,
-			capped: false,
-		});
+		expect(search.body).toStrictEqual(
+			{
+				kind: "search",
+				dir: "",
+				query: "skill",
+				results: [
+					{
+						name: "skills",
+						relPath: "skills",
+						isDirectory: true,
+					},
+					{
+						name: "a.md",
+						relPath: "skills/a.md",
+						isDirectory: false,
+					},
+					{
+						name: "kill.js",
+						relPath: "node_modules/x/kill.js",
+						isDirectory: false,
+						ignored: true,
+					},
+				],
+				partial: false,
+				capped: false,
+			},
+		);
 	});
 
-	it("keeps a weak tracked match when 50+ stronger gitignored matches fill the result cap", async () => {
+	it("keeps a weak tracked match when 50+ stronger gitignored matches fill the result cap", async () =>
+	{
 		runGit(root, ["init", "--quiet"]);
 		runGit(root, ["config", "core.excludesFile", "/dev/null"]);
 		write(".gitignore", "ig/\n");
 		mkdirSync(join(root, "ig"));
-		const ignoredNames = Array.from({length: 60}, (_, index) => `skill${String(index).padStart(2, "0")}.md`);
+		const ignoredNames = Array.from(
+			{
+				length: 60,
+			},
+			(_, index) => `skill${String(index).padStart(2, "0")}.md`,
+		);
 		for (const name of ignoredNames) write(`ig/${name}`);
 		write("sxkxixlxl.md");
 		insertSession(root);
 
-		const search = await request({q: "skill", markIgnored: "1"});
+		const search = await request(
+			{
+				q: "skill",
+				markIgnored: "1",
+			},
+		);
 
-		expect(search.body).toStrictEqual({
-			kind: "search",
-			dir: "",
-			query: "skill",
-			results: [
-				{name: "sxkxixlxl.md", relPath: "sxkxixlxl.md", isDirectory: false},
-				...ignoredNames
-					.slice(0, 49)
-					.map((name) => ({name, relPath: `ig/${name}`, isDirectory: false, ignored: true})),
-			],
-			partial: false,
-			capped: true,
-		});
-	});
-
-	it("rejects an invalid markIgnored flag", async () => {
-		insertSession(root);
-		expect(await request({markIgnored: "yes"})).toStrictEqual({
-			status: 400,
-			body: {error: "Invalid markIgnored flag"},
-		});
-	});
-
-	it("rejects an invalid hideIgnored flag", async () => {
-		insertSession(root);
-		expect(await request({hideIgnored: "yes"})).toStrictEqual({
-			status: 400,
-			body: {error: "Invalid hideIgnored flag"},
-		});
-	});
-});
-
-describe("session files client", () => {
-	it("parses every response kind strictly", () => {
-		expect(SessionFilesResponseSchema.parse({kind: "no-cwd"})).toStrictEqual({kind: "no-cwd"});
-		expect(() => SessionFilesResponseSchema.parse({kind: "no-cwd", extra: 1})).toThrow(
-			/Unrecognized key: \\"extra\\"/,
+		expect(search.body).toStrictEqual(
+			{
+				kind: "search",
+				dir: "",
+				query: "skill",
+				results: [
+					{
+						name: "sxkxixlxl.md",
+						relPath: "sxkxixlxl.md",
+						isDirectory: false,
+					},
+					...ignoredNames.slice(0, 49).map((name) => (
+					{
+						name,
+						relPath: `ig/${name}`,
+						isDirectory: false,
+						ignored: true,
+					})),
+				],
+				partial: false,
+				capped: true,
+			},
 		);
 	});
 
-	it("builds the query key and URL from the query-string parameters", () => {
-		expect(sessionFilesQueryOptions("abc", {dir: "src", query: "", hideIgnored: true}).queryKey).toStrictEqual([
-			"session-files",
-			"abc",
-			"src",
-			"",
-			true,
-		]);
+	it("rejects an invalid markIgnored flag", async () =>
+	{
+		insertSession(root);
+		expect(
+			await request(
+				{
+					markIgnored: "yes",
+				},
+			),
+		).toStrictEqual(
+			{
+				status: 400,
+				body:
+				{
+					error: "Invalid markIgnored flag",
+				},
+			},
+		);
+	});
+
+	it("rejects an invalid hideIgnored flag", async () =>
+	{
+		insertSession(root);
+		expect(
+			await request(
+				{
+					hideIgnored: "yes",
+				},
+			),
+		).toStrictEqual(
+			{
+				status: 400,
+				body:
+				{
+					error: "Invalid hideIgnored flag",
+				},
+			},
+		);
+	});
+});
+
+describe("session files client", () =>
+{
+	it("parses every response kind strictly", () =>
+	{
+		expect(
+			SessionFilesResponseSchema.parse(
+				{
+					kind: "no-cwd",
+				},
+			),
+		).toStrictEqual(
+			{
+				kind: "no-cwd",
+			},
+		);
+		expect(() =>
+			SessionFilesResponseSchema.parse(
+				{
+					kind: "no-cwd",
+					extra: 1,
+				},
+			),
+		).toThrow(/Unrecognized key: \\"extra\\"/);
+	});
+
+	it("builds the query key and URL from the query-string parameters", () =>
+	{
+		expect(
+			sessionFilesQueryOptions(
+				"abc",
+				{
+					dir: "src",
+					query: "",
+					hideIgnored: true,
+				},
+			).queryKey,
+		).toStrictEqual(["session-files", "abc", "src", "", true]);
 	});
 });

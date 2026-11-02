@@ -1,5 +1,6 @@
 import {noop, type QueryClient} from "@tanstack/react-query";
-import {
+import
+{
 	customizeClaudeAiConnectorsQueryOptions,
 	customizeDiscoverQueryOptions,
 	customizeMcpServersQueryOptions,
@@ -10,8 +11,10 @@ import type {CustomizeSectionId} from "./sections";
 
 // Route loaders stay in the client entry, so this lives apart from the section bodies it feeds.
 /** Start fetching what a Customize section reads, for its route loader. */
-export function prefetchCustomizeSection(queryClient: QueryClient, section: CustomizeSectionId): void {
-	switch (section) {
+export function prefetchCustomizeSection(queryClient: QueryClient, section: CustomizeSectionId): void
+{
+	switch (section)
+	{
 		case "skills":
 			void queryClient.query(customizeSkillsQueryOptions).catch(noop);
 			void queryClient.query(userCommandsQueryOptions).catch(noop);
@@ -29,7 +32,8 @@ export function prefetchCustomizeSection(queryClient: QueryClient, section: Cust
 }
 
 /** Start fetching every source unified search reads, so a `?q=` deep link never counts a partial result set. */
-export function prefetchUnifiedSearch(queryClient: QueryClient): void {
+export function prefetchUnifiedSearch(queryClient: QueryClient): void
+{
 	void queryClient.query(customizeSkillsQueryOptions).catch(noop);
 	void queryClient.query(userCommandsQueryOptions).catch(noop);
 	void queryClient.query(customizeMcpServersQueryOptions).catch(noop);

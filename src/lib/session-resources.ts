@@ -2,7 +2,8 @@ import type {SessionContentBlock, SessionLine} from "./transcript";
 
 export type ContentSource = "visible" | "tool" | "thinking";
 
-export interface ResourceOccurrence {
+export interface ResourceOccurrence
+{
 	source: ContentSource;
 	/**
 	 * Session-absolute JSONL record index of the owning message. It orders and
@@ -29,19 +30,22 @@ export interface ResourceOccurrence {
  * repeat produces an identical chip. Collapsing them on this key is what keeps
  * a whole-session inventory to a payload worth serving.
  */
-export function occurrenceKey(occurrence: ResourceOccurrence): string {
+export function occurrenceKey(occurrence: ResourceOccurrence): string
+{
 	return JSON.stringify([occurrence.anchorIndex, occurrence.source, occurrence.role, occurrence.tool ?? null]);
 }
 
 /** One flattened content block, ready to scan. */
-export interface TextChunk extends ResourceOccurrence {
+export interface TextChunk extends ResourceOccurrence
+{
 	text: string;
 }
 
 /** Where a chunk's owning message lives: its record index, and its uuid anchor. */
 type ChunkAnchor = Pick<ResourceOccurrence, "anchorIndex" | "anchorUuid">;
 
-interface ToolUseOwner {
+interface ToolUseOwner
+{
 	anchor: ChunkAnchor;
 	toolName: string;
 }
@@ -55,11 +59,13 @@ interface ToolUseOwner {
  * Paging history in shrinks `unscannedRecordCount` towards zero, at which point
  * the count is the whole session's and the marks disappear.
  */
-export function formatResourceCount(count: number, unscannedRecordCount: number): string {
+export function formatResourceCount(count: number, unscannedRecordCount: number): string
+{
 	return unscannedRecordCount > 0 ? `${count}+` : String(count);
 }
 
-export function resourceCoverageNote(unscannedRecordCount: number): string | undefined {
+export function resourceCoverageNote(unscannedRecordCount: number): string | undefined
+{
 	if (unscannedRecordCount <= 0) return undefined;
 
 	const records =
@@ -68,18 +74,28 @@ export function resourceCoverageNote(unscannedRecordCount: number): string | und
 	return `Counted from the loaded messages only — ${records} not been scanned. Load earlier messages to include ${included}.`;
 }
 
-function getContentBlocks(line: SessionLine): SessionContentBlock[] {
+function getContentBlocks(line: SessionLine): SessionContentBlock[]
+{
 	if (line.type !== "user" && line.type !== "assistant") return [];
 	const content = line.message?.content;
 	return Array.isArray(content) ? content : [];
 }
 
-function getToolResultText(block: Extract<SessionContentBlock, {type: "tool_result"}>) {
+function getToolResultText(
+	block: Extract<
+		SessionContentBlock,
+		{
+			type: "tool_result";
+		}
+	>,
+)
+{
 	if (typeof block.content === "string") return block.content;
 	if (!Array.isArray(block.content)) return undefined;
 
 	return block.content
-		.flatMap((part) => {
+		.flatMap((part) =>
+		{
 			if (
 				typeof part === "object" &&
 				part !== null &&
@@ -87,7 +103,8 @@ function getToolResultText(block: Extract<SessionContentBlock, {type: "tool_resu
 				part.type === "text" &&
 				"text" in part &&
 				typeof part.text === "string"
-			) {
+			)
+			{
 				return [part.text];
 			}
 			return [];
@@ -95,71 +112,117 @@ function getToolResultText(block: Extract<SessionContentBlock, {type: "tool_resu
 		.join("\n");
 }
 
-function lineAnchor(line: {lineIndex: number; uuid?: string | undefined}): ChunkAnchor {
+function lineAnchor(line: {lineIndex: number; uuid?: string | undefined}): ChunkAnchor
+{
 	return {
 		anchorIndex: line.lineIndex,
-		...(line.uuid === undefined ? {} : {anchorUuid: line.uuid}),
+		...(line.uuid === undefined
+			? {}
+			:
+				{
+					anchorUuid: line.uuid,
+				}),
 	};
 }
 
-export function scanSessionContent(lines: SessionLine[]): TextChunk[] {
+export function scanSessionContent(lines: SessionLine[]): TextChunk[]
+{
 	const toolUseOwners = new Map<string, ToolUseOwner>();
 
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		if (line.type !== "user" && line.type !== "assistant") continue;
-		for (const block of getContentBlocks(line)) {
-			if (block.type === "tool_use") {
-				toolUseOwners.set(block.id, {anchor: lineAnchor(line), toolName: block.name});
+		for (const block of getContentBlocks(line))
+		{
+			if (block.type === "tool_use")
+			{
+				toolUseOwners.set(
+					block.id,
+					{
+						anchor: lineAnchor(line),
+						toolName: block.name,
+					},
+				);
 			}
 		}
 	}
 
 	const chunks: TextChunk[] = [];
 
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		if (line.type !== "user" && line.type !== "assistant") continue;
 
 		const anchor = lineAnchor(line);
 		const content = line.message?.content;
-		if (typeof content === "string") {
-			chunks.push({text: content, source: "visible", ...anchor, role: line.type});
+		if (typeof content === "string")
+		{
+			chunks.push(
+				{
+					text: content,
+					source: "visible",
+					...anchor,
+					role: line.type,
+				},
+			);
 			continue;
 		}
 
-		for (const block of getContentBlocks(line)) {
-			switch (block.type) {
+		for (const block of getContentBlocks(line))
+		{
+			switch (block.type)
+			{
 				case "text":
-					chunks.push({text: block.text, source: "visible", ...anchor, role: line.type});
+					chunks.push(
+						{
+							text: block.text,
+							source: "visible",
+							...anchor,
+							role: line.type,
+						},
+					);
 					break;
 				case "thinking":
-					chunks.push({
-						text: block.thinking,
-						source: "thinking",
-						...anchor,
-						role: line.type,
-					});
+					chunks.push(
+						{
+							text: block.thinking,
+							source: "thinking",
+							...anchor,
+							role: line.type,
+						},
+					);
 					break;
 				case "tool_use":
-					chunks.push({
-						text: JSON.stringify(block.input),
-						source: "tool",
-						...anchor,
-						role: line.type,
-						tool: block.name,
-					});
+					chunks.push(
+						{
+							text: JSON.stringify(block.input),
+							source: "tool",
+							...anchor,
+							role: line.type,
+							tool: block.name,
+						},
+					);
 					break;
-				case "tool_result": {
+				case "tool_result":
+				{
 					const text = getToolResultText(block);
 					if (text === undefined) break;
 
 					const owner = toolUseOwners.get(block.tool_use_id);
-					chunks.push({
-						text,
-						source: "tool",
-						...(owner ? owner.anchor : anchor),
-						role: line.type,
-						...(owner ? {tool: owner.toolName} : {}),
-					});
+					chunks.push(
+						{
+							text,
+							source: "tool",
+							...(owner ? owner.anchor : anchor),
+							role: line.type,
+							...(owner
+								?
+									{
+										tool: owner.toolName,
+									}
+								: {}),
+						},
+					);
 					break;
 				}
 				case "image":

@@ -8,7 +8,8 @@ import {useShortcut} from "./use-shortcut";
  * during IME composition), and move focus to the composer after a keyboard answer
  * unmounts its question card.
  */
-export function useFocusRegionShortcuts(): void {
+export function useFocusRegionShortcuts(): void
+{
 	useShortcut("focus_next_region", (event) => !event.isComposing && cycleFocusRegion(document, "next"));
 	useShortcut("focus_previous_region", (event) => !event.isComposing && cycleFocusRegion(document, "previous"));
 	useEffect(() => watchAnsweredCards(document), []);

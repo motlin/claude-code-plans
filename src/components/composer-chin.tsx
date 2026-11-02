@@ -2,7 +2,8 @@ import {useQuery} from "@tanstack/react-query";
 import {Gauge, Plus, SquareSlash} from "lucide-react";
 import {lazy, memo, type Ref, Suspense, useImperativeHandle, useState} from "react";
 
-import {
+import
+{
 	type ComposerState,
 	type ComposerUsage,
 	FIVE_HOUR_LABEL,
@@ -15,7 +16,8 @@ import {
 	usageRingSeverity,
 	WEEKLY_LABEL,
 } from "../lib/composer-state";
-import {
+import
+{
 	type EffortLevel,
 	EffortLevelSchema,
 	effortOptionsFor,
@@ -31,7 +33,8 @@ import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
 import {ConnectorsLoadingItem} from "./composer-connectors-loading";
 import {type ChinMenu, type ChinSurface, ModeMenu, ModelMenu} from "./composer-launch-menus";
-import {
+import
+{
 	ADD_BUTTON_CLASS,
 	CHIN_ICON_INK_CLASS,
 	CHIN_PICKERS_CLASS,
@@ -52,18 +55,34 @@ import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
 
 // Keeps the Customize API schemas and router hooks out of the composer's cold load.
 const loadConnectorsMenu = async () =>
-	import("./composer-connectors-menu").then((module) => ({default: module.ComposerConnectorsMenu}));
+	import("./composer-connectors-menu").then((module) => (
+	{
+		default: module.ComposerConnectorsMenu,
+	}));
 const ComposerConnectorsMenu = lazy(loadConnectorsMenu);
 
 /** Upstream's 2026-10-20 usage popover: r10, and up to 640px (or the room left) tall before its own scroll. */
 const POPUP_CLASS =
 	"w-[360px] max-w-[calc(100vw-2rem)] max-h-[min(var(--available-height),640px)] rounded-r7 bg-[var(--menu-bg)] p-0 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
 
-function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onNavigate: () => void}) {
+function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onNavigate: () => void})
+{
 	const {data: account} = useQuery(localAccountQueryOptions);
 	const limits = [
-		usage?.fiveHour ? {label: FIVE_HOUR_LABEL, window: usage.fiveHour} : null,
-		usage?.weekly ? {label: WEEKLY_LABEL, window: usage.weekly} : null,
+		usage?.fiveHour
+			?
+				{
+					label: FIVE_HOUR_LABEL,
+					window: usage.fiveHour,
+				}
+			: null,
+		usage?.weekly
+			?
+				{
+					label: WEEKLY_LABEL,
+					window: usage.weekly,
+				}
+			: null,
 	].filter((limit) => limit !== null);
 	const planDetail = account?.planDetail;
 	return (
@@ -101,13 +120,15 @@ function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onN
 }
 
 /** Upstream's arc: --cds-fill-accent, then fill-warning at ≥75% and fill-danger at ≥90%. */
-const USAGE_RING_STROKES: Record<UsageRingSeverity, string> = {
+const USAGE_RING_STROKES: Record<UsageRingSeverity, string> =
+{
 	normal: "var(--color-fill-accent)",
 	warning: "var(--color-usage-warning)",
 	critical: "var(--color-usage-danger)",
 };
 
-export function UsageRing({usage}: {usage: ComposerUsage | null}) {
+export function UsageRing({usage}: {usage: ComposerUsage | null})
+{
 	const [open, setOpen] = useState(false);
 	const now = Date.now();
 	const percent = usageRingPercent(usage);
@@ -145,7 +166,8 @@ export function UsageRing({usage}: {usage: ComposerUsage | null}) {
 				<div className={POPOVER_SCROLL_BODY_CLASS}>
 					<UsagePopoverBody
 						usage={usage}
-						onNavigate={() => {
+						onNavigate={() =>
+						{
 							setOpen(false);
 						}}
 					/>
@@ -172,7 +194,8 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 	active: boolean;
 	/** ⌘U "Add files or photos": opens the composer's file picker. */
 	onAddFiles: () => void;
-}) {
+})
+{
 	const addFilesKeys = useShortcutKeys("add_files").keys;
 	// The closing menu would hand focus back to Add, so the "/" goes in once it has closed.
 	const slashAfterClose = useRenameAfterMenuClose(onInsertSlash);
@@ -187,7 +210,12 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 				<MenuItem
 					icon={<Icon name="Attachment" size="auto" />}
 					onSelect={onAddFiles}
-					{...(active ? {shortcut: addFilesKeys} : {})}
+					{...(active
+						?
+							{
+								shortcut: addFilesKeys,
+							}
+						: {})}
 				>
 					Add files or photos
 				</MenuItem>
@@ -202,7 +230,8 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 	);
 });
 
-export interface ChinLaunchControls {
+export interface ChinLaunchControls
+{
 	launchOptions: LaunchOptions;
 	onLaunchOptionsChange: (next: LaunchOptions) => void;
 	openMenu: ChinMenu | null;
@@ -217,15 +246,33 @@ export interface ChinLaunchControls {
 }
 
 /** A `/effort <level>`, `/model <id>` or `/fast` sent from the composer, applied the way a menu pick is. */
-export type ChinPick = {effort: EffortLevel} | {model: string} | {fastMode: boolean};
+export type ChinPick =
+	|
+	  {
+			effort: EffortLevel;
+	  }
+	|
+	  {
+			model: string;
+	  }
+	|
+	  {
+			fastMode: boolean;
+	  };
 
-export interface ChinPickHandle {
+export interface ChinPickHandle
+{
 	pick: (pick: ChinPick) => void;
 	/** The chin's fast state; `canToggle` is false when the current model has no Fast mode section or it is blocked. */
-	fastState: () => {on: boolean; canToggle: boolean};
+	fastState: () =>
+	{
+		on: boolean;
+		canToggle: boolean;
+	};
 }
 
-function effortText(effort: string): string {
+function effortText(effort: string): string
+{
 	const level = EffortLevelSchema.safeParse(effort);
 	return level.success ? effortLevelLabels[level.data] : effort;
 }
@@ -245,51 +292,90 @@ export const ComposerChin = memo(function ComposerChin({
 	launch: ChinLaunchControls;
 	surface: ChinSurface;
 	pickRef?: Ref<ChinPickHandle> | undefined;
-}) {
+})
+{
 	const {launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange} = launch;
 	// Keeps the picked level while the confirm fades out, so its copy doesn't flicker.
-	const [effortConfirm, setEffortConfirm] = useState<{effort: EffortLevel; open: boolean}>({
-		effort: "high",
-		open: false,
-	});
+	const [effortConfirm, setEffortConfirm] = useState<
+	{
+		effort: EffortLevel;
+		open: boolean;
+	}>(
+		{
+			effort: "high",
+			open: false,
+		},
+	);
 	const currentEffort = launchOptions.effort ?? state.effort.id;
-	const selectEffort = (effort: EffortLevel) => {
-		if (launch.confirmEffortChange !== true) {
-			onLaunchOptionsChange({...launchOptions, effort});
-		} else if (effort !== currentEffort) {
+	const selectEffort = (effort: EffortLevel) =>
+	{
+		if (launch.confirmEffortChange !== true)
+		{
+			onLaunchOptionsChange(
+				{
+					...launchOptions,
+					effort,
+				},
+			);
+		}
+		else if (effort !== currentEffort)
+		{
 			onOpenMenuChange(null);
-			setEffortConfirm({effort, open: true});
+			setEffortConfirm(
+				{
+					effort,
+					open: true,
+				},
+			);
 		}
 	};
 	const ultracode = launchOptions.ultracode ?? false;
-	const selectUltracode = (on: boolean) => {
-		onLaunchOptionsChange({...launchOptions, ultracode: on});
+	const selectUltracode = (on: boolean) =>
+	{
+		onLaunchOptionsChange(
+			{
+				...launchOptions,
+				ultracode: on,
+			},
+		);
 	};
-	const selectModel = (model: string) => {
+	const selectModel = (model: string) =>
+	{
 		onLaunchOptionsChange(withModel(launchOptions, model));
 	};
 	const currentModel = launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined;
 	// Upstream's `fastModeOn = !blocked && value`; a blocked session can't pick it either.
 	const fastModeBlocked = state.fastModeBlocked;
 	const fastMode = fastModeBlocked === null && (launchOptions.fastMode ?? state.fastMode);
-	const selectFastMode = (on: boolean) => {
+	const selectFastMode = (on: boolean) =>
+	{
 		if (fastModeBlocked !== null) return;
-		onLaunchOptionsChange({...launchOptions, fastMode: on});
+		onLaunchOptionsChange(
+			{
+				...launchOptions,
+				fastMode: on,
+			},
+		);
 	};
-	useImperativeHandle(pickRef, () => ({
-		pick: (pick) => {
+	useImperativeHandle(pickRef, () => (
+	{
+		pick: (pick) =>
+		{
 			if ("effort" in pick) selectEffort(pick.effort);
 			else if ("model" in pick) selectModel(pick.model);
 			else selectFastMode(pick.fastMode);
 		},
-		fastState: () => ({
+		fastState: () => (
+		{
 			on: fastMode,
 			canToggle: fastModeBlocked === null && currentModel !== undefined && fastModeSupported(currentModel),
 		}),
 	}));
-	const menuProps = (menu: ChinMenu) => ({
+	const menuProps = (menu: ChinMenu) => (
+	{
 		open: openMenu === menu,
-		onOpenChange: (open: boolean) => {
+		onOpenChange: (open: boolean) =>
+		{
 			onOpenMenuChange(open ? menu : null);
 		},
 	});
@@ -303,7 +389,8 @@ export const ComposerChin = memo(function ComposerChin({
 	const overridden =
 		launchOptions.model !== undefined &&
 		(modelMenuValue(launchOptions.model) ?? launchOptions.model) !== settingsModel;
-	const clearModel = () => {
+	const clearModel = () =>
+	{
 		const {model: _cleared, ...rest} = launchOptions;
 		onLaunchOptionsChange(rest);
 	};
@@ -311,7 +398,8 @@ export const ComposerChin = memo(function ComposerChin({
 		/* Upstream's one model + effort picker; ⇧⌘E opens it on its Effort submenu in a chin, plain on the bar */
 		<ModelMenu
 			open={openMenu === "model" || openMenu === "effort"}
-			onOpenChange={(open) => {
+			onOpenChange={(open) =>
+			{
 				onOpenMenuChange(open ? "model" : null);
 			}}
 			surface={surface}
@@ -320,7 +408,15 @@ export const ComposerChin = memo(function ComposerChin({
 			currentLabel={modelText}
 			currentEffort={currentEffort}
 			onSelect={selectModel}
-			settingsOverride={overridden ? {label: modelLabel(settingsModel), onUse: clearModel} : null}
+			settingsOverride={
+				overridden
+					?
+						{
+							label: modelLabel(settingsModel),
+							onUse: clearModel,
+						}
+					: null
+			}
 			onSelectEffort={selectEffort}
 			effortOptions={effortOptionsFor(currentModel ?? state.modelId)}
 			ultracode={ultracode}
@@ -338,9 +434,15 @@ export const ComposerChin = memo(function ComposerChin({
 			currentLabel={modeLabel}
 			bypassPermissionsAllowed={launch.bypassPermissionsAllowed}
 			workspace={launch.permissionWorkspace}
-			onSelect={(permissionMode) => {
+			onSelect={(permissionMode) =>
+			{
 				launch.onPermissionModePick?.(permissionMode);
-				onLaunchOptionsChange({...launchOptions, permissionMode});
+				onLaunchOptionsChange(
+					{
+						...launchOptions,
+						permissionMode,
+					},
+				);
 			}}
 		/>
 	);
@@ -381,14 +483,25 @@ export const ComposerChin = memo(function ComposerChin({
 			)}
 			<ConfirmDialog
 				open={effortConfirm.open}
-				onOpenChange={(open) => {
-					setEffortConfirm((prev) => ({...prev, open}));
+				onOpenChange={(open) =>
+				{
+					setEffortConfirm((prev) => (
+					{
+						...prev,
+						open,
+					}));
 				}}
 				title="Change effort?"
 				body={`This session is cached with effort set to ${effortText(currentEffort)}. Changing it to ${effortText(effortConfirm.effort)} means Claude re-reads the whole session on your next message, which uses more of your limit.`}
 				confirmLabel="Change effort"
-				onConfirm={() => {
-					onLaunchOptionsChange({...launchOptions, effort: effortConfirm.effort});
+				onConfirm={() =>
+				{
+					onLaunchOptionsChange(
+						{
+							...launchOptions,
+							effort: effortConfirm.effort,
+						},
+					);
 				}}
 			/>
 		</>

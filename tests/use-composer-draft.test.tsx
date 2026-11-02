@@ -3,7 +3,8 @@
 import {act, cleanup, fireEvent, render, renderHook, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
-import {
+import
+{
 	COMPOSER_DRAFT_DEBOUNCE_MS,
 	composerDraftStorageKey,
 	markFailedSend,
@@ -15,248 +16,514 @@ import {installLocalStorage} from "./fake-storage";
 
 let storage: ReturnType<typeof installLocalStorage>;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	storage = installLocalStorage();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 	vi.useRealTimers();
 });
 
-function storedDrafts(): Record<string, string> {
+function storedDrafts(): Record<string, string>
+{
 	return Object.fromEntries(storage.values);
 }
 
-describe("composerDraftStorageKey", () => {
-	it("namespaces session drafts and uses a home key for the home composer", () => {
-		expect({
-			session: composerDraftStorageKey("session-alice"),
-			home: composerDraftStorageKey("home"),
-		}).toStrictEqual({
-			session: "ccp-composer-draft:session-alice",
-			home: "ccp-composer-draft:home",
-		});
+describe("composerDraftStorageKey", () =>
+{
+	it("namespaces session drafts and uses a home key for the home composer", () =>
+	{
+		expect(
+			{
+				session: composerDraftStorageKey("session-alice"),
+				home: composerDraftStorageKey("home"),
+			},
+		).toStrictEqual(
+			{
+				session: "ccp-composer-draft:session-alice",
+				home: "ccp-composer-draft:home",
+			},
+		);
 	});
 });
 
-describe("useComposerDraft", () => {
-	it("restores a stored draft on mount", () => {
-		storage.setItem("ccp-composer-draft:session-alice", JSON.stringify({text: "Continue Alice's test"}));
+describe("useComposerDraft", () =>
+{
+	it("restores a stored draft on mount", () =>
+	{
+		storage.setItem(
+			"ccp-composer-draft:session-alice",
+			JSON.stringify(
+				{
+					text: "Continue Alice's test",
+				},
+			),
+		);
 
 		const {result} = renderHook(() => useComposerDraft("session-alice"));
 
 		expect(result.current.text).toBe("Continue Alice's test");
 	});
 
-	it("ignores drafts that fail the strict schema", () => {
-		storage.setItem("ccp-composer-draft:session-alice", JSON.stringify({text: "Continue Alice's test", files: []}));
+	it("ignores drafts that fail the strict schema", () =>
+	{
+		storage.setItem(
+			"ccp-composer-draft:session-alice",
+			JSON.stringify(
+				{
+					text: "Continue Alice's test",
+					files: [],
+				},
+			),
+		);
 
 		const {result} = renderHook(() => useComposerDraft("session-alice"));
 
 		expect(result.current.text).toBe("");
 	});
 
-	it("writes the draft after the debounce and removes the key once emptied", () => {
+	it("writes the draft after the debounce and removes the key once emptied", () =>
+	{
 		vi.useFakeTimers();
 		const {result} = renderHook(() => useComposerDraft("session-bob"));
 
-		act(() => {
+		act(() =>
+		{
 			result.current.setText("Continue Bob's test");
 		});
 		const beforeDebounce = storedDrafts();
-		act(() => {
+		act(() =>
+		{
 			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
 		});
 		const afterDebounce = storedDrafts();
-		act(() => {
+		act(() =>
+		{
 			result.current.setText("");
 		});
-		act(() => {
+		act(() =>
+		{
 			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
 		});
 
-		expect({
-			debounceMs: COMPOSER_DRAFT_DEBOUNCE_MS,
-			beforeDebounce,
-			afterDebounce,
-			afterEmpty: storedDrafts(),
-		}).toStrictEqual({
-			debounceMs: 150,
-			beforeDebounce: {},
-			afterDebounce: {
-				"ccp-composer-draft:session-bob": JSON.stringify({text: "Continue Bob's test"}),
+		expect(
+			{
+				debounceMs: COMPOSER_DRAFT_DEBOUNCE_MS,
+				beforeDebounce,
+				afterDebounce,
+				afterEmpty: storedDrafts(),
 			},
-			afterEmpty: {},
-		});
+		).toStrictEqual(
+			{
+				debounceMs: 150,
+				beforeDebounce: {},
+				afterDebounce:
+				{
+					"ccp-composer-draft:session-bob": JSON.stringify(
+						{
+							text: "Continue Bob's test",
+						},
+					),
+				},
+				afterEmpty: {},
+			},
+		);
 	});
 
-	it("flushes a pending write when the key changes", () => {
+	it("flushes a pending write when the key changes", () =>
+	{
 		vi.useFakeTimers();
-		const {result, rerender} = renderHook(({draftKey}) => useComposerDraft(draftKey), {
-			initialProps: {draftKey: "session-alice"},
-		});
+		const {result, rerender} = renderHook(
+			({draftKey}) => useComposerDraft(draftKey),
+			{
+				initialProps:
+				{
+					draftKey: "session-alice",
+				},
+			},
+		);
 
-		act(() => {
+		act(() =>
+		{
 			result.current.setText("Continue Alice's test");
 		});
-		rerender({draftKey: "session-bob"});
-
-		expect({text: result.current.text, stored: storedDrafts()}).toStrictEqual({
-			text: "",
-			stored: {
-				"ccp-composer-draft:session-alice": JSON.stringify({text: "Continue Alice's test"}),
+		rerender(
+			{
+				draftKey: "session-bob",
 			},
-		});
+		);
+
+		expect(
+			{
+				text: result.current.text,
+				stored: storedDrafts(),
+			},
+		).toStrictEqual(
+			{
+				text: "",
+				stored:
+				{
+					"ccp-composer-draft:session-alice": JSON.stringify(
+						{
+							text: "Continue Alice's test",
+						},
+					),
+				},
+			},
+		);
 	});
 
-	it("keeps working when storage throws", () => {
+	it("keeps working when storage throws", () =>
+	{
 		vi.useFakeTimers();
-		vi.spyOn(storage, "getItem").mockImplementation(() => {
+		vi.spyOn(storage, "getItem").mockImplementation(() =>
+		{
 			throw new Error("denied");
 		});
-		vi.spyOn(storage, "setItem").mockImplementation(() => {
+		vi.spyOn(storage, "setItem").mockImplementation(() =>
+		{
 			throw new Error("denied");
 		});
-		vi.spyOn(storage, "removeItem").mockImplementation(() => {
+		vi.spyOn(storage, "removeItem").mockImplementation(() =>
+		{
 			throw new Error("denied");
 		});
 
 		const {result} = renderHook(() => useComposerDraft("session-alice"));
-		act(() => {
+		act(() =>
+		{
 			result.current.setText("Continue Alice's test");
 		});
-		act(() => {
+		act(() =>
+		{
 			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
 		});
 		const typed = result.current.text;
-		act(() => {
+		act(() =>
+		{
 			result.current.clear();
 		});
 
-		expect({typed, cleared: result.current.text}).toStrictEqual({
-			typed: "Continue Alice's test",
-			cleared: "",
-		});
+		expect(
+			{
+				typed,
+				cleared: result.current.text,
+			},
+		).toStrictEqual(
+			{
+				typed: "Continue Alice's test",
+				cleared: "",
+			},
+		);
 	});
 });
 
-describe("failedSend draft marker", () => {
-	it("restores the text of a draft that carries a failedSend marker", () => {
-		storage.setItem("ccp-composer-draft:session-alice", JSON.stringify({text: "hi", failedSend: "hi"}));
+describe("failedSend draft marker", () =>
+{
+	it("restores the text of a draft that carries a failedSend marker", () =>
+	{
+		storage.setItem(
+			"ccp-composer-draft:session-alice",
+			JSON.stringify(
+				{
+					text: "hi",
+					failedSend: "hi",
+				},
+			),
+		);
 
 		const {result} = renderHook(() => useComposerDraft("session-alice"));
 
-		expect({text: result.current.text, failedSend: readFailedSend("session-alice")}).toStrictEqual({
-			text: "hi",
-			failedSend: "hi",
-		});
+		expect(
+			{
+				text: result.current.text,
+				failedSend: readFailedSend("session-alice"),
+			},
+		).toStrictEqual(
+			{
+				text: "hi",
+				failedSend: "hi",
+			},
+		);
 	});
 
-	it("reports a failed send only while the draft text still equals it", () => {
-		storage.setItem("ccp-composer-draft:session-alice", JSON.stringify({text: "hi edited", failedSend: "hi"}));
-		storage.setItem("ccp-composer-draft:session-bob", JSON.stringify({text: "hi"}));
+	it("reports a failed send only while the draft text still equals it", () =>
+	{
+		storage.setItem(
+			"ccp-composer-draft:session-alice",
+			JSON.stringify(
+				{
+					text: "hi edited",
+					failedSend: "hi",
+				},
+			),
+		);
+		storage.setItem(
+			"ccp-composer-draft:session-bob",
+			JSON.stringify(
+				{
+					text: "hi",
+				},
+			),
+		);
 
-		expect({
-			edited: readFailedSend("session-alice"),
-			unmarked: readFailedSend("session-bob"),
-			missing: readFailedSend("session-carol"),
-		}).toStrictEqual({edited: null, unmarked: null, missing: null});
+		expect(
+			{
+				edited: readFailedSend("session-alice"),
+				unmarked: readFailedSend("session-bob"),
+				missing: readFailedSend("session-carol"),
+			},
+		).toStrictEqual(
+			{
+				edited: null,
+				unmarked: null,
+				missing: null,
+			},
+		);
 	});
 
-	it("writes the marker, keeps it through an equal write and drops it once the text changes", () => {
+	it("writes the marker, keeps it through an equal write and drops it once the text changes", () =>
+	{
 		vi.useFakeTimers();
 		const {result} = renderHook(() => useComposerDraft("session-bob"));
 
-		act(() => {
+		act(() =>
+		{
 			markFailedSend("session-bob", "hi");
 		});
 		const marked = storedDrafts();
-		act(() => {
+		act(() =>
+		{
 			result.current.setText("hi");
 			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
 		});
 		const unchanged = storedDrafts();
-		act(() => {
+		act(() =>
+		{
 			result.current.setText("hi edited");
 			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
 		});
 		const edited = storedDrafts();
-		act(() => {
+		act(() =>
+		{
 			result.current.setText("hi");
 			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
 		});
 
-		expect({marked, unchanged, edited, editedBack: storedDrafts()}).toStrictEqual({
-			marked: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi", failedSend: "hi"})},
-			unchanged: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi", failedSend: "hi"})},
-			edited: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi edited"})},
-			editedBack: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi"})},
-		});
+		expect(
+			{
+				marked,
+				unchanged,
+				edited,
+				editedBack: storedDrafts(),
+			},
+		).toStrictEqual(
+			{
+				marked:
+				{
+					"ccp-composer-draft:session-bob": JSON.stringify(
+						{
+							text: "hi",
+							failedSend: "hi",
+						},
+					),
+				},
+				unchanged:
+				{
+					"ccp-composer-draft:session-bob": JSON.stringify(
+						{
+							text: "hi",
+							failedSend: "hi",
+						},
+					),
+				},
+				edited:
+				{
+					"ccp-composer-draft:session-bob": JSON.stringify(
+						{
+							text: "hi edited",
+						},
+					),
+				},
+				editedBack:
+				{
+					"ccp-composer-draft:session-bob": JSON.stringify(
+						{
+							text: "hi",
+						},
+					),
+				},
+			},
+		);
 	});
 });
 
-describe("rejected prompt merged into a stored draft", () => {
-	it("puts the rejected prompt above newer stored text, marking failedSend only when nothing else is there", () => {
-		storage.setItem("ccp-composer-draft:session-alice", JSON.stringify({text: "newer"}));
+describe("rejected prompt merged into a stored draft", () =>
+{
+	it("puts the rejected prompt above newer stored text, marking failedSend only when nothing else is there", () =>
+	{
+		storage.setItem(
+			"ccp-composer-draft:session-alice",
+			JSON.stringify(
+				{
+					text: "newer",
+				},
+			),
+		);
 
 		markFailedSend("session-alice", "hi");
 		markFailedSend("session-bob", "hi");
 		storeRejectedDraft("session-carol", "hi");
-		storage.setItem("ccp-composer-draft:session-dave", JSON.stringify({text: "newer", bashMode: true}));
+		storage.setItem(
+			"ccp-composer-draft:session-dave",
+			JSON.stringify(
+				{
+					text: "newer",
+					bashMode: true,
+				},
+			),
+		);
 		storeRejectedDraft("session-dave", "hi");
 
-		expect(storedDrafts()).toStrictEqual({
-			"ccp-composer-draft:session-alice": JSON.stringify({text: "hi\n\nnewer"}),
-			"ccp-composer-draft:session-bob": JSON.stringify({text: "hi", failedSend: "hi"}),
-			"ccp-composer-draft:session-carol": JSON.stringify({text: "hi"}),
-			"ccp-composer-draft:session-dave": JSON.stringify({text: "hi\n\nnewer"}),
-		});
+		expect(storedDrafts()).toStrictEqual(
+			{
+				"ccp-composer-draft:session-alice": JSON.stringify(
+					{
+						text: "hi\n\nnewer",
+					},
+				),
+				"ccp-composer-draft:session-bob": JSON.stringify(
+					{
+						text: "hi",
+						failedSend: "hi",
+					},
+				),
+				"ccp-composer-draft:session-carol": JSON.stringify(
+					{
+						text: "hi",
+					},
+				),
+				"ccp-composer-draft:session-dave": JSON.stringify(
+					{
+						text: "hi\n\nnewer",
+					},
+				),
+			},
+		);
 	});
 
-	it("doesn't add the prompt twice when the stored draft already starts with it", () => {
+	it("doesn't add the prompt twice when the stored draft already starts with it", () =>
+	{
 		storeRejectedDraft("session-alice", "hi");
 		markFailedSend("session-alice", "hi");
 
-		expect(storedDrafts()).toStrictEqual({
-			"ccp-composer-draft:session-alice": JSON.stringify({text: "hi", failedSend: "hi"}),
-		});
+		expect(storedDrafts()).toStrictEqual(
+			{
+				"ccp-composer-draft:session-alice": JSON.stringify(
+					{
+						text: "hi",
+						failedSend: "hi",
+					},
+				),
+			},
+		);
 	});
 });
 
-describe("Composer draft persistence", () => {
-	it("restores the draft and clears it after a send", () => {
-		storage.setItem("ccp-composer-draft:session-alice", JSON.stringify({text: "Continue Alice's test"}));
+describe("Composer draft persistence", () =>
+{
+	it("restores the draft and clears it after a send", () =>
+	{
+		storage.setItem(
+			"ccp-composer-draft:session-alice",
+			JSON.stringify(
+				{
+					text: "Continue Alice's test",
+				},
+			),
+		);
 		const onSend = vi.fn<(prompt: string) => void>();
 		render(<Composer variant="session" draftKey="session-alice" onSend={onSend} />);
-		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		const textarea = screen.getByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
 		const restored = textarea.value;
 
-		fireEvent.keyDown(textarea, {key: "Enter"});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
 
-		expect({
-			restored,
-			sends: onSend.mock.calls,
-			value: textarea.value,
-			stored: storedDrafts(),
-		}).toStrictEqual({
-			restored: "Continue Alice's test",
-			sends: [["Continue Alice's test", {}]],
-			value: "",
-			stored: {},
-		});
+		expect(
+			{
+				restored,
+				sends: onSend.mock.calls,
+				value: textarea.value,
+				stored: storedDrafts(),
+			},
+		).toStrictEqual(
+			{
+				restored: "Continue Alice's test",
+				sends: [["Continue Alice's test", {}]],
+				value: "",
+				stored: {},
+			},
+		);
 	});
 
-	it("persists typed text for the next mount", () => {
+	it("persists typed text for the next mount", () =>
+	{
 		vi.useFakeTimers();
-		const {unmount} = render(<Composer variant="home" draftKey="home" onSend={() => {}} />);
-		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
-			target: {value: "Describe Bob's task"},
-		});
+		const {unmount} = render(
+			<Composer
+				variant="home"
+				draftKey="home"
+				onSend={() =>
+				{
+				}}
+			/>,
+		);
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			),
+			{
+				target:
+				{
+					value: "Describe Bob's task",
+				},
+			},
+		);
 		unmount();
-		render(<Composer variant="home" draftKey="home" onSend={() => {}} />);
+		render(
+			<Composer
+				variant="home"
+				draftKey="home"
+				onSend={() =>
+				{
+				}}
+			/>,
+		);
 
-		expect(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"}).value).toBe("Describe Bob's task");
+		expect(
+			screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			).value,
+		).toBe("Describe Bob's task");
 	});
 });

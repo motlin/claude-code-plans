@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -19,7 +20,8 @@ import {Sidebar} from "../src/components/sidebar/Sidebar";
 import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
-import {
+import
+{
 	activeSessionsQueryOptions,
 	recentSessionsInfiniteQueryOptions,
 	RecentSessionsResponse,
@@ -34,50 +36,81 @@ import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
 import {plansQueryOptions} from "../src/lib/api/plans";
 import {PanelsOff} from "./fizzy-lake-off";
 
-function seedQueryClient(): QueryClient {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
-		},
-	});
-	queryClient.setQueryData(approvalsQueryOptions().queryKey, {
-		approvals: [
+function seedQueryClient(): QueryClient
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
 			{
-				sessionId: "session-test-200",
-				projectId: "project-test-200",
-				projectName: "project-test-200",
-				toolName: "ExitPlanMode",
-				toolUseId: "tool-use-test-200",
-				blockedSince: "2026-01-01T00:00:00.000Z",
-				planFilename: null,
-				questionPreview: null,
-				questionOptions: [],
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
 			},
-		],
-	});
-	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+		},
+	);
+	queryClient.setQueryData(
+		approvalsQueryOptions().queryKey,
+		{
+			approvals: [
+				{
+					sessionId: "session-test-200",
+					projectId: "project-test-200",
+					projectName: "project-test-200",
+					toolName: "ExitPlanMode",
+					toolUseId: "tool-use-test-200",
+					blockedSince: "2026-01-01T00:00:00.000Z",
+					planFilename: null,
+					questionPreview: null,
+					questionOptions: [],
+				},
+			],
+		},
+	);
+	queryClient.setQueryData(
+		notificationsQueryOptions().queryKey,
+		{
+			notifications: [],
+		},
+	);
 	queryClient.setQueryData(plansQueryOptions().queryKey, [
 		{
 			filename: "plan-test-alpha.md",
 			title: "Plan test alpha",
 			mtime: "2026-01-01T00:00:00.000Z",
-			projects: [{projectId: "project-test-alpha", projectName: "project-test-alpha"}],
+			projects: [
+				{
+					projectId: "project-test-alpha",
+					projectName: "project-test-alpha",
+				},
+			],
 		},
 		{
 			filename: "plan-test-beta.md",
 			title: "Plan test beta",
 			mtime: "2026-01-01T00:00:00.000Z",
-			projects: [{projectId: "project-test-beta", projectName: "project-test-beta"}],
+			projects: [
+				{
+					projectId: "project-test-beta",
+					projectName: "project-test-beta",
+				},
+			],
 		},
 	]);
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
-	queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
-		terminalWritesEnabled: false,
-		terminalHost: "auto",
-		shellPaneEnabled: true,
-		visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr"),
-		ignoredDirs: ["node_modules"],
-	});
+	queryClient.setQueryData(
+		applicationSettingsQueryOptions.queryKey,
+		{
+			terminalWritesEnabled: false,
+			terminalHost: "auto",
+			shellPaneEnabled: true,
+			visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr"),
+			ignoredDirs: ["node_modules"],
+		},
+	);
 	return queryClient;
 }
 
@@ -85,41 +118,70 @@ async function renderSidebarAt(
 	path: string,
 	queryClient = seedQueryClient(),
 	{panelsOff = false, phoneSheet = false} = {},
-) {
-	const sidebar = <Sidebar collapsed={false} {...(phoneSheet ? {onPhoneSheetClose: () => {}} : {})} />;
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<SettingsProvider>
-						{panelsOff ? <PanelsOff>{sidebar}</PanelsOff> : sidebar}
-						<Outlet />
-					</SettingsProvider>
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
+)
+{
+	const sidebar = (
+		<Sidebar
+			collapsed={false}
+			{...(phoneSheet
+				?
+					{
+						onPhoneSheetClose: () =>
+						{
+						},
+					}
+				: {})}
+		/>
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SettingsProvider>
+							{panelsOff ? <PanelsOff>{sidebar}</PanelsOff> : sidebar}
+							<Outlet />
+						</SettingsProvider>
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
 	const pathname = path.split(/[?#]/)[0]!;
 	const pageRoutes =
 		pathname === "/"
 			? []
 			: [
-					createRoute({
-						getParentRoute: () => rootRoute,
-						path: pathname.startsWith("/session/") ? "/session/$id" : pathname,
-					}),
+					createRoute(
+						{
+							getParentRoute: () => rootRoute,
+							path: pathname.startsWith("/session/") ? "/session/$id" : pathname,
+						},
+					),
 				];
-	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/"});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([...pageRoutes, homeRoute]),
-		history: createMemoryHistory({initialEntries: [path]}),
-	});
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([...pageRoutes, homeRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [path],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	return router;
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
@@ -127,54 +189,84 @@ afterEach(() => {
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 });
 
-describe("sidebar navigation", () => {
-	it("selects the local session for an alias and clears selection when that alias becomes ambiguous", async () => {
+describe("sidebar navigation", () =>
+{
+	it("selects the local session for an alias and clears selection when that alias becomes ambiguous", async () =>
+	{
 		vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2000, 0, 1));
 		const queryClient = seedQueryClient();
-		queryClient.setQueryData(localAccountQueryOptions.queryKey, {name: "Alice", firstName: "Alice", initial: "A"});
-		queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-			pages: [
-				RecentSessionsResponse.parse({
-					sessions: [
+		queryClient.setQueryData(
+			localAccountQueryOptions.queryKey,
+			{
+				name: "Alice",
+				firstName: "Alice",
+				initial: "A",
+			},
+		);
+		queryClient.setQueryData(
+			recentSessionsInfiniteQueryOptions().queryKey,
+			{
+				pages: [
+					RecentSessionsResponse.parse(
 						{
-							id: "session-alice",
-							title: "Example Alice session",
-							mtime: "2000-01-01T00:00:00.000Z",
-							created: "2000-01-01T00:00:00.000Z",
-							project: "example-project",
-							projectName: "Example project",
-							messageCount: 1,
-							archived: false,
-							state: "idle",
-							bucket: "done",
-							liveAgentCount: 0,
-							unseen: false,
-							blockedSince: null,
+							sessions: [
+								{
+									id: "session-alice",
+									title: "Example Alice session",
+									mtime: "2000-01-01T00:00:00.000Z",
+									created: "2000-01-01T00:00:00.000Z",
+									project: "example-project",
+									projectName: "Example project",
+									messageCount: 1,
+									archived: false,
+									state: "idle",
+									bucket: "done",
+									liveAgentCount: 0,
+									unseen: false,
+									blockedSince: null,
+								},
+							],
+							nextCursor: null,
 						},
-					],
-					nextCursor: null,
-				}),
-			],
-			pageParams: [null],
-		});
+					),
+				],
+				pageParams: [null],
+			},
+		);
 		const fetch = vi
 			.fn<typeof globalThis.fetch>()
-			.mockResolvedValueOnce(Response.json({sessionId: "session-alice"}))
-			.mockResolvedValue(Response.json({}, {status: 409}));
+			.mockResolvedValueOnce(
+				Response.json(
+					{
+						sessionId: "session-alice",
+					},
+				),
+			)
+			.mockResolvedValue(
+				Response.json(
+					{},
+					{
+						status: 409,
+					},
+				),
+			);
 		vi.stubGlobal("fetch", fetch);
 		await renderSidebarAt("/session/session_alice_100", queryClient);
 		const title = await screen.findByText("Example Alice session");
 		const row = title.closest("a[data-row-main-button]");
 		if (row === null) throw new Error("Example session row is missing");
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(row.getAttribute("data-selected")).toBe("focused");
 		});
 		await act(async () => invalidateSessionIdentities(queryClient));
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(row.getAttribute("data-selected")).toBe(null);
 		});
 		expect(fetch.mock.calls.map(([url]) => url)).toStrictEqual([
@@ -182,25 +274,72 @@ describe("sidebar navigation", () => {
 			"/api/sessions/session_alice_100/identity",
 		]);
 	});
-	it("links to each top-level section", () => {
-		expect(navItems.map(({label, to}) => ({label, to}))).toStrictEqual([
-			{label: "Projects", to: "/projects"},
-			{label: "Artifacts", to: "/artifacts"},
-			{label: "Scheduled", to: "/routines"},
-			{label: "Background jobs", to: "/jobs"},
-			{label: "Active", to: "/active"},
-			{label: "Terminals", to: "/terminals"},
-			{label: "Approvals", to: "/approvals"},
-			{label: "Notifications", to: "/notifications"},
-			{label: "Tasks", to: "/tasks"},
-			{label: "Plans", to: "/plans"},
-			{label: "Memories", to: "/memories"},
-			{label: "Sessions", to: "/sessions"},
-			{label: "Customize", to: "/customize"},
+	it("links to each top-level section", () =>
+	{
+		expect(
+			navItems.map(({label, to}) => (
+			{
+				label,
+				to,
+			})),
+		).toStrictEqual([
+			{
+				label: "Projects",
+				to: "/projects",
+			},
+			{
+				label: "Artifacts",
+				to: "/artifacts",
+			},
+			{
+				label: "Scheduled",
+				to: "/routines",
+			},
+			{
+				label: "Background jobs",
+				to: "/jobs",
+			},
+			{
+				label: "Active",
+				to: "/active",
+			},
+			{
+				label: "Terminals",
+				to: "/terminals",
+			},
+			{
+				label: "Approvals",
+				to: "/approvals",
+			},
+			{
+				label: "Notifications",
+				to: "/notifications",
+			},
+			{
+				label: "Tasks",
+				to: "/tasks",
+			},
+			{
+				label: "Plans",
+				to: "/plans",
+			},
+			{
+				label: "Memories",
+				to: "/memories",
+			},
+			{
+				label: "Sessions",
+				to: "/sessions",
+			},
+			{
+				label: "Customize",
+				to: "/customize",
+			},
 		]);
 	});
 
-	it("drops Settings, Claude Config and Setup, which live in the account menu", () => {
+	it("drops Settings, Claude Config and Setup, which live in the account menu", () =>
+	{
 		expect(
 			navItems.filter(
 				(item) =>
@@ -210,98 +349,223 @@ describe("sidebar navigation", () => {
 		).toStrictEqual([]);
 	});
 
-	it("replaces the Plugins row with a Customize row", () => {
-		expect({
-			customize: navItems.filter((item) => item.section === "customize").map(({label, to}) => ({label, to})),
-			plugins: navItems.filter((item) => item.label === "Plugins" || item.to === "/plugins"),
-		}).toStrictEqual({customize: [{label: "Customize", to: "/customize"}], plugins: []});
+	it("replaces the Plugins row with a Customize row", () =>
+	{
+		expect(
+			{
+				customize: navItems
+					.filter((item) => item.section === "customize")
+					.map(({label, to}) => (
+					{
+						label,
+						to,
+					})),
+				plugins: navItems.filter((item) => item.label === "Plugins" || item.to === "/plugins"),
+			},
+		).toStrictEqual(
+			{
+				customize: [
+					{
+						label: "Customize",
+						to: "/customize",
+					},
+				],
+				plugins: [],
+			},
+		);
 	});
 
-	it("activates the Artifacts section on the gallery", () => {
-		expect(activeSectionFor([{fullPath: "/artifacts", params: {}}])).toStrictEqual({
-			section: "artifacts",
-			activeItemId: null,
-		});
+	it("activates the Artifacts section on the gallery", () =>
+	{
+		expect(
+			activeSectionFor([
+				{
+					fullPath: "/artifacts",
+					params: {},
+				},
+			]),
+		).toStrictEqual(
+			{
+				section: "artifacts",
+				activeItemId: null,
+			},
+		);
 	});
 
-	it("activates the Routines section on the Routines page", () => {
-		expect(activeSectionFor([{fullPath: "/routines", params: {}}])).toStrictEqual({
-			section: "routines",
-			activeItemId: null,
-		});
+	it("activates the Routines section on the Routines page", () =>
+	{
+		expect(
+			activeSectionFor([
+				{
+					fullPath: "/routines",
+					params: {},
+				},
+			]),
+		).toStrictEqual(
+			{
+				section: "routines",
+				activeItemId: null,
+			},
+		);
 	});
 
-	it("activates the Background jobs section on the Background jobs page", () => {
-		expect(activeSectionFor([{fullPath: "/jobs", params: {}}])).toStrictEqual({
-			section: "jobs",
-			activeItemId: null,
-		});
+	it("activates the Background jobs section on the Background jobs page", () =>
+	{
+		expect(
+			activeSectionFor([
+				{
+					fullPath: "/jobs",
+					params: {},
+				},
+			]),
+		).toStrictEqual(
+			{
+				section: "jobs",
+				activeItemId: null,
+			},
+		);
 	});
 
-	it("activates the Customize section on Customize and legacy plugin routes", () => {
+	it("activates the Customize section on Customize and legacy plugin routes", () =>
+	{
 		const sectionAt = (fullPath: string, params: Record<string, string> = {}) =>
-			activeSectionFor([{fullPath, params}]);
+			activeSectionFor([
+				{
+					fullPath,
+					params,
+				},
+			]);
 
 		expect([
 			sectionAt("/customize/skills"),
-			sectionAt("/customize/plugins/id/$pluginId", {pluginId: "tools@market"}),
+			sectionAt(
+				"/customize/plugins/id/$pluginId",
+				{
+					pluginId: "tools@market",
+				},
+			),
 			sectionAt("/plugins"),
 			sectionAt("/command/$source/$filename"),
 		]).toStrictEqual([
-			{section: "customize", activeItemId: null},
-			{section: "customize", activeItemId: null},
-			{section: "customize", activeItemId: null},
-			{section: "customize", activeItemId: null},
+			{
+				section: "customize",
+				activeItemId: null,
+			},
+			{
+				section: "customize",
+				activeItemId: null,
+			},
+			{
+				section: "customize",
+				activeItemId: null,
+			},
+			{
+				section: "customize",
+				activeItemId: null,
+			},
 		]);
 	});
 
-	it("redirects the old Plugins nav link into Customize", async () => {
-		const rootRoute = createRootRoute({component: Outlet});
-		const router = createRouter({
-			routeTree: rootRoute.addChildren([
-				createRoute({
-					getParentRoute: () => rootRoute,
-					path: "/plugins",
-					beforeLoad: redirectLegacyPlugins,
-				}),
-				createRoute({getParentRoute: () => rootRoute, path: "/customize/plugins"}),
-			]),
-			history: createMemoryHistory({initialEntries: ["/plugins"]}),
-		});
+	it("redirects the old Plugins nav link into Customize", async () =>
+	{
+		const rootRoute = createRootRoute(
+			{
+				component: Outlet,
+			},
+		);
+		const router = createRouter(
+			{
+				routeTree: rootRoute.addChildren([
+					createRoute(
+						{
+							getParentRoute: () => rootRoute,
+							path: "/plugins",
+							beforeLoad: redirectLegacyPlugins,
+						},
+					),
+					createRoute(
+						{
+							getParentRoute: () => rootRoute,
+							path: "/customize/plugins",
+						},
+					),
+				]),
+				history: createMemoryHistory(
+					{
+						initialEntries: ["/plugins"],
+					},
+				),
+			},
+		);
 		await router.load();
 
 		expect(router.state.location.pathname).toBe("/customize/plugins");
 	});
 
-	it("activates no nav section on the Claude Config editor or Setup pages", () => {
-		const sectionAt = (fullPath: string) => activeSectionFor([{fullPath, params: {}}]);
+	it("activates no nav section on the Claude Config editor or Setup pages", () =>
+	{
+		const sectionAt = (fullPath: string) =>
+			activeSectionFor([
+				{
+					fullPath,
+					params: {},
+				},
+			]);
 
 		expect([sectionAt("/settings/edit"), sectionAt("/setup")]).toStrictEqual([
-			{section: null, activeItemId: null},
-			{section: null, activeItemId: null},
+			{
+				section: null,
+				activeItemId: null,
+			},
+			{
+				section: null,
+				activeItemId: null,
+			},
 		]);
 	});
 
-	it("activates the Terminals section on the legacy tmux route while it redirects", () => {
-		const matches = [{fullPath: "/tmux", params: {}}] as unknown as Parameters<typeof activeSectionFor>[0];
-
-		expect(activeSectionFor(matches)).toStrictEqual({section: "herdr", activeItemId: null});
-	});
-
-	it("activates the Terminals section and terminal on a live terminal route", () => {
+	it("activates the Terminals section on the legacy tmux route while it redirects", () =>
+	{
 		const matches = [
-			{fullPath: "/terminals/$sessionId", params: {sessionId: "session-test-100"}},
+			{
+				fullPath: "/tmux",
+				params: {},
+			},
 		] as unknown as Parameters<typeof activeSectionFor>[0];
 
-		expect(activeSectionFor(matches)).toStrictEqual({
-			section: "herdr",
-			activeItemId: "session-test-100",
-		});
+		expect(activeSectionFor(matches)).toStrictEqual(
+			{
+				section: "herdr",
+				activeItemId: null,
+			},
+		);
+	});
+
+	it("activates the Terminals section and terminal on a live terminal route", () =>
+	{
+		const matches = [
+			{
+				fullPath: "/terminals/$sessionId",
+				params:
+				{
+					sessionId: "session-test-100",
+				},
+			},
+		] as unknown as Parameters<typeof activeSectionFor>[0];
+
+		expect(activeSectionFor(matches)).toStrictEqual(
+			{
+				section: "herdr",
+				activeItemId: "session-test-100",
+			},
+		);
 	});
 });
 
-describe("sidebar nav rows", () => {
-	function navRows(): HTMLElement[] {
+describe("sidebar nav rows", () =>
+{
+	function navRows(): HTMLElement[]
+	{
 		const footer = screen.getByTestId("sidebar-footer");
 		return screen
 			.getAllByRole("link")
@@ -309,21 +573,31 @@ describe("sidebar nav rows", () => {
 			.filter((link) => !footer.contains(link));
 	}
 
-	it("uses the upstream row recipe on every nav link", async () => {
+	it("uses the upstream row recipe on every nav link", async () =>
+	{
 		await renderSidebarAt("/tasks");
-		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Tasks",
+				},
+			),
+		);
 
 		const rows = navRows();
 		expect(rows.length).toBeGreaterThan(0);
 		expect(
-			rows.map((row) => ({
+			rows.map((row) => (
+			{
 				href: row.getAttribute("href"),
 				height: row.classList.contains("h-[var(--sb-row-h)]"),
 				radius: row.classList.contains("rounded-[var(--sb-radius)]"),
 				leadingSlot: row.querySelector(":scope > .df-leading-slot > svg") !== null,
 			})),
 		).toStrictEqual(
-			rows.map((row) => ({
+			rows.map((row) => (
+			{
 				href: row.getAttribute("href"),
 				height: true,
 				radius: true,
@@ -332,23 +606,45 @@ describe("sidebar nav rows", () => {
 		);
 	});
 
-	it("marks only the active row as focused", async () => {
+	it("marks only the active row as focused", async () =>
+	{
 		await renderSidebarAt("/tasks");
-		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Tasks",
+				},
+			),
+		);
 
 		expect(
 			navRows()
 				.filter((row) => row.hasAttribute("data-selected"))
-				.map((row) => ({
+				.map((row) => (
+				{
 					href: row.getAttribute("href"),
 					selected: row.getAttribute("data-selected"),
 				})),
-		).toStrictEqual([{href: "/tasks", selected: "focused"}]);
+		).toStrictEqual([
+			{
+				href: "/tasks",
+				selected: "focused",
+			},
+		]);
 	});
 
-	it("has no Expand or Collapse chevrons on nav rows", async () => {
+	it("has no Expand or Collapse chevrons on nav rows", async () =>
+	{
 		await renderSidebarAt("/plans");
-		await waitFor(() => screen.getByRole("link", {name: "Plans"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Plans",
+				},
+			),
+		);
 
 		expect(
 			screen
@@ -358,75 +654,192 @@ describe("sidebar nav rows", () => {
 		).toStrictEqual([]);
 	});
 
-	it.each(["/plans", "/plans/some-plan", "/plan/$filename"])("selects the Plans row at %s", async (path) => {
+	it.each(["/plans", "/plans/some-plan", "/plan/$filename"])("selects the Plans row at %s", async (path) =>
+	{
 		await renderSidebarAt(path);
-		await waitFor(() => screen.getByRole("link", {name: "Plans"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Plans",
+				},
+			),
+		);
 
 		expect(
 			navRows()
 				.filter((row) => row.hasAttribute("data-selected"))
-				.map((row) => ({href: row.getAttribute("href"), selected: row.getAttribute("data-selected")})),
-		).toStrictEqual([{href: "/plans", selected: "focused"}]);
+				.map((row) => (
+				{
+					href: row.getAttribute("href"),
+					selected: row.getAttribute("data-selected"),
+				})),
+		).toStrictEqual([
+			{
+				href: "/plans",
+				selected: "focused",
+			},
+		]);
 	});
 
-	it("selects the Memories row on a memory detail route", async () => {
+	it("selects the Memories row on a memory detail route", async () =>
+	{
 		await renderSidebarAt("/memory/$project/$filename");
-		await waitFor(() => screen.getByRole("link", {name: "Memories"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Memories",
+				},
+			),
+		);
 
 		expect(
 			navRows()
 				.filter((row) => row.hasAttribute("data-selected"))
-				.map((row) => ({href: row.getAttribute("href"), selected: row.getAttribute("data-selected")})),
-		).toStrictEqual([{href: "/memories", selected: "focused"}]);
+				.map((row) => (
+				{
+					href: row.getAttribute("href"),
+					selected: row.getAttribute("data-selected"),
+				})),
+		).toStrictEqual([
+			{
+				href: "/memories",
+				selected: "focused",
+			},
+		]);
 	});
 
-	it("renders no plan groups or plan links in the sidebar", async () => {
+	it("renders no plan groups or plan links in the sidebar", async () =>
+	{
 		await renderSidebarAt("/plans");
-		await waitFor(() => screen.getByRole("link", {name: "Plans"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Plans",
+				},
+			),
+		);
 
-		const sidebar = screen.getByRole("navigation", {name: "Sidebar"});
-		expect({
-			groupToggles: within(sidebar).queryAllByRole("button", {name: /project-test-(alpha|beta)/}).length,
-			planLinks: within(sidebar).queryAllByRole("link", {name: /Plan test/}).length,
-		}).toStrictEqual({groupToggles: 0, planLinks: 0});
+		const sidebar = screen.getByRole(
+			"navigation",
+			{
+				name: "Sidebar",
+			},
+		);
+		expect(
+			{
+				groupToggles: within(sidebar).queryAllByRole(
+					"button",
+					{
+						name: /project-test-(alpha|beta)/,
+					},
+				).length,
+				planLinks: within(sidebar).queryAllByRole(
+					"link",
+					{
+						name: /Plan test/,
+					},
+				).length,
+			},
+		).toStrictEqual(
+			{
+				groupToggles: 0,
+				planLinks: 0,
+			},
+		);
 	});
 
-	it("renders count badges inside the trailing slot", async () => {
+	it("renders count badges inside the trailing slot", async () =>
+	{
 		await renderSidebarAt("/tasks");
-		const approvals = await waitFor(() => screen.getByRole("link", {name: /Approvals/}));
+		const approvals = await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: /Approvals/,
+				},
+			),
+		);
 
 		const tail = approvals.querySelector(":scope > .df-tail-mark");
-		expect({
-			text: tail?.textContent,
-			badgeTitle: tail ? within(tail as HTMLElement).getByTitle("1 awaiting approval").textContent : null,
-		}).toStrictEqual({text: "1", badgeTitle: "1"});
+		expect(
+			{
+				text: tail?.textContent,
+				badgeTitle: tail ? within(tail as HTMLElement).getByTitle("1 awaiting approval").textContent : null,
+			},
+		).toStrictEqual(
+			{
+				text: "1",
+				badgeTitle: "1",
+			},
+		);
 	});
 });
 
-describe("fizzy sidebar color ink hooks", () => {
-	it.each([{phoneSheet: false}, {phoneSheet: true}])(
-		"classes the sidebar nav dframe-sidebar (phone sheet: $phoneSheet)",
-		async ({phoneSheet}) => {
-			await renderSidebarAt("/tasks", seedQueryClient(), {phoneSheet});
-			await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
-
-			expect(
-				screen
-					.getAllByRole("navigation", {name: "Sidebar"})
-					.map((nav) => nav.classList.contains("dframe-sidebar")),
-			).toStrictEqual([true]);
+describe("fizzy sidebar color ink hooks", () =>
+{
+	it.each([
+		{
+			phoneSheet: false,
 		},
-	);
+		{
+			phoneSheet: true,
+		},
+	])("classes the sidebar nav dframe-sidebar (phone sheet: $phoneSheet)", async ({phoneSheet}) =>
+	{
+		await renderSidebarAt(
+			"/tasks",
+			seedQueryClient(),
+			{
+				phoneSheet,
+			},
+		);
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Tasks",
+				},
+			),
+		);
 
-	it("marks New, Search, every nav link and More data-row-nav, and nothing else", async () => {
+		expect(
+			screen
+				.getAllByRole(
+					"navigation",
+					{
+						name: "Sidebar",
+					},
+				)
+				.map((nav) => nav.classList.contains("dframe-sidebar")),
+		).toStrictEqual([true]);
+	});
+
+	it("marks New, Search, every nav link and More data-row-nav, and nothing else", async () =>
+	{
 		await renderSidebarAt("/tasks");
-		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Tasks",
+				},
+			),
+		);
 
-		const nav = screen.getByRole("navigation", {name: "Sidebar"});
+		const nav = screen.getByRole(
+			"navigation",
+			{
+				name: "Sidebar",
+			},
+		);
 		const navLinks = Array.from(nav.querySelectorAll<HTMLElement>("a[data-nav-item]"));
 		expect(navLinks.length).toBeGreaterThan(0);
 		expect(
-			Array.from(nav.querySelectorAll<HTMLElement>("[data-row-nav]")).map((row) => ({
+			Array.from(nav.querySelectorAll<HTMLElement>("[data-row-nav]")).map((row) => (
+			{
 				tag: row.tagName,
 				value: row.getAttribute("data-row-nav"),
 				label:
@@ -435,114 +848,246 @@ describe("fizzy sidebar color ink hooks", () => {
 					row.querySelector(".df-leading-slot")?.nextElementSibling?.textContent,
 			})),
 		).toStrictEqual([
-			{tag: "A", value: "", label: "New"},
-			{tag: "BUTTON", value: "", label: "Search"},
-			...navLinks.map((link) => ({tag: "A", value: "", label: link.getAttribute("data-nav-item")})),
-			{tag: "BUTTON", value: "", label: "more"},
+			{
+				tag: "A",
+				value: "",
+				label: "New",
+			},
+			{
+				tag: "BUTTON",
+				value: "",
+				label: "Search",
+			},
+			...navLinks.map((link) => (
+			{
+				tag: "A",
+				value: "",
+				label: link.getAttribute("data-nav-item"),
+			})),
+			{
+				tag: "BUTTON",
+				value: "",
+				label: "more",
+			},
 		]);
 	});
 });
 
-describe("sidebar New row", () => {
-	function navLinks(): HTMLElement[] {
+describe("sidebar New row", () =>
+{
+	function navLinks(): HTMLElement[]
+	{
 		const titlebar = screen.getByTestId("sidebar-titlebar");
 		const footer = screen.getByTestId("sidebar-footer");
 		return screen.getAllByRole("link").filter((link) => !titlebar.contains(link) && !footer.contains(link));
 	}
 
 	it.each([
-		{path: "/", selected: "focused", current: "page"},
-		{path: "/?filter=alice#settings/general", selected: "focused", current: "page"},
-		{path: "/tasks", selected: null, current: null},
-		{path: "/session/session-alice-100", selected: null, current: null},
-	])("selects New only on the home pathname at $path", async ({path, selected, current}) => {
+		{
+			path: "/",
+			selected: "focused",
+			current: "page",
+		},
+		{
+			path: "/?filter=alice#settings/general",
+			selected: "focused",
+			current: "page",
+		},
+		{
+			path: "/tasks",
+			selected: null,
+			current: null,
+		},
+		{
+			path: "/session/session-alice-100",
+			selected: null,
+			current: null,
+		},
+	])("selects New only on the home pathname at $path", async ({path, selected, current}) =>
+	{
 		await renderSidebarAt(path);
 		const newRow = navLinks()[0];
 
-		expect({
-			href: newRow?.getAttribute("href"),
-			selected: newRow?.getAttribute("data-selected"),
-			current: newRow?.getAttribute("aria-current"),
-		}).toStrictEqual({href: "/", selected, current});
+		expect(
+			{
+				href: newRow?.getAttribute("href"),
+				selected: newRow?.getAttribute("data-selected"),
+				current: newRow?.getAttribute("aria-current"),
+			},
+		).toStrictEqual(
+			{
+				href: "/",
+				selected,
+				current,
+			},
+		);
 	});
 
-	it("is the first nav link, points home and reveals ⇧⌘O on hover", async () => {
+	it("is the first nav link, points home and reveals ⇧⌘O on hover", async () =>
+	{
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 		await renderSidebarAt("/tasks");
-		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Tasks",
+				},
+			),
+		);
 
-		const first = screen.getByRole("link", {name: "New"});
+		const first = screen.getByRole(
+			"link",
+			{
+				name: "New",
+			},
+		);
 		const shortcut = first.querySelector('[data-cds="Shortcut"]');
-		expect({
-			firstNavLink: first === navLinks()[0],
-			name: first.textContent,
-			href: first.getAttribute("href"),
-			ariaKeyShortcuts: first.getAttribute("aria-keyshortcuts"),
-			keycaps: [...(shortcut?.querySelectorAll('kbd > [aria-hidden="true"]') ?? [])].map(
-				(cap) => cap.textContent,
-			),
-			hiddenUntilHover: ["opacity-0", "group-hover:opacity-100"].every((name) =>
-				shortcut?.classList.contains(name),
-			),
-		}).toStrictEqual({
-			firstNavLink: true,
-			name: "New⇧Shift⌘CommandO",
-			href: "/",
-			ariaKeyShortcuts: "Shift+Meta+o",
-			keycaps: ["⇧", "⌘"],
-			hiddenUntilHover: true,
-		});
+		expect(
+			{
+				firstNavLink: first === navLinks()[0],
+				name: first.textContent,
+				href: first.getAttribute("href"),
+				ariaKeyShortcuts: first.getAttribute("aria-keyshortcuts"),
+				keycaps: [...(shortcut?.querySelectorAll('kbd > [aria-hidden="true"]') ?? [])].map(
+					(cap) => cap.textContent,
+				),
+				hiddenUntilHover: ["opacity-0", "group-hover:opacity-100"].every((name) =>
+					shortcut?.classList.contains(name),
+				),
+			},
+		).toStrictEqual(
+			{
+				firstNavLink: true,
+				name: "New⇧Shift⌘CommandO",
+				href: "/",
+				ariaKeyShortcuts: "Shift+Meta+o",
+				keycaps: ["⇧", "⌘"],
+				hiddenUntilHover: true,
+			},
+		);
 	});
 
-	it("scrolls the New and Search header with the nav rows, first inside the scroller, as upstream panels does", async () => {
+	it("scrolls the New and Search header with the nav rows, first inside the scroller, as upstream panels does", async () =>
+	{
 		await renderSidebarAt("/tasks");
-		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Tasks",
+				},
+			),
+		);
 
 		const scroller = screen.getByTestId("nav-scroll");
-		const newRow = screen.getByRole("link", {name: "New"});
+		const newRow = screen.getByRole(
+			"link",
+			{
+				name: "New",
+			},
+		);
 		const header = scroller.firstElementChild;
-		expect({
-			fixedLinks: navLinks()
-				.filter((link) => !scroller.contains(link))
-				.map((link) => link.getAttribute("href")),
-			headerFirst:
-				header?.contains(newRow) === true && header.contains(screen.getByRole("button", {name: "Search"})),
-			newBeforeNav: Boolean(
-				newRow.compareDocumentPosition(screen.getByRole("link", {name: "Tasks"})) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
-			),
-			scrollPaddingTop: scroller.classList.contains("scroll-pt-1"),
-			keyboardContainer: ["df-nav-scroll-box", "relative", "flex", "flex-1", "flex-col", "min-h-0"].filter(
-				(token) => scroller.closest("[data-sidebar-body]")?.classList.contains(token) !== true,
-			),
-		}).toStrictEqual({
-			fixedLinks: [],
-			headerFirst: true,
-			newBeforeNav: true,
-			scrollPaddingTop: true,
-			keyboardContainer: [],
-		});
-	});
-
-	it("keeps New and Search in the scroller whatever fizzy-lake parts are on, as upstream's graduated shell does", async () => {
-		async function render(panelsOff: boolean) {
-			await renderSidebarAt("/tasks", seedQueryClient(), {panelsOff});
-			await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
-			const scroller = screen.getByTestId("nav-scroll");
-			const header = scroller.firstElementChild;
-			const result = {
+		expect(
+			{
 				fixedLinks: navLinks()
 					.filter((link) => !scroller.contains(link))
 					.map((link) => link.getAttribute("href")),
-				newInScroller: header?.contains(screen.getByRole("link", {name: "New"})) === true,
-				searchRowInScroller: header?.contains(screen.getByRole("button", {name: "Search"})) === true,
+				headerFirst:
+					header?.contains(newRow) === true &&
+					header.contains(
+						screen.getByRole(
+							"button",
+							{
+								name: "Search",
+							},
+						),
+					),
+				newBeforeNav: Boolean(
+					newRow.compareDocumentPosition(
+						screen.getByRole(
+							"link",
+							{
+								name: "Tasks",
+							},
+						),
+					) & Node.DOCUMENT_POSITION_FOLLOWING,
+				),
+				scrollPaddingTop: scroller.classList.contains("scroll-pt-1"),
+				keyboardContainer: ["df-nav-scroll-box", "relative", "flex", "flex-1", "flex-col", "min-h-0"].filter(
+					(token) => scroller.closest("[data-sidebar-body]")?.classList.contains(token) !== true,
+				),
+			},
+		).toStrictEqual(
+			{
+				fixedLinks: [],
+				headerFirst: true,
+				newBeforeNav: true,
+				scrollPaddingTop: true,
+				keyboardContainer: [],
+			},
+		);
+	});
+
+	it("keeps New and Search in the scroller whatever fizzy-lake parts are on, as upstream's graduated shell does", async () =>
+	{
+		async function render(panelsOff: boolean)
+		{
+			await renderSidebarAt(
+				"/tasks",
+				seedQueryClient(),
+				{
+					panelsOff,
+				},
+			);
+			await waitFor(() =>
+				screen.getByRole(
+					"link",
+					{
+						name: "Tasks",
+					},
+				),
+			);
+			const scroller = screen.getByTestId("nav-scroll");
+			const header = scroller.firstElementChild;
+			const result =
+			{
+				fixedLinks: navLinks()
+					.filter((link) => !scroller.contains(link))
+					.map((link) => link.getAttribute("href")),
+				newInScroller:
+					header?.contains(
+						screen.getByRole(
+							"link",
+							{
+								name: "New",
+							},
+						),
+					) === true,
+				searchRowInScroller:
+					header?.contains(
+						screen.getByRole(
+							"button",
+							{
+								name: "Search",
+							},
+						),
+					) === true,
 				navBlockClass: scroller.querySelectorAll("[data-nav-block]")[1]?.getAttribute("class"),
-				flatLook: screen.getByRole("navigation", {name: "Sidebar"}).getAttribute("data-flat-look"),
+				flatLook: screen
+					.getByRole(
+						"navigation",
+						{
+							name: "Sidebar",
+						},
+					)
+					.getAttribute("data-flat-look"),
 			};
 			cleanup();
 			return result;
 		}
-		const expected = {
+		const expected =
+		{
 			fixedLinks: [],
 			newInScroller: true,
 			searchRowInScroller: true,
@@ -550,20 +1095,41 @@ describe("sidebar New row", () => {
 			flatLook: "",
 		};
 
-		expect({on: await render(false), off: await render(true)}).toStrictEqual({on: expected, off: expected});
+		expect(
+			{
+				on: await render(false),
+				off: await render(true),
+			},
+		).toStrictEqual(
+			{
+				on: expected,
+				off: expected,
+			},
+		);
 	});
 
-	it("pins Projects first by default, then Artifacts, Plans, Memories and Customize", async () => {
+	it("pins Projects first by default, then Artifacts, Plans, Memories and Customize", async () =>
+	{
 		const queryClient = seedQueryClient();
-		queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
-			terminalWritesEnabled: false,
-			terminalHost: "auto",
-			shellPaneEnabled: true,
-			visibleNavSections: [...DEFAULT_VISIBLE_NAV_SECTIONS],
-			ignoredDirs: ["node_modules"],
-		});
+		queryClient.setQueryData(
+			applicationSettingsQueryOptions.queryKey,
+			{
+				terminalWritesEnabled: false,
+				terminalHost: "auto",
+				shellPaneEnabled: true,
+				visibleNavSections: [...DEFAULT_VISIBLE_NAV_SECTIONS],
+				ignoredDirs: ["node_modules"],
+			},
+		);
 		await renderSidebarAt("/tasks", queryClient);
-		await waitFor(() => screen.getByRole("link", {name: "Customize"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Customize",
+				},
+			),
+		);
 
 		const sectionHrefs = new Set(navItems.map((item) => item.to));
 		expect(
@@ -573,28 +1139,48 @@ describe("sidebar New row", () => {
 		).toStrictEqual(["Projects", "Artifacts", "Plans", "Memories", "Customize"]);
 	});
 
-	it("spaces the first session-group header 29px below More, as upstream does", async () => {
+	it("spaces the first session-group header 29px below More, as upstream does", async () =>
+	{
 		await renderSidebarAt("/tasks");
-		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+		await waitFor(() =>
+			screen.getByRole(
+				"link",
+				{
+					name: "Tasks",
+				},
+			),
+		);
 
 		const spacer = screen.getByTestId("nav-scroll").querySelector("[data-nav-groups-gap]");
 		expect(spacer?.className).toBe("h-[11.5px] shrink-0");
 	});
 
-	it("navigates home and focuses the home composer, like ⇧⌘O", async () => {
+	it("navigates home and focuses the home composer, like ⇧⌘O", async () =>
+	{
 		const focusRequests: string[] = [];
 		const unsubscribe = onHomeComposerFocusRequest(() => focusRequests.push("focus"));
-		try {
+		try
+		{
 			const router = await renderSidebarAt("/tasks");
-			await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+			await waitFor(() =>
+				screen.getByRole(
+					"link",
+					{
+						name: "Tasks",
+					},
+				),
+			);
 
 			fireEvent.click(navLinks()[0]!);
 
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(focusRequests).toStrictEqual(["focus"]);
 			});
 			expect(router.state.location.pathname).toBe("/");
-		} finally {
+		}
+		finally
+		{
 			unsubscribe();
 		}
 	});

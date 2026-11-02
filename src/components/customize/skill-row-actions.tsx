@@ -17,13 +17,27 @@ export function SkillRowActions({
 	skill: SkillSummary;
 	/** Rows say "More actions for <name>"; the detail header says "More options for <name>". */
 	triggerLabel?: string;
-}) {
+})
+{
 	const toast = useToast();
 	const invocation = skillInvocation(skill);
 
-	const copy = async (text: string, message: string) => {
+	const copy = async (text: string, message: string) =>
+	{
 		const copied = await writeClipboardText(text);
-		toast(copied ? {kind: "success", message} : {kind: "error", message: "Copy failed"});
+		toast(
+			copied
+				?
+					{
+						kind: "success",
+						message,
+					}
+				:
+					{
+						kind: "error",
+						message: "Copy failed",
+					},
+		);
 	};
 
 	return (

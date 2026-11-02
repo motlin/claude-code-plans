@@ -4,7 +4,8 @@ import {fetchEarlierTranscript} from "../lib/api/sessions";
 import {jumpToMessage} from "../lib/jump-to-message";
 
 /** A request to reach one message, numbered so asking twice jumps twice. */
-interface PendingJump {
+interface PendingJump
+{
 	uuid: string;
 	requestId: number;
 }
@@ -31,14 +32,16 @@ export function usePendingMessageJump(
 	sessionId: string,
 	windowStartIndex: number,
 	uuidToLine: ReadonlyMap<string, number>,
-): (uuid: string) => void {
+): (uuid: string) => void
+{
 	const queryClient = useQueryClient();
 	const inFlightRef = useRef(false);
 	const jumpedRequestRef = useRef<number | undefined>(undefined);
 	const requestCountRef = useRef(0);
 	const [pending, setPending] = useState<PendingJump | undefined>(undefined);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (pending === undefined) return undefined;
 		// Landing on the message is a one-shot. Reading on from there means
 		// scrolling up, which auto-loads the previous page and grows `uuidToLine`
@@ -47,12 +50,14 @@ export function usePendingMessageJump(
 		if (jumpedRequestRef.current === pending.requestId) return undefined;
 
 		const recordIndex = uuidToLine.get(pending.uuid);
-		if (recordIndex === undefined) {
+		if (recordIndex === undefined)
+		{
 			// `windowStartIndex === 0` is the terminating case: the whole file is
 			// loaded, so the message simply does not belong to this session.
 			if (windowStartIndex === 0 || inFlightRef.current) return undefined;
 			inFlightRef.current = true;
-			void fetchEarlierTranscript(queryClient, sessionId).finally(() => {
+			void fetchEarlierTranscript(queryClient, sessionId).finally(() =>
+			{
 				inFlightRef.current = false;
 			});
 			return undefined;
@@ -62,13 +67,20 @@ export function usePendingMessageJump(
 		// One frame late so the scroll measures the transcript React has just
 		// committed rather than the layout it is replacing.
 		const frame = requestAnimationFrame(() => jumpToMessage(recordIndex));
-		return () => {
+		return () =>
+		{
 			cancelAnimationFrame(frame);
 		};
 	}, [pending, windowStartIndex, uuidToLine, sessionId, queryClient]);
 
-	return useCallback((uuid: string) => {
+	return useCallback((uuid: string) =>
+	{
 		requestCountRef.current += 1;
-		setPending({uuid, requestId: requestCountRef.current});
+		setPending(
+			{
+				uuid,
+				requestId: requestCountRef.current,
+			},
+		);
 	}, []);
 }

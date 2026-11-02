@@ -10,7 +10,8 @@ import {displayState, type DisplayState} from "../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork} from "../lib/unread-store";
 import {useSettings} from "./settings-context";
 
-function viewedRouteId(router: ReturnType<typeof useRouter>): string | null {
+function viewedRouteId(router: ReturnType<typeof useRouter>): string | null
+{
 	const sessionMatch = router.state.matches.find((match) => match.routeId.startsWith("/session/$id"));
 	if (!sessionMatch || !("id" in sessionMatch.params)) return null;
 	const id = sessionMatch.params.id;
@@ -23,7 +24,8 @@ function viewedRouteId(router: ReturnType<typeof useRouter>): string | null {
  * into waiting or review, for every session the global switches cover or the
  * composer's "Notify me" opted in.
  */
-export function DesktopNotificationBridge(): null {
+export function DesktopNotificationBridge(): null
+{
 	const {settings} = useSettings();
 	const subscribeSessionStates = useSubscribeSessionStates();
 	const router = useRouter();
@@ -31,17 +33,21 @@ export function DesktopNotificationBridge(): null {
 	const previousStates = useRef(new Map<string, DisplayState>());
 	const activityStates = useRef(new Map<string, Parameters<typeof displayState>[0]>());
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (typeof Notification === "undefined") return undefined;
 
-		const seedFromUnseenWork = () => {
-			for (const [sessionId, state] of activityStates.current) {
+		const seedFromUnseenWork = () =>
+		{
+			for (const [sessionId, state] of activityStates.current)
+			{
 				previousStates.current.set(sessionId, displayState(state, hasUnseenWork(sessionId)));
 			}
 		};
 		const unsubscribeUnseenWork = subscribeUnseenWork(seedFromUnseenWork);
 		let seeding = true;
-		const unsubscribeSessionStates = subscribeSessionStates((session) => {
+		const unsubscribeSessionStates = subscribeSessionStates((session) =>
+		{
 			if (typeof document === "undefined") return;
 			activityStates.current.set(session.sessionId, session.state);
 			const next = displayState(session.state, hasUnseenWork(session.sessionId));
@@ -60,26 +66,37 @@ export function DesktopNotificationBridge(): null {
 					getCachedSessionIdentity(queryClient, viewedRouteId(router)),
 					session.archived,
 				)
-			) {
+			)
+			{
 				return;
 			}
 
-			const notification = new Notification(copy, {
-				tag: session.sessionId,
-				silent: settings.notificationSound === "none",
-			});
-			notification.onclick = () => {
+			const notification = new Notification(
+				copy,
+				{
+					tag: session.sessionId,
+					silent: settings.notificationSound === "none",
+				},
+			);
+			notification.onclick = () =>
+			{
 				window.focus();
-				void router.navigate({
-					to: "/session/$id",
-					params: {id: session.sessionId},
-				});
+				void router.navigate(
+					{
+						to: "/session/$id",
+						params:
+						{
+							id: session.sessionId,
+						},
+					},
+				);
 				notification.close();
 			};
 		});
 		seeding = false;
 
-		return () => {
+		return () =>
+		{
 			unsubscribeSessionStates();
 			unsubscribeUnseenWork();
 		};

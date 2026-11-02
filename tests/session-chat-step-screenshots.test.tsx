@@ -5,21 +5,43 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
+	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class NoopResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords(): ResizeObserverEntry[] {
+class NoopResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords(): ResizeObserverEntry[]
+	{
 		return [];
 	}
 }
@@ -31,16 +53,35 @@ afterEach(cleanup);
 const MEDIA_SLOT_CLASS = "order-last ms-auto inline-flex h-[1lh] shrink-0 items-center overflow-visible";
 
 /** A Bash call and a Read of a PNG in one assistant turn, the Read returning an image block. */
-function groupRecords(): unknown[] {
+function groupRecords(): unknown[]
+{
 	return [
 		{
 			type: "assistant",
 			uuid: "a1",
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
-					{type: "tool_use", id: "t1", name: "Bash", input: {command: "ls", description: "List files"}},
-					{type: "tool_use", id: "t2", name: "Read", input: {file_path: "/repo/shots/input-debug.png"}},
+					{
+						type: "tool_use",
+						id: "t1",
+						name: "Bash",
+						input:
+						{
+							command: "ls",
+							description: "List files",
+						},
+					},
+					{
+						type: "tool_use",
+						id: "t2",
+						name: "Read",
+						input:
+						{
+							file_path: "/repo/shots/input-debug.png",
+						},
+					},
 				],
 			},
 		},
@@ -48,19 +89,40 @@ function groupRecords(): unknown[] {
 			type: "user",
 			uuid: "r1",
 			parentUuid: "a1",
-			message: {role: "user", content: [{type: "tool_result", tool_use_id: "t1", content: "a.txt"}]},
+			message:
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: "t1",
+						content: "a.txt",
+					},
+				],
+			},
 		},
 		{
 			type: "user",
 			uuid: "r2",
 			parentUuid: "r1",
-			message: {
+			message:
+			{
 				role: "user",
 				content: [
 					{
 						type: "tool_result",
 						tool_use_id: "t2",
-						content: [{type: "image", source: {type: "base64", media_type: "image/png", data: "AAA"}}],
+						content: [
+							{
+								type: "image",
+								source:
+								{
+									type: "base64",
+									media_type: "image/png",
+									data: "AAA",
+								},
+							},
+						],
 					},
 				],
 			},
@@ -68,7 +130,8 @@ function groupRecords(): unknown[] {
 	];
 }
 
-function renderTranscript(records: unknown[], {turnInProgress = false} = {}): HTMLElement {
+function renderTranscript(records: unknown[], {turnInProgress = false} = {}): HTMLElement
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
@@ -84,7 +147,8 @@ function renderTranscript(records: unknown[], {turnInProgress = false} = {}): HT
 	).container;
 }
 
-interface MediaSlot {
+interface MediaSlot
+{
 	className: string;
 	title: string | null;
 	labels: (string | null)[];
@@ -94,12 +158,15 @@ interface MediaSlot {
 	inStepRow: boolean;
 }
 
-function mediaSlots(container: HTMLElement): MediaSlot[] {
-	return [...container.querySelectorAll<HTMLElement>("[data-cds-row-media]")].map((slot) => ({
+function mediaSlots(container: HTMLElement): MediaSlot[]
+{
+	return [...container.querySelectorAll<HTMLElement>("[data-cds-row-media]")].map((slot) => (
+	{
 		className: slot.className,
 		title: slot.getAttribute("title"),
 		labels: [...slot.querySelectorAll("button")].map((button) => button.getAttribute("aria-label")),
-		captions: [...slot.querySelectorAll("button")].map((button) => {
+		captions: [...slot.querySelectorAll("button")].map((button) =>
+		{
 			const id = button.getAttribute("aria-describedby");
 			return id === null ? null : (slot.querySelector(`[id="${id}"]`)?.textContent ?? null);
 		}),
@@ -109,13 +176,15 @@ function mediaSlots(container: HTMLElement): MediaSlot[] {
 	}));
 }
 
-function groupToggle(container: HTMLElement): HTMLElement {
+function groupToggle(container: HTMLElement): HTMLElement
+{
 	const toggle = container.querySelector<HTMLElement>("[data-turn-status] button[aria-expanded]");
 	if (toggle === null) throw new Error("no group toggle");
 	return toggle;
 }
 
-function readStepToggle(container: HTMLElement): HTMLElement {
+function readStepToggle(container: HTMLElement): HTMLElement
+{
 	const toggle = [...container.querySelectorAll<HTMLElement>('[role="button"][aria-expanded]')].find((element) =>
 		element.textContent.includes("input-debug.png"),
 	);
@@ -123,8 +192,10 @@ function readStepToggle(container: HTMLElement): HTMLElement {
 	return toggle;
 }
 
-describe("tool-row screenshot media slots", () => {
-	it("draws the collapsed group's strip in a trailing media slot beside the toggle", () => {
+describe("tool-row screenshot media slots", () =>
+{
+	it("draws the collapsed group's strip in a trailing media slot beside the toggle", () =>
+	{
 		const container = renderTranscript(groupRecords());
 
 		expect(mediaSlots(container)).toStrictEqual([
@@ -144,7 +215,8 @@ describe("tool-row screenshot media slots", () => {
 		expect(slot?.previousElementSibling).toBe(groupToggle(container).closest("[data-cds-row]"));
 	});
 
-	it("does not toggle the group when its thumbnail is clicked", () => {
+	it("does not toggle the group when its thumbnail is clicked", () =>
+	{
 		const container = renderTranscript(groupRecords());
 
 		const thumb = container.querySelector<HTMLElement>('[data-cds-row-media] button[aria-label="Screenshot"]');
@@ -154,7 +226,8 @@ describe("tool-row screenshot media slots", () => {
 		expect(groupToggle(container).getAttribute("aria-expanded")).toBe("false");
 	});
 
-	it("moves the strip to the Read step row when the group expands", () => {
+	it("moves the strip to the Read step row when the group expands", () =>
+	{
 		const container = renderTranscript(groupRecords());
 		fireEvent.click(groupToggle(container));
 
@@ -172,7 +245,8 @@ describe("tool-row screenshot media slots", () => {
 		expect(readStepToggle(container).querySelector("[data-cds-row-media]")).not.toBeNull();
 	});
 
-	it("drops the step's strip while that step is expanded", () => {
+	it("drops the step's strip while that step is expanded", () =>
+	{
 		const container = renderTranscript(groupRecords());
 		fireEvent.click(groupToggle(container));
 		fireEvent.click(readStepToggle(container));
@@ -181,19 +255,26 @@ describe("tool-row screenshot media slots", () => {
 		expect(mediaSlots(container)).toStrictEqual([]);
 	});
 
-	it("keeps the step collapsed when its thumbnail is activated by click or Enter", () => {
+	it("keeps the step collapsed when its thumbnail is activated by click or Enter", () =>
+	{
 		const container = renderTranscript(groupRecords());
 		fireEvent.click(groupToggle(container));
 
 		const thumb = readStepToggle(container).querySelector<HTMLElement>('button[aria-label="Screenshot"]');
 		if (thumb === null) throw new Error("no step thumbnail");
 		fireEvent.click(thumb);
-		fireEvent.keyDown(thumb, {key: "Enter"});
+		fireEvent.keyDown(
+			thumb,
+			{
+				key: "Enter",
+			},
+		);
 
 		expect(readStepToggle(container).getAttribute("aria-expanded")).toBe("false");
 	});
 
-	it("shows an expanded step's screenshots in its body as 'View screenshot' buttons", () => {
+	it("shows an expanded step's screenshots in its body as 'View screenshot' buttons", () =>
+	{
 		const container = renderTranscript(groupRecords());
 		fireEvent.click(groupToggle(container));
 		fireEvent.click(readStepToggle(container));
@@ -215,7 +296,8 @@ describe("tool-row screenshot media slots", () => {
 		]);
 	});
 
-	it("draws a lone row's screenshots in a card after the row, without top padding", () => {
+	it("draws a lone row's screenshots in a card after the row, without top padding", () =>
+	{
 		const container = renderTranscript(loneRecords());
 
 		expect(mediaSlots(container)).toStrictEqual([]);
@@ -236,8 +318,14 @@ describe("tool-row screenshot media slots", () => {
 		]);
 	});
 
-	it("keeps a live turn's last lone row's screenshots in the row instead of a card", () => {
-		const container = renderTranscript(loneRecords(), {turnInProgress: true});
+	it("keeps a live turn's last lone row's screenshots in the row instead of a card", () =>
+	{
+		const container = renderTranscript(
+			loneRecords(),
+			{
+				turnInProgress: true,
+			},
+		);
 
 		expect(mediaSlots(container)).toStrictEqual([
 			{
@@ -253,35 +341,75 @@ describe("tool-row screenshot media slots", () => {
 		expect(stepScreenshots(container)).toStrictEqual([]);
 	});
 
-	it("shows a held lone row's screenshots in its expanded body", () => {
-		const container = renderTranscript(loneRecords(), {turnInProgress: true});
+	it("shows a held lone row's screenshots in its expanded body", () =>
+	{
+		const container = renderTranscript(
+			loneRecords(),
+			{
+				turnInProgress: true,
+			},
+		);
 		fireEvent.click(readStepToggle(container));
 
 		expect(mediaSlots(container)).toStrictEqual([]);
-		expect(stepScreenshots(container).map(({className, inBody}) => ({className, inBody}))).toStrictEqual([
-			{className: SCREENSHOTS_CLASS, inBody: true},
+		expect(
+			stepScreenshots(container).map(({className, inBody}) => (
+			{
+				className,
+				inBody,
+			})),
+		).toStrictEqual([
+			{
+				className: SCREENSHOTS_CLASS,
+				inBody: true,
+			},
 		]);
 	});
 
-	it("hoists a live turn's lone row's screenshots once the turn moves on to prose", () => {
+	it("hoists a live turn's lone row's screenshots once the turn moves on to prose", () =>
+	{
 		const records = [
 			...loneRecords(),
 			{
 				type: "assistant",
 				uuid: "a2",
 				parentUuid: "r2",
-				message: {role: "assistant", content: [{type: "text", text: "Here is the screenshot."}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "Here is the screenshot.",
+						},
+					],
+				},
 			},
 		];
-		const container = renderTranscript(records, {turnInProgress: true});
+		const container = renderTranscript(
+			records,
+			{
+				turnInProgress: true,
+			},
+		);
 
 		expect(mediaSlots(container)).toStrictEqual([]);
-		expect(stepScreenshots(container).map(({className, inBody}) => ({className, inBody}))).toStrictEqual([
-			{className: "flex flex-col items-start gap-1", inBody: false},
+		expect(
+			stepScreenshots(container).map(({className, inBody}) => (
+			{
+				className,
+				inBody,
+			})),
+		).toStrictEqual([
+			{
+				className: "flex flex-col items-start gap-1",
+				inBody: false,
+			},
 		]);
 	});
 
-	it("keeps a lone row's card out of its expanded body", () => {
+	it("keeps a lone row's card out of its expanded body", () =>
+	{
 		const container = renderTranscript(loneRecords());
 		fireEvent.click(readStepToggle(container));
 
@@ -296,26 +424,41 @@ const VIEW_BUTTON_CLASS =
 const VIEW_IMG_CLASS = "max-w-full max-h-[360px] w-auto rounded-r4 border";
 
 /** One Read of a PNG alone in its turn, which draws as a lone row. */
-function loneRecords(): unknown[] {
+function loneRecords(): unknown[]
+{
 	const [assistant, , imageResult] = groupRecords() as [Record<string, unknown>, unknown, Record<string, unknown>];
 	return [
 		{
 			...assistant,
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
-					{type: "tool_use", id: "t2", name: "Read", input: {file_path: "/repo/shots/input-debug.png"}},
+					{
+						type: "tool_use",
+						id: "t2",
+						name: "Read",
+						input:
+						{
+							file_path: "/repo/shots/input-debug.png",
+						},
+					},
 				],
 			},
 		},
-		{...imageResult, parentUuid: "a1"},
+		{
+			...imageResult,
+			parentUuid: "a1",
+		},
 	];
 }
 
-interface StepScreenshotsCard {
+interface StepScreenshotsCard
+{
 	className: string;
 	inBody: boolean;
-	buttons: {
+	buttons:
+	{
 		label: string | null;
 		className: string;
 		imgClass: string | undefined;
@@ -324,12 +467,15 @@ interface StepScreenshotsCard {
 	}[];
 }
 
-function stepScreenshots(container: HTMLElement): StepScreenshotsCard[] {
-	return [...container.querySelectorAll<HTMLElement>("[data-step-screenshots]")].map((card) => ({
+function stepScreenshots(container: HTMLElement): StepScreenshotsCard[]
+{
+	return [...container.querySelectorAll<HTMLElement>("[data-step-screenshots]")].map((card) => (
+	{
 		className: card.className,
 		// A lone row's card follows the row; a step's sits inside its row's body.
 		inBody: card.closest("[data-tool-row]") !== null,
-		buttons: [...card.querySelectorAll("button")].map((button) => {
+		buttons: [...card.querySelectorAll("button")].map((button) =>
+		{
 			const img = button.querySelector("img");
 			return {
 				label: button.getAttribute("aria-label"),
@@ -342,35 +488,65 @@ function stepScreenshots(container: HTMLElement): StepScreenshotsCard[] {
 	}));
 }
 
-describe("tool-row screenshot viewer", () => {
-	async function viewerCaption(): Promise<{caption: string | undefined; zoom: string | null | undefined}> {
-		const dialog = await screen.findByRole("dialog", {name: "Image preview"});
+describe("tool-row screenshot viewer", () =>
+{
+	async function viewerCaption(): Promise<
+	{
+		caption: string | undefined;
+		zoom: string | null | undefined;
+	}>
+	{
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Image preview",
+			},
+		);
 		return {
 			caption: dialog.querySelector("bdi")?.textContent,
 			zoom: dialog.querySelector('[data-viewer-slide][role="button"]')?.getAttribute("aria-label"),
 		};
 	}
 
-	function closeByBackdrop() {
-		fireEvent.click(screen.getByRole("dialog", {name: "Image preview"}));
+	function closeByBackdrop()
+	{
+		fireEvent.click(
+			screen.getByRole(
+				"dialog",
+				{
+					name: "Image preview",
+				},
+			),
+		);
 	}
 
-	it("opens a collapsed group's thumbnail in the viewer, captioned with the step label", async () => {
+	it("opens a collapsed group's thumbnail in the viewer, captioned with the step label", async () =>
+	{
 		const container = renderTranscript(groupRecords());
 		fireEvent.click(container.querySelector<HTMLElement>('[data-cds-row-media] button[aria-label="Screenshot"]')!);
 
-		expect(await viewerCaption()).toStrictEqual({
-			caption: "Read input-debug.png",
-			zoom: "Zoom image: Read input-debug.png",
-		});
+		expect(await viewerCaption()).toStrictEqual(
+			{
+				caption: "Read input-debug.png",
+				zoom: "Zoom image: Read input-debug.png",
+			},
+		);
 		closeByBackdrop();
-		expect({
-			dialog: screen.queryByRole("dialog"),
-			expanded: groupToggle(container).getAttribute("aria-expanded"),
-		}).toStrictEqual({dialog: null, expanded: "false"});
+		expect(
+			{
+				dialog: screen.queryByRole("dialog"),
+				expanded: groupToggle(container).getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				dialog: null,
+				expanded: "false",
+			},
+		);
 	});
 
-	it("keeps a step collapsed when its thumbnail's viewer is closed from the backdrop", async () => {
+	it("keeps a step collapsed when its thumbnail's viewer is closed from the backdrop", async () =>
+	{
 		const container = renderTranscript(groupRecords());
 		fireEvent.click(groupToggle(container));
 		fireEvent.click(readStepToggle(container).querySelector<HTMLElement>('button[aria-label="Screenshot"]')!);
@@ -381,16 +557,26 @@ describe("tool-row screenshot viewer", () => {
 		expect(readStepToggle(container).getAttribute("aria-expanded")).toBe("false");
 	});
 
-	it("opens an expanded step's 'View screenshot' image in the viewer with its caption", async () => {
+	it("opens an expanded step's 'View screenshot' image in the viewer with its caption", async () =>
+	{
 		const container = renderTranscript(groupRecords());
 		fireEvent.click(groupToggle(container));
 		fireEvent.click(readStepToggle(container));
-		fireEvent.click(screen.getByRole("button", {name: "View screenshot"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "View screenshot",
+				},
+			),
+		);
 
-		expect(await viewerCaption()).toStrictEqual({
-			caption: "Read input-debug.png",
-			zoom: "Zoom image: Read input-debug.png",
-		});
+		expect(await viewerCaption()).toStrictEqual(
+			{
+				caption: "Read input-debug.png",
+				zoom: "Zoom image: Read input-debug.png",
+			},
+		);
 	});
 });
 
@@ -399,23 +585,48 @@ const FAKE_GH = `ghp_${"A".repeat(36)}`;
 /** A right-to-left override and a zero-width space: display controls upstream's viewer title drops. */
 const CONTROLS = "\u202E\u200B";
 
-describe("tool-row screenshot captions match upstream (Ka raw, CP viewer title)", () => {
+describe("tool-row screenshot captions match upstream (Ka raw, CP viewer title)", () =>
+{
 	/** The group records with the Read's file renamed. */
-	function renamedRecords(name: string): unknown[] {
-		const records = groupRecords() as {message: {content: {input?: Record<string, unknown>}[]}}[];
+	function renamedRecords(name: string): unknown[]
+	{
+		const records = groupRecords() as
+		{
+			message:
+			{
+				content:
+				{
+					input?: Record<string, unknown>;
+				}[];
+			};
+		}[];
 		const read = records[0]!.message.content[1]!;
-		read.input = {file_path: `/repo/shots/${name}`};
+		read.input =
+		{
+			file_path: `/repo/shots/${name}`,
+		};
 		return records;
 	}
 
-	async function captionTexts(name: string) {
+	async function captionTexts(name: string)
+	{
 		const container = renderTranscript(renamedRecords(name));
 		const slots = mediaSlots(container).map((slot) => slot.captions);
 		const thumb = container.querySelector<HTMLElement>('[data-cds-row-media] button[aria-label="Screenshot"]')!;
 		fireEvent.focus(thumb);
-		const preview = await screen.findByText(`Read ${name}`, {selector: "[data-screenshot-preview] bdi"});
+		const preview = await screen.findByText(
+			`Read ${name}`,
+			{
+				selector: "[data-screenshot-preview] bdi",
+			},
+		);
 		fireEvent.click(thumb);
-		const dialog = await screen.findByRole("dialog", {name: "Image preview"});
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Image preview",
+			},
+		);
 		const caption = dialog.querySelector("bdi");
 		return {
 			slots,
@@ -426,26 +637,32 @@ describe("tool-row screenshot captions match upstream (Ka raw, CP viewer title)"
 		};
 	}
 
-	it("builds the caption raw, secret and controls included, and drops the controls from the viewer title", async () => {
+	it("builds the caption raw, secret and controls included, and drops the controls from the viewer title", async () =>
+	{
 		const name = `${FAKE_GH}${CONTROLS}.png`;
-		expect(await captionTexts(name)).toStrictEqual({
-			slots: [[`Read ${name}`]],
-			preview: `Read ${name}`,
-			caption: `Read ${name}`,
-			title: `Read ${FAKE_GH}.png`,
-			zoom: `Zoom image: Read ${name}`,
-		});
+		expect(await captionTexts(name)).toStrictEqual(
+			{
+				slots: [[`Read ${name}`]],
+				preview: `Read ${name}`,
+				caption: `Read ${name}`,
+				title: `Read ${FAKE_GH}.png`,
+				zoom: `Zoom image: Read ${name}`,
+			},
+		);
 	});
 
-	it("gives the viewer caption no hover title when it holds right-to-left text", async () => {
+	it("gives the viewer caption no hover title when it holds right-to-left text", async () =>
+	{
 		const name = "\u05E9\u05DC\u05D5\u05DD.png";
-		expect(await captionTexts(name)).toStrictEqual({
-			slots: [[`Read ${name}`]],
-			preview: `Read ${name}`,
-			caption: `Read ${name}`,
-			title: null,
-			zoom: `Zoom image: Read ${name}`,
-		});
+		expect(await captionTexts(name)).toStrictEqual(
+			{
+				slots: [[`Read ${name}`]],
+				preview: `Read ${name}`,
+				caption: `Read ${name}`,
+				title: null,
+				zoom: `Zoom image: Read ${name}`,
+			},
+		);
 	});
 });
 
@@ -454,22 +671,41 @@ describe("tool-row screenshot captions match upstream (Ka raw, CP viewer title)"
  * and tab details anonymised, the jpeg cut to a stub). Upstream draws every tool's
  * `outputImages` the same way, so these must strip exactly like a Read of a PNG.
  */
-describe("browser MCP screenshot specimens", () => {
+describe("browser MCP screenshot specimens", () =>
+{
 	/** A navigate call then a screenshot call in one turn, the screenshot returning `screenshotContent`. */
 	function screenshotGroup(
-		navigate: {name: string; input: Record<string, unknown>},
-		screenshot: {name: string; input: Record<string, unknown>},
+		navigate:
+		{
+			name: string;
+			input: Record<string, unknown>;
+		},
+		screenshot:
+		{
+			name: string;
+			input: Record<string, unknown>;
+		},
 		screenshotContent: unknown[],
-	): unknown[] {
+	): unknown[]
+	{
 		return [
 			{
 				type: "assistant",
 				uuid: "a1",
-				message: {
+				message:
+				{
 					role: "assistant",
 					content: [
-						{type: "tool_use", id: "t1", ...navigate},
-						{type: "tool_use", id: "t2", ...screenshot},
+						{
+							type: "tool_use",
+							id: "t1",
+							...navigate,
+						},
+						{
+							type: "tool_use",
+							id: "t2",
+							...screenshot,
+						},
 					],
 				},
 			},
@@ -477,24 +713,51 @@ describe("browser MCP screenshot specimens", () => {
 				type: "user",
 				uuid: "r1",
 				parentUuid: "a1",
-				message: {role: "user", content: [{type: "tool_result", tool_use_id: "t1", content: "Navigated."}]},
+				message:
+				{
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "t1",
+							content: "Navigated.",
+						},
+					],
+				},
 			},
 			{
 				type: "user",
 				uuid: "r2",
 				parentUuid: "r1",
-				message: {
+				message:
+				{
 					role: "user",
-					content: [{type: "tool_result", tool_use_id: "t2", content: screenshotContent}],
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "t2",
+							content: screenshotContent,
+						},
+					],
 				},
 			},
 		];
 	}
 
-	const JPEG = {type: "image", source: {type: "base64", media_type: "image/jpeg", data: "/9j/4AAQ"}};
+	const JPEG =
+	{
+		type: "image",
+		source:
+		{
+			type: "base64",
+			media_type: "image/jpeg",
+			data: "/9j/4AAQ",
+		},
+	};
 
 	/** The text of the expanded group's step row holding the thumbnail: the step label the caption must equal. */
-	function stepLabelOfStrip(container: HTMLElement): string {
+	function stepLabelOfStrip(container: HTMLElement): string
+	{
 		fireEvent.click(groupToggle(container));
 		const row = container.querySelector("[data-cds-row-media]")?.closest<HTMLElement>('[role="button"]');
 		if (row === null || row === undefined) throw new Error("no step row with a strip");
@@ -502,10 +765,26 @@ describe("browser MCP screenshot specimens", () => {
 		return row.textContent.replace(media?.textContent ?? "", "").trim();
 	}
 
-	it("strips a Claude in Chrome computer screenshot", () => {
+	it("strips a Claude in Chrome computer screenshot", () =>
+	{
 		const records = screenshotGroup(
-			{name: "mcp__claude-in-chrome__navigate", input: {url: "https://example.com", tabId: 1}},
-			{name: "mcp__claude-in-chrome__computer", input: {action: "screenshot", tabId: 1, scale: 0.5}},
+			{
+				name: "mcp__claude-in-chrome__navigate",
+				input:
+				{
+					url: "https://example.com",
+					tabId: 1,
+				},
+			},
+			{
+				name: "mcp__claude-in-chrome__computer",
+				input:
+				{
+					action: "screenshot",
+					tabId: 1,
+					scale: 0.5,
+				},
+			},
 			[
 				{
 					type: "text",
@@ -519,7 +798,12 @@ describe("browser MCP screenshot specimens", () => {
 			],
 		);
 		const {toolResultMap} = processTranscript(records);
-		expect(toolResultMap.get("t2")?.images).toStrictEqual([{mimeType: "image/jpeg", data: "/9j/4AAQ"}]);
+		expect(toolResultMap.get("t2")?.images).toStrictEqual([
+			{
+				mimeType: "image/jpeg",
+				data: "/9j/4AAQ",
+			},
+		]);
 
 		const container = renderTranscript(records);
 		expect(mediaSlots(container)).toStrictEqual([
@@ -536,17 +820,38 @@ describe("browser MCP screenshot specimens", () => {
 		expect(stepLabelOfStrip(container)).toBe("Used claude-in-chrome: computer");
 	});
 
-	it("strips a Chrome DevTools take_screenshot", () => {
+	it("strips a Chrome DevTools take_screenshot", () =>
+	{
 		const records = screenshotGroup(
 			{
 				name: "mcp__plugin_chrome-devtools-mcp_chrome-devtools__navigate_page",
-				input: {url: "https://example.com"},
+				input:
+				{
+					url: "https://example.com",
+				},
 			},
-			{name: "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot", input: {pageId: 2}},
-			[{type: "text", text: "Took a screenshot of the current page's viewport."}, JPEG],
+			{
+				name: "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot",
+				input:
+				{
+					pageId: 2,
+				},
+			},
+			[
+				{
+					type: "text",
+					text: "Took a screenshot of the current page's viewport.",
+				},
+				JPEG,
+			],
 		);
 		const {toolResultMap} = processTranscript(records);
-		expect(toolResultMap.get("t2")?.images).toStrictEqual([{mimeType: "image/jpeg", data: "/9j/4AAQ"}]);
+		expect(toolResultMap.get("t2")?.images).toStrictEqual([
+			{
+				mimeType: "image/jpeg",
+				data: "/9j/4AAQ",
+			},
+		]);
 
 		const container = renderTranscript(records);
 		expect(mediaSlots(container)).toStrictEqual([

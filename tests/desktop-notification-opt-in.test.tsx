@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -18,81 +19,160 @@ import {installLocalStorage} from "./fake-storage";
 const ALICE = "session-alice";
 const BOB = "session-bob";
 const VIEWED = "session-viewed";
-type Observation = {sessionId: string; label: string; state: "working" | "waiting"; archived: boolean};
+type Observation =
+{
+	sessionId: string;
+	label: string;
+	state: "working" | "waiting";
+	archived: boolean;
+};
 
-const harness = vi.hoisted(() => {
+const harness = vi.hoisted(() =>
+{
 	const listeners = new Set<(session: Observation) => void>();
-	const subscribe = vi.fn<(listener: (session: Observation) => void) => () => void>((listener) => {
+	const subscribe = vi.fn<(listener: (session: Observation) => void) => () => void>((listener) =>
+	{
 		listeners.add(listener);
 		return () => listeners.delete(listener);
 	});
-	return {listeners, subscribe};
+	return {
+		listeners,
+		subscribe,
+	};
 });
 
-vi.mock("../src/hooks/use-claude-events", () => ({useSubscribeSessionStates: () => harness.subscribe}));
-vi.mock("../src/components/settings-context", async (importOriginal) => {
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useSubscribeSessionStates: () => harness.subscribe,
+}));
+vi.mock("../src/components/settings-context", async (importOriginal) =>
+{
 	const original = await importOriginal<typeof import("../src/components/settings-context")>();
-	const settings = {...original.DEFAULTS, notifyCompletions: false, notifyPermissionRequests: false};
-	return {...original, useSettings: () => ({settings})};
+	const settings =
+	{
+		...original.DEFAULTS,
+		notifyCompletions: false,
+		notifyPermissionRequests: false,
+	};
+	return {
+		...original,
+		useSettings: () => (
+		{
+			settings,
+		}),
+	};
 });
 
 let client: QueryClient;
-let notifications: Array<{title: string; tag: string | undefined}>;
+let notifications: Array<
+{
+	title: string;
+	tag: string | undefined;
+}>;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
-	client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	client = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	notifications = [];
 	vi.spyOn(document, "hidden", "get").mockReturnValue(false);
 	vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 	vi.stubGlobal(
 		"Notification",
-		class {
+		class
+		{
 			static permission = "granted";
 			onclick: (() => void) | null = null;
-			constructor(title: string, options: NotificationOptions) {
-				notifications.push({title, tag: options.tag});
+			constructor(title: string, options: NotificationOptions)
+			{
+				notifications.push(
+					{
+						title,
+						tag: options.tag,
+					},
+				);
 			}
-			close() {}
+			close()
+			{
+			}
 		},
 	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	client.clear();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
 
-async function start() {
-	const root = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={client}>
-				<DesktopNotificationBridge />
-				<Outlet />
-			</QueryClientProvider>
-		),
-	});
-	const session = createRoute({getParentRoute: () => root, path: "/session/$id", component: () => null});
-	const router = createRouter({
-		routeTree: root.addChildren([session]),
-		history: createMemoryHistory({initialEntries: [`/session/${VIEWED}`]}),
-	});
+async function start()
+{
+	const root = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={client}>
+					<DesktopNotificationBridge />
+					<Outlet />
+				</QueryClientProvider>
+			),
+		},
+	);
+	const session = createRoute(
+		{
+			getParentRoute: () => root,
+			path: "/session/$id",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: root.addChildren([session]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [`/session/${VIEWED}`],
+				},
+			),
+		},
+	);
 	await router.load();
-	act(() => {
+	act(() =>
+	{
 		render(<RouterProvider router={router} />);
 	});
 }
 
-function publish(sessionId: string, state: Observation["state"] = "waiting") {
-	act(() => {
-		for (const listener of harness.listeners) listener({sessionId, label: sessionId, state, archived: false});
+function publish(sessionId: string, state: Observation["state"] = "waiting")
+{
+	act(() =>
+	{
+		for (const listener of harness.listeners)
+			listener(
+				{
+					sessionId,
+					label: sessionId,
+					state,
+					archived: false,
+				},
+			);
 	});
 }
 
-describe("per-session Notify me", () => {
-	it("notifies only opted-in sessions while both global switches are off", async () => {
+describe("per-session Notify me", () =>
+{
+	it("notifies only opted-in sessions while both global switches are off", async () =>
+	{
 		await start();
 		publish(ALICE);
 		publish(BOB);
@@ -103,13 +183,26 @@ describe("per-session Notify me", () => {
 		publish(ALICE);
 		publish(BOB);
 
-		expect({beforeOptIn, afterOptIn: notifications}).toStrictEqual({
-			beforeOptIn: [],
-			afterOptIn: [{tag: ALICE, title: "session-alice is waiting on you"}],
-		});
+		expect(
+			{
+				beforeOptIn,
+				afterOptIn: notifications,
+			},
+		).toStrictEqual(
+			{
+				beforeOptIn: [],
+				afterOptIn: [
+					{
+						tag: ALICE,
+						title: "session-alice is waiting on you",
+					},
+				],
+			},
+		);
 	});
 
-	it("does not notify for the opted-in session currently on screen", async () => {
+	it("does not notify for the opted-in session currently on screen", async () =>
+	{
 		optInSessionNotifications(VIEWED);
 		await start();
 		publish(VIEWED, "working");

@@ -15,7 +15,8 @@ export function canStopResponse({
 	hasLivePane: boolean;
 	writesEnabled: boolean;
 	working: boolean;
-}): boolean {
+}): boolean
+{
 	return hasLivePane && writesEnabled && working;
 }
 
@@ -23,7 +24,8 @@ export function canStopResponse({
 const defaultInterrupt = async (sessionId: string, force: boolean): Promise<void> =>
 	sendHerdrInterrupt(sessionId, force);
 
-export interface StopResponseOptions {
+export interface StopResponseOptions
+{
 	sessionId: string;
 	enabled: boolean;
 	/** Called with the press time as each interrupt is sent. */
@@ -49,14 +51,17 @@ export function useStopResponse({
 	interrupt = defaultInterrupt,
 	now = Date.now,
 	onEscapeRecall,
-}: StopResponseOptions): () => void {
+}: StopResponseOptions): () => void
+{
 	const lastPressRef = useRef<number | null>(null);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		lastPressRef.current = null;
 	}, [sessionId]);
 
-	const stop = useCallback(() => {
+	const stop = useCallback(() =>
+	{
 		const at = now();
 		const last = lastPressRef.current;
 		const force = last !== null && at - last <= STOP_FORCE_WINDOW_MS;
@@ -67,11 +72,14 @@ export function useStopResponse({
 
 	useShortcut(
 		"stop_response",
-		() => {
+		() =>
+		{
 			if (onEscapeRecall?.() === true) return;
 			stop();
 		},
-		{disabled: !enabled},
+		{
+			disabled: !enabled,
+		},
 	);
 
 	return stop;

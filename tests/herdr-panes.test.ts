@@ -4,13 +4,16 @@ import {createHerdrPaneTable} from "../src/lib/herdr/pane-table";
 import {getHerdrPanes, type HerdrRequester, type IndexedSessionFilter} from "../src/lib/herdr/panes";
 import {herdrNamedSessionSocketPath, resolveHerdrSocketPath} from "../src/lib/herdr/socket-path";
 
-vi.mock("../src/lib/db", () => ({
-	getDb: () => {
+vi.mock("../src/lib/db", () => (
+{
+	getDb: () =>
+	{
 		throw new Error("Database should not be initialized");
 	},
 }));
 
-function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
+function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry
+{
 	return {
 		sessionId: "session-test-100",
 		state: "working",
@@ -30,352 +33,446 @@ function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
 	};
 }
 
-describe("getHerdrPanes", () => {
-	it("normalizes panes and joins sessions through both identity sources", async () => {
+describe("getHerdrPanes", () =>
+{
+	it("normalizes panes and joins sessions through both identity sources", async () =>
+	{
 		const requests: object[] = [];
 		const indexedSessionIdBatches: string[][] = [];
-		const filterIndexedSessions: IndexedSessionFilter = (sessionIds) => {
+		const filterIndexedSessions: IndexedSessionFilter = (sessionIds) =>
+		{
 			indexedSessionIdBatches.push(sessionIds);
 			return new Set(["session-test-500"]);
 		};
-		const request: HerdrRequester = async (requestValue) => {
+		const request: HerdrRequester = async (requestValue) =>
+		{
 			requests.push(requestValue);
-			return Promise.resolve({
-				ok: true,
-				value: {
-					type: "session_snapshot",
-					snapshot: {
-						version: "99.0.0-test",
-						protocol: 100,
-						workspaces: [],
-						tabs: [],
-						panes: [
-							{
-								pane_id: "w100:p100",
-								terminal_id: "terminal-test-100",
-								workspace_id: "w100",
-								tab_id: "w100:t100",
-								focused: true,
-								cwd: "/tmp/test/project",
-								foreground_cwd: "/tmp/test/project/src",
-								agent_status: "working",
-								agent: "claude",
-								terminal_title: "Alice test terminal",
-								agent_session: {
-									source: "test-source",
+			return Promise.resolve(
+				{
+					ok: true,
+					value:
+					{
+						type: "session_snapshot",
+						snapshot:
+						{
+							version: "99.0.0-test",
+							protocol: 100,
+							workspaces: [],
+							tabs: [],
+							panes: [
+								{
+									pane_id: "w100:p100",
+									terminal_id: "terminal-test-100",
+									workspace_id: "w100",
+									tab_id: "w100:t100",
+									focused: true,
+									cwd: "/tmp/test/project",
+									foreground_cwd: "/tmp/test/project/src",
+									agent_status: "working",
 									agent: "claude",
-									kind: "id",
-									value: "session-test-100",
+									terminal_title: "Alice test terminal",
+									agent_session:
+									{
+										source: "test-source",
+										agent: "claude",
+										kind: "id",
+										value: "session-test-100",
+									},
+									revision: 100,
 								},
-								revision: 100,
-							},
-							{
-								pane_id: "w200:p200",
-								terminal_id: "terminal-test-200",
-								workspace_id: "w200",
-								tab_id: "w200:t200",
-								focused: false,
-								cwd: null,
-								foreground_cwd: null,
-								agent_status: "idle",
-								agent: null,
-								terminal_title: null,
-								agent_session: {
-									source: "test-source",
+								{
+									pane_id: "w200:p200",
+									terminal_id: "terminal-test-200",
+									workspace_id: "w200",
+									tab_id: "w200:t200",
+									focused: false,
+									cwd: null,
+									foreground_cwd: null,
+									agent_status: "idle",
+									agent: null,
+									terminal_title: null,
+									agent_session:
+									{
+										source: "test-source",
+										agent: "claude",
+										kind: "id",
+										value: "session-test-200",
+									},
+									revision: 200,
+								},
+								{
+									pane_id: "w300:p300",
+									terminal_id: "terminal-test-300",
+									workspace_id: "w300",
+									tab_id: "w300:t300",
+									focused: false,
+									agent_status: "blocked",
+									revision: 300,
+								},
+								{
+									pane_id: "w400:p400",
+									terminal_id: "terminal-test-400",
+									workspace_id: "w400",
+									tab_id: "w400:t400",
+									focused: false,
+									agent_status: "done",
+									revision: 400,
+								},
+								{
+									pane_id: "w500:p500",
+									terminal_id: "terminal-test-500",
+									workspace_id: "w500",
+									tab_id: "w500:t500",
+									focused: false,
+									agent_status: "idle",
 									agent: "claude",
-									kind: "id",
-									value: "session-test-200",
+									agent_session:
+									{
+										source: "test-source",
+										agent: "claude",
+										kind: "id",
+										value: "session-test-500",
+									},
+									revision: 500,
 								},
-								revision: 200,
-							},
-							{
-								pane_id: "w300:p300",
-								terminal_id: "terminal-test-300",
-								workspace_id: "w300",
-								tab_id: "w300:t300",
-								focused: false,
-								agent_status: "blocked",
-								revision: 300,
-							},
-							{
-								pane_id: "w400:p400",
-								terminal_id: "terminal-test-400",
-								workspace_id: "w400",
-								tab_id: "w400:t400",
-								focused: false,
-								agent_status: "done",
-								revision: 400,
-							},
-							{
-								pane_id: "w500:p500",
-								terminal_id: "terminal-test-500",
-								workspace_id: "w500",
-								tab_id: "w500:t500",
-								focused: false,
-								agent_status: "idle",
-								agent: "claude",
-								agent_session: {
-									source: "test-source",
+								{
+									pane_id: "w600:p600",
+									terminal_id: "terminal-test-600",
+									workspace_id: "w600",
+									tab_id: "w600:t600",
+									focused: false,
+									agent_status: "idle",
 									agent: "claude",
-									kind: "id",
-									value: "session-test-500",
+									agent_session:
+									{
+										source: "test-source",
+										agent: "claude",
+										kind: "id",
+										value: "session-test-600",
+									},
+									revision: 600,
 								},
-								revision: 500,
-							},
-							{
-								pane_id: "w600:p600",
-								terminal_id: "terminal-test-600",
-								workspace_id: "w600",
-								tab_id: "w600:t600",
-								focused: false,
-								agent_status: "idle",
-								agent: "claude",
-								agent_session: {
-									source: "test-source",
+								{
+									pane_id: "w700:p700",
+									terminal_id: "terminal-test-700",
+									workspace_id: "w700",
+									tab_id: "w700:t700",
+									focused: false,
+									agent_status: "idle",
 									agent: "claude",
-									kind: "id",
-									value: "session-test-600",
+									agent_session:
+									{
+										source: "test-source",
+										agent: "claude",
+										kind: "path",
+										value: "/tmp/test/session-test-700.jsonl",
+									},
+									revision: 700,
 								},
-								revision: 600,
-							},
-							{
-								pane_id: "w700:p700",
-								terminal_id: "terminal-test-700",
-								workspace_id: "w700",
-								tab_id: "w700:t700",
-								focused: false,
-								agent_status: "idle",
-								agent: "claude",
-								agent_session: {
-									source: "test-source",
-									agent: "claude",
-									kind: "path",
-									value: "/tmp/test/session-test-700.jsonl",
-								},
-								revision: 700,
-							},
-							{
-								pane_id: "w800:p800",
-								terminal_id: "terminal-test-800",
-								workspace_id: "w800",
-								tab_id: "w800:t800",
-								focused: false,
-								agent_status: "idle",
-								agent: "codex",
-								agent_session: {
-									source: "test-source",
+								{
+									pane_id: "w800:p800",
+									terminal_id: "terminal-test-800",
+									workspace_id: "w800",
+									tab_id: "w800:t800",
+									focused: false,
+									agent_status: "idle",
 									agent: "codex",
-									kind: "id",
-									value: "session-test-800",
+									agent_session:
+									{
+										source: "test-source",
+										agent: "codex",
+										kind: "id",
+										value: "session-test-800",
+									},
+									revision: 800,
 								},
-								revision: 800,
-							},
-						],
-						layouts: [],
-						agents: [],
-						focused_workspace_id: "w100",
-						focused_tab_id: "w100:t100",
-						focused_pane_id: "w100:p100",
+							],
+							layouts: [],
+							agents: [],
+							focused_workspace_id: "w100",
+							focused_tab_id: "w100:t100",
+							focused_pane_id: "w100:p100",
+						},
 					},
 				},
-			});
+			);
 		};
 		const entries = [
-			entry({sessionId: "session-test-100", herdrPane: "w100:p100"}),
-			entry({sessionId: "session-test-200"}),
-			entry({sessionId: "session-test-300", herdrPane: "w300:p300"}),
+			entry(
+				{
+					sessionId: "session-test-100",
+					herdrPane: "w100:p100",
+				},
+			),
+			entry(
+				{
+					sessionId: "session-test-200",
+				},
+			),
+			entry(
+				{
+					sessionId: "session-test-300",
+					herdrPane: "w300:p300",
+				},
+			),
 		];
 
 		const links = await getHerdrPanes(entries, request, filterIndexedSessions);
 
-		expect({indexedSessionIdBatches, links, requests}).toStrictEqual({
-			indexedSessionIdBatches: [["session-test-100", "session-test-200", "session-test-500", "session-test-600"]],
-			links: [
-				{
-					host: "herdr",
-					paneId: "w100:p100",
-					terminalId: "terminal-test-100",
-					workspaceId: "w100",
-					tabId: "w100:t100",
-					focused: true,
-					cwd: "/tmp/test/project",
-					foregroundCwd: "/tmp/test/project/src",
-					agentStatus: "working",
-					agent: "claude",
-					terminalTitle: "Alice test terminal",
-					agentSessionId: "session-test-100",
-					revision: 100,
-					sessionId: "session-test-100",
-					via: "both",
-				},
-				{
-					host: "herdr",
-					paneId: "w200:p200",
-					terminalId: "terminal-test-200",
-					workspaceId: "w200",
-					tabId: "w200:t200",
-					focused: false,
-					cwd: null,
-					foregroundCwd: null,
-					agentStatus: "idle",
-					agent: null,
-					terminalTitle: null,
-					agentSessionId: "session-test-200",
-					revision: 200,
-					sessionId: "session-test-200",
-					via: "agent-session",
-				},
-				{
-					host: "herdr",
-					paneId: "w300:p300",
-					terminalId: "terminal-test-300",
-					workspaceId: "w300",
-					tabId: "w300:t300",
-					focused: false,
-					cwd: null,
-					foregroundCwd: null,
-					agentStatus: "blocked",
-					agent: null,
-					terminalTitle: null,
-					agentSessionId: null,
-					revision: 300,
-					sessionId: "session-test-300",
-					via: "env",
-				},
-				{
-					host: "herdr",
-					paneId: "w500:p500",
-					terminalId: "terminal-test-500",
-					workspaceId: "w500",
-					tabId: "w500:t500",
-					focused: false,
-					cwd: null,
-					foregroundCwd: null,
-					agentStatus: "idle",
-					agent: "claude",
-					terminalTitle: null,
-					agentSessionId: "session-test-500",
-					revision: 500,
-					sessionId: "session-test-500",
-					via: "agent-session",
-				},
-			],
-			requests: [
-				{
-					id: "ccp:snap",
-					method: "session.snapshot",
-					params: {},
-				},
-			],
-		});
+		expect(
+			{
+				indexedSessionIdBatches,
+				links,
+				requests,
+			},
+		).toStrictEqual(
+			{
+				indexedSessionIdBatches: [
+					["session-test-100", "session-test-200", "session-test-500", "session-test-600"],
+				],
+				links: [
+					{
+						host: "herdr",
+						paneId: "w100:p100",
+						terminalId: "terminal-test-100",
+						workspaceId: "w100",
+						tabId: "w100:t100",
+						focused: true,
+						cwd: "/tmp/test/project",
+						foregroundCwd: "/tmp/test/project/src",
+						agentStatus: "working",
+						agent: "claude",
+						terminalTitle: "Alice test terminal",
+						agentSessionId: "session-test-100",
+						revision: 100,
+						sessionId: "session-test-100",
+						via: "both",
+					},
+					{
+						host: "herdr",
+						paneId: "w200:p200",
+						terminalId: "terminal-test-200",
+						workspaceId: "w200",
+						tabId: "w200:t200",
+						focused: false,
+						cwd: null,
+						foregroundCwd: null,
+						agentStatus: "idle",
+						agent: null,
+						terminalTitle: null,
+						agentSessionId: "session-test-200",
+						revision: 200,
+						sessionId: "session-test-200",
+						via: "agent-session",
+					},
+					{
+						host: "herdr",
+						paneId: "w300:p300",
+						terminalId: "terminal-test-300",
+						workspaceId: "w300",
+						tabId: "w300:t300",
+						focused: false,
+						cwd: null,
+						foregroundCwd: null,
+						agentStatus: "blocked",
+						agent: null,
+						terminalTitle: null,
+						agentSessionId: null,
+						revision: 300,
+						sessionId: "session-test-300",
+						via: "env",
+					},
+					{
+						host: "herdr",
+						paneId: "w500:p500",
+						terminalId: "terminal-test-500",
+						workspaceId: "w500",
+						tabId: "w500:t500",
+						focused: false,
+						cwd: null,
+						foregroundCwd: null,
+						agentStatus: "idle",
+						agent: "claude",
+						terminalTitle: null,
+						agentSessionId: "session-test-500",
+						revision: 500,
+						sessionId: "session-test-500",
+						via: "agent-session",
+					},
+				],
+				requests: [
+					{
+						id: "ccp:snap",
+						method: "session.snapshot",
+						params: {},
+					},
+				],
+			},
+		);
 	});
 
-	it("returns an empty table for unavailable or invalid herdr responses", async () => {
+	it("returns an empty table for unavailable or invalid herdr responses", async () =>
+	{
 		const unavailable: HerdrRequester = async () =>
-			Promise.resolve({
-				ok: false,
-				code: "connect-failed",
-				message: "fabricated connection failure",
-			});
+			Promise.resolve(
+				{
+					ok: false,
+					code: "connect-failed",
+					message: "fabricated connection failure",
+				},
+			);
 		const invalid: HerdrRequester = async () =>
-			Promise.resolve({
-				ok: true,
-				value: {type: "unexpected-test-result"},
-			});
+			Promise.resolve(
+				{
+					ok: true,
+					value:
+					{
+						type: "unexpected-test-result",
+					},
+				},
+			);
 		await expect(Promise.all([getHerdrPanes([], unavailable), getHerdrPanes([], invalid)])).resolves.toStrictEqual([
 			[],
 			[],
 		]);
 	});
 
-	it("returns an empty table without initializing the database when panes lack session ids", async () => {
+	it("returns an empty table without initializing the database when panes lack session ids", async () =>
+	{
 		const request: HerdrRequester = async () =>
-			Promise.resolve({
-				ok: true,
-				value: {
-					type: "session_snapshot",
-					snapshot: {
-						version: "99.0.0-test",
-						protocol: 100,
-						workspaces: [],
-						tabs: [],
-						panes: [
-							{
-								pane_id: "w100:p100",
-								terminal_id: "terminal-test-100",
-								workspace_id: "w100",
-								tab_id: "w100:t100",
-								focused: true,
-								agent_status: "idle",
-								revision: 100,
-							},
-						],
-						layouts: [],
-						agents: [],
-						focused_workspace_id: "w100",
-						focused_tab_id: "w100:t100",
-						focused_pane_id: "w100:p100",
+			Promise.resolve(
+				{
+					ok: true,
+					value:
+					{
+						type: "session_snapshot",
+						snapshot:
+						{
+							version: "99.0.0-test",
+							protocol: 100,
+							workspaces: [],
+							tabs: [],
+							panes: [
+								{
+									pane_id: "w100:p100",
+									terminal_id: "terminal-test-100",
+									workspace_id: "w100",
+									tab_id: "w100:t100",
+									focused: true,
+									agent_status: "idle",
+									revision: 100,
+								},
+							],
+							layouts: [],
+							agents: [],
+							focused_workspace_id: "w100",
+							focused_tab_id: "w100:t100",
+							focused_pane_id: "w100:p100",
+						},
 					},
 				},
-			});
+			);
 
 		await expect(getHerdrPanes([], request)).resolves.toStrictEqual([]);
 	});
 
-	it("serves panes from a current pane table without a socket round trip", async () => {
+	it("serves panes from a current pane table without a socket round trip", async () =>
+	{
 		const requests: object[] = [];
-		const request: HerdrRequester = async (requestValue) => {
+		const request: HerdrRequester = async (requestValue) =>
+		{
 			requests.push(requestValue);
-			return Promise.resolve({ok: false, code: "connect-failed", message: "socket must not be used"});
+			return Promise.resolve(
+				{
+					ok: false,
+					code: "connect-failed",
+					message: "socket must not be used",
+				},
+			);
 		};
 		const table = createHerdrPaneTable();
-		table.seed({
-			workspaces: [],
-			panes: [
-				{
-					pane_id: "w100:p100",
-					terminal_id: "terminal-test-100",
-					workspace_id: "w100",
-					tab_id: "w100:t100",
-					focused: true,
-					agent_status: "working",
-					agent: "claude",
-					agent_session: {source: "test-source", agent: "claude", kind: "id", value: "session-test-100"},
-					revision: 100,
-				},
-			],
-		});
-		table.apply("pane_agent_status_changed", {pane_id: "w100:p100", workspace_id: "w100", agent_status: "done"});
+		table.seed(
+			{
+				workspaces: [],
+				panes: [
+					{
+						pane_id: "w100:p100",
+						terminal_id: "terminal-test-100",
+						workspace_id: "w100",
+						tab_id: "w100:t100",
+						focused: true,
+						agent_status: "working",
+						agent: "claude",
+						agent_session:
+						{
+							source: "test-source",
+							agent: "claude",
+							kind: "id",
+							value: "session-test-100",
+						},
+						revision: 100,
+					},
+				],
+			},
+		);
+		table.apply(
+			"pane_agent_status_changed",
+			{
+				pane_id: "w100:p100",
+				workspace_id: "w100",
+				agent_status: "done",
+			},
+		);
 
-		const panes = await getHerdrPanes([entry({herdrPane: "w100:p100"})], request, () => new Set(), table);
-
-		expect({panes, requests}).toStrictEqual({
-			panes: [
-				{
-					host: "herdr",
-					paneId: "w100:p100",
-					terminalId: "terminal-test-100",
-					workspaceId: "w100",
-					tabId: "w100:t100",
-					focused: true,
-					cwd: null,
-					foregroundCwd: null,
-					agentStatus: "done",
-					agent: "claude",
-					terminalTitle: null,
-					agentSessionId: "session-test-100",
-					revision: 100,
-					sessionId: "session-test-100",
-					via: "both",
-				},
+		const panes = await getHerdrPanes(
+			[
+				entry(
+					{
+						herdrPane: "w100:p100",
+					},
+				),
 			],
-			requests: [],
-		});
+			request,
+			() => new Set(),
+			table,
+		);
+
+		expect(
+			{
+				panes,
+				requests,
+			},
+		).toStrictEqual(
+			{
+				panes: [
+					{
+						host: "herdr",
+						paneId: "w100:p100",
+						terminalId: "terminal-test-100",
+						workspaceId: "w100",
+						tabId: "w100:t100",
+						focused: true,
+						cwd: null,
+						foregroundCwd: null,
+						agentStatus: "done",
+						agent: "claude",
+						terminalTitle: null,
+						agentSessionId: "session-test-100",
+						revision: 100,
+						sessionId: "session-test-100",
+						via: "both",
+					},
+				],
+				requests: [],
+			},
+		);
 	});
 
-	describe("named herdr sessions", () => {
+	describe("named herdr sessions", () =>
+	{
 		const laterSocketPath = herdrNamedSessionSocketPath("later");
-		const laterWirePane = {
+		const laterWirePane =
+		{
 			pane_id: "wM:p1",
 			terminal_id: "terminal-test-700",
 			workspace_id: "wM",
@@ -385,7 +482,8 @@ describe("getHerdrPanes", () => {
 			agent: "claude",
 			revision: 7,
 		};
-		const laterLink = {
+		const laterLink =
+		{
 			host: "herdr",
 			paneId: "wM:p1@later",
 			terminalId: "terminal-test-700",
@@ -402,72 +500,150 @@ describe("getHerdrPanes", () => {
 			sessionId: "session-test-700",
 			via: "env",
 		};
-		const laterEntry = entry({sessionId: "session-test-700", herdrPane: "wM:p1", herdrSocketPath: laterSocketPath});
+		const laterEntry = entry(
+			{
+				sessionId: "session-test-700",
+				herdrPane: "wM:p1",
+				herdrSocketPath: laterSocketPath,
+			},
+		);
 
-		it("matches a session to its pane in a named session by the hook's pane id and socket", async () => {
+		it("matches a session to its pane in a named session by the hook's pane id and socket", async () =>
+		{
 			const table = createHerdrPaneTable();
-			table.seed({
-				workspaces: [],
-				panes: [{...laterWirePane, pane_id: "wM:p1@later", workspace_id: "wM@later", tab_id: "wM:t1@later"}],
-			});
+			table.seed(
+				{
+					workspaces: [],
+					panes: [
+						{
+							...laterWirePane,
+							pane_id: "wM:p1@later",
+							workspace_id: "wM@later",
+							tab_id: "wM:t1@later",
+						},
+					],
+				},
+			);
 			const request: HerdrRequester = async () =>
-				Promise.resolve({ok: false, code: "connect-failed", message: "socket must not be used"});
+				Promise.resolve(
+					{
+						ok: false,
+						code: "connect-failed",
+						message: "socket must not be used",
+					},
+				);
 
 			// A default-server pane with the same raw id must not claim the session.
-			const defaultEntry = entry({sessionId: "session-test-800", herdrPane: "wM:p1"});
+			const defaultEntry = entry(
+				{
+					sessionId: "session-test-800",
+					herdrPane: "wM:p1",
+				},
+			);
 			await expect(
 				getHerdrPanes([laterEntry, defaultEntry], request, () => new Set(), table),
 			).resolves.toStrictEqual([laterLink]);
 		});
 
-		it("reads every known server's snapshot while the pane table is not current", async () => {
+		it("reads every known server's snapshot while the pane table is not current", async () =>
+		{
 			const sockets: (string | undefined)[] = [];
-			const request: HerdrRequester = async (_request, _timeoutMs, socketPath) => {
+			const request: HerdrRequester = async (_request, _timeoutMs, socketPath) =>
+			{
 				sockets.push(socketPath);
-				if (socketPath === "/tmp/test/gone.sock") {
-					return Promise.resolve({ok: false, code: "connect-failed", message: "no server"});
+				if (socketPath === "/tmp/test/gone.sock")
+				{
+					return Promise.resolve(
+						{
+							ok: false,
+							code: "connect-failed",
+							message: "no server",
+						},
+					);
 				}
 				const panes =
 					socketPath === laterSocketPath
 						? [laterWirePane]
-						: [{...laterWirePane, terminal_id: "terminal-test-100", agent_status: "idle"}];
-				return Promise.resolve({
-					ok: true,
-					value: {
-						type: "session_snapshot",
-						snapshot: {version: "1", protocol: 1, workspaces: [], tabs: [], layouts: [], agents: [], panes},
+						: [
+								{
+									...laterWirePane,
+									terminal_id: "terminal-test-100",
+									agent_status: "idle",
+								},
+							];
+				return Promise.resolve(
+					{
+						ok: true,
+						value:
+						{
+							type: "session_snapshot",
+							snapshot:
+							{
+								version: "1",
+								protocol: 1,
+								workspaces: [],
+								tabs: [],
+								layouts: [],
+								agents: [],
+								panes,
+							},
+						},
 					},
-				});
+				);
 			};
 			const servers = () => [
-				{session: null, socketPath: resolveHerdrSocketPath()},
-				{session: "later", socketPath: laterSocketPath},
-				{session: "gone", socketPath: "/tmp/test/gone.sock"},
+				{
+					session: null,
+					socketPath: resolveHerdrSocketPath(),
+				},
+				{
+					session: "later",
+					socketPath: laterSocketPath,
+				},
+				{
+					session: "gone",
+					socketPath: "/tmp/test/gone.sock",
+				},
 			];
 
 			const panes = await getHerdrPanes(
-				[laterEntry, entry({sessionId: "session-test-100", herdrPane: "wM:p1"})],
+				[
+					laterEntry,
+					entry(
+						{
+							sessionId: "session-test-100",
+							herdrPane: "wM:p1",
+						},
+					),
+				],
 				request,
 				() => new Set(),
 				createHerdrPaneTable(),
 				servers,
 			);
 
-			expect({panes, sockets}).toStrictEqual({
-				panes: [
-					{
-						...laterLink,
-						paneId: "wM:p1",
-						terminalId: "terminal-test-100",
-						workspaceId: "wM",
-						tabId: "wM:t1",
-						agentStatus: "idle",
-						sessionId: "session-test-100",
-					},
-					laterLink,
-				],
-				sockets: [resolveHerdrSocketPath(), laterSocketPath, "/tmp/test/gone.sock"],
-			});
+			expect(
+				{
+					panes,
+					sockets,
+				},
+			).toStrictEqual(
+				{
+					panes: [
+						{
+							...laterLink,
+							paneId: "wM:p1",
+							terminalId: "terminal-test-100",
+							workspaceId: "wM",
+							tabId: "wM:t1",
+							agentStatus: "idle",
+							sessionId: "session-test-100",
+						},
+						laterLink,
+					],
+					sockets: [resolveHerdrSocketPath(), laterSocketPath, "/tmp/test/gone.sock"],
+				},
+			);
 		});
 	});
 });

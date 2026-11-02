@@ -1,11 +1,20 @@
 export function getSessionPromptBehavior(
 	sessionId: string,
 	isActive: boolean,
-	herdr: {panes: Array<{sessionId: string}>; writesEnabled: boolean},
-): SessionPromptBehavior {
+	herdr:
+	{
+		panes: Array<
+		{
+			sessionId: string;
+		}>;
+		writesEnabled: boolean;
+	},
+): SessionPromptBehavior
+{
 	const hasLivePane = herdr.panes.some((pane) => pane.sessionId === sessionId);
 
-	if (!hasLivePane) {
+	if (!hasLivePane)
+	{
 		return {
 			disabled: isActive,
 			deliveryHint: "Starts a forked session",
@@ -13,7 +22,8 @@ export function getSessionPromptBehavior(
 			usesHerdr: false,
 		};
 	}
-	if (!herdr.writesEnabled) {
+	if (!herdr.writesEnabled)
+	{
 		return {
 			disabled: true,
 			deliveryHint: "Live terminal input is disabled",
@@ -29,7 +39,8 @@ export function getSessionPromptBehavior(
 	};
 }
 
-interface SessionPromptBehavior {
+interface SessionPromptBehavior
+{
 	disabled: boolean;
 	deliveryHint: string;
 	hasLivePane: boolean;

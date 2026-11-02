@@ -5,30 +5,52 @@ import {findPinConflicts, formatConflicts} from "./check-action-pins.mjs";
 const SHA_A = "3d3c42e5aac5ba805825da76410c181273ba90b1";
 const SHA_B = "2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca";
 
-describe("findPinConflicts", () => {
-	test("all pins equal passes", () => {
+describe("findPinConflicts", () =>
+{
+	test("all pins equal passes", () =>
+	{
 		const files = [
-			{path: ".github/workflows/a.yml", content: `steps:\n  - uses: actions/checkout@${SHA_A} # v7.0.1\n`},
-			{path: ".github/workflows/b.yml", content: `steps:\n  - uses: actions/checkout@${SHA_A} # v7.0.1\n`},
+			{
+				path: ".github/workflows/a.yml",
+				content: `steps:\n  - uses: actions/checkout@${SHA_A} # v7.0.1\n`,
+			},
+			{
+				path: ".github/workflows/b.yml",
+				content: `steps:\n  - uses: actions/checkout@${SHA_A} # v7.0.1\n`,
+			},
 		];
 		expect(findPinConflicts(files)).toStrictEqual([]);
 	});
 
-	test("two SHAs for the same action fails and reports both locations", () => {
+	test("two SHAs for the same action fails and reports both locations", () =>
+	{
 		const files = [
 			{
 				path: ".github/workflows/a.yml",
 				content: `jobs:\n  x:\n    steps:\n      - uses: jdx/mise-action@${SHA_A} # v5.0.1\n`,
 			},
-			{path: ".github/workflows/b.yml", content: `steps:\n  - uses: jdx/mise-action@${SHA_B} # v5.1.1\n`},
+			{
+				path: ".github/workflows/b.yml",
+				content: `steps:\n  - uses: jdx/mise-action@${SHA_B} # v5.1.1\n`,
+			},
 		];
 		const conflicts = findPinConflicts(files);
 		expect(conflicts).toStrictEqual([
 			{
 				action: "jdx/mise-action",
 				occurrences: [
-					{file: ".github/workflows/a.yml", line: 4, ref: SHA_A, comment: "v5.0.1"},
-					{file: ".github/workflows/b.yml", line: 2, ref: SHA_B, comment: "v5.1.1"},
+					{
+						file: ".github/workflows/a.yml",
+						line: 4,
+						ref: SHA_A,
+						comment: "v5.0.1",
+					},
+					{
+						file: ".github/workflows/b.yml",
+						line: 2,
+						ref: SHA_B,
+						comment: "v5.1.1",
+					},
 				],
 			},
 		]);
@@ -41,7 +63,8 @@ describe("findPinConflicts", () => {
 		);
 	});
 
-	test("subpath actions group with owner/repo", () => {
+	test("subpath actions group with owner/repo", () =>
+	{
 		const files = [
 			{
 				path: ".github/workflows/a.yml",
@@ -52,14 +75,25 @@ describe("findPinConflicts", () => {
 			{
 				action: "github/codeql-action",
 				occurrences: [
-					{file: ".github/workflows/a.yml", line: 2, ref: SHA_A, comment: "v3"},
-					{file: ".github/workflows/a.yml", line: 4, ref: SHA_B, comment: undefined},
+					{
+						file: ".github/workflows/a.yml",
+						line: 2,
+						ref: SHA_A,
+						comment: "v3",
+					},
+					{
+						file: ".github/workflows/a.yml",
+						line: 4,
+						ref: SHA_B,
+						comment: undefined,
+					},
 				],
 			},
 		]);
 	});
 
-	test("local and docker refs are ignored", () => {
+	test("local and docker refs are ignored", () =>
+	{
 		const files = [
 			{
 				path: ".github/actions/setup/action.yml",

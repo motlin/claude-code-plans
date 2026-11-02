@@ -11,9 +11,12 @@ import type {ApiRequestMessages} from "../src/lib/api-request-messages";
 
 afterEach(cleanup);
 
-const LOG: ApiRequestLog = {
-	requests: {
-		r1: {
+const LOG: ApiRequestLog =
+{
+	requests:
+	{
+		r1:
+		{
 			id: "r1",
 			timestamp: "2000-01-01T00:00:00.000Z",
 			querySource: "repl_main_thread",
@@ -21,12 +24,21 @@ const LOG: ApiRequestLog = {
 			model: "claude-opus-5-5",
 			betas: ["beta-one", "beta-two"],
 			maxTokens: 128000,
-			thinking: {type: "adaptive", display: "updates"},
+			thinking:
+			{
+				type: "adaptive",
+				display: "updates",
+			},
 			effort: "medium",
 			permissionMode: "auto",
-			toolChanges: {added: ["Write"], removed: ["Bash"]},
+			toolChanges:
+			{
+				added: ["Write"],
+				removed: ["Bash"],
+			},
 		},
-		withArtifacts: {
+		withArtifacts:
+		{
 			id: "withArtifacts",
 			timestamp: "2000-01-01T00:00:00.000Z",
 			querySource: "repl_main_thread",
@@ -34,14 +46,19 @@ const LOG: ApiRequestLog = {
 			model: "claude-opus-5-5",
 			betas: [],
 			maxTokens: 100,
-			thinking: {type: "adaptive", display: "updates"},
+			thinking:
+			{
+				type: "adaptive",
+				display: "updates",
+			},
 			effort: "high",
 			artifacts: [
 				{
 					id: "artifact-alice-1",
 					paths: [],
 					lastPublish: false,
-					share: {
+					share:
+					{
 						mode: "owner",
 						role: "owner",
 						isSharedLive: true,
@@ -59,7 +76,8 @@ const LOG: ApiRequestLog = {
 					paths: ["/tmp/alice/review.html"],
 					lastPublish: true,
 					publishedEnv: "prod",
-					share: {
+					share:
+					{
 						mode: "owner",
 						isSharedLive: false,
 						probed: true,
@@ -71,11 +89,21 @@ const LOG: ApiRequestLog = {
 						grantObserved: false,
 					},
 				},
-				{id: "artifact-alice-3", paths: [], lastPublish: false, attested: "first_party_type"},
-				{id: "artifact-alice-4", paths: ["/tmp/alice/other.html"], lastPublish: false},
+				{
+					id: "artifact-alice-3",
+					paths: [],
+					lastPublish: false,
+					attested: "first_party_type",
+				},
+				{
+					id: "artifact-alice-4",
+					paths: ["/tmp/alice/other.html"],
+					lastPublish: false,
+				},
 			],
 		},
-		orphan: {
+		orphan:
+		{
 			id: "orphan",
 			timestamp: "2000-01-01T00:00:00.000Z",
 			querySource: "repl_main_thread",
@@ -83,46 +111,87 @@ const LOG: ApiRequestLog = {
 			model: "claude-opus-5-5",
 			betas: [],
 			maxTokens: 100,
-			thinking: {type: "adaptive", display: "updates"},
+			thinking:
+			{
+				type: "adaptive",
+				display: "updates",
+			},
 			effort: "high",
 		},
 	},
-	shapes: {s1: {shapeHash: "s1", system: ["You are a test."], tools: ["Read", "Write"]}},
+	shapes:
+	{
+		s1:
+		{
+			shapeHash: "s1",
+			system: ["You are a test."],
+			tools: ["Read", "Write"],
+		},
+	},
 };
 
-const MESSAGES: ApiRequestMessages = {
+const MESSAGES: ApiRequestMessages =
+{
 	found: true,
 	messages: [
 		{
 			hash: "h-user",
 			role: "user",
 			blocks: [
-				{type: "text", text: "I got [Image #1]"},
-				{type: "image", mediaType: "image/png", data: "AAAA"},
+				{
+					type: "text",
+					text: "I got [Image #1]",
+				},
+				{
+					type: "image",
+					mediaType: "image/png",
+					data: "AAAA",
+				},
 				{
 					type: "tool_result",
 					toolUseId: "toolu_1",
 					isError: true,
 					text: "Failed.",
-					images: [{mediaType: "image/jpeg", data: "BBBB"}],
+					images: [
+						{
+							mediaType: "image/jpeg",
+							data: "BBBB",
+						},
+					],
 				},
-				{type: "tool_addition", name: "mcp__docs__guide", definition: false},
-				{type: "tool_removal", name: "mcp__docs__batch"},
+				{
+					type: "tool_addition",
+					name: "mcp__docs__guide",
+					definition: false,
+				},
+				{
+					type: "tool_removal",
+					name: "mcp__docs__batch",
+				},
 			],
 		},
 		{
 			hash: "h-assistant",
 			role: "assistant",
 			blocks: [
-				{type: "thinking", text: "Plan."},
-				{type: "tool_use", id: "toolu_1", name: "Read", input: '{"file_path":"/a"}'},
+				{
+					type: "thinking",
+					text: "Plan.",
+				},
+				{
+					type: "tool_use",
+					id: "toolu_1",
+					name: "Read",
+					input: '{"file_path":"/a"}',
+				},
 			],
 		},
 	],
 	missing: ["h-gone"],
 };
 
-function renderDisclosure(requestRef: string) {
+function renderDisclosure(requestRef: string)
+{
 	const queryClient = new QueryClient();
 	queryClient.setQueryData(sessionQueryKeys.apiRequests("session-1"), LOG);
 	queryClient.setQueryData(sessionQueryKeys.apiRequestMessages("session-1", "r1"), MESSAGES);
@@ -133,17 +202,32 @@ function renderDisclosure(requestRef: string) {
 	);
 }
 
-describe("ApiRequestDisclosure", () => {
-	it("stays collapsed until opened", () => {
+describe("ApiRequestDisclosure", () =>
+{
+	it("stays collapsed until opened", () =>
+	{
 		renderDisclosure("r1");
-		const button = screen.getByRole("button", {name: "Request"});
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Request",
+			},
+		);
 		expect(button.getAttribute("aria-expanded")).toBe("false");
 		expect(screen.queryByText("Opus 5.5 · medium effort · adaptive thinking (updates)")).toBeNull();
 	});
 
-	it("shows the request's params, tools, tool changes and system prompt once opened", () => {
+	it("shows the request's params, tools, tool changes and system prompt once opened", () =>
+	{
 		renderDisclosure("r1");
-		fireEvent.click(screen.getByRole("button", {name: "Request"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Request",
+				},
+			),
+		);
 		const body = screen.getByTestId("api-request-body");
 		expect(body.textContent).toBe(
 			[
@@ -158,13 +242,28 @@ describe("ApiRequestDisclosure", () => {
 				"New messages",
 			].join(""),
 		);
-		fireEvent.click(screen.getByRole("button", {name: "System prompt (1 block)"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "System prompt (1 block)",
+				},
+			),
+		);
 		expect(screen.getByText("You are a test.")).toBeTruthy();
 	});
 
-	it("says so when the request's shape was never logged", () => {
+	it("says so when the request's shape was never logged", () =>
+	{
 		renderDisclosure("orphan");
-		fireEvent.click(screen.getByRole("button", {name: "Request"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Request",
+				},
+			),
+		);
 		expect(screen.getByTestId("api-request-body").textContent).toBe(
 			[
 				"Opus 5.5 · high effort · adaptive thinking (updates)",
@@ -176,9 +275,17 @@ describe("ApiRequestDisclosure", () => {
 		);
 	});
 
-	it("lists the classifier's artifact share state", () => {
+	it("lists the classifier's artifact share state", () =>
+	{
 		renderDisclosure("withArtifacts");
-		fireEvent.click(screen.getByRole("button", {name: "Request"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Request",
+				},
+			),
+		);
 		expect(screen.getByTestId("api-request-body").textContent).toBe(
 			[
 				"Opus 5.5 · high effort · adaptive thinking (updates)",
@@ -199,10 +306,25 @@ describe("ApiRequestDisclosure", () => {
 		);
 	});
 
-	it("shows the messages the request appended once its Messages section opens", () => {
+	it("shows the messages the request appended once its Messages section opens", () =>
+	{
 		renderDisclosure("r1");
-		fireEvent.click(screen.getByRole("button", {name: "Request"}));
-		fireEvent.click(screen.getByRole("button", {name: "New messages"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Request",
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "New messages",
+				},
+			),
+		);
 		const messages = screen.getByTestId("api-request-messages");
 		expect(messages.textContent).toBe(
 			[
@@ -224,12 +346,27 @@ describe("ApiRequestDisclosure", () => {
 			"data:image/png;base64,AAAA",
 			"data:image/jpeg;base64,BBBB",
 		]);
-		expect(screen.getAllByRole("button", {name: "Open Attached image"})).toHaveLength(2);
+		expect(
+			screen.getAllByRole(
+				"button",
+				{
+					name: "Open Attached image",
+				},
+			),
+		).toHaveLength(2);
 	});
 
-	it("says so when the session never logged the request", () => {
+	it("says so when the session never logged the request", () =>
+	{
 		renderDisclosure("nope");
-		fireEvent.click(screen.getByRole("button", {name: "Request"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Request",
+				},
+			),
+		);
 		expect(screen.getByTestId("api-request-body").textContent).toBe("No API request logged for this turn");
 	});
 });

@@ -6,8 +6,10 @@ import {HerdrStatusIndicator} from "../src/components/herdr-status-indicator";
 
 afterEach(cleanup);
 
-describe("HerdrStatusIndicator", () => {
-	it("renders Herdr's canonical status labels and colors with an unknown fallback", () => {
+describe("HerdrStatusIndicator", () =>
+{
+	it("renders Herdr's canonical status labels and colors with an unknown fallback", () =>
+	{
 		render(
 			<div>
 				{["blocked", "working", "done", "idle", "future-test-status"].map((status) => (
@@ -17,7 +19,8 @@ describe("HerdrStatusIndicator", () => {
 		);
 
 		expect(
-			screen.getAllByLabelText(/^Herdr agent status:/).map((indicator) => ({
+			screen.getAllByLabelText(/^Herdr agent status:/).map((indicator) => (
+			{
 				colorClassName: indicator.firstElementChild?.className,
 				label: indicator.textContent,
 				screenReaderLabel: indicator.getAttribute("aria-label"),

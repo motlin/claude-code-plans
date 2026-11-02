@@ -2,7 +2,8 @@ import {describe, expect, it, vi} from "vite-plus/test";
 
 import type {ActiveSessionEntry} from "../src/lib/active-session-store";
 import {ghPrDetailsLookup, parseGhPrDetails} from "../src/lib/pr-details";
-import {
+import
+{
 	ghPrLookup,
 	parseGhPrList,
 	parseGhPrStatusCache,
@@ -20,14 +21,17 @@ const NOW = 946_598_400_000;
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 
-const PR_LINK = {
+const PR_LINK =
+{
 	number: 42,
 	url: "https://github.com/alice/widgets/pull/42",
 	repository: "alice/widgets",
 };
 
-describe("parseGhPrList", () => {
-	it("maps `gh pr list --json number,state,isDraft` rows to a PR status", () => {
+describe("parseGhPrList", () =>
+{
+	it("maps `gh pr list --json number,state,isDraft` rows to a PR status", () =>
+	{
 		expect(
 			[
 				'[{"number":6,"state":"OPEN","isDraft":true}]',
@@ -37,23 +41,42 @@ describe("parseGhPrList", () => {
 				"[]",
 			].map(parseGhPrList),
 		).toStrictEqual([
-			{number: 6, state: "draft"},
-			{number: 7, state: "open"},
-			{number: 8, state: "merged"},
-			{number: 9, state: "closed"},
+			{
+				number: 6,
+				state: "draft",
+			},
+			{
+				number: 7,
+				state: "open",
+			},
+			{
+				number: 8,
+				state: "merged",
+			},
+			{
+				number: 9,
+				state: "closed",
+			},
 			null,
 		]);
 	});
 
-	it("prefers an open PR over newer closed ones on the same branch", () => {
+	it("prefers an open PR over newer closed ones on the same branch", () =>
+	{
 		expect(
 			parseGhPrList(
 				'[{"number":12,"state":"CLOSED","isDraft":false},{"number":11,"state":"OPEN","isDraft":false}]',
 			),
-		).toStrictEqual({number: 11, state: "open"});
+		).toStrictEqual(
+			{
+				number: 11,
+				state: "open",
+			},
+		);
 	});
 
-	it("rejects output that does not match the strict schema", () => {
+	it("rejects output that does not match the strict schema", () =>
+	{
 		expect(() => parseGhPrList('[{"number":6,"state":"OPEN"}]')).toThrow(
 			"Invalid input: expected boolean, received undefined",
 		);
@@ -64,38 +87,62 @@ describe("parseGhPrList", () => {
 	});
 });
 
-describe("parseGhPrView", () => {
-	it("maps `gh pr view --json number,state,isDraft` to a PR status", () => {
-		expect(parseGhPrView('{"number":42,"state":"OPEN","isDraft":true}')).toStrictEqual({
-			number: 42,
-			state: "draft",
-		});
+describe("parseGhPrView", () =>
+{
+	it("maps `gh pr view --json number,state,isDraft` to a PR status", () =>
+	{
+		expect(parseGhPrView('{"number":42,"state":"OPEN","isDraft":true}')).toStrictEqual(
+			{
+				number: 42,
+				state: "draft",
+			},
+		);
 	});
 });
 
-describe("parseGhPrStatusCache", () => {
-	it("reads ~/.claude/gh-pr-status-cache.json entries keyed by PR url", () => {
-		const text = JSON.stringify({
-			[PR_LINK.url]: {
-				number: 42,
-				title: "Add widgets",
-				state: "DRAFT",
-				checks: {passed: 1, failed: 0, pending: 0},
-				review: null,
-				additions: 3,
-				deletions: 1,
+describe("parseGhPrStatusCache", () =>
+{
+	it("reads ~/.claude/gh-pr-status-cache.json entries keyed by PR url", () =>
+	{
+		const text = JSON.stringify(
+			{
+				[PR_LINK.url]:
+				{
+					number: 42,
+					title: "Add widgets",
+					state: "DRAFT",
+					checks:
+					{
+						passed: 1,
+						failed: 0,
+						pending: 0,
+					},
+					review: null,
+					additions: 3,
+					deletions: 1,
+				},
+				"https://github.com/alice/widgets/pull/41":
+				{
+					number: 41,
+					title: "Old",
+					state: "MERGED",
+					checks:
+					{
+						passed: 0,
+						failed: 0,
+						pending: 0,
+					},
+					review: "APPROVED",
+					additions: 0,
+					deletions: 0,
+				},
+				"https://github.com/alice/widgets/pull/40":
+				{
+					number: 40,
+					state: "BOGUS",
+				},
 			},
-			"https://github.com/alice/widgets/pull/41": {
-				number: 41,
-				title: "Old",
-				state: "MERGED",
-				checks: {passed: 0, failed: 0, pending: 0},
-				review: "APPROVED",
-				additions: 0,
-				deletions: 0,
-			},
-			"https://github.com/alice/widgets/pull/40": {number: 40, state: "BOGUS"},
-		});
+		);
 		expect([...parseGhPrStatusCache(text)]).toStrictEqual([
 			[
 				PR_LINK.url,
@@ -104,7 +151,12 @@ describe("parseGhPrStatusCache", () => {
 					state: "draft",
 					url: PR_LINK.url,
 					title: "Add widgets",
-					checks: {passed: 1, failed: 0, pending: 0},
+					checks:
+					{
+						passed: 1,
+						failed: 0,
+						pending: 0,
+					},
 					review: null,
 				},
 			],
@@ -115,39 +167,92 @@ describe("parseGhPrStatusCache", () => {
 					state: "merged",
 					url: "https://github.com/alice/widgets/pull/41",
 					title: "Old",
-					checks: {passed: 0, failed: 0, pending: 0},
+					checks:
+					{
+						passed: 0,
+						failed: 0,
+						pending: 0,
+					},
 					review: "APPROVED",
 				},
 			],
 		]);
 	});
 
-	it("treats unparseable JSON as an empty cache", () => {
+	it("treats unparseable JSON as an empty cache", () =>
+	{
 		expect(parseGhPrStatusCache("{")).toStrictEqual(new Map());
 	});
 });
 
-describe("parseGhPrDetails", () => {
-	it("reads the head branch, failing check names and unresolved review threads from the graphql reply", () => {
-		const reply = {
-			data: {
-				repository: {
-					pullRequest: {
+describe("parseGhPrDetails", () =>
+{
+	it("reads the head branch, failing check names and unresolved review threads from the graphql reply", () =>
+	{
+		const reply =
+		{
+			data:
+			{
+				repository:
+				{
+					pullRequest:
+					{
 						headRefName: "feature",
-						reviewThreads: {nodes: [{isResolved: false}, {isResolved: true}, {isResolved: false}]},
-						commits: {
+						reviewThreads:
+						{
 							nodes: [
 								{
-									commit: {
-										statusCheckRollup: {
-											contexts: {
+									isResolved: false,
+								},
+								{
+									isResolved: true,
+								},
+								{
+									isResolved: false,
+								},
+							],
+						},
+						commits:
+						{
+							nodes: [
+								{
+									commit:
+									{
+										statusCheckRollup:
+										{
+											contexts:
+											{
 												nodes: [
-													{__typename: "CheckRun", name: "lint", conclusion: "SUCCESS"},
-													{__typename: "CheckRun", name: "test", conclusion: "FAILURE"},
-													{__typename: "CheckRun", name: "build", conclusion: null},
-													{__typename: "CheckRun", name: "e2e", conclusion: "TIMED_OUT"},
-													{__typename: "StatusContext", context: "ci/legacy", state: "ERROR"},
-													{__typename: "StatusContext", context: "ci/ok", state: "SUCCESS"},
+													{
+														__typename: "CheckRun",
+														name: "lint",
+														conclusion: "SUCCESS",
+													},
+													{
+														__typename: "CheckRun",
+														name: "test",
+														conclusion: "FAILURE",
+													},
+													{
+														__typename: "CheckRun",
+														name: "build",
+														conclusion: null,
+													},
+													{
+														__typename: "CheckRun",
+														name: "e2e",
+														conclusion: "TIMED_OUT",
+													},
+													{
+														__typename: "StatusContext",
+														context: "ci/legacy",
+														state: "ERROR",
+													},
+													{
+														__typename: "StatusContext",
+														context: "ci/ok",
+														state: "SUCCESS",
+													},
 												],
 											},
 										},
@@ -159,57 +264,96 @@ describe("parseGhPrDetails", () => {
 				},
 			},
 		};
-		expect(parseGhPrDetails(JSON.stringify(reply))).toStrictEqual({
-			headBranch: "feature",
-			failingChecks: ["test", "e2e", "ci/legacy"],
-			unresolvedReviewThreads: 2,
-		});
+		expect(parseGhPrDetails(JSON.stringify(reply))).toStrictEqual(
+			{
+				headBranch: "feature",
+				failingChecks: ["test", "e2e", "ci/legacy"],
+				unresolvedReviewThreads: 2,
+			},
+		);
 	});
 
-	it("treats a commit without a check rollup as no failing checks", () => {
-		const reply = {
-			data: {
-				repository: {
-					pullRequest: {
+	it("treats a commit without a check rollup as no failing checks", () =>
+	{
+		const reply =
+		{
+			data:
+			{
+				repository:
+				{
+					pullRequest:
+					{
 						headRefName: "feature",
-						reviewThreads: {nodes: []},
-						commits: {nodes: [{commit: {statusCheckRollup: null}}]},
+						reviewThreads:
+						{
+							nodes: [],
+						},
+						commits:
+						{
+							nodes: [
+								{
+									commit:
+									{
+										statusCheckRollup: null,
+									},
+								},
+							],
+						},
 					},
 				},
 			},
 		};
-		expect(parseGhPrDetails(JSON.stringify(reply))).toStrictEqual({
-			headBranch: "feature",
-			failingChecks: [],
-			unresolvedReviewThreads: 0,
-		});
+		expect(parseGhPrDetails(JSON.stringify(reply))).toStrictEqual(
+			{
+				headBranch: "feature",
+				failingChecks: [],
+				unresolvedReviewThreads: 0,
+			},
+		);
 	});
 
-	it("rejects a reply that does not match the strict schema", () => {
-		expect(() => parseGhPrDetails(JSON.stringify({data: {repository: null}}))).toThrow(
-			"Invalid input: expected object, received null",
+	it("rejects a reply that does not match the strict schema", () =>
+	{
+		expect(() =>
+			parseGhPrDetails(
+				JSON.stringify(
+					{
+						data:
+						{
+							repository: null,
+						},
+					},
+				),
+			),
+		).toThrow("Invalid input: expected object, received null");
+	});
+});
+
+describe("ghPrDetailsLookup", () =>
+{
+	it("builds a gh api graphql argv from a GitHub PR url, and nothing for other urls", () =>
+	{
+		const lookup = ghPrDetailsLookup(PR_LINK.url);
+		expect(
+			{
+				key: lookup?.key,
+				head: lookup?.args.slice(0, 8),
+				query: lookup?.args[9]?.startsWith("query=query("),
+				other: ghPrDetailsLookup("https://example.com/not-a-pr"),
+			},
+		).toStrictEqual(
+			{
+				key: `details:${PR_LINK.url}`,
+				head: ["api", "graphql", "-f", "owner=alice", "-f", "repo=widgets", "-F", "number=42"],
+				query: true,
+				other: null,
+			},
 		);
 	});
 });
 
-describe("ghPrDetailsLookup", () => {
-	it("builds a gh api graphql argv from a GitHub PR url, and nothing for other urls", () => {
-		const lookup = ghPrDetailsLookup(PR_LINK.url);
-		expect({
-			key: lookup?.key,
-			head: lookup?.args.slice(0, 8),
-			query: lookup?.args[9]?.startsWith("query=query("),
-			other: ghPrDetailsLookup("https://example.com/not-a-pr"),
-		}).toStrictEqual({
-			key: `details:${PR_LINK.url}`,
-			head: ["api", "graphql", "-f", "owner=alice", "-f", "repo=widgets", "-F", "number=42"],
-			query: true,
-			other: null,
-		});
-	});
-});
-
-describe("resolvePrStatus", () => {
+describe("resolvePrStatus", () =>
+{
 	const cacheFile = new Map<string, PrStatus>([
 		[
 			PR_LINK.url,
@@ -218,52 +362,173 @@ describe("resolvePrStatus", () => {
 				state: "open",
 				url: PR_LINK.url,
 				title: "Add widgets",
-				checks: {passed: 2, failed: 0, pending: 1},
+				checks:
+				{
+					passed: 2,
+					failed: 0,
+					pending: 1,
+				},
 				review: "APPROVED",
 			},
 		],
 	]);
 
-	it("uses the pr-link number and url with the cache file state and details first", () => {
-		expect(resolvePrStatus({prLink: PR_LINK, cacheFile, gh: {number: 42, state: "merged"}})).toStrictEqual({
-			number: 42,
-			state: "open",
-			url: PR_LINK.url,
-			title: "Add widgets",
-			checks: {passed: 2, failed: 0, pending: 1},
-			review: "APPROVED",
-		});
-	});
-
-	it("falls back to gh when the cache file has no entry for the pr-link", () => {
-		expect(resolvePrStatus({prLink: PR_LINK, cacheFile: new Map(), gh: {number: 42, state: "open"}})).toStrictEqual(
-			{number: 42, state: "open", url: PR_LINK.url},
+	it("uses the pr-link number and url with the cache file state and details first", () =>
+	{
+		expect(
+			resolvePrStatus(
+				{
+					prLink: PR_LINK,
+					cacheFile,
+					gh:
+					{
+						number: 42,
+						state: "merged",
+					},
+				},
+			),
+		).toStrictEqual(
+			{
+				number: 42,
+				state: "open",
+				url: PR_LINK.url,
+				title: "Add widgets",
+				checks:
+				{
+					passed: 2,
+					failed: 0,
+					pending: 1,
+				},
+				review: "APPROVED",
+			},
 		);
 	});
 
-	it("keeps the pr-link number over a gh branch lookup", () => {
-		expect(resolvePrStatus({prLink: PR_LINK, cacheFile: new Map(), gh: {number: 7, state: "draft"}})).toStrictEqual(
-			{number: 42, state: "draft", url: PR_LINK.url},
+	it("falls back to gh when the cache file has no entry for the pr-link", () =>
+	{
+		expect(
+			resolvePrStatus(
+				{
+					prLink: PR_LINK,
+					cacheFile: new Map(),
+					gh:
+					{
+						number: 42,
+						state: "open",
+					},
+				},
+			),
+		).toStrictEqual(
+			{
+				number: 42,
+				state: "open",
+				url: PR_LINK.url,
+			},
 		);
 	});
 
-	it("uses gh alone without a pr-link, and nothing without any source", () => {
+	it("keeps the pr-link number over a gh branch lookup", () =>
+	{
+		expect(
+			resolvePrStatus(
+				{
+					prLink: PR_LINK,
+					cacheFile: new Map(),
+					gh:
+					{
+						number: 7,
+						state: "draft",
+					},
+				},
+			),
+		).toStrictEqual(
+			{
+				number: 42,
+				state: "draft",
+				url: PR_LINK.url,
+			},
+		);
+	});
+
+	it("uses gh alone without a pr-link, and nothing without any source", () =>
+	{
 		expect([
-			resolvePrStatus({prLink: undefined, cacheFile, gh: {number: 7, state: "open"}}),
-			resolvePrStatus({prLink: undefined, cacheFile, gh: null}),
-			resolvePrStatus({prLink: PR_LINK, cacheFile: new Map(), gh: null}),
-		]).toStrictEqual([{number: 7, state: "open"}, null, null]);
+			resolvePrStatus(
+				{
+					prLink: undefined,
+					cacheFile,
+					gh:
+					{
+						number: 7,
+						state: "open",
+					},
+				},
+			),
+			resolvePrStatus(
+				{
+					prLink: undefined,
+					cacheFile,
+					gh: null,
+				},
+			),
+			resolvePrStatus(
+				{
+					prLink: PR_LINK,
+					cacheFile: new Map(),
+					gh: null,
+				},
+			),
+		]).toStrictEqual([
+			{
+				number: 7,
+				state: "open",
+			},
+			null,
+			null,
+		]);
 	});
 });
 
-describe("ghPrLookup", () => {
-	it("builds argv: pr view for a pr-link, pr list --head for a feature branch", () => {
+describe("ghPrLookup", () =>
+{
+	it("builds argv: pr view for a pr-link, pr list --head for a feature branch", () =>
+	{
 		expect([
-			ghPrLookup({prLink: PR_LINK, cwd: "/repo", branch: "feature"}),
-			ghPrLookup({prLink: undefined, cwd: "/repo", branch: "feature/x"}),
-			ghPrLookup({prLink: undefined, cwd: "/repo", branch: "main"}),
-			ghPrLookup({prLink: undefined, cwd: undefined, branch: "feature"}),
-			ghPrLookup({prLink: undefined, cwd: "/repo", branch: undefined}),
+			ghPrLookup(
+				{
+					prLink: PR_LINK,
+					cwd: "/repo",
+					branch: "feature",
+				},
+			),
+			ghPrLookup(
+				{
+					prLink: undefined,
+					cwd: "/repo",
+					branch: "feature/x",
+				},
+			),
+			ghPrLookup(
+				{
+					prLink: undefined,
+					cwd: "/repo",
+					branch: "main",
+				},
+			),
+			ghPrLookup(
+				{
+					prLink: undefined,
+					cwd: undefined,
+					branch: "feature",
+				},
+			),
+			ghPrLookup(
+				{
+					prLink: undefined,
+					cwd: "/repo",
+					branch: undefined,
+				},
+			),
 		]).toStrictEqual([
 			{
 				key: `url:${PR_LINK.url}`,
@@ -295,26 +560,32 @@ describe("ghPrLookup", () => {
 	});
 });
 
-describe("createPrStatusService", () => {
-	function setup(runGh: GhRunner, cacheText: string | null = null) {
+describe("createPrStatusService", () =>
+{
+	function setup(runGh: GhRunner, cacheText: string | null = null)
+	{
 		let now = NOW;
 		const onChange = vi.fn<(projectId: string) => void>();
-		const service = createPrStatusService({
-			runGh,
-			readCacheFile: async () => Promise.resolve(cacheText),
-			now: () => now,
-			onChange,
-		});
+		const service = createPrStatusService(
+			{
+				runGh,
+				readCacheFile: async () => Promise.resolve(cacheText),
+				now: () => now,
+				onChange,
+			},
+		);
 		return {
 			service,
 			onChange,
-			advance: (ms: number) => {
+			advance: (ms: number) =>
+			{
 				now += ms;
 			},
 		};
 	}
 
-	const target = {
+	const target =
+	{
 		projectId: "-repo",
 		prLink: undefined,
 		cwd: "/repo",
@@ -322,41 +593,51 @@ describe("createPrStatusService", () => {
 		mtimeMs: NOW - MINUTE,
 	};
 
-	it("answers from memory without blocking, then refreshes via gh in the background", async () => {
+	it("answers from memory without blocking, then refreshes via gh in the background", async () =>
+	{
 		const runGh = vi.fn<GhRunner>(async () => Promise.resolve('[{"number":6,"state":"OPEN","isDraft":true}]'));
 		const {service, onChange} = setup(runGh);
 
 		expect(service.lookup(target)).toBeNull();
 		await service.idle();
 
-		expect({
-			status: service.lookup(target),
-			calls: runGh.mock.calls,
-			changed: onChange.mock.calls,
-		}).toStrictEqual({
-			status: {number: 6, state: "draft"},
-			calls: [
-				[
+		expect(
+			{
+				status: service.lookup(target),
+				calls: runGh.mock.calls,
+				changed: onChange.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				status:
+				{
+					number: 6,
+					state: "draft",
+				},
+				calls: [
 					[
-						"pr",
-						"list",
-						"--head",
-						"feature",
-						"--state",
-						"all",
-						"--limit",
-						"10",
-						"--json",
-						"number,state,isDraft",
+						[
+							"pr",
+							"list",
+							"--head",
+							"feature",
+							"--state",
+							"all",
+							"--limit",
+							"10",
+							"--json",
+							"number,state,isDraft",
+						],
+						"/repo",
 					],
-					"/repo",
 				],
-			],
-			changed: [["-repo"]],
-		});
+				changed: [["-repo"]],
+			},
+		);
 	});
 
-	it("caches gh results until the TTL and backs off after failures", async () => {
+	it("caches gh results until the TTL and backs off after failures", async () =>
+	{
 		const runGh = vi.fn<GhRunner>(async () => Promise.reject(new Error("rate limited")));
 		const {service, advance} = setup(runGh);
 
@@ -375,101 +656,158 @@ describe("createPrStatusService", () => {
 		expect(runGh).toHaveBeenCalledTimes(2);
 	});
 
-	it("prefers the cache file for pr-link sessions and asks gh only for review details", async () => {
+	it("prefers the cache file for pr-link sessions and asks gh only for review details", async () =>
+	{
 		const runGh = vi.fn<GhRunner>(async () =>
 			Promise.resolve(
-				JSON.stringify({
-					data: {
-						repository: {
-							pullRequest: {
-								headRefName: "widgets",
-								reviewThreads: {nodes: [{isResolved: false}, {isResolved: false}]},
-								commits: {
-									nodes: [
-										{
-											commit: {
-												statusCheckRollup: {
-													contexts: {
-														nodes: [
-															{
-																__typename: "CheckRun",
-																name: "test",
-																conclusion: "FAILURE",
-															},
-														],
+				JSON.stringify(
+					{
+						data:
+						{
+							repository:
+							{
+								pullRequest:
+								{
+									headRefName: "widgets",
+									reviewThreads:
+									{
+										nodes: [
+											{
+												isResolved: false,
+											},
+											{
+												isResolved: false,
+											},
+										],
+									},
+									commits:
+									{
+										nodes: [
+											{
+												commit:
+												{
+													statusCheckRollup:
+													{
+														contexts:
+														{
+															nodes: [
+																{
+																	__typename: "CheckRun",
+																	name: "test",
+																	conclusion: "FAILURE",
+																},
+															],
+														},
 													},
 												},
 											},
-										},
-									],
+										],
+									},
 								},
 							},
 						},
 					},
-				}),
+				),
 			),
 		);
-		const cacheText = JSON.stringify({
-			[PR_LINK.url]: {
-				number: 42,
-				title: "Add widgets",
-				state: "OPEN",
-				checks: {passed: 0, failed: 0, pending: 0},
-				review: null,
-				additions: 0,
-				deletions: 0,
-			},
-		});
-		const {service} = setup(runGh, cacheText);
-		const linked = {...target, prLink: PR_LINK};
-
-		service.lookup(linked);
-		await service.idle();
-		service.lookup(linked);
-		await service.idle();
-
-		expect({
-			status: service.lookup(linked),
-			calls: runGh.mock.calls.map(([args]) => args.slice(0, 2)),
-		}).toStrictEqual({
-			status: {
-				number: 42,
-				state: "open",
-				url: PR_LINK.url,
-				title: "Add widgets",
-				checks: {passed: 0, failed: 0, pending: 0},
-				review: null,
-				headBranch: "widgets",
-				failingChecks: ["test"],
-				unresolvedReviewThreads: 2,
-			},
-			calls: [["api", "graphql"]],
-		});
-	});
-
-	it("reports a change when only a cached PR's checks or review change", async () => {
-		const entry = (failed: number) =>
-			JSON.stringify({
-				[PR_LINK.url]: {
+		const cacheText = JSON.stringify(
+			{
+				[PR_LINK.url]:
+				{
 					number: 42,
 					title: "Add widgets",
 					state: "OPEN",
-					checks: {passed: 1, failed, pending: 0},
+					checks:
+					{
+						passed: 0,
+						failed: 0,
+						pending: 0,
+					},
 					review: null,
 					additions: 0,
 					deletions: 0,
 				},
-			});
+			},
+		);
+		const {service} = setup(runGh, cacheText);
+		const linked =
+		{
+			...target,
+			prLink: PR_LINK,
+		};
+
+		service.lookup(linked);
+		await service.idle();
+		service.lookup(linked);
+		await service.idle();
+
+		expect(
+			{
+				status: service.lookup(linked),
+				calls: runGh.mock.calls.map(([args]) => args.slice(0, 2)),
+			},
+		).toStrictEqual(
+			{
+				status:
+				{
+					number: 42,
+					state: "open",
+					url: PR_LINK.url,
+					title: "Add widgets",
+					checks:
+					{
+						passed: 0,
+						failed: 0,
+						pending: 0,
+					},
+					review: null,
+					headBranch: "widgets",
+					failingChecks: ["test"],
+					unresolvedReviewThreads: 2,
+				},
+				calls: [["api", "graphql"]],
+			},
+		);
+	});
+
+	it("reports a change when only a cached PR's checks or review change", async () =>
+	{
+		const entry = (failed: number) =>
+			JSON.stringify(
+				{
+					[PR_LINK.url]:
+					{
+						number: 42,
+						title: "Add widgets",
+						state: "OPEN",
+						checks:
+						{
+							passed: 1,
+							failed,
+							pending: 0,
+						},
+						review: null,
+						additions: 0,
+						deletions: 0,
+					},
+				},
+			);
 		let cacheText = entry(0);
 		let now = NOW;
 		const onChange = vi.fn<(projectId: string) => void>();
-		const service = createPrStatusService({
-			runGh: async () => Promise.resolve("{}"),
-			readCacheFile: async () => Promise.resolve(cacheText),
-			now: () => now,
-			onChange,
-		});
-		const linked = {...target, prLink: PR_LINK};
+		const service = createPrStatusService(
+			{
+				runGh: async () => Promise.resolve("{}"),
+				readCacheFile: async () => Promise.resolve(cacheText),
+				now: () => now,
+				onChange,
+			},
+		);
+		const linked =
+		{
+			...target,
+			prLink: PR_LINK,
+		};
 
 		service.lookup(linked);
 		await service.idle();
@@ -479,28 +817,45 @@ describe("createPrStatusService", () => {
 		service.lookup(linked);
 		await service.idle();
 
-		expect({
-			checks: service.lookup(linked)?.checks,
-			changed: onChange.mock.calls,
-		}).toStrictEqual({
-			checks: {passed: 1, failed: 1, pending: 0},
-			changed: [["-repo"]],
-		});
+		expect(
+			{
+				checks: service.lookup(linked)?.checks,
+				changed: onChange.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				checks:
+				{
+					passed: 1,
+					failed: 1,
+					pending: 0,
+				},
+				changed: [["-repo"]],
+			},
+		);
 	});
 
-	it("skips gh for sessions idle longer than the lookup window", async () => {
+	it("skips gh for sessions idle longer than the lookup window", async () =>
+	{
 		const runGh = vi.fn<GhRunner>(async () => Promise.resolve("[]"));
 		const {service} = setup(runGh);
 
-		service.lookup({...target, mtimeMs: NOW - 30 * DAY});
+		service.lookup(
+			{
+				...target,
+				mtimeMs: NOW - 30 * DAY,
+			},
+		);
 		await service.idle();
 
 		expect(runGh).not.toHaveBeenCalled();
 	});
 });
 
-describe("PR state in the session summary", () => {
-	const entry: SessionEntry = {
+describe("PR state in the session summary", () =>
+{
+	const entry: SessionEntry =
+	{
 		id: "session-pr",
 		title: "Add widgets",
 		mtime: new Date(NOW - MINUTE),
@@ -511,7 +866,8 @@ describe("PR state in the session summary", () => {
 		gitBranch: "feature",
 		isSidechain: false,
 	};
-	const idleSession: ActiveSessionEntry = {
+	const idleSession: ActiveSessionEntry =
+	{
 		sessionId: "session-pr",
 		state: "idle",
 		cwd: "/repo",
@@ -528,58 +884,150 @@ describe("PR state in the session summary", () => {
 		backgroundTasks: [],
 	};
 
-	it("puts an idle session with an open or draft PR in Ready for review", () => {
-		const summarize = (prStatus: PrStatus | null) => {
-			const payload = toSessionSummaryPayload(entry, {
-				activeSession: idleSession,
-				now: NOW,
-				prStatus,
-			});
-			return {bucket: payload.bucket, prStatus: payload.prStatus};
+	it("puts an idle session with an open or draft PR in Ready for review", () =>
+	{
+		const summarize = (prStatus: PrStatus | null) =>
+		{
+			const payload = toSessionSummaryPayload(
+				entry,
+				{
+					activeSession: idleSession,
+					now: NOW,
+					prStatus,
+				},
+			);
+			return {
+				bucket: payload.bucket,
+				prStatus: payload.prStatus,
+			};
 		};
 		expect([
-			summarize({number: 6, state: "draft"}),
-			summarize({number: 7, state: "open"}),
-			summarize({number: 8, state: "merged"}),
+			summarize(
+				{
+					number: 6,
+					state: "draft",
+				},
+			),
+			summarize(
+				{
+					number: 7,
+					state: "open",
+				},
+			),
+			summarize(
+				{
+					number: 8,
+					state: "merged",
+				},
+			),
 			summarize(null),
 		]).toStrictEqual([
-			{bucket: "review", prStatus: {number: 6, state: "draft"}},
-			{bucket: "review", prStatus: {number: 7, state: "open"}},
-			{bucket: "done", prStatus: {number: 8, state: "merged"}},
-			{bucket: "done", prStatus: undefined},
+			{
+				bucket: "review",
+				prStatus:
+				{
+					number: 6,
+					state: "draft",
+				},
+			},
+			{
+				bucket: "review",
+				prStatus:
+				{
+					number: 7,
+					state: "open",
+				},
+			},
+			{
+				bucket: "done",
+				prStatus:
+				{
+					number: 8,
+					state: "merged",
+				},
+			},
+			{
+				bucket: "done",
+				prStatus: undefined,
+			},
 		]);
 	});
 });
 
-describe("PR row glyph", () => {
-	it("maps each PR state to its upstream git colour state", () => {
+describe("PR row glyph", () =>
+{
+	it("maps each PR state to its upstream git colour state", () =>
+	{
 		expect(
 			(
 				[
-					{number: 6, state: "draft"},
-					{number: 7, state: "open"},
-					{number: 8, state: "merged"},
-					{number: 9, state: "closed"},
+					{
+						number: 6,
+						state: "draft",
+					},
+					{
+						number: 7,
+						state: "open",
+					},
+					{
+						number: 8,
+						state: "merged",
+					},
+					{
+						number: 9,
+						state: "closed",
+					},
 				] as const
 			).map(prGlyph),
 		).toStrictEqual([
-			{number: 6, state: "draft"},
-			{number: 7, state: "opened"},
-			{number: 8, state: "merged"},
-			{number: 9, state: "closed"},
+			{
+				number: 6,
+				state: "draft",
+			},
+			{
+				number: 7,
+				state: "opened",
+			},
+			{
+				number: 8,
+				state: "merged",
+			},
+			{
+				number: 9,
+				state: "closed",
+			},
 		]);
 	});
 
-	it("never puts a PR in the status slot: live states, then the unread dot, else the env glyph (upstream jX)", () => {
-		const draft = {number: 6, state: "draft"} as const;
-		const merged = {number: 8, state: "merged"} as const;
+	it("never puts a PR in the status slot: live states, then the unread dot, else the env glyph (upstream jX)", () =>
+	{
+		const draft =
+		{
+			number: 6,
+			state: "draft",
+		} as const;
+		const merged =
+		{
+			number: 8,
+			state: "merged",
+		} as const;
 		const kind = (
 			bucket: "blocked" | "review" | "working" | "done",
 			unseen: boolean,
 			prStatus: PrStatus | undefined,
 			showPrStatus = true,
 			unseenError = false,
-		) => sessionRowIconKind({bucket, unseen, serverUnseen: false, unseenError, prStatus, showPrStatus});
+		) =>
+			sessionRowIconKind(
+				{
+					bucket,
+					unseen,
+					serverUnseen: false,
+					unseenError,
+					prStatus,
+					showPrStatus,
+				},
+			);
 		expect([
 			kind("blocked", false, draft),
 			kind("working", false, draft),

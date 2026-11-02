@@ -1,5 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from "react";
-import {
+import
+{
 	markerEventsFromRecords,
 	toolActivityLabel,
 	workingMarkerState,
@@ -20,43 +21,72 @@ export function useWorkingMarkerState({
 	pendingToolName,
 	interruptedAt = null,
 	awaitingPermission = false,
-}: WorkingMarkerSignals): WorkingMarkerState {
-	const events = useMemo(() => {
+}: WorkingMarkerSignals): WorkingMarkerState
+{
+	const events = useMemo(() =>
+	{
 		const fromRecords = markerEventsFromRecords(records);
-		if (interruptedAt !== null) {
+		if (interruptedAt !== null)
+		{
 			const after = fromRecords.findIndex((event) => event.at > interruptedAt);
 			const index = after === -1 ? fromRecords.length : after;
-			fromRecords.splice(index, 0, {kind: "interrupt", at: interruptedAt});
+			fromRecords.splice(
+				index,
+				0,
+				{
+					kind: "interrupt",
+					at: interruptedAt,
+				},
+			);
 		}
 		const lastAt = fromRecords.at(-1)?.at ?? 0;
 		const overlay: WorkingMarkerEvent[] = [];
-		if (pendingToolName !== undefined) {
-			overlay.push({
-				kind: "tool",
-				at: lastAt,
-				label: toolActivityLabel(pendingToolName, undefined),
-			});
+		if (pendingToolName !== undefined)
+		{
+			overlay.push(
+				{
+					kind: "tool",
+					at: lastAt,
+					label: toolActivityLabel(pendingToolName, undefined),
+				},
+			);
 		}
 		const hookKnown = sessionState !== null && sessionState !== "unknown";
 		const closed = hookKnown ? sessionState !== "working" : !isActive;
-		if (closed) overlay.push({kind: "stop", at: lastAt});
+		if (closed)
+			overlay.push(
+				{
+					kind: "stop",
+					at: lastAt,
+				},
+			);
 		return [...fromRecords, ...overlay];
 	}, [records, sessionState, isActive, pendingToolName, interruptedAt]);
 	const open = !awaitingPermission && workingMarkerState(events, 0).status !== "idle";
 	const now = useNow(open);
-	return useStableState(awaitingPermission ? {status: "waiting"} : workingMarkerState(events, now));
+	return useStableState(
+		awaitingPermission
+			?
+				{
+					status: "waiting",
+				}
+			: workingMarkerState(events, now),
+	);
 }
 
 /** The previous state while the new one holds the same values, so what memoizes on it re-renders once per change. */
-function useStableState(state: WorkingMarkerState): WorkingMarkerState {
+function useStableState(state: WorkingMarkerState): WorkingMarkerState
+{
 	const previous = useRef(state);
-	if (!sameState(previous.current, state)) {
+	if (!sameState(previous.current, state))
+	{
 		previous.current = state;
 	}
 	return previous.current;
 }
 
-function sameState(a: WorkingMarkerState, b: WorkingMarkerState): boolean {
+function sameState(a: WorkingMarkerState, b: WorkingMarkerState): boolean
+{
 	const aEntries = Object.entries(a);
 	return (
 		aEntries.length === Object.keys(b).length &&
@@ -64,22 +94,27 @@ function sameState(a: WorkingMarkerState, b: WorkingMarkerState): boolean {
 	);
 }
 
-function useNow(ticking: boolean): number {
+function useNow(ticking: boolean): number
+{
 	const [now, setNow] = useState(() => Date.now());
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!ticking) return undefined;
 		setNow(Date.now());
-		const timer = setInterval(() => {
+		const timer = setInterval(() =>
+		{
 			setNow(Date.now());
 		}, 1000);
-		return () => {
+		return () =>
+		{
 			clearInterval(timer);
 		};
 	}, [ticking]);
 	return now;
 }
 
-export interface WorkingMarkerSignals {
+export interface WorkingMarkerSignals
+{
 	records: readonly unknown[];
 	/** Hook-derived main-thread state; null when no loaded session list knows it. */
 	sessionState: SessionSummaryState | null;

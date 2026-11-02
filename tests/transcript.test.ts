@@ -2,7 +2,8 @@ import {describe, it, expect} from "vite-plus/test";
 import {processTranscript, processNewRecords} from "../src/lib/transcript";
 import rowSpecimens from "./fixtures/transcript-row-specimens.json";
 import {buildClientToolCall} from "../src/components/tool-renderers/types";
-import {
+import
+{
 	extractToolResultContent,
 	extractToolResultImages,
 	stripResultTags,
@@ -16,14 +17,28 @@ import {
 // Helper: build a minimal JSONL record
 // ---------------------------------------------------------------------------
 
-function userRecord(content: unknown, extra: Record<string, unknown> = {}): Record<string, unknown> {
-	return {type: "user", message: {role: "user", content}, ...extra};
+function userRecord(content: unknown, extra: Record<string, unknown> = {}): Record<string, unknown>
+{
+	return {
+		type: "user",
+		message:
+		{
+			role: "user",
+			content,
+		},
+		...extra,
+	};
 }
 
-function assistantRecord(content: unknown, extra: Record<string, unknown> = {}): Record<string, unknown> {
+function assistantRecord(content: unknown, extra: Record<string, unknown> = {}): Record<string, unknown>
+{
 	return {
 		type: "assistant",
-		message: {role: "assistant", content},
+		message:
+		{
+			role: "assistant",
+			content,
+		},
 		...extra,
 	};
 }
@@ -32,8 +47,10 @@ function assistantRecord(content: unknown, extra: Record<string, unknown> = {}):
 // processTranscript
 // ---------------------------------------------------------------------------
 
-describe("processTranscript", () => {
-	it("returns empty results for empty input", () => {
+describe("processTranscript", () =>
+{
+	it("returns empty results for empty input", () =>
+	{
 		const result = processTranscript([]);
 		expect(result.lines).toStrictEqual([]);
 		expect(result.toolResultMap.size).toBe(0);
@@ -42,16 +59,33 @@ describe("processTranscript", () => {
 		expect(result.customTitle).toBeUndefined();
 	});
 
-	it("includes user and assistant lines with lineIndex", () => {
+	it("includes user and assistant lines with lineIndex", () =>
+	{
 		const records = [
-			userRecord([{type: "text", text: "Hello"}], {
-				uuid: "u-1",
-				timestamp: "1999-12-31T00:00:00Z",
-			}),
-			assistantRecord([{type: "text", text: "Hi"}], {
-				uuid: "a-1",
-				timestamp: "1999-12-31T00:01:00Z",
-			}),
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hello",
+					},
+				],
+				{
+					uuid: "u-1",
+					timestamp: "1999-12-31T00:00:00Z",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "Hi",
+					},
+				],
+				{
+					uuid: "a-1",
+					timestamp: "1999-12-31T00:01:00Z",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		expect(result.lines).toHaveLength(2);
@@ -61,12 +95,16 @@ describe("processTranscript", () => {
 		expect(result.lines[1]!.lineIndex).toBe(1);
 	});
 
-	it("normalizes snake_case session identifiers for rendered lines", () => {
+	it("normalizes snake_case session identifiers for rendered lines", () =>
+	{
 		const result = processTranscript([
-			userRecord("Hello", {
-				uuid: "u-1",
-				session_id: "record-session",
-			}),
+			userRecord(
+				"Hello",
+				{
+					uuid: "u-1",
+					session_id: "record-session",
+				},
+			),
 		]);
 
 		expect(result.lines).toStrictEqual([
@@ -74,7 +112,8 @@ describe("processTranscript", () => {
 				type: "user",
 				uuid: "u-1",
 				sessionId: "record-session",
-				message: {
+				message:
+				{
 					role: "user",
 					content: "Hello",
 				},
@@ -83,62 +122,154 @@ describe("processTranscript", () => {
 		]);
 	});
 
-	it("filters out non-rendering record types", () => {
+	it("filters out non-rendering record types", () =>
+	{
 		const records = [
-			{type: "system", uuid: "sys-1", timestamp: "1999-12-31T00:00:00Z"},
-			{type: "progress", uuid: "prog-1"},
-			{type: "file-history-snapshot", snapshot: {trackedFileBackups: {}}},
+			{
+				type: "system",
+				uuid: "sys-1",
+				timestamp: "1999-12-31T00:00:00Z",
+			},
+			{
+				type: "progress",
+				uuid: "prog-1",
+			},
+			{
+				type: "file-history-snapshot",
+				snapshot:
+				{
+					trackedFileBackups: {},
+				},
+			},
 		];
 		const result = processTranscript(records);
 		expect(result.lines).toStrictEqual([]);
 	});
 
-	it("extracts title from first user text", () => {
+	it("extracts title from first user text", () =>
+	{
 		const records = [
-			userRecord([{type: "text", text: "Fix the login page"}], {
-				uuid: "u-1",
-			}),
-			assistantRecord([{type: "text", text: "Done"}], {uuid: "a-1"}),
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Fix the login page",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "Done",
+					},
+				],
+				{
+					uuid: "a-1",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		expect(result.title).toBe("Fix the login page");
 	});
 
-	it("extracts customTitle from custom-title records", () => {
+	it("extracts customTitle from custom-title records", () =>
+	{
 		const records = [
 			{
 				type: "custom-title",
 				customTitle: "My Custom Title",
 				sessionId: "s-1",
 			},
-			userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"}),
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hello",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		expect(result.customTitle).toBe("My Custom Title");
 	});
 
-	it("consumes session-owner records as metadata instead of rendering them", () => {
+	it("consumes session-owner records as metadata instead of rendering them", () =>
+	{
 		const records = [
-			{type: "session-owner", accountUuid: "acct-1", organizationUuid: "org-1", sessionId: "s-1"},
-			userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"}),
-			{type: "session-owner", accountUuid: "acct-2", organizationUuid: "org-2", sessionId: "s-1"},
+			{
+				type: "session-owner",
+				accountUuid: "acct-1",
+				organizationUuid: "org-1",
+				sessionId: "s-1",
+			},
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hello",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
+			{
+				type: "session-owner",
+				accountUuid: "acct-2",
+				organizationUuid: "org-2",
+				sessionId: "s-1",
+			},
 		];
 		const result = processTranscript(records);
 		expect(result.lines.map((line) => line.type)).toStrictEqual(["user"]);
-		expect(result.sessionOwner).toStrictEqual({accountUuid: "acct-2", organizationUuid: "org-2"});
+		expect(result.sessionOwner).toStrictEqual(
+			{
+				accountUuid: "acct-2",
+				organizationUuid: "org-2",
+			},
+		);
 	});
 
-	it("builds uuidToLine mapping", () => {
+	it("builds uuidToLine mapping", () =>
+	{
 		const records = [
-			userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"}),
-			assistantRecord([{type: "text", text: "Hi"}], {uuid: "a-1"}),
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hello",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "Hi",
+					},
+				],
+				{
+					uuid: "a-1",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		expect(result.uuidToLine.get("u-1")).toBe(0);
 		expect(result.uuidToLine.get("a-1")).toBe(1);
 	});
 
-	it("pairs tool_use with tool_result and computes duration", () => {
+	it("pairs tool_use with tool_result and computes duration", () =>
+	{
 		const records = [
 			assistantRecord(
 				[
@@ -146,7 +277,10 @@ describe("processTranscript", () => {
 						type: "tool_use",
 						id: "tool-1",
 						name: "Bash",
-						input: {command: "ls"},
+						input:
+						{
+							command: "ls",
+						},
 					},
 				],
 				{
@@ -171,37 +305,90 @@ describe("processTranscript", () => {
 		const result = processTranscript(records);
 		expect(result.toolResultMap.size).toBe(1);
 		const toolResult = result.toolResultMap.get("tool-1");
-		expect(toolResult).toStrictEqual({
-			result: "file1.txt\nfile2.txt",
-			isError: false,
-			resultUuid: "u-1",
-			duration: 5000,
-		});
+		expect(toolResult).toStrictEqual(
+			{
+				result: "file1.txt\nfile2.txt",
+				isError: false,
+				resultUuid: "u-1",
+				duration: 5000,
+			},
+		);
 	});
 
-	it("carries the permission decision onto the tool result", () => {
+	it("carries the permission decision onto the tool result", () =>
+	{
 		const records = [
-			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),
-			userRecord([{type: "tool_result", tool_use_id: "tool-1", content: "ok"}], {
-				uuid: "u-1",
-				permissionDecision: {decision: "accept", source: "config", reasonType: "classifier"},
-			}),
+			assistantRecord(
+				[
+					{
+						type: "tool_use",
+						id: "tool-1",
+						name: "Bash",
+						input:
+						{
+							command: "ls",
+						},
+					},
+				],
+				{
+					uuid: "a-1",
+				},
+			),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "tool-1",
+						content: "ok",
+					},
+				],
+				{
+					uuid: "u-1",
+					permissionDecision:
+					{
+						decision: "accept",
+						source: "config",
+						reasonType: "classifier",
+					},
+				},
+			),
 		];
-		expect(processTranscript(records).toolResultMap.get("tool-1")).toStrictEqual({
-			result: "ok",
-			isError: false,
-			resultUuid: "u-1",
-			permission: {decision: "accept", source: "config", reasonType: "classifier"},
-		});
+		expect(processTranscript(records).toolResultMap.get("tool-1")).toStrictEqual(
+			{
+				result: "ok",
+				isError: false,
+				resultUuid: "u-1",
+				permission:
+				{
+					decision: "accept",
+					source: "config",
+					reasonType: "classifier",
+				},
+			},
+		);
 	});
 
-	it("carries upstream's output shape for saved, previewed and empty results, and full pretty JSON past the line cap", () => {
+	it("carries upstream's output shape for saved, previewed and empty results, and full pretty JSON past the line cap", () =>
+	{
 		const saved =
 			"Error: result (75,442 characters across 1,903 lines) exceeds maximum allowed tokens. Output has been saved to /x/tool-results/mcp-1.txt.\nFormat: Plain text";
 		const preview =
 			"<persisted-output>\nOutput too large (74.1KB). Full output saved to: /x/tool-results/a.txt\n\nPreview (first 2KB):\nline1\nline2\n...\n</persisted-output>";
-		const bigJson = JSON.stringify(Array.from({length: 300}, (_, i) => i));
-		const call = (id: string, name: string) => ({type: "tool_use", id, name, input: {}});
+		const bigJson = JSON.stringify(
+			Array.from(
+				{
+					length: 300,
+				},
+				(_, i) => i,
+			),
+		);
+		const call = (id: string, name: string) => (
+		{
+			type: "tool_use",
+			id,
+			name,
+			input: {},
+		});
 		const records = [
 			assistantRecord(
 				[
@@ -212,62 +399,134 @@ describe("processTranscript", () => {
 					call("t-json", "mcp__db__query"),
 					call("t-error", "mcp__gmail__search"),
 				],
-				{uuid: "a-1"},
+				{
+					uuid: "a-1",
+				},
 			),
-			userRecord([{type: "tool_result", tool_use_id: "t-saved", content: saved}], {
-				uuid: "u-1",
-				toolUseResult: saved,
-			}),
-			userRecord([{type: "tool_result", tool_use_id: "t-preview", content: preview}], {uuid: "u-2"}),
-			userRecord([{type: "tool_result", tool_use_id: "t-empty", content: "(Glob completed with no output)"}], {
-				uuid: "u-3",
-			}),
-			userRecord([{type: "tool_result", tool_use_id: "t-plain", content: "a.ts"}], {uuid: "u-4"}),
-			userRecord([{type: "tool_result", tool_use_id: "t-json", content: bigJson.replaceAll(",", ",\n")}], {
-				uuid: "u-5",
-			}),
-			userRecord([{type: "tool_result", tool_use_id: "t-error", content: saved, is_error: true}], {
-				uuid: "u-6",
-				toolUseResult: saved,
-			}),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "t-saved",
+						content: saved,
+					},
+				],
+				{
+					uuid: "u-1",
+					toolUseResult: saved,
+				},
+			),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "t-preview",
+						content: preview,
+					},
+				],
+				{
+					uuid: "u-2",
+				},
+			),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "t-empty",
+						content: "(Glob completed with no output)",
+					},
+				],
+				{
+					uuid: "u-3",
+				},
+			),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "t-plain",
+						content: "a.ts",
+					},
+				],
+				{
+					uuid: "u-4",
+				},
+			),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "t-json",
+						content: bigJson.replaceAll(",", ",\n"),
+					},
+				],
+				{
+					uuid: "u-5",
+				},
+			),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "t-error",
+						content: saved,
+						is_error: true,
+					},
+				],
+				{
+					uuid: "u-6",
+					toolUseResult: saved,
+				},
+			),
 		];
 		const map = processTranscript(records).toolResultMap;
 		const json = map.get("t-json");
-		expect({
-			saved: map.get("t-saved")?.outputShape,
-			preview: map.get("t-preview")?.outputShape,
-			empty: map.get("t-empty")?.outputShape,
-			plainKeys: Object.keys(map.get("t-plain") ?? {}),
-			jsonHead: json?.resultJson?.slice(0, 4),
-			jsonLines: json?.resultJson?.split("\n").length,
-			jsonResultTail: json?.result.split("\n").at(-1),
-			errorShape: map.get("t-error")?.outputShape,
-		}).toStrictEqual({
-			saved: {note: {kind: "saved", path: "/x/tool-results/mcp-1.txt"}, toldClaude: saved},
-			preview: {note: {kind: "preview", path: "/x/tool-results/a.txt"}, body: "line1\nline2"},
-			empty: {status: "empty"},
-			plainKeys: ["result", "isError", "resultUuid"],
-			jsonHead: "[\n  ",
-			jsonLines: 302,
-			jsonResultTail: "... (150 more lines)",
-			errorShape: undefined,
-		});
+		expect(
+			{
+				saved: map.get("t-saved")?.outputShape,
+				preview: map.get("t-preview")?.outputShape,
+				empty: map.get("t-empty")?.outputShape,
+				plainKeys: Object.keys(map.get("t-plain") ?? {}),
+				jsonHead: json?.resultJson?.slice(0, 4),
+				jsonLines: json?.resultJson?.split("\n").length,
+				jsonResultTail: json?.result.split("\n").at(-1),
+				errorShape: map.get("t-error")?.outputShape,
+			},
+		).toStrictEqual(
+			{
+				saved:
+				{
+					note:
+					{
+						kind: "saved",
+						path: "/x/tool-results/mcp-1.txt",
+					},
+					toldClaude: saved,
+				},
+				preview:
+				{
+					note:
+					{
+						kind: "preview",
+						path: "/x/tool-results/a.txt",
+					},
+					body: "line1\nline2",
+				},
+				empty:
+				{
+					status: "empty",
+				},
+				plainKeys: ["result", "isError", "resultUuid"],
+				jsonHead: "[\n  ",
+				jsonLines: 302,
+				jsonResultTail: "... (150 more lines)",
+				errorShape: undefined,
+			},
+		);
 	});
 
-	it("carries the sandboxed flag onto the tool result", () => {
-		const records = [
-			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),
-			userRecord([{type: "tool_result", tool_use_id: "tool-1", content: "ok"}], {uuid: "u-1", sandboxed: false}),
-		];
-		expect(processTranscript(records).toolResultMap.get("tool-1")).toStrictEqual({
-			result: "ok",
-			isError: false,
-			resultUuid: "u-1",
-			sandboxed: false,
-		});
-	});
-
-	it("marks error tool results", () => {
+	it("carries the sandboxed flag onto the tool result", () =>
+	{
 		const records = [
 			assistantRecord(
 				[
@@ -275,7 +534,53 @@ describe("processTranscript", () => {
 						type: "tool_use",
 						id: "tool-1",
 						name: "Bash",
-						input: {command: "fail"},
+						input:
+						{
+							command: "ls",
+						},
+					},
+				],
+				{
+					uuid: "a-1",
+				},
+			),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "tool-1",
+						content: "ok",
+					},
+				],
+				{
+					uuid: "u-1",
+					sandboxed: false,
+				},
+			),
+		];
+		expect(processTranscript(records).toolResultMap.get("tool-1")).toStrictEqual(
+			{
+				result: "ok",
+				isError: false,
+				resultUuid: "u-1",
+				sandboxed: false,
+			},
+		);
+	});
+
+	it("marks error tool results", () =>
+	{
+		const records = [
+			assistantRecord(
+				[
+					{
+						type: "tool_use",
+						id: "tool-1",
+						name: "Bash",
+						input:
+						{
+							command: "fail",
+						},
 					},
 				],
 				{
@@ -302,7 +607,8 @@ describe("processTranscript", () => {
 		expect(result.toolResultMap.get("tool-1")!.isError).toBe(true);
 	});
 
-	it("strips system-reminder tags from tool results", () => {
+	it("strips system-reminder tags from tool results", () =>
+	{
 		const records = [
 			assistantRecord(
 				[
@@ -310,7 +616,10 @@ describe("processTranscript", () => {
 						type: "tool_use",
 						id: "tool-1",
 						name: "Bash",
-						input: {command: "echo hi"},
+						input:
+						{
+							command: "echo hi",
+						},
 					},
 				],
 				{
@@ -326,15 +635,24 @@ describe("processTranscript", () => {
 						content: "output<system-reminder>hidden</system-reminder>",
 					},
 				],
-				{uuid: "u-1", timestamp: "1999-12-31T00:00:01Z"},
+				{
+					uuid: "u-1",
+					timestamp: "1999-12-31T00:00:01Z",
+				},
 			),
 		];
 		const result = processTranscript(records);
 		expect(result.toolResultMap.get("tool-1")!.result).toBe("output");
 	});
 
-	it("truncates long tool results", () => {
-		const longContent = Array.from({length: 200}, (_, i) => `line ${i}`).join("\n");
+	it("truncates long tool results", () =>
+	{
+		const longContent = Array.from(
+			{
+				length: 200,
+			},
+			(_, i) => `line ${i}`,
+		).join("\n");
 		const records = [
 			assistantRecord(
 				[
@@ -342,7 +660,10 @@ describe("processTranscript", () => {
 						type: "tool_use",
 						id: "tool-1",
 						name: "Bash",
-						input: {command: "cat big"},
+						input:
+						{
+							command: "cat big",
+						},
 					},
 				],
 				{
@@ -350,10 +671,19 @@ describe("processTranscript", () => {
 					timestamp: "1999-12-31T00:00:00Z",
 				},
 			),
-			userRecord([{type: "tool_result", tool_use_id: "tool-1", content: longContent}], {
-				uuid: "u-1",
-				timestamp: "1999-12-31T00:00:01Z",
-			}),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "tool-1",
+						content: longContent,
+					},
+				],
+				{
+					uuid: "u-1",
+					timestamp: "1999-12-31T00:00:01Z",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		const resultText = result.toolResultMap.get("tool-1")!.result;
@@ -362,7 +692,8 @@ describe("processTranscript", () => {
 		expect(resultLines[resultLines.length - 1]).toMatch(/\d+ more lines/);
 	});
 
-	it("handles tool_result with array content blocks", () => {
+	it("handles tool_result with array content blocks", () =>
+	{
 		const records = [
 			assistantRecord(
 				[
@@ -370,7 +701,10 @@ describe("processTranscript", () => {
 						type: "tool_use",
 						id: "tool-1",
 						name: "Read",
-						input: {file_path: "/tmp/f"},
+						input:
+						{
+							file_path: "/tmp/f",
+						},
 					},
 				],
 				{
@@ -384,41 +718,69 @@ describe("processTranscript", () => {
 						type: "tool_result",
 						tool_use_id: "tool-1",
 						content: [
-							{type: "text", text: "line1"},
-							{type: "text", text: "line2"},
+							{
+								type: "text",
+								text: "line1",
+							},
+							{
+								type: "text",
+								text: "line2",
+							},
 						],
 					},
 				],
-				{uuid: "u-1", timestamp: "1999-12-31T00:00:01Z"},
+				{
+					uuid: "u-1",
+					timestamp: "1999-12-31T00:00:01Z",
+				},
 			),
 		];
 		const result = processTranscript(records);
 		expect(result.toolResultMap.get("tool-1")!.result).toBe("line1\nline2");
 	});
 
-	it("includes agent-name lines", () => {
-		const records = [{type: "agent-name", agentName: "test-agent", sessionId: "s-1"}];
+	it("includes agent-name lines", () =>
+	{
+		const records = [
+			{
+				type: "agent-name",
+				agentName: "test-agent",
+				sessionId: "s-1",
+			},
+		];
 		const result = processTranscript(records);
 		expect(result.lines).toHaveLength(1);
-		expect(result.lines[0]).toStrictEqual({
-			type: "agent-name",
-			agentName: "test-agent",
-			lineIndex: 0,
-		});
+		expect(result.lines[0]).toStrictEqual(
+			{
+				type: "agent-name",
+				agentName: "test-agent",
+				lineIndex: 0,
+			},
+		);
 	});
 
-	it("includes agent-color lines", () => {
-		const records = [{type: "agent-color", agentColor: "#ff0000", sessionId: "s-1"}];
+	it("includes agent-color lines", () =>
+	{
+		const records = [
+			{
+				type: "agent-color",
+				agentColor: "#ff0000",
+				sessionId: "s-1",
+			},
+		];
 		const result = processTranscript(records);
 		expect(result.lines).toHaveLength(1);
-		expect(result.lines[0]).toStrictEqual({
-			type: "agent-color",
-			agentColor: "#ff0000",
-			lineIndex: 0,
-		});
+		expect(result.lines[0]).toStrictEqual(
+			{
+				type: "agent-color",
+				agentColor: "#ff0000",
+				lineIndex: 0,
+			},
+		);
 	});
 
-	it("includes permission-mode lines", () => {
+	it("includes permission-mode lines", () =>
+	{
 		const records = [
 			{
 				type: "permission-mode",
@@ -428,14 +790,17 @@ describe("processTranscript", () => {
 		];
 		const result = processTranscript(records);
 		expect(result.lines).toHaveLength(1);
-		expect(result.lines[0]).toStrictEqual({
-			type: "permission-mode",
-			permissionMode: "auto-accept",
-			lineIndex: 0,
-		});
+		expect(result.lines[0]).toStrictEqual(
+			{
+				type: "permission-mode",
+				permissionMode: "auto-accept",
+				lineIndex: 0,
+			},
+		);
 	});
 
-	it("skips pr-link records, which the index surfaces instead of the transcript", () => {
+	it("skips pr-link records, which the index surfaces instead of the transcript", () =>
+	{
 		const records = [
 			{
 				type: "pr-link",
@@ -450,39 +815,59 @@ describe("processTranscript", () => {
 		expect(result.lines).toStrictEqual([]);
 	});
 
-	it("includes attachment lines", () => {
+	it("includes attachment lines", () =>
+	{
 		const records = [
 			{
 				type: "attachment",
 				uuid: "att-1",
 				timestamp: "1999-12-31T00:00:00Z",
-				attachment: {type: "plan_mode", planFilePath: "/tmp/plan.md"},
+				attachment:
+				{
+					type: "plan_mode",
+					planFilePath: "/tmp/plan.md",
+				},
 			},
 		];
 		const result = processTranscript(records);
 		expect(result.lines).toHaveLength(1);
 		const line = result.lines[0]!;
 		expect(line.type).toBe("attachment");
-		if (line.type === "attachment") {
-			expect(JSON.parse(line.attachmentJson)).toStrictEqual({
-				type: "plan_mode",
-				planFilePath: "/tmp/plan.md",
-			});
+		if (line.type === "attachment")
+		{
+			expect(JSON.parse(line.attachmentJson)).toStrictEqual(
+				{
+					type: "plan_mode",
+					planFilePath: "/tmp/plan.md",
+				},
+			);
 			expect(line.uuid).toBe("att-1");
 			expect(line.timestamp).toBe("1999-12-31T00:00:00Z");
 		}
 	});
 
-	it("carries rendered attachment context onto attachment lines", () => {
+	it("carries rendered attachment context onto attachment lines", () =>
+	{
 		const records = [
 			{
 				type: "attachment",
 				uuid: "att-2",
 				timestamp: "1999-12-31T00:00:00Z",
 				sessionId: "s-1",
-				attachment: {type: "silent_turn_reminder"},
-				rendered: [{content: "<system-reminder>quiet</system-reminder>"}],
-				renderedInHumanTurn: [{content: "quiet"}],
+				attachment:
+				{
+					type: "silent_turn_reminder",
+				},
+				rendered: [
+					{
+						content: "<system-reminder>quiet</system-reminder>",
+					},
+				],
+				renderedInHumanTurn: [
+					{
+						content: "quiet",
+					},
+				],
 				renderedRole: "user",
 			},
 		];
@@ -490,7 +875,11 @@ describe("processTranscript", () => {
 		expect(result.lines).toStrictEqual([
 			{
 				type: "attachment",
-				attachmentJson: JSON.stringify({type: "silent_turn_reminder"}),
+				attachmentJson: JSON.stringify(
+					{
+						type: "silent_turn_reminder",
+					},
+				),
 				rendered: ["<system-reminder>quiet</system-reminder>"],
 				renderedInHumanTurn: ["quiet"],
 				renderedRole: "user",
@@ -502,82 +891,140 @@ describe("processTranscript", () => {
 		]);
 	});
 
-	describe("sameAs-surfaced deferred tool definitions", () => {
+	describe("sameAs-surfaced deferred tool definitions", () =>
+	{
 		const firstUuid = "398d17b2-379f-4a8c-9d42-6180faf07536";
-		const first = {
+		const first =
+		{
 			type: "attachment",
 			uuid: firstUuid,
-			attachment: {
+			attachment:
+			{
 				type: "deferred_tools_delta",
 				surfacedDefinitions: [
 					{
 						name: "mcp__docs__guide",
 						listing: "aaa",
-						definition: {name: "mcp__docs__guide", description: "Docs guides.\nMore detail."},
+						definition:
+						{
+							name: "mcp__docs__guide",
+							description: "Docs guides.\nMore detail.",
+						},
 					},
-					{name: "mcp__docs__batch", listing: "bbb", definition: {name: "mcp__docs__batch"}},
+					{
+						name: "mcp__docs__batch",
+						listing: "bbb",
+						definition:
+						{
+							name: "mcp__docs__batch",
+						},
+					},
 				],
 			},
 		};
-		const second = {
+		const second =
+		{
 			type: "attachment",
 			uuid: "att-2",
-			attachment: {
+			attachment:
+			{
 				type: "deferred_tools_delta",
 				surfacedDefinitions: [
-					{name: "mcp__docs__guide", listing: "aaa", sameAs: firstUuid},
-					{name: "mcp__docs__batch", listing: "bbb", sameAs: firstUuid},
+					{
+						name: "mcp__docs__guide",
+						listing: "aaa",
+						sameAs: firstUuid,
+					},
+					{
+						name: "mcp__docs__batch",
+						listing: "bbb",
+						sameAs: firstUuid,
+					},
 				],
 			},
 		};
-		const third = {
+		const third =
+		{
 			type: "attachment",
 			uuid: "att-3",
-			attachment: {
+			attachment:
+			{
 				type: "deferred_tools_delta",
-				surfacedDefinitions: [{name: "mcp__docs__guide", listing: "aaa", sameAs: "att-2"}],
+				surfacedDefinitions: [
+					{
+						name: "mcp__docs__guide",
+						listing: "aaa",
+						sameAs: "att-2",
+					},
+				],
 			},
 		};
 
-		it("resolves sameAs references, including chained ones, to the earlier definition's description", () => {
+		it("resolves sameAs references, including chained ones, to the earlier definition's description", () =>
+		{
 			expect(processTranscript([first, second, third]).lines).toStrictEqual([
-				{type: "attachment", attachmentJson: JSON.stringify(first.attachment), uuid: firstUuid, lineIndex: 0},
+				{
+					type: "attachment",
+					attachmentJson: JSON.stringify(first.attachment),
+					uuid: firstUuid,
+					lineIndex: 0,
+				},
 				{
 					type: "attachment",
 					attachmentJson: JSON.stringify(second.attachment),
-					sameAsDescriptions: {mcp__docs__guide: "Docs guides.\nMore detail."},
+					sameAsDescriptions:
+					{
+						mcp__docs__guide: "Docs guides.\nMore detail.",
+					},
 					uuid: "att-2",
 					lineIndex: 1,
 				},
 				{
 					type: "attachment",
 					attachmentJson: JSON.stringify(third.attachment),
-					sameAsDescriptions: {mcp__docs__guide: "Docs guides.\nMore detail."},
+					sameAsDescriptions:
+					{
+						mcp__docs__guide: "Docs guides.\nMore detail.",
+					},
 					uuid: "att-3",
 					lineIndex: 2,
 				},
 			]);
 		});
 
-		it("leaves sameAs references to unseen records unresolved", () => {
+		it("leaves sameAs references to unseen records unresolved", () =>
+		{
 			expect(processTranscript([second]).lines).toStrictEqual([
-				{type: "attachment", attachmentJson: JSON.stringify(second.attachment), uuid: "att-2", lineIndex: 0},
+				{
+					type: "attachment",
+					attachmentJson: JSON.stringify(second.attachment),
+					uuid: "att-2",
+					lineIndex: 0,
+				},
 			]);
 		});
 	});
 
-	describe("priority-aware queue replay", () => {
-		const queueOp = (operation: string, timestamp: string, content?: string) => ({
+	describe("priority-aware queue replay", () =>
+	{
+		const queueOp = (operation: string, timestamp: string, content?: string) => (
+		{
 			type: "queue-operation",
 			operation,
 			timestamp,
 			sessionId: "s-1",
-			...(content === undefined ? {} : {content}),
+			...(content === undefined
+				? {}
+				:
+					{
+						content,
+					}),
 		});
 		const notificationA = "<task-notification>A</task-notification>";
 		const notificationB = "<task-notification>B</task-notification>";
 
-		it("dequeues a waiting prompt before an earlier task notification", () => {
+		it("dequeues a waiting prompt before an earlier task notification", () =>
+		{
 			const records = [
 				queueOp("enqueue", "1999-12-31T00:00:01Z", notificationA),
 				queueOp("enqueue", "1999-12-31T00:00:02Z", "hi"),
@@ -593,7 +1040,8 @@ describe("processTranscript", () => {
 			]);
 		});
 
-		it("dequeues task notifications of equal priority in order", () => {
+		it("dequeues task notifications of equal priority in order", () =>
+		{
 			const records = [
 				queueOp("enqueue", "1999-12-31T00:00:01Z", notificationA),
 				queueOp("enqueue", "1999-12-31T00:00:02Z", notificationB),
@@ -611,8 +1059,10 @@ describe("processTranscript", () => {
 		});
 	});
 
-	describe("queued commands absorbed mid-turn", () => {
-		const absorbedRemove = {
+	describe("queued commands absorbed mid-turn", () =>
+	{
+		const absorbedRemove =
+		{
 			type: "queue-operation",
 			operation: "remove",
 			timestamp: "1999-12-31T00:00:01Z",
@@ -621,18 +1071,21 @@ describe("processTranscript", () => {
 			reason: "absorbed_mid_turn",
 			commandUuid: "cmd-1",
 		};
-		const queuedAttachment = {
+		const queuedAttachment =
+		{
 			type: "attachment",
 			uuid: "att-q",
 			timestamp: "1999-12-31T00:00:02Z",
 			sessionId: "s-1",
-			attachment: {
+			attachment:
+			{
 				type: "queued_command",
 				prompt: "also check the tests",
 				source_uuid: "cmd-1",
 			},
 		};
-		const expectedLine = (lineIndex: number) => ({
+		const expectedLine = (lineIndex: number) => (
+		{
 			type: "attachment",
 			attachmentJson: JSON.stringify(queuedAttachment.attachment),
 			absorbedMidTurn: true,
@@ -642,18 +1095,27 @@ describe("processTranscript", () => {
 			lineIndex,
 		});
 
-		it("marks the queued command an earlier absorbed removal points at", () => {
+		it("marks the queued command an earlier absorbed removal points at", () =>
+		{
 			expect(processTranscript([absorbedRemove, queuedAttachment]).lines).toStrictEqual([expectedLine(1)]);
 		});
 
-		it("marks the queued command when the absorbed removal is written after it", () => {
+		it("marks the queued command when the absorbed removal is written after it", () =>
+		{
 			expect(processTranscript([queuedAttachment, absorbedRemove]).lines).toStrictEqual([expectedLine(0)]);
 		});
 
-		it("leaves queued commands unmarked for other removals or other commands", () => {
+		it("leaves queued commands unmarked for other removals or other commands", () =>
+		{
 			const records = [
-				{...absorbedRemove, reason: "cancelled"},
-				{...absorbedRemove, commandUuid: "cmd-other"},
+				{
+					...absorbedRemove,
+					reason: "cancelled",
+				},
+				{
+					...absorbedRemove,
+					commandUuid: "cmd-other",
+				},
 				queuedAttachment,
 			];
 			expect(processTranscript(records).lines).toStrictEqual([
@@ -668,40 +1130,66 @@ describe("processTranscript", () => {
 			]);
 		});
 
-		describe("paired by delivery id when the command uuid is absent", () => {
+		describe("paired by delivery id when the command uuid is absent", () =>
+		{
 			const {commandUuid: _removedCommandUuid, ...removeWithoutCommandUuid} = absorbedRemove;
-			const deliveredRemove = {...removeWithoutCommandUuid, deliveryId: "dlv-1"};
-			const deliveredAttachment = {
-				...queuedAttachment,
-				attachment: {type: "queued_command", prompt: "also check the tests", delivery_id: "dlv-1"},
+			const deliveredRemove =
+			{
+				...removeWithoutCommandUuid,
+				deliveryId: "dlv-1",
 			};
-			const expectedDeliveredLine = (lineIndex: number) => ({
+			const deliveredAttachment =
+			{
+				...queuedAttachment,
+				attachment:
+				{
+					type: "queued_command",
+					prompt: "also check the tests",
+					delivery_id: "dlv-1",
+				},
+			};
+			const expectedDeliveredLine = (lineIndex: number) => (
+			{
 				...expectedLine(lineIndex),
 				attachmentJson: JSON.stringify(deliveredAttachment.attachment),
 			});
 
-			it("marks the queued command an earlier absorbed removal delivered", () => {
+			it("marks the queued command an earlier absorbed removal delivered", () =>
+			{
 				expect(processTranscript([deliveredRemove, deliveredAttachment]).lines).toStrictEqual([
 					expectedDeliveredLine(1),
 				]);
 			});
 
-			it("marks the queued command when the absorbed removal is written after it", () => {
+			it("marks the queued command when the absorbed removal is written after it", () =>
+			{
 				expect(processTranscript([deliveredAttachment, deliveredRemove]).lines).toStrictEqual([
 					expectedDeliveredLine(0),
 				]);
 			});
 
-			it("marks the queued command when only one side carries a command uuid", () => {
-				const remove = {...absorbedRemove, deliveryId: "dlv-1"};
+			it("marks the queued command when only one side carries a command uuid", () =>
+			{
+				const remove =
+				{
+					...absorbedRemove,
+					deliveryId: "dlv-1",
+				};
 				expect(processTranscript([remove, deliveredAttachment]).lines).toStrictEqual([
 					expectedDeliveredLine(1),
 				]);
 			});
 
-			it("leaves the queued command unmarked for a different delivery", () => {
+			it("leaves the queued command unmarked for a different delivery", () =>
+			{
 				expect(
-					processTranscript([{...deliveredRemove, deliveryId: "dlv-other"}, deliveredAttachment]).lines,
+					processTranscript([
+						{
+							...deliveredRemove,
+							deliveryId: "dlv-other",
+						},
+						deliveredAttachment,
+					]).lines,
 				).toStrictEqual([
 					{
 						type: "attachment",
@@ -716,75 +1204,145 @@ describe("processTranscript", () => {
 		});
 	});
 
-	it("preserves parentUuid on message lines", () => {
+	it("preserves parentUuid on message lines", () =>
+	{
 		const records = [
-			assistantRecord([{type: "text", text: "response"}], {
-				uuid: "a-1",
-				parentUuid: "u-0",
-			}),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "response",
+					},
+				],
+				{
+					uuid: "a-1",
+					parentUuid: "u-0",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		const line = result.lines[0]!;
-		if (line.type === "assistant") {
+		if (line.type === "assistant")
+		{
 			expect(line.parentUuid).toBe("u-0");
 		}
 	});
 
-	it("preserves userType on message lines", () => {
+	it("preserves userType on message lines", () =>
+	{
 		const records = [
-			userRecord([{type: "text", text: "automated prompt"}], {
-				uuid: "u-1",
-				userType: "external",
-			}),
-			assistantRecord([{type: "text", text: "response"}], {uuid: "a-1"}),
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "automated prompt",
+					},
+				],
+				{
+					uuid: "u-1",
+					userType: "external",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "response",
+					},
+				],
+				{
+					uuid: "a-1",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		const userLine = result.lines[0]!;
 		expect(userLine.type).toBe("user");
-		if (userLine.type === "user") {
+		if (userLine.type === "user")
+		{
 			expect(userLine.userType).toBe("external");
 		}
 		const assistantLine = result.lines[1]!;
 		expect(assistantLine.type).toBe("assistant");
-		if (assistantLine.type === "assistant") {
+		if (assistantLine.type === "assistant")
+		{
 			expect(assistantLine.userType).toBeUndefined();
 		}
 	});
 
-	it("omits userType when not present on record", () => {
-		const records = [userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"})];
+	it("omits userType when not present on record", () =>
+	{
+		const records = [
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hello",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
+		];
 		const result = processTranscript(records);
 		const line = result.lines[0]!;
-		if (line.type === "user") {
+		if (line.type === "user")
+		{
 			expect(line.userType).toBeUndefined();
 		}
 	});
 
-	it("preserves isMeta on user message lines when true", () => {
+	it("preserves isMeta on user message lines when true", () =>
+	{
 		const records = [
-			userRecord([{type: "text", text: "Stop hook feedback: ..."}], {
-				uuid: "u-1",
-				isMeta: true,
-			}),
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Stop hook feedback: ...",
+					},
+				],
+				{
+					uuid: "u-1",
+					isMeta: true,
+				},
+			),
 		];
 		const result = processTranscript(records);
 		const line = result.lines[0]!;
 		expect(line.type).toBe("user");
-		if (line.type === "user") {
+		if (line.type === "user")
+		{
 			expect(line.isMeta).toBe(true);
 		}
 	});
 
-	it("omits isMeta when not present on record", () => {
-		const records = [userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"})];
+	it("omits isMeta when not present on record", () =>
+	{
+		const records = [
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hello",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
+		];
 		const result = processTranscript(records);
 		const line = result.lines[0]!;
-		if (line.type === "user") {
+		if (line.type === "user")
+		{
 			expect(line.isMeta).toBeUndefined();
 		}
 	});
 
-	it("preserves isCompactSummary on user message lines when true", () => {
+	it("preserves isCompactSummary on user message lines when true", () =>
+	{
 		const records = [
 			userRecord(
 				[
@@ -802,74 +1360,155 @@ describe("processTranscript", () => {
 		const result = processTranscript(records);
 		const line = result.lines[0]!;
 		expect(line.type).toBe("user");
-		if (line.type === "user") {
+		if (line.type === "user")
+		{
 			expect(line.isCompactSummary).toBe(true);
 		}
 	});
 
-	it("omits isCompactSummary when not present on record", () => {
-		const records = [userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"})];
+	it("omits isCompactSummary when not present on record", () =>
+	{
+		const records = [
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hello",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
+		];
 		const result = processTranscript(records);
 		const line = result.lines[0]!;
-		if (line.type === "user") {
+		if (line.type === "user")
+		{
 			expect(line.isCompactSummary).toBeUndefined();
 		}
 	});
 
-	it("preserves isVisibleInTranscriptOnly on user message lines when true", () => {
+	it("preserves isVisibleInTranscriptOnly on user message lines when true", () =>
+	{
 		const records = [
-			userRecord([{type: "text", text: "Hidden message"}], {
-				uuid: "u-1",
-				isVisibleInTranscriptOnly: true,
-			}),
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hidden message",
+					},
+				],
+				{
+					uuid: "u-1",
+					isVisibleInTranscriptOnly: true,
+				},
+			),
 		];
 		const result = processTranscript(records);
 		const line = result.lines[0]!;
 		expect(line.type).toBe("user");
-		if (line.type === "user") {
+		if (line.type === "user")
+		{
 			expect(line.isVisibleInTranscriptOnly).toBe(true);
 		}
 	});
 
-	it("omits isVisibleInTranscriptOnly when not present on record", () => {
-		const records = [userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"})];
+	it("omits isVisibleInTranscriptOnly when not present on record", () =>
+	{
+		const records = [
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hello",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
+		];
 		const result = processTranscript(records);
 		const line = result.lines[0]!;
-		if (line.type === "user") {
+		if (line.type === "user")
+		{
 			expect(line.isVisibleInTranscriptOnly).toBeUndefined();
 		}
 	});
 
-	it("handles user records with string content", () => {
-		const records = [userRecord("simple text", {uuid: "u-1"})];
+	it("handles user records with string content", () =>
+	{
+		const records = [
+			userRecord(
+				"simple text",
+				{
+					uuid: "u-1",
+				},
+			),
+		];
 		const result = processTranscript(records);
 		expect(result.lines).toHaveLength(1);
 		expect(result.title).toBe("simple text");
 	});
 
-	it("surfaces malformed records without dropping the records around them", () => {
-		const records = [{type: "unknown-type-42"}, userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"})];
+	it("surfaces malformed records without dropping the records around them", () =>
+	{
+		const records = [
+			{
+				type: "unknown-type-42",
+			},
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hello",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
+		];
 		const result = processTranscript(records);
 		expect(result.lines.map((line) => line.type)).toStrictEqual(["unparsed", "user"]);
 	});
 
-	it("parses subagent records that contain agentId field", () => {
+	it("parses subagent records that contain agentId field", () =>
+	{
 		const records = [
-			userRecord([{type: "text", text: "subagent prompt"}], {
-				uuid: "u-1",
-				agentId: "agent-abc123",
-			}),
-			assistantRecord([{type: "text", text: "subagent response"}], {
-				uuid: "a-1",
-				agentId: "agent-abc123",
-			}),
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "subagent prompt",
+					},
+				],
+				{
+					uuid: "u-1",
+					agentId: "agent-abc123",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "subagent response",
+					},
+				],
+				{
+					uuid: "a-1",
+					agentId: "agent-abc123",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		expect(result.lines).toHaveLength(2);
 		expect(result.title).toBe("subagent prompt");
 	});
 
-	it("parses tool_use blocks with unknown tool names", () => {
+	it("parses tool_use blocks with unknown tool names", () =>
+	{
 		const records = [
 			assistantRecord(
 				[
@@ -877,7 +1516,10 @@ describe("processTranscript", () => {
 						type: "tool_use",
 						id: "tool-1",
 						name: "bash",
-						input: {command: "ls"},
+						input:
+						{
+							command: "ls",
+						},
 					},
 				],
 				{
@@ -885,17 +1527,27 @@ describe("processTranscript", () => {
 					timestamp: "1999-12-31T00:00:00Z",
 				},
 			),
-			userRecord([{type: "tool_result", tool_use_id: "tool-1", content: "output"}], {
-				uuid: "u-1",
-				timestamp: "1999-12-31T00:00:01Z",
-			}),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "tool-1",
+						content: "output",
+					},
+				],
+				{
+					uuid: "u-1",
+					timestamp: "1999-12-31T00:00:01Z",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		expect(result.lines).toHaveLength(2);
 		expect(result.toolResultMap.size).toBe(1);
 	});
 
-	it("deduplicates consecutive identical slash command messages", () => {
+	it("deduplicates consecutive identical slash command messages", () =>
+	{
 		const commandContent =
 			"<command-name>/chrome</command-name>\n<command-message>chrome</command-message>\n<command-args></command-args>";
 		const caveatContent =
@@ -903,10 +1555,20 @@ describe("processTranscript", () => {
 		const stdoutContent = "<local-command-stdout>(no content)</local-command-stdout>";
 		const records = [
 			userRecord(caveatContent),
-			userRecord(commandContent, {uuid: "cmd-1"}),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-1",
+				},
+			),
 			userRecord(stdoutContent),
 			userRecord(caveatContent),
-			userRecord(commandContent, {uuid: "cmd-2"}),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-2",
+				},
+			),
 			userRecord(stdoutContent),
 		];
 		const result = processTranscript(records);
@@ -921,16 +1583,45 @@ describe("processTranscript", () => {
 		expect(commandLines).toHaveLength(1);
 	});
 
-	it("keeps non-consecutive identical slash commands", () => {
+	it("keeps non-consecutive identical slash commands", () =>
+	{
 		const commandContent =
 			"<command-name>/chrome</command-name>\n<command-message>chrome</command-message>\n<command-args></command-args>";
 		const records = [
-			userRecord(commandContent, {uuid: "cmd-1"}),
-			userRecord([{type: "text", text: "regular user message"}], {
-				uuid: "u-1",
-			}),
-			assistantRecord([{type: "text", text: "response"}], {uuid: "a-1"}),
-			userRecord(commandContent, {uuid: "cmd-2"}),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-1",
+				},
+			),
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "regular user message",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "response",
+					},
+				],
+				{
+					uuid: "a-1",
+				},
+			),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-2",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		const commandLines = result.lines.filter(
@@ -943,12 +1634,26 @@ describe("processTranscript", () => {
 		expect(commandLines).toHaveLength(2);
 	});
 
-	it("keeps consecutive different slash commands", () => {
+	it("keeps consecutive different slash commands", () =>
+	{
 		const chromeCommand =
 			"<command-name>/chrome</command-name>\n<command-message>chrome</command-message>\n<command-args></command-args>";
 		const compactCommand =
 			"<command-name>/compact</command-name>\n<command-message>compact</command-message>\n<command-args></command-args>";
-		const records = [userRecord(chromeCommand, {uuid: "cmd-1"}), userRecord(compactCommand, {uuid: "cmd-2"})];
+		const records = [
+			userRecord(
+				chromeCommand,
+				{
+					uuid: "cmd-1",
+				},
+			),
+			userRecord(
+				compactCommand,
+				{
+					uuid: "cmd-2",
+				},
+			),
+		];
 		const result = processTranscript(records);
 		const commandLines = result.lines.filter(
 			(l) =>
@@ -960,7 +1665,8 @@ describe("processTranscript", () => {
 		expect(commandLines).toHaveLength(2);
 	});
 
-	it("deduplicates command groups separated by a blank assistant message", () => {
+	it("deduplicates command groups separated by a blank assistant message", () =>
+	{
 		const commandContent =
 			"<command-name>/chrome</command-name>\n<command-message>chrome</command-message>\n<command-args></command-args>";
 		const caveatContent =
@@ -968,11 +1674,26 @@ describe("processTranscript", () => {
 		const stdoutContent = "<local-command-stdout>(no content)</local-command-stdout>";
 		const records = [
 			userRecord(caveatContent),
-			userRecord(commandContent, {uuid: "cmd-1"}),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-1",
+				},
+			),
 			userRecord(stdoutContent),
-			assistantRecord([], {uuid: "a-blank"}),
+			assistantRecord(
+				[],
+				{
+					uuid: "a-blank",
+				},
+			),
 			userRecord(caveatContent),
-			userRecord(commandContent, {uuid: "cmd-2"}),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-2",
+				},
+			),
 			userRecord(stdoutContent),
 		];
 		const result = processTranscript(records);
@@ -989,13 +1710,29 @@ describe("processTranscript", () => {
 		expect(assistantLines).toHaveLength(0);
 	});
 
-	it("deduplicates command groups separated by an empty-string assistant message", () => {
+	it("deduplicates command groups separated by an empty-string assistant message", () =>
+	{
 		const commandContent =
 			"<command-name>/chrome</command-name>\n<command-message>chrome</command-message>\n<command-args></command-args>";
 		const records = [
-			userRecord(commandContent, {uuid: "cmd-1"}),
-			assistantRecord("", {uuid: "a-blank"}),
-			userRecord(commandContent, {uuid: "cmd-2"}),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-1",
+				},
+			),
+			assistantRecord(
+				"",
+				{
+					uuid: "a-blank",
+				},
+			),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-2",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		const commandLines = result.lines.filter(
@@ -1008,15 +1745,34 @@ describe("processTranscript", () => {
 		expect(commandLines).toHaveLength(1);
 	});
 
-	it("keeps commands separated by a non-blank assistant message", () => {
+	it("keeps commands separated by a non-blank assistant message", () =>
+	{
 		const commandContent =
 			"<command-name>/chrome</command-name>\n<command-message>chrome</command-message>\n<command-args></command-args>";
 		const records = [
-			userRecord(commandContent, {uuid: "cmd-1"}),
-			assistantRecord([{type: "text", text: "Connecting to Chrome..."}], {
-				uuid: "a-1",
-			}),
-			userRecord(commandContent, {uuid: "cmd-2"}),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-1",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "Connecting to Chrome...",
+					},
+				],
+				{
+					uuid: "a-1",
+				},
+			),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-2",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		const commandLines = result.lines.filter(
@@ -1029,7 +1785,8 @@ describe("processTranscript", () => {
 		expect(commandLines).toHaveLength(2);
 	});
 
-	it("deduplicates command group including caveat and stdout lines", () => {
+	it("deduplicates command group including caveat and stdout lines", () =>
+	{
 		const commandContent =
 			"<command-name>/chrome</command-name>\n<command-message>chrome</command-message>\n<command-args></command-args>";
 		const caveatContent =
@@ -1037,12 +1794,32 @@ describe("processTranscript", () => {
 		const stdoutContent = "<local-command-stdout>(no content)</local-command-stdout>";
 		const records = [
 			userRecord(caveatContent),
-			userRecord(commandContent, {uuid: "cmd-1"}),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-1",
+				},
+			),
 			userRecord(stdoutContent),
 			userRecord(caveatContent),
-			userRecord(commandContent, {uuid: "cmd-2"}),
+			userRecord(
+				commandContent,
+				{
+					uuid: "cmd-2",
+				},
+			),
 			userRecord(stdoutContent),
-			userRecord([{type: "text", text: "is it connected?"}], {uuid: "u-1"}),
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "is it connected?",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
 		];
 		const result = processTranscript(records);
 		// Should have: caveat + command + stdout + "is it connected?" = 4 lines
@@ -1056,20 +1833,36 @@ describe("processTranscript", () => {
 // processNewRecords
 // ---------------------------------------------------------------------------
 
-describe("processNewRecords", () => {
-	it("returns empty results for empty input", () => {
+describe("processNewRecords", () =>
+{
+	it("returns empty results for empty input", () =>
+	{
 		const result = processNewRecords([], 0);
 		expect(result.newSessionLines).toStrictEqual([]);
 		expect(result.newToolResults.size).toBe(0);
 	});
 
-	it("applies startIndex offset to lineIndex", () => {
-		const records = [userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"})];
+	it("applies startIndex offset to lineIndex", () =>
+	{
+		const records = [
+			userRecord(
+				[
+					{
+						type: "text",
+						text: "Hello",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
+		];
 		const result = processNewRecords(records, 5);
 		expect(result.newSessionLines[0]!.lineIndex).toBe(5);
 	});
 
-	it("pairs tool_use with tool_result in incremental batch", () => {
+	it("pairs tool_use with tool_result in incremental batch", () =>
+	{
 		const records = [
 			assistantRecord(
 				[
@@ -1077,7 +1870,10 @@ describe("processNewRecords", () => {
 						type: "tool_use",
 						id: "tool-1",
 						name: "Bash",
-						input: {command: "ls"},
+						input:
+						{
+							command: "ls",
+						},
 					},
 				],
 				{
@@ -1085,20 +1881,36 @@ describe("processNewRecords", () => {
 					timestamp: "1999-12-31T00:00:00.000Z",
 				},
 			),
-			userRecord([{type: "tool_result", tool_use_id: "tool-1", content: "output"}], {
-				uuid: "u-1",
-				timestamp: "1999-12-31T00:00:03.000Z",
-			}),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "tool-1",
+						content: "output",
+					},
+				],
+				{
+					uuid: "u-1",
+					timestamp: "1999-12-31T00:00:03.000Z",
+				},
+			),
 		];
 		const result = processNewRecords(records, 10);
 		expect(result.newToolResults.size).toBe(1);
 		expect(result.newToolResults.get("tool-1")!.duration).toBe(3000);
 	});
 
-	it("filters non-rendering record types", () => {
+	it("filters non-rendering record types", () =>
+	{
 		const records = [
-			{type: "system", uuid: "sys-1"},
-			{type: "progress", uuid: "prog-1"},
+			{
+				type: "system",
+				uuid: "sys-1",
+			},
+			{
+				type: "progress",
+				uuid: "prog-1",
+			},
 		];
 		const result = processNewRecords(records, 0);
 		expect(result.newSessionLines).toStrictEqual([]);
@@ -1109,143 +1921,283 @@ describe("processNewRecords", () => {
 // Shared helpers (moved from session-utils.ts)
 // ---------------------------------------------------------------------------
 
-describe("extractToolResultContent", () => {
-	it("returns string content directly", () => {
+describe("extractToolResultContent", () =>
+{
+	it("returns string content directly", () =>
+	{
 		expect(extractToolResultContent("hello")).toBe("hello");
 	});
 
-	it("concatenates text blocks from array content", () => {
+	it("concatenates text blocks from array content", () =>
+	{
 		const content = [
-			{type: "text", text: "a"},
-			{type: "text", text: "b"},
+			{
+				type: "text",
+				text: "a",
+			},
+			{
+				type: "text",
+				text: "b",
+			},
 		];
 		expect(extractToolResultContent(content)).toBe("a\nb");
 	});
 
-	it("returns undefined for non-text array", () => {
-		expect(extractToolResultContent([{type: "image"}])).toBeUndefined();
+	it("returns undefined for non-text array", () =>
+	{
+		expect(
+			extractToolResultContent([
+				{
+					type: "image",
+				},
+			]),
+		).toBeUndefined();
 	});
 
-	it("returns undefined for undefined", () => {
+	it("returns undefined for undefined", () =>
+	{
 		expect(extractToolResultContent(undefined)).toBeUndefined();
 	});
 });
 
-describe("extractToolResultImages", () => {
-	const image = (mediaType: string, data: string, sourceType = "base64") => ({
+describe("extractToolResultImages", () =>
+{
+	const image = (mediaType: string, data: string, sourceType = "base64") => (
+	{
 		type: "image",
-		source: {type: sourceType, media_type: mediaType, data},
+		source:
+		{
+			type: sourceType,
+			media_type: mediaType,
+			data,
+		},
 	});
 
-	it("keeps a Read result's base64 image", () => {
+	it("keeps a Read result's base64 image", () =>
+	{
 		expect(extractToolResultImages([image("image/png", "AAA")])).toStrictEqual([
-			{mimeType: "image/png", data: "AAA"},
+			{
+				mimeType: "image/png",
+				data: "AAA",
+			},
 		]);
 	});
 
-	it("keeps images in order alongside text", () => {
+	it("keeps images in order alongside text", () =>
+	{
 		const content = [
-			{type: "text", text: "Successfully captured screenshot"},
+			{
+				type: "text",
+				text: "Successfully captured screenshot",
+			},
 			image("image/jpeg", "J1"),
-			{type: "text", text: "between"},
+			{
+				type: "text",
+				text: "between",
+			},
 			image("image/webp", "W2"),
 		];
 		expect(extractToolResultImages(content)).toStrictEqual([
-			{mimeType: "image/jpeg", data: "J1"},
-			{mimeType: "image/webp", data: "W2"},
+			{
+				mimeType: "image/jpeg",
+				data: "J1",
+			},
+			{
+				mimeType: "image/webp",
+				data: "W2",
+			},
 		]);
 	});
 
-	it("keeps gif and drops svg and non-base64 sources", () => {
+	it("keeps gif and drops svg and non-base64 sources", () =>
+	{
 		const content = [
 			image("image/svg+xml", "SVG"),
 			image("image/png", "https://example.com/a.png", "url"),
 			image("image/gif", "G"),
-			{type: "image"},
+			{
+				type: "image",
+			},
 		];
-		expect(extractToolResultImages(content)).toStrictEqual([{mimeType: "image/gif", data: "G"}]);
+		expect(extractToolResultImages(content)).toStrictEqual([
+			{
+				mimeType: "image/gif",
+				data: "G",
+			},
+		]);
 	});
 
-	it("returns no images for string or missing content", () => {
+	it("returns no images for string or missing content", () =>
+	{
 		expect(extractToolResultImages("hello")).toStrictEqual([]);
 		expect(extractToolResultImages(undefined)).toStrictEqual([]);
 	});
 });
 
-describe("tool-result images", () => {
+describe("tool-result images", () =>
+{
 	const records = [
-		assistantRecord([{type: "tool_use", id: "tool-1", name: "Read", input: {file_path: "/tmp/input-debug.png"}}], {
-			uuid: "a-1",
-		}),
+		assistantRecord(
+			[
+				{
+					type: "tool_use",
+					id: "tool-1",
+					name: "Read",
+					input:
+					{
+						file_path: "/tmp/input-debug.png",
+					},
+				},
+			],
+			{
+				uuid: "a-1",
+			},
+		),
 		userRecord(
 			[
 				{
 					type: "tool_result",
 					tool_use_id: "tool-1",
-					content: [{type: "image", source: {type: "base64", media_type: "image/png", data: "AAA"}}],
+					content: [
+						{
+							type: "image",
+							source:
+							{
+								type: "base64",
+								media_type: "image/png",
+								data: "AAA",
+							},
+						},
+					],
 				},
 			],
-			{uuid: "u-1"},
+			{
+				uuid: "u-1",
+			},
 		),
 	];
 
-	it("pairs a Read image result's images onto the tool result", () => {
-		expect(processTranscript(records).toolResultMap.get("tool-1")).toStrictEqual({
-			result: "",
-			isError: false,
-			resultUuid: "u-1",
-			images: [{mimeType: "image/png", data: "AAA"}],
-		});
+	it("pairs a Read image result's images onto the tool result", () =>
+	{
+		expect(processTranscript(records).toolResultMap.get("tool-1")).toStrictEqual(
+			{
+				result: "",
+				isError: false,
+				resultUuid: "u-1",
+				images: [
+					{
+						mimeType: "image/png",
+						data: "AAA",
+					},
+				],
+			},
+		);
 	});
 
-	it("copies the images onto the client tool call as outputImages", () => {
+	it("copies the images onto the client tool call as outputImages", () =>
+	{
 		const {toolResultMap} = processTranscript(records);
 		const call = buildClientToolCall(
-			{type: "tool_use", id: "tool-1", name: "Read", input: {file_path: "/tmp/input-debug.png"}},
+			{
+				type: "tool_use",
+				id: "tool-1",
+				name: "Read",
+				input:
+				{
+					file_path: "/tmp/input-debug.png",
+				},
+			},
 			"a-1",
 			toolResultMap,
 		);
-		expect(call.outputImages).toStrictEqual([{mimeType: "image/png", data: "AAA"}]);
+		expect(call.outputImages).toStrictEqual([
+			{
+				mimeType: "image/png",
+				data: "AAA",
+			},
+		]);
 	});
 
-	it("leaves text-only results without images", () => {
+	it("leaves text-only results without images", () =>
+	{
 		const textRecords = [
-			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),
-			userRecord([{type: "tool_result", tool_use_id: "tool-1", content: "ok"}], {uuid: "u-1"}),
+			assistantRecord(
+				[
+					{
+						type: "tool_use",
+						id: "tool-1",
+						name: "Bash",
+						input:
+						{
+							command: "ls",
+						},
+					},
+				],
+				{
+					uuid: "a-1",
+				},
+			),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "tool-1",
+						content: "ok",
+					},
+				],
+				{
+					uuid: "u-1",
+				},
+			),
 		];
-		expect(processTranscript(textRecords).toolResultMap.get("tool-1")).toStrictEqual({
-			result: "ok",
-			isError: false,
-			resultUuid: "u-1",
-		});
+		expect(processTranscript(textRecords).toolResultMap.get("tool-1")).toStrictEqual(
+			{
+				result: "ok",
+				isError: false,
+				resultUuid: "u-1",
+			},
+		);
 	});
 });
 
-describe("stripResultTags", () => {
-	it("strips system-reminder tags", () => {
+describe("stripResultTags", () =>
+{
+	it("strips system-reminder tags", () =>
+	{
 		expect(stripResultTags("output<system-reminder>hidden</system-reminder>")).toBe("output");
 	});
 
-	it("strips tool_use_error tags", () => {
+	it("strips tool_use_error tags", () =>
+	{
 		expect(stripResultTags("<tool_use_error>error</tool_use_error>")).toBe("error");
 	});
 
-	it("strips persisted-output tags", () => {
+	it("strips persisted-output tags", () =>
+	{
 		expect(stripResultTags("<persisted-output>data</persisted-output>")).toBe("data");
 	});
 
-	it("returns unchanged text when no tags present", () => {
+	it("returns unchanged text when no tags present", () =>
+	{
 		expect(stripResultTags("no tags here")).toBe("no tags here");
 	});
 });
 
-describe("truncateResult", () => {
-	it("returns short text unchanged", () => {
+describe("truncateResult", () =>
+{
+	it("returns short text unchanged", () =>
+	{
 		expect(truncateResult("short", 10)).toBe("short");
 	});
 
-	it("truncates long text with line count", () => {
-		const text = Array.from({length: 20}, (_, i) => `line ${i}`).join("\n");
+	it("truncates long text with line count", () =>
+	{
+		const text = Array.from(
+			{
+				length: 20,
+			},
+			(_, i) => `line ${i}`,
+		).join("\n");
 		const result = truncateResult(text, 5);
 		const lines = result.split("\n");
 		expect(lines).toHaveLength(6);
@@ -1253,16 +2205,20 @@ describe("truncateResult", () => {
 	});
 });
 
-describe("stripCommandTags", () => {
-	it("strips command tags from text", () => {
+describe("stripCommandTags", () =>
+{
+	it("strips command tags from text", () =>
+	{
 		expect(stripCommandTags("<command-message>hello</command-message>")).toBe("hello");
 	});
 
-	it("returns plain text unchanged", () => {
+	it("returns plain text unchanged", () =>
+	{
 		expect(stripCommandTags("plain text")).toBe("plain text");
 	});
 
-	it("unwraps every pasted_content block to its text, as upstream shows a paste", () => {
+	it("unwraps every pasted_content block to its text, as upstream shows a paste", () =>
+	{
 		expect(
 			stripCommandTags(
 				'in .pre-commit-config.yaml, there\'s \n\n<pasted_content id="5216">\n  7┊      - id: check-json\n</pasted_content id="5216">\n\n, aren\'t jsonc files excluded? Also\n\n<pasted_content id="df57">\nsecond paste\n</pasted_content id="df57">\n',
@@ -1272,14 +2228,17 @@ describe("stripCommandTags", () => {
 		);
 	});
 
-	it("keeps a pasted_content tag that is quoted mid-line rather than wrapping a paste", () => {
+	it("keeps a pasted_content tag that is quoted mid-line rather than wrapping a paste", () =>
+	{
 		const text = 'bubbles show literal `<pasted_content id="5216">` … `</pasted_content id="5216">` tag lines';
 		expect(stripCommandTags(text)).toBe(text);
 	});
 });
 
-describe("stripHarnessTags", () => {
-	it("drops a teammate-message element with its body and the blank line after it, as upstream does", () => {
+describe("stripHarnessTags", () =>
+{
+	it("drops a teammate-message element with its body and the blank line after it, as upstream does", () =>
+	{
 		expect(
 			stripHarnessTags(
 				'Another Claude session sent a message:\n<teammate-message teammate_id="fix-ordered-map-indexed" color="cyan">\n{"type":"idle_notification","from":"fix-ordered-map-indexed"}\n</teammate-message>\n\nThis came from another Claude session — not from your user.',
@@ -1287,38 +2246,48 @@ describe("stripHarnessTags", () => {
 		).toBe("Another Claude session sent a message:\nThis came from another Claude session — not from your user.");
 	});
 
-	it("drops system-reminder and cross-session-message elements, but not a tag that only shares a prefix", () => {
-		expect({
-			reminder: stripHarnessTags("Fix it.\n<system-reminder>\nThe date changed.\n</system-reminder>\n"),
-			crossSession: stripHarnessTags(
-				'<cross-session-message from="worker">\nhi\n</cross-session-message>\n\nReply when done.',
-			),
-			prefix: stripHarnessTags("<cellar>wine</cellar>"),
-		}).toStrictEqual({
-			reminder: "Fix it.\n",
-			crossSession: "Reply when done.",
-			prefix: "<cellar>wine</cellar>",
-		});
+	it("drops system-reminder and cross-session-message elements, but not a tag that only shares a prefix", () =>
+	{
+		expect(
+			{
+				reminder: stripHarnessTags("Fix it.\n<system-reminder>\nThe date changed.\n</system-reminder>\n"),
+				crossSession: stripHarnessTags(
+					'<cross-session-message from="worker">\nhi\n</cross-session-message>\n\nReply when done.',
+				),
+				prefix: stripHarnessTags("<cellar>wine</cellar>"),
+			},
+		).toStrictEqual(
+			{
+				reminder: "Fix it.\n",
+				crossSession: "Reply when done.",
+				prefix: "<cellar>wine</cellar>",
+			},
+		);
 	});
 });
 
-describe("extractSessionTitle", () => {
-	it("returns short text directly", () => {
+describe("extractSessionTitle", () =>
+{
+	it("returns short text directly", () =>
+	{
 		expect(extractSessionTitle("Fix the bug")).toBe("Fix the bug");
 	});
 
-	it("truncates long text with ellipsis", () => {
+	it("truncates long text with ellipsis", () =>
+	{
 		const longText = "A".repeat(100);
 		const result = extractSessionTitle(longText);
 		expect(result.length).toBeLessThan(100);
 		expect(result.endsWith("...")).toBe(true);
 	});
 
-	it("returns fallback for empty text", () => {
+	it("returns fallback for empty text", () =>
+	{
 		expect(extractSessionTitle("", "fallback")).toBe("fallback");
 	});
 
-	it("returns Untitled Session for empty text with no fallback", () => {
+	it("returns Untitled Session for empty text with no fallback", () =>
+	{
 		expect(extractSessionTitle("")).toBe("Untitled Session");
 	});
 });
@@ -1327,23 +2296,42 @@ describe("extractSessionTitle", () => {
 // Message metadata fields (promptSource, API errors, usage, attribution)
 // ---------------------------------------------------------------------------
 
-describe("message metadata fields", () => {
-	it("carries non-human turnOrigin, scheduledTaskId and wakeupSource on user lines", () => {
+describe("message metadata fields", () =>
+{
+	it("carries non-human turnOrigin, scheduledTaskId and wakeupSource on user lines", () =>
+	{
 		const records = [
-			userRecord("from a peer", {turnOrigin: "peer"}),
-			userRecord("/loop check", {
-				turnOrigin: "scheduled",
-				scheduledTaskId: "e283ee16",
-				wakeupSource: "loop_wakeup",
-			}),
-			userRecord("typed by a human", {turnOrigin: "human"}),
+			userRecord(
+				"from a peer",
+				{
+					turnOrigin: "peer",
+				},
+			),
+			userRecord(
+				"/loop check",
+				{
+					turnOrigin: "scheduled",
+					scheduledTaskId: "e283ee16",
+					wakeupSource: "loop_wakeup",
+				},
+			),
+			userRecord(
+				"typed by a human",
+				{
+					turnOrigin: "human",
+				},
+			),
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
 			{
 				type: "user",
 				lineIndex: 0,
 				turnOrigin: "peer",
-				message: {role: "user", content: "from a peer"},
+				message:
+				{
+					role: "user",
+					content: "from a peer",
+				},
 			},
 			{
 				type: "user",
@@ -1351,23 +2339,40 @@ describe("message metadata fields", () => {
 				turnOrigin: "scheduled",
 				scheduledTaskId: "e283ee16",
 				wakeupSource: "loop_wakeup",
-				message: {role: "user", content: "/loop check"},
+				message:
+				{
+					role: "user",
+					content: "/loop check",
+				},
 			},
 			{
 				type: "user",
 				lineIndex: 2,
-				message: {role: "user", content: "typed by a human"},
+				message:
+				{
+					role: "user",
+					content: "typed by a human",
+				},
 			},
 		]);
 	});
 
-	it("carries promptSource and queuePriority on user lines except typed prompt sources", () => {
+	it("carries promptSource and queuePriority on user lines except typed prompt sources", () =>
+	{
 		const records = [
-			userRecord("Background agents were stopped by the user.", {
-				promptSource: "system",
-				queuePriority: "later",
-			}),
-			userRecord("typed prompt", {promptSource: "typed"}),
+			userRecord(
+				"Background agents were stopped by the user.",
+				{
+					promptSource: "system",
+					queuePriority: "later",
+				},
+			),
+			userRecord(
+				"typed prompt",
+				{
+					promptSource: "typed",
+				},
+			),
 			userRecord("plain prompt"),
 		];
 		const result = processTranscript(records);
@@ -1377,7 +2382,8 @@ describe("message metadata fields", () => {
 				lineIndex: 0,
 				promptSource: "system",
 				queuePriority: "later",
-				message: {
+				message:
+				{
 					role: "user",
 					content: "Background agents were stopped by the user.",
 				},
@@ -1385,7 +2391,8 @@ describe("message metadata fields", () => {
 			{
 				type: "user",
 				lineIndex: 1,
-				message: {
+				message:
+				{
 					role: "user",
 					content: "typed prompt",
 				},
@@ -1393,7 +2400,8 @@ describe("message metadata fields", () => {
 			{
 				type: "user",
 				lineIndex: 2,
-				message: {
+				message:
+				{
 					role: "user",
 					content: "plain prompt",
 				},
@@ -1401,33 +2409,61 @@ describe("message metadata fields", () => {
 		]);
 	});
 
-	it("carries API error fields on assistant lines", () => {
+	it("carries API error fields on assistant lines", () =>
+	{
 		const records = [
-			assistantRecord([{type: "text", text: "overloaded"}], {
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "overloaded",
+					},
+				],
+				{
+					isApiErrorMessage: true,
+					apiErrorStatus: 529,
+					errorDetails: '{"error":{"message":"Overloaded"}}',
+				},
+			),
+			assistantRecord([
+				{
+					type: "text",
+					text: "fine",
+				},
+			]),
+		];
+		const result = processTranscript(records);
+		expect(result.lines[0]).toMatchObject(
+			{
+				type: "assistant",
 				isApiErrorMessage: true,
 				apiErrorStatus: 529,
 				errorDetails: '{"error":{"message":"Overloaded"}}',
-			}),
-			assistantRecord([{type: "text", text: "fine"}]),
-		];
-		const result = processTranscript(records);
-		expect(result.lines[0]).toMatchObject({
-			type: "assistant",
-			isApiErrorMessage: true,
-			apiErrorStatus: 529,
-			errorDetails: '{"error":{"message":"Overloaded"}}',
-		});
+			},
+		);
 		expect(result.lines[1]!).not.toHaveProperty("isApiErrorMessage");
 	});
 
-	it("carries the request id, message id and string error code on API error lines only", () => {
+	it("carries the request id, message id and string error code on API error lines only", () =>
+	{
 		const records = [
 			{
-				...assistantRecord([{type: "text", text: "API Error: 529 Overloaded."}]),
-				message: {
+				...assistantRecord([
+					{
+						type: "text",
+						text: "API Error: 529 Overloaded.",
+					},
+				]),
+				message:
+				{
 					id: "69f6c760-e79e-4483-bdfe-5fb492ef4838",
 					role: "assistant",
-					content: [{type: "text", text: "API Error: 529 Overloaded."}],
+					content: [
+						{
+							type: "text",
+							text: "API Error: 529 Overloaded.",
+						},
+					],
 				},
 				isApiErrorMessage: true,
 				apiErrorStatus: 529,
@@ -1435,14 +2471,39 @@ describe("message metadata fields", () => {
 				error: "server_error",
 			},
 			{
-				...assistantRecord([{type: "text", text: "fine"}], {requestId: "req_ok"}),
-				message: {id: "msg_ok", role: "assistant", content: [{type: "text", text: "fine"}]},
+				...assistantRecord(
+					[
+						{
+							type: "text",
+							text: "fine",
+						},
+					],
+					{
+						requestId: "req_ok",
+					},
+				),
+				message:
+				{
+					id: "msg_ok",
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "fine",
+						},
+					],
+				},
 			},
 		];
 		expect(
 			processTranscript(records).lines.map((line) =>
 				line.type === "assistant"
-					? {requestId: line.requestId, messageId: line.messageId, apiErrorCode: line.apiErrorCode}
+					?
+						{
+							requestId: line.requestId,
+							messageId: line.messageId,
+							apiErrorCode: line.apiErrorCode,
+						}
 					: null,
 			),
 		).toStrictEqual([
@@ -1451,12 +2512,18 @@ describe("message metadata fields", () => {
 				messageId: "69f6c760-e79e-4483-bdfe-5fb492ef4838",
 				apiErrorCode: "server_error",
 			},
-			{requestId: undefined, messageId: undefined, apiErrorCode: undefined},
+			{
+				requestId: undefined,
+				messageId: undefined,
+				apiErrorCode: undefined,
+			},
 		]);
 	});
 
-	it("carries the usage-limit window from apiErrorParams, falling back to quotaLimits", () => {
-		const info = {
+	it("carries the usage-limit window from apiErrorParams, falling back to quotaLimits", () =>
+	{
+		const info =
+		{
 			status: "rejected",
 			resetsAt: 1792396800,
 			rateLimitType: "seven_day",
@@ -1465,33 +2532,63 @@ describe("message metadata fields", () => {
 			isUsingOverage: false,
 		};
 		const records = [
-			assistantRecord([{type: "text", text: "You've hit your weekly limit"}], {
-				isApiErrorMessage: true,
-				apiErrorStatus: 429,
-				apiError: "usage_limit_reached",
-				apiErrorParams: {rate_limit_info: info},
-				quotaLimits: {
-					...info,
-					unifiedRateLimitFallbackAvailable: false,
-					upgradePaths: ["overage"],
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "You've hit your weekly limit",
+					},
+				],
+				{
+					isApiErrorMessage: true,
+					apiErrorStatus: 429,
+					apiError: "usage_limit_reached",
+					apiErrorParams:
+					{
+						rate_limit_info: info,
+					},
+					quotaLimits:
+					{
+						...info,
+						unifiedRateLimitFallbackAvailable: false,
+						upgradePaths: ["overage"],
+					},
 				},
-			}),
-			assistantRecord([{type: "text", text: "You've hit your 5-hour limit"}], {
-				isApiErrorMessage: true,
-				apiError: "usage_limit_reached",
-				quotaLimits: {
-					...info,
-					rateLimitType: "five_hour",
-					unifiedRateLimitFallbackAvailable: false,
-					upgradePaths: [],
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "You've hit your 5-hour limit",
+					},
+				],
+				{
+					isApiErrorMessage: true,
+					apiError: "usage_limit_reached",
+					quotaLimits:
+					{
+						...info,
+						rateLimitType: "five_hour",
+						unifiedRateLimitFallbackAvailable: false,
+						upgradePaths: [],
+					},
 				},
-			}),
-			assistantRecord([{type: "text", text: "overloaded"}], {
-				isApiErrorMessage: true,
-				apiErrorStatus: 529,
-			}),
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "overloaded",
+					},
+				],
+				{
+					isApiErrorMessage: true,
+					apiErrorStatus: 529,
+				},
+			),
 		];
-		const expected = {
+		const expected =
+		{
 			resetsAt: 1792396800,
 			rateLimitType: "seven_day",
 			overageStatus: "rejected",
@@ -1500,74 +2597,163 @@ describe("message metadata fields", () => {
 		};
 		expect(
 			processTranscript(records).lines.map((line) => ("usageLimit" in line ? line.usageLimit : null)),
-		).toStrictEqual([expected, {...expected, rateLimitType: "five_hour"}, null]);
+		).toStrictEqual([
+			expected,
+			{
+				...expected,
+				rateLimitType: "five_hour",
+			},
+			null,
+		]);
 	});
 
-	it("carries stopReason only when max_tokens", () => {
+	it("carries stopReason only when max_tokens", () =>
+	{
 		const records = [
-			assistantRecord([{type: "text", text: "cut"}], {
-				message: {
-					role: "assistant",
-					content: [{type: "text", text: "cut"}],
-					stop_reason: "max_tokens",
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "cut",
+					},
+				],
+				{
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "text",
+								text: "cut",
+							},
+						],
+						stop_reason: "max_tokens",
+					},
 				},
-			}),
-			assistantRecord([{type: "text", text: "done"}], {
-				message: {
-					role: "assistant",
-					content: [{type: "text", text: "done"}],
-					stop_reason: "end_turn",
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "done",
+					},
+				],
+				{
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "text",
+								text: "done",
+							},
+						],
+						stop_reason: "end_turn",
+					},
 				},
-			}),
+			),
 		];
 		const result = processTranscript(records);
-		expect(result.lines[0]).toMatchObject({stopReason: "max_tokens"});
+		expect(result.lines[0]).toMatchObject(
+			{
+				stopReason: "max_tokens",
+			},
+		);
 		expect(result.lines[1]!).not.toHaveProperty("stopReason");
 	});
 
-	it("keeps stop_reason refusal on a safeguards-flagged assistant line", () => {
+	it("keeps stop_reason refusal on a safeguards-flagged assistant line", () =>
+	{
 		const records = [
-			assistantRecord([{type: "thinking", thinking: "", signature: "CAQS"}], {
-				requestId: "req_011CgGLji7Z5kBsT1veSwPzU",
-				message: {
-					role: "assistant",
-					content: [{type: "thinking", thinking: "", signature: "CAQS"}],
-					stop_reason: "refusal",
+			assistantRecord(
+				[
+					{
+						type: "thinking",
+						thinking: "",
+						signature: "CAQS",
+					},
+				],
+				{
+					requestId: "req_011CgGLji7Z5kBsT1veSwPzU",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "thinking",
+								thinking: "",
+								signature: "CAQS",
+							},
+						],
+						stop_reason: "refusal",
+					},
 				},
-			}),
+			),
 		];
 		const line = processTranscript(records).lines[0];
 		expect(line !== undefined && "stopReason" in line ? line.stopReason : null).toBe("refusal");
 	});
 
-	it("carries usage and attribution fields on assistant lines", () => {
+	it("carries usage and attribution fields on assistant lines", () =>
+	{
 		const records = [
-			assistantRecord([{type: "text", text: "hi"}], {
-				message: {
-					role: "assistant",
-					content: [{type: "text", text: "hi"}],
-					usage: {input_tokens: 1000, output_tokens: 50},
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "hi",
+					},
+				],
+				{
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "text",
+								text: "hi",
+							},
+						],
+						usage:
+						{
+							input_tokens: 1000,
+							output_tokens: 50,
+						},
+					},
+					attributionSkill: "git:git-workflow",
+					attributionPlugin: "git",
+					attributionMcpServer: "imcp",
+					attributionMcpTool: "weather_current",
+				},
+			),
+		];
+		const result = processTranscript(records);
+		expect(result.lines[0]).toMatchObject(
+			{
+				usage:
+				{
+					input_tokens: 1000,
+					output_tokens: 50,
 				},
 				attributionSkill: "git:git-workflow",
 				attributionPlugin: "git",
 				attributionMcpServer: "imcp",
 				attributionMcpTool: "weather_current",
-			}),
-		];
-		const result = processTranscript(records);
-		expect(result.lines[0]).toMatchObject({
-			usage: {input_tokens: 1000, output_tokens: 50},
-			attributionSkill: "git:git-workflow",
-			attributionPlugin: "git",
-			attributionMcpServer: "imcp",
-			attributionMcpTool: "weather_current",
-		});
+			},
+		);
 	});
 
-	it("carries per-turn effort, advisor model, input transformations, and safeguard results on assistant lines", () => {
-		const message = {
+	it("carries per-turn effort, advisor model, input transformations, and safeguard results on assistant lines", () =>
+	{
+		const message =
+		{
 			role: "assistant",
-			content: [{type: "text", text: "Done."}],
+			content: [
+				{
+					type: "text",
+					text: "Done.",
+				},
+			],
 			input_transformations: [
 				{
 					type: "thinking_dropped",
@@ -1578,16 +2764,41 @@ describe("message metadata fields", () => {
 			safeguard_results: [
 				{
 					type: "dangerous_tool_use",
-					status: {
+					status:
+					{
 						type: "available",
-						tool_uses: {toolu_1: {type: "evaluated", outcome: "flagged"}},
+						tool_uses:
+						{
+							toolu_1:
+							{
+								type: "evaluated",
+								outcome: "flagged",
+							},
+						},
 					},
 				},
 			],
 		};
 		const records = [
-			assistantRecord([], {message, perTurnEffort: "high", advisorModel: "claude-opus-5-5"}),
-			assistantRecord([{type: "text", text: "plain"}], {perTurnEffort: null}),
+			assistantRecord(
+				[],
+				{
+					message,
+					perTurnEffort: "high",
+					advisorModel: "claude-opus-5-5",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "plain",
+					},
+				],
+				{
+					perTurnEffort: null,
+				},
+			),
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
 			{
@@ -1600,138 +2811,428 @@ describe("message metadata fields", () => {
 			{
 				type: "assistant",
 				lineIndex: 1,
-				message: {role: "assistant", content: [{type: "text", text: "plain"}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "plain",
+						},
+					],
+				},
 			},
 		]);
 	});
 
-	it("records a requested model only when a different model answered", () => {
+	it("records a requested model only when a different model answered", () =>
+	{
 		const records = [
-			assistantRecord([{type: "text", text: "fallback"}], {
-				message: {role: "assistant", model: "claude-sonnet-5-5", content: [{type: "text", text: "fallback"}]},
-				requestedModel: "claude-opus-5-5",
-			}),
-			assistantRecord([{type: "text", text: "same"}], {
-				message: {role: "assistant", model: "claude-opus-5", content: [{type: "text", text: "same"}]},
-				requestedModel: "claude-opus-5[1m]",
-			}),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "fallback",
+					},
+				],
+				{
+					message:
+					{
+						role: "assistant",
+						model: "claude-sonnet-5-5",
+						content: [
+							{
+								type: "text",
+								text: "fallback",
+							},
+						],
+					},
+					requestedModel: "claude-opus-5-5",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "same",
+					},
+				],
+				{
+					message:
+					{
+						role: "assistant",
+						model: "claude-opus-5",
+						content: [
+							{
+								type: "text",
+								text: "same",
+							},
+						],
+					},
+					requestedModel: "claude-opus-5[1m]",
+				},
+			),
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
 			{
 				type: "assistant",
 				lineIndex: 0,
-				modelMismatch: {requested: "claude-opus-5-5", actual: "claude-sonnet-5-5"},
-				message: {role: "assistant", model: "claude-sonnet-5-5", content: [{type: "text", text: "fallback"}]},
+				modelMismatch:
+				{
+					requested: "claude-opus-5-5",
+					actual: "claude-sonnet-5-5",
+				},
+				message:
+				{
+					role: "assistant",
+					model: "claude-sonnet-5-5",
+					content: [
+						{
+							type: "text",
+							text: "fallback",
+						},
+					],
+				},
 			},
 			{
 				type: "assistant",
 				lineIndex: 1,
-				message: {role: "assistant", model: "claude-opus-5", content: [{type: "text", text: "same"}]},
+				message:
+				{
+					role: "assistant",
+					model: "claude-opus-5",
+					content: [
+						{
+							type: "text",
+							text: "same",
+						},
+					],
+				},
 			},
 		]);
 	});
 
-	it("carries the thinking duration on assistant lines", () => {
+	it("carries the thinking duration on assistant lines", () =>
+	{
 		const records = [
-			assistantRecord([{type: "thinking", thinking: "hmm", signature: "sig"}], {thinkingDurationMs: 2600}),
-			assistantRecord([{type: "text", text: "plain"}]),
+			assistantRecord(
+				[
+					{
+						type: "thinking",
+						thinking: "hmm",
+						signature: "sig",
+					},
+				],
+				{
+					thinkingDurationMs: 2600,
+				},
+			),
+			assistantRecord([
+				{
+					type: "text",
+					text: "plain",
+				},
+			]),
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
 			{
 				type: "assistant",
 				lineIndex: 0,
 				thinkingDurationMs: 2600,
-				message: {role: "assistant", content: [{type: "thinking", thinking: "hmm", signature: "sig"}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "thinking",
+							thinking: "hmm",
+							signature: "sig",
+						},
+					],
+				},
 			},
 			{
 				type: "assistant",
 				lineIndex: 1,
-				message: {role: "assistant", content: [{type: "text", text: "plain"}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "plain",
+						},
+					],
+				},
 			},
 		]);
 	});
 
-	it("flags assistant lines whose thinking display is omitted", () => {
+	it("flags assistant lines whose thinking display is omitted", () =>
+	{
 		const records = [
-			assistantRecord([{type: "thinking", thinking: "", signature: "sig"}], {thinkingDisplay: "omitted"}),
-			assistantRecord([{type: "thinking", thinking: "shown", signature: "sig"}], {thinkingDisplay: "updates"}),
+			assistantRecord(
+				[
+					{
+						type: "thinking",
+						thinking: "",
+						signature: "sig",
+					},
+				],
+				{
+					thinkingDisplay: "omitted",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "thinking",
+						thinking: "shown",
+						signature: "sig",
+					},
+				],
+				{
+					thinkingDisplay: "updates",
+				},
+			),
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
 			{
 				type: "assistant",
 				lineIndex: 0,
 				thinkingOmitted: true,
-				message: {role: "assistant", content: [{type: "thinking", thinking: "", signature: "sig"}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "thinking",
+							thinking: "",
+							signature: "sig",
+						},
+					],
+				},
 			},
 			{
 				type: "assistant",
 				lineIndex: 1,
-				message: {role: "assistant", content: [{type: "thinking", thinking: "shown", signature: "sig"}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "thinking",
+							thinking: "shown",
+							signature: "sig",
+						},
+					],
+				},
 			},
 		]);
 	});
 
-	it("carries the classifier's live cwd, git branch, and platform on user lines", () => {
+	it("carries the classifier's live cwd, git branch, and platform on user lines", () =>
+	{
 		const records = [
-			userRecord("hello", {
-				serverClassifierContext: {
-					request: "r1",
-					context: {
-						git_state: {cwd: "/repo", root: "/repo", branch: "feature", default_branch: "main"},
-						live_cwd: "/repo/sub",
-						platform: "macos",
+			userRecord(
+				"hello",
+				{
+					serverClassifierContext:
+					{
+						request: "r1",
+						context:
+						{
+							git_state:
+							{
+								cwd: "/repo",
+								root: "/repo",
+								branch: "feature",
+								default_branch: "main",
+							},
+							live_cwd: "/repo/sub",
+							platform: "macos",
+						},
 					},
 				},
-			}),
-			userRecord("pending", {
-				serverClassifierContext: {
-					request: "r2",
-					context: {
-						git_state: {cwd: "/tmp", root: null, branch: null, error: "pending"},
-						live_cwd: "/tmp",
+			),
+			userRecord(
+				"pending",
+				{
+					serverClassifierContext:
+					{
+						request: "r2",
+						context:
+						{
+							git_state:
+							{
+								cwd: "/tmp",
+								root: null,
+								branch: null,
+								error: "pending",
+							},
+							live_cwd: "/tmp",
+						},
 					},
 				},
-			}),
+			),
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
 			{
 				type: "user",
 				lineIndex: 0,
-				classifierContext: {liveCwd: "/repo/sub", branch: "feature", platform: "macos"},
-				message: {role: "user", content: "hello"},
+				classifierContext:
+				{
+					liveCwd: "/repo/sub",
+					branch: "feature",
+					platform: "macos",
+				},
+				message:
+				{
+					role: "user",
+					content: "hello",
+				},
 			},
 			{
 				type: "user",
 				lineIndex: 1,
-				classifierContext: {liveCwd: "/tmp"},
-				message: {role: "user", content: "pending"},
+				classifierContext:
+				{
+					liveCwd: "/tmp",
+				},
+				message:
+				{
+					role: "user",
+					content: "pending",
+				},
 			},
 		]);
 	});
 
-	it("dedupes consecutive identical attribution onto the first line only", () => {
+	it("dedupes consecutive identical attribution onto the first line only", () =>
+	{
 		const records = [
-			assistantRecord([{type: "text", text: "a"}], {attributionSkill: "build:fix"}),
-			assistantRecord([{type: "text", text: "b"}], {attributionSkill: "build:fix"}),
-			assistantRecord([{type: "text", text: "c"}], {attributionSkill: "other:skill"}),
-			assistantRecord([{type: "text", text: "d"}]),
-			assistantRecord([{type: "text", text: "e"}], {attributionSkill: "build:fix"}),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "a",
+					},
+				],
+				{
+					attributionSkill: "build:fix",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "b",
+					},
+				],
+				{
+					attributionSkill: "build:fix",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "c",
+					},
+				],
+				{
+					attributionSkill: "other:skill",
+				},
+			),
+			assistantRecord([
+				{
+					type: "text",
+					text: "d",
+				},
+			]),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "e",
+					},
+				],
+				{
+					attributionSkill: "build:fix",
+				},
+			),
 		];
 		const result = processTranscript(records);
-		expect(result.lines[0]).toMatchObject({attributionSkill: "build:fix"});
+		expect(result.lines[0]).toMatchObject(
+			{
+				attributionSkill: "build:fix",
+			},
+		);
 		expect(result.lines[1]!).not.toHaveProperty("attributionSkill");
-		expect(result.lines[2]).toMatchObject({attributionSkill: "other:skill"});
+		expect(result.lines[2]).toMatchObject(
+			{
+				attributionSkill: "other:skill",
+			},
+		);
 		expect(result.lines[3]!).not.toHaveProperty("attributionSkill");
-		expect(result.lines[4]).toMatchObject({attributionSkill: "build:fix"});
+		expect(result.lines[4]).toMatchObject(
+			{
+				attributionSkill: "build:fix",
+			},
+		);
 	});
 
-	it("carries an api request's requestRef onto the first line of its run only", () => {
+	it("carries an api request's requestRef onto the first line of its run only", () =>
+	{
 		const records = [
-			assistantRecord([{type: "thinking", thinking: "t", signature: "s"}], {requestRef: "r1"}),
-			assistantRecord([{type: "text", text: "a"}], {requestRef: "r1"}),
-			{type: "user", message: {role: "user", content: "next"}},
-			assistantRecord([{type: "text", text: "b"}], {requestRef: "r2"}),
-			assistantRecord([{type: "text", text: "c"}]),
+			assistantRecord(
+				[
+					{
+						type: "thinking",
+						thinking: "t",
+						signature: "s",
+					},
+				],
+				{
+					requestRef: "r1",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "a",
+					},
+				],
+				{
+					requestRef: "r1",
+				},
+			),
+			{
+				type: "user",
+				message:
+				{
+					role: "user",
+					content: "next",
+				},
+			},
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "b",
+					},
+				],
+				{
+					requestRef: "r2",
+				},
+			),
+			assistantRecord([
+				{
+					type: "text",
+					text: "c",
+				},
+			]),
 		];
 		const refs = processTranscript(records).lines.map((line) =>
 			"requestRef" in line ? line.requestRef : undefined,
@@ -1741,25 +3242,87 @@ describe("message metadata fields", () => {
 
 	// Shapes from session 76b11aac (CLI 2.1.312): with thinkingDisplay "updates" a request's first record is an
 	// empty thinking block that never renders, so a Request disclosure on it never appeared.
-	it("passes a requestRef past a leading empty thinking record to the request's first visible record", () => {
+	it("passes a requestRef past a leading empty thinking record to the request's first visible record", () =>
+	{
 		const emptyThinking = (requestRef: string, extra: Record<string, unknown> = {}) =>
-			assistantRecord([{type: "thinking", thinking: "", signature: "EqwBCkYIDRgCKkB"}], {
-				requestRef,
-				thinkingDisplay: "updates",
-				thinkingDurationMs: 1204,
-				...extra,
-			});
+			assistantRecord(
+				[
+					{
+						type: "thinking",
+						thinking: "",
+						signature: "EqwBCkYIDRgCKkB",
+					},
+				],
+				{
+					requestRef,
+					thinkingDisplay: "updates",
+					thinkingDurationMs: 1204,
+					...extra,
+				},
+			);
 		const records = [
 			emptyThinking("432f6d37"),
-			assistantRecord([{type: "text", text: "Done."}], {requestRef: "432f6d37"}),
-			{type: "user", message: {role: "user", content: "next"}},
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "Done.",
+					},
+				],
+				{
+					requestRef: "432f6d37",
+				},
+			),
+			{
+				type: "user",
+				message:
+				{
+					role: "user",
+					content: "next",
+				},
+			},
 			emptyThinking("8be78525"),
-			assistantRecord([{type: "tool_use", id: "toolu_1", name: "Bash", input: {command: "ls"}}], {
-				requestRef: "8be78525",
-			}),
-			{type: "user", message: {role: "user", content: "again"}},
-			emptyThinking("dba7639d", {thinkingDisplay: "omitted"}),
-			assistantRecord([{type: "text", text: "Hidden reasoning."}], {requestRef: "dba7639d"}),
+			assistantRecord(
+				[
+					{
+						type: "tool_use",
+						id: "toolu_1",
+						name: "Bash",
+						input:
+						{
+							command: "ls",
+						},
+					},
+				],
+				{
+					requestRef: "8be78525",
+				},
+			),
+			{
+				type: "user",
+				message:
+				{
+					role: "user",
+					content: "again",
+				},
+			},
+			emptyThinking(
+				"dba7639d",
+				{
+					thinkingDisplay: "omitted",
+				},
+			),
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "Hidden reasoning.",
+					},
+				],
+				{
+					requestRef: "dba7639d",
+				},
+			),
 		];
 		const refs = processTranscript(records).lines.map((line) =>
 			"requestRef" in line ? line.requestRef : undefined,
@@ -1781,14 +3344,17 @@ describe("message metadata fields", () => {
 // System record lines
 // ---------------------------------------------------------------------------
 
-describe("system record lines", () => {
-	it("emits a system line for compact_boundary with typed compactMetadata", () => {
+describe("system record lines", () =>
+{
+	it("emits a system line for compact_boundary with typed compactMetadata", () =>
+	{
 		const records = [
 			{
 				type: "system",
 				subtype: "compact_boundary",
 				content: "Conversation compacted",
-				compactMetadata: {
+				compactMetadata:
+				{
 					trigger: "auto",
 					preTokens: 261187,
 					postTokens: 10827,
@@ -1801,30 +3367,57 @@ describe("system record lines", () => {
 		];
 		const result = processTranscript(records);
 		expect(result.lines).toHaveLength(1);
-		expect(result.lines[0]).toMatchObject({
-			type: "system",
-			subtype: "compact_boundary",
-			content: "Conversation compacted",
-			compactMetadata: {trigger: "auto", preTokens: 261187, postTokens: 10827},
-			uuid: "s-1",
-			lineIndex: 0,
-		});
+		expect(result.lines[0]).toMatchObject(
+			{
+				type: "system",
+				subtype: "compact_boundary",
+				content: "Conversation compacted",
+				compactMetadata:
+				{
+					trigger: "auto",
+					preTokens: 261187,
+					postTokens: 10827,
+				},
+				uuid: "s-1",
+				lineIndex: 0,
+			},
+		);
 	});
 
-	it("skips unrendered system subtypes and local_command echoes without commandRun", () => {
+	it("skips unrendered system subtypes and local_command echoes without commandRun", () =>
+	{
 		const records = [
-			{type: "system", subtype: "informational", content: "x"},
-			{type: "system", subtype: "local_command", content: "y"},
+			{
+				type: "system",
+				subtype: "informational",
+				content: "x",
+			},
+			{
+				type: "system",
+				subtype: "local_command",
+				content: "y",
+			},
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
-			{type: "hook-notice", notices: [{message: "x", level: "notice"}], lineIndex: 0},
+			{
+				type: "hook-notice",
+				notices: [
+					{
+						message: "x",
+						level: "notice",
+					},
+				],
+				lineIndex: 0,
+			},
 		]);
 	});
 
-	describe("informational records as hook-notice lines", () => {
+	describe("informational records as hook-notice lines", () =>
+	{
 		const IDLE =
 			'Compacted while idle, before the prompt cache expired · turn off with "idleCompaction": false in settings.json';
-		const info = (content: unknown, extra: Record<string, unknown> = {}) => ({
+		const info = (content: unknown, extra: Record<string, unknown> = {}) => (
+		{
 			type: "system",
 			subtype: "informational",
 			content,
@@ -1832,12 +3425,28 @@ describe("system record lines", () => {
 			...extra,
 		});
 
-		it("turns a notice record into one hook-notice line", () => {
-			const records = [info(IDLE, {level: "notice", uuid: "n-1", timestamp: "2026-11-05T10:00:00.000Z"})];
+		it("turns a notice record into one hook-notice line", () =>
+		{
+			const records = [
+				info(
+					IDLE,
+					{
+						level: "notice",
+						uuid: "n-1",
+						timestamp: "2026-11-05T10:00:00.000Z",
+					},
+				),
+			];
 			expect(processTranscript(records).lines).toStrictEqual([
 				{
 					type: "hook-notice",
-					notices: [{message: IDLE, level: "notice", uuid: "n-1"}],
+					notices: [
+						{
+							message: IDLE,
+							level: "notice",
+							uuid: "n-1",
+						},
+					],
 					uuid: "n-1",
 					timestamp: "2026-11-05T10:00:00.000Z",
 					lineIndex: 0,
@@ -1845,28 +3454,78 @@ describe("system record lines", () => {
 			]);
 		});
 
-		it("keeps warning, defaults a missing or unknown level to notice, and skips info", () => {
+		it("keeps warning, defaults a missing or unknown level to notice, and skips info", () =>
+		{
 			const lines = (record: unknown) => processTranscript([record]).lines;
 			expect([
-				lines(info("Remote Control disconnected", {level: "warning"})),
+				lines(
+					info(
+						"Remote Control disconnected",
+						{
+							level: "warning",
+						},
+					),
+				),
 				lines(info("old cli")),
-				lines(info("odd", {level: "error"})),
-				lines(info("Worktree creation took 3s", {level: "info"})),
+				lines(
+					info(
+						"odd",
+						{
+							level: "error",
+						},
+					),
+				),
+				lines(
+					info(
+						"Worktree creation took 3s",
+						{
+							level: "info",
+						},
+					),
+				),
 			]).toStrictEqual([
 				[
 					{
 						type: "hook-notice",
-						notices: [{message: "Remote Control disconnected", level: "warning"}],
+						notices: [
+							{
+								message: "Remote Control disconnected",
+								level: "warning",
+							},
+						],
 						lineIndex: 0,
 					},
 				],
-				[{type: "hook-notice", notices: [{message: "old cli", level: "notice"}], lineIndex: 0}],
-				[{type: "hook-notice", notices: [{message: "odd", level: "notice"}], lineIndex: 0}],
+				[
+					{
+						type: "hook-notice",
+						notices: [
+							{
+								message: "old cli",
+								level: "notice",
+							},
+						],
+						lineIndex: 0,
+					},
+				],
+				[
+					{
+						type: "hook-notice",
+						notices: [
+							{
+								message: "odd",
+								level: "notice",
+							},
+						],
+						lineIndex: 0,
+					},
+				],
 				[],
 			]);
 		});
 
-		it("drops one trailing colon, strips ANSI, and skips empty text", () => {
+		it("drops one trailing colon, strips ANSI, and skips empty text", () =>
+		{
 			const lines = (content: unknown) => processTranscript([info(content)]).lines;
 			expect([
 				lines("Version 1.2.3:"),
@@ -1876,49 +3535,150 @@ describe("system record lines", () => {
 				lines("   "),
 				lines(":"),
 			]).toStrictEqual([
-				[{type: "hook-notice", notices: [{message: "Version 1.2.3", level: "notice"}], lineIndex: 0}],
-				[{type: "hook-notice", notices: [{message: "Version 1:\n· a", level: "notice"}], lineIndex: 0}],
-				[{type: "hook-notice", notices: [{message: "red", level: "notice"}], lineIndex: 0}],
-				[{type: "hook-notice", notices: [{message: "Saved", level: "notice"}], lineIndex: 0}],
+				[
+					{
+						type: "hook-notice",
+						notices: [
+							{
+								message: "Version 1.2.3",
+								level: "notice",
+							},
+						],
+						lineIndex: 0,
+					},
+				],
+				[
+					{
+						type: "hook-notice",
+						notices: [
+							{
+								message: "Version 1:\n· a",
+								level: "notice",
+							},
+						],
+						lineIndex: 0,
+					},
+				],
+				[
+					{
+						type: "hook-notice",
+						notices: [
+							{
+								message: "red",
+								level: "notice",
+							},
+						],
+						lineIndex: 0,
+					},
+				],
+				[
+					{
+						type: "hook-notice",
+						notices: [
+							{
+								message: "Saved",
+								level: "notice",
+							},
+						],
+						lineIndex: 0,
+					},
+				],
 				[],
 				[],
 			]);
 		});
 
-		it("caps a huge message at 262144 characters plus an ellipsis", () => {
+		it("caps a huge message at 262144 characters plus an ellipsis", () =>
+		{
 			const [line] = processTranscript([info("a".repeat(262150))]).lines;
-			expect(line).toStrictEqual({
-				type: "hook-notice",
-				notices: [{message: `${"a".repeat(262144)}…`, level: "notice"}],
-				lineIndex: 0,
-			});
+			expect(line).toStrictEqual(
+				{
+					type: "hook-notice",
+					notices: [
+						{
+							message: `${"a".repeat(262144)}…`,
+							level: "notice",
+						},
+					],
+					lineIndex: 0,
+				},
+			);
 		});
 
-		it("skips sidechain notices", () => {
-			expect(processTranscript([info("in a subagent", {isSidechain: true})]).lines).toStrictEqual([]);
+		it("skips sidechain notices", () =>
+		{
+			expect(
+				processTranscript([
+					info(
+						"in a subagent",
+						{
+							isSidechain: true,
+						},
+					),
+				]).lines,
+			).toStrictEqual([]);
 		});
 
-		it("merges adjacent records into one line and splits on a record in between", () => {
+		it("merges adjacent records into one line and splits on a record in between", () =>
+		{
 			const records = [
-				info("first", {uuid: "a"}),
-				info("second", {level: "warning", uuid: "b"}),
-				{type: "user", uuid: "u-1", message: {role: "user", content: "hi"}},
-				info("third", {uuid: "c"}),
+				info(
+					"first",
+					{
+						uuid: "a",
+					},
+				),
+				info(
+					"second",
+					{
+						level: "warning",
+						uuid: "b",
+					},
+				),
+				{
+					type: "user",
+					uuid: "u-1",
+					message:
+					{
+						role: "user",
+						content: "hi",
+					},
+				},
+				info(
+					"third",
+					{
+						uuid: "c",
+					},
+				),
 			];
 			const lines = processTranscript(records).lines;
 			expect([lines[0], lines[2]]).toStrictEqual([
 				{
 					type: "hook-notice",
 					notices: [
-						{message: "first", level: "notice", uuid: "a"},
-						{message: "second", level: "warning", uuid: "b"},
+						{
+							message: "first",
+							level: "notice",
+							uuid: "a",
+						},
+						{
+							message: "second",
+							level: "warning",
+							uuid: "b",
+						},
 					],
 					uuid: "a",
 					lineIndex: 0,
 				},
 				{
 					type: "hook-notice",
-					notices: [{message: "third", level: "notice", uuid: "c"}],
+					notices: [
+						{
+							message: "third",
+							level: "notice",
+							uuid: "c",
+						},
+					],
 					uuid: "c",
 					lineIndex: 3,
 				},
@@ -1926,9 +3686,15 @@ describe("system record lines", () => {
 			expect(lines.map((line) => line.type)).toStrictEqual(["hook-notice", "user", "hook-notice"]);
 		});
 
-		it("leaves the hook block form to its own rule and words a stop without preventContinuation as a notice", () => {
+		it("leaves the hook block form to its own rule and words a stop without preventContinuation as a notice", () =>
+		{
 			const records = [
-				info("UserPromptSubmit operation blocked by hook:\n[cmd]: nope", {level: "warning"}),
+				info(
+					"UserPromptSubmit operation blocked by hook:\n[cmd]: nope",
+					{
+						level: "warning",
+					},
+				),
 				info("Operation stopped by hook: done"),
 			];
 			expect(processTranscript(records).lines.map((line) => line.type)).toStrictEqual([
@@ -1938,10 +3704,12 @@ describe("system record lines", () => {
 		});
 	});
 
-	describe("hook-stopped prompts as prompt_stopped notices", () => {
+	describe("hook-stopped prompts as prompt_stopped notices", () =>
+	{
 		const IDLE =
 			'Compacted while idle, before the prompt cache expired · turn off with "idleCompaction": false in settings.json';
-		const stop = (content: string, extra: Record<string, unknown> = {}) => ({
+		const stop = (content: string, extra: Record<string, unknown> = {}) => (
+		{
 			type: "system",
 			subtype: "informational",
 			level: "warning",
@@ -1950,24 +3718,57 @@ describe("system record lines", () => {
 			isMeta: false,
 			...extra,
 		});
-		const user = (content: unknown, extra: Record<string, unknown> = {}) => ({
+		const user = (content: unknown, extra: Record<string, unknown> = {}) => (
+		{
 			type: "user",
-			message: {role: "user", content},
+			message:
+			{
+				role: "user",
+				content,
+			},
 			...extra,
 		});
 		const noticeLines = (records: unknown[]) =>
 			processTranscript(records).lines.filter((line) => line.type === "hook-notice");
 
-		it("turns a typed prompt's stop into a warning prompt_stopped notice", () => {
+		it("turns a typed prompt's stop into a warning prompt_stopped notice", () =>
+		{
 			const records = [
-				user("hi", {uuid: "u1"}),
-				user("Operation stopped by hook: quota", {uuid: "m1", isMeta: true}),
-				stop("Operation stopped by hook: quota", {uuid: "s1", timestamp: "2026-11-07T10:00:00.000Z"}),
+				user(
+					"hi",
+					{
+						uuid: "u1",
+					},
+				),
+				user(
+					"Operation stopped by hook: quota",
+					{
+						uuid: "m1",
+						isMeta: true,
+					},
+				),
+				stop(
+					"Operation stopped by hook: quota",
+					{
+						uuid: "s1",
+						timestamp: "2026-11-07T10:00:00.000Z",
+					},
+				),
 			];
 			expect(noticeLines(records)).toStrictEqual([
 				{
 					type: "hook-notice",
-					notices: [{message: {notice: "prompt_stopped", reason: "quota"}, level: "warning", uuid: "s1"}],
+					notices: [
+						{
+							message:
+							{
+								notice: "prompt_stopped",
+								reason: "quota",
+							},
+							level: "warning",
+							uuid: "s1",
+						},
+					],
 					uuid: "s1",
 					timestamp: "2026-11-07T10:00:00.000Z",
 					lineIndex: 2,
@@ -1975,7 +3776,8 @@ describe("system record lines", () => {
 			]);
 		});
 
-		it("drops the reason key when the stop names none", () => {
+		it("drops the reason key when the stop names none", () =>
+		{
 			expect([
 				noticeLines([stop("Operation stopped by hook")]),
 				noticeLines([stop("Operation stopped by hook:   ")]),
@@ -1983,55 +3785,123 @@ describe("system record lines", () => {
 				[
 					{
 						type: "hook-notice",
-						notices: [{message: {notice: "prompt_stopped"}, level: "warning"}],
+						notices: [
+							{
+								message:
+								{
+									notice: "prompt_stopped",
+								},
+								level: "warning",
+							},
+						],
 						lineIndex: 0,
 					},
 				],
 				[
 					{
 						type: "hook-notice",
-						notices: [{message: {notice: "prompt_stopped"}, level: "warning"}],
+						notices: [
+							{
+								message:
+								{
+									notice: "prompt_stopped",
+								},
+								level: "warning",
+							},
+						],
 						lineIndex: 0,
 					},
 				],
 			]);
 		});
 
-		it("suppresses the stop after a visible user bubble with the same text, ANSI or not", () => {
+		it("suppresses the stop after a visible user bubble with the same text, ANSI or not", () =>
+		{
 			expect([
 				noticeLines([user("Operation stopped by hook: x"), stop("Operation stopped by hook: x")]),
 				noticeLines([
-					user([{type: "text", text: "\x1b[1mOperation stopped by hook: x\x1b[0m"}]),
+					user([
+						{
+							type: "text",
+							text: "\x1b[1mOperation stopped by hook: x\x1b[0m",
+						},
+					]),
 					stop("Operation stopped by hook: x"),
 				]),
 			]).toStrictEqual([[], []]);
 		});
 
-		it("shows the stop after an assistant reply", () => {
+		it("shows the stop after an assistant reply", () =>
+		{
 			const records = [
-				{type: "assistant", message: {role: "assistant", content: [{type: "text", text: "ok"}]}},
+				{
+					type: "assistant",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "text",
+								text: "ok",
+							},
+						],
+					},
+				},
 				stop("Operation stopped by hook: x"),
 			];
 			expect(noticeLines(records)).toStrictEqual([
 				{
 					type: "hook-notice",
-					notices: [{message: {notice: "prompt_stopped", reason: "x"}, level: "warning"}],
+					notices: [
+						{
+							message:
+							{
+								notice: "prompt_stopped",
+								reason: "x",
+							},
+							level: "warning",
+						},
+					],
 					lineIndex: 1,
 				},
 			]);
 		});
 
-		it("merges the stop into an adjacent notice line", () => {
+		it("merges the stop into an adjacent notice line", () =>
+		{
 			const records = [
-				{type: "system", subtype: "informational", level: "notice", content: IDLE, uuid: "n1"},
-				stop("Operation stopped by hook: x", {uuid: "s1"}),
+				{
+					type: "system",
+					subtype: "informational",
+					level: "notice",
+					content: IDLE,
+					uuid: "n1",
+				},
+				stop(
+					"Operation stopped by hook: x",
+					{
+						uuid: "s1",
+					},
+				),
 			];
 			expect(processTranscript(records).lines).toStrictEqual([
 				{
 					type: "hook-notice",
 					notices: [
-						{message: IDLE, level: "notice", uuid: "n1"},
-						{message: {notice: "prompt_stopped", reason: "x"}, level: "warning", uuid: "s1"},
+						{
+							message: IDLE,
+							level: "notice",
+							uuid: "n1",
+						},
+						{
+							message:
+							{
+								notice: "prompt_stopped",
+								reason: "x",
+							},
+							level: "warning",
+							uuid: "s1",
+						},
 					],
 					uuid: "n1",
 					lineIndex: 0,
@@ -2039,15 +3909,35 @@ describe("system record lines", () => {
 			]);
 		});
 
-		it("keeps the stop text a plain notice without preventContinuation, and skips a sidechain stop", () => {
+		it("keeps the stop text a plain notice without preventContinuation, and skips a sidechain stop", () =>
+		{
 			expect([
-				processTranscript([stop("Operation stopped by hook: x", {preventContinuation: false})]).lines,
-				processTranscript([stop("Operation stopped by hook: x", {isSidechain: true})]).lines,
+				processTranscript([
+					stop(
+						"Operation stopped by hook: x",
+						{
+							preventContinuation: false,
+						},
+					),
+				]).lines,
+				processTranscript([
+					stop(
+						"Operation stopped by hook: x",
+						{
+							isSidechain: true,
+						},
+					),
+				]).lines,
 			]).toStrictEqual([
 				[
 					{
 						type: "hook-notice",
-						notices: [{message: "Operation stopped by hook: x", level: "warning"}],
+						notices: [
+							{
+								message: "Operation stopped by hook: x",
+								level: "warning",
+							},
+						],
 						lineIndex: 0,
 					},
 				],
@@ -2056,10 +3946,12 @@ describe("system record lines", () => {
 		});
 	});
 
-	describe("notice subtypes as hook-notice lines", () => {
+	describe("notice subtypes as hook-notice lines", () =>
+	{
 		const RECAP =
 			"We revived the Mnemonica Playdate game: crashes fixed, screens redesigned, Simon fixed with sounds, and the crank made less sensitive, all committed locally on main. Next: run `just run` and upload the build to your Playdate.";
-		const sys = (subtype: string, extra: Record<string, unknown> = {}) => ({
+		const sys = (subtype: string, extra: Record<string, unknown> = {}) => (
+		{
 			type: "system",
 			subtype,
 			isMeta: false,
@@ -2069,18 +3961,26 @@ describe("system record lines", () => {
 		const notices = (record: unknown) =>
 			processTranscript([record]).lines.map((line) => (line.type === "hook-notice" ? line.notices : line));
 
-		it("turns the away_summary specimen into one recap hook-notice line", () => {
-			const record = sys("away_summary", {
-				content: RECAP,
-				uuid: "8cdbfaf5-da11-4377-a2d7-da286fb75930",
-				timestamp: "2026-09-23T23:57:25.845Z",
-			});
+		it("turns the away_summary specimen into one recap hook-notice line", () =>
+		{
+			const record = sys(
+				"away_summary",
+				{
+					content: RECAP,
+					uuid: "8cdbfaf5-da11-4377-a2d7-da286fb75930",
+					timestamp: "2026-09-23T23:57:25.845Z",
+				},
+			);
 			expect(processTranscript([record]).lines).toStrictEqual([
 				{
 					type: "hook-notice",
 					notices: [
 						{
-							message: {notice: "away_summary", recap: RECAP},
+							message:
+							{
+								notice: "away_summary",
+								recap: RECAP,
+							},
 							level: "notice",
 							uuid: "8cdbfaf5-da11-4377-a2d7-da286fb75930",
 						},
@@ -2092,75 +3992,349 @@ describe("system record lines", () => {
 			]);
 		});
 
-		it("normalises a recap and skips an empty or non-string one", () => {
+		it("normalises a recap and skips an empty or non-string one", () =>
+		{
 			expect([
-				notices(sys("away_summary", {content: "a\n\n  b"})),
-				notices(sys("away_summary", {content: "\x1b[1mbold\x1b[0m (disable recaps in /config)"})),
-				notices(sys("away_summary", {content: "   "})),
+				notices(
+					sys(
+						"away_summary",
+						{
+							content: "a\n\n  b",
+						},
+					),
+				),
+				notices(
+					sys(
+						"away_summary",
+						{
+							content: "\x1b[1mbold\x1b[0m (disable recaps in /config)",
+						},
+					),
+				),
+				notices(
+					sys(
+						"away_summary",
+						{
+							content: "   ",
+						},
+					),
+				),
 				notices(sys("away_summary", {})),
 			]).toStrictEqual([
-				[[{message: {notice: "away_summary", recap: "a b"}, level: "notice"}]],
-				[[{message: {notice: "away_summary", recap: "bold (disable recaps in /config)"}, level: "notice"}]],
+				[
+					[
+						{
+							message:
+							{
+								notice: "away_summary",
+								recap: "a b",
+							},
+							level: "notice",
+						},
+					],
+				],
+				[
+					[
+						{
+							message:
+							{
+								notice: "away_summary",
+								recap: "bold (disable recaps in /config)",
+							},
+							level: "notice",
+						},
+					],
+				],
 				[],
 				[],
 			]);
 		});
 
-		it("caps a 600-character recap at 500 characters plus an ellipsis", () => {
-			expect(notices(sys("away_summary", {content: "x".repeat(600)}))).toStrictEqual([
-				[{message: {notice: "away_summary", recap: `${"x".repeat(500)}…`}, level: "notice"}],
+		it("caps a 600-character recap at 500 characters plus an ellipsis", () =>
+		{
+			expect(
+				notices(
+					sys(
+						"away_summary",
+						{
+							content: "x".repeat(600),
+						},
+					),
+				),
+			).toStrictEqual([
+				[
+					{
+						message:
+						{
+							notice: "away_summary",
+							recap: `${"x".repeat(500)}…`,
+						},
+						level: "notice",
+					},
+				],
 			]);
 		});
 
-		it("turns agents_killed into a notice and skips it on a sidechain", () => {
+		it("turns agents_killed into a notice and skips it on a sidechain", () =>
+		{
 			expect([
-				notices(sys("agents_killed", {uuid: "k-1"})),
-				notices(sys("agents_killed", {isSidechain: true})),
-			]).toStrictEqual([[[{message: {notice: "agents_killed"}, level: "notice", uuid: "k-1"}]], []]);
-		});
-
-		it("counts memory_saved paths, clamping and flooring the team count", () => {
-			expect([
-				notices(sys("memory_saved", {writtenPaths: ["a", "b", "c"], teamCount: 1})),
-				notices(sys("memory_saved", {writtenPaths: ["a"], teamCount: 5})),
-				notices(sys("memory_saved", {writtenPaths: ["a", "b"], teamCount: 1.7})),
-				notices(sys("memory_saved", {writtenPaths: ["a", "b"], teamCount: -1})),
-				notices(sys("memory_saved", {writtenPaths: [], teamCount: 1})),
-				notices(sys("memory_saved", {})),
-				notices(sys("memory_saved", {writtenPaths: ["a"], verb: " Improved "})),
-				notices(sys("memory_saved", {writtenPaths: ["a"], verb: "  "})),
+				notices(
+					sys(
+						"agents_killed",
+						{
+							uuid: "k-1",
+						},
+					),
+				),
+				notices(
+					sys(
+						"agents_killed",
+						{
+							isSidechain: true,
+						},
+					),
+				),
 			]).toStrictEqual([
-				[[{message: {notice: "memory_saved", count: 2, teamCount: 1}, level: "notice"}]],
-				[[{message: {notice: "memory_saved", count: 0, teamCount: 1}, level: "notice"}]],
-				[[{message: {notice: "memory_saved", count: 1, teamCount: 1}, level: "notice"}]],
-				[[{message: {notice: "memory_saved", count: 2, teamCount: 0}, level: "notice"}]],
+				[
+					[
+						{
+							message:
+							{
+								notice: "agents_killed",
+							},
+							level: "notice",
+							uuid: "k-1",
+						},
+					],
+				],
 				[],
-				[],
-				[[{message: {notice: "memory_saved", count: 1, teamCount: 0, verb: "Improved"}, level: "notice"}]],
-				[[{message: {notice: "memory_saved", count: 1, teamCount: 0}, level: "notice"}]],
 			]);
 		});
 
-		it("turns model_consent_fallback content into a warning without a colon trim", () => {
+		it("counts memory_saved paths, clamping and flooring the team count", () =>
+		{
+			expect([
+				notices(
+					sys(
+						"memory_saved",
+						{
+							writtenPaths: ["a", "b", "c"],
+							teamCount: 1,
+						},
+					),
+				),
+				notices(
+					sys(
+						"memory_saved",
+						{
+							writtenPaths: ["a"],
+							teamCount: 5,
+						},
+					),
+				),
+				notices(
+					sys(
+						"memory_saved",
+						{
+							writtenPaths: ["a", "b"],
+							teamCount: 1.7,
+						},
+					),
+				),
+				notices(
+					sys(
+						"memory_saved",
+						{
+							writtenPaths: ["a", "b"],
+							teamCount: -1,
+						},
+					),
+				),
+				notices(
+					sys(
+						"memory_saved",
+						{
+							writtenPaths: [],
+							teamCount: 1,
+						},
+					),
+				),
+				notices(sys("memory_saved", {})),
+				notices(
+					sys(
+						"memory_saved",
+						{
+							writtenPaths: ["a"],
+							verb: " Improved ",
+						},
+					),
+				),
+				notices(
+					sys(
+						"memory_saved",
+						{
+							writtenPaths: ["a"],
+							verb: "  ",
+						},
+					),
+				),
+			]).toStrictEqual([
+				[
+					[
+						{
+							message:
+							{
+								notice: "memory_saved",
+								count: 2,
+								teamCount: 1,
+							},
+							level: "notice",
+						},
+					],
+				],
+				[
+					[
+						{
+							message:
+							{
+								notice: "memory_saved",
+								count: 0,
+								teamCount: 1,
+							},
+							level: "notice",
+						},
+					],
+				],
+				[
+					[
+						{
+							message:
+							{
+								notice: "memory_saved",
+								count: 1,
+								teamCount: 1,
+							},
+							level: "notice",
+						},
+					],
+				],
+				[
+					[
+						{
+							message:
+							{
+								notice: "memory_saved",
+								count: 2,
+								teamCount: 0,
+							},
+							level: "notice",
+						},
+					],
+				],
+				[],
+				[],
+				[
+					[
+						{
+							message:
+							{
+								notice: "memory_saved",
+								count: 1,
+								teamCount: 0,
+								verb: "Improved",
+							},
+							level: "notice",
+						},
+					],
+				],
+				[
+					[
+						{
+							message:
+							{
+								notice: "memory_saved",
+								count: 1,
+								teamCount: 0,
+							},
+							level: "notice",
+						},
+					],
+				],
+			]);
+		});
+
+		it("turns model_consent_fallback content into a warning without a colon trim", () =>
+		{
 			const content =
 				"Switched to Opus 4.7 — for this session · Fable 5 requires usage credits · /model to change:";
 			expect([
-				notices(sys("model_consent_fallback", {content: ` ${content} `, level: "warning"})),
-				notices(sys("model_consent_fallback", {content: "  ", level: "warning"})),
-			]).toStrictEqual([[[{message: content, level: "warning"}]], []]);
+				notices(
+					sys(
+						"model_consent_fallback",
+						{
+							content: ` ${content} `,
+							level: "warning",
+						},
+					),
+				),
+				notices(
+					sys(
+						"model_consent_fallback",
+						{
+							content: "  ",
+							level: "warning",
+						},
+					),
+				),
+			]).toStrictEqual([
+				[
+					[
+						{
+							message: content,
+							level: "warning",
+						},
+					],
+				],
+				[],
+			]);
 		});
 
-		it("merges a recap into the informational notice before it", () => {
+		it("merges a recap into the informational notice before it", () =>
+		{
 			const records = [
-				{type: "system", subtype: "informational", content: "plugin says hi", isMeta: true, uuid: "i-1"},
-				sys("away_summary", {content: "x", uuid: "r-1"}),
+				{
+					type: "system",
+					subtype: "informational",
+					content: "plugin says hi",
+					isMeta: true,
+					uuid: "i-1",
+				},
+				sys(
+					"away_summary",
+					{
+						content: "x",
+						uuid: "r-1",
+					},
+				),
 			];
 			expect(processTranscript(records).lines).toStrictEqual([
 				{
 					type: "hook-notice",
 					notices: [
-						{message: "plugin says hi", level: "notice", uuid: "i-1"},
-						{message: {notice: "away_summary", recap: "x"}, level: "notice", uuid: "r-1"},
+						{
+							message: "plugin says hi",
+							level: "notice",
+							uuid: "i-1",
+						},
+						{
+							message:
+							{
+								notice: "away_summary",
+								recap: "x",
+							},
+							level: "notice",
+							uuid: "r-1",
+						},
 					],
 					uuid: "i-1",
 					lineIndex: 0,
@@ -2168,27 +4342,63 @@ describe("system record lines", () => {
 			]);
 		});
 
-		it("merges notices across a turn_duration line, which upstream's event stream never carries as an item", () => {
+		it("merges notices across a turn_duration line, which upstream's event stream never carries as an item", () =>
+		{
 			const records = [
-				{type: "system", subtype: "informational", content: "first", isMeta: true, uuid: "i-1"},
-				sys("turn_duration", {durationMs: 1200, uuid: "d-1"}),
-				sys("agents_killed", {uuid: "k-1"}),
+				{
+					type: "system",
+					subtype: "informational",
+					content: "first",
+					isMeta: true,
+					uuid: "i-1",
+				},
+				sys(
+					"turn_duration",
+					{
+						durationMs: 1200,
+						uuid: "d-1",
+					},
+				),
+				sys(
+					"agents_killed",
+					{
+						uuid: "k-1",
+					},
+				),
 			];
 			expect(processTranscript(records).lines).toStrictEqual([
 				{
 					type: "hook-notice",
 					notices: [
-						{message: "first", level: "notice", uuid: "i-1"},
-						{message: {notice: "agents_killed"}, level: "notice", uuid: "k-1"},
+						{
+							message: "first",
+							level: "notice",
+							uuid: "i-1",
+						},
+						{
+							message:
+							{
+								notice: "agents_killed",
+							},
+							level: "notice",
+							uuid: "k-1",
+						},
 					],
 					uuid: "i-1",
 					lineIndex: 0,
 				},
-				{type: "system", subtype: "turn_duration", durationMs: 1200, uuid: "d-1", lineIndex: 1},
+				{
+					type: "system",
+					subtype: "turn_duration",
+					durationMs: 1200,
+					uuid: "d-1",
+					lineIndex: 1,
+				},
 			]);
 		});
 
-		it("merges the 9b04df69 recap and agents_killed across the queue-operation records upstream drops", () => {
+		it("merges the 9b04df69 recap and agents_killed across the queue-operation records upstream drops", () =>
+		{
 			const specimen = rowSpecimens.find(
 				(candidate) => candidate.session === "9b04df69" && candidate.line === 1794,
 			)!;
@@ -2196,8 +4406,23 @@ describe("system record lines", () => {
 				{
 					type: "hook-notice",
 					notices: [
-						{message: {notice: "away_summary", recap: "x"}, level: "notice", uuid: "9b04-summary"},
-						{message: {notice: "agents_killed"}, level: "notice", uuid: "9b04-killed"},
+						{
+							message:
+							{
+								notice: "away_summary",
+								recap: "x",
+							},
+							level: "notice",
+							uuid: "9b04-summary",
+						},
+						{
+							message:
+							{
+								notice: "agents_killed",
+							},
+							level: "notice",
+							uuid: "9b04-killed",
+						},
 					],
 					uuid: "9b04-summary",
 					timestamp: "2026-08-11T22:57:30.000Z",
@@ -2206,21 +4431,48 @@ describe("system record lines", () => {
 			]);
 		});
 
-		it("drops the 6d735487 agents_killed record copied onto a sidechain", () => {
+		it("drops the 6d735487 agents_killed record copied onto a sidechain", () =>
+		{
 			const specimen = rowSpecimens.find(
 				(candidate) => candidate.session === "6d735487" && candidate.line === 1683,
 			)!;
 			const killed = specimen.records.find(
 				(record) => "subtype" in record && record.subtype === "agents_killed",
 			)!;
-			expect(processTranscript([{...killed, isSidechain: true}]).lines).toStrictEqual([]);
+			expect(
+				processTranscript([
+					{
+						...killed,
+						isSidechain: true,
+					},
+				]).lines,
+			).toStrictEqual([]);
 		});
 
-		it("still splits notices across a line upstream draws", () => {
+		it("still splits notices across a line upstream draws", () =>
+		{
 			const records = [
-				{type: "system", subtype: "informational", content: "first", isMeta: true, uuid: "i-1"},
-				sys("compact_boundary", {content: "Conversation compacted", uuid: "c-1"}),
-				{type: "system", subtype: "informational", content: "second", isMeta: true, uuid: "i-2"},
+				{
+					type: "system",
+					subtype: "informational",
+					content: "first",
+					isMeta: true,
+					uuid: "i-1",
+				},
+				sys(
+					"compact_boundary",
+					{
+						content: "Conversation compacted",
+						uuid: "c-1",
+					},
+				),
+				{
+					type: "system",
+					subtype: "informational",
+					content: "second",
+					isMeta: true,
+					uuid: "i-2",
+				},
 			];
 			expect(processTranscript(records).lines.map((line) => line.type)).toStrictEqual([
 				"hook-notice",
@@ -2230,7 +4482,8 @@ describe("system record lines", () => {
 		});
 	});
 
-	it("turns a hook-blocked prompt record into one prompt-blocked line", () => {
+	it("turns a hook-blocked prompt record into one prompt-blocked line", () =>
+	{
 		const records = [
 			{
 				type: "system",
@@ -2255,14 +4508,27 @@ describe("system record lines", () => {
 		]);
 	});
 
-	it("uses the whole content as the reason when preventContinuation text doesn't parse", () => {
-		const records = [{type: "system", subtype: "informational", preventContinuation: true, content: "custom text"}];
+	it("uses the whole content as the reason when preventContinuation text doesn't parse", () =>
+	{
+		const records = [
+			{
+				type: "system",
+				subtype: "informational",
+				preventContinuation: true,
+				content: "custom text",
+			},
+		];
 		expect(processTranscript(records).lines).toStrictEqual([
-			{type: "prompt-blocked", reason: "custom text", lineIndex: 0},
+			{
+				type: "prompt-blocked",
+				reason: "custom text",
+				lineIndex: 0,
+			},
 		]);
 	});
 
-	it("leaves a stopped-by-hook record with preventContinuation to the prompt_stopped notice", () => {
+	it("leaves a stopped-by-hook record with preventContinuation to the prompt_stopped notice", () =>
+	{
 		const records = [
 			{
 				type: "system",
@@ -2274,7 +4540,8 @@ describe("system record lines", () => {
 		expect(processTranscript(records).lines.map((line) => line.type)).toStrictEqual(["hook-notice"]);
 	});
 
-	it("emits scheduled_task_fire with its task, cron, prompt, and no-op streak", () => {
+	it("emits scheduled_task_fire with its task, cron, prompt, and no-op streak", () =>
+	{
 		const records = [
 			{
 				type: "system",
@@ -2310,7 +4577,8 @@ describe("system record lines", () => {
 		]);
 	});
 
-	it("emits bridge_status records with their Remote Control url", () => {
+	it("emits bridge_status records with their Remote Control url", () =>
+	{
 		const records = [
 			{
 				type: "system",
@@ -2332,7 +4600,8 @@ describe("system record lines", () => {
 		]);
 	});
 
-	it("emits model_refusal_no_fallback records with their category, explanation and original model", () => {
+	it("emits model_refusal_no_fallback records with their category, explanation and original model", () =>
+	{
 		const records = [
 			{
 				type: "system",
@@ -2381,14 +4650,19 @@ describe("system record lines", () => {
 		]);
 	});
 
-	it("emits local_command records that name the slash command they ran", () => {
+	it("emits local_command records that name the slash command they ran", () =>
+	{
 		const records = [
 			{
 				type: "system",
 				subtype: "local_command",
 				content: "<local-command-stdout>Session renamed to: daily</local-command-stdout>",
 				uuid: "cmd-1",
-				commandRun: {command: "rename", args: "daily"},
+				commandRun:
+				{
+					command: "rename",
+					args: "daily",
+				},
 			},
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
@@ -2396,61 +4670,86 @@ describe("system record lines", () => {
 				type: "system",
 				subtype: "local_command",
 				content: "<local-command-stdout>Session renamed to: daily</local-command-stdout>",
-				commandRun: {command: "rename", args: "daily"},
+				commandRun:
+				{
+					command: "rename",
+					args: "daily",
+				},
 				uuid: "cmd-1",
 				lineIndex: 0,
 			},
 		]);
 	});
 
-	it("emits stop_hook_summary with hook fields", () => {
+	it("emits stop_hook_summary with hook fields", () =>
+	{
 		const records = [
 			{
 				type: "system",
 				subtype: "stop_hook_summary",
 				hookCount: 3,
 				hookErrors: ["boom"],
-				hookInfos: [{name: "precommit"}],
+				hookInfos: [
+					{
+						name: "precommit",
+					},
+				],
 				hookAdditionalContext: ["ctx"],
 				preventedContinuation: true,
 				hasOutput: true,
 			},
 		];
 		const result = processTranscript(records);
-		expect(result.lines[0]).toMatchObject({
-			type: "system",
-			subtype: "stop_hook_summary",
-			hookCount: 3,
-			hookErrors: ["boom"],
-			hookInfos: [{name: "precommit"}],
-			hookAdditionalContext: ["ctx"],
-			preventedContinuation: true,
-		});
+		expect(result.lines[0]).toMatchObject(
+			{
+				type: "system",
+				subtype: "stop_hook_summary",
+				hookCount: 3,
+				hookErrors: ["boom"],
+				hookInfos: [
+					{
+						name: "precommit",
+					},
+				],
+				hookAdditionalContext: ["ctx"],
+				preventedContinuation: true,
+			},
+		);
 	});
 
-	it("emits api_error with retry fields", () => {
+	it("emits api_error with retry fields", () =>
+	{
 		const records = [
 			{
 				type: "system",
 				subtype: "api_error",
-				error: {message: "Overloaded"},
+				error:
+				{
+					message: "Overloaded",
+				},
 				retryAttempt: 2,
 				retryInMs: 4000,
 				maxRetries: 10,
 			},
 		];
 		const result = processTranscript(records);
-		expect(result.lines[0]).toMatchObject({
-			type: "system",
-			subtype: "api_error",
-			error: {message: "Overloaded"},
-			retryAttempt: 2,
-			retryInMs: 4000,
-			maxRetries: 10,
-		});
+		expect(result.lines[0]).toMatchObject(
+			{
+				type: "system",
+				subtype: "api_error",
+				error:
+				{
+					message: "Overloaded",
+				},
+				retryAttempt: 2,
+				retryInMs: 4000,
+				maxRetries: 10,
+			},
+		);
 	});
 
-	it("emits turn_duration with durationMs and pending agents", () => {
+	it("emits turn_duration with durationMs and pending agents", () =>
+	{
 		const records = [
 			{
 				type: "system",
@@ -2460,12 +4759,14 @@ describe("system record lines", () => {
 			},
 		];
 		const result = processTranscript(records);
-		expect(result.lines[0]).toMatchObject({
-			type: "system",
-			subtype: "turn_duration",
-			durationMs: 12500,
-			pendingBackgroundAgentCount: 2,
-		});
+		expect(result.lines[0]).toMatchObject(
+			{
+				type: "system",
+				subtype: "turn_duration",
+				durationMs: 12500,
+				pendingBackgroundAgentCount: 2,
+			},
+		);
 	});
 });
 
@@ -2473,8 +4774,10 @@ describe("system record lines", () => {
 // Worktree state lines
 // ---------------------------------------------------------------------------
 
-describe("worktree state lines", () => {
-	const session = {
+describe("worktree state lines", () =>
+{
+	const session =
+	{
 		originalCwd: "/Users/x/proj",
 		worktreePath: "/Users/x/proj-wt",
 		worktreeName: "fix-bug",
@@ -2485,42 +4788,70 @@ describe("worktree state lines", () => {
 		enteredExisting: true,
 	};
 
-	it("emits a worktree line and dedupes unchanged repeats", () => {
+	it("emits a worktree line and dedupes unchanged repeats", () =>
+	{
 		const records = [
-			{type: "worktree-state", worktreeSession: session},
-			{type: "worktree-state", worktreeSession: session},
+			{
+				type: "worktree-state",
+				worktreeSession: session,
+			},
+			{
+				type: "worktree-state",
+				worktreeSession: session,
+			},
 		];
 		const result = processTranscript(records);
 		expect(result.lines).toHaveLength(1);
-		expect(result.lines[0]).toMatchObject({
-			type: "worktree",
-			worktreeName: "fix-bug",
-			worktreeBranch: "fix-bug-branch",
-			originalBranch: "main",
-			originalHeadCommit: "abc1234def5678",
-			originalCwd: "/Users/x/proj",
-			enteredExisting: true,
-		});
+		expect(result.lines[0]).toMatchObject(
+			{
+				type: "worktree",
+				worktreeName: "fix-bug",
+				worktreeBranch: "fix-bug-branch",
+				originalBranch: "main",
+				originalHeadCommit: "abc1234def5678",
+				originalCwd: "/Users/x/proj",
+				enteredExisting: true,
+			},
+		);
 	});
 
-	it("emits again when the worktree changes", () => {
+	it("emits again when the worktree changes", () =>
+	{
 		const records = [
-			{type: "worktree-state", worktreeSession: session},
-			{type: "worktree-state", worktreeSession: {...session, worktreeName: "other"}},
+			{
+				type: "worktree-state",
+				worktreeSession: session,
+			},
+			{
+				type: "worktree-state",
+				worktreeSession:
+				{
+					...session,
+					worktreeName: "other",
+				},
+			},
 		];
 		expect(processTranscript(records).lines).toHaveLength(2);
 	});
 
-	it("skips null worktreeSession", () => {
-		const records = [{type: "worktree-state", worktreeSession: null}];
-		expect(processTranscript(records).lines).toStrictEqual([]);
-	});
-
-	it("skips hook-based worktree sessions without branch metadata", () => {
+	it("skips null worktreeSession", () =>
+	{
 		const records = [
 			{
 				type: "worktree-state",
-				worktreeSession: {
+				worktreeSession: null,
+			},
+		];
+		expect(processTranscript(records).lines).toStrictEqual([]);
+	});
+
+	it("skips hook-based worktree sessions without branch metadata", () =>
+	{
+		const records = [
+			{
+				type: "worktree-state",
+				worktreeSession:
+				{
 					originalCwd: "/tmp/test/project",
 					preEnterOriginalCwd: "/tmp/test/project",
 					worktreePath: "/tmp/test/worktree",
@@ -2535,16 +4866,31 @@ describe("worktree state lines", () => {
 	});
 });
 
-describe("schema-rejected records", () => {
-	it("emits a visible unparsed line instead of silently dropping the record", () => {
+describe("schema-rejected records", () =>
+{
+	it("emits a visible unparsed line instead of silently dropping the record", () =>
+	{
 		const result = processTranscript([
 			userRecord("Hello"),
-			{type: "assistant", uuid: "u-2", timestamp: "2026-08-07T00:00:00.000Z", unknownKey: 1},
+			{
+				type: "assistant",
+				uuid: "u-2",
+				timestamp: "2026-08-07T00:00:00.000Z",
+				unknownKey: 1,
+			},
 			userRecord("Goodbye"),
 		]);
 
 		expect(
-			result.lines.map((line) => (line.type === "unparsed" ? {...line, issues: []} : line.type)),
+			result.lines.map((line) =>
+				line.type === "unparsed"
+					?
+						{
+							...line,
+							issues: [],
+						}
+					: line.type,
+			),
 		).toStrictEqual([
 			"user",
 			{
@@ -2559,8 +4905,19 @@ describe("schema-rejected records", () => {
 		]);
 	});
 
-	it("reports why the record was rejected", () => {
-		const result = processTranscript([{type: "assistant", message: {role: "assistant", content: []}, uuid: 1}]);
+	it("reports why the record was rejected", () =>
+	{
+		const result = processTranscript([
+			{
+				type: "assistant",
+				message:
+				{
+					role: "assistant",
+					content: [],
+				},
+				uuid: 1,
+			},
+		]);
 		const line = result.lines[0];
 
 		expect(line?.type === "unparsed" ? line.issues : []).toStrictEqual([
@@ -2568,20 +4925,30 @@ describe("schema-rejected records", () => {
 		]);
 	});
 
-	it("keeps records whose type is not rendered out of the transcript", () => {
+	it("keeps records whose type is not rendered out of the transcript", () =>
+	{
 		const result = processTranscript([
-			{type: "file-history-snapshot", messageId: "m-1", snapshot: {trackedFileBackups: {}}},
+			{
+				type: "file-history-snapshot",
+				messageId: "m-1",
+				snapshot:
+				{
+					trackedFileBackups: {},
+				},
+			},
 		]);
 
 		expect(result.lines).toStrictEqual([]);
 	});
 });
 
-describe("artifact records", () => {
+describe("artifact records", () =>
+{
 	const uuid = "29d89ae8-e33b-4f55-bbbd-874d5d316169";
 	const frameUrl = `https://claude.ai/code/artifact/${uuid}`;
 
-	it("emits a published-artifact line for a frame-link that names its artifact", () => {
+	it("emits a published-artifact line for a frame-link that names its artifact", () =>
+	{
 		const records = [
 			{
 				type: "frame-link",
@@ -2605,29 +4972,63 @@ describe("artifact records", () => {
 		]);
 	});
 
-	it("skips count-only frame-link heartbeats and unchanged republishes", () => {
-		const published = {type: "frame-link", frameUrl, title: "Quarto Oracle", artifactCount: 1};
+	it("skips count-only frame-link heartbeats and unchanged republishes", () =>
+	{
+		const published =
+		{
+			type: "frame-link",
+			frameUrl,
+			title: "Quarto Oracle",
+			artifactCount: 1,
+		};
 		const records = [
 			published,
-			{type: "frame-link", artifactCount: 1, sessionId: "s-1"},
+			{
+				type: "frame-link",
+				artifactCount: 1,
+				sessionId: "s-1",
+			},
 			published,
-			{...published, title: "Quarto Oracle v2"},
+			{
+				...published,
+				title: "Quarto Oracle v2",
+			},
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
-			{type: "artifact-link", frameUrl, title: "Quarto Oracle", lineIndex: 0},
-			{type: "artifact-link", frameUrl, title: "Quarto Oracle v2", lineIndex: 3},
+			{
+				type: "artifact-link",
+				frameUrl,
+				title: "Quarto Oracle",
+				lineIndex: 0,
+			},
+			{
+				type: "artifact-link",
+				frameUrl,
+				title: "Quarto Oracle v2",
+				lineIndex: 3,
+			},
 		]);
 	});
 
-	it("emits a watch line naming the artifacts the comment monitor watches", () => {
+	it("emits a watch line naming the artifacts the comment monitor watches", () =>
+	{
 		const records = [
 			{
 				type: "artifact-comment-monitor",
 				v: 1,
 				sessionId: "s-1",
-				artifacts: {
-					[uuid]: {state: "armed", writtenAtMs: 1, title: "Quarto Oracle"},
-					"https://claude.ai/artifact/some-slug": {state: "paused"},
+				artifacts:
+				{
+					[uuid]:
+					{
+						state: "armed",
+						writtenAtMs: 1,
+						title: "Quarto Oracle",
+					},
+					"https://claude.ai/artifact/some-slug":
+					{
+						state: "paused",
+					},
 				},
 			},
 		];
@@ -2635,57 +5036,122 @@ describe("artifact records", () => {
 			{
 				type: "artifact-watch",
 				artifacts: [
-					{url: frameUrl, title: "Quarto Oracle", state: "armed"},
-					{url: "https://claude.ai/artifact/some-slug", state: "paused"},
+					{
+						url: frameUrl,
+						title: "Quarto Oracle",
+						state: "armed",
+					},
+					{
+						url: "https://claude.ai/artifact/some-slug",
+						state: "paused",
+					},
 				],
 				lineIndex: 0,
 			},
 		]);
 	});
 
-	it("dedupes unchanged monitor state and folds in ledger comment threads", () => {
-		const monitor = {
+	it("dedupes unchanged monitor state and folds in ledger comment threads", () =>
+	{
+		const monitor =
+		{
 			type: "artifact-comment-monitor",
 			v: 1,
-			artifacts: {[uuid]: {state: "armed", writtenAtMs: 1, title: "Quarto Oracle"}},
+			artifacts:
+			{
+				[uuid]:
+				{
+					state: "armed",
+					writtenAtMs: 1,
+					title: "Quarto Oracle",
+				},
+			},
 		};
 		const records = [
 			monitor,
 			{
 				...monitor,
-				artifacts: {[uuid]: {state: "armed", writtenAtMs: 2, title: "Quarto Oracle"}},
-			},
-			{
-				type: "artifact-autoreact-ledger",
-				v: 1,
-				artifacts: {
-					[uuid]: {savedAt: 1, stampHighWater: null, threads: [], turnTimestamps: []},
+				artifacts:
+				{
+					[uuid]:
+					{
+						state: "armed",
+						writtenAtMs: 2,
+						title: "Quarto Oracle",
+					},
 				},
 			},
 			{
 				type: "artifact-autoreact-ledger",
 				v: 1,
-				artifacts: {
-					[uuid]: {savedAt: 2, stampHighWater: "x", threads: [{id: "t1"}, {id: "t2"}]},
+				artifacts:
+				{
+					[uuid]:
+					{
+						savedAt: 1,
+						stampHighWater: null,
+						threads: [],
+						turnTimestamps: [],
+					},
+				},
+			},
+			{
+				type: "artifact-autoreact-ledger",
+				v: 1,
+				artifacts:
+				{
+					[uuid]:
+					{
+						savedAt: 2,
+						stampHighWater: "x",
+						threads: [
+							{
+								id: "t1",
+							},
+							{
+								id: "t2",
+							},
+						],
+					},
 				},
 			},
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
 			{
 				type: "artifact-watch",
-				artifacts: [{url: frameUrl, title: "Quarto Oracle", state: "armed"}],
+				artifacts: [
+					{
+						url: frameUrl,
+						title: "Quarto Oracle",
+						state: "armed",
+					},
+				],
 				lineIndex: 0,
 			},
 			{
 				type: "artifact-watch",
-				artifacts: [{url: frameUrl, title: "Quarto Oracle", state: "armed", commentThreads: 2}],
+				artifacts: [
+					{
+						url: frameUrl,
+						title: "Quarto Oracle",
+						state: "armed",
+						commentThreads: 2,
+					},
+				],
 				lineIndex: 3,
 			},
 		]);
 	});
 
-	it("emits nothing for an empty monitor", () => {
-		const records = [{type: "artifact-comment-monitor", v: 1, artifacts: {}}];
+	it("emits nothing for an empty monitor", () =>
+	{
+		const records = [
+			{
+				type: "artifact-comment-monitor",
+				v: 1,
+				artifacts: {},
+			},
+		];
 		expect(processTranscript(records).lines).toStrictEqual([]);
 	});
 });
@@ -2694,19 +5160,46 @@ describe("artifact records", () => {
 // Auto-mode classifier denials
 // ---------------------------------------------------------------------------
 
-describe("auto-mode denials", () => {
+describe("auto-mode denials", () =>
+{
 	const CLASSIFIER = "Permission for this action was denied by the Claude Code auto mode classifier. Reason: ";
 	const TAIL =
 		". If you have other tasks that don't depend on this action, continue working on those. IMPORTANT: You *may* attempt to accomplish this action using other tools.";
 	const resultFor = (kind: string, content: string) =>
 		processTranscript([
-			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),
-			userRecord([{type: "tool_result", tool_use_id: "tool-1", content, is_error: true}], {
-				uuid: "u-1",
-				toolDenialKind: kind,
-			}),
+			assistantRecord(
+				[
+					{
+						type: "tool_use",
+						id: "tool-1",
+						name: "Bash",
+						input:
+						{
+							command: "ls",
+						},
+					},
+				],
+				{
+					uuid: "a-1",
+				},
+			),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "tool-1",
+						content,
+						is_error: true,
+					},
+				],
+				{
+					uuid: "u-1",
+					toolDenialKind: kind,
+				},
+			),
 		]).toolResultMap.get("tool-1");
-	const blockedFields = (kind: string, content: string) => {
+	const blockedFields = (kind: string, content: string) =>
+	{
 		const info = resultFor(kind, content)!;
 		return {
 			blocked: info.blocked,
@@ -2717,38 +5210,48 @@ describe("auto-mode denials", () => {
 		};
 	};
 
-	it("marks an automode-blocked result blocked with the classifier's reason", () => {
-		expect(blockedFields("automode-blocked", `${CLASSIFIER}[Credential Materialization]${TAIL}`)).toStrictEqual({
-			blocked: true,
-			blockedReason: "[Credential Materialization]",
-			blockedNoVerdict: undefined,
-			stopped: undefined,
-			denied: undefined,
-		});
+	it("marks an automode-blocked result blocked with the classifier's reason", () =>
+	{
+		expect(blockedFields("automode-blocked", `${CLASSIFIER}[Credential Materialization]${TAIL}`)).toStrictEqual(
+			{
+				blocked: true,
+				blockedReason: "[Credential Materialization]",
+				blockedNoVerdict: undefined,
+				stopped: undefined,
+				denied: undefined,
+			},
+		);
 	});
 
-	it("drops a placeholder reason like upstream's Fc set", () => {
-		expect(blockedFields("automode-blocked", `${CLASSIFIER}Blocked by classifier${TAIL}`)).toStrictEqual({
-			blocked: true,
-			blockedReason: undefined,
-			blockedNoVerdict: undefined,
-			stopped: undefined,
-			denied: undefined,
-		});
+	it("drops a placeholder reason like upstream's Fc set", () =>
+	{
+		expect(blockedFields("automode-blocked", `${CLASSIFIER}Blocked by classifier${TAIL}`)).toStrictEqual(
+			{
+				blocked: true,
+				blockedReason: undefined,
+				blockedNoVerdict: undefined,
+				stopped: undefined,
+				denied: undefined,
+			},
+		);
 	});
 
-	it("collapses whitespace and takes the whole rest when the tail is absent", () => {
+	it("collapses whitespace and takes the whole rest when the tail is absent", () =>
+	{
 		expect(blockedFields("automode-blocked", `${CLASSIFIER}  Deletes\n  the   repo  `).blockedReason).toBe(
 			"Deletes the repo",
 		);
 	});
 
-	it("drops the reason when the text lacks the classifier prefix", () => {
+	it("drops the reason when the text lacks the classifier prefix", () =>
+	{
 		expect(blockedFields("automode-blocked", "Something else entirely").blockedReason).toBeUndefined();
 	});
 
-	it("marks automode-unavailable and automode-parsing-error blocked with no verdict", () => {
-		const noVerdict = {
+	it("marks automode-unavailable and automode-parsing-error blocked with no verdict", () =>
+	{
+		const noVerdict =
+		{
 			blocked: true,
 			blockedReason: undefined,
 			blockedNoVerdict: "unanswered",
@@ -2761,48 +5264,82 @@ describe("auto-mode denials", () => {
 		]).toStrictEqual([noVerdict, noVerdict]);
 	});
 
-	it("leaves a permission-rule denial a plain failure", () => {
-		expect(blockedFields("permission-rule", "Permission to use Bash has been denied.")).toStrictEqual({
-			blocked: undefined,
-			blockedReason: undefined,
-			blockedNoVerdict: undefined,
-			stopped: undefined,
-			denied: undefined,
-		});
+	it("leaves a permission-rule denial a plain failure", () =>
+	{
+		expect(blockedFields("permission-rule", "Permission to use Bash has been denied.")).toStrictEqual(
+			{
+				blocked: undefined,
+				blockedReason: undefined,
+				blockedNoVerdict: undefined,
+				stopped: undefined,
+				denied: undefined,
+			},
+		);
 	});
 
-	it("keeps a user-rejected call stopped, never blocked", () => {
-		expect(blockedFields("user-rejected", "Rejected")).toStrictEqual({
-			blocked: undefined,
-			blockedReason: undefined,
-			blockedNoVerdict: undefined,
-			stopped: true,
-			denied: undefined,
-		});
+	it("keeps a user-rejected call stopped, never blocked", () =>
+	{
+		expect(blockedFields("user-rejected", "Rejected")).toStrictEqual(
+			{
+				blocked: undefined,
+				blockedReason: undefined,
+				blockedNoVerdict: undefined,
+				stopped: true,
+				denied: undefined,
+			},
+		);
 	});
 
-	it("stops a cancelled call like an interrupted one (upstream Ll)", () => {
-		expect(blockedFields("cancelled", "Tool execution was interrupted.")).toStrictEqual({
-			blocked: undefined,
-			blockedReason: undefined,
-			blockedNoVerdict: undefined,
-			stopped: true,
-			denied: undefined,
-		});
+	it("stops a cancelled call like an interrupted one (upstream Ll)", () =>
+	{
+		expect(blockedFields("cancelled", "Tool execution was interrupted.")).toStrictEqual(
+			{
+				blocked: undefined,
+				blockedReason: undefined,
+				blockedNoVerdict: undefined,
+				stopped: true,
+				denied: undefined,
+			},
+		);
 	});
 
-	it("clips a reason over 1000 chars at a word boundary with an ellipsis", () => {
+	it("clips a reason over 1000 chars at a word boundary with an ellipsis", () =>
+	{
 		const reason = blockedFields("automode-blocked", `${CLASSIFIER}${"word ".repeat(240)}${TAIL}`).blockedReason!;
-		expect({ends: reason.endsWith("…"), length: reason.length, text: reason}).toStrictEqual({
-			ends: true,
-			length: 1000,
-			text: `${"word ".repeat(199)}word…`,
-		});
+		expect(
+			{
+				ends: reason.endsWith("…"),
+				length: reason.length,
+				text: reason,
+			},
+		).toStrictEqual(
+			{
+				ends: true,
+				length: 1000,
+				text: `${"word ".repeat(199)}word…`,
+			},
+		);
 	});
 
-	it("copies the blocked fields onto the client tool call", () => {
+	it("copies the blocked fields onto the client tool call", () =>
+	{
 		const {toolResultMap} = processTranscript([
-			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),
+			assistantRecord(
+				[
+					{
+						type: "tool_use",
+						id: "tool-1",
+						name: "Bash",
+						input:
+						{
+							command: "ls",
+						},
+					},
+				],
+				{
+					uuid: "a-1",
+				},
+			),
 			userRecord(
 				[
 					{
@@ -2812,11 +5349,22 @@ describe("auto-mode denials", () => {
 						is_error: true,
 					},
 				],
-				{uuid: "u-1", toolDenialKind: "automode-blocked"},
+				{
+					uuid: "u-1",
+					toolDenialKind: "automode-blocked",
+				},
 			),
 		]);
 		const call = buildClientToolCall(
-			{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}},
+			{
+				type: "tool_use",
+				id: "tool-1",
+				name: "Bash",
+				input:
+				{
+					command: "ls",
+				},
+			},
 			"a-1",
 			toolResultMap,
 		);

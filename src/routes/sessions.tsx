@@ -1,7 +1,8 @@
 import {pageTitle} from "../lib/route-title";
 import {createFileRoute} from "@tanstack/react-router";
 import {useQuery, useSuspenseInfiniteQuery, useSuspenseQuery} from "@tanstack/react-query";
-import {
+import
+{
 	activeSessionsQueryOptions,
 	groupedSessionsQueryOptions,
 	recentSessionsInfiniteQueryOptions,
@@ -11,19 +12,33 @@ import {SessionProjectGroups} from "../components/session-project-groups";
 import {SessionRow} from "../components/session-row";
 import {useSettings} from "../components/settings-context";
 
-export const Route = createFileRoute("/sessions")({
-	component: SessionsPage,
-	loader: async ({context: {queryClient}}) =>
-		Promise.all([
-			queryClient.infiniteQuery({...recentSessionsInfiniteQueryOptions(), staleTime: "static"}),
-			queryClient.query({...groupedSessionsQueryOptions(), staleTime: "static"}),
-		]),
-	head: () => ({
-		meta: [pageTitle("Claude Sessions")],
-	}),
-});
+export const Route = createFileRoute("/sessions")(
+	{
+		component: SessionsPage,
+		loader: async ({context: {queryClient}}) =>
+			Promise.all([
+				queryClient.infiniteQuery(
+					{
+						...recentSessionsInfiniteQueryOptions(),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...groupedSessionsQueryOptions(),
+						staleTime: "static",
+					},
+				),
+			]),
+		head: () => (
+		{
+			meta: [pageTitle("Claude Sessions")],
+		}),
+	},
+);
 
-function getTimePeriod(mtime: string): string {
+function getTimePeriod(mtime: string): string
+{
 	const date = new Date(mtime);
 	const now = new Date();
 	const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -34,7 +49,13 @@ function getTimePeriod(mtime: string): string {
 	if (diffDays === 1) return "Yesterday";
 	if (diffDays <= 7) return "Last 7 days";
 	if (diffDays <= 30) return "Last 30 days";
-	return date.toLocaleDateString("en-US", {month: "long", year: "numeric"});
+	return date.toLocaleDateString(
+		"en-US",
+		{
+			month: "long",
+			year: "numeric",
+		},
+	);
 }
 
 /**
@@ -42,7 +63,8 @@ function getTimePeriod(mtime: string): string {
  * on what "recent" means. The time grouping stays available for the "what did I
  * touch today, across everything" question that cuts across projects.
  */
-function SessionsPage() {
+function SessionsPage()
+{
 	const {settings, setSetting} = useSettings();
 	const {data: groups} = useSuspenseQuery(groupedSessionsQueryOptions());
 	// Same liveness source as the sidebar's Sessions tree and Active badge, so a
@@ -60,7 +82,8 @@ function SessionsPage() {
 					<button
 						key={grouping}
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							setSetting("sessionsGrouping", grouping);
 						}}
 						className={`cursor-pointer rounded-md px-2.5 py-1 transition-colors ${
@@ -89,8 +112,10 @@ function SessionsPage() {
 	);
 }
 
-function SessionsByTime({activeIds}: {activeIds: ReadonlySet<string>}) {
-	const {
+function SessionsByTime({activeIds}: {activeIds: ReadonlySet<string>})
+{
+	const
+	{
 		data: recent,
 		hasNextPage,
 		isFetchingNextPage,
@@ -101,14 +126,27 @@ function SessionsByTime({activeIds}: {activeIds: ReadonlySet<string>}) {
 	const allSessions = recent.pages
 		.flatMap((page) => page.sessions)
 		.toSorted((first, second) => Date.parse(second.mtime) - Date.parse(first.mtime));
-	const timePeriodGroups: Array<{period: string; sessions: typeof allSessions}> = [];
-	for (const session of allSessions) {
+	const timePeriodGroups: Array<
+	{
+		period: string;
+		sessions: typeof allSessions;
+	}> = [];
+	for (const session of allSessions)
+	{
 		const period = getTimePeriod(session.mtime);
 		const last = timePeriodGroups[timePeriodGroups.length - 1];
-		if (last?.period === period) {
+		if (last?.period === period)
+		{
 			last.sessions.push(session);
-		} else {
-			timePeriodGroups.push({period, sessions: [session]});
+		}
+		else
+		{
+			timePeriodGroups.push(
+				{
+					period,
+					sessions: [session],
+				},
+			);
 		}
 	}
 

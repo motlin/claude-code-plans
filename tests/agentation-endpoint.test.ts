@@ -1,8 +1,10 @@
 import {describe, expect, it} from "vite-plus/test";
 import {AGENTATION_ENDPOINT, AGENTATION_SERVER, agentationEndpoint} from "../src/lib/agentation-endpoint";
 
-describe("Agentation endpoint", () => {
-	it("resolves to the page's own origin on localhost and on a remote https host", () => {
+describe("Agentation endpoint", () =>
+{
+	it("resolves to the page's own origin on localhost and on a remote https host", () =>
+	{
 		const resolved = ["http://localhost:7526", "https://plans.m4.notlin.com"].map(
 			(origin) => new URL(`${AGENTATION_ENDPOINT}/health`, origin).href,
 		);
@@ -13,7 +15,8 @@ describe("Agentation endpoint", () => {
 		]);
 	});
 
-	it("connects straight to the local server from a loopback page and through the proxy from anywhere else", () => {
+	it("connects straight to the local server from a loopback page and through the proxy from anywhere else", () =>
+	{
 		// Its event stream is long-lived: through the proxy it would take a second of the six HTTP/1.1
 		// connections Chrome allows the app's origin per tab, so three tabs left none for the app's fetches.
 		const endpoints = [

@@ -16,7 +16,8 @@ import {POPUP_LIST_GUTTER_CLASS, POPUP_LIST_SCROLL_CLASS, POPUP_LISTBOX_CLASS} f
  * trigger's end edge; its Escape closes only the popup and refocuses the trigger.
  */
 
-interface ComboboxOption<T extends string> {
+interface ComboboxOption<T extends string>
+{
 	value: T;
 	label: string;
 	/** Shown (and checked when current) but not selectable, like upstream's uninstalled output style. */
@@ -25,7 +26,8 @@ interface ComboboxOption<T extends string> {
 	labelStyle?: CSSProperties;
 }
 
-interface ThemedComboboxProps<T extends string> {
+interface ThemedComboboxProps<T extends string>
+{
 	value: T;
 	onValueChange: (value: T) => void;
 	options: ReadonlyArray<ComboboxOption<T>>;
@@ -49,7 +51,8 @@ export function ThemedCombobox<T extends string>({
 	filterable = true,
 	variant = "field",
 	triggerLabel,
-}: ThemedComboboxProps<T>) {
+}: ThemedComboboxProps<T>)
+{
 	const row = useSettingsRowIds();
 	const baseId = useId();
 	const listboxId = `${baseId}-listbox`;
@@ -65,20 +68,24 @@ export function ThemedCombobox<T extends string>({
 	const filtered = options.filter((option) => option.label.toLowerCase().includes(needle));
 	const current = options.find((option) => option.value === value);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!open) return undefined;
-		const handlePointerDown = (event: PointerEvent | MouseEvent) => {
+		const handlePointerDown = (event: PointerEvent | MouseEvent) =>
+		{
 			if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
 			setOpen(false);
 		};
 		if (!filterable) listboxRef.current?.focus();
 		document.addEventListener("mousedown", handlePointerDown);
-		return () => {
+		return () =>
+		{
 			document.removeEventListener("mousedown", handlePointerDown);
 		};
 	}, [open, filterable]);
 
-	const openPopup = () => {
+	const openPopup = () =>
+	{
 		setQuery("");
 		setActiveIndex(
 			Math.max(
@@ -89,15 +96,18 @@ export function ThemedCombobox<T extends string>({
 		setOpen(true);
 	};
 
-	const choose = (option: ComboboxOption<T> | undefined) => {
+	const choose = (option: ComboboxOption<T> | undefined) =>
+	{
 		if (option === undefined || option.disabled === true) return;
 		if (option.value !== value) onValueChange(option.value);
 		setOpen(false);
 		triggerRef.current?.focus();
 	};
 
-	const handleListKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-		switch (event.key) {
+	const handleListKeyDown = (event: KeyboardEvent<HTMLElement>) =>
+	{
+		switch (event.key)
+		{
 			case "ArrowDown":
 				event.preventDefault();
 				setActiveIndex((index) => Math.min(filtered.length - 1, index + 1));
@@ -111,7 +121,8 @@ export function ThemedCombobox<T extends string>({
 				choose(filtered[activeIndex]);
 				break;
 			case "Escape":
-				if (ghost) {
+				if (ghost)
+				{
 					event.preventDefault();
 					event.stopPropagation();
 				}
@@ -147,12 +158,15 @@ export function ThemedCombobox<T extends string>({
 				aria-controls={open ? listboxId : undefined}
 				aria-disabled={disabled ? true : undefined}
 				disabled={disabled}
-				onClick={() => {
+				onClick={() =>
+				{
 					if (open) setOpen(false);
 					else openPopup();
 				}}
-				onKeyDown={(event) => {
-					if (event.key === "ArrowDown" && !open) {
+				onKeyDown={(event) =>
+				{
+					if (event.key === "ArrowDown" && !open)
+					{
 						event.preventDefault();
 						openPopup();
 					}
@@ -188,7 +202,8 @@ export function ThemedCombobox<T extends string>({
 								aria-controls={listboxId}
 								aria-activedescendant={activeDescendant}
 								value={query}
-								onChange={(event) => {
+								onChange={(event) =>
+								{
 									setQuery(event.target.value);
 									setActiveIndex(-1);
 								}}
@@ -214,7 +229,8 @@ export function ThemedCombobox<T extends string>({
 										No results
 									</div>
 								) : (
-									filtered.map((option, index) => {
+									filtered.map((option, index) =>
+									{
 										const selected = option.value === value;
 										return (
 											// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
@@ -225,13 +241,16 @@ export function ThemedCombobox<T extends string>({
 												aria-selected={selected}
 												aria-disabled={option.disabled === true ? true : undefined}
 												data-highlighted={index === activeIndex ? "" : undefined}
-												onMouseEnter={() => {
+												onMouseEnter={() =>
+												{
 													setActiveIndex(index);
 												}}
-												onMouseDown={(event) => {
+												onMouseDown={(event) =>
+												{
 													event.preventDefault();
 												}}
-												onClick={() => {
+												onClick={() =>
+												{
 													choose(option);
 												}}
 												className="flex h-8 cursor-default items-center gap-1 rounded-r6 px-2.5 text-body text-primary select-none data-[highlighted]:bg-fill-ghost-hover aria-disabled:opacity-50"

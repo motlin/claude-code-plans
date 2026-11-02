@@ -2,7 +2,8 @@ import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ChevronRight} from "lucide-react";
 import {useState} from "react";
-import {
+import
+{
 	herdrWorkspacesQueryOptions,
 	type HerdrWorkspaceData,
 	type HerdrWorkspacePaneData,
@@ -18,7 +19,8 @@ import {LoadingBars} from "./sidebar/primitives/LoadingBars";
  */
 const RAIL_ROW = "grid grid-cols-[1rem_minmax(0,1fr)_4.5rem] items-center gap-1.5 py-1 text-xs";
 
-function PaneTitle({title}: {title: string}) {
+function PaneTitle({title}: {title: string})
+{
 	const {glyph, title: rest} = splitTerminalTitleGlyph(title);
 	return (
 		<span className="truncate">
@@ -40,7 +42,8 @@ function PaneRow({
 	pane: HerdrWorkspacePaneData;
 	workspaceLabel: string;
 	selected: boolean;
-}) {
+})
+{
 	const body = (
 		<>
 			<span />
@@ -54,9 +57,15 @@ function PaneRow({
 			? "bg-fill-ghost-hover font-medium text-primary"
 			: "text-secondary hover:bg-fill-ghost-hover hover:text-primary"
 	}`;
-	const linkProps = {
+	const linkProps =
+	{
 		"aria-label": `Open live terminal for ${pane.title} in workspace ${workspaceLabel}`,
-		...(selected ? {"aria-current": "page" as const} : {}),
+		...(selected
+			?
+				{
+					"aria-current": "page" as const,
+				}
+			: {}),
 		className,
 	};
 
@@ -66,11 +75,25 @@ function PaneRow({
 	 * its own live terminal by pane id.
 	 */
 	return pane.sessionId === null ? (
-		<Link to="/terminals/pane/$paneId" params={{paneId: pane.paneId}} {...linkProps}>
+		<Link
+			to="/terminals/pane/$paneId"
+			params={
+			{
+				paneId: pane.paneId,
+			}}
+			{...linkProps}
+		>
 			{body}
 		</Link>
 	) : (
-		<Link to="/terminals/$sessionId" params={{sessionId: pane.sessionId}} {...linkProps}>
+		<Link
+			to="/terminals/$sessionId"
+			params={
+			{
+				sessionId: pane.sessionId,
+			}}
+			{...linkProps}
+		>
 			{body}
 		</Link>
 	);
@@ -84,7 +107,8 @@ function WorkspaceGroup({
 	workspace: HerdrWorkspaceData;
 	selectedSessionId: string | null;
 	selectedPaneId: string | null;
-}) {
+})
+{
 	const [expanded, setExpanded] = useState(true);
 	const [shellsShown, setShellsShown] = useState(() =>
 		workspace.shellPanes.some((pane) => pane.paneId === selectedPaneId),
@@ -95,7 +119,8 @@ function WorkspaceGroup({
 		<div>
 			<button
 				type="button"
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded((current) => !current);
 				}}
 				aria-expanded={expanded}
@@ -106,7 +131,10 @@ function WorkspaceGroup({
 				<ChevronRight
 					aria-hidden="true"
 					className="h-3 w-3 justify-self-center transition-transform motion-reduce:transition-none duration-200"
-					style={{transform: expanded ? "rotate(90deg)" : "rotate(0deg)"}}
+					style={
+					{
+						transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+					}}
 				/>
 				<span className="truncate font-medium">
 					<span className="mr-1.5 tabular-nums font-normal text-t6">{workspace.number}</span>
@@ -133,7 +161,8 @@ function WorkspaceGroup({
 						<>
 							<button
 								type="button"
-								onClick={() => {
+								onClick={() =>
+								{
 									setShellsShown((current) => !current);
 								}}
 								aria-expanded={shellsShown}
@@ -173,7 +202,8 @@ export function HerdrWorkspaceRail({
 	selectedSessionId: string | null;
 	/** The `/terminals/pane/$paneId` view's pane, for panes no indexed session owns. */
 	selectedPaneId?: string | null;
-}) {
+})
+{
 	const {data} = useQuery(herdrWorkspacesQueryOptions);
 
 	return (

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -18,30 +19,70 @@ import {sessionQueryKeys} from "../src/lib/api/sessions";
 const ALIAS = "session_alice_100";
 const ALICE = "session-alice";
 const BOB = "session-bob";
-type Observation = {sessionId: string; label: string; state: "working" | "waiting"; archived: boolean};
+type Observation =
+{
+	sessionId: string;
+	label: string;
+	state: "working" | "waiting";
+	archived: boolean;
+};
 
-const harness = vi.hoisted(() => {
+const harness = vi.hoisted(() =>
+{
 	const listeners = new Set<(session: Observation) => void>();
-	const subscribe = vi.fn<(listener: (session: Observation) => void) => () => void>((listener) => {
+	const subscribe = vi.fn<(listener: (session: Observation) => void) => () => void>((listener) =>
+	{
 		listeners.add(listener);
 		return () => listeners.delete(listener);
 	});
-	return {listeners, subscribe};
+	return {
+		listeners,
+		subscribe,
+	};
 });
 
-vi.mock("../src/hooks/use-claude-events", () => ({useSubscribeSessionStates: () => harness.subscribe}));
-vi.mock("../src/components/settings-context", async (importOriginal) => {
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useSubscribeSessionStates: () => harness.subscribe,
+}));
+vi.mock("../src/components/settings-context", async (importOriginal) =>
+{
 	const original = await importOriginal<typeof import("../src/components/settings-context")>();
-	const settings = {...original.DEFAULTS, notifyPermissionRequests: true};
-	return {...original, useSettings: () => ({settings})};
+	const settings =
+	{
+		...original.DEFAULTS,
+		notifyPermissionRequests: true,
+	};
+	return {
+		...original,
+		useSettings: () => (
+		{
+			settings,
+		}),
+	};
 });
 
 let client: QueryClient;
-let notifications: Array<{title: string; tag: string | undefined}>;
+let notifications: Array<
+{
+	title: string;
+	tag: string | undefined;
+}>;
 const fetch = vi.fn<typeof globalThis.fetch>();
 
-beforeEach(() => {
-	client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+beforeEach(() =>
+{
+	client = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	notifications = [];
 	fetch.mockReset();
 	harness.subscribe.mockClear();
@@ -50,18 +91,28 @@ beforeEach(() => {
 	vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 	vi.stubGlobal(
 		"Notification",
-		class {
+		class
+		{
 			static permission = "granted";
 			onclick: (() => void) | null = null;
-			constructor(title: string, options: NotificationOptions) {
-				notifications.push({title, tag: options.tag});
+			constructor(title: string, options: NotificationOptions)
+			{
+				notifications.push(
+					{
+						title,
+						tag: options.tag,
+					},
+				);
 			}
-			close() {}
+			close()
+			{
+			}
 		},
 	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	client.clear();
 	vi.restoreAllMocks();
@@ -69,42 +120,77 @@ afterEach(() => {
 	document.title = "";
 });
 
-async function start(routeId: string) {
-	const root = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={client}>
-				<DesktopNotificationBridge />
-				<Outlet />
-			</QueryClientProvider>
-		),
-	});
-	const session = createRoute({
-		getParentRoute: () => root,
-		path: "/session/$id",
-		head: () => ({meta: [{title: "Example session"}]}),
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: root.addChildren([session]),
-		history: createMemoryHistory({initialEntries: [`/session/${routeId}`]}),
-	});
+async function start(routeId: string)
+{
+	const root = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={client}>
+					<DesktopNotificationBridge />
+					<Outlet />
+				</QueryClientProvider>
+			),
+		},
+	);
+	const session = createRoute(
+		{
+			getParentRoute: () => root,
+			path: "/session/$id",
+			head: () => (
+			{
+				meta: [
+					{
+						title: "Example session",
+					},
+				],
+			}),
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: root.addChildren([session]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [`/session/${routeId}`],
+				},
+			),
+		},
+	);
 	await router.load();
-	act(() => {
+	act(() =>
+	{
 		render(<RouterProvider router={router} />);
 	});
 	return router;
 }
 
-function publish(sessionId: string, state: Observation["state"] = "waiting") {
-	act(() => {
+function publish(sessionId: string, state: Observation["state"] = "waiting")
+{
+	act(() =>
+	{
 		for (const listener of harness.listeners)
-			listener({sessionId, label: "Example session", state, archived: false});
+			listener(
+				{
+					sessionId,
+					label: "Example session",
+					state,
+					archived: false,
+				},
+			);
 	});
 }
 
-describe("desktop notifications for session aliases", () => {
-	it("suppresses a resolved visible alias and retains hidden-tab alerts", async () => {
-		client.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: ALICE});
+describe("desktop notifications for session aliases", () =>
+{
+	it("suppresses a resolved visible alias and retains hidden-tab alerts", async () =>
+	{
+		client.setQueryData(
+			sessionQueryKeys.identity(ALIAS),
+			{
+				sessionId: ALICE,
+			},
+		);
 		await start(ALIAS);
 		publish(ALICE);
 		const visible = [...notifications];
@@ -112,87 +198,176 @@ describe("desktop notifications for session aliases", () => {
 		vi.spyOn(document, "hidden", "get").mockReturnValue(true);
 		publish(ALICE);
 		publish(ALICE);
-		expect({visible, hidden: notifications, requests: fetch.mock.calls}).toStrictEqual({
-			visible: [],
-			hidden: [{tag: ALICE, title: "Example session is waiting on you"}],
-			requests: [],
-		});
+		expect(
+			{
+				visible,
+				hidden: notifications,
+				requests: fetch.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				visible: [],
+				hidden: [
+					{
+						tag: ALICE,
+						title: "Example session is waiting on you",
+					},
+				],
+				requests: [],
+			},
+		);
 	});
 
-	it("does not suppress pending aliases or emit notifications when the identity resolves", async () => {
-		client.getQueryCache().build(client, {queryKey: sessionQueryKeys.identity(ALIAS)});
+	it("does not suppress pending aliases or emit notifications when the identity resolves", async () =>
+	{
+		client.getQueryCache().build(
+			client,
+			{
+				queryKey: sessionQueryKeys.identity(ALIAS),
+			},
+		);
 		const router = await start(ALIAS);
 		publish(ALICE);
 		const pending = [...notifications];
 		notifications = [];
-		act(() => {
-			client.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: ALICE});
+		act(() =>
+		{
+			client.setQueryData(
+				sessionQueryKeys.identity(ALIAS),
+				{
+					sessionId: ALICE,
+				},
+			);
 		});
 		const resolved = [...notifications];
 		publish(ALICE, "working");
 		publish(ALICE);
 		const viewed = [...notifications];
-		await act(async () => router.navigate({to: "/session/$id", params: {id: BOB}}));
+		await act(async () =>
+			router.navigate(
+				{
+					to: "/session/$id",
+					params:
+					{
+						id: BOB,
+					},
+				},
+			),
+		);
 		publish(ALICE, "working");
 		publish(ALICE);
 		publish(BOB);
-		expect({
-			pending,
-			resolved,
-			viewed,
-			afterNavigation: notifications,
-			subscriptions: harness.subscribe.mock.calls.length,
-			requests: fetch.mock.calls,
-		}).toStrictEqual({
-			pending: [{tag: ALICE, title: "Example session is waiting on you"}],
-			resolved: [],
-			viewed: [],
-			afterNavigation: [{tag: ALICE, title: "Example session is waiting on you"}],
-			subscriptions: 1,
-			requests: [],
-		});
+		expect(
+			{
+				pending,
+				resolved,
+				viewed,
+				afterNavigation: notifications,
+				subscriptions: harness.subscribe.mock.calls.length,
+				requests: fetch.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				pending: [
+					{
+						tag: ALICE,
+						title: "Example session is waiting on you",
+					},
+				],
+				resolved: [],
+				viewed: [],
+				afterNavigation: [
+					{
+						tag: ALICE,
+						title: "Example session is waiting on you",
+					},
+				],
+				subscriptions: 1,
+				requests: [],
+			},
+		);
 	});
 
-	it("does not suppress the former owner after a 409 while old cache data remains", async () => {
-		client.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: ALICE});
+	it("does not suppress the former owner after a 409 while old cache data remains", async () =>
+	{
+		client.setQueryData(
+			sessionQueryKeys.identity(ALIAS),
+			{
+				sessionId: ALICE,
+			},
+		);
 		await start(ALIAS);
 		publish(ALICE);
 		const error = new ApiResponseError(
 			"/api/sessions/session_alice_100/identity",
-			Response.json({}, {status: 409}),
+			Response.json(
+				{},
+				{
+					status: 409,
+				},
+			),
 		);
-		await act(async () => {
+		await act(async () =>
+		{
 			await expect(
-				client.query({
-					queryKey: sessionQueryKeys.identity(ALIAS),
-					queryFn: async () => Promise.reject(error),
-				}),
+				client.query(
+					{
+						queryKey: sessionQueryKeys.identity(ALIAS),
+						queryFn: async () => Promise.reject(error),
+					},
+				),
 			).rejects.toThrow(error);
 		});
 		const afterCacheError = [...notifications];
 		publish(ALICE, "working");
 		publish(ALICE);
-		expect({
-			afterCacheError,
-			notifications,
-			cached: client.getQueryData(sessionQueryKeys.identity(ALIAS)),
-			requests: fetch.mock.calls,
-		}).toStrictEqual({
-			afterCacheError: [],
-			notifications: [{tag: ALICE, title: "Example session is waiting on you"}],
-			cached: {sessionId: ALICE},
-			requests: [],
-		});
+		expect(
+			{
+				afterCacheError,
+				notifications,
+				cached: client.getQueryData(sessionQueryKeys.identity(ALIAS)),
+				requests: fetch.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				afterCacheError: [],
+				notifications: [
+					{
+						tag: ALICE,
+						title: "Example session is waiting on you",
+					},
+				],
+				cached:
+				{
+					sessionId: ALICE,
+				},
+				requests: [],
+			},
+		);
 	});
 
-	it("suppresses ordinary UUID routes without queries or HTTP requests", async () => {
+	it("suppresses ordinary UUID routes without queries or HTTP requests", async () =>
+	{
 		await start(ALICE);
 		publish(ALICE);
 		publish(BOB);
-		expect({notifications, requests: fetch.mock.calls, queries: client.getQueryCache().getAll()}).toStrictEqual({
-			notifications: [{tag: BOB, title: "Example session is waiting on you"}],
-			requests: [],
-			queries: [],
-		});
+		expect(
+			{
+				notifications,
+				requests: fetch.mock.calls,
+				queries: client.getQueryCache().getAll(),
+			},
+		).toStrictEqual(
+			{
+				notifications: [
+					{
+						tag: BOB,
+						title: "Example session is waiting on you",
+					},
+				],
+				requests: [],
+				queries: [],
+			},
+		);
 	});
 });

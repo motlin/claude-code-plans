@@ -13,7 +13,8 @@ const MERMAID_MAX_SOURCE = 262_144;
  * Upstream's pre-gate `Z(code, true)`: a source this long, or with any secret in it, stays a code block (where the
  * secret cloak masks it) and never loads mermaid.
  */
-export function mermaidSourceDrawable(code: string): boolean {
+export function mermaidSourceDrawable(code: string): boolean
+{
 	return code.length <= MERMAID_MAX_SOURCE && findSecrets(code).length === 0;
 }
 
@@ -22,29 +23,35 @@ let loadFailed = false;
 const loadListeners = new Set<() => void>();
 
 /** Marks the diagram code as unloadable, as upstream's failed lazy chunk does: fences stay code blocks. */
-export function noteMermaidLoadFailed(): void {
+export function noteMermaidLoadFailed(): void
+{
 	if (loadFailed) return;
 	loadFailed = true;
 	for (const listener of loadListeners) listener();
 }
 
 /** Upstream's `chunkFailed` half of the gate `hn()`. */
-export function mermaidLoadFailed(): boolean {
+export function mermaidLoadFailed(): boolean
+{
 	return loadFailed;
 }
 
-export function subscribeMermaidLoad(listener: () => void): () => void {
+export function subscribeMermaidLoad(listener: () => void): () => void
+{
 	loadListeners.add(listener);
-	return () => {
+	return () =>
+	{
 		loadListeners.delete(listener);
 	};
 }
 
 /** Upstream `ic`: mermaid, imported once on first use. A failed import turns diagrams off for the page. */
-export async function loadMermaid(): Promise<Mermaid> {
+export async function loadMermaid(): Promise<Mermaid>
+{
 	mermaidModule ??= import("mermaid").then(
 		(module) => module.default,
-		(error: unknown) => {
+		(error: unknown) =>
+		{
 			noteMermaidLoadFailed();
 			throw error;
 		},

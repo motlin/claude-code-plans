@@ -1,6 +1,7 @@
 import {describe, it, expect, vi} from "vite-plus/test";
 import {QueryClient} from "@tanstack/react-query";
-import {
+import
+{
 	applyMemoryChanged,
 	applyMemoryRemoved,
 	applyNotificationAdded,
@@ -17,7 +18,8 @@ import {
 	type ClaudeEventsState,
 	type ClaudeEventsAction,
 } from "../src/hooks/use-claude-events";
-import {
+import
+{
 	DOMAIN_EVENTS,
 	type MemorySummaryPayload,
 	type NotificationEntryPayload,
@@ -27,7 +29,14 @@ import {
 import {sessionQueryKeys, transcriptQueryOptions, type TranscriptData} from "../src/lib/api/sessions";
 import type {LiveSubagentNode} from "../src/lib/live-subagent-store";
 
-function makeSession(overrides: Partial<SessionSummaryPayload> & {id: string; project: string}): SessionSummaryPayload {
+function makeSession(
+	overrides: Partial<SessionSummaryPayload> &
+	{
+		id: string;
+		project: string;
+	},
+): SessionSummaryPayload
+{
 	const {id, project, ...rest} = overrides;
 	return {
 		id,
@@ -49,11 +58,17 @@ function makeSession(overrides: Partial<SessionSummaryPayload> & {id: string; pr
 	};
 }
 
-function makePlan(filename: string, title = filename): PlanSummaryPayload {
-	return {filename, title, mtime: "1999-12-31T00:00:00.000Z"};
+function makePlan(filename: string, title = filename): PlanSummaryPayload
+{
+	return {
+		filename,
+		title,
+		mtime: "1999-12-31T00:00:00.000Z",
+	};
 }
 
-function makeMemory(project: string, filename: string, title = filename): MemorySummaryPayload {
+function makeMemory(project: string, filename: string, title = filename): MemorySummaryPayload
+{
 	return {
 		filename,
 		title,
@@ -63,7 +78,8 @@ function makeMemory(project: string, filename: string, title = filename): Memory
 	};
 }
 
-function makeInitialState(): ClaudeEventsState {
+function makeInitialState(): ClaudeEventsState
+{
 	return {
 		activeSessions: new Map(),
 		hookContexts: new Map(),
@@ -78,50 +94,60 @@ function makeInitialState(): ClaudeEventsState {
 	};
 }
 
-describe("claudeEventsReducer", () => {
-	it("merges live turn context and clears paused work for the next prompt", () => {
-		const paused = claudeEventsReducer(makeInitialState(), {
-			type: "SSE_EVENT",
-			eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
-			data: {
-				sessionId: "session-test-100",
-				sessionTitle: "Test session",
-				promptId: "prompt-test-100",
-				permissionMode: "auto",
-				effortLevel: "high",
-				backgroundTasks: [
-					{
-						id: "task-test-100",
-						type: "agent",
-						status: "running",
-						description: "Inspect the example project",
-					},
-				],
-				sessionCrons: [
-					{
-						id: "cron-test-100",
-						schedule: "0 * * * *",
-						recurring: true,
-						prompt: "Check the example service",
-					},
-				],
+describe("claudeEventsReducer", () =>
+{
+	it("merges live turn context and clears paused work for the next prompt", () =>
+	{
+		const paused = claudeEventsReducer(
+			makeInitialState(),
+			{
+				type: "SSE_EVENT",
+				eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+				data:
+				{
+					sessionId: "session-test-100",
+					sessionTitle: "Test session",
+					promptId: "prompt-test-100",
+					permissionMode: "auto",
+					effortLevel: "high",
+					backgroundTasks: [
+						{
+							id: "task-test-100",
+							type: "agent",
+							status: "running",
+							description: "Inspect the example project",
+						},
+					],
+					sessionCrons: [
+						{
+							id: "cron-test-100",
+							schedule: "0 * * * *",
+							recurring: true,
+							prompt: "Check the example service",
+						},
+					],
+				},
+				timestamp: 1_000,
 			},
-			timestamp: 1_000,
-		});
+		);
 
-		const resumed = claudeEventsReducer(paused, {
-			type: "SSE_EVENT",
-			eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
-			data: {
-				sessionId: "session-test-100",
-				promptId: "prompt-test-200",
-				permissionMode: "",
-				effortLevel: "",
-				backgroundTasks: [],
-				sessionCrons: [],
+		const resumed = claudeEventsReducer(
+			paused,
+			{
+				type: "SSE_EVENT",
+				eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+				data:
+				{
+					sessionId: "session-test-100",
+					promptId: "prompt-test-200",
+					permissionMode: "",
+					effortLevel: "",
+					backgroundTasks: [],
+					sessionCrons: [],
+				},
+				timestamp: 2_000,
 			},
-			timestamp: 2_000,
-		});
+		);
 
 		expect(resumed.hookContexts).toStrictEqual(
 			new Map([
@@ -141,32 +167,53 @@ describe("claudeEventsReducer", () => {
 		);
 	});
 
-	it("keeps the model a mid-session switch reported beside the turn context", () => {
-		const switched = claudeEventsReducer(makeInitialState(), {
-			type: "SSE_EVENT",
-			eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
-			data: {sessionId: "session-test-100", model: "claude-haiku-5-5"},
-			timestamp: 1_000,
-		});
-		const nextTurn = claudeEventsReducer(switched, {
-			type: "SSE_EVENT",
-			eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
-			data: {sessionId: "session-test-100", permissionMode: "auto"},
-			timestamp: 2_000,
-		});
+	it("keeps the model a mid-session switch reported beside the turn context", () =>
+	{
+		const switched = claudeEventsReducer(
+			makeInitialState(),
+			{
+				type: "SSE_EVENT",
+				eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+				data:
+				{
+					sessionId: "session-test-100",
+					model: "claude-haiku-5-5",
+				},
+				timestamp: 1_000,
+			},
+		);
+		const nextTurn = claudeEventsReducer(
+			switched,
+			{
+				type: "SSE_EVENT",
+				eventType: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+				data:
+				{
+					sessionId: "session-test-100",
+					permissionMode: "auto",
+				},
+				timestamp: 2_000,
+			},
+		);
 
 		expect(nextTurn.hookContexts).toStrictEqual(
 			new Map([
 				[
 					"session-test-100",
-					{sessionId: "session-test-100", model: "claude-haiku-5-5", permissionMode: "auto"},
+					{
+						sessionId: "session-test-100",
+						model: "claude-haiku-5-5",
+						permissionMode: "auto",
+					},
 				],
 			]),
 		);
 	});
 
-	it("hydrates running and recently-ended nodes from the SSE snapshot", () => {
-		const runningNode: LiveSubagentNode = {
+	it("hydrates running and recently-ended nodes from the SSE snapshot", () =>
+	{
+		const runningNode: LiveSubagentNode =
+		{
 			sessionId: "session-test",
 			parentAgentId: null,
 			agentType: "Explore",
@@ -175,7 +222,8 @@ describe("claudeEventsReducer", () => {
 			startedAt: "1999-12-31T00:00:00.000Z",
 			endedAt: null,
 		};
-		const endedNode: LiveSubagentNode = {
+		const endedNode: LiveSubagentNode =
+		{
 			sessionId: "session-test",
 			parentAgentId: "agent-alice",
 			agentType: "Plan",
@@ -185,38 +233,54 @@ describe("claudeEventsReducer", () => {
 			endedAt: "1999-12-31T00:00:02.000Z",
 		};
 
-		const state = claudeEventsReducer(makeInitialState(), {
-			type: "SSE_EVENT",
-			eventType: DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT,
-			data: {subagents: [runningNode, endedNode]},
-			timestamp: 1_000,
-		});
+		const state = claudeEventsReducer(
+			makeInitialState(),
+			{
+				type: "SSE_EVENT",
+				eventType: DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT,
+				data:
+				{
+					subagents: [runningNode, endedNode],
+				},
+				timestamp: 1_000,
+			},
+		);
 
-		expect({
-			liveSubagents: state.liveSubagents,
-			runningSubagents: state.runningSubagents,
-		}).toStrictEqual({
-			liveSubagents: new Map([
-				["agent-alice", runningNode],
-				["agent-bob", endedNode],
-			]),
-			runningSubagents: new Map([["session-test:alice", runningNode]]),
-		});
+		expect(
+			{
+				liveSubagents: state.liveSubagents,
+				runningSubagents: state.runningSubagents,
+			},
+		).toStrictEqual(
+			{
+				liveSubagents: new Map([
+					["agent-alice", runningNode],
+					["agent-bob", endedNode],
+				]),
+				runningSubagents: new Map([["session-test:alice", runningNode]]),
+			},
+		);
 	});
 
-	it("tracks a subagent from start through stop", () => {
-		const started = claudeEventsReducer(makeInitialState(), {
-			type: "SSE_EVENT",
-			eventType: DOMAIN_EVENTS.SUBAGENT_STARTED,
-			data: {
-				sessionId: "session-test",
-				agentType: "Explore",
-				agentId: "test-agent",
-				description: "Inspect test behavior",
+	it("tracks a subagent from start through stop", () =>
+	{
+		const started = claudeEventsReducer(
+			makeInitialState(),
+			{
+				type: "SSE_EVENT",
+				eventType: DOMAIN_EVENTS.SUBAGENT_STARTED,
+				data:
+				{
+					sessionId: "session-test",
+					agentType: "Explore",
+					agentId: "test-agent",
+					description: "Inspect test behavior",
+				},
+				timestamp: 1_000,
 			},
-			timestamp: 1_000,
-		});
-		const startedNode = {
+		);
+		const startedNode =
+		{
 			sessionId: "session-test",
 			parentAgentId: null,
 			agentType: "Explore",
@@ -225,116 +289,167 @@ describe("claudeEventsReducer", () => {
 			startedAt: "1970-01-01T00:00:01.000Z",
 			endedAt: null,
 		};
-		expect({
-			runningSubagents: started.runningSubagents,
-			liveSubagents: started.liveSubagents,
-		}).toStrictEqual({
-			runningSubagents: new Map([["session-test:test-agent", startedNode]]),
-			liveSubagents: new Map([["agent-test-agent", startedNode]]),
-		});
-
-		const stopped = claudeEventsReducer(started, {
-			type: "SSE_EVENT",
-			eventType: DOMAIN_EVENTS.SUBAGENT_STOPPED,
-			data: {
-				sessionId: "session-test",
-				agentType: "Explore",
-				agentId: "agent-test-agent",
+		expect(
+			{
+				runningSubagents: started.runningSubagents,
+				liveSubagents: started.liveSubagents,
 			},
-			timestamp: 2_000,
-		});
-		expect({
-			runningSubagents: stopped.runningSubagents,
-			liveSubagents: stopped.liveSubagents,
-		}).toStrictEqual({
-			runningSubagents: new Map(),
-			liveSubagents: new Map([
-				[
-					"agent-test-agent",
-					{
-						...startedNode,
-						endedAt: "1970-01-01T00:00:02.000Z",
-					},
-				],
-			]),
-		});
+		).toStrictEqual(
+			{
+				runningSubagents: new Map([["session-test:test-agent", startedNode]]),
+				liveSubagents: new Map([["agent-test-agent", startedNode]]),
+			},
+		);
+
+		const stopped = claudeEventsReducer(
+			started,
+			{
+				type: "SSE_EVENT",
+				eventType: DOMAIN_EVENTS.SUBAGENT_STOPPED,
+				data:
+				{
+					sessionId: "session-test",
+					agentType: "Explore",
+					agentId: "agent-test-agent",
+				},
+				timestamp: 2_000,
+			},
+		);
+		expect(
+			{
+				runningSubagents: stopped.runningSubagents,
+				liveSubagents: stopped.liveSubagents,
+			},
+		).toStrictEqual(
+			{
+				runningSubagents: new Map(),
+				liveSubagents: new Map([
+					[
+						"agent-test-agent",
+						{
+							...startedNode,
+							endedAt: "1970-01-01T00:00:02.000Z",
+						},
+					],
+				]),
+			},
+		);
 	});
 
-	it("handles session:start by adding to activeSessions", () => {
+	it("handles session:start by adding to activeSessions", () =>
+	{
 		const state = makeInitialState();
-		const action: ClaudeEventsAction = {
+		const action: ClaudeEventsAction =
+		{
 			type: "SSE_EVENT",
 			eventType: "session:start",
-			data: {sessionId: "abc-123", cwd: "/home/user/project", model: "opus"},
+			data:
+			{
+				sessionId: "abc-123",
+				cwd: "/home/user/project",
+				model: "opus",
+			},
 			timestamp: 1000,
 		};
 		const next = claudeEventsReducer(state, action);
 		expect(next.activeSessions.has("abc-123")).toBe(true);
-		expect(next.activeSessions.get("abc-123")).toStrictEqual({
-			sessionId: "abc-123",
-			cwd: "/home/user/project",
-			model: "opus",
-			startedAt: 1000,
-			lastActivity: 1000,
-		});
+		expect(next.activeSessions.get("abc-123")).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				cwd: "/home/user/project",
+				model: "opus",
+				startedAt: 1000,
+				lastActivity: 1000,
+			},
+		);
 	});
 
-	it("handles session:end by removing from activeSessions", () => {
+	it("handles session:end by removing from activeSessions", () =>
+	{
 		const state = makeInitialState();
-		state.activeSessions.set("abc-123", {
-			sessionId: "abc-123",
-			cwd: "/home/user/project",
-			model: "opus",
-			startedAt: 1000,
-			lastActivity: 1000,
-		});
-		const action: ClaudeEventsAction = {
+		state.activeSessions.set(
+			"abc-123",
+			{
+				sessionId: "abc-123",
+				cwd: "/home/user/project",
+				model: "opus",
+				startedAt: 1000,
+				lastActivity: 1000,
+			},
+		);
+		const action: ClaudeEventsAction =
+		{
 			type: "SSE_EVENT",
 			eventType: "session:end",
-			data: {sessionId: "abc-123"},
+			data:
+			{
+				sessionId: "abc-123",
+			},
 			timestamp: 2000,
 		};
 		const next = claudeEventsReducer(state, action);
 		expect(next.activeSessions.has("abc-123")).toBe(false);
 	});
 
-	it("handles domain session:updated by touching lastActivity via the session payload id", () => {
+	it("handles domain session:updated by touching lastActivity via the session payload id", () =>
+	{
 		const state = makeInitialState();
-		state.activeSessions.set("abc-123", {
-			sessionId: "abc-123",
-			cwd: "/home/user/project",
-			model: "opus",
-			startedAt: 1000,
-			lastActivity: 1000,
-		});
-		const action: ClaudeEventsAction = {
+		state.activeSessions.set(
+			"abc-123",
+			{
+				sessionId: "abc-123",
+				cwd: "/home/user/project",
+				model: "opus",
+				startedAt: 1000,
+				lastActivity: 1000,
+			},
+		);
+		const action: ClaudeEventsAction =
+		{
 			type: "SSE_EVENT",
 			eventType: "session:updated",
-			data: {session: {id: "abc-123"}},
+			data:
+			{
+				session:
+				{
+					id: "abc-123",
+				},
+			},
 			timestamp: 3000,
 		};
 		const next = claudeEventsReducer(state, action);
 		expect(next.activeSessions.get("abc-123")?.lastActivity).toBe(3000);
 	});
 
-	it("ignores non-lifecycle events without mutating state", () => {
+	it("ignores non-lifecycle events without mutating state", () =>
+	{
 		const state = makeInitialState();
-		const action: ClaudeEventsAction = {
+		const action: ClaudeEventsAction =
+		{
 			type: "SSE_EVENT",
 			eventType: "task:changed",
-			data: {taskId: "task-1"},
+			data:
+			{
+				taskId: "task-1",
+			},
 			timestamp: 5000,
 		};
 		const next = claudeEventsReducer(state, action);
 		expect(next).toBe(state);
 	});
 
-	it("does not mutate the original state", () => {
+	it("does not mutate the original state", () =>
+	{
 		const state = makeInitialState();
-		const action: ClaudeEventsAction = {
+		const action: ClaudeEventsAction =
+		{
 			type: "SSE_EVENT",
 			eventType: "session:start",
-			data: {sessionId: "abc-123", cwd: "/tmp"},
+			data:
+			{
+				sessionId: "abc-123",
+				cwd: "/tmp",
+			},
 			timestamp: 1000,
 		};
 		const next = claudeEventsReducer(state, action);
@@ -342,40 +457,58 @@ describe("claudeEventsReducer", () => {
 		expect(next.activeSessions.size).toBe(1);
 	});
 
-	it("session:updated for unknown session does not add it", () => {
+	it("session:updated for unknown session does not add it", () =>
+	{
 		const state = makeInitialState();
-		const action: ClaudeEventsAction = {
+		const action: ClaudeEventsAction =
+		{
 			type: "SSE_EVENT",
 			eventType: "session:updated",
-			data: {session: {id: "unknown-id"}},
+			data:
+			{
+				session:
+				{
+					id: "unknown-id",
+				},
+			},
 			timestamp: 1000,
 		};
 		const next = claudeEventsReducer(state, action);
 		expect(next.activeSessions.has("unknown-id")).toBe(false);
 	});
 
-	it("handles RESET action", () => {
+	it("handles RESET action", () =>
+	{
 		const state = makeInitialState();
-		state.activeSessions.set("abc-123", {
-			sessionId: "abc-123",
-			cwd: "/tmp",
-			model: "",
-			startedAt: 1000,
-			lastActivity: 1000,
-		});
-		const action: ClaudeEventsAction = {type: "RESET"};
+		state.activeSessions.set(
+			"abc-123",
+			{
+				sessionId: "abc-123",
+				cwd: "/tmp",
+				model: "",
+				startedAt: 1000,
+				lastActivity: 1000,
+			},
+		);
+		const action: ClaudeEventsAction =
+		{
+			type: "RESET",
+		};
 		const next = claudeEventsReducer(state, action);
 		expect(next.activeSessions.size).toBe(0);
 		expect(next.hookSchemaDrifts.size).toBe(0);
 		expect(next.dismissedDrifts.size).toBe(0);
 	});
 
-	it("records session:tool-failed payloads into failedTools keyed by sessionId:toolUseId", () => {
+	it("records session:tool-failed payloads into failedTools keyed by sessionId:toolUseId", () =>
+	{
 		const state = makeInitialState();
-		const action: ClaudeEventsAction = {
+		const action: ClaudeEventsAction =
+		{
 			type: "SSE_EVENT",
 			eventType: "session:tool-failed",
-			data: {
+			data:
+			{
 				sessionId: "abc-123",
 				toolName: "Bash",
 				toolUseId: "toolu_fail_01",
@@ -384,42 +517,55 @@ describe("claudeEventsReducer", () => {
 			timestamp: 5000,
 		};
 		const next = claudeEventsReducer(state, action);
-		expect(next.failedTools.get("abc-123:toolu_fail_01")).toStrictEqual({
-			sessionId: "abc-123",
-			toolName: "Bash",
-			toolUseId: "toolu_fail_01",
-			error: "exit 1",
-		});
-	});
-
-	it("session:tool-failed clears matching pending tool indicator", () => {
-		const state = makeInitialState();
-		state.pendingTools.set("abc-123", {
-			sessionId: "abc-123",
-			toolName: "Bash",
-			toolUseId: "toolu_fail_01",
-		});
-		const next = claudeEventsReducer(state, {
-			type: "SSE_EVENT",
-			eventType: "session:tool-failed",
-			data: {
+		expect(next.failedTools.get("abc-123:toolu_fail_01")).toStrictEqual(
+			{
 				sessionId: "abc-123",
 				toolName: "Bash",
 				toolUseId: "toolu_fail_01",
-				error: "boom",
+				error: "exit 1",
 			},
-			timestamp: 6000,
-		});
+		);
+	});
+
+	it("session:tool-failed clears matching pending tool indicator", () =>
+	{
+		const state = makeInitialState();
+		state.pendingTools.set(
+			"abc-123",
+			{
+				sessionId: "abc-123",
+				toolName: "Bash",
+				toolUseId: "toolu_fail_01",
+			},
+		);
+		const next = claudeEventsReducer(
+			state,
+			{
+				type: "SSE_EVENT",
+				eventType: "session:tool-failed",
+				data:
+				{
+					sessionId: "abc-123",
+					toolName: "Bash",
+					toolUseId: "toolu_fail_01",
+					error: "boom",
+				},
+				timestamp: 6000,
+			},
+		);
 		expect(next.pendingTools.has("abc-123")).toBe(false);
 		expect(next.failedTools.get("abc-123:toolu_fail_01")?.error).toBe("boom");
 	});
 
-	it("records hook:schema-drift payloads keyed by hookEventName", () => {
+	it("records hook:schema-drift payloads keyed by hookEventName", () =>
+	{
 		const state = makeInitialState();
-		const action: ClaudeEventsAction = {
+		const action: ClaudeEventsAction =
+		{
 			type: "SSE_EVENT",
 			eventType: "hook:schema-drift",
-			data: {
+			data:
+			{
 				hookEventName: "PostToolUse",
 				missingFields: ["tool_response.foo"],
 				unknownFields: ["tool_input.experimental_flag"],
@@ -428,55 +574,90 @@ describe("claudeEventsReducer", () => {
 			timestamp: 5000,
 		};
 		const next = claudeEventsReducer(state, action);
-		expect(next.hookSchemaDrifts.get("PostToolUse")).toStrictEqual({
-			hookEventName: "PostToolUse",
-			missingFields: ["tool_response.foo"],
-			unknownFields: ["tool_input.experimental_flag"],
-			count: 3,
-		});
+		expect(next.hookSchemaDrifts.get("PostToolUse")).toStrictEqual(
+			{
+				hookEventName: "PostToolUse",
+				missingFields: ["tool_response.foo"],
+				unknownFields: ["tool_input.experimental_flag"],
+				count: 3,
+			},
+		);
 	});
 
-	it("DISMISS_DRIFT hides the named drift until a fresh one arrives", () => {
+	it("DISMISS_DRIFT hides the named drift until a fresh one arrives", () =>
+	{
 		const state = makeInitialState();
-		state.hookSchemaDrifts.set("PostToolUse", {
-			hookEventName: "PostToolUse",
-			missingFields: [],
-			unknownFields: ["x"],
-			count: 1,
-		});
-		const dismissed = claudeEventsReducer(state, {
-			type: "DISMISS_DRIFT",
-			hookEventName: "PostToolUse",
-		});
+		state.hookSchemaDrifts.set(
+			"PostToolUse",
+			{
+				hookEventName: "PostToolUse",
+				missingFields: [],
+				unknownFields: ["x"],
+				count: 1,
+			},
+		);
+		const dismissed = claudeEventsReducer(
+			state,
+			{
+				type: "DISMISS_DRIFT",
+				hookEventName: "PostToolUse",
+			},
+		);
 		expect(dismissed.dismissedDrifts.has("PostToolUse")).toBe(true);
 
 		// A new drift for the same event clears the dismissal.
-		const next = claudeEventsReducer(dismissed, {
-			type: "SSE_EVENT",
-			eventType: "hook:schema-drift",
-			data: {
-				hookEventName: "PostToolUse",
-				missingFields: [],
-				unknownFields: ["y"],
-				count: 2,
+		const next = claudeEventsReducer(
+			dismissed,
+			{
+				type: "SSE_EVENT",
+				eventType: "hook:schema-drift",
+				data:
+				{
+					hookEventName: "PostToolUse",
+					missingFields: [],
+					unknownFields: ["y"],
+					count: 2,
+				},
+				timestamp: 6000,
 			},
-			timestamp: 6000,
-		});
+		);
 		expect(next.dismissedDrifts.has("PostToolUse")).toBe(false);
 	});
 });
 
-describe("applySessionAdded", () => {
-	it("invalidates every registered session-list shape", () => {
+describe("applySessionAdded", () =>
+{
+	it("invalidates every registered session-list shape", () =>
+	{
 		const queryClient = new QueryClient();
 		const groupedKey = sessionQueryKeys.grouped();
 		const recentKey = sessionQueryKeys.recent(20);
 		const recentInfiniteKey = sessionQueryKeys.recentInfinite();
 		queryClient.setQueryData(groupedKey, []);
-		queryClient.setQueryData(recentKey, {sessions: [], nextCursor: null});
-		queryClient.setQueryData(recentInfiniteKey, {pages: [], pageParams: []});
+		queryClient.setQueryData(
+			recentKey,
+			{
+				sessions: [],
+				nextCursor: null,
+			},
+		);
+		queryClient.setQueryData(
+			recentInfiniteKey,
+			{
+				pages: [],
+				pageParams: [],
+			},
+		);
 
-		applySessionAdded(queryClient, makeSession({id: "new", project: "proj-a"}));
+		applySessionAdded(
+			queryClient,
+			makeSession(
+				{
+					id: "new",
+					project: "proj-a",
+				},
+			),
+		);
 
 		expect([
 			queryClient.getQueryState(groupedKey)?.isInvalidated,
@@ -485,13 +666,41 @@ describe("applySessionAdded", () => {
 		]).toStrictEqual([true, true, true]);
 	});
 
-	it("invalidates all plan link queries", () => {
+	it("invalidates all plan link queries", () =>
+	{
 		const queryClient = new QueryClient();
-		queryClient.setQueryData(["plans", "plan-a.md", "links"], [{sessionId: "s1"}]);
-		queryClient.setQueryData(["plans", "plan-b.md", "links"], [{sessionId: "s2"}]);
-		queryClient.setQueryData(["plans", "plan-a.md"], {content: "keep"});
+		queryClient.setQueryData(
+			["plans", "plan-a.md", "links"],
+			[
+				{
+					sessionId: "s1",
+				},
+			],
+		);
+		queryClient.setQueryData(
+			["plans", "plan-b.md", "links"],
+			[
+				{
+					sessionId: "s2",
+				},
+			],
+		);
+		queryClient.setQueryData(
+			["plans", "plan-a.md"],
+			{
+				content: "keep",
+			},
+		);
 
-		applySessionAdded(queryClient, makeSession({id: "new-1", project: "proj-a"}));
+		applySessionAdded(
+			queryClient,
+			makeSession(
+				{
+					id: "new-1",
+					project: "proj-a",
+				},
+			),
+		);
 
 		expect(queryClient.getQueryState(["plans", "plan-a.md", "links"])?.isInvalidated).toBe(true);
 		expect(queryClient.getQueryState(["plans", "plan-b.md", "links"])?.isInvalidated).toBe(true);
@@ -500,15 +709,29 @@ describe("applySessionAdded", () => {
 	});
 });
 
-describe("applySessionRemoved", () => {
-	it("invalidates every registered session-list shape", () => {
+describe("applySessionRemoved", () =>
+{
+	it("invalidates every registered session-list shape", () =>
+	{
 		const queryClient = new QueryClient();
 		const groupedKey = sessionQueryKeys.grouped();
 		const recentKey = sessionQueryKeys.recent(20);
 		const recentInfiniteKey = sessionQueryKeys.recentInfinite();
 		queryClient.setQueryData(groupedKey, []);
-		queryClient.setQueryData(recentKey, {sessions: [], nextCursor: null});
-		queryClient.setQueryData(recentInfiniteKey, {pages: [], pageParams: []});
+		queryClient.setQueryData(
+			recentKey,
+			{
+				sessions: [],
+				nextCursor: null,
+			},
+		);
+		queryClient.setQueryData(
+			recentInfiniteKey,
+			{
+				pages: [],
+				pageParams: [],
+			},
+		);
 
 		applySessionRemoved(queryClient, "a1", "proj-a");
 
@@ -519,52 +742,114 @@ describe("applySessionRemoved", () => {
 		]).toStrictEqual([true, true, true]);
 	});
 
-	it("invalidates the factory-keyed session subtree without removing data", () => {
+	it("invalidates the factory-keyed session subtree without removing data", () =>
+	{
 		const queryClient = new QueryClient();
 		const detailKey = sessionQueryKeys.detail("a1");
 		const transcriptKey = sessionQueryKeys.transcript("a1");
 		const subagentsKey = sessionQueryKeys.subagents("a1");
 		const unrelatedDetailKey = sessionQueryKeys.detail("a2");
-		queryClient.setQueryData(detailKey, {id: "a1"});
-		queryClient.setQueryData(transcriptKey, {records: [], byteOffset: 0});
-		queryClient.setQueryData(subagentsKey, [{name: "planner"}]);
-		queryClient.setQueryData(unrelatedDetailKey, {id: "a2"});
+		queryClient.setQueryData(
+			detailKey,
+			{
+				id: "a1",
+			},
+		);
+		queryClient.setQueryData(
+			transcriptKey,
+			{
+				records: [],
+				byteOffset: 0,
+			},
+		);
+		queryClient.setQueryData(subagentsKey, [
+			{
+				name: "planner",
+			},
+		]);
+		queryClient.setQueryData(
+			unrelatedDetailKey,
+			{
+				id: "a2",
+			},
+		);
 
 		applySessionRemoved(queryClient, "a1", "proj-a");
 
-		expect({
-			detail: queryClient.getQueryData(detailKey),
-			detailInvalidated: queryClient.getQueryState(detailKey)?.isInvalidated,
-			subagents: queryClient.getQueryData(subagentsKey),
-			subagentsInvalidated: queryClient.getQueryState(subagentsKey)?.isInvalidated,
-			transcript: queryClient.getQueryData(transcriptKey),
-			transcriptInvalidated: queryClient.getQueryState(transcriptKey)?.isInvalidated,
-			unrelatedDetail: queryClient.getQueryData(unrelatedDetailKey),
-			unrelatedDetailInvalidated: queryClient.getQueryState(unrelatedDetailKey)?.isInvalidated,
-		}).toStrictEqual({
-			detail: {id: "a1"},
-			detailInvalidated: true,
-			subagents: [{name: "planner"}],
-			subagentsInvalidated: true,
-			transcript: {records: [], byteOffset: 0},
-			transcriptInvalidated: true,
-			unrelatedDetail: {id: "a2"},
-			unrelatedDetailInvalidated: false,
-		});
+		expect(
+			{
+				detail: queryClient.getQueryData(detailKey),
+				detailInvalidated: queryClient.getQueryState(detailKey)?.isInvalidated,
+				subagents: queryClient.getQueryData(subagentsKey),
+				subagentsInvalidated: queryClient.getQueryState(subagentsKey)?.isInvalidated,
+				transcript: queryClient.getQueryData(transcriptKey),
+				transcriptInvalidated: queryClient.getQueryState(transcriptKey)?.isInvalidated,
+				unrelatedDetail: queryClient.getQueryData(unrelatedDetailKey),
+				unrelatedDetailInvalidated: queryClient.getQueryState(unrelatedDetailKey)?.isInvalidated,
+			},
+		).toStrictEqual(
+			{
+				detail:
+				{
+					id: "a1",
+				},
+				detailInvalidated: true,
+				subagents: [
+					{
+						name: "planner",
+					},
+				],
+				subagentsInvalidated: true,
+				transcript:
+				{
+					records: [],
+					byteOffset: 0,
+				},
+				transcriptInvalidated: true,
+				unrelatedDetail:
+				{
+					id: "a2",
+				},
+				unrelatedDetailInvalidated: false,
+			},
+		);
 	});
 });
 
-describe("applySessionUpdated", () => {
-	it("invalidates every registered session-list shape", () => {
+describe("applySessionUpdated", () =>
+{
+	it("invalidates every registered session-list shape", () =>
+	{
 		const queryClient = new QueryClient();
 		const groupedKey = sessionQueryKeys.grouped();
 		const recentKey = sessionQueryKeys.recent(20);
 		const recentInfiniteKey = sessionQueryKeys.recentInfinite();
 		queryClient.setQueryData(groupedKey, []);
-		queryClient.setQueryData(recentKey, {sessions: [], nextCursor: null});
-		queryClient.setQueryData(recentInfiniteKey, {pages: [], pageParams: []});
+		queryClient.setQueryData(
+			recentKey,
+			{
+				sessions: [],
+				nextCursor: null,
+			},
+		);
+		queryClient.setQueryData(
+			recentInfiniteKey,
+			{
+				pages: [],
+				pageParams: [],
+			},
+		);
 
-		applySessionUpdated(queryClient, makeSession({id: "a1", project: "proj-a", title: "New"}));
+		applySessionUpdated(
+			queryClient,
+			makeSession(
+				{
+					id: "a1",
+					project: "proj-a",
+					title: "New",
+				},
+			),
+		);
 
 		expect([
 			queryClient.getQueryState(groupedKey)?.isInvalidated,
@@ -573,98 +858,220 @@ describe("applySessionUpdated", () => {
 		]).toStrictEqual([true, true, true]);
 	});
 
-	it("refetches the default recent list that session pages read even while no list observes it", async () => {
+	it("refetches the default recent list that session pages read even while no list observes it", async () =>
+	{
 		const queryClient = new QueryClient();
-		const queryFn = vi.fn<() => Promise<{sessions: SessionSummaryPayload[]; nextCursor: null}>>(async () =>
-			Promise.resolve({sessions: [], nextCursor: null}),
+		const queryFn = vi.fn<
+			() => Promise<
+			{
+				sessions: SessionSummaryPayload[];
+				nextCursor: null;
+			}>
+		>(async () =>
+			Promise.resolve(
+				{
+					sessions: [],
+					nextCursor: null,
+				},
+			),
 		);
-		await queryClient.infiniteQuery({
-			queryKey: sessionQueryKeys.recentInfinite(),
-			queryFn,
-			initialPageParam: null,
-		});
+		await queryClient.infiniteQuery(
+			{
+				queryKey: sessionQueryKeys.recentInfinite(),
+				queryFn,
+				initialPageParam: null,
+			},
+		);
 
-		applySessionUpdated(queryClient, makeSession({id: "a1", project: "proj-a", state: "working"}));
+		applySessionUpdated(
+			queryClient,
+			makeSession(
+				{
+					id: "a1",
+					project: "proj-a",
+					state: "working",
+				},
+			),
+		);
 
 		expect(queryFn).toHaveBeenCalledTimes(2);
 	});
 
-	it("invalidates session detail without invalidating its transcript", () => {
+	it("invalidates session detail without invalidating its transcript", () =>
+	{
 		const queryClient = new QueryClient();
 		const detailKey = sessionQueryKeys.detail("a1");
 		const transcriptKey = sessionQueryKeys.transcript("a1");
-		queryClient.setQueryData(detailKey, {title: "Old"});
-		queryClient.setQueryData(transcriptKey, {records: [], byteOffset: 0});
+		queryClient.setQueryData(
+			detailKey,
+			{
+				title: "Old",
+			},
+		);
+		queryClient.setQueryData(
+			transcriptKey,
+			{
+				records: [],
+				byteOffset: 0,
+			},
+		);
 
-		applySessionUpdated(queryClient, makeSession({id: "a1", project: "proj-a", title: "New"}));
+		applySessionUpdated(
+			queryClient,
+			makeSession(
+				{
+					id: "a1",
+					project: "proj-a",
+					title: "New",
+				},
+			),
+		);
 
-		expect({
-			detailInvalidated: queryClient.getQueryState(detailKey)?.isInvalidated,
-			transcriptInvalidated: queryClient.getQueryState(transcriptKey)?.isInvalidated,
-		}).toStrictEqual({
-			detailInvalidated: true,
-			transcriptInvalidated: false,
-		});
+		expect(
+			{
+				detailInvalidated: queryClient.getQueryState(detailKey)?.isInvalidated,
+				transcriptInvalidated: queryClient.getQueryState(transcriptKey)?.isInvalidated,
+			},
+		).toStrictEqual(
+			{
+				detailInvalidated: true,
+				transcriptInvalidated: false,
+			},
+		);
 	});
 
-	it("refetches the open-in data only when the summary's Remote Control state disagrees with it", () => {
+	it("refetches the open-in data only when the summary's Remote Control state disagrees with it", () =>
+	{
 		const queryClient = new QueryClient();
-		const openIn = (state: "on" | "off" | null) => ({
+		const openIn = (state: "on" | "off" | null) => (
+		{
 			cwd: "/tmp/test/alice-project",
 			bridgeSessionId: null,
 			remoteHistory: null,
 			githubUrl: null,
 			remoteControl:
-				state === null ? null : {state, url: state === "on" ? "https://claude.ai/code/session_x" : null},
+				state === null
+					? null
+					:
+						{
+							state,
+							url: state === "on" ? "https://claude.ai/code/session_x" : null,
+						},
 		});
-		const invalidatedAfter = (cached: "on" | "off" | null, summary: "on" | "off" | undefined) => {
+		const invalidatedAfter = (cached: "on" | "off" | null, summary: "on" | "off" | undefined) =>
+		{
 			const key = sessionQueryKeys.openIn("a1");
 			queryClient.setQueryData(key, openIn(cached));
 			applySessionUpdated(
 				queryClient,
-				makeSession({
-					id: "a1",
-					project: "proj-a",
-					...(summary === undefined ? {} : {remoteControlState: summary}),
-				}),
+				makeSession(
+					{
+						id: "a1",
+						project: "proj-a",
+						...(summary === undefined
+							? {}
+							:
+								{
+									remoteControlState: summary,
+								}),
+					},
+				),
 			);
 			return queryClient.getQueryState(key)?.isInvalidated;
 		};
 
-		expect({
-			same: invalidatedAfter("on", "on"),
-			tornDown: invalidatedAfter("on", "off"),
-			bridged: invalidatedAfter("off", "on"),
-			ended: invalidatedAfter("off", undefined),
-			stillEnded: invalidatedAfter(null, undefined),
-		}).toStrictEqual({same: false, tornDown: true, bridged: true, ended: true, stillEnded: false});
+		expect(
+			{
+				same: invalidatedAfter("on", "on"),
+				tornDown: invalidatedAfter("on", "off"),
+				bridged: invalidatedAfter("off", "on"),
+				ended: invalidatedAfter("off", undefined),
+				stillEnded: invalidatedAfter(null, undefined),
+			},
+		).toStrictEqual(
+			{
+				same: false,
+				tornDown: true,
+				bridged: true,
+				ended: true,
+				stillEnded: false,
+			},
+		);
 	});
 });
 
-describe("cachedSessionSummary", () => {
-	it("reads the most recently fetched list's copy, so the session page agrees with the sidebar's filtered list", () => {
+describe("cachedSessionSummary", () =>
+{
+	it("reads the most recently fetched list's copy, so the session page agrees with the sidebar's filtered list", () =>
+	{
 		const queryClient = new QueryClient();
-		const answered = makeSession({id: "a1", project: "proj-a", state: "working", bucket: "working"});
-		const stale = makeSession({id: "a1", project: "proj-a", state: "waiting", bucket: "blocked"});
+		const answered = makeSession(
+			{
+				id: "a1",
+				project: "proj-a",
+				state: "working",
+				bucket: "working",
+			},
+		);
+		const stale = makeSession(
+			{
+				id: "a1",
+				project: "proj-a",
+				state: "waiting",
+				bucket: "blocked",
+			},
+		);
 		// The default list was fetched while the question waited and has had no observer since.
 		queryClient.setQueryData(
 			sessionQueryKeys.recentInfinite(),
-			{pages: [{sessions: [stale], nextCursor: null}], pageParams: [null]},
-			{updatedAt: 1000},
+			{
+				pages: [
+					{
+						sessions: [stale],
+						nextCursor: null,
+					},
+				],
+				pageParams: [null],
+			},
+			{
+				updatedAt: 1000,
+			},
 		);
 		queryClient.setQueryData(
 			sessionQueryKeys.recentInfinite(undefined, "all"),
-			{pages: [{sessions: [answered], nextCursor: null}], pageParams: [null]},
-			{updatedAt: 2000},
+			{
+				pages: [
+					{
+						sessions: [answered],
+						nextCursor: null,
+					},
+				],
+				pageParams: [null],
+			},
+			{
+				updatedAt: 2000,
+			},
 		);
-		queryClient.setQueryData(sessionQueryKeys.grouped(), [{sessions: [stale]}], {updatedAt: 1500});
+		queryClient.setQueryData(
+			sessionQueryKeys.grouped(),
+			[
+				{
+					sessions: [stale],
+				},
+			],
+			{
+				updatedAt: 1500,
+			},
+		);
 
 		expect(cachedSessionSummary(queryClient, "a1")).toStrictEqual(answered);
 	});
 });
 
-describe("applyPlanChanged", () => {
-	it("invalidates the flat plans list so it refetches with up-to-date project links", () => {
+describe("applyPlanChanged", () =>
+{
+	it("invalidates the flat plans list so it refetches with up-to-date project links", () =>
+	{
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(["plans"], [makePlan("a.md")]);
 
@@ -674,15 +1081,19 @@ describe("applyPlanChanged", () => {
 		expect(plansState?.isInvalidated).toBe(true);
 	});
 
-	it("invalidates plan detail and links queries keyed by the URL slug", () => {
+	it("invalidates plan detail and links queries keyed by the URL slug", () =>
+	{
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(["plans"], [makePlan("a.md")]);
 		// planQueryOptions/planLinksQueryOptions key by the slug, not the filename.
-		queryClient.setQueryData(["plans", "a"], {
-			markdown: "old",
-			mtime: null,
-			title: "old",
-		});
+		queryClient.setQueryData(
+			["plans", "a"],
+			{
+				markdown: "old",
+				mtime: null,
+				title: "old",
+			},
+		);
 		queryClient.setQueryData(["plans", "a", "links"], []);
 
 		applyPlanChanged(queryClient, makePlan("a.md", "Updated"));
@@ -694,16 +1105,21 @@ describe("applyPlanChanged", () => {
 	});
 });
 
-describe("applyPlanRemoved", () => {
-	it("invalidates the flat plans list and removes the slug-keyed detail caches", () => {
+describe("applyPlanRemoved", () =>
+{
+	it("invalidates the flat plans list and removes the slug-keyed detail caches", () =>
+	{
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(["plans"], [makePlan("a.md"), makePlan("b.md")]);
 		// planQueryOptions/planLinksQueryOptions key by the slug, not the filename.
-		queryClient.setQueryData(["plans", "a"], {
-			markdown: "a",
-			mtime: null,
-			title: "a",
-		});
+		queryClient.setQueryData(
+			["plans", "a"],
+			{
+				markdown: "a",
+				mtime: null,
+				title: "a",
+			},
+		);
 		queryClient.setQueryData(["plans", "a", "links"], []);
 
 		applyPlanRemoved(queryClient, "a.md");
@@ -715,19 +1131,32 @@ describe("applyPlanRemoved", () => {
 	});
 });
 
-describe("applyMemoryChanged", () => {
-	it("invalidates the project memory list and per-memory detail caches", () => {
+describe("applyMemoryChanged", () =>
+{
+	it("invalidates the project memory list and per-memory detail caches", () =>
+	{
 		const queryClient = new QueryClient();
-		queryClient.setQueryData(["projects", "proj-a", "memories"], {
-			project: {id: "proj-a", name: "Project A", projectPath: null},
-			memories: [],
-		});
+		queryClient.setQueryData(
+			["projects", "proj-a", "memories"],
+			{
+				project:
+				{
+					id: "proj-a",
+					name: "Project A",
+					projectPath: null,
+				},
+				memories: [],
+			},
+		);
 		// memoryDetailQueryOptions keys by the slug, not the filename.
-		queryClient.setQueryData(["projects", "proj-a", "memories", "MEMORY"], {
-			markdown: "old",
-			mtime: null,
-			projectName: "Project A",
-		});
+		queryClient.setQueryData(
+			["projects", "proj-a", "memories", "MEMORY"],
+			{
+				markdown: "old",
+				mtime: null,
+				projectName: "Project A",
+			},
+		);
 
 		applyMemoryChanged(queryClient, makeMemory("proj-a", "MEMORY.md", "Updated"));
 
@@ -738,46 +1167,67 @@ describe("applyMemoryChanged", () => {
 	});
 });
 
-describe("applyMemoryRemoved", () => {
-	it("invalidates the project memory list and evicts the per-memory cache", () => {
+describe("applyMemoryRemoved", () =>
+{
+	it("invalidates the project memory list and evicts the per-memory cache", () =>
+	{
 		const queryClient = new QueryClient();
-		queryClient.setQueryData(["projects", "proj-a", "memories"], {
-			project: {id: "proj-a", name: "Project A", projectPath: null},
-			memories: [],
-		});
+		queryClient.setQueryData(
+			["projects", "proj-a", "memories"],
+			{
+				project:
+				{
+					id: "proj-a",
+					name: "Project A",
+					projectPath: null,
+				},
+				memories: [],
+			},
+		);
 		// memoryDetailQueryOptions keys by the slug, not the filename.
-		queryClient.setQueryData(["projects", "proj-a", "memories", "MEMORY"], {
-			markdown: "old",
-			mtime: null,
-			projectName: "Project A",
-		});
-		queryClient.setQueryData(["projects", "proj-b", "memories", "OTHER"], {
-			markdown: "keep",
-			mtime: null,
-			projectName: "Project B",
-		});
+		queryClient.setQueryData(
+			["projects", "proj-a", "memories", "MEMORY"],
+			{
+				markdown: "old",
+				mtime: null,
+				projectName: "Project A",
+			},
+		);
+		queryClient.setQueryData(
+			["projects", "proj-b", "memories", "OTHER"],
+			{
+				markdown: "keep",
+				mtime: null,
+				projectName: "Project B",
+			},
+		);
 
 		applyMemoryRemoved(queryClient, "proj-a", "MEMORY.md");
 
 		const listState = queryClient.getQueryState(["projects", "proj-a", "memories"]);
 		expect(listState?.isInvalidated).toBe(true);
 		expect(queryClient.getQueryData(["projects", "proj-a", "memories", "MEMORY"])).toBeUndefined();
-		expect(queryClient.getQueryData(["projects", "proj-b", "memories", "OTHER"])).toStrictEqual({
-			markdown: "keep",
-			mtime: null,
-			projectName: "Project B",
-		});
+		expect(queryClient.getQueryData(["projects", "proj-b", "memories", "OTHER"])).toStrictEqual(
+			{
+				markdown: "keep",
+				mtime: null,
+				projectName: "Project B",
+			},
+		);
 	});
 
-	it("is a no-op when the memories query has never been populated", () => {
+	it("is a no-op when the memories query has never been populated", () =>
+	{
 		const queryClient = new QueryClient();
 		applyMemoryRemoved(queryClient, "proj-a", "MEMORY.md");
 		expect(queryClient.getQueryData(["projects", "proj-a", "memories"])).toBeUndefined();
 	});
 });
 
-describe("applyTaskChanged", () => {
-	it("invalidates both the global and per-project task queries", () => {
+describe("applyTaskChanged", () =>
+{
+	it("invalidates both the global and per-project task queries", () =>
+	{
 		const queryClient = new QueryClient();
 		// Prime two task queries.
 		queryClient.setQueryData(["tasks"], []);
@@ -793,11 +1243,13 @@ describe("applyTaskChanged", () => {
 });
 
 function makeNotification(
-	overrides: Partial<NotificationEntryPayload> & {
+	overrides: Partial<NotificationEntryPayload> &
+	{
 		id: string;
 		projectId: string;
 	},
-): NotificationEntryPayload {
+): NotificationEntryPayload
+{
 	const {id, projectId, ...rest} = overrides;
 	return {
 		id,
@@ -813,78 +1265,229 @@ function makeNotification(
 	};
 }
 
-type NotificationsData = {
-	notifications: Array<NotificationEntryPayload & {unread: boolean}>;
+type NotificationsData =
+{
+	notifications: Array<
+		NotificationEntryPayload &
+		{
+			unread: boolean;
+		}
+	>;
 };
 
-describe("applyNotificationAdded", () => {
-	it("prepends the new notification newest-first into both the global and per-project slices", () => {
+describe("applyNotificationAdded", () =>
+{
+	it("prepends the new notification newest-first into both the global and per-project slices", () =>
+	{
 		const queryClient = new QueryClient();
-		const existing = makeNotification({id: "old", projectId: "proj-a"});
-		queryClient.setQueryData<NotificationsData>(["notifications"], {
-			notifications: [{...existing, unread: false}],
-		});
-		queryClient.setQueryData<NotificationsData>(["notifications", "proj-a"], {
-			notifications: [{...existing, unread: false}],
-		});
+		const existing = makeNotification(
+			{
+				id: "old",
+				projectId: "proj-a",
+			},
+		);
+		queryClient.setQueryData<NotificationsData>(
+			["notifications"],
+			{
+				notifications: [
+					{
+						...existing,
+						unread: false,
+					},
+				],
+			},
+		);
+		queryClient.setQueryData<NotificationsData>(
+			["notifications", "proj-a"],
+			{
+				notifications: [
+					{
+						...existing,
+						unread: false,
+					},
+				],
+			},
+		);
 
-		applyNotificationAdded(queryClient, makeNotification({id: "new", projectId: "proj-a"}));
+		applyNotificationAdded(
+			queryClient,
+			makeNotification(
+				{
+					id: "new",
+					projectId: "proj-a",
+				},
+			),
+		);
 
 		const global = queryClient.getQueryData<NotificationsData>(["notifications"]);
 		const scoped = queryClient.getQueryData<NotificationsData>(["notifications", "proj-a"]);
-		expect(global?.notifications.map(({id, unread}) => ({id, unread}))).toStrictEqual([
-			{id: "new", unread: true},
-			{id: "old", unread: false},
+		expect(
+			global?.notifications.map(({id, unread}) => (
+			{
+				id,
+				unread,
+			})),
+		).toStrictEqual([
+			{
+				id: "new",
+				unread: true,
+			},
+			{
+				id: "old",
+				unread: false,
+			},
 		]);
-		expect(scoped?.notifications.map(({id, unread}) => ({id, unread}))).toStrictEqual([
-			{id: "new", unread: true},
-			{id: "old", unread: false},
+		expect(
+			scoped?.notifications.map(({id, unread}) => (
+			{
+				id,
+				unread,
+			})),
+		).toStrictEqual([
+			{
+				id: "new",
+				unread: true,
+			},
+			{
+				id: "old",
+				unread: false,
+			},
 		]);
 	});
 
-	it("replaces an existing entry with the same id and moves it to the front", () => {
+	it("replaces an existing entry with the same id and moves it to the front", () =>
+	{
 		const queryClient = new QueryClient();
-		queryClient.setQueryData<NotificationsData>(["notifications"], {
-			notifications: [
-				{
-					...makeNotification({id: "a", projectId: "proj-a", message: "old text"}),
-					unread: false,
-				},
-				{...makeNotification({id: "b", projectId: "proj-a"}), unread: false},
-			],
-		});
+		queryClient.setQueryData<NotificationsData>(
+			["notifications"],
+			{
+				notifications: [
+					{
+						...makeNotification(
+							{
+								id: "a",
+								projectId: "proj-a",
+								message: "old text",
+							},
+						),
+						unread: false,
+					},
+					{
+						...makeNotification(
+							{
+								id: "b",
+								projectId: "proj-a",
+							},
+						),
+						unread: false,
+					},
+				],
+			},
+		);
 
-		applyNotificationAdded(queryClient, makeNotification({id: "a", projectId: "proj-a", message: "new text"}));
+		applyNotificationAdded(
+			queryClient,
+			makeNotification(
+				{
+					id: "a",
+					projectId: "proj-a",
+					message: "new text",
+				},
+			),
+		);
 
 		const global = queryClient.getQueryData<NotificationsData>(["notifications"]);
-		expect(global?.notifications.map(({id, message, unread}) => ({id, message, unread}))).toStrictEqual([
-			{id: "a", message: "new text", unread: true},
-			{id: "b", message: "Message b", unread: false},
+		expect(
+			global?.notifications.map(({id, message, unread}) => (
+			{
+				id,
+				message,
+				unread,
+			})),
+		).toStrictEqual([
+			{
+				id: "a",
+				message: "new text",
+				unread: true,
+			},
+			{
+				id: "b",
+				message: "Message b",
+				unread: false,
+			},
 		]);
 	});
 
-	it("is a no-op when a slice has never been populated", () => {
+	it("is a no-op when a slice has never been populated", () =>
+	{
 		const queryClient = new QueryClient();
-		applyNotificationAdded(queryClient, makeNotification({id: "x", projectId: "proj-a"}));
+		applyNotificationAdded(
+			queryClient,
+			makeNotification(
+				{
+					id: "x",
+					projectId: "proj-a",
+				},
+			),
+		);
 		expect(queryClient.getQueryData(["notifications"])).toBeUndefined();
 		expect(queryClient.getQueryData(["notifications", "proj-a"])).toBeUndefined();
 	});
 });
 
-describe("applyNotificationCleared", () => {
-	it("removes a single id from every matching slice", () => {
+describe("applyNotificationCleared", () =>
+{
+	it("removes a single id from every matching slice", () =>
+	{
 		const queryClient = new QueryClient();
-		queryClient.setQueryData<NotificationsData>(["notifications"], {
-			notifications: [
-				{...makeNotification({id: "a", projectId: "proj-a"}), unread: true},
-				{...makeNotification({id: "b", projectId: "proj-b"}), unread: false},
-			],
-		});
-		queryClient.setQueryData<NotificationsData>(["notifications", "proj-a"], {
-			notifications: [{...makeNotification({id: "a", projectId: "proj-a"}), unread: true}],
-		});
+		queryClient.setQueryData<NotificationsData>(
+			["notifications"],
+			{
+				notifications: [
+					{
+						...makeNotification(
+							{
+								id: "a",
+								projectId: "proj-a",
+							},
+						),
+						unread: true,
+					},
+					{
+						...makeNotification(
+							{
+								id: "b",
+								projectId: "proj-b",
+							},
+						),
+						unread: false,
+					},
+				],
+			},
+		);
+		queryClient.setQueryData<NotificationsData>(
+			["notifications", "proj-a"],
+			{
+				notifications: [
+					{
+						...makeNotification(
+							{
+								id: "a",
+								projectId: "proj-a",
+							},
+						),
+						unread: true,
+					},
+				],
+			},
+		);
 
-		applyNotificationCleared(queryClient, {id: "a"});
+		applyNotificationCleared(
+			queryClient,
+			{
+				id: "a",
+			},
+		);
 
 		expect(
 			queryClient.getQueryData<NotificationsData>(["notifications"])?.notifications.map((n) => n.id),
@@ -894,19 +1497,57 @@ describe("applyNotificationCleared", () => {
 		);
 	});
 
-	it("empties every slice when all:true", () => {
+	it("empties every slice when all:true", () =>
+	{
 		const queryClient = new QueryClient();
-		queryClient.setQueryData<NotificationsData>(["notifications"], {
-			notifications: [
-				{...makeNotification({id: "a", projectId: "proj-a"}), unread: true},
-				{...makeNotification({id: "b", projectId: "proj-b"}), unread: false},
-			],
-		});
-		queryClient.setQueryData<NotificationsData>(["notifications", "proj-a"], {
-			notifications: [{...makeNotification({id: "a", projectId: "proj-a"}), unread: true}],
-		});
+		queryClient.setQueryData<NotificationsData>(
+			["notifications"],
+			{
+				notifications: [
+					{
+						...makeNotification(
+							{
+								id: "a",
+								projectId: "proj-a",
+							},
+						),
+						unread: true,
+					},
+					{
+						...makeNotification(
+							{
+								id: "b",
+								projectId: "proj-b",
+							},
+						),
+						unread: false,
+					},
+				],
+			},
+		);
+		queryClient.setQueryData<NotificationsData>(
+			["notifications", "proj-a"],
+			{
+				notifications: [
+					{
+						...makeNotification(
+							{
+								id: "a",
+								projectId: "proj-a",
+							},
+						),
+						unread: true,
+					},
+				],
+			},
+		);
 
-		applyNotificationCleared(queryClient, {all: true});
+		applyNotificationCleared(
+			queryClient,
+			{
+				all: true,
+			},
+		);
 
 		expect(queryClient.getQueryData<NotificationsData>(["notifications"])?.notifications).toStrictEqual([]);
 		expect(queryClient.getQueryData<NotificationsData>(["notifications", "proj-a"])?.notifications).toStrictEqual(
@@ -919,7 +1560,8 @@ describe("applyNotificationCleared", () => {
 // applySessionLinesAppended
 // -----------------------------------------------------------------------
 
-function makeTranscriptCache(overrides?: Partial<TranscriptData>): TranscriptData {
+function makeTranscriptCache(overrides?: Partial<TranscriptData>): TranscriptData
+{
 	return {
 		records: [],
 		byteOffset: 0,
@@ -933,249 +1575,465 @@ function makeTranscriptCache(overrides?: Partial<TranscriptData>): TranscriptDat
 	};
 }
 
-describe("applySessionLinesAppended", () => {
-	it("ignores event when no cached data exists for the session", () => {
+describe("applySessionLinesAppended", () =>
+{
+	it("ignores event when no cached data exists for the session", () =>
+	{
 		const queryClient = new QueryClient();
-		applySessionLinesAppended(queryClient, "sess-1", {
-			sessionId: "sess-1",
-			lines: [
-				{
-					type: "assistant",
-					uuid: "a-1",
-					message: {
-						role: "assistant",
-						content: [{type: "text", text: "hi"}],
+		applySessionLinesAppended(
+			queryClient,
+			"sess-1",
+			{
+				sessionId: "sess-1",
+				lines: [
+					{
+						type: "assistant",
+						uuid: "a-1",
+						message:
+						{
+							role: "assistant",
+							content: [
+								{
+									type: "text",
+									text: "hi",
+								},
+							],
+						},
 					},
-				},
-			],
-		});
+				],
+			},
+		);
 		expect(queryClient.getQueryData(sessionQueryKeys.transcript("sess-1"))).toBeUndefined();
 	});
 
-	it("appends new raw records to cached transcript data", () => {
+	it("appends new raw records to cached transcript data", () =>
+	{
 		const queryClient = new QueryClient();
-		const existingRecord = {
+		const existingRecord =
+		{
 			type: "user",
 			uuid: "u-1",
-			message: {role: "user", content: "hello"},
+			message:
+			{
+				role: "user",
+				content: "hello",
+			},
 		};
 		queryClient.setQueryData(
 			sessionQueryKeys.transcript("sess-1"),
-			makeTranscriptCache({records: [existingRecord], byteOffset: 100}),
+			makeTranscriptCache(
+				{
+					records: [existingRecord],
+					byteOffset: 100,
+				},
+			),
 		);
 
-		const newRecord = {
+		const newRecord =
+		{
 			type: "assistant",
 			uuid: "a-1",
 			timestamp: "1999-12-31T00:00:00Z",
-			message: {
+			message:
+			{
 				role: "assistant",
-				content: [{type: "text", text: "response"}],
+				content: [
+					{
+						type: "text",
+						text: "response",
+					},
+				],
 			},
 		};
-		applySessionLinesAppended(queryClient, "sess-1", {
-			sessionId: "sess-1",
-			lines: [newRecord],
-		});
-
-		const cached = queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))!;
-		expect(cached).toStrictEqual({
-			records: [existingRecord, newRecord],
-			byteOffset: 100,
-			startIndex: 0,
-			precedingMessageCount: 0,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: "v1",
-			chapters: [],
-		});
-	});
-
-	it("adds an appended chapter call to the cached chapters and drops one a failed result removes", () => {
-		const queryClient = new QueryClient();
-		const early = {id: "toolu_early", title: "Early", uuid: "a-0", recordIndex: 0};
-		const failed = {id: "toolu_failed", title: "Failed", uuid: "a-1", recordIndex: 1};
-		queryClient.setQueryData(
-			sessionQueryKeys.transcript("sess-1"),
-			makeTranscriptCache({
-				records: [
-					{type: "user", uuid: "u-0"},
-					{type: "user", uuid: "u-1"},
-				],
-				chapters: [early, failed],
-			}),
+		applySessionLinesAppended(
+			queryClient,
+			"sess-1",
+			{
+				sessionId: "sess-1",
+				lines: [newRecord],
+			},
 		);
 
-		applySessionLinesAppended(queryClient, "sess-1", {
-			sessionId: "sess-1",
-			lines: [
-				{
-					type: "user",
-					uuid: "r-1",
-					message: {
-						role: "user",
-						content: [{type: "tool_result", tool_use_id: "toolu_failed", content: "boom", is_error: true}],
-					},
-				},
-				{
-					type: "assistant",
-					uuid: "a-3",
-					message: {
-						role: "assistant",
-						content: [{type: "tool_use", id: "toolu_late", name: "MarkChapter", input: {title: "Late"}}],
-					},
-				},
-			],
-		});
-
 		const cached = queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))!;
-		expect(cached.chapters).toStrictEqual([early, {id: "toolu_late", title: "Late", uuid: "a-3", recordIndex: 3}]);
+		expect(cached).toStrictEqual(
+			{
+				records: [existingRecord, newRecord],
+				byteOffset: 100,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
+				chapters: [],
+			},
+		);
 	});
 
-	it("marks the api request log stale only when api request records are appended", () => {
+	it("adds an appended chapter call to the cached chapters and drops one a failed result removes", () =>
+	{
+		const queryClient = new QueryClient();
+		const early =
+		{
+			id: "toolu_early",
+			title: "Early",
+			uuid: "a-0",
+			recordIndex: 0,
+		};
+		const failed =
+		{
+			id: "toolu_failed",
+			title: "Failed",
+			uuid: "a-1",
+			recordIndex: 1,
+		};
+		queryClient.setQueryData(
+			sessionQueryKeys.transcript("sess-1"),
+			makeTranscriptCache(
+				{
+					records: [
+						{
+							type: "user",
+							uuid: "u-0",
+						},
+						{
+							type: "user",
+							uuid: "u-1",
+						},
+					],
+					chapters: [early, failed],
+				},
+			),
+		);
+
+		applySessionLinesAppended(
+			queryClient,
+			"sess-1",
+			{
+				sessionId: "sess-1",
+				lines: [
+					{
+						type: "user",
+						uuid: "r-1",
+						message:
+						{
+							role: "user",
+							content: [
+								{
+									type: "tool_result",
+									tool_use_id: "toolu_failed",
+									content: "boom",
+									is_error: true,
+								},
+							],
+						},
+					},
+					{
+						type: "assistant",
+						uuid: "a-3",
+						message:
+						{
+							role: "assistant",
+							content: [
+								{
+									type: "tool_use",
+									id: "toolu_late",
+									name: "MarkChapter",
+									input:
+									{
+										title: "Late",
+									},
+								},
+							],
+						},
+					},
+				],
+			},
+		);
+
+		const cached = queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))!;
+		expect(cached.chapters).toStrictEqual([
+			early,
+			{
+				id: "toolu_late",
+				title: "Late",
+				uuid: "a-3",
+				recordIndex: 3,
+			},
+		]);
+	});
+
+	it("marks the api request log stale only when api request records are appended", () =>
+	{
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), makeTranscriptCache());
-		queryClient.setQueryData(sessionQueryKeys.apiRequests("sess-1"), {requests: {}, shapes: {}});
+		queryClient.setQueryData(
+			sessionQueryKeys.apiRequests("sess-1"),
+			{
+				requests: {},
+				shapes: {},
+			},
+		);
 		const isStale = () => queryClient.getQueryState(sessionQueryKeys.apiRequests("sess-1"))?.isInvalidated;
 
-		applySessionLinesAppended(queryClient, "sess-1", {
-			sessionId: "sess-1",
-			lines: [{type: "user", uuid: "u-1", message: {role: "user", content: "hello"}}],
-		});
+		applySessionLinesAppended(
+			queryClient,
+			"sess-1",
+			{
+				sessionId: "sess-1",
+				lines: [
+					{
+						type: "user",
+						uuid: "u-1",
+						message:
+						{
+							role: "user",
+							content: "hello",
+						},
+					},
+				],
+			},
+		);
 		expect(isStale()).toBe(false);
 
-		applySessionLinesAppended(queryClient, "sess-1", {
-			sessionId: "sess-1",
-			lines: [{type: "api-request", id: "r1"}],
-		});
+		applySessionLinesAppended(
+			queryClient,
+			"sess-1",
+			{
+				sessionId: "sess-1",
+				lines: [
+					{
+						type: "api-request",
+						id: "r1",
+					},
+				],
+			},
+		);
 		expect(isStale()).toBe(true);
 	});
 
-	it("does not modify cache when lines array is empty", () => {
+	it("does not modify cache when lines array is empty", () =>
+	{
 		const queryClient = new QueryClient();
-		const original = makeTranscriptCache({byteOffset: 50});
+		const original = makeTranscriptCache(
+			{
+				byteOffset: 50,
+			},
+		);
 		queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), original);
 
-		applySessionLinesAppended(queryClient, "sess-1", {
-			sessionId: "sess-1",
-			lines: [],
-		});
+		applySessionLinesAppended(
+			queryClient,
+			"sess-1",
+			{
+				sessionId: "sess-1",
+				lines: [],
+			},
+		);
 
 		const cached = queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))!;
 		expect(cached).toBe(original);
 	});
 
-	it("appends all record types including non-user/assistant", () => {
+	it("appends all record types including non-user/assistant", () =>
+	{
 		const queryClient = new QueryClient();
-		queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), makeTranscriptCache({byteOffset: 50}));
+		queryClient.setQueryData(
+			sessionQueryKeys.transcript("sess-1"),
+			makeTranscriptCache(
+				{
+					byteOffset: 50,
+				},
+			),
+		);
 
 		const records = [
-			{type: "progress", uuid: "p-1"},
+			{
+				type: "progress",
+				uuid: "p-1",
+			},
 			{
 				type: "assistant",
 				uuid: "a-1",
-				message: {role: "assistant", content: "hi"},
+				message:
+				{
+					role: "assistant",
+					content: "hi",
+				},
 			},
 		];
-		applySessionLinesAppended(queryClient, "sess-1", {
-			sessionId: "sess-1",
-			lines: records,
-		});
+		applySessionLinesAppended(
+			queryClient,
+			"sess-1",
+			{
+				sessionId: "sess-1",
+				lines: records,
+			},
+		);
 
 		const cached = queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))!;
-		expect(cached).toStrictEqual({
-			records,
-			byteOffset: 50,
-			startIndex: 0,
-			precedingMessageCount: 0,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: "v1",
-			chapters: [],
-		});
+		expect(cached).toStrictEqual(
+			{
+				records,
+				byteOffset: 50,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
+				chapters: [],
+			},
+		);
 	});
 
-	it("preserves an appended line when an older in-flight refetch resolves afterward", async () => {
+	it("preserves an appended line when an older in-flight refetch resolves afterward", async () =>
+	{
 		const queryClient = new QueryClient();
 		const queryKey = sessionQueryKeys.transcript("session-test-100");
-		const existingRecord = {
+		const existingRecord =
+		{
 			type: "user",
 			uuid: "user-test-100",
-			message: {role: "user", content: "hello"},
+			message:
+			{
+				role: "user",
+				content: "hello",
+			},
 		};
-		const appendedRecord = {
+		const appendedRecord =
+		{
 			type: "assistant",
 			uuid: "assistant-test-100",
-			message: {role: "assistant", content: "response"},
+			message:
+			{
+				role: "assistant",
+				content: "response",
+			},
 		};
-		queryClient.setQueryData(queryKey, makeTranscriptCache({records: [existingRecord], byteOffset: 100}));
+		queryClient.setQueryData(
+			queryKey,
+			makeTranscriptCache(
+				{
+					records: [existingRecord],
+					byteOffset: 100,
+				},
+			),
+		);
 		let resolveRefetch: () => void = () => undefined;
-		const responseReady = new Promise<void>((resolve) => {
+		const responseReady = new Promise<void>((resolve) =>
+		{
 			resolveRefetch = resolve;
 		});
-		const refetch = queryClient.query({
-			...transcriptQueryOptions("session-test-100"),
-			staleTime: 0,
-			queryFn: async () => {
-				await responseReady;
-				return makeTranscriptCache({records: [existingRecord], byteOffset: 100});
+		const refetch = queryClient.query(
+			{
+				...transcriptQueryOptions("session-test-100"),
+				staleTime: 0,
+				queryFn: async () =>
+				{
+					await responseReady;
+					return makeTranscriptCache(
+						{
+							records: [existingRecord],
+							byteOffset: 100,
+						},
+					);
+				},
 			},
-		});
+		);
 
-		applySessionLinesAppended(queryClient, "session-test-100", {
-			sessionId: "session-test-100",
-			lines: [appendedRecord],
-		});
+		applySessionLinesAppended(
+			queryClient,
+			"session-test-100",
+			{
+				sessionId: "session-test-100",
+				lines: [appendedRecord],
+			},
+		);
 		resolveRefetch();
 		await refetch;
 
-		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
-			records: [existingRecord, appendedRecord],
-			byteOffset: 100,
-			startIndex: 0,
-			precedingMessageCount: 0,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: "v1",
-			chapters: [],
-		});
+		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual(
+			{
+				records: [existingRecord, appendedRecord],
+				byteOffset: 100,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
+				chapters: [],
+			},
+		);
 	});
 
-	it("does not duplicate a line appended after a refetch already returned it", async () => {
+	it("does not duplicate a line appended after a refetch already returned it", async () =>
+	{
 		const queryClient = new QueryClient();
 		const queryKey = sessionQueryKeys.transcript("session-test-100");
-		const existingRecord = {
+		const existingRecord =
+		{
 			type: "user",
 			uuid: "user-test-100",
-			message: {role: "user", content: "hello"},
+			message:
+			{
+				role: "user",
+				content: "hello",
+			},
 		};
-		const appendedRecord = {
+		const appendedRecord =
+		{
 			type: "assistant",
 			uuid: "assistant-test-100",
-			message: {role: "assistant", content: "response"},
+			message:
+			{
+				role: "assistant",
+				content: "response",
+			},
 		};
-		queryClient.setQueryData(queryKey, makeTranscriptCache({records: [existingRecord], byteOffset: 100}));
+		queryClient.setQueryData(
+			queryKey,
+			makeTranscriptCache(
+				{
+					records: [existingRecord],
+					byteOffset: 100,
+				},
+			),
+		);
 
-		await queryClient.query({
-			...transcriptQueryOptions("session-test-100"),
-			staleTime: 0,
-			queryFn: async () =>
-				Promise.resolve(makeTranscriptCache({records: [existingRecord, appendedRecord], byteOffset: 200})),
-		});
-		applySessionLinesAppended(queryClient, "session-test-100", {
-			sessionId: "session-test-100",
-			lines: [appendedRecord],
-		});
+		await queryClient.query(
+			{
+				...transcriptQueryOptions("session-test-100"),
+				staleTime: 0,
+				queryFn: async () =>
+					Promise.resolve(
+						makeTranscriptCache(
+							{
+								records: [existingRecord, appendedRecord],
+								byteOffset: 200,
+							},
+						),
+					),
+			},
+		);
+		applySessionLinesAppended(
+			queryClient,
+			"session-test-100",
+			{
+				sessionId: "session-test-100",
+				lines: [appendedRecord],
+			},
+		);
 
-		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
-			records: [existingRecord, appendedRecord],
-			byteOffset: 200,
-			startIndex: 0,
-			precedingMessageCount: 0,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: "v1",
-			chapters: [],
-		});
+		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual(
+			{
+				records: [existingRecord, appendedRecord],
+				byteOffset: 200,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
+				chapters: [],
+			},
+		);
 	});
 });

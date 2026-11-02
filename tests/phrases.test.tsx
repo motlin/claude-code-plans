@@ -8,36 +8,57 @@ import {FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 
 const TYPE_OFF: readonly FizzyLakePart[] = ["color", "panels"];
 
-class StubObserver {
+class StubObserver
+{
 	static instances: StubObserver[] = [];
-	constructor(private readonly callback: ResizeObserverCallback) {
+	constructor(private readonly callback: ResizeObserverCallback)
+	{
 		StubObserver.instances.push(this);
 	}
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	fire(targets: Element[]) {
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	fire(targets: Element[])
+	{
 		this.callback(
-			targets.map((target) => ({target}) as ResizeObserverEntry),
+			targets.map(
+				(target) =>
+					(
+					{
+						target,
+					}) as ResizeObserverEntry,
+			),
 			this,
 		);
 	}
 }
 
-describe("Phrases under fizzy-lake type (upstream shared-9 MG, cds-type-experiment-gate T3)", () => {
+describe("Phrases under fizzy-lake type (upstream shared-9 MG, cds-type-experiment-gate T3)", () =>
+{
 	const original = globalThis.ResizeObserver;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		StubObserver.instances = [];
-		globalThis.ResizeObserver = class extends StubObserver {};
+		globalThis.ResizeObserver = class extends StubObserver
+		{
+		};
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		globalThis.ResizeObserver = original;
 	});
 
-	it("renders one ellipsis bdi with no probe and no inline styles", () => {
+	it("renders one ellipsis bdi with no probe and no inline styles", () =>
+	{
 		const html = renderToString(<Phrases>{["Ran 2 commands", ", read a file"]}</Phrases>).replaceAll(
 			"<!-- -->",
 			"",
@@ -47,7 +68,8 @@ describe("Phrases under fizzy-lake type (upstream shared-9 MG, cds-type-experime
 		);
 	});
 
-	it("keeps one text node per phrase and drops empty phrases", () => {
+	it("keeps one text node per phrase and drops empty phrases", () =>
+	{
 		const {container} = render(<Phrases>{["Ran 2 commands", "", ", read a file"]}</Phrases>);
 		const bdi = container.querySelector("bdi")!;
 		expect([...bdi.childNodes].map((node) => [node.nodeType, node.textContent])).toStrictEqual([
@@ -56,27 +78,52 @@ describe("Phrases under fizzy-lake type (upstream shared-9 MG, cds-type-experime
 		]);
 	});
 
-	it("fades the bdi with data-cds-row-cut while it overflows", () => {
+	it("fades the bdi with data-cds-row-cut while it overflows", () =>
+	{
 		const {container} = render(<Phrases>{["Ran 2 commands", ", read a file"]}</Phrases>);
 		const bdi = container.querySelector("bdi")!;
-		Object.defineProperty(bdi, "scrollWidth", {configurable: true, value: 300});
-		Object.defineProperty(bdi, "clientWidth", {configurable: true, value: 200});
-		act(() => {
+		Object.defineProperty(
+			bdi,
+			"scrollWidth",
+			{
+				configurable: true,
+				value: 300,
+			},
+		);
+		Object.defineProperty(
+			bdi,
+			"clientWidth",
+			{
+				configurable: true,
+				value: 200,
+			},
+		);
+		act(() =>
+		{
 			StubObserver.instances[0]!.fire([bdi]);
 		});
 		expect(bdi.getAttribute("data-cds-row-cut")).toBe("");
 	});
 
-	it("renders the measuring probe when type is off and there are several phrases", () => {
+	it("renders the measuring probe when type is off and there are several phrases", () =>
+	{
 		const {container} = render(
 			<FizzyLakeContext.Provider value={TYPE_OFF}>
 				<Phrases>{["Ran 2 commands", ", read a file"]}</Phrases>
 			</FizzyLakeContext.Provider>,
 		);
-		expect({
-			probe: container.querySelector("span.invisible.absolute.start-0.top-0")?.getAttribute("aria-hidden"),
-			bdiClass: container.querySelector("bdi")?.className,
-			observers: StubObserver.instances.length,
-		}).toStrictEqual({probe: "true", bdiClass: "block overflow-x-clip whitespace-nowrap", observers: 0});
+		expect(
+			{
+				probe: container.querySelector("span.invisible.absolute.start-0.top-0")?.getAttribute("aria-hidden"),
+				bdiClass: container.querySelector("bdi")?.className,
+				observers: StubObserver.instances.length,
+			},
+		).toStrictEqual(
+			{
+				probe: "true",
+				bdiClass: "block overflow-x-clip whitespace-nowrap",
+				observers: 0,
+			},
+		);
 	});
 });

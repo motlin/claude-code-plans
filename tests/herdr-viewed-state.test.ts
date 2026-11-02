@@ -1,12 +1,14 @@
 import {describe, expect, it} from "vite-plus/test";
 import type {HerdrPaneLink} from "../src/lib/herdr/panes";
-import {
+import
+{
 	compareHerdrAttention,
 	createHerdrViewedStateTracker,
 	isCompletionTransitionParts,
 } from "../src/lib/herdr/viewed-state";
 
-function pane(overrides: Partial<HerdrPaneLink>): HerdrPaneLink {
+function pane(overrides: Partial<HerdrPaneLink>): HerdrPaneLink
+{
 	return {
 		host: "herdr",
 		paneId: "workspace-100:pane-100",
@@ -27,8 +29,10 @@ function pane(overrides: Partial<HerdrPaneLink>): HerdrPaneLink {
 	};
 }
 
-describe("herdr viewed-state transitions", () => {
-	it("recognizes only herdr completion transitions, including derived done", () => {
+describe("herdr viewed-state transitions", () =>
+{
+	it("recognizes only herdr completion transitions, including derived done", () =>
+	{
 		const cases = [
 			["working", "idle", "claude", "claude", true],
 			["working", "done", "claude", "claude", true],
@@ -44,84 +48,176 @@ describe("herdr viewed-state transitions", () => {
 		expect(
 			cases.map(([previousStatus, nextStatus, previousAgent, nextAgent]) =>
 				isCompletionTransitionParts(
-					{status: previousStatus, agent: previousAgent},
-					{status: nextStatus, agent: nextAgent},
+					{
+						status: previousStatus,
+						agent: previousAgent,
+					},
+					{
+						status: nextStatus,
+						agent: nextAgent,
+					},
 				),
 			),
 		).toStrictEqual(cases.map((entry) => entry[4]));
 	});
 
-	it("latches done-to-idle by terminal id across a pane move and skips ccp clearing in view", async () => {
-		const calls: Array<{type: string; terminalId?: string; sessionId: string}> = [];
-		const record = (call: {type: string; terminalId?: string; sessionId: string}): void => {
+	it("latches done-to-idle by terminal id across a pane move and skips ccp clearing in view", async () =>
+	{
+		const calls: Array<
+		{
+			type: string;
+			terminalId?: string;
+			sessionId: string;
+		}> = [];
+		const record = (call: {type: string; terminalId?: string; sessionId: string}): void =>
+		{
 			calls.push(call);
 		};
 		let visible = false;
-		const tracker = createHerdrViewedStateTracker({
-			isSessionVisible: () => visible,
-			linkTerminal: (terminalId, sessionId) => {
-				record({type: "link", terminalId, sessionId});
+		const tracker = createHerdrViewedStateTracker(
+			{
+				isSessionVisible: () => visible,
+				linkTerminal: (terminalId, sessionId) =>
+				{
+					record(
+						{
+							type: "link",
+							terminalId,
+							sessionId,
+						},
+					);
+				},
+				pruneTerminalLinks: (sessionId) =>
+				{
+					record(
+						{
+							type: "prune",
+							sessionId,
+						},
+					);
+				},
+				markSessionCompletionUnreviewed: (sessionId) =>
+				{
+					record(
+						{
+							type: "completion",
+							sessionId,
+						},
+					);
+				},
+				markTerminalUnviewed: (terminalId, sessionId) =>
+				{
+					record(
+						{
+							type: "terminal-unviewed",
+							terminalId,
+							sessionId,
+						},
+					);
+				},
+				markTerminalViewed: (terminalId, sessionId) =>
+				{
+					record(
+						{
+							type: "terminal-viewed",
+							terminalId,
+							sessionId,
+						},
+					);
+				},
 			},
-			pruneTerminalLinks: (sessionId) => {
-				record({type: "prune", sessionId});
-			},
-			markSessionCompletionUnreviewed: (sessionId) => {
-				record({type: "completion", sessionId});
-			},
-			markTerminalUnviewed: (terminalId, sessionId) => {
-				record({type: "terminal-unviewed", terminalId, sessionId});
-			},
-			markTerminalViewed: (terminalId, sessionId) => {
-				record({type: "terminal-viewed", terminalId, sessionId});
-			},
-		});
+		);
 
-		await tracker.syncPanes([pane({agentStatus: "working"})]);
-		await tracker.handleStatusEvent({
-			pane_id: "workspace-100:pane-100",
-			agent_status: "done",
-			agent: "claude",
-		});
 		await tracker.syncPanes([
-			pane({paneId: "workspace-200:pane-200", workspaceId: "workspace-200", agentStatus: "done"}),
+			pane(
+				{
+					agentStatus: "working",
+				},
+			),
 		]);
-		await tracker.handleStatusEvent({
-			pane_id: "workspace-200:pane-200",
-			agent_status: "idle",
-			agent: "claude",
-		});
+		await tracker.handleStatusEvent(
+			{
+				pane_id: "workspace-100:pane-100",
+				agent_status: "done",
+				agent: "claude",
+			},
+		);
+		await tracker.syncPanes([
+			pane(
+				{
+					paneId: "workspace-200:pane-200",
+					workspaceId: "workspace-200",
+					agentStatus: "done",
+				},
+			),
+		]);
+		await tracker.handleStatusEvent(
+			{
+				pane_id: "workspace-200:pane-200",
+				agent_status: "idle",
+				agent: "claude",
+			},
+		);
 		visible = true;
 		await tracker.syncPanes([
-			pane({
-				paneId: "workspace-200:pane-200",
-				workspaceId: "workspace-200",
-				agentStatus: "working",
-			}),
+			pane(
+				{
+					paneId: "workspace-200:pane-200",
+					workspaceId: "workspace-200",
+					agentStatus: "working",
+				},
+			),
 		]);
-		await tracker.handleStatusEvent({
-			pane_id: "workspace-200:pane-200",
-			agent_status: "idle",
-			agent: "claude",
-		});
+		await tracker.handleStatusEvent(
+			{
+				pane_id: "workspace-200:pane-200",
+				agent_status: "idle",
+				agent: "claude",
+			},
+		);
 
 		expect(calls).toStrictEqual([
-			{type: "link", terminalId: "terminal-test-100", sessionId: "session-test-100"},
-			{type: "prune", sessionId: "session-test-100"},
+			{
+				type: "link",
+				terminalId: "terminal-test-100",
+				sessionId: "session-test-100",
+			},
+			{
+				type: "prune",
+				sessionId: "session-test-100",
+			},
 			{
 				type: "terminal-unviewed",
 				terminalId: "terminal-test-100",
 				sessionId: "session-test-100",
 			},
-			{type: "completion", sessionId: "session-test-100"},
-			{type: "link", terminalId: "terminal-test-100", sessionId: "session-test-100"},
-			{type: "prune", sessionId: "session-test-100"},
+			{
+				type: "completion",
+				sessionId: "session-test-100",
+			},
+			{
+				type: "link",
+				terminalId: "terminal-test-100",
+				sessionId: "session-test-100",
+			},
+			{
+				type: "prune",
+				sessionId: "session-test-100",
+			},
 			{
 				type: "terminal-viewed",
 				terminalId: "terminal-test-100",
 				sessionId: "session-test-100",
 			},
-			{type: "link", terminalId: "terminal-test-100", sessionId: "session-test-100"},
-			{type: "prune", sessionId: "session-test-100"},
+			{
+				type: "link",
+				terminalId: "terminal-test-100",
+				sessionId: "session-test-100",
+			},
+			{
+				type: "prune",
+				sessionId: "session-test-100",
+			},
 			{
 				type: "terminal-unviewed",
 				terminalId: "terminal-test-100",
@@ -130,49 +226,85 @@ describe("herdr viewed-state transitions", () => {
 		]);
 	});
 
-	it("applies writes in call order even when an earlier write waits, and keeps going after a failure", async () => {
+	it("applies writes in call order even when an earlier write waits, and keeps going after a failure", async () =>
+	{
 		const calls: string[] = [];
-		let releaseLink: () => void = () => {};
-		const tracker = createHerdrViewedStateTracker({
-			isSessionVisible: () => true,
-			linkTerminal: async (terminalId) =>
-				new Promise<void>((resolve) => {
-					releaseLink = () => {
-						calls.push(`link ${terminalId}`);
-						resolve();
-					};
-				}),
-			pruneTerminalLinks: () => {
-				throw new Error("prune failed");
+		let releaseLink: () => void = () =>
+		{
+		};
+		const tracker = createHerdrViewedStateTracker(
+			{
+				isSessionVisible: () => true,
+				linkTerminal: async (terminalId) =>
+					new Promise<void>((resolve) =>
+					{
+						releaseLink = () =>
+						{
+							calls.push(`link ${terminalId}`);
+							resolve();
+						};
+					}),
+				pruneTerminalLinks: () =>
+				{
+					throw new Error("prune failed");
+				},
+				markSessionCompletionUnreviewed: () =>
+				{
+				},
+				markTerminalUnviewed: (terminalId) =>
+				{
+					calls.push(`unviewed ${terminalId}`);
+				},
+				markTerminalViewed: () =>
+				{
+				},
 			},
-			markSessionCompletionUnreviewed: () => {},
-			markTerminalUnviewed: (terminalId) => {
-				calls.push(`unviewed ${terminalId}`);
-			},
-			markTerminalViewed: () => {},
-		});
+		);
 
-		const synced = tracker.syncPanes([pane({agentStatus: "working"})]).catch((error: unknown) => error);
-		const statusHandled = tracker.handleStatusEvent({
-			pane_id: "workspace-100:pane-100",
-			agent_status: "idle",
-			agent: "claude",
-		});
+		const synced = tracker
+			.syncPanes([
+				pane(
+					{
+						agentStatus: "working",
+					},
+				),
+			])
+			.catch((error: unknown) => error);
+		const statusHandled = tracker.handleStatusEvent(
+			{
+				pane_id: "workspace-100:pane-100",
+				agent_status: "idle",
+				agent: "claude",
+			},
+		);
 		await Promise.resolve();
 		calls.push("released");
 		releaseLink();
 
 		const syncError = ((await synced) as Error).message;
 		await statusHandled;
-		expect({syncError, calls}).toStrictEqual({
-			syncError: "prune failed",
-			calls: ["released", "link terminal-test-100", "unviewed terminal-test-100"],
-		});
+		expect(
+			{
+				syncError,
+				calls,
+			},
+		).toStrictEqual(
+			{
+				syncError: "prune failed",
+				calls: ["released", "link terminal-test-100", "unviewed terminal-test-100"],
+			},
+		);
 	});
 
-	it("uses blocked, done, working, idle, unknown workspace attention ordering", () => {
+	it("uses blocked, done, working, idle, unknown workspace attention ordering", () =>
+	{
 		const panes = ["idle", "future-test-status", "working", "done", "blocked"].map((agentStatus, index) =>
-			pane({agentStatus, terminalId: `terminal-test-${index * 100}`}),
+			pane(
+				{
+					agentStatus,
+					terminalId: `terminal-test-${index * 100}`,
+				},
+			),
 		);
 		panes.sort(compareHerdrAttention);
 

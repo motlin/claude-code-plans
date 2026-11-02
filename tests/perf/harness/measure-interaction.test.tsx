@@ -9,19 +9,25 @@ import {installFixedResizeObserver} from "./fixed-resize-observer";
 import {measureInteraction, useRenderCount} from "./measure-interaction";
 import {PerfSubtree} from "./perf-subtree";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-function Loader() {
+function Loader()
+{
 	useRenderCount("Loader");
 	const [loading, setLoading] = useState(false);
 	const [name, setName] = useState("");
-	const load = async () => {
+	const load = async () =>
+	{
 		setLoading(true);
 		const response = await fetch("/api/thing");
-		const body = (await response.json()) as {name: string};
+		const body = (await response.json()) as
+		{
+			name: string;
+		};
 		setName(body.name);
 	};
 	return (
@@ -34,82 +40,119 @@ function Loader() {
 	);
 }
 
-function Static() {
+function Static()
+{
 	useRenderCount("Static");
 	return <span>static</span>;
 }
 
-function ThingName() {
+function ThingName()
+{
 	useRenderCount("ThingName");
-	const query = useQuery({
-		queryKey: ["thing"],
-		queryFn: async () => (await (await fetch("/api/thing")).json()) as {name: string},
-	});
+	const query = useQuery(
+		{
+			queryKey: ["thing"],
+			queryFn: async () =>
+				(await (await fetch("/api/thing")).json()) as
+				{
+					name: string;
+				},
+		},
+	);
 	return <p>{query.data?.name ?? "pending"}</p>;
 }
 
 /** Mounts its query's component two macrotask turns after the first render, the way the router renders a route. */
-function DeferredThingSize() {
+function DeferredThingSize()
+{
 	const [mounted, setMounted] = useState(false);
-	useEffect(() => {
-		let timer = setTimeout(() => {
-			timer = setTimeout(() => {
+	useEffect(() =>
+	{
+		let timer = setTimeout(() =>
+		{
+			timer = setTimeout(() =>
+			{
 				setMounted(true);
 			}, 0);
 		}, 0);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 		};
 	}, []);
 	return mounted ? <ThingSize /> : null;
 }
 
-function ThingSize() {
+function ThingSize()
+{
 	useRenderCount("ThingSize");
-	const query = useQuery({
-		queryKey: ["thing-size"],
-		queryFn: async () => (await (await fetch("/api/thing-size")).json()) as {size: number},
-	});
+	const query = useQuery(
+		{
+			queryKey: ["thing-size"],
+			queryFn: async () =>
+				(await (await fetch("/api/thing-size")).json()) as
+				{
+					size: number;
+				},
+		},
+	);
 	return <p>{query.data?.size ?? "pending"}</p>;
 }
 
-function FetchingBadge() {
+function FetchingBadge()
+{
 	const fetching = useIsFetching();
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const source = new EventSource("/api/events");
 		source.addEventListener("session:lines-appended", () => {});
-		return () => {
+		return () =>
+		{
 			source.close();
 		};
 	}, []);
 	return <span>{fetching}</span>;
 }
 
-function Typed() {
+function Typed()
+{
 	useRenderCount("Typed");
 	const [text, setText] = useState("");
 	return (
 		<input
 			aria-label="typed"
 			value={text}
-			onChange={(event) => {
+			onChange={(event) =>
+			{
 				setText(event.target.value);
 			}}
 		/>
 	);
 }
 
-function Invalidator() {
+function Invalidator()
+{
 	const queryClient = useQueryClient();
 	return (
-		<button type="button" onClick={() => void queryClient.invalidateQueries({queryKey: ["thing"]})}>
+		<button
+			type="button"
+			onClick={() =>
+				void queryClient.invalidateQueries(
+					{
+						queryKey: ["thing"],
+					},
+				)
+			}
+		>
 			Refresh
 		</button>
 	);
 }
 
-describe("measureInteraction", () => {
-	it("counts the commits, mutations and fetches of a click that makes two state updates and one fetch", async () => {
+describe("measureInteraction", () =>
+{
+	it("counts the commits, mutations and fetches of a click that makes two state updates and one fetch", async () =>
+	{
 		const result = await measureInteraction(
 			() => (
 				<>
@@ -121,27 +164,61 @@ describe("measureInteraction", () => {
 					</PerfSubtree>
 				</>
 			),
-			() => {
+			() =>
+			{
 				fireEvent.click(screen.getByRole("button"));
 			},
-			{fixtures: {"/api/thing": {name: "widget"}}},
+			{
+				fixtures:
+				{
+					"/api/thing":
+					{
+						name: "widget",
+					},
+				},
+			},
 		);
 
-		expect({result, text: screen.getByRole("paragraph").textContent}).toStrictEqual({
-			result: {
-				commits: 2,
-				commitsBySubtree: {loader: 2},
-				mutations: 2,
-				fetches: {count: 1, bytes: 17, urls: ["/api/thing"]},
-				hiddenReloads: 0,
-				rendersByComponent: {Loader: 2},
-				subscriptions: {queryCacheListeners: 0, queryObservers: 0, eventSourceListeners: 0},
+		expect(
+			{
+				result,
+				text: screen.getByRole("paragraph").textContent,
 			},
-			text: "widget",
-		});
+		).toStrictEqual(
+			{
+				result:
+				{
+					commits: 2,
+					commitsBySubtree:
+					{
+						loader: 2,
+					},
+					mutations: 2,
+					fetches:
+					{
+						count: 1,
+						bytes: 17,
+						urls: ["/api/thing"],
+					},
+					hiddenReloads: 0,
+					rendersByComponent:
+					{
+						Loader: 2,
+					},
+					subscriptions:
+					{
+						queryCacheListeners: 0,
+						queryObservers: 0,
+						eventSourceListeners: 0,
+					},
+				},
+				text: "widget",
+			},
+		);
 	});
 
-	it("reports a background invalidation as one hidden reload", async () => {
+	it("reports a background invalidation as one hidden reload", async () =>
+	{
 		const result = await measureInteraction(
 			() => (
 				<>
@@ -149,25 +226,54 @@ describe("measureInteraction", () => {
 					<Invalidator />
 				</>
 			),
-			() => {
-				fireEvent.click(screen.getByRole("button", {name: "Refresh"}));
+			() =>
+			{
+				fireEvent.click(
+					screen.getByRole(
+						"button",
+						{
+							name: "Refresh",
+						},
+					),
+				);
 			},
-			{fixtures: {"/api/thing": {name: "widget"}}},
+			{
+				fixtures:
+				{
+					"/api/thing":
+					{
+						name: "widget",
+					},
+				},
+			},
 		);
 
 		// Tracked props plus structural sharing: the refetch costs a request but no commit, which is what makes it hidden.
-		expect(result).toStrictEqual({
-			commits: 0,
-			commitsBySubtree: {},
-			mutations: 0,
-			fetches: {count: 1, bytes: 17, urls: ["/api/thing"]},
-			hiddenReloads: 1,
-			rendersByComponent: {},
-			subscriptions: {queryCacheListeners: 0, queryObservers: 1, eventSourceListeners: 0},
-		});
+		expect(result).toStrictEqual(
+			{
+				commits: 0,
+				commitsBySubtree: {},
+				mutations: 0,
+				fetches:
+				{
+					count: 1,
+					bytes: 17,
+					urls: ["/api/thing"],
+				},
+				hiddenReloads: 1,
+				rendersByComponent: {},
+				subscriptions:
+				{
+					queryCacheListeners: 0,
+					queryObservers: 1,
+					eventSourceListeners: 0,
+				},
+			},
+		);
 	});
 
-	it("subtracts the query fetches an interaction explicitly expects", async () => {
+	it("subtracts the query fetches an interaction explicitly expects", async () =>
+	{
 		const result = await measureInteraction(
 			() => (
 				<>
@@ -175,75 +281,146 @@ describe("measureInteraction", () => {
 					<Invalidator />
 				</>
 			),
-			() => {
-				fireEvent.click(screen.getByRole("button", {name: "Refresh"}));
+			() =>
+			{
+				fireEvent.click(
+					screen.getByRole(
+						"button",
+						{
+							name: "Refresh",
+						},
+					),
+				);
 			},
-			{fixtures: {"/api/thing": {name: "widget"}}, expectedQueryFetches: 1},
+			{
+				fixtures:
+				{
+					"/api/thing":
+					{
+						name: "widget",
+					},
+				},
+				expectedQueryFetches: 1,
+			},
 		);
 
 		expect(result.hiddenReloads).toBe(0);
 	});
 
-	it("counts QueryCache listeners and open EventSource listeners in the subscription census", async () => {
+	it("counts QueryCache listeners and open EventSource listeners in the subscription census", async () =>
+	{
 		installFakeEventSource();
 		const result = await measureInteraction(
 			() => <FetchingBadge />,
 			() => {},
-			{fixtures: {}},
+			{
+				fixtures: {},
+			},
 		);
 
-		expect(result.subscriptions).toStrictEqual({
-			queryCacheListeners: 1,
-			queryObservers: 0,
-			eventSourceListeners: 1,
-		});
+		expect(result.subscriptions).toStrictEqual(
+			{
+				queryCacheListeners: 1,
+				queryObservers: 0,
+				eventSourceListeners: 1,
+			},
+		);
 	});
 
-	it("runs each step of a multi-step interaction in its own act, so every keystroke commits", async () => {
-		const typeInto = (value: string) => () => {
-			fireEvent.change(screen.getByRole("textbox"), {target: {value}});
+	it("runs each step of a multi-step interaction in its own act, so every keystroke commits", async () =>
+	{
+		const typeInto = (value: string) => () =>
+		{
+			fireEvent.change(
+				screen.getByRole("textbox"),
+				{
+					target:
+					{
+						value,
+					},
+				},
+			);
 		};
-		const result = await measureInteraction(() => <Typed />, [typeInto("a"), typeInto("ab"), typeInto("abc")], {
-			fixtures: {},
-		});
+		const result = await measureInteraction(
+			() => <Typed />,
+			[typeInto("a"), typeInto("ab"), typeInto("abc")],
+			{
+				fixtures: {},
+			},
+		);
 
-		expect({
-			commits: result.commits,
-			renders: result.rendersByComponent,
-			value: screen.getByRole<HTMLInputElement>("textbox").value,
-		}).toStrictEqual({commits: 3, renders: {Typed: 3}, value: "abc"});
+		expect(
+			{
+				commits: result.commits,
+				renders: result.rendersByComponent,
+				value: screen.getByRole<HTMLInputElement>("textbox").value,
+			},
+		).toStrictEqual(
+			{
+				commits: 3,
+				renders:
+				{
+					Typed: 3,
+				},
+				value: "abc",
+			},
+		);
 	});
 
-	it("settles a component that mounts late before measuring, so its fetch lands outside the interaction", async () => {
+	it("settles a component that mounts late before measuring, so its fetch lands outside the interaction", async () =>
+	{
 		const result = await measureInteraction(
 			() => <DeferredThingSize />,
 			() => {},
-			{fixtures: {"/api/thing-size": {size: 3}}},
+			{
+				fixtures:
+				{
+					"/api/thing-size":
+					{
+						size: 3,
+					},
+				},
+			},
 		);
 
-		expect({
-			commits: result.commits,
-			fetches: result.fetches.count,
-			renders: result.rendersByComponent,
-			text: screen.getByText("3").textContent,
-		}).toStrictEqual({commits: 0, fetches: 0, renders: {}, text: "3"});
+		expect(
+			{
+				commits: result.commits,
+				fetches: result.fetches.count,
+				renders: result.rendersByComponent,
+				text: screen.getByText("3").textContent,
+			},
+		).toStrictEqual(
+			{
+				commits: 0,
+				fetches: 0,
+				renders: {},
+				text: "3",
+			},
+		);
 	});
 
-	it("fails on a fetch with no fixture", async () => {
+	it("fails on a fetch with no fixture", async () =>
+	{
 		await expect(
 			measureInteraction(
 				() => <Loader />,
-				() => {
+				() =>
+				{
 					fireEvent.click(screen.getByRole("button"));
 				},
-				{fixtures: {}},
+				{
+					fixtures: {},
+				},
 			),
 		).rejects.toThrow("measureInteraction: no fixture for fetch /api/thing");
 	});
 });
 
-describe("FakeEventSource", () => {
-	it("opens, delivers named events as JSON MessageEvents, reports errors, and drops listeners on close", () => {
+describe("FakeEventSource", () =>
+{
+	it("opens, delivers named events as JSON MessageEvents, reports errors, and drops listeners on close", () =>
+	{
 		installFakeEventSource();
 		const received: Array<string> = [];
 		const source = new EventSource("/api/events");
@@ -256,34 +433,57 @@ describe("FakeEventSource", () => {
 		fake.onerror = () => received.push("error");
 
 		fake.open();
-		fake.emit("session:lines-appended", {sessionId: "s1"});
+		fake.emit(
+			"session:lines-appended",
+			{
+				sessionId: "s1",
+			},
+		);
 		fake.error();
 		const listenersBeforeClose = fake.listenerCount();
 		fake.close();
-		fake.emit("session:lines-appended", {sessionId: "s2"});
+		fake.emit(
+			"session:lines-appended",
+			{
+				sessionId: "s2",
+			},
+		);
 
-		expect({
-			received,
-			listenersBeforeClose,
-			listenersAfterClose: fake.listenerCount(),
-			readyState: source.readyState,
-			instances: FakeEventSource.instances.map((instance) => instance.url),
-		}).toStrictEqual({
-			received: ["open", '{"sessionId":"s1"}', "error"],
-			listenersBeforeClose: 3,
-			listenersAfterClose: 0,
-			readyState: 2,
-			instances: ["/api/events"],
-		});
+		expect(
+			{
+				received,
+				listenersBeforeClose,
+				listenersAfterClose: fake.listenerCount(),
+				readyState: source.readyState,
+				instances: FakeEventSource.instances.map((instance) => instance.url),
+			},
+		).toStrictEqual(
+			{
+				received: ["open", '{"sessionId":"s1"}', "error"],
+				listenersBeforeClose: 3,
+				listenersAfterClose: 0,
+				readyState: 2,
+				instances: ["/api/events"],
+			},
+		);
 	});
 });
 
-describe("installFixedResizeObserver", () => {
-	it("reports a fixed size for every observed element", () => {
-		installFixedResizeObserver({width: 800, height: 40});
+describe("installFixedResizeObserver", () =>
+{
+	it("reports a fixed size for every observed element", () =>
+	{
+		installFixedResizeObserver(
+			{
+				width: 800,
+				height: 40,
+			},
+		);
 		const sizes: Array<[number, number, number]> = [];
-		const observer = new ResizeObserver((entries) => {
-			for (const entry of entries) {
+		const observer = new ResizeObserver((entries) =>
+		{
+			for (const entry of entries)
+			{
 				sizes.push([entry.contentRect.width, entry.contentRect.height, entry.borderBoxSize[0]!.blockSize]);
 			}
 		});

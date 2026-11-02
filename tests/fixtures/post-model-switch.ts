@@ -2,7 +2,8 @@
  * Real `PostModelSwitch` payload captured from Claude Code 2.1.302 after a
  * stream-json `set_model` control request (`source: "sdk"`), paths anonymized.
  */
-export const postModelSwitchFixture = {
+export const postModelSwitchFixture =
+{
 	session_id: "abc-123",
 	transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
 	cwd: "/Users/u/projects/app",
@@ -19,7 +20,8 @@ export const postModelSwitchFixture = {
 };
 
 /** An automatic fallback: `requested_model` is null when `source` is `auto`. */
-export const postModelSwitchAutoFixture = {
+export const postModelSwitchAutoFixture =
+{
 	...postModelSwitchFixture,
 	from_model: "claude-opus-5-5",
 	to_model: "claude-sonnet-5-5",

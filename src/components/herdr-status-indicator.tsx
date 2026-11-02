@@ -1,20 +1,38 @@
-type HerdrStatusPresentation = {
+type HerdrStatusPresentation =
+{
 	colorClassName: string;
 	label: string;
 };
 
-function statusPresentation(status: string): HerdrStatusPresentation {
-	switch (status) {
+function statusPresentation(status: string): HerdrStatusPresentation
+{
+	switch (status)
+	{
 		case "blocked":
-			return {colorClassName: "bg-red-500", label: "blocked"};
+			return {
+				colorClassName: "bg-red-500",
+				label: "blocked",
+			};
 		case "working":
-			return {colorClassName: "bg-yellow-500", label: "working"};
+			return {
+				colorClassName: "bg-yellow-500",
+				label: "working",
+			};
 		case "done":
-			return {colorClassName: "bg-blue-500", label: "done"};
+			return {
+				colorClassName: "bg-blue-500",
+				label: "done",
+			};
 		case "idle":
-			return {colorClassName: "bg-green-500", label: "idle"};
+			return {
+				colorClassName: "bg-green-500",
+				label: "idle",
+			};
 		default:
-			return {colorClassName: "bg-gray-500", label: "unknown"};
+			return {
+				colorClassName: "bg-gray-500",
+				label: "unknown",
+			};
 	}
 }
 
@@ -22,7 +40,8 @@ function statusPresentation(status: string): HerdrStatusPresentation {
  * Fixed two-column grid so the dot and the status word land at the same x on
  * every fleet row, regardless of which label the row shows.
  */
-export function HerdrStatusIndicator({status}: {status: string}) {
+export function HerdrStatusIndicator({status}: {status: string})
+{
 	const presentation = statusPresentation(status);
 
 	return (

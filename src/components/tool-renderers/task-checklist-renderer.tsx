@@ -5,8 +5,10 @@ import {taskChecklist} from "../../lib/task-checklist";
 import {MarkdownInline} from "../markdown-view";
 import type {ToolRendererProps} from "./types";
 
-function StatusIcon({status}: {status: string}) {
-	if (status === "completed") {
+function StatusIcon({status}: {status: string})
+{
+	if (status === "completed")
+	{
 		return (
 			<>
 				<Check aria-hidden="true" className="size-4 text-primary" />
@@ -14,7 +16,8 @@ function StatusIcon({status}: {status: string}) {
 			</>
 		);
 	}
-	if (status === "in_progress") {
+	if (status === "in_progress")
+	{
 		return (
 			<>
 				<span aria-hidden="true" data-running-spinner="" className="running-spinner inline-flex size-4" />
@@ -26,7 +29,8 @@ function StatusIcon({status}: {status: string}) {
 }
 
 /** One checklist row: a status (`pending`, `in_progress` or `completed`; anything else reads as pending) and its markdown. */
-export interface TodoChecklistItem {
+export interface TodoChecklistItem
+{
 	id: string;
 	content: string;
 	status: string;
@@ -37,7 +41,8 @@ export interface TodoChecklistItem {
  * 16px status slot, then the item as inline markdown, struck through once
  * done. An in-progress item always spins.
  */
-export function TodoChecklist({items}: {items: readonly TodoChecklistItem[]}) {
+export function TodoChecklist({items}: {items: readonly TodoChecklistItem[]})
+{
 	return (
 		<ul className="m-0 flex list-none flex-col gap-1.5 p-0 py-1 text-body select-text">
 			{items.map((item) => (
@@ -59,7 +64,8 @@ export function TodoChecklist({items}: {items: readonly TodoChecklistItem[]}) {
 }
 
 /** Upstream's checklist body for every task tool (TodoWrite and the Task* family), listing the call's own todos. */
-export function TaskChecklistRenderer({toolCall}: ToolRendererProps) {
+export function TaskChecklistRenderer({toolCall}: ToolRendererProps)
+{
 	const items = useMemo(() => taskChecklist(toolCall.name, toolCall.input), [toolCall.name, toolCall.input]);
 	if (items.length === 0) return null;
 	return <TodoChecklist items={items} />;

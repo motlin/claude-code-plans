@@ -20,7 +20,8 @@ import {z} from "zod";
  * typed as a known one — that is the deliberate trade for keeping one type.
  */
 export function toLenient<T extends z.ZodType>(schema: T): z.ZodType<z.output<T>, z.input<T>>;
-export function toLenient(schema: z.ZodType): z.core.$ZodType {
+export function toLenient(schema: z.ZodType): z.core.$ZodType
+{
 	return transform(schema, undefined);
 }
 
@@ -31,66 +32,129 @@ const memo = new WeakMap<Schema, Schema>();
 const memoKeyed = new WeakMap<Schema, Map<string, Schema>>();
 
 /** `keepKey`: an enclosing discriminated union's discriminator, left closed. */
-function transform(schema: Schema, keepKey: string | undefined): Schema {
+function transform(schema: Schema, keepKey: string | undefined): Schema
+{
 	const byKey = keepKey === undefined ? undefined : (memoKeyed.get(schema) ?? new Map<string, Schema>());
 	const cached = byKey === undefined || keepKey === undefined ? memo.get(schema) : byKey.get(keepKey);
 	if (cached) return cached;
 	const result = transformUncached(schema, keepKey);
-	if (byKey === undefined || keepKey === undefined) {
+	if (byKey === undefined || keepKey === undefined)
+	{
 		memo.set(schema, result);
-	} else {
+	}
+	else
+	{
 		byKey.set(keepKey, result);
 		memoKeyed.set(schema, byKey);
 	}
 	return result;
 }
 
-function transformUncached(schema: Schema, keepKey: string | undefined): Schema {
+function transformUncached(schema: Schema, keepKey: string | undefined): Schema
+{
 	const clone = z.core.clone;
-	if (schema instanceof z.core.$ZodObject) {
+	if (schema instanceof z.core.$ZodObject)
+	{
 		const {def} = schema._zod;
 		const shape: Record<string, Schema> = {};
-		for (const [key, value] of Object.entries(def.shape)) {
+		for (const [key, value] of Object.entries(def.shape))
+		{
 			shape[key] = key === keepKey ? value : transform(value, undefined);
 		}
 		const {catchall, ...rest} = def;
 		return clone(
 			schema,
 			catchall === undefined || catchall instanceof z.core.$ZodNever
-				? {...rest, shape}
-				: {...rest, shape, catchall: transform(catchall, undefined)},
+				?
+					{
+						...rest,
+						shape,
+					}
+				:
+					{
+						...rest,
+						shape,
+						catchall: transform(catchall, undefined),
+					},
 		);
 	}
-	if (schema instanceof z.core.$ZodUnion) {
+	if (schema instanceof z.core.$ZodUnion)
+	{
 		const {def} = schema._zod;
 		const discriminator = schema instanceof z.core.$ZodDiscriminatedUnion ? schema._zod.def.discriminator : keepKey;
-		return clone(schema, {...def, options: def.options.map((option) => transform(option, discriminator))});
+		return clone(
+			schema,
+			{
+				...def,
+				options: def.options.map((option) => transform(option, discriminator)),
+			},
+		);
 	}
-	if (schema instanceof z.core.$ZodEnum) {
+	if (schema instanceof z.core.$ZodEnum)
+	{
 		const values = Object.values(schema._zod.def.entries);
 		return keepKey === undefined && values.every((value) => typeof value === "string") ? z.string() : schema;
 	}
-	if (schema instanceof z.core.$ZodRecord) {
+	if (schema instanceof z.core.$ZodRecord)
+	{
 		const {def} = schema._zod;
 		const keyType = def.keyType instanceof z.core.$ZodEnum ? z.string() : def.keyType;
-		return clone(schema, {...def, keyType, valueType: transform(def.valueType, undefined)});
+		return clone(
+			schema,
+			{
+				...def,
+				keyType,
+				valueType: transform(def.valueType, undefined),
+			},
+		);
 	}
-	if (schema instanceof z.core.$ZodArray) {
+	if (schema instanceof z.core.$ZodArray)
+	{
 		const {def} = schema._zod;
-		return clone(schema, {...def, element: transform(def.element, undefined)});
+		return clone(
+			schema,
+			{
+				...def,
+				element: transform(def.element, undefined),
+			},
+		);
 	}
-	if (schema instanceof z.core.$ZodTuple) {
+	if (schema instanceof z.core.$ZodTuple)
+	{
 		const {def} = schema._zod;
 		const items = def.items.map((item) => transform(item, undefined));
-		return clone(schema, {...def, items, rest: def.rest === null ? null : transform(def.rest, undefined)});
+		return clone(
+			schema,
+			{
+				...def,
+				items,
+				rest: def.rest === null ? null : transform(def.rest, undefined),
+			},
+		);
 	}
-	if (schema instanceof z.core.$ZodIntersection) {
+	if (schema instanceof z.core.$ZodIntersection)
+	{
 		const {def} = schema._zod;
-		return clone(schema, {...def, left: transform(def.left, keepKey), right: transform(def.right, keepKey)});
+		return clone(
+			schema,
+			{
+				...def,
+				left: transform(def.left, keepKey),
+				right: transform(def.right, keepKey),
+			},
+		);
 	}
-	if (schema instanceof z.core.$ZodPipe) {
+	if (schema instanceof z.core.$ZodPipe)
+	{
 		const {def} = schema._zod;
-		return clone(schema, {...def, in: transform(def.in, keepKey), out: transform(def.out, keepKey)});
+		return clone(
+			schema,
+			{
+				...def,
+				in: transform(def.in, keepKey),
+				out: transform(def.out, keepKey),
+			},
+		);
 	}
 	if (
 		schema instanceof z.core.$ZodOptional ||
@@ -100,11 +164,19 @@ function transformUncached(schema: Schema, keepKey: string | undefined): Schema 
 		schema instanceof z.core.$ZodCatch ||
 		schema instanceof z.core.$ZodNonOptional ||
 		schema instanceof z.core.$ZodReadonly
-	) {
+	)
+	{
 		const {def} = schema._zod;
-		return clone<typeof schema>(schema, {...def, innerType: transform(def.innerType, keepKey)});
+		return clone<typeof schema>(
+			schema,
+			{
+				...def,
+				innerType: transform(def.innerType, keepKey),
+			},
+		);
 	}
-	if (schema instanceof z.core.$ZodLazy) {
+	if (schema instanceof z.core.$ZodLazy)
+	{
 		const {getter} = schema._zod.def;
 		return z.lazy(() => transform(getter(), keepKey));
 	}

@@ -14,13 +14,18 @@ import {DEFAULTS, SettingsContext} from "../src/components/settings-context";
 import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
 
 /** Counts `Menu` root renders: Base UI renders nothing for a closed root, so the DOM can't show the lazy mount. */
-const menuRoots = vi.hoisted(() => ({rendered: 0}));
+const menuRoots = vi.hoisted(() => (
+{
+	rendered: 0,
+}));
 
-vi.mock("../src/components/ui/menu", async (importOriginal) => {
+vi.mock("../src/components/ui/menu", async (importOriginal) =>
+{
 	const actual = await importOriginal<typeof import("../src/components/ui/menu")>();
 	return {
 		...actual,
-		Menu: (props: Parameters<typeof actual.Menu>[0]) => {
+		Menu: (props: Parameters<typeof actual.Menu>[0]) =>
+		{
 			menuRoots.rendered++;
 			return actual.Menu(props);
 		},
@@ -40,34 +45,39 @@ index 1111111..2222222 100644
 +export const loud = (name: string) => greet(name).toUpperCase();
 `;
 
-function shadowRootOf(container: HTMLElement): ShadowRoot {
+function shadowRootOf(container: HTMLElement): ShadowRoot
+{
 	const host = container.querySelector("diffs-container");
 	if (!host?.shadowRoot) throw new Error("diffs-container has no shadow root yet");
 	return host.shadowRoot;
 }
 
 /** The cds FileDiff wrapper div that carries upstream's host style (ca7ba268c Va). */
-function hostOf(container: HTMLElement): HTMLElement | null {
+function hostOf(container: HTMLElement): HTMLElement | null
+{
 	const parent = container.querySelector("diffs-container")?.parentElement;
 	return parent instanceof HTMLElement && parent.getAttribute("data-cds") === "FileDiff" ? parent : null;
 }
 
 /** The injected `@layer unsafe` text inside the diff's shadow root. */
-function unsafeLayer(container: HTMLElement): string {
+function unsafeLayer(container: HTMLElement): string
+{
 	const text = [...shadowRootOf(container).querySelectorAll("style")].map((style) => style.textContent).join("");
 	const start = text.indexOf("@layer unsafe");
 	return start === -1 ? "" : text.slice(start);
 }
 
 /** Whether the rails sheet (upstream ca9e46d28 `q`) is among the shadow root's adopted sheets. */
-function hasRailsSheet(root: ShadowRoot): boolean {
+function hasRailsSheet(root: ShadowRoot): boolean
+{
 	return root.adoptedStyleSheets.some((sheet) =>
 		[...sheet.cssRules].some((rule) => rule.cssText.includes("--diff-rail-added")),
 	);
 }
 
 /** Each gutter row as `type[:start][:end]`, from the run marks `markRailRuns` sets. */
-function gutterRailMarks(root: ShadowRoot): string[] {
+function gutterRailMarks(root: ShadowRoot): string[]
+{
 	return [...root.querySelectorAll("[data-gutter] > [data-line-type]")].map((row) =>
 		[
 			row.getAttribute("data-line-type"),
@@ -113,11 +123,13 @@ const BARE_PATCH = `--- a/src/a.ts
    c
 `;
 
-function hunkHeadingState(root: ShadowRoot) {
+function hunkHeadingState(root: ShadowRoot)
+{
 	return {
 		labels: [...root.querySelectorAll("[data-gutter] [data-unmodified-lines]")]
 			.filter((label) => label.querySelector("[data-hunk-heading]"))
-			.map((label) => ({
+			.map((label) => (
+			{
 				count: label.querySelector("[data-unmodified-count]")?.textContent,
 				heading: label.querySelector("[data-hunk-heading]")?.textContent,
 				title: label.querySelector("[data-hunk-heading]")?.getAttribute("title"),
@@ -129,47 +141,69 @@ function hunkHeadingState(root: ShadowRoot) {
 	};
 }
 
-function contentRowTypes(root: ShadowRoot): string[] {
+function contentRowTypes(root: ShadowRoot): string[]
+{
 	return [...root.querySelectorAll("[data-content] > [data-line-type]")].map(
 		(row) => row.getAttribute("data-line-type") ?? "",
 	);
 }
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadFileTypeIcons();
 });
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
 /** Settings context values with only Code font size changed. */
-function settingsWithCodeFontSize(codeFontSize: 20 | null) {
+function settingsWithCodeFontSize(codeFontSize: 20 | null)
+{
 	return {
-		settings: {...DEFAULTS, codeFontSize},
+		settings:
+		{
+			...DEFAULTS,
+			codeFontSize,
+		},
 		loaded: true,
 		setSetting: () => undefined,
 		setVerbosity: () => undefined,
 		resetAll: () => undefined,
 	};
 }
-const CODE_FONT_SIZE_CONTEXT = {default: settingsWithCodeFontSize(null), twenty: settingsWithCodeFontSize(20)};
+const CODE_FONT_SIZE_CONTEXT =
+{
+	default: settingsWithCodeFontSize(null),
+	twenty: settingsWithCodeFontSize(20),
+};
 
-function withCodeFontSize(codeFontSize: 20 | null) {
+function withCodeFontSize(codeFontSize: 20 | null)
+{
 	return (
 		<SettingsContext.Provider
 			value={codeFontSize === null ? CODE_FONT_SIZE_CONTEXT.default : CODE_FONT_SIZE_CONTEXT.twenty}
@@ -179,10 +213,13 @@ function withCodeFontSize(codeFontSize: 20 | null) {
 	);
 }
 
-describe("DiffFile", () => {
+describe("DiffFile", () =>
+{
 	// Upstream c44d00c7f passes c82eca2bd c()'s ×1.5 lineHeight, so za() writes it on the host; a size also sets the font.
-	it("sizes Changes rows from Settings ▸ Code font size at ×1.5 on the host, and remounts when the metric changes", async () => {
-		const hostVars = (container: HTMLElement) => {
+	it("sizes Changes rows from Settings ▸ Code font size at ×1.5 on the host, and remounts when the metric changes", async () =>
+	{
+		const hostVars = (container: HTMLElement) =>
+		{
 			const host = hostOf(container);
 			return {
 				leading: host?.style.getPropertyValue("--diffs-line-height"),
@@ -190,22 +227,36 @@ describe("DiffFile", () => {
 			};
 		};
 		const view = render(withCodeFontSize(null));
-		await waitFor(() => {
-			expect(hostVars(view.container)).toStrictEqual({leading: "20px", size: "var(--upstream-text-code)"});
+		await waitFor(() =>
+		{
+			expect(hostVars(view.container)).toStrictEqual(
+				{
+					leading: "20px",
+					size: "var(--upstream-text-code)",
+				},
+			);
 		});
 		const previousHost = view.container.querySelector("diffs-container");
 
 		view.rerender(withCodeFontSize(20));
-		await waitFor(() => {
-			expect(hostVars(view.container)).toStrictEqual({leading: "30px", size: "1.25rem"});
+		await waitFor(() =>
+		{
+			expect(hostVars(view.container)).toStrictEqual(
+				{
+					leading: "30px",
+					size: "1.25rem",
+				},
+			);
 		});
 		expect(view.container.querySelector("diffs-container")).not.toBe(previousHost);
 	});
 
-	it("renders every added, removed and context row of a patch, pairing the rewritten line with its replacement", async () => {
+	it("renders every added, removed and context row of a patch, pairing the rewritten line with its replacement", async () =>
+	{
 		const {container} = render(<DiffFile patch={PATCH} />);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(contentRowTypes(shadowRootOf(container))).toEqual([
 				"context",
 				"change-addition",
@@ -217,21 +268,33 @@ describe("DiffFile", () => {
 		});
 	});
 
-	it("applies the upstream Changes pane options to the rendered <pre>", async () => {
+	it("applies the upstream Changes pane options to the rendered <pre>", async () =>
+	{
 		const {container} = render(<DiffFile patch={PATCH} />);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			const pre = shadowRootOf(container).querySelector("pre[data-diff]");
-			expect({
-				indicators: pre?.getAttribute("data-indicators"),
-				diffType: pre?.getAttribute("data-diff-type"),
-				overflow: pre?.getAttribute("data-overflow"),
-			}).toEqual({indicators: "classic", diffType: "single", overflow: "wrap"});
+			expect(
+				{
+					indicators: pre?.getAttribute("data-indicators"),
+					diffType: pre?.getAttribute("data-diff-type"),
+					overflow: pre?.getAttribute("data-overflow"),
+				},
+			).toEqual(
+				{
+					indicators: "classic",
+					diffType: "single",
+					overflow: "wrap",
+				},
+			);
 		});
 	});
 
-	it("sets upstream's wrap-only overflow vars on the host only when word wrap is on, so scroll mode can scroll", async () => {
-		const overflowVars = (container: HTMLElement) => {
+	it("sets upstream's wrap-only overflow vars on the host only when word wrap is on, so scroll mode can scroll", async () =>
+	{
+		const overflowVars = (container: HTMLElement) =>
+		{
 			const host = hostOf(container);
 			return {
 				overflow: host?.style.getPropertyValue("--diffs-overflow-override"),
@@ -239,28 +302,50 @@ describe("DiffFile", () => {
 			};
 		};
 		const wrapped = render(<DiffFile patch={PATCH} />);
-		await waitFor(() => {
-			expect(overflowVars(wrapped.container)).toStrictEqual({overflow: "clip", gutter: "0px"});
+		await waitFor(() =>
+		{
+			expect(overflowVars(wrapped.container)).toStrictEqual(
+				{
+					overflow: "clip",
+					gutter: "0px",
+				},
+			);
 		});
 		cleanup();
 
 		const scrolled = render(<DiffFile patch={PATCH} wordWrap={false} />);
-		await waitFor(() => {
-			expect(overflowVars(scrolled.container)).toStrictEqual({overflow: "", gutter: ""});
+		await waitFor(() =>
+		{
+			expect(overflowVars(scrolled.container)).toStrictEqual(
+				{
+					overflow: "",
+					gutter: "",
+				},
+			);
 		});
 	});
 
-	it("injects upstream's za() list into the shadow root's unsafe layer, Ta only while panels is on and Ca only with the gutter +", async () => {
+	it("injects upstream's za() list into the shadow root's unsafe layer, Ta only while panels is on and Ca only with the gutter +", async () =>
+	{
 		const panels = render(<DiffFile patch={PATCH} />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(contentRowTypes(shadowRootOf(panels.container))).toHaveLength(6);
 		});
 		const on = unsafeLayer(panels.container);
-		expect({
-			wa: on.includes(WA + TA + EA),
-			sa: on.includes(SA),
-			ca: on.includes(CA),
-		}).toStrictEqual({wa: true, sa: false, ca: false});
+		expect(
+			{
+				wa: on.includes(WA + TA + EA),
+				sa: on.includes(SA),
+				ca: on.includes(CA),
+			},
+		).toStrictEqual(
+			{
+				wa: true,
+				sa: false,
+				ca: false,
+			},
+		);
 		cleanup();
 
 		const off = render(
@@ -268,103 +353,147 @@ describe("DiffFile", () => {
 				<DiffFile patch={PATCH} onRequestChanges={() => undefined} />
 			</PanelsOff>,
 		);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(contentRowTypes(shadowRootOf(off.container))).toHaveLength(6);
 		});
 		const gutter = unsafeLayer(off.container);
-		expect({
-			ca: gutter.includes(CA + WA + EA),
-			ta: gutter.includes(TA),
-		}).toStrictEqual({ca: true, ta: false});
+		expect(
+			{
+				ca: gutter.includes(CA + WA + EA),
+				ta: gutter.includes(TA),
+			},
+		).toStrictEqual(
+			{
+				ca: true,
+				ta: false,
+			},
+		);
 	});
 
-	it("wraps pierre in upstream's cds FileDiff div carrying the host style and the code theme background", async () => {
+	it("wraps pierre in upstream's cds FileDiff div carrying the host style and the code theme background", async () =>
+	{
 		const {container} = render(<DiffFile patch={PATCH} />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			const host = hostOf(container);
-			expect({
-				dir: host?.getAttribute("dir"),
-				className: host?.getAttribute("class"),
-				gap: host?.style.getPropertyValue("--diffs-gap-style"),
-				bg: host?.style.getPropertyValue("--cds-filediff-bg"),
-				pierreStyle: container.querySelector("diffs-container")?.getAttribute("style") ?? null,
-			}).toStrictEqual({
-				dir: "ltr",
-				className: "text-code text-primary font-normal",
-				gap: "0",
-				bg: "light-dark(#ffffff, #191919)",
-				pierreStyle: null,
-			});
+			expect(
+				{
+					dir: host?.getAttribute("dir"),
+					className: host?.getAttribute("class"),
+					gap: host?.style.getPropertyValue("--diffs-gap-style"),
+					bg: host?.style.getPropertyValue("--cds-filediff-bg"),
+					pierreStyle: container.querySelector("diffs-container")?.getAttribute("style") ?? null,
+				},
+			).toStrictEqual(
+				{
+					dir: "ltr",
+					className: "text-code text-primary font-normal",
+					gap: "0",
+					bg: "light-dark(#ffffff, #191919)",
+					pierreStyle: null,
+				},
+			);
 		});
 	});
 
-	it("renders side-by-side when diffStyle is split", async () => {
+	it("renders side-by-side when diffStyle is split", async () =>
+	{
 		const {container} = render(<DiffFile patch={PATCH} diffStyle="split" />);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			const pre = shadowRootOf(container).querySelector("pre[data-diff]");
 			expect(pre?.getAttribute("data-diff-type")).toBe("split");
 		});
 	});
 
-	it("slots the custom header with the file name and +/- counts instead of the library header", async () => {
+	it("slots the custom header with the file name and +/- counts instead of the library header", async () =>
+	{
 		const {container} = render(<DiffFile patch={PATCH} />);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			const header = container.querySelector("[data-diff-file-header]");
-			expect({
-				path: header?.getAttribute("data-diff-file-header"),
-				slot: header?.parentElement?.getAttribute("slot"),
-				text: header?.textContent,
-			}).toEqual({path: "src/greet.ts", slot: "header-custom", text: "greet.tssrc+3−1"});
+			expect(
+				{
+					path: header?.getAttribute("data-diff-file-header"),
+					slot: header?.parentElement?.getAttribute("slot"),
+					text: header?.textContent,
+				},
+			).toEqual(
+				{
+					path: "src/greet.ts",
+					slot: "header-custom",
+					text: "greet.tssrc+3−1",
+				},
+			);
 		});
 	});
 
-	it("draws upstream's 12px file-type icon for the header's file before the path", async () => {
+	it("draws upstream's 12px file-type icon for the header's file before the path", async () =>
+	{
 		const {container} = render(
 			<FileTypeIconSetContext value="pierre">
 				<DiffFile patch={PATCH} />
 			</FileTypeIconSetContext>,
 		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			const header = container.querySelector("[data-diff-file-header]");
 			const icon = header?.querySelector<SVGSVGElement>("svg[data-file-type-icon]");
-			expect({
-				className: icon?.getAttribute("class"),
-				width: icon?.style.width,
-				height: icon?.style.height,
-				fills: [...(icon?.querySelectorAll("path") ?? [])].map((path) => path.getAttribute("fill")),
-				nextClass: icon?.nextElementSibling?.getAttribute("class"),
-				lucide: header?.querySelectorAll(".lucide-file-text").length,
-			}).toEqual({
-				className: "shrink-0 text-ink-muted",
-				width: "12px",
-				height: "12px",
-				fills: ["var(--fti-typescript)", "var(--fti-typescript)"],
-				nextClass: "flex min-w-0 text-body text-secondary",
-				lucide: 0,
-			});
+			expect(
+				{
+					className: icon?.getAttribute("class"),
+					width: icon?.style.width,
+					height: icon?.style.height,
+					fills: [...(icon?.querySelectorAll("path") ?? [])].map((path) => path.getAttribute("fill")),
+					nextClass: icon?.nextElementSibling?.getAttribute("class"),
+					lucide: header?.querySelectorAll(".lucide-file-text").length,
+				},
+			).toEqual(
+				{
+					className: "shrink-0 text-ink-muted",
+					width: "12px",
+					height: "12px",
+					fills: ["var(--fti-typescript)", "var(--fti-typescript)"],
+					nextClass: "flex min-w-0 text-body text-secondary",
+					lucide: 0,
+				},
+			);
 		});
 	});
 
-	it("mounts the custom header slot inside the shadow root so the header is visible", async () => {
+	it("mounts the custom header slot inside the shadow root so the header is visible", async () =>
+	{
 		const {container} = render(<DiffFile patch={PATCH} />);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			const header = shadowRootOf(container).querySelector("[data-diffs-header]");
-			expect({
-				mode: header?.getAttribute("data-diffs-header"),
-				changeType: header?.getAttribute("data-change-type"),
-				slot: header?.querySelector("slot")?.getAttribute("name"),
-			}).toEqual({mode: "custom", changeType: "change", slot: "header-custom"});
+			expect(
+				{
+					mode: header?.getAttribute("data-diffs-header"),
+					changeType: header?.getAttribute("data-change-type"),
+					slot: header?.querySelector("slot")?.getAttribute("name"),
+				},
+			).toEqual(
+				{
+					mode: "custom",
+					changeType: "change",
+					slot: "header-custom",
+				},
+			);
 		});
 	});
 
 	// Upstream ca9e46d28 Q(wordDiff, !readOnly).draw from each onPostRender (Changes pane c44d00c7f `se.draw(e)`).
-	it("adopts upstream's rails sheet and marks change runs after every render, with data-add-button only when commenting", async () => {
+	it("adopts upstream's rails sheet and marks change runs after every render, with data-add-button only when commenting", async () =>
+	{
 		const view = render(<DiffFile patch={PATCH} />);
-		const state = () => {
+		const state = () =>
+		{
 			const host = view.container.querySelector("diffs-container");
 			const root = shadowRootOf(view.container);
 			return {
@@ -377,18 +506,21 @@ describe("DiffFile", () => {
 				],
 			};
 		};
-		const expected = {
+		const expected =
+		{
 			rails: true,
 			marks: PATCH_RAIL_MARKS,
 			addButton: false,
 			words: ['"added"', '"removed"'],
 		};
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(state()).toStrictEqual(expected);
 		});
 
 		view.rerender(<DiffFile patch={PATCH} wordWrap={false} />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(shadowRootOf(view.container).querySelector("pre[data-diff]")?.getAttribute("data-overflow")).toBe(
 				"scroll",
 			);
@@ -396,28 +528,46 @@ describe("DiffFile", () => {
 		expect(state()).toStrictEqual(expected);
 
 		view.rerender(<DiffFile patch={PATCH} onRequestChanges={() => undefined} />);
-		await waitFor(() => {
-			expect(state()).toStrictEqual({...expected, addButton: true});
+		await waitFor(() =>
+		{
+			expect(state()).toStrictEqual(
+				{
+					...expected,
+					addButton: true,
+				},
+			);
 		});
 	});
 
 	// Upstream c44d00c7f xn: Bn(e, fileDiff) (c91a5e4a6 g) after the other post-render passes.
-	it("heads each gutter separator with its hunk's context and adopts the hunk-heading sheet", async () => {
+	it("heads each gutter separator with its hunk's context and adopts the hunk-heading sheet", async () =>
+	{
 		const view = render(<DiffFile patch={HEADED_PATCH} />);
-		const expected = {
+		const expected =
+		{
 			labels: [
-				{count: "13 unmodified lines", heading: "function foo() {", title: "function foo() {"},
-				{count: "7 unmodified lines", heading: "function second() {", title: "function second() {"},
+				{
+					count: "13 unmodified lines",
+					heading: "function foo() {",
+					title: "function foo() {",
+				},
+				{
+					count: "7 unmodified lines",
+					heading: "function second() {",
+					title: "function second() {",
+				},
 			],
 			sheet: true,
 			outsideDeletions: 0,
 		};
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(hunkHeadingState(shadowRootOf(view.container))).toStrictEqual(expected);
 		});
 
 		view.rerender(<DiffFile patch={HEADED_PATCH} wordWrap={false} />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(shadowRootOf(view.container).querySelector("pre[data-diff]")?.getAttribute("data-overflow")).toBe(
 				"scroll",
 			);
@@ -425,20 +575,31 @@ describe("DiffFile", () => {
 		expect(hunkHeadingState(shadowRootOf(view.container))).toStrictEqual(expected);
 	});
 
-	it("puts split-view headings in the deletions column only", async () => {
+	it("puts split-view headings in the deletions column only", async () =>
+	{
 		const view = render(<DiffFile patch={HEADED_PATCH} diffStyle="split" />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			const root = shadowRootOf(view.container);
-			expect({
-				deletions: root.querySelectorAll("[data-deletions] [data-hunk-heading]").length,
-				all: root.querySelectorAll("[data-hunk-heading]").length,
-			}).toStrictEqual({deletions: 2, all: 2});
+			expect(
+				{
+					deletions: root.querySelectorAll("[data-deletions] [data-hunk-heading]").length,
+					all: root.querySelectorAll("[data-hunk-heading]").length,
+				},
+			).toStrictEqual(
+				{
+					deletions: 2,
+					all: 2,
+				},
+			);
 		});
 	});
 
-	it("gives a context-less session-edits hunk no heading", async () => {
+	it("gives a context-less session-edits hunk no heading", async () =>
+	{
 		const view = render(<DiffFile patch={BARE_PATCH} />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(shadowRootOf(view.container).querySelector("[data-gutter] [data-unmodified-lines]")?.innerHTML).toBe(
 				"13 unmodified lines",
 			);
@@ -446,7 +607,8 @@ describe("DiffFile", () => {
 		expect(shadowRootOf(view.container).querySelectorAll("[data-hunk-heading]").length).toBe(0);
 	});
 
-	it("moves the gutter + clear of the rail under data-add-button", () => {
+	it("moves the gutter + clear of the rail under data-add-button", () =>
+	{
 		expect(DIFF_RAILS_CSS).toContain(
 			":host([data-add-button]) [data-diff]:not([data-disable-line-numbers]) [data-gutter-utility-slot]{left:calc(6px + 2px + 0.125rem)}",
 		);
@@ -454,9 +616,13 @@ describe("DiffFile", () => {
 });
 
 /** `line 1` … `line N`, each newline-terminated, with the given lines rewritten in capitals. */
-function numberedFile(count: number, changed: readonly number[] = []): string {
-	return Array.from({length: count}, (_, index) =>
-		changed.includes(index + 1) ? `LINE ${index + 1}\n` : `line ${index + 1}\n`,
+function numberedFile(count: number, changed: readonly number[] = []): string
+{
+	return Array.from(
+		{
+			length: count,
+		},
+		(_, index) => (changed.includes(index + 1) ? `LINE ${index + 1}\n` : `line ${index + 1}\n`),
 	).join("");
 }
 
@@ -474,7 +640,11 @@ const TWO_HUNK_PATCH = `--- a/src/a.ts
 +LINE 21
  line 22
 `;
-const TWO_HUNK_SIDES = {oldText: numberedFile(40), newText: numberedFile(40, [15, 21])};
+const TWO_HUNK_SIDES =
+{
+	oldText: numberedFile(40),
+	newText: numberedFile(40, [15, 21]),
+};
 
 /** U0 one-line hunks at 10, 13, 17 and 22 of a 23-line file: gaps of 2, 3 and 4 lines and a 1-line tail. */
 const GAPS_PATCH = `--- a/src/gaps.ts
@@ -492,11 +662,17 @@ const GAPS_PATCH = `--- a/src/gaps.ts
 -line 22
 +LINE 22
 `;
-const GAPS_SIDES = {oldText: numberedFile(23), newText: numberedFile(23, [10, 13, 17, 22])};
+const GAPS_SIDES =
+{
+	oldText: numberedFile(23),
+	newText: numberedFile(23, [10, 13, 17, 22]),
+};
 
 /** Each gutter separator as upstream's live probe read it. */
-function separators(root: ShadowRoot) {
-	return [...root.querySelectorAll("[data-gutter] > [data-separator]")].map((separator) => ({
+function separators(root: ShadowRoot)
+{
+	return [...root.querySelectorAll("[data-gutter] > [data-separator]")].map((separator) => (
+	{
 		index: separator.getAttribute("data-expand-index"),
 		first: separator.hasAttribute("data-separator-first"),
 		last: separator.hasAttribute("data-separator-last"),
@@ -510,7 +686,8 @@ function separators(root: ShadowRoot) {
 	}));
 }
 
-function separatorButton(root: ShadowRoot, index: number, direction: string): HTMLElement {
+function separatorButton(root: ShadowRoot, index: number, direction: string): HTMLElement
+{
 	const button = root.querySelector(
 		`[data-gutter] > [data-separator][data-expand-index="${index}"] [data-expand-button][data-${direction}]`,
 	);
@@ -518,100 +695,199 @@ function separatorButton(root: ShadowRoot, index: number, direction: string): HT
 	return button;
 }
 
-describe("DiffFile lazy full-file context (upstream c44d00c7f qt/Kt, Cn, bd, xn, Xn)", () => {
-	it("draws expandable separators without loading, with the tail relabelled Show more lines", async () => {
-		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
-			Promise.resolve(TWO_HUNK_SIDES),
-		);
+describe("DiffFile lazy full-file context (upstream c44d00c7f qt/Kt, Cn, bd, xn, Xn)", () =>
+{
+	it("draws expandable separators without loading, with the tail relabelled Show more lines", async () =>
+	{
+		const load = vi.fn<
+			(fresh: boolean) => Promise<
+			{
+				oldText: string;
+				newText: string;
+			}>
+		>(async (_fresh: boolean) => Promise.resolve(TWO_HUNK_SIDES));
 		const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} />);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(separators(shadowRootOf(view.container))).toStrictEqual([
-				{index: "0", first: true, last: false, buttons: ["data-expand-down"], text: "13 unmodified lines"},
-				{index: "1", first: false, last: false, buttons: ["data-expand-both"], text: "3 unmodified lines"},
-				{index: "2", first: false, last: true, buttons: ["data-expand-up"], text: "Show more lines"},
+				{
+					index: "0",
+					first: true,
+					last: false,
+					buttons: ["data-expand-down"],
+					text: "13 unmodified lines",
+				},
+				{
+					index: "1",
+					first: false,
+					last: false,
+					buttons: ["data-expand-both"],
+					text: "3 unmodified lines",
+				},
+				{
+					index: "2",
+					first: false,
+					last: true,
+					buttons: ["data-expand-up"],
+					text: "Show more lines",
+				},
 			]);
 		});
 		expect(load).not.toHaveBeenCalled();
 	});
 
-	it("loads once on an expand click, then shows a gap of 3 inline and counts the 18-line tail", async () => {
-		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
-			Promise.resolve(TWO_HUNK_SIDES),
-		);
+	it("loads once on an expand click, then shows a gap of 3 inline and counts the 18-line tail", async () =>
+	{
+		const load = vi.fn<
+			(fresh: boolean) => Promise<
+			{
+				oldText: string;
+				newText: string;
+			}>
+		>(async (_fresh: boolean) => Promise.resolve(TWO_HUNK_SIDES));
 		const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(separators(shadowRootOf(view.container))).toHaveLength(3);
 		});
 
 		fireEvent.click(separatorButton(shadowRootOf(view.container), 0, "expand-down"));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(separators(shadowRootOf(view.container))).toStrictEqual([
-				{index: "2", first: false, last: true, buttons: ["data-expand-up"], text: "18 unmodified lines"},
+				{
+					index: "2",
+					first: false,
+					last: true,
+					buttons: ["data-expand-up"],
+					text: "18 unmodified lines",
+				},
 			]);
 		});
-		expect({
-			calls: load.mock.calls,
-			rows: contentRowTypes(shadowRootOf(view.container)).length,
-		}).toStrictEqual({calls: [[false]], rows: 13 + 4 + 3 + 4});
-	});
-
-	it("keeps today's plain separators and no tail without a loader", async () => {
-		const view = render(<DiffFile patch={TWO_HUNK_PATCH} />);
-		await waitFor(() => {
-			expect(separators(shadowRootOf(view.container))).toStrictEqual([
-				{index: null, first: true, last: false, buttons: [], text: "13 unmodified lines"},
-				{index: null, first: false, last: false, buttons: [], text: "3 unmodified lines"},
-			]);
-		});
-	});
-
-	it("inlines hydrated gaps of up to 3 lines and a 1-line tail (collapsedContextThreshold 3)", async () => {
-		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
-			Promise.resolve(GAPS_SIDES),
+		expect(
+			{
+				calls: load.mock.calls,
+				rows: contentRowTypes(shadowRootOf(view.container)).length,
+			},
+		).toStrictEqual(
+			{
+				calls: [[false]],
+				rows: 13 + 4 + 3 + 4,
+			},
 		);
+	});
+
+	it("keeps today's plain separators and no tail without a loader", async () =>
+	{
+		const view = render(<DiffFile patch={TWO_HUNK_PATCH} />);
+		await waitFor(() =>
+		{
+			expect(separators(shadowRootOf(view.container))).toStrictEqual([
+				{
+					index: null,
+					first: true,
+					last: false,
+					buttons: [],
+					text: "13 unmodified lines",
+				},
+				{
+					index: null,
+					first: false,
+					last: false,
+					buttons: [],
+					text: "3 unmodified lines",
+				},
+			]);
+		});
+	});
+
+	it("inlines hydrated gaps of up to 3 lines and a 1-line tail (collapsedContextThreshold 3)", async () =>
+	{
+		const load = vi.fn<
+			(fresh: boolean) => Promise<
+			{
+				oldText: string;
+				newText: string;
+			}>
+		>(async (_fresh: boolean) => Promise.resolve(GAPS_SIDES));
 		const view = render(<DiffFile patch={GAPS_PATCH} loadFileSides={load} />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(separators(shadowRootOf(view.container))).toHaveLength(5);
 		});
 
 		fireEvent.click(separatorButton(shadowRootOf(view.container), 0, "expand-down"));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(separators(shadowRootOf(view.container))).toStrictEqual([
-				{index: "3", first: false, last: false, buttons: ["data-expand-both"], text: "4 unmodified lines"},
+				{
+					index: "3",
+					first: false,
+					last: false,
+					buttons: ["data-expand-both"],
+					text: "4 unmodified lines",
+				},
 			]);
 		});
 	});
 
-	it("leaves a file that drifted since its patch partial, giving up once", async () => {
+	it("leaves a file that drifted since its patch partial, giving up once", async () =>
+	{
 		const onGiveUp = vi.fn<() => void>();
-		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
-			Promise.resolve({oldText: numberedFile(41), newText: numberedFile(40, [15, 21])}),
+		const load = vi.fn<
+			(fresh: boolean) => Promise<
+			{
+				oldText: string;
+				newText: string;
+			}>
+		>(async (_fresh: boolean) =>
+			Promise.resolve(
+				{
+					oldText: numberedFile(41),
+					newText: numberedFile(40, [15, 21]),
+				},
+			),
 		);
 		const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} onLoaderGaveUp={onGiveUp} />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(separators(shadowRootOf(view.container))).toHaveLength(3);
 		});
 
 		fireEvent.click(separatorButton(shadowRootOf(view.container), 1, "expand-both"));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(onGiveUp).toHaveBeenCalledTimes(1);
 		});
-		expect({calls: load.mock.calls, separators: separators(shadowRootOf(view.container)).length}).toStrictEqual({
-			calls: [[false]],
-			separators: 3,
-		});
+		expect(
+			{
+				calls: load.mock.calls,
+				separators: separators(shadowRootOf(view.container)).length,
+			},
+		).toStrictEqual(
+			{
+				calls: [[false]],
+				separators: 3,
+			},
+		);
 	});
 
-	it("expands a gap when its label, not a button, is clicked (upstream c91a5e4a6 i)", async () => {
-		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
-			Promise.resolve(TWO_HUNK_SIDES),
-		);
+	it("expands a gap when its label, not a button, is clicked (upstream c91a5e4a6 i)", async () =>
+	{
+		const load = vi.fn<
+			(fresh: boolean) => Promise<
+			{
+				oldText: string;
+				newText: string;
+			}>
+		>(async (_fresh: boolean) => Promise.resolve(TWO_HUNK_SIDES));
 		const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(separators(shadowRootOf(view.container))).toHaveLength(3);
 		});
 
@@ -621,7 +897,8 @@ describe("DiffFile lazy full-file context (upstream c44d00c7f qt/Kt, Cn, bd, xn,
 		if (!(label instanceof HTMLElement)) throw new Error("no separator label");
 		fireEvent.click(label);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(separators(shadowRootOf(view.container)).map((separator) => separator.text)).toStrictEqual([
 				"13 unmodified lines",
 				"18 unmodified lines",
@@ -630,31 +907,47 @@ describe("DiffFile lazy full-file context (upstream c44d00c7f qt/Kt, Cn, bd, xn,
 		expect(load).toHaveBeenCalledTimes(1);
 	});
 
-	it("loads without a click and draws no separators when expandUnchanged is on, but only with a loader", async () => {
-		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
-			Promise.resolve(TWO_HUNK_SIDES),
-		);
+	it("loads without a click and draws no separators when expandUnchanged is on, but only with a loader", async () =>
+	{
+		const load = vi.fn<
+			(fresh: boolean) => Promise<
+			{
+				oldText: string;
+				newText: string;
+			}>
+		>(async (_fresh: boolean) => Promise.resolve(TWO_HUNK_SIDES));
 		const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} expandUnchanged />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(contentRowTypes(shadowRootOf(view.container))).toHaveLength(40 + 2);
 		});
-		expect({calls: load.mock.calls, separators: separators(shadowRootOf(view.container))}).toStrictEqual({
-			calls: [[false]],
-			separators: [],
-		});
+		expect(
+			{
+				calls: load.mock.calls,
+				separators: separators(shadowRootOf(view.container)),
+			},
+		).toStrictEqual(
+			{
+				calls: [[false]],
+				separators: [],
+			},
+		);
 		cleanup();
 
 		const plain = render(<DiffFile patch={TWO_HUNK_PATCH} expandUnchanged />);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(separators(shadowRootOf(plain.container))).toHaveLength(2);
 		});
 	});
 });
 
-describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () => {
+describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () =>
+{
 	const FILE = "src/greet.ts";
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		menuRoots.rendered = 0;
 	});
 
@@ -662,7 +955,13 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () => {
 		showMenuButton = true,
 		onOpenFile,
 		wholeFile = "unread",
-	}: {showMenuButton?: boolean; onOpenFile?: () => void; wholeFile?: "folded" | "unread" | undefined} = {}) {
+	}:
+	{
+		showMenuButton?: boolean;
+		onOpenFile?: () => void;
+		wholeFile?: "folded" | "unread" | undefined;
+	} = {})
+	{
 		return render(
 			<ToastProvider>
 				<DiffFileHeader
@@ -670,7 +969,9 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () => {
 					additions={2}
 					deletions={1}
 					collapsed={false}
-					onToggle={() => {}}
+					onToggle={() =>
+					{
+					}}
 					onOpenFile={onOpenFile}
 					showMenuButton={showMenuButton}
 					menu={
@@ -678,7 +979,9 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () => {
 							path={FILE}
 							absolutePath={`/repo/${FILE}`}
 							wholeFile={wholeFile}
-							onShowWholeFile={() => {}}
+							onShowWholeFile={() =>
+							{
+							}}
 						/>
 					}
 				/>
@@ -686,213 +989,438 @@ describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () => {
 		);
 	}
 
-	function moreButton(): HTMLElement {
-		return screen.getByRole("button", {name: "More actions"});
+	function moreButton(): HTMLElement
+	{
+		return screen.getByRole(
+			"button",
+			{
+				name: "More actions",
+			},
+		);
 	}
 
-	function rows(menu: HTMLElement): string[] {
+	function rows(menu: HTMLElement): string[]
+	{
 		return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((row) =>
 			row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? row.textContent),
 		);
 	}
 
-	function label(element: Element | null): string | null | undefined {
+	function label(element: Element | null): string | null | undefined
+	{
 		return element?.getAttribute("aria-label") ?? element?.firstElementChild?.textContent;
 	}
 
-	it("opens the file menu end-aligned from the More button, with the right-click menu's rows", async () => {
+	it("opens the file menu end-aligned from the More button, with the right-click menu's rows", async () =>
+	{
 		renderHeader();
-		const atRest = {
+		const atRest =
+		{
 			expanded: moreButton().getAttribute("aria-expanded"),
 			haspopup: moreButton().getAttribute("aria-haspopup"),
 		};
-		fireEvent.pointerEnter(moreButton(), {pointerType: "mouse"});
+		fireEvent.pointerEnter(
+			moreButton(),
+			{
+				pointerType: "mouse",
+			},
+		);
 		fireEvent.click(moreButton());
 		const menu = await screen.findByRole("menu");
 
-		expect({
-			atRest,
-			open: moreButton().getAttribute("aria-expanded"),
-			align: menu.getAttribute("data-align"),
-			rows: rows(menu),
-		}).toStrictEqual({
-			atRest: {expanded: "false", haspopup: "menu"},
-			open: "true",
-			align: "end",
-			rows: ["Copy", "─", "Show whole file"],
-		});
+		expect(
+			{
+				atRest,
+				open: moreButton().getAttribute("aria-expanded"),
+				align: menu.getAttribute("data-align"),
+				rows: rows(menu),
+			},
+		).toStrictEqual(
+			{
+				atRest:
+				{
+					expanded: "false",
+					haspopup: "menu",
+				},
+				open: "true",
+				align: "end",
+				rows: ["Copy", "─", "Show whole file"],
+			},
+		);
 	});
 
-	it("has no More button without showMenuButton, but right-click still opens the menu", async () => {
-		renderHeader({showMenuButton: false});
-		const button = screen.queryByRole("button", {name: "More actions"});
-		fireEvent.contextMenu(screen.getByRole("button", {expanded: true}), {clientX: 10, clientY: 10});
+	it("has no More button without showMenuButton, but right-click still opens the menu", async () =>
+	{
+		renderHeader(
+			{
+				showMenuButton: false,
+			},
+		);
+		const button = screen.queryByRole(
+			"button",
+			{
+				name: "More actions",
+			},
+		);
+		fireEvent.contextMenu(
+			screen.getByRole(
+				"button",
+				{
+					expanded: true,
+				},
+			),
+			{
+				clientX: 10,
+				clientY: 10,
+			},
+		);
 
-		expect({button, rows: rows(await screen.findByRole("menu"))}).toStrictEqual({
-			button: null,
-			rows: ["Copy", "─", "Show whole file"],
-		});
+		expect(
+			{
+				button,
+				rows: rows(await screen.findByRole("menu")),
+			},
+		).toStrictEqual(
+			{
+				button: null,
+				rows: ["Copy", "─", "Show whole file"],
+			},
+		);
 	});
 
-	it("shows a More actions tooltip below the button on hover, but not while the menu is open", () => {
+	it("shows a More actions tooltip below the button on hover, but not while the menu is open", () =>
+	{
 		vi.useFakeTimers();
-		try {
+		try
+		{
 			renderHeader();
-			act(() => {
-				fireEvent.pointerEnter(moreButton().parentElement ?? moreButton(), {pointerType: "mouse"});
+			act(() =>
+			{
+				fireEvent.pointerEnter(
+					moreButton().parentElement ?? moreButton(),
+					{
+						pointerType: "mouse",
+					},
+				);
 				vi.advanceTimersByTime(1000);
 			});
 			const tip = screen.getByRole("tooltip");
-			const hovered = {text: tip.textContent, side: tip.getAttribute("data-side")};
-			act(() => {
-				fireEvent.pointerDown(moreButton(), {pointerType: "mouse"});
+			const hovered =
+			{
+				text: tip.textContent,
+				side: tip.getAttribute("data-side"),
+			};
+			act(() =>
+			{
+				fireEvent.pointerDown(
+					moreButton(),
+					{
+						pointerType: "mouse",
+					},
+				);
 				fireEvent.click(moreButton());
 				vi.advanceTimersByTime(1000);
 			});
 
-			expect({hovered, whileOpen: screen.queryByRole("tooltip")}).toStrictEqual({
-				hovered: {text: "More actions", side: "bottom"},
-				whileOpen: null,
-			});
-		} finally {
+			expect(
+				{
+					hovered,
+					whileOpen: screen.queryByRole("tooltip"),
+				},
+			).toStrictEqual(
+				{
+					hovered:
+					{
+						text: "More actions",
+						side: "bottom",
+					},
+					whileOpen: null,
+				},
+			);
+		}
+		finally
+		{
 			vi.useRealTimers();
 		}
 	});
 
-	it.each(["Enter", " "])("opens on %j with the first row focused", async (key) => {
+	it.each(["Enter", " "])("opens on %j with the first row focused", async (key) =>
+	{
 		renderHeader();
-		act(() => {
+		act(() =>
+		{
 			moreButton().focus();
 		});
 		// jsdom has no native button activation: a browser follows Enter's keydown or Space's keyup with a click.
-		fireEvent.keyDown(moreButton(), {key});
-		fireEvent.keyUp(moreButton(), {key});
-		fireEvent.click(moreButton(), {detail: 0});
+		fireEvent.keyDown(
+			moreButton(),
+			{
+				key,
+			},
+		);
+		fireEvent.keyUp(
+			moreButton(),
+			{
+				key,
+			},
+		);
+		fireEvent.click(
+			moreButton(),
+			{
+				detail: 0,
+			},
+		);
 		await screen.findByRole("menu");
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(label(document.activeElement)).toBe("Copy");
 		});
 	});
 
-	it("walks the menu by keyboard: disabled row, Copy submenu, Escape back out to the More button", async () => {
+	it("walks the menu by keyboard: disabled row, Copy submenu, Escape back out to the More button", async () =>
+	{
 		renderHeader();
-		act(() => {
+		act(() =>
+		{
 			moreButton().focus();
 		});
-		fireEvent.keyDown(moreButton(), {key: "Enter"});
-		fireEvent.click(moreButton(), {detail: 0});
+		fireEvent.keyDown(
+			moreButton(),
+			{
+				key: "Enter",
+			},
+		);
+		fireEvent.click(
+			moreButton(),
+			{
+				detail: 0,
+			},
+		);
 		const menu = await screen.findByRole("menu");
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(label(document.activeElement)).toBe("Copy");
 		});
-		fireEvent.keyDown(document.activeElement ?? menu, {key: "ArrowDown"});
+		fireEvent.keyDown(
+			document.activeElement ?? menu,
+			{
+				key: "ArrowDown",
+			},
+		);
 		const disabled = document.activeElement;
 		const reasonId = disabled?.getAttribute("aria-describedby");
-		const disabledRow = {
+		const disabledRow =
+		{
 			label: label(disabled),
 			disabled: disabled?.getAttribute("aria-disabled"),
 			reason: reasonId ? document.getElementById(reasonId)?.textContent : undefined,
 		};
-		fireEvent.keyDown(document.activeElement ?? menu, {key: "ArrowUp"});
-		fireEvent.keyDown(document.activeElement ?? menu, {key: "ArrowRight"});
-		await waitFor(() => {
+		fireEvent.keyDown(
+			document.activeElement ?? menu,
+			{
+				key: "ArrowUp",
+			},
+		);
+		fireEvent.keyDown(
+			document.activeElement ?? menu,
+			{
+				key: "ArrowRight",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(label(document.activeElement)).toBe("Absolute path");
 		});
-		fireEvent.keyDown(document.activeElement ?? menu, {key: "Escape"});
-		await waitFor(() => {
+		fireEvent.keyDown(
+			document.activeElement ?? menu,
+			{
+				key: "Escape",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(label(document.activeElement)).toBe("Copy");
 		});
-		fireEvent.keyDown(document.activeElement ?? menu, {key: "Escape"});
+		fireEvent.keyDown(
+			document.activeElement ?? menu,
+			{
+				key: "Escape",
+			},
+		);
 
-		await waitFor(() => {
-			expect({disabledRow, focused: label(document.activeElement)}).toStrictEqual({
-				disabledRow: {
-					label: "Show whole file",
-					disabled: "true",
-					reason: "This file’s unmodified lines couldn’t be read.",
+		await waitFor(() =>
+		{
+			expect(
+				{
+					disabledRow,
+					focused: label(document.activeElement),
 				},
-				focused: "More actions",
-			});
+			).toStrictEqual(
+				{
+					disabledRow:
+					{
+						label: "Show whole file",
+						disabled: "true",
+						reason: "This file’s unmodified lines couldn’t be read.",
+					},
+					focused: "More actions",
+				},
+			);
 		});
 	});
 
-	it("closes on a chosen row and returns focus to the More button", async () => {
-		renderHeader({wholeFile: "folded"});
-		act(() => {
+	it("closes on a chosen row and returns focus to the More button", async () =>
+	{
+		renderHeader(
+			{
+				wholeFile: "folded",
+			},
+		);
+		act(() =>
+		{
 			moreButton().focus();
 		});
-		fireEvent.keyDown(moreButton(), {key: "Enter"});
-		fireEvent.click(moreButton(), {detail: 0});
-		fireEvent.click(await screen.findByRole("menuitem", {name: "Show whole file"}));
+		fireEvent.keyDown(
+			moreButton(),
+			{
+				key: "Enter",
+			},
+		);
+		fireEvent.click(
+			moreButton(),
+			{
+				detail: 0,
+			},
+		);
+		fireEvent.click(
+			await screen.findByRole(
+				"menuitem",
+				{
+					name: "Show whole file",
+				},
+			),
+		);
 
-		await waitFor(() => {
-			expect({menu: screen.queryByRole("menu"), focused: label(document.activeElement)}).toStrictEqual({
-				menu: null,
-				focused: "More actions",
-			});
+		await waitFor(() =>
+		{
+			expect(
+				{
+					menu: screen.queryByRole("menu"),
+					focused: label(document.activeElement),
+				},
+			).toStrictEqual(
+				{
+					menu: null,
+					focused: "More actions",
+				},
+			);
 		});
 	});
 
-	it("lays the actions out in one overlay cluster with upstream's reserved spacers", () => {
-		const {container} = renderHeader({onOpenFile: () => {}});
+	it("lays the actions out in one overlay cluster with upstream's reserved spacers", () =>
+	{
+		const {container} = renderHeader(
+			{
+				onOpenFile: () =>
+				{
+				},
+			},
+		);
 		const cluster = container.querySelector("[data-diff-file-header] > span");
 		const spacers = [
 			...container.querySelectorAll("[data-diff-file-header] > button > span[aria-hidden][data-size]"),
 		];
 		cleanup();
-		const {container: openOnly} = renderHeader({showMenuButton: false, onOpenFile: () => {}});
+		const {container: openOnly} = renderHeader(
+			{
+				showMenuButton: false,
+				onOpenFile: () =>
+				{
+				},
+			},
+		);
 		const openOnlySpacers = [
 			...openOnly.querySelectorAll("[data-diff-file-header] > button > span[aria-hidden][data-size]"),
 		];
 
-		expect({
-			cluster: cluster?.className,
-			children: [...(cluster?.children ?? [])].map((child) => [
-				child.className,
-				label(child.querySelector("button")),
-			]),
-			spacers: spacers.map((spacer) => [spacer.getAttribute("data-size"), spacer.className]),
-			openOnlySpacers: openOnlySpacers.map((spacer) => spacer.className),
-		}).toStrictEqual({
-			cluster: "pointer-events-none absolute inset-0 flex items-center justify-end gap-[4px] px-3",
-			children: [
-				[expect.stringMatching(/^pointer-events-auto flex @max-\[15rem\]\/diff-file:hidden( |$)/), "Open file"],
-				["pointer-events-auto flex", "More actions"],
-			],
-			spacers: [
-				["xs", "w-6 shrink-0 @max-[15rem]/diff-file:hidden"],
-				["xs", "w-6 shrink-0"],
-			],
-			openOnlySpacers: ["w-6 shrink-0"],
-		});
+		expect(
+			{
+				cluster: cluster?.className,
+				children: [...(cluster?.children ?? [])].map((child) => [
+					child.className,
+					label(child.querySelector("button")),
+				]),
+				spacers: spacers.map((spacer) => [spacer.getAttribute("data-size"), spacer.className]),
+				openOnlySpacers: openOnlySpacers.map((spacer) => spacer.className),
+			},
+		).toStrictEqual(
+			{
+				cluster: "pointer-events-none absolute inset-0 flex items-center justify-end gap-[4px] px-3",
+				children: [
+					[
+						expect.stringMatching(/^pointer-events-auto flex @max-\[15rem\]\/diff-file:hidden( |$)/),
+						"Open file",
+					],
+					["pointer-events-auto flex", "More actions"],
+				],
+				spacers: [
+					["xs", "w-6 shrink-0 @max-[15rem]/diff-file:hidden"],
+					["xs", "w-6 shrink-0"],
+				],
+				openOnlySpacers: ["w-6 shrink-0"],
+			},
+		);
 	});
 
-	it("mounts the dropdown's menu root only once the trigger is hovered or focused (upstream BK)", () => {
+	it("mounts the dropdown's menu root only once the trigger is hovered or focused (upstream BK)", () =>
+	{
 		renderHeader();
 		const before = menuRoots.rendered;
-		fireEvent.pointerEnter(moreButton(), {pointerType: "mouse"});
+		fireEvent.pointerEnter(
+			moreButton(),
+			{
+				pointerType: "mouse",
+			},
+		);
 		const afterHover = menuRoots.rendered;
 		cleanup();
 		menuRoots.rendered = 0;
 		renderHeader();
-		fireEvent.pointerEnter(moreButton(), {pointerType: "touch"});
+		fireEvent.pointerEnter(
+			moreButton(),
+			{
+				pointerType: "touch",
+			},
+		);
 		const afterTouch = menuRoots.rendered;
-		act(() => {
+		act(() =>
+		{
 			moreButton().focus();
 		});
 
-		expect({before, hovered: afterHover > 0, afterTouch, focused: menuRoots.rendered > 0}).toStrictEqual({
-			before: 0,
-			hovered: true,
-			afterTouch: 0,
-			focused: true,
-		});
+		expect(
+			{
+				before,
+				hovered: afterHover > 0,
+				afterTouch,
+				focused: menuRoots.rendered > 0,
+			},
+		).toStrictEqual(
+			{
+				before: 0,
+				hovered: true,
+				afterTouch: 0,
+				focused: true,
+			},
+		);
 	});
 });
 
-describe("isSyntheticDiffRow (upstream Iu)", () => {
-	it("flags the … N more and index-flag rows only", () => {
+describe("isSyntheticDiffRow (upstream Iu)", () =>
+{
+	it("flags the … N more and index-flag rows only", () =>
+	{
 		expect(
 			[
 				"… 12 more files",
@@ -903,18 +1431,51 @@ describe("isSyntheticDiffRow (upstream Iu)", () => {
 		).toStrictEqual([true, true, false, false]);
 	});
 
-	it("gates the More button on a viewed mark, or on the whole-file toggle for a real file", () => {
-		const mark = {status: "none" as const, canMark: true, setMarked: () => {}};
+	it("gates the More button on a viewed mark, or on the whole-file toggle for a real file", () =>
+	{
+		const mark =
+		{
+			status: "none" as const,
+			canMark: true,
+			setMarked: () =>
+			{
+			},
+		};
 		expect([
-			diffFileMenuButtonShown({path: "src/a.ts", mark: undefined, wholeFileOffered: false}),
-			diffFileMenuButtonShown({path: "src/a.ts", mark: undefined, wholeFileOffered: true}),
-			diffFileMenuButtonShown({path: "… 12 more files", mark: undefined, wholeFileOffered: true}),
-			diffFileMenuButtonShown({path: "… 12 more files", mark, wholeFileOffered: false}),
+			diffFileMenuButtonShown(
+				{
+					path: "src/a.ts",
+					mark: undefined,
+					wholeFileOffered: false,
+				},
+			),
+			diffFileMenuButtonShown(
+				{
+					path: "src/a.ts",
+					mark: undefined,
+					wholeFileOffered: true,
+				},
+			),
+			diffFileMenuButtonShown(
+				{
+					path: "… 12 more files",
+					mark: undefined,
+					wholeFileOffered: true,
+				},
+			),
+			diffFileMenuButtonShown(
+				{
+					path: "… 12 more files",
+					mark,
+					wholeFileOffered: false,
+				},
+			),
 		]).toStrictEqual([false, true, false, true]);
 	});
 });
 
-describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () => {
+describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () =>
+{
 	const FILE = "src/greet.ts";
 	const UNAVAILABLE = "This file can’t be marked as viewed. Later changes to it wouldn’t be detected.";
 	// Upstream's cds ghost Button paints on a [data-cds-part=paint] layer, which `Fs` keeps clear when pressed.
@@ -925,8 +1486,16 @@ describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () => {
 
 	function renderMarked(
 		status: "marked" | "stale" | "none",
-		{canMark = true, onOpenFile}: {canMark?: boolean; onOpenFile?: () => void} = {},
-	) {
+		{
+			canMark = true,
+			onOpenFile,
+		}:
+		{
+			canMark?: boolean;
+			onOpenFile?: () => void;
+		} = {},
+	)
+	{
 		const setMarked = vi.fn<(marked: boolean) => void>();
 		const view = render(
 			<ToastProvider>
@@ -935,40 +1504,78 @@ describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () => {
 					additions={2}
 					deletions={1}
 					collapsed={false}
-					onToggle={() => {}}
+					onToggle={() =>
+					{
+					}}
 					onOpenFile={onOpenFile}
-					mark={{status, canMark, setMarked}}
+					mark={
+					{
+						status,
+						canMark,
+						setMarked,
+					}}
 					showMenuButton
 					menu={<DiffFileMenuItems path={FILE} />}
 				/>
 			</ToastProvider>,
 		);
-		return {setMarked, view};
+		return {
+			setMarked,
+			view,
+		};
 	}
 
-	function viewed(): HTMLElement {
-		return screen.getByRole("button", {name: "Viewed"});
+	function viewed(): HTMLElement
+	{
+		return screen.getByRole(
+			"button",
+			{
+				name: "Viewed",
+			},
+		);
 	}
 
-	function hoverTip(element: HTMLElement): {text: string | null; side: string | null} | null {
+	function hoverTip(element: HTMLElement):
+	{
+		text: string | null;
+		side: string | null;
+	} | null
+	{
 		vi.useFakeTimers();
-		try {
-			act(() => {
-				fireEvent.pointerEnter(element, {pointerType: "mouse"});
+		try
+		{
+			act(() =>
+			{
+				fireEvent.pointerEnter(
+					element,
+					{
+						pointerType: "mouse",
+					},
+				);
 				vi.advanceTimersByTime(1000);
 			});
 			const tip = screen.queryByRole("tooltip");
-			return tip === null ? null : {text: tip.textContent, side: tip.getAttribute("data-side")};
-		} finally {
+			return tip === null
+				? null
+				:
+					{
+						text: tip.textContent,
+						side: tip.getAttribute("data-side"),
+					};
+		}
+		finally
+		{
 			vi.useRealTimers();
 		}
 	}
 
-	function glyph(button: HTMLElement): string | undefined {
+	function glyph(button: HTMLElement): string | undefined
+	{
 		return button.querySelector("svg path")?.getAttribute("fill") === "currentColor" ? "filled" : "outline";
 	}
 
-	it("renders an unpressed outline check whose tooltip says Mark as viewed below it, and marks on click", () => {
+	it("renders an unpressed outline check whose tooltip says Mark as viewed below it, and marks on click", () =>
+	{
 		const {setMarked} = renderMarked("none");
 		const button = viewed();
 		// Upstream `lazy`: the tip isn't mounted until it opens.
@@ -977,131 +1584,197 @@ describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () => {
 		// Upstream `hoverable={false}`: the tip takes no pointer, so leaving the button closes it.
 		const hoverable = !screen.getByRole("tooltip").classList.contains("pointer-events-none");
 		fireEvent.click(button);
-		expect({
-			beforeHover,
-			pressed: button.getAttribute("aria-pressed"),
-			glyph: glyph(button),
-			tip,
-			hoverable,
-			calls: setMarked.mock.calls,
-		}).toStrictEqual({
-			beforeHover: null,
-			pressed: "false",
-			glyph: "outline",
-			tip: {text: "Mark as viewed", side: "bottom"},
-			hoverable: false,
-			calls: [[true]],
-		});
+		expect(
+			{
+				beforeHover,
+				pressed: button.getAttribute("aria-pressed"),
+				glyph: glyph(button),
+				tip,
+				hoverable,
+				calls: setMarked.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				beforeHover: null,
+				pressed: "false",
+				glyph: "outline",
+				tip:
+				{
+					text: "Mark as viewed",
+					side: "bottom",
+				},
+				hoverable: false,
+				calls: [[true]],
+			},
+		);
 	});
 
-	it("presses a marked check with the filled glyph and no selected paint, and unmarks on click", () => {
+	it("presses a marked check with the filled glyph and no selected paint, and unmarks on click", () =>
+	{
 		const {setMarked} = renderMarked("marked");
 		const button = viewed();
 		const tip = hoverTip(button.parentElement ?? button);
 		fireEvent.click(button);
-		expect({
-			pressed: button.getAttribute("aria-pressed"),
-			glyph: glyph(button),
-			className: button.className,
-			paint: button.querySelector('[data-cds-part="paint"]')?.className,
-			tip,
-			calls: setMarked.mock.calls,
-		}).toStrictEqual({
-			pressed: "true",
-			glyph: "filled",
-			className: VIEWED_CLASS,
-			paint: PAINT_CLASS,
-			tip: {text: "Mark as not viewed", side: "bottom"},
-			calls: [[false]],
-		});
+		expect(
+			{
+				pressed: button.getAttribute("aria-pressed"),
+				glyph: glyph(button),
+				className: button.className,
+				paint: button.querySelector('[data-cds-part="paint"]')?.className,
+				tip,
+				calls: setMarked.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				pressed: "true",
+				glyph: "filled",
+				className: VIEWED_CLASS,
+				paint: PAINT_CLASS,
+				tip:
+				{
+					text: "Mark as not viewed",
+					side: "bottom",
+				},
+				calls: [[false]],
+			},
+		);
 	});
 
-	it("disables the check behind upstream's disabled reason when the file can't be marked", () => {
-		renderMarked("none", {canMark: false});
+	it("disables the check behind upstream's disabled reason when the file can't be marked", () =>
+	{
+		renderMarked(
+			"none",
+			{
+				canMark: false,
+			},
+		);
 		const button = viewed() as HTMLButtonElement;
 		const wrapper = button.closest("[data-cds-disabled-reason-wrapper]");
 		const tip = hoverTip(wrapper instanceof HTMLElement ? wrapper : button);
-		expect({
-			disabled: button.disabled,
-			reason: wrapper?.querySelector("[data-cds-disabled-reason]")?.textContent,
-			tip,
-		}).toStrictEqual({
-			disabled: true,
-			reason: UNAVAILABLE,
-			tip: {text: UNAVAILABLE, side: "bottom"},
-		});
+		expect(
+			{
+				disabled: button.disabled,
+				reason: wrapper?.querySelector("[data-cds-disabled-reason]")?.textContent,
+				tip,
+			},
+		).toStrictEqual(
+			{
+				disabled: true,
+				reason: UNAVAILABLE,
+				tip:
+				{
+					text: UNAVAILABLE,
+					side: "bottom",
+				},
+			},
+		);
 	});
 
-	it("puts the Pulse indicator on a stale check, described as Changed since you viewed it", () => {
+	it("puts the Pulse indicator on a stale check, described as Changed since you viewed it", () =>
+	{
 		renderMarked("stale");
 		const button = viewed();
 		const described = button.getAttribute("aria-describedby");
 		const description = described === null ? null : document.getElementById(described);
 		const tip = hoverTip(button.parentElement ?? button);
-		expect({
-			description: description?.textContent,
-			hidden: description?.hidden,
-			pulse: button.querySelector("[data-cds-part=indicator] > [data-cds=Pulse]") !== null,
-			notched: button
-				.querySelector("[data-cds-part=indicator]")
-				?.previousElementSibling?.className.includes("[--btn-dot-r:"),
-			tip,
-		}).toStrictEqual({
-			description: "Changed since you viewed it",
-			hidden: true,
-			pulse: true,
-			notched: true,
-			tip: {text: "Mark as viewed Changed since you viewed it", side: "bottom"},
-		});
+		expect(
+			{
+				description: description?.textContent,
+				hidden: description?.hidden,
+				pulse: button.querySelector("[data-cds-part=indicator] > [data-cds=Pulse]") !== null,
+				notched: button
+					.querySelector("[data-cds-part=indicator]")
+					?.previousElementSibling?.className.includes("[--btn-dot-r:"),
+				tip,
+			},
+		).toStrictEqual(
+			{
+				description: "Changed since you viewed it",
+				hidden: true,
+				pulse: true,
+				notched: true,
+				tip:
+				{
+					text: "Mark as viewed Changed since you viewed it",
+					side: "bottom",
+				},
+			},
+		);
 	});
 
-	it("orders the cluster Viewed, Open file, More with a spacer for each", () => {
-		const {view} = renderMarked("none", {onOpenFile: () => {}});
+	it("orders the cluster Viewed, Open file, More with a spacer for each", () =>
+	{
+		const {view} = renderMarked(
+			"none",
+			{
+				onOpenFile: () =>
+				{
+				},
+			},
+		);
 		const cluster = view.container.querySelector("[data-diff-file-header] > span");
 		const spacers = [
 			...view.container.querySelectorAll("[data-diff-file-header] > button > span[aria-hidden][data-size]"),
 		];
-		expect({
-			cluster: cluster?.className,
-			actions: [...(cluster?.querySelectorAll("button") ?? [])].map((button) =>
-				button.getAttribute("aria-label"),
-			),
-			spacers: spacers.map((spacer) => spacer.className),
-		}).toStrictEqual({
-			cluster: "pointer-events-none absolute inset-0 flex items-center justify-end gap-[4px] px-3",
-			actions: ["Viewed", "Open file", "More actions"],
-			spacers: ["w-6 shrink-0 @max-[15rem]/diff-file:hidden", "w-6 shrink-0", "w-6 shrink-0"],
-		});
+		expect(
+			{
+				cluster: cluster?.className,
+				actions: [...(cluster?.querySelectorAll("button") ?? [])].map((button) =>
+					button.getAttribute("aria-label"),
+				),
+				spacers: spacers.map((spacer) => spacer.className),
+			},
+		).toStrictEqual(
+			{
+				cluster: "pointer-events-none absolute inset-0 flex items-center justify-end gap-[4px] px-3",
+				actions: ["Viewed", "Open file", "More actions"],
+				spacers: ["w-6 shrink-0 @max-[15rem]/diff-file:hidden", "w-6 shrink-0", "w-6 shrink-0"],
+			},
+		);
 	});
 
-	it("moves a stale file's stats into the wrapping row beside the Changed since you viewed it label", () => {
+	it("moves a stale file's stats into the wrapping row beside the Changed since you viewed it label", () =>
+	{
 		const {view} = renderMarked("stale");
 		const row = view.container.querySelector("[data-diff-file-header] > button > span.overflow-clip");
 		const label = row?.firstElementChild;
 		const stats = row?.lastElementChild;
-		expect({
-			row: row?.className,
-			label: [label?.className, label?.firstElementChild?.className, label?.textContent],
-			stats: [stats?.className, stats?.textContent],
-			title: view.container.querySelector("[data-diff-file-header] [title]")?.getAttribute("title"),
-		}).toStrictEqual({
-			row: "flex h-[1lh] min-w-min grow shrink-[1e12] flex-row-reverse flex-wrap items-center justify-end gap-[4px] overflow-clip text-body",
-			label: [
-				"grid max-w-max min-w-0 grow basis-[8ch] grid-cols-[minmax(0,max-content)] text-muted-as-secondary",
-				"truncate",
-				"Changed since you viewed it",
-			],
-			stats: ["order-first ms-auto flex shrink-0 items-center gap-[4px] tabular-nums", "+2−1"],
-			title: "src/greet.ts (changed since you viewed it)",
-		});
+		expect(
+			{
+				row: row?.className,
+				label: [label?.className, label?.firstElementChild?.className, label?.textContent],
+				stats: [stats?.className, stats?.textContent],
+				title: view.container.querySelector("[data-diff-file-header] [title]")?.getAttribute("title"),
+			},
+		).toStrictEqual(
+			{
+				row: "flex h-[1lh] min-w-min grow shrink-[1e12] flex-row-reverse flex-wrap items-center justify-end gap-[4px] overflow-clip text-body",
+				label: [
+					"grid max-w-max min-w-0 grow basis-[8ch] grid-cols-[minmax(0,max-content)] text-muted-as-secondary",
+					"truncate",
+					"Changed since you viewed it",
+				],
+				stats: ["order-first ms-auto flex shrink-0 items-center gap-[4px] tabular-nums", "+2−1"],
+				title: "src/greet.ts (changed since you viewed it)",
+			},
+		);
 	});
 
-	it("keeps the plain stats span and no title when the file isn't stale", () => {
+	it("keeps the plain stats span and no title when the file isn't stale", () =>
+	{
 		const {view} = renderMarked("marked");
-		expect({
-			row: view.container.querySelector("[data-diff-file-header] span.overflow-clip"),
-			stats: view.container.querySelector("[data-diff-file-header] > button > span.ml-auto")?.textContent,
-			title: view.container.querySelector("[data-diff-file-header] [title]"),
-		}).toStrictEqual({row: null, stats: "+2−1", title: null});
+		expect(
+			{
+				row: view.container.querySelector("[data-diff-file-header] span.overflow-clip"),
+				stats: view.container.querySelector("[data-diff-file-header] > button > span.ml-auto")?.textContent,
+				title: view.container.querySelector("[data-diff-file-header] [title]"),
+			},
+		).toStrictEqual(
+			{
+				row: null,
+				stats: "+2−1",
+				title: null,
+			},
+		);
 	});
 });

@@ -10,8 +10,10 @@ export function setServerProcessTitle({
 }: {
 	dev: boolean;
 	env?: Readonly<Record<string, string | undefined>>;
-}): void {
-	if (!dev) {
+}): void
+{
+	if (!dev)
+	{
 		const title = env["SERVER_TITLE"];
 		process.title = title === undefined || title === "" ? SERVER_PROCESS_TITLE : title;
 	}

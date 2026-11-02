@@ -1,7 +1,9 @@
 import {basename, dirname, resolve} from "node:path";
 
-export function resolveMarkdownFilePath(directory: string, filename: string): string | null {
-	if (filename.includes("..") || basename(filename) !== filename || !filename.endsWith(".md")) {
+export function resolveMarkdownFilePath(directory: string, filename: string): string | null
+{
+	if (filename.includes("..") || basename(filename) !== filename || !filename.endsWith(".md"))
+	{
 		return null;
 	}
 

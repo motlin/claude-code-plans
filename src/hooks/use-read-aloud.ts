@@ -11,15 +11,20 @@ const VOICE_LIST_WAIT_MS = 1000;
  */
 export type ReadAloudStatus = "idle" | "loading" | "playing" | "paused";
 
-function subscribeNever(): () => void {
-	return () => {};
+function subscribeNever(): () => void
+{
+	return () =>
+	{
+	};
 }
 
-function hasSpeechSynthesis(): boolean {
+function hasSpeechSynthesis(): boolean
+{
 	return typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined";
 }
 
-function documentLang(): string {
+function documentLang(): string
+{
 	return document.documentElement.lang || navigator.language || "en";
 }
 
@@ -28,18 +33,24 @@ function documentLang(): string {
  * once its `voiceschanged` event fires (Chrome loads the list lazily) or the
  * wait runs out. The returned function abandons a pending wait.
  */
-function withVoices(speak: (voices: readonly SpeechSynthesisVoice[]) => void): () => void {
+function withVoices(speak: (voices: readonly SpeechSynthesisVoice[]) => void): () => void
+{
 	const voices = speechSynthesis.getVoices();
-	if (voices.length > 0) {
+	if (voices.length > 0)
+	{
 		speak(voices);
-		return () => {};
+		return () =>
+		{
+		};
 	}
-	const done = () => {
+	const done = () =>
+	{
 		cleanup();
 		speak(speechSynthesis.getVoices());
 	};
 	const timer = setTimeout(done, VOICE_LIST_WAIT_MS);
-	const cleanup = () => {
+	const cleanup = () =>
+	{
 		clearTimeout(timer);
 		speechSynthesis.removeEventListener("voiceschanged", done);
 	};
@@ -48,7 +59,8 @@ function withVoices(speak: (voices: readonly SpeechSynthesisVoice[]) => void): (
 }
 
 /** The mounted record or footer owns speech, not its temporary menu portal. */
-export function useReadAloud(text: string) {
+export function useReadAloud(text: string)
+{
 	const supported = useSyncExternalStore(subscribeNever, hasSpeechSynthesis, () => false);
 	const [status, setStatus] = useState<ReadAloudStatus>("idle");
 	const statusRef = useRef<ReadAloudStatus>("idle");
@@ -56,23 +68,28 @@ export function useReadAloud(text: string) {
 	/** Counts readings, so a cancelled reading's late events cannot settle the next one. */
 	const reading = useRef(0);
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			abandonVoiceWait.current();
 			if (statusRef.current !== "idle") speechSynthesis.cancel();
 		},
 		[],
 	);
-	const settle = (value: ReadAloudStatus) => {
+	const settle = (value: ReadAloudStatus) =>
+	{
 		statusRef.current = value;
 		setStatus(value);
 	};
-	const toggle = () => {
-		if (status === "playing") {
+	const toggle = () =>
+	{
+		if (status === "playing")
+		{
 			speechSynthesis.pause();
 			settle("paused");
 			return;
 		}
-		if (status === "paused") {
+		if (status === "paused")
+		{
 			speechSynthesis.resume();
 			settle("playing");
 			return;
@@ -80,33 +97,42 @@ export function useReadAloud(text: string) {
 		abandonVoiceWait.current();
 		const current = ++reading.current;
 		speechSynthesis.cancel();
-		if (status === "loading") {
+		if (status === "loading")
+		{
 			settle("idle");
 			return;
 		}
 		const spoken = speechText(text);
 		if (spoken === "") return;
 		settle("loading");
-		const settleCurrent = (value: ReadAloudStatus) => {
+		const settleCurrent = (value: ReadAloudStatus) =>
+		{
 			if (reading.current === current) settle(value);
 		};
-		abandonVoiceWait.current = withVoices((voices) => {
+		abandonVoiceWait.current = withVoices((voices) =>
+		{
 			const lang = documentLang();
 			const voice = chooseVoice(voices, lang);
 			const utterance = new SpeechSynthesisUtterance(spoken);
 			utterance.lang = voice?.lang ?? lang;
 			if (voice !== null) utterance.voice = voice;
-			utterance.onstart = () => {
+			utterance.onstart = () =>
+			{
 				settleCurrent("playing");
 			};
-			utterance.onend = () => {
+			utterance.onend = () =>
+			{
 				settleCurrent("idle");
 			};
-			utterance.onerror = () => {
+			utterance.onerror = () =>
+			{
 				settleCurrent("idle");
 			};
 			speechSynthesis.speak(utterance);
 		});
 	};
-	return {status, toggle: supported && text !== "" ? toggle : undefined};
+	return {
+		status,
+		toggle: supported && text !== "" ? toggle : undefined,
+	};
 }

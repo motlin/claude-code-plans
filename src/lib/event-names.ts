@@ -9,7 +9,8 @@
  * (session:update, sessions:reindexed, task:updated, plan:updated,
  * memory:updated) now lives exclusively in DOMAIN_EVENTS below.
  */
-export const SSE_EVENTS = {
+export const SSE_EVENTS =
+{
 	SESSION_START: "session:start",
 	SESSION_END: "session:end",
 	WORKTREE_CREATED: "worktree:created",
@@ -19,7 +20,8 @@ export const SSE_EVENTS = {
 } as const;
 
 /** Events emitted by the process-wide herdr subscription bridge. */
-export const HERDR_EVENTS = {
+export const HERDR_EVENTS =
+{
 	PANES_SNAPSHOT: "herdr:panes-snapshot",
 	PANE_CREATED: "herdr:pane-created",
 	PANE_CLOSED: "herdr:pane-closed",
@@ -39,7 +41,8 @@ export const HERDR_EVENTS = {
  * TanStack Query cache client-side without a refetch. The server is
  * responsible for diffing old vs new state and emitting these events.
  */
-export const DOMAIN_EVENTS = {
+export const DOMAIN_EVENTS =
+{
 	SESSION_ADDED: "session:added",
 	SESSION_REMOVED: "session:removed",
 	SESSION_UPDATED: "session:updated",

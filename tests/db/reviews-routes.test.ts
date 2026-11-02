@@ -2,7 +2,8 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {FindingSchema, ReviewBundleSchema, reviewQueryOptions} from "../../src/lib/api/reviews";
 import {openTestDb, type AppDb} from "../../src/lib/db/connection";
 import * as schema from "../../src/lib/db/schema";
-import {
+import
+{
 	handleCreateReviewRequest,
 	handleGetReviewRequest,
 	handleReplaceReviewFindingsRequest,
@@ -27,41 +28,52 @@ const DIFF = [
 
 let db: AppDb;
 
-function insertSession(cwd: string | null = SESSION_CWD): void {
+function insertSession(cwd: string | null = SESSION_CWD): void
+{
 	db.index
 		.insert(schema.sessions)
-		.values({
-			id: SESSION_ID,
-			projectId: "project-test-100",
-			title: "Alice fixture session",
-			firstPrompt: "Review the fabricated change",
-			summary: "Alice changed the fabricated value.",
-			customTitle: null,
-			messageCount: 10,
-			gitBranch: "main",
-			cwd,
-			isSidechain: 0,
-			createdAt: GENERATED_AT.getTime(),
-			mtimeMs: GENERATED_AT.getTime(),
-			filePath: `/fixture/transcripts/${SESSION_ID}.jsonl`,
-		})
+		.values(
+			{
+				id: SESSION_ID,
+				projectId: "project-test-100",
+				title: "Alice fixture session",
+				firstPrompt: "Review the fabricated change",
+				summary: "Alice changed the fabricated value.",
+				customTitle: null,
+				messageCount: 10,
+				gitBranch: "main",
+				cwd,
+				isSidechain: 0,
+				createdAt: GENERATED_AT.getTime(),
+				mtimeMs: GENERATED_AT.getTime(),
+				filePath: `/fixture/transcripts/${SESSION_ID}.jsonl`,
+			},
+		)
 		.run();
 	db.index
 		.insert(schema.sessionMessages)
-		.values({
-			sessionId: SESSION_ID,
-			messageIndex: 0,
-			role: "assistant",
-			text: "Alice changed the fabricated value.",
-		})
-		.onConflictDoUpdate({
-			target: [schema.sessionMessages.sessionId, schema.sessionMessages.messageIndex],
-			set: {text: "Alice changed the fabricated value."},
-		})
+		.values(
+			{
+				sessionId: SESSION_ID,
+				messageIndex: 0,
+				role: "assistant",
+				text: "Alice changed the fabricated value.",
+			},
+		)
+		.onConflictDoUpdate(
+			{
+				target: [schema.sessionMessages.sessionId, schema.sessionMessages.messageIndex],
+				set:
+				{
+					text: "Alice changed the fabricated value.",
+				},
+			},
+		)
 		.run();
 }
 
-function dependencies(overrides: Partial<ReviewHandlerDependencies> = {}): ReviewHandlerDependencies {
+function dependencies(overrides: Partial<ReviewHandlerDependencies> = {}): ReviewHandlerDependencies
+{
 	return {
 		index: db.index,
 		buildDiff: async () => Promise.resolve(DIFF),
@@ -71,19 +83,28 @@ function dependencies(overrides: Partial<ReviewHandlerDependencies> = {}): Revie
 	};
 }
 
-function findingsRequest(body: unknown): Request {
-	return new Request(`http://127.0.0.1:7526/api/reviews/${REVIEW_ID}/findings`, {
-		method: "POST",
-		headers: {"Content-Type": "application/json"},
-		body: typeof body === "string" ? body : JSON.stringify(body),
-	});
+function findingsRequest(body: unknown): Request
+{
+	return new Request(
+		`http://127.0.0.1:7526/api/reviews/${REVIEW_ID}/findings`,
+		{
+			method: "POST",
+			headers:
+			{
+				"Content-Type": "application/json",
+			},
+			body: typeof body === "string" ? body : JSON.stringify(body),
+		},
+	);
 }
 
-async function describeResponse(response: Response): Promise<{
+async function describeResponse(response: Response): Promise<
+{
 	body: unknown;
 	cacheControl: string | null;
 	status: number;
-}> {
+}>
+{
 	return {
 		body: await response.json(),
 		cacheControl: response.headers.get("Cache-Control"),
@@ -91,17 +112,22 @@ async function describeResponse(response: Response): Promise<{
 	};
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
 });
 
-describe("review API contracts", () => {
-	it("defaults unresolved findings and rejects undeclared fields", () => {
-		const finding = {
+describe("review API contracts", () =>
+{
+	it("defaults unresolved findings and rejects undeclared fields", () =>
+	{
+		const finding =
+		{
 			id: "finding-test-100",
 			file: "src/alice.ts",
 			side: "new" as const,
@@ -111,131 +137,166 @@ describe("review API contracts", () => {
 			body: "The fabricated value has no guard.",
 		};
 
-		expect({
-			finding: FindingSchema.parse(finding),
-			findingWithExtraFieldAccepted: FindingSchema.safeParse({...finding, extra: true}).success,
-			bundleWithExtraFieldAccepted: ReviewBundleSchema.safeParse({
-				reviewId: REVIEW_ID,
-				sessionId: SESSION_ID,
-				cwd: SESSION_CWD,
-				diff: DIFF,
-				summary: null,
-				findings: [],
-				generatedAt: GENERATED_AT.toISOString(),
-				extra: true,
-			}).success,
-		}).toStrictEqual({
-			finding: {
-				id: "finding-test-100",
-				file: "src/alice.ts",
-				side: "new",
-				line: 10,
-				severity: "medium",
-				title: "Fabricated finding",
-				body: "The fabricated value has no guard.",
-				resolved: false,
+		expect(
+			{
+				finding: FindingSchema.parse(finding),
+				findingWithExtraFieldAccepted: FindingSchema.safeParse(
+					{
+						...finding,
+						extra: true,
+					},
+				).success,
+				bundleWithExtraFieldAccepted: ReviewBundleSchema.safeParse(
+					{
+						reviewId: REVIEW_ID,
+						sessionId: SESSION_ID,
+						cwd: SESSION_CWD,
+						diff: DIFF,
+						summary: null,
+						findings: [],
+						generatedAt: GENERATED_AT.toISOString(),
+						extra: true,
+					},
+				).success,
 			},
-			findingWithExtraFieldAccepted: false,
-			bundleWithExtraFieldAccepted: false,
-		});
+		).toStrictEqual(
+			{
+				finding:
+				{
+					id: "finding-test-100",
+					file: "src/alice.ts",
+					side: "new",
+					line: 10,
+					severity: "medium",
+					title: "Fabricated finding",
+					body: "The fabricated value has no guard.",
+					resolved: false,
+				},
+				findingWithExtraFieldAccepted: false,
+				bundleWithExtraFieldAccepted: false,
+			},
+		);
 	});
 
-	it("builds review query options with an encoded resource id", () => {
+	it("builds review query options with an encoded resource id", () =>
+	{
 		const options = reviewQueryOptions("local-session/test 100");
 
-		expect({
-			queryKey: options.queryKey,
-			staleTime: options.staleTime,
-			gcTime: options.gcTime,
-		}).toStrictEqual({
-			queryKey: ["reviews", "local-session/test 100"],
-			staleTime: Infinity,
-			gcTime: Infinity,
-		});
+		expect(
+			{
+				queryKey: options.queryKey,
+				staleTime: options.staleTime,
+				gcTime: options.gcTime,
+			},
+		).toStrictEqual(
+			{
+				queryKey: ["reviews", "local-session/test 100"],
+				staleTime: Infinity,
+				gcTime: Infinity,
+			},
+		);
 	});
 });
 
-describe("review route handlers", () => {
-	it("rejects malformed review-run JSON without invoking process controls", async () => {
+describe("review route handlers", () =>
+{
+	it("rejects malformed review-run JSON without invoking process controls", async () =>
+	{
 		const spawn = vi.fn<ReviewRunDependencies["spawn"]>();
 		const kill = vi.fn<ReviewRunDependencies["kill"]>();
 
 		const response = await handleRunReviewRequest(
-			new Request(`http://127.0.0.1:7526/api/reviews/${REVIEW_ID}/run`, {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: "{not-json",
-			}),
+			new Request(
+				`http://127.0.0.1:7526/api/reviews/${REVIEW_ID}/run`,
+				{
+					method: "POST",
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+					body: "{not-json",
+				},
+			),
 			REVIEW_ID,
-			{index: db.index, kill, origin: "http://127.0.0.1:7526", spawn},
+			{
+				index: db.index,
+				kill,
+				origin: "http://127.0.0.1:7526",
+				spawn,
+			},
 		);
 
-		expect({
-			response: await describeResponse(response),
-			killCalls: kill.mock.calls,
-			spawnCalls: spawn.mock.calls,
-		}).toStrictEqual({
-			response: {
-				body: {error: "Invalid review run payload"},
-				cacheControl: "private, max-age=0, must-revalidate",
-				status: 400,
+		expect(
+			{
+				response: await describeResponse(response),
+				killCalls: kill.mock.calls,
+				spawnCalls: spawn.mock.calls,
 			},
-			killCalls: [],
-			spawnCalls: [],
-		});
+		).toStrictEqual(
+			{
+				response:
+				{
+					body:
+					{
+						error: "Invalid review run payload",
+					},
+					cacheControl: "private, max-age=0, must-revalidate",
+					status: 400,
+				},
+				killCalls: [],
+				spawnCalls: [],
+			},
+		);
 	});
 
-	it("creates and fetches a validated bundle from indexed session metadata", async () => {
+	it("creates and fetches a validated bundle from indexed session metadata", async () =>
+	{
 		insertSession();
 		const resolvedDirectories: string[] = [];
 		const diffDirectories: string[] = [];
 
 		const created = await handleCreateReviewRequest(
 			SESSION_ID,
-			dependencies({
-				resolveDirectory: async (cwd) => {
-					resolvedDirectories.push(cwd);
-					return Promise.resolve("/fixture/canonical-alice-repository");
+			dependencies(
+				{
+					resolveDirectory: async (cwd) =>
+					{
+						resolvedDirectories.push(cwd);
+						return Promise.resolve("/fixture/canonical-alice-repository");
+					},
+					buildDiff: async (cwd) =>
+					{
+						diffDirectories.push(cwd);
+						return Promise.resolve(DIFF);
+					},
 				},
-				buildDiff: async (cwd) => {
-					diffDirectories.push(cwd);
-					return Promise.resolve(DIFF);
-				},
-			}),
+			),
 		);
 		const fetched = handleGetReviewRequest(REVIEW_ID, db.index);
 
-		expect({
-			created: await describeResponse(created),
-			fetched: await describeResponse(fetched),
-			resolvedDirectories,
-			diffDirectories,
-			storedRows: db.index.select().from(schema.reviews).all(),
-		}).toStrictEqual({
-			created: {
-				body: {reviewId: REVIEW_ID},
-				cacheControl: "private, max-age=0, must-revalidate",
-				status: 200,
+		expect(
+			{
+				created: await describeResponse(created),
+				fetched: await describeResponse(fetched),
+				resolvedDirectories,
+				diffDirectories,
+				storedRows: db.index.select().from(schema.reviews).all(),
 			},
-			fetched: {
-				body: {
-					reviewId: REVIEW_ID,
-					sessionId: SESSION_ID,
-					cwd: "/fixture/canonical-alice-repository",
-					diff: DIFF,
-					summary: "Alice changed the fabricated value.",
-					findings: [],
-					generatedAt: GENERATED_AT.toISOString(),
-				},
-				cacheControl: "private, max-age=0, must-revalidate",
-				status: 200,
-			},
-			resolvedDirectories: [SESSION_CWD],
-			diffDirectories: ["/fixture/canonical-alice-repository"],
-			storedRows: [
+		).toStrictEqual(
+			{
+				created:
 				{
-					reviewId: REVIEW_ID,
-					bundle: {
+					body:
+					{
+						reviewId: REVIEW_ID,
+					},
+					cacheControl: "private, max-age=0, must-revalidate",
+					status: 200,
+				},
+				fetched:
+				{
+					body:
+					{
 						reviewId: REVIEW_ID,
 						sessionId: SESSION_ID,
 						cwd: "/fixture/canonical-alice-repository",
@@ -244,147 +305,191 @@ describe("review route handlers", () => {
 						findings: [],
 						generatedAt: GENERATED_AT.toISOString(),
 					},
+					cacheControl: "private, max-age=0, must-revalidate",
+					status: 200,
 				},
-			],
-		});
+				resolvedDirectories: [SESSION_CWD],
+				diffDirectories: ["/fixture/canonical-alice-repository"],
+				storedRows: [
+					{
+						reviewId: REVIEW_ID,
+						bundle:
+						{
+							reviewId: REVIEW_ID,
+							sessionId: SESSION_ID,
+							cwd: "/fixture/canonical-alice-repository",
+							diff: DIFF,
+							summary: "Alice changed the fabricated value.",
+							findings: [],
+							generatedAt: GENERATED_AT.toISOString(),
+						},
+					},
+				],
+			},
+		);
 	});
 
-	it("replaces findings while preserving their exact hunk addressing", async () => {
+	it("replaces findings while preserving their exact hunk addressing", async () =>
+	{
 		insertSession();
 		await handleCreateReviewRequest(SESSION_ID, dependencies());
 
 		const response = await handleReplaceReviewFindingsRequest(
-			findingsRequest({
-				findings: [
-					{
-						id: "finding-test-100",
-						file: "src/alice.ts",
-						side: "new",
-						line: 10,
-						endLine: 12,
-						severity: "high",
-						title: "Guard the fabricated value",
-						body: "The fabricated value can be negative.",
-						suggestion: "Math.max(0, value)",
-					},
-					{
-						id: "finding-test-200",
-						file: "src/bob.ts",
-						side: "old",
-						line: 20,
-						severity: "nit",
-						title: "Rename the fabricated helper",
-						body: "The fixture name is ambiguous.",
-						resolved: true,
-					},
-				],
-			}),
+			findingsRequest(
+				{
+					findings: [
+						{
+							id: "finding-test-100",
+							file: "src/alice.ts",
+							side: "new",
+							line: 10,
+							endLine: 12,
+							severity: "high",
+							title: "Guard the fabricated value",
+							body: "The fabricated value can be negative.",
+							suggestion: "Math.max(0, value)",
+						},
+						{
+							id: "finding-test-200",
+							file: "src/bob.ts",
+							side: "old",
+							line: 20,
+							severity: "nit",
+							title: "Rename the fabricated helper",
+							body: "The fixture name is ambiguous.",
+							resolved: true,
+						},
+					],
+				},
+			),
 			REVIEW_ID,
 			db.index,
 		);
 
-		expect(await describeResponse(response)).toStrictEqual({
-			body: {
-				reviewId: REVIEW_ID,
-				sessionId: SESSION_ID,
-				cwd: SESSION_CWD,
-				diff: DIFF,
-				summary: "Alice changed the fabricated value.",
-				findings: [
-					{
-						id: "finding-test-100",
-						file: "src/alice.ts",
-						side: "new",
-						line: 10,
-						endLine: 12,
-						severity: "high",
-						title: "Guard the fabricated value",
-						body: "The fabricated value can be negative.",
-						suggestion: "Math.max(0, value)",
-						resolved: false,
-					},
-					{
-						id: "finding-test-200",
-						file: "src/bob.ts",
-						side: "old",
-						line: 20,
-						severity: "nit",
-						title: "Rename the fabricated helper",
-						body: "The fixture name is ambiguous.",
-						resolved: true,
-					},
-				],
-				generatedAt: GENERATED_AT.toISOString(),
+		expect(await describeResponse(response)).toStrictEqual(
+			{
+				body:
+				{
+					reviewId: REVIEW_ID,
+					sessionId: SESSION_ID,
+					cwd: SESSION_CWD,
+					diff: DIFF,
+					summary: "Alice changed the fabricated value.",
+					findings: [
+						{
+							id: "finding-test-100",
+							file: "src/alice.ts",
+							side: "new",
+							line: 10,
+							endLine: 12,
+							severity: "high",
+							title: "Guard the fabricated value",
+							body: "The fabricated value can be negative.",
+							suggestion: "Math.max(0, value)",
+							resolved: false,
+						},
+						{
+							id: "finding-test-200",
+							file: "src/bob.ts",
+							side: "old",
+							line: 20,
+							severity: "nit",
+							title: "Rename the fabricated helper",
+							body: "The fixture name is ambiguous.",
+							resolved: true,
+						},
+					],
+					generatedAt: GENERATED_AT.toISOString(),
+				},
+				cacheControl: "private, max-age=0, must-revalidate",
+				status: 200,
 			},
-			cacheControl: "private, max-age=0, must-revalidate",
-			status: 200,
-		});
+		);
 	});
 
-	it("regenerates a review wholesale under the stable local session id", async () => {
+	it("regenerates a review wholesale under the stable local session id", async () =>
+	{
 		insertSession();
 		await handleCreateReviewRequest(SESSION_ID, dependencies());
 		await handleReplaceReviewFindingsRequest(
-			findingsRequest({
-				findings: [
-					{
-						id: "finding-test-100",
-						file: "src/alice.ts",
-						side: "new",
-						line: 10,
-						severity: "low",
-						title: "Old fabricated finding",
-						body: "This finding should be replaced.",
-						resolved: false,
-					},
-				],
-			}),
+			findingsRequest(
+				{
+					findings: [
+						{
+							id: "finding-test-100",
+							file: "src/alice.ts",
+							side: "new",
+							line: 10,
+							severity: "low",
+							title: "Old fabricated finding",
+							body: "This finding should be replaced.",
+							resolved: false,
+						},
+					],
+				},
+			),
 			REVIEW_ID,
 			db.index,
 		);
 
 		const regenerated = await handleCreateReviewRequest(
 			SESSION_ID,
-			dependencies({
-				buildDiff: async () => Promise.resolve("diff --git a/new.txt b/new.txt\n"),
-				now: () => new Date("2000-01-02T00:00:00.000Z"),
-			}),
+			dependencies(
+				{
+					buildDiff: async () => Promise.resolve("diff --git a/new.txt b/new.txt\n"),
+					now: () => new Date("2000-01-02T00:00:00.000Z"),
+				},
+			),
 		);
 		const stored = handleGetReviewRequest(REVIEW_ID, db.index);
 
-		expect({
-			regenerated: await describeResponse(regenerated),
-			stored: await describeResponse(stored),
-			rowCount: db.index.select().from(schema.reviews).all().length,
-		}).toStrictEqual({
-			regenerated: {
-				body: {reviewId: REVIEW_ID},
-				cacheControl: "private, max-age=0, must-revalidate",
-				status: 200,
+		expect(
+			{
+				regenerated: await describeResponse(regenerated),
+				stored: await describeResponse(stored),
+				rowCount: db.index.select().from(schema.reviews).all().length,
 			},
-			stored: {
-				body: {
-					reviewId: REVIEW_ID,
-					sessionId: SESSION_ID,
-					cwd: SESSION_CWD,
-					diff: "diff --git a/new.txt b/new.txt\n",
-					summary: "Alice changed the fabricated value.",
-					findings: [],
-					generatedAt: "2000-01-02T00:00:00.000Z",
+		).toStrictEqual(
+			{
+				regenerated:
+				{
+					body:
+					{
+						reviewId: REVIEW_ID,
+					},
+					cacheControl: "private, max-age=0, must-revalidate",
+					status: 200,
 				},
-				cacheControl: "private, max-age=0, must-revalidate",
-				status: 200,
+				stored:
+				{
+					body:
+					{
+						reviewId: REVIEW_ID,
+						sessionId: SESSION_ID,
+						cwd: SESSION_CWD,
+						diff: "diff --git a/new.txt b/new.txt\n",
+						summary: "Alice changed the fabricated value.",
+						findings: [],
+						generatedAt: "2000-01-02T00:00:00.000Z",
+					},
+					cacheControl: "private, max-age=0, must-revalidate",
+					status: 200,
+				},
+				rowCount: 1,
 			},
-			rowCount: 1,
-		});
+		);
 	});
 
-	it("rejects malformed finding payloads without changing the stored bundle", async () => {
+	it("rejects malformed finding payloads without changing the stored bundle", async () =>
+	{
 		insertSession();
 		await handleCreateReviewRequest(SESSION_ID, dependencies());
 		const malformedBodies: unknown[] = [
 			[],
-			{findings: [], extra: true},
+			{
+				findings: [],
+				extra: true,
+			},
 			{
 				findings: [
 					{
@@ -403,7 +508,8 @@ describe("review route handlers", () => {
 		];
 
 		const responses = [];
-		for (const body of malformedBodies) {
+		for (const body of malformedBodies)
+		{
 			responses.push(
 				await describeResponse(
 					await handleReplaceReviewFindingsRequest(findingsRequest(body), REVIEW_ID, db.index),
@@ -411,84 +517,142 @@ describe("review route handlers", () => {
 			);
 		}
 
-		expect({
-			responses,
-			stored: await describeResponse(handleGetReviewRequest(REVIEW_ID, db.index)),
-		}).toStrictEqual({
-			responses: Array.from({length: 4}, () => ({
-				body: {error: "Invalid findings payload"},
-				cacheControl: "private, max-age=0, must-revalidate",
-				status: 400,
-			})),
-			stored: {
-				body: {
-					reviewId: REVIEW_ID,
-					sessionId: SESSION_ID,
-					cwd: SESSION_CWD,
-					diff: DIFF,
-					summary: "Alice changed the fabricated value.",
-					findings: [],
-					generatedAt: GENERATED_AT.toISOString(),
-				},
-				cacheControl: "private, max-age=0, must-revalidate",
-				status: 200,
+		expect(
+			{
+				responses,
+				stored: await describeResponse(handleGetReviewRequest(REVIEW_ID, db.index)),
 			},
-		});
+		).toStrictEqual(
+			{
+				responses: Array.from(
+					{
+						length: 4,
+					},
+					() => (
+					{
+						body:
+						{
+							error: "Invalid findings payload",
+						},
+						cacheControl: "private, max-age=0, must-revalidate",
+						status: 400,
+					}),
+				),
+				stored:
+				{
+					body:
+					{
+						reviewId: REVIEW_ID,
+						sessionId: SESSION_ID,
+						cwd: SESSION_CWD,
+						diff: DIFF,
+						summary: "Alice changed the fabricated value.",
+						findings: [],
+						generatedAt: GENERATED_AT.toISOString(),
+					},
+					cacheControl: "private, max-age=0, must-revalidate",
+					status: 200,
+				},
+			},
+		);
 	});
 
-	it("returns precise errors for missing sessions, cwd values, directories, and reviews", async () => {
+	it("returns precise errors for missing sessions, cwd values, directories, and reviews", async () =>
+	{
 		const buildDiff = vi.fn<(cwd: string) => Promise<string>>();
-		const missingSession = await handleCreateReviewRequest("session-test-missing", dependencies({buildDiff}));
+		const missingSession = await handleCreateReviewRequest(
+			"session-test-missing",
+			dependencies(
+				{
+					buildDiff,
+				},
+			),
+		);
 
 		insertSession(null);
-		const missingCwd = await handleCreateReviewRequest(SESSION_ID, dependencies({buildDiff}));
+		const missingCwd = await handleCreateReviewRequest(
+			SESSION_ID,
+			dependencies(
+				{
+					buildDiff,
+				},
+			),
+		);
 		db.index.delete(schema.sessions).run();
 		insertSession();
 		const staleCwd = await handleCreateReviewRequest(
 			SESSION_ID,
-			dependencies({buildDiff, resolveDirectory: async () => Promise.resolve(null)}),
+			dependencies(
+				{
+					buildDiff,
+					resolveDirectory: async () => Promise.resolve(null),
+				},
+			),
 		);
 		const missingReview = handleGetReviewRequest("local-session-test-missing", db.index);
 		const missingFindingsReview = await handleReplaceReviewFindingsRequest(
-			findingsRequest({findings: []}),
+			findingsRequest(
+				{
+					findings: [],
+				},
+			),
 			"local-session-test-missing",
 			db.index,
 		);
 
-		expect({
-			responses: await Promise.all(
-				[missingSession, missingCwd, staleCwd, missingReview, missingFindingsReview].map(describeResponse),
-			),
-			buildDiffCalls: buildDiff.mock.calls,
-		}).toStrictEqual({
-			responses: [
-				{
-					body: {error: "Session not found"},
-					cacheControl: "private, max-age=0, must-revalidate",
-					status: 404,
-				},
-				{
-					body: {error: "Session has no working directory"},
-					cacheControl: "private, max-age=0, must-revalidate",
-					status: 422,
-				},
-				{
-					body: {error: "Session working directory is unavailable"},
-					cacheControl: "private, max-age=0, must-revalidate",
-					status: 422,
-				},
-				{
-					body: {error: "Review not found"},
-					cacheControl: "private, max-age=0, must-revalidate",
-					status: 404,
-				},
-				{
-					body: {error: "Review not found"},
-					cacheControl: "private, max-age=0, must-revalidate",
-					status: 404,
-				},
-			],
-			buildDiffCalls: [],
-		});
+		expect(
+			{
+				responses: await Promise.all(
+					[missingSession, missingCwd, staleCwd, missingReview, missingFindingsReview].map(describeResponse),
+				),
+				buildDiffCalls: buildDiff.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				responses: [
+					{
+						body:
+						{
+							error: "Session not found",
+						},
+						cacheControl: "private, max-age=0, must-revalidate",
+						status: 404,
+					},
+					{
+						body:
+						{
+							error: "Session has no working directory",
+						},
+						cacheControl: "private, max-age=0, must-revalidate",
+						status: 422,
+					},
+					{
+						body:
+						{
+							error: "Session working directory is unavailable",
+						},
+						cacheControl: "private, max-age=0, must-revalidate",
+						status: 422,
+					},
+					{
+						body:
+						{
+							error: "Review not found",
+						},
+						cacheControl: "private, max-age=0, must-revalidate",
+						status: 404,
+					},
+					{
+						body:
+						{
+							error: "Review not found",
+						},
+						cacheControl: "private, max-age=0, must-revalidate",
+						status: 404,
+					},
+				],
+				buildDiffCalls: [],
+			},
+		);
 	});
 });

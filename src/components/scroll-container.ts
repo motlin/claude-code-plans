@@ -4,8 +4,10 @@
  * `overflow-y` ancestor keeps this correct wherever the transcript is mounted,
  * and falls back to the document scroller when nothing else scrolls.
  */
-export function findScrollContainer(node: Element | null): Element {
-	for (let element = node?.parentElement ?? null; element; element = element.parentElement) {
+export function findScrollContainer(node: Element | null): Element
+{
+	for (let element = node?.parentElement ?? null; element; element = element.parentElement)
+	{
 		const {overflowY} = getComputedStyle(element);
 		if (overflowY === "auto" || overflowY === "scroll") return element;
 	}
@@ -19,7 +21,8 @@ export function findScrollContainer(node: Element | null): Element {
  * document parked partway down, so a viewport-rooted observer would call the
  * top of the transcript "off screen" no matter where the reader scrolled to.
  */
-export function toObserverRoot(scroller: Element): Element | null {
+export function toObserverRoot(scroller: Element): Element | null
+{
 	if (scroller === document.documentElement) return null;
 	if (scroller === document.scrollingElement) return null;
 	return scroller;

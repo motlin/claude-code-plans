@@ -6,17 +6,26 @@
 
 type HeaderMap = Record<string, string | string[] | undefined>;
 
-interface RequestLike {
+interface RequestLike
+{
 	method?: string | undefined;
 	url?: string | undefined;
-	socket: {destroyed: boolean};
+	socket:
+	{
+		destroyed: boolean;
+	};
 }
 
-interface DevServerLike {
-	middlewares: {use(fn: typeof closeWorkerConnection | typeof devRequestErrorHandler): unknown};
+interface DevServerLike
+{
+	middlewares:
+	{
+		use(fn: typeof closeWorkerConnection | typeof devRequestErrorHandler): unknown;
+	};
 }
 
-interface DevPlugin {
+interface DevPlugin
+{
 	name: string;
 	apply: "serve";
 	enforce?: "pre";
@@ -36,16 +45,24 @@ const CLIENT_DISCONNECT_CODES = new Set([
  * never a stale one to reuse. A fresh loopback connection costs next to nothing; a stalled worker just answers late.
  */
 export function closeWorkerConnection(
-	req: {headers: HeaderMap; rawHeaders: string[]},
+	req:
+	{
+		headers: HeaderMap;
+		rawHeaders: string[];
+	},
 	_res: unknown,
 	next: () => void,
-): void {
+): void
+{
 	req.headers["connection"] = "close";
 	// srvx builds the forwarded request's headers from rawHeaders, not the parsed map.
 	const index = req.rawHeaders.findIndex((name, i) => i % 2 === 0 && name.toLowerCase() === "connection");
-	if (index === -1) {
+	if (index === -1)
+	{
 		req.rawHeaders.push("Connection", "close");
-	} else {
+	}
+	else
+	{
 		req.rawHeaders[index + 1] = "close";
 	}
 	next();
@@ -58,15 +75,21 @@ export function closeWorkerConnection(
 export function devRequestErrorHandler(
 	err: unknown,
 	req: RequestLike,
-	res: {destroyed: boolean},
+	res:
+	{
+		destroyed: boolean;
+	},
 	next: (err: unknown) => void,
-): void {
+): void
+{
 	const code = err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
 	const clientGone = req.socket.destroyed || res.destroyed;
-	if (clientGone && code !== undefined && CLIENT_DISCONNECT_CODES.has(code)) {
+	if (clientGone && code !== undefined && CLIENT_DISCONNECT_CODES.has(code))
+	{
 		return;
 	}
-	if (err instanceof Error) {
+	if (err instanceof Error)
+	{
 		err.message = `${err.message} (${req.method ?? "GET"} ${req.url ?? ""})`;
 	}
 	next(err);
@@ -76,21 +99,25 @@ export function devRequestErrorHandler(
  * The connection middleware must run before nitro's pre middleware, which dispatches matched routes directly;
  * the error handler must be registered after nitro's catch-all, so list these plugins after `nitro()`.
  */
-export function devWorkerProxy(): [DevPlugin, DevPlugin] {
+export function devWorkerProxy(): [DevPlugin, DevPlugin]
+{
 	return [
 		{
 			name: "ccp:dev-worker-connection-close",
 			apply: "serve",
 			enforce: "pre",
-			configureServer(server) {
+			configureServer(server)
+			{
 				server.middlewares.use(closeWorkerConnection);
 			},
 		},
 		{
 			name: "ccp:dev-request-errors",
 			apply: "serve",
-			configureServer(server) {
-				return () => {
+			configureServer(server)
+			{
+				return () =>
+				{
 					server.middlewares.use(devRequestErrorHandler);
 				};
 			},

@@ -1,13 +1,28 @@
 /** claude.ai/code's session hover card: Needs input rows open sooner and wider, with reply controls. */
-export const SESSION_HOVER_CARD = {
-	blocked: {delay: 400, width: "[--preview-card-min-w:440px] [--preview-card-max-w:440px] !px-0 !py-0"},
-	other: {delay: 500, width: "[--preview-card-min-w:340px] [--preview-card-max-w:340px]"},
+export const SESSION_HOVER_CARD =
+{
+	blocked:
+	{
+		delay: 400,
+		width: "[--preview-card-min-w:440px] [--preview-card-max-w:440px] !px-0 !py-0",
+	},
+	other:
+	{
+		delay: 500,
+		width: "[--preview-card-min-w:340px] [--preview-card-max-w:340px]",
+	},
 } as const;
 
 export const CLOSE_DELAY_MS = 200;
 
 /** Upstream's PreviewCard collision padding, clear of the 48px titlebar row. */
-export const COLLISION_PADDING = {top: 48, right: 8, bottom: 8, left: 8};
+export const COLLISION_PADDING =
+{
+	top: 48,
+	right: 8,
+	bottom: 8,
+	left: 8,
+};
 
 /** Upstream's PreviewCard shell; the ring and drop shadows are its light `shadow-panel`. */
 export const POPUP_CLASS =

@@ -3,7 +3,8 @@
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {useState} from "react";
-import {
+import
+{
 	ComposerNoticeProvider,
 	ComposerNoticeRegion,
 	NOTICE_ENTER_CLASS,
@@ -13,20 +14,30 @@ import {useComposerNotice} from "../src/components/composer-notice-context";
 import type {NoticeSlot} from "../src/lib/composer-notices";
 import {UsagePaceBand} from "../src/components/usage-pace-banner";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.useRealTimers();
 });
 
-function Band({slot, id, text}: {slot: NoticeSlot; id: string; text: string}) {
-	const claimed = useComposerNotice(slot, {id, content: <span>{text}</span>});
+function Band({slot, id, text}: {slot: NoticeSlot; id: string; text: string})
+{
+	const claimed = useComposerNotice(
+		slot,
+		{
+			id,
+			content: <span>{text}</span>,
+		},
+	);
 	return claimed ? null : <span data-inline-band>{text}</span>;
 }
 
-function itemsOf(container: HTMLElement) {
+function itemsOf(container: HTMLElement)
+{
 	const status = container.querySelectorAll('[role="status"][aria-live="polite"]');
 	expect(status).toHaveLength(1);
-	return [...status[0]!.children].map((item) => ({
+	return [...status[0]!.children].map((item) => (
+	{
 		text: item.textContent,
 		className: item.className,
 		dockCard: item.getAttribute("data-cds-dock-card"),
@@ -34,8 +45,10 @@ function itemsOf(container: HTMLElement) {
 	}));
 }
 
-describe("ComposerNoticeRegion", () => {
-	it("stacks registered notices in NOTICE_ORDER inside one polite status list", () => {
+describe("ComposerNoticeRegion", () =>
+{
+	it("stacks registered notices in NOTICE_ORDER inside one polite status list", () =>
+	{
 		const {container} = render(
 			<ComposerNoticeProvider>
 				<ComposerNoticeRegion />
@@ -53,14 +66,30 @@ describe("ComposerNoticeRegion", () => {
 		expect(list?.className).toBe("w-full");
 		expect(list?.firstElementChild?.getAttribute("aria-atomic")).toBe("false");
 		expect(itemsOf(container)).toStrictEqual([
-			{text: "Workflow", className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`, dockCard: "", leaving: null},
-			{text: "Limit", className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`, dockCard: "", leaving: null},
-			{text: "Sleeping", className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`, dockCard: "", leaving: null},
+			{
+				text: "Workflow",
+				className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`,
+				dockCard: "",
+				leaving: null,
+			},
+			{
+				text: "Limit",
+				className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`,
+				dockCard: "",
+				leaving: null,
+			},
+			{
+				text: "Sleeping",
+				className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`,
+				dockCard: "",
+				leaving: null,
+			},
 		]);
 		expect(container.querySelectorAll("[data-inline-band]")).toHaveLength(0);
 	});
 
-	it("skips the enter animation for a notice registered before the region mounted", () => {
+	it("skips the enter animation for a notice registered before the region mounted", () =>
+	{
 		const {container} = render(
 			<ComposerNoticeProvider>
 				<Band slot="limit" id="code_usage_limit" text="Limit" />
@@ -69,11 +98,17 @@ describe("ComposerNoticeRegion", () => {
 		);
 
 		expect(itemsOf(container)).toStrictEqual([
-			{text: "Limit", className: "pb-[var(--cds-gap-xs)]", dockCard: "", leaving: null},
+			{
+				text: "Limit",
+				className: "pb-[var(--cds-gap-xs)]",
+				dockCard: "",
+				leaving: null,
+			},
 		]);
 	});
 
-	it("marks a notice leaving, in its slot position, when its band unregisters", () => {
+	it("marks a notice leaving, in its slot position, when its band unregisters", () =>
+	{
 		const {container, rerender} = render(
 			<ComposerNoticeProvider>
 				<ComposerNoticeRegion />
@@ -95,23 +130,32 @@ describe("ComposerNoticeRegion", () => {
 				dockCard: "",
 				leaving: "",
 			},
-			{text: "Sleeping", className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`, dockCard: "", leaving: null},
+			{
+				text: "Sleeping",
+				className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`,
+				dockCard: "",
+				leaving: null,
+			},
 		]);
 	});
 
-	it("holds a leaving notice inert for up to 300ms and hands focus to the list root", () => {
+	it("holds a leaving notice inert for up to 300ms and hands focus to the list root", () =>
+	{
 		vi.useFakeTimers();
-		function Dismissible() {
+		function Dismissible()
+		{
 			const [shown, setShown] = useState(true);
 			useComposerNotice(
 				"limit",
 				shown
-					? {
+					?
+						{
 							id: "code_usage_limit",
 							content: (
 								<button
 									type="button"
-									onClick={() => {
+									onClick={() =>
+									{
 										setShown(false);
 									}}
 								>
@@ -129,7 +173,12 @@ describe("ComposerNoticeRegion", () => {
 				<Dismissible />
 			</ComposerNoticeProvider>,
 		);
-		const dismiss = getByRole("button", {name: "Dismiss"});
+		const dismiss = getByRole(
+			"button",
+			{
+				name: "Dismiss",
+			},
+		);
 		dismiss.focus();
 		fireEvent.click(dismiss);
 
@@ -140,18 +189,21 @@ describe("ComposerNoticeRegion", () => {
 		);
 		expect(document.activeElement).toBe(list);
 
-		act(() => {
+		act(() =>
+		{
 			vi.advanceTimersByTime(299);
 		});
 		expect(container.querySelector("[inert]")).toBe(leaving);
-		act(() => {
+		act(() =>
+		{
 			vi.advanceTimersByTime(1);
 		});
 		expect(container.querySelector("[inert]")).toBeNull();
 		expect(document.activeElement).toBe(list);
 	});
 
-	it("drops a leaving notice as soon as its exit animation ends", () => {
+	it("drops a leaving notice as soon as its exit animation ends", () =>
+	{
 		const {container, rerender} = render(
 			<ComposerNoticeProvider>
 				<ComposerNoticeRegion />
@@ -167,24 +219,52 @@ describe("ComposerNoticeRegion", () => {
 		expect(leaving?.textContent).toBe("Limit");
 
 		// jsdom has no AnimationEvent, so React listens for the prefixed name instead of `animationend`.
-		fireEvent(leaving!, new Event("webkitAnimationEnd", {bubbles: true}));
+		fireEvent(
+			leaving!,
+			new Event(
+				"webkitAnimationEnd",
+				{
+					bubbles: true,
+				},
+			),
+		);
 
 		expect(itemsOf(container)).toStrictEqual([]);
 	});
 
-	it("leaves a band inline when no region provider is mounted", () => {
+	it("leaves a band inline when no region provider is mounted", () =>
+	{
 		const {container} = render(<Band slot="limit" id="code_usage_limit" text="Limit" />);
 
 		expect(container.innerHTML).toBe('<span data-inline-band="true">Limit</span>');
 	});
 
-	it("draws the usage band as a cds Banner card inside the region and keeps the animated shell inline", () => {
-		function RegisteredBand() {
-			const claimed = useComposerNotice("limit", {
-				id: "code_usage_limit",
-				content: <UsagePaceBand resetText="Resets at 5:00 PM" onDismiss={() => {}} />,
-			});
-			return claimed ? null : <UsagePaceBand resetText="Resets at 5:00 PM" onDismiss={() => {}} />;
+	it("draws the usage band as a cds Banner card inside the region and keeps the animated shell inline", () =>
+	{
+		function RegisteredBand()
+		{
+			const claimed = useComposerNotice(
+				"limit",
+				{
+					id: "code_usage_limit",
+					content: (
+						<UsagePaceBand
+							resetText="Resets at 5:00 PM"
+							onDismiss={() =>
+							{
+							}}
+						/>
+					),
+				},
+			);
+			return claimed ? null : (
+				<UsagePaceBand
+					resetText="Resets at 5:00 PM"
+					onDismiss={() =>
+					{
+					}}
+				/>
+			);
 		}
 		const {container: inRegion} = render(
 			<ComposerNoticeProvider>
@@ -196,16 +276,21 @@ describe("ComposerNoticeRegion", () => {
 
 		const bandClass =
 			"flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body";
-		expect({
-			inRegionBanner: inRegion.querySelectorAll('[data-cds="ChatComposerNotices"] [data-cds="Banner"]').length,
-			inRegionShell: inRegion.querySelector(".bg-alpha-1"),
-			inlineBanner: inline.querySelector('[data-cds="Banner"]'),
-			inline: inline.querySelector(".bg-alpha-1")?.className,
-		}).toStrictEqual({
-			inRegionBanner: 1,
-			inRegionShell: null,
-			inlineBanner: null,
-			inline: `${bandClass} usage-band-enter`,
-		});
+		expect(
+			{
+				inRegionBanner: inRegion.querySelectorAll('[data-cds="ChatComposerNotices"] [data-cds="Banner"]')
+					.length,
+				inRegionShell: inRegion.querySelector(".bg-alpha-1"),
+				inlineBanner: inline.querySelector('[data-cds="Banner"]'),
+				inline: inline.querySelector(".bg-alpha-1")?.className,
+			},
+		).toStrictEqual(
+			{
+				inRegionBanner: 1,
+				inRegionShell: null,
+				inlineBanner: null,
+				inline: `${bandClass} usage-band-enter`,
+			},
+		);
 	});
 });

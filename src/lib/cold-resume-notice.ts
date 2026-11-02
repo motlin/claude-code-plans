@@ -9,20 +9,26 @@
 /** Upstream `72e5`: the idle stretch after which the prompt cache counts as cold. */
 export const COLD_RESUME_IDLE_MS = 7_200_000;
 
-export interface ColdResumeQuota {
+export interface ColdResumeQuota
+{
 	readonly percentPerMillionTokens: number;
 	readonly minPercent: number;
 }
 
 /** Upstream's preview quota `Bge`. */
-export const COLD_RESUME_QUOTA: ColdResumeQuota = {percentPerMillionTokens: 40, minPercent: 5};
+export const COLD_RESUME_QUOTA: ColdResumeQuota =
+{
+	percentPerMillionTokens: 40,
+	minPercent: 5,
+};
 
 /**
  * Upstream ships these as compiled intl ids with no default message (heading `1ozh099`, detail
  * `10bu3nc` / `jjr9a3`, actions `10c4epw` / `cx2164` / `1wchwgr`, tips `1mtizas` / `5j44f9`); the
  * English is inferred from the ICU arguments until the live catalog can be read.
  */
-export const COLD_RESUME_COPY = {
+export const COLD_RESUME_COPY =
+{
 	heading: "This session has been idle",
 	detail: "Idle {idle}. Resuming will use about {percent} of your 5-hour limit.",
 	detailUsesRest: "Idle {idle}. Resuming will likely use the rest of your 5-hour limit.",
@@ -34,7 +40,8 @@ export const COLD_RESUME_COPY = {
 } as const;
 
 /** Upstream `Lge`: the rounded share of the five-hour window, or null under the quota's floor. */
-export function coldResumePercent(tokens: number, quota: ColdResumeQuota): number | null {
+export function coldResumePercent(tokens: number, quota: ColdResumeQuota): number | null
+{
 	const percent = (tokens / 1e6) * quota.percentPerMillionTokens;
 	return percent >= quota.minPercent ? Math.round(percent) : null;
 }
@@ -46,22 +53,30 @@ export function idleSince({
 }: {
 	lastRecordMs: number | null;
 	lastActivityMs: number | null;
-}): number | null {
+}): number | null
+{
 	if (lastRecordMs === null) return lastActivityMs;
 	if (lastActivityMs === null) return lastRecordMs;
 	return Math.max(lastRecordMs, lastActivityMs);
 }
 
 /** Upstream `cj` with `unitDisplay: "long"`: whole hours, or whole days from 2880 minutes. */
-export function formatIdleDuration(minutes: number): string {
+export function formatIdleDuration(minutes: number): string
+{
 	const days = minutes >= 2880;
 	const value = days ? Math.floor(minutes / 1440) : Math.floor(minutes / 60);
-	return new Intl.NumberFormat("en-US", {style: "unit", unit: days ? "day" : "hour", unitDisplay: "long"}).format(
-		value,
-	);
+	return new Intl.NumberFormat(
+		"en-US",
+		{
+			style: "unit",
+			unit: days ? "day" : "hour",
+			unitDisplay: "long",
+		},
+	).format(value);
 }
 
-export interface ColdResumeDecision {
+export interface ColdResumeDecision
+{
 	readonly since: number;
 	readonly idleMinutes: number;
 	readonly percent: number;
@@ -69,14 +84,21 @@ export interface ColdResumeDecision {
 }
 
 /** Upstream `k6`'s detail line. */
-export function coldResumeDetail({idleMinutes, percent, usesRest}: Omit<ColdResumeDecision, "since">): string {
+export function coldResumeDetail({idleMinutes, percent, usesRest}: Omit<ColdResumeDecision, "since">): string
+{
 	const idle = formatIdleDuration(idleMinutes);
 	if (usesRest) return COLD_RESUME_COPY.detailUsesRest.replace("{idle}", idle);
-	const percentText = new Intl.NumberFormat("en-US", {style: "percent"}).format(percent / 100);
+	const percentText = new Intl.NumberFormat(
+		"en-US",
+		{
+			style: "percent",
+		},
+	).format(percent / 100);
 	return COLD_RESUME_COPY.detail.replace("{idle}", idle).replace("{percent}", percentText);
 }
 
-export interface ColdResumeInput {
+export interface ColdResumeInput
+{
 	readonly nowMs: number;
 	readonly since: number | null;
 	readonly contextTokens: number | null;
@@ -95,7 +117,8 @@ export interface ColdResumeInput {
 }
 
 /** Upstream `Wge`'s show decision (`ce` / `le`), less the experiment, plan and ownership gates. */
-export function decideColdResume(input: ColdResumeInput): ColdResumeDecision | null {
+export function decideColdResume(input: ColdResumeInput): ColdResumeDecision | null
+{
 	const {since, contextTokens, fiveHourPct} = input;
 	if (since === null || contextTokens === null || fiveHourPct === null) return null;
 	if (input.running || input.heldInput || !input.focused || !input.visible || input.anyWindowSpent) return null;
@@ -104,12 +127,19 @@ export function decideColdResume(input: ColdResumeInput): ColdResumeDecision | n
 	if (idleMs < COLD_RESUME_IDLE_MS) return null;
 	const percent = coldResumePercent(contextTokens, COLD_RESUME_QUOTA);
 	if (percent === null) return null;
-	return {since, idleMinutes: Math.round(idleMs / 60_000), percent, usesRest: percent >= 100 - fiveHourPct};
+	return {
+		since,
+		idleMinutes: Math.round(idleMs / 60_000),
+		percent,
+		usesRest: percent >= 100 - fiveHourPct,
+	};
 }
 
 /** Upstream `D6`'s newest message time: the last transcript record carrying a string `timestamp`. */
-export function newestRecordMs(records: readonly unknown[]): number | null {
-	for (let i = records.length - 1; i >= 0; i--) {
+export function newestRecordMs(records: readonly unknown[]): number | null
+{
+	for (let i = records.length - 1; i >= 0; i--)
+	{
 		const record = records[i];
 		if (typeof record !== "object" || record === null || !("timestamp" in record)) continue;
 		const {timestamp} = record;
@@ -120,7 +150,8 @@ export function newestRecordMs(records: readonly unknown[]): number | null {
 	return null;
 }
 
-interface SpendableWindow {
+interface SpendableWindow
+{
 	readonly usedPercentage: number;
 	/** Epoch seconds. */
 	readonly resetsAt: number;
@@ -128,9 +159,14 @@ interface SpendableWindow {
 
 /** Upstream `ae` inverted: some window sits at its limit before its reset, so the limit band shows instead. */
 export function usageWindowSpent(
-	usage: {readonly fiveHour: SpendableWindow | null; readonly weekly: SpendableWindow | null} | null,
+	usage:
+	{
+		readonly fiveHour: SpendableWindow | null;
+		readonly weekly: SpendableWindow | null;
+	} | null,
 	nowMs: number,
-): boolean {
+): boolean
+{
 	if (usage === null) return false;
 	return [usage.fiveHour, usage.weekly].some(
 		(window) => window !== null && window.usedPercentage >= 100 && window.resetsAt * 1000 > nowMs,
@@ -138,7 +174,8 @@ export function usageWindowSpent(
 }
 
 /** One session's retired idle stretches. */
-export interface ColdResumeRecord {
+export interface ColdResumeRecord
+{
 	answeredSince: number | null;
 	sentOverSince: number | null;
 }
@@ -147,16 +184,23 @@ export interface ColdResumeRecord {
 const coldResumeStore = new Map<string, ColdResumeRecord>();
 
 /** The session's mutable record in the store, created on first use. */
-export function coldResumeRecord(sessionId: string): ColdResumeRecord {
+export function coldResumeRecord(sessionId: string): ColdResumeRecord
+{
 	let record = coldResumeStore.get(sessionId);
-	if (record === undefined) {
-		record = {answeredSince: null, sentOverSince: null};
+	if (record === undefined)
+	{
+		record =
+		{
+			answeredSince: null,
+			sentOverSince: null,
+		};
 		coldResumeStore.set(sessionId, record);
 	}
 	return record;
 }
 
 /** Forget every answered and sent-over stretch, as a page reload does. */
-export function resetColdResumeStore(): void {
+export function resetColdResumeStore(): void
+{
 	coldResumeStore.clear();
 }

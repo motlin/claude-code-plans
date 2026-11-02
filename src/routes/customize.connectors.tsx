@@ -3,15 +3,26 @@ import {createFileRoute, useSearch} from "@tanstack/react-router";
 import {prefetchCustomizeSection} from "../components/customize/section-prefetch";
 import {ConnectorsSection} from "../components/customize/section-views";
 
-export const Route = createFileRoute("/customize/connectors")({
-	component: CustomizeConnectors,
-	loader: ({context: {queryClient}}) => {
-		prefetchCustomizeSection(queryClient, "connectors");
+export const Route = createFileRoute("/customize/connectors")(
+	{
+		component: CustomizeConnectors,
+		loader: ({context: {queryClient}}) =>
+		{
+			prefetchCustomizeSection(queryClient, "connectors");
+		},
+		head: () => (
+		{
+			meta: [pageTitle("Connectors · Customize")],
+		}),
 	},
-	head: () => ({meta: [pageTitle("Connectors · Customize")]}),
-});
+);
 
-function CustomizeConnectors() {
-	const search = useSearch({from: "/customize"});
+function CustomizeConnectors()
+{
+	const search = useSearch(
+		{
+			from: "/customize",
+		},
+	);
 	return <ConnectorsSection search={search} />;
 }

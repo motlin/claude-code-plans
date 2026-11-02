@@ -32,7 +32,8 @@ export function TextPreviewDialog({
 	onClose: () => void;
 	/** Where focus returns on close; defaults to Base UI's previously focused element. */
 	finalFocus?: () => HTMLElement | boolean;
-}) {
+})
+{
 	const closeRef = useRef<HTMLButtonElement>(null);
 	const shown = text.slice(0, TEXT_PREVIEW_LIMIT);
 	const {size: sizeLabel, lines} = textPreviewStats(shown, size);
@@ -42,7 +43,8 @@ export function TextPreviewDialog({
 	return (
 		<Dialog.Root
 			open={open}
-			onOpenChange={(next) => {
+			onOpenChange={(next) =>
+			{
 				if (!next) onClose();
 			}}
 		>
@@ -52,7 +54,12 @@ export function TextPreviewDialog({
 						<Dialog.Backdrop className="fixed inset-0 bg-backdrop transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
 						<DialogPopup
 							initialFocus={closeRef}
-							{...(finalFocus === undefined ? {} : {finalFocus})}
+							{...(finalFocus === undefined
+								? {}
+								:
+									{
+										finalFocus,
+									})}
 							className="fixed top-1/2 left-1/2 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body font-normal text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100"
 						>
 							<div className={`${DIALOG_BODY_CLASS} ${pad.p} ${bandBody}`}>
@@ -60,7 +67,8 @@ export function TextPreviewDialog({
 									title={title}
 									closeRef={closeRef}
 									{...(variant === "file"
-										? {
+										?
+											{
 												description: (
 													<span
 														className={`${panels ? "" : "mb-3 mt-0.5 "}flex flex-wrap items-center gap-x-1.5 gap-y-2 text-xs`}

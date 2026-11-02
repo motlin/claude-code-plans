@@ -1,5 +1,6 @@
 import {type ReactNode, useCallback, useContext, useSyncExternalStore} from "react";
-import {
+import
+{
 	type FileTypeGlyph,
 	type FileTypeIconNode,
 	type FileTypeIconSet,
@@ -18,7 +19,8 @@ import {FILE_TYPE_ICON_SIZE_PX, type FileTypeIconSize} from "./file-type-icon-si
 import {Icon, type IconName} from "./ui/icon";
 
 /** Upstream's monochrome cds glyph per kind, drawn through the local Icon. */
-const GLYPH_ICONS: Readonly<Record<FileTypeGlyph, IconName>> = {
+const GLYPH_ICONS: Readonly<Record<FileTypeGlyph, IconName>> =
+{
 	doc: "File",
 	code: "Code",
 	data: "Database",
@@ -31,7 +33,8 @@ const GLYPH_ICONS: Readonly<Record<FileTypeGlyph, IconName>> = {
 	skill: "Scroll",
 };
 
-const REACT_ATTRIBUTE_NAMES: Readonly<Record<string, string>> = {
+const REACT_ATTRIBUTE_NAMES: Readonly<Record<string, string>> =
+{
 	"fill-rule": "fillRule",
 	"clip-rule": "clipRule",
 	"stroke-width": "strokeWidth",
@@ -42,20 +45,25 @@ const REACT_ATTRIBUTE_NAMES: Readonly<Record<string, string>> = {
 };
 
 /** The palette's CSS variable prefix (src/styles/file-type-icons.css): pierre's is unscoped, the others carry the set's name. */
-function paletteVariablePrefix(setName: FileTypeIconSetName): string {
+function paletteVariablePrefix(setName: FileTypeIconSetName): string
+{
 	return setName === "pierre" ? "--fti-" : `--fti-${setName}-`;
 }
 
 /** `"$name"` → the palette's CSS variable; anything else is literal. */
-function attributeValue(value: string, prefix: string): string {
+function attributeValue(value: string, prefix: string): string
+{
 	return value.startsWith("$") ? `var(${prefix}${value.slice(1)})` : value;
 }
 
-function renderNodes(nodes: readonly FileTypeIconNode[], prefix: string): ReactNode[] {
+function renderNodes(nodes: readonly FileTypeIconNode[], prefix: string): ReactNode[]
+{
 	const rendered: ReactNode[] = [];
-	for (const [key, [Element, attributes, children]] of nodes.entries()) {
+	for (const [key, [Element, attributes, children]] of nodes.entries())
+	{
 		const props: Record<string, string> = {};
-		for (const [name, value] of Object.entries(attributes)) {
+		for (const [name, value] of Object.entries(attributes))
+		{
 			props[REACT_ATTRIBUTE_NAMES[name] ?? name] = attributeValue(value, prefix);
 		}
 		rendered.push(
@@ -68,9 +76,11 @@ function renderNodes(nodes: readonly FileTypeIconNode[], prefix: string): ReactN
 }
 
 /** Upstream `O[set]`: the named set once loaded (pierre at once), starting its load; undefined for no set. */
-function useFileTypeIconSet(name: FileTypeIconSetName | null): FileTypeIconSet | undefined {
+function useFileTypeIconSet(name: FileTypeIconSetName | null): FileTypeIconSet | undefined
+{
 	const subscribe = useCallback(
-		(listener: () => void) => {
+		(listener: () => void) =>
+		{
 			const unsubscribe = subscribeFileTypeIconSets(listener);
 			if (name !== null) void loadFileTypeIconSet(name).catch(() => undefined);
 			return unsubscribe;
@@ -97,19 +107,25 @@ export function FileTypeIcon({
 	size: FileTypeIconSize;
 	className?: string;
 	fallback?: ReactNode;
-}): ReactNode {
+}): ReactNode
+{
 	const activeSet = useContext(FileTypeIconSetContext);
 	const setName = activeSet === null ? null : fileTypeIconSetFor(fileName, activeSet);
 	const set = useFileTypeIconSet(setName);
 	const px = `${FILE_TYPE_ICON_SIZE_PX[size]}px`;
-	const style = {width: px, height: px};
+	const style =
+	{
+		width: px,
+		height: px,
+	};
 	const glyph = fileTypeGlyph(fileName);
 	const id =
 		set === undefined
 			? null
 			: (resolveFileTypeIcon(fileName, set) ?? (glyph === "doc" ? fileTypeIconDefault(set) : null));
 	const tree = id === null || set === undefined ? undefined : set.icons[id];
-	if (tree === undefined || setName === null) {
+	if (tree === undefined || setName === null)
+	{
 		if (fallback !== undefined) return fallback;
 		return (
 			<Icon

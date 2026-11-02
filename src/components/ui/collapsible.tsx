@@ -1,7 +1,8 @@
 import {Collapsible as BaseCollapsible} from "@base-ui/react/collapsible";
 import {type ComponentProps, type ReactNode, type Ref, useCallback} from "react";
 
-import {
+import
+{
 	COLLAPSIBLE_CARET_CLASS,
 	COLLAPSIBLE_PANEL_CLASS,
 	COLLAPSIBLE_TRIGGER_CLASS,
@@ -28,21 +29,24 @@ function preventMultiClickSelection(event: {
 	button: number;
 	target: EventTarget;
 	preventDefault: () => void;
-}) {
+})
+{
 	if (event.detail <= 1 || event.button !== 0) return;
 	const target = event.target;
 	if (target instanceof Element && target.closest(EDITABLE_TARGET) !== null) return;
 	event.preventDefault();
 }
 
-function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
+function assignRef<T>(ref: Ref<T> | undefined, value: T | null)
+{
 	if (typeof ref === "function") ref(value);
 	else if (ref !== null && ref !== undefined) ref.current = value;
 }
 
 type RootProps = ComponentProps<typeof BaseCollapsible.Root>;
 
-export function Root(props: RootProps) {
+export function Root(props: RootProps)
+{
 	return <BaseCollapsible.Root data-cds="Collapsible" {...props} />;
 }
 
@@ -50,7 +54,8 @@ type BaseTriggerProps = ComponentProps<typeof BaseCollapsible.Trigger>;
 
 export type CaretPosition = "start" | "end" | "row-end";
 
-export interface CollapsibleTriggerProps extends Omit<BaseTriggerProps, "className" | "children"> {
+export interface CollapsibleTriggerProps extends Omit<BaseTriggerProps, "className" | "children">
+{
 	className?: string | undefined;
 	children?: ReactNode;
 	/** Default `start`: the caret before the label. `end` / `row-end` put it after, pushed to the row's end. */
@@ -67,16 +72,22 @@ export function Trigger({
 	render,
 	onMouseDown,
 	...rest
-}: CollapsibleTriggerProps) {
-	const handleMouseDown: BaseTriggerProps["onMouseDown"] = (event) => {
+}: CollapsibleTriggerProps)
+{
+	const handleMouseDown: BaseTriggerProps["onMouseDown"] = (event) =>
+	{
 		onMouseDown?.(event);
 		preventMultiClickSelection(event);
 	};
-	if (render !== undefined) {
+	if (render !== undefined)
+	{
 		return (
 			<BaseCollapsible.Trigger
 				render={render}
-				{...(className !== undefined && {className})}
+				{...(className !== undefined &&
+				{
+					className,
+				})}
 				{...rest}
 				onMouseDown={handleMouseDown}
 			>
@@ -95,7 +106,13 @@ export function Trigger({
 			name={caretPosition === "row-end" ? "CaretRight" : "CaretRightFilled"}
 			size="sm"
 			className={caretClass}
-			{...(caretPosition === "end" && {style: {translate: "0 0.5px"}})}
+			{...(caretPosition === "end" &&
+			{
+				style:
+				{
+					translate: "0 0.5px",
+				},
+			})}
 		/>
 	);
 	return (
@@ -113,17 +130,21 @@ export function Trigger({
 
 type BasePanelProps = ComponentProps<typeof BaseCollapsible.Panel>;
 
-export interface CollapsiblePanelProps extends Omit<BasePanelProps, "className"> {
+export interface CollapsiblePanelProps extends Omit<BasePanelProps, "className">
+{
 	className?: string | undefined;
 }
 
-export function Panel({className, ref, ...rest}: CollapsiblePanelProps) {
+export function Panel({className, ref, ...rest}: CollapsiblePanelProps)
+{
 	const animatingRef = useAnimatingAttr();
 	const mergedRef = useCallback(
-		(element: HTMLDivElement | null) => {
+		(element: HTMLDivElement | null) =>
+		{
 			assignRef(ref, element);
 			const cleanup = animatingRef(element);
-			return () => {
+			return () =>
+			{
 				cleanup?.();
 				assignRef(ref, null);
 			};

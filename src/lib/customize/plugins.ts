@@ -12,27 +12,32 @@ import {readJson} from "./skills";
  * carry many churning keys (source, author, lspServers, …), so callers pick
  * these keys out first and parse that projection strictly.
  */
-const MarketplaceEntryProjectionSchema = z.strictObject({
-	name: z.string(),
-	category: z.string().optional(),
-	tags: z.array(z.string()).optional(),
-	homepage: z.string().optional(),
-});
+const MarketplaceEntryProjectionSchema = z.strictObject(
+	{
+		name: z.string(),
+		category: z.string().optional(),
+		tags: z.array(z.string()).optional(),
+		homepage: z.string().optional(),
+	},
+);
 type MarketplaceEntry = z.infer<typeof MarketplaceEntryProjectionSchema>;
 
 const PROJECTED_KEYS = ["name", "category", "tags", "homepage"] as const;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown>
+{
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function readMarketplaceEntry(claudeDir: string, plugin: PluginInfo): Promise<MarketplaceEntry | undefined> {
+async function readMarketplaceEntry(claudeDir: string, plugin: PluginInfo): Promise<MarketplaceEntry | undefined>
+{
 	const manifest = await readJson(
 		join(claudeDir, "plugins", "marketplaces", plugin.marketplace, ".claude-plugin", "marketplace.json"),
 	);
 	if (!isRecord(manifest) || !Array.isArray(manifest["plugins"])) return undefined;
 	const pluginName = plugin.id.slice(0, plugin.id.lastIndexOf("@"));
-	for (const entry of manifest["plugins"]) {
+	for (const entry of manifest["plugins"])
+	{
 		if (!isRecord(entry) || entry["name"] !== pluginName) continue;
 		const projection = Object.fromEntries(
 			PROJECTED_KEYS.filter((key) => key in entry).map((key) => [key, entry[key]]),
@@ -47,11 +52,13 @@ async function readMarketplaceEntry(claudeDir: string, plugin: PluginInfo): Prom
  * One row per event × matcher group in the plugin's hooks/hooks.json, in file
  * order. A file that fails the strict schema contributes no rows.
  */
-async function readPluginHooks(installPath: string): Promise<PluginHookRow[]> {
+async function readPluginHooks(installPath: string): Promise<PluginHookRow[]>
+{
 	const parsed = PluginHooksFileSchema.safeParse(await readJson(join(installPath, "hooks", "hooks.json")));
 	if (!parsed.success) return [];
 	return Object.entries(parsed.data.hooks).flatMap(([event, groups]) =>
-		groups.map((group) => ({
+		groups.map((group) => (
+		{
 			event,
 			matcher: group.matcher ?? "",
 			handlers: group.hooks.map((hook) => (hook.type === "command" ? hook.command : hook.url)),
@@ -59,7 +66,8 @@ async function readPluginHooks(installPath: string): Promise<PluginHookRow[]> {
 	);
 }
 
-export interface ReadPluginDetailOptions {
+export interface ReadPluginDetailOptions
+{
 	/** Defaults to ~/.claude. */
 	claudeDir?: string;
 }
@@ -72,7 +80,8 @@ export interface ReadPluginDetailOptions {
 export async function readPluginDetail(
 	plugin: PluginInfo,
 	{claudeDir = join(homedir(), ".claude")}: ReadPluginDetailOptions = {},
-): Promise<PluginDetail> {
+): Promise<PluginDetail>
+{
 	const [tree, hooks, connectors, entry] = await Promise.all([
 		scanPluginTree(plugin.installPath),
 		readPluginHooks(plugin.installPath),
@@ -84,7 +93,12 @@ export async function readPluginDetail(
 	];
 	return {
 		plugin,
-		...(entry?.homepage === undefined ? {} : {homepage: entry.homepage}),
+		...(entry?.homepage === undefined
+			? {}
+			:
+				{
+					homepage: entry.homepage,
+				}),
 		categories,
 		tree: tree?.children ?? [],
 		connectors,

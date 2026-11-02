@@ -9,8 +9,10 @@ const LEGIBILITY_JOINERS: ReadonlySet<number> = new Set([0x200c, 0x200d, 0xfe0e,
  * Upstream's `kr(text, {keepLegibilityJoiners: true})` (shared-l-p-m-w-0): a C0 control shows as its
  * control picture, DEL as ␡, and every other hidden character as U+FFFD; tab and newline pass.
  */
-export function replaceHiddenChars(text: string): string {
-	return text.replace(HIDDEN_RE, (char) => {
+export function replaceHiddenChars(text: string): string
+{
+	return text.replace(HIDDEN_RE, (char) =>
+	{
 		const code = char.codePointAt(0) ?? 0;
 		if (LEGIBILITY_JOINERS.has(code)) return char;
 		if (code <= 31) return String.fromCharCode(0x2400 + code);
@@ -22,8 +24,10 @@ export function replaceHiddenChars(text: string): string {
  * Upstream's `sV` (shared-frame): every hidden character removed, a lone high surrogate kept. Callers use it
  * to ask whether text has anything visible.
  */
-export function stripHiddenChars(text: string): string {
-	return text.replace(HIDDEN_RE, (char) => {
+export function stripHiddenChars(text: string): string
+{
+	return text.replace(HIDDEN_RE, (char) =>
+	{
 		const code = char.codePointAt(0) ?? 0;
 		return code >= 0xd800 && code <= 0xdbff ? char : "";
 	});

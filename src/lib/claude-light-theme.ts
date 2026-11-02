@@ -6,10 +6,12 @@ import type {ThemeRegistrationRaw} from "shiki";
  * from shared-41's hsl "claude-chat-light" source. Copied verbatim from
  * .llm/upstream-sync/dumps/code-theme-claude-light-port-live-2026-11-10.json.
  */
-export const claudeLight: ThemeRegistrationRaw = {
+export const claudeLight: ThemeRegistrationRaw =
+{
 	name: "claude-light",
 	type: "light",
-	colors: {
+	colors:
+	{
 		"editor.background": "#ffffff",
 		"editor.foreground": "#14181f",
 		"editor.selectionBackground": "#0073e640",
@@ -44,31 +46,36 @@ export const claudeLight: ThemeRegistrationRaw = {
 	},
 	settings: [
 		{
-			settings: {
+			settings:
+			{
 				foreground: "#14181f",
 			},
 		},
 		{
 			scope: ["comment", "punctuation.definition.comment"],
-			settings: {
+			settings:
+			{
 				foreground: "#6e7687",
 			},
 		},
 		{
 			scope: ["punctuation", "meta.brace", "entity.name.namespace"],
-			settings: {
+			settings:
+			{
 				foreground: "#2b303b",
 			},
 		},
 		{
 			scope: ["keyword", "storage", "variable.language"],
-			settings: {
+			settings:
+			{
 				foreground: "#8100c2",
 			},
 		},
 		{
 			scope: ["keyword.operator"],
-			settings: {
+			settings:
+			{
 				foreground: "#14181f",
 			},
 		},
@@ -79,55 +86,64 @@ export const claudeLight: ThemeRegistrationRaw = {
 				"keyword.operator.word",
 				"keyword.operator.logical.python",
 			],
-			settings: {
+			settings:
+			{
 				foreground: "#8100c2",
 			},
 		},
 		{
 			scope: ["string", "punctuation.definition.string"],
-			settings: {
+			settings:
+			{
 				foreground: "#008000",
 			},
 		},
 		{
 			scope: ["string.regexp"],
-			settings: {
+			settings:
+			{
 				foreground: "#078307",
 			},
 		},
 		{
 			scope: ["constant.numeric", "constant.language", "constant.character", "constant.other.symbol"],
-			settings: {
+			settings:
+			{
 				foreground: "#008080",
 			},
 		},
 		{
 			scope: ["entity.name.tag", "support.type.property-name", "meta.object-literal.key"],
-			settings: {
+			settings:
+			{
 				foreground: "#b80a18",
 			},
 		},
 		{
 			scope: ["entity.other.attribute-name"],
-			settings: {
+			settings:
+			{
 				foreground: "#bd0f1e",
 			},
 		},
 		{
 			scope: ["entity.name.function", "support.function"],
-			settings: {
+			settings:
+			{
 				foreground: "#0051c2",
 			},
 		},
 		{
 			scope: ["variable.parameter"],
-			settings: {
+			settings:
+			{
 				foreground: "#b84f05",
 			},
 		},
 		{
 			scope: ["variable.other.normal", "punctuation.definition.variable"],
-			settings: {
+			settings:
+			{
 				foreground: "#b34a00",
 			},
 		},
@@ -139,31 +155,36 @@ export const claudeLight: ThemeRegistrationRaw = {
 				"support.class",
 				"support.type",
 			],
-			settings: {
+			settings:
+			{
 				foreground: "#b34a00",
 			},
 		},
 		{
 			scope: ["markup.deleted"],
-			settings: {
+			settings:
+			{
 				foreground: "#b80a18",
 			},
 		},
 		{
 			scope: ["markup.inserted"],
-			settings: {
+			settings:
+			{
 				foreground: "#008000",
 			},
 		},
 		{
 			scope: ["markup.underline.link"],
-			settings: {
+			settings:
+			{
 				foreground: "#008080",
 			},
 		},
 		{
 			scope: ["keyword.other.important"],
-			settings: {
+			settings:
+			{
 				foreground: "#b80a18",
 				fontStyle: "bold",
 			},
@@ -175,32 +196,37 @@ export const claudeLight: ThemeRegistrationRaw = {
 				"punctuation.definition.heading.markdown",
 				"meta.separator.markdown",
 			],
-			settings: {
+			settings:
+			{
 				foreground: "#0051c2",
 				fontStyle: "bold",
 			},
 		},
 		{
 			scope: ["markup.bold"],
-			settings: {
+			settings:
+			{
 				fontStyle: "bold",
 			},
 		},
 		{
 			scope: ["markup.italic"],
-			settings: {
+			settings:
+			{
 				fontStyle: "italic",
 			},
 		},
 		{
 			scope: ["markup.strikethrough"],
-			settings: {
+			settings:
+			{
 				fontStyle: "strikethrough",
 			},
 		},
 		{
 			scope: ["markup.inline.raw", "constant.other.reference.link.markdown"],
-			settings: {
+			settings:
+			{
 				foreground: "#008000",
 			},
 		},
@@ -220,13 +246,15 @@ export const claudeLight: ThemeRegistrationRaw = {
 				"constant.other.timestamp",
 				"constant.other.date",
 			],
-			settings: {
+			settings:
+			{
 				foreground: "#008080",
 			},
 		},
 		{
 			scope: ["variable.css", "variable.argument.css", "variable.scss"],
-			settings: {
+			settings:
+			{
 				foreground: "#b34a00",
 			},
 		},
@@ -259,37 +287,43 @@ export const claudeLight: ThemeRegistrationRaw = {
 				"punctuation.definition.range.diff",
 				"punctuation.definition.list.begin.markdown",
 			],
-			settings: {
+			settings:
+			{
 				foreground: "#8100c2",
 			},
 		},
 		{
 			scope: ["markup.changed", "punctuation.definition.changed.diff"],
-			settings: {
+			settings:
+			{
 				foreground: "#b84f05",
 			},
 		},
 		{
 			scope: ["punctuation.definition.inserted.diff"],
-			settings: {
+			settings:
+			{
 				foreground: "#008000",
 			},
 		},
 		{
 			scope: ["punctuation.definition.deleted.diff"],
-			settings: {
+			settings:
+			{
 				foreground: "#b80a18",
 			},
 		},
 		{
 			scope: ["variable.other.key.toml"],
-			settings: {
+			settings:
+			{
 				foreground: "#b80a18",
 			},
 		},
 		{
 			scope: ["source.json invalid.illegal"],
-			settings: {
+			settings:
+			{
 				foreground: "#b80a18",
 				fontStyle: "underline",
 			},
@@ -301,13 +335,15 @@ export const claudeLight: ThemeRegistrationRaw = {
 				"punctuation.definition.to-file.diff",
 				"meta.function-call.generic.python",
 			],
-			settings: {
+			settings:
+			{
 				foreground: "#0051c2",
 			},
 		},
 		{
 			scope: ["variable.other.alias.yaml"],
-			settings: {
+			settings:
+			{
 				foreground: "#b34a00",
 			},
 		},
@@ -322,13 +358,15 @@ export const claudeLight: ThemeRegistrationRaw = {
 				"string variable.other.readwrite.class.ruby",
 				"string variable.other.readwrite.global.ruby",
 			],
-			settings: {
+			settings:
+			{
 				foreground: "#14181f",
 			},
 		},
 		{
 			scope: ["variable.other.property", "variable.other.object.property"],
-			settings: {
+			settings:
+			{
 				foreground: "#14181f",
 			},
 		},

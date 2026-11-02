@@ -18,12 +18,15 @@ export function UrlElicitationDock({
 	sessionId: string;
 	card: UrlElicitationCardModel;
 	fetcher?: typeof fetch;
-}) {
-	const dialog = useQuery({
-		queryKey: ["herdr-elicitation-dialog", sessionId, card.key] as const,
-		queryFn: async () => fetchHerdrElicitationDialog(sessionId, fetcher),
-		retry: false,
-	});
+})
+{
+	const dialog = useQuery(
+		{
+			queryKey: ["herdr-elicitation-dialog", sessionId, card.key] as const,
+			queryFn: async () => fetchHerdrElicitationDialog(sessionId, fetcher),
+			retry: false,
+		},
+	);
 	const dialogFocus = dialog.isPending ? undefined : dialog.data?.kind === "url" ? dialog.data.focus : null;
 	const onDecision = useCallback(
 		async (decision: "allow" | "deny") => sendHerdrElicitationDecision(sessionId, decision, fetcher, "url"),

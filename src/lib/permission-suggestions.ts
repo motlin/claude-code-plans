@@ -25,21 +25,58 @@ export const PERSISTENT_ALLOW_LABEL = "Always allow";
 export const PERSISTENT_ALLOW_SCOPE = "Don’t ask again for this tool";
 
 /** One thing "Always allow" adds, as upstream's saves block lists it. */
-export type PersistentAllowSave = {kind: "rule"; toolName: string; ruleContent?: string} | {kind: "acceptEditsMode"};
+export type PersistentAllowSave =
+	|
+	  {
+			kind: "rule";
+			toolName: string;
+			ruleContent?: string;
+	  }
+	|
+	  {
+			kind: "acceptEditsMode";
+	  };
 
 export const PersistentAllowSaveSchema: z.ZodType<PersistentAllowSave> = z.union([
-	z.strictObject({kind: z.literal("rule"), toolName: z.string(), ruleContent: z.string().exactOptional()}),
-	z.strictObject({kind: z.literal("acceptEditsMode")}),
+	z.strictObject(
+		{
+			kind: z.literal("rule"),
+			toolName: z.string(),
+			ruleContent: z.string().exactOptional(),
+		},
+	),
+	z.strictObject(
+		{
+			kind: z.literal("acceptEditsMode"),
+		},
+	),
 ]);
 
-function savesOf(update: PermissionUpdate): PersistentAllowSave[] {
-	switch (update.type) {
+function savesOf(update: PermissionUpdate): PersistentAllowSave[]
+{
+	switch (update.type)
+	{
 		case "addRules":
 			return update.rules.map(({toolName, ruleContent}) =>
-				ruleContent === undefined ? {kind: "rule", toolName} : {kind: "rule", toolName, ruleContent},
+				ruleContent === undefined
+					?
+						{
+							kind: "rule",
+							toolName,
+						}
+					:
+						{
+							kind: "rule",
+							toolName,
+							ruleContent,
+						},
 			);
 		case "setMode":
-			return [{kind: "acceptEditsMode"}];
+			return [
+				{
+					kind: "acceptEditsMode",
+				},
+			];
 		case "addDirectories":
 		case "replaceRules":
 		case "removeRules":
@@ -55,14 +92,16 @@ function savesOf(update: PermissionUpdate): PersistentAllowSave[] {
  * (cc32965c2 `Zb`/`$b`/`ex`, now `wx`/`Ex`/`Dx`): every rule of an `addRules` whatever its behavior, the
  * accept-edits mode for any `setMode`, and nothing for directories, replacements or removals.
  */
-export function persistentAllowSaves(suggestions: readonly PermissionUpdate[]): PersistentAllowSave[] {
+export function persistentAllowSaves(suggestions: readonly PermissionUpdate[]): PersistentAllowSave[]
+{
 	return suggestions.flatMap(savesOf);
 }
 
 export type PermissionDialogDecision = "allow" | "deny" | "always";
 
 /** Which kind of persistent option an update saved to each destination is: settings files persist, the rest end with the session. */
-export const PERSISTENT_ALLOW_KIND_BY_DESTINATION = {
+export const PERSISTENT_ALLOW_KIND_BY_DESTINATION =
+{
 	userSettings: "always",
 	projectSettings: "always",
 	localSettings: "always",
@@ -75,8 +114,10 @@ export const PERSISTENT_ALLOW_KIND_BY_DESTINATION = {
  * and the accept-edits mode; it never offers removals, replacements, or deny
  * rules.
  */
-function offersPersistentOption(update: PermissionUpdate): boolean {
-	switch (update.type) {
+function offersPersistentOption(update: PermissionUpdate): boolean
+{
+	switch (update.type)
+	{
 		case "addRules":
 			return update.behavior === "allow";
 		case "addDirectories":
@@ -96,7 +137,8 @@ function offersPersistentOption(update: PermissionUpdate): boolean {
  * again" option, and of which kind, from the PermissionRequest hook's
  * `permission_suggestions`.
  */
-export function persistentAllowKind(suggestions: readonly PermissionUpdate[] | undefined): PersistentAllowKind | null {
+export function persistentAllowKind(suggestions: readonly PermissionUpdate[] | undefined): PersistentAllowKind | null
+{
 	const offered = suggestions?.find(offersPersistentOption);
 	return offered === undefined ? null : PERSISTENT_ALLOW_KIND_BY_DESTINATION[offered.destination];
 }
@@ -113,12 +155,15 @@ export function permissionDialogKey(
 	decision: PermissionDialogDecision,
 	persistent: PersistentAllowKind | null,
 	dialog: PermissionDialogKind = "generic",
-): string | null {
-	if (dialog === "outsideReadFirstPrompt") {
+): string | null
+{
+	if (dialog === "outsideReadFirstPrompt")
+	{
 		if (decision === "always") return null;
 		return decision === "allow" ? "4" : "esc";
 	}
-	switch (decision) {
+	switch (decision)
+	{
 		case "allow":
 			return "1";
 		case "deny":

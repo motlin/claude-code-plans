@@ -2,7 +2,8 @@ import {mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, unlinkSync, w
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {
+import
+{
 	clearFileRootsCache,
 	FILE_ROOTS_CACHE_TTL_MILLISECONDS,
 	resolveConfiguredFileRoots,
@@ -16,36 +17,74 @@ let repositoryRoot: string;
 let configPath: string;
 let db: AppDb;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	clearFileRootsCache();
 	fixtureDirectory = realpathSync(mkdtempSync(join(tmpdir(), "file-roots-cache-")));
 	repositoryRoot = join(fixtureDirectory, "repository");
-	mkdirSync(join(repositoryRoot, ".git"), {recursive: true});
+	mkdirSync(
+		join(repositoryRoot, ".git"),
+		{
+			recursive: true,
+		},
+	);
 	configPath = join(fixtureDirectory, "config.json");
 	writeFileSync(configPath, JSON.stringify({}));
 	db = openTestDb();
 	db.index
 		.insert(schema.projects)
-		.values({id: "repository", name: "Repository", projectPath: repositoryRoot, updatedAt: 1})
+		.values(
+			{
+				id: "repository",
+				name: "Repository",
+				projectPath: repositoryRoot,
+				updatedAt: 1,
+			},
+		)
 		.run();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	vi.useRealTimers();
 	db.close();
-	rmSync(fixtureDirectory, {recursive: true, force: true});
+	rmSync(
+		fixtureDirectory,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("file root resolution cache", () => {
-	it("reuses a recent resolution instead of re-reading the filesystem, and re-resolves once it expires", async () => {
-		vi.useFakeTimers({toFake: ["Date"]});
+describe("file root resolution cache", () =>
+{
+	it("reuses a recent resolution instead of re-reading the filesystem, and re-resolves once it expires", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["Date"],
+			},
+		);
 		const otherRoot = join(fixtureDirectory, "other");
-		mkdirSync(join(otherRoot, ".git"), {recursive: true});
+		mkdirSync(
+			join(otherRoot, ".git"),
+			{
+				recursive: true,
+			},
+		);
 		const linkedProject = join(fixtureDirectory, "linked");
 		symlinkSync(repositoryRoot, linkedProject);
 		db.index
 			.insert(schema.projects)
-			.values({id: "linked", name: "Linked", projectPath: linkedProject, updatedAt: 2})
+			.values(
+				{
+					id: "linked",
+					name: "Linked",
+					projectPath: linkedProject,
+					updatedAt: 2,
+				},
+			)
 			.run();
 		const first = await resolveFileSearchRoots(db.index, configPath);
 		const firstConfigured = await resolveConfiguredFileRoots(configPath, first);
@@ -59,25 +98,58 @@ describe("file root resolution cache", () => {
 		vi.setSystemTime(Date.now() + FILE_ROOTS_CACHE_TTL_MILLISECONDS + 1);
 		const expired = await resolveFileSearchRoots(db.index, configPath);
 
-		expect({first, firstConfigured, cached, cachedConfigured, expired}).toStrictEqual({
-			first: [repositoryRoot],
-			firstConfigured: [repositoryRoot],
-			cached: [repositoryRoot],
-			cachedConfigured: [repositoryRoot],
-			expired: [otherRoot, repositoryRoot],
-		});
+		expect(
+			{
+				first,
+				firstConfigured,
+				cached,
+				cachedConfigured,
+				expired,
+			},
+		).toStrictEqual(
+			{
+				first: [repositoryRoot],
+				firstConfigured: [repositoryRoot],
+				cached: [repositoryRoot],
+				cachedConfigured: [repositoryRoot],
+				expired: [otherRoot, repositoryRoot],
+			},
+		);
 	});
 
-	it("re-resolves immediately when the indexed projects change", async () => {
+	it("re-resolves immediately when the indexed projects change", async () =>
+	{
 		const otherRoot = join(fixtureDirectory, "other");
-		mkdirSync(join(otherRoot, ".git"), {recursive: true});
+		mkdirSync(
+			join(otherRoot, ".git"),
+			{
+				recursive: true,
+			},
+		);
 		const before = await resolveFileSearchRoots(db.index, configPath);
 		db.index
 			.insert(schema.projects)
-			.values({id: "other", name: "Other", projectPath: otherRoot, updatedAt: 2})
+			.values(
+				{
+					id: "other",
+					name: "Other",
+					projectPath: otherRoot,
+					updatedAt: 2,
+				},
+			)
 			.run();
 		const after = await resolveFileSearchRoots(db.index, configPath);
 
-		expect({before, after}).toStrictEqual({before: [repositoryRoot], after: [otherRoot, repositoryRoot]});
+		expect(
+			{
+				before,
+				after,
+			},
+		).toStrictEqual(
+			{
+				before: [repositoryRoot],
+				after: [otherRoot, repositoryRoot],
+			},
+		);
 	});
 });

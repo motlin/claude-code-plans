@@ -2,23 +2,49 @@ import {queryOptions} from "@tanstack/react-query";
 import {z} from "zod";
 import {apiFetch} from "./client";
 
-export const HomeDismissalsResponse = z.object({dismissals: z.record(z.string(), z.number())}).strict();
+export const HomeDismissalsResponse = z
+	.object(
+		{
+			dismissals: z.record(z.string(), z.number()),
+		},
+	)
+	.strict();
 export type HomeDismissals = z.infer<typeof HomeDismissalsResponse>;
 
 /** `sessionId` is a session id for the Sessions section, or a `nextStepKey()` for a start-card Next steps row. */
-export const HomeDismissBodySchema = z.object({sessionId: z.string().min(1)}).strict();
+export const HomeDismissBodySchema = z
+	.object(
+		{
+			sessionId: z.string().min(1),
+		},
+	)
+	.strict();
 
-export const homeDismissalsQueryOptions = queryOptions({
-	queryKey: ["home-dismissals"] as const,
-	queryFn: async () => apiFetch("/api/home/dismissals", HomeDismissalsResponse),
-	staleTime: Infinity,
-});
+export const homeDismissalsQueryOptions = queryOptions(
+	{
+		queryKey: ["home-dismissals"] as const,
+		queryFn: async () => apiFetch("/api/home/dismissals", HomeDismissalsResponse),
+		staleTime: Infinity,
+	},
+);
 
 /** Hide a session from the home action center until it has newer activity. */
-export async function postHomeDismissal(sessionId: string): Promise<HomeDismissals> {
-	return apiFetch("/api/home/dismissals", HomeDismissalsResponse, {
-		method: "POST",
-		headers: {"Content-Type": "application/json"},
-		body: JSON.stringify({sessionId}),
-	});
+export async function postHomeDismissal(sessionId: string): Promise<HomeDismissals>
+{
+	return apiFetch(
+		"/api/home/dismissals",
+		HomeDismissalsResponse,
+		{
+			method: "POST",
+			headers:
+			{
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(
+				{
+					sessionId,
+				},
+			),
+		},
+	);
 }

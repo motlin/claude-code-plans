@@ -12,11 +12,13 @@ const VISIBLE_WAKE_LIMIT = 2;
 export type StreamStatus = "connecting" | "connected" | "reconnecting";
 
 /** Doubles from one second to thirty, jittered by ×[0.75, 1.25] so separate browsers don't retry in lockstep. */
-export function sseReconnectDelay(attempt: number, random: () => number = Math.random): number {
+export function sseReconnectDelay(attempt: number, random: () => number = Math.random): number
+{
 	return Math.round(Math.min(BASE_DELAY_MS * 2 ** attempt, MAX_DELAY_MS) * (0.75 + random() * 0.5));
 }
 
-export interface ReconnectingEventSourceOptions {
+export interface ReconnectingEventSourceOptions
+{
 	/** Adds the event listeners to each stream, including every reopened one. */
 	attach(es: EventSource): void;
 	/** Runs when a stream opens after any error, so the caller can catch up on events missed during the gap. */
@@ -30,7 +32,8 @@ export interface ReconnectingEventSourceOptions {
 }
 
 /** Opens an EventSource that reopens itself with backoff whenever the server refuses it. Returns a close function. */
-export function openReconnectingEventSource(url: string, options: ReconnectingEventSourceOptions): () => void {
+export function openReconnectingEventSource(url: string, options: ReconnectingEventSourceOptions): () => void
+{
 	let es: EventSource;
 	let attempt = 0;
 	let hadError = options.resumeAfterGap === true;
@@ -39,18 +42,21 @@ export function openReconnectingEventSource(url: string, options: ReconnectingEv
 	let wakes = 0;
 	let removeWakeListeners: (() => void) | undefined;
 
-	const setStatus = (next: StreamStatus): void => {
+	const setStatus = (next: StreamStatus): void =>
+	{
 		if (next === status) return;
 		status = next;
 		options.onStatus?.(next);
 	};
 
-	const stopWaiting = (): void => {
+	const stopWaiting = (): void =>
+	{
 		removeWakeListeners?.();
 		removeWakeListeners = undefined;
 	};
 
-	const reconnectSoon = (): void => {
+	const reconnectSoon = (): void =>
+	{
 		stopWaiting();
 		clearTimeout(timer);
 		wakes++;
@@ -58,26 +64,31 @@ export function openReconnectingEventSource(url: string, options: ReconnectingEv
 	};
 
 	// While a reopen waits out its backoff, coming back online or to the page reconnects in about a second instead.
-	const waitForWake = (): void => {
-		const onVisibilityChange = (): void => {
+	const waitForWake = (): void =>
+	{
+		const onVisibilityChange = (): void =>
+		{
 			if (document.visibilityState === "visible") reconnectSoon();
 		};
 		window.addEventListener("online", reconnectSoon);
 		const onlineOnly = wakes >= VISIBLE_WAKE_LIMIT;
 		if (!onlineOnly) document.addEventListener("visibilitychange", onVisibilityChange);
-		removeWakeListeners = () => {
+		removeWakeListeners = () =>
+		{
 			window.removeEventListener("online", reconnectSoon);
 			document.removeEventListener("visibilitychange", onVisibilityChange);
 		};
 	};
 
-	const connect = (): void => {
+	const connect = (): void =>
+	{
 		stopWaiting();
 		setStatus("connecting");
 		const current = new EventSource(url);
 		es = current;
 		options.attach(current);
-		current.onerror = () => {
+		current.onerror = () =>
+		{
 			hadError = true;
 			setStatus("reconnecting");
 			if (current.readyState !== CLOSED) return;
@@ -86,11 +97,13 @@ export function openReconnectingEventSource(url: string, options: ReconnectingEv
 			attempt++;
 			waitForWake();
 		};
-		current.addEventListener("open", () => {
+		current.addEventListener("open", () =>
+		{
 			attempt = 0;
 			wakes = 0;
 			setStatus("connected");
-			if (hadError) {
+			if (hadError)
+			{
 				hadError = false;
 				options.onReconnected();
 			}
@@ -98,7 +111,8 @@ export function openReconnectingEventSource(url: string, options: ReconnectingEv
 	};
 
 	connect();
-	return () => {
+	return () =>
+	{
 		clearTimeout(timer);
 		stopWaiting();
 		es.close();

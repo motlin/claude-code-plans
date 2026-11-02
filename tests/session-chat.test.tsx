@@ -12,30 +12,52 @@ import {TURN_STATUS_ROW_GEOMETRY} from "../src/components/turn-status-row-geomet
 import {processTranscript} from "../src/lib/transcript";
 import type {Subagent} from "../src/lib/subagents";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
+import {ruleStart} from "./css-rule";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: true, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: true,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
@@ -53,7 +75,8 @@ const GLOBAL_STYLES_PATH = join(process.cwd(), "src", "styles", "globals.css");
 // Helpers
 // ---------------------------------------------------------------------------
 
-interface RenderOverrides {
+interface RenderOverrides
+{
 	showCompactSummaries?: boolean;
 	showTranscriptOnly?: boolean;
 	transcriptMode?: TranscriptMode;
@@ -63,7 +86,8 @@ function renderRecord(
 	record: unknown,
 	overrides: RenderOverrides,
 	defaults: Required<Omit<RenderOverrides, "transcriptMode">>,
-): string {
+): string
+{
 	const {lines, toolResultMap} = processTranscript([record]);
 	return renderToStaticMarkup(
 		<SessionChat
@@ -77,33 +101,42 @@ function renderRecord(
 	);
 }
 
-function renderShape(shapeKey: string, overrides: RenderOverrides = {}): string {
+function renderShape(shapeKey: string, overrides: RenderOverrides = {}): string
+{
 	const record = SHAPES[shapeKey];
 	expect(record, `fixture ${shapeKey} missing`).toBeDefined();
 	// Shapes test rendering: enable both flags by default so the bubbles appear.
-	return renderRecord(record, overrides, {
-		showCompactSummaries: true,
-		showTranscriptOnly: true,
-	});
+	return renderRecord(
+		record,
+		overrides,
+		{
+			showCompactSummaries: true,
+			showTranscriptOnly: true,
+		},
+	);
 }
 
-function findClassName(html: string, marker: string): string | null {
+function findClassName(html: string, marker: string): string | null
+{
 	return html.match(new RegExp(`<div class="([^"]*${marker}[^"]*)"`))?.[1] ?? null;
 }
 
 /** Every `rounded*` utility on a class list, in source order. */
-function cornerClasses(className: string | null): string[] {
+function cornerClasses(className: string | null): string[]
+{
 	return (className ?? "").split(" ").filter((token) => token.startsWith("rounded"));
 }
 
 /** The body of a top-level CSS block (`:root`, `.dark`) from globals.css. */
-function extractBlock(styles: string, selector: string): string {
-	const start = styles.indexOf(`${selector} {`);
+function extractBlock(styles: string, selector: string): string
+{
+	const start = ruleStart(styles, selector);
 	expect(start, `${selector} block missing from globals.css`).toBeGreaterThan(-1);
 	return styles.slice(start, styles.indexOf("\n}", start));
 }
 
-function readToken(block: string, name: string): string | null {
+function readToken(block: string, name: string): string | null
+{
 	return block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null;
 }
 
@@ -118,27 +151,45 @@ const AUTOMATED_LABELS = [
 	"Slash command body",
 ];
 
-describe("SessionChat body typography", () => {
-	it("renders transcript and streaming prose with the upstream 14px/20px body token", () => {
+describe("SessionChat body typography", () =>
+{
+	it("renders transcript and streaming prose with the upstream 14px/20px body token", () =>
+	{
 		const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
 		const userHtml = renderRecord(
 			{
 				type: "user",
-				message: {role: "user", content: "Fabricated user message"},
+				message:
+				{
+					role: "user",
+					content: "Fabricated user message",
+				},
 			},
 			{},
-			{showCompactSummaries: true, showTranscriptOnly: true},
+			{
+				showCompactSummaries: true,
+				showTranscriptOnly: true,
+			},
 		);
 		const assistantHtml = renderRecord(
 			{
 				type: "assistant",
-				message: {
+				message:
+				{
 					role: "assistant",
-					content: [{type: "text", text: "Fabricated assistant response"}],
+					content: [
+						{
+							type: "text",
+							text: "Fabricated assistant response",
+						},
+					],
 				},
 			},
 			{},
-			{showCompactSummaries: true, showTranscriptOnly: true},
+			{
+				showCompactSummaries: true,
+				showTranscriptOnly: true,
+			},
 		);
 		const streamingHtml = renderToStaticMarkup(
 			<StreamingMessage
@@ -148,41 +199,50 @@ describe("SessionChat body typography", () => {
 			/>,
 		);
 
-		expect({
-			bodyFontSize: styles.match(/--upstream-text-body:\s*([^;]+);/)?.[1] ?? null,
-			bodyLineHeight: styles.match(/--upstream-leading-body:\s*([^;]+);/)?.[1] ?? null,
-			primaryTextColor: readToken(extractBlock(styles, "@theme inline"), "--color-primary"),
-			secondaryTextColor: readToken(extractBlock(styles, "@theme inline"), "--color-secondary"),
-			legacyPrimaryTextColor: readToken(extractBlock(styles, "@theme inline"), "--color-assistant-primary"),
-			legacySecondaryTextColor: readToken(extractBlock(styles, "@theme inline"), "--color-assistant-secondary"),
-			sessionColumnClassName: findClassName(userHtml, "pt-4 pb-4 text-body"),
-			userBubbleClassName: findClassName(userHtml, "user-message-bubble"),
-			assistantProseClassName: findClassName(assistantHtml, "relative min-w-0 text-body"),
-			streamingBubbleClassName: findClassName(streamingHtml, "user-message-bubble"),
-			streamingPromptRowClassName: findClassName(streamingHtml, "items-end mb-6"),
-			streamingProseClassName: findClassName(streamingHtml, "min-w-0 text-body"),
-		}).toStrictEqual({
-			bodyFontSize: "14px",
-			bodyLineHeight: "20px",
-			primaryTextColor: "var(--upstream-text-primary)",
-			secondaryTextColor: "var(--upstream-text-secondary)",
-			legacyPrimaryTextColor: null,
-			legacySecondaryTextColor: null,
-			sessionColumnClassName: "chat-column pt-4 pb-4 text-body transcript-text",
-			userBubbleClassName:
-				"user-message-bubble relative flex min-w-0 flex-col gap-[6px] comfortable:gap-[8px] rounded-r7 comfortable:rounded-card px-3 py-2 comfortable:px-4 comfortable:py-3 text-heading font-normal break-words select-text text-user-msg-text max-w-[85%] bg-user-msg-bg",
-			assistantProseClassName: "relative min-w-0 text-body text-primary",
-			streamingBubbleClassName:
-				"user-message-bubble relative flex min-w-0 flex-col gap-[6px] comfortable:gap-[8px] rounded-r7 comfortable:rounded-card px-3 py-2 comfortable:px-4 comfortable:py-3 text-heading font-normal break-words select-text text-user-msg-text max-w-[85%] bg-user-msg-bg",
-			streamingPromptRowClassName:
-				"group/message-row flex w-full min-w-0 flex-col gap-g5 comfortable:gap-g6 font-sans ms-auto items-end mb-6",
-			streamingProseClassName: "min-w-0 text-body text-primary",
-		});
+		expect(
+			{
+				bodyFontSize: styles.match(/--upstream-text-body:\s*([^;]+);/)?.[1] ?? null,
+				bodyLineHeight: styles.match(/--upstream-leading-body:\s*([^;]+);/)?.[1] ?? null,
+				primaryTextColor: readToken(extractBlock(styles, "@theme inline"), "--color-primary"),
+				secondaryTextColor: readToken(extractBlock(styles, "@theme inline"), "--color-secondary"),
+				legacyPrimaryTextColor: readToken(extractBlock(styles, "@theme inline"), "--color-assistant-primary"),
+				legacySecondaryTextColor: readToken(
+					extractBlock(styles, "@theme inline"),
+					"--color-assistant-secondary",
+				),
+				sessionColumnClassName: findClassName(userHtml, "pt-4 pb-4 text-body"),
+				userBubbleClassName: findClassName(userHtml, "user-message-bubble"),
+				assistantProseClassName: findClassName(assistantHtml, "relative min-w-0 text-body"),
+				streamingBubbleClassName: findClassName(streamingHtml, "user-message-bubble"),
+				streamingPromptRowClassName: findClassName(streamingHtml, "items-end mb-6"),
+				streamingProseClassName: findClassName(streamingHtml, "min-w-0 text-body"),
+			},
+		).toStrictEqual(
+			{
+				bodyFontSize: "14px",
+				bodyLineHeight: "20px",
+				primaryTextColor: "var(--upstream-text-primary)",
+				secondaryTextColor: "var(--upstream-text-secondary)",
+				legacyPrimaryTextColor: null,
+				legacySecondaryTextColor: null,
+				sessionColumnClassName: "chat-column pt-4 pb-4 text-body transcript-text",
+				userBubbleClassName:
+					"user-message-bubble relative flex min-w-0 flex-col gap-[6px] comfortable:gap-[8px] rounded-r7 comfortable:rounded-card px-3 py-2 comfortable:px-4 comfortable:py-3 text-heading font-normal break-words select-text text-user-msg-text max-w-[85%] bg-user-msg-bg",
+				assistantProseClassName: "relative min-w-0 text-body text-primary",
+				streamingBubbleClassName:
+					"user-message-bubble relative flex min-w-0 flex-col gap-[6px] comfortable:gap-[8px] rounded-r7 comfortable:rounded-card px-3 py-2 comfortable:px-4 comfortable:py-3 text-heading font-normal break-words select-text text-user-msg-text max-w-[85%] bg-user-msg-bg",
+				streamingPromptRowClassName:
+					"group/message-row flex w-full min-w-0 flex-col gap-g5 comfortable:gap-g6 font-sans ms-auto items-end mb-6",
+				streamingProseClassName: "min-w-0 text-body text-primary",
+			},
+		);
 	});
 });
 
-describe("SessionChat user bubble chrome", () => {
-	it("paints every user bubble with the upstream neutral wash and uniform 10px corners", () => {
+describe("SessionChat user bubble chrome", () =>
+{
+	it("paints every user bubble with the upstream neutral wash and uniform 10px corners", () =>
+	{
 		const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
 		const streamingHtml = renderToStaticMarkup(
 			<StreamingMessage
@@ -192,28 +252,34 @@ describe("SessionChat user bubble chrome", () => {
 			/>,
 		);
 
-		expect({
-			lightBg: readToken(extractBlock(styles, ":root"), "--user-msg-bg"),
-			lightText: readToken(extractBlock(styles, ":root"), "--user-msg-text"),
-			darkBg: readToken(extractBlock(styles, ".dark"), "--user-msg-bg"),
-			darkText: readToken(extractBlock(styles, ".dark"), "--user-msg-text"),
-			userCorners: cornerClasses(findClassName(renderShape("A"), "user-message-bubble")),
-			automatedCorners: cornerClasses(findClassName(renderShape("C"), "user-message-bubble")),
-			streamingCorners: cornerClasses(findClassName(streamingHtml, "user-message-bubble")),
-		}).toStrictEqual({
-			lightBg: "var(--upstream-alpha-1)",
-			lightText: "var(--upstream-text-primary)",
-			darkBg: "var(--upstream-alpha-1)",
-			darkText: "var(--upstream-text-primary)",
-			userCorners: ["rounded-r7"],
-			automatedCorners: ["rounded-r7"],
-			streamingCorners: ["rounded-r7"],
-		});
+		expect(
+			{
+				lightBg: readToken(extractBlock(styles, ":root"), "--user-msg-bg"),
+				lightText: readToken(extractBlock(styles, ":root"), "--user-msg-text"),
+				darkBg: readToken(extractBlock(styles, ".dark"), "--user-msg-bg"),
+				darkText: readToken(extractBlock(styles, ".dark"), "--user-msg-text"),
+				userCorners: cornerClasses(findClassName(renderShape("A"), "user-message-bubble")),
+				automatedCorners: cornerClasses(findClassName(renderShape("C"), "user-message-bubble")),
+				streamingCorners: cornerClasses(findClassName(streamingHtml, "user-message-bubble")),
+			},
+		).toStrictEqual(
+			{
+				lightBg: "var(--upstream-alpha-1)",
+				lightText: "var(--upstream-text-primary)",
+				darkBg: "var(--upstream-alpha-1)",
+				darkText: "var(--upstream-text-primary)",
+				userCorners: ["rounded-r7"],
+				automatedCorners: ["rounded-r7"],
+				streamingCorners: ["rounded-r7"],
+			},
+		);
 	});
 });
 
-describe("SessionChat user-message shapes", () => {
-	it("Shape A — plain text renders the regular user bubble with no automated label", () => {
+describe("SessionChat user-message shapes", () =>
+{
+	it("Shape A — plain text renders the regular user bubble with no automated label", () =>
+	{
 		const html = renderShape("A");
 
 		// Neutral user-bubble class is present.
@@ -224,47 +290,79 @@ describe("SessionChat user-message shapes", () => {
 		// None of the automated labels appear (this is the regression test for
 		// the original "Automated" badge bug — every plain user message used to
 		// get tagged because userType is always 'external' in real JSONL).
-		for (const label of AUTOMATED_LABELS) {
+		for (const label of AUTOMATED_LABELS)
+		{
 			expect(html, `Shape A must not contain label "${label}"`).not.toContain(`>${label}<`);
 		}
 	});
 
-	it('Shape B — Request interrupted renders gray bubble with the "Request interrupted" label in Verbose', () => {
-		const html = renderShape("B", {transcriptMode: "verbose"});
+	it('Shape B — Request interrupted renders gray bubble with the "Request interrupted" label in Verbose', () =>
+	{
+		const html = renderShape(
+			"B",
+			{
+				transcriptMode: "verbose",
+			},
+		);
 
 		expect(html).toContain("bg-auto-msg-bg");
 		expect(html).toContain(">Request interrupted<");
 	});
 
-	it('Shape C — Compact summary renders gray bubble with the "Compact summary" label', () => {
+	it('Shape C — Compact summary renders gray bubble with the "Compact summary" label', () =>
+	{
 		const html = renderShape("C");
 
 		expect(html).toContain("bg-auto-msg-bg");
 		expect(html).toContain(">Compact summary<");
 	});
 
-	it('Shape D — Stop hook feedback collapses into the "Hook re-prompted Claude" marker', () => {
+	it('Shape D — Stop hook feedback collapses into the "Hook re-prompted Claude" marker', () =>
+	{
 		const html = renderShape("D");
 
-		expect({
-			hasAutomatedBubble: html.includes("bg-auto-msg-bg"),
-			hasLabel: html.includes(">Stop hook feedback<"),
-			hasMarker: html.includes(">Hook re-prompted Claude<"),
-		}).toStrictEqual({hasAutomatedBubble: false, hasLabel: false, hasMarker: true});
+		expect(
+			{
+				hasAutomatedBubble: html.includes("bg-auto-msg-bg"),
+				hasLabel: html.includes(">Stop hook feedback<"),
+				hasMarker: html.includes(">Hook re-prompted Claude<"),
+			},
+		).toStrictEqual(
+			{
+				hasAutomatedBubble: false,
+				hasLabel: false,
+				hasMarker: true,
+			},
+		);
 	});
 
-	it("Shape E — slash command body renders nothing, like upstream", () => {
+	it("Shape E — slash command body renders nothing, like upstream", () =>
+	{
 		const html = renderShape("E");
 
-		expect({
-			hasAutomatedBubble: html.includes("bg-auto-msg-bg"),
-			hasLabel: html.includes(">Slash command body<"),
-			hasSkillBody: html.includes("Base directory for this skill"),
-		}).toStrictEqual({hasAutomatedBubble: false, hasLabel: false, hasSkillBody: false});
+		expect(
+			{
+				hasAutomatedBubble: html.includes("bg-auto-msg-bg"),
+				hasLabel: html.includes(">Slash command body<"),
+				hasSkillBody: html.includes("Base directory for this skill"),
+			},
+		).toStrictEqual(
+			{
+				hasAutomatedBubble: false,
+				hasLabel: false,
+				hasSkillBody: false,
+			},
+		);
 	});
 
-	it("Shape C — compact summary collapses to a stub when showCompactSummaries=false", () => {
-		const html = renderShape("C", {showCompactSummaries: false});
+	it("Shape C — compact summary collapses to a stub when showCompactSummaries=false", () =>
+	{
+		const html = renderShape(
+			"C",
+			{
+				showCompactSummaries: false,
+			},
+		);
 
 		// Upstream's collapsed marker row stands in for the summary.
 		expect(html).toContain(">Compacted conversation<");
@@ -272,8 +370,14 @@ describe("SessionChat user-message shapes", () => {
 		expect(html).not.toContain("bg-auto-msg-bg");
 	});
 
-	it("Shape C — compact summary renders fully when showCompactSummaries=true", () => {
-		const html = renderShape("C", {showCompactSummaries: true});
+	it("Shape C — compact summary renders fully when showCompactSummaries=true", () =>
+	{
+		const html = renderShape(
+			"C",
+			{
+				showCompactSummaries: true,
+			},
+		);
 
 		// Full automated bubble IS rendered.
 		expect(html).toContain("bg-auto-msg-bg");
@@ -282,14 +386,16 @@ describe("SessionChat user-message shapes", () => {
 		expect(html).not.toContain("Compacted conversation");
 	});
 
-	it("Shape F — document attachment renders the regular user bubble path with no automated label", () => {
+	it("Shape F — document attachment renders the regular user bubble path with no automated label", () =>
+	{
 		const html = renderShape("F");
 
 		// Document attachments should fall through the user-initiated path, not
 		// the labeled automated path — even though the fixture has isMeta=true.
 		expect(html).not.toContain("bg-auto-msg-bg");
 
-		for (const label of AUTOMATED_LABELS) {
+		for (const label of AUTOMATED_LABELS)
+		{
 			expect(html, `Shape F must not contain label "${label}"`).not.toContain(`>${label}<`);
 		}
 
@@ -298,19 +404,28 @@ describe("SessionChat user-message shapes", () => {
 	});
 });
 
-describe("SessionChat turn origin captions", () => {
-	it("keeps origin and prompt-source captions out of the visible transcript, like upstream", () => {
+describe("SessionChat turn origin captions", () =>
+{
+	it("keeps origin and prompt-source captions out of the visible transcript, like upstream", () =>
+	{
 		const html = renderRecord(
 			{
 				type: "user",
-				message: {role: "user", content: "Background agents were stopped by the user."},
+				message:
+				{
+					role: "user",
+					content: "Background agents were stopped by the user.",
+				},
 				promptSource: "system",
 				queuePriority: "later",
 				turnOrigin: "scheduled",
 				scheduledTaskId: "e283ee16",
 			},
 			{},
-			{showCompactSummaries: true, showTranscriptOnly: true},
+			{
+				showCompactSummaries: true,
+				showTranscriptOnly: true,
+			},
 		);
 
 		expect(
@@ -319,14 +434,17 @@ describe("SessionChat turn origin captions", () => {
 	});
 });
 
-describe("SessionChat source links", () => {
-	it("uses the parsed snake_case record session identifier", () => {
+describe("SessionChat source links", () =>
+{
+	it("uses the parsed snake_case record session identifier", () =>
+	{
 		const html = renderRecord(
 			{
 				type: "user",
 				uuid: "record-uuid",
 				session_id: "record-session",
-				message: {
+				message:
+				{
 					role: "user",
 					content: "Session-specific source",
 				},
@@ -351,11 +469,13 @@ describe("SessionChat source links", () => {
 
 const TRANSCRIPT_ONLY_TEXT = "TRANSCRIPT_ONLY_MARKER_PHRASE_FOR_TEST";
 
-const TRANSCRIPT_ONLY_RECORD = {
+const TRANSCRIPT_ONLY_RECORD =
+{
 	parentUuid: "00000000-0000-0000-0000-000000000001",
 	isSidechain: false,
 	type: "user",
-	message: {
+	message:
+	{
 		role: "user",
 		content: TRANSCRIPT_ONLY_TEXT,
 	},
@@ -372,17 +492,28 @@ const TRANSCRIPT_ONLY_RECORD = {
 	slug: "transcript-only-test",
 };
 
-function renderTranscriptOnly(overrides: RenderOverrides): string {
+function renderTranscriptOnly(overrides: RenderOverrides): string
+{
 	// Default both flags to false so isLineVisible can suppress the row.
-	return renderRecord(TRANSCRIPT_ONLY_RECORD, overrides, {
-		showCompactSummaries: false,
-		showTranscriptOnly: false,
-	});
+	return renderRecord(
+		TRANSCRIPT_ONLY_RECORD,
+		overrides,
+		{
+			showCompactSummaries: false,
+			showTranscriptOnly: false,
+		},
+	);
 }
 
-describe("SessionChat transcript-only suppression", () => {
-	it("omits the row entirely when isVisibleInTranscriptOnly=true && isCompactSummary=false && showTranscriptOnly=false", () => {
-		const html = renderTranscriptOnly({showTranscriptOnly: false});
+describe("SessionChat transcript-only suppression", () =>
+{
+	it("omits the row entirely when isVisibleInTranscriptOnly=true && isCompactSummary=false && showTranscriptOnly=false", () =>
+	{
+		const html = renderTranscriptOnly(
+			{
+				showTranscriptOnly: false,
+			},
+		);
 
 		// The marker text must not appear anywhere in the output: the line is
 		// fully filtered out by isLineVisible() before the renderer ever sees it.
@@ -392,8 +523,13 @@ describe("SessionChat transcript-only suppression", () => {
 		expect(html).not.toContain("bg-user-msg-bg");
 	});
 
-	it("renders the row fully when isVisibleInTranscriptOnly=true && isCompactSummary=false && showTranscriptOnly=true", () => {
-		const html = renderTranscriptOnly({showTranscriptOnly: true});
+	it("renders the row fully when isVisibleInTranscriptOnly=true && isCompactSummary=false && showTranscriptOnly=true", () =>
+	{
+		const html = renderTranscriptOnly(
+			{
+				showTranscriptOnly: true,
+			},
+		);
 
 		// The marker text appears.
 		expect(html).toContain(TRANSCRIPT_ONLY_TEXT);
@@ -405,7 +541,8 @@ describe("SessionChat transcript-only suppression", () => {
 	});
 });
 
-function renderTranscript(records: unknown[]): string {
+function renderTranscript(records: unknown[]): string
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	return renderToStaticMarkup(
 		<SessionChat
@@ -418,7 +555,8 @@ function renderTranscript(records: unknown[]): string {
 	);
 }
 
-function renderTranscriptElement(records: unknown[]): HTMLElement {
+function renderTranscriptElement(records: unknown[]): HTMLElement
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
@@ -433,129 +571,207 @@ function renderTranscriptElement(records: unknown[]): HTMLElement {
 }
 
 /** Class list of every turn wrapper (`<div data-record-index="N">`), in document order. */
-function turnWrapperClassNames(html: string): string[] {
+function turnWrapperClassNames(html: string): string[]
+{
 	return [...html.matchAll(/<div data-record-index="\d+" class="([^"]*)"/g)].map((match) => match[1] ?? "");
 }
 
-describe("SessionChat turn spacing", () => {
-	it("pads every assistant turn wrapper with --chat-turn-gap, leaves the prompt's gap to its reply boundary, and spaces intra-turn blocks with --chat-item-gap", () => {
+describe("SessionChat turn spacing", () =>
+{
+	it("pads every assistant turn wrapper with --chat-turn-gap, leaves the prompt's gap to its reply boundary, and spaces intra-turn blocks with --chat-item-gap", () =>
+	{
 		const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
 		const html = renderTranscript([
 			{
 				type: "user",
 				uuid: "u1",
-				message: {role: "user", content: "Fabricated user message"},
+				message:
+				{
+					role: "user",
+					content: "Fabricated user message",
+				},
 			},
 			{
 				type: "assistant",
 				uuid: "a1",
 				parentUuid: "u1",
-				message: {
+				message:
+				{
 					role: "assistant",
-					content: [{type: "text", text: "Fabricated first assistant response"}],
+					content: [
+						{
+							type: "text",
+							text: "Fabricated first assistant response",
+						},
+					],
 				},
 			},
 			{
 				type: "assistant",
 				uuid: "a2",
 				parentUuid: "a1",
-				message: {
+				message:
+				{
 					role: "assistant",
-					content: [{type: "text", text: "Fabricated second assistant response"}],
+					content: [
+						{
+							type: "text",
+							text: "Fabricated second assistant response",
+						},
+					],
 				},
 			},
 		]);
 
-		expect({
-			turnGap: styles.match(/--chat-turn-gap:\s*([^;]+);/)?.[1] ?? null,
-			itemGap: styles.match(/--chat-item-gap:\s*([^;]+);/)?.[1] ?? null,
-			// Every assistant turn is padded, including the second one that follows
-			// another assistant turn; the prompt's reply row carries its boundary.
-			turnWrappers: turnWrapperClassNames(html),
-			itemGapColumns: (html.match(/gap-\[var\(--chat-item-gap\)\]/g) ?? []).length,
-		}).toStrictEqual({
-			turnGap: "15px",
-			itemGap: "10px",
-			turnWrappers: [
-				"group relative",
-				"group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0",
-				"group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0",
-			],
-			itemGapColumns: 2,
-		});
+		expect(
+			{
+				turnGap: styles.match(/--chat-turn-gap:\s*([^;]+);/)?.[1] ?? null,
+				itemGap: styles.match(/--chat-item-gap:\s*([^;]+);/)?.[1] ?? null,
+				// Every assistant turn is padded, including the second one that follows
+				// another assistant turn; the prompt's reply row carries its boundary.
+				turnWrappers: turnWrapperClassNames(html),
+				itemGapColumns: (html.match(/gap-\[var\(--chat-item-gap\)\]/g) ?? []).length,
+			},
+		).toStrictEqual(
+			{
+				turnGap: "15px",
+				itemGap: "10px",
+				turnWrappers: [
+					"group relative",
+					"group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0",
+					"group/msg flex flex-col w-full pb-[var(--chat-turn-gap)] empty:pb-0",
+				],
+				itemGapColumns: 2,
+			},
+		);
 	});
 });
 
 /** Class list of every tool card shell, in document order. */
-function toolCardClassNames(container: HTMLElement): string[] {
+function toolCardClassNames(container: HTMLElement): string[]
+{
 	return [...container.querySelectorAll("div.card-outline")].map((element) => element.className);
 }
 
-function disclosureControls(container: HTMLElement): HTMLElement[] {
+function disclosureControls(container: HTMLElement): HTMLElement[]
+{
 	return [...container.querySelectorAll<HTMLElement>('[aria-expanded="false"]')];
 }
 
-async function expandSingleToolRow(container: HTMLElement): Promise<void> {
+async function expandSingleToolRow(container: HTMLElement): Promise<void>
+{
 	const [control] = disclosureControls(container);
 	if (!control) throw new Error("Expected one collapsed tool disclosure.");
 	fireEvent.click(control);
-	await waitFor(() => {
-		if (container.querySelector(".group\\/body") === null) {
+	await waitFor(() =>
+	{
+		if (container.querySelector(".group\\/body") === null)
+		{
 			throw new Error("Expected the expanded renderer body to mount.");
 		}
 	});
 }
 
-function expandGroupSummary(container: HTMLElement): void {
+function expandGroupSummary(container: HTMLElement): void
+{
 	const [control] = disclosureControls(container);
 	if (!control) throw new Error("Expected one collapsed tool group.");
 	fireEvent.click(control);
 }
 
 /** The tool_result record answering one call, parented to the record that made it. */
-function toolResultRecord(callId: string, parentUuid: string): unknown {
+function toolResultRecord(callId: string, parentUuid: string): unknown
+{
 	return {
 		type: "user",
 		uuid: `r-${callId}`,
 		parentUuid,
-		message: {
+		message:
+		{
 			role: "user",
-			content: [{type: "tool_result", tool_use_id: callId, content: "Fabricated tool result"}],
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: callId,
+					content: "Fabricated tool result",
+				},
+			],
 		},
 	};
 }
 
-function toolCallRecords(calls: {id: string; name: string; input: unknown}[]): unknown[] {
+function toolCallRecords(
+	calls:
+	{
+		id: string;
+		name: string;
+		input: unknown;
+	}[],
+): unknown[]
+{
 	return [
 		{
 			type: "assistant",
 			uuid: "a1",
-			message: {
+			message:
+			{
 				role: "assistant",
-				content: calls.map((call) => ({type: "tool_use", ...call})),
+				content: calls.map((call) => (
+				{
+					type: "tool_use",
+					...call,
+				})),
 			},
 		},
 		...calls.map((call) => toolResultRecord(call.id, "a1")),
 	];
 }
 
-describe("SessionChat tool card chrome", () => {
-	it("mounts the correct tool card surface only after its row expands", async () => {
+describe("SessionChat tool card chrome", () =>
+{
+	it("mounts the correct tool card surface only after its row expands", async () =>
+	{
 		const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
-		const bash = renderTranscriptElement(toolCallRecords([{id: "t1", name: "Bash", input: {command: "ls -la"}}]));
+		const bash = renderTranscriptElement(
+			toolCallRecords([
+				{
+					id: "t1",
+					name: "Bash",
+					input:
+					{
+						command: "ls -la",
+					},
+				},
+			]),
+		);
 		const edit = renderTranscriptElement(
 			toolCallRecords([
 				{
 					id: "t2",
 					name: "Edit",
-					input: {file_path: "/repo/src/a.ts", old_string: "a", new_string: "b"},
+					input:
+					{
+						file_path: "/repo/src/a.ts",
+						old_string: "a",
+						new_string: "b",
+					},
 				},
 			]),
 		);
 		const read = renderTranscriptElement(
-			toolCallRecords([{id: "t3", name: "Read", input: {file_path: "/repo/src/a.ts"}}]),
+			toolCallRecords([
+				{
+					id: "t3",
+					name: "Read",
+					input:
+					{
+						file_path: "/repo/src/a.ts",
+					},
+				},
+			]),
 		);
-		const collapsedCards = {
+		const collapsedCards =
+		{
 			bash: toolCardClassNames(bash),
 			edit: toolCardClassNames(edit),
 			read: toolCardClassNames(read),
@@ -563,58 +779,108 @@ describe("SessionChat tool card chrome", () => {
 
 		await Promise.all([expandSingleToolRow(bash), expandSingleToolRow(edit), expandSingleToolRow(read)]);
 
-		expect({
-			lightOutline: readToken(extractBlock(styles, ":root"), "--card-outline"),
-			darkOutline: readToken(extractBlock(styles, ".dark"), "--card-outline"),
-			lightCodeCardBg: readToken(extractBlock(styles, ":root"), "--code-card-bg"),
-			darkCodeCardBg: readToken(extractBlock(styles, ".dark"), "--code-card-bg"),
-			outlineRing: styles.includes("box-shadow: inset 0 0 0 1px var(--card-outline);"),
-			codeCardFill: styles.includes("background-color: var(--code-card-bg);"),
-			collapsedCards,
-			bashCard: toolCardClassNames(bash),
-			editCard: toolCardClassNames(edit),
-			readCard: toolCardClassNames(read),
-			fillsAnyCardWithT1: bash.querySelector(".bg-t1") !== null || edit.querySelector(".bg-t1") !== null,
-		}).toStrictEqual({
-			lightOutline: "hsl(0 0% 4% / 0.1)",
-			darkOutline: "hsl(0 0% 100% / 0.1)",
-			lightCodeCardBg: "hsl(60 14% 99%)",
-			darkCodeCardBg: "#151515",
-			outlineRing: true,
-			codeCardFill: true,
-			collapsedCards: {bash: [], edit: [], read: []},
-			bashCard: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
-			editCard: ["card-outline code-card rounded-r6 overflow-clip flex flex-col relative"],
-			readCard: ["card-outline code-card rounded-r6 overflow-clip flex flex-col relative"],
-			fillsAnyCardWithT1: false,
-		});
+		expect(
+			{
+				lightOutline: readToken(extractBlock(styles, ":root"), "--card-outline"),
+				darkOutline: readToken(extractBlock(styles, ".dark"), "--card-outline"),
+				lightCodeCardBg: readToken(extractBlock(styles, ":root"), "--code-card-bg"),
+				darkCodeCardBg: readToken(extractBlock(styles, ".dark"), "--code-card-bg"),
+				outlineRing: styles.includes("box-shadow: inset 0 0 0 1px var(--card-outline);"),
+				codeCardFill: styles.includes("background-color: var(--code-card-bg);"),
+				collapsedCards,
+				bashCard: toolCardClassNames(bash),
+				editCard: toolCardClassNames(edit),
+				readCard: toolCardClassNames(read),
+				fillsAnyCardWithT1: bash.querySelector(".bg-t1") !== null || edit.querySelector(".bg-t1") !== null,
+			},
+		).toStrictEqual(
+			{
+				lightOutline: "hsl(0 0% 4% / 0.1)",
+				darkOutline: "hsl(0 0% 100% / 0.1)",
+				lightCodeCardBg: "hsl(60 14% 99%)",
+				darkCodeCardBg: "#151515",
+				outlineRing: true,
+				codeCardFill: true,
+				collapsedCards:
+				{
+					bash: [],
+					edit: [],
+					read: [],
+				},
+				bashCard: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
+				editCard: ["card-outline code-card rounded-r6 overflow-clip flex flex-col relative"],
+				readCard: ["card-outline code-card rounded-r6 overflow-clip flex flex-col relative"],
+				fillsAnyCardWithT1: false,
+			},
+		);
 	});
 });
 
 /** Class list of every expanding-body wrapper (`group/body ...`), in document order. */
-function toolBodyClassNames(container: HTMLElement): string[] {
+function toolBodyClassNames(container: HTMLElement): string[]
+{
 	return [...container.querySelectorAll(".group\\/body")].map((element) => element.className);
 }
 
-describe("SessionChat nested tool rows", () => {
-	it("mounts nested bodies without nested card shells after each row expands", async () => {
+describe("SessionChat nested tool rows", () =>
+{
+	it("mounts nested bodies without nested card shells after each row expands", async () =>
+	{
 		const groupedBash = renderTranscriptElement(
 			toolCallRecords([
-				{id: "t1", name: "Bash", input: {command: "git status"}},
-				{id: "t2", name: "Bash", input: {command: "git log --oneline"}},
+				{
+					id: "t1",
+					name: "Bash",
+					input:
+					{
+						command: "git status",
+					},
+				},
+				{
+					id: "t2",
+					name: "Bash",
+					input:
+					{
+						command: "git log --oneline",
+					},
+				},
 			]),
 		);
 		const groupedRead = renderTranscriptElement(
 			toolCallRecords([
-				{id: "t1", name: "Read", input: {file_path: "/repo/src/a.ts"}},
-				{id: "t2", name: "Read", input: {file_path: "/repo/src/b.ts"}},
+				{
+					id: "t1",
+					name: "Read",
+					input:
+					{
+						file_path: "/repo/src/a.ts",
+					},
+				},
+				{
+					id: "t2",
+					name: "Read",
+					input:
+					{
+						file_path: "/repo/src/b.ts",
+					},
+				},
 			]),
 		);
 		const singleBash = renderTranscriptElement(
-			toolCallRecords([{id: "t1", name: "Bash", input: {command: "git status"}}]),
+			toolCallRecords([
+				{
+					id: "t1",
+					name: "Bash",
+					input:
+					{
+						command: "git status",
+					},
+				},
+			]),
 		);
 
-		const collapsedBodies = {
+		const collapsedBodies =
+		{
 			groupedBash: toolBodyClassNames(groupedBash),
 			groupedRead: toolBodyClassNames(groupedRead),
 			singleBash: toolBodyClassNames(singleBash),
@@ -624,115 +890,186 @@ describe("SessionChat nested tool rows", () => {
 		for (const control of disclosureControls(groupedBash)) fireEvent.click(control);
 		for (const control of disclosureControls(groupedRead)) fireEvent.click(control);
 		await expandSingleToolRow(singleBash);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			if (toolBodyClassNames(groupedBash).length !== 2 || toolBodyClassNames(groupedRead).length !== 2)
 				throw new Error("Expected each nested renderer body to mount.");
 		});
 
-		expect({
-			collapsedBodies,
-			groupedBashCards: toolCardClassNames(groupedBash),
-			groupedBashBodies: toolBodyClassNames(groupedBash),
-			groupedReadCards: toolCardClassNames(groupedRead),
-			groupedReadBodies: toolBodyClassNames(groupedRead),
-			singleBashCards: toolCardClassNames(singleBash),
-			singleBashBodies: toolBodyClassNames(singleBash),
-		}).toStrictEqual({
-			collapsedBodies: {groupedBash: [], groupedRead: [], singleBash: []},
-			groupedBashCards: [
-				"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
-			],
-			groupedBashBodies: [
-				"epitaxy-code-size group/body relative flex w-full pt-2.5 empty:hidden",
-				"epitaxy-code-size group/body relative flex w-full pt-2.5 empty:hidden",
-			],
-			groupedReadCards: [
-				"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
-			],
-			groupedReadBodies: [
-				"epitaxy-code-size group/body relative flex w-full flex-col pt-2.5 empty:hidden",
-				"epitaxy-code-size group/body relative flex w-full flex-col pt-2.5 empty:hidden",
-			],
-			singleBashCards: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
-			singleBashBodies: ["epitaxy-code-size group/body py-p6"],
-		});
+		expect(
+			{
+				collapsedBodies,
+				groupedBashCards: toolCardClassNames(groupedBash),
+				groupedBashBodies: toolBodyClassNames(groupedBash),
+				groupedReadCards: toolCardClassNames(groupedRead),
+				groupedReadBodies: toolBodyClassNames(groupedRead),
+				singleBashCards: toolCardClassNames(singleBash),
+				singleBashBodies: toolBodyClassNames(singleBash),
+			},
+		).toStrictEqual(
+			{
+				collapsedBodies:
+				{
+					groupedBash: [],
+					groupedRead: [],
+					singleBash: [],
+				},
+				groupedBashCards: [
+					"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
+				],
+				groupedBashBodies: [
+					"epitaxy-code-size group/body relative flex w-full pt-2.5 empty:hidden",
+					"epitaxy-code-size group/body relative flex w-full pt-2.5 empty:hidden",
+				],
+				groupedReadCards: [
+					"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
+				],
+				groupedReadBodies: [
+					"epitaxy-code-size group/body relative flex w-full flex-col pt-2.5 empty:hidden",
+					"epitaxy-code-size group/body relative flex w-full flex-col pt-2.5 empty:hidden",
+				],
+				singleBashCards: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
+				singleBashBodies: ["epitaxy-code-size group/body py-p6"],
+			},
+		);
 	});
 });
 
-describe("SessionChat task calls", () => {
-	it("keeps a group of five TaskCreate calls as five ordinary rows, with no tasks view header, as upstream", () => {
+describe("SessionChat task calls", () =>
+{
+	it("keeps a group of five TaskCreate calls as five ordinary rows, with no tasks view header, as upstream", () =>
+	{
 		const grouped = renderTranscriptElement(
 			toolCallRecords(
-				["Alice", "Bob", "Charlie", "Dana", "Eve"].map((name, index) => ({
+				["Alice", "Bob", "Charlie", "Dana", "Eve"].map((name, index) => (
+				{
 					id: `t${index}`,
 					name: "TaskCreate",
-					input: {subject: `Example ${name} task`},
+					input:
+					{
+						subject: `Example ${name} task`,
+					},
 				})),
 			),
 		);
 		const before = grouped.textContent.match(/\d+ tasks/)?.[0] ?? null;
 		expandGroupSummary(grouped);
 
-		expect({
-			before,
-			rows: grouped.querySelectorAll(".divide-y > [data-tool-row]").length,
-			headings: grouped.querySelectorAll("h3").length,
-		}).toStrictEqual({before: null, rows: 5, headings: 0});
+		expect(
+			{
+				before,
+				rows: grouped.querySelectorAll(".divide-y > [data-tool-row]").length,
+				headings: grouped.querySelectorAll("h3").length,
+			},
+		).toStrictEqual(
+			{
+				before: null,
+				rows: 5,
+				headings: 0,
+			},
+		);
 	});
 });
 
-describe("SessionChat grouped tool rows", () => {
-	it("joins each row's label and parameter with one plain space inside a single <bdi>, as upstream", () => {
+describe("SessionChat grouped tool rows", () =>
+{
+	it("joins each row's label and parameter with one plain space inside a single <bdi>, as upstream", () =>
+	{
 		const grouped = renderTranscriptElement(
 			toolCallRecords([
-				{id: "t1", name: "Read", input: {file_path: "/repo/src/a.ts"}},
-				{id: "t2", name: "Bash", input: {command: "git status", description: "Show status"}},
+				{
+					id: "t1",
+					name: "Read",
+					input:
+					{
+						file_path: "/repo/src/a.ts",
+					},
+				},
+				{
+					id: "t2",
+					name: "Bash",
+					input:
+					{
+						command: "git status",
+						description: "Show status",
+					},
+				},
 			]),
 		);
 		expandGroupSummary(grouped);
 		const rows = [
 			...grouped.querySelectorAll(".divide-y > [data-tool-row] [role=button], .divide-y > [data-tool-row] > div"),
 		];
-		const labels = [...new Set(rows)].map((row) => {
+		const labels = [...new Set(rows)].map((row) =>
+		{
 			const bdi = row.querySelector(":scope > bdi");
 			return bdi === null
 				? null
-				: {
+				:
+					{
 						text: bdi.textContent,
 						spaced: [...bdi.childNodes].some((node) => node.nodeType === 3 && node.textContent === " "),
 					};
 		});
 
-		expect(labels.filter((label) => label !== null)).toStrictEqual([{text: "Read a.ts", spaced: true}]);
+		expect(labels.filter((label) => label !== null)).toStrictEqual([
+			{
+				text: "Read a.ts",
+				spaced: true,
+			},
+		]);
 	});
 });
 
 /** Class of the expanded grouped-tool-call container. */
-function groupContainerClassNames(container: HTMLElement): string[] {
+function groupContainerClassNames(container: HTMLElement): string[]
+{
 	return [...container.querySelectorAll("div.card-outline.divide-y")].map((element) => element.className);
 }
 
-describe("SessionChat grouped tool card", () => {
-	it("mounts the outlined, divided group card only after the summary expands", () => {
+describe("SessionChat grouped tool card", () =>
+{
+	it("mounts the outlined, divided group card only after the summary expands", () =>
+	{
 		const groupedBash = renderTranscriptElement(
 			toolCallRecords([
-				{id: "t1", name: "Bash", input: {command: "git status"}},
-				{id: "t2", name: "Bash", input: {command: "git log --oneline"}},
+				{
+					id: "t1",
+					name: "Bash",
+					input:
+					{
+						command: "git status",
+					},
+				},
+				{
+					id: "t2",
+					name: "Bash",
+					input:
+					{
+						command: "git log --oneline",
+					},
+				},
 			]),
 		);
 
 		const collapsed = groupContainerClassNames(groupedBash);
 		expandGroupSummary(groupedBash);
 
-		expect({
-			collapsed,
-			expanded: groupContainerClassNames(groupedBash),
-			fillsWithT1: groupedBash.querySelector(".bg-t1") !== null,
-		}).toStrictEqual({
-			collapsed: [],
-			expanded: ["flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5"],
-			fillsWithT1: false,
-		});
+		expect(
+			{
+				collapsed,
+				expanded: groupContainerClassNames(groupedBash),
+				fillsWithT1: groupedBash.querySelector(".bg-t1") !== null,
+			},
+		).toStrictEqual(
+			{
+				collapsed: [],
+				expanded: [
+					"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
+				],
+				fillsWithT1: false,
+			},
+		);
 	});
 });
 
@@ -744,24 +1081,28 @@ const TOOL_ROW = /group\/tool[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
 const ARGUMENT = "text-body text-primary truncate min-w-0";
 
 /** [class, text] of every label span in one tool row's markup. */
-function labelSpans(row: string): [string, string][] {
+function labelSpans(row: string): [string, string][]
+{
 	return [...row.matchAll(/<span (?:id="[^"]*" )?class="([^"]+)">([^<]*)<\/span>/g)]
 		.filter((match) => match[1]!.includes("text-body") || match[1]!.includes("text-code"))
 		.map((match): [string, string] => [match[1]!, match[2]!]);
 }
 
 /** The markup of every tool row, in document order. */
-function toolRows(html: string): string[] {
+function toolRows(html: string): string[]
+{
 	return [...html.matchAll(TOOL_ROW)].map((match) => match[1]!);
 }
 
 /** [class, text] of every label span in the first tool row, in document order. */
-function toolRowLabelSpans(html: string): [string, string][] {
+function toolRowLabelSpans(html: string): [string, string][]
+{
 	return labelSpans(toolRows(html)[0] ?? "");
 }
 
 /** [class, text] of every label span in every tool row, in document order. */
-function allToolRowLabelSpans(html: string): [string, string][] {
+function allToolRowLabelSpans(html: string): [string, string][]
+{
 	return toolRows(html).flatMap((row) => labelSpans(row));
 }
 
@@ -772,16 +1113,33 @@ function allToolRowLabelSpans(html: string): [string, string][] {
  * message's `id`.
  */
 function batchedToolCallRecords(
-	batches: {messageId: string; calls: {id: string; name: string; input: unknown}[]}[],
-): unknown[] {
+	batches:
+	{
+		messageId: string;
+		calls:
+		{
+			id: string;
+			name: string;
+			input: unknown;
+		}[];
+	}[],
+): unknown[]
+{
 	return batches.flatMap((batch) => [
-		...batch.calls.map((call) => ({
+		...batch.calls.map((call) => (
+		{
 			type: "assistant",
 			uuid: `a-${call.id}`,
-			message: {
+			message:
+			{
 				role: "assistant",
 				id: batch.messageId,
-				content: [{type: "tool_use", ...call}],
+				content: [
+					{
+						type: "tool_use",
+						...call,
+					},
+				],
 			},
 		})),
 		...batch.calls.map((call) => toolResultRecord(call.id, `a-${call.id}`)),
@@ -789,7 +1147,8 @@ function batchedToolCallRecords(
 }
 
 /** Text of every collapsed summary label (`Read 3 files`), in document order. */
-function summaryLabels(html: string): string[] {
+function summaryLabels(html: string): string[]
+{
 	const root = document.createElement("div");
 	root.innerHTML = html;
 	return Array.from(
@@ -800,19 +1159,37 @@ function summaryLabels(html: string): string[] {
 
 /** One tool-only assistant record and its result, with an optional source session id. */
 function answeredToolCall(
-	call: {id: string; name: string; input: unknown},
+	call:
+	{
+		id: string;
+		name: string;
+		input: unknown;
+	},
 	sessionId?: string,
 	result = "ok",
-): unknown[] {
-	const session = sessionId === undefined ? {} : {sessionId};
+): unknown[]
+{
+	const session =
+		sessionId === undefined
+			? {}
+			:
+				{
+					sessionId,
+				};
 	return [
 		{
 			type: "assistant",
 			uuid: `a-${call.id}`,
 			...session,
-			message: {
+			message:
+			{
 				role: "assistant",
-				content: [{type: "tool_use", ...call}],
+				content: [
+					{
+						type: "tool_use",
+						...call,
+					},
+				],
 			},
 		},
 		{
@@ -820,40 +1197,71 @@ function answeredToolCall(
 			uuid: `r-${call.id}`,
 			parentUuid: `a-${call.id}`,
 			...session,
-			message: {
+			message:
+			{
 				role: "user",
-				content: [{type: "tool_result", tool_use_id: call.id, content: result, is_error: false}],
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: call.id,
+						content: result,
+						is_error: false,
+					},
+				],
 			},
 		},
 	];
 }
 
-describe("SessionChat sequential tool batches", () => {
-	it("immediately renders answered questions between their surrounding command groups", () => {
-		const reminder = {
+describe("SessionChat sequential tool batches", () =>
+{
+	it("immediately renders answered questions between their surrounding command groups", () =>
+	{
+		const reminder =
+		{
 			type: "attachment",
-			attachment: {type: "total_tokens_reminder", text: "<total_tokens>1000 tokens left</total_tokens>"},
+			attachment:
+			{
+				type: "total_tokens_reminder",
+				text: "<total_tokens>1000 tokens left</total_tokens>",
+			},
 		};
 		const container = renderTranscriptElement([
-			...answeredToolCall({
-				id: "before-question",
-				name: "Bash",
-				input: {command: "echo prepared", description: "Prepare example files"},
-			}),
-			{...reminder, uuid: "reminder-before-question"},
+			...answeredToolCall(
+				{
+					id: "before-question",
+					name: "Bash",
+					input:
+					{
+						command: "echo prepared",
+						description: "Prepare example files",
+					},
+				},
+			),
+			{
+				...reminder,
+				uuid: "reminder-before-question",
+			},
 			...answeredToolCall(
 				{
 					id: "question",
 					name: "AskUserQuestion",
-					input: {
+					input:
+					{
 						questions: [
 							{
 								question: "Continue with the example?",
 								header: "Example",
 								multiSelect: false,
 								options: [
-									{label: "Continue", description: "Run both example commands"},
-									{label: "Stop", description: "Leave the example unchanged"},
+									{
+										label: "Continue",
+										description: "Run both example commands",
+									},
+									{
+										label: "Stop",
+										description: "Leave the example unchanged",
+									},
 								],
 							},
 						],
@@ -862,10 +1270,34 @@ describe("SessionChat sequential tool batches", () => {
 				undefined,
 				'Your questions have been answered: "Continue with the example?"="Continue". You can now continue with these answers in mind.',
 			),
-			{...reminder, uuid: "reminder-after-question"},
-			...answeredToolCall({id: "after-first", name: "Bash", input: {command: "echo first"}}),
-			{...reminder, uuid: "reminder-between-commands"},
-			...answeredToolCall({id: "after-second", name: "Bash", input: {command: "echo second"}}),
+			{
+				...reminder,
+				uuid: "reminder-after-question",
+			},
+			...answeredToolCall(
+				{
+					id: "after-first",
+					name: "Bash",
+					input:
+					{
+						command: "echo first",
+					},
+				},
+			),
+			{
+				...reminder,
+				uuid: "reminder-between-commands",
+			},
+			...answeredToolCall(
+				{
+					id: "after-second",
+					name: "Bash",
+					input:
+					{
+						command: "echo second",
+					},
+				},
+			),
 		]);
 
 		expect(
@@ -877,15 +1309,38 @@ describe("SessionChat sequential tool batches", () => {
 		).toStrictEqual(["Prepared example files", "Continue with the example?", "Continue", "Ran 2 commands"]);
 	});
 
-	it("groups commands across a hidden token budget reminder", () => {
+	it("groups commands across a hidden token budget reminder", () =>
+	{
 		const html = renderTranscript([
-			...answeredToolCall({id: "first-command", name: "Bash", input: {command: "echo first"}}),
+			...answeredToolCall(
+				{
+					id: "first-command",
+					name: "Bash",
+					input:
+					{
+						command: "echo first",
+					},
+				},
+			),
 			{
 				type: "attachment",
 				uuid: "token-reminder",
-				attachment: {type: "total_tokens_reminder", text: "<total_tokens>1000 tokens left</total_tokens>"},
+				attachment:
+				{
+					type: "total_tokens_reminder",
+					text: "<total_tokens>1000 tokens left</total_tokens>",
+				},
 			},
-			...answeredToolCall({id: "second-command", name: "Bash", input: {command: "echo second"}}),
+			...answeredToolCall(
+				{
+					id: "second-command",
+					name: "Bash",
+					input:
+					{
+						command: "echo second",
+					},
+				},
+			),
 		]);
 
 		expect(summaryLabels(html)).toStrictEqual(["Ran 2 commands"]);
@@ -894,12 +1349,22 @@ describe("SessionChat sequential tool batches", () => {
 	// Upstream claude.ai/code Normal folds a whole run of tool calls into one
 	// cross-tool summary row -- "Ran 2 commands, read cache.ts", "Updated todos,
 	// read 3 files" (.llm/ui-sync/upstream/code-rich-normal.tree.json, class 41).
-	it("merges a run of different tools into one summary row naming every tool", () => {
+	it("merges a run of different tools into one summary row naming every tool", () =>
+	{
 		const html = renderTranscript(
 			batchedToolCallRecords([
 				{
 					messageId: "msg_read",
-					calls: [{id: "t1", name: "Read", input: {file_path: "/repo/src/a.ts"}}],
+					calls: [
+						{
+							id: "t1",
+							name: "Read",
+							input:
+							{
+								file_path: "/repo/src/a.ts",
+							},
+						},
+					],
 				},
 				{
 					messageId: "msg_edit",
@@ -907,83 +1372,205 @@ describe("SessionChat sequential tool batches", () => {
 						{
 							id: "t2",
 							name: "Edit",
-							input: {file_path: "/repo/src/b.ts", old_string: "a", new_string: "b"},
+							input:
+							{
+								file_path: "/repo/src/b.ts",
+								old_string: "a",
+								new_string: "b",
+							},
 						},
 					],
 				},
 				{
 					messageId: "msg_grep",
-					calls: [{id: "t3", name: "Grep", input: {pattern: "alice"}}],
+					calls: [
+						{
+							id: "t3",
+							name: "Grep",
+							input:
+							{
+								pattern: "alice",
+							},
+						},
+					],
 				},
 			]),
 		);
 
-		expect({
-			labels: summaryLabels(html),
-			// Nested rows are not mounted until the summary is expanded.
-			rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
-		}).toStrictEqual({
-			labels: ["Read a file, edited a file, searched code"],
-			rowArguments: [],
-		});
+		expect(
+			{
+				labels: summaryLabels(html),
+				// Nested rows are not mounted until the summary is expanded.
+				rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
+			},
+		).toStrictEqual(
+			{
+				labels: ["Read a file, edited a file, searched code"],
+				rowArguments: [],
+			},
+		);
 	});
 
-	it("merges parallel batches from separate API messages, anchoring the row at the run's first line", () => {
+	it("merges parallel batches from separate API messages, anchoring the row at the run's first line", () =>
+	{
 		const html = renderTranscript(
 			batchedToolCallRecords([
 				{
 					messageId: "msg_read",
 					calls: [
-						{id: "t1", name: "Read", input: {file_path: "/repo/src/a.ts"}},
-						{id: "t2", name: "Read", input: {file_path: "/repo/src/b.ts"}},
-						{id: "t3", name: "Read", input: {file_path: "/repo/src/c.ts"}},
+						{
+							id: "t1",
+							name: "Read",
+							input:
+							{
+								file_path: "/repo/src/a.ts",
+							},
+						},
+						{
+							id: "t2",
+							name: "Read",
+							input:
+							{
+								file_path: "/repo/src/b.ts",
+							},
+						},
+						{
+							id: "t3",
+							name: "Read",
+							input:
+							{
+								file_path: "/repo/src/c.ts",
+							},
+						},
 					],
 				},
 				{
 					messageId: "msg_bash",
 					calls: [
-						{id: "t4", name: "Bash", input: {command: "git status"}},
-						{id: "t5", name: "Bash", input: {command: "git log --oneline"}},
+						{
+							id: "t4",
+							name: "Bash",
+							input:
+							{
+								command: "git status",
+							},
+						},
+						{
+							id: "t5",
+							name: "Bash",
+							input:
+							{
+								command: "git log --oneline",
+							},
+						},
 					],
 				},
 			]),
 		);
 
-		expect({
-			labels: summaryLabels(html),
-			// The whole run stays one turn, so the row sits inside a single turn gap.
-			turnWrappers: (html.match(/pb-\[var\(--chat-turn-gap\)\]/g) ?? []).length,
-			// jumpToMessage() walks back from the record index a swallowed line
-			// carries, so the run's first line carries the only jump target.
-			jumpTargets: [...html.matchAll(/<div data-record-index="(\d+)"/g)].map((match) => match[1]),
-		}).toStrictEqual({
-			labels: ["Read 3 files, ran 2 commands"],
-			turnWrappers: 1,
-			jumpTargets: ["0"],
-		});
+		expect(
+			{
+				labels: summaryLabels(html),
+				// The whole run stays one turn, so the row sits inside a single turn gap.
+				turnWrappers: (html.match(/pb-\[var\(--chat-turn-gap\)\]/g) ?? []).length,
+				// jumpToMessage() walks back from the record index a swallowed line
+				// carries, so the run's first line carries the only jump target.
+				jumpTargets: [...html.matchAll(/<div data-record-index="(\d+)"/g)].map((match) => match[1]),
+			},
+		).toStrictEqual(
+			{
+				labels: ["Read 3 files, ran 2 commands"],
+				turnWrappers: 1,
+				jumpTargets: ["0"],
+			},
+		);
 	});
 
-	it("merges records with no message id, since grouping no longer depends on batch identity", () => {
+	it("merges records with no message id, since grouping no longer depends on batch identity", () =>
+	{
 		const html = renderTranscript([
-			...answeredToolCall({id: "t1", name: "Read", input: {file_path: "/a.ts"}}),
-			...answeredToolCall({id: "t2", name: "Read", input: {file_path: "/b.ts"}}),
+			...answeredToolCall(
+				{
+					id: "t1",
+					name: "Read",
+					input:
+					{
+						file_path: "/a.ts",
+					},
+				},
+			),
+			...answeredToolCall(
+				{
+					id: "t2",
+					name: "Read",
+					input:
+					{
+						file_path: "/b.ts",
+					},
+				},
+			),
 		]);
 
-		expect({
-			labels: summaryLabels(html),
-			rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
-		}).toStrictEqual({
-			labels: ["Read 2 files"],
-			rowArguments: [],
-		});
+		expect(
+			{
+				labels: summaryLabels(html),
+				rowArguments: allToolRowLabelSpans(html).filter(([className]) => className === ARGUMENT),
+			},
+		).toStrictEqual(
+			{
+				labels: ["Read 2 files"],
+				rowArguments: [],
+			},
+		);
 	});
 
-	it("splits the run where the source session changes, so a row's debug links stay in one session", () => {
+	it("splits the run where the source session changes, so a row's debug links stay in one session", () =>
+	{
 		const html = renderTranscript([
-			...answeredToolCall({id: "t1", name: "Read", input: {file_path: "/a.ts"}}, "sess-parent"),
-			...answeredToolCall({id: "t2", name: "Read", input: {file_path: "/b.ts"}}, "sess-parent"),
-			...answeredToolCall({id: "t3", name: "Bash", input: {command: "git status"}}, "sess-child"),
-			...answeredToolCall({id: "t4", name: "Bash", input: {command: "git log"}}, "sess-child"),
+			...answeredToolCall(
+				{
+					id: "t1",
+					name: "Read",
+					input:
+					{
+						file_path: "/a.ts",
+					},
+				},
+				"sess-parent",
+			),
+			...answeredToolCall(
+				{
+					id: "t2",
+					name: "Read",
+					input:
+					{
+						file_path: "/b.ts",
+					},
+				},
+				"sess-parent",
+			),
+			...answeredToolCall(
+				{
+					id: "t3",
+					name: "Bash",
+					input:
+					{
+						command: "git status",
+					},
+				},
+				"sess-child",
+			),
+			...answeredToolCall(
+				{
+					id: "t4",
+					name: "Bash",
+					input:
+					{
+						command: "git log",
+					},
+				},
+				"sess-child",
+			),
 		]);
 
 		expect(summaryLabels(html)).toStrictEqual(["Read 2 files", "Ran 2 commands"]);
@@ -992,27 +1579,48 @@ describe("SessionChat sequential tool batches", () => {
 
 /** One tool call plus its result, so the row renders with a known isError flag. */
 function toolResultRecords(
-	call: {name: string; input: unknown},
+	call:
+	{
+		name: string;
+		input: unknown;
+	},
 	content: string,
 	isError = false,
 	resultFields: Record<string, unknown> = {},
-): unknown[] {
+): unknown[]
+{
 	return [
 		{
 			type: "assistant",
 			uuid: "a1",
-			message: {
+			message:
+			{
 				role: "assistant",
-				content: [{type: "tool_use", id: "t1", name: call.name, input: call.input}],
+				content: [
+					{
+						type: "tool_use",
+						id: "t1",
+						name: call.name,
+						input: call.input,
+					},
+				],
 			},
 		},
 		{
 			type: "user",
 			uuid: "r-t1",
 			parentUuid: "a1",
-			message: {
+			message:
+			{
 				role: "user",
-				content: [{type: "tool_result", tool_use_id: "t1", content, is_error: isError}],
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: "t1",
+						content,
+						is_error: isError,
+					},
+				],
 			},
 			...resultFields,
 		},
@@ -1021,30 +1629,78 @@ function toolResultRecords(
 
 function failedToolCallRecords(
 	isError: boolean,
-	call: {name: string; input: unknown} = {name: "Grep", input: {pattern: "alice"}},
-): unknown[] {
+	call:
+	{
+		name: string;
+		input: unknown;
+	} =
+	{
+		name: "Grep",
+		input:
+		{
+			pattern: "alice",
+		},
+	},
+): unknown[]
+{
 	return toolResultRecords(call, "rg exited with code 2", isError);
 }
 
 /** Text and class of every direct child of the one tool row header. */
-function rowHeaderChildren(records: unknown[]): {text: string | null; className: string}[] {
+function rowHeaderChildren(records: unknown[]):
+{
+	text: string | null;
+	className: string;
+}[]
+{
 	const header = renderTranscriptElement(records).querySelector(".group\\/tool")!;
-	return Array.from(header.children, (child) => ({text: child.textContent, className: child.className}));
+	return Array.from(header.children, (child) => (
+	{
+		text: child.textContent,
+		className: child.className,
+	}));
 }
 
 const MUTED_LABEL = "text-body text-secondary group-hover/tool:text-secondary";
-const FAILED_SUFFIX = {text: "Failed", className: "shrink-0 text-body text-danger"};
-const STOPPED_SUFFIX = {text: "Stopped", className: "shrink-0 text-body text-secondary"};
-const ROW_CHEVRON = {
+const FAILED_SUFFIX =
+{
+	text: "Failed",
+	className: "shrink-0 text-body text-danger",
+};
+const STOPPED_SUFFIX =
+{
+	text: "Stopped",
+	className: "shrink-0 text-body text-secondary",
+};
+const ROW_CHEVRON =
+{
 	text: "",
 	className: "shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&_svg]:size-4",
 };
 
-describe("SessionChat tool row permission decision", () => {
-	const records = toolResultRecords({name: "Grep", input: {pattern: "alice"}}, "found", false, {
-		permissionDecision: {decision: "accept", source: "config", reasonType: "classifier"},
-	});
-	const permissionSpans = (transcriptMode: TranscriptMode) => {
+describe("SessionChat tool row permission decision", () =>
+{
+	const records = toolResultRecords(
+		{
+			name: "Grep",
+			input:
+			{
+				pattern: "alice",
+			},
+		},
+		"found",
+		false,
+		{
+			permissionDecision:
+			{
+				decision: "accept",
+				source: "config",
+				reasonType: "classifier",
+			},
+		},
+	);
+	const permissionSpans = (transcriptMode: TranscriptMode) =>
+	{
 		const {lines, toolResultMap} = processTranscript(records);
 		const container = render(
 			<SessionChat
@@ -1055,14 +1711,16 @@ describe("SessionChat tool row permission decision", () => {
 				shouldScrollToEnd={false}
 			/>,
 		).container;
-		return Array.from(container.querySelectorAll("[data-permission-decision]"), (el) => ({
+		return Array.from(container.querySelectorAll("[data-permission-decision]"), (el) => (
+		{
 			text: el.textContent,
 			title: el.getAttribute("title"),
 			className: el.className,
 		}));
 	};
 
-	it("names what allowed the call in Verbose, with the raw decision as its tooltip", () => {
+	it("names what allowed the call in Verbose, with the raw decision as its tooltip", () =>
+	{
 		expect(permissionSpans("verbose")).toStrictEqual([
 			{
 				text: "Allowed by auto mode",
@@ -1072,15 +1730,39 @@ describe("SessionChat tool row permission decision", () => {
 		]);
 	});
 
-	it("leaves the permission decision out of Normal, which upstream never shows", () => {
+	it("leaves the permission decision out of Normal, which upstream never shows", () =>
+	{
 		expect(permissionSpans("normal")).toStrictEqual([]);
 	});
 });
 
-describe("SessionChat Bash tool row sandbox badge", () => {
-	const sandboxSpans = (sandboxed: boolean, transcriptMode: TranscriptMode, name = "Bash") => {
-		const input = name === "Bash" ? {command: "ls"} : {pattern: "alice"};
-		const {lines, toolResultMap} = processTranscript(toolResultRecords({name, input}, "ok", false, {sandboxed}));
+describe("SessionChat Bash tool row sandbox badge", () =>
+{
+	const sandboxSpans = (sandboxed: boolean, transcriptMode: TranscriptMode, name = "Bash") =>
+	{
+		const input =
+			name === "Bash"
+				?
+					{
+						command: "ls",
+					}
+				:
+					{
+						pattern: "alice",
+					};
+		const {lines, toolResultMap} = processTranscript(
+			toolResultRecords(
+				{
+					name,
+					input,
+				},
+				"ok",
+				false,
+				{
+					sandboxed,
+				},
+			),
+		);
 		const container = render(
 			<SessionChat
 				sessionId="test-session"
@@ -1090,7 +1772,8 @@ describe("SessionChat Bash tool row sandbox badge", () => {
 				shouldScrollToEnd={false}
 			/>,
 		).container;
-		return Array.from(container.querySelectorAll("[data-sandboxed]"), (el) => ({
+		return Array.from(container.querySelectorAll("[data-sandboxed]"), (el) => (
+		{
 			text: el.textContent,
 			sandboxed: el.getAttribute("data-sandboxed"),
 			title: el.getAttribute("title"),
@@ -1098,7 +1781,8 @@ describe("SessionChat Bash tool row sandbox badge", () => {
 		}));
 	};
 
-	it("badges a sandboxed Bash call in Verbose", () => {
+	it("badges a sandboxed Bash call in Verbose", () =>
+	{
 		expect(sandboxSpans(true, "verbose")).toStrictEqual([
 			{
 				text: "Sandboxed",
@@ -1109,7 +1793,8 @@ describe("SessionChat Bash tool row sandbox badge", () => {
 		]);
 	});
 
-	it("badges an unsandboxed Bash call in Verbose", () => {
+	it("badges an unsandboxed Bash call in Verbose", () =>
+	{
 		expect(sandboxSpans(false, "verbose")).toStrictEqual([
 			{
 				text: "Unsandboxed",
@@ -1120,23 +1805,47 @@ describe("SessionChat Bash tool row sandbox badge", () => {
 		]);
 	});
 
-	it("leaves the sandbox badge out of Normal, which upstream never shows", () => {
+	it("leaves the sandbox badge out of Normal, which upstream never shows", () =>
+	{
 		expect(sandboxSpans(true, "normal")).toStrictEqual([]);
 	});
 
-	it("only badges Bash rows", () => {
+	it("only badges Bash rows", () =>
+	{
 		expect(sandboxSpans(true, "verbose", "Grep")).toStrictEqual([]);
 	});
 });
 
-describe("SessionChat failed tool row label", () => {
-	const bash = (description: string) => ({name: "Bash", input: {command: "git push", description}});
+describe("SessionChat failed tool row label", () =>
+{
+	const bash = (description: string) => (
+	{
+		name: "Bash",
+		input:
+		{
+			command: "git push",
+			description,
+		},
+	});
 	const denied = (kind: string) =>
-		rowHeaderChildren(toolResultRecords(bash("Rebase and push X"), "Denied", true, {toolDenialKind: kind}));
+		rowHeaderChildren(
+			toolResultRecords(
+				bash("Rebase and push X"),
+				"Denied",
+				true,
+				{
+					toolDenialKind: kind,
+				},
+			),
+		);
 
-	it('keeps a failed Bash row on its raw description in muted ink and appends a danger "Failed", as upstream does', () => {
+	it('keeps a failed Bash row on its raw description in muted ink and appends a danger "Failed", as upstream does', () =>
+	{
 		expect(rowHeaderChildren(toolResultRecords(bash("Rebase and push X"), "Exit code 1", true))).toStrictEqual([
-			{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			{
+				text: "Rebase and push X",
+				className: `truncate min-w-0 ${MUTED_LABEL}`,
+			},
 			FAILED_SUFFIX,
 			ROW_CHEVRON,
 		]);
@@ -1144,132 +1853,257 @@ describe("SessionChat failed tool row label", () => {
 
 	const CLASSIFIER_DENIAL =
 		"Permission for this action was denied by the Claude Code auto mode classifier. Reason: [Credential Materialization]. If you have other tasks that don't depend on this action, continue working on those. IMPORTANT: You *may* attempt it another way.";
-	const BLOCKED_SUFFIX = {text: "Blocked", className: "shrink-0 text-body text-secondary"};
+	const BLOCKED_SUFFIX =
+	{
+		text: "Blocked",
+		className: "shrink-0 text-body text-secondary",
+	};
 
-	it('appends a secondary "Blocked" to a row the auto-mode classifier refused, with no danger ink', () => {
-		const records = toolResultRecords(bash("Rebase and push X"), CLASSIFIER_DENIAL, true, {
-			toolDenialKind: "automode-blocked",
-		});
+	it('appends a secondary "Blocked" to a row the auto-mode classifier refused, with no danger ink', () =>
+	{
+		const records = toolResultRecords(
+			bash("Rebase and push X"),
+			CLASSIFIER_DENIAL,
+			true,
+			{
+				toolDenialKind: "automode-blocked",
+			},
+		);
 
-		expect({
-			children: rowHeaderChildren(records),
-			danger: renderTranscript(records).includes("text-danger"),
-		}).toStrictEqual({
-			children: [
-				{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
-				BLOCKED_SUFFIX,
-				ROW_CHEVRON,
-			],
-			danger: false,
-		});
+		expect(
+			{
+				children: rowHeaderChildren(records),
+				danger: renderTranscript(records).includes("text-danger"),
+			},
+		).toStrictEqual(
+			{
+				children: [
+					{
+						text: "Rebase and push X",
+						className: `truncate min-w-0 ${MUTED_LABEL}`,
+					},
+					BLOCKED_SUFFIX,
+					ROW_CHEVRON,
+				],
+				danger: false,
+			},
+		);
 	});
 
-	it('reads "Blocked" when auto mode\'s check gave no verdict', () => {
+	it('reads "Blocked" when auto mode\'s check gave no verdict', () =>
+	{
 		expect(denied("automode-unavailable")).toStrictEqual([
-			{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			{
+				text: "Rebase and push X",
+				className: `truncate min-w-0 ${MUTED_LABEL}`,
+			},
 			BLOCKED_SUFFIX,
 			ROW_CHEVRON,
 		]);
 	});
 
-	it('keeps a permission-rule denial a danger "Failed"', () => {
+	it('keeps a permission-rule denial a danger "Failed"', () =>
+	{
 		expect(denied("permission-rule")).toStrictEqual([
-			{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			{
+				text: "Rebase and push X",
+				className: `truncate min-w-0 ${MUTED_LABEL}`,
+			},
 			FAILED_SUFFIX,
 			ROW_CHEVRON,
 		]);
 	});
 
-	it('names a blocked AskUserQuestion row in the running tense, "Asking", as upstream\'s neverAsked label does', () => {
+	it('names a blocked AskUserQuestion row in the running tense, "Asking", as upstream\'s neverAsked label does', () =>
+	{
 		const records = toolResultRecords(
 			{
 				name: "AskUserQuestion",
-				input: {
-					questions: [{header: "Change", question: "Which change?", options: [{label: "A"}, {label: "B"}]}],
+				input:
+				{
+					questions: [
+						{
+							header: "Change",
+							question: "Which change?",
+							options: [
+								{
+									label: "A",
+								},
+								{
+									label: "B",
+								},
+							],
+						},
+					],
 				},
 			},
 			CLASSIFIER_DENIAL,
 			true,
-			{toolDenialKind: "automode-blocked"},
+			{
+				toolDenialKind: "automode-blocked",
+			},
 		);
 		expect(rowHeaderChildren(records)).toStrictEqual([
-			{text: "Asking \u201cChange\u201d", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			{
+				text: "Asking \u201cChange\u201d",
+				className: `truncate min-w-0 ${MUTED_LABEL}`,
+			},
 			BLOCKED_SUFFIX,
 			ROW_CHEVRON,
 		]);
 	});
 
-	it('appends a secondary "Stopped" to a row the user rejected, with no danger ink', () => {
-		const records = toolResultRecords(bash("Get first incomplete task"), "Rejected", true, {
-			toolDenialKind: "user-rejected",
-		});
+	it('appends a secondary "Stopped" to a row the user rejected, with no danger ink', () =>
+	{
+		const records = toolResultRecords(
+			bash("Get first incomplete task"),
+			"Rejected",
+			true,
+			{
+				toolDenialKind: "user-rejected",
+			},
+		);
 
-		expect({
-			children: rowHeaderChildren(records),
-			danger: renderTranscript(records).includes("text-danger"),
-		}).toStrictEqual({
-			children: [
-				{text: "Get first incomplete task", className: `truncate min-w-0 ${MUTED_LABEL}`},
-				STOPPED_SUFFIX,
-				ROW_CHEVRON,
-			],
-			danger: false,
-		});
+		expect(
+			{
+				children: rowHeaderChildren(records),
+				danger: renderTranscript(records).includes("text-danger"),
+			},
+		).toStrictEqual(
+			{
+				children: [
+					{
+						text: "Get first incomplete task",
+						className: `truncate min-w-0 ${MUTED_LABEL}`,
+					},
+					STOPPED_SUFFIX,
+					ROW_CHEVRON,
+				],
+				danger: false,
+			},
+		);
 	});
 
-	it('names a stopped multi-question AskUserQuestion row "Asked 2 questions" as one text run, with a 12px chevron 2px after the status', () => {
+	it('names a stopped multi-question AskUserQuestion row "Asked 2 questions" as one text run, with a 12px chevron 2px after the status', () =>
+	{
 		const records = toolResultRecords(
 			{
 				name: "AskUserQuestion",
-				input: {
+				input:
+				{
 					questions: [
-						{header: "Change", question: "Which change?", options: [{label: "A"}, {label: "B"}]},
-						{header: "Scope", question: "How wide?", options: [{label: "C"}, {label: "D"}]},
+						{
+							header: "Change",
+							question: "Which change?",
+							options: [
+								{
+									label: "A",
+								},
+								{
+									label: "B",
+								},
+							],
+						},
+						{
+							header: "Scope",
+							question: "How wide?",
+							options: [
+								{
+									label: "C",
+								},
+								{
+									label: "D",
+								},
+							],
+						},
 					],
 				},
 			},
 			"Rejected",
 			true,
-			{toolDenialKind: "user-rejected"},
+			{
+				toolDenialKind: "user-rejected",
+			},
 		);
 		const header = renderTranscriptElement(records).querySelector(".group\\/tool")!;
 		const chevron = header.lastElementChild?.querySelector("svg");
 
-		expect({
-			children: Array.from(header.children, (child) => ({text: child.textContent, className: child.className})),
-			chevron: [chevron?.getAttribute("width"), chevron?.getAttribute("height")],
-		}).toStrictEqual({
-			children: [
-				{text: "Asked 2 questions", className: `truncate min-w-0 ${MUTED_LABEL}`},
-				STOPPED_SUFFIX,
-				ROW_CHEVRON,
-			],
-			chevron: ["12", "12"],
-		});
+		expect(
+			{
+				children: Array.from(header.children, (child) => (
+				{
+					text: child.textContent,
+					className: child.className,
+				})),
+				chevron: [chevron?.getAttribute("width"), chevron?.getAttribute("height")],
+			},
+		).toStrictEqual(
+			{
+				children: [
+					{
+						text: "Asked 2 questions",
+						className: `truncate min-w-0 ${MUTED_LABEL}`,
+					},
+					STOPPED_SUFFIX,
+					ROW_CHEVRON,
+				],
+				chevron: ["12", "12"],
+			},
+		);
 	});
 
-	describe("an AskUserQuestion call nobody answered", () => {
-		const question = (header: string, text: string) => ({
+	describe("an AskUserQuestion call nobody answered", () =>
+	{
+		const question = (header: string, text: string) => (
+		{
 			header,
 			question: text,
-			options: [{label: "A"}, {label: "B"}],
+			options: [
+				{
+					label: "A",
+				},
+				{
+					label: "B",
+				},
+			],
 		});
 		const unanswered = (
-			questions: {header: string; question: string}[],
+			questions:
+			{
+				header: string;
+				question: string;
+			}[],
 			answers: Record<string, string>,
 			content = "User has answered your questions.",
 		) =>
-			toolResultRecords({name: "AskUserQuestion", input: {questions}}, content, false, {
-				toolUseResult: {questions, answers},
-			});
-		const row = (records: unknown[]) => {
+			toolResultRecords(
+				{
+					name: "AskUserQuestion",
+					input:
+					{
+						questions,
+					},
+				},
+				content,
+				false,
+				{
+					toolUseResult:
+					{
+						questions,
+						answers,
+					},
+				},
+			);
+		const row = (records: unknown[]) =>
+		{
 			const container = renderTranscriptElement(records);
 			const header = container.querySelector(".group\\/tool");
 			return {
 				children:
 					header === null
 						? null
-						: Array.from(header.children, (child) => ({
+						: Array.from(header.children, (child) => (
+							{
 								text: child.textContent,
 								className: child.className,
 							})),
@@ -1277,10 +2111,17 @@ describe("SessionChat failed tool row label", () => {
 				legacyCard: container.querySelector(".card-outline") !== null,
 			};
 		};
-		const noted = (label: string, note: string) => ({
+		const noted = (label: string, note: string) => (
+		{
 			children: [
-				{text: label, className: `truncate min-w-0 ${MUTED_LABEL}`},
-				{text: note, className: "shrink-0 text-body text-secondary"},
+				{
+					text: label,
+					className: `truncate min-w-0 ${MUTED_LABEL}`,
+				},
+				{
+					text: note,
+					className: "shrink-0 text-body text-secondary",
+				},
 				ROW_CHEVRON,
 			],
 			receipt: false,
@@ -1288,296 +2129,542 @@ describe("SessionChat failed tool row label", () => {
 		});
 		const dismissedAnswer = "[User dismissed — do not proceed, wait for next instruction]";
 
-		it('draws a single "[No preference]" answer as the row "Asked “Color”" noted "Skipped", not a receipt', () => {
+		it('draws a single "[No preference]" answer as the row "Asked “Color”" noted "Skipped", not a receipt', () =>
+		{
 			const color = question("Color", "Which color?");
-			expect(row(unanswered([color], {"Which color?": "[No preference]"}))).toStrictEqual(
-				noted("Asked “Color”", "Skipped"),
-			);
+			expect(
+				row(
+					unanswered(
+						[color],
+						{
+							"Which color?": "[No preference]",
+						},
+					),
+				),
+			).toStrictEqual(noted("Asked “Color”", "Skipped"));
 		});
 
-		it('notes a two-question call replied to in chat "Asked 2 questions · Replied in chat"', () => {
+		it('notes a two-question call replied to in chat "Asked 2 questions · Replied in chat"', () =>
+		{
 			const replied =
 				"[User did not answer this question — they sent a message instead. Treat that message as their response; do not re-ask.]";
 			expect(
 				row(
-					unanswered([question("Fruit", "Which fruit?"), question("Size", "How big?")], {
-						"Which fruit?": replied,
-						"How big?": replied,
-					}),
+					unanswered(
+						[question("Fruit", "Which fruit?"), question("Size", "How big?")],
+						{
+							"Which fruit?": replied,
+							"How big?": replied,
+						},
+					),
 				),
 			).toStrictEqual(noted("Asked 2 questions", "Replied in chat"));
 		});
 
-		it('notes a dismissed question "Not answered"', () => {
-			expect(row(unanswered([question("Pet", "Which pet?")], {"Which pet?": dismissedAnswer}))).toStrictEqual(
-				noted("Asked “Pet”", "Not answered"),
-			);
-		});
-
-		it('notes a call whose questions have mixed outcomes "Not answered"', () => {
+		it('notes a dismissed question "Not answered"', () =>
+		{
 			expect(
 				row(
-					unanswered([question("Fruit", "Which fruit?"), question("Size", "How big?")], {
-						"Which fruit?": "[No preference]",
-						"How big?": dismissedAnswer,
-					}),
+					unanswered(
+						[question("Pet", "Which pet?")],
+						{
+							"Which pet?": dismissedAnswer,
+						},
+					),
+				),
+			).toStrictEqual(noted("Asked “Pet”", "Not answered"));
+		});
+
+		it('notes a call whose questions have mixed outcomes "Not answered"', () =>
+		{
+			expect(
+				row(
+					unanswered(
+						[question("Fruit", "Which fruit?"), question("Size", "How big?")],
+						{
+							"Which fruit?": "[No preference]",
+							"How big?": dismissedAnswer,
+						},
+					),
 				),
 			).toStrictEqual(noted("Asked 2 questions", "Not answered"));
 		});
 
-		it('draws the CLI terminal skip (answers: {}) as a plain "Asked “G”" row with no note and no legacy card', () => {
+		it('draws the CLI terminal skip (answers: {}) as a plain "Asked “G”" row with no note and no legacy card', () =>
+		{
 			expect(
 				row(unanswered([question("G", "Which game?")], {}, "The user did not answer the questions.")),
-			).toStrictEqual({
-				children: [{text: "Asked “G”", className: `truncate min-w-0 ${MUTED_LABEL}`}, ROW_CHEVRON],
-				receipt: false,
-				legacyCard: false,
-			});
+			).toStrictEqual(
+				{
+					children: [
+						{
+							text: "Asked “G”",
+							className: `truncate min-w-0 ${MUTED_LABEL}`,
+						},
+						ROW_CHEVRON,
+					],
+					receipt: false,
+					legacyCard: false,
+				},
+			);
 		});
 	});
 
-	it('labels a rejection the user explained "Denied" and a bare rejection "Stopped", both in secondary ink', () => {
+	it('labels a rejection the user explained "Denied" and a bare rejection "Stopped", both in secondary ink', () =>
+	{
 		const rejection =
 			"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nNot now";
 		const description = "Commit the mise version bumps";
-		const label = {text: description, className: `truncate min-w-0 ${MUTED_LABEL}`};
+		const label =
+		{
+			text: description,
+			className: `truncate min-w-0 ${MUTED_LABEL}`,
+		};
 
-		expect({
-			denied: rowHeaderChildren(
-				toolResultRecords(bash(description), rejection, true, {
-					toolDenialKind: "user-rejected",
-					toolUseResult: `Error: ${rejection}`,
-				}),
-			),
-			stopped: rowHeaderChildren(
-				toolResultRecords(bash(description), rejection, true, {
-					toolDenialKind: "user-rejected",
-					toolUseResult: "User rejected tool use",
-				}),
-			),
-		}).toStrictEqual({
-			denied: [label, {text: "Denied", className: "shrink-0 text-body text-secondary"}, ROW_CHEVRON],
-			stopped: [label, STOPPED_SUFFIX, ROW_CHEVRON],
-		});
+		expect(
+			{
+				denied: rowHeaderChildren(
+					toolResultRecords(
+						bash(description),
+						rejection,
+						true,
+						{
+							toolDenialKind: "user-rejected",
+							toolUseResult: `Error: ${rejection}`,
+						},
+					),
+				),
+				stopped: rowHeaderChildren(
+					toolResultRecords(
+						bash(description),
+						rejection,
+						true,
+						{
+							toolDenialKind: "user-rejected",
+							toolUseResult: "User rejected tool use",
+						},
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				denied: [
+					label,
+					{
+						text: "Denied",
+						className: "shrink-0 text-body text-secondary",
+					},
+					ROW_CHEVRON,
+				],
+				stopped: [label, STOPPED_SUFFIX, ROW_CHEVRON],
+			},
+		);
 	});
 
-	it('notes a rejected or interrupted ExitPlanMode "Not approved" after its plan heading, as upstream\'s mD does', () => {
+	it('notes a rejected or interrupted ExitPlanMode "Not approved" after its plan heading, as upstream\'s mD does', () =>
+	{
 		const rejection =
 			"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nmake it shorter";
-		const plan = {name: "ExitPlanMode", input: {plan: "# Plan: Water a pretend plant\n\n1. Pour"}};
+		const plan =
+		{
+			name: "ExitPlanMode",
+			input:
+			{
+				plan: "# Plan: Water a pretend plant\n\n1. Pour",
+			},
+		};
 		const texts = (records: unknown[]) => rowHeaderChildren(records).map((child) => child.text);
 
-		expect({
-			denied: texts(
-				toolResultRecords(plan, rejection, true, {
-					toolDenialKind: "user-rejected",
-					toolUseResult: `Error: ${rejection}`,
-				}),
-			),
-			stopped: texts(
-				toolResultRecords(plan, rejection, true, {
-					toolDenialKind: "user-rejected",
-					toolUseResult: "User rejected tool use",
-				}),
-			),
-		}).toStrictEqual({
-			denied: ["Proposed plan", "Plan: Water a pretend plant", "Not approved", ""],
-			stopped: ["Proposed plan", "Plan: Water a pretend plant", "Not approved", ""],
-		});
+		expect(
+			{
+				denied: texts(
+					toolResultRecords(
+						plan,
+						rejection,
+						true,
+						{
+							toolDenialKind: "user-rejected",
+							toolUseResult: `Error: ${rejection}`,
+						},
+					),
+				),
+				stopped: texts(
+					toolResultRecords(
+						plan,
+						rejection,
+						true,
+						{
+							toolDenialKind: "user-rejected",
+							toolUseResult: "User rejected tool use",
+						},
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				denied: ["Proposed plan", "Plan: Water a pretend plant", "Not approved", ""],
+				stopped: ["Proposed plan", "Plan: Water a pretend plant", "Not approved", ""],
+			},
+		);
 	});
 
-	it("shows a Revise feedback after the ExitPlanMode row as a user message bubble, as upstream does", () => {
+	it("shows a Revise feedback after the ExitPlanMode row as a user message bubble, as upstream does", () =>
+	{
 		const rejection =
 			"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nmake it shorter";
-		const plan = {name: "ExitPlanMode", input: {plan: "# Plan: Water a pretend plant"}};
+		const plan =
+		{
+			name: "ExitPlanMode",
+			input:
+			{
+				plan: "# Plan: Water a pretend plant",
+			},
+		};
 		const bubbles = (result: string) =>
 			[
 				...renderTranscriptElement(
-					toolResultRecords(plan, result, true, {
-						toolDenialKind: "user-rejected",
-						toolUseResult: `Error: ${result}`,
-					}),
+					toolResultRecords(
+						plan,
+						result,
+						true,
+						{
+							toolDenialKind: "user-rejected",
+							toolUseResult: `Error: ${result}`,
+						},
+					),
 				).querySelectorAll("[data-plan-feedback]"),
 			].map((bubble) => [
 				bubble.querySelector(".user-message-bubble p")?.className,
 				bubble.querySelector(".user-message-bubble p")?.textContent,
 			]);
 
-		expect({
-			feedback: bubbles(rejection),
-			bare: bubbles("The user doesn't want to proceed with this tool use. The tool use was rejected."),
-		}).toStrictEqual({
-			feedback: [
-				[
-					"text-prose whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]",
-					"make it shorter",
+		expect(
+			{
+				feedback: bubbles(rejection),
+				bare: bubbles("The user doesn't want to proceed with this tool use. The tool use was rejected."),
+			},
+		).toStrictEqual(
+			{
+				feedback: [
+					[
+						"text-prose whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]",
+						"make it shorter",
+					],
 				],
-			],
-			bare: [],
-		});
+				bare: [],
+			},
+		);
 	});
 
-	it('marks a call whose result reports {success: false} "Failed" without is_error, as upstream does', () => {
-		const sendMessage = {name: "SendMessage", input: {to: "slotter", message: "hi"}};
+	it('marks a call whose result reports {success: false} "Failed" without is_error, as upstream does', () =>
+	{
+		const sendMessage =
+		{
+			name: "SendMessage",
+			input:
+			{
+				to: "slotter",
+				message: "hi",
+			},
+		};
 		const unreachable = "No agent named 'slotter' is reachable.";
 
 		expect(
 			rowHeaderChildren(
-				toolResultRecords(sendMessage, JSON.stringify({success: false, message: unreachable}), false, {
-					toolUseResult: {success: false, message: unreachable, display: "Not sent"},
-				}),
+				toolResultRecords(
+					sendMessage,
+					JSON.stringify(
+						{
+							success: false,
+							message: unreachable,
+						},
+					),
+					false,
+					{
+						toolUseResult:
+						{
+							success: false,
+							message: unreachable,
+							display: "Not sent",
+						},
+					},
+				),
 			),
 		).toStrictEqual([
-			{text: "Messaging @slotter", className: `shrink-0 ${MUTED_LABEL}`},
-			{text: "hi", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			{
+				text: "Messaging @slotter",
+				className: `shrink-0 ${MUTED_LABEL}`,
+			},
+			{
+				text: "hi",
+				className: `truncate min-w-0 ${MUTED_LABEL}`,
+			},
 			FAILED_SUFFIX,
 			ROW_CHEVRON,
 		]);
 	});
 
-	it('gives a failed Edit the running verb, with the file name in primary ink, and appends "Failed"', () => {
+	it('gives a failed Edit the running verb, with the file name in primary ink, and appends "Failed"', () =>
+	{
 		const children = rowHeaderChildren(
 			toolResultRecords(
-				{name: "Edit", input: {file_path: "/repo/src/pages.tsx", old_string: "a", new_string: "b"}},
+				{
+					name: "Edit",
+					input:
+					{
+						file_path: "/repo/src/pages.tsx",
+						old_string: "a",
+						new_string: "b",
+					},
+				},
 				"File has not been read yet",
 				true,
 			),
 		);
 
 		expect(children.filter((child) => child.text !== "" && !/^[+-]\d/.test(child.text ?? ""))).toStrictEqual([
-			{text: "Editing", className: `shrink-0 ${MUTED_LABEL}`},
-			{text: "pages.tsx", className: "text-body text-primary truncate min-w-0"},
+			{
+				text: "Editing",
+				className: `shrink-0 ${MUTED_LABEL}`,
+			},
+			{
+				text: "pages.tsx",
+				className: "text-body text-primary truncate min-w-0",
+			},
 			FAILED_SUFFIX,
 		]);
 	});
 
-	it("leaves a successful row without a status suffix", () => {
+	it("leaves a successful row without a status suffix", () =>
+	{
 		expect(rowHeaderChildren(toolResultRecords(bash("Push the branch"), "ok"))).toStrictEqual([
-			{text: "Pushed the branch", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			{
+				text: "Pushed the branch",
+				className: `truncate min-w-0 ${MUTED_LABEL}`,
+			},
 			ROW_CHEVRON,
 		]);
 	});
 });
 
-describe("SessionChat Skill row label", () => {
-	it('draws "Ran skill" in secondary ink and the skill name in primary, as upstream does', () => {
-		const html = renderTranscript(toolResultRecords({name: "Skill", input: {skill: "loop"}}, "Launched", false));
+describe("SessionChat Skill row label", () =>
+{
+	it('draws "Ran skill" in secondary ink and the skill name in primary, as upstream does', () =>
+	{
+		const html = renderTranscript(
+			toolResultRecords(
+				{
+					name: "Skill",
+					input:
+					{
+						skill: "loop",
+					},
+				},
+				"Launched",
+				false,
+			),
+		);
 
-		expect({
-			spans: rowHeaderSpanClasses(html),
-			name: html.includes('<code class="font-mono">/loop</code>'),
-		}).toStrictEqual({
-			spans: [
-				"shrink-0 text-body text-secondary",
-				"truncate min-w-0 text-body text-primary",
-				"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
-			],
-			name: true,
-		});
+		expect(
+			{
+				spans: rowHeaderSpanClasses(html),
+				name: html.includes('<code class="font-mono">/loop</code>'),
+			},
+		).toStrictEqual(
+			{
+				spans: [
+					"shrink-0 text-body text-secondary",
+					"truncate min-w-0 text-body text-primary",
+					"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+				],
+				name: true,
+			},
+		);
 	});
 
-	it('gives a failed Skill row "Running skill /name" and appends a danger "Failed", as upstream does', () => {
-		const records = toolResultRecords({name: "Skill", input: {skill: "nextdns:report"}}, "Unknown skill", true);
+	it('gives a failed Skill row "Running skill /name" and appends a danger "Failed", as upstream does', () =>
+	{
+		const records = toolResultRecords(
+			{
+				name: "Skill",
+				input:
+				{
+					skill: "nextdns:report",
+				},
+			},
+			"Unknown skill",
+			true,
+		);
 		const html = renderTranscript(records);
 		const header = renderTranscriptElement(records).querySelector(".group\\/tool")!;
 
-		expect({
-			text: Array.from(header.children, (child) => child.textContent),
-			spans: rowHeaderSpanClasses(html),
-			code: html.includes("<code"),
-			oldLabel: html.includes("Failed to run skill"),
-		}).toStrictEqual({
-			text: ["Running skill", "/nextdns:report", "Failed", ""],
-			spans: [
-				"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
-				"truncate min-w-0 text-body text-secondary",
-				"shrink-0 text-body text-danger",
-				"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
-			],
-			code: false,
-			oldLabel: false,
-		});
+		expect(
+			{
+				text: Array.from(header.children, (child) => child.textContent),
+				spans: rowHeaderSpanClasses(html),
+				code: html.includes("<code"),
+				oldLabel: html.includes("Failed to run skill"),
+			},
+		).toStrictEqual(
+			{
+				text: ["Running skill", "/nextdns:report", "Failed", ""],
+				spans: [
+					"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
+					"truncate min-w-0 text-body text-secondary",
+					"shrink-0 text-body text-danger",
+					"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+				],
+				code: false,
+				oldLabel: false,
+			},
+		);
 	});
 
-	it("defines the danger ink token from upstream's rgb(142, 38, 38)", () => {
+	it("defines the danger ink token from upstream's rgb(142, 38, 38)", () =>
+	{
 		const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
 
-		expect({
-			token: styles.includes("--color-danger-ink: var(--upstream-code-ink);"),
-			light: styles.includes("--upstream-code-ink: rgb(142 38 38);"),
-		}).toStrictEqual({token: true, light: true});
+		expect(
+			{
+				token: styles.includes("--color-danger-ink: var(--upstream-code-ink);"),
+				light: styles.includes("--upstream-code-ink: rgb(142 38 38);"),
+			},
+		).toStrictEqual(
+			{
+				token: true,
+				light: true,
+			},
+		);
 	});
 });
 
-describe("SessionChat failed tool row label text", () => {
-	it('gives a failed row the running verb and appends "Failed", keeping the file path primary', () => {
-		const editInput = {
+describe("SessionChat failed tool row label text", () =>
+{
+	it('gives a failed row the running verb and appends "Failed", keeping the file path primary', () =>
+	{
+		const editInput =
+		{
 			file_path: "/repo/src/cache.ts",
 			old_string: "a",
 			new_string: "b",
 		};
 
-		expect({
-			failedEdit: toolRowLabelSpans(
-				renderTranscript(failedToolCallRecords(true, {name: "Edit", input: editInput})),
-			),
-			okEdit: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, {name: "Edit", input: editInput}))),
-			failedGrep: toolRowLabelSpans(renderTranscript(failedToolCallRecords(true))),
-			okGrep: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false))),
-		}).toStrictEqual({
-			failedEdit: [
-				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Editing"],
-				["text-body text-primary truncate min-w-0", "cache.ts"],
-				["shrink-0 text-body text-danger", "Failed"],
-			],
-			okEdit: [
-				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Edited"],
-				["text-body text-primary truncate min-w-0", "cache.ts"],
-			],
-			failedGrep: [
-				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searching"],
-				["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "alice"],
-				["shrink-0 text-body text-danger", "Failed"],
-			],
-			okGrep: [
-				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searched"],
-				["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "alice"],
-			],
-		});
+		expect(
+			{
+				failedEdit: toolRowLabelSpans(
+					renderTranscript(
+						failedToolCallRecords(
+							true,
+							{
+								name: "Edit",
+								input: editInput,
+							},
+						),
+					),
+				),
+				okEdit: toolRowLabelSpans(
+					renderTranscript(
+						failedToolCallRecords(
+							false,
+							{
+								name: "Edit",
+								input: editInput,
+							},
+						),
+					),
+				),
+				failedGrep: toolRowLabelSpans(renderTranscript(failedToolCallRecords(true))),
+				okGrep: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false))),
+			},
+		).toStrictEqual(
+			{
+				failedEdit: [
+					["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Editing"],
+					["text-body text-primary truncate min-w-0", "cache.ts"],
+					["shrink-0 text-body text-danger", "Failed"],
+				],
+				okEdit: [
+					["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Edited"],
+					["text-body text-primary truncate min-w-0", "cache.ts"],
+				],
+				failedGrep: [
+					["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searching"],
+					["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "alice"],
+					["shrink-0 text-body text-danger", "Failed"],
+				],
+				okGrep: [
+					["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searched"],
+					["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "alice"],
+				],
+			},
+		);
 	});
 
-	it("keeps a failed call's own description unchanged, as upstream past-tenses it only on success", () => {
-		const bashInput = {
+	it("keeps a failed call's own description unchanged, as upstream past-tenses it only on success", () =>
+	{
+		const bashInput =
+		{
 			command: "pnpm install && pnpm build",
 			description: "Install dependencies and build",
 		};
 
-		expect({
-			failed: toolRowLabelSpans(renderTranscript(failedToolCallRecords(true, {name: "Bash", input: bashInput}))),
-			ok: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, {name: "Bash", input: bashInput}))),
-		}).toStrictEqual({
-			failed: [
-				[
-					"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
-					"Install dependencies and build",
+		expect(
+			{
+				failed: toolRowLabelSpans(
+					renderTranscript(
+						failedToolCallRecords(
+							true,
+							{
+								name: "Bash",
+								input: bashInput,
+							},
+						),
+					),
+				),
+				ok: toolRowLabelSpans(
+					renderTranscript(
+						failedToolCallRecords(
+							false,
+							{
+								name: "Bash",
+								input: bashInput,
+							},
+						),
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				failed: [
+					[
+						"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
+						"Install dependencies and build",
+					],
+					["shrink-0 text-body text-danger", "Failed"],
 				],
-				["shrink-0 text-body text-danger", "Failed"],
-			],
-			ok: [
-				[
-					"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
-					"Installed dependencies and built",
+				ok: [
+					[
+						"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
+						"Installed dependencies and built",
+					],
 				],
-			],
-		});
+			},
+		);
 	});
 
-	it('gives a failed tool with no verb of its own "Using {server: tool name}"', () => {
+	it('gives a failed tool with no verb of its own "Using {server: tool name}"', () =>
+	{
 		const html = renderTranscript(
-			failedToolCallRecords(true, {
-				name: "mcp__sentry__search_issues",
-				input: {query: "unhandled"},
-			}),
+			failedToolCallRecords(
+				true,
+				{
+					name: "mcp__sentry__search_issues",
+					input:
+					{
+						query: "unhandled",
+					},
+				},
+			),
 		);
 
 		expect(toolRowLabelSpans(html)).toStrictEqual([
@@ -1588,12 +2675,23 @@ describe("SessionChat failed tool row label text", () => {
 	});
 });
 
-describe("SessionChat file-param tool row argument", () => {
+describe("SessionChat file-param tool row argument", () =>
+{
 	const VERB = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
 
-	it("sets a file argument in the sans body face, matching upstream Read/Edit rows", () => {
+	it("sets a file argument in the sans body face, matching upstream Read/Edit rows", () =>
+	{
 		const html = renderTranscript(
-			toolCallRecords([{id: "t1", name: "Read", input: {file_path: "/repo/src/cache.ts"}}]),
+			toolCallRecords([
+				{
+					id: "t1",
+					name: "Read",
+					input:
+					{
+						file_path: "/repo/src/cache.ts",
+					},
+				},
+			]),
 		);
 
 		expect(toolRowLabelSpans(html)).toStrictEqual([
@@ -1602,11 +2700,26 @@ describe("SessionChat file-param tool row argument", () => {
 		]);
 	});
 
-	it("does not mount nested file rows until the group summary is expanded", () => {
+	it("does not mount nested file rows until the group summary is expanded", () =>
+	{
 		const html = renderTranscript(
 			toolCallRecords([
-				{id: "t1", name: "Read", input: {file_path: "/repo/src/cache.ts"}},
-				{id: "t2", name: "Read", input: {file_path: "/repo/src/schema.ts"}},
+				{
+					id: "t1",
+					name: "Read",
+					input:
+					{
+						file_path: "/repo/src/cache.ts",
+					},
+				},
+				{
+					id: "t2",
+					name: "Read",
+					input:
+					{
+						file_path: "/repo/src/schema.ts",
+					},
+				},
 			]),
 		);
 
@@ -1618,36 +2731,81 @@ describe("SessionChat file-param tool row argument", () => {
 	// slice is distinguishable from a whole-file read.
 	const RANGE = "text-body text-secondary group-hover/tool:text-secondary truncate min-w-0";
 
-	function readRow(input: unknown): [string, string][] {
-		return toolRowLabelSpans(renderTranscript(toolCallRecords([{id: "t1", name: "Read", input}])));
+	function readRow(input: unknown): [string, string][]
+	{
+		return toolRowLabelSpans(
+			renderTranscript(
+				toolCallRecords([
+					{
+						id: "t1",
+						name: "Read",
+						input,
+					},
+				]),
+			),
+		);
 	}
 
-	it("appends the line range of a partial read to the row", () => {
-		expect(readRow({file_path: "/repo/src/cache.ts", offset: 220, limit: 20})).toStrictEqual([
+	it("appends the line range of a partial read to the row", () =>
+	{
+		expect(
+			readRow(
+				{
+					file_path: "/repo/src/cache.ts",
+					offset: 220,
+					limit: 20,
+				},
+			),
+		).toStrictEqual([
 			[VERB, "Read"],
 			[ARGUMENT, "cache.ts"],
 			[RANGE, "(220–239)"],
 		]);
 	});
 
-	it("counts a limit with no offset from the first line", () => {
-		expect(readRow({file_path: "/repo/src/cache.ts", limit: 50})).toStrictEqual([
+	it("counts a limit with no offset from the first line", () =>
+	{
+		expect(
+			readRow(
+				{
+					file_path: "/repo/src/cache.ts",
+					limit: 50,
+				},
+			),
+		).toStrictEqual([
 			[VERB, "Read"],
 			[ARGUMENT, "cache.ts"],
 			[RANGE, "(1–50)"],
 		]);
 	});
 
-	it("leaves an offset with no limit open-ended", () => {
-		expect(readRow({file_path: "/repo/src/cache.ts", offset: 220})).toStrictEqual([
+	it("leaves an offset with no limit open-ended", () =>
+	{
+		expect(
+			readRow(
+				{
+					file_path: "/repo/src/cache.ts",
+					offset: 220,
+				},
+			),
+		).toStrictEqual([
 			[VERB, "Read"],
 			[ARGUMENT, "cache.ts"],
 			[RANGE, "(220–)"],
 		]);
 	});
 
-	it("names a single-line read as a range, as upstream never collapses one", () => {
-		expect(readRow({file_path: "/repo/src/cache.ts", offset: 220, limit: 1})).toStrictEqual([
+	it("names a single-line read as a range, as upstream never collapses one", () =>
+	{
+		expect(
+			readRow(
+				{
+					file_path: "/repo/src/cache.ts",
+					offset: 220,
+					limit: 1,
+				},
+			),
+		).toStrictEqual([
 			[VERB, "Read"],
 			[ARGUMENT, "cache.ts"],
 			[RANGE, "(220–220)"],
@@ -1656,32 +2814,57 @@ describe("SessionChat file-param tool row argument", () => {
 
 	// Claude Code has written `"offset": "55, "` on disk, so the row parses the
 	// bounds rather than trusting them to be numbers.
-	it("parses string bounds and ignores unparseable ones", () => {
-		expect({
-			stringy: readRow({file_path: "/repo/src/cache.ts", offset: "55, ", limit: "45"}),
-			junk: readRow({file_path: "/repo/src/cache.ts", offset: "start", limit: 0}),
-		}).toStrictEqual({
-			stringy: [
-				[VERB, "Read"],
-				[ARGUMENT, "cache.ts"],
-				[RANGE, "(55–99)"],
-			],
-			junk: [
-				[VERB, "Read"],
-				[ARGUMENT, "cache.ts"],
-			],
-		});
+	it("parses string bounds and ignores unparseable ones", () =>
+	{
+		expect(
+			{
+				stringy: readRow(
+					{
+						file_path: "/repo/src/cache.ts",
+						offset: "55, ",
+						limit: "45",
+					},
+				),
+				junk: readRow(
+					{
+						file_path: "/repo/src/cache.ts",
+						offset: "start",
+						limit: 0,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				stringy: [
+					[VERB, "Read"],
+					[ARGUMENT, "cache.ts"],
+					[RANGE, "(55–99)"],
+				],
+				junk: [
+					[VERB, "Read"],
+					[ARGUMENT, "cache.ts"],
+				],
+			},
+		);
 	});
 
-	it("leaves a whole-file read unranged", () => {
-		expect(readRow({file_path: "/repo/src/cache.ts"})).toStrictEqual([
+	it("leaves a whole-file read unranged", () =>
+	{
+		expect(
+			readRow(
+				{
+					file_path: "/repo/src/cache.ts",
+				},
+			),
+		).toStrictEqual([
 			[VERB, "Read"],
 			[ARGUMENT, "cache.ts"],
 		]);
 	});
 });
 
-describe("SessionChat Agent row label", () => {
+describe("SessionChat Agent row label", () =>
+{
 	const VERB = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
 	const DESCRIPTION = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
 
@@ -1689,7 +2872,8 @@ describe("SessionChat Agent row label", () => {
 		{
 			id: "t1",
 			name: "Agent",
-			input: {
+			input:
+			{
 				description: "Implement pending approvals fix",
 				prompt: "Fix the pending approvals bug",
 				subagent_type: "Code",
@@ -1698,7 +2882,8 @@ describe("SessionChat Agent row label", () => {
 	]);
 
 	/** The one subagent `agentRecords` spawns, resolved by (agentType, description). */
-	function spawnedAgent(model: string | null): Subagent[] {
+	function spawnedAgent(model: string | null): Subagent[]
+	{
 		return [
 			{
 				id: "agent-abc123",
@@ -1716,7 +2901,8 @@ describe("SessionChat Agent row label", () => {
 		];
 	}
 
-	function renderWithSubagents(subagents: Subagent[]): string {
+	function renderWithSubagents(subagents: Subagent[]): string
+	{
 		const {lines, toolResultMap} = processTranscript(agentRecords);
 		return renderToStaticMarkup(
 			<SessionChat
@@ -1730,14 +2916,16 @@ describe("SessionChat Agent row label", () => {
 		);
 	}
 
-	it("labels a completed agent row with its verb followed by its description", () => {
+	it("labels a completed agent row with its verb followed by its description", () =>
+	{
 		expect(toolRowLabelSpans(renderTranscript(agentRecords))).toStrictEqual([
 			[VERB, "Ran agent"],
 			[DESCRIPTION, "Implement pending approvals fix"],
 		]);
 	});
 
-	it("draws the agent row chevron in the flat t6 token upstream uses", () => {
+	it("draws the agent row chevron in the flat t6 token upstream uses", () =>
+	{
 		expect(rowHeaderSpanClasses(renderTranscript(agentRecords))).toStrictEqual([
 			VERB,
 			DESCRIPTION,
@@ -1745,7 +2933,8 @@ describe("SessionChat Agent row label", () => {
 		]);
 	});
 
-	it("trails the subagent's model in a secondary badge before the chevron", () => {
+	it("trails the subagent's model in a secondary badge before the chevron", () =>
+	{
 		expect(rowHeaderSpanClasses(renderWithSubagents(spawnedAgent("claude-haiku-4-5-20251001")))).toStrictEqual([
 			VERB,
 			DESCRIPTION,
@@ -1755,14 +2944,22 @@ describe("SessionChat Agent row label", () => {
 		]);
 	});
 
-	it('keeps a failed agent row on its success label and appends "Failed"', () => {
+	it('keeps a failed agent row on its success label and appends "Failed"', () =>
+	{
 		expect(
 			toolRowLabelSpans(
 				renderTranscript(
-					failedToolCallRecords(true, {
-						name: "Agent",
-						input: {description: "Implement pending approvals fix", prompt: "Fix it"},
-					}),
+					failedToolCallRecords(
+						true,
+						{
+							name: "Agent",
+							input:
+							{
+								description: "Implement pending approvals fix",
+								prompt: "Fix it",
+							},
+						},
+					),
 				),
 			),
 		).toStrictEqual([
@@ -1772,8 +2969,10 @@ describe("SessionChat Agent row label", () => {
 	});
 });
 
-describe("SessionChat Agent row opening the Subagent pane", () => {
-	const SUBAGENT: Subagent = {
+describe("SessionChat Agent row opening the Subagent pane", () =>
+{
+	const SUBAGENT: Subagent =
+	{
 		id: "agent-abc123",
 		sessionId: "test-session",
 		projectId: "proj-1",
@@ -1786,13 +2985,20 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 		startedAt: "2026-01-01T00:00:00.000Z",
 		finishedAt: "2026-01-01T00:00:05.000Z",
 	};
-	const AGENT_CALL = {
+	const AGENT_CALL =
+	{
 		id: "t1",
 		name: "Agent",
-		input: {description: "Commit lazy allocation fixup", prompt: "Commit the fixup", subagent_type: "Code"},
+		input:
+		{
+			description: "Commit lazy allocation fixup",
+			prompt: "Commit the fixup",
+			subagent_type: "Code",
+		},
 	};
 
-	function renderWithOpener(records: unknown[], open: (agentId: string) => void): HTMLElement {
+	function renderWithOpener(records: unknown[], open: (agentId: string) => void): HTMLElement
+	{
 		const {lines, toolResultMap} = processTranscript(records);
 		return render(
 			<SubagentOpenerProvider value={open}>
@@ -1816,53 +3022,79 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 	const AGENT_META_UNDERLINE =
 		"py-[0.125em] -my-[0.125em] underline decoration-(--_text-link-line) underline-offset-[3px] transition-none [--_text-link-line:transparent] [@media(hover:none)]:[--_text-link-line:color-mix(in_srgb,currentColor,transparent_35%)] group-hover/tool:[--_text-link-line:color-mix(in_srgb,currentColor_100%,transparent)] group-focus-visible/tool:[--_text-link-line:color-mix(in_srgb,currentColor_100%,transparent)]";
 
-	function agentRow(container: HTMLElement): HTMLElement {
+	function agentRow(container: HTMLElement): HTMLElement
+	{
 		const row = container.querySelector<HTMLElement>("[data-transcript-keeps-pin]");
 		if (row === null) throw new Error("no pane-opening agent row");
 		return row;
 	}
 
-	it("opens the pane on the agent from click, Enter and Space, and never expands a body inline", () => {
+	it("opens the pane on the agent from click, Enter and Space, and never expands a body inline", () =>
+	{
 		const opened: string[] = [];
 		const container = renderWithOpener(toolCallRecords([AGENT_CALL]), (agentId) => opened.push(agentId));
 		const row = agentRow(container);
 
 		fireEvent.click(row);
-		fireEvent.keyDown(row, {key: "Enter"});
-		fireEvent.keyDown(row, {key: " "});
+		fireEvent.keyDown(
+			row,
+			{
+				key: "Enter",
+			},
+		);
+		fireEvent.keyDown(
+			row,
+			{
+				key: " ",
+			},
+		);
 
-		expect({
-			opened,
-			role: row.getAttribute("role"),
-			tabIndex: row.getAttribute("tabindex"),
-			ariaExpanded: row.getAttribute("aria-expanded"),
-			spans: [...row.children].map((child) => [child.getAttribute("class"), child.textContent]),
-			glyph: row.querySelector("svg")?.getAttribute("class"),
-			body: container.textContent.includes("Commit the fixup"),
-		}).toStrictEqual({
-			opened: ["agent-abc123", "agent-abc123", "agent-abc123"],
-			role: "button",
-			tabIndex: "0",
-			ariaExpanded: null,
-			spans: [
-				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Ran agent"],
-				[`truncate min-w-0 text-body ${AGENT_META_UNDERLINE} text-primary`, "Commit lazy allocation fixup"],
-				[MODEL_BADGE_CLASS, "Haiku 4.5"],
-			],
-			glyph: undefined,
-			body: false,
-		});
+		expect(
+			{
+				opened,
+				role: row.getAttribute("role"),
+				tabIndex: row.getAttribute("tabindex"),
+				ariaExpanded: row.getAttribute("aria-expanded"),
+				spans: [...row.children].map((child) => [child.getAttribute("class"), child.textContent]),
+				glyph: row.querySelector("svg")?.getAttribute("class"),
+				body: container.textContent.includes("Commit the fixup"),
+			},
+		).toStrictEqual(
+			{
+				opened: ["agent-abc123", "agent-abc123", "agent-abc123"],
+				role: "button",
+				tabIndex: "0",
+				ariaExpanded: null,
+				spans: [
+					["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Ran agent"],
+					[`truncate min-w-0 text-body ${AGENT_META_UNDERLINE} text-primary`, "Commit lazy allocation fixup"],
+					[MODEL_BADGE_CLASS, "Haiku 4.5"],
+				],
+				glyph: undefined,
+				body: false,
+			},
+		);
 	});
 
-	it("follows a settled agent's description with upstream's model badge, its full name in a title", () => {
+	it("follows a settled agent's description with upstream's model badge, its full name in a title", () =>
+	{
 		const {lines, toolResultMap} = processTranscript(toolCallRecords([AGENT_CALL]));
 		const container = render(
-			<SubagentOpenerProvider value={() => {}}>
+			<SubagentOpenerProvider
+				value={() =>
+				{
+				}}
+			>
 				<SessionChat
 					sessionId="test-session"
 					lines={lines}
 					toolResultMap={toolResultMap}
-					subagents={[{...SUBAGENT, model: "claude-opus-5-5"}]}
+					subagents={[
+						{
+							...SUBAGENT,
+							model: "claude-opus-5-5",
+						},
+					]}
 					showCompactSummaries
 					showTranscriptOnly
 					shouldScrollToEnd={false}
@@ -1871,16 +3103,21 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 		).container;
 		const badge = agentRow(container).lastElementChild;
 
-		expect({
-			className: badge?.getAttribute("class"),
-			bdi: badge?.querySelector(":scope > bdi")?.outerHTML,
-		}).toStrictEqual({
-			className: MODEL_BADGE_CLASS,
-			bdi: '<bdi class="inline-flex max-w-[28ch] align-bottom" title="Opus 5.5"><span class="truncate">Opus 5.5</span></bdi>',
-		});
+		expect(
+			{
+				className: badge?.getAttribute("class"),
+				bdi: badge?.querySelector(":scope > bdi")?.outerHTML,
+			},
+		).toStrictEqual(
+			{
+				className: MODEL_BADGE_CLASS,
+				bdi: '<bdi class="inline-flex max-w-[28ch] align-bottom" title="Opus 5.5"><span class="truncate">Opus 5.5</span></bdi>',
+			},
+		);
 	});
 
-	it("shows no model badge while the agent runs or after it fails", () => {
+	it("shows no model badge while the agent runs or after it fails", () =>
+	{
 		const pending = renderWithOpener(toolCallRecords([AGENT_CALL]).slice(0, 1), () => {});
 		const failed = renderWithOpener(toolResultRecords(AGENT_CALL, "Fabricated failure", true), () => {});
 
@@ -1904,103 +3141,194 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 				"shrink-0 text-body text-danger",
 			],
 		},
-	])("preserves the $state resolved agent label treatment", ({records, expectedClasses}) => {
+	])("preserves the $state resolved agent label treatment", ({records, expectedClasses}) =>
+	{
 		const container = renderWithOpener(records, () => {});
 		expect([...agentRow(container).querySelectorAll("span.text-body")].map((span) => span.className)).toStrictEqual(
 			expectedClasses,
 		);
 	});
 
-	it('reads "Ran agent" followed by the description inside a group, joined in one <bdi>', () => {
+	it('reads "Ran agent" followed by the description inside a group, joined in one <bdi>', () =>
+	{
 		const container = renderWithOpener(
-			toolCallRecords([{id: "t0", name: "Bash", input: {command: "git status"}}, AGENT_CALL]),
+			toolCallRecords([
+				{
+					id: "t0",
+					name: "Bash",
+					input:
+					{
+						command: "git status",
+					},
+				},
+				AGENT_CALL,
+			]),
 			() => {},
 		);
 		expandGroupSummary(container);
 		const bdi = agentRow(container).querySelector(":scope > bdi");
 
-		expect({
-			parts: [...(bdi?.children ?? [])].map((span) => span.textContent),
-			text: bdi?.textContent,
-		}).toStrictEqual({
-			parts: ["Ran agent", "Commit lazy allocation fixup"],
-			text: "Ran agent Commit lazy allocation fixup",
-		});
+		expect(
+			{
+				parts: [...(bdi?.children ?? [])].map((span) => span.textContent),
+				text: bdi?.textContent,
+			},
+		).toStrictEqual(
+			{
+				parts: ["Ran agent", "Commit lazy allocation fixup"],
+				text: "Ran agent Commit lazy allocation fixup",
+			},
+		);
 	});
 
-	it("keeps the inline disclosure when no subagent resolves for the call", () => {
+	it("keeps the inline disclosure when no subagent resolves for the call", () =>
+	{
 		const container = renderWithOpener(
-			toolCallRecords([{...AGENT_CALL, input: {...AGENT_CALL.input, description: "Unknown agent"}}]),
+			toolCallRecords([
+				{
+					...AGENT_CALL,
+					input:
+					{
+						...AGENT_CALL.input,
+						description: "Unknown agent",
+					},
+				},
+			]),
 			() => {},
 		);
 
-		expect({
-			pinned: container.querySelector("[data-transcript-keeps-pin]"),
-			ariaExpanded: container.querySelector('[role="button"]')?.getAttribute("aria-expanded"),
-		}).toStrictEqual({pinned: null, ariaExpanded: "false"});
+		expect(
+			{
+				pinned: container.querySelector("[data-transcript-keeps-pin]"),
+				ariaExpanded: container.querySelector('[role="button"]')?.getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				pinned: null,
+				ariaExpanded: "false",
+			},
+		);
 	});
 });
 
-describe("SessionChat Bash row label", () => {
+describe("SessionChat Bash row label", () =>
+{
 	const PHRASE = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
 
 	const bashLabel = (input: Record<string, unknown>) =>
-		toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, {name: "Bash", input})));
+		toolRowLabelSpans(
+			renderTranscript(
+				failedToolCallRecords(
+					false,
+					{
+						name: "Bash",
+						input,
+					},
+				),
+			),
+		);
 
-	it("renders one label span holding the past-tensed description, with no separate verb span", () => {
-		expect(bashLabel({command: "git status --short", description: "Check git status"})).toStrictEqual([
-			[PHRASE, "Checked git status"],
-		]);
+	it("renders one label span holding the past-tensed description, with no separate verb span", () =>
+	{
+		expect(
+			bashLabel(
+				{
+					command: "git status --short",
+					description: "Check git status",
+				},
+			),
+		).toStrictEqual([[PHRASE, "Checked git status"]]);
 	});
 
-	it("past-tenses irregular leading verbs the way upstream does", () => {
-		const label = (description: string) => bashLabel({command: "true", description}).map(([, text]) => text);
+	it("past-tenses irregular leading verbs the way upstream does", () =>
+	{
+		const label = (description: string) =>
+			bashLabel(
+				{
+					command: "true",
+					description,
+				},
+			).map(([, text]) => text);
 
-		expect({
-			run: label("Run tests to verify migration"),
-			see: label("See new cache.ts structure"),
-			find: label("Find conflict markers in cache.ts"),
-			build: label("Build project to check for type errors"),
-			show: label("Show changed files summary"),
-			write: label("Write release notes"),
-		}).toStrictEqual({
-			run: ["Ran tests to verify migration"],
-			see: ["Saw new cache.ts structure"],
-			find: ["Found conflict markers in cache.ts"],
-			build: ["Built project to check for type errors"],
-			show: ["Showed changed files summary"],
-			write: ["Wrote release notes"],
-		});
+		expect(
+			{
+				run: label("Run tests to verify migration"),
+				see: label("See new cache.ts structure"),
+				find: label("Find conflict markers in cache.ts"),
+				build: label("Build project to check for type errors"),
+				show: label("Show changed files summary"),
+				write: label("Write release notes"),
+			},
+		).toStrictEqual(
+			{
+				run: ["Ran tests to verify migration"],
+				see: ["Saw new cache.ts structure"],
+				find: ["Found conflict markers in cache.ts"],
+				build: ["Built project to check for type errors"],
+				show: ["Showed changed files summary"],
+				write: ["Wrote release notes"],
+			},
+		);
 	});
 
-	it("suffixes regular verbs and leaves anything already past tense alone", () => {
-		const label = (description: string) => bashLabel({command: "true", description}).map(([, text]) => text);
+	it("suffixes regular verbs and leaves anything already past tense alone", () =>
+	{
+		const label = (description: string) =>
+			bashLabel(
+				{
+					command: "true",
+					description,
+				},
+			).map(([, text]) => text);
 
-		expect({
-			consonant: label("List files in current directory"),
-			silentE: label("Create the release branch"),
-			consonantY: label("Copy the fixture into place"),
-			vowelY: label("Deploy the preview build"),
-			alreadyPast: label("Checked git status"),
-			nonWord: label("`git status` in the worktree"),
-		}).toStrictEqual({
-			consonant: ["Listed files in current directory"],
-			silentE: ["Created the release branch"],
-			consonantY: ["Copied the fixture into place"],
-			vowelY: ["Deployed the preview build"],
-			alreadyPast: ["Checked git status"],
-			nonWord: ["`git status` in the worktree"],
-		});
+		expect(
+			{
+				consonant: label("List files in current directory"),
+				silentE: label("Create the release branch"),
+				consonantY: label("Copy the fixture into place"),
+				vowelY: label("Deploy the preview build"),
+				alreadyPast: label("Checked git status"),
+				nonWord: label("`git status` in the worktree"),
+			},
+		).toStrictEqual(
+			{
+				consonant: ["Listed files in current directory"],
+				silentE: ["Created the release branch"],
+				consonantY: ["Copied the fixture into place"],
+				vowelY: ["Deployed the preview build"],
+				alreadyPast: ["Checked git status"],
+				nonWord: ["`git status` in the worktree"],
+			},
+		);
 	});
 
-	it("falls back to the raw command when the call carries no description", () => {
-		expect(bashLabel({command: "pnpm run build"})).toStrictEqual([[PHRASE, "pnpm run build"]]);
+	it("falls back to the raw command when the call carries no description", () =>
+	{
+		expect(
+			bashLabel(
+				{
+					command: "pnpm run build",
+				},
+			),
+		).toStrictEqual([[PHRASE, "pnpm run build"]]);
 	});
 
-	it('reads "Running" + the raw command and appends "Failed" when an undescribed call errors', () => {
+	it('reads "Running" + the raw command and appends "Failed" when an undescribed call errors', () =>
+	{
 		expect(
 			toolRowLabelSpans(
-				renderTranscript(failedToolCallRecords(true, {name: "Bash", input: {command: "pnpm run build"}})),
+				renderTranscript(
+					failedToolCallRecords(
+						true,
+						{
+							name: "Bash",
+							input:
+							{
+								command: "pnpm run build",
+							},
+						},
+					),
+				),
 			),
 		).toStrictEqual([
 			["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Running"],
@@ -2010,128 +3338,304 @@ describe("SessionChat Bash row label", () => {
 	});
 });
 
-describe("SessionChat tool row verbs", () => {
+describe("SessionChat tool row verbs", () =>
+{
 	const SECONDARY = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
 	const SECONDARY_PARAM = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
 
-	it("labels every row with an upstream verb phrase instead of the raw tool name", () => {
+	it("labels every row with an upstream verb phrase instead of the raw tool name", () =>
+	{
 		const label = (call: {name: string; input: unknown}) =>
 			toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, call)));
 
-		expect({
-			glob: label({name: "Glob", input: {pattern: ".github/workflows/*.yml"}}),
-			todoWrite: label({
-				name: "TodoWrite",
-				input: {todos: [{content: "ship it", status: "pending", activeForm: "Shipping it"}]},
-			}),
-			enterPlanMode: label({name: "EnterPlanMode", input: {}}),
-			exitPlanMode: label({name: "ExitPlanMode", input: {plan: "## Plan\n\nDo the thing"}}),
-			cronCreate: label({
-				name: "CronCreate",
-				input: {cron: "0 9 * * 1", prompt: "Review the weekly metrics", recurring: true},
-			}),
-			toolSearch: label({name: "ToolSearch", input: {query: "select:Read,Edit"}}),
-		}).toStrictEqual({
-			glob: [
-				[SECONDARY, "Searched"],
-				[SECONDARY_PARAM, ".github/workflows/*.yml"],
-			],
-			todoWrite: [[SECONDARY, "Updated todos"]],
-			enterPlanMode: [[SECONDARY, "Started planning"]],
-			exitPlanMode: [
-				[SECONDARY, "Proposed plan"],
-				[SECONDARY_PARAM, "Plan"],
-			],
-			cronCreate: [
-				[SECONDARY, "Started loop"],
-				[SECONDARY_PARAM, "Review the weekly metrics"],
-			],
-			toolSearch: [[SECONDARY, "Loaded tools"]],
-		});
+		expect(
+			{
+				glob: label(
+					{
+						name: "Glob",
+						input:
+						{
+							pattern: ".github/workflows/*.yml",
+						},
+					},
+				),
+				todoWrite: label(
+					{
+						name: "TodoWrite",
+						input:
+						{
+							todos: [
+								{
+									content: "ship it",
+									status: "pending",
+									activeForm: "Shipping it",
+								},
+							],
+						},
+					},
+				),
+				enterPlanMode: label(
+					{
+						name: "EnterPlanMode",
+						input: {},
+					},
+				),
+				exitPlanMode: label(
+					{
+						name: "ExitPlanMode",
+						input:
+						{
+							plan: "## Plan\n\nDo the thing",
+						},
+					},
+				),
+				cronCreate: label(
+					{
+						name: "CronCreate",
+						input:
+						{
+							cron: "0 9 * * 1",
+							prompt: "Review the weekly metrics",
+							recurring: true,
+						},
+					},
+				),
+				toolSearch: label(
+					{
+						name: "ToolSearch",
+						input:
+						{
+							query: "select:Read,Edit",
+						},
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				glob: [
+					[SECONDARY, "Searched"],
+					[SECONDARY_PARAM, ".github/workflows/*.yml"],
+				],
+				todoWrite: [[SECONDARY, "Updated todos"]],
+				enterPlanMode: [[SECONDARY, "Started planning"]],
+				exitPlanMode: [
+					[SECONDARY, "Proposed plan"],
+					[SECONDARY_PARAM, "Plan"],
+				],
+				cronCreate: [
+					[SECONDARY, "Started loop"],
+					[SECONDARY_PARAM, "Review the weekly metrics"],
+				],
+				toolSearch: [[SECONDARY, "Loaded tools"]],
+			},
+		);
 	});
 
-	it('gives those rows upstream\'s running verbs and appends "Failed" when the call errored', () => {
+	it('gives those rows upstream\'s running verbs and appends "Failed" when the call errored', () =>
+	{
 		const label = (call: {name: string; input: unknown}) =>
 			toolRowLabelSpans(renderTranscript(failedToolCallRecords(true, call))).map(([, text]) => text);
 
-		expect({
-			glob: label({name: "Glob", input: {pattern: "*.yml"}}),
-			todoWrite: label({name: "TodoWrite", input: {todos: []}}),
-			enterPlanMode: label({name: "EnterPlanMode", input: {}}),
-			exitPlanMode: label({name: "ExitPlanMode", input: {plan: "p"}}),
-			cronCreate: label({name: "CronCreate", input: {cron: "0 9 * * 1", prompt: "p"}}),
-			toolSearch: label({name: "ToolSearch", input: {query: "select:Read"}}),
-		}).toStrictEqual({
-			glob: ["Searching", "*.yml", "Failed"],
-			todoWrite: ["Updating todos", "Failed"],
-			enterPlanMode: ["Making a plan", "Failed"],
-			exitPlanMode: ["Proposing plan", "Failed"],
-			cronCreate: ["Starting loop", "p", "Failed"],
-			toolSearch: ["Loading tools", "Failed"],
-		});
+		expect(
+			{
+				glob: label(
+					{
+						name: "Glob",
+						input:
+						{
+							pattern: "*.yml",
+						},
+					},
+				),
+				todoWrite: label(
+					{
+						name: "TodoWrite",
+						input:
+						{
+							todos: [],
+						},
+					},
+				),
+				enterPlanMode: label(
+					{
+						name: "EnterPlanMode",
+						input: {},
+					},
+				),
+				exitPlanMode: label(
+					{
+						name: "ExitPlanMode",
+						input:
+						{
+							plan: "p",
+						},
+					},
+				),
+				cronCreate: label(
+					{
+						name: "CronCreate",
+						input:
+						{
+							cron: "0 9 * * 1",
+							prompt: "p",
+						},
+					},
+				),
+				toolSearch: label(
+					{
+						name: "ToolSearch",
+						input:
+						{
+							query: "select:Read",
+						},
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				glob: ["Searching", "*.yml", "Failed"],
+				todoWrite: ["Updating todos", "Failed"],
+				enterPlanMode: ["Making a plan", "Failed"],
+				exitPlanMode: ["Proposing plan", "Failed"],
+				cronCreate: ["Starting loop", "p", "Failed"],
+				toolSearch: ["Loading tools", "Failed"],
+			},
+		);
 	});
 });
 
-describe("SessionChat tool rows labelled from the tool result", () => {
+describe("SessionChat tool rows labelled from the tool result", () =>
+{
 	const SECONDARY = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
 	const SECONDARY_PARAM = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
 
-	const withToolUseResult = (call: {name: string; input: unknown}, toolUseResult: unknown) => {
+	const withToolUseResult = (
+		call:
+		{
+			name: string;
+			input: unknown;
+		},
+		toolUseResult: unknown,
+	) =>
+	{
 		const records = toolResultRecords(call, "ok");
-		return [records[0], {...(records[1] as Record<string, unknown>), toolUseResult}];
+		return [
+			records[0],
+			{
+				...(records[1] as Record<string, unknown>),
+				toolUseResult,
+			},
+		];
 	};
 
-	it("labels Write rows Created or Updated from toolUseResult.type", () => {
+	it("labels Write rows Created or Updated from toolUseResult.type", () =>
+	{
 		const write = (type: "create" | "update") =>
 			toolRowLabelSpans(
 				renderTranscript(
 					withToolUseResult(
-						{name: "Write", input: {file_path: "/repo/a.ts", content: "x"}},
-						{type, filePath: "/repo/a.ts", content: "x", structuredPatch: [], originalFile: null},
+						{
+							name: "Write",
+							input:
+							{
+								file_path: "/repo/a.ts",
+								content: "x",
+							},
+						},
+						{
+							type,
+							filePath: "/repo/a.ts",
+							content: "x",
+							structuredPatch: [],
+							originalFile: null,
+						},
 					),
 				),
 			)[0];
 
-		expect({create: write("create"), update: write("update")}).toStrictEqual({
-			create: [SECONDARY, "Created"],
-			update: [SECONDARY, "Updated"],
-		});
+		expect(
+			{
+				create: write("create"),
+				update: write("update"),
+			},
+		).toStrictEqual(
+			{
+				create: [SECONDARY, "Created"],
+				update: [SECONDARY, "Updated"],
+			},
+		);
 	});
 
-	it("labels a git Bash row with the operation and links a PR", () => {
+	it("labels a git Bash row with the operation and links a PR", () =>
+	{
 		const html = renderTranscript(
 			withToolUseResult(
-				{name: "Bash", input: {command: "gh pr create", description: "Open the PR"}},
+				{
+					name: "Bash",
+					input:
+					{
+						command: "gh pr create",
+						description: "Open the PR",
+					},
+				},
 				{
 					stdout: "https://github.com/o/r/pull/42",
 					stderr: "",
 					interrupted: false,
 					isImage: false,
-					gitOperation: {
-						pr: {number: 42, url: "https://github.com/o/r/pull/42", action: "created"},
+					gitOperation:
+					{
+						pr:
+						{
+							number: 42,
+							url: "https://github.com/o/r/pull/42",
+							action: "created",
+						},
 					},
 				},
 			),
 		);
 
-		expect({
-			verb: toolRowLabelSpans(html)[0],
-			link: html.includes('href="https://github.com/o/r/pull/42"'),
-			meta: html.includes("<bdi>#42</bdi>"),
-		}).toStrictEqual({verb: [SECONDARY, "Created PR"], link: true, meta: true});
+		expect(
+			{
+				verb: toolRowLabelSpans(html)[0],
+				link: html.includes('href="https://github.com/o/r/pull/42"'),
+				meta: html.includes("<bdi>#42</bdi>"),
+			},
+		).toStrictEqual(
+			{
+				verb: [SECONDARY, "Created PR"],
+				link: true,
+				meta: true,
+			},
+		);
 	});
 
-	it("draws a linked PR param in secondary ink, always underlined at 65% alpha, and announces the new tab", () => {
+	it("draws a linked PR param in secondary ink, always underlined at 65% alpha, and announces the new tab", () =>
+	{
 		const header = renderTranscriptElement(
 			withToolUseResult(
-				{name: "Bash", input: {command: "gh pr create", description: "Open the PR"}},
+				{
+					name: "Bash",
+					input:
+					{
+						command: "gh pr create",
+						description: "Open the PR",
+					},
+				},
 				{
 					stdout: "https://github.com/o/r/pull/42",
 					stderr: "",
 					interrupted: false,
 					isImage: false,
-					gitOperation: {
-						pr: {number: 42, url: "https://github.com/o/r/pull/42", action: "created"},
+					gitOperation:
+					{
+						pr:
+						{
+							number: 42,
+							url: "https://github.com/o/r/pull/42",
+							action: "created",
+						},
 					},
 				},
 			),
@@ -2139,47 +3643,80 @@ describe("SessionChat tool rows labelled from the tool result", () => {
 		const link = header.querySelector("a")!;
 		const hintId = link.querySelector("span")?.id ?? "";
 
-		expect({
-			param: link.parentElement?.className,
-			link: {
-				href: link.getAttribute("href"),
-				target: link.getAttribute("target"),
-				rel: link.getAttribute("rel"),
-				className: link.className,
-				html: link.innerHTML.replace(`id="${hintId}"`, 'id="HINT"'),
-				describedByHint: hintId !== "" && link.getAttribute("aria-describedby") === hintId,
+		expect(
+			{
+				param: link.parentElement?.className,
+				link:
+				{
+					href: link.getAttribute("href"),
+					target: link.getAttribute("target"),
+					rel: link.getAttribute("rel"),
+					className: link.className,
+					html: link.innerHTML.replace(`id="${hintId}"`, 'id="HINT"'),
+					describedByHint: hintId !== "" && link.getAttribute("aria-describedby") === hintId,
+				},
 			},
-		}).toStrictEqual({
-			param: "truncate min-w-0 text-body text-secondary",
-			link: {
-				href: "https://github.com/o/r/pull/42",
-				target: "_blank",
-				rel: "noopener noreferrer",
-				className:
-					"underline decoration-[color-mix(in_srgb,currentColor_65%,transparent)] underline-offset-[3px]",
-				html: '<bdi>#42</bdi><span id="HINT" hidden="" class="sr-only">(opens in new tab)</span>',
-				describedByHint: true,
+		).toStrictEqual(
+			{
+				param: "truncate min-w-0 text-body text-secondary",
+				link:
+				{
+					href: "https://github.com/o/r/pull/42",
+					target: "_blank",
+					rel: "noopener noreferrer",
+					className:
+						"underline decoration-[color-mix(in_srgb,currentColor_65%,transparent)] underline-offset-[3px]",
+					html: '<bdi>#42</bdi><span id="HINT" hidden="" class="sr-only">(opens in new tab)</span>',
+					describedByHint: true,
+				},
 			},
-		});
+		);
 	});
 
-	it('labels a Skill row "Ran skill" with the /name in code', () => {
-		const html = renderTranscript(failedToolCallRecords(false, {name: "Skill", input: {skill: "git:commit"}}));
+	it('labels a Skill row "Ran skill" with the /name in code', () =>
+	{
+		const html = renderTranscript(
+			failedToolCallRecords(
+				false,
+				{
+					name: "Skill",
+					input:
+					{
+						skill: "git:commit",
+					},
+				},
+			),
+		);
 
-		expect({
-			verb: toolRowLabelSpans(html),
-			code: html.includes('<code class="font-mono">/git:commit</code>'),
-		}).toStrictEqual({verb: [["shrink-0 text-body text-secondary", "Ran skill"]], code: true});
+		expect(
+			{
+				verb: toolRowLabelSpans(html),
+				code: html.includes('<code class="font-mono">/git:commit</code>'),
+			},
+		).toStrictEqual(
+			{
+				verb: [["shrink-0 text-body text-secondary", "Ran skill"]],
+				code: true,
+			},
+		);
 	});
 
-	it("labels a TaskUpdate row by the status it set", () => {
+	it("labels a TaskUpdate row by the status it set", () =>
+	{
 		expect(
 			toolRowLabelSpans(
 				renderTranscript(
-					failedToolCallRecords(false, {
-						name: "TaskUpdate",
-						input: {taskId: "3", status: "completed"},
-					}),
+					failedToolCallRecords(
+						false,
+						{
+							name: "TaskUpdate",
+							input:
+							{
+								taskId: "3",
+								status: "completed",
+							},
+						},
+					),
 				),
 			),
 		).toStrictEqual([
@@ -2190,7 +3727,8 @@ describe("SessionChat tool rows labelled from the tool result", () => {
 });
 
 /** Class list of every `<span>` in the clickable row header (classless spans -> ""). */
-function rowHeaderSpanClasses(html: string): string[] {
+function rowHeaderSpanClasses(html: string): string[]
+{
 	const start = html.indexOf('class="relative group/tool');
 	expect(start, "no tool row header in html").toBeGreaterThan(-1);
 	const tagStart = html.lastIndexOf("<", start);
@@ -2202,33 +3740,61 @@ function rowHeaderSpanClasses(html: string): string[] {
 }
 
 /** Two tool calls in one assistant turn, so the collapsed group summary renders. */
-function groupedToolCallRecords(): unknown[] {
+function groupedToolCallRecords(): unknown[]
+{
 	return [
 		{
 			type: "assistant",
 			uuid: "a1",
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
-					{type: "tool_use", id: "t1", name: "Grep", input: {pattern: "alice"}},
-					{type: "tool_use", id: "t2", name: "Grep", input: {pattern: "bob"}},
+					{
+						type: "tool_use",
+						id: "t1",
+						name: "Grep",
+						input:
+						{
+							pattern: "alice",
+						},
+					},
+					{
+						type: "tool_use",
+						id: "t2",
+						name: "Grep",
+						input:
+						{
+							pattern: "bob",
+						},
+					},
 				],
 			},
 		},
-		...["t1", "t2"].map((id) => ({
+		...["t1", "t2"].map((id) => (
+		{
 			type: "user",
 			uuid: `r-${id}`,
 			parentUuid: "a1",
-			message: {
+			message:
+			{
 				role: "user",
-				content: [{type: "tool_result", tool_use_id: id, content: "1 match"}],
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: id,
+						content: "1 match",
+					},
+				],
 			},
 		})),
 	];
 }
 
-describe("SessionChat tool row hover treatment", () => {
-	it("mutes a collapsed successful row and lifts its verb, param and chevron to secondary on group hover", () => {
+describe("SessionChat tool row hover treatment", () =>
+{
+	it("mutes a collapsed successful row and lifts its verb, param and chevron to secondary on group hover", () =>
+	{
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(false)))).toStrictEqual([
 			"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
 			"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
@@ -2236,7 +3802,8 @@ describe("SessionChat tool row hover treatment", () => {
 		]);
 	});
 
-	it('lifts a failed row\'s label on hover like any row while its "Failed" stays danger red', () => {
+	it('lifts a failed row\'s label on hover like any row while its "Failed" stays danger red', () =>
+	{
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(true)))).toStrictEqual([
 			"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
 			"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
@@ -2245,7 +3812,8 @@ describe("SessionChat tool row hover treatment", () => {
 		]);
 	});
 
-	it("colors the collapsed group summary muted from its wrapper so the whole label lifts on hover", () => {
+	it("colors the collapsed group summary muted from its wrapper so the whole label lifts on hover", () =>
+	{
 		expect(rowHeaderSpanClasses(renderTranscript(groupedToolCallRecords()))).toStrictEqual([
 			"inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-secondary",
 			"block min-w-0 truncate text-body",
@@ -2259,7 +3827,8 @@ describe("SessionChat tool row hover treatment", () => {
 /** The chevron svg's viewBox, unique to `ChevronIcon` among the row's markup. */
 const CHEVRON_MARKER = 'viewBox="0 0 16 16"';
 
-function toolRowChrome(html: string): Record<string, unknown> {
+function toolRowChrome(html: string): Record<string, unknown>
+{
 	return {
 		// Only a non-expanding row puts `class` first; the disclosure row leads
 		// with role/tabindex/aria attributes.
@@ -2271,83 +3840,155 @@ function toolRowChrome(html: string): Record<string, unknown> {
 	};
 }
 
-describe("SessionChat non-expanding tool rows", () => {
-	it("discloses a TodoWrite call with todos, as upstream's checklist body", () => {
+describe("SessionChat non-expanding tool rows", () =>
+{
+	it("discloses a TodoWrite call with todos, as upstream's checklist body", () =>
+	{
 		const html = renderTranscript(
-			failedToolCallRecords(false, {
-				name: "TodoWrite",
-				input: {
-					todos: [{content: "Fix login bug", status: "in_progress", activeForm: "Fixing bug"}],
+			failedToolCallRecords(
+				false,
+				{
+					name: "TodoWrite",
+					input:
+					{
+						todos: [
+							{
+								content: "Fix login bug",
+								status: "in_progress",
+								activeForm: "Fixing bug",
+							},
+						],
+					},
 				},
-			}),
+			),
 		);
 
-		expect({...toolRowChrome(html), label: html.includes(">Updated todos<")}).toStrictEqual({
-			bareHeaderClass: null,
-			roleButton: true,
-			ariaExpanded: true,
-			bodyMounted: false,
-			chevron: true,
-			label: true,
-		});
+		expect(
+			{
+				...toolRowChrome(html),
+				label: html.includes(">Updated todos<"),
+			},
+		).toStrictEqual(
+			{
+				bareHeaderClass: null,
+				roleButton: true,
+				ariaExpanded: true,
+				bodyMounted: false,
+				chevron: true,
+				label: true,
+			},
+		);
 	});
 
-	it("draws an EnterPlanMode call as a bare label row with no instruction block", () => {
+	it("draws an EnterPlanMode call as a bare label row with no instruction block", () =>
+	{
 		const html = renderTranscript(
 			toolResultRecords(
-				{name: "EnterPlanMode", input: {}},
+				{
+					name: "EnterPlanMode",
+					input: {},
+				},
 				"Entered plan mode. You should now focus on exploring the codebase and designing an implementation approach.\n\nRemember: DO NOT write or edit any files yet.",
 			),
 		);
 
-		expect({
-			...toolRowChrome(html),
-			label: html.includes(">Started planning<"),
-			instructions: html.includes("DO NOT write or edit any files yet"),
-		}).toStrictEqual({
-			bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left",
-			roleButton: false,
-			ariaExpanded: false,
-			bodyMounted: false,
-			chevron: false,
-			label: true,
-			instructions: false,
-		});
+		expect(
+			{
+				...toolRowChrome(html),
+				label: html.includes(">Started planning<"),
+				instructions: html.includes("DO NOT write or edit any files yet"),
+			},
+		).toStrictEqual(
+			{
+				bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left",
+				roleButton: false,
+				ariaExpanded: false,
+				bodyMounted: false,
+				chevron: false,
+				label: true,
+				instructions: false,
+			},
+		);
 	});
 
-	it("draws a TaskList call that returned nothing as a bare label row", () => {
-		const html = renderTranscript(toolResultRecords({name: "TaskList", input: {}}, ""));
+	it("draws a TaskList call that returned nothing as a bare label row", () =>
+	{
+		const html = renderTranscript(
+			toolResultRecords(
+				{
+					name: "TaskList",
+					input: {},
+				},
+				"",
+			),
+		);
 
-		expect({...toolRowChrome(html), label: html.includes(">Listed tasks<")}).toStrictEqual({
-			bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left",
-			roleButton: false,
-			ariaExpanded: false,
-			bodyMounted: false,
-			chevron: false,
-			label: true,
-		});
+		expect(
+			{
+				...toolRowChrome(html),
+				label: html.includes(">Listed tasks<"),
+			},
+		).toStrictEqual(
+			{
+				bareHeaderClass: "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left",
+				roleButton: false,
+				ariaExpanded: false,
+				bodyMounted: false,
+				chevron: false,
+				label: true,
+			},
+		);
 	});
 
-	it("draws TaskList, TaskGet and a status-only TaskUpdate as bare rows even with results, as their upstream checklists are empty", () => {
+	it("draws TaskList, TaskGet and a status-only TaskUpdate as bare rows even with results, as their upstream checklists are empty", () =>
+	{
 		const bare = "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left";
 
 		expect(
 			[
-				toolResultRecords({name: "TaskList", input: {}}, "#1 Ship it"),
-				toolResultRecords({name: "TaskGet", input: {taskId: "42"}}, "Task #42: Ship it"),
-				toolResultRecords({name: "TaskUpdate", input: {taskId: "42", status: "completed"}}, "Updated task #42"),
+				toolResultRecords(
+					{
+						name: "TaskList",
+						input: {},
+					},
+					"#1 Ship it",
+				),
+				toolResultRecords(
+					{
+						name: "TaskGet",
+						input:
+						{
+							taskId: "42",
+						},
+					},
+					"Task #42: Ship it",
+				),
+				toolResultRecords(
+					{
+						name: "TaskUpdate",
+						input:
+						{
+							taskId: "42",
+							status: "completed",
+						},
+					},
+					"Updated task #42",
+				),
 			].map((records) => toolRowChrome(renderTranscript(records))["bareHeaderClass"]),
 		).toStrictEqual([bare, bare, bare]);
 	});
 
-	it("keeps the disclosure chrome on every other tool row", () => {
-		expect(toolRowChrome(renderTranscript(failedToolCallRecords(false)))).toStrictEqual({
-			bareHeaderClass: null,
-			roleButton: true,
-			ariaExpanded: true,
-			bodyMounted: false,
-			chevron: true,
-		});
+	it("keeps the disclosure chrome on every other tool row", () =>
+	{
+		expect(toolRowChrome(renderTranscript(failedToolCallRecords(false)))).toStrictEqual(
+			{
+				bareHeaderClass: null,
+				roleButton: true,
+				ariaExpanded: true,
+				bodyMounted: false,
+				chevron: true,
+			},
+		);
 	});
 });
 
@@ -2359,7 +4000,8 @@ describe("SessionChat non-expanding tool rows", () => {
 // ---------------------------------------------------------------------------
 
 /** Class list of the one disclosure control in a rendered transcript. */
-function disclosureClassName(container: HTMLElement): string | null {
+function disclosureClassName(container: HTMLElement): string | null
+{
 	const controls = disclosureControls(container);
 	if (controls.length !== 1) throw new Error(`Expected one disclosure, found ${controls.length}`);
 	return controls[0]!.className;
@@ -2372,25 +4014,52 @@ function disclosureClassName(container: HTMLElement): string | null {
 // ---------------------------------------------------------------------------
 
 /** Two Bash calls; the second one settles per `second` ("ok", "error", or "pending"). */
-function groupedBashRecords(second: "ok" | "error" | "pending"): unknown[] {
-	const resultFor = (id: string, isError: boolean) => ({
+function groupedBashRecords(second: "ok" | "error" | "pending"): unknown[]
+{
+	const resultFor = (id: string, isError: boolean) => (
+	{
 		type: "user",
 		uuid: `r-${id}`,
 		parentUuid: "a1",
-		message: {
+		message:
+		{
 			role: "user",
-			content: [{type: "tool_result", tool_use_id: id, content: "Fabricated tool result", is_error: isError}],
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: id,
+					content: "Fabricated tool result",
+					is_error: isError,
+				},
+			],
 		},
 	});
 	return [
 		{
 			type: "assistant",
 			uuid: "a1",
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
-					{type: "tool_use", id: "t1", name: "Bash", input: {command: "git status"}},
-					{type: "tool_use", id: "t2", name: "Bash", input: {command: "git log --oneline"}},
+					{
+						type: "tool_use",
+						id: "t1",
+						name: "Bash",
+						input:
+						{
+							command: "git status",
+						},
+					},
+					{
+						type: "tool_use",
+						id: "t2",
+						name: "Bash",
+						input:
+						{
+							command: "git log --oneline",
+						},
+					},
 				],
 			},
 		},
@@ -2402,23 +4071,39 @@ function groupedBashRecords(second: "ok" | "error" | "pending"): unknown[] {
 const STATUS_ROW_LAYOUT = `min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-0.5`;
 const MARKED_ROW_MOTION = "transition-[margin-inline-start] duration-200 ease-out motion-reduce:transition-none";
 
-describe("SessionChat grouped header height", () => {
-	it("gives failed and running grouped headers the completed header's 24px padded row, easing the running one's start margin, as upstream does", () => {
-		expect({
-			completed: disclosureClassName(renderTranscriptElement(groupedBashRecords("ok"))),
-			failed: disclosureClassName(renderTranscriptElement(groupedBashRecords("error"))),
-			running: disclosureClassName(renderTranscriptElement(groupedBashRecords("pending"))),
-		}).toStrictEqual({
-			completed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
-			failed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
-			running: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 ${MARKED_ROW_MOTION}`,
-		});
+describe("SessionChat grouped header height", () =>
+{
+	it("gives failed and running grouped headers the completed header's 24px padded row, easing the running one's start margin, as upstream does", () =>
+	{
+		expect(
+			{
+				completed: disclosureClassName(renderTranscriptElement(groupedBashRecords("ok"))),
+				failed: disclosureClassName(renderTranscriptElement(groupedBashRecords("error"))),
+				running: disclosureClassName(renderTranscriptElement(groupedBashRecords("pending"))),
+			},
+		).toStrictEqual(
+			{
+				completed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
+				failed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
+				running: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 ${MARKED_ROW_MOTION}`,
+			},
+		);
 	});
 });
 
-describe("SessionChat standalone status row layout", () => {
-	const bash = {name: "Bash", input: {command: "git push", description: "Push the branch"}};
-	const standaloneRow = (container: HTMLElement) => {
+describe("SessionChat standalone status row layout", () =>
+{
+	const bash =
+	{
+		name: "Bash",
+		input:
+		{
+			command: "git push",
+			description: "Push the branch",
+		},
+	};
+	const standaloneRow = (container: HTMLElement) =>
+	{
 		const frame = container.querySelector("[data-turn-status-frame] > [data-tool-row]")!;
 		return {
 			marker: frame.hasAttribute("data-standalone-tool-row"),
@@ -2427,21 +4112,39 @@ describe("SessionChat standalone status row layout", () => {
 	};
 	const rowClass = `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6`;
 
-	it("draws failed and running standalone rows in the completed row's 24px padded layout, easing the running one's start margin, as upstream does", () => {
+	it("draws failed and running standalone rows in the completed row's 24px padded layout, easing the running one's start margin, as upstream does", () =>
+	{
 		const pending = toolResultRecords(bash, "").slice(0, 1);
 
-		expect({
-			completed: standaloneRow(renderTranscriptElement(toolResultRecords(bash, "ok"))),
-			failed: standaloneRow(renderTranscriptElement(toolResultRecords(bash, "Exit code 1", true))),
-			running: standaloneRow(renderTranscriptElement(pending)),
-		}).toStrictEqual({
-			completed: {marker: true, className: rowClass},
-			failed: {marker: true, className: rowClass},
-			running: {marker: true, className: `${rowClass} ${MARKED_ROW_MOTION}`},
-		});
+		expect(
+			{
+				completed: standaloneRow(renderTranscriptElement(toolResultRecords(bash, "ok"))),
+				failed: standaloneRow(renderTranscriptElement(toolResultRecords(bash, "Exit code 1", true))),
+				running: standaloneRow(renderTranscriptElement(pending)),
+			},
+		).toStrictEqual(
+			{
+				completed:
+				{
+					marker: true,
+					className: rowClass,
+				},
+				failed:
+				{
+					marker: true,
+					className: rowClass,
+				},
+				running:
+				{
+					marker: true,
+					className: `${rowClass} ${MARKED_ROW_MOTION}`,
+				},
+			},
+		);
 	});
 
-	it("keeps a failed row nested in an expanded group on the bare self-start row", () => {
+	it("keeps a failed row nested in an expanded group on the bare self-start row", () =>
+	{
 		const container = renderTranscriptElement(groupedBashRecords("error"));
 		expandGroupSummary(container);
 
@@ -2454,10 +4157,12 @@ describe("SessionChat standalone status row layout", () => {
 	});
 });
 
-describe("SessionChat TurnStatus rows at comfortable density (coarse pointer)", () => {
+describe("SessionChat TurnStatus rows at comfortable density (coarse pointer)", () =>
+{
 	const comfortable = (element: Element | null) =>
 		(element?.getAttribute("class") ?? "").split(" ").filter((name) => name.startsWith("comfortable:"));
-	const statusRow = (container: HTMLElement) => {
+	const statusRow = (container: HTMLElement) =>
+	{
 		const frame = container.querySelector("[data-turn-status-frame]");
 		const wrapper = frame?.querySelector(":scope > [data-turn-status]") ?? null;
 		const control = disclosureControls(container)[0] ?? null;
@@ -2470,80 +4175,143 @@ describe("SessionChat TurnStatus rows at comfortable density (coarse pointer)", 
 	};
 	const rowTokens = ["comfortable:py-1.5", "comfortable:rounded-r6"];
 
-	it("grows grouped and standalone tool rows to upstream's h32 6/6 r8 row with a 16px chevron and a 6px outset", () => {
-		const bash = {name: "Bash", input: {command: "git push", description: "Push the branch"}};
+	it("grows grouped and standalone tool rows to upstream's h32 6/6 r8 row with a 16px chevron and a 6px outset", () =>
+	{
+		const bash =
+		{
+			name: "Bash",
+			input:
+			{
+				command: "git push",
+				description: "Push the branch",
+			},
+		};
 
-		expect({
-			grouped: statusRow(renderTranscriptElement(groupedBashRecords("ok"))),
-			standalone: statusRow(renderTranscriptElement(toolResultRecords(bash, "ok"))),
-		}).toStrictEqual({
-			grouped: {
-				frame: ["comfortable:py-1.5"],
-				wrapper: ["comfortable:-my-1.5"],
-				control: rowTokens,
-				chevron: ["comfortable:[&_svg]:size-4"],
+		expect(
+			{
+				grouped: statusRow(renderTranscriptElement(groupedBashRecords("ok"))),
+				standalone: statusRow(renderTranscriptElement(toolResultRecords(bash, "ok"))),
 			},
-			standalone: {
-				frame: ["comfortable:py-1.5"],
-				wrapper: ["comfortable:-my-1.5"],
-				control: [...rowTokens, "comfortable:gap-g6"],
-				chevron: ["comfortable:[&_svg]:size-4"],
+		).toStrictEqual(
+			{
+				grouped:
+				{
+					frame: ["comfortable:py-1.5"],
+					wrapper: ["comfortable:-my-1.5"],
+					control: rowTokens,
+					chevron: ["comfortable:[&_svg]:size-4"],
+				},
+				standalone:
+				{
+					frame: ["comfortable:py-1.5"],
+					wrapper: ["comfortable:-my-1.5"],
+					control: [...rowTokens, "comfortable:gap-g6"],
+					chevron: ["comfortable:[&_svg]:size-4"],
+				},
 			},
-		});
+		);
 	});
 });
 
-describe("SessionChat disclosure focus treatment", () => {
-	it("gives the single tool row and the group summary upstream's focus-ring classes", () => {
+describe("SessionChat disclosure focus treatment", () =>
+{
+	it("gives the single tool row and the group summary upstream's focus-ring classes", () =>
+	{
 		const singleBash = renderTranscriptElement(
-			toolCallRecords([{id: "t1", name: "Bash", input: {command: "git status"}}]),
+			toolCallRecords([
+				{
+					id: "t1",
+					name: "Bash",
+					input:
+					{
+						command: "git status",
+					},
+				},
+			]),
 		);
 		const groupedBash = renderTranscriptElement(
 			toolCallRecords([
-				{id: "t1", name: "Bash", input: {command: "git status"}},
-				{id: "t2", name: "Bash", input: {command: "git log --oneline"}},
+				{
+					id: "t1",
+					name: "Bash",
+					input:
+					{
+						command: "git status",
+					},
+				},
+				{
+					id: "t2",
+					name: "Bash",
+					input:
+					{
+						command: "git log --oneline",
+					},
+				},
 			]),
 		);
 
-		expect({
-			row: disclosureClassName(singleBash),
-			summary: disclosureClassName(groupedBash),
-		}).toStrictEqual({
-			row: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6`,
-			summary: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
-		});
+		expect(
+			{
+				row: disclosureClassName(singleBash),
+				summary: disclosureClassName(groupedBash),
+			},
+		).toStrictEqual(
+			{
+				row: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6`,
+				summary: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
+			},
+		);
 	});
 
-	it("opts out of the base outline with hide-focus-ring and rings with ring-focus's shadow", () => {
+	it("opts out of the base outline with hide-focus-ring and rings with ring-focus's shadow", () =>
+	{
 		const styles = readFileSync(GLOBAL_STYLES_PATH, "utf8");
 
-		expect({
-			hideFocusRingHasRules: /\.hide-focus-ring\s*[{,:]/.test(styles),
-			definesRingFocus: /@utility ring-focus \{\s*box-shadow: var\(--focus-shadow\);/.test(styles),
-		}).toStrictEqual({
-			hideFocusRingHasRules: false,
-			definesRingFocus: true,
-		});
+		expect(
+			{
+				hideFocusRingHasRules: /\.hide-focus-ring\s*[{,:]/.test(styles),
+				definesRingFocus: /@utility ring-focus\s*\{\s*box-shadow: var\(--focus-shadow\);/.test(styles),
+			},
+		).toStrictEqual(
+			{
+				hideFocusRingHasRules: false,
+				definesRingFocus: true,
+			},
+		);
 	});
 });
 
-describe("SessionChat skill attribution", () => {
+describe("SessionChat skill attribution", () =>
+{
 	const records = [
-		{type: "user", uuid: "u1", message: {role: "user", content: "Do all the tasks"}},
+		{
+			type: "user",
+			uuid: "u1",
+			message:
+			{
+				role: "user",
+				content: "Do all the tasks",
+			},
+		},
 		{
 			type: "assistant",
 			uuid: "a1",
 			parentUuid: "u1",
 			attributionSkill: "markdown-tasks:do-all-tasks",
 			attributionPlugin: "markdown-tasks",
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
 					{
 						type: "tool_use",
 						id: "t1",
 						name: "Bash",
-						input: {command: "just next-task", description: "Get first incomplete task"},
+						input:
+						{
+							command: "just next-task",
+							description: "Get first incomplete task",
+						},
 					},
 				],
 			},
@@ -2552,10 +4320,21 @@ describe("SessionChat skill attribution", () => {
 			type: "user",
 			uuid: "r-t1",
 			parentUuid: "a1",
-			message: {role: "user", content: [{type: "tool_result", tool_use_id: "t1", content: "ok"}]},
+			message:
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: "t1",
+						content: "ok",
+					},
+				],
+			},
 		},
 	];
-	const renderMode = (transcriptMode: TranscriptMode) => {
+	const renderMode = (transcriptMode: TranscriptMode) =>
+	{
 		const {lines, toolResultMap} = processTranscript(records);
 		const {container} = render(
 			<SessionChat
@@ -2572,56 +4351,92 @@ describe("SessionChat skill attribution", () => {
 		};
 	};
 
-	it("draws no attribution pill in Normal, so the tool row opens the reply as upstream does", () => {
-		expect(renderMode("normal")).toStrictEqual({
-			pill: false,
-			frame: "flex flex-col w-full pb-p3 comfortable:pb-1.5",
-		});
+	it("draws no attribution pill in Normal, so the tool row opens the reply as upstream does", () =>
+	{
+		expect(renderMode("normal")).toStrictEqual(
+			{
+				pill: false,
+				frame: "flex flex-col w-full pb-p3 comfortable:pb-1.5",
+			},
+		);
 	});
 
-	it("keeps the attribution pill in Verbose", () => {
+	it("keeps the attribution pill in Verbose", () =>
+	{
 		expect(renderMode("verbose").pill).toBe(true);
 	});
 });
 
-describe("SessionChat smart quotes", () => {
-	it("curls quotes in assistant prose but leaves the user's own words and inline code as typed", () => {
+describe("SessionChat smart quotes", () =>
+{
+	it("curls quotes in assistant prose but leaves the user's own words and inline code as typed", () =>
+	{
 		const element = renderTranscriptElement([
-			{type: "user", uuid: "u1", message: {role: "user", content: `I couldn't open "the doc"`}},
+			{
+				type: "user",
+				uuid: "u1",
+				message:
+				{
+					role: "user",
+					content: `I couldn't open "the doc"`,
+				},
+			},
 			{
 				type: "assistant",
 				uuid: "a1",
 				parentUuid: "u1",
-				message: {
+				message:
+				{
 					role: "assistant",
-					content: [{type: "text", text: `I couldn't find "kinds of upgrades" in \`it's\`.`}],
+					content: [
+						{
+							type: "text",
+							text: `I couldn't find "kinds of upgrades" in \`it's\`.`,
+						},
+					],
 				},
 			},
 		]);
 
-		expect({
-			user: element.querySelector(".user-message-bubble")?.textContent,
-			prose: element.querySelector("[data-transcript-prose] article")?.textContent.trim(),
-		}).toStrictEqual({
-			user: `I couldn't open "the doc"`,
-			prose: "I couldn’t find “kinds of upgrades” in it's.",
-		});
+		expect(
+			{
+				user: element.querySelector(".user-message-bubble")?.textContent,
+				prose: element.querySelector("[data-transcript-prose] article")?.textContent.trim(),
+			},
+		).toStrictEqual(
+			{
+				user: `I couldn't open "the doc"`,
+				prose: "I couldn’t find “kinds of upgrades” in it's.",
+			},
+		);
 	});
 });
 
-describe("SessionChat usage-limit card", () => {
-	const usageLimitRecord = (extra: Record<string, unknown>) => ({
+describe("SessionChat usage-limit card", () =>
+{
+	const usageLimitRecord = (extra: Record<string, unknown>) => (
+	{
 		type: "assistant",
-		message: {
+		message:
+		{
 			role: "assistant",
 			model: "<synthetic>",
-			content: [{type: "text", text: "You've hit your weekly limit · resets Oct 20 at 4am (America/New_York)"}],
+			content: [
+				{
+					type: "text",
+					text: "You've hit your weekly limit · resets Oct 20 at 4am (America/New_York)",
+				},
+			],
 		},
 		isApiErrorMessage: true,
 		apiErrorStatus: 429,
 		...extra,
 	});
-	const defaults = {showCompactSummaries: true, showTranscriptOnly: true};
+	const defaults =
+	{
+		showCompactSummaries: true,
+		showTranscriptOnly: true,
+	};
 	const card = (html: string) =>
 		new DOMParser().parseFromString(html, "text/html").querySelector("[data-usage-limit-card]");
 	/** Whether the raw limit text is drawn as prose (the screen-reader turn heading may still quote it). */
@@ -2630,127 +4445,164 @@ describe("SessionChat usage-limit card", () => {
 			element.textContent.includes("You've hit your weekly limit"),
 		);
 
-	it("draws the kalshi specimen as upstream's card, hiding the raw text: danger gauge headline and hint, no actions", () => {
+	it("draws the kalshi specimen as upstream's card, hiding the raw text: danger gauge headline and hint, no actions", () =>
+	{
 		const html = renderRecord(
-			usageLimitRecord({
-				apiError: "usage_limit_reached",
-				apiErrorParams: {
-					rate_limit_info: {
-						status: "rejected",
-						resetsAt: 4_102_444_800,
-						rateLimitType: "seven_day",
-						overageStatus: "rejected",
-						overageDisabledReason: "org_level_disabled",
-						isUsingOverage: false,
+			usageLimitRecord(
+				{
+					apiError: "usage_limit_reached",
+					apiErrorParams:
+					{
+						rate_limit_info:
+						{
+							status: "rejected",
+							resetsAt: 4_102_444_800,
+							rateLimitType: "seven_day",
+							overageStatus: "rejected",
+							overageDisabledReason: "org_level_disabled",
+							isUsingOverage: false,
+						},
 					},
 				},
-			}),
+			),
 			{},
 			defaults,
 		);
 		const found = card(html);
 
-		expect({
-			shell: found?.className,
-			header: found?.firstElementChild?.className,
-			body: found?.lastElementChild?.className,
-			icon: found?.querySelector("svg")?.getAttribute("class"),
-			headline: found?.firstElementChild?.textContent,
-			hint: found
-				?.querySelector("span.text-secondary")
-				?.textContent.startsWith(
-					"Turn on usage credits to keep working past your plan limit. Your weekly limit resets",
-				),
-			settings: found?.querySelector("a") ?? null,
-			tryAgain: html.includes("Try again"),
-			rawText: showsRawText(html),
-			apiErrorHeader: html.includes("API Error"),
-		}).toStrictEqual({
-			shell: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
-			header: "flex items-start gap-md px-lg py-md bg-alpha-1 text-body contain-inline-size",
-			body: "flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
-			icon: "lucide lucide-gauge size-4 shrink-0 text-danger-000",
-			headline: "Weekly limit reached",
-			hint: true,
-			settings: null,
-			tryAgain: false,
-			rawText: false,
-			apiErrorHeader: false,
-		});
+		expect(
+			{
+				shell: found?.className,
+				header: found?.firstElementChild?.className,
+				body: found?.lastElementChild?.className,
+				icon: found?.querySelector("svg")?.getAttribute("class"),
+				headline: found?.firstElementChild?.textContent,
+				hint: found
+					?.querySelector("span.text-secondary")
+					?.textContent.startsWith(
+						"Turn on usage credits to keep working past your plan limit. Your weekly limit resets",
+					),
+				settings: found?.querySelector("a") ?? null,
+				tryAgain: html.includes("Try again"),
+				rawText: showsRawText(html),
+				apiErrorHeader: html.includes("API Error"),
+			},
+		).toStrictEqual(
+			{
+				shell: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
+				header: "flex items-start gap-md px-lg py-md bg-alpha-1 text-body contain-inline-size",
+				body: "flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
+				icon: "lucide lucide-gauge size-4 shrink-0 text-danger-000",
+				headline: "Weekly limit reached",
+				hint: true,
+				settings: null,
+				tryAgain: false,
+				rawText: false,
+				apiErrorHeader: false,
+			},
+		);
 	});
 
-	it("names the limit from the message text when the record has no limit fields", () => {
+	it("names the limit from the message text when the record has no limit fields", () =>
+	{
 		const html = renderRecord(usageLimitRecord({}), {}, defaults);
 
-		expect({
-			headline: card(html)?.firstElementChild?.textContent,
-			hint: card(html)?.querySelector("span.text-secondary")?.textContent,
-			settings: card(html)?.querySelector("a"),
-			rawText: showsRawText(html),
-		}).toStrictEqual({
-			headline: "Weekly limit reached",
-			hint: "Send a message after your weekly limit resets.",
-			settings: null,
-			rawText: false,
-		});
+		expect(
+			{
+				headline: card(html)?.firstElementChild?.textContent,
+				hint: card(html)?.querySelector("span.text-secondary")?.textContent,
+				settings: card(html)?.querySelector("a"),
+				rawText: showsRawText(html),
+			},
+		).toStrictEqual(
+			{
+				headline: "Weekly limit reached",
+				hint: "Send a message after your weekly limit resets.",
+				settings: null,
+				rawText: false,
+			},
+		);
 	});
 });
 
-describe("SessionChat auto-mode blocked specimens (live upstream, 2026-11-05)", () => {
+describe("SessionChat auto-mode blocked specimens (live upstream, 2026-11-05)", () =>
+{
 	const specimen = (file: string): unknown[] =>
 		readFileSync(join(__dirname, "fixtures", file), "utf8")
 			.trim()
 			.split("\n")
 			.map((line) => JSON.parse(line) as unknown);
 
-	const settled = async (file: string) => {
+	const settled = async (file: string) =>
+	{
 		const container = renderTranscriptElement(specimen(file));
 		const header = container.querySelector(".group\\/tool")!;
 		await expandSingleToolRow(container);
 		const body = container.querySelector(".group\\/body")!;
 		// The renderer is lazy, so wait for its reason line to mount.
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			if (body.querySelector("bdi, [data-find-omitted]") === null) throw new Error("reason not mounted");
 		});
 		return {
-			children: Array.from(header.children, (child) => ({text: child.textContent, className: child.className})),
+			children: Array.from(header.children, (child) => (
+			{
+				text: child.textContent,
+				className: child.className,
+			})),
 			reason: body.querySelector("[class*='font-sans text-body text-secondary']")?.textContent,
 			rawOutput: body.textContent.includes("IMPORTANT:") || body.textContent.includes("transient failure"),
 			danger: container.innerHTML.includes("text-danger"),
 		};
 	};
-	const BLOCKED = {text: "Blocked", className: "shrink-0 text-body text-secondary"};
+	const BLOCKED =
+	{
+		text: "Blocked",
+		className: "shrink-0 text-body text-secondary",
+	};
 
-	it('settles cbe014a6\'s classifier-blocked Bash "Blocked" with its reason', async () => {
-		expect(await settled("cbe014a6-automode-blocked.jsonl")).toStrictEqual({
-			children: [
-				{
-					text: "Inspect candidate OpenRewrite session transcripts",
-					className: "truncate min-w-0 text-body text-secondary",
-				},
-				BLOCKED,
-				{...ROW_CHEVRON, className: ROW_CHEVRON.className.replace(" group-hover/tool:text-secondary", "")},
-			],
-			reason: "Blocked by auto mode: [Credential Materialization]",
-			rawOutput: false,
-			danger: false,
-		});
+	it('settles cbe014a6\'s classifier-blocked Bash "Blocked" with its reason', async () =>
+	{
+		expect(await settled("cbe014a6-automode-blocked.jsonl")).toStrictEqual(
+			{
+				children: [
+					{
+						text: "Inspect candidate OpenRewrite session transcripts",
+						className: "truncate min-w-0 text-body text-secondary",
+					},
+					BLOCKED,
+					{
+						...ROW_CHEVRON,
+						className: ROW_CHEVRON.className.replace(" group-hover/tool:text-secondary", ""),
+					},
+				],
+				reason: "Blocked by auto mode: [Credential Materialization]",
+				rawOutput: false,
+				danger: false,
+			},
+		);
 	});
 
-	it("settles 0999816d's no-verdict Bash \"Blocked\" with upstream's sentence", async () => {
-		expect(await settled("0999816d-automode-unavailable.jsonl")).toStrictEqual({
-			children: [
-				{
-					// The local row clips a long description; upstream clips it with CSS.
-					text: "Verify the worktree, the new commit, the test gate, and the ...",
-					className: "truncate min-w-0 text-body text-secondary",
-				},
-				BLOCKED,
-				{...ROW_CHEVRON, className: ROW_CHEVRON.className.replace(" group-hover/tool:text-secondary", "")},
-			],
-			reason: "This did not run because auto mode’s check had no usable answer.",
-			rawOutput: false,
-			danger: false,
-		});
+	it("settles 0999816d's no-verdict Bash \"Blocked\" with upstream's sentence", async () =>
+	{
+		expect(await settled("0999816d-automode-unavailable.jsonl")).toStrictEqual(
+			{
+				children: [
+					{
+						// The local row clips a long description; upstream clips it with CSS.
+						text: "Verify the worktree, the new commit, the test gate, and the ...",
+						className: "truncate min-w-0 text-body text-secondary",
+					},
+					BLOCKED,
+					{
+						...ROW_CHEVRON,
+						className: ROW_CHEVRON.className.replace(" group-hover/tool:text-secondary", ""),
+					},
+				],
+				reason: "This did not run because auto mode’s check had no usable answer.",
+				rawOutput: false,
+				danger: false,
+			},
+		);
 	});
 });

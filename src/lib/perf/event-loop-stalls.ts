@@ -4,7 +4,8 @@
 // trackActivitySync. Each stall also reports how much CPU the thread used meanwhile: a stall with little CPU was not
 // this thread's code running but the thread waiting (a blocking syscall, a SQLite lock, or a busy machine).
 
-export interface EventLoopStall {
+export interface EventLoopStall
+{
 	/** How much later than scheduled the monitor's timer fired, in milliseconds: a lower bound on the stall. */
 	durationMs: number;
 	/** CPU time this thread used over the window, in milliseconds, including garbage collection on the thread. */
@@ -13,12 +14,14 @@ export interface EventLoopStall {
 	activities: string[];
 }
 
-interface Activity {
+interface Activity
+{
 	label: string;
 	startedAt: number;
 }
 
-interface EndedActivity extends Activity {
+interface EndedActivity extends Activity
+{
 	endedAt: number;
 }
 
@@ -27,42 +30,73 @@ let recentlyEnded: EndedActivity[] = [];
 let runningMonitors = 0;
 
 /** Runs `fn` as a named activity, so a stall monitor can report it if the event loop stalls meanwhile. */
-export async function trackActivity<T>(label: string, fn: () => T | Promise<T>): Promise<T> {
-	const activity: Activity = {label, startedAt: performance.now()};
+export async function trackActivity<T>(label: string, fn: () => T | Promise<T>): Promise<T>
+{
+	const activity: Activity =
+	{
+		label,
+		startedAt: performance.now(),
+	};
 	inFlight.add(activity);
-	try {
+	try
+	{
 		return await fn();
-	} finally {
+	}
+	finally
+	{
 		inFlight.delete(activity);
 		// Ended activities are only kept while a monitor can still attribute a stall to them.
-		if (runningMonitors > 0) recentlyEnded.push({...activity, endedAt: performance.now()});
+		if (runningMonitors > 0)
+			recentlyEnded.push(
+				{
+					...activity,
+					endedAt: performance.now(),
+				},
+			);
 	}
 }
 
 /** Runs synchronous `fn` as a named activity, so a stall monitor can report it if `fn` blocks the event loop. */
-export function trackActivitySync<T>(label: string, fn: () => T): T {
-	const activity: Activity = {label, startedAt: performance.now()};
+export function trackActivitySync<T>(label: string, fn: () => T): T
+{
+	const activity: Activity =
+	{
+		label,
+		startedAt: performance.now(),
+	};
 	inFlight.add(activity);
-	try {
+	try
+	{
 		return fn();
-	} finally {
+	}
+	finally
+	{
 		inFlight.delete(activity);
-		if (runningMonitors > 0) recentlyEnded.push({...activity, endedAt: performance.now()});
+		if (runningMonitors > 0)
+			recentlyEnded.push(
+				{
+					...activity,
+					endedAt: performance.now(),
+				},
+			);
 	}
 }
 
-function threadCpuMs(): number {
+function threadCpuMs(): number
+{
 	const {user, system} = process.threadCpuUsage();
 	return (user + system) / 1000;
 }
 
-function activitiesSince(windowStart: number): string[] {
+function activitiesSince(windowStart: number): string[]
+{
 	const overlapping = [...recentlyEnded.filter((activity) => activity.endedAt >= windowStart), ...inFlight];
 	overlapping.sort((a, b) => a.startedAt - b.startedAt);
 	return [...new Set(overlapping.map((activity) => activity.label))];
 }
 
-export interface StallMonitorOptions {
+export interface StallMonitorOptions
+{
 	/** Report any single event-loop delay longer than this. */
 	thresholdMs: number;
 	onStall: (stall: EventLoopStall) => void;
@@ -76,17 +110,26 @@ export interface StallMonitorOptions {
  * record a stall only after this timer has already read it, attributing it to the wrong window.
  * Returns a function that stops the monitor.
  */
-export function startStallMonitor({thresholdMs, onStall, intervalMs = 100}: StallMonitorOptions): () => void {
+export function startStallMonitor({thresholdMs, onStall, intervalMs = 100}: StallMonitorOptions): () => void
+{
 	runningMonitors += 1;
 	let windowStart = performance.now();
 	let windowStartCpuMs = threadCpuMs();
 
-	const timer = setInterval(() => {
+	const timer = setInterval(() =>
+	{
 		const now = performance.now();
 		const nowCpuMs = threadCpuMs();
 		const durationMs = now - windowStart - intervalMs;
-		if (durationMs > thresholdMs) {
-			onStall({durationMs, cpuMs: nowCpuMs - windowStartCpuMs, activities: activitiesSince(windowStart)});
+		if (durationMs > thresholdMs)
+		{
+			onStall(
+				{
+					durationMs,
+					cpuMs: nowCpuMs - windowStartCpuMs,
+					activities: activitiesSince(windowStart),
+				},
+			);
 		}
 		windowStart = now;
 		windowStartCpuMs = nowCpuMs;
@@ -95,7 +138,8 @@ export function startStallMonitor({thresholdMs, onStall, intervalMs = 100}: Stal
 	timer.unref();
 
 	let stopped = false;
-	return () => {
+	return () =>
+	{
 		if (stopped) return;
 		stopped = true;
 		clearInterval(timer);
@@ -104,7 +148,8 @@ export function startStallMonitor({thresholdMs, onStall, intervalMs = 100}: Stal
 	};
 }
 
-export function formatStall(stall: EventLoopStall): string {
+export function formatStall(stall: EventLoopStall): string
+{
 	const during = stall.activities.length > 0 ? stall.activities.join(", ") : "no tracked activity";
 	const offCpu = stall.cpuMs < stall.durationMs / 2 ? ", off-CPU: blocking syscall, lock wait or busy machine" : "";
 	return `[event-loop] blocked for ${Math.round(stall.durationMs)} ms (cpu ${Math.round(stall.cpuMs)} ms${offCpu}) during: ${during}`;
@@ -113,7 +158,8 @@ export function formatStall(stall: EventLoopStall): string {
 /** Wraps a fetch handler so each request is a tracked activity named by its method and path. */
 export function withActivityTracking(
 	handler: (request: Request) => Response | Promise<Response>,
-): (request: Request) => Promise<Response> {
+): (request: Request) => Promise<Response>
+{
 	return async (request) =>
 		trackActivity(`${request.method} ${new URL(request.url).pathname}`, (): Response | Promise<Response> =>
 			handler(request),

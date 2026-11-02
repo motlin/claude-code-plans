@@ -39,7 +39,8 @@ export function SessionRenameDialog({
 	title?: string;
 	/** The name field's accessible label. */
 	fieldLabel?: string;
-}) {
+})
+{
 	const [name, setName] = useState(initialName);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const selectedRef = useRef(false);
@@ -50,14 +51,16 @@ export function SessionRenameDialog({
 	const sessionTitle = useFizzyLake("panels") ? "Rename" : "Rename session";
 	const title = titleOverride ?? sessionTitle;
 
-	const submit = (event: SubmitEvent<HTMLFormElement>) => {
+	const submit = (event: SubmitEvent<HTMLFormElement>) =>
+	{
 		event.preventDefault();
 		if (trimmed === "") return;
 		if (trimmed !== initialName) onRename(trimmed);
 		onClose();
 	};
 
-	const selectOnFirstFocus = (event: FocusEvent<HTMLInputElement>) => {
+	const selectOnFirstFocus = (event: FocusEvent<HTMLInputElement>) =>
+	{
 		if (selectedRef.current) return;
 		selectedRef.current = true;
 		event.currentTarget.select();
@@ -66,10 +69,12 @@ export function SessionRenameDialog({
 	return (
 		<Dialog.Root
 			open={open}
-			onOpenChange={(isOpen) => {
+			onOpenChange={(isOpen) =>
+			{
 				if (!isOpen) onClose();
 			}}
-			onOpenChangeComplete={(isOpen) => {
+			onOpenChangeComplete={(isOpen) =>
+			{
 				if (!isOpen) onClosed?.();
 			}}
 		>
@@ -78,7 +83,12 @@ export function SessionRenameDialog({
 					<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
 					<DialogPopup
 						initialFocus={inputRef}
-						{...(finalFocus === undefined ? {} : {finalFocus})}
+						{...(finalFocus === undefined
+							? {}
+							:
+								{
+									finalFocus,
+								})}
 						className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none"
 					>
 						<form
@@ -98,7 +108,8 @@ export function SessionRenameDialog({
 									data-testid="name-session"
 									dir="auto"
 									value={name}
-									onChange={(event) => {
+									onChange={(event) =>
+									{
 										setName(event.target.value);
 									}}
 									onFocus={selectOnFirstFocus}

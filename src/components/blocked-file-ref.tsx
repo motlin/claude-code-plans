@@ -1,6 +1,7 @@
 import type {ReactNode, RefCallback} from "react";
 
-import {
+import
+{
 	DISABLED_REASON_ATTR,
 	DISABLED_REASON_WRAPPER_ATTR,
 	FILE_REF_BLOCK_REASONS,
@@ -24,7 +25,8 @@ export function BlockedFileRef({
 	block: FileRefBlock;
 	focusSlot?: RefCallback<HTMLElement> | undefined;
 	children: ReactNode;
-}) {
+})
+{
 	const reasonTooltip = useReasonTooltip();
 	const id = fileRefReasonId(path, block);
 	return (
@@ -32,14 +34,24 @@ export function BlockedFileRef({
 			<span
 				// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's disabled-reason wrapper is a tab stop that reaches its reason tooltip
 				tabIndex={0}
-				{...{[DISABLED_REASON_WRAPPER_ATTR]: ""}}
+				{...
+				{
+					[DISABLED_REASON_WRAPPER_ATTR]: "",
+				}}
 				aria-describedby={id}
 				className={BLOCKED_WRAPPER_CLASS}
 				{...reasonTooltip.handlers}
 			>
 				{children}
 				{block === "missing" && <span ref={focusSlot} hidden />}
-				<span id={id} hidden {...{[DISABLED_REASON_ATTR]: ""}}>
+				<span
+					id={id}
+					hidden
+					{...
+					{
+						[DISABLED_REASON_ATTR]: "",
+					}}
+				>
 					{FILE_REF_BLOCK_REASONS[block]}
 				</span>
 			</span>

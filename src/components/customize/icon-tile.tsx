@@ -1,6 +1,7 @@
 import type {LucideIcon} from "lucide-react";
 
-const SIZE_CLASS = {
+const SIZE_CLASS =
+{
 	/** List rows: 36px tile, radius 8. */
 	md: "size-9 rounded-r6",
 	/** Discover cards: 48px tile, radius 8. */
@@ -10,18 +11,22 @@ const SIZE_CLASS = {
 } as const;
 
 /** Upstream's glyph is 20px everywhere but the Discover card, which uses 26px. */
-const GLYPH_CLASS = {md: "size-5", card: "size-[26px]", lg: "size-5"} as const satisfies Record<
-	keyof typeof SIZE_CLASS,
-	string
->;
+const GLYPH_CLASS =
+{
+	md: "size-5",
+	card: "size-[26px]",
+	lg: "size-5",
+} as const satisfies Record<keyof typeof SIZE_CLASS, string>;
 
-interface IconTileProps {
+interface IconTileProps
+{
 	icon: LucideIcon;
 	size?: keyof typeof SIZE_CLASS;
 }
 
 /** Upstream `tabbed-list-icon-tile`: bordered surface-0 square holding a 20px glyph. */
-export function IconTile({icon: Icon, size = "md"}: IconTileProps) {
+export function IconTile({icon: Icon, size = "md"}: IconTileProps)
+{
 	return (
 		<div
 			aria-hidden="true"

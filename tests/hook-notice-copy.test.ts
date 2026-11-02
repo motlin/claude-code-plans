@@ -2,18 +2,66 @@ import {describe, expect, it} from "vite-plus/test";
 
 import {foldsIntoToolRun, hookNoticeText} from "../src/lib/hook-notice-copy";
 
-describe("hookNoticeText", () => {
-	it("words each notice as upstream's m_ copy does", () => {
+describe("hookNoticeText", () =>
+{
+	it("words each notice as upstream's m_ copy does", () =>
+	{
 		expect([
 			hookNoticeText("plain text"),
-			hookNoticeText({notice: "away_summary", recap: "x"}),
-			hookNoticeText({notice: "agents_killed"}),
-			hookNoticeText({notice: "memory_saved", count: 3, teamCount: 0}),
-			hookNoticeText({notice: "memory_saved", count: 1, teamCount: 0}),
-			hookNoticeText({notice: "memory_saved", count: 2, teamCount: 1}),
-			hookNoticeText({notice: "memory_saved", count: 0, teamCount: 2}),
-			hookNoticeText({notice: "memory_saved", count: 0, teamCount: 1}),
-			hookNoticeText({notice: "memory_saved", count: 4, teamCount: 0, verb: "Improved"}),
+			hookNoticeText(
+				{
+					notice: "away_summary",
+					recap: "x",
+				},
+			),
+			hookNoticeText(
+				{
+					notice: "agents_killed",
+				},
+			),
+			hookNoticeText(
+				{
+					notice: "memory_saved",
+					count: 3,
+					teamCount: 0,
+				},
+			),
+			hookNoticeText(
+				{
+					notice: "memory_saved",
+					count: 1,
+					teamCount: 0,
+				},
+			),
+			hookNoticeText(
+				{
+					notice: "memory_saved",
+					count: 2,
+					teamCount: 1,
+				},
+			),
+			hookNoticeText(
+				{
+					notice: "memory_saved",
+					count: 0,
+					teamCount: 2,
+				},
+			),
+			hookNoticeText(
+				{
+					notice: "memory_saved",
+					count: 0,
+					teamCount: 1,
+				},
+			),
+			hookNoticeText(
+				{
+					notice: "memory_saved",
+					count: 4,
+					teamCount: 0,
+					verb: "Improved",
+				},
+			),
 		]).toStrictEqual([
 			"plain text",
 			"Recap: x",
@@ -28,38 +76,115 @@ describe("hookNoticeText", () => {
 	});
 });
 
-describe("hookNoticeText prompt_stopped", () => {
-	it("words a hook stop with or without its reason", () => {
+describe("hookNoticeText prompt_stopped", () =>
+{
+	it("words a hook stop with or without its reason", () =>
+	{
 		expect([
-			hookNoticeText({notice: "prompt_stopped", reason: "quota"}),
-			hookNoticeText({notice: "prompt_stopped"}),
+			hookNoticeText(
+				{
+					notice: "prompt_stopped",
+					reason: "quota",
+				},
+			),
+			hookNoticeText(
+				{
+					notice: "prompt_stopped",
+				},
+			),
 		]).toStrictEqual([
 			"A hook stopped a message, so Claude didn’t reply to it: quota",
 			"A hook stopped a message, so Claude didn’t reply to it. To find out why, check your hook settings or ask your admin.",
 		]);
 	});
 
-	it("caps a long reason at 262144 characters plus an ellipsis", () => {
-		const text = hookNoticeText({notice: "prompt_stopped", reason: "a".repeat(262200)});
+	it("caps a long reason at 262144 characters plus an ellipsis", () =>
+	{
+		const text = hookNoticeText(
+			{
+				notice: "prompt_stopped",
+				reason: "a".repeat(262200),
+			},
+		);
 		expect([text.length, text.endsWith("a…")]).toStrictEqual([262145, true]);
 	});
 
-	it("keeps prompt_stopped a warning that never rolls into a tool run", () => {
-		expect(foldsIntoToolRun([{message: {notice: "prompt_stopped"}, level: "warning"}])).toBe(false);
+	it("keeps prompt_stopped a warning that never rolls into a tool run", () =>
+	{
+		expect(
+			foldsIntoToolRun([
+				{
+					message:
+					{
+						notice: "prompt_stopped",
+					},
+					level: "warning",
+				},
+			]),
+		).toBe(false);
 	});
 });
 
-describe("foldsIntoToolRun", () => {
-	it("folds notice-level lines unless a notice is a warning or a recap", () => {
+describe("foldsIntoToolRun", () =>
+{
+	it("folds notice-level lines unless a notice is a warning or a recap", () =>
+	{
 		expect([
-			foldsIntoToolRun([{message: "plain", level: "notice"}]),
-			foldsIntoToolRun([{message: {notice: "agents_killed"}, level: "notice"}]),
-			foldsIntoToolRun([{message: {notice: "memory_saved", count: 1, teamCount: 0}, level: "notice"}]),
-			foldsIntoToolRun([{message: "careful", level: "warning"}]),
-			foldsIntoToolRun([{message: {notice: "away_summary", recap: "x"}, level: "notice"}]),
 			foldsIntoToolRun([
-				{message: "plain", level: "notice"},
-				{message: {notice: "away_summary", recap: "x"}, level: "notice"},
+				{
+					message: "plain",
+					level: "notice",
+				},
+			]),
+			foldsIntoToolRun([
+				{
+					message:
+					{
+						notice: "agents_killed",
+					},
+					level: "notice",
+				},
+			]),
+			foldsIntoToolRun([
+				{
+					message:
+					{
+						notice: "memory_saved",
+						count: 1,
+						teamCount: 0,
+					},
+					level: "notice",
+				},
+			]),
+			foldsIntoToolRun([
+				{
+					message: "careful",
+					level: "warning",
+				},
+			]),
+			foldsIntoToolRun([
+				{
+					message:
+					{
+						notice: "away_summary",
+						recap: "x",
+					},
+					level: "notice",
+				},
+			]),
+			foldsIntoToolRun([
+				{
+					message: "plain",
+					level: "notice",
+				},
+				{
+					message:
+					{
+						notice: "away_summary",
+						recap: "x",
+					},
+					level: "notice",
+				},
 			]),
 		]).toStrictEqual([true, true, true, false, false, false]);
 	});

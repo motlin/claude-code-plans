@@ -15,17 +15,20 @@
  * so updates at or below the last known revision are replays.
  */
 
-export interface PaneRevision {
+export interface PaneRevision
+{
 	paneId: string;
 	revision: number | null;
 }
 
-interface KnownPane {
+interface KnownPane
+{
 	revision: number | null;
 	closed: boolean;
 }
 
-export interface HerdrPaneDiffer {
+export interface HerdrPaneDiffer
+{
 	/**
 	 * Merge the panes herdr reports at (re)subscribe time into the known set.
 	 * Merging rather than replacing matters: herdr replays creates for zombie
@@ -43,31 +46,55 @@ export interface HerdrPaneDiffer {
 	shouldBroadcastSnapshot(panes: unknown): boolean;
 }
 
-export function createHerdrPaneDiffer(): HerdrPaneDiffer {
+export function createHerdrPaneDiffer(): HerdrPaneDiffer
+{
 	const knownPanes = new Map<string, KnownPane>();
 	let lastSnapshotSignature: string | null = null;
 
 	return {
-		seedKnownPanes(panes) {
-			for (const pane of panes) {
-				knownPanes.set(pane.paneId, {revision: pane.revision, closed: false});
+		seedKnownPanes(panes)
+		{
+			for (const pane of panes)
+			{
+				knownPanes.set(
+					pane.paneId,
+					{
+						revision: pane.revision,
+						closed: false,
+					},
+				);
 			}
 		},
 
-		recordCreated(pane) {
+		recordCreated(pane)
+		{
 			if (knownPanes.has(pane.paneId)) return false;
-			knownPanes.set(pane.paneId, {revision: pane.revision, closed: false});
+			knownPanes.set(
+				pane.paneId,
+				{
+					revision: pane.revision,
+					closed: false,
+				},
+			);
 			return true;
 		},
 
-		recordUpdated(pane) {
+		recordUpdated(pane)
+		{
 			// A payload without a revision cannot be proven redundant; pass it
 			// through without recording so a later revision-bearing update still
 			// compares against the last confirmed revision.
 			if (pane.revision === null) return true;
 			const known = knownPanes.get(pane.paneId);
-			if (!known) {
-				knownPanes.set(pane.paneId, {revision: pane.revision, closed: false});
+			if (!known)
+			{
+				knownPanes.set(
+					pane.paneId,
+					{
+						revision: pane.revision,
+						closed: false,
+					},
+				);
 				return true;
 			}
 			if (known.revision !== null && pane.revision <= known.revision) return false;
@@ -75,12 +102,20 @@ export function createHerdrPaneDiffer(): HerdrPaneDiffer {
 			return true;
 		},
 
-		recordClosed(paneId) {
+		recordClosed(paneId)
+		{
 			const known = knownPanes.get(paneId);
-			if (!known) {
+			if (!known)
+			{
 				// A close replay can outlive its create in herdr's buffer; tombstone
 				// it so the create replay on the next resubscribe stays quiet too.
-				knownPanes.set(paneId, {revision: null, closed: true});
+				knownPanes.set(
+					paneId,
+					{
+						revision: null,
+						closed: true,
+					},
+				);
 				return false;
 			}
 			if (known.closed) return false;
@@ -88,7 +123,8 @@ export function createHerdrPaneDiffer(): HerdrPaneDiffer {
 			return true;
 		},
 
-		shouldBroadcastSnapshot(panes) {
+		shouldBroadcastSnapshot(panes)
+		{
 			const signature = JSON.stringify(panes);
 			if (signature === lastSnapshotSignature) return false;
 			lastSnapshotSignature = signature;
@@ -97,7 +133,8 @@ export function createHerdrPaneDiffer(): HerdrPaneDiffer {
 	};
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown>
+{
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
@@ -105,11 +142,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Pull the pane identity out of a pushed herdr event payload. Live pushes nest
  * the full pane under `data.pane`; pane_closed carries a bare `pane_id`.
  */
-export function extractPaneRevision(data: Record<string, unknown>): PaneRevision | null {
+export function extractPaneRevision(data: Record<string, unknown>): PaneRevision | null
+{
 	const pane = data["pane"];
 	const source = isRecord(pane) ? pane : data;
 	const paneId = source["pane_id"];
 	if (typeof paneId !== "string") return null;
 	const revision = source["revision"];
-	return {paneId, revision: typeof revision === "number" ? revision : null};
+	return {
+		paneId,
+		revision: typeof revision === "number" ? revision : null,
+	};
 }

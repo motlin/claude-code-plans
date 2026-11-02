@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -22,24 +23,55 @@ import {processTranscript} from "../src/lib/transcript";
 import type {SessionLine} from "../src/lib/sessions";
 import {entryIndex, transcriptRows, transcriptSpacerHeight} from "./dom-walk";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
+	}),
 }));
 // The shrinkwrap engine shares one ResizeObserver over every bubble's ancestors; keep it out of these scroll fakes.
-vi.mock("../src/hooks/use-shrinkwrap", () => ({useShrinkwrap: () => () => undefined}));
-vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
-vi.mock("../src/hooks/use-claude-events", () => ({useClaudeEvents: () => ({failedTools: new Map()})}));
+vi.mock("../src/hooks/use-shrinkwrap", () => (
+{
+	useShrinkwrap: () => () => undefined,
+}));
+vi.mock("../src/lib/hmr-persist", () => (
+{
+	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
+}));
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
+}));
 
 const LOCAL_ID = "00000000-0000-4000-8000-000000000100";
 const ALIAS = "session_alice_100";
 const clients: QueryClient[] = [];
 
-const lines: SessionLine[] = Array.from({length: 80}, (_, index) => ({
-	type: index % 2 === 0 ? "user" : "assistant",
-	uuid: `example-message-${index}`,
-	lineIndex: index,
-	message: {role: index % 2 === 0 ? "user" : "assistant", content: `Fabricated message ${index}`},
-}));
+const lines: SessionLine[] = Array.from(
+	{
+		length: 80,
+	},
+	(_, index) => (
+	{
+		type: index % 2 === 0 ? "user" : "assistant",
+		uuid: `example-message-${index}`,
+		lineIndex: index,
+		message:
+		{
+			role: index % 2 === 0 ? "user" : "assistant",
+			content: `Fabricated message ${index}`,
+		},
+	}),
+);
 
 // Simulate browser geometry, not the virtualizer's estimated height calculations.
 const rowAdjustments = new Map<number, number>();
@@ -56,18 +88,26 @@ const viewportHeight = 600;
 let listWidth = 800;
 let phase = "initial";
 let scrollPosition = 0;
-const writes: Array<{phase: string; requested: number; applied: number}> = [];
+const writes: Array<
+{
+	phase: string;
+	requested: number;
+	applied: number;
+}> = [];
 const restored: Array<number | undefined> = [];
 const restorationWindows: string[][] = [];
 const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop")!;
 
-function mountedRows(): HTMLElement[] {
+function mountedRows(): HTMLElement[]
+{
 	return transcriptRows(document);
 }
-function spacerHeight(position: "before" | "after"): number {
+function spacerHeight(position: "before" | "after"): number
+{
 	return transcriptSpacerHeight(document, position);
 }
-function contentHeight(): number {
+function contentHeight(): number
+{
 	return (
 		spacerHeight("before") +
 		mountedRows().reduce((sum, row) => sum + rowHeight(entryIndex(row)), 0) +
@@ -75,41 +115,54 @@ function contentHeight(): number {
 		footerExtent
 	);
 }
-function clampedPosition(): number {
+function clampedPosition(): number
+{
 	return Math.min(scrollPosition, Math.max(0, contentHeight() - viewportHeight));
 }
-function rowTop(row: HTMLElement): number {
+function rowTop(row: HTMLElement): number
+{
 	let top = spacerHeight("before");
-	for (const current of mountedRows()) {
+	for (const current of mountedRows())
+	{
 		if (current === row) return top - clampedPosition();
 		top += rowHeight(entryIndex(current));
 	}
 	throw new Error("Expected a mounted transcript row.");
 }
-function visibleAnchor() {
+function visibleAnchor()
+{
 	const row = mountedRows().find((candidate) => rowTop(candidate) + rowHeight(entryIndex(candidate)) > 0);
 	if (!row) throw new Error("Expected a visible transcript row.");
-	return {record: row.dataset["perfLine"], top: rowTop(row)};
+	return {
+		record: row.dataset["perfLine"],
+		top: rowTop(row),
+	};
 }
 
-class ControlledResizeObserver {
+class ControlledResizeObserver
+{
 	static active = new Set<ControlledResizeObserver>();
 	readonly elements = new Set<Element>();
-	constructor(readonly callback: ResizeObserverCallback) {
+	constructor(readonly callback: ResizeObserverCallback)
+	{
 		ControlledResizeObserver.active.add(this);
 	}
-	observe(element: Element) {
+	observe(element: Element)
+	{
 		this.elements.add(element);
 	}
-	unobserve(element: Element) {
+	unobserve(element: Element)
+	{
 		this.elements.delete(element);
 	}
-	disconnect() {
+	disconnect()
+	{
 		ControlledResizeObserver.active.delete(this);
 	}
 }
 
-function installGeometry() {
+function installGeometry()
+{
 	rowAdjustments.clear();
 	tailGeometry = false;
 	footerExtent = 0;
@@ -124,70 +177,109 @@ function installGeometry() {
 	restored.length = 0;
 	vi.stubGlobal("ResizeObserver", ControlledResizeObserver);
 	vi.stubGlobal("scrollTo", vi.fn());
-	Object.defineProperty(Element.prototype, "scrollTo", {
-		configurable: true,
-		value: function (this: Element, options: ScrollToOptions) {
-			this.scrollTop = options.top ?? this.scrollTop;
+	Object.defineProperty(
+		Element.prototype,
+		"scrollTo",
+		{
+			configurable: true,
+			value: function (this: Element, options: ScrollToOptions)
+			{
+				this.scrollTop = options.top ?? this.scrollTop;
+			},
 		},
-	});
-	Object.defineProperty(Element.prototype, "scrollTop", {
-		configurable: true,
-		get() {
-			return clampedPosition();
+	);
+	Object.defineProperty(
+		Element.prototype,
+		"scrollTop",
+		{
+			configurable: true,
+			get()
+			{
+				return clampedPosition();
+			},
+			set(value: number)
+			{
+				if (phase === "back-router")
+					restorationWindows.push(mountedRows().map((row) => row.dataset["perfLine"]!));
+				const applied = Math.min(Math.max(0, value), Math.max(0, contentHeight() - viewportHeight));
+				scrollPosition = applied;
+				writes.push(
+					{
+						phase,
+						requested: value,
+						applied,
+					},
+				);
+			},
 		},
-		set(value: number) {
-			if (phase === "back-router") restorationWindows.push(mountedRows().map((row) => row.dataset["perfLine"]!));
-			const applied = Math.min(Math.max(0, value), Math.max(0, contentHeight() - viewportHeight));
-			scrollPosition = applied;
-			writes.push({phase, requested: value, applied});
-		},
-	});
-	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+	);
+	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element)
+	{
 		if (this.localName === "main") return new DOMRect(0, 0, 800, viewportHeight);
 		if (this.getAttribute("data-testid") === "virtualized-transcript")
 			return new DOMRect(0, -clampedPosition(), listWidth, contentHeight());
-		if (this instanceof HTMLElement && this.hasAttribute("data-transcript-entry-index")) {
+		if (this instanceof HTMLElement && this.hasAttribute("data-transcript-entry-index"))
+		{
 			return new DOMRect(0, rowTop(this), 800, rowHeight(entryIndex(this)));
 		}
 		return new DOMRect();
 	});
 }
 
-function settleMeasurements(main: HTMLElement) {
+function settleMeasurements(main: HTMLElement)
+{
 	// Browser scroll and resize callbacks arrive after the router's rendered pass.
-	for (let batch = 0; batch < 20; batch++) {
-		const before = JSON.stringify({
-			height: contentHeight(),
-			top: main.scrollTop,
-			rows: mountedRows().map((row) => row.dataset["transcriptEntryIndex"]),
-		});
-		act(() => {
+	for (let batch = 0; batch < 20; batch++)
+	{
+		const before = JSON.stringify(
+			{
+				height: contentHeight(),
+				top: main.scrollTop,
+				rows: mountedRows().map((row) => row.dataset["transcriptEntryIndex"]),
+			},
+		);
+		act(() =>
+		{
 			fireEvent.scroll(main);
-			for (const observer of [...ControlledResizeObserver.active]) {
+			for (const observer of [...ControlledResizeObserver.active])
+			{
 				const observations = [...observer.elements]
 					.filter((element) => element.isConnected)
-					.map((target) => ({
+					.map((target) => (
+					{
 						target,
 						contentRect: target.getBoundingClientRect(),
-						borderBoxSize: [{blockSize: target.getBoundingClientRect().height, inlineSize: 800}],
+						borderBoxSize: [
+							{
+								blockSize: target.getBoundingClientRect().height,
+								inlineSize: 800,
+							},
+						],
 						contentBoxSize: [],
 						devicePixelContentBoxSize: [],
 					}));
 				observer.callback(observations, observer);
 			}
 		});
-		const after = JSON.stringify({
-			height: contentHeight(),
-			top: main.scrollTop,
-			rows: mountedRows().map((row) => row.dataset["transcriptEntryIndex"]),
-		});
+		const after = JSON.stringify(
+			{
+				height: contentHeight(),
+				top: main.scrollTop,
+				rows: mountedRows().map((row) => row.dataset["transcriptEntryIndex"]),
+			},
+		);
 		if (before === after) return;
 	}
 	throw new Error("Transcript measurement did not settle within 20 observer batches.");
 }
 
-function TranscriptRoute() {
-	const {id} = useParams({strict: false});
+function TranscriptRoute()
+{
+	const {id} = useParams(
+		{
+			strict: false,
+		},
+	);
 	if (id === undefined) throw new Error("Expected a session route ID.");
 	return (
 		<SessionRouteIdentity routeId={id}>
@@ -196,7 +288,8 @@ function TranscriptRoute() {
 	);
 }
 
-function RestoredChat({sessionId, scrollKey}: {sessionId: string; scrollKey: string}) {
+function RestoredChat({sessionId, scrollKey}: {sessionId: string; scrollKey: string})
+{
 	const position = useMainScrollRestoration(scrollKey);
 	restored.push(position?.scrollY);
 	return (
@@ -212,7 +305,8 @@ function RestoredChat({sessionId, scrollKey}: {sessionId: string; scrollKey: str
 	);
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	for (const client of clients.splice(0)) client.clear();
 	Object.defineProperty(Element.prototype, "scrollTop", nativeScrollTop);
@@ -227,40 +321,108 @@ afterEach(() => {
 });
 
 it.each([
-	{routeId: LOCAL_ID, strict: false, initialAtEnd: false},
-	{routeId: ALIAS, strict: false, initialAtEnd: false},
-	{routeId: LOCAL_ID, strict: true, initialAtEnd: false},
-	{routeId: ALIAS, strict: true, initialAtEnd: false},
-	{routeId: LOCAL_ID, strict: false, initialAtEnd: true},
-	{routeId: ALIAS, strict: false, initialAtEnd: true},
+	{
+		routeId: LOCAL_ID,
+		strict: false,
+		initialAtEnd: false,
+	},
+	{
+		routeId: ALIAS,
+		strict: false,
+		initialAtEnd: false,
+	},
+	{
+		routeId: LOCAL_ID,
+		strict: true,
+		initialAtEnd: false,
+	},
+	{
+		routeId: ALIAS,
+		strict: true,
+		initialAtEnd: false,
+	},
+	{
+		routeId: LOCAL_ID,
+		strict: false,
+		initialAtEnd: true,
+	},
+	{
+		routeId: ALIAS,
+		strict: false,
+		initialAtEnd: true,
+	},
 ])(
 	"restores the same visible transcript record after New/Back on $routeId with StrictMode=$strict and initialAtEnd=$initialAtEnd",
-	async ({routeId, strict, initialAtEnd}) => {
+	async ({routeId, strict, initialAtEnd}) =>
+	{
 		installGeometry();
 		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
-			window.setTimeout(() => {
+			window.setTimeout(() =>
+			{
 				callback(performance.now());
 			}, 0),
 		);
 		vi.stubGlobal("cancelAnimationFrame", window.clearTimeout.bind(window));
-		const root = createRootRoute({
-			component: () => (
-				<main style={{overflowY: "auto"}} data-testid="main" data-scroll-restoration-id="main">
-					<Outlet />
-				</main>
-			),
-		});
-		const transcript = createRoute({getParentRoute: () => root, path: "/session/$id", component: TranscriptRoute});
-		const home = createRoute({getParentRoute: () => root, path: "/", component: () => <p>New session</p>});
-		const router = createRouter({
-			routeTree: root.addChildren([transcript, home]),
-			history: createMemoryHistory({initialEntries: [`/session/${routeId}`]}),
-			scrollRestoration: true,
-		});
+		const root = createRootRoute(
+			{
+				component: () => (
+					<main
+						style={
+						{
+							overflowY: "auto",
+						}}
+						data-testid="main"
+						data-scroll-restoration-id="main"
+					>
+						<Outlet />
+					</main>
+				),
+			},
+		);
+		const transcript = createRoute(
+			{
+				getParentRoute: () => root,
+				path: "/session/$id",
+				component: TranscriptRoute,
+			},
+		);
+		const home = createRoute(
+			{
+				getParentRoute: () => root,
+				path: "/",
+				component: () => <p>New session</p>,
+			},
+		);
+		const router = createRouter(
+			{
+				routeTree: root.addChildren([transcript, home]),
+				history: createMemoryHistory(
+					{
+						initialEntries: [`/session/${routeId}`],
+					},
+				),
+				scrollRestoration: true,
+			},
+		);
 		await router.load();
-		const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		const client = new QueryClient(
+			{
+				defaultOptions:
+				{
+					queries:
+					{
+						retry: false,
+					},
+				},
+			},
+		);
 		clients.push(client);
-		client.setQueryData(sessionIdentityQueryOptions(ALIAS).queryKey, {sessionId: LOCAL_ID});
+		client.setQueryData(
+			sessionIdentityQueryOptions(ALIAS).queryKey,
+			{
+				sessionId: LOCAL_ID,
+			},
+		);
 		const page = (
 			<QueryClientProvider client={client}>
 				<RouterProvider router={router} />
@@ -268,40 +430,71 @@ it.each([
 		);
 		render(strict ? <StrictMode>{page}</StrictMode> : page);
 		const main = await screen.findByTestId("main");
-		Object.defineProperty(main, "clientHeight", {configurable: true, value: viewportHeight});
-		Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
+		Object.defineProperty(
+			main,
+			"clientHeight",
+			{
+				configurable: true,
+				value: viewportHeight,
+			},
+		);
+		Object.defineProperty(
+			main,
+			"scrollHeight",
+			{
+				configurable: true,
+				get: contentHeight,
+			},
+		);
 		if (initialAtEnd)
-			act(() => {
+			act(() =>
+			{
 				main.scrollTop = main.scrollHeight - main.clientHeight;
 				fireEvent.scroll(main);
 			});
 		settleMeasurements(main);
 		phase = "user-scroll";
-		act(() => {
+		act(() =>
+		{
 			main.scrollTop = initialAtEnd ? main.scrollHeight - main.clientHeight : 8000;
 			fireEvent.scroll(main);
 		});
 		settleMeasurements(main);
-		act(() => {
+		act(() =>
+		{
 			main.scrollTop -= 480;
 			fireEvent.scroll(main);
 		});
 		settleMeasurements(main);
-		const before = {scrollTop: main.scrollTop, anchor: visibleAnchor()};
+		const before =
+		{
+			scrollTop: main.scrollTop,
+			anchor: visibleAnchor(),
+		};
 		const beforeRows = mountedRows().map((row) => row.dataset["perfLine"]!);
 		phase = "leave";
-		await act(async () => router.navigate({to: "/"}));
+		await act(async () =>
+			router.navigate(
+				{
+					to: "/",
+				},
+			),
+		);
 		phase = "back-router";
-		act(() => {
+		act(() =>
+		{
 			router.history.back();
 		});
 		// vi.waitFor gives up after its own 1s default, not Testing Library's 5s from tests/setup.ts. This Back takes
 		// 50-250ms alone at load average 200, and overran 1s once in a full run, so give it the same 5s budget.
 		await vi.waitFor(
-			() => {
+			() =>
+			{
 				expect(router.state.resolvedLocation?.pathname).toBe(`/session/${routeId}`);
 			},
-			{timeout: 5000},
+			{
+				timeout: 5000,
+			},
 		);
 		const routerWrites = writes.filter((write) => write.phase === "back-router");
 		const restoredOffset = restored.at(-1);
@@ -309,35 +502,94 @@ it.each([
 		settleMeasurements(main);
 		expect(restorationWindows).toStrictEqual([beforeRows]);
 		// The router restores the saved offset; measurement must not subsequently shift its visible record.
-		expect({
-			restoredOffset,
-			routerWrites,
-			measurementWrites: writes.filter((write) => write.phase === "back-measurement"),
-			before,
-			after: {scrollTop: main.scrollTop, anchor: visibleAnchor()},
-		}).toStrictEqual(
+		expect(
+			{
+				restoredOffset,
+				routerWrites,
+				measurementWrites: writes.filter((write) => write.phase === "back-measurement"),
+				before,
+				after:
+				{
+					scrollTop: main.scrollTop,
+					anchor: visibleAnchor(),
+				},
+			},
+		).toStrictEqual(
 			initialAtEnd
-				? {
+				?
+					{
 						restoredOffset: 11770,
-						routerWrites: [{phase: "back-router", requested: 11770, applied: 11770}],
+						routerWrites: [
+							{
+								phase: "back-router",
+								requested: 11770,
+								applied: 11770,
+							},
+						],
 						measurementWrites: [],
-						before: {scrollTop: 11770, anchor: {record: "72", top: -170}},
-						after: {scrollTop: 11770, anchor: {record: "72", top: -170}},
+						before:
+						{
+							scrollTop: 11770,
+							anchor:
+							{
+								record: "72",
+								top: -170,
+							},
+						},
+						after:
+						{
+							scrollTop: 11770,
+							anchor:
+							{
+								record: "72",
+								top: -170,
+							},
+						},
 					}
-				: {
+				:
+					{
 						restoredOffset: 7430,
-						routerWrites: [{phase: "back-router", requested: 7430, applied: 7430}],
+						routerWrites: [
+							{
+								phase: "back-router",
+								requested: 7430,
+								applied: 7430,
+							},
+						],
 						measurementWrites: [],
-						before: {scrollTop: 7430, anchor: {record: "46", top: -270}},
-						after: {scrollTop: 7430, anchor: {record: "46", top: -270}},
+						before:
+						{
+							scrollTop: 7430,
+							anchor:
+							{
+								record: "46",
+								top: -270,
+							},
+						},
+						after:
+						{
+							scrollTop: 7430,
+							anchor:
+							{
+								record: "46",
+								top: -270,
+							},
+						},
 					},
 		);
 	},
 );
 
-function guardChat(source: object, layout = "example-layout", transcriptLines = lines, toolResultMap = new Map()) {
+function guardChat(source: object, layout = "example-layout", transcriptLines = lines, toolResultMap = new Map())
+{
 	return (
-		<main style={{overflowY: "auto"}} data-testid="main">
+		<main
+			style={
+			{
+				overflowY: "auto",
+			}}
+			data-testid="main"
+		>
 			<SessionChat
 				sessionId={LOCAL_ID}
 				initialScrollKey="example-guard-visit"
@@ -351,12 +603,28 @@ function guardChat(source: object, layout = "example-layout", transcriptLines = 
 	);
 }
 
-async function learnGuardMeasurements() {
+async function learnGuardMeasurements()
+{
 	const main = screen.getByTestId("main");
-	Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
-	Object.defineProperty(main, "clientHeight", {configurable: true, value: viewportHeight});
+	Object.defineProperty(
+		main,
+		"scrollHeight",
+		{
+			configurable: true,
+			get: contentHeight,
+		},
+	);
+	Object.defineProperty(
+		main,
+		"clientHeight",
+		{
+			configurable: true,
+			value: viewportHeight,
+		},
+	);
 	settleMeasurements(main);
-	act(() => {
+	act(() =>
+	{
 		main.scrollTop = 8000;
 		fireEvent.scroll(main);
 	});
@@ -366,7 +634,8 @@ async function learnGuardMeasurements() {
 
 it.each(["width-return", "source-return", "source-away", "layout-away", "width-away"] as const)(
 	"discards unsafe retained geometry after %s",
-	async (change) => {
+	async (change) =>
+	{
 		installGeometry();
 		const read = vi.spyOn(measurements, "readTranscriptMeasurements");
 		const remember = vi.spyOn(measurements, "rememberTranscriptMeasurements");
@@ -374,18 +643,24 @@ it.each(["width-return", "source-return", "source-away", "layout-away", "width-a
 		const changedSource = {};
 		const view = render(guardChat(source));
 		const main = await learnGuardMeasurements();
-		if (change === "width-return") {
+		if (change === "width-return")
+		{
 			listWidth = 640;
 			settleMeasurements(main);
 			listWidth = 800;
 			settleMeasurements(main);
 		}
-		if (change === "source-return") {
+		if (change === "source-return")
+		{
 			view.rerender(guardChat(changedSource));
 			view.rerender(guardChat(source));
 		}
 		view.unmount();
-		const saved = remember.mock.calls.map(([, value]) => ({width: value.width, rows: value.heights.size}));
+		const saved = remember.mock.calls.map(([, value]) => (
+		{
+			width: value.width,
+			rows: value.heights.size,
+		}));
 		read.mockClear();
 		if (change === "width-away") listWidth = 640;
 		render(
@@ -395,56 +670,143 @@ it.each(["width-return", "source-return", "source-away", "layout-away", "width-a
 			),
 		);
 		const recovered = read.mock.results.map((result) =>
-			result.value === undefined ? undefined : {width: result.value.width, rows: result.value.heights.size},
+			result.value === undefined
+				? undefined
+				:
+					{
+						width: result.value.width,
+						rows: result.value.heights.size,
+					},
 		);
 		// Before ResizeObserver runs, an incompatible visit uses the same estimated spacers as a fresh visit.
-		const geometry = {
+		const geometry =
+		{
 			before: spacerHeight("before"),
 			after: spacerHeight("after"),
 			rows: mountedRows().map((row) => row.dataset["perfLine"]),
 		};
-		expect({saved, recovered, geometry}).toStrictEqual({
-			saved: change === "width-return" || change === "source-return" ? [] : [{width: 800, rows: 9}],
-			recovered: [change === "width-away" ? {width: 800, rows: 9} : undefined],
-			geometry: {before: 7680, after: 3840, rows: ["48", "50", "52", "54"]},
-		});
+		expect(
+			{
+				saved,
+				recovered,
+				geometry,
+			},
+		).toStrictEqual(
+			{
+				saved:
+					change === "width-return" || change === "source-return"
+						? []
+						: [
+								{
+									width: 800,
+									rows: 9,
+								},
+							],
+				recovered: [
+					change === "width-away"
+						?
+							{
+								width: 800,
+								rows: 9,
+							}
+						: undefined,
+				],
+				geometry:
+				{
+					before: 7680,
+					after: 3840,
+					rows: ["48", "50", "52", "54"],
+				},
+			},
+		);
 	},
 );
 
-it("resets virtual measurements when the active layout changes", async () => {
+it("resets virtual measurements when the active layout changes", async () =>
+{
 	installGeometry();
 	const source = {};
 	const view = render(guardChat(source));
 	await learnGuardMeasurements();
-	const measured = {before: spacerHeight("before"), after: spacerHeight("after")};
+	const measured =
+	{
+		before: spacerHeight("before"),
+		after: spacerHeight("after"),
+	};
 	view.rerender(guardChat(source, "example-larger-font"));
-	const reset = {before: spacerHeight("before"), after: spacerHeight("after")};
-	expect({measured, reset}).toStrictEqual({
-		measured: {before: 7650, after: 3520},
-		reset: {before: 7680, after: 3840},
-	});
+	const reset =
+	{
+		before: spacerHeight("before"),
+		after: spacerHeight("after"),
+	};
+	expect(
+		{
+			measured,
+			reset,
+		},
+	).toStrictEqual(
+		{
+			measured:
+			{
+				before: 7650,
+				after: 3520,
+			},
+			reset:
+			{
+				before: 7680,
+				after: 3840,
+			},
+		},
+	);
 });
 
-it("does not retain expanded row heights after a disclosure is opened and closed", () => {
+it("does not retain expanded row heights after a disclosure is opened and closed", () =>
+{
 	installGeometry();
 	const records = [
-		{type: "user", uuid: "example-user-100", message: {role: "user", content: "Inspect the fabricated file."}},
+		{
+			type: "user",
+			uuid: "example-user-100",
+			message:
+			{
+				role: "user",
+				content: "Inspect the fabricated file.",
+			},
+		},
 		{
 			type: "assistant",
 			uuid: "example-assistant-100",
 			parentUuid: "example-user-100",
-			message: {
+			message:
+			{
 				role: "assistant",
-				content: [{type: "tool_use", id: "example-tool-100", name: "Grep", input: {pattern: "example"}}],
+				content: [
+					{
+						type: "tool_use",
+						id: "example-tool-100",
+						name: "Grep",
+						input:
+						{
+							pattern: "example",
+						},
+					},
+				],
 			},
 		},
 		{
 			type: "user",
 			uuid: "example-result-100",
 			parentUuid: "example-assistant-100",
-			message: {
+			message:
+			{
 				role: "user",
-				content: [{type: "tool_result", tool_use_id: "example-tool-100", content: "1 example match"}],
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: "example-tool-100",
+						content: "1 example match",
+					},
+				],
 			},
 		},
 	];
@@ -463,22 +825,36 @@ it("does not retain expanded row heights after a disclosure is opened and closed
 	const closed = retained.getAttribute("aria-expanded");
 	settleMeasurements(main);
 	view.unmount();
-	expect({opened, afterLayout, closed, saves: remember.mock.calls}).toStrictEqual({
-		opened: "true",
-		afterLayout: "true",
-		closed: "false",
-		saves: [],
-	});
+	expect(
+		{
+			opened,
+			afterLayout,
+			closed,
+			saves: remember.mock.calls,
+		},
+	).toStrictEqual(
+		{
+			opened: "true",
+			afterLayout: "true",
+			closed: "false",
+			saves: [],
+		},
+	);
 });
 
-it("rejects geometry after an independent compact-summary disclosure changes", () => {
+it("rejects geometry after an independent compact-summary disclosure changes", () =>
+{
 	installGeometry();
 	const records = [
 		{
 			type: "user",
 			uuid: "example-compact-100",
 			isCompactSummary: true,
-			message: {role: "user", content: "Fabricated compact summary"},
+			message:
+			{
+				role: "user",
+				content: "Fabricated compact summary",
+			},
 		},
 	];
 	const transcript = processTranscript(records);
@@ -486,12 +862,27 @@ it("rejects geometry after an independent compact-summary disclosure changes", (
 	const view = render(guardChat(records, "example-layout", transcript.lines, transcript.toolResultMap));
 	const main = screen.getByTestId("main");
 	settleMeasurements(main);
-	const control = screen.getByRole("button", {name: "Compacted conversation"});
+	const control = screen.getByRole(
+		"button",
+		{
+			name: "Compacted conversation",
+		},
+	);
 	fireEvent.click(control);
 	const expanded = control.getAttribute("aria-expanded");
 	settleMeasurements(main);
 	view.unmount();
-	expect({expanded, saves: remember.mock.calls}).toStrictEqual({expanded: "true", saves: []});
+	expect(
+		{
+			expanded,
+			saves: remember.mock.calls,
+		},
+	).toStrictEqual(
+		{
+			expanded: "true",
+			saves: [],
+		},
+	);
 });
 
 // Model actual mounted rows plus footer content that extends beyond the transcript itself.
@@ -503,10 +894,17 @@ function TailFixture({
 	fresh: boolean;
 	visit: string;
 	transcriptLines?: SessionLine[];
-}) {
+})
+{
 	const anchor = useRef<HTMLDivElement>(null);
 	return (
-		<main style={{overflowY: "auto"}} data-testid="main">
+		<main
+			style={
+			{
+				overflowY: "auto",
+			}}
+			data-testid="main"
+		>
 			<div ref={anchor}>
 				<SessionChat
 					sessionId={LOCAL_ID}
@@ -525,49 +923,72 @@ function TailFixture({
 		</main>
 	);
 }
-function installTailGeometry(footer: number) {
+function installTailGeometry(footer: number)
+{
 	installGeometry();
 	tailGeometry = true;
 	footerExtent = footer;
-	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+	{
 		const id = ++nextFrame;
 		frames.set(id, callback);
 		return id;
 	});
 	vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
-	Object.defineProperty(Element.prototype, "scrollIntoView", {
-		configurable: true,
-		value: function (this: Element) {
-			const main = document.querySelector("main")!;
-			// SessionChat's sentinel is before footer content. This is intentionally not total scrollHeight.
-			main.scrollTop = contentHeight() - footerExtent - viewportHeight;
+	Object.defineProperty(
+		Element.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: function (this: Element)
+			{
+				const main = document.querySelector("main")!;
+				// SessionChat's sentinel is before footer content. This is intentionally not total scrollHeight.
+				main.scrollTop = contentHeight() - footerExtent - viewportHeight;
+			},
 		},
-	});
-	Object.defineProperty(Element.prototype, "scrollTo", {
-		configurable: true,
-		value: function (this: Element, options: ScrollToOptions) {
-			if (options.behavior === "smooth") smoothTarget = options.top ?? this.scrollTop;
-			else this.scrollTop = options.top ?? this.scrollTop;
+	);
+	Object.defineProperty(
+		Element.prototype,
+		"scrollTo",
+		{
+			configurable: true,
+			value: function (this: Element, options: ScrollToOptions)
+			{
+				if (options.behavior === "smooth") smoothTarget = options.top ?? this.scrollTop;
+				else this.scrollTop = options.top ?? this.scrollTop;
+			},
 		},
-	});
+	);
 }
-async function flushTailFrame(main: HTMLElement) {
-	act(() => {
+async function flushTailFrame(main: HTMLElement)
+{
+	act(() =>
+	{
 		const pending = [...frames.values()];
 		frames.clear();
 		for (const callback of pending) callback(performance.now());
 	});
 	await act(() => fireEvent.scroll(main));
 }
-async function deliverTailMeasurements(main: HTMLElement) {
-	act(() => {
-		for (const observer of [...ControlledResizeObserver.active]) {
+async function deliverTailMeasurements(main: HTMLElement)
+{
+	act(() =>
+	{
+		for (const observer of [...ControlledResizeObserver.active])
+		{
 			const observations = [...observer.elements]
 				.filter((element) => element.isConnected)
-				.map((target) => ({
+				.map((target) => (
+				{
 					target,
 					contentRect: target.getBoundingClientRect(),
-					borderBoxSize: [{blockSize: target.getBoundingClientRect().height, inlineSize: listWidth}],
+					borderBoxSize: [
+						{
+							blockSize: target.getBoundingClientRect().height,
+							inlineSize: listWidth,
+						},
+					],
 					contentBoxSize: [],
 					devicePixelContentBoxSize: [],
 				}));
@@ -577,50 +998,75 @@ async function deliverTailMeasurements(main: HTMLElement) {
 	// Native scrolling from clamping/measurement commits is observed before the queued follow frame.
 	await act(() => fireEvent.scroll(main));
 }
-async function settleTail(main: HTMLElement) {
-	for (let batch = 0; batch < 20; batch++) {
-		const before = JSON.stringify({
-			height: contentHeight(),
-			top: main.scrollTop,
-			rows: mountedRows().map((row) => row.dataset["perfLine"]),
-		});
+async function settleTail(main: HTMLElement)
+{
+	for (let batch = 0; batch < 20; batch++)
+	{
+		const before = JSON.stringify(
+			{
+				height: contentHeight(),
+				top: main.scrollTop,
+				rows: mountedRows().map((row) => row.dataset["perfLine"]),
+			},
+		);
 		await deliverTailMeasurements(main);
 		await flushTailFrame(main);
-		const after = JSON.stringify({
-			height: contentHeight(),
-			top: main.scrollTop,
-			rows: mountedRows().map((row) => row.dataset["perfLine"]),
-		});
+		const after = JSON.stringify(
+			{
+				height: contentHeight(),
+				top: main.scrollTop,
+				rows: mountedRows().map((row) => row.dataset["perfLine"]),
+			},
+		);
 		if (before === after && frames.size === 0) return;
 	}
 	throw new Error("Tail geometry did not settle in twenty deterministic batches.");
 }
-function tailDistance(main: HTMLElement) {
+function tailDistance(main: HTMLElement)
+{
 	return contentHeight() - main.clientHeight - main.scrollTop;
 }
-function shrinkAboveAnchor(pixels: number) {
+function shrinkAboveAnchor(pixels: number)
+{
 	const row = mountedRows().find((candidate) => rowTop(candidate) + rowHeight(entryIndex(candidate)) <= 0);
 	if (!row) throw new Error("Expected a mounted row entirely above the visible anchor.");
 	const index = Number(row.dataset["transcriptEntryIndex"]);
 	rowAdjustments.set(index, (rowAdjustments.get(index) ?? 0) - pixels);
 	return index;
 }
-async function mountTail(fresh: boolean, visit: string, transcriptLines = lines) {
+async function mountTail(fresh: boolean, visit: string, transcriptLines = lines)
+{
 	render(<TailFixture fresh={fresh} visit={visit} transcriptLines={transcriptLines} />);
 	const main = screen.getByTestId("main");
-	Object.defineProperty(main, "clientHeight", {configurable: true, value: viewportHeight});
-	Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
+	Object.defineProperty(
+		main,
+		"clientHeight",
+		{
+			configurable: true,
+			value: viewportHeight,
+		},
+	);
+	Object.defineProperty(
+		main,
+		"scrollHeight",
+		{
+			configurable: true,
+			get: contentHeight,
+		},
+	);
 	await flushTailFrame(main);
 	await flushTailFrame(main);
 	await settleTail(main);
 	return main;
 }
 
-it("keeps a fresh end-follow visit at the true end after a row above the anchor shrinks by 64px", async () => {
+it("keeps a fresh end-follow visit at the true end after a row above the anchor shrinks by 64px", async () =>
+{
 	installTailGeometry(0);
 	const main = await mountTail(true, "example-fresh-tail-100");
 	// Establish a fully measured end before the isolated late resize.
-	act(() => {
+	act(() =>
+	{
 		main.scrollTop = contentHeight();
 		fireEvent.scroll(main);
 	});
@@ -631,58 +1077,99 @@ it("keeps a fresh end-follow visit at the true end after a row above the anchor 
 	await deliverTailMeasurements(main);
 	await flushTailFrame(main);
 	await settleTail(main);
-	expect({
-		before,
-		after: tailDistance(main),
-		changedRow,
-		writes: writes.filter((write) => write.phase === "tail-shrink"),
-	}).toStrictEqual({
-		before: 0,
-		after: 0,
-		changedRow: 38,
-		writes: [
-			{phase: "tail-shrink", requested: 12532, applied: 12532},
-			{phase: "tail-shrink", requested: 13196, applied: 12596},
-			{phase: "tail-shrink", requested: 13196, applied: 12596},
-		],
-	});
+	expect(
+		{
+			before,
+			after: tailDistance(main),
+			changedRow,
+			writes: writes.filter((write) => write.phase === "tail-shrink"),
+		},
+	).toStrictEqual(
+		{
+			before: 0,
+			after: 0,
+			changedRow: 38,
+			writes: [
+				{
+					phase: "tail-shrink",
+					requested: 12532,
+					applied: 12532,
+				},
+				{
+					phase: "tail-shrink",
+					requested: 13196,
+					applied: 12596,
+				},
+				{
+					phase: "tail-shrink",
+					requested: 13196,
+					applied: 12596,
+				},
+			],
+		},
+	);
 });
 
-it("the actual bottom button targets the full static extent including content after the chat sentinel", async () => {
+it("the actual bottom button targets the full static extent including content after the chat sentinel", async () =>
+{
 	installTailGeometry(120);
 	const main = await mountTail(false, "example-static-button-100");
-	act(() => {
+	act(() =>
+	{
 		main.scrollTop = contentHeight() - viewportHeight - 600;
 		fireEvent.scroll(main);
 	});
 	await settleTail(main);
 	const extent = contentHeight();
-	fireEvent.click(screen.getByRole("button", {name: "Scroll to bottom"}));
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "Scroll to bottom",
+			},
+		),
+	);
 	const target = smoothTarget;
 	if (target === undefined) throw new Error("Expected actual SessionDock smooth target.");
 	scrollPosition = Math.min(target, contentHeight() - viewportHeight);
 	smoothTarget = undefined;
 	await act(() => fireEvent.scroll(main));
-	expect({target, extent, distance: tailDistance(main)}).toStrictEqual({
-		target: 13340,
-		extent: 13340,
-		distance: 0,
-	});
+	expect(
+		{
+			target,
+			extent,
+			distance: tailDistance(main),
+		},
+	).toStrictEqual(
+		{
+			target: 13340,
+			extent: 13340,
+			distance: 0,
+		},
+	);
 });
 
 it.each([false, true])(
 	"preserves the reader's record after shrinking above an away-from-bottom visit (fresh=%s)",
-	async (fresh) => {
+	async (fresh) =>
+	{
 		installTailGeometry(0);
 		const main = await mountTail(fresh, `example-away-tail-${fresh}`);
-		act(() => {
+		act(() =>
+		{
 			main.scrollTop = contentHeight() - viewportHeight - 1000;
-			fireEvent.wheel(main, {deltaY: -1000});
+			fireEvent.wheel(
+				main,
+				{
+					deltaY: -1000,
+				},
+			);
 			fireEvent.scroll(main);
 		});
 		await settleTail(main);
 		const anchor = mountedRows().find((row) => rowTop(row) <= 0 && rowTop(row) + rowHeight(entryIndex(row)) > 0)!;
-		const before = {
+		const before =
+		{
 			index: Number(anchor.dataset["transcriptEntryIndex"]),
 			top: rowTop(anchor),
 			distance: tailDistance(main),
@@ -695,30 +1182,69 @@ it.each([false, true])(
 		const currentAnchor = mountedRows().find(
 			(row) => Number(row.dataset["transcriptEntryIndex"]) === before.index,
 		)!;
-		expect({
-			before,
-			after: {
-				index: Number(currentAnchor.dataset["transcriptEntryIndex"]),
-				top: rowTop(currentAnchor),
-				distance: tailDistance(main),
+		expect(
+			{
+				before,
+				after:
+				{
+					index: Number(currentAnchor.dataset["transcriptEntryIndex"]),
+					top: rowTop(currentAnchor),
+					distance: tailDistance(main),
+				},
+				changedRow,
+				writes: writes.filter((write) => write.phase === "away-shrink"),
 			},
-			changedRow,
-			writes: writes.filter((write) => write.phase === "away-shrink"),
-		}).toStrictEqual(
+		).toStrictEqual(
 			fresh
-				? {
-						before: {index: 36, top: -90, distance: 960},
-						after: {index: 36, top: -90, distance: 960},
+				?
+					{
+						before:
+						{
+							index: 36,
+							top: -90,
+							distance: 960,
+						},
+						after:
+						{
+							index: 36,
+							top: -90,
+							distance: 960,
+						},
 						changedRow: 35,
-						writes: [{phase: "away-shrink", requested: 11596, applied: 11596}],
+						writes: [
+							{
+								phase: "away-shrink",
+								requested: 11596,
+								applied: 11596,
+							},
+						],
 					}
-				: {
-						before: {index: 35, top: -170, distance: 970},
-						after: {index: 35, top: -170, distance: 970},
+				:
+					{
+						before:
+						{
+							index: 35,
+							top: -170,
+							distance: 970,
+						},
+						after:
+						{
+							index: 35,
+							top: -170,
+							distance: 970,
+						},
 						changedRow: 34,
 						writes: [
-							{phase: "away-shrink", requested: 11106, applied: 11106},
-							{phase: "away-shrink", requested: 11286, applied: 11286},
+							{
+								phase: "away-shrink",
+								requested: 11106,
+								applied: 11106,
+							},
+							{
+								phase: "away-shrink",
+								requested: 11286,
+								applied: 11286,
+							},
 						],
 					},
 		);
@@ -727,13 +1253,28 @@ it.each([false, true])(
 
 it.each([false, true])(
 	"initially reaches the full scroll extent beyond the transcript and retains it through late measurements (StrictMode=%s)",
-	async (strict) => {
+	async (strict) =>
+	{
 		installTailGeometry(120);
 		const chat = <TailFixture fresh visit={`example-footer-fresh-${strict}`} transcriptLines={lines.slice(0, 8)} />;
 		render(strict ? <StrictMode>{chat}</StrictMode> : chat);
 		const main = screen.getByTestId("main");
-		Object.defineProperty(main, "clientHeight", {configurable: true, value: viewportHeight});
-		Object.defineProperty(main, "scrollHeight", {configurable: true, get: contentHeight});
+		Object.defineProperty(
+			main,
+			"clientHeight",
+			{
+				configurable: true,
+				value: viewportHeight,
+			},
+		);
+		Object.defineProperty(
+			main,
+			"scrollHeight",
+			{
+				configurable: true,
+				get: contentHeight,
+			},
+		);
 		await flushTailFrame(main);
 		await flushTailFrame(main);
 		await settleTail(main);
@@ -742,28 +1283,45 @@ it.each([false, true])(
 		await deliverTailMeasurements(main);
 		await flushTailFrame(main);
 		await settleTail(main);
-		expect({footerExtent, measuredDistance, resizedDistance: tailDistance(main)}).toStrictEqual({
-			footerExtent: 120,
-			measuredDistance: 0,
-			resizedDistance: 0,
-		});
+		expect(
+			{
+				footerExtent,
+				measuredDistance,
+				resizedDistance: tailDistance(main),
+			},
+		).toStrictEqual(
+			{
+				footerExtent: 120,
+				measuredDistance: 0,
+				resizedDistance: 0,
+			},
+		);
 	},
 );
 
 it.each([false, true])(
 	"handles simultaneous row shrink and footer growth without overriding a reader who scrolls away (interrupted=%s)",
-	async (interrupted) => {
+	async (interrupted) =>
+	{
 		installTailGeometry(120);
 		rowAdjustments.set(39, -120);
 		const main = await mountTail(true, `example-combined-layout-${interrupted}`);
-		act(() => {
+		act(() =>
+		{
 			main.scrollTop = contentHeight();
 			fireEvent.scroll(main);
 		});
 		await settleTail(main);
-		if (interrupted) {
-			act(() => {
-				fireEvent.wheel(main, {deltaY: -300});
+		if (interrupted)
+		{
+			act(() =>
+			{
+				fireEvent.wheel(
+					main,
+					{
+						deltaY: -300,
+					},
+				);
 				main.scrollTop -= 300;
 				fireEvent.scroll(main);
 			});
@@ -779,21 +1337,33 @@ it.each([false, true])(
 		await act(() => fireEvent.scroll(main));
 		await flushTailFrame(main);
 		await settleTail(main);
-		expect({
-			distance: tailDistance(main),
-			anchor: visibleAnchor(),
-		}).toStrictEqual({
-			distance: interrupted ? 345.5 : 0,
-			anchor: interrupted ? before : {record: "78", top: -245.5},
-		});
+		expect(
+			{
+				distance: tailDistance(main),
+				anchor: visibleAnchor(),
+			},
+		).toStrictEqual(
+			{
+				distance: interrupted ? 345.5 : 0,
+				anchor: interrupted
+					? before
+					:
+						{
+							record: "78",
+							top: -245.5,
+						},
+			},
+		);
 	},
 );
 
-function resizeTailContent() {
+function resizeTailContent()
+{
 	const content = screen.getByTestId("test-footer").parentElement!;
 	const observer = [...ControlledResizeObserver.active].find((candidate) => candidate.elements.has(content));
 	if (!observer) throw new Error("Expected the complete content wrapper to be observed.");
-	act(() => {
+	act(() =>
+	{
 		observer.callback(
 			[
 				{
@@ -811,90 +1381,249 @@ function resizeTailContent() {
 
 it.each(["none", "typing", "caret", "downward-wheel", "touch-start"])(
 	"follows footer-only growth while preserving ordinary bottom activity (%s)",
-	async (activity) => {
+	async (activity) =>
+	{
 		installTailGeometry(120);
 		const main = await mountTail(true, `example-footer-only-${activity}`, lines.slice(0, 8));
 		footerExtent += 64;
 		resizeTailContent();
-		act(() => {
-			if (activity === "typing") fireEvent.keyDown(screen.getByLabelText("Fabricated tail composer"), {key: " "});
+		act(() =>
+		{
+			if (activity === "typing")
+				fireEvent.keyDown(
+					screen.getByLabelText("Fabricated tail composer"),
+					{
+						key: " ",
+					},
+				);
 			if (activity === "caret")
-				fireEvent.keyDown(screen.getByLabelText("Fabricated tail composer"), {key: "ArrowUp"});
-			if (activity === "downward-wheel") fireEvent.wheel(main, {deltaY: 100});
-			if (activity === "touch-start") fireEvent.touchStart(main, {touches: [{clientY: 100}]});
+				fireEvent.keyDown(
+					screen.getByLabelText("Fabricated tail composer"),
+					{
+						key: "ArrowUp",
+					},
+				);
+			if (activity === "downward-wheel")
+				fireEvent.wheel(
+					main,
+					{
+						deltaY: 100,
+					},
+				);
+			if (activity === "touch-start")
+				fireEvent.touchStart(
+					main,
+					{
+						touches: [
+							{
+								clientY: 100,
+							},
+						],
+					},
+				);
 		});
 		await flushTailFrame(main);
-		expect({distance: tailDistance(main), pendingFrames: frames.size}).toStrictEqual({
-			distance: 0,
-			pendingFrames: 0,
-		});
+		expect(
+			{
+				distance: tailDistance(main),
+				pendingFrames: frames.size,
+			},
+		).toStrictEqual(
+			{
+				distance: 0,
+				pendingFrames: 0,
+			},
+		);
 	},
 );
 
-it.each(["wheel", "key", "touch"])("cancels a queued layout follow when the reader moves away by %s", async (input) => {
+it.each(["wheel", "key", "touch"])("cancels a queued layout follow when the reader moves away by %s", async (input) =>
+{
 	installTailGeometry(120);
 	const main = await mountTail(true, `example-footer-cancel-${input}`, lines.slice(0, 8));
 	footerExtent += 64;
 	resizeTailContent();
-	act(() => {
-		if (input === "wheel") fireEvent.wheel(main, {deltaY: -300});
-		if (input === "key") fireEvent.keyDown(main, {key: "PageUp"});
-		if (input === "touch") {
-			fireEvent.touchStart(main, {touches: [{clientY: 100}]});
-			fireEvent.touchMove(main, {touches: [{clientY: 140}]});
+	act(() =>
+	{
+		if (input === "wheel")
+			fireEvent.wheel(
+				main,
+				{
+					deltaY: -300,
+				},
+			);
+		if (input === "key")
+			fireEvent.keyDown(
+				main,
+				{
+					key: "PageUp",
+				},
+			);
+		if (input === "touch")
+		{
+			fireEvent.touchStart(
+				main,
+				{
+					touches: [
+						{
+							clientY: 100,
+						},
+					],
+				},
+			);
+			fireEvent.touchMove(
+				main,
+				{
+					touches: [
+						{
+							clientY: 140,
+						},
+					],
+				},
+			);
 		}
 		main.scrollTop -= 300;
 		fireEvent.scroll(main);
 	});
 	const before = visibleAnchor();
 	await flushTailFrame(main);
-	expect({distance: tailDistance(main), anchor: visibleAnchor(), pendingFrames: frames.size}).toStrictEqual({
-		distance: 364,
-		anchor: before,
-		pendingFrames: 0,
-	});
+	expect(
+		{
+			distance: tailDistance(main),
+			anchor: visibleAnchor(),
+			pendingFrames: frames.size,
+		},
+	).toStrictEqual(
+		{
+			distance: 364,
+			anchor: before,
+			pendingFrames: 0,
+		},
+	);
 });
 
 it.each([
-	{input: "wheel", scrollTop: 120, overscroll: "auto", ownerMoves: false},
-	{input: "touch", scrollTop: 120, overscroll: "auto", ownerMoves: false},
-	{input: "key", scrollTop: 120, overscroll: "auto", ownerMoves: false},
-	{input: "wheel", scrollTop: 0, overscroll: "contain", ownerMoves: false},
-	{input: "wheel", scrollTop: 0, overscroll: "auto", ownerMoves: true},
+	{
+		input: "wheel",
+		scrollTop: 120,
+		overscroll: "auto",
+		ownerMoves: false,
+	},
+	{
+		input: "touch",
+		scrollTop: 120,
+		overscroll: "auto",
+		ownerMoves: false,
+	},
+	{
+		input: "key",
+		scrollTop: 120,
+		overscroll: "auto",
+		ownerMoves: false,
+	},
+	{
+		input: "wheel",
+		scrollTop: 0,
+		overscroll: "contain",
+		ownerMoves: false,
+	},
+	{
+		input: "wheel",
+		scrollTop: 0,
+		overscroll: "auto",
+		ownerMoves: true,
+	},
 ])(
 	"handles upward input through a nested scroll area: $input (top=$scrollTop, overscroll=$overscroll)",
-	async ({input, scrollTop, overscroll, ownerMoves}) => {
+	async ({input, scrollTop, overscroll, ownerMoves}) =>
+	{
 		installTailGeometry(120);
 		const main = await mountTail(true, `example-nested-${input}-${scrollTop}-${overscroll}`, lines.slice(0, 8));
 		const nested = document.createElement("pre");
 		nested.textContent = "Fabricated scrollable tool output";
 		nested.style.overflowY = "auto";
 		nested.style.overscrollBehaviorY = overscroll;
-		Object.defineProperties(nested, {
-			scrollTop: {configurable: true, value: scrollTop, writable: true},
-			clientHeight: {configurable: true, value: 100},
-			scrollHeight: {configurable: true, value: 500},
-		});
+		Object.defineProperties(
+			nested,
+			{
+				scrollTop:
+				{
+					configurable: true,
+					value: scrollTop,
+					writable: true,
+				},
+				clientHeight:
+				{
+					configurable: true,
+					value: 100,
+				},
+				scrollHeight:
+				{
+					configurable: true,
+					value: 500,
+				},
+			},
+		);
 		screen.getByTestId("test-footer").append(nested);
 		footerExtent += 64;
 		resizeTailContent();
-		act(() => {
-			if (input === "wheel") fireEvent.wheel(nested, {deltaY: -100});
-			if (input === "key") fireEvent.keyDown(nested, {key: "PageUp"});
-			if (input === "touch") {
-				fireEvent.touchStart(nested, {touches: [{clientY: 100}]});
-				fireEvent.touchMove(nested, {touches: [{clientY: 140}]});
+		act(() =>
+		{
+			if (input === "wheel")
+				fireEvent.wheel(
+					nested,
+					{
+						deltaY: -100,
+					},
+				);
+			if (input === "key")
+				fireEvent.keyDown(
+					nested,
+					{
+						key: "PageUp",
+					},
+				);
+			if (input === "touch")
+			{
+				fireEvent.touchStart(
+					nested,
+					{
+						touches: [
+							{
+								clientY: 100,
+							},
+						],
+					},
+				);
+				fireEvent.touchMove(
+					nested,
+					{
+						touches: [
+							{
+								clientY: 140,
+							},
+						],
+					},
+				);
 			}
 		});
 		if (ownerMoves)
-			act(() => {
+			act(() =>
+			{
 				main.scrollTop -= 300;
 				fireEvent.scroll(main);
 			});
 		await flushTailFrame(main);
-		expect({distance: tailDistance(main), pendingFrames: frames.size}).toStrictEqual({
-			distance: ownerMoves ? 364 : 0,
-			pendingFrames: 0,
-		});
+		expect(
+			{
+				distance: tailDistance(main),
+				pendingFrames: frames.size,
+			},
+		).toStrictEqual(
+			{
+				distance: ownerMoves ? 364 : 0,
+				pendingFrames: 0,
+			},
+		);
 	},
 );

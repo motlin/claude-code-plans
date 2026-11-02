@@ -1,7 +1,8 @@
 import {PersistentAllowKindSchema, PersistentAllowSaveSchema} from "./permission-suggestions";
 import {z} from "zod";
 import {SessionSummaryStateSchema} from "./api/sessions";
-import type {
+import type
+{
 	HookBackgroundTaskPayload,
 	HookSessionCronPayload,
 	MemorySummaryPayload,
@@ -21,131 +22,168 @@ import {RemoteControlStateSchema, SessionBucketSchema} from "./session-state";
  */
 
 export const SessionSummaryPayloadSchema: z.ZodType<SessionSummaryPayload> = z
-	.strictObject({
-		id: z.string(),
-		title: z.string(),
-		titleIsStandIn: z.literal(true).exactOptional(),
-		summary: z.string().optional(),
-		aiTitle: z.string().exactOptional(),
-		lastUserMessage: z.string().exactOptional(),
-		mtime: z.string(),
-		created: z.string(),
-		project: z.string(),
-		projectName: z.string(),
-		messageCount: z.number(),
-		gitBranch: z.string().optional(),
-		pr: z.strictObject({number: z.number(), url: z.string(), repository: z.string()}).exactOptional(),
-		prStatus: PrStatusSchema.exactOptional(),
-		forkedFromSessionId: z.string().exactOptional(),
-		archived: z.boolean(),
-		remoteControl: z.literal(true).exactOptional(),
-		remoteControlState: RemoteControlStateSchema.exactOptional(),
-		terminalHost: z.string().exactOptional(),
-		state: SessionSummaryStateSchema,
-		awaitingPermission: z.literal(true).exactOptional(),
-		processStartedAt: z.number().exactOptional(),
-		bucket: SessionBucketSchema,
-		liveAgentCount: z.number(),
-		unseen: z.boolean(),
-		blockedSince: z.string().nullable(),
-	})
+	.strictObject(
+		{
+			id: z.string(),
+			title: z.string(),
+			titleIsStandIn: z.literal(true).exactOptional(),
+			summary: z.string().optional(),
+			aiTitle: z.string().exactOptional(),
+			lastUserMessage: z.string().exactOptional(),
+			mtime: z.string(),
+			created: z.string(),
+			project: z.string(),
+			projectName: z.string(),
+			messageCount: z.number(),
+			gitBranch: z.string().optional(),
+			pr: z
+				.strictObject(
+					{
+						number: z.number(),
+						url: z.string(),
+						repository: z.string(),
+					},
+				)
+				.exactOptional(),
+			prStatus: PrStatusSchema.exactOptional(),
+			forkedFromSessionId: z.string().exactOptional(),
+			archived: z.boolean(),
+			remoteControl: z.literal(true).exactOptional(),
+			remoteControlState: RemoteControlStateSchema.exactOptional(),
+			terminalHost: z.string().exactOptional(),
+			state: SessionSummaryStateSchema,
+			awaitingPermission: z.literal(true).exactOptional(),
+			processStartedAt: z.number().exactOptional(),
+			bucket: SessionBucketSchema,
+			liveAgentCount: z.number(),
+			unseen: z.boolean(),
+			blockedSince: z.string().nullable(),
+		},
+	)
 	// JSON drops the interface's explicitly-undefined `summary` and `gitBranch`; restore the keys.
-	.transform(({summary, gitBranch, ...rest}) => ({...rest, summary, gitBranch}));
+	.transform(({summary, gitBranch, ...rest}) => (
+	{
+		...rest,
+		summary,
+		gitBranch,
+	}));
 
 /** The tools whose unanswered call leaves a session waiting on the user (src/lib/pending-approvals.ts). */
 export const PendingApprovalToolNameSchema = z.enum(["ExitPlanMode", "AskUserQuestion"]);
 
-export const PendingApprovalPayloadSchema: z.ZodType<PendingApprovalPayload> = z.strictObject({
-	sessionId: z.string(),
-	projectId: z.string(),
-	projectName: z.string(),
-	toolName: PendingApprovalToolNameSchema,
-	toolUseId: z.string(),
-	blockedSince: z.string(),
-	planFilename: z.string().nullable(),
-	questionPreview: z.string().nullable(),
-	questionOptions: z.array(z.string()),
-});
-
-export const PlanSummaryPayloadSchema: z.ZodType<PlanSummaryPayload> = z.strictObject({
-	filename: z.string(),
-	title: z.string(),
-	mtime: z.string(),
-});
-
-export const MemorySummaryPayloadSchema: z.ZodType<MemorySummaryPayload> = z.strictObject({
-	filename: z.string(),
-	title: z.string(),
-	mtime: z.string(),
-	project: z.string(),
-	projectName: z.string(),
-});
-
-export const NotificationEntryPayloadSchema: z.ZodType<NotificationEntryPayload> = z
-	.strictObject({
-		id: z.string(),
+export const PendingApprovalPayloadSchema: z.ZodType<PendingApprovalPayload> = z.strictObject(
+	{
 		sessionId: z.string(),
 		projectId: z.string(),
 		projectName: z.string(),
-		message: z.string(),
-		title: z.string().optional(),
-		notificationType: z.string(),
-		persistentAllow: PersistentAllowKindSchema.optional(),
-		persistentAllowSaves: z.array(PersistentAllowSaveSchema).optional(),
-		createdAt: z.number(),
-		createdAtIso: z.string(),
-	})
+		toolName: PendingApprovalToolNameSchema,
+		toolUseId: z.string(),
+		blockedSince: z.string(),
+		planFilename: z.string().nullable(),
+		questionPreview: z.string().nullable(),
+		questionOptions: z.array(z.string()),
+	},
+);
+
+export const PlanSummaryPayloadSchema: z.ZodType<PlanSummaryPayload> = z.strictObject(
+	{
+		filename: z.string(),
+		title: z.string(),
+		mtime: z.string(),
+	},
+);
+
+export const MemorySummaryPayloadSchema: z.ZodType<MemorySummaryPayload> = z.strictObject(
+	{
+		filename: z.string(),
+		title: z.string(),
+		mtime: z.string(),
+		project: z.string(),
+		projectName: z.string(),
+	},
+);
+
+export const NotificationEntryPayloadSchema: z.ZodType<NotificationEntryPayload> = z
+	.strictObject(
+		{
+			id: z.string(),
+			sessionId: z.string(),
+			projectId: z.string(),
+			projectName: z.string(),
+			message: z.string(),
+			title: z.string().optional(),
+			notificationType: z.string(),
+			persistentAllow: PersistentAllowKindSchema.optional(),
+			persistentAllowSaves: z.array(PersistentAllowSaveSchema).optional(),
+			createdAt: z.number(),
+			createdAtIso: z.string(),
+		},
+	)
 	// JSON drops the interface's explicitly-undefined `title`; restore the key.
-	.transform(({title, ...rest}) => ({...rest, title}));
+	.transform(({title, ...rest}) => (
+	{
+		...rest,
+		title,
+	}));
 
-export const LiveSubagentNodeSchema: z.ZodType<LiveSubagentNode> = z.strictObject({
-	agentId: z.string(),
-	sessionId: z.string(),
-	parentAgentId: z.string().nullable(),
-	agentType: z.string(),
-	description: z.string(),
-	startedAt: z.string(),
-	endedAt: z.string().nullable(),
-});
+export const LiveSubagentNodeSchema: z.ZodType<LiveSubagentNode> = z.strictObject(
+	{
+		agentId: z.string(),
+		sessionId: z.string(),
+		parentAgentId: z.string().nullable(),
+		agentType: z.string(),
+		description: z.string(),
+		startedAt: z.string(),
+		endedAt: z.string().nullable(),
+	},
+);
 
-export const HookBackgroundTaskPayloadSchema: z.ZodType<HookBackgroundTaskPayload> = z.strictObject({
-	id: z.string(),
-	type: z.string(),
-	status: z.string(),
-	description: z.string(),
-	command: z.string().exactOptional(),
-	agentType: z.string().exactOptional(),
-	server: z.string().exactOptional(),
-	tool: z.string().exactOptional(),
-	name: z.string().exactOptional(),
-});
+export const HookBackgroundTaskPayloadSchema: z.ZodType<HookBackgroundTaskPayload> = z.strictObject(
+	{
+		id: z.string(),
+		type: z.string(),
+		status: z.string(),
+		description: z.string(),
+		command: z.string().exactOptional(),
+		agentType: z.string().exactOptional(),
+		server: z.string().exactOptional(),
+		tool: z.string().exactOptional(),
+		name: z.string().exactOptional(),
+	},
+);
 
-export const HookSessionCronPayloadSchema: z.ZodType<HookSessionCronPayload> = z.strictObject({
-	id: z.string(),
-	schedule: z.string(),
-	recurring: z.boolean(),
-	prompt: z.string(),
-});
+export const HookSessionCronPayloadSchema: z.ZodType<HookSessionCronPayload> = z.strictObject(
+	{
+		id: z.string(),
+		schedule: z.string(),
+		recurring: z.boolean(),
+		prompt: z.string(),
+	},
+);
 
 /**
  * An MCP elicitation a session waits on, kept from its `Elicitation` hook until
  * the matching `ElicitationResult` or the turn ends. `mode` is "form" when the
  * hook omitted it (the MCP default); `requestedSchema` is the server's JSON Schema.
  */
-export const PendingElicitationSchema = z.strictObject({
-	elicitationId: z.string().optional(),
-	serverName: z.string(),
-	message: z.string(),
-	mode: z.enum(["form", "url"]),
-	url: z.string().optional(),
-	requestedSchema: JsonValueSchema.optional(),
-	receivedAt: z.number(),
-});
+export const PendingElicitationSchema = z.strictObject(
+	{
+		elicitationId: z.string().optional(),
+		serverName: z.string(),
+		message: z.string(),
+		mode: z.enum(["form", "url"]),
+		url: z.string().optional(),
+		requestedSchema: JsonValueSchema.optional(),
+		receivedAt: z.number(),
+	},
+);
 export type PendingElicitation = z.infer<typeof PendingElicitationSchema>;
 
 /** Payload broadcast when a session's pending elicitations change; the full list, oldest first. */
-export const SessionElicitationChangedPayloadSchema = z.strictObject({
-	sessionId: z.string(),
-	pendingElicitations: z.array(PendingElicitationSchema),
-});
+export const SessionElicitationChangedPayloadSchema = z.strictObject(
+	{
+		sessionId: z.string(),
+		pendingElicitations: z.array(PendingElicitationSchema),
+	},
+);
 export type SessionElicitationChangedPayload = z.infer<typeof SessionElicitationChangedPayloadSchema>;

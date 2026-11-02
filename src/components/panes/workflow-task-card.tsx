@@ -6,7 +6,8 @@ import type {BackgroundTask} from "../../lib/background-tasks";
 import {formatModelName} from "../../lib/model-name";
 import {nonEmpty} from "../../lib/non-empty";
 import {workflowSummary} from "../../lib/workflow-name";
-import {
+import
+{
 	type AgentCell,
 	agentCells,
 	buildWorkflowProgress,
@@ -24,10 +25,14 @@ import {Tooltip} from "../ui/tooltip";
 import {WorkflowAgentCells} from "../workflow-agent-cells";
 
 /** Upstream `mf.leading.body`. */
-const BODY_LEADING = {lineHeight: "var(--text-body--line-height)"};
+const BODY_LEADING =
+{
+	lineHeight: "var(--text-body--line-height)",
+};
 
 /** Upstream `y1`. */
-const RUN_STATUS_LABELS: Record<WorkflowRunStatus, string> = {
+const RUN_STATUS_LABELS: Record<WorkflowRunStatus, string> =
+{
 	running: "Running",
 	completed: "Completed",
 	stopped: "Stopped",
@@ -35,7 +40,8 @@ const RUN_STATUS_LABELS: Record<WorkflowRunStatus, string> = {
 };
 
 /** Upstream `Xme`: an expanded phase with no agents. */
-const EMPTY_PHASE_COPY: Record<WorkflowRunStatus, string> = {
+const EMPTY_PHASE_COPY: Record<WorkflowRunStatus, string> =
+{
 	running: "No agents have started yet",
 	completed: "No agents ran in this phase",
 	stopped: "Stopped before any agents started",
@@ -53,19 +59,22 @@ const ERROR_SPAN = "col-span-3 @max-[19.875rem]/agents:col-span-2";
 const FOCUS = "outline-none hide-focus-ring focus-visible:ring-focus";
 
 /** Upstream `U$`: a duration as the card's padded elapsed clock. */
-function formatDuration(ms: number): string {
+function formatDuration(ms: number): string
+{
 	return formatPaddedElapsed(Number.isFinite(ms) ? Math.max(0, Math.round(ms / 1000)) : 0);
 }
 
 /** Upstream `ac`: a token count in thousands or millions to one decimal. */
-function compactCount(n: number): string {
+function compactCount(n: number): string
+{
 	if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
 	if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
 	return String(n);
 }
 
 /** Upstream `Ee`: shimmers only while active; settled, it stays an inactive ShimmerText in its own ink. */
-function MaybeShimmer({active, className, children}: {active: boolean; className: string; children: ReactNode}) {
+function MaybeShimmer({active, className, children}: {active: boolean; className: string; children: ReactNode})
+{
 	return (
 		<ShimmerText active={active} className={className}>
 			{children}
@@ -74,8 +83,10 @@ function MaybeShimmer({active, className, children}: {active: boolean; className
 }
 
 /** Upstream `J$`: a phase title's ink for its status. */
-function phaseInk(phase: WorkflowPhase): string {
-	switch (phase.status) {
+function phaseInk(phase: WorkflowPhase): string
+{
+	switch (phase.status)
+	{
 		case "running":
 			return phase.counts.stalled > 0 ? "text-warning" : "text-secondary";
 		case "error":
@@ -86,7 +97,8 @@ function phaseInk(phase: WorkflowPhase): string {
 }
 
 /** Upstream `G$`: a live elapsed clock from `startedAt`. */
-function LiveTimer({startedAt, now}: {startedAt: number; now: number}) {
+function LiveTimer({startedAt, now}: {startedAt: number; now: number})
+{
 	return <span className="tabular-nums">{formatDuration(now - startedAt)}</span>;
 }
 
@@ -101,15 +113,21 @@ function AgentRow({
 	running: boolean;
 	stopped: boolean;
 	now: number;
-}) {
+})
+{
 	const isDone = agent.state === "done";
 	const model = formatModelName(agent.model);
 	let time: ReactNode = null;
-	if (running && (agent.state === "progress" || agent.state === "start") && agent.startedAt !== undefined) {
+	if (running && (agent.state === "progress" || agent.state === "start") && agent.startedAt !== undefined)
+	{
 		time = <LiveTimer startedAt={agent.startedAt} now={now} />;
-	} else if (stopped) {
+	}
+	else if (stopped)
+	{
 		time = "Stopped";
-	} else if (agent.durationMs !== undefined) {
+	}
+	else if (agent.durationMs !== undefined)
+	{
 		time = formatDuration(agent.durationMs);
 	}
 	return (
@@ -174,14 +192,19 @@ function AgentsTable({
 	cells: readonly AgentCell[];
 	status: WorkflowRunStatus;
 	now: number;
-}) {
+})
+{
 	if (agents.length === 0) return <div className="text-footnote text-ink-muted ps-2">{EMPTY_PHASE_COPY[status]}</div>;
 	const running = status === "running";
 	return (
 		<div className="@container/agents px-2">
 			<div
 				className={`relative grid items-center gap-x-2 gap-y-1 text-footnote ${AGENT_GRID}`}
-				style={{gridTemplateRows: "auto", gridAutoRows: "16px"}}
+				style={
+				{
+					gridTemplateRows: "auto",
+					gridAutoRows: "16px",
+				}}
 			>
 				<span />
 				<span className={`whitespace-nowrap text-ink-muted ${HIDE_AGENT}`}>Agent</span>
@@ -215,14 +238,22 @@ function PhaseRow({
 	status: WorkflowRunStatus;
 	anticipate: boolean;
 	now: number;
-}) {
+})
+{
 	const running = status === "running";
 	const [chosen, setChosen] = useState<boolean | null>(null);
 	const open = chosen ?? (running && phase.counts.total > 0);
-	const cells = agentCells(phase.agents, {now, taskStopped: status === "stopped"});
+	const cells = agentCells(
+		phase.agents,
+		{
+			now,
+			taskStopped: status === "stopped",
+		},
+	);
 	const hasAgents = phase.counts.total > 0;
 	let ink = "text-ink-muted";
-	if (running) {
+	if (running)
+	{
 		if (phase.status === "running" || phase.status === "error") ink = phaseInk(phase);
 		else ink = open ? "text-primary" : phaseInk(phase);
 	}
@@ -230,7 +261,8 @@ function PhaseRow({
 		<li className={`flex flex-col gap-2 ${open ? "pb-3" : ""}`}>
 			<button
 				type="button"
-				onClick={() => {
+				onClick={() =>
+				{
 					setChosen(!open);
 				}}
 				aria-expanded={open}
@@ -281,13 +313,21 @@ function PhaseRow({
 }
 
 /** Upstream `Rhe`'s failed/stopped summary block. */
-function SummaryRegion({status, summary}: {status: "failed" | "stopped"; summary: string}) {
+function SummaryRegion({status, summary}: {status: "failed" | "stopped"; summary: string})
+{
 	const failed = status === "failed";
 	const label = failed ? "Error" : "Stopped";
 	return (
 		<span
 			className={`flex flex-col gap-1 ${failed ? "rounded-r5 p-2 pt-[7px]" : "rounded-r5 bg-alpha-1 p-2 pt-[7px]"}`}
-			style={failed ? {background: "color-mix(in srgb, var(--color-fill-danger) 8%, transparent)"} : undefined}
+			style={
+				failed
+					?
+						{
+							background: "color-mix(in srgb, var(--color-fill-danger) 8%, transparent)",
+						}
+					: undefined
+			}
 		>
 			<span className={`text-footnote ${failed ? "text-danger" : "text-ink-muted"}`}>{label}</span>
 			<span
@@ -311,17 +351,21 @@ function SummaryRegion({status, summary}: {status: "failed" | "stopped"; summary
  * description, a failed or stopped run's summary, and its phases. Local CLI
  * tasks can't be stopped from here, so there is no Stop button.
  */
-export function WorkflowTaskCard({task, run}: {task: BackgroundTask; run?: SessionWorkflowRun | undefined}) {
+export function WorkflowTaskCard({task, run}: {task: BackgroundTask; run?: SessionWorkflowRun | undefined})
+{
 	const runStatus = run?.status;
 	const status: WorkflowRunStatus = runStatus !== undefined && runStatus !== "running" ? runStatus : task.status;
 	const running = status === "running";
 	const now = useNow();
 	const entries = run?.progress ?? [];
-	const model = buildWorkflowProgress(running ? entries : endUnfinishedAgents(entries, status), {
-		now,
-		settled: !running,
-		taskStopped: status === "stopped",
-	});
+	const model = buildWorkflowProgress(
+		running ? entries : endUnfinishedAgents(entries, status),
+		{
+			now,
+			settled: !running,
+			taskStopped: status === "stopped",
+		},
+	);
 	const title = nonEmpty(run?.workflowName) ?? nonEmpty(task.description) ?? task.id;
 	const description = run?.description ?? "";
 	const summary = workflowSummary(run?.summary ?? task.summary ?? undefined, description || undefined);

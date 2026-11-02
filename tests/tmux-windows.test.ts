@@ -4,7 +4,8 @@ import {createTmuxPaneTable} from "../src/lib/tmux/pane-table";
 import type {TmuxListPanesRunner, TmuxSessionPaneSources} from "../src/lib/tmux/session-panes";
 import type {ActiveSessionEntry} from "../src/lib/active-session-store";
 
-function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
+function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry
+{
 	return {
 		sessionId: "s1",
 		state: "working",
@@ -33,12 +34,14 @@ function paneLine(
 	windowName: string,
 	windowActive: boolean,
 	socket = SOCKET,
-): string {
+): string
+{
 	const pid = 1000 + Number(paneId.slice(1));
 	return [paneId, pid, socket, "main", windowIndex, windowName, windowActive ? "1" : "0", "1", "/tmp"].join("\t");
 }
 
-function sources(entries: ActiveSessionEntry[], listPanes: TmuxListPanesRunner): TmuxSessionPaneSources {
+function sources(entries: ActiveSessionEntry[], listPanes: TmuxListPanesRunner): TmuxSessionPaneSources
+{
 	return {
 		entries: () => entries,
 		registry: () => [],
@@ -47,11 +50,24 @@ function sources(entries: ActiveSessionEntry[], listPanes: TmuxListPanesRunner):
 	};
 }
 
-describe("getTmuxWindows", () => {
-	it("joins store entries to tmux panes by pane id", async () => {
+describe("getTmuxWindows", () =>
+{
+	it("joins store entries to tmux panes by pane id", async () =>
+	{
 		const entries = [
-			entry({sessionId: "sA", tmuxPane: "%1"}),
-			entry({sessionId: "sB", tmuxPane: "%2", cwd: "/Users/craig/projects/foo"}),
+			entry(
+				{
+					sessionId: "sA",
+					tmuxPane: "%1",
+				},
+			),
+			entry(
+				{
+					sessionId: "sB",
+					tmuxPane: "%2",
+					cwd: "/Users/craig/projects/foo",
+				},
+			),
 		];
 		const runTmux = async () =>
 			Promise.resolve(
@@ -86,19 +102,51 @@ describe("getTmuxWindows", () => {
 		expect(windows).toStrictEqual(expected);
 	});
 
-	it("sorts by window index", async () => {
-		const entries = [entry({sessionId: "sA", tmuxPane: "%1"}), entry({sessionId: "sB", tmuxPane: "%2"})];
+	it("sorts by window index", async () =>
+	{
+		const entries = [
+			entry(
+				{
+					sessionId: "sA",
+					tmuxPane: "%1",
+				},
+			),
+			entry(
+				{
+					sessionId: "sB",
+					tmuxPane: "%2",
+				},
+			),
+		];
 		const runTmux = async () =>
 			Promise.resolve([paneLine("%1", 7, "a", false), paneLine("%2", 3, "b", false)].join("\n"));
 		const windows = await getTmuxWindows(sources(entries, runTmux));
 		expect(windows.map((w) => w.windowIndex)).toStrictEqual([3, 7]);
 	});
 
-	it("ignores entries without a pane, and matches a socketless hook pane on any server", async () => {
+	it("ignores entries without a pane, and matches a socketless hook pane on any server", async () =>
+	{
 		const entries = [
-			entry({sessionId: "sA", tmuxPane: "", tmuxServerSocket: ""}),
-			entry({sessionId: "sB", tmuxPane: "%2", tmuxServerSocket: ""}),
-			entry({sessionId: "sC", tmuxPane: "%3"}),
+			entry(
+				{
+					sessionId: "sA",
+					tmuxPane: "",
+					tmuxServerSocket: "",
+				},
+			),
+			entry(
+				{
+					sessionId: "sB",
+					tmuxPane: "%2",
+					tmuxServerSocket: "",
+				},
+			),
+			entry(
+				{
+					sessionId: "sC",
+					tmuxPane: "%3",
+				},
+			),
 		];
 		const runTmux = async () =>
 			Promise.resolve([paneLine("%2", 0, "b", false), paneLine("%3", 1, "c", true)].join("\n"));
@@ -106,26 +154,62 @@ describe("getTmuxWindows", () => {
 		expect(windows.map((w) => w.sessionId)).toStrictEqual(["sB", "sC"]);
 	});
 
-	it("emits only matched panes", async () => {
-		const entries = [entry({sessionId: "sA", tmuxPane: "%missing"})];
+	it("emits only matched panes", async () =>
+	{
+		const entries = [
+			entry(
+				{
+					sessionId: "sA",
+					tmuxPane: "%missing",
+				},
+			),
+		];
 		const runTmux = async () => Promise.resolve(paneLine("%1", 0, "x", true));
 		const windows = await getTmuxWindows(sources(entries, runTmux));
 		expect(windows).toStrictEqual([]);
 	});
 
-	it("collapses multiple entries mapping to the same pane", async () => {
-		const entries = [entry({sessionId: "sA", tmuxPane: "%1"}), entry({sessionId: "sB", tmuxPane: "%1"})];
+	it("collapses multiple entries mapping to the same pane", async () =>
+	{
+		const entries = [
+			entry(
+				{
+					sessionId: "sA",
+					tmuxPane: "%1",
+				},
+			),
+			entry(
+				{
+					sessionId: "sB",
+					tmuxPane: "%1",
+				},
+			),
+		];
 		const runTmux = async () => Promise.resolve(paneLine("%1", 0, "x", true));
 		const windows = await getTmuxWindows(sources(entries, runTmux));
 		expect(windows.map((w) => w.sessionId)).toStrictEqual(["sA"]);
 	});
 
-	it("reads each hook socket's server and drops only a failing server's windows", async () => {
+	it("reads each hook socket's server and drops only a failing server's windows", async () =>
+	{
 		const entries = [
-			entry({sessionId: "sA", tmuxPane: "%1", tmuxServerSocket: "/tmp/sock-a"}),
-			entry({sessionId: "sB", tmuxPane: "%1", tmuxServerSocket: "/tmp/sock-b"}),
+			entry(
+				{
+					sessionId: "sA",
+					tmuxPane: "%1",
+					tmuxServerSocket: "/tmp/sock-a",
+				},
+			),
+			entry(
+				{
+					sessionId: "sB",
+					tmuxPane: "%1",
+					tmuxServerSocket: "/tmp/sock-b",
+				},
+			),
 		];
-		const runTmux = async (socket: string | null) => {
+		const runTmux = async (socket: string | null) =>
+		{
 			if (socket === "/tmp/sock-b") return Promise.resolve(paneLine("%1", 0, "x", true, "/tmp/sock-b"));
 			return Promise.reject(new Error("no server running"));
 		};
@@ -133,36 +217,61 @@ describe("getTmuxWindows", () => {
 		expect(windows.map((w) => [w.sessionId, w.socket])).toStrictEqual([["sB", "/tmp/sock-b"]]);
 	});
 
-	it("returns [] when there are no tmux entries", async () => {
+	it("returns [] when there are no tmux entries", async () =>
+	{
 		const windows = await getTmuxWindows(sources([], async () => Promise.resolve("")));
 		expect(windows).toStrictEqual([]);
 	});
 });
 
-describe("tmux placement provider", () => {
-	it("reports tmux placements as writable, since tmux types through send-keys", async () => {
+describe("tmux placement provider", () =>
+{
+	it("reports tmux placements as writable, since tmux types through send-keys", async () =>
+	{
 		const provider = createTmuxPlacementProvider(
-			sources([entry({sessionId: "sA", tmuxPane: "%1"})], async () =>
-				Promise.resolve(paneLine("%1", 0, "x", true)),
+			sources(
+				[
+					entry(
+						{
+							sessionId: "sA",
+							tmuxPane: "%1",
+						},
+					),
+				],
+				async () => Promise.resolve(paneLine("%1", 0, "x", true)),
 			),
 		);
 		const placements = await provider.getPlacements();
-		const capabilities = {supportsWrite: true, supportsEvents: true, supportsObserve: false};
+		const capabilities =
+		{
+			supportsWrite: true,
+			supportsEvents: true,
+			supportsObserve: false,
+		};
 
-		expect({
-			provider: provider.capabilities,
-			placements: placements.map((placement) => placement.capabilities),
-		}).toStrictEqual({provider: capabilities, placements: [capabilities]});
+		expect(
+			{
+				provider: provider.capabilities,
+				placements: placements.map((placement) => placement.capabilities),
+			},
+		).toStrictEqual(
+			{
+				provider: capabilities,
+				placements: [capabilities],
+			},
+		);
 	});
 
-	it("serves placements from the poller's pane table while it is current, without running tmux", async () => {
+	it("serves placements from the poller's pane table while it is current, without running tmux", async () =>
+	{
 		const table = createTmuxPaneTable();
 		table.hold([
 			{
 				sessionId: "sT",
 				cwd: "/tmp/test/table-project",
 				via: "env",
-				pane: {
+				pane:
+				{
 					paneId: "%4",
 					panePid: 1004,
 					socketPath: SOCKET,
@@ -176,18 +285,38 @@ describe("tmux placement provider", () => {
 			},
 		]);
 		let runs = 0;
-		const provider = createTmuxPlacementProvider({
-			...sources([entry({sessionId: "sA", tmuxPane: "%1"})], async () => {
-				runs += 1;
-				return Promise.resolve(paneLine("%1", 0, "x", true));
-			}),
-			paneTable: table,
-		});
+		const provider = createTmuxPlacementProvider(
+			{
+				...sources(
+					[
+						entry(
+							{
+								sessionId: "sA",
+								tmuxPane: "%1",
+							},
+						),
+					],
+					async () =>
+					{
+						runs += 1;
+						return Promise.resolve(paneLine("%1", 0, "x", true));
+					},
+				),
+				paneTable: table,
+			},
+		);
 		const placements = await provider.getPlacements();
 
-		expect({sessions: placements.map((placement) => placement.sessionId), runs}).toStrictEqual({
-			sessions: ["sT"],
-			runs: 0,
-		});
+		expect(
+			{
+				sessions: placements.map((placement) => placement.sessionId),
+				runs,
+			},
+		).toStrictEqual(
+			{
+				sessions: ["sT"],
+				runs: 0,
+			},
+		);
 	});
 });

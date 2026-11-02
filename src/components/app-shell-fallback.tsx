@@ -14,7 +14,8 @@ import {Skeleton} from "./ui/skeleton";
 import {HOME_COLUMN} from "./home/home-column";
 import {HomeTitlebar} from "./home/home-page";
 import type {ShellChinLabels} from "../lib/shell-chin-store";
-import {
+import
+{
 	ADD_BUTTON_CLASS,
 	BAR_EFFORT_LABEL_CLASS,
 	BAR_MODEL_LABEL_CLASS,
@@ -72,7 +73,8 @@ function FallbackComposer({
 	placeholder: string;
 	chin: ShellChinLabels | null;
 	environment?: boolean;
-}) {
+})
+{
 	const painted = chin === null ? undefined : JSON.stringify(chin);
 	return (
 		<div data-cds="ChatComposer" className="flex w-full min-w-0 flex-col font-sans">
@@ -112,7 +114,8 @@ function FallbackComposer({
 }
 
 /** The chin's model and effort, then its mode, then the usage ring, as the live ComposerChin lays them out. */
-function FallbackChinControls({chin, surface}: {chin: ShellChinLabels | null; surface: "bar" | "chin"}) {
+function FallbackChinControls({chin, surface}: {chin: ShellChinLabels | null; surface: "bar" | "chin"})
+{
 	const bar = surface === "bar";
 	const controls = (
 		<>
@@ -140,7 +143,8 @@ function FallbackChinControls({chin, surface}: {chin: ShellChinLabels | null; su
 			</span>
 		</>
 	);
-	if (bar) {
+	if (bar)
+	{
 		return (
 			<span data-fallback-chin-end="" className={ENVIRONMENT_PICKERS_CLASS}>
 				{controls}
@@ -162,7 +166,8 @@ function FallbackChinControls({chin, surface}: {chin: ShellChinLabels | null; su
  * page's own padded max-width box with the compact header's title and tab row, then a card grid like the
  * loaded page's.
  */
-function ArtifactsSkeleton() {
+function ArtifactsSkeleton()
+{
 	return (
 		<div data-testid="artifacts-skeleton" className="min-h-0 flex-1 overflow-hidden">
 			<div className="min-h-9 max-sm:h-12" />
@@ -194,10 +199,24 @@ function ArtifactsSkeleton() {
 								<div className="mx-px border-t border-alpha-1" />
 								<div className="flex flex-col gap-1.5 p-3.5">
 									<div className="flex h-[1lh] items-center text-body">
-										<Skeleton className="rounded" style={{width: "70%", height: 14}} />
+										<Skeleton
+											className="rounded"
+											style={
+											{
+												width: "70%",
+												height: 14,
+											}}
+										/>
 									</div>
 									<div className="flex h-[1lh] items-center text-caption">
-										<Skeleton className="rounded" style={{width: "50%", height: 11}} />
+										<Skeleton
+											className="rounded"
+											style={
+											{
+												width: "50%",
+												height: 11,
+											}}
+										/>
 									</div>
 								</div>
 							</div>
@@ -210,7 +229,8 @@ function ArtifactsSkeleton() {
 }
 
 /** The home page while it loads, in its own layout: "New session" titlebar, Sessions rows and the home composer. */
-function HomeSkeleton({chin}: {chin: ShellChinLabels | null}) {
+function HomeSkeleton({chin}: {chin: ShellChinLabels | null})
+{
 	return (
 		<div data-testid="home-skeleton" className="@container/tile-slot flex h-full min-h-0 flex-col">
 			<HomeTitlebar />
@@ -242,21 +262,26 @@ function HomeSkeleton({chin}: {chin: ShellChinLabels | null}) {
 }
 
 /** The labels the server painted, so hydration renders the same chin; null outside a hydrating page. */
-function readPaintedChin(): ShellChinLabels | null {
+function readPaintedChin(): ShellChinLabels | null
+{
 	if (typeof document === "undefined") return null;
 	const painted = document
 		.querySelector("#app-shell-fallback [data-fallback-chin]")
 		?.getAttribute("data-fallback-chin");
 	if (!painted) return null;
-	try {
+	try
+	{
 		const parsed: unknown = JSON.parse(painted);
 		return isShellChinLabels(parsed) ? parsed : null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-function isShellChinLabels(value: unknown): value is ShellChinLabels {
+function isShellChinLabels(value: unknown): value is ShellChinLabels
+{
 	if (typeof value !== "object" || value === null) return false;
 	const {mode, model, effort} = value as Partial<Record<keyof ShellChinLabels, unknown>>;
 	return typeof mode === "string" && typeof model === "string" && typeof effort === "string";
@@ -271,7 +296,8 @@ export function AppShellFallback({
 	pathname?: string;
 	/** The chin's labels, which only the server knows; null paints the chin's icons alone. */
 	chin?: ShellChinLabels | null;
-}) {
+})
+{
 	const appMounted = useAppMounted();
 	const shell = fallbackShellFor(pathname);
 	const [labels] = useState(() => chin ?? readPaintedChin());
@@ -299,7 +325,10 @@ export function AppShellFallback({
 		>
 			<div
 				aria-label="Sidebar"
-				style={{"--sidebar-width": `${DEFAULT_SIDEBAR_STATE.width}px`}}
+				style={
+				{
+					"--sidebar-width": `${DEFAULT_SIDEBAR_STATE.width}px`,
+				}}
 				className="relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] min-[701px]:flex"
 			>
 				<div className="flex h-11 shrink-0 items-center px-2">
@@ -327,7 +356,8 @@ export function AppShellFallback({
 						<div aria-hidden="true" className="h-1 shrink-0" />
 					</div>
 					<div data-nav-block="" className="-mt-1 shrink-0">
-						{getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS).pinned.map((item) => {
+						{getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS).pinned.map((item) =>
+						{
 							const Icon = item.icon;
 							return (
 								<span key={item.to} data-row="" className={NAV_ROW_CLASS}>

@@ -21,7 +21,8 @@ const REWIND_BUTTON_CLASS = cdsButtonClass("primary");
 /* Upstream's Cancel is a secondary cds Button at the comfortable control height (32px). */
 const CANCEL_BUTTON_CLASS = cdsButtonClass("secondary");
 
-const CHOICE_LABELS = {
+const CHOICE_LABELS =
+{
 	both: "Code and conversation",
 	conversation: "Conversation only",
 	code: "Code only",
@@ -29,7 +30,8 @@ const CHOICE_LABELS = {
 
 const ALL_CHOICES: readonly RewindChoice[] = ["both", "conversation", "code"];
 
-export interface RewindConfirmProps {
+export interface RewindConfirmProps
+{
 	/** The prompt being rewound to, quoted in the card. */
 	text: string;
 	preview: RewindPreview;
@@ -39,7 +41,8 @@ export interface RewindConfirmProps {
 	onConfirm: (choice: RewindChoice) => Promise<void>;
 }
 
-function fileCount(count: number): string {
+function fileCount(count: number): string
+{
 	return `${count} ${count === 1 ? "file" : "files"}`;
 }
 
@@ -49,7 +52,8 @@ function fileCount(count: number): string {
  * dry run's file count. Cancel takes the initial focus; closing is blocked
  * while the rewind runs.
  */
-export function RewindConfirm({text, preview, conversation, onClose, onConfirm}: RewindConfirmProps) {
+export function RewindConfirm({text, preview, conversation, onClose, onConfirm}: RewindConfirmProps)
+{
 	const [choice, setChoice] = useState<RewindChoice>(conversation ? "both" : "code");
 	const [running, setRunning] = useState(false);
 	const cancelRef = useRef<HTMLButtonElement>(null);
@@ -59,9 +63,11 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 	const panels = useFizzyLake("panels");
 	const pad = useDialogPad();
 	const bandBody = useDialogBandBodyClass();
-	const confirm = () => {
+	const confirm = () =>
+	{
 		setRunning(true);
-		void onConfirm(files === null ? (conversation ? "conversation" : "code") : choice).finally(() => {
+		void onConfirm(files === null ? (conversation ? "conversation" : "code") : choice).finally(() =>
+		{
 			setRunning(false);
 		});
 	};
@@ -69,7 +75,8 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 	return (
 		<Dialog.Root
 			open
-			onOpenChange={(open) => {
+			onOpenChange={(open) =>
+			{
 				if (!open && !running) onClose();
 			}}
 		>
@@ -100,7 +107,11 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 										{choices.length > 1 && (
 											<Select
 												label="Restore"
-												items={choices.map((value) => ({value, label: CHOICE_LABELS[value]}))}
+												items={choices.map((value) => (
+												{
+													value,
+													label: CHOICE_LABELS[value],
+												}))}
 												value={choice}
 												disabled={running || pending}
 												onChange={setChoice}
@@ -150,7 +161,8 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 									type="button"
 									disabled={pending}
 									aria-busy={running ? true : undefined}
-									onClick={() => {
+									onClick={() =>
+									{
 										if (!running) confirm();
 									}}
 									className={REWIND_BUTTON_CLASS}

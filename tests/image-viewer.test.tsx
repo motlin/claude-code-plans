@@ -7,9 +7,21 @@ import {ImageViewer} from "../src/components/image-viewer";
 import type {AttachedImage} from "../src/components/user-attachments";
 
 const IMAGES: readonly AttachedImage[] = [
-	{key: "a", src: "/a.png", label: "Alpha"},
-	{key: "b", src: "/b.png", label: "Beta"},
-	{key: "c", src: "/c.png", label: "Gamma"},
+	{
+		key: "a",
+		src: "/a.png",
+		label: "Alpha",
+	},
+	{
+		key: "b",
+		src: "/b.png",
+		label: "Beta",
+	},
+	{
+		key: "c",
+		src: "/c.png",
+		label: "Gamma",
+	},
 ];
 
 const SLIDE_IMG =
@@ -30,7 +42,8 @@ function Harness({
 	initial: number;
 	captions?: readonly (string | undefined)[];
 	onClose: () => void;
-}) {
+})
+{
 	const [index, setIndex] = useState(initial);
 	return (
 		<ImageViewer
@@ -38,60 +51,124 @@ function Harness({
 			index={index}
 			onIndexChange={setIndex}
 			onClose={onClose}
-			{...(captions === undefined ? {} : {captions})}
+			{...(captions === undefined
+				? {}
+				:
+					{
+						captions,
+					})}
 		/>
 	);
 }
 
-function open(initial = 0, images: readonly AttachedImage[] = IMAGES, captions?: readonly (string | undefined)[]) {
+function open(initial = 0, images: readonly AttachedImage[] = IMAGES, captions?: readonly (string | undefined)[])
+{
 	const onClose = vi.fn<() => void>();
 	render(
-		<Harness images={images} initial={initial} onClose={onClose} {...(captions === undefined ? {} : {captions})} />,
+		<Harness
+			images={images}
+			initial={initial}
+			onClose={onClose}
+			{...(captions === undefined
+				? {}
+				:
+					{
+						captions,
+					})}
+		/>,
 	);
-	const viewer = screen.getByRole("dialog", {name: "Image preview"});
-	return {viewer, onClose};
+	const viewer = screen.getByRole(
+		"dialog",
+		{
+			name: "Image preview",
+		},
+	);
+	return {
+		viewer,
+		onClose,
+	};
 }
 
-function slides(viewer: HTMLElement) {
+function slides(viewer: HTMLElement)
+{
 	return [...viewer.querySelectorAll<HTMLElement>("[data-viewer-slide]")];
 }
 
-function count(viewer: HTMLElement) {
+function count(viewer: HTMLElement)
+{
 	return viewer.querySelector("[aria-live=polite]")?.textContent;
 }
 
-function track(viewer: HTMLElement) {
+function track(viewer: HTMLElement)
+{
 	return viewer.querySelector<HTMLElement>("[data-viewer-track]")!;
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 });
 
 /** The active image fits at 400x300 centred on (400, 250) inside a 1000x600 stage; natural width 1600 → max 4x. */
-const IMG_RECT = {left: 200, top: 100, width: 400, height: 300};
-const STAGE_RECT = {left: 0, top: 0, width: 1000, height: 600};
+const IMG_RECT =
+{
+	left: 200,
+	top: 100,
+	width: 400,
+	height: 300,
+};
+const STAGE_RECT =
+{
+	left: 0,
+	top: 0,
+	width: 1000,
+	height: 600,
+};
 
-function rect({left, top, width, height}: {left: number; top: number; width: number; height: number}): DOMRect {
-	return DOMRect.fromRect({x: left, y: top, width, height});
+function rect({left, top, width, height}: {left: number; top: number; width: number; height: number}): DOMRect
+{
+	return DOMRect.fromRect(
+		{
+			x: left,
+			y: top,
+			width,
+			height,
+		},
+	);
 }
 
-function layOut() {
-	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+function layOut()
+{
+	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element)
+	{
 		if (this.tagName === "IMG") return rect(IMG_RECT);
 		if (this.hasAttribute("data-viewer-stage")) return rect(STAGE_RECT);
-		return rect({left: 0, top: 0, width: 0, height: 0});
+		return rect(
+			{
+				left: 0,
+				top: 0,
+				width: 0,
+				height: 0,
+			},
+		);
 	});
 	vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(1600);
 	HTMLElement.prototype.setPointerCapture = () => undefined;
 }
 
-function zoomTarget() {
-	return screen.getByRole("button", {name: "Zoom image: Alpha"});
+function zoomTarget()
+{
+	return screen.getByRole(
+		"button",
+		{
+			name: "Zoom image: Alpha",
+		},
+	);
 }
 
-function zoomOf(viewer: HTMLElement, index = 0) {
+function zoomOf(viewer: HTMLElement, index = 0)
+{
 	const slide = slides(viewer)[index]!;
 	const img = slide.querySelector("img")!;
 	return {
@@ -102,214 +179,600 @@ function zoomOf(viewer: HTMLElement, index = 0) {
 	};
 }
 
-const UNZOOMED = {pressed: "false", slideClass: `${SLIDE} group/zoomslide`, imgClass: ACTIVE_IMG, transform: ""};
+const UNZOOMED =
+{
+	pressed: "false",
+	slideClass: `${SLIDE} group/zoomslide`,
+	imgClass: ACTIVE_IMG,
+	transform: "",
+};
 
-function zoomed(transform: string) {
-	return {pressed: "true", slideClass: `${SLIDE} group/zoomslide z-10`, imgClass: ZOOMED_IMG, transform};
+function zoomed(transform: string)
+{
+	return {
+		pressed: "true",
+		slideClass: `${SLIDE} group/zoomslide z-10`,
+		imgClass: ZOOMED_IMG,
+		transform,
+	};
 }
 
-describe("ImageViewer zoom and pan", () => {
-	it("exposes only the active slide as the zoom button, labelled with its alt", () => {
+describe("ImageViewer zoom and pan", () =>
+{
+	it("exposes only the active slide as the zoom button, labelled with its alt", () =>
+	{
 		layOut();
-		const {viewer} = open(1, [{key: "p", src: "/p.png", label: "Attached image"}, ...IMAGES]);
-		expect({
-			buttons: screen.getAllByRole("button", {name: /^Zoom image: /}).map((button) => ({
-				name: button.getAttribute("aria-label"),
-				tabIndex: button.getAttribute("tabindex"),
-				pressed: button.getAttribute("aria-pressed"),
-			})),
-			roles: slides(viewer).map((slide) => slide.getAttribute("role")),
-		}).toStrictEqual({
-			buttons: [{name: "Zoom image: Alpha", tabIndex: "0", pressed: "false"}],
-			roles: [null, "button", null, null],
-		});
-		fireEvent.click(screen.getByRole("button", {name: "Previous image"}));
+		const {viewer} = open(1, [
+			{
+				key: "p",
+				src: "/p.png",
+				label: "Attached image",
+			},
+			...IMAGES,
+		]);
 		expect(
-			screen.getAllByRole("button", {name: /^Zoom image: /}).map((b) => b.getAttribute("aria-label")),
+			{
+				buttons: screen
+					.getAllByRole(
+						"button",
+						{
+							name: /^Zoom image: /,
+						},
+					)
+					.map((button) => (
+					{
+						name: button.getAttribute("aria-label"),
+						tabIndex: button.getAttribute("tabindex"),
+						pressed: button.getAttribute("aria-pressed"),
+					})),
+				roles: slides(viewer).map((slide) => slide.getAttribute("role")),
+			},
+		).toStrictEqual(
+			{
+				buttons: [
+					{
+						name: "Zoom image: Alpha",
+						tabIndex: "0",
+						pressed: "false",
+					},
+				],
+				roles: [null, "button", null, null],
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Previous image",
+				},
+			),
+		);
+		expect(
+			screen
+				.getAllByRole(
+					"button",
+					{
+						name: /^Zoom image: /,
+					},
+				)
+				.map((b) => b.getAttribute("aria-label")),
 		).toStrictEqual(["Zoom image: Attached image"]);
 	});
 
-	it("zooms to the natural-size scale anchored at the click and restores on a second click", () => {
+	it("zooms to the natural-size scale anchored at the click and restores on a second click", () =>
+	{
 		layOut();
 		const {viewer, onClose} = open(0);
 		const img = slides(viewer)[0]!.querySelector("img")!;
 		const before = zoomOf(viewer);
-		fireEvent.click(img, {clientX: 500, clientY: 300, detail: 1});
+		fireEvent.click(
+			img,
+			{
+				clientX: 500,
+				clientY: 300,
+				detail: 1,
+			},
+		);
 		const after = zoomOf(viewer);
-		fireEvent.click(img, {clientX: 500, clientY: 300, detail: 1});
-		expect({before, after, restored: zoomOf(viewer), closed: onClose.mock.calls.length}).toStrictEqual({
-			before: UNZOOMED,
-			after: zoomed("translate(-300px, -150px) scale(4)"),
-			restored: UNZOOMED,
-			closed: 0,
-		});
+		fireEvent.click(
+			img,
+			{
+				clientX: 500,
+				clientY: 300,
+				detail: 1,
+			},
+		);
+		expect(
+			{
+				before,
+				after,
+				restored: zoomOf(viewer),
+				closed: onClose.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				before: UNZOOMED,
+				after: zoomed("translate(-300px, -150px) scale(4)"),
+				restored: UNZOOMED,
+				closed: 0,
+			},
+		);
 	});
 
-	it("zooms to at least 2x when the image is already shown at natural size", () => {
+	it("zooms to at least 2x when the image is already shown at natural size", () =>
+	{
 		layOut();
 		vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(400);
 		const {viewer} = open(0);
-		fireEvent.click(slides(viewer)[0]!.querySelector("img")!, {clientX: 400, clientY: 250, detail: 1});
+		fireEvent.click(
+			slides(viewer)[0]!.querySelector("img")!,
+			{
+				clientX: 400,
+				clientY: 250,
+				detail: 1,
+			},
+		);
 		expect(zoomOf(viewer).transform).toBe("translate(0px, 0px) scale(2)");
 	});
 
-	it("pans a zoomed image by a drag without unzooming", () => {
+	it("pans a zoomed image by a drag without unzooming", () =>
+	{
 		layOut();
 		const {viewer} = open(0);
 		const img = slides(viewer)[0]!.querySelector("img")!;
-		fireEvent.click(img, {clientX: 400, clientY: 250, detail: 1});
-		fireEvent.pointerDown(img, {pointerId: 1, button: 0, clientX: 400, clientY: 250});
-		fireEvent.pointerMove(img, {pointerId: 1, clientX: 440, clientY: 270});
-		fireEvent.pointerUp(img, {pointerId: 1, clientX: 440, clientY: 270});
-		fireEvent.click(img, {clientX: 440, clientY: 270, detail: 1});
+		fireEvent.click(
+			img,
+			{
+				clientX: 400,
+				clientY: 250,
+				detail: 1,
+			},
+		);
+		fireEvent.pointerDown(
+			img,
+			{
+				pointerId: 1,
+				button: 0,
+				clientX: 400,
+				clientY: 250,
+			},
+		);
+		fireEvent.pointerMove(
+			img,
+			{
+				pointerId: 1,
+				clientX: 440,
+				clientY: 270,
+			},
+		);
+		fireEvent.pointerUp(
+			img,
+			{
+				pointerId: 1,
+				clientX: 440,
+				clientY: 270,
+			},
+		);
+		fireEvent.click(
+			img,
+			{
+				clientX: 440,
+				clientY: 270,
+				detail: 1,
+			},
+		);
 		expect(zoomOf(viewer)).toStrictEqual(zoomed("translate(40px, 20px) scale(4)"));
 	});
 
-	it("ignores movement under the 4px drag threshold", () => {
+	it("ignores movement under the 4px drag threshold", () =>
+	{
 		layOut();
 		const {viewer} = open(0);
 		const img = slides(viewer)[0]!.querySelector("img")!;
-		fireEvent.click(img, {clientX: 400, clientY: 250, detail: 1});
-		fireEvent.pointerDown(img, {pointerId: 1, button: 0, clientX: 400, clientY: 250});
-		fireEvent.pointerMove(img, {pointerId: 1, clientX: 402, clientY: 252});
-		fireEvent.pointerUp(img, {pointerId: 1, clientX: 402, clientY: 252});
+		fireEvent.click(
+			img,
+			{
+				clientX: 400,
+				clientY: 250,
+				detail: 1,
+			},
+		);
+		fireEvent.pointerDown(
+			img,
+			{
+				pointerId: 1,
+				button: 0,
+				clientX: 400,
+				clientY: 250,
+			},
+		);
+		fireEvent.pointerMove(
+			img,
+			{
+				pointerId: 1,
+				clientX: 402,
+				clientY: 252,
+			},
+		);
+		fireEvent.pointerUp(
+			img,
+			{
+				pointerId: 1,
+				clientX: 402,
+				clientY: 252,
+			},
+		);
 		const afterTinyMove = zoomOf(viewer).transform;
-		fireEvent.click(img, {clientX: 402, clientY: 252, detail: 1});
-		expect({afterTinyMove, afterClick: zoomOf(viewer)}).toStrictEqual({
-			afterTinyMove: "translate(0px, 0px) scale(4)",
-			afterClick: UNZOOMED,
-		});
+		fireEvent.click(
+			img,
+			{
+				clientX: 402,
+				clientY: 252,
+				detail: 1,
+			},
+		);
+		expect(
+			{
+				afterTinyMove,
+				afterClick: zoomOf(viewer),
+			},
+		).toStrictEqual(
+			{
+				afterTinyMove: "translate(0px, 0px) scale(4)",
+				afterClick: UNZOOMED,
+			},
+		);
 	});
 
-	it("clamps a pan at the pan limit", () => {
+	it("clamps a pan at the pan limit", () =>
+	{
 		layOut();
 		const {viewer} = open(0);
 		const img = slides(viewer)[0]!.querySelector("img")!;
-		fireEvent.click(img, {clientX: 400, clientY: 250, detail: 1});
-		fireEvent.pointerDown(img, {pointerId: 1, button: 0, clientX: 400, clientY: 250});
-		fireEvent.pointerMove(img, {pointerId: 1, clientX: 2400, clientY: -1750});
-		fireEvent.pointerUp(img, {pointerId: 1, clientX: 2400, clientY: -1750});
+		fireEvent.click(
+			img,
+			{
+				clientX: 400,
+				clientY: 250,
+				detail: 1,
+			},
+		);
+		fireEvent.pointerDown(
+			img,
+			{
+				pointerId: 1,
+				button: 0,
+				clientX: 400,
+				clientY: 250,
+			},
+		);
+		fireEvent.pointerMove(
+			img,
+			{
+				pointerId: 1,
+				clientX: 2400,
+				clientY: -1750,
+			},
+		);
+		fireEvent.pointerUp(
+			img,
+			{
+				pointerId: 1,
+				clientX: 2400,
+				clientY: -1750,
+			},
+		);
 		expect(zoomOf(viewer).transform).toBe("translate(600px, -480px) scale(4)");
 	});
 
-	it("resets zoom and pan when navigating", () => {
+	it("resets zoom and pan when navigating", () =>
+	{
 		layOut();
 		const {viewer} = open(0);
 		const img = slides(viewer)[0]!.querySelector("img")!;
-		fireEvent.click(img, {clientX: 500, clientY: 300, detail: 1});
-		fireEvent.click(screen.getByRole("button", {name: "Next image"}));
+		fireEvent.click(
+			img,
+			{
+				clientX: 500,
+				clientY: 300,
+				detail: 1,
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Next image",
+				},
+			),
+		);
 		const next = zoomOf(viewer, 1);
-		fireEvent.click(screen.getByRole("button", {name: "Previous image"}));
-		expect({next, back: zoomOf(viewer, 0)}).toStrictEqual({
-			next: {...UNZOOMED, transform: ""},
-			back: UNZOOMED,
-		});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Previous image",
+				},
+			),
+		);
+		expect(
+			{
+				next,
+				back: zoomOf(viewer, 0),
+			},
+		).toStrictEqual(
+			{
+				next:
+				{
+					...UNZOOMED,
+					transform: "",
+				},
+				back: UNZOOMED,
+			},
+		);
 	});
 
-	it("unzooms when the window resizes", () => {
+	it("unzooms when the window resizes", () =>
+	{
 		layOut();
 		const {viewer} = open(0);
-		fireEvent.click(slides(viewer)[0]!.querySelector("img")!, {clientX: 500, clientY: 300, detail: 1});
+		fireEvent.click(
+			slides(viewer)[0]!.querySelector("img")!,
+			{
+				clientX: 500,
+				clientY: 300,
+				detail: 1,
+			},
+		);
 		fireEvent(window, new Event("resize"));
 		expect(zoomOf(viewer)).toStrictEqual(UNZOOMED);
 	});
 
-	it("closes on Escape even while zoomed", () => {
+	it("closes on Escape even while zoomed", () =>
+	{
 		layOut();
 		const {viewer, onClose} = open(0);
-		fireEvent.click(slides(viewer)[0]!.querySelector("img")!, {clientX: 500, clientY: 300, detail: 1});
-		fireEvent.keyDown(viewer, {key: "Escape"});
+		fireEvent.click(
+			slides(viewer)[0]!.querySelector("img")!,
+			{
+				clientX: 500,
+				clientY: 300,
+				detail: 1,
+			},
+		);
+		fireEvent.keyDown(
+			viewer,
+			{
+				key: "Escape",
+			},
+		);
 		expect(onClose.mock.calls.length).toBe(1);
 	});
 
-	it("unzooms instead of closing on a backdrop click, and ignores neighbour clicks while zoomed", () => {
+	it("unzooms instead of closing on a backdrop click, and ignores neighbour clicks while zoomed", () =>
+	{
 		layOut();
 		const {viewer, onClose} = open(0);
-		fireEvent.click(slides(viewer)[0]!.querySelector("img")!, {clientX: 500, clientY: 300, detail: 1});
-		fireEvent.click(slides(viewer)[1]!, {clientX: 900, clientY: 300});
-		const afterNeighbour = {count: count(viewer), zoom: zoomOf(viewer)};
-		fireEvent.click(slides(viewer)[0]!.querySelector("img")!, {clientX: 500, clientY: 300, detail: 1});
+		fireEvent.click(
+			slides(viewer)[0]!.querySelector("img")!,
+			{
+				clientX: 500,
+				clientY: 300,
+				detail: 1,
+			},
+		);
+		fireEvent.click(
+			slides(viewer)[1]!,
+			{
+				clientX: 900,
+				clientY: 300,
+			},
+		);
+		const afterNeighbour =
+		{
+			count: count(viewer),
+			zoom: zoomOf(viewer),
+		};
+		fireEvent.click(
+			slides(viewer)[0]!.querySelector("img")!,
+			{
+				clientX: 500,
+				clientY: 300,
+				detail: 1,
+			},
+		);
 		fireEvent.click(viewer);
-		expect({afterNeighbour, zoom: zoomOf(viewer), closed: onClose.mock.calls.length}).toStrictEqual({
-			afterNeighbour: {count: "1 of 3", zoom: UNZOOMED},
-			zoom: UNZOOMED,
-			closed: 0,
-		});
+		expect(
+			{
+				afterNeighbour,
+				zoom: zoomOf(viewer),
+				closed: onClose.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				afterNeighbour:
+				{
+					count: "1 of 3",
+					zoom: UNZOOMED,
+				},
+				zoom: UNZOOMED,
+				closed: 0,
+			},
+		);
 	});
 
-	it("toggles a centred zoom with Enter and Space on the slide", () => {
+	it("toggles a centred zoom with Enter and Space on the slide", () =>
+	{
 		layOut();
 		const {viewer} = open(0);
 		const slide = zoomTarget();
-		fireEvent.keyDown(slide, {key: "Enter"});
+		fireEvent.keyDown(
+			slide,
+			{
+				key: "Enter",
+			},
+		);
 		const entered = zoomOf(viewer);
-		fireEvent.keyDown(slide, {key: " "});
+		fireEvent.keyDown(
+			slide,
+			{
+				key: " ",
+			},
+		);
 		const spaced = zoomOf(viewer);
-		fireEvent.keyDown(slide, {key: " "});
-		expect({entered, spaced, again: zoomOf(viewer)}).toStrictEqual({
-			entered: zoomed("translate(0px, 0px) scale(4)"),
-			spaced: UNZOOMED,
-			again: zoomed("translate(0px, 0px) scale(4)"),
-		});
+		fireEvent.keyDown(
+			slide,
+			{
+				key: " ",
+			},
+		);
+		expect(
+			{
+				entered,
+				spaced,
+				again: zoomOf(viewer),
+			},
+		).toStrictEqual(
+			{
+				entered: zoomed("translate(0px, 0px) scale(4)"),
+				spaced: UNZOOMED,
+				again: zoomed("translate(0px, 0px) scale(4)"),
+			},
+		);
 	});
 
-	it("has no + / - / 0 or double-click zoom bindings", () => {
+	it("has no + / - / 0 or double-click zoom bindings", () =>
+	{
 		layOut();
 		const {viewer} = open(0);
-		for (const key of ["+", "=", "-", "0"]) fireEvent.keyDown(slides(viewer)[0]!, {key});
+		for (const key of ["+", "=", "-", "0"])
+			fireEvent.keyDown(
+				slides(viewer)[0]!,
+				{
+					key,
+				},
+			);
 		fireEvent.doubleClick(slides(viewer)[0]!.querySelector("img")!);
 		expect(zoomOf(viewer)).toStrictEqual(UNZOOMED);
 	});
 
-	it("pinch-zooms with ctrl+wheel anchored at the cursor and snaps back to fit near 1x", () => {
+	it("pinch-zooms with ctrl+wheel anchored at the cursor and snaps back to fit near 1x", () =>
+	{
 		layOut();
 		const {viewer} = open(0);
 		const img = slides(viewer)[0]!.querySelector("img")!;
-		fireEvent.wheel(img, {ctrlKey: true, deltaY: -100, deltaMode: 0, clientX: 500, clientY: 300});
+		fireEvent.wheel(
+			img,
+			{
+				ctrlKey: true,
+				deltaY: -100,
+				deltaMode: 0,
+				clientX: 500,
+				clientY: 300,
+			},
+		);
 		const pinched = zoomOf(viewer);
-		fireEvent.wheel(img, {ctrlKey: true, deltaY: 100, deltaMode: 0, clientX: 500, clientY: 300});
-		expect({pinched, released: zoomOf(viewer)}).toStrictEqual({
-			pinched: zoomed(`translate(${100 - 100 * Math.E}px, ${50 - 50 * Math.E}px) scale(${Math.E})`),
-			released: UNZOOMED,
-		});
+		fireEvent.wheel(
+			img,
+			{
+				ctrlKey: true,
+				deltaY: 100,
+				deltaMode: 0,
+				clientX: 500,
+				clientY: 300,
+			},
+		);
+		expect(
+			{
+				pinched,
+				released: zoomOf(viewer),
+			},
+		).toStrictEqual(
+			{
+				pinched: zoomed(`translate(${100 - 100 * Math.E}px, ${50 - 50 * Math.E}px) scale(${Math.E})`),
+				released: UNZOOMED,
+			},
+		);
 	});
 
-	it("makes the first ctrl+wheel step at least 1.25x", () => {
+	it("makes the first ctrl+wheel step at least 1.25x", () =>
+	{
 		layOut();
 		const {viewer} = open(0);
-		fireEvent.wheel(slides(viewer)[0]!.querySelector("img")!, {
-			ctrlKey: true,
-			deltaY: -1,
-			deltaMode: 0,
-			clientX: 400,
-			clientY: 250,
-		});
+		fireEvent.wheel(
+			slides(viewer)[0]!.querySelector("img")!,
+			{
+				ctrlKey: true,
+				deltaY: -1,
+				deltaMode: 0,
+				clientX: 400,
+				clientY: 250,
+			},
+		);
 		expect(zoomOf(viewer).transform).toBe("translate(0px, 0px) scale(1.25)");
 	});
 
-	it("pans with the plain wheel only while zoomed, 16px per line", () => {
+	it("pans with the plain wheel only while zoomed, 16px per line", () =>
+	{
 		layOut();
 		const {viewer} = open(0);
 		const img = slides(viewer)[0]!.querySelector("img")!;
-		fireEvent.wheel(img, {deltaY: 30, deltaMode: 0});
+		fireEvent.wheel(
+			img,
+			{
+				deltaY: 30,
+				deltaMode: 0,
+			},
+		);
 		const unzoomed = zoomOf(viewer);
-		fireEvent.click(img, {clientX: 400, clientY: 250, detail: 1});
-		fireEvent.wheel(img, {deltaX: -10, deltaY: 30, deltaMode: 0});
+		fireEvent.click(
+			img,
+			{
+				clientX: 400,
+				clientY: 250,
+				detail: 1,
+			},
+		);
+		fireEvent.wheel(
+			img,
+			{
+				deltaX: -10,
+				deltaY: 30,
+				deltaMode: 0,
+			},
+		);
 		const pixels = zoomOf(viewer).transform;
-		fireEvent.wheel(img, {deltaY: 2, deltaMode: 1});
-		expect({unzoomed, pixels, lines: zoomOf(viewer).transform}).toStrictEqual({
-			unzoomed: UNZOOMED,
-			pixels: "translate(10px, -30px) scale(4)",
-			lines: "translate(10px, -62px) scale(4)",
-		});
+		fireEvent.wheel(
+			img,
+			{
+				deltaY: 2,
+				deltaMode: 1,
+			},
+		);
+		expect(
+			{
+				unzoomed,
+				pixels,
+				lines: zoomOf(viewer).transform,
+			},
+		).toStrictEqual(
+			{
+				unzoomed: UNZOOMED,
+				pixels: "translate(10px, -30px) scale(4)",
+				lines: "translate(10px, -62px) scale(4)",
+			},
+		);
 	});
 });
 
-describe("ImageViewer", () => {
-	it("renders every image as a 75vw slide with only the active one at full opacity", () => {
+describe("ImageViewer", () =>
+{
+	it("renders every image as a 75vw slide with only the active one at full opacity", () =>
+	{
 		const {viewer} = open(0);
 		expect(
-			slides(viewer).map((slide) => {
+			slides(viewer).map((slide) =>
+			{
 				const img = slide.querySelector("img")!;
 				return {
 					alt: img.getAttribute("alt"),
@@ -320,42 +783,119 @@ describe("ImageViewer", () => {
 				};
 			}),
 		).toStrictEqual([
-			{alt: "Alpha", active: true, width: "75vw", className: ACTIVE_IMG, referrerPolicy: "no-referrer"},
-			{alt: "Beta", active: false, width: "75vw", className: NEIGHBOUR_IMG, referrerPolicy: "no-referrer"},
-			{alt: "Gamma", active: false, width: "75vw", className: NEIGHBOUR_IMG, referrerPolicy: "no-referrer"},
+			{
+				alt: "Alpha",
+				active: true,
+				width: "75vw",
+				className: ACTIVE_IMG,
+				referrerPolicy: "no-referrer",
+			},
+			{
+				alt: "Beta",
+				active: false,
+				width: "75vw",
+				className: NEIGHBOUR_IMG,
+				referrerPolicy: "no-referrer",
+			},
+			{
+				alt: "Gamma",
+				active: false,
+				width: "75vw",
+				className: NEIGHBOUR_IMG,
+				referrerPolicy: "no-referrer",
+			},
 		]);
 	});
 
-	it("centres the track on the active slide with upstream's transform and transition", () => {
+	it("centres the track on the active slide with upstream's transform and transition", () =>
+	{
 		const {viewer} = open(0);
-		const first = {transform: track(viewer).style.transform, gap: track(viewer).style.gap};
-		fireEvent.click(screen.getByRole("button", {name: "Next image"}));
-		const second = {transform: track(viewer).style.transform, gap: track(viewer).style.gap};
-		expect({first, second, className: track(viewer).getAttribute("class")}).toStrictEqual({
-			first: {transform: "translateX(calc(12.5vw - 0vw - 0px))", gap: "32px"},
-			second: {transform: "translateX(calc(12.5vw - 75vw - 32px))", gap: "32px"},
-			className:
-				"flex h-full items-center motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out",
-		});
+		const first =
+		{
+			transform: track(viewer).style.transform,
+			gap: track(viewer).style.gap,
+		};
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Next image",
+				},
+			),
+		);
+		const second =
+		{
+			transform: track(viewer).style.transform,
+			gap: track(viewer).style.gap,
+		};
+		expect(
+			{
+				first,
+				second,
+				className: track(viewer).getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				first:
+				{
+					transform: "translateX(calc(12.5vw - 0vw - 0px))",
+					gap: "32px",
+				},
+				second:
+				{
+					transform: "translateX(calc(12.5vw - 75vw - 32px))",
+					gap: "32px",
+				},
+				className:
+					"flex h-full items-center motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out",
+			},
+		);
 	});
 
-	it("selects a neighbour when it is clicked, without closing", () => {
+	it("selects a neighbour when it is clicked, without closing", () =>
+	{
 		const {viewer, onClose} = open(0);
 		const before = count(viewer);
-		fireEvent.click(slides(viewer)[1]!, {clientX: 500, clientY: 300});
-		expect({before, after: count(viewer), closed: onClose.mock.calls.length}).toStrictEqual({
-			before: "1 of 3",
-			after: "2 of 3",
-			closed: 0,
-		});
+		fireEvent.click(
+			slides(viewer)[1]!,
+			{
+				clientX: 500,
+				clientY: 300,
+			},
+		);
+		expect(
+			{
+				before,
+				after: count(viewer),
+				closed: onClose.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				before: "1 of 3",
+				after: "2 of 3",
+				closed: 0,
+			},
+		);
 	});
 
-	it("stops at the ends instead of wrapping, marking the end button aria-disabled", () => {
+	it("stops at the ends instead of wrapping, marking the end button aria-disabled", () =>
+	{
 		const {viewer} = open(0);
-		const previous = screen.getByRole("button", {name: "Previous image"});
-		const next = screen.getByRole("button", {name: "Next image"});
+		const previous = screen.getByRole(
+			"button",
+			{
+				name: "Previous image",
+			},
+		);
+		const next = screen.getByRole(
+			"button",
+			{
+				name: "Next image",
+			},
+		);
 		fireEvent.click(previous);
-		const atStart = {
+		const atStart =
+		{
 			count: count(viewer),
 			previous: previous.getAttribute("aria-disabled"),
 			next: next.getAttribute("aria-disabled"),
@@ -363,81 +903,170 @@ describe("ImageViewer", () => {
 		fireEvent.click(next);
 		fireEvent.click(next);
 		fireEvent.click(next);
-		const atEnd = {
+		const atEnd =
+		{
 			count: count(viewer),
 			previous: previous.getAttribute("aria-disabled"),
 			next: next.getAttribute("aria-disabled"),
 		};
-		expect({
-			atStart,
-			atEnd,
-			nextClass: next.getAttribute("class"),
-			previousClass: previous.getAttribute("class"),
-		}).toStrictEqual({
-			atStart: {count: "1 of 3", previous: "true", next: "false"},
-			atEnd: {count: "3 of 3", previous: "false", next: "true"},
-			nextClass: "p-2 rounded-lg text-white/30 cursor-default",
-			previousClass: "p-2 rounded-lg text-white hover:bg-white/10",
-		});
+		expect(
+			{
+				atStart,
+				atEnd,
+				nextClass: next.getAttribute("class"),
+				previousClass: previous.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				atStart:
+				{
+					count: "1 of 3",
+					previous: "true",
+					next: "false",
+				},
+				atEnd:
+				{
+					count: "3 of 3",
+					previous: "false",
+					next: "true",
+				},
+				nextClass: "p-2 rounded-lg text-white/30 cursor-default",
+				previousClass: "p-2 rounded-lg text-white hover:bg-white/10",
+			},
+		);
 	});
 
-	it("announces the position politely and atomically", () => {
+	it("announces the position politely and atomically", () =>
+	{
 		const {viewer} = open(1);
 		const label = viewer.querySelector("[aria-live]")!;
-		expect({
-			text: label.textContent,
-			live: label.getAttribute("aria-live"),
-			atomic: label.getAttribute("aria-atomic"),
-		}).toStrictEqual({text: "2 of 3", live: "polite", atomic: "true"});
+		expect(
+			{
+				text: label.textContent,
+				live: label.getAttribute("aria-live"),
+				atomic: label.getAttribute("aria-atomic"),
+			},
+		).toStrictEqual(
+			{
+				text: "2 of 3",
+				live: "polite",
+				atomic: "true",
+			},
+		);
 	});
 
-	it("moves right with ArrowRight", () => {
+	it("moves right with ArrowRight", () =>
+	{
 		const {viewer} = open(0);
-		fireEvent.keyDown(viewer, {key: "ArrowRight"});
+		fireEvent.keyDown(
+			viewer,
+			{
+				key: "ArrowRight",
+			},
+		);
 		expect(count(viewer)).toBe("2 of 3");
 	});
 
-	it("moves left with ArrowLeft and stops at the first image", () => {
+	it("moves left with ArrowLeft and stops at the first image", () =>
+	{
 		const {viewer} = open(1);
-		fireEvent.keyDown(viewer, {key: "ArrowLeft"});
-		fireEvent.keyDown(viewer, {key: "ArrowLeft"});
+		fireEvent.keyDown(
+			viewer,
+			{
+				key: "ArrowLeft",
+			},
+		);
+		fireEvent.keyDown(
+			viewer,
+			{
+				key: "ArrowLeft",
+			},
+		);
 		expect(count(viewer)).toBe("1 of 3");
 	});
 
-	it("jumps to the last image with End", () => {
+	it("jumps to the last image with End", () =>
+	{
 		const {viewer} = open(0);
-		fireEvent.keyDown(viewer, {key: "End"});
+		fireEvent.keyDown(
+			viewer,
+			{
+				key: "End",
+			},
+		);
 		expect(count(viewer)).toBe("3 of 3");
 	});
 
-	it("jumps to the first image with Home", () => {
+	it("jumps to the first image with Home", () =>
+	{
 		const {viewer} = open(2);
-		fireEvent.keyDown(viewer, {key: "Home"});
+		fireEvent.keyDown(
+			viewer,
+			{
+				key: "Home",
+			},
+		);
 		expect(count(viewer)).toBe("1 of 3");
 	});
 
-	it("closes on Escape", () => {
+	it("closes on Escape", () =>
+	{
 		const {viewer, onClose} = open(0);
-		fireEvent.keyDown(viewer, {key: "Escape"});
+		fireEvent.keyDown(
+			viewer,
+			{
+				key: "Escape",
+			},
+		);
 		expect(onClose.mock.calls.length).toBe(1);
 	});
 
-	it("closes on a backdrop click but not on the active image or the pager", () => {
+	it("closes on a backdrop click but not on the active image or the pager", () =>
+	{
 		const {viewer, onClose} = open(0);
 		fireEvent.click(slides(viewer)[0]!.querySelector("img")!);
 		fireEvent.click(viewer.querySelector("[aria-live]")!.parentElement!);
 		const beforeBackdrop = onClose.mock.calls.length;
 		fireEvent.click(viewer);
-		expect({beforeBackdrop, after: onClose.mock.calls.length}).toStrictEqual({beforeBackdrop: 0, after: 1});
+		expect(
+			{
+				beforeBackdrop,
+				after: onClose.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				beforeBackdrop: 0,
+				after: 1,
+			},
+		);
 	});
 
-	it("shows no pager for a single image", () => {
+	it("shows no pager for a single image", () =>
+	{
 		const {viewer} = open(0, IMAGES.slice(0, 1));
-		expect({
-			previous: screen.queryByRole("button", {name: "Previous image"}),
-			next: screen.queryByRole("button", {name: "Next image"}),
-			count: viewer.querySelector("[aria-live]"),
-		}).toStrictEqual({previous: null, next: null, count: null});
+		expect(
+			{
+				previous: screen.queryByRole(
+					"button",
+					{
+						name: "Previous image",
+					},
+				),
+				next: screen.queryByRole(
+					"button",
+					{
+						name: "Next image",
+					},
+				),
+				count: viewer.querySelector("[aria-live]"),
+			},
+		).toStrictEqual(
+			{
+				previous: null,
+				next: null,
+				count: null,
+			},
+		);
 	});
 });
 
@@ -445,40 +1074,76 @@ const CAPTION_ROW = "absolute inset-x-0 bottom-6 z-10 flex h-14 items-center jus
 const CAPTION_BDI =
 	"block truncate text-body text-white/80 max-sm:absolute max-sm:inset-x-6 max-sm:bottom-full max-sm:text-center sm:max-w-[calc(50vw-7rem)]";
 
-describe("ImageViewer captions", () => {
-	it("renders the caption row for a single captioned image, with no pager", () => {
+describe("ImageViewer captions", () =>
+{
+	it("renders the caption row for a single captioned image, with no pager", () =>
+	{
 		const {viewer} = open(0, IMAGES.slice(0, 1), ["Read"]);
 		const bdi = viewer.querySelector("bdi");
 		const row = bdi?.parentElement?.parentElement;
-		expect({
-			row: row?.className,
-			children: [...(row?.children ?? [])].map((child) => child.outerHTML),
-			pager: viewer.querySelector("[aria-live]"),
-		}).toStrictEqual({
-			row: CAPTION_ROW,
-			children: [
-				`<div class="flex-1 flex justify-start items-center"><bdi title="Read" class="${CAPTION_BDI}">Read</bdi></div>`,
-				'<div class="flex-1"></div>',
-			],
-			pager: null,
-		});
+		expect(
+			{
+				row: row?.className,
+				children: [...(row?.children ?? [])].map((child) => child.outerHTML),
+				pager: viewer.querySelector("[aria-live]"),
+			},
+		).toStrictEqual(
+			{
+				row: CAPTION_ROW,
+				children: [
+					`<div class="flex-1 flex justify-start items-center"><bdi title="Read" class="${CAPTION_BDI}">Read</bdi></div>`,
+					'<div class="flex-1"></div>',
+				],
+				pager: null,
+			},
+		);
 	});
 
-	it("captions the active slide and keeps the pager for several images", () => {
+	it("captions the active slide and keeps the pager for several images", () =>
+	{
 		const {viewer} = open(0, IMAGES, ["Read a.png", "Read b.png", undefined]);
-		fireEvent.click(screen.getByRole("button", {name: "Next image"}));
-		expect({caption: viewer.querySelector("bdi")?.textContent, count: count(viewer)}).toStrictEqual({
-			caption: "Read b.png",
-			count: "2 of 3",
-		});
-		fireEvent.click(screen.getByRole("button", {name: "Next image"}));
-		expect({caption: viewer.querySelector("bdi"), count: count(viewer)}).toStrictEqual({
-			caption: null,
-			count: "3 of 3",
-		});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Next image",
+				},
+			),
+		);
+		expect(
+			{
+				caption: viewer.querySelector("bdi")?.textContent,
+				count: count(viewer),
+			},
+		).toStrictEqual(
+			{
+				caption: "Read b.png",
+				count: "2 of 3",
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Next image",
+				},
+			),
+		);
+		expect(
+			{
+				caption: viewer.querySelector("bdi"),
+				count: count(viewer),
+			},
+		).toStrictEqual(
+			{
+				caption: null,
+				count: "3 of 3",
+			},
+		);
 	});
 
-	it("keeps pager clicks inside the caption row from closing the viewer", () => {
+	it("keeps pager clicks inside the caption row from closing the viewer", () =>
+	{
 		const {viewer, onClose} = open(0, IMAGES.slice(0, 1), ["Read"]);
 		fireEvent.click(viewer.querySelector("bdi")!);
 		expect(onClose).not.toHaveBeenCalled();
@@ -487,7 +1152,8 @@ describe("ImageViewer captions", () => {
 
 const MORPH = "image-viewer-morph";
 
-function OriginHarness({origin, onClose}: {origin: HTMLElement; onClose: () => void}) {
+function OriginHarness({origin, onClose}: {origin: HTMLElement; onClose: () => void})
+{
 	const [shown, setShown] = useState(true);
 	const [index, setIndex] = useState(0);
 	if (!shown) return null;
@@ -497,7 +1163,8 @@ function OriginHarness({origin, onClose}: {origin: HTMLElement; onClose: () => v
 			index={index}
 			origin={origin}
 			onIndexChange={setIndex}
-			onClose={() => {
+			onClose={() =>
+			{
 				onClose();
 				setShown(false);
 			}}
@@ -507,7 +1174,8 @@ function OriginHarness({origin, onClose}: {origin: HTMLElement; onClose: () => v
 
 const origins: HTMLElement[] = [];
 
-function makeOrigin(): HTMLElement {
+function makeOrigin(): HTMLElement
+{
 	const origin = document.createElement("span");
 	origins.push(origin);
 	origin.tabIndex = 0;
@@ -515,8 +1183,10 @@ function makeOrigin(): HTMLElement {
 	return origin;
 }
 
-function stubMotion(reduce: boolean) {
-	vi.stubGlobal("matchMedia", (query: string) => ({
+function stubMotion(reduce: boolean)
+{
+	vi.stubGlobal("matchMedia", (query: string) => (
+	{
 		matches: reduce && query === "(prefers-reduced-motion: reduce)",
 		media: query,
 		addEventListener: () => undefined,
@@ -524,131 +1194,276 @@ function stubMotion(reduce: boolean) {
 	}));
 	const updates: (() => void)[] = [];
 	const start = vi.fn<
-		(update: () => void) => {finished: Promise<void>; ready: Promise<void>; updateCallbackDone: Promise<void>}
-	>((update) => {
+		(update: () => void) =>
+		{
+			finished: Promise<void>;
+			ready: Promise<void>;
+			updateCallbackDone: Promise<void>;
+		}
+	>((update) =>
+	{
 		updates.push(update);
-		return {finished: Promise.resolve(), ready: Promise.resolve(), updateCallbackDone: Promise.resolve()};
+		return {
+			finished: Promise.resolve(),
+			ready: Promise.resolve(),
+			updateCallbackDone: Promise.resolve(),
+		};
 	});
-	Object.defineProperty(document, "startViewTransition", {configurable: true, value: start});
-	return {start, updates};
+	Object.defineProperty(
+		document,
+		"startViewTransition",
+		{
+			configurable: true,
+			value: start,
+		},
+	);
+	return {
+		start,
+		updates,
+	};
 }
 
-describe("ImageViewer focus and morph", () => {
-	afterEach(() => {
+describe("ImageViewer focus and morph", () =>
+{
+	afterEach(() =>
+	{
 		vi.unstubAllGlobals();
 		Reflect.deleteProperty(document, "startViewTransition");
 		document.documentElement.removeAttribute("data-reduce-motion");
 		for (const origin of origins.splice(0)) origin.remove();
 	});
 
-	it("focuses the active slide after ArrowRight when focus was on body", () => {
+	it("focuses the active slide after ArrowRight when focus was on body", () =>
+	{
 		const {viewer} = open(0);
 		(document.activeElement as HTMLElement | null)?.blur();
-		fireEvent.keyDown(viewer, {key: "ArrowRight"});
+		fireEvent.keyDown(
+			viewer,
+			{
+				key: "ArrowRight",
+			},
+		);
 		expect(document.activeElement).toBe(slides(viewer)[1]);
 	});
 
-	it("leaves focus on the pager button that changed the index", () => {
+	it("leaves focus on the pager button that changed the index", () =>
+	{
 		open(0);
-		const next = screen.getByRole("button", {name: "Next image"});
+		const next = screen.getByRole(
+			"button",
+			{
+				name: "Next image",
+			},
+		);
 		next.focus();
 		fireEvent.click(next);
 		expect(document.activeElement).toBe(next);
 	});
 
-	it("hides the origin tile while open and restores it and its focus on close", () => {
+	it("hides the origin tile while open and restores it and its focus on close", () =>
+	{
 		const origin = makeOrigin();
 		origin.focus();
 		const onClose = vi.fn<() => void>();
 		render(<OriginHarness origin={origin} onClose={onClose} />);
 		const whileOpen = origin.style.visibility;
-		fireEvent.click(screen.getByRole("button", {name: "Close"}));
-		expect({
-			whileOpen,
-			afterClose: origin.style.visibility,
-			closed: onClose.mock.calls.length,
-			focused: document.activeElement === origin,
-		}).toStrictEqual({whileOpen: "hidden", afterClose: "", closed: 1, focused: true});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Close",
+				},
+			),
+		);
+		expect(
+			{
+				whileOpen,
+				afterClose: origin.style.visibility,
+				closed: onClose.mock.calls.length,
+				focused: document.activeElement === origin,
+			},
+		).toStrictEqual(
+			{
+				whileOpen: "hidden",
+				afterClose: "",
+				closed: 1,
+				focused: true,
+			},
+		);
 	});
 
-	it("starts no view transition under prefers-reduced-motion", () => {
+	it("starts no view transition under prefers-reduced-motion", () =>
+	{
 		const {start} = stubMotion(true);
 		const origin = makeOrigin();
 		render(<OriginHarness origin={origin} onClose={() => undefined} />);
 		const whileOpen = origin.style.visibility;
-		fireEvent.click(screen.getByRole("button", {name: "Close"}));
-		expect({calls: start.mock.calls.length, whileOpen, afterClose: origin.style.visibility}).toStrictEqual({
-			calls: 0,
-			whileOpen: "hidden",
-			afterClose: "",
-		});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Close",
+				},
+			),
+		);
+		expect(
+			{
+				calls: start.mock.calls.length,
+				whileOpen,
+				afterClose: origin.style.visibility,
+			},
+		).toStrictEqual(
+			{
+				calls: 0,
+				whileOpen: "hidden",
+				afterClose: "",
+			},
+		);
 	});
 
-	it("starts no view transition under html[data-reduce-motion=true] with no OS preference", () => {
+	it("starts no view transition under html[data-reduce-motion=true] with no OS preference", () =>
+	{
 		const {start} = stubMotion(false);
 		document.documentElement.setAttribute("data-reduce-motion", "true");
 		const origin = makeOrigin();
 		render(<OriginHarness origin={origin} onClose={() => undefined} />);
-		fireEvent.click(screen.getByRole("button", {name: "Close"}));
-		expect({calls: start.mock.calls.length, afterClose: origin.style.visibility}).toStrictEqual({
-			calls: 0,
-			afterClose: "",
-		});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Close",
+				},
+			),
+		);
+		expect(
+			{
+				calls: start.mock.calls.length,
+				afterClose: origin.style.visibility,
+			},
+		).toStrictEqual(
+			{
+				calls: 0,
+				afterClose: "",
+			},
+		);
 	});
 
-	it("morphs from the origin to the active image on open and back on close", () => {
+	it("morphs from the origin to the active image on open and back on close", () =>
+	{
 		const {start, updates} = stubMotion(false);
 		const origin = makeOrigin();
 		const onClose = vi.fn<() => void>();
 		render(<OriginHarness origin={origin} onClose={onClose} />);
-		const viewer = screen.getByRole("dialog", {name: "Image preview"});
+		const viewer = screen.getByRole(
+			"dialog",
+			{
+				name: "Image preview",
+			},
+		);
 		const img = slides(viewer)[0]!.querySelector("img")!;
-		const beforeOpen = {origin: origin.style.viewTransitionName, visibility: origin.style.visibility};
-		act(() => {
+		const beforeOpen =
+		{
+			origin: origin.style.viewTransitionName,
+			visibility: origin.style.visibility,
+		};
+		act(() =>
+		{
 			updates[0]!();
 		});
-		const afterOpen = {
+		const afterOpen =
+		{
 			origin: origin.style.viewTransitionName,
 			visibility: origin.style.visibility,
 			img: img.style.viewTransitionName,
 		};
-		fireEvent.click(screen.getByRole("button", {name: "Close"}));
-		const beforeClose = {img: img.style.viewTransitionName, closed: onClose.mock.calls.length};
-		act(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Close",
+				},
+			),
+		);
+		const beforeClose =
+		{
+			img: img.style.viewTransitionName,
+			closed: onClose.mock.calls.length,
+		};
+		act(() =>
+		{
 			updates[1]!();
 		});
-		expect({
-			calls: start.mock.calls.length,
-			beforeOpen,
-			afterOpen,
-			beforeClose,
-			afterClose: {
-				origin: origin.style.viewTransitionName,
-				visibility: origin.style.visibility,
-				closed: onClose.mock.calls.length,
+		expect(
+			{
+				calls: start.mock.calls.length,
+				beforeOpen,
+				afterOpen,
+				beforeClose,
+				afterClose:
+				{
+					origin: origin.style.viewTransitionName,
+					visibility: origin.style.visibility,
+					closed: onClose.mock.calls.length,
+				},
 			},
-		}).toStrictEqual({
-			calls: 2,
-			beforeOpen: {origin: MORPH, visibility: ""},
-			afterOpen: {origin: "", visibility: "hidden", img: MORPH},
-			beforeClose: {img: MORPH, closed: 0},
-			afterClose: {origin: MORPH, visibility: "", closed: 1},
-		});
+		).toStrictEqual(
+			{
+				calls: 2,
+				beforeOpen:
+				{
+					origin: MORPH,
+					visibility: "",
+				},
+				afterOpen:
+				{
+					origin: "",
+					visibility: "hidden",
+					img: MORPH,
+				},
+				beforeClose:
+				{
+					img: MORPH,
+					closed: 0,
+				},
+				afterClose:
+				{
+					origin: MORPH,
+					visibility: "",
+					closed: 1,
+				},
+			},
+		);
 	});
 
-	it("crossfades without naming anything when there is no origin", () => {
+	it("crossfades without naming anything when there is no origin", () =>
+	{
 		const {start, updates} = stubMotion(false);
 		render(<Harness images={IMAGES} initial={0} onClose={() => undefined} />);
-		const viewer = screen.getByRole("dialog", {name: "Image preview"});
+		const viewer = screen.getByRole(
+			"dialog",
+			{
+				name: "Image preview",
+			},
+		);
 		const opacityBeforeUpdate = viewer.style.opacity;
-		act(() => {
+		act(() =>
+		{
 			updates[0]!();
 		});
-		expect({
-			opacityBeforeUpdate,
-			opacityAfterUpdate: viewer.style.opacity,
-			calls: start.mock.calls.length,
-			img: slides(viewer)[0]!.querySelector("img")!.style.viewTransitionName,
-		}).toStrictEqual({opacityBeforeUpdate: "0", opacityAfterUpdate: "", calls: 1, img: ""});
+		expect(
+			{
+				opacityBeforeUpdate,
+				opacityAfterUpdate: viewer.style.opacity,
+				calls: start.mock.calls.length,
+				img: slides(viewer)[0]!.querySelector("img")!.style.viewTransitionName,
+			},
+		).toStrictEqual(
+			{
+				opacityBeforeUpdate: "0",
+				opacityAfterUpdate: "",
+				calls: 1,
+				img: "",
+			},
+		);
 	});
 });

@@ -7,39 +7,66 @@ import {encodeFilePath} from "../src/lib/api/file";
 import {PermissionFileChangePreview} from "../src/components/permission-file-change-body";
 import {plainFileChangeParts} from "../src/lib/permission-file-change";
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
 /** Answers the file API: a status with the file's text for 200, an error body otherwise. */
-function serveFile(status: number, content = ""): ReturnType<typeof vi.fn<typeof fetch>> {
-	const fetchMock = vi.fn<typeof fetch>(async (input) => {
+function serveFile(status: number, content = ""): ReturnType<typeof vi.fn<typeof fetch>>
+{
+	const fetchMock = vi.fn<typeof fetch>(async (input) =>
+	{
 		const url = String(input);
 		if (!url.startsWith("/api/file/")) throw new Error(`unexpected fetch ${url}`);
 		return Promise.resolve(
-			status === 200 ? Response.json({content, path: "/repo/a.ts"}) : Response.json({error: "nope"}, {status}),
+			status === 200
+				? Response.json(
+						{
+							content,
+							path: "/repo/a.ts",
+						},
+					)
+				: Response.json(
+						{
+							error: "nope",
+						},
+						{
+							status,
+						},
+					),
 		);
 	});
 	vi.stubGlobal("fetch", fetchMock);
 	return fetchMock;
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
 /** Draws the path, and the note when there is one, as the card's `drawDetail` does. */
-function drawDetail(note: string | null) {
+function drawDetail(note: string | null)
+{
 	return (
 		<div data-testid="detail">
 			/repo/a.ts{note === null ? null : <p data-testid="approval-detail-note">{note}</p>}
@@ -47,7 +74,8 @@ function drawDetail(note: string | null) {
 	);
 }
 
-function preview(toolName: string, toolInput: Record<string, unknown>, copyNote: string | null = null) {
+function preview(toolName: string, toolInput: Record<string, unknown>, copyNote: string | null = null)
+{
 	return render(
 		<PermissionFileChangePreview
 			toolName={toolName}
@@ -58,26 +86,36 @@ function preview(toolName: string, toolInput: Record<string, unknown>, copyNote:
 	);
 }
 
-interface DiffMarkup {
+interface DiffMarkup
+{
 	rows: string[];
 	numbers: string[];
-	pre: {diff: boolean; file: boolean; disableLineNumbers: boolean};
+	pre:
+	{
+		diff: boolean;
+		file: boolean;
+		disableLineNumbers: boolean;
+	};
 }
 
-async function diffMarkup(container: HTMLElement): Promise<DiffMarkup> {
+async function diffMarkup(container: HTMLElement): Promise<DiffMarkup>
+{
 	let markup: DiffMarkup | null = null;
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		const root = container.querySelector("diffs-container")?.shadowRoot;
 		const pre = root?.querySelector("pre");
 		if (!root || !pre?.querySelector("[data-content] > [data-line-type]")) throw new Error("no rendered rows yet");
-		markup = {
+		markup =
+		{
 			rows: [...root.querySelectorAll("[data-content] > [data-line-type]")].map(
 				(row) => `${row.getAttribute("data-line-type")}:${row.textContent}`,
 			),
 			numbers: [...root.querySelectorAll("[data-gutter] [data-line-number-content]")].map(
 				(cell) => cell.textContent,
 			),
-			pre: {
+			pre:
+			{
 				diff: pre.hasAttribute("data-diff"),
 				file: pre.hasAttribute("data-file"),
 				disableLineNumbers: pre.hasAttribute("data-disable-line-numbers"),
@@ -88,7 +126,8 @@ async function diffMarkup(container: HTMLElement): Promise<DiffMarkup> {
 }
 
 /** Upstream's `Yx` in a card: the group/body column and its Code scroller. */
-function scroller(outer: HTMLElement) {
+function scroller(outer: HTMLElement)
+{
 	const node = outer.querySelector<HTMLElement>(":scope > div");
 	return {
 		outerClass: outer.className,
@@ -101,7 +140,8 @@ function scroller(outer: HTMLElement) {
 	};
 }
 
-const SCROLLER = {
+const SCROLLER =
+{
 	outerClass: "group/body flex w-full flex-col",
 	className: "max-h-[400px] overflow-y-auto epitaxy-diff card-ring rounded-lg overflow-clip",
 	role: "group",
@@ -110,67 +150,136 @@ const SCROLLER = {
 	host: "ltr",
 };
 
-describe("PermissionFileChangePreview, input only", () => {
-	it("draws an Edit's old → new diff without line numbers in upstream's 400px Code scroller", async () => {
+describe("PermissionFileChangePreview, input only", () =>
+{
+	it("draws an Edit's old → new diff without line numbers in upstream's 400px Code scroller", async () =>
+	{
 		serveFile(404);
-		const {container} = preview("Edit", {file_path: "/repo/a.ts", old_string: "a\nb", new_string: "a\nc"});
-		expect(await diffMarkup(container)).toStrictEqual({
-			rows: ["context:a", "change-deletion:b", "change-addition:c"],
-			numbers: ["1", "2", "2"],
-			pre: {diff: true, file: false, disableLineNumbers: true},
-		});
-		expect({
-			scroller: scroller(container.querySelector("[data-file-change-body]")!),
-			note: screen.queryByTestId("approval-detail-note"),
-		}).toStrictEqual({scroller: {...SCROLLER, minHeight: "48px"}, note: null});
+		const {container} = preview(
+			"Edit",
+			{
+				file_path: "/repo/a.ts",
+				old_string: "a\nb",
+				new_string: "a\nc",
+			},
+		);
+		expect(await diffMarkup(container)).toStrictEqual(
+			{
+				rows: ["context:a", "change-deletion:b", "change-addition:c"],
+				numbers: ["1", "2", "2"],
+				pre:
+				{
+					diff: true,
+					file: false,
+					disableLineNumbers: true,
+				},
+			},
+		);
+		expect(
+			{
+				scroller: scroller(container.querySelector("[data-file-change-body]")!),
+				note: screen.queryByTestId("approval-detail-note"),
+			},
+		).toStrictEqual(
+			{
+				scroller:
+				{
+					...SCROLLER,
+					minHeight: "48px",
+				},
+				note: null,
+			},
+		);
 	});
 
-	it("draws a MultiEdit as one diff with an ellipsis row between edits, and reads no file", async () => {
+	it("draws a MultiEdit as one diff with an ellipsis row between edits, and reads no file", async () =>
+	{
 		const fetchMock = serveFile(404);
-		const {container} = preview("MultiEdit", {
-			file_path: "/repo/a.ts",
-			edits: [
-				{old_string: "a", new_string: "b"},
-				{old_string: "c", new_string: "d"},
-			],
-		});
-		expect(await diffMarkup(container)).toStrictEqual({
-			rows: ["change-deletion:a", "change-addition:b", "context:…", "change-deletion:c", "change-addition:d"],
-			numbers: ["1", "1", "2", "3", "3"],
-			pre: {diff: true, file: false, disableLineNumbers: true},
-		});
-		expect({
-			minHeight: scroller(container.querySelector("[data-file-change-body]")!).minHeight,
-			fetches: fetchMock.mock.calls.length,
-		}).toStrictEqual({minHeight: "80px", fetches: 0});
+		const {container} = preview(
+			"MultiEdit",
+			{
+				file_path: "/repo/a.ts",
+				edits: [
+					{
+						old_string: "a",
+						new_string: "b",
+					},
+					{
+						old_string: "c",
+						new_string: "d",
+					},
+				],
+			},
+		);
+		expect(await diffMarkup(container)).toStrictEqual(
+			{
+				rows: ["change-deletion:a", "change-addition:b", "context:…", "change-deletion:c", "change-addition:d"],
+				numbers: ["1", "1", "2", "3", "3"],
+				pre:
+				{
+					diff: true,
+					file: false,
+					disableLineNumbers: true,
+				},
+			},
+		);
+		expect(
+			{
+				minHeight: scroller(container.querySelector("[data-file-change-body]")!).minHeight,
+				fetches: fetchMock.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				minHeight: "80px",
+				fetches: 0,
+			},
+		);
 	});
 
-	it("draws a Write to a new file as upstream's pure-additions file: numbered lines behind a `+ ` sign", async () => {
+	it("draws a Write to a new file as upstream's pure-additions file: numbered lines behind a `+ ` sign", async () =>
+	{
 		serveFile(404);
-		const {container} = preview("Write", {file_path: "/repo/a.ts", content: "one\ntwo\nthree\nfour"});
+		const {container} = preview(
+			"Write",
+			{
+				file_path: "/repo/a.ts",
+				content: "one\ntwo\nthree\nfour",
+			},
+		);
 		const markup = await diffMarkup(container);
 		const root = container.querySelector("diffs-container")!.shadowRoot!;
 		const css = [...root.querySelectorAll("style")].map((style) => style.textContent).join("");
-		expect({
-			markup,
-			addTint: css.includes("[data-line]{background:var(--diffs-bg-addition);}"),
-			sign: css.includes('[data-line-number-content]::before{content:"+ ";'),
-			minHeight: scroller(container.querySelector("[data-file-change-body]")!).minHeight,
-		}).toStrictEqual({
-			markup: {
-				rows: ["context:one", "context:two", "context:three", "context:four"],
-				numbers: ["1", "2", "3", "4"],
-				pre: {diff: false, file: true, disableLineNumbers: false},
+		expect(
+			{
+				markup,
+				addTint: css.includes("[data-line]{background:var(--diffs-bg-addition);}"),
+				sign: css.includes('[data-line-number-content]::before{content:"+ ";'),
+				minHeight: scroller(container.querySelector("[data-file-change-body]")!).minHeight,
 			},
-			addTint: true,
-			sign: true,
-			minHeight: "64px",
-		});
+		).toStrictEqual(
+			{
+				markup:
+				{
+					rows: ["context:one", "context:two", "context:three", "context:four"],
+					numbers: ["1", "2", "3", "4"],
+					pre:
+					{
+						diff: false,
+						file: true,
+						disableLineNumbers: false,
+					},
+				},
+				addTint: true,
+				sign: true,
+				minHeight: "64px",
+			},
+		);
 	});
 });
 
 /** A file API that never answers, so the read stays pending. */
-function neverServe() {
+function neverServe()
+{
 	vi.stubGlobal(
 		"fetch",
 		vi.fn<typeof fetch>(async () => new Promise<Response>(() => {})),
@@ -178,23 +287,41 @@ function neverServe() {
 }
 
 /** A file API whose single answer the test releases. */
-function serveLater(): (status: number, content?: string) => Promise<void> {
-	let release: (response: Response) => void = () => {};
+function serveLater(): (status: number, content?: string) => Promise<void>
+{
+	let release: (response: Response) => void = () =>
+	{
+	};
 	vi.stubGlobal(
 		"fetch",
 		vi.fn<typeof fetch>(
 			async () =>
-				new Promise<Response>((resolve) => {
+				new Promise<Response>((resolve) =>
+				{
 					release = resolve;
 				}),
 		),
 	);
-	return async (status, content = "") => {
-		await act(async () => {
+	return async (status, content = "") =>
+	{
+		await act(async () =>
+		{
 			release(
 				status === 200
-					? Response.json({content, path: "/repo/a.ts"})
-					: Response.json({error: "nope"}, {status}),
+					? Response.json(
+							{
+								content,
+								path: "/repo/a.ts",
+							},
+						)
+					: Response.json(
+							{
+								error: "nope",
+							},
+							{
+								status,
+							},
+						),
 			);
 			await Promise.resolve();
 		});
@@ -209,93 +336,162 @@ const TEXT_CLASS =
 	"bg-alpha-1 rounded-lg py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]";
 
 /** Upstream's plain body (`fw`): each part's label and text, with the classes they carry. */
-function plainBody(container: HTMLElement) {
+function plainBody(container: HTMLElement)
+{
 	const plain = container.querySelector<HTMLElement>("[data-testid=approval-file-change-plain]");
 	if (plain === null) return null;
 	return {
 		className: plain.className,
 		fixed: plain.getAttribute("data-fixed-code-size"),
 		text: plain.textContent,
-		parts: [...plain.children].map((part) => ({
+		parts: [...plain.children].map((part) => (
+		{
 			className: part.className,
 			children: [...part.children].map((child) => [child.tagName, child.className, child.textContent]),
 		})),
 	};
 }
 
-describe("PermissionFileChangePreview, upstream's plain body (uw/fw/dw)", () => {
-	it("draws an Edit as Removed text then Added text while the file read is pending, with no skeleton or diff", () => {
+describe("PermissionFileChangePreview, upstream's plain body (uw/fw/dw)", () =>
+{
+	it("draws an Edit as Removed text then Added text while the file read is pending, with no skeleton or diff", () =>
+	{
 		neverServe();
-		const {container} = preview("Edit", {file_path: "/repo/a.ts", old_string: "a\nb", new_string: "a\nc\nd"});
-		expect({
-			plain: plainBody(container),
-			grid: container.querySelector("[data-testid=approval-file-change-plain]")?.parentElement?.className,
-			skeleton: container.querySelector("[aria-hidden].rounded-lg.bg-alpha-1"),
-			diff: container.querySelector("[data-cds=FileDiff]"),
-		}).toStrictEqual({
-			plain: {
-				className: PLAIN_CLASS,
-				fixed: "",
-				text: "Removed texta\nbAdded texta\nc\nd",
-				parts: [
+		const {container} = preview(
+			"Edit",
+			{
+				file_path: "/repo/a.ts",
+				old_string: "a\nb",
+				new_string: "a\nc\nd",
+			},
+		);
+		expect(
+			{
+				plain: plainBody(container),
+				grid: container.querySelector("[data-testid=approval-file-change-plain]")?.parentElement?.className,
+				skeleton: container.querySelector("[aria-hidden].rounded-lg.bg-alpha-1"),
+				diff: container.querySelector("[data-cds=FileDiff]"),
+			},
+		).toStrictEqual(
+			{
+				plain:
+				{
+					className: PLAIN_CLASS,
+					fixed: "",
+					text: "Removed texta\nbAdded texta\nc\nd",
+					parts: [
+						{
+							className: PART_CLASS,
+							children: [
+								["P", LABEL_CLASS, "Removed text"],
+								["DIV", TEXT_CLASS, "a\nb"],
+							],
+						},
+						{
+							className: PART_CLASS,
+							children: [
+								["P", LABEL_CLASS, "Added text"],
+								["DIV", TEXT_CLASS, "a\nc\nd"],
+							],
+						},
+					],
+				},
+				grid: "grid [&>*]:[grid-area:1/1] [&>*]:min-w-0",
+				skeleton: null,
+				diff: null,
+			},
+		);
+	});
+
+	it("draws a Write as one unlabelled part, and drops an Edit's empty side", () =>
+	{
+		neverServe();
+		const write = preview(
+			"Write",
+			{
+				file_path: "/repo/a.ts",
+				content: "x",
+			},
+		);
+		const writeParts = plainBody(write.container)?.parts;
+		cleanup();
+		const edit = preview(
+			"Edit",
+			{
+				file_path: "/repo/b.ts",
+				old_string: "",
+				new_string: "y",
+			},
+		);
+		expect(
+			{
+				write: writeParts,
+				edit: plainBody(edit.container)?.parts,
+			},
+		).toStrictEqual(
+			{
+				write: [
 					{
 						className: PART_CLASS,
-						children: [
-							["P", LABEL_CLASS, "Removed text"],
-							["DIV", TEXT_CLASS, "a\nb"],
-						],
+						children: [["DIV", TEXT_CLASS, "x"]],
 					},
+				],
+				edit: [
 					{
 						className: PART_CLASS,
 						children: [
 							["P", LABEL_CLASS, "Added text"],
-							["DIV", TEXT_CLASS, "a\nc\nd"],
+							["DIV", TEXT_CLASS, "y"],
 						],
 					},
 				],
 			},
-			grid: "grid [&>*]:[grid-area:1/1] [&>*]:min-w-0",
-			skeleton: null,
-			diff: null,
-		});
+		);
 	});
 
-	it("draws a Write as one unlabelled part, and drops an Edit's empty side", () => {
-		neverServe();
-		const write = preview("Write", {file_path: "/repo/a.ts", content: "x"});
-		const writeParts = plainBody(write.container)?.parts;
-		cleanup();
-		const edit = preview("Edit", {file_path: "/repo/b.ts", old_string: "", new_string: "y"});
-		expect({write: writeParts, edit: plainBody(edit.container)?.parts}).toStrictEqual({
-			write: [{className: PART_CLASS, children: [["DIV", TEXT_CLASS, "x"]]}],
-			edit: [
+	it("lists a MultiEdit's edits as Removed/Added pairs (upstream's dw)", () =>
+	{
+		expect(
+			plainFileChangeParts(
+				"MultiEdit",
 				{
-					className: PART_CLASS,
-					children: [
-						["P", LABEL_CLASS, "Added text"],
-						["DIV", TEXT_CLASS, "y"],
+					file_path: "/repo/a.ts",
+					edits: [
+						{
+							old_string: "a",
+							new_string: "b",
+						},
+						{
+							old_string: "c",
+							new_string: "d",
+						},
+						"not an edit",
 					],
 				},
-			],
-		});
-	});
-
-	it("lists a MultiEdit's edits as Removed/Added pairs (upstream's dw)", () => {
-		expect(
-			plainFileChangeParts("MultiEdit", {
-				file_path: "/repo/a.ts",
-				edits: [{old_string: "a", new_string: "b"}, {old_string: "c", new_string: "d"}, "not an edit"],
-			}),
+			),
 		).toStrictEqual([
-			{label: "Removed text", text: "a"},
-			{label: "Added text", text: "b"},
-			{label: "Removed text", text: "c"},
-			{label: "Added text", text: "d"},
+			{
+				label: "Removed text",
+				text: "a",
+			},
+			{
+				label: "Added text",
+				text: "b",
+			},
+			{
+				label: "Removed text",
+				text: "c",
+			},
+			{
+				label: "Added text",
+				text: "d",
+			},
 		]);
 	});
 
 	/** The plain text box's children: a bare string, or upstream's per-line spans. */
-	function textLines(container: HTMLElement) {
+	function textLines(container: HTMLElement)
+	{
 		const box = container.querySelector("[data-testid=approval-file-change-plain] > div > div");
 		return [...(box?.childNodes ?? [])].map((node) =>
 			node instanceof HTMLElement
@@ -305,15 +501,29 @@ describe("PermissionFileChangePreview, upstream's plain body (uw/fw/dw)", () => 
 	}
 
 	// Upstream's plain text goes through shared-38 `VP`, a bidi line splitter: no hidden-character reveal.
-	it("draws left-to-right text raw, hidden characters and all (upstream's VP)", () => {
+	it("draws left-to-right text raw, hidden characters and all (upstream's VP)", () =>
+	{
 		neverServe();
-		const {container} = preview("Write", {file_path: "/repo/a.ts", content: "a\u0007b\n\u200Bc"});
+		const {container} = preview(
+			"Write",
+			{
+				file_path: "/repo/a.ts",
+				content: "a\u0007b\n\u200Bc",
+			},
+		);
 		expect(textLines(container)).toStrictEqual(["a\u0007b\n\u200Bc"]);
 	});
 
-	it("splits multi-line text with right-to-left letters into isolated lines (upstream's VP and hz)", () => {
+	it("splits multi-line text with right-to-left letters into isolated lines (upstream's VP and hz)", () =>
+	{
 		neverServe();
-		const {container} = preview("Write", {file_path: "/repo/a.ts", content: "\u05E9\u05DC\u05D5\u05DD\nab\n"});
+		const {container} = preview(
+			"Write",
+			{
+				file_path: "/repo/a.ts",
+				content: "\u05E9\u05DC\u05D5\u05DD\nab\n",
+			},
+		);
 		expect(textLines(container)).toStrictEqual([
 			[
 				"SPAN",
@@ -325,19 +535,31 @@ describe("PermissionFileChangePreview, upstream's plain body (uw/fw/dw)", () => 
 		]);
 	});
 
-	it("keeps a single right-to-left line whole (upstream's VP)", () => {
+	it("keeps a single right-to-left line whole (upstream's VP)", () =>
+	{
 		neverServe();
-		const {container} = preview("Write", {file_path: "/repo/a.ts", content: "\u05E9\u05DC\u05D5\u05DD"});
+		const {container} = preview(
+			"Write",
+			{
+				file_path: "/repo/a.ts",
+				content: "\u05E9\u05DC\u05D5\u05DD",
+			},
+		);
 		expect(textLines(container)).toStrictEqual(["\u05E9\u05DC\u05D5\u05DD"]);
 	});
 
-	it("splits every line under a right-to-left direction (upstream's VP and hz)", () => {
+	it("splits every line under a right-to-left direction (upstream's VP and hz)", () =>
+	{
 		neverServe();
 		const {container} = render(
 			<DirectionProvider direction="rtl">
 				<PermissionFileChangePreview
 					toolName="Write"
-					toolInput={{file_path: "/repo/a.ts", content: "ab"}}
+					toolInput={
+					{
+						file_path: "/repo/a.ts",
+						content: "ab",
+					}}
 					copyNote={null}
 					drawDetail={drawDetail}
 				/>
@@ -348,67 +570,131 @@ describe("PermissionFileChangePreview, upstream's plain body (uw/fw/dw)", () => 
 		]);
 	});
 
-	it("keeps the plain body after the user scrolled it when the read gives no disk diff", async () => {
+	it("keeps the plain body after the user scrolled it when the read gives no disk diff", async () =>
+	{
 		const answer = serveLater();
-		const {container} = preview("Edit", {file_path: "/repo/a.ts", old_string: "a", new_string: "b"});
+		const {container} = preview(
+			"Edit",
+			{
+				file_path: "/repo/a.ts",
+				old_string: "a",
+				new_string: "b",
+			},
+		);
 		fireEvent.scroll(container.querySelector("[data-testid=approval-file-change-plain]")!);
 		await answer(404);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(vi.mocked(fetch).mock.calls.length).toBe(1);
 		});
-		expect({
-			plain: plainBody(container)?.text,
-			diff: container.querySelector("[data-cds=FileDiff]"),
-		}).toStrictEqual({plain: "Removed textaAdded textb", diff: null});
+		expect(
+			{
+				plain: plainBody(container)?.text,
+				diff: container.querySelector("[data-cds=FileDiff]"),
+			},
+		).toStrictEqual(
+			{
+				plain: "Removed textaAdded textb",
+				diff: null,
+			},
+		);
 	});
 
-	it("swaps the diff in for the plain body when the read settles untouched", async () => {
+	it("swaps the diff in for the plain body when the read settles untouched", async () =>
+	{
 		const answer = serveLater();
-		const {container} = preview("Edit", {file_path: "/repo/a.ts", old_string: "a", new_string: "b"});
+		const {container} = preview(
+			"Edit",
+			{
+				file_path: "/repo/a.ts",
+				old_string: "a",
+				new_string: "b",
+			},
+		);
 		await answer(404);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(container.querySelector("[data-cds=FileDiff]")).not.toBeNull();
 		});
 		expect(plainBody(container)).toBeNull();
 	});
 
-	it("draws the disk diff even after a scroll once the read finds the file", async () => {
+	it("draws the disk diff even after a scroll once the read finds the file", async () =>
+	{
 		const answer = serveLater();
-		const {container} = preview("Edit", {file_path: "/repo/a.ts", old_string: "a", new_string: "b"});
+		const {container} = preview(
+			"Edit",
+			{
+				file_path: "/repo/a.ts",
+				old_string: "a",
+				new_string: "b",
+			},
+		);
 		fireEvent.pointerDown(container.querySelector("[data-testid=approval-file-change-plain]")!);
 		await answer(200, "a\n");
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(container.querySelector("[data-cds=FileDiff]")).not.toBeNull();
 		});
 		expect(plainBody(container)).toBeNull();
 	});
 });
 
-describe("PermissionFileChangePreview, read from disk", () => {
-	it("draws an Edit at the file's real line numbers with one line of context", async () => {
+describe("PermissionFileChangePreview, read from disk", () =>
+{
+	it("draws an Edit at the file's real line numbers with one line of context", async () =>
+	{
 		const fetchMock = serveFile(200, "one\ntwo\nthree\nfour\nfive\n");
-		const {container} = preview("Edit", {file_path: "/repo/a.ts", old_string: "four", new_string: "FOUR"});
-		expect(await diffMarkup(container)).toStrictEqual({
-			rows: ["context:three", "change-deletion:four", "change-addition:FOUR", "context:five"],
-			numbers: ["3", "4", "4", "5"],
-			pre: {diff: true, file: false, disableLineNumbers: false},
-		});
+		const {container} = preview(
+			"Edit",
+			{
+				file_path: "/repo/a.ts",
+				old_string: "four",
+				new_string: "FOUR",
+			},
+		);
+		expect(await diffMarkup(container)).toStrictEqual(
+			{
+				rows: ["context:three", "change-deletion:four", "change-addition:FOUR", "context:five"],
+				numbers: ["3", "4", "4", "5"],
+				pre:
+				{
+					diff: true,
+					file: false,
+					disableLineNumbers: false,
+				},
+			},
+		);
 		expect(fetchMock.mock.calls.map(([url]) => url)).toStrictEqual([`/api/file/${encodeFilePath("/repo/a.ts")}`]);
 	});
 
-	it("says a file outside the allowed roots couldn't be checked", async () => {
+	it("says a file outside the allowed roots couldn't be checked", async () =>
+	{
 		serveFile(403);
-		preview("Edit", {file_path: "/repo/a.ts", old_string: "a", new_string: "b"});
+		preview(
+			"Edit",
+			{
+				file_path: "/repo/a.ts",
+				old_string: "a",
+				new_string: "b",
+			},
+		);
 		expect((await screen.findByTestId("approval-detail-note")).textContent).toBe(
 			"Couldn’t check this file, so this shows only what Claude sent.",
 		);
 	});
 
-	it("puts the disk's match count in place of the copy's replace-every note", async () => {
+	it("puts the disk's match count in place of the copy's replace-every note", async () =>
+	{
 		serveFile(200, "x x x\n");
 		preview(
 			"Edit",
-			{file_path: "/repo/a.ts", old_string: "x", new_string: "y", replace_all: true},
+			{
+				file_path: "/repo/a.ts",
+				old_string: "x",
+				new_string: "y",
+				replace_all: true,
+			},
 			"Replaces every match in the file.",
 		);
 		expect((await screen.findByTestId("approval-detail-note")).textContent).toBe(
@@ -416,20 +702,36 @@ describe("PermissionFileChangePreview, read from disk", () => {
 		);
 	});
 
-	it("says a Write replaces the existing file only until its disk diff is drawn", async () => {
+	it("says a Write replaces the existing file only until its disk diff is drawn", async () =>
+	{
 		const answer = serveLater();
-		const {container} = preview("Write", {file_path: "/repo/a.ts", content: "new\n"});
+		const {container} = preview(
+			"Write",
+			{
+				file_path: "/repo/a.ts",
+				content: "new\n",
+			},
+		);
 		await answer(200, "old\n");
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(container.querySelector("[data-cds=FileDiff]")).not.toBeNull();
 		});
 		expect(screen.queryByTestId("approval-detail-note")).toBeNull();
 	});
 
-	it("keeps the replace note beside a secret file's diff, which is drawn from the input alone", async () => {
+	it("keeps the replace note beside a secret file's diff, which is drawn from the input alone", async () =>
+	{
 		serveFile(200, "A=1\n");
-		const {container} = preview("Write", {file_path: "/repo/.env", content: "B=2\n"});
-		await waitFor(() => {
+		const {container} = preview(
+			"Write",
+			{
+				file_path: "/repo/.env",
+				content: "B=2\n",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(container.querySelector("[data-cds=FileDiff]")).not.toBeNull();
 		});
 		expect(screen.getByTestId("approval-detail-note").textContent).toBe("Replaces the existing file.");

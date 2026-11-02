@@ -12,7 +12,8 @@ type SettingValue = string | boolean | undefined;
  */
 const writeChains = new WeakMap<QueryClient, Promise<unknown>>();
 
-async function enqueue<T>(queryClient: QueryClient, task: () => Promise<T>): Promise<T> {
+async function enqueue<T>(queryClient: QueryClient, task: () => Promise<T>): Promise<T>
+{
 	const next = (writeChains.get(queryClient) ?? Promise.resolve()).then(task);
 	writeChains.set(
 		queryClient,
@@ -21,7 +22,8 @@ async function enqueue<T>(queryClient: QueryClient, task: () => Promise<T>): Pro
 	return next;
 }
 
-interface ClaudeCodeSettingBinding {
+interface ClaudeCodeSettingBinding
+{
 	/** The shown value: the pending write's while one is in flight, else the file's. */
 	value: SettingValue;
 	loading: boolean;
@@ -39,38 +41,66 @@ interface ClaudeCodeSettingBinding {
  * (optimistic), and only the newest write's response settles it, so an older write answering late is
  * ignored. A refused write reverts the value and raises `writeFailed`.
  */
-export function useClaudeCodeSetting(key: ClaudeCodeSettingKey): ClaudeCodeSettingBinding {
+export function useClaudeCodeSetting(key: ClaudeCodeSettingKey): ClaudeCodeSettingBinding
+{
 	const queryClient = useQueryClient();
 	const query = useQuery(claudeCodeSettingsQueryOptions);
-	const [optimistic, setOptimistic] = useState<{value: SettingValue} | null>(null);
+	const [optimistic, setOptimistic] = useState<
+	{
+		value: SettingValue;
+	} | null>(null);
 	const [writeFailed, setWriteFailed] = useState(false);
 	const sequence = useRef(0);
 
-	const save = async (value: SettingValue): Promise<boolean> => {
+	const save = async (value: SettingValue): Promise<boolean> =>
+	{
 		sequence.current += 1;
 		const mine = sequence.current;
-		setOptimistic({value});
+		setOptimistic(
+			{
+				value,
+			},
+		);
 		setWriteFailed(false);
-		return enqueue(queryClient, async () => {
+		return enqueue(queryClient, async () =>
+		{
 			const current = queryClient.getQueryData(claudeCodeSettingsQueryOptions.queryKey);
-			const saved = await postClaudeCodeSetting({key, value, expectedMtimeMs: current?.mtimeMs ?? null});
+			const saved = await postClaudeCodeSetting(
+				{
+					key,
+					value,
+					expectedMtimeMs: current?.mtimeMs ?? null,
+				},
+			);
 			if (saved !== null) queryClient.setQueryData(claudeCodeSettingsQueryOptions.queryKey, saved);
 			return saved;
-		}).then((saved) => {
+		}).then((saved) =>
+		{
 			if (mine !== sequence.current) return saved !== null;
 			setOptimistic(null);
-			if (saved === null) {
+			if (saved === null)
+			{
 				setWriteFailed(true);
-				void queryClient.invalidateQueries({queryKey: claudeCodeSettingsQueryOptions.queryKey});
+				void queryClient.invalidateQueries(
+					{
+						queryKey: claudeCodeSettingsQueryOptions.queryKey,
+					},
+				);
 				return false;
 			}
-			if (key === "skipDangerousModePermissionPrompt") {
-				void queryClient.invalidateQueries({queryKey: composerDefaultsQueryOptions.queryKey});
+			if (key === "skipDangerousModePermissionPrompt")
+			{
+				void queryClient.invalidateQueries(
+					{
+						queryKey: composerDefaultsQueryOptions.queryKey,
+					},
+				);
 			}
 			return true;
 		});
 	};
-	const write = (value: SettingValue) => {
+	const write = (value: SettingValue) =>
+	{
 		void save(value);
 	};
 

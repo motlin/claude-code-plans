@@ -12,7 +12,8 @@ import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_STYLE} from "./turn-status-row
  * report as clamped markdown prose. Upstream names a hand-back's sender
  * "subagent", never its description.
  */
-export function AgentMessageRow({message}: {message: AgentMessage}) {
+export function AgentMessageRow({message}: {message: AgentMessage})
+{
 	const [expanded, setExpanded] = useState(false);
 	const bodyId = useId();
 	const rowCut = useTypeRowCut("Message from\nsubagent");
@@ -24,7 +25,8 @@ export function AgentMessageRow({message}: {message: AgentMessage}) {
 				aria-expanded={expanded}
 				aria-controls={bodyId}
 				aria-label={expanded ? "Hide message from subagent" : "Show message from subagent"}
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded((value) => !value);
 				}}
 				data-cds-row=""

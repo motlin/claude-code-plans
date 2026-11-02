@@ -1,4 +1,5 @@
-const ABSOLUTE_FORMAT: Intl.DateTimeFormatOptions = {
+const ABSOLUTE_FORMAT: Intl.DateTimeFormatOptions =
+{
 	month: "short",
 	day: "numeric",
 	year: "numeric",
@@ -7,7 +8,8 @@ const ABSOLUTE_FORMAT: Intl.DateTimeFormatOptions = {
 	hour12: true,
 };
 
-function parseTimestamp(timestamp?: string): Date | null {
+function parseTimestamp(timestamp?: string): Date | null
+{
 	if (!timestamp) return null;
 	const date = new Date(timestamp);
 	return isNaN(date.getTime()) ? null : date;
@@ -18,10 +20,20 @@ function parseTimestamp(timestamp?: string): Date | null {
  * always with the date, in the viewer's time zone unless one is given. Returns null for missing or
  * unparseable input.
  */
-export function formatTimestamp(timestamp?: string, timeZone?: string): string | null {
+export function formatTimestamp(timestamp?: string, timeZone?: string): string | null
+{
 	const date = parseTimestamp(timestamp);
 	if (!date) return null;
-	return date.toLocaleString("en-US", timeZone === undefined ? ABSOLUTE_FORMAT : {...ABSOLUTE_FORMAT, timeZone});
+	return date.toLocaleString(
+		"en-US",
+		timeZone === undefined
+			? ABSOLUTE_FORMAT
+			:
+				{
+					...ABSOLUTE_FORMAT,
+					timeZone,
+				},
+	);
 }
 
 const RELATIVE_UNITS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [
@@ -33,18 +45,25 @@ const RELATIVE_UNITS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [
 	["minute", 60],
 ];
 
-const RELATIVE_FORMAT = new Intl.RelativeTimeFormat("en-US", {numeric: "auto"});
+const RELATIVE_FORMAT = new Intl.RelativeTimeFormat(
+	"en-US",
+	{
+		numeric: "auto",
+	},
+);
 
 /**
  * Formats an ISO timestamp the way claude.ai/code's relative times do: the largest unit it has
  * reached, rounded ("18 days" reads "3 weeks ago"), and "just now" under a minute. Returns null for
  * missing or unparseable input.
  */
-export function formatRelativeTimestamp(timestamp?: string, nowMs: number = Date.now()): string | null {
+export function formatRelativeTimestamp(timestamp?: string, nowMs: number = Date.now()): string | null
+{
 	const date = parseTimestamp(timestamp);
 	if (!date) return null;
 	const seconds = Math.max(0, (nowMs - date.getTime()) / 1000);
-	for (const [unit, size] of RELATIVE_UNITS) {
+	for (const [unit, size] of RELATIVE_UNITS)
+	{
 		if (seconds >= size) return RELATIVE_FORMAT.format(-Math.round(seconds / size), unit);
 	}
 	return "just now";
@@ -57,45 +76,80 @@ const ABSOLUTE_AFTER_MS = 168 * 3_600_000;
  * Formats a message's hover time as claude.ai/code does: relative for a week, then the date
  * ("Sep 26", with the year when it is not the current one).
  */
-export function formatMessageTime(timestamp?: string, nowMs: number = Date.now(), timeZone?: string): string | null {
+export function formatMessageTime(timestamp?: string, nowMs: number = Date.now(), timeZone?: string): string | null
+{
 	const date = parseTimestamp(timestamp);
 	if (!date) return null;
 	if (nowMs - date.getTime() < ABSOLUTE_AFTER_MS) return formatRelativeTimestamp(timestamp, nowMs);
-	const zone = timeZone === undefined ? {} : {timeZone};
-	const year = (at: Date) => at.toLocaleString("en-US", {year: "numeric", ...zone});
+	const zone =
+		timeZone === undefined
+			? {}
+			:
+				{
+					timeZone,
+				};
+	const year = (at: Date) =>
+		at.toLocaleString(
+			"en-US",
+			{
+				year: "numeric",
+				...zone,
+			},
+		);
 	const sameYear = year(date) === year(new Date(nowMs));
-	return date.toLocaleString("en-US", {
-		month: "short",
-		day: "numeric",
-		...(sameYear ? {} : {year: "numeric"}),
-		...zone,
-	});
+	return date.toLocaleString(
+		"en-US",
+		{
+			month: "short",
+			day: "numeric",
+			...(sameYear
+				? {}
+				:
+					{
+						year: "numeric",
+					}),
+			...zone,
+		},
+	);
 }
 
 /** The plans and memories lists' full UTC date and time: "Oct 17, 2026, 09:34 PM". */
-export function formatListDate(iso: string): string {
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-		timeZone: "UTC",
-	});
+export function formatListDate(iso: string): string
+{
+	return new Date(iso).toLocaleDateString(
+		"en-US",
+		{
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+			timeZone: "UTC",
+		},
+	);
 }
 
 /**
  * The narrow UTC date phone-width lists show: "Oct 17", with the year when it is not the current
  * one. Returns null for unparseable input.
  */
-export function formatShortDate(iso: string, nowMs: number = Date.now()): string | null {
+export function formatShortDate(iso: string, nowMs: number = Date.now()): string | null
+{
 	const date = parseTimestamp(iso);
 	if (!date) return null;
 	const sameYear = date.getUTCFullYear() === new Date(nowMs).getUTCFullYear();
-	return date.toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		...(sameYear ? {} : {year: "numeric"}),
-		timeZone: "UTC",
-	});
+	return date.toLocaleDateString(
+		"en-US",
+		{
+			month: "short",
+			day: "numeric",
+			...(sameYear
+				? {}
+				:
+					{
+						year: "numeric",
+					}),
+			timeZone: "UTC",
+		},
+	);
 }

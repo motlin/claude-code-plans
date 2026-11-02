@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -23,7 +24,8 @@ import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
-import {
+import
+{
 	readSidebarState,
 	SIDEBAR_STORAGE_KEY,
 	useSidebarState,
@@ -33,36 +35,71 @@ import {
 import {COARSE_POINTER_QUERY, narrowViewportQuery, PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {readFileSync} from "node:fs";
 import {installLocalStorage} from "./fake-storage";
+import {ruleStart} from "./css-rule";
 
-function seedQueryClient(): QueryClient {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+function seedQueryClient(): QueryClient
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
-	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+	);
+	queryClient.setQueryData(
+		approvalsQueryOptions().queryKey,
+		{
+			approvals: [],
+		},
+	);
+	queryClient.setQueryData(
+		notificationsQueryOptions().queryKey,
+		{
+			notifications: [],
+		},
+	);
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
-	queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
-		terminalWritesEnabled: false,
-		terminalHost: "auto",
-		shellPaneEnabled: true,
-		visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr"),
-		ignoredDirs: ["node_modules"],
-	});
+	queryClient.setQueryData(
+		applicationSettingsQueryOptions.queryKey,
+		{
+			terminalWritesEnabled: false,
+			terminalHost: "auto",
+			shellPaneEnabled: true,
+			visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr"),
+			ignoredDirs: ["node_modules"],
+		},
+	);
 	return queryClient;
 }
 
 /** Evaluates a `(max-width: Npx)` query against the mocked width, as the browser would. */
-function matchesMaxWidth(query: string, width: number): boolean {
+function matchesMaxWidth(query: string, width: number): boolean
+{
 	const match = /^\(max-width: (\d+)px\)$/.exec(query);
 	return match !== null && width <= Number(match[1]);
 }
 
-function mockViewport(width: number, {coarse = false}: {coarse?: boolean} = {}) {
+function mockViewport(
+	width: number,
+	{
+		coarse = false,
+	}:
+	{
+		coarse?: boolean;
+	} = {},
+)
+{
 	vi.stubGlobal(
 		"matchMedia",
-		vi.fn((query: string) => ({
+		vi.fn((query: string) => (
+		{
 			matches:
 				query === PHONE_SHEET_QUERY
 					? width < 640
@@ -80,7 +117,8 @@ function mockViewport(width: number, {coarse = false}: {coarse?: boolean} = {}) 
 	);
 }
 
-function PaletteProbe() {
+function PaletteProbe()
+{
 	const palette = useCommandPalette();
 	return (
 		<div data-testid="palette-probe">
@@ -89,11 +127,13 @@ function PaletteProbe() {
 	);
 }
 
-function DensityProbe() {
+function DensityProbe()
+{
 	return <span data-testid="density-probe">{useDensity()}</span>;
 }
 
-function PersistedFrame() {
+function PersistedFrame()
+{
 	const {collapsed} = useSidebarState();
 	useSidebarToggleShortcut();
 	return (
@@ -103,66 +143,90 @@ function PersistedFrame() {
 	);
 }
 
-async function renderFrame(fizzyLakeParts: readonly FizzyLakePart[] = FIZZY_LAKE_PARTS) {
+async function renderFrame(fizzyLakeParts: readonly FizzyLakePart[] = FIZZY_LAKE_PARTS)
+{
 	const queryClient = seedQueryClient();
-	const rootRoute = createRootRoute({
-		component: () => (
-			<FizzyLakeContext.Provider value={fizzyLakeParts}>
-				<QueryClientProvider client={queryClient}>
-					<ToastProvider>
-						<SettingsProvider>
-							<PersistedFrame />
-							<PaletteProbe />
-						</SettingsProvider>
-					</ToastProvider>
-				</QueryClientProvider>
-			</FizzyLakeContext.Provider>
-		),
-	});
-	const homeRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: () => (
-			<>
-				<p>Home page</p>
-				<DensityProbe />
-			</>
-		),
-	});
-	const otherRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/plans",
-		component: () => <p>Other page</p>,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, otherRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<FizzyLakeContext.Provider value={fizzyLakeParts}>
+					<QueryClientProvider client={queryClient}>
+						<ToastProvider>
+							<SettingsProvider>
+								<PersistedFrame />
+								<PaletteProbe />
+							</SettingsProvider>
+						</ToastProvider>
+					</QueryClientProvider>
+				</FizzyLakeContext.Provider>
+			),
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => (
+				<>
+					<p>Home page</p>
+					<DensityProbe />
+				</>
+			),
+		},
+	);
+	const otherRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/plans",
+			component: () => <p>Other page</p>,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, otherRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	const view = render(<RouterProvider router={router} />);
 	await waitFor(() => screen.getByText("Home page"));
-	return {router, container: view.container};
+	return {
+		router,
+		container: view.container,
+	};
 }
 
-function frameRoot(container: HTMLElement): HTMLElement {
+function frameRoot(container: HTMLElement): HTMLElement
+{
 	const root = container.querySelector<HTMLElement>("[data-testid='app-frame']");
 	if (!root) throw new Error("app frame not rendered");
 	return root;
 }
 
-function sheet(): HTMLElement {
+function sheet(): HTMLElement
+{
 	const element = document.getElementById("sidebar-sheet");
 	if (!element) throw new Error("sheet not rendered");
 	return element;
 }
 
-function mainElement(container: HTMLElement): HTMLElement {
+function mainElement(container: HTMLElement): HTMLElement
+{
 	const element = container.querySelector("main");
 	if (!element) throw new Error("main not rendered");
 	return element;
 }
 
-function clearanceVars(container: HTMLElement): {start: string; top: string} {
+function clearanceVars(container: HTMLElement):
+{
+	start: string;
+	top: string;
+}
+{
 	const style = mainElement(container).style;
 	return {
 		start: style.getPropertyValue("--top-left-clearance-start"),
@@ -170,74 +234,113 @@ function clearanceVars(container: HTMLElement): {start: string; top: string} {
 	};
 }
 
-async function openSheet() {
-	const trigger = screen.getByRole("button", {name: "Show sidebar"});
+async function openSheet()
+{
+	const trigger = screen.getByRole(
+		"button",
+		{
+			name: "Show sidebar",
+		},
+	);
 	fireEvent.click(trigger);
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(sheet().hasAttribute("data-open")).toBe(true);
 	});
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 });
 
-describe("density scopes", () => {
-	it("marks <main> comfortable under fizzy-lake panels, upstream's live look, with the epitaxy-root base text classes", async () => {
+describe("density scopes", () =>
+{
+	it("marks <main> comfortable under fizzy-lake panels, upstream's live look, with the epitaxy-root base text classes", async () =>
+	{
 		mockViewport(1440);
 		const {container} = await renderFrame();
 		const main = mainElement(container);
 
-		expect({
-			frame: frameRoot(container).getAttribute("data-density"),
-			main: main.getAttribute("data-density"),
-			children: screen.getByTestId("density-probe").textContent,
-			text: main.className
-				.split(" ")
-				.filter((name) => ["text-body", "text-primary", "break-words", "select-none"].includes(name)),
-		}).toStrictEqual({
-			frame: null,
-			main: "comfortable",
-			children: "comfortable",
-			text: ["text-body", "text-primary", "break-words"],
-		});
+		expect(
+			{
+				frame: frameRoot(container).getAttribute("data-density"),
+				main: main.getAttribute("data-density"),
+				children: screen.getByTestId("density-probe").textContent,
+				text: main.className
+					.split(" ")
+					.filter((name) => ["text-body", "text-primary", "break-words", "select-none"].includes(name)),
+			},
+		).toStrictEqual(
+			{
+				frame: null,
+				main: "comfortable",
+				children: "comfortable",
+				text: ["text-body", "text-primary", "break-words"],
+			},
+		);
 	});
 
-	it("marks <main> compact without panels and leaves the frame to inherit <html>", async () => {
+	it("marks <main> compact without panels and leaves the frame to inherit <html>", async () =>
+	{
 		mockViewport(1440);
 		const {container} = await renderFrame(["color", "type"]);
 
-		expect({
-			frame: frameRoot(container).getAttribute("data-density"),
-			main: mainElement(container).getAttribute("data-density"),
-		}).toStrictEqual({frame: null, main: "compact"});
+		expect(
+			{
+				frame: frameRoot(container).getAttribute("data-density"),
+				main: mainElement(container).getAttribute("data-density"),
+			},
+		).toStrictEqual(
+			{
+				frame: null,
+				main: "compact",
+			},
+		);
 	});
 
-	it("provides the compact density to <main>'s children without panels, so their menus and portals open compact", async () => {
+	it("provides the compact density to <main>'s children without panels, so their menus and portals open compact", async () =>
+	{
 		mockViewport(1440);
 		await renderFrame(["color", "type"]);
 
 		expect(screen.getByTestId("density-probe").textContent).toBe("compact");
 	});
 
-	it("turns <main> comfortable on a coarse pointer at desktop width, as upstream's si overrides fv's compact prop", async () => {
-		mockViewport(900, {coarse: true});
+	it("turns <main> comfortable on a coarse pointer at desktop width, as upstream's si overrides fv's compact prop", async () =>
+	{
+		mockViewport(
+			900,
+			{
+				coarse: true,
+			},
+		);
 		const {container} = await renderFrame();
 
-		expect({
-			main: mainElement(container).getAttribute("data-density"),
-			children: screen.getByTestId("density-probe").textContent,
-		}).toStrictEqual({main: "comfortable", children: "comfortable"});
+		expect(
+			{
+				main: mainElement(container).getAttribute("data-density"),
+				children: screen.getByTestId("density-probe").textContent,
+			},
+		).toStrictEqual(
+			{
+				main: "comfortable",
+				children: "comfortable",
+			},
+		);
 	});
 });
 
-describe("phone sheet sidebar", () => {
-	it("sizes the frame to the dynamic viewport rather than 100vh, so iOS never scrolls the titlebar away", async () => {
+describe("phone sheet sidebar", () =>
+{
+	it("sizes the frame to the dynamic viewport rather than 100vh, so iOS never scrolls the titlebar away", async () =>
+	{
 		mockViewport(390);
 		const {container} = await renderFrame();
 
@@ -248,112 +351,224 @@ describe("phone sheet sidebar", () => {
 		).toStrictEqual(["h-[var(--app-visual-viewport-height,100dvh)]"]);
 	});
 
-	it("marks the root and renders a closed modal sheet under 640px", async () => {
+	it("marks the root and renders a closed modal sheet under 640px", async () =>
+	{
 		mockViewport(390);
 		const {container} = await renderFrame();
 
 		expect(frameRoot(container).getAttribute("data-phone-sheet")).toBe("left");
-		const trigger = screen.getByRole("button", {name: "Show sidebar"});
-		expect({
-			expanded: trigger.getAttribute("aria-expanded"),
-			controls: trigger.getAttribute("aria-controls"),
-			geometry: {
-				left: trigger.style.left,
-				top: trigger.style.top,
-				width: trigger.style.width,
-				height: trigger.style.height,
+		const trigger = screen.getByRole(
+			"button",
+			{
+				name: "Show sidebar",
 			},
-		}).toStrictEqual({
-			expanded: "false",
-			controls: "sidebar-sheet",
-			geometry: {left: "8px", top: "8px", width: "32px", height: "32px"},
-		});
-		expect({
-			role: sheet().getAttribute("role"),
-			modal: sheet().getAttribute("aria-modal"),
-			open: sheet().hasAttribute("data-open"),
-			inert: sheet().hasAttribute("inert"),
-		}).toStrictEqual({role: "dialog", modal: "true", open: false, inert: true});
-		expect({
-			inert: mainElement(container).hasAttribute("inert"),
-			clearance: clearanceVars(container),
-		}).toStrictEqual({
-			inert: false,
-			clearance: {start: "41px", top: "9px"},
-		});
+		);
+		expect(
+			{
+				expanded: trigger.getAttribute("aria-expanded"),
+				controls: trigger.getAttribute("aria-controls"),
+				geometry:
+				{
+					left: trigger.style.left,
+					top: trigger.style.top,
+					width: trigger.style.width,
+					height: trigger.style.height,
+				},
+			},
+		).toStrictEqual(
+			{
+				expanded: "false",
+				controls: "sidebar-sheet",
+				geometry:
+				{
+					left: "8px",
+					top: "8px",
+					width: "32px",
+					height: "32px",
+				},
+			},
+		);
+		expect(
+			{
+				role: sheet().getAttribute("role"),
+				modal: sheet().getAttribute("aria-modal"),
+				open: sheet().hasAttribute("data-open"),
+				inert: sheet().hasAttribute("inert"),
+			},
+		).toStrictEqual(
+			{
+				role: "dialog",
+				modal: "true",
+				open: false,
+				inert: true,
+			},
+		);
+		expect(
+			{
+				inert: mainElement(container).hasAttribute("inert"),
+				clearance: clearanceVars(container),
+			},
+		).toStrictEqual(
+			{
+				inert: false,
+				clearance:
+				{
+					start: "41px",
+					top: "9px",
+				},
+			},
+		);
 	});
 
-	it("opens from the trigger, focuses Close and makes main inert", async () => {
+	it("opens from the trigger, focuses Close and makes main inert", async () =>
+	{
 		mockViewport(390);
 		const {container} = await renderFrame();
 
 		await openSheet();
 
-		const close = screen.getByRole("button", {name: "Close sidebar"});
-		expect({
-			expanded: screen.getByRole("button", {name: "Show sidebar"}).getAttribute("aria-expanded"),
-			mainInert: mainElement(container).hasAttribute("inert"),
-			sheetInert: sheet().hasAttribute("inert"),
-			closeMarked: close.hasAttribute("data-phone-sheet-close"),
-			focused: document.activeElement === close,
-		}).toStrictEqual({
-			expanded: "true",
-			mainInert: true,
-			sheetInert: false,
-			closeMarked: true,
-			focused: true,
-		});
+		const close = screen.getByRole(
+			"button",
+			{
+				name: "Close sidebar",
+			},
+		);
+		expect(
+			{
+				expanded: screen
+					.getByRole(
+						"button",
+						{
+							name: "Show sidebar",
+						},
+					)
+					.getAttribute("aria-expanded"),
+				mainInert: mainElement(container).hasAttribute("inert"),
+				sheetInert: sheet().hasAttribute("inert"),
+				closeMarked: close.hasAttribute("data-phone-sheet-close"),
+				focused: document.activeElement === close,
+			},
+		).toStrictEqual(
+			{
+				expanded: "true",
+				mainInert: true,
+				sheetInert: false,
+				closeMarked: true,
+				focused: true,
+			},
+		);
 	});
 
-	it("closes on Escape and returns focus to the trigger", async () => {
+	it("closes on Escape and returns focus to the trigger", async () =>
+	{
 		mockViewport(390);
 		const {container} = await renderFrame();
 		await openSheet();
 
-		fireEvent.keyDown(document, {key: "Escape"});
+		fireEvent.keyDown(
+			document,
+			{
+				key: "Escape",
+			},
+		);
 
-		await waitFor(() => {
-			expect(document.activeElement).toBe(screen.getByRole("button", {name: "Show sidebar"}));
+		await waitFor(() =>
+		{
+			expect(document.activeElement).toBe(
+				screen.getByRole(
+					"button",
+					{
+						name: "Show sidebar",
+					},
+				),
+			);
 		});
-		expect({
-			open: sheet().hasAttribute("data-open"),
-			mainInert: mainElement(container).hasAttribute("inert"),
-		}).toStrictEqual({open: false, mainInert: false});
+		expect(
+			{
+				open: sheet().hasAttribute("data-open"),
+				mainInert: mainElement(container).hasAttribute("inert"),
+			},
+		).toStrictEqual(
+			{
+				open: false,
+				mainInert: false,
+			},
+		);
 	});
 
-	it("closes from the Close button and returns focus to the trigger", async () => {
+	it("closes from the Close button and returns focus to the trigger", async () =>
+	{
 		mockViewport(390);
 		const {container} = await renderFrame();
 		await openSheet();
 
-		fireEvent.click(screen.getByRole("button", {name: "Close sidebar"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Close sidebar",
+				},
+			),
+		);
 
-		await waitFor(() => {
-			expect(document.activeElement).toBe(screen.getByRole("button", {name: "Show sidebar"}));
+		await waitFor(() =>
+		{
+			expect(document.activeElement).toBe(
+				screen.getByRole(
+					"button",
+					{
+						name: "Show sidebar",
+					},
+				),
+			);
 		});
-		expect({
-			open: sheet().hasAttribute("data-open"),
-			mainInert: mainElement(container).hasAttribute("inert"),
-		}).toStrictEqual({open: false, mainInert: false});
+		expect(
+			{
+				open: sheet().hasAttribute("data-open"),
+				mainInert: mainElement(container).hasAttribute("inert"),
+			},
+		).toStrictEqual(
+			{
+				open: false,
+				mainInert: false,
+			},
+		);
 	});
 
-	it("draws Close sidebar as upstream's 20px X", async () => {
+	it("draws Close sidebar as upstream's 20px X", async () =>
+	{
 		mockViewport(390);
 		await renderFrame();
 		await openSheet();
 
-		const svg = screen.getByRole("button", {name: "Close sidebar"}).querySelector("svg");
-		expect({
-			glyph: svg
-				?.getAttribute("class")
-				?.split(" ")
-				.filter((name) => name.startsWith("lucide-")),
-			cds: svg?.getAttribute("data-cds"),
-			fontSize: svg?.style.fontSize,
-		}).toStrictEqual({glyph: ["lucide-x"], cds: "Icon", fontSize: "calc(1.25rem * var(--cds-rem-scale, 1))"});
+		const svg = screen
+			.getByRole(
+				"button",
+				{
+					name: "Close sidebar",
+				},
+			)
+			.querySelector("svg");
+		expect(
+			{
+				glyph: svg
+					?.getAttribute("class")
+					?.split(" ")
+					.filter((name) => name.startsWith("lucide-")),
+				cds: svg?.getAttribute("data-cds"),
+				fontSize: svg?.style.fontSize,
+			},
+		).toStrictEqual(
+			{
+				glyph: ["lucide-x"],
+				cds: "Icon",
+				fontSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
+			},
+		);
 	});
 
-	it("ends the nav block 11px below More, as upstream's phone sheet does", async () => {
+	it("ends the nav block 11px below More, as upstream's phone sheet does", async () =>
+	{
 		mockViewport(390);
 		await renderFrame();
 		await openSheet();
@@ -361,255 +576,460 @@ describe("phone sheet sidebar", () => {
 		expect(sheet().querySelector("[data-nav-groups-gap]")?.className).toBe("h-[9.5px] shrink-0");
 	});
 
-	it("puts upstream's full-width Search button under Close and opens the ⌘K default entry forced to Search", async () => {
+	it("puts upstream's full-width Search button under Close and opens the ⌘K default entry forced to Search", async () =>
+	{
 		mockViewport(390);
 		await renderFrame();
 		await openSheet();
 
 		const header = within(screen.getByTestId("phone-sheet-header"));
-		const search = header.getByRole("button", {name: "Search"});
-		expect({
-			buttons: header
-				.getAllByRole("button")
-				.map((button) => button.getAttribute("aria-label") ?? button.textContent),
-			headerLayout: screen
-				.getByTestId("phone-sheet-header")
-				.className.split(" ")
-				.filter((name) => ["flex-col", "gap-2"].includes(name)),
-			closeRadius: header
-				.getByRole("button", {name: "Close sidebar"})
-				.className.split(" ")
-				.filter((name) => name.startsWith("rounded")),
-			searchBox: search.className
-				.split(" ")
-				.filter((name) => ["w-full", "h-10", "rounded-r7", "bg-fill-control", "px-4"].includes(name)),
-			icon: search
-				.querySelector("svg")
-				?.getAttribute("class")
-				?.split(" ")
-				.filter((name) => name === "lucide-search" || name === "-ms-1"),
-			iconSize: search.querySelector("svg")?.style.fontSize,
-		}).toStrictEqual({
-			buttons: ["Close sidebar", "Search"],
-			headerLayout: ["flex-col", "gap-2"],
-			closeRadius: ["rounded-r6"],
-			searchBox: ["h-10", "w-full", "rounded-r7", "bg-fill-control", "px-4"],
-			icon: ["lucide-search", "-ms-1"],
-			iconSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
-		});
+		const search = header.getByRole(
+			"button",
+			{
+				name: "Search",
+			},
+		);
+		expect(
+			{
+				buttons: header
+					.getAllByRole("button")
+					.map((button) => button.getAttribute("aria-label") ?? button.textContent),
+				headerLayout: screen
+					.getByTestId("phone-sheet-header")
+					.className.split(" ")
+					.filter((name) => ["flex-col", "gap-2"].includes(name)),
+				closeRadius: header
+					.getByRole(
+						"button",
+						{
+							name: "Close sidebar",
+						},
+					)
+					.className.split(" ")
+					.filter((name) => name.startsWith("rounded")),
+				searchBox: search.className
+					.split(" ")
+					.filter((name) => ["w-full", "h-10", "rounded-r7", "bg-fill-control", "px-4"].includes(name)),
+				icon: search
+					.querySelector("svg")
+					?.getAttribute("class")
+					?.split(" ")
+					.filter((name) => name === "lucide-search" || name === "-ms-1"),
+				iconSize: search.querySelector("svg")?.style.fontSize,
+			},
+		).toStrictEqual(
+			{
+				buttons: ["Close sidebar", "Search"],
+				headerLayout: ["flex-col", "gap-2"],
+				closeRadius: ["rounded-r6"],
+				searchBox: ["h-10", "w-full", "rounded-r7", "bg-fill-control", "px-4"],
+				icon: ["lucide-search", "-ms-1"],
+				iconSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
+			},
+		);
 
 		fireEvent.click(search);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.getByTestId("palette-probe").textContent).toBe("open:default:search");
 		});
 	});
 
-	it("drops the Search icon from the sheet footer", async () => {
+	it("drops the Search icon from the sheet footer", async () =>
+	{
 		mockViewport(390);
 		await renderFrame();
 		await openSheet();
 
 		const footer = within(sheet()).getByTestId("sidebar-footer");
-		expect({
-			search: within(footer).queryByRole("button", {name: "Search"}),
-			accountWidth: within(footer)
-				.getByTestId("user-menu-button")
-				.className.split(" ")
-				.filter((name) => name === "w-full"),
-		}).toStrictEqual({search: null, accountWidth: ["w-full"]});
+		expect(
+			{
+				search: within(footer).queryByRole(
+					"button",
+					{
+						name: "Search",
+					},
+				),
+				accountWidth: within(footer)
+					.getByTestId("user-menu-button")
+					.className.split(" ")
+					.filter((name) => name === "w-full"),
+			},
+		).toStrictEqual(
+			{
+				search: null,
+				accountWidth: ["w-full"],
+			},
+		);
 	});
 
-	it("closes when the route changes", async () => {
+	it("closes when the route changes", async () =>
+	{
 		mockViewport(390);
 		const {router} = await renderFrame();
 		await openSheet();
 
-		await act(async () => router.navigate({to: "/plans"}));
+		await act(async () =>
+			router.navigate(
+				{
+					to: "/plans",
+				},
+			),
+		);
 
 		await waitFor(() => screen.getByText("Other page"));
 		expect(sheet().hasAttribute("data-open")).toBe(false);
 	});
 
-	it("closes on browser Back (popstate)", async () => {
+	it("closes on browser Back (popstate)", async () =>
+	{
 		mockViewport(390);
 		await renderFrame();
 		await openSheet();
 
-		act(() => {
+		act(() =>
+		{
 			window.dispatchEvent(new PopStateEvent("popstate"));
 		});
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sheet().hasAttribute("data-open")).toBe(false);
 		});
 	});
 
-	it("does not render the sheet at 640px and wider", async () => {
+	it("does not render the sheet at 640px and wider", async () =>
+	{
 		mockViewport(640);
 		const {container} = await renderFrame();
 
-		expect({
-			phoneSheet: frameRoot(container).hasAttribute("data-phone-sheet"),
-			sheet: document.getElementById("sidebar-sheet"),
-		}).toStrictEqual({phoneSheet: false, sheet: null});
+		expect(
+			{
+				phoneSheet: frameRoot(container).hasAttribute("data-phone-sheet"),
+				sheet: document.getElementById("sidebar-sheet"),
+			},
+		).toStrictEqual(
+			{
+				phoneSheet: false,
+				sheet: null,
+			},
+		);
 	});
 });
 
-describe("narrow viewport forced collapse", () => {
-	it("renders collapsed at 700px (the default 288px sidebar's narrow threshold) without touching the stored preference", async () => {
+describe("narrow viewport forced collapse", () =>
+{
+	it("renders collapsed at 700px (the default 288px sidebar's narrow threshold) without touching the stored preference", async () =>
+	{
 		mockViewport(700);
-		writeSidebarState({...readSidebarState(), collapsed: false});
+		writeSidebarState(
+			{
+				...readSidebarState(),
+				collapsed: false,
+			},
+		);
 		const storedBefore = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
 		const {container} = await renderFrame();
 
-		const trigger = screen.getByRole("button", {name: "Show sidebar"});
-		expect({
-			phoneSheet: frameRoot(container).hasAttribute("data-phone-sheet"),
-			collapsed: screen.queryByTestId("sidebar-collapsed") !== null,
-			hide: screen.queryByRole("button", {name: "Hide sidebar"}),
-			shortcut: trigger.getAttribute("aria-keyshortcuts"),
-			stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
-			storedCollapsed: readSidebarState().collapsed,
-			clearance: clearanceVars(container),
-		}).toStrictEqual({
-			phoneSheet: false,
-			collapsed: true,
-			clearance: {start: "41px", top: "9px"},
-			hide: null,
-			shortcut: "Control+b",
-			stored: storedBefore,
-			storedCollapsed: false,
-		});
+		const trigger = screen.getByRole(
+			"button",
+			{
+				name: "Show sidebar",
+			},
+		);
+		expect(
+			{
+				phoneSheet: frameRoot(container).hasAttribute("data-phone-sheet"),
+				collapsed: screen.queryByTestId("sidebar-collapsed") !== null,
+				hide: screen.queryByRole(
+					"button",
+					{
+						name: "Hide sidebar",
+					},
+				),
+				shortcut: trigger.getAttribute("aria-keyshortcuts"),
+				stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
+				storedCollapsed: readSidebarState().collapsed,
+				clearance: clearanceVars(container),
+			},
+		).toStrictEqual(
+			{
+				phoneSheet: false,
+				collapsed: true,
+				clearance:
+				{
+					start: "41px",
+					top: "9px",
+				},
+				hide: null,
+				shortcut: "Control+b",
+				stored: storedBefore,
+				storedCollapsed: false,
+			},
+		);
 	});
 
-	it("opens the peek from a trigger click instead of changing the stored preference", async () => {
+	it("opens the peek from a trigger click instead of changing the stored preference", async () =>
+	{
 		mockViewport(700);
-		writeSidebarState({...readSidebarState(), collapsed: false});
+		writeSidebarState(
+			{
+				...readSidebarState(),
+				collapsed: false,
+			},
+		);
 		const storedBefore = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
 		await renderFrame();
 
-		fireEvent.click(screen.getByRole("button", {name: "Show sidebar"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show sidebar",
+				},
+			),
+		);
 
-		expect({
-			hovering: screen.getByTestId("sidebar-collapsed").hasAttribute("data-hovering"),
-			stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
-		}).toStrictEqual({hovering: true, stored: storedBefore});
+		expect(
+			{
+				hovering: screen.getByTestId("sidebar-collapsed").hasAttribute("data-hovering"),
+				stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
+			},
+		).toStrictEqual(
+			{
+				hovering: true,
+				stored: storedBefore,
+			},
+		);
 	});
 
-	it("toggles the peek with Ctrl+B instead of the stored preference, as upstream's narrow toggleCollapsed", async () => {
+	it("toggles the peek with Ctrl+B instead of the stored preference, as upstream's narrow toggleCollapsed", async () =>
+	{
 		mockViewport(700);
-		writeSidebarState({...readSidebarState(), collapsed: false});
+		writeSidebarState(
+			{
+				...readSidebarState(),
+				collapsed: false,
+			},
+		);
 		const storedBefore = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
 		await renderFrame();
 		const root = screen.getByTestId("sidebar-collapsed");
-		const pressToggle = () => {
-			act(() => {
-				fireEvent.keyDown(document.body, {key: "b", code: "KeyB", ctrlKey: true});
+		const pressToggle = () =>
+		{
+			act(() =>
+			{
+				fireEvent.keyDown(
+					document.body,
+					{
+						key: "b",
+						code: "KeyB",
+						ctrlKey: true,
+					},
+				);
 			});
 			return {
 				hovering: root.hasAttribute("data-hovering"),
-				expanded: screen.getByRole("button", {name: "Show sidebar"}).getAttribute("aria-expanded"),
+				expanded: screen
+					.getByRole(
+						"button",
+						{
+							name: "Show sidebar",
+						},
+					)
+					.getAttribute("aria-expanded"),
 				stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
 			};
 		};
 
-		expect({first: pressToggle(), second: pressToggle()}).toStrictEqual({
-			first: {hovering: true, expanded: "true", stored: storedBefore},
-			second: {hovering: false, expanded: "false", stored: storedBefore},
-		});
+		expect(
+			{
+				first: pressToggle(),
+				second: pressToggle(),
+			},
+		).toStrictEqual(
+			{
+				first:
+				{
+					hovering: true,
+					expanded: "true",
+					stored: storedBefore,
+				},
+				second:
+				{
+					hovering: false,
+					expanded: "false",
+					stored: storedBefore,
+				},
+			},
+		);
 	});
 
-	it("keeps the peek open after hover plus click and closes it on an outside press", async () => {
+	it("keeps the peek open after hover plus click and closes it on an outside press", async () =>
+	{
 		mockViewport(700);
 		const {container} = await renderFrame();
-		const trigger = screen.getByRole("button", {name: "Show sidebar"});
+		const trigger = screen.getByRole(
+			"button",
+			{
+				name: "Show sidebar",
+			},
+		);
 		const root = screen.getByTestId("sidebar-collapsed");
 
-		act(() => {
-			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		act(() =>
+		{
+			fireEvent.pointerEnter(
+				trigger,
+				{
+					pointerType: "mouse",
+				},
+			);
 		});
 		fireEvent.click(trigger);
 		const afterClick = root.hasAttribute("data-hovering");
 
-		act(() => {
+		act(() =>
+		{
 			fireEvent.pointerDown(mainElement(container));
 		});
 
-		expect({afterClick, afterOutside: root.hasAttribute("data-hovering")}).toStrictEqual({
-			afterClick: true,
-			afterOutside: false,
-		});
+		expect(
+			{
+				afterClick,
+				afterOutside: root.hasAttribute("data-hovering"),
+			},
+		).toStrictEqual(
+			{
+				afterClick: true,
+				afterOutside: false,
+			},
+		);
 	});
 
-	it("keeps the default-width sidebar docked at 720px, above upstream's max(700, width + 329) threshold", async () => {
+	it("keeps the default-width sidebar docked at 720px, above upstream's max(700, width + 329) threshold", async () =>
+	{
 		mockViewport(720);
-		writeSidebarState({...readSidebarState(), collapsed: false, width: 288});
+		writeSidebarState(
+			{
+				...readSidebarState(),
+				collapsed: false,
+				width: 288,
+			},
+		);
 		const {container} = await renderFrame();
 
-		expect({
-			collapsed: screen.queryByTestId("sidebar-collapsed"),
-			// The docked nav's own breakpoint must not hide it below 768px (it was `hidden md:flex`).
-			navigationShownFrom: [
-				...(container.querySelector("nav[data-focus-region=navigation]")?.classList ?? []),
-			].filter((token) => token === "hidden" || token.endsWith(":flex")),
-			hide: screen.getByRole("button", {name: "Hide sidebar"}).tagName,
-			clearance: clearanceVars(container),
-		}).toStrictEqual({
-			collapsed: null,
-			navigationShownFrom: ["hidden", "min-[701px]:flex"],
-			hide: "BUTTON",
-			clearance: {start: "", top: ""},
-		});
+		expect(
+			{
+				collapsed: screen.queryByTestId("sidebar-collapsed"),
+				// The docked nav's own breakpoint must not hide it below 768px (it was `hidden md:flex`).
+				navigationShownFrom: [
+					...(container.querySelector("nav[data-focus-region=navigation]")?.classList ?? []),
+				].filter((token) => token === "hidden" || token.endsWith(":flex")),
+				hide: screen.getByRole(
+					"button",
+					{
+						name: "Hide sidebar",
+					},
+				).tagName,
+				clearance: clearanceVars(container),
+			},
+		).toStrictEqual(
+			{
+				collapsed: null,
+				navigationShownFrom: ["hidden", "min-[701px]:flex"],
+				hide: "BUTTON",
+				clearance:
+				{
+					start: "",
+					top: "",
+				},
+			},
+		);
 	});
 
-	it("moves the narrow threshold with the sidebar width: a 420px sidebar collapses at 740px and docks at 750px", async () => {
-		writeSidebarState({...readSidebarState(), collapsed: false, width: 420});
+	it("moves the narrow threshold with the sidebar width: a 420px sidebar collapses at 740px and docks at 750px", async () =>
+	{
+		writeSidebarState(
+			{
+				...readSidebarState(),
+				collapsed: false,
+				width: 420,
+			},
+		);
 		const storedBefore = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
-		const layoutAt = async (width: number) => {
+		const layoutAt = async (width: number) =>
+		{
 			mockViewport(width);
 			await renderFrame();
-			const layout = {
+			const layout =
+			{
 				collapsed: screen.queryByTestId("sidebar-collapsed") !== null,
-				hide: screen.queryByRole("button", {name: "Hide sidebar"}) !== null,
+				hide:
+					screen.queryByRole(
+						"button",
+						{
+							name: "Hide sidebar",
+						},
+					) !== null,
 			};
 			cleanup();
 			return layout;
 		};
 
-		expect({
-			at740: await layoutAt(740),
-			at750: await layoutAt(750),
-			stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
-		}).toStrictEqual({
-			at740: {collapsed: true, hide: false},
-			at750: {collapsed: false, hide: true},
-			stored: storedBefore,
-		});
+		expect(
+			{
+				at740: await layoutAt(740),
+				at750: await layoutAt(750),
+				stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
+			},
+		).toStrictEqual(
+			{
+				at740:
+				{
+					collapsed: true,
+					hide: false,
+				},
+				at750:
+				{
+					collapsed: false,
+					hide: true,
+				},
+				stored: storedBefore,
+			},
+		);
 	});
 
-	it("builds upstream's narrow query from the sidebar width: max(700, ceil(width) + 329)", () => {
-		expect({
-			default: narrowViewportQuery(288),
-			max: narrowViewportQuery(420),
-			min: narrowViewportQuery(232),
-			fractional: narrowViewportQuery(400.2),
-		}).toStrictEqual({
-			default: "(max-width: 700px)",
-			max: "(max-width: 749px)",
-			min: "(max-width: 700px)",
-			fractional: "(max-width: 730px)",
-		});
+	it("builds upstream's narrow query from the sidebar width: max(700, ceil(width) + 329)", () =>
+	{
+		expect(
+			{
+				default: narrowViewportQuery(288),
+				max: narrowViewportQuery(420),
+				min: narrowViewportQuery(232),
+				fractional: narrowViewportQuery(400.2),
+			},
+		).toStrictEqual(
+			{
+				default: "(max-width: 700px)",
+				max: "(max-width: 749px)",
+				min: "(max-width: 700px)",
+				fractional: "(max-width: 730px)",
+			},
+		);
 	});
 
-	it("marks the main column with the upstream data-perf-region anchor", async () => {
+	it("marks the main column with the upstream data-perf-region anchor", async () =>
+	{
 		mockViewport(1024);
 		const {container} = await renderFrame();
 
 		expect(mainElement(container).getAttribute("data-perf-region")).toBe("main");
 	});
 
-	it("makes the main column a containing block so absolute descendants cannot stretch the document", async () => {
+	it("makes the main column a containing block so absolute descendants cannot stretch the document", async () =>
+	{
 		mockViewport(390);
 		const {container} = await renderFrame();
 
@@ -617,52 +1037,77 @@ describe("narrow viewport forced collapse", () => {
 	});
 });
 
-describe("phone sheet CSS", () => {
+describe("phone sheet CSS", () =>
+{
 	const styles = readFileSync("src/styles/globals.css", "utf8");
-	const rule = (selector: string) => {
-		const start = styles.indexOf(`${selector} {`);
+	const rule = (selector: string) =>
+	{
+		const start = ruleStart(styles, selector);
 		return styles.slice(start, styles.indexOf("}", start));
 	};
 
-	it("insets the sheet only for safe areas, so its rows sit 8px in as upstream's px-2 body", () => {
+	it("insets the sheet only for safe areas, so its rows sit 8px in as upstream's px-2 body", () =>
+	{
 		expect(/padding:[^;]*max\(8px/.test(rule("\n.phone-sheet"))).toBe(false);
 	});
 
-	it("keeps an expanded sidebar group's caret visible on touch, as upstream's [data-group-caret] touch rule", () => {
-		const caret = styles.indexOf("\t[data-group-caret] {");
+	it("keeps an expanded sidebar group's caret visible on touch, as upstream's [data-group-caret] touch rule", () =>
+	{
+		const caret = ruleStart(styles, "\t[data-group-caret]");
 		const media = styles.lastIndexOf("\n@media ", caret);
-		expect({
-			touchMedia:
-				styles.startsWith("\n@media (pointer: coarse), (hover: none) {", media) &&
-				!styles.slice(media, caret).includes("\n}"),
-			rule: rule("\t[data-group-caret]").trim(),
-		}).toStrictEqual({touchMedia: true, rule: "[data-group-caret] {\n\t\topacity: 1;"});
+		expect(
+			{
+				touchMedia:
+					styles.startsWith("\n@media (pointer: coarse), (hover: none)\n{", media) &&
+					!styles.slice(media, caret).includes("\n}"),
+				rule: rule("\t[data-group-caret]").trim(),
+			},
+		).toStrictEqual(
+			{
+				touchMedia: true,
+				rule: "[data-group-caret]\n\t{\n\t\topacity: 1;",
+			},
+		);
 	});
 
-	it("re-resolves the row-height label band against the phone sheet's 44px rows and inherits the rest of upstream's df-session-list tokens", () => {
+	it("re-resolves the row-height label band against the phone sheet's 44px rows and inherits the rest of upstream's df-session-list tokens", () =>
+	{
 		const sheet = rule("\n.phone-sheet");
 		const vars = Object.fromEntries(
 			[...sheet.matchAll(/(--sb-(?:group|row-stack)[\w-]*): ([^;]+);/g)].map((match) => [match[1], match[2]]),
 		);
-		expect(vars).toStrictEqual({
-			"--sb-group-band-h": "var(--sb-row-h)",
-		});
+		expect(vars).toStrictEqual(
+			{
+				"--sb-group-band-h": "var(--sb-row-h)",
+			},
+		);
 	});
 
-	it("drives sidebar group spacing from the band and stack-gap variables", () => {
+	it("drives sidebar group spacing from the band and stack-gap variables", () =>
+	{
 		const source = readFileSync("src/components/sidebar/session-group-section.tsx", "utf8");
-		expect({
-			stackGaps: source.split("gap-[var(--sb-row-stack-gap)]").length - 1,
-			bandMargins: source.split("mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)]").length - 1,
-			labelPadding:
-				source.split("pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)]")
-					.length - 1,
-			oldMinHeight: source.includes("min-h-[calc(var(--sb-group-pt)"),
-		}).toStrictEqual({stackGaps: 1, bandMargins: 2, labelPadding: 2, oldMinHeight: false});
+		expect(
+			{
+				stackGaps: source.split("gap-[var(--sb-row-stack-gap)]").length - 1,
+				bandMargins: source.split("mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)]").length - 1,
+				labelPadding:
+					source.split("pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)]")
+						.length - 1,
+				oldMinHeight: source.includes("min-h-[calc(var(--sb-group-pt)"),
+			},
+		).toStrictEqual(
+			{
+				stackGaps: 1,
+				bandMargins: 2,
+				labelPadding: 2,
+				oldMinHeight: false,
+			},
+		);
 	});
 
-	it("reveals the touch kebab only on the data-touch-menu row and shifts its mark beside it, as upstream's touch: rules", () => {
-		const reveal = styles.indexOf("[data-touch-menu] .df-touch-reveal {");
+	it("reveals the touch kebab only on the data-touch-menu row and shifts its mark beside it, as upstream's touch: rules", () =>
+	{
+		const reveal = ruleStart(styles, "[data-touch-menu] .df-touch-reveal");
 		const before = styles.slice(Math.max(0, reveal - 200), reveal);
 		const declarations = (selector: string) =>
 			rule(selector)
@@ -670,16 +1115,20 @@ describe("phone sheet CSS", () => {
 				.split(";")
 				.map((declaration) => declaration.trim())
 				.filter((declaration) => declaration !== "");
-		expect({
-			touchMedia: /@media \(pointer: coarse\), \(hover: none\) \{\s*$/.test(before),
-			sheetWide: styles.includes(".phone-sheet .df-touch-reveal"),
-			decoration: declarations("\t[data-touch-menu] [data-row-decoration]"),
-			label: declarations("\t[data-touch-menu] [data-row-main-button] [data-row-label]"),
-		}).toStrictEqual({
-			touchMedia: true,
-			sheetWide: false,
-			decoration: ["right: calc(var(--sb-row-ctl-inset) + var(--sb-row-ctl) + 4px)"],
-			label: ["padding-inline-end: calc(var(--sb-row-ctl) * 2 + 4px)"],
-		});
+		expect(
+			{
+				touchMedia: /@media \(pointer: coarse\), \(hover: none\)\s*\{\s*$/.test(before),
+				sheetWide: styles.includes(".phone-sheet .df-touch-reveal"),
+				decoration: declarations("\t[data-touch-menu] [data-row-decoration]"),
+				label: declarations("\t[data-touch-menu] [data-row-main-button] [data-row-label]"),
+			},
+		).toStrictEqual(
+			{
+				touchMedia: true,
+				sheetWide: false,
+				decoration: ["right: calc(var(--sb-row-ctl-inset) + var(--sb-row-ctl) + 4px)"],
+				label: ["padding-inline-end: calc(var(--sb-row-ctl) * 2 + 4px)"],
+			},
+		);
 	});
 });

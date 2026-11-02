@@ -1,5 +1,6 @@
 import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {
+import
+{
 	appendFileSync,
 	writeFileSync,
 	mkdirSync,
@@ -13,7 +14,8 @@ import {
 import {createServer, type Server} from "node:net";
 import {dirname, join} from "node:path";
 import {tmpdir} from "node:os";
-import {
+import
+{
 	__testing,
 	addClient,
 	removeClient,
@@ -26,7 +28,8 @@ import {
 	processJsonlAppend,
 	rebroadcastSessionsById,
 } from "../src/lib/watcher";
-import {
+import
+{
 	clearSessionRegistry,
 	refreshSessionRegistry,
 	startSessionRegistryMonitor,
@@ -46,7 +49,8 @@ import * as recursiveWatch from "../src/lib/recursive-watch";
 import type {RecursiveWatcher} from "../src/lib/recursive-watch";
 import {runGit} from "./git-fixture";
 
-const {
+const
+{
 	toSessionSummaryPayload,
 	sessionSummariesEqual,
 	toTaskSummaryPayload,
@@ -56,16 +60,19 @@ const {
 	handlePlanMdUnlink,
 } = __testing;
 
-interface CapturedBroadcast {
+interface CapturedBroadcast
+{
 	type: string;
 	data: Record<string, unknown>;
 }
 
-function jsonl(...lines: Record<string, unknown>[]): string {
+function jsonl(...lines: Record<string, unknown>[]): string
+{
 	return lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
 }
 
-function makeSession(overrides: Partial<SessionEntry> = {}): SessionEntry {
+function makeSession(overrides: Partial<SessionEntry> = {}): SessionEntry
+{
 	return {
 		id: "sess-1",
 		title: "Hello",
@@ -83,7 +90,8 @@ function makeSession(overrides: Partial<SessionEntry> = {}): SessionEntry {
 	};
 }
 
-function makeTask(overrides: Partial<TaskRow> = {}): TaskRow {
+function makeTask(overrides: Partial<TaskRow> = {}): TaskRow
+{
 	return {
 		taskId: "task-1",
 		projectDir: "proj",
@@ -102,7 +110,12 @@ function makeTask(overrides: Partial<TaskRow> = {}): TaskRow {
 function createLinkedWorktree(
 	repositoryDirectory: string,
 	fixtureDirectory: string,
-): {repositoryIndexPath: string; worktreeDirectory: string} {
+):
+{
+	repositoryIndexPath: string;
+	worktreeDirectory: string;
+}
+{
 	writeFileSync(join(repositoryDirectory, "initial.txt"), "Initial tracked content.\n");
 	runGit(repositoryDirectory, ["add", "initial.txt"]);
 	runGit(repositoryDirectory, [
@@ -123,48 +136,92 @@ function createLinkedWorktree(
 		"--git-path",
 		"index",
 	]);
-	return {repositoryIndexPath, worktreeDirectory};
+	return {
+		repositoryIndexPath,
+		worktreeDirectory,
+	};
 }
 
 // Every getDb() caller in this file must see the in-memory test database, never the
 // real cache DB. Assign the holder instead of seeding it, because a handler that ran
 // before this hook would otherwise have created the holder with the real database.
 const sharedDb: AppDb = openTestDb();
-const dbHolder = hmrPersist<{db: AppDb | null}>("appDbHolder", () => ({db: null}));
+const dbHolder = hmrPersist<
+{
+	db: AppDb | null;
+}>("appDbHolder", () => (
+{
+	db: null,
+}));
 
-beforeAll(() => {
+beforeAll(() =>
+{
 	dbHolder.db = sharedDb;
 });
 
-afterAll(() => {
+afterAll(() =>
+{
 	dbHolder.db = null;
 	sharedDb.close();
 });
 
-describe("handleFileChange", () => {
+describe("handleFileChange", () =>
+{
 	const testDir = join(tmpdir(), "watcher-debounce-test-" + process.pid);
 
-	beforeEach(() => {
-		mkdirSync(testDir, {recursive: true});
+	beforeEach(() =>
+	{
+		mkdirSync(
+			testDir,
+			{
+				recursive: true,
+			},
+		);
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2000-01-01T00:00:00.000Z"));
 		__testing.resetJsonlThrottle();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		__testing.resetJsonlThrottle();
 		vi.restoreAllMocks();
 		vi.useRealTimers();
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("fires changes for two interleaved JSONL paths", async () => {
+	it("fires changes for two interleaved JSONL paths", async () =>
+	{
 		const alicePath = join(testDir, "alice-session.jsonl");
 		const bobPath = join(testDir, "bob-session.jsonl");
-		const aliceFirstLine = jsonl({type: "user", sessionId: "alice-session"});
-		const aliceSecondLine = jsonl({type: "assistant", sessionId: "alice-session"});
+		const aliceFirstLine = jsonl(
+			{
+				type: "user",
+				sessionId: "alice-session",
+			},
+		);
+		const aliceSecondLine = jsonl(
+			{
+				type: "assistant",
+				sessionId: "alice-session",
+			},
+		);
 		writeFileSync(alicePath, aliceFirstLine);
-		writeFileSync(bobPath, jsonl({type: "user", sessionId: "bob-session"}));
+		writeFileSync(
+			bobPath,
+			jsonl(
+				{
+					type: "user",
+					sessionId: "bob-session",
+				},
+			),
+		);
 		const readNewJsonlLines = vi.spyOn(sessions, "readNewJsonlLines");
 
 		await __testing.handleFileChange(alicePath);
@@ -176,7 +233,8 @@ describe("handleFileChange", () => {
 		await vi.advanceTimersByTimeAsync(1_800);
 
 		// Timer delivery starts the append pipeline; its filesystem reads still finish asynchronously.
-		await vi.waitFor(() => {
+		await vi.waitFor(() =>
+		{
 			expect(new Set(readNewJsonlLines.mock.calls.map(([path]) => path))).toStrictEqual(
 				new Set([alicePath, bobPath]),
 			);
@@ -184,28 +242,68 @@ describe("handleFileChange", () => {
 	});
 });
 
-describe("expediteSessionJsonlRead", () => {
+describe("expediteSessionJsonlRead", () =>
+{
 	const testDir = join(tmpdir(), "watcher-expedite-test-" + process.pid);
 	const alicePath = join(testDir, "alice-session.jsonl");
 	const bobPath = join(testDir, "bob-session.jsonl");
 
-	beforeEach(() => {
-		mkdirSync(testDir, {recursive: true});
+	beforeEach(() =>
+	{
+		mkdirSync(
+			testDir,
+			{
+				recursive: true,
+			},
+		);
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2000-01-01T00:00:00.000Z"));
 		__testing.resetJsonlThrottle();
-		writeFileSync(alicePath, jsonl({type: "user", sessionId: "alice-session"}));
-		writeFileSync(bobPath, jsonl({type: "user", sessionId: "bob-session"}));
+		writeFileSync(
+			alicePath,
+			jsonl(
+				{
+					type: "user",
+					sessionId: "alice-session",
+				},
+			),
+		);
+		writeFileSync(
+			bobPath,
+			jsonl(
+				{
+					type: "user",
+					sessionId: "bob-session",
+				},
+			),
+		);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		__testing.resetJsonlThrottle();
 		vi.restoreAllMocks();
 		vi.useRealTimers();
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	function readCounts(readNewJsonlLines: {mock: {calls: unknown[][]}}): {alice: number; bob: number} {
+	function readCounts(readNewJsonlLines: {
+		mock:
+		{
+			calls: unknown[][];
+		};
+	}):
+	{
+		alice: number;
+		bob: number;
+	}
+	{
 		const paths = readNewJsonlLines.mock.calls.map(([path]) => path);
 		return {
 			alice: paths.filter((path) => path === alicePath).length,
@@ -213,112 +311,257 @@ describe("expediteSessionJsonlRead", () => {
 		};
 	}
 
-	it("reads only the answered session's next change at once, one time, while other sessions stay throttled", async () => {
+	it("reads only the answered session's next change at once, one time, while other sessions stay throttled", async () =>
+	{
 		const readNewJsonlLines = vi.spyOn(sessions, "readNewJsonlLines");
 		await __testing.handleFileChange(alicePath);
 		await __testing.handleFileChange(bobPath);
-		await vi.waitFor(() => {
-			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 1, bob: 1});
+		await vi.waitFor(() =>
+		{
+			expect(readCounts(readNewJsonlLines)).toStrictEqual(
+				{
+					alice: 1,
+					bob: 1,
+				},
+			);
 		});
 		await vi.advanceTimersByTimeAsync(100);
 
 		expediteSessionJsonlRead("alice-session");
-		appendFileSync(alicePath, jsonl({type: "assistant", sessionId: "alice-session"}));
-		appendFileSync(bobPath, jsonl({type: "assistant", sessionId: "bob-session"}));
+		appendFileSync(
+			alicePath,
+			jsonl(
+				{
+					type: "assistant",
+					sessionId: "alice-session",
+				},
+			),
+		);
+		appendFileSync(
+			bobPath,
+			jsonl(
+				{
+					type: "assistant",
+					sessionId: "bob-session",
+				},
+			),
+		);
 		await __testing.handleFileChange(alicePath);
 		await __testing.handleFileChange(bobPath);
-		await vi.waitFor(() => {
-			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 2, bob: 1});
+		await vi.waitFor(() =>
+		{
+			expect(readCounts(readNewJsonlLines)).toStrictEqual(
+				{
+					alice: 2,
+					bob: 1,
+				},
+			);
 		});
 
 		// One-shot: the answered session's following change is throttled again.
 		await vi.advanceTimersByTimeAsync(100);
-		appendFileSync(alicePath, jsonl({type: "assistant", sessionId: "alice-session"}));
+		appendFileSync(
+			alicePath,
+			jsonl(
+				{
+					type: "assistant",
+					sessionId: "alice-session",
+				},
+			),
+		);
 		await __testing.handleFileChange(alicePath);
 		await vi.advanceTimersByTimeAsync(0);
-		expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 2, bob: 1});
+		expect(readCounts(readNewJsonlLines)).toStrictEqual(
+			{
+				alice: 2,
+				bob: 1,
+			},
+		);
 
 		await vi.advanceTimersByTimeAsync(2_000);
-		await vi.waitFor(() => {
-			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 3, bob: 2});
+		await vi.waitFor(() =>
+		{
+			expect(readCounts(readNewJsonlLines)).toStrictEqual(
+				{
+					alice: 3,
+					bob: 2,
+				},
+			);
 		});
 	});
 
-	it("fires the answered session's pending trailing read at once", async () => {
+	it("fires the answered session's pending trailing read at once", async () =>
+	{
 		const readNewJsonlLines = vi.spyOn(sessions, "readNewJsonlLines");
 		await __testing.handleFileChange(alicePath);
 		await __testing.handleFileChange(bobPath);
-		await vi.waitFor(() => {
-			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 1, bob: 1});
+		await vi.waitFor(() =>
+		{
+			expect(readCounts(readNewJsonlLines)).toStrictEqual(
+				{
+					alice: 1,
+					bob: 1,
+				},
+			);
 		});
 		await vi.advanceTimersByTimeAsync(100);
-		appendFileSync(alicePath, jsonl({type: "assistant", sessionId: "alice-session"}));
-		appendFileSync(bobPath, jsonl({type: "assistant", sessionId: "bob-session"}));
+		appendFileSync(
+			alicePath,
+			jsonl(
+				{
+					type: "assistant",
+					sessionId: "alice-session",
+				},
+			),
+		);
+		appendFileSync(
+			bobPath,
+			jsonl(
+				{
+					type: "assistant",
+					sessionId: "bob-session",
+				},
+			),
+		);
 		await __testing.handleFileChange(alicePath);
 		await __testing.handleFileChange(bobPath);
 		await vi.advanceTimersByTimeAsync(0);
-		expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 1, bob: 1});
+		expect(readCounts(readNewJsonlLines)).toStrictEqual(
+			{
+				alice: 1,
+				bob: 1,
+			},
+		);
 
 		expediteSessionJsonlRead("alice-session");
-		await vi.waitFor(() => {
-			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 2, bob: 1});
+		await vi.waitFor(() =>
+		{
+			expect(readCounts(readNewJsonlLines)).toStrictEqual(
+				{
+					alice: 2,
+					bob: 1,
+				},
+			);
 		});
 
 		await vi.advanceTimersByTimeAsync(2_000);
-		await vi.waitFor(() => {
-			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 2, bob: 2});
+		await vi.waitFor(() =>
+		{
+			expect(readCounts(readNewJsonlLines)).toStrictEqual(
+				{
+					alice: 2,
+					bob: 2,
+				},
+			);
 		});
 	});
 
-	it("lets an unused expedite lapse, so a much later change is throttled as usual", async () => {
+	it("lets an unused expedite lapse, so a much later change is throttled as usual", async () =>
+	{
 		const readNewJsonlLines = vi.spyOn(sessions, "readNewJsonlLines");
 		expediteSessionJsonlRead("alice-session");
 		await vi.advanceTimersByTimeAsync(10_000);
 		// Unthrottled anyway, so this read leaves the stale bypass armed if it never lapsed.
 		await __testing.handleFileChange(alicePath);
-		await vi.waitFor(() => {
-			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 1, bob: 0});
+		await vi.waitFor(() =>
+		{
+			expect(readCounts(readNewJsonlLines)).toStrictEqual(
+				{
+					alice: 1,
+					bob: 0,
+				},
+			);
 		});
 		await vi.advanceTimersByTimeAsync(100);
-		appendFileSync(alicePath, jsonl({type: "assistant", sessionId: "alice-session"}));
+		appendFileSync(
+			alicePath,
+			jsonl(
+				{
+					type: "assistant",
+					sessionId: "alice-session",
+				},
+			),
+		);
 		await __testing.handleFileChange(alicePath);
 		await vi.advanceTimersByTimeAsync(0);
-		expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 1, bob: 0});
+		expect(readCounts(readNewJsonlLines)).toStrictEqual(
+			{
+				alice: 1,
+				bob: 0,
+			},
+		);
 	});
 });
 
-describe("handleFileChange outside the projects directory", () => {
+describe("handleFileChange outside the projects directory", () =>
+{
 	let fixtureDirectory: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		fixtureDirectory = realpathSync(mkdtempSync(join(tmpdir(), "watcher-projects-dir-test-")));
 		__testing.resetJsonlThrottle();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		__testing.setProjectsDir("");
 		__testing.resetJsonlThrottle();
 		vi.restoreAllMocks();
-		rmSync(fixtureDirectory, {recursive: true, force: true});
+		rmSync(
+			fixtureDirectory,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("reads appended lines only from transcripts, never from an application's own .jsonl log", async () => {
+	it("reads appended lines only from transcripts, never from an application's own .jsonl log", async () =>
+	{
 		const projectsDirectory = join(fixtureDirectory, "projects");
 		const sessionDirectory = join(projectsDirectory, "-home-alice-app");
 		const logDirectory = join(fixtureDirectory, "app", "logs");
-		mkdirSync(sessionDirectory, {recursive: true});
-		mkdirSync(logDirectory, {recursive: true});
+		mkdirSync(
+			sessionDirectory,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			logDirectory,
+			{
+				recursive: true,
+			},
+		);
 		const transcriptPath = join(sessionDirectory, "alice-session.jsonl");
 		const logPath = join(logDirectory, "logstash.jsonl");
-		writeFileSync(transcriptPath, jsonl({type: "user", sessionId: "alice-session"}));
-		writeFileSync(logPath, jsonl({level: "INFO", message: "started"}));
+		writeFileSync(
+			transcriptPath,
+			jsonl(
+				{
+					type: "user",
+					sessionId: "alice-session",
+				},
+			),
+		);
+		writeFileSync(
+			logPath,
+			jsonl(
+				{
+					level: "INFO",
+					message: "started",
+				},
+			),
+		);
 		__testing.setProjectsDir(projectsDirectory);
 		const readNewJsonlLines = vi.spyOn(sessions, "readNewJsonlLines");
 
 		await __testing.handleFileChange(logPath);
 		await __testing.handleFileChange(transcriptPath);
 
-		await vi.waitFor(() => {
+		await vi.waitFor(() =>
+		{
 			// An earlier test's trailing throttle timer can still read its own file.
 			expect(
 				readNewJsonlLines.mock.calls.map(([path]) => path).filter((path) => path.startsWith(fixtureDirectory)),
@@ -327,11 +570,13 @@ describe("handleFileChange outside the projects directory", () => {
 	});
 });
 
-describe("handleFileChange file content", () => {
+describe("handleFileChange file content", () =>
+{
 	let fixtureDirectory: string;
 	let repositoryDirectory: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		fixtureDirectory = realpathSync(mkdtempSync(join(tmpdir(), "watcher-file-content-test-")));
 		repositoryDirectory = join(fixtureDirectory, "repository");
 		mkdirSync(repositoryDirectory);
@@ -339,14 +584,22 @@ describe("handleFileChange file content", () => {
 		__testing.setFileContentRoots([repositoryDirectory]);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		__testing.setFileContentRoots([]);
-		rmSync(fixtureDirectory, {recursive: true, force: true});
+		rmSync(
+			fixtureDirectory,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 		// The file's db outlives each test, so drop what this one indexed before the next one reads the table.
 		sharedDb.index.run(sql`DELETE FROM file_content`);
 	});
 
-	it("indexes an untracked file only after git add changes the repository index", async () => {
+	it("indexes an untracked file only after git add changes the repository index", async () =>
+	{
 		const filePath = join(repositoryDirectory, "alice.txt");
 		const gitIndexPath = join(repositoryDirectory, ".git", "index");
 		writeFileSync(filePath, "Alice's searchable file content.\n");
@@ -363,14 +616,28 @@ describe("handleFileChange file content", () => {
 		await __testing.handleFileChange(gitIndexPath);
 		const rowsAfterRemoval = sharedDb.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 
-		expect({rowsAfterAdd, rowsAfterRemoval, rowsBeforeAdd}).toStrictEqual({
-			rowsAfterAdd: [{path: filePath, content: "Alice's searchable file content.\n"}],
-			rowsAfterRemoval: [],
-			rowsBeforeAdd: [],
-		});
+		expect(
+			{
+				rowsAfterAdd,
+				rowsAfterRemoval,
+				rowsBeforeAdd,
+			},
+		).toStrictEqual(
+			{
+				rowsAfterAdd: [
+					{
+						path: filePath,
+						content: "Alice's searchable file content.\n",
+					},
+				],
+				rowsAfterRemoval: [],
+				rowsBeforeAdd: [],
+			},
+		);
 	});
 
-	it("indexes a newly tracked file when a linked worktree index changes", async () => {
+	it("indexes a newly tracked file when a linked worktree index changes", async () =>
+	{
 		const {repositoryIndexPath, worktreeDirectory} = createLinkedWorktree(repositoryDirectory, fixtureDirectory);
 		__testing.setFileContentRoots([worktreeDirectory]);
 		const filePath = join(worktreeDirectory, "alice.txt");
@@ -380,92 +647,156 @@ describe("handleFileChange file content", () => {
 		await __testing.handleFileChange(repositoryIndexPath);
 		const rows = sharedDb.index.all(sql`SELECT path, content FROM file_content_fts ORDER BY path`);
 
-		expect({ignored: shouldIgnoreWatch(repositoryIndexPath), rows}).toStrictEqual({
-			ignored: false,
-			rows: [
-				{path: filePath, content: "Alice's linked worktree content.\n"},
-				{path: join(worktreeDirectory, "initial.txt"), content: "Initial tracked content.\n"},
-			],
-		});
+		expect(
+			{
+				ignored: shouldIgnoreWatch(repositoryIndexPath),
+				rows,
+			},
+		).toStrictEqual(
+			{
+				ignored: false,
+				rows: [
+					{
+						path: filePath,
+						content: "Alice's linked worktree content.\n",
+					},
+					{
+						path: join(worktreeDirectory, "initial.txt"),
+						content: "Initial tracked content.\n",
+					},
+				],
+			},
+		);
 	});
 });
 
-describe("toSessionSummaryPayload", () => {
-	it("serializes dates as ISO strings and preserves core fields", () => {
+describe("toSessionSummaryPayload", () =>
+{
+	it("serializes dates as ISO strings and preserves core fields", () =>
+	{
 		const payload = toSessionSummaryPayload(makeSession());
 
-		expect(payload).toStrictEqual({
-			id: "sess-1",
-			title: "Hello",
-			summary: undefined,
-			mtime: "1999-12-31T00:00:00.000Z",
-			created: "1999-12-30T00:00:00.000Z",
-			project: "project-1",
-			projectName: "Project 1",
-			messageCount: 3,
-			gitBranch: undefined,
-			archived: false,
-			state: "ended",
-			bucket: "done",
-			liveAgentCount: 0,
-			unseen: false,
-			blockedSince: null,
-		});
+		expect(payload).toStrictEqual(
+			{
+				id: "sess-1",
+				title: "Hello",
+				summary: undefined,
+				mtime: "1999-12-31T00:00:00.000Z",
+				created: "1999-12-30T00:00:00.000Z",
+				project: "project-1",
+				projectName: "Project 1",
+				messageCount: 3,
+				gitBranch: undefined,
+				archived: false,
+				state: "ended",
+				bucket: "done",
+				liveAgentCount: 0,
+				unseen: false,
+				blockedSince: null,
+			},
+		);
 	});
 
-	it("reserves unknown for an active session whose state has not been reported", () => {
-		markSessionActive("sess-1", {cwd: "/tmp/test/project-1"});
+	it("reserves unknown for an active session whose state has not been reported", () =>
+	{
+		markSessionActive(
+			"sess-1",
+			{
+				cwd: "/tmp/test/project-1",
+			},
+		);
 
-		try {
+		try
+		{
 			const unreportedState = toSessionSummaryPayload(makeSession()).state;
 
 			setSessionState("sess-1", "working");
 			const reportedState = toSessionSummaryPayload(makeSession()).state;
 
-			expect({unreportedState, reportedState}).toStrictEqual({
-				unreportedState: "unknown",
-				reportedState: "working",
-			});
-		} finally {
+			expect(
+				{
+					unreportedState,
+					reportedState,
+				},
+			).toStrictEqual(
+				{
+					unreportedState: "unknown",
+					reportedState: "working",
+				},
+			);
+		}
+		finally
+		{
 			markSessionEnded("sess-1");
 		}
 	});
 });
 
-describe("sessionSummariesEqual", () => {
-	it("returns true for identical summaries", () => {
+describe("sessionSummariesEqual", () =>
+{
+	it("returns true for identical summaries", () =>
+	{
 		const a = toSessionSummaryPayload(makeSession());
 		const b = toSessionSummaryPayload(makeSession());
 		expect(sessionSummariesEqual(a, b)).toBe(true);
 	});
 
-	it("returns false when the title changes", () => {
+	it("returns false when the title changes", () =>
+	{
 		const a = toSessionSummaryPayload(makeSession());
-		const b = toSessionSummaryPayload(makeSession({title: "Different"}));
+		const b = toSessionSummaryPayload(
+			makeSession(
+				{
+					title: "Different",
+				},
+			),
+		);
 		expect(sessionSummariesEqual(a, b)).toBe(false);
 	});
 
-	it("returns false when the mtime changes", () => {
+	it("returns false when the mtime changes", () =>
+	{
 		const a = toSessionSummaryPayload(makeSession());
-		const b = toSessionSummaryPayload(makeSession({mtime: new Date("2000-01-01T00:00:00.000Z")}));
+		const b = toSessionSummaryPayload(
+			makeSession(
+				{
+					mtime: new Date("2000-01-01T00:00:00.000Z"),
+				},
+			),
+		);
 		expect(sessionSummariesEqual(a, b)).toBe(false);
 	});
 
-	it("returns false when messageCount changes (new message appended)", () => {
+	it("returns false when messageCount changes (new message appended)", () =>
+	{
 		const a = toSessionSummaryPayload(makeSession());
-		const b = toSessionSummaryPayload(makeSession({messageCount: 4}));
+		const b = toSessionSummaryPayload(
+			makeSession(
+				{
+					messageCount: 4,
+				},
+			),
+		);
 		expect(sessionSummariesEqual(a, b)).toBe(false);
 	});
 
-	it("returns false when archived changes", () => {
+	it("returns false when archived changes", () =>
+	{
 		const a = toSessionSummaryPayload(makeSession());
-		const b = toSessionSummaryPayload(makeSession(), {archived: true});
+		const b = toSessionSummaryPayload(
+			makeSession(),
+			{
+				archived: true,
+			},
+		);
 		expect(sessionSummariesEqual(a, b)).toBe(false);
 	});
 
-	it("returns false when the fused activity state changes", () => {
+	it("returns false when the fused activity state changes", () =>
+	{
 		const summary = toSessionSummaryPayload(makeSession());
-		const waitingSummary = {
+		const waitingSummary =
+		{
 			...summary,
 			state: "waiting" as const,
 			blockedSince: "2000-01-01T00:00:00.000Z",
@@ -475,72 +806,147 @@ describe("sessionSummariesEqual", () => {
 	});
 });
 
-describe("toTaskSummaryPayload", () => {
-	it("maps blocks/blockedBy arrays through unchanged", () => {
-		const row = makeTask({blocks: ["task-2"], blockedBy: ["task-3"]});
+describe("toTaskSummaryPayload", () =>
+{
+	it("maps blocks/blockedBy arrays through unchanged", () =>
+	{
+		const row = makeTask(
+			{
+				blocks: ["task-2"],
+				blockedBy: ["task-3"],
+			},
+		);
 
 		const payload = toTaskSummaryPayload(row);
 
-		expect(payload).toStrictEqual({
-			taskId: "task-1",
-			projectDir: "proj",
-			subject: "Do a thing",
-			description: "Details",
-			status: "pending",
-			activeForm: null,
-			owner: null,
-			blocks: ["task-2"],
-			blockedBy: ["task-3"],
-		});
+		expect(payload).toStrictEqual(
+			{
+				taskId: "task-1",
+				projectDir: "proj",
+				subject: "Do a thing",
+				description: "Details",
+				status: "pending",
+				activeForm: null,
+				owner: null,
+				blocks: ["task-2"],
+				blockedBy: ["task-3"],
+			},
+		);
 	});
 });
 
-describe("tasksEqual", () => {
-	it("returns true for identical tasks", () => {
+describe("tasksEqual", () =>
+{
+	it("returns true for identical tasks", () =>
+	{
 		const a = toTaskSummaryPayload(makeTask());
 		const b = toTaskSummaryPayload(makeTask());
 		expect(tasksEqual(a, b)).toBe(true);
 	});
 
-	it("returns false when status changes from pending to completed", () => {
-		const a = toTaskSummaryPayload(makeTask({status: "pending"}));
-		const b = toTaskSummaryPayload(makeTask({status: "completed"}));
+	it("returns false when status changes from pending to completed", () =>
+	{
+		const a = toTaskSummaryPayload(
+			makeTask(
+				{
+					status: "pending",
+				},
+			),
+		);
+		const b = toTaskSummaryPayload(
+			makeTask(
+				{
+					status: "completed",
+				},
+			),
+		);
 		expect(tasksEqual(a, b)).toBe(false);
 	});
 
-	it("returns false when owner changes", () => {
-		const a = toTaskSummaryPayload(makeTask({owner: "alice"}));
-		const b = toTaskSummaryPayload(makeTask({owner: "bob"}));
+	it("returns false when owner changes", () =>
+	{
+		const a = toTaskSummaryPayload(
+			makeTask(
+				{
+					owner: "alice",
+				},
+			),
+		);
+		const b = toTaskSummaryPayload(
+			makeTask(
+				{
+					owner: "bob",
+				},
+			),
+		);
 		expect(tasksEqual(a, b)).toBe(false);
 	});
 
-	it("returns false when blocks array changes order", () => {
-		const a = toTaskSummaryPayload(makeTask({blocks: ["a", "b"]}));
-		const b = toTaskSummaryPayload(makeTask({blocks: ["b", "a"]}));
+	it("returns false when blocks array changes order", () =>
+	{
+		const a = toTaskSummaryPayload(
+			makeTask(
+				{
+					blocks: ["a", "b"],
+				},
+			),
+		);
+		const b = toTaskSummaryPayload(
+			makeTask(
+				{
+					blocks: ["b", "a"],
+				},
+			),
+		);
 		expect(tasksEqual(a, b)).toBe(false);
 	});
 });
 
-describe("handleJsonlPlanLinks", () => {
+describe("handleJsonlPlanLinks", () =>
+{
 	const testDir = join(tmpdir(), "claude-watcher-test-" + process.pid);
 	let db: AppDb;
 
-	beforeEach(() => {
-		mkdirSync(testDir, {recursive: true});
+	beforeEach(() =>
+	{
+		mkdirSync(
+			testDir,
+			{
+				recursive: true,
+			},
+		);
 		db = openTestDb();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		db.close();
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("broadcasts PLAN_CHANGED for each plan linked by a JSONL with a plan_mode line", async () => {
+	it("broadcasts PLAN_CHANGED for each plan linked by a JSONL with a plan_mode line", async () =>
+	{
 		const projectsDir = testDir;
 		const plansDir = join(testDir, "plans");
 		const projectDir = join(projectsDir, "-Users-craig-projects-app");
-		mkdirSync(plansDir, {recursive: true});
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			plansDir,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(join(plansDir, "gamma.md"), "# Gamma");
 
@@ -551,12 +957,17 @@ describe("handleJsonlPlanLinks", () => {
 				{
 					type: "user",
 					sessionId: "sess-watcher",
-					message: {role: "user", content: "Draft"},
+					message:
+					{
+						role: "user",
+						content: "Draft",
+					},
 				},
 				{
 					type: "attachment",
 					sessionId: "sess-watcher",
-					attachment: {
+					attachment:
+					{
 						type: "plan_mode",
 						planFilePath: "/Users/craig/.claude/plans/gamma.md",
 					},
@@ -566,39 +977,71 @@ describe("handleJsonlPlanLinks", () => {
 
 		const broadcasts: CapturedBroadcast[] = [];
 		const result = await handleJsonlPlanLinks(db.index, jsonlPath, projectsDir, plansDir, (type, data) =>
-			broadcasts.push({type, data}),
+			broadcasts.push(
+				{
+					type,
+					data,
+				},
+			),
 		);
 
 		expect(result.linkedPlans).toStrictEqual(["gamma.md"]);
 		const planEvents = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.PLAN_CHANGED);
 		expect(planEvents.length).toBe(1);
-		const payload = planEvents[0]!.data as {
-			plan: {filename: string; title: string};
+		const payload = planEvents[0]!.data as
+		{
+			plan:
+			{
+				filename: string;
+				title: string;
+			};
 		};
 		expect(payload.plan.filename).toBe("gamma.md");
 		expect(payload.plan.title).toBe("Gamma");
 	});
 
-	it("broadcasts nothing when the JSONL has no plan references", async () => {
+	it("broadcasts nothing when the JSONL has no plan references", async () =>
+	{
 		const projectsDir = testDir;
 		const plansDir = join(testDir, "plans");
 		const projectDir = join(projectsDir, "-Users-craig-projects-app");
-		mkdirSync(plansDir, {recursive: true});
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			plansDir,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const jsonlPath = join(projectDir, "sess-no-plan.jsonl");
 		writeFileSync(
 			jsonlPath,
-			jsonl({
-				type: "user",
-				sessionId: "sess-no-plan",
-				message: {role: "user", content: "Hi"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					sessionId: "sess-no-plan",
+					message:
+					{
+						role: "user",
+						content: "Hi",
+					},
+				},
+			),
 		);
 
 		const broadcasts: CapturedBroadcast[] = [];
 		const result = await handleJsonlPlanLinks(db.index, jsonlPath, projectsDir, plansDir, (type, data) =>
-			broadcasts.push({type, data}),
+			broadcasts.push(
+				{
+					type,
+					data,
+				},
+			),
 		);
 
 		expect(result.linkedPlans).toStrictEqual([]);
@@ -606,113 +1049,215 @@ describe("handleJsonlPlanLinks", () => {
 	});
 });
 
-describe("processJsonlAppend", () => {
+describe("processJsonlAppend", () =>
+{
 	const testDir = join(tmpdir(), "claude-watcher-append-test-" + process.pid);
 	let db: AppDb;
 
-	beforeEach(() => {
-		mkdirSync(testDir, {recursive: true});
+	beforeEach(() =>
+	{
+		mkdirSync(
+			testDir,
+			{
+				recursive: true,
+			},
+		);
 		db = openTestDb();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		db.close();
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("broadcasts the appended lines, the session delta and newly linked plans for each append", async () => {
+	it("broadcasts the appended lines, the session delta and newly linked plans for each append", async () =>
+	{
 		const projectsDir = testDir;
 		const plansDir = join(testDir, "plans");
 		const projectDir = join(projectsDir, "-Users-alice-projects-append");
-		mkdirSync(plansDir, {recursive: true});
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			plansDir,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(join(plansDir, "delta.md"), "# Delta");
 
-		const firstLine = {
+		const firstLine =
+		{
 			type: "user",
 			sessionId: "sess-append",
 			timestamp: "2000-01-01T00:00:00.000Z",
-			message: {role: "user", content: "Draft the plan"},
+			message:
+			{
+				role: "user",
+				content: "Draft the plan",
+			},
 		};
-		const planLine = {
+		const planLine =
+		{
 			type: "attachment",
 			sessionId: "sess-append",
-			attachment: {type: "plan_mode", planFilePath: "/Users/alice/.claude/plans/delta.md"},
+			attachment:
+			{
+				type: "plan_mode",
+				planFilePath: "/Users/alice/.claude/plans/delta.md",
+			},
 		};
 		const jsonlPath = join(projectDir, "sess-append.jsonl");
 		writeFileSync(jsonlPath, jsonl(firstLine, planLine));
 
 		const offsets = new Map<string, number>();
 		const broadcasts: CapturedBroadcast[] = [];
-		const record = (type: string, data: Record<string, unknown>) => broadcasts.push({type, data});
-		await processJsonlAppend(db.index, jsonlPath, offsets, record, {projectsDir, plansDir});
+		const record = (type: string, data: Record<string, unknown>) =>
+			broadcasts.push(
+				{
+					type,
+					data,
+				},
+			);
+		await processJsonlAppend(
+			db.index,
+			jsonlPath,
+			offsets,
+			record,
+			{
+				projectsDir,
+				plansDir,
+			},
+		);
 
 		expect(broadcasts.map((b) => b.type)).toStrictEqual([
 			DOMAIN_EVENTS.SESSION_LINES_APPENDED,
 			DOMAIN_EVENTS.SESSION_ADDED,
 			DOMAIN_EVENTS.PLAN_CHANGED,
 		]);
-		expect(broadcasts[0]!.data).toStrictEqual({
-			sessionId: "sess-append",
-			lines: [firstLine, planLine],
-			writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
-		});
+		expect(broadcasts[0]!.data).toStrictEqual(
+			{
+				sessionId: "sess-append",
+				lines: [firstLine, planLine],
+				writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
+			},
+		);
 		expect(offsets).toStrictEqual(new Map([[jsonlPath, Buffer.byteLength(jsonl(firstLine, planLine))]]));
 
-		const secondLine = {
+		const secondLine =
+		{
 			type: "user",
 			sessionId: "sess-append",
 			timestamp: "2000-01-01T00:01:00.000Z",
-			message: {role: "user", content: "Ship it"},
+			message:
+			{
+				role: "user",
+				content: "Ship it",
+			},
 		};
 		appendFileSync(jsonlPath, jsonl(secondLine));
 		broadcasts.length = 0;
-		await processJsonlAppend(db.index, jsonlPath, offsets, record, {projectsDir, plansDir});
+		await processJsonlAppend(
+			db.index,
+			jsonlPath,
+			offsets,
+			record,
+			{
+				projectsDir,
+				plansDir,
+			},
+		);
 
 		expect(broadcasts.map((b) => b.type)).toStrictEqual([
 			DOMAIN_EVENTS.SESSION_LINES_APPENDED,
 			DOMAIN_EVENTS.SESSION_UPDATED,
 		]);
-		expect(broadcasts[0]!.data).toStrictEqual({
-			sessionId: "sess-append",
-			lines: [secondLine],
-			writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
-		});
+		expect(broadcasts[0]!.data).toStrictEqual(
+			{
+				sessionId: "sess-append",
+				lines: [secondLine],
+				writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
+			},
+		);
 	});
 
-	it("after a restart, broadcasts only the lines appended since the transcript was indexed", async () => {
+	it("after a restart, broadcasts only the lines appended since the transcript was indexed", async () =>
+	{
 		const projectsDir = testDir;
 		const projectDir = join(projectsDir, "-Users-alice-projects-restart");
-		mkdirSync(projectDir, {recursive: true});
-		const history = Array.from({length: 50}, (_, index) => ({
-			type: "user",
-			sessionId: "sess-restart",
-			uuid: `history-${index}`,
-			timestamp: "2000-01-01T00:00:00.000Z",
-			message: {role: "user", content: `Earlier turn ${index}`},
-		}));
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
+		const history = Array.from(
+			{
+				length: 50,
+			},
+			(_, index) => (
+			{
+				type: "user",
+				sessionId: "sess-restart",
+				uuid: `history-${index}`,
+				timestamp: "2000-01-01T00:00:00.000Z",
+				message:
+				{
+					role: "user",
+					content: `Earlier turn ${index}`,
+				},
+			}),
+		);
 		const jsonlPath = join(projectDir, "sess-restart.jsonl");
 		writeFileSync(jsonlPath, jsonl(...history));
 		await indexFile(db.index, jsonlPath, projectsDir);
 
-		const appended = {
+		const appended =
+		{
 			type: "user",
 			sessionId: "sess-restart",
 			uuid: "after-restart",
 			timestamp: "2000-01-01T00:05:00.000Z",
-			message: {role: "user", content: "First turn after the restart"},
+			message:
+			{
+				role: "user",
+				content: "First turn after the restart",
+			},
 		};
 		appendFileSync(jsonlPath, jsonl(appended));
 		const broadcasts: CapturedBroadcast[] = [];
-		await processJsonlAppend(db.index, jsonlPath, new Map(), (type, data) => broadcasts.push({type, data}), {
-			projectsDir,
-			plansDir: "",
-		});
+		await processJsonlAppend(
+			db.index,
+			jsonlPath,
+			new Map(),
+			(type, data) =>
+				broadcasts.push(
+					{
+						type,
+						data,
+					},
+				),
+			{
+				projectsDir,
+				plansDir: "",
+			},
+		);
 
 		expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED)).toStrictEqual([
 			{
 				type: DOMAIN_EVENTS.SESSION_LINES_APPENDED,
-				data: {
+				data:
+				{
 					sessionId: "sess-restart",
 					lines: [appended],
 					writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
@@ -721,24 +1266,45 @@ describe("processJsonlAppend", () => {
 		]);
 	});
 
-	it("after the transcript is rewritten shorter, broadcasts the lines appended to the rewrite", async () => {
+	it("after the transcript is rewritten shorter, broadcasts the lines appended to the rewrite", async () =>
+	{
 		const projectsDir = testDir;
 		const projectDir = join(projectsDir, "-Users-alice-projects-rewrite");
-		mkdirSync(projectDir, {recursive: true});
-		const line = (uuid: string, content: string) => ({
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
+		const line = (uuid: string, content: string) => (
+		{
 			type: "user",
 			sessionId: "sess-rewrite",
 			uuid,
 			timestamp: "2000-01-01T00:00:00.000Z",
-			message: {role: "user", content},
+			message:
+			{
+				role: "user",
+				content,
+			},
 		});
 		const seeded = line("seeded", "Seeded turn");
 		const jsonlPath = join(projectDir, "sess-rewrite.jsonl");
 		writeFileSync(jsonlPath, jsonl(seeded, line("dropped", "A long turn the rewrite drops from the transcript")));
 		const offsets = new Map<string, number>();
 		const broadcasts: CapturedBroadcast[] = [];
-		const record = (type: string, data: Record<string, unknown>) => broadcasts.push({type, data});
-		const dirs = {projectsDir, plansDir: ""};
+		const record = (type: string, data: Record<string, unknown>) =>
+			broadcasts.push(
+				{
+					type,
+					data,
+				},
+			);
+		const dirs =
+		{
+			projectsDir,
+			plansDir: "",
+		};
 		await processJsonlAppend(db.index, jsonlPath, offsets, record, dirs);
 
 		writeFileSync(jsonlPath, jsonl(seeded));
@@ -751,7 +1317,8 @@ describe("processJsonlAppend", () => {
 		expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED)).toStrictEqual([
 			{
 				type: DOMAIN_EVENTS.SESSION_LINES_APPENDED,
-				data: {
+				data:
+				{
 					sessionId: "sess-rewrite",
 					lines: [appended],
 					writtenAt: Math.trunc(statSync(jsonlPath).mtimeMs),
@@ -759,16 +1326,27 @@ describe("processJsonlAppend", () => {
 			},
 		]);
 	});
-	it("after a line is removed in place and more appended, broadcasts one transcript rewrite and no appended lines", async () => {
+	it("after a line is removed in place and more appended, broadcasts one transcript rewrite and no appended lines", async () =>
+	{
 		const projectsDir = testDir;
 		const projectDir = join(projectsDir, "-Users-alice-projects-retract");
-		mkdirSync(projectDir, {recursive: true});
-		const line = (uuid: string, content: string) => ({
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
+		const line = (uuid: string, content: string) => (
+		{
 			type: "user",
 			sessionId: "sess-retract",
 			uuid,
 			timestamp: "2000-01-01T00:00:00.000Z",
-			message: {role: "user", content},
+			message:
+			{
+				role: "user",
+				content,
+			},
 		});
 		const kept = line("kept", "Kept turn");
 		const retracted = line("retracted", "Retracted attempt");
@@ -776,8 +1354,18 @@ describe("processJsonlAppend", () => {
 		writeFileSync(jsonlPath, jsonl(kept, retracted));
 		const offsets = new Map<string, number>();
 		const broadcasts: CapturedBroadcast[] = [];
-		const record = (type: string, data: Record<string, unknown>) => broadcasts.push({type, data});
-		const dirs = {projectsDir, plansDir: ""};
+		const record = (type: string, data: Record<string, unknown>) =>
+			broadcasts.push(
+				{
+					type,
+					data,
+				},
+			);
+		const dirs =
+		{
+			projectsDir,
+			plansDir: "",
+		};
 		await processJsonlAppend(db.index, jsonlPath, offsets, record, dirs);
 
 		writeFileSync(jsonlPath, jsonl(kept, line("retried", "The retried attempt, longer than the retracted one")));
@@ -790,224 +1378,420 @@ describe("processJsonlAppend", () => {
 					b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED ||
 					b.type === DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN,
 			),
-		).toStrictEqual([{type: DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN, data: {sessionId: "sess-retract"}}]);
+		).toStrictEqual([
+			{
+				type: DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN,
+				data:
+				{
+					sessionId: "sess-retract",
+				},
+			},
+		]);
 	});
 });
 
-describe("rebroadcastSessionsById", () => {
+describe("rebroadcastSessionsById", () =>
+{
 	const testDir = join(tmpdir(), "claude-watcher-registry-test-" + process.pid);
 	const registryDir = join(testDir, "sessions");
 	let db: AppDb;
 
-	async function setRegistryStatus(status: "idle" | "busy" | "waiting", statusUpdatedAt: number): Promise<void> {
+	async function setRegistryStatus(status: "idle" | "busy" | "waiting", statusUpdatedAt: number): Promise<void>
+	{
 		writeFileSync(
 			join(registryDir, "4242.json"),
-			JSON.stringify({
-				pid: 4242,
-				sessionId: "sess-registry",
-				cwd: "/Users/alice/projects/registry",
-				startedAt: 946_598_400_000,
-				procStart: "Fri Dec 31 00:00:00 1999",
-				version: "2.0.0",
-				kind: "interactive",
-				entrypoint: "cli",
-				pidDomain: "darwin",
-				status,
-				updatedAt: statusUpdatedAt,
-				statusUpdatedAt,
-			}),
+			JSON.stringify(
+				{
+					pid: 4242,
+					sessionId: "sess-registry",
+					cwd: "/Users/alice/projects/registry",
+					startedAt: 946_598_400_000,
+					procStart: "Fri Dec 31 00:00:00 1999",
+					version: "2.0.0",
+					kind: "interactive",
+					entrypoint: "cli",
+					pidDomain: "darwin",
+					status,
+					updatedAt: statusUpdatedAt,
+					statusUpdatedAt,
+				},
+			),
 		);
-		await refreshSessionRegistry(registryDir, {
-			isAlive: () => true,
-			readStartTimes: async () => Promise.resolve(null),
-		});
+		await refreshSessionRegistry(
+			registryDir,
+			{
+				isAlive: () => true,
+				readStartTimes: async () => Promise.resolve(null),
+			},
+		);
 	}
 
-	beforeEach(() => {
-		mkdirSync(registryDir, {recursive: true});
+	beforeEach(() =>
+	{
+		mkdirSync(
+			registryDir,
+			{
+				recursive: true,
+			},
+		);
 		db = openTestDb();
 		clearSessionRegistry();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		clearSessionRegistry();
 		db.close();
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("broadcasts each registry status change for a known session, even within the dedupe window", async () => {
+	it("broadcasts each registry status change for a known session, even within the dedupe window", async () =>
+	{
 		const projectDir = join(testDir, "-Users-alice-projects-registry");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		const jsonlPath = join(projectDir, "sess-registry.jsonl");
 		writeFileSync(
 			jsonlPath,
-			jsonl({
-				type: "user",
-				sessionId: "sess-registry",
-				timestamp: "2000-01-01T00:00:00.000Z",
-				message: {role: "user", content: "Ask me something"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					sessionId: "sess-registry",
+					timestamp: "2000-01-01T00:00:00.000Z",
+					message:
+					{
+						role: "user",
+						content: "Ask me something",
+					},
+				},
+			),
 		);
-		await processJsonlAppend(db.index, jsonlPath, new Map(), () => {}, {projectsDir: testDir, plansDir: ""});
+		await processJsonlAppend(
+			db.index,
+			jsonlPath,
+			new Map(),
+			() => {},
+			{
+				projectsDir: testDir,
+				plansDir: "",
+			},
+		);
 
 		const broadcasts: CapturedBroadcast[] = [];
-		const record = (type: string, data: Record<string, unknown>) => broadcasts.push({type, data});
+		const record = (type: string, data: Record<string, unknown>) =>
+			broadcasts.push(
+				{
+					type,
+					data,
+				},
+			);
 		await setRegistryStatus("waiting", 946_598_402_000);
 		rebroadcastSessionsById(new Set(["sess-registry", "sess-unknown"]), record, db.index);
 		await setRegistryStatus("busy", 946_598_403_000);
 		rebroadcastSessionsById(new Set(["sess-registry"]), record, db.index);
 
 		expect(
-			broadcasts.map(({type, data}) => {
-				const session = data["session"] as {id: string; state: string; bucket: string};
-				return {type, id: session.id, state: session.state, bucket: session.bucket};
+			broadcasts.map(({type, data}) =>
+			{
+				const session = data["session"] as
+				{
+					id: string;
+					state: string;
+					bucket: string;
+				};
+				return {
+					type,
+					id: session.id,
+					state: session.state,
+					bucket: session.bucket,
+				};
 			}),
 		).toStrictEqual([
-			{type: DOMAIN_EVENTS.SESSION_UPDATED, id: "sess-registry", state: "waiting", bucket: "blocked"},
-			{type: DOMAIN_EVENTS.SESSION_UPDATED, id: "sess-registry", state: "working", bucket: "working"},
+			{
+				type: DOMAIN_EVENTS.SESSION_UPDATED,
+				id: "sess-registry",
+				state: "waiting",
+				bucket: "blocked",
+			},
+			{
+				type: DOMAIN_EVENTS.SESSION_UPDATED,
+				id: "sess-registry",
+				state: "working",
+				bucket: "working",
+			},
 		]);
 	});
 });
 
-describe("task file unlink", () => {
+describe("task file unlink", () =>
+{
 	let testDir: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		testDir = realpathSync(mkdtempSync(join(tmpdir(), "watcher-task-unlink-test-")));
 	});
 
-	afterEach(() => {
-		rmSync(testDir, {recursive: true, force: true});
+	afterEach(() =>
+	{
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("drops the deleted task's row and broadcasts task:removed", async () => {
+	it("drops the deleted task's row and broadcasts task:removed", async () =>
+	{
 		const projectsDir = join(testDir, "projects");
 		const projectDir = join(projectsDir, "-Users-alice-projects-tasks");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		const jsonlPath = join(projectDir, "sess-task-unlink.jsonl");
 		writeFileSync(
 			jsonlPath,
-			jsonl({
-				type: "user",
-				sessionId: "sess-task-unlink",
-				timestamp: "2000-01-01T00:00:00.000Z",
-				message: {role: "user", content: "Track a task"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					sessionId: "sess-task-unlink",
+					timestamp: "2000-01-01T00:00:00.000Z",
+					message:
+					{
+						role: "user",
+						content: "Track a task",
+					},
+				},
+			),
 		);
-		await processJsonlAppend(sharedDb.index, jsonlPath, new Map(), () => {}, {projectsDir, plansDir: ""});
+		await processJsonlAppend(
+			sharedDb.index,
+			jsonlPath,
+			new Map(),
+			() => {},
+			{
+				projectsDir,
+				plansDir: "",
+			},
+		);
 
 		const taskPath = join(testDir, "tasks", "sess-task-unlink", "1.json");
-		mkdirSync(dirname(taskPath), {recursive: true});
+		mkdirSync(
+			dirname(taskPath),
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			taskPath,
-			JSON.stringify({
-				id: "1",
-				subject: "Fix bug",
-				description: "",
-				status: "pending",
-				blocks: [],
-				blockedBy: [],
-			}),
+			JSON.stringify(
+				{
+					id: "1",
+					subject: "Fix bug",
+					description: "",
+					status: "pending",
+					blocks: [],
+					blockedBy: [],
+				},
+			),
 		);
 
 		const decoder = new TextDecoder();
-		const events: {type: string; data: unknown}[] = [];
-		const client = {
-			enqueue: (chunk: Uint8Array) => {
+		const events:
+		{
+			type: string;
+			data: unknown;
+		}[] = [];
+		const client =
+		{
+			enqueue: (chunk: Uint8Array) =>
+			{
 				const [eventLine = "", dataLine = ""] = decoder.decode(chunk).split("\n");
-				events.push({type: eventLine.replace("event: ", ""), data: JSON.parse(dataLine.replace("data: ", ""))});
+				events.push(
+					{
+						type: eventLine.replace("event: ", ""),
+						data: JSON.parse(dataLine.replace("data: ", "")),
+					},
+				);
 			},
 		} as unknown as ReadableStreamDefaultController;
 
 		addClient(client);
-		try {
+		try
+		{
 			await __testing.handleFileChange(taskPath);
-			await vi.waitFor(() => {
+			await vi.waitFor(() =>
+			{
 				expect(events.map(({type}) => type)).toContain(DOMAIN_EVENTS.TASK_CHANGED);
 			});
 			events.length = 0;
 
 			rmSync(taskPath);
 			await __testing.handleFileUnlink(taskPath);
-		} finally {
+		}
+		finally
+		{
 			removeClient(client);
 		}
 
-		expect({
-			events,
-			rows: sharedDb.index.select().from(schema.tasks).where(eq(schema.tasks.filePath, taskPath)).all(),
-		}).toStrictEqual({
-			events: [{type: DOMAIN_EVENTS.TASK_REMOVED, data: {taskId: "1", projectDir: "sess-task-unlink"}}],
-			rows: [],
-		});
+		expect(
+			{
+				events,
+				rows: sharedDb.index.select().from(schema.tasks).where(eq(schema.tasks.filePath, taskPath)).all(),
+			},
+		).toStrictEqual(
+			{
+				events: [
+					{
+						type: DOMAIN_EVENTS.TASK_REMOVED,
+						data:
+						{
+							taskId: "1",
+							projectDir: "sess-task-unlink",
+						},
+					},
+				],
+				rows: [],
+			},
+		);
 	});
 });
 
-describe("task diff across task lists", () => {
+describe("task diff across task lists", () =>
+{
 	let testDir: string;
 	let projectsDir: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		testDir = realpathSync(mkdtempSync(join(tmpdir(), "watcher-task-diff-test-")));
 		projectsDir = join(testDir, "projects");
 	});
 
-	afterEach(() => {
-		rmSync(testDir, {recursive: true, force: true});
+	afterEach(() =>
+	{
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	async function indexSession(projectId: string, sessionId: string): Promise<void> {
+	async function indexSession(projectId: string, sessionId: string): Promise<void>
+	{
 		const jsonlPath = join(projectsDir, projectId, `${sessionId}.jsonl`);
-		mkdirSync(dirname(jsonlPath), {recursive: true});
+		mkdirSync(
+			dirname(jsonlPath),
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			jsonlPath,
-			jsonl({
-				type: "user",
-				sessionId,
-				timestamp: "2000-01-01T00:00:00.000Z",
-				message: {role: "user", content: "Track tasks"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					sessionId,
+					timestamp: "2000-01-01T00:00:00.000Z",
+					message:
+					{
+						role: "user",
+						content: "Track tasks",
+					},
+				},
+			),
 		);
-		await processJsonlAppend(sharedDb.index, jsonlPath, new Map(), () => {}, {projectsDir, plansDir: ""});
+		await processJsonlAppend(
+			sharedDb.index,
+			jsonlPath,
+			new Map(),
+			() => {},
+			{
+				projectsDir,
+				plansDir: "",
+			},
+		);
 	}
 
-	function writeTask(dirName: string, id: string, status: string, mtimeSeconds: number): string {
+	function writeTask(dirName: string, id: string, status: string, mtimeSeconds: number): string
+	{
 		const taskPath = join(testDir, "tasks", dirName, `${id}.json`);
-		mkdirSync(dirname(taskPath), {recursive: true});
+		mkdirSync(
+			dirname(taskPath),
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			taskPath,
-			JSON.stringify({id, subject: `Task ${dirName} ${id}`, description: "", status, blocks: [], blockedBy: []}),
+			JSON.stringify(
+				{
+					id,
+					subject: `Task ${dirName} ${id}`,
+					description: "",
+					status,
+					blocks: [],
+					blockedBy: [],
+				},
+			),
 		);
 		utimesSync(taskPath, mtimeSeconds, mtimeSeconds);
 		return taskPath;
 	}
 
-	async function captureBroadcasts(action: () => Promise<void>): Promise<CapturedBroadcast[]> {
+	async function captureBroadcasts(action: () => Promise<void>): Promise<CapturedBroadcast[]>
+	{
 		const broadcasts: CapturedBroadcast[] = [];
 		const decoder = new TextDecoder();
-		const client = {
-			enqueue: (chunk: Uint8Array) => {
+		const client =
+		{
+			enqueue: (chunk: Uint8Array) =>
+			{
 				const [eventLine = "", dataLine = ""] = decoder.decode(chunk).split("\n");
-				broadcasts.push({
-					type: eventLine.replace("event: ", ""),
-					data: JSON.parse(dataLine.replace("data: ", "")),
-				});
+				broadcasts.push(
+					{
+						type: eventLine.replace("event: ", ""),
+						data: JSON.parse(dataLine.replace("data: ", "")),
+					},
+				);
 			},
 		} as unknown as ReadableStreamDefaultController;
 		addClient(client);
-		try {
+		try
+		{
 			await action();
 			// handleFileChange detaches the task indexing; wait for it rather than a fixed sleep.
 			await __testing.settleDetachedWork();
-		} finally {
+		}
+		finally
+		{
 			removeClient(client);
 		}
 		return broadcasts.filter(({type}) => type.startsWith("task:"));
 	}
 
-	function taskPayload(dirName: string, id: string, status: string): Record<string, unknown> {
+	function taskPayload(dirName: string, id: string, status: string): Record<string, unknown>
+	{
 		return {
-			task: {
+			task:
+			{
 				taskId: id,
 				projectDir: dirName,
 				subject: `Task ${dirName} ${id}`,
@@ -1021,13 +1805,15 @@ describe("task diff across task lists", () => {
 		};
 	}
 
-	it("keeps two lists' task '1' apart and does not dedupe one list's change against the other's", async () => {
+	it("keeps two lists' task '1' apart and does not dedupe one list's change against the other's", async () =>
+	{
 		const projectId = "-Users-alice-projects-two-lists";
 		await indexSession(projectId, "sess-list-a");
 		await indexSession(projectId, "sess-list-b");
 		const pathA = writeTask("sess-list-a", "1", "pending", 1000);
 		const pathB = writeTask("sess-list-b", "1", "pending", 1000);
-		await captureBroadcasts(async () => {
+		await captureBroadcasts(async () =>
+		{
 			await __testing.handleFileChange(pathA);
 			await __testing.settleDetachedWork();
 			await __testing.handleFileChange(pathB);
@@ -1038,13 +1824,31 @@ describe("task diff across task lists", () => {
 		writeTask("sess-list-b", "1", "in_progress", 2000);
 		const changeB = await captureBroadcasts(async () => __testing.handleFileChange(pathB));
 
-		expect({changeA, changeB}).toStrictEqual({
-			changeA: [{type: DOMAIN_EVENTS.TASK_CHANGED, data: taskPayload("sess-list-a", "1", "in_progress")}],
-			changeB: [{type: DOMAIN_EVENTS.TASK_CHANGED, data: taskPayload("sess-list-b", "1", "in_progress")}],
-		});
+		expect(
+			{
+				changeA,
+				changeB,
+			},
+		).toStrictEqual(
+			{
+				changeA: [
+					{
+						type: DOMAIN_EVENTS.TASK_CHANGED,
+						data: taskPayload("sess-list-a", "1", "in_progress"),
+					},
+				],
+				changeB: [
+					{
+						type: DOMAIN_EVENTS.TASK_CHANGED,
+						data: taskPayload("sess-list-b", "1", "in_progress"),
+					},
+				],
+			},
+		);
 	});
 
-	it("broadcasts only the changed task on the first change after a restart", async () => {
+	it("broadcasts only the changed task on the first change after a restart", async () =>
+	{
 		const projectId = "-Users-alice-projects-restart";
 		await indexSession(projectId, "sess-restart");
 		const donePath = writeTask("sess-restart", "1", "completed", 1000);
@@ -1057,17 +1861,22 @@ describe("task diff across task lists", () => {
 		const broadcasts = await captureBroadcasts(async () => __testing.handleFileChange(openPath));
 
 		expect(broadcasts).toStrictEqual([
-			{type: DOMAIN_EVENTS.TASK_CHANGED, data: taskPayload("sess-restart", "2", "in_progress")},
+			{
+				type: DOMAIN_EVENTS.TASK_CHANGED,
+				data: taskPayload("sess-restart", "2", "in_progress"),
+			},
 		]);
 	});
 
-	it("broadcasts changes in session-<prefix> and project-named task dirs", async () => {
+	it("broadcasts changes in session-<prefix> and project-named task dirs", async () =>
+	{
 		const projectId = "-Users-alice-projects-named-dirs";
 		await indexSession(projectId, "abcd1234-0000-4000-8000-000000000001");
 		const prefixPath = writeTask("session-abcd1234", "1", "pending", 1000);
 		const namedPath = writeTask("named-dirs", "1", "pending", 1000);
 
-		const broadcasts = await captureBroadcasts(async () => {
+		const broadcasts = await captureBroadcasts(async () =>
+		{
 			// Concurrent indexes of one project finish in either order; settle in between for a stable order.
 			await __testing.handleFileChange(prefixPath);
 			await __testing.settleDetachedWork();
@@ -1075,103 +1884,185 @@ describe("task diff across task lists", () => {
 		});
 
 		expect(broadcasts).toStrictEqual([
-			{type: DOMAIN_EVENTS.TASK_CHANGED, data: taskPayload("session-abcd1234", "1", "pending")},
-			{type: DOMAIN_EVENTS.TASK_CHANGED, data: taskPayload("named-dirs", "1", "pending")},
+			{
+				type: DOMAIN_EVENTS.TASK_CHANGED,
+				data: taskPayload("session-abcd1234", "1", "pending"),
+			},
+			{
+				type: DOMAIN_EVENTS.TASK_CHANGED,
+				data: taskPayload("named-dirs", "1", "pending"),
+			},
 		]);
 	});
 });
 
-describe("session transcript unlink", () => {
+describe("session transcript unlink", () =>
+{
 	let testDir: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		testDir = realpathSync(mkdtempSync(join(tmpdir(), "watcher-session-unlink-test-")));
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		__testing.setProjectsDir("");
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("deletes the deleted transcript's session rows and broadcasts session:removed", async () => {
+	it("deletes the deleted transcript's session rows and broadcasts session:removed", async () =>
+	{
 		const projectsDir = join(testDir, "projects");
 		const projectId = "-Users-alice-projects-unlink";
 		const projectDir = join(projectsDir, projectId);
 		const sessionId = "sess-transcript-unlink";
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		const jsonlPath = join(projectDir, `${sessionId}.jsonl`);
 		writeFileSync(
 			jsonlPath,
-			jsonl({
-				type: "user",
-				sessionId,
-				timestamp: "2000-01-01T00:00:00.000Z",
-				message: {role: "user", content: "Remember this conversation"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					sessionId,
+					timestamp: "2000-01-01T00:00:00.000Z",
+					message:
+					{
+						role: "user",
+						content: "Remember this conversation",
+					},
+				},
+			),
 		);
 		__testing.setProjectsDir(projectsDir);
-		await processJsonlAppend(sharedDb.index, jsonlPath, new Map(), () => {}, {projectsDir, plansDir: ""});
+		await processJsonlAppend(
+			sharedDb.index,
+			jsonlPath,
+			new Map(),
+			() => {},
+			{
+				projectsDir,
+				plansDir: "",
+			},
+		);
 		rebroadcastSessionsById(new Set([sessionId]), () => {}, sharedDb.index);
 
 		const broadcasts: CapturedBroadcast[] = [];
 		const decoder = new TextDecoder();
-		const client = {
-			enqueue: (chunk: Uint8Array) => {
+		const client =
+		{
+			enqueue: (chunk: Uint8Array) =>
+			{
 				const [eventLine = "", dataLine = ""] = decoder.decode(chunk).split("\n");
-				broadcasts.push({
-					type: eventLine.replace("event: ", ""),
-					data: JSON.parse(dataLine.replace("data: ", "")),
-				});
+				broadcasts.push(
+					{
+						type: eventLine.replace("event: ", ""),
+						data: JSON.parse(dataLine.replace("data: ", "")),
+					},
+				);
 			},
 		} as unknown as ReadableStreamDefaultController;
 
 		addClient(client);
-		try {
+		try
+		{
 			rmSync(jsonlPath);
 			await __testing.handleFileUnlink(jsonlPath);
-		} finally {
+		}
+		finally
+		{
 			removeClient(client);
 		}
 
-		expect({
-			broadcasts: broadcasts.filter(({type}) => type === DOMAIN_EVENTS.SESSION_REMOVED),
-			sessions: sharedDb.index.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).all(),
-			messages: sharedDb.index
-				.select()
-				.from(schema.sessionMessages)
-				.where(eq(schema.sessionMessages.sessionId, sessionId))
-				.all(),
-			indexedFiles: sharedDb.index
-				.select()
-				.from(schema.indexedFiles)
-				.where(eq(schema.indexedFiles.path, jsonlPath))
-				.all(),
-			messageContent: sharedDb.index.all(sql`SELECT * FROM message_content WHERE session_id = ${sessionId}`),
-		}).toStrictEqual({
-			broadcasts: [{type: DOMAIN_EVENTS.SESSION_REMOVED, data: {sessionId, projectDir: projectId}}],
-			sessions: [],
-			messages: [],
-			indexedFiles: [],
-			messageContent: [],
-		});
+		expect(
+			{
+				broadcasts: broadcasts.filter(({type}) => type === DOMAIN_EVENTS.SESSION_REMOVED),
+				sessions: sharedDb.index.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).all(),
+				messages: sharedDb.index
+					.select()
+					.from(schema.sessionMessages)
+					.where(eq(schema.sessionMessages.sessionId, sessionId))
+					.all(),
+				indexedFiles: sharedDb.index
+					.select()
+					.from(schema.indexedFiles)
+					.where(eq(schema.indexedFiles.path, jsonlPath))
+					.all(),
+				messageContent: sharedDb.index.all(sql`SELECT * FROM message_content WHERE session_id = ${sessionId}`),
+			},
+		).toStrictEqual(
+			{
+				broadcasts: [
+					{
+						type: DOMAIN_EVENTS.SESSION_REMOVED,
+						data:
+						{
+							sessionId,
+							projectDir: projectId,
+						},
+					},
+				],
+				sessions: [],
+				messages: [],
+				indexedFiles: [],
+				messageContent: [],
+			},
+		);
 	});
 
-	it("keeps a moved session's rows when its transcript still exists under another project", async () => {
+	it("keeps a moved session's rows when its transcript still exists under another project", async () =>
+	{
 		const projectsDir = join(testDir, "projects");
 		const sessionId = "sess-transcript-moved";
 		const oldPath = join(projectsDir, "-Users-alice-projects-old", `${sessionId}.jsonl`);
 		const newPath = join(projectsDir, "-Users-alice-projects-new", `${sessionId}.jsonl`);
-		mkdirSync(dirname(oldPath), {recursive: true});
-		mkdirSync(dirname(newPath), {recursive: true});
-		const content = jsonl({
-			type: "user",
-			sessionId,
-			timestamp: "2000-01-01T00:00:00.000Z",
-			message: {role: "user", content: "Move me"},
-		});
+		mkdirSync(
+			dirname(oldPath),
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			dirname(newPath),
+			{
+				recursive: true,
+			},
+		);
+		const content = jsonl(
+			{
+				type: "user",
+				sessionId,
+				timestamp: "2000-01-01T00:00:00.000Z",
+				message:
+				{
+					role: "user",
+					content: "Move me",
+				},
+			},
+		);
 		writeFileSync(oldPath, content);
 		__testing.setProjectsDir(projectsDir);
-		await processJsonlAppend(sharedDb.index, oldPath, new Map(), () => {}, {projectsDir, plansDir: ""});
+		await processJsonlAppend(
+			sharedDb.index,
+			oldPath,
+			new Map(),
+			() => {},
+			{
+				projectsDir,
+				plansDir: "",
+			},
+		);
 
 		writeFileSync(newPath, content);
 		rmSync(oldPath);
@@ -1179,45 +2070,86 @@ describe("session transcript unlink", () => {
 
 		expect(
 			sharedDb.index
-				.select({id: schema.sessions.id})
+				.select(
+					{
+						id: schema.sessions.id,
+					},
+				)
 				.from(schema.sessions)
 				.where(eq(schema.sessions.id, sessionId))
 				.all(),
-		).toStrictEqual([{id: sessionId}]);
+		).toStrictEqual([
+			{
+				id: sessionId,
+			},
+		]);
 	});
 });
 
-describe("handlePlanMdChange", () => {
+describe("handlePlanMdChange", () =>
+{
 	const testDir = join(tmpdir(), "claude-watcher-md-test-" + process.pid);
 	let db: AppDb;
 
-	beforeEach(() => {
-		mkdirSync(testDir, {recursive: true});
+	beforeEach(() =>
+	{
+		mkdirSync(
+			testDir,
+			{
+				recursive: true,
+			},
+		);
 		db = openTestDb();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		db.close();
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("inserts the plans row before broadcasting PLAN_CHANGED", async () => {
+	it("inserts the plans row before broadcasting PLAN_CHANGED", async () =>
+	{
 		const projectsDir = join(testDir, "projects");
 		const plansDir = join(testDir, "plans");
-		mkdirSync(projectsDir, {recursive: true});
-		mkdirSync(plansDir, {recursive: true});
+		mkdirSync(
+			projectsDir,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			plansDir,
+			{
+				recursive: true,
+			},
+		);
 		const mdPath = join(plansDir, "delta.md");
 		writeFileSync(mdPath, "# Delta");
 
-		let rowAtBroadcastTime: {filename: string; title: string} | null = null;
+		let rowAtBroadcastTime:
+		{
+			filename: string;
+			title: string;
+		} | null = null;
 
-		await handlePlanMdChange(db.index, mdPath, projectsDir, plansDir, (type, data) => {
-			if (type === DOMAIN_EVENTS.PLAN_CHANGED) {
+		await handlePlanMdChange(db.index, mdPath, projectsDir, plansDir, (type, data) =>
+		{
+			if (type === DOMAIN_EVENTS.PLAN_CHANGED)
+			{
 				const rows = db.index
-					.select({
-						filename: schema.plans.filename,
-						title: schema.plans.title,
-					})
+					.select(
+						{
+							filename: schema.plans.filename,
+							title: schema.plans.title,
+						},
+					)
 					.from(schema.plans)
 					.where(eq(schema.plans.filename, "delta.md"))
 					.all();
@@ -1234,40 +2166,69 @@ describe("handlePlanMdChange", () => {
 	});
 });
 
-describe("handlePlanMdUnlink", () => {
+describe("handlePlanMdUnlink", () =>
+{
 	const testDir = join(tmpdir(), "claude-watcher-unlink-test-" + process.pid);
 	let db: AppDb;
 
-	beforeEach(() => {
-		mkdirSync(testDir, {recursive: true});
+	beforeEach(() =>
+	{
+		mkdirSync(
+			testDir,
+			{
+				recursive: true,
+			},
+		);
 		db = openTestDb();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		db.close();
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("deletes the row before broadcasting PLAN_REMOVED", () => {
+	it("deletes the row before broadcasting PLAN_REMOVED", () =>
+	{
 		const plansDir = join(testDir, "plans");
-		mkdirSync(plansDir, {recursive: true});
+		mkdirSync(
+			plansDir,
+			{
+				recursive: true,
+			},
+		);
 		const mdPath = join(plansDir, "epsilon.md");
 
 		db.index
 			.insert(schema.plans)
-			.values({
-				filename: "epsilon.md",
-				title: "Epsilon",
-				mtimeMs: 1_700_000_000_000,
-			})
+			.values(
+				{
+					filename: "epsilon.md",
+					title: "Epsilon",
+					mtimeMs: 1_700_000_000_000,
+				},
+			)
 			.run();
 
 		let rowCountAtBroadcast = -1;
 		const broadcasts: CapturedBroadcast[] = [];
 
-		handlePlanMdUnlink(db.index, mdPath, (type, data) => {
-			broadcasts.push({type, data});
-			if (type === DOMAIN_EVENTS.PLAN_REMOVED) {
+		handlePlanMdUnlink(db.index, mdPath, (type, data) =>
+		{
+			broadcasts.push(
+				{
+					type,
+					data,
+				},
+			);
+			if (type === DOMAIN_EVENTS.PLAN_REMOVED)
+			{
 				rowCountAtBroadcast = db.index
 					.select()
 					.from(schema.plans)
@@ -1278,20 +2239,32 @@ describe("handlePlanMdUnlink", () => {
 
 		// At broadcast time, the row was already deleted.
 		expect(rowCountAtBroadcast).toBe(0);
-		expect(broadcasts).toStrictEqual([{type: DOMAIN_EVENTS.PLAN_REMOVED, data: {filename: "epsilon.md"}}]);
+		expect(broadcasts).toStrictEqual([
+			{
+				type: DOMAIN_EVENTS.PLAN_REMOVED,
+				data:
+				{
+					filename: "epsilon.md",
+				},
+			},
+		]);
 	});
 });
 
-describe("shouldIgnoreWatch", () => {
-	const fileStats = {
+describe("shouldIgnoreWatch", () =>
+{
+	const fileStats =
+	{
 		isFile: () => true,
 		isDirectory: () => false,
 	} as import("node:fs").Stats;
-	const dirStats = {
+	const dirStats =
+	{
 		isFile: () => false,
 		isDirectory: () => true,
 	} as import("node:fs").Stats;
-	const socketStats = {
+	const socketStats =
+	{
 		isFile: () => false,
 		isDirectory: () => false,
 	} as import("node:fs").Stats;
@@ -1299,32 +2272,38 @@ describe("shouldIgnoreWatch", () => {
 	// The module resolves ignored dirs from the real config.json / env at
 	// load time. Pin it to the hard-coded defaults so these assertions are
 	// deterministic regardless of the developer's environment.
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		__testing.resetIgnoredDirPattern();
 	});
-	afterEach(() => {
+	afterEach(() =>
+	{
 		__testing.resetIgnoredDirPattern();
 		__testing.setFileContentRoots([]);
 	});
 
-	it("ignores .git directories at any depth", () => {
+	it("ignores .git directories at any depth", () =>
+	{
 		expect(shouldIgnoreWatch("/foo/.git")).toBe(true);
 		expect(shouldIgnoreWatch("/foo/.git/fsmonitor--daemon.ipc")).toBe(true);
 		expect(shouldIgnoreWatch("/a/b/c/.git/HEAD")).toBe(true);
 		expect(shouldIgnoreWatch(".git/config")).toBe(true);
 	});
 
-	it("ignores node_modules subtrees", () => {
+	it("ignores node_modules subtrees", () =>
+	{
 		expect(shouldIgnoreWatch("/foo/node_modules")).toBe(true);
 		expect(shouldIgnoreWatch("/foo/node_modules/react/package.json")).toBe(true);
 	});
 
-	it("ignores agent context subtrees", () => {
+	it("ignores agent context subtrees", () =>
+	{
 		expect(shouldIgnoreWatch("/foo/.llm")).toBe(true);
 		expect(shouldIgnoreWatch("/foo/.llm/cached-repository/src/index.ts")).toBe(true);
 	});
 
-	it("ignores common build / cache / vendor directories", () => {
+	it("ignores common build / cache / vendor directories", () =>
+	{
 		expect(shouldIgnoreWatch("/foo/dist/bundle.js")).toBe(true);
 		expect(shouldIgnoreWatch("/foo/build/output.json")).toBe(true);
 		expect(shouldIgnoreWatch("/foo/out/index.html")).toBe(true);
@@ -1336,58 +2315,78 @@ describe("shouldIgnoreWatch", () => {
 		expect(shouldIgnoreWatch("/foo/target/release/bin")).toBe(true);
 	});
 
-	it("does not ignore look-alike basenames in other positions", () => {
+	it("does not ignore look-alike basenames in other positions", () =>
+	{
 		expect(shouldIgnoreWatch("/foo/my-dist-tool/file.md", fileStats)).toBe(false);
 		expect(shouldIgnoreWatch("/foo/distributed.md", fileStats)).toBe(false);
 	});
 
-	it("does not ignore watched files or directories", () => {
+	it("does not ignore watched files or directories", () =>
+	{
 		expect(shouldIgnoreWatch("/foo/bar.md", fileStats)).toBe(false);
 		expect(shouldIgnoreWatch("/foo/bar", dirStats)).toBe(false);
 	});
 
-	it("ignores non-regular files (sockets, FIFOs)", () => {
+	it("ignores non-regular files (sockets, FIFOs)", () =>
+	{
 		expect(shouldIgnoreWatch("/foo/sock", socketStats)).toBe(true);
 	});
 
-	it("ignores files with non-watched extensions when stats indicate a file", () => {
+	it("ignores files with non-watched extensions when stats indicate a file", () =>
+	{
 		expect(shouldIgnoreWatch("/foo/bar.png", fileStats)).toBe(true);
 		expect(shouldIgnoreWatch("/foo/bar.ts", fileStats)).toBe(true);
 		expect(shouldIgnoreWatch("/foo/Makefile", fileStats)).toBe(true);
 	});
 
-	it("does not ignore watched extensions", () => {
+	it("does not ignore watched extensions", () =>
+	{
 		expect(shouldIgnoreWatch("/foo/bar.md", fileStats)).toBe(false);
 		expect(shouldIgnoreWatch("/foo/bar.jsonl", fileStats)).toBe(false);
 		expect(shouldIgnoreWatch("/foo/bar.json", fileStats)).toBe(false);
 	});
 
-	it("keeps the Git index and its ancestor directories watched under an ignored .git", () => {
+	it("keeps the Git index and its ancestor directories watched under an ignored .git", () =>
+	{
 		const repositoryDirectory = realpathSync(mkdtempSync(join(tmpdir(), "watch-git-index-")));
 		mkdirSync(join(repositoryDirectory, ".git"));
-		try {
+		try
+		{
 			__testing.setFileContentRoots([repositoryDirectory]);
-			expect({
-				index: shouldIgnoreWatch(join(repositoryDirectory, ".git", "index")),
-				gitDirectory: shouldIgnoreWatch(join(repositoryDirectory, ".git")),
-				root: shouldIgnoreWatch(repositoryDirectory),
-				parent: shouldIgnoreWatch(dirname(repositoryDirectory)),
-				otherGitFile: shouldIgnoreWatch(join(repositoryDirectory, ".git", "HEAD")),
-				lockFile: shouldIgnoreWatch(join(repositoryDirectory, ".git", "index.lock")),
-			}).toStrictEqual({
-				index: false,
-				gitDirectory: false,
-				root: false,
-				parent: false,
-				otherGitFile: true,
-				lockFile: true,
-			});
-		} finally {
-			rmSync(repositoryDirectory, {recursive: true, force: true});
+			expect(
+				{
+					index: shouldIgnoreWatch(join(repositoryDirectory, ".git", "index")),
+					gitDirectory: shouldIgnoreWatch(join(repositoryDirectory, ".git")),
+					root: shouldIgnoreWatch(repositoryDirectory),
+					parent: shouldIgnoreWatch(dirname(repositoryDirectory)),
+					otherGitFile: shouldIgnoreWatch(join(repositoryDirectory, ".git", "HEAD")),
+					lockFile: shouldIgnoreWatch(join(repositoryDirectory, ".git", "index.lock")),
+				},
+			).toStrictEqual(
+				{
+					index: false,
+					gitDirectory: false,
+					root: false,
+					parent: false,
+					otherGitFile: true,
+					lockFile: true,
+				},
+			);
+		}
+		finally
+		{
+			rmSync(
+				repositoryDirectory,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
 		}
 	});
 
-	it("filters each native event at a cost that does not grow with the number of file-content roots", () => {
+	it("filters each native event at a cost that does not grow with the number of file-content roots", () =>
+	{
 		// libuv drains a whole FSEvents batch in one callback, so the predicate runs once per changed path with
 		// no chance to yield: a burst blocks the event loop for (events x per-event cost). Scanning every
 		// file-content root per event made that cost grow with the root count and starved the server. Compare
@@ -1395,20 +2394,37 @@ describe("shouldIgnoreWatch", () => {
 		// them under the same machine load, so the ratio measures the predicate, not the machine. A per-root scan
 		// costs ~100x more with 100x the roots; a set lookup per ancestor costs the same.
 		const base = realpathSync(mkdtempSync(join(tmpdir(), "watch-burst-")));
-		const manyRoots = Array.from({length: 1000}, (_, index) => {
-			const root = join(base, `repository-${index}`);
-			mkdirSync(join(root, ".git"), {recursive: true});
-			return root;
-		});
+		const manyRoots = Array.from(
+			{
+				length: 1000,
+			},
+			(_, index) =>
+			{
+				const root = join(base, `repository-${index}`);
+				mkdirSync(
+					join(root, ".git"),
+					{
+						recursive: true,
+					},
+				);
+				return root;
+			},
+		);
 		const fewRoots = manyRoots.slice(0, 10);
 		const filterBurst = (
 			roots: readonly string[],
 			firstEvent: number,
-		): {cpuMicros: number; ignoredCount: number} => {
+		):
+		{
+			cpuMicros: number;
+			ignoredCount: number;
+		} =>
+		{
 			__testing.setFileContentRoots([...roots]);
 			let ignoredCount = 0;
 			const before = process.threadCpuUsage();
-			for (let event = firstEvent; event < firstEvent + 1000; event += 1) {
+			for (let event = firstEvent; event < firstEvent + 1000; event += 1)
+			{
 				const root = roots[event % roots.length] ?? base;
 				// Half land in an ignored build directory; the rest survive to the post-stat check.
 				const ignoredDirectory = event % 2 === 0;
@@ -1416,11 +2432,22 @@ describe("shouldIgnoreWatch", () => {
 				if (ignoredDirectory ? shouldIgnoreWatch(path) : shouldIgnoreWatch(path, fileStats)) ignoredCount += 1;
 			}
 			const {user, system} = process.threadCpuUsage(before);
-			return {cpuMicros: user + system, ignoredCount};
+			return {
+				cpuMicros: user + system,
+				ignoredCount,
+			};
 		};
-		const totals = {few: 0, many: 0, ignoredFew: 0, ignoredMany: 0};
-		try {
-			for (let round = 0; round < 10; round += 1) {
+		const totals =
+		{
+			few: 0,
+			many: 0,
+			ignoredFew: 0,
+			ignoredMany: 0,
+		};
+		try
+		{
+			for (let round = 0; round < 10; round += 1)
+			{
 				const few = filterBurst(fewRoots, round * 1000);
 				const many = filterBurst(manyRoots, round * 1000);
 				totals.few += few.cpuMicros;
@@ -1428,98 +2455,181 @@ describe("shouldIgnoreWatch", () => {
 				totals.ignoredFew += few.ignoredCount;
 				totals.ignoredMany += many.ignoredCount;
 			}
-		} finally {
-			rmSync(base, {recursive: true, force: true});
 		}
-		expect({
-			ignoredFew: totals.ignoredFew,
-			ignoredMany: totals.ignoredMany,
-			costIndependentOfRootCount: totals.many < totals.few * 4,
-		}).toStrictEqual({ignoredFew: 5000, ignoredMany: 5000, costIndependentOfRootCount: true});
+		finally
+		{
+			rmSync(
+				base,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
+		}
+		expect(
+			{
+				ignoredFew: totals.ignoredFew,
+				ignoredMany: totals.ignoredMany,
+				costIndependentOfRootCount: totals.many < totals.few * 4,
+			},
+		).toStrictEqual(
+			{
+				ignoredFew: 5000,
+				ignoredMany: 5000,
+				costIndependentOfRootCount: true,
+			},
+		);
 	});
 });
 
-describe("resolveIgnoredDirNames", () => {
+describe("resolveIgnoredDirNames", () =>
+{
 	const configDir = mkdtempSync(join(tmpdir(), "watcher-config-test-"));
 	const configPath = join(configDir, "config.json");
 	const missingPath = join(configDir, "does-not-exist.json");
 
-	afterEach(() => {
-		rmSync(configPath, {force: true});
+	afterEach(() =>
+	{
+		rmSync(
+			configPath,
+			{
+				force: true,
+			},
+		);
 	});
 
-	it("uses the hard-coded defaults when neither env var nor config provides values", () => {
+	it("uses the hard-coded defaults when neither env var nor config provides values", () =>
+	{
 		const resolved = resolveIgnoredDirNames(missingPath);
 		expect([...resolved].toSorted()).toStrictEqual(__testing.DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
-	it("overrides defaults with the ignored_dirs array in config.json", () => {
-		writeFileSync(configPath, JSON.stringify({ignored_dirs: ["vendor", "tmp"]}));
+	it("overrides defaults with the ignored_dirs array in config.json", () =>
+	{
+		writeFileSync(
+			configPath,
+			JSON.stringify(
+				{
+					ignored_dirs: ["vendor", "tmp"],
+				},
+			),
+		);
 		const resolved = resolveIgnoredDirNames(configPath);
 		expect([...resolved].toSorted()).toStrictEqual(["tmp", "vendor"]);
 	});
 
-	it("ignores the retired environment alias when config is present", () => {
-		writeFileSync(configPath, JSON.stringify({ignored_dirs: ["from-config"]}));
+	it("ignores the retired environment alias when config is present", () =>
+	{
+		writeFileSync(
+			configPath,
+			JSON.stringify(
+				{
+					ignored_dirs: ["from-config"],
+				},
+			),
+		);
 		process.env["CCP_WATCHER_IGNORED_DIRS"] = "from-env";
-		try {
+		try
+		{
 			expect([...resolveIgnoredDirNames(configPath)]).toStrictEqual(["from-config"]);
-		} finally {
+		}
+		finally
+		{
 			delete process.env["CCP_WATCHER_IGNORED_DIRS"];
 		}
 	});
 
-	it("falls back to defaults when config.json is malformed JSON", () => {
+	it("falls back to defaults when config.json is malformed JSON", () =>
+	{
 		writeFileSync(configPath, "{ not json");
 		const resolved = resolveIgnoredDirNames(configPath);
 		expect([...resolved].toSorted()).toStrictEqual(__testing.DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
-	it("falls back to defaults when ignored_dirs is not an array", () => {
-		writeFileSync(configPath, JSON.stringify({ignored_dirs: "node_modules"}));
+	it("falls back to defaults when ignored_dirs is not an array", () =>
+	{
+		writeFileSync(
+			configPath,
+			JSON.stringify(
+				{
+					ignored_dirs: "node_modules",
+				},
+			),
+		);
 		const resolved = resolveIgnoredDirNames(configPath);
 		expect([...resolved].toSorted()).toStrictEqual(__testing.DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
-	it("rejects the whole file and falls back to defaults when an array entry is invalid", () => {
-		writeFileSync(configPath, JSON.stringify({ignored_dirs: ["keep", "", "  ", 42, null]}));
+	it("rejects the whole file and falls back to defaults when an array entry is invalid", () =>
+	{
+		writeFileSync(
+			configPath,
+			JSON.stringify(
+				{
+					ignored_dirs: ["keep", "", "  ", 42, null],
+				},
+			),
+		);
 		const resolved = resolveIgnoredDirNames(configPath);
 		expect([...resolved].toSorted()).toStrictEqual(__testing.DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
-	it("rejects the whole file and falls back to defaults on unknown config keys", () => {
-		writeFileSync(configPath, JSON.stringify({ignored_dirs: ["vendor"], bogus: true}));
+	it("rejects the whole file and falls back to defaults on unknown config keys", () =>
+	{
+		writeFileSync(
+			configPath,
+			JSON.stringify(
+				{
+					ignored_dirs: ["vendor"],
+					bogus: true,
+				},
+			),
+		);
 		const resolved = resolveIgnoredDirNames(configPath);
 		expect([...resolved].toSorted()).toStrictEqual(__testing.DEFAULT_IGNORED_DIR_NAMES.toSorted());
 	});
 
-	it("trims whitespace around valid configured directory names", () => {
-		writeFileSync(configPath, JSON.stringify({ignored_dirs: ["  vendor  ", "tmp"]}));
+	it("trims whitespace around valid configured directory names", () =>
+	{
+		writeFileSync(
+			configPath,
+			JSON.stringify(
+				{
+					ignored_dirs: ["  vendor  ", "tmp"],
+				},
+			),
+		);
 		const resolved = readIgnoredDirsFromConfigViaTesting(configPath);
 		expect(resolved).toStrictEqual(["vendor", "tmp"]);
 	});
 
-	function readIgnoredDirsFromConfigViaTesting(path: string): string[] | null {
+	function readIgnoredDirsFromConfigViaTesting(path: string): string[] | null
+	{
 		return __testing.readIgnoredDirsFromConfig(path);
 	}
 });
 
-describe("shouldIgnoreWatch with configured ignored dirs", () => {
-	const fileStats = {
+describe("shouldIgnoreWatch with configured ignored dirs", () =>
+{
+	const fileStats =
+	{
 		isFile: () => true,
 		isDirectory: () => false,
 	} as import("node:fs").Stats;
-	const directoryStats = {
+	const directoryStats =
+	{
 		isFile: () => false,
 		isDirectory: () => true,
 	} as import("node:fs").Stats;
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		__testing.resetIgnoredDirPattern();
 		__testing.setFileContentRoots([]);
 	});
 
-	it("honors a custom ignored-dir set when applied via the resolved pattern", () => {
+	it("honors a custom ignored-dir set when applied via the resolved pattern", () =>
+	{
 		__testing.setIgnoredDirPattern(buildIgnoredDirPattern(new Set(["vendor", "tmp"])));
 
 		expect(shouldIgnoreWatch("/foo/vendor/file.json")).toBe(true);
@@ -1528,7 +2638,8 @@ describe("shouldIgnoreWatch with configured ignored dirs", () => {
 		expect(shouldIgnoreWatch("/foo/node_modules/x.json", fileStats)).toBe(false);
 	});
 
-	it("escapes regex metacharacters in configured directory names", () => {
+	it("escapes regex metacharacters in configured directory names", () =>
+	{
 		__testing.setIgnoredDirPattern(buildIgnoredDirPattern(new Set([".cache", "a+b"])));
 
 		expect(shouldIgnoreWatch("/foo/.cache/x")).toBe(true);
@@ -1537,98 +2648,149 @@ describe("shouldIgnoreWatch with configured ignored dirs", () => {
 		expect(shouldIgnoreWatch("/foo/aab/x.json", fileStats)).toBe(false);
 	});
 
-	it("watches searchable file extensions only inside configured file roots", () => {
+	it("watches searchable file extensions only inside configured file roots", () =>
+	{
 		const fixtureDirectory = mkdtempSync(join(tmpdir(), "watcher-ignore-test-"));
 		const fileContentRoot = join(fixtureDirectory, "allowed");
-		mkdirSync(join(fileContentRoot, ".git"), {recursive: true});
+		mkdirSync(
+			join(fileContentRoot, ".git"),
+			{
+				recursive: true,
+			},
+		);
 		__testing.setFileContentRoots([fileContentRoot]);
 
-		try {
-			expect({
-				ignoredBinary: shouldIgnoreWatch(join(fileContentRoot, "diagram.png"), fileStats),
-				ignoredInsideRoot: shouldIgnoreWatch(join(fileContentRoot, "alice.custom"), fileStats),
-				ignoredOutsideRoot: shouldIgnoreWatch(join(fixtureDirectory, "outside", "alice.custom"), fileStats),
-				ignoredSourceMap: shouldIgnoreWatch(join(fileContentRoot, "bundle.js.map"), fileStats),
-				ignoredSubtree: shouldIgnoreWatch(join(fileContentRoot, "node_modules", "alice.custom"), fileStats),
-				ignoredGitConfig: shouldIgnoreWatch(join(fileContentRoot, ".git", "config"), fileStats),
-				watchedGitDirectory: shouldIgnoreWatch(join(fileContentRoot, ".git"), directoryStats),
-				watchedGitIndex: shouldIgnoreWatch(join(fileContentRoot, ".git", "index"), fileStats),
-			}).toStrictEqual({
-				ignoredBinary: true,
-				ignoredInsideRoot: false,
-				ignoredOutsideRoot: true,
-				ignoredSourceMap: true,
-				ignoredSubtree: true,
-				ignoredGitConfig: true,
-				watchedGitDirectory: false,
-				watchedGitIndex: false,
-			});
-		} finally {
-			rmSync(fixtureDirectory, {recursive: true, force: true});
+		try
+		{
+			expect(
+				{
+					ignoredBinary: shouldIgnoreWatch(join(fileContentRoot, "diagram.png"), fileStats),
+					ignoredInsideRoot: shouldIgnoreWatch(join(fileContentRoot, "alice.custom"), fileStats),
+					ignoredOutsideRoot: shouldIgnoreWatch(join(fixtureDirectory, "outside", "alice.custom"), fileStats),
+					ignoredSourceMap: shouldIgnoreWatch(join(fileContentRoot, "bundle.js.map"), fileStats),
+					ignoredSubtree: shouldIgnoreWatch(join(fileContentRoot, "node_modules", "alice.custom"), fileStats),
+					ignoredGitConfig: shouldIgnoreWatch(join(fileContentRoot, ".git", "config"), fileStats),
+					watchedGitDirectory: shouldIgnoreWatch(join(fileContentRoot, ".git"), directoryStats),
+					watchedGitIndex: shouldIgnoreWatch(join(fileContentRoot, ".git", "index"), fileStats),
+				},
+			).toStrictEqual(
+				{
+					ignoredBinary: true,
+					ignoredInsideRoot: false,
+					ignoredOutsideRoot: true,
+					ignoredSourceMap: true,
+					ignoredSubtree: true,
+					ignoredGitConfig: true,
+					watchedGitDirectory: false,
+					watchedGitIndex: false,
+				},
+			);
+		}
+		finally
+		{
+			rmSync(
+				fixtureDirectory,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
 		}
 	});
 });
 
-describe("createWatcher resilience", () => {
+describe("createWatcher resilience", () =>
+{
 	let dir: string;
 	let server: Server | null = null;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		dir = mkdtempSync(join(tmpdir(), "watcher-socket-test-"));
 	});
 
-	afterEach(async () => {
-		if (server) {
-			await new Promise<void>((resolve) => {
-				server!.close(() => {
+	afterEach(async () =>
+	{
+		if (server)
+		{
+			await new Promise<void>((resolve) =>
+			{
+				server!.close(() =>
+				{
 					resolve();
 				});
 			});
 			server = null;
 		}
-		rmSync(dir, {recursive: true, force: true});
+		rmSync(
+			dir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("does not crash when a .git directory contains a Unix socket", async () => {
+	it("does not crash when a .git directory contains a Unix socket", async () =>
+	{
 		const gitDir = join(dir, ".git");
-		mkdirSync(gitDir, {recursive: true});
+		mkdirSync(
+			gitDir,
+			{
+				recursive: true,
+			},
+		);
 		const sockPath = join(gitDir, "fsmonitor--daemon.ipc");
 		server = createServer();
-		await new Promise<void>((resolve, reject) => {
+		await new Promise<void>((resolve, reject) =>
+		{
 			server!.once("error", reject);
-			server!.listen(sockPath, () => {
+			server!.listen(sockPath, () =>
+			{
 				resolve();
 			});
 		});
 
 		const watcher = await createWatcher([dir]);
-		const ready = new Promise<void>((resolve) => {
-			watcher.once("ready", () => {
+		const ready = new Promise<void>((resolve) =>
+		{
+			watcher.once("ready", () =>
+			{
 				resolve();
 			});
 		});
 		await expect(ready).resolves.toBeUndefined();
-		await new Promise((r) => {
+		await new Promise((r) =>
+		{
 			setTimeout(r, 100);
 		});
 		await watcher.close();
 	});
 });
 
-describe("session registry events", () => {
-	afterEach(() => {
+describe("session registry events", () =>
+{
+	afterEach(() =>
+	{
 		stopSessionRegistryMonitor();
 		clearSessionRegistry();
 		vi.restoreAllMocks();
 	});
 
-	it("refreshes the registry for a <pid>.json event reported under the real path of a symlinked ~/.claude", async () => {
+	it("refreshes the registry for a <pid>.json event reported under the real path of a symlinked ~/.claude", async () =>
+	{
 		const fixture = realpathSync(mkdtempSync(join(tmpdir(), "watcher-registry-symlink-test-")));
 		const realSessions = join(fixture, "real", "sessions");
-		mkdirSync(realSessions, {recursive: true});
+		mkdirSync(
+			realSessions,
+			{
+				recursive: true,
+			},
+		);
 		symlinkSync(join(fixture, "real"), join(fixture, "link"));
 		const linkedSessions = join(fixture, "link", "sessions");
-		const recursiveWatcher = {
+		const recursiveWatcher =
+		{
 			once: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
 			on: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
 			whenReady: vi.fn<RecursiveWatcher["whenReady"]>(async () => Promise.resolve(undefined)),
@@ -1636,61 +2798,90 @@ describe("session registry events", () => {
 		} as unknown as RecursiveWatcher;
 		vi.spyOn(recursiveWatch, "createRecursiveWatcher").mockReturnValue(recursiveWatcher);
 		const changes: string[][] = [];
-		startSessionRegistryMonitor({
-			dir: linkedSessions,
-			pollMs: 60_000,
-			probe: {isAlive: () => true, readStartTimes: async () => Promise.resolve(null)},
-			onChange: (sessionIds) => changes.push([...sessionIds]),
-		});
+		startSessionRegistryMonitor(
+			{
+				dir: linkedSessions,
+				pollMs: 60_000,
+				probe:
+				{
+					isAlive: () => true,
+					readStartTimes: async () => Promise.resolve(null),
+				},
+				onChange: (sessionIds) => changes.push([...sessionIds]),
+			},
+		);
 
-		try {
+		try
+		{
 			await createWatcher([], undefined, undefined, undefined, [], undefined, linkedSessions);
 			const realFile = join(realSessions, "4242.json");
 			writeFileSync(
 				realFile,
-				JSON.stringify({
-					pid: 4242,
-					sessionId: "sess-symlinked",
-					cwd: "/Users/alice/projects/registry",
-					startedAt: 946_598_400_000,
-					procStart: "Fri Dec 31 00:00:00 1999",
-					version: "2.0.0",
-					kind: "interactive",
-					entrypoint: "cli",
-					pidDomain: "darwin",
-					status: "waiting",
-					waitingFor: "input needed",
-					updatedAt: 946_598_402_000,
-					statusUpdatedAt: 946_598_402_000,
-				}),
+				JSON.stringify(
+					{
+						pid: 4242,
+						sessionId: "sess-symlinked",
+						cwd: "/Users/alice/projects/registry",
+						startedAt: 946_598_400_000,
+						procStart: "Fri Dec 31 00:00:00 1999",
+						version: "2.0.0",
+						kind: "interactive",
+						entrypoint: "cli",
+						pidDomain: "darwin",
+						status: "waiting",
+						waitingFor: "input needed",
+						updatedAt: 946_598_402_000,
+						statusUpdatedAt: 946_598_402_000,
+					},
+				),
 			);
 			// The recursive watcher reports paths under the root's real path.
 			await __testing.handleFileChange(realFile);
 			await vi.waitFor(
-				() => {
+				() =>
+				{
 					expect(changes).toStrictEqual([["sess-symlinked"]]);
 				},
-				{timeout: 2000},
+				{
+					timeout: 2000,
+				},
 			);
-		} finally {
+		}
+		finally
+		{
 			await closeWatcher();
-			rmSync(fixture, {recursive: true, force: true});
+			rmSync(
+				fixture,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
 		}
 	});
 });
 
-describe("createWatcher with a symlinked ~/.claude", () => {
+describe("createWatcher with a symlinked ~/.claude", () =>
+{
 	let fixture: string;
 	let realClaude: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		fixture = realpathSync(mkdtempSync(join(tmpdir(), "watcher-claude-symlink-test-")));
 		realClaude = join(fixture, "real");
-		for (const dir of ["projects/-home-alice-app/memory", "plans", "jobs"]) {
-			mkdirSync(join(realClaude, dir), {recursive: true});
+		for (const dir of ["projects/-home-alice-app/memory", "plans", "jobs"])
+		{
+			mkdirSync(
+				join(realClaude, dir),
+				{
+					recursive: true,
+				},
+			);
 		}
 		symlinkSync(realClaude, join(fixture, "link"));
-		const recursiveWatcher = {
+		const recursiveWatcher =
+		{
 			once: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
 			on: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
 			whenReady: vi.fn<RecursiveWatcher["whenReady"]>(async () => Promise.resolve(undefined)),
@@ -1699,15 +2890,23 @@ describe("createWatcher with a symlinked ~/.claude", () => {
 		vi.spyOn(recursiveWatch, "createRecursiveWatcher").mockReturnValue(recursiveWatcher);
 	});
 
-	afterEach(async () => {
+	afterEach(async () =>
+	{
 		await closeWatcher();
 		__testing.setProjectsDir("");
 		__testing.resetJsonlThrottle();
 		vi.restoreAllMocks();
-		rmSync(fixture, {recursive: true, force: true});
+		rmSync(
+			fixture,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("indexes plan and memory edits the recursive watcher reports under the real path", async () => {
+	it("indexes plan and memory edits the recursive watcher reports under the real path", async () =>
+	{
 		const linkedClaude = join(fixture, "link");
 		await createWatcher(
 			[],
@@ -1725,47 +2924,81 @@ describe("createWatcher with a symlinked ~/.claude", () => {
 		await __testing.handleFileChange(planPath);
 		await __testing.handleFileChange(memoryPath);
 
-		await vi.waitFor(() => {
-			expect({
-				plans: sharedDb.index
-					.select({filename: schema.plans.filename, title: schema.plans.title})
-					.from(schema.plans)
-					.where(eq(schema.plans.filename, "symlinked-plan.md"))
-					.all(),
-				memories: sharedDb.index
-					.select({
-						filePath: schema.memories.filePath,
-						projectId: schema.memories.projectId,
-						title: schema.memories.title,
-					})
-					.from(schema.memories)
-					.where(eq(schema.memories.filename, "symlinked-memory.md"))
-					.all(),
-			}).toStrictEqual({
-				plans: [{filename: "symlinked-plan.md", title: "Symlinked plan"}],
-				memories: [{filePath: memoryPath, projectId: "-home-alice-app", title: "Symlinked memory"}],
-			});
+		await vi.waitFor(() =>
+		{
+			expect(
+				{
+					plans: sharedDb.index
+						.select(
+							{
+								filename: schema.plans.filename,
+								title: schema.plans.title,
+							},
+						)
+						.from(schema.plans)
+						.where(eq(schema.plans.filename, "symlinked-plan.md"))
+						.all(),
+					memories: sharedDb.index
+						.select(
+							{
+								filePath: schema.memories.filePath,
+								projectId: schema.memories.projectId,
+								title: schema.memories.title,
+							},
+						)
+						.from(schema.memories)
+						.where(eq(schema.memories.filename, "symlinked-memory.md"))
+						.all(),
+				},
+			).toStrictEqual(
+				{
+					plans: [
+						{
+							filename: "symlinked-plan.md",
+							title: "Symlinked plan",
+						},
+					],
+					memories: [
+						{
+							filePath: memoryPath,
+							projectId: "-home-alice-app",
+							title: "Symlinked memory",
+						},
+					],
+				},
+			);
 		});
 	});
 
-	it("broadcasts jobs:changed for a job state file reported under the real path", async () => {
+	it("broadcasts jobs:changed for a job state file reported under the real path", async () =>
+	{
 		const linkedClaude = join(fixture, "link");
 		await createWatcher([], undefined, undefined, undefined, [], join(linkedClaude, "jobs"));
 		const decoder = new TextDecoder();
 		const events: string[] = [];
-		const client = {
-			enqueue: (chunk: Uint8Array) => {
+		const client =
+		{
+			enqueue: (chunk: Uint8Array) =>
+			{
 				events.push(decoder.decode(chunk).split("\n")[0] ?? "");
 			},
 		} as unknown as ReadableStreamDefaultController;
 		const stateFile = join(realClaude, "jobs", "job-alice", "state.json");
-		mkdirSync(dirname(stateFile), {recursive: true});
+		mkdirSync(
+			dirname(stateFile),
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(stateFile, "{}");
 
 		addClient(client);
-		try {
+		try
+		{
 			await __testing.handleFileChange(stateFile);
-		} finally {
+		}
+		finally
+		{
 			removeClient(client);
 		}
 
@@ -1773,23 +3006,32 @@ describe("createWatcher with a symlinked ~/.claude", () => {
 	});
 });
 
-describe("createWatcher integration", () => {
-	afterEach(() => {
+describe("createWatcher integration", () =>
+{
+	afterEach(() =>
+	{
 		vi.restoreAllMocks();
 	});
 
-	it("creates a recursive watcher with the existing filter and handlers", async () => {
+	it("creates a recursive watcher with the existing filter and handlers", async () =>
+	{
 		const fixtureDirectory = mkdtempSync(join(tmpdir(), "watcher-integration-test-"));
 		const watchedDirectory = join(fixtureDirectory, "watched");
 		const fileContentRoot = join(fixtureDirectory, "file-content");
 		mkdirSync(watchedDirectory);
-		mkdirSync(join(fileContentRoot, ".git"), {recursive: true});
+		mkdirSync(
+			join(fileContentRoot, ".git"),
+			{
+				recursive: true,
+			},
+		);
 		let recursiveWatcher: RecursiveWatcher;
 		const once = vi.fn<RecursiveWatcher["once"]>((_event: "ready", _listener: () => void) => recursiveWatcher);
 		const on = vi.fn<RecursiveWatcher["on"]>(
 			(_event: "add" | "change" | "unlink", _listener: (path: string) => void) => recursiveWatcher,
 		);
-		recursiveWatcher = {
+		recursiveWatcher =
+		{
 			once,
 			on,
 			whenReady: vi.fn<RecursiveWatcher["whenReady"]>(async () => Promise.resolve(undefined)),
@@ -1799,30 +3041,44 @@ describe("createWatcher integration", () => {
 			.spyOn(recursiveWatch, "createRecursiveWatcher")
 			.mockReturnValue(recursiveWatcher);
 
-		try {
+		try
+		{
 			const result = await createWatcher([watchedDirectory], undefined, undefined, undefined, [fileContentRoot]);
 
-			expect({
-				result,
-				createCalls: createRecursiveWatcher.mock.calls,
-				onCalls: on.mock.calls.map(([event, listener]) => [event, listener.name]),
-			}).toStrictEqual({
-				result: recursiveWatcher,
-				createCalls: [[[watchedDirectory, fileContentRoot], shouldIgnoreWatch]],
-				onCalls: [
-					["add", "onFileChange"],
-					["change", "onFileChange"],
-					["unlink", "onFileUnlink"],
-				],
-			});
-		} finally {
+			expect(
+				{
+					result,
+					createCalls: createRecursiveWatcher.mock.calls,
+					onCalls: on.mock.calls.map(([event, listener]) => [event, listener.name]),
+				},
+			).toStrictEqual(
+				{
+					result: recursiveWatcher,
+					createCalls: [[[watchedDirectory, fileContentRoot], shouldIgnoreWatch]],
+					onCalls: [
+						["add", "onFileChange"],
+						["change", "onFileChange"],
+						["unlink", "onFileUnlink"],
+					],
+				},
+			);
+		}
+		finally
+		{
 			await recursiveWatcher.close();
 			__testing.setFileContentRoots([]);
-			rmSync(fixtureDirectory, {recursive: true, force: true});
+			rmSync(
+				fixtureDirectory,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
 		}
 	});
 
-	it("watches the real index directory for a linked worktree", async () => {
+	it("watches the real index directory for a linked worktree", async () =>
+	{
 		const fixtureDirectory = mkdtempSync(join(tmpdir(), "watcher-worktree-test-"));
 		const repositoryDirectory = join(fixtureDirectory, "repository");
 		const worktreeDirectory = join(fixtureDirectory, "worktree");
@@ -1834,7 +3090,8 @@ describe("createWatcher integration", () => {
 		const on = vi.fn<RecursiveWatcher["on"]>(
 			(_event: "add" | "change" | "unlink", _listener: (path: string) => void) => recursiveWatcher,
 		);
-		recursiveWatcher = {
+		recursiveWatcher =
+		{
 			once,
 			on,
 			whenReady: vi.fn<RecursiveWatcher["whenReady"]>(async () => Promise.resolve(undefined)),
@@ -1844,39 +3101,58 @@ describe("createWatcher integration", () => {
 			.spyOn(recursiveWatch, "createRecursiveWatcher")
 			.mockReturnValue(recursiveWatcher);
 
-		try {
+		try
+		{
 			await createWatcher([], undefined, undefined, undefined, [worktreeDirectory]);
 
 			expect(createRecursiveWatcher.mock.calls).toStrictEqual([
 				[[worktreeDirectory, dirname(repositoryIndexPath)], shouldIgnoreWatch],
 			]);
-		} finally {
+		}
+		finally
+		{
 			await recursiveWatcher.close();
 			__testing.setFileContentRoots([]);
-			rmSync(fixtureDirectory, {recursive: true, force: true});
+			rmSync(
+				fixtureDirectory,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
 		}
 	});
 });
 
-describe("handleWorkflowFileEvent", () => {
+describe("handleWorkflowFileEvent", () =>
+{
 	const projectsDir = "/home/alice/.claude/projects";
 	const session = join(projectsDir, "-Users-alice-projects-outline", "1ff9ad30-4e13-4af4-8d20-31a37088f09f");
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2000-01-01T00:00:00.000Z"));
 		__testing.resetWorkflowThrottle();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		__testing.resetWorkflowThrottle();
 		vi.useRealTimers();
 	});
 
-	it("broadcasts workflows:changed for the session at most once per throttle window, with a trailing fire", async () => {
+	it("broadcasts workflows:changed for the session at most once per throttle window, with a trailing fire", async () =>
+	{
 		const events: CapturedBroadcast[] = [];
-		const capture = (type: string, data: Record<string, unknown>): void => {
-			events.push({type, data});
+		const capture = (type: string, data: Record<string, unknown>): void =>
+		{
+			events.push(
+				{
+					type,
+					data,
+				},
+			);
 		};
 		const handled = [
 			__testing.handleWorkflowFileEvent(
@@ -1895,13 +3171,33 @@ describe("handleWorkflowFileEvent", () => {
 		const leading = events.length;
 		await vi.advanceTimersByTimeAsync(2_000);
 
-		expect({handled, leading, events}).toStrictEqual({
-			handled: [true, true, true, false],
-			leading: 1,
-			events: [
-				{type: DOMAIN_EVENTS.WORKFLOWS_CHANGED, data: {sessionId: "1ff9ad30-4e13-4af4-8d20-31a37088f09f"}},
-				{type: DOMAIN_EVENTS.WORKFLOWS_CHANGED, data: {sessionId: "1ff9ad30-4e13-4af4-8d20-31a37088f09f"}},
-			],
-		});
+		expect(
+			{
+				handled,
+				leading,
+				events,
+			},
+		).toStrictEqual(
+			{
+				handled: [true, true, true, false],
+				leading: 1,
+				events: [
+					{
+						type: DOMAIN_EVENTS.WORKFLOWS_CHANGED,
+						data:
+						{
+							sessionId: "1ff9ad30-4e13-4af4-8d20-31a37088f09f",
+						},
+					},
+					{
+						type: DOMAIN_EVENTS.WORKFLOWS_CHANGED,
+						data:
+						{
+							sessionId: "1ff9ad30-4e13-4af4-8d20-31a37088f09f",
+						},
+					},
+				],
+			},
+		);
 	});
 });

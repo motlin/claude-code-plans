@@ -1,4 +1,5 @@
-import {
+import
+{
 	FolderGit2,
 	GitBranch,
 	GitMerge,
@@ -29,7 +30,8 @@ const DISMISS_KEY_PREFIX = "branch-strip-dismissed:";
 const GHOST_BUTTON =
 	"inline-flex h-6 min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-r5 px-1.5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover";
 
-function numberAt(data: Record<string, unknown> | null, group: string, key: string) {
+function numberAt(data: Record<string, unknown> | null, group: string, key: string)
+{
 	const value = data?.[group];
 	if (!isRecord(value)) return undefined;
 	const leaf = value[key];
@@ -37,62 +39,88 @@ function numberAt(data: Record<string, unknown> | null, group: string, key: stri
 }
 
 /** `+N −M` from the statusline's `cost.total_lines_added/removed`, or null when nothing changed. */
-function lineCounts(statusline: Record<string, unknown> | null): LineCounts | null {
+function lineCounts(statusline: Record<string, unknown> | null): LineCounts | null
+{
 	const additions = numberAt(statusline, "cost", "total_lines_added") ?? 0;
 	const deletions = numberAt(statusline, "cost", "total_lines_removed") ?? 0;
-	return additions > 0 || deletions > 0 ? {additions, deletions} : null;
+	return additions > 0 || deletions > 0
+		?
+			{
+				additions,
+				deletions,
+			}
+		: null;
 }
 
-function readDismissed(sessionId: string): boolean {
-	try {
+function readDismissed(sessionId: string): boolean
+{
+	try
+	{
 		return sessionStorage.getItem(DISMISS_KEY_PREFIX + sessionId) === "1";
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
 
-function writeDismissed(sessionId: string): void {
-	try {
+function writeDismissed(sessionId: string): void
+{
+	try
+	{
 		sessionStorage.setItem(DISMISS_KEY_PREFIX + sessionId, "1");
-	} catch {
+	}
+	catch
+	{
 		// Storage is unavailable; the dismissal lasts until the page reloads.
 	}
 }
 
 /** Dismissal is per session and per tab, like upstream. */
-function useDismissed(sessionId: string): [boolean, () => void] {
+function useDismissed(sessionId: string): [boolean, () => void]
+{
 	const [dismissed, setDismissed] = useState(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		// oxlint-disable-next-line react/no-deriving-state-in-effects -- sessionStorage exists only on the client, so reading it during render would break hydration
 		setDismissed(readDismissed(sessionId));
 	}, [sessionId]);
-	const dismiss = useCallback(() => {
+	const dismiss = useCallback(() =>
+	{
 		writeDismissed(sessionId);
 		setDismissed(true);
 	}, [sessionId]);
 	return [dismissed, dismiss];
 }
 
-function useContainerWidth() {
+function useContainerWidth()
+{
 	const ref = useRef<HTMLDivElement>(null);
 	const [width, setWidth] = useState<number | null>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const element = ref.current;
 		if (element === null || typeof ResizeObserver === "undefined") return undefined;
-		const observer = new ResizeObserver((entries) => {
+		const observer = new ResizeObserver((entries) =>
+		{
 			const measured = entries[0]?.contentRect.width;
 			if (measured !== undefined) setWidth(measured);
 		});
 		observer.observe(element);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, []);
-	return {ref, width};
+	return {
+		ref,
+		width,
+	};
 }
 
 /** Upstream's clickable env-bar diff button (`pr` in c390f938b): the animated `Qe` stat, tooltip "View changes". */
-function DiffStatButton({sessionId, additions, deletions}: {sessionId: string; additions: number; deletions: number}) {
+function DiffStatButton({sessionId, additions, deletions}: {sessionId: string; additions: number; deletions: number})
+{
 	const host = useOptionalPaneHost();
 	return (
 		<button
@@ -100,7 +128,8 @@ function DiffStatButton({sessionId, additions, deletions}: {sessionId: string; a
 			dir="ltr"
 			title="View changes"
 			className={GHOST_BUTTON}
-			onClick={() => {
+			onClick={() =>
+			{
 				requestChangesScope(sessionId, "branch");
 				host?.openPane("changes");
 			}}
@@ -111,8 +140,10 @@ function DiffStatButton({sessionId, additions, deletions}: {sessionId: string; a
 }
 
 /** A linked PR owns its identity; only status with the same number and URL may decorate it. */
-function pullRequestSummary(session: BranchStripSession) {
-	if (session.pr !== undefined) {
+function pullRequestSummary(session: BranchStripSession)
+{
+	if (session.pr !== undefined)
+	{
 		const status = session.prStatus;
 		return {
 			number: session.pr.number,
@@ -133,14 +164,21 @@ function pullRequestSummary(session: BranchStripSession) {
 const PR_REPOSITORY_BUTTON =
 	"inline-flex h-6 min-w-0 max-w-[160px] shrink cursor-pointer items-center rounded-r5 px-[5px] text-[13px] leading-[19px] opacity-60 transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover";
 
-const PR_STATE_ICONS = {
+const PR_STATE_ICONS =
+{
 	open: GitPullRequest,
 	draft: GitPullRequestDraft,
 	merged: GitMerge,
 	closed: GitPullRequestClosed,
 };
 
-const PR_STATE_LABELS = {open: "Open", draft: "Draft", merged: "Merged", closed: "Closed"} as const;
+const PR_STATE_LABELS =
+{
+	open: "Open",
+	draft: "Draft",
+	merged: "Merged",
+	closed: "Closed",
+} as const;
 
 function PullRequestStripContent({
 	sessionId,
@@ -150,7 +188,8 @@ function PullRequestStripContent({
 	sessionId: string;
 	session: BranchStripSession;
 	pr: NonNullable<ReturnType<typeof pullRequestSummary>>;
-}) {
+})
+{
 	const color = pr.status === undefined ? undefined : `var(--color-git-${prGlyph(pr.status).state})`;
 	const Icon = pr.status === undefined ? GitPullRequest : PR_STATE_ICONS[pr.status.state];
 	const label = `#${pr.number}`;
@@ -158,9 +197,22 @@ function PullRequestStripContent({
 	return (
 		<>
 			<div className="flex min-w-0 flex-1 items-center gap-0">
-				<Icon aria-hidden className="size-4 shrink-0" style={{color}} />
+				<Icon
+					aria-hidden
+					className="size-4 shrink-0"
+					style={
+					{
+						color,
+					}}
+				/>
 				{pr.url === undefined ? (
-					<span className="shrink-0 px-[5px] tabular-nums" style={{color}}>
+					<span
+						className="shrink-0 px-[5px] tabular-nums"
+						style={
+						{
+							color,
+						}}
+					>
 						{label}
 					</span>
 				) : (
@@ -169,7 +221,10 @@ function PullRequestStripContent({
 						target="_blank"
 						rel="noopener noreferrer"
 						className="shrink-0 rounded-r5 px-[5px] tabular-nums hover:underline hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-						style={{color}}
+						style={
+						{
+							color,
+						}}
 					>
 						{label}
 					</a>
@@ -182,7 +237,10 @@ function PullRequestStripContent({
 								aria-label={`Repository ${pr.repository}`}
 								title={pr.repository}
 								className={PR_REPOSITORY_BUTTON}
-								style={{color}}
+								style={
+								{
+									color,
+								}}
 							>
 								<span className="truncate">{repositoryName}</span>
 							</MenuTrigger>
@@ -193,7 +251,13 @@ function PullRequestStripContent({
 					</>
 				)}
 			</div>
-			<span className="shrink-0 whitespace-nowrap" style={{color}}>
+			<span
+				className="shrink-0 whitespace-nowrap"
+				style={
+				{
+					color,
+				}}
+			>
 				{pr.status === undefined ? "Status unknown" : PR_STATE_LABELS[pr.status.state]}
 			</span>
 		</>
@@ -212,7 +276,8 @@ export function BranchStrip({
 	sessionId: string;
 	session: BranchStripSession;
 	statusline: Record<string, unknown> | null;
-}) {
+})
+{
 	const [dismissed, dismiss] = useDismissed(sessionId);
 	const {ref, width} = useContainerWidth();
 	const counts = lineCounts(statusline);
@@ -240,7 +305,10 @@ export function BranchStrip({
 					style={
 						prColor === undefined
 							? undefined
-							: {backgroundColor: `color-mix(in srgb, ${prColor} 20%, transparent)`}
+							:
+								{
+									backgroundColor: `color-mix(in srgb, ${prColor} 20%, transparent)`,
+								}
 					}
 				>
 					{pr === null ? (
@@ -278,7 +346,10 @@ export function BranchStrip({
 								? `${GHOST_BUTTON} ml-auto`
 								: "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 						}
-						style={{color: prColor}}
+						style={
+						{
+							color: prColor,
+						}}
 						onClick={dismiss}
 					>
 						<X aria-hidden className={pr === null ? "size-3.5" : "size-4"} />

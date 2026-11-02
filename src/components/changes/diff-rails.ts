@@ -13,15 +13,32 @@ const R = `:is(${I},${L})`;
 /** Upstream c4860ec62 `p` (forced-colors or more contrast). */
 const z = "@media (forced-colors:active),(prefers-contrast:more)";
 /** Upstream ca9e46d28 `B`: the glyphs (U+2212 minus for deletions). */
-const B = {additions: "+", deletions: "−"} as const;
+const B =
+{
+	additions: "+",
+	deletions: "−",
+} as const;
 /** Upstream ca9e46d28 `V`: change-row `--mix-light`/`--mix-dark`. */
-const V = {additions: {light: "88%", dark: "80%"}, deletions: {light: "91.5%", dark: "90%"}} as const;
+const V =
+{
+	additions:
+	{
+		light: "88%",
+		dark: "80%",
+	},
+	deletions:
+	{
+		light: "91.5%",
+		dark: "90%",
+	},
+} as const;
 const H =
 	":host{--diff-rail-added:light-dark(color-mix(in lab,var(--diffs-addition-base) 86%,black),color-mix(in lab,var(--diffs-addition-base) 80%,var(--diffs-bg)));--diff-rail-removed:light-dark(color-mix(in lab,var(--diffs-deletion-base) 90%,black),color-mix(in lab,var(--diffs-deletion-base) 76%,white))}";
 const U = "6px";
 const W = `${U} + 2px`;
 const G = ":host([data-add-button]) [data-diff]:not([data-disable-line-numbers])";
-const K = {
+const K =
+{
 	box: `content:"";position:absolute;left:0;width:${U};top:0;bottom:0;pointer-events:none`,
 	additions: "background:var(--diff-rail-added)",
 	deletions:
@@ -54,12 +71,14 @@ export const DIFF_RAILS_CSS = `@supports ${SUPPORTS}{${[
 ].join("")}}`;
 
 /** Upstream `Q()`'s host style: the alt words the rails sheet's `content: … / var(--diff-word-*)` reads. */
-export const DIFF_WORD_STYLE = {
+export const DIFF_WORD_STYLE =
+{
 	"--diff-word-added": '"added"',
 	"--diff-word-removed": '"removed"',
 } as const;
 
-export interface DiffSheetAdopter {
+export interface DiffSheetAdopter
+{
 	(host: Element): void;
 	setDisabled(disabled: boolean): void;
 }
@@ -68,34 +87,45 @@ export interface DiffSheetAdopter {
  * Upstream c91a5e4a6 `T()`: one constructed sheet per window, appended to a host's shadow root only if it
  * isn't there yet. `setDisabled` flips every sheet it made (upstream's growthbook gate flips).
  */
-export function adoptDiffSheet(css: string): DiffSheetAdopter {
+export function adoptDiffSheet(css: string): DiffSheetAdopter
+{
 	const sheets = new WeakMap<Window, CSSStyleSheet>();
 	const made: WeakRef<CSSStyleSheet>[] = [];
 	let disabled = false;
-	const adopt = (host: Element): void => {
+	const adopt = (host: Element): void =>
+	{
 		const root = host.shadowRoot;
 		const win = host.ownerDocument.defaultView;
 		if (!root || !win || typeof win.CSSStyleSheet !== "function") return;
 		let sheet = sheets.get(win);
-		if (!sheet) {
+		if (!sheet)
+		{
 			sheet = new win.CSSStyleSheet();
 			sheet.replaceSync(css);
 			sheet.disabled = disabled;
 			sheets.set(win, sheet);
 			made.push(new WeakRef(sheet));
 		}
-		if (!root.adoptedStyleSheets.includes(sheet)) {
+		if (!root.adoptedStyleSheets.includes(sheet))
+		{
 			root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
 		}
 	};
-	const setDisabled = (next: boolean): void => {
+	const setDisabled = (next: boolean): void =>
+	{
 		disabled = next;
-		for (const ref of made) {
+		for (const ref of made)
+		{
 			const sheet = ref.deref();
 			if (sheet) sheet.disabled = next;
 		}
 	};
-	return Object.assign(adopt, {setDisabled});
+	return Object.assign(
+		adopt,
+		{
+			setDisabled,
+		},
+	);
 }
 
 /** Upstream ca9e46d28 `J`. */
@@ -105,8 +135,10 @@ export const adoptRails = adoptDiffSheet(DIFF_RAILS_CSS);
  * Upstream ca9e46d28 `Q(wordDiff, addButton).draw` as a pierre `onPostRender`: on every mount and update,
  * adopt the rails sheet, re-mark the runs and set `data-add-button` (the Changes pane's `!readOnly`).
  */
-export function railsPostRender(addButton: boolean): (node: HTMLElement, instance: unknown, phase: string) => void {
-	return (node, _instance, phase) => {
+export function railsPostRender(addButton: boolean): (node: HTMLElement, instance: unknown, phase: string) => void
+{
+	return (node, _instance, phase) =>
+	{
 		if (phase === "unmount") return;
 		adoptRails(node);
 		markRailRuns(node);
@@ -115,7 +147,8 @@ export function railsPostRender(addButton: boolean): (node: HTMLElement, instanc
 }
 
 /** Upstream ca9e46d28 `Y`. */
-function isChangeRow(row: Element | null): boolean {
+function isChangeRow(row: Element | null): boolean
+{
 	const type = row?.getAttribute("data-line-type");
 	return type === "change-addition" || type === "change-deletion";
 }
@@ -125,12 +158,15 @@ function isChangeRow(row: Element | null): boolean {
  * and the last gets `data-rail-end`; every other row loses both. Re-run after each render, since virtual
  * windows and expanded hunks re-create rows.
  */
-export function markRailRuns(host: Element): void {
-	for (const gutter of host.shadowRoot?.querySelectorAll("[data-gutter]") ?? []) {
+export function markRailRuns(host: Element): void
+{
+	for (const gutter of host.shadowRoot?.querySelectorAll("[data-gutter]") ?? [])
+	{
 		let previous = false;
 		let row = gutter.firstElementChild;
 		let current = isChangeRow(row);
-		while (row) {
+		while (row)
+		{
 			const next = row.nextElementSibling;
 			const nextIsChange = isChangeRow(next);
 			row.toggleAttribute("data-rail-start", current && !previous);

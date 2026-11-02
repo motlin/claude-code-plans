@@ -10,20 +10,43 @@ import {Route} from "../src/routes/api/sessions.$id";
  * with no transcript anywhere is still `null` once indexing finishes.
  */
 
-type ApiHandler = (context: {params: {id: string}}) => Response | Promise<Response>;
+type ApiHandler = (context: {
+	params:
+	{
+		id: string;
+	};
+}) => Response | Promise<Response>;
 
 // The route's module graph loads once, at file import, where no test or hook timeout applies: a cold import on a
 // loaded machine can take longer than a whole test's budget. Each test swaps the database and indexing flag instead.
-const state = vi.hoisted(() => ({home: "", db: undefined as AppDb | undefined, indexing: false}));
+const state = vi.hoisted(() => (
+{
+	home: "",
+	db: undefined as AppDb | undefined,
+	indexing: false,
+}));
 
-vi.mock("node:os", async () => {
+vi.mock("node:os", async () =>
+{
 	const os = await vi.importActual<typeof import("node:os")>("node:os");
 	state.home = `${os.tmpdir()}/claude-session-detail-indexing-${process.pid}`;
 	const homedir = (): string => state.home;
-	return {...os, homedir, default: {...os, homedir}};
+	return {
+		...os,
+		homedir,
+		default:
+		{
+			...os,
+			homedir,
+		},
+	};
 });
-vi.mock("../src/lib/db", () => ({getDb: () => state.db}));
-vi.mock("../src/lib/db/indexer", async () => ({
+vi.mock("../src/lib/db", () => (
+{
+	getDb: () => state.db,
+}));
+vi.mock("../src/lib/db/indexer", async () => (
+{
 	...(await vi.importActual<typeof import("../src/lib/db/indexer")>("../src/lib/db/indexer")),
 	isCurrentlyIndexing: () => state.indexing,
 }));
@@ -35,84 +58,175 @@ if (state.home === "") throw new Error("node:os was not mocked before the route 
 
 let db: AppDb;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	db = openTestDb();
 	state.db = db;
 	const projectDir = join(state.home, ".claude", "projects", projectId);
-	mkdirSync(projectDir, {recursive: true});
+	mkdirSync(
+		projectDir,
+		{
+			recursive: true,
+		},
+	);
 	writeFileSync(
 		join(projectDir, `${sessionId}.jsonl`),
-		JSON.stringify({
-			type: "user",
-			uuid: "u1",
-			sessionId,
-			cwd: "/Users/alice/projects/workflowy",
-			timestamp: "2026-10-31T12:00:00.000Z",
-			message: {role: "user", content: "Fix the flaky sync test"},
-		}) + "\n",
+		JSON.stringify(
+			{
+				type: "user",
+				uuid: "u1",
+				sessionId,
+				cwd: "/Users/alice/projects/workflowy",
+				timestamp: "2026-10-31T12:00:00.000Z",
+				message:
+				{
+					role: "user",
+					content: "Fix the flaky sync test",
+				},
+			},
+		) + "\n",
 	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(state.home, {recursive: true, force: true});
+	rmSync(
+		state.home,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-async function getDetail(id: string, indexing: boolean): Promise<unknown> {
+async function getDetail(id: string, indexing: boolean): Promise<unknown>
+{
 	state.indexing = indexing;
-	const handlers = (Route as unknown as {options: {server: {handlers: Record<string, ApiHandler>}}}).options.server
-		.handlers;
-	const response = await handlers["GET"]!({params: {id}});
+	const handlers = (
+		Route as unknown as
+		{
+			options:
+			{
+				server:
+				{
+					handlers: Record<string, ApiHandler>;
+				};
+			};
+		}
+	).options.server.handlers;
+	const response = await handlers["GET"]!(
+		{
+			params:
+			{
+				id,
+			},
+		},
+	);
 	return response.json();
 }
-describe("GET /api/sessions/$id during the first index build", () => {
-	it("finds a session whose transcript is on disk but not indexed yet", async () => {
-		const body = (await getDetail(sessionId, true)) as {title: string; projectId: string} | null;
+describe("GET /api/sessions/$id during the first index build", () =>
+{
+	it("finds a session whose transcript is on disk but not indexed yet", async () =>
+	{
+		const body = (await getDetail(sessionId, true)) as
+		{
+			title: string;
+			projectId: string;
+		} | null;
 
-		expect(body === null ? null : {title: body.title, projectId: body.projectId}).toStrictEqual({
-			title: "Fix the flaky sync test",
-			projectId,
-		});
+		expect(
+			body === null
+				? null
+				:
+					{
+						title: body.title,
+						projectId: body.projectId,
+					},
+		).toStrictEqual(
+			{
+				title: "Fix the flaky sync test",
+				projectId,
+			},
+		);
 	});
 
-	it("names a session with no title source by its folder, else Untitled, never by its id", async () => {
+	it("names a session with no title source by its folder, else Untitled, never by its id", async () =>
+	{
 		const projectDir = join(state.home, ".claude", "projects", projectId);
 		const folderId = "1a2b3c4d-0000-4000-8000-000000000001";
 		const emptyId = "1a2b3c4d-0000-4000-8000-000000000002";
 		writeFileSync(
 			join(projectDir, `${folderId}.jsonl`),
-			JSON.stringify({
-				type: "permission-mode",
-				permissionMode: "auto",
-				sessionId: folderId,
-				cwd: "/fake/projects/example-repo",
-			}) + "\n",
+			JSON.stringify(
+				{
+					type: "permission-mode",
+					permissionMode: "auto",
+					sessionId: folderId,
+					cwd: "/fake/projects/example-repo",
+				},
+			) + "\n",
 		);
 		writeFileSync(
 			join(projectDir, `${emptyId}.jsonl`),
-			JSON.stringify({type: "permission-mode", permissionMode: "auto", sessionId: emptyId}) + "\n",
+			JSON.stringify(
+				{
+					type: "permission-mode",
+					permissionMode: "auto",
+					sessionId: emptyId,
+				},
+			) + "\n",
 		);
-		const titleOf = async (id: string) => {
-			const body = (await getDetail(id, true)) as {title: string; titleIsStandIn?: boolean} | null;
-			return body === null ? null : {title: body.title, titleIsStandIn: body.titleIsStandIn};
+		const titleOf = async (id: string) =>
+		{
+			const body = (await getDetail(id, true)) as
+			{
+				title: string;
+				titleIsStandIn?: boolean;
+			} | null;
+			return body === null
+				? null
+				:
+					{
+						title: body.title,
+						titleIsStandIn: body.titleIsStandIn,
+					};
 		};
 
-		expect({
-			named: await titleOf(sessionId),
-			folder: await titleOf(folderId),
-			empty: await titleOf(emptyId),
-		}).toStrictEqual({
-			named: {title: "Fix the flaky sync test", titleIsStandIn: undefined},
-			folder: {title: "example-repo", titleIsStandIn: true},
-			empty: {title: "Untitled", titleIsStandIn: true},
-		});
+		expect(
+			{
+				named: await titleOf(sessionId),
+				folder: await titleOf(folderId),
+				empty: await titleOf(emptyId),
+			},
+		).toStrictEqual(
+			{
+				named:
+				{
+					title: "Fix the flaky sync test",
+					titleIsStandIn: undefined,
+				},
+				folder:
+				{
+					title: "example-repo",
+					titleIsStandIn: true,
+				},
+				empty:
+				{
+					title: "Untitled",
+					titleIsStandIn: true,
+				},
+			},
+		);
 	});
 
-	it("still reports an unknown id as not found once indexing is done", async () => {
+	it("still reports an unknown id as not found once indexing is done", async () =>
+	{
 		expect(await getDetail("0a0b0c0d-1e1f-4a2b-8c3d-4e5f6a7b8c9d", false)).toStrictEqual(null);
 	});
 
-	it("reports an unknown id as not found while indexing when no transcript exists", async () => {
+	it("reports an unknown id as not found while indexing when no transcript exists", async () =>
+	{
 		expect(await getDetail("0a0b0c0d-1e1f-4a2b-8c3d-4e5f6a7b8c9d", true)).toStrictEqual(null);
 	});
 });

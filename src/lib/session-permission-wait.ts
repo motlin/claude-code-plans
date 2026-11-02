@@ -14,6 +14,7 @@ const REGISTRY_PERMISSION_WAIT = "permission prompt";
 export function sessionAwaitingPermission(
 	sessionId: string,
 	registrySession: RegistrySessionState | null = getRegistrySessionState(sessionId),
-): boolean {
+): boolean
+{
 	return hasPermissionPromptForSession(sessionId) || registrySession?.waitingFor === REGISTRY_PERMISSION_WAIT;
 }

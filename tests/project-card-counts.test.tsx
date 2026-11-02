@@ -4,7 +4,8 @@ import {render} from "@testing-library/react";
 import {describe, expect, it} from "vite-plus/test";
 import {ProjectCardCounts} from "../src/components/project-card-counts";
 
-const baseProject = {
+const baseProject =
+{
 	activeCount: 0,
 	sessionCount: 1,
 	planCount: 1,
@@ -13,9 +14,19 @@ const baseProject = {
 	lastActivity: "2026-08-05T00:00:00.000Z",
 };
 
-describe("ProjectCardCounts", () => {
-	it("renders singular labels when every count is 1", () => {
-		const view = render(<ProjectCardCounts project={{...baseProject, activeCount: 1}} />);
+describe("ProjectCardCounts", () =>
+{
+	it("renders singular labels when every count is 1", () =>
+	{
+		const view = render(
+			<ProjectCardCounts
+				project={
+				{
+					...baseProject,
+					activeCount: 1,
+				}}
+			/>,
+		);
 		const text = view.container.textContent;
 
 		expect(text).toContain("1 active");
@@ -30,10 +41,12 @@ describe("ProjectCardCounts", () => {
 		expect(text).not.toContain("1 tasks");
 	});
 
-	it("renders plural labels for counts above 1", () => {
+	it("renders plural labels for counts above 1", () =>
+	{
 		const view = render(
 			<ProjectCardCounts
-				project={{
+				project={
+				{
 					...baseProject,
 					activeCount: 2,
 					sessionCount: 3,
@@ -52,10 +65,18 @@ describe("ProjectCardCounts", () => {
 		expect(text).toContain("6 tasks");
 	});
 
-	it("omits zero counts except sessions", () => {
+	it("omits zero counts except sessions", () =>
+	{
 		const view = render(
 			<ProjectCardCounts
-				project={{...baseProject, sessionCount: 0, planCount: 0, memoryCount: 0, taskCount: 0}}
+				project={
+				{
+					...baseProject,
+					sessionCount: 0,
+					planCount: 0,
+					memoryCount: 0,
+					taskCount: 0,
+				}}
 			/>,
 		);
 		const text = view.container.textContent;

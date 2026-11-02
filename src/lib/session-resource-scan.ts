@@ -30,16 +30,22 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
  * Links come back uncategorized: `categorizeUrl` depends on the serving host
  * and the reader's own rules, so the browser groups them (`groupSessionLinks`).
  */
-export interface SessionResources {
+export interface SessionResources
+{
 	files: SessionFiles;
 	links: CollectedLink[];
 }
 
-function emptyResources(homeRoot: string): SessionResources {
-	return {files: extractSessionFiles([], homeRoot), links: []};
+function emptyResources(homeRoot: string): SessionResources
+{
+	return {
+		files: extractSessionFiles([], homeRoot),
+		links: [],
+	};
 }
 
-export interface ScanOptions {
+export interface ScanOptions
+{
 	/** How long the scan may hold the event loop before handing it back. */
 	sliceMs?: number;
 }
@@ -72,27 +78,32 @@ const lastColdScan = new Map<string, SessionResources>();
 let running = 0;
 
 /** How many cold scans are reading and processing a transcript right now: never more than one. */
-export function coldScansRunning(): number {
+export function coldScansRunning(): number
+{
 	return running;
 }
 
 /** Drop the in-memory memo, as a server restart does. Stored scans survive. */
-export function forgetScannedResources(): void {
+export function forgetScannedResources(): void
+{
 	memo.clear();
 	inFlight.clear();
 	lastColdScan.clear();
 	coldScans = new CooperativeQueue(0);
 }
 
-function remember(key: string, resources: SessionResources): void {
+function remember(key: string, resources: SessionResources): void
+{
 	memo.set(key, resources);
-	for (const oldest of memo.keys()) {
+	for (const oldest of memo.keys())
+	{
 		if (memo.size <= MEMO_LIMIT) break;
 		memo.delete(oldest);
 	}
 }
 
-function memoKey(filePath: string, size: number, mtimeMs: number, homeRoot: string): string {
+function memoKey(filePath: string, size: number, mtimeMs: number, homeRoot: string): string
+{
 	return JSON.stringify([filePath, size, mtimeMs, homeRoot]);
 }
 
@@ -100,17 +111,23 @@ function memoKey(filePath: string, size: number, mtimeMs: number, homeRoot: stri
  * Scan `filePath` as it stands when the job runs, which can be newer than when
  * it was asked for, unless that version is already memoized or stored.
  */
-async function coldScan(db: IndexDb, filePath: string, homeRoot: string, sliceMs: number): Promise<SessionResources> {
+async function coldScan(db: IndexDb, filePath: string, homeRoot: string, sliceMs: number): Promise<SessionResources>
+{
 	const fileKey = JSON.stringify([filePath, homeRoot]);
-	await coldScans.enqueue(fileKey, async () => {
+	await coldScans.enqueue(fileKey, async () =>
+	{
 		const {size, mtimeMs} = await stat(filePath);
 		const key = memoKey(filePath, size, mtimeMs, homeRoot);
 		let resources = memo.get(key) ?? readStoredScan(db, filePath, homeRoot, size, mtimeMs);
-		if (resources === undefined) {
+		if (resources === undefined)
+		{
 			running++;
-			try {
+			try
+			{
 				resources = await scanFile(filePath, size, homeRoot, createSlicer(sliceMs));
-			} finally {
+			}
+			finally
+			{
 				running--;
 			}
 			storeScan(db, filePath, homeRoot, size, mtimeMs, resources);
@@ -118,7 +135,8 @@ async function coldScan(db: IndexDb, filePath: string, homeRoot: string, sliceMs
 		remember(key, resources);
 		lastColdScan.delete(fileKey);
 		lastColdScan.set(fileKey, resources);
-		for (const oldest of lastColdScan.keys()) {
+		for (const oldest of lastColdScan.keys())
+		{
 			if (lastColdScan.size <= MEMO_LIMIT) break;
 			lastColdScan.delete(oldest);
 		}
@@ -141,21 +159,26 @@ export async function readSessionResources(
 	id: string,
 	homeRoot: string,
 	options: ScanOptions = {},
-): Promise<SessionResources> {
+): Promise<SessionResources>
+{
 	const filePath = transcriptFilePath(db, id);
 	if (!filePath) return emptyResources(homeRoot);
 
 	let size: number;
 	let mtimeMs: number;
-	try {
+	try
+	{
 		({size, mtimeMs} = await stat(filePath));
-	} catch {
+	}
+	catch
+	{
 		return emptyResources(homeRoot);
 	}
 
 	const key = memoKey(filePath, size, mtimeMs, homeRoot);
 	const cached = memo.get(key);
-	if (cached !== undefined) {
+	if (cached !== undefined)
+	{
 		memo.delete(key);
 		memo.set(key, cached);
 		return cached;
@@ -164,7 +187,8 @@ export async function readSessionResources(
 	if (pending !== undefined) return pending;
 
 	const stored = readStoredScan(db, filePath, homeRoot, size, mtimeMs);
-	if (stored !== undefined) {
+	if (stored !== undefined)
+	{
 		remember(key, stored);
 		return stored;
 	}
@@ -182,8 +206,10 @@ function readStoredScan(
 	homeRoot: string,
 	size: number,
 	mtimeMs: number,
-): SessionResources | undefined {
-	try {
+): SessionResources | undefined
+{
+	try
+	{
 		const row = db
 			.select()
 			.from(schema.sessionResourceScans)
@@ -195,12 +221,15 @@ function readStoredScan(
 			row.size !== size ||
 			row.mtimeMs !== mtimeMs ||
 			row.scanVersion !== SCAN_VERSION
-		) {
+		)
+		{
 			return undefined;
 		}
 		const parsed = SessionResourcesResponse.safeParse(JSON.parse(row.resources));
 		return parsed.success ? parsed.data : undefined;
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 }
@@ -217,13 +246,31 @@ function storeScan(
 	size: number,
 	mtimeMs: number,
 	resources: SessionResources,
-): void {
-	const row = {homeRoot, size, mtimeMs, scanVersion: SCAN_VERSION, resources: JSON.stringify(resources)};
+): void
+{
+	const row =
+	{
+		homeRoot,
+		size,
+		mtimeMs,
+		scanVersion: SCAN_VERSION,
+		resources: JSON.stringify(resources),
+	};
 	retryWhileBusy(() =>
 		db
 			.insert(schema.sessionResourceScans)
-			.values({filePath, ...row})
-			.onConflictDoUpdate({target: schema.sessionResourceScans.filePath, set: row})
+			.values(
+				{
+					filePath,
+					...row,
+				},
+			)
+			.onConflictDoUpdate(
+				{
+					target: schema.sessionResourceScans.filePath,
+					set: row,
+				},
+			)
 			.run(),
 	).catch(() => undefined);
 }
@@ -241,7 +288,8 @@ function storeScan(
  */
 const API_REQUEST_PREFIX = Buffer.from('{"type":"api-request",');
 const CLOSING_BRACE = 0x7d;
-const API_REQUEST_STAND_IN: Record<string, unknown> = {
+const API_REQUEST_STAND_IN: Record<string, unknown> =
+{
 	type: "api-request",
 	sessionId: "",
 	id: "",
@@ -249,13 +297,24 @@ const API_REQUEST_STAND_IN: Record<string, unknown> = {
 	version: "",
 	querySource: "",
 	shapeHash: "",
-	params: {
+	params:
+	{
 		model: "",
 		betas: [],
 		max_tokens: 0,
-		thinking: {type: "", display: ""},
-		context_management: {edits: []},
-		output_config: {effort: ""},
+		thinking:
+		{
+			type: "",
+			display: "",
+		},
+		context_management:
+		{
+			edits: [],
+		},
+		output_config:
+		{
+			effort: "",
+		},
 	},
 	keep: 0,
 	tail: [],
@@ -264,14 +323,17 @@ const API_REQUEST_STAND_IN: Record<string, unknown> = {
 };
 
 /** Where a skipped `api-request` line sits: its record index and byte range. */
-interface SkippedRecord {
+interface SkippedRecord
+{
 	index: number;
 	start: number;
 	end: number;
 }
 
-async function scanFile(filePath: string, size: number, homeRoot: string, slicer: Slicer): Promise<SessionResources> {
-	try {
+async function scanFile(filePath: string, size: number, homeRoot: string, slicer: Slicer): Promise<SessionResources>
+{
+	try
+	{
 		const skipped: SkippedRecord[] = [];
 		const folds: [number, number][] = [];
 		const lines = await processFile(filePath, size, slicer, skipped, (from, to) => folds.push([from, to]));
@@ -283,36 +345,51 @@ async function scanFile(filePath: string, size: number, homeRoot: string, slicer
 		// checking. If one of them would not parse, scan again reading them all.
 		if (await skippedRecordsParse(filePath, skippedInFolds(skipped, folds))) return extract(lines, homeRoot);
 		return extract(await processFile(filePath, size, slicer, undefined, undefined), homeRoot);
-	} catch {
+	}
+	catch
+	{
 		return emptyResources(homeRoot);
 	}
 }
 
-function extract(lines: SessionLine[], homeRoot: string): SessionResources {
-	return {files: extractSessionFiles(lines, homeRoot), links: collectSessionLinks(lines)};
+function extract(lines: SessionLine[], homeRoot: string): SessionResources
+{
+	return {
+		files: extractSessionFiles(lines, homeRoot),
+		links: collectSessionLinks(lines),
+	};
 }
 
-function skippedInFolds(skipped: SkippedRecord[], folds: [number, number][]): SkippedRecord[] {
+function skippedInFolds(skipped: SkippedRecord[], folds: [number, number][]): SkippedRecord[]
+{
 	return skipped.filter(({index}) => folds.some(([from, to]) => from < index && index < to));
 }
 
-async function skippedRecordsParse(filePath: string, records: SkippedRecord[]): Promise<boolean> {
+async function skippedRecordsParse(filePath: string, records: SkippedRecord[]): Promise<boolean>
+{
 	if (records.length === 0) return true;
 	const file = await open(filePath, "r");
-	try {
-		for (const {start, end} of records) {
+	try
+	{
+		for (const {start, end} of records)
+		{
 			const buffer = Buffer.alloc(end - start);
 			await file.read(buffer, 0, buffer.length, start);
 			let record: unknown;
-			try {
+			try
+			{
 				record = JSON.parse(buffer.toString("utf8"));
-			} catch {
+			}
+			catch
+			{
 				return false;
 			}
 			if (!JsonlRecordSchema.safeParse(record).success) return false;
 		}
 		return true;
-	} finally {
+	}
+	finally
+	{
 		await file.close();
 	}
 }
@@ -336,13 +413,15 @@ async function processFile(
 	slicer: Slicer,
 	skipped: SkippedRecord[] | undefined,
 	onFold: ((fromLineIndex: number, toLineIndex: number) => void) | undefined,
-): Promise<SessionLine[]> {
+): Promise<SessionLine[]>
+{
 	const records = await readRecords(filePath, size, slicer, skipped);
 	const {lines} = await runCooperatively(processTranscriptSteps(records, 0, undefined, onFold), slicer);
 	return lines;
 }
 
-function isApiRequestLine(buffer: Buffer, start: number, end: number): boolean {
+function isApiRequestLine(buffer: Buffer, start: number, end: number): boolean
+{
 	return (
 		end - start > API_REQUEST_PREFIX.length &&
 		buffer[end - 1] === CLOSING_BRACE &&
@@ -356,14 +435,23 @@ async function readRecords(
 	size: number,
 	slicer: Slicer,
 	skipped: SkippedRecord[] | undefined,
-): Promise<Record<string, unknown>[]> {
+): Promise<Record<string, unknown>[]>
+{
 	const records: Record<string, unknown>[] = [];
 	if (size === 0) return records;
 
 	// `base` is the file offset of `buffer[0]`.
-	const parseLine = (buffer: Buffer, base: number, start: number, end: number): void => {
-		if (skipped !== undefined && isApiRequestLine(buffer, start, end)) {
-			skipped.push({index: records.length, start: base + start, end: base + end});
+	const parseLine = (buffer: Buffer, base: number, start: number, end: number): void =>
+	{
+		if (skipped !== undefined && isApiRequestLine(buffer, start, end))
+		{
+			skipped.push(
+				{
+					index: records.length,
+					start: base + start,
+					end: base + end,
+				},
+			);
 			records.push(API_REQUEST_STAND_IN);
 			return;
 		}
@@ -376,13 +464,22 @@ async function readRecords(
 	let carry: Buffer | undefined;
 	let carryBase = 0;
 	let nextBase = 0;
-	const stream = createReadStream(filePath, {start: 0, end: size - 1, highWaterMark: READ_CHUNK_BYTES});
-	for await (const chunk of stream as AsyncIterable<Buffer>) {
+	const stream = createReadStream(
+		filePath,
+		{
+			start: 0,
+			end: size - 1,
+			highWaterMark: READ_CHUNK_BYTES,
+		},
+	);
+	for await (const chunk of stream as AsyncIterable<Buffer>)
+	{
 		const buffer: Buffer = carry === undefined ? chunk : Buffer.concat([carry, chunk]);
 		const base = carry === undefined ? nextBase : carryBase;
 		nextBase += chunk.length;
 		let position = 0;
-		for (;;) {
+		for (;;)
+		{
 			const newline = buffer.indexOf(NEWLINE, position);
 			if (newline === -1) break;
 			parseLine(buffer, base, position, newline);

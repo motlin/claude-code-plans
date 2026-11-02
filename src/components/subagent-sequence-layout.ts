@@ -4,12 +4,17 @@ import {orderByWorkflowRun} from "../lib/workflow-lane-groups";
 
 export function layoutSequence(
 	agents: Subagent[],
-	options?: {workflowRuns?: readonly WorkflowRunInfo[] | undefined},
-): SequenceLayout {
+	options?:
+	{
+		workflowRuns?: readonly WorkflowRunInfo[] | undefined;
+	},
+): SequenceLayout
+{
 	const spans = timedSpans(agents);
 	const timed = spans.map((span) => span.agent);
 
-	if (timed.length === 0) {
+	if (timed.length === 0)
+	{
 		return {
 			lifelines: [],
 			groups: [],
@@ -24,7 +29,8 @@ export function layoutSequence(
 
 	const depthOf = computeDepths(timed);
 	const childrenByParent = new Map<string, TimedSpan[]>();
-	for (const span of spans) {
+	for (const span of spans)
+	{
 		const key = span.agent.parentAgentId;
 		if (!key) continue;
 		const list = childrenByParent.get(key) ?? [];
@@ -34,7 +40,8 @@ export function layoutSequence(
 
 	const {ordered, groups} = orderByWorkflowRun(
 		spans,
-		(a, b) => {
+		(a, b) =>
+		{
 			if (a.startMs !== b.startMs) return a.startMs - b.startMs;
 			const aDepth = depthOf.get(a.agent.id) ?? 0;
 			const bDepth = depthOf.get(b.agent.id) ?? 0;
@@ -47,9 +54,14 @@ export function layoutSequence(
 	const columnOf = new Map<string, number>();
 	ordered.forEach((span, i) => columnOf.set(span.agent.id, i));
 
-	const lifelines: SequenceLifeline[] = ordered.map(({agent, startMs, endMs}, column) => {
+	const lifelines: SequenceLifeline[] = ordered.map(({agent, startMs, endMs}, column) =>
+	{
 		const childRanges: SequenceTimeRange[] = (childrenByParent.get(agent.id) ?? [])
-			.map((c) => ({startMs: c.startMs, endMs: c.endMs}))
+			.map((c) => (
+			{
+				startMs: c.startMs,
+				endMs: c.endMs,
+			}))
 			.filter((r) => r.endMs > r.startMs);
 		return {
 			agent,
@@ -63,25 +75,30 @@ export function layoutSequence(
 
 	const spawns: SequenceSpawnArrow[] = [];
 	const returns: SequenceReturnArrow[] = [];
-	for (const [childColumn, {agent: child, startMs, endMs}] of ordered.entries()) {
+	for (const [childColumn, {agent: child, startMs, endMs}] of ordered.entries())
+	{
 		const parentId = child.parentAgentId;
 		if (!parentId) continue;
 		const parentColumn = columnOf.get(parentId);
 		if (parentColumn === undefined) continue;
-		spawns.push({
-			parentId,
-			childId: child.id,
-			parentColumn,
-			childColumn,
-			atMs: startMs,
-		});
-		returns.push({
-			parentId,
-			childId: child.id,
-			parentColumn,
-			childColumn,
-			atMs: endMs,
-		});
+		spawns.push(
+			{
+				parentId,
+				childId: child.id,
+				parentColumn,
+				childColumn,
+				atMs: startMs,
+			},
+		);
+		returns.push(
+			{
+				parentId,
+				childId: child.id,
+				parentColumn,
+				childColumn,
+				atMs: endMs,
+			},
+		);
 	}
 
 	const startMs = Math.min(...lifelines.map((l) => l.startMs));
@@ -90,7 +107,8 @@ export function layoutSequence(
 
 	return {
 		lifelines,
-		groups: groups.map(({runId, name, phaseTitle, first, count}) => ({
+		groups: groups.map(({runId, name, phaseTitle, first, count}) => (
+		{
 			runId,
 			name,
 			phaseTitle,
@@ -106,12 +124,14 @@ export function layoutSequence(
 	};
 }
 
-interface SequenceTimeRange {
+interface SequenceTimeRange
+{
 	startMs: number;
 	endMs: number;
 }
 
-interface SequenceLifeline {
+interface SequenceLifeline
+{
 	agent: Subagent;
 	column: number;
 	depth: number;
@@ -120,7 +140,8 @@ interface SequenceLifeline {
 	waiting: SequenceTimeRange[];
 }
 
-interface SequenceSpawnArrow {
+interface SequenceSpawnArrow
+{
 	parentId: string;
 	childId: string;
 	parentColumn: number;
@@ -128,7 +149,8 @@ interface SequenceSpawnArrow {
 	atMs: number;
 }
 
-interface SequenceReturnArrow {
+interface SequenceReturnArrow
+{
 	parentId: string;
 	childId: string;
 	parentColumn: number;
@@ -137,7 +159,8 @@ interface SequenceReturnArrow {
 }
 
 /** The columns `[firstColumn, firstColumn + columnCount)` of one phase of a workflow run. */
-interface SequenceGroup {
+interface SequenceGroup
+{
 	runId: string;
 	name: string;
 	phaseTitle: string;
@@ -145,7 +168,8 @@ interface SequenceGroup {
 	columnCount: number;
 }
 
-export interface SequenceLayout {
+export interface SequenceLayout
+{
 	lifelines: SequenceLifeline[];
 	groups: SequenceGroup[];
 	spawns: SequenceSpawnArrow[];
@@ -156,38 +180,53 @@ export interface SequenceLayout {
 	ticks: SequenceTick[];
 }
 
-interface TimedSpan {
+interface TimedSpan
+{
 	agent: Subagent;
 	startMs: number;
 	endMs: number;
 }
 
 /** Agents with a parseable start and finish, paired with those timestamps in ms. */
-function timedSpans(agents: Subagent[]): TimedSpan[] {
-	return agents.flatMap((agent) => {
+function timedSpans(agents: Subagent[]): TimedSpan[]
+{
+	return agents.flatMap((agent) =>
+	{
 		const startMs = toMsOrNull(agent.startedAt);
 		const endMs = toMsOrNull(agent.finishedAt);
-		return startMs === null || endMs === null ? [] : [{agent, startMs, endMs}];
+		return startMs === null || endMs === null
+			? []
+			: [
+					{
+						agent,
+						startMs,
+						endMs,
+					},
+				];
 	});
 }
 
-function toMsOrNull(iso: string | null): number | null {
+function toMsOrNull(iso: string | null): number | null
+{
 	if (!iso) return null;
 	const ms = new Date(iso).getTime();
 	return Number.isFinite(ms) ? ms : null;
 }
 
-function computeDepths(timed: Subagent[]): Map<string, number> {
+function computeDepths(timed: Subagent[]): Map<string, number>
+{
 	const byId = new Map(timed.map((a) => [a.id, a]));
 	const depthOf = new Map<string, number>();
 
-	function depth(id: string, seen: Set<string>): number {
+	function depth(id: string, seen: Set<string>): number
+	{
 		const cached = depthOf.get(id);
 		if (cached !== undefined) return cached;
 		if (seen.has(id)) return 0;
 		seen.add(id);
 		const agent = byId.get(id);
-		if (!agent?.parentAgentId || !byId.has(agent.parentAgentId)) {
+		if (!agent?.parentAgentId || !byId.has(agent.parentAgentId))
+		{
 			depthOf.set(id, 0);
 			return 0;
 		}
@@ -200,62 +239,123 @@ function computeDepths(timed: Subagent[]): Map<string, number> {
 	return depthOf;
 }
 
-function mergeRanges(ranges: SequenceTimeRange[]): SequenceTimeRange[] {
+function mergeRanges(ranges: SequenceTimeRange[]): SequenceTimeRange[]
+{
 	if (ranges.length === 0) return [];
 	const sorted = ranges.toSorted((a, b) => a.startMs - b.startMs);
 	const merged: SequenceTimeRange[] = [];
-	for (const next of sorted) {
+	for (const next of sorted)
+	{
 		const last = merged.at(-1);
-		if (last !== undefined && next.startMs <= last.endMs) {
+		if (last !== undefined && next.startMs <= last.endMs)
+		{
 			if (next.endMs > last.endMs) last.endMs = next.endMs;
-		} else {
-			merged.push({...next});
+		}
+		else
+		{
+			merged.push(
+				{
+					...next,
+				},
+			);
 		}
 	}
 	return merged;
 }
 
-function buildTicks(totalMs: number): SequenceTick[] {
-	if (totalMs <= 0) return [{offsetMs: 0, label: "0s"}];
+function buildTicks(totalMs: number): SequenceTick[]
+{
+	if (totalMs <= 0)
+		return [
+			{
+				offsetMs: 0,
+				label: "0s",
+			},
+		];
 	const {intervalMs, format} = pickTickInterval(totalMs);
 	const ticks: SequenceTick[] = [];
-	for (let t = 0; t <= totalMs; t += intervalMs) {
-		ticks.push({offsetMs: t, label: format(t)});
+	for (let t = 0; t <= totalMs; t += intervalMs)
+	{
+		ticks.push(
+			{
+				offsetMs: t,
+				label: format(t),
+			},
+		);
 	}
-	if ((ticks.at(-1)?.offsetMs ?? 0) < totalMs) {
-		ticks.push({offsetMs: totalMs, label: format(totalMs)});
+	if ((ticks.at(-1)?.offsetMs ?? 0) < totalMs)
+	{
+		ticks.push(
+			{
+				offsetMs: totalMs,
+				label: format(totalMs),
+			},
+		);
 	}
 	return ticks;
 }
 
-interface SequenceTick {
+interface SequenceTick
+{
 	offsetMs: number;
 	label: string;
 }
 
-function pickTickInterval(totalMs: number): {
+function pickTickInterval(totalMs: number):
+{
 	intervalMs: number;
 	format: (ms: number) => string;
-} {
+}
+{
 	const sec = 1000;
 	const min = 60 * sec;
 	const hour = 60 * min;
-	const largest = {intervalMs: hour, format: (ms: number) => `${Math.round(ms / hour)}h`};
-	const candidates: Array<{
+	const largest =
+	{
+		intervalMs: hour,
+		format: (ms: number) => `${Math.round(ms / hour)}h`,
+	};
+	const candidates: Array<
+	{
 		intervalMs: number;
 		format: (ms: number) => string;
 	}> = [
-		{intervalMs: sec, format: (ms) => `${Math.round(ms / sec)}s`},
-		{intervalMs: 5 * sec, format: (ms) => `${Math.round(ms / sec)}s`},
-		{intervalMs: 15 * sec, format: (ms) => `${Math.round(ms / sec)}s`},
-		{intervalMs: 30 * sec, format: (ms) => `${Math.round(ms / sec)}s`},
-		{intervalMs: min, format: (ms) => `${Math.round(ms / min)}m`},
-		{intervalMs: 5 * min, format: (ms) => `${Math.round(ms / min)}m`},
-		{intervalMs: 15 * min, format: (ms) => `${Math.round(ms / min)}m`},
-		{intervalMs: 30 * min, format: (ms) => `${Math.round(ms / min)}m`},
+		{
+			intervalMs: sec,
+			format: (ms) => `${Math.round(ms / sec)}s`,
+		},
+		{
+			intervalMs: 5 * sec,
+			format: (ms) => `${Math.round(ms / sec)}s`,
+		},
+		{
+			intervalMs: 15 * sec,
+			format: (ms) => `${Math.round(ms / sec)}s`,
+		},
+		{
+			intervalMs: 30 * sec,
+			format: (ms) => `${Math.round(ms / sec)}s`,
+		},
+		{
+			intervalMs: min,
+			format: (ms) => `${Math.round(ms / min)}m`,
+		},
+		{
+			intervalMs: 5 * min,
+			format: (ms) => `${Math.round(ms / min)}m`,
+		},
+		{
+			intervalMs: 15 * min,
+			format: (ms) => `${Math.round(ms / min)}m`,
+		},
+		{
+			intervalMs: 30 * min,
+			format: (ms) => `${Math.round(ms / min)}m`,
+		},
 		largest,
 	];
-	for (const c of candidates) {
+	for (const c of candidates)
+	{
 		if (totalMs / c.intervalMs <= 10) return c;
 	}
 	return largest;

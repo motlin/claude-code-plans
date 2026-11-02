@@ -16,14 +16,16 @@ import {useAfterMenuClose} from "./use-after-menu-close";
 const PLACE_UNKNOWN = "Where these sessions run isn’t known, so there’s nowhere to start a new one.";
 
 /** Upstream's worked-out section reasons (no environments locally, so Rename and Delete show disabled). */
-const WORKED_OUT = {
+const WORKED_OUT =
+{
 	rename: "This group is made automatically, so it can’t be renamed.",
 	delete: "This group is made automatically, so it can’t be deleted.",
 	/** `fixedAtEnd`: folder sections have no reorder context locally. */
 	move: "This group stays at the end of the list.",
 } as const;
 
-interface HeaderRow extends SessionGroupRow {
+interface HeaderRow extends SessionGroupRow
+{
 	archived: boolean;
 }
 
@@ -50,7 +52,8 @@ export function ProjectGroupHeader({
 	onNewSession: (() => void) | null;
 	/** The label's toggle button. */
 	children: ReactNode;
-}) {
+})
+{
 	const appearance = useProjectAppearance()[group.key];
 	const actions = useGroupBulkActions(group, sectionKeys, activeItemId, false);
 	const [dialog, setDialog] = useState<"new-group" | "archive-all" | null>(null);
@@ -67,7 +70,8 @@ export function ProjectGroupHeader({
 			</MenuItem>
 			<MenuSeparator />
 			<MenuItem
-				onSelect={later(() => {
+				onSelect={later(() =>
+				{
 					setDialog("new-group");
 				})}
 			>
@@ -84,13 +88,15 @@ export function ProjectGroupHeader({
 			</MenuItem>
 			<GroupBulkMenuItems
 				actions={actions}
-				onArchiveAll={later(() => {
+				onArchiveAll={later(() =>
+				{
 					setDialog("archive-all");
 				})}
 				beforeArchive={
 					<GroupAppearanceSubmenu
 						appearance={appearance}
-						onChange={(patch) => {
+						onChange={(patch) =>
+						{
 							setProjectAppearance(group.key, patch);
 						}}
 					/>
@@ -120,16 +126,19 @@ export function ProjectGroupHeader({
 			</Menu>
 			<NewGroupDialog
 				open={dialog === "new-group"}
-				onOpenChange={(open) => {
+				onOpenChange={(open) =>
+				{
 					setDialog(open ? "new-group" : null);
 				}}
-				onCreate={(name) => {
+				onCreate={(name) =>
+				{
 					createGroup(name);
 				}}
 			/>
 			<ArchiveAllConfirm
 				open={dialog === "archive-all"}
-				onOpenChange={(open) => {
+				onOpenChange={(open) =>
+				{
 					setDialog(open ? "archive-all" : null);
 				}}
 				label={group.label}

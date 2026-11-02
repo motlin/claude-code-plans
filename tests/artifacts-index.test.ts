@@ -20,7 +20,8 @@ const OTHER_URL = `https://claude.ai/code/artifact/${OTHER_ID}`;
 const SOURCE_A = "/Users/alice/projects/ladder/.llm/rebalance-ui.html";
 const SOURCE_B = "/Users/alice/projects/ladder/.llm/rebalance-queue.html";
 
-interface ArtifactCall {
+interface ArtifactCall
+{
 	toolUseId: string;
 	timestamp: string;
 	input: Record<string, unknown>;
@@ -29,16 +30,25 @@ interface ArtifactCall {
 	isError?: boolean;
 }
 
-function artifactCallRecords(sessionId: string, call: ArtifactCall): unknown[] {
+function artifactCallRecords(sessionId: string, call: ArtifactCall): unknown[]
+{
 	return [
 		{
 			type: "assistant",
 			uuid: `${call.toolUseId}-use`,
 			sessionId,
 			timestamp: call.timestamp,
-			message: {
+			message:
+			{
 				role: "assistant",
-				content: [{type: "tool_use", id: call.toolUseId, name: "Artifact", input: call.input}],
+				content: [
+					{
+						type: "tool_use",
+						id: call.toolUseId,
+						name: "Artifact",
+						input: call.input,
+					},
+				],
 			},
 		},
 		{
@@ -46,13 +56,19 @@ function artifactCallRecords(sessionId: string, call: ArtifactCall): unknown[] {
 			uuid: `${call.toolUseId}-result`,
 			sessionId,
 			timestamp: call.timestamp,
-			message: {
+			message:
+			{
 				role: "user",
 				content: [
 					{
 						type: "tool_result",
 						tool_use_id: call.toolUseId,
-						content: [{type: "text", text: call.resultText}],
+						content: [
+							{
+								type: "text",
+								text: call.resultText,
+							},
+						],
 						is_error: call.isError ?? false,
 					},
 				],
@@ -62,7 +78,8 @@ function artifactCallRecords(sessionId: string, call: ArtifactCall): unknown[] {
 	];
 }
 
-function publishResult(url: string, path: string, title: string, version: string) {
+function publishResult(url: string, path: string, title: string, version: string)
+{
 	return {
 		url,
 		path,
@@ -74,10 +91,12 @@ function publishResult(url: string, path: string, title: string, version: string
 	};
 }
 
-const firstPublish: ArtifactCall = {
+const firstPublish: ArtifactCall =
+{
 	toolUseId: "toolu_a_publish",
 	timestamp: "2000-01-01T00:00:00.000Z",
-	input: {
+	input:
+	{
 		file_path: SOURCE_A,
 		title: "Asap Ladder Rebalance",
 		description: "Drag tasks between tiers.",
@@ -87,38 +106,73 @@ const firstPublish: ArtifactCall = {
 	toolUseResult: publishResult(ARTIFACT_URL, SOURCE_A, "Asap Ladder Rebalance", "v1"),
 };
 
-const readDb: ArtifactCall = {
+const readDb: ArtifactCall =
+{
 	toolUseId: "toolu_a_read_db",
 	timestamp: "2000-01-01T01:00:00.000Z",
-	input: {action: "read_db", url: ARTIFACT_URL, db_op: "list", collection: "rebalance"},
+	input:
+	{
+		action: "read_db",
+		url: ARTIFACT_URL,
+		db_op: "list",
+		collection: "rebalance",
+	},
 	resultText: '0 documents from collection "rebalance".',
-	toolUseResult: {db_read: {op: "list", collection: "rebalance", docs: []}},
+	toolUseResult:
+	{
+		db_read:
+		{
+			op: "list",
+			collection: "rebalance",
+			docs: [],
+		},
+	},
 };
 
-const failedPublish: ArtifactCall = {
+const failedPublish: ArtifactCall =
+{
 	toolUseId: "toolu_a_error",
 	timestamp: "2000-01-01T02:00:00.000Z",
-	input: {file_path: SOURCE_A, url: ARTIFACT_URL, favicon: "💥"},
+	input:
+	{
+		file_path: SOURCE_A,
+		url: ARTIFACT_URL,
+		favicon: "💥",
+	},
 	resultText: `Could not publish to ${ARTIFACT_URL}: rate-limited.`,
 	toolUseResult: "Error: rate-limited",
 	isError: true,
 };
 
-const listCall: ArtifactCall = {
+const listCall: ArtifactCall =
+{
 	toolUseId: "toolu_a_list",
 	timestamp: "2000-01-01T03:00:00.000Z",
-	input: {action: "list", limit: 10},
+	input:
+	{
+		action: "list",
+		limit: 10,
+	},
 	resultText: `1 published artifact:\n- Elsewhere — ${OTHER_URL}`,
-	toolUseResult: {
-		artifacts: [{title: "Elsewhere", url: OTHER_URL, updatedAt: "2000-01-01T00:00:00Z"}],
+	toolUseResult:
+	{
+		artifacts: [
+			{
+				title: "Elsewhere",
+				url: OTHER_URL,
+				updatedAt: "2000-01-01T00:00:00Z",
+			},
+		],
 		truncated: false,
 	},
 };
 
-const secondPublish: ArtifactCall = {
+const secondPublish: ArtifactCall =
+{
 	toolUseId: "toolu_b_publish",
 	timestamp: "2000-01-02T00:00:00.000Z",
-	input: {
+	input:
+	{
 		file_path: SOURCE_B,
 		url: ARTIFACT_URL,
 		description: "One continuous queue.",
@@ -128,10 +182,15 @@ const secondPublish: ArtifactCall = {
 	toolUseResult: publishResult(ARTIFACT_URL, SOURCE_B, "Asap Ladder Queue", "v2"),
 };
 
-const subagentPin: ArtifactCall = {
+const subagentPin: ArtifactCall =
+{
 	toolUseId: "toolu_b_sub_pin",
 	timestamp: "2000-01-02T01:00:00.000Z",
-	input: {action: "pin", url: `${ARTIFACT_URL}/`},
+	input:
+	{
+		action: "pin",
+		url: `${ARTIFACT_URL}/`,
+	},
 	resultText: `Pinned ${ARTIFACT_URL}.`,
 	toolUseResult: "Pinned.",
 };
@@ -139,12 +198,18 @@ const subagentPin: ArtifactCall = {
 const SLUG_HTML_URL = "https://claude.ai/artifact/Tq3wDkV8mRf2YzLpNc7HsX";
 const SLUG_HTML_SOURCE = "/private/tmp/scratchpad/research-line.html";
 
-const slugHtmlPublish: ArtifactCall = {
+const slugHtmlPublish: ArtifactCall =
+{
 	toolUseId: "toolu_slug_html",
 	timestamp: "2000-01-03T00:00:00.000Z",
-	input: {file_path: SLUG_HTML_SOURCE, icon: "chart"},
+	input:
+	{
+		file_path: SLUG_HTML_SOURCE,
+		icon: "chart",
+	},
 	resultText: `Published ${SLUG_HTML_SOURCE} at ${SLUG_HTML_URL}\n\nLive subscription: connected.`,
-	toolUseResult: {
+	toolUseResult:
+	{
 		url: SLUG_HTML_URL,
 		path: SLUG_HTML_SOURCE,
 		artifact_id: "0f3c2a91-6b7d-4e58-9a1c-2d4e6f8a0b13",
@@ -159,17 +224,27 @@ const slugHtmlPublish: ArtifactCall = {
 const DOCS_TYPE_URL = "https://claude.ai/artifact/Rp9naXUCj2xozpUkyQy19W";
 const DOCS_TYPE_ARTIFACT_URL = "https://claude.ai/artifact/88kDDG41ePqvfVZNsq4HCF";
 
-const docsTypeCreate: ArtifactCall = {
+const docsTypeCreate: ArtifactCall =
+{
 	toolUseId: "toolu_docs_type",
 	timestamp: "2000-01-04T00:00:00.000Z",
-	input: {type_url: DOCS_TYPE_URL, title: "tmux support plan"},
+	input:
+	{
+		type_url: DOCS_TYPE_URL,
+		title: "tmux support plan",
+	},
 	resultText: `Created a new Artifact at ${DOCS_TYPE_ARTIFACT_URL} (version 1790103359-22eb) from the Artifact type ${DOCS_TYPE_URL} (release 1790098900-58f7).`,
-	toolUseResult: {
+	toolUseResult:
+	{
 		created_from_type: true,
 		url: DOCS_TYPE_ARTIFACT_URL,
 		version: "1790103359-22eb",
 		title: "tmux support plan",
-		type: {url: DOCS_TYPE_URL, release: "1790098900-58f7"},
+		type:
+		{
+			url: DOCS_TYPE_URL,
+			release: "1790098900-58f7",
+		},
 		own_files: [],
 		type_files: ["SKILL.md"],
 		liveSubscription: "connected",
@@ -180,7 +255,8 @@ const docsTypeCreate: ArtifactCall = {
 
 let db: AppDb;
 
-function writeTranscript(path: string, sessionId: string, calls: ArtifactCall[]): string {
+function writeTranscript(path: string, sessionId: string, calls: ArtifactCall[]): string
+{
 	const records = [
 		{
 			type: "user",
@@ -188,7 +264,11 @@ function writeTranscript(path: string, sessionId: string, calls: ArtifactCall[])
 			sessionId,
 			timestamp: "2000-01-01T00:00:00.000Z",
 			cwd: "/Users/alice/projects/ladder",
-			message: {role: "user", content: "Build the ladder page"},
+			message:
+			{
+				role: "user",
+				content: "Build the ladder page",
+			},
 		},
 		...calls.flatMap((call) => artifactCallRecords(sessionId, call)),
 	];
@@ -196,25 +276,35 @@ function writeTranscript(path: string, sessionId: string, calls: ArtifactCall[])
 	return path;
 }
 
-function sessionPath(sessionId: string): string {
+function sessionPath(sessionId: string): string
+{
 	return join(testDir, projectId, `${sessionId}.jsonl`);
 }
 
-function subagentPath(sessionId: string): string {
+function subagentPath(sessionId: string): string
+{
 	const dir = join(testDir, projectId, sessionId, "subagents");
-	mkdirSync(dir, {recursive: true});
+	mkdirSync(
+		dir,
+		{
+			recursive: true,
+		},
+	);
 	return join(dir, "agent-pinner.jsonl");
 }
 
-function bumpMtime(path: string, seconds: number): void {
+function bumpMtime(path: string, seconds: number): void
+{
 	utimesSync(path, seconds, seconds);
 }
 
-function readArtifacts() {
+function readArtifacts()
+{
 	return db.index.select().from(schema.artifacts).orderBy(asc(schema.artifacts.url)).all();
 }
 
-function readEvents() {
+function readEvents()
+{
 	return db.index
 		.select()
 		.from(schema.artifactEvents)
@@ -222,7 +312,8 @@ function readEvents() {
 		.all();
 }
 
-const expectedArtifactAfterBothSessions = {
+const expectedArtifactAfterBothSessions =
+{
 	url: ARTIFACT_URL,
 	id: ARTIFACT_ID,
 	urlKind: "uuid",
@@ -303,18 +394,33 @@ const expectedEventsAfterBothSessions = [
 	},
 ];
 
-beforeEach(() => {
-	mkdirSync(join(testDir, projectId), {recursive: true});
+beforeEach(() =>
+{
+	mkdirSync(
+		join(testDir, projectId),
+		{
+			recursive: true,
+		},
+	);
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(testDir, {recursive: true, force: true});
+	rmSync(
+		testDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("artifact indexing", () => {
-	it("merges republishes of one URL across sessions into one artifact", async () => {
+describe("artifact indexing", () =>
+{
+	it("merges republishes of one URL across sessions into one artifact", async () =>
+	{
 		writeTranscript(sessionPath(sessionA), sessionA, [firstPublish, readDb, failedPublish, listCall]);
 		writeTranscript(sessionPath(sessionB), sessionB, [secondPublish]);
 
@@ -325,7 +431,8 @@ describe("artifact indexing", () => {
 		expect(readEvents()).toStrictEqual(expectedEventsAfterBothSessions);
 	});
 
-	it("reindexes idempotently", async () => {
+	it("reindexes idempotently", async () =>
+	{
 		writeTranscript(sessionPath(sessionA), sessionA, [firstPublish, readDb, failedPublish]);
 		writeTranscript(sessionPath(sessionB), sessionB, [secondPublish]);
 		await indexJsonlFile(db.index, sessionPath(sessionA), projectId);
@@ -340,7 +447,8 @@ describe("artifact indexing", () => {
 		expect(readEvents()).toStrictEqual(expectedEventsAfterBothSessions);
 	});
 
-	it("recomputes the artifact when a session's publish disappears on reindex", async () => {
+	it("recomputes the artifact when a session's publish disappears on reindex", async () =>
+	{
 		writeTranscript(sessionPath(sessionA), sessionA, [firstPublish]);
 		writeTranscript(sessionPath(sessionB), sessionB, [secondPublish]);
 		await indexJsonlFile(db.index, sessionPath(sessionA), projectId);
@@ -374,7 +482,8 @@ describe("artifact indexing", () => {
 		]);
 	});
 
-	it("records subagent calls under the parent session without clobbering its events", async () => {
+	it("records subagent calls under the parent session without clobbering its events", async () =>
+	{
 		writeTranscript(sessionPath(sessionB), sessionB, [secondPublish]);
 		const agentPath = writeTranscript(subagentPath(sessionB), sessionB, [subagentPin]);
 
@@ -384,7 +493,8 @@ describe("artifact indexing", () => {
 		await indexJsonlFile(db.index, sessionPath(sessionB), projectId);
 
 		expect(
-			readEvents().map(({toolUseId, action, url, isSubagent, filePath}) => ({
+			readEvents().map(({toolUseId, action, url, isSubagent, filePath}) => (
+			{
 				toolUseId,
 				action,
 				url,
@@ -431,48 +541,88 @@ describe("artifact indexing", () => {
 		]);
 	});
 
-	it("indexes the latest open or read as lastOpenedAt, and null for a publish-only artifact", async () => {
-		const openCall: ArtifactCall = {
+	it("indexes the latest open or read as lastOpenedAt, and null for a publish-only artifact", async () =>
+	{
+		const openCall: ArtifactCall =
+		{
 			toolUseId: "toolu_a_open",
 			timestamp: "2000-01-01T05:00:00.000Z",
-			input: {action: "open", url: ARTIFACT_URL},
+			input:
+			{
+				action: "open",
+				url: ARTIFACT_URL,
+			},
 			resultText: `Opened ${ARTIFACT_URL}.`,
-			toolUseResult: {opened: true},
+			toolUseResult:
+			{
+				opened: true,
+			},
 		};
-		const readCall: ArtifactCall = {
+		const readCall: ArtifactCall =
+		{
 			toolUseId: "toolu_a_read",
 			timestamp: "2000-01-01T04:00:00.000Z",
-			input: {action: "read", url: ARTIFACT_URL},
+			input:
+			{
+				action: "read",
+				url: ARTIFACT_URL,
+			},
 			resultText: "<html></html>",
-			toolUseResult: {read: {url: ARTIFACT_URL}},
+			toolUseResult:
+			{
+				read:
+				{
+					url: ARTIFACT_URL,
+				},
+			},
 		};
 		writeTranscript(sessionPath(sessionA), sessionA, [firstPublish, readCall, openCall, slugHtmlPublish]);
 		await indexJsonlFile(db.index, sessionPath(sessionA), projectId);
 
-		expect({
-			rows: readArtifacts().map(({url, lastPublishedAt, lastOpenedAt}) => ({url, lastPublishedAt, lastOpenedAt})),
-			summaries: getArtifacts(db.index, {}, () => null).map(({url, lastOpenedAt}) => ({url, lastOpenedAt})),
-		}).toStrictEqual({
-			rows: [
+		expect(
+			{
+				rows: readArtifacts().map(({url, lastPublishedAt, lastOpenedAt}) => (
 				{
-					url: SLUG_HTML_URL,
-					lastPublishedAt: Date.parse("2000-01-03T00:00:00.000Z"),
-					lastOpenedAt: null,
-				},
+					url,
+					lastPublishedAt,
+					lastOpenedAt,
+				})),
+				summaries: getArtifacts(db.index, {}, () => null).map(({url, lastOpenedAt}) => (
 				{
-					url: ARTIFACT_URL,
-					lastPublishedAt: Date.parse("2000-01-01T00:00:00.000Z"),
-					lastOpenedAt: Date.parse("2000-01-01T05:00:00.000Z"),
-				},
-			],
-			summaries: [
-				{url: SLUG_HTML_URL, lastOpenedAt: null},
-				{url: ARTIFACT_URL, lastOpenedAt: Date.parse("2000-01-01T05:00:00.000Z")},
-			],
-		});
+					url,
+					lastOpenedAt,
+				})),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						url: SLUG_HTML_URL,
+						lastPublishedAt: Date.parse("2000-01-03T00:00:00.000Z"),
+						lastOpenedAt: null,
+					},
+					{
+						url: ARTIFACT_URL,
+						lastPublishedAt: Date.parse("2000-01-01T00:00:00.000Z"),
+						lastOpenedAt: Date.parse("2000-01-01T05:00:00.000Z"),
+					},
+				],
+				summaries: [
+					{
+						url: SLUG_HTML_URL,
+						lastOpenedAt: null,
+					},
+					{
+						url: ARTIFACT_URL,
+						lastOpenedAt: Date.parse("2000-01-01T05:00:00.000Z"),
+					},
+				],
+			},
+		);
 	});
 
-	it("classifies a slug-URL HTML publish as html and keeps its icon", async () => {
+	it("classifies a slug-URL HTML publish as html and keeps its icon", async () =>
+	{
 		writeTranscript(sessionPath(sessionA), sessionA, [slugHtmlPublish]);
 		await indexJsonlFile(db.index, sessionPath(sessionA), projectId);
 
@@ -498,17 +648,30 @@ describe("artifact indexing", () => {
 				projectId,
 			},
 		]);
-		expect(getArtifacts(db.index, {}, () => null).map(({url, kind, icon}) => ({url, kind, icon}))).toStrictEqual([
-			{url: SLUG_HTML_URL, kind: "html", icon: "chart"},
+		expect(
+			getArtifacts(db.index, {}, () => null).map(({url, kind, icon}) => (
+			{
+				url,
+				kind,
+				icon,
+			})),
+		).toStrictEqual([
+			{
+				url: SLUG_HTML_URL,
+				kind: "html",
+				icon: "chart",
+			},
 		]);
 	});
 
-	it("classifies an artifact created from the Docs type as docs", async () => {
+	it("classifies an artifact created from the Docs type as docs", async () =>
+	{
 		writeTranscript(sessionPath(sessionA), sessionA, [docsTypeCreate]);
 		await indexJsonlFile(db.index, sessionPath(sessionA), projectId);
 
 		expect(
-			readArtifacts().map(({url, urlKind, icon, artifactUuid, typeUrl}) => ({
+			readArtifacts().map(({url, urlKind, icon, artifactUuid, typeUrl}) => (
+			{
 				url,
 				urlKind,
 				icon,
@@ -516,10 +679,27 @@ describe("artifact indexing", () => {
 				typeUrl,
 			})),
 		).toStrictEqual([
-			{url: DOCS_TYPE_ARTIFACT_URL, urlKind: "slug", icon: null, artifactUuid: null, typeUrl: DOCS_TYPE_URL},
+			{
+				url: DOCS_TYPE_ARTIFACT_URL,
+				urlKind: "slug",
+				icon: null,
+				artifactUuid: null,
+				typeUrl: DOCS_TYPE_URL,
+			},
 		]);
-		expect(getArtifacts(db.index, {}, () => null).map(({url, kind, icon}) => ({url, kind, icon}))).toStrictEqual([
-			{url: DOCS_TYPE_ARTIFACT_URL, kind: "docs", icon: null},
+		expect(
+			getArtifacts(db.index, {}, () => null).map(({url, kind, icon}) => (
+			{
+				url,
+				kind,
+				icon,
+			})),
+		).toStrictEqual([
+			{
+				url: DOCS_TYPE_ARTIFACT_URL,
+				kind: "docs",
+				icon: null,
+			},
 		]);
 	});
 });

@@ -5,7 +5,8 @@ import {assertNever} from "../lib/assert-never";
 import {useSessionArchive} from "../hooks/use-session-archive";
 import {useSessionFork} from "../hooks/use-session-fork";
 import type {SessionMenuItemId} from "../lib/session-menu-items";
-import {
+import
+{
 	claudeAiSessionUrl,
 	copySessionLink,
 	copySessionResumeCommand,
@@ -13,7 +14,8 @@ import {
 	vscodeFolderUrl,
 } from "../lib/session-open-in";
 import {transcriptModeLabels} from "../lib/schema-choices";
-import {
+import
+{
 	loadTranscriptViewNudge,
 	recordTranscriptViewPick,
 	saveTranscriptViewNudge,
@@ -38,7 +40,8 @@ export function useSessionMenuRunner({
 	movePinned,
 	requestNewGroup,
 	transcriptView,
-}: SessionMenuRunnerOptions): SessionMenuRun {
+}: SessionMenuRunnerOptions): SessionMenuRun
+{
 	const queryClient = useQueryClient();
 	const toast = useToast();
 	const transcriptViewRunner = useTranscriptViewRunner(sessionId, transcriptView);
@@ -46,20 +49,37 @@ export function useSessionMenuRunner({
 	const navigate = useNavigate();
 	const fork = useSessionFork();
 
-	const revealInFinder = () => {
-		openSessionInFinder(sessionId).catch(() => {
-			toast({kind: "error", message: "Couldn’t open the folder in Finder."});
+	const revealInFinder = () =>
+	{
+		openSessionInFinder(sessionId).catch(() =>
+		{
+			toast(
+				{
+					kind: "error",
+					message: "Couldn’t open the folder in Finder.",
+				},
+			);
 		});
 	};
 
-	return (id, value): void => {
-		switch (id) {
+	return (id, value): void =>
+	{
+		switch (id)
+		{
 			case "open-live-terminal":
-				void navigate({
-					to: "/session/$id",
-					params: {id: sessionId},
-					search: {pane: "terminal"},
-				});
+				void navigate(
+					{
+						to: "/session/$id",
+						params:
+						{
+							id: sessionId,
+						},
+						search:
+						{
+							pane: "terminal",
+						},
+					},
+				);
 				return;
 			case "open-terminal":
 				if (cwd !== null) void copySessionResumeCommand(sessionId, cwd, toast);
@@ -71,7 +91,8 @@ export function useSessionMenuRunner({
 				revealInFinder();
 				return;
 			case "open-claude-ai":
-				if (bridgeSessionId !== null) {
+				if (bridgeSessionId !== null)
+				{
 					window.open(claudeAiSessionUrl(bridgeSessionId), "_blank", "noopener,noreferrer");
 				}
 				return;
@@ -107,7 +128,13 @@ export function useSessionMenuRunner({
 				setArchived(id === "archive");
 				return;
 			case "fork":
-				if (cwd !== null) fork({sessionId, cwd});
+				if (cwd !== null)
+					fork(
+						{
+							sessionId,
+							cwd,
+						},
+					);
 				return;
 			case "move-to-custom-group":
 				if (value !== undefined) assign(sessionId, value);
@@ -134,7 +161,8 @@ export function useSessionMenuRunner({
 	};
 }
 
-export interface SessionMenuRunnerOptions {
+export interface SessionMenuRunnerOptions
+{
 	sessionId: string;
 	/** The row's transcript mtime, which "Mark as completed" acks at (upstream acks at `updated_at`). */
 	mtime?: string;
@@ -157,39 +185,58 @@ export interface SessionMenuRunnerOptions {
 export type SessionMenuRun = (id: SessionMenuItemId, value?: string) => void;
 
 /** Transcript view ▸ radios and Make default, with upstream's toasts and default-view nudge. */
-function useTranscriptViewRunner(sessionId: string, view: TranscriptViewActions | undefined) {
+function useTranscriptViewRunner(sessionId: string, view: TranscriptViewActions | undefined)
+{
 	const toast = useToast();
-	const makeDefault = (mode: TranscriptMode) => {
+	const makeDefault = (mode: TranscriptMode) =>
+	{
 		view?.makeDefault(mode);
-		toast({kind: "success", message: `${transcriptModeLabels[mode]} is now the default view.`});
+		toast(
+			{
+				kind: "success",
+				message: `${transcriptModeLabels[mode]} is now the default view.`,
+			},
+		);
 	};
-	const pick = (value: string | undefined) => {
+	const pick = (value: string | undefined) =>
+	{
 		const parsed = TranscriptModeSchema.safeParse(value);
 		if (view === undefined || !parsed.success || parsed.data === view.mode) return;
 		const mode = parsed.data;
 		view.setMode(mode);
-		const {state, due} = recordTranscriptViewPick(loadTranscriptViewNudge(), {
-			sessionId,
-			mode,
-			defaultMode: view.defaultMode,
-		});
+		const {state, due} = recordTranscriptViewPick(
+			loadTranscriptViewNudge(),
+			{
+				sessionId,
+				mode,
+				defaultMode: view.defaultMode,
+			},
+		);
 		saveTranscriptViewNudge(state);
 		if (!due) return;
 		const label = transcriptModeLabels[mode];
-		toast({
-			kind: "success",
-			message: `Make ${label} your default view?`,
-			description: `You’ve picked ${label} in more than one session. You can change the default anytime in Settings.`,
-			action: {
-				label: "Make default",
-				onAction: () => {
-					makeDefault(mode);
+		toast(
+			{
+				kind: "success",
+				message: `Make ${label} your default view?`,
+				description: `You’ve picked ${label} in more than one session. You can change the default anytime in Settings.`,
+				action:
+				{
+					label: "Make default",
+					onAction: () =>
+					{
+						makeDefault(mode);
+					},
 				},
 			},
-		});
+		);
 	};
-	const makeCurrentDefault = () => {
+	const makeCurrentDefault = () =>
+	{
 		if (view !== undefined) makeDefault(view.mode);
 	};
-	return {pick, makeCurrentDefault};
+	return {
+		pick,
+		makeCurrentDefault,
+	};
 }

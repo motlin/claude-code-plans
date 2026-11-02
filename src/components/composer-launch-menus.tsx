@@ -2,7 +2,8 @@ import {Info, TriangleAlert} from "lucide-react";
 
 import {useShortcutKeys} from "../hooks/use-shortcut";
 
-import {
+import
+{
 	type EffortLevel,
 	type EffortOption,
 	EffortLevelSchema,
@@ -19,7 +20,8 @@ import {
 } from "../lib/launch-options";
 import {effortLevelShortLabels} from "../lib/schema-choices";
 import type {FastModeBlocked} from "../lib/session-fast-mode";
-import {
+import
+{
 	BAR_EFFORT_LABEL_CLASS,
 	BAR_MODEL_LABEL_CLASS,
 	BAR_MODEL_NAME_CLASS,
@@ -28,7 +30,8 @@ import {
 	CHIN_MODEL_NAME_CLASS,
 	CHIN_TRIGGER_CLASS,
 } from "./composer-tokens";
-import {
+import
+{
 	MENU_HEADER_CLASS,
 	Menu,
 	MenuCheckboxSwitchItem,
@@ -62,7 +65,8 @@ export type ChinMenu = "mode" | "model" | "effort";
 /** Where the chin controls render: the home environment bar or a session composer chin. */
 export type ChinSurface = "bar" | "chin";
 
-interface ControlledMenuProps {
+interface ControlledMenuProps
+{
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }
@@ -76,7 +80,8 @@ export function ModeMenu({
 	workspace,
 	onSelect,
 	surface,
-}: ControlledMenuProps & {
+}: ControlledMenuProps &
+{
 	/** Upstream's new-session bar reads "Permissions · this session" with no digit keycaps; chins read "Mode". */
 	surface: ChinSurface;
 	current: string;
@@ -85,7 +90,8 @@ export function ModeMenu({
 	/** The consent workspace key (`consentWorkspaceKey`), or "" before a folder is known. */
 	workspace: string;
 	onSelect: (mode: LaunchPermissionMode) => void;
-}) {
+})
+{
 	const {guard, gate} = usePermissionModeGuard(workspace);
 	const modeKeys = useShortcutKeys("open_mode_menu").keys;
 	const bar = surface === "bar";
@@ -96,7 +102,12 @@ export function ModeMenu({
 					<MenuTrigger
 						data-chin-mode=""
 						className={CHIN_TRIGGER_CLASS}
-						{...(bar ? {"aria-label": `Permissions: ${currentLabel}`} : {})}
+						{...(bar
+							?
+								{
+									"aria-label": `Permissions: ${currentLabel}`,
+								}
+							: {})}
 					>
 						{bar ? (
 							currentLabel
@@ -112,10 +123,12 @@ export function ModeMenu({
 					<MenuRadioGroup
 						label={bar ? "Permissions · this session" : "Mode"}
 						value={current}
-						onValueChange={(value: string) => {
+						onValueChange={(value: string) =>
+						{
 							const mode = LaunchPermissionModeSchema.parse(value);
 							// Upstream's `Ei`: the pick (and a live pane's shift+tab presses) waits for any consent owed.
-							guard(mode, () => {
+							guard(mode, () =>
+							{
 								onSelect(mode);
 							});
 						}}
@@ -124,14 +137,24 @@ export function ModeMenu({
 							<MenuRadioItem
 								key={item.id}
 								value={item.id}
-								{...(bar ? {} : {accelerator: String(index + 1)})}
+								{...(bar
+									? {}
+									:
+										{
+											accelerator: String(index + 1),
+										})}
 								closeOnClick
 								data-variant={item.warning ? "warning" : "default"}
 								description={item.description}
 							>
 								<span
 									data-menu-item-label=""
-									{...(item.warning ? {className: "text-warning-100"} : {})}
+									{...(item.warning
+										?
+											{
+												className: "text-warning-100",
+											}
+										: {})}
 								>
 									{item.label}
 								</span>
@@ -155,7 +178,8 @@ const EFFORT_BADGE_CLASS =
  * warning "3.5× or more usage"), on one non-wrapping flex line. A tooltipped row without a warning badge (every Max
  * but Opus 5.5's) ends in a muted 12px Info glyph instead.
  */
-function EffortRowLabel({option}: {option: EffortOption}) {
+function EffortRowLabel({option}: {option: EffortOption})
+{
 	return (
 		<span className="flex min-w-0 items-center gap-1">
 			<span data-menu-item-label="" className="truncate">
@@ -205,7 +229,8 @@ export function ModelMenu({
 	onFastModeChange,
 	settingsOverride,
 	surface,
-}: ControlledMenuProps & {
+}: ControlledMenuProps &
+{
 	/** Upstream's new-session bar pins a "Model · this session" header; session chins have none. */
 	surface: ChinSurface;
 	/** Opened from ⇧⌘E: show the Effort submenu straight away. */
@@ -226,8 +251,13 @@ export function ModelMenu({
 	fastModeBlocked: FastModeBlocked | null;
 	onFastModeChange: (on: boolean) => void;
 	/** The pick differs from the settings.json model: accent label, "(settings: X)" tooltip, "Use settings’ X". */
-	settingsOverride: {label: string; onUse: () => void} | null;
-}) {
+	settingsOverride:
+	{
+		label: string;
+		onUse: () => void;
+	} | null;
+})
+{
 	/** Upstream's checked row shows its ✓ in place of its digit; the others keep their position's digit. */
 	const primary = primaryModelMenuValue(current);
 	const level = EffortLevelSchema.safeParse(currentEffort);
@@ -246,7 +276,12 @@ export function ModelMenu({
 	const trigger = (
 		<MenuTrigger
 			data-cds="ModelSelector"
-			{...(chin ? {"data-collapse": "name"} : {})}
+			{...(chin
+				?
+					{
+						"data-collapse": "name",
+					}
+				: {})}
 			aria-label={`Model: ${currentLabel}${fastShown ? " Fast" : ""}${effortShown ? ` ${effortLabel}` : ""}${ultracodeShown ? " · Ultracode" : ""}${maxWarning ? ` ${MAX_WARNING_MESSAGE}` : ""}`}
 			className={CHIN_TRIGGER_CLASS}
 		>
@@ -287,7 +322,8 @@ export function ModelMenu({
 	/** Upstream's `content = tooltip ?? (warning ? effort tooltip : undefined)`. */
 	const tooltip =
 		surface === "bar" || settingsOverride !== null
-			? {
+			?
+				{
 					content:
 						settingsOverride === null
 							? "Model"
@@ -295,7 +331,11 @@ export function ModelMenu({
 					shortcut: modelKeys,
 				}
 			: maxWarning
-				? {content: MAX_EFFORT_TOOLTIP, shortcut: undefined}
+				?
+					{
+						content: MAX_EFFORT_TOOLTIP,
+						shortcut: undefined,
+					}
 				: null;
 	const effortHint = ultracodeShown ? `${effortLabel} · Ultracode` : effortLabel;
 	return (
@@ -306,7 +346,12 @@ export function ModelMenu({
 			) : (
 				<Tooltip
 					content={tooltip.content}
-					{...(tooltip.shortcut === undefined ? {} : {shortcut: tooltip.shortcut})}
+					{...(tooltip.shortcut === undefined
+						? {}
+						:
+							{
+								shortcut: tooltip.shortcut,
+							})}
 					side="top"
 					suppressAfterPopup
 				>
@@ -319,7 +364,8 @@ export function ModelMenu({
 				sheetSize="base"
 				cds="ModelSelector"
 				{...(surface === "bar"
-					? {
+					?
+						{
 							header: (
 								<div role="presentation" className={MENU_HEADER_CLASS}>
 									Model · this session
@@ -330,11 +376,13 @@ export function ModelMenu({
 			>
 				<MenuRadioGroup
 					value={primary}
-					onValueChange={(value: string) => {
+					onValueChange={(value: string) =>
+					{
 						onSelect(value);
 					}}
 				>
-					{PRIMARY_MODELS.map((model, index) => {
+					{PRIMARY_MODELS.map((model, index) =>
+					{
 						const row = (
 							<MenuRadioItem
 								key={model.id}
@@ -363,7 +411,8 @@ export function ModelMenu({
 							<MenuSubTrigger
 								value={effortHint}
 								{...(maxWarning
-									? {
+									?
+										{
 											trailing: (
 												<span
 													data-effort-warning-hint=""
@@ -385,14 +434,16 @@ export function ModelMenu({
 								<MenuLabel className={EFFORT_HELP_CLASS}>{EFFORT_HELP}</MenuLabel>
 								<MenuRadioGroup
 									value={level.success ? level.data : ""}
-									onValueChange={(value: unknown) => {
+									onValueChange={(value: unknown) =>
+									{
 										const picked = EffortLevelSchema.safeParse(value);
 										if (!picked.success) return;
 										onSelectEffort(picked.data);
 										onOpenChange(false);
 									}}
 								>
-									{effortOptions.map((option) => {
+									{effortOptions.map((option) =>
+									{
 										const row = (
 											<MenuRadioItem
 												key={option.id}
@@ -437,7 +488,8 @@ export function ModelMenu({
 					<MenuSubContent className="max-h-[min(50vh,var(--available-height))]">
 						<MenuRadioGroup
 							value={moreModelsMenuValue(current)}
-							onValueChange={(value: string) => {
+							onValueChange={(value: string) =>
+							{
 								onSelect(value);
 								onOpenChange(false);
 							}}
@@ -464,7 +516,8 @@ export function ModelMenu({
 							onCheckedChange={onFastModeChange}
 							{...(fastModeBlocked === null
 								? {}
-								: {
+								:
+									{
 										disabled: true,
 										description: fastModeBlocked.line,
 										disabledReason: fastModeBlocked.reason,

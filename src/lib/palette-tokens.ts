@@ -28,7 +28,8 @@ export type PaletteType = z.infer<typeof PaletteTypeSchema>;
 export type ClientPaletteType = Extract<PaletteType, "artifacts" | "projects" | "scheduled">;
 export type ServerPaletteType = Exclude<PaletteType, ClientPaletteType>;
 
-export function isClientPaletteType(type: PaletteType): type is ClientPaletteType {
+export function isClientPaletteType(type: PaletteType): type is ClientPaletteType
+{
 	return type === "artifacts" || type === "projects" || type === "scheduled";
 }
 
@@ -36,7 +37,8 @@ export function isClientPaletteType(type: PaletteType): type is ClientPaletteTyp
 export const PaletteFilterSchema = z.enum(["date", "repo", "project", "type", "archived", "actions"]);
 export type PaletteFilter = z.infer<typeof PaletteFilterSchema>;
 
-export interface PaletteTokens {
+export interface PaletteTokens
+{
 	text: string;
 	project?: string;
 	date?: UnifiedSearchDate;
@@ -51,7 +53,8 @@ const DATE_KEYS = new Set(["date", "when", "active"]);
 /** Values that switch on a flag filter (`archived:`, `actions:`); the bare key does too. */
 const FLAG_VALUES = new Set(["", "true", "yes"]);
 
-const TYPE_ALIASES: Readonly<Record<string, PaletteType>> = {
+const TYPE_ALIASES: Readonly<Record<string, PaletteType>> =
+{
 	all: "all",
 	session: "sessions",
 	sessions: "sessions",
@@ -74,31 +77,37 @@ const TYPE_ALIASES: Readonly<Record<string, PaletteType>> = {
 };
 
 /** Apply one `key:value` word to `tokens`; false leaves the word as search text. */
-function applyToken(tokens: PaletteTokens, key: string, rawValue: string): boolean {
+function applyToken(tokens: PaletteTokens, key: string, rawValue: string): boolean
+{
 	const value = rawValue.toLowerCase();
-	if (PROJECT_KEYS.has(key)) {
+	if (PROJECT_KEYS.has(key))
+	{
 		if (rawValue !== "") tokens.project = rawValue;
 		return true;
 	}
-	if (DATE_KEYS.has(key)) {
+	if (DATE_KEYS.has(key))
+	{
 		if (value === "") return true;
 		const date = UnifiedSearchDateSchema.safeParse(value);
 		if (!date.success) return false;
 		tokens.date = date.data;
 		return true;
 	}
-	if (key === "type") {
+	if (key === "type")
+	{
 		if (value === "") return true;
 		const type = TYPE_ALIASES[value];
 		if (type === undefined) return false;
 		tokens.type = type;
 		return true;
 	}
-	if ((key === "is" && value === "archived") || (key === "archived" && FLAG_VALUES.has(value))) {
+	if ((key === "is" && value === "archived") || (key === "archived" && FLAG_VALUES.has(value)))
+	{
 		tokens.archived = true;
 		return true;
 	}
-	if (key === "actions" && FLAG_VALUES.has(value)) {
+	if (key === "actions" && FLAG_VALUES.has(value))
+	{
 		tokens.actions = true;
 		return true;
 	}
@@ -106,13 +115,19 @@ function applyToken(tokens: PaletteTokens, key: string, rawValue: string): boole
 }
 
 /** Split a palette query into free text and upstream's inline filter tokens (last one wins). */
-export function parsePaletteTokens(query: string): PaletteTokens {
-	const tokens: PaletteTokens = {text: ""};
+export function parsePaletteTokens(query: string): PaletteTokens
+{
+	const tokens: PaletteTokens =
+	{
+		text: "",
+	};
 	const words: string[] = [];
-	for (const word of query.split(/\s+/u)) {
+	for (const word of query.split(/\s+/u))
+	{
 		if (word === "") continue;
 		const match = /^([a-z]+):(.*)$/iu.exec(word);
-		if (match?.[1] !== undefined && applyToken(tokens, match[1].toLowerCase(), match[2] ?? "")) {
+		if (match?.[1] !== undefined && applyToken(tokens, match[1].toLowerCase(), match[2] ?? ""))
+		{
 			continue;
 		}
 		words.push(word);
@@ -121,18 +136,21 @@ export function parsePaletteTokens(query: string): PaletteTokens {
 	return tokens;
 }
 
-export interface PaletteProject {
+export interface PaletteProject
+{
 	id: string;
 	name: string;
 	projectPath: string | null;
 }
 
-function basename(path: string): string {
+function basename(path: string): string
+{
 	return path.replace(/\/+$/u, "").split("/").pop() ?? path;
 }
 
 /** True when `value` names `project` by id, name or cwd basename (upstream's `repo:`). */
-export function paletteProjectMatches(value: string, project: PaletteProject): boolean {
+export function paletteProjectMatches(value: string, project: PaletteProject): boolean
+{
 	if (value === project.id) return true;
 	const lower = value.toLowerCase();
 	return (
@@ -142,7 +160,8 @@ export function paletteProjectMatches(value: string, project: PaletteProject): b
 }
 
 /** Resolve a `repo:`/`project:` value to a project id; unknown values pass through and match nothing. */
-export function resolvePaletteProject(value: string, projects: readonly PaletteProject[]): string {
+export function resolvePaletteProject(value: string, projects: readonly PaletteProject[]): string
+{
 	return projects.find((project) => paletteProjectMatches(value, project))?.id ?? value;
 }
 
@@ -153,20 +172,37 @@ export function paletteSearchParams(
 	tokens: PaletteTokens,
 	tab: PaletteType,
 	projects: readonly PaletteProject[],
-): PaletteSearchParams | null {
+): PaletteSearchParams | null
+{
 	const type = tokens.type ?? tab;
 	if (isClientPaletteType(type)) return null;
 	return {
 		query: tokens.text,
 		type,
-		...(tokens.project === undefined ? {} : {project: resolvePaletteProject(tokens.project, projects)}),
-		...(tokens.date === undefined ? {} : {date: tokens.date}),
-		...(tokens.archived === true ? {archived: true} : {}),
+		...(tokens.project === undefined
+			? {}
+			:
+				{
+					project: resolvePaletteProject(tokens.project, projects),
+				}),
+		...(tokens.date === undefined
+			? {}
+			:
+				{
+					date: tokens.date,
+				}),
+		...(tokens.archived === true
+			?
+				{
+					archived: true,
+				}
+			: {}),
 	};
 }
 
 /** Upstream's hint keyword table `bt`; a hint also matches on its token prefix. */
-const FILTER_KEYWORDS = {
+const FILTER_KEYWORDS =
+{
 	date: ["date", "when", "recently", "today", "week", "month"],
 	repo: ["repo", "repository"],
 	project: ["project"],
@@ -176,7 +212,8 @@ const FILTER_KEYWORDS = {
 } as const satisfies Record<PaletteFilter, readonly string[]>;
 
 /** The token each hint row inserts into the query. */
-export const PALETTE_FILTER_TOKENS = {
+export const PALETTE_FILTER_TOKENS =
+{
 	date: "date:",
 	repo: "repo:",
 	project: "project:",
@@ -186,7 +223,8 @@ export const PALETTE_FILTER_TOKENS = {
 } as const satisfies Record<PaletteFilter, string>;
 
 /** The filters whose token or one of whose keywords starts with `prefix` (lowercase). */
-function filtersMatching(prefix: string): PaletteFilter[] {
+function filtersMatching(prefix: string): PaletteFilter[]
+{
 	return PaletteFilterSchema.options.filter(
 		(filter) =>
 			PALETTE_FILTER_TOKENS[filter].startsWith(prefix) ||
@@ -195,12 +233,14 @@ function filtersMatching(prefix: string): PaletteFilter[] {
 }
 
 /** Hint rows for a "/…" query, narrowed by keyword prefix; null when the query is not a hint query. */
-export function paletteFilterHints(query: string): PaletteFilter[] | null {
+export function paletteFilterHints(query: string): PaletteFilter[] | null
+{
 	if (!query.startsWith("/") || /\s/u.test(query)) return null;
 	return filtersMatching(query.slice(1).toLowerCase());
 }
 
-export interface PaletteFilterHintMatch {
+export interface PaletteFilterHintMatch
+{
 	keys: PaletteFilter[];
 	/** Where the hint's words start; choosing a hint replaces the query from here on. */
 	start: number;
@@ -218,17 +258,34 @@ const KEYWORD_HINT_MIN = 3;
  * trailing "filter by <letters>" lists every filter those letters start; a last word of 3 or
  * more letters that starts a filter keyword (`rep`, `today`) asks for that filter alone.
  */
-export function paletteFilterHintMatch(query: string): PaletteFilterHintMatch | undefined {
+export function paletteFilterHintMatch(query: string): PaletteFilterHintMatch | undefined
+{
 	const slash = /^\/([a-z]*)$/iu.exec(query);
-	if (slash !== null) {
+	if (slash !== null)
+	{
 		const keys = filtersMatching((slash[1] ?? "").toLowerCase());
-		return keys.length === 0 ? undefined : {keys, start: 0, sentence: true};
+		return keys.length === 0
+			? undefined
+			:
+				{
+					keys,
+					start: 0,
+					sentence: true,
+				};
 	}
 	const sentence = FILTER_SENTENCE.exec(query);
-	if (sentence?.[1] !== undefined) {
+	if (sentence?.[1] !== undefined)
+	{
 		const keys = filtersMatching((sentence[2] ?? "").toLowerCase());
 		const start = query.length - sentence[1].length;
-		return keys.length === 0 ? undefined : {keys, start, sentence: true};
+		return keys.length === 0
+			? undefined
+			:
+				{
+					keys,
+					start,
+					sentence: true,
+				};
 	}
 	const word = /(?:^|\s)([a-z]+)$/iu.exec(query)?.[1];
 	if (word === undefined || word.length < KEYWORD_HINT_MIN) return undefined;
@@ -236,11 +293,19 @@ export function paletteFilterHintMatch(query: string): PaletteFilterHintMatch | 
 	const keys = PaletteFilterSchema.options.filter((filter) =>
 		FILTER_KEYWORDS[filter].some((keyword) => keyword.startsWith(lower)),
 	);
-	return keys.length === 0 ? undefined : {keys, start: query.length - word.length, sentence: false};
+	return keys.length === 0
+		? undefined
+		:
+			{
+				keys,
+				start: query.length - word.length,
+				sentence: false,
+			};
 }
 
 /** The filter a bare `key:` names, including the parser's aliases. */
-const BARE_KEY_FILTERS: Readonly<Record<string, PaletteFilter>> = {
+const BARE_KEY_FILTERS: Readonly<Record<string, PaletteFilter>> =
+{
 	project: "project",
 	repo: "repo",
 	repository: "repo",
@@ -255,7 +320,8 @@ const BARE_KEY_FILTERS: Readonly<Record<string, PaletteFilter>> = {
 /** How many recent repos or projects a `repo:`/`project:` value list offers, like upstream. */
 const PALETTE_VALUE_LIMIT = 10;
 
-export interface PaletteValueSession {
+export interface PaletteValueSession
+{
 	project: string;
 	projectName: string;
 }
@@ -264,25 +330,30 @@ export interface PaletteValueSession {
  * The value `repo:` lists and commits for a session: its cwd basename, which the server derives
  * as `projectName`. `project` is the encoded project dir id, never a path.
  */
-export function paletteRepoValue(session: PaletteValueSession): string {
+export function paletteRepoValue(session: PaletteValueSession): string
+{
 	return session.projectName;
 }
 
-export interface PaletteFilterValue {
+export interface PaletteFilterValue
+{
 	label: string;
 	/** The whole query once this value completes the token. */
 	query: string;
 }
 
-export interface PaletteValueSuggestions {
+export interface PaletteValueSuggestions
+{
 	filter: PaletteFilter;
 	values: PaletteFilterValue[];
 }
 
 /** Distinct, token-safe values in first-seen order, capped at the upstream limit. */
-function recentValues(values: Iterable<string>): string[] {
+function recentValues(values: Iterable<string>): string[]
+{
 	const seen = new Set<string>();
-	for (const value of values) {
+	for (const value of values)
+	{
 		if (value === "" || /\s/u.test(value)) continue;
 		seen.add(value);
 		if (seen.size === PALETTE_VALUE_LIMIT) break;
@@ -293,8 +364,10 @@ function recentValues(values: Iterable<string>): string[] {
 function filterValues(
 	filter: PaletteFilter,
 	sessions: readonly PaletteValueSession[],
-): Array<[label: string, value: string]> {
-	switch (filter) {
+): Array<[label: string, value: string]>
+{
+	switch (filter)
+	{
 		case "date":
 			return UnifiedSearchDateSchema.options.map((date) => [unifiedSearchDateLabels[date], date]);
 		case "type":
@@ -321,7 +394,8 @@ function filterValues(
  * Upstream's value match: the label without spaces starts with `typed`, or any word of it
  * does (repo labels also split on "/"). Case-insensitive; empty `typed` matches everything.
  */
-function valueMatches(filter: PaletteFilter, label: string, typed: string): boolean {
+function valueMatches(filter: PaletteFilter, label: string, typed: string): boolean
+{
 	const lower = label.toLowerCase();
 	if (lower.replaceAll(/\s/gu, "").startsWith(typed)) return true;
 	return lower.split(filter === "repo" ? /[\s/]+/u : /\s+/u).some((word) => word.startsWith(typed));
@@ -335,7 +409,8 @@ function valueMatches(filter: PaletteFilter, label: string, typed: string): bool
 export function paletteValueSuggestions(
 	query: string,
 	sessions: readonly PaletteValueSession[],
-): PaletteValueSuggestions | null {
+): PaletteValueSuggestions | null
+{
 	const match = /(?:^|\s)([a-z]+):(\S*)$/iu.exec(query);
 	const key = match?.[1];
 	if (match === null || key === undefined) return null;
@@ -345,11 +420,22 @@ export function paletteValueSuggestions(
 	const head = query.slice(0, query.length - typed.length);
 	const values = filterValues(filter, sessions)
 		.filter(([label]) => valueMatches(filter, label, typed.toLowerCase()))
-		.map(([label, value]) => ({label, query: `${head}${value} `}));
-	return values.length === 0 ? null : {filter, values};
+		.map(([label, value]) => (
+		{
+			label,
+			query: `${head}${value} `,
+		}));
+	return values.length === 0
+		? null
+		:
+			{
+				filter,
+				values,
+			};
 }
 
-export interface PaletteInlineSuggestion {
+export interface PaletteInlineSuggestion
+{
 	filter: PaletteFilter;
 	/** The value the filter's token takes, e.g. `week` in `date:week`. */
 	value: string;
@@ -371,27 +457,47 @@ const INLINE_MIN_LETTERS = 2;
 export function paletteInlineSuggestions(
 	query: string,
 	sessions: readonly PaletteValueSession[],
-): PaletteInlineSuggestion[] {
+): PaletteInlineSuggestion[]
+{
 	const words = [...query.matchAll(/\S+/gu)];
 	const last = words.at(-1);
 	if (last === undefined || last.index + last[0].length !== query.length) return [];
-	const phrases: Array<{typed: string; start: number}> = [];
-	for (let count = Math.min(INLINE_MAX_WORDS, words.length); count >= 1; count--) {
+	const phrases: Array<
+	{
+		typed: string;
+		start: number;
+	}> = [];
+	for (let count = Math.min(INLINE_MAX_WORDS, words.length); count >= 1; count--)
+	{
 		const tail = words.slice(-count);
 		if (tail.some(([word]) => word.length < INLINE_MIN_LETTERS || word.includes(":"))) continue;
-		phrases.push({typed: tail.map(([word]) => word.toLowerCase()).join(""), start: tail[0]?.index ?? 0});
+		phrases.push(
+			{
+				typed: tail.map(([word]) => word.toLowerCase()).join(""),
+				start: tail[0]?.index ?? 0,
+			},
+		);
 	}
 	return PaletteFilterSchema.options.flatMap((filter) =>
-		filterValues(filter, sessions).flatMap(([label, value]) => {
+		filterValues(filter, sessions).flatMap(([label, value]) =>
+		{
 			const phrase = phrases.find(({typed}) => valueMatches(filter, label, typed));
 			if (phrase === undefined) return [];
-			return [{filter, value, label: `${paletteFilterLabels[filter]}: ${label}`, start: phrase.start}];
+			return [
+				{
+					filter,
+					value,
+					label: `${paletteFilterLabels[filter]}: ${label}`,
+					start: phrase.start,
+				},
+			];
 		}),
 	);
 }
 
 /** The palette's committed filter chips, kept apart from the query text like upstream's filter object. */
-export interface PaletteFilters {
+export interface PaletteFilters
+{
 	date?: UnifiedSearchDate;
 	repo?: string;
 	project?: string;
@@ -400,7 +506,8 @@ export interface PaletteFilters {
 	actions?: true;
 }
 
-export interface CommittedPaletteTokens {
+export interface CommittedPaletteTokens
+{
 	text: string;
 	filters: PaletteFilters;
 	/** Set when a `type:` token switched the tab; type is a tab, never a chip. */
@@ -408,46 +515,102 @@ export interface CommittedPaletteTokens {
 }
 
 /** The known value matching `value` case-insensitively, in its canonical spelling. */
-function knownValue(value: string, known: Iterable<string>): string | undefined {
+function knownValue(value: string, known: Iterable<string>): string | undefined
+{
 	const lower = value.toLowerCase();
-	for (const candidate of known) {
+	for (const candidate of known)
+	{
 		if (candidate.toLowerCase() === lower) return candidate;
 	}
 	return undefined;
 }
 
-type FilterChange = {filters: PaletteFilters} | {tab: PaletteType};
+type FilterChange =
+	|
+	  {
+			filters: PaletteFilters;
+	  }
+	|
+	  {
+			tab: PaletteType;
+	  };
 
 /** Upstream's `mt`: the change one `key:value` word commits, or undefined when it doesn't parse. */
 function parseCommitToken(
 	key: string,
 	rawValue: string,
 	sessions: readonly PaletteValueSession[],
-): FilterChange | undefined {
+): FilterChange | undefined
+{
 	const value = rawValue.toLowerCase();
-	if (key === "repo" || key === "repository") {
+	if (key === "repo" || key === "repository")
+	{
 		const repo = knownValue(rawValue, sessions.map(paletteRepoValue));
-		return repo === undefined ? undefined : {filters: {repo}};
+		return repo === undefined
+			? undefined
+			:
+				{
+					filters:
+					{
+						repo,
+					},
+				};
 	}
-	if (key === "project") {
+	if (key === "project")
+	{
 		const project = knownValue(
 			rawValue,
 			sessions.map((session) => session.projectName),
 		);
-		return project === undefined ? undefined : {filters: {project}};
+		return project === undefined
+			? undefined
+			:
+				{
+					filters:
+					{
+						project,
+					},
+				};
 	}
-	if (DATE_KEYS.has(key)) {
+	if (DATE_KEYS.has(key))
+	{
 		const date = UnifiedSearchDateSchema.safeParse(value);
-		return date.success ? {filters: {date: date.data}} : undefined;
+		return date.success
+			?
+				{
+					filters:
+					{
+						date: date.data,
+					},
+				}
+			: undefined;
 	}
-	if (key === "type") {
+	if (key === "type")
+	{
 		const tab = TYPE_ALIASES[value];
-		return tab === undefined ? undefined : {tab};
+		return tab === undefined
+			? undefined
+			:
+				{
+					tab,
+				};
 	}
-	if ((key === "is" && value === "archived") || (key === "archived" && FLAG_VALUES.has(value))) {
-		return {filters: {archived: true}};
+	if ((key === "is" && value === "archived") || (key === "archived" && FLAG_VALUES.has(value)))
+	{
+		return {
+			filters:
+			{
+				archived: true,
+			},
+		};
 	}
-	if (key === "actions" && FLAG_VALUES.has(value)) return {filters: {actions: true}};
+	if (key === "actions" && FLAG_VALUES.has(value))
+		return {
+			filters:
+			{
+				actions: true,
+			},
+		};
 	return undefined;
 }
 
@@ -460,30 +623,57 @@ export function commitPaletteTokens(
 	query: string,
 	filters: PaletteFilters,
 	sessions: readonly PaletteValueSession[],
-): CommittedPaletteTokens {
-	let next: PaletteFilters = {...filters};
+): CommittedPaletteTokens
+{
+	let next: PaletteFilters =
+	{
+		...filters,
+	};
 	let tab: PaletteType | undefined;
-	const text = query.replaceAll(/(?<=^|\s)([a-z]+):(\S*)\s+/giu, (word, key: string, value: string) => {
+	const text = query.replaceAll(/(?<=^|\s)([a-z]+):(\S*)\s+/giu, (word, key: string, value: string) =>
+	{
 		const change = parseCommitToken(key.toLowerCase(), value, sessions);
 		if (change === undefined) return word;
-		if ("tab" in change) {
+		if ("tab" in change)
+		{
 			tab = change.tab;
-		} else if (change.filters.actions === true) {
-			next = {actions: true};
-		} else {
+		}
+		else if (change.filters.actions === true)
+		{
+			next =
+			{
+				actions: true,
+			};
+		}
+		else
+		{
 			const {actions: _actions, ...rest} = next;
-			next = {...rest, ...change.filters};
+			next =
+			{
+				...rest,
+				...change.filters,
+			};
 		}
 		return "";
 	});
-	return {text, filters: next, ...(tab === undefined ? {} : {tab})};
+	return {
+		text,
+		filters: next,
+		...(tab === undefined
+			? {}
+			:
+				{
+					tab,
+				}),
+	};
 }
 
 /**
  * Upstream's chip-conversion gate: only a raw query of at most 50 characters with no newline
  * turns its `key:value` words into chips; a longer one is a prompt and keeps them as text.
  */
-export function shouldCommitPaletteTokens(rawQuery: string): boolean {
+export function shouldCommitPaletteTokens(rawQuery: string): boolean
+{
 	return paletteSearchable(rawQuery) && !rawQuery.includes("\n");
 }
 
@@ -499,30 +689,67 @@ const POP_ORDER = ["actions", "archived", "project", "repo", "date"] as const sa
 export function popPaletteFilter(
 	filters: PaletteFilters,
 	tab: PaletteType,
-): {filters: PaletteFilters; tab: PaletteType} | null {
+):
+{
+	filters: PaletteFilters;
+	tab: PaletteType;
+} | null
+{
 	const key = POP_ORDER.find((candidate) => filters[candidate] !== undefined);
-	if (key !== undefined) {
+	if (key !== undefined)
+	{
 		const {[key]: _removed, ...rest} = filters;
-		return {filters: rest, tab};
+		return {
+			filters: rest,
+			tab,
+		};
 	}
-	return tab === "all" ? null : {filters: {}, tab: "all"};
+	return tab === "all"
+		? null
+		:
+			{
+				filters: {},
+				tab: "all",
+			};
 }
 
 /** The committed chips layered over the typed tokens; a chip wins over a token for the same facet. */
-export function applyPaletteFilters(tokens: PaletteTokens, filters: PaletteFilters): PaletteTokens {
+export function applyPaletteFilters(tokens: PaletteTokens, filters: PaletteFilters): PaletteTokens
+{
 	const project = filters.project ?? filters.repo;
 	return {
 		...tokens,
-		...(filters.date === undefined ? {} : {date: filters.date}),
-		...(project === undefined ? {} : {project}),
-		...(filters.archived === undefined ? {} : {archived: true}),
-		...(filters.actions === undefined ? {} : {actions: true}),
+		...(filters.date === undefined
+			? {}
+			:
+				{
+					date: filters.date,
+				}),
+		...(project === undefined
+			? {}
+			:
+				{
+					project,
+				}),
+		...(filters.archived === undefined
+			? {}
+			:
+				{
+					archived: true,
+				}),
+		...(filters.actions === undefined
+			? {}
+			:
+				{
+					actions: true,
+				}),
 	};
 }
 
 export type PaletteChipFilter = keyof PaletteFilters;
 
-export interface PaletteChip {
+export interface PaletteChip
+{
 	filter: PaletteChipFilter;
 	/** The chip's aria-label: "<Name> <Value>", or the bare name for Archived and Actions. */
 	label: string;
@@ -535,15 +762,18 @@ export interface PaletteChip {
 /** Upstream's chip order (minus its cloud-only owner). */
 const CHIP_ORDER = ["actions", "date", "repo", "project", "archived"] as const satisfies readonly PaletteChipFilter[];
 
-function repoChipText(repo: string, repos: readonly string[]): string {
+function repoChipText(repo: string, repos: readonly string[]): string
+{
 	const name = repo.slice(repo.lastIndexOf("/") + 1);
 	if (name === repo) return repo;
 	const clashes = repos.some((other) => other !== repo && other.slice(other.lastIndexOf("/") + 1) === name);
 	return clashes ? repo : name;
 }
 
-function chipValue(filter: PaletteChipFilter, filters: PaletteFilters): string | undefined {
-	switch (filter) {
+function chipValue(filter: PaletteChipFilter, filters: PaletteFilters): string | undefined
+{
+	switch (filter)
+	{
 		case "date":
 			return filters.date === undefined ? undefined : unifiedSearchDateLabels[filters.date];
 		case "repo":
@@ -558,8 +788,10 @@ function chipValue(filter: PaletteChipFilter, filters: PaletteFilters): string |
 }
 
 /** The chips for `filters` in upstream's order; `repos` are the known repo values. */
-export function paletteChips(filters: PaletteFilters, repos: readonly string[]): PaletteChip[] {
-	return CHIP_ORDER.flatMap((filter) => {
+export function paletteChips(filters: PaletteFilters, repos: readonly string[]): PaletteChip[]
+{
+	return CHIP_ORDER.flatMap((filter) =>
+	{
 		const value = chipValue(filter, filters);
 		if (value === undefined) return [];
 		const flag = filter === "archived" || filter === "actions";
@@ -577,15 +809,25 @@ export function paletteChips(filters: PaletteFilters, repos: readonly string[]):
 const DAY_MS = 24 * 60 * 60_000;
 
 /** Earliest mtime a `date:` token keeps, matching the server's `/api/search` cutoff. */
-export function paletteDateCutoff(date: UnifiedSearchDate, now: number): number {
-	if (date === "today") {
+export function paletteDateCutoff(date: UnifiedSearchDate, now: number): number
+{
+	if (date === "today")
+	{
 		const today = new Date(now);
 		return new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
 	}
 	return now - (date === "week" ? 7 : 30) * DAY_MS;
 }
 
-type ScrollStrip = {scrollLeft: number; getBoundingClientRect: () => {left: number; right: number}};
+type ScrollStrip =
+{
+	scrollLeft: number;
+	getBoundingClientRect: () =>
+	{
+		left: number;
+		right: number;
+	};
+};
 
 /**
  * Upstream's `$t`: scroll the type-tab strip just far enough that `tab` sits inside it,
@@ -593,21 +835,33 @@ type ScrollStrip = {scrollLeft: number; getBoundingClientRect: () => {left: numb
  */
 export function scrollIntoStrip(
 	strip: ScrollStrip,
-	tab: {getBoundingClientRect: () => {left: number; right: number}},
+	tab:
+	{
+		getBoundingClientRect: () =>
+		{
+			left: number;
+			right: number;
+		};
+	},
 	paddingLeft: string,
-): void {
+): void
+{
 	const pad = Number.parseFloat(paddingLeft) || 0;
 	const stripRect = strip.getBoundingClientRect();
 	const tabRect = tab.getBoundingClientRect();
-	if (tabRect.left < stripRect.left + pad) {
+	if (tabRect.left < stripRect.left + pad)
+	{
 		strip.scrollLeft -= stripRect.left + pad - tabRect.left;
-	} else if (tabRect.right > stripRect.right - pad) {
+	}
+	else if (tabRect.right > stripRect.right - pad)
+	{
 		strip.scrollLeft += tabRect.right - (stripRect.right - pad);
 	}
 }
 
 /** The key fields upstream's `yu` reads off a palette keydown. */
-export interface PaletteStepKey {
+export interface PaletteStepKey
+{
 	key: string;
 	shiftKey: boolean;
 	altKey: boolean;
@@ -618,7 +872,8 @@ export interface PaletteStepKey {
 }
 
 /** The textarea fields upstream's `yu` reads. */
-export interface PaletteStepField {
+export interface PaletteStepField
+{
 	text: string;
 	selectionStart: number | null;
 	selectionEnd: number | null;
@@ -628,8 +883,10 @@ const LETTER = /\p{L}/u;
 const RTL_LETTER = /[֐-ࣿיִ-﷿ﹰ-﻿\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]/u;
 
 /** Upstream's `vu`: every letter in `text` reads in the UI's direction (the mixed-bidi guard). */
-function lettersMatchDirection(text: string, rtl: boolean): boolean {
-	for (const char of text) {
+function lettersMatchDirection(text: string, rtl: boolean): boolean
+{
+	for (const char of text)
+	{
 		if (LETTER.test(char) && RTL_LETTER.test(char) !== rtl) return false;
 	}
 	return true;
@@ -640,7 +897,8 @@ function lettersMatchDirection(text: string, rtl: boolean): boolean {
  * It steps only with the caret collapsed at the matching edge, never on a held key with text,
  * and never when the query's script direction differs from the UI's.
  */
-export function paletteTypeStep(key: PaletteStepKey, field: PaletteStepField, rtl: boolean): -1 | 0 | 1 {
+export function paletteTypeStep(key: PaletteStepKey, field: PaletteStepField, rtl: boolean): -1 | 0 | 1
+{
 	if (key.key !== "ArrowLeft" && key.key !== "ArrowRight") return 0;
 	if (key.shiftKey || key.altKey || key.metaKey || key.ctrlKey || key.composing) return 0;
 	const atStart = field.selectionStart === 0;
@@ -655,7 +913,8 @@ export function paletteTypeStep(key: PaletteStepKey, field: PaletteStepField, rt
  * Upstream's `bu`: the entry `direction` steps from `current`, wrapping both ways when `wrap`
  * (a held key passes false and stops at the ends). Undefined when the step lands back on `current`.
  */
-export function nextPaletteType<T>(list: readonly T[], current: T, direction: -1 | 1, wrap: boolean): T | undefined {
+export function nextPaletteType<T>(list: readonly T[], current: T, direction: -1 | 1, wrap: boolean): T | undefined
+{
 	const index = list.indexOf(current);
 	const target = index === -1 ? 0 : index + direction;
 	const next = wrap ? list[(target + list.length) % list.length] : list[target];
@@ -669,7 +928,8 @@ export type ActivationDirection = "left" | "right" | "none";
  * Base UI Tabs' positional activation direction: `right` for a higher index, `left` for a lower one,
  * so a wrap from the last tab to the first reports `left`. `none` without a previous value or a change.
  */
-export function activationDirection<T>(list: readonly T[], previous: T | undefined, next: T): ActivationDirection {
+export function activationDirection<T>(list: readonly T[], previous: T | undefined, next: T): ActivationDirection
+{
 	if (previous === undefined || previous === next) return "none";
 	return list.indexOf(next) > list.indexOf(previous) ? "right" : "left";
 }

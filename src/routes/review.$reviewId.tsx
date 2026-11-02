@@ -9,20 +9,37 @@ import {openReviewInChanges} from "../lib/changes-review";
  * A deep link to a working-copy review: opens the review's session with the
  * Changes pane on the Uncommitted scope, where the findings render inline.
  */
-export const Route = createFileRoute("/review/$reviewId")({
-	component: ReviewDeepLink,
-	loader: async ({context: {queryClient}, params}) =>
-		queryClient.query({...reviewQueryOptions(params.reviewId), staleTime: "static"}),
-	head: () => ({meta: [pageTitle("Working-copy review")]}),
-});
+export const Route = createFileRoute("/review/$reviewId")(
+	{
+		component: ReviewDeepLink,
+		loader: async ({context: {queryClient}, params}) =>
+			queryClient.query(
+				{
+					...reviewQueryOptions(params.reviewId),
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Working-copy review")],
+		}),
+	},
+);
 
-function ReviewDeepLink() {
+function ReviewDeepLink()
+{
 	const {reviewId} = Route.useParams();
 	const {data: review} = useSuspenseQuery(reviewQueryOptions(reviewId));
 	const navigate = useNavigate();
 
-	useEffect(() => {
-		void navigate({...openReviewInChanges(review.sessionId, reviewId), replace: true});
+	useEffect(() =>
+	{
+		void navigate(
+			{
+				...openReviewInChanges(review.sessionId, reviewId),
+				replace: true,
+			},
+		);
 	}, [navigate, review.sessionId, reviewId]);
 
 	return <p className="px-6 py-6 text-body text-ink-muted">Opening review findings…</p>;

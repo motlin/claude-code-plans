@@ -18,14 +18,23 @@ const MAC_UA =
 const SESSION = "session-alice";
 const ATTACHMENTS = "/cache/claude-code-plans/attachments";
 
-const CHIN: ComposerState = {
-	mode: {id: "default", label: "Manual"},
+const CHIN: ComposerState =
+{
+	mode:
+	{
+		id: "default",
+		label: "Manual",
+	},
 	model: "Opus 5.5",
 	modelId: "claude-opus-5-5",
 	settingsModelId: "claude-opus-5-5",
 	fastMode: false,
 	fastModeBlocked: null,
-	effort: {id: "high", label: "High"},
+	effort:
+	{
+		id: "high",
+		label: "High",
+	},
 	usage: null,
 };
 
@@ -34,10 +43,12 @@ type OnSend = (prompt: string, launchOptions: LaunchOptions) => void;
 const uploads: string[] = [];
 const toasts = vi.fn<(options: ToastOptions) => void>();
 
-function mockUploads(respond: (file: File) => Response) {
+function mockUploads(respond: (file: File) => Response)
+{
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async (_url: string, init: RequestInit) => {
+		vi.fn(async (_url: string, init: RequestInit) =>
+		{
 			const file = (init.body as FormData).get("file") as File;
 			uploads.push(file.name);
 			return Promise.resolve(respond(file));
@@ -46,13 +57,16 @@ function mockUploads(respond: (file: File) => Response) {
 }
 
 /** Holds each upload open until the test settles it. */
-function deferUploads() {
+function deferUploads()
+{
 	const pending: ((response: Response) => void)[] = [];
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async (_url: string, init: RequestInit) => {
+		vi.fn(async (_url: string, init: RequestInit) =>
+		{
 			uploads.push(((init.body as FormData).get("file") as File).name);
-			return new Promise<Response>((resolve) => {
+			return new Promise<Response>((resolve) =>
+			{
 				pending.push(resolve);
 			});
 		}),
@@ -60,11 +74,24 @@ function deferUploads() {
 	return pending;
 }
 
-function savedAs(path: string) {
-	return (file: File) => Response.json({path, name: file.name, mediaType: file.type, size: file.size}, {status: 201});
+function savedAs(path: string)
+{
+	return (file: File) =>
+		Response.json(
+			{
+				path,
+				name: file.name,
+				mediaType: file.type,
+				size: file.size,
+			},
+			{
+				status: 201,
+			},
+		);
 }
 
-function renderComposer(chin?: ComposerState, disabled = false) {
+function renderComposer(chin?: ComposerState, disabled = false)
+{
 	const onSend = vi.fn<OnSend>();
 	// The + menu's Connectors submenu reads the MCP server list.
 	const queryClient = new QueryClient();
@@ -77,7 +104,12 @@ function renderComposer(chin?: ComposerState, disabled = false) {
 					draftKey={SESSION}
 					onSend={onSend}
 					disabled={disabled}
-					{...(chin === undefined ? {} : {chin})}
+					{...(chin === undefined
+						? {}
+						:
+							{
+								chin,
+							})}
 				/>
 			</ToastContext.Provider>
 		</QueryClientProvider>,
@@ -85,51 +117,88 @@ function renderComposer(chin?: ComposerState, disabled = false) {
 	return onSend;
 }
 
-function prompt(): HTMLTextAreaElement {
-	return screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-}
-
-function paste(init: {text?: string; files?: File[]}) {
-	const files = init.files ?? [];
-	return fireEvent.paste(prompt(), {
-		clipboardData: {
-			getData: (type: string) => (type === "text/plain" ? (init.text ?? "") : ""),
-			files,
-			types: files.length > 0 ? ["Files"] : ["text/plain"],
+function prompt(): HTMLTextAreaElement
+{
+	return screen.getByRole<HTMLTextAreaElement>(
+		"textbox",
+		{
+			name: "Prompt",
 		},
-	});
+	);
 }
 
-function fileInput(): HTMLInputElement {
+function paste(init: {text?: string; files?: File[]})
+{
+	const files = init.files ?? [];
+	return fireEvent.paste(
+		prompt(),
+		{
+			clipboardData:
+			{
+				getData: (type: string) => (type === "text/plain" ? (init.text ?? "") : ""),
+				files,
+				types: files.length > 0 ? ["Files"] : ["text/plain"],
+			},
+		},
+	);
+}
+
+function fileInput(): HTMLInputElement
+{
 	const input = document.querySelector<HTMLInputElement>('input[type="file"]');
 	if (input === null) throw new Error("no file input");
 	return input;
 }
 
-function chipNames(): string[] {
-	const strip = screen.queryByRole("list", {name: "Attached context"});
+function chipNames(): string[]
+{
+	const strip = screen.queryByRole(
+		"list",
+		{
+			name: "Attached context",
+		},
+	);
 	if (strip === null) return [];
 	return within(strip)
 		.getAllByRole("listitem")
 		.map((item) => item.getAttribute("data-chip-label") ?? "");
 }
 
-const png = (name: string) => new File([new Uint8Array([1, 2, 3])], name, {type: "image/png"});
+const png = (name: string) =>
+	new File(
+		[new Uint8Array([1, 2, 3])],
+		name,
+		{
+			type: "image/png",
+		},
+	);
 
 const chatDropHandlers: ((files: readonly File[]) => void)[] = [];
-function registerChatDrop(handler: (files: readonly File[]) => void) {
+function registerChatDrop(handler: (files: readonly File[]) => void)
+{
 	chatDropHandlers.push(handler);
-	return () => {
+	return () =>
+	{
 		chatDropHandlers.splice(chatDropHandlers.indexOf(handler), 1);
 	};
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
-	Object.assign(URL, {createObjectURL: () => "blob:preview", revokeObjectURL: () => {}});
+	Object.assign(
+		URL,
+		{
+			createObjectURL: () => "blob:preview",
+			revokeObjectURL: () =>
+			{
+			},
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	for (const chip of getContextChips(SESSION)) removeContextChip(SESSION, chip.id);
 	localStorage.clear();
@@ -141,81 +210,187 @@ afterEach(() => {
 	Reflect.deleteProperty(URL, "revokeObjectURL");
 });
 
-describe("Composer attachments", () => {
-	it("keeps a long paste inline in the prompt with no attachment chip, as upstream does", () => {
+describe("Composer attachments", () =>
+{
+	it("keeps a long paste inline in the prompt with no attachment chip, as upstream does", () =>
+	{
 		renderComposer();
 
-		const notPrevented = paste({text: "x".repeat(3000)});
+		const notPrevented = paste(
+			{
+				text: "x".repeat(3000),
+			},
+		);
 
-		expect({
-			notPrevented,
-			chips: chipNames(),
-			attachedList: document.querySelector('[aria-label="Attached context"]'),
-		}).toStrictEqual({notPrevented: true, chips: [], attachedList: null});
+		expect(
+			{
+				notPrevented,
+				chips: chipNames(),
+				attachedList: document.querySelector('[aria-label="Attached context"]'),
+			},
+		).toStrictEqual(
+			{
+				notPrevented: true,
+				chips: [],
+				attachedList: null,
+			},
+		);
 	});
 
-	it("lets a short paste go into the prompt as usual", () => {
+	it("lets a short paste go into the prompt as usual", () =>
+	{
 		renderComposer();
 
-		const notPrevented = paste({text: "a short snippet"});
+		const notPrevented = paste(
+			{
+				text: "a short snippet",
+			},
+		);
 
-		expect({notPrevented, chips: chipNames()}).toStrictEqual({notPrevented: true, chips: []});
+		expect(
+			{
+				notPrevented,
+				chips: chipNames(),
+			},
+		).toStrictEqual(
+			{
+				notPrevented: true,
+				chips: [],
+			},
+		);
 	});
 
-	it("uploads a pasted image, shows a thumbnail chip, and puts its saved path in the prompt", async () => {
+	it("uploads a pasted image, shows a thumbnail chip, and puts its saved path in the prompt", async () =>
+	{
 		mockUploads(savedAs(`${ATTACHMENTS}/0001.png`));
 		const onSend = renderComposer();
 
-		paste({files: [png("screenshot.png")]});
-		const thumbnail = (await screen.findByRole("button", {name: "screenshot.png"})).querySelector("img")!;
-		fireEvent.change(prompt(), {target: {value: "Why is this red?"}});
-		fireEvent.keyDown(prompt(), {key: "Enter"});
+		paste(
+			{
+				files: [png("screenshot.png")],
+			},
+		);
+		const thumbnail = (
+			await screen.findByRole(
+				"button",
+				{
+					name: "screenshot.png",
+				},
+			)
+		).querySelector("img")!;
+		fireEvent.change(
+			prompt(),
+			{
+				target:
+				{
+					value: "Why is this red?",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			prompt(),
+			{
+				key: "Enter",
+			},
+		);
 
-		expect({
-			uploads,
-			src: thumbnail.getAttribute("src"),
-			sent: onSend.mock.calls,
-		}).toStrictEqual({
-			uploads: ["screenshot.png"],
-			src: "blob:preview",
-			sent: [[`${ATTACHMENTS}/0001.png\n\nWhy is this red?`, {}]],
-		});
+		expect(
+			{
+				uploads,
+				src: thumbnail.getAttribute("src"),
+				sent: onSend.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				uploads: ["screenshot.png"],
+				src: "blob:preview",
+				sent: [[`${ATTACHMENTS}/0001.png\n\nWhy is this red?`, {}]],
+			},
+		);
 	});
 
-	it("attaches an uploaded text file as an @ mention of its saved path", async () => {
+	it("attaches an uploaded text file as an @ mention of its saved path", async () =>
+	{
 		mockUploads(savedAs(`${ATTACHMENTS}/0002.md`));
 		const onSend = renderComposer();
 
-		paste({files: [new File(["# Notes"], "notes.md", {type: "text/markdown"})]});
-		await waitFor(() => {
+		paste(
+			{
+				files: [
+					new File(
+						["# Notes"],
+						"notes.md",
+						{
+							type: "text/markdown",
+						},
+					),
+				],
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(document.querySelector("[data-state=pending]")).toBeNull();
 		});
-		fireEvent.keyDown(prompt(), {key: "Enter"});
+		fireEvent.keyDown(
+			prompt(),
+			{
+				key: "Enter",
+			},
+		);
 
 		expect(onSend.mock.calls).toStrictEqual([[`@${ATTACHMENTS}/0002.md`, {}]]);
 	});
 
-	it("uploads files dropped anywhere on the page, behind the page-wide drop scrim", async () => {
+	it("uploads files dropped anywhere on the page, behind the page-wide drop scrim", async () =>
+	{
 		mockUploads(savedAs(`${ATTACHMENTS}/0003.png`));
 		renderComposer();
 
-		fireEvent.dragOver(document.body, {dataTransfer: {types: ["Files"], files: []}});
+		fireEvent.dragOver(
+			document.body,
+			{
+				dataTransfer:
+				{
+					types: ["Files"],
+					files: [],
+				},
+			},
+		);
 		const overlay = document.querySelector('[data-cds="ChatComposerDropScrim"]')?.textContent === "Drop files here";
-		fireEvent.drop(document.body, {dataTransfer: {types: ["Files"], files: [png("dropped.png")]}});
-		await screen.findByRole("button", {name: "dropped.png"});
+		fireEvent.drop(
+			document.body,
+			{
+				dataTransfer:
+				{
+					types: ["Files"],
+					files: [png("dropped.png")],
+				},
+			},
+		);
+		await screen.findByRole(
+			"button",
+			{
+				name: "dropped.png",
+			},
+		);
 
-		expect({
-			overlay,
-			overlayAfterDrop: screen.queryByText("Drop files here") !== null,
-			uploads,
-		}).toStrictEqual({
-			overlay: true,
-			overlayAfterDrop: false,
-			uploads: ["dropped.png"],
-		});
+		expect(
+			{
+				overlay,
+				overlayAfterDrop: screen.queryByText("Drop files here") !== null,
+				uploads,
+			},
+		).toStrictEqual(
+			{
+				overlay: true,
+				overlayAfterDrop: false,
+				uploads: ["dropped.png"],
+			},
+		);
 	});
 
-	it("hands a chat-panel composer's attach to the chat tile's drop zone instead of the page scrim", async () => {
+	it("hands a chat-panel composer's attach to the chat tile's drop zone instead of the page scrim", async () =>
+	{
 		mockUploads(savedAs(`${ATTACHMENTS}/0003.png`));
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
@@ -223,20 +398,49 @@ describe("Composer attachments", () => {
 			<QueryClientProvider client={queryClient}>
 				<ToastContext.Provider value={toasts}>
 					<ChatFileDropContext.Provider value={registerChatDrop}>
-						<Composer variant="session" draftKey={SESSION} onSend={() => {}} dropScope="chat-panel" />
+						<Composer
+							variant="session"
+							draftKey={SESSION}
+							onSend={() =>
+							{
+							}}
+							dropScope="chat-panel"
+						/>
 					</ChatFileDropContext.Provider>
 				</ToastContext.Provider>
 			</QueryClientProvider>,
 		);
 
-		const pageDragNotPrevented = fireEvent.dragOver(document.body, {dataTransfer: {types: ["Files"], files: []}});
+		const pageDragNotPrevented = fireEvent.dragOver(
+			document.body,
+			{
+				dataTransfer:
+				{
+					types: ["Files"],
+					files: [],
+				},
+			},
+		);
 		const scrim = document.querySelector('[data-cds="ChatComposerDropScrim"]');
 		const registered = chatDropHandlers.length;
 		chatDropHandlers[0]?.([png("dropped.png")]);
-		await screen.findByRole("button", {name: "dropped.png"});
+		await screen.findByRole(
+			"button",
+			{
+				name: "dropped.png",
+			},
+		);
 		unmount();
 
-		expect({pageDragNotPrevented, scrim, registered, uploads, afterUnmount: chatDropHandlers.length}).toStrictEqual(
+		expect(
+			{
+				pageDragNotPrevented,
+				scrim,
+				registered,
+				uploads,
+				afterUnmount: chatDropHandlers.length,
+			},
+		).toStrictEqual(
 			{
 				pageDragNotPrevented: true,
 				scrim: null,
@@ -247,115 +451,226 @@ describe("Composer attachments", () => {
 		);
 	});
 
-	describe("dropped and pasted folders (upstream zt + cc970fefe WJ)", () => {
+	describe("dropped and pasted folders (upstream zt + cc970fefe WJ)", () =>
+	{
 		const folderFile = () => new File([], "proj");
-		const item = (file: File, isDirectory: boolean) => ({
+		const item = (file: File, isDirectory: boolean) => (
+		{
 			kind: "file",
 			getAsFile: () => file,
-			webkitGetAsEntry: () => ({isDirectory, name: file.name}),
+			webkitGetAsEntry: () => (
+			{
+				isDirectory,
+				name: file.name,
+			}),
 		});
 
-		it("drops the folder and attaches the files beside it, with no toast", async () => {
+		it("drops the folder and attaches the files beside it, with no toast", async () =>
+		{
 			mockUploads(savedAs(`${ATTACHMENTS}/0003.png`));
 			renderComposer();
 			const proj = folderFile();
 			const dropped = png("dropped.png");
 
-			fireEvent.drop(document.body, {
-				dataTransfer: {
-					types: ["Files"],
-					items: [item(proj, true), item(dropped, false)],
-					files: [proj, dropped],
+			fireEvent.drop(
+				document.body,
+				{
+					dataTransfer:
+					{
+						types: ["Files"],
+						items: [item(proj, true), item(dropped, false)],
+						files: [proj, dropped],
+					},
 				},
-			});
-			await screen.findByRole("button", {name: "dropped.png"});
+			);
+			await screen.findByRole(
+				"button",
+				{
+					name: "dropped.png",
+				},
+			);
 
-			expect({uploads, chips: chipNames(), toasts: toasts.mock.calls}).toStrictEqual({
-				uploads: ["dropped.png"],
-				chips: ["dropped.png"],
-				toasts: [],
-			});
+			expect(
+				{
+					uploads,
+					chips: chipNames(),
+					toasts: toasts.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					uploads: ["dropped.png"],
+					chips: ["dropped.png"],
+					toasts: [],
+				},
+			);
 		});
 
-		it("does nothing for a drop of only folders, but still keeps the browser from opening it", async () => {
+		it("does nothing for a drop of only folders, but still keeps the browser from opening it", async () =>
+		{
 			mockUploads(savedAs(`${ATTACHMENTS}/0003.png`));
 			renderComposer();
 			const proj = folderFile();
 
-			const notPrevented = fireEvent.drop(document.body, {
-				dataTransfer: {types: ["Files"], items: [item(proj, true)], files: [proj]},
-			});
+			const notPrevented = fireEvent.drop(
+				document.body,
+				{
+					dataTransfer:
+					{
+						types: ["Files"],
+						items: [item(proj, true)],
+						files: [proj],
+					},
+				},
+			);
 			await Promise.resolve();
 
-			expect({notPrevented, uploads, chips: chipNames(), toasts: toasts.mock.calls}).toStrictEqual({
-				notPrevented: false,
-				uploads: [],
-				chips: [],
-				toasts: [],
-			});
+			expect(
+				{
+					notPrevented,
+					uploads,
+					chips: chipNames(),
+					toasts: toasts.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					notPrevented: false,
+					uploads: [],
+					chips: [],
+					toasts: [],
+				},
+			);
 		});
 
-		it("pastes only the files beside a copied folder", async () => {
+		it("pastes only the files beside a copied folder", async () =>
+		{
 			mockUploads(savedAs(`${ATTACHMENTS}/0003.png`));
 			renderComposer();
 			const proj = folderFile();
 			const shot = png("shot.png");
 
-			const notPrevented = fireEvent.paste(prompt(), {
-				clipboardData: {
-					getData: (type: string) => (type === "text/plain" ? "proj" : ""),
-					items: [item(proj, true), item(shot, false)],
-					files: [proj, shot],
-					types: ["Files", "text/plain"],
+			const notPrevented = fireEvent.paste(
+				prompt(),
+				{
+					clipboardData:
+					{
+						getData: (type: string) => (type === "text/plain" ? "proj" : ""),
+						items: [item(proj, true), item(shot, false)],
+						files: [proj, shot],
+						types: ["Files", "text/plain"],
+					},
 				},
-			});
-			await screen.findByRole("button", {name: "shot.png"});
+			);
+			await screen.findByRole(
+				"button",
+				{
+					name: "shot.png",
+				},
+			);
 
-			expect({notPrevented, uploads, prompt: prompt().value, toasts: toasts.mock.calls}).toStrictEqual({
-				notPrevented: false,
-				uploads: ["shot.png"],
-				prompt: "",
-				toasts: [],
-			});
+			expect(
+				{
+					notPrevented,
+					uploads,
+					prompt: prompt().value,
+					toasts: toasts.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					notPrevented: false,
+					uploads: ["shot.png"],
+					prompt: "",
+					toasts: [],
+				},
+			);
 		});
 	});
 
-	it("opens the file picker from ⌘U and from + Add files or photos, and uploads the picks", async () => {
+	it("opens the file picker from ⌘U and from + Add files or photos, and uploads the picks", async () =>
+	{
 		mockUploads(savedAs(`${ATTACHMENTS}/0004.png`));
 		renderComposer(CHIN);
 		const picker = fileInput();
 		const clicks = vi.spyOn(picker, "click").mockImplementation(() => {});
 
-		fireEvent.keyDown(prompt(), {key: "u", code: "KeyU", metaKey: true});
-		fireEvent.click(screen.getByRole("button", {name: "Add"}));
-		fireEvent.click(await screen.findByRole("menuitem", {name: /Add files or photos/}));
-		fireEvent.change(picker, {target: {files: [png("picked.png")]}});
-		await screen.findByRole("button", {name: "picked.png"});
+		fireEvent.keyDown(
+			prompt(),
+			{
+				key: "u",
+				code: "KeyU",
+				metaKey: true,
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Add",
+				},
+			),
+		);
+		fireEvent.click(
+			await screen.findByRole(
+				"menuitem",
+				{
+					name: /Add files or photos/,
+				},
+			),
+		);
+		fireEvent.change(
+			picker,
+			{
+				target:
+				{
+					files: [png("picked.png")],
+				},
+			},
+		);
+		await screen.findByRole(
+			"button",
+			{
+				name: "picked.png",
+			},
+		);
 
-		expect({
-			clicks: clicks.mock.calls.length,
-			uploads,
-			enabled: getShortcut("add_files").enabled,
-		}).toStrictEqual({
-			clicks: 2,
-			uploads: ["picked.png"],
-			enabled: true,
-		});
+		expect(
+			{
+				clicks: clicks.mock.calls.length,
+				uploads,
+				enabled: getShortcut("add_files").enabled,
+			},
+		).toStrictEqual(
+			{
+				clicks: 2,
+				uploads: ["picked.png"],
+				enabled: true,
+			},
+		);
 	});
 
-	it("gives the active composer's file input upstream's id, no accept filter, no aria-label, and multiple", () => {
+	it("gives the active composer's file input upstream's id, no accept filter, no aria-label, and multiple", () =>
+	{
 		renderComposer(CHIN);
 		const picker = fileInput();
 
-		expect({
-			id: picker.id,
-			accept: picker.getAttribute("accept"),
-			ariaLabel: picker.getAttribute("aria-label"),
-			multiple: picker.multiple,
-		}).toStrictEqual({id: "chat-input-file-upload-epitaxy", accept: null, ariaLabel: null, multiple: true});
+		expect(
+			{
+				id: picker.id,
+				accept: picker.getAttribute("accept"),
+				ariaLabel: picker.getAttribute("aria-label"),
+				multiple: picker.multiple,
+			},
+		).toStrictEqual(
+			{
+				id: "chat-input-file-upload-epitaxy",
+				accept: null,
+				ariaLabel: null,
+				multiple: true,
+			},
+		);
 	});
 
-	it("leaves the id off an inactive composer's file input", () => {
+	it("leaves the id off an inactive composer's file input", () =>
+	{
 		render(
 			<QueryClientProvider client={new QueryClient()}>
 				<Composer variant="session" draftKey={SESSION} onSend={vi.fn<OnSend>()} active={false} />
@@ -365,7 +680,8 @@ describe("Composer attachments", () => {
 		expect(fileInput().getAttribute("id")).toBeNull();
 	});
 
-	it("drops a pick when the composer switched to another session while the picker was open", async () => {
+	it("drops a pick when the composer switched to another session while the picker was open", async () =>
+	{
 		mockUploads(savedAs(`${ATTACHMENTS}/0010.png`));
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
@@ -377,29 +693,59 @@ describe("Composer attachments", () => {
 		const {rerender} = render(view(SESSION));
 		vi.spyOn(fileInput(), "click").mockImplementation(() => {});
 
-		fireEvent.keyDown(prompt(), {key: "u", code: "KeyU", metaKey: true});
+		fireEvent.keyDown(
+			prompt(),
+			{
+				key: "u",
+				code: "KeyU",
+				metaKey: true,
+			},
+		);
 		rerender(view("session-bob"));
-		fireEvent.change(fileInput(), {target: {files: [png("stale.png")]}});
-		await new Promise((resolve) => {
+		fireEvent.change(
+			fileInput(),
+			{
+				target:
+				{
+					files: [png("stale.png")],
+				},
+			},
+		);
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 
-		expect({
-			uploads,
-			alice: getContextChips(SESSION).map((chip) => chip.name),
-			bob: getContextChips("session-bob").map((chip) => chip.name),
-		}).toStrictEqual({uploads: [], alice: [], bob: []});
+		expect(
+			{
+				uploads,
+				alice: getContextChips(SESSION).map((chip) => chip.name),
+				bob: getContextChips("session-bob").map((chip) => chip.name),
+			},
+		).toStrictEqual(
+			{
+				uploads: [],
+				alice: [],
+				bob: [],
+			},
+		);
 	});
 
-	it("shows a pending image tile while the upload runs, then swaps in the saved image", async () => {
+	it("shows a pending image tile while the upload runs, then swaps in the saved image", async () =>
+	{
 		const pending = deferUploads();
 		renderComposer();
 
-		paste({files: [png("shot.png")]});
+		paste(
+			{
+				files: [png("shot.png")],
+			},
+		);
 		const tile = document.querySelector("li[data-cds=MessageAttachmentsImage]")!;
 		const skeleton = tile.querySelector("[data-cds=Skeleton]")!;
 		const img = tile.querySelector("img")!;
-		const before = {
+		const before =
+		{
 			state: tile.getAttribute("data-state"),
 			busy: tile.getAttribute("aria-busy"),
 			skeletonRole: skeleton.getAttribute("role"),
@@ -422,150 +768,335 @@ describe("Composer attachments", () => {
 		fireEvent.load(img);
 		const loadedOpacity = [...img.classList].filter((name) => name.startsWith("opacity-"));
 		pending[0]!(savedAs(`${ATTACHMENTS}/0005.png`)(png("shot.png")));
-		const saved = await screen.findByRole("button", {name: "shot.png"});
+		const saved = await screen.findByRole(
+			"button",
+			{
+				name: "shot.png",
+			},
+		);
 		const settled = saved.closest("li")!;
 
-		expect({
-			before,
-			loadedOpacity,
-			after: {
-				state: settled.getAttribute("data-state"),
-				busy: settled.getAttribute("aria-busy"),
-				skeleton: settled.querySelector("[data-cds=Skeleton]"),
+		expect(
+			{
+				before,
+				loadedOpacity,
+				after:
+				{
+					state: settled.getAttribute("data-state"),
+					busy: settled.getAttribute("aria-busy"),
+					skeleton: settled.querySelector("[data-cds=Skeleton]"),
+				},
+				chips: takeContextChips(SESSION).map(({id: _id, ...rest}) => rest),
 			},
-			chips: takeContextChips(SESSION).map(({id: _id, ...rest}) => rest),
-		}).toStrictEqual({
-			before: {
-				state: "pending",
-				busy: "true",
-				skeletonRole: "status",
-				skeletonClasses: [],
-				skeletonRelative: false,
-				src: "blob:preview",
-				alt: "shot.png",
-				opacity: ["opacity-0"],
-				status: ["Processing image"],
-				cardLink: null,
+		).toStrictEqual(
+			{
+				before:
+				{
+					state: "pending",
+					busy: "true",
+					skeletonRole: "status",
+					skeletonClasses: [],
+					skeletonRelative: false,
+					src: "blob:preview",
+					alt: "shot.png",
+					opacity: ["opacity-0"],
+					status: ["Processing image"],
+					cardLink: null,
+				},
+				loadedOpacity: ["opacity-50"],
+				after:
+				{
+					state: null,
+					busy: null,
+					skeleton: null,
+				},
+				chips: [
+					{
+						kind: "image",
+						path: `${ATTACHMENTS}/0005.png`,
+						name: "shot.png",
+						previewUrl: "blob:preview",
+					},
+				],
 			},
-			loadedOpacity: ["opacity-50"],
-			after: {state: null, busy: null, skeleton: null},
-			chips: [{kind: "image", path: `${ATTACHMENTS}/0005.png`, name: "shot.png", previewUrl: "blob:preview"}],
-		});
+		);
 	});
 
-	it("animates the first tile in, though the strip mounts with it, and marks tiles staged before a remount restored", async () => {
+	it("animates the first tile in, though the strip mounts with it, and marks tiles staged before a remount restored", async () =>
+	{
 		deferUploads();
 		renderComposer();
 
-		paste({files: [png("first.png")]});
+		paste(
+			{
+				files: [png("first.png")],
+			},
+		);
 		const fresh = (await screen.findByRole("listitem")).getAttribute("data-cds-attachment-restored");
 		cleanup();
 		renderComposer();
 
-		expect({
-			fresh,
-			remounted: (await screen.findByRole("listitem")).getAttribute("data-cds-attachment-restored"),
-		}).toStrictEqual({fresh: null, remounted: ""});
+		expect(
+			{
+				fresh,
+				remounted: (await screen.findByRole("listitem")).getAttribute("data-cds-attachment-restored"),
+			},
+		).toStrictEqual(
+			{
+				fresh: null,
+				remounted: "",
+			},
+		);
 	});
 
-	it("shows a pending file tile while a non-image upload runs", () => {
+	it("shows a pending file tile while a non-image upload runs", () =>
+	{
 		deferUploads();
 		renderComposer();
 
-		paste({files: [new File(["# Notes"], "notes.md", {type: "text/markdown"})]});
+		paste(
+			{
+				files: [
+					new File(
+						["# Notes"],
+						"notes.md",
+						{
+							type: "text/markdown",
+						},
+					),
+				],
+			},
+		);
 		const tile = document.querySelector("li[data-cds=MessageAttachmentsFile]")!;
 
-		expect({
-			chips: chipNames(),
-			state: tile.getAttribute("data-state"),
-			busy: tile.getAttribute("aria-busy"),
-			skeleton: tile.querySelector("[data-cds=Skeleton]")?.getAttribute("role"),
-			status: [...tile.querySelectorAll(":scope > [role=status].sr-only")].map((node) => node.textContent),
-		}).toStrictEqual({
-			chips: ["notes.md"],
-			state: "pending",
-			busy: "true",
-			skeleton: "status",
-			status: ["Uploading file"],
-		});
+		expect(
+			{
+				chips: chipNames(),
+				state: tile.getAttribute("data-state"),
+				busy: tile.getAttribute("aria-busy"),
+				skeleton: tile.querySelector("[data-cds=Skeleton]")?.getAttribute("role"),
+				status: [...tile.querySelectorAll(":scope > [role=status].sr-only")].map((node) => node.textContent),
+			},
+		).toStrictEqual(
+			{
+				chips: ["notes.md"],
+				state: "pending",
+				busy: "true",
+				skeleton: "status",
+				status: ["Uploading file"],
+			},
+		);
 	});
 
-	it("adds nothing when a pending chip is removed before its upload resolves", async () => {
+	it("adds nothing when a pending chip is removed before its upload resolves", async () =>
+	{
 		const pending = deferUploads();
 		renderComposer();
 
-		paste({files: [png("gone.png")]});
-		fireEvent.click(screen.getByRole("button", {name: "Remove gone.png"}));
+		paste(
+			{
+				files: [png("gone.png")],
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Remove gone.png",
+				},
+			),
+		);
 		pending[0]!(savedAs(`${ATTACHMENTS}/0006.png`)(png("gone.png")));
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 
 		expect(chipNames()).toStrictEqual([]);
 	});
 
-	it("waits for a pending upload before sending, then sends its saved path with the prompt", async () => {
+	it("waits for a pending upload before sending, then sends its saved path with the prompt", async () =>
+	{
 		const pending = deferUploads();
 		const onSend = renderComposer();
 
-		paste({files: [png("shot.png")]});
-		fireEvent.change(prompt(), {target: {value: "Why?"}});
-		fireEvent.keyDown(prompt(), {key: "Enter"});
-		const whileWaiting = {sent: [...onSend.mock.calls], prompt: prompt().value};
+		paste(
+			{
+				files: [png("shot.png")],
+			},
+		);
+		fireEvent.change(
+			prompt(),
+			{
+				target:
+				{
+					value: "Why?",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			prompt(),
+			{
+				key: "Enter",
+			},
+		);
+		const whileWaiting =
+		{
+			sent: [...onSend.mock.calls],
+			prompt: prompt().value,
+		};
 		pending[0]!(savedAs(`${ATTACHMENTS}/0007.png`)(png("shot.png")));
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(onSend).toHaveBeenCalled();
 		});
 
-		expect({whileWaiting, sent: onSend.mock.calls, prompt: prompt().value, chips: chipNames()}).toStrictEqual({
-			whileWaiting: {sent: [], prompt: "Why?"},
-			sent: [[`${ATTACHMENTS}/0007.png\n\nWhy?`, {}]],
-			prompt: "",
-			chips: [],
-		});
+		expect(
+			{
+				whileWaiting,
+				sent: onSend.mock.calls,
+				prompt: prompt().value,
+				chips: chipNames(),
+			},
+		).toStrictEqual(
+			{
+				whileWaiting:
+				{
+					sent: [],
+					prompt: "Why?",
+				},
+				sent: [[`${ATTACHMENTS}/0007.png\n\nWhy?`, {}]],
+				prompt: "",
+				chips: [],
+			},
+		);
 	});
 
-	it("abandons a waiting send when the prompt changes, keeping the chip", async () => {
+	it("abandons a waiting send when the prompt changes, keeping the chip", async () =>
+	{
 		const pending = deferUploads();
 		const onSend = renderComposer();
 
-		paste({files: [png("shot.png")]});
-		fireEvent.change(prompt(), {target: {value: "Why?"}});
-		fireEvent.keyDown(prompt(), {key: "Enter"});
-		fireEvent.change(prompt(), {target: {value: "Why not?"}});
+		paste(
+			{
+				files: [png("shot.png")],
+			},
+		);
+		fireEvent.change(
+			prompt(),
+			{
+				target:
+				{
+					value: "Why?",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			prompt(),
+			{
+				key: "Enter",
+			},
+		);
+		fireEvent.change(
+			prompt(),
+			{
+				target:
+				{
+					value: "Why not?",
+				},
+			},
+		);
 		pending[0]!(savedAs(`${ATTACHMENTS}/0008.png`)(png("shot.png")));
-		await screen.findByRole("button", {name: "shot.png"});
-		await new Promise((resolve) => {
+		await screen.findByRole(
+			"button",
+			{
+				name: "shot.png",
+			},
+		);
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 
-		expect({sent: onSend.mock.calls, prompt: prompt().value, chips: chipNames()}).toStrictEqual({
-			sent: [],
-			prompt: "Why not?",
-			chips: ["shot.png"],
-		});
+		expect(
+			{
+				sent: onSend.mock.calls,
+				prompt: prompt().value,
+				chips: chipNames(),
+			},
+		).toStrictEqual(
+			{
+				sent: [],
+				prompt: "Why not?",
+				chips: ["shot.png"],
+			},
+		);
 	});
 
-	it("sends the prompt alone when the upload it waited for fails", async () => {
+	it("sends the prompt alone when the upload it waited for fails", async () =>
+	{
 		const pending = deferUploads();
 		const onSend = renderComposer();
 
-		paste({files: [png("huge.png")]});
-		fireEvent.change(prompt(), {target: {value: "Why?"}});
-		fireEvent.keyDown(prompt(), {key: "Enter"});
-		pending[0]!(Response.json({error: "File is larger than 5 MB"}, {status: 413}));
-		await waitFor(() => {
+		paste(
+			{
+				files: [png("huge.png")],
+			},
+		);
+		fireEvent.change(
+			prompt(),
+			{
+				target:
+				{
+					value: "Why?",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			prompt(),
+			{
+				key: "Enter",
+			},
+		);
+		pending[0]!(
+			Response.json(
+				{
+					error: "File is larger than 5 MB",
+				},
+				{
+					status: 413,
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(onSend).toHaveBeenCalled();
 		});
 
-		expect({sent: onSend.mock.calls, toasts: toasts.mock.calls, chips: chipNames()}).toStrictEqual({
-			sent: [["Why?", {}]],
-			toasts: [[{kind: "error", message: "Failed to process image. You can try again."}]],
-			chips: [],
-		});
+		expect(
+			{
+				sent: onSend.mock.calls,
+				toasts: toasts.mock.calls,
+				chips: chipNames(),
+			},
+		).toStrictEqual(
+			{
+				sent: [["Why?", {}]],
+				toasts: [
+					[
+						{
+							kind: "error",
+							message: "Failed to process image. You can try again.",
+						},
+					],
+				],
+				chips: [],
+			},
+		);
 	});
 
-	it("abandons a waiting send when the composer switches to another session", async () => {
+	it("abandons a waiting send when the composer switches to another session", async () =>
+	{
 		const pending = deferUploads();
 		const onSend = vi.fn<OnSend>();
 		const queryClient = new QueryClient();
@@ -577,211 +1108,504 @@ describe("Composer attachments", () => {
 		);
 		const {rerender} = render(view(SESSION));
 
-		paste({files: [png("shot.png")]});
-		fireEvent.change(prompt(), {target: {value: "Why?"}});
-		fireEvent.keyDown(prompt(), {key: "Enter"});
+		paste(
+			{
+				files: [png("shot.png")],
+			},
+		);
+		fireEvent.change(
+			prompt(),
+			{
+				target:
+				{
+					value: "Why?",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			prompt(),
+			{
+				key: "Enter",
+			},
+		);
 		rerender(view("session-bob"));
 		pending[0]!(savedAs(`${ATTACHMENTS}/0009.png`)(png("shot.png")));
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(getContextChips(SESSION).map((chip) => chip.status)).toStrictEqual([undefined]);
 		});
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 
-		expect({sent: onSend.mock.calls, chips: getContextChips(SESSION).map((chip) => chip.name)}).toStrictEqual({
-			sent: [],
-			chips: ["shot.png"],
-		});
+		expect(
+			{
+				sent: onSend.mock.calls,
+				chips: getContextChips(SESSION).map((chip) => chip.name),
+			},
+		).toStrictEqual(
+			{
+				sent: [],
+				chips: ["shot.png"],
+			},
+		);
 	});
 
-	it("toasts upstream's image failure copy for a rejected image upload, removing its pending chip", async () => {
-		mockUploads(() => Response.json({error: "File is larger than 5 MB"}, {status: 413}));
+	it("toasts upstream's image failure copy for a rejected image upload, removing its pending chip", async () =>
+	{
+		mockUploads(() =>
+			Response.json(
+				{
+					error: "File is larger than 5 MB",
+				},
+				{
+					status: 413,
+				},
+			),
+		);
 		renderComposer();
 
-		paste({files: [png("huge.png")]});
-		await waitFor(() => {
+		paste(
+			{
+				files: [png("huge.png")],
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(toasts).toHaveBeenCalled();
 		});
 
-		expect({toasts: toasts.mock.calls, chips: chipNames(), alert: screen.queryByRole("alert")}).toStrictEqual({
-			toasts: [[{kind: "error", message: "Failed to process image. You can try again."}]],
-			chips: [],
-			alert: null,
-		});
+		expect(
+			{
+				toasts: toasts.mock.calls,
+				chips: chipNames(),
+				alert: screen.queryByRole("alert"),
+			},
+		).toStrictEqual(
+			{
+				toasts: [
+					[
+						{
+							kind: "error",
+							message: "Failed to process image. You can try again.",
+						},
+					],
+				],
+				chips: [],
+				alert: null,
+			},
+		);
 	});
 
-	it("toasts upstream's file failure copy for a rejected non-image upload", async () => {
-		mockUploads(() => Response.json({error: "Unsupported file type"}, {status: 415}));
+	it("toasts upstream's file failure copy for a rejected non-image upload", async () =>
+	{
+		mockUploads(() =>
+			Response.json(
+				{
+					error: "Unsupported file type",
+				},
+				{
+					status: 415,
+				},
+			),
+		);
 		renderComposer();
 
-		paste({files: [new File(["# notes"], "notes.md", {type: "text/markdown"})]});
-		await waitFor(() => {
+		paste(
+			{
+				files: [
+					new File(
+						["# notes"],
+						"notes.md",
+						{
+							type: "text/markdown",
+						},
+					),
+				],
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(toasts).toHaveBeenCalled();
 		});
 
-		expect({toasts: toasts.mock.calls, chips: chipNames(), alert: screen.queryByRole("alert")}).toStrictEqual({
-			toasts: [[{kind: "error", message: "Failed to upload notes.md. It won’t be attached."}]],
-			chips: [],
-			alert: null,
-		});
+		expect(
+			{
+				toasts: toasts.mock.calls,
+				chips: chipNames(),
+				alert: screen.queryByRole("alert"),
+			},
+		).toStrictEqual(
+			{
+				toasts: [
+					[
+						{
+							kind: "error",
+							message: "Failed to upload notes.md. It won’t be attached.",
+						},
+					],
+				],
+				chips: [],
+				alert: null,
+			},
+		);
 	});
-	it("caps a paste at 5 images, counting staged and pending ones, and warns once", () => {
+	it("caps a paste at 5 images, counting staged and pending ones, and warns once", () =>
+	{
 		deferUploads();
 		renderComposer();
 
-		paste({files: [png("a.png"), png("b.png")]});
-		paste({files: [png("c.png"), png("d.png"), png("e.png"), png("f.png")]});
+		paste(
+			{
+				files: [png("a.png"), png("b.png")],
+			},
+		);
+		paste(
+			{
+				files: [png("c.png"), png("d.png"), png("e.png"), png("f.png")],
+			},
+		);
 
-		expect({uploads, toasts: toasts.mock.calls, chips: chipNames()}).toStrictEqual({
-			uploads: ["a.png", "b.png", "c.png", "d.png", "e.png"],
-			toasts: [[{kind: "warning", message: "Maximum of 5 images allowed.", durationMs: 8000}]],
-			chips: ["a.png", "b.png", "c.png", "d.png", "e.png"],
-		});
+		expect(
+			{
+				uploads,
+				toasts: toasts.mock.calls,
+				chips: chipNames(),
+			},
+		).toStrictEqual(
+			{
+				uploads: ["a.png", "b.png", "c.png", "d.png", "e.png"],
+				toasts: [
+					[
+						{
+							kind: "warning",
+							message: "Maximum of 5 images allowed.",
+							durationMs: 8000,
+						},
+					],
+				],
+				chips: ["a.png", "b.png", "c.png", "d.png", "e.png"],
+			},
+		);
 	});
 
-	it("does not count files toward the 5-image cap", () => {
+	it("does not count files toward the 5-image cap", () =>
+	{
 		deferUploads();
 		renderComposer();
 
-		paste({files: ["a", "b", "c", "d", "e"].map((name) => png(`${name}.png`))});
-		paste({files: [new File(["# notes"], "notes.md", {type: "text/markdown"})]});
+		paste(
+			{
+				files: ["a", "b", "c", "d", "e"].map((name) => png(`${name}.png`)),
+			},
+		);
+		paste(
+			{
+				files: [
+					new File(
+						["# notes"],
+						"notes.md",
+						{
+							type: "text/markdown",
+						},
+					),
+				],
+			},
+		);
 
-		expect({uploads, toasts: toasts.mock.calls}).toStrictEqual({
-			uploads: ["a.png", "b.png", "c.png", "d.png", "e.png", "notes.md"],
-			toasts: [],
-		});
+		expect(
+			{
+				uploads,
+				toasts: toasts.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				uploads: ["a.png", "b.png", "c.png", "d.png", "e.png", "notes.md"],
+				toasts: [],
+			},
+		);
 	});
 
 	it.each([
-		{name: "pic.bmp", type: "image/bmp"},
-		{name: "logo.svg", type: "image/svg+xml"},
-		{name: "photo.heic", type: "image/heic"},
-		{name: "scan.tiff", type: "image/tiff"},
-	])("routes $type to the file lane: a pending file tile, uploading", ({name, type}) => {
+		{
+			name: "pic.bmp",
+			type: "image/bmp",
+		},
+		{
+			name: "logo.svg",
+			type: "image/svg+xml",
+		},
+		{
+			name: "photo.heic",
+			type: "image/heic",
+		},
+		{
+			name: "scan.tiff",
+			type: "image/tiff",
+		},
+	])("routes $type to the file lane: a pending file tile, uploading", ({name, type}) =>
+	{
 		deferUploads();
 		renderComposer();
 
-		paste({files: [new File([new Uint8Array([1, 2, 3])], name, {type})]});
+		paste(
+			{
+				files: [
+					new File(
+						[new Uint8Array([1, 2, 3])],
+						name,
+						{
+							type,
+						},
+					),
+				],
+			},
+		);
 		const tile = document.querySelector(`li[data-chip-label="${name}"]`);
 
-		expect({
-			kind: tile?.getAttribute("data-cds"),
-			state: tile?.getAttribute("data-state"),
-			status: [...(tile?.querySelectorAll(":scope > [role=status].sr-only") ?? [])].map(
-				(node) => node.textContent,
-			),
-			uploads,
-		}).toStrictEqual({
-			kind: "MessageAttachmentsFile",
-			state: "pending",
-			status: ["Uploading file"],
-			uploads: [name],
-		});
+		expect(
+			{
+				kind: tile?.getAttribute("data-cds"),
+				state: tile?.getAttribute("data-state"),
+				status: [...(tile?.querySelectorAll(":scope > [role=status].sr-only") ?? [])].map(
+					(node) => node.textContent,
+				),
+				uploads,
+			},
+		).toStrictEqual(
+			{
+				kind: "MessageAttachmentsFile",
+				state: "pending",
+				status: ["Uploading file"],
+				uploads: [name],
+			},
+		);
 	});
 
-	it("toasts the file failure copy when a BMP upload is rejected", async () => {
-		mockUploads(() => Response.json({error: "Unsupported file type"}, {status: 415}));
+	it("toasts the file failure copy when a BMP upload is rejected", async () =>
+	{
+		mockUploads(() =>
+			Response.json(
+				{
+					error: "Unsupported file type",
+				},
+				{
+					status: 415,
+				},
+			),
+		);
 		renderComposer();
 
-		paste({files: [new File([new Uint8Array([1, 2, 3])], "pic.bmp", {type: "image/bmp"})]});
-		await waitFor(() => {
+		paste(
+			{
+				files: [
+					new File(
+						[new Uint8Array([1, 2, 3])],
+						"pic.bmp",
+						{
+							type: "image/bmp",
+						},
+					),
+				],
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(toasts).toHaveBeenCalled();
 		});
 
-		expect({toasts: toasts.mock.calls, chips: chipNames()}).toStrictEqual({
-			toasts: [[{kind: "error", message: "Failed to upload pic.bmp. It won’t be attached."}]],
-			chips: [],
-		});
-	});
-
-	it("does not count a BMP toward the 5-image cap", () => {
-		deferUploads();
-		renderComposer();
-
-		paste({files: ["a", "b", "c", "d", "e"].map((name) => png(`${name}.png`))});
-		paste({files: [new File([new Uint8Array([1, 2, 3])], "pic.bmp", {type: "image/bmp"})]});
-
-		expect({uploads, toasts: toasts.mock.calls}).toStrictEqual({
-			uploads: ["a.png", "b.png", "c.png", "d.png", "e.png", "pic.bmp"],
-			toasts: [],
-		});
-	});
-
-	it("drops an image over the size limit without uploading it and warns with the local limit", () => {
-		deferUploads();
-		renderComposer();
-
-		const huge = new File([new Uint8Array(6 * 1024 * 1024)], "huge.png", {type: "image/png"});
-		paste({files: [huge, png("small.png")]});
-
-		expect({uploads, toasts: toasts.mock.calls, chips: chipNames()}).toStrictEqual({
-			uploads: ["small.png"],
-			toasts: [
-				[
-					{
-						kind: "warning",
-						message: "Some images were too large to attach. Maximum size is 5 MB.",
-						durationMs: 8000,
-					},
+		expect(
+			{
+				toasts: toasts.mock.calls,
+				chips: chipNames(),
+			},
+		).toStrictEqual(
+			{
+				toasts: [
+					[
+						{
+							kind: "error",
+							message: "Failed to upload pic.bmp. It won’t be attached.",
+						},
+					],
 				],
-			],
-			chips: ["small.png"],
-		});
+				chips: [],
+			},
+		);
 	});
-	it("refuses a file drop and a file paste while the session is launching, with upstream's finishes-loading toast", () => {
+
+	it("does not count a BMP toward the 5-image cap", () =>
+	{
+		deferUploads();
+		renderComposer();
+
+		paste(
+			{
+				files: ["a", "b", "c", "d", "e"].map((name) => png(`${name}.png`)),
+			},
+		);
+		paste(
+			{
+				files: [
+					new File(
+						[new Uint8Array([1, 2, 3])],
+						"pic.bmp",
+						{
+							type: "image/bmp",
+						},
+					),
+				],
+			},
+		);
+
+		expect(
+			{
+				uploads,
+				toasts: toasts.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				uploads: ["a.png", "b.png", "c.png", "d.png", "e.png", "pic.bmp"],
+				toasts: [],
+			},
+		);
+	});
+
+	it("drops an image over the size limit without uploading it and warns with the local limit", () =>
+	{
+		deferUploads();
+		renderComposer();
+
+		const huge = new File(
+			[new Uint8Array(6 * 1024 * 1024)],
+			"huge.png",
+			{
+				type: "image/png",
+			},
+		);
+		paste(
+			{
+				files: [huge, png("small.png")],
+			},
+		);
+
+		expect(
+			{
+				uploads,
+				toasts: toasts.mock.calls,
+				chips: chipNames(),
+			},
+		).toStrictEqual(
+			{
+				uploads: ["small.png"],
+				toasts: [
+					[
+						{
+							kind: "warning",
+							message: "Some images were too large to attach. Maximum size is 5 MB.",
+							durationMs: 8000,
+						},
+					],
+				],
+				chips: ["small.png"],
+			},
+		);
+	});
+	it("refuses a file drop and a file paste while the session is launching, with upstream's finishes-loading toast", () =>
+	{
 		deferUploads();
 		renderComposer(undefined, true);
 		const card = prompt().closest("[data-composer-card]")!;
-		const loading = {
+		const loading =
+		{
 			kind: "error",
 			message: "Files can’t be attached until the session finishes loading. Try again in a moment.",
 		};
 
-		const dragOverNotPrevented = fireEvent.dragOver(card, {dataTransfer: {types: ["Files"], files: []}});
+		const dragOverNotPrevented = fireEvent.dragOver(
+			card,
+			{
+				dataTransfer:
+				{
+					types: ["Files"],
+					files: [],
+				},
+			},
+		);
 		const overlay = screen.queryByText("Drop files here") !== null;
-		const dropNotPrevented = fireEvent.drop(card, {dataTransfer: {types: ["Files"], files: [png("dropped.png")]}});
-		const pasteNotPrevented = paste({files: [png("pasted.png")]});
-		const textPasteNotPrevented = paste({text: "hello"});
+		const dropNotPrevented = fireEvent.drop(
+			card,
+			{
+				dataTransfer:
+				{
+					types: ["Files"],
+					files: [png("dropped.png")],
+				},
+			},
+		);
+		const pasteNotPrevented = paste(
+			{
+				files: [png("pasted.png")],
+			},
+		);
+		const textPasteNotPrevented = paste(
+			{
+				text: "hello",
+			},
+		);
 
-		expect({
-			dragOverNotPrevented,
-			overlay,
-			dropNotPrevented,
-			pasteNotPrevented,
-			textPasteNotPrevented,
-			uploads,
-			toasts: toasts.mock.calls,
-			chips: chipNames(),
-		}).toStrictEqual({
-			dragOverNotPrevented: false,
-			overlay: false,
-			dropNotPrevented: false,
-			pasteNotPrevented: false,
-			textPasteNotPrevented: true,
-			uploads: [],
-			toasts: [[loading], [loading]],
-			chips: [],
-		});
+		expect(
+			{
+				dragOverNotPrevented,
+				overlay,
+				dropNotPrevented,
+				pasteNotPrevented,
+				textPasteNotPrevented,
+				uploads,
+				toasts: toasts.mock.calls,
+				chips: chipNames(),
+			},
+		).toStrictEqual(
+			{
+				dragOverNotPrevented: false,
+				overlay: false,
+				dropNotPrevented: false,
+				pasteNotPrevented: false,
+				textPasteNotPrevented: true,
+				uploads: [],
+				toasts: [[loading], [loading]],
+				chips: [],
+			},
+		);
 	});
 
-	describe("text file preview", () => {
+	describe("text file preview", () =>
+	{
 		const NOTES = "# Notes\n\n- one\n- two\n- three\n\nSee the plan now";
 
-		async function uploaded(...files: File[]) {
+		async function uploaded(...files: File[])
+		{
 			mockUploads((file) => savedAs(`${ATTACHMENTS}/${file.name}`)(file));
 			renderComposer();
-			paste({files});
-			await waitFor(() => {
+			paste(
+				{
+					files,
+				},
+			);
+			await waitFor(() =>
+			{
 				expect(document.querySelector("[data-state=pending]")).toBeNull();
 			});
 		}
 
-		function tile(name: string): HTMLElement {
+		function tile(name: string): HTMLElement
+		{
 			return document.querySelector<HTMLElement>(`li[data-chip-label="${name}"]`)!;
 		}
 
-		function preview(dialog: HTMLElement) {
+		function preview(dialog: HTMLElement)
+		{
 			return {
 				title: dialog.querySelector("h2")?.textContent,
 				description: dialog.querySelector("p")?.textContent,
@@ -789,91 +1613,195 @@ describe("Composer attachments", () => {
 			};
 		}
 
-		it("opens an uploaded markdown file as upstream's file preview, sized from its bytes", async () => {
-			await uploaded(new File([NOTES], "notes.md", {type: "text/markdown"}));
-			const link = within(tile("notes.md")).getByRole("button", {name: "notes.md"});
+		it("opens an uploaded markdown file as upstream's file preview, sized from its bytes", async () =>
+		{
+			await uploaded(
+				new File(
+					[NOTES],
+					"notes.md",
+					{
+						type: "text/markdown",
+					},
+				),
+			);
+			const link = within(tile("notes.md")).getByRole(
+				"button",
+				{
+					name: "notes.md",
+				},
+			);
 
 			fireEvent.click(link);
 
-			expect({
-				tabIndex: link.tabIndex,
-				cardLink: link.getAttribute("data-cds"),
-				cursor: link.classList.contains("cursor-pointer"),
-				preview: preview(await screen.findByRole("dialog")),
-			}).toStrictEqual({
-				tabIndex: 0,
-				cardLink: "CardLink",
-				cursor: true,
-				preview: {
-					title: "notes.md",
-					description: "0.04 KB\u00A0•7 lines•Formatting may be inconsistent from source",
-					body: NOTES,
+			expect(
+				{
+					tabIndex: link.tabIndex,
+					cardLink: link.getAttribute("data-cds"),
+					cursor: link.classList.contains("cursor-pointer"),
+					preview: preview(await screen.findByRole("dialog")),
 				},
-			});
+			).toStrictEqual(
+				{
+					tabIndex: 0,
+					cardLink: "CardLink",
+					cursor: true,
+					preview:
+					{
+						title: "notes.md",
+						description: "0.04 KB\u00A0•7 lines•Formatting may be inconsistent from source",
+						body: NOTES,
+					},
+				},
+			);
 		});
 
-		it("gives an upload outside upstream's text extensions no opener", async () => {
-			await uploaded(new File([new Uint8Array([80, 75, 3, 4])], "bundle.zip", {type: "application/zip"}));
+		it("gives an upload outside upstream's text extensions no opener", async () =>
+		{
+			await uploaded(
+				new File(
+					[new Uint8Array([80, 75, 3, 4])],
+					"bundle.zip",
+					{
+						type: "application/zip",
+					},
+				),
+			);
 
-			expect(within(tile("bundle.zip")).queryByRole("button", {name: "bundle.zip"})).toBeNull();
+			expect(
+				within(tile("bundle.zip")).queryByRole(
+					"button",
+					{
+						name: "bundle.zip",
+					},
+				),
+			).toBeNull();
 		});
 
-		it("matches the extension case-insensitively", async () => {
-			await uploaded(new File(["x"], "README.MD", {type: "text/markdown"}));
+		it("matches the extension case-insensitively", async () =>
+		{
+			await uploaded(
+				new File(
+					["x"],
+					"README.MD",
+					{
+						type: "text/markdown",
+					},
+				),
+			);
 
-			fireEvent.click(within(tile("README.MD")).getByRole("button", {name: "README.MD"}));
+			fireEvent.click(
+				within(tile("README.MD")).getByRole(
+					"button",
+					{
+						name: "README.MD",
+					},
+				),
+			);
 
 			expect(preview(await screen.findByRole("dialog")).title).toBe("README.MD");
 		});
 
-		it("shows only the first 102400 characters of a large log, sized by the whole file", async () => {
-			await uploaded(new File(["x".repeat(150 * 1024)], "server.log", {type: "text/plain"}));
+		it("shows only the first 102400 characters of a large log, sized by the whole file", async () =>
+		{
+			await uploaded(
+				new File(
+					["x".repeat(150 * 1024)],
+					"server.log",
+					{
+						type: "text/plain",
+					},
+				),
+			);
 
-			fireEvent.click(within(tile("server.log")).getByRole("button", {name: "server.log"}));
+			fireEvent.click(
+				within(tile("server.log")).getByRole(
+					"button",
+					{
+						name: "server.log",
+					},
+				),
+			);
 			const dialog = await screen.findByRole("dialog");
 
-			expect({
-				description: preview(dialog).description,
-				length: preview(dialog).body?.length,
-			}).toStrictEqual({
-				description: "150.00 KB\u00A0•1 lines•Formatting may be inconsistent from source",
-				length: 102400,
-			});
+			expect(
+				{
+					description: preview(dialog).description,
+					length: preview(dialog).body?.length,
+				},
+			).toStrictEqual(
+				{
+					description: "150.00 KB\u00A0•1 lines•Formatting may be inconsistent from source",
+					length: 102400,
+				},
+			);
 		});
 
-		it("drops a file read that resolves after a later preview opened", async () => {
+		it("drops a file read that resolves after a later preview opened", async () =>
+		{
 			await uploaded(
-				new File(["first"], "a.md", {type: "text/markdown"}),
-				new File(["second"], "b.md", {type: "text/markdown"}),
+				new File(
+					["first"],
+					"a.md",
+					{
+						type: "text/markdown",
+					},
+				),
+				new File(
+					["second"],
+					"b.md",
+					{
+						type: "text/markdown",
+					},
+				),
 			);
 			const reads: ((text: string) => void)[] = [];
 			vi.spyOn(Blob.prototype, "text").mockImplementation(
 				async () =>
-					new Promise<string>((resolve) => {
+					new Promise<string>((resolve) =>
+					{
 						reads.push(resolve);
 					}),
 			);
 
-			fireEvent.click(within(tile("a.md")).getByRole("button", {name: "a.md"}));
-			fireEvent.click(within(tile("b.md")).getByRole("button", {name: "b.md"}));
+			fireEvent.click(
+				within(tile("a.md")).getByRole(
+					"button",
+					{
+						name: "a.md",
+					},
+				),
+			);
+			fireEvent.click(
+				within(tile("b.md")).getByRole(
+					"button",
+					{
+						name: "b.md",
+					},
+				),
+			);
 			reads[1]!("second");
 			const dialog = await screen.findByRole("dialog");
 			reads[0]!("first");
 			await Promise.resolve();
 
-			expect({
-				reads: reads.length,
-				dialogs: screen.getAllByRole("dialog").length,
-				preview: preview(dialog),
-			}).toStrictEqual({
-				reads: 2,
-				dialogs: 1,
-				preview: {
-					title: "b.md",
-					description: "0.01 KB\u00A0•1 lines•Formatting may be inconsistent from source",
-					body: "second",
+			expect(
+				{
+					reads: reads.length,
+					dialogs: screen.getAllByRole("dialog").length,
+					preview: preview(dialog),
 				},
-			});
+			).toStrictEqual(
+				{
+					reads: 2,
+					dialogs: 1,
+					preview:
+					{
+						title: "b.md",
+						description: "0.01 KB\u00A0•1 lines•Formatting may be inconsistent from source",
+						body: "second",
+					},
+				},
+			);
 		});
 	});
 });

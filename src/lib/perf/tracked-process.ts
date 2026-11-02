@@ -8,21 +8,39 @@ import {currentPerfCounters} from "./server-scope";
 export async function trackedExecFile(
 	file: string,
 	args: readonly string[],
-	options: {cwd: string; timeout?: number; env?: NodeJS.ProcessEnv},
-): Promise<string> {
+	options:
+	{
+		cwd: string;
+		timeout?: number;
+		env?: NodeJS.ProcessEnv;
+	},
+): Promise<string>
+{
 	const counters = currentPerfCounters();
 	if (counters !== undefined) counters.proc.spawned += 1;
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve, reject) =>
+	{
 		execFile(
 			file,
 			args,
 			{
 				cwd: options.cwd,
 				encoding: "utf-8",
-				...(options.timeout === undefined ? {} : {timeout: options.timeout}),
-				...(options.env === undefined ? {} : {env: options.env}),
+				...(options.timeout === undefined
+					? {}
+					:
+						{
+							timeout: options.timeout,
+						}),
+				...(options.env === undefined
+					? {}
+					:
+						{
+							env: options.env,
+						}),
 			},
-			(error: Error | null, stdout: string) => {
+			(error: Error | null, stdout: string) =>
+			{
 				if (error) reject(error);
 				else resolve(stdout);
 			},

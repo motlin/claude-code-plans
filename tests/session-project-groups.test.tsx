@@ -8,7 +8,8 @@ import {afterEach, describe, expect, it} from "vite-plus/test";
 import {SessionProjectGroups, SESSION_PROJECT_PREVIEW_LIMIT} from "../src/components/session-project-groups";
 import {GroupedSessionsResponse} from "../src/lib/api/sessions";
 
-function session(id: string, title: string, project: string, mtime: string) {
+function session(id: string, title: string, project: string, mtime: string)
+{
 	return {
 		id,
 		title,
@@ -44,86 +45,158 @@ const groups = GroupedSessionsResponse.parse([
 	},
 ]);
 
-async function renderGroups(activeIds: Set<string> = new Set(), rendered: typeof groups = groups) {
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={new QueryClient()}>
-				<ToastProvider>
-					<SessionProjectGroups groups={rendered} activeIds={activeIds} />
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/session/$id",
-		component: () => null,
-	});
-	const projectRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/project/$id",
-		component: () => null,
-	});
-	const projectSessionsRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/project/$id/sessions",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([sessionRoute, projectRoute, projectSessionsRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+async function renderGroups(activeIds: Set<string> = new Set(), rendered: typeof groups = groups)
+{
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={new QueryClient()}>
+					<ToastProvider>
+						<SessionProjectGroups groups={rendered} activeIds={activeIds} />
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/session/$id",
+			component: () => null,
+		},
+	);
+	const projectRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/project/$id",
+			component: () => null,
+		},
+	);
+	const projectSessionsRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/project/$id/sessions",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([sessionRoute, projectRoute, projectSessionsRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 }
 
 afterEach(cleanup);
 
-describe("SessionProjectGroups", () => {
-	it("renders project headings in the order the server returned them", async () => {
+describe("SessionProjectGroups", () =>
+{
+	it("renders project headings in the order the server returned them", async () =>
+	{
 		await renderGroups();
 
 		const headings = screen.getAllByRole("heading").map((heading) => heading.textContent);
 		expect(headings.map((text) => text.replace(/\d+.*$/, "").trim())).toEqual(["Gamma", "Alpha"]);
 	});
 
-	it("links to the project session list when a group is truncated", async () => {
+	it("links to the project session list when a group is truncated", async () =>
+	{
 		await renderGroups();
 
-		const more = screen.getByRole("link", {name: /5 more sessions/});
+		const more = screen.getByRole(
+			"link",
+			{
+				name: /5 more sessions/,
+			},
+		);
 		expect(more.getAttribute("href")).toBe("/project/gamma/sessions");
-		expect(screen.queryByRole("link", {name: /more sessions/})).toBe(more);
+		expect(
+			screen.queryByRole(
+				"link",
+				{
+					name: /more sessions/,
+				},
+			),
+		).toBe(more);
 	});
 
-	it("marks live sessions with an active indicator", async () => {
+	it("marks live sessions with an active indicator", async () =>
+	{
 		await renderGroups(new Set(["g1"]));
 
 		expect(
-			screen.getAllByRole("status", {name: /.+/}).map((icon) => ({
-				label: icon.getAttribute("aria-label"),
-				kind: icon.firstElementChild?.getAttribute("data-kind"),
-			})),
-		).toStrictEqual([{label: "Running", kind: "running"}]);
+			screen
+				.getAllByRole(
+					"status",
+					{
+						name: /.+/,
+					},
+				)
+				.map((icon) => (
+				{
+					label: icon.getAttribute("aria-label"),
+					kind: icon.firstElementChild?.getAttribute("data-kind"),
+				})),
+		).toStrictEqual([
+			{
+				label: "Running",
+				kind: "running",
+			},
+		]);
 	});
 
-	it("holds back projects past the preview limit until asked", async () => {
+	it("holds back projects past the preview limit until asked", async () =>
+	{
 		const many = GroupedSessionsResponse.parse(
-			Array.from({length: SESSION_PROJECT_PREVIEW_LIMIT + 3}, (_, index) => ({
-				project: `p${index}`,
-				projectName: `Project ${index}`,
-				sessionCount: 1,
-				sessions: [session(`s${index}`, `Session ${index}`, `Project ${index}`, "2026-08-07T10:00:00Z")],
-			})),
+			Array.from(
+				{
+					length: SESSION_PROJECT_PREVIEW_LIMIT + 3,
+				},
+				(_, index) => (
+				{
+					project: `p${index}`,
+					projectName: `Project ${index}`,
+					sessionCount: 1,
+					sessions: [session(`s${index}`, `Session ${index}`, `Project ${index}`, "2026-08-07T10:00:00Z")],
+				}),
+			),
 		);
 
 		await renderGroups(new Set(), many);
 
 		expect(screen.getAllByRole("heading").length).toBe(SESSION_PROJECT_PREVIEW_LIMIT);
-		expect(screen.queryByRole("heading", {name: /Project 12/})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"heading",
+				{
+					name: /Project 12/,
+				},
+			),
+		).toBeNull();
 
-		fireEvent.click(screen.getByRole("button", {name: /3 more projects/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /3 more projects/,
+				},
+			),
+		);
 
 		expect(screen.getAllByRole("heading").length).toBe(SESSION_PROJECT_PREVIEW_LIMIT + 3);
-		expect(screen.queryByRole("button", {name: /more projects/})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: /more projects/,
+				},
+			),
+		).toBeNull();
 	});
 });

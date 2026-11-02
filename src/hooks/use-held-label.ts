@@ -5,14 +5,16 @@ export const LABEL_HOLD_DEFAULT_MS = 650;
 
 export type HeldLabelOptions<T> =
 	| number
-	| {
+	|
+	  {
 			minMs?: number | ((shown: T) => number | undefined);
 			settleMs?: number;
 			line?: string;
 			restretch?: boolean;
 	  };
 
-interface Shown<T> {
+interface Shown<T>
+{
 	key: string;
 	value: T;
 	line: string | undefined;
@@ -20,19 +22,43 @@ interface Shown<T> {
 }
 
 type Action<T> =
-	| {type: "swap"; key: string; value: T; line: string | undefined; armed: boolean}
-	| {type: "shown"; value: T; line: string | undefined};
+	|
+	  {
+			type: "swap";
+			key: string;
+			value: T;
+			line: string | undefined;
+			armed: boolean;
+	  }
+	|
+	  {
+			type: "shown";
+			value: T;
+			line: string | undefined;
+	  };
 
-function reduce<T>(state: Shown<T>, action: Action<T>): Shown<T> {
-	if (action.type === "shown") {
+function reduce<T>(state: Shown<T>, action: Action<T>): Shown<T>
+{
+	if (action.type === "shown")
+	{
 		if (Object.is(action.value, state.value) && action.line === state.line) return state;
-		return {...state, value: action.value, line: action.line};
+		return {
+			...state,
+			value: action.value,
+			line: action.line,
+		};
 	}
 	if (action.key === state.key) return state;
-	return {key: action.key, value: action.value, line: action.line, armed: action.armed};
+	return {
+		key: action.key,
+		value: action.value,
+		line: action.line,
+		armed: action.armed,
+	};
 }
 
-interface Clock {
+interface Clock
+{
 	key: string;
 	at: number;
 }
@@ -44,66 +70,140 @@ interface Clock {
  * first change waits only the settle; with `restretch`, a value reached by a 0ms
  * change is unarmed too.
  */
-export function useHeldLabel<T>(value: T, key: string, opts: HeldLabelOptions<T>): T {
-	const {minMs, settleMs: settleOpt, line, restretch: restretchOpt} = typeof opts === "object" ? opts : {minMs: opts};
+export function useHeldLabel<T>(value: T, key: string, opts: HeldLabelOptions<T>): T
+{
+	const
+	{
+		minMs,
+		settleMs: settleOpt,
+		line,
+		restretch: restretchOpt,
+	} = typeof opts === "object"
+		? opts
+		:
+			{
+				minMs: opts,
+			};
 	const settleMs = settleOpt ?? 0;
 	const restretch = restretchOpt ?? false;
 
-	const [shown, dispatch] = useReducer(reduce<T>, {key, value, line, armed: false});
+	const [shown, dispatch] = useReducer(
+		reduce<T>,
+		{
+			key,
+			value,
+			line,
+			armed: false,
+		},
+	);
 	const holdMs = (typeof minMs === "function" ? minMs(shown.value) : minMs) ?? LABEL_HOLD_DEFAULT_MS;
 	const armNext = !(restretch && holdMs === 0);
 
-	if (key !== shown.key && (holdMs === 0 || (!shown.armed && settleMs === 0))) {
-		dispatch({type: "swap", key, value, line, armed: armNext});
+	if (key !== shown.key && (holdMs === 0 || (!shown.armed && settleMs === 0)))
+	{
+		dispatch(
+			{
+				type: "swap",
+				key,
+				value,
+				line,
+				armed: armNext,
+			},
+		);
 	}
 
 	const pending = key !== shown.key;
 	const shownClock = useRef<Clock | null>(null);
 	const pendingClock = useRef<Clock | null>(null);
-	const latest = useRef({value, line});
+	const latest = useRef(
+		{
+			value,
+			line,
+		},
+	);
 
-	useEffect(() => {
-		if (!pending) latest.current = {value, line};
+	useEffect(() =>
+	{
+		if (!pending)
+			latest.current =
+			{
+				value,
+				line,
+			};
 	}, [pending, value, line]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const newest = latest.current;
-		if (pending && !(Object.is(shown.value, newest.value) && shown.line === newest.line)) {
-			dispatch({type: "shown", value: newest.value, line: newest.line});
+		if (pending && !(Object.is(shown.value, newest.value) && shown.line === newest.line))
+		{
+			dispatch(
+				{
+					type: "shown",
+					value: newest.value,
+					line: newest.line,
+				},
+			);
 		}
 	}, [pending, shown.value, shown.line]);
 
-	useEffect(() => {
-		if (shownClock.current?.key !== shown.key) shownClock.current = {key: shown.key, at: performance.now()};
+	useEffect(() =>
+	{
+		if (shownClock.current?.key !== shown.key)
+			shownClock.current =
+			{
+				key: shown.key,
+				at: performance.now(),
+			};
 	}, [shown.key]);
 
-	useEffect(() => {
-		if (!pending) {
+	useEffect(() =>
+	{
+		if (!pending)
+		{
 			pendingClock.current = null;
-		} else if (pendingClock.current?.key !== key) {
-			pendingClock.current = {key, at: performance.now()};
+		}
+		else if (pendingClock.current?.key !== key)
+		{
+			pendingClock.current =
+			{
+				key,
+				at: performance.now(),
+			};
 		}
 	}, [pending, key]);
 
 	const sameLine = line !== undefined && line === shown.line;
 	const holdsMinimum = shown.armed && !sameLine;
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!pending) return undefined;
 		const now = performance.now();
 		const settleAt = (pendingClock.current?.at ?? now) + settleMs;
 		const since = shownClock.current;
 		const minAt = holdsMinimum && since !== null ? since.at + holdMs : now;
 		const at = Math.max(settleAt, minAt);
-		const swap = (): void => {
-			dispatch({type: "swap", key, value, line, armed: armNext});
+		const swap = (): void =>
+		{
+			dispatch(
+				{
+					type: "swap",
+					key,
+					value,
+					line,
+					armed: armNext,
+				},
+			);
 		};
-		if (now >= at) {
+		if (now >= at)
+		{
 			swap();
 			return undefined;
 		}
 		const timer = setTimeout(swap, at - now);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 		};
 	}, [pending, key, value, line, holdMs, settleMs, holdsMinimum, armNext]);

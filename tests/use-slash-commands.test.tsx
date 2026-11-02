@@ -7,22 +7,45 @@ import {Composer} from "../src/components/composer";
 import {useSlashCommands} from "../src/hooks/use-slash-commands";
 import {BUILTIN_SLASH_COMMANDS, SESSION_SLASH_COMMANDS, type SlashCommand} from "../src/lib/slash-commands";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	localStorage.clear();
 	vi.unstubAllGlobals();
 });
 
 const HEADER = "Some commands didn’t load.\nType / again to retry.";
-const LOADED: SlashCommand[] = [{name: "standup", description: "Write my standup", source: "personal-command"}];
+const LOADED: SlashCommand[] = [
+	{
+		name: "standup",
+		description: "Write my standup",
+		source: "personal-command",
+	},
+];
 
-function Harness() {
+function Harness()
+{
 	const slash = useSlashCommands(undefined);
-	return <Composer variant="session" draftKey="session-alice" onSend={() => {}} {...slash} />;
+	return (
+		<Composer
+			variant="session"
+			draftKey="session-alice"
+			onSend={() =>
+			{
+			}}
+			{...slash}
+		/>
+	);
 }
 
-function menuState() {
-	const menu = screen.queryByRole("menu", {name: "Slash commands"});
+function menuState()
+{
+	const menu = screen.queryByRole(
+		"menu",
+		{
+			name: "Slash commands",
+		},
+	);
 	if (menu === null) return null;
 	const first = menu.firstElementChild;
 	return {
@@ -33,11 +56,23 @@ function menuState() {
 	};
 }
 
-describe("useSlashCommands", () => {
-	it("shows upstream's error header over the built-ins when /api/commands fails, and refetches on the next /", async () => {
+describe("useSlashCommands", () =>
+{
+	it("shows upstream's error header over the built-ins when /api/commands fails, and refetches on the next /", async () =>
+	{
 		const responses = [
-			new Response("boom", {status: 500}),
-			new Response("boom", {status: 500}),
+			new Response(
+				"boom",
+				{
+					status: 500,
+				},
+			),
+			new Response(
+				"boom",
+				{
+					status: 500,
+				},
+			),
 			Response.json(LOADED),
 		];
 		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(responses.shift() ?? Response.json(LOADED)));
@@ -48,43 +83,108 @@ describe("useSlashCommands", () => {
 				<Harness />
 			</QueryClientProvider>,
 		);
-		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-		await waitFor(() => {
+		const textarea = screen.getByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(fetchMock).toHaveBeenCalledTimes(1);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(queryClient.getQueryState(["slash-commands", null])?.status).toBe("error");
 		});
 
-		fireEvent.change(textarea, {target: {value: "/"}});
-		await waitFor(() => {
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/",
+				},
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(menuState()?.header).toBe(HEADER);
 		});
-		const failed = {fetches: fetchMock.mock.calls.length, menu: menuState()};
+		const failed =
+		{
+			fetches: fetchMock.mock.calls.length,
+			menu: menuState(),
+		};
 
-		fireEvent.change(textarea, {target: {value: ""}});
-		fireEvent.change(textarea, {target: {value: "/"}});
-		await waitFor(() => {
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "",
+				},
+			},
+		);
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/",
+				},
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(menuState()?.labels).toStrictEqual(["standup"]);
 		});
-		const retried = {fetches: fetchMock.mock.calls.length, menu: menuState()};
+		const retried =
+		{
+			fetches: fetchMock.mock.calls.length,
+			menu: menuState(),
+		};
 
-		expect({failed, retried}).toStrictEqual({
-			failed: {
-				fetches: 2,
-				menu: {header: HEADER, labels: BUILTIN_SLASH_COMMANDS.map((command) => command.name)},
+		expect(
+			{
+				failed,
+				retried,
 			},
-			retried: {fetches: 3, menu: {header: null, labels: ["standup"]}},
-		});
+		).toStrictEqual(
+			{
+				failed:
+				{
+					fetches: 2,
+					menu:
+					{
+						header: HEADER,
+						labels: BUILTIN_SLASH_COMMANDS.map((command) => command.name),
+					},
+				},
+				retried:
+				{
+					fetches: 3,
+					menu:
+					{
+						header: null,
+						labels: ["standup"],
+					},
+				},
+			},
+		);
 	});
 
-	it("replaces the list with upstream's single skeleton row while /api/commands is pending", async () => {
-		let resolve: (response: Response) => void = () => {};
+	it("replaces the list with upstream's single skeleton row while /api/commands is pending", async () =>
+	{
+		let resolve: (response: Response) => void = () =>
+		{
+		};
 		vi.stubGlobal(
 			"fetch",
 			vi.fn<typeof fetch>(
 				async () =>
-					new Promise<Response>((r) => {
+					new Promise<Response>((r) =>
+					{
 						resolve = r;
 					}),
 			),
@@ -95,36 +195,69 @@ describe("useSlashCommands", () => {
 				<Harness />
 			</QueryClientProvider>,
 		);
-		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		const textarea = screen.getByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
 
-		fireEvent.change(textarea, {target: {value: "/"}});
-		const menu = screen.getByRole("menu", {name: "Slash commands"});
-		const loading = {
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/",
+				},
+			},
+		);
+		const menu = screen.getByRole(
+			"menu",
+			{
+				name: "Slash commands",
+			},
+		);
+		const loading =
+		{
 			children: [...menu.children].map((child) => child.outerHTML),
 			menuitems: menu.querySelectorAll('[role="menuitem"]').length,
 			status: within(menu).getByRole("status").textContent,
 		};
 
 		resolve(Response.json(LOADED));
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(menuState()?.labels).toStrictEqual(["standup"]);
 		});
 
-		expect(loading).toStrictEqual({
-			children: [
-				'<div data-testid="slash-loading-row"><div data-skeleton-group="" data-motion="wave" data-hold="none" data-hold-reason="overlay" role="status"><span class="sr-only">Loading</span><div aria-hidden="true" class="contents"><div class="flex h-7 items-center gap-2 px-2.5"><div data-skeleton="" class="max-w-full rounded bg-[var(--skeleton-base)]" style="width: 120px; height: 16px;"></div></div></div></div></div>',
-			],
-			menuitems: 0,
-			status: "Loading",
-		});
+		expect(loading).toStrictEqual(
+			{
+				children: [
+					'<div data-testid="slash-loading-row"><div data-skeleton-group="" data-motion="wave" data-hold="none" data-hold-reason="overlay" role="status"><span class="sr-only">Loading</span><div aria-hidden="true" class="contents"><div class="flex h-7 items-center gap-2 px-2.5"><div data-skeleton="" class="max-w-full rounded bg-[var(--skeleton-base)]" style="width: 120px; height: 16px;"></div></div></div></div></div>',
+				],
+				menuitems: 0,
+				status: "Loading",
+			},
+		);
 	});
 
-	it("shows upstream's not-running header over the built-ins when the session directory is unknown", () => {
+	it("shows upstream's not-running header over the built-ins when the session directory is unknown", () =>
+	{
 		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(LOADED)));
 		vi.stubGlobal("fetch", fetchMock);
-		function DisabledHarness() {
+		function DisabledHarness()
+		{
 			const slash = useSlashCommands(undefined, false);
-			return <Composer variant="session" draftKey="session-alice" onSend={() => {}} {...slash} />;
+			return (
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+					{...slash}
+				/>
+			);
 		}
 		render(
 			<QueryClientProvider client={new QueryClient()}>
@@ -132,20 +265,40 @@ describe("useSlashCommands", () => {
 			</QueryClientProvider>,
 		);
 
-		fireEvent.change(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"}), {
-			target: {value: "/"},
-		});
-
-		expect({fetches: fetchMock.mock.calls.length, menu: menuState()}).toStrictEqual({
-			fetches: 0,
-			menu: {
-				header: "More commands available once the session is running",
-				labels: BUILTIN_SLASH_COMMANDS.map((command) => command.name),
+		fireEvent.change(
+			screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			),
+			{
+				target:
+				{
+					value: "/",
+				},
 			},
-		});
+		);
+
+		expect(
+			{
+				fetches: fetchMock.mock.calls.length,
+				menu: menuState(),
+			},
+		).toStrictEqual(
+			{
+				fetches: 0,
+				menu:
+				{
+					header: "More commands available once the session is running",
+					labels: BUILTIN_SLASH_COMMANDS.map((command) => command.name),
+				},
+			},
+		);
 	});
 
-	it("passes the loaded list through without a header", async () => {
+	it("passes the loaded list through without a header", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(LOADED))),
@@ -156,25 +309,53 @@ describe("useSlashCommands", () => {
 				<Harness />
 			</QueryClientProvider>,
 		);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(queryClient.getQueryState(["slash-commands", null])?.status).toBe("success");
 		});
 
-		fireEvent.change(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"}), {
-			target: {value: "/"},
-		});
+		fireEvent.change(
+			screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			),
+			{
+				target:
+				{
+					value: "/",
+				},
+			},
+		);
 
-		expect(menuState()).toStrictEqual({header: null, labels: ["standup"]});
+		expect(menuState()).toStrictEqual(
+			{
+				header: null,
+				labels: ["standup"],
+			},
+		);
 	});
 
-	it("adds the session-only built-ins (/rewind, /autocompact) to a session's list but not the home composer's", async () => {
+	it("adds the session-only built-ins (/rewind, /autocompact) to a session's list but not the home composer's", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(LOADED))),
 		);
-		function SessionHarness({session}: {session: boolean}) {
+		function SessionHarness({session}: {session: boolean})
+		{
 			const slash = useSlashCommands(undefined, true, session);
-			return <Composer variant="session" draftKey="k" onSend={() => {}} {...slash} />;
+			return (
+				<Composer
+					variant="session"
+					draftKey="k"
+					onSend={() =>
+					{
+					}}
+					{...slash}
+				/>
+			);
 		}
 		const queryClient = new QueryClient();
 		const view = render(
@@ -182,31 +363,88 @@ describe("useSlashCommands", () => {
 				<SessionHarness session={false} />
 			</QueryClientProvider>,
 		);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(queryClient.getQueryState(["slash-commands", null])?.status).toBe("success");
 		});
-		const textarea = () => screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-		fireEvent.change(textarea(), {target: {value: "/"}});
+		const textarea = () =>
+			screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
+		fireEvent.change(
+			textarea(),
+			{
+				target:
+				{
+					value: "/",
+				},
+			},
+		);
 		const home = menuState();
 		view.rerender(
 			<QueryClientProvider client={queryClient}>
 				<SessionHarness session />
 			</QueryClientProvider>,
 		);
-		fireEvent.change(textarea(), {target: {value: ""}});
-		fireEvent.change(textarea(), {target: {value: "/"}});
+		fireEvent.change(
+			textarea(),
+			{
+				target:
+				{
+					value: "",
+				},
+			},
+		);
+		fireEvent.change(
+			textarea(),
+			{
+				target:
+				{
+					value: "/",
+				},
+			},
+		);
 		const session = menuState();
 
-		expect({home, session}).toStrictEqual({
-			home: {header: null, labels: ["standup"]},
-			session: {header: null, labels: ["rewind", "autocompact", "standup"]},
-		});
+		expect(
+			{
+				home,
+				session,
+			},
+		).toStrictEqual(
+			{
+				home:
+				{
+					header: null,
+					labels: ["standup"],
+				},
+				session:
+				{
+					header: null,
+					labels: ["rewind", "autocompact", "standup"],
+				},
+			},
+		);
 	});
 
-	it("lists the session-only built-ins ahead of the built-ins when the session directory is unknown", () => {
-		function DisabledHarness() {
+	it("lists the session-only built-ins ahead of the built-ins when the session directory is unknown", () =>
+	{
+		function DisabledHarness()
+		{
 			const slash = useSlashCommands(undefined, false, true);
-			return <Composer variant="session" draftKey="session-alice" onSend={() => {}} {...slash} />;
+			return (
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+					{...slash}
+				/>
+			);
 		}
 		render(
 			<QueryClientProvider client={new QueryClient()}>
@@ -214,9 +452,20 @@ describe("useSlashCommands", () => {
 			</QueryClientProvider>,
 		);
 
-		fireEvent.change(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"}), {
-			target: {value: "/"},
-		});
+		fireEvent.change(
+			screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			),
+			{
+				target:
+				{
+					value: "/",
+				},
+			},
+		);
 
 		expect(menuState()?.labels).toStrictEqual(
 			[...SESSION_SLASH_COMMANDS, ...BUILTIN_SLASH_COMMANDS].map((command) => command.name),

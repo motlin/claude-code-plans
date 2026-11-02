@@ -7,7 +7,8 @@ import {useDialogPad} from "./dialog-pad";
 import {useDialogFinalFocus} from "./use-dialog-final-focus";
 import {overlayAttrs} from "../../lib/overlay";
 
-interface PopupFocusProps {
+interface PopupFocusProps
+{
 	/** Upstream `Dialog.Root`'s `modal`; every local dialog is modal. */
 	modal?: boolean;
 	/** Upstream `DialogTriggerRefContext`: the trigger to return to when nothing held focus at open. */
@@ -17,7 +18,8 @@ interface PopupFocusProps {
 }
 
 type DialogPopupProps = ComponentProps<typeof Dialog.Popup> &
-	PopupFocusProps & {
+	PopupFocusProps &
+	{
 		/** Upstream `lZ` without the styled `js` markers: no `data-cds="Dialog"`/`data-cds-fizzy`. */
 		unstyled?: boolean;
 	};
@@ -36,13 +38,21 @@ export function DialogPopup({
 	restoreFocus,
 	unstyled = false,
 	...props
-}: DialogPopupProps) {
+}: DialogPopupProps)
+{
 	const {popup} = useDialogPad();
 	const tallWindowRef = useTallWindowRef();
-	const focus = useDialogFinalFocus({open: true, modal, triggerRef});
+	const focus = useDialogFinalFocus(
+		{
+			open: true,
+			modal,
+			triggerRef,
+		},
+	);
 	const popupRef = focus.popupRef;
 	const mergedRef = useCallback(
-		(element: HTMLDivElement | null) => {
+		(element: HTMLDivElement | null) =>
+		{
 			popupRef(element);
 			tallWindowRef(element);
 			assignRef(ref, element);
@@ -71,12 +81,19 @@ export function AlertDialogPopup({
 	finalFocus,
 	triggerRef,
 	...props
-}: ComponentProps<typeof AlertDialog.Popup> & Omit<PopupFocusProps, "modal" | "restoreFocus">) {
+}: ComponentProps<typeof AlertDialog.Popup> & Omit<PopupFocusProps, "modal" | "restoreFocus">)
+{
 	const tallWindowRef = useTallWindowRef();
-	const focus = useDialogFinalFocus({open: true, triggerRef});
+	const focus = useDialogFinalFocus(
+		{
+			open: true,
+			triggerRef,
+		},
+	);
 	const popupRef = focus.popupRef;
 	const mergedRef = useCallback(
-		(element: HTMLDivElement | null) => {
+		(element: HTMLDivElement | null) =>
+		{
 			popupRef(element);
 			tallWindowRef(element);
 			assignRef(ref, element);
@@ -88,7 +105,8 @@ export function AlertDialogPopup({
 	);
 }
 
-function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
+function assignRef<T>(ref: Ref<T> | undefined, value: T | null)
+{
 	if (typeof ref === "function") ref(value);
 	else if (ref !== null && ref !== undefined) ref.current = value;
 }

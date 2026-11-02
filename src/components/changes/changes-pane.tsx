@@ -2,7 +2,8 @@ import {getSingularPatch} from "@pierre/diffs";
 import {Virtualizer} from "@pierre/diffs/react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {ArrowRight, ChevronDown, List, Loader2, TriangleAlert} from "lucide-react";
-import {
+import
+{
 	type ReactNode,
 	type RefObject,
 	useCallback,
@@ -15,7 +16,8 @@ import {
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {replaceReviewFindings, reviewQueryOptions} from "../../lib/api/reviews";
-import {
+import
+{
 	type SessionDiffFile,
 	type SessionDiffResponse,
 	type SessionDiffScopesResponse,
@@ -27,7 +29,8 @@ import {
 	sessionDiffQueryOptions,
 	sessionDiffScopesQueryOptions,
 } from "../../lib/api/session-diff";
-import {
+import
+{
 	CHANGES_REVIEW_REQUEST_EVENT,
 	findingAfterDismiss,
 	formatFixFindingPrompt,
@@ -38,7 +41,8 @@ import {
 import {CHANGES_SCOPE_REQUEST_EVENT} from "../../lib/changes-scope-request";
 import {codeRowLeadingPx} from "../../lib/code-themes";
 import {type DiffLineAnchor, startScrollToLine} from "../../lib/diff-scroll-to-line";
-import {
+import
+{
 	clearDiffScrollTarget,
 	resolveFuzzyDiffPath,
 	scrollToDiffLine,
@@ -47,7 +51,8 @@ import {
 import {writeClipboardText} from "../../lib/clipboard";
 import {attachContext, requestComposerInsert} from "../../lib/context-attach";
 import {requestFileOpen} from "../../lib/file-open-requests";
-import {
+import
+{
 	type DiffFileMark,
 	type DiffMarkScope,
 	canMarkPatch,
@@ -67,7 +72,8 @@ import {PANE_HEADER_ICON_BUTTON_CLASS} from "../panes/pane-classes";
 import {PaneHeaderRow} from "../panes/pane-header-row";
 import type {PaneChrome} from "../panes/pane-registry";
 import {type Settings, useSettings} from "../settings-context";
-import {
+import
+{
 	Menu,
 	MenuCheckboxItem,
 	MenuContent,
@@ -105,27 +111,53 @@ export const DIFF_FILE_LIST_COACH_MARK_KEY = "ccb.coachmark.diffFileList";
 
 const TOO_LARGE_TO_EXPAND = "This diff is too large to expand at once. Select a file to expand it.";
 
-type ScopeLabel = {kind: "range"; base: string; head: string} | {kind: "text"; text: string};
+type ScopeLabel =
+	|
+	  {
+			kind: "range";
+			base: string;
+			head: string;
+	  }
+	|
+	  {
+			kind: "text";
+			text: string;
+	  };
 
-type SessionDiffCommit = Extract<SessionDiffScopesResponse, {kind: "git"}>["commits"][number];
+type SessionDiffCommit = Extract<
+	SessionDiffScopesResponse,
+	{
+		kind: "git";
+	}
+>["commits"][number];
 
 const BRANCH_SCOPE = "branch";
 const UNCOMMITTED_SCOPE = "uncommitted";
 const NO_FINDINGS: readonly ReviewFinding[] = [];
 const NO_FILES: readonly SessionDiffFile[] = [];
-const noop = (): void => {};
+const noop = (): void =>
+{
+};
 const NO_MESSAGE = "(no message)";
 
-function commitShaOf(scope: string): string | null {
+function commitShaOf(scope: string): string | null
+{
 	const parsed = parseDiffScope(scope);
 	return parsed?.kind === "commit" ? parsed.sha : null;
 }
 
-function commitScope(sha: string): string {
-	return formatDiffScope({kind: "commit", sha});
+function commitScope(sha: string): string
+{
+	return formatDiffScope(
+		{
+			kind: "commit",
+			sha,
+		},
+	);
 }
 
-function commitMatches(commit: SessionDiffCommit, sha: string): boolean {
+function commitMatches(commit: SessionDiffCommit, sha: string): boolean
+{
 	return commit.sha.startsWith(sha) || sha.startsWith(commit.sha);
 }
 
@@ -133,25 +165,44 @@ function scopeLabelOf(
 	scope: string,
 	diff: SessionDiffResponse | undefined,
 	scopes: SessionDiffScopesResponse | undefined,
-): ScopeLabel | null {
-	if (diff?.source === "session-edits" || scopes?.kind === "no-git" || scope === "session") {
-		return {kind: "text", text: "Session edits"};
+): ScopeLabel | null
+{
+	if (diff?.source === "session-edits" || scopes?.kind === "no-git" || scope === "session")
+	{
+		return {
+			kind: "text",
+			text: "Session edits",
+		};
 	}
 	if (scopes?.kind !== "git") return null;
-	if (scope === "uncommitted") return {kind: "text", text: "Uncommitted changes"};
+	if (scope === "uncommitted")
+		return {
+			kind: "text",
+			text: "Uncommitted changes",
+		};
 	const sha = commitShaOf(scope);
-	if (sha !== null) {
+	if (sha !== null)
+	{
 		const commit = scopes.commits.find((candidate) => commitMatches(candidate, sha));
-		return {kind: "text", text: commit ? commit.subject || commit.shortSha : sha.slice(0, 7)};
+		return {
+			kind: "text",
+			text: commit ? commit.subject || commit.shortSha : sha.slice(0, 7),
+		};
 	}
-	return {kind: "range", base: scopes.base, head: scopes.head ?? "working tree"};
+	return {
+		kind: "range",
+		base: scopes.base,
+		head: scopes.head ?? "working tree",
+	};
 }
 
-function scopeLabelText(label: ScopeLabel): string {
+function scopeLabelText(label: ScopeLabel): string
+{
 	return label.kind === "range" ? `${label.base} → ${label.head}` : label.text;
 }
 
-function commitMatchesSearch(commit: SessionDiffCommit, search: string): boolean {
+function commitMatchesSearch(commit: SessionDiffCommit, search: string): boolean
+{
 	const needle = search.trim().toLowerCase();
 	if (needle === "") return true;
 	return commit.subject.toLowerCase().includes(needle) || commit.sha.startsWith(needle);
@@ -167,7 +218,8 @@ function CommitsSubmenu({
 	totalCommits: number;
 	selectedSha: string | null;
 	onSelectScope: (scope: string) => void;
-}) {
+})
+{
 	const [search, setSearch] = useState("");
 	const shown = commits.filter((commit) => commitMatchesSearch(commit, search));
 	const older = totalCommits - commits.length;
@@ -182,11 +234,14 @@ function CommitsSubmenu({
 						aria-label="Search commits"
 						placeholder="Search commits"
 						value={search}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							setSearch(event.target.value);
 						}}
-						onKeyDown={(event) => {
-							if (event.key !== "Escape" && event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+						onKeyDown={(event) =>
+						{
+							if (event.key !== "Escape" && event.key !== "ArrowDown" && event.key !== "ArrowUp")
+							{
 								event.stopPropagation();
 							}
 						}}
@@ -198,7 +253,8 @@ function CommitsSubmenu({
 				) : (
 					<MenuRadioGroup
 						value={selected?.sha ?? ""}
-						onValueChange={(sha: unknown) => {
+						onValueChange={(sha: unknown) =>
+						{
 							if (typeof sha === "string") onSelectScope(commitScope(sha));
 						}}
 					>
@@ -234,7 +290,8 @@ function ScopeButton({
 	scope: string;
 	scopes: SessionDiffScopesResponse | undefined;
 	onSelectScope: (scope: string) => void;
-}) {
+})
+{
 	const git = scopes?.kind === "git" ? scopes : null;
 	const commitSha = commitShaOf(scope);
 	const radioValue = commitSha === null ? scope : "commit";
@@ -260,7 +317,8 @@ function ScopeButton({
 			<MenuContent>
 				<MenuRadioGroup
 					value={git === null ? "session" : radioValue}
-					onValueChange={(value: unknown) => {
+					onValueChange={(value: unknown) =>
+					{
 						if (typeof value === "string") onSelectScope(value);
 					}}
 				>
@@ -315,15 +373,22 @@ function PrefCheckboxItem({
 	prefKey: DiffPrefKey;
 	shortcut?: string;
 	children: ReactNode;
-}) {
+})
+{
 	const {settings, setSetting} = useSettings();
 	return (
 		<MenuCheckboxItem
 			checked={settings[prefKey]}
-			onCheckedChange={(checked) => {
+			onCheckedChange={(checked) =>
+			{
 				setSetting(prefKey, checked);
 			}}
-			{...(shortcut === undefined ? {} : {shortcut})}
+			{...(shortcut === undefined
+				? {}
+				:
+					{
+						shortcut,
+					})}
 		>
 			{children}
 		</MenuCheckboxItem>
@@ -348,7 +413,8 @@ function SettingsMenu({
 	onCollapseAll: () => void;
 	onExpandAll: () => void;
 	onRefresh: () => void;
-}) {
+})
+{
 	const {settings, setSetting} = useSettings();
 	const showFilesKeys = useShortcutKeys("toggle_changes_file_list");
 	return (
@@ -379,7 +445,8 @@ function SettingsMenu({
 						{sideBySideAvailable && (
 							<MenuCheckboxItem
 								checked={settings.diffStyle === "split"}
-								onCheckedChange={(checked) => {
+								onCheckedChange={(checked) =>
+								{
 									setSetting("diffStyle", checked ? "split" : "unified");
 								}}
 							>
@@ -399,17 +466,21 @@ function SettingsMenu({
 }
 
 /** The element's content width, tracked with a ResizeObserver (0 until first measured). */
-function useElementWidth(ref: RefObject<HTMLElement | null>): number {
+function useElementWidth(ref: RefObject<HTMLElement | null>): number
+{
 	const [width, setWidth] = useState(0);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const element = ref.current;
 		if (element === null || typeof ResizeObserver === "undefined") return undefined;
-		const observer = new ResizeObserver((entries) => {
+		const observer = new ResizeObserver((entries) =>
+		{
 			const entry = entries[entries.length - 1];
 			if (entry) setWidth(entry.contentRect.width);
 		});
 		observer.observe(element);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [ref]);
@@ -417,16 +488,21 @@ function useElementWidth(ref: RefObject<HTMLElement | null>): number {
 }
 
 /** How each file of the diff renders, from the Changes settings menu. */
-interface DiffViewOptions {
+interface DiffViewOptions
+{
 	diffStyle: Settings["diffStyle"];
 	wordWrap: boolean;
 	wordDiff: boolean;
 }
 
-function readCoachMarkSeen(key: string): boolean {
-	try {
+function readCoachMarkSeen(key: string): boolean
+{
+	try
+	{
 		return localStorage.getItem(key) === "true";
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
@@ -435,20 +511,26 @@ function readCoachMarkSeen(key: string): boolean {
  * A one-time coach mark's seen flag, persisted in localStorage under `key`.
  * `closed` hides it for this mount only (an outside click), without marking it seen.
  */
-function useCoachMarkSeen(key: string) {
+function useCoachMarkSeen(key: string)
+{
 	const [seen, setSeen] = useState(() => readCoachMarkSeen(key));
 	const [closed, setClosed] = useState(false);
 	return {
 		hidden: seen || closed,
-		markSeen: () => {
+		markSeen: () =>
+		{
 			setSeen(true);
-			try {
+			try
+			{
 				localStorage.setItem(key, "true");
-			} catch {
+			}
+			catch
+			{
 				// Storage unavailable: the tip stays dismissed for this mount.
 			}
 		},
-		close: () => {
+		close: () =>
+		{
 			setClosed(true);
 		},
 	};
@@ -462,7 +544,8 @@ function ShowFilesToggle({
 	ref?: (element: HTMLButtonElement | null) => void;
 	pressed: boolean;
 	onToggle: () => void;
-}) {
+})
+{
 	const keys = useShortcutKeys("toggle_changes_file_list");
 	const label = pressed ? "Hide files" : "Show files";
 	return (
@@ -482,14 +565,16 @@ function ShowFilesToggle({
 	);
 }
 
-export interface DiffFetchContext {
+export interface DiffFetchContext
+{
 	sessionId: string;
 	scope: string;
 	hideWhitespace?: boolean;
 }
 
 /** One file's lazy full-file context (upstream CodeView's `loadDiffFiles` and per-item `expandUnchanged`). */
-interface WholeFileProps {
+interface WholeFileProps
+{
 	/** Reads both sides of the file for this patch; undefined when the diff has no checkout to read. */
 	loadFileSides: ((patch: string, fresh: boolean) => Promise<FileSides>) | undefined;
 	onLoaderGaveUp: () => void;
@@ -501,7 +586,8 @@ interface WholeFileProps {
 	onPatch: (patch: string) => void;
 }
 
-function wholeFileDiffProps(whole: WholeFileProps, patch: string) {
+function wholeFileDiffProps(whole: WholeFileProps, patch: string)
+{
 	const load = whole.loadFileSides;
 	return {
 		loadFileSides: load === undefined ? undefined : async (fresh: boolean) => load(patch, fresh),
@@ -535,20 +621,36 @@ function LazyDiffFile({
 	annotations: readonly DiffFileAnnotation[] | undefined;
 	onRequestChanges: ((target: DiffLineRange) => void) | undefined;
 	whole: WholeFileProps;
-}) {
-	const query = useQuery({
-		...sessionDiffFileQueryOptions(fetchContext.sessionId, fetchContext.scope, file.path, {
-			hideWhitespace: fetchContext.hideWhitespace === true,
-		}),
-		enabled: !collapsed,
-	});
+})
+{
+	const query = useQuery(
+		{
+			...sessionDiffFileQueryOptions(
+				fetchContext.sessionId,
+				fetchContext.scope,
+				file.path,
+				{
+					hideWhitespace: fetchContext.hideWhitespace === true,
+				},
+			),
+			enabled: !collapsed,
+		},
+	);
 	const patch = query.data?.file.patch;
 	const {onPatch} = whole;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (patch) onPatch(patch);
 	}, [patch, onPatch]);
-	const menuButton = diffFileMenuButtonShown({path: file.path, mark, wholeFileOffered: whole.offered});
-	if (!collapsed && patch) {
+	const menuButton = diffFileMenuButtonShown(
+		{
+			path: file.path,
+			mark,
+			wholeFileOffered: whole.offered,
+		},
+	);
+	if (!collapsed && patch)
+	{
 		return (
 			<DiffFile
 				patch={patch}
@@ -556,12 +658,27 @@ function LazyDiffFile({
 				{...view}
 				collapsed={collapsed}
 				onCollapsedChange={onCollapsedChange}
-				{...(onOpenFile ? {onOpenFile} : {})}
+				{...(onOpenFile
+					?
+						{
+							onOpenFile,
+						}
+					: {})}
 				headerMenu={headerMenu}
 				headerMenuButton={menuButton}
 				mark={mark}
-				{...(annotations ? {annotations} : {})}
-				{...(onRequestChanges ? {onRequestChanges} : {})}
+				{...(annotations
+					?
+						{
+							annotations,
+						}
+					: {})}
+				{...(onRequestChanges
+					?
+						{
+							onRequestChanges,
+						}
+					: {})}
 			/>
 		);
 	}
@@ -573,7 +690,8 @@ function LazyDiffFile({
 				additions={file.additions}
 				deletions={file.deletions}
 				collapsed={collapsed}
-				onToggle={() => {
+				onToggle={() =>
+				{
 					onCollapsedChange(!collapsed);
 				}}
 				onOpenFile={onOpenFile}
@@ -612,10 +730,18 @@ function ChangesFile({
 	annotations: readonly DiffFileAnnotation[] | undefined;
 	onRequestChanges: ((target: DiffLineRange) => void) | undefined;
 	whole: WholeFileProps;
-}) {
+})
+{
 	const mark = useDiffFileMark(file.path);
-	const menuButton = diffFileMenuButtonShown({path: file.path, mark, wholeFileOffered: whole.offered});
-	if (file.patch !== null && !file.binary) {
+	const menuButton = diffFileMenuButtonShown(
+		{
+			path: file.path,
+			mark,
+			wholeFileOffered: whole.offered,
+		},
+	);
+	if (file.patch !== null && !file.binary)
+	{
 		return (
 			<DiffFile
 				patch={file.patch}
@@ -623,16 +749,32 @@ function ChangesFile({
 				{...view}
 				collapsed={collapsed}
 				onCollapsedChange={onCollapsedChange}
-				{...(onOpenFile ? {onOpenFile} : {})}
+				{...(onOpenFile
+					?
+						{
+							onOpenFile,
+						}
+					: {})}
 				headerMenu={headerMenu}
 				headerMenuButton={menuButton}
 				mark={mark}
-				{...(annotations ? {annotations} : {})}
-				{...(onRequestChanges ? {onRequestChanges} : {})}
+				{...(annotations
+					?
+						{
+							annotations,
+						}
+					: {})}
+				{...(onRequestChanges
+					?
+						{
+							onRequestChanges,
+						}
+					: {})}
 			/>
 		);
 	}
-	if (!file.binary && fetchContext !== undefined) {
+	if (!file.binary && fetchContext !== undefined)
+	{
 		return (
 			<LazyDiffFile
 				file={file}
@@ -656,7 +798,9 @@ function ChangesFile({
 			additions={file.additions}
 			deletions={file.deletions}
 			collapsed
-			onToggle={() => {}}
+			onToggle={() =>
+			{
+			}}
 			onOpenFile={onOpenFile}
 			menu={headerMenu}
 			showMenuButton={menuButton}
@@ -688,7 +832,8 @@ function ChangesFileMenu({
 	isDirectory?: boolean;
 	wholeFile?: WholeFileState | undefined;
 	onShowWholeFile?: ((path: string, show: boolean) => void) | undefined;
-}) {
+})
+{
 	const toast = useToast();
 	const mark = useDiffFileMark(isDirectory ? undefined : path);
 	return (
@@ -699,11 +844,31 @@ function ChangesFileMenu({
 			mark={mark}
 			wholeFile={wholeFile}
 			onShowWholeFile={onShowWholeFile}
-			{...(openFileShortcut === undefined ? {} : {openFileShortcut})}
-			onAttachFile={() => {
+			{...(openFileShortcut === undefined
+				? {}
+				:
+					{
+						openFileShortcut,
+					})}
+			onAttachFile={() =>
+			{
 				const mention = `${mentionPath(absolutePath, cwd)}${isDirectory ? "/" : ""}`;
-				if (!attachContext(sessionId, {kind: "file", path: mention})) {
-					toast({kind: "error", message: "Open the chat input to attach context."});
+				if (
+					!attachContext(
+						sessionId,
+						{
+							kind: "file",
+							path: mention,
+						},
+					)
+				)
+				{
+					toast(
+						{
+							kind: "error",
+							message: "Open the chat input to attach context.",
+						},
+					);
 				}
 			}}
 			onOpenFile={onOpenFile}
@@ -722,7 +887,8 @@ function ChangesFileMenu({
 	);
 }
 
-function CenteredMessage({children, detail}: {children: ReactNode; detail?: string}) {
+function CenteredMessage({children, detail}: {children: ReactNode; detail?: string})
+{
 	return (
 		<div className="flex h-full w-full flex-col items-center justify-center gap-3 px-4 py-4 text-center">
 			<p className="max-w-[36ch] text-pretty break-words text-body text-primary">{children}</p>
@@ -734,7 +900,8 @@ function CenteredMessage({children, detail}: {children: ReactNode; detail?: stri
 }
 
 /** Upstream's loading state: a large spinner labelled "Loading changes", no text. */
-function LoadingChanges() {
+function LoadingChanges()
+{
 	return (
 		<div className="flex h-full w-full items-center justify-center">
 			<span role="status" aria-label="Loading changes" className="flex text-ink-muted">
@@ -745,7 +912,16 @@ function LoadingChanges() {
 }
 
 /** Upstream's failed load: a warning alert that either promises an automatic retry or offers Try again. */
-function LoadFailure({failure}: {failure: {retrying: boolean; onRetry: () => void}}) {
+function LoadFailure({
+	failure,
+}: {
+	failure:
+	{
+		retrying: boolean;
+		onRetry: () => void;
+	};
+})
+{
 	return (
 		<div
 			role="alert"
@@ -772,11 +948,13 @@ function LoadFailure({failure}: {failure: {retrying: boolean; onRetry: () => voi
  * The file whose header is pinned at (or last scrolled past) the top of the diff scroller —
  * sticky headers of earlier files have scrolled away with their file.
  */
-function fileInView(scroller: EventTarget): string | null {
+function fileInView(scroller: EventTarget): string | null
+{
 	if (!(scroller instanceof HTMLElement)) return null;
 	const top = scroller.getBoundingClientRect().top;
 	let inView: string | null = null;
-	for (const header of scroller.querySelectorAll<HTMLElement>("[data-diff-file-header]")) {
+	for (const header of scroller.querySelectorAll<HTMLElement>("[data-diff-file-header]"))
+	{
 		if (header.getBoundingClientRect().top > top + 1) break;
 		inView = header.dataset["diffFileHeader"] ?? inView;
 	}
@@ -787,19 +965,31 @@ function fileInView(scroller: EventTarget): string | null {
 function commentSnippet(
 	file: SessionDiffFile,
 	{side, line}: DiffLineRange,
-): Pick<DiffCommentTarget, "snippet" | "lang"> {
+): Pick<DiffCommentTarget, "snippet" | "lang">
+{
 	const snippet = file.patch === null || file.binary ? undefined : diffSideSnippet(file.patch, side, line, line);
 	if (snippet === undefined) return {};
 	const lang = detectLanguage(file.path);
-	return lang === null ? {snippet} : {snippet, lang};
+	return lang === null
+		?
+			{
+				snippet,
+			}
+		:
+			{
+				snippet,
+				lang,
+			};
 }
 
-function isUnavailable(file: SessionDiffFile): boolean {
+function isUnavailable(file: SessionDiffFile): boolean
+{
 	return file.binary;
 }
 
 /** Upstream `qn`: the mark scope key of a local git comparison; session edits and turns get no marks. */
-function markScopeKey(scope: string): string | undefined {
+function markScopeKey(scope: string): string | undefined
+{
 	const parsed = parseDiffScope(scope);
 	if (parsed === null) return undefined;
 	if (parsed.kind === "branch" || parsed.kind === "uncommitted") return parsed.kind;
@@ -814,7 +1004,8 @@ function useMarkScope(
 	sessionId: string | undefined,
 	diff: SessionDiffResponse | undefined,
 	scopes: SessionDiffScopesResponse | undefined,
-): DiffMarkScope | undefined {
+): DiffMarkScope | undefined
+{
 	const key = diff?.source === "git" ? markScopeKey(diff.scope) : undefined;
 	const repo = diff?.root;
 	const comparison =
@@ -822,13 +1013,19 @@ function useMarkScope(
 	return useMemo(
 		() =>
 			sessionId !== undefined && repo !== undefined && comparison !== undefined
-				? {sessionId, repo, diff: comparison}
+				?
+					{
+						sessionId,
+						repo,
+						diff: comparison,
+					}
 				: undefined,
 		[sessionId, repo, comparison],
 	);
 }
 
-function sameMarkScope(a: DiffMarkScope, b: DiffMarkScope): boolean {
+function sameMarkScope(a: DiffMarkScope, b: DiffMarkScope): boolean
+{
 	return a.sessionId === b.sessionId && a.repo === b.repo && a.diff === b.diff;
 }
 
@@ -837,16 +1034,20 @@ const NO_PATHS: ReadonlySet<string> = new Set();
 const NO_LAZY_PATCHES: ReadonlyMap<string, string> = new Map();
 const NO_PATCHES: ReadonlyMap<string, string | null> = new Map();
 
-function patchMap(files: readonly SessionDiffFile[]): ReadonlyMap<string, string | null> {
+function patchMap(files: readonly SessionDiffFile[]): ReadonlyMap<string, string | null>
+{
 	const map = new Map<string, string | null>();
 	for (const file of files) if (!map.has(file.path)) map.set(file.path, file.patch);
 	return map;
 }
 
 /** Upstream CodeView `xc`: the nearest ancestor that scrolls vertically. */
-function scrollParent(element: HTMLElement): HTMLElement | null {
-	for (let parent = element.parentElement; parent !== null; parent = parent.parentElement) {
-		if (parent.scrollHeight > parent.clientHeight) {
+function scrollParent(element: HTMLElement): HTMLElement | null
+{
+	for (let parent = element.parentElement; parent !== null; parent = parent.parentElement)
+	{
+		if (parent.scrollHeight > parent.clientHeight)
+		{
 			const {overflowY} = getComputedStyle(parent);
 			if (overflowY === "auto" || overflowY === "scroll") return parent;
 		}
@@ -855,7 +1056,8 @@ function scrollParent(element: HTMLElement): HTMLElement | null {
 }
 
 /** Upstream `Cc`: whether a box overlaps the visible part of the element's scroller, clipped to the window. */
-function inScrollerView(element: HTMLElement, box: DOMRect): boolean {
+function inScrollerView(element: HTMLElement, box: DOMRect): boolean
+{
 	const scroller = scrollParent(element)?.getBoundingClientRect();
 	const viewport = element.ownerDocument.defaultView?.innerHeight ?? 0;
 	const top = Math.max(scroller?.top ?? 0, 0);
@@ -864,14 +1066,16 @@ function inScrollerView(element: HTMLElement, box: DOMRect): boolean {
 }
 
 /** Upstream `Sc`: scrolls the element's scroller so its top lands back at `top`. */
-function restoreTop(element: HTMLElement, top: number): void {
+function restoreTop(element: HTMLElement, top: number): void
+{
 	const scroller = scrollParent(element);
 	if (scroller === null) return;
 	const delta = Math.round(element.getBoundingClientRect().top - top);
 	if (delta !== 0) scroller.scrollTop += delta;
 }
 
-function fileHeader(body: HTMLElement | null, path: string): HTMLElement | null {
+function fileHeader(body: HTMLElement | null, path: string): HTMLElement | null
+{
 	const header = body?.querySelector(`[data-diff-file-header="${CSS.escape(path)}"]`);
 	return header instanceof HTMLElement ? header : null;
 }
@@ -880,7 +1084,8 @@ function fileHeader(body: HTMLElement | null, path: string): HTMLElement | null 
  * Upstream CodeView's file root `Oe`: the cds FileDiff, or the header itself for a file drawn without one (its header
  * isn't sticky, so it starts the file).
  */
-function fileRoot(header: HTMLElement): HTMLElement {
+function fileRoot(header: HTMLElement): HTMLElement
+{
 	const root = header.closest('[data-cds="FileDiff"]');
 	return root instanceof HTMLElement ? root : header;
 }
@@ -888,7 +1093,8 @@ function fileRoot(header: HTMLElement): HTMLElement {
 type LargeDiffNote = "collapsed" | "collapsed-no-marks" | "no-marks" | null;
 
 /** Upstream `vp` (2026-11-05 `mp`). */
-function LargeDiffNoteText({note}: {note: Exclude<LargeDiffNote, null>}) {
+function LargeDiffNoteText({note}: {note: Exclude<LargeDiffNote, null>})
+{
 	return (
 		<>
 			{note !== "no-marks" && <span>Files are collapsed for large diffs. Select a file to expand it.</span>}
@@ -898,12 +1104,17 @@ function LargeDiffNoteText({note}: {note: Exclude<LargeDiffNote, null>}) {
 	);
 }
 
-export interface ChangesPaneViewProps {
+export interface ChangesPaneViewProps
+{
 	/** Undefined while loading or after an error; `failure` says which. */
 	diff: SessionDiffResponse | undefined;
 	scopes: SessionDiffScopesResponse | undefined;
 	/** Set once a load has failed: still auto-retrying, or settled with a Try again action. */
-	failure?: {retrying: boolean; onRetry: () => void};
+	failure?:
+	{
+		retrying: boolean;
+		onRetry: () => void;
+	};
 	/** Host Expand/Close controls, placed at the right end of the header. */
 	controls: ReactNode;
 	moveHandle?: ReactNode;
@@ -954,7 +1165,8 @@ export function ChangesPaneView({
 	sessionId,
 	cwd,
 	loadFileSides,
-}: ChangesPaneViewProps) {
+}: ChangesPaneViewProps)
+{
 	const comments = useDiffComments(sessionId);
 	const iconSet = useActiveFileTypeIconSet();
 	const files = diff?.files ?? NO_FILES;
@@ -963,7 +1175,8 @@ export function ChangesPaneView({
 	const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
 	const {settings, loaded, setSetting} = useSettings();
 	const showFiles = settings.diffShowTree;
-	useShortcut("toggle_changes_file_list", () => {
+	useShortcut("toggle_changes_file_list", () =>
+	{
 		setSetting("diffShowTree", !showFiles);
 	});
 	const headerRef = useRef<HTMLDivElement>(null);
@@ -978,7 +1191,8 @@ export function ChangesPaneView({
 		files.length >= 2 &&
 		!fileListTip.hidden &&
 		showFilesButton !== null;
-	const view: DiffViewOptions = {
+	const view: DiffViewOptions =
+	{
 		diffStyle: sideBySideAvailable ? settings.diffStyle : "unified",
 		wordWrap: settings.diffWordWrap,
 		wordDiff: settings.diffWordDiff,
@@ -992,7 +1206,14 @@ export function ChangesPaneView({
 	const someMarkable = files.some((file) => canMarkPatch(file.patch));
 	const patches = useMemo(() => patchMap(files), [files]);
 	const marks = useMemo<DiffMarksContextValue | undefined>(
-		() => (baseMarkScope !== undefined && someMarkable ? {scope: baseMarkScope, patches} : undefined),
+		() =>
+			baseMarkScope !== undefined && someMarkable
+				?
+					{
+						scope: baseMarkScope,
+						patches,
+					}
+				: undefined,
 		[baseMarkScope, someMarkable, patches],
 	);
 	const markScope = marks?.scope;
@@ -1008,7 +1229,8 @@ export function ChangesPaneView({
 
 	// A new comparison starts over; a refetch of the same one keeps each file's collapse (upstream's per-path map).
 	const servedScope = diff?.scope;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		setCollapsedOverrides({});
 	}, [servedScope]);
 
@@ -1016,7 +1238,14 @@ export function ChangesPaneView({
 	// its collapse reads the patches last announced, as upstream's per-file collapse state (`Tp`) holds it collapsed.
 	const markKey =
 		markScope === undefined ? undefined : `${markScope.sessionId}\n${markScope.repo}\n${markScope.diff}`;
-	const announcedPatches = useRef<{key: string; patches: ReadonlyMap<string, string | null>} | undefined>(undefined);
+	const announcedPatches = useRef<
+		|
+		  {
+				key: string;
+				patches: ReadonlyMap<string, string | null>;
+		  }
+		| undefined
+	>(undefined);
 	const announced = announcedPatches.current?.key === markKey ? announcedPatches.current?.patches : undefined;
 	const isCollapsed = (file: SessionDiffFile) =>
 		collapsedOverrides[file.path] ??
@@ -1032,8 +1261,13 @@ export function ChangesPaneView({
 	renderedCollapse.current = new Map(files.map((file) => [file.path, isCollapsed(file)]));
 
 	/** Upstream CodeView's held anchor (`ht`): the header's top before a collapse toggle, restored after it. */
-	const heldAnchor = useRef<{path: string; top: number} | null>(null);
-	useLayoutEffect(() => {
+	const heldAnchor = useRef<
+	{
+		path: string;
+		top: number;
+	} | null>(null);
+	useLayoutEffect(() =>
+	{
 		const held = heldAnchor.current;
 		heldAnchor.current = null;
 		const header = held === null ? null : fileHeader(bodyRef.current, held.path);
@@ -1042,55 +1276,97 @@ export function ChangesPaneView({
 
 	// Upstream `Ms` [`xt`]: marking collapses the file and unmarking expands it. A header on screen holds its place,
 	// once per burst of patch-change announcements so several expanding files don't jump the scroll.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (markScope === undefined) return undefined;
-		return subscribeMarkChanges((scope, path, marked, burst) => {
+		return subscribeMarkChanges((scope, path, marked, burst) =>
+		{
 			if (!sameMarkScope(scope, markScope)) return;
 			if (renderedCollapse.current.get(path) === marked) return;
 			const header = fileHeader(bodyRef.current, path);
 			const box = header?.getBoundingClientRect();
-			if (header !== null && box !== undefined && inScrollerView(fileRoot(header), box) && burst?.held !== true) {
-				heldAnchor.current = {path, top: box.top};
+			if (header !== null && box !== undefined && inScrollerView(fileRoot(header), box) && burst?.held !== true)
+			{
+				heldAnchor.current =
+				{
+					path,
+					top: box.top,
+				};
 				if (burst !== undefined) burst.held = true;
 			}
-			setCollapsedOverrides((previous) => ({...previous, [path]: marked}));
+			setCollapsedOverrides((previous) => (
+			{
+				...previous,
+				[path]: marked,
+			}));
 		});
 	}, [markScope]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const previous = announcedPatches.current;
-		announcedPatches.current = markKey === undefined ? undefined : {key: markKey, patches};
-		if (markScope !== undefined && previous !== undefined && previous.key === markKey) {
+		announcedPatches.current =
+			markKey === undefined
+				? undefined
+				:
+					{
+						key: markKey,
+						patches,
+					};
+		if (markScope !== undefined && previous !== undefined && previous.key === markKey)
+		{
 			notifyPatchChanges(markScope, previous.patches, patches);
 		}
 	}, [markKey, markScope, patches]);
 
 	// Upstream `Ke` and `Xe`, reset when the comparison changes (`Ge`): the files shown whole from the menu, and the
 	// files whose loader gave up, at the patch it gave up on (a new patch gets a fresh attempt).
-	const [wholeFileToggles, setWholeFileToggles] = useState<{scope: string | undefined; paths: ReadonlySet<string>}>(
-		() => ({scope: undefined, paths: new Set()}),
-	);
-	const [unreadFiles, setUnreadFiles] = useState<{
+	const [wholeFileToggles, setWholeFileToggles] = useState<
+	{
+		scope: string | undefined;
+		paths: ReadonlySet<string>;
+	}>(() => (
+	{
+		scope: undefined,
+		paths: new Set(),
+	}));
+	const [unreadFiles, setUnreadFiles] = useState<
+	{
 		scope: string | undefined;
 		patches: ReadonlyMap<string, string | null>;
-	}>(() => ({scope: undefined, patches: new Map()}));
+	}>(() => (
+	{
+		scope: undefined,
+		patches: new Map(),
+	}));
 	const wholeFilePaths = wholeFileToggles.scope === servedScope ? wholeFileToggles.paths : NO_PATHS;
 	const unreadPatches = unreadFiles.scope === servedScope ? unreadFiles.patches : NO_PATCHES;
 	const fileLoader = diff?.source === "git" ? loadFileSides : undefined;
 	const canLoadFiles = fileLoader !== undefined;
 	// The patches of files fetched lazily (too large to inline): upstream decides `Id` and hidden-line jumps on the
 	// rendered fileDiff, which for such a file is the fetched patch.
-	const [lazyPatches, setLazyPatches] = useState<{scope: string | undefined; patches: ReadonlyMap<string, string>}>(
-		() => ({scope: undefined, patches: new Map()}),
-	);
+	const [lazyPatches, setLazyPatches] = useState<
+	{
+		scope: string | undefined;
+		patches: ReadonlyMap<string, string>;
+	}>(() => (
+	{
+		scope: undefined,
+		patches: new Map(),
+	}));
 	const fetchedPatches = lazyPatches.scope === servedScope ? lazyPatches.patches : NO_LAZY_PATCHES;
 	const patchOf = (file: SessionDiffFile): string | null => file.patch ?? fetchedPatches.get(file.path) ?? null;
 	const notePatch = useCallback(
-		(path: string, patch: string) => {
-			setLazyPatches((previous) => {
+		(path: string, patch: string) =>
+		{
+			setLazyPatches((previous) =>
+			{
 				const known = previous.scope === servedScope ? previous.patches : NO_LAZY_PATCHES;
 				if (known.get(path) === patch) return previous;
-				return {scope: servedScope, patches: new Map(known).set(path, patch)};
+				return {
+					scope: servedScope,
+					patches: new Map(known).set(path, patch),
+				};
 			});
 		},
 		[servedScope],
@@ -1098,37 +1374,66 @@ export function ChangesPaneView({
 
 	/** Upstream `Jt`'s anchor: a line kept in place across the whole-file toggle until the user scrolls. */
 	const pendingAnchor = useRef<LineAnchor | null>(null);
-	const restoreAnchor = useCallback(() => {
+	const restoreAnchor = useCallback(() =>
+	{
 		const anchor = pendingAnchor.current;
 		const header = anchor === null ? null : fileHeader(bodyRef.current, anchor.path);
 		const scroller = header === null ? null : scrollParent(header);
 		if (anchor !== null && scroller !== null) restoreLineAnchor(scroller, anchor);
 	}, []);
 	useLayoutEffect(restoreAnchor, [restoreAnchor, wholeFileToggles]);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const body = bodyRef.current;
 		if (body === null) return undefined;
-		const cancel = () => {
+		const cancel = () =>
+		{
 			pendingAnchor.current = null;
 		};
 		const events = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
-		for (const type of events) body.addEventListener(type, cancel, {capture: true, passive: true});
-		return () => {
-			for (const type of events) body.removeEventListener(type, cancel, {capture: true});
+		for (const type of events)
+			body.addEventListener(
+				type,
+				cancel,
+				{
+					capture: true,
+					passive: true,
+				},
+			);
+		return () =>
+		{
+			for (const type of events)
+				body.removeEventListener(
+					type,
+					cancel,
+					{
+						capture: true,
+					},
+				);
 		};
 	}, [hasFiles]);
 
 	/** Upstream `Jt`: toggles the file's whole-file view, expanding a collapsed file or keeping the line in view. */
-	function showWholeFile(path: string, show: boolean) {
-		setWholeFileToggles((previous) => {
+	function showWholeFile(path: string, show: boolean)
+	{
+		setWholeFileToggles((previous) =>
+		{
 			const paths = new Set(previous.scope === servedScope ? previous.paths : NO_PATHS);
 			if (show) paths.add(path);
 			else paths.delete(path);
-			return {scope: servedScope, paths};
+			return {
+				scope: servedScope,
+				paths,
+			};
 		});
 		const file = files.find((candidate) => candidate.path === path);
-		if (show && file !== undefined && isCollapsed(file)) {
-			setCollapsedOverrides((previous) => ({...previous, [path]: false}));
+		if (show && file !== undefined && isCollapsed(file))
+		{
+			setCollapsedOverrides((previous) => (
+			{
+				...previous,
+				[path]: false,
+			}));
 			return;
 		}
 		const header = fileHeader(bodyRef.current, path);
@@ -1149,11 +1454,16 @@ export function ChangesPaneView({
 
 	/** Upstream `Qe`: adds a file to the whole-file set (never removes one). */
 	const addWholeFile = useCallback(
-		(path: string) => {
-			setWholeFileToggles((previous) => {
+		(path: string) =>
+		{
+			setWholeFileToggles((previous) =>
+			{
 				const paths = previous.scope === servedScope ? previous.paths : NO_PATHS;
 				if (previous.scope === servedScope && paths.has(path)) return previous;
-				return {scope: servedScope, paths: new Set(paths).add(path)};
+				return {
+					scope: servedScope,
+					paths: new Set(paths).add(path),
+				};
 			});
 		},
 		[servedScope],
@@ -1165,12 +1475,19 @@ export function ChangesPaneView({
 		[canLoadFiles],
 	);
 	/** A jump into a lazily fetched file whose patch hadn't arrived: decided once it does (upstream's pending `mn`). */
-	const pendingJump = useRef<{scope: string | undefined; path: string; anchor: DiffLineAnchor} | null>(null);
-	useEffect(() => {
+	const pendingJump = useRef<
+	{
+		scope: string | undefined;
+		path: string;
+		anchor: DiffLineAnchor;
+	} | null>(null);
+	useEffect(() =>
+	{
 		const pending = pendingJump.current;
 		if (pending === null) return;
 		const file = files.find((candidate) => candidate.path === pending.path);
-		if (pending.scope !== servedScope || file === undefined) {
+		if (pending.scope !== servedScope || file === undefined)
+		{
 			pendingJump.current = null;
 			return;
 		}
@@ -1185,17 +1502,20 @@ export function ChangesPaneView({
 	const scrollTarget = useDiffScrollTarget(sessionId);
 	const cancelScroll = useRef<(() => void) | null>(null);
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			cancelScroll.current?.();
 		},
 		[],
 	);
 	const codeFontSize = settings.codeFontSize;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const body = bodyRef.current;
 		// Upstream `Yn`: a hidden pane leaves the target for when it shows.
 		if (sessionId === undefined || scrollTarget === undefined || body?.offsetParent == null) return;
-		if (scrollTarget.fuzzy === true) {
+		if (scrollTarget.fuzzy === true)
+		{
 			const path = resolveFuzzyDiffPath(
 				scrollTarget.filePath,
 				files.map((file) => file.path),
@@ -1205,7 +1525,12 @@ export function ChangesPaneView({
 				scrollToDiffLine(
 					sessionId,
 					path,
-					scrollTarget.anchor === undefined ? {} : {anchor: scrollTarget.anchor},
+					scrollTarget.anchor === undefined
+						? {}
+						:
+							{
+								anchor: scrollTarget.anchor,
+							},
 				);
 			return;
 		}
@@ -1213,46 +1538,76 @@ export function ChangesPaneView({
 		const file = files.find((candidate) => candidate.path === scrollTarget.filePath);
 		if (file === undefined) return;
 		setActivePath(file.path);
-		setCollapsedOverrides((previous) => ({...previous, [file.path]: false}));
+		setCollapsedOverrides((previous) => (
+		{
+			...previous,
+			[file.path]: false,
+		}));
 		cancelScroll.current?.();
 		cancelScroll.current = null;
 		const {anchor} = scrollTarget;
-		if (anchor === undefined) {
-			fileHeader(body, file.path)?.scrollIntoView({block: "start"});
+		if (anchor === undefined)
+		{
+			fileHeader(body, file.path)?.scrollIntoView(
+				{
+					block: "start",
+				},
+			);
 			return;
 		}
 		const patch = file.patch ?? fetchedPatches.get(file.path);
 		pendingJump.current = null;
-		if (patch === undefined) pendingJump.current = {scope: servedScope, path: file.path, anchor};
+		if (patch === undefined)
+			pendingJump.current =
+			{
+				scope: servedScope,
+				path: file.path,
+				anchor,
+			};
 		else if (jumpNeedsWholeFile(file, patch, anchor)) addWholeFile(file.path);
-		requestAnimationFrame(() => {
+		requestAnimationFrame(() =>
+		{
 			const root = body.querySelector(`[data-diff-file-path="${CSS.escape(file.path)}"]`);
 			if (root !== null) cancelScroll.current = startScrollToLine(root, anchor, codeRowLeadingPx(codeFontSize));
 		});
 		// Each request is cleared as it's taken, so a re-run for any other dependency finds no target.
 	}, [scrollTarget, files, sessionId, servedScope, fetchedPatches, codeFontSize, jumpNeedsWholeFile, addWholeFile]);
 
-	const setAllCollapsed = (collapsed: boolean) => {
+	const setAllCollapsed = (collapsed: boolean) =>
+	{
 		setCollapsedOverrides(Object.fromEntries(files.map((file) => [file.path, collapsed])));
 	};
 
-	function selectFile(path: string) {
+	function selectFile(path: string)
+	{
 		setActivePath(path);
-		setCollapsedOverrides((previous) => ({...previous, [path]: false}));
+		setCollapsedOverrides((previous) => (
+		{
+			...previous,
+			[path]: false,
+		}));
 		const header = bodyRef.current?.querySelector(`[data-diff-file-header="${CSS.escape(path)}"]`);
-		header?.scrollIntoView({block: "start"});
+		header?.scrollIntoView(
+			{
+				block: "start",
+			},
+		);
 	}
 
 	let body: ReactNode;
-	if (diff === undefined) {
+	if (diff === undefined)
+	{
 		body = failure === undefined ? <LoadingChanges /> : <LoadFailure failure={failure} />;
-	} else if (hasFiles) {
+	}
+	else if (hasFiles)
+	{
 		body = (
 			<DiffMarksContext value={marks}>
 				<div className="flex min-h-0 flex-1">
 					<ChangedFilesSidebar
 						shown={showFiles}
-						onShownChange={(shown) => {
+						onShownChange={(shown) =>
+						{
 							setSetting("diffShowTree", shown);
 						}}
 						files={files}
@@ -1260,11 +1615,17 @@ export function ChangesPaneView({
 						groupByKind={settings.diffGroupByKind}
 						activePath={activePath}
 						onSelectFile={selectFile}
-						{...(onOpenFile ? {onOpenFile} : {})}
+						{...(onOpenFile
+							?
+								{
+									onOpenFile,
+								}
+							: {})}
 						rowMenu={
 							sessionId === undefined
 								? undefined
-								: (path, isDirectory) => {
+								: (path, isDirectory) =>
+									{
 										// Upstream `fp`: the header's menu plus Open file ⌘↵; folders get no Open file. Upstream's
 										// tree-row menu (c44d00c7f `vp`) passes no wholeFile, so Show whole file stays a header item.
 										const cannotOpen =
@@ -1281,7 +1642,8 @@ export function ChangesPaneView({
 												openFileShortcut="cmd+enter"
 												onOpenFile={
 													onOpenFile && !isDirectory && !cannotOpen
-														? () => {
+														? () =>
+															{
 																onOpenFile(path);
 															}
 														: undefined
@@ -1292,14 +1654,16 @@ export function ChangesPaneView({
 						}
 						commits={scopes?.kind === "git" ? scopes.commits : []}
 						selectedCommitSha={selectedCommitSha}
-						onSelectCommit={(sha) => {
+						onSelectCommit={(sha) =>
+						{
 							onSelectScope(sha === null ? BRANCH_SCOPE : commitScope(sha));
 						}}
 						onCopyCommitSha={onCopyCommitSha}
 					/>
 					<div
 						ref={bodyRef}
-						onScrollCapture={(event) => {
+						onScrollCapture={(event) =>
+						{
 							const inView = fileInView(event.target);
 							if (inView !== null) setActivePath(inView);
 						}}
@@ -1318,7 +1682,8 @@ export function ChangesPaneView({
 								className="min-h-0 flex-1 overflow-y-auto text-primary [overflow-anchor:none]"
 								contentClassName="flex flex-col pb-2"
 							>
-								{files.map((file) => {
+								{files.map((file) =>
+								{
 									const load = file.binary ? undefined : fileLoader;
 									const fileCanLoad = load !== undefined;
 									const findingCount = findings.filter(
@@ -1326,7 +1691,8 @@ export function ChangesPaneView({
 									).length;
 									const commentLines = [...comments.queued, ...comments.drafts]
 										.filter((comment) => comment.path === file.path)
-										.map((comment) => ({
+										.map((comment) => (
+										{
 											side: comment.side,
 											line: comment.endLine ?? comment.line,
 										}));
@@ -1340,41 +1706,55 @@ export function ChangesPaneView({
 									const locked = findingCount > 0 || commentLocked;
 									const shown = locked || wholeFilePaths.has(file.path);
 									const expandUnchanged = fileCanLoad && shown;
-									const wholeFile = wholeFileState({
-										offered: fileCanLoad,
-										hasHunks: file.additions + file.deletions > 0,
-										status: file.status,
-										loaderGaveUp:
-											unreadPatches.has(file.path) && unreadPatches.get(file.path) === file.patch,
-										shown,
-										locked,
-									});
-									const whole: WholeFileProps = {
+									const wholeFile = wholeFileState(
+										{
+											offered: fileCanLoad,
+											hasHunks: file.additions + file.deletions > 0,
+											status: file.status,
+											loaderGaveUp:
+												unreadPatches.has(file.path) &&
+												unreadPatches.get(file.path) === file.patch,
+											shown,
+											locked,
+										},
+									);
+									const whole: WholeFileProps =
+									{
 										loadFileSides:
 											load === undefined
 												? undefined
 												: async (patch, fresh) => load(file, patch, fresh),
-										onLoaderGaveUp: () => {
-											setUnreadFiles((previous) => {
+										onLoaderGaveUp: () =>
+										{
+											setUnreadFiles((previous) =>
+											{
 												const patches = new Map(
 													previous.scope === servedScope ? previous.patches : NO_PATCHES,
 												);
 												patches.set(file.path, file.patch);
-												return {scope: servedScope, patches};
+												return {
+													scope: servedScope,
+													patches,
+												};
 											});
 										},
 										expandUnchanged,
 										onRendered: restoreAnchor,
 										offered: canLoadFiles,
-										onPatch: (patch) => {
+										onPatch: (patch) =>
+										{
 											notePatch(file.path, patch);
 										},
 									};
 									const annotations = [
-										...findingAnnotations(findings, file.path, {
-											onFix: onFixFinding,
-											onDismiss: onDismissFinding,
-										}),
+										...findingAnnotations(
+											findings,
+											file.path,
+											{
+												onFix: onFixFinding,
+												onDismiss: onDismissFinding,
+											},
+										),
 										...(sessionId === undefined
 											? []
 											: commentAnnotations(
@@ -1392,7 +1772,8 @@ export function ChangesPaneView({
 									const cannotOpen = file.status === "deleted";
 									const fileOpener =
 										onOpenFile && !cannotOpen
-											? () => {
+											? () =>
+												{
 													onOpenFile(file.path);
 												}
 											: undefined;
@@ -1414,16 +1795,20 @@ export function ChangesPaneView({
 											file={file}
 											view={view}
 											collapsed={isCollapsed(file)}
-											onCollapsedChange={(collapsed) => {
+											onCollapsedChange={(collapsed) =>
+											{
 												// Upstream `gt`: the header's chevron holds its place too.
 												const header = fileHeader(bodyRef.current, file.path);
-												if (header !== null) {
-													heldAnchor.current = {
+												if (header !== null)
+												{
+													heldAnchor.current =
+													{
 														path: file.path,
 														top: header.getBoundingClientRect().top,
 													};
 												}
-												setCollapsedOverrides((previous) => ({
+												setCollapsedOverrides((previous) => (
+												{
 													...previous,
 													[file.path]: collapsed,
 												}));
@@ -1436,12 +1821,16 @@ export function ChangesPaneView({
 											onRequestChanges={
 												sessionId === undefined
 													? undefined
-													: (target) => {
-															openDiffCommentDraft(sessionId, {
-																path: file.path,
-																...target,
-																...commentSnippet(file, target),
-															});
+													: (target) =>
+														{
+															openDiffCommentDraft(
+																sessionId,
+																{
+																	path: file.path,
+																	...target,
+																	...commentSnippet(file, target),
+																},
+															);
 														}
 											}
 										/>
@@ -1471,15 +1860,21 @@ export function ChangesPaneView({
 				</div>
 			</DiffMarksContext>
 		);
-	} else if (scopes?.kind === "no-git" && diff.source === "session-edits") {
+	}
+	else if (scopes?.kind === "no-git" && diff.source === "session-edits")
+	{
 		body = (
 			<CenteredMessage detail="None was found for this session, or its folder couldn’t be reached.">
 				Changes need a Git repository
 			</CenteredMessage>
 		);
-	} else if (diff.scope === "uncommitted") {
+	}
+	else if (diff.scope === "uncommitted")
+	{
 		body = <CenteredMessage>No uncommitted changes</CenteredMessage>;
-	} else {
+	}
+	else
+	{
 		body = <CenteredMessage>No changes to show</CenteredMessage>;
 	}
 
@@ -1494,7 +1889,8 @@ export function ChangesPaneView({
 							<ShowFilesToggle
 								ref={setShowFilesButton}
 								pressed={showFiles}
-								onToggle={() => {
+								onToggle={() =>
+								{
 									setSetting("diffShowTree", !showFiles);
 								}}
 							/>
@@ -1505,9 +1901,11 @@ export function ChangesPaneView({
 							side="bottom"
 							title={`Browse all ${files.length} changed files`}
 							message="Open the file list to see everything this diff touches and jump between files."
-							action={{
+							action={
+							{
 								label: "Show files",
-								onClick: () => {
+								onClick: () =>
+								{
 									fileListTip.markSeen();
 									setSetting("diffShowTree", true);
 								},
@@ -1532,10 +1930,12 @@ export function ChangesPaneView({
 							hasFiles={hasFiles}
 							large={large}
 							sideBySideAvailable={sideBySideAvailable}
-							onCollapseAll={() => {
+							onCollapseAll={() =>
+							{
 								setAllCollapsed(true);
 							}}
-							onExpandAll={() => {
+							onExpandAll={() =>
+							{
 								setAllCollapsed(false);
 							}}
 							onRefresh={onRefresh}
@@ -1552,41 +1952,80 @@ export function ChangesPaneView({
 	);
 }
 
-function usePersistedScope(sessionId: string): [string, (scope: string) => void] {
-	const [entry, setEntry] = useState(() => ({sessionId, scope: loadChangesScope(sessionId)}));
+function usePersistedScope(sessionId: string): [string, (scope: string) => void]
+{
+	const [entry, setEntry] = useState(() => (
+	{
+		sessionId,
+		scope: loadChangesScope(sessionId),
+	}));
 	const current = entry.sessionId === sessionId ? entry.scope : loadChangesScope(sessionId);
 	const setScope = useCallback(
-		(scope: string) => {
-			setEntry({sessionId, scope});
+		(scope: string) =>
+		{
+			setEntry(
+				{
+					sessionId,
+					scope,
+				},
+			);
 			saveChangesScope(sessionId, scope);
 		},
 		[sessionId],
 	);
-	useEffect(() => {
-		function onRequest(event: Event) {
+	useEffect(() =>
+	{
+		function onRequest(event: Event)
+		{
 			const detail = asRecord(event instanceof CustomEvent ? event.detail : undefined);
 			const scope = detail?.["scope"];
-			if (detail?.["sessionId"] === sessionId && typeof scope === "string") setEntry({sessionId, scope});
+			if (detail?.["sessionId"] === sessionId && typeof scope === "string")
+				setEntry(
+					{
+						sessionId,
+						scope,
+					},
+				);
 		}
 		window.addEventListener(CHANGES_SCOPE_REQUEST_EVENT, onRequest);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, onRequest);
 		};
 	}, [sessionId]);
 	return [current, setScope];
 }
 
-function usePersistedReview(sessionId: string): string | null {
-	const [entry, setEntry] = useState(() => ({sessionId, reviewId: loadChangesReview(sessionId)}));
-	useEffect(() => {
-		setEntry({sessionId, reviewId: loadChangesReview(sessionId)});
-		function onRequest(event: Event) {
+function usePersistedReview(sessionId: string): string | null
+{
+	const [entry, setEntry] = useState(() => (
+	{
+		sessionId,
+		reviewId: loadChangesReview(sessionId),
+	}));
+	useEffect(() =>
+	{
+		setEntry(
+			{
+				sessionId,
+				reviewId: loadChangesReview(sessionId),
+			},
+		);
+		function onRequest(event: Event)
+		{
 			const detail = asRecord(event instanceof CustomEvent ? event.detail : undefined);
 			const reviewId = detail?.["reviewId"];
-			if (detail?.["sessionId"] === sessionId && typeof reviewId === "string") setEntry({sessionId, reviewId});
+			if (detail?.["sessionId"] === sessionId && typeof reviewId === "string")
+				setEntry(
+					{
+						sessionId,
+						reviewId,
+					},
+				);
 		}
 		window.addEventListener(CHANGES_REVIEW_REQUEST_EVENT, onRequest);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener(CHANGES_REVIEW_REQUEST_EVENT, onRequest);
 		};
 	}, [sessionId]);
@@ -1597,45 +2036,77 @@ function usePersistedReview(sessionId: string): string | null {
  * The working-copy review findings shown on the Uncommitted scope, with
  * "Fix this one" (sent to the chat input) and "Dismiss finding" (saved as resolved).
  */
-function useReviewFindings(sessionId: string, scope: string) {
+function useReviewFindings(sessionId: string, scope: string)
+{
 	const reviewId = usePersistedReview(sessionId);
 	const active = reviewId !== null && scope === UNCOMMITTED_SCOPE;
 	const queryClient = useQueryClient();
 	const toast = useToast();
 	// useQueries, not a disabled useQuery, so sessions without a review register no query.
 	const reviewQueryList: ReturnType<typeof reviewQueryOptions>[] = active ? [reviewQueryOptions(reviewId)] : [];
-	const reviewQueries = useQueries({queries: reviewQueryList});
+	const reviewQueries = useQueries(
+		{
+			queries: reviewQueryList,
+		},
+	);
 	const review = reviewQueries[0];
 	const findings = review?.data?.findings ?? NO_FINDINGS;
 	const loadedFindings = review?.data?.findings;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (loadedFindings !== undefined) scrollToFirstOpenFinding(sessionId, loadedFindings);
 	}, [sessionId, loadedFindings]);
 
-	function fix(finding: ReviewFinding): void {
-		if (!requestComposerInsert(sessionId, formatFixFindingPrompt(finding))) {
-			toast({kind: "error", message: "Open the chat input to send this fix."});
+	function fix(finding: ReviewFinding): void
+	{
+		if (!requestComposerInsert(sessionId, formatFixFindingPrompt(finding)))
+		{
+			toast(
+				{
+					kind: "error",
+					message: "Open the chat input to send this fix.",
+				},
+			);
 		}
 	}
 
-	async function dismiss(finding: ReviewFinding): Promise<void> {
+	async function dismiss(finding: ReviewFinding): Promise<void>
+	{
 		const bundle = review?.data;
 		if (reviewId === null || bundle === undefined) return;
 		const next = bundle.findings.map((candidate) =>
-			candidate.id === finding.id ? {...candidate, resolved: true} : candidate,
+			candidate.id === finding.id
+				?
+					{
+						...candidate,
+						resolved: true,
+					}
+				: candidate,
 		);
-		try {
+		try
+		{
 			const updated = await replaceReviewFindings(reviewId, next);
 			queryClient.setQueryData(reviewQueryOptions(reviewId).queryKey, updated);
 			// Upstream `dismissReviewFinding`: the next finding becomes current and is scrolled to.
 			const following = findingAfterDismiss(bundle.findings, finding.id);
 			if (following !== undefined) scrollToFinding(sessionId, following);
-		} catch {
-			toast({kind: "error", message: "Couldn’t dismiss the finding. Try again."});
+		}
+		catch
+		{
+			toast(
+				{
+					kind: "error",
+					message: "Couldn’t dismiss the finding. Try again.",
+				},
+			);
 		}
 	}
 
-	return {findings, fix, dismiss: (finding: ReviewFinding) => void dismiss(finding)};
+	return {
+		findings,
+		fix,
+		dismiss: (finding: ReviewFinding) => void dismiss(finding),
+	};
 }
 
 /** The Changes pane for one session, showing the scope persisted for it (All changes by default). */
@@ -1647,17 +2118,30 @@ export function ChangesPane({
 	sessionId: string;
 	cwd?: string | undefined;
 	chrome: PaneChrome;
-}) {
+})
+{
 	const [scope, setScope] = usePersistedScope(sessionId);
 	const hideWhitespace = useSettings().settings.diffHideWhitespace;
-	const diffQuery = useQuery(sessionDiffQueryOptions(sessionId, scope, {hideWhitespace}));
+	const diffQuery = useQuery(
+		sessionDiffQueryOptions(
+			sessionId,
+			scope,
+			{
+				hideWhitespace,
+			},
+		),
+	);
 	const scopesQuery = useQuery(sessionDiffScopesQueryOptions(sessionId));
 	const toast = useToast();
 	const queryClient = useQueryClient();
 	const review = useReviewFindings(sessionId, scope);
 	const failure =
 		diffQuery.data === undefined && (diffQuery.isError || diffQuery.failureCount > 0)
-			? {retrying: !diffQuery.isError, onRetry: () => void diffQuery.refetch()}
+			?
+				{
+					retrying: !diffQuery.isError,
+					onRetry: () => void diffQuery.refetch(),
+				}
 			: undefined;
 	const scopes = scopesQuery.data;
 	const selectedCommitSha = commitShaOf(scope);
@@ -1666,16 +2150,26 @@ export function ChangesPane({
 		scopes !== undefined &&
 		!(scopes.kind === "git" && scopes.commits.some((commit) => commitMatches(commit, selectedCommitSha)));
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (commitVanished) setScope(BRANCH_SCOPE);
 	}, [commitVanished, setScope]);
 
-	async function copyCommitSha(sha: string): Promise<void> {
+	async function copyCommitSha(sha: string): Promise<void>
+	{
 		const copied = await writeClipboardText(sha);
 		toast(
 			copied
-				? {kind: "success", message: "Commit SHA copied to clipboard."}
-				: {kind: "error", message: "Couldn’t copy the commit SHA. Try again."},
+				?
+					{
+						kind: "success",
+						message: "Commit SHA copied to clipboard.",
+					}
+				:
+					{
+						kind: "error",
+						message: "Couldn’t copy the commit SHA. Try again.",
+					},
 		);
 	}
 
@@ -1683,23 +2177,40 @@ export function ChangesPane({
 		<ChangesPaneView
 			diff={diffQuery.data}
 			scopes={scopes}
-			{...(failure === undefined ? {} : {failure})}
+			{...(failure === undefined
+				? {}
+				:
+					{
+						failure,
+					})}
 			controls={chrome.controls}
 			moveHandle={chrome.moveHandle}
-			onRefresh={() => {
+			onRefresh={() =>
+			{
 				void diffQuery.refetch();
 				void scopesQuery.refetch();
 			}}
-			fetchContext={{sessionId, scope: diffQuery.data?.scope ?? scope, hideWhitespace}}
-			loadFileSides={async (file, patch, fresh) => {
+			fetchContext={
+			{
+				sessionId,
+				scope: diffQuery.data?.scope ?? scope,
+				hideWhitespace,
+			}}
+			loadFileSides={async (file, patch, fresh) =>
+			{
 				// Upstream `td`: one cached read per file and patch (`ed`), refetched on every retry.
 				const servedScope = diffQuery.data?.scope ?? scope;
 				return queryClient.query(
-					sessionDiffFileLinesQueryOptions(sessionId, servedScope, file.path, {
-						contentKey: patchFingerprint(patch) ?? patch,
-						status: file.status,
-						fresh,
-					}),
+					sessionDiffFileLinesQueryOptions(
+						sessionId,
+						servedScope,
+						file.path,
+						{
+							contentKey: patchFingerprint(patch) ?? patch,
+							status: file.status,
+							fresh,
+						},
+					),
 				);
 			}}
 			scope={scope}
@@ -1710,9 +2221,16 @@ export function ChangesPane({
 			onDismissFinding={review.dismiss}
 			sessionId={sessionId}
 			cwd={cwd}
-			onOpenFile={(path) => {
+			onOpenFile={(path) =>
+			{
 				const root = diffQuery.data?.root;
-				if (root !== undefined) requestFileOpen(sessionId, {path: resolveAbsoluteDiffPath(root, path)});
+				if (root !== undefined)
+					requestFileOpen(
+						sessionId,
+						{
+							path: resolveAbsoluteDiffPath(root, path),
+						},
+					);
 			}}
 		/>
 	);

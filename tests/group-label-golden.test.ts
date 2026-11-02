@@ -1,6 +1,7 @@
 import {withTrailingFailedCount} from "./failed-count";
 import specimens from "./fixtures/group-label-specimens.json";
-import {
+import
+{
 	countedLabelText,
 	summarizeToolCallStats,
 	type BackgroundCompletionLike,
@@ -11,30 +12,39 @@ import {
  * Tool-only groups whose header text was read from live claude.ai/code DOM
  * (wave 60), with the calls behind each one pulled from the session JSONL.
  */
-interface Specimen {
+interface Specimen
+{
 	session: string;
 	line: number;
 	upstream: string;
 	calls: ToolCallLike[];
 	completions?: BackgroundCompletionLike[];
 	/** Agent messages folded into the group, before and after its tools. */
-	received?: {leading: number; trailing: number};
+	received?:
+	{
+		leading: number;
+		trailing: number;
+	};
 	/** Why the local label cannot match yet. */
 	skip?: string;
 }
 
-function label(specimen: Specimen): string {
+function label(specimen: Specimen): string
+{
 	return countedLabelText(summarizeToolCallStats(specimen.calls, specimen.completions, new Set(), specimen.received));
 }
 
 const all = specimens as Specimen[];
 
-describe("group label golden specimens", () => {
-	it.each(all.filter((specimen) => specimen.skip === undefined))("$session:$line reads $upstream", (specimen) => {
+describe("group label golden specimens", () =>
+{
+	it.each(all.filter((specimen) => specimen.skip === undefined))("$session:$line reads $upstream", (specimen) =>
+	{
 		expect(label(specimen)).toBe(withTrailingFailedCount(specimen.upstream));
 	});
 
-	it.for(all.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) => {
+	it.for(all.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) =>
+	{
 		skip(specimen.skip);
 		expect(label(specimen)).toBe(withTrailingFailedCount(specimen.upstream));
 	});

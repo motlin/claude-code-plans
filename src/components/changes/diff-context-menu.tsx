@@ -11,15 +11,18 @@ import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} f
 import {useAnyMenuOpen} from "../ui/menu-open-count";
 
 /** The diff lines a right-click lands on: the selection inside the diff, or the clicked line. */
-interface DiffLineSelection {
+interface DiffLineSelection
+{
 	side: DiffSide;
 	line: number;
 	endLine: number;
 	text: string;
 }
 
-function rowSide(row: Element): DiffSide {
-	switch (row.getAttribute("data-line-type")) {
+function rowSide(row: Element): DiffSide
+{
+	switch (row.getAttribute("data-line-type"))
+	{
 		case "change-deletion":
 			return "deletions";
 		case "change-addition":
@@ -29,12 +32,14 @@ function rowSide(row: Element): DiffSide {
 	}
 }
 
-function rowText(row: Element): string {
+function rowText(row: Element): string
+{
 	return row.textContent.replace(/\n$/, "");
 }
 
 /** The code row for a node inside the diff: a `[data-line]` row, or the row a line number labels. */
-function rowOf(node: Node | null): Element | null {
+function rowOf(node: Node | null): Element | null
+{
 	const element = node instanceof Element ? node : (node?.parentElement ?? null);
 	const row = element?.closest("[data-line], [data-column-number]") ?? null;
 	if (row === null || row.hasAttribute("data-line")) return row;
@@ -45,15 +50,22 @@ function rowOf(node: Node | null): Element | null {
 }
 
 /** Every diff row from `first` to `last` in document order, across both columns of a split diff. */
-function rowsBetween(root: ShadowRoot, first: Element, last: Element): Element[] {
+function rowsBetween(root: ShadowRoot, first: Element, last: Element): Element[]
+{
 	const rows = [...root.querySelectorAll("[data-line]")];
 	const [from, to] = [rows.indexOf(first), rows.indexOf(last)].toSorted((x, y) => x - y);
 	if (from === undefined || to === undefined || from === -1) return [last];
 	return rows.slice(from, to + 1);
 }
 
-function selectionIn(root: ShadowRoot): Selection | null {
-	const scoped = (root as ShadowRoot & {getSelection?: () => Selection | null}).getSelection;
+function selectionIn(root: ShadowRoot): Selection | null
+{
+	const scoped = (
+		root as ShadowRoot &
+		{
+			getSelection?: () => Selection | null;
+		}
+	).getSelection;
 	const selection = typeof scoped === "function" ? scoped.call(root) : document.getSelection();
 	if (selection === null || selection.rangeCount === 0 || selection.isCollapsed) return null;
 	const node = selection.getRangeAt(0).commonAncestorContainer;
@@ -64,39 +76,53 @@ function selectionIn(root: ShadowRoot): Selection | null {
  * Upstream `p`: the addition rows if any were selected, else the deletion rows; none for a
  * split diff selection that spans both columns.
  */
-function spanOf(root: ShadowRoot, rows: Element[]): DiffLineSelection | null {
+function spanOf(root: ShadowRoot, rows: Element[]): DiffLineSelection | null
+{
 	const additions = rows.filter((row) => rowSide(row) === "additions");
 	const deletions = rows.filter((row) => rowSide(row) === "deletions");
 	const split = root.querySelector("[data-deletions], [data-additions]") !== null;
 	if (split && additions.length > 0 && deletions.length > 0) return null;
 	const side: DiffSide = additions.length > 0 ? "additions" : "deletions";
 	const numbered = (side === "additions" ? additions : deletions)
-		.map((row) => ({row, line: Number(row.getAttribute("data-line"))}))
+		.map((row) => (
+		{
+			row,
+			line: Number(row.getAttribute("data-line")),
+		}))
 		.filter(({line}) => Number.isSafeInteger(line))
 		.toSorted((x, y) => x.line - y.line);
 	const first = numbered[0];
 	const last = numbered.at(-1);
 	if (first === undefined || last === undefined) return null;
-	return {side, line: first.line, endLine: last.line, text: numbered.map(({row}) => rowText(row)).join("\n")};
+	return {
+		side,
+		line: first.line,
+		endLine: last.line,
+		text: numbered.map(({row}) => rowText(row)).join("\n"),
+	};
 }
 
-function sameSpan(a: DiffLineSelection, b: DiffLineSelection): boolean {
+function sameSpan(a: DiffLineSelection, b: DiffLineSelection): boolean
+{
 	return a.line === b.line && a.endLine === b.endLine && a.side === b.side;
 }
 
 /** Upstream's "line N" / "lines A–B" for a comment's accessible name. */
-function linesLabel({line, endLine}: DiffLineSelection): string {
+function linesLabel({line, endLine}: DiffLineSelection): string
+{
 	return line === endLine ? `line ${line}` : `lines ${line}–${endLine}`;
 }
 
 /** The diff row an event lands on, through the `@pierre/diffs` shadow root. */
-function eventRow(event: MouseEvent): Element | null {
+function eventRow(event: MouseEvent): Element | null
+{
 	const path = event.nativeEvent.composedPath();
 	return rowOf(path.find((target): target is Element => target instanceof Element) ?? null);
 }
 
 /** The rows a selection inside `root` spans, or null without one. */
-function selectedRows(root: ShadowRoot): Element[] | null {
+function selectedRows(root: ShadowRoot): Element[] | null
+{
 	const selection = selectionIn(root);
 	if (selection === null) return null;
 	const anchor = rowOf(selection.anchorNode);
@@ -106,13 +132,15 @@ function selectedRows(root: ShadowRoot): Element[] | null {
 }
 
 /** Upstream `Cr`: the span the selection inside `root` covers, or null. */
-function selectionSpan(root: ShadowRoot): DiffLineSelection | null {
+function selectionSpan(root: ShadowRoot): DiffLineSelection | null
+{
 	const rows = selectedRows(root);
 	return rows === null ? null : spanOf(root, rows);
 }
 
 /** Resolves a right-click inside a `@pierre/diffs` shadow root to diff lines. */
-function diffLinesAt(event: MouseEvent): DiffLineSelection | null {
+function diffLinesAt(event: MouseEvent): DiffLineSelection | null
+{
 	const clicked = eventRow(event);
 	const root = clicked?.getRootNode();
 	if (clicked === null || !(root instanceof ShadowRoot)) return null;
@@ -134,7 +162,8 @@ const HOST_MOVE_TOLERANCE = 1;
 const CHIP_Z_INDEX = 4;
 
 /** The floating chip over a diff selection, placed in the file wrapper's coordinates. */
-interface SelectionChip {
+interface SelectionChip
+{
 	root: ShadowRoot;
 	host: Element;
 	lines: DiffLineSelection;
@@ -145,7 +174,8 @@ interface SelectionChip {
 }
 
 /** Upstream `Gd`: the top of the nearest scrolling ancestor, or 0 when the document scrolls. */
-function scrollerTop(host: Element): number {
+function scrollerTop(host: Element): number
+{
 	const scroller = findScrollContainer(host);
 	return scroller === document.scrollingElement || scroller === document.documentElement
 		? 0
@@ -153,7 +183,8 @@ function scrollerTop(host: Element): number {
 }
 
 /** Upstream `ie`: the chip anchored to the pointer, clamped inside the wrapper, flipped below near the scroller's top. */
-function chipAt(wrapper: Element, host: Element, clientX: number, clientY: number): SelectionChip | null {
+function chipAt(wrapper: Element, host: Element, clientX: number, clientY: number): SelectionChip | null
+{
 	const root = host.shadowRoot;
 	const lines = root === null ? null : selectionSpan(root);
 	if (root === null || lines === null) return null;
@@ -170,12 +201,14 @@ function chipAt(wrapper: Element, host: Element, clientX: number, clientY: numbe
 }
 
 /** Upstream `_r`: the `diffs-container` host a mouse-up landed in, outside any file header. */
-function diffHostOf(target: EventTarget | null): Element | null {
+function diffHostOf(target: EventTarget | null): Element | null
+{
 	if (!(target instanceof Element) || target.closest("[data-diff-file-header]") !== null) return null;
 	return target.closest("diffs-container");
 }
 
-function isEditable(element: Element | null): boolean {
+function isEditable(element: Element | null): boolean
+{
 	return (
 		element instanceof HTMLInputElement ||
 		element instanceof HTMLTextAreaElement ||
@@ -184,34 +217,55 @@ function isEditable(element: Element | null): boolean {
 }
 
 /** Upstream `Wd`: another dialog or popup (a menu included) owns Escape. */
-function dialogOpen(): boolean {
+function dialogOpen(): boolean
+{
 	return document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]') !== null;
 }
 
 /** Hides the chip on Escape, a wheel, a scroll that moves the host, or a selection of other lines. */
-function useChipDismissal(chip: SelectionChip | null, hide: () => void) {
-	useEffect(() => {
+function useChipDismissal(chip: SelectionChip | null, hide: () => void)
+{
+	useEffect(() =>
+	{
 		if (chip === null) return undefined;
-		const recheck = () => {
+		const recheck = () =>
+		{
 			const lines = selectionSpan(chip.root);
 			if (lines === null || !sameSpan(lines, chip.lines)) hide();
 		};
-		const onKeyDown = (event: KeyboardEvent) => {
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			if (event.key !== "Escape" || event.isComposing) return;
 			if (isEditable(document.activeElement) || dialogOpen()) return;
 			event.preventDefault();
 			event.stopPropagation();
 			hide();
 		};
-		const onScroll = () => {
+		const onScroll = () =>
+		{
 			if (Math.abs(chip.host.getBoundingClientRect().top - chip.hostTop) > HOST_MOVE_TOLERANCE) hide();
 			else recheck();
 		};
 		document.addEventListener("selectionchange", recheck);
 		document.addEventListener("keydown", onKeyDown, true);
-		document.addEventListener("wheel", hide, {capture: true, passive: true});
-		window.addEventListener("scroll", onScroll, {capture: true, passive: true});
-		return () => {
+		document.addEventListener(
+			"wheel",
+			hide,
+			{
+				capture: true,
+				passive: true,
+			},
+		);
+		window.addEventListener(
+			"scroll",
+			onScroll,
+			{
+				capture: true,
+				passive: true,
+			},
+		);
+		return () =>
+		{
 			document.removeEventListener("selectionchange", recheck);
 			document.removeEventListener("keydown", onKeyDown, true);
 			document.removeEventListener("wheel", hide, true);
@@ -221,74 +275,129 @@ function useChipDismissal(chip: SelectionChip | null, hide: () => void) {
 }
 
 /** A double or triple click's deferred chip: the timer and the wheel listener that cancels it. */
-function usePendingChip() {
+function usePendingChip()
+{
 	const cancelRef = useRef<(() => void) | null>(null);
-	const cancel = () => {
+	const cancel = () =>
+	{
 		cancelRef.current?.();
 		cancelRef.current = null;
 	};
 	useEffect(() => cancel, []);
-	const defer = (run: () => void) => {
+	const defer = (run: () => void) =>
+	{
 		cancel();
-		const timer = setTimeout(() => {
+		const timer = setTimeout(() =>
+		{
 			cancel();
 			run();
 		}, MULTI_CLICK_DELAY);
-		document.addEventListener("wheel", cancel, {capture: true, passive: true});
-		cancelRef.current = () => {
+		document.addEventListener(
+			"wheel",
+			cancel,
+			{
+				capture: true,
+				passive: true,
+			},
+		);
+		cancelRef.current = () =>
+		{
 			clearTimeout(timer);
 			document.removeEventListener("wheel", cancel, true);
 		};
 	};
-	return {defer, cancel};
+	return {
+		defer,
+		cancel,
+	};
 }
 
 /**
  * The Changes pane body's right-click menu, as on claude.ai/code:
  * Attach as context · Add comment · ─ · Copy ⌘C.
  */
-export function DiffContextMenu({sessionId, path, children}: {sessionId: string; path: string; children: ReactNode}) {
+export function DiffContextMenu({sessionId, path, children}: {sessionId: string; path: string; children: ReactNode})
+{
 	const [target, setTarget] = useState<DiffLineSelection | null>(null);
 	const [chip, setChip] = useState<SelectionChip | null>(null);
 	const toast = useToast();
 	const menuOpen = useAnyMenuOpen();
 	const pending = usePendingChip();
-	const hideChip = useCallback(() => {
+	const hideChip = useCallback(() =>
+	{
 		setChip(null);
 	}, []);
 	useChipDismissal(chip, hideChip);
 
-	function comment(lines: DiffLineSelection) {
+	function comment(lines: DiffLineSelection)
+	{
 		const lang = detectLanguage(path);
-		openDiffCommentDraft(sessionId, {
-			path,
-			side: lines.side,
-			line: lines.line,
-			endLine: lines.endLine,
-			...(lines.text === "" ? {} : {snippet: lines.text}),
-			...(lang === null ? {} : {lang}),
-		});
+		openDiffCommentDraft(
+			sessionId,
+			{
+				path,
+				side: lines.side,
+				line: lines.line,
+				endLine: lines.endLine,
+				...(lines.text === ""
+					? {}
+					:
+						{
+							snippet: lines.text,
+						}),
+				...(lang === null
+					? {}
+					:
+						{
+							lang,
+						}),
+			},
+		);
 	}
 
-	function attach(lines: DiffLineSelection) {
-		const attached = attachContext(sessionId, {
-			kind: "selection",
-			path,
-			range: {start: lines.line, end: lines.endLine},
-			text: lines.text,
-			language: detectLanguage(path),
-		});
-		if (!attached) {
-			toast({kind: "error", message: "Open the chat input to attach context."});
+	function attach(lines: DiffLineSelection)
+	{
+		const attached = attachContext(
+			sessionId,
+			{
+				kind: "selection",
+				path,
+				range:
+				{
+					start: lines.line,
+					end: lines.endLine,
+				},
+				text: lines.text,
+				language: detectLanguage(path),
+			},
+		);
+		if (!attached)
+		{
+			toast(
+				{
+					kind: "error",
+					message: "Open the chat input to attach context.",
+				},
+			);
 		}
 	}
 
-	function copy(lines: DiffLineSelection) {
-		void writeClipboardText(lines.text).then((copied) => {
+	function copy(lines: DiffLineSelection)
+	{
+		void writeClipboardText(lines.text).then((copied) =>
+		{
 			toast(
 				copied
-					? {kind: "success", message: "Copied to clipboard."}
-					: {kind: "error", message: "Couldn’t copy the selection."},
+					?
+						{
+							kind: "success",
+							message: "Copied to clipboard.",
+						}
+					:
+						{
+							kind: "error",
+							message: "Couldn’t copy the selection.",
+						},
 			);
 		});
 	}
@@ -297,24 +406,28 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 		<ContextMenu>
 			<ContextMenuTrigger
 				render={<div className="relative" />}
-				onContextMenu={(event: MouseEvent) => {
+				onContextMenu={(event: MouseEvent) =>
+				{
 					pending.cancel();
 					setChip(null);
 					setTarget(diffLinesAt(event));
 				}}
-				onMouseUp={(event: MouseEvent<HTMLElement>) => {
+				onMouseUp={(event: MouseEvent<HTMLElement>) =>
+				{
 					pending.cancel();
 					// Upstream `U`: only a primary release inside a diff (not on a file header or the chip) places it.
 					const host = diffHostOf(event.target);
 					if (event.button !== 0 || host === null) return;
 					const wrapper = event.currentTarget;
 					const {clientX, clientY} = event;
-					if (event.detail < 2) {
+					if (event.detail < 2)
+					{
 						setChip(chipAt(wrapper, host, clientX, clientY));
 						return;
 					}
 					const pressTop = host.getBoundingClientRect().top;
-					pending.defer(() => {
+					pending.defer(() =>
+					{
 						if (Math.abs(host.getBoundingClientRect().top - pressTop) > HOST_MOVE_TOLERANCE) return;
 						setChip(chipAt(wrapper, host, clientX, clientY));
 					});
@@ -325,7 +438,8 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 					<div
 						className="absolute isolate"
 						data-pane-editor=""
-						style={{
+						style={
+						{
 							left: chip.x,
 							top: chip.y,
 							transform: chip.flipBelow
@@ -337,14 +451,23 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 						<div
 							data-surface="popover"
 							className={SELECTION_BAR_CLASS}
-							style={menuOpen ? {visibility: "hidden"} : undefined}
+							style={
+								menuOpen
+									?
+										{
+											visibility: "hidden",
+										}
+									: undefined
+							}
 						>
 							<SelectionBarButton
 								aria-label={`Add comment on ${linesLabel(chip.lines)}`}
-								onMouseDown={(event) => {
+								onMouseDown={(event) =>
+								{
 									event.preventDefault();
 								}}
-								onClick={() => {
+								onClick={() =>
+								{
 									comment(chip.lines);
 									selectionIn(chip.root)?.removeAllRanges();
 									setChip(null);
@@ -359,7 +482,8 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 			<MenuContent>
 				<MenuItem
 					disabled={target === null}
-					onSelect={() => {
+					onSelect={() =>
+					{
 						if (target) attach(target);
 					}}
 				>
@@ -367,8 +491,14 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 				</MenuItem>
 				<MenuItem
 					disabled={target === null}
-					{...(target === null ? {} : {"aria-label": `Add comment on ${linesLabel(target)}`})}
-					onSelect={() => {
+					{...(target === null
+						? {}
+						:
+							{
+								"aria-label": `Add comment on ${linesLabel(target)}`,
+							})}
+					onSelect={() =>
+					{
 						if (target) comment(target);
 					}}
 				>
@@ -378,7 +508,8 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 				<MenuItem
 					shortcut="cmd+c"
 					disabled={target === null}
-					onSelect={() => {
+					onSelect={() =>
+					{
 						if (target) copy(target);
 					}}
 				>

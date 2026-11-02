@@ -15,15 +15,36 @@ export function ApprovalSlot({
 	takesFocus,
 	chordActsAnywhere,
 	children,
-}: ApprovalSlotCard & {sessionId: string; children: ReactNode}) {
+}: ApprovalSlotCard &
+{
+	sessionId: string;
+	children: ReactNode;
+})
+{
 	const hasDraft = useCallback(() => (getComposerText(sessionId) ?? "") !== "", [sessionId]);
-	const toComposer = useCallback(() => {
+	const toComposer = useCallback(() =>
+	{
 		focusComposer(sessionId);
 	}, [sessionId]);
-	const {setSlot, watch} = useApprovalSlot({card, takesFocus, hasDraft, chordActsAnywhere, toComposer});
+	const {setSlot, watch} = useApprovalSlot(
+		{
+			card,
+			takesFocus,
+			hasDraft,
+			chordActsAnywhere,
+			toComposer,
+		},
+	);
 	return (
 		<>
-			<div ref={setSlot} style={{display: "contents"}} data-approval-slot="">
+			<div
+				ref={setSlot}
+				style={
+				{
+					display: "contents",
+				}}
+				data-approval-slot=""
+			>
 				{children}
 			</div>
 			{watch}

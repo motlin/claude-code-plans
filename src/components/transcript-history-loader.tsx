@@ -5,7 +5,8 @@ import {fetchEarlierTranscript} from "../lib/api/sessions";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {findScrollContainer, toObserverRoot} from "./scroll-container";
 
-interface TranscriptHistoryLoaderProps {
+interface TranscriptHistoryLoaderProps
+{
 	sessionId: string;
 	/** Index of the oldest record the client holds; 0 means nothing is missing. */
 	startIndex: number;
@@ -18,7 +19,8 @@ interface TranscriptHistoryLoaderProps {
  * claude.ai/code it loads silently, showing only a spinner while a page is in
  * flight.
  */
-export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHistoryLoaderProps) {
+export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHistoryLoaderProps)
+{
 	const queryClient = useQueryClient();
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
@@ -34,16 +36,22 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 	 */
 	const armedRef = useRef(false);
 
-	const loadEarlier = useCallback(async () => {
+	const loadEarlier = useCallback(async () =>
+	{
 		if (inFlightRef.current) return;
 		inFlightRef.current = true;
 		setIsLoading(true);
-		try {
+		try
+		{
 			await fetchEarlierTranscript(queryClient, sessionId);
 			setError("");
-		} catch (cause) {
+		}
+		catch (cause)
+		{
 			setError(cause instanceof Error ? cause.message : "Failed to load earlier messages");
-		} finally {
+		}
+		finally
+		{
 			inFlightRef.current = false;
 			setIsLoading(false);
 		}
@@ -58,7 +66,8 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 	 * still wanting more". Arming has to survive that rebuild for the
 	 * re-delivery to read as an ask rather than as another opening frame.
 	 */
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const sentinel = sentinelRef.current;
 		if (!sentinel) return undefined;
 		const scroller = findScrollContainer(sentinel);
@@ -71,10 +80,13 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 		 * with the sentinel still in view has nowhere further to scroll: load, as if
 		 * the reader had scrolled to it.
 		 */
-		const loadIfStuckInView = () => {
+		const loadIfStuckInView = () =>
+		{
 			cancelAnimationFrame(frame);
-			frame = requestAnimationFrame(() => {
-				frame = requestAnimationFrame(() => {
+			frame = requestAnimationFrame(() =>
+			{
+				frame = requestAnimationFrame(() =>
+				{
 					const {clientHeight, scrollHeight, scrollTop} = scroller;
 					const atNewest = clientHeight > 0 && scrollTop >= scrollHeight - clientHeight - 1;
 					if (intersecting && !armedRef.current && atNewest) void loadEarlier();
@@ -82,13 +94,16 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 			});
 		};
 		const observer = new IntersectionObserver(
-			(entries) => {
+			(entries) =>
+			{
 				// A fast scroll down and back up arrives as one callback carrying both
 				// transitions, so walk the whole batch in order rather than reading
 				// only the first entry and throwing the arrival away.
-				for (const entry of entries) {
+				for (const entry of entries)
+				{
 					intersecting = entry.isIntersecting;
-					if (!entry.isIntersecting) {
+					if (!entry.isIntersecting)
+					{
 						armedRef.current = true;
 						continue;
 					}
@@ -104,7 +119,8 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 			},
 		);
 		observer.observe(sentinel);
-		return () => {
+		return () =>
+		{
 			cancelAnimationFrame(frame);
 			observer.disconnect();
 		};

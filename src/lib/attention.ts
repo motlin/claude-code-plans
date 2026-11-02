@@ -1,28 +1,40 @@
 import type {DisplayState} from "./session-state";
 
-interface AttentionSettings {
+interface AttentionSettings
+{
 	notifyCompletions: boolean;
 	notifyPermissionRequests: boolean;
 }
 
-export interface AttentionBadgeSession {
+export interface AttentionBadgeSession
+{
 	sessionId: string;
 	displayState: DisplayState;
 	/** Archived sessions never ask for attention. */
 	archived: boolean;
 }
 
-const EVERY_KIND: AttentionSettings = {notifyCompletions: true, notifyPermissionRequests: true};
+const EVERY_KIND: AttentionSettings =
+{
+	notifyCompletions: true,
+	notifyPermissionRequests: true,
+};
 
 /** A session opted in with the composer's "Notify me" notifies for every kind, whatever the global switches say. */
-export function notificationSettingsFor(settings: AttentionSettings, optedIn: boolean): AttentionSettings {
+export function notificationSettingsFor(settings: AttentionSettings, optedIn: boolean): AttentionSettings
+{
 	return optedIn
 		? EVERY_KIND
-		: {notifyCompletions: settings.notifyCompletions, notifyPermissionRequests: settings.notifyPermissionRequests};
+		:
+			{
+				notifyCompletions: settings.notifyCompletions,
+				notifyPermissionRequests: settings.notifyPermissionRequests,
+			};
 }
 
 /** Waiting asks for a permission decision; review means a response completed. */
-function kindEnabled(settings: AttentionSettings, state: DisplayState): boolean {
+function kindEnabled(settings: AttentionSettings, state: DisplayState): boolean
+{
 	if (state === "waiting") return settings.notifyPermissionRequests;
 	if (state === "review") return settings.notifyCompletions;
 	return false;
@@ -35,7 +47,8 @@ function sessionAlertsEnabled(
 	hidden: boolean,
 	sessionId: string,
 	viewedSessionId: string | null,
-): boolean {
+): boolean
+{
 	return kindEnabled(settings, state) && (hidden || sessionId !== viewedSessionId);
 }
 
@@ -47,7 +60,8 @@ export function shouldNotify(
 	sessionId: string,
 	viewedSessionId: string | null,
 	archived: boolean,
-): boolean {
+): boolean
+{
 	return (
 		permission === "granted" &&
 		!archived &&
@@ -55,7 +69,8 @@ export function shouldNotify(
 	);
 }
 
-export function notificationCopy(previous: DisplayState | undefined, next: DisplayState, label: string): string | null {
+export function notificationCopy(previous: DisplayState | undefined, next: DisplayState, label: string): string | null
+{
 	if (previous === next) return null;
 	if (next === "waiting") return `${label} is waiting on you`;
 	if (next === "review") return `${label} finished — needs review`;
@@ -67,7 +82,8 @@ export function countSessionsNeedingAttention(
 	settings: AttentionSettings,
 	hidden: boolean,
 	viewedSessionId: string | null,
-): number {
+): number
+{
 	return sessions.filter(
 		(session) =>
 			!session.archived &&

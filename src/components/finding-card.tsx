@@ -3,14 +3,16 @@ import type {ReviewFinding} from "../lib/review-diff";
 
 type FindingSeverity = ReviewFinding["severity"];
 
-const severityStyles: Record<FindingSeverity, string> = {
+const severityStyles: Record<FindingSeverity, string> =
+{
 	high: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300",
 	medium: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
 	low: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300",
 	nit: "border-strong bg-surface-0 text-t6",
 };
 
-export interface FindingCardProps {
+export interface FindingCardProps
+{
 	severity: FindingSeverity;
 	title: string;
 	body: string;
@@ -31,7 +33,8 @@ export function FindingCard({
 	location,
 	category,
 	verdict,
-}: FindingCardProps) {
+}: FindingCardProps)
+{
 	const Icon = severity === "high" ? CircleAlert : severity === "medium" ? AlertTriangle : Info;
 	const hasMeta = location !== undefined || category !== undefined || verdict !== undefined;
 	return (

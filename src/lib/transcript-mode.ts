@@ -19,7 +19,8 @@ export type TranscriptModeOverrides = Readonly<Record<string, TranscriptMode>>;
 // Upstream removed its "summary" view; stored summary entries fall back to the default.
 const StoredOverridesSchema = z.record(z.string().min(1), z.union([TranscriptModeSchema, z.literal("summary")]));
 
-function coerce(mode: TranscriptMode, hasThinking: boolean): TranscriptMode {
+function coerce(mode: TranscriptMode, hasThinking: boolean): TranscriptMode
+{
 	return mode === "thinking" && !hasThinking ? "normal" : mode;
 }
 
@@ -33,17 +34,28 @@ export function resolveTranscriptMode({
 	overrides: TranscriptModeOverrides;
 	defaultMode: TranscriptMode;
 	hasThinking: boolean;
-}): TranscriptMode {
+}): TranscriptMode
+{
 	return coerce(overrides[sessionId] ?? defaultMode, hasThinking);
 }
 
-export function nextTranscriptMode(current: TranscriptMode, {hasThinking}: {hasThinking: boolean}): TranscriptMode {
+export function nextTranscriptMode(
+	current: TranscriptMode,
+	{
+		hasThinking,
+	}:
+	{
+		hasThinking: boolean;
+	},
+): TranscriptMode
+{
 	const index = TRANSCRIPT_MODES.indexOf(coerce(current, hasThinking));
 	const next = TRANSCRIPT_MODES[(index + 1) % TRANSCRIPT_MODES.length] ?? "normal";
 	return hasThinking || next !== "thinking" ? next : "verbose";
 }
 
-function capOverrides(entries: Array<[string, TranscriptMode]>): TranscriptModeOverrides {
+function capOverrides(entries: Array<[string, TranscriptMode]>): TranscriptModeOverrides
+{
 	return Object.fromEntries(entries.slice(-TRANSCRIPT_MODE_MAX_OVERRIDES));
 }
 
@@ -53,34 +65,44 @@ export function setSessionMode(
 	sessionId: string,
 	mode: TranscriptMode,
 	defaultMode: TranscriptMode,
-): TranscriptModeOverrides {
+): TranscriptModeOverrides
+{
 	const entries = Object.entries(overrides).filter(([id]) => id !== sessionId);
 	if (mode !== defaultMode) entries.push([sessionId, mode]);
 	return capOverrides(entries);
 }
 
-function browserLocalStorage(): Storage | null {
+function browserLocalStorage(): Storage | null
+{
 	if (typeof window === "undefined") return null;
-	try {
+	try
+	{
 		return window.localStorage;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-export function loadTranscriptModeOverrides(storage: Storage | null = browserLocalStorage()): TranscriptModeOverrides {
+export function loadTranscriptModeOverrides(storage: Storage | null = browserLocalStorage()): TranscriptModeOverrides
+{
 	if (!storage) return {};
-	try {
+	try
+	{
 		const raw = storage.getItem(TRANSCRIPT_MODE_STORAGE_KEY);
 		if (raw === null) return {};
 		const parsed = StoredOverridesSchema.safeParse(JSON.parse(raw));
 		if (!parsed.success) return {};
 		const entries: Array<[string, TranscriptMode]> = [];
-		for (const [id, mode] of Object.entries(parsed.data)) {
+		for (const [id, mode] of Object.entries(parsed.data))
+		{
 			if (mode !== "summary") entries.push([id, mode]);
 		}
 		return capOverrides(entries);
-	} catch {
+	}
+	catch
+	{
 		// localStorage can be denied or hold corrupt JSON; per-session modes are best-effort.
 		return {};
 	}
@@ -89,11 +111,15 @@ export function loadTranscriptModeOverrides(storage: Storage | null = browserLoc
 export function saveTranscriptModeOverrides(
 	overrides: TranscriptModeOverrides,
 	storage: Storage | null = browserLocalStorage(),
-): void {
+): void
+{
 	if (!storage) return;
-	try {
+	try
+	{
 		storage.setItem(TRANSCRIPT_MODE_STORAGE_KEY, JSON.stringify(overrides));
-	} catch {
+	}
+	catch
+	{
 		// localStorage can be denied or full; per-session modes are best-effort.
 	}
 }
@@ -112,20 +138,36 @@ export function transcriptModeFlags<Flags extends object>({
 	defaultMode: TranscriptMode;
 	settings: Flags;
 	presets: Readonly<Record<TranscriptMode, Readonly<Partial<Flags>>>>;
-}): Partial<Flags> {
+}): Partial<Flags>
+{
 	const preset = presets[mode];
-	if (mode !== defaultMode) return {...preset};
+	if (mode !== defaultMode)
+		return {
+			...preset,
+		};
 	const flags: Partial<Flags> = {};
-	for (const key of objectKeys(preset)) {
+	for (const key of objectKeys(preset))
+	{
 		flags[key] = settings[key];
 	}
 	return flags;
 }
 
 export function sessionHasThinking(
-	lines: ReadonlyArray<{type: string; message?: {content?: unknown} | undefined}>,
-): boolean {
-	return lines.some((line) => {
+	lines: ReadonlyArray<
+	{
+		type: string;
+		message?:
+			|
+			  {
+					content?: unknown;
+			  }
+			| undefined;
+	}>,
+): boolean
+{
+	return lines.some((line) =>
+	{
 		if (line.type !== "assistant") return false;
 		const content = line.message?.content;
 		return (
@@ -157,22 +199,59 @@ const StoredNudgeSchema = z.partialRecord(TranscriptModeSchema, z.union([z.strin
  */
 export function recordTranscriptViewPick(
 	state: TranscriptViewNudgeState,
-	{sessionId, mode, defaultMode}: {sessionId: string; mode: TranscriptMode; defaultMode: TranscriptMode},
-): {state: TranscriptViewNudgeState; due: boolean} {
+	{
+		sessionId,
+		mode,
+		defaultMode,
+	}:
+	{
+		sessionId: string;
+		mode: TranscriptMode;
+		defaultMode: TranscriptMode;
+	},
+):
+{
+	state: TranscriptViewNudgeState;
+	due: boolean;
+}
+{
 	const seen = state[mode];
-	if (mode === defaultMode || seen === true || seen === sessionId) return {state, due: false};
-	if (seen === undefined) return {state: {...state, [mode]: sessionId}, due: false};
-	return {state: {...state, [mode]: true}, due: true};
+	if (mode === defaultMode || seen === true || seen === sessionId)
+		return {
+			state,
+			due: false,
+		};
+	if (seen === undefined)
+		return {
+			state:
+			{
+				...state,
+				[mode]: sessionId,
+			},
+			due: false,
+		};
+	return {
+		state:
+		{
+			...state,
+			[mode]: true,
+		},
+		due: true,
+	};
 }
 
-export function loadTranscriptViewNudge(storage: Storage | null = browserLocalStorage()): TranscriptViewNudgeState {
+export function loadTranscriptViewNudge(storage: Storage | null = browserLocalStorage()): TranscriptViewNudgeState
+{
 	if (!storage) return {};
-	try {
+	try
+	{
 		const raw = storage.getItem(TRANSCRIPT_VIEW_NUDGE_STORAGE_KEY);
 		if (raw === null) return {};
 		const parsed = StoredNudgeSchema.safeParse(JSON.parse(raw));
 		return parsed.success ? parsed.data : {};
-	} catch {
+	}
+	catch
+	{
 		// localStorage can be denied or hold corrupt JSON; the nudge is best-effort.
 		return {};
 	}
@@ -181,11 +260,15 @@ export function loadTranscriptViewNudge(storage: Storage | null = browserLocalSt
 export function saveTranscriptViewNudge(
 	state: TranscriptViewNudgeState,
 	storage: Storage | null = browserLocalStorage(),
-): void {
+): void
+{
 	if (!storage) return;
-	try {
+	try
+	{
 		storage.setItem(TRANSCRIPT_VIEW_NUDGE_STORAGE_KEY, JSON.stringify(state));
-	} catch {
+	}
+	catch
+	{
 		// localStorage can be denied or full; the nudge is best-effort.
 	}
 }

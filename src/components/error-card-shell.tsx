@@ -5,7 +5,8 @@ import {assertNever} from "../lib/assert-never";
 
 type ErrorCardIcon = "warning" | "gauge";
 
-interface ErrorCardShellProps {
+interface ErrorCardShellProps
+{
 	headline: string;
 	hint: string;
 	icon: ErrorCardIcon;
@@ -43,8 +44,10 @@ const HINT_SPACING = "gap-md px-lg pt-lg pb-md last:pb-lg";
 export const GHOST_DISMISS_CLASS =
 	"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-function CardIcon({icon}: {icon: ErrorCardIcon}): ReactNode {
-	switch (icon) {
+function CardIcon({icon}: {icon: ErrorCardIcon}): ReactNode
+{
+	switch (icon)
+	{
 		case "warning":
 			return <TriangleAlert aria-hidden="true" className={ICON_CLASS} />;
 		case "gauge":
@@ -74,11 +77,17 @@ export function ErrorCardShell({
 	note,
 	busy = false,
 	children,
-}: ErrorCardShellProps) {
+}: ErrorCardShellProps)
+{
 	return (
 		<div
 			{...data}
-			{...(busy ? {"aria-busy": true} : {})}
+			{...(busy
+				?
+					{
+						"aria-busy": true,
+					}
+				: {})}
 			className="card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text"
 		>
 			{announce === "alert" && (
@@ -97,7 +106,8 @@ export function ErrorCardShell({
 							type="button"
 							aria-label="Dismiss"
 							className={GHOST_DISMISS_CLASS}
-							onMouseDown={(event) => {
+							onMouseDown={(event) =>
+							{
 								event.preventDefault();
 							}}
 							onClick={onDismiss}

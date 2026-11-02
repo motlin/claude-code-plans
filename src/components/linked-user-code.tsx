@@ -11,12 +11,14 @@ import {useFocusSlot} from "./use-focus-slot";
  * code until the path resolves, then the underlined code-chip link, or the
  * disabled-reason wrapper once it is blocked (outside the roots, or missing).
  */
-export function LinkedUserCode({text}: {text: string}) {
+export function LinkedUserCode({text}: {text: string})
+{
 	const link = useRef<HTMLSpanElement | null>(null);
 	// Upstream's focus slot: a focused link replaced by its missing wrapper hands focus to the wrapper.
 	const focusSlot = useFocusSlot();
 	const linkRef = useCallback(
-		(node: HTMLSpanElement | null) => {
+		(node: HTMLSpanElement | null) =>
+		{
 			link.current = node;
 			focusSlot(node);
 		},
@@ -26,7 +28,8 @@ export function LinkedUserCode({text}: {text: string}) {
 	const block = ref?.block;
 
 	if (ref === undefined) return <PlainUserCode text={text} />;
-	if (block !== undefined) {
+	if (block !== undefined)
+	{
 		return (
 			<bdi key="blocked" dir="ltr">
 				<BlockedFileRef path={ref.path} block={block} focusSlot={focusSlot}>

@@ -11,7 +11,8 @@ const WIDE_CLASS = "min-w-[calc(1em+6px)] px-[3px]";
 export const WIDE_KEYCAP_CLASS = `${KEYCAP_CLASS} ${WIDE_CLASS}`;
 
 /** Upstream's cds `Kbd`: one boxed caption keycap on its own, as a menu row's digit accelerator. */
-export function Kbd({children}: {children: string}) {
+export function Kbd({children}: {children: string})
+{
 	return (
 		<kbd
 			data-cds="Kbd"
@@ -22,7 +23,8 @@ export function Kbd({children}: {children: string}) {
 	);
 }
 
-const WRAPPER_CLASS = {
+const WRAPPER_CLASS =
+{
 	keycap: "inline-flex shrink-0 items-center gap-[2px] text-caption",
 	text: "inline-flex shrink-0 items-baseline gap-[0.15em] text-caption",
 } as const;
@@ -36,7 +38,8 @@ const PLUS_CLASS = "mx-[-0.15em] [color:var(--shortcut-cap-ink)]";
 
 export type ShortcutVariant = keyof typeof WRAPPER_CLASS;
 
-function Keycaps({labels}: {labels: KeyLabel[]}) {
+function Keycaps({labels}: {labels: KeyLabel[]})
+{
 	return labels.map((label, index) => (
 		<kbd key={index} className={`${KEYCAP_CLASS} ${label.label.length > 1 ? WIDE_CLASS : SQUARE_CLASS}`}>
 			<KeyGlyph label={label} />
@@ -44,7 +47,8 @@ function Keycaps({labels}: {labels: KeyLabel[]}) {
 	));
 }
 
-function TextKeys({labels, isMac}: {labels: KeyLabel[]; isMac: boolean}) {
+function TextKeys({labels, isMac}: {labels: KeyLabel[]; isMac: boolean})
+{
 	return labels.map((label, index) => (
 		<Fragment key={index}>
 			{!isMac && index > 0 && <span className={PLUS_CLASS}>+</span>}
@@ -54,7 +58,8 @@ function TextKeys({labels, isMac}: {labels: KeyLabel[]; isMac: boolean}) {
 	));
 }
 
-function KeyGlyph({label}: {label: KeyLabel}) {
+function KeyGlyph({label}: {label: KeyLabel})
+{
 	if (label.spoken === undefined) return label.label;
 	return (
 		<>
@@ -76,7 +81,8 @@ export function Shortcut({
 	className?: string;
 	/** Upstream's row hints are `aria-hidden`: the row's `aria-keyshortcuts` already names the keys. */
 	hidden?: boolean;
-}) {
+})
+{
 	const isMac = useIsMac();
 	const steps = formatKeySequence(keys, isMac);
 	/* Upstream tailwind-merges the consumer's className, so a menu hint's text-footnote replaces text-caption. */

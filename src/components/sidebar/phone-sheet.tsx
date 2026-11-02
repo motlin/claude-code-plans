@@ -19,7 +19,8 @@ export function PhoneSheetTrigger({
 	open: boolean;
 	onOpen: () => void;
 	ref?: Ref<HTMLButtonElement>;
-}) {
+})
+{
 	return (
 		<button
 			ref={ref}
@@ -29,7 +30,8 @@ export function PhoneSheetTrigger({
 			aria-controls={PHONE_SHEET_ID}
 			data-focus-region="navigation"
 			onClick={onOpen}
-			style={{
+			style={
+			{
 				left: `${PHONE_SIDEBAR_TOGGLE.left}px`,
 				top: `${PHONE_SIDEBAR_TOGGLE.top}px`,
 				width: `${PHONE_SIDEBAR_TOGGLE.size}px`,
@@ -42,7 +44,8 @@ export function PhoneSheetTrigger({
 	);
 }
 
-interface SwipeStart {
+interface SwipeStart
+{
 	x: number;
 	y: number;
 	time: number;
@@ -56,23 +59,27 @@ interface SwipeStart {
  * The user's own dismissals (Close, Escape, swipe) call `onDismiss`, so focus can return to the
  * trigger; navigation closes call `onClose` and leave focus to the router.
  */
-export function PhoneSheet({open, onClose, onDismiss}: {open: boolean; onClose: () => void; onDismiss: () => void}) {
+export function PhoneSheet({open, onClose, onDismiss}: {open: boolean; onClose: () => void; onDismiss: () => void})
+{
 	const router = useRouter();
 	const sheetRef = useRef<HTMLDivElement>(null);
 	const swipe = useRef<SwipeStart | null>(null);
 	const [drag, setDrag] = useState<number | null>(null);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!open) return undefined;
 		sheetRef.current?.querySelector<HTMLElement>("[data-phone-sheet-close]")?.focus();
-		const onKeyDown = (event: KeyboardEvent) => {
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			if (event.key === "Escape") onDismiss();
 		};
 		const unsubscribe = router.subscribe("onBeforeNavigate", onClose);
 		document.addEventListener("keydown", onKeyDown);
 		window.addEventListener("popstate", onClose);
 		window.addEventListener("pagehide", onClose);
-		return () => {
+		return () =>
+		{
 			unsubscribe();
 			document.removeEventListener("keydown", onKeyDown);
 			window.removeEventListener("popstate", onClose);
@@ -80,15 +87,18 @@ export function PhoneSheet({open, onClose, onDismiss}: {open: boolean; onClose: 
 		};
 	}, [open, onClose, onDismiss, router]);
 
-	const resetSwipe = () => {
+	const resetSwipe = () =>
+	{
 		swipe.current = null;
 		setDrag(null);
 	};
 
-	const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+	const onPointerDown = (event: PointerEvent<HTMLDivElement>) =>
+	{
 		if (!open || event.pointerType === "mouse" || !event.isPrimary) return;
 		if (event.target instanceof Element && event.target.closest("[data-no-sheet-swipe]")) return;
-		swipe.current = {
+		swipe.current =
+		{
 			x: event.clientX,
 			y: event.clientY,
 			time: event.timeStamp,
@@ -97,15 +107,18 @@ export function PhoneSheet({open, onClose, onDismiss}: {open: boolean; onClose: 
 		};
 	};
 
-	const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+	const onPointerMove = (event: PointerEvent<HTMLDivElement>) =>
+	{
 		const start = swipe.current;
 		if (!start || start.pointerId !== event.pointerId) return;
 		const dx = start.x - event.clientX;
 		const dy = event.clientY - start.y;
-		if (!start.dragging) {
+		if (!start.dragging)
+		{
 			const intent = swipeIntent(dx, dy);
 			if (intent === "pending") return;
-			if (intent === "abandon") {
+			if (intent === "abandon")
+			{
 				swipe.current = null;
 				return;
 			}
@@ -114,10 +127,12 @@ export function PhoneSheet({open, onClose, onDismiss}: {open: boolean; onClose: 
 		setDrag(Math.max(0, dx));
 	};
 
-	const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+	const onPointerUp = (event: PointerEvent<HTMLDivElement>) =>
+	{
 		const start = swipe.current;
 		if (!start || start.pointerId !== event.pointerId) return;
-		if (start.dragging) {
+		if (start.dragging)
+		{
 			const distance = Math.max(0, start.x - event.clientX);
 			const elapsed = Math.max(1, event.timeStamp - start.time);
 			const width = sheetRef.current?.getBoundingClientRect().width ?? window.innerWidth;
@@ -139,7 +154,14 @@ export function PhoneSheet({open, onClose, onDismiss}: {open: boolean; onClose: 
 			inert={!open}
 			data-open={open ? "" : undefined}
 			data-phone-sheet-dragging={dragging ? "" : undefined}
-			style={dragging ? {"--df-phone-sheet-drag": `${-drag}px`} : undefined}
+			style={
+				dragging
+					?
+						{
+							"--df-phone-sheet-drag": `${-drag}px`,
+						}
+					: undefined
+			}
 			onPointerDown={onPointerDown}
 			onPointerMove={onPointerMove}
 			onPointerUp={onPointerUp}

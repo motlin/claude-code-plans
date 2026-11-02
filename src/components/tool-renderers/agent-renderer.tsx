@@ -5,7 +5,8 @@ import {getAgentTypeFromInput, inputString} from "../../lib/tool-utils";
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
-export function AgentRenderer({toolCall}: ToolRendererProps) {
+export function AgentRenderer({toolCall}: ToolRendererProps)
+{
 	const prompt = inputString(toolCall.input, "prompt") ?? "";
 	const agentType = getAgentTypeFromInput(toolCall.input);
 	const description = inputString(toolCall.input, "description") ?? "";
@@ -21,12 +22,48 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 	const status = subagentInfo?.status;
 
 	const params: KeyValueParam[] = [];
-	if (description) params.push({key: "description", value: description});
-	if (prompt) params.push({key: "prompt", value: prompt});
-	if (agentType) params.push({key: "agentType", value: agentType});
-	if (effort) params.push({key: "effort", value: effort});
-	if (slug) params.push({key: "slug", value: slug});
-	if (parameter) params.push({key: "parameter", value: parameter});
+	if (description)
+		params.push(
+			{
+				key: "description",
+				value: description,
+			},
+		);
+	if (prompt)
+		params.push(
+			{
+				key: "prompt",
+				value: prompt,
+			},
+		);
+	if (agentType)
+		params.push(
+			{
+				key: "agentType",
+				value: agentType,
+			},
+		);
+	if (effort)
+		params.push(
+			{
+				key: "effort",
+				value: effort,
+			},
+		);
+	if (slug)
+		params.push(
+			{
+				key: "slug",
+				value: slug,
+			},
+		);
+	if (parameter)
+		params.push(
+			{
+				key: "parameter",
+				value: parameter,
+			},
+		);
 
 	// Upstream labels no subagent status: a finished agent needs no "done" badge
 	// and a failed one already reads pink. A still-running agent is the one state
@@ -40,7 +77,10 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 		<>
 			{notes.length > 0 && <div className="mb-1 text-body text-secondary">{notes.join(" · ")}</div>}
 			<KeyValueCard
-				call={{name: toolCall.name}}
+				call={
+				{
+					name: toolCall.name,
+				}}
 				isError={isError}
 				params={params}
 				result={displayResult ?? undefined}

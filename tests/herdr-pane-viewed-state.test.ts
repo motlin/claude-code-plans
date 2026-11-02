@@ -4,7 +4,8 @@ import {linkHerdrTerminalToSession, markSessionUnreviewed, setHerdrTerminalViewe
 import {addViewedStateToHerdrPanes} from "../src/lib/herdr/pane-viewed-state";
 import type {HerdrPaneLink} from "../src/lib/herdr/panes";
 
-function pane(terminalId: string, agentStatus: string): HerdrPaneLink {
+function pane(terminalId: string, agentStatus: string): HerdrPaneLink
+{
 	return {
 		host: "herdr",
 		paneId: `workspace-100:pane-${terminalId}`,
@@ -24,10 +25,13 @@ function pane(terminalId: string, agentStatus: string): HerdrPaneLink {
 	};
 }
 
-describe("herdr pane viewed-state projection", () => {
-	it("prunes stale terminal hints and sorts using workspace attention", () => {
+describe("herdr pane viewed-state projection", () =>
+{
+	it("prunes stale terminal hints and sorts using workspace attention", () =>
+	{
 		const db = openTestDb();
-		try {
+		try
+		{
 			markSessionUnreviewed(db.index, "session-test-100", 0, 1_000);
 			linkHerdrTerminalToSession(db.index, "terminal-test-old", "session-test-100", 2_000);
 			setHerdrTerminalViewed(db.index, "terminal-test-old", "session-test-100", true, 3_000);
@@ -40,7 +44,8 @@ describe("herdr pane viewed-state projection", () => {
 			expect(projected).toStrictEqual([
 				{
 					...pane("terminal-test-blocked", "blocked"),
-					viewedState: {
+					viewedState:
+					{
 						currentMessageIndex: -1,
 						lastViewedMessageIndex: -1,
 						reviewTargetMessageIndex: 0,
@@ -52,7 +57,8 @@ describe("herdr pane viewed-state projection", () => {
 				},
 				{
 					...pane("terminal-test-idle", "idle"),
-					viewedState: {
+					viewedState:
+					{
 						currentMessageIndex: -1,
 						lastViewedMessageIndex: -1,
 						reviewTargetMessageIndex: 0,
@@ -63,7 +69,9 @@ describe("herdr pane viewed-state projection", () => {
 					},
 				},
 			]);
-		} finally {
+		}
+		finally
+		{
 			db.close();
 		}
 	});

@@ -5,21 +5,26 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {GroupNewSessionButton, type GroupNewSessionSource} from "../src/components/sidebar/group-new-session-button";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.useRealTimers();
 });
 
-function hoverPlus(): void {
+function hoverPlus(): void
+{
 	vi.useFakeTimers();
 	fireEvent.pointerEnter(screen.getByRole("button"));
-	act(() => {
+	act(() =>
+	{
 		vi.advanceTimersByTime(300);
 	});
 }
 
-describe("<GroupNewSessionButton> labels", () => {
-	it("labels a project section's + by the group, with no tooltip", () => {
+describe("<GroupNewSessionButton> labels", () =>
+{
+	it("labels a project section's + by the group, with no tooltip", () =>
+	{
 		render(
 			<GroupNewSessionButton
 				groupLabel="claude-code-plans"
@@ -29,15 +34,25 @@ describe("<GroupNewSessionButton> labels", () => {
 
 		hoverPlus();
 
-		expect({
-			label: screen.getByRole("button").getAttribute("aria-label"),
-			tabIndex: screen.getByRole("button").tabIndex,
-			rowAction: screen.getByRole("button").hasAttribute("data-row-action"),
-			tooltip: screen.queryByRole("tooltip"),
-		}).toStrictEqual({label: "New session in claude-code-plans", tabIndex: -1, rowAction: true, tooltip: null});
+		expect(
+			{
+				label: screen.getByRole("button").getAttribute("aria-label"),
+				tabIndex: screen.getByRole("button").tabIndex,
+				rowAction: screen.getByRole("button").hasAttribute("data-row-action"),
+				tooltip: screen.queryByRole("tooltip"),
+			},
+		).toStrictEqual(
+			{
+				label: "New session in claude-code-plans",
+				tabIndex: -1,
+				rowAction: true,
+				tooltip: null,
+			},
+		);
 	});
 
-	it("labels a custom section's + by its folder and group, with the folder tooltip and Added to detail", () => {
+	it("labels a custom section's + by its folder and group, with the folder tooltip and Added to detail", () =>
+	{
 		render(
 			<GroupNewSessionButton
 				groupLabel="Work"
@@ -49,20 +64,25 @@ describe("<GroupNewSessionButton> labels", () => {
 		hoverPlus();
 
 		const tooltip = screen.getByRole("tooltip");
-		expect({
-			label: screen.getByRole("button").getAttribute("aria-label"),
-			text: tooltip.textContent,
-			side: tooltip.dataset["side"],
-			detail: [...tooltip.querySelectorAll("span")].map((span) => span.textContent).at(-1),
-		}).toStrictEqual({
-			label: "New session in foo, added to Work",
-			text: "New session in fooAdded to Work",
-			side: "right",
-			detail: "Added to Work",
-		});
+		expect(
+			{
+				label: screen.getByRole("button").getAttribute("aria-label"),
+				text: tooltip.textContent,
+				side: tooltip.dataset["side"],
+				detail: [...tooltip.querySelectorAll("span")].map((span) => span.textContent).at(-1),
+			},
+		).toStrictEqual(
+			{
+				label: "New session in foo, added to Work",
+				text: "New session in fooAdded to Work",
+				side: "right",
+				detail: "Added to Work",
+			},
+		);
 	});
 
-	it("labels a custom section with no folder as no folder picked", () => {
+	it("labels a custom section with no folder as no folder picked", () =>
+	{
 		render(
 			<GroupNewSessionButton
 				groupLabel="Work"
@@ -73,18 +93,24 @@ describe("<GroupNewSessionButton> labels", () => {
 
 		hoverPlus();
 
-		expect({
-			label: screen.getByRole("button").getAttribute("aria-label"),
-			text: screen.getByRole("tooltip").textContent,
-		}).toStrictEqual({
-			label: "New session with no folder picked, added to Work",
-			text: "New session with no folder pickedAdded to Work",
-		});
+		expect(
+			{
+				label: screen.getByRole("button").getAttribute("aria-label"),
+				text: screen.getByRole("tooltip").textContent,
+			},
+		).toStrictEqual(
+			{
+				label: "New session with no folder picked, added to Work",
+				text: "New session with no folder pickedAdded to Work",
+			},
+		);
 	});
 });
 
-describe("<GroupNewSessionButton> click", () => {
-	it("starts a new session from the plus button without toggling the section", () => {
+describe("<GroupNewSessionButton> click", () =>
+{
+	it("starts a new session from the plus button without toggling the section", () =>
+	{
 		const onNewSession = vi.fn<(source: GroupNewSessionSource) => void>();
 		const onToggle = vi.fn<() => void>();
 		render(
@@ -96,9 +122,16 @@ describe("<GroupNewSessionButton> click", () => {
 
 		fireEvent.click(screen.getByRole("button"));
 
-		expect({newSession: onNewSession.mock.calls, toggled: onToggle.mock.calls}).toStrictEqual({
-			newSession: [["plus_button"]],
-			toggled: [],
-		});
+		expect(
+			{
+				newSession: onNewSession.mock.calls,
+				toggled: onToggle.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				newSession: [["plus_button"]],
+				toggled: [],
+			},
+		);
 	});
 });

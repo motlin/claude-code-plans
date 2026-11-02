@@ -1,5 +1,6 @@
 /** The awaiting card's title, shared by the loading skeleton and the loaded body. */
-export function AwaitingTitle({title, titleId}: {title: string; titleId: string}) {
+export function AwaitingTitle({title, titleId}: {title: string; titleId: string})
+{
 	return (
 		<div className="px-4 pt-2.5">
 			<span
@@ -14,7 +15,8 @@ export function AwaitingTitle({title, titleId}: {title: string; titleId: string}
 }
 
 /** Upstream's loading skeleton: three bars, the last one a reply box tall. */
-export function AwaitingBodySkeleton({title, titleId}: {title: string; titleId: string}) {
+export function AwaitingBodySkeleton({title, titleId}: {title: string; titleId: string})
+{
 	return (
 		<>
 			<AwaitingTitle title={title} titleId={titleId} />

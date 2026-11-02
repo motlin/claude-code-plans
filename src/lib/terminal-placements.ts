@@ -3,13 +3,15 @@ import type {TmuxTerminalPlacement} from "./tmux-windows";
 
 export type TerminalProviderId = "tmux" | "herdr";
 
-export interface TerminalPlacementCapabilities {
+export interface TerminalPlacementCapabilities
+{
 	readonly supportsWrite: boolean;
 	readonly supportsEvents: boolean;
 	readonly supportsObserve: boolean;
 }
 
-export interface TerminalPlacementBase {
+export interface TerminalPlacementBase
+{
 	provider: TerminalProviderId;
 	sessionId: string;
 	displayName: string;
@@ -21,7 +23,8 @@ export interface TerminalPlacementBase {
 
 export type TerminalPlacement = TmuxTerminalPlacement | HerdrTerminalPlacement;
 
-export interface TerminalPlacementProvider {
+export interface TerminalPlacementProvider
+{
 	readonly id: TerminalProviderId;
 	readonly capabilities: TerminalPlacementCapabilities;
 	getPlacements: () => Promise<TerminalPlacement[]>;
@@ -32,7 +35,8 @@ export interface TerminalPlacementProvider {
  * provider order. Herdr replaces tmux only for sessions reported by both.
  * The live providers come from `terminalPlacementProviders()` in terminal-host.
  */
-export async function getTerminalPlacements(providers: TerminalPlacementProvider[]): Promise<TerminalPlacement[]> {
+export async function getTerminalPlacements(providers: TerminalPlacementProvider[]): Promise<TerminalPlacement[]>
+{
 	const results = await Promise.allSettled(providers.map(async (provider) => provider.getPlacements()));
 	const placements = results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
 	const herdrPlacements = placements.filter(

@@ -7,132 +7,241 @@ import {DEFAULTS, SettingsContext} from "../src/components/settings-context";
 import {fileViewerLanguage, parseFileLineHash} from "../src/components/file-viewer-utils";
 
 /** Settings context values with only Code font size changed. */
-function settingsWithCodeFontSize(codeFontSize: 20 | null) {
+function settingsWithCodeFontSize(codeFontSize: 20 | null)
+{
 	return {
-		settings: {...DEFAULTS, codeFontSize},
+		settings:
+		{
+			...DEFAULTS,
+			codeFontSize,
+		},
 		loaded: true,
 		setSetting: () => undefined,
 		setVerbosity: () => undefined,
 		resetAll: () => undefined,
 	};
 }
-const CODE_FONT_SIZE_CONTEXT = {default: settingsWithCodeFontSize(null), twenty: settingsWithCodeFontSize(20)};
+const CODE_FONT_SIZE_CONTEXT =
+{
+	default: settingsWithCodeFontSize(null),
+	twenty: settingsWithCodeFontSize(20),
+};
 
 const useHighlightedLines = vi.hoisted(() => vi.fn<(code: string, language: string | null) => null>(() => null));
 
-vi.mock("../src/hooks/use-shiki", () => ({useHighlightedLines}));
+vi.mock("../src/hooks/use-shiki", () => (
+{
+	useHighlightedLines,
+}));
 
 const scrollIntoView = vi.fn<() => void>();
 
-function renderViewer(content: string, path = "/test/alice.unknown") {
-	return render(<FileViewer file={{content, path}} />);
+function renderViewer(content: string, path = "/test/alice.unknown")
+{
+	return render(
+		<FileViewer
+			file={
+			{
+				content,
+				path,
+			}}
+		/>,
+	);
 }
 
-function highlightedLineIds(): string[] {
+function highlightedLineIds(): string[]
+{
 	return [...document.querySelectorAll('[data-highlighted="true"]')].map((element) => element.id);
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	window.history.replaceState(null, "", "/file/fabricated-token");
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-		configurable: true,
-		value: scrollIntoView,
-	});
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: scrollIntoView,
+		},
+	);
 	scrollIntoView.mockReset();
 	useHighlightedLines.mockClear();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
 
-describe("read-only file viewer", () => {
+describe("read-only file viewer", () =>
+{
 	// Upstream cd2efac6e sizes Files pane rows with c82eca2bd c(): ×1.5 of the code font size, Default 13 → 20px.
-	it("estimates unmounted chunks at the Code font size's ×1.5 row height", () => {
-		const content = Array.from({length: 2401}, (_, index) => `line ${index + 1}`).join("\n");
-		const secondChunkHeight = (codeFontSize: 20 | null) => {
+	it("estimates unmounted chunks at the Code font size's ×1.5 row height", () =>
+	{
+		const content = Array.from(
+			{
+				length: 2401,
+			},
+			(_, index) => `line ${index + 1}`,
+		).join("\n");
+		const secondChunkHeight = (codeFontSize: 20 | null) =>
+		{
 			const view = render(
 				<SettingsContext.Provider
 					value={codeFontSize === null ? CODE_FONT_SIZE_CONTEXT.default : CODE_FONT_SIZE_CONTEXT.twenty}
 				>
-					<FileViewer file={{content, path: "/test/alice.unknown"}} />
+					<FileViewer
+						file={
+						{
+							content,
+							path: "/test/alice.unknown",
+						}}
+					/>
 				</SettingsContext.Provider>,
 			);
 			const height = view.container.querySelector<HTMLElement>('[data-chunk="1"]')?.style.height;
 			view.unmount();
 			return height;
 		};
-		expect({defaultSize: secondChunkHeight(null), twenty: secondChunkHeight(20)}).toStrictEqual({
-			defaultSize: "4000px",
-			twenty: "6000px",
-		});
+		expect(
+			{
+				defaultSize: secondChunkHeight(null),
+				twenty: secondChunkHeight(20),
+			},
+		).toStrictEqual(
+			{
+				defaultSize: "4000px",
+				twenty: "6000px",
+			},
+		);
 	});
 
 	// Upstream's Files pane rows (`epitaxy-diff epitaxy-file-rows`) follow Settings ▸ Code font size at ×1.5 leading.
-	it("marks the rows container with upstream's Code font size hooks and sizes rows by their line box", () => {
+	it("marks the rows container with upstream's Code font size hooks and sizes rows by their line box", () =>
+	{
 		renderViewer("alice\nbob");
 
-		expect({
-			rows: document.querySelector("[data-file-source]")?.getAttribute("class"),
-			row: document.querySelector("#L1")?.getAttribute("class"),
-		}).toStrictEqual({
-			rows: "epitaxy-diff epitaxy-file-rows bg-surface-1 py-2 font-mono text-xs leading-5 min-w-max",
-			row: "flex min-h-[1lh] scroll-mt-16 ",
-		});
+		expect(
+			{
+				rows: document.querySelector("[data-file-source]")?.getAttribute("class"),
+				row: document.querySelector("#L1")?.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				rows: "epitaxy-diff epitaxy-file-rows bg-surface-1 py-2 font-mono text-xs leading-5 min-w-max",
+				row: "flex min-h-[1lh] scroll-mt-16 ",
+			},
+		);
 	});
 
-	it("scrolls to and highlights line 142 from the initial hash", () => {
+	it("scrolls to and highlights line 142 from the initial hash", () =>
+	{
 		window.history.replaceState(null, "", "/file/fabricated-token#L142");
-		renderViewer(Array.from({length: 150}, (_, index) => `line ${index + 1}`).join("\n"));
+		renderViewer(
+			Array.from(
+				{
+					length: 150,
+				},
+				(_, index) => `line ${index + 1}`,
+			).join("\n"),
+		);
 
-		expect({
-			currentGutter: screen.getByRole("link", {name: "Go to line 142"}).getAttribute("aria-current"),
-			highlightedLineIds: highlightedLineIds(),
-			lineText: document.querySelector("#L142")?.textContent,
-			scrollCalls: scrollIntoView.mock.calls,
-		}).toStrictEqual({
-			currentGutter: "location",
-			highlightedLineIds: ["L142"],
-			lineText: "142line 142",
-			scrollCalls: [[{block: "center"}]],
-		});
+		expect(
+			{
+				currentGutter: screen
+					.getByRole(
+						"link",
+						{
+							name: "Go to line 142",
+						},
+					)
+					.getAttribute("aria-current"),
+				highlightedLineIds: highlightedLineIds(),
+				lineText: document.querySelector("#L142")?.textContent,
+				scrollCalls: scrollIntoView.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				currentGutter: "location",
+				highlightedLineIds: ["L142"],
+				lineText: "142line 142",
+				scrollCalls: [
+					[
+						{
+							block: "center",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("highlights an #L<start>-L<end> range and scrolls to its first line", () => {
+	it("highlights an #L<start>-L<end> range and scrolls to its first line", () =>
+	{
 		window.history.replaceState(null, "", "/file/fabricated-token#L2-L3");
 		renderViewer("first\nsecond\nthird\nfourth");
 
-		expect({
-			highlightedLineIds: highlightedLineIds(),
-			scrollCalls: scrollIntoView.mock.calls,
-		}).toStrictEqual({
-			highlightedLineIds: ["L2", "L3"],
-			scrollCalls: [[{block: "center"}]],
-		});
+		expect(
+			{
+				highlightedLineIds: highlightedLineIds(),
+				scrollCalls: scrollIntoView.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				highlightedLineIds: ["L2", "L3"],
+				scrollCalls: [
+					[
+						{
+							block: "center",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("updates the hash from an accessible gutter and preserves source whitespace safely", () => {
+	it("updates the hash from an accessible gutter and preserves source whitespace safely", () =>
+	{
 		const {container} = renderViewer("<img src=x onerror=alert(1)>\n\tconst alice = 100;");
 
-		fireEvent.click(screen.getByRole("link", {name: "Go to line 2"}));
+		fireEvent.click(
+			screen.getByRole(
+				"link",
+				{
+					name: "Go to line 2",
+				},
+			),
+		);
 
-		expect({
-			hash: window.location.hash,
-			highlightedLineIds: highlightedLineIds(),
-			renderedImages: container.querySelectorAll("img").length,
-			secondLineText: document.querySelector("#L2 code")?.textContent,
-			scrollCalls: scrollIntoView.mock.calls,
-		}).toStrictEqual({
-			hash: "#L2",
-			highlightedLineIds: ["L2"],
-			renderedImages: 0,
-			secondLineText: "\tconst alice = 100;",
-			scrollCalls: [[{block: "center"}]],
-		});
+		expect(
+			{
+				hash: window.location.hash,
+				highlightedLineIds: highlightedLineIds(),
+				renderedImages: container.querySelectorAll("img").length,
+				secondLineText: document.querySelector("#L2 code")?.textContent,
+				scrollCalls: scrollIntoView.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				hash: "#L2",
+				highlightedLineIds: ["L2"],
+				renderedImages: 0,
+				secondLineText: "\tconst alice = 100;",
+				scrollCalls: [
+					[
+						{
+							block: "center",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("ignores malformed and nonexistent line hashes without errors", () => {
+	it("ignores malformed and nonexistent line hashes without errors", () =>
+	{
 		window.history.replaceState(null, "", "/file/fabricated-token#L0");
 		renderViewer("first\nsecond");
 
@@ -141,57 +250,114 @@ describe("read-only file viewer", () => {
 		window.history.pushState(null, "", "#line-1");
 		fireEvent(window, new HashChangeEvent("hashchange"));
 
-		expect({
-			highlightedLineIds: highlightedLineIds(),
-			parsedHashes: ["#L1", "#L01", "#L0", "#L100", "#line-1"].map(parseFileLineHash),
-			scrollCalls: scrollIntoView.mock.calls,
-		}).toStrictEqual({
-			highlightedLineIds: [],
-			parsedHashes: [1, null, null, 100, null],
-			scrollCalls: [],
-		});
+		expect(
+			{
+				highlightedLineIds: highlightedLineIds(),
+				parsedHashes: ["#L1", "#L01", "#L0", "#L100", "#line-1"].map(parseFileLineHash),
+				scrollCalls: scrollIntoView.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				highlightedLineIds: [],
+				parsedHashes: [1, null, null, 100, null],
+				scrollCalls: [],
+			},
+		);
 	});
 
-	it("tracks repeated hash navigation and reactivates a gutter already selected", () => {
+	it("tracks repeated hash navigation and reactivates a gutter already selected", () =>
+	{
 		renderViewer("first\nsecond\nthird");
 
 		window.history.pushState(null, "", "#L2");
 		fireEvent(window, new HashChangeEvent("hashchange"));
 		window.history.pushState(null, "", "#L1");
 		fireEvent(window, new HashChangeEvent("hashchange"));
-		fireEvent.click(screen.getByRole("link", {name: "Go to line 1"}));
+		fireEvent.click(
+			screen.getByRole(
+				"link",
+				{
+					name: "Go to line 1",
+				},
+			),
+		);
 
-		expect({
-			currentGutters: screen
-				.getAllByRole("link", {name: /Go to line/})
-				.map((element) => element.getAttribute("aria-current")),
-			hash: window.location.hash,
-			highlightedLineIds: highlightedLineIds(),
-			scrollCalls: scrollIntoView.mock.calls,
-		}).toStrictEqual({
-			currentGutters: ["location", null, null],
-			hash: "#L1",
-			highlightedLineIds: ["L1"],
-			scrollCalls: [[{block: "center"}], [{block: "center"}], [{block: "center"}]],
-		});
+		expect(
+			{
+				currentGutters: screen
+					.getAllByRole(
+						"link",
+						{
+							name: /Go to line/,
+						},
+					)
+					.map((element) => element.getAttribute("aria-current")),
+				hash: window.location.hash,
+				highlightedLineIds: highlightedLineIds(),
+				scrollCalls: scrollIntoView.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				currentGutters: ["location", null, null],
+				hash: "#L1",
+				highlightedLineIds: ["L1"],
+				scrollCalls: [
+					[
+						{
+							block: "center",
+						},
+					],
+					[
+						{
+							block: "center",
+						},
+					],
+					[
+						{
+							block: "center",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("uses detected Shiki languages and falls back to plain lines for unknown extensions", () => {
+	it("uses detected Shiki languages and falls back to plain lines for unknown extensions", () =>
+	{
 		const view = renderViewer("const alice = 100;", "/test/alice.unknown");
-		view.rerender(<FileViewer file={{content: "const alice = 100;", path: "/test/alice.ts"}} />);
+		view.rerender(
+			<FileViewer
+				file={
+				{
+					content: "const alice = 100;",
+					path: "/test/alice.ts",
+				}}
+			/>,
+		);
 
-		expect({
-			detectedLanguages: [fileViewerLanguage("/test/alice.unknown"), fileViewerLanguage("/test/alice.ts")],
-			highlighterCalls: useHighlightedLines.mock.calls.map(([content, language]) => ({
-				content,
-				language,
-			})),
-		}).toStrictEqual({
-			detectedLanguages: [null, "typescript"],
-			highlighterCalls: [
-				{content: "const alice = 100;", language: null},
-				{content: "const alice = 100;", language: "typescript"},
-			],
-		});
+		expect(
+			{
+				detectedLanguages: [fileViewerLanguage("/test/alice.unknown"), fileViewerLanguage("/test/alice.ts")],
+				highlighterCalls: useHighlightedLines.mock.calls.map(([content, language]) => (
+				{
+					content,
+					language,
+				})),
+			},
+		).toStrictEqual(
+			{
+				detectedLanguages: [null, "typescript"],
+				highlighterCalls: [
+					{
+						content: "const alice = 100;",
+						language: null,
+					},
+					{
+						content: "const alice = 100;",
+						language: "typescript",
+					},
+				],
+			},
+		);
 	});
 });

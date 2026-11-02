@@ -4,14 +4,16 @@ import {formatResetLabel, type RateLimitWindow} from "../lib/composer-state";
 import {usageVariant, type UsageVariant} from "../lib/usage";
 
 /** cds Meter's `bg-fill-<variant>`; the popover pins every variant's track to alpha-2. */
-const FILL_CLASS = {
+const FILL_CLASS =
+{
 	accent: "bg-accent-100",
 	warning: "bg-usage-warning",
 	danger: "bg-usage-danger",
 } as const satisfies Record<UsageVariant, string>;
 
 /** cds Meter's fill: slid in from the inline start, never thinner than 4px. */
-function meterFillTransform(percent: number): string {
+function meterFillTransform(percent: number): string
+{
 	return `translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(${percent}%, 4px)))))`;
 }
 
@@ -20,7 +22,8 @@ function meterFillTransform(percent: number): string {
  * alpha-2 track (inset alpha-1 ring) that names the row and describes it with the reset. The fill
  * takes upstream's `wV` severity: warning at 75%, danger at 90%.
  */
-export function UsagePopoverLimitRow({label, window}: {label: string; window: RateLimitWindow}) {
+export function UsagePopoverLimitRow({label, window}: {label: string; window: RateLimitWindow})
+{
 	const labelId = useId();
 	const resetId = useId();
 	const percent = Math.round(Math.min(100, Math.max(0, window.usedPercentage)));
@@ -51,7 +54,10 @@ export function UsagePopoverLimitRow({label, window}: {label: string; window: Ra
 					<div
 						data-usage-bar-fill
 						className={`h-full w-full rounded-full ${FILL_CLASS[variant]} transition-transform duration-200 ease-[cubic-bezier(.165,.84,.44,1)] motion-reduce:transition-none rtl:[--_meter-dir:1]`}
-						style={{transform: meterFillTransform(percent)}}
+						style={
+						{
+							transform: meterFillTransform(percent),
+						}}
 					/>
 				)}
 			</div>

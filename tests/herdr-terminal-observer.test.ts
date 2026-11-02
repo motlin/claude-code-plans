@@ -1,7 +1,8 @@
 import {EventEmitter} from "node:events";
 import {PassThrough} from "node:stream";
 import {describe, expect, it, vi} from "vite-plus/test";
-import {
+import
+{
 	__testing,
 	createTerminalRecordParser,
 	observeHerdrSession,
@@ -15,7 +16,8 @@ import type {HerdrPaneLink, HerdrRequester, HerdrServerLister} from "../src/lib/
 import {herdrNamedSessionSocketPath} from "../src/lib/herdr/socket-path";
 import type {HerdrTerminalRecord} from "../src/lib/herdr/terminal-protocol";
 
-function frame(sequence: number, full: boolean): HerdrTerminalRecord {
+function frame(sequence: number, full: boolean): HerdrTerminalRecord
+{
 	return {
 		type: "terminal.frame",
 		seq: sequence,
@@ -29,27 +31,34 @@ function frame(sequence: number, full: boolean): HerdrTerminalRecord {
 
 type FakeChild = ReturnType<typeof createFakeChild>;
 
-function createFakeChild() {
+function createFakeChild()
+{
 	const emitter = new EventEmitter();
-	const child = Object.assign(emitter, {
-		stdout: new PassThrough(),
-		stderr: new PassThrough(),
-		exitCode: null,
-		signalCode: null,
-		kill: vi.fn<() => boolean>(() => true),
-	});
+	const child = Object.assign(
+		emitter,
+		{
+			stdout: new PassThrough(),
+			stderr: new PassThrough(),
+			exitCode: null,
+			signalCode: null,
+			kill: vi.fn<() => boolean>(() => true),
+		},
+	);
 	return child;
 }
 
-function createSocket() {
+function createSocket()
+{
 	return {
 		send: vi.fn<(message: string) => void>(),
 		close: vi.fn<(code?: number, reason?: string) => void>(),
 	};
 }
 
-describe("herdr terminal observer NDJSON bridge", () => {
-	it("parses chunked and multiple records without changing their complete values", () => {
+describe("herdr terminal observer NDJSON bridge", () =>
+{
+	it("parses chunked and multiple records without changing their complete values", () =>
+	{
 		const records: HerdrTerminalRecord[] = [];
 		const errors: string[] = [];
 		const parser = createTerminalRecordParser(
@@ -64,13 +73,28 @@ describe("herdr terminal observer NDJSON bridge", () => {
 		parser.push('closed","reason":"Alice finished"}\n');
 		parser.end();
 
-		expect({records, errors}).toStrictEqual({
-			records: [frame(100, true), frame(200, false), {type: "terminal.closed", reason: "Alice finished"}],
-			errors: [],
-		});
+		expect(
+			{
+				records,
+				errors,
+			},
+		).toStrictEqual(
+			{
+				records: [
+					frame(100, true),
+					frame(200, false),
+					{
+						type: "terminal.closed",
+						reason: "Alice finished",
+					},
+				],
+				errors: [],
+			},
+		);
 	});
 
-	it("rejects a stream that ends with an incomplete record", () => {
+	it("rejects a stream that ends with an incomplete record", () =>
+	{
 		const records: HerdrTerminalRecord[] = [];
 		const errors: string[] = [];
 		const parser = createTerminalRecordParser(
@@ -81,13 +105,21 @@ describe("herdr terminal observer NDJSON bridge", () => {
 		parser.push('{"type":"terminal.closed"');
 		parser.end();
 
-		expect({records, errors}).toStrictEqual({
-			records: [],
-			errors: ["terminal observer ended with an incomplete record"],
-		});
+		expect(
+			{
+				records,
+				errors,
+			},
+		).toStrictEqual(
+			{
+				records: [],
+				errors: ["terminal observer ended with an incomplete record"],
+			},
+		);
 	});
 
-	it("rejects a malformed complete record", () => {
+	it("rejects a malformed complete record", () =>
+	{
 		const records: HerdrTerminalRecord[] = [];
 		const errors: string[] = [];
 		const parser = createTerminalRecordParser(
@@ -97,19 +129,40 @@ describe("herdr terminal observer NDJSON bridge", () => {
 
 		parser.push("not-json\n");
 
-		expect({records, errors}).toStrictEqual({records: [], errors: ["SyntaxError"]});
+		expect(
+			{
+				records,
+				errors,
+			},
+		).toStrictEqual(
+			{
+				records: [],
+				errors: ["SyntaxError"],
+			},
+		);
 	});
 
-	it("observes a named herdr session's terminal through that session's socket", () => {
+	it("observes a named herdr session's terminal through that session's socket", () =>
+	{
 		const child = createFakeChild();
 		const spawnObserver = vi.fn<() => FakeChild>(() => child);
 
 		startTerminalObserver(
-			{target: "terminal-test-100@later", columns: 120, rows: 40},
+			{
+				target: "terminal-test-100@later",
+				columns: 120,
+				rows: 40,
+			},
 			createSocket(),
 			spawnObserver as unknown as TerminalObserverDependencies["spawnObserver"],
 		);
-		child.stdout.write(`${JSON.stringify({type: "terminal.closed"})}\n`);
+		child.stdout.write(
+			`${JSON.stringify(
+				{
+					type: "terminal.closed",
+				},
+			)}\n`,
+		);
 
 		expect(spawnObserver.mock.calls).toStrictEqual([
 			[
@@ -117,51 +170,79 @@ describe("herdr terminal observer NDJSON bridge", () => {
 				["terminal", "session", "observe", "terminal-test-100", "--cols", "120", "--rows", "40"],
 				{
 					stdio: ["ignore", "pipe", "pipe"],
-					env: {...process.env, HERDR_SOCKET_PATH: herdrNamedSessionSocketPath("later")},
+					env:
+					{
+						...process.env,
+						HERDR_SOCKET_PATH: herdrNamedSessionSocketPath("later"),
+					},
 				},
 			],
 		]);
 	});
 
-	it("spawns only observe, forwards a monotonic stream, and cleans up on terminal.closed", () => {
+	it("spawns only observe, forwards a monotonic stream, and cleans up on terminal.closed", () =>
+	{
 		const child = createFakeChild();
 		const spawnObserver = vi.fn<() => FakeChild>(() => child);
 		const socket = createSocket();
 
 		startTerminalObserver(
-			{target: "terminal-test-100", columns: 120, rows: 40},
+			{
+				target: "terminal-test-100",
+				columns: 120,
+				rows: 40,
+			},
 			socket,
 			spawnObserver as unknown as TerminalObserverDependencies["spawnObserver"],
 		);
 		child.stdout.write(`${JSON.stringify(frame(100, true))}\n`);
-		child.stdout.write(`${JSON.stringify(frame(200, false))}\n${JSON.stringify({type: "terminal.closed"})}\n`);
+		child.stdout.write(
+			`${JSON.stringify(frame(200, false))}\n${JSON.stringify(
+				{
+					type: "terminal.closed",
+				},
+			)}\n`,
+		);
 
-		expect({
-			spawnCalls: spawnObserver.mock.calls,
-			sent: socket.send.mock.calls,
-			closed: socket.close.mock.calls,
-			killed: child.kill.mock.calls,
-			activeObservers: __testing.activeObserverCount(),
-		}).toStrictEqual({
-			spawnCalls: [
-				[
-					"herdr",
-					["terminal", "session", "observe", "terminal-test-100", "--cols", "120", "--rows", "40"],
-					{stdio: ["ignore", "pipe", "pipe"]},
+		expect(
+			{
+				spawnCalls: spawnObserver.mock.calls,
+				sent: socket.send.mock.calls,
+				closed: socket.close.mock.calls,
+				killed: child.kill.mock.calls,
+				activeObservers: __testing.activeObserverCount(),
+			},
+		).toStrictEqual(
+			{
+				spawnCalls: [
+					[
+						"herdr",
+						["terminal", "session", "observe", "terminal-test-100", "--cols", "120", "--rows", "40"],
+						{
+							stdio: ["ignore", "pipe", "pipe"],
+						},
+					],
 				],
-			],
-			sent: [
-				[JSON.stringify(frame(100, true))],
-				[JSON.stringify(frame(200, false))],
-				[JSON.stringify({type: "terminal.closed"})],
-			],
-			closed: [[1000, "terminal closed"]],
-			killed: [["SIGTERM"]],
-			activeObservers: 0,
-		});
+				sent: [
+					[JSON.stringify(frame(100, true))],
+					[JSON.stringify(frame(200, false))],
+					[
+						JSON.stringify(
+							{
+								type: "terminal.closed",
+							},
+						),
+					],
+				],
+				closed: [[1000, "terminal closed"]],
+				killed: [["SIGTERM"]],
+				activeObservers: 0,
+			},
+		);
 	});
 
-	it("requires a full keyframe and rejects repeated sequence numbers", () => {
+	it("requires a full keyframe and rejects repeated sequence numbers", () =>
+	{
 		const firstChild = createFakeChild();
 		const secondChild = createFakeChild();
 		const children = [firstChild, secondChild];
@@ -170,60 +251,81 @@ describe("herdr terminal observer NDJSON bridge", () => {
 		const secondSocket = createSocket();
 
 		startTerminalObserver(
-			{target: "terminal-test-100", columns: 80, rows: 24},
+			{
+				target: "terminal-test-100",
+				columns: 80,
+				rows: 24,
+			},
 			firstSocket,
 			spawnObserver as unknown as TerminalObserverDependencies["spawnObserver"],
 		);
 		firstChild.stdout.write(`${JSON.stringify(frame(100, false))}\n`);
 
 		startTerminalObserver(
-			{target: "terminal-test-200", columns: 80, rows: 24},
+			{
+				target: "terminal-test-200",
+				columns: 80,
+				rows: 24,
+			},
 			secondSocket,
 			spawnObserver as unknown as TerminalObserverDependencies["spawnObserver"],
 		);
 		secondChild.stdout.write(`${JSON.stringify(frame(100, true))}\n${JSON.stringify(frame(100, false))}\n`);
 
-		expect({
-			first: {
-				sent: firstSocket.send.mock.calls,
-				closed: firstSocket.close.mock.calls,
-				killed: firstChild.kill.mock.calls,
+		expect(
+			{
+				first:
+				{
+					sent: firstSocket.send.mock.calls,
+					closed: firstSocket.close.mock.calls,
+					killed: firstChild.kill.mock.calls,
+				},
+				second:
+				{
+					sent: secondSocket.send.mock.calls,
+					closed: secondSocket.close.mock.calls,
+					killed: secondChild.kill.mock.calls,
+				},
 			},
-			second: {
-				sent: secondSocket.send.mock.calls,
-				closed: secondSocket.close.mock.calls,
-				killed: secondChild.kill.mock.calls,
-			},
-		}).toStrictEqual({
-			first: {
-				sent: [
-					[
-						JSON.stringify({
-							type: "observer.error",
-							message: "terminal observer did not begin with a full keyframe",
-						}),
+		).toStrictEqual(
+			{
+				first:
+				{
+					sent: [
+						[
+							JSON.stringify(
+								{
+									type: "observer.error",
+									message: "terminal observer did not begin with a full keyframe",
+								},
+							),
+						],
 					],
-				],
-				closed: [[1011, "terminal observer failed"]],
-				killed: [["SIGTERM"]],
-			},
-			second: {
-				sent: [
-					[JSON.stringify(frame(100, true))],
-					[
-						JSON.stringify({
-							type: "observer.error",
-							message: "terminal frame sequence did not advance",
-						}),
+					closed: [[1011, "terminal observer failed"]],
+					killed: [["SIGTERM"]],
+				},
+				second:
+				{
+					sent: [
+						[JSON.stringify(frame(100, true))],
+						[
+							JSON.stringify(
+								{
+									type: "observer.error",
+									message: "terminal frame sequence did not advance",
+								},
+							),
+						],
 					],
-				],
-				closed: [[1011, "terminal observer failed"]],
-				killed: [["SIGTERM"]],
+					closed: [[1011, "terminal observer failed"]],
+					killed: [["SIGTERM"]],
+				},
 			},
-		});
+		);
 	});
 
-	it("resolves a session to a terminal and closes sockets during server shutdown", async () => {
+	it("resolves a session to a terminal and closes sockets during server shutdown", async () =>
+	{
 		const child = createFakeChild();
 		const spawnObserver = vi.fn<() => FakeChild>(() => child);
 		const resolveTarget = vi.fn<TerminalObserverDependencies["resolveTarget"]>(async () =>
@@ -231,58 +333,81 @@ describe("herdr terminal observer NDJSON bridge", () => {
 		);
 		const socket = createSocket();
 
-		await observeHerdrSession("session-test-100", 90, 30, socket, {
-			resolveTarget,
-			spawnObserver: spawnObserver as unknown as TerminalObserverDependencies["spawnObserver"],
-		});
+		await observeHerdrSession(
+			"session-test-100",
+			90,
+			30,
+			socket,
+			{
+				resolveTarget,
+				spawnObserver: spawnObserver as unknown as TerminalObserverDependencies["spawnObserver"],
+			},
+		);
 		stopAllTerminalObservers();
 
-		expect({
-			resolved: resolveTarget.mock.calls,
-			command: spawnObserver.mock.calls,
-			closed: socket.close.mock.calls,
-			killed: child.kill.mock.calls,
-			activeObservers: __testing.activeObserverCount(),
-		}).toStrictEqual({
-			resolved: [["session-test-100"]],
-			command: [
-				[
-					"herdr",
-					["terminal", "session", "observe", "terminal-test-100", "--cols", "90", "--rows", "30"],
-					{stdio: ["ignore", "pipe", "pipe"]},
+		expect(
+			{
+				resolved: resolveTarget.mock.calls,
+				command: spawnObserver.mock.calls,
+				closed: socket.close.mock.calls,
+				killed: child.kill.mock.calls,
+				activeObservers: __testing.activeObserverCount(),
+			},
+		).toStrictEqual(
+			{
+				resolved: [["session-test-100"]],
+				command: [
+					[
+						"herdr",
+						["terminal", "session", "observe", "terminal-test-100", "--cols", "90", "--rows", "30"],
+						{
+							stdio: ["ignore", "pipe", "pipe"],
+						},
+					],
 				],
-			],
-			closed: [[1012, "terminal observer server stopped"]],
-			killed: [["SIGTERM"]],
-			activeObservers: 0,
-		});
+				closed: [[1012, "terminal observer server stopped"]],
+				killed: [["SIGTERM"]],
+				activeObservers: 0,
+			},
+		);
 	});
 
-	it("terminates the child when its WebSocket connection disconnects", () => {
+	it("terminates the child when its WebSocket connection disconnects", () =>
+	{
 		const child = createFakeChild();
 		const socket = createSocket();
 		const observer = startTerminalObserver(
-			{target: "terminal-test-100", columns: 80, rows: 24},
+			{
+				target: "terminal-test-100",
+				columns: 80,
+				rows: 24,
+			},
 			socket,
 			vi.fn<() => FakeChild>(() => child) as unknown as TerminalObserverDependencies["spawnObserver"],
 		);
 
 		observer.stop();
 
-		expect({
-			socketClosed: socket.close.mock.calls,
-			childKilled: child.kill.mock.calls,
-			activeObservers: __testing.activeObserverCount(),
-		}).toStrictEqual({
-			socketClosed: [],
-			childKilled: [["SIGTERM"]],
-			activeObservers: 0,
-		});
+		expect(
+			{
+				socketClosed: socket.close.mock.calls,
+				childKilled: child.kill.mock.calls,
+				activeObservers: __testing.activeObserverCount(),
+			},
+		).toStrictEqual(
+			{
+				socketClosed: [],
+				childKilled: [["SIGTERM"]],
+				activeObservers: 0,
+			},
+		);
 	});
 });
 
-describe("resolveSessionTerminal", () => {
-	const laterPane: HerdrPaneLink = {
+describe("resolveSessionTerminal", () =>
+{
+	const laterPane: HerdrPaneLink =
+	{
 		host: "herdr",
 		paneId: "wM:p2@later",
 		terminalId: "term_alice_later",
@@ -301,21 +426,38 @@ describe("resolveSessionTerminal", () => {
 	};
 
 	// The panes a reader finds depend on which herdr servers it is told to read.
-	async function panesOn(servers: HerdrServerLister): Promise<HerdrPaneLink[]> {
+	async function panesOn(servers: HerdrServerLister): Promise<HerdrPaneLink[]>
+	{
 		return Promise.resolve(servers().some((server) => server.session === "later") ? [laterPane] : []);
 	}
 
-	it("reads every server the lister names, so a named-session pane resolves to its qualified terminal", async () => {
+	it("reads every server the lister names, so a named-session pane resolves to its qualified terminal", async () =>
+	{
 		const servers: HerdrServerLister = () => [
-			{session: null, socketPath: "/tmp/test/home/.config/herdr/herdr.sock"},
-			{session: "later", socketPath: herdrNamedSessionSocketPath("later", {HOME: "/tmp/test/home"})},
+			{
+				session: null,
+				socketPath: "/tmp/test/home/.config/herdr/herdr.sock",
+			},
+			{
+				session: "later",
+				socketPath: herdrNamedSessionSocketPath(
+					"later",
+					{
+						HOME: "/tmp/test/home",
+					},
+				),
+			},
 		];
 		await expect(resolveSessionTerminal("alice-session", panesOn, servers)).resolves.toBe("term_alice_later@later");
 	});
 
-	it("reports no linked pane when no server has the session", async () => {
+	it("reports no linked pane when no server has the session", async () =>
+	{
 		const servers: HerdrServerLister = () => [
-			{session: null, socketPath: "/tmp/test/home/.config/herdr/herdr.sock"},
+			{
+				session: null,
+				socketPath: "/tmp/test/home/.config/herdr/herdr.sock",
+			},
 		];
 		await expect(resolveSessionTerminal("alice-session", panesOn, servers)).rejects.toThrow(
 			"No live herdr pane is linked to this session",
@@ -323,11 +465,14 @@ describe("resolveSessionTerminal", () => {
 	});
 });
 
-describe("resolvePaneTerminal", () => {
-	function paneInfo(terminalId: string) {
+describe("resolvePaneTerminal", () =>
+{
+	function paneInfo(terminalId: string)
+	{
 		return {
 			type: "pane_info",
-			pane: {
+			pane:
+			{
 				pane_id: "wM:p4",
 				terminal_id: terminalId,
 				workspace_id: "wM",
@@ -340,25 +485,52 @@ describe("resolvePaneTerminal", () => {
 		};
 	}
 
-	it("asks herdr for the pane and qualifies its terminal by the pane's herdr session", async () => {
+	it("asks herdr for the pane and qualifies its terminal by the pane's herdr session", async () =>
+	{
 		const requests: object[] = [];
-		const request = vi.fn<HerdrRequester>(async (body: object) => {
+		const request = vi.fn<HerdrRequester>(async (body: object) =>
+		{
 			requests.push(body);
-			return Promise.resolve({ok: true as const, value: paneInfo("term_shell")});
+			return Promise.resolve(
+				{
+					ok: true as const,
+					value: paneInfo("term_shell"),
+				},
+			);
 		});
 
-		expect({
-			terminal: await resolvePaneTerminal("wM:p4@later", request),
-			requests,
-		}).toStrictEqual({
-			terminal: "term_shell@later",
-			requests: [{id: "ccp:terminal:pane", method: "pane.get", params: {pane_id: "wM:p4@later"}}],
-		});
+		expect(
+			{
+				terminal: await resolvePaneTerminal("wM:p4@later", request),
+				requests,
+			},
+		).toStrictEqual(
+			{
+				terminal: "term_shell@later",
+				requests: [
+					{
+						id: "ccp:terminal:pane",
+						method: "pane.get",
+						params:
+						{
+							pane_id: "wM:p4@later",
+						},
+					},
+				],
+			},
+		);
 	});
 
-	it("reports a missing pane when herdr does not know it", async () => {
+	it("reports a missing pane when herdr does not know it", async () =>
+	{
 		const request = async () =>
-			Promise.resolve({ok: false as const, code: "pane_not_found", message: "pane wM:p9 not found"});
+			Promise.resolve(
+				{
+					ok: false as const,
+					code: "pane_not_found",
+					message: "pane wM:p9 not found",
+				},
+			);
 		await expect(resolvePaneTerminal("wM:p9", request)).rejects.toThrow("No live herdr pane wM:p9");
 	});
 });

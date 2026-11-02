@@ -8,7 +8,8 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
 /** `--worktree` takes an optional name; only the bare form is accepted. */
 const VALUELESS_FLAGS = new Set(["--fork-session", "--worktree"]);
 
-const VALUE_FLAGS: Record<string, (value: string) => boolean> = {
+const VALUE_FLAGS: Record<string, (value: string) => boolean> =
+{
 	"--resume": (value) => ID_PATTERN.test(value),
 	"--resume-session-at": (value) => ID_PATTERN.test(value),
 	"--model": (value) => /^[A-Za-z0-9][A-Za-z0-9._[\]-]*$/.test(value),
@@ -19,10 +20,12 @@ const VALUE_FLAGS: Record<string, (value: string) => boolean> = {
 };
 
 /** Returns an error message, or null when `args` only uses the supported launch flags. */
-export function validateClaudeLaunchArgs(args: readonly string[]): string | null {
+export function validateClaudeLaunchArgs(args: readonly string[]): string | null
+{
 	const seen = new Set<string>();
 	const remaining = [...args];
-	for (let flag = remaining.shift(); flag !== undefined; flag = remaining.shift()) {
+	for (let flag = remaining.shift(); flag !== undefined; flag = remaining.shift())
+	{
 		if (seen.has(flag)) return "duplicate claude argument";
 		seen.add(flag);
 
@@ -36,22 +39,26 @@ export function validateClaudeLaunchArgs(args: readonly string[]): string | null
 		if (!isValid(value)) return `invalid value for ${flag}`;
 	}
 
-	for (const flag of ["--fork-session", "--resume-session-at"]) {
+	for (const flag of ["--fork-session", "--resume-session-at"])
+	{
 		if (seen.has(flag) && !seen.has("--resume")) return `${flag} requires --resume`;
 	}
 	if (seen.has("--worktree") && seen.has("--resume")) return "--worktree cannot be used with --resume";
 	return null;
 }
 
-function shellQuote(value: string): string {
+function shellQuote(value: string): string
+{
 	return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
-function shellWord(value: string): string {
+function shellWord(value: string): string
+{
 	return /^[A-Za-z0-9_@%+=:,./-]+$/.test(value) ? value : shellQuote(value);
 }
 
-export interface ClaudeLaunchCommand {
+export interface ClaudeLaunchCommand
+{
 	/** Omitted to run in the terminal's current directory. */
 	cwd?: string;
 	prompt?: string;
@@ -59,7 +66,8 @@ export interface ClaudeLaunchCommand {
 }
 
 /** POSIX shell command that starts the same session herdr would, for copy-to-clipboard fallback. */
-export function buildClaudeCopyCommand({cwd, prompt, args = []}: ClaudeLaunchCommand): string {
+export function buildClaudeCopyCommand({cwd, prompt, args = []}: ClaudeLaunchCommand): string
+{
 	const words = ["claude", ...args.map(shellWord)];
 	if (prompt !== undefined) words.push(shellQuote(prompt));
 	const command = words.join(" ");

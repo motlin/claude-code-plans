@@ -9,24 +9,29 @@ const RESETTING = "Resetting…";
  * the reset instant. In a notice card the visible text is aria-hidden and an sr-only absolute
  * reset follows it; outside one, "Resetting…" sits in an `aria-live="off"` span.
  */
-export function ResetCountdown({resetsAt, inNoticeCard = false}: {resetsAt: number; inNoticeCard?: boolean}) {
+export function ResetCountdown({resetsAt, inNoticeCard = false}: {resetsAt: number; inNoticeCard?: boolean})
+{
 	const [nowMs, setNowMs] = useState(() => Date.now());
 	const resetMs = resetsAt * 1000;
 	const resetting = resetMs <= nowMs;
-	useEffect(() => {
-		const tick = () => {
+	useEffect(() =>
+	{
+		const tick = () =>
+		{
 			setNowMs(Date.now());
 		};
 		const id = setInterval(tick, 60_000);
 		const atReset = resetting ? undefined : setTimeout(tick, resetMs - Date.now());
-		return () => {
+		return () =>
+		{
 			clearInterval(id);
 			if (atReset !== undefined) clearTimeout(atReset);
 		};
 	}, [resetMs, resetting]);
 	const absolute = formatPaceBannerReset(resetsAt, nowMs);
 	const visible = resetting ? RESETTING : absolute;
-	if (inNoticeCard) {
+	if (inNoticeCard)
+	{
 		return (
 			<span data-testid="reset-countdown">
 				<span aria-hidden="true">{visible}</span>

@@ -14,7 +14,8 @@ import {Tooltip} from "./tooltip";
  */
 
 export type SplitItem =
-	| {
+	|
+	  {
 			label: ReactNode;
 			/** A muted second line, as on upstream's "Always allow" row with its scope. */
 			description?: ReactNode;
@@ -27,7 +28,8 @@ export type SplitItem =
 	  }
 	| "separator";
 
-export interface SplitDropdownButtonProps {
+export interface SplitDropdownButtonProps
+{
 	variant?: "primary" | "secondary" | "ghost" | "danger";
 	/** `control` is upstream's cds Button scale on the density tokens (h-control, text-body, the button pad). */
 	size?: "default" | "sm" | "touch" | "control";
@@ -67,7 +69,8 @@ export interface SplitDropdownButtonProps {
 /* A tooltip anchor stays a shrinkable flex item, so the joined segments keep their layout. */
 const TOOLTIP_ANCHOR_CLASS = "flex min-w-0 shrink";
 
-function tooltipText(tooltip: boolean | string | undefined, name: string | undefined): string | undefined {
+function tooltipText(tooltip: boolean | string | undefined, name: string | undefined): string | undefined
+{
 	if (typeof tooltip === "string") return tooltip;
 	return tooltip === true ? name : undefined;
 }
@@ -97,20 +100,32 @@ const SECONDARY_RING_CLASS =
 type JoinedVariant = "primary" | "secondary" | "danger";
 
 /* Upstream's `ho` seam: a 1px strip in the segment fill with a half-height line. */
-const JOINED_LOOKS: Record<JoinedVariant, {root: string; fill: string; seam: string; line: string}> = {
-	primary: {
+const JOINED_LOOKS: Record<
+	JoinedVariant,
+	{
+		root: string;
+		fill: string;
+		seam: string;
+		line: string;
+	}
+> =
+{
+	primary:
+	{
 		root: "",
 		fill: `bg-fill-primary text-on-primary font-control hover:bg-fill-primary-hover aria-expanded:bg-fill-primary-hover ${CDS_BUTTON_DISABLED_FILL}`,
 		seam: `relative ${SEAM_BASE_CLASS} bg-fill-primary ${SEAM_FADE_CLASS} ${SOLID_SEAM_DISABLED_CLASS}`,
 		line: "absolute inset-x-0 inset-y-1/4 bg-on-primary opacity-25",
 	},
-	secondary: {
+	secondary:
+	{
 		root: `shadow-field-drop ${SECONDARY_RING_CLASS}`,
 		fill: `bg-fill-secondary text-primary font-control-regular hover:bg-fill-secondary-hover aria-expanded:bg-fill-secondary-hover ${CDS_BUTTON_DISABLED_FILL}`,
 		seam: `relative ${SEAM_BASE_CLASS} bg-fill-secondary ${SEAM_FADE_CLASS}`,
 		line: "absolute inset-x-0 inset-y-1/4 bg-border",
 	},
-	danger: {
+	danger:
+	{
 		root: "",
 		fill: `bg-fill-danger text-on-danger font-control hover:bg-fill-danger-hover aria-expanded:bg-fill-danger-hover ${CDS_BUTTON_DISABLED_FILL}`,
 		seam: `relative ${SEAM_BASE_CLASS} bg-fill-danger ${SEAM_FADE_CLASS} ${SOLID_SEAM_DISABLED_CLASS}`,
@@ -153,7 +168,8 @@ const GHOST_LABELED_CARET_CLASS =
 const STATUS_SLOT_CLASS =
 	"flex shrink-0 items-center self-stretch pe-3 transition-colors duration-[60ms] ease-out peer-[:disabled:not([aria-busy])]/slot:opacity-disabled stacks:peer-[:disabled:not([aria-busy])]/slot:opacity-100 stacks:peer-[:disabled:not([aria-busy])]/slot:text-button-disabled";
 const SLOT_DISABLED_FILL = "stacks:peer-[:disabled:not([aria-busy])]/slot:bg-fill-disabled";
-const STATUS_SLOT_FILLS: Record<NonNullable<SplitDropdownButtonProps["variant"]>, string> = {
+const STATUS_SLOT_FILLS: Record<NonNullable<SplitDropdownButtonProps["variant"]>, string> =
+{
 	primary: `bg-fill-primary peer-hover/slot:bg-fill-primary-hover ${SLOT_DISABLED_FILL}`,
 	secondary: `bg-fill-secondary peer-hover/slot:bg-fill-secondary-hover ${SLOT_DISABLED_FILL}`,
 	danger: `bg-fill-danger peer-hover/slot:bg-fill-danger-hover ${SLOT_DISABLED_FILL}`,
@@ -171,9 +187,19 @@ type SplitSize = NonNullable<SplitDropdownButtonProps["size"]>;
  */
 const SIZES: Record<
 	SplitSize,
-	{h: string; height: string; text: string; padX: string; radius: string; icon: string; caretW: string}
-> = {
-	default: {
+	{
+		h: string;
+		height: string;
+		text: string;
+		padX: string;
+		radius: string;
+		icon: string;
+		caretW: string;
+	}
+> =
+{
+	default:
+	{
 		h: "24px",
 		height: "h-6",
 		text: "text-[13px]/[19px]",
@@ -182,7 +208,8 @@ const SIZES: Record<
 		icon: "size-4",
 		caretW: "w-auto",
 	},
-	sm: {
+	sm:
+	{
 		h: "20px",
 		height: "h-5",
 		text: "text-[12px]/[17px]",
@@ -191,7 +218,8 @@ const SIZES: Record<
 		icon: "size-3",
 		caretW: "w-auto",
 	},
-	touch: {
+	touch:
+	{
 		h: "28px",
 		height: "h-7",
 		text: "text-[13px]/[19px]",
@@ -200,7 +228,8 @@ const SIZES: Record<
 		icon: "size-4",
 		caretW: "w-auto",
 	},
-	control: {
+	control:
+	{
 		h: "var(--cds-h-control)",
 		height: "h-control",
 		text: "text-body",
@@ -211,8 +240,12 @@ const SIZES: Record<
 	},
 };
 
-function rootStyle(size: SplitSize, ghost: boolean): CSSProperties {
-	const height: CSSProperties = {"--split-h": SIZES[size].h};
+function rootStyle(size: SplitSize, ghost: boolean): CSSProperties
+{
+	const height: CSSProperties =
+	{
+		"--split-h": SIZES[size].h,
+	};
 	if (!ghost) return height;
 	return {
 		...height,
@@ -221,16 +254,20 @@ function rootStyle(size: SplitSize, ghost: boolean): CSSProperties {
 	};
 }
 
-function GhostPaint() {
+function GhostPaint()
+{
 	return <span aria-hidden="true" data-cds-part="paint" className={GHOST_PAINT_CLASS} />;
 }
 
-function joinClasses(...classes: (string | undefined | false)[]): string {
+function joinClasses(...classes: (string | undefined | false)[]): string
+{
 	return classes.filter((value) => typeof value === "string" && value !== "").join(" ");
 }
 
-function MenuItems({items}: {items: SplitItem[]}) {
-	return items.map((item, index) => {
+function MenuItems({items}: {items: SplitItem[]})
+{
+	return items.map((item, index) =>
+	{
 		const key = String(index);
 		if (item === "separator") return <MenuSeparator key={key} />;
 		return (
@@ -238,10 +275,30 @@ function MenuItems({items}: {items: SplitItem[]}) {
 				{item.separatorBefore === true && <MenuSeparator />}
 				<MenuItem
 					onSelect={item.onSelect}
-					{...(item.icon === undefined ? {} : {icon: item.icon})}
-					{...(item.description === undefined ? {} : {description: item.description})}
-					{...(item.shortcut === undefined ? {} : {shortcut: item.shortcut})}
-					{...(item.disabled === undefined ? {} : {disabled: item.disabled})}
+					{...(item.icon === undefined
+						? {}
+						:
+							{
+								icon: item.icon,
+							})}
+					{...(item.description === undefined
+						? {}
+						:
+							{
+								description: item.description,
+							})}
+					{...(item.shortcut === undefined
+						? {}
+						:
+							{
+								shortcut: item.shortcut,
+							})}
+					{...(item.disabled === undefined
+						? {}
+						:
+							{
+								disabled: item.disabled,
+							})}
 				>
 					{item.label}
 				</MenuItem>
@@ -276,21 +333,25 @@ export function SplitDropdownButton({
 	tooltipSide = "top",
 	menuTooltip,
 	className,
-}: SplitDropdownButtonProps) {
+}: SplitDropdownButtonProps)
+{
 	const [internalOpen, setInternalOpen] = useState(false);
 	const open = controlledOpen ?? internalOpen;
 	/* The outside press closes the menu before the click lands, so remember it was open at pointerdown. */
 	const openAtPointerDown = useRef(false);
 
-	const setOpen = (next: boolean) => {
+	const setOpen = (next: boolean) =>
+	{
 		if (controlledOpen === undefined) setInternalOpen(next);
 		onOpenChange?.(next);
 	};
 
-	const handlePrimaryClick = () => {
+	const handlePrimaryClick = () =>
+	{
 		const wasOpen = open || openAtPointerDown.current;
 		openAtPointerDown.current = false;
-		if (wasOpen) {
+		if (wasOpen)
+		{
 			if (open) setOpen(false);
 			return;
 		}
@@ -385,8 +446,18 @@ export function SplitDropdownButton({
 			aria-label={name}
 			className={rootClass}
 			style={rootStyle(size, !joined)}
-			{...(open ? {"data-popup-open": ""} : {})}
-			{...(disabled ? {"data-disabled": ""} : {})}
+			{...(open
+				?
+					{
+						"data-popup-open": "",
+					}
+				: {})}
+			{...(disabled
+				?
+					{
+						"data-disabled": "",
+					}
+				: {})}
 		>
 			<div data-cds-segment="" className="contents">
 				<div className="contents">
@@ -399,15 +470,42 @@ export function SplitDropdownButton({
 							data-cds="Button"
 							className={primaryClass}
 							disabled={disabled}
-							onPointerDown={() => {
+							onPointerDown={() =>
+							{
 								openAtPointerDown.current = open;
 							}}
 							onClick={handlePrimaryClick}
-							{...(label === undefined && ariaLabel !== undefined ? {"aria-label": ariaLabel} : {})}
-							{...(ariaKeyShortcuts === undefined ? {} : {"aria-keyshortcuts": ariaKeyShortcuts})}
-							{...(busy ? {"aria-busy": "true", "aria-disabled": "true"} : {})}
-							{...(!busy && ariaDisabled !== undefined ? {"aria-disabled": ariaDisabled} : {})}
-							{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
+							{...(label === undefined && ariaLabel !== undefined
+								?
+									{
+										"aria-label": ariaLabel,
+									}
+								: {})}
+							{...(ariaKeyShortcuts === undefined
+								? {}
+								:
+									{
+										"aria-keyshortcuts": ariaKeyShortcuts,
+									})}
+							{...(busy
+								?
+									{
+										"aria-busy": "true",
+										"aria-disabled": "true",
+									}
+								: {})}
+							{...(!busy && ariaDisabled !== undefined
+								?
+									{
+										"aria-disabled": ariaDisabled,
+									}
+								: {})}
+							{...(pressed === undefined
+								? {}
+								:
+									{
+										"aria-pressed": pressed,
+									})}
 						>
 							{!joined && <GhostPaint />}
 							{icon !== undefined && <span className={busy ? "opacity-0" : undefined}>{icon}</span>}
@@ -452,7 +550,12 @@ export function SplitDropdownButton({
 						side={side}
 						align={align}
 						sideOffset={6}
-						{...(finalFocus === undefined ? {} : {finalFocus})}
+						{...(finalFocus === undefined
+							? {}
+							:
+								{
+									finalFocus,
+								})}
 					>
 						<MenuItems items={items} />
 					</MenuContent>
@@ -466,8 +569,12 @@ function withTooltip(
 	content: string | undefined,
 	side: "top" | "bottom",
 	suppressAfterPopup: boolean,
-	button: ReactElement<{"aria-describedby"?: string}>,
-): ReactElement {
+	button: ReactElement<
+	{
+		"aria-describedby"?: string;
+	}>,
+): ReactElement
+{
 	if (content === undefined) return button;
 	return (
 		<Tooltip content={content} side={side} suppressAfterPopup={suppressAfterPopup} className={TOOLTIP_ANCHOR_CLASS}>

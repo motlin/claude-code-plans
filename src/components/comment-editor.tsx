@@ -1,5 +1,6 @@
 import {MessageSquarePlus, Pencil, Trash2} from "lucide-react";
-import {
+import
+{
 	type CSSProperties,
 	type FocusEvent,
 	type KeyboardEvent,
@@ -20,7 +21,8 @@ import {Tooltip} from "./ui/tooltip";
  * and the floating body of the plan "Comment on selection" popover. Saved comments render as the same card
  * with a clickable body and hover/focus/touch-revealed Edit and Delete.
  */
-export type CommentEditorProps = {
+export type CommentEditorProps =
+{
 	/** `inline` (diff cards, default) draws the bordered card in a padded wrapper; `floating` fills its popover. */
 	variant?: "inline" | "floating";
 	label?: ReactNode;
@@ -42,7 +44,14 @@ export type CommentEditorProps = {
 	inputReadOnly?: boolean;
 	/** Shown before Edit/Delete on a saved card, e.g. "Posting…". */
 	readStatus?: ReactNode;
-	onSave: (text: string, options: {submit: boolean; viaKeyboard: boolean}) => void;
+	onSave: (
+		text: string,
+		options:
+		{
+			submit: boolean;
+			viaKeyboard: boolean;
+		},
+	) => void;
 	/** Replaces the ⌘/Ctrl+Enter save. */
 	onChordEnter?: (text: string) => void;
 	onCancel: () => void;
@@ -70,11 +79,22 @@ const PLAIN_BODY_CLASS = "flex-1 min-w-0 whitespace-pre-wrap break-words text-pa
 const FOOTNOTE_MUTED_CLASS = "text-[12px] leading-[15px] text-ink-muted";
 const CARD_BASE_CLASS = "group/card relative isolate flex flex-col transition-colors gap-1.5 px-3 py-2.5 font-sans";
 
-const INLINE_TEXTAREA_STYLE: CSSProperties = {fieldSizing: "content"};
-const FLOATING_TEXTAREA_STYLE: CSSProperties = {fieldSizing: "content", maxHeight: "8lh"};
-const ACTIVE_STYLE: CSSProperties = {borderColor: "var(--color-fill-accent)"};
+const INLINE_TEXTAREA_STYLE: CSSProperties =
+{
+	fieldSizing: "content",
+};
+const FLOATING_TEXTAREA_STYLE: CSSProperties =
+{
+	fieldSizing: "content",
+	maxHeight: "8lh",
+};
+const ACTIVE_STYLE: CSSProperties =
+{
+	borderColor: "var(--color-fill-accent)",
+};
 
-function hasModifier(event: KeyboardEvent): boolean {
+function hasModifier(event: KeyboardEvent): boolean
+{
 	return event.metaKey || event.ctrlKey || event.altKey;
 }
 
@@ -105,23 +125,27 @@ export function CommentEditor({
 	leadingActions,
 	saveAction,
 	cardRef,
-}: CommentEditorProps) {
+}: CommentEditorProps)
+{
 	const ownRef = useRef<HTMLTextAreaElement>(null);
 	const textareaRef = inputRef ?? ownRef;
 	const floating = variant === "floating";
 	const blocked = saveDisabledReason !== undefined;
 	const isMac = useIsMac();
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const textarea = textareaRef.current;
 		if (!autoFocus || textarea === null) return undefined;
 		// A diff annotation's card mounts before `@pierre/diffs` adds the shadow <slot> it goes in, and an
 		// unslotted textarea ignores focus(); retry each frame until the browser takes it.
 		let frame = 0;
 		let attempts = 0;
-		const tryFocus = () => {
+		const tryFocus = () =>
+		{
 			textarea.focus();
-			if (textarea.ownerDocument.activeElement !== textarea) {
+			if (textarea.ownerDocument.activeElement !== textarea)
+			{
 				if (++attempts < AUTO_FOCUS_ATTEMPTS) frame = requestAnimationFrame(tryFocus);
 				return;
 			}
@@ -129,35 +153,48 @@ export function CommentEditor({
 			textarea.scrollTop = textarea.scrollHeight;
 		};
 		tryFocus();
-		return () => {
+		return () =>
+		{
 			cancelAnimationFrame(frame);
 		};
 	}, [autoFocus, textareaRef]);
 
-	const save = (viaKeyboard: boolean, submit: boolean) => {
+	const save = (viaKeyboard: boolean, submit: boolean) =>
+	{
 		const text = value.trim();
 		if ((text === "" && !saveWhenEmpty) || blocked) return;
-		onSave(text, {submit, viaKeyboard});
+		onSave(
+			text,
+			{
+				submit,
+				viaKeyboard,
+			},
+		);
 	};
 
-	const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+	const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) =>
+	{
 		// oxlint-disable-next-line typescript/no-deprecated -- Safari reports the IME-commit Enter only as keyCode 229, as upstream checks
 		if (event.nativeEvent.isComposing || event.keyCode === 229) return;
-		if (event.key === "Enter" && !event.shiftKey && !event.altKey) {
+		if (event.key === "Enter" && !event.shiftKey && !event.altKey)
+		{
 			event.preventDefault();
 			event.stopPropagation();
 			if (event.repeat) return;
 			const chord = event.metaKey || event.ctrlKey;
 			if (chord && onChordEnter !== undefined && !blocked) onChordEnter(value.trim());
 			else save(true, chord);
-		} else if (event.key === "Escape") {
+		}
+		else if (event.key === "Escape")
+		{
 			event.preventDefault();
 			if (event.currentTarget.closest('[role="dialog"], [role="alertdialog"]') !== null) event.stopPropagation();
 			onCancel();
 		}
 	};
 
-	const onBodyClick = (event: MouseEvent<HTMLDivElement>) => {
+	const onBodyClick = (event: MouseEvent<HTMLDivElement>) =>
+	{
 		const selection = event.currentTarget.ownerDocument.getSelection();
 		if (
 			selection?.isCollapsed === false &&
@@ -168,13 +205,15 @@ export function CommentEditor({
 	};
 
 	let body: ReactNode;
-	if (isEditing) {
+	if (isEditing)
+	{
 		body = (
 			<textarea
 				ref={textareaRef}
 				value={value}
 				readOnly={inputReadOnly}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					onChange(event.target.value);
 				}}
 				onKeyDown={onKeyDown}
@@ -186,20 +225,26 @@ export function CommentEditor({
 				style={floating ? FLOATING_TEXTAREA_STYLE : INLINE_TEXTAREA_STYLE}
 			/>
 		);
-	} else if (onActivate === undefined) {
+	}
+	else if (onActivate === undefined)
+	{
 		body = <p className={PLAIN_BODY_CLASS}>{value}</p>;
-	} else {
+	}
+	else
+	{
 		body = (
 			<div
 				role="button"
 				tabIndex={0}
 				onClick={onBodyClick}
-				onKeyDown={(event) => {
+				onKeyDown={(event) =>
+				{
 					if (hasModifier(event)) return;
 					if (event.key === "Enter" || event.key === " ") event.preventDefault();
 					if (event.key === "Enter") onActivate();
 				}}
-				onKeyUp={(event) => {
+				onKeyUp={(event) =>
+				{
 					if (event.key !== " " || hasModifier(event)) return;
 					event.preventDefault();
 					onActivate();
@@ -234,13 +279,19 @@ export function CommentEditor({
 			{saveAction ?? (
 				<Tooltip
 					content={saveDisabledReason ?? saveLabel}
-					{...(blocked || saveShortcut === undefined ? {} : {shortcut: saveShortcut})}
+					{...(blocked || saveShortcut === undefined
+						? {}
+						:
+							{
+								shortcut: saveShortcut,
+							})}
 				>
 					<span className="inline-flex">
 						<button
 							type="button"
 							disabled={(value.trim() === "" && !saveWhenEmpty) || blocked}
-							onClick={() => {
+							onClick={() =>
+							{
 								save(false, false);
 							}}
 							className={ICON_BUTTON_CLASS}

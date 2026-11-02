@@ -1,4 +1,5 @@
-import {
+import
+{
 	closestCenter,
 	DndContext,
 	KeyboardSensor,
@@ -8,7 +9,8 @@ import {
 	type DragEndEvent,
 	type DragStartEvent,
 } from "@dnd-kit/core";
-import {
+import
+{
 	SortableContext,
 	sortableKeyboardCoordinates,
 	useSortable,
@@ -22,7 +24,8 @@ import {animateRailDrop, blurOnPointerDragStart, lockRailDragToVerticalAxis} fro
 import {RAIL_CARD_CLASS, RAIL_SLOT_CLASS} from "./rail-row";
 import {railSectionAccessibility} from "./rail-section-accessibility";
 
-import {
+import
+{
 	HIDEABLE_RAIL_SECTIONS,
 	isRailSectionOpen,
 	isRailSectionsPristine,
@@ -40,7 +43,8 @@ import {
 } from "../../lib/session-rail-store";
 import {usageRingSeverity, type UsageRingSeverity} from "../../lib/composer-state";
 import {TooltipPortalContext} from "../ui/tooltip-portal-context";
-import {
+import
+{
 	ContextMenu,
 	ContextMenuTrigger,
 	MenuCheckboxItem,
@@ -51,7 +55,8 @@ import {
 } from "../ui/menu";
 
 /** One card with content; a section with nothing to show passes no card at all. */
-export interface RailCard {
+export interface RailCard
+{
 	id: RailSectionId;
 	/** Right-aligned header text, e.g. `1 of 3`. */
 	summary?: string | undefined;
@@ -70,7 +75,8 @@ const HEAD_CLASS =
 	"group/railhead relative flex min-h-6 w-full min-w-0 cursor-pointer items-center gap-1 rounded-r5 px-2 text-left text-[12px]/[16px] font-medium text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's header menu: a Show checkbox per hideable section, then Reset to defaults. */
-function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: RailSectionsState}) {
+function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: RailSectionsState})
+{
 	return (
 		<MenuContent density="compact">
 			<MenuLabel>Show</MenuLabel>
@@ -78,7 +84,8 @@ function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: Rai
 				<MenuCheckboxItem
 					key={id}
 					checked={!sections.hidden.includes(id)}
-					onCheckedChange={() => {
+					onCheckedChange={() =>
+					{
 						toggleRailSectionHidden(id);
 					}}
 				>
@@ -88,7 +95,8 @@ function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: Rai
 			<MenuSeparator />
 			<MenuItem
 				disabled={isRailSectionsPristine(sections, sessionId)}
-				onSelect={() => {
+				onSelect={() =>
+				{
 					resetRailSections(sessionId);
 				}}
 			>
@@ -99,14 +107,16 @@ function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: Rai
 }
 
 /** Upstream's rollup meter fill: accent, then warning at the composer ring's 75% and danger at 90%. */
-const ROLLUP_FILLS: Record<UsageRingSeverity, string> = {
+const ROLLUP_FILLS: Record<UsageRingSeverity, string> =
+{
 	normal: "bg-fill-accent",
 	warning: "bg-usage-warning",
 	critical: "bg-usage-danger",
 };
 
 /** Upstream's header rollup: the rounded percent beside a 24x10 pill meter. */
-function RollupSummary({pct}: {pct: number}) {
+function RollupSummary({pct}: {pct: number})
+{
 	const clamped = Math.max(0, Math.min(100, pct));
 	return (
 		<span className="flex items-center justify-end gap-1.5">
@@ -114,7 +124,10 @@ function RollupSummary({pct}: {pct: number}) {
 			<span aria-hidden className="flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5">
 				<span
 					className={`h-full min-w-1.5 rounded-full ${ROLLUP_FILLS[usageRingSeverity(clamped)]}`}
-					style={{width: `${clamped}%`}}
+					style={
+					{
+						width: `${clamped}%`,
+					}}
 				/>
 			</span>
 		</span>
@@ -125,16 +138,22 @@ function RollupSummary({pct}: {pct: number}) {
  * Upstream's grip: a 2x3 dot grid at 75% inside a 20px frame that takes the
  * focus ring, shown while the header is hovered or the grip has focus.
  */
-function GripDots() {
+function GripDots()
+{
 	return (
 		<span
 			aria-hidden
 			className="flex size-5 items-center justify-center rounded group-focus-visible/railgrip:shadow-focus"
 		>
 			<span className="grid grid-cols-2 gap-[3px] scale-75">
-				{Array.from({length: 6}, (_, index) => (
-					<i key={index} className="size-0.5 rounded-full bg-current" />
-				))}
+				{Array.from(
+					{
+						length: 6,
+					},
+					(_, index) => (
+						<i key={index} className="size-0.5 rounded-full bg-current" />
+					),
+				)}
 			</span>
 		</span>
 	);
@@ -152,12 +171,18 @@ function RailSection({
 	open: boolean;
 	sections: RailSectionsState;
 	onToggle: (event: MouseEvent<HTMLButtonElement>) => void;
-}) {
+})
+{
 	const headingId = useId();
-	const {attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging} = useSortable({
-		id: card.id,
-		attributes: {roleDescription: "Draggable section"},
-	});
+	const {attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging} = useSortable(
+		{
+			id: card.id,
+			attributes:
+			{
+				roleDescription: "Draggable section",
+			},
+		},
+	);
 	const title = RAIL_SECTION_TITLES[card.id];
 	// Upstream's grip is keyboard-only: pointer drags start from the grab zone inside the header button.
 	const keyboardListeners = Object.fromEntries(
@@ -168,14 +193,29 @@ function RailSection({
 		<div
 			ref={setNodeRef}
 			data-rail-card={card.id}
-			style={{transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 1 : undefined}}
-			{...(isDragging ? {"data-dragging": ""} : {})}
+			style={
+			{
+				transform: CSS.Translate.toString(transform),
+				transition,
+				zIndex: isDragging ? 1 : undefined,
+			}}
+			{...(isDragging
+				?
+					{
+						"data-dragging": "",
+					}
+				: {})}
 			className={isDragging ? `${RAIL_SLOT_CLASS} bg-page` : RAIL_SLOT_CLASS}
 		>
 			<ContextMenu>
 				<section
 					data-rail-section={card.id}
-					{...(open ? {"data-open": ""} : {})}
+					{...(open
+						?
+							{
+								"data-open": "",
+							}
+						: {})}
 					aria-labelledby={headingId}
 					className={RAIL_CARD_CLASS}
 				>
@@ -188,9 +228,11 @@ function RailSection({
 								type="button"
 								aria-expanded={open}
 								onClick={onToggle}
-								onPointerDown={(event) => {
+								onPointerDown={(event) =>
+								{
 									// Upstream's grab zone sits inside the trigger: a press there can start a drag, and a click still toggles.
-									if (event.target instanceof Element && event.target.closest("[data-rail-grab]")) {
+									if (event.target instanceof Element && event.target.closest("[data-rail-grab]"))
+									{
 										listeners?.["onPointerDown"]?.(event);
 									}
 								}}
@@ -204,7 +246,12 @@ function RailSection({
 								{(card.summary !== undefined || card.rollupPct !== undefined) && (
 									<span
 										data-rail-summary=""
-										{...(open ? {"aria-hidden": true} : {})}
+										{...(open
+											?
+												{
+													"aria-hidden": true,
+												}
+											: {})}
 										className={`ms-auto min-w-0 truncate ps-1.5 text-[12px]/[15px] font-normal text-ink-muted group-hover/railtop:opacity-0 group-has-[[data-rail-grip]:focus-visible]/railtop:opacity-0 ${open ? "invisible" : ""}`}
 									>
 										{card.rollupPct === undefined ? (
@@ -250,7 +297,8 @@ function RailSection({
  * card to that card's new state; a header's grip drags it to a new place
  * (after 6px, or with the keyboard), saved for every session.
  */
-export function SessionRail({sessionId, cards}: {sessionId: string; cards: readonly RailCard[]}) {
+export function SessionRail({sessionId, cards}: {sessionId: string; cards: readonly RailCard[]})
+{
 	const sections = useRailSectionsState();
 	const byId = new Map(cards.map((card) => [card.id, card]));
 	const shownIds = orderRailSections(
@@ -259,26 +307,52 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 	);
 	const shown = shownIds.flatMap((id) => byId.get(id) ?? []);
 	const sensors = useSensors(
-		useSensor(PointerSensor, {activationConstraint: {distance: 6}}),
-		useSensor(KeyboardSensor, {coordinateGetter: sortableKeyboardCoordinates}),
+		useSensor(
+			PointerSensor,
+			{
+				activationConstraint:
+				{
+					distance: 6,
+				},
+			},
+		),
+		useSensor(
+			KeyboardSensor,
+			{
+				coordinateGetter: sortableKeyboardCoordinates,
+			},
+		),
 	);
 	const listRef = useRef<HTMLDivElement>(null);
-	const [drop, setDrop] = useState<{id: RailSectionId; top: number} | null>(null);
-	useLayoutEffect(() => {
+	const [drop, setDrop] = useState<
+	{
+		id: RailSectionId;
+		top: number;
+	} | null>(null);
+	useLayoutEffect(() =>
+	{
 		if (drop === null) return;
 		const element = listRef.current?.querySelector<HTMLElement>(`[data-rail-card="${drop.id}"]`);
 		if (element) animateRailDrop(element, drop.top);
 	}, [drop]);
-	const onDragStart = ({activatorEvent}: DragStartEvent) => {
+	const onDragStart = ({activatorEvent}: DragStartEvent) =>
+	{
 		blurOnPointerDragStart(activatorEvent);
 	};
-	const onDragEnd = ({active, over}: DragEndEvent) => {
+	const onDragEnd = ({active, over}: DragEndEvent) =>
+	{
 		const from = RailSectionIdSchema.safeParse(active.id);
 		const to = RailSectionIdSchema.safeParse(over?.id);
 		if (!from.success) return;
 		if (to.success) reorderRailSections(from.data, to.data);
 		const dropTop = active.rect.current.translated?.top;
-		if (dropTop !== undefined) setDrop({id: from.data, top: dropTop});
+		if (dropTop !== undefined)
+			setDrop(
+				{
+					id: from.data,
+					top: dropTop,
+				},
+			);
 	};
 	return (
 		<aside
@@ -303,7 +377,8 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 						accessibility={railSectionAccessibility(shownIds)}
 					>
 						<SortableContext items={shownIds} strategy={verticalListSortingStrategy}>
-							{shown.map((card) => {
+							{shown.map((card) =>
+							{
 								const open = isRailSectionOpen(sections, sessionId, card.id);
 								return (
 									<RailSection
@@ -312,14 +387,18 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 										card={card}
 										open={open}
 										sections={sections}
-										onToggle={(event) => {
-											if (event.altKey) {
+										onToggle={(event) =>
+										{
+											if (event.altKey)
+											{
 												setRailSectionsOpen(
 													sessionId,
 													shown.map((each) => each.id),
 													!open,
 												);
-											} else {
+											}
+											else
+											{
 												toggleRailSection(sessionId, card.id);
 											}
 										}}

@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	ENDED_SUBAGENT_TTL_MS,
 	MAX_LIVE_SUBAGENTS_PER_SESSION,
 	mergeLiveSubagents,
@@ -21,7 +22,8 @@ function startNode(
 	parentSessionId: string,
 	agentId: string,
 	now: number,
-): LiveSubagentNode {
+): LiveSubagentNode
+{
 	const node = recordLiveSubagentStart(
 		target,
 		{
@@ -36,8 +38,10 @@ function startNode(
 	return node;
 }
 
-describe("live subagent store", () => {
-	it("uses the captured parent session id, canonical raw child id, and nested edge", () => {
+describe("live subagent store", () =>
+{
+	it("uses the captured parent session id, canonical raw child id, and nested edge", () =>
+	{
 		const target = new Map<string, LiveSubagentNode>();
 
 		recordLiveSubagentStart(
@@ -82,7 +86,8 @@ describe("live subagent store", () => {
 		);
 	});
 
-	it("expires ended nodes after five minutes while retaining running nodes and the boundary", () => {
+	it("expires ended nodes after five minutes while retaining running nodes and the boundary", () =>
+	{
 		const now = Date.UTC(2000, 0, 1);
 		const target = new Map<string, LiveSubagentNode>();
 		startNode(target, "session-parent", "alice", now - ENDED_SUBAGENT_TTL_MS - 1);
@@ -96,27 +101,41 @@ describe("live subagent store", () => {
 		expect([...target.keys()]).toStrictEqual(["agent-bob", "agent-charlie"]);
 	});
 
-	it("caps each root session independently and evicts its oldest ended node first", () => {
+	it("caps each root session independently and evicts its oldest ended node first", () =>
+	{
 		const target = new Map<string, LiveSubagentNode>();
 		startNode(target, "session-alice", "alice-0", 0);
 		recordLiveSubagentStop(target, "alice-0", 1);
-		for (let index = 1; index <= MAX_LIVE_SUBAGENTS_PER_SESSION; index++) {
+		for (let index = 1; index <= MAX_LIVE_SUBAGENTS_PER_SESSION; index++)
+		{
 			startNode(target, "session-alice", `alice-${index}`, index);
 		}
 		startNode(target, "session-bob", "bob-0", 0);
 
-		expect({
-			aliceIds: [...target.values()]
-				.filter((node) => node.sessionId === "session-alice")
-				.map((node) => node.agentId),
-			bobIds: [...target.values()].filter((node) => node.sessionId === "session-bob").map((node) => node.agentId),
-		}).toStrictEqual({
-			aliceIds: Array.from({length: MAX_LIVE_SUBAGENTS_PER_SESSION}, (_, index) => `agent-alice-${index + 1}`),
-			bobIds: ["agent-bob-0"],
-		});
+		expect(
+			{
+				aliceIds: [...target.values()]
+					.filter((node) => node.sessionId === "session-alice")
+					.map((node) => node.agentId),
+				bobIds: [...target.values()]
+					.filter((node) => node.sessionId === "session-bob")
+					.map((node) => node.agentId),
+			},
+		).toStrictEqual(
+			{
+				aliceIds: Array.from(
+					{
+						length: MAX_LIVE_SUBAGENTS_PER_SESSION,
+					},
+					(_, index) => `agent-alice-${index + 1}`,
+				),
+				bobIds: ["agent-bob-0"],
+			},
+		);
 	});
 
-	it("reconciles killed descendants from the root parent Stop without reopening ended nodes", () => {
+	it("reconciles killed descendants from the root parent Stop without reopening ended nodes", () =>
+	{
 		const target = new Map<string, LiveSubagentNode>();
 		startNode(target, "session-parent", "alice", Date.UTC(1999, 11, 31));
 		startNode(target, "session-parent", "bob", Date.UTC(1999, 11, 31, 0, 0, 1));
@@ -125,33 +144,14 @@ describe("live subagent store", () => {
 
 		const reconciled = reconcileLiveSubagents(target, "session-parent", Date.UTC(1999, 11, 31, 0, 0, 4));
 
-		expect({reconciled, target}).toStrictEqual({
-			reconciled: [
-				{
-					agentId: "agent-bob",
-					sessionId: "session-parent",
-					parentAgentId: null,
-					agentType: "Explore",
-					description: "Inspect bob",
-					startedAt: "1999-12-31T00:00:01.000Z",
-					endedAt: "1999-12-31T00:00:04.000Z",
-				},
-			],
-			target: new Map([
-				[
-					"agent-alice",
-					{
-						agentId: "agent-alice",
-						sessionId: "session-parent",
-						parentAgentId: null,
-						agentType: "Explore",
-						description: "Inspect alice",
-						startedAt: "1999-12-31T00:00:00.000Z",
-						endedAt: "1999-12-31T00:00:03.000Z",
-					},
-				],
-				[
-					"agent-bob",
+		expect(
+			{
+				reconciled,
+				target,
+			},
+		).toStrictEqual(
+			{
+				reconciled: [
 					{
 						agentId: "agent-bob",
 						sessionId: "session-parent",
@@ -162,25 +162,53 @@ describe("live subagent store", () => {
 						endedAt: "1999-12-31T00:00:04.000Z",
 					},
 				],
-				[
-					"agent-charlie",
-					{
-						agentId: "agent-charlie",
-						sessionId: "session-other",
-						parentAgentId: null,
-						agentType: "Explore",
-						description: "Inspect charlie",
-						startedAt: "1999-12-31T00:00:02.000Z",
-						endedAt: null,
-					},
-				],
-			]),
-		});
+				target: new Map([
+					[
+						"agent-alice",
+						{
+							agentId: "agent-alice",
+							sessionId: "session-parent",
+							parentAgentId: null,
+							agentType: "Explore",
+							description: "Inspect alice",
+							startedAt: "1999-12-31T00:00:00.000Z",
+							endedAt: "1999-12-31T00:00:03.000Z",
+						},
+					],
+					[
+						"agent-bob",
+						{
+							agentId: "agent-bob",
+							sessionId: "session-parent",
+							parentAgentId: null,
+							agentType: "Explore",
+							description: "Inspect bob",
+							startedAt: "1999-12-31T00:00:01.000Z",
+							endedAt: "1999-12-31T00:00:04.000Z",
+						},
+					],
+					[
+						"agent-charlie",
+						{
+							agentId: "agent-charlie",
+							sessionId: "session-other",
+							parentAgentId: null,
+							agentType: "Explore",
+							description: "Inspect charlie",
+							startedAt: "1999-12-31T00:00:02.000Z",
+							endedAt: null,
+						},
+					],
+				]),
+			},
+		);
 	});
 });
 
-describe("background-aware reconcile and stale sweep", () => {
-	it("keeps the listed ids open when the parent Stop reconciles", () => {
+describe("background-aware reconcile and stale sweep", () =>
+{
+	it("keeps the listed ids open when the parent Stop reconciles", () =>
+	{
 		const target = new Map<string, LiveSubagentNode>();
 		startNode(target, "session-parent", "alice", Date.UTC(1999, 11, 31));
 		startNode(target, "session-parent", "bob", Date.UTC(1999, 11, 31, 0, 0, 1));
@@ -192,33 +220,14 @@ describe("background-aware reconcile and stale sweep", () => {
 			new Set(["agent-alice"]),
 		);
 
-		expect({reconciled, target}).toStrictEqual({
-			reconciled: [
-				{
-					agentId: "agent-bob",
-					sessionId: "session-parent",
-					parentAgentId: null,
-					agentType: "Explore",
-					description: "Inspect bob",
-					startedAt: "1999-12-31T00:00:01.000Z",
-					endedAt: "1999-12-31T00:00:04.000Z",
-				},
-			],
-			target: new Map([
-				[
-					"agent-alice",
-					{
-						agentId: "agent-alice",
-						sessionId: "session-parent",
-						parentAgentId: null,
-						agentType: "Explore",
-						description: "Inspect alice",
-						startedAt: "1999-12-31T00:00:00.000Z",
-						endedAt: null,
-					},
-				],
-				[
-					"agent-bob",
+		expect(
+			{
+				reconciled,
+				target,
+			},
+		).toStrictEqual(
+			{
+				reconciled: [
 					{
 						agentId: "agent-bob",
 						sessionId: "session-parent",
@@ -229,11 +238,38 @@ describe("background-aware reconcile and stale sweep", () => {
 						endedAt: "1999-12-31T00:00:04.000Z",
 					},
 				],
-			]),
-		});
+				target: new Map([
+					[
+						"agent-alice",
+						{
+							agentId: "agent-alice",
+							sessionId: "session-parent",
+							parentAgentId: null,
+							agentType: "Explore",
+							description: "Inspect alice",
+							startedAt: "1999-12-31T00:00:00.000Z",
+							endedAt: null,
+						},
+					],
+					[
+						"agent-bob",
+						{
+							agentId: "agent-bob",
+							sessionId: "session-parent",
+							parentAgentId: null,
+							agentType: "Explore",
+							description: "Inspect bob",
+							startedAt: "1999-12-31T00:00:01.000Z",
+							endedAt: "1999-12-31T00:00:04.000Z",
+						},
+					],
+				]),
+			},
+		);
 	});
 
-	it("matches running local_agent background tasks by id or by agent type and description", () => {
+	it("matches running local_agent background tasks by id or by agent type and description", () =>
+	{
 		const target = new Map<string, LiveSubagentNode>();
 		startNode(target, "session-parent", "alice", 0);
 		startNode(target, "session-parent", "bob", 1);
@@ -241,7 +277,12 @@ describe("background-aware reconcile and stale sweep", () => {
 
 		expect(
 			runningBackgroundAgentIds(target, "session-parent", [
-				{id: "alice", type: "local_agent", status: "running", description: "Task alice"},
+				{
+					id: "alice",
+					type: "local_agent",
+					status: "running",
+					description: "Task alice",
+				},
 				{
 					id: "task-test-100",
 					type: "local_agent",
@@ -249,13 +290,24 @@ describe("background-aware reconcile and stale sweep", () => {
 					description: "Inspect bob",
 					agentType: "Explore",
 				},
-				{id: "charlie", type: "local_agent", status: "completed", description: "Done"},
-				{id: "shell-test-100", type: "local_bash", status: "running", description: "sleep"},
+				{
+					id: "charlie",
+					type: "local_agent",
+					status: "completed",
+					description: "Done",
+				},
+				{
+					id: "shell-test-100",
+					type: "local_bash",
+					status: "running",
+					description: "sleep",
+				},
 			]),
 		).toStrictEqual(new Set(["agent-alice", "agent-bob"]));
 	});
 
-	it("keeps every live node open when a running local_agent task cannot be matched", () => {
+	it("keeps every live node open when a running local_agent task cannot be matched", () =>
+	{
 		const target = new Map<string, LiveSubagentNode>();
 		startNode(target, "session-parent", "alice", 0);
 		startNode(target, "session-parent", "bob", 1);
@@ -273,7 +325,8 @@ describe("background-aware reconcile and stale sweep", () => {
 		).toStrictEqual(new Set(["agent-alice", "agent-bob"]));
 	});
 
-	it("ends running nodes idle for more than ten minutes and keeps recently active ones", () => {
+	it("ends running nodes idle for more than ten minutes and keeps recently active ones", () =>
+	{
 		const now = Date.UTC(2000, 0, 1);
 		const target = new Map<string, LiveSubagentNode>();
 		const activity = new Map<string, number>();
@@ -284,48 +337,55 @@ describe("background-aware reconcile and stale sweep", () => {
 
 		const ended = endStaleLiveSubagents(target, activity, now);
 
-		expect({
-			ended,
-			running: [...target.values()].filter((node) => node.endedAt === null),
-		}).toStrictEqual({
-			ended: [
-				{
-					agentId: "agent-alice",
-					sessionId: "session-parent",
-					parentAgentId: null,
-					agentType: "Explore",
-					description: "Inspect alice",
-					startedAt: new Date(now - STALE_RUNNING_SUBAGENT_MS - 1).toISOString(),
-					endedAt: new Date(now).toISOString(),
-				},
-			],
-			running: [
-				{
-					agentId: "agent-bob",
-					sessionId: "session-parent",
-					parentAgentId: null,
-					agentType: "Explore",
-					description: "Inspect bob",
-					startedAt: new Date(now - STALE_RUNNING_SUBAGENT_MS - 1).toISOString(),
-					endedAt: null,
-				},
-				{
-					agentId: "agent-charlie",
-					sessionId: "session-parent",
-					parentAgentId: null,
-					agentType: "Explore",
-					description: "Inspect charlie",
-					startedAt: new Date(now - STALE_RUNNING_SUBAGENT_MS).toISOString(),
-					endedAt: null,
-				},
-			],
-		});
+		expect(
+			{
+				ended,
+				running: [...target.values()].filter((node) => node.endedAt === null),
+			},
+		).toStrictEqual(
+			{
+				ended: [
+					{
+						agentId: "agent-alice",
+						sessionId: "session-parent",
+						parentAgentId: null,
+						agentType: "Explore",
+						description: "Inspect alice",
+						startedAt: new Date(now - STALE_RUNNING_SUBAGENT_MS - 1).toISOString(),
+						endedAt: new Date(now).toISOString(),
+					},
+				],
+				running: [
+					{
+						agentId: "agent-bob",
+						sessionId: "session-parent",
+						parentAgentId: null,
+						agentType: "Explore",
+						description: "Inspect bob",
+						startedAt: new Date(now - STALE_RUNNING_SUBAGENT_MS - 1).toISOString(),
+						endedAt: null,
+					},
+					{
+						agentId: "agent-charlie",
+						sessionId: "session-parent",
+						parentAgentId: null,
+						agentType: "Explore",
+						description: "Inspect charlie",
+						startedAt: new Date(now - STALE_RUNNING_SUBAGENT_MS).toISOString(),
+						endedAt: null,
+					},
+				],
+			},
+		);
 	});
 });
 
-describe("mergeLiveSubagents", () => {
-	it("keeps live-only nodes but prefers the richer indexed row for matching ids", () => {
-		const indexed: Subagent = {
+describe("mergeLiveSubagents", () =>
+{
+	it("keeps live-only nodes but prefers the richer indexed row for matching ids", () =>
+	{
+		const indexed: Subagent =
+		{
 			id: "agent-alice",
 			sessionId: "session-parent",
 			projectId: "project-example",

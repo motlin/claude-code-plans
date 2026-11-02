@@ -1,11 +1,13 @@
 {
-	"totals": {
+	"totals":
+	{
 		"files": 6935,
 		"subagentFiles": 6285,
 		"lines": 998138,
 		"bytes": 3650275510
 	},
-	"fileBytes": {
+	"fileBytes":
+	{
 		"0": 23,
 		"128": 1,
 		"8192": 10,
@@ -23,7 +25,8 @@
 		"33554432": 1,
 		"67108864": 1
 	},
-	"fileLines": {
+	"fileLines":
+	{
 		"0": 23,
 		"2": 1,
 		"4": 68,
@@ -40,7 +43,8 @@
 		"8192": 5,
 		"16384": 1
 	},
-	"recordTypes": {
+	"recordTypes":
+	{
 		"agent-name": 3024,
 		"ai-title": 11679,
 		"artifact-autoreact-ledger": 426,
@@ -66,22 +70,28 @@
 		"user": 234869,
 		"worktree-state": 958
 	},
-	"lineBytesByType": {
-		"agent-name": {
+	"lineBytesByType":
+	{
+		"agent-name":
+		{
 			"64": 3024
 		},
-		"ai-title": {
+		"ai-title":
+		{
 			"64": 10891,
 			"128": 788
 		},
-		"artifact-autoreact-ledger": {
+		"artifact-autoreact-ledger":
+		{
 			"256": 426
 		},
-		"artifact-comment-monitor": {
+		"artifact-comment-monitor":
+		{
 			"128": 37,
 			"256": 12
 		},
-		"assistant": {
+		"assistant":
+		{
 			"512": 4291,
 			"1024": 248855,
 			"2048": 96280,
@@ -93,12 +103,14 @@
 			"131072": 2,
 			"262144": 1
 		},
-		"atis-latch": {
+		"atis-latch":
+		{
 			"64": 6742,
 			"128": 1270,
 			"256": 1573
 		},
-		"attachment": {
+		"attachment":
+		{
 			"256": 15009,
 			"512": 193731,
 			"1024": 20980,
@@ -111,44 +123,55 @@
 			"131072": 179,
 			"524288": 2
 		},
-		"bridge-session": {
+		"bridge-session":
+		{
 			"256": 6663
 		},
-		"cost-state": {
+		"cost-state":
+		{
 			"256": 57,
 			"512": 288,
 			"1024": 29
 		},
-		"custom-title": {
+		"custom-title":
+		{
 			"64": 680
 		},
-		"fork-context-ref": {
+		"fork-context-ref":
+		{
 			"128": 5
 		},
-		"frame-link": {
+		"frame-link":
+		{
 			"128": 778,
 			"256": 41
 		},
-		"last-prompt": {
+		"last-prompt":
+		{
 			"64": 2456,
 			"128": 8977,
 			"256": 9360,
 			"512": 6
 		},
-		"launched": {
+		"launched":
+		{
 			"16": 1
 		},
-		"mode": {
+		"mode":
+		{
 			"64": 20050
 		},
-		"permission-mode": {
+		"permission-mode":
+		{
 			"64": 19349
 		},
-		"pr-link": {
+		"pr-link":
+		{
 			"128": 1976,
 			"256": 191
 		},
-		"queue-operation": {
+		"queue-operation":
+		{
 			"128": 3484,
 			"256": 735,
 			"512": 3999,
@@ -160,11 +183,13 @@
 			"32768": 3,
 			"131072": 2
 		},
-		"relocated": {
+		"relocated":
+		{
 			"64": 654,
 			"128": 121
 		},
-		"result": {
+		"result":
+		{
 			"1024": 7,
 			"2048": 22,
 			"4096": 6,
@@ -173,11 +198,13 @@
 			"32768": 1,
 			"131072": 1
 		},
-		"started": {
+		"started":
+		{
 			"64": 54,
 			"128": 19
 		},
-		"system": {
+		"system":
+		{
 			"256": 3478,
 			"512": 1397,
 			"1024": 4045,
@@ -186,7 +213,8 @@
 			"32768": 1,
 			"262144": 1
 		},
-		"user": {
+		"user":
+		{
 			"256": 1130,
 			"512": 44742,
 			"1024": 68791,
@@ -201,13 +229,15 @@
 			"524288": 240,
 			"1048576": 80
 		},
-		"worktree-state": {
+		"worktree-state":
+		{
 			"64": 699,
 			"256": 112,
 			"512": 147
 		}
 	},
-	"toolNames": {
+	"toolNames":
+	{
 		"(mcp)": 11601,
 		"Agent": 8115,
 		"Artifact": 67,
@@ -248,34 +278,40 @@
 		"Workflow": 4,
 		"Write": 3448
 	},
-	"toolUseLineBytes": {
-		"(mcp)": {
+	"toolUseLineBytes":
+	{
+		"(mcp)":
+		{
 			"512": 1,
 			"1024": 8894,
 			"2048": 2267,
 			"4096": 390,
 			"8192": 49
 		},
-		"Agent": {
+		"Agent":
+		{
 			"1024": 4121,
 			"2048": 3078,
 			"4096": 770,
 			"8192": 90,
 			"16384": 18
 		},
-		"Artifact": {
+		"Artifact":
+		{
 			"1024": 60,
 			"2048": 4,
 			"16384": 3
 		},
-		"AskUserQuestion": {
+		"AskUserQuestion":
+		{
 			"1024": 927,
 			"2048": 1946,
 			"4096": 367,
 			"8192": 18,
 			"16384": 5
 		},
-		"Bash": {
+		"Bash":
+		{
 			"1024": 111146,
 			"2048": 22404,
 			"4096": 3283,
@@ -284,91 +320,112 @@
 			"32768": 25,
 			"65536": 2
 		},
-		"CronCreate": {
+		"CronCreate":
+		{
 			"1024": 4,
 			"2048": 5
 		},
-		"CronDelete": {
+		"CronDelete":
+		{
 			"1024": 3
 		},
-		"CronList": {
+		"CronList":
+		{
 			"1024": 2
 		},
-		"Edit": {
+		"Edit":
+		{
 			"1024": 5557,
 			"2048": 4180,
 			"4096": 786,
 			"8192": 107,
 			"16384": 15
 		},
-		"EnterPlanMode": {
+		"EnterPlanMode":
+		{
 			"1024": 10
 		},
-		"EnterWorktree": {
+		"EnterWorktree":
+		{
 			"1024": 20
 		},
-		"ExitPlanMode": {
+		"ExitPlanMode":
+		{
 			"1024": 6,
 			"2048": 26,
 			"4096": 52,
 			"8192": 61,
 			"16384": 3
 		},
-		"ExitWorktree": {
+		"ExitWorktree":
+		{
 			"1024": 8
 		},
-		"Glob": {
+		"Glob":
+		{
 			"1024": 1
 		},
-		"Grep": {
+		"Grep":
+		{
 			"1024": 3
 		},
-		"ListAgents": {
+		"ListAgents":
+		{
 			"1024": 54
 		},
-		"Monitor": {
+		"Monitor":
+		{
 			"1024": 75,
 			"2048": 35,
 			"16384": 2
 		},
-		"PushNotification": {
+		"PushNotification":
+		{
 			"1024": 8
 		},
-		"Read": {
+		"Read":
+		{
 			"1024": 13476,
 			"2048": 72,
 			"4096": 1,
 			"8192": 2,
 			"16384": 14
 		},
-		"ReadNotifications": {
+		"ReadNotifications":
+		{
 			"1024": 1
 		},
-		"RemoteTrigger": {
+		"RemoteTrigger":
+		{
 			"16384": 1
 		},
-		"ReportFindings": {
+		"ReportFindings":
+		{
 			"1024": 49,
 			"2048": 13,
 			"4096": 11
 		},
-		"ScheduleWakeup": {
+		"ScheduleWakeup":
+		{
 			"1024": 2,
 			"2048": 13,
 			"16384": 27
 		},
-		"SendMessage": {
+		"SendMessage":
+		{
 			"1024": 824,
 			"2048": 968,
 			"4096": 277,
 			"8192": 132,
 			"16384": 13
 		},
-		"SendUserFile": {
+		"SendUserFile":
+		{
 			"1024": 2,
 			"2048": 2
 		},
-		"Skill": {
+		"Skill":
+		{
 			"512": 3,
 			"1024": 4485,
 			"2048": 46,
@@ -376,7 +433,8 @@
 			"8192": 3,
 			"16384": 2
 		},
-		"StructuredOutput": {
+		"StructuredOutput":
+		{
 			"2048": 2,
 			"4096": 17,
 			"8192": 16,
@@ -384,7 +442,8 @@
 			"32768": 6,
 			"262144": 1
 		},
-		"SubagentHandback": {
+		"SubagentHandback":
+		{
 			"1024": 98,
 			"2048": 410,
 			"4096": 605,
@@ -393,45 +452,56 @@
 			"32768": 4,
 			"65536": 1
 		},
-		"TaskCreate": {
+		"TaskCreate":
+		{
 			"1024": 155,
 			"2048": 22
 		},
-		"TaskGet": {
+		"TaskGet":
+		{
 			"1024": 12
 		},
-		"TaskList": {
+		"TaskList":
+		{
 			"1024": 10
 		},
-		"TaskOutput": {
+		"TaskOutput":
+		{
 			"1024": 43
 		},
-		"TaskStop": {
+		"TaskStop":
+		{
 			"1024": 139
 		},
-		"TaskUpdate": {
+		"TaskUpdate":
+		{
 			"1024": 337,
 			"2048": 7
 		},
-		"ToolSearch": {
+		"ToolSearch":
+		{
 			"1024": 2586,
 			"2048": 91,
 			"4096": 1,
 			"8192": 1,
 			"16384": 1
 		},
-		"WebFetch": {
+		"WebFetch":
+		{
 			"1024": 556,
 			"2048": 41
 		},
-		"WebSearch": {
+		"WebSearch":
+		{
 			"1024": 326
 		},
-		"Workflow": {
+		"Workflow":
+		{
 			"1024": 2,
 			"16384": 2
 		},
-		"Write": {
+		"Write":
+		{
 			"1024": 257,
 			"2048": 1009,
 			"4096": 983,
@@ -441,8 +511,10 @@
 			"65536": 5
 		}
 	},
-	"toolResultLineBytes": {
-		"(mcp)": {
+	"toolResultLineBytes":
+	{
+		"(mcp)":
+		{
 			"512": 916,
 			"1024": 5234,
 			"2048": 2582,
@@ -456,10 +528,12 @@
 			"524288": 63,
 			"1048576": 25
 		},
-		"(unknown)": {
+		"(unknown)":
+		{
 			"1024": 4
 		},
-		"Agent": {
+		"Agent":
+		{
 			"512": 466,
 			"1024": 660,
 			"2048": 4805,
@@ -469,14 +543,16 @@
 			"32768": 20,
 			"65536": 4
 		},
-		"Artifact": {
+		"Artifact":
+		{
 			"512": 1,
 			"1024": 24,
 			"2048": 38,
 			"16384": 3,
 			"32768": 1
 		},
-		"AskUserQuestion": {
+		"AskUserQuestion":
+		{
 			"512": 93,
 			"1024": 1102,
 			"2048": 1409,
@@ -485,7 +561,8 @@
 			"65536": 2,
 			"524288": 2
 		},
-		"Bash": {
+		"Bash":
+		{
 			"512": 22626,
 			"1024": 45673,
 			"2048": 31197,
@@ -496,18 +573,22 @@
 			"65536": 7,
 			"131072": 1
 		},
-		"CronCreate": {
+		"CronCreate":
+		{
 			"512": 8,
 			"2048": 1
 		},
-		"CronDelete": {
+		"CronDelete":
+		{
 			"512": 3
 		},
-		"CronList": {
+		"CronList":
+		{
 			"512": 1,
 			"1024": 1
 		},
-		"Edit": {
+		"Edit":
+		{
 			"512": 634,
 			"1024": 2076,
 			"2048": 3159,
@@ -516,14 +597,17 @@
 			"16384": 98,
 			"32768": 9
 		},
-		"EnterPlanMode": {
+		"EnterPlanMode":
+		{
 			"1024": 10
 		},
-		"EnterWorktree": {
+		"EnterWorktree":
+		{
 			"512": 10,
 			"1024": 8
 		},
-		"ExitPlanMode": {
+		"ExitPlanMode":
+		{
 			"512": 42,
 			"1024": 19,
 			"2048": 8,
@@ -531,31 +615,38 @@
 			"8192": 33,
 			"16384": 18
 		},
-		"ExitWorktree": {
+		"ExitWorktree":
+		{
 			"1024": 6
 		},
-		"Glob": {
+		"Glob":
+		{
 			"512": 1
 		},
-		"Grep": {
+		"Grep":
+		{
 			"512": 3
 		},
-		"ListAgents": {
+		"ListAgents":
+		{
 			"1024": 1,
 			"2048": 4,
 			"4096": 36,
 			"8192": 12,
 			"16384": 1
 		},
-		"Monitor": {
+		"Monitor":
+		{
 			"512": 68,
 			"1024": 41,
 			"2048": 3
 		},
-		"PushNotification": {
+		"PushNotification":
+		{
 			"512": 8
 		},
-		"Read": {
+		"Read":
+		{
 			"512": 385,
 			"1024": 1334,
 			"2048": 2277,
@@ -569,23 +660,28 @@
 			"524288": 164,
 			"1048576": 54
 		},
-		"ReadNotifications": {
+		"ReadNotifications":
+		{
 			"512": 1
 		},
-		"RemoteTrigger": {
+		"RemoteTrigger":
+		{
 			"8192": 1
 		},
-		"ReportFindings": {
+		"ReportFindings":
+		{
 			"512": 49,
 			"1024": 6,
 			"2048": 12,
 			"4096": 6
 		},
-		"ScheduleWakeup": {
+		"ScheduleWakeup":
+		{
 			"512": 40,
 			"1024": 2
 		},
-		"SendMessage": {
+		"SendMessage":
+		{
 			"512": 280,
 			"1024": 1449,
 			"2048": 305,
@@ -593,35 +689,43 @@
 			"8192": 69,
 			"16384": 6
 		},
-		"SendUserFile": {
+		"SendUserFile":
+		{
 			"1024": 3,
 			"2048": 1
 		},
-		"Skill": {
+		"Skill":
+		{
 			"512": 4514,
 			"1024": 29
 		},
-		"StructuredOutput": {
+		"StructuredOutput":
+		{
 			"512": 45
 		},
-		"SubagentHandback": {
+		"SubagentHandback":
+		{
 			"512": 455,
 			"1024": 888
 		},
-		"TaskCreate": {
+		"TaskCreate":
+		{
 			"512": 175,
 			"2048": 2
 		},
-		"TaskGet": {
+		"TaskGet":
+		{
 			"1024": 6,
 			"2048": 6
 		},
-		"TaskList": {
+		"TaskList":
+		{
 			"512": 8,
 			"1024": 1,
 			"4096": 1
 		},
-		"TaskOutput": {
+		"TaskOutput":
+		{
 			"512": 3,
 			"1024": 15,
 			"2048": 1,
@@ -629,24 +733,28 @@
 			"8192": 8,
 			"262144": 1
 		},
-		"TaskStop": {
+		"TaskStop":
+		{
 			"512": 29,
 			"1024": 85,
 			"2048": 21,
 			"4096": 3,
 			"8192": 1
 		},
-		"TaskUpdate": {
+		"TaskUpdate":
+		{
 			"512": 343,
 			"2048": 1
 		},
-		"ToolSearch": {
+		"ToolSearch":
+		{
 			"512": 1953,
 			"1024": 635,
 			"2048": 91,
 			"4096": 1
 		},
-		"WebFetch": {
+		"WebFetch":
+		{
 			"512": 74,
 			"1024": 157,
 			"2048": 277,
@@ -655,16 +763,19 @@
 			"32768": 5,
 			"65536": 8
 		},
-		"WebSearch": {
+		"WebSearch":
+		{
 			"1024": 2,
 			"2048": 13,
 			"4096": 245,
 			"8192": 66
 		},
-		"Workflow": {
+		"Workflow":
+		{
 			"2048": 4
 		},
-		"Write": {
+		"Write":
+		{
 			"512": 230,
 			"1024": 373,
 			"2048": 917,

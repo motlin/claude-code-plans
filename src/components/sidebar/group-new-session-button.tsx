@@ -17,11 +17,13 @@ export function GroupNewSessionButton({
 	groupLabel: string;
 	target?: string | null;
 	onNewSession: (source: GroupNewSessionSource) => void;
-}) {
+})
+{
 	const place = target === null ? "New session with no folder picked" : `New session in ${target ?? groupLabel}`;
 	const label = target === undefined ? place : `${place}, added to ${groupLabel}`;
 
-	function onClick(event: MouseEvent<HTMLButtonElement>) {
+	function onClick(event: MouseEvent<HTMLButtonElement>)
+	{
 		// Never toggles the section the header belongs to.
 		event.stopPropagation();
 		event.preventDefault();

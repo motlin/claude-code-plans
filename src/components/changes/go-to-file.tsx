@@ -7,17 +7,20 @@ import {FileTypeIcon} from "../file-type-icon";
 import {Tooltip} from "../ui/tooltip";
 import {DiffCounts} from "./changes-file-tree";
 
-export interface GoToFileEntry {
+export interface GoToFileEntry
+{
 	path: string;
 	additions: number;
 	deletions: number;
 }
 
 /** `text` (which starts at `offset` in the full path) with the matched characters lit. */
-function Highlighted({text, offset, ranges}: {text: string; offset: number; ranges: readonly MatchRange[]}) {
+function Highlighted({text, offset, ranges}: {text: string; offset: number; ranges: readonly MatchRange[]})
+{
 	const parts: ReactNode[] = [];
 	let cursor = 0;
-	for (const [start, end] of ranges) {
+	for (const [start, end] of ranges)
+	{
 		const from = Math.max(start - offset, cursor);
 		const to = Math.min(end - offset, text.length);
 		if (to <= from) continue;
@@ -44,7 +47,8 @@ export function GoToFile({
 }: {
 	files: readonly GoToFileEntry[];
 	onSelectFile: (path: string) => void;
-}) {
+})
+{
 	const baseId = useId();
 	const listboxId = `${baseId}-listbox`;
 	const keys = useShortcutKeys("go_to_file_in_changes");
@@ -54,7 +58,8 @@ export function GoToFile({
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(0);
 
-	const openPopup = () => {
+	const openPopup = () =>
+	{
 		setQuery("");
 		setActiveIndex(0);
 		setOpen(true);
@@ -62,14 +67,17 @@ export function GoToFile({
 
 	useShortcut("go_to_file_in_changes", openPopup);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!open) return undefined;
-		const handlePointerDown = (event: MouseEvent) => {
+		const handlePointerDown = (event: MouseEvent) =>
+		{
 			if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
 			setOpen(false);
 		};
 		document.addEventListener("mousedown", handlePointerDown);
-		return () => {
+		return () =>
+		{
 			document.removeEventListener("mousedown", handlePointerDown);
 		};
 	}, [open]);
@@ -82,14 +90,17 @@ export function GoToFile({
 	const footer = goToFileFooter(more);
 	const active = results[Math.min(activeIndex, results.length - 1)];
 
-	const choose = (path: string | undefined) => {
+	const choose = (path: string | undefined) =>
+	{
 		if (path === undefined) return;
 		setOpen(false);
 		onSelectFile(path);
 	};
 
-	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-		switch (event.key) {
+	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) =>
+	{
+		switch (event.key)
+		{
 			case "ArrowDown":
 				event.preventDefault();
 				setActiveIndex((index) => Math.min(results.length - 1, index + 1));
@@ -123,7 +134,8 @@ export function GoToFile({
 					aria-haspopup="listbox"
 					aria-expanded={open}
 					aria-keyshortcuts={keys.ariaKeyShortcuts}
-					onClick={() => {
+					onClick={() =>
+					{
 						if (open) setOpen(false);
 						else openPopup();
 					}}
@@ -145,7 +157,8 @@ export function GoToFile({
 						aria-activedescendant={active === undefined ? undefined : `${baseId}-${active.path}`}
 						placeholder="Search changed files"
 						value={query}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							setQuery(event.target.value);
 							setActiveIndex(0);
 						}}
@@ -161,7 +174,8 @@ export function GoToFile({
 							aria-label="Changed files"
 							className="max-h-[320px] min-h-0 overflow-y-auto"
 						>
-							{results.map((result) => {
+							{results.map((result) =>
+							{
 								const slash = result.path.lastIndexOf("/");
 								const name = result.path.slice(slash + 1);
 								const dir = slash === -1 ? "" : result.path.slice(0, slash);
@@ -175,13 +189,16 @@ export function GoToFile({
 										role="option"
 										aria-selected={selected}
 										title={result.path}
-										onMouseEnter={() => {
+										onMouseEnter={() =>
+										{
 											setActiveIndex(results.indexOf(result));
 										}}
-										onMouseDown={(event) => {
+										onMouseDown={(event) =>
+										{
 											event.preventDefault();
 										}}
-										onClick={() => {
+										onClick={() =>
+										{
 											choose(result.path);
 										}}
 										className="flex h-6 shrink-0 cursor-default items-center gap-1.5 rounded-r5 px-2 text-body select-none aria-selected:bg-fill-ghost-hover"

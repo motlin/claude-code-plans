@@ -15,29 +15,35 @@ const PUBLISH_ACTION = "publish";
 /** The actions that count as opening an artifact for its "Last opened" time. */
 const OPEN_ACTIONS = new Set(["open", "read"]);
 
-interface PendingCall {
+interface PendingCall
+{
 	action: string;
 	input: Record<string, unknown>;
 	timestamp: string | undefined;
 }
 
-function nonEmptyString(value: unknown): string | null {
+function nonEmptyString(value: unknown): string | null
+{
 	return typeof value === "string" && value !== "" ? value : null;
 }
 
-function toolResultText(content: unknown): string {
+function toolResultText(content: unknown): string
+{
 	if (typeof content === "string") return content;
 	if (!Array.isArray(content)) return "";
 	return content
-		.map((block) => {
+		.map((block) =>
+		{
 			const record = asRecord(block);
 			return record?.["type"] === "text" && typeof record["text"] === "string" ? record["text"] : "";
 		})
 		.join("\n");
 }
 
-function parseTimestamp(...candidates: Array<string | undefined>): number | undefined {
-	for (const candidate of candidates) {
+function parseTimestamp(...candidates: Array<string | undefined>): number | undefined
+{
+	for (const candidate of candidates)
+	{
 		if (candidate === undefined) continue;
 		const ms = Date.parse(candidate);
 		if (Number.isFinite(ms)) return ms;
@@ -49,41 +55,57 @@ function parseTimestamp(...candidates: Array<string | undefined>): number | unde
  * Collects the successful `Artifact` tool calls in one transcript, pairing
  * each assistant tool_use with the user record that carries its result.
  */
-export class ArtifactEventCollector {
+export class ArtifactEventCollector
+{
 	private readonly pending = new Map<string, PendingCall>();
 	private readonly collected: ArtifactEventData[] = [];
 
-	add(record: unknown): void {
+	add(record: unknown): void
+	{
 		const obj = asRecord(record);
 		if (obj === undefined) return;
 		const content = asRecord(obj["message"])?.["content"];
 		if (!Array.isArray(content)) return;
 		const timestamp = typeof obj["timestamp"] === "string" ? obj["timestamp"] : undefined;
 
-		for (const rawBlock of content) {
+		for (const rawBlock of content)
+		{
 			const block = asRecord(rawBlock);
 			if (block === undefined) continue;
-			if (obj["type"] === "assistant" && block["type"] === "tool_use") {
+			if (obj["type"] === "assistant" && block["type"] === "tool_use")
+			{
 				this.addToolUse(block, timestamp);
-			} else if (obj["type"] === "user" && block["type"] === "tool_result") {
+			}
+			else if (obj["type"] === "user" && block["type"] === "tool_result")
+			{
 				this.addToolResult(block, obj["toolUseResult"], timestamp);
 			}
 		}
 	}
 
-	events(): ArtifactEventData[] {
+	events(): ArtifactEventData[]
+	{
 		return this.collected;
 	}
 
-	private addToolUse(block: Record<string, unknown>, timestamp: string | undefined): void {
+	private addToolUse(block: Record<string, unknown>, timestamp: string | undefined): void
+	{
 		if (block["name"] !== "Artifact" || typeof block["id"] !== "string") return;
 		const input = asRecord(block["input"]) ?? {};
 		const action = typeof input["action"] === "string" ? input["action"] : PUBLISH_ACTION;
 		if (!INDEXED_ACTIONS.has(action)) return;
-		this.pending.set(block["id"], {action, input, timestamp});
+		this.pending.set(
+			block["id"],
+			{
+				action,
+				input,
+				timestamp,
+			},
+		);
 	}
 
-	private addToolResult(block: Record<string, unknown>, toolUseResult: unknown, timestamp: string | undefined): void {
+	private addToolResult(block: Record<string, unknown>, toolUseResult: unknown, timestamp: string | undefined): void
+	{
 		const toolUseId = block["tool_use_id"];
 		if (typeof toolUseId !== "string") return;
 		const call = this.pending.get(toolUseId);
@@ -106,40 +128,46 @@ export class ArtifactEventCollector {
 			(typeof readUrl === "string" ? normalizeArtifactUrl(readUrl)?.url : undefined);
 		if (url === undefined) return;
 
-		this.collected.push({
-			toolUseId,
-			ts,
-			action,
-			url,
-			title: parsed?.title ?? nonEmptyString(input["title"]),
-			favicon: nonEmptyString(input["favicon"]),
-			description: nonEmptyString(input["description"]),
-			sourcePath: parsed?.path ?? nonEmptyString(input["file_path"]),
-			version: parsed?.version ?? null,
-			audience: nonEmptyString(resultRecord?.["audience"]),
-			icon: nonEmptyString(resultRecord?.["icon"]),
-			artifactUuid: nonEmptyString(resultRecord?.["artifact_id"]),
-			typeUrl:
-				resultRecord?.["created_from_type"] === true
-					? nonEmptyString(asRecord(resultRecord["type"])?.["url"])
-					: null,
-		});
+		this.collected.push(
+			{
+				toolUseId,
+				ts,
+				action,
+				url,
+				title: parsed?.title ?? nonEmptyString(input["title"]),
+				favicon: nonEmptyString(input["favicon"]),
+				description: nonEmptyString(input["description"]),
+				sourcePath: parsed?.path ?? nonEmptyString(input["file_path"]),
+				version: parsed?.version ?? null,
+				audience: nonEmptyString(resultRecord?.["audience"]),
+				icon: nonEmptyString(resultRecord?.["icon"]),
+				artifactUuid: nonEmptyString(resultRecord?.["artifact_id"]),
+				typeUrl:
+					resultRecord?.["created_from_type"] === true
+						? nonEmptyString(asRecord(resultRecord["type"])?.["url"])
+						: null,
+			},
+		);
 	}
 }
 
-function lastNonNull<T>(values: ReadonlyArray<T | null | undefined>): T | null {
-	for (let index = values.length - 1; index >= 0; index--) {
+function lastNonNull<T>(values: ReadonlyArray<T | null | undefined>): T | null
+{
+	for (let index = values.length - 1; index >= 0; index--)
+	{
 		const value = values[index];
 		if (value !== null && value !== undefined) return value;
 	}
 	return null;
 }
 
-function firstNonNull<T>(values: ReadonlyArray<T | null | undefined>): T | null {
+function firstNonNull<T>(values: ReadonlyArray<T | null | undefined>): T | null
+{
 	return lastNonNull(values.toReversed());
 }
 
-function recomputeArtifact(transaction: IndexDb, url: string): void {
+function recomputeArtifact(transaction: IndexDb, url: string): void
+{
 	const events = transaction
 		.select()
 		.from(schema.artifactEvents)
@@ -148,13 +176,15 @@ function recomputeArtifact(transaction: IndexDb, url: string): void {
 		.toSorted((a, b) => a.ts - b.ts || a.toolUseId.localeCompare(b.toolUseId));
 	const latest = events.at(-1);
 	const normalized = normalizeArtifactUrl(url);
-	if (latest === undefined || normalized === undefined) {
+	if (latest === undefined || normalized === undefined)
+	{
 		transaction.delete(schema.artifacts).where(eq(schema.artifacts.url, url)).run();
 		return;
 	}
 
 	const publishes = events.filter((event) => event.action === PUBLISH_ACTION);
-	const row = {
+	const row =
+	{
 		url,
 		id: normalized.id,
 		urlKind: normalized.kind,
@@ -174,10 +204,20 @@ function recomputeArtifact(transaction: IndexDb, url: string): void {
 		lastSessionId: latest.sessionId,
 		projectId: latest.projectId,
 	};
-	transaction.insert(schema.artifacts).values(row).onConflictDoUpdate({target: schema.artifacts.url, set: row}).run();
+	transaction
+		.insert(schema.artifacts)
+		.values(row)
+		.onConflictDoUpdate(
+			{
+				target: schema.artifacts.url,
+				set: row,
+			},
+		)
+		.run();
 }
 
-function recomputeArtifacts(transaction: IndexDb, urls: Iterable<string>): void {
+function recomputeArtifacts(transaction: IndexDb, urls: Iterable<string>): void
+{
 	for (const url of new Set(urls)) recomputeArtifact(transaction, url);
 }
 
@@ -187,19 +227,33 @@ function recomputeArtifacts(transaction: IndexDb, urls: Iterable<string>): void 
  */
 export function replaceArtifactEvents(
 	db: IndexDb,
-	source: {filePath: string; sessionId: string; projectId: string; isSubagent: boolean},
+	source:
+	{
+		filePath: string;
+		sessionId: string;
+		projectId: string;
+		isSubagent: boolean;
+	},
 	events: readonly ArtifactEventData[],
-): void {
-	db.transaction((transaction) => {
+): void
+{
+	db.transaction((transaction) =>
+	{
 		const previousUrls = transaction
-			.selectDistinct({url: schema.artifactEvents.url})
+			.selectDistinct(
+				{
+					url: schema.artifactEvents.url,
+				},
+			)
 			.from(schema.artifactEvents)
 			.where(eq(schema.artifactEvents.filePath, source.filePath))
 			.all()
 			.map((row) => row.url);
 		transaction.delete(schema.artifactEvents).where(eq(schema.artifactEvents.filePath, source.filePath)).run();
-		for (const event of events) {
-			const row: ArtifactEventRow = {
+		for (const event of events)
+		{
+			const row: ArtifactEventRow =
+			{
 				...event,
 				sessionId: source.sessionId,
 				projectId: source.projectId,
@@ -209,7 +263,12 @@ export function replaceArtifactEvents(
 			transaction
 				.insert(schema.artifactEvents)
 				.values(row)
-				.onConflictDoUpdate({target: schema.artifactEvents.toolUseId, set: row})
+				.onConflictDoUpdate(
+					{
+						target: schema.artifactEvents.toolUseId,
+						set: row,
+					},
+				)
 				.run();
 		}
 		recomputeArtifacts(transaction, [...previousUrls, ...events.map((event) => event.url)]);
@@ -217,11 +276,17 @@ export function replaceArtifactEvents(
 }
 
 /** Drops every artifact event recorded for the given sessions (main and subagent transcripts). */
-export function deleteArtifactEventsForSessions(db: IndexDb, sessionIds: readonly string[]): void {
+export function deleteArtifactEventsForSessions(db: IndexDb, sessionIds: readonly string[]): void
+{
 	if (sessionIds.length === 0) return;
-	db.transaction((transaction) => {
+	db.transaction((transaction) =>
+	{
 		const urls = transaction
-			.selectDistinct({url: schema.artifactEvents.url})
+			.selectDistinct(
+				{
+					url: schema.artifactEvents.url,
+				},
+			)
 			.from(schema.artifactEvents)
 			.where(inArray(schema.artifactEvents.sessionId, [...sessionIds]))
 			.all()

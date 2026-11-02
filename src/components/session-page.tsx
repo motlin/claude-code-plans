@@ -13,7 +13,8 @@ import {usageQueryOptions} from "../lib/api/usage";
 import {focusComposer, refillComposer, refillRejectedSend, takeBackSend} from "../lib/context-attach";
 import {rewindStepsBack, rewindTurns} from "../lib/rewind-picker";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
-import {
+import
+{
 	SessionRailFitContext,
 	useSessionRailDocked,
 	useSessionRailFitState,
@@ -39,7 +40,8 @@ import {sessionTitlePending} from "../lib/session-stand-in-title";
 import {SessionAiTitleLine} from "./session-ai-title-line";
 import {SESSION_STICKY_HEADER_CLASS} from "./titlebar-classes";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
-import {
+import
+{
 	AskUserQuestionProvider,
 	type AnswerSubmission,
 	type AskUserQuestionContextValue,
@@ -90,7 +92,8 @@ import {RefusalFallbackBand} from "./refusal-fallback-card";
 import {startSessionOnModel} from "../lib/start-session-on-model";
 import {activeRefusalFallback} from "../lib/refusal-fallback";
 import {newestRecordMs, usageWindowSpent} from "../lib/cold-resume-notice";
-import {
+import
+{
 	STALE_COMPACT_FLOOR,
 	decideStaleCompact,
 	lastEntryIsAssistantReply,
@@ -125,7 +128,8 @@ import {useRewindRequest} from "../hooks/use-rewind-request";
 import {useRefusalEditRetry} from "../hooks/use-refusal-edit-retry";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
 import {SEND_NOW_FAILED_MESSAGE, useComposerQueue} from "../hooks/use-composer-queue";
-import {
+import
+{
 	type ComposerPaneState,
 	type ComposerSubmit,
 	dispatchComposerSubmit,
@@ -137,7 +141,8 @@ import {assertNever} from "../lib/assert-never";
 import {canApplyLive, type LaunchOptions, modeMenuItems} from "../lib/launch-options";
 import {setPendingFork} from "../lib/session-fork";
 import {requestRailContextCard} from "../lib/session-rail-store";
-import {
+import
+{
 	useClaudeEvents,
 	useComposerServerState,
 	useIsSessionActive,
@@ -145,7 +150,8 @@ import {
 	useCachedSessionSummary,
 	useStatusline,
 } from "../hooks/use-claude-events";
-import {
+import
+{
 	lastAssistantEffortFromRecords,
 	lastAssistantModelFromRecords,
 	lastAssistantUsageFromRecords,
@@ -159,7 +165,8 @@ import {useChapterJump} from "../hooks/use-chapter-jump";
 import {useSessionChapters} from "../lib/chapter-store";
 import {buildSessionChapters} from "../lib/session-chapters";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
-import {
+import
+{
 	findLastPendingToolUse,
 	findPendingAskUserQuestion,
 	hookQuestionCardShown as isHookQuestionCardShown,
@@ -169,7 +176,8 @@ import {useApprovalAnswered, useForgetAnsweredHookPlan} from "../lib/answered-ap
 import {useAnsweredSessionIds} from "../lib/answered-sessions";
 import {useQuestionCardSent} from "../lib/question-card-store";
 import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../lib/api/application-settings";
-import {
+import
+{
 	herdrPanesQueryOptions,
 	launchHerdrSession,
 	sendHerdrInterrupt,
@@ -187,7 +195,8 @@ import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
 import {useLiveApproval} from "../lib/live-approval-sessions";
 import {pendingPlanQueryOptions} from "../lib/api/pending-plan";
 import {pendingElicitationsQueryOptions} from "../lib/api/pending-elicitations";
-import {
+import
+{
 	DeferredInlinePlanApproval,
 	DeferredSessionPermissionCard,
 	DeferredSendRejectedCard,
@@ -196,7 +205,8 @@ import {
 import {useSendRejectionActions} from "./use-send-rejection-actions";
 import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
 import {planText} from "../lib/exit-plan-mode";
-import {
+import
+{
 	findElicitationWaitingNotice,
 	findPendingElicitationPermission,
 	findUrlElicitationCard,
@@ -208,7 +218,8 @@ import {
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
 import type {PaneKind} from "../lib/pane-layout";
 import type {QuestionAnswer} from "../lib/hook-events";
-import {
+import
+{
 	sessionDetailQueryOptions,
 	sessionResourcesQueryOptions,
 	sessionSubagentsQueryOptions,
@@ -231,7 +242,8 @@ import {sessionAnswerRoute, sessionLiveness} from "../hooks/use-question-answer-
 import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
 import {runShellCommandInPane} from "../lib/composer-shell-command";
 import {useHerdrReconnecting} from "../hooks/use-herdr-reconnecting";
-import {
+import
+{
 	errorRecoveryAvailability,
 	errorRecoveryHandlers,
 	lastEntryIsError,
@@ -252,7 +264,8 @@ const SESSION_PANE_CHUNKS = [
 	preloadErrorRecoveryActions,
 ];
 
-function SessionChrome({children}: {children: React.ReactNode}) {
+function SessionChrome({children}: {children: React.ReactNode})
+{
 	return <div className="h-full overflow-auto">{children}</div>;
 }
 
@@ -263,14 +276,18 @@ function SessionChrome({children}: {children: React.ReactNode}) {
 const COMPOSER_RUNNING_LAUNCHES: ReadonlyMap<string, string> = new Map();
 
 /** A pane to open on arrival (the `?pane=` deep link), reported back once handled. */
-interface RequestedPaneProps {
+interface RequestedPaneProps
+{
 	requestedPane?: PaneKind | undefined;
 	onRequestedPaneHandled?: (() => void) | undefined;
 }
 
 // The session rail's cards load on its first show.
 const SessionRailCards = lazy(async () =>
-	import("./session-rail/session-rail-cards").then((module) => ({default: module.SessionRailCards})),
+	import("./session-rail/session-rail-cards").then((module) => (
+	{
+		default: module.SessionRailCards,
+	})),
 );
 
 /** The session outline in the chat tile's start gutter, jumping through the transcript's own scroller. */
@@ -278,21 +295,25 @@ function SessionOutline({
 	requestMessageJump,
 	windowStartIndex,
 	...props
-}: Omit<ComponentProps<typeof SessionChaptersToc>, "onJump"> & {
+}: Omit<ComponentProps<typeof SessionChaptersToc>, "onJump"> &
+{
 	requestMessageJump: (uuid: string) => void;
 	windowStartIndex: number;
-}) {
+})
+{
 	const jump = useChapterJump(props.scrollRef, requestMessageJump, windowStartIndex);
 	return <SessionChaptersToc {...props} onJump={jump} />;
 }
 
-type RailTileFrameProps = Omit<ComponentProps<typeof SessionTileFrame>, "rail" | "railDocked" | "tileRef"> & {
+type RailTileFrameProps = Omit<ComponentProps<typeof SessionTileFrame>, "rail" | "railDocked" | "tileRef"> &
+{
 	railInputs: SessionRailInputs;
 	runningBackgroundLaunches: ReadonlyMap<string, string>;
 };
 
 /** The chat tile with the session rail docked at its end while shown and fitting (≥800px beside a side pane under panels). */
-function RailTileFrame(props: RailTileFrameProps) {
+function RailTileFrame(props: RailTileFrameProps)
+{
 	const fit = useSessionRailFitState();
 	return (
 		<SessionRailFitContext.Provider value={fit}>
@@ -306,7 +327,11 @@ function RailTileFrameBody({
 	runningBackgroundLaunches,
 	measureRef,
 	...props
-}: RailTileFrameProps & {measureRef: (node: HTMLElement | null) => void}) {
+}: RailTileFrameProps &
+{
+	measureRef: (node: HTMLElement | null) => void;
+})
+{
 	const railDocked = useSessionRailDocked();
 	return (
 		<SessionTileFrame
@@ -332,13 +357,26 @@ function RailTileFrameBody({
 
 // The notify tip shows nothing until the user comes back from 30s away, so it loads with the first permission card.
 const ToolApprovalNotifyTip = lazy(async () =>
-	import("./tool-approval-notify-tip").then((module) => ({default: module.ToolApprovalNotifyTip})),
+	import("./tool-approval-notify-tip").then((module) => (
+	{
+		default: module.ToolApprovalNotifyTip,
+	})),
 );
 
 // The Rewind picker loads on its first open (Esc Esc or /rewind) and stays mounted for its close animation.
-const RewindPicker = lazy(async () => import("./rewind-picker").then((module) => ({default: module.RewindPicker})));
+const RewindPicker = lazy(async () =>
+	import("./rewind-picker").then((module) => (
+	{
+		default: module.RewindPicker,
+	})),
+);
 // The "Rewind to this message?" confirm loads when a rewind first needs it.
-const RewindConfirm = lazy(async () => import("./rewind-confirm").then((module) => ({default: module.RewindConfirm})));
+const RewindConfirm = lazy(async () =>
+	import("./rewind-confirm").then((module) => (
+	{
+		default: module.RewindConfirm,
+	})),
+);
 
 /** Upstream's conversation-rewind failures (`kb`). */
 const REWIND_NOT_POSSIBLE = "Can’t rewind to this message.";
@@ -352,21 +390,25 @@ export function SessionPage({
 	scrollRestoration,
 	requestedPane,
 	onRequestedPaneHandled,
-}: {
+}:
+{
 	sessionId: string;
 	routeId?: string;
 	scrollKey?: string;
 	scrollRestoration?: MainScrollRestorationSnapshot | undefined;
-} & RequestedPaneProps) {
+} & RequestedPaneProps)
+{
 	// Plain `useQuery` (not suspense) so the app shell stays painted and this
 	// page can show its own skeleton while the transcript payload loads.
 	const detailQuery = useQuery(sessionDetailQueryOptions(sessionId));
 	const transcriptQuery = useQuery(transcriptQueryOptions(sessionId));
 	const subagentsQuery = useQuery(sessionSubagentsQueryOptions(sessionId));
 	const herdrQuery = useQuery(herdrPanesQueryOptions);
-	const locationScrollKey = useLocation({
-		select: (location) => sessionScrollKey(location, sessionId),
-	});
+	const locationScrollKey = useLocation(
+		{
+			select: (location) => sessionScrollKey(location, sessionId),
+		},
+	);
 	// The route boundary keeps the departing visit stable while the next location is still loading.
 	const initialScrollKey = scrollKey ?? locationScrollKey;
 	// Standalone callers capture before detail loads; routed pages supply the earlier pre-alias snapshot.
@@ -412,7 +454,8 @@ export function SessionPage({
 	);
 }
 
-interface SessionViewProps extends RequestedPaneProps {
+interface SessionViewProps extends RequestedPaneProps
+{
 	sessionId: string;
 	routeId: string;
 	/** The location's history key: the transcript scrolls to its end once per key. */
@@ -426,7 +469,8 @@ interface SessionViewProps extends RequestedPaneProps {
 }
 
 /** The window's first record, by uuid where it has one, so a session switch reads as a new transcript. */
-function firstRecordKey(transcript: TranscriptData): string | undefined {
+function firstRecordKey(transcript: TranscriptData): string | undefined
+{
 	const first = transcript.records[0];
 	if (first === undefined) return undefined;
 	const uuid = first["uuid"];
@@ -438,13 +482,31 @@ function firstRecordKey(transcript: TranscriptData): string | undefined {
  * animates bands that mount after first paint, so the archived note band-enters when the session is
  * archived while open, and stays put when the session was already archived on open.
  */
-function useArchivedSinceOpen(sessionId: string, archived: boolean): boolean {
-	const [seen, setSeen] = useState({sessionId, unarchived: !archived});
-	if (seen.sessionId !== sessionId) {
-		setSeen({sessionId, unarchived: !archived});
+function useArchivedSinceOpen(sessionId: string, archived: boolean): boolean
+{
+	const [seen, setSeen] = useState(
+		{
+			sessionId,
+			unarchived: !archived,
+		},
+	);
+	if (seen.sessionId !== sessionId)
+	{
+		setSeen(
+			{
+				sessionId,
+				unarchived: !archived,
+			},
+		);
 		return false;
 	}
-	if (!archived && !seen.unarchived) setSeen({sessionId, unarchived: true});
+	if (!archived && !seen.unarchived)
+		setSeen(
+			{
+				sessionId,
+				unarchived: true,
+			},
+		);
 	return archived && seen.unarchived;
 }
 
@@ -459,13 +521,18 @@ function SessionView({
 	restoredScrollPosition,
 	requestedPane,
 	onRequestedPaneHandled,
-}: SessionViewProps) {
+}: SessionViewProps)
+{
 	// The project path can fail to resolve from its lossy directory name (e.g. a
 	// dotted folder), so the session's recorded cwd stands in for it.
 	const sessionDirectory = data.projectPath ?? data.cwd;
 	const archivedNoteEnters = useArchivedSinceOpen(sessionId, data.archived);
 	const scrollAnchorRef = useRef<HTMLDivElement>(null);
-	const locationHash = useLocation({select: (location) => location.hash});
+	const locationHash = useLocation(
+		{
+			select: (location) => location.hash,
+		},
+	);
 	// Viewed positions are stored in message units (see message-count.ts) so
 	// they line up with messageCount and newMessageCount on every surface. The
 	// transcript is only a window over the JSONL, so the messages the server
@@ -481,15 +548,22 @@ function SessionView({
 	const endIndex = transcriptEndIndex(transcript);
 	const {visibilityRef} = useSessionViewedState(sessionId, currentMessageIndex);
 	const sessionViewRef = useCallback(
-		(element: HTMLDivElement | null) => {
+		(element: HTMLDivElement | null) =>
+		{
 			scrollAnchorRef.current = element;
 			visibilityRef(element);
 		},
 		[visibilityRef],
 	);
 	const detailUnseen = !data.viewedState.viewedAnywhere;
-	useEffect(() => {
-		syncUnseenFromSummaries([{id: sessionId, unseen: detailUnseen}]);
+	useEffect(() =>
+	{
+		syncUnseenFromSummaries([
+			{
+				id: sessionId,
+				unseen: detailUnseen,
+			},
+		]);
 	}, [detailUnseen, sessionId]);
 	const {settings, setSetting} = useSettings();
 	// Keyed off the window's startIndex so every line carries its session-absolute
@@ -499,11 +573,23 @@ function SessionView({
 	// skips the records it served as hidden and never recomputes the chain.
 	const chainProcessed = useMemo(
 		() =>
-			processTranscript(transcript.records, transcript.startIndex, {hidden: hiddenUuids, cuts: transcript.cuts}),
+			processTranscript(
+				transcript.records,
+				transcript.startIndex,
+				{
+					hidden: hiddenUuids,
+					cuts: transcript.cuts,
+				},
+			),
 		[transcript.records, transcript.startIndex, hiddenUuids, transcript.cuts],
 	);
 	const hasThinking = useMemo(() => sessionHasThinking(chainProcessed.lines), [chainProcessed.lines]);
-	const transcriptView = useTranscriptModeShortcut(sessionId, {hasThinking});
+	const transcriptView = useTranscriptModeShortcut(
+		sessionId,
+		{
+			hasThinking,
+		},
+	);
 	const {mode: transcriptMode, flags: transcriptFlags} = transcriptView;
 	// Verbose is the raw JSONL view: abandoned branches stay in, behind each cut's marker.
 	const showAbandoned = transcriptMode === "verbose" && transcript.hiddenUuids.length > 0;
@@ -516,18 +602,25 @@ function SessionView({
 	// Workflow cards are an enhancement over the plain rows, so the transcript never waits on (or fails with)
 	// them, and a session that never launched a workflow never fetches them.
 	const hasWorkflowCall = useMemo(() => linesHaveWorkflowCall(processed.lines), [processed.lines]);
-	const workflowRuns = useQuery({...sessionWorkflowRunsQueryOptions(sessionId), enabled: hasWorkflowCall}).data;
+	const workflowRuns = useQuery(
+		{
+			...sessionWorkflowRunsQueryOptions(sessionId),
+			enabled: hasWorkflowCall,
+		},
+	).data;
 	const requestMessageJump = usePendingMessageJump(sessionId, transcript.startIndex, processed.uuidToLine);
 	const chapterEdits = useSessionChapters(sessionId);
 	const firstEntryUuid = firstRecordKey(transcript);
 	const outlineChapters = useMemo(
 		() =>
-			buildSessionChapters({
-				claudeChapters: transcript.chapters,
-				store: chapterEdits,
-				firstEntryUuid,
-				sessionStartTitle: "Session start",
-			}),
+			buildSessionChapters(
+				{
+					claudeChapters: transcript.chapters,
+					store: chapterEdits,
+					firstEntryUuid,
+					sessionStartTitle: "Session start",
+				},
+			),
 		[transcript.chapters, chapterEdits, firstEntryUuid],
 	);
 	useRegisterChangesPane(sessionId, sessionDirectory ?? undefined);
@@ -540,36 +633,46 @@ function SessionView({
 	// count `12+` rather than passing a partial tally off as the total.
 	const windowFiles = useExtractedSessionFiles(processed.lines, data.homeRoot);
 	const jumpTargetWindow = useMemo<JumpTargetWindow>(
-		() => ({windowStartIndex: transcript.startIndex, requestMessageJump}),
+		() => (
+		{
+			windowStartIndex: transcript.startIndex,
+			requestMessageJump,
+		}),
 		[requestMessageJump, transcript.startIndex],
 	);
-	useRegisterFilesPane({
-		sessionId,
-		cwd: sessionDirectory ?? undefined,
-		windowFiles,
-		windowStartIndex: transcript.startIndex,
-		jumpTargetWindow,
-	});
+	useRegisterFilesPane(
+		{
+			sessionId,
+			cwd: sessionDirectory ?? undefined,
+			windowFiles,
+			windowStartIndex: transcript.startIndex,
+			jumpTargetWindow,
+		},
+	);
 	const sessionArtifacts = useSessionArtifacts(sessionId);
 	const outputFiles = useMemo(
 		() => extractOutputFiles(transcript.records, sessionDirectory ?? null),
 		[transcript.records, sessionDirectory],
 	);
 	useRegisterArtifactsPane(sessionArtifacts);
-	useRegisterLinksPane({
-		sessionId,
-		lines: processed.lines,
-		windowStartIndex: transcript.startIndex,
-		jumpTargetWindow,
-	});
+	useRegisterLinksPane(
+		{
+			sessionId,
+			lines: processed.lines,
+			windowStartIndex: transcript.startIndex,
+			jumpTargetWindow,
+		},
+	);
 	useIdlePrefetch(SESSION_PANE_CHUNKS);
 	const {hookContexts, runningSubagents, pendingTools} = useClaudeEvents();
 	const hookContext = hookContexts.get(sessionId);
 	const transcriptActiveSubagents = useMemo(() => extractPendingSubagents(transcript.records), [transcript.records]);
-	const activeSubagents = useMemo(() => {
+	const activeSubagents = useMemo(() =>
+	{
 		const eventSubagents: ActiveSubagent[] = [...runningSubagents.values()]
 			.filter((subagent) => subagent.sessionId === sessionId)
-			.map((subagent) => ({
+			.map((subagent) => (
+			{
 				key: getSubagentLifecycleKey(subagent.sessionId, subagent.agentId, subagent.agentType),
 				...subagent,
 			}));
@@ -577,21 +680,29 @@ function SessionView({
 	}, [sessionId, runningSubagents, transcriptActiveSubagents]);
 	const [aiSummary, setAiSummary] = useState<string | null>(data.summary ?? null);
 	const isActive = useIsSessionActive(sessionId);
-	const [lastInterrupt, setLastInterrupt] = useState<{sessionId: string; at: number} | null>(null);
-	const notifications = useQuery({
-		...notificationsQueryOptions(),
-		select: (data) => data.notifications,
-	}).data;
+	const [lastInterrupt, setLastInterrupt] = useState<
+	{
+		sessionId: string;
+		at: number;
+	} | null>(null);
+	const notifications = useQuery(
+		{
+			...notificationsQueryOptions(),
+			select: (data) => data.notifications,
+		},
+	).data;
 	const sessionSummary = useCachedSessionSummary(sessionId);
 	const sessionPermissionWait = sessionSummary?.awaitingPermission === true;
 	const permissionWaitId = useMemo(
 		() =>
-			permissionWaitToolUseId({
-				sessionId,
-				notifications: notifications ?? [],
-				records: transcript.records,
-				awaitingPermission: sessionPermissionWait,
-			}),
+			permissionWaitToolUseId(
+				{
+					sessionId,
+					notifications: notifications ?? [],
+					records: transcript.records,
+					awaitingPermission: sessionPermissionWait,
+				},
+			),
 		[sessionId, notifications, transcript.records, sessionPermissionWait],
 	);
 	// A prompt this tab answered is consumed at the click, as upstream's answered set hides it.
@@ -601,27 +712,40 @@ function SessionView({
 	// A session this tab just answered is working again at the click, before the server's summary says so.
 	const answeredHeld = useAnsweredSessionIds().has(sessionId);
 	const displaySummaryState = answeredHeld && sessionSummaryState === "waiting" ? "working" : sessionSummaryState;
-	const hookQuestion = useQuery({
-		...pendingQuestionQueryOptions(sessionId),
-		// Only a waiting session can have one; SSE patches the cache either way.
-		enabled: sessionSummaryState === "waiting",
-		select: (data) => data.pendingQuestion,
-	}).data;
-	const hookPlan = useQuery({
-		...pendingPlanQueryOptions(sessionId),
-		// Only a waiting session can have one; SSE patches the cache either way.
-		enabled: sessionSummaryState === "waiting",
-		select: (data) => data.pendingPlan,
-	}).data;
-	const pendingElicitations = useQuery({
-		...pendingElicitationsQueryOptions(sessionId),
-		// Only a waiting session can have one; SSE patches the cache either way.
-		enabled: sessionSummaryState === "waiting",
-		select: (data) => data.pendingElicitations,
-	}).data;
+	const hookQuestion = useQuery(
+		{
+			...pendingQuestionQueryOptions(sessionId),
+			// Only a waiting session can have one; SSE patches the cache either way.
+			enabled: sessionSummaryState === "waiting",
+			select: (data) => data.pendingQuestion,
+		},
+	).data;
+	const hookPlan = useQuery(
+		{
+			...pendingPlanQueryOptions(sessionId),
+			// Only a waiting session can have one; SSE patches the cache either way.
+			enabled: sessionSummaryState === "waiting",
+			select: (data) => data.pendingPlan,
+		},
+	).data;
+	const pendingElicitations = useQuery(
+		{
+			...pendingElicitationsQueryOptions(sessionId),
+			// Only a waiting session can have one; SSE patches the cache either way.
+			enabled: sessionSummaryState === "waiting",
+			select: (data) => data.pendingElicitations,
+		},
+	).data;
 	// The CLI writes a pending ExitPlanMode to the JSONL only once answered, so its hook copy docks until then.
 	const hookDockedPlan = useMemo(
-		() => dockedHookPlan({hookPlan, state: sessionSummaryState, records: transcript.records}),
+		() =>
+			dockedHookPlan(
+				{
+					hookPlan,
+					state: sessionSummaryState,
+					records: transcript.records,
+				},
+			),
 		[hookPlan, sessionSummaryState, transcript.records],
 	);
 	// A plan this tab answered is consumed at the click: its card and every gate drop until the answer fails.
@@ -634,34 +758,57 @@ function SessionView({
 		[processed.lines, hookDockedPlan],
 	);
 	const turnTokens = useMemo(() => turnTokenEstimate(transcript.records), [transcript.records]);
-	const workingMarkerState = useWorkingMarkerState({
-		records: transcript.records,
-		sessionState: displaySummaryState,
-		isActive,
-		pendingToolName: pendingTools.get(sessionId)?.toolName,
-		interruptedAt: lastInterrupt?.sessionId === sessionId ? lastInterrupt.at : null,
-		awaitingPermission: awaitingPermission && !answeredHeld,
-	});
+	const workingMarkerState = useWorkingMarkerState(
+		{
+			records: transcript.records,
+			sessionState: displaySummaryState,
+			isActive,
+			pendingToolName: pendingTools.get(sessionId)?.toolName,
+			interruptedAt: lastInterrupt?.sessionId === sessionId ? lastInterrupt.at : null,
+			awaitingPermission: awaitingPermission && !answeredHeld,
+		},
+	);
 	// The turn's in-flight call has its own running row in the transcript; upstream marks an Agent step too.
 	const pendingCall = useMemo(() => findLastPendingToolUse(transcript.records), [transcript.records]);
 	const waitingPlanId = inlinePlanToolUseId(sessionSummaryState, pendingCall);
 	const inlinePlanAnswered = useApprovalAnswered(sessionId, waitingPlanId);
 	const inlinePlanId = inlinePlanAnswered ? null : waitingPlanId;
-	const inlinePlanCard = useMemo(() => {
-		if (inlinePlanId !== null) return {toolUseId: inlinePlanId, planText: planText(pendingCall?.input ?? {})};
+	const inlinePlanCard = useMemo(() =>
+	{
+		if (inlinePlanId !== null)
+			return {
+				toolUseId: inlinePlanId,
+				planText: planText(pendingCall?.input ?? {}),
+			};
 		if (dockedPlan === null) return null;
-		return {toolUseId: dockedPlan.toolUseId, planText: dockedPlan.plan};
+		return {
+			toolUseId: dockedPlan.toolUseId,
+			planText: dockedPlan.plan,
+		};
 	}, [inlinePlanId, pendingCall, dockedPlan]);
 	const inFlightRow = workingMarkerState.status === "working" && pendingCall !== null;
 	const backgroundTasks = useMemo(
 		() =>
-			extractBackgroundTasks(transcript.records, {
-				sessionActive: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
-				processStartedAt: sessionSummary?.processStartedAt ?? null,
-				teammates: subagents,
-				runningSubagents: activeSubagents,
-				...(hookContext?.backgroundTasks === undefined ? {} : {hookTasks: hookContext.backgroundTasks}),
-			}),
+			extractBackgroundTasks(
+				transcript.records,
+				{
+					sessionActive: sessionProcessLive(
+						{
+							hookActive: isActive,
+							summaryState: sessionSummaryState,
+						},
+					),
+					processStartedAt: sessionSummary?.processStartedAt ?? null,
+					teammates: subagents,
+					runningSubagents: activeSubagents,
+					...(hookContext?.backgroundTasks === undefined
+						? {}
+						:
+							{
+								hookTasks: hookContext.backgroundTasks,
+							}),
+				},
+			),
 		[
 			transcript.records,
 			isActive,
@@ -682,7 +829,13 @@ function SessionView({
 			),
 		[backgroundTasks],
 	);
-	useRegisterSubagentPane({sessionId, subagents, records: transcript.records});
+	useRegisterSubagentPane(
+		{
+			sessionId,
+			subagents,
+			records: transcript.records,
+		},
+	);
 	const statusline = useStatusline(sessionId);
 	useRegisterSessionDetailsPane(statusline, data.messageCount);
 	const composerServerState = useComposerServerState(sessionId);
@@ -694,58 +847,94 @@ function SessionView({
 	const composerChin = useMemo(
 		() =>
 			withComposerAccountLimits(
-				resolveComposerState({
-					hookPermissionMode: hookContext?.permissionMode,
-					jsonlPermissionMode: lastPermissionModeFromRecords(transcript.records),
-					settingsDefaultMode: composerServerState?.settingsDefaultMode ?? null,
-					statuslineModel: composerServerState?.statusline?.model?.display_name ?? null,
-					statuslineModelId: composerServerState?.statusline?.model?.id ?? null,
-					lastAssistantModel: lastAssistantModelFromRecords(transcript.records),
-					lastAssistantUsage: lastAssistantUsageFromRecords(transcript.records),
-					lastAssistantEffort: lastAssistantEffortFromRecords(transcript.records),
-					fastMode: sessionFastMode(transcript.records, {fastMode: composerServerState?.settingsFastMode}),
-					fastModeBlocked: composerServerState?.fastModeBlocked ?? null,
-					settingsModel: composerServerState?.settingsModel ?? null,
-					settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
-					statusline: composerServerState?.statusline ?? null,
-					statuslineUpdatedAt: composerServerState?.statuslineUpdatedAt ?? null,
-				}),
+				resolveComposerState(
+					{
+						hookPermissionMode: hookContext?.permissionMode,
+						jsonlPermissionMode: lastPermissionModeFromRecords(transcript.records),
+						settingsDefaultMode: composerServerState?.settingsDefaultMode ?? null,
+						statuslineModel: composerServerState?.statusline?.model?.display_name ?? null,
+						statuslineModelId: composerServerState?.statusline?.model?.id ?? null,
+						lastAssistantModel: lastAssistantModelFromRecords(transcript.records),
+						lastAssistantUsage: lastAssistantUsageFromRecords(transcript.records),
+						lastAssistantEffort: lastAssistantEffortFromRecords(transcript.records),
+						fastMode: sessionFastMode(
+							transcript.records,
+							{
+								fastMode: composerServerState?.settingsFastMode,
+							},
+						),
+						fastModeBlocked: composerServerState?.fastModeBlocked ?? null,
+						settingsModel: composerServerState?.settingsModel ?? null,
+						settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
+						statusline: composerServerState?.statusline ?? null,
+						statuslineUpdatedAt: composerServerState?.statuslineUpdatedAt ?? null,
+					},
+				),
 				accountUsage,
 			),
 		[hookContext?.permissionMode, transcript.records, composerServerState, accountUsage],
 	);
 	// Upstream lets the user comment on the plan in plan mode or while a plan waits for approval.
-	useRegisterPlanPane(data.planFilename, planModel, {
-		sessionId,
-		commentsEnabled:
-			composerChin.mode?.id === "plan" || dockedPlan !== null || pendingCall?.name === "ExitPlanMode",
-	});
+	useRegisterPlanPane(
+		data.planFilename,
+		planModel,
+		{
+			sessionId,
+			commentsEnabled:
+				composerChin.mode?.id === "plan" || dockedPlan !== null || pendingCall?.name === "ExitPlanMode",
+		},
+	);
 	const slashMenu = useSlashCommands(sessionDirectory ?? undefined, Boolean(sessionDirectory), true);
 	const {slashCommands} = slashMenu;
-	const {data: promptHistory} = useQuery({
-		...promptHistoryQueryOptions(sessionId),
-		enabled: Boolean(sessionDirectory),
-	});
+	const {data: promptHistory} = useQuery(
+		{
+			...promptHistoryQueryOptions(sessionId),
+			enabled: Boolean(sessionDirectory),
+		},
+	);
 	const [generating, setGenerating] = useState(false);
 	const summaryMutation = useRequestSummary(sessionId);
 	const chromeHidden = settings.chromeHidden;
 	const setChromeHidden = useCallback(
-		(v: boolean) => {
+		(v: boolean) =>
+		{
 			setSetting("chromeHidden", v);
 		},
 		[setSetting],
 	);
 	const chromeShortcut = useShortcutKeys("expand_collapse_pane");
-	const toggleChromeHidden = useCallback(() => {
+	const toggleChromeHidden = useCallback(() =>
+	{
 		setChromeHidden(!chromeHidden);
 	}, [chromeHidden, setChromeHidden]);
 
-	const answerRoute = sessionAnswerRoute({sessionId, hookActive: isActive, summary: sessionSummary, herdr});
-	const answerLiveness = sessionLiveness({hookActive: isActive, summary: sessionSummary});
+	const answerRoute = sessionAnswerRoute(
+		{
+			sessionId,
+			hookActive: isActive,
+			summary: sessionSummary,
+			herdr,
+		},
+	);
+	const answerLiveness = sessionLiveness(
+		{
+			hookActive: isActive,
+			summary: sessionSummary,
+		},
+	);
 	const submitAnswer = useCallback(
-		async ({toolUseId, questions, picks}: AnswerSubmission) => {
+		async ({toolUseId, questions, picks}: AnswerSubmission) =>
+		{
 			const {submitQuestionAnswer} = await import("../lib/question-answer-submit");
-			await submitQuestionAnswer(answerRoute, {sessionId, toolUseId, questions, picks});
+			await submitQuestionAnswer(
+				answerRoute,
+				{
+					sessionId,
+					toolUseId,
+					questions,
+					picks,
+				},
+			);
 		},
 		[answerRoute, sessionId],
 	);
@@ -759,12 +948,14 @@ function SessionView({
 	const hookQuestionSent = useQuestionCardSent(hookQuestion?.toolUseId ?? "");
 	const hookQuestionCardShown = useMemo(
 		() =>
-			isHookQuestionCardShown({
-				state: sessionSummaryState,
-				hookQuestion,
-				records: transcript.records,
-				sent: hookQuestionSent,
-			}),
+			isHookQuestionCardShown(
+				{
+					state: sessionSummaryState,
+					hookQuestion,
+					records: transcript.records,
+					sent: hookQuestionSent,
+				},
+			),
 		[sessionSummaryState, hookQuestion, transcript.records, hookQuestionSent],
 	);
 	// Upstream draws a pending question inline as its card; one in the transcript answers there while the session runs.
@@ -782,8 +973,14 @@ function SessionView({
 	const forkFromMessage =
 		forkCwd === null
 			? undefined
-			: (target: {sessionId: string; atMessage: string}) => {
-					forkSession({...target, cwd: forkCwd});
+			: (target: {sessionId: string; atMessage: string}) =>
+				{
+					forkSession(
+						{
+							...target,
+							cwd: forkCwd,
+						},
+					);
 				};
 	const refillRejectedPrompt = useCallback(
 		(id: string, prompt: string) => refillRejectedSend(id, prompt, toast),
@@ -808,56 +1005,73 @@ function SessionView({
 		liveHerdrPrompt.state.rejection,
 		liveHerdrPrompt.clearRejection,
 	);
-	const stopAvailable = canStopResponse({
-		hasLivePane: promptBehavior.hasLivePane,
-		writesEnabled: herdr.writesEnabled,
-		working: workingMarkerState.status !== "idle",
-	});
+	const stopAvailable = canStopResponse(
+		{
+			hasLivePane: promptBehavior.hasLivePane,
+			writesEnabled: herdr.writesEnabled,
+			working: workingMarkerState.status !== "idle",
+		},
+	);
 	const bypassPermissionsAllowed = composerServerState?.settingsBypassPermissionsAllowed ?? false;
 	const liveModes = useMemo(
 		() => modeMenuItems(bypassPermissionsAllowed).map((item) => item.id),
 		[bypassPermissionsAllowed],
 	);
 	const folderModes = useFolderModeMemory(sessionDirectory ?? undefined);
-	const liveLaunch = useLiveLaunchOptions({
-		sessionId,
-		currentMode: composerChin.mode?.id ?? "default",
-		availableModes: liveModes,
-		hookContext,
-		toast,
-		onModeFailed: folderModes.rollback,
-	});
-	const liveLaunchAvailable = canApplyLive({
-		hasLivePane: promptBehavior.hasLivePane,
-		writesEnabled: herdr.writesEnabled,
-		working: workingMarkerState.status !== "idle",
-	});
+	const liveLaunch = useLiveLaunchOptions(
+		{
+			sessionId,
+			currentMode: composerChin.mode?.id ?? "default",
+			availableModes: liveModes,
+			hookContext,
+			toast,
+			onModeFailed: folderModes.rollback,
+		},
+	);
+	const liveLaunchAvailable = canApplyLive(
+		{
+			hasLivePane: promptBehavior.hasLivePane,
+			writesEnabled: herdr.writesEnabled,
+			working: workingMarkerState.status !== "idle",
+		},
+	);
 	const onInterrupt = useCallback(
-		(at: number) => {
-			setLastInterrupt({sessionId, at});
+		(at: number) =>
+		{
+			setLastInterrupt(
+				{
+					sessionId,
+					at,
+				},
+			);
 		},
 		[sessionId],
 	);
 	const onInterruptError = useCallback(
-		(error: unknown) => {
-			toast({
-				kind: "error",
-				message: "Couldn't stop the response",
-				description: error instanceof Error ? error.message : String(error),
-			});
+		(error: unknown) =>
+		{
+			toast(
+				{
+					kind: "error",
+					message: "Couldn't stop the response",
+					description: error instanceof Error ? error.message : String(error),
+				},
+			);
 		},
 		[toast],
 	);
 	const toolPermission = useMemo(
 		() =>
 			inlineQuestion === null
-				? findPendingPermission({
-						sessionId,
-						isActive,
-						notifications: notifications ?? [],
-						records: transcript.records,
-						awaitingPermission: sessionPermissionWait,
-					})
+				? findPendingPermission(
+						{
+							sessionId,
+							isActive,
+							notifications: notifications ?? [],
+							records: transcript.records,
+							awaitingPermission: sessionPermissionWait,
+						},
+					)
 				: null,
 		[isActive, inlineQuestion, sessionId, notifications, transcript.records, sessionPermissionWait],
 	);
@@ -882,14 +1096,17 @@ function SessionView({
 	// Keyed by its tool call, so a handoff between the signals that describe it neither remounts nor redraws it.
 	const permissionKey = candidatePermission === null ? null : permissionAnswerKey(candidatePermission);
 	// A card the server says isn't pending is stale: it drops and the lists that drew it refetch.
-	const {
+	const
+	{
 		dropped: permissionDropped,
 		answer: answerPermission,
 		answerWith: answerPermissionWith,
-	} = usePermissionAnswer({
-		permissionId: permissionKey,
-		send: sendPermissionDecision,
-	});
+	} = usePermissionAnswer(
+		{
+			permissionId: permissionKey,
+			send: sendPermissionDecision,
+		},
+	);
 	const shownPermission = permissionDropped ? null : candidatePermission;
 	const permissionCanAnswer = promptBehavior.hasLivePane && herdr.writesEnabled;
 	// The terminal's dialog stands in for upstream's ask flags; an elicitation's has no permission rows.
@@ -900,20 +1117,23 @@ function SessionView({
 	);
 	// Upstream's "Allow and switch to Auto": offered from Manual or Accept edits once the terminal's dialog is read.
 	const permissionMode = composerChin.mode?.id ?? "default";
-	const permissionAutoOffered = autoSwitchOffered({
-		mode: permissionMode,
-		availableModes: liveModes,
-		canAnswer: permissionCanAnswer,
-		readGated: false,
-		elicitation: answersElicitation,
-		dialog: permissionDialog,
-	});
+	const permissionAutoOffered = autoSwitchOffered(
+		{
+			mode: permissionMode,
+			availableModes: liveModes,
+			canAnswer: permissionCanAnswer,
+			readGated: false,
+			elicitation: answersElicitation,
+			dialog: permissionDialog,
+		},
+	);
 	const sendAllowAuto = useCallback(
 		async (presses: number | null) => sendHerdrPermissionAllowAuto(sessionId, presses),
 		[sessionId],
 	);
 	const answerAllowOnce = useCallback(async () => sendPermissionDecision("allow"), [sendPermissionDecision]);
-	const permissionAutoSwitch: SessionAutoSwitch = {
+	const permissionAutoSwitch: SessionAutoSwitch =
+	{
 		offered: permissionAutoOffered,
 		answerWith: answerPermissionWith,
 		workspace: consentWorkspaceKey(sessionDirectory ?? undefined),
@@ -928,14 +1148,20 @@ function SessionView({
 	const permissionAnswered = useApprovalAnswered(sessionId, permissionKey);
 	const pendingPermission = permissionAnswered ? null : shownPermission;
 	// The trailing approval slot's drawn card: the permission card, else the plan card, else the hook question card.
-	const approvalSlotCard = sessionApprovalSlotCard({
-		permission:
-			pendingPermission === null || permissionKey === null
-				? null
-				: {key: permissionKey, dialog: permissionDialog},
-		planId: inlinePlanCard?.toolUseId ?? null,
-		questionId: hookQuestionCardShown && !hookQuestionSent ? (hookQuestion?.toolUseId ?? null) : null,
-	});
+	const approvalSlotCard = sessionApprovalSlotCard(
+		{
+			permission:
+				pendingPermission === null || permissionKey === null
+					? null
+					:
+						{
+							key: permissionKey,
+							dialog: permissionDialog,
+						},
+			planId: inlinePlanCard?.toolUseId ?? null,
+			questionId: hookQuestionCardShown && !hookQuestionSent ? (hookQuestion?.toolUseId ?? null) : null,
+		},
+	);
 	// A form or url elicitation stays with the terminal dialog, but the waiting notice names its server.
 	const elicitationNotice = useMemo(
 		() => findElicitationWaitingNotice(pendingElicitations ?? []),
@@ -950,17 +1176,19 @@ function SessionView({
 		[sessionSummaryState, promptBehavior.hasLivePane, herdr.writesEnabled, pendingElicitations],
 	);
 	// The working line's "Needs your input" replaces the dock's waiting notice, as upstream shows only the former.
-	const workingLineWaits = workingLineWaitsOnUser({
-		awaitingPermission: awaitingPermission && !answeredHeld,
-		sessionState: displaySummaryState,
-		cardShown:
-			pendingPermission !== null ||
-			transcriptQuestionCard ||
-			hookQuestionCardShown ||
-			inlinePlanId !== null ||
-			dockedPlan !== null ||
-			urlElicitationCard !== null,
-	});
+	const workingLineWaits = workingLineWaitsOnUser(
+		{
+			awaitingPermission: awaitingPermission && !answeredHeld,
+			sessionState: displaySummaryState,
+			cardShown:
+				pendingPermission !== null ||
+				transcriptQuestionCard ||
+				hookQuestionCardShown ||
+				inlinePlanId !== null ||
+				dockedPlan !== null ||
+				urlElicitationCard !== null,
+		},
+	);
 	// Upstream's `hasLiveApproval`: a card this tab draws keeps the row in Needs input over a Mark as completed ack.
 	useLiveApproval(
 		sessionId,
@@ -973,19 +1201,28 @@ function SessionView({
 	);
 	const hookQuestionToolUseId = hookQuestion?.toolUseId;
 	const answerHookQuestion = useCallback(
-		async (answers: Array<QuestionAnswer | null>) => {
-			if (hookQuestionToolUseId !== undefined) {
+		async (answers: Array<QuestionAnswer | null>) =>
+		{
+			if (hookQuestionToolUseId !== undefined)
+			{
 				await sendHerdrQuestionAnswer(sessionId, hookQuestionToolUseId, answers);
 			}
 		},
 		[sessionId, hookQuestionToolUseId],
 	);
 	const askUserQuestionCtx: AskUserQuestionContextValue = useMemo(
-		() => ({sessionId, answerRoute, sessionLive: answerLiveness, submitAnswer}),
+		() => (
+		{
+			sessionId,
+			answerRoute,
+			sessionLive: answerLiveness,
+			submitAnswer,
+		}),
 		[sessionId, answerRoute, answerLiveness, submitAnswer],
 	);
 	const planApprovalCtx: PlanApprovalContextValue = useMemo(
-		() => ({
+		() => (
+		{
 			sessionId,
 			answerRoute,
 			loadDialog: async () => fetchHerdrPlanDialog(sessionId),
@@ -993,68 +1230,92 @@ function SessionView({
 		}),
 		[answerRoute, sessionId],
 	);
-	const composerGate = composerPendingGate({
-		hookQuestion: unansweredHookQuestion,
-		transcriptQuestion: inlineQuestion !== null,
-		awaitingPermission,
-		questionSent,
-	});
+	const composerGate = composerPendingGate(
+		{
+			hookQuestion: unansweredHookQuestion,
+			transcriptQuestion: inlineQuestion !== null,
+			awaitingPermission,
+			questionSent,
+		},
+	);
 	// The pane shows the dialog until the answer's result lands, so a prompt typed meanwhile is held mid-turn.
 	const paneBusy = workingMarkerState.status !== "idle" || liveHerdrPrompt.state.isPending || questionSent;
 	const dialogOpen = gateHoldsQueue(composerGate) || questionSent;
 	const queueBusy = paneBusy || dialogOpen;
-	const requestSendNowInterrupt = useCallback(async () => {
+	const requestSendNowInterrupt = useCallback(async () =>
+	{
 		onInterrupt(Date.now());
 		await sendHerdrInterrupt(sessionId, false).catch(onInterruptError);
 	}, [onInterrupt, onInterruptError, sessionId]);
 	// A queued message's Send now toasts upstream's promote failure instead of the stop error.
-	const requestQueuedSendNowInterrupt = useCallback(async () => {
+	const requestQueuedSendNowInterrupt = useCallback(async () =>
+	{
 		onInterrupt(Date.now());
 		await sendHerdrInterrupt(sessionId, false);
 	}, [onInterrupt, sessionId]);
-	const toastQueuedSendNowFailed = useCallback(() => {
-		toast({kind: "error", message: SEND_NOW_FAILED_MESSAGE});
+	const toastQueuedSendNowFailed = useCallback(() =>
+	{
+		toast(
+			{
+				kind: "error",
+				message: SEND_NOW_FAILED_MESSAGE,
+			},
+		);
 	}, [toast]);
-	const focusSessionComposer = useCallback(() => {
+	const focusSessionComposer = useCallback(() =>
+	{
 		focusComposer(sessionId);
 	}, [sessionId]);
-	const composerQueue = useComposerQueue({
-		sessionId,
-		busy: queueBusy,
-		dialogOpen,
-		deliver: liveHerdrPrompt.send,
-		interrupt: requestQueuedSendNowInterrupt,
-		onSendNowFailed: toastQueuedSendNowFailed,
-	});
+	const composerQueue = useComposerQueue(
+		{
+			sessionId,
+			busy: queueBusy,
+			dialogOpen,
+			deliver: liveHerdrPrompt.send,
+			interrupt: requestQueuedSendNowInterrupt,
+			onSendNowFailed: toastQueuedSendNowFailed,
+		},
+	);
 	const {enqueue: enqueuePrompt, items: queuedPrompts, remove: removeQueuedPrompt} = composerQueue;
 	const cancelHeldSteer = useCallback(
-		(item: QueuedPrompt) => {
+		(item: QueuedPrompt) =>
+		{
 			if (takeBackSend(sessionId, item.text, toast)) removeQueuedPrompt(item.id);
 		},
 		[removeQueuedPrompt, sessionId, toast],
 	);
-	const stopResponse = useStopResponse({
-		sessionId,
-		// Esc denies the docked permission prompt instead of stopping the turn.
-		enabled: stopAvailable && pendingPermission === null,
-		onInterrupt,
-		onError: onInterruptError,
-		onEscapeRecall: () => recallLastHeldSteer(sessionId, steeredPrompts(queuedPrompts), removeQueuedPrompt),
-	});
-	const {send: composerSend} = composerSendPlan(composerGate, {busy: paneBusy, queued: queuedPrompts.length});
-	const errorRecoveryAvailable = errorRecoveryAvailability({
-		hasLivePane: promptBehavior.hasLivePane,
-		writesEnabled: herdr.writesEnabled,
-		paneStatus: workingMarkerState.status,
-		pendingCard:
-			pendingPermission !== null ||
-			inlineQuestion !== null ||
-			hookQuestionCardShown ||
-			inlinePlanId !== null ||
-			dockedPlan !== null,
-		isPending: liveHerdrPrompt.state.isPending,
-		isLastEntry: lastEntryIsError(processed.lines),
-	});
+	const stopResponse = useStopResponse(
+		{
+			sessionId,
+			// Esc denies the docked permission prompt instead of stopping the turn.
+			enabled: stopAvailable && pendingPermission === null,
+			onInterrupt,
+			onError: onInterruptError,
+			onEscapeRecall: () => recallLastHeldSteer(sessionId, steeredPrompts(queuedPrompts), removeQueuedPrompt),
+		},
+	);
+	const {send: composerSend} = composerSendPlan(
+		composerGate,
+		{
+			busy: paneBusy,
+			queued: queuedPrompts.length,
+		},
+	);
+	const errorRecoveryAvailable = errorRecoveryAvailability(
+		{
+			hasLivePane: promptBehavior.hasLivePane,
+			writesEnabled: herdr.writesEnabled,
+			paneStatus: workingMarkerState.status,
+			pendingCard:
+				pendingPermission !== null ||
+				inlineQuestion !== null ||
+				hookQuestionCardShown ||
+				inlinePlanId !== null ||
+				dockedPlan !== null,
+			isPending: liveHerdrPrompt.state.isPending,
+			isLastEntry: lastEntryIsError(processed.lines),
+		},
+	);
 	const {retryable: errorRetryable, idle: errorIdle} = errorRecoveryAvailable;
 	// Rewinding drives the live CLI's selector, so it needs a writable pane on a session that isn't archived.
 	const rewindAvailable = promptBehavior.hasLivePane && herdr.writesEnabled && !data.archived;
@@ -1067,40 +1328,76 @@ function SessionView({
 		hookQuestionCardShown ||
 		inlinePlanId !== null ||
 		dockedPlan !== null;
-	const rewindPicker = useRewindPicker({sessionId, available: rewindAvailable, busy: rewindBusy});
+	const rewindPicker = useRewindPicker(
+		{
+			sessionId,
+			available: rewindAvailable,
+			busy: rewindBusy,
+		},
+	);
 	const rewindTurnList = useMemo(
 		() => rewindTurns(transcript.records, hiddenUuids),
 		[transcript.records, hiddenUuids],
 	);
 	// Upstream's conversation rewind (`kb`): on success the composer holds the rewound prompt, focused.
 	const runConversationRewind = useCallback(
-		async (uuid: string, text: string, afterCode: boolean) => {
+		async (uuid: string, text: string, afterCode: boolean) =>
+		{
 			const failed = afterCode ? REWIND_CONVERSATION_AFTER_CODE_FAILED : REWIND_NOT_POSSIBLE;
 			const stepsBack = rewindStepsBack(rewindTurnList, uuid);
-			if (stepsBack === null) {
-				toast({kind: "error", message: failed});
+			if (stepsBack === null)
+			{
+				toast(
+					{
+						kind: "error",
+						message: failed,
+					},
+				);
 				return;
 			}
-			try {
-				await sendHerdrRewind(sessionId, {stepsBack, text});
+			try
+			{
+				await sendHerdrRewind(
+					sessionId,
+					{
+						stepsBack,
+						text,
+					},
+				);
 				refillComposer(sessionId, text);
-			} catch (error) {
-				toast({kind: "error", message: afterCode || !(error instanceof Error) ? failed : error.message});
+			}
+			catch (error)
+			{
+				toast(
+					{
+						kind: "error",
+						message: afterCode || !(error instanceof Error) ? failed : error.message,
+					},
+				);
 			}
 		},
 		[rewindTurnList, sessionId, toast],
 	);
-	const rewindRequest = useRewindRequest({
-		sessionId,
-		conversationAvailable: rewindAvailable,
-		runConversationRewind,
-	});
+	const rewindRequest = useRewindRequest(
+		{
+			sessionId,
+			conversationAvailable: rewindAvailable,
+			runConversationRewind,
+		},
+	);
 	const {requestRewind} = rewindRequest;
 	// A transcript row's Rewind to here: the prompt's text as the CLI's selector draws it.
 	const rewindToMessage = useCallback(
-		(uuid: string) => {
+		(uuid: string) =>
+		{
 			const turn = rewindTurnList.find((candidate) => candidate.uuid === uuid);
-			if (turn === undefined) toast({kind: "error", message: REWIND_NOT_POSSIBLE});
+			if (turn === undefined)
+				toast(
+					{
+						kind: "error",
+						message: REWIND_NOT_POSSIBLE,
+					},
+				);
 			else requestRewind(uuid, turn.text);
 		},
 		[requestRewind, rewindTurnList, toast],
@@ -1115,22 +1412,34 @@ function SessionView({
 				? "busy"
 				: "ready";
 	const composerRewind = useMemo(
-		() => ({
+		() => (
+		{
 			state: composerRewindState,
-			open: () => {
-				requestRewindPicker({fromComposer: true});
+			open: () =>
+			{
+				requestRewindPicker(
+					{
+						fromComposer: true,
+					},
+				);
 			},
 		}),
 		[composerRewindState, requestRewindPicker],
 	);
-	const openContextCard = useCallback(() => {
+	const openContextCard = useCallback(() =>
+	{
 		requestRailContextCard(sessionId);
 	}, [sessionId]);
 	const rewindAvailableFromComposer = useMemo(
 		() =>
 			rewindAvailable
-				? () => {
-						requestRewindPicker({fromComposer: true});
+				? () =>
+					{
+						requestRewindPicker(
+							{
+								fromComposer: true,
+							},
+						);
 					}
 				: undefined,
 		[rewindAvailable, requestRewindPicker],
@@ -1143,14 +1452,16 @@ function SessionView({
 	const coldResumeHeld = queuedPrompts.length > 0 || liveHerdrPrompt.state.phase === "held";
 	const canTypeCompact = promptBehavior.hasLivePane && herdr.writesEnabled;
 	const sendCompactPrompt = liveHerdrPrompt.send;
-	const typeCompact = useCallback(async () => {
+	const typeCompact = useCallback(async () =>
+	{
 		const result = await sendCompactPrompt("/compact");
 		if (result === "not-ready") enqueuePrompt("/compact");
 	}, [sendCompactPrompt, enqueuePrompt]);
 	const coldResumeCompact = useMemo(
 		() =>
 			canTypeCompact
-				? () => {
+				? () =>
+					{
 						void typeCompact();
 					}
 				: undefined,
@@ -1159,11 +1470,13 @@ function SessionView({
 	// The stale-session compact line (upstream `nke` via host `wke`): it yields to the cold-resume card (`LMe`).
 	const [coldResumeHolds, setColdResumeHolds] = useState(false);
 	// Like upstream's effect outside the experiment, the clock stays off where the line could never show.
-	const staleCompactIdle = useStaleCompactIdle({
-		anchorMs: canTypeCompact && !data.archived ? coldResumeLastRecordMs : null,
-		responding: coldResumeRunning,
-		hidden: chromeHidden,
-	});
+	const staleCompactIdle = useStaleCompactIdle(
+		{
+			anchorMs: canTypeCompact && !data.archived ? coldResumeLastRecordMs : null,
+			responding: coldResumeRunning,
+			hidden: chromeHidden,
+		},
+	);
 	const staleCompactEligible =
 		canTypeCompact &&
 		!coldResumeRunning &&
@@ -1171,18 +1484,24 @@ function SessionView({
 		!data.archived &&
 		!chromeHidden &&
 		!coldResumeHolds &&
-		staleCompactSlot({lastEntryIsAssistant: lastEntryIsAssistantReply(processed.lines)});
+		staleCompactSlot(
+			{
+				lastEntryIsAssistant: lastEntryIsAssistantReply(processed.lines),
+			},
+		);
 	const staleCompactAdvisory =
 		staleCompactIdle === null || staleCompactIdle.anchor !== coldResumeLastRecordMs
 			? null
-			: decideStaleCompact({
-					nowMs: staleCompactIdle.anchor + staleCompactIdle.ageMs,
-					anchorMs: staleCompactIdle.anchor,
-					contextTokens: composerChin.usage?.contextTokens ?? null,
-					contextWindow: composerChin.usage?.contextWindowSize ?? null,
-					floor: STALE_COMPACT_FLOOR,
-					eligible: staleCompactEligible,
-				});
+			: decideStaleCompact(
+					{
+						nowMs: staleCompactIdle.anchor + staleCompactIdle.ageMs,
+						anchorMs: staleCompactIdle.anchor,
+						contextTokens: composerChin.usage?.contextTokens ?? null,
+						contextWindow: composerChin.usage?.contextWindowSize ?? null,
+						floor: STALE_COMPACT_FLOOR,
+						eligible: staleCompactEligible,
+					},
+				);
 	// Upstream's compacting episode `K`: the band it started stays mounted while the compact runs.
 	const [staleCompactEpisode, setStaleCompactEpisode] = useState<StaleCompactAdvisory | null>(null);
 	const staleCompactShown = staleCompactEpisode ?? staleCompactAdvisory;
@@ -1190,12 +1509,14 @@ function SessionView({
 	staleCompactRef.current = staleCompactShown;
 	const staleCompactEpisodeRef = useRef(staleCompactEpisode);
 	staleCompactEpisodeRef.current = staleCompactEpisode;
-	const compactStaleSession = useCallback(() => {
+	const compactStaleSession = useCallback(() =>
+	{
 		const advisory = staleCompactRef.current;
 		if (staleCompactEpisodeRef.current !== null || advisory === null) return;
 		staleCompactEpisodeRef.current = advisory;
 		setStaleCompactEpisode(advisory);
-		void typeCompact().finally(() => {
+		void typeCompact().finally(() =>
+		{
 			setStaleCompactEpisode((current) => (current === advisory ? null : current));
 		});
 	}, [typeCompact]);
@@ -1203,7 +1524,8 @@ function SessionView({
 		() =>
 			staleCompactShown === null
 				? undefined
-				: {
+				:
+					{
 						ageMinutes: staleCompactShown.ageMinutes,
 						contextTokens: staleCompactShown.contextTokens,
 						tokensInLine: staleCompactShown.tokensInLine,
@@ -1215,52 +1537,94 @@ function SessionView({
 	);
 	// Upstream's refusal band shows only for fallbacks that arrive live: the records the page opened with
 	// are history (upstream's restored, dismissed fallback).
-	const [refusalLiveSince, setRefusalLiveSince] = useState({sessionId, index: endIndex});
-	if (refusalLiveSince.sessionId !== sessionId) setRefusalLiveSince({sessionId, index: endIndex});
+	const [refusalLiveSince, setRefusalLiveSince] = useState(
+		{
+			sessionId,
+			index: endIndex,
+		},
+	);
+	if (refusalLiveSince.sessionId !== sessionId)
+		setRefusalLiveSince(
+			{
+				sessionId,
+				index: endIndex,
+			},
+		);
 	const refusalLiveSinceIndex = refusalLiveSince.sessionId === sessionId ? refusalLiveSince.index : endIndex;
 	const refusalFallback = useMemo(
 		() => activeRefusalFallback(transcript.records, transcript.startIndex, refusalLiveSinceIndex, hiddenUuids),
 		[transcript.records, transcript.startIndex, refusalLiveSinceIndex, hiddenUuids],
 	);
 	// Upstream's band "Rewind and retry" (`Mx`): only while the live CLI can rewind to the refused prompt.
-	const refusalEditRetry = useRefusalEditRetry({
-		sessionId,
-		refusedUuid: refusalFallback?.refusedUserMessageUuid ?? null,
-		available: rewindAvailable && !rewindBusy,
-		turns: rewindTurnList,
-	});
+	const refusalEditRetry = useRefusalEditRetry(
+		{
+			sessionId,
+			refusedUuid: refusalFallback?.refusedUserMessageUuid ?? null,
+			available: rewindAvailable && !rewindBusy,
+			turns: rewindTurnList,
+		},
+	);
 	const refusalNewSession = useMemo(
 		() =>
 			sessionDirectory
-				? (model: string) => {
-						void startSessionOnModel(sessionDirectory, model, {
-							launch: launchHerdrSession,
-							toast,
-							open: (id) => {
-								void navigate({to: "/session/$id", params: {id}});
+				? (model: string) =>
+					{
+						void startSessionOnModel(
+							sessionDirectory,
+							model,
+							{
+								launch: launchHerdrSession,
+								toast,
+								open: (id) =>
+								{
+									void navigate(
+										{
+											to: "/session/$id",
+											params:
+											{
+												id,
+											},
+										},
+									);
+								},
 							},
-						});
+						);
 					}
 				: undefined,
 		[sessionDirectory, toast, navigate],
 	);
 	const sessionProjectId = data.projectId;
-	const coldResumeNewSession = useCallback(() => {
+	const coldResumeNewSession = useCallback(() =>
+	{
 		requestHomeLaunchFolder(sessionProjectId);
-		void navigate({to: "/"}).then(requestHomeComposerFocus);
+		void navigate(
+			{
+				to: "/",
+			},
+		).then(requestHomeComposerFocus);
 	}, [navigate, sessionProjectId]);
 	const sendErrorRecoveryPrompt = liveHerdrPrompt.send;
 	const currentModelId = composerChin.modelId;
 	const errorRecovery = useMemo(
 		() =>
 			errorRecoveryHandlers(
-				{retryable: errorRetryable, idle: errorIdle},
+				{
+					retryable: errorRetryable,
+					idle: errorIdle,
+				},
 				sendErrorRecoveryPrompt,
 				enqueuePrompt,
 				{
 					current: currentModelId,
 					switchTo: async (model) =>
-						switchModelForRetry(sessionId, model, {send: sendHerdrLiveOption, toast}),
+						switchModelForRetry(
+							sessionId,
+							model,
+							{
+								send: sendHerdrLiveOption,
+								toast,
+							},
+						),
 				},
 				// A click is an explicit open, like the composer's /rewind, so a draft doesn't block it.
 				rewindAvailableFromComposer,
@@ -1277,25 +1641,42 @@ function SessionView({
 		],
 	);
 	const sendLivePrompt = useCallback(
-		async (prompt: string) => {
-			switch (composerSend.kind) {
+		async (prompt: string) =>
+		{
+			switch (composerSend.kind)
+			{
 				case "dismiss-question-then-queue":
 					// Upstream: a message sent under a question answers it as skipped, then goes in right away;
 					// the queue types it mid-turn as soon as the hooks show the dialog closed.
-					enqueuePrompt(prompt, {midTurn: true});
-					try {
+					enqueuePrompt(
+						prompt,
+						{
+							midTurn: true,
+						},
+					);
+					try
+					{
 						await sendHerdrQuestionAnswer(sessionId, composerSend.toolUseId, composerSend.answers);
-					} catch (error) {
-						toast({
-							kind: "error",
-							message: "Couldn't skip the question",
-							description: error instanceof Error ? error.message : String(error),
-						});
+					}
+					catch (error)
+					{
+						toast(
+							{
+								kind: "error",
+								message: "Couldn't skip the question",
+								description: error instanceof Error ? error.message : String(error),
+							},
+						);
 					}
 					return;
 				case "steer":
 					// Upstream's Enter while working: typed into the pane mid-turn, read at Claude's next step.
-					enqueuePrompt(prompt, {midTurn: true});
+					enqueuePrompt(
+						prompt,
+						{
+							midTurn: true,
+						},
+					);
 					return;
 				case "queue":
 					// Enter while the pane shows a dialog, or behind earlier queued prompts, waits for the next idle.
@@ -1314,7 +1695,14 @@ function SessionView({
 	const runShellCommand = useMemo(
 		() =>
 			promptBehavior.usesHerdr
-				? async (command: string) => runShellCommandInPane(sessionId, command, {toast})
+				? async (command: string) =>
+						runShellCommandInPane(
+							sessionId,
+							command,
+							{
+								toast,
+							},
+						)
 				: undefined,
 		[promptBehavior.usesHerdr, sessionId, toast],
 	);
@@ -1338,24 +1726,30 @@ function SessionView({
 				sendLive: (livePrompt) => void sendLivePrompt(livePrompt),
 				sendForkStream: (forkedPrompt, options) => void chatStream.send(sessionId, forkedPrompt, options),
 				launchFork: (launch) =>
-					void launchPromptFork(launch, sessionId, {
-						launch: launchHerdrSession,
-						onLaunched: setPendingFork,
-						toast,
-						now: Date.now,
-					}),
+					void launchPromptFork(
+						launch,
+						sessionId,
+						{
+							launch: launchHerdrSession,
+							onLaunched: setPendingFork,
+							toast,
+							now: Date.now,
+						},
+					),
 			},
 		);
 	// Upstream's turn Undo sends its prompt like the composer does; read through a ref so the
 	// context value stays put across renders.
 	const submitComposerRef = useRef(submitComposer);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		submitComposerRef.current = submitComposer;
 	});
 	const turnUndoSend = useMemo(
 		() =>
 			promptBehavior.usesHerdr
-				? (text: string) => {
+				? (text: string) =>
+					{
 						submitComposerRef.current("send", text, {});
 					}
 				: null,
@@ -1364,10 +1758,17 @@ function SessionView({
 	const applicationSettings = useQuery(applicationSettingsQueryOptions).data;
 	const shellsEnabled = applicationSettings?.shellPaneEnabled ?? false;
 	const {mutateAsync: saveApplicationSettings} = useSaveApplicationSettings();
-	const enableTerminalWrites = useMemo(() => {
+	const enableTerminalWrites = useMemo(() =>
+	{
 		if (!promptBehavior.hasLivePane || herdr.writesEnabled || applicationSettings === undefined) return null;
-		return async () => {
-			await saveApplicationSettings({...applicationSettings, terminalWritesEnabled: true});
+		return async () =>
+		{
+			await saveApplicationSettings(
+				{
+					...applicationSettings,
+					terminalWritesEnabled: true,
+				},
+			);
 		};
 	}, [promptBehavior.hasLivePane, herdr.writesEnabled, applicationSettings, saveApplicationSettings]);
 	const startHerdrTerminal = useStartHerdrTerminal();
@@ -1390,8 +1791,10 @@ function SessionView({
 	);
 	const prevSessionIdRef = useRef(sessionId);
 
-	useEffect(() => {
-		if (prevSessionIdRef.current !== sessionId) {
+	useEffect(() =>
+	{
+		if (prevSessionIdRef.current !== sessionId)
+		{
 			prevSessionIdRef.current = sessionId;
 			chatStream.reset();
 		}
@@ -1401,36 +1804,46 @@ function SessionView({
 	// stream bubble (kept around by isComplete) and the new transcript line
 	// from SSE both render the same text — visible as a duplicate message.
 	const completionRecordCountRef = useRef<number | null>(null);
-	useEffect(() => {
-		if (chatStream.state.isStreaming) {
+	useEffect(() =>
+	{
+		if (chatStream.state.isStreaming)
+		{
 			completionRecordCountRef.current = null;
 			return;
 		}
 		if (!chatStream.state.isComplete) return;
-		if (completionRecordCountRef.current === null) {
+		if (completionRecordCountRef.current === null)
+		{
 			completionRecordCountRef.current = endIndex;
 			return;
 		}
-		if (endIndex > completionRecordCountRef.current) {
+		if (endIndex > completionRecordCountRef.current)
+		{
 			completionRecordCountRef.current = null;
 			chatStream.reset();
 		}
 	}, [chatStream, chatStream.state.isStreaming, chatStream.state.isComplete, endIndex]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		setAiSummary(data.summary ?? null);
 	}, [sessionId, data.summary]);
 
 	const sessionCommands = createSessionCommands(sessionId, sessionDirectory);
 
-	async function handleGenerateSummary() {
+	async function handleGenerateSummary()
+	{
 		setGenerating(true);
-		try {
+		try
+		{
 			const result = await summaryMutation.mutateAsync();
-			if (result.summary) {
+			if (result.summary)
+			{
 				setAiSummary(result.summary);
 			}
-		} finally {
+		}
+		finally
+		{
 			setGenerating(false);
 		}
 	}
@@ -1468,7 +1881,13 @@ function SessionView({
 	);
 	// Upstream `pf`: while the docked permission card holds the tail of a running turn, the marked row is carried below it.
 	const cardHoldsTail = pendingPermission !== null && workingMarkerState.status !== "idle";
-	const markedRow = markedRowBelowTailSlot({cardHoldsTail, planHoldsLoader: false, heldRedialReported: false});
+	const markedRow = markedRowBelowTailSlot(
+		{
+			cardHoldsTail,
+			planHoldsLoader: false,
+			heldRedialReported: false,
+		},
+	);
 	const transcriptTail = useMemo(
 		() => (workingLineFollowsTranscript ? null : workingLine(true)),
 		[workingLineFollowsTranscript, workingLine],
@@ -1521,14 +1940,20 @@ function SessionView({
 							</Suspense>
 						)}
 						<RailTileFrame
-							railInputs={{
+							railInputs={
+							{
 								sessionId,
 								homeRoot: data.homeRoot,
 								cwd: sessionDirectory,
 								gitBranch: data.gitBranch,
 								model: composerChin.model,
 								herdrPane: herdr.panes.find((pane) => pane.sessionId === sessionId) ?? null,
-								live: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
+								live: sessionProcessLive(
+									{
+										hookActive: isActive,
+										summaryState: sessionSummaryState,
+									},
+								),
 								working: workingMarkerState.status !== "idle",
 								canToggleRemoteControl: promptBehavior.hasLivePane && herdr.writesEnabled,
 								usage: composerChin.usage,
@@ -1563,7 +1988,8 @@ function SessionView({
 												sessionId={sessionId}
 												data={data}
 												isActive={isActive}
-												local={{
+												local={
+												{
 													resumeCommand: sessionCommands.resume,
 													forkCommand: sessionCommands.fork,
 													onGenerateSummary:
@@ -1579,7 +2005,8 @@ function SessionView({
 												paneToggles={
 													<SessionPaneControls
 														railAvailable
-														facts={{
+														facts={
+														{
 															artifactCount: sessionArtifacts.length,
 															hasPlan: hasSessionPlan(data.planFilename, planModel),
 															hasUnloadedHistory: transcript.startIndex > 0,
@@ -1589,7 +2016,8 @@ function SessionView({
 															),
 															subagentCount: subagents.length,
 														}}
-														onExpandChat={() => {
+														onExpandChat={() =>
+														{
 															setChromeHidden(true);
 														}}
 													/>
@@ -1616,7 +2044,8 @@ function SessionView({
 											>
 												<button
 													type="button"
-													onClick={() => {
+													onClick={() =>
+													{
 														setChromeHidden(false);
 													}}
 													className="rounded-md bg-surface-0 border border-border px-2 py-1 text-xs text-t6 hover:text-primary hover:bg-fill-control transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
@@ -1668,15 +2097,17 @@ function SessionView({
 															/>
 														)}
 													{/* With no question to draw inline, a waiting session says it needs input above the composer */}
-													{showsWaitingForInputNotice({
-														state: sessionSummaryState,
-														hasDockedCard:
-															inlineQuestion !== null ||
-															pendingPermission !== null ||
-															dockedPlan !== null ||
-															urlElicitationCard !== null,
-														workingLineWaits,
-													}) &&
+													{showsWaitingForInputNotice(
+														{
+															state: sessionSummaryState,
+															hasDockedCard:
+																inlineQuestion !== null ||
+																pendingPermission !== null ||
+																dockedPlan !== null ||
+																urlElicitationCard !== null,
+															workingLineWaits,
+														},
+													) &&
 														!unansweredHookQuestion && (
 															<WaitingForInputNotice {...elicitationNotice} />
 														)}
@@ -1749,14 +2180,19 @@ function SessionView({
 																variant="session"
 																draftKey={sessionId}
 																dropScope="chat-panel"
-																onSend={(prompt, launchOptions) => {
+																onSend={(prompt, launchOptions) =>
+																{
 																	if (
-																		handleBtwPrompt(prompt, {
-																			sessionId,
-																			messageCount: data.messageCount,
-																			toast,
-																		})
-																	) {
+																		handleBtwPrompt(
+																			prompt,
+																			{
+																				sessionId,
+																				messageCount: data.messageCount,
+																				toast,
+																			},
+																		)
+																	)
+																	{
 																		return;
 																	}
 																	submitComposer("send", prompt, launchOptions);
@@ -1764,11 +2200,14 @@ function SessionView({
 																onFork={(prompt, launchOptions) =>
 																	submitComposer("fork", prompt, launchOptions)
 																}
-																forkLabel={forkSubmitLabel({
-																	pane: paneState,
-																	writesEnabled: herdr.writesEnabled,
-																})}
-																onCancel={() => {
+																forkLabel={forkSubmitLabel(
+																	{
+																		pane: paneState,
+																		writesEnabled: herdr.writesEnabled,
+																	},
+																)}
+																onCancel={() =>
+																{
 																	void chatStream.cancel();
 																}}
 																isStreaming={
@@ -1857,7 +2296,10 @@ function SessionView({
 																subagents={subagents}
 																{...(workflowRuns === undefined
 																	? null
-																	: {workflowRuns})}
+																	:
+																		{
+																			workflowRuns,
+																		})}
 																showThinking={transcriptFlags.showThinking}
 																showTools={transcriptFlags.showTools}
 																showPassedHooks={transcriptFlags.showPassedHooks}
@@ -1869,10 +2311,12 @@ function SessionView({
 																}
 																showTranscriptOnly={transcriptFlags.showTranscriptOnly}
 																transcriptMode={transcriptMode}
-																sessionLive={sessionProcessLive({
-																	hookActive: isActive,
-																	summaryState: sessionSummaryState,
-																})}
+																sessionLive={sessionProcessLive(
+																	{
+																		hookActive: isActive,
+																		summaryState: sessionSummaryState,
+																	},
+																)}
 																turnInProgress={workingMarkerState.status !== "idle"}
 																archived={data.archived}
 																permissionWaitToolUseId={permissionWaitId}
@@ -1888,8 +2332,14 @@ function SessionView({
 																summary={aiSummary}
 																{...(slashCommands === undefined
 																	? {}
-																	: {slashCommands})}
-																{...(errorRecovery !== undefined && {errorRecovery})}
+																	:
+																		{
+																			slashCommands,
+																		})}
+																{...(errorRecovery !== undefined &&
+																{
+																	errorRecovery,
+																})}
 																staleCompact={staleCompact}
 															/>
 														</TranscriptTailContext.Provider>
@@ -2008,10 +2458,12 @@ function SessionView({
 										head={
 											liveHerdrPrompt.state.prompt === "" &&
 											!(
-												sessionProcessLive({
-													hookActive: isActive,
-													summaryState: sessionSummaryState,
-												}) && processed.lines.some((line) => line.type === "queued-prompt")
+												sessionProcessLive(
+													{
+														hookActive: isActive,
+														summaryState: sessionSummaryState,
+													},
+												) && processed.lines.some((line) => line.type === "queued-prompt")
 											)
 										}
 										onSendNow={composerQueue.sendNow}

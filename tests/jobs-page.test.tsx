@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -19,7 +20,8 @@ import {Route as JobsRoute} from "../src/routes/jobs";
 const HOUR = 60 * 60 * 1000;
 const now = Date.parse("2026-09-29T12:00:00.000Z");
 
-function job(overrides: Partial<Job>): Job {
+function job(overrides: Partial<Job>): Job
+{
 	return {
 		id: "0b3837ca",
 		name: "expenses-treemap",
@@ -40,88 +42,168 @@ function job(overrides: Partial<Job>): Job {
 }
 
 const JOBS: Job[] = [
-	job({
-		result: "Treemap of recurring expenses by category",
-		children: [{id: "12", href: "https://github.com/alice/app/pull/12", kind: "pr", title: null}],
-		timeline: [
-			{at: now - 2 * HOUR, state: "working", detail: "Reading statements", text: ""},
-			{at: now - HOUR, state: "done", detail: "Treemap built", text: "Treemap built"},
-		],
-	}),
-	job({
-		id: "221f2efe",
-		name: "photo-rescan",
-		state: "blocked",
-		detail: "Which walk should this fork take?",
-		needs: "answer: Which walk should this fork take?",
-		updatedAt: now - 2 * HOUR,
-		sessionId: "221f2efe-7e21",
-	}),
-	job({
-		id: "171ac680",
-		name: "test-command",
-		state: "failed",
-		detail: "process gone while supervisor was down",
-		updatedAt: now - 5 * HOUR,
-		sessionId: null,
-		projectId: null,
-	}),
+	job(
+		{
+			result: "Treemap of recurring expenses by category",
+			children: [
+				{
+					id: "12",
+					href: "https://github.com/alice/app/pull/12",
+					kind: "pr",
+					title: null,
+				},
+			],
+			timeline: [
+				{
+					at: now - 2 * HOUR,
+					state: "working",
+					detail: "Reading statements",
+					text: "",
+				},
+				{
+					at: now - HOUR,
+					state: "done",
+					detail: "Treemap built",
+					text: "Treemap built",
+				},
+			],
+		},
+	),
+	job(
+		{
+			id: "221f2efe",
+			name: "photo-rescan",
+			state: "blocked",
+			detail: "Which walk should this fork take?",
+			needs: "answer: Which walk should this fork take?",
+			updatedAt: now - 2 * HOUR,
+			sessionId: "221f2efe-7e21",
+		},
+	),
+	job(
+		{
+			id: "171ac680",
+			name: "test-command",
+			state: "failed",
+			detail: "process gone while supervisor was down",
+			updatedAt: now - 5 * HOUR,
+			sessionId: null,
+			projectId: null,
+		},
+	),
 ];
 
-beforeEach(() => {
-	vi.useFakeTimers({toFake: ["Date"]});
+beforeEach(() =>
+{
+	vi.useFakeTimers(
+		{
+			toFake: ["Date"],
+		},
+	);
 	vi.setSystemTime(now);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.useRealTimers();
 });
 
-async function renderJobsPage(jobs: Job[]) {
-	const queryClient = new QueryClient({
-		defaultOptions: {queries: {retry: false, staleTime: Infinity}},
-	});
+async function renderJobsPage(jobs: Job[])
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+				},
+			},
+		},
+	);
 	queryClient.setQueryData(jobsQueryOptions.queryKey, jobs);
 
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<Outlet />
-			</QueryClientProvider>
-		),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<Outlet />
+				</QueryClientProvider>
+			),
+		},
+	);
 	const {component} = JobsRoute.options;
-	const jobsRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/jobs",
-		...(component ? {component} : {}),
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([jobsRoute]),
-		history: createMemoryHistory({initialEntries: ["/jobs"]}),
-	});
+	const jobsRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/jobs",
+			...(component
+				?
+					{
+						component,
+					}
+				: {}),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([jobsRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/jobs"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
-	await screen.findByRole("heading", {level: 1, name: "Background jobs"});
+	await screen.findByRole(
+		"heading",
+		{
+			level: 1,
+			name: "Background jobs",
+		},
+	);
 }
 
-function jobRows(): HTMLElement[] {
-	return [...screen.getByRole("list", {name: "Background jobs"}).querySelectorAll<HTMLElement>(":scope > li")];
+function jobRows(): HTMLElement[]
+{
+	return [
+		...screen
+			.getByRole(
+				"list",
+				{
+					name: "Background jobs",
+				},
+			)
+			.querySelectorAll<HTMLElement>(":scope > li"),
+	];
 }
 
-describe("jobs route", () => {
-	it("titles the page with upstream's 24/32 serif PageHeader", async () => {
+describe("jobs route", () =>
+{
+	it("titles the page with upstream's 24/32 serif PageHeader", async () =>
+	{
 		await renderJobsPage(JOBS);
-		expect(screen.getByRole("heading", {level: 1, name: "Background jobs"}).className).toBe(
-			"min-w-0 font-voice text-[24px]/[32px] font-medium text-primary",
-		);
+		expect(
+			screen.getByRole(
+				"heading",
+				{
+					level: 1,
+					name: "Background jobs",
+				},
+			).className,
+		).toBe("min-w-0 font-voice text-[24px]/[32px] font-medium text-primary");
 	});
 
-	it("lists each job with its state pill, detail, result, time and session link", async () => {
+	it("lists each job with its state pill, detail, result, time and session link", async () =>
+	{
 		await renderJobsPage(JOBS);
 
-		const rows = jobRows().map((row) => ({
+		const rows = jobRows().map((row) => (
+		{
 			title: row.querySelector("[data-job-title]")?.textContent,
 			state: row.querySelector("[data-job-state]")?.textContent,
 			detail: row.querySelector("[data-job-detail]")?.textContent,
@@ -158,23 +240,36 @@ describe("jobs route", () => {
 		]);
 	});
 
-	it("links a job's pull requests and shows its timeline", async () => {
+	it("links a job's pull requests and shows its timeline", async () =>
+	{
 		await renderJobsPage(JOBS);
 
 		const row = within(jobRows()[0]!);
 
-		expect({
-			pr: row.getByRole("link", {name: "Pull request 12"}).getAttribute("href"),
-			timeline: row
-				.getAllByRole("listitem")
-				.map((entry) => entry.querySelector("[data-job-timeline-detail]")?.textContent),
-		}).toStrictEqual({
-			pr: "https://github.com/alice/app/pull/12",
-			timeline: ["Treemap built", "Reading statements"],
-		});
+		expect(
+			{
+				pr: row
+					.getByRole(
+						"link",
+						{
+							name: "Pull request 12",
+						},
+					)
+					.getAttribute("href"),
+				timeline: row
+					.getAllByRole("listitem")
+					.map((entry) => entry.querySelector("[data-job-timeline-detail]")?.textContent),
+			},
+		).toStrictEqual(
+			{
+				pr: "https://github.com/alice/app/pull/12",
+				timeline: ["Treemap built", "Reading statements"],
+			},
+		);
 	});
 
-	it("explains the page when there are no background jobs", async () => {
+	it("explains the page when there are no background jobs", async () =>
+	{
 		await renderJobsPage([]);
 
 		expect(screen.getByRole("status").textContent).toBe("Background jobs you start from Claude Code appear here.");

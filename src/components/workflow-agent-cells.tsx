@@ -1,5 +1,6 @@
 import {type CSSProperties, type PointerEvent, type ReactNode, useRef, useState} from "react";
-import {
+import
+{
 	type AgentCell as AgentCellData,
 	cellCap,
 	cellStates,
@@ -27,7 +28,8 @@ const GHOST = "ghost";
 type CellState = AgentState | typeof GHOST;
 
 /** Upstream `P$`/`Tme`: the hovered cell's tooltip label. */
-const CELL_LABEL: Record<CellState, string> = {
+const CELL_LABEL: Record<CellState, string> =
+{
 	done: "Done",
 	running: "Running",
 	stalled: "Stalled",
@@ -38,8 +40,10 @@ const CELL_LABEL: Record<CellState, string> = {
 };
 
 /** Upstream `F$`: one agent cell; a running cell gets its own pulse timing. */
-function AgentCell({state, cell, index = 0}: {state: CellState; cell: number | typeof GHOST; index?: number}) {
-	const style: CSSProperties = {
+function AgentCell({state, cell, index = 0}: {state: CellState; cell: number | typeof GHOST; index?: number})
+{
+	const style: CSSProperties =
+	{
 		width: CELL_PX,
 		height: CELL_PX,
 		...(state === "running" ? pulseVars(index) : null),
@@ -75,17 +79,21 @@ function CellsTooltip({
 	tooltipClassName: string;
 	style: CSSProperties;
 	children: ReactNode;
-}) {
+})
+{
 	const [hovered, setHovered] = useState<number | typeof GHOST | null>(null);
 	const hoveredRef = useRef<number | typeof GHOST | null>(null);
 	const hoveredBox = useRef<DOMRect | null>(null);
 
-	function move(event: PointerEvent<HTMLSpanElement>) {
+	function move(event: PointerEvent<HTMLSpanElement>)
+	{
 		const target = event.target instanceof Element ? event.target.closest("[data-cell]") : null;
-		if (target !== null) {
+		if (target !== null)
+		{
 			const id = target.getAttribute("data-cell");
 			const next = id === GHOST ? GHOST : Number(id);
-			if (next !== hoveredRef.current) {
+			if (next !== hoveredRef.current)
+			{
 				hoveredRef.current = next;
 				hoveredBox.current = target.getBoundingClientRect();
 				setHovered(next);
@@ -99,14 +107,16 @@ function CellsTooltip({
 			event.clientX <= box.right + HOVER_SLOP_PX &&
 			event.clientY >= box.top - HOVER_SLOP_PX &&
 			event.clientY <= box.bottom + HOVER_SLOP_PX;
-		if (!inSlop && hoveredRef.current !== null) {
+		if (!inSlop && hoveredRef.current !== null)
+		{
 			hoveredRef.current = null;
 			hoveredBox.current = null;
 			setHovered(null);
 		}
 	}
 
-	function leave() {
+	function leave()
+	{
 		hoveredRef.current = -1;
 		hoveredBox.current = null;
 	}
@@ -152,24 +162,53 @@ export function WorkflowAgentCells({
 	anticipate?: boolean;
 	/** Every agent's label and state; used for the cells and tooltips when it covers every agent. */
 	agents?: readonly AgentCellData[] | undefined;
-}) {
-	const cap = cellCap({wrap, maxRows, ...(cols === undefined ? null : {cols})});
+})
+{
+	const cap = cellCap(
+		{
+			wrap,
+			maxRows,
+			...(cols === undefined
+				? null
+				:
+					{
+						cols,
+					}),
+		},
+	);
 	const perAgent = agents !== undefined && agents.length === counts.total && counts.total <= cap;
 	const states = perAgent ? agents.map((agent) => agent.state) : cellStates(counts, cap);
 	const labelled = perAgent ? agents : undefined;
 	const summary = progressSummary(counts);
 	const cells = states.map((state, i) => <AgentCell key={i} state={state} cell={i} index={i} />);
 	const ghost = anticipate ? <AgentCell state={GHOST} cell={GHOST} /> : null;
-	const tooltipProps = {summary, cells: states, agents: labelled, hasGhost: anticipate};
+	const tooltipProps =
+	{
+		summary,
+		cells: states,
+		agents: labelled,
+		hasGhost: anticipate,
+	};
 
 	// `flex` replaces the tooltip anchor's default `inline-flex`, keeping it block-level so no line box pads the grid's height.
-	if (wrap || cols !== undefined) {
+	if (wrap || cols !== undefined)
+	{
 		const style: CSSProperties = cols
-			? {gridTemplateColumns: `repeat(${cols}, ${CELL_PX}px)`, gap: GAP_PX}
-			: {
+			?
+				{
+					gridTemplateColumns: `repeat(${cols}, ${CELL_PX}px)`,
+					gap: GAP_PX,
+				}
+			:
+				{
 					gridTemplateColumns: `repeat(auto-fill, ${CELL_PX}px)`,
 					gap: GAP_PX,
-					...(Number.isFinite(maxRows) ? {maxHeight: maxRows * ROW_PX - GAP_PX} : null),
+					...(Number.isFinite(maxRows)
+						?
+							{
+								maxHeight: maxRows * ROW_PX - GAP_PX,
+							}
+						: null),
 				};
 		return (
 			<CellsTooltip
@@ -188,11 +227,19 @@ export function WorkflowAgentCells({
 			{...tooltipProps}
 			className="flex items-center"
 			tooltipClassName="flex w-full"
-			style={{height: "var(--text-body--line-height)"}}
+			style={
+			{
+				height: "var(--text-body--line-height)",
+			}}
 		>
 			<span
 				className="grid w-full overflow-hidden"
-				style={{gridTemplateColumns: `repeat(auto-fill, ${CELL_PX}px)`, gap: GAP_PX, maxHeight: CELL_PX}}
+				style={
+				{
+					gridTemplateColumns: `repeat(auto-fill, ${CELL_PX}px)`,
+					gap: GAP_PX,
+					maxHeight: CELL_PX,
+				}}
 			>
 				{cells}
 				{ghost}

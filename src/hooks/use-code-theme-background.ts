@@ -9,7 +9,8 @@ export const CODE_THEME_BG_FALLBACK =
 /** Each loaded theme's editor background, so later diffs read it synchronously. */
 const loadedBackgrounds = new Map<CodeThemeId, string>();
 
-async function themeBackground(id: CodeThemeId): Promise<void> {
+async function themeBackground(id: CodeThemeId): Promise<void>
+{
 	if (loadedBackgrounds.has(id)) return;
 	const theme = await loadCodeTheme(id);
 	// Upstream c6e73333a `y`: `colors["editor.background"] ?? bg`.
@@ -17,7 +18,8 @@ async function themeBackground(id: CodeThemeId): Promise<void> {
 	if (bg !== undefined) loadedBackgrounds.set(id, bg);
 }
 
-function pairBackground(light: string | undefined, dark: string | undefined): string {
+function pairBackground(light: string | undefined, dark: string | undefined): string
+{
 	return light === undefined || dark === undefined ? CODE_THEME_BG_FALLBACK : `light-dark(${light}, ${dark})`;
 }
 
@@ -26,17 +28,21 @@ function pairBackground(light: string | undefined, dark: string | undefined): st
  * editor backgrounds once both have loaded. Upstream's injected `Ea` replaces pierre's theme background with
  * the host's `--cds-filediff-bg`, so the Changes pane must hand the theme background back explicitly.
  */
-export function useCodeThemeBackground(): string {
+export function useCodeThemeBackground(): string
+{
 	const {light, dark} = useCodeThemes();
 	const [, setVersion] = useState(0);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (loadedBackgrounds.has(light) && loadedBackgrounds.has(dark)) return undefined;
 		let cancelled = false;
-		void Promise.all([themeBackground(light), themeBackground(dark)]).then(() => {
+		void Promise.all([themeBackground(light), themeBackground(dark)]).then(() =>
+		{
 			if (!cancelled) setVersion((version) => version + 1);
 		});
-		return () => {
+		return () =>
+		{
 			cancelled = true;
 		};
 	}, [light, dark]);

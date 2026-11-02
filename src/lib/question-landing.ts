@@ -16,7 +16,8 @@ const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock"]);
  * cards in order (the composer dock's first, then the rest in document order),
  * landing on the card after the one holding `from`, else on the first.
  */
-export function findWaitingCard(root: Document, from: Element | null = null): HTMLElement | null {
+export function findWaitingCard(root: Document, from: Element | null = null): HTMLElement | null
+{
 	const all = [...root.querySelectorAll<HTMLElement>(WAITING_CARD_SELECTOR)].filter(isAvailable);
 	const dock = root.querySelector('[data-focus-region="composer"]')?.parentElement ?? null;
 	const docked = dock === null ? [] : all.filter((card) => dock.contains(card));
@@ -26,13 +27,24 @@ export function findWaitingCard(root: Document, from: Element | null = null): HT
 }
 
 /** Focus the card with the overlay landing ring, cleared by the next key, input, pointerdown, focus-out or window blur. */
-export function landOnWaitingCard(card: HTMLElement): void {
+export function landOnWaitingCard(card: HTMLElement): void
+{
 	if (!card.hasAttribute("tabindex")) card.tabIndex = -1;
-	card.scrollIntoView({block: "nearest"});
-	card.focus({preventScroll: true, focusVisible: true});
+	card.scrollIntoView(
+		{
+			block: "nearest",
+		},
+	);
+	card.focus(
+		{
+			preventScroll: true,
+			focusVisible: true,
+		},
+	);
 	card.setAttribute(LANDING_ATTR, "overlay");
 
-	const clear = () => {
+	const clear = () =>
+	{
 		card.removeAttribute(LANDING_ATTR);
 		card.removeEventListener("keydown", onKeyDown, true);
 		card.removeEventListener("beforeinput", clear, true);
@@ -40,10 +52,12 @@ export function landOnWaitingCard(card: HTMLElement): void {
 		card.removeEventListener("focusout", onFocusOut);
 		window.removeEventListener("blur", clear);
 	};
-	const onKeyDown = (event: KeyboardEvent) => {
+	const onKeyDown = (event: KeyboardEvent) =>
+	{
 		if (!MODIFIER_KEYS.has(event.key)) clear();
 	};
-	const onFocusOut = (event: FocusEvent) => {
+	const onFocusOut = (event: FocusEvent) =>
+	{
 		const next = event.relatedTarget;
 		if (next instanceof Node && card.contains(next)) return;
 		clear();

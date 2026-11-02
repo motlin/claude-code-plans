@@ -11,30 +11,52 @@ const testDir = join(tmpdir(), "claude-memories-indexer-test-" + process.pid);
 const projectId = "-Users-test-project";
 let db: AppDb;
 
-function writeMemoryFile(filename: string, content: string, mtimeMs?: number): string {
+function writeMemoryFile(filename: string, content: string, mtimeMs?: number): string
+{
 	const memDir = join(testDir, projectId, "memory");
-	mkdirSync(memDir, {recursive: true});
+	mkdirSync(
+		memDir,
+		{
+			recursive: true,
+		},
+	);
 	const filePath = join(memDir, filename);
 	writeFileSync(filePath, content);
-	if (mtimeMs !== undefined) {
+	if (mtimeMs !== undefined)
+	{
 		const secs = mtimeMs / 1000;
 		utimesSync(filePath, secs, secs);
 	}
 	return filePath;
 }
 
-beforeEach(() => {
-	mkdirSync(testDir, {recursive: true});
+beforeEach(() =>
+{
+	mkdirSync(
+		testDir,
+		{
+			recursive: true,
+		},
+	);
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(testDir, {recursive: true, force: true});
+	rmSync(
+		testDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("scanMemoriesForProject", () => {
-	it("indexes all .md files under {projectsDir}/{projectId}/memory/", async () => {
+describe("scanMemoriesForProject", () =>
+{
+	it("indexes all .md files under {projectsDir}/{projectId}/memory/", async () =>
+	{
 		writeMemoryFile("alpha.md", "# Alpha title\n\nbody");
 		writeMemoryFile("beta.md", "# Beta title\n\nbody");
 		writeMemoryFile("skip.txt", "not markdown");
@@ -60,7 +82,8 @@ describe("scanMemoriesForProject", () => {
 		expect(beta.title).toBe("Beta title");
 	});
 
-	it("reindexes when a file mtime changes and updates title + mtimeMs", async () => {
+	it("reindexes when a file mtime changes and updates title + mtimeMs", async () =>
+	{
 		const filePath = writeMemoryFile("alpha.md", "# Original title\n");
 
 		await scanMemoriesForProject(db.index, testDir, projectId);
@@ -86,7 +109,8 @@ describe("scanMemoriesForProject", () => {
 		expect(secondRow.mtimeMs).toBeGreaterThan(firstMtime);
 	});
 
-	it("prunes memories rows and indexed_files rows when a file is deleted", async () => {
+	it("prunes memories rows and indexed_files rows when a file is deleted", async () =>
+	{
 		const keep = writeMemoryFile("keep.md", "# Keep\n");
 		const remove = writeMemoryFile("remove.md", "# Remove\n");
 
@@ -110,13 +134,19 @@ describe("scanMemoriesForProject", () => {
 		).toBeUndefined();
 	});
 
-	it("prunes stale rows for a project when its memory dir no longer exists", async () => {
+	it("prunes stale rows for a project when its memory dir no longer exists", async () =>
+	{
 		const filePath = writeMemoryFile("alpha.md", "# Alpha\n");
 
 		await scanMemoriesForProject(db.index, testDir, projectId);
 		expect(db.index.select().from(schema.memories).all().length).toBe(1);
 
-		rmSync(join(testDir, projectId, "memory"), {recursive: true});
+		rmSync(
+			join(testDir, projectId, "memory"),
+			{
+				recursive: true,
+			},
+		);
 
 		await scanMemoriesForProject(db.index, testDir, projectId);
 		expect(db.index.select().from(schema.memories).all()).toStrictEqual([]);
@@ -126,8 +156,10 @@ describe("scanMemoriesForProject", () => {
 	});
 });
 
-describe("indexMemoryFile", () => {
-	it("upserts a single memory file", async () => {
+describe("indexMemoryFile", () =>
+{
+	it("upserts a single memory file", async () =>
+	{
 		const filePath = writeMemoryFile("alpha.md", "# Solo title\n");
 
 		await indexMemoryFile(db.index, filePath, projectId);
@@ -140,8 +172,10 @@ describe("indexMemoryFile", () => {
 	});
 });
 
-describe("indexFile dispatcher (memory branch)", () => {
-	it("routes memory .md paths to indexMemoryFile", async () => {
+describe("indexFile dispatcher (memory branch)", () =>
+{
+	it("routes memory .md paths to indexMemoryFile", async () =>
+	{
 		const filePath = writeMemoryFile("alpha.md", "# Dispatcher title\n");
 
 		await indexFile(db.index, filePath, testDir);
@@ -153,9 +187,15 @@ describe("indexFile dispatcher (memory branch)", () => {
 		expect(row.title).toBe("Dispatcher title");
 	});
 
-	it("does not write a memory row for non-memory .md paths under projectsDir", async () => {
+	it("does not write a memory row for non-memory .md paths under projectsDir", async () =>
+	{
 		const otherDir = join(testDir, projectId, "other");
-		mkdirSync(otherDir, {recursive: true});
+		mkdirSync(
+			otherDir,
+			{
+				recursive: true,
+			},
+		);
 		const filePath = join(otherDir, "README.md");
 		writeFileSync(filePath, "# Not a memory\n");
 

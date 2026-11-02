@@ -1,3 +1,4 @@
-export function fileMentionOptionId(menuId: string, index: number): string {
+export function fileMentionOptionId(menuId: string, index: number): string
+{
 	return `${menuId}-option-${index}`;
 }

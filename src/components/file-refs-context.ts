@@ -2,7 +2,8 @@ import {createContext, useContext} from "react";
 
 import type {FileRef} from "../lib/file-refs";
 
-interface FileRefsContextValue {
+interface FileRefsContextValue
+{
 	/** Keys the session's missing-file set. */
 	sessionId: string;
 	/** The session's working directory; relative refs resolve against it first. */
@@ -17,6 +18,7 @@ export const FileRefsContext = createContext<FileRefsContextValue | null>(null);
 export const FileRefsProvider = FileRefsContext.Provider;
 
 /** The surrounding {@link FileRefsProvider}'s working directory, if any. */
-export function useFileRefsCwd(): string | undefined {
+export function useFileRefsCwd(): string | undefined
+{
 	return useContext(FileRefsContext)?.cwd;
 }

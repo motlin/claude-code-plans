@@ -1,5 +1,6 @@
 import {Check, CheckCheck, Copy, Loader2, Pause, Pin, RotateCcw, Split, Volume2, X} from "lucide-react";
-import {
+import
+{
 	createContext,
 	type FocusEvent,
 	type MouseEvent,
@@ -43,7 +44,8 @@ import {useTimedFlag} from "../hooks/use-timed-flag";
  * stop; the bar hides again once focus leaves.
  */
 
-export interface MessageActionsProps {
+export interface MessageActionsProps
+{
 	/** The message the actions act on; absent for records without a uuid. */
 	message: TranscriptMessageRef | undefined;
 	/** The message's text as written, which Copy copies. */
@@ -102,12 +104,14 @@ const NOTHING_TO_COPY = "This message has no text to copy.";
  */
 const RovingBarContext = createContext(false);
 
-function useRovingTabIndex(first: boolean): number | undefined {
+function useRovingTabIndex(first: boolean): number | undefined
+{
 	if (!useContext(RovingBarContext)) return undefined;
 	return first ? 0 : -1;
 }
 
-function preventFocusSteal(event: MouseEvent) {
+function preventFocusSteal(event: MouseEvent)
+{
 	event.preventDefault();
 }
 
@@ -139,7 +143,8 @@ function ActionButton({
 	/** Marks the Read aloud control, whose label changes with its state. */
 	readAloud?: boolean;
 	children: ReactNode;
-}) {
+})
+{
 	const tabIndex = useRovingTabIndex(first);
 	const blocked = disabledReason !== undefined && disabledReason !== null;
 	const control = (
@@ -148,11 +153,36 @@ function ActionButton({
 				type="button"
 				aria-label={label}
 				// Upstream's toolbar drops the detail while disabled; the reason wrapper's description stands alone.
-				{...(blocked || description === undefined ? {} : {"aria-description": description})}
-				{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
-				{...(readAloud ? {"data-read-aloud": ""} : {})}
-				{...(testId === undefined ? {} : {"data-testid": testId})}
-				{...(tabIndex === undefined ? {} : {tabIndex})}
+				{...(blocked || description === undefined
+					? {}
+					:
+						{
+							"aria-description": description,
+						})}
+				{...(pressed === undefined
+					? {}
+					:
+						{
+							"aria-pressed": pressed,
+						})}
+				{...(readAloud
+					?
+						{
+							"data-read-aloud": "",
+						}
+					: {})}
+				{...(testId === undefined
+					? {}
+					:
+						{
+							"data-testid": testId,
+						})}
+				{...(tabIndex === undefined
+					? {}
+					:
+						{
+							tabIndex,
+						})}
 				disabled={onClick === undefined || blocked}
 				// Pressing keeps focus where it was (the composer), as upstream's toolbar buttons do.
 				onMouseDown={preventFocusSteal}
@@ -191,7 +221,8 @@ function CopyAction({
 	first?: boolean;
 	/** Upstream (shared-80 `eb`) tags only a user turn's Copy button, `user-message-copy`. */
 	testId?: string;
-}) {
+})
+{
 	const [copied, showCopied] = useTimedFlag(COPIED_MS);
 	const trimmed = text.trim();
 	const empty = trimmed === "";
@@ -202,11 +233,18 @@ function CopyAction({
 				label={empty ? `Copy: ${NOTHING_TO_COPY}` : "Copy"}
 				first={first}
 				testId={testId}
-				{...(empty ? {disabledReason: NOTHING_TO_COPY} : {})}
-				onClick={() => {
+				{...(empty
+					?
+						{
+							disabledReason: NOTHING_TO_COPY,
+						}
+					: {})}
+				onClick={() =>
+				{
 					const html = getHtml?.();
 					const write = html === undefined ? writeClipboardText(trimmed) : writeClipboardText(trimmed, html);
-					void write.then((ok) => {
+					void write.then((ok) =>
+					{
 						if (!ok) return;
 						showCopied();
 					});
@@ -229,14 +267,17 @@ function CopyAction({
 function bound(
 	action: ((message: TranscriptMessageRef) => void) | undefined,
 	message: TranscriptMessageRef | undefined,
-): (() => void) | undefined {
+): (() => void) | undefined
+{
 	if (action === undefined || message === undefined) return undefined;
-	return () => {
+	return () =>
+	{
 		action(message);
 	};
 }
 
-function ForkAction({message}: {message: TranscriptMessageRef | undefined}) {
+function ForkAction({message}: {message: TranscriptMessageRef | undefined})
+{
 	const {forkFrom, forkDisabledReason} = useContext(TranscriptActionsContext);
 	return (
 		<ActionButton
@@ -251,7 +292,8 @@ function ForkAction({message}: {message: TranscriptMessageRef | undefined}) {
 	);
 }
 
-function PinAction({message}: {message: TranscriptMessageRef | undefined}) {
+function PinAction({message}: {message: TranscriptMessageRef | undefined})
+{
 	const {pinChapter} = useContext(TranscriptActionsContext);
 	const {userChapters} = useSessionChapters(message?.sessionId ?? "");
 	const pinned = message !== undefined && userChapters.some((chapter) => chapter.afterId === message.uuid);
@@ -262,7 +304,8 @@ function PinAction({message}: {message: TranscriptMessageRef | undefined}) {
 	);
 }
 
-function RewindAction({message}: {message: TranscriptMessageRef | undefined}) {
+function RewindAction({message}: {message: TranscriptMessageRef | undefined})
+{
 	const {rewindTo, rewindDisabledReason, rewindHidden = false} = useContext(TranscriptActionsContext);
 	if (rewindHidden) return null;
 	return (
@@ -277,7 +320,8 @@ function RewindAction({message}: {message: TranscriptMessageRef | undefined}) {
 	);
 }
 
-const READ_ALOUD_LABELS: Record<ReadAloudStatus, string> = {
+const READ_ALOUD_LABELS: Record<ReadAloudStatus, string> =
+{
 	idle: "Read aloud",
 	loading: "Loading\u2026",
 	playing: "Pause",
@@ -288,7 +332,8 @@ const READ_ALOUD_LABELS: Record<ReadAloudStatus, string> = {
  * Read aloud with the browser's speech service. Like upstream, a press starts,
  * pauses or resumes, and the label and icon say what the next press does.
  */
-function ReadAloudAction({text}: {text: string}) {
+function ReadAloudAction({text}: {text: string})
+{
 	const {status, toggle} = useReadAloud(text);
 	return (
 		<ActionButton label={READ_ALOUD_LABELS[status]} onClick={toggle} readAloud>
@@ -303,8 +348,10 @@ function ReadAloudAction({text}: {text: string}) {
 	);
 }
 
-function timeClass(inner: "left" | "right", panels: boolean): string {
-	if (inner === "left") {
+function timeClass(inner: "left" | "right", panels: boolean): string
+{
+	if (inner === "left")
+	{
 		// Panels: upstream's flat-look ps 8 + ms-1 4 = 12px from the last button at both densities, so
 		// no comfortable ps-3 on top (panels makes every scope comfortable locally).
 		const inset = panels ? "ps-2 ms-1" : "ps-2";
@@ -330,7 +377,8 @@ function MessageTime({
 	inner: "left" | "right";
 	/** Upstream's `settling` row state: the time fades in after a waiting row was read. */
 	settling?: boolean;
-}) {
+})
+{
 	// Fizzy-lake panels brings upstream's flat look: the user time sentence-cased in a block box, the
 	// assistant time 4px further (`ms-1`) from the last button.
 	const panels = useFizzyLake("panels");
@@ -367,14 +415,16 @@ function ActionBar({
 	hovered?: boolean | undefined;
 	/** Upstream's `message-actions` (assistant) or `user-message-actions` (user). */
 	testId: string;
-}) {
+})
+{
 	const [revealed, setRevealed] = useState(false);
 	const {ref: barRef, onFocus, onKeyDown} = useRovingToolbar();
 	const barElement = useRef<HTMLDivElement | null>(null);
 	const [revealRequest, setRevealRequest] = useState(0);
 
 	// Upstream focuses the roving tab stop, else the first enabled button.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (revealRequest === 0) return;
 		const element = barElement.current;
 		const target =
@@ -383,12 +433,14 @@ function ActionBar({
 		target?.focus();
 	}, [revealRequest]);
 
-	function reveal() {
+	function reveal()
+	{
 		setRevealed(true);
 		setRevealRequest((count) => count + 1);
 	}
 
-	function hideWhenFocusLeaves(event: FocusEvent<HTMLDivElement>) {
+	function hideWhenFocusLeaves(event: FocusEvent<HTMLDivElement>)
+	{
 		const next = event.relatedTarget;
 		if (next instanceof Node && event.currentTarget.contains(next)) return;
 		setRevealed(false);
@@ -398,7 +450,8 @@ function ActionBar({
 		<>
 			<button type="button" className="sr-only" aria-label={label} onFocus={reveal} onClick={reveal} />
 			<div
-				ref={(element) => {
+				ref={(element) =>
+				{
 					barElement.current = element;
 					barRef(element);
 				}}
@@ -411,7 +464,12 @@ function ActionBar({
 				data-testid={testId}
 				data-size="xs"
 				data-hovered={hovered ? "" : undefined}
-				{...(revealed ? {"data-revealed": ""} : {})}
+				{...(revealed
+					?
+						{
+							"data-revealed": "",
+						}
+					: {})}
 				className={className}
 				onBlur={hideWhenFocusLeaves}
 				onFocus={onFocus}
@@ -423,7 +481,8 @@ function ActionBar({
 	);
 }
 
-export function AssistantMessageActions({message, text, timestamp, details, hovered, getHtml}: MessageActionsProps) {
+export function AssistantMessageActions({message, text, timestamp, details, hovered, getHtml}: MessageActionsProps)
+{
 	return (
 		<ActionBar
 			// Upstream sets the toolbar its column's gap-xs (6px compact, 8px comfortable) under the last prose block, its left edge 2px left of the text.
@@ -463,9 +522,11 @@ function ReceiptMark({
 	/** Classes on the bar's flex item: the InfoTip trigger, or the tooltip anchor around the button. */
 	anchorClassName?: string;
 	tabIndex: number | undefined;
-}) {
+})
+{
 	const touch = useMediaQuery(RECEIPT_TOUCH_QUERY);
-	if (touch) {
+	if (touch)
+	{
 		const triggerClass = [className, anchorClassName].filter(Boolean).join(" ");
 		return (
 			<InfoTip
@@ -473,8 +534,18 @@ function ReceiptMark({
 				content={label}
 				delay={0}
 				icon={icon}
-				{...(triggerClass === "" ? {} : {className: triggerClass})}
-				{...(tabIndex === undefined ? {} : {tabIndex})}
+				{...(triggerClass === ""
+					? {}
+					:
+						{
+							className: triggerClass,
+						})}
+				{...(tabIndex === undefined
+					? {}
+					:
+						{
+							tabIndex,
+						})}
 			/>
 		);
 	}
@@ -484,12 +555,22 @@ function ReceiptMark({
 			closeOnClick={false}
 			openOnClick
 			markOpen
-			{...(anchorClassName === undefined ? {} : {className: anchorClassName})}
+			{...(anchorClassName === undefined
+				? {}
+				:
+					{
+						className: anchorClassName,
+					})}
 		>
 			<button
 				type="button"
 				aria-label={label}
-				{...(tabIndex === undefined ? {} : {tabIndex})}
+				{...(tabIndex === undefined
+					? {}
+					:
+						{
+							tabIndex,
+						})}
 				onMouseDown={preventFocusSteal}
 				// `hover:bg-transparent` stands in for upstream's `[&_[data-cds-part=paint]]:invisible`.
 				className={`${BUTTON_CLASS} hover:bg-transparent${className === undefined ? "" : ` ${className}`}`}
@@ -501,7 +582,8 @@ function ReceiptMark({
 }
 
 /** Upstream's "Read by Claude" CheckDouble receipt mark; the toolbar's hover rule turns it primary. */
-function ReadByClaudeReceipt() {
+function ReadByClaudeReceipt()
+{
 	const tabIndex = useRovingTabIndex(true);
 	const panels = useFizzyLake("panels");
 	return (
@@ -510,7 +592,12 @@ function ReadByClaudeReceipt() {
 				label="Read by Claude"
 				icon={<CheckCheck aria-hidden className={ICON_CLASS} />}
 				// Under panels upstream draws the receipt first, though it stays after the time in the DOM.
-				{...(panels ? {anchorClassName: "order-first me-0"} : {})}
+				{...(panels
+					?
+						{
+							anchorClassName: "order-first me-0",
+						}
+					: {})}
 				tabIndex={tabIndex}
 			/>
 			{panels && (
@@ -533,7 +620,8 @@ export function UserMessageActions({
 	details,
 	readByClaude = false,
 	settling = false,
-}: MessageActionsProps) {
+}: MessageActionsProps)
+{
 	return (
 		<ActionBar
 			className={`${BAR_CLASS} justify-end self-end`}
@@ -567,7 +655,8 @@ const REVEAL_ON_HOVER_CLASS = [
  * Upstream's X on a waiting row the browser still holds: busy ("Removing…") until the take-back
  * settles. The mouse-down keeps focus where it is, so the composer can take it.
  */
-function CancelEditAction({onCancel}: {onCancel: () => Promise<void> | void}) {
+function CancelEditAction({onCancel}: {onCancel: () => Promise<void> | void})
+{
 	const [removing, setRemoving] = useState(false);
 	return (
 		<span className="epitaxy-hint-fade-in flex items-center gap-[3px]">
@@ -578,13 +667,16 @@ function CancelEditAction({onCancel}: {onCancel: () => Promise<void> | void}) {
 					aria-busy={removing ? true : undefined}
 					aria-disabled={removing ? true : undefined}
 					className={`relative ${BUTTON_CLASS} hover:text-primary`}
-					onMouseDown={(event) => {
+					onMouseDown={(event) =>
+					{
 						event.preventDefault();
 					}}
-					onClick={() => {
+					onClick={() =>
+					{
 						if (removing) return;
 						setRemoving(true);
-						void Promise.resolve(onCancel()).finally(() => {
+						void Promise.resolve(onCancel()).finally(() =>
+						{
 							setRemoving(false);
 						});
 					}}
@@ -611,7 +703,8 @@ const ROW_WORDS_CLASS =
  * Upstream's "Delivered" (`Kv`), first in a stacked row's hover group once the host has the
  * message, then the "·" before the actions that follow (Copy always does here).
  */
-function DeliveredReceipt() {
+function DeliveredReceipt()
+{
 	return (
 		<>
 			<span aria-hidden data-testid="epitaxy-receipt-on-hover" className={`${ROW_WORDS_CLASS} pe-1.5`}>
@@ -647,7 +740,8 @@ export function WaitingMessageActions({
 	/** Takes a browser-held steer back into the composer; absent once the CLI owns the text. */
 	onCancel?: (() => Promise<void> | void) | undefined;
 	children?: ReactNode;
-}) {
+})
+{
 	const panels = useFizzyLake("panels");
 	const hoverOnly = stacked && panels;
 	const unreadAtRest = stacked && !panels;
@@ -659,7 +753,12 @@ export function WaitingMessageActions({
 			data-message-actions
 			data-cds="MessageActions"
 			data-reveal="fade"
-			{...(hoverOnly ? {} : {"data-always-visible": ""})}
+			{...(hoverOnly
+				? {}
+				:
+					{
+						"data-always-visible": "",
+					})}
 			role="toolbar"
 			aria-label="Message actions"
 			tabIndex={-1}
@@ -684,7 +783,8 @@ export function WaitingMessageActions({
 }
 
 /** Upstream's at-rest "Unread" receipt on a stacked waiting row without panels: the bar's first item. */
-function UnreadReceipt() {
+function UnreadReceipt()
+{
 	const tabIndex = useRovingTabIndex(true);
 	return (
 		<span

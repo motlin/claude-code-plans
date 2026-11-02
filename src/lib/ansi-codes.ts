@@ -1,7 +1,8 @@
 import type {CSSProperties} from "react";
 
 // ANSI color code to CSS color mapping
-const BASIC_COLORS: Record<number, string> = {
+const BASIC_COLORS: Record<number, string> =
+{
 	30: "#000000", // black
 	31: "#cc0000", // red
 	32: "#00cc00", // green
@@ -20,7 +21,8 @@ const BASIC_COLORS: Record<number, string> = {
 	97: "#ffffff", // bright white
 };
 
-const BG_COLORS: Record<number, string> = {
+const BG_COLORS: Record<number, string> =
+{
 	40: "#000000",
 	41: "#cc0000",
 	42: "#00cc00",
@@ -39,7 +41,8 @@ const BG_COLORS: Record<number, string> = {
 	107: "#ffffff",
 };
 
-interface StyledPart {
+interface StyledPart
+{
 	text: string;
 	fg?: string;
 	bg?: string;
@@ -50,7 +53,8 @@ interface StyledPart {
 }
 
 /** The inline style one ANSI run paints with. */
-export function ansiPartStyle(part: StyledPart): CSSProperties {
+export function ansiPartStyle(part: StyledPart): CSSProperties
+{
 	return {
 		color: part.fg,
 		backgroundColor: part.bg,
@@ -61,7 +65,8 @@ export function ansiPartStyle(part: StyledPart): CSSProperties {
 	};
 }
 
-export function parseAnsiCodes(text: string): StyledPart[] {
+export function parseAnsiCodes(text: string): StyledPart[]
+{
 	const parts: StyledPart[] = [];
 
 	// Current style state
@@ -78,12 +83,18 @@ export function parseAnsiCodes(text: string): StyledPart[] {
 	let lastIndex = 0;
 	let match: RegExpExecArray | null;
 
-	while ((match = ansiRegex.exec(text)) !== null) {
+	while ((match = ansiRegex.exec(text)) !== null)
+	{
 		// Add text before this escape code
-		if (match.index > lastIndex) {
+		if (match.index > lastIndex)
+		{
 			const textContent = text.slice(lastIndex, match.index);
-			if (textContent) {
-				const part: StyledPart = {text: textContent};
+			if (textContent)
+			{
+				const part: StyledPart =
+				{
+					text: textContent,
+				};
 				if (currentFg) part.fg = currentFg;
 				if (currentBg) part.bg = currentBg;
 				if (currentBold) part.bold = true;
@@ -98,9 +109,11 @@ export function parseAnsiCodes(text: string): StyledPart[] {
 		const codeStr = match[1] ?? "";
 		const codes = codeStr.split(";").map((c) => parseInt(c || "0", 10));
 
-		for (let i = 0; i < codes.length; i++) {
+		for (let i = 0; i < codes.length; i++)
+		{
 			const code = codes[i] ?? 0;
-			if (code === 0) {
+			if (code === 0)
+			{
 				// Reset all
 				currentFg = undefined;
 				currentBg = undefined;
@@ -108,86 +121,132 @@ export function parseAnsiCodes(text: string): StyledPart[] {
 				currentDim = false;
 				currentItalic = false;
 				currentUnderline = false;
-			} else if (code === 1) {
+			}
+			else if (code === 1)
+			{
 				currentBold = true;
-			} else if (code === 2) {
+			}
+			else if (code === 2)
+			{
 				currentDim = true;
-			} else if (code === 3) {
+			}
+			else if (code === 3)
+			{
 				currentItalic = true;
-			} else if (code === 4) {
+			}
+			else if (code === 4)
+			{
 				currentUnderline = true;
-			} else if (code === 22) {
+			}
+			else if (code === 22)
+			{
 				currentBold = false;
 				currentDim = false;
-			} else if (code === 23) {
+			}
+			else if (code === 23)
+			{
 				currentItalic = false;
-			} else if (code === 24) {
+			}
+			else if (code === 24)
+			{
 				currentUnderline = false;
-			} else if (code >= 30 && code <= 37) {
+			}
+			else if (code >= 30 && code <= 37)
+			{
 				currentFg = BASIC_COLORS[code];
-			} else if (code >= 40 && code <= 47) {
+			}
+			else if (code >= 40 && code <= 47)
+			{
 				currentBg = BG_COLORS[code];
-			} else if (code >= 90 && code <= 97) {
+			}
+			else if (code >= 90 && code <= 97)
+			{
 				currentFg = BASIC_COLORS[code];
-			} else if (code >= 100 && code <= 107) {
+			}
+			else if (code >= 100 && code <= 107)
+			{
 				currentBg = BG_COLORS[code];
-			} else if (code === 38) {
+			}
+			else if (code === 38)
+			{
 				// 256-color or RGB
 				// Format: 38;5;N or 38;2;R;G;B
 				const mode = codes[i + 1];
-				if (mode === 5) {
+				if (mode === 5)
+				{
 					const colorIdx = codes[i + 2];
-					if (colorIdx !== undefined) {
-						if (colorIdx >= 0 && colorIdx <= 15) {
+					if (colorIdx !== undefined)
+					{
+						if (colorIdx >= 0 && colorIdx <= 15)
+						{
 							currentFg = BASIC_COLORS[30 + (colorIdx % 8)] ?? "#ffffff";
-						} else if (colorIdx >= 16 && colorIdx <= 231) {
+						}
+						else if (colorIdx >= 16 && colorIdx <= 231)
+						{
 							// Standard 216-color cube
 							const idx = colorIdx - 16;
 							const r = Math.floor(idx / 36) * 51;
 							const g = Math.floor((idx % 36) / 6) * 51;
 							const b = (idx % 6) * 51;
 							currentFg = `rgb(${r},${g},${b})`;
-						} else {
+						}
+						else
+						{
 							// Grayscale
 							const gray = 8 + (colorIdx - 232) * 10;
 							currentFg = `rgb(${gray},${gray},${gray})`;
 						}
 						i += 2; // Skip the next two codes
 					}
-				} else if (mode === 2) {
+				}
+				else if (mode === 2)
+				{
 					const r = codes[i + 2];
 					const g = codes[i + 3];
 					const b = codes[i + 4];
-					if (r !== undefined && g !== undefined && b !== undefined) {
+					if (r !== undefined && g !== undefined && b !== undefined)
+					{
 						currentFg = `rgb(${r},${g},${b})`;
 						i += 4; // Skip the next four codes
 					}
 				}
-			} else if (code === 48) {
+			}
+			else if (code === 48)
+			{
 				// Background 256-color or RGB
 				const mode = codes[i + 1];
-				if (mode === 5) {
+				if (mode === 5)
+				{
 					const colorIdx = codes[i + 2];
-					if (colorIdx !== undefined) {
-						if (colorIdx >= 0 && colorIdx <= 15) {
+					if (colorIdx !== undefined)
+					{
+						if (colorIdx >= 0 && colorIdx <= 15)
+						{
 							currentBg = BG_COLORS[40 + (colorIdx % 8)] ?? "#000000";
-						} else if (colorIdx >= 16 && colorIdx <= 231) {
+						}
+						else if (colorIdx >= 16 && colorIdx <= 231)
+						{
 							const idx = colorIdx - 16;
 							const r = Math.floor(idx / 36) * 51;
 							const g = Math.floor((idx % 36) / 6) * 51;
 							const b = (idx % 6) * 51;
 							currentBg = `rgb(${r},${g},${b})`;
-						} else {
+						}
+						else
+						{
 							const gray = 8 + (colorIdx - 232) * 10;
 							currentBg = `rgb(${gray},${gray},${gray})`;
 						}
 						i += 2; // Skip the next two codes
 					}
-				} else if (mode === 2) {
+				}
+				else if (mode === 2)
+				{
 					const r = codes[i + 2];
 					const g = codes[i + 3];
 					const b = codes[i + 4];
-					if (r !== undefined && g !== undefined && b !== undefined) {
+					if (r !== undefined && g !== undefined && b !== undefined)
+					{
 						currentBg = `rgb(${r},${g},${b})`;
 						i += 4; // Skip the next four codes
 					}
@@ -199,10 +258,15 @@ export function parseAnsiCodes(text: string): StyledPart[] {
 	}
 
 	// Add remaining text
-	if (lastIndex < text.length) {
+	if (lastIndex < text.length)
+	{
 		const textContent = text.slice(lastIndex);
-		if (textContent) {
-			const part: StyledPart = {text: textContent};
+		if (textContent)
+		{
+			const part: StyledPart =
+			{
+				text: textContent,
+			};
 			if (currentFg) part.fg = currentFg;
 			if (currentBg) part.bg = currentBg;
 			if (currentBold) part.bold = true;
@@ -222,6 +286,7 @@ const CSI_PATTERN = /\x1b\[[0-9;:?]*[ -/]*[@-~]/g;
 const OSC_PATTERN = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
 
 /** Remove ANSI CSI and OSC escape sequences (upstream `Or`), keeping the text. */
-export function stripAnsi(text: string): string {
+export function stripAnsi(text: string): string
+{
 	return text.replace(OSC_PATTERN, "").replace(CSI_PATTERN, "");
 }

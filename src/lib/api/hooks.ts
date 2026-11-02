@@ -14,76 +14,142 @@ import type {PersistedCapabilities} from "../capabilities";
  * still carrying our forwarder; `events` details each installed event, and
  * `features` says which app features the install leaves on, partial, or off.
  */
-export const HookStatusResponse = z.object({
-	installed: z.boolean(),
-	partial: z.boolean(),
-	installedCount: z.number(),
-	totalCount: z.number(),
-	missingEvents: z.array(z.string()),
-	outdatedEvents: z.array(z.string()),
-	strayEvents: z.array(z.string()),
-	events: z.array(
-		z.strictObject({
-			event: z.string(),
-			state: z.enum(["current", "outdated", "missing"]),
-			reasons: z.array(z.string()),
-			foreignCommands: z.array(z.string()),
-		}),
-	),
-	features: z.array(
-		z.strictObject({
-			id: z.string(),
-			label: z.string(),
-			state: z.enum(["on", "partial", "off"]),
-			missingRequired: z.array(z.string()),
-			missingOptional: z.array(z.string()),
-		}),
-	),
-	settingsPath: z.string(),
-});
+export const HookStatusResponse = z.object(
+	{
+		installed: z.boolean(),
+		partial: z.boolean(),
+		installedCount: z.number(),
+		totalCount: z.number(),
+		missingEvents: z.array(z.string()),
+		outdatedEvents: z.array(z.string()),
+		strayEvents: z.array(z.string()),
+		events: z.array(
+			z.strictObject(
+				{
+					event: z.string(),
+					state: z.enum(["current", "outdated", "missing"]),
+					reasons: z.array(z.string()),
+					foreignCommands: z.array(z.string()),
+				},
+			),
+		),
+		features: z.array(
+			z.strictObject(
+				{
+					id: z.string(),
+					label: z.string(),
+					state: z.enum(["on", "partial", "off"]),
+					missingRequired: z.array(z.string()),
+					missingOptional: z.array(z.string()),
+				},
+			),
+		),
+		settingsPath: z.string(),
+	},
+);
 
-export const hookStatusQueryOptions = queryOptions({
-	queryKey: ["hooks", "status"] as const,
-	queryFn: async () => apiFetch("/api/hooks/status", HookStatusResponse),
-	staleTime: Infinity,
-	gcTime: Infinity,
-});
+export const hookStatusQueryOptions = queryOptions(
+	{
+		queryKey: ["hooks", "status"] as const,
+		queryFn: async () => apiFetch("/api/hooks/status", HookStatusResponse),
+		staleTime: Infinity,
+		gcTime: Infinity,
+	},
+);
 
-export const HookMutationResponse = z.object({
-	ok: z.boolean(),
-	settingsPath: z.string(),
-	/** Where the file's previous contents were copied, when there was a file. */
-	backupPath: z.string().optional(),
-});
+export const HookMutationResponse = z.object(
+	{
+		ok: z.boolean(),
+		settingsPath: z.string(),
+		/** Where the file's previous contents were copied, when there was a file. */
+		backupPath: z.string().optional(),
+	},
+);
 
-export const useInstallHooks = () => {
+export const useInstallHooks = () =>
+{
 	const qc = useQueryClient();
-	return useMutation({
-		mutationFn: async ({port, capabilities}: {port?: number; capabilities: PersistedCapabilities}) =>
-			apiFetch("/api/hooks", HookMutationResponse, {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify(port === undefined ? {capabilities} : {port, capabilities}),
-			}),
-		onSuccess: () => {
-			void qc.invalidateQueries({queryKey: ["hooks", "status"]});
-			void qc.invalidateQueries({queryKey: ["settings"]});
+	return useMutation(
+		{
+			mutationFn: async ({port, capabilities}: {port?: number; capabilities: PersistedCapabilities}) =>
+				apiFetch(
+					"/api/hooks",
+					HookMutationResponse,
+					{
+						method: "POST",
+						headers:
+						{
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(
+							port === undefined
+								?
+									{
+										capabilities,
+									}
+								:
+									{
+										port,
+										capabilities,
+									},
+						),
+					},
+				),
+			onSuccess: () =>
+			{
+				void qc.invalidateQueries(
+					{
+						queryKey: ["hooks", "status"],
+					},
+				);
+				void qc.invalidateQueries(
+					{
+						queryKey: ["settings"],
+					},
+				);
+			},
 		},
-	});
+	);
 };
 
-export const useUninstallHooks = () => {
+export const useUninstallHooks = () =>
+{
 	const qc = useQueryClient();
-	return useMutation({
-		mutationFn: async ({port}: {port?: number}) =>
-			apiFetch("/api/hooks", HookMutationResponse, {
-				method: "DELETE",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify(port === undefined ? {} : {port}),
-			}),
-		onSuccess: () => {
-			void qc.invalidateQueries({queryKey: ["hooks", "status"]});
-			void qc.invalidateQueries({queryKey: ["settings"]});
+	return useMutation(
+		{
+			mutationFn: async ({port}: {port?: number}) =>
+				apiFetch(
+					"/api/hooks",
+					HookMutationResponse,
+					{
+						method: "DELETE",
+						headers:
+						{
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(
+							port === undefined
+								? {}
+								:
+									{
+										port,
+									},
+						),
+					},
+				),
+			onSuccess: () =>
+			{
+				void qc.invalidateQueries(
+					{
+						queryKey: ["hooks", "status"],
+					},
+				);
+				void qc.invalidateQueries(
+					{
+						queryKey: ["settings"],
+					},
+				);
+			},
 		},
-	});
+	);
 };

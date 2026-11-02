@@ -13,7 +13,8 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
 type ArtifactKind = ArtifactSummary["kind"];
 
 /** Upstream's classification: a type-created artifact takes its type's kind; plain publishes (and unknown types) are HTML. */
-function artifactKind(typeUrl: string | null): ArtifactKind {
+function artifactKind(typeUrl: string | null): ArtifactKind
+{
 	return (typeUrl === null ? undefined : ARTIFACT_TYPE_KINDS[typeUrl]) ?? "html";
 }
 
@@ -21,11 +22,15 @@ function artifactKind(typeUrl: string | null): ArtifactKind {
 const UNTITLED_ARTIFACT = "Untitled artifact";
 
 /** The source file's mtime in ms when it is still a regular file, else null. */
-function statSourceMtime(path: string): number | null {
-	try {
+function statSourceMtime(path: string): number | null
+{
+	try
+	{
 		const stat = statSync(path);
 		return stat.isFile() ? stat.mtimeMs : null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -37,9 +42,15 @@ function statSourceMtime(path: string): number | null {
  */
 export function getArtifacts(
 	db: IndexDb,
-	{q = ""}: {q?: string},
+	{
+		q = "",
+	}:
+	{
+		q?: string;
+	},
 	sourceMtime: (path: string) => number | null = statSourceMtime,
-): ArtifactSummary[] {
+): ArtifactSummary[]
+{
 	const rows = db
 		.select()
 		.from(schema.artifacts)
@@ -50,7 +61,8 @@ export function getArtifacts(
 		.all();
 
 	return rows
-		.map((row): ArtifactSummary => {
+		.map((row): ArtifactSummary =>
+		{
 			const sourceModifiedAt =
 				row.sourcePath !== null && isPreviewableSourcePath(row.sourcePath) ? sourceMtime(row.sourcePath) : null;
 			return {
@@ -82,12 +94,15 @@ const SESSION_ARTIFACT_ACTIONS = ["publish", "open"];
  * URL, most recently touched first: upstream's session Artifacts pane frames.
  * The title prefers the session's own latest title, then the artifact's.
  */
-export function getSessionArtifacts(db: IndexDb, sessionId: string): SessionArtifact[] {
+export function getSessionArtifacts(db: IndexDb, sessionId: string): SessionArtifact[]
+{
 	const rows = db
-		.select({
-			event: schema.artifactEvents,
-			artifact: schema.artifacts,
-		})
+		.select(
+			{
+				event: schema.artifactEvents,
+				artifact: schema.artifacts,
+			},
+		)
 		.from(schema.artifactEvents)
 		.innerJoin(schema.artifacts, eq(schema.artifacts.url, schema.artifactEvents.url))
 		.where(
@@ -100,14 +115,29 @@ export function getSessionArtifacts(db: IndexDb, sessionId: string): SessionArti
 		.all();
 
 	type Row = (typeof rows)[number];
-	const byUrl = new Map<string, {latest: Row; rows: Row[]}>();
-	for (const row of rows) {
+	const byUrl = new Map<
+		string,
+		{
+			latest: Row;
+			rows: Row[];
+		}
+	>();
+	for (const row of rows)
+	{
 		const entry = byUrl.get(row.event.url);
-		if (entry === undefined) byUrl.set(row.event.url, {latest: row, rows: [row]});
+		if (entry === undefined)
+			byUrl.set(
+				row.event.url,
+				{
+					latest: row,
+					rows: [row],
+				},
+			);
 		else entry.rows.push(row);
 	}
 
-	return [...byUrl.values()].map(({latest: {event, artifact}, rows: urlRows}): SessionArtifact => {
+	return [...byUrl.values()].map(({latest: {event, artifact}, rows: urlRows}): SessionArtifact =>
+	{
 		const sourcePath =
 			urlRows.find((row) => row.event.sourcePath !== null)?.event.sourcePath ?? artifact.sourcePath;
 		const title =

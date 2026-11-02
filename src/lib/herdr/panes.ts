@@ -11,7 +11,8 @@ import type {TerminalPlacementBase, TerminalPlacementProvider} from "../terminal
 export type HerdrAgentStatus = z.infer<typeof HerdrPaneInfoSchema>["agent_status"];
 export type HerdrWirePane = z.infer<typeof HerdrPaneInfoSchema>;
 
-export interface HerdrPane {
+export interface HerdrPane
+{
 	paneId: string;
 	terminalId: string;
 	workspaceId: string;
@@ -31,18 +32,21 @@ export interface HerdrPane {
  * `src/lib/tmux/pane-links.ts`), so `host` says which multiplexer owns it and
  * `via: "process"` marks a tmux match found through the session's pid.
  */
-export interface HerdrPaneLink extends HerdrPane {
+export interface HerdrPaneLink extends HerdrPane
+{
 	host: "herdr" | "tmux";
 	sessionId: string;
 	via: "env" | "agent-session" | "process" | "both";
 }
 
-export interface HerdrTerminalPlacement extends TerminalPlacementBase {
+export interface HerdrTerminalPlacement extends TerminalPlacementBase
+{
 	provider: "herdr";
 	herdrPane: HerdrPaneLink;
 }
 
-const HERDR_CAPABILITIES = {
+const HERDR_CAPABILITIES =
+{
 	supportsWrite: true,
 	supportsEvents: true,
 	supportsObserve: true,
@@ -57,12 +61,14 @@ export type HerdrRequester = (
 export type HerdrServerLister = () => readonly HerdrServer[];
 export type IndexedSessionFilter = (sessionIds: string[]) => Set<string>;
 
-export const filterIndexedSessions: IndexedSessionFilter = (sessionIds) => {
+export const filterIndexedSessions: IndexedSessionFilter = (sessionIds) =>
+{
 	if (sessionIds.length === 0) return new Set();
 	return getIndexedSessionIds(getDb().index, sessionIds);
 };
 
-const SNAPSHOT_REQUEST = {
+const SNAPSHOT_REQUEST =
+{
 	id: "ccp:snap",
 	method: "session.snapshot",
 	params: {},
@@ -80,31 +86,66 @@ export async function readHerdrPaneState(
 	request: HerdrRequester,
 	table: HerdrPaneReader = herdrPaneTable,
 	servers: HerdrServerLister = knownHerdrServers,
-): Promise<HerdrResult<HerdrPaneState>> {
+): Promise<HerdrResult<HerdrPaneState>>
+{
 	const current = table.current();
-	if (current !== null) return {ok: true, value: current};
+	if (current !== null)
+		return {
+			ok: true,
+			value: current,
+		};
 	const states: HerdrPaneState[] = [];
-	let firstFailure: Extract<HerdrResult<unknown>, {ok: false}> | null = null;
-	for (const server of servers()) {
+	let firstFailure: Extract<
+		HerdrResult<unknown>,
+		{
+			ok: false;
+		}
+	> | null = null;
+	for (const server of servers())
+	{
 		const response = await request(SNAPSHOT_REQUEST, undefined, server.socketPath);
-		if (!response.ok) {
+		if (!response.ok)
+		{
 			firstFailure ??= response;
 			continue;
 		}
 		const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
-		if (!parsed.success) {
-			firstFailure ??= {ok: false, code: "bad-response", message: "herdr returned an invalid session snapshot"};
+		if (!parsed.success)
+		{
+			firstFailure ??=
+			{
+				ok: false,
+				code: "bad-response",
+				message: "herdr returned an invalid session snapshot",
+			};
 			continue;
 		}
 		const {workspaces, panes} = parsed.data.snapshot;
-		states.push(qualifyHerdrPaneState({workspaces, panes}, server.session));
+		states.push(
+			qualifyHerdrPaneState(
+				{
+					workspaces,
+					panes,
+				},
+				server.session,
+			),
+		);
 	}
-	if (states.length === 0) {
-		return firstFailure ?? {ok: false, code: "no-server", message: "no herdr server is known"};
+	if (states.length === 0)
+	{
+		return (
+			firstFailure ??
+			{
+				ok: false,
+				code: "no-server",
+				message: "no herdr server is known",
+			}
+		);
 	}
 	return {
 		ok: true,
-		value: {
+		value:
+		{
 			workspaces: states.flatMap((state) => state.workspaces),
 			panes: states.flatMap((state) => state.panes),
 		},
@@ -116,24 +157,28 @@ export async function readHerdrSnapshot(
 	request: HerdrRequester,
 	table: HerdrPaneReader = herdrPaneTable,
 	servers: HerdrServerLister = knownHerdrServers,
-): Promise<HerdrPaneState | null> {
+): Promise<HerdrPaneState | null>
+{
 	const result = await readHerdrPaneState(request, table, servers);
 	return result.ok ? result.value : null;
 }
 
 /** The Claude transcript id herdr resolved for a pane, if the pane runs Claude at all. */
-export function claudeSessionId(pane: HerdrWirePane): string | null {
+export function claudeSessionId(pane: HerdrWirePane): string | null
+{
 	const session = pane.agent_session;
 	if (session?.kind !== "id" || session.agent !== "claude") return null;
 	return session.value;
 }
 
 /** Single naming policy so a pane reads the same in every Herdr view. */
-export function herdrPaneDisplayName(pane: HerdrPane): string {
+export function herdrPaneDisplayName(pane: HerdrPane): string
+{
 	return pane.terminalTitle ?? pane.foregroundCwd ?? pane.cwd ?? pane.terminalId;
 }
 
-export function normalizePane(pane: HerdrWirePane): HerdrPane {
+export function normalizePane(pane: HerdrWirePane): HerdrPane
+{
 	return {
 		paneId: pane.pane_id,
 		terminalId: pane.terminal_id,
@@ -164,7 +209,8 @@ export async function getHerdrPanes(
 	indexedSessionFilter: IndexedSessionFilter = filterIndexedSessions,
 	table: HerdrPaneReader = herdrPaneTable,
 	servers: HerdrServerLister = knownHerdrServers,
-): Promise<HerdrPaneLink[]> {
+): Promise<HerdrPaneLink[]>
+{
 	const snapshot = await readHerdrSnapshot(request, table, servers);
 	return snapshot === null ? [] : linkHerdrPanes(snapshot, entries, indexedSessionFilter);
 }
@@ -174,10 +220,12 @@ export function linkHerdrPanes(
 	snapshot: HerdrPaneState,
 	entries: ActiveSessionEntry[],
 	indexedSessionFilter: IndexedSessionFilter,
-): HerdrPaneLink[] {
+): HerdrPaneLink[]
+{
 	const entriesByPaneId = new Map<string, ActiveSessionEntry[]>();
 	const entriesBySessionId = new Map(entries.map((entry) => [entry.sessionId, entry]));
-	for (const entry of entries) {
+	for (const entry of entries)
+	{
 		const paneId = qualifiedEntryHerdrPane(entry);
 		if (!paneId) continue;
 		const paneEntries = entriesByPaneId.get(paneId);
@@ -185,14 +233,16 @@ export function linkHerdrPanes(
 		else entriesByPaneId.set(paneId, [entry]);
 	}
 
-	const indexedSessionCandidates = snapshot.panes.flatMap((pane) => {
+	const indexedSessionCandidates = snapshot.panes.flatMap((pane) =>
+	{
 		const sessionId = claudeSessionId(pane);
 		return sessionId === null ? [] : [sessionId];
 	});
 	const indexedSessionIds = indexedSessionFilter(indexedSessionCandidates);
 
 	const links: HerdrPaneLink[] = [];
-	for (const wirePane of snapshot.panes) {
+	for (const wirePane of snapshot.panes)
+	{
 		const pane = normalizePane(wirePane);
 		const matches = new Map<
 			string,
@@ -202,23 +252,33 @@ export function linkHerdrPanes(
 			}
 		>();
 
-		for (const entry of entriesByPaneId.get(pane.paneId) ?? []) {
-			matches.set(entry.sessionId, {
-				matchedByEnvironment: true,
-				matchedByAgentSession: false,
-			});
+		for (const entry of entriesByPaneId.get(pane.paneId) ?? [])
+		{
+			matches.set(
+				entry.sessionId,
+				{
+					matchedByEnvironment: true,
+					matchedByAgentSession: false,
+				},
+			);
 		}
 
-		if (pane.agentSessionId) {
+		if (pane.agentSessionId)
+		{
 			const entry = entriesBySessionId.get(pane.agentSessionId);
-			if (entry) {
+			if (entry)
+			{
 				const match = matches.get(entry.sessionId);
 				if (match) match.matchedByAgentSession = true;
-				else {
-					matches.set(entry.sessionId, {
-						matchedByEnvironment: false,
-						matchedByAgentSession: true,
-					});
+				else
+				{
+					matches.set(
+						entry.sessionId,
+						{
+							matchedByEnvironment: false,
+							matchedByAgentSession: true,
+						},
+					);
 				}
 			}
 		}
@@ -228,25 +288,32 @@ export function linkHerdrPanes(
 			indexedClaudeSessionId !== null &&
 			indexedSessionIds.has(indexedClaudeSessionId) &&
 			!matches.has(indexedClaudeSessionId)
-		) {
-			matches.set(indexedClaudeSessionId, {
-				matchedByEnvironment: false,
-				matchedByAgentSession: true,
-			});
+		)
+		{
+			matches.set(
+				indexedClaudeSessionId,
+				{
+					matchedByEnvironment: false,
+					matchedByAgentSession: true,
+				},
+			);
 		}
 
-		for (const [sessionId, {matchedByEnvironment, matchedByAgentSession}] of matches) {
-			links.push({
-				host: "herdr",
-				...pane,
-				sessionId,
-				via:
-					matchedByEnvironment && matchedByAgentSession
-						? "both"
-						: matchedByEnvironment
-							? "env"
-							: "agent-session",
-			});
+		for (const [sessionId, {matchedByEnvironment, matchedByAgentSession}] of matches)
+		{
+			links.push(
+				{
+					host: "herdr",
+					...pane,
+					sessionId,
+					via:
+						matchedByEnvironment && matchedByAgentSession
+							? "both"
+							: matchedByEnvironment
+								? "env"
+								: "agent-session",
+				},
+			);
 		}
 	}
 
@@ -257,9 +324,11 @@ async function getHerdrPlacements(
 	entries: ActiveSessionEntry[] = getActiveSessionEntries(),
 	request: HerdrRequester = herdrRequest,
 	indexedSessionFilter: IndexedSessionFilter = filterIndexedSessions,
-): Promise<HerdrTerminalPlacement[]> {
+): Promise<HerdrTerminalPlacement[]>
+{
 	const panes = await getHerdrPanes(entries, request, indexedSessionFilter);
-	return panes.map((pane) => ({
+	return panes.map((pane) => (
+	{
 		provider: "herdr",
 		sessionId: pane.sessionId,
 		displayName: herdrPaneDisplayName(pane),
@@ -275,7 +344,8 @@ export function createHerdrPlacementProvider(
 	entries: ActiveSessionEntry[] = getActiveSessionEntries(),
 	request: HerdrRequester = herdrRequest,
 	indexedSessionFilter: IndexedSessionFilter = filterIndexedSessions,
-): TerminalPlacementProvider {
+): TerminalPlacementProvider
+{
 	return {
 		id: "herdr",
 		capabilities: HERDR_CAPABILITIES,

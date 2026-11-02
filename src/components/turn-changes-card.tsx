@@ -24,21 +24,29 @@ const VISIBLE_FILE_LIMIT = 3;
 const expandedTurns = new Map<string, boolean>();
 
 /** Upstream `rX`'s ICU header, `{n, plural, one {Edited a file} other {Edited # files}}`, and its Created/Changed kin. */
-const TITLE_VERB = {created: "Created", changed: "Changed", edited: "Edited"} as const;
+const TITLE_VERB =
+{
+	created: "Created",
+	changed: "Changed",
+	edited: "Edited",
+} as const;
 
-function useTurnExpanded(turnUuid: string): [boolean, (expanded: boolean) => void] {
+function useTurnExpanded(turnUuid: string): [boolean, (expanded: boolean) => void]
+{
 	const key = `turn-edits:${turnUuid}`;
 	const [expanded, setExpanded] = useState(() => expandedTurns.get(key) ?? false);
 	return [
 		expanded,
-		(next) => {
+		(next) =>
+		{
 			expandedTurns.set(key, next);
 			setExpanded(next);
 		},
 	];
 }
 
-function basename(path: string): string {
+function basename(path: string): string
+{
 	return path.slice(path.lastIndexOf("/") + 1) || path;
 }
 
@@ -46,21 +54,39 @@ function basename(path: string): string {
  * Upstream's row folder hints: for files sharing a basename, the fewest trailing parent folders that tell them
  * apart ("a" for src/a/index.ts vs src/b/index.ts, "x/lib" for x/lib/util.ts vs y/lib/util.ts).
  */
-function folderHints(paths: readonly string[]): Map<string, string> {
-	const groups = new Map<string, {path: string; dirs: string[]}[]>();
-	for (const path of paths) {
+function folderHints(paths: readonly string[]): Map<string, string>
+{
+	const groups = new Map<
+		string,
+		{
+			path: string;
+			dirs: string[];
+		}[]
+	>();
+	for (const path of paths)
+	{
 		const dirs = path.split("/").filter((segment) => segment !== "");
 		const name = dirs.pop() ?? path;
-		groups.set(name, [...(groups.get(name) ?? []), {path, dirs}]);
+		groups.set(name, [
+			...(groups.get(name) ?? []),
+			{
+				path,
+				dirs,
+			},
+		]);
 	}
 	const hints = new Map<string, string>();
-	for (const group of groups.values()) {
+	for (const group of groups.values())
+	{
 		if (group.length < 2) continue;
 		const depth = Math.max(...group.map(({dirs}) => dirs.length));
-		for (let take = 1; take <= depth; take += 1) {
+		for (let take = 1; take <= depth; take += 1)
+		{
 			const suffixes = group.map(({dirs}) => dirs.slice(-take).join("/"));
-			if (new Set(suffixes).size === group.length || take === depth) {
-				group.forEach(({path}, index) => {
+			if (new Set(suffixes).size === group.length || take === depth)
+			{
+				group.forEach(({path}, index) =>
+				{
 					const hint = suffixes[index] ?? "";
 					hints.set(path, hint === "" ? "/" : hint);
 				});
@@ -106,7 +132,8 @@ function UndoButton({
 	busy: boolean;
 	onUndo: () => void;
 	flushEnd?: boolean;
-}) {
+})
+{
 	return (
 		<Tooltip
 			content={sendsPrompt ? "Ask Claude to undo this turn\u2019s file changes" : "Undo this turn's file changes"}
@@ -115,7 +142,8 @@ function UndoButton({
 			<button
 				type="button"
 				disabled={busy}
-				onMouseDown={(event) => {
+				onMouseDown={(event) =>
+				{
 					event.preventDefault();
 				}}
 				onClick={onUndo}
@@ -127,7 +155,8 @@ function UndoButton({
 	);
 }
 
-function RowLabel({icon, path, folderHint}: {icon: ReactNode; path: string; folderHint: string | undefined}) {
+function RowLabel({icon, path, folderHint}: {icon: ReactNode; path: string; folderHint: string | undefined})
+{
 	return (
 		<span className="relative flex min-w-0 items-center gap-1">
 			<span className="flex shrink-0 text-ink-muted">{icon}</span>
@@ -145,7 +174,8 @@ function RowLabel({icon, path, folderHint}: {icon: ReactNode; path: string; fold
 }
 
 /** The row's right side: upstream's pass-through group holding Undo (when offered) and the stats. */
-function RowTrailing({added, removed, undo}: {added: number; removed: number; undo?: ReactNode}) {
+function RowTrailing({added, removed, undo}: {added: number; removed: number; undo?: ReactNode})
+{
 	return (
 		<span className={TRAILING_CLASS}>
 			{undo !== undefined && <span className="pointer-events-auto flex items-center gap-1">{undo}</span>}
@@ -181,19 +211,27 @@ export function TurnChangesCard({
 	sessionId: string;
 	changes: TurnChanges;
 	undoable: boolean;
-}) {
+})
+{
 	const host = useOptionalPaneHost();
 	const [expanded, setExpanded] = useTurnExpanded(changes.turnUuid);
 	// Optional: cards rendered outside the app shell (tests, previews) have no toaster.
 	const toast = useContext(ToastContext);
-	const undo = useTurnUndo((outcome) => {
-		toast?.({kind: outcome.kind === "done" ? "success" : "error", message: outcome.message});
+	const undo = useTurnUndo((outcome) =>
+	{
+		toast?.(
+			{
+				kind: outcome.kind === "done" ? "success" : "error",
+				message: outcome.message,
+			},
+		);
 	});
 	const send = useContext(TurnUndoSendContext);
 	const startUndo =
 		send === null
 			? () => void undo.start(sessionId, changes.turnUuid)
-			: () => {
+			: () =>
+				{
 					send(turnUndoPrompt(changes.files.map((file) => file.path)));
 				};
 	const count = changes.files.length;
@@ -203,13 +241,15 @@ export function TurnChangesCard({
 	const openChanges =
 		host === null
 			? undefined
-			: () => {
+			: () =>
+				{
 					requestChangesScope(sessionId, `turn:${changes.turnUuid}`);
 					host.openPane("changes");
 				};
 
 	const [soleFile] = changes.files;
-	if (count === 1 && soleFile !== undefined) {
+	if (count === 1 && soleFile !== undefined)
+	{
 		const label = (
 			<RowLabel
 				icon={<LazyFileTypeIcon fileName={soleFile.path} size="sm" />}
@@ -303,7 +343,8 @@ export function TurnChangesCard({
 						<button
 							type="button"
 							aria-expanded={expanded}
-							onClick={() => {
+							onClick={() =>
+							{
 								if (!expanded) openChanges?.();
 								setExpanded(!expanded);
 							}}

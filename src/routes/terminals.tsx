@@ -2,11 +2,18 @@ import {createFileRoute, Outlet, useParams} from "@tanstack/react-router";
 import {HerdrWorkspaceRail} from "../components/herdr-workspace-rail";
 import {herdrWorkspacesQueryOptions} from "../lib/api/herdr-workspaces";
 
-export const Route = createFileRoute("/terminals")({
-	component: TerminalsLayout,
-	loader: async ({context: {queryClient}}) =>
-		queryClient.query({...herdrWorkspacesQueryOptions, staleTime: "static"}),
-});
+export const Route = createFileRoute("/terminals")(
+	{
+		component: TerminalsLayout,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...herdrWorkspacesQueryOptions,
+					staleTime: "static",
+				},
+			),
+	},
+);
 
 /**
  * Master-detail shell for every `/terminals` view.
@@ -17,8 +24,13 @@ export const Route = createFileRoute("/terminals")({
  * title updated while the child never mounts. `tests/route-parents-render-outlet.test.ts`
  * guards that invariant.
  */
-function TerminalsLayout() {
-	const params = useParams({strict: false});
+function TerminalsLayout()
+{
+	const params = useParams(
+		{
+			strict: false,
+		},
+	);
 	const selectedSessionId = params.sessionId ?? null;
 	const selectedPaneId = params.paneId ?? null;
 

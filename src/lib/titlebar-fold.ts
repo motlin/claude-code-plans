@@ -23,7 +23,8 @@ const REEXPAND_REFUSED_PX = 4;
 export const MAX_PASSES = 8;
 
 /** `zt`: the rail toggle (with its separator) folds first, then the main panes. */
-export function foldBudget({railToggleFoldable, hiddenCount}: {railToggleFoldable: boolean; hiddenCount: number}) {
+export function foldBudget({railToggleFoldable, hiddenCount}: {railToggleFoldable: boolean; hiddenCount: number})
+{
 	const railToggleFolded = railToggleFoldable && hiddenCount > 0;
 	return {
 		maxHidden: railToggleFoldable ? 7 : 6,
@@ -33,12 +34,26 @@ export function foldBudget({railToggleFoldable, hiddenCount}: {railToggleFoldabl
 }
 
 /** `G_`: the first n of `[...inactive, ...active]` fold; both lists keep the original order. */
-export function splitPanes<T extends {active: boolean}>(
+export function splitPanes<
+	T extends
+	{
+		active: boolean;
+	},
+>(
 	panes: readonly T[],
 	count: number,
-): {folded: T[]; inline: T[]} {
+):
+{
+	folded: T[];
+	inline: T[];
+}
+{
 	const n = Math.min(Math.max(0, Math.trunc(count) || 0), panes.length);
-	if (n === 0) return {folded: [], inline: [...panes]};
+	if (n === 0)
+		return {
+			folded: [],
+			inline: [...panes],
+		};
 	const order = [...panes.filter((pane) => !pane.active), ...panes.filter((pane) => pane.active)];
 	const folding = new Set(order.slice(0, n));
 	return {
@@ -58,7 +73,8 @@ export function freeAfterTitle({
 	titleClientPx: number;
 	titleNaturalPx: number;
 	shortfallPx?: number;
-}): number {
+}): number
+{
 	return freePx + titleClientPx - Math.min(titleNaturalPx, TITLE_KEEP_PX) - shortfallPx;
 }
 
@@ -73,7 +89,8 @@ export function overflowShortfall({
 	leadEnd: number | undefined;
 	lastEnd: number | undefined;
 	rowEnd: number;
-}): number {
+}): number
+{
 	return (
 		(leadEnd === undefined ? 0 : Math.max(0, titleEnd - leadEnd)) +
 		(lastEnd === undefined ? 0 : Math.max(0, lastEnd - rowEnd))
@@ -81,7 +98,8 @@ export function overflowShortfall({
 }
 
 /** `Kt`: how many more buttons to hide (positive) or reveal (negative). */
-export function nextHidden(free: number, step: number, hidden: number, max = 6): number {
+export function nextHidden(free: number, step: number, hidden: number, max = 6): number
+{
 	if (free < -1 && hidden < max) return Math.min(Math.ceil(-free / step), max - hidden);
 	if (free >= step + REVEAL_SLACK_PX && hidden > 0)
 		return -Math.min(Math.floor((free - REVEAL_SLACK_PX) / step), hidden);
@@ -98,7 +116,8 @@ export function pillsCompact(
 		hidden,
 		pillBudget,
 		pillBudgetAtCollapse,
-	}: {
+	}:
+	{
 		freePx: number;
 		titleClientPx: number;
 		titleNaturalPx: number;
@@ -106,14 +125,16 @@ export function pillsCompact(
 		pillBudget: number;
 		pillBudgetAtCollapse: number;
 	},
-): boolean {
+): boolean
+{
 	if (previous)
 		return !(hidden === 0 && pillBudget > pillBudgetAtCollapse + TOLERANCE_PX && freePx >= PILL_REEXPAND_FREE_PX);
 	return freePx <= PILL_COMPACT_FREE_PX && titleClientPx < titleNaturalPx;
 }
 
 /** One measurement of the titlebar row. */
-export interface FoldGeometry {
+export interface FoldGeometry
+{
 	/** The gaps between the row's children. */
 	freePx: number;
 	/** The widths of the row's children other than the title's cluster. */
@@ -129,7 +150,8 @@ export interface FoldGeometry {
 	stepPx: number;
 }
 
-export interface FoldState {
+export interface FoldState
+{
 	hidden: number;
 	compact: boolean;
 	pillBudgetAtCollapse: number;
@@ -138,32 +160,48 @@ export interface FoldState {
 }
 
 /** One pass of upstream's measure (`Jt`'s `G`): pill compaction with hysteresis, then the hide/reveal step. */
-export function foldPass(geometry: FoldGeometry, state: FoldState, maxHidden: number): FoldState {
+export function foldPass(geometry: FoldGeometry, state: FoldState, maxHidden: number): FoldState
+{
 	const pillBudget = geometry.rootPx - geometry.otherPx - geometry.titleNaturalPx;
-	let compact = pillsCompact(state.compact, {
-		freePx: geometry.freePx,
-		titleClientPx: geometry.titleClientPx,
-		titleNaturalPx: geometry.titleNaturalPx,
-		hidden: state.hidden,
-		pillBudget,
-		pillBudgetAtCollapse: state.pillBudgetAtCollapse,
-	});
+	let compact = pillsCompact(
+		state.compact,
+		{
+			freePx: geometry.freePx,
+			titleClientPx: geometry.titleClientPx,
+			titleNaturalPx: geometry.titleNaturalPx,
+			hidden: state.hidden,
+			pillBudget,
+			pillBudgetAtCollapse: state.pillBudgetAtCollapse,
+		},
+	);
 	let {pillBudgetAtCollapse, compactedThisBurst} = state;
-	if (state.compact && !compact && compactedThisBurst) {
+	if (state.compact && !compact && compactedThisBurst)
+	{
 		compact = true;
 		pillBudgetAtCollapse = pillBudget + REEXPAND_REFUSED_PX;
-	} else if (compact && !state.compact) {
+	}
+	else if (compact && !state.compact)
+	{
 		pillBudgetAtCollapse = pillBudget;
 		compactedThisBurst = true;
-	} else if (!compact && state.compact) {
+	}
+	else if (!compact && state.compact)
+	{
 		pillBudgetAtCollapse = -Infinity;
 	}
-	const free = freeAfterTitle({
-		freePx: geometry.freePx,
-		titleClientPx: geometry.titleClientPx,
-		titleNaturalPx: geometry.titleNaturalPx,
-		shortfallPx: geometry.shortfallPx,
-	});
+	const free = freeAfterTitle(
+		{
+			freePx: geometry.freePx,
+			titleClientPx: geometry.titleClientPx,
+			titleNaturalPx: geometry.titleNaturalPx,
+			shortfallPx: geometry.shortfallPx,
+		},
+	);
 	const hidden = state.hidden + nextHidden(free, geometry.stepPx, state.hidden, maxHidden);
-	return {hidden, compact, pillBudgetAtCollapse, compactedThisBurst};
+	return {
+		hidden,
+		compact,
+		pillBudgetAtCollapse,
+		compactedThisBurst,
+	};
 }

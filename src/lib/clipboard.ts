@@ -8,32 +8,53 @@
  *
  * Returns true if the copy succeeded, false otherwise.
  */
-export async function writeClipboardText(text: string, html?: string): Promise<boolean> {
+export async function writeClipboardText(text: string, html?: string): Promise<boolean>
+{
 	// With html, write both flavours as one item so rich editors keep the formatting, as upstream's Copy does.
-	if (html !== undefined) {
-		try {
-			const item = new ClipboardItem({
-				"text/plain": new Blob([text], {type: "text/plain"}),
-				"text/html": new Blob([html], {type: "text/html"}),
-			});
+	if (html !== undefined)
+	{
+		try
+		{
+			const item = new ClipboardItem(
+				{
+					"text/plain": new Blob(
+						[text],
+						{
+							type: "text/plain",
+						},
+					),
+					"text/html": new Blob(
+						[html],
+						{
+							type: "text/html",
+						},
+					),
+				},
+			);
 			await navigator.clipboard.write([item]);
 			return true;
-		} catch {
+		}
+		catch
+		{
 			// Fall through to plain text
 		}
 	}
 
 	// Try the modern Clipboard API first; outside a secure context navigator.clipboard is
 	// undefined despite its type, and the TypeError lands in the same fallback.
-	try {
+	try
+	{
 		await navigator.clipboard.writeText(text);
 		return true;
-	} catch {
+	}
+	catch
+	{
 		// Fall through to legacy approach
 	}
 
 	// Legacy fallback using execCommand
-	try {
+	try
+	{
 		const textarea = document.createElement("textarea");
 		textarea.value = text;
 		// Position off-screen to avoid visual flash
@@ -47,7 +68,9 @@ export async function writeClipboardText(text: string, html?: string): Promise<b
 		const success = document.execCommand("copy");
 		document.body.removeChild(textarea);
 		return success;
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }

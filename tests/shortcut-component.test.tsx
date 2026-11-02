@@ -23,18 +23,22 @@ const KEYCAP_WRAPPER = `${KEYCAP_SEQUENCE_WRAPPER} ${RTL}`;
 const TEXT_WRAPPER = `${TEXT_SEQUENCE_WRAPPER} ${RTL}`;
 const THEN = `<span class="px-[2px] [color:var(--shortcut-cap-ink)]">then</span>`;
 
-function stubUserAgent(ua: string): void {
+function stubUserAgent(ua: string): void
+{
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(ua);
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 	vi.useRealTimers();
 });
 
-describe("<Shortcut variant=keycap>", () => {
-	it("renders one square keycap per key on mac with aria-hidden glyphs and sr-only spoken labels", () => {
+describe("<Shortcut variant=keycap>", () =>
+{
+	it("renders one square keycap per key on mac with aria-hidden glyphs and sr-only spoken labels", () =>
+	{
 		stubUserAgent(MAC_UA);
 		const {container} = render(<Shortcut keys="shift+cmd+k" />);
 
@@ -47,7 +51,8 @@ describe("<Shortcut variant=keycap>", () => {
 		);
 	});
 
-	it("uses a min-width padded keycap for multi-character labels", () => {
+	it("uses a min-width padded keycap for multi-character labels", () =>
+	{
 		stubUserAgent(MAC_UA);
 		const {container} = render(<Shortcut keys="esc" />);
 
@@ -58,7 +63,8 @@ describe("<Shortcut variant=keycap>", () => {
 		);
 	});
 
-	it("renders a space-separated sequence as caps joined by then, without the RTL reverse class", () => {
+	it("renders a space-separated sequence as caps joined by then, without the RTL reverse class", () =>
+	{
 		stubUserAgent(MAC_UA);
 		const {container} = render(<Shortcut keys="esc esc" />);
 
@@ -69,7 +75,8 @@ describe("<Shortcut variant=keycap>", () => {
 		);
 	});
 
-	it("renders Ctrl words instead of glyphs on non-mac platforms", () => {
+	it("renders Ctrl words instead of glyphs on non-mac platforms", () =>
+	{
 		stubUserAgent(WINDOWS_UA);
 		const {container} = render(<Shortcut keys="shift+cmd+k" />);
 
@@ -83,8 +90,10 @@ describe("<Shortcut variant=keycap>", () => {
 	});
 });
 
-describe("<Shortcut variant=text>", () => {
-	it("renders one borderless kbd per key on mac, spaced by the wrapper gap", () => {
+describe("<Shortcut variant=text>", () =>
+{
+	it("renders one borderless kbd per key on mac, spaced by the wrapper gap", () =>
+	{
 		stubUserAgent(MAC_UA);
 		const {container} = render(<Shortcut keys="shift+cmd+o" variant="text" />);
 
@@ -97,7 +106,8 @@ describe("<Shortcut variant=text>", () => {
 		);
 	});
 
-	it("separates non-mac kbds with gap-cancelling + spans", () => {
+	it("separates non-mac kbds with gap-cancelling + spans", () =>
+	{
 		stubUserAgent(WINDOWS_UA);
 		const {container} = render(<Shortcut keys="shift+cmd+o" variant="text" />);
 
@@ -108,7 +118,8 @@ describe("<Shortcut variant=text>", () => {
 		);
 	});
 
-	it("lets a text-footnote className replace the wrapper's text-caption, as upstream's tailwind-merge does", () => {
+	it("lets a text-footnote className replace the wrapper's text-caption, as upstream's tailwind-merge does", () =>
+	{
 		stubUserAgent(MAC_UA);
 		const {container} = render(
 			<Shortcut keys="1" variant="text" className="pointer-coarse:hidden text-footnote" />,
@@ -120,8 +131,10 @@ describe("<Shortcut variant=text>", () => {
 	});
 });
 
-describe("<Shortcut variant=text> sequences", () => {
-	it("puts a padded then span between steps and drops the RTL reverse class", () => {
+describe("<Shortcut variant=text> sequences", () =>
+{
+	it("puts a padded then span between steps and drops the RTL reverse class", () =>
+	{
 		stubUserAgent(WINDOWS_UA);
 		const {container} = render(<Shortcut keys="esc esc" variant="text" />);
 
@@ -133,8 +146,10 @@ describe("<Shortcut variant=text> sequences", () => {
 	});
 });
 
-describe("<Tooltip>", () => {
-	it("shows the dark tooltip with a text shortcut only after the 300ms delay", () => {
+describe("<Tooltip>", () =>
+{
+	it("shows the dark tooltip with a text shortcut only after the 300ms delay", () =>
+	{
 		vi.useFakeTimers();
 		stubUserAgent(MAC_UA);
 		render(
@@ -143,36 +158,65 @@ describe("<Tooltip>", () => {
 			</Tooltip>,
 		);
 
-		fireEvent.pointerEnter(screen.getByRole("button", {name: "Expand"}));
-		act(() => {
+		fireEvent.pointerEnter(
+			screen.getByRole(
+				"button",
+				{
+					name: "Expand",
+				},
+			),
+		);
+		act(() =>
+		{
 			vi.advanceTimersByTime(299);
 		});
 		const beforeDelay = screen.queryByRole("tooltip");
-		act(() => {
+		act(() =>
+		{
 			vi.advanceTimersByTime(1);
 		});
 		const tooltip = screen.getByRole("tooltip");
 
-		expect({
-			beforeDelay,
-			className: tooltip.className,
-			text: tooltip.textContent,
-			shortcut: tooltip.querySelector("[data-cds=Shortcut]")?.getAttribute("data-variant"),
-			describedBy: screen.getByRole("button", {name: "Expand"}).getAttribute("aria-describedby") === tooltip.id,
-		}).toStrictEqual({
-			beforeDelay: null,
-			className:
-				"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal bottom-full left-1/2 mb-1 -translate-x-1/2",
-			text: "Expand chat⇧Shift⌘Command\\",
-			shortcut: "text",
-			describedBy: true,
-		});
+		expect(
+			{
+				beforeDelay,
+				className: tooltip.className,
+				text: tooltip.textContent,
+				shortcut: tooltip.querySelector("[data-cds=Shortcut]")?.getAttribute("data-variant"),
+				describedBy:
+					screen
+						.getByRole(
+							"button",
+							{
+								name: "Expand",
+							},
+						)
+						.getAttribute("aria-describedby") === tooltip.id,
+			},
+		).toStrictEqual(
+			{
+				beforeDelay: null,
+				className:
+					"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal bottom-full left-1/2 mb-1 -translate-x-1/2",
+				text: "Expand chat⇧Shift⌘Command\\",
+				shortcut: "text",
+				describedBy: true,
+			},
+		);
 
-		fireEvent.pointerLeave(screen.getByRole("button", {name: "Expand"}));
+		fireEvent.pointerLeave(
+			screen.getByRole(
+				"button",
+				{
+					name: "Expand",
+				},
+			),
+		);
 		expect(screen.queryByRole("tooltip")).toBeNull();
 	});
 
-	it("stacks a muted description line under the label and shortcut", () => {
+	it("stacks a muted description line under the label and shortcut", () =>
+	{
 		vi.useFakeTimers();
 		stubUserAgent(MAC_UA);
 		render(
@@ -181,26 +225,49 @@ describe("<Tooltip>", () => {
 			</Tooltip>,
 		);
 
-		fireEvent.pointerEnter(screen.getByRole("button", {name: "Edge"}));
-		act(() => {
+		fireEvent.pointerEnter(
+			screen.getByRole(
+				"button",
+				{
+					name: "Edge",
+				},
+			),
+		);
+		act(() =>
+		{
 			vi.advanceTimersByTime(300);
 		});
 		const tooltip = screen.getByRole("tooltip");
 
-		expect({
-			className: tooltip.className,
-			lines: [...tooltip.children].map((line) => ({className: line.className, text: line.textContent})),
-		}).toStrictEqual({
-			className:
-				"pointer-events-none absolute z-50 flex w-max max-w-[240px] flex-col items-start gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal left-full top-1/2 ml-1 -translate-y-1/2",
-			lines: [
-				{className: "inline-flex items-center gap-2", text: "Hide sidebar⌘CommandB"},
-				{className: "text-[11px]/[14px] text-[var(--tooltip-description-ink)]", text: "Drag to resize"},
-			],
-		});
+		expect(
+			{
+				className: tooltip.className,
+				lines: [...tooltip.children].map((line) => (
+				{
+					className: line.className,
+					text: line.textContent,
+				})),
+			},
+		).toStrictEqual(
+			{
+				className:
+					"pointer-events-none absolute z-50 flex w-max max-w-[240px] flex-col items-start gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal left-full top-1/2 ml-1 -translate-y-1/2",
+				lines: [
+					{
+						className: "inline-flex items-center gap-2",
+						text: "Hide sidebar⌘CommandB",
+					},
+					{
+						className: "text-[11px]/[14px] text-[var(--tooltip-description-ink)]",
+						text: "Drag to resize",
+					},
+				],
+			},
+		);
 	});
 
-	it("opens on keyboard focus and closes on blur", () => {
+	it("opens on keyboard focus and closes on blur", () =>
+	{
 		vi.useFakeTimers();
 		render(
 			<Tooltip content="Show header and footer">
@@ -208,16 +275,38 @@ describe("<Tooltip>", () => {
 			</Tooltip>,
 		);
 
-		fireEvent.focus(screen.getByRole("button", {name: "Show chrome"}));
-		act(() => {
+		fireEvent.focus(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show chrome",
+				},
+			),
+		);
+		act(() =>
+		{
 			vi.advanceTimersByTime(300);
 		});
 		const opened = screen.getByRole("tooltip").textContent;
-		fireEvent.blur(screen.getByRole("button", {name: "Show chrome"}));
+		fireEvent.blur(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show chrome",
+				},
+			),
+		);
 
-		expect({opened, afterBlur: screen.queryByRole("tooltip")}).toStrictEqual({
-			opened: "Show header and footer",
-			afterBlur: null,
-		});
+		expect(
+			{
+				opened,
+				afterBlur: screen.queryByRole("tooltip"),
+			},
+		).toStrictEqual(
+			{
+				opened: "Show header and footer",
+				afterBlur: null,
+			},
+		);
 	});
 });

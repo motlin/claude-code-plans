@@ -11,7 +11,8 @@ import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../li
 import {withAwaitingAck} from "../../lib/awaiting-ack-overlay";
 import {ackedAt, useAwaitingAckVersion} from "../../lib/awaiting-ack-store";
 import {useLiveApprovalIds} from "../../lib/live-approval-sessions";
-import {
+import
+{
 	folderNextStepCandidates,
 	folderPrBranch,
 	folderPrNextStepCandidates,
@@ -33,12 +34,18 @@ import type {NextStepsListProps} from "./start-card";
 function waitingSessionCandidates(
 	sessions: readonly SessionListItem[],
 	approvalTools: ReadonlyMap<string, string>,
-): NextStepCandidate[] {
+): NextStepCandidate[]
+{
 	return sessions
 		.filter((session) => session.unseenError !== true)
-		.map((session) => ({row: toGroupRow(session), toolName: approvalTools.get(session.id)}))
+		.map((session) => (
+		{
+			row: toGroupRow(session),
+			toolName: approvalTools.get(session.id),
+		}))
 		.filter(({row}) => row.bucket === "blocked" && !row.archived && row.title.trim() !== "")
-		.map(({row, toolName}) => ({
+		.map(({row, toolName}) => (
+		{
 			id: "waiting-session",
 			subject: row.sessionId,
 			stamp: row.lastActivityAt,
@@ -54,16 +61,34 @@ function waitingSessionCandidates(
 function newestFailedSession(
 	sessions: readonly SessionListItem[],
 	projectId: string | undefined,
-): {sessionId: string; title: string; failedAt: number} | null {
-	let failed: {sessionId: string; title: string; failedAt: number} | null = null;
-	for (const session of sessions) {
+):
+{
+	sessionId: string;
+	title: string;
+	failedAt: number;
+} | null
+{
+	let failed:
+	{
+		sessionId: string;
+		title: string;
+		failedAt: number;
+	} | null = null;
+	for (const session of sessions)
+	{
 		if (session.project !== projectId || session.archived || session.erroredAt === undefined) continue;
 		// Upstream's folder scan (`gge`) skips a failed session whose trimmed title is blank.
 		const title = session.title.trim();
 		if (title === "") continue;
 		const failedAt = Date.parse(session.erroredAt);
-		if (failed === null || failedAt > failed.failedAt) {
-			failed = {sessionId: session.id, title, failedAt};
+		if (failed === null || failedAt > failed.failedAt)
+		{
+			failed =
+			{
+				sessionId: session.id,
+				title,
+				failedAt,
+			};
 		}
 	}
 	return failed;
@@ -76,7 +101,8 @@ function newestFailedSession(
  * as "Asked a question"), then latched: a later reset or refetch that drops a source's data keeps the
  * last list instead of unmounting it.
  */
-export function useHomeNextSteps(): NextStepsListProps | undefined {
+export function useHomeNextSteps(): NextStepsListProps | undefined
+{
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const {data: recent} = useInfiniteQuery(recentSessionsInfiniteQueryOptions());
@@ -95,15 +121,23 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 	useAwaitingAckVersion();
 	const liveApprovalIds = useLiveApprovalIds();
 
-	const dismiss = useMutation({
-		mutationFn: postHomeDismissal,
-		onMutate: (key) => {
-			queryClient.setQueryData<HomeDismissals>(homeDismissalsQueryOptions.queryKey, (previous) => ({
-				dismissals: {...previous?.dismissals, [key]: Date.now()},
-			}));
+	const dismiss = useMutation(
+		{
+			mutationFn: postHomeDismissal,
+			onMutate: (key) =>
+			{
+				queryClient.setQueryData<HomeDismissals>(homeDismissalsQueryOptions.queryKey, (previous) => (
+				{
+					dismissals:
+					{
+						...previous?.dismissals,
+						[key]: Date.now(),
+					},
+				}));
+			},
+			onSuccess: (data) => queryClient.setQueryData(homeDismissalsQueryOptions.queryKey, data),
 		},
-		onSuccess: (data) => queryClient.setQueryData(homeDismissalsQueryOptions.queryKey, data),
-	});
+	);
 
 	if (recent === undefined || dismissals === undefined || !approvalsFetched) return latched.current;
 
@@ -117,34 +151,51 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 	const approvalTools = new Map(
 		(approvals?.approvals ?? []).map((approval) => [approval.sessionId, approval.toolName]),
 	);
-	const folderCandidates = folderNextStepCandidates({
-		folder,
-		git,
-		runningHere: sessionRunningIn(sessions, selected?.id),
-		worktreeOn: worktree.enabled,
-		worktreeTaken: folder !== undefined && worktree.isTaken(folder),
-		used,
-		failed: newestFailedSession(sessions, selected?.id),
-		launching,
-	});
+	const folderCandidates = folderNextStepCandidates(
+		{
+			folder,
+			git,
+			runningHere: sessionRunningIn(sessions, selected?.id),
+			worktreeOn: worktree.enabled,
+			worktreeTaken: folder !== undefined && worktree.isTaken(folder),
+			used,
+			failed: newestFailedSession(sessions, selected?.id),
+			launching,
+		},
+	);
 
-	latched.current = {
-		rows: selectNextSteps({
-			candidates: [
-				...waitingSessionCandidates(sessions, approvalTools),
-				...folderCandidates,
-				...folderPrNextStepCandidates({
-					git,
-					pr: folderPr,
-					worktreeOn: worktree.enabled,
-					used,
-					launching,
-				}),
-			],
-			dismissed: dismissals.dismissals,
-		}),
-		onOpen: (id) => void navigate({to: "/session/$id", params: {id}}),
-		onDismiss: (candidates) => {
+	latched.current =
+	{
+		rows: selectNextSteps(
+			{
+				candidates: [
+					...waitingSessionCandidates(sessions, approvalTools),
+					...folderCandidates,
+					...folderPrNextStepCandidates(
+						{
+							git,
+							pr: folderPr,
+							worktreeOn: worktree.enabled,
+							used,
+							launching,
+						},
+					),
+				],
+				dismissed: dismissals.dismissals,
+			},
+		),
+		onOpen: (id) =>
+			void navigate(
+				{
+					to: "/session/$id",
+					params:
+					{
+						id,
+					},
+				},
+			),
+		onDismiss: (candidates) =>
+		{
 			for (const candidate of candidates) dismiss.mutate(nextStepKey(candidate));
 		},
 	};

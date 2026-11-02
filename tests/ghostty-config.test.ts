@@ -1,23 +1,37 @@
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	GhosttyConfigSchema,
 	parseGhosttyConfig,
 	readGhosttyConfig,
 	resolveGhosttyConfigPath,
 } from "../src/lib/ghostty/config";
 
-function errorDetails(action: () => unknown): {message: string; name: string} | null {
-	try {
+function errorDetails(action: () => unknown):
+{
+	message: string;
+	name: string;
+} | null
+{
+	try
+	{
 		action();
 		return null;
-	} catch (error) {
+	}
+	catch (error)
+	{
 		if (!(error instanceof Error)) throw error;
-		return {message: error.message, name: error.name};
+		return {
+			message: error.message,
+			name: error.name,
+		};
 	}
 }
 
-describe("Ghostty config", () => {
-	it("parses every supported appearance setting and maps the ANSI palette", () => {
+describe("Ghostty config", () =>
+{
+	it("parses every supported appearance setting and maps the ANSI palette", () =>
+	{
 		const config = parseGhosttyConfig(`
 font-family = Alice Mono
 font-size = 16
@@ -44,56 +58,65 @@ palette = 14=#00ffff
 palette = 15=#ffffff
 `);
 
-		expect(config).toStrictEqual({
-			fontFamily: "Alice Mono",
-			fontSize: 16,
-			theme: {
-				foreground: "#eeeeee",
-				background: "#000000",
-				cursor: "#dddddd",
-				selectionBackground: "#cccccc",
-				selectionForeground: "#111111",
-				black: "#000000",
-				red: "#110000",
-				green: "#001100",
-				yellow: "#111100",
-				blue: "#000011",
-				magenta: "#110011",
-				cyan: "#001111",
-				white: "#aaaaaa",
-				brightBlack: "#555555",
-				brightRed: "#ff0000",
-				brightGreen: "#00ff00",
-				brightYellow: "#ffff00",
-				brightBlue: "#0000ff",
-				brightMagenta: "#ff00ff",
-				brightCyan: "#00ffff",
-				brightWhite: "#ffffff",
+		expect(config).toStrictEqual(
+			{
+				fontFamily: "Alice Mono",
+				fontSize: 16,
+				theme:
+				{
+					foreground: "#eeeeee",
+					background: "#000000",
+					cursor: "#dddddd",
+					selectionBackground: "#cccccc",
+					selectionForeground: "#111111",
+					black: "#000000",
+					red: "#110000",
+					green: "#001100",
+					yellow: "#111100",
+					blue: "#000011",
+					magenta: "#110011",
+					cyan: "#001111",
+					white: "#aaaaaa",
+					brightBlack: "#555555",
+					brightRed: "#ff0000",
+					brightGreen: "#00ff00",
+					brightYellow: "#ffff00",
+					brightBlue: "#0000ff",
+					brightMagenta: "#ff00ff",
+					brightCyan: "#00ffff",
+					brightWhite: "#ffffff",
+				},
 			},
-		});
+		);
 	});
 
-	it("returns optional-field defaults when the config file is missing", () => {
+	it("returns optional-field defaults when the config file is missing", () =>
+	{
 		expect(readGhosttyConfig("/tmp/test/missing-ghostty-config/config")).toStrictEqual({});
 	});
 
-	it("parses a partial config without inventing absent settings", () => {
+	it("parses a partial config without inventing absent settings", () =>
+	{
 		expect(
 			parseGhosttyConfig(`
 font-family = Bob Mono
 background = #101010
 palette = 4=#0000aa
 `),
-		).toStrictEqual({
-			fontFamily: "Bob Mono",
-			theme: {
-				background: "#101010",
-				blue: "#0000aa",
+		).toStrictEqual(
+			{
+				fontFamily: "Bob Mono",
+				theme:
+				{
+					background: "#101010",
+					blue: "#0000aa",
+				},
 			},
-		});
+		);
 	});
 
-	it("ignores comments, blank lines, and unsupported Ghostty settings", () => {
+	it("ignores comments, blank lines, and unsupported Ghostty settings", () =>
+	{
 		expect(
 			parseGhosttyConfig(`
 # Fabricated Ghostty config
@@ -103,10 +126,15 @@ palette = 4=#0000aa
 shell-integration-features = no-title
 # Another comment
 `),
-		).toStrictEqual({fontSize: 14.5});
+		).toStrictEqual(
+			{
+				fontSize: 14.5,
+			},
+		);
 	});
 
-	it("rejects malformed palette entries with their source line", () => {
+	it("rejects malformed palette entries with their source line", () =>
+	{
 		const malformedEntries = [
 			"palette = -1=#000000",
 			"palette = 16=#ffffff",
@@ -134,20 +162,39 @@ shell-integration-features = no-title
 		]);
 	});
 
-	it("rejects unknown fields at both strict schema boundaries", () => {
+	it("rejects unknown fields at both strict schema boundaries", () =>
+	{
 		expect([
-			GhosttyConfigSchema.safeParse({unknownSetting: true}).success,
-			GhosttyConfigSchema.safeParse({theme: {unknownColor: "#000000"}}).success,
+			GhosttyConfigSchema.safeParse(
+				{
+					unknownSetting: true,
+				},
+			).success,
+			GhosttyConfigSchema.safeParse(
+				{
+					theme:
+					{
+						unknownColor: "#000000",
+					},
+				},
+			).success,
 		]).toStrictEqual([false, false]);
 	});
 
-	it("resolves the config path from XDG_CONFIG_HOME before HOME", () => {
+	it("resolves the config path from XDG_CONFIG_HOME before HOME", () =>
+	{
 		expect([
-			resolveGhosttyConfigPath({
-				XDG_CONFIG_HOME: "/tmp/test/xdg",
-				HOME: "/tmp/test/home",
-			}),
-			resolveGhosttyConfigPath({HOME: "/tmp/test/home"}),
+			resolveGhosttyConfigPath(
+				{
+					XDG_CONFIG_HOME: "/tmp/test/xdg",
+					HOME: "/tmp/test/home",
+				},
+			),
+			resolveGhosttyConfigPath(
+				{
+					HOME: "/tmp/test/home",
+				},
+			),
 		]).toStrictEqual(["/tmp/test/xdg/ghostty/config", "/tmp/test/home/.config/ghostty/config"]);
 	});
 });

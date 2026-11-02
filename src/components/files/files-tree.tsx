@@ -1,6 +1,7 @@
 import {keepPreviousData, useQuery} from "@tanstack/react-query";
 import {ArrowUp, Folder, Search, X} from "lucide-react";
-import {
+import
+{
 	type KeyboardEvent,
 	type ReactNode,
 	type RefObject,
@@ -36,20 +37,28 @@ const FALLBACK_VIEWPORT_HEIGHT = 480;
 const QUERY_DEBOUNCE_MS = 120;
 const PARTIAL_FOOTER = "Some entries may not be listed. Keep typing to narrow.";
 
-type WorkspaceEntry = Extract<SessionFilesResponse, {kind: "listing"}>["entries"][number];
+type WorkspaceEntry = Extract<
+	SessionFilesResponse,
+	{
+		kind: "listing";
+	}
+>["entries"][number];
 
-function parentDir(relPath: string): string {
+function parentDir(relPath: string): string
+{
 	const lastSlash = relPath.lastIndexOf("/");
 	return lastSlash === -1 ? "" : relPath.slice(0, lastSlash);
 }
 
 /** Whether the row's name is truncated, the only case its full-name tooltip opens. */
-function nameOverflows(anchor: HTMLElement): boolean {
+function nameOverflows(anchor: HTMLElement): boolean
+{
 	const name = anchor.querySelector("[data-tree-name]");
 	return name !== null && name.scrollWidth > name.clientWidth;
 }
 
-function symlinkLabel(entry: WorkspaceEntry): string | undefined {
+function symlinkLabel(entry: WorkspaceEntry): string | undefined
+{
 	const {symlink} = entry;
 	if (symlink === undefined) return undefined;
 	if (symlink.broken) return `Broken link to ${symlink.target}`;
@@ -74,17 +83,22 @@ export function FilesTreeColumn({
 	shown?: boolean;
 	onShownChange?: (shown: boolean) => void;
 	fill?: boolean;
-}) {
+})
+{
 	const {settings, setSetting} = useSettings();
-	const {columnRef, columnStyle, resizing, handleProps, edgeHandleProps} = useFileColumnResize({
-		width: clampFilesTreeWidth(settings.filesTreeWidth),
-		onWidthChange: (next) => {
-			setSetting("filesTreeWidth", next);
+	const {columnRef, columnStyle, resizing, handleProps, edgeHandleProps} = useFileColumnResize(
+		{
+			width: clampFilesTreeWidth(settings.filesTreeWidth),
+			onWidthChange: (next) =>
+			{
+				setSetting("filesTreeWidth", next);
+			},
+			shown,
+			onShownChange,
 		},
-		shown,
-		onShownChange,
-	});
-	if (fill) {
+	);
+	if (fill)
+	{
 		return shown ? (
 			<div data-files-tree className="relative flex min-h-0 min-w-0 flex-1 flex-col">
 				{children}
@@ -107,7 +121,10 @@ export function FilesTreeColumn({
 						aria-label="Resize file tree"
 						onBorder
 						className={RESIZE_HANDLE_HALF_CLIP_CLASS}
-						style={{zIndex: FILE_COLUMN_HANDLE_Z}}
+						style={
+						{
+							zIndex: FILE_COLUMN_HANDLE_Z,
+						}}
 					/>
 				)}
 			</div>
@@ -120,7 +137,8 @@ export function FilesTreeColumn({
 /** Double-click pins the tab; a single click or Enter opens a preview tab. A content match adds its line and query. */
 type OpenFileOptions = ContentMatchOpenOptions;
 
-interface FilesTreeProps {
+interface FilesTreeProps
+{
 	sessionId: string;
 	filterRef?: RefObject<HTMLInputElement | null>;
 	onOpenFile?: (relPath: string, options: OpenFileOptions) => void;
@@ -157,7 +175,8 @@ export function FilesTree({
 	cwd,
 	onAttachContext,
 	onAsk,
-}: FilesTreeProps): ReactNode {
+}: FilesTreeProps): ReactNode
+{
 	const {settings} = useSettings();
 	const [localQuery, setLocalQuery] = useState("");
 	const query = controlledQuery ?? localQuery;
@@ -179,110 +198,150 @@ export function FilesTree({
 	// A drill-in or "Go up" changes only the folder, so it skips the typing debounce.
 	const requested = parseTreeQuery(parseTreeQuery(query).search === "" ? query : debouncedQuery);
 	const displayedDir = parseTreeQuery(query).dir;
-	const filesQuery = useQuery({
-		...sessionFilesQueryOptions(sessionId, {
-			dir: requested.dir,
-			query: requested.search,
-			hideIgnored: settings.filesHideIgnored,
-		}),
-		placeholderData: keepPreviousData,
-		enabled: contentQuery === null,
-	});
+	const filesQuery = useQuery(
+		{
+			...sessionFilesQueryOptions(
+				sessionId,
+				{
+					dir: requested.dir,
+					query: requested.search,
+					hideIgnored: settings.filesHideIgnored,
+				},
+			),
+			placeholderData: keepPreviousData,
+			enabled: contentQuery === null,
+		},
+	);
 	const data = filesQuery.data;
 	const entries: readonly WorkspaceEntry[] =
 		data === undefined || data.kind === "no-cwd" ? [] : data.kind === "listing" ? data.entries : data.results;
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const tree = treeRef.current;
 		if (tree === null || typeof ResizeObserver === "undefined") return undefined;
-		const observer = new ResizeObserver(() => {
+		const observer = new ResizeObserver(() =>
+		{
 			if (tree.clientHeight > 0) setViewportHeight(tree.clientHeight);
 		});
 		observer.observe(tree);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, []);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		setActiveIndex(-1);
 		setScrollTop(0);
 		if (treeRef.current !== null) treeRef.current.scrollTop = 0;
 	}, [data]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (focusRequest === 0 || activeIndex < 0) return;
 		const tree = treeRef.current;
 		if (tree === null) return;
 		const rowTop = activeIndex * ROW_HEIGHT;
 		if (rowTop < tree.scrollTop) tree.scrollTop = rowTop;
-		else if (rowTop + ROW_HEIGHT > tree.scrollTop + viewportHeight) {
+		else if (rowTop + ROW_HEIGHT > tree.scrollTop + viewportHeight)
+		{
 			tree.scrollTop = rowTop + ROW_HEIGHT - viewportHeight;
 		}
 		setScrollTop(tree.scrollTop);
 		tree.querySelector<HTMLElement>(`[data-row-index="${activeIndex}"]`)?.focus();
 	}, [activeIndex, focusRequest, viewportHeight]);
 
-	function focusRow(index: number): void {
+	function focusRow(index: number): void
+	{
 		setActiveIndex(index);
 		setFocusRequest((request) => request + 1);
 	}
 
-	function changeQuery(next: string): void {
+	function changeQuery(next: string): void
+	{
 		setQuery(next);
 		setActiveIndex(-1);
 	}
 
-	function activate(entry: WorkspaceEntry, options: OpenFileOptions): void {
-		if (entry.isDirectory) {
+	function activate(entry: WorkspaceEntry, options: OpenFileOptions): void
+	{
+		if (entry.isDirectory)
+		{
 			changeQuery(`${entry.relPath}/`);
 			return;
 		}
 		onOpenFile?.(entry.relPath, options);
 	}
 
-	function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-		if (event.key === "ArrowDown" && contentQuery !== null) {
+	function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>): void
+	{
+		if (event.key === "ArrowDown" && contentQuery !== null)
+		{
 			if (focusFirstMatchRef.current?.() === true) event.preventDefault();
-		} else if (event.key === "ArrowDown" && entries.length > 0) {
+		}
+		else if (event.key === "ArrowDown" && entries.length > 0)
+		{
 			event.preventDefault();
 			focusRow(0);
-		} else if (event.key === "Escape" && query !== "") {
+		}
+		else if (event.key === "Escape" && query !== "")
+		{
 			event.preventDefault();
 			changeQuery("");
 		}
 	}
 
-	function handleTreeKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+	function handleTreeKeyDown(event: KeyboardEvent<HTMLDivElement>): void
+	{
 		if (entries.length === 0) return;
 		const index = activeIndex;
-		if (event.key === "ArrowDown") {
+		if (event.key === "ArrowDown")
+		{
 			event.preventDefault();
 			focusRow(Math.min(entries.length - 1, index + 1));
-		} else if (event.key === "ArrowUp") {
+		}
+		else if (event.key === "ArrowUp")
+		{
 			event.preventDefault();
-			if (index <= 0) {
+			if (index <= 0)
+			{
 				setActiveIndex(-1);
 				inputRef.current?.focus();
-			} else {
+			}
+			else
+			{
 				focusRow(index - 1);
 			}
-		} else if (event.key === "Home") {
+		}
+		else if (event.key === "Home")
+		{
 			event.preventDefault();
 			focusRow(0);
-		} else if (event.key === "End") {
+		}
+		else if (event.key === "End")
+		{
 			event.preventDefault();
 			focusRow(entries.length - 1);
-		} else if (event.key === "Enter") {
+		}
+		else if (event.key === "Enter")
+		{
 			const entry = entries[index];
 			if (entry === undefined) return;
 			event.preventDefault();
-			activate(entry, {pin: false});
+			activate(
+				entry,
+				{
+					pin: false,
+				},
+			);
 			if (entry.isDirectory) inputRef.current?.focus();
 		}
 	}
 
-	if (data?.kind === "no-cwd") {
+	if (data?.kind === "no-cwd")
+	{
 		return (
 			noCwdFallback ?? (
 				<p className="px-3 py-6 text-center text-footnote text-ink-muted">
@@ -298,15 +357,19 @@ export function FilesTree({
 	const goUp = displayedDir === "" ? null : goUpTarget(displayedDir);
 
 	let footer: string | null = null;
-	if (data?.kind === "search" && data.capped) {
+	if (data?.kind === "search" && data.capped)
+	{
 		footer = `Only the first ${data.results.length} results are shown. Keep typing to narrow.`;
-	} else if (data?.partial === true) {
+	}
+	else if (data?.partial === true)
+	{
 		footer = PARTIAL_FOOTER;
 	}
 
 	let emptyMessage: string | null = null;
 	if (filesQuery.isError && data === undefined) emptyMessage = "Couldn’t read this folder.";
-	else if (data !== undefined && entries.length === 0) {
+	else if (data !== undefined && entries.length === 0)
+	{
 		emptyMessage = isSearch ? "No matching files" : "Folder is empty";
 	}
 
@@ -327,19 +390,24 @@ export function FilesTree({
 						spellCheck={false}
 						autoComplete="off"
 						value={query}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							changeQuery(event.target.value);
 						}}
 						onKeyDown={handleInputKeyDown}
 						placeholder="Search files…"
 						className="h-6 w-full rounded-md border border-strong bg-surface-1 pl-7 pr-6 text-pane text-primary outline-none placeholder:text-t6 focus:shadow-[0_0_0_1px_rgb(37,125,224),0_0_6px_1px_rgb(205,226,251)]"
-						style={{textOverflow: "ellipsis"}}
+						style={
+						{
+							textOverflow: "ellipsis",
+						}}
 					/>
 					{query !== "" && (
 						<button
 							type="button"
 							aria-label="Clear filter"
-							onClick={() => {
+							onClick={() =>
+							{
 								changeQuery("");
 								inputRef.current?.focus();
 							}}
@@ -369,7 +437,8 @@ export function FilesTree({
 						<div className="shrink-0 px-1 pt-1.25">
 							<button
 								type="button"
-								onClick={() => {
+								onClick={() =>
+								{
 									changeQuery(goUp.query);
 								}}
 								className="flex h-[21.33px] w-full cursor-pointer items-center gap-1 rounded-r5 bg-fill-control px-2 text-pane text-primary hover:bg-fill-ghost-hover"
@@ -386,19 +455,30 @@ export function FilesTree({
 						aria-label="Project files"
 						tabIndex={0}
 						onKeyDown={handleTreeKeyDown}
-						onScroll={(event) => {
+						onScroll={(event) =>
+						{
 							setScrollTop(event.currentTarget.scrollTop);
 						}}
-						onFocus={(event) => {
-							if (event.target === event.currentTarget && entries.length > 0) {
+						onFocus={(event) =>
+						{
+							if (event.target === event.currentTarget && entries.length > 0)
+							{
 								focusRow(Math.max(0, activeIndex));
 							}
 						}}
 						className="min-h-0 flex-1 overflow-y-auto px-1 py-1.25 outline-none [contain:strict]"
 					>
 						{emptyMessage === null ? (
-							<div role="none" style={{height: entries.length * ROW_HEIGHT, position: "relative"}}>
-								{entries.slice(firstRow, lastRow).map((entry, offset) => {
+							<div
+								role="none"
+								style={
+								{
+									height: entries.length * ROW_HEIGHT,
+									position: "relative",
+								}}
+							>
+								{entries.slice(firstRow, lastRow).map((entry, offset) =>
+								{
 									const index = firstRow + offset;
 									const dirSuffix = isSearch ? parentDir(entry.relPath) : "";
 									return (
@@ -412,11 +492,16 @@ export function FilesTree({
 												aria-current={entry.relPath === activeRelPath ? "true" : undefined}
 												tabIndex={-1}
 												title={symlinkLabel(entry)}
-												onFocus={() => {
+												onFocus={() =>
+												{
 													setActiveIndex(index);
 												}}
 												className="absolute left-0 flex h-[19px] w-full items-center rounded-r3 text-pane text-primary outline-none select-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
-												style={{top: index * ROW_HEIGHT, paddingLeft: 8}}
+												style={
+												{
+													top: index * ROW_HEIGHT,
+													paddingLeft: 8,
+												}}
 											>
 												<Tooltip
 													content={entry.name}
@@ -427,12 +512,24 @@ export function FilesTree({
 														type="button"
 														data-tree-primary
 														tabIndex={-1}
-														onClick={() => {
-															activate(entry, {pin: false});
+														onClick={() =>
+														{
+															activate(
+																entry,
+																{
+																	pin: false,
+																},
+															);
 														}}
-														onDoubleClick={() => {
+														onDoubleClick={() =>
+														{
 															if (!entry.isDirectory)
-																onOpenFile?.(entry.relPath, {pin: true});
+																onOpenFile?.(
+																	entry.relPath,
+																	{
+																		pin: true,
+																	},
+																);
 														}}
 														className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-1 border-0 bg-transparent pr-2 text-left outline-none"
 													>
@@ -482,7 +579,10 @@ export function FilesTree({
 						{footer !== null && emptyMessage === null && (
 							<div
 								className="py-1.5 pr-2 text-footnote text-ink-muted select-none"
-								style={{paddingLeft: 8}}
+								style={
+								{
+									paddingLeft: 8,
+								}}
 							>
 								{footer}
 							</div>

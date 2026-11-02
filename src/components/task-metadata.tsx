@@ -1,14 +1,19 @@
-interface TaskMetadataProps {
+interface TaskMetadataProps
+{
 	metadata: Record<string, unknown>;
 }
 
-function isMetadataObject(value: unknown): value is Record<string, unknown> {
+function isMetadataObject(value: unknown): value is Record<string, unknown>
+{
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function MetadataValue({value}: {value: unknown}) {
-	if (isMetadataObject(value)) {
-		if (Object.keys(value).length === 0) {
+function MetadataValue({value}: {value: unknown})
+{
+	if (isMetadataObject(value))
+	{
+		if (Object.keys(value).length === 0)
+		{
 			return <span className="text-t6">{"{}"}</span>;
 		}
 		return <MetadataEntries metadata={value} nested />;
@@ -18,7 +23,8 @@ function MetadataValue({value}: {value: unknown}) {
 	return <span className="break-all text-secondary">{formatted}</span>;
 }
 
-function MetadataEntries({metadata, nested = false}: {metadata: Record<string, unknown>; nested?: boolean}) {
+function MetadataEntries({metadata, nested = false}: {metadata: Record<string, unknown>; nested?: boolean})
+{
 	return (
 		<dl
 			className={
@@ -37,7 +43,8 @@ function MetadataEntries({metadata, nested = false}: {metadata: Record<string, u
 	);
 }
 
-export function TaskMetadata({metadata}: TaskMetadataProps) {
+export function TaskMetadata({metadata}: TaskMetadataProps)
+{
 	const fieldCount = Object.keys(metadata).length;
 	if (fieldCount === 0) return null;
 

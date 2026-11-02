@@ -1,4 +1,5 @@
-export interface SearchableTask {
+export interface SearchableTask
+{
 	taskId: string;
 	subject: string;
 	description: string;
@@ -6,7 +7,8 @@ export interface SearchableTask {
 	owner: string | null;
 }
 
-export function taskMatchesSearch(task: SearchableTask, query: string): boolean {
+export function taskMatchesSearch(task: SearchableTask, query: string): boolean
+{
 	const normalizedQuery = query.trim().toLowerCase();
 	if (normalizedQuery.length === 0) return true;
 
@@ -15,6 +17,7 @@ export function taskMatchesSearch(task: SearchableTask, query: string): boolean 
 	);
 }
 
-export function filterTasks<T extends SearchableTask>(tasks: T[], query: string): T[] {
+export function filterTasks<T extends SearchableTask>(tasks: T[], query: string): T[]
+{
 	return tasks.filter((task) => taskMatchesSearch(task, query));
 }

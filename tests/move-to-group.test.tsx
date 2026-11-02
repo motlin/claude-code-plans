@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -25,8 +26,14 @@ const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 const PREFS_KEY = "ccp-session-list-prefs";
 const GROUPS_KEY = "ccp-session-groups";
 const GROUPS = [
-	{id: "cg-blog", name: "Blog"},
-	{id: "cg-gtd", name: "GTD"},
+	{
+		id: "cg-blog",
+		name: "Blog",
+	},
+	{
+		id: "cg-gtd",
+		name: "GTD",
+	},
 ];
 
 const CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMenuCapability>([
@@ -35,7 +42,8 @@ const CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMenuCapa
 	"customGroups",
 ]);
 
-function menuSession(overrides: Partial<SessionMenuSession> = {}): SessionMenuSession {
+function menuSession(overrides: Partial<SessionMenuSession> = {}): SessionMenuSession
+{
 	return {
 		title: "Fix the flaky test",
 		pinned: false,
@@ -50,15 +58,36 @@ function menuSession(overrides: Partial<SessionMenuSession> = {}): SessionMenuSe
 	};
 }
 
-describe("getSessionMenuItems Move to group", () => {
-	it("puts Move to group between the actions and Archive on rows", () => {
+describe("getSessionMenuItems Move to group", () =>
+{
+	it("puts Move to group between the actions and Archive on rows", () =>
+	{
 		expect(
-			getSessionMenuItems(menuSession({customGroup: {groups: GROUPS, current: null}}), CAPABILITIES, {
-				surface: "row",
-			}),
+			getSessionMenuItems(
+				menuSession(
+					{
+						customGroup:
+						{
+							groups: GROUPS,
+							current: null,
+						},
+					},
+				),
+				CAPABILITIES,
+				{
+					surface: "row",
+				},
+			),
 		).toEqual([
-			{kind: "item", id: "rename", label: "Rename", accelerator: "r"},
-			{kind: "separator"},
+			{
+				kind: "item",
+				id: "rename",
+				label: "Rename",
+				accelerator: "r",
+			},
+			{
+				kind: "separator",
+			},
 			{
 				kind: "item",
 				id: "move-to-group",
@@ -80,74 +109,151 @@ describe("getSessionMenuItems Move to group", () => {
 						checked: false,
 						accelerator: "2",
 					},
-					{kind: "separator"},
-					{kind: "item", id: "new-group", label: "New section", accelerator: "3"},
+					{
+						kind: "separator",
+					},
+					{
+						kind: "item",
+						id: "new-group",
+						label: "New section",
+						accelerator: "3",
+					},
 				],
 			},
-			{kind: "separator"},
-			{kind: "item", id: "archive", label: "Archive", accelerator: "a"},
+			{
+				kind: "separator",
+			},
+			{
+				kind: "item",
+				id: "archive",
+				label: "Archive",
+				accelerator: "a",
+			},
 		]);
 	});
 
-	it("checks the current group and offers Ungrouped only for a grouped row", () => {
+	it("checks the current group and offers Ungrouped only for a grouped row", () =>
+	{
 		const [, , moveToGroup] = getSessionMenuItems(
-			menuSession({customGroup: {groups: GROUPS, current: "cg-gtd"}}),
+			menuSession(
+				{
+					customGroup:
+					{
+						groups: GROUPS,
+						current: "cg-gtd",
+					},
+				},
+			),
 			CAPABILITIES,
-			{surface: "row"},
+			{
+				surface: "row",
+			},
 		);
 
-		expect(moveToGroup).toEqual({
-			kind: "item",
-			id: "move-to-group",
-			label: "Move to section",
-			submenu: [
-				{
-					kind: "item",
-					id: "move-to-custom-group",
-					label: "Blog",
-					groupId: "cg-blog",
-					checked: false,
-					accelerator: "1",
-				},
-				{
-					kind: "item",
-					id: "move-to-custom-group",
-					label: "GTD",
-					groupId: "cg-gtd",
-					checked: true,
-					accelerator: "2",
-				},
-				{kind: "separator"},
-				{kind: "item", id: "ungroup", label: "Remove from GTD", checked: false, accelerator: "3"},
-				{kind: "item", id: "new-group", label: "New section", accelerator: "4"},
-			],
-		});
+		expect(moveToGroup).toEqual(
+			{
+				kind: "item",
+				id: "move-to-group",
+				label: "Move to section",
+				submenu: [
+					{
+						kind: "item",
+						id: "move-to-custom-group",
+						label: "Blog",
+						groupId: "cg-blog",
+						checked: false,
+						accelerator: "1",
+					},
+					{
+						kind: "item",
+						id: "move-to-custom-group",
+						label: "GTD",
+						groupId: "cg-gtd",
+						checked: true,
+						accelerator: "2",
+					},
+					{
+						kind: "separator",
+					},
+					{
+						kind: "item",
+						id: "ungroup",
+						label: "Remove from GTD",
+						checked: false,
+						accelerator: "3",
+					},
+					{
+						kind: "item",
+						id: "new-group",
+						label: "New section",
+						accelerator: "4",
+					},
+				],
+			},
+		);
 	});
 
-	it("offers only New group… when there are no groups", () => {
+	it("offers only New group… when there are no groups", () =>
+	{
 		const [, , moveToGroup] = getSessionMenuItems(
-			menuSession({customGroup: {groups: [], current: null}}),
+			menuSession(
+				{
+					customGroup:
+					{
+						groups: [],
+						current: null,
+					},
+				},
+			),
 			CAPABILITIES,
-			{surface: "row"},
+			{
+				surface: "row",
+			},
 		);
 
-		expect(moveToGroup).toEqual({
-			kind: "item",
-			id: "move-to-group",
-			label: "Move to section",
-			submenu: [{kind: "item", id: "new-group", label: "New section", accelerator: "1"}],
-		});
+		expect(moveToGroup).toEqual(
+			{
+				kind: "item",
+				id: "move-to-group",
+				label: "Move to section",
+				submenu: [
+					{
+						kind: "item",
+						id: "new-group",
+						label: "New section",
+						accelerator: "1",
+					},
+				],
+			},
+		);
 	});
 
-	it("numbers only the first nine entries", () => {
-		const groups = Array.from({length: 10}, (_, index) => ({
-			id: `cg-${index}`,
-			name: `Group ${index}`,
-		}));
+	it("numbers only the first nine entries", () =>
+	{
+		const groups = Array.from(
+			{
+				length: 10,
+			},
+			(_, index) => (
+			{
+				id: `cg-${index}`,
+				name: `Group ${index}`,
+			}),
+		);
 		const [, , moveToGroup] = getSessionMenuItems(
-			menuSession({customGroup: {groups, current: null}}),
+			menuSession(
+				{
+					customGroup:
+					{
+						groups,
+						current: null,
+					},
+				},
+			),
 			CAPABILITIES,
-			{surface: "row"},
+			{
+				surface: "row",
+			},
 		);
 
 		expect(
@@ -157,16 +263,30 @@ describe("getSessionMenuItems Move to group", () => {
 		).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", undefined, "---", undefined]);
 	});
 
-	it("leaves Move to group off the header menu", () => {
+	it("leaves Move to group off the header menu", () =>
+	{
 		expect(
-			getSessionMenuItems(menuSession({customGroup: {groups: GROUPS, current: null}}), CAPABILITIES, {
-				surface: "header",
-			}).map((entry) => (entry.kind === "separator" ? "---" : entry.id)),
+			getSessionMenuItems(
+				menuSession(
+					{
+						customGroup:
+						{
+							groups: GROUPS,
+							current: null,
+						},
+					},
+				),
+				CAPABILITIES,
+				{
+					surface: "header",
+				},
+			).map((entry) => (entry.kind === "separator" ? "---" : entry.id)),
 		).toEqual(["rename", "---", "archive"]);
 	});
 });
 
-function listItem(): SessionListItem {
+function listItem(): SessionListItem
+{
 	return {
 		id: SESSION_ID,
 		title: "Fix the flaky test",
@@ -184,78 +304,139 @@ function listItem(): SessionListItem {
 	};
 }
 
-async function flush() {
-	await act(async () => {
-		await new Promise((resolve) => {
+async function flush()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-function storeGroups(assignments: Record<string, string> = {}) {
-	localStorage.setItem(GROUPS_KEY, JSON.stringify({groups: GROUPS, assignments, order: {}}));
+function storeGroups(assignments: Record<string, string> = {})
+{
+	localStorage.setItem(
+		GROUPS_KEY,
+		JSON.stringify(
+			{
+				groups: GROUPS,
+				assignments,
+				order: {},
+			},
+		),
+	);
 }
 
-function storedPrefs(): unknown {
+function storedPrefs(): unknown
+{
 	const raw = localStorage.getItem(PREFS_KEY);
 	return raw === null ? null : JSON.parse(raw);
 }
 
-async function renderRow() {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+async function renderRow()
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
+	);
+	queryClient.setQueryData(
+		herdrPanesQueryOptions.queryKey,
+		{
+			panes: [],
+			writesEnabled: false,
+		},
+	);
 	const session = listItem();
-	const rootRoute = createRootRoute({
-		component: () => (
-			<SettingsProvider>
-				<QueryClientProvider client={queryClient}>
-					<ToastProvider>
-						<SessionActionsMenu session={session}>
-							<a href={`/session/${session.id}`}>Row title</a>
-						</SessionActionsMenu>
-						<Outlet />
-					</ToastProvider>
-				</QueryClientProvider>
-			</SettingsProvider>
-		),
-	});
-	const homeRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<SettingsProvider>
+					<QueryClientProvider client={queryClient}>
+						<ToastProvider>
+							<SessionActionsMenu session={session}>
+								<a href={`/session/${session.id}`}>Row title</a>
+							</SessionActionsMenu>
+							<Outlet />
+						</ToastProvider>
+					</QueryClientProvider>
+				</SettingsProvider>
+			),
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(screen.getByText("Row title")).toBeTruthy();
 	});
 }
 
-async function openMoveToGroup(): Promise<HTMLElement> {
-	fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+async function openMoveToGroup(): Promise<HTMLElement>
+{
+	fireEvent.contextMenu(
+		screen.getByText("Row title"),
+		{
+			clientX: 40,
+			clientY: 50,
+		},
+	);
 	await flush();
-	const trigger = screen.getByRole("menuitem", {name: /^Move to section/});
+	const trigger = screen.getByRole(
+		"menuitem",
+		{
+			name: /^Move to section/,
+		},
+	);
 	expect(trigger.getAttribute("data-testid")).toBe("move-to-group-trigger");
-	act(() => {
+	act(() =>
+	{
 		trigger.focus();
 	});
-	fireEvent.keyDown(trigger, {key: "ArrowRight"});
+	fireEvent.keyDown(
+		trigger,
+		{
+			key: "ArrowRight",
+		},
+	);
 	await flush();
 	const menus = screen.getAllByRole("menu");
 	expect(menus).toHaveLength(2);
 	return menus[1]!;
 }
 
-function submenuOutline(menu: HTMLElement): string[] {
-	return [...menu.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="separator"]')].map((node) => {
+function submenuOutline(menu: HTMLElement): string[]
+{
+	return [...menu.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="separator"]')].map((node) =>
+	{
 		if (node.getAttribute("role") === "separator") return "---";
 		const checked = node.getAttribute("aria-checked");
 		const state = checked === null ? "" : ` (${checked})`;
@@ -263,7 +444,8 @@ function submenuOutline(menu: HTMLElement): string[] {
 	});
 }
 
-async function openNewGroupDialog(): Promise<HTMLElement> {
+async function openNewGroupDialog(): Promise<HTMLElement>
+{
 	const submenu = await openMoveToGroup();
 	const newGroup = [...submenu.querySelectorAll('[role="menuitem"]')].find(
 		(node) => node.getAttribute("data-testid") === "new-custom-group",
@@ -274,16 +456,20 @@ async function openNewGroupDialog(): Promise<HTMLElement> {
 	return await waitFor(() => screen.getByRole("dialog"));
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 });
 
-describe("SessionActionsMenu Move to group", () => {
-	it("lists the groups as radios for an ungrouped row", async () => {
+describe("SessionActionsMenu Move to group", () =>
+{
+	it("lists the groups as radios for an ungrouped row", async () =>
+	{
 		storeGroups();
 		await renderRow();
 
@@ -295,8 +481,13 @@ describe("SessionActionsMenu Move to group", () => {
 		]);
 	});
 
-	it("checks the current group and offers Ungrouped for a grouped row", async () => {
-		storeGroups({[SESSION_ID]: "cg-blog"});
+	it("checks the current group and offers Ungrouped for a grouped row", async () =>
+	{
+		storeGroups(
+			{
+				[SESSION_ID]: "cg-blog",
+			},
+		);
 		await renderRow();
 
 		expect(submenuOutline(await openMoveToGroup())).toEqual([
@@ -308,49 +499,98 @@ describe("SessionActionsMenu Move to group", () => {
 		]);
 	});
 
-	it("moves the row into a group with its digit and closes the menu", async () => {
+	it("moves the row into a group with its digit and closes the menu", async () =>
+	{
 		storeGroups();
 		await renderRow();
 		const submenu = await openMoveToGroup();
 
-		fireEvent.keyDown(submenu, {key: "2"});
+		fireEvent.keyDown(
+			submenu,
+			{
+				key: "2",
+			},
+		);
 		await flush();
 
-		expect(readSessionGroupState().assignments).toEqual({[SESSION_ID]: "cg-gtd"});
+		expect(readSessionGroupState().assignments).toEqual(
+			{
+				[SESSION_ID]: "cg-gtd",
+			},
+		);
 		expect(screen.queryByRole("menu")).toBeNull();
 	});
 
-	it("returns a grouped row to Ungrouped", async () => {
-		storeGroups({[SESSION_ID]: "cg-blog"});
+	it("returns a grouped row to Ungrouped", async () =>
+	{
+		storeGroups(
+			{
+				[SESSION_ID]: "cg-blog",
+			},
+		);
 		await renderRow();
 		const submenu = await openMoveToGroup();
 
-		fireEvent.keyDown(submenu, {key: "3"});
+		fireEvent.keyDown(
+			submenu,
+			{
+				key: "3",
+			},
+		);
 		await flush();
 
 		expect(readSessionGroupState().assignments).toEqual({});
 	});
 });
 
-describe("New section dialog", () => {
-	it("creates a section, moves the row into it and leaves Group by alone", async () => {
+describe("New section dialog", () =>
+{
+	it("creates a section, moves the row into it and leaves Group by alone", async () =>
+	{
 		storeGroups();
 		await renderRow();
 		const dialog = await openNewGroupDialog();
 
 		expect(dialog.querySelector("h2")?.textContent).toBe("New section");
 		expect(dialog.textContent).toContain("The new section is listed above your other sessions.");
-		const input = screen.getByRole("textbox", {name: "Section name"});
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Section name",
+			},
+		);
 		expect(input.getAttribute("placeholder")).toBe("Section name");
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(document.activeElement).toBe(input);
 		});
-		const create = screen.getByRole("button", {name: "Create section"});
+		const create = screen.getByRole(
+			"button",
+			{
+				name: "Create section",
+			},
+		);
 		expect(create.hasAttribute("disabled")).toBe(true);
 
-		fireEvent.change(input, {target: {value: "   "}});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "   ",
+				},
+			},
+		);
 		expect(create.hasAttribute("disabled")).toBe(true);
-		fireEvent.change(input, {target: {value: "  Upstream sync  "}});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "  Upstream sync  ",
+				},
+			},
+		);
 		expect(create.hasAttribute("disabled")).toBe(false);
 		fireEvent.click(create);
 		await flush();
@@ -358,25 +598,53 @@ describe("New section dialog", () => {
 		const state = readSessionGroupState();
 		const created = state.groups.at(-1);
 		expect(state.groups.map((group) => group.name)).toEqual(["Blog", "GTD", "Upstream sync"]);
-		expect(state.assignments).toEqual({[SESSION_ID]: created?.id});
+		expect(state.assignments).toEqual(
+			{
+				[SESSION_ID]: created?.id,
+			},
+		);
 		expect(storedPrefs()).toBeNull();
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 	});
 
-	it("cancels with Escape without creating a group", async () => {
+	it("cancels with Escape without creating a group", async () =>
+	{
 		storeGroups();
 		await renderRow();
 		await openNewGroupDialog();
 
-		fireEvent.change(screen.getByRole("textbox", {name: "Section name"}), {
-			target: {value: "Never"},
-		});
-		fireEvent.keyDown(screen.getByRole("textbox", {name: "Section name"}), {key: "Escape"});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Section name",
+				},
+			),
+			{
+				target:
+				{
+					value: "Never",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Section name",
+				},
+			),
+			{
+				key: "Escape",
+			},
+		);
 		await flush();
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 		expect(readSessionGroupState().groups.map((group) => group.name)).toEqual(["Blog", "GTD"]);

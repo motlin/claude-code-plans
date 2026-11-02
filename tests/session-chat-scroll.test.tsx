@@ -8,77 +8,112 @@ import {setScrollTop} from "../src/lib/scroll-setter";
 import type {SessionLine} from "../src/lib/sessions";
 import {CHAT_COLUMN_CLASS} from "../src/lib/transcript-width";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
 // The shrinkwrap engine shares one ResizeObserver over every bubble's ancestors; keep it out of these scroll fakes.
-vi.mock("../src/hooks/use-shrinkwrap", () => ({useShrinkwrap: () => () => undefined}));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/hooks/use-shrinkwrap", () => (
+{
+	useShrinkwrap: () => () => undefined,
+}));
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
 const animationFrames: Array<FrameRequestCallback> = [];
 const scrollIntoView = vi.fn<Element["scrollIntoView"]>();
 const scrollTo = vi.fn<(options: ScrollToOptions) => void>();
 
-class FakeResizeObserver {
+class FakeResizeObserver
+{
 	static instances: FakeResizeObserver[] = [];
 
 	readonly callback: ResizeObserverCallback;
 	readonly observedElements = new Set<Element>();
 
-	constructor(callback: ResizeObserverCallback) {
+	constructor(callback: ResizeObserverCallback)
+	{
 		this.callback = callback;
 		FakeResizeObserver.instances.push(this);
 	}
 
-	observe(element: Element) {
+	observe(element: Element)
+	{
 		this.observedElements.add(element);
 	}
-	unobserve(element: Element) {
+	unobserve(element: Element)
+	{
 		this.observedElements.delete(element);
 	}
-	disconnect() {}
-	takeRecords() {
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 
-	resize() {
+	resize()
+	{
 		this.callback([], this);
 	}
 }
 
-function messages(count: number): SessionLine[] {
-	return Array.from({length: count}, (_, index) => ({
-		type: index % 2 === 0 ? "user" : "assistant",
-		uuid: `message-${index}`,
-		lineIndex: index,
-		message: {
-			role: index % 2 === 0 ? "user" : "assistant",
-			content: `Fabricated message ${index}`,
+function messages(count: number): SessionLine[]
+{
+	return Array.from(
+		{
+			length: count,
 		},
-	}));
+		(_, index) => (
+		{
+			type: index % 2 === 0 ? "user" : "assistant",
+			uuid: `message-${index}`,
+			lineIndex: index,
+			message:
+			{
+				role: index % 2 === 0 ? "user" : "assistant",
+				content: `Fabricated message ${index}`,
+			},
+		}),
+	);
 }
 
-function flushAnimationFrames() {
-	while (animationFrames.length > 0) {
+function flushAnimationFrames()
+{
+	while (animationFrames.length > 0)
+	{
 		const pendingFrames = animationFrames.splice(0);
 		for (const callback of pendingFrames) callback(0);
 	}
 }
 
-function observerFor(element: Element): FakeResizeObserver {
+function observerFor(element: Element): FakeResizeObserver
+{
 	const observer = FakeResizeObserver.instances.find((candidate) => candidate.observedElements.has(element));
 	if (!observer) throw new Error("No resize observer watches the session chat container.");
 	return observer;
 }
 
-function followObserverCount(): number {
+function followObserverCount(): number
+{
 	return FakeResizeObserver.instances.filter((observer) =>
 		[...observer.observedElements].some((element) =>
 			element.querySelector("[data-testid='virtualized-transcript']"),
@@ -86,47 +121,68 @@ function followObserverCount(): number {
 	).length;
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	animationFrames.length = 0;
 	FakeResizeObserver.instances = [];
 	scrollIntoView.mockReset();
 	scrollTo.mockReset();
 
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
-	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+	{
 		animationFrames.push(callback);
 		return animationFrames.length;
 	});
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	vi.stubGlobal("scrollTo", scrollTo);
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-		configurable: true,
-		value: scrollIntoView,
-	});
-	Object.defineProperty(document.documentElement, "scrollHeight", {
-		configurable: true,
-		value: 10_000,
-	});
-	Object.defineProperty(window, "innerHeight", {
-		configurable: true,
-		value: 1_000,
-	});
-	Object.defineProperty(window, "scrollY", {
-		configurable: true,
-		value: 9_000,
-		writable: true,
-	});
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: scrollIntoView,
+		},
+	);
+	Object.defineProperty(
+		document.documentElement,
+		"scrollHeight",
+		{
+			configurable: true,
+			value: 10_000,
+		},
+	);
+	Object.defineProperty(
+		window,
+		"innerHeight",
+		{
+			configurable: true,
+			value: 1_000,
+		},
+	);
+	Object.defineProperty(
+		window,
+		"scrollY",
+		{
+			configurable: true,
+			value: 9_000,
+			writable: true,
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
 
-describe("SessionChat column measure", () => {
-	it("lays the transcript out on the chat column shared with the composer dock", () => {
+describe("SessionChat column measure", () =>
+{
+	it("lays the transcript out on the chat column shared with the composer dock", () =>
+	{
 		const view = render(
 			<SessionChat
 				sessionId="session-50"
@@ -141,7 +197,8 @@ describe("SessionChat column measure", () => {
 		);
 	});
 
-	it("gives feed articles upstream's 8px keyboard-nav scroll margins, widened by any edge fade", () => {
+	it("gives feed articles upstream's 8px keyboard-nav scroll margins, widened by any edge fade", () =>
+	{
 		const view = render(
 			<SessionChat
 				sessionId="session-51"
@@ -161,8 +218,10 @@ describe("SessionChat column measure", () => {
 	});
 });
 
-describe("SessionChat initial scrolling", () => {
-	it("mounts a viewport-sized turn window and reveals an unmounted jump target", () => {
+describe("SessionChat initial scrolling", () =>
+{
+	it("mounts a viewport-sized turn window and reveals an unmounted jump target", () =>
+	{
 		const view = render(
 			<SessionChat
 				sessionId="session-100"
@@ -172,34 +231,52 @@ describe("SessionChat initial scrolling", () => {
 			/>,
 		);
 		const spacers = [...view.container.querySelectorAll<HTMLElement>("[data-transcript-spacer]")];
-		const initialState = {
+		const initialState =
+		{
 			mountedTurns: view.container.querySelectorAll(".group\\/msg").length,
 			spacerHeights: spacers.map((spacer) => spacer.style.height),
 		};
 
 		let jumpRequested = true;
-		act(() => {
+		act(() =>
+		{
 			jumpRequested = jumpToMessage(90);
 		});
 
-		expect({
-			initialState,
-			mountedJumpWindowTurns: view.container.querySelectorAll(".group\\/msg").length,
-			jumpRequested,
-			spacerHeights: spacers.map((spacer) => spacer.style.height),
-		}).toStrictEqual({
-			initialState: {mountedTurns: 5, spacerHeights: ["0px", "14400px"]},
-			mountedJumpWindowTurns: 3,
-			jumpRequested: false,
-			spacerHeights: ["14080px", "960px"],
-		});
+		expect(
+			{
+				initialState,
+				mountedJumpWindowTurns: view.container.querySelectorAll(".group\\/msg").length,
+				jumpRequested,
+				spacerHeights: spacers.map((spacer) => spacer.style.height),
+			},
+		).toStrictEqual(
+			{
+				initialState:
+				{
+					mountedTurns: 5,
+					spacerHeights: ["0px", "14400px"],
+				},
+				mountedJumpWindowTurns: 3,
+				jumpRequested: false,
+				spacerHeights: ["14080px", "960px"],
+			},
+		);
 
 		act(flushAnimationFrames);
 
-		expect(scrollIntoView.mock.calls).toStrictEqual([[{block: "center", behavior: "smooth"}]]);
+		expect(scrollIntoView.mock.calls).toStrictEqual([
+			[
+				{
+					block: "center",
+					behavior: "smooth",
+				},
+			],
+		]);
 	});
 
-	it("reveals an unmounted target a few records after a mounted turn instead of flashing that earlier turn", () => {
+	it("reveals an unmounted target a few records after a mounted turn instead of flashing that earlier turn", () =>
+	{
 		const view = render(
 			<SessionChat
 				sessionId="session-110"
@@ -210,7 +287,8 @@ describe("SessionChat initial scrolling", () => {
 		);
 
 		let jumpRequested = true;
-		act(() => {
+		act(() =>
+		{
 			jumpRequested = jumpToMessage(30);
 		});
 		const flashedBeforeReveal = [...view.container.querySelectorAll<HTMLElement>(".message-highlight")].map(
@@ -219,16 +297,25 @@ describe("SessionChat initial scrolling", () => {
 
 		act(flushAnimationFrames);
 
-		expect({
-			jumpRequested,
-			flashedBeforeReveal,
-			scrolledTo: scrollIntoView.mock.instances.map((element) =>
-				element instanceof HTMLElement ? element.dataset["recordIndex"] : undefined,
-			),
-		}).toStrictEqual({jumpRequested: false, flashedBeforeReveal: [], scrolledTo: ["30"]});
+		expect(
+			{
+				jumpRequested,
+				flashedBeforeReveal,
+				scrolledTo: scrollIntoView.mock.instances.map((element) =>
+					element instanceof HTMLElement ? element.dataset["recordIndex"] : undefined,
+				),
+			},
+		).toStrictEqual(
+			{
+				jumpRequested: false,
+				flashedBeforeReveal: [],
+				scrolledTo: ["30"],
+			},
+		);
 	});
 
-	it("derives the mounted window from the scroll event, not again from a range commit's clamped offset", () => {
+	it("derives the mounted window from the scroll event, not again from a range commit's clamped offset", () =>
+	{
 		const view = render(
 			<SessionChat
 				sessionId="session-400"
@@ -241,9 +328,17 @@ describe("SessionChat initial scrolling", () => {
 		// The first read is the offset the scroll event reports. Every later read is the offset
 		// after the newly mounted rows clamp the scroller, which only a later scroll event may follow.
 		let reads = 0;
-		feed.getBoundingClientRect = () => {
+		feed.getBoundingClientRect = () =>
+		{
 			reads += 1;
-			return DOMRect.fromRect({x: 0, y: reads === 1 ? -9_000 : -6_000, width: 768, height: 16_000});
+			return DOMRect.fromRect(
+				{
+					x: 0,
+					y: reads === 1 ? -9_000 : -6_000,
+					width: 768,
+					height: 16_000,
+				},
+			);
 		};
 
 		fireEvent.scroll(document.scrollingElement ?? document.documentElement);
@@ -255,7 +350,8 @@ describe("SessionChat initial scrolling", () => {
 		).toStrictEqual(["27", "28", "29", "30", "31", "32"]);
 	});
 
-	it("scrolls a long session to its end once and does not follow an append after the user scrolls up", () => {
+	it("scrolls a long session to its end once and does not follow an append after the user scrolls up", () =>
+	{
 		const initialLines = messages(100);
 		const view = render(
 			<SessionChat
@@ -267,12 +363,21 @@ describe("SessionChat initial scrolling", () => {
 		);
 
 		act(flushAnimationFrames);
-		act(() => {
+		act(() =>
+		{
 			observerFor(view.container.firstElementChild!).resize();
 		});
 		act(flushAnimationFrames);
 
-		Object.defineProperty(window, "scrollY", {configurable: true, value: 100, writable: true});
+		Object.defineProperty(
+			window,
+			"scrollY",
+			{
+				configurable: true,
+				value: 100,
+				writable: true,
+			},
+		);
 		fireEvent.scroll(window);
 		view.rerender(
 			<SessionChat
@@ -282,21 +387,38 @@ describe("SessionChat initial scrolling", () => {
 				toolResultMap={new Map()}
 			/>,
 		);
-		act(() => {
+		act(() =>
+		{
 			observerFor(view.container.firstElementChild!).resize();
 		});
 		act(flushAnimationFrames);
 
-		expect({
-			scrollIntoViewCalls: scrollIntoView.mock.calls,
-			scrollToCalls: scrollTo.mock.calls,
-		}).toStrictEqual({
-			scrollIntoViewCalls: [],
-			scrollToCalls: [[{top: 10_000}], [{top: 10_000}]],
-		});
+		expect(
+			{
+				scrollIntoViewCalls: scrollIntoView.mock.calls,
+				scrollToCalls: scrollTo.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				scrollIntoViewCalls: [],
+				scrollToCalls: [
+					[
+						{
+							top: 10_000,
+						},
+					],
+					[
+						{
+							top: 10_000,
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("stops following the end once a jump releases it", () => {
+	it("stops following the end once a jump releases it", () =>
+	{
 		const view = render(
 			<SessionChat
 				sessionId="session-100"
@@ -305,8 +427,10 @@ describe("SessionChat initial scrolling", () => {
 				toolResultMap={new Map()}
 			/>,
 		);
-		const resize = () => {
-			act(() => {
+		const resize = () =>
+		{
+			act(() =>
+			{
 				observerFor(view.container.firstElementChild!).resize();
 			});
 			act(flushAnimationFrames);
@@ -315,20 +439,35 @@ describe("SessionChat initial scrolling", () => {
 		const initial = scrollTo.mock.calls.length;
 		resize();
 		const followed = scrollTo.mock.calls.length - initial;
-		act(() => {
+		act(() =>
+		{
 			releaseEndFollow(document.documentElement);
 		});
 		resize();
 
-		expect({followed, afterRelease: scrollTo.mock.calls.length - initial - followed}).toStrictEqual({
-			followed: 1,
-			afterRelease: 0,
-		});
+		expect(
+			{
+				followed,
+				afterRelease: scrollTo.mock.calls.length - initial - followed,
+			},
+		).toStrictEqual(
+			{
+				followed: 1,
+				afterRelease: 0,
+			},
+		);
 	});
 
-	it("resumes following the end when a tile move restores its scroller to the bottom through upstream's gT", () => {
+	it("resumes following the end when a tile move restores its scroller to the bottom through upstream's gT", () =>
+	{
 		const view = render(
-			<div data-testid="example-scroller" style={{overflowY: "auto"}}>
+			<div
+				data-testid="example-scroller"
+				style={
+				{
+					overflowY: "auto",
+				}}
+			>
 				<SessionChat
 					sessionId="session-100"
 					initialScrollKey="history-entry-tile-move"
@@ -340,21 +479,50 @@ describe("SessionChat initial scrolling", () => {
 		);
 		const scroller = view.getByTestId("example-scroller");
 		const scrollerTo = vi.fn<(options: ScrollToOptions) => void>();
-		Object.defineProperty(scroller, "scrollHeight", {configurable: true, value: 5_000});
-		Object.defineProperty(scroller, "clientHeight", {configurable: true, value: 500});
-		Object.defineProperty(scroller, "scrollTo", {configurable: true, value: scrollerTo});
+		Object.defineProperty(
+			scroller,
+			"scrollHeight",
+			{
+				configurable: true,
+				value: 5_000,
+			},
+		);
+		Object.defineProperty(
+			scroller,
+			"clientHeight",
+			{
+				configurable: true,
+				value: 500,
+			},
+		);
+		Object.defineProperty(
+			scroller,
+			"scrollTo",
+			{
+				configurable: true,
+				value: scrollerTo,
+			},
+		);
 		act(flushAnimationFrames);
-		act(() => {
+		act(() =>
+		{
 			// The restore writes before the browser's scroll event; a resize may land in between.
 			setScrollTop(scroller, 4_500);
 			observerFor(view.container.firstElementChild!.firstElementChild!).resize();
 		});
 		act(flushAnimationFrames);
 
-		expect(scrollerTo.mock.calls).toStrictEqual([[{top: 5_000}]]);
+		expect(scrollerTo.mock.calls).toStrictEqual([
+			[
+				{
+					top: 5_000,
+				},
+			],
+		]);
 	});
 
-	it("leaves a restored session entry at its saved scroll position", () => {
+	it("leaves a restored session entry at its saved scroll position", () =>
+	{
 		render(
 			<SessionChat
 				sessionId="session-200"
@@ -367,18 +535,23 @@ describe("SessionChat initial scrolling", () => {
 
 		act(flushAnimationFrames);
 
-		expect({
-			followObservers: followObserverCount(),
-			scrollIntoViewCalls: scrollIntoView.mock.calls,
-			scrollToCalls: scrollTo.mock.calls,
-		}).toStrictEqual({
-			followObservers: 1,
-			scrollIntoViewCalls: [],
-			scrollToCalls: [],
-		});
+		expect(
+			{
+				followObservers: followObserverCount(),
+				scrollIntoViewCalls: scrollIntoView.mock.calls,
+				scrollToCalls: scrollTo.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				followObservers: 1,
+				scrollIntoViewCalls: [],
+				scrollToCalls: [],
+			},
+		);
 	});
 
-	it("scrolls the same session again only when it has a fresh history entry", () => {
+	it("scrolls the same session again only when it has a fresh history entry", () =>
+	{
 		const firstView = render(
 			<SessionChat
 				sessionId="session-300"
@@ -411,14 +584,29 @@ describe("SessionChat initial scrolling", () => {
 		);
 		act(flushAnimationFrames);
 
-		expect({
-			followObservers: followObserverCount(),
-			scrollIntoViewCalls: scrollIntoView.mock.calls,
-			scrollToCalls: scrollTo.mock.calls,
-		}).toStrictEqual({
-			followObservers: 3,
-			scrollIntoViewCalls: [],
-			scrollToCalls: [[{top: 10_000}], [{top: 10_000}]],
-		});
+		expect(
+			{
+				followObservers: followObserverCount(),
+				scrollIntoViewCalls: scrollIntoView.mock.calls,
+				scrollToCalls: scrollTo.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				followObservers: 3,
+				scrollIntoViewCalls: [],
+				scrollToCalls: [
+					[
+						{
+							top: 10_000,
+						},
+					],
+					[
+						{
+							top: 10_000,
+						},
+					],
+				],
+			},
+		);
 	});
 });

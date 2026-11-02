@@ -4,7 +4,8 @@ import {homedir} from "node:os";
 import {join} from "node:path";
 
 import {ghPrDetailsLookup, parseGhPrDetails, type PrDetails} from "./pr-details";
-import {
+import
+{
 	ghPrLookup,
 	parseGhPrList,
 	parseGhPrStatusCache,
@@ -19,7 +20,8 @@ import {errnoCode} from "./narrow";
 /** Runs `gh <args>` (argv, never a shell) in `cwd` and resolves its stdout. */
 export type GhRunner = (args: string[], cwd: string | undefined) => Promise<string>;
 
-export interface PrStatusTarget {
+export interface PrStatusTarget
+{
 	projectId: string;
 	prLink: SessionPrLink | undefined;
 	cwd: string | undefined;
@@ -28,7 +30,8 @@ export interface PrStatusTarget {
 	mtimeMs: number;
 }
 
-export interface PrStatusService {
+export interface PrStatusService
+{
 	/** The best known PR status right now; never waits on `gh` or the disk. */
 	lookup(target: PrStatusTarget): PrStatus | null;
 	/** Resolves once every queued refresh has settled (for tests). */
@@ -42,7 +45,8 @@ const OPEN_TTL_MS = 5 * MINUTE;
 const FINAL_TTL_MS = 6 * HOUR;
 const MAX_BACKOFF_MS = HOUR;
 
-interface GhEntry<T = PrStatus | null> {
+interface GhEntry<T = PrStatus | null>
+{
 	value: T;
 	retryAt: number;
 	failures: number;
@@ -50,7 +54,8 @@ interface GhEntry<T = PrStatus | null> {
 	projects: Set<string>;
 }
 
-function sameDetails(a: PrDetails | null, b: PrDetails) {
+function sameDetails(a: PrDetails | null, b: PrDetails)
+{
 	return (
 		a !== null &&
 		a.headBranch === b.headBranch &&
@@ -80,7 +85,8 @@ export function createPrStatusService({
 	onChange: (projectId: string) => void;
 	cacheFileTtlMs?: number;
 	lookupWindowMs?: number;
-}): PrStatusService {
+}): PrStatusService
+{
 	let cacheFile = new Map<string, PrStatus>();
 	let cacheFileReadAt: number | null = null;
 	let cacheFileLoad: Promise<void> | null = null;
@@ -90,16 +96,20 @@ export function createPrStatusService({
 	let queue: Promise<void> = Promise.resolve();
 	let ghMissing = false;
 
-	async function ensureCacheFile(): Promise<void> {
+	async function ensureCacheFile(): Promise<void>
+	{
 		if (cacheFileLoad !== null) return cacheFileLoad;
-		if (cacheFileReadAt !== null && now() - cacheFileReadAt < cacheFileTtlMs) {
+		if (cacheFileReadAt !== null && now() - cacheFileReadAt < cacheFileTtlMs)
+		{
 			return Promise.resolve();
 		}
 		cacheFileLoad = readCacheFile()
-			.then((text) => {
+			.then((text) =>
+			{
 				const next = text === null ? new Map<string, PrStatus>() : parseGhPrStatusCache(text);
 				const changed = new Set<string>();
-				for (const url of new Set([...cacheFile.keys(), ...next.keys()])) {
+				for (const url of new Set([...cacheFile.keys(), ...next.keys()]))
+				{
 					if (samePrStatus(cacheFile.get(url) ?? null, next.get(url) ?? null)) continue;
 					for (const projectId of projectsByUrl.get(url) ?? []) changed.add(projectId);
 				}
@@ -107,7 +117,8 @@ export function createPrStatusService({
 				for (const projectId of changed) onChange(projectId);
 			})
 			.catch(() => undefined)
-			.finally(() => {
+			.finally(() =>
+			{
 				cacheFileReadAt = now();
 				cacheFileLoad = null;
 			});
@@ -120,10 +131,13 @@ export function createPrStatusService({
 		args: string[],
 		cwd: string | undefined,
 		kind: "view" | "list",
-	) {
-		try {
+	)
+	{
+		try
+		{
 			await ensureCacheFile();
-			if (target.prLink !== undefined && cacheFile.has(target.prLink.url)) {
+			if (target.prLink !== undefined && cacheFile.has(target.prLink.url))
+			{
 				entry.retryAt = now() + cacheFileTtlMs;
 				return;
 			}
@@ -132,61 +146,92 @@ export function createPrStatusService({
 			entry.failures = 0;
 			entry.retryAt =
 				now() + (value?.state === "merged" || value?.state === "closed" ? FINAL_TTL_MS : OPEN_TTL_MS);
-			if (!samePrStatus(entry.value, value)) {
+			if (!samePrStatus(entry.value, value))
+			{
 				entry.value = value;
 				for (const projectId of entry.projects) onChange(projectId);
 			}
-		} catch (error) {
+		}
+		catch (error)
+		{
 			backOff(entry, error);
-		} finally {
+		}
+		finally
+		{
 			entry.pending = false;
 		}
 	}
 
-	function backOff(entry: GhEntry<unknown>, error: unknown) {
+	function backOff(entry: GhEntry<unknown>, error: unknown)
+	{
 		if (errnoCode(error) === "ENOENT") ghMissing = true;
 		entry.failures += 1;
 		entry.retryAt = now() + Math.min(MINUTE * 2 ** (entry.failures - 1), MAX_BACKOFF_MS);
 	}
 
-	async function refreshDetails(entry: GhEntry<PrDetails | null>, args: string[]) {
-		try {
+	async function refreshDetails(entry: GhEntry<PrDetails | null>, args: string[])
+	{
+		try
+		{
 			const value = parseGhPrDetails(await runGh(args, undefined));
 			entry.failures = 0;
 			entry.retryAt = now() + OPEN_TTL_MS;
-			if (!sameDetails(entry.value, value)) {
+			if (!sameDetails(entry.value, value))
+			{
 				entry.value = value;
 				for (const projectId of entry.projects) onChange(projectId);
 			}
-		} catch (error) {
+		}
+		catch (error)
+		{
 			backOff(entry, error);
-		} finally {
+		}
+		finally
+		{
 			entry.pending = false;
 		}
 	}
 
 	/** Merge known review details over an open or draft PR, queueing their refresh when due. */
-	function withDetails(status: PrStatus | null, target: PrStatusTarget): PrStatus | null {
+	function withDetails(status: PrStatus | null, target: PrStatusTarget): PrStatus | null
+	{
 		if (status?.url === undefined || (status.state !== "open" && status.state !== "draft")) return status;
 		const request = ghPrDetailsLookup(status.url);
 		if (request === null) return status;
 		let entry = detailEntries.get(request.key);
-		if (entry === undefined) {
-			entry = {value: null, retryAt: 0, failures: 0, pending: false, projects: new Set()};
+		if (entry === undefined)
+		{
+			entry =
+			{
+				value: null,
+				retryAt: 0,
+				failures: 0,
+				pending: false,
+				projects: new Set(),
+			};
 			detailEntries.set(request.key, entry);
 		}
 		entry.projects.add(target.projectId);
-		if (!ghMissing && !entry.pending && now() >= entry.retryAt && now() - target.mtimeMs < lookupWindowMs) {
+		if (!ghMissing && !entry.pending && now() >= entry.retryAt && now() - target.mtimeMs < lookupWindowMs)
+		{
 			entry.pending = true;
 			const queued = entry;
 			queue = queue.then(async () => refreshDetails(queued, request.args));
 		}
-		return entry.value === null ? status : {...status, ...entry.value};
+		return entry.value === null
+			? status
+			:
+				{
+					...status,
+					...entry.value,
+				};
 	}
 
-	function lookup(target: PrStatusTarget): PrStatus | null {
+	function lookup(target: PrStatusTarget): PrStatus | null
+	{
 		const {prLink} = target;
-		if (prLink !== undefined) {
+		if (prLink !== undefined)
+		{
 			const projects = projectsByUrl.get(prLink.url) ?? new Set<string>();
 			projects.add(target.projectId);
 			projectsByUrl.set(prLink.url, projects);
@@ -195,10 +240,19 @@ export function createPrStatusService({
 
 		const request = ghPrLookup(target);
 		let entry: GhEntry | undefined;
-		if (request !== null) {
+		if (request !== null)
+		{
 			entry = ghEntries.get(request.key);
-			if (entry === undefined) {
-				entry = {value: null, retryAt: 0, failures: 0, pending: false, projects: new Set()};
+			if (entry === undefined)
+			{
+				entry =
+				{
+					value: null,
+					retryAt: 0,
+					failures: 0,
+					pending: false,
+					projects: new Set(),
+				};
 				ghEntries.set(request.key, entry);
 			}
 			entry.projects.add(target.projectId);
@@ -208,41 +262,65 @@ export function createPrStatusService({
 				now() >= entry.retryAt &&
 				now() - target.mtimeMs < lookupWindowMs &&
 				!(prLink !== undefined && cacheFile.has(prLink.url));
-			if (eligible) {
+			if (eligible)
+			{
 				entry.pending = true;
 				const queued = entry;
 				queue = queue.then(async () => refresh(queued, target, request.args, request.cwd, request.kind));
 			}
 		}
-		return withDetails(resolvePrStatus({prLink, cacheFile, gh: entry?.value ?? null}), target);
+		return withDetails(
+			resolvePrStatus(
+				{
+					prLink,
+					cacheFile,
+					gh: entry?.value ?? null,
+				},
+			),
+			target,
+		);
 	}
 
-	async function idle(): Promise<void> {
+	async function idle(): Promise<void>
+	{
 		let settled: Promise<void> | null = null;
-		while (settled !== queue || cacheFileLoad !== null) {
+		while (settled !== queue || cacheFileLoad !== null)
+		{
 			settled = queue;
 			await Promise.all([queue, cacheFileLoad]);
 		}
 	}
 
-	return {lookup, idle};
+	return {
+		lookup,
+		idle,
+	};
 }
 
 const GH_TIMEOUT_MS = 15 * 1000;
 
 /** `gh` (argv, never a shell) with a timeout and prompts off; the real `GhRunner`. */
-export async function runGhCommand(args: string[], cwd: string | undefined): Promise<string> {
-	return new Promise((resolve, reject) => {
+export async function runGhCommand(args: string[], cwd: string | undefined): Promise<string>
+{
+	return new Promise((resolve, reject) =>
+	{
 		execFile(
 			"gh",
 			args,
 			{
 				cwd,
 				timeout: GH_TIMEOUT_MS,
-				env: {...process.env, GH_PROMPT_DISABLED: "1", NO_COLOR: "1"},
+				env:
+				{
+					...process.env,
+					GH_PROMPT_DISABLED: "1",
+					NO_COLOR: "1",
+				},
 			},
-			(error: Error | null, stdout: string) => {
-				if (error) {
+			(error: Error | null, stdout: string) =>
+			{
+				if (error)
+				{
 					reject(error);
 					return;
 				}
@@ -252,10 +330,14 @@ export async function runGhCommand(args: string[], cwd: string | undefined): Pro
 	});
 }
 
-async function readGhPrStatusCacheFile(): Promise<string | null> {
-	try {
+async function readGhPrStatusCacheFile(): Promise<string | null>
+{
+	try
+	{
 		return await readFile(join(homedir(), ".claude", "gh-pr-status-cache.json"), "utf8");
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -263,26 +345,33 @@ async function readGhPrStatusCacheFile(): Promise<string | null> {
 let service: PrStatusService | null = null;
 
 /** Start answering PR lookups at server startup; tests never call this, so they never run `gh`. */
-export function initPrStatusService(onChange: (projectId: string) => void): void {
-	service = createPrStatusService({
-		runGh: runGhCommand,
-		readCacheFile: readGhPrStatusCacheFile,
-		onChange,
-	});
+export function initPrStatusService(onChange: (projectId: string) => void): void
+{
+	service = createPrStatusService(
+		{
+			runGh: runGhCommand,
+			readCacheFile: readGhPrStatusCacheFile,
+			onChange,
+		},
+	);
 }
 
 /** A PR status from the running service, or null before `initPrStatusService` (tests). */
-export function lookupPrStatus(target: PrStatusTarget): PrStatus | null {
+export function lookupPrStatus(target: PrStatusTarget): PrStatus | null
+{
 	return service?.lookup(target) ?? null;
 }
 
 /** A session row's PR status, or null before `initPrStatusService` (tests) or without data. */
-export function lookupSessionPrStatus(entry: SessionEntry): PrStatus | null {
-	return lookupPrStatus({
-		projectId: entry.project,
-		prLink: entry.pr,
-		cwd: entry.cwd,
-		branch: entry.gitBranch,
-		mtimeMs: entry.mtime.getTime(),
-	});
+export function lookupSessionPrStatus(entry: SessionEntry): PrStatus | null
+{
+	return lookupPrStatus(
+		{
+			projectId: entry.project,
+			prLink: entry.pr,
+			cwd: entry.cwd,
+			branch: entry.gitBranch,
+			mtimeMs: entry.mtime.getTime(),
+		},
+	);
 }

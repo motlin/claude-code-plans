@@ -8,7 +8,8 @@ import {CHIP_INTERACTIVE, CHIP_LABEL, CHIP_MUTED, CHIP_STATIC} from "./session-l
 export type SessionLinkChipState = SessionStateKind | "archived";
 
 /** Upstream `bt`'s screen-reader status words; idle has none. */
-const STATE_LABELS = {
+const STATE_LABELS =
+{
 	running: "Running",
 	awaiting: "Awaiting permission",
 	ready: "Ready",
@@ -29,23 +30,34 @@ const titleMarkdown = new MarkdownIt("zero").enable(["emphasis", "backticks", "s
 titleMarkdown.renderer.rules.code_inline = (tokens, idx) =>
 	`<code class="font-mono-ui">${titleMarkdown.utils.escapeHtml(tokens[idx]?.content ?? "")}</code>`;
 
-function renderChipTitleHtml(title: string): string {
+function renderChipTitleHtml(title: string): string
+{
 	return titleMarkdown.renderInline(title);
 }
 
-function nodeText(node: ReactNode): string {
+function nodeText(node: ReactNode): string
+{
 	let text = "";
-	Children.forEach(node, (child) => {
+	Children.forEach(node, (child) =>
+	{
 		if (typeof child === "string" || typeof child === "number") text += String(child);
-		else if (isValidElement<{children?: ReactNode}>(child)) text += nodeText(child.props.children);
+		else if (
+			isValidElement<
+			{
+				children?: ReactNode;
+			}>(child)
+		)
+			text += nodeText(child.props.children);
 	});
 	return text;
 }
 
 /* Upstream `jn`/`An`: Space activates an anchor chip on keyup, once per press. */
-function onAnchorKeyDown(event: KeyboardEvent<HTMLAnchorElement>): void {
+function onAnchorKeyDown(event: KeyboardEvent<HTMLAnchorElement>): void
+{
 	const target = event.currentTarget;
-	if (event.key !== " ") {
+	if (event.key !== " ")
+	{
 		delete target.dataset["spaceDown"];
 		return;
 	}
@@ -53,14 +65,16 @@ function onAnchorKeyDown(event: KeyboardEvent<HTMLAnchorElement>): void {
 	if (!event.repeat) target.dataset["spaceDown"] = "";
 }
 
-function onAnchorKeyUp(event: KeyboardEvent<HTMLAnchorElement>): void {
+function onAnchorKeyUp(event: KeyboardEvent<HTMLAnchorElement>): void
+{
 	const target = event.currentTarget;
 	const spaceDown = target.dataset["spaceDown"] !== undefined;
 	delete target.dataset["spaceDown"];
 	if (spaceDown && event.key === " " && !event.defaultPrevented) target.click();
 }
 
-export interface SessionLinkChipProps {
+export interface SessionLinkChipProps
+{
 	sessionId: string;
 	title?: string;
 	state?: SessionLinkChipState;
@@ -98,15 +112,28 @@ export function SessionLinkChip({
 	wordsOnly = false,
 	labelSource = "title",
 	children,
-}: SessionLinkChipProps) {
+}: SessionLinkChipProps)
+{
 	const status = wordsOnly ? undefined : state;
 	const trimmedTitle = title?.trim() ?? "";
 	let label: ReactNode;
-	if (labelSource === "title" && trimmedTitle !== "") {
-		label = <span dangerouslySetInnerHTML={{__html: renderChipTitleHtml(trimmedTitle)}} />;
-	} else if (labelSource === "title" && SESSION_LINK_TEXT.test(nodeText(children).trim())) {
+	if (labelSource === "title" && trimmedTitle !== "")
+	{
+		label = (
+			<span
+				dangerouslySetInnerHTML={
+				{
+					__html: renderChipTitleHtml(trimmedTitle),
+				}}
+			/>
+		);
+	}
+	else if (labelSource === "title" && SESSION_LINK_TEXT.test(nodeText(children).trim()))
+	{
 		label = <span>session</span>;
-	} else {
+	}
+	else
+	{
 		label = <span>{children}</span>;
 	}
 	const statusLabel = status === undefined ? null : STATE_LABELS[status];
@@ -121,30 +148,37 @@ export function SessionLinkChip({
 		</span>
 	);
 
-	const shared = {
+	const shared =
+	{
 		"aria-current": !wordsOnly && isOpen ? ("true" as const) : undefined,
 		"aria-busy": status === "running" ? true : undefined,
-		...(menuOpen && {"data-menu-open": ""}),
+		...(menuOpen &&
+		{
+			"data-menu-open": "",
+		}),
 		className: CHIP_INTERACTIVE,
 		onContextMenu,
 	};
 	const linked = !wordsOnly && !writing;
 
-	if (linked && internalTo !== undefined) {
+	if (linked && internalTo !== undefined)
+	{
 		return (
 			<Link to={internalTo} activeProps={{}} onKeyDown={onAnchorKeyDown} onKeyUp={onAnchorKeyUp} {...shared}>
 				{body}
 			</Link>
 		);
 	}
-	if (linked && onClick !== undefined) {
+	if (linked && onClick !== undefined)
+	{
 		return (
 			<button type="button" onClick={onClick} {...shared}>
 				{body}
 			</button>
 		);
 	}
-	if (linked && href !== undefined) {
+	if (linked && href !== undefined)
+	{
 		return (
 			<a
 				href={href}

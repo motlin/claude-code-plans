@@ -9,20 +9,31 @@ import {formatRelativeTimeFromIso} from "../lib/relative-time";
 import {pillStyles} from "../components/pill-styles";
 import {ListPageHeader} from "../components/list-page-header";
 
-export const Route = createFileRoute("/approvals")({
-	component: ApprovalsPage,
-	loader: async ({context: {queryClient}}) => queryClient.query({...approvalsQueryOptions(), staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Approvals")],
-	}),
-});
+export const Route = createFileRoute("/approvals")(
+	{
+		component: ApprovalsPage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...approvalsQueryOptions(),
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Approvals")],
+		}),
+	},
+);
 
-function truncate(text: string, max: number): string {
+function truncate(text: string, max: number): string
+{
 	if (text.length <= max) return text;
 	return `${text.slice(0, max - 1)}…`;
 }
 
-function ApprovalsPage() {
+function ApprovalsPage()
+{
 	const {data} = useSuspenseQuery(approvalsQueryOptions());
 	const approvals = data.approvals;
 
@@ -38,16 +49,25 @@ function ApprovalsPage() {
 				<p className="mt-8 text-center text-t6">Nothing waiting on you right now.</p>
 			) : (
 				<ul className="mt-4 space-y-1">
-					{approvals.map((approval) => {
+					{approvals.map((approval) =>
+					{
 						const sessionTitle = titles[approval.sessionId] ?? approval.sessionId;
 						const linkProps = approval.planFilename
-							? ({
+							? (
+								{
 									to: "/plan/$filename",
-									params: {filename: toMdSlug(approval.planFilename)},
+									params:
+									{
+										filename: toMdSlug(approval.planFilename),
+									},
 								} as const)
-							: ({
+							: (
+								{
 									to: "/session/$id",
-									params: {id: approval.sessionId},
+									params:
+									{
+										id: approval.sessionId,
+									},
 								} as const);
 
 						return (

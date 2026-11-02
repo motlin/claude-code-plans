@@ -6,23 +6,34 @@ import * as schema from "../src/lib/db/schema";
 
 export type ReadonlyIndexDb = BetterSQLite3Database<typeof schema>;
 
-export interface CorpusDatabase {
+export interface CorpusDatabase
+{
 	index: ReadonlyIndexDb;
 	sqlite: Database.Database;
 	close(): void;
 }
 
-export function openCorpusDatabase(cacheDir: string = getCacheDir()): CorpusDatabase {
-	const sqlite = new Database(join(cacheDir, "index.db"), {
-		readonly: true,
-		fileMustExist: true,
-	});
+export function openCorpusDatabase(cacheDir: string = getCacheDir()): CorpusDatabase
+{
+	const sqlite = new Database(
+		join(cacheDir, "index.db"),
+		{
+			readonly: true,
+			fileMustExist: true,
+		},
+	);
 	sqlite.pragma("query_only = ON");
-	const index = drizzle(sqlite, {schema});
+	const index = drizzle(
+		sqlite,
+		{
+			schema,
+		},
+	);
 	return {
 		index,
 		sqlite,
-		close() {
+		close()
+		{
 			sqlite.close();
 		},
 	};

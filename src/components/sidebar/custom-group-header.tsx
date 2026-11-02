@@ -2,7 +2,8 @@ import {Ellipsis} from "lucide-react";
 import {type KeyboardEvent, type ReactNode, useRef, useState} from "react";
 
 import {useArchiveSessions} from "../../hooks/use-session-archive";
-import {
+import
+{
 	createGroup,
 	deleteGroup,
 	renameGroup,
@@ -24,7 +25,8 @@ export const KEBAB_CLASS =
 type Dialog = "new-group" | "delete" | "archive-all";
 
 /** Upstream `Cg.deleteBody`, pluralized on the sessions in the section. */
-function deleteGroupBody(name: string, count: number): string {
+function deleteGroupBody(name: string, count: number): string
+{
 	const rest =
 		count === 0
 			? "Nothing is in it."
@@ -58,7 +60,8 @@ export function CustomGroupHeader({
 	onNewSession: () => void;
 	/** The label's toggle button, replaced by the rename input while renaming. */
 	children: ReactNode;
-}) {
+})
+{
 	const {groups, assignments} = useSessionGroups();
 	const sections = useSidebarSections();
 	const manual = sections.filter((section) => section.kind === "manual");
@@ -75,12 +78,15 @@ export function CustomGroupHeader({
 	const appearance = groups.find((group) => group.id === groupId);
 	const assignedCount = Object.values(assignments).filter((id) => id === groupId).length;
 
-	const later = (action: () => void) => () => {
+	const later = (action: () => void) => () =>
+	{
 		afterClose.current = action;
 		keepFocus.current = true;
 	};
-	const onOpenChangeComplete = (open: boolean) => {
-		if (open) {
+	const onOpenChangeComplete = (open: boolean) =>
+	{
+		if (open)
+		{
 			keepFocus.current = false;
 			return;
 		}
@@ -90,18 +96,21 @@ export function CustomGroupHeader({
 	};
 	const finalFocus = () => !keepFocus.current;
 
-	const focusToggle = () => {
+	const focusToggle = () =>
+	{
 		labelRef.current?.querySelector<HTMLElement>("[data-group-toggle]")?.focus();
 	};
 	/** Move this section one place among the manual sections; false at either end. */
-	const move = (delta: -1 | 1): boolean => {
+	const move = (delta: -1 | 1): boolean =>
+	{
 		const neighbour = manual[index + delta];
 		if (neighbour === undefined) return false;
 		moveSidebarSection(groupId, sections.indexOf(neighbour));
 		return true;
 	};
 	// Upstream `no`: Alt+Shift+Up/Down on the header moves the section, keeping focus on its toggle.
-	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) =>
+	{
 		if (!event.altKey || !event.shiftKey || event.metaKey || event.ctrlKey) return;
 		if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
 		if (event.target instanceof HTMLInputElement) return;
@@ -110,7 +119,8 @@ export function CustomGroupHeader({
 		if (move(event.key === "ArrowUp" ? -1 : 1)) requestAnimationFrame(focusToggle);
 	};
 
-	const endRename = () => {
+	const endRename = () =>
+	{
 		setRenaming(false);
 		requestAnimationFrame(focusToggle);
 	};
@@ -121,22 +131,27 @@ export function CustomGroupHeader({
 			count={manual.length}
 			archiveCount={archivableIds.length}
 			appearance={appearance}
-			onAppearance={(patch) => {
+			onAppearance={(patch) =>
+			{
 				setGroupAppearance(groupId, patch);
 			}}
 			onNewSession={later(onNewSession)}
-			onRename={later(() => {
+			onRename={later(() =>
+			{
 				setRenaming(true);
 			})}
-			onNewGroup={later(() => {
+			onNewGroup={later(() =>
+			{
 				setDialog("new-group");
 			})}
 			onMove={move}
 			onSort={sortManualSectionsByName}
-			onArchiveAll={later(() => {
+			onArchiveAll={later(() =>
+			{
 				setDialog("archive-all");
 			})}
-			onDelete={later(() => {
+			onDelete={later(() =>
+			{
 				setDialog("delete");
 			})}
 		/>
@@ -151,7 +166,8 @@ export function CustomGroupHeader({
 							<InlineRenameInput
 								value={label}
 								ariaLabel="Rename section"
-								onCommit={(name) => {
+								onCommit={(name) =>
+								{
 									renameGroup(groupId, name);
 									endRename();
 								}}
@@ -174,33 +190,38 @@ export function CustomGroupHeader({
 			</Menu>
 			<NewGroupDialog
 				open={dialog === "new-group"}
-				onOpenChange={(open) => {
+				onOpenChange={(open) =>
+				{
 					setDialog(open ? "new-group" : null);
 				}}
 				onCreate={(name) => createGroup(name)}
 			/>
 			<ConfirmDialog
 				open={dialog === "delete"}
-				onOpenChange={(open) => {
+				onOpenChange={(open) =>
+				{
 					setDialog(open ? "delete" : null);
 				}}
 				title="Delete section?"
 				body={deleteGroupBody(label, assignedCount)}
 				confirmLabel="Delete"
 				variant="danger"
-				onConfirm={() => {
+				onConfirm={() =>
+				{
 					deleteGroup(groupId);
 					if (readSidebarState().collapsedGroups.includes(groupKey)) toggleSidebarGroup(groupKey);
 				}}
 			/>
 			<ConfirmDialog
 				open={dialog === "archive-all"}
-				onOpenChange={(open) => {
+				onOpenChange={(open) =>
+				{
 					setDialog(open ? "archive-all" : null);
 				}}
 				title={`Archive all sessions in “${label}”?`}
 				confirmLabel="Archive"
-				onConfirm={() => {
+				onConfirm={() =>
+				{
 					archiveSessions(archivableIds);
 				}}
 			/>
@@ -235,7 +256,8 @@ function CustomGroupMenuItems({
 	onSort: () => void;
 	onArchiveAll: () => void;
 	onDelete: () => void;
-}) {
+})
+{
 	const canReorder = index !== -1 && count > 1;
 	return (
 		<>
@@ -249,7 +271,8 @@ function CustomGroupMenuItems({
 					<MenuSeparator />
 					{index > 0 && (
 						<MenuItem
-							onSelect={() => {
+							onSelect={() =>
+							{
 								onMove(-1);
 							}}
 						>
@@ -258,7 +281,8 @@ function CustomGroupMenuItems({
 					)}
 					{index < count - 1 && (
 						<MenuItem
-							onSelect={() => {
+							onSelect={() =>
+							{
 								onMove(1);
 							}}
 						>

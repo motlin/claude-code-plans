@@ -18,6 +18,7 @@ export const CODE_TILE_CSS =
 	TOKEN_FONT_CSS;
 
 /** Upstream c5071af19 `J`: one trailing newline dropped, and each lone `\r` shown as ␍. */
-export function normalizeTileCode(code: string): string {
+export function normalizeTileCode(code: string): string
+{
 	return code.replace(/\r?\n$/, "").replace(/\r(?!\n)/g, "␍");
 }

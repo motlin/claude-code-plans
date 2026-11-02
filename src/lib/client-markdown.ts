@@ -7,7 +7,8 @@ import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
 import {requestLanguage, themeOrRequest} from "../hooks/use-shiki";
 import {type CodeThemePair, DEFAULT_CODE_THEMES} from "./code-themes";
-import {
+import
+{
 	DISABLED_REASON_ATTR,
 	DISABLED_REASON_WRAPPER_ATTR,
 	FILE_REF_BLOCK_REASONS,
@@ -18,7 +19,8 @@ import {
 } from "./file-refs";
 import {normalizeArtifactUrl} from "./artifact-output";
 import {ARTIFACT_ICON_SVG, COPY_ICON_SVG, EYE_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
-import {
+import
+{
 	type SecretMatch,
 	findSecrets,
 	maskSecretValue,
@@ -31,7 +33,8 @@ import {afterBreak, afterOpaque, newQuoteState, smartenQuotes} from "./smart-quo
 import {SHIKI_TOKENIZE_OPTIONS} from "./shiki-tokenize-options";
 import {defined} from "./defined";
 
-interface MarkdownRenderOptions {
+interface MarkdownRenderOptions
+{
 	typographer?: boolean;
 	/**
 	 * Route prefix that sibling `.md` files are addressed under, e.g.
@@ -68,7 +71,8 @@ interface MarkdownRenderOptions {
  * Per-render state; the MarkdownIt instances themselves are cached and shared. A class, so rules can narrow
  * markdown-it's untyped `env` with `instanceof`.
  */
-class MarkdownEnv {
+class MarkdownEnv
+{
 	readonly mdLinkBase: string | undefined;
 	readonly fileRefs: ReadonlyMap<string, FileRef> | undefined;
 	readonly artifactTitles: ReadonlyMap<string, string> | undefined;
@@ -79,7 +83,8 @@ class MarkdownEnv {
 	/** Mermaid fences marked so far in this render; the next one's index. */
 	mermaidFences = 0;
 
-	constructor(options?: MarkdownRenderOptions) {
+	constructor(options?: MarkdownRenderOptions)
+	{
 		this.mdLinkBase = options?.mdLinkBase;
 		this.fileRefs = options?.fileRefs;
 		this.artifactTitles = options?.artifactTitles;
@@ -90,27 +95,32 @@ class MarkdownEnv {
 	}
 }
 
-function toEnv(options?: MarkdownRenderOptions): MarkdownEnv {
+function toEnv(options?: MarkdownRenderOptions): MarkdownEnv
+{
 	return new MarkdownEnv(options);
 }
 
 /** The render's `MarkdownEnv`, or undefined for an env some other caller passed. */
-function envOf(env: unknown): MarkdownEnv | undefined {
+function envOf(env: unknown): MarkdownEnv | undefined
+{
 	return env instanceof MarkdownEnv ? env : undefined;
 }
 
 /** Marks a transcript file ref; its `data-file-*` attributes carry the target. */
 export const FILE_REF_ATTR = "data-file-ref";
 
-function fileRefHtml(text: string, ref: FileRef, escape: (value: string) => string): string {
-	if (ref.block !== undefined) {
+function fileRefHtml(text: string, ref: FileRef, escape: (value: string) => string): string
+{
+	if (ref.block !== undefined)
+	{
 		const [open, close] = blockedFileRefWrapper(ref.path, ref.block, escape);
 		return `${open}<code data-inline-code="" data-file-ref-blocked="">${escape(text)}</code>${close}`;
 	}
 	return `${fileRefButtonOpen(ref, escape)}<span data-inline-code="">${escape(text)}</span></span>`;
 }
 
-function fileRefButtonOpen(ref: FileRef, escape: (value: string) => string): string {
+function fileRefButtonOpen(ref: FileRef, escape: (value: string) => string): string
+{
 	const attrs = [
 		`role="button"`,
 		`tabindex="0"`,
@@ -133,7 +143,8 @@ function blockedFileRefWrapper(
 	path: string,
 	block: FileRefBlock,
 	escape: (value: string) => string,
-): [open: string, close: string] {
+): [open: string, close: string]
+{
 	const id = fileRefReasonId(path, block);
 	return [
 		`<span tabindex="0" ${DISABLED_REASON_WRAPPER_ATTR}="" aria-describedby="${id}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">`,
@@ -146,22 +157,30 @@ function blockedFileRefWrapper(
  * `#fragment`, or null for a link that leaves the app (any URL scheme) or
  * targets a fragment of this page.
  */
-function fileRefLinkKey(href: string): string | null {
+function fileRefLinkKey(href: string): string | null
+{
 	if (href === "" || href.startsWith("#") || /^[a-z][a-z\d+.-]*:/i.test(href)) return null;
 	const hash = href.indexOf("#");
 	const path = hash === -1 ? href : href.slice(0, hash);
-	try {
+	try
+	{
 		return decodeURIComponent(path);
-	} catch {
+	}
+	catch
+	{
 		return path;
 	}
 }
 
 /** Read the ref a {@link FILE_REF_ATTR} element carries. */
-export function fileRefFromElement(element: Element): FileRef | null {
+export function fileRefFromElement(element: Element): FileRef | null
+{
 	const path = element.getAttribute("data-file-path");
 	if (path === null) return null;
-	const ref: FileRef = {path};
+	const ref: FileRef =
+	{
+		path,
+	};
 	const line = element.getAttribute("data-file-line");
 	const endLine = element.getAttribute("data-file-end-line");
 	if (line !== null) ref.line = Number(line);
@@ -171,7 +190,8 @@ export function fileRefFromElement(element: Element): FileRef | null {
 
 type MarkdownVariant = "default" | "typographer";
 
-const plainInstances: Record<MarkdownVariant, MarkdownIt | null> = {
+const plainInstances: Record<MarkdownVariant, MarkdownIt | null> =
+{
 	default: null,
 	typographer: null,
 };
@@ -179,7 +199,8 @@ const plainInstances: Record<MarkdownVariant, MarkdownIt | null> = {
 const highlightedInstances = new Map<string, MarkdownIt>();
 const boundHighlighters = new Map<string, HighlighterCore>();
 
-function getMarkdownVariant(options?: MarkdownRenderOptions): MarkdownVariant {
+function getMarkdownVariant(options?: MarkdownRenderOptions): MarkdownVariant
+{
 	return options?.typographer ? "typographer" : "default";
 }
 
@@ -192,7 +213,8 @@ export const MERMAID_FENCE_ATTR = "data-mermaid-fence";
 export const MERMAID_SOURCE_ATTR = "data-mermaid-source";
 
 /** Upstream's code-block dispatch: only a fence whose language is `mermaid`, in any case, may draw. */
-function isMermaidFence(info: string): boolean {
+function isMermaidFence(info: string): boolean
+{
 	return info.trim().split(/\s+/)[0]?.toLowerCase() === "mermaid";
 }
 
@@ -215,7 +237,8 @@ export const SECRET_REVEAL_ATTR = "data-reveal-secrets";
 /** A `<template>` holding the raw markup a masked secret stands in for; it is not rendered or searched. */
 export const SECRET_RAW_ATTR = "data-secret-raw";
 
-function secretCopyStrip(count: number): string {
+function secretCopyStrip(count: number): string
+{
 	const label = secretToggleLabel(count, false);
 	return `<div class="${CODEBLOCK_COPY_RAIL_CLASS}"><div class="${CODEBLOCK_COPY_CLASS}"><button type="button" ${SECRET_REVEAL_ATTR} aria-pressed="false" aria-label="${label}" data-tooltip="${label}">${EYE_ICON_SVG}</button>${COPY_BUTTON}</div></div>`;
 }
@@ -225,16 +248,19 @@ const SECRET_CLOAK_BUTTON_CLASS =
 	"inline-flex shrink-0 translate-y-[1px] items-center justify-center rounded-r2 text-secondary focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus hover:text-primary";
 
 /** Upstream cloak `v`: a masked secret with its own Eye button; the raw value waits in a template. */
-function secretCloakHtml(match: SecretMatch, escape: (value: string) => string): string {
+function secretCloakHtml(match: SecretMatch, escape: (value: string) => string): string
+{
 	const label = secretLabel(match.patternId);
 	return `<span data-redacted-secret="" class="inline-flex max-w-full items-baseline gap-[2px] align-baseline"><span class="break-all"><span data-find-omitted="" class="sr-only select-none">Redacted ${label}</span><span aria-hidden="true">${escape(maskSecretValue(match.value, match.keep))}</span><template ${SECRET_RAW_ATTR}>${escape(match.value)}</template></span><button type="button" aria-pressed="false" aria-label="Reveal ${label}" class="${SECRET_CLOAK_BUTTON_CLASS}">${EYE_ICON_SVG}</button></span>`;
 }
 
 /** Upstream `_o`: inline code text with each secret drawn as a cloak. */
-function cloakedCodeHtml(text: string, matches: readonly SecretMatch[], escape: (value: string) => string): string {
+function cloakedCodeHtml(text: string, matches: readonly SecretMatch[], escape: (value: string) => string): string
+{
 	let html = "";
 	let pos = 0;
-	for (const match of matches) {
+	for (const match of matches)
+	{
 		html += escape(text.slice(pos, match.start)) + secretCloakHtml(match, escape);
 		pos = match.end;
 	}
@@ -245,17 +271,22 @@ function cloakedCodeHtml(text: string, matches: readonly SecretMatch[], escape: 
  * Upstream masks link labels and image alts (c19e90103 `Je`) and does not linkify a URL that holds a
  * secret; text inside links and images is masked here before rendering.
  */
-function maskLinkText(state: StateCore): void {
-	for (const block of state.tokens) {
+function maskLinkText(state: StateCore): void
+{
+	for (const block of state.tokens)
+	{
 		if (block.type !== "inline" || block.children === null) continue;
 		let depth = 0;
-		for (const token of block.children) {
+		for (const token of block.children)
+		{
 			if (token.type === "link_open") depth++;
 			else if (token.type === "link_close") depth = Math.max(0, depth - 1);
-			else if (token.type === "image") {
+			else if (token.type === "image")
+			{
 				token.content = maskSecrets(token.content);
 				for (const child of token.children ?? []) child.content = maskSecrets(child.content);
-			} else if (depth > 0 && token.type === "text") token.content = maskSecrets(token.content);
+			}
+			else if (depth > 0 && token.type === "text") token.content = maskSecrets(token.content);
 		}
 	}
 }
@@ -265,7 +296,8 @@ function maskLinkText(state: StateCore): void {
  * leaves as literal text. Resolve it to the sibling memory when the caller told
  * us where siblings live; otherwise decline so the text renders unchanged.
  */
-function wikiLink(state: StateInline, silent: boolean): boolean {
+function wikiLink(state: StateInline, silent: boolean): boolean
+{
 	const base = envOf(state.env)?.mdLinkBase;
 	if (base === undefined) return false;
 
@@ -279,7 +311,8 @@ function wikiLink(state: StateInline, silent: boolean): boolean {
 	const label = state.src.slice(start + 2, end);
 	if (!label || /[[\]\n]/.test(label)) return false;
 
-	if (!silent) {
+	if (!silent)
+	{
 		state.push("link_open", "a", 1).attrs = [["href", mdFileHref(base, label)]];
 		state.push("text", "", 0).content = label;
 		state.push("link_close", "a", -1);
@@ -294,7 +327,8 @@ const ARTIFACT_LINK_ATTR = "data-artifact-link";
 const ARTIFACT_LINK_TOKEN = "artifact_link";
 
 /** The plain text of the inline tokens between a link's open and close. */
-function linkText(tokens: readonly Token[]): string {
+function linkText(tokens: readonly Token[]): string
+{
 	return tokens
 		.filter((token) => token.type === "text" || token.type === "code_inline")
 		.map((token) => token.content)
@@ -310,18 +344,22 @@ function collapseLinks(
 	state: StateCore,
 	type: string,
 	match: (href: string, token: Token, text: string) => boolean,
-): void {
-	for (const block of state.tokens) {
+): void
+{
+	for (const block of state.tokens)
+	{
 		const children = block.children;
 		if (block.type !== "inline" || children === null) continue;
 		const rewritten: Token[] = [];
-		for (let index = 0; index < children.length; index++) {
+		for (let index = 0; index < children.length; index++)
+		{
 			const token = defined(children[index], "link token index out of range");
 			const href = token.type === "link_open" ? token.attrGet("href") : null;
 			const close =
 				href === null ? -1 : children.findIndex((child, at) => at > index && child.type === "link_close");
 			const text = close === -1 ? "" : linkText(children.slice(index + 1, close));
-			if (href === null || close === -1 || !match(href, token, text)) {
+			if (href === null || close === -1 || !match(href, token, text))
+			{
 				rewritten.push(token);
 				continue;
 			}
@@ -336,7 +374,8 @@ function collapseLinks(
 }
 
 /** Upstream renders a markdown link to a claude.ai artifact as an inline chip rather than plain link text. */
-function artifactLinks(state: StateCore): void {
+function artifactLinks(state: StateCore): void
+{
 	collapseLinks(state, ARTIFACT_LINK_TOKEN, (href) => normalizeArtifactUrl(href) !== undefined);
 }
 
@@ -344,13 +383,15 @@ const PR_CHIP_TOKEN = "pr_chip";
 
 const GITHUB_PR_URL = /^https:\/\/github\.com\/([^/?#]+)\/([^/?#]+)\/pull\/(\d+)\/?(?:[?#].*)?$/;
 
-interface PullRequestRef {
+interface PullRequestRef
+{
 	owner: string;
 	repo: string;
 	number: string;
 }
 
-function parsePullRequestUrl(href: string): PullRequestRef | undefined {
+function parsePullRequestUrl(href: string): PullRequestRef | undefined
+{
 	const match = GITHUB_PR_URL.exec(href);
 	if (match === null) return undefined;
 	return {
@@ -367,7 +408,8 @@ const PR_REF_LABEL = /^(?:([\w.-]+)\/([\w.-]+))?#(\d{1,9})$/;
  * upstream draws as a chip: no text, the URL itself, or `#n` / `owner/repo#n`
  * naming the same pull request.
  */
-function labelNamesPullRequest(text: string, href: string, ref: PullRequestRef): boolean {
+function labelNamesPullRequest(text: string, href: string, ref: PullRequestRef): boolean
+{
 	const label = text.trim();
 	if (label === "" || label === href) return true;
 	const match = PR_REF_LABEL.exec(label);
@@ -376,34 +418,40 @@ function labelNamesPullRequest(text: string, href: string, ref: PullRequestRef):
 }
 
 /** Raw PR URLs, and links whose text only restates the PR, become chips; other authored links keep their label tokens. */
-function pullRequestChips(state: StateCore): void {
-	collapseLinks(state, PR_CHIP_TOKEN, (href, token, text) => {
+function pullRequestChips(state: StateCore): void
+{
+	collapseLinks(state, PR_CHIP_TOKEN, (href, token, text) =>
+	{
 		const ref = parsePullRequestUrl(href);
 		if (ref === undefined) return false;
 		return token.markup === "linkify" || token.markup === "autolink" || labelNamesPullRequest(text, href, ref);
 	});
 }
 
-function pullRequestChipHtml(token: Token, escape: (value: string) => string): string {
+function pullRequestChipHtml(token: Token, escape: (value: string) => string): string
+{
 	const href = token.attrGet("href") ?? "";
 	const {owner, repo, number} = defined(parsePullRequestUrl(href), "PR chip token href");
 	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="pr-chip"><span class="whitespace-nowrap">${PR_ICON_SVG}${escape(`${owner}/${repo}#${number}`)}</span></a>`;
 }
 
 /** Whether `href` leaves the app, so it opens in a new tab like upstream's links. */
-function isExternalHref(href: string): boolean {
+function isExternalHref(href: string): boolean
+{
 	return /^https?:\/\//i.test(href);
 }
 
 /** Upstream's inline artifact chip: the artifact glyph and title on an accent-muted fill, in the line of prose. */
-function artifactLinkHtml(token: Token, env: MarkdownEnv | undefined, escape: (value: string) => string) {
+function artifactLinkHtml(token: Token, env: MarkdownEnv | undefined, escape: (value: string) => string)
+{
 	const href = token.attrGet("href") ?? "";
 	const {id} = defined(normalizeArtifactUrl(href), "artifact link token href");
 	const title = env?.artifactTitles?.get(id) ?? token.content;
 	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="artifact-link-chip" ${ARTIFACT_LINK_ATTR}="">${ARTIFACT_ICON_SVG}<span class="artifact-link-chip-title">${escape(title)}</span></a>`;
 }
 
-function artifactLinkCardHtml(href: string, host: string, title: string, escape: (value: string) => string): string {
+function artifactLinkCardHtml(href: string, host: string, title: string, escape: (value: string) => string): string
+{
 	const label = escape(`Artifact: ${title}`);
 	const attrs = [
 		`href="${escape(href)}"`,
@@ -418,11 +466,15 @@ function artifactLinkCardHtml(href: string, host: string, title: string, escape:
 }
 
 /** Upstream's artifact link card for `href`, as an Artifact tool result renders. */
-export function renderArtifactLinkCard(href: string, title: string): string {
+export function renderArtifactLinkCard(href: string, title: string): string
+{
 	let host = "";
-	try {
+	try
+	{
 		host = new URL(href).host;
-	} catch {
+	}
+	catch
+	{
 		// An unparsable href still renders, captioned without a host.
 	}
 	return artifactLinkCardHtml(href, host, title, getPlainMarkdownIt().utils.escapeHtml);
@@ -430,35 +482,63 @@ export function renderArtifactLinkCard(href: string, title: string): string {
 
 const NUMERIC_CELL = /^[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)?(?:\.\d+)?%?$/;
 
-function isNumericCell(text: string): boolean {
+function isNumericCell(text: string): boolean
+{
 	const trimmed = text.trim();
 	return /\d/.test(trimmed) && NUMERIC_CELL.test(trimmed);
 }
 
 /** Groups one table's cell-open tokens by column, with each body cell's text. */
-function tableColumns(tokens: Token[], start: number): {end: number; columns: {cells: Token[]; body: string[]}[]} {
-	const columns: {cells: Token[]; body: string[]}[] = [];
+function tableColumns(
+	tokens: Token[],
+	start: number,
+):
+{
+	end: number;
+	columns:
+	{
+		cells: Token[];
+		body: string[];
+	}[];
+}
+{
+	const columns:
+	{
+		cells: Token[];
+		body: string[];
+	}[] = [];
 	let column = 0;
 	let index = start + 1;
-	for (; index < tokens.length; index++) {
+	for (; index < tokens.length; index++)
+	{
 		const token = defined(tokens[index], "table token index out of range");
 		if (token.type === "table_close") break;
 		if (token.type === "tr_open") column = 0;
 		if (token.type !== "th_open" && token.type !== "td_open") continue;
-		const entry = (columns[column] ??= {cells: [], body: []});
+		const entry = (columns[column] ??=
+		{
+			cells: [],
+			body: [],
+		});
 		entry.cells.push(token);
 		if (token.type === "td_open") entry.body.push(tokens[index + 1]?.content ?? "");
 		column++;
 	}
-	return {end: index, columns};
+	return {
+		end: index,
+		columns,
+	};
 }
 
 /** Marks every cell of a column whose body cells all parse as numbers, so it can right-align like upstream's. */
-function numericTableColumns(state: StateCore): void {
-	for (let index = 0; index < state.tokens.length; index++) {
+function numericTableColumns(state: StateCore): void
+{
+	for (let index = 0; index < state.tokens.length; index++)
+	{
 		if (state.tokens[index]?.type !== "table_open") continue;
 		const {end, columns} = tableColumns(state.tokens, index);
-		for (const {cells, body} of columns) {
+		for (const {cells, body} of columns)
+		{
 			if (body.length === 0 || !body.every(isNumericCell)) continue;
 			for (const cell of cells) cell.attrSet("data-numeric", "");
 		}
@@ -467,7 +547,8 @@ function numericTableColumns(state: StateCore): void {
 }
 
 /** Whether a link shows its own URL, which upstream leaves as written. */
-function isBareUrlLink(children: readonly Token[], open: number): boolean {
+function isBareUrlLink(children: readonly Token[], open: number): boolean
+{
 	const text = children[open + 1];
 	if (text?.type !== "text" || children[open + 2]?.type !== "link_close") return false;
 	const href = children[open]?.attrGet("href");
@@ -479,15 +560,19 @@ function isBareUrlLink(children: readonly Token[], open: number): boolean {
  * asks for it, carrying context across its text runs. Code, bare URLs and other
  * opaque inline content stay straight and read as a word to what follows.
  */
-function smartQuotes(state: StateCore): void {
+function smartQuotes(state: StateCore): void
+{
 	if (envOf(state.env)?.smartQuotes !== true) return;
-	for (const block of state.tokens) {
+	for (const block of state.tokens)
+	{
 		const children = block.type === "inline" ? block.children : null;
 		if (children === null) continue;
 		const quotes = newQuoteState();
-		for (let i = 0; i < children.length; i++) {
+		for (let i = 0; i < children.length; i++)
+		{
 			const token = defined(children[i], "inline token index out of range");
-			switch (token.type) {
+			switch (token.type)
+			{
 				case "text":
 					token.content = smartenQuotes(token.content, quotes);
 					break;
@@ -496,7 +581,8 @@ function smartQuotes(state: StateCore): void {
 					afterBreak(quotes);
 					break;
 				case "link_open":
-					if (isBareUrlLink(children, i)) {
+					if (isBareUrlLink(children, i))
+					{
 						afterOpaque(quotes);
 						i += 2;
 					}
@@ -530,8 +616,10 @@ const zonedTimesListeners = new Set<() => void>();
 /** Cheap test for text that might hold a zoned clock time. */
 const CLOCK_TIME_CANDIDATE = /\d:\d\d/;
 
-async function loadTimeWithZone(): Promise<void> {
-	timeWithZoneLoad ??= import("./time-with-zone").then((module) => {
+async function loadTimeWithZone(): Promise<void>
+{
+	timeWithZoneLoad ??= import("./time-with-zone").then((module) =>
+	{
 		timeWithZone = module;
 		zonedTimesLoadVersion++;
 		for (const listener of zonedTimesListeners) listener();
@@ -540,22 +628,27 @@ async function loadTimeWithZone(): Promise<void> {
 }
 
 /** Subscribe function for useSyncExternalStore: fires once the zoned-time parser loads. */
-export function subscribeZonedTimes(listener: () => void): () => void {
+export function subscribeZonedTimes(listener: () => void): () => void
+{
 	zonedTimesListeners.add(listener);
-	return () => {
+	return () =>
+	{
 		zonedTimesListeners.delete(listener);
 	};
 }
 
 /** Snapshot for useSyncExternalStore that changes only for markdown the parser's arrival can redraw. */
-export function zonedTimesVersion(markdown: string, enabled: boolean): number {
+export function zonedTimesVersion(markdown: string, enabled: boolean): number
+{
 	return enabled && CLOCK_TIME_CANDIDATE.test(markdown) ? zonedTimesLoadVersion : 0;
 }
 
 /** Split each zoned clock time into its own token, once the parser has loaded and when the render asks for it. */
-function zonedTimes(state: StateCore): void {
+function zonedTimes(state: StateCore): void
+{
 	if (envOf(state.env)?.zonedTimes !== true) return;
-	if (timeWithZone === null) {
+	if (timeWithZone === null)
+	{
 		if (CLOCK_TIME_CANDIDATE.test(state.src)) void loadTimeWithZone();
 		return;
 	}
@@ -563,7 +656,11 @@ function zonedTimes(state: StateCore): void {
 }
 
 /** What a file-ref link's `link_open` left on its `link_close` to render instead of `</a>`. */
-function isFileRefClose(meta: unknown): meta is {fileRefClose: string} {
+function isFileRefClose(meta: unknown): meta is
+{
+	fileRefClose: string;
+}
+{
 	return typeof meta === "object" && meta !== null && "fileRefClose" in meta && typeof meta.fileRefClose === "string";
 }
 
@@ -571,20 +668,23 @@ function isFileRefClose(meta: unknown): meta is {fileRefClose: string} {
  * Upstream `Bi`: under `headingsUnder`, a heading announces `aria-level` = under + 1 + the number of distinct
  * shallower heading levels the document uses (capped at 6), so a tool body never joins the page's h1-h3 outline.
  */
-function headingsUnder(state: StateCore): void {
+function headingsUnder(state: StateCore): void
+{
 	const under = envOf(state.env)?.headingsUnder;
 	if (under === undefined) return;
 	const level = (token: Token) => Number(token.tag.slice(1));
 	const headings = state.tokens.filter((token) => token.type === "heading_open");
 	const used = new Set(headings.map(level));
-	for (const heading of headings) {
+	for (const heading of headings)
+	{
 		const shallower = [...used].filter((other) => other < level(heading)).length;
 		heading.attrSet("aria-level", String(Math.min(under + 1 + shallower, 6)));
 	}
 }
 
 /** The plugins and renderer overrides every cached instance shares. */
-function applyPlugins(instance: MarkdownIt): void {
+function applyPlugins(instance: MarkdownIt): void
+{
 	instance.use(taskLists);
 	instance.use(footnote);
 	instance.inline.ruler.before("link", "wikilink", wikiLink);
@@ -609,10 +709,12 @@ function applyPlugins(instance: MarkdownIt): void {
 	// route that serves them is keyed by the extension-less slug, so an
 	// unrewritten link is a hard 404 rather than a redirect.
 	const renderCodeInline = defined(instance.renderer.rules.code_inline, "markdown-it code_inline rule");
-	instance.renderer.rules.code_inline = (tokens, idx, options, env, self) => {
+	instance.renderer.rules.code_inline = (tokens, idx, options, env, self) =>
+	{
 		const text = defined(tokens[idx], "code_inline token").content;
 		const secrets = findSecrets(text);
-		if (secrets.length > 0) {
+		if (secrets.length > 0)
+		{
 			const escape = instance.utils.escapeHtml;
 			return `<code data-code-text="${escape(maskSecrets(text))}">${cloakedCodeHtml(text, secrets, escape)}</code>`;
 		}
@@ -625,48 +727,69 @@ function applyPlugins(instance: MarkdownIt): void {
 	// Upstream routes a link whose href is a file path through the same file-ref
 	// renderer as inline code, with the link text as its content; a file path
 	// that doesn't resolve keeps only its text rather than a dead relative link.
-	instance.renderer.rules["link_open"] = (tokens, idx, options, env, self) => {
+	instance.renderer.rules["link_open"] = (tokens, idx, options, env, self) =>
+	{
 		const token = defined(tokens[idx], "link_open token");
 		const href = token.attrGet("href");
 		const markdownEnv = envOf(env);
 		const fileRefs = markdownEnv?.fileRefs;
 		const key = fileRefs === undefined || href === null ? null : fileRefLinkKey(href);
-		if (href !== null && findSecrets(href).length > 0) {
+		if (href !== null && findSecrets(href).length > 0)
+		{
 			const secretClose = tokens.slice(idx + 1).find((other) => other.type === "link_close");
-			if (secretClose !== undefined) {
-				secretClose.meta = {fileRefClose: ""};
+			if (secretClose !== undefined)
+			{
+				secretClose.meta =
+				{
+					fileRefClose: "",
+				};
 				return "";
 			}
 		}
 		const close = key === null ? undefined : tokens.slice(idx + 1).find((other) => other.type === "link_close");
-		if (key !== null && close !== undefined) {
+		if (key !== null && close !== undefined)
+		{
 			const ref = fileRefs?.get(key);
-			if (ref !== undefined) {
+			if (ref !== undefined)
+			{
 				const escape = instance.utils.escapeHtml;
-				if (ref.block === undefined) {
-					close.meta = {fileRefClose: "</span>"};
+				if (ref.block === undefined)
+				{
+					close.meta =
+					{
+						fileRefClose: "</span>",
+					};
 					return fileRefButtonOpen(ref, escape);
 				}
 				const [open, closeHtml] = blockedFileRefWrapper(ref.path, ref.block, escape);
-				close.meta = {fileRefClose: closeHtml};
+				close.meta =
+				{
+					fileRefClose: closeHtml,
+				};
 				return open;
 			}
 		}
 		const base = markdownEnv?.mdLinkBase;
 		const resolved = base === undefined || href === null ? null : resolveRelativeMdHref(href, base);
 		if (resolved !== null) token.attrSet("href", resolved);
-		else if (key !== null && close !== undefined && parseFileRefText(key) !== null) {
-			close.meta = {fileRefClose: ""};
+		else if (key !== null && close !== undefined && parseFileRefText(key) !== null)
+		{
+			close.meta =
+			{
+				fileRefClose: "",
+			};
 			return "";
 		}
-		if (href !== null && isExternalHref(href)) {
+		if (href !== null && isExternalHref(href))
+		{
 			token.attrSet("target", "_blank");
 			token.attrSet("rel", "noreferrer");
 		}
 		return self.renderToken(tokens, idx, options);
 	};
 
-	instance.renderer.rules["link_close"] = (tokens, idx, options, _env, self) => {
+	instance.renderer.rules["link_close"] = (tokens, idx, options, _env, self) =>
+	{
 		const meta: unknown = defined(tokens[idx], "link_close token").meta;
 		return isFileRefClose(meta) ? meta.fileRefClose : self.renderToken(tokens, idx, options);
 	};
@@ -677,11 +800,13 @@ function applyPlugins(instance: MarkdownIt): void {
 	const renderFence = defined(instance.renderer.rules.fence, "markdown-it fence rule");
 	// A fence holding secrets draws masked text with a Reveal toggle before Copy (upstream code card
 	// c5071af19); the raw highlighted block waits in a template the toggle swaps in.
-	instance.renderer.rules.fence = (tokens, idx, options, env, self) => {
+	instance.renderer.rules.fence = (tokens, idx, options, env, self) =>
+	{
 		const token = defined(tokens[idx], "fence token");
 		const raw = token.content;
 		const secrets = findSecrets(raw);
-		if (secrets.length === 0) {
+		if (secrets.length === 0)
+		{
 			const block = `<div class="${CODEBLOCK_CLASS} epitaxy-codeblock">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>`;
 			const markdownEnv = envOf(env);
 			// Upstream's pre-gate `Z` keeps a fence holding a secret as its (masked) code block.
@@ -705,25 +830,30 @@ function applyPlugins(instance: MarkdownIt): void {
 		`${self.renderToken(tokens, idx, options)}</div>`;
 }
 
-function getPlainMarkdownIt(options?: MarkdownRenderOptions): MarkdownIt {
+function getPlainMarkdownIt(options?: MarkdownRenderOptions): MarkdownIt
+{
 	const variant = getMarkdownVariant(options);
 	const cachedInstance = plainInstances[variant];
 	if (cachedInstance) return cachedInstance;
 
-	const instance = MarkdownIt({
-		html: false,
-		linkify: true,
-		typographer: options?.typographer ?? false,
-	});
+	const instance = MarkdownIt(
+		{
+			html: false,
+			linkify: true,
+			typographer: options?.typographer ?? false,
+		},
+	);
 	applyPlugins(instance);
 	plainInstances[variant] = instance;
 	return instance;
 }
 
-function getHighlightedMarkdownIt(highlighter: HighlighterCore, options?: MarkdownRenderOptions): MarkdownIt {
+function getHighlightedMarkdownIt(highlighter: HighlighterCore, options?: MarkdownRenderOptions): MarkdownIt
+{
 	const variant = getMarkdownVariant(options);
 	const chosen = options?.codeThemes ?? DEFAULT_CODE_THEMES;
-	const themes = {
+	const themes =
+	{
 		light:
 			chosen.light === DEFAULT_CODE_THEMES.light
 				? chosen.light
@@ -739,32 +869,42 @@ function getHighlightedMarkdownIt(highlighter: HighlighterCore, options?: Markdo
 	const cachedInstance = highlightedInstances.get(cacheKey);
 	if (cachedInstance && boundHighlighters.get(cacheKey) === highlighter) return cachedInstance;
 
-	const instance = MarkdownIt({
-		html: false,
-		linkify: true,
-		typographer: options?.typographer ?? false,
-		highlight(code: string, lang: string): string {
-			const language = lang || "text";
-			if (language === "text") return "";
-			if (!highlighter.getLoadedLanguages().includes(language)) {
-				void requestLanguage(language);
-				return "";
-			}
-			try {
-				let trimmed = code;
-				if (trimmed.endsWith("\n")) trimmed = trimmed.slice(0, -1);
-				return highlighter.codeToHtml(trimmed, {
-					...SHIKI_TOKENIZE_OPTIONS,
-					lang: language,
-					themes,
-					defaultColor: "light",
-					cssVariablePrefix: "--shiki-",
-				});
-			} catch {
-				return "";
-			}
+	const instance = MarkdownIt(
+		{
+			html: false,
+			linkify: true,
+			typographer: options?.typographer ?? false,
+			highlight(code: string, lang: string): string
+			{
+				const language = lang || "text";
+				if (language === "text") return "";
+				if (!highlighter.getLoadedLanguages().includes(language))
+				{
+					void requestLanguage(language);
+					return "";
+				}
+				try
+				{
+					let trimmed = code;
+					if (trimmed.endsWith("\n")) trimmed = trimmed.slice(0, -1);
+					return highlighter.codeToHtml(
+						trimmed,
+						{
+							...SHIKI_TOKENIZE_OPTIONS,
+							lang: language,
+							themes,
+							defaultColor: "light",
+							cssVariablePrefix: "--shiki-",
+						},
+					);
+				}
+				catch
+				{
+					return "";
+				}
+			},
 		},
-	});
+	);
 	applyPlugins(instance);
 	highlightedInstances.set(cacheKey, instance);
 	boundHighlighters.set(cacheKey, highlighter);
@@ -778,9 +918,16 @@ let previewInstance: MarkdownIt | null = null;
  * `renderUrlsAsText`, `renderMermaidAsCode` and `flagShowCodeHeader: false`, so URLs and links read
  * as their text and every fence is a bare code block with no header or copy button.
  */
-function getPreviewMarkdownIt(): MarkdownIt {
+function getPreviewMarkdownIt(): MarkdownIt
+{
 	if (previewInstance) return previewInstance;
-	const instance = MarkdownIt({html: false, linkify: false, typographer: false});
+	const instance = MarkdownIt(
+		{
+			html: false,
+			linkify: false,
+			typographer: false,
+		},
+	);
 	const renderFence = defined(instance.renderer.rules.fence, "markdown-it fence rule");
 	applyPlugins(instance);
 	instance.core.ruler.disable([ARTIFACT_LINK_TOKEN, PR_CHIP_TOKEN]);
@@ -792,19 +939,22 @@ function getPreviewMarkdownIt(): MarkdownIt {
 }
 
 /** Render an AskUserQuestion option's text preview as upstream's `PreviewMarkdown` does. */
-export function renderPreviewMarkdownToHtml(markdown: string): string {
+export function renderPreviewMarkdownToHtml(markdown: string): string
+{
 	if (!markdown.trim()) return "";
 	return getPreviewMarkdownIt().render(markdown, toEnv());
 }
 
 /** Render markdown to HTML without syntax highlighting. */
-export function renderMarkdownToHtml(markdown: string, options?: MarkdownRenderOptions): string {
+export function renderMarkdownToHtml(markdown: string, options?: MarkdownRenderOptions): string
+{
 	if (!markdown.trim()) return "";
 	return getPlainMarkdownIt(options).render(markdown, toEnv(options));
 }
 
 /** Render markdown to inline HTML without a paragraph wrapper. */
-export function renderInlineMarkdownToHtml(markdown: string, options?: MarkdownRenderOptions): string {
+export function renderInlineMarkdownToHtml(markdown: string, options?: MarkdownRenderOptions): string
+{
 	if (!markdown.trim()) return "";
 	return getPlainMarkdownIt(options).renderInline(markdown, toEnv(options));
 }
@@ -812,7 +962,8 @@ export function renderInlineMarkdownToHtml(markdown: string, options?: MarkdownR
 const ARTIFACT_URL_HINT = /claude\.ai\/(?:code\/)?artifact\//;
 
 /** Whether `markdown` may hold a claude.ai artifact link worth resolving titles for. */
-export function mentionsArtifactUrl(markdown: string): boolean {
+export function mentionsArtifactUrl(markdown: string): boolean
+{
 	return ARTIFACT_URL_HINT.test(markdown);
 }
 
@@ -821,10 +972,13 @@ export function mentionsArtifactUrl(markdown: string): boolean {
  * code span, and the path every in-app markdown link points at (see
  * {@link fileRefLinkKey}). These are the keys a render's `fileRefs` map uses.
  */
-export function fileRefTexts(markdown: string): string[] {
+export function fileRefTexts(markdown: string): string[]
+{
 	const texts: string[] = [];
-	for (const token of getPlainMarkdownIt().parse(markdown, {})) {
-		for (const child of token.children ?? []) {
+	for (const token of getPlainMarkdownIt().parse(markdown, {}))
+	{
+		for (const child of token.children ?? [])
+		{
 			if (child.type === "code_inline") texts.push(child.content);
 			const href = child.type === "link_open" ? child.attrGet("href") : null;
 			const key = href === null ? null : fileRefLinkKey(href);
@@ -842,7 +996,8 @@ export function renderMarkdownWithHighlighting(
 	markdown: string,
 	highlighter: HighlighterCore | null,
 	options?: MarkdownRenderOptions,
-): string {
+): string
+{
 	if (!markdown.trim()) return "";
 	if (!highlighter) return renderMarkdownToHtml(markdown, options);
 	return getHighlightedMarkdownIt(highlighter, options).render(markdown, toEnv(options));

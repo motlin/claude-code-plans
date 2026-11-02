@@ -1,7 +1,8 @@
 import {RotateCcw} from "lucide-react";
 import {useId, useState, type KeyboardEvent, type SubmitEvent, type ReactNode} from "react";
 
-import {
+import
+{
 	elicitationFormDefaults,
 	fieldLabel,
 	isMultiSelect,
@@ -23,7 +24,16 @@ import {APPROVAL_CARD_TITLE, ApprovalActionButton, ApprovalCardShell} from "./ap
  * can be typed into field by field (elicitation-form-card-herdr-typing).
  */
 
-export type ElicitationAnswer = {action: "accept"; content: Record<string, unknown>} | {action: "decline"};
+export type ElicitationAnswer =
+	|
+	  {
+			action: "accept";
+			content: Record<string, unknown>;
+	  }
+	|
+	  {
+			action: "decline";
+	  };
 
 /** Upstream's `kE`: server text is capped at 4000 characters. */
 const TEXT_MAX = 4000;
@@ -39,103 +49,153 @@ const TEXTAREA = `${CONTROL} min-h-8 resize-none py-[6px] [field-sizing:content]
 type FieldValue = ElicitationValue | undefined;
 
 /** Upstream's `ns`: Esc never declines the form, unless an IME is composing. */
-function swallowEscape(event: KeyboardEvent<HTMLDivElement>) {
+function swallowEscape(event: KeyboardEvent<HTMLDivElement>)
+{
 	// oxlint-disable-next-line typescript/no-deprecated -- Safari reports IME keydowns only as keyCode 229, as upstream checks
-	if (event.key === "Escape" && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) {
+	if (event.key === "Escape" && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229)
+	{
 		event.preventDefault();
 	}
 }
 
 /** Upstream's `pe`: an RFC 3339 date-time as a `datetime-local` value in local time. */
-function datetimeLocal(value: string): string {
+function datetimeLocal(value: string): string
+{
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value.replace(/(?:Z|[+-]\d{2}:?\d{2})$/, "");
 	const pad = (part: number) => String(part).padStart(2, "0");
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-function initialFieldValue(field: ElicitationFieldSchema, value: FieldValue): FieldValue {
+function initialFieldValue(field: ElicitationFieldSchema, value: FieldValue): FieldValue
+{
 	if (typeof value !== "string") return value;
 	if (field["format"] === "date-time") return datetimeLocal(value);
 	return field["format"] === "date" ? value.slice(0, 10) : value;
 }
 
 /** Upstream's dirty check: empty values (and an untouched unchecked checkbox) compare equal. */
-function valueKey(value: FieldValue, boolean: boolean, initial: FieldValue): string {
+function valueKey(value: FieldValue, boolean: boolean, initial: FieldValue): string
+{
 	if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) return "__empty__";
 	if (boolean && initial === undefined && value === false) return "__empty__";
 	return JSON.stringify(Array.isArray(value) ? value.toSorted() : value);
 }
 
-interface Option {
+interface Option
+{
 	value: string;
 	label: string;
 	description?: string;
 }
 
-function cappedText(value: unknown): string {
+function cappedText(value: unknown): string
+{
 	return schemaText(value).trim().slice(0, TEXT_MAX);
 }
 
 /** Upstream's `he`: a multi-select's options from items.anyOf or items.enum. */
-function multiOptions(field: ElicitationFieldSchema): Option[] {
+function multiOptions(field: ElicitationFieldSchema): Option[]
+{
 	const items = asRecord(field["items"]);
 	const anyOf = items?.["anyOf"];
-	if (Array.isArray(anyOf)) {
-		return anyOf.map((option) => {
+	if (Array.isArray(anyOf))
+	{
+		return anyOf.map((option) =>
+		{
 			const record = asRecord(option);
 			const value = schemaText(record?.["const"]);
-			return {value, label: schemaText(record?.["title"]).trim() || value.trim()};
+			return {
+				value,
+				label: schemaText(record?.["title"]).trim() || value.trim(),
+			};
 		});
 	}
 	const values = items?.["enum"];
 	return Array.isArray(values)
-		? values.map((value) => ({value: schemaText(value), label: schemaText(value).trim()}))
+		? values.map((value) => (
+			{
+				value: schemaText(value),
+				label: schemaText(value).trim(),
+			}))
 		: [];
 }
 
 /** A string field's options from enum (+ enumNames) or oneOf, or null for free text. */
-function singleOptions(field: ElicitationFieldSchema): Option[] | null {
+function singleOptions(field: ElicitationFieldSchema): Option[] | null
+{
 	const values = field["enum"];
-	if (Array.isArray(values)) {
+	if (Array.isArray(values))
+	{
 		const names = Array.isArray(field["enumNames"]) ? field["enumNames"] : [];
-		return values.map((value, index) => ({
+		return values.map((value, index) => (
+		{
 			value: schemaText(value),
 			label: schemaText(names[index]).trim() || schemaText(value).trim(),
 		}));
 	}
 	const oneOf = field["oneOf"];
 	if (!Array.isArray(oneOf)) return null;
-	return oneOf.map((option) => {
+	return oneOf.map((option) =>
+	{
 		const record = asRecord(option);
 		const value = schemaText(record?.["const"]);
 		const description = cappedText(record?.["description"]);
 		return {
 			value,
 			label: schemaText(record?.["title"]).trim() || value.trim(),
-			...(description === "" ? {} : {description}),
+			...(description === ""
+				? {}
+				:
+					{
+						description,
+					}),
 		};
 	});
 }
 
 /** Upstream's `xe`: the input type for a string format. */
-function formatInput(format: unknown): {type: string; inputMode?: "url" | "email"; dir?: "ltr"; step?: string} {
-	switch (format) {
+function formatInput(format: unknown):
+{
+	type: string;
+	inputMode?: "url" | "email";
+	dir?: "ltr";
+	step?: string;
+}
+{
+	switch (format)
+	{
 		case "uri":
-			return {type: "text", inputMode: "url", dir: "ltr"};
+			return {
+				type: "text",
+				inputMode: "url",
+				dir: "ltr",
+			};
 		case "email":
-			return {type: "text", inputMode: "email", dir: "ltr"};
+			return {
+				type: "text",
+				inputMode: "email",
+				dir: "ltr",
+			};
 		case "date-time":
-			return {type: "datetime-local", step: "any"};
+			return {
+				type: "datetime-local",
+				step: "any",
+			};
 		case "date":
-			return {type: "date"};
+			return {
+				type: "date",
+			};
 		default:
-			return {type: "text"};
+			return {
+				type: "text",
+			};
 	}
 }
 
 /** Upstream's integer field blocks the keys that start a fraction or exponent. */
-function blockFraction(event: KeyboardEvent<HTMLInputElement>) {
+function blockFraction(event: KeyboardEvent<HTMLInputElement>)
+{
 	if (event.key === "." || event.key === "e" || event.key === "E") event.preventDefault();
 }
 
@@ -155,7 +215,8 @@ function ElicitationField({
 	hasSubmitError: boolean;
 	clearSubmitError: (name: string) => void;
 	disabled: boolean;
-}) {
+})
+{
 	const id = useId();
 	const labelId = `${id}-label`;
 	const descriptionId = `${id}-description`;
@@ -165,24 +226,29 @@ function ElicitationField({
 	const [liveError, setLiveError] = useState<string | null>(null);
 	const error = liveError ?? (hasSubmitError ? validateFieldValue(value, field, required) : null);
 
-	const validateNow = () => {
+	const validateNow = () =>
+	{
 		setLiveError(validateFieldValue(value, field, required));
 	};
-	const clearLiveError = () => {
+	const clearLiveError = () =>
+	{
 		setLiveError(null);
 	};
 	/** A pick that validates at once (numbers, checkboxes, dates). */
-	const pick = (next: FieldValue) => {
+	const pick = (next: FieldValue) =>
+	{
 		setValue(next);
 		clearSubmitError(name);
 		setLiveError(validateFieldValue(next, field, required));
 	};
 	/** A typed or chosen value that waits for blur to validate. */
-	const type = (next: FieldValue) => {
+	const type = (next: FieldValue) =>
+	{
 		setValue(next);
 		clearSubmitError(name);
 	};
-	const reset = () => {
+	const reset = () =>
+	{
 		setValue(initial);
 		setLiveError(null);
 		clearSubmitError(name);
@@ -195,11 +261,17 @@ function ElicitationField({
 	const describedBy = [description === "" ? null : descriptionId, error === null ? null : errorId]
 		.filter((part) => part !== null)
 		.join(" ");
-	const aria = {
+	const aria =
+	{
 		"aria-labelledby": labelId,
 		"aria-required": required || undefined,
 		"aria-invalid": error === null ? undefined : true,
-		...(describedBy === "" ? {} : {"aria-describedby": describedBy}),
+		...(describedBy === ""
+			? {}
+			:
+				{
+					"aria-describedby": describedBy,
+				}),
 	};
 	const label = (
 		<>
@@ -247,9 +319,11 @@ function ElicitationField({
 		</div>
 	);
 
-	if (isMultiSelect(field)) {
+	if (isMultiSelect(field))
+	{
 		const selected = Array.isArray(value) ? value : [];
-		const toggle = (option: string) => {
+		const toggle = (option: string) =>
+		{
 			pick(selected.includes(option) ? selected.filter((item) => item !== option) : [...selected, option]);
 		};
 		return frame(
@@ -261,7 +335,8 @@ function ElicitationField({
 							<input
 								type="checkbox"
 								checked={selected.includes(option.value)}
-								onChange={() => {
+								onChange={() =>
+								{
 									toggle(option.value);
 								}}
 							/>
@@ -273,7 +348,8 @@ function ElicitationField({
 		);
 	}
 
-	if (boolean) {
+	if (boolean)
+	{
 		return frame(
 			<>
 				<input type="hidden" name={name} value={value === undefined ? "" : String(value)} disabled={disabled} />
@@ -282,9 +358,15 @@ function ElicitationField({
 						type="checkbox"
 						aria-required={required || undefined}
 						aria-invalid={error === null ? undefined : true}
-						{...(describedBy === "" ? {} : {"aria-describedby": describedBy})}
+						{...(describedBy === ""
+							? {}
+							:
+								{
+									"aria-describedby": describedBy,
+								})}
 						checked={value === true}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							pick(event.currentTarget.checked);
 						}}
 					/>
@@ -295,7 +377,8 @@ function ElicitationField({
 		);
 	}
 
-	if (field["type"] === "number" || field["type"] === "integer") {
+	if (field["type"] === "number" || field["type"] === "integer")
+	{
 		const integer = field["type"] === "integer";
 		return frame(
 			<input
@@ -306,9 +389,11 @@ function ElicitationField({
 				className={INPUT}
 				{...aria}
 				value={value === undefined ? "" : String(value)}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					const text = event.currentTarget.value;
-					if (text === "") {
+					if (text === "")
+					{
 						pick("");
 						return;
 					}
@@ -323,10 +408,12 @@ function ElicitationField({
 	}
 
 	const options = singleOptions(field);
-	if (options !== null) {
+	if (options !== null)
+	{
 		const current = value === undefined ? "" : String(value);
 		const radios = Array.isArray(field["oneOf"]) && required && options.length <= RADIO_MAX;
-		if (radios && options.some((option) => option.description !== undefined)) {
+		if (radios && options.some((option) => option.description !== undefined))
+		{
 			const checked = options.some((option) => option.value === current) ? current : "";
 			return frame(
 				<>
@@ -338,7 +425,8 @@ function ElicitationField({
 									type="radio"
 									name={`${id}-radio`}
 									checked={checked === option.value}
-									onChange={() => {
+									onChange={() =>
+									{
 										type(option.value);
 										setLiveError(null);
 									}}
@@ -363,11 +451,13 @@ function ElicitationField({
 				className={INPUT}
 				{...aria}
 				value={current}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					type(event.currentTarget.value);
 				}}
 				onFocus={clearLiveError}
-				onBlur={() => {
+				onBlur={() =>
+				{
 					if (value !== undefined) validateNow();
 				}}
 			>
@@ -382,7 +472,8 @@ function ElicitationField({
 	}
 
 	const format = field["format"];
-	if (format === undefined) {
+	if (format === undefined)
+	{
 		return frame(
 			<textarea
 				name={name}
@@ -391,7 +482,8 @@ function ElicitationField({
 				className={TEXTAREA}
 				{...aria}
 				value={typeof value === "string" ? value : ""}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					type(event.currentTarget.value);
 				}}
 				onFocus={clearLiveError}
@@ -407,7 +499,8 @@ function ElicitationField({
 			{...formatInput(format)}
 			{...aria}
 			value={value === undefined ? "" : String(value)}
-			onChange={(event) => {
+			onChange={(event) =>
+			{
 				(format === "date" ? pick : type)(event.currentTarget.value);
 			}}
 			onFocus={clearLiveError}
@@ -434,7 +527,8 @@ export function ElicitationFormCard({
 	schema: ElicitationFormSchema;
 	fieldNames: readonly string[];
 	onAnswer: (answer: ElicitationAnswer) => Promise<void>;
-}) {
+})
+{
 	const formId = useId();
 	const [defaults] = useState(() => elicitationFormDefaults(schema));
 	const [requiredKeys] = useState(() => requiredFieldNames(schema));
@@ -445,32 +539,46 @@ export function ElicitationFormCard({
 	const title = `${serverName.trim() || "An unknown server"} requests your input`;
 	const shownMessage = message.slice(0, TEXT_MAX).trim();
 
-	const answer = async (result: ElicitationAnswer) => {
+	const answer = async (result: ElicitationAnswer) =>
+	{
 		if (sending) return;
 		setError(null);
 		setInFlight(result.action);
-		try {
+		try
+		{
 			await onAnswer(result);
-		} catch (err) {
+		}
+		catch (err)
+		{
 			setError(err instanceof Error ? err.message : "Failed to answer the request");
 			setInFlight(null);
 		}
 	};
-	const clearSubmitError = (name: string) => {
-		setInvalidFields((current) => {
+	const clearSubmitError = (name: string) =>
+	{
+		setInvalidFields((current) =>
+		{
 			if (!current.has(name)) return current;
 			const next = new Set(current);
 			next.delete(name);
 			return next;
 		});
 	};
-	const onSubmitCapture = (event: SubmitEvent<HTMLFormElement>) => {
+	const onSubmitCapture = (event: SubmitEvent<HTMLFormElement>) =>
+	{
 		setInvalidFields(parseElicitationForm(new FormData(event.currentTarget), schema).invalidFields);
 	};
-	const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+	const onSubmit = (event: SubmitEvent<HTMLFormElement>) =>
+	{
 		event.preventDefault();
 		const {data, invalidFields: invalid} = parseElicitationForm(new FormData(event.currentTarget), schema);
-		if (invalid.size === 0) void answer({action: "accept", content: data});
+		if (invalid.size === 0)
+			void answer(
+				{
+					action: "accept",
+					content: data,
+				},
+			);
 	};
 
 	return (
@@ -497,13 +605,19 @@ export function ElicitationFormCard({
 						noValidate
 						data-testid="epitaxy-elicitation-form"
 						data-owns-typing-and-pastes=""
-						{...(sending ? {"data-disabled": ""} : {})}
+						{...(sending
+							?
+								{
+									"data-disabled": "",
+								}
+							: {})}
 						className="flex flex-col gap-2"
 						onSubmitCapture={onSubmitCapture}
 						onSubmit={onSubmit}
 					>
 						<fieldset disabled={sending} className="contents">
-							{fieldNames.map((name) => {
+							{fieldNames.map((name) =>
+							{
 								const field = schema.properties[name];
 								if (field === undefined) return null;
 								return (
@@ -538,7 +652,13 @@ export function ElicitationFormCard({
 					<ApprovalActionButton
 						variant="secondary"
 						disabled={sending}
-						onClick={() => void answer({action: "decline"})}
+						onClick={() =>
+							void answer(
+								{
+									action: "decline",
+								},
+							)
+						}
 					>
 						Decline
 					</ApprovalActionButton>
@@ -548,7 +668,8 @@ export function ElicitationFormCard({
 							data-approval-primary=""
 							busy={inFlight === "accept"}
 							disabled={inFlight === "decline"}
-							onClick={() => {
+							onClick={() =>
+							{
 								const form = document.getElementById(formId);
 								if (form instanceof HTMLFormElement) form.requestSubmit();
 							}}

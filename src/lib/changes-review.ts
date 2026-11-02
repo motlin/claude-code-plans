@@ -11,86 +11,144 @@ const CHANGES_REVIEW_STORAGE_KEY = "ccb.changesReview.v1";
 /** Window event an already-open Changes pane listens for to show a review's findings. */
 export const CHANGES_REVIEW_REQUEST_EVENT = "ccp:changes-review-request";
 
-interface ChangesReviewRequest {
+interface ChangesReviewRequest
+{
 	sessionId: string;
 	reviewId: string;
 }
 
 const ChangesReviewStoreSchema = z.record(z.string(), z.string());
 
-function browserStorage(): Storage | null {
+function browserStorage(): Storage | null
+{
 	if (typeof window === "undefined") return null;
-	try {
+	try
+	{
 		return window.localStorage;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-function readStore(storage: Storage): Record<string, string> {
-	try {
+function readStore(storage: Storage): Record<string, string>
+{
+	try
+	{
 		const raw = storage.getItem(CHANGES_REVIEW_STORAGE_KEY);
 		if (raw === null) return {};
 		const parsed = ChangesReviewStoreSchema.safeParse(JSON.parse(raw));
 		return parsed.success ? parsed.data : {};
-	} catch {
+	}
+	catch
+	{
 		return {};
 	}
 }
 
-export function loadChangesReview(sessionId: string, storage: Storage | null = browserStorage()): string | null {
+export function loadChangesReview(sessionId: string, storage: Storage | null = browserStorage()): string | null
+{
 	return (storage && readStore(storage)[sessionId]) ?? null;
 }
 
-function saveChangesReview(sessionId: string, reviewId: string, storage: Storage | null = browserStorage()): void {
+function saveChangesReview(sessionId: string, reviewId: string, storage: Storage | null = browserStorage()): void
+{
 	if (!storage) return;
-	try {
-		storage.setItem(CHANGES_REVIEW_STORAGE_KEY, JSON.stringify({...readStore(storage), [sessionId]: reviewId}));
-	} catch {
+	try
+	{
+		storage.setItem(
+			CHANGES_REVIEW_STORAGE_KEY,
+			JSON.stringify(
+				{
+					...readStore(storage),
+					[sessionId]: reviewId,
+				},
+			),
+		);
+	}
+	catch
+	{
 		// localStorage can be denied even when window exists; this is best-effort.
 	}
 }
 
-export interface ReviewChangesTarget {
+export interface ReviewChangesTarget
+{
 	to: "/session/$id";
-	params: {id: string};
-	search: {pane: "changes"};
+	params:
+	{
+		id: string;
+	};
+	search:
+	{
+		pane: "changes";
+	};
 }
 
 /**
  * Point the session's Changes pane at `reviewId`'s findings on the Uncommitted
  * scope, and return where to navigate so the session opens with the pane.
  */
-export function openReviewInChanges(sessionId: string, reviewId: string): ReviewChangesTarget {
+export function openReviewInChanges(sessionId: string, reviewId: string): ReviewChangesTarget
+{
 	saveChangesReview(sessionId, reviewId);
 	reviewScrollRequests.add(sessionId);
 	requestChangesScope(sessionId, "uncommitted");
-	if (typeof window !== "undefined") {
+	if (typeof window !== "undefined")
+	{
 		window.dispatchEvent(
-			new CustomEvent<ChangesReviewRequest>(CHANGES_REVIEW_REQUEST_EVENT, {
-				detail: {sessionId, reviewId},
-			}),
+			new CustomEvent<ChangesReviewRequest>(
+				CHANGES_REVIEW_REQUEST_EVENT,
+				{
+					detail:
+					{
+						sessionId,
+						reviewId,
+					},
+				},
+			),
 		);
 	}
-	return {to: "/session/$id", params: {id: sessionId}, search: {pane: "changes"}};
+	return {
+		to: "/session/$id",
+		params:
+		{
+			id: sessionId,
+		},
+		search:
+		{
+			pane: "changes",
+		},
+	};
 }
 
 /** Sessions whose review was just opened: their pane scrolls to the first open finding once it loads. */
 const reviewScrollRequests = new Set<string>();
 
 /** Upstream `scrollToAnnotation(session, finding.filePath, {fuzzy: true, anchor: {side, line: endLine}})`. */
-export function scrollToFinding(sessionId: string, finding: ReviewFinding): void {
-	scrollToDiffLine(sessionId, finding.file, {
-		fuzzy: true,
-		anchor: {side: finding.side === "old" ? "deletions" : "additions", line: finding.endLine ?? finding.line},
-	});
+export function scrollToFinding(sessionId: string, finding: ReviewFinding): void
+{
+	scrollToDiffLine(
+		sessionId,
+		finding.file,
+		{
+			fuzzy: true,
+			anchor:
+			{
+				side: finding.side === "old" ? "deletions" : "additions",
+				line: finding.endLine ?? finding.line,
+			},
+		},
+	);
 }
 
 /**
  * Upstream c3fef5c6f's open findings: the first open finding becomes the target, once per `openReviewInChanges`.
  * True when it scrolled.
  */
-export function scrollToFirstOpenFinding(sessionId: string, findings: readonly ReviewFinding[]): boolean {
+export function scrollToFirstOpenFinding(sessionId: string, findings: readonly ReviewFinding[]): boolean
+{
 	if (!reviewScrollRequests.delete(sessionId)) return false;
 	const first = findings.find((finding) => !finding.resolved);
 	if (first === undefined) return false;
@@ -99,10 +157,8 @@ export function scrollToFirstOpenFinding(sessionId: string, findings: readonly R
 }
 
 /** Upstream `dismissReviewFinding`: the open finding after the dismissed one, else the one before it. */
-export function findingAfterDismiss(
-	findings: readonly ReviewFinding[],
-	dismissedId: string,
-): ReviewFinding | undefined {
+export function findingAfterDismiss(findings: readonly ReviewFinding[], dismissedId: string): ReviewFinding | undefined
+{
 	const open = findings.filter((finding) => !finding.resolved);
 	const index = open.findIndex((finding) => finding.id === dismissedId);
 	if (index < 0) return undefined;
@@ -110,15 +166,29 @@ export function findingAfterDismiss(
 }
 
 /** `openReviewInChanges`'s target as an href. */
-export function reviewChangesHref(sessionId: string): string {
+export function reviewChangesHref(sessionId: string): string
+{
 	return `/session/${encodeURIComponent(sessionId)}?pane=changes`;
 }
 
 /** The chat-input text "Fix this one" sends for a finding. */
-export function formatFixFindingPrompt(finding: ReviewFinding): string {
-	const range = finding.side === "new" ? {start: finding.line, end: finding.endLine ?? finding.line} : undefined;
+export function formatFixFindingPrompt(finding: ReviewFinding): string
+{
+	const range =
+		finding.side === "new"
+			?
+				{
+					start: finding.line,
+					end: finding.endLine ?? finding.line,
+				}
+			: undefined;
 	const lines = [
-		`Fix this review finding in ${formatAttachContext({path: finding.file, range})}: ${finding.title}`,
+		`Fix this review finding in ${formatAttachContext(
+			{
+				path: finding.file,
+				range,
+			},
+		)}: ${finding.title}`,
 		"",
 		finding.body,
 	];

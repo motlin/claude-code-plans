@@ -1,8 +1,10 @@
 import {describe, expect, it} from "vite-plus/test";
 import {paletteEmptyKind, paletteEmptyMessage} from "../src/lib/palette-empty";
 
-describe("paletteEmptyMessage", () => {
-	it("ports upstream's zg copy, dropping queries longer than 50 characters", () => {
+describe("paletteEmptyMessage", () =>
+{
+	it("ports upstream's zg copy, dropping queries longer than 50 characters", () =>
+	{
 		const long = "x".repeat(51);
 		const fifty = "y".repeat(50);
 		const cases: [string, string | null][] = [
@@ -31,26 +33,92 @@ describe("paletteEmptyMessage", () => {
 	});
 });
 
-describe("paletteEmptyKind", () => {
-	it("ports upstream's Sm: no kind while searching or with rows, then silent, stalled, failed, filtered, nothing", () => {
-		const base = {query: "zzqxvq", searching: false, rowCount: 0, filtered: false, failed: false, stalled: false};
+describe("paletteEmptyKind", () =>
+{
+	it("ports upstream's Sm: no kind while searching or with rows, then silent, stalled, failed, filtered, nothing", () =>
+	{
+		const base =
+		{
+			query: "zzqxvq",
+			searching: false,
+			rowCount: 0,
+			filtered: false,
+			failed: false,
+			stalled: false,
+		};
 		const cases = [
 			base,
-			{...base, searching: true},
-			{...base, rowCount: 2},
-			{...base, query: "x"},
-			{...base, query: " x "},
-			{...base, query: "x", failed: true, filtered: true},
-			{...base, query: "x", searching: true},
-			{...base, failed: true},
-			{...base, failed: true, filtered: true},
-			{...base, failed: true, rowCount: 1},
-			{...base, filtered: true},
-			{...base, query: ""},
-			{...base, query: "", filtered: true},
-			{...base, filtered: true, stalled: true},
-			{...base, filtered: true, failed: true, stalled: true},
-			{...base, query: "x", filtered: true, stalled: true},
+			{
+				...base,
+				searching: true,
+			},
+			{
+				...base,
+				rowCount: 2,
+			},
+			{
+				...base,
+				query: "x",
+			},
+			{
+				...base,
+				query: " x ",
+			},
+			{
+				...base,
+				query: "x",
+				failed: true,
+				filtered: true,
+			},
+			{
+				...base,
+				query: "x",
+				searching: true,
+			},
+			{
+				...base,
+				failed: true,
+			},
+			{
+				...base,
+				failed: true,
+				filtered: true,
+			},
+			{
+				...base,
+				failed: true,
+				rowCount: 1,
+			},
+			{
+				...base,
+				filtered: true,
+			},
+			{
+				...base,
+				query: "",
+			},
+			{
+				...base,
+				query: "",
+				filtered: true,
+			},
+			{
+				...base,
+				filtered: true,
+				stalled: true,
+			},
+			{
+				...base,
+				filtered: true,
+				failed: true,
+				stalled: true,
+			},
+			{
+				...base,
+				query: "x",
+				filtered: true,
+				stalled: true,
+			},
 		];
 
 		expect(cases.map((input) => paletteEmptyKind(input))).toStrictEqual([

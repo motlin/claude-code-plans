@@ -24,9 +24,11 @@ import {stopFailureFixture, stopFailureRateLimitFixture} from "./fixtures/stop-f
 // The production herdr reporter reads the real config and talks to the real
 // herdr socket on a detached promise that can log after the test ends. Tests
 // must inject their own reporter; fail loudly if the real one is reached.
-vi.mock("../src/lib/herdr/report-state", async (importOriginal) => ({
+vi.mock("../src/lib/herdr/report-state", async (importOriginal) => (
+{
 	...(await importOriginal<typeof import("../src/lib/herdr/report-state")>()),
-	reportHookStateToHerdr: () => {
+	reportHookStateToHerdr: () =>
+	{
 		throw new Error("tests must inject reportHerdrState instead of reaching the real herdr");
 	},
 }));
@@ -34,37 +36,80 @@ vi.mock("../src/lib/herdr/report-state", async (importOriginal) => ({
 const testDir = join(tmpdir(), "claude-hook-dispatcher-test-" + process.pid);
 let db: AppDb;
 
-type Broadcast = {type: string; data: Record<string, unknown>};
+type Broadcast =
+{
+	type: string;
+	data: Record<string, unknown>;
+};
 
-function makeSessionsIndex(entries: Record<string, unknown>[]): string {
-	return JSON.stringify({version: 1, entries});
+function makeSessionsIndex(entries: Record<string, unknown>[]): string
+{
+	return JSON.stringify(
+		{
+			version: 1,
+			entries,
+		},
+	);
 }
 
-type StoreMeta = {
+type StoreMeta =
+{
 	cwd: string;
 	model?: string;
 	claudeEnv?: Record<string, string>;
 };
 
-function makeStore() {
-	const activeCalls: Array<{sessionId: string; meta: StoreMeta}> = [];
-	const endedCalls: string[] = [];
-	const stateCalls: Array<{sessionId: string; state: ActivityState}> = [];
-	const touchedCalls: string[] = [];
-	const touchCalls: Array<{
+function makeStore()
+{
+	const activeCalls: Array<
+	{
 		sessionId: string;
-		meta?: {claudeEnv?: Record<string, string>};
+		meta: StoreMeta;
 	}> = [];
-	const subagentActivityCalls: Array<{sessionId: string; agentId: string}> = [];
-	const backgroundTaskCalls: Array<{
+	const endedCalls: string[] = [];
+	const stateCalls: Array<
+	{
+		sessionId: string;
+		state: ActivityState;
+	}> = [];
+	const touchedCalls: string[] = [];
+	const touchCalls: Array<
+	{
+		sessionId: string;
+		meta?:
+		{
+			claudeEnv?: Record<string, string>;
+		};
+	}> = [];
+	const subagentActivityCalls: Array<
+	{
+		sessionId: string;
+		agentId: string;
+	}> = [];
+	const backgroundTaskCalls: Array<
+	{
 		sessionId: string;
 		backgroundTasks: HookBackgroundTaskPayload[];
 	}> = [];
-	const sessionCronCalls: Array<{sessionId: string; sessionCrons: HookSessionCronPayload[]}> = [];
-	const pendingPermissionCalls: Array<{sessionId: string; request: PendingPermissionRequest | null}> = [];
-	const pendingPermissionEntry = (sessionId: string) => {
+	const sessionCronCalls: Array<
+	{
+		sessionId: string;
+		sessionCrons: HookSessionCronPayload[];
+	}> = [];
+	const pendingPermissionCalls: Array<
+	{
+		sessionId: string;
+		request: PendingPermissionRequest | null;
+	}> = [];
+	const pendingPermissionEntry = (sessionId: string) =>
+	{
 		const request = pendingPermissionCalls.findLast((pendingCall) => pendingCall.sessionId === sessionId)?.request;
-		return request ? {pendingPermissionRequest: request} : {};
+		return request
+			?
+				{
+					pendingPermissionRequest: request,
+				}
+			: {};
 	};
 	return {
 		pendingPermissionCalls,
@@ -76,33 +121,90 @@ function makeStore() {
 		subagentActivityCalls,
 		backgroundTaskCalls,
 		sessionCronCalls,
-		store: {
-			setPendingPermissionRequest: (sessionId: string, request: PendingPermissionRequest | null) => {
-				pendingPermissionCalls.push({sessionId, request});
+		store:
+		{
+			setPendingPermissionRequest: (sessionId: string, request: PendingPermissionRequest | null) =>
+			{
+				pendingPermissionCalls.push(
+					{
+						sessionId,
+						request,
+					},
+				);
 			},
-			setSessionCrons: (sessionId: string, sessionCrons: HookSessionCronPayload[]) => {
-				sessionCronCalls.push({sessionId, sessionCrons});
+			setSessionCrons: (sessionId: string, sessionCrons: HookSessionCronPayload[]) =>
+			{
+				sessionCronCalls.push(
+					{
+						sessionId,
+						sessionCrons,
+					},
+				);
 			},
-			touchSubagentActivity: (sessionId: string, agentId: string) => {
-				subagentActivityCalls.push({sessionId, agentId});
+			touchSubagentActivity: (sessionId: string, agentId: string) =>
+			{
+				subagentActivityCalls.push(
+					{
+						sessionId,
+						agentId,
+					},
+				);
 			},
-			setBackgroundTasks: (sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]) => {
-				backgroundTaskCalls.push({sessionId, backgroundTasks});
+			setBackgroundTasks: (sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]) =>
+			{
+				backgroundTaskCalls.push(
+					{
+						sessionId,
+						backgroundTasks,
+					},
+				);
 			},
-			markSessionActive: (sessionId: string, meta: StoreMeta) => {
-				activeCalls.push({sessionId, meta});
+			markSessionActive: (sessionId: string, meta: StoreMeta) =>
+			{
+				activeCalls.push(
+					{
+						sessionId,
+						meta,
+					},
+				);
 			},
-			markSessionEnded: (sessionId: string) => {
+			markSessionEnded: (sessionId: string) =>
+			{
 				endedCalls.push(sessionId);
 			},
-			setSessionState: (sessionId: string, state: ActivityState) => {
-				stateCalls.push({sessionId, state});
+			setSessionState: (sessionId: string, state: ActivityState) =>
+			{
+				stateCalls.push(
+					{
+						sessionId,
+						state,
+					},
+				);
 			},
-			touchSession: (sessionId: string, meta?: {claudeEnv?: Record<string, string>}) => {
+			touchSession: (
+				sessionId: string,
+				meta?:
+				{
+					claudeEnv?: Record<string, string>;
+				},
+			) =>
+			{
 				touchedCalls.push(sessionId);
-				touchCalls.push(meta === undefined ? {sessionId} : {sessionId, meta});
+				touchCalls.push(
+					meta === undefined
+						?
+							{
+								sessionId,
+							}
+						:
+							{
+								sessionId,
+								meta,
+							},
+				);
 			},
-			getActiveSessionEntry: (sessionId: string) => {
+			getActiveSessionEntry: (sessionId: string) =>
+			{
 				const call = activeCalls.find((c) => c.sessionId === sessionId);
 				if (!call) return null;
 				return {
@@ -127,24 +229,40 @@ function makeStore() {
 	};
 }
 
-beforeEach(() => {
-	mkdirSync(testDir, {recursive: true});
+beforeEach(() =>
+{
+	mkdirSync(
+		testDir,
+		{
+			recursive: true,
+		},
+	);
 	db = openTestDb();
 	clearLiveSubagents();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	vi.restoreAllMocks();
 	clearLiveSubagents();
 	db.close();
-	rmSync(testDir, {recursive: true, force: true});
+	rmSync(
+		testDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("dispatchHookEvent", () => {
-	it("SessionStart broadcasts both legacy SESSION_START and domain SESSION_STARTED with full payload", async () => {
+describe("dispatchHookEvent", () =>
+{
+	it("SessionStart broadcasts both legacy SESSION_START and domain SESSION_STARTED with full payload", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, activeCalls} = makeStore();
-		const event: HookEvent = {
+		const event: HookEvent =
+		{
 			hook_event_name: "SessionStart",
 			session_id: "abc-123",
 			transcript_path: "/Users/u/.claude/projects/-h-u-p/abc-123.jsonl",
@@ -154,108 +272,200 @@ describe("dispatchHookEvent", () => {
 			session_title: "Test hook session",
 			prompt_id: "prompt-test-100",
 			permission_mode: "auto",
-			effort: {level: "high"},
+			effort:
+			{
+				level: "high",
+			},
 		};
 
-		await dispatchHookEvent({
-			event,
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		await dispatchHookEvent(
+			{
+				event,
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
+			},
+		);
 
 		expect(activeCalls).toStrictEqual([
 			{
 				sessionId: "abc-123",
-				meta: {cwd: "/home/user/project", model: "claude-sonnet-4-6"},
+				meta:
+				{
+					cwd: "/home/user/project",
+					model: "claude-sonnet-4-6",
+				},
 			},
 		]);
 		const legacy = broadcasts.find((b) => b.type === SSE_EVENTS.SESSION_START);
 		if (!legacy) throw new Error("Expected legacy broadcast");
-		expect(legacy.data).toStrictEqual({
-			sessionId: "abc-123",
-			cwd: "/home/user/project",
-			model: "claude-sonnet-4-6",
-		});
-		const domain = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_STARTED);
-		if (!domain) throw new Error("Expected domain broadcast");
-		expect(domain.data).toStrictEqual({
-			session: {
+		expect(legacy.data).toStrictEqual(
+			{
 				sessionId: "abc-123",
 				cwd: "/home/user/project",
 				model: "claude-sonnet-4-6",
-				startedAt: 946_598_400_000,
-				lastActivity: 946_598_400_000,
 			},
-		});
+		);
+		const domain = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_STARTED);
+		if (!domain) throw new Error("Expected domain broadcast");
+		expect(domain.data).toStrictEqual(
+			{
+				session:
+				{
+					sessionId: "abc-123",
+					cwd: "/home/user/project",
+					model: "claude-sonnet-4-6",
+					startedAt: 946_598_400_000,
+					lastActivity: 946_598_400_000,
+				},
+			},
+		);
 		const context = broadcasts.find((broadcast) => broadcast.type === DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED);
 		if (!context) throw new Error("Expected session:hook-context-changed broadcast");
-		expect(context.data).toStrictEqual({
-			sessionId: "abc-123",
-			sessionTitle: "Test hook session",
-			promptId: "prompt-test-100",
-			permissionMode: "auto",
-			effortLevel: "high",
-			backgroundTasks: [],
-			sessionCrons: [],
-		});
+		expect(context.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				sessionTitle: "Test hook session",
+				promptId: "prompt-test-100",
+				permissionMode: "auto",
+				effortLevel: "high",
+				backgroundTasks: [],
+				sessionCrons: [],
+			},
+		);
 	});
 
-	it("Stop stores the session crons it reports, and a Stop without them leaves them alone", async () => {
+	it("Stop stores the session crons it reports, and a Stop without them leaves them alone", async () =>
+	{
 		const {store, sessionCronCalls} = makeStore();
-		const cron = {
+		const cron =
+		{
 			id: "cron-test-100",
 			schedule: "*/5 * * * *",
 			recurring: true,
 			prompt: "Poll the example PR",
 		};
-		const stop = {
+		const stop =
+		{
 			hook_event_name: "Stop" as const,
 			session_id: "session-test-100",
 			transcript_path: "/tmp/test/session-test-100.jsonl",
 			cwd: "/tmp/test/project",
 		};
-		await dispatchHookEvent({
-			event: {...stop, session_crons: [cron]},
-			db: db.index,
-			store,
-			broadcast: () => {},
-			reportHerdrState: () => {},
-		});
-		await dispatchHookEvent({
-			event: stop,
-			db: db.index,
-			store,
-			broadcast: () => {},
-			reportHerdrState: () => {},
-		});
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					...stop,
+					session_crons: [cron],
+				},
+				db: db.index,
+				store,
+				broadcast: () =>
+				{
+				},
+				reportHerdrState: () =>
+				{
+				},
+			},
+		);
+		await dispatchHookEvent(
+			{
+				event: stop,
+				db: db.index,
+				store,
+				broadcast: () =>
+				{
+				},
+				reportHerdrState: () =>
+				{
+				},
+			},
+		);
 
-		expect(sessionCronCalls).toStrictEqual([{sessionId: "session-test-100", sessionCrons: [cron]}]);
+		expect(sessionCronCalls).toStrictEqual([
+			{
+				sessionId: "session-test-100",
+				sessionCrons: [cron],
+			},
+		]);
 	});
 
-	it("Stop broadcasts the background work that keeps a session paused", async () => {
+	it("Stop broadcasts the background work that keeps a session paused", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "Stop",
-				session_id: "session-test-100",
-				transcript_path: "/tmp/test/session-test-100.jsonl",
-				cwd: "/tmp/test/project",
-				prompt_id: "prompt-test-100",
-				permission_mode: "auto",
-				effort: {level: "high"},
-				background_tasks: [
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "Stop",
+					session_id: "session-test-100",
+					transcript_path: "/tmp/test/session-test-100.jsonl",
+					cwd: "/tmp/test/project",
+					prompt_id: "prompt-test-100",
+					permission_mode: "auto",
+					effort:
+					{
+						level: "high",
+					},
+					background_tasks: [
+						{
+							id: "task-test-100",
+							type: "agent",
+							status: "running",
+							description: "Inspect the example project",
+							agent_type: "Explore",
+						},
+					],
+					session_crons: [
+						{
+							id: "cron-test-100",
+							schedule: "0 * * * *",
+							recurring: true,
+							prompt: "Check the example service",
+						},
+					],
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
+			},
+		);
+
+		const context = broadcasts.find((broadcast) => broadcast.type === DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED);
+		if (!context) throw new Error("Expected session:hook-context-changed broadcast");
+		expect(context.data).toStrictEqual(
+			{
+				sessionId: "session-test-100",
+				backgroundTasks: [
 					{
 						id: "task-test-100",
 						type: "agent",
 						status: "running",
 						description: "Inspect the example project",
-						agent_type: "Explore",
+						agentType: "Explore",
 					},
 				],
-				session_crons: [
+				sessionCrons: [
 					{
 						id: "cron-test-100",
 						schedule: "0 * * * *",
@@ -263,43 +473,22 @@ describe("dispatchHookEvent", () => {
 						prompt: "Check the example service",
 					},
 				],
+				promptId: "prompt-test-100",
+				permissionMode: "auto",
+				effortLevel: "high",
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
-
-		const context = broadcasts.find((broadcast) => broadcast.type === DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED);
-		if (!context) throw new Error("Expected session:hook-context-changed broadcast");
-		expect(context.data).toStrictEqual({
-			sessionId: "session-test-100",
-			backgroundTasks: [
-				{
-					id: "task-test-100",
-					type: "agent",
-					status: "running",
-					description: "Inspect the example project",
-					agentType: "Explore",
-				},
-			],
-			sessionCrons: [
-				{
-					id: "cron-test-100",
-					schedule: "0 * * * *",
-					recurring: true,
-					prompt: "Check the example service",
-				},
-			],
-			promptId: "prompt-test-100",
-			permissionMode: "auto",
-			effortLevel: "high",
-		});
+		);
 	});
 
-	it("SessionStart also emits session:added when the session is indexed in the db", async () => {
+	it("SessionStart also emits session:added when the session is indexed in the db", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
 			makeSessionsIndex([
@@ -317,48 +506,68 @@ describe("dispatchHookEvent", () => {
 
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "SessionStart",
-				session_id: "abc-123",
-				transcript_path: "/Users/craig/.claude/projects/-Users-craig-projects-app/abc-123.jsonl",
-				cwd: "/Users/craig/projects/app",
-				source: "startup",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "SessionStart",
+					session_id: "abc-123",
+					transcript_path: "/Users/craig/.claude/projects/-Users-craig-projects-app/abc-123.jsonl",
+					cwd: "/Users/craig/projects/app",
+					source: "startup",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		const added = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_ADDED);
 		if (!added) throw new Error("Expected session:added broadcast");
-		expect(added.data).toStrictEqual({
-			session: {
-				id: "abc-123",
-				title: "Fix the login bug",
-				summary: undefined,
-				mtime: "1999-12-31T00:00:00.000Z",
-				created: "1999-12-31T00:00:00.000Z",
-				project: "-Users-craig-projects-app",
-				projectName: "app",
-				// indexSessionsIndex no longer trusts the sessions-index messageCount;
-				// no transcript was indexed, so the canonical count is 0.
-				messageCount: 0,
-				gitBranch: undefined,
-				archived: false,
-				state: "unknown",
-				bucket: "done",
-				liveAgentCount: 0,
-				unseen: false,
-				blockedSince: null,
+		expect(added.data).toStrictEqual(
+			{
+				session:
+				{
+					id: "abc-123",
+					title: "Fix the login bug",
+					summary: undefined,
+					mtime: "1999-12-31T00:00:00.000Z",
+					created: "1999-12-31T00:00:00.000Z",
+					project: "-Users-craig-projects-app",
+					projectName: "app",
+					// indexSessionsIndex no longer trusts the sessions-index messageCount;
+					// no transcript was indexed, so the canonical count is 0.
+					messageCount: 0,
+					gitBranch: undefined,
+					archived: false,
+					state: "unknown",
+					bucket: "done",
+					liveAgentCount: 0,
+					unseen: false,
+					blockedSince: null,
+				},
 			},
-		});
+		);
 	});
 
-	it("Stop broadcasts domain SESSION_UPDATED with enriched payload", async () => {
+	it("Stop broadcasts domain SESSION_UPDATED with enriched payload", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
 			makeSessionsIndex([
@@ -377,65 +586,100 @@ describe("dispatchHookEvent", () => {
 
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "Stop",
-				session_id: "abc-123",
-				transcript_path: "/Users/craig/.claude/projects/-Users-craig-projects-app/abc-123.jsonl",
-				cwd: "/Users/craig/projects/app",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "Stop",
+					session_id: "abc-123",
+					transcript_path: "/Users/craig/.claude/projects/-Users-craig-projects-app/abc-123.jsonl",
+					cwd: "/Users/craig/projects/app",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(touchedCalls).toStrictEqual(["abc-123"]);
 		const domain = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED);
 		if (!domain) throw new Error("Expected session:updated broadcast");
-		expect(domain.data).toStrictEqual({
-			session: {
-				id: "abc-123",
-				title: "Shipped feature X",
-				summary: "Shipped feature X",
-				mtime: "1999-12-31T00:00:00.000Z",
-				created: "1999-12-31T00:00:00.000Z",
-				project: "-Users-craig-projects-app",
-				projectName: "app",
-				// indexSessionsIndex no longer trusts the sessions-index messageCount;
-				// no transcript was indexed, so the canonical count is 0.
-				messageCount: 0,
-				gitBranch: undefined,
-				archived: false,
-				state: "ended",
-				bucket: "done",
-				liveAgentCount: 0,
-				unseen: true,
-				blockedSince: null,
+		expect(domain.data).toStrictEqual(
+			{
+				session:
+				{
+					id: "abc-123",
+					title: "Shipped feature X",
+					summary: "Shipped feature X",
+					mtime: "1999-12-31T00:00:00.000Z",
+					created: "1999-12-31T00:00:00.000Z",
+					project: "-Users-craig-projects-app",
+					projectName: "app",
+					// indexSessionsIndex no longer trusts the sessions-index messageCount;
+					// no transcript was indexed, so the canonical count is 0.
+					messageCount: 0,
+					gitBranch: undefined,
+					archived: false,
+					state: "ended",
+					bucket: "done",
+					liveAgentCount: 0,
+					unseen: true,
+					blockedSince: null,
+				},
 			},
-		});
-		expect(broadcasts.find((broadcast) => broadcast.type === DOMAIN_EVENTS.REVIEW_OFFERED)).toStrictEqual({
-			type: DOMAIN_EVENTS.REVIEW_OFFERED,
-			data: {sessionId: "abc-123"},
-		});
+		);
+		expect(broadcasts.find((broadcast) => broadcast.type === DOMAIN_EVENTS.REVIEW_OFFERED)).toStrictEqual(
+			{
+				type: DOMAIN_EVENTS.REVIEW_OFFERED,
+				data:
+				{
+					sessionId: "abc-123",
+				},
+			},
+		);
 	});
 
 	it.each([
 		{
 			visible: false,
 			sessionId: "session-test-150",
-			expected: {unseen: true, bucket: "done", viewedAnywhere: false},
+			expected:
+			{
+				unseen: true,
+				bucket: "done",
+				viewedAnywhere: false,
+			},
 		},
 		{
 			visible: true,
 			sessionId: "session-test-151",
-			expected: {unseen: false, bucket: "done", viewedAnywhere: true},
+			expected:
+			{
+				unseen: false,
+				bucket: "done",
+				viewedAnywhere: true,
+			},
 		},
 	])(
 		"a main Stop durably marks the finished turn unseen unless a browser is viewing it (visible: $visible)",
-		async ({visible, sessionId, expected}) => {
+		async ({visible, sessionId, expected}) =>
+		{
 			const projectDir = join(testDir, "-Users-alice-projects-unseen");
-			mkdirSync(projectDir, {recursive: true});
+			mkdirSync(
+				projectDir,
+				{
+					recursive: true,
+				},
+			);
 			writeFileSync(
 				join(projectDir, "sessions-index.json"),
 				makeSessionsIndex([
@@ -452,36 +696,64 @@ describe("dispatchHookEvent", () => {
 			await indexSessionsIndex(db.index, projectDir, "-Users-alice-projects-unseen");
 			const broadcasts: Broadcast[] = [];
 			const {store} = makeStore();
-			store.markSessionActive(sessionId, {cwd: "/Users/alice/projects/unseen"});
-
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "Stop",
-					session_id: sessionId,
-					transcript_path: join(projectDir, `${sessionId}.jsonl`),
+			store.markSessionActive(
+				sessionId,
+				{
 					cwd: "/Users/alice/projects/unseen",
 				},
-				db: db.index,
-				store,
-				broadcast: (type, data) => broadcasts.push({type, data}),
-				isSessionVisible: (candidate) => visible && candidate === sessionId,
-				reportHerdrState: () => {},
-			});
+			);
+
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "Stop",
+						session_id: sessionId,
+						transcript_path: join(projectDir, `${sessionId}.jsonl`),
+						cwd: "/Users/alice/projects/unseen",
+					},
+					db: db.index,
+					store,
+					broadcast: (type, data) =>
+						broadcasts.push(
+							{
+								type,
+								data,
+							},
+						),
+					isSessionVisible: (candidate) => visible && candidate === sessionId,
+					reportHerdrState: () =>
+					{
+					},
+				},
+			);
 
 			const updated = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED)?.data["session"] as
-				| {unseen: boolean; bucket: string}
+				|
+				  {
+						unseen: boolean;
+						bucket: string;
+				  }
 				| undefined;
-			expect({
-				unseen: updated?.unseen,
-				bucket: updated?.bucket,
-				viewedAnywhere: getSessionViewedState(db.index, sessionId, -1).viewedAnywhere,
-			}).toStrictEqual(expected);
+			expect(
+				{
+					unseen: updated?.unseen,
+					bucket: updated?.bucket,
+					viewedAnywhere: getSessionViewedState(db.index, sessionId, -1).viewedAnywhere,
+				},
+			).toStrictEqual(expected);
 		},
 	);
 
-	it("Stop from a spawned review fork does not recursively offer another review", async () => {
+	it("Stop from a spawned review fork does not recursively offer another review", async () =>
+	{
 		const projectDir = join(testDir, "-Users-alice-projects-example");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
 			makeSessionsIndex([
@@ -499,68 +771,111 @@ describe("dispatchHookEvent", () => {
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
 
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "Stop",
-				session_id: "session-test-100",
-				transcript_path: join(projectDir, "session-test-100.jsonl"),
-				cwd: "/Users/alice/projects/example",
-				claude_env: {CLAUDE_CCP_REVIEW_RUN: "1"},
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "Stop",
+					session_id: "session-test-100",
+					transcript_path: join(projectDir, "session-test-100.jsonl"),
+					cwd: "/Users/alice/projects/example",
+					claude_env:
+					{
+						CLAUDE_CCP_REVIEW_RUN: "1",
+					},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(broadcasts.map((broadcast) => broadcast.type)).toStrictEqual([DOMAIN_EVENTS.SESSION_UPDATED]);
 	});
 
-	it("Stop without an indexed session emits nothing on the wire", async () => {
+	it("Stop without an indexed session emits nothing on the wire", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "Stop",
-				session_id: "unknown-session",
-				transcript_path: "/tmp/unknown.jsonl",
-				cwd: "/tmp",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "Stop",
+					session_id: "unknown-session",
+					transcript_path: "/tmp/unknown.jsonl",
+					cwd: "/tmp",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(broadcasts).toStrictEqual([]);
 	});
 
-	it("does not await detached herdr reporting before completing dispatch", async () => {
+	it("does not await detached herdr reporting before completing dispatch", async () =>
+	{
 		const {store} = makeStore();
-		const reportCalls: Array<{event: HookEvent; entry: ActiveSessionEntry | null}> = [];
+		const reportCalls: Array<
+		{
+			event: HookEvent;
+			entry: ActiveSessionEntry | null;
+		}> = [];
 		const pendingReport = new Promise<void>(() => {});
-		const neverSettlingReport = async (event: HookEvent, entry: ActiveSessionEntry | null): Promise<void> => {
-			reportCalls.push({event, entry});
+		const neverSettlingReport = async (event: HookEvent, entry: ActiveSessionEntry | null): Promise<void> =>
+		{
+			reportCalls.push(
+				{
+					event,
+					entry,
+				},
+			);
 			await pendingReport;
 		};
 
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "Stop",
-				session_id: "session-test-100",
-				transcript_path: "/tmp/test/session-test-100.jsonl",
-				cwd: "/tmp/test/project",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "Stop",
+					session_id: "session-test-100",
+					transcript_path: "/tmp/test/session-test-100.jsonl",
+					cwd: "/tmp/test/project",
+				},
+				db: db.index,
+				store,
+				broadcast: () =>
+				{
+				},
+				// oxlint-disable-next-line typescript/no-misused-promises -- deliberately promise-returning: dispatch must complete without awaiting it
+				reportHerdrState: neverSettlingReport,
 			},
-			db: db.index,
-			store,
-			broadcast: () => {},
-			// oxlint-disable-next-line typescript/no-misused-promises -- deliberately promise-returning: dispatch must complete without awaiting it
-			reportHerdrState: neverSettlingReport,
-		});
+		);
 
 		expect(reportCalls).toStrictEqual([
 			{
-				event: {
+				event:
+				{
 					hook_event_name: "Stop",
 					session_id: "session-test-100",
 					transcript_path: "/tmp/test/session-test-100.jsonl",
@@ -571,194 +886,349 @@ describe("dispatchHookEvent", () => {
 		]);
 	});
 
-	it("SessionEnd broadcasts both lifecycle SESSION_END and domain SESSION_ENDED", async () => {
+	it("SessionEnd broadcasts both lifecycle SESSION_END and domain SESSION_ENDED", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, endedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "SessionEnd",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "SessionEnd",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(endedCalls).toStrictEqual(["abc-123"]);
-		expect(broadcasts.find((b) => b.type === SSE_EVENTS.SESSION_END)!.data).toStrictEqual({
-			sessionId: "abc-123",
-		});
-		expect(broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_ENDED)!.data).toStrictEqual({
-			sessionId: "abc-123",
-		});
+		expect(broadcasts.find((b) => b.type === SSE_EVENTS.SESSION_END)!.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+			},
+		);
+		expect(broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_ENDED)!.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+			},
+		);
 	});
 
-	it.each(["Stop", "SessionEnd"] as const)("%s excludes the session's pending approval", async (hookEventName) => {
+	it.each(["Stop", "SessionEnd"] as const)("%s excludes the session's pending approval", async (hookEventName) =>
+	{
 		const projectId = "-Users-craig-projects-app";
 		const sessionId = `session-${hookEventName}`;
 		const transcriptPath = join(testDir, `${sessionId}.jsonl`);
 		writeFileSync(
 			transcriptPath,
-			`${JSON.stringify({
-				type: "assistant",
-				sessionId,
-				timestamp: "2026-08-06T12:00:00.000Z",
-				message: {
-					role: "assistant",
-					content: [
-						{
-							type: "tool_use",
-							id: `tool-${hookEventName}`,
-							name: "ExitPlanMode",
-							input: {plan: "## Plan"},
-						},
-					],
+			`${JSON.stringify(
+				{
+					type: "assistant",
+					sessionId,
+					timestamp: "2026-08-06T12:00:00.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: `tool-${hookEventName}`,
+								name: "ExitPlanMode",
+								input:
+								{
+									plan: "## Plan",
+								},
+							},
+						],
+					},
 				},
-			})}\n`,
+			)}\n`,
 		);
 		db.index
 			.insert(schema.projects)
-			.values({
-				id: projectId,
-				name: "app",
-				projectPath: "/Users/craig/projects/app",
-				updatedAt: 1,
-			})
+			.values(
+				{
+					id: projectId,
+					name: "app",
+					projectPath: "/Users/craig/projects/app",
+					updatedAt: 1,
+				},
+			)
 			.run();
 		db.index
 			.insert(schema.sessions)
-			.values({
-				id: sessionId,
-				projectId,
-				title: sessionId,
-				firstPrompt: null,
-				summary: null,
-				customTitle: null,
-				messageCount: 0,
-				gitBranch: null,
-				cwd: null,
-				isSidechain: 0,
-				createdAt: 1,
-				mtimeMs: 1,
-				filePath: transcriptPath,
-			})
+			.values(
+				{
+					id: sessionId,
+					projectId,
+					title: sessionId,
+					firstPrompt: null,
+					summary: null,
+					customTitle: null,
+					messageCount: 0,
+					gitBranch: null,
+					cwd: null,
+					isSidechain: 0,
+					createdAt: 1,
+					mtimeMs: 1,
+					filePath: transcriptPath,
+				},
+			)
 			.run();
 		await initPendingApprovalsCache(db.index);
 		expect(getPendingApprovals().map((approval) => approval.sessionId)).toStrictEqual([sessionId]);
 
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: hookEventName,
-				session_id: sessionId,
-				transcript_path: transcriptPath,
-				cwd: "/Users/craig/projects/app",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: hookEventName,
+					session_id: sessionId,
+					transcript_path: transcriptPath,
+					cwd: "/Users/craig/projects/app",
+				},
+				db: db.index,
+				store,
+				broadcast: () =>
+				{
+				},
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: () => {},
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(getPendingApprovals()).toStrictEqual([]);
 	});
 
-	it("sets session state exactly once for every state-bearing event", async () => {
+	it("sets session state exactly once for every state-bearing event", async () =>
+	{
 		const {store, stateCalls} = makeStore();
-		const baseEvent = {
+		const baseEvent =
+		{
 			session_id: "session-test-100",
 			transcript_path: "/tmp/test/session-test-100.jsonl",
 			cwd: "/tmp/test/project",
 		} as const;
 		const events: HookEvent[] = [
-			{...baseEvent, hook_event_name: "UserPromptSubmit", prompt: "Test prompt"},
+			{
+				...baseEvent,
+				hook_event_name: "UserPromptSubmit",
+				prompt: "Test prompt",
+			},
 			{
 				...baseEvent,
 				hook_event_name: "PreToolUse",
 				tool_name: "AskUserQuestion",
-				tool_input: {question: "Test question?"},
+				tool_input:
+				{
+					question: "Test question?",
+				},
 			},
 			{
 				...baseEvent,
 				hook_event_name: "PreToolUse",
 				tool_name: "ExitPlanMode",
-				tool_input: {plan: "Test plan"},
+				tool_input:
+				{
+					plan: "Test plan",
+				},
 			},
 			{
 				...baseEvent,
 				hook_event_name: "PreToolUse",
 				tool_name: "Bash",
-				tool_input: {command: "true"},
+				tool_input:
+				{
+					command: "true",
+				},
 			},
 			{
 				...baseEvent,
 				hook_event_name: "PostToolUse",
 				tool_name: "Bash",
-				tool_input: {command: "true"},
+				tool_input:
+				{
+					command: "true",
+				},
 			},
 			{
 				...baseEvent,
 				hook_event_name: "PostToolUseFailure",
 				tool_name: "Bash",
-				tool_input: {command: "false"},
+				tool_input:
+				{
+					command: "false",
+				},
 				error: "Test failure",
 			},
-			{...baseEvent, hook_event_name: "MessageDisplay", message: "Test response"},
-			{...baseEvent, hook_event_name: "PreCompact", trigger: "manual"},
-			{...baseEvent, hook_event_name: "PostCompact", reason: "manual"},
-			{...baseEvent, hook_event_name: "Stop"},
-			{...baseEvent, hook_event_name: "SessionEnd"},
+			{
+				...baseEvent,
+				hook_event_name: "MessageDisplay",
+				message: "Test response",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "PreCompact",
+				trigger: "manual",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "PostCompact",
+				reason: "manual",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "Stop",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "SessionEnd",
+			},
 		];
 
-		for (const event of events) {
-			await dispatchHookEvent({
-				event,
-				db: db.index,
-				store,
-				broadcast: () => {},
-				reportHerdrState: () => {},
-			});
+		for (const event of events)
+		{
+			await dispatchHookEvent(
+				{
+					event,
+					db: db.index,
+					store,
+					broadcast: () =>
+					{
+					},
+					reportHerdrState: () =>
+					{
+					},
+				},
+			);
 		}
 
 		expect(stateCalls).toStrictEqual([
-			{sessionId: "session-test-100", state: "working"},
-			{sessionId: "session-test-100", state: "waiting"},
-			{sessionId: "session-test-100", state: "waiting"},
-			{sessionId: "session-test-100", state: "working"},
-			{sessionId: "session-test-100", state: "working"},
-			{sessionId: "session-test-100", state: "working"},
-			{sessionId: "session-test-100", state: "working"},
-			{sessionId: "session-test-100", state: "working"},
-			{sessionId: "session-test-100", state: "idle"},
-			{sessionId: "session-test-100", state: "idle"},
-			{sessionId: "session-test-100", state: "idle"},
+			{
+				sessionId: "session-test-100",
+				state: "working",
+			},
+			{
+				sessionId: "session-test-100",
+				state: "waiting",
+			},
+			{
+				sessionId: "session-test-100",
+				state: "waiting",
+			},
+			{
+				sessionId: "session-test-100",
+				state: "working",
+			},
+			{
+				sessionId: "session-test-100",
+				state: "working",
+			},
+			{
+				sessionId: "session-test-100",
+				state: "working",
+			},
+			{
+				sessionId: "session-test-100",
+				state: "working",
+			},
+			{
+				sessionId: "session-test-100",
+				state: "working",
+			},
+			{
+				sessionId: "session-test-100",
+				state: "idle",
+			},
+			{
+				sessionId: "session-test-100",
+				state: "idle",
+			},
+			{
+				sessionId: "session-test-100",
+				state: "idle",
+			},
 		]);
 	});
 
-	it("never sets session state for events carrying no state information", async () => {
+	it("never sets session state for events carrying no state information", async () =>
+	{
 		clearAllNotifications();
 		const {store, stateCalls} = makeStore();
-		const baseEvent = {
+		const baseEvent =
+		{
 			session_id: "session-test-100",
 			transcript_path: "/tmp/test/session-test-100.jsonl",
 			cwd: "/tmp/test/project",
 		} as const;
 		const events: HookEvent[] = [
-			{...baseEvent, hook_event_name: "SessionStart", source: "startup"},
-			{...baseEvent, hook_event_name: "SubagentStart"},
-			{...baseEvent, hook_event_name: "SubagentStop"},
-			{...baseEvent, hook_event_name: "Notification", message: "Test notification"},
-			{...baseEvent, hook_event_name: "PreCompact", trigger: "auto"},
-			{...baseEvent, hook_event_name: "PreCompact"},
-			{...baseEvent, hook_event_name: "PostCompact", reason: "auto"},
-			{...baseEvent, hook_event_name: "PostCompact"},
-			{...baseEvent, hook_event_name: "TaskCreated"},
-			{...baseEvent, hook_event_name: "TaskCompleted"},
-			{...baseEvent, hook_event_name: "WorktreeCreate"},
-			{...baseEvent, hook_event_name: "WorktreeRemove"},
+			{
+				...baseEvent,
+				hook_event_name: "SessionStart",
+				source: "startup",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "SubagentStart",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "SubagentStop",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "Notification",
+				message: "Test notification",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "PreCompact",
+				trigger: "auto",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "PreCompact",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "PostCompact",
+				reason: "auto",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "PostCompact",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "TaskCreated",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "TaskCompleted",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "WorktreeCreate",
+			},
+			{
+				...baseEvent,
+				hook_event_name: "WorktreeRemove",
+			},
 			{
 				...baseEvent,
 				hook_event_name: "CwdChanged",
@@ -770,31 +1240,47 @@ describe("dispatchHookEvent", () => {
 				hook_event_name: "InstructionsLoaded",
 				file_path: "/tmp/test/project/CLAUDE.md",
 			},
-			{...baseEvent, hook_event_name: "ConfigChange", config_source: "project_settings"},
+			{
+				...baseEvent,
+				hook_event_name: "ConfigChange",
+				config_source: "project_settings",
+			},
 		];
 
-		for (const event of events) {
-			await dispatchHookEvent({
-				event,
-				db: db.index,
-				store,
-				broadcast: () => {},
-				reportHerdrState: () => {},
-			});
+		for (const event of events)
+		{
+			await dispatchHookEvent(
+				{
+					event,
+					db: db.index,
+					store,
+					broadcast: () =>
+					{
+					},
+					reportHerdrState: () =>
+					{
+					},
+				},
+			);
 		}
 
 		expect(stateCalls).toStrictEqual([]);
 	});
 
-	it("retains the session pane mapping for detached SessionEnd cleanup", async () => {
-		const activeEntry: ActiveSessionEntry = {
+	it("retains the session pane mapping for detached SessionEnd cleanup", async () =>
+	{
+		const activeEntry: ActiveSessionEntry =
+		{
 			sessionId: "session-test-100",
 			state: "working",
 			cwd: "/tmp/test/project",
 			model: "claude-test-model",
 			startedAt: 0,
 			lastActivity: 0,
-			claudeEnv: {HERDR_PANE_ID: "w100:p100"},
+			claudeEnv:
+			{
+				HERDR_PANE_ID: "w100:p100",
+			},
 			tmuxPane: "",
 			tmuxServerSocket: "",
 			herdrPane: "w100:p100",
@@ -804,69 +1290,119 @@ describe("dispatchHookEvent", () => {
 			backgroundTasks: [],
 		};
 		let currentEntry: ActiveSessionEntry | null = activeEntry;
-		const reportCalls: Array<{event: HookEvent; entry: ActiveSessionEntry | null}> = [];
+		const reportCalls: Array<
+		{
+			event: HookEvent;
+			entry: ActiveSessionEntry | null;
+		}> = [];
 
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "SessionEnd",
-				session_id: "session-test-100",
-				transcript_path: "/tmp/test/session-test-100.jsonl",
-				cwd: "/tmp/test/project",
-			},
-			db: db.index,
-			store: {
-				markSessionActive: () => {},
-				markSessionEnded: () => {
-					currentEntry = null;
-				},
-				setSessionState: (_sessionId, state) => {
-					activeEntry.state = state;
-				},
-				touchSession: () => {},
-				touchSubagentActivity: () => {},
-				setBackgroundTasks: () => {},
-				setSessionCrons: () => {},
-				setPendingPermissionRequest: () => {},
-				getActiveSessionEntry: () => currentEntry,
-			},
-			broadcast: () => {},
-			reportHerdrState: (event, entryValue) => {
-				reportCalls.push({event, entry: entryValue});
-			},
-		});
-
-		expect({currentEntry, reportCalls}).toStrictEqual({
-			currentEntry: null,
-			reportCalls: [
+		await dispatchHookEvent(
+			{
+				event:
 				{
-					event: {
-						hook_event_name: "SessionEnd",
-						session_id: "session-test-100",
-						transcript_path: "/tmp/test/session-test-100.jsonl",
-						cwd: "/tmp/test/project",
-					},
-					entry: activeEntry,
+					hook_event_name: "SessionEnd",
+					session_id: "session-test-100",
+					transcript_path: "/tmp/test/session-test-100.jsonl",
+					cwd: "/tmp/test/project",
 				},
-			],
-		});
+				db: db.index,
+				store:
+				{
+					markSessionActive: () =>
+					{
+					},
+					markSessionEnded: () =>
+					{
+						currentEntry = null;
+					},
+					setSessionState: (_sessionId, state) =>
+					{
+						activeEntry.state = state;
+					},
+					touchSession: () =>
+					{
+					},
+					touchSubagentActivity: () =>
+					{
+					},
+					setBackgroundTasks: () =>
+					{
+					},
+					setSessionCrons: () =>
+					{
+					},
+					setPendingPermissionRequest: () =>
+					{
+					},
+					getActiveSessionEntry: () => currentEntry,
+				},
+				broadcast: () =>
+				{
+				},
+				reportHerdrState: (event, entryValue) =>
+				{
+					reportCalls.push(
+						{
+							event,
+							entry: entryValue,
+						},
+					);
+				},
+			},
+		);
+
+		expect(
+			{
+				currentEntry,
+				reportCalls,
+			},
+		).toStrictEqual(
+			{
+				currentEntry: null,
+				reportCalls: [
+					{
+						event:
+						{
+							hook_event_name: "SessionEnd",
+							session_id: "session-test-100",
+							transcript_path: "/tmp/test/session-test-100.jsonl",
+							cwd: "/tmp/test/project",
+						},
+						entry: activeEntry,
+					},
+				],
+			},
+		);
 	});
 
-	it("UserPromptSubmit broadcasts SESSION_PROMPT_SUBMITTED with the prompt body", async () => {
+	it("UserPromptSubmit broadcasts SESSION_PROMPT_SUBMITTED with the prompt body", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "UserPromptSubmit",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
-				prompt: "fix the login bug",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "UserPromptSubmit",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					prompt: "fix the login bug",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(touchedCalls).toStrictEqual(["abc-123"]);
 		const submitted = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED);
@@ -876,121 +1412,189 @@ describe("dispatchHookEvent", () => {
 		expect(typeof submitted.data["ts"]).toBe("string");
 		const context = broadcasts.find((broadcast) => broadcast.type === DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED);
 		if (!context) throw new Error("Expected session:hook-context-changed broadcast");
-		expect(context.data).toStrictEqual({
-			sessionId: "abc-123",
-			promptId: "",
-			permissionMode: "",
-			effortLevel: "",
-			backgroundTasks: [],
-			sessionCrons: [],
-		});
+		expect(context.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				promptId: "",
+				permissionMode: "",
+				effortLevel: "",
+				backgroundTasks: [],
+				sessionCrons: [],
+			},
+		);
 	});
 
-	it("UserPromptSubmit re-stamps the tmux pane by passing claude_env to touchSession", async () => {
+	it("UserPromptSubmit re-stamps the tmux pane by passing claude_env to touchSession", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, touchCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "UserPromptSubmit",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
-				prompt: "resume work",
-				claude_env: {TMUX_PANE: "%42", TMUX: "/tmp/tmux-501/default,900,0"},
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "UserPromptSubmit",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					prompt: "resume work",
+					claude_env:
+					{
+						TMUX_PANE: "%42",
+						TMUX: "/tmp/tmux-501/default,900,0",
+					},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(touchCalls).toStrictEqual([
 			{
 				sessionId: "abc-123",
-				meta: {claudeEnv: {TMUX_PANE: "%42", TMUX: "/tmp/tmux-501/default,900,0"}},
+				meta:
+				{
+					claudeEnv:
+					{
+						TMUX_PANE: "%42",
+						TMUX: "/tmp/tmux-501/default,900,0",
+					},
+				},
 			},
 		]);
 	});
 
-	it("Notification broadcasts NOTIFICATION with message and optional title", async () => {
+	it("Notification broadcasts NOTIFICATION with message and optional title", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, stateCalls, touchCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "Notification",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "Notification",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					message: "Waiting for input",
+					title: "Claude Code",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
+			},
+		);
+
+		expect(
+			{
+				stateCalls,
+				touchCalls,
+			},
+		).toStrictEqual(
+			{
+				stateCalls: [],
+				touchCalls: [
+					{
+						sessionId: "abc-123",
+					},
+				],
+			},
+		);
+		const notif = broadcasts.find((b) => b.type === DOMAIN_EVENTS.NOTIFICATION);
+		if (!notif) throw new Error("Expected notification broadcast");
+		expect(notif.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
 				message: "Waiting for input",
 				title: "Claude Code",
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
-
-		expect({stateCalls, touchCalls}).toStrictEqual({
-			stateCalls: [],
-			touchCalls: [{sessionId: "abc-123"}],
-		});
-		const notif = broadcasts.find((b) => b.type === DOMAIN_EVENTS.NOTIFICATION);
-		if (!notif) throw new Error("Expected notification broadcast");
-		expect(notif.data).toStrictEqual({
-			sessionId: "abc-123",
-			message: "Waiting for input",
-			title: "Claude Code",
-		});
+		);
 	});
 
-	it("Notification persists into the notifications store with the classified type", async () => {
+	it("Notification persists into the notifications store with the classified type", async () =>
+	{
 		clearAllNotifications();
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "Notification",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp/my-project",
-				message: "Agent needs your input",
-				title: "Claude Code",
-				notification_type: "agent_needs_input",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "Notification",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp/my-project",
+					message: "Agent needs your input",
+					title: "Claude Code",
+					notification_type: "agent_needs_input",
+				},
+				db: db.index,
+				store,
+				broadcast: () =>
+				{
+				},
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: () => {},
-			reportHerdrState: () => {},
-		});
+		);
 
 		const stored = getNotifications();
 		expect(stored).toHaveLength(1);
-		expect(stored[0]).toMatchObject({
-			sessionId: "abc-123",
-			message: "Agent needs your input",
-			title: "Claude Code",
-			notificationType: "agent_needs_input",
-			// Session is not indexed, so project resolution falls back to basename(cwd).
-			projectId: "my-project",
-			projectName: "my-project",
-		});
+		expect(stored[0]).toMatchObject(
+			{
+				sessionId: "abc-123",
+				message: "Agent needs your input",
+				title: "Claude Code",
+				notificationType: "agent_needs_input",
+				// Session is not indexed, so project resolution falls back to basename(cwd).
+				projectId: "my-project",
+				projectName: "my-project",
+			},
+		);
 	});
 
-	it("Notification without notification_type persists with an empty-string type", async () => {
+	it("Notification without notification_type persists with an empty-string type", async () =>
+	{
 		clearAllNotifications();
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "Notification",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp/my-project",
-				message: "Waiting for input",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "Notification",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp/my-project",
+					message: "Waiting for input",
+				},
+				db: db.index,
+				store,
+				broadcast: () =>
+				{
+				},
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: () => {},
-			reportHerdrState: () => {},
-		});
+		);
 
 		const stored = getNotifications();
 		expect(stored).toHaveLength(1);
@@ -999,41 +1603,57 @@ describe("dispatchHookEvent", () => {
 		expect(stored[0] && "title" in stored[0]).toBe(false);
 	});
 
-	it("a working-state event clears the session's persisted notifications but not other sessions'", async () => {
+	it("a working-state event clears the session's persisted notifications but not other sessions'", async () =>
+	{
 		clearAllNotifications();
 		const {store} = makeStore();
-		for (const sessionId of ["abc-123", "other-456"]) {
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "Notification",
-					session_id: sessionId,
-					transcript_path: `/tmp/${sessionId}.jsonl`,
-					cwd: "/tmp/my-project",
-					message: "Claude is waiting for your input",
-					notification_type: "agent_needs_input",
+		for (const sessionId of ["abc-123", "other-456"])
+		{
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "Notification",
+						session_id: sessionId,
+						transcript_path: `/tmp/${sessionId}.jsonl`,
+						cwd: "/tmp/my-project",
+						message: "Claude is waiting for your input",
+						notification_type: "agent_needs_input",
+					},
+					db: db.index,
+					store,
+					broadcast: () =>
+					{
+					},
+					reportHerdrState: () =>
+					{
+					},
 				},
-				db: db.index,
-				store,
-				broadcast: () => {},
-				reportHerdrState: () => {},
-			});
+			);
 		}
 		expect(getNotifications()).toHaveLength(2);
 
 		// The user resumes the session: UserPromptSubmit derives state "working".
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "UserPromptSubmit",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp/my-project",
-				prompt: "continue",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "UserPromptSubmit",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp/my-project",
+					prompt: "continue",
+				},
+				db: db.index,
+				store,
+				broadcast: () =>
+				{
+				},
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: () => {},
-			reportHerdrState: () => {},
-		});
+		);
 
 		const stored = getNotifications();
 		expect(stored).toHaveLength(1);
@@ -1043,70 +1663,110 @@ describe("dispatchHookEvent", () => {
 
 	it.each(["Stop", "SessionEnd"] as const)(
 		"%s clears the session's permission prompt but keeps its other notifications",
-		async (hookEventName) => {
+		async (hookEventName) =>
+		{
 			clearAllNotifications();
 			const {store} = makeStore();
 			const notify = async (sessionId: string, notificationType: string) =>
-				dispatchHookEvent({
-					event: {
-						hook_event_name: "Notification",
-						session_id: sessionId,
-						transcript_path: `/tmp/${sessionId}.jsonl`,
-						cwd: "/tmp/my-project",
-						message: "Claude needs your permission to use Bash",
-						notification_type: notificationType,
+				dispatchHookEvent(
+					{
+						event:
+						{
+							hook_event_name: "Notification",
+							session_id: sessionId,
+							transcript_path: `/tmp/${sessionId}.jsonl`,
+							cwd: "/tmp/my-project",
+							message: "Claude needs your permission to use Bash",
+							notification_type: notificationType,
+						},
+						db: db.index,
+						store,
+						broadcast: () =>
+						{
+						},
+						reportHerdrState: () =>
+						{
+						},
 					},
-					db: db.index,
-					store,
-					broadcast: () => {},
-					reportHerdrState: () => {},
-				});
+				);
 			await notify("abc-123", "permission_prompt");
 			await notify("other-456", "idle_prompt");
 
-			for (const sessionId of ["abc-123", "other-456"]) {
-				await dispatchHookEvent({
-					event: {
-						hook_event_name: hookEventName,
-						session_id: sessionId,
-						transcript_path: `/tmp/${sessionId}.jsonl`,
-						cwd: "/tmp/my-project",
+			for (const sessionId of ["abc-123", "other-456"])
+			{
+				await dispatchHookEvent(
+					{
+						event:
+						{
+							hook_event_name: hookEventName,
+							session_id: sessionId,
+							transcript_path: `/tmp/${sessionId}.jsonl`,
+							cwd: "/tmp/my-project",
+						},
+						db: db.index,
+						store,
+						broadcast: () =>
+						{
+						},
+						reportHerdrState: () =>
+						{
+						},
 					},
-					db: db.index,
-					store,
-					broadcast: () => {},
-					reportHerdrState: () => {},
-				});
+				);
 			}
 
 			expect(
-				getNotifications().map(({sessionId, notificationType}) => ({sessionId, notificationType})),
-			).toStrictEqual([{sessionId: "other-456", notificationType: "idle_prompt"}]);
+				getNotifications().map(({sessionId, notificationType}) => (
+				{
+					sessionId,
+					notificationType,
+				})),
+			).toStrictEqual([
+				{
+					sessionId: "other-456",
+					notificationType: "idle_prompt",
+				},
+			]);
 			clearAllNotifications();
 		},
 	);
 
-	it("PermissionRequest stores its suggestions, the permission prompt carries the persistent option, and resuming work clears it", async () => {
+	it("PermissionRequest stores its suggestions, the permission prompt carries the persistent option, and resuming work clears it", async () =>
+	{
 		clearAllNotifications();
 		const {store, pendingPermissionCalls} = makeStore();
-		const base = {
+		const base =
+		{
 			session_id: "session-test-200",
 			transcript_path: "/tmp/session-test-200.jsonl",
 			cwd: "/tmp/my-project",
 		};
-		const suggestion = {
+		const suggestion =
+		{
 			type: "addRules" as const,
-			rules: [{toolName: "Bash", ruleContent: "rm -rf dist"}],
+			rules: [
+				{
+					toolName: "Bash",
+					ruleContent: "rm -rf dist",
+				},
+			],
 			behavior: "allow" as const,
 			destination: "localSettings" as const,
 		};
 		const events: HookEvent[] = [
-			{...base, hook_event_name: "SessionStart", source: "startup"},
+			{
+				...base,
+				hook_event_name: "SessionStart",
+				source: "startup",
+			},
 			{
 				...base,
 				hook_event_name: "PermissionRequest",
 				tool_name: "Bash",
-				tool_input: {command: "rm -rf dist"},
+				tool_input:
+				{
+					command: "rm -rf dist",
+				},
 				permission_suggestions: [suggestion],
 			},
 			{
@@ -1116,54 +1776,120 @@ describe("dispatchHookEvent", () => {
 				notification_type: "permission_prompt",
 			},
 		];
-		for (const event of events) {
-			await dispatchHookEvent({event, db: db.index, store, broadcast: () => {}, reportHerdrState: () => {}});
+		for (const event of events)
+		{
+			await dispatchHookEvent(
+				{
+					event,
+					db: db.index,
+					store,
+					broadcast: () =>
+					{
+					},
+					reportHerdrState: () =>
+					{
+					},
+				},
+			);
 		}
-		const prompted = getNotifications().map(({notificationType, persistentAllow, persistentAllowSaves}) => ({
+		const prompted = getNotifications().map(({notificationType, persistentAllow, persistentAllowSaves}) => (
+		{
 			notificationType,
 			persistentAllow,
 			persistentAllowSaves,
 		}));
-		await dispatchHookEvent({
-			event: {...base, hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: {command: "rm -rf dist"}},
-			db: db.index,
-			store,
-			broadcast: () => {},
-			reportHerdrState: () => {},
-		});
-
-		expect({prompted, pendingPermissionCalls}).toStrictEqual({
-			prompted: [
+		await dispatchHookEvent(
+			{
+				event:
 				{
-					notificationType: "permission_prompt",
-					persistentAllow: "always",
-					persistentAllowSaves: [{kind: "rule", toolName: "Bash", ruleContent: "rm -rf dist"}],
+					...base,
+					hook_event_name: "PostToolUse",
+					tool_name: "Bash",
+					tool_input:
+					{
+						command: "rm -rf dist",
+					},
 				},
-			],
-			pendingPermissionCalls: [
-				{sessionId: "session-test-200", request: {toolName: "Bash", suggestions: [suggestion]}},
-				{sessionId: "session-test-200", request: null},
-			],
-		});
+				db: db.index,
+				store,
+				broadcast: () =>
+				{
+				},
+				reportHerdrState: () =>
+				{
+				},
+			},
+		);
+
+		expect(
+			{
+				prompted,
+				pendingPermissionCalls,
+			},
+		).toStrictEqual(
+			{
+				prompted: [
+					{
+						notificationType: "permission_prompt",
+						persistentAllow: "always",
+						persistentAllowSaves: [
+							{
+								kind: "rule",
+								toolName: "Bash",
+								ruleContent: "rm -rf dist",
+							},
+						],
+					},
+				],
+				pendingPermissionCalls: [
+					{
+						sessionId: "session-test-200",
+						request:
+						{
+							toolName: "Bash",
+							suggestions: [suggestion],
+						},
+					},
+					{
+						sessionId: "session-test-200",
+						request: null,
+					},
+				],
+			},
+		);
 		clearAllNotifications();
 	});
 
 	it.each([
-		{hasSeen: false, persistentAllow: null},
-		{hasSeen: true, persistentAllow: "perChat"},
+		{
+			hasSeen: false,
+			persistentAllow: null,
+		},
+		{
+			hasSeen: true,
+			persistentAllow: "perChat",
+		},
 	] as const)(
 		"auto mode's first outside Read stores its permission mode, and its prompt offers a persistent option only once the flag is seen ($hasSeen)",
-		async ({hasSeen, persistentAllow}) => {
+		async ({hasSeen, persistentAllow}) =>
+		{
 			clearAllNotifications();
 			const {store, pendingPermissionCalls} = makeStore();
-			const base = {
+			const base =
+			{
 				session_id: "session-test-202",
 				transcript_path: "/tmp/session-test-202.jsonl",
 				cwd: "/tmp/spike/cwd",
 			};
-			const suggestion = {
+			const suggestion =
+			{
 				type: "addRules" as const,
-				rules: [{toolName: "Read", ruleContent: "//tmp/spike/outside/**"}],
+				rules: [
+					{
+						toolName: "Read",
+						ruleContent: "//tmp/spike/outside/**",
+					},
+				],
 				behavior: "allow" as const,
 				destination: "session" as const,
 			};
@@ -1173,14 +1899,20 @@ describe("dispatchHookEvent", () => {
 					...base,
 					hook_event_name: "SessionStart",
 					source: "startup",
-					claude_env: {CLAUDE_CONFIG_DIR: "/tmp/cfg"},
+					claude_env:
+					{
+						CLAUDE_CONFIG_DIR: "/tmp/cfg",
+					},
 				},
 				{
 					...base,
 					hook_event_name: "PermissionRequest",
 					permission_mode: "auto",
 					tool_name: "Read",
-					tool_input: {file_path: "/tmp/spike/outside/note.txt"},
+					tool_input:
+					{
+						file_path: "/tmp/spike/outside/note.txt",
+					},
 					permission_suggestions: [suggestion],
 				},
 				{
@@ -1190,141 +1922,216 @@ describe("dispatchHookEvent", () => {
 					notification_type: "permission_prompt",
 				},
 			];
-			for (const event of events) {
-				await dispatchHookEvent({
-					event,
-					db: db.index,
-					store,
-					broadcast: () => {},
-					reportHerdrState: () => {},
-					readHasSeenOutsideReadPrompt: async (configDir) => {
-						configReads.push(configDir);
-						return Promise.resolve(hasSeen);
-					},
-				});
-			}
-			expect({
-				pendingPermissionCalls,
-				persistentAllow: getNotifications().map((notification) => notification.persistentAllow ?? null),
-				saves: getNotifications().map((notification) => Object.hasOwn(notification, "persistentAllowSaves")),
-				configReads,
-			}).toStrictEqual({
-				pendingPermissionCalls: [
+			for (const event of events)
+			{
+				await dispatchHookEvent(
 					{
-						sessionId: "session-test-202",
-						request: {toolName: "Read", suggestions: [suggestion], permissionMode: "auto"},
+						event,
+						db: db.index,
+						store,
+						broadcast: () =>
+						{
+						},
+						reportHerdrState: () =>
+						{
+						},
+						readHasSeenOutsideReadPrompt: async (configDir) =>
+						{
+							configReads.push(configDir);
+							return Promise.resolve(hasSeen);
+						},
 					},
-				],
-				persistentAllow: [persistentAllow],
-				saves: [persistentAllow !== null],
-				configReads: ["/tmp/cfg"],
-			});
+				);
+			}
+			expect(
+				{
+					pendingPermissionCalls,
+					persistentAllow: getNotifications().map((notification) => notification.persistentAllow ?? null),
+					saves: getNotifications().map((notification) =>
+						Object.hasOwn(notification, "persistentAllowSaves"),
+					),
+					configReads,
+				},
+			).toStrictEqual(
+				{
+					pendingPermissionCalls: [
+						{
+							sessionId: "session-test-202",
+							request:
+							{
+								toolName: "Read",
+								suggestions: [suggestion],
+								permissionMode: "auto",
+							},
+						},
+					],
+					persistentAllow: [persistentAllow],
+					saves: [persistentAllow !== null],
+					configReads: ["/tmp/cfg"],
+				},
+			);
 			clearAllNotifications();
 		},
 	);
 
-	it("a permission prompt without a PermissionRequest carries no persistent option", async () => {
+	it("a permission prompt without a PermissionRequest carries no persistent option", async () =>
+	{
 		clearAllNotifications();
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				session_id: "session-test-201",
-				transcript_path: "/tmp/session-test-201.jsonl",
-				cwd: "/tmp/my-project",
-				hook_event_name: "Notification",
-				message: "Claude needs your permission to use Bash",
-				notification_type: "permission_prompt",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					session_id: "session-test-201",
+					transcript_path: "/tmp/session-test-201.jsonl",
+					cwd: "/tmp/my-project",
+					hook_event_name: "Notification",
+					message: "Claude needs your permission to use Bash",
+					notification_type: "permission_prompt",
+				},
+				db: db.index,
+				store,
+				broadcast: () =>
+				{
+				},
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: () => {},
-			reportHerdrState: () => {},
-		});
+		);
 		expect(getNotifications().map(({persistentAllow}) => persistentAllow ?? null)).toStrictEqual([null]);
 		clearAllNotifications();
 	});
 
-	it("PreCompact broadcasts SESSION_COMPACTING with optional trigger", async () => {
+	it("PreCompact broadcasts SESSION_COMPACTING with optional trigger", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "PreCompact",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
-				trigger: "auto",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "PreCompact",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					trigger: "auto",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		const compacting = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_COMPACTING);
 		if (!compacting) throw new Error("Expected session:compacting broadcast");
-		expect(compacting.data).toStrictEqual({
-			sessionId: "abc-123",
-			trigger: "auto",
-		});
+		expect(compacting.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				trigger: "auto",
+			},
+		);
 	});
 
-	it("PostCompact broadcasts SESSION_COMPACTED with reason and tokensRemoved", async () => {
+	it("PostCompact broadcasts SESSION_COMPACTED with reason and tokensRemoved", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "PostCompact",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
-				reason: "auto",
-				tokens_removed: 5000,
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "PostCompact",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					reason: "auto",
+					tokens_removed: 5000,
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(touchedCalls).toStrictEqual(["abc-123"]);
 		const compacted = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_COMPACTED);
 		if (!compacted) throw new Error("Expected session:compacted broadcast");
-		expect(compacted.data).toStrictEqual({
-			sessionId: "abc-123",
-			reason: "auto",
-			tokensRemoved: 5000,
-		});
+		expect(compacted.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				reason: "auto",
+				tokensRemoved: 5000,
+			},
+		);
 	});
 
-	it("PostCompact broadcasts SESSION_COMPACTED with undefined fields when optional fields absent", async () => {
+	it("PostCompact broadcasts SESSION_COMPACTED with undefined fields when optional fields absent", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "PostCompact",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "PostCompact",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		const compacted = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_COMPACTED);
 		if (!compacted) throw new Error("Expected session:compacted broadcast");
-		expect(compacted.data).toStrictEqual({
-			sessionId: "abc-123",
-			reason: undefined,
-			tokensRemoved: undefined,
-		});
+		expect(compacted.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				reason: undefined,
+				tokensRemoved: undefined,
+			},
+		);
 	});
 
-	it("SubagentStop broadcasts SESSION_UPDATED for the subagent session id when indexed", async () => {
+	it("SubagentStop broadcasts SESSION_UPDATED for the subagent session id when indexed", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
 			makeSessionsIndex([
@@ -1341,142 +2148,221 @@ describe("dispatchHookEvent", () => {
 		await indexSessionsIndex(db.index, projectDir, "-Users-craig-projects-app");
 		db.index
 			.insert(schema.subagents)
-			.values({
-				id: "sub-456",
-				sessionId: "parent-789",
-				projectId: "project-test",
-				parentAgentId: null,
-				agentType: "Explore",
-				filePath: "/tmp/test/sub-456.jsonl",
-				mtimeMs: 1_000,
-			})
+			.values(
+				{
+					id: "sub-456",
+					sessionId: "parent-789",
+					projectId: "project-test",
+					parentAgentId: null,
+					agentType: "Explore",
+					filePath: "/tmp/test/sub-456.jsonl",
+					mtimeMs: 1_000,
+				},
+			)
 			.run();
 
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "SubagentStop",
-				session_id: "sub-456",
-				transcript_path: "/Users/craig/.claude/projects/-Users-craig-projects-app/sub-456.jsonl",
-				cwd: "/tmp",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "SubagentStop",
+					session_id: "sub-456",
+					transcript_path: "/Users/craig/.claude/projects/-Users-craig-projects-app/sub-456.jsonl",
+					cwd: "/tmp",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(touchedCalls).toStrictEqual(["sub-456"]);
 		const stopped = broadcasts.find((broadcast) => broadcast.type === DOMAIN_EVENTS.SUBAGENT_STOPPED);
 		if (!stopped) throw new Error("Expected subagent:stopped broadcast");
-		expect(stopped.data).toStrictEqual({
-			sessionId: "parent-789",
-			agentType: "Explore",
-			agentId: "sub-456",
-		});
+		expect(stopped.data).toStrictEqual(
+			{
+				sessionId: "parent-789",
+				agentType: "Explore",
+				agentId: "sub-456",
+			},
+		);
 		const updated = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED);
 		if (!updated) throw new Error("Expected session:updated broadcast for subagent");
-		expect((updated.data as {session: {id: string}}).session.id).toBe("sub-456");
+		expect(
+			(
+				updated.data as
+				{
+					session:
+					{
+						id: string;
+					};
+				}
+			).session.id,
+		).toBe("sub-456");
 	});
 
-	it("SubagentStart broadcasts SUBAGENT_STARTED with agent_type / agent_id and touches the parent session", async () => {
+	it("SubagentStart broadcasts SUBAGENT_STARTED with agent_type / agent_id and touches the parent session", async () =>
+	{
 		vi.spyOn(Date, "now").mockReturnValue(Date.UTC(1999, 11, 31));
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "SubagentStart",
-				session_id: "parent-789",
-				transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
-				cwd: "/tmp",
-				agent_type: "general-purpose",
-				agent_id: "sub-456",
-				agent_config: {
-					description: "Inspect test behavior",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "SubagentStart",
+					session_id: "parent-789",
+					transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
+					cwd: "/tmp",
+					agent_type: "general-purpose",
+					agent_id: "sub-456",
+					agent_config:
+					{
+						description: "Inspect test behavior",
+					},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
 				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(touchedCalls).toStrictEqual(["parent-789"]);
 		const started = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SUBAGENT_STARTED);
 		if (!started) throw new Error("Expected subagent:started broadcast");
-		expect(started.data).toStrictEqual({
-			sessionId: "parent-789",
-			parentAgentId: null,
-			agentType: "general-purpose",
-			agentId: "agent-sub-456",
-			description: "Inspect test behavior",
-			startedAt: "1999-12-31T00:00:00.000Z",
-			endedAt: null,
-		});
+		expect(started.data).toStrictEqual(
+			{
+				sessionId: "parent-789",
+				parentAgentId: null,
+				agentType: "general-purpose",
+				agentId: "agent-sub-456",
+				description: "Inspect test behavior",
+				startedAt: "1999-12-31T00:00:00.000Z",
+				endedAt: null,
+			},
+		);
 	});
 
-	it("SubagentStart without an agent id does not create an unkeyed live node", async () => {
+	it("SubagentStart without an agent id does not create an unkeyed live node", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "SubagentStart",
-				session_id: "parent-789",
-				transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
-				cwd: "/tmp",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "SubagentStart",
+					session_id: "parent-789",
+					transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
+					cwd: "/tmp",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SUBAGENT_STARTED)).toStrictEqual([]);
 	});
 
-	it("Stop reconciles a killed live subagent and broadcasts its ended timestamp", async () => {
+	it("Stop reconciles a killed live subagent and broadcasts its ended timestamp", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
 		vi.spyOn(Date, "now")
 			.mockReturnValueOnce(Date.UTC(1999, 11, 31))
 			.mockReturnValueOnce(Date.UTC(1999, 11, 31, 0, 0, 5));
 
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "SubagentStart",
-				session_id: "parent-789",
-				transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
-				cwd: "/tmp",
-				agent_type: "Explore",
-				agent_id: "alice",
-				agent_config: {description: "Inspect test behavior"},
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "SubagentStart",
+					session_id: "parent-789",
+					transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
+					cwd: "/tmp",
+					agent_type: "Explore",
+					agent_id: "alice",
+					agent_config:
+					{
+						description: "Inspect test behavior",
+					},
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 		broadcasts.length = 0;
 
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "Stop",
-				session_id: "parent-789",
-				transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
-				cwd: "/tmp",
-				stop_hook_active: false,
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "Stop",
+					session_id: "parent-789",
+					transcript_path: "/Users/u/.claude/projects/-h-u-p/parent-789.jsonl",
+					cwd: "/tmp",
+					stop_hook_active: false,
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(broadcasts).toStrictEqual([
 			{
 				type: DOMAIN_EVENTS.SUBAGENT_STOPPED,
-				data: {
+				data:
+				{
 					sessionId: "parent-789",
 					agentType: "Explore",
 					agentId: "agent-alice",
@@ -1486,53 +2372,95 @@ describe("dispatchHookEvent", () => {
 		]);
 	});
 
-	describe("subagent-scoped hook events", () => {
-		const parentEvent = {
+	describe("subagent-scoped hook events", () =>
+	{
+		const parentEvent =
+		{
 			session_id: "parent-test-100",
 			transcript_path: "/tmp/test/parent-test-100.jsonl",
 			cwd: "/tmp/test/project",
 		} as const;
-		const subagentFields = {agent_id: "alice", agent_type: "Explore"} as const;
+		const subagentFields =
+		{
+			agent_id: "alice",
+			agent_type: "Explore",
+		} as const;
 
-		it("a subagent PreToolUse after the parent Stop leaves the parent idle", async () => {
+		it("a subagent PreToolUse after the parent Stop leaves the parent idle", async () =>
+		{
 			const {store, stateCalls, subagentActivityCalls} = makeStore();
 			const events: HookEvent[] = [
-				{...parentEvent, hook_event_name: "Stop"},
+				{
+					...parentEvent,
+					hook_event_name: "Stop",
+				},
 				{
 					...parentEvent,
 					...subagentFields,
 					hook_event_name: "PreToolUse",
 					tool_name: "Bash",
-					tool_input: {command: "true"},
+					tool_input:
+					{
+						command: "true",
+					},
 				},
 				{
 					...parentEvent,
 					...subagentFields,
 					hook_event_name: "PostToolUse",
 					tool_name: "Bash",
-					tool_input: {command: "true"},
+					tool_input:
+					{
+						command: "true",
+					},
 				},
 			];
-			for (const event of events) {
-				await dispatchHookEvent({
-					event,
-					db: db.index,
-					store,
-					broadcast: () => {},
-					reportHerdrState: () => {},
-				});
+			for (const event of events)
+			{
+				await dispatchHookEvent(
+					{
+						event,
+						db: db.index,
+						store,
+						broadcast: () =>
+						{
+						},
+						reportHerdrState: () =>
+						{
+						},
+					},
+				);
 			}
 
-			expect({stateCalls, subagentActivityCalls}).toStrictEqual({
-				stateCalls: [{sessionId: "parent-test-100", state: "idle"}],
-				subagentActivityCalls: [
-					{sessionId: "parent-test-100", agentId: "alice"},
-					{sessionId: "parent-test-100", agentId: "alice"},
-				],
-			});
+			expect(
+				{
+					stateCalls,
+					subagentActivityCalls,
+				},
+			).toStrictEqual(
+				{
+					stateCalls: [
+						{
+							sessionId: "parent-test-100",
+							state: "idle",
+						},
+					],
+					subagentActivityCalls: [
+						{
+							sessionId: "parent-test-100",
+							agentId: "alice",
+						},
+						{
+							sessionId: "parent-test-100",
+							agentId: "alice",
+						},
+					],
+				},
+			);
 		});
 
-		it("a subagent AskUserQuestion does not set the parent waiting or clear its notifications, but a subagent permission prompt surfaces for the parent", async () => {
+		it("a subagent AskUserQuestion does not set the parent waiting or clear its notifications, but a subagent permission prompt surfaces for the parent", async () =>
+		{
 			clearAllNotifications();
 			const {store, stateCalls} = makeStore();
 			const events: HookEvent[] = [
@@ -1548,372 +2476,551 @@ describe("dispatchHookEvent", () => {
 					...subagentFields,
 					hook_event_name: "PreToolUse",
 					tool_name: "AskUserQuestion",
-					tool_input: {questions: []},
+					tool_input:
+					{
+						questions: [],
+					},
 				},
 			];
-			for (const event of events) {
-				await dispatchHookEvent({
-					event,
-					db: db.index,
-					store,
-					broadcast: () => {},
-					reportHerdrState: () => {},
-				});
-			}
-
-			expect({
-				stateCalls,
-				notifications: getNotifications().map((notification) => ({
-					sessionId: notification.sessionId,
-					notificationType: notification.notificationType,
-				})),
-			}).toStrictEqual({
-				stateCalls: [],
-				notifications: [{sessionId: "parent-test-100", notificationType: "permission_prompt"}],
-			});
-			clearAllNotifications();
-		});
-
-		it("Stop keeps live subagents that are still running as background tasks and stores the tasks", async () => {
-			const broadcasts: Broadcast[] = [];
-			const {store, backgroundTaskCalls} = makeStore();
-			vi.spyOn(Date, "now").mockReturnValue(Date.UTC(1999, 11, 31));
-			for (const agentId of ["alice", "bob"]) {
-				await dispatchHookEvent({
-					event: {
-						...parentEvent,
-						hook_event_name: "SubagentStart",
-						agent_type: "Explore",
-						agent_id: agentId,
-						agent_config: {description: `Inspect ${agentId}`},
-					},
-					db: db.index,
-					store,
-					broadcast: () => {},
-					reportHerdrState: () => {},
-				});
-			}
-
-			await dispatchHookEvent({
-				event: {
-					...parentEvent,
-					hook_event_name: "Stop",
-					background_tasks: [
+			for (const event of events)
+			{
+				await dispatchHookEvent(
+					{
+						event,
+						db: db.index,
+						store,
+						broadcast: () =>
 						{
-							id: "alice",
-							type: "local_agent",
-							status: "running",
-							description: "Inspect alice",
-							agent_type: "Explore",
+						},
+						reportHerdrState: () =>
+						{
+						},
+					},
+				);
+			}
+
+			expect(
+				{
+					stateCalls,
+					notifications: getNotifications().map((notification) => (
+					{
+						sessionId: notification.sessionId,
+						notificationType: notification.notificationType,
+					})),
+				},
+			).toStrictEqual(
+				{
+					stateCalls: [],
+					notifications: [
+						{
+							sessionId: "parent-test-100",
+							notificationType: "permission_prompt",
 						},
 					],
 				},
-				db: db.index,
-				store,
-				broadcast: (type, data) => broadcasts.push({type, data}),
-				reportHerdrState: () => {},
-			});
+			);
+			clearAllNotifications();
+		});
 
-			expect({
-				stopped: broadcasts.filter((broadcast) => broadcast.type === DOMAIN_EVENTS.SUBAGENT_STOPPED),
-				backgroundTaskCalls,
-			}).toStrictEqual({
-				stopped: [
+		it("Stop keeps live subagents that are still running as background tasks and stores the tasks", async () =>
+		{
+			const broadcasts: Broadcast[] = [];
+			const {store, backgroundTaskCalls} = makeStore();
+			vi.spyOn(Date, "now").mockReturnValue(Date.UTC(1999, 11, 31));
+			for (const agentId of ["alice", "bob"])
+			{
+				await dispatchHookEvent(
 					{
-						type: DOMAIN_EVENTS.SUBAGENT_STOPPED,
-						data: {
-							sessionId: "parent-test-100",
-							agentType: "Explore",
-							agentId: "agent-bob",
-							endedAt: "1999-12-31T00:00:00.000Z",
+						event:
+						{
+							...parentEvent,
+							hook_event_name: "SubagentStart",
+							agent_type: "Explore",
+							agent_id: agentId,
+							agent_config:
+							{
+								description: `Inspect ${agentId}`,
+							},
+						},
+						db: db.index,
+						store,
+						broadcast: () =>
+						{
+						},
+						reportHerdrState: () =>
+						{
 						},
 					},
-				],
-				backgroundTaskCalls: [
+				);
+			}
+
+			await dispatchHookEvent(
+				{
+					event:
 					{
-						sessionId: "parent-test-100",
-						backgroundTasks: [
+						...parentEvent,
+						hook_event_name: "Stop",
+						background_tasks: [
 							{
 								id: "alice",
 								type: "local_agent",
 								status: "running",
 								description: "Inspect alice",
-								agentType: "Explore",
+								agent_type: "Explore",
 							},
 						],
 					},
-				],
-			});
+					db: db.index,
+					store,
+					broadcast: (type, data) =>
+						broadcasts.push(
+							{
+								type,
+								data,
+							},
+						),
+					reportHerdrState: () =>
+					{
+					},
+				},
+			);
+
+			expect(
+				{
+					stopped: broadcasts.filter((broadcast) => broadcast.type === DOMAIN_EVENTS.SUBAGENT_STOPPED),
+					backgroundTaskCalls,
+				},
+			).toStrictEqual(
+				{
+					stopped: [
+						{
+							type: DOMAIN_EVENTS.SUBAGENT_STOPPED,
+							data:
+							{
+								sessionId: "parent-test-100",
+								agentType: "Explore",
+								agentId: "agent-bob",
+								endedAt: "1999-12-31T00:00:00.000Z",
+							},
+						},
+					],
+					backgroundTaskCalls: [
+						{
+							sessionId: "parent-test-100",
+							backgroundTasks: [
+								{
+									id: "alice",
+									type: "local_agent",
+									status: "running",
+									description: "Inspect alice",
+									agentType: "Explore",
+								},
+							],
+						},
+					],
+				},
+			);
 		});
 	});
 
-	it("CwdChanged updates the active-session store cwd and broadcasts SESSION_CWD_CHANGED", async () => {
+	it("CwdChanged updates the active-session store cwd and broadcasts SESSION_CWD_CHANGED", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, activeCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "CwdChanged",
-				session_id: "abc-123",
-				transcript_path: "/Users/u/.claude/projects/-h-u-p/abc-123.jsonl",
-				cwd: "/Users/u/projects/app",
-				old_cwd: "/Users/u/projects/app",
-				new_cwd: "/Users/u/projects/other-app",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "CwdChanged",
+					session_id: "abc-123",
+					transcript_path: "/Users/u/.claude/projects/-h-u-p/abc-123.jsonl",
+					cwd: "/Users/u/projects/app",
+					old_cwd: "/Users/u/projects/app",
+					new_cwd: "/Users/u/projects/other-app",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(activeCalls).toStrictEqual([
 			{
 				sessionId: "abc-123",
-				meta: {cwd: "/Users/u/projects/other-app"},
+				meta:
+				{
+					cwd: "/Users/u/projects/other-app",
+				},
 			},
 		]);
 		const changed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_CWD_CHANGED);
 		if (!changed) throw new Error("Expected session:cwd-changed broadcast");
-		expect(changed.data).toStrictEqual({
-			sessionId: "abc-123",
-			oldCwd: "/Users/u/projects/app",
-			newCwd: "/Users/u/projects/other-app",
-		});
+		expect(changed.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				oldCwd: "/Users/u/projects/app",
+				newCwd: "/Users/u/projects/other-app",
+			},
+		);
 	});
 
-	it("InstructionsLoaded broadcasts INSTRUCTIONS_LOADED with the full payload and touches the session", async () => {
+	it("InstructionsLoaded broadcasts INSTRUCTIONS_LOADED with the full payload and touches the session", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "InstructionsLoaded",
-				session_id: "abc-123",
-				transcript_path: "/Users/u/.claude/projects/-h-u-p/abc-123.jsonl",
-				cwd: "/Users/u/projects/app",
-				file_path: "/Users/u/projects/app/CLAUDE.md",
-				memory_type: "project",
-				load_reason: "session_start",
-				globs: ["**/*.ts"],
-				trigger_file_path: "/Users/u/projects/app/CLAUDE.md",
-				parent_file_path: "/Users/u/projects/app/CLAUDE.md",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "InstructionsLoaded",
+					session_id: "abc-123",
+					transcript_path: "/Users/u/.claude/projects/-h-u-p/abc-123.jsonl",
+					cwd: "/Users/u/projects/app",
+					file_path: "/Users/u/projects/app/CLAUDE.md",
+					memory_type: "project",
+					load_reason: "session_start",
+					globs: ["**/*.ts"],
+					trigger_file_path: "/Users/u/projects/app/CLAUDE.md",
+					parent_file_path: "/Users/u/projects/app/CLAUDE.md",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(touchedCalls).toStrictEqual(["abc-123"]);
 		const loaded = broadcasts.find((b) => b.type === DOMAIN_EVENTS.INSTRUCTIONS_LOADED);
 		if (!loaded) throw new Error("Expected instructions:loaded broadcast");
-		expect(loaded.data).toStrictEqual({
-			sessionId: "abc-123",
-			filePath: "/Users/u/projects/app/CLAUDE.md",
-			memoryType: "project",
-			loadReason: "session_start",
-			globs: ["**/*.ts"],
-			triggerFilePath: "/Users/u/projects/app/CLAUDE.md",
-			parentFilePath: "/Users/u/projects/app/CLAUDE.md",
-		});
+		expect(loaded.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				filePath: "/Users/u/projects/app/CLAUDE.md",
+				memoryType: "project",
+				loadReason: "session_start",
+				globs: ["**/*.ts"],
+				triggerFilePath: "/Users/u/projects/app/CLAUDE.md",
+				parentFilePath: "/Users/u/projects/app/CLAUDE.md",
+			},
+		);
 	});
 
-	it("InstructionsLoaded with only required file_path emits undefined optional fields", async () => {
+	it("InstructionsLoaded with only required file_path emits undefined optional fields", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "InstructionsLoaded",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
-				file_path: "/Users/u/.claude/CLAUDE.md",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "InstructionsLoaded",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					file_path: "/Users/u/.claude/CLAUDE.md",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		const loaded = broadcasts.find((b) => b.type === DOMAIN_EVENTS.INSTRUCTIONS_LOADED);
 		if (!loaded) throw new Error("Expected instructions:loaded broadcast");
-		expect(loaded.data).toStrictEqual({
-			sessionId: "abc-123",
-			filePath: "/Users/u/.claude/CLAUDE.md",
-			memoryType: undefined,
-			loadReason: undefined,
-			globs: undefined,
-			triggerFilePath: undefined,
-			parentFilePath: undefined,
-		});
+		expect(loaded.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				filePath: "/Users/u/.claude/CLAUDE.md",
+				memoryType: undefined,
+				loadReason: undefined,
+				globs: undefined,
+				triggerFilePath: undefined,
+				parentFilePath: undefined,
+			},
+		);
 	});
 
-	it("ConfigChange broadcasts CONFIG_CHANGED with sessionId, configSource, and changedFields", async () => {
+	it("ConfigChange broadcasts CONFIG_CHANGED with sessionId, configSource, and changedFields", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "ConfigChange",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
-				config_source: "user_settings",
-				changed_fields: ["hooks.PostToolUse", "permissions.allow"],
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "ConfigChange",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					config_source: "user_settings",
+					changed_fields: ["hooks.PostToolUse", "permissions.allow"],
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(touchedCalls).toStrictEqual(["abc-123"]);
 		const changed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.CONFIG_CHANGED);
 		if (!changed) throw new Error("Expected config:changed broadcast");
-		expect(changed.data).toStrictEqual({
-			sessionId: "abc-123",
-			configSource: "user_settings",
-			changedFields: ["hooks.PostToolUse", "permissions.allow"],
-		});
+		expect(changed.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				configSource: "user_settings",
+				changedFields: ["hooks.PostToolUse", "permissions.allow"],
+			},
+		);
 		expect(broadcasts.find((b) => b.type === SSE_EVENTS.CONTENT_UPDATED)).toBeUndefined();
 	});
 
-	it("ConfigChange with config_source=skills additionally broadcasts CONTENT_UPDATED for the plugins view", async () => {
+	it("ConfigChange with config_source=skills additionally broadcasts CONTENT_UPDATED for the plugins view", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "ConfigChange",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
-				config_source: "skills",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "ConfigChange",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					config_source: "skills",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		const changed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.CONFIG_CHANGED);
 		if (!changed) throw new Error("Expected config:changed broadcast");
-		expect(changed.data).toStrictEqual({
-			sessionId: "abc-123",
-			configSource: "skills",
-			changedFields: [],
-		});
+		expect(changed.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				configSource: "skills",
+				changedFields: [],
+			},
+		);
 		const content = broadcasts.find((b) => b.type === SSE_EVENTS.CONTENT_UPDATED);
 		if (!content) throw new Error("Expected content:updated broadcast for skills source");
 		expect(content.data).toStrictEqual({});
 	});
 
-	it("MessageDisplay broadcasts MESSAGE_DISPLAYED with sessionId, message, and messageId", async () => {
+	it("MessageDisplay broadcasts MESSAGE_DISPLAYED with sessionId, message, and messageId", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "MessageDisplay",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "MessageDisplay",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					message: "Here is the answer you asked for.",
+					message_id: "msg_018a7f9b2c3d4e5f",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
+			},
+		);
+
+		expect(touchedCalls).toStrictEqual(["abc-123"]);
+		const displayed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.MESSAGE_DISPLAYED);
+		if (!displayed) throw new Error("Expected message:displayed broadcast");
+		expect(displayed.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
 				message: "Here is the answer you asked for.",
-				message_id: "msg_018a7f9b2c3d4e5f",
+				messageId: "msg_018a7f9b2c3d4e5f",
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
+	});
+
+	it("MessageDisplay accepts payloads missing the optional message and messageId fields", async () =>
+	{
+		const broadcasts: Broadcast[] = [];
+		const {store, touchedCalls} = makeStore();
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "MessageDisplay",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
+			},
+		);
 
 		expect(touchedCalls).toStrictEqual(["abc-123"]);
 		const displayed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.MESSAGE_DISPLAYED);
 		if (!displayed) throw new Error("Expected message:displayed broadcast");
-		expect(displayed.data).toStrictEqual({
-			sessionId: "abc-123",
-			message: "Here is the answer you asked for.",
-			messageId: "msg_018a7f9b2c3d4e5f",
-		});
+		expect(displayed.data).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				message: undefined,
+				messageId: undefined,
+			},
+		);
 	});
 
-	it("MessageDisplay accepts payloads missing the optional message and messageId fields", async () => {
+	it("TaskCreated broadcasts the domain TASK_CREATED event", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "MessageDisplay",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "TaskCreated",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					task_id: "task-002",
+					task_subject: "Ship feature",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
-
-		expect(touchedCalls).toStrictEqual(["abc-123"]);
-		const displayed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.MESSAGE_DISPLAYED);
-		if (!displayed) throw new Error("Expected message:displayed broadcast");
-		expect(displayed.data).toStrictEqual({
-			sessionId: "abc-123",
-			message: undefined,
-			messageId: undefined,
-		});
-	});
-
-	it("TaskCreated broadcasts the domain TASK_CREATED event", async () => {
-		const broadcasts: Broadcast[] = [];
-		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "TaskCreated",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
-				task_id: "task-002",
-				task_subject: "Ship feature",
-			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(touchedCalls).toStrictEqual(["abc-123"]);
 		const created = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.TASK_CREATED);
 		expect(created.length).toBe(1);
-		expect(created[0]!.data).toStrictEqual({
-			taskId: "task-002",
-			subject: "Ship feature",
-		});
+		expect(created[0]!.data).toStrictEqual(
+			{
+				taskId: "task-002",
+				subject: "Ship feature",
+			},
+		);
 	});
 
-	it("TaskCompleted broadcasts the domain TASK_COMPLETED event", async () => {
+	it("TaskCompleted broadcasts the domain TASK_COMPLETED event", async () =>
+	{
 		const broadcasts: Broadcast[] = [];
 		const {store, touchedCalls} = makeStore();
-		await dispatchHookEvent({
-			event: {
-				hook_event_name: "TaskCompleted",
-				session_id: "abc-123",
-				transcript_path: "/tmp/abc-123.jsonl",
-				cwd: "/tmp",
-				task_id: "task-001",
-				task_subject: "Build auth",
+		await dispatchHookEvent(
+			{
+				event:
+				{
+					hook_event_name: "TaskCompleted",
+					session_id: "abc-123",
+					transcript_path: "/tmp/abc-123.jsonl",
+					cwd: "/tmp",
+					task_id: "task-001",
+					task_subject: "Build auth",
+				},
+				db: db.index,
+				store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
 			},
-			db: db.index,
-			store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
+		);
 
 		expect(touchedCalls).toStrictEqual(["abc-123"]);
 		const completed = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.TASK_COMPLETED);
 		expect(completed.length).toBe(1);
-		expect(completed[0]!.data).toStrictEqual({
-			taskId: "task-001",
-			subject: "Build auth",
-		});
+		expect(completed[0]!.data).toStrictEqual(
+			{
+				taskId: "task-001",
+				subject: "Build auth",
+			},
+		);
 	});
 
-	describe("PostToolUse fast path", () => {
-		function makeDirs(): import("../src/lib/hook-dispatcher").HookDispatchDirs {
+	describe("PostToolUse fast path", () =>
+	{
+		function makeDirs(): import("../src/lib/hook-dispatcher").HookDispatchDirs
+		{
 			return {
 				projectsDir: join(testDir, "projects"),
 				plansDir: join(testDir, "plans"),
@@ -1924,27 +3031,40 @@ describe("dispatchHookEvent", () => {
 			};
 		}
 
-		it("keys hook-side transcript and memory indexing by the same real path the watcher reports under a symlinked ~/.claude", async () => {
+		it("keys hook-side transcript and memory indexing by the same real path the watcher reports under a symlinked ~/.claude", async () =>
+		{
 			const realClaude = join(realpathSync(testDir), "real");
 			const linkedClaude = join(testDir, "link");
 			const realProjectDir = join(realClaude, "projects", "-home-alice-app");
-			mkdirSync(join(realProjectDir, "memory"), {recursive: true});
+			mkdirSync(
+				join(realProjectDir, "memory"),
+				{
+					recursive: true,
+				},
+			);
 			symlinkSync(realClaude, linkedClaude);
 			const realTranscript = join(realProjectDir, "alice-session.jsonl");
 			const realMemory = join(realProjectDir, "memory", "alice-memory.md");
 			writeFileSync(
 				realTranscript,
-				`${JSON.stringify({
-					type: "user",
-					sessionId: "alice-session",
-					uuid: "alice-uuid-1",
-					timestamp: "1999-12-31T00:00:00.000Z",
-					cwd: "/home/alice/app",
-					message: {role: "user", content: "Hello"},
-				})}\n`,
+				`${JSON.stringify(
+					{
+						type: "user",
+						sessionId: "alice-session",
+						uuid: "alice-uuid-1",
+						timestamp: "1999-12-31T00:00:00.000Z",
+						cwd: "/home/alice/app",
+						message:
+						{
+							role: "user",
+							content: "Hello",
+						},
+					},
+				)}\n`,
 			);
 			writeFileSync(realMemory, "# Alice memory\n");
-			const dirs = {
+			const dirs =
+			{
 				projectsDir: join(linkedClaude, "projects"),
 				plansDir: join(linkedClaude, "plans"),
 				tasksDir: join(linkedClaude, "tasks"),
@@ -1954,55 +3074,85 @@ describe("dispatchHookEvent", () => {
 			};
 			const {store} = makeStore();
 
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "PostToolUse",
-					session_id: "alice-session",
-					transcript_path: join(dirs.projectsDir, "-home-alice-app", "alice-session.jsonl"),
-					cwd: "/home/alice/app",
-					tool_name: "Write",
-					tool_input: {
-						file_path: join(dirs.projectsDir, "-home-alice-app", "memory", "alice-memory.md"),
-						content: "# Alice memory\n",
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "PostToolUse",
+						session_id: "alice-session",
+						transcript_path: join(dirs.projectsDir, "-home-alice-app", "alice-session.jsonl"),
+						cwd: "/home/alice/app",
+						tool_name: "Write",
+						tool_input:
+						{
+							file_path: join(dirs.projectsDir, "-home-alice-app", "memory", "alice-memory.md"),
+							content: "# Alice memory\n",
+						},
+					},
+					db: db.index,
+					store,
+					broadcast: () =>
+					{
+					},
+					dirs,
+					reportHerdrState: () =>
+					{
 					},
 				},
-				db: db.index,
-				store,
-				broadcast: () => {},
-				dirs,
-				reportHerdrState: () => {},
-			});
+			);
 			// The recursive watcher reports the same files under their real paths.
 			await indexFile(db.index, realTranscript, dirs.projectsDir, dirs.plansDir);
 			await indexFile(db.index, realMemory, dirs.projectsDir, dirs.plansDir);
 
-			expect({
-				indexedFiles: db.index
-					.select({path: schema.indexedFiles.path})
-					.from(schema.indexedFiles)
-					.all()
-					.map((row) => row.path)
-					.filter((path) => path.endsWith(".jsonl")),
-				sessionFilePaths: db.index
-					.select({filePath: schema.sessions.filePath})
-					.from(schema.sessions)
-					.all()
-					.map((row) => row.filePath),
-				memoryFilePaths: db.index
-					.select({filePath: schema.memories.filePath})
-					.from(schema.memories)
-					.all()
-					.map((row) => row.filePath),
-			}).toStrictEqual({
-				indexedFiles: [realTranscript],
-				sessionFilePaths: [realTranscript],
-				memoryFilePaths: [realMemory],
-			});
+			expect(
+				{
+					indexedFiles: db.index
+						.select(
+							{
+								path: schema.indexedFiles.path,
+							},
+						)
+						.from(schema.indexedFiles)
+						.all()
+						.map((row) => row.path)
+						.filter((path) => path.endsWith(".jsonl")),
+					sessionFilePaths: db.index
+						.select(
+							{
+								filePath: schema.sessions.filePath,
+							},
+						)
+						.from(schema.sessions)
+						.all()
+						.map((row) => row.filePath),
+					memoryFilePaths: db.index
+						.select(
+							{
+								filePath: schema.memories.filePath,
+							},
+						)
+						.from(schema.memories)
+						.all()
+						.map((row) => row.filePath),
+				},
+			).toStrictEqual(
+				{
+					indexedFiles: [realTranscript],
+					sessionFilePaths: [realTranscript],
+					memoryFilePaths: [realMemory],
+				},
+			);
 		});
 
-		it("Edit on a plan markdown file indexes the file and broadcasts plan:changed", async () => {
+		it("Edit on a plan markdown file indexes the file and broadcasts plan:changed", async () =>
+		{
 			const dirs = makeDirs();
-			mkdirSync(dirs.plansDir, {recursive: true});
+			mkdirSync(
+				dirs.plansDir,
+				{
+					recursive: true,
+				},
+			);
 			const planFilename = "2026-05-20-test-plan.md";
 			const planPath = join(dirs.plansDir, planFilename);
 			writeFileSync(planPath, "# Test Plan Title\n\nBody.\n");
@@ -2010,31 +3160,49 @@ describe("dispatchHookEvent", () => {
 			const broadcasts: Broadcast[] = [];
 			const {store} = makeStore();
 
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "PostToolUse",
-					session_id: "abc-123",
-					transcript_path: "/tmp/missing.jsonl",
-					cwd: "/tmp",
-					tool_name: "Edit",
-					tool_input: {
-						file_path: planPath,
-						old_string: "Body.",
-						new_string: "New body.",
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "PostToolUse",
+						session_id: "abc-123",
+						transcript_path: "/tmp/missing.jsonl",
+						cwd: "/tmp",
+						tool_name: "Edit",
+						tool_input:
+						{
+							file_path: planPath,
+							old_string: "Body.",
+							new_string: "New body.",
+						},
+					},
+					db: db.index,
+					store,
+					broadcast: (type, data) =>
+						broadcasts.push(
+							{
+								type,
+								data,
+							},
+						),
+					dirs,
+					reportHerdrState: () =>
+					{
 					},
 				},
-				db: db.index,
-				store,
-				broadcast: (type, data) => broadcasts.push({type, data}),
-				dirs,
-				reportHerdrState: () => {},
-			});
+			);
 
 			const planChanged = broadcasts.find((b) => b.type === DOMAIN_EVENTS.PLAN_CHANGED);
 			if (!planChanged) throw new Error("Expected plan:changed broadcast");
 			const plan = (
-				planChanged.data as {
-					plan: {filename: string; title: string; mtime: string};
+				planChanged.data as
+				{
+					plan:
+					{
+						filename: string;
+						title: string;
+						mtime: string;
+					};
 				}
 			).plan;
 			expect(plan.filename).toBe(planFilename);
@@ -2042,86 +3210,125 @@ describe("dispatchHookEvent", () => {
 			expect(typeof plan.mtime).toBe("string");
 		});
 
-		it("Write on a task json file indexes the task and broadcasts task:changed", async () => {
+		it("Write on a task json file indexes the task and broadcasts task:changed", async () =>
+		{
 			const dirs = makeDirs();
 			const projectDir = "sample-project";
 			const tasksProjectDir = join(dirs.tasksDir, projectDir);
-			mkdirSync(tasksProjectDir, {recursive: true});
+			mkdirSync(
+				tasksProjectDir,
+				{
+					recursive: true,
+				},
+			);
 			const taskId = "task-007";
 			const taskPath = join(tasksProjectDir, `${taskId}.json`);
 			writeFileSync(
 				taskPath,
-				JSON.stringify({
-					id: taskId,
-					subject: "Ship the thing",
-					description: "desc",
-					status: "in_progress",
-					blocks: [],
-					blockedBy: [],
-				}),
+				JSON.stringify(
+					{
+						id: taskId,
+						subject: "Ship the thing",
+						description: "desc",
+						status: "in_progress",
+						blocks: [],
+						blockedBy: [],
+					},
+				),
 			);
 
 			const broadcasts: Broadcast[] = [];
 			const {store, touchedCalls} = makeStore();
 
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "PostToolUse",
-					session_id: "abc-123",
-					transcript_path: "/tmp/missing.jsonl",
-					cwd: "/tmp",
-					tool_name: "Write",
-					tool_input: {file_path: taskPath, content: "{}"},
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "PostToolUse",
+						session_id: "abc-123",
+						transcript_path: "/tmp/missing.jsonl",
+						cwd: "/tmp",
+						tool_name: "Write",
+						tool_input:
+						{
+							file_path: taskPath,
+							content: "{}",
+						},
+					},
+					db: db.index,
+					store,
+					broadcast: (type, data) =>
+						broadcasts.push(
+							{
+								type,
+								data,
+							},
+						),
+					dirs,
+					reportHerdrState: () =>
+					{
+					},
 				},
-				db: db.index,
-				store,
-				broadcast: (type, data) => broadcasts.push({type, data}),
-				dirs,
-				reportHerdrState: () => {},
-			});
+			);
 
 			expect(touchedCalls).toStrictEqual(["abc-123"]);
 			const taskChanged = broadcasts.find((b) => b.type === DOMAIN_EVENTS.TASK_CHANGED);
 			if (!taskChanged) throw new Error("Expected task:changed broadcast");
-			expect(taskChanged.data).toStrictEqual({
-				task: {
-					taskId,
-					projectDir,
-					subject: "Ship the thing",
-					description: "desc",
-					status: "in_progress",
-					activeForm: null,
-					owner: null,
-					blocks: [],
-					blockedBy: [],
+			expect(taskChanged.data).toStrictEqual(
+				{
+					task:
+					{
+						taskId,
+						projectDir,
+						subject: "Ship the thing",
+						description: "desc",
+						status: "in_progress",
+						activeForm: null,
+						owner: null,
+						blocks: [],
+						blockedBy: [],
+					},
 				},
-			});
+			);
 		});
 
-		it("Edit on an unrelated path emits no domain delta but still touches session", async () => {
+		it("Edit on an unrelated path emits no domain delta but still touches session", async () =>
+		{
 			const dirs = makeDirs();
 			const broadcasts: Broadcast[] = [];
 			const {store, touchedCalls} = makeStore();
 
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "PostToolUse",
-					session_id: "abc-123",
-					transcript_path: "/tmp/missing.jsonl",
-					cwd: "/tmp",
-					tool_name: "Edit",
-					tool_input: {
-						file_path: join(testDir, "unrelated", "note.md"),
-						old_string: "a",
-						new_string: "b",
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "PostToolUse",
+						session_id: "abc-123",
+						transcript_path: "/tmp/missing.jsonl",
+						cwd: "/tmp",
+						tool_name: "Edit",
+						tool_input:
+						{
+							file_path: join(testDir, "unrelated", "note.md"),
+							old_string: "a",
+							new_string: "b",
+						},
+					},
+					db: db.index,
+					store,
+					broadcast: (type, data) =>
+						broadcasts.push(
+							{
+								type,
+								data,
+							},
+						),
+					dirs,
+					reportHerdrState: () =>
+					{
 					},
 				},
-				db: db.index,
-				store,
-				broadcast: (type, data) => broadcasts.push({type, data}),
-				dirs,
-				reportHerdrState: () => {},
-			});
+			);
 
 			expect(touchedCalls).toStrictEqual(["abc-123"]);
 			const domain = broadcasts.find(
@@ -2133,105 +3340,171 @@ describe("dispatchHookEvent", () => {
 			expect(domain).toBeUndefined();
 		});
 
-		it("PreToolUse broadcasts SESSION_TOOL_PENDING with toolName and toolUseId", async () => {
+		it("PreToolUse broadcasts SESSION_TOOL_PENDING with toolName and toolUseId", async () =>
+		{
 			const broadcasts: Broadcast[] = [];
 			const {store, touchedCalls} = makeStore();
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "PreToolUse",
-					session_id: "abc-123",
-					transcript_path: "/tmp/abc-123.jsonl",
-					cwd: "/tmp",
-					tool_name: "Bash",
-					tool_use_id: "toolu_abc",
-					tool_input: {command: "ls"},
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "PreToolUse",
+						session_id: "abc-123",
+						transcript_path: "/tmp/abc-123.jsonl",
+						cwd: "/tmp",
+						tool_name: "Bash",
+						tool_use_id: "toolu_abc",
+						tool_input:
+						{
+							command: "ls",
+						},
+					},
+					db: db.index,
+					store,
+					broadcast: (type, data) =>
+						broadcasts.push(
+							{
+								type,
+								data,
+							},
+						),
+					reportHerdrState: () =>
+					{
+					},
 				},
-				db: db.index,
-				store,
-				broadcast: (type, data) => broadcasts.push({type, data}),
-				reportHerdrState: () => {},
-			});
+			);
 
 			expect(touchedCalls).toStrictEqual(["abc-123"]);
 			const pending = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_TOOL_PENDING);
 			if (!pending) throw new Error("Expected session:tool-pending broadcast");
-			expect(pending.data).toStrictEqual({
-				sessionId: "abc-123",
-				toolName: "Bash",
-				toolUseId: "toolu_abc",
-			});
+			expect(pending.data).toStrictEqual(
+				{
+					sessionId: "abc-123",
+					toolName: "Bash",
+					toolUseId: "toolu_abc",
+				},
+			);
 		});
 
-		it("PostToolUseFailure broadcasts SESSION_TOOL_FAILED with toolName, toolUseId, error", async () => {
+		it("PostToolUseFailure broadcasts SESSION_TOOL_FAILED with toolName, toolUseId, error", async () =>
+		{
 			const broadcasts: Broadcast[] = [];
 			const {store, touchedCalls} = makeStore();
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "PostToolUseFailure",
-					session_id: "abc-123",
-					transcript_path: "/tmp/abc-123.jsonl",
-					cwd: "/tmp",
-					tool_name: "Bash",
-					tool_use_id: "toolu_fail_01",
-					tool_input: {command: "exit 1"},
-					error: "Command exited with status 1",
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "PostToolUseFailure",
+						session_id: "abc-123",
+						transcript_path: "/tmp/abc-123.jsonl",
+						cwd: "/tmp",
+						tool_name: "Bash",
+						tool_use_id: "toolu_fail_01",
+						tool_input:
+						{
+							command: "exit 1",
+						},
+						error: "Command exited with status 1",
+					},
+					db: db.index,
+					store,
+					broadcast: (type, data) =>
+						broadcasts.push(
+							{
+								type,
+								data,
+							},
+						),
+					reportHerdrState: () =>
+					{
+					},
 				},
-				db: db.index,
-				store,
-				broadcast: (type, data) => broadcasts.push({type, data}),
-				reportHerdrState: () => {},
-			});
+			);
 
 			expect(touchedCalls).toStrictEqual(["abc-123"]);
 			const failed = broadcasts.find((b) => b.type === DOMAIN_EVENTS.SESSION_TOOL_FAILED);
 			if (!failed) throw new Error("Expected session:tool-failed broadcast");
-			expect(failed.data).toStrictEqual({
-				sessionId: "abc-123",
-				toolName: "Bash",
-				toolUseId: "toolu_fail_01",
-				error: "Command exited with status 1",
-			});
+			expect(failed.data).toStrictEqual(
+				{
+					sessionId: "abc-123",
+					toolName: "Bash",
+					toolUseId: "toolu_fail_01",
+					error: "Command exited with status 1",
+				},
+			);
 		});
 
-		it("PostToolUse with a transcript_path broadcasts session:lines-appended for new lines only", async () => {
+		it("PostToolUse with a transcript_path broadcasts session:lines-appended for new lines only", async () =>
+		{
 			const dirs = makeDirs();
 			const projectId = "-Users-craig-projects-app";
 			const projectDir = join(dirs.projectsDir, projectId);
-			mkdirSync(projectDir, {recursive: true});
+			mkdirSync(
+				projectDir,
+				{
+					recursive: true,
+				},
+			);
 			const sessionId = "abc-123";
 			const transcriptPath = join(projectDir, `${sessionId}.jsonl`);
-			const line1 = JSON.stringify({type: "user", message: "hello"});
-			const line2 = JSON.stringify({type: "assistant", message: "world"});
+			const line1 = JSON.stringify(
+				{
+					type: "user",
+					message: "hello",
+				},
+			);
+			const line2 = JSON.stringify(
+				{
+					type: "assistant",
+					message: "world",
+				},
+			);
 			writeFileSync(transcriptPath, line1 + "\n" + line2 + "\n");
 
 			const broadcasts: Broadcast[] = [];
 			const {store} = makeStore();
-			const state: import("../src/lib/hook-dispatcher").HookDispatchState = {
+			const state: import("../src/lib/hook-dispatcher").HookDispatchState =
+			{
 				jsonlOffsets: new Map(),
 			};
 
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "PostToolUse",
-					session_id: sessionId,
-					transcript_path: transcriptPath,
-					cwd: "/tmp",
-					tool_name: "Bash",
-					tool_input: {command: "echo hi"},
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "PostToolUse",
+						session_id: sessionId,
+						transcript_path: transcriptPath,
+						cwd: "/tmp",
+						tool_name: "Bash",
+						tool_input:
+						{
+							command: "echo hi",
+						},
+					},
+					db: db.index,
+					store,
+					broadcast: (type, data) =>
+						broadcasts.push(
+							{
+								type,
+								data,
+							},
+						),
+					dirs,
+					state,
+					reportHerdrState: () =>
+					{
+					},
 				},
-				db: db.index,
-				store,
-				broadcast: (type, data) => broadcasts.push({type, data}),
-				dirs,
-				state,
-				reportHerdrState: () => {},
-			});
+			);
 
 			const linesAppended = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED);
 			expect(linesAppended).toStrictEqual([
 				{
 					type: DOMAIN_EVENTS.SESSION_LINES_APPENDED,
-					data: {
+					data:
+					{
 						sessionId,
 						lines: [JSON.parse(line1), JSON.parse(line2)],
 						writtenAt: Math.trunc(statSync(transcriptPath).mtimeMs),
@@ -2241,82 +3514,149 @@ describe("dispatchHookEvent", () => {
 
 			// Second event with no new content -- no broadcast.
 			broadcasts.length = 0;
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "PostToolUse",
-					session_id: sessionId,
-					transcript_path: transcriptPath,
-					cwd: "/tmp",
-					tool_name: "Bash",
-					tool_input: {command: "echo hi"},
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "PostToolUse",
+						session_id: sessionId,
+						transcript_path: transcriptPath,
+						cwd: "/tmp",
+						tool_name: "Bash",
+						tool_input:
+						{
+							command: "echo hi",
+						},
+					},
+					db: db.index,
+					store,
+					broadcast: (type, data) =>
+						broadcasts.push(
+							{
+								type,
+								data,
+							},
+						),
+					dirs,
+					state,
+					reportHerdrState: () =>
+					{
+					},
 				},
-				db: db.index,
-				store,
-				broadcast: (type, data) => broadcasts.push({type, data}),
-				dirs,
-				state,
-				reportHerdrState: () => {},
-			});
+			);
 
 			expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED).length).toBe(0);
 		});
 
-		it("after a restart, PostToolUse broadcasts only the lines appended since the transcript was indexed", async () => {
+		it("after a restart, PostToolUse broadcasts only the lines appended since the transcript was indexed", async () =>
+		{
 			const dirs = makeDirs();
 			const projectId = "-Users-craig-projects-app";
 			const projectDir = join(dirs.projectsDir, projectId);
-			mkdirSync(projectDir, {recursive: true});
+			mkdirSync(
+				projectDir,
+				{
+					recursive: true,
+				},
+			);
 			const sessionId = "restart-123";
 			const transcriptPath = join(projectDir, `${sessionId}.jsonl`);
-			const history = Array.from({length: 50}, (_, index) =>
-				JSON.stringify({type: "user", uuid: `history-${index}`, message: `turn ${index}`}),
+			const history = Array.from(
+				{
+					length: 50,
+				},
+				(_, index) =>
+					JSON.stringify(
+						{
+							type: "user",
+							uuid: `history-${index}`,
+							message: `turn ${index}`,
+						},
+					),
 			);
 			writeFileSync(transcriptPath, history.map((line) => line + "\n").join(""));
 			await indexFile(db.index, transcriptPath, dirs.projectsDir);
-			const appended = {type: "assistant", uuid: "after-restart", message: "fresh"};
+			const appended =
+			{
+				type: "assistant",
+				uuid: "after-restart",
+				message: "fresh",
+			};
 			appendFileSync(transcriptPath, JSON.stringify(appended) + "\n");
 
 			const broadcasts: Broadcast[] = [];
 			const {store} = makeStore();
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "PostToolUse",
-					session_id: sessionId,
-					transcript_path: transcriptPath,
-					cwd: "/tmp",
-					tool_name: "Bash",
-					tool_input: {command: "echo hi"},
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "PostToolUse",
+						session_id: sessionId,
+						transcript_path: transcriptPath,
+						cwd: "/tmp",
+						tool_name: "Bash",
+						tool_input:
+						{
+							command: "echo hi",
+						},
+					},
+					db: db.index,
+					store,
+					broadcast: (type, data) =>
+						broadcasts.push(
+							{
+								type,
+								data,
+							},
+						),
+					dirs,
+					state:
+					{
+						jsonlOffsets: new Map(),
+					},
+					reportHerdrState: () =>
+					{
+					},
 				},
-				db: db.index,
-				store,
-				broadcast: (type, data) => broadcasts.push({type, data}),
-				dirs,
-				state: {jsonlOffsets: new Map()},
-				reportHerdrState: () => {},
-			});
+			);
 
 			expect(broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED)).toStrictEqual([
 				{
 					type: DOMAIN_EVENTS.SESSION_LINES_APPENDED,
-					data: {sessionId, lines: [appended], writtenAt: Math.trunc(statSync(transcriptPath).mtimeMs)},
+					data:
+					{
+						sessionId,
+						lines: [appended],
+						writtenAt: Math.trunc(statSync(transcriptPath).mtimeMs),
+					},
 				},
 			]);
 		});
 	});
 
-	describe("dedupe between hook fast-path and watcher trailing broadcast", () => {
+	describe("dedupe between hook fast-path and watcher trailing broadcast", () =>
+	{
 		// The dedupe window is 500ms of wall clock, and a cold import of the watcher under heavy load took longer,
 		// so the trailing call landed outside it. Freeze Date so the test checks the dedupe, not the machine's speed.
-		beforeEach(() => {
-			vi.useFakeTimers({toFake: ["Date"], now: new Date("2026-05-20T12:00:00Z")});
+		beforeEach(() =>
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["Date"],
+					now: new Date("2026-05-20T12:00:00Z"),
+				},
+			);
 		});
-		afterEach(() => {
+		afterEach(() =>
+		{
 			vi.useRealTimers();
 		});
 
-		function setUpSharedTranscript(sessionId: string) {
+		function setUpSharedTranscript(sessionId: string)
+		{
 			const root = realpathSync(testDir);
-			const dirs = {
+			const dirs =
+			{
 				projectsDir: join(root, "projects"),
 				plansDir: join(root, "plans"),
 				tasksDir: join(root, "tasks"),
@@ -2325,27 +3665,54 @@ describe("dispatchHookEvent", () => {
 				statuslineDir: join(root, "statusline"),
 			};
 			const projectDir = join(dirs.projectsDir, "-Users-craig-projects-shared");
-			mkdirSync(projectDir, {recursive: true});
+			mkdirSync(
+				projectDir,
+				{
+					recursive: true,
+				},
+			);
 			const transcriptPath = join(projectDir, `${sessionId}.jsonl`);
-			const line = (n: number) => ({type: "summary", summary: `Summary ${n}`});
+			const line = (n: number) => (
+			{
+				type: "summary",
+				summary: `Summary ${n}`,
+			});
 			const broadcasts: Broadcast[] = [];
-			const broadcast = (type: string, data: Record<string, unknown>): void => {
-				broadcasts.push({type, data});
+			const broadcast = (type: string, data: Record<string, unknown>): void =>
+			{
+				broadcasts.push(
+					{
+						type,
+						data,
+					},
+				);
 			};
-			const hookEvent: HookEvent = {
+			const hookEvent: HookEvent =
+			{
 				hook_event_name: "PostToolUse",
 				session_id: sessionId,
 				transcript_path: transcriptPath,
 				cwd: "/tmp",
 				tool_name: "Bash",
-				tool_input: {command: "echo hi"},
+				tool_input:
+				{
+					command: "echo hi",
+				},
 			};
 			const appendedLines = () =>
 				broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED).map((b) => b.data["lines"]);
-			return {dirs, transcriptPath, line, broadcast, hookEvent, appendedLines};
+			return {
+				dirs,
+				transcriptPath,
+				line,
+				broadcast,
+				hookEvent,
+				appendedLines,
+			};
 		}
 
-		it("broadcasts each uuid-less transcript line once across watcher, hook and watcher appends", async () => {
+		it("broadcasts each uuid-less transcript line once across watcher, hook and watcher appends", async () =>
+		{
 			const {__testing: dedupeTesting} = await import("../src/lib/update-dedupe");
 			dedupeTesting.clear();
 			const {processJsonlAppend} = await import("../src/lib/watcher");
@@ -2353,26 +3720,35 @@ describe("dispatchHookEvent", () => {
 			const {dirs, transcriptPath, line, broadcast, hookEvent, appendedLines} =
 				setUpSharedTranscript("shared-offsets");
 			const {store} = makeStore();
-			const watcherDirs = {projectsDir: dirs.projectsDir, plansDir: dirs.plansDir};
+			const watcherDirs =
+			{
+				projectsDir: dirs.projectsDir,
+				plansDir: dirs.plansDir,
+			};
 
 			writeFileSync(transcriptPath, JSON.stringify(line(1)) + "\n");
 			await processJsonlAppend(db.index, transcriptPath, sharedJsonlOffsets, broadcast, watcherDirs);
 			appendFileSync(transcriptPath, JSON.stringify(line(2)) + "\n");
-			await dispatchHookEvent({
-				event: hookEvent,
-				db: db.index,
-				store,
-				broadcast,
-				dirs,
-				reportHerdrState: () => {},
-			});
+			await dispatchHookEvent(
+				{
+					event: hookEvent,
+					db: db.index,
+					store,
+					broadcast,
+					dirs,
+					reportHerdrState: () =>
+					{
+					},
+				},
+			);
 			appendFileSync(transcriptPath, JSON.stringify(line(3)) + "\n");
 			await processJsonlAppend(db.index, transcriptPath, sharedJsonlOffsets, broadcast, watcherDirs);
 
 			expect(appendedLines()).toStrictEqual([[line(1)], [line(2)], [line(3)]]);
 		});
 
-		it("serializes overlapping hook and watcher reads of one transcript so each line broadcasts once", async () => {
+		it("serializes overlapping hook and watcher reads of one transcript so each line broadcasts once", async () =>
+		{
 			const {__testing: dedupeTesting} = await import("../src/lib/update-dedupe");
 			dedupeTesting.clear();
 			const {processJsonlAppend} = await import("../src/lib/watcher");
@@ -2380,30 +3756,40 @@ describe("dispatchHookEvent", () => {
 			const {dirs, transcriptPath, line, broadcast, hookEvent, appendedLines} =
 				setUpSharedTranscript("overlapping-reads");
 			const {store} = makeStore();
-			const watcherDirs = {projectsDir: dirs.projectsDir, plansDir: dirs.plansDir};
+			const watcherDirs =
+			{
+				projectsDir: dirs.projectsDir,
+				plansDir: dirs.plansDir,
+			};
 
 			writeFileSync(transcriptPath, JSON.stringify(line(1)) + "\n");
 			const first = processJsonlAppend(db.index, transcriptPath, sharedJsonlOffsets, broadcast, watcherDirs);
 			appendFileSync(transcriptPath, JSON.stringify(line(2)) + "\n");
-			const second = dispatchHookEvent({
-				event: hookEvent,
-				db: db.index,
-				store,
-				broadcast,
-				dirs,
-				reportHerdrState: () => {},
-			});
+			const second = dispatchHookEvent(
+				{
+					event: hookEvent,
+					db: db.index,
+					store,
+					broadcast,
+					dirs,
+					reportHerdrState: () =>
+					{
+					},
+				},
+			);
 			await Promise.all([first, second]);
 
 			expect(appendedLines().flat()).toStrictEqual([line(1), line(2)]);
 			expect(sharedJsonlOffsets.get(transcriptPath)).toBe(statSync(transcriptPath).size);
 		});
 
-		it("only broadcasts plan:changed once when PostToolUse fires then watcher trails", async () => {
+		it("only broadcasts plan:changed once when PostToolUse fires then watcher trails", async () =>
+		{
 			const {__testing: dedupeTesting} = await import("../src/lib/update-dedupe");
 			dedupeTesting.clear();
 
-			const dirs = {
+			const dirs =
+			{
 				projectsDir: join(testDir, "projects"),
 				plansDir: join(testDir, "plans"),
 				tasksDir: join(testDir, "tasks"),
@@ -2411,37 +3797,54 @@ describe("dispatchHookEvent", () => {
 				pluginsDir: join(testDir, "plugins", "cache"),
 				statuslineDir: join(testDir, "statusline"),
 			};
-			mkdirSync(dirs.plansDir, {recursive: true});
+			mkdirSync(
+				dirs.plansDir,
+				{
+					recursive: true,
+				},
+			);
 			const planFilename = "2026-05-20-dedupe-plan.md";
 			const planPath = join(dirs.plansDir, planFilename);
 			writeFileSync(planPath, "# Dedupe Plan\n\nBody.\n");
 
 			const broadcasts: Broadcast[] = [];
-			const broadcast = (type: string, data: Record<string, unknown>): void => {
-				broadcasts.push({type, data});
+			const broadcast = (type: string, data: Record<string, unknown>): void =>
+			{
+				broadcasts.push(
+					{
+						type,
+						data,
+					},
+				);
 			};
 			const {store} = makeStore();
 
 			// 1. Hook fast-path broadcasts plan:changed.
-			await dispatchHookEvent({
-				event: {
-					hook_event_name: "PostToolUse",
-					session_id: "abc-123",
-					transcript_path: "/tmp/missing.jsonl",
-					cwd: "/tmp",
-					tool_name: "Edit",
-					tool_input: {
-						file_path: planPath,
-						old_string: "Body.",
-						new_string: "New.",
+			await dispatchHookEvent(
+				{
+					event:
+					{
+						hook_event_name: "PostToolUse",
+						session_id: "abc-123",
+						transcript_path: "/tmp/missing.jsonl",
+						cwd: "/tmp",
+						tool_name: "Edit",
+						tool_input:
+						{
+							file_path: planPath,
+							old_string: "Body.",
+							new_string: "New.",
+						},
+					},
+					db: db.index,
+					store,
+					broadcast,
+					dirs,
+					reportHerdrState: () =>
+					{
 					},
 				},
-				db: db.index,
-				store,
-				broadcast,
-				dirs,
-				reportHerdrState: () => {},
-			});
+			);
 
 			// 2. Simulate the chokidar trailing broadcast for the same file.
 			const {__testing: watcherTesting} = await import("../src/lib/watcher");
@@ -2451,11 +3854,13 @@ describe("dispatchHookEvent", () => {
 			expect(planChanged.length).toBe(1);
 		});
 
-		it("only broadcasts task:changed once when PostToolUse fires then a second identical call trails", async () => {
+		it("only broadcasts task:changed once when PostToolUse fires then a second identical call trails", async () =>
+		{
 			const {__testing: dedupeTesting} = await import("../src/lib/update-dedupe");
 			dedupeTesting.clear();
 
-			const dirs = {
+			const dirs =
+			{
 				projectsDir: join(testDir, "projects"),
 				plansDir: join(testDir, "plans"),
 				tasksDir: join(testDir, "tasks"),
@@ -2465,54 +3870,80 @@ describe("dispatchHookEvent", () => {
 			};
 			const projectDir = "sample-project";
 			const tasksProjectDir = join(dirs.tasksDir, projectDir);
-			mkdirSync(tasksProjectDir, {recursive: true});
+			mkdirSync(
+				tasksProjectDir,
+				{
+					recursive: true,
+				},
+			);
 			const taskId = "task-dd-001";
 			const taskPath = join(tasksProjectDir, `${taskId}.json`);
 			writeFileSync(
 				taskPath,
-				JSON.stringify({
-					id: taskId,
-					subject: "Dedupe me",
-					description: "desc",
-					status: "in_progress",
-					blocks: [],
-					blockedBy: [],
-				}),
+				JSON.stringify(
+					{
+						id: taskId,
+						subject: "Dedupe me",
+						description: "desc",
+						status: "in_progress",
+						blocks: [],
+						blockedBy: [],
+					},
+				),
 			);
 
 			const broadcasts: Broadcast[] = [];
-			const broadcast = (type: string, data: Record<string, unknown>): void => {
-				broadcasts.push({type, data});
+			const broadcast = (type: string, data: Record<string, unknown>): void =>
+			{
+				broadcasts.push(
+					{
+						type,
+						data,
+					},
+				);
 			};
 			const {store} = makeStore();
 
-			const event: HookEvent = {
+			const event: HookEvent =
+			{
 				hook_event_name: "PostToolUse",
 				session_id: "abc-123",
 				transcript_path: "/tmp/missing.jsonl",
 				cwd: "/tmp",
 				tool_name: "Write",
-				tool_input: {file_path: taskPath, content: "{}"},
+				tool_input:
+				{
+					file_path: taskPath,
+					content: "{}",
+				},
 			};
 
-			await dispatchHookEvent({
-				event,
-				db: db.index,
-				store,
-				broadcast,
-				dirs,
-				reportHerdrState: () => {},
-			});
+			await dispatchHookEvent(
+				{
+					event,
+					db: db.index,
+					store,
+					broadcast,
+					dirs,
+					reportHerdrState: () =>
+					{
+					},
+				},
+			);
 			// Fire the same hook again -- simulates the watcher's trailing broadcast
 			// for the same task file with the same status signal.
-			await dispatchHookEvent({
-				event,
-				db: db.index,
-				store,
-				broadcast,
-				dirs,
-				reportHerdrState: () => {},
-			});
+			await dispatchHookEvent(
+				{
+					event,
+					db: db.index,
+					store,
+					broadcast,
+					dirs,
+					reportHerdrState: () =>
+					{
+					},
+				},
+			);
 
 			const taskChanged = broadcasts.filter((b) => b.type === DOMAIN_EVENTS.TASK_CHANGED);
 			expect(taskChanged.length).toBe(1);
@@ -2520,21 +3951,38 @@ describe("dispatchHookEvent", () => {
 	});
 });
 
-describe("dispatchHookEvent for the turn-failure, denial, model-switch and elicitation events", () => {
-	async function dispatch(event: HookEvent, harness = makeStore()) {
+describe("dispatchHookEvent for the turn-failure, denial, model-switch and elicitation events", () =>
+{
+	async function dispatch(event: HookEvent, harness = makeStore())
+	{
 		const broadcasts: Broadcast[] = [];
-		await dispatchHookEvent({
-			event,
-			db: db.index,
-			store: harness.store,
-			broadcast: (type, data) => broadcasts.push({type, data}),
-			reportHerdrState: () => {},
-		});
-		return {broadcasts, ...harness};
+		await dispatchHookEvent(
+			{
+				event,
+				db: db.index,
+				store: harness.store,
+				broadcast: (type, data) =>
+					broadcasts.push(
+						{
+							type,
+							data,
+						},
+					),
+				reportHerdrState: () =>
+				{
+				},
+			},
+		);
+		return {
+			broadcasts,
+			...harness,
+		};
 	}
 
-	function storedNotifications() {
-		return getNotifications().map(({sessionId, message, title, notificationType}) => ({
+	function storedNotifications()
+	{
+		return getNotifications().map(({sessionId, message, title, notificationType}) => (
+		{
 			sessionId,
 			message,
 			title,
@@ -2542,31 +3990,49 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 		}));
 	}
 
-	it("StopFailure ends the turn idle and persists a turn-failed notification with the error text", async () => {
+	it("StopFailure ends the turn idle and persists a turn-failed notification with the error text", async () =>
+	{
 		clearAllNotifications();
 		const {stateCalls, touchedCalls} = await dispatch(stopFailureFixture);
-		expect({stateCalls, touchedCalls, notifications: storedNotifications()}).toStrictEqual({
-			stateCalls: [{sessionId: "abc-123", state: "idle"}],
-			touchedCalls: ["abc-123"],
-			notifications: [
-				{
-					sessionId: "abc-123",
-					message: stopFailureFixture.last_assistant_message,
-					title: "Turn failed: model_not_found",
-					notificationType: "turn_failed",
-				},
-			],
-		});
+		expect(
+			{
+				stateCalls,
+				touchedCalls,
+				notifications: storedNotifications(),
+			},
+		).toStrictEqual(
+			{
+				stateCalls: [
+					{
+						sessionId: "abc-123",
+						state: "idle",
+					},
+				],
+				touchedCalls: ["abc-123"],
+				notifications: [
+					{
+						sessionId: "abc-123",
+						message: stopFailureFixture.last_assistant_message,
+						title: "Turn failed: model_not_found",
+						notificationType: "turn_failed",
+					},
+				],
+			},
+		);
 	});
 
-	it("StopFailure clears a standing permission prompt, since the turn that asked has ended", async () => {
+	it("StopFailure clears a standing permission prompt, since the turn that asked has ended", async () =>
+	{
 		clearAllNotifications();
-		addNotification(db.index, {
-			sessionId: "abc-123",
-			cwd: "/Users/u/projects/app",
-			message: "Claude needs your permission to use Bash",
-			notificationType: "permission_prompt",
-		});
+		addNotification(
+			db.index,
+			{
+				sessionId: "abc-123",
+				cwd: "/Users/u/projects/app",
+				message: "Claude needs your permission to use Bash",
+				notificationType: "permission_prompt",
+			},
+		);
 		await dispatch(stopFailureRateLimitFixture);
 		expect(storedNotifications()).toStrictEqual([
 			{
@@ -2578,46 +4044,91 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 		]);
 	});
 
-	it("PermissionDenied drops the pending permission request and the permission-prompt notification", async () => {
+	it("PermissionDenied drops the pending permission request and the permission-prompt notification", async () =>
+	{
 		clearAllNotifications();
 		const harness = makeStore();
-		harness.store.markSessionActive("abc-123", {cwd: "/Users/u/projects/app"});
-		harness.store.setPendingPermissionRequest("abc-123", {toolName: "Bash", suggestions: []});
-		addNotification(db.index, {
-			sessionId: "abc-123",
-			cwd: "/Users/u/projects/app",
-			message: "Claude needs your permission to use Bash",
-			notificationType: "permission_prompt",
-		});
+		harness.store.markSessionActive(
+			"abc-123",
+			{
+				cwd: "/Users/u/projects/app",
+			},
+		);
+		harness.store.setPendingPermissionRequest(
+			"abc-123",
+			{
+				toolName: "Bash",
+				suggestions: [],
+			},
+		);
+		addNotification(
+			db.index,
+			{
+				sessionId: "abc-123",
+				cwd: "/Users/u/projects/app",
+				message: "Claude needs your permission to use Bash",
+				notificationType: "permission_prompt",
+			},
+		);
 		const {pendingPermissionCalls, touchedCalls, broadcasts} = await dispatch(permissionDeniedFixture, harness);
-		expect({
-			pendingPermissionCalls,
-			touchedCalls,
-			notifications: storedNotifications(),
-			broadcastTypes: broadcasts.map((b) => b.type),
-		}).toStrictEqual({
-			pendingPermissionCalls: [
-				{sessionId: "abc-123", request: {toolName: "Bash", suggestions: []}},
-				{sessionId: "abc-123", request: null},
-			],
-			touchedCalls: ["abc-123"],
-			notifications: [],
-			broadcastTypes: [],
-		});
+		expect(
+			{
+				pendingPermissionCalls,
+				touchedCalls,
+				notifications: storedNotifications(),
+				broadcastTypes: broadcasts.map((b) => b.type),
+			},
+		).toStrictEqual(
+			{
+				pendingPermissionCalls: [
+					{
+						sessionId: "abc-123",
+						request:
+						{
+							toolName: "Bash",
+							suggestions: [],
+						},
+					},
+					{
+						sessionId: "abc-123",
+						request: null,
+					},
+				],
+				touchedCalls: ["abc-123"],
+				notifications: [],
+				broadcastTypes: [],
+			},
+		);
 	});
 
-	it("a background subagent's PostToolUse and SubagentStop keep the parent's pending permission request and prompt", async () => {
+	it("a background subagent's PostToolUse and SubagentStop keep the parent's pending permission request and prompt", async () =>
+	{
 		clearAllNotifications();
 		const harness = makeStore();
-		harness.store.markSessionActive("abc-123", {cwd: "/Users/u/projects/app"});
-		harness.store.setPendingPermissionRequest("abc-123", {toolName: "Bash", suggestions: []});
-		addNotification(db.index, {
-			sessionId: "abc-123",
-			cwd: "/Users/u/projects/app",
-			message: "Claude needs your permission to use Bash",
-			notificationType: "permission_prompt",
-		});
-		const subagent = {
+		harness.store.markSessionActive(
+			"abc-123",
+			{
+				cwd: "/Users/u/projects/app",
+			},
+		);
+		harness.store.setPendingPermissionRequest(
+			"abc-123",
+			{
+				toolName: "Bash",
+				suggestions: [],
+			},
+		);
+		addNotification(
+			db.index,
+			{
+				sessionId: "abc-123",
+				cwd: "/Users/u/projects/app",
+				message: "Claude needs your permission to use Bash",
+				notificationType: "permission_prompt",
+			},
+		);
+		const subagent =
+		{
 			session_id: "abc-123",
 			transcript_path: "/Users/u/.claude/projects/app/abc-123.jsonl",
 			cwd: "/Users/u/projects/app",
@@ -2630,8 +4141,17 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 				hook_event_name: "PostToolUse",
 				tool_name: "Bash",
 				tool_use_id: "toolu_bob",
-				tool_input: {command: "true"},
-				tool_response: {stdout: "", stderr: "", interrupted: false, isImage: false},
+				tool_input:
+				{
+					command: "true",
+				},
+				tool_response:
+				{
+					stdout: "",
+					stderr: "",
+					interrupted: false,
+					isImage: false,
+				},
 			},
 			harness,
 		);
@@ -2644,65 +4164,124 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 			},
 			harness,
 		);
-		expect({
-			pendingPermissionCalls,
-			notificationTypes: storedNotifications().map((notification) => notification.notificationType),
-		}).toStrictEqual({
-			pendingPermissionCalls: [{sessionId: "abc-123", request: {toolName: "Bash", suggestions: []}}],
-			notificationTypes: ["permission_prompt"],
-		});
+		expect(
+			{
+				pendingPermissionCalls,
+				notificationTypes: storedNotifications().map((notification) => notification.notificationType),
+			},
+		).toStrictEqual(
+			{
+				pendingPermissionCalls: [
+					{
+						sessionId: "abc-123",
+						request:
+						{
+							toolName: "Bash",
+							suggestions: [],
+						},
+					},
+				],
+				notificationTypes: ["permission_prompt"],
+			},
+		);
 	});
 
-	it("PostModelSwitch broadcasts the new model as hook context", async () => {
+	it("PostModelSwitch broadcasts the new model as hook context", async () =>
+	{
 		const {broadcasts, touchedCalls} = await dispatch(postModelSwitchFixture);
-		expect({broadcasts, touchedCalls}).toStrictEqual({
-			broadcasts: [
-				{
-					type: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
-					data: {sessionId: "abc-123", model: "claude-haiku-5-5"},
-				},
-			],
-			touchedCalls: ["abc-123"],
-		});
+		expect(
+			{
+				broadcasts,
+				touchedCalls,
+			},
+		).toStrictEqual(
+			{
+				broadcasts: [
+					{
+						type: DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
+						data:
+						{
+							sessionId: "abc-123",
+							model: "claude-haiku-5-5",
+						},
+					},
+				],
+				touchedCalls: ["abc-123"],
+			},
+		);
 	});
 
-	it("Elicitation marks the session waiting and persists an input-request notification", async () => {
+	it("Elicitation marks the session waiting and persists an input-request notification", async () =>
+	{
 		clearAllNotifications();
 		const {stateCalls} = await dispatch(elicitationFormFixture);
-		expect({stateCalls, notifications: storedNotifications()}).toStrictEqual({
-			stateCalls: [{sessionId: "abc-123", state: "waiting"}],
-			notifications: [
-				{
-					sessionId: "abc-123",
-					message: "Please provide your credentials",
-					title: "my-mcp-server needs input",
-					notificationType: "mcp_elicitation",
-				},
-			],
-		});
+		expect(
+			{
+				stateCalls,
+				notifications: storedNotifications(),
+			},
+		).toStrictEqual(
+			{
+				stateCalls: [
+					{
+						sessionId: "abc-123",
+						state: "waiting",
+					},
+				],
+				notifications: [
+					{
+						sessionId: "abc-123",
+						message: "Please provide your credentials",
+						title: "my-mcp-server needs input",
+						notificationType: "mcp_elicitation",
+					},
+				],
+			},
+		);
 	});
 
-	it("ElicitationResult resumes working and clears the input-request notification", async () => {
+	it("ElicitationResult resumes working and clears the input-request notification", async () =>
+	{
 		clearAllNotifications();
 		const harness = makeStore();
 		await dispatch(elicitationFormFixture, harness);
 		const {stateCalls} = await dispatch(elicitationResultFixture, harness);
-		expect({stateCalls, notifications: storedNotifications()}).toStrictEqual({
-			stateCalls: [
-				{sessionId: "abc-123", state: "waiting"},
-				{sessionId: "abc-123", state: "working"},
-			],
-			notifications: [],
-		});
+		expect(
+			{
+				stateCalls,
+				notifications: storedNotifications(),
+			},
+		).toStrictEqual(
+			{
+				stateCalls: [
+					{
+						sessionId: "abc-123",
+						state: "waiting",
+					},
+					{
+						sessionId: "abc-123",
+						state: "working",
+					},
+				],
+				notifications: [],
+			},
+		);
 	});
 });
 
-describe("dispatchHookEvent re-broadcasts the session summary when a working hook clears what it waited on", () => {
+describe("dispatchHookEvent re-broadcasts the session summary when a working hook clears what it waited on", () =>
+{
 	const decoder = new TextDecoder();
 
-	async function indexSession(sessionId: string) {
+	async function indexSession(sessionId: string)
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
 			makeSessionsIndex([
@@ -2720,46 +4299,71 @@ describe("dispatchHookEvent re-broadcasts the session summary when a working hoo
 	}
 
 	/** Record dispatcher broadcasts and global SSE broadcasts (notification:cleared) on one timeline. */
-	async function dispatchAll(events: HookEvent[]) {
+	async function dispatchAll(events: HookEvent[])
+	{
 		const timeline: Broadcast[] = [];
-		const client = {
-			enqueue: (chunk: Uint8Array) => {
+		const client =
+		{
+			enqueue: (chunk: Uint8Array) =>
+			{
 				const [eventLine, dataLine] = decoder.decode(chunk).split("\n");
-				timeline.push({
-					type: (eventLine ?? "").replace("event: ", ""),
-					data: JSON.parse((dataLine ?? "").replace("data: ", "")) as Record<string, unknown>,
-				});
+				timeline.push(
+					{
+						type: (eventLine ?? "").replace("event: ", ""),
+						data: JSON.parse((dataLine ?? "").replace("data: ", "")) as Record<string, unknown>,
+					},
+				);
 			},
 		} as unknown as ReadableStreamDefaultController;
 		const {store} = makeStore();
 		addClient(client);
-		try {
-			for (const event of events) {
-				await dispatchHookEvent({
-					event,
-					db: db.index,
-					store,
-					broadcast: (type, data) => timeline.push({type, data}),
-					reportHerdrState: () => {},
-				});
+		try
+		{
+			for (const event of events)
+			{
+				await dispatchHookEvent(
+					{
+						event,
+						db: db.index,
+						store,
+						broadcast: (type, data) =>
+							timeline.push(
+								{
+									type,
+									data,
+								},
+							),
+						reportHerdrState: () =>
+						{
+						},
+					},
+				);
 			}
-		} finally {
+		}
+		finally
+		{
 			removeClient(client);
 		}
 		return timeline;
 	}
 
-	it("PostToolUse after a permission prompt broadcasts session:updated without awaitingPermission before notification:cleared", async () => {
+	it("PostToolUse after a permission prompt broadcasts session:updated without awaitingPermission before notification:cleared", async () =>
+	{
 		clearAllNotifications();
 		const sessionId = "permission-cleared-601";
 		await indexSession(sessionId);
-		const base = {
+		const base =
+		{
 			session_id: sessionId,
 			transcript_path: `/tmp/${sessionId}.jsonl`,
 			cwd: "/Users/craig/projects/app",
 		};
 		const timeline = await dispatchAll([
-			{...base, hook_event_name: "SessionStart", source: "startup"},
+			{
+				...base,
+				hook_event_name: "SessionStart",
+				source: "startup",
+			},
 			{
 				...base,
 				hook_event_name: "Notification",
@@ -2770,16 +4374,24 @@ describe("dispatchHookEvent re-broadcasts the session summary when a working hoo
 				...base,
 				hook_event_name: "PostToolUse",
 				tool_name: "Bash",
-				tool_input: {command: "ls"},
+				tool_input:
+				{
+					command: "ls",
+				},
 				tool_use_id: "toolu_601",
 			},
 		]);
 
 		const relevant = timeline
 			.filter((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED || b.type === DOMAIN_EVENTS.NOTIFICATION_CLEARED)
-			.map((b) => {
-				if (b.type === DOMAIN_EVENTS.NOTIFICATION_CLEARED) return {type: b.type};
-				const session = b.data["session"] as {
+			.map((b) =>
+			{
+				if (b.type === DOMAIN_EVENTS.NOTIFICATION_CLEARED)
+					return {
+						type: b.type,
+					};
+				const session = b.data["session"] as
+				{
 					awaitingPermission?: boolean;
 					state: string;
 				};
@@ -2795,35 +4407,50 @@ describe("dispatchHookEvent re-broadcasts the session summary when a working hoo
 				state: "working",
 				awaitingPermission: undefined,
 			},
-			{type: DOMAIN_EVENTS.NOTIFICATION_CLEARED},
+			{
+				type: DOMAIN_EVENTS.NOTIFICATION_CLEARED,
+			},
 		]);
 		clearAllNotifications();
 	});
 
-	it("PostToolUse(AskUserQuestion) after its PreToolUse broadcasts session:updated with a non-waiting state", async () => {
+	it("PostToolUse(AskUserQuestion) after its PreToolUse broadcasts session:updated with a non-waiting state", async () =>
+	{
 		clearAllNotifications();
 		const sessionId = "question-cleared-602";
 		await indexSession(sessionId);
-		const base = {
+		const base =
+		{
 			session_id: sessionId,
 			transcript_path: `/tmp/${sessionId}.jsonl`,
 			cwd: "/Users/craig/projects/app",
 		};
-		const toolInput = {
+		const toolInput =
+		{
 			questions: [
 				{
 					question: "Which?",
 					header: "Pick",
 					multiSelect: false,
 					options: [
-						{label: "A", description: "a"},
-						{label: "B", description: "b"},
+						{
+							label: "A",
+							description: "a",
+						},
+						{
+							label: "B",
+							description: "b",
+						},
 					],
 				},
 			],
 		};
 		const timeline = await dispatchAll([
-			{...base, hook_event_name: "SessionStart", source: "startup"},
+			{
+				...base,
+				hook_event_name: "SessionStart",
+				source: "startup",
+			},
 			{
 				...base,
 				hook_event_name: "PreToolUse",
@@ -2845,59 +4472,101 @@ describe("dispatchHookEvent re-broadcasts the session summary when a working hoo
 		);
 		const states = timeline
 			.filter((b, index) => b.type === DOMAIN_EVENTS.SESSION_UPDATED && index > questionClearedIndex - 1)
-			.map((b) => (b.data["session"] as {state: string}).state);
-		expect({
-			questionCleared: questionClearedIndex >= 0,
-			states,
-		}).toStrictEqual({
-			questionCleared: true,
-			states: ["working"],
-		});
+			.map(
+				(b) =>
+					(
+						b.data["session"] as
+						{
+							state: string;
+						}
+					).state,
+			);
+		expect(
+			{
+				questionCleared: questionClearedIndex >= 0,
+				states,
+			},
+		).toStrictEqual(
+			{
+				questionCleared: true,
+				states: ["working"],
+			},
+		);
 	});
 
-	it("PostToolUse(AskUserQuestion) reads working over the CLI registry's waiting status written after the PreToolUse hook", async () => {
+	it("PostToolUse(AskUserQuestion) reads working over the CLI registry's waiting status written after the PreToolUse hook", async () =>
+	{
 		clearAllNotifications();
 		const sessionId = "question-answered-603";
 		await indexSession(sessionId);
-		const base = {
+		const base =
+		{
 			session_id: sessionId,
 			transcript_path: `/tmp/${sessionId}.jsonl`,
 			cwd: "/Users/craig/projects/app",
 		};
-		const toolInput = {
+		const toolInput =
+		{
 			questions: [
-				{question: "Which?", header: "Pick", multiSelect: false, options: [{label: "A"}, {label: "B"}]},
+				{
+					question: "Which?",
+					header: "Pick",
+					multiSelect: false,
+					options: [
+						{
+							label: "A",
+						},
+						{
+							label: "B",
+						},
+					],
+				},
 			],
 		};
 		// The CLI marks itself waiting once its dialog shows, after the PreToolUse hook last touched the session.
 		const registryDir = join(testDir, "sessions");
-		mkdirSync(registryDir, {recursive: true});
+		mkdirSync(
+			registryDir,
+			{
+				recursive: true,
+			},
+		);
 		const waitingSince = Date.now() - 60_000;
 		writeFileSync(
 			join(registryDir, "4603.json"),
-			JSON.stringify({
-				pid: 4603,
-				sessionId,
-				cwd: "/Users/craig/projects/app",
-				startedAt: 946_598_400_000,
-				procStart: "Fri Dec 31 00:00:00 1999",
-				version: "2.1.321",
-				kind: "interactive",
-				entrypoint: "cli",
-				pidDomain: "darwin",
-				status: "waiting",
-				waitingFor: "input needed",
-				updatedAt: waitingSince,
-				statusUpdatedAt: waitingSince,
-			}),
+			JSON.stringify(
+				{
+					pid: 4603,
+					sessionId,
+					cwd: "/Users/craig/projects/app",
+					startedAt: 946_598_400_000,
+					procStart: "Fri Dec 31 00:00:00 1999",
+					version: "2.1.321",
+					kind: "interactive",
+					entrypoint: "cli",
+					pidDomain: "darwin",
+					status: "waiting",
+					waitingFor: "input needed",
+					updatedAt: waitingSince,
+					statusUpdatedAt: waitingSince,
+				},
+			),
 		);
-		await refreshSessionRegistry(registryDir, {
-			isAlive: () => true,
-			readStartTimes: async () => Promise.resolve(null),
-		});
-		try {
+		await refreshSessionRegistry(
+			registryDir,
+			{
+				isAlive: () => true,
+				readStartTimes: async () => Promise.resolve(null),
+			},
+		);
+		try
+		{
 			const timeline = await dispatchAll([
-				{...base, hook_event_name: "SessionStart", source: "startup"},
+				{
+					...base,
+					hook_event_name: "SessionStart",
+					source: "startup",
+				},
 				{
 					...base,
 					hook_event_name: "PreToolUse",
@@ -2920,45 +4589,98 @@ describe("dispatchHookEvent re-broadcasts the session summary when a working hoo
 			const cleared = timeline
 				.slice(questionClearedIndex)
 				.filter((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED)
-				.map((b) => {
-					const session = b.data["session"] as {state: string; bucket: string};
-					return {state: session.state, bucket: session.bucket};
+				.map((b) =>
+				{
+					const session = b.data["session"] as
+					{
+						state: string;
+						bucket: string;
+					};
+					return {
+						state: session.state,
+						bucket: session.bucket,
+					};
 				});
-			expect(cleared).toStrictEqual([{state: "working", bucket: "working"}]);
-		} finally {
+			expect(cleared).toStrictEqual([
+				{
+					state: "working",
+					bucket: "working",
+				},
+			]);
+		}
+		finally
+		{
 			clearSessionRegistry();
 		}
 	});
 
-	describe("entry hops send session:updated from the hook that changes the state", () => {
-		const questionInput = {
+	describe("entry hops send session:updated from the hook that changes the state", () =>
+	{
+		const questionInput =
+		{
 			questions: [
-				{question: "Which?", header: "Pick", multiSelect: false, options: [{label: "A"}, {label: "B"}]},
+				{
+					question: "Which?",
+					header: "Pick",
+					multiSelect: false,
+					options: [
+						{
+							label: "A",
+						},
+						{
+							label: "B",
+						},
+					],
+				},
 			],
 		};
 
-		function updates(timeline: Broadcast[]) {
+		function updates(timeline: Broadcast[])
+		{
 			return timeline
-				.map((b, index) => ({b, index}))
+				.map((b, index) => (
+				{
+					b,
+					index,
+				}))
 				.filter(({b}) => b.type === DOMAIN_EVENTS.SESSION_UPDATED)
-				.map(({b, index}) => {
-					const session = b.data["session"] as {state: string; bucket: string};
-					return {index, state: session.state, bucket: session.bucket};
+				.map(({b, index}) =>
+				{
+					const session = b.data["session"] as
+					{
+						state: string;
+						bucket: string;
+					};
+					return {
+						index,
+						state: session.state,
+						bucket: session.bucket,
+					};
 				});
 		}
 
-		it("UserPromptSubmit sends working, then PreToolUse(AskUserQuestion) sends waiting before the question docks", async () => {
+		it("UserPromptSubmit sends working, then PreToolUse(AskUserQuestion) sends waiting before the question docks", async () =>
+		{
 			clearAllNotifications();
 			const sessionId = "entry-hop-604";
 			await indexSession(sessionId);
-			const base = {
+			const base =
+			{
 				session_id: sessionId,
 				transcript_path: `/tmp/${sessionId}.jsonl`,
 				cwd: "/Users/craig/projects/app",
 			};
 			const timeline = await dispatchAll([
-				{...base, hook_event_name: "SessionStart", source: "startup"},
-				{...base, hook_event_name: "UserPromptSubmit", prompt: "Ask me something"},
+				{
+					...base,
+					hook_event_name: "SessionStart",
+					source: "startup",
+				},
+				{
+					...base,
+					hook_event_name: "UserPromptSubmit",
+					prompt: "Ask me something",
+				},
 				{
 					...base,
 					hook_event_name: "PreToolUse",
@@ -2972,124 +4694,220 @@ describe("dispatchHookEvent re-broadcasts the session summary when a working hoo
 				(b) => b.type === DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED && b.data["pendingQuestion"] !== null,
 			);
 			const sent = updates(timeline);
-			expect({
-				states: sent.map(({state, bucket}) => ({state, bucket})),
-				waitingBeforeQuestion: (sent[1]?.index ?? Infinity) < questionDockedIndex,
-			}).toStrictEqual({
-				states: [
-					{state: "working", bucket: "working"},
-					{state: "waiting", bucket: "blocked"},
-				],
-				waitingBeforeQuestion: true,
-			});
+			expect(
+				{
+					states: sent.map(({state, bucket}) => (
+					{
+						state,
+						bucket,
+					})),
+					waitingBeforeQuestion: (sent[1]?.index ?? Infinity) < questionDockedIndex,
+				},
+			).toStrictEqual(
+				{
+					states: [
+						{
+							state: "working",
+							bucket: "working",
+						},
+						{
+							state: "waiting",
+							bucket: "blocked",
+						},
+					],
+					waitingBeforeQuestion: true,
+				},
+			);
 		});
 
-		it("tool calls while already working send no further session:updated", async () => {
+		it("tool calls while already working send no further session:updated", async () =>
+		{
 			clearAllNotifications();
 			const sessionId = "entry-hop-605";
 			await indexSession(sessionId);
-			const base = {
+			const base =
+			{
 				session_id: sessionId,
 				transcript_path: `/tmp/${sessionId}.jsonl`,
 				cwd: "/Users/craig/projects/app",
 			};
 			const timeline = await dispatchAll([
-				{...base, hook_event_name: "SessionStart", source: "startup"},
-				{...base, hook_event_name: "UserPromptSubmit", prompt: "List files"},
-				{...base, hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {command: "ls"}},
-				{...base, hook_event_name: "PreToolUse", tool_name: "Read", tool_input: {file_path: "/tmp/a"}},
+				{
+					...base,
+					hook_event_name: "SessionStart",
+					source: "startup",
+				},
+				{
+					...base,
+					hook_event_name: "UserPromptSubmit",
+					prompt: "List files",
+				},
+				{
+					...base,
+					hook_event_name: "PreToolUse",
+					tool_name: "Bash",
+					tool_input:
+					{
+						command: "ls",
+					},
+				},
+				{
+					...base,
+					hook_event_name: "PreToolUse",
+					tool_name: "Read",
+					tool_input:
+					{
+						file_path: "/tmp/a",
+					},
+				},
 			]);
 
 			expect(updates(timeline).map(({state}) => state)).toStrictEqual(["working"]);
 		});
 
-		it("PreToolUse(ExitPlanMode) sends waiting", async () => {
+		it("PreToolUse(ExitPlanMode) sends waiting", async () =>
+		{
 			clearAllNotifications();
 			const sessionId = "entry-hop-606";
 			await indexSession(sessionId);
-			const base = {
+			const base =
+			{
 				session_id: sessionId,
 				transcript_path: `/tmp/${sessionId}.jsonl`,
 				cwd: "/Users/craig/projects/app",
 			};
 			const timeline = await dispatchAll([
-				{...base, hook_event_name: "SessionStart", source: "startup"},
-				{...base, hook_event_name: "UserPromptSubmit", prompt: "Plan it"},
+				{
+					...base,
+					hook_event_name: "SessionStart",
+					source: "startup",
+				},
+				{
+					...base,
+					hook_event_name: "UserPromptSubmit",
+					prompt: "Plan it",
+				},
 				{
 					...base,
 					hook_event_name: "PreToolUse",
 					tool_name: "ExitPlanMode",
-					tool_input: {plan: "Do the thing"},
+					tool_input:
+					{
+						plan: "Do the thing",
+					},
 					tool_use_id: "toolu_606",
 				},
 			]);
 
-			expect(updates(timeline).map(({state, bucket}) => ({state, bucket}))).toStrictEqual([
-				{state: "working", bucket: "working"},
-				{state: "waiting", bucket: "blocked"},
+			expect(
+				updates(timeline).map(({state, bucket}) => (
+				{
+					state,
+					bucket,
+				})),
+			).toStrictEqual([
+				{
+					state: "working",
+					bucket: "working",
+				},
+				{
+					state: "waiting",
+					bucket: "blocked",
+				},
 			]);
 		});
 
-		it("Elicitation sends waiting", async () => {
+		it("Elicitation sends waiting", async () =>
+		{
 			clearAllNotifications();
 			const sessionId = "entry-hop-607";
 			await indexSession(sessionId);
-			const base = {
+			const base =
+			{
 				session_id: sessionId,
 				transcript_path: `/tmp/${sessionId}.jsonl`,
 				cwd: "/Users/craig/projects/app",
 			};
 			const timeline = await dispatchAll([
-				{...base, hook_event_name: "SessionStart", source: "startup"},
-				{...base, hook_event_name: "UserPromptSubmit", prompt: "Use the server"},
+				{
+					...base,
+					hook_event_name: "SessionStart",
+					source: "startup",
+				},
+				{
+					...base,
+					hook_event_name: "UserPromptSubmit",
+					prompt: "Use the server",
+				},
 				{
 					...base,
 					hook_event_name: "Elicitation",
 					mcp_server_name: "example-server",
 					message: "Pick a value",
-					requested_schema: {type: "object", properties: {}},
+					requested_schema:
+					{
+						type: "object",
+						properties: {},
+					},
 				},
 			]);
 
 			expect(updates(timeline).map(({state}) => state)).toStrictEqual(["working", "waiting"]);
 		});
 
-		it("PreToolUse(AskUserQuestion) reads waiting over a newer CLI registry busy status", async () => {
+		it("PreToolUse(AskUserQuestion) reads waiting over a newer CLI registry busy status", async () =>
+		{
 			clearAllNotifications();
 			const sessionId = "entry-hop-608";
 			await indexSession(sessionId);
-			const base = {
+			const base =
+			{
 				session_id: sessionId,
 				transcript_path: `/tmp/${sessionId}.jsonl`,
 				cwd: "/Users/craig/projects/app",
 			};
 			const registryDir = join(testDir, "sessions");
-			mkdirSync(registryDir, {recursive: true});
+			mkdirSync(
+				registryDir,
+				{
+					recursive: true,
+				},
+			);
 			const busySince = Date.now() - 60_000;
 			writeFileSync(
 				join(registryDir, "4608.json"),
-				JSON.stringify({
-					pid: 4608,
-					sessionId,
-					cwd: "/Users/craig/projects/app",
-					startedAt: 946_598_400_000,
-					procStart: "Fri Dec 31 00:00:00 1999",
-					version: "2.1.321",
-					kind: "interactive",
-					entrypoint: "cli",
-					pidDomain: "darwin",
-					status: "busy",
-					updatedAt: busySince,
-					statusUpdatedAt: busySince,
-				}),
+				JSON.stringify(
+					{
+						pid: 4608,
+						sessionId,
+						cwd: "/Users/craig/projects/app",
+						startedAt: 946_598_400_000,
+						procStart: "Fri Dec 31 00:00:00 1999",
+						version: "2.1.321",
+						kind: "interactive",
+						entrypoint: "cli",
+						pidDomain: "darwin",
+						status: "busy",
+						updatedAt: busySince,
+						statusUpdatedAt: busySince,
+					},
+				),
 			);
-			await refreshSessionRegistry(registryDir, {
-				isAlive: () => true,
-				readStartTimes: async () => Promise.resolve(null),
-			});
-			try {
+			await refreshSessionRegistry(
+				registryDir,
+				{
+					isAlive: () => true,
+					readStartTimes: async () => Promise.resolve(null),
+				},
+			);
+			try
+			{
 				const timeline = await dispatchAll([
-					{...base, hook_event_name: "SessionStart", source: "startup"},
+					{
+						...base,
+						hook_event_name: "SessionStart",
+						source: "startup",
+					},
 					{
 						...base,
 						hook_event_name: "PreToolUse",
@@ -3099,25 +4917,42 @@ describe("dispatchHookEvent re-broadcasts the session summary when a working hoo
 					},
 				]);
 
-				expect(updates(timeline).map(({state, bucket}) => ({state, bucket}))).toStrictEqual([
-					{state: "waiting", bucket: "blocked"},
+				expect(
+					updates(timeline).map(({state, bucket}) => (
+					{
+						state,
+						bucket,
+					})),
+				).toStrictEqual([
+					{
+						state: "waiting",
+						bucket: "blocked",
+					},
 				]);
-			} finally {
+			}
+			finally
+			{
 				clearSessionRegistry();
 			}
 		});
 
-		it("a subagent-scoped PreToolUse(AskUserQuestion) sends no session:updated", async () => {
+		it("a subagent-scoped PreToolUse(AskUserQuestion) sends no session:updated", async () =>
+		{
 			clearAllNotifications();
 			const sessionId = "entry-hop-609";
 			await indexSession(sessionId);
-			const base = {
+			const base =
+			{
 				session_id: sessionId,
 				transcript_path: `/tmp/${sessionId}.jsonl`,
 				cwd: "/Users/craig/projects/app",
 			};
 			const timeline = await dispatchAll([
-				{...base, hook_event_name: "SessionStart", source: "startup"},
+				{
+					...base,
+					hook_event_name: "SessionStart",
+					source: "startup",
+				},
 				{
 					...base,
 					agent_id: "alice",

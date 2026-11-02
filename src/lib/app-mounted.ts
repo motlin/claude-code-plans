@@ -10,7 +10,8 @@ import {useLayoutEffect, useSyncExternalStore} from "react";
 let mounted = false;
 const listeners = new Set<() => void>();
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
@@ -18,13 +19,16 @@ function subscribe(listener: () => void): () => void {
 const getSnapshot = (): boolean => mounted;
 const getServerSnapshot = (): boolean => false;
 
-export function useAppMounted(): boolean {
+export function useAppMounted(): boolean
+{
 	return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 /** Marks the app as mounted in a layout effect, so the shell is gone in the same commit the app first paints. */
-export function useMarkAppMounted(): void {
-	useLayoutEffect(() => {
+export function useMarkAppMounted(): void
+{
+	useLayoutEffect(() =>
+	{
 		if (mounted) return;
 		mounted = true;
 		for (const listener of listeners) listener();

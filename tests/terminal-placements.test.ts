@@ -4,7 +4,8 @@ import {createHerdrPlacementProvider, type HerdrRequester, type IndexedSessionFi
 import {getTerminalPlacements, type TerminalPlacementProvider} from "../src/lib/terminal-placements";
 import {createTmuxPlacementProvider} from "../src/lib/tmux-windows";
 
-function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
+function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry
+{
 	return {
 		sessionId: "session-test-100",
 		state: "working",
@@ -24,79 +25,100 @@ function entry(overrides: Partial<ActiveSessionEntry>): ActiveSessionEntry {
 	};
 }
 
-function herdrSnapshot(sessionId = "session-test-200"): HerdrRequester {
+function herdrSnapshot(sessionId = "session-test-200"): HerdrRequester
+{
 	return async () =>
-		Promise.resolve({
-			ok: true,
-			value: {
-				type: "session_snapshot",
-				snapshot: {
-					version: "99.0.0-test",
-					protocol: 100,
-					workspaces: [],
-					tabs: [],
-					panes: [
-						{
-							pane_id: "w200:p200",
-							terminal_id: "terminal-test-200",
-							workspace_id: "w200",
-							tab_id: "w200:t200",
-							focused: true,
-							cwd: "/tmp/test/bob-project",
-							foreground_cwd: "/tmp/test/bob-project/src",
-							agent_status: "working",
-							agent: "claude",
-							terminal_title: "Bob test terminal",
-							agent_session: {
-								source: "test-source",
+		Promise.resolve(
+			{
+				ok: true,
+				value:
+				{
+					type: "session_snapshot",
+					snapshot:
+					{
+						version: "99.0.0-test",
+						protocol: 100,
+						workspaces: [],
+						tabs: [],
+						panes: [
+							{
+								pane_id: "w200:p200",
+								terminal_id: "terminal-test-200",
+								workspace_id: "w200",
+								tab_id: "w200:t200",
+								focused: true,
+								cwd: "/tmp/test/bob-project",
+								foreground_cwd: "/tmp/test/bob-project/src",
+								agent_status: "working",
 								agent: "claude",
-								kind: "id",
-								value: sessionId,
+								terminal_title: "Bob test terminal",
+								agent_session:
+								{
+									source: "test-source",
+									agent: "claude",
+									kind: "id",
+									value: sessionId,
+								},
+								revision: 200,
 							},
-							revision: 200,
-						},
-					],
-					layouts: [],
-					agents: [],
-					focused_workspace_id: "w200",
-					focused_tab_id: "w200:t200",
-					focused_pane_id: "w200:p200",
+						],
+						layouts: [],
+						agents: [],
+						focused_workspace_id: "w200",
+						focused_tab_id: "w200:t200",
+						focused_pane_id: "w200:p200",
+					},
 				},
 			},
-		});
+		);
 }
 
-function tmuxProvider(sessionId = "session-test-100"): TerminalPlacementProvider {
-	return createTmuxPlacementProvider({
-		entries: () => [
-			entry({
-				sessionId,
-				tmuxPane: "%100",
-				tmuxServerSocket: "/tmp/test/tmux.sock",
-			}),
-		],
-		registry: () => [],
-		listPanes: async (socket) =>
-			Promise.resolve(
-				socket === "/tmp/test/tmux.sock"
-					? "%100\t1000\t/tmp/test/tmux.sock\ttest-session\t10\tAlice test window\t1\t1\t/tmp/test\n"
-					: "",
-			),
-		processTable: async () => Promise.resolve(""),
-	});
+function tmuxProvider(sessionId = "session-test-100"): TerminalPlacementProvider
+{
+	return createTmuxPlacementProvider(
+		{
+			entries: () => [
+				entry(
+					{
+						sessionId,
+						tmuxPane: "%100",
+						tmuxServerSocket: "/tmp/test/tmux.sock",
+					},
+				),
+			],
+			registry: () => [],
+			listPanes: async (socket) =>
+				Promise.resolve(
+					socket === "/tmp/test/tmux.sock"
+						? "%100\t1000\t/tmp/test/tmux.sock\ttest-session\t10\tAlice test window\t1\t1\t/tmp/test\n"
+						: "",
+				),
+			processTable: async () => Promise.resolve(""),
+		},
+	);
 }
 
-function herdrProvider(sessionId = "session-test-200"): TerminalPlacementProvider {
+function herdrProvider(sessionId = "session-test-200"): TerminalPlacementProvider
+{
 	const filterIndexedSessions: IndexedSessionFilter = () => new Set([sessionId]);
 	return createHerdrPlacementProvider(
-		[entry({sessionId, herdrPane: "w200:p200"})],
+		[
+			entry(
+				{
+					sessionId,
+					herdrPane: "w200:p200",
+				},
+			),
+		],
 		herdrSnapshot(sessionId),
 		filterIndexedSessions,
 	);
 }
 
-describe("terminal placement providers", () => {
-	it("reports a tmux-only fleet without changing the native tmux record", async () => {
+describe("terminal placement providers", () =>
+{
+	it("reports a tmux-only fleet without changing the native tmux record", async () =>
+	{
 		await expect(getTerminalPlacements([tmuxProvider()])).resolves.toStrictEqual([
 			{
 				provider: "tmux",
@@ -105,12 +127,14 @@ describe("terminal placement providers", () => {
 				active: true,
 				paneHandle: "%100",
 				scopeHandle: "/tmp/test/tmux.sock",
-				capabilities: {
+				capabilities:
+				{
 					supportsWrite: true,
 					supportsEvents: true,
 					supportsObserve: false,
 				},
-				tmuxWindow: {
+				tmuxWindow:
+				{
 					sessionId: "session-test-100",
 					projectName: "alice-project",
 					windowIndex: 10,
@@ -123,7 +147,8 @@ describe("terminal placement providers", () => {
 		]);
 	});
 
-	it("reports a herdr-only fleet with the complete pane read model", async () => {
+	it("reports a herdr-only fleet with the complete pane read model", async () =>
+	{
 		await expect(getTerminalPlacements([herdrProvider()])).resolves.toStrictEqual([
 			{
 				provider: "herdr",
@@ -132,12 +157,14 @@ describe("terminal placement providers", () => {
 				active: true,
 				paneHandle: "w200:p200",
 				scopeHandle: "w200",
-				capabilities: {
+				capabilities:
+				{
 					supportsWrite: true,
 					supportsEvents: true,
 					supportsObserve: true,
 				},
-				herdrPane: {
+				herdrPane:
+				{
 					host: "herdr",
 					paneId: "w200:p200",
 					terminalId: "terminal-test-200",
@@ -158,7 +185,8 @@ describe("terminal placement providers", () => {
 		]);
 	});
 
-	it("reports an indexed herdr pane without an active-session store entry", async () => {
+	it("reports an indexed herdr pane without an active-session store entry", async () =>
+	{
 		const provider = createHerdrPlacementProvider(
 			[],
 			herdrSnapshot("session-test-500"),
@@ -173,12 +201,14 @@ describe("terminal placement providers", () => {
 				active: true,
 				paneHandle: "w200:p200",
 				scopeHandle: "w200",
-				capabilities: {
+				capabilities:
+				{
 					supportsWrite: true,
 					supportsEvents: true,
 					supportsObserve: true,
 				},
-				herdrPane: {
+				herdrPane:
+				{
 					host: "herdr",
 					paneId: "w200:p200",
 					terminalId: "terminal-test-200",
@@ -199,77 +229,120 @@ describe("terminal placement providers", () => {
 		]);
 	});
 
-	it("merges independently available providers in deterministic order", async () => {
+	it("merges independently available providers in deterministic order", async () =>
+	{
 		const placements = await getTerminalPlacements([herdrProvider(), tmuxProvider()]);
 
-		expect(placements.map(({provider, sessionId}) => ({provider, sessionId}))).toStrictEqual([
-			{provider: "tmux", sessionId: "session-test-100"},
-			{provider: "herdr", sessionId: "session-test-200"},
+		expect(
+			placements.map(({provider, sessionId}) => (
+			{
+				provider,
+				sessionId,
+			})),
+		).toStrictEqual([
+			{
+				provider: "tmux",
+				sessionId: "session-test-100",
+			},
+			{
+				provider: "herdr",
+				sessionId: "session-test-200",
+			},
 		]);
 	});
 
-	it("prefers herdr when both providers report the same session id", async () => {
+	it("prefers herdr when both providers report the same session id", async () =>
+	{
 		const placements = await getTerminalPlacements([
 			tmuxProvider("session-test-200"),
 			herdrProvider("session-test-200"),
 		]);
 
-		expect(placements.map(({provider, sessionId}) => ({provider, sessionId}))).toStrictEqual([
-			{provider: "herdr", sessionId: "session-test-200"},
+		expect(
+			placements.map(({provider, sessionId}) => (
+			{
+				provider,
+				sessionId,
+			})),
+		).toStrictEqual([
+			{
+				provider: "herdr",
+				sessionId: "session-test-200",
+			},
 		]);
 	});
 
-	it("models each provider's capabilities explicitly", async () => {
+	it("models each provider's capabilities explicitly", async () =>
+	{
 		const providers = [tmuxProvider(), herdrProvider()];
 		const placements = await getTerminalPlacements(providers);
 
-		expect({
-			providers: providers.map(({id, capabilities}) => ({id, capabilities})),
-			placements: placements.map(({provider, capabilities}) => ({provider, capabilities})),
-		}).toStrictEqual({
-			providers: [
+		expect(
+			{
+				providers: providers.map(({id, capabilities}) => (
 				{
-					id: "tmux",
-					capabilities: {
-						supportsWrite: true,
-						supportsEvents: true,
-						supportsObserve: false,
-					},
-				},
+					id,
+					capabilities,
+				})),
+				placements: placements.map(({provider, capabilities}) => (
 				{
-					id: "herdr",
-					capabilities: {
-						supportsWrite: true,
-						supportsEvents: true,
-						supportsObserve: true,
+					provider,
+					capabilities,
+				})),
+			},
+		).toStrictEqual(
+			{
+				providers: [
+					{
+						id: "tmux",
+						capabilities:
+						{
+							supportsWrite: true,
+							supportsEvents: true,
+							supportsObserve: false,
+						},
 					},
-				},
-			],
-			placements: [
-				{
-					provider: "tmux",
-					capabilities: {
-						supportsWrite: true,
-						supportsEvents: true,
-						supportsObserve: false,
+					{
+						id: "herdr",
+						capabilities:
+						{
+							supportsWrite: true,
+							supportsEvents: true,
+							supportsObserve: true,
+						},
 					},
-				},
-				{
-					provider: "herdr",
-					capabilities: {
-						supportsWrite: true,
-						supportsEvents: true,
-						supportsObserve: true,
+				],
+				placements: [
+					{
+						provider: "tmux",
+						capabilities:
+						{
+							supportsWrite: true,
+							supportsEvents: true,
+							supportsObserve: false,
+						},
 					},
-				},
-			],
-		});
+					{
+						provider: "herdr",
+						capabilities:
+						{
+							supportsWrite: true,
+							supportsEvents: true,
+							supportsObserve: true,
+						},
+					},
+				],
+			},
+		);
 	});
 
-	it("isolates a rejected provider from the remaining fleet", async () => {
-		const rejectedProvider: TerminalPlacementProvider = {
+	it("isolates a rejected provider from the remaining fleet", async () =>
+	{
+		const rejectedProvider: TerminalPlacementProvider =
+		{
 			id: "herdr",
-			capabilities: {
+			capabilities:
+			{
 				supportsWrite: true,
 				supportsEvents: true,
 				supportsObserve: true,
@@ -279,27 +352,48 @@ describe("terminal placement providers", () => {
 
 		const placements = await getTerminalPlacements([rejectedProvider, tmuxProvider()]);
 
-		expect(placements.map(({provider, sessionId}) => ({provider, sessionId}))).toStrictEqual([
-			{provider: "tmux", sessionId: "session-test-100"},
+		expect(
+			placements.map(({provider, sessionId}) => (
+			{
+				provider,
+				sessionId,
+			})),
+		).toStrictEqual([
+			{
+				provider: "tmux",
+				sessionId: "session-test-100",
+			},
 		]);
 	});
 
-	it("isolates an unavailable herdr response from the tmux provider", async () => {
+	it("isolates an unavailable herdr response from the tmux provider", async () =>
+	{
 		const unavailableHerdr = createHerdrPlacementProvider(
 			[],
 			async () =>
-				Promise.resolve({
-					ok: false,
-					code: "connect-failed",
-					message: "Fabricated unavailable herdr service",
-				}),
+				Promise.resolve(
+					{
+						ok: false,
+						code: "connect-failed",
+						message: "Fabricated unavailable herdr service",
+					},
+				),
 			() => new Set(),
 		);
 
 		const placements = await getTerminalPlacements([unavailableHerdr, tmuxProvider()]);
 
-		expect(placements.map(({provider, sessionId}) => ({provider, sessionId}))).toStrictEqual([
-			{provider: "tmux", sessionId: "session-test-100"},
+		expect(
+			placements.map(({provider, sessionId}) => (
+			{
+				provider,
+				sessionId,
+			})),
+		).toStrictEqual([
+			{
+				provider: "tmux",
+				sessionId: "session-test-100",
+			},
 		]);
 	});
 });

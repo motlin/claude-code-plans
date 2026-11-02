@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -19,22 +20,31 @@ import {useMainScrollRestoration} from "../src/hooks/use-main-scroll-restoration
 const scrollTops = new WeakMap<Element, number>();
 const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop")!;
 
-beforeAll(() => {
-	Object.defineProperty(Element.prototype, "scrollTop", {
-		configurable: true,
-		get(this: Element) {
-			return scrollTops.get(this) ?? 0;
+beforeAll(() =>
+{
+	Object.defineProperty(
+		Element.prototype,
+		"scrollTop",
+		{
+			configurable: true,
+			get(this: Element)
+			{
+				return scrollTops.get(this) ?? 0;
+			},
+			set(this: Element, value: number)
+			{
+				scrollTops.set(this, value);
+			},
 		},
-		set(this: Element, value: number) {
-			scrollTops.set(this, value);
-		},
-	});
-	Element.prototype.scrollTo = function scrollTo(this: Element, options?: ScrollToOptions | number) {
+	);
+	Element.prototype.scrollTo = function scrollTo(this: Element, options?: ScrollToOptions | number)
+	{
 		if (typeof options === "object" && options.top !== undefined) this.scrollTop = options.top;
 	};
 });
 
-afterAll(() => {
+afterAll(() =>
+{
 	Object.defineProperty(Element.prototype, "scrollTop", nativeScrollTop);
 	Reflect.deleteProperty(Element.prototype, "scrollTo");
 });
@@ -42,9 +52,14 @@ afterAll(() => {
 afterEach(cleanup);
 
 /** Like the session page: reads the restored <main> position for its location, and re-renders on demand. */
-function RestoredMainPosition() {
+function RestoredMainPosition()
+{
 	const [, rerender] = useReducer((count: number) => count + 1, 0);
-	const locationKey = useLocation({select: (location) => location.state.__TSR_key ?? location.href});
+	const locationKey = useLocation(
+		{
+			select: (location) => location.state.__TSR_key ?? location.href,
+		},
+	);
 	const restored = useMainScrollRestoration(locationKey);
 	return (
 		<button type="button" data-testid="restored" onClick={rerender}>
@@ -53,76 +68,116 @@ function RestoredMainPosition() {
 	);
 }
 
-function makeRouter() {
-	const rootRoute = createRootRoute({
-		component: () => (
-			<main data-testid="main" data-scroll-restoration-id="main">
-				<Outlet />
-			</main>
-		),
-	});
-	const pageRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/session/$id",
-		component: RestoredMainPosition,
-	});
-	return createRouter({
-		scrollRestoration: true,
-		routeTree: rootRoute.addChildren([pageRoute]),
-		history: createMemoryHistory({initialEntries: ["/session/first"]}),
-	});
+function makeRouter()
+{
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<main data-testid="main" data-scroll-restoration-id="main">
+					<Outlet />
+				</main>
+			),
+		},
+	);
+	const pageRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/session/$id",
+			component: RestoredMainPosition,
+		},
+	);
+	return createRouter(
+		{
+			scrollRestoration: true,
+			routeTree: rootRoute.addChildren([pageRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/session/first"],
+				},
+			),
+		},
+	);
 }
 
 /** The user scrolls <main>: the router tracks the position from the scroll event. */
-function scrollMain(main: HTMLElement, top: number): void {
+function scrollMain(main: HTMLElement, top: number): void
+{
 	main.scrollTop = top;
 	main.dispatchEvent(new Event("scroll"));
 }
 
 /** What the page reads on a later re-render, after the router's post-render restoration pass has run. */
-function restoredOnRerender(): string | null {
+function restoredOnRerender(): string | null
+{
 	fireEvent.click(screen.getByTestId("restored"));
 	return screen.getByTestId("restored").textContent;
 }
 
 // One router per file: the router keeps its scroll-restoration cache and listeners at module level.
-it("reports no restored <main> position for a fresh navigation, and the page's own position on Back", async () => {
+it("reports no restored <main> position for a fresh navigation, and the page's own position on Back", async () =>
+{
 	const router = makeRouter();
 	const renderedLocations: string[] = [];
-	const unsubscribe = router.subscribe("onRendered", ({toLocation}) => {
+	const unsubscribe = router.subscribe("onRendered", ({toLocation}) =>
+	{
 		renderedLocations.push(toLocation.pathname);
 	});
-	try {
+	try
+	{
 		await router.load();
 		render(<RouterProvider router={router} />);
 		const main = await screen.findByTestId("main");
 		// onRendered clears tracked scroll events. Scroll only after the route's restoration pass.
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(renderedLocations).toStrictEqual(["/session/first"]);
 		});
 		scrollMain(main, 13_939);
 
 		// The router copies the left page's <main> entry into the new location's after it renders.
-		await act(async () => router.navigate({to: "/session/$id", params: {id: "second"}}));
-		await waitFor(() => {
+		await act(async () =>
+			router.navigate(
+				{
+					to: "/session/$id",
+					params:
+					{
+						id: "second",
+					},
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(renderedLocations).toStrictEqual(["/session/first", "/session/second"]);
 		});
 		const afterSwitch = restoredOnRerender();
 		scrollMain(main, 200);
 
-		act(() => {
+		act(() =>
+		{
 			router.history.back();
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(renderedLocations).toStrictEqual(["/session/first", "/session/second", "/session/first"]);
 		});
 
-		expect({afterSwitch, afterBack: restoredOnRerender(), scrollTopAfterBack: main.scrollTop}).toStrictEqual({
-			afterSwitch: "none",
-			afterBack: "13939",
-			scrollTopAfterBack: 13_939,
-		});
-	} finally {
+		expect(
+			{
+				afterSwitch,
+				afterBack: restoredOnRerender(),
+				scrollTopAfterBack: main.scrollTop,
+			},
+		).toStrictEqual(
+			{
+				afterSwitch: "none",
+				afterBack: "13939",
+				scrollTopAfterBack: 13_939,
+			},
+		);
+	}
+	finally
+	{
 		unsubscribe();
 	}
 });

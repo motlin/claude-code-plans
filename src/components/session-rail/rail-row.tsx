@@ -24,7 +24,8 @@ export function RailRowContent({
 	hint?: ReactNode;
 	/** Set when the hint is the event stream's state rather than a detail of the row. */
 	hintStatus?: string;
-}) {
+})
+{
 	return (
 		<>
 			<span className="flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4">
@@ -53,7 +54,8 @@ export function RailRow(props: {
 	hint?: ReactNode;
 	hintStatus?: string;
 	title?: string;
-}) {
+})
+{
 	return (
 		<div className={ROW_CLASS} title={props.title}>
 			<RailRowContent {...props} />

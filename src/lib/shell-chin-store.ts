@@ -5,7 +5,8 @@
  * (see `withShellChinLabels`), so on the client it stays null and the fallback
  * keeps the server's text through hydration.
  */
-export interface ShellChinLabels {
+export interface ShellChinLabels
+{
 	mode: string;
 	model: string;
 	effort: string;
@@ -13,10 +14,12 @@ export interface ShellChinLabels {
 
 let current: ShellChinLabels | null = null;
 
-export function getShellChinLabels(): ShellChinLabels | null {
+export function getShellChinLabels(): ShellChinLabels | null
+{
 	return current;
 }
 
-export function setShellChinLabels(labels: ShellChinLabels | null): void {
+export function setShellChinLabels(labels: ShellChinLabels | null): void
+{
 	current = labels;
 }

@@ -7,7 +7,8 @@ import {stripCommandTags} from "./session-utils";
 import {isPrompt, promptText} from "./transcript-chain";
 
 /** One prompt the picker offers to rewind to. */
-export interface RewindTurn {
+export interface RewindTurn
+{
 	uuid: string;
 	/** The prompt as the CLI's selector draws it; checked against the selected row before Enter. */
 	text: string;
@@ -24,7 +25,8 @@ const COMMAND_NAME = /<command-name>\s*\/?([^<\s]+)\s*<\/command-name>/;
 const COMMAND_ARGS = /<command-args>([\s\S]*?)<\/command-args>/;
 
 /** A slash command record as the CLI shows it ("/model opus"); otherwise the prompt without harness tags. */
-function turnText(raw: string): string {
+function turnText(raw: string): string
+{
 	const name = COMMAND_NAME.exec(raw)?.[1];
 	if (name === undefined) return stripCommandTags(raw);
 	const args = COMMAND_ARGS.exec(raw)?.[1]?.trim() ?? "";
@@ -32,23 +34,34 @@ function turnText(raw: string): string {
 }
 
 /** The active chain's user prompts with text, oldest first, as the picker lists them. */
-export function rewindTurns(records: readonly Record<string, unknown>[], hidden: ReadonlySet<string>): RewindTurn[] {
-	return records.flatMap((record) => {
+export function rewindTurns(records: readonly Record<string, unknown>[], hidden: ReadonlySet<string>): RewindTurn[]
+{
+	return records.flatMap((record) =>
+	{
 		const uuid = record["uuid"];
 		if (typeof uuid !== "string" || hidden.has(uuid)) return [];
 		if (record["isSidechain"] === true || record["isCompactSummary"] === true || !isPrompt(record)) return [];
 		const text = turnText(promptText(record) ?? "");
-		return text === "" ? [] : [{uuid, text}];
+		return text === ""
+			? []
+			: [
+					{
+						uuid,
+						text,
+					},
+				];
 	});
 }
 
 /** Upstream's `Cte`: the row label, pre-truncated before CSS `truncate`. */
-export function rewindLabel(text: string): string {
+export function rewindLabel(text: string): string
+{
 	return text.length > REWIND_LABEL_LIMIT ? `${text.slice(0, REWIND_LABEL_LIMIT)}…` : text;
 }
 
 /** Up presses from the CLI selector's "(current)" row to the turn (1 is the newest), or null when it isn't listed. */
-export function rewindStepsBack(turns: readonly RewindTurn[], uuid: string): number | null {
+export function rewindStepsBack(turns: readonly RewindTurn[], uuid: string): number | null
+{
 	const index = turns.findIndex((turn) => turn.uuid === uuid);
 	return index === -1 ? null : turns.length - index;
 }
@@ -70,7 +83,8 @@ export function canOpenRewindPicker({
 	draft: string;
 	now: number;
 	closedAt: number | null;
-}): boolean {
+}): boolean
+{
 	if (!available || busy || draft.trim() !== "") return false;
 	return closedAt === null || now - closedAt >= REWIND_REOPEN_GUARD_MS;
 }

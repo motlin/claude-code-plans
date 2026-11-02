@@ -5,14 +5,17 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {buildWorkingCopyDiff} from "../src/lib/working-copy-diff";
 import {runGit} from "./git-fixture";
 
-describe("buildWorkingCopyDiff", () => {
+describe("buildWorkingCopyDiff", () =>
+{
 	let repositoryDirectory: string;
 
-	function git(...arguments_: string[]): void {
+	function git(...arguments_: string[]): void
+	{
 		runGit(repositoryDirectory, arguments_);
 	}
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		repositoryDirectory = mkdtempSync(join(tmpdir(), "working-copy-diff-test-"));
 
 		git("init", "--initial-branch=main");
@@ -25,11 +28,19 @@ describe("buildWorkingCopyDiff", () => {
 		git("commit", "--message", "Create fixture files.");
 	});
 
-	afterEach(() => {
-		rmSync(repositoryDirectory, {recursive: true, force: true});
+	afterEach(() =>
+	{
+		rmSync(
+			repositoryDirectory,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("includes modified tracked, staged, and untracked files", async () => {
+	it("includes modified tracked, staged, and untracked files", async () =>
+	{
 		writeFileSync(join(repositoryDirectory, "modified.txt"), "after modification\n");
 		writeFileSync(join(repositoryDirectory, "staged.txt"), "after staging\n");
 		git("add", "staged.txt");

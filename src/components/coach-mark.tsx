@@ -27,16 +27,22 @@ export function CoachMark({
 	anchor: Element | null;
 	title?: string;
 	message: string;
-	action?: {label: string; onClick: () => void};
+	action?:
+	{
+		label: string;
+		onClick: () => void;
+	};
 	icon?: ReactNode;
 	side?: "top" | "right" | "bottom" | "left";
 	onDismiss: () => void;
 	onClose: () => void;
-}) {
+})
+{
 	return (
 		<Popover.Root
 			open={open}
-			onOpenChange={(next, details) => {
+			onOpenChange={(next, details) =>
+			{
 				if (next) return;
 				if (details.reason === "escape-key" || details.reason === "close-press") onDismiss();
 				else onClose();

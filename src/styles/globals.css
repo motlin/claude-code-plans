@@ -4,7 +4,8 @@
 @import "@fontsource/opendyslexic/400.css";
 @import "@fontsource/opendyslexic/700.css";
 
-@font-face {
+@font-face
+{
 	font-family: "MesloLGS NF Web";
 	src: url("/fonts/MesloLGSNerdFontMono-Regular.woff2") format("woff2");
 	font-style: normal;
@@ -12,7 +13,8 @@
 	font-display: swap;
 }
 
-@font-face {
+@font-face
+{
 	font-family: "MesloLGS NF Web";
 	src: url("/fonts/MesloLGSNerdFontMono-Bold.woff2") format("woff2");
 	font-style: normal;
@@ -22,17 +24,22 @@
 
 @custom-variant dark (&:is(.dark *));
 /* Block form: the shorthand splits on the comma, so `(hover: none)` became a dangling descendant selector. */
-@custom-variant touch {
-	@media (pointer: coarse), (hover: none) {
+@custom-variant touch
+{
+	@media (pointer: coarse), (hover: none)
+	{
 		@slot;
 	}
 }
 /* Upstream's fizzy-lake `panels` control sizes (28px comfortable controls, the toolbar icon box, the
    6px menu gutter) sit in this fine-pointer query, so a coarse device keeps the classic 32px controls.
    The query is FIZZY_LAKE_PANELS_FINE_POINTER_QUERY in src/lib/fizzy-lake.ts. */
-@custom-variant panels-fine {
-	@media (hover: hover) and (pointer: fine), (hover: hover) and (pointer: none) {
-		&:where([data-cds-fizzy-lake~="panels"] *) {
+@custom-variant panels-fine
+{
+	@media (hover: hover) and (pointer: fine), (hover: hover) and (pointer: none)
+	{
+		&:where([data-cds-fizzy-lake~="panels"] *)
+		{
 			@slot;
 		}
 	}
@@ -44,18 +51,24 @@
 /* Upstream's motion variants: html[data-reduce-motion=true] (Settings ▸ Motion ▸ Reduced or the OS
    query, set by the settings provider) suppresses motion-safe: and turns on motion-reduce:, and the
    @media halves cover the paint before hydration. */
-@custom-variant motion-safe {
-	@media (prefers-reduced-motion: no-preference) {
-		&:not(:where([data-reduce-motion="true"], [data-reduce-motion="true"] *)) {
+@custom-variant motion-safe
+{
+	@media (prefers-reduced-motion: no-preference)
+	{
+		&:not(:where([data-reduce-motion="true"], [data-reduce-motion="true"] *))
+		{
 			@slot;
 		}
 	}
 }
-@custom-variant motion-reduce {
-	@media (prefers-reduced-motion: reduce) {
+@custom-variant motion-reduce
+{
+	@media (prefers-reduced-motion: reduce)
+	{
 		@slot;
 	}
-	&:where([data-reduce-motion="true"], [data-reduce-motion="true"] *) {
+	&:where([data-reduce-motion="true"], [data-reduce-motion="true"] *)
+	{
 		@slot;
 	}
 }
@@ -68,8 +81,10 @@
 @custom-variant cds-Icon (& [data-cds=Icon]);
 
 /* Upstream `stacks:`: fizzy colour on (outside a `data-cds-theme` scope), never under forced colours. */
-@custom-variant stacks {
-	@media (forced-colors: none) {
+@custom-variant stacks
+{
+	@media (forced-colors: none)
+	{
 		/* prettier-ignore */
 		&:where([data-cds-fizzy-lake~="color"], [data-cds-fizzy-lake~="color"] *):not(:where([data-cds-theme], [data-cds-theme] *)) {
 			@slot;
@@ -82,7 +97,8 @@
 
 /* Not inline, so `font-mono` and `font-sans` read their variables and Settings ▸
    Code font / Interface font can override them on <html>. */
-@theme {
+@theme
+{
 	/* Upstream cds density spacing (.cds-root, the compact base): gap-* and m*-* use the gap scale,
 	   p*-* and m*-pad-* the pad scale. The [data-density] blocks below restate or widen it. */
 	--cds-gap-xs: 0.375rem;
@@ -146,7 +162,8 @@
 
 /* Fizzy-lake `panels` rollout: upstream's toolbar hairline token, 1px under panels (read live 2026-11-01);
    borders use max(var(--cds-toolbar-line,0px),0.5px) so they fall back to 0.5px without it. */
-:root[data-cds-fizzy-lake~="panels"] {
+:root[data-cds-fizzy-lake~="panels"]
+{
 	--cds-toolbar-line: 1px;
 }
 
@@ -156,26 +173,31 @@
 :is(
 	[data-cds-fizzy-lake~="panels"][data-density="comfortable"],
 	[data-cds-fizzy-lake~="panels"] [data-density="comfortable"]
-) {
+)
+{
 	--cds-toolbar-pad-block: calc(0.5rem * var(--cds-rem-scale, 1));
 	--cds-toolbar-pad-inline: calc(0.5rem * var(--cds-rem-scale, 1));
 	--cds-toolbar-icon-box: calc(2rem * var(--cds-rem-scale, 1));
 }
-@media (hover: hover) and (pointer: fine), (hover: hover) and (pointer: none) {
-	:root[data-cds-fizzy-lake~="panels"] {
+@media (hover: hover) and (pointer: fine), (hover: hover) and (pointer: none)
+{
+	:root[data-cds-fizzy-lake~="panels"]
+	{
 		--cds-toolbar-strip: 1px;
 	}
 	:is(
 		[data-cds-fizzy-lake~="panels"][data-density="comfortable"],
 		[data-cds-fizzy-lake~="panels"] [data-density="comfortable"]
-	) {
+	)
+	{
 		--cds-toolbar-icon-box: calc(1.75rem * var(--cds-rem-scale, 1));
 	}
 }
 
 /* Fizzy-lake `type` rollout: upstream `.cds-root:is([data-cds-fizzy-lake~=type], …)`
    (dumps/upstream-survey-root-vars.css). */
-:root[data-cds-fizzy-lake~="type"] {
+:root[data-cds-fizzy-lake~="type"]
+{
 	--font-weight-control: 435;
 	--font-weight-control-regular: 435;
 	/* Upstream `--cds-font-weight-header`: dialog headings, settings group titles, sidebar group labels. */
@@ -188,7 +210,8 @@
 }
 
 /* Upstream's `[data-font=system]` type axes, for Settings ▸ Interface font ▸ System. */
-:root[data-cds-fizzy-lake~="type"][data-interface-font="system"] {
+:root[data-cds-fizzy-lake~="type"][data-interface-font="system"]
+{
 	--cds-font-wght-body: "wght" 380;
 	--cds-font-wght-control: "wght" 420;
 	--cds-font-wght-header: "wght" 500;
@@ -196,20 +219,23 @@
 }
 
 /* Settings ▸ Interface font ▸ OpenDyslexic, self-hosted from @fontsource/opendyslexic. */
-html[data-interface-font="dyslexic"] {
+html[data-interface-font="dyslexic"]
+{
 	--font-sans: "OpenDyslexic", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* Upstream `:root[data-dyslexic-font]`: no type role axes, so dark text falls back to the regular axis
    (OpenDyslexic is static, so the axis draws nothing anyway). After the type blocks so it wins. */
-:root[data-interface-font="dyslexic"] {
+:root[data-interface-font="dyslexic"]
+{
 	--cds-font-wght-body: initial;
 	--cds-font-wght-control: initial;
 	--cds-font-wght-header: initial;
 	--cds-font-wght-badge: initial;
 }
 
-@theme inline {
+@theme inline
+{
 	--font-voice: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
 	/* Upstream claude.ai/code semantic surfaces and fills */
@@ -473,7 +499,8 @@ html[data-interface-font="dyslexic"] {
 	--text-pane--line-height: 19px;
 }
 
-:root {
+:root
+{
 	/* Upstream --df-ease-out-cubic, the dframe chrome's transition curve. */
 	--df-ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
 	/* Upstream .cds-root control height: the shell is a comfortable context (see [data-density] below). */
@@ -881,7 +908,8 @@ html[data-interface-font="dyslexic"] {
 	--cds-font-axis-wght-badge: initial;
 }
 
-.dark {
+.dark
+{
 	/* Sidebar rows: upstream [data-mode="dark"] .dframe-sidebar overrides */
 	--sb-hover: hsl(0 0% 100% / 0.075);
 	--sb-selected: hsl(0 0% 100% / 0.15);
@@ -1123,7 +1151,8 @@ html[data-interface-font="dyslexic"] {
    (dumps/upstream-survey-root-vars.css). The base blocks above keep the pre-rollout values, so
    dropping `color` from FIZZY_LAKE_PARTS falls back to them. The light block outranks `.dark`, so
    a value that differs in dark is restated in the dark block. */
-:root[data-cds-fizzy-lake~="color"] {
+:root[data-cds-fizzy-lake~="color"]
+{
 	/* Upstream fizzy `--cds-fill-disabled`, `--cds-text-button-disabled` and
 	   `--cds-fizzy-lake-color-icon-only-disabled`: a disabled cds Button keeps opacity 1 with this paint and ink. */
 	--upstream-fill-disabled: #00000006;
@@ -1274,7 +1303,8 @@ html[data-interface-font="dyslexic"] {
 	--pro-tint: #785ee81f;
 }
 
-:root.dark[data-cds-fizzy-lake~="color"] {
+:root.dark[data-cds-fizzy-lake~="color"]
+{
 	/* Upstream dark `--cds-fizzy-lake-color-solid-{primary,secondary}` (--cds-gray-50/200). */
 	--cds-fizzy-lake-color-solid-primary: #efefef;
 	--cds-fizzy-lake-color-solid-secondary: #c2c2c2;
@@ -1347,20 +1377,26 @@ html[data-interface-font="dyslexic"] {
 }
 
 /* Upstream `--cds-ring-hairline`: .5px at 2x, a third at 3x, a quarter at 4x (the sidebar Search ring). */
-@media (min-resolution: 2dppx) {
-	:root {
+@media (min-resolution: 2dppx)
+{
+	:root
+	{
 		--sb-field-hairline: 0.5px;
 	}
 }
 
-@media (min-resolution: 3dppx) {
-	:root {
+@media (min-resolution: 3dppx)
+{
+	:root
+	{
 		--sb-field-hairline: calc(1px / 3);
 	}
 }
 
-@media (min-resolution: 4dppx) {
-	:root {
+@media (min-resolution: 4dppx)
+{
+	:root
+	{
 		--sb-field-hairline: calc(1px / 4);
 	}
 }
@@ -1375,8 +1411,10 @@ html[data-interface-font="dyslexic"] {
  * #0b0b0b light, #fff dark under fizzy. --fizzy-lake-color-secondary and --muted-as-secondary follow
  * --upstream-text-secondary. The dark rule restates every value because `.dark`/`:root.dark[…]` would otherwise win.
  */
-@media (prefers-contrast: more) {
-	:root[data-cds-fizzy-lake~="color"] {
+@media (prefers-contrast: more)
+{
+	:root[data-cds-fizzy-lake~="color"]
+	{
 		--upstream-plain-secondary: #000000bf;
 		--upstream-text-primary: #000;
 		--upstream-text-secondary: #000000bf;
@@ -1393,7 +1431,8 @@ html[data-interface-font="dyslexic"] {
 		--upstream-placeholder: #0009;
 	}
 
-	:root.dark[data-cds-fizzy-lake~="color"] {
+	:root.dark[data-cds-fizzy-lake~="color"]
+	{
 		--upstream-plain-secondary: #ffffffbf;
 		--upstream-text-primary: #fff;
 		--upstream-text-secondary: #ffffffbf;
@@ -1429,30 +1468,36 @@ html[data-interface-font="dyslexic"] {
 	[class*="data-[popup-open]:bg-fill-ghost-hover"][data-popup-open]:not(
 		[class*="data-[highlighted]:bg-fill-ghost-hover"]
 	),
-:root[data-cds-fizzy-lake~="color"] [class*="aria-expanded:bg-fill-ghost-hover"][aria-expanded="true"] {
+:root[data-cds-fizzy-lake~="color"] [class*="aria-expanded:bg-fill-ghost-hover"][aria-expanded="true"]
+{
 	background-color: var(--color-fill-ghost-selected);
 }
 
-@media (hover: hover) {
+@media (hover: hover)
+{
 	:root[data-cds-fizzy-lake~="color"]
-		[class*="data-[highlighted]:bg-fill-ghost-hover"][class*="focus-visible:bg-fill-ghost-hover"]:hover {
+		[class*="data-[highlighted]:bg-fill-ghost-hover"][class*="focus-visible:bg-fill-ghost-hover"]:hover
+	{
 		background-color: var(--color-fill-ghost-selected);
 	}
 
 	/* Upstream `.bg-fill-ghost-selected:hover { background-color: var(--cds-fizzy-lake-color-selected-hover) }`. */
-	:root[data-cds-fizzy-lake~="color"] .bg-fill-ghost-selected:hover {
+	:root[data-cds-fizzy-lake~="color"] .bg-fill-ghost-selected:hover
+	{
 		background-color: var(--selected-hover);
 	}
 }
 
 /* Upstream `.placeholder\:text-muted::placeholder { color: var(--cds-fizzy-lake-color-placeholder) }`. */
-:root[data-cds-fizzy-lake~="color"] .placeholder\:text-ink-muted::placeholder {
+:root[data-cds-fizzy-lake~="color"] .placeholder\:text-ink-muted::placeholder
+{
 	color: var(--upstream-placeholder);
 }
 
 /* Upstream `[data-cds=Panel]`/`.cds-pane-ground` collapse surface-2/3 to surface-1 (dark #1f1f1f to #191919;
    light is #fff throughout). */
-:root[data-cds-fizzy-lake~="color"] [data-session-tile] {
+:root[data-cds-fizzy-lake~="color"] [data-session-tile]
+{
 	--upstream-surface-2: var(--upstream-surface-1);
 	--upstream-surface-3: var(--upstream-surface-1);
 }
@@ -1482,7 +1527,8 @@ html[data-interface-font="dyslexic"] {
 		.shadow-composer-focus,
 		.rounded-composer,
 		.rounded-\[20px\]
-	) {
+	)
+{
 	--upstream-surface-3: var(--upstream-surface-popover);
 	--color-surface-3: var(--upstream-surface-popover);
 }
@@ -1502,12 +1548,14 @@ html[data-interface-font="dyslexic"] {
 		.focus-visible\:bg-surface-1:focus-visible,
 		label.focus-within\:bg-surface-1:focus-within
 	):not([class^="bg-"], [class*=" bg-"]),
-:root[data-cds-fizzy-lake~="color"] label.focus-within\:bg-surface-1:focus-within:not([class^="bg-"], [class*=" bg-"]) {
+:root[data-cds-fizzy-lake~="color"] label.focus-within\:bg-surface-1:focus-within:not([class^="bg-"], [class*=" bg-"])
+{
 	background-color: var(--upstream-fill-ghost-selected);
 }
 
 /* Surface hovers paint a translucent ghost-hover wash instead of an opaque surface fill. */
-@media (hover: hover) {
+@media (hover: hover)
+{
 	:root[data-cds-fizzy-lake~="color"]
 		.hover\:bg-surface-0:hover:not(
 			.focus-visible\:bg-surface-0:focus-visible,
@@ -1536,7 +1584,8 @@ html[data-interface-font="dyslexic"] {
 	:root[data-cds-fizzy-lake~="color"]
 		.enabled\:hover\:bg-surface-1:enabled:hover:not([class^="bg-"], [class*=" bg-"], .hover\:drop-shadow-md):not(
 			:where(.focus-visible\:bg-surface-1:focus-visible, label.focus-within\:bg-surface-1:focus-within)
-		) {
+		)
+	{
 		background-color: var(--upstream-fill-ghost-hover);
 	}
 }
@@ -1547,7 +1596,8 @@ html[data-interface-font="dyslexic"] {
 	:is([role="dialog"], [role="alertdialog"])
 	:is(h1, h2).break-words.font-semibold,
 :root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-settings-group-title],
-:root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-sidebar-group-label] {
+:root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-sidebar-group-label]
+{
 	font-weight: var(--font-weight-header);
 }
 
@@ -1556,7 +1606,8 @@ html[data-interface-font="dyslexic"] {
 :root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"])
 	[role="dialog"]
 	nav
-	:is(a, button).text-body.h-8.px-2 {
+	:is(a, button).text-body.h-8.px-2
+{
 	font-weight: var(--font-weight-control);
 	--cds-font-axis-wght: var(--cds-font-axis-wght-control, var(--cds-font-axis-wght-regular));
 	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
@@ -1565,13 +1616,16 @@ html[data-interface-font="dyslexic"] {
 /* Upstream's variable wght axes: font-variation-settings is inherited and its "wght" beats font-weight, so the
    root applies the body axis and every weight utility re-declares its own (dark only, where the axes are set).
    Light mode computes `"GRAD" 0`, which Inter and SF Pro ignore. */
-@property --_cds-font-axis-wght-role {
+@property --_cds-font-axis-wght-role
+{
 	syntax: "*";
 	inherits: false;
 }
 
-@layer base {
-	:root {
+@layer base
+{
+	:root
+	{
 		--cds-font-axis-wght: var(--cds-font-axis-wght-body, var(--cds-font-axis-wght-regular,));
 		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 	}
@@ -1579,7 +1633,8 @@ html[data-interface-font="dyslexic"] {
 	code,
 	kbd,
 	samp,
-	pre {
+	pre
+	{
 		font-variation-settings: var(--default-mono-font-variation-settings, normal);
 	}
 
@@ -1594,30 +1649,36 @@ html[data-interface-font="dyslexic"] {
 			[style*="font-weight: normal"],
 			[style*="font-weight:normal"]
 		)
-	) {
+	)
+	{
 		--cds-font-axis-wght: initial;
 		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 	}
 }
 
-@layer utilities {
+@layer utilities
+{
 	/* Local `font-control(-regular)` is upstream's `font-medium font-control` / `font-normal font-control`. */
 	.font-control,
-	.font-control-regular {
+	.font-control-regular
+	{
 		--_cds-font-axis-wght-role: var(--cds-font-axis-wght-control);
 	}
 
-	:where(.dark) :is(b, strong):where([class*="font"]) {
+	:where(.dark) :is(b, strong):where([class*="font"])
+	{
 		--cds-font-axis-wght: initial;
 		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 	}
 
-	:where(.dark) :is(b, strong):where(:not([class*="font"])) {
+	:where(.dark) :is(b, strong):where(:not([class*="font"]))
+	{
 		--cds-font-axis-wght: var(--cds-font-axis-wght-bold);
 		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 	}
 
-	:where(.dark) :is(.font-normal, .font-control-regular) {
+	:where(.dark) :is(.font-normal, .font-control-regular)
+	{
 		--cds-font-axis-wght: var(
 			--_cds-font-axis-wght-role,
 			var(--cds-font-axis-wght-body, var(--cds-font-axis-wght-regular))
@@ -1625,7 +1686,8 @@ html[data-interface-font="dyslexic"] {
 		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 	}
 
-	:where(.dark) :is(.font-medium, .font-control) {
+	:where(.dark) :is(.font-medium, .font-control)
+	{
 		--cds-font-axis-wght: var(
 			--_cds-font-axis-wght-role,
 			var(--cds-font-axis-wght-control, var(--cds-font-axis-wght-medium))
@@ -1633,7 +1695,8 @@ html[data-interface-font="dyslexic"] {
 		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 	}
 
-	:where(.dark) .font-semibold {
+	:where(.dark) .font-semibold
+	{
 		--cds-font-axis-wght: var(
 			--_cds-font-axis-wght-role,
 			var(--cds-font-axis-wght-header, var(--cds-font-axis-wght-semibold))
@@ -1641,41 +1704,49 @@ html[data-interface-font="dyslexic"] {
 		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 	}
 
-	:where(.dark) .font-bold {
+	:where(.dark) .font-bold
+	{
 		--cds-font-axis-wght: var(--_cds-font-axis-wght-role, var(--cds-font-axis-wght-bold));
 		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 	}
 
-	:where(.dark) :is(.font-normal, .font-medium, .font-semibold) :is(b, strong) {
+	:where(.dark) :is(.font-normal, .font-medium, .font-semibold) :is(b, strong)
+	{
 		--cds-font-axis-wght: var(--cds-font-axis-wght-bold);
 		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 	}
 }
 
-@layer utilities {
-	.card-outline {
+@layer utilities
+{
+	.card-outline
+	{
 		background-color: transparent;
 		box-shadow: inset 0 0 0 1px var(--card-outline);
 	}
 
 	/* Upstream `epitaxy-card-outline` (the question receipt): the same ring, outside the edge. */
-	.card-ring {
+	.card-ring
+	{
 		background-color: transparent;
 		box-shadow: 0 0 0 1px var(--card-outline);
 	}
 
 	/* Upstream's question card hairlines: an option preview between two options breaks the run, so neither gets one. */
-	.epitaxy-answer-option + .epitaxy-answer-option {
+	.epitaxy-answer-option + .epitaxy-answer-option
+	{
 		border-top: 1px solid var(--card-outline);
 	}
 
 	/* Upstream's start card keeps its surface-1 fill inside the ring. */
-	.card-ring.bg-surface-1 {
+	.card-ring.bg-surface-1
+	{
 		background-color: var(--color-surface-1);
 	}
 
 	/* Upstream's MessageAttachments strip of natural image tiles above a user bubble. */
-	.attachment-strip {
+	.attachment-strip
+	{
 		display: flex;
 		width: 100%;
 		flex-wrap: wrap;
@@ -1686,14 +1757,16 @@ html[data-interface-font="dyslexic"] {
 		margin-top: -6px;
 	}
 
-	.attachment-strip::after {
+	.attachment-strip::after
+	{
 		content: "";
 		flex: 0 0 100%;
 		order: -1;
 		height: 0;
 	}
 
-	.attachment-tile {
+	.attachment-tile
+	{
 		position: relative;
 		isolation: isolate;
 		display: flex;
@@ -1707,7 +1780,8 @@ html[data-interface-font="dyslexic"] {
 	}
 
 	/* The tile's inset hairline ring in strong border ink. */
-	.attachment-tile::after {
+	.attachment-tile::after
+	{
 		content: "";
 		position: absolute;
 		inset: 0;
@@ -1716,7 +1790,8 @@ html[data-interface-font="dyslexic"] {
 		pointer-events: none;
 	}
 
-	.attachment-media {
+	.attachment-media
+	{
 		display: flex;
 		min-width: 120px;
 		flex: 1;
@@ -1726,7 +1801,8 @@ html[data-interface-font="dyslexic"] {
 		border-radius: 10px;
 	}
 
-	.attachment-media img {
+	.attachment-media img
+	{
 		display: block;
 		width: auto;
 		height: auto;
@@ -1735,20 +1811,24 @@ html[data-interface-font="dyslexic"] {
 		object-fit: contain;
 	}
 
-	.attachment-strip:has(.attachment-tile ~ .attachment-tile) .attachment-tile {
+	.attachment-strip:has(.attachment-tile ~ .attachment-tile) .attachment-tile
+	{
 		max-width: min(100%, 240px, calc(50% - 3px));
 	}
 
-	.attachment-strip:has(.attachment-tile ~ .attachment-tile) .attachment-media img {
+	.attachment-strip:has(.attachment-tile ~ .attachment-tile) .attachment-media img
+	{
 		max-height: 160px;
 	}
 
 	/* Upstream `epitaxy-card-outline-layer` (the usage-limit card): the ring inset, drawn on ::after over the card. */
-	.card-outline-layer {
+	.card-outline-layer
+	{
 		position: relative;
 	}
 
-	.card-outline-layer::after {
+	.card-outline-layer::after
+	{
 		content: "";
 		position: absolute;
 		inset: 0;
@@ -1759,7 +1839,8 @@ html[data-interface-font="dyslexic"] {
 			inset 0 0 0 1px var(--upstream-page);
 		pointer-events: none;
 	}
-	.code-card {
+	.code-card
+	{
 		background-color: var(--code-card-bg);
 	}
 }
@@ -1772,115 +1853,143 @@ html[data-interface-font="dyslexic"] {
    `[data-cds-theme] { --control-ink: initial }`; when local gains a `[data-cds-theme]` scope
    (see tooltip-content-dark-scope-wrapper), add that reset too. */
 /* Upstream `bg-tint-<hue>` / `text-tint-<hue>` (the ArtifactMark `vL` tiles and `NH` inks); separate utilities because each reads its own variable. */
-@utility bg-tint-blue {
+@utility bg-tint-blue
+{
 	background-color: var(--upstream-bg-tint-blue);
 }
-@utility text-tint-blue {
+@utility text-tint-blue
+{
 	color: var(--upstream-text-tint-blue);
 }
-@utility bg-tint-orange {
+@utility bg-tint-orange
+{
 	background-color: var(--upstream-bg-tint-orange);
 }
-@utility text-tint-orange {
+@utility text-tint-orange
+{
 	color: var(--upstream-text-tint-orange);
 }
-@utility bg-tint-violet {
+@utility bg-tint-violet
+{
 	background-color: var(--upstream-bg-tint-violet);
 }
-@utility text-tint-violet {
+@utility text-tint-violet
+{
 	color: var(--upstream-text-tint-violet);
 }
-@utility bg-tint-red {
+@utility bg-tint-red
+{
 	background-color: var(--upstream-bg-tint-red);
 }
-@utility text-tint-red {
+@utility text-tint-red
+{
 	color: var(--upstream-text-tint-red);
 }
-@utility bg-tint-aqua {
+@utility bg-tint-aqua
+{
 	background-color: var(--upstream-bg-tint-aqua);
 }
-@utility text-tint-aqua {
+@utility text-tint-aqua
+{
 	color: var(--upstream-text-tint-aqua);
 }
-@utility bg-tint-yellow {
+@utility bg-tint-yellow
+{
 	background-color: var(--upstream-bg-tint-yellow);
 }
-@utility text-tint-yellow {
+@utility text-tint-yellow
+{
 	color: var(--upstream-text-tint-yellow);
 }
-@utility bg-tint-magenta {
+@utility bg-tint-magenta
+{
 	background-color: var(--upstream-bg-tint-magenta);
 }
-@utility text-tint-magenta {
+@utility text-tint-magenta
+{
 	color: var(--upstream-text-tint-magenta);
 }
-@utility bg-tint-green {
+@utility bg-tint-green
+{
 	background-color: var(--upstream-bg-tint-green);
 }
-@utility text-tint-green {
+@utility text-tint-green
+{
 	color: var(--upstream-text-tint-green);
 }
 
 /* Upstream `opacity-disabled`: var(--cds-opacity-disabled), 0.4 at rest. */
-@utility opacity-disabled {
+@utility opacity-disabled
+{
 	opacity: var(--upstream-opacity-disabled, 0.4);
 }
 
 /* Upstream `text-button-disabled`: var(--cds-text-button-disabled, var(--cds-text-disabled)). */
-@utility text-button-disabled {
+@utility text-button-disabled
+{
 	color: var(--upstream-text-button-disabled, var(--upstream-text-disabled, currentColor));
 }
 
 /* Upstream `bg-fill-disabled`: var(--cds-fill-disabled). */
-@utility bg-fill-disabled {
+@utility bg-fill-disabled
+{
 	background-color: var(--upstream-fill-disabled);
 }
 
-@utility text-secondary-control {
+@utility text-secondary-control
+{
 	color: var(--control-ink, var(--color-secondary));
 }
 
-@utility text-muted-control {
+@utility text-muted-control
+{
 	color: var(--control-ink, var(--color-ink-muted));
 }
 
-@utility text-current-control {
+@utility text-current-control
+{
 	color: var(--control-ink, currentColor);
 }
 
 /* Upstream's `.border-0.5`: a half-pixel border (Tailwind's own `border-<n>` takes integers only). */
-@utility border-0.5 {
+@utility border-0.5
+{
 	border-style: var(--tw-border-style);
 	border-width: 0.5px;
 }
 
 /* Upstream's cds `duration-base` (--cds-dur-base, 0.2s); reduced motion drops the transition with motion-reduce:. */
-@utility duration-base {
+@utility duration-base
+{
 	--tw-duration: 200ms;
 	transition-duration: 200ms;
 }
 
 /* Upstream hides the native search clear on a cds TextInput; its own Clear button replaces it. */
-input.cds-input::-webkit-search-cancel-button {
+input.cds-input::-webkit-search-cancel-button
+{
 	-webkit-appearance: none;
 	display: none;
 }
 
 /* Upstream's cds `duration-fast` (60ms): the TextInput field's ring transition. */
-@utility duration-fast {
+@utility duration-fast
+{
 	--tw-duration: 60ms;
 	transition-duration: 60ms;
 }
 
 /* Upstream's `.text-code` carries the mono face along with the code size and leading; the size and leading
    come from the `--text-code` theme token, this adds the family. */
-@utility text-code {
+@utility text-code
+{
 	font-family: var(--font-mono);
 	font-feature-settings: var(--font-mono--font-feature-settings);
 }
 
 /* Upstream's `.text-code-medium`: the code size and leading in the mono face at the control (medium) weight. */
-@utility text-code-medium {
+@utility text-code-medium
+{
 	font-family: var(--font-mono);
 	font-feature-settings: var(--font-mono--font-feature-settings);
 	font-size: var(--text-code);
@@ -1890,22 +1999,26 @@ input.cds-input::-webkit-search-cancel-button {
 
 /* Upstream `hover:layers-1-fill-ghost-hover`: a selected settings nav row keeps its ghost-selected fill and lays
    the ghost hover over it as a background-image layer (Tailwind's hover: is already gated on (hover: hover)). */
-@utility layers-1-fill-ghost-hover {
+@utility layers-1-fill-ghost-hover
+{
 	background-image: linear-gradient(var(--color-fill-ghost-hover) 0 0);
 }
 
 /* Upstream `layers-1-fill-button-layer`: one fill-button-layer gradient over a cds Button paint's background. */
-@utility layers-1-fill-button-layer {
+@utility layers-1-fill-button-layer
+{
 	background-image: linear-gradient(var(--color-fill-button-layer) 0 0);
 }
 
 /* Upstream `cursor-interactive`: the pointer cursor on chips and other clickable inline atoms. */
-@utility cursor-interactive {
+@utility cursor-interactive
+{
 	cursor: pointer;
 }
 
 /* Upstream `page-fade-t`: the sticky page header's scroll fade, page bg to transparent downward. */
-@utility page-fade-t {
+@utility page-fade-t
+{
 	background-image: linear-gradient(var(--color-page), transparent);
 }
 
@@ -1913,7 +2026,8 @@ input.cds-input::-webkit-search-cancel-button {
    backdrop blur) instead of an opaque bg-page slab, and falls back to opaque when transparency is unwanted or
    unsupported. `--cds-page-bg` (default surface-0) maps to the local `--color-page`. Upstream shares these rules with
    `[data-cds=Toolbar]>[data-cds-part=toolbar-ground]`; the desktop-only `[data-cds-opaque-toolbars]` rule is left out. */
-[data-cds="Page"] [data-cds-part="page-header-ground"] {
+[data-cds="Page"] [data-cds-part="page-header-ground"]
+{
 	--_toolbar-ground-fill: 85%;
 	z-index: -1;
 	pointer-events: none;
@@ -1926,16 +2040,20 @@ input.cds-input::-webkit-search-cancel-button {
 	inset: 0;
 }
 
-@media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active), print {
-	[data-cds="Page"] [data-cds-part="page-header-ground"] {
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active), print
+{
+	[data-cds="Page"] [data-cds-part="page-header-ground"]
+	{
 		--_toolbar-ground-fill: 100%;
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
 	}
 }
 
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-	[data-cds="Page"] [data-cds-part="page-header-ground"] {
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px)))
+{
+	[data-cds="Page"] [data-cds-part="page-header-ground"]
+	{
 		--_toolbar-ground-fill: 100%;
 	}
 }
@@ -1945,42 +2063,52 @@ input.cds-input::-webkit-search-cancel-button {
    their resting x (pulled back by --cds-page-header-tabs-pull) to the shifted x that clears the toggle over the first
    --cds-page-header-tabs-travel px. PageHeaderMotion (code-page-header.tsx) sets the attributes and vars. Longhands as
    upstream, so animation-duration:auto follows the timeline reset. */
-@keyframes cds-page-title-leaves {
-	0% {
+@keyframes cds-page-title-leaves
+{
+	0%
+	{
 		opacity: 1;
 		transform: none;
 	}
 	0.001%,
-	to {
+	to
+	{
 		opacity: 0;
 		transform: translateY(20px) scale(0.96);
 	}
 }
 
-@keyframes cds-page-tabs-arrive {
-	0% {
+@keyframes cds-page-tabs-arrive
+{
+	0%
+	{
 		translate: var(--cds-page-header-tabs-pull);
 		animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
 	}
 	0.005%,
-	to {
+	to
+	{
 		translate: 0;
 	}
 }
 
-@supports (animation-timeline: scroll()) {
-	[data-cds-title-leaves] [data-cds-part="page-title-motion"] {
+@supports (animation-timeline: scroll())
+{
+	[data-cds-title-leaves] [data-cds-part="page-title-motion"]
+	{
 		animation-name: cds-page-title-leaves;
 		animation-duration: auto;
 		animation-timing-function: linear;
 		animation-timeline: scroll();
 		animation-range: 0 2800000px;
 	}
-	[data-cds-tabs-arrive] {
+	[data-cds-tabs-arrive]
+	{
 		--cds-page-header-tabs-pull: 0px;
 		--cds-page-header-tabs-travel: 1px;
 	}
-	[data-cds-tabs-arrive] [data-cds-part="tabs-row"] {
+	[data-cds-tabs-arrive] [data-cds-part="tabs-row"]
+	{
 		translate: var(--cds-page-header-tabs-pull);
 		animation-name: cds-page-tabs-arrive;
 		animation-duration: auto;
@@ -1989,11 +2117,13 @@ input.cds-input::-webkit-search-cancel-button {
 		animation-range: 0px calc(var(--cds-page-header-tabs-travel) * 20000);
 	}
 	[data-cds-title-leaves] [data-cds-part="page-title-motion"],
-	[data-cds-tabs-arrive] [data-cds-part="tabs-row"] {
+	[data-cds-tabs-arrive] [data-cds-part="tabs-row"]
+	{
 		z-index: 1;
 	}
 	[data-cds-title-leaves]:not([data-cds-row-level]) [data-cds-part="page-title-motion"],
-	[data-cds-tabs-arrive] [data-cds-part="tabs-row"] {
+	[data-cds-tabs-arrive] [data-cds-part="tabs-row"]
+	{
 		position: relative;
 	}
 }
@@ -2001,14 +2131,16 @@ input.cds-input::-webkit-search-cancel-button {
 /* Upstream `.cds-btn-squish`: pressed buttons shrink to .975 in 60ms and spring
    back over .45s. `transition` replaces `transition-colors`, so the hover fade
    rides along at upstream's 60ms paint-span timing. */
-@utility btn-squish {
+@utility btn-squish
+{
 	--btn-squish-paint:
 		background-color 60ms cubic-bezier(0.165, 0.84, 0.44, 1), color 60ms cubic-bezier(0.165, 0.84, 0.44, 1);
 	transform-origin: 50% center;
 	transition:
 		transform 0.45s var(--btn-spring),
 		var(--btn-squish-paint);
-	&:active:not(:disabled) {
+	&:active:not(:disabled)
+	{
 		transform: scale(0.975);
 		transition:
 			transform 60ms ease-out,
@@ -2018,12 +2150,14 @@ input.cds-input::-webkit-search-cancel-button {
 
 /* Upstream `.epitaxy-task-card-surface`: a pressed 318px task card's surface shrinks
    to .99 in 60ms and springs back over .45s, shared by the workflow and artifact cards. */
-.task-card-surface {
+.task-card-surface
+{
 	transform-origin: 50%;
 	transition: transform 0.45s var(--btn-spring);
 }
 
-.group\/btn:active:not([disabled]) .task-card-surface {
+.group\/btn:active:not([disabled]) .task-card-surface
+{
 	transition: transform 60ms ease-out;
 	transform: scale(0.99);
 }
@@ -2031,71 +2165,87 @@ input.cds-input::-webkit-search-cancel-button {
 /* Upstream cds `scroll-fade-y`: a scroller's top and bottom edges fade through a mask whose
    depth a scroll-driven timeline grows from 0 to --scroll-fade-size as content scrolls past
    each edge. Browsers without scroll timelines keep only the scroll padding, so no mask. */
-@property --scroll-fade-size {
+@property --scroll-fade-size
+{
 	syntax: "<length>";
 	inherits: false;
 	initial-value: 28px;
 }
 
-@property --scroll-fade-top-raw {
+@property --scroll-fade-top-raw
+{
 	syntax: "<length>";
 	inherits: false;
 	initial-value: 0px;
 }
 
-@property --scroll-fade-bottom-raw {
+@property --scroll-fade-bottom-raw
+{
 	syntax: "<length>";
 	inherits: false;
 	initial-value: 0px;
 }
 
-@property --scroll-fade-y-active {
+@property --scroll-fade-y-active
+{
 	syntax: "<number>";
 	inherits: false;
 	initial-value: 0;
 }
 
-@property --scroll-fade-top-on {
+@property --scroll-fade-top-on
+{
 	syntax: "<number>";
 	inherits: false;
 	initial-value: 1;
 }
 
-@property --scroll-fade-bottom-on {
+@property --scroll-fade-bottom-on
+{
 	syntax: "<number>";
 	inherits: false;
 	initial-value: 1;
 }
 
-@keyframes scroll-fade-top {
-	0% {
+@keyframes scroll-fade-top
+{
+	0%
+	{
 		--scroll-fade-top-raw: 0px;
 	}
-	to {
+	to
+	{
 		--scroll-fade-top-raw: var(--scroll-fade-size);
 	}
 }
 
-@keyframes scroll-fade-bottom {
-	0% {
+@keyframes scroll-fade-bottom
+{
+	0%
+	{
 		--scroll-fade-bottom-raw: var(--scroll-fade-size);
 	}
-	to {
+	to
+	{
 		--scroll-fade-bottom-raw: 0px;
 	}
 }
 
-@keyframes scroll-fade-y-active {
+@keyframes scroll-fade-y-active
+{
 	0%,
-	to {
+	to
+	{
 		--scroll-fade-y-active: 1;
 	}
 }
 
-@utility scroll-fade-y {
+@utility scroll-fade-y
+{
 	scroll-padding-block: calc(var(--scroll-fade-size) * var(--scroll-fade-top-on))
 		calc(var(--scroll-fade-size) * var(--scroll-fade-bottom-on));
-	@supports (animation-timeline: scroll()) {
+	@supports (animation-timeline: scroll())
+	{
 		--scroll-fade-top: calc(var(--scroll-fade-top-raw) * var(--scroll-fade-y-active) * var(--scroll-fade-top-on));
 		--scroll-fade-bottom: calc(
 			var(--scroll-fade-bottom-raw) * var(--scroll-fade-y-active) * var(--scroll-fade-bottom-on)
@@ -2134,65 +2284,80 @@ input.cds-input::-webkit-search-cancel-button {
 /* Upstream cds `scroll-fade-x`: the horizontal twin of scroll-fade-y on the same
    --scroll-fade-size, fading a row's left and right edges as content scrolls past
    them. RTL rows start scrolled to the right edge, so the two depths swap. */
-@property --scroll-fade-left-raw {
+@property --scroll-fade-left-raw
+{
 	syntax: "<length>";
 	inherits: false;
 	initial-value: 0px;
 }
 
-@property --scroll-fade-right-raw {
+@property --scroll-fade-right-raw
+{
 	syntax: "<length>";
 	inherits: false;
 	initial-value: 0px;
 }
 
-@property --scroll-fade-x-active {
+@property --scroll-fade-x-active
+{
 	syntax: "<number>";
 	inherits: false;
 	initial-value: 0;
 }
 
-@property --scroll-fade-left-on {
+@property --scroll-fade-left-on
+{
 	syntax: "<number>";
 	inherits: false;
 	initial-value: 1;
 }
 
-@property --scroll-fade-right-on {
+@property --scroll-fade-right-on
+{
 	syntax: "<number>";
 	inherits: false;
 	initial-value: 1;
 }
 
-@keyframes scroll-fade-left {
-	0% {
+@keyframes scroll-fade-left
+{
+	0%
+	{
 		--scroll-fade-left-raw: 0px;
 	}
-	to {
+	to
+	{
 		--scroll-fade-left-raw: var(--scroll-fade-size);
 	}
 }
 
-@keyframes scroll-fade-right {
-	0% {
+@keyframes scroll-fade-right
+{
+	0%
+	{
 		--scroll-fade-right-raw: var(--scroll-fade-size);
 	}
-	to {
+	to
+	{
 		--scroll-fade-right-raw: 0px;
 	}
 }
 
-@keyframes scroll-fade-x-active {
+@keyframes scroll-fade-x-active
+{
 	0%,
-	to {
+	to
+	{
 		--scroll-fade-x-active: 1;
 	}
 }
 
-@utility scroll-fade-x {
+@utility scroll-fade-x
+{
 	scroll-padding-left: calc(var(--scroll-fade-size) * var(--scroll-fade-left-on));
 	scroll-padding-right: calc(var(--scroll-fade-size) * var(--scroll-fade-right-on));
-	@supports (animation-timeline: scroll()) {
+	@supports (animation-timeline: scroll())
+	{
 		--scroll-fade-left: calc(
 			var(--scroll-fade-left-raw) * var(--scroll-fade-x-active) * var(--scroll-fade-left-on)
 		);
@@ -2227,7 +2392,8 @@ input.cds-input::-webkit-search-cancel-button {
 			0px var(--scroll-fade-size),
 			calc(100% - var(--scroll-fade-size)) 100%,
 			0px 101%;
-		&:where(:root[dir="rtl"] :dir(rtl)) {
+		&:where(:root[dir="rtl"] :dir(rtl))
+		{
 			--scroll-fade-left: calc(
 				var(--scroll-fade-right-raw) * var(--scroll-fade-x-active) * var(--scroll-fade-left-on)
 			);
@@ -2240,34 +2406,41 @@ input.cds-input::-webkit-search-cancel-button {
 
 /* Upstream cds scroll-fade modifiers: each edge switch drops that edge's mask and scroll padding,
    and the size utilities set the fade depth on this element only (the properties don't inherit). */
-@utility scroll-fade-hide-top {
+@utility scroll-fade-hide-top
+{
 	--scroll-fade-top-on: 0;
 }
 
-@utility scroll-fade-hide-bottom {
+@utility scroll-fade-hide-bottom
+{
 	--scroll-fade-bottom-on: 0;
 }
 
-@utility scroll-fade-hide-left {
+@utility scroll-fade-hide-left
+{
 	--scroll-fade-left-on: 0;
 }
 
-@utility scroll-fade-hide-right {
+@utility scroll-fade-hide-right
+{
 	--scroll-fade-right-on: 0;
 }
 
-@utility scroll-fade-size-* {
+@utility scroll-fade-size-*
+{
 	--scroll-fade-size: calc(var(--spacing) * --value(integer));
 	--scroll-fade-size: --value([length], [*]);
 }
 
 /* Upstream cds `scroll-fade`: both axes at once, the y and x masks intersected. */
-@utility scroll-fade {
+@utility scroll-fade
+{
 	scroll-padding: calc(var(--scroll-fade-size) * var(--scroll-fade-top-on))
 		calc(var(--scroll-fade-size) * var(--scroll-fade-right-on))
 		calc(var(--scroll-fade-size) * var(--scroll-fade-bottom-on))
 		calc(var(--scroll-fade-size) * var(--scroll-fade-left-on));
-	@supports (animation-timeline: scroll()) {
+	@supports (animation-timeline: scroll())
+	{
 		--scroll-fade-top: calc(var(--scroll-fade-top-raw) * var(--scroll-fade-y-active) * var(--scroll-fade-top-on));
 		--scroll-fade-bottom: calc(
 			var(--scroll-fade-bottom-raw) * var(--scroll-fade-y-active) * var(--scroll-fade-bottom-on)
@@ -2333,7 +2506,8 @@ input.cds-input::-webkit-search-cancel-button {
 			0px 101%,
 			0px 101%;
 		mask-composite: intersect;
-		&:where(:root[dir="rtl"] :dir(rtl)) {
+		&:where(:root[dir="rtl"] :dir(rtl))
+		{
 			--scroll-fade-left: calc(
 				var(--scroll-fade-right-raw) * var(--scroll-fade-x-active) * var(--scroll-fade-left-on)
 			);
@@ -2346,65 +2520,83 @@ input.cds-input::-webkit-search-cancel-button {
 
 /* Upstream cds `scroll-fade-strip-top/bottom`: a sticky surface-colored gradient strip whose
    opacity follows the nearest scroll ancestor, so it's invisible at that edge. */
-@property --scroll-fade-strip-raw {
+@property --scroll-fade-strip-raw
+{
 	syntax: "<number>";
 	inherits: false;
 	initial-value: 0;
 }
 
-@property --scroll-fade-strip-active {
+@property --scroll-fade-strip-active
+{
 	syntax: "<number>";
 	inherits: false;
 	initial-value: 0;
 }
 
-@keyframes scroll-fade-strip-in {
-	0% {
+@keyframes scroll-fade-strip-in
+{
+	0%
+	{
 		--scroll-fade-strip-raw: 0;
 	}
-	to {
+	to
+	{
 		--scroll-fade-strip-raw: 1;
 	}
 }
 
-@keyframes scroll-fade-strip-out {
-	0% {
+@keyframes scroll-fade-strip-out
+{
+	0%
+	{
 		--scroll-fade-strip-raw: 1;
 	}
-	to {
+	to
+	{
 		--scroll-fade-strip-raw: 0;
 	}
 }
 
-@keyframes scroll-fade-strip-active {
+@keyframes scroll-fade-strip-active
+{
 	0%,
-	to {
+	to
+	{
 		--scroll-fade-strip-active: 1;
 	}
 }
 
-@layer base {
-	:where(.bg-surface-0) {
+@layer base
+{
+	:where(.bg-surface-0)
+	{
 		--scroll-fade-strip-color: var(--color-surface-0);
 	}
-	:where(.bg-surface-1) {
+	:where(.bg-surface-1)
+	{
 		--scroll-fade-strip-color: var(--color-surface-1);
 	}
-	:where(.bg-surface-2) {
+	:where(.bg-surface-2)
+	{
 		--scroll-fade-strip-color: var(--color-surface-2);
 	}
-	:where(.bg-surface-3) {
+	:where(.bg-surface-3)
+	{
 		--scroll-fade-strip-color: var(--color-surface-3);
 	}
-	:where(.bg-surface-popover) {
+	:where(.bg-surface-popover)
+	{
 		--scroll-fade-strip-color: var(--color-surface-popover);
 	}
-	:where([data-cds="Card"]) {
+	:where([data-cds="Card"])
+	{
 		--scroll-fade-strip-color: var(--color-surface-1);
 	}
 }
 
-@utility scroll-fade-strip-top {
+@utility scroll-fade-strip-top
+{
 	height: var(--scroll-fade-size);
 	margin-bottom: calc(var(--scroll-fade-size) * -1);
 	pointer-events: none;
@@ -2421,7 +2613,8 @@ input.cds-input::-webkit-search-cancel-button {
 	top: 0;
 	position: sticky;
 	inset-inline-start: 0;
-	@supports (animation-timeline: scroll()) {
+	@supports (animation-timeline: scroll())
+	{
 		opacity: calc(var(--scroll-fade-strip-raw) * var(--scroll-fade-strip-active));
 		animation-name: scroll-fade-strip-in, scroll-fade-strip-active;
 		animation-timing-function: linear;
@@ -2434,7 +2627,8 @@ input.cds-input::-webkit-search-cancel-button {
 	}
 }
 
-@utility scroll-fade-strip-bottom {
+@utility scroll-fade-strip-bottom
+{
 	height: var(--scroll-fade-size);
 	margin-top: calc(var(--scroll-fade-size) * -1);
 	pointer-events: none;
@@ -2451,7 +2645,8 @@ input.cds-input::-webkit-search-cancel-button {
 	bottom: 0;
 	position: sticky;
 	inset-inline-start: 0;
-	@supports (animation-timeline: scroll()) {
+	@supports (animation-timeline: scroll())
+	{
 		opacity: calc(var(--scroll-fade-strip-raw) * var(--scroll-fade-strip-active));
 		animation-name: scroll-fade-strip-out, scroll-fade-strip-active;
 		animation-timing-function: linear;
@@ -2465,15 +2660,18 @@ input.cds-input::-webkit-search-cancel-button {
 }
 
 /* Upstream `u-hidden-scrollbar`. */
-@utility u-hidden-scrollbar {
+@utility u-hidden-scrollbar
+{
 	scrollbar-width: none;
-	&::-webkit-scrollbar {
+	&::-webkit-scrollbar
+	{
 		opacity: 0;
 		width: 0;
 	}
 }
 
-@utility ring-focus {
+@utility ring-focus
+{
 	box-shadow: var(--focus-shadow);
 	outline-style: none;
 }
@@ -2481,7 +2679,8 @@ input.cds-input::-webkit-search-cancel-button {
 /* Upstream `cds-inline-code` (c6a992d55) outside fizzy-lake `type` (no `--cds-prose-quiet`), so every
    `--_inline-code-*` falls back: the danger-ink mono chip a tool's path param draws until its file ref
    resolves (cb6930dae `Zv`). */
-.cds-inline-code {
+.cds-inline-code
+{
 	font-family: var(--font-mono);
 	color: var(--upstream-text-danger);
 	background: var(--upstream-alpha-1);
@@ -2499,7 +2698,8 @@ input.cds-input::-webkit-search-cancel-button {
    long path wraps across lines and every fragment keeps its radius and focus
    ring; the underline is always drawn, 40% ink at rest and solid on hover and
    keyboard focus. */
-.prose-link {
+.prose-link
+{
 	display: inline;
 	-webkit-box-decoration-break: clone;
 	box-decoration-break: clone;
@@ -2514,15 +2714,18 @@ input.cds-input::-webkit-search-cancel-button {
 	transition-duration: 60ms;
 	transition-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1);
 }
-.prose-link:is(:hover, :focus-visible) {
+.prose-link:is(:hover, :focus-visible)
+{
 	--_text-link-line: currentColor;
 }
-.prose-link:focus-visible {
+.prose-link:focus-visible
+{
 	outline: 2px solid transparent;
 	outline-offset: 2px;
 	box-shadow: var(--focus-shadow);
 }
-.prose-link[aria-busy="true"] {
+.prose-link[aria-busy="true"]
+{
 	cursor: progress;
 	opacity: 0.6;
 }
@@ -2531,17 +2734,20 @@ input.cds-input::-webkit-search-cancel-button {
    3px below the text at 40% ink, the line going full currentColor on hover and
    keyboard focus, with the accent focus shadow as its ring. `.markdown a` in
    markdown-article.module.css draws prose links the same way. */
-.text-link {
+.text-link
+{
 	color: var(--upstream-accent);
 	text-decoration-line: underline;
 	text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
 	text-underline-offset: 3px;
 	border-radius: 2px;
 }
-.text-link:is(:hover, :focus-visible) {
+.text-link:is(:hover, :focus-visible)
+{
 	text-decoration-color: currentColor;
 }
-.text-link:focus-visible {
+.text-link:focus-visible
+{
 	outline: 2px solid transparent;
 	outline-offset: 2px;
 	box-shadow: var(--focus-shadow);
@@ -2549,7 +2755,8 @@ input.cds-input::-webkit-search-cancel-button {
 
 /* Upstream cds TextLink `inheritColor` (the group note's "Don’t add"): the surrounding ink, underlined 3px below
    at 35% transparent, the line going solid on hover and keyboard focus. */
-.text-link-inherit {
+.text-link-inherit
+{
 	--_text-link-line: color-mix(in srgb, currentColor, transparent 35%);
 	color: inherit;
 	cursor: pointer;
@@ -2561,10 +2768,12 @@ input.cds-input::-webkit-search-cancel-button {
 	transition-duration: 60ms;
 	transition-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1);
 }
-.text-link-inherit:is(:hover, :focus-visible) {
+.text-link-inherit:is(:hover, :focus-visible)
+{
 	--_text-link-line: currentColor;
 }
-.text-link-inherit:focus-visible {
+.text-link-inherit:focus-visible
+{
 	outline: 2px solid transparent;
 	outline-offset: 2px;
 	box-shadow: var(--focus-shadow);
@@ -2577,18 +2786,21 @@ input.cds-input::-webkit-search-cancel-button {
    `outline: none` beats the approval card's focus-visible outline utility, as
    upstream's does. */
 [data-focus-region-landing=""]:focus,
-[data-focus-region-landing=""][data-focus-region-around]:focus-within {
+[data-focus-region-landing=""][data-focus-region-around]:focus-within
+{
 	outline: 2px solid transparent;
 	outline-offset: 2px;
 	box-shadow: var(--focus-shadow);
 }
 [data-focus-region-landing="overlay"]:focus,
 [data-focus-region-landing="overlay"][data-focus-region-around]:focus-within,
-[data-focus-region-inside]:focus {
+[data-focus-region-inside]:focus
+{
 	outline: none;
 }
 [data-focus-region-landing="overlay"]:focus::after,
-[data-focus-region-landing="overlay"][data-focus-region-around]:focus-within::after {
+[data-focus-region-landing="overlay"][data-focus-region-around]:focus-within::after
+{
 	content: "";
 	position: absolute;
 	inset: 2px;
@@ -2602,11 +2814,13 @@ input.cds-input::-webkit-search-cancel-button {
 }
 /* Upstream's `.dframe-content` landing: main's ring sits 2px inside it under
    any overlay above z-index 100 (web: --df-chrome-bar-height is 0). */
-main[data-focus-region="main"][data-focus-region-landing]:focus {
+main[data-focus-region="main"][data-focus-region-landing]:focus
+{
 	box-shadow: none;
 	outline: none;
 }
-main[data-focus-region="main"][data-focus-region-landing]:focus::after {
+main[data-focus-region="main"][data-focus-region-landing]:focus::after
+{
 	content: "";
 	position: absolute;
 	inset: 2px;
@@ -2620,13 +2834,16 @@ main[data-focus-region="main"][data-focus-region-landing]:focus::after {
    doesn't scroll), so an absolute ::after would scroll away with the content.
    There the ring is a zero-net-height sticky ::before sized to main by
    container units, which stays 2px inside main's viewport at any scroll. */
-main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-region-landing]:focus {
+main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-region-landing]:focus
+{
 	container-type: size;
 }
-main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-region-landing]:focus::after {
+main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-region-landing]:focus::after
+{
 	content: none;
 }
-main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-region-landing]:focus::before {
+main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-region-landing]:focus::before
+{
 	content: "";
 	display: block;
 	position: sticky;
@@ -2640,15 +2857,18 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	box-shadow: var(--focus-shadow);
 }
 
-[data-record-index] {
+[data-record-index]
+{
 	transition: background-color 200ms ease-out;
 }
 
-.message-highlight {
+.message-highlight
+{
 	background-color: var(--message-highlight-bg);
 }
 
-@layer base {
+@layer base
+{
 	/* Upstream resting outline: transparent accent at the ring's width and
 	   offset, so the outline .2s transition fades only its colour in instead of
 	   flashing currentColor at medium width with a jumping offset. Links and
@@ -2657,19 +2877,23 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	a,
 	button,
 	input,
-	textarea {
+	textarea
+	{
 		outline: 2px solid hsl(from var(--focus-outline-color) h s l / 0%);
 		outline-offset: 2px;
 	}
 	.can-focus:not(:where(input, textarea, :focus-visible)),
 	a:not(:where(:focus-visible)),
-	button:not(:where(:focus-visible)) {
+	button:not(:where(:focus-visible))
+	{
 		outline-style: none;
 	}
-	@media (forced-colors: active) {
+	@media (forced-colors: active)
+	{
 		.can-focus:not(:where(input, textarea, :focus-visible)),
 		a:not(:where(:focus-visible)),
-		button:not(:where(:focus-visible)) {
+		button:not(:where(:focus-visible))
+		{
 			outline-style: none;
 		}
 	}
@@ -2680,7 +2904,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	input:not(.hide-focus-ring):not(.cds-input):focus-visible,
 	textarea:not(.hide-focus-ring):not(.cds-input):focus-visible,
 	.can-focus:focus-visible,
-	.can-focus-within:focus-within {
+	.can-focus-within:focus-within
+	{
 		outline: 2px solid var(--focus-outline-color);
 		outline-offset: 2px;
 		transition: outline 0.2s !important;
@@ -2688,28 +2913,34 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	/* Upstream's `.cds-reset` (`.cds-root` is local `:root`): no focus outline, but a transparent one on
 	   focus-visible so forced-colors mode still draws a ring. */
 	:where(:root) .cds-reset:focus,
-	:where(:root) .cds-reset:focus-visible {
+	:where(:root) .cds-reset:focus-visible
+	{
 		outline: none;
 	}
-	:where(:root) .cds-reset:focus-visible {
+	:where(:root) .cds-reset:focus-visible
+	{
 		outline-offset: 2px;
 		outline: 2px solid #0000;
 	}
-	* {
+	*
+	{
 		@apply border-border;
 		scrollbar-width: thin;
 	}
-	:root:not(.dark) {
+	:root:not(.dark)
+	{
 		scrollbar-color: rgba(30, 30, 29, 0.35) transparent;
 	}
-	body {
+	body
+	{
 		@apply bg-page text-primary font-sans;
 	}
 	code,
 	kbd,
 	samp,
 	pre,
-	.font-mono {
+	.font-mono
+	{
 		font-variant-ligatures: none;
 		font-feature-settings:
 			"liga" 0,
@@ -2719,41 +2950,52 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 
 /* The approval notify tip's icon and line fade in (upstream's animate-notify-tip-in), via `motion-safe:`. */
 /* Upstream cds-sticky-edge-start: a sticky band's bottom line fades in once its scroll timeline moves. */
-@keyframes sc-sticky-edge {
-	to {
+@keyframes sc-sticky-edge
+{
+	to
+	{
 		opacity: 1;
 	}
 }
 
-@keyframes notify-tip-in {
-	from {
+@keyframes notify-tip-in
+{
+	from
+	{
 		opacity: 0;
 		transform: translateY(2px);
 	}
-	to {
+	to
+	{
 		opacity: 1;
 		transform: translateY(0);
 	}
 }
 
 /* Upstream's cds-fade-in: a face or popup fades up from transparent (e.g. the send cell's Stop/Send crossfade). */
-@keyframes cds-fade-in {
-	from {
+@keyframes cds-fade-in
+{
+	from
+	{
 		opacity: 0;
 	}
 }
 
 /* The drop scrim's frame (upstream cds-drop-ring-in): the accent ring settles in from a slightly larger frame. */
-@keyframes cds-drop-ring-in {
-	from {
+@keyframes cds-drop-ring-in
+{
+	from
+	{
 		opacity: 0;
 		transform: scale(1.02);
 	}
 }
 
 /* The drop scrim's icons (upstream cds-drop-icon-rise): each rises into place after its --rise-delay. */
-@keyframes cds-drop-icon-rise {
-	from {
+@keyframes cds-drop-icon-rise
+{
+	from
+	{
 		opacity: 0;
 		transform: translateY(8px);
 	}
@@ -2761,7 +3003,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 
 /* Upstream shared-styles .dframe-drop-overlay-badge: the chat panel's "Drop files here" badge while files are dragged
    over the chat column (ChatFileDropZone). */
-.dframe-drop-overlay-badge {
+.dframe-drop-overlay-badge
+{
 	border-radius: var(--df-radius-card, 8px);
 	border: 1px solid var(--color-strong);
 	background: color-mix(in srgb, var(--color-surface-0) 40%, transparent);
@@ -2783,7 +3026,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	position: absolute;
 }
 
-.dframe-drop-overlay-badge:where(:root[dir="rtl"] :dir(rtl)) {
+.dframe-drop-overlay-badge:where(:root[dir="rtl"] :dir(rtl))
+{
 	transition:
 		right 0.12s var(--df-ease-out-cubic),
 		top 0.12s var(--df-ease-out-cubic),
@@ -2792,7 +3036,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		opacity 0.12s var(--df-ease-out-cubic);
 }
 
-.dframe-drop-overlay-label {
+.dframe-drop-overlay-label
+{
 	background: var(--color-fill-accent);
 	color: var(--color-gray-0);
 	transition:
@@ -2802,7 +3047,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	padding: 4px 10px;
 }
 
-.dframe-drop-overlay-badge::before {
+.dframe-drop-overlay-badge::before
+{
 	content: "";
 	border-radius: inherit;
 	box-shadow: inset 0 0 24px 0 color-mix(in srgb, var(--color-fill-accent) 20%, transparent);
@@ -2811,26 +3057,31 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	inset: 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)
+{
 	.dframe-drop-overlay-badge,
 	.dframe-drop-overlay-badge::before,
-	.dframe-drop-overlay-label {
+	.dframe-drop-overlay-label
+	{
 		transition: none;
 	}
 }
 
 [data-reduce-motion="true"] .dframe-drop-overlay-badge,
-[data-reduce-motion="true"] .dframe-drop-overlay-label {
+[data-reduce-motion="true"] .dframe-drop-overlay-label
+{
 	transition: none;
 }
 
 /* Upstream's struck-through link chip: inside <del>/<s> the chip draws its own strike line,
    since text-decoration doesn't reach into an inline-flex box. */
-:is(del, s) .epitaxy-link-chip {
+:is(del, s) .epitaxy-link-chip
+{
 	position: relative;
 }
 
-:is(del, s) .epitaxy-link-chip::after {
+:is(del, s) .epitaxy-link-chip::after
+{
 	content: "";
 	position: absolute;
 	inset-inline: 0;
@@ -2840,93 +3091,118 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 }
 
 /* Upstream's epitaxy-hint-fade-in: a waiting row's at-rest receipt rises into place. */
-@keyframes epitaxy-hint-fade-in {
-	0% {
+@keyframes epitaxy-hint-fade-in
+{
+	0%
+	{
 		opacity: 0.4;
 		transform: translateY(1px);
 	}
-	100% {
+	100%
+	{
 		opacity: 1;
 		transform: none;
 	}
 }
 
-.epitaxy-hint-fade-in {
+.epitaxy-hint-fade-in
+{
 	animation: 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) epitaxy-hint-fade-in;
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.epitaxy-hint-fade-in {
+@media (prefers-reduced-motion: reduce)
+{
+	.epitaxy-hint-fade-in
+	{
 		animation: none;
 	}
 }
 
 /* Upstream's epitaxy-check-draw: an accepted promote's ✓ Sent check wipes in left to right. */
-@keyframes epitaxy-check-draw {
-	0% {
+@keyframes epitaxy-check-draw
+{
+	0%
+	{
 		clip-path: inset(0 100% 0 0);
 	}
-	100% {
+	100%
+	{
 		clip-path: inset(0);
 	}
 }
 
-.epitaxy-check-draw {
+.epitaxy-check-draw
+{
 	animation: epitaxy-check-draw 0.18s cubic-bezier(0.215, 0.61, 0.355, 1) both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.epitaxy-check-draw {
+@media (prefers-reduced-motion: reduce)
+{
+	.epitaxy-check-draw
+	{
 		animation: none;
 	}
 }
 
 /* Upstream's h-control: the density control height. */
-@utility h-control {
+@utility h-control
+{
 	height: var(--cds-h-control);
 }
 
 /* Upstream's h-list-row: a list row's height (the session outline's rows), 32px at every density. */
-@utility h-list-row {
+@utility h-list-row
+{
 	height: calc(2rem * var(--cds-rem-scale, 1));
 }
 
 /* Upstream's session outline fade (injected style c2e28a737): it appears once its active chapter is known. */
-@keyframes epitaxy-toc-fade-in {
-	0% {
+@keyframes epitaxy-toc-fade-in
+{
+	0%
+	{
 		opacity: 0;
 	}
-	to {
+	to
+	{
 		opacity: 1;
 	}
 }
 
-.epitaxy-toc-fade-in {
+.epitaxy-toc-fade-in
+{
 	animation: 0.18s ease-out 0.12s both epitaxy-toc-fade-in;
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.epitaxy-toc-fade-in {
+@media (prefers-reduced-motion: reduce)
+{
+	.epitaxy-toc-fade-in
+	{
 		animation-duration: 1ms;
 	}
 }
 
 /* Upstream's "landed" flash on a promoted queued message's row (`animate-code-reply-flash-accent`). */
-@keyframes code-reply-flash-accent {
-	0% {
+@keyframes code-reply-flash-accent
+{
+	0%
+	{
 		background-color: var(--upstream-accent-pressed);
 	}
-	100% {
+	100%
+	{
 		background-color: transparent;
 	}
 }
 
-.animate-code-reply-flash-accent {
+.animate-code-reply-flash-accent
+{
 	animation: 1.2s ease-out code-reply-flash-accent;
 }
 
 /* Upstream's workflow agent cells (inline style c1bc4f7a0), on the local tokens. */
-.epitaxy-agent-cell {
+.epitaxy-agent-cell
+{
 	background-color: transparent;
 	border: 1px solid transparent;
 	transition:
@@ -2936,133 +3212,168 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		filter 0.16s;
 }
 
-.epitaxy-agent-cell:hover {
+.epitaxy-agent-cell:hover
+{
 	filter: brightness(0.9);
 }
 
-.dark .epitaxy-agent-cell:hover {
+.dark .epitaxy-agent-cell:hover
+{
 	filter: brightness(1.1);
 }
 
-.epitaxy-agent-cell--done {
+.epitaxy-agent-cell--done
+{
 	background-color: var(--color-alpha-3);
 }
 
-.epitaxy-agent-cell--running {
+.epitaxy-agent-cell--running
+{
 	background-color: var(--color-fill-accent);
 	animation: epitaxy-agent-pulse var(--epitaxy-pulse-dur, 2.8s) ease-in-out var(--epitaxy-pulse-delay, 0s) infinite;
 }
 
-.epitaxy-agent-cell--stalled {
+.epitaxy-agent-cell--stalled
+{
 	background-color: var(--upstream-fill-warning);
 }
 
-.epitaxy-agent-cell--error {
+.epitaxy-agent-cell--error
+{
 	background-color: var(--color-fill-danger);
 }
 
 .epitaxy-agent-cell--stopped,
-.epitaxy-agent-cell--pending {
+.epitaxy-agent-cell--pending
+{
 	border-color: var(--color-alpha-3);
 }
 
-.epitaxy-agent-cell--ghost {
+.epitaxy-agent-cell--ghost
+{
 	border-color: var(--color-alpha-3);
 	animation: 2.2s ease-in-out infinite epitaxy-agent-ghost-pulse;
 }
 
-@keyframes epitaxy-agent-pulse {
+@keyframes epitaxy-agent-pulse
+{
 	0%,
-	100% {
+	100%
+	{
 		opacity: 1;
 	}
-	50% {
+	50%
+	{
 		opacity: 0.72;
 	}
 }
 
-@keyframes epitaxy-agent-ghost-pulse {
+@keyframes epitaxy-agent-ghost-pulse
+{
 	0%,
-	100% {
+	100%
+	{
 		opacity: 0.25;
 	}
-	50% {
+	50%
+	{
 		opacity: 0.9;
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.epitaxy-agent-cell {
+@media (prefers-reduced-motion: reduce)
+{
+	.epitaxy-agent-cell
+	{
 		transition: none;
 	}
-	.epitaxy-agent-cell--running {
+	.epitaxy-agent-cell--running
+	{
 		animation: none;
 	}
-	.epitaxy-agent-cell--ghost {
+	.epitaxy-agent-cell--ghost
+	{
 		opacity: 0.45;
 		animation: none;
 	}
 }
 
 /* A fresh question card fades in (upstream's epitaxy-approval-inline-enter); a restored one skips it. */
-@keyframes approval-inline-enter {
-	from {
+@keyframes approval-inline-enter
+{
+	from
+	{
 		opacity: 0;
 	}
-	to {
+	to
+	{
 		opacity: 1;
 	}
 }
 
 /* The ⌘K row-actions card slides in from --cp-card-slide (-12px LTR, +12px RTL) as it fades in. */
-@keyframes palette-card-in {
-	0% {
+@keyframes palette-card-in
+{
+	0%
+	{
 		opacity: 0;
 		transform: translateX(var(--cp-card-slide));
 	}
 }
 
 /* Upstream cds-reveal-in: Customize unified-search sections rise 4px as they fade in. */
-@keyframes reveal-in {
-	from {
+@keyframes reveal-in
+{
+	from
+	{
 		opacity: 0;
 		transform: translateY(4px);
 	}
-	to {
+	to
+	{
 		opacity: 1;
 		transform: none;
 	}
 }
 
 /* Upstream cds-reveal-out (`PY`): a leaving composer notice fades and drops 4px, mirroring reveal-in. */
-@keyframes reveal-out {
-	from {
+@keyframes reveal-out
+{
+	from
+	{
 		opacity: 1;
 		transform: none;
 	}
-	to {
+	to
+	{
 		opacity: 0;
 		transform: translateY(4px);
 	}
 }
 
-.notice-reveal-out {
+.notice-reveal-out
+{
 	animation: reveal-out 200ms cubic-bezier(0.165, 0.84, 0.44, 1) both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.notice-reveal-out {
+@media (prefers-reduced-motion: reduce)
+{
+	.notice-reveal-out
+	{
 		animation: none;
 	}
 }
 
 /* Toast entrance, applied via `motion-safe:` so reduced-motion users get none. */
-@keyframes toast-in {
-	from {
+@keyframes toast-in
+{
+	from
+	{
 		opacity: 0;
 		transform: translateY(8px);
 	}
-	to {
+	to
+	{
 		opacity: 1;
 		transform: translateY(0);
 	}
@@ -3071,25 +3382,30 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 /* Sidebar pointer drag (src/hooks/use-sidebar-drag.ts). Rows only animate while a drag is in
    progress so the reset on drop snaps instead of sliding from the old slot. */
 [data-session-dragging],
-[data-session-dragging] * {
+[data-session-dragging] *
+{
 	cursor: grabbing !important;
 	user-select: none;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-	[data-session-dragging] .df-drag-shiftable {
+@media (prefers-reduced-motion: no-preference)
+{
+	[data-session-dragging] .df-drag-shiftable
+	{
 		transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
 	}
 }
 
-[data-drag-ghost] {
+[data-drag-ghost]
+{
 	opacity: 0.9;
 	box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
 }
 
 /* Upstream .df-pin-section-reveal: the empty Pinned section (src/components/sidebar/sublists/PinnedSubList.tsx)
    is a zero-height stub that animates open when a row drag starts. */
-.df-pin-section-reveal {
+.df-pin-section-reveal
+{
 	interpolate-size: allow-keywords;
 	transition:
 		height 0.2s,
@@ -3097,7 +3413,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	overflow-y: clip;
 }
 
-.df-pin-section-reveal[data-stub] {
+.df-pin-section-reveal[data-stub]
+{
 	opacity: 0;
 	height: 0;
 }
@@ -3107,14 +3424,17 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
  * applies only once the root is `[data-peeked]`, so the first frame after collapse doesn't animate,
  * and reduced motion drops the nudge but keeps the fade.
  */
-[data-peeked] .sidebar-peek-motion {
+[data-peeked] .sidebar-peek-motion
+{
 	transition:
 		opacity 0.14s ease,
 		translate 0.18s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.sidebar-peek-motion {
+@media (prefers-reduced-motion: reduce)
+{
+	.sidebar-peek-motion
+	{
 		translate: none;
 	}
 }
@@ -3123,7 +3443,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
  * Upstream claude.ai/code phone sheet (< 40rem): the sidebar becomes a full-screen dialog that
  * slides in from the left, pads for safe areas, and grows rows to touch size (44px / 36px).
  */
-.phone-sheet {
+.phone-sheet
+{
 	position: fixed;
 	inset: 0;
 	z-index: 50;
@@ -3151,7 +3472,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		visibility 0s linear 0.3s;
 }
 
-.phone-sheet[data-open] {
+.phone-sheet[data-open]
+{
 	visibility: visible;
 	transform: none;
 	transition:
@@ -3159,7 +3481,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		visibility 0s;
 }
 
-.phone-sheet[data-open][data-phone-sheet-dragging] {
+.phone-sheet[data-open][data-phone-sheet-dragging]
+{
 	transform: translateX(var(--df-phone-sheet-drag, 0px));
 	transition: none;
 }
@@ -3167,19 +3490,24 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 /* On touch only the current session's row keeps its kebab at rest; its status mark shifts beside the
    kebab (upstream's touch:group-data-[touch-menu]:end-[calc(ctl-inset+ctl+4px)]) and the title clears
    both. A mouse, at any width, still reveals the kebab on hover. */
-@media (pointer: coarse), (hover: none) {
-	[data-touch-menu] .df-touch-reveal {
+@media (pointer: coarse), (hover: none)
+{
+	[data-touch-menu] .df-touch-reveal
+	{
 		opacity: 1;
 		pointer-events: auto;
 	}
-	[data-touch-menu] [data-row-decoration] {
+	[data-touch-menu] [data-row-decoration]
+	{
 		right: calc(var(--sb-row-ctl-inset) + var(--sb-row-ctl) + 4px);
 	}
-	[data-touch-menu] [data-row-main-button] [data-row-label] {
+	[data-touch-menu] [data-row-main-button] [data-row-label]
+	{
 		padding-inline-end: calc(var(--sb-row-ctl) * 2 + 4px);
 	}
 	/* An expanded group's caret otherwise shows only on hover or focus, which touch never has. */
-	[data-group-caret] {
+	[data-group-caret]
+	{
 		opacity: 1;
 	}
 }
@@ -3188,13 +3516,16 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
  * Upstream claude.ai/code text-entry floor (c6a992d55, unlayered): on a coarse pointer every text field
  * is at least 16px, which prevents iOS focus zoom. Unlayered so it beats any `@layer utilities` size.
  */
-@media (pointer: coarse) {
-	:root {
+@media (pointer: coarse)
+{
+	:root
+	{
 		--text-entry-floor: 16px;
 	}
 }
 
-@media (pointer: coarse) {
+@media (pointer: coarse)
+{
 	:root
 		input:where(
 			:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not(
@@ -3203,49 +3534,61 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		),
 	:root textarea,
 	:root select,
-	:root .text-entry-floored {
+	:root .text-entry-floored
+	{
 		font-size: max(var(--text-entry-floor, 0px), var(--upstream-text-body));
 	}
 }
 
-@media (pointer: coarse) {
+@media (pointer: coarse)
+{
 	:root textarea,
-	:root .text-entry-floored {
+	:root .text-entry-floored
+	{
 		line-height: var(--cmp-leading, max(1.375em, var(--upstream-leading-body)));
 	}
 }
 
-@media (pointer: coarse) {
-	:root [contenteditable]:where(:not([contenteditable="false"])) {
+@media (pointer: coarse)
+{
+	:root [contenteditable]:where(:not([contenteditable="false"]))
+	{
 		font-size: max(var(--text-entry-floor, 0px), 1em);
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)
+{
 	.phone-sheet,
-	.phone-sheet[data-open] {
+	.phone-sheet[data-open]
+	{
 		transition: none;
 	}
 }
 
 /* Upstream `.df-tab-dot-running`: the session row's running Pulse blinks (src/components/status-dot.tsx). */
-.df-tab-dot-running {
+.df-tab-dot-running
+{
 	animation: dframe-dot-blink 1.2s ease-in-out infinite;
 }
 
-@keyframes dframe-dot-blink {
+@keyframes dframe-dot-blink
+{
 	0%,
-	100% {
+	100%
+	{
 		opacity: 0.3;
 	}
-	50% {
+	50%
+	{
 		opacity: 1;
 	}
 }
 
 /* Upstream's 20px running spinner before an in-flight tool row: a 3x3 matrix of
    clay dots whose brightness sweeps across the grid. */
-.running-spinner {
+.running-spinner
+{
 	background-image: radial-gradient(circle, rgb(217 119 87) 1.6px, transparent 1.8px);
 	background-size: calc(20px / 3) calc(20px / 3);
 	mask-image: linear-gradient(90deg, rgb(0 0 0 / 0.35), #000, rgb(0 0 0 / 0.35));
@@ -3253,34 +3596,43 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	animation: running-spinner-sweep 1.2s linear infinite;
 }
 
-@keyframes running-spinner-sweep {
-	from {
+@keyframes running-spinner-sweep
+{
+	from
+	{
 		mask-position: 100% 0;
 	}
-	to {
+	to
+	{
 		mask-position: -100% 0;
 	}
 }
 
 /* The terminal loading placeholder's caret, blinking like a terminal cursor. */
-.terminal-caret {
+.terminal-caret
+{
 	animation: caret-blink 1s steps(1, end) infinite;
 }
 
-@keyframes caret-blink {
+@keyframes caret-blink
+{
 	0%,
-	100% {
+	100%
+	{
 		opacity: 1;
 	}
-	50% {
+	50%
+	{
 		opacity: 0;
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)
+{
 	.df-tab-dot-running,
 	.running-spinner,
-	.terminal-caret {
+	.terminal-caret
+	{
 		animation: none;
 	}
 }
@@ -3288,53 +3640,67 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 /* Upstream composer bands (epitaxy-band-enter / epitaxy-band-exit): a band that mounts into a
    slot carrying data-band-enter (see useBandEnter) fades and rises 6px in; a leaving band plays
    the reverse and holds its end state until it unmounts on animationend. */
-[data-band-enter] .band-enter {
+[data-band-enter] .band-enter
+{
 	transition-property: opacity, translate, background-color, color;
 	transition-duration: 120ms;
 	transition-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
-@starting-style {
-	[data-band-enter] .band-enter {
+@starting-style
+{
+	[data-band-enter] .band-enter
+	{
 		opacity: 0;
 		translate: 0 6px;
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	[data-band-enter] .band-enter {
+@media (prefers-reduced-motion: reduce)
+{
+	[data-band-enter] .band-enter
+	{
 		transition: none;
 	}
 }
 
-@keyframes band-exit {
-	to {
+@keyframes band-exit
+{
+	to
+	{
 		opacity: 0;
 		translate: 0 6px;
 	}
 }
 
-.band-exit {
+.band-exit
+{
 	animation: band-exit 120ms cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
 }
 
 /* Upstream claude.ai/code's WorkingMark: the component steps its sprite strip from frame 0
    up to --working-mark-end; reduced motion holds frame 0. */
-@keyframes working-mark-strip {
-	to {
+@keyframes working-mark-strip
+{
+	to
+	{
 		transform: translateY(var(--working-mark-end));
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	[data-working-mark-strip] {
+@media (prefers-reduced-motion: reduce)
+{
+	[data-working-mark-strip]
+	{
 		animation: none !important;
 	}
 }
 
 /* Upstream's cds-morph-in: the Stopping label rises 3px into place as it fades in. */
-@keyframes cds-morph-in {
-	0% {
+@keyframes cds-morph-in
+{
+	0%
+	{
 		opacity: 0;
 		transform: translateY(3px);
 	}
@@ -3346,7 +3712,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
    its ::after; fallback (data-shimmer-mode) sweeps a background-clip gradient on the span.
    An inactive shimmer (data-shimmering=false) is plain text. --cds-shimmer-text-delay
    phase-locks remounted bands and --cds-shimmer-text-play-state pauses them. */
-[data-cds="ShimmerText"] {
+[data-cds="ShimmerText"]
+{
 	--cds-shimmer-text-bell-stops:
 		var(--cds-shimmer-text-ink, currentcolor) 37.5%,
 		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 16%, var(--cds-shimmer-text-ink, currentcolor)) 41%,
@@ -3367,34 +3734,40 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 16%, transparent) 59%, transparent 62.5%;
 }
 
-[data-cds="ShimmerText"][data-shimmering="true"] {
+[data-cds="ShimmerText"][data-shimmering="true"]
+{
 	--cds-shimmer-text-ink: var(--upstream-text-primary);
 	--cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-primary) 30%, white);
 }
 
-.dark [data-cds="ShimmerText"][data-shimmering="true"] {
+.dark [data-cds="ShimmerText"][data-shimmering="true"]
+{
 	--cds-shimmer-text-ink: var(--upstream-text-secondary);
 	--cds-shimmer-text-peak: var(--upstream-text-primary);
 }
 
-[data-cds="ShimmerText"][data-shimmering="true"][data-variant="secondary"] {
+[data-cds="ShimmerText"][data-shimmering="true"][data-variant="secondary"]
+{
 	--cds-shimmer-text-ink: var(--upstream-text-secondary);
 	--cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-secondary) 30%, white);
 }
 
-.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="secondary"] {
+.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="secondary"]
+{
 	--cds-shimmer-text-ink: var(--upstream-text-muted);
 	--cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-muted) 30%, white);
 }
 
 [data-cds="ShimmerText"][data-shimmering="true"][data-variant="muted"],
-.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="muted"] {
+.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="muted"]
+{
 	--cds-shimmer-text-ink: var(--upstream-text-muted);
 	--cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-muted) 30%, white);
 }
 
 [data-cds="ShimmerText"][data-shimmering="true"][data-variant="strong"],
-.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="strong"] {
+.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="strong"]
+{
 	--cds-shimmer-text-ink: var(--upstream-text-primary);
 	--cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-primary) 45%, white);
 	--cds-shimmer-text-band-stops: var(--cds-shimmer-text-bell-band-stops);
@@ -3403,16 +3776,19 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 }
 
 /* Upstream --cds-gray-450. */
-.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="strong"] {
+.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="strong"]
+{
 	--cds-shimmer-text-peak: #7b7974;
 }
 
-[data-cds="ShimmerText"][data-shimmering="true"]:not([data-shimmer-mode="fallback"]) {
+[data-cds="ShimmerText"][data-shimmering="true"]:not([data-shimmer-mode="fallback"])
+{
 	-webkit-text-fill-color: var(--cds-shimmer-text-ink);
 }
 
 /* Upstream yI: the fallback sweeps the band through the span's own background. */
-[data-cds="ShimmerText"][data-shimmer-mode="fallback"] {
+[data-cds="ShimmerText"][data-shimmer-mode="fallback"]
+{
 	background-clip: text;
 	-webkit-text-fill-color: transparent;
 	background-repeat: no-repeat;
@@ -3428,23 +3804,28 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 }
 
 /* Upstream b$. */
-[data-cds="ShimmerText"][data-shimmer-mode="fallback"][data-variant="strong"] {
+[data-cds="ShimmerText"][data-shimmer-mode="fallback"][data-variant="strong"]
+{
 	background-image: linear-gradient(var(--cds-shimmer-text-angle, 120deg), var(--cds-shimmer-text-bell-stops));
 	animation: 3s linear infinite cds-shimmer-text-shine-strong;
 }
 
 /* Upstream S8. */
-[data-cds="ShimmerText"][data-shimmer-mode="fallback"]:where(:root[dir="rtl"] :dir(rtl)) {
+[data-cds="ShimmerText"][data-shimmer-mode="fallback"]:where(:root[dir="rtl"] :dir(rtl))
+{
 	--cds-shimmer-text-angle: 240deg;
 	animation-name: cds-shimmer-text-shine-rtl;
 }
 
-[data-cds="ShimmerText"][data-shimmer-mode="fallback"][data-variant="strong"]:where(:root[dir="rtl"] :dir(rtl)) {
+[data-cds="ShimmerText"][data-shimmer-mode="fallback"][data-variant="strong"]:where(:root[dir="rtl"] :dir(rtl))
+{
 	animation-name: cds-shimmer-text-shine-strong-rtl;
 }
 
-@media (prefers-reduced-motion: reduce) {
-	[data-cds="ShimmerText"][data-shimmer-mode="fallback"] {
+@media (prefers-reduced-motion: reduce)
+{
+	[data-cds="ShimmerText"][data-shimmer-mode="fallback"]
+	{
 		animation: none;
 		background: none;
 		color: var(--cds-shimmer-text-ink);
@@ -3452,19 +3833,23 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
-html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fallback"] {
+html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fallback"]
+{
 	animation: none;
 	background: none;
 	color: var(--cds-shimmer-text-ink);
 	-webkit-text-fill-color: currentcolor;
 }
 
-[data-cds-shimmer-clone] {
+[data-cds-shimmer-clone]
+{
 	display: none;
 }
 
-@supports (-webkit-mask-clip: text) and (-webkit-app-region: drag) {
-	[data-cds-shimmer-clone] {
+@supports (-webkit-mask-clip: text) and (-webkit-app-region: drag)
+{
+	[data-cds-shimmer-clone]
+	{
 		box-sizing: border-box;
 		padding: inherit;
 		white-space: inherit;
@@ -3481,7 +3866,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 		overflow: clip;
 	}
 
-	[data-cds-shimmer-clone]::after {
+	[data-cds-shimmer-clone]::after
+	{
 		content: "";
 		background-image: linear-gradient(
 			120deg,
@@ -3501,7 +3887,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 		translate: -62.5%;
 	}
 
-	[data-cds-shimmer-clone]:where(:root[dir="rtl"] :dir(rtl))::after {
+	[data-cds-shimmer-clone]:where(:root[dir="rtl"] :dir(rtl))::after
+	{
 		background-image: linear-gradient(
 			240deg,
 			var(
@@ -3517,304 +3904,392 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 
 	/* Upstream QU: a strong label without emoji paints its clone in primary ink. The component
 	   sets the attribute only under fizzy-lake type. */
-	@media screen and (prefers-reduced-motion: no-preference) and (forced-colors: none) {
-		[data-cds-shimmer-copy-inks]:not([data-reduce-motion="true"] *) {
+	@media screen and (prefers-reduced-motion: no-preference) and (forced-colors: none)
+	{
+		[data-cds-shimmer-copy-inks]:not([data-reduce-motion="true"] *)
+		{
 			-webkit-text-fill-color: transparent;
 		}
 
-		[data-cds-shimmer-copy-inks]:not([data-reduce-motion="true"] *) > [inert] {
+		[data-cds-shimmer-copy-inks]:not([data-reduce-motion="true"] *) > [inert]
+		{
 			background-color: var(--upstream-text-primary, currentcolor);
 		}
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	[data-cds-shimmer-clone] {
+@media (prefers-reduced-motion: reduce)
+{
+	[data-cds-shimmer-clone]
+	{
 		display: none;
 	}
 }
 
-@media (forced-colors: active) {
-	[data-cds="ShimmerText"][data-shimmering="true"] {
+@media (forced-colors: active)
+{
+	[data-cds="ShimmerText"][data-shimmering="true"]
+	{
 		-webkit-text-fill-color: CanvasText;
 	}
 
-	[data-cds-shimmer-clone] {
+	[data-cds-shimmer-clone]
+	{
 		display: none;
 	}
 
-	[data-cds="ShimmerText"][data-shimmer-mode="fallback"] {
+	[data-cds="ShimmerText"][data-shimmer-mode="fallback"]
+	{
 		animation: none;
 		background: none;
 	}
 }
 
-@keyframes cds-shimmer-text-band {
+@keyframes cds-shimmer-text-band
+{
 	0%,
-	15% {
+	15%
+	{
 		animation-timing-function: cubic-bezier(0.714, 0.121, 0.211, 0.888);
 		translate: -62.5%;
 	}
 	85%,
-	to {
+	to
+	{
 		translate: -12.5%;
 	}
 }
 
-@keyframes cds-shimmer-text-band-rtl {
+@keyframes cds-shimmer-text-band-rtl
+{
 	0%,
-	15% {
+	15%
+	{
 		animation-timing-function: cubic-bezier(0.714, 0.121, 0.211, 0.888);
 		translate: -12.5%;
 	}
 	85%,
-	to {
+	to
+	{
 		translate: -62.5%;
 	}
 }
 
-@keyframes cds-shimmer-text-band-strong {
+@keyframes cds-shimmer-text-band-strong
+{
 	0%,
-	15% {
+	15%
+	{
 		animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
 		translate: -62.5%;
 	}
 	85%,
-	to {
+	to
+	{
 		translate: -12.5%;
 	}
 }
 
-@keyframes cds-shimmer-text-band-strong-rtl {
+@keyframes cds-shimmer-text-band-strong-rtl
+{
 	0%,
-	15% {
+	15%
+	{
 		animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
 		translate: -12.5%;
 	}
 	85%,
-	to {
+	to
+	{
 		translate: -62.5%;
 	}
 }
 
-@keyframes cds-shimmer-text-shine {
+@keyframes cds-shimmer-text-shine
+{
 	0%,
-	15% {
+	15%
+	{
 		animation-timing-function: cubic-bezier(0.714, 0.121, 0.211, 0.888);
 		background-position: 83.333% 0;
 	}
 	85%,
-	to {
+	to
+	{
 		background-position: 16.667% 0;
 	}
 }
 
-@keyframes cds-shimmer-text-shine-rtl {
+@keyframes cds-shimmer-text-shine-rtl
+{
 	0%,
-	15% {
+	15%
+	{
 		animation-timing-function: cubic-bezier(0.714, 0.121, 0.211, 0.888);
 		background-position: 16.667% 0;
 	}
 	85%,
-	to {
+	to
+	{
 		background-position: 83.333% 0;
 	}
 }
 
-@keyframes cds-shimmer-text-shine-strong {
+@keyframes cds-shimmer-text-shine-strong
+{
 	0%,
-	15% {
+	15%
+	{
 		animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
 		background-position: 83.333% 0;
 	}
 	85%,
-	to {
+	to
+	{
 		background-position: 16.667% 0;
 	}
 }
 
-@keyframes cds-shimmer-text-shine-strong-rtl {
+@keyframes cds-shimmer-text-shine-strong-rtl
+{
 	0%,
-	15% {
+	15%
+	{
 		animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
 		background-position: 16.667% 0;
 	}
 	85%,
-	to {
+	to
+	{
 		background-position: 83.333% 0;
 	}
 }
 
 /* Clawd mascot on the home start card: a click plays a short hop. `translate` leaves the
    mirroring `scale` alone. */
-@media (prefers-reduced-motion: no-preference) {
-	.clawd-mascot[data-hopping] {
+@media (prefers-reduced-motion: no-preference)
+{
+	.clawd-mascot[data-hopping]
+	{
 		animation: clawd-hop 0.45s ease-out;
 	}
 }
 
-@keyframes clawd-hop {
+@keyframes clawd-hop
+{
 	0%,
-	100% {
+	100%
+	{
 		translate: 0 0;
 	}
-	40% {
+	40%
+	{
 		translate: 0 -14px;
 	}
-	70% {
+	70%
+	{
 		translate: 0 2px;
 	}
 }
 
 /* Upstream cds density spacing utilities (gap-xs, px-md, -me-pad-xs…) on the --cds-gap-* / --cds-pad-*
    tokens. Not --spacing-*: that would also resize max-w-xs and send px-* to the gap scale. */
-@utility gap-* {
+@utility gap-*
+{
 	gap: --value(--cds-gap-*);
 }
-@utility gap-x-* {
+@utility gap-x-*
+{
 	column-gap: --value(--cds-gap-*);
 }
-@utility gap-y-* {
+@utility gap-y-*
+{
 	row-gap: --value(--cds-gap-*);
 }
-@utility p-* {
+@utility p-*
+{
 	padding: --value(--cds-pad-*);
 }
-@utility px-* {
+@utility px-*
+{
 	padding-inline: --value(--cds-pad-*);
 }
-@utility py-* {
+@utility py-*
+{
 	padding-block: --value(--cds-pad-*);
 }
-@utility pt-* {
+@utility pt-*
+{
 	padding-top: --value(--cds-pad-*);
 }
-@utility pb-* {
+@utility pb-*
+{
 	padding-bottom: --value(--cds-pad-*);
 }
-@utility ps-* {
+@utility ps-*
+{
 	padding-inline-start: --value(--cds-pad-*);
 }
-@utility pe-* {
+@utility pe-*
+{
 	padding-inline-end: --value(--cds-pad-*);
 }
-@utility pl-* {
+@utility pl-*
+{
 	padding-left: --value(--cds-pad-*);
 }
-@utility pr-* {
+@utility pr-*
+{
 	padding-right: --value(--cds-pad-*);
 }
-@utility m-* {
+@utility m-*
+{
 	margin: --value(--cds-gap-*);
 }
-@utility -m-* {
+@utility -m-*
+{
 	margin: calc(--value(--cds-gap-*) * -1);
 }
-@utility m-pad-* {
+@utility m-pad-*
+{
 	margin: --value(--cds-pad-*);
 }
-@utility -m-pad-* {
+@utility -m-pad-*
+{
 	margin: calc(--value(--cds-pad-*) * -1);
 }
-@utility mx-* {
+@utility mx-*
+{
 	margin-inline: --value(--cds-gap-*);
 }
-@utility -mx-* {
+@utility -mx-*
+{
 	margin-inline: calc(--value(--cds-gap-*) * -1);
 }
-@utility mx-pad-* {
+@utility mx-pad-*
+{
 	margin-inline: --value(--cds-pad-*);
 }
-@utility -mx-pad-* {
+@utility -mx-pad-*
+{
 	margin-inline: calc(--value(--cds-pad-*) * -1);
 }
-@utility my-* {
+@utility my-*
+{
 	margin-block: --value(--cds-gap-*);
 }
-@utility -my-* {
+@utility -my-*
+{
 	margin-block: calc(--value(--cds-gap-*) * -1);
 }
-@utility my-pad-* {
+@utility my-pad-*
+{
 	margin-block: --value(--cds-pad-*);
 }
-@utility -my-pad-* {
+@utility -my-pad-*
+{
 	margin-block: calc(--value(--cds-pad-*) * -1);
 }
-@utility mt-* {
+@utility mt-*
+{
 	margin-top: --value(--cds-gap-*);
 }
-@utility -mt-* {
+@utility -mt-*
+{
 	margin-top: calc(--value(--cds-gap-*) * -1);
 }
-@utility mt-pad-* {
+@utility mt-pad-*
+{
 	margin-top: --value(--cds-pad-*);
 }
-@utility -mt-pad-* {
+@utility -mt-pad-*
+{
 	margin-top: calc(--value(--cds-pad-*) * -1);
 }
-@utility mb-* {
+@utility mb-*
+{
 	margin-bottom: --value(--cds-gap-*);
 }
-@utility -mb-* {
+@utility -mb-*
+{
 	margin-bottom: calc(--value(--cds-gap-*) * -1);
 }
-@utility mb-pad-* {
+@utility mb-pad-*
+{
 	margin-bottom: --value(--cds-pad-*);
 }
-@utility -mb-pad-* {
+@utility -mb-pad-*
+{
 	margin-bottom: calc(--value(--cds-pad-*) * -1);
 }
-@utility ms-* {
+@utility ms-*
+{
 	margin-inline-start: --value(--cds-gap-*);
 }
-@utility -ms-* {
+@utility -ms-*
+{
 	margin-inline-start: calc(--value(--cds-gap-*) * -1);
 }
-@utility ms-pad-* {
+@utility ms-pad-*
+{
 	margin-inline-start: --value(--cds-pad-*);
 }
-@utility -ms-pad-* {
+@utility -ms-pad-*
+{
 	margin-inline-start: calc(--value(--cds-pad-*) * -1);
 }
-@utility me-* {
+@utility me-*
+{
 	margin-inline-end: --value(--cds-gap-*);
 }
-@utility -me-* {
+@utility -me-*
+{
 	margin-inline-end: calc(--value(--cds-gap-*) * -1);
 }
-@utility me-pad-* {
+@utility me-pad-*
+{
 	margin-inline-end: --value(--cds-pad-*);
 }
-@utility -me-pad-* {
+@utility -me-pad-*
+{
 	margin-inline-end: calc(--value(--cds-pad-*) * -1);
 }
-@utility ml-* {
+@utility ml-*
+{
 	margin-left: --value(--cds-gap-*);
 }
-@utility -ml-* {
+@utility -ml-*
+{
 	margin-left: calc(--value(--cds-gap-*) * -1);
 }
-@utility ml-pad-* {
+@utility ml-pad-*
+{
 	margin-left: --value(--cds-pad-*);
 }
-@utility -ml-pad-* {
+@utility -ml-pad-*
+{
 	margin-left: calc(--value(--cds-pad-*) * -1);
 }
-@utility mr-* {
+@utility mr-*
+{
 	margin-right: --value(--cds-gap-*);
 }
-@utility -mr-* {
+@utility -mr-*
+{
 	margin-right: calc(--value(--cds-gap-*) * -1);
 }
-@utility mr-pad-* {
+@utility mr-pad-*
+{
 	margin-right: --value(--cds-pad-*);
 }
-@utility -mr-pad-* {
+@utility -mr-pad-*
+{
 	margin-right: calc(--value(--cds-pad-*) * -1);
 }
 
 /* Upstream .w-stretch: TurnStatus rows fill their column less their own inset/stop margins. */
-@utility w-stretch {
+@utility w-stretch
+{
 	width: -webkit-fill-available;
 	width: -moz-available;
 	width: stretch;
@@ -3823,7 +4298,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 /* Upstream c6a992d55 `.cds-root [data-cds=AssistantMessage]` text inset/stop: prose pads by them and
    TurnStatus rows (TURN_STATUS_ROW_GEOMETRY) line their label and end up with them. The stop keeps its raw
    100%, so each use site resolves it against its own containing block. Nested cds surfaces reset both. */
-[data-cds="AssistantMessage"] {
+[data-cds="AssistantMessage"]
+{
 	--cds-assistant-message-text-inset: 4px;
 	--cds-assistant-message-text-stop: clamp(0px, (100% - 384px) * 0.175, 56px);
 }
@@ -3845,7 +4321,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 		[data-cds="CellChartContainer"],
 		[data-cds="FileDiff"],
 		[data-cds="UserMessage"]
-	) {
+	)
+{
 	--cds-assistant-message-text-inset: 0px;
 	--cds-assistant-message-text-stop: 0px;
 }
@@ -3854,7 +4331,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
    scale (upstream .cds-root[data-density=comfortable], the web shell); the Claude
    Code main column is marked compact, which is upstream's base .cds-root block.
    A comfortable scope restates :root's scale so it wins over an enclosing compact one. */
-[data-density="comfortable"] {
+[data-density="comfortable"]
+{
 	--cds-h-control: calc(2rem * var(--cds-rem-scale, 1));
 	--cds-h-control-nested: calc(1.375rem * var(--cds-rem-scale, 1));
 	--cds-switch-h: calc(1.25rem * var(--cds-rem-scale, 1));
@@ -3902,7 +4380,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--cds-pad-xl--lg: 1.75rem;
 }
 
-[data-density="compact"] {
+[data-density="compact"]
+{
 	--cds-h-control: calc(1.5rem * var(--cds-rem-scale, 1));
 	--cds-h-control-nested: calc(1.125rem * var(--cds-rem-scale, 1));
 	--cds-switch-h: calc(1rem * var(--cds-rem-scale, 1));
@@ -3953,9 +4432,11 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 /* Upstream --cds-h-control under fizzy-lake panels: comfortable controls are 28px on a fine (or no) pointer;
    compact stays 24px and a coarse pointer keeps 32px. The query equals FIZZY_LAKE_PANELS_FINE_POINTER_QUERY.
    --cds-button-pad-max caps a cds Button's inline pad (pad-md 12px) at 9px there; it is unset elsewhere. */
-@media (hover: hover) and (pointer: fine), (hover: hover) and (pointer: none) {
+@media (hover: hover) and (pointer: fine), (hover: hover) and (pointer: none)
+{
 	[data-cds-fizzy-lake~="panels"][data-density="comfortable"],
-	[data-cds-fizzy-lake~="panels"] [data-density="comfortable"] {
+	[data-cds-fizzy-lake~="panels"] [data-density="comfortable"]
+	{
 		--cds-h-control: calc(1.75rem * var(--cds-rem-scale, 1));
 		--cds-button-pad-max: calc(0.5625rem * var(--cds-rem-scale, 1));
 	}
@@ -3965,7 +4446,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
    inside upstream's four hook classes, so chrome text-code (composer, sidebar, inline chips) stays at
    the density default. --code-size / --code-leading are unset by default so hardcoded consumers keep
    their own fallbacks (12px / 17px fences, Bash, inline diffs). */
-[data-code-font-size] :is(.epitaxy-code-size, .epitaxy-codeblock, .epitaxy-diff, .epitaxy-terminal-view) {
+[data-code-font-size] :is(.epitaxy-code-size, .epitaxy-codeblock, .epitaxy-diff, .epitaxy-terminal-view)
+{
 	--upstream-text-code: var(--epitaxy-code-font-size);
 	--upstream-leading-code: var(--epitaxy-code-leading);
 	--code-size: var(--epitaxy-code-font-size);
@@ -3973,7 +4455,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 }
 
 /* Upstream's Files pane rows take Settings ▸ Code font size at ×1.5 leading (11/13/16/20 px → 17/20/24/30 px). */
-[data-code-font-size] .epitaxy-file-rows {
+[data-code-font-size] .epitaxy-file-rows
+{
 	font-size: var(--code-size);
 	line-height: round(calc(var(--code-size) * 1.5 + 0.01px), 1px);
 }
@@ -3981,7 +4464,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 /* Upstream exempts the markdown document view and approval cards from the code font size. */
 [data-code-font-size]
 	:is(.epitaxy-document-prose, [data-fixed-code-size])
-	:is(.epitaxy-code-size, .epitaxy-codeblock, .epitaxy-diff) {
+	:is(.epitaxy-code-size, .epitaxy-codeblock, .epitaxy-diff)
+{
 	--upstream-text-code: inherit;
 	--upstream-leading-code: inherit;
 	--code-size: initial;
@@ -3990,16 +4474,19 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 
 /* Upstream [data-mode=dark|light] .epitaxy-root diffs-container: the code tile's token font rules
    (CODE_TILE_CSS) read the current mode's weight/decoration and skip the other mode's. */
-.dark diffs-container {
+.dark diffs-container
+{
 	--code-font-skip-light: ;
 	--code-font-skip-dark: initial;
 }
-:root:not(.dark) diffs-container {
+:root:not(.dark) diffs-container
+{
 	--code-font-skip-dark: ;
 	--code-font-skip-light: initial;
 }
 /* Upstream .cds-root [data-size=xs|sm|lg]: a sized control's subtree pads on that size's scale. */
-[data-size="xs"] {
+[data-size="xs"]
+{
 	--cds-pad-xs: var(--cds-pad-xs--xs);
 	--cds-pad-sm: var(--cds-pad-sm--xs);
 	--cds-pad-md: var(--cds-pad-md--xs);
@@ -4007,7 +4494,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--cds-pad-xl: var(--cds-pad-xl--xs);
 }
 
-[data-size="sm"] {
+[data-size="sm"]
+{
 	--cds-pad-xs: var(--cds-pad-xs--sm);
 	--cds-pad-sm: var(--cds-pad-sm--sm);
 	--cds-pad-md: var(--cds-pad-md--sm);
@@ -4015,7 +4503,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--cds-pad-xl: var(--cds-pad-xl--sm);
 }
 
-[data-size="lg"] {
+[data-size="lg"]
+{
 	--cds-pad-xs: var(--cds-pad-xs--lg);
 	--cds-pad-sm: var(--cds-pad-sm--lg);
 	--cds-pad-md: var(--cds-pad-md--lg);
@@ -4026,7 +4515,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 /* Upstream's transcript root (`.epitaxy-root .epitaxy-transcript-typography`): a 15px / 1.4 chat body, so
    the item gap is 10.5px. The root element's own `[--chat-turn-gap:calc(var(--spacing)*5)]!` class then sets
    the turn gap to 20px (16px compact). Panes outside the transcript keep the :root 15px / 10px. */
-.epitaxy-transcript-typography {
+.epitaxy-transcript-typography
+{
 	--chat-body: calc(0.9375rem * var(--cds-rem-scale, 1));
 	--chat-leading: 1.4;
 	--chat-turn-gap: calc(var(--chat-body) * var(--chat-leading) * 0.75);
@@ -4037,7 +4527,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
    size (rem) and unitless leading on <html>; every `text-body` inside the transcript
    follows. The body leading stays a length (its consumers size boxes with it) but is
    derived from the rem size, so a browser text zoom scales the whole transcript. */
-.transcript-text {
+.transcript-text
+{
 	--upstream-text-body: var(--transcript-text-size, 0.875rem);
 	--upstream-leading-body: calc(var(--transcript-leading, 1.42857) * var(--transcript-text-size, 0.875rem));
 	/* A user paragraph's text-prose follows the same setting: the default-density size, then upstream's
@@ -4057,7 +4548,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 					)
 				)
 			)
-		) {
+		)
+	{
 		--upstream-text-prose: var(--transcript-comfortable-text-size, 1rem);
 		--upstream-leading-prose: var(--transcript-comfortable-leading, 1.5rem);
 	}
@@ -4070,7 +4562,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	> [data-record-index]:has(
 		> [data-completed-agent-row],
 		> [data-turn-status-frame] > [data-standalone-tool-row]
-	):not(:has([data-assistant-span-footer], [data-turn-changes-card])) {
+	):not(:has([data-assistant-span-footer], [data-turn-changes-card]))
+{
 	padding-bottom: 12px;
 }
 
@@ -4078,7 +4571,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
    12px there too, collapsed or expanded. The span's footer keeps its turn gap. */
 .transcript-text
 	[data-perf-row="assistant_tool"][data-assistant-span]:has(+ [data-perf-row="assistant_text"])
-	> [data-grouped-tool-row]:not(:has([data-assistant-span-footer], [data-turn-changes-card])) {
+	> [data-grouped-tool-row]:not(:has([data-assistant-span-footer], [data-turn-changes-card]))
+{
 	padding-bottom: 12px;
 }
 
@@ -4088,7 +4582,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	[data-perf-row="assistant_text"][data-assistant-span]
 	> [data-record-index][data-precedes-turn-status=""]:not(
 		:has([data-assistant-span-footer], [data-turn-changes-card])
-	) {
+	)
+{
 	padding-bottom: 12px;
 }
 
@@ -4098,19 +4593,22 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	[data-perf-row="assistant_text"][data-assistant-span]
 	> [data-record-index][data-precedes-turn-status="marker"]:not(
 		:has([data-assistant-span-footer], [data-turn-changes-card])
-	) {
+	)
+{
 	padding-bottom: 16px;
 }
 
 /* Settings search deep link (#settings/<tab>/<row>), copied from claude.ai/code: about 300ms after
    opening, the row gets a warm --cds-fill-warning (#fab219) wash and its title a wavy underline
    that wipes in, both fading out over 1.95s. Reduced motion shows both statically. */
-.feature-anchor-row-fill {
+.feature-anchor-row-fill
+{
 	isolation: isolate;
 	position: relative;
 }
 
-.feature-anchor-row-fill::before {
+.feature-anchor-row-fill::before
+{
 	content: "";
 	background: color-mix(in srgb, #fab219 22%, transparent);
 	pointer-events: none;
@@ -4122,11 +4620,13 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	inset: 4px -4px;
 }
 
-.feature-anchor-highlight {
+.feature-anchor-highlight
+{
 	position: relative;
 }
 
-.feature-anchor-highlight::after {
+.feature-anchor-highlight::after
+{
 	content: "";
 	background: #fab219;
 	pointer-events: none;
@@ -4142,99 +4642,123 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	mask-repeat: repeat-x;
 }
 
-@keyframes feature-anchor-highlight-underline {
-	0% {
+@keyframes feature-anchor-highlight-underline
+{
+	0%
+	{
 		clip-path: inset(0px 100% 0px 0px);
 		opacity: 1;
 	}
-	17.9% {
+	17.9%
+	{
 		clip-path: inset(0px);
 		opacity: 1;
 	}
-	53.8% {
+	53.8%
+	{
 		clip-path: inset(0px);
 		opacity: 1;
 	}
-	100% {
+	100%
+	{
 		clip-path: inset(0px);
 		opacity: 0;
 	}
 }
 
 /* A flashed section header's wash hugs its title: upstream insets it by 4px minus --cds-pad-md (12px comfortable). */
-.feature-anchor-row-fill[data-settings-group-header]::before {
+.feature-anchor-row-fill[data-settings-group-header]::before
+{
 	inset-block: calc(4px - 12px);
 }
 
 /* Under RTL the underline wipes in from the right. */
-.feature-anchor-highlight:where(:root[dir="rtl"] :dir(rtl))::after {
+.feature-anchor-highlight:where(:root[dir="rtl"] :dir(rtl))::after
+{
 	clip-path: inset(0 0 0 100%);
 	animation-name: feature-anchor-highlight-underline-rtl;
 }
 
-@keyframes feature-anchor-highlight-underline-rtl {
-	0% {
+@keyframes feature-anchor-highlight-underline-rtl
+{
+	0%
+	{
 		clip-path: inset(0 0 0 100%);
 		opacity: 1;
 	}
-	17.9% {
+	17.9%
+	{
 		clip-path: inset(0);
 		opacity: 1;
 	}
-	53.8% {
+	53.8%
+	{
 		clip-path: inset(0);
 		opacity: 1;
 	}
-	100% {
+	100%
+	{
 		clip-path: inset(0);
 		opacity: 0;
 	}
 }
 
-@keyframes feature-anchor-row-fill-wash {
-	0% {
+@keyframes feature-anchor-row-fill-wash
+{
+	0%
+	{
 		opacity: 0;
 	}
-	17.9% {
+	17.9%
+	{
 		opacity: 1;
 	}
-	53.8% {
+	53.8%
+	{
 		opacity: 1;
 	}
-	100% {
+	100%
+	{
 		opacity: 0;
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.feature-anchor-highlight::after {
+@media (prefers-reduced-motion: reduce)
+{
+	.feature-anchor-highlight::after
+	{
 		clip-path: inset(0px);
 		opacity: 1;
 		animation: none;
 	}
-	.feature-anchor-row-fill::before {
+	.feature-anchor-row-fill::before
+	{
 		opacity: 1;
 		animation: none;
 	}
 }
 
-html[data-reduce-motion="true"] .feature-anchor-highlight::after {
+html[data-reduce-motion="true"] .feature-anchor-highlight::after
+{
 	clip-path: inset(0px);
 	opacity: 1;
 	animation: none;
 }
 
-html[data-reduce-motion="true"] .feature-anchor-row-fill::before {
+html[data-reduce-motion="true"] .feature-anchor-row-fill::before
+{
 	opacity: 1;
 	animation: none;
 }
 
 /* Upstream's global pair: under the OS query or html[data-reduce-motion=true] every animation jumps to
    its end state (and still fires animationend). Transitions are gated one by one. */
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)
+{
 	*,
 	::before,
-	::after {
+	::after
+	{
 		animation-duration: 0.01ms !important;
 		animation-iteration-count: 1 !important;
 	}
@@ -4242,7 +4766,8 @@ html[data-reduce-motion="true"] .feature-anchor-row-fill::before {
 
 [data-reduce-motion="true"] *,
 [data-reduce-motion="true"] ::before,
-[data-reduce-motion="true"] ::after {
+[data-reduce-motion="true"] ::after
+{
 	animation-duration: 0.01ms !important;
 	animation-iteration-count: 1 !important;
 }
@@ -4250,7 +4775,8 @@ html[data-reduce-motion="true"] .feature-anchor-row-fill::before {
 /* Settings ▸ General ▸ Motion: Reduced (or the OS query). The settings provider sets
    html[data-reduce-motion=true]; it stops pulsing and pinging indicators. Transitions stop only where
    gated (motion-reduce:transition-none and the hand-written rules), as upstream's do. */
-html[data-reduce-motion="true"] {
+html[data-reduce-motion="true"]
+{
 	--cds-dur-base: 0s;
 }
 
@@ -4261,66 +4787,82 @@ html[data-reduce-motion="true"] .animate-question-receipt-enter,
 html[data-reduce-motion="true"] .animate-palette-card-in,
 html[data-reduce-motion="true"] .df-tab-dot-running,
 html[data-reduce-motion="true"] .terminal-caret,
-html[data-reduce-motion="true"] [data-spinner] * {
+html[data-reduce-motion="true"] [data-spinner] *
+{
 	animation: none !important;
 }
 
 /* The ⌘K palette doesn't recede behind the row-actions card, as motion-reduce:scale-100 does. */
-html[data-reduce-motion="true"] [data-palette-recede-card] {
+html[data-reduce-motion="true"] [data-palette-recede-card]
+{
 	scale: none !important;
 }
 
-html[data-reduce-motion="true"] [data-cds-shimmer-clone] {
+html[data-reduce-motion="true"] [data-cds-shimmer-clone]
+{
 	display: none;
 }
 
-html[data-reduce-motion="true"] [data-cds="Skeleton"]::after {
+html[data-reduce-motion="true"] [data-cds="Skeleton"]::after
+{
 	display: none;
 }
 
 /* Upstream cds-skeleton-breathe on a data-motion=wave SkeletonGroup, staggered 90ms per bar. */
-@keyframes skeleton-breathe {
+@keyframes skeleton-breathe
+{
 	0%,
-	100% {
+	100%
+	{
 		opacity: 1;
 	}
-	50% {
+	50%
+	{
 		opacity: 0.6;
 	}
 }
 
 [data-palette-skeleton][data-motion="wave"] [data-skeleton],
-[data-skeleton-group][data-motion="wave"] [data-skeleton] {
+[data-skeleton-group][data-motion="wave"] [data-skeleton]
+{
 	animation: skeleton-breathe 2s ease-in-out calc(var(--skel-i, 0) * 90ms) infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)
+{
 	[data-palette-skeleton][data-motion="wave"] [data-skeleton],
-	[data-skeleton-group][data-motion="wave"] [data-skeleton] {
+	[data-skeleton-group][data-motion="wave"] [data-skeleton]
+	{
 		animation-duration: 0.01ms;
 		animation-iteration-count: 1;
 	}
 }
 
 html[data-reduce-motion="true"] [data-palette-skeleton][data-motion="wave"] [data-skeleton],
-html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-skeleton] {
+html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-skeleton]
+{
 	animation-duration: 0.01ms;
 	animation-iteration-count: 1;
 }
 
 /* Upstream cds-shimmer: the Skeleton sheen sweeps across once per cycle. */
-@keyframes shimmer {
-	0% {
+@keyframes shimmer
+{
+	0%
+	{
 		transform: translate(-100%);
 	}
-	to {
+	to
+	{
 		transform: translate(100%);
 	}
 }
 
 /* Bounded home/chat tiles and the message/dock column share responsive gutters. */
-@layer components {
-	[data-route-tile-shell] {
+@layer components
+{
+	[data-route-tile-shell]
+	{
 		display: flex;
 		min-height: 0;
 		flex: 1;
@@ -4336,22 +4878,26 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 		--chat-column-end: 24px;
 	}
 
-	@media (width < 40rem) {
-		[data-route-tile-shell="session"] {
+	@media (width < 40rem)
+	{
+		[data-route-tile-shell="session"]
+		{
 			/* Upstream's chat card sits at 9,9 and stops 1px short of the viewport's end, like the desktop tile. */
 			padding: 9px 1px 9px 9px;
 			--tile-title-start: max(0px, calc(var(--top-left-clearance-start, 0px) - 9px));
 			--session-dock-bottom: max(0px, calc(env(safe-area-inset-bottom) - 9px));
 		}
 
-		[data-route-tile-shell="home"] {
+		[data-route-tile-shell="home"]
+		{
 			/* Upstream's home chat card sits 9px from the start and 1px from the end, like the session card. */
 			padding-inline: 9px 1px;
 			--tile-title-start: max(0px, calc(var(--top-left-clearance-start, 0px) - 9px));
 		}
 	}
 
-	.chat-column {
+	.chat-column
+	{
 		margin-inline: auto;
 		width: 100%;
 		max-width: calc(var(--max-content-width, 768px) + var(--chat-column-extra, 64px));
@@ -4362,7 +4908,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	/* The composer dock's column. Upstream docks it outside the scrollport, so it
 	   spans the scrollbar gutters the transcript loses; inside the scroller it
 	   takes them back from its padding and max width. */
-	.chat-dock-column {
+	.chat-dock-column
+	{
 		margin-inline: auto;
 		width: 100%;
 		max-width: calc(
@@ -4375,7 +4922,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	/* Upstream's docked session rail: a 280px column at the chat tile's end, and the chat
 	   column re-centred in the room left of it, sliding left and then narrowing once the
 	   centred column would run under the rail. */
-	[data-session-rail-docked] {
+	[data-session-rail-docked]
+	{
 		--session-rail-w: 17.5rem;
 		--session-rail-gutter: 24px;
 		/* Upstream insets the rail 13px from the window edge; the tile shell's 1px border is the rest. */
@@ -4388,7 +4936,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	}
 
 	[data-session-rail-docked] .chat-column,
-	[data-session-rail-docked] .chat-dock-column {
+	[data-session-rail-docked] .chat-dock-column
+	{
 		--rail-column-box: calc(var(--max-content-width, 768px) + var(--chat-column-extra, 64px));
 		--rail-column-room: calc(100cqw - var(--scroll-gutter, 0px) - var(--session-rail-reserve));
 		--rail-column-start: max(
@@ -4409,12 +4958,15 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 		max-width: calc(min(var(--rail-column-box), var(--rail-column-room)) - var(--rail-column-trim, 0px));
 	}
 
-	[data-session-rail-docked] .chat-dock-column {
+	[data-session-rail-docked] .chat-dock-column
+	{
 		--rail-column-trim: calc(2 * var(--scroll-gutter, 0px));
 	}
 
-	@media (width >= 40rem) {
-		[data-route-tile-shell] {
+	@media (width >= 40rem)
+	{
+		[data-route-tile-shell]
+		{
 			border: 1px solid transparent;
 			padding-block: calc(var(--spacing) * 2);
 			padding-left: calc(var(--spacing) * 2);
@@ -4426,12 +4978,14 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 			--home-dock-bottom: max(0px, calc(env(safe-area-inset-bottom) - 9px));
 		}
 
-		.chat-column {
+		.chat-column
+		{
 			padding-inline-start: var(--chat-column-start, 32px);
 			padding-inline-end: var(--chat-column-end, 32px);
 		}
 
-		.chat-dock-column {
+		.chat-dock-column
+		{
 			padding-inline-start: calc(var(--chat-column-start, 32px) - var(--scroll-gutter, 0px));
 			padding-inline-end: calc(var(--chat-column-end, 32px) - var(--scroll-gutter, 0px));
 		}
@@ -4440,7 +4994,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	/* Upstream's line mode: with a side pane open the route shell has no padding or border at every width; the chat
 	   shell's own inline padding (shared-20 `it`: 8px bottom, 8px on an un-guttered side) is the only inset, and panes
 	   run flush. Phone keeps the chat at 0,0 (741px tall at 386x741). */
-	[data-route-tile-shell="session"]:has([data-tiles-line]) {
+	[data-route-tile-shell="session"]:has([data-tiles-line])
+	{
 		border-width: 0;
 		padding: 0;
 		--tile-title-start: var(--top-left-clearance-start, 0px);
@@ -4450,7 +5005,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 
 /* In upstream's line mode (a side pane open, any width) the tiles are square-cornered, the chat as flat as the pane.
    Unlayered so it beats the chat card's rounded-r7 and shadow-panel-sm utilities. */
-[data-route-tile-shell="session"]:has([data-tiles-line]) [data-session-tile] {
+[data-route-tile-shell="session"]:has([data-tiles-line]) [data-session-tile]
+{
 	border-radius: 0;
 	box-shadow: none;
 }
@@ -4458,41 +5014,50 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 /* Upstream shared-38 `MJ`: in line mode the chat column's side gutters absorb the chat shell's 8px inset, so a shaved
    side is 39px (32 - (1 - 8)), a bleeding end 40px, and the chat alone centres on the whole shell. The rules sit on the
    session tile, which mirrors the slot's gutter attributes, because a container query cannot style its own container. */
-[data-tiles-line] [data-tile-slot="chat"] {
+[data-tiles-line] [data-tile-slot="chat"]
+{
 	--chat-gutter: 32px;
 	--tiles-gap: 1px;
 }
 
-@container tile-slot (max-width: 560px) {
-	[data-tiles-line] [data-session-tile]:is([data-chat-gutter-start], [data-chat-gutter-end]) {
+@container tile-slot (max-width: 560px)
+{
+	[data-tiles-line] [data-session-tile]:is([data-chat-gutter-start], [data-chat-gutter-end])
+	{
 		--chat-gutter: 16px;
 	}
 }
 
 /* Upstream `VF`: the column's max width is max-content-width + gutter-start + gutter-end. */
-[data-tiles-line] [data-session-tile]:is([data-chat-gutter-start], [data-chat-gutter-end]) {
+[data-tiles-line] [data-session-tile]:is([data-chat-gutter-start], [data-chat-gutter-end])
+{
 	--chat-column-start: var(--chat-gutter);
 	--chat-column-end: var(--chat-gutter);
 	--chat-column-extra: calc(var(--chat-column-start) + var(--chat-column-end));
 }
 
-[data-tiles-line] [data-session-tile][data-chat-gutter-start="shave"] {
+[data-tiles-line] [data-session-tile][data-chat-gutter-start="shave"]
+{
 	--chat-column-start: calc(var(--chat-gutter) - (var(--tiles-gap) - var(--tiles-padding)));
 }
 
-[data-tiles-line] [data-session-tile][data-chat-gutter-end="shave"] {
+[data-tiles-line] [data-session-tile][data-chat-gutter-end="shave"]
+{
 	--chat-column-end: calc(var(--chat-gutter) - (var(--tiles-gap) - var(--tiles-padding)));
 }
 
-[data-tiles-line] [data-session-tile][data-chat-gutter-end="bleed"] {
+[data-tiles-line] [data-session-tile][data-chat-gutter-end="bleed"]
+{
 	--chat-column-end: calc(var(--chat-gutter) + var(--tiles-padding));
 }
 
-[data-tiles-line] [data-session-tile][data-chat-gutter-end="shave"]:not([data-chat-gutter-start]) {
+[data-tiles-line] [data-session-tile][data-chat-gutter-end="shave"]:not([data-chat-gutter-start])
+{
 	--chat-column-end: calc(var(--chat-column-start) + var(--tiles-padding));
 }
 
-[data-tiles-line] [data-session-tile][data-chat-gutter-end="bleed"]:not([data-chat-gutter-start]) {
+[data-tiles-line] [data-session-tile][data-chat-gutter-end="bleed"]:not([data-chat-gutter-start])
+{
 	--chat-column-end: clamp(
 		0.75rem,
 		(100% - var(--max-content-width, 768px) + var(--tiles-padding)) / 2,
@@ -4503,28 +5068,34 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 
 /* Upstream shared-18 `Z8`: rail end = max(0, edge - tiles-padding - tiles-border - 1px), edge .5rem with an end
    attribute (bleed drops the tiles-padding term) and 13px without one. Card mode keeps 12px. */
-[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="bleed"] {
+[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="bleed"]
+{
 	--session-rail-end: 7px;
 }
 
-[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="shave"] {
+[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="shave"]
+{
 	--session-rail-end: 0px;
 }
 
-[data-tiles-line] [data-session-rail-docked]:not([data-chat-gutter-end]) {
+[data-tiles-line] [data-session-rail-docked]:not([data-chat-gutter-end])
+{
 	--session-rail-end: 4px;
 }
 
 /* Upstream shared-18 `g_`: the closed rail's end gap is the chat gutter, shaved (39px) or bled (40px) by the end attribute. */
-[data-tiles-line] [data-session-rail-docked] {
+[data-tiles-line] [data-session-rail-docked]
+{
 	--session-rail-closed-end: var(--chat-gutter, 32px);
 }
 
-[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="shave"] {
+[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="shave"]
+{
 	--session-rail-closed-end: calc(var(--chat-gutter) - (var(--tiles-gap) - var(--tiles-padding)));
 }
 
-[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="bleed"] {
+[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="bleed"]
+{
 	--session-rail-closed-end: calc(var(--chat-gutter) + var(--tiles-padding));
 }
 
@@ -4532,25 +5103,30 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
    the titlebar bleeds back over the chat shell's 8px inset, so it always spans the tile slot. Its ground is upstream's
    drag backdrop (`Bb`: start-2/end-2, 0 on a shaved start or any end attribute), which covers only the panel. The tile
    stops clipping (its corners are square in line mode) so the bleed shows. A phone has no --tiles-padding, so no bleed. */
-[data-tiles-line] [data-session-tile] {
+[data-tiles-line] [data-session-tile]
+{
 	overflow: visible;
 }
 
-[data-tiles-line] [data-session-tile] [data-transcript-sticky-header] {
+[data-tiles-line] [data-session-tile] [data-transcript-sticky-header]
+{
 	margin-inline-start: calc(-1 * var(--tiles-padding, 0px));
 	margin-inline-end: calc(-1 * var(--tiles-padding, 0px));
 	background: transparent;
 }
 
-[data-tiles-line] [data-session-tile][data-chat-gutter-start="shave"] [data-transcript-sticky-header] {
+[data-tiles-line] [data-session-tile][data-chat-gutter-start="shave"] [data-transcript-sticky-header]
+{
 	margin-inline-start: 0;
 }
 
-[data-tiles-line] [data-session-tile][data-chat-gutter-end] [data-transcript-sticky-header] {
+[data-tiles-line] [data-session-tile][data-chat-gutter-end] [data-transcript-sticky-header]
+{
 	margin-inline-end: 0;
 }
 
-[data-tiles-line] [data-session-tile] [data-transcript-sticky-header]::before {
+[data-tiles-line] [data-session-tile] [data-transcript-sticky-header]::before
+{
 	content: "";
 	position: absolute;
 	inset-block: 0;
@@ -4560,33 +5136,40 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	background: var(--color-surface-2);
 }
 
-[data-tiles-line] [data-session-tile][data-chat-gutter-start="shave"] [data-transcript-sticky-header]::before {
+[data-tiles-line] [data-session-tile][data-chat-gutter-start="shave"] [data-transcript-sticky-header]::before
+{
 	inset-inline-start: 0;
 }
 
-[data-tiles-line] [data-session-tile][data-chat-gutter-end] [data-transcript-sticky-header]::before {
+[data-tiles-line] [data-session-tile][data-chat-gutter-end] [data-transcript-sticky-header]::before
+{
 	inset-inline-end: 0;
 }
 
 /* Upstream's tile shell ground: --tile-pane-ground (surface-2) for panes, --tile-page-ground (surface-1) for chat. */
-[data-tile-slot] {
+[data-tile-slot]
+{
 	--tile-shell-ground: var(--color-surface-2);
 }
 
-[data-tile-slot="chat"] {
+[data-tile-slot="chat"]
+{
 	--tile-shell-ground: var(--color-surface-1);
 }
 
 /* Upstream's `[data-tiles-line] .tiles-shell.is-moving`: the tile a Move grip drag carries gets a ring and shadow-md. */
-[data-tiles-line] [data-tile-moving] {
+[data-tiles-line] [data-tile-moving]
+{
 	box-shadow:
 		0 0 0 1px var(--upstream-border-strong),
 		0 0 0 1px var(--tile-shell-ground, transparent),
 		var(--cds-shadow-md);
 }
 
-@media (forced-colors: active) {
-	[data-tiles-line] [data-tile-moving] {
+@media (forced-colors: active)
+{
+	[data-tiles-line] [data-tile-moving]
+	{
 		outline: 1px solid CanvasText;
 	}
 }
@@ -4597,13 +5180,16 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
  * stack by the same gap (gap-[var(--sb-row-stack-gap)]), so this covers the New and nav blocks.
  * The pre-panels Search field keeps its own wrapper margin; the panels Search row stacks like New.
  */
-[data-nav-block] [data-row]:not(.df-search-field) {
+[data-nav-block] [data-row]:not(.df-search-field)
+{
 	margin-bottom: var(--sb-row-stack-gap);
 }
 
 /* Shared geometry and states for the sidebar's New, navigation, and More rows. */
-@layer components {
-	.df-nav-row {
+@layer components
+{
+	.df-nav-row
+	{
 		display: flex;
 		min-width: 0;
 		align-items: center;
@@ -4616,38 +5202,47 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 		text-decoration-line: none;
 	}
 
-	@media (hover: hover) {
-		.df-nav-row:hover {
+	@media (hover: hover)
+	{
+		.df-nav-row:hover
+		{
 			background-color: var(--sb-hover);
 		}
 	}
 
 	/* Upstream's nav rows tint keyboard focus with the hover background; selection still wins. */
-	.df-nav-row:focus-visible {
+	.df-nav-row:focus-visible
+	{
 		background-color: var(--sb-hover);
 	}
 
-	.df-nav-row[data-selected="focused"] {
+	.df-nav-row[data-selected="focused"]
+	{
 		background-color: var(--sb-selected);
 		color: var(--upstream-text-primary);
 	}
 
 	/* Upstream `.dframe-sidebar [data-row][data-selected]:hover`: the fizzy selected-hover, unset with color off. */
-	@media (hover: hover) {
-		.df-nav-row[data-selected="focused"]:hover {
+	@media (hover: hover)
+	{
+		.df-nav-row[data-selected="focused"]:hover
+		{
 			background-color: var(--selected-hover, var(--sb-selected));
 		}
 	}
 
-	.df-nav-row .df-leading-slot {
+	.df-nav-row .df-leading-slot
+	{
 		color: var(--upstream-text-secondary);
 	}
 
-	.df-nav-row[data-selected="focused"] .df-leading-slot {
+	.df-nav-row[data-selected="focused"] .df-leading-slot
+	{
 		color: var(--upstream-text-primary);
 	}
 
-	.df-new-icon-circle {
+	.df-new-icon-circle
+	{
 		display: flex;
 		width: 22px;
 		height: 22px;
@@ -4657,59 +5252,72 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 		background-color: var(--sb-new-circle);
 	}
 
-	@media (hover: hover) {
-		.df-nav-row:hover .df-new-icon-circle {
+	@media (hover: hover)
+	{
+		.df-nav-row:hover .df-new-icon-circle
+		{
 			background-color: color-mix(in oklab, var(--upstream-text-muted) 25%, transparent);
 		}
 	}
 
-	.df-nav-row[data-selected="focused"] .df-new-icon-circle {
+	.df-nav-row[data-selected="focused"] .df-new-icon-circle
+	{
 		background-color: transparent;
 	}
 }
 
 /* Upstream .df-search-field: the sidebar Search row above New, and its hover/focus-visible keys hint.
    Unlayered, as upstream's, so the hover background beats the row's bg utility. */
-.df-search-field {
+.df-search-field
+{
 	transition: background-color 60ms cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
-.df-search-field:not(:focus-visible) {
+.df-search-field:not(:focus-visible)
+{
 	box-shadow:
 		inset 0 0 0 var(--sb-field-hairline) var(--sb-field-ring),
 		0 1px 2px 0 #0000000d;
 }
 
-.df-search-field:focus-visible {
+.df-search-field:focus-visible
+{
 	box-shadow:
 		inset 0 0 0 1px var(--color-accent-100, #257de0),
 		0 0 6px 0 color-mix(in srgb, #257de0 20%, transparent);
 }
 
-.df-search-field-keys {
+.df-search-field-keys
+{
 	opacity: 0;
 }
 
-.df-search-field:focus-visible .df-search-field-keys {
+.df-search-field:focus-visible .df-search-field-keys
+{
 	opacity: 1;
 }
 
-@media (hover: hover) {
-	.df-search-field:hover {
+@media (hover: hover)
+{
+	.df-search-field:hover
+	{
 		background-color: var(--sb-field-hover);
 	}
-	.df-search-field:hover:not(:focus-visible) {
+	.df-search-field:hover:not(:focus-visible)
+	{
 		box-shadow:
 			inset 0 0 0 1px var(--sb-field-hover-ring),
 			0 1px 2px 0 #0000000d;
 	}
-	.df-search-field:hover .df-search-field-keys {
+	.df-search-field:hover .df-search-field-keys
+	{
 		opacity: 1;
 	}
 }
 
 /* Upstream .df-fade-truncate: a label that fades out over its last 12px instead of an ellipsis. */
-.df-fade-truncate {
+.df-fade-truncate
+{
 	min-width: 0;
 	margin: -4px 0;
 	padding: 4px 12px 4px 0;
@@ -4717,7 +5325,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent);
 }
 
-.df-fade-truncate:where(:root[dir="rtl"] :dir(rtl)) {
+.df-fade-truncate:where(:root[dir="rtl"] :dir(rtl))
+{
 	padding: 4px 0 4px 12px;
 	mask-image: linear-gradient(270deg, #000 calc(100% - 12px), transparent);
 }
@@ -4726,17 +5335,20 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
    `type`, useRowCut marks an overflowing transcript label and it fades over its last 24px instead
    of an ellipsis. Inside a cds row the faded label sits above the row's hit area but lets clicks
    through, except on its own interactive descendants. */
-[data-cds-row-cut] {
+[data-cds-row-cut]
+{
 	text-overflow: clip;
 	mask-image: linear-gradient(90deg, #000 calc(100% - 24px), #0000);
 	mask-clip: no-clip;
 }
 
-[data-cds-row-cut]:dir(rtl) {
+[data-cds-row-cut]:dir(rtl)
+{
 	mask-image: linear-gradient(270deg, #000 calc(100% - 24px), #0000);
 }
 
-[data-cds-row] [data-cds-row-cut] {
+[data-cds-row] [data-cds-row-cut]
+{
 	z-index: 1;
 	pointer-events: none;
 	position: relative;
@@ -4755,7 +5367,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 		[role="button"],
 		[contenteditable]:not([contenteditable="false"]),
 		[tabindex]:not([tabindex^="-"])
-	) {
+	)
+{
 	pointer-events: auto;
 }
 
@@ -4766,7 +5379,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 [data-cds-reply-type]
 	:is([data-turn-status], [data-cds="TurnStatus"]):not([data-cds-reply-type] [data-cds]:not([data-cds-reply-type]) *)
 	> :first-child,
-[data-cds-reply-type] .group\/step:not([data-cds-reply-type] [data-cds]:not([data-cds-reply-type]) *) {
+[data-cds-reply-type] .group\/step:not([data-cds-reply-type] [data-cds]:not([data-cds-reply-type]) *)
+{
 	--upstream-text-body: var(--transcript-text-size, 0.875rem);
 	--upstream-leading-body: calc(var(--transcript-leading, 1.42857) * var(--transcript-text-size, 0.875rem));
 	font-size: var(--upstream-text-body);
@@ -4784,21 +5398,25 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 					)
 				)
 			)
-		) {
+		)
+	{
 		--upstream-text-body: var(--transcript-comfortable-text-size, 1rem);
 		--upstream-leading-body: var(--transcript-comfortable-leading, 1.5rem);
 	}
 }
 
 /* Upstream .dframe-sidebar .df-on-rail: a leading slot that follows the hub rail's shift. */
-.df-on-rail {
+.df-on-rail
+{
 	margin-inline-start: var(--sb-rail-shift, 0px);
 }
 
 /* Upstream hit-row-main: a ::before that reaches the row's hit grid (--cds-hit-grid-x/y) and its gap below
    (--cds-hit-gap-y) through the --cds-hit-row-reach-* vars. */
-@layer components {
-	.hit-row {
+@layer components
+{
+	.hit-row
+	{
 		position: relative;
 		isolation: isolate;
 		--cds-hit-row-reach-top: var(--cds-hit-grid-y, 0px);
@@ -4806,7 +5424,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 		--cds-hit-row-reach-bottom: calc(var(--cds-hit-gap-y, 0px) + var(--cds-hit-grid-y, 0px));
 	}
 
-	.hit-row-main::before {
+	.hit-row-main::before
+	{
 		content: "";
 		position: absolute;
 		z-index: -1;
@@ -4816,23 +5435,28 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 }
 
 /* Upstream hit-gap-y-px: a 1px row gap that each non-last row's hit-row-main::before reaches across. */
-@utility hit-gap-y-px {
+@utility hit-gap-y-px
+{
 	row-gap: 1px;
-	& > :where(:not(:last-child)) {
+	& > :where(:not(:last-child))
+	{
 		--cds-hit-gap-y: 1px;
 	}
 }
 
 /* Upstream hit-gap-y-<n>: a spacing-scale row gap that each non-last row's hit-row-main::before reaches across. */
-@utility hit-gap-y-* {
+@utility hit-gap-y-*
+{
 	row-gap: calc(var(--spacing) * --value(number));
-	& > :where(:not(:last-child)) {
+	& > :where(:not(:last-child))
+	{
 		--cds-hit-gap-y: calc(var(--spacing) * --value(number));
 	}
 }
 
 /* Upstream .df-leading-slot: a fixed box that centers the row's icon. */
-.df-leading-slot {
+.df-leading-slot
+{
 	display: flex;
 	flex-shrink: 0;
 	align-items: center;
@@ -4841,14 +5465,16 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	height: var(--sb-leading-slot);
 }
 
-.df-leading-slot svg {
+.df-leading-slot svg
+{
 	flex-shrink: 0;
 	width: var(--sb-icon);
 	height: var(--sb-icon);
 }
 
 /* Upstream .df-label-inset: the row padding plus .df-session-list's iconless pad (10px), else the icon inset. */
-.df-label-inset {
+.df-label-inset
+{
 	padding-left: calc(var(--sb-row-px) + var(--sb-iconless-pad, calc((var(--sb-leading-slot) - var(--sb-icon)) / 2)));
 }
 
@@ -4858,13 +5484,15 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
  * which is the .9 ink measured live on header hover, while its custom group mark keeps the sidebar's
  * own muted and fizzy secondary inks.
  */
-[data-hub-rail] [data-sidebar-group-label] {
+[data-hub-rail] [data-sidebar-group-label]
+{
 	--color-ink-muted: var(--color-primary);
 	--muted-as-secondary: var(--color-primary);
 	--color-secondary: var(--color-primary);
 }
 
-[data-hub-rail] [data-sidebar-group-label] [data-group-mark] {
+[data-hub-rail] [data-sidebar-group-label] [data-group-mark]
+{
 	--color-ink-muted: var(--upstream-text-muted);
 	--muted-as-secondary: var(--fizzy-lake-color-secondary, var(--upstream-text-muted));
 	--color-secondary: var(--fizzy-lake-color-secondary, var(--upstream-text-muted));
@@ -4878,18 +5506,21 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
  * is `--cds-fill-ghost-selected` (#0000001a / #ffffff26). `@theme inline` compiles `text-ink-muted` and
  * `text-secondary` to the --upstream-text-* values, so both layers are remapped.
  */
-:root[data-cds-fizzy-lake~="color"] [data-cds="Tabs"] [role="tab"] {
+:root[data-cds-fizzy-lake~="color"] [data-cds="Tabs"] [role="tab"]
+{
 	--color-ink-muted: var(--upstream-text-primary);
 	--color-secondary: var(--upstream-text-primary);
 	--upstream-text-muted: var(--upstream-text-primary);
 	--upstream-text-secondary: var(--upstream-text-primary);
 }
 
-:root[data-cds-fizzy-lake~="color"] [data-cds="Tabs"] [role="tab"][data-active]::before {
+:root[data-cds-fizzy-lake~="color"] [data-cds="Tabs"] [role="tab"][data-active]::before
+{
 	background-color: var(--upstream-fill-ghost-selected);
 }
 
-:root[data-cds-fizzy-lake~="color"] [data-cds="SegmentedControl"] [role="radio"] {
+:root[data-cds-fizzy-lake~="color"] [data-cds="SegmentedControl"] [role="radio"]
+{
 	--settings-segmented-ink: var(--upstream-text-primary);
 	--color-ink-muted: var(--upstream-text-primary);
 	--color-secondary: var(--upstream-text-primary);
@@ -4903,7 +5534,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
  * #ffffff91, the inherited root value, so this scope must not redefine --fizzy-lake-color-secondary).
  * `text-*` utilities inline the --upstream-text-* values, so both layers are remapped.
  */
-:root[data-cds-fizzy-lake~="color"] .dframe-sidebar {
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar
+{
 	--color-secondary: var(--color-primary);
 	--upstream-text-secondary: var(--upstream-text-primary);
 	--upstream-plain-secondary: var(--upstream-text-primary);
@@ -4913,13 +5545,15 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 }
 
 /* Upstream `.dframe-sidebar [data-cds=Badge]`: badges keep the fizzy secondary ink. */
-:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-cds="Badge"] {
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-cds="Badge"]
+{
 	--color-secondary: var(--fizzy-lake-color-secondary);
 	--upstream-text-secondary: var(--fizzy-lake-color-secondary);
 }
 
 /* Upstream `.dframe-sidebar .df-leading-slot`: leading icons rest at the fizzy secondary... */
-:root[data-cds-fizzy-lake~="color"] .dframe-sidebar .df-leading-slot {
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar .df-leading-slot
+{
 	color: var(--sb-icon-rest);
 }
 
@@ -4930,19 +5564,23 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 :root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-context-menu-open="true"] .df-leading-slot,
 :root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-selected] .df-leading-slot,
 :root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-editing] .df-leading-slot,
-:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-edit-box] .df-leading-slot {
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-edit-box] .df-leading-slot
+{
 	color: inherit;
 }
 
 /* ...or hovered. */
-@media (hover: hover) {
-	:root[data-cds-fizzy-lake~="color"] .dframe-sidebar :is(.group, [data-row]):hover .df-leading-slot {
+@media (hover: hover)
+{
+	:root[data-cds-fizzy-lake~="color"] .dframe-sidebar :is(.group, [data-row]):hover .df-leading-slot
+	{
 		color: inherit;
 	}
 }
 
 /* Upstream `.dframe-sidebar [data-row-nav] .df-leading-slot`: nav-variant rows always paint their icon primary. */
-:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-row-nav] .df-leading-slot {
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-row-nav] .df-leading-slot
+{
 	color: var(--upstream-text-primary);
 }
 
@@ -4954,40 +5592,48 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
  * menu-open header, the collapsed badge at the row end where Group and sort appears (fine pointer only), and secondary
  * toggle ink that turns to the label's ink on hover, focus or an open menu.
  */
-[data-hub-rail] [data-sidebar-group-label] {
+[data-hub-rail] [data-sidebar-group-label]
+{
 	--sb-group-font: 12px;
 	isolation: isolate;
 	line-height: 20px;
 	position: relative;
 }
 
-[data-hub-rail] [data-sidebar-group-label] input {
+[data-hub-rail] [data-sidebar-group-label] input
+{
 	line-height: 20px;
 }
 
 [data-hub-rail] [data-sidebar-group-label],
-[data-hub-rail] [data-sidebar-group-label] > div {
+[data-hub-rail] [data-sidebar-group-label] > div
+{
 	gap: 0;
 }
 
-[data-hub-rail] [data-sidebar-group-label] [data-row-glyph] {
+[data-hub-rail] [data-sidebar-group-label] [data-row-glyph]
+{
 	margin-inline-start: 4px;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media (hover: hover) and (pointer: fine)
+{
 	[data-hub-rail]
 		[data-group-key]:not([data-hover-within])
 		[data-sidebar-group-label]:not(:has(:focus-visible), :has([data-popup-open]))
-		[data-header-reveal] {
+		[data-header-reveal]
+	{
 		opacity: 0;
 	}
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media (hover: hover) and (pointer: fine)
+{
 	[data-hub-rail]
 		[data-sidebar-group-label]:has(> [data-header-controls])
 		h3
-		> [data-group-toggle]:has(> [data-group-badge]:not(:empty)) {
+		> [data-group-toggle]:has(> [data-group-badge]:not(:empty))
+	{
 		isolation: auto;
 		position: static;
 	}
@@ -4996,7 +5642,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 		[data-sidebar-group-label]:has(> [data-header-controls])
 		h3
 		> [data-group-toggle]
-		> [data-group-badge] {
+		> [data-group-badge]
+	{
 		width: var(--sb-row-ctl);
 		height: var(--sb-row-h);
 		pointer-events: none;
@@ -5028,14 +5675,17 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 		[data-sidebar-group-label]:has(> [data-header-controls] > :not([data-header-reveal]):focus-within)
 		h3
 		> [data-group-toggle]
-		> [data-group-badge] {
+		> [data-group-badge]
+	{
 		opacity: 0;
 	}
 }
 
-@media (hover: hover) {
+@media (hover: hover)
+{
 	[data-hub-rail] [data-sidebar-group-label]:has(h3 > [data-group-toggle]):hover::before,
-	[data-hub-rail] [data-sidebar-group-label]:has(h3 > [data-group-toggle]):has([data-popup-open])::before {
+	[data-hub-rail] [data-sidebar-group-label]:has(h3 > [data-group-toggle]):has([data-popup-open])::before
+	{
 		content: "";
 		z-index: -1;
 		height: var(--sb-row-h);
@@ -5046,17 +5696,21 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	}
 }
 
-[data-hub-rail] [data-sidebar-group-label] h3 > [data-group-toggle] {
+[data-hub-rail] [data-sidebar-group-label] h3 > [data-group-toggle]
+{
 	color: var(--fizzy-lake-color-secondary, inherit);
 }
 
-[data-hub-rail] [data-sidebar-group-label] h3 > [data-group-toggle]:focus-visible {
+[data-hub-rail] [data-sidebar-group-label] h3 > [data-group-toggle]:focus-visible
+{
 	color: inherit;
 }
 
-@media (hover: hover) {
+@media (hover: hover)
+{
 	[data-hub-rail] [data-sidebar-group-label]:hover h3 > [data-group-toggle],
-	[data-hub-rail] [data-sidebar-group-label]:has([data-popup-open]) h3 > [data-group-toggle] {
+	[data-hub-rail] [data-sidebar-group-label]:has([data-popup-open]) h3 > [data-group-toggle]
+	{
 		color: inherit;
 	}
 }
@@ -5064,7 +5718,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 /* Upstream .df-described-row: a two-line session row (Show > Metadata), its title line where a one-line row's text sits.
    Padding comes from the row control, as upstream's does: 6px on desktop and on the phone sheet, where the
    24px described line makes the row 6 + 20 + 2 + 20 + 6 = 54px. */
-.df-described-row {
+.df-described-row
+{
 	padding-block: calc(
 		(var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim)
 	);
@@ -5072,53 +5727,62 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 }
 
 /* Upstream .df-row-description: the metadata line in the group-heading font. */
-.df-row-description {
+.df-row-description
+{
 	font-size: var(--sb-group-font);
 	line-height: 16px;
 	gap: 6px;
 }
 
 .df-described-title,
-.df-row-description {
+.df-row-description
+{
 	height: calc(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck));
 }
 
 /* Upstream .df-session-list .df-meta-line: long branches/folders clip under a 12px end fade, no ellipsis. */
-.df-meta-line {
+.df-meta-line
+{
 	overflow: clip;
 	padding-inline-end: 12px;
 	mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent);
 }
 
-.df-meta-line:where(:root[dir="rtl"] :dir(rtl)) {
+.df-meta-line:where(:root[dir="rtl"] :dir(rtl))
+{
 	mask-image: linear-gradient(270deg, #000 calc(100% - 12px), transparent);
 }
 
 /* Upstream .df-meta-slots: the line and its place, sized as a container so the place caps against it. */
-.df-meta-slots {
+.df-meta-slots
+{
 	container-type: inline-size;
 }
 
 /* Upstream .df-meta-place: the folder clips past min(14ch, 40cqi) under a 12px fade. */
-.df-meta-place {
+.df-meta-place
+{
 	--df-place-cap: min(14ch, 40cqi);
 	max-inline-size: calc(var(--df-place-cap) + 12px);
 	mask-image: linear-gradient(to right, #000 var(--df-place-cap), transparent calc(var(--df-place-cap) + 12px));
 	overflow: clip;
 }
 
-.df-meta-place:dir(rtl) {
+.df-meta-place:dir(rtl)
+{
 	mask-image: linear-gradient(to left, #000 var(--df-place-cap), transparent calc(var(--df-place-cap) + 12px));
 }
 
 /* With no message before it (only a word, or nothing), the place gets most of the width. */
-.df-meta-line:not(:has(> bdi)) + .df-meta-place {
+.df-meta-line:not(:has(> bdi)) + .df-meta-place
+{
 	--df-place-cap: min(70cqi, 100cqi - 92px);
 }
 
 /* Message text running against the page direction shrinks and fades at its own end. */
 :root:not([dir="rtl"]) .df-meta-slots .df-meta-line > bdi:dir(rtl),
-:root[dir="rtl"] .df-meta-slots .df-meta-line > bdi:dir(ltr) {
+:root[dir="rtl"] .df-meta-slots .df-meta-line > bdi:dir(ltr)
+{
 	flex-shrink: 1;
 	min-inline-size: 0;
 	padding-inline-end: 12px;
@@ -5126,17 +5790,20 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	mask-image: linear-gradient(270deg, #000 calc(100% - 12px), #0000);
 }
 
-:root[dir="rtl"] .df-meta-slots .df-meta-line > bdi:dir(ltr) {
+:root[dir="rtl"] .df-meta-slots .df-meta-line > bdi:dir(ltr)
+{
 	mask-image: linear-gradient(90deg, #000 calc(100% - 12px), #0000);
 }
 
 /* Upstream's described row swaps top-1/2 for this, so the status mark and kebab centre on the title line. */
-[data-described] :is([data-row-decoration], [data-row-action]) {
+[data-described] :is([data-row-decoration], [data-row-action])
+{
 	top: calc(var(--sb-row-h) / 2 + var(--sb-described-tuck) / 2 - var(--sb-described-trim));
 }
 
 /* Upstream .dframe-fade-label: an overflowing row title fades out instead of ending in an ellipsis. */
-.dframe-fade-label {
+.dframe-fade-label
+{
 	display: block;
 	width: 100%;
 	min-width: 0;
@@ -5146,17 +5813,20 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	text-align: match-parent;
 }
 
-.dframe-fade-label[data-overflowing] {
+.dframe-fade-label[data-overflowing]
+{
 	mask-image: linear-gradient(var(--df-label-fade-angle, 90deg), black calc(100% - 24px), transparent 100%);
 }
 
 /* An RTL title (dir=auto) fades at its start, which is the left edge. */
-.dframe-fade-label:dir(rtl) {
+.dframe-fade-label:dir(rtl)
+{
 	--df-label-fade-angle: 270deg;
 }
 
 /* Upstream .df-tail-mark: a row-ctl box at the row's end for trailing marks. */
-.df-tail-mark {
+.df-tail-mark
+{
 	display: flex;
 	flex-shrink: 0;
 	align-items: center;
@@ -5173,7 +5843,8 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
  * 1.25px tree line aligned with the head's status dot. The line turns accent while the
  * invisible handle over it is hovered.
  */
-.df-family::before {
+.df-family::before
+{
 	content: "";
 	position: absolute;
 	top: 4px;
@@ -5186,19 +5857,22 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 }
 
 /* Upstream: a described last child ends the guide halfway down its description line. */
-.df-family:has(> [data-family-child]:last-child .df-described-row)::before {
+.df-family:has(> [data-family-child]:last-child .df-described-row)::before
+{
 	bottom: calc(
 		(var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim) + 2px + 1.5 *
 			(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck))
 	);
 }
 
-.df-family[data-branch-hot]::before {
+.df-family[data-branch-hot]::before
+{
 	--df-tree-ink: var(--accent-100);
 	transition-delay: 0.1s;
 }
 
-.df-family > .df-family-handle-slot {
+.df-family > .df-family-handle-slot
+{
 	position: absolute;
 	top: 0;
 	bottom: 4px;
@@ -5207,24 +5881,29 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	width: 20px;
 }
 
-@media (hover: none) {
-	.df-family > .df-family-handle-slot {
+@media (hover: none)
+{
+	.df-family > .df-family-handle-slot
+	{
 		display: none;
 	}
 }
 
 /* Find in file matches, painted with the CSS Custom Highlight API. */
-::highlight(file-find) {
+::highlight(file-find)
+{
 	background-color: rgb(250 204 21 / 0.35);
 }
 
-::highlight(file-find-active) {
+::highlight(file-find-active)
+{
 	background-color: rgb(249 115 22 / 0.65);
 }
 
 /* The Plan pane selection a comment popover is open for, kept painted after the window selection is cleared
    (upstream's epitaxy-plan-selection highlight). */
-::highlight(plan-selection) {
+::highlight(plan-selection)
+{
 	background-color: highlight;
 	color: highlighttext;
 }
@@ -5234,48 +5913,59 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
    its radius and shadow easing from the tile's to the preview's. With no tile
    it crossfades the root over .18s. Values from
    .llm/upstream-sync/dumps/composer-attachment-preview-upstream-render.txt. */
-::view-transition-group(chat-image-preview) {
+::view-transition-group(chat-image-preview)
+{
 	animation-duration: 0.35s;
 	animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
 }
-::view-transition-image-pair(chat-image-preview) {
+::view-transition-image-pair(chat-image-preview)
+{
 	isolation: auto;
 	animation: 0.35s cubic-bezier(0.32, 0.72, 0, 1) both vt-image-preview-decoration-in;
 	overflow: clip;
 }
 ::view-transition-old(chat-image-preview),
-::view-transition-new(chat-image-preview) {
+::view-transition-new(chat-image-preview)
+{
 	mix-blend-mode: normal;
 	object-fit: cover;
 	width: 100%;
 	height: 100%;
 	animation: none;
 }
-html:not(.vt-image-preview-closing)::view-transition-old(chat-image-preview) {
+html:not(.vt-image-preview-closing)::view-transition-old(chat-image-preview)
+{
 	display: none;
 }
-html.vt-image-preview-closing::view-transition-group(chat-image-preview) {
+html.vt-image-preview-closing::view-transition-group(chat-image-preview)
+{
 	animation-duration: 0.25s;
 }
-html.vt-image-preview-closing::view-transition-image-pair(chat-image-preview) {
+html.vt-image-preview-closing::view-transition-image-pair(chat-image-preview)
+{
 	animation-name: vt-image-preview-decoration-out;
 	animation-duration: 0.25s;
 }
-html.vt-image-preview-active.vt-image-preview-closing::view-transition-group(root) {
+html.vt-image-preview-active.vt-image-preview-closing::view-transition-group(root)
+{
 	animation-duration: 0.25s !important;
 }
-html.vt-image-preview-active.vt-image-preview-crossfade::view-transition-group(root) {
+html.vt-image-preview-active.vt-image-preview-crossfade::view-transition-group(root)
+{
 	animation-duration: 0.18s !important;
 }
-@keyframes vt-image-preview-decoration-in {
-	0% {
+@keyframes vt-image-preview-decoration-in
+{
+	0%
+	{
 		inset: var(--vt-image-preview-source-inset, 0%);
 		box-shadow:
 			0 4px 32px color-mix(in srgb, black 0%, transparent),
 			0 0 0 0.5px color-mix(in srgb, black 0%, transparent);
 		border-radius: var(--vt-image-preview-source-radius, 0.5rem);
 	}
-	100% {
+	100%
+	{
 		inset: 0%;
 		box-shadow:
 			0 4px 32px color-mix(in srgb, black 30%, transparent),
@@ -5283,15 +5973,18 @@ html.vt-image-preview-active.vt-image-preview-crossfade::view-transition-group(r
 		border-radius: var(--vt-image-preview-target-radius, 0.375rem);
 	}
 }
-@keyframes vt-image-preview-decoration-out {
-	0% {
+@keyframes vt-image-preview-decoration-out
+{
+	0%
+	{
 		inset: 0%;
 		box-shadow:
 			0 4px 32px color-mix(in srgb, black 30%, transparent),
 			0 0 0 0.5px color-mix(in srgb, black 25%, transparent);
 		border-radius: var(--vt-image-preview-target-radius, 0.375rem);
 	}
-	100% {
+	100%
+	{
 		inset: var(--vt-image-preview-source-inset, 0%);
 		box-shadow:
 			0 4px 32px color-mix(in srgb, black 0%, transparent),
@@ -5305,13 +5998,15 @@ html.vt-image-preview-active.vt-image-preview-crossfade::view-transition-group(r
    (data-cds-attachment-restored) skip both. Removal runs inside a cds-attachments view
    transition (see withAttachmentsTransition): siblings slide 180ms while the old tile
    shrinks out. */
-[data-cds-composer-attachments]:has([data-cds-attachment]) {
+[data-cds-composer-attachments]:has([data-cds-attachment])
+{
 	transition:
 		opacity 0.2s cubic-bezier(0.215, 0.61, 0.355, 1),
 		transform 0.2s cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
-[data-cds-composer-attachments] [data-cds-attachment] {
+[data-cds-composer-attachments] [data-cds-attachment]
+{
 	transform-origin: 0;
 	view-transition-class: cds-attachment;
 	transition:
@@ -5319,96 +6014,120 @@ html.vt-image-preview-active.vt-image-preview-crossfade::view-transition-group(r
 		opacity 0.18s cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
-[data-cds-composer-attachments] [data-cds-attachment]:where(:dir(rtl), [dir="rtl"] *) {
+[data-cds-composer-attachments] [data-cds-attachment]:where(:dir(rtl), [dir="rtl"] *)
+{
 	transform-origin: 100%;
 }
 
-@starting-style {
-	[data-cds-composer-attachments]:has([data-cds-attachment]:not([data-cds-attachment-restored])) {
+@starting-style
+{
+	[data-cds-composer-attachments]:has([data-cds-attachment]:not([data-cds-attachment-restored]))
+	{
 		opacity: 0;
 		transform: translateY(-8px);
 	}
-	[data-cds-composer-attachments] [data-cds-attachment]:not([data-cds-attachment-restored]) {
+	[data-cds-composer-attachments] [data-cds-attachment]:not([data-cds-attachment-restored])
+	{
 		opacity: 0;
 		transform: scale(0.92) translateY(4px);
 	}
 }
 
-:root:active-view-transition-type(cds-attachments) [data-cds-composer-attachments] [data-cds-attachment] {
+:root:active-view-transition-type(cds-attachments) [data-cds-composer-attachments] [data-cds-attachment]
+{
 	view-transition-name: var(--cds-attachment-vt-name);
 }
 
-:root:active-view-transition-type(cds-attachments) {
+:root:active-view-transition-type(cds-attachments)
+{
 	view-transition-name: none;
 }
 
-:root:active-view-transition-type(cds-attachments)::view-transition-group(root) {
+:root:active-view-transition-type(cds-attachments)::view-transition-group(root)
+{
 	animation-duration: 0s;
 }
 
-:root:active-view-transition-type(cds-attachments)::view-transition-group(.cds-attachment) {
+:root:active-view-transition-type(cds-attachments)::view-transition-group(.cds-attachment)
+{
 	animation-duration: 0.18s;
 	animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
-@keyframes cds-attachment-out {
-	to {
+@keyframes cds-attachment-out
+{
+	to
+	{
 		opacity: 0;
 		transform: scale(0.5);
 	}
 }
 
-:root:active-view-transition-type(cds-attachments)::view-transition-old(.cds-attachment):only-child {
+:root:active-view-transition-type(cds-attachments)::view-transition-old(.cds-attachment):only-child
+{
 	animation: 0.13s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards cds-attachment-out;
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce)
+{
 	[data-cds-composer-attachments]:has([data-cds-attachment]),
-	[data-cds-composer-attachments] [data-cds-attachment] {
+	[data-cds-composer-attachments] [data-cds-attachment]
+	{
 		transition: none;
 	}
 }
 
 html[data-reduce-motion="true"] [data-cds-composer-attachments]:has([data-cds-attachment]),
-html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attachment] {
+html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attachment]
+{
 	transition: none;
 }
 
 /* Upstream cds Icon (c6a992d55): the size-icon / w-icon boxes over --cds-icon, and the Icon rules for
    its svg form (the font-only rules stay out with the font; see src/components/ui/icon.tsx). */
-@utility size-icon {
+@utility size-icon
+{
 	width: var(--cds-icon);
 	height: var(--cds-icon);
 }
-@utility w-icon {
+@utility w-icon
+{
 	width: var(--cds-icon);
 }
-[data-cds="Icon"] {
+[data-cds="Icon"]
+{
 	flex-shrink: 0;
 }
-:root[dir="rtl"] :is([data-cds="Icon"], svg)[data-cds-mirror]:dir(rtl) {
+:root[dir="rtl"] :is([data-cds="Icon"], svg)[data-cds-mirror]:dir(rtl)
+{
 	transform: scaleX(-1);
 }
-[data-cds="Icon"][data-cds-rotate] {
+[data-cds="Icon"][data-cds-rotate]
+{
 	--cds-icon-rotate: 0deg;
 	rotate: var(--cds-icon-rotate);
 }
-:root[dir="rtl"] [data-cds="Icon"][data-cds-rotate]:dir(rtl) {
+:root[dir="rtl"] [data-cds="Icon"][data-cds-rotate]:dir(rtl)
+{
 	rotate: calc(var(--cds-icon-rotate) * -1);
 }
 
 /* Upstream's sticky prompt bubble (cf74bc599 `$w`, inline style c499e192a), with upstream's tokens mapped to the
    local ones that follow density the same way: --cds-leading-body / --cds-font-size-body → --upstream-leading-body /
    --upstream-text-body, --cds-radius → --upstream-radius, --cds-bg-user-message → --user-msg-bg. */
-@keyframes epitaxy-sticky-prompt-enter {
-	0% {
+@keyframes epitaxy-sticky-prompt-enter
+{
+	0%
+	{
 		transform: translateY(calc(-1 * var(--epitaxy-sticky-peek)));
 	}
-	to {
+	to
+	{
 		transform: none;
 	}
 }
-.epitaxy-sticky-prompt-clip {
+.epitaxy-sticky-prompt-clip
+{
 	--epitaxy-sticky-line: var(--upstream-leading-body);
 	--epitaxy-sticky-peek: calc(var(--epitaxy-sticky-line) + var(--cds-pad-md));
 	max-height: var(--epitaxy-sticky-peek);
@@ -5423,14 +6142,17 @@ html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attach
 	overflow: hidden;
 }
 .epitaxy-sticky-prompt-clip:hover,
-.epitaxy-sticky-prompt-clip:focus-visible {
+.epitaxy-sticky-prompt-clip:focus-visible
+{
 	max-height: calc(var(--epitaxy-sticky-peek) + var(--epitaxy-sticky-line) * 4 + var(--cds-pad-md));
 }
-.epitaxy-sticky-prompt-clip:focus-visible {
+.epitaxy-sticky-prompt-clip:focus-visible
+{
 	outline: 1px solid var(--cds-fill-accent);
 	outline-offset: 2px;
 }
-.epitaxy-sticky-prompt-bubble {
+.epitaxy-sticky-prompt-bubble
+{
 	padding: var(--cds-pad-md) var(--cds-pad-lg);
 	border-radius: 0 0 calc(var(--upstream-radius) + 4px) calc(var(--upstream-radius) + 4px);
 	background:
@@ -5446,17 +6168,22 @@ html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attach
 	animation: 0.22s cubic-bezier(0.215, 0.61, 0.355, 1) epitaxy-sticky-prompt-enter;
 	display: block;
 }
-@media (prefers-reduced-motion: reduce) {
-	.epitaxy-sticky-prompt-clip {
+@media (prefers-reduced-motion: reduce)
+{
+	.epitaxy-sticky-prompt-clip
+	{
 		transition: none;
 	}
-	.epitaxy-sticky-prompt-bubble {
+	.epitaxy-sticky-prompt-bubble
+	{
 		animation: none;
 	}
 }
-[data-reduce-motion="true"] .epitaxy-sticky-prompt-clip {
+[data-reduce-motion="true"] .epitaxy-sticky-prompt-clip
+{
 	transition: none;
 }
-[data-reduce-motion="true"] .epitaxy-sticky-prompt-bubble {
+[data-reduce-motion="true"] .epitaxy-sticky-prompt-bubble
+{
 	animation: none;
 }

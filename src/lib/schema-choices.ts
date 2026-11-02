@@ -1,5 +1,6 @@
 import type {z} from "zod";
-import type {
+import type
+{
 	ArtifactAccessLevelSchema,
 	ArtifactActionSchema,
 	ArtifactAutoOpenSchema,
@@ -17,7 +18,8 @@ import type {TerminalAppearance} from "./terminal-theme";
 import type {InterfaceFont, ResponseFont} from "./appearance";
 import type {TerminalHostSetting} from "./terminal-host-setting";
 import type {WorkflowAgentEntryStateSchema, WorkflowProgressEntrySchema} from "./workflow-progress";
-import type {
+import type
+{
 	WorkflowJournalEventSchema,
 	WorkflowLaunchStatusSchema,
 	WorkflowLaunchTaskTypeSchema,
@@ -28,7 +30,8 @@ import type {FileRefStatusSchema} from "./api/file-refs";
 import type {PluginFileSchema, PluginListResponse} from "./api/plugins";
 import type {UnifiedSearchDateSchema, UnifiedSearchKindSchema, UnifiedSearchTypeSchema} from "./api/search";
 import type {SessionSummaryStateSchema} from "./api/sessions";
-import type {
+import type
+{
 	RemoteControlState,
 	PullRequestStateSchema,
 	SessionBucketReasonSchema,
@@ -45,7 +48,8 @@ import type {NavSection} from "./nav-sections";
 import type {PinDropOutcome} from "./pinned-sessions";
 import type {PaletteFilter, PaletteType} from "./palette-tokens";
 import type {Direction, LayoutNode, PaneKind, TileId} from "./pane-layout";
-import type {
+import type
+{
 	ApiRequestBlobContentBlockSchema,
 	ApiRequestBlobRoleSchema,
 	AttachmentPayloadSchema,
@@ -91,7 +95,8 @@ import type {
 	UserRecordSchema,
 	WriteToolUseResultTypeSchema,
 } from "./schemas";
-import type {
+import type
+{
 	SessionActivityDaysSchema,
 	SessionGroupBySchema,
 	SessionSortBySchema,
@@ -107,7 +112,8 @@ import type {MessageProcessedLine, ProcessedLine} from "./transcript";
 import type {RecentKind} from "./recents-history";
 import type {RoutineKind, RoutineScheduleFilter, RoutineSort, RoutineStatus, RoutineStatusFilter} from "./routines";
 import type {TranscriptMode} from "./transcript-mode";
-import type {
+import type
+{
 	ExitWorktreeActionSchema,
 	RemoteTriggerActionSchema,
 	ReportFindingsVerdictSchema,
@@ -133,10 +139,21 @@ import type {
 
 type PromptSource = NonNullable<z.infer<typeof UserRecordSchema>["promptSource"]>;
 type ClaudeHook = NonNullable<z.infer<typeof ClaudeSettingsSchema>["hooks"]>[string][number]["hooks"][number];
-type ClaudeCommandHook = Extract<ClaudeHook, {type: "command"}>;
-type HookEventOf<Name extends HookEvent["hook_event_name"]> = Extract<HookEvent, {hook_event_name: Name}>;
+type ClaudeCommandHook = Extract<
+	ClaudeHook,
+	{
+		type: "command";
+	}
+>;
+type HookEventOf<Name extends HookEvent["hook_event_name"]> = Extract<
+	HookEvent,
+	{
+		hook_event_name: Name;
+	}
+>;
 
-export const promptSourceLabels = {
+export const promptSourceLabels =
+{
 	typed: "Typed",
 	system: "System",
 	sdk: "SDK",
@@ -144,7 +161,8 @@ export const promptSourceLabels = {
 	suggestion_accepted: "Suggestion accepted",
 } satisfies Record<PromptSource, string>;
 
-export const turnOriginLabels = {
+export const turnOriginLabels =
+{
 	human: "Human",
 	peer: "From another session",
 	task_notification: "Task notification",
@@ -154,21 +172,25 @@ export const turnOriginLabels = {
 } satisfies Record<z.infer<typeof TurnOriginSchema>, string>;
 
 /** Not consumed yet — `queueOrigin` is only validated. */
-const queueOriginKindLabels = {
+const queueOriginKindLabels =
+{
 	"task-notification": "Task notification",
 } satisfies Record<z.infer<typeof QueueOriginKindSchema>, string>;
 
-export const wakeupSourceLabels = {
+export const wakeupSourceLabels =
+{
 	loop_wakeup: "Loop wakeup",
 	schedule_wakeup: "Schedule wakeup",
 } satisfies Record<z.infer<typeof WakeupSourceSchema>, string>;
 
 /** Labels not consumed yet — the transcript reads `queueOrigin` only for an ended Artifact watch. */
-const queueOriginSourceLabels = {
+const queueOriginSourceLabels =
+{
 	"artifact-watch-lifecycle": "Artifact watch",
 } satisfies Record<z.infer<typeof QueueOriginSourceSchema>, string>;
 
-const historySuppressionCauseLabels = {
+const historySuppressionCauseLabels =
+{
 	chokepoint_veto: "Vetoed for another account",
 	migration: "Migration",
 	restored_owner_mismatch: "Restored for another account",
@@ -176,17 +198,20 @@ const historySuppressionCauseLabels = {
 } satisfies Record<z.infer<typeof HistorySuppressionCauseSchema>, string>;
 
 /** A `history-suppression` cause's label, or undefined for a cause newer than the schema. */
-export function historySuppressionCauseLabel(cause: string): string | undefined {
+export function historySuppressionCauseLabel(cause: string): string | undefined
+{
 	const labels: Readonly<Record<string, string>> = historySuppressionCauseLabels;
 	return Object.hasOwn(labels, cause) ? labels[cause] : undefined;
 }
 
-export const permissionDecisionDecisionLabels = {
+export const permissionDecisionDecisionLabels =
+{
 	accept: "Accepted",
 	reject: "Rejected",
 } satisfies Record<z.infer<typeof PermissionDecisionDecisionSchema>, string>;
 
-export const permissionDecisionSourceLabels = {
+export const permissionDecisionSourceLabels =
+{
 	classifier: "Classifier",
 	config: "Configuration",
 	hook: "Hook",
@@ -197,27 +222,31 @@ export const permissionDecisionSourceLabels = {
 } satisfies Record<z.infer<typeof PermissionDecisionSourceSchema>, string>;
 
 /** `model_refusal_fallback` system record `direction`; only `retry` raises the refusal band (src/lib/refusal-fallback.ts). */
-const modelRefusalFallbackDirectionLabels = {
+const modelRefusalFallbackDirectionLabels =
+{
 	retry: "Retried on the fallback model",
 	revert: "Reverted to the original model",
 	sticky: "Stayed on the fallback model",
 } satisfies Record<z.infer<typeof ModelRefusalFallbackDirectionSchema>, string>;
 
 /** `model_refusal_fallback` system record `scope`; validated only, not rendered yet. */
-const modelRefusalFallbackScopeLabels = {
+const modelRefusalFallbackScopeLabels =
+{
 	session: "Whole session",
 	local: "This turn",
 } satisfies Record<z.infer<typeof ModelRefusalFallbackScopeSchema>, string>;
 
 /** Settings `askUserQuestionTimeout` options (src/lib/settings-fields.ts). */
-export const askUserQuestionTimeoutLabels = {
+export const askUserQuestionTimeoutLabels =
+{
 	"60s": "60 seconds",
 	"5m": "5 minutes",
 	"10m": "10 minutes",
 	never: "Never",
 } satisfies Record<z.infer<typeof AskUserQuestionTimeoutSchema>, string>;
 
-export const permissionDecisionReasonTypeLabels = {
+export const permissionDecisionReasonTypeLabels =
+{
 	asyncAgent: "No approval prompt",
 	classifier: "Classifier",
 	hook: "Hook",
@@ -230,7 +259,8 @@ export const permissionDecisionReasonTypeLabels = {
 	workingDir: "Working directories",
 } satisfies Record<z.infer<typeof PermissionDecisionReasonTypeSchema>, string>;
 
-export const permissionDecisionRuleSourceLabels = {
+export const permissionDecisionRuleSourceLabels =
+{
 	userSettings: "User settings",
 	projectSettings: "Project settings",
 	localSettings: "Local settings",
@@ -244,12 +274,14 @@ export const permissionDecisionRuleSourceLabels = {
 	hostCredential: "Host credential",
 } satisfies Record<z.infer<typeof PermissionDecisionRuleSourceSchema>, string>;
 
-const permissionDecisionGrantScopeLabels = {
+const permissionDecisionGrantScopeLabels =
+{
 	once: "This call only",
 	session: "Rest of session",
 } satisfies Record<z.infer<typeof PermissionDecisionGrantScopeSchema>, string>;
 
-export const permissionDecisionCircuitBreakerLabels = {
+export const permissionDecisionCircuitBreakerLabels =
+{
 	dangerousRemoval: "Dangerous removal",
 	backgroundOperator: "Background operator",
 	suspiciousWindowsPath: "Suspicious Windows path",
@@ -261,7 +293,8 @@ export const permissionDecisionCircuitBreakerLabels = {
 	unfinishedCheck: "Unfinished check",
 } satisfies Record<z.infer<typeof PermissionDecisionCircuitBreakerSchema>, string>;
 
-const permissionDecisionClassifierCategories = {
+const permissionDecisionClassifierCategories =
+{
 	account_standing_rule_changes: true,
 	auto_mode_bypass: true,
 	blind_apply: true,
@@ -345,13 +378,15 @@ const permissionDecisionClassifierCategories = {
 } satisfies Record<z.infer<typeof PermissionDecisionClassifierCategorySchema>, true>;
 
 /** `workflowProgress` entry kinds in `workflows/<runId>.json` (src/lib/workflow-progress.ts). */
-const workflowProgressEntryTypes = {
+const workflowProgressEntryTypes =
+{
 	workflow_phase: "Phase header",
 	workflow_agent: "Agent",
 } satisfies Record<z.infer<typeof WorkflowProgressEntrySchema>["type"], string>;
 
 /** How src/lib/workflow-progress.ts `agentState` reads each workflow agent `state`. */
-const workflowAgentEntryStates = {
+const workflowAgentEntryStates =
+{
 	start: "Pending, or running once startedAt is set",
 	progress: "Running, or stalled after 90s without progress",
 	done: "Done",
@@ -359,7 +394,8 @@ const workflowAgentEntryStates = {
 } satisfies Record<z.infer<typeof WorkflowAgentEntryStateSchema>, string>;
 
 /** How src/lib/workflow-runs.ts reads each journal event while a run is live. */
-const workflowJournalEventTypes = {
+const workflowJournalEventTypes =
+{
 	launched: "Ignored: a launch marker",
 	started: "Agent running",
 	result: "Agent done",
@@ -367,54 +403,63 @@ const workflowJournalEventTypes = {
 } satisfies Record<z.infer<typeof WorkflowJournalEventSchema>["type"], string>;
 
 /** How src/lib/workflow-runs.ts maps a run file's `status` (via notificationStatus). */
-const workflowRunFileStatuses = {
+const workflowRunFileStatuses =
+{
 	completed: "Completed",
 	failed: "Failed",
 	killed: "Stopped",
 } satisfies Record<z.infer<typeof WorkflowRunFileStatusSchema>, string>;
 
-const workflowLaunchStatuses = {
+const workflowLaunchStatuses =
+{
 	async_launched: "Local run (readWorkflowRuns)",
 	remote_launched: "Remote CCR run (keyed by taskId)",
 } satisfies Record<z.infer<typeof WorkflowLaunchStatusSchema>, string>;
 
-const workflowLaunchTaskTypes = {
+const workflowLaunchTaskTypes =
+{
 	local_workflow: "Local run",
 	remote_agent: "Remote run",
 } satisfies Record<z.infer<typeof WorkflowLaunchTaskTypeSchema>, string>;
 
-const taskStatusLabels = {
+const taskStatusLabels =
+{
 	pending: "Pending",
 	in_progress: "In progress",
 	completed: "Completed",
 } satisfies Record<z.infer<typeof TaskStatusSchema>, string>;
 
 /** `status` in the CLI's live session registry, `~/.claude/sessions/<pid>.json`. */
-const sessionRegistryStatusLabels = {
+const sessionRegistryStatusLabels =
+{
 	idle: "Idle",
 	busy: "Working",
 	waiting: "Needs input",
 	shell: "Running a shell command",
 } satisfies Record<z.infer<typeof SessionRegistryStatusSchema>, string>;
 
-const writeToolUseResultTypeLabels = {
+const writeToolUseResultTypeLabels =
+{
 	create: "Created",
 	update: "Updated",
 } satisfies Record<z.infer<typeof WriteToolUseResultTypeSchema>, string>;
 
 /** Bash row verbs for `toolUseResult.gitOperation`, used by `toolLabel`. */
-export const gitCommitKindLabels = {
+export const gitCommitKindLabels =
+{
 	committed: "Committed",
 	amended: "Amended commit",
 	"cherry-picked": "Cherry-picked",
 } satisfies Record<z.infer<typeof GitCommitKindSchema>, string>;
 
-export const gitBranchActionLabels = {
+export const gitBranchActionLabels =
+{
 	rebased: "Rebased onto",
 	merged: "Merged",
 } satisfies Record<z.infer<typeof GitBranchActionSchema>, string>;
 
-export const gitPrActionLabels = {
+export const gitPrActionLabels =
+{
 	created: "Created PR",
 	edited: "Edited PR",
 	commented: "Commented on PR",
@@ -424,12 +469,14 @@ export const gitPrActionLabels = {
 } satisfies Record<z.infer<typeof GitPrActionSchema>, string>;
 
 /** A live CLI's Remote Control bridge state (src/lib/session-environment.ts), registered so each state has a name. */
-const remoteControlStateLabels = {
+const remoteControlStateLabels =
+{
 	on: "Remote Control on",
 	off: "Remote Control off",
 } satisfies Record<RemoteControlState, string>;
 
-const sessionSummaryStateLabels = {
+const sessionSummaryStateLabels =
+{
 	idle: "Idle",
 	working: "Working",
 	waiting: "Waiting",
@@ -438,7 +485,8 @@ const sessionSummaryStateLabels = {
 } satisfies Record<z.infer<typeof SessionSummaryStateSchema>, string>;
 
 /** Upstream claude.ai/code sidebar group names. */
-const sessionBucketLabels = {
+const sessionBucketLabels =
+{
 	blocked: "Needs input",
 	review: "Ready for review",
 	working: "Working",
@@ -446,13 +494,15 @@ const sessionBucketLabels = {
 } satisfies Record<z.infer<typeof SessionBucketSchema>, string>;
 
 /** The code sidebar's Status sections: upstream labels the done bucket "Idle" there (`wP = {...uG, done: kx.idle}`). */
-export const sidebarStateGroupLabels = {
+export const sidebarStateGroupLabels =
+{
 	...sessionBucketLabels,
 	done: "Idle",
 } as const satisfies Record<z.infer<typeof SessionBucketSchema>, string>;
 
 /** Filter & group menu options (src/lib/session-groups.ts); local "Project" is upstream "Folder". */
-export const sessionGroupByLabels = {
+export const sessionGroupByLabels =
+{
 	date: "Date",
 	project: "Folder",
 	state: "Status",
@@ -460,14 +510,16 @@ export const sessionGroupByLabels = {
 } satisfies Record<z.infer<typeof SessionGroupBySchema>, string>;
 
 /** Sidebar section kinds (src/lib/sidebar-sections.ts); the Sessions section is headed "Recents". */
-const sidebarSectionKindLabels = {
+const sidebarSectionKindLabels =
+{
 	pinned: "Pinned",
 	manual: "Section",
 	sessions: "Recents",
 } satisfies Record<z.infer<typeof SidebarSectionKindSchema>, string>;
 
 /** A sidebar section's own Group by (upstream `yX` without the cloud-only Environment). */
-export const sectionGroupByLabels = {
+export const sectionGroupByLabels =
+{
 	none: "None",
 	folder: "Folder",
 	status: "Status",
@@ -475,7 +527,8 @@ export const sectionGroupByLabels = {
 } satisfies Record<z.infer<typeof SectionGroupBySchema>, string>;
 
 /** Section header icon choices (src/lib/group-appearance.ts). */
-export const groupIconLabels = {
+export const groupIconLabels =
+{
 	folder: "Folder",
 	star: "Star",
 	heart: "Heart",
@@ -491,7 +544,8 @@ export const groupIconLabels = {
 } satisfies Record<z.infer<typeof GroupIconSchema>, string>;
 
 /** Section header color choices (src/lib/group-appearance.ts). */
-export const groupColorLabels = {
+export const groupColorLabels =
+{
 	gray: "Gray",
 	red: "Red",
 	orange: "Orange",
@@ -503,24 +557,28 @@ export const groupColorLabels = {
 	pink: "Pink",
 } satisfies Record<z.infer<typeof GroupColorSchema>, string>;
 
-export const sessionSortByLabels = {
+export const sessionSortByLabels =
+{
 	name: "Name",
 	created: "Date created",
 	activity: "Last updated",
 } satisfies Record<z.infer<typeof SessionSortBySchema>, string>;
 
-export const sessionSortDirectionLabels = {
+export const sessionSortDirectionLabels =
+{
 	desc: "Descending",
 	asc: "Ascending",
 } satisfies Record<z.infer<typeof SessionSortDirectionSchema>, string>;
 
-export const sessionStatusFilterLabels = {
+export const sessionStatusFilterLabels =
+{
 	active: "Active",
 	archived: "Archived",
 	all: "All",
 } satisfies Record<z.infer<typeof SessionStatusFilterSchema>, string>;
 
-export const sessionActivityDaysLabels = {
+export const sessionActivityDaysLabels =
+{
 	"1d": "1d",
 	"3d": "3d",
 	"7d": "7d",
@@ -528,7 +586,8 @@ export const sessionActivityDaysLabels = {
 	all: "All",
 } satisfies Record<z.infer<typeof SessionActivityDaysSchema>, string>;
 
-const sessionBucketReasonLabels = {
+const sessionBucketReasonLabels =
+{
 	ended: "Session ended",
 	"pending-input": "Waiting on input",
 	waiting: "Waiting on a question",
@@ -547,7 +606,8 @@ const sessionBucketReasonLabels = {
 } satisfies Record<z.infer<typeof SessionBucketReasonSchema>, string>;
 
 /** Default accessible labels of the upstream row icons (src/components/status-dot.tsx). */
-export const sessionStateKindLabels = {
+export const sessionStateKindLabels =
+{
 	awaiting: "Awaiting input",
 	running: "Running",
 	ready: "Ready",
@@ -556,7 +616,8 @@ export const sessionStateKindLabels = {
 } satisfies Record<z.infer<typeof SessionStateKindSchema>, string>;
 
 /** Normalized session PR states (src/lib/pr-status.ts); upstream glyph label suffixes. */
-const pullRequestStateLabels = {
+const pullRequestStateLabels =
+{
 	open: "Open",
 	draft: "Draft",
 	merged: "Merged",
@@ -564,25 +625,29 @@ const pullRequestStateLabels = {
 } satisfies Record<z.infer<typeof PullRequestStateSchema>, string>;
 
 /** `thinkingDisplay` on assistant JSONL records; `omitted` draws the Thinking hidden placeholder (transcript.ts `thinkingOmitted`). */
-const thinkingDisplayChoices = {
+const thinkingDisplayChoices =
+{
 	updates: true,
 	omitted: true,
 	summarized: true,
 } satisfies Record<z.infer<typeof ThinkingDisplaySchema>, true>;
 
 /** Not consumed yet — `streamCutCause` on assistant error records is only validated. */
-const streamCutCauseChoices = {
+const streamCutCauseChoices =
+{
 	stream_suspended: true,
 } satisfies Record<z.infer<typeof StreamCutCauseSchema>, true>;
 
 /** Not consumed yet — `promptCacheRequested` (the prompt-cache TTL asked for) on assistant records is only validated. */
-const promptCacheTtlChoices = {
+const promptCacheTtlChoices =
+{
 	"5m": true,
 	"1h": true,
 } satisfies Record<z.infer<typeof PromptCacheTtlSchema>, true>;
 
 /** Not consumed yet — `/context` twin category kinds on `system/local_command` records. */
-const contextUsageCategoryKindChoices = {
+const contextUsageCategoryKindChoices =
+{
 	used: true,
 	free: true,
 	buffer: true,
@@ -590,20 +655,23 @@ const contextUsageCategoryKindChoices = {
 } satisfies Record<z.infer<typeof ContextUsageCategoryKindSchema>, true>;
 
 /** Not consumed yet — `/context` twin `over_limit.kind` on `system/local_command` records. */
-const contextUsageOverLimitKindChoices = {
+const contextUsageOverLimitKindChoices =
+{
 	hard_limit: true,
 	compaction_window: true,
 } satisfies Record<z.infer<typeof ContextUsageOverLimitKindSchema>, true>;
 
 /** Not consumed — upstream web ignores `promptSubmitEnding`; the transcript reads the record's content instead. */
-const promptSubmitEndingKindChoices = {
+const promptSubmitEndingKindChoices =
+{
 	stopped_by_hook: true,
 	blocked_by_hook: true,
 	no_verdict: true,
 } satisfies Record<z.infer<typeof PromptSubmitEndingSchema>["ending"]["kind"], true>;
 
 /** Not consumed yet — how the ccb-context-mirror breakdown's window was settled (`autocompactSource`). */
-const contextWindowSourceChoices = {
+const contextWindowSourceChoices =
+{
 	env: true,
 	settings: true,
 	clientdata: true,
@@ -614,20 +682,23 @@ const contextWindowSourceChoices = {
 } satisfies Record<z.infer<typeof ContextWindowSourceSchema>, true>;
 
 /** `renderedRole` on attachment JSONL records. */
-const renderedRoleChoices = {
+const renderedRoleChoices =
+{
 	system: true,
 	user: true,
 } satisfies Record<z.infer<typeof RenderedRoleSchema>, true>;
 
 /** `gh pr list|view --json state` values. */
-const ghPrStateChoices = {
+const ghPrStateChoices =
+{
 	OPEN: true,
 	CLOSED: true,
 	MERGED: true,
 } satisfies Record<z.infer<typeof GhPrStateSchema>, true>;
 
 /** `state` in ~/.claude/gh-pr-status-cache.json. */
-const ghPrStatusCacheStateChoices = {
+const ghPrStatusCacheStateChoices =
+{
 	OPEN: true,
 	DRAFT: true,
 	MERGED: true,
@@ -635,14 +706,16 @@ const ghPrStatusCacheStateChoices = {
 } satisfies Record<z.infer<typeof GhPrStatusCacheStateSchema>, true>;
 
 /** `review` in ~/.claude/gh-pr-status-cache.json. */
-const ghPrReviewDecisionChoices = {
+const ghPrReviewDecisionChoices =
+{
 	APPROVED: true,
 	CHANGES_REQUESTED: true,
 	REVIEW_REQUIRED: true,
 } satisfies Record<z.infer<typeof GhPrReviewDecisionSchema>, true>;
 
 /** `conclusion` of a CheckRun in the `gh api graphql` PR details reply. */
-const ghCheckRunConclusionChoices = {
+const ghCheckRunConclusionChoices =
+{
 	ACTION_REQUIRED: true,
 	CANCELLED: true,
 	FAILURE: true,
@@ -655,7 +728,8 @@ const ghCheckRunConclusionChoices = {
 } satisfies Record<z.infer<typeof GhCheckRunConclusionSchema>, true>;
 
 /** `state` of a StatusContext in the `gh api graphql` PR details reply. */
-const ghStatusContextStateChoices = {
+const ghStatusContextStateChoices =
+{
 	ERROR: true,
 	EXPECTED: true,
 	FAILURE: true,
@@ -663,7 +737,8 @@ const ghStatusContextStateChoices = {
 	SUCCESS: true,
 } satisfies Record<z.infer<typeof GhStatusContextStateSchema>, true>;
 
-export const unifiedSearchTypeLabels = {
+export const unifiedSearchTypeLabels =
+{
 	all: "All",
 	sessions: "Sessions",
 	plans: "Plans",
@@ -671,20 +746,23 @@ export const unifiedSearchTypeLabels = {
 	files: "Files",
 } satisfies Record<z.infer<typeof UnifiedSearchTypeSchema>, string>;
 
-export const unifiedSearchDateLabels = {
+export const unifiedSearchDateLabels =
+{
 	today: "Today",
 	week: "Past week",
 	month: "Past month",
 } satisfies Record<z.infer<typeof UnifiedSearchDateSchema>, string>;
 
-const unifiedSearchKindLabels = {
+const unifiedSearchKindLabels =
+{
 	session: "Session",
 	plan: "Plan",
 	memory: "Memory",
 	file: "File",
 } satisfies Record<z.infer<typeof UnifiedSearchKindSchema>, string>;
 
-export const paletteTypeLabels = {
+export const paletteTypeLabels =
+{
 	all: "All",
 	artifacts: "Artifacts",
 	// Upstream's code-context label for its code-session tab
@@ -696,7 +774,8 @@ export const paletteTypeLabels = {
 	files: "Files",
 } satisfies Record<PaletteType, string>;
 
-export const paletteFilterLabels = {
+export const paletteFilterLabels =
+{
 	date: "Date",
 	repo: "Repo",
 	project: "Project",
@@ -705,7 +784,8 @@ export const paletteFilterLabels = {
 	actions: "Actions",
 } satisfies Record<PaletteFilter, string>;
 
-const sessionStartSourceLabels = {
+const sessionStartSourceLabels =
+{
 	startup: "Startup",
 	resume: "Resume",
 	clear: "Clear",
@@ -713,7 +793,8 @@ const sessionStartSourceLabels = {
 	fork: "Fork",
 } satisfies Record<HookEventOf<"SessionStart">["source"], string>;
 
-const userPromptSourceLabels = {
+const userPromptSourceLabels =
+{
 	user: "User",
 	sdk: "SDK",
 	system: "System",
@@ -721,12 +802,14 @@ const userPromptSourceLabels = {
 	schedule_wakeup: "Schedule wakeup",
 } satisfies Record<NonNullable<HookEventOf<"UserPromptSubmit">["source"]>, string>;
 
-const compactTriggerLabels = {
+const compactTriggerLabels =
+{
 	manual: "Manual",
 	auto: "Auto",
 } satisfies Record<NonNullable<HookEventOf<"PreCompact">["trigger"]>, string>;
 
-const instructionsLoadReasonLabels = {
+const instructionsLoadReasonLabels =
+{
 	session_start: "Session start",
 	nested_traversal: "Nested traversal",
 	path_glob_match: "Path glob match",
@@ -735,7 +818,8 @@ const instructionsLoadReasonLabels = {
 } satisfies Record<NonNullable<HookEventOf<"InstructionsLoaded">["load_reason"]>, string>;
 
 /** Why the CLI re-announced instructions / session context, phrased to follow "Instructions re-read". */
-const contextRefreshReasonLabels = {
+const contextRefreshReasonLabels =
+{
 	session_start: "at session start",
 	compaction: "after the conversation was compacted",
 	policy_refresh: "after a policy refresh",
@@ -753,38 +837,66 @@ const contextRefreshReasonLabels = {
 } satisfies Record<z.infer<typeof ContextRefreshReasonSchema>, string>;
 
 /** Exhaustive handler: HookNoticeRow (src/components/hook-notice-row.tsx) draws a warning icon only for `warning`. */
-const hookNoticeLevelChoices = {
+const hookNoticeLevelChoices =
+{
 	notice: true,
 	warning: true,
-} satisfies Record<Extract<ProcessedLine, {type: "hook-notice"}>["notices"][number]["level"], true>;
+} satisfies Record<
+	Extract<
+		ProcessedLine,
+		{
+			type: "hook-notice";
+		}
+	>["notices"][number]["level"],
+	true
+>;
 
 /** Exhaustive handler: hookNoticeText (src/lib/hook-notice-copy.ts) words each structured notice kind. */
-const hookNoticeKindChoices = {
+const hookNoticeKindChoices =
+{
 	away_summary: true,
 	agents_killed: true,
 	memory_saved: true,
 	prompt_stopped: true,
 } satisfies Record<
-	Exclude<Extract<ProcessedLine, {type: "hook-notice"}>["notices"][number]["message"], string>["notice"],
+	Exclude<
+		Extract<
+			ProcessedLine,
+			{
+				type: "hook-notice";
+			}
+		>["notices"][number]["message"],
+		string
+	>["notice"],
 	true
 >;
 
 /** How the transcript's context-refresh meta line opens, by the attachment it announces. */
-export const contextRefreshSubjectLabels = {
+export const contextRefreshSubjectLabels =
+{
 	instructions: "Instructions re-read",
 	session_context: "Session context refreshed",
 } as const satisfies Record<
-	NonNullable<Extract<ProcessedLine, {type: "attachment"}>["contextRefresh"]>["subject"],
+	NonNullable<
+		Extract<
+			ProcessedLine,
+			{
+				type: "attachment";
+			}
+		>["contextRefresh"]
+	>["subject"],
 	string
 >;
 
 /** A context refresh reason's phrase, or undefined for a reason newer than the schema. */
-export function contextRefreshReasonLabel(reason: string): string | undefined {
+export function contextRefreshReasonLabel(reason: string): string | undefined
+{
 	const labels: Readonly<Record<string, string>> = contextRefreshReasonLabels;
 	return Object.hasOwn(labels, reason) ? labels[reason] : undefined;
 }
 
-const configChangeSourceLabels = {
+const configChangeSourceLabels =
+{
 	user_settings: "User settings",
 	project_settings: "Project settings",
 	local_settings: "Local settings",
@@ -792,7 +904,8 @@ const configChangeSourceLabels = {
 	skills: "Skills",
 } satisfies Record<HookEventOf<"ConfigChange">["config_source"], string>;
 
-const modelSwitchSourceLabels = {
+const modelSwitchSourceLabels =
+{
 	command: "Command",
 	picker: "Model picker",
 	sdk: "SDK",
@@ -800,23 +913,27 @@ const modelSwitchSourceLabels = {
 	resume: "Resume",
 } satisfies Record<HookEventOf<"PostModelSwitch">["source"], string>;
 
-const promptCacheTtlLabels = {
+const promptCacheTtlLabels =
+{
 	"5m": "5 minutes",
 	"1h": "1 hour",
 } satisfies Record<HookEventOf<"PostModelSwitch">["cache_ttl"], string>;
 
-const modelSwitchPricingLabels = {
+const modelSwitchPricingLabels =
+{
 	configured: "Configured rates",
 	catalog: "List price",
 	default: "Default rate",
 } satisfies Record<HookEventOf<"PostModelSwitch">["pricing"], string>;
 
-const elicitationModeLabels = {
+const elicitationModeLabels =
+{
 	form: "Form",
 	url: "URL",
 } satisfies Record<NonNullable<HookEventOf<"Elicitation">["mode"]>, string>;
 
-const elicitationActionLabels = {
+const elicitationActionLabels =
+{
 	accept: "Accepted",
 	decline: "Declined",
 	cancel: "Cancelled",
@@ -833,7 +950,8 @@ export type NotificationTypePresentation = "permission" | "elicitation" | "needs
  * The CLI raises `elicitation_dialog` / `elicitation_url_dialog` while an MCP
  * elicitation dialog waits on the user.
  */
-export const notificationTypePresentations = {
+export const notificationTypePresentations =
+{
 	permission_prompt: "permission",
 	idle_prompt: "needs_input",
 	auth_success: "info",
@@ -860,16 +978,19 @@ const notificationTypePresentationsByType: ReadonlyMap<string, NotificationTypeP
 );
 
 /** The presentation for a `notification_type`; unknown and future types read as info. */
-export function notificationTypePresentation(notificationType: string): NotificationTypePresentation {
+export function notificationTypePresentation(notificationType: string): NotificationTypePresentation
+{
 	return notificationTypePresentationsByType.get(notificationType) ?? "info";
 }
 
-const sourceLanguageLabels = {
+const sourceLanguageLabels =
+{
 	markdown: "Markdown",
 	json: "JSON",
 } satisfies Record<NonNullable<z.infer<typeof SourceFileResponse>>["language"], string>;
 
-const pluginFileTypeLabels = {
+const pluginFileTypeLabels =
+{
 	agent: "Agent",
 	command: "Command",
 	skill: "Skill",
@@ -877,48 +998,56 @@ const pluginFileTypeLabels = {
 	example: "Example",
 } satisfies Record<z.infer<typeof PluginFileSchema>["type"], string>;
 
-const pluginVersionKindLabels = {
+const pluginVersionKindLabels =
+{
 	commit: "Commit",
 	release: "Release",
 } satisfies Record<z.infer<typeof PluginListResponse>[number]["versionKind"], string>;
 
-const skillSourceLabels = {
+const skillSourceLabels =
+{
 	personal: "Personal",
 	project: "Project",
 	plugin: "Plugin",
 } satisfies Record<z.infer<typeof SkillSourceSchema>, string>;
 
-const mcpScopeLabels = {
+const mcpScopeLabels =
+{
 	user: "User",
 	local: "Local",
 	project: "Project",
 	plugin: "Plugin",
 } satisfies Record<z.infer<typeof McpScopeSchema>, string>;
 
-const permissionBehaviorLabels = {
+const permissionBehaviorLabels =
+{
 	allow: "Always allow",
 	ask: "Needs approval",
 	deny: "Blocked",
 } satisfies Record<z.infer<typeof PermissionBehaviorSchema>, string>;
 
-const claudeHookVariants = {
+const claudeHookVariants =
+{
 	command: true,
 	http: true,
 } satisfies Record<ClaudeHook["type"], true>;
 
-const claudeHookShellLabels = {
+const claudeHookShellLabels =
+{
 	bash: "Bash",
 	powershell: "PowerShell",
 } satisfies Record<NonNullable<ClaudeCommandHook["shell"]>, string>;
 
-const skillOverrideLabels = {
+const skillOverrideLabels =
+{
 	on: "On",
 	"name-only": "Name only",
 	"user-invocable-only": "User-invocable only",
 	off: "Off",
 } satisfies Record<z.infer<typeof SkillOverrideValueSchema>, string>;
 
-const systemSubtypeLabels = {
+const systemSubtypeLabels =
+{
 	compact_boundary: "Compaction",
 	stop_hook_summary: "Stop hooks",
 	api_error: "API error",
@@ -927,21 +1056,32 @@ const systemSubtypeLabels = {
 	local_command: "Local command",
 	bridge_status: "Remote Control status",
 	model_refusal_no_fallback: "Request refused",
-} satisfies Record<Extract<ProcessedLine, {type: "system"}>["subtype"], string>;
+} satisfies Record<
+	Extract<
+		ProcessedLine,
+		{
+			type: "system";
+		}
+	>["subtype"],
+	string
+>;
 
-const messageLineTypeLabels = {
+const messageLineTypeLabels =
+{
 	user: "User",
 	assistant: "Assistant",
 } satisfies Record<MessageProcessedLine["type"], string>;
 
 /** Handled in src/lib/turn-metadata.ts (max_tokens) and src/components/session-chat.tsx (refusal). */
-const messageLineStopReasonLabels = {
+const messageLineStopReasonLabels =
+{
 	max_tokens: "Truncated at max tokens",
 	refusal: "Message flagged",
 } satisfies Record<NonNullable<MessageProcessedLine["stopReason"]>, string>;
 
 /** Exhaustive handler: switch in src/components/attachment-banner.tsx. */
-const attachmentVariants = {
+const attachmentVariants =
+{
 	plan_mode: true,
 	plan_mode_exit: true,
 	plan_mode_reentry: true,
@@ -1010,7 +1150,8 @@ const attachmentVariants = {
 } satisfies Record<z.infer<typeof AttachmentPayloadSchema>["type"], true>;
 
 /** Consumed selectively (text extraction etc.) — no single exhaustive handler. */
-const contentBlockVariants = {
+const contentBlockVariants =
+{
 	text: true,
 	tool_use: true,
 	thinking: true,
@@ -1020,7 +1161,8 @@ const contentBlockVariants = {
 } satisfies Record<z.infer<typeof ContentBlockSchema>["type"], true>;
 
 /** Consumed selectively in src/lib/transcript.ts and src/lib/db/indexer.ts. */
-const jsonlRecordVariants = {
+const jsonlRecordVariants =
+{
 	user: true,
 	assistant: true,
 	"custom-title": true,
@@ -1058,7 +1200,8 @@ const jsonlRecordVariants = {
 } satisfies Record<z.infer<typeof JsonlRecordSchema>["type"], true>;
 
 /** Not consumed yet — the API request log is only validated. */
-const apiRequestBlobContentBlockVariants = {
+const apiRequestBlobContentBlockVariants =
+{
 	text: true,
 	thinking: true,
 	tool_use: true,
@@ -1069,19 +1212,22 @@ const apiRequestBlobContentBlockVariants = {
 } satisfies Record<z.infer<typeof ApiRequestBlobContentBlockSchema>["type"], true>;
 
 /** Not consumed yet — the API request log is only validated. */
-const toolAdditionToolVariants = {
+const toolAdditionToolVariants =
+{
 	tool_definition: true,
 	tool_reference: true,
 } satisfies Record<z.infer<typeof ToolAdditionToolSchema>["type"], true>;
 
-const apiRequestBlobRoleLabels = {
+const apiRequestBlobRoleLabels =
+{
 	user: "User",
 	assistant: "Assistant",
 	system: "System",
 } satisfies Record<z.infer<typeof ApiRequestBlobRoleSchema>, string>;
 
 /** Exhaustive handler: renderSessionMessage switch in src/components/session-chat.tsx. */
-const renderedLineVariants = {
+const renderedLineVariants =
+{
 	user: true,
 	assistant: true,
 	"agent-name": true,
@@ -1100,7 +1246,8 @@ const renderedLineVariants = {
 } satisfies Record<ProcessedLine["type"], true>;
 
 /** Exhaustive handler: switch in src/lib/hook-dispatcher.ts. */
-const hookEventNames = {
+const hookEventNames =
+{
 	SessionStart: true,
 	SessionEnd: true,
 	Stop: true,
@@ -1130,7 +1277,8 @@ const hookEventNames = {
 } satisfies Record<HookEvent["hook_event_name"], true>;
 
 /** Per-tool strict input/response variants; see buildToolUseUnion in hook-events.ts. */
-const toolNames = {
+const toolNames =
+{
 	Bash: true,
 	Read: true,
 	Edit: true,
@@ -1177,7 +1325,8 @@ const toolNames = {
 } satisfies Record<z.infer<typeof ToolUseUnion>["tool_name"], true>;
 
 /** Side-pane tile kinds of the session pane host (src/lib/pane-layout.ts); labels match upstream pane titles. */
-const paneKindLabels = {
+const paneKindLabels =
+{
 	files: "Files",
 	links: "Links",
 	changes: "Changes",
@@ -1190,24 +1339,28 @@ const paneKindLabels = {
 	"session-details": "Session details",
 } satisfies Record<PaneKind, string>;
 
-const tileIdLabels = {
+const tileIdLabels =
+{
 	chat: "Chat",
 	...paneKindLabels,
 } satisfies Record<TileId, string>;
 
-const paneStackDirectionLabels = {
+const paneStackDirectionLabels =
+{
 	row: "Row",
 	column: "Column",
 } satisfies Record<Direction, string>;
 
 /** Consumed by the pane-layout reducers in src/lib/pane-layout.ts. */
-const paneLayoutNodeVariants = {
+const paneLayoutNodeVariants =
+{
 	tile: true,
 	stack: true,
 } satisfies Record<LayoutNode["kind"], true>;
 
 /** Changes pane file kinds (src/lib/changed-file-kind.ts); non-source labels are upstream's section headings. */
-export const changedFileKindLabels = {
+export const changedFileKindLabels =
+{
 	source: "Source files",
 	test: "Test files",
 	build: "Build files",
@@ -1215,7 +1368,8 @@ export const changedFileKindLabels = {
 } satisfies Record<z.infer<typeof ChangedFileKindSchema>, string>;
 
 /** Settings dialog nav labels, in nav order. */
-export const settingsTabLabels = {
+export const settingsTabLabels =
+{
 	general: "General",
 	notifications: "Notifications",
 	usage: "Usage",
@@ -1229,18 +1383,21 @@ export const settingsTabLabels = {
 } satisfies Record<SettingsTab, string>;
 
 /** Customize sections in the Settings dialog nav, after Claude Code, as on claude.ai/code. */
-export const customizeSectionLabels = {
+export const customizeSectionLabels =
+{
 	skills: "Skills",
 	connectors: "Connectors",
 	plugins: "Plugins",
 } satisfies Record<CustomizeSection, string>;
 
-const customizeViewLabels = {
+const customizeViewLabels =
+{
 	yours: "Yours",
 	discover: "Discover",
 } satisfies Record<CustomizeView, string>;
 
-const customizeDetailTabLabels = {
+const customizeDetailTabLabels =
+{
 	contents: "Contents",
 	skills: "Skills",
 	connectors: "Connectors",
@@ -1250,7 +1407,8 @@ const customizeDetailTabLabels = {
 } satisfies Record<CustomizeDetailTab, string>;
 
 /** Settings ▸ Code appearance light themes (src/lib/code-themes.ts), named as on claude.ai/code. */
-export const codeThemeLightLabels = {
+export const codeThemeLightLabels =
+{
 	"claude-light": "Claude Light",
 	"github-light": "GitHub Light",
 	"pierre-light": "Pierre Light",
@@ -1265,7 +1423,8 @@ export const codeThemeLightLabels = {
 } satisfies Record<CodeThemeLight, string>;
 
 /** Settings ▸ Code appearance dark themes (src/lib/code-themes.ts), named as on claude.ai/code. */
-export const codeThemeDarkLabels = {
+export const codeThemeDarkLabels =
+{
 	"claude-dark": "Claude Dark",
 	"github-dark": "GitHub Dark",
 	"github-dark-dimmed": "GitHub Dark Dimmed",
@@ -1288,33 +1447,38 @@ export const codeThemeDarkLabels = {
 } satisfies Record<CodeThemeDark, string>;
 
 /** Settings ▸ Code appearance ▸ Terminal colors (src/lib/terminal-theme.ts). */
-export const terminalAppearanceLabels = {
+export const terminalAppearanceLabels =
+{
 	"code-theme": "Code theme",
 	ghostty: "Ghostty config",
 } satisfies Record<TerminalAppearance, string>;
 
 /** Settings ▸ Claude Code ▸ Appearance ▸ Interface font (src/lib/appearance.ts); "Sans" since local ships Inter, not Anthropic Sans. */
-export const interfaceFontLabels = {
+export const interfaceFontLabels =
+{
 	sans: "Sans",
 	system: "System",
 	dyslexic: "OpenDyslexic",
 } satisfies Record<InterfaceFont, string>;
 
 /** Settings ▸ General ▸ Appearance ▸ Response font (src/lib/appearance.ts). */
-const responseFontLabels = {
+const responseFontLabels =
+{
 	sans: "Sans",
 	serif: "Serif",
 } satisfies Record<ResponseFont, string>;
 
 /** Terminal host picker in Settings › Application (src/lib/terminal-host-setting.ts). */
-export const terminalHostSettingLabels = {
+export const terminalHostSettingLabels =
+{
 	auto: "Auto",
 	herdr: "herdr",
 	tmux: "tmux",
 } satisfies Record<TerminalHostSetting, string>;
 
 /** Session actions menu labels (src/lib/session-menu-items.ts), copied from claude.ai/code. */
-export const sessionMenuItemLabels = {
+export const sessionMenuItemLabels =
+{
 	"open-in": "Open in",
 	"open-live-terminal": "Live terminal",
 	"open-terminal": "Terminal",
@@ -1344,7 +1508,8 @@ export const sessionMenuItemLabels = {
 } satisfies Record<z.infer<typeof SessionMenuItemIdSchema>, string>;
 
 /** Sidebar sections toggleable in the Edit sidebar dialog, in nav order. */
-const navSectionLabels = {
+const navSectionLabels =
+{
 	artifacts: "Artifacts",
 	routines: "Routines",
 	jobs: "Background jobs",
@@ -1361,38 +1526,44 @@ const navSectionLabels = {
 } satisfies Record<NavSection, string>;
 
 /** Where a Routines page row runs (src/lib/routines.ts). */
-export const routineKindLabels = {
+export const routineKindLabels =
+{
 	cron: "Scheduled prompt",
 	wakeup: "Wakeup",
 	cloud: "Cloud",
 } satisfies Record<RoutineKind, string>;
 
-const routineStatusLabels = {
+const routineStatusLabels =
+{
 	active: "Active",
 	completed: "Completed",
 } satisfies Record<RoutineStatus, string>;
 
 /** Routines page Filter ▸ Schedule, as upstream. */
-export const routineScheduleFilterLabels = {
+export const routineScheduleFilterLabels =
+{
 	all: "All",
 	recurring: "Recurring",
 	"one-time": "One-time",
 } satisfies Record<RoutineScheduleFilter, string>;
 
 /** Routines page Filter ▸ Status (local routines are only active or completed). */
-export const routineStatusFilterLabels = {
+export const routineStatusFilterLabels =
+{
 	all: "All",
 	active: "Active",
 	completed: "Completed",
 } satisfies Record<RoutineStatusFilter, string>;
 
-export const routineSortLabels = {
+export const routineSortLabels =
+{
 	"next-run": "Next run",
 	name: "Name",
 } satisfies Record<RoutineSort, string>;
 
 /** Background job state pill (`~/.claude/jobs/<short>/state.json`, src/lib/jobs.ts). */
-export const jobStateLabels = {
+export const jobStateLabels =
+{
 	working: "Working",
 	running: "Running",
 	blocked: "Blocked",
@@ -1401,28 +1572,33 @@ export const jobStateLabels = {
 	stopped: "Stopped",
 } satisfies Record<JobState, string>;
 
-const jobTempoLabels = {
+const jobTempoLabels =
+{
 	idle: "Idle",
 	blocked: "Blocked",
 } satisfies Record<z.infer<typeof JobTempoSchema>, string>;
 
-const jobNameSourceLabels = {
+const jobNameSourceLabels =
+{
 	auto: "Automatic",
 	user: "User",
 } satisfies Record<z.infer<typeof JobNameSourceSchema>, string>;
 
 /** What a background job produced: a published artifact frame or a pull request. */
-export const jobChildKindLabels = {
+export const jobChildKindLabels =
+{
 	frame: "Artifact",
 	pr: "Pull request",
 } satisfies Record<z.infer<typeof JobChildKindSchema>, string>;
 
-const jobFanKindLabels = {
+const jobFanKindLabels =
+{
 	agent: "Agent",
 } satisfies Record<z.infer<typeof JobFanKindSchema>, string>;
 
 /** Page kinds recorded in the per-tab ⌃Q recents history (src/lib/recents-history.ts). */
-const recentKindLabels = {
+const recentKindLabels =
+{
 	session: "Session",
 	subagents: "Subagents",
 	plan: "Plan",
@@ -1432,14 +1608,16 @@ const recentKindLabels = {
 } satisfies Record<RecentKind, string>;
 
 /** Per-session transcript views (src/lib/transcript-mode.ts), cycled by ⌃O. */
-export const transcriptModeLabels = {
+export const transcriptModeLabels =
+{
 	normal: "Normal",
 	thinking: "Thinking",
 	verbose: "Verbose",
 } satisfies Record<TranscriptMode, string>;
 
 /** Composer mode menu labels (src/lib/launch-options.ts), in upstream wording. */
-export const launchPermissionModeLabels = {
+export const launchPermissionModeLabels =
+{
 	auto: "Auto",
 	default: "Manual",
 	acceptEdits: "Accept edits",
@@ -1448,7 +1626,8 @@ export const launchPermissionModeLabels = {
 } satisfies Record<LaunchPermissionMode, string>;
 
 /** Composer effort slider stops (src/lib/launch-options.ts). */
-export const effortLevelLabels = {
+export const effortLevelLabels =
+{
 	low: "Low",
 	medium: "Medium",
 	high: "High",
@@ -1457,7 +1636,8 @@ export const effortLevelLabels = {
 } satisfies Record<EffortLevel, string>;
 
 /** The effort slider's tick tooltips, which shorten Extra-high. */
-export const effortLevelShortLabels = {
+export const effortLevelShortLabels =
+{
 	low: "Low",
 	medium: "Medium",
 	high: "High",
@@ -1466,7 +1646,8 @@ export const effortLevelShortLabels = {
 } satisfies Record<EffortLevel, string>;
 
 /** Chin picks applied to a live herdr pane (src/lib/herdr/live-option.ts). */
-const liveOptionChangeVariants = {
+const liveOptionChangeVariants =
+{
 	model: true,
 	effort: true,
 	fast: true,
@@ -1475,7 +1656,8 @@ const liveOptionChangeVariants = {
 } satisfies Record<LiveOptionChange["kind"], true>;
 
 /** Composer context chip kinds attached with ⇧⌘L (src/lib/context-attach.ts). */
-const contextAttachmentKindLabels = {
+const contextAttachmentKindLabels =
+{
 	file: "File",
 	selection: "Selection",
 	terminal: "Terminal output",
@@ -1486,7 +1668,8 @@ const contextAttachmentKindLabels = {
 } satisfies Record<z.infer<typeof ContextAttachmentKindSchema>, string>;
 
 /** Sidebar row drag release outcomes (src/lib/pinned-sessions.ts). */
-const pinDropOutcomeLabels = {
+const pinDropOutcomeLabels =
+{
 	pin: "Pin",
 	reorder: "Reorder",
 	unpin: "Unpin",
@@ -1494,7 +1677,8 @@ const pinDropOutcomeLabels = {
 } satisfies Record<PinDropOutcome, string>;
 
 /** `Artifact` tool `action` (src/lib/artifact-schemas.ts); omitted means publish. */
-const artifactActionLabels = {
+const artifactActionLabels =
+{
 	publish: "Publish",
 	read: "Read",
 	list: "List",
@@ -1506,14 +1690,16 @@ const artifactActionLabels = {
 	read_db: "Read database",
 } satisfies Record<z.infer<typeof ArtifactActionSchema>, string>;
 
-const artifactIntentLabels = {
+const artifactIntentLabels =
+{
 	document: "Document",
 	slides: "Slides",
 	design: "Design",
 	other: "Other",
 } satisfies Record<z.infer<typeof ArtifactIntentSchema>, string>;
 
-const artifactListScopeLabels = {
+const artifactListScopeLabels =
+{
 	mine: "Mine",
 	shared: "Shared",
 	all: "All",
@@ -1522,17 +1708,20 @@ const artifactListScopeLabels = {
 	assets: "Assets",
 } satisfies Record<z.infer<typeof ArtifactListScopeSchema>, string>;
 
-const artifactAutoOpenLabels = {
+const artifactAutoOpenLabels =
+{
 	at_create: "At create",
 	after_first_write: "After first write",
 } satisfies Record<z.infer<typeof ArtifactAutoOpenSchema>, string>;
 
-const artifactDbOpLabels = {
+const artifactDbOpLabels =
+{
 	get: "Get",
 	list: "List",
 } satisfies Record<z.infer<typeof ArtifactDbOpSchema>, string>;
 
-const artifactLiveSubscriptionLabels = {
+const artifactLiveSubscriptionLabels =
+{
 	arming: "Arming",
 	connected: "Connected",
 	publish_context: "Publish context",
@@ -1540,7 +1729,8 @@ const artifactLiveSubscriptionLabels = {
 } satisfies Record<z.infer<typeof ArtifactLiveSubscriptionSchema>, string>;
 
 /** `Artifact` `capabilities.db.rules[]` read/write minimum (src/lib/artifact-schemas.ts). */
-const artifactAccessLevelLabels = {
+const artifactAccessLevelLabels =
+{
 	view: "View",
 	interact: "Interact",
 	admin: "Admin",
@@ -1548,45 +1738,53 @@ const artifactAccessLevelLabels = {
 } satisfies Record<z.infer<typeof ArtifactAccessLevelSchema>, string>;
 
 /** `Artifact` `capabilities.user.scopes[]` (src/lib/artifact-schemas.ts). */
-const artifactUserScopeLabels = {
+const artifactUserScopeLabels =
+{
 	profile: "Profile",
 	email: "Email",
 } satisfies Record<z.infer<typeof ArtifactUserScopeSchema>, string>;
 
 /** Classifier context `artifacts.by_slug{}.share.mode` (src/lib/schemas.ts). */
-export const classifierArtifactShareModeLabels = {
+export const classifierArtifactShareModeLabels =
+{
 	owner: "Owner",
 } satisfies Record<z.infer<typeof ClassifierArtifactShareModeSchema>, string>;
 
 /** Classifier context `artifacts.by_slug{}.share.role` (src/lib/schemas.ts). */
-export const classifierArtifactShareRoleLabels = {
+export const classifierArtifactShareRoleLabels =
+{
 	owner: "Owner",
 } satisfies Record<z.infer<typeof ClassifierArtifactShareRoleSchema>, string>;
 
 /** Classifier context `artifacts.by_slug{}.published_env` and `artifacts.last_publish.env` (src/lib/schemas.ts). */
-export const classifierArtifactPublishEnvLabels = {
+export const classifierArtifactPublishEnvLabels =
+{
 	prod: "Production",
 } satisfies Record<z.infer<typeof ClassifierArtifactPublishEnvSchema>, string>;
 
 /** Classifier context `artifacts.by_slug{}.attested` (src/lib/schemas.ts). */
-export const classifierArtifactAttestationLabels = {
+export const classifierArtifactAttestationLabels =
+{
 	first_party_type: "First-party type",
 } satisfies Record<z.infer<typeof ClassifierArtifactAttestationSchema>, string>;
 
 /** WebSearch `mode` (src/lib/tool-input-schemas.ts). */
-const webSearchModeLabels = {
+const webSearchModeLabels =
+{
 	standard: "Standard",
 	extended: "Extended",
 } satisfies Record<z.infer<typeof WebSearchModeSchema>, string>;
 
 /** `ReportFindings` finding `verdict` (src/lib/tool-input-schemas.ts); labels match upstream. */
-export const reportFindingsVerdictLabels = {
+export const reportFindingsVerdictLabels =
+{
 	CONFIRMED: "Confirmed",
 	PLAUSIBLE: "Plausible",
 } satisfies Record<z.infer<typeof ReportFindingsVerdictSchema>, string>;
 
 /** `RemoteTrigger` `action` (src/lib/tool-input-schemas.ts); row verbs match upstream's routine verbs. */
-export const remoteTriggerActionLabels = {
+export const remoteTriggerActionLabels =
+{
 	list: "Listed routines",
 	get: "Read routine",
 	create: "Created routine",
@@ -1595,7 +1793,8 @@ export const remoteTriggerActionLabels = {
 } satisfies Record<z.infer<typeof RemoteTriggerActionSchema>, string>;
 
 /** Upstream's failed verb for an errored `RemoteTrigger` per `action`. */
-export const remoteTriggerActionFailedVerbs = {
+export const remoteTriggerActionFailedVerbs =
+{
 	list: "Failed to list routines",
 	get: "Failed to read routine",
 	create: "Failed to create routine",
@@ -1604,51 +1803,59 @@ export const remoteTriggerActionFailedVerbs = {
 } satisfies Record<z.infer<typeof RemoteTriggerActionSchema>, string>;
 
 /** `ExitWorktree` `action` (src/lib/tool-input-schemas.ts); upstream reads "Left the worktree" for both. */
-export const exitWorktreeActionLabels = {
+export const exitWorktreeActionLabels =
+{
 	keep: "Left the worktree",
 	remove: "Left the worktree",
 } satisfies Record<z.infer<typeof ExitWorktreeActionSchema>, string>;
 
 /** Upstream's failed verb for an errored `ExitWorktree` per `action`. */
-export const exitWorktreeActionFailedVerbs = {
+export const exitWorktreeActionFailedVerbs =
+{
 	keep: "Failed to leave the worktree",
 	remove: "Failed to remove the worktree",
 } satisfies Record<z.infer<typeof ExitWorktreeActionSchema>, string>;
 
 /** Agent `run_in_background` / Monitor `persistent` sent as strings (src/lib/tool-input-schemas.ts). */
-const stringifiedBooleanLabels = {
+const stringifiedBooleanLabels =
+{
 	true: "Yes",
 	false: "No",
 } satisfies Record<z.infer<typeof StringifiedBooleanSchema>, string>;
 
 /** SendMessage `recipient_kind` (src/lib/tool-input-schemas.ts). */
-const sendMessageRecipientKindLabels = {
+const sendMessageRecipientKindLabels =
+{
 	name: "Name",
 	agent: "Agent",
 	session: "Session",
 } satisfies Record<z.infer<typeof SendMessageRecipientKindSchema>, string>;
 
 /** `marketplace_entry.source.source` in plugin-catalog-cache.json (src/lib/customize/discover.ts). */
-const pluginCatalogSourceKindLabels = {
+const pluginCatalogSourceKindLabels =
+{
 	url: "Git repository",
 	"git-subdir": "Git subdirectory",
 } satisfies Record<z.infer<typeof PluginCatalogSourceKindSchema>, string>;
 
 /** Pending approval `toolName` (src/lib/domain-event-payload-schemas.ts). */
-const pendingApprovalToolNameLabels = {
+const pendingApprovalToolNameLabels =
+{
 	ExitPlanMode: "Plan approval",
 	AskUserQuestion: "Question",
 } satisfies Record<z.infer<typeof PendingApprovalToolNameSchema>, string>;
 
 /** How a transcript file ref renders for each `/api/file-refs` status (src/components/use-resolved-file-refs.ts). */
-const fileRefStatusRenders = {
+const fileRefStatusRenders =
+{
 	exists: "File link",
 	missing: "File link, blocked as missing once a click finds no file",
 	outside: "Blocked: outside the session's folders",
 } satisfies Record<z.infer<typeof FileRefStatusSchema>, string>;
 
 /** Exhaustive handler: offersPersistentOption switch in src/lib/permission-suggestions.ts. */
-const permissionUpdateVariants = {
+const permissionUpdateVariants =
+{
 	addRules: true,
 	replaceRules: true,
 	removeRules: true,
@@ -1657,10 +1864,15 @@ const permissionUpdateVariants = {
 	removeDirectories: true,
 } satisfies Record<PermissionUpdate["type"], true>;
 
-const toolNamesWithMcp = {...toolNames, "mcp__*": true} as const;
+const toolNamesWithMcp =
+{
+	...toolNames,
+	"mcp__*": true,
+} as const;
 
 /** Maps walker path keys (see tests/schema-choices.test.ts) to choice maps. */
-export const schemaChoiceRegistry: Record<string, Record<string, string | true>> = {
+export const schemaChoiceRegistry: Record<string, Record<string, string | true>> =
+{
 	TaskStatusSchema: taskStatusLabels,
 	WorkflowProgressEntrySchema: workflowProgressEntryTypes,
 	"WorkflowProgressEntrySchema.<workflow_agent>.state": workflowAgentEntryStates,

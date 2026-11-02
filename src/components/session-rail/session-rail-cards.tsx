@@ -1,7 +1,8 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {useEffect, useRef, useState} from "react";
-import {
+import
+{
 	AppWindow,
 	Bot,
 	Cpu,
@@ -22,7 +23,8 @@ import type {SessionArtifact} from "../../lib/api/artifacts";
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../../lib/api/customize";
 import type {HerdrPaneIndexData} from "../../lib/api/herdr";
 import {sessionDiffQueryOptions} from "../../lib/api/session-diff";
-import {
+import
+{
 	openSessionInFinder,
 	sessionDevServersQueryOptions,
 	sessionOpenInQueryOptions,
@@ -53,7 +55,8 @@ import {RemoteControlRow, RemoteControlRowPending, RemoteControlToggleRow} from 
 import {SessionRail, type RailCard} from "./session-rail";
 
 /** What the session page knows that the rail's cards show. */
-export interface SessionRailInputs {
+export interface SessionRailInputs
+{
 	sessionId: string;
 	homeRoot: string;
 	cwd: string | null;
@@ -81,11 +84,13 @@ export interface SessionRailInputs {
 /** Upstream lists four background tasks before its Show more row. */
 const BACKGROUND_TASKS_SHOWN = 4;
 
-function homeRelative(path: string, homeRoot: string): string {
+function homeRelative(path: string, homeRoot: string): string
+{
 	return path === homeRoot || path.startsWith(`${homeRoot}/`) ? `~${path.slice(homeRoot.length)}` : path;
 }
 
-function Rows({children}: {children: React.ReactNode}) {
+function Rows({children}: {children: React.ReactNode})
+{
 	return (
 		<div data-testid="rail-rows" className="flex flex-col">
 			{children}
@@ -93,12 +98,14 @@ function Rows({children}: {children: React.ReactNode}) {
 	);
 }
 
-function Icon({icon: IconComponent}: {icon: LucideIcon}) {
+function Icon({icon: IconComponent}: {icon: LucideIcon})
+{
 	return <IconComponent aria-hidden />;
 }
 
 /** A branch's page in its GitHub repo, each path segment encoded so a `user/topic` branch keeps its slashes. */
-function gitHubBranchUrl(repoUrl: string, branch: string): string {
+function gitHubBranchUrl(repoUrl: string, branch: string): string
+{
 	return `${repoUrl}/tree/${branch.split("/").map(encodeURIComponent).join("/")}`;
 }
 
@@ -118,7 +125,8 @@ function EnvironmentMenuRow({
 	hintStatus?: string;
 	title: string;
 	children: React.ReactNode;
-}) {
+})
+{
 	return (
 		<div className="relative flex min-w-0 flex-1">
 			<Menu>
@@ -153,7 +161,8 @@ function EnvironmentMenuRow({
  * Control setting row while its CLI runs (on or off from its registry entry),
  * then its model and herdr pane.
  */
-function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
+function EnvironmentBody({inputs}: {inputs: SessionRailInputs})
+{
 	const toast = useToast();
 	const copy = useCopyToClipboard();
 	const {cwd, gitBranch, model, herdrPane} = inputs;
@@ -162,10 +171,12 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	const openInPending = openInQuery.isPending;
 	const remoteControl = openIn?.remoteControl ?? null;
 	const githubUrl = openIn?.githubUrl ?? null;
-	const environment = sessionEnvironment({
-		terminalHost: herdrPane === null ? null : terminalHostLabel(herdrPane),
-		remoteControl: remoteControl?.state ?? null,
-	});
+	const environment = sessionEnvironment(
+		{
+			terminalHost: herdrPane === null ? null : terminalHostLabel(herdrPane),
+			remoteControl: remoteControl?.state ?? null,
+		},
+	);
 	const streamDrop = useEventStreamStatus();
 	return (
 		<Rows>
@@ -174,8 +185,13 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 					icon={Laptop}
 					label={homeRelative(cwd, inputs.homeRoot)}
 					{...(streamDrop === null
-						? {hint: environment.label, title: cwd}
-						: {
+						?
+							{
+								hint: environment.label,
+								title: cwd,
+							}
+						:
+							{
 								hint: streamDropHint(streamDrop),
 								hintStatus: streamDrop,
 								// The stream's state takes the terminal host's place; the title keeps it.
@@ -183,16 +199,24 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 							})}
 				>
 					<MenuItem
-						onSelect={() => {
-							openSessionInFinder(inputs.sessionId).catch(() => {
-								toast({kind: "error", message: "Couldn’t open the folder in Finder."});
+						onSelect={() =>
+						{
+							openSessionInFinder(inputs.sessionId).catch(() =>
+							{
+								toast(
+									{
+										kind: "error",
+										message: "Couldn’t open the folder in Finder.",
+									},
+								);
 							});
 						}}
 					>
 						Open in Finder
 					</MenuItem>
 					<MenuItem
-						onSelect={() => {
+						onSelect={() =>
+						{
 							copy(cwd);
 						}}
 					>
@@ -212,12 +236,22 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 			{gitBranch !== null && (
 				<EnvironmentMenuRow icon={GitBranch} label={gitBranch} title={gitBranch}>
 					<MenuItem
-						onSelect={() => {
-							void writeClipboardText(gitBranch).then((copied) => {
+						onSelect={() =>
+						{
+							void writeClipboardText(gitBranch).then((copied) =>
+							{
 								toast(
 									copied
-										? {kind: "success", message: "Branch name copied to clipboard."}
-										: {kind: "error", message: "Couldn’t copy the branch name. Try again."},
+										?
+											{
+												kind: "success",
+												message: "Branch name copied to clipboard.",
+											}
+										:
+											{
+												kind: "error",
+												message: "Couldn’t copy the branch name. Try again.",
+											},
 								);
 							});
 						}}
@@ -226,7 +260,8 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 					</MenuItem>
 					{githubUrl !== null && (
 						<MenuItem
-							onSelect={() => {
+							onSelect={() =>
+							{
 								window.open(gitHubBranchUrl(githubUrl, gitBranch), "_blank", "noopener,noreferrer");
 							}}
 						>
@@ -264,7 +299,10 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 			) : (
 				<Link
 					to="/terminals/$sessionId"
-					params={{sessionId: inputs.sessionId}}
+					params={
+					{
+						sessionId: inputs.sessionId,
+					}}
 					className={RAIL_ROW_ACTION_CLASS}
 				>
 					<RailRowContent icon={<Icon icon={SquareTerminal} />} label="herdr" hint={herdrPane.agentStatus} />
@@ -275,7 +313,8 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 }
 
 /** How the Context card's data refreshes: upstream's turn-driven wording, or a `/context`-run breakdown's local one. */
-function refreshHint(working: boolean, source: ContextBreakdown["source"] | null): string {
+function refreshHint(working: boolean, source: ContextBreakdown["source"] | null): string
+{
 	if (source === "context-command") return "Run /context to refresh.";
 	return working ? "Refreshes when this turn ends." : "Send a message to refresh.";
 }
@@ -288,7 +327,8 @@ function ContextUpdated({
 	updatedAt: string;
 	working: boolean;
 	source?: ContextBreakdown["source"] | null;
-}) {
+})
+{
 	return (
 		<div data-rail-context-updated="" className="mt-1 px-2 pb-1 text-[12px]/[15px] text-secondary">
 			Last updated <time dateTime={updatedAt}>{formatUpdatedAgo(updatedAt, Date.now())}</time>.{" "}
@@ -298,9 +338,11 @@ function ContextUpdated({
 }
 
 /** Upstream's rail Context card: "N% used" over the token summary, a 4px meter, and when the usage was last updated. */
-function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSummary[]): RailCard {
+function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSummary[]): RailCard
+{
 	const {usage, working, breakdown} = inputs;
-	if (breakdown !== null) {
+	if (breakdown !== null)
+	{
 		const liveTokens = usage?.contextTokens ?? null;
 		return {
 			id: "context",
@@ -318,7 +360,8 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 			),
 		};
 	}
-	if (usage?.contextTokens == null || usage.contextWindowSize === null) {
+	if (usage?.contextTokens == null || usage.contextWindowSize === null)
+	{
 		return {
 			id: "context",
 			body: <p className="px-2 pb-1 text-[12px]/[15px] text-secondary">Send a message to see context usage.</p>,
@@ -347,14 +390,23 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 					</div>
 					<div
 						className="h-[4px] rounded-full overflow-hidden"
-						style={{backgroundColor: "var(--chart-reference-tint)"}}
+						style={
+						{
+							backgroundColor: "var(--chart-reference-tint)",
+						}}
 						role="progressbar"
 						aria-label="Context window"
 						aria-valuenow={rounded}
 						aria-valuemin={0}
 						aria-valuemax={100}
 					>
-						<div className="h-full bg-accent-100 transition-[width]" style={{width: `${percent}%`}} />
+						<div
+							className="h-full bg-accent-100 transition-[width]"
+							style={
+							{
+								width: `${percent}%`,
+							}}
+						/>
 					</div>
 				</div>
 				{/* Upstream's window-only state: no Last updated footer, which needs a breakdown. */}
@@ -372,13 +424,15 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 }
 
 /** The MCP servers the session's project can use: user-wide ones and its own. */
-function sessionConnectors(servers: readonly McpServerSummary[], cwd: string | null): McpServerSummary[] {
+function sessionConnectors(servers: readonly McpServerSummary[], cwd: string | null): McpServerSummary[]
+{
 	return servers.filter(
 		(server) => server.enabled && (server.projectPath === undefined || server.projectPath === cwd),
 	);
 }
 
-function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null {
+function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null
+{
 	if (servers.length === 0) return null;
 	const reconnect = servers.filter((server) => server.needsAuth).length;
 	return {
@@ -391,14 +445,22 @@ function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null {
 						<Link
 							key={server.id}
 							to="/customize/connectors/id/$serverId"
-							params={{serverId: toConnectorSlug(server.id)}}
+							params={
+							{
+								serverId: toConnectorSlug(server.id),
+							}}
 							title={server.urlOrCommand}
 							className={RAIL_ROW_ACTION_CLASS}
 						>
 							<RailRowContent
 								icon={<Icon icon={Plug} />}
 								label={server.name}
-								{...(server.needsAuth ? {hint: "Reconnect"} : {})}
+								{...(server.needsAuth
+									?
+										{
+											hint: "Reconnect",
+										}
+									: {})}
 							/>
 						</Link>
 					))}
@@ -417,7 +479,8 @@ function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null {
 const SHOW_MORE_CLASS =
 	"flex min-h-8 w-full min-w-0 cursor-pointer items-center rounded px-2 text-start text-[13px]/[19px] text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-interface ShowMoreState {
+interface ShowMoreState
+{
 	expanded: boolean;
 	/** The first row the toggle reveals, which a keyboard press focuses. */
 	firstNewRow: (element: HTMLElement | null) => void;
@@ -425,34 +488,40 @@ interface ShowMoreState {
 }
 
 /** Upstream's in-place Show more: a keyboard expand focuses the first newly shown row. */
-function useShowMore(): ShowMoreState {
+function useShowMore(): ShowMoreState
+{
 	const [expanded, setExpanded] = useState(false);
 	const firstNewRow = useRef<HTMLElement | null>(null);
 	const focusFirstNew = useRef(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!focusFirstNew.current) return;
 		focusFirstNew.current = false;
 		firstNewRow.current?.focus();
 	}, [expanded]);
 	return {
 		expanded,
-		firstNewRow: (element) => {
+		firstNewRow: (element) =>
+		{
 			firstNewRow.current = element;
 		},
-		toggle: (fromKeyboard) => {
+		toggle: (fromKeyboard) =>
+		{
 			focusFirstNew.current = !expanded && fromKeyboard;
 			setExpanded(!expanded);
 		},
 	};
 }
 
-function ShowMoreButton({state}: {state: ShowMoreState}) {
+function ShowMoreButton({state}: {state: ShowMoreState})
+{
 	return (
 		<button
 			type="button"
 			aria-expanded={state.expanded}
 			className={SHOW_MORE_CLASS}
-			onClick={(event) => {
+			onClick={(event) =>
+			{
 				// A keyboard press (detail 0) moves focus to the first row it reveals.
 				state.toggle(event.detail === 0);
 			}}
@@ -467,27 +536,46 @@ function ShowMoreButton({state}: {state: ShowMoreState}) {
 /** Upstream lists five outputs before its Show more row. */
 const OUTPUTS_SHOWN = 5;
 
-type Output = {kind: "artifact"; artifact: SessionArtifact; at: number} | {kind: "file"; file: OutputFile; at: number};
+type Output =
+	|
+	  {
+			kind: "artifact";
+			artifact: SessionArtifact;
+			at: number;
+	  }
+	|
+	  {
+			kind: "file";
+			file: OutputFile;
+			at: number;
+	  };
 
-function basename(path: string): string {
+function basename(path: string): string
+{
 	return path.slice(path.lastIndexOf("/") + 1);
 }
 
-function OutputsBody({outputs, sessionId}: {outputs: readonly Output[]; sessionId: string}) {
+function OutputsBody({outputs, sessionId}: {outputs: readonly Output[]; sessionId: string})
+{
 	const host = usePaneHost();
 	const showMore = useShowMore();
 	const shown = showMore.expanded ? outputs : outputs.slice(0, OUTPUTS_SHOWN);
 	return (
 		<Rows>
-			{shown.map((output, index) => {
+			{shown.map((output, index) =>
+			{
 				const ref = index === OUTPUTS_SHOWN ? showMore.firstNewRow : undefined;
-				if (output.kind === "artifact") {
+				if (output.kind === "artifact")
+				{
 					return (
 						<Link
 							key={`artifact:${output.artifact.id}`}
 							ref={ref}
 							to="/artifact/$id"
-							params={{id: output.artifact.id}}
+							params={
+							{
+								id: output.artifact.id,
+							}}
 							className={RAIL_ROW_ACTION_CLASS}
 						>
 							<RailRowContent icon={<Icon icon={AppWindow} />} label={output.artifact.title} />
@@ -503,8 +591,14 @@ function OutputsBody({outputs, sessionId}: {outputs: readonly Output[]; sessionI
 						title={output.file.path}
 						aria-label={`Open ${name} in Files`}
 						className={RAIL_ROW_ACTION_CLASS}
-						onClick={() => {
-							requestFileOpen(sessionId, {path: output.file.path});
+						onClick={() =>
+						{
+							requestFileOpen(
+								sessionId,
+								{
+									path: output.file.path,
+								},
+							);
 							host.openPane("files");
 						}}
 					>
@@ -518,10 +612,21 @@ function OutputsBody({outputs, sessionId}: {outputs: readonly Output[]; sessionI
 }
 
 /** Upstream's Outputs card; locally, the artifacts the session published or opened and the files it wrote or sent, newest first. */
-function outputsCard(inputs: SessionRailInputs): RailCard | null {
+function outputsCard(inputs: SessionRailInputs): RailCard | null
+{
 	const outputs: Output[] = [
-		...inputs.artifacts.map((artifact) => ({kind: "artifact" as const, artifact, at: artifact.lastEventAt})),
-		...inputs.outputFiles.map((file) => ({kind: "file" as const, file, at: file.at})),
+		...inputs.artifacts.map((artifact) => (
+		{
+			kind: "artifact" as const,
+			artifact,
+			at: artifact.lastEventAt,
+		})),
+		...inputs.outputFiles.map((file) => (
+		{
+			kind: "file" as const,
+			file,
+			at: file.at,
+		})),
 	].toSorted((left, right) => right.at - left.at);
 	if (outputs.length === 0) return null;
 	return {
@@ -531,7 +636,8 @@ function outputsCard(inputs: SessionRailInputs): RailCard | null {
 	};
 }
 
-interface DiffStats {
+interface DiffStats
+{
 	files: number;
 	additions: number;
 	deletions: number;
@@ -546,7 +652,8 @@ function ChangesBody({
 	pr: NonNullable<SessionDetailData["pr"]> | null;
 	prStatus: PrStatus | null;
 	diff: DiffStats | null;
-}) {
+})
+{
 	const host = usePaneHost();
 	const prUrl = prStatus?.url ?? pr?.url;
 	const prNumber = prStatus?.number ?? pr?.number;
@@ -571,7 +678,8 @@ function ChangesBody({
 					className={RAIL_ROW_ACTION_CLASS}
 					title={formatCount(diff.files, "file")}
 					aria-label={`Open changes, ${railCount.format(diff.additions)} added, ${railCount.format(diff.deletions)} removed`}
-					onClick={() => {
+					onClick={() =>
+					{
 						host.openPane("changes");
 					}}
 				>
@@ -595,18 +703,25 @@ function ChangesBody({
 /** Upstream's "Open changes, {added, number} added, {removed, number} removed" (`+7hgPw`) groups its counts. */
 const railCount = new Intl.NumberFormat("en-US");
 
-function changesCard(inputs: SessionRailInputs, diff: DiffStats | null): RailCard | null {
+function changesCard(inputs: SessionRailInputs, diff: DiffStats | null): RailCard | null
+{
 	const hasPr = inputs.pr !== null || inputs.prStatus !== null;
 	const liveDiff = diff !== null && diff.files > 0 ? diff : null;
 	if (!hasPr && liveDiff === null) return null;
 	return {
 		id: "pullRequests",
-		...(hasPr ? {summary: formatCount(1, "pull request")} : {}),
+		...(hasPr
+			?
+				{
+					summary: formatCount(1, "pull request"),
+				}
+			: {}),
 		body: <ChangesBody pr={inputs.pr ?? null} prStatus={inputs.prStatus} diff={liveDiff} />,
 	};
 }
 
-interface DevServer {
+interface DevServer
+{
 	url: string;
 	name?: string | undefined;
 	live: boolean;
@@ -615,12 +730,14 @@ interface DevServer {
 /** Upstream's `zM`: four servers before its Show more row. */
 const SERVERS_SHOWN = 4;
 
-function ServersBody({servers}: {servers: readonly DevServer[]}) {
+function ServersBody({servers}: {servers: readonly DevServer[]})
+{
 	const showMore = useShowMore();
 	const shown = showMore.expanded ? servers : servers.slice(0, SERVERS_SHOWN);
 	return (
 		<div data-testid="rail-rows" tabIndex={-1} className="flex flex-col outline-none">
-			{shown.map((server, index) => {
+			{shown.map((server, index) =>
+			{
 				const hostLabel = server.url.replace(/^https?:\/\//, "");
 				const label = server.name ?? hostLabel;
 				const icon = <Icon icon={Server} />;
@@ -638,7 +755,16 @@ function ServersBody({servers}: {servers: readonly DevServer[]}) {
 						className={`${RAIL_ROW_ACTION_CLASS} flex-1`}
 					>
 						{/* Upstream trails `localhost:<port>` only when the label is something else. */}
-						<RailRowContent icon={icon} label={label} {...(label === hostLabel ? {} : {hint: hostLabel})} />
+						<RailRowContent
+							icon={icon}
+							label={label}
+							{...(label === hostLabel
+								? {}
+								:
+									{
+										hint: hostLabel,
+									})}
+						/>
 					</a>
 				);
 			})}
@@ -648,7 +774,8 @@ function ServersBody({servers}: {servers: readonly DevServer[]}) {
 }
 
 /** Upstream's Servers card: "{count} running", always shown, then each server, launch.json's first. */
-function serversCard(servers: readonly DevServer[]): RailCard | null {
+function serversCard(servers: readonly DevServer[]): RailCard | null
+{
 	if (servers.length === 0) return null;
 	return {
 		id: "servers",
@@ -657,7 +784,8 @@ function serversCard(servers: readonly DevServer[]): RailCard | null {
 	};
 }
 
-const TASK_ICONS: Record<BackgroundTask["kind"], LucideIcon> = {
+const TASK_ICONS: Record<BackgroundTask["kind"], LucideIcon> =
+{
 	bash: SquareTerminal,
 	agent: Bot,
 	monitor: Gauge,
@@ -666,7 +794,8 @@ const TASK_ICONS: Record<BackgroundTask["kind"], LucideIcon> = {
 };
 
 /** Upstream's running-task clock: whole minutes, hours past the first. */
-function formatTaskElapsed(ms: number): string {
+function formatTaskElapsed(ms: number): string
+{
 	const minutes = Math.max(0, Math.floor(ms / 60_000));
 	return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
@@ -674,15 +803,19 @@ function formatTaskElapsed(ms: number): string {
 const MINUTE_MS = 60_000;
 
 /** The current time, re-read each minute while `ticking`. */
-function useMinuteClock(ticking: boolean): number {
+function useMinuteClock(ticking: boolean): number
+{
 	const [now, setNow] = useState(() => Date.now());
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!ticking) return undefined;
 		setNow(Date.now());
-		const timer = setInterval(() => {
+		const timer = setInterval(() =>
+		{
 			setNow(Date.now());
 		}, MINUTE_MS);
-		return () => {
+		return () =>
+		{
 			clearInterval(timer);
 		};
 	}, [ticking]);
@@ -694,13 +827,15 @@ function useMinuteClock(ticking: boolean): number {
  * time, an in-place Show more, then a finished count; each row opens the
  * Background tasks pane.
  */
-function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
+function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups})
+{
 	const host = usePaneHost();
 	const opener = useBackgroundTasksOpener();
 	const showMore = useShowMore();
 	const now = useMinuteClock(tasks.running.some((task) => task.startedAt !== null));
 	// Upstream's rail rows call openTask: an agent opens its transcript, a task is focused, "N finished" expands Finished.
-	const open = (focus: BackgroundTasksFocus) => {
+	const open = (focus: BackgroundTasksFocus) =>
+	{
 		if (opener === null) host.openPane("background-tasks");
 		else opener.open(focus);
 	};
@@ -715,8 +850,19 @@ function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
 					title={task.command ?? task.description}
 					aria-label={`Open ${task.description} in Background tasks`}
 					className={RAIL_ROW_ACTION_CLASS}
-					onClick={() => {
-						open(task.kind === "agent" ? {agentId: task.id} : {taskId: task.id});
+					onClick={() =>
+					{
+						open(
+							task.kind === "agent"
+								?
+									{
+										agentId: task.id,
+									}
+								:
+									{
+										taskId: task.id,
+									},
+						);
 					}}
 				>
 					<RailRowContent
@@ -724,7 +870,10 @@ function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
 						label={task.description}
 						{...(task.startedAt === null
 							? {}
-							: {hint: formatTaskElapsed(now - Date.parse(task.startedAt))})}
+							:
+								{
+									hint: formatTaskElapsed(now - Date.parse(task.startedAt)),
+								})}
 					/>
 				</button>
 			))}
@@ -733,8 +882,13 @@ function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
 				<button
 					type="button"
 					className={RAIL_ROW_ACTION_CLASS}
-					onClick={() => {
-						open({finished: true});
+					onClick={() =>
+					{
+						open(
+							{
+								finished: true,
+							},
+						);
 					}}
 				>
 					<RailRowContent icon={<Icon icon={Bot} />} label={`${tasks.finished.length} finished`} />
@@ -745,7 +899,8 @@ function BackgroundTasksBody({tasks}: {tasks: BackgroundTaskGroups}) {
 }
 
 /** Upstream's card leaves once nothing runs, however many tasks finished. */
-function backgroundTasksCard(tasks: BackgroundTaskGroups): RailCard | null {
+function backgroundTasksCard(tasks: BackgroundTaskGroups): RailCard | null
+{
 	if (tasks.running.length === 0) return null;
 	return {
 		id: "backgroundTasks",
@@ -759,18 +914,26 @@ function backgroundTasksCard(tasks: BackgroundTaskGroups): RailCard | null {
  * default order. Connectors, Servers and the working-copy diff are fetched only
  * while the rail is docked. Upstream's Goal card has no local source.
  */
-export function SessionRailCards({inputs}: {inputs: SessionRailInputs}) {
+export function SessionRailCards({inputs}: {inputs: SessionRailInputs})
+{
 	const mcpServers = useQuery(customizeMcpServersQueryOptions).data;
 	const devServers = useQuery(sessionDevServersQueryOptions(inputs.sessionId, inputs.cwd !== null)).data?.servers;
-	const diff = useQuery({
-		...sessionDiffQueryOptions(inputs.sessionId, "uncommitted"),
-		enabled: inputs.cwd !== null,
-	}).data?.stats;
+	const diff = useQuery(
+		{
+			...sessionDiffQueryOptions(inputs.sessionId, "uncommitted"),
+			enabled: inputs.cwd !== null,
+		},
+	).data?.stats;
 	const connectors = sessionConnectors(mcpServers ?? [], inputs.cwd);
 	const cards = [
 		{
 			id: "environment",
-			...(inputs.gitBranch === null ? {} : {summary: inputs.gitBranch}),
+			...(inputs.gitBranch === null
+				? {}
+				:
+					{
+						summary: inputs.gitBranch,
+					}),
 			body: <EnvironmentBody inputs={inputs} />,
 		} satisfies RailCard,
 		contextCard(inputs, connectors),

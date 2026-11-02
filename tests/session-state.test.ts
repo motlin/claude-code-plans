@@ -2,7 +2,8 @@ import {describe, expect, it} from "vite-plus/test";
 
 import {KNOWN_HOOK_EVENTS} from "../src/lib/hook-events";
 import type {HookEvent} from "../src/lib/hook-events";
-import {
+import
+{
 	STATE_RANK,
 	compareByStableCreation,
 	compareByUrgency,
@@ -22,13 +23,15 @@ import {isAwaitingPermission} from "../src/lib/permission-card";
 const ACTIVITY_STATES = ["idle", "working", "waiting", "unknown"] satisfies ActivityState[];
 const DISPLAY_STATES = [...ACTIVITY_STATES, "review"] satisfies DisplayState[];
 
-const BASE_EVENT = {
+const BASE_EVENT =
+{
 	session_id: "session-test-100",
 	transcript_path: "/tmp/test/session-test-100.jsonl",
 	cwd: "/tmp/test/project",
 } as const;
 
-interface StateCase {
+interface StateCase
+{
 	name: string;
 	event: HookEvent;
 	expected: ActivityState | null;
@@ -37,42 +40,74 @@ interface StateCase {
 const STATE_CASES = [
 	{
 		name: "SessionStart carries no state",
-		event: {...BASE_EVENT, hook_event_name: "SessionStart", source: "startup"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "SessionStart",
+			source: "startup",
+		},
 		expected: null,
 	},
 	{
 		name: "SessionEnd is idle",
-		event: {...BASE_EVENT, hook_event_name: "SessionEnd"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "SessionEnd",
+		},
 		expected: "idle",
 	},
 	{
 		name: "Stop is idle",
-		event: {...BASE_EVENT, hook_event_name: "Stop"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "Stop",
+		},
 		expected: "idle",
 	},
 	{
 		name: "SubagentStart carries no state",
-		event: {...BASE_EVENT, hook_event_name: "SubagentStart"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "SubagentStart",
+		},
 		expected: null,
 	},
 	{
 		name: "SubagentStop carries no state",
-		event: {...BASE_EVENT, hook_event_name: "SubagentStop"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "SubagentStop",
+		},
 		expected: null,
 	},
 	{
 		name: "UserPromptSubmit is working",
-		event: {...BASE_EVENT, hook_event_name: "UserPromptSubmit", prompt: "Test prompt"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "UserPromptSubmit",
+			prompt: "Test prompt",
+		},
 		expected: "working",
 	},
 	{
 		name: "Notification carries no state",
-		event: {...BASE_EVENT, hook_event_name: "Notification", message: "Test notification"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "Notification",
+			message: "Test notification",
+		},
 		expected: null,
 	},
 	{
 		name: "Notification for a CLI elicitation form dialog is waiting",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "Notification",
 			message: "An MCP server needs your input",
@@ -82,7 +117,8 @@ const STATE_CASES = [
 	},
 	{
 		name: "Notification for a CLI elicitation URL dialog is waiting",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "Notification",
 			message: "An MCP server needs your input",
@@ -92,123 +128,198 @@ const STATE_CASES = [
 	},
 	{
 		name: "Notification for an idle prompt carries no state",
-		event: {...BASE_EVENT, hook_event_name: "Notification", message: "Waiting", notification_type: "idle_prompt"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "Notification",
+			message: "Waiting",
+			notification_type: "idle_prompt",
+		},
 		expected: null,
 	},
 	{
 		name: "PermissionRequest carries no state",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "PermissionRequest",
 			tool_name: "Bash",
-			tool_input: {command: "rm -rf dist"},
+			tool_input:
+			{
+				command: "rm -rf dist",
+			},
 		},
 		expected: null,
 	},
 	{
 		name: "manual PreCompact is working",
-		event: {...BASE_EVENT, hook_event_name: "PreCompact", trigger: "manual"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "PreCompact",
+			trigger: "manual",
+		},
 		expected: "working",
 	},
 	{
 		name: "automatic PreCompact carries no state",
-		event: {...BASE_EVENT, hook_event_name: "PreCompact", trigger: "auto"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "PreCompact",
+			trigger: "auto",
+		},
 		expected: null,
 	},
 	{
 		name: "PreCompact without trigger carries no state",
-		event: {...BASE_EVENT, hook_event_name: "PreCompact"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "PreCompact",
+		},
 		expected: null,
 	},
 	{
 		name: "manual PostCompact is idle",
-		event: {...BASE_EVENT, hook_event_name: "PostCompact", reason: "manual"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "PostCompact",
+			reason: "manual",
+		},
 		expected: "idle",
 	},
 	{
 		name: "automatic PostCompact carries no state",
-		event: {...BASE_EVENT, hook_event_name: "PostCompact", reason: "auto"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "PostCompact",
+			reason: "auto",
+		},
 		expected: null,
 	},
 	{
 		name: "PostCompact without reason carries no state",
-		event: {...BASE_EVENT, hook_event_name: "PostCompact"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "PostCompact",
+		},
 		expected: null,
 	},
 	{
 		name: "AskUserQuestion PreToolUse is waiting",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "PreToolUse",
 			tool_name: "AskUserQuestion",
-			tool_input: {question: "Test question?"},
+			tool_input:
+			{
+				question: "Test question?",
+			},
 		},
 		expected: "waiting",
 	},
 	{
 		name: "ExitPlanMode PreToolUse is waiting",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "PreToolUse",
 			tool_name: "ExitPlanMode",
-			tool_input: {plan: "Test plan"},
+			tool_input:
+			{
+				plan: "Test plan",
+			},
 		},
 		expected: "waiting",
 	},
 	{
 		name: "other PreToolUse is working",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "PreToolUse",
 			tool_name: "Bash",
-			tool_input: {command: "true"},
+			tool_input:
+			{
+				command: "true",
+			},
 		},
 		expected: "working",
 	},
 	{
 		name: "PostToolUse is working",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "PostToolUse",
 			tool_name: "Bash",
-			tool_input: {command: "true"},
+			tool_input:
+			{
+				command: "true",
+			},
 		},
 		expected: "working",
 	},
 	{
 		name: "PostToolUseFailure is working",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "PostToolUseFailure",
 			tool_name: "Bash",
-			tool_input: {command: "false"},
+			tool_input:
+			{
+				command: "false",
+			},
 			error: "Test failure",
 		},
 		expected: "working",
 	},
 	{
 		name: "TaskCreated carries no state",
-		event: {...BASE_EVENT, hook_event_name: "TaskCreated"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "TaskCreated",
+		},
 		expected: null,
 	},
 	{
 		name: "TaskCompleted carries no state",
-		event: {...BASE_EVENT, hook_event_name: "TaskCompleted"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "TaskCompleted",
+		},
 		expected: null,
 	},
 	{
 		name: "WorktreeCreate carries no state",
-		event: {...BASE_EVENT, hook_event_name: "WorktreeCreate"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "WorktreeCreate",
+		},
 		expected: null,
 	},
 	{
 		name: "WorktreeRemove carries no state",
-		event: {...BASE_EVENT, hook_event_name: "WorktreeRemove"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "WorktreeRemove",
+		},
 		expected: null,
 	},
 	{
 		name: "CwdChanged carries no state",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "CwdChanged",
 			old_cwd: "/tmp/test/old-project",
@@ -218,7 +329,8 @@ const STATE_CASES = [
 	},
 	{
 		name: "InstructionsLoaded carries no state",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "InstructionsLoaded",
 			file_path: "/tmp/test/project/CLAUDE.md",
@@ -227,7 +339,8 @@ const STATE_CASES = [
 	},
 	{
 		name: "ConfigChange carries no state",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "ConfigChange",
 			config_source: "project_settings",
@@ -236,28 +349,43 @@ const STATE_CASES = [
 	},
 	{
 		name: "MessageDisplay is working",
-		event: {...BASE_EVENT, hook_event_name: "MessageDisplay", message: "Test response"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "MessageDisplay",
+			message: "Test response",
+		},
 		expected: "working",
 	},
 	{
 		name: "StopFailure ends the turn idle",
-		event: {...BASE_EVENT, hook_event_name: "StopFailure", error: "rate_limit"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "StopFailure",
+			error: "rate_limit",
+		},
 		expected: "idle",
 	},
 	{
 		name: "PermissionDenied carries no state",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "PermissionDenied",
 			tool_name: "Bash",
-			tool_input: {command: "rm -rf /tmp/test/build"},
+			tool_input:
+			{
+				command: "rm -rf /tmp/test/build",
+			},
 			reason: "[Irreversible Local Destruction]",
 		},
 		expected: null,
 	},
 	{
 		name: "PostModelSwitch carries no state",
-		event: {
+		event:
+		{
 			...BASE_EVENT,
 			hook_event_name: "PostModelSwitch",
 			from_model: "claude-sonnet-5-5",
@@ -274,54 +402,115 @@ const STATE_CASES = [
 	},
 	{
 		name: "Elicitation is waiting",
-		event: {...BASE_EVENT, hook_event_name: "Elicitation", mcp_server_name: "server-test", message: "Sign in"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "Elicitation",
+			mcp_server_name: "server-test",
+			message: "Sign in",
+		},
 		expected: "waiting",
 	},
 	{
 		name: "ElicitationResult is working",
-		event: {...BASE_EVENT, hook_event_name: "ElicitationResult", mcp_server_name: "server-test", action: "accept"},
+		event:
+		{
+			...BASE_EVENT,
+			hook_event_name: "ElicitationResult",
+			mcp_server_name: "server-test",
+			action: "accept",
+		},
 		expected: "working",
 	},
 ] satisfies StateCase[];
 
-describe("stateForEvent", () => {
-	it("exports the activity and display state contracts", () => {
-		expect({activity: ACTIVITY_STATES, display: DISPLAY_STATES}).toStrictEqual({
-			activity: ["idle", "working", "waiting", "unknown"],
-			display: ["idle", "working", "waiting", "unknown", "review"],
-		});
+describe("stateForEvent", () =>
+{
+	it("exports the activity and display state contracts", () =>
+	{
+		expect(
+			{
+				activity: ACTIVITY_STATES,
+				display: DISPLAY_STATES,
+			},
+		).toStrictEqual(
+			{
+				activity: ["idle", "working", "waiting", "unknown"],
+				display: ["idle", "working", "waiting", "unknown", "review"],
+			},
+		);
 	});
 
-	it("covers every known hook event", () => {
+	it("covers every known hook event", () =>
+	{
 		expect(new Set(STATE_CASES.map(({event}) => event.hook_event_name))).toStrictEqual(new Set(KNOWN_HOOK_EVENTS));
 	});
 
-	it.each(STATE_CASES)("maps $name", ({event, expected}) => {
+	it.each(STATE_CASES)("maps $name", ({event, expected}) =>
+	{
 		expect(stateForEvent(event)).toBe(expected);
 	});
 });
 
-describe("compareByUrgency", () => {
-	it("defines the complete urgency rank", () => {
-		expect(STATE_RANK).toStrictEqual({
-			waiting: 0,
-			review: 1,
-			working: 2,
-			idle: 3,
-			unknown: 4,
-		});
+describe("compareByUrgency", () =>
+{
+	it("defines the complete urgency rank", () =>
+	{
+		expect(STATE_RANK).toStrictEqual(
+			{
+				waiting: 0,
+				review: 1,
+				working: 2,
+				idle: 3,
+				unknown: 4,
+			},
+		);
 	});
 
-	it("sorts by state rank before recency and by newest activity within a state", () => {
+	it("sorts by state rank before recency and by newest activity within a state", () =>
+	{
 		const sessions = [
-			{id: "unknown-newest", state: "unknown", lastModified: 9_000},
-			{id: "waiting-older", state: "waiting", lastModified: 1_000},
-			{id: "working-newer", state: "working", lastModified: 8_000},
-			{id: "review", state: "review", lastModified: 4_000},
-			{id: "idle", state: "idle", lastModified: 5_000},
-			{id: "waiting-newer", state: "waiting", lastModified: 3_000},
-			{id: "working-older", state: "working", lastModified: 2_000},
-		] satisfies Array<{id: string; state: DisplayState; lastModified: number}>;
+			{
+				id: "unknown-newest",
+				state: "unknown",
+				lastModified: 9_000,
+			},
+			{
+				id: "waiting-older",
+				state: "waiting",
+				lastModified: 1_000,
+			},
+			{
+				id: "working-newer",
+				state: "working",
+				lastModified: 8_000,
+			},
+			{
+				id: "review",
+				state: "review",
+				lastModified: 4_000,
+			},
+			{
+				id: "idle",
+				state: "idle",
+				lastModified: 5_000,
+			},
+			{
+				id: "waiting-newer",
+				state: "waiting",
+				lastModified: 3_000,
+			},
+			{
+				id: "working-older",
+				state: "working",
+				lastModified: 2_000,
+			},
+		] satisfies Array<
+		{
+			id: string;
+			state: DisplayState;
+			lastModified: number;
+		}>;
 
 		expect(sessions.toSorted(compareByUrgency).map(({id}) => id)).toStrictEqual([
 			"waiting-newer",
@@ -335,12 +524,26 @@ describe("compareByUrgency", () => {
 	});
 });
 
-describe("compareByStableCreation", () => {
-	it("sorts by creation time with a session-id tiebreak and ignores activity", () => {
+describe("compareByStableCreation", () =>
+{
+	it("sorts by creation time with a session-id tiebreak and ignores activity", () =>
+	{
 		const sessions = [
-			{sessionId: "session-c", createdAt: 2_000, lastModified: 9_000},
-			{sessionId: "session-b", createdAt: 1_000, lastModified: 1_000},
-			{sessionId: "session-a", createdAt: 1_000, lastModified: 8_000},
+			{
+				sessionId: "session-c",
+				createdAt: 2_000,
+				lastModified: 9_000,
+			},
+			{
+				sessionId: "session-b",
+				createdAt: 1_000,
+				lastModified: 1_000,
+			},
+			{
+				sessionId: "session-a",
+				createdAt: 1_000,
+				lastModified: 8_000,
+			},
 		];
 
 		expect(sessions.toSorted(compareByStableCreation).map(({sessionId}) => sessionId)).toStrictEqual([
@@ -351,12 +554,15 @@ describe("compareByStableCreation", () => {
 	});
 });
 
-describe("displayState", () => {
-	it("turns unseen idle work into review", () => {
+describe("displayState", () =>
+{
+	it("turns unseen idle work into review", () =>
+	{
 		expect(displayState("idle", true)).toBe("review");
 	});
 
-	it("leaves every activity state unchanged without unseen work", () => {
+	it("leaves every activity state unchanged without unseen work", () =>
+	{
 		expect(ACTIVITY_STATES.map((state) => displayState(state, false))).toStrictEqual([
 			"idle",
 			"working",
@@ -365,29 +571,35 @@ describe("displayState", () => {
 		]);
 	});
 
-	it("does not replace active states when unseen work is latched", () => {
+	it("does not replace active states when unseen work is latched", () =>
+	{
 		expect(
 			ACTIVITY_STATES.filter((state) => state !== "idle").map((state) => displayState(state, true)),
 		).toStrictEqual(["working", "waiting", "unknown"]);
 	});
 });
 
-describe("waitHeat", () => {
+describe("waitHeat", () =>
+{
 	const now = Date.parse("2000-01-01T00:30:00.000Z");
 
-	it("is warm at the exact ten-minute boundary", () => {
+	it("is warm at the exact ten-minute boundary", () =>
+	{
 		expect(waitHeat("waiting", "2000-01-01T00:20:00.000Z", now)).toBe("warm");
 	});
 
-	it("is hot at the exact thirty-minute boundary", () => {
+	it("is hot at the exact thirty-minute boundary", () =>
+	{
 		expect(waitHeat("waiting", "2000-01-01T00:00:00.000Z", now)).toBe("hot");
 	});
 
-	it("has no heat without a blocked-since timestamp", () => {
+	it("has no heat without a blocked-since timestamp", () =>
+	{
 		expect(waitHeat("waiting", null, now)).toBe("");
 	});
 
-	it("does not encode age for non-waiting states", () => {
+	it("does not encode age for non-waiting states", () =>
+	{
 		expect(
 			DISPLAY_STATES.filter((state) => state !== "waiting").map((state) =>
 				waitHeat(state, "1999-12-31T00:00:00.000Z", now),
@@ -396,58 +608,103 @@ describe("waitHeat", () => {
 	});
 });
 
-describe("resolveSessionBucket for a session blocked on a permission prompt", () => {
+describe("resolveSessionBucket for a session blocked on a permission prompt", () =>
+{
 	const NOW = 946_598_400_000;
-	const PERMISSION_NOTIFICATION = {
+	const PERMISSION_NOTIFICATION =
+	{
 		id: "notification-test-100",
 		sessionId: "session-test-100",
 		notificationType: "permission_prompt",
 		message: "Claude needs your permission to use Bash",
 	};
-	const PENDING_BASH = {
+	const PENDING_BASH =
+	{
 		type: "assistant",
-		message: {content: [{type: "tool_use", id: "tool-test-100", name: "Bash", input: {command: "true"}}]},
+		message:
+		{
+			content: [
+				{
+					type: "tool_use",
+					id: "tool-test-100",
+					name: "Bash",
+					input:
+					{
+						command: "true",
+					},
+				},
+			],
+		},
 	};
-	const BASH_RESULT = {
+	const BASH_RESULT =
+	{
 		type: "user",
-		message: {content: [{type: "tool_result", tool_use_id: "tool-test-100", content: "ok"}]},
+		message:
+		{
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: "tool-test-100",
+					content: "ok",
+				},
+			],
+		},
 	};
 
-	function bucketFor(records: readonly unknown[]): SessionBucketResolution {
-		return resolveSessionBucket({
-			mainState: "ended",
-			bridged: false,
-			pendingInput: false,
-			awaitingPermission: isAwaitingPermission({
-				sessionId: "session-test-100",
-				notifications: [PERMISSION_NOTIFICATION],
-				records,
-			}),
-			unseenError: false,
-			liveAgentCount: 0,
-			backgroundTasks: [],
-			lastSubagentActivityAt: null,
-			herdrStatus: null,
-			prState: null,
-			unseen: false,
-			verdictNeedsInput: false,
-			fileMtime: NOW - 8 * 60 * 60 * 1000,
-			now: NOW,
-		});
+	function bucketFor(records: readonly unknown[]): SessionBucketResolution
+	{
+		return resolveSessionBucket(
+			{
+				mainState: "ended",
+				bridged: false,
+				pendingInput: false,
+				awaitingPermission: isAwaitingPermission(
+					{
+						sessionId: "session-test-100",
+						notifications: [PERMISSION_NOTIFICATION],
+						records,
+					},
+				),
+				unseenError: false,
+				liveAgentCount: 0,
+				backgroundTasks: [],
+				lastSubagentActivityAt: null,
+				herdrStatus: null,
+				prState: null,
+				unseen: false,
+				verdictNeedsInput: false,
+				fileMtime: NOW - 8 * 60 * 60 * 1000,
+				now: NOW,
+			},
+		);
 	}
 
-	it("needs input while the tool call waits on the prompt, however old the transcript is", () => {
-		expect(bucketFor([PENDING_BASH])).toStrictEqual({bucket: "blocked", reason: "pending-input"});
+	it("needs input while the tool call waits on the prompt, however old the transcript is", () =>
+	{
+		expect(bucketFor([PENDING_BASH])).toStrictEqual(
+			{
+				bucket: "blocked",
+				reason: "pending-input",
+			},
+		);
 	});
 
-	it("is completed once a tool_result follows", () => {
-		expect(bucketFor([PENDING_BASH, BASH_RESULT])).toStrictEqual({bucket: "done", reason: "ended"});
+	it("is completed once a tool_result follows", () =>
+	{
+		expect(bucketFor([PENDING_BASH, BASH_RESULT])).toStrictEqual(
+			{
+				bucket: "done",
+				reason: "ended",
+			},
+		);
 	});
 });
 
-describe("resolveSessionBucket with a post-turn needs-input verdict", () => {
+describe("resolveSessionBucket with a post-turn needs-input verdict", () =>
+{
 	const NOW = 946_598_400_000;
-	const BASE: SessionBucketSignals = {
+	const BASE: SessionBucketSignals =
+	{
 		mainState: "idle",
 		bridged: false,
 		pendingInput: false,
@@ -464,46 +721,101 @@ describe("resolveSessionBucket with a post-turn needs-input verdict", () => {
 		now: NOW,
 	};
 
-	it("is blocked when an idle, unread session's last turn handed the user an action", () => {
-		expect(resolveSessionBucket(BASE)).toStrictEqual({bucket: "blocked", reason: "verdict-needs-input"});
+	it("is blocked when an idle, unread session's last turn handed the user an action", () =>
+	{
+		expect(resolveSessionBucket(BASE)).toStrictEqual(
+			{
+				bucket: "blocked",
+				reason: "verdict-needs-input",
+			},
+		);
 	});
 
-	it("is done once the session has been read", () => {
-		expect(resolveSessionBucket({...BASE, unseen: false})).toStrictEqual({bucket: "done", reason: "idle"});
+	it("is done once the session has been read", () =>
+	{
+		expect(
+			resolveSessionBucket(
+				{
+					...BASE,
+					unseen: false,
+				},
+			),
+		).toStrictEqual(
+			{
+				bucket: "done",
+				reason: "idle",
+			},
+		);
 	});
 
-	it("is blocked, not ended, after the session's process has ended", () => {
-		expect(resolveSessionBucket({...BASE, mainState: "ended"})).toStrictEqual({
-			bucket: "blocked",
-			reason: "verdict-needs-input",
-		});
+	it("is blocked, not ended, after the session's process has ended", () =>
+	{
+		expect(
+			resolveSessionBucket(
+				{
+					...BASE,
+					mainState: "ended",
+				},
+			),
+		).toStrictEqual(
+			{
+				bucket: "blocked",
+				reason: "verdict-needs-input",
+			},
+		);
 	});
 
-	it("is working while the main thread runs a new turn", () => {
-		expect(resolveSessionBucket({...BASE, mainState: "working"})).toStrictEqual({
-			bucket: "working",
-			reason: "main-working",
-		});
+	it("is working while the main thread runs a new turn", () =>
+	{
+		expect(
+			resolveSessionBucket(
+				{
+					...BASE,
+					mainState: "working",
+				},
+			),
+		).toStrictEqual(
+			{
+				bucket: "working",
+				reason: "main-working",
+			},
+		);
 	});
 
-	it("is done when the verdict says no input is needed", () => {
-		expect(resolveSessionBucket({...BASE, verdictNeedsInput: false})).toStrictEqual({
-			bucket: "done",
-			reason: "unseen",
-		});
+	it("is done when the verdict says no input is needed", () =>
+	{
+		expect(
+			resolveSessionBucket(
+				{
+					...BASE,
+					verdictNeedsInput: false,
+				},
+			),
+		).toStrictEqual(
+			{
+				bucket: "done",
+				reason: "unseen",
+			},
+		);
 	});
 });
 
-describe("resolveSessionBucket for a Remote Control bridged session", () => {
+describe("resolveSessionBucket for a Remote Control bridged session", () =>
+{
 	const NOW = 946_598_400_000;
-	const BASE: SessionBucketSignals = {
+	const BASE: SessionBucketSignals =
+	{
 		mainState: "idle",
 		bridged: true,
 		pendingInput: false,
 		awaitingPermission: false,
 		unseenError: false,
 		liveAgentCount: 1,
-		backgroundTasks: [{status: "running"}],
+		backgroundTasks: [
+			{
+				status: "running",
+			},
+		],
 		lastSubagentActivityAt: NOW - 1000,
 		herdrStatus: null,
 		prState: null,
@@ -513,99 +825,274 @@ describe("resolveSessionBucket for a Remote Control bridged session", () => {
 		now: NOW,
 	};
 
-	it("is done once the turn ends, though background tasks and subagents still run", () => {
-		expect(resolveSessionBucket(BASE)).toStrictEqual({bucket: "done", reason: "idle"});
+	it("is done once the turn ends, though background tasks and subagents still run", () =>
+	{
+		expect(resolveSessionBucket(BASE)).toStrictEqual(
+			{
+				bucket: "done",
+				reason: "idle",
+			},
+		);
 	});
 
-	it("is working through live subagents when not bridged", () => {
-		expect(resolveSessionBucket({...BASE, bridged: false})).toStrictEqual({
-			bucket: "working",
-			reason: "live-agents",
-		});
+	it("is working through live subagents when not bridged", () =>
+	{
+		expect(
+			resolveSessionBucket(
+				{
+					...BASE,
+					bridged: false,
+				},
+			),
+		).toStrictEqual(
+			{
+				bucket: "working",
+				reason: "live-agents",
+			},
+		);
 	});
 
-	it("is working through running background tasks when not bridged", () => {
-		expect(resolveSessionBucket({...BASE, bridged: false, liveAgentCount: 0})).toStrictEqual({
-			bucket: "working",
-			reason: "background-tasks",
-		});
+	it("is working through running background tasks when not bridged", () =>
+	{
+		expect(
+			resolveSessionBucket(
+				{
+					...BASE,
+					bridged: false,
+					liveAgentCount: 0,
+				},
+			),
+		).toStrictEqual(
+			{
+				bucket: "working",
+				reason: "background-tasks",
+			},
+		);
 	});
 
-	it("is working while the main thread runs a turn", () => {
-		expect(resolveSessionBucket({...BASE, mainState: "working"})).toStrictEqual({
-			bucket: "working",
-			reason: "main-working",
-		});
+	it("is working while the main thread runs a turn", () =>
+	{
+		expect(
+			resolveSessionBucket(
+				{
+					...BASE,
+					mainState: "working",
+				},
+			),
+		).toStrictEqual(
+			{
+				bucket: "working",
+				reason: "main-working",
+			},
+		);
 	});
 });
 
-describe("resolveMainState", () => {
-	const registry = (status: "idle" | "busy" | "waiting" | "shell", statusUpdatedAt: number) => ({
+describe("resolveMainState", () =>
+{
+	const registry = (status: "idle" | "busy" | "waiting" | "shell", statusUpdatedAt: number) => (
+	{
 		status,
 		statusUpdatedAt,
 	});
-	const hook = (state: ActivityState, lastActivity: number) => ({state, lastActivity});
+	const hook = (state: ActivityState, lastActivity: number) => (
+	{
+		state,
+		lastActivity,
+	});
 
-	it("maps registry statuses to activity states when no hook entry exists, a `!` shell reading idle as upstream", () => {
+	it("maps registry statuses to activity states when no hook entry exists, a `!` shell reading idle as upstream", () =>
+	{
 		expect(
 			(["idle", "busy", "waiting", "shell"] as const).map((status) =>
-				resolveMainState({hook: null, registry: registry(status, 1_000)}),
+				resolveMainState(
+					{
+						hook: null,
+						registry: registry(status, 1_000),
+					},
+				),
 			),
 		).toStrictEqual([
-			{state: "idle", source: "registry"},
-			{state: "working", source: "registry"},
-			{state: "waiting", source: "registry"},
-			{state: "idle", source: "registry"},
+			{
+				state: "idle",
+				source: "registry",
+			},
+			{
+				state: "working",
+				source: "registry",
+			},
+			{
+				state: "waiting",
+				source: "registry",
+			},
+			{
+				state: "idle",
+				source: "registry",
+			},
 		]);
 	});
 
-	it("reads a busy registry status as idle once the transcript's turn ended after it, as upstream does", () => {
+	it("reads a busy registry status as idle once the transcript's turn ended after it, as upstream does", () =>
+	{
 		expect([
-			resolveMainState({hook: null, registry: registry("busy", 1_000), turnEndedAt: 61_000}),
-			resolveMainState({hook: null, registry: registry("busy", 1_000), turnEndedAt: 500}),
-			resolveMainState({hook: null, registry: registry("busy", 1_000), turnEndedAt: null}),
-			resolveMainState({hook: null, registry: registry("waiting", 1_000), turnEndedAt: 61_000}),
+			resolveMainState(
+				{
+					hook: null,
+					registry: registry("busy", 1_000),
+					turnEndedAt: 61_000,
+				},
+			),
+			resolveMainState(
+				{
+					hook: null,
+					registry: registry("busy", 1_000),
+					turnEndedAt: 500,
+				},
+			),
+			resolveMainState(
+				{
+					hook: null,
+					registry: registry("busy", 1_000),
+					turnEndedAt: null,
+				},
+			),
+			resolveMainState(
+				{
+					hook: null,
+					registry: registry("waiting", 1_000),
+					turnEndedAt: 61_000,
+				},
+			),
 		]).toStrictEqual([
-			{state: "idle", source: "registry"},
-			{state: "working", source: "registry"},
-			{state: "working", source: "registry"},
-			{state: "waiting", source: "registry"},
+			{
+				state: "idle",
+				source: "registry",
+			},
+			{
+				state: "working",
+				source: "registry",
+			},
+			{
+				state: "working",
+				source: "registry",
+			},
+			{
+				state: "waiting",
+				source: "registry",
+			},
 		]);
 	});
 
-	it("reads ended without either source and the hook state without a registry entry", () => {
+	it("reads ended without either source and the hook state without a registry entry", () =>
+	{
 		expect([
-			resolveMainState({hook: null, registry: null}),
-			resolveMainState({hook: hook("working", 1_000), registry: null}),
+			resolveMainState(
+				{
+					hook: null,
+					registry: null,
+				},
+			),
+			resolveMainState(
+				{
+					hook: hook("working", 1_000),
+					registry: null,
+				},
+			),
 		]).toStrictEqual([
-			{state: "ended", source: null},
-			{state: "working", source: "hook"},
+			{
+				state: "ended",
+				source: null,
+			},
+			{
+				state: "working",
+				source: "hook",
+			},
 		]);
 	});
 
-	it("lets the fresher source win, the registry on a tie, and the registry over an unknown hook state", () => {
+	it("lets the fresher source win, the registry on a tie, and the registry over an unknown hook state", () =>
+	{
 		expect([
-			resolveMainState({hook: hook("working", 2_000), registry: registry("waiting", 1_000)}),
-			resolveMainState({hook: hook("working", 1_000), registry: registry("waiting", 2_000)}),
-			resolveMainState({hook: hook("working", 1_000), registry: registry("idle", 1_000)}),
-			resolveMainState({hook: hook("unknown", 5_000), registry: registry("busy", 1_000)}),
+			resolveMainState(
+				{
+					hook: hook("working", 2_000),
+					registry: registry("waiting", 1_000),
+				},
+			),
+			resolveMainState(
+				{
+					hook: hook("working", 1_000),
+					registry: registry("waiting", 2_000),
+				},
+			),
+			resolveMainState(
+				{
+					hook: hook("working", 1_000),
+					registry: registry("idle", 1_000),
+				},
+			),
+			resolveMainState(
+				{
+					hook: hook("unknown", 5_000),
+					registry: registry("busy", 1_000),
+				},
+			),
 		]).toStrictEqual([
-			{state: "working", source: "hook"},
-			{state: "waiting", source: "registry"},
-			{state: "idle", source: "registry"},
-			{state: "working", source: "registry"},
+			{
+				state: "working",
+				source: "hook",
+			},
+			{
+				state: "waiting",
+				source: "registry",
+			},
+			{
+				state: "idle",
+				source: "registry",
+			},
+			{
+				state: "working",
+				source: "registry",
+			},
 		]);
 	});
 });
 
-describe("sessionProcessLive", () => {
-	it("counts a session live from its hooks or from any non-ended state its registry gives it", () => {
+describe("sessionProcessLive", () =>
+{
+	it("counts a session live from its hooks or from any non-ended state its registry gives it", () =>
+	{
 		expect([
-			sessionProcessLive({hookActive: true, summaryState: null}),
-			sessionProcessLive({hookActive: false, summaryState: "waiting"}),
-			sessionProcessLive({hookActive: false, summaryState: "idle"}),
-			sessionProcessLive({hookActive: false, summaryState: "ended"}),
-			sessionProcessLive({hookActive: false, summaryState: null}),
+			sessionProcessLive(
+				{
+					hookActive: true,
+					summaryState: null,
+				},
+			),
+			sessionProcessLive(
+				{
+					hookActive: false,
+					summaryState: "waiting",
+				},
+			),
+			sessionProcessLive(
+				{
+					hookActive: false,
+					summaryState: "idle",
+				},
+			),
+			sessionProcessLive(
+				{
+					hookActive: false,
+					summaryState: "ended",
+				},
+			),
+			sessionProcessLive(
+				{
+					hookActive: false,
+					summaryState: null,
+				},
+			),
 		]).toStrictEqual([true, true, true, false, false]);
 	});
 });

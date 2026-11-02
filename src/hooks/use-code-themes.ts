@@ -8,9 +8,17 @@ import type {CodeThemePair} from "../lib/code-themes";
  * reads it here; each asks the shared Shiki highlighter to load a theme it
  * has not seen yet and uses the default until it arrives.
  */
-export function useCodeThemes(): CodeThemePair {
+export function useCodeThemes(): CodeThemePair
+{
 	const {settings} = useSettings();
 	const light = settings.codeThemeLight;
 	const dark = settings.codeThemeDark;
-	return useMemo(() => ({light, dark}), [light, dark]);
+	return useMemo(
+		() => (
+		{
+			light,
+			dark,
+		}),
+		[light, dark],
+	);
 }

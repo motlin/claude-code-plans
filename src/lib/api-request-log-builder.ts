@@ -6,11 +6,13 @@ import {ApiRequestRecordSchema, ApiRequestShapeRecordSchema} from "./runtime-sch
 // client, which only parses and resolves the log, doesn't download the transcript schemas.
 
 /** Cheap pre-filter for JSONL lines worth parsing; blobs (the bulky messages) are excluded. */
-export function mightBeApiRequestLogLine(line: string): boolean {
+export function mightBeApiRequestLogLine(line: string): boolean
+{
 	return line.includes('"type":"api-request"') || line.includes('"type":"api-request-shape"');
 }
 
-function toolChanges(previous: readonly string[], current: readonly string[]) {
+function toolChanges(previous: readonly string[], current: readonly string[])
+{
 	const before = new Set(previous);
 	const after = new Set(current);
 	return {
@@ -26,25 +28,41 @@ type ClassifierArtifacts = NonNullable<
 >;
 
 /** Every artifact the classifier context mentions, by_slug first, then ones known only from by_path or last_publish. */
-function summarizeArtifacts(artifacts: ClassifierArtifacts): ClassifierArtifactSummary[] {
+function summarizeArtifacts(artifacts: ClassifierArtifacts): ClassifierArtifactSummary[]
+{
 	const summaries = new Map<string, ClassifierArtifactSummary>();
-	const entry = (id: string) => {
+	const entry = (id: string) =>
+	{
 		let summary = summaries.get(id);
-		if (summary === undefined) {
-			summary = {id, paths: [], lastPublish: false};
+		if (summary === undefined)
+		{
+			summary =
+			{
+				id,
+				paths: [],
+				lastPublish: false,
+			};
 			summaries.set(id, summary);
 		}
 		return summary;
 	};
-	for (const [id, artifact] of Object.entries(artifacts.by_slug)) {
+	for (const [id, artifact] of Object.entries(artifacts.by_slug))
+	{
 		const summary = entry(id);
 		if (artifact.published_env !== undefined) summary.publishedEnv = artifact.published_env;
 		if (artifact.attested !== undefined) summary.attested = artifact.attested;
 		const {share} = artifact;
-		if (share !== undefined) {
-			summary.share = {
+		if (share !== undefined)
+		{
+			summary.share =
+			{
 				mode: share.mode,
-				...(share.role === undefined ? {} : {role: share.role}),
+				...(share.role === undefined
+					? {}
+					:
+						{
+							role: share.role,
+						}),
 				isSharedLive: share.is_shared_live,
 				probed: share.probed,
 				probeFailed: share.probe_failed === true,
@@ -62,15 +80,19 @@ function summarizeArtifacts(artifacts: ClassifierArtifacts): ClassifierArtifactS
 }
 
 /** The request log carried by a session's records, in file order. Records the strict schemas reject are skipped. */
-export function buildApiRequestLog(records: readonly unknown[]): ApiRequestLog {
+export function buildApiRequestLog(records: readonly unknown[]): ApiRequestLog
+{
 	const requests: ApiRequestLog["requests"] = {};
 	const shapes: ApiRequestLog["shapes"] = {};
 	const parsedRequests: z.infer<typeof ApiRequestRecordSchema>[] = [];
 
-	for (const record of records) {
+	for (const record of records)
+	{
 		const shape = ApiRequestShapeRecordSchema.safeParse(record);
-		if (shape.success) {
-			shapes[shape.data.shapeHash] = {
+		if (shape.success)
+		{
+			shapes[shape.data.shapeHash] =
+			{
 				shapeHash: shape.data.shapeHash,
 				system: shape.data.shape.system.map((block) => block.text),
 				tools: shape.data.shape.tools.map((tool) => tool.name),
@@ -83,9 +105,11 @@ export function buildApiRequestLog(records: readonly unknown[]): ApiRequestLog {
 
 	// Shapes may be logged after the requests that use them, so diff once every shape is known.
 	const previousShapeBySource = new Map<string, string>();
-	for (const record of parsedRequests) {
+	for (const record of parsedRequests)
+	{
 		const {params} = record;
-		const summary: ApiRequestSummary = {
+		const summary: ApiRequestSummary =
+		{
 			id: record.id,
 			timestamp: record.timestamp,
 			querySource: record.querySource,
@@ -105,12 +129,16 @@ export function buildApiRequestLog(records: readonly unknown[]): ApiRequestLog {
 		const previousHash = previousShapeBySource.get(record.querySource);
 		const previousShape = previousHash === undefined ? undefined : shapes[previousHash];
 		const currentShape = shapes[record.shapeHash];
-		if (previousHash !== record.shapeHash && previousShape !== undefined && currentShape !== undefined) {
+		if (previousHash !== record.shapeHash && previousShape !== undefined && currentShape !== undefined)
+		{
 			summary.toolChanges = toolChanges(previousShape.tools, currentShape.tools);
 		}
 		previousShapeBySource.set(record.querySource, record.shapeHash);
 		requests[record.id] = summary;
 	}
 
-	return {requests, shapes};
+	return {
+		requests,
+		shapes,
+	};
 }

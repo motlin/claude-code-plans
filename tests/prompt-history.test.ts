@@ -2,7 +2,8 @@ import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {dirname, join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	HistoryLineSchema,
 	historyNavigator,
 	historyKeyApplies,
@@ -11,28 +12,51 @@ import {
 } from "../src/lib/prompt-history";
 import {readPromptHistory} from "../src/lib/prompt-history.server";
 
-function write(file: string, content: string): void {
-	mkdirSync(dirname(file), {recursive: true});
+function write(file: string, content: string): void
+{
+	mkdirSync(
+		dirname(file),
+		{
+			recursive: true,
+		},
+	);
 	writeFileSync(file, content);
 }
 
-function historyLine(display: string, sessionId: string, timestamp: number): string {
-	return JSON.stringify({
-		display,
-		pastedContents: {},
-		timestamp,
-		project: "/Users/alice/projects/garden",
-		sessionId,
-	});
+function historyLine(display: string, sessionId: string, timestamp: number): string
+{
+	return JSON.stringify(
+		{
+			display,
+			pastedContents: {},
+			timestamp,
+			project: "/Users/alice/projects/garden",
+			sessionId,
+		},
+	);
 }
 
-describe("HistoryLineSchema", () => {
-	it("accepts a history.jsonl line with inline and hashed pasted contents", () => {
-		const line = {
+describe("HistoryLineSchema", () =>
+{
+	it("accepts a history.jsonl line with inline and hashed pasted contents", () =>
+	{
+		const line =
+		{
 			display: "Review this [Pasted text #1 +12 lines] and [Pasted text #2 +40 lines]",
-			pastedContents: {
-				"1": {id: 1, type: "text", content: "alpha\nbeta"},
-				"2": {id: 2, type: "text", contentHash: "3f2a9c"},
+			pastedContents:
+			{
+				"1":
+				{
+					id: 1,
+					type: "text",
+					content: "alpha\nbeta",
+				},
+				"2":
+				{
+					id: 2,
+					type: "text",
+					contentHash: "3f2a9c",
+				},
 			},
 			timestamp: 1790725341859,
 			project: "/Users/alice/projects/garden",
@@ -41,47 +65,75 @@ describe("HistoryLineSchema", () => {
 		expect(HistoryLineSchema.parse(line)).toStrictEqual(line);
 	});
 
-	it("rejects unknown keys at the top level and inside pasted contents", () => {
+	it("rejects unknown keys at the top level and inside pasted contents", () =>
+	{
 		expect(
-			HistoryLineSchema.safeParse({
-				display: "hi",
-				pastedContents: {},
-				timestamp: 1,
-				project: "/p",
-				sessionId: "s",
-				extra: true,
-			}).success,
+			HistoryLineSchema.safeParse(
+				{
+					display: "hi",
+					pastedContents: {},
+					timestamp: 1,
+					project: "/p",
+					sessionId: "s",
+					extra: true,
+				},
+			).success,
 		).toBe(false);
 		expect(
-			HistoryLineSchema.safeParse({
-				display: "hi",
-				pastedContents: {"1": {id: 1, type: "text", content: "x", mystery: 1}},
-				timestamp: 1,
-				project: "/p",
-				sessionId: "s",
-			}).success,
+			HistoryLineSchema.safeParse(
+				{
+					display: "hi",
+					pastedContents:
+					{
+						"1":
+						{
+							id: 1,
+							type: "text",
+							content: "x",
+							mystery: 1,
+						},
+					},
+					timestamp: 1,
+					project: "/p",
+					sessionId: "s",
+				},
+			).success,
 		).toBe(false);
 	});
 });
 
-describe("parseHistoryJsonl", () => {
-	it("returns prompts newest first, skipping blank and malformed lines", () => {
+describe("parseHistoryJsonl", () =>
+{
+	it("returns prompts newest first, skipping blank and malformed lines", () =>
+	{
 		const text = [
 			historyLine("plant tomatoes", "s-alice", 1),
 			"",
 			"{not json",
-			JSON.stringify({display: "missing fields"}),
+			JSON.stringify(
+				{
+					display: "missing fields",
+				},
+			),
 			historyLine("water the basil", "s-bob", 2),
 		].join("\n");
 		expect(parseHistoryJsonl(text)).toStrictEqual([
-			{display: "water the basil", sessionId: "s-bob"},
-			{display: "plant tomatoes", sessionId: "s-alice"},
+			{
+				display: "water the basil",
+				sessionId: "s-bob",
+			},
+			{
+				display: "plant tomatoes",
+				sessionId: "s-alice",
+			},
 		]);
 	});
 });
 
-describe("mergePromptHistory", () => {
-	it("puts session prompts first, then the rest, deduped and capped", () => {
+describe("mergePromptHistory", () =>
+{
+	it("puts session prompts first, then the rest, deduped and capped", () =>
+	{
 		expect(
 			mergePromptHistory(
 				["second session prompt", "first session prompt"],
@@ -92,52 +144,69 @@ describe("mergePromptHistory", () => {
 	});
 });
 
-describe("historyNavigator", () => {
+describe("historyNavigator", () =>
+{
 	const entries = ["newest prompt", "middle prompt", "oldest prompt"];
 
-	it("walks older with up and newer with down, returning to the draft", () => {
+	it("walks older with up and newer with down, returning to the draft", () =>
+	{
 		const start = historyNavigator(entries, "half-typed draft");
 		const one = start.up();
 		const two = one?.up();
 		const three = two?.up();
-		expect({
-			start: start.text,
-			one: one?.text,
-			two: two?.text,
-			three: three?.text,
-			pastOldest: three?.up() ?? null,
-			back: three?.down()?.text,
-			toDraft: one?.down()?.text,
-			toDraftActive: one?.down()?.active,
-			pastDraft: start.down(),
-		}).toStrictEqual({
-			start: "half-typed draft",
-			one: "newest prompt",
-			two: "middle prompt",
-			three: "oldest prompt",
-			pastOldest: null,
-			back: "middle prompt",
-			toDraft: "half-typed draft",
-			toDraftActive: false,
-			pastDraft: null,
-		});
+		expect(
+			{
+				start: start.text,
+				one: one?.text,
+				two: two?.text,
+				three: three?.text,
+				pastOldest: three?.up() ?? null,
+				back: three?.down()?.text,
+				toDraft: one?.down()?.text,
+				toDraftActive: one?.down()?.active,
+				pastDraft: start.down(),
+			},
+		).toStrictEqual(
+			{
+				start: "half-typed draft",
+				one: "newest prompt",
+				two: "middle prompt",
+				three: "oldest prompt",
+				pastOldest: null,
+				back: "middle prompt",
+				toDraft: "half-typed draft",
+				toDraftActive: false,
+				pastDraft: null,
+			},
+		);
 	});
 
-	it("keeps the draft through the walk so escape can restore it", () => {
+	it("keeps the draft through the walk so escape can restore it", () =>
+	{
 		const walked = historyNavigator(entries, "my draft").up()?.up();
-		expect({active: walked?.active, draft: walked?.draft}).toStrictEqual({
-			active: true,
-			draft: "my draft",
-		});
+		expect(
+			{
+				active: walked?.active,
+				draft: walked?.draft,
+			},
+		).toStrictEqual(
+			{
+				active: true,
+				draft: "my draft",
+			},
+		);
 	});
 
-	it("has nothing to walk without entries", () => {
+	it("has nothing to walk without entries", () =>
+	{
 		expect(historyNavigator([], "draft").up()).toBeNull();
 	});
 });
 
-describe("historyKeyApplies", () => {
-	it("lets ArrowUp act only with the caret on the first line", () => {
+describe("historyKeyApplies", () =>
+{
+	it("lets ArrowUp act only with the caret on the first line", () =>
+	{
 		expect([
 			historyKeyApplies("ArrowUp", "", 0, 0),
 			historyKeyApplies("ArrowUp", "one line", 4, 4),
@@ -147,7 +216,8 @@ describe("historyKeyApplies", () => {
 		]).toStrictEqual([true, true, true, false, false]);
 	});
 
-	it("lets ArrowDown act only with the caret on the last line", () => {
+	it("lets ArrowDown act only with the caret on the last line", () =>
+	{
 		expect([
 			historyKeyApplies("ArrowDown", "", 0, 0),
 			historyKeyApplies("ArrowDown", "first\nsecond", 8, 8),
@@ -157,41 +227,97 @@ describe("historyKeyApplies", () => {
 	});
 });
 
-describe("readPromptHistory", () => {
+describe("readPromptHistory", () =>
+{
 	let root: string;
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		root = mkdtempSync(join(tmpdir(), "prompt-history-"));
 	});
-	afterEach(() => {
-		rmSync(root, {recursive: true, force: true});
+	afterEach(() =>
+	{
+		rmSync(
+			root,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("reads session transcript prompts first, then global history", async () => {
+	it("reads session transcript prompts first, then global history", async () =>
+	{
 		const sessionId = "a1b2c3d4-0000-4000-8000-000000000001";
 		write(
 			join(root, "projects", "-Users-alice-projects-garden", `${sessionId}.jsonl`),
 			[
-				JSON.stringify({type: "user", message: {role: "user", content: "plant tomatoes"}}),
-				JSON.stringify({
-					type: "assistant",
-					message: {role: "assistant", content: [{type: "text", text: "Planted."}]},
-				}),
-				JSON.stringify({
-					type: "user",
-					message: {
-						role: "user",
-						content: [{type: "tool_result", tool_use_id: "t1", content: "ok"}],
+				JSON.stringify(
+					{
+						type: "user",
+						message:
+						{
+							role: "user",
+							content: "plant tomatoes",
+						},
 					},
-				}),
-				JSON.stringify({
-					type: "user",
-					isMeta: true,
-					message: {role: "user", content: "injected by the CLI"},
-				}),
-				JSON.stringify({
-					type: "user",
-					message: {role: "user", content: [{type: "text", text: "now water them"}]},
-				}),
+				),
+				JSON.stringify(
+					{
+						type: "assistant",
+						message:
+						{
+							role: "assistant",
+							content: [
+								{
+									type: "text",
+									text: "Planted.",
+								},
+							],
+						},
+					},
+				),
+				JSON.stringify(
+					{
+						type: "user",
+						message:
+						{
+							role: "user",
+							content: [
+								{
+									type: "tool_result",
+									tool_use_id: "t1",
+									content: "ok",
+								},
+							],
+						},
+					},
+				),
+				JSON.stringify(
+					{
+						type: "user",
+						isMeta: true,
+						message:
+						{
+							role: "user",
+							content: "injected by the CLI",
+						},
+					},
+				),
+				JSON.stringify(
+					{
+						type: "user",
+						message:
+						{
+							role: "user",
+							content: [
+								{
+									type: "text",
+									text: "now water them",
+								},
+							],
+						},
+					},
+				),
 			].join("\n"),
 		);
 		write(
@@ -203,20 +329,48 @@ describe("readPromptHistory", () => {
 			].join("\n"),
 		);
 
-		expect(await readPromptHistory({claudeDir: root, sessionId})).toStrictEqual({
-			prompts: ["now water them", "plant tomatoes", "unrelated newer prompt", "unrelated older prompt"],
-			bashCommands: [],
-		});
-		expect(await readPromptHistory({claudeDir: root})).toStrictEqual({
-			prompts: ["unrelated newer prompt", "unrelated older prompt", "plant tomatoes"],
-			bashCommands: [],
-		});
+		expect(
+			await readPromptHistory(
+				{
+					claudeDir: root,
+					sessionId,
+				},
+			),
+		).toStrictEqual(
+			{
+				prompts: ["now water them", "plant tomatoes", "unrelated newer prompt", "unrelated older prompt"],
+				bashCommands: [],
+			},
+		);
+		expect(
+			await readPromptHistory(
+				{
+					claudeDir: root,
+				},
+			),
+		).toStrictEqual(
+			{
+				prompts: ["unrelated newer prompt", "unrelated older prompt", "plant tomatoes"],
+				bashCommands: [],
+			},
+		);
 	});
 
-	it("recalls only the prompts typed into the transcript, never harness-injected user records", async () => {
+	it("recalls only the prompts typed into the transcript, never harness-injected user records", async () =>
+	{
 		const sessionId = "a1b2c3d4-0000-4000-8000-000000000002";
 		const user = (content: unknown, extra: Record<string, unknown> = {}) =>
-			JSON.stringify({type: "user", ...extra, message: {role: "user", content}});
+			JSON.stringify(
+				{
+					type: "user",
+					...extra,
+					message:
+					{
+						role: "user",
+						content,
+					},
+				},
+			);
 		write(
 			join(root, "projects", "-Users-alice-projects-garden", `${sessionId}.jsonl`),
 			[
@@ -224,10 +378,21 @@ describe("readPromptHistory", () => {
 				user(
 					"<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>\n<summary>Background command finished</summary>\n</task-notification>",
 				),
-				user([{type: "text", text: "<system-reminder>\nThe date changed.\n</system-reminder>"}]),
 				user([
-					{type: "text", text: "<system-reminder>\nA file was opened.\n</system-reminder>"},
-					{type: "text", text: "prune the basil"},
+					{
+						type: "text",
+						text: "<system-reminder>\nThe date changed.\n</system-reminder>",
+					},
+				]),
+				user([
+					{
+						type: "text",
+						text: "<system-reminder>\nA file was opened.\n</system-reminder>",
+					},
+					{
+						type: "text",
+						text: "prune the basil",
+					},
 				]),
 				user("water them<system-reminder>\nhook context\n</system-reminder>"),
 				user("<local-command-caveat>Caveat: generated by local commands.</local-command-caveat>"),
@@ -235,26 +400,79 @@ describe("readPromptHistory", () => {
 				user("<local-command-stdout>Set model to opus</local-command-stdout>"),
 				user("<bash-input>ls</bash-input>"),
 				user("<bash-stdout>seeds</bash-stdout><bash-stderr></bash-stderr>"),
-				user("This session is being continued from a previous conversation.", {isCompactSummary: true}),
-				user("Transcript-only note", {isVisibleInTranscriptOnly: true}),
-				user("Stop hook feedback: tests failed", {isMeta: true}),
-				user([{type: "tool_result", tool_use_id: "t1", content: "ok"}]),
+				user(
+					"This session is being continued from a previous conversation.",
+					{
+						isCompactSummary: true,
+					},
+				),
+				user(
+					"Transcript-only note",
+					{
+						isVisibleInTranscriptOnly: true,
+					},
+				),
+				user(
+					"Stop hook feedback: tests failed",
+					{
+						isMeta: true,
+					},
+				),
+				user([
+					{
+						type: "tool_result",
+						tool_use_id: "t1",
+						content: "ok",
+					},
+				]),
 			].join("\n"),
 		);
 
-		expect(await readPromptHistory({claudeDir: root, sessionId})).toStrictEqual({
-			prompts: ["water them", "prune the basil", "plant tomatoes"],
-			bashCommands: ["ls"],
-		});
+		expect(
+			await readPromptHistory(
+				{
+					claudeDir: root,
+					sessionId,
+				},
+			),
+		).toStrictEqual(
+			{
+				prompts: ["water them", "prune the basil", "plant tomatoes"],
+				bashCommands: ["ls"],
+			},
+		);
 	});
 
-	it("returns nothing when history.jsonl is missing", async () => {
-		expect(await readPromptHistory({claudeDir: root})).toStrictEqual({prompts: [], bashCommands: []});
+	it("returns nothing when history.jsonl is missing", async () =>
+	{
+		expect(
+			await readPromptHistory(
+				{
+					claudeDir: root,
+				},
+			),
+		).toStrictEqual(
+			{
+				prompts: [],
+				bashCommands: [],
+			},
+		);
 	});
 
-	it("splits the session's bash commands from its prompts, as upstream's getBashHistory does", async () => {
+	it("splits the session's bash commands from its prompts, as upstream's getBashHistory does", async () =>
+	{
 		const sessionId = "a1b2c3d4-0000-4000-8000-000000000003";
-		const user = (content: unknown) => JSON.stringify({type: "user", message: {role: "user", content}});
+		const user = (content: unknown) =>
+			JSON.stringify(
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content,
+					},
+				},
+			);
 		write(
 			join(root, "projects", "-Users-alice-projects-garden", `${sessionId}.jsonl`),
 			[
@@ -277,9 +495,18 @@ describe("readPromptHistory", () => {
 			].join("\n"),
 		);
 
-		expect(await readPromptHistory({claudeDir: root, sessionId})).toStrictEqual({
-			prompts: ["plant tomatoes", "water the basil"],
-			bashCommands: ["ls", "git status", "ls", "npm test", "pwd"],
-		});
+		expect(
+			await readPromptHistory(
+				{
+					claudeDir: root,
+					sessionId,
+				},
+			),
+		).toStrictEqual(
+			{
+				prompts: ["plant tomatoes", "water the basil"],
+				bashCommands: ["ls", "git status", "ls", "npm test", "pwd"],
+			},
+		);
 	});
 });

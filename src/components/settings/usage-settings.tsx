@@ -3,7 +3,8 @@ import {RefreshCw} from "lucide-react";
 import {useId} from "react";
 import {localAccountQueryOptions} from "../../lib/api/local-account";
 import {usageQueryOptions} from "../../lib/api/usage";
-import {
+import
+{
 	formatLimitCaption,
 	formatUsageUpdated,
 	meterPercent,
@@ -30,13 +31,15 @@ import {SettingsSection} from "./settings-row";
 const USAGE_LIMITS_ARTICLE = "https://support.claude.com/en/articles/11647753-understanding-usage-and-length-limits";
 
 /** Upstream's cds Meter track (`bg-<variant>`) and fill (`bg-fill-<variant>`) per variant. */
-const TRACK_CLASS = {
+const TRACK_CLASS =
+{
 	accent: "bg-accent-900",
 	warning: "bg-usage-track-warning",
 	danger: "bg-usage-track-danger",
 } as const satisfies Record<UsageVariant, string>;
 
-const FILL_CLASS = {
+const FILL_CLASS =
+{
 	accent: "bg-accent-100",
 	warning: "bg-usage-warning",
 	danger: "bg-usage-danger",
@@ -52,7 +55,8 @@ function UsageMeter({
 	variant: UsageVariant;
 	used: string;
 	labelId: string;
-}) {
+})
+{
 	return (
 		<div
 			role="meter"
@@ -67,7 +71,8 @@ function UsageMeter({
 				<div
 					data-usage-bar-fill=""
 					className={`h-full w-full rounded-full ${FILL_CLASS[variant]} transition-transform duration-200 ease-[cubic-bezier(.165,.84,.44,1)] motion-reduce:transition-none rtl:[--_meter-dir:1]`}
-					style={{
+					style={
+					{
 						transform: `translateX(calc(var(--_meter-dir, -1) * (100% - min(100%, max(${percent}%, 4px)))))`,
 					}}
 				/>
@@ -87,7 +92,8 @@ function UsageMeterRow({
 	window: UsageWindow;
 	/** Upstream's paused session row: secondary label and a half-opacity meter. */
 	dimmed?: boolean;
-}) {
+})
+{
 	const labelId = useId();
 	const percent = meterPercent(window.usedPct);
 	const variant = usageVariant(percent);
@@ -116,7 +122,8 @@ function UsageMeterRow({
 	);
 }
 
-interface UsagePanelProps {
+interface UsagePanelProps
+{
 	usage: UsageSummary;
 	planDetail?: string | undefined;
 	nowMs: number;
@@ -126,7 +133,8 @@ interface UsagePanelProps {
 	onRefresh: () => void;
 }
 
-export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRefresh}: UsagePanelProps) {
+export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRefresh}: UsagePanelProps)
+{
 	const headline = paceHeadline(usage, nowMs, timeZone);
 	// Upstream's `sessionPaused`: the week is hit (usage credits never apply locally).
 	const sessionPaused = usage.sevenDay !== null && usage.sevenDay.usedPct >= 100;
@@ -211,7 +219,8 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 }
 
 /** Upstream's `IO`: the usage page's first-load skeleton. */
-function UsageSkeleton() {
+function UsageSkeleton()
+{
 	return (
 		<div data-testid="usage-page-skeleton" aria-busy="true">
 			<div className="space-y-6 py-3">
@@ -231,7 +240,8 @@ function UsageSkeleton() {
 const TRY_AGAIN_CLASS =
 	"inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-footnote text-primary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-function UsageError({retrying, onRetry}: {retrying: boolean; onRetry: () => void}) {
+function UsageError({retrying, onRetry}: {retrying: boolean; onRetry: () => void})
+{
 	return (
 		<div className="flex flex-col items-start gap-2 text-footnote text-secondary">
 			<p>Unable to load usage limits. Please try again later.</p>
@@ -248,11 +258,13 @@ function UsageError({retrying, onRetry}: {retrying: boolean; onRetry: () => void
 	);
 }
 
-export function UsageSettings() {
+export function UsageSettings()
+{
 	const usageQuery = useQuery(usageQueryOptions);
 	const {data: account} = useQuery(localAccountQueryOptions);
 
-	if (usageQuery.data === undefined) {
+	if (usageQuery.data === undefined)
+	{
 		return usageQuery.isError ? (
 			<UsageError retrying={usageQuery.isFetching} onRetry={() => void usageQuery.refetch()} />
 		) : (

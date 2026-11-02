@@ -17,8 +17,10 @@ const TWO_LINE_PB_CLASS =
 	"pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]";
 const PANELS_TWO_LINE_PB_CLASS =
 	"panels-fine:pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]";
-export const DENSITY_CLASSES = {
-	compact: {
+export const DENSITY_CLASSES =
+{
+	compact:
+	{
 		popup: "rounded-r7",
 		scroller: "",
 		text: "text-[13px]/[19px]",
@@ -38,7 +40,8 @@ export const DENSITY_CLASSES = {
 		digitTrailing: "flex shrink-0 items-center gap-1.5 ms-3 h-[1lh] self-start",
 		iconBox: "size-4",
 	},
-	comfortable: {
+	comfortable:
+	{
 		/* Upstream's radius + gutter: 8 + 4 = 12, or 8 + 6 = 14 under fizzy-lake panels on a fine pointer. */
 		popup: "rounded-card panels-fine:rounded-menu-comfortable",
 		/* Upstream's `--cds-menu-gutter`: 0.25rem, 0.375rem under panels (fine pointer), where the scroller
@@ -63,7 +66,8 @@ export const DENSITY_CLASSES = {
 } as const;
 
 /** Upstream's `ta("lg")` rows, which a sheet lays over its forced comfortable density. */
-export const SHEET_SIZING = {
+export const SHEET_SIZING =
+{
 	...DENSITY_CLASSES.comfortable,
 	/* A sheet is a coarse-pointer surface, so the panels fine-pointer sizes never apply. */
 	popup: "rounded-card",
@@ -87,7 +91,8 @@ export const SheetSizeContext = createContext<SheetSize>("lg");
 /** Whether the enclosing popup is a sheet, whose rows take the lg size whatever the consumer's density. */
 export const MenuLgContext = createContext(false);
 
-export function useMenuSizing() {
+export function useMenuSizing()
+{
 	const density = useDensity();
 	return useContext(MenuLgContext) ? SHEET_SIZING : DENSITY_CLASSES[density];
 }
@@ -95,7 +100,8 @@ export function useMenuSizing() {
 export const POSITIONER_CLASS = "z-[130] outline-none";
 
 /** One sheet level's link to its tree: the shared tree id, and how a submenu marks this level drilled. */
-export interface SheetLevel {
+export interface SheetLevel
+{
 	treeId: string;
 	setDrilled: (drilled: boolean) => void;
 }
@@ -103,14 +109,16 @@ export interface SheetLevel {
 export const SheetLevelContext = createContext<SheetLevel | null>(null);
 
 /** The submenu a drilled level belongs to: its trigger, for the title, and how Back closes it. */
-export interface SubmenuControl {
+export interface SubmenuControl
+{
 	triggerRef: RefObject<HTMLElement | null>;
 	close: () => void;
 }
 
 export const SubmenuControlContext = createContext<SubmenuControl | null>(null);
 
-export function useItemClass(twoLine = false, gap?: string): string {
+export function useItemClass(twoLine = false, gap?: string): string
+{
 	const sizing = useMenuSizing();
 	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} ${gap ?? sizing.gap} ${sizing.item} ${sizing.text} font-control-regular outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
 }
@@ -118,7 +126,8 @@ export function useItemClass(twoLine = false, gap?: string): string {
 export const LABEL_CLASS = "min-w-0 flex-1 truncate";
 
 /** Upstream's eJ: a menu row's text hint is footnote-sized, hidden on touch, with tabular all-digit keys. */
-export function menuHintClass(keys: string): string {
+export function menuHintClass(keys: string): string
+{
 	return /^\d+$/.test(keys)
 		? "pointer-coarse:hidden text-footnote tabular-nums"
 		: "pointer-coarse:hidden text-footnote";
@@ -127,7 +136,8 @@ export function menuHintClass(keys: string): string {
 /** Upstream's digit rows match the physical key, so Numpad digits and non-QWERTY layouts work. */
 const DIGIT_CODE = /^(?:Digit|Numpad)([1-9])$/;
 
-function acceleratorKey(event: KeyboardEvent<HTMLElement>): string | undefined {
+function acceleratorKey(event: KeyboardEvent<HTMLElement>): string | undefined
+{
 	if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey) return undefined;
 	const digit = DIGIT_CODE.exec(event.code)?.[1];
 	if (digit !== undefined) return digit;
@@ -135,11 +145,13 @@ function acceleratorKey(event: KeyboardEvent<HTMLElement>): string | undefined {
 	return event.key.toLowerCase();
 }
 
-export function handleAcceleratorKey(event: KeyboardEvent<HTMLElement>): void {
+export function handleAcceleratorKey(event: KeyboardEvent<HTMLElement>): void
+{
 	const key = acceleratorKey(event);
 	if (key === undefined) return;
 	const popup = event.currentTarget;
-	if (!(event.target instanceof Element) || event.target.closest('[role="menu"]') !== popup) {
+	if (!(event.target instanceof Element) || event.target.closest('[role="menu"]') !== popup)
+	{
 		return;
 	}
 	const item = Array.from(popup.querySelectorAll<HTMLElement>("[data-accelerator]")).find(

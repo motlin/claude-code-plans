@@ -11,7 +11,8 @@ import {Icon} from "./ui/icon";
 export type TranscriptRowCrashKind = "reply" | "row";
 
 /** Upstream `WH` messages. */
-const ROW_CRASH_COPY = {
+const ROW_CRASH_COPY =
+{
 	row: PART_CRASHED_COPY,
 	reply: "This response didn’t load.",
 	retry: "Try again",
@@ -21,7 +22,8 @@ const ROW_CRASH_COPY = {
 const REPEAT_WINDOW_MS = 10_000;
 
 /** Upstream `AG`: a hash of the first seven stack lines. */
-function stackHash(error: Error): string {
+function stackHash(error: Error): string
+{
 	let hash = 5381;
 	for (const line of (error.stack ?? "").split("\n").slice(0, 7))
 		for (let i = 0; i < line.length; i += 1) hash = (Math.imul(hash, 33) + line.charCodeAt(i)) | 0;
@@ -31,8 +33,10 @@ function stackHash(error: Error): string {
 /* Upstream `Rw`: a crash already logged from any row isn't logged again. */
 const reportedCrashes = new Set<string>();
 
-function reportRowCrash(error: unknown) {
-	if (error instanceof Error) {
+function reportRowCrash(error: unknown)
+{
+	if (error instanceof Error)
+	{
 		const key = `${error.name}:${stackHash(error)}`;
 		if (reportedCrashes.has(key)) return;
 		reportedCrashes.add(key);
@@ -41,30 +45,53 @@ function reportRowCrash(error: unknown) {
 }
 
 /** Upstream `KN`: whether the boundary crashed again soon after a retry with the same `resetOn`. */
-function useRepeatWindow(resetOn: unknown) {
-	const lastRetry = useRef<{at: number; shown: unknown} | null>(null);
+function useRepeatWindow(resetOn: unknown)
+{
+	const lastRetry = useRef<
+	{
+		at: number;
+		shown: unknown;
+	} | null>(null);
 	const [again, setAgain] = useState(false);
-	const onError = useCallback(() => {
+	const onError = useCallback(() =>
+	{
 		const retry = lastRetry.current;
 		setAgain(retry !== null && retry.shown === resetOn && performance.now() - retry.at < REPEAT_WINDOW_MS);
 	}, [resetOn]);
-	const noteRetry = useCallback(() => {
-		lastRetry.current = {at: performance.now(), shown: resetOn};
+	const noteRetry = useCallback(() =>
+	{
+		lastRetry.current =
+		{
+			at: performance.now(),
+			shown: resetOn,
+		};
 	}, [resetOn]);
-	return {again, onError, noteRetry};
+	return {
+		again,
+		onError,
+		noteRetry,
+	};
 }
 
 /** Upstream `Lp`: after a retry, focus falls back to the row article that held it. */
-function withFocusReturn(onRetry: () => void): () => void {
-	return () => {
+function withFocusReturn(onRetry: () => void): () => void
+{
+	return () =>
+	{
 		const view = document.defaultView;
 		const article = document.activeElement
 			?.closest("[data-transcript-row-crashed]")
 			?.parentElement?.closest<HTMLElement>("[tabindex]");
 		onRetry();
-		view?.requestAnimationFrame(() => {
+		view?.requestAnimationFrame(() =>
+		{
 			const active = document.activeElement;
-			if (active === null || active === document.body) article?.focus({preventScroll: true});
+			if (active === null || active === document.body)
+				article?.focus(
+					{
+						preventScroll: true,
+					},
+				);
 		});
 	};
 }
@@ -78,7 +105,8 @@ function TranscriptRowCrashed({
 	kind: TranscriptRowCrashKind;
 	again: boolean;
 	onRetry: () => void;
-}) {
+})
+{
 	const messageId = useId();
 	return (
 		<div data-transcript-row-crashed={kind} className="py-sm">
@@ -116,7 +144,8 @@ export function TranscriptRowBoundary({
 	kind: TranscriptRowCrashKind;
 	resetOn: unknown;
 	children: ReactNode;
-}) {
+})
+{
 	const {again, onError, noteRetry} = useRepeatWindow(resetOn);
 	return (
 		<RenderErrorBoundary
@@ -124,13 +153,15 @@ export function TranscriptRowBoundary({
 			report={reportRowCrash}
 			reportEveryCatch
 			onError={onError}
-			fallback={(error, redraw) => {
+			fallback={(error, redraw) =>
+			{
 				if (isStaleChunkError(error)) throw error;
 				return (
 					<TranscriptRowCrashed
 						kind={kind}
 						again={again}
-						onRetry={() => {
+						onRetry={() =>
+						{
 							noteRetry();
 							redraw();
 						}}

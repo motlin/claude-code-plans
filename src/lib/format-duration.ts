@@ -1,4 +1,5 @@
-export function formatDuration(ms: number): string {
+export function formatDuration(ms: number): string
+{
 	if (ms < 1000) return "< 1s";
 	if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
 	const mins = Math.floor(ms / 60000);

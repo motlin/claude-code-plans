@@ -1,4 +1,5 @@
-import {
+import
+{
 	type CSSProperties,
 	Fragment,
 	memo,
@@ -28,7 +29,8 @@ import {type QueuedPrompt, queuedForLater, queuedStatusText} from "../lib/compos
 import {consentWorkspaceKey} from "../lib/permission-mode-consent";
 import {carryPickToFolder, folderModeKey} from "../lib/folder-permission-mode";
 import {type HistoryNavigator, historyKeyApplies, historyNavigator} from "../lib/prompt-history";
-import {
+import
+{
 	appendAttachment,
 	attachUploadedFiles,
 	composePrompt,
@@ -45,7 +47,8 @@ import {
 import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
 import {splitDroppedItems} from "../lib/drop-collect";
 import type {SessionFilesEntry} from "../lib/api/session-files";
-import {
+import
+{
 	fileMentionMenuPosition,
 	fileMentionMenuWidth,
 	fileMentionTrigger,
@@ -53,14 +56,16 @@ import {
 	isMentionSuppressed,
 } from "../lib/file-mentions";
 import {textareaCaretRect} from "../lib/textarea-caret";
-import {
+import
+{
 	type AcceptedMention,
 	mentionAt,
 	mentionEndingAt,
 	mentionStartingAt,
 	remapMentions,
 } from "../lib/composer-mentions";
-import {
+import
+{
 	autocompactCommand,
 	extraLinesBody,
 	FAST_COMMAND_NOTICE_KEY,
@@ -70,7 +75,8 @@ import {
 	routeFastCommand,
 	trailingArgsBody,
 } from "../lib/composer-host-commands";
-import {
+import
+{
 	CLI_DEFAULT_MODEL,
 	effortLevelsFor,
 	type LaunchOptions,
@@ -79,7 +85,8 @@ import {
 	MORE_MODELS,
 	PRIMARY_MODELS,
 } from "../lib/launch-options";
-import {
+import
+{
 	clampSlashHighlight,
 	filterSlashCommands,
 	firstSlashHighlight,
@@ -96,7 +103,8 @@ import {ComposerCommandNotice} from "./composer-command-notice";
 import {type ChinLaunchControls, type ChinPickHandle, ComposerAddMenu, ComposerChin} from "./composer-chin";
 import {ErrorCardShell} from "./error-card-shell";
 import type {ChinMenu} from "./composer-launch-menus";
-import {
+import
+{
 	COMPOSER_CARD_CLASS,
 	COMPOSER_CHIN_CLASS,
 	COMPOSER_EDITOR_ROW_CLASS,
@@ -115,7 +123,8 @@ import {Icon} from "./ui/icon";
 import {Tooltip} from "./ui/tooltip";
 import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
-import {
+import
+{
 	HIDDEN_CHARACTERS_REFUSAL,
 	hasHiddenCharacters,
 	isShellCommandText,
@@ -134,7 +143,8 @@ import {type MentionChipActions, paintMentions} from "./composer-mention-paint";
 
 type ComposerVariant = "session" | "home";
 
-const PLACEHOLDER: Record<ComposerVariant, string> = {
+const PLACEHOLDER: Record<ComposerVariant, string> =
+{
 	session: SESSION_COMPOSER_PLACEHOLDER,
 	home: "Describe a task or ask a question",
 };
@@ -164,12 +174,14 @@ const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] comfortable:le
 const PLACEHOLDER_OVERLAY_CLASS = `${PAINTED_OVERLAY_CLASS} text-placeholder select-none`;
 
 /** Upstream `.epitaxy-prompt[data-bash-mode]`: the editor, placeholder, probe and painted command take the mono face. */
-function bashFont(className: string, bashMode: boolean): string {
+function bashFont(className: string, bashMode: boolean): string
+{
 	return bashMode ? className.replace("font-sans", "font-mono") : className;
 }
 
 /** Upstream's inline visually-hidden style for the argument hint's live twin. */
-const SR_ONLY_STYLE: CSSProperties = {
+const SR_ONLY_STYLE: CSSProperties =
+{
 	position: "absolute",
 	top: 0,
 	left: 0,
@@ -183,7 +195,8 @@ const SR_ONLY_STYLE: CSSProperties = {
 };
 
 /** An accepted slash command, drawn as upstream's chip until the prompt stops starting with it. */
-interface AcceptedSkillChip {
+interface AcceptedSkillChip
+{
 	draftKey: string;
 	name: string;
 	argumentHint: string | undefined;
@@ -193,7 +206,8 @@ const ICON_BUTTON_CLASS =
 	"flex aspect-square size-7 items-center justify-center rounded-r5 comfortable:rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-40";
 
 /** Prompts waiting for the live session to go idle, with their chip actions. */
-export interface ComposerQueueView {
+export interface ComposerQueueView
+{
 	items: readonly QueuedPrompt[];
 	/** Prompts whose Send now was accepted; each shows upstream's ✓ Sent chip. */
 	acceptedIds?: ReadonlySet<string>;
@@ -208,13 +222,15 @@ export interface ComposerQueueView {
  */
 export type ComposerRewindState = "unsupported" | "offline" | "busy" | "ready";
 
-interface ComposerRewind {
+interface ComposerRewind
+{
 	state: ComposerRewindState;
 	/** Opens the Rewind picker, after the composer has cleared `/rewind`. */
 	open: () => void;
 }
 
-interface ComposerProps {
+interface ComposerProps
+{
 	variant: ComposerVariant;
 	/** Draft storage key: the session id, or `"home"` for the new-session composer. */
 	draftKey: string;
@@ -298,17 +314,25 @@ interface ComposerProps {
 }
 
 /** Upstream `gc`: a Shiki token's colour and italic / bold bits as inline style. */
-function bashTokenStyle(token: ThemedToken): CSSProperties {
+function bashTokenStyle(token: ThemedToken): CSSProperties
+{
 	const fontStyle = token.fontStyle ?? 0;
 	return {
 		color: token.color,
-		...((fontStyle & 1) !== 0 && {fontStyle: "italic"}),
-		...((fontStyle & 2) !== 0 && {fontWeight: "bold"}),
+		...((fontStyle & 1) !== 0 &&
+		{
+			fontStyle: "italic",
+		}),
+		...((fontStyle & 2) !== 0 &&
+		{
+			fontWeight: "bold",
+		}),
 	};
 }
 
 /** The bash-mode command, painted line by line over the transparent editor. */
-function BashHighlight({lines}: {lines: ThemedToken[][]}) {
+function BashHighlight({lines}: {lines: ThemedToken[][]})
+{
 	return lines.map((tokens, line) => (
 		<Fragment key={line}>
 			{line > 0 && "\n"}
@@ -383,8 +407,15 @@ const STOP_TAP_GUARD_MS = 500;
 const noop = () => undefined;
 /* The coarse spacer's inert split never opens, but its menu holds the working items so it measures the same. */
 const SPACER_SPLIT_ITEMS: SplitItem[] = [
-	{label: "Queue for later", onSelect: noop},
-	{label: "Stop", separatorBefore: true, onSelect: noop},
+	{
+		label: "Queue for later",
+		onSelect: noop,
+	},
+	{
+		label: "Stop",
+		separatorBefore: true,
+		onSelect: noop,
+	},
 ];
 
 /** Which lane a touch split submit goes to: Send (a steer while working) or the menu's Queue for later. */
@@ -394,18 +425,22 @@ type TouchSubmitLane = "send" | "later";
  * Upstream's send-cell crossfade (`Jd`): Stop and Send share one grid cell. When the face flips, the new one
  * fades in while the old one stays mounted, `inert` and hidden, until its `visibility` transition ends.
  */
-function SendCrossfade({showStop, stop, send}: {showStop: boolean; stop: ReactNode; send: ReactNode}) {
+function SendCrossfade({showStop, stop, send}: {showStop: boolean; stop: ReactNode; send: ReactNode})
+{
 	const face: SendFace = showStop ? "stop" : "send";
 	const [current, setCurrent] = useState<SendFace>(face);
 	const [leaving, setLeaving] = useState<SendFace | null>(null);
 	const [flipped, setFlipped] = useState(false);
-	if (current !== face) {
+	if (current !== face)
+	{
 		setCurrent(face);
 		setLeaving(current);
 		setFlipped(true);
 	}
-	function renderFace(name: SendFace, children: ReactNode) {
-		if (name === face) {
+	function renderFace(name: SendFace, children: ReactNode)
+	{
+		if (name === face)
+		{
 			return (
 				<div
 					key={name}
@@ -424,7 +459,8 @@ function SendCrossfade({showStop, stop, send}: {showStop: boolean; stop: ReactNo
 				inert
 				aria-hidden="true"
 				className={`${SEND_FACE_CLASS} ${SEND_FACE_EXIT_CLASS}`}
-				onTransitionEnd={(event) => {
+				onTransitionEnd={(event) =>
+				{
 					if (event.target === event.currentTarget && event.propertyName === "visibility") setLeaving(null);
 				}}
 			>
@@ -481,19 +517,41 @@ const SendSlot = memo(function SendSlot({
 	onTouchSubmit: (lane: TouchSubmitLane) => void;
 	/** The prompt editor, which takes focus back when the split's menu closes. */
 	editorRef: React.RefObject<HTMLTextAreaElement | null>;
-}) {
+})
+{
 	const coarse = useCoarsePointer();
 	const stopClickAtRef = useRef(Number.NEGATIVE_INFINITY);
 	const forkKeys = useShortcutKeys("fork_with_prompt").keys;
 	const cmdEnterKeys = useIsMac() ? "cmd+enter" : "ctrl+enter";
 	const working = isStreaming || onStop !== undefined;
-	const forkRow = forkLabel === undefined ? undefined : {content: forkLabel, shortcut: forkKeys};
+	const forkRow =
+		forkLabel === undefined
+			? undefined
+			:
+				{
+					content: forkLabel,
+					shortcut: forkKeys,
+				};
 	const secondary = working
 		? [
-				...(queueForLater ? [{content: "Queue for later", shortcut: cmdEnterKeys}] : []),
+				...(queueForLater
+					? [
+							{
+								content: "Queue for later",
+								shortcut: cmdEnterKeys,
+							},
+						]
+					: []),
 				...(forkRow === undefined ? [] : [forkRow]),
 			]
-		: (forkRow ?? (sendAndStay ? {content: "Send and stay here", shortcut: cmdEnterKeys} : undefined));
+		: (forkRow ??
+			(sendAndStay
+				?
+					{
+						content: "Send and stay here",
+						shortcut: cmdEnterKeys,
+					}
+				: undefined));
 	const send = (
 		<Tooltip content="Send" shortcut="enter" secondary={secondary}>
 			<button
@@ -501,7 +559,8 @@ const SendSlot = memo(function SendSlot({
 				aria-label="Send"
 				aria-describedby={deliveryHint ? hintId : undefined}
 				data-testid="code-prompt-send"
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					if (Date.now() - stopClickAtRef.current < STOP_TAP_GUARD_MS) return;
 					onSubmit(event);
 				}}
@@ -512,7 +571,8 @@ const SendSlot = memo(function SendSlot({
 			</button>
 		</Tooltip>
 	);
-	const stop = () => {
+	const stop = () =>
+	{
 		stopClickAtRef.current = Date.now();
 		onStop?.();
 	};
@@ -523,14 +583,24 @@ const SendSlot = memo(function SendSlot({
 	 * face with the draft kept. Locally the turn stays working until the pane goes idle, so latch the Stop this
 	 * split handed out; a new Stop (the next turn) or none (the turn ended) clears it.
 	 */
-	const [stopAskedOf, setStopAskedOf] = useState<{stop: () => void} | null>(null);
+	const [stopAskedOf, setStopAskedOf] = useState<
+	{
+		stop: () => void;
+	} | null>(null);
 	if (stopAskedOf !== null && stopAskedOf.stop !== onStop) setStopAskedOf(null);
-	const menuStop = () => {
+	const menuStop = () =>
+	{
 		stopFromMenuRef.current = true;
-		if (onStop !== undefined) setStopAskedOf({stop: onStop});
+		if (onStop !== undefined)
+			setStopAskedOf(
+				{
+					stop: onStop,
+				},
+			);
 		stop();
 	};
-	const splitFinalFocus = useCallback(() => {
+	const splitFinalFocus = useCallback(() =>
+	{
 		if (!stopFromMenuRef.current) return editorRef.current;
 		stopFromMenuRef.current = false;
 		return false;
@@ -544,18 +614,39 @@ const SendSlot = memo(function SendSlot({
 		? [
 				{
 					label: "Queue for later",
-					onSelect: () => {
+					onSelect: () =>
+					{
 						onTouchSubmit("later");
 					},
 				},
-				{label: "Stop", separatorBefore: true, onSelect: menuStop},
+				{
+					label: "Stop",
+					separatorBefore: true,
+					onSelect: menuStop,
+				},
 			]
-		: [{label: "Stop", onSelect: menuStop}];
+		: [
+				{
+					label: "Stop",
+					onSelect: menuStop,
+				},
+			];
 	const face = touchSplit ? (
 		<SplitDropdownButton
 			variant="ghost"
 			size="touch"
-			icon={<Icon name="ArrowReturn" size="auto" {...(canSend ? {} : {className: "opacity-40"})} />}
+			icon={
+				<Icon
+					name="ArrowReturn"
+					size="auto"
+					{...(canSend
+						? {}
+						:
+							{
+								className: "opacity-40",
+							})}
+				/>
+			}
 			aria-label="Send"
 			aria-keyshortcuts="Enter"
 			menuLabel="More send options"
@@ -563,8 +654,14 @@ const SendSlot = memo(function SendSlot({
 			align="end"
 			items={splitItems}
 			finalFocus={splitFinalFocus}
-			{...(canSend ? {} : {"aria-disabled": true})}
-			onPrimaryClick={() => {
+			{...(canSend
+				? {}
+				:
+					{
+						"aria-disabled": true,
+					})}
+			onPrimaryClick={() =>
+			{
 				if (canSend) onTouchSubmit("send");
 			}}
 		/>
@@ -572,7 +669,15 @@ const SendSlot = memo(function SendSlot({
 		<SendCrossfade
 			showStop={isStreaming || !hasContent}
 			stop={
-				<Tooltip content="Stop" {...(isStreaming ? {} : {shortcut: "escape"})}>
+				<Tooltip
+					content="Stop"
+					{...(isStreaming
+						? {}
+						:
+							{
+								shortcut: "escape",
+							})}
+				>
 					<button
 						type="button"
 						aria-label="Stop"
@@ -599,7 +704,8 @@ const SendSlot = memo(function SendSlot({
 	 * Upstream's coarse send cell (`ku`/`Au`): an invisible, inert copy of the split always reserves its width,
 	 * and the visible face overlays it end-aligned, so the box never reflows when the split appears.
 	 */
-	if (coarse) {
+	if (coarse)
+	{
 		return (
 			<div className="absolute right-0 bottom-0 grid min-h-7 items-center justify-items-end pl-1.5 comfortable:pl-2">
 				<div data-send-spacer aria-hidden="true" inert className="invisible col-start-1 row-start-1 flex">
@@ -680,8 +786,10 @@ export function Composer({
 	rewind,
 	onOpenContext,
 	onShellCommand,
-}: ComposerProps) {
-	const {
+}: ComposerProps)
+{
+	const
+	{
 		text: prompt,
 		setText: setPrompt,
 		bashMode: draftBashMode,
@@ -705,7 +813,8 @@ export function Composer({
 	const contextChips = useContextChips(draftKey);
 	const restoredChipIds = useRestoredChipIds(draftKey);
 	// Upstream restores staged attachments with the draft; after mount, so SSR and hydration render none.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		hydrateStagedChips(draftKey);
 	}, [draftKey]);
 	// Upstream's bash mode, saved with the draft: only a composer that can run shell commands enters or restores it.
@@ -713,60 +822,92 @@ export function Composer({
 	const bashModeRef = useRef(bashMode);
 	bashModeRef.current = bashMode;
 	// Upstream restores a saved bash mode only where it's available, and otherwise drops it from the draft.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (onShellCommand === undefined && draftBashMode) setBashMode(false);
 	}, [onShellCommand, draftBashMode, setBashMode]);
 	const hasContent = bashMode
 		? prompt.trim() !== ""
 		: prompt.trim() !== "" || queuedComments.length > 0 || contextChips.length > 0;
 	const canSend = hasContent && !isStreaming && !disabled;
-	const [launch, setLaunch] = useState<{draftKey: string; options: LaunchOptions}>({
-		draftKey,
-		options: {},
-	});
+	const [launch, setLaunch] = useState<
+	{
+		draftKey: string;
+		options: LaunchOptions;
+	}>(
+		{
+			draftKey,
+			options: {},
+		},
+	);
 	const launchOptions = launch.draftKey === draftKey ? launch.options : NO_LAUNCH_OPTIONS;
 	// Upstream's folder-transfer effect (cf6ae6197 `Jt`): a Manual, Accept edits or Plan pick stays with the draft in
 	// the new folder, while an Auto or Bypass pick is dropped so that folder's own memory or default takes over.
 	const launchFolder = folderModeKey(permissionCwd);
 	const [pickFolder, setPickFolder] = useState(launchFolder);
-	if (pickFolder !== launchFolder) {
+	if (pickFolder !== launchFolder)
+	{
 		setPickFolder(launchFolder);
 		const pick = launchOptions.permissionMode;
-		if (pick !== undefined && !carryPickToFolder({pick})) {
+		if (
+			pick !== undefined &&
+			!carryPickToFolder(
+				{
+					pick,
+				},
+			)
+		)
+		{
 			const {permissionMode: _dropped, ...kept} = launchOptions;
-			setLaunch({draftKey, options: kept});
+			setLaunch(
+				{
+					draftKey,
+					options: kept,
+				},
+			);
 		}
 	}
 	const [openMenu, setOpenMenu] = useState<ChinMenu | null>(null);
 	const chinPickRef = useRef<ChinPickHandle>(null);
 	// Upstream's literal error band: kept while typing, cleared by Dismiss or the next submit.
-	const [commandError, setCommandError] = useState<{draftKey: string; body: string} | null>(null);
+	const [commandError, setCommandError] = useState<
+	{
+		draftKey: string;
+		body: string;
+	} | null>(null);
 	const commandErrorBody = commandError?.draftKey === draftKey ? commandError.body : null;
 	// Upstream's "isn’t a command here" footnote: set by the send of an unknown command, cleared by the next submit.
-	const [unknownCommand, setUnknownCommand] = useState<{
+	const [unknownCommand, setUnknownCommand] = useState<
+	{
 		draftKey: string;
 		name: string;
 		suggestion: string | null;
 	} | null>(null);
 	const shownUnknownCommand = unknownCommand?.draftKey === draftKey ? unknownCommand : null;
-	const menuShortcutOptions = {disabled: chin === undefined};
+	const menuShortcutOptions =
+	{
+		disabled: chin === undefined,
+	};
 	useShortcut(
 		"open_mode_menu",
-		() => {
+		() =>
+		{
 			setOpenMenu("mode");
 		},
 		menuShortcutOptions,
 	);
 	useShortcut(
 		"open_model_menu",
-		() => {
+		() =>
+		{
 			setOpenMenu("model");
 		},
 		menuShortcutOptions,
 	);
 	useShortcut(
 		"open_effort_selector",
-		() => {
+		() =>
+		{
 			setOpenMenu("effort");
 		},
 		menuShortcutOptions,
@@ -774,8 +915,10 @@ export function Composer({
 	// Upstream's `toggleFastMode`: toggles in a session; the home composer opens the Model menu instead.
 	useShortcut(
 		"toggle_fast_mode",
-		() => {
-			if (variant === "home") {
+		() =>
+		{
+			if (variant === "home")
+			{
 				setOpenMenu("model");
 				return true;
 			}
@@ -783,7 +926,11 @@ export function Composer({
 			if (chinPick === null) return false;
 			const {on, canToggle} = chinPick.fastState();
 			if (!canToggle) return false;
-			chinPick.pick({fastMode: !on});
+			chinPick.pick(
+				{
+					fastMode: !on,
+				},
+			);
 			return true;
 		},
 		menuShortcutOptions,
@@ -791,21 +938,30 @@ export function Composer({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	// The draft the open picker belongs to; upstream (`Ld`) drops a pick when the scope changed while it was open.
 	const pickerDraftKeyRef = useRef<string | null>(null);
-	const openFilePicker = useCallback(() => {
+	const openFilePicker = useCallback(() =>
+	{
 		pickerDraftKeyRef.current = draftKey;
 		fileInputRef.current?.click();
 	}, [draftKey]);
-	useShortcut("add_files", openFilePicker, {disabled});
+	useShortcut(
+		"add_files",
+		openFilePicker,
+		{
+			disabled,
+		},
+	);
 	const chinLaunchOptions = live?.options ?? launchOptions;
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!isStreaming) textareaRef.current?.focus();
 	}, [isStreaming]);
 
 	// Upstream remounts its editor per session, so opening one from the sidebar or palette lands focus in the
 	// prompt; here a session switch keeps this instance, so a new draft key takes the focus a mount would.
 	const focusedDraftKeyRef = useRef(draftKey);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (focusedDraftKeyRef.current === draftKey) return;
 		focusedDraftKeyRef.current = draftKey;
 		if (disabled || document.activeElement?.closest('[role="dialog"], [role="alertdialog"]')) return;
@@ -817,11 +973,13 @@ export function Composer({
 	// on the render that disables the editor, and take it back on re-enable unless the user moved it meanwhile.
 	const lockedRef = useRef(false);
 	const focusedAtLockRef = useRef(false);
-	if (disabled && !lockedRef.current && typeof document !== "undefined") {
+	if (disabled && !lockedRef.current && typeof document !== "undefined")
+	{
 		focusedAtLockRef.current = textareaRef.current !== null && document.activeElement === textareaRef.current;
 	}
 	lockedRef.current = disabled;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (disabled || !focusedAtLockRef.current) return;
 		focusedAtLockRef.current = false;
 		const active = document.activeElement;
@@ -838,7 +996,8 @@ export function Composer({
 	 * an add with uXFFUp and a take-back with the draft message, and chat text reading as `! command` refuses an add.
 	 */
 	const refuseCommandInBox = useCallback(
-		(kind: "add" | "takeBack"): boolean => {
+		(kind: "add" | "takeBack"): boolean =>
+		{
 			const message = bashModeRef.current
 				? kind === "add"
 					? BASH_MODE_REFUSAL
@@ -847,7 +1006,12 @@ export function Composer({
 					? COMMAND_IN_BOX_REFUSAL
 					: null;
 			if (message === null) return false;
-			toast?.({kind: "error", message});
+			toast?.(
+				{
+					kind: "error",
+					message,
+				},
+			);
 			return true;
 		},
 		[toast],
@@ -856,7 +1020,8 @@ export function Composer({
 	bashAvailableRef.current = onShellCommand !== undefined;
 	/** Upstream `Tc`: a routed `!` into the empty composer enters bash mode instead of typing. */
 	const enterBashFromRoutedText = useCallback(
-		(text: string): boolean => {
+		(text: string): boolean =>
+		{
 			if (text !== "!" || !bashAvailableRef.current || bashModeRef.current || promptRef.current !== "")
 				return false;
 			setBashMode(true);
@@ -868,59 +1033,74 @@ export function Composer({
 	useTypeToFocus(textareaRef, active && !disabled, enterBashFromRoutedText);
 	useEffect(
 		() =>
-			registerComposer(draftKey, {
-				insertText: (text) => {
-					if (refuseCommandInBox("add")) return;
-					const next = appendAttachment(promptRef.current, text);
-					promptRef.current = next;
-					setPrompt(next);
-					textareaRef.current?.focus();
+			registerComposer(
+				draftKey,
+				{
+					insertText: (text) =>
+					{
+						if (refuseCommandInBox("add")) return;
+						const next = appendAttachment(promptRef.current, text);
+						promptRef.current = next;
+						setPrompt(next);
+						textareaRef.current?.focus();
+					},
+					focus: () => textareaRef.current?.focus(),
+					setText: (text) =>
+					{
+						promptRef.current = text;
+						setPrompt(text);
+						textareaRef.current?.focus();
+					},
+					getText: () => promptRef.current,
+					submit: () =>
+					{
+						handleSubmitRef.current();
+					},
+					prefill: (text) =>
+					{
+						const refusal = bashModeRef.current
+							? BASH_MODE_REFUSAL
+							: COMMAND_DRAFT_PATTERN.test(promptRef.current.replace(/^[\s\p{Cf}]+/u, ""))
+								? COMMAND_IN_BOX_REFUSAL
+								: null;
+						if (refusal !== null)
+						{
+							toast?.(
+								{
+									kind: "warning",
+									message: refusal,
+								},
+							);
+							return false;
+						}
+						const next = joinPrefill(promptRef.current, text);
+						promptRef.current = next;
+						pendingCaretRef.current = next.length;
+						setCaret(next.length);
+						setPrompt(next);
+						textareaRef.current?.focus();
+						return true;
+					},
+					takeBack: (text) =>
+					{
+						if (refuseCommandInBox("takeBack")) return false;
+						const next = mergeTakeBack(text, promptRef.current);
+						promptRef.current = next;
+						pendingCaretRef.current = text.length;
+						setCaret(text.length);
+						setPrompt(next);
+						textareaRef.current?.focus();
+						return true;
+					},
 				},
-				focus: () => textareaRef.current?.focus(),
-				setText: (text) => {
-					promptRef.current = text;
-					setPrompt(text);
-					textareaRef.current?.focus();
-				},
-				getText: () => promptRef.current,
-				submit: () => {
-					handleSubmitRef.current();
-				},
-				prefill: (text) => {
-					const refusal = bashModeRef.current
-						? BASH_MODE_REFUSAL
-						: COMMAND_DRAFT_PATTERN.test(promptRef.current.replace(/^[\s\p{Cf}]+/u, ""))
-							? COMMAND_IN_BOX_REFUSAL
-							: null;
-					if (refusal !== null) {
-						toast?.({kind: "warning", message: refusal});
-						return false;
-					}
-					const next = joinPrefill(promptRef.current, text);
-					promptRef.current = next;
-					pendingCaretRef.current = next.length;
-					setCaret(next.length);
-					setPrompt(next);
-					textareaRef.current?.focus();
-					return true;
-				},
-				takeBack: (text) => {
-					if (refuseCommandInBox("takeBack")) return false;
-					const next = mergeTakeBack(text, promptRef.current);
-					promptRef.current = next;
-					pendingCaretRef.current = text.length;
-					setCaret(text.length);
-					setPrompt(next);
-					textareaRef.current?.focus();
-					return true;
-				},
-			}),
+			),
 		[draftKey, setPrompt, refuseCommandInBox, toast],
 	);
 
 	useEffect(
 		() =>
-			subscribePrefill?.((text) => {
+			subscribePrefill?.((text) =>
+			{
 				if (refuseCommandInBox("add")) return;
 				const textarea = textareaRef.current;
 				textarea?.focus();
@@ -941,14 +1121,21 @@ export function Composer({
 	const [slashDismissed, setSlashDismissed] = useState(false);
 	if (slashDismissed && slash === null) setSlashDismissed(false);
 	const slashKey = slash === null ? null : `${slash.start}\0${slash.query}`;
-	const [highlight, setHighlight] = useState<{key: string | null; index: number}>({
-		key: null,
-		index: 0,
-	});
+	const [highlight, setHighlight] = useState<
+	{
+		key: string | null;
+		index: number;
+	}>(
+		{
+			key: null,
+			index: 0,
+		},
+	);
 	const slashTyped = slash !== null;
 	const onSlashMenuOpenRef = useRef(onSlashMenuOpen);
 	onSlashMenuOpenRef.current = onSlashMenuOpen;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (slashTyped) onSlashMenuOpenRef.current?.();
 	}, [slashTyped]);
 	const slashActive = slash !== null && !slashDismissed;
@@ -956,13 +1143,26 @@ export function Composer({
 	const slashLoading = slashActive && slashCommandsLoading;
 	const slashOpen = slashLoading || matches.length > 0;
 	const slashItems: SlashMenuItem[] = slashLoading
-		? [{type: "loading"}]
+		? [
+				{
+					type: "loading",
+				},
+			]
 		: [
 				// Upstream ranks a typed query over command rows only (`zq` drops headers), so headers lead the bare `/` alone.
 				...(slashMenuHeader === undefined || query !== ""
 					? []
-					: [{type: "section-header" as const, label: slashMenuHeader}]),
-				...matches.map((command) => ({type: "command" as const, command})),
+					: [
+							{
+								type: "section-header" as const,
+								label: slashMenuHeader,
+							},
+						]),
+				...matches.map((command) => (
+				{
+					type: "command" as const,
+					command,
+				})),
 			];
 	// A mid-line slash opens with nothing highlighted (-1), as upstream's `startsUnselected` does.
 	const highlighted =
@@ -985,7 +1185,8 @@ export function Composer({
 	const argumentHint = chip === null ? null : skillChipArgumentHint(chip, prompt);
 	// Accepted @ mentions, in memory only and tied to the exact prompt they were tracked against:
 	// any other prompt change (history, prefill, send, remount) drops them, as upstream's reload does.
-	const [mentionState, setMentionState] = useState<{
+	const [mentionState, setMentionState] = useState<
+	{
 		draftKey: string;
 		text: string;
 		mentions: readonly AcceptedMention[];
@@ -1002,16 +1203,27 @@ export function Composer({
 	const bashPlaceholder = bashCompact ? BASH_COMPACT_PLACEHOLDER : BASH_PLACEHOLDER;
 	// Upstream's editor hint in bash mode: the full placeholder as aria-description, and as title while compact.
 	const bashHintProps = bashMode
-		? {"aria-description": BASH_PLACEHOLDER, ...(bashCompact ? {title: BASH_PLACEHOLDER} : {})}
+		?
+			{
+				"aria-description": BASH_PLACEHOLDER,
+				...(bashCompact
+					?
+						{
+							title: BASH_PLACEHOLDER,
+						}
+					: {}),
+			}
 		: {};
 	const showWorking =
 		!bashMode &&
-		showsWorkingPlaceholder({
-			working: onStop !== undefined && onQueueForLater !== undefined,
-			disabled: disabled || isStreaming,
-			coarse: coarsePointer,
-			isWindows,
-		});
+		showsWorkingPlaceholder(
+			{
+				working: onStop !== undefined && onQueueForLater !== undefined,
+				disabled: disabled || isStreaming,
+				coarse: coarsePointer,
+				isWindows,
+			},
+		);
 	const placeholder = bashMode ? bashPlaceholder : showWorking ? workingPlaceholder(isMac) : PLACEHOLDER[variant];
 	// The textarea's selection end, so a selection spanning exactly one chip paints it selected.
 	const [selectionEnd, setSelectionEnd] = useState(0);
@@ -1028,7 +1240,11 @@ export function Composer({
 			? null
 			: fileMentionTrigger(prompt, caret);
 	// Esc suppresses the trigger at `start` while its token extends the dismissed one, as upstream does.
-	const [dismissedMention, setDismissedMention] = useState<{start: number; token: string} | null>(null);
+	const [dismissedMention, setDismissedMention] = useState<
+	{
+		start: number;
+		token: string;
+	} | null>(null);
 	const mentionSuppressed =
 		trigger !== null &&
 		trigger.start === dismissedMention?.start &&
@@ -1036,10 +1252,12 @@ export function Composer({
 	if (dismissedMention !== null && !mentionSuppressed) setDismissedMention(null);
 	const mention = mentionSuppressed ? null : trigger;
 	const suggestions = useFileMentionSuggestions(mentionSessionId, mention?.query ?? null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (mentionSessionId !== undefined) void preloadFileTypeIcons();
 	}, [mentionSessionId]);
-	const {
+	const
+	{
 		AttachedContextChips,
 		ComposerDropScrim,
 		FileMentionMenu,
@@ -1047,15 +1265,22 @@ export function Composer({
 		QueuedPromoteStatus,
 		SlashCommandMenu,
 	} = useComposerSurfaces();
-	useEffect(() => {
+	useEffect(() =>
+	{
 		preloadComposerSurfaces().catch(() => {});
 	}, []);
 	const mentionEntries = suggestions?.entries ?? [];
 	const mentionOpen = mention !== null && mentionEntries.length > 0;
-	const [mentionHighlight, setMentionHighlight] = useState<{
+	const [mentionHighlight, setMentionHighlight] = useState<
+	{
 		entries: readonly SessionFilesEntry[];
 		index: number;
-	}>({entries: [], index: 0});
+	}>(
+		{
+			entries: [],
+			index: 0,
+		},
+	);
 	const mentionHighlighted =
 		mentionHighlight.entries === mentionEntries ? Math.min(mentionHighlight.index, mentionEntries.length - 1) : 0;
 	// Upstream anchors the popup to the `@` glyph, clamped to the textarea's box: measured once per trigger start (and width),
@@ -1064,24 +1289,32 @@ export function Composer({
 	const mentionInputRef = useRef<HTMLDivElement>(null);
 	const mentionStart = mentionOpen ? mention.start : null;
 	const mentionWidth = fileMentionMenuWidth(mentionEntries);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (mentionStart === null) return undefined;
-		const place = () => {
+		const place = () =>
+		{
 			const textarea = textareaRef.current;
 			const container = mentionInputRef.current;
 			const menu = document.getElementById(mentionMenuId);
 			if (textarea === null || container === null || menu === null) return;
 			const caretRect = textareaCaretRect(textarea, mentionStart);
 			const box = textarea.getBoundingClientRect();
-			const {left, bottom} = fileMentionMenuPosition({
-				at: {left: box.left + caretRect.left, bottom: box.top + caretRect.top + caretRect.height},
-				editor: box,
-				// Upstream's `@.bottom - @.top`: the glyph's line box.
-				lineHeight: caretRect.height,
-				container: container.getBoundingClientRect(),
-				width: mentionWidth,
-				viewportWidth: window.innerWidth,
-			});
+			const {left, bottom} = fileMentionMenuPosition(
+				{
+					at:
+					{
+						left: box.left + caretRect.left,
+						bottom: box.top + caretRect.top + caretRect.height,
+					},
+					editor: box,
+					// Upstream's `@.bottom - @.top`: the glyph's line box.
+					lineHeight: caretRect.height,
+					container: container.getBoundingClientRect(),
+					width: mentionWidth,
+					viewportWidth: window.innerWidth,
+				},
+			);
 			menu.style.left = `${left}px`;
 			menu.style.bottom = `${bottom}px`;
 		};
@@ -1089,64 +1322,85 @@ export function Composer({
 		const textarea = textareaRef.current;
 		window.addEventListener("resize", place);
 		textarea?.addEventListener("scroll", place);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("resize", place);
 			textarea?.removeEventListener("scroll", place);
 		};
 	}, [mentionStart, mentionWidth, mentionMenuId]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const next = pendingCaretRef.current;
 		if (next === null) return;
 		pendingCaretRef.current = null;
 		textareaRef.current?.setSelectionRange(next, next);
 	}, [prompt]);
 
-	function acceptFileMention(entry: SessionFilesEntry) {
+	function acceptFileMention(entry: SessionFilesEntry)
+	{
 		if (mention === null) return;
 		const next = insertFileMention(prompt, mention, caret, entry.relPath);
-		setMentionState({
-			draftKey,
-			text: next.text,
-			mentions: [
-				...remapMentions(prompt, next.text, mentions),
-				// The token runs up to the trailing space.
-				{
-					start: mention.start,
-					end: next.caret - 1,
-					relPath: entry.relPath,
-					isDirectory: entry.isDirectory,
-				},
-			],
-		});
+		setMentionState(
+			{
+				draftKey,
+				text: next.text,
+				mentions: [
+					...remapMentions(prompt, next.text, mentions),
+					// The token runs up to the trailing space.
+					{
+						start: mention.start,
+						end: next.caret - 1,
+						relPath: entry.relPath,
+						isDirectory: entry.isDirectory,
+					},
+				],
+			},
+		);
 		pendingCaretRef.current = next.caret;
 		setCaret(next.caret);
 		setPrompt(next.text);
 		textareaRef.current?.focus();
 	}
 
-	function handleMentionKey(e: React.KeyboardEvent): boolean {
+	function handleMentionKey(e: React.KeyboardEvent): boolean
+	{
 		if (!mentionOpen) return false;
 		const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
-		if (move !== 0) {
-			setMentionHighlight({
-				entries: mentionEntries,
-				index: Math.min(Math.max(mentionHighlighted + move, 0), mentionEntries.length - 1),
-			});
-		} else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
+		if (move !== 0)
+		{
+			setMentionHighlight(
+				{
+					entries: mentionEntries,
+					index: Math.min(Math.max(mentionHighlighted + move, 0), mentionEntries.length - 1),
+				},
+			);
+		}
+		else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey)
+		{
 			const entry = mentionEntries[mentionHighlighted];
 			if (entry !== undefined) acceptFileMention(entry);
-		} else if (e.key === "Escape") {
-			setDismissedMention({start: mention.start, token: `@${mention.query}`});
+		}
+		else if (e.key === "Escape")
+		{
+			setDismissedMention(
+				{
+					start: mention.start,
+					token: `@${mention.query}`,
+				},
+			);
 			e.stopPropagation();
-		} else {
+		}
+		else
+		{
 			return false;
 		}
 		e.preventDefault();
 		return true;
 	}
 
-	function acceptSlashCommand(command: SlashCommand) {
+	function acceptSlashCommand(command: SlashCommand)
+	{
 		if (slash === null) return;
 		const inserted = `/${command.name} `;
 		const next = slash.start + inserted.length;
@@ -1155,27 +1409,50 @@ export function Composer({
 		setPrompt(prompt.slice(0, slash.start) + inserted + prompt.slice(caret));
 		setChipSelection(false);
 		// The local menu can open mid-line, but only a leading command becomes a chip.
-		setAcceptedChip(slash.start === 0 ? {draftKey, name: command.name, argumentHint: command.argumentHint} : null);
+		setAcceptedChip(
+			slash.start === 0
+				?
+					{
+						draftKey,
+						name: command.name,
+						argumentHint: command.argumentHint,
+					}
+				: null,
+		);
 		textareaRef.current?.focus();
 	}
 
-	function handleSlashKey(e: React.KeyboardEvent): boolean {
+	function handleSlashKey(e: React.KeyboardEvent): boolean
+	{
 		if (!slashOpen) return false;
 		const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
-		if (move !== 0) {
-			setHighlight({key: slashKey, index: stepSlashHighlight(slashItems, highlighted, move)});
-		} else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
+		if (move !== 0)
+		{
+			setHighlight(
+				{
+					key: slashKey,
+					index: stepSlashHighlight(slashItems, highlighted, move),
+				},
+			);
+		}
+		else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey)
+		{
 			const command = highlightedCommand;
 			// Nothing highlighted: upstream closes the menu and lets the key through (Enter sends).
-			if (command === undefined) {
+			if (command === undefined)
+			{
 				setSlashDismissed(true);
 				return false;
 			}
 			acceptSlashCommand(command);
-		} else if (e.key === "Escape") {
+		}
+		else if (e.key === "Escape")
+		{
 			setSlashDismissed(true);
 			e.stopPropagation();
-		} else {
+		}
+		else
+		{
 			return false;
 		}
 		e.preventDefault();
@@ -1183,37 +1460,54 @@ export function Composer({
 	}
 
 	function handleSubmit(
-		send: (prompt: string) => void = (text) => {
+		send: (prompt: string) => void = (text) =>
+		{
 			onSend(text, launchOptions);
 		},
 		trigger?: Event,
-	): void {
+	): void
+	{
 		if (!canSend) return;
 		// The session composer's draft is keyed by its session id.
 		if (trigger !== undefined && variant === "session") startComposerSubmitJourneys(trigger, draftKey);
 		const trimmed = prompt.trim();
 		setUnknownCommand(null);
 		setCommandError(null);
-		if (bashMode) {
+		if (bashMode)
+		{
 			// Upstream zO: a command hiding characters stays in the box rather than running.
-			if (hasHiddenCharacters(trimmed)) toast?.({kind: "error", message: HIDDEN_CHARACTERS_REFUSAL});
+			if (hasHiddenCharacters(trimmed))
+				toast?.(
+					{
+						kind: "error",
+						message: HIDDEN_CHARACTERS_REFUSAL,
+					},
+				);
 			else runShellCommand(trimmed);
 			return;
 		}
 		// Upstream refuses a typed `! command` where nothing can run it, rather than sending it as a prompt.
-		if (onShellCommand === undefined && isShellCommandText(trimmed)) {
-			toast?.({kind: "error", message: shellCommandUnavailableMessage(variant)});
+		if (onShellCommand === undefined && isShellCommandText(trimmed))
+		{
+			toast?.(
+				{
+					kind: "error",
+					message: shellCommandUnavailableMessage(variant),
+				},
+			);
 			return;
 		}
 		if (trimmed.startsWith("/") && runHostCommand(trimmed)) return;
 		// Other slash commands run as typed; attached context and comments wait for the next real prompt.
-		if (trimmed.startsWith("/")) {
+		if (trimmed.startsWith("/"))
+		{
 			noteUnknownCommand(trimmed);
 			send(trimmed);
 			clearDraft();
 			return;
 		}
-		const finish = () => {
+		const finish = () =>
+		{
 			const sentChips = takeContextChips(draftKey);
 			const comments = takeQueuedDiffComments(draftKey);
 			const composed = composePrompt(trimmed, sentChips, comments);
@@ -1221,7 +1515,8 @@ export function Composer({
 			send(composed);
 			clearDraft();
 		};
-		if (!contextChips.some((chip) => chip.status === "pending")) {
+		if (!contextChips.some((chip) => chip.status === "pending"))
+		{
 			finish();
 			return;
 		}
@@ -1229,18 +1524,21 @@ export function Composer({
 		// if the prompt or session changed meanwhile. A failed upload's chip is gone by then.
 		if (waitingSendRef.current) return;
 		waitingSendRef.current = true;
-		void waitForPendingUploads(draftKey).then(() => {
+		void waitForPendingUploads(draftKey).then(() =>
+		{
 			waitingSendRef.current = false;
 			if (draftKeyRef.current !== draftKey || promptRef.current !== prompt) return;
 			finish();
 		});
 	}
 	/** Bash mode's send: never queued or steered; the composer clears and returns to chat, or takes a refused command back. */
-	function runShellCommand(command: string): void {
+	function runShellCommand(command: string): void
+	{
 		if (onShellCommand === undefined) return;
 		clearDraft();
 		setBashMode(false);
-		void onShellCommand(command).then((ran) => {
+		void onShellCommand(command).then((ran) =>
+		{
 			if (ran || draftKeyRef.current !== draftKey || promptRef.current !== "") return;
 			promptRef.current = command;
 			pendingCaretRef.current = command.length;
@@ -1250,31 +1548,47 @@ export function Composer({
 		});
 	}
 	/** Upstream's bash-mode keys: `!` in the empty editor enters, Backspace there or Escape (when idle) leaves. */
-	function handleBashKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean {
+	function handleBashKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean
+	{
 		if (onShellCommand === undefined || e.altKey || e.metaKey || e.ctrlKey) return false;
-		if (!bashMode) {
+		if (!bashMode)
+		{
 			if (e.key !== "!" || prompt !== "") return false;
 			setBashMode(true);
-		} else if (e.key === "Backspace" && prompt === "") {
+		}
+		else if (e.key === "Backspace" && prompt === "")
+		{
 			setBashMode(false);
-		} else if (e.key === "Escape" && !e.shiftKey && onStop === undefined && historyNav === null) {
+		}
+		else if (e.key === "Escape" && !e.shiftKey && onStop === undefined && historyNav === null)
+		{
 			// While Claude works, Escape stops it first, as upstream's working Escape does.
 			setBashMode(false);
-		} else {
+		}
+		else
+		{
 			return false;
 		}
 		e.preventDefault();
 		return true;
 	}
 	/** Upstream still sends an unknown command, but explains the CLI's coming "Unknown command" reply. */
-	function noteUnknownCommand(text: string): void {
+	function noteUnknownCommand(text: string): void
+	{
 		const name = /^\/(\w[\w:-]*)(?=\s|$)/.exec(text)?.[1];
 		if (name === undefined || slashCommands.length === 0 || isKnownSlashCommand(name, slashCommands)) return;
 		// Locally every command is a CLI command, so the loaded list is the candidate set.
 		const candidates = slashCommands.flatMap((command) => [command.name, ...(command.aliases ?? [])]);
-		setUnknownCommand({draftKey, name, suggestion: nearestCommand(name, candidates)});
+		setUnknownCommand(
+			{
+				draftKey,
+				name,
+				suggestion: nearestCommand(name, candidates),
+			},
+		);
 	}
-	function applySuggestedCommand(command: string): void {
+	function applySuggestedCommand(command: string): void
+	{
 		setUnknownCommand(null);
 		const rest = prompt.trim();
 		const next = rest === "" ? `/${command} ` : `/${command} ${rest}`;
@@ -1284,66 +1598,117 @@ export function Composer({
 		textareaRef.current?.focus();
 	}
 	/** Upstream's host interception of `/model`, `/effort` and `/permissions`: true when the composer handled it. */
-	function runHostCommand(text: string): boolean {
+	function runHostCommand(text: string): boolean
+	{
 		if (runFastCommand(text) || runRewindCommand(text) || runWorkflowsCommand(text) || runAutocompactCommand(text))
 			return true;
-		const command = parseHostCommand(text, {
-			effortLevels: effortLevelsFor(chinLaunchOptions.model ?? chin?.modelId ?? CLI_DEFAULT_MODEL),
-			models: HOST_COMMAND_MODELS,
-			menusAvailable: chin !== undefined,
-		});
+		const command = parseHostCommand(
+			text,
+			{
+				effortLevels: effortLevelsFor(chinLaunchOptions.model ?? chin?.modelId ?? CLI_DEFAULT_MODEL),
+				models: HOST_COMMAND_MODELS,
+				menusAvailable: chin !== undefined,
+			},
+		);
 		if (command === null) return false;
-		switch (command.kind) {
+		switch (command.kind)
+		{
 			case "open":
 				setOpenMenu(command.menu);
 				clearDraft();
 				break;
 			case "effort":
-				chinPickRef.current?.pick({effort: command.level});
+				chinPickRef.current?.pick(
+					{
+						effort: command.level,
+					},
+				);
 				clearDraft();
 				break;
 			case "model":
 				// Upstream accepts any multi-word id; locally the pick must also be a valid `--model` value.
-				if (LaunchOptionsSchema.shape.model.safeParse(command.model).success) {
-					chinPickRef.current?.pick({model: command.model});
+				if (LaunchOptionsSchema.shape.model.safeParse(command.model).success)
+				{
+					chinPickRef.current?.pick(
+						{
+							model: command.model,
+						},
+					);
 					clearDraft();
-				} else {
-					toast?.({kind: "error", message: `“${command.model}” isn’t an available model.`});
+				}
+				else
+				{
+					toast?.(
+						{
+							kind: "error",
+							message: `“${command.model}” isn’t an available model.`,
+						},
+					);
 				}
 				break;
 			case "refuse":
-				toast?.({kind: "error", message: command.toast});
+				toast?.(
+					{
+						kind: "error",
+						message: command.toast,
+					},
+				);
 				break;
 			case "band":
-				setCommandError({draftKey, body: command.text});
+				setCommandError(
+					{
+						draftKey,
+						body: command.text,
+					},
+				);
 				break;
 		}
 		return true;
 	}
 	/** Upstream's bare-only `/autocompact` (`context-popover`); with an argument it reaches the CLI as typed. */
-	function runAutocompactCommand(text: string): boolean {
+	function runAutocompactCommand(text: string): boolean
+	{
 		if (autocompactCommand(text) === null) return false;
-		if (onOpenContext !== undefined) {
+		if (onOpenContext !== undefined)
+		{
 			onOpenContext();
 			clearDraft();
 			return true;
 		}
 		if (variant !== "home") return false;
-		toast?.({kind: "error", message: AUTOCOMPACT_BEFORE_SESSION});
+		toast?.(
+			{
+				kind: "error",
+				message: AUTOCOMPACT_BEFORE_SESSION,
+			},
+		);
 		return true;
 	}
 	/** Upstream's `/rewind` (`noArgs`) dispatch: the shape band first, then the gate's outcome. */
-	function runRewindCommand(text: string): boolean {
+	function runRewindCommand(text: string): boolean
+	{
 		if (rewind === undefined) return false;
 		const shape = parseCommandShape(["rewind"], text);
 		if (shape === null) return false;
-		if (shape.kind === "run") {
-			switch (rewind.state) {
+		if (shape.kind === "run")
+		{
+			switch (rewind.state)
+			{
 				case "unsupported":
-					toast?.({kind: "error", message: REWIND_UNSUPPORTED});
+					toast?.(
+						{
+							kind: "error",
+							message: REWIND_UNSUPPORTED,
+						},
+					);
 					break;
 				case "offline":
-					toast?.({kind: "warning", message: REWIND_OFFLINE});
+					toast?.(
+						{
+							kind: "warning",
+							message: REWIND_OFFLINE,
+						},
+					);
 					break;
 				case "busy":
 					// Upstream's `ignore`: nothing happens and the composer keeps `/rewind`.
@@ -1355,11 +1720,15 @@ export function Composer({
 				default:
 					assertNever(rewind.state);
 			}
-		} else {
-			setCommandError({
-				draftKey,
-				body: shape.kind === "extra_lines" ? extraLinesBody(shape.name) : trailingArgsBody(shape.name),
-			});
+		}
+		else
+		{
+			setCommandError(
+				{
+					draftKey,
+					body: shape.kind === "extra_lines" ? extraLinesBody(shape.name) : trailingArgsBody(shape.name),
+				},
+			);
 		}
 		return true;
 	}
@@ -1367,86 +1736,130 @@ export function Composer({
 	 * Upstream's `/workflows` (alias `/workflow`, `noArgs`): opens the Background tasks pane with its
 	 * Finished section expanded. Without a pane to open, it reaches the CLI as typed.
 	 */
-	function runWorkflowsCommand(text: string): boolean {
+	function runWorkflowsCommand(text: string): boolean
+	{
 		if (backgroundTasks === null) return false;
 		const shape = parseCommandShape(["workflows", "workflow"], text);
 		if (shape === null) return false;
-		if (shape.kind === "run") {
+		if (shape.kind === "run")
+		{
 			clearDraft();
-			backgroundTasks.open({finished: true});
-		} else {
-			setCommandError({
-				draftKey,
-				body: shape.kind === "extra_lines" ? extraLinesBody(shape.name) : trailingArgsBody(shape.name),
-			});
+			backgroundTasks.open(
+				{
+					finished: true,
+				},
+			);
+		}
+		else
+		{
+			setCommandError(
+				{
+					draftKey,
+					body: shape.kind === "extra_lines" ? extraLinesBody(shape.name) : trailingArgsBody(shape.name),
+				},
+			);
 		}
 		return true;
 	}
 	/** Upstream's `/fast [on|off]` routing; anything it leaves unhandled reaches the CLI as typed. */
-	function runFastCommand(text: string): boolean {
+	function runFastCommand(text: string): boolean
+	{
 		const arg = fastCommandArg(text);
 		const chinPick = chinPickRef.current;
 		if (arg === null || chinPick === null) return false;
 		const {on, canToggle} = chinPick.fastState();
-		const route = routeFastCommand({arg, on, canToggle});
+		const route = routeFastCommand(
+			{
+				arg,
+				on,
+				canToggle,
+			},
+		);
 		if (route === "unhandled") return false;
-		if (route === "toggle") chinPick.pick({fastMode: !on});
+		if (route === "toggle")
+			chinPick.pick(
+				{
+					fastMode: !on,
+				},
+			);
 		else
-			toast?.({
-				kind: "success",
-				message: on ? "Fast mode is already on." : "Fast mode is already off.",
-				uniqueKey: FAST_COMMAND_NOTICE_KEY,
-			});
+			toast?.(
+				{
+					kind: "success",
+					message: on ? "Fast mode is already on." : "Fast mode is already off.",
+					uniqueKey: FAST_COMMAND_NOTICE_KEY,
+				},
+			);
 		clearDraft();
 		return true;
 	}
 	// The send slot and chin are memoized, so they read the latest render's handlers through refs.
 	const handleSubmitRef = useRef(handleSubmit);
 	handleSubmitRef.current = handleSubmit;
-	const submit = useCallback((event: React.MouseEvent) => {
+	const submit = useCallback((event: React.MouseEvent) =>
+	{
 		handleSubmitRef.current(undefined, event.nativeEvent);
 	}, []);
 	const onQueueForLaterRef = useRef(onQueueForLater);
 	onQueueForLaterRef.current = onQueueForLater;
-	const touchSubmit = useCallback((lane: TouchSubmitLane) => {
+	const touchSubmit = useCallback((lane: TouchSubmitLane) =>
+	{
 		const later = onQueueForLaterRef.current;
 		if (lane === "later" && later !== undefined) handleSubmitRef.current(later);
 		else handleSubmitRef.current();
 	}, []);
 
 	// Upstream keys the walk on `${historyResetKey}:${bash|chat}`, so toggling bash mode drops an active walk.
-	const [historyWalk, setHistoryWalk] = useState<{
+	const [historyWalk, setHistoryWalk] = useState<
+	{
 		draftKey: string;
 		bashMode: boolean;
 		nav: HistoryNavigator;
 	} | null>(null);
 	const historyNav = historyWalk?.draftKey === draftKey && historyWalk.bashMode === bashMode ? historyWalk.nav : null;
 
-	function showPrompt(text: string, caretAt: number) {
+	function showPrompt(text: string, caretAt: number)
+	{
 		pendingCaretRef.current = caretAt;
 		setCaret(caretAt);
 		setPrompt(text);
 	}
 
 	/** ↑/↓ walk prior prompts (caret on the first / last line); Esc restores the draft. */
-	function handleHistoryKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean {
+	function handleHistoryKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean
+	{
 		if (e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return false;
-		if (e.key === "Escape") {
+		if (e.key === "Escape")
+		{
 			if (historyNav === null) return false;
 			setHistoryWalk(null);
 			showPrompt(historyNav.draft, historyNav.draft.length);
-		} else {
+		}
+		else
+		{
 			const {selectionStart, selectionEnd} = e.currentTarget;
 			if (!historyKeyApplies(e.key, prompt, selectionStart, selectionEnd)) return false;
 			// Bash mode walks the session's shell commands (upstream getBashHistory) and never pulls a queued prompt back.
 			const lastQueued = bashMode ? undefined : queue?.items.at(-1);
-			if (e.key === "ArrowUp" && historyNav === null && prompt === "" && lastQueued) {
+			if (e.key === "ArrowUp" && historyNav === null && prompt === "" && lastQueued)
+			{
 				editQueuedPrompt(lastQueued);
-			} else {
+			}
+			else
+			{
 				const from = historyNav ?? historyNavigator(bashMode ? bashHistory : promptHistory, prompt);
 				const next = e.key === "ArrowUp" ? from.up() : from.down();
 				if (next === null) return false;
-				setHistoryWalk(next.active ? {draftKey, bashMode, nav: next} : null);
+				setHistoryWalk(
+					next.active
+						?
+							{
+								draftKey,
+								bashMode,
+								nav: next,
+							}
+						: null,
+				);
 				showPrompt(next.text, e.key === "ArrowUp" ? 0 : next.text.length);
 			}
 		}
@@ -1455,13 +1868,17 @@ export function Composer({
 		return true;
 	}
 
-	function editQueuedPrompt(item: QueuedPrompt) {
+	function editQueuedPrompt(item: QueuedPrompt)
+	{
 		// Upstream refuses to pull a queued message back over a draft rather than merging them.
-		if (prompt.trim() !== "") {
-			toast?.({
-				kind: "warning",
-				message: "The input already has a draft. Clear it to pull this message back in.",
-			});
+		if (prompt.trim() !== "")
+		{
+			toast?.(
+				{
+					kind: "warning",
+					message: "The input already has a draft. Clear it to pull this message back in.",
+				},
+			);
 			return;
 		}
 		queue?.remove(item.id);
@@ -1471,13 +1888,17 @@ export function Composer({
 		textareaRef.current?.focus();
 	}
 
-	function attachFiles(files: readonly File[]) {
+	function attachFiles(files: readonly File[])
+	{
 		// Upstream refuses attachments until the session's meta has loaded; locally that's the launch window.
-		if (disabled) {
-			toast?.({
-				kind: "error",
-				message: "Files can’t be attached until the session finishes loading. Try again in a moment.",
-			});
+		if (disabled)
+		{
+			toast?.(
+				{
+					kind: "error",
+					message: "Files can’t be attached until the session finishes loading. Try again in a moment.",
+				},
+			);
 			return;
 		}
 		attachUploadedFiles(draftKey, files, (options) => toast?.(options));
@@ -1487,27 +1908,38 @@ export function Composer({
 	// toasts instead of opening the file, but the scrim only shows once files can attach.
 	const cardRef = useRef<HTMLDivElement>(null);
 	const chatPanelDrop = dropScope === "chat-panel";
-	const dropState = useFileDropTarget({onFileDrop: attachFiles, targetRef: cardRef, disabled: chatPanelDrop});
+	const dropState = useFileDropTarget(
+		{
+			onFileDrop: attachFiles,
+			targetRef: cardRef,
+			disabled: chatPanelDrop,
+		},
+	);
 	const registerChatDrop = useContext(ChatFileDropContext);
 	const dropFromChatPanel = useEffectEvent(attachFiles);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!chatPanelDrop || registerChatDrop === null) return undefined;
-		return registerChatDrop((files) => {
+		return registerChatDrop((files) =>
+		{
 			dropFromChatPanel(files);
 		});
 	}, [chatPanelDrop, registerChatDrop]);
 
-	function handlePaste(e: React.ClipboardEvent) {
+	function handlePaste(e: React.ClipboardEvent)
+	{
 		// Upstream's paste guard (`c1958b152` `_c`): a clipboard holding a folder isn't pasted as text, and only the
 		// files beside the folder attach.
 		const {folders, files} = splitDroppedItems(e.clipboardData.items, e.clipboardData.files);
-		if (files.length > 0 || folders.length > 0) {
+		if (files.length > 0 || folders.length > 0)
+		{
 			e.preventDefault();
 			if (files.length > 0) attachFiles(files);
 		}
 	}
 
-	const insertSlash = useCallback(() => {
+	const insertSlash = useCallback(() =>
+	{
 		const current = promptRef.current;
 		// Upstream prepends "/" and leaves the caret right after it.
 		pendingCaretRef.current = 1;
@@ -1522,12 +1954,19 @@ export function Composer({
 	const queuedItems = queue?.items;
 	const laterItems = useMemo(() => queuedForLater(queuedItems ?? []), [queuedItems]);
 	const launchControls = useMemo<ChinLaunchControls>(
-		() => ({
+		() => (
+		{
 			launchOptions: chinLaunchOptions,
 			onLaunchOptionsChange:
 				live === undefined
-					? (options) => {
-							setLaunch({draftKey, options});
+					? (options) =>
+						{
+							setLaunch(
+								{
+									draftKey,
+									options,
+								},
+							);
 						}
 					: (options) => void live.apply(options),
 			confirmEffortChange: live !== undefined,
@@ -1541,7 +1980,8 @@ export function Composer({
 	);
 
 	/** Upstream `Cq` is an atom: Backspace after it (or Delete before it) selects it instead of eating a character. */
-	function handleChipKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean {
+	function handleChipKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean
+	{
 		if (chip === null) return false;
 		const {selectionStart, selectionEnd} = e.currentTarget;
 		if (selectionStart !== selectionEnd) return false;
@@ -1555,29 +1995,39 @@ export function Composer({
 	}
 
 	/** Keeps the caret and selection edges out of the chip, as they can't enter upstream's atom node. */
-	function clampChipSelection(textarea: HTMLTextAreaElement) {
+	function clampChipSelection(textarea: HTMLTextAreaElement)
+	{
 		let {selectionStart: start, selectionEnd: end} = textarea;
-		if (chip !== null) {
-			if (start === end && start > 0 && start < chipLength) {
+		if (chip !== null)
+		{
+			if (start === end && start > 0 && start < chipLength)
+			{
 				// One step left from the chip's end jumps over it (ArrowLeft); anything else lands after it.
 				start = end = start === chipLength - 1 && caret >= chipLength ? 0 : chipLength;
-			} else {
+			}
+			else
+			{
 				if (start > 0 && start < chipLength) start = 0;
 				if (end > 0 && end < chipLength) end = chipLength;
 			}
-			if (start !== textarea.selectionStart || end !== textarea.selectionEnd) {
+			if (start !== textarea.selectionStart || end !== textarea.selectionEnd)
+			{
 				textarea.setSelectionRange(start, end, textarea.selectionDirection);
 			}
 		}
 		// Same for accepted @ mentions: a caret inside one lands after it, or before it when stepping left from its end.
 		const inside = start === end ? mentionAt(mentions, start) : undefined;
-		if (inside === undefined) {
+		if (inside === undefined)
+		{
 			start = mentionAt(mentions, start)?.start ?? start;
 			end = mentionAt(mentions, end)?.end ?? end;
-		} else {
+		}
+		else
+		{
 			start = end = start === inside.end - 1 && caret >= inside.end ? inside.start : inside.end;
 		}
-		if (start !== textarea.selectionStart || end !== textarea.selectionEnd) {
+		if (start !== textarea.selectionStart || end !== textarea.selectionEnd)
+		{
 			textarea.setSelectionRange(start, end, textarea.selectionDirection);
 		}
 		setCaret(start);
@@ -1589,13 +2039,15 @@ export function Composer({
 	 * Upstream's mention is a ProseMirror atom with no shortcuts of its own: Backspace after it (or Delete
 	 * before it) removes it in one step, and the arrows select it whole before stepping past it.
 	 */
-	function handleMentionChipKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean {
+	function handleMentionChipKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean
+	{
 		if (mentions.length === 0 || e.altKey || e.metaKey || e.ctrlKey || e.shiftKey) return false;
 		const {selectionStart, selectionEnd: end} = e.currentTarget;
 		const selected = mentions.find((m) => m.start === selectionStart && m.end === end);
 		const collapsed = selectionStart === end;
 		const textarea = e.currentTarget;
-		const selectRange = (start: number, rangeEnd: number) => {
+		const selectRange = (start: number, rangeEnd: number) =>
+		{
 			textarea.setSelectionRange(start, rangeEnd);
 			setCaret(start);
 			setSelectionEnd(rangeEnd);
@@ -1603,21 +2055,29 @@ export function Composer({
 		// The chip a collapsed caret sits right after (stepping backward) or right before (forward).
 		const besideCaret = (backward: boolean) =>
 			collapsed ? (backward ? mentionEndingAt : mentionStartingAt)(mentions, selectionStart) : undefined;
-		if (e.key === "Backspace" || e.key === "Delete") {
+		if (e.key === "Backspace" || e.key === "Delete")
+		{
 			const target = selected ?? besideCaret(e.key === "Backspace");
 			if (target === undefined) return false;
 			deleteMention(target);
-		} else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+		}
+		else if (e.key === "ArrowLeft" || e.key === "ArrowRight")
+		{
 			const left = e.key === "ArrowLeft";
-			if (selected === undefined) {
+			if (selected === undefined)
+			{
 				const target = besideCaret(left);
 				if (target === undefined) return false;
 				selectRange(target.start, target.end);
-			} else {
+			}
+			else
+			{
 				const edge = left ? selected.start : selected.end;
 				selectRange(edge, edge);
 			}
-		} else {
+		}
+		else
+		{
 			return false;
 		}
 		e.preventDefault();
@@ -1625,20 +2085,29 @@ export function Composer({
 	}
 
 	/** Removes a chip's token (its trailing space stays, as upstream's `deleteNode`) and leaves the caret there. */
-	function deleteMention(target: AcceptedMention) {
+	function deleteMention(target: AcceptedMention)
+	{
 		const next = prompt.slice(0, target.start) + prompt.slice(target.end);
 		setHistoryWalk(null);
-		setMentionState({draftKey, text: next, mentions: remapMentions(prompt, next, mentions)});
+		setMentionState(
+			{
+				draftKey,
+				text: next,
+				mentions: remapMentions(prompt, next, mentions),
+			},
+		);
 		pendingCaretRef.current = target.start;
 		setCaret(target.start);
 		setSelectionEnd(target.start);
 		setPrompt(next);
 	}
 
-	const mentionChipActions: MentionChipActions = {
+	const mentionChipActions: MentionChipActions =
+	{
 		editorRef: textareaRef,
 		cwd: mentionCwd,
-		onPress: (target) => {
+		onPress: (target) =>
+		{
 			const textarea = textareaRef.current;
 			if (textarea === null) return;
 			textarea.focus();
@@ -1646,13 +2115,15 @@ export function Composer({
 			setCaret(target.start);
 			setSelectionEnd(target.end);
 		},
-		onDelete: (target) => {
+		onDelete: (target) =>
+		{
 			deleteMention(target);
 			textareaRef.current?.focus();
 		},
 	};
 
-	function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+	function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>)
+	{
 		startComposerKeystrokeJourney(e.nativeEvent);
 		if (
 			e.nativeEvent.isComposing ||
@@ -1662,33 +2133,49 @@ export function Composer({
 			handleMentionKey(e) ||
 			handleBashKey(e) ||
 			handleHistoryKey(e)
-		) {
+		)
+		{
 			return;
 		}
-		if (e.key === "Enter" && !e.shiftKey) {
+		if (e.key === "Enter" && !e.shiftKey)
+		{
 			e.preventDefault();
 			const commandChord = e.metaKey || e.ctrlKey;
 			// Upstream swallows ⌘⏎ key repeat so a held chord never sends twice.
-			if (commandChord && e.repeat) {
+			if (commandChord && e.repeat)
+			{
 				e.stopPropagation();
 				return;
 			}
 			const trigger = e.nativeEvent;
-			if (commandChord && e.altKey && bashMode) {
+			if (commandChord && e.altKey && bashMode)
+			{
 				// Upstream offers no fork from bash mode.
-			} else if (bashMode) {
+			}
+			else if (bashMode)
+			{
 				handleSubmit(undefined, trigger);
-			} else if (commandChord && e.altKey && onFork !== undefined) {
-				handleSubmit((text) => {
+			}
+			else if (commandChord && e.altKey && onFork !== undefined)
+			{
+				handleSubmit((text) =>
+				{
 					onFork(text, chinLaunchOptions);
 				}, trigger);
-			} else if (commandChord && !e.altKey && onQueueForLater !== undefined) {
+			}
+			else if (commandChord && !e.altKey && onQueueForLater !== undefined)
+			{
 				handleSubmit(onQueueForLater, trigger);
-			} else if (commandChord && !e.altKey && onSendAndStay !== undefined) {
-				handleSubmit((text) => {
+			}
+			else if (commandChord && !e.altKey && onSendAndStay !== undefined)
+			{
+				handleSubmit((text) =>
+				{
 					onSendAndStay(text, chinLaunchOptions);
 				}, trigger);
-			} else {
+			}
+			else
+			{
 				handleSubmit(undefined, trigger);
 			}
 		}
@@ -1712,7 +2199,12 @@ export function Composer({
 						<QueuedMessageBar
 							sessionId={draftKey}
 							items={laterItems}
-							{...(queue.acceptedIds === undefined ? {} : {acceptedIds: queue.acceptedIds})}
+							{...(queue.acceptedIds === undefined
+								? {}
+								:
+									{
+										acceptedIds: queue.acceptedIds,
+									})}
 							onEdit={editQueuedPrompt}
 							onSendNow={queue.sendNow}
 							onRemove={queue.remove}
@@ -1728,7 +2220,8 @@ export function Composer({
 				id={active ? "chat-input-file-upload-epitaxy" : undefined}
 				tabIndex={-1}
 				className="hidden"
-				onChange={(e) => {
+				onChange={(e) =>
+				{
 					const pickedFor = pickerDraftKeyRef.current;
 					pickerDraftKeyRef.current = null;
 					if (pickedFor === draftKey) attachFiles(Array.from(e.target.files ?? []));
@@ -1742,7 +2235,8 @@ export function Composer({
 						hint={commandErrorBody}
 						icon="warning"
 						announce="alert"
-						onDismiss={() => {
+						onDismiss={() =>
+						{
 							setCommandError(null);
 						}}
 					/>
@@ -1760,7 +2254,8 @@ export function Composer({
 				ref={cardRef}
 				data-composer-card
 				className={bashMode ? `${COMPOSER_CARD_CLASS} ${BASH_CARD_CLASS}` : COMPOSER_CARD_CLASS}
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					// A portaled menu's click bubbles here through the React tree; only clicks on the card itself focus.
 					if (event.target instanceof Node && event.currentTarget.contains(event.target))
 						textareaRef.current?.focus();
@@ -1794,8 +2289,14 @@ export function Composer({
 							items={slashItems}
 							query={query ?? ""}
 							highlighted={highlighted}
-							onHighlight={(index) => {
-								setHighlight({key: slashKey, index});
+							onHighlight={(index) =>
+							{
+								setHighlight(
+									{
+										key: slashKey,
+										index,
+									},
+								);
 							}}
 							onAccept={acceptSlashCommand}
 						/>
@@ -1805,8 +2306,14 @@ export function Composer({
 							id={mentionMenuId}
 							entries={mentionEntries}
 							highlighted={mentionHighlighted}
-							onHighlight={(index) => {
-								setMentionHighlight({entries: mentionEntries, index});
+							onHighlight={(index) =>
+							{
+								setMentionHighlight(
+									{
+										entries: mentionEntries,
+										index,
+									},
+								);
 							}}
 							onAccept={acceptFileMention}
 						/>
@@ -1833,7 +2340,8 @@ export function Composer({
 												slashCommands.find((command) => command.name === chip.name)?.description
 											}
 											selected={chipSelected}
-											onPress={(e) => {
+											onPress={(e) =>
+											{
 												// Upstream's atom can't hold the caret, so a press on the chip lands it after the chip.
 												e.preventDefault();
 												const textarea = textareaRef.current;
@@ -1868,7 +2376,10 @@ export function Composer({
 												data-testid="slash-argument-hint"
 												data-skill-arg-hint="true"
 												aria-hidden="true"
-												style={{opacity: 0.5}}
+												style={
+												{
+													opacity: 0.5,
+												}}
 											>
 												{argumentHint}
 											</span>
@@ -1928,18 +2439,15 @@ export function Composer({
 						// Upstream c2319b8e9: the chat tile's focus target for the tile focus hand-off.
 						data-tile-focus-target=""
 						value={prompt}
-						onChange={(e) => {
+						onChange={(e) =>
+						{
 							setHistoryWalk(null);
 							let next = e.target.value;
 							let nextCaret = e.target.selectionStart;
 							// Upstream `Yg chipArgumentSeparator`: a character typed right after the chip gets a space before it.
 							const after = next.charAt(chipLength);
-							if (
-								chip !== null &&
-								next.startsWith(`/${chip.name}`) &&
-								after !== "" &&
-								!/\s/.test(after)
-							) {
+							if (chip !== null && next.startsWith(`/${chip.name}`) && after !== "" && !/\s/.test(after))
+							{
 								next = `${next.slice(0, chipLength)} ${next.slice(chipLength)}`;
 								if (nextCaret >= chipLength) nextCaret += 1;
 								pendingCaretRef.current = nextCaret;
@@ -1947,20 +2455,26 @@ export function Composer({
 							setCaret(nextCaret);
 							setSelectionEnd(nextCaret);
 							setChipSelection(false);
-							if (mentions.length > 0) {
-								setMentionState({
-									draftKey,
-									text: next,
-									mentions: remapMentions(prompt, next, mentions),
-								});
+							if (mentions.length > 0)
+							{
+								setMentionState(
+									{
+										draftKey,
+										text: next,
+										mentions: remapMentions(prompt, next, mentions),
+									},
+								);
 							}
 							setPrompt(next);
 						}}
-						onSelect={(e) => {
+						onSelect={(e) =>
+						{
 							clampChipSelection(e.currentTarget);
 						}}
-						onScroll={(e) => {
-							if (paintedOverlayRef.current !== null) {
+						onScroll={(e) =>
+						{
+							if (paintedOverlayRef.current !== null)
+							{
 								paintedOverlayRef.current.scrollTop = e.currentTarget.scrollTop;
 							}
 						}}
@@ -1984,7 +2498,11 @@ export function Composer({
 						rows={1}
 						enterKeyHint="enter"
 						className={`${bashFont(EDITOR_CLASS, bashMode)} ${painted ? "text-transparent caret-primary" : "text-primary"}`}
-						style={{minHeight: "28px", maxHeight: "min(24rem, 40svh)"}}
+						style={
+						{
+							minHeight: "28px",
+							maxHeight: "min(24rem, 40svh)",
+						}}
 					/>
 					{/* Upstream's bash/chat announcement, rendered only where bash mode is available. */}
 					{onShellCommand !== undefined && (

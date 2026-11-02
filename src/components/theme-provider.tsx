@@ -2,7 +2,8 @@ import {useEffect, useMemo, useState} from "react";
 
 import {type Theme, ThemeProviderContext} from "./theme-context";
 
-function isTheme(value: string | null): value is Theme {
+function isTheme(value: string | null): value is Theme
+{
 	return value === "dark" || value === "light" || value === "system";
 }
 
@@ -14,27 +15,33 @@ export function ThemeProvider({
 	children: React.ReactNode;
 	defaultTheme?: Theme;
 	storageKey?: string;
-}) {
+})
+{
 	const [theme, setTheme] = useState<Theme>(defaultTheme);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const stored = localStorage.getItem(storageKey);
 		if (isTheme(stored)) setTheme(stored);
 	}, [storageKey]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const root = document.documentElement;
 		root.classList.remove("light", "dark");
 
-		if (theme === "system") {
+		if (theme === "system")
+		{
 			const mql = window.matchMedia("(prefers-color-scheme: dark)");
-			const handler = (e: MediaQueryListEvent) => {
+			const handler = (e: MediaQueryListEvent) =>
+			{
 				root.classList.remove("light", "dark");
 				root.classList.add(e.matches ? "dark" : "light");
 			};
 			root.classList.add(mql.matches ? "dark" : "light");
 			mql.addEventListener("change", handler);
-			return () => {
+			return () =>
+			{
 				mql.removeEventListener("change", handler);
 			};
 		}
@@ -44,9 +51,11 @@ export function ThemeProvider({
 	}, [theme]);
 
 	const value = useMemo(
-		() => ({
+		() => (
+		{
 			theme,
-			setTheme: (t: Theme) => {
+			setTheme: (t: Theme) =>
+			{
 				localStorage.setItem(storageKey, t);
 				setTheme(t);
 			},

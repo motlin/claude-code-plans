@@ -9,21 +9,24 @@ import {toMdSlug} from "../../lib/md-slug";
 
 const PLAN_RE = /\.claude\/plans\/([^/]+\.md)$/;
 
-export function WriteRenderer({toolCall}: ToolRendererProps) {
+export function WriteRenderer({toolCall}: ToolRendererProps)
+{
 	const filePath = inputString(toolCall.input, "file_path") ?? "";
 	const content = inputString(toolCall.input, "content");
 	const {result, isError} = toolCall;
 	const planFile = filePath.match(PLAN_RE)?.[1];
 	const copyText = content ?? result ?? filePath;
 
-	if (!content && toolCall.blocked === true) {
+	if (!content && toolCall.blocked === true)
+	{
 		return (
 			<div className="px-p6 py-p5">
 				<PolicyDenialReason call={toolCall} />
 			</div>
 		);
 	}
-	if (!content) {
+	if (!content)
+	{
 		return (
 			<div className="px-p6 py-p5">
 				<pre
@@ -44,7 +47,10 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 				{planFile !== undefined && (
 					<Link
 						to="/plan/$filename"
-						params={{filename: toMdSlug(planFile)}}
+						params={
+						{
+							filename: toMdSlug(planFile),
+						}}
 						className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 hover:underline shrink-0"
 					>
 						<FileText size={12} />

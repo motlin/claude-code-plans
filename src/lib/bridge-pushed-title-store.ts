@@ -12,21 +12,25 @@ import {persistedSessionMap} from "./persisted-session-map";
 const store = persistedSessionMap<string>("bridgePushedTitle", z.string());
 
 /** Mirror the store to `file` from now on, first replacing it with what the file holds. */
-export function persistBridgePushedTitlesTo(file: string): void {
+export function persistBridgePushedTitlesTo(file: string): void
+{
 	store.persistTo(file);
 }
 
-export function bridgePushedTitle(sessionId: string): string | null {
+export function bridgePushedTitle(sessionId: string): string | null
+{
 	return store.get(sessionId);
 }
 
 /** Remember `title` as the session's pushed title, or forget it for null. */
-export function setBridgePushedTitle(sessionId: string, title: string | null): void {
+export function setBridgePushedTitle(sessionId: string, title: string | null): void
+{
 	if (title === null) store.delete(sessionId);
 	else store.set(sessionId, title);
 }
 
 /** Forget every pushed title, as a fresh process starts. */
-export function resetBridgePushedTitles(): void {
+export function resetBridgePushedTitles(): void
+{
 	store.reset();
 }

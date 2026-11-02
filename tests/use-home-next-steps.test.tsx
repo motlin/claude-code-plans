@@ -5,7 +5,8 @@ import type {ReactElement} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -28,7 +29,8 @@ import {__awaitingAckTesting, ack} from "../src/lib/awaiting-ack-store";
 
 const MINUTE = 60 * 1000;
 
-function listItem(id: string): SessionListItem {
+function listItem(id: string): SessionListItem
+{
 	return {
 		id,
 		title: `Title ${id}`,
@@ -46,7 +48,8 @@ function listItem(id: string): SessionListItem {
 	};
 }
 
-const APPROVALS = {
+const APPROVALS =
+{
 	approvals: [
 		{
 			sessionId: "waiting",
@@ -62,7 +65,8 @@ const APPROVALS = {
 	],
 };
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
@@ -72,70 +76,118 @@ async function renderHook(
 	queryClient: QueryClient,
 	describeRow: (candidate: NextStepCandidate) => string | null = (candidate) => candidate.detail,
 	wrap: (probe: ReactElement) => ReactElement = (probe) => probe,
-): Promise<((string | null)[] | undefined)[]> {
+): Promise<((string | null)[] | undefined)[]>
+{
 	const frames: ((string | null)[] | undefined)[] = [];
-	function Probe() {
+	function Probe()
+	{
 		const nextSteps = useHomeNextSteps();
 		frames.push(nextSteps?.rows.map((row) => (row.type === "row" ? describeRow(row.candidate) : row.type)));
 		return null;
 	}
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<Outlet />
-			</QueryClientProvider>
-		),
-	});
-	const homeRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: () => wrap(<Probe />),
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<Outlet />
+				</QueryClientProvider>
+			),
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => wrap(<Probe />),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	return frames;
 }
 
-function seededClient(): QueryClient {
-	const queryClient = new QueryClient({
-		defaultOptions: {queries: {retry: false, staleTime: Infinity}},
-	});
-	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [{sessions: [listItem("waiting")], nextCursor: null}],
-		pageParams: [null],
-	});
-	queryClient.setQueryData(homeDismissalsQueryOptions.queryKey, {dismissals: {}});
+function seededClient(): QueryClient
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+				},
+			},
+		},
+	);
+	queryClient.setQueryData(
+		recentSessionsInfiniteQueryOptions().queryKey,
+		{
+			pages: [
+				{
+					sessions: [listItem("waiting")],
+					nextCursor: null,
+				},
+			],
+			pageParams: [null],
+		},
+	);
+	queryClient.setQueryData(
+		homeDismissalsQueryOptions.queryKey,
+		{
+			dismissals: {},
+		},
+	);
 	return queryClient;
 }
 
-describe("useHomeNextSteps", () => {
-	it("stays undefined until approvals settle, so the first rendered detail is Needs permission", async () => {
-		let resolveApprovals: (response: Response) => void = () => {};
+describe("useHomeNextSteps", () =>
+{
+	it("stays undefined until approvals settle, so the first rendered detail is Needs permission", async () =>
+	{
+		let resolveApprovals: (response: Response) => void = () =>
+		{
+		};
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async (url: string) =>
 				url === "/api/approvals"
-					? new Promise<Response>((resolve) => {
+					? new Promise<Response>((resolve) =>
+						{
 							resolveApprovals = resolve;
 						})
-					: new Response("{}", {status: 404}),
+					: new Response(
+							"{}",
+							{
+								status: 404,
+							},
+						),
 			),
 		);
 		const frames = await renderHook(seededClient());
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(frames.length).toBeGreaterThan(0);
 		});
 
 		expect(frames.every((frame) => frame === undefined)).toBe(true);
 
-		act(() => {
+		act(() =>
+		{
 			resolveApprovals(Response.json(APPROVALS));
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(frames.at(-1)).toStrictEqual(["Needs permission"]);
 		});
 
@@ -144,18 +196,30 @@ describe("useHomeNextSteps", () => {
 		);
 	});
 
-	it("drops a waiting session's row the moment this tab answers it", async () => {
+	it("drops a waiting session's row the moment this tab answers it", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+			vi.fn(async () =>
+				Promise.resolve(
+					new Response(
+						"{}",
+						{
+							status: 404,
+						},
+					),
+				),
+			),
 		);
 		const queryClient = seededClient();
 		queryClient.setQueryData(approvalsQueryOptions().queryKey, APPROVALS);
 		const frames = await renderHook(queryClient);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(frames.at(-1)).toStrictEqual(["Needs permission"]);
 		});
-		act(() => {
+		act(() =>
+		{
 			holdAnswered("waiting", "toolu_1");
 		});
 		const answered = frames.at(-1);
@@ -164,20 +228,32 @@ describe("useHomeNextSteps", () => {
 		expect(answered).toStrictEqual([]);
 	});
 
-	it("drops a waiting session's row once this browser marks it completed", async () => {
+	it("drops a waiting session's row once this browser marks it completed", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+			vi.fn(async () =>
+				Promise.resolve(
+					new Response(
+						"{}",
+						{
+							status: 404,
+						},
+					),
+				),
+			),
 		);
 		const queryClient = seededClient();
 		queryClient.setQueryData(approvalsQueryOptions().queryKey, APPROVALS);
 		const frames = await renderHook(queryClient);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(frames.at(-1)).toStrictEqual(["Needs permission"]);
 		});
 		const recent = queryClient.getQueryData(recentSessionsInfiniteQueryOptions().queryKey);
 		const mtime = recent?.pages[0]?.sessions[0]?.mtime ?? "";
-		act(() => {
+		act(() =>
+		{
 			ack("waiting", Date.parse(mtime));
 		});
 		const acked = frames.at(-1);
@@ -186,47 +262,81 @@ describe("useHomeNextSteps", () => {
 		expect(acked).toStrictEqual([]);
 	});
 
-	it("keeps the list mounted once settled, even when a source resets and refetches", async () => {
+	it("keeps the list mounted once settled, even when a source resets and refetches", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async (url: string) =>
-				url === "/api/approvals" ? new Promise<Response>(() => {}) : new Response("{}", {status: 404}),
+				url === "/api/approvals"
+					? new Promise<Response>(() => {})
+					: new Response(
+							"{}",
+							{
+								status: 404,
+							},
+						),
 			),
 		);
 		const queryClient = seededClient();
 		queryClient.setQueryData(approvalsQueryOptions().queryKey, APPROVALS);
 		const frames = await renderHook(queryClient);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(frames.at(-1)).toStrictEqual(["Needs permission"]);
 		});
 		const settledAt = frames.length;
 
-		act(() => {
-			void queryClient.resetQueries({queryKey: approvalsQueryOptions().queryKey});
-			void queryClient.resetQueries({queryKey: recentSessionsInfiniteQueryOptions().queryKey});
+		act(() =>
+		{
+			void queryClient.resetQueries(
+				{
+					queryKey: approvalsQueryOptions().queryKey,
+				},
+			);
+			void queryClient.resetQueries(
+				{
+					queryKey: recentSessionsInfiniteQueryOptions().queryKey,
+				},
+			);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(frames.length).toBeGreaterThan(settledAt);
 		});
 
 		expect(frames.slice(settledAt)).toStrictEqual(frames.slice(settledAt).map(() => ["Needs permission"]));
 	});
 
-	describe("Session running here", () => {
-		function folderClient(state: SessionListItem["state"], project = "-projects-alpha"): QueryClient {
+	describe("Session running here", () =>
+	{
+		function folderClient(state: SessionListItem["state"], project = "-projects-alpha"): QueryClient
+		{
 			const queryClient = seededClient();
-			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-				pages: [
-					{
-						sessions: [{...listItem("live"), project, state, bucket: "done"}],
-						nextCursor: null,
-					},
-				],
-				pageParams: [null],
-			});
-			queryClient.setQueryData(approvalsQueryOptions().queryKey, {
-				approvals: [],
-			});
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions().queryKey,
+				{
+					pages: [
+						{
+							sessions: [
+								{
+									...listItem("live"),
+									project,
+									state,
+									bucket: "done",
+								},
+							],
+							nextCursor: null,
+						},
+					],
+					pageParams: [null],
+				},
+			);
+			queryClient.setQueryData(
+				approvalsQueryOptions().queryKey,
+				{
+					approvals: [],
+				},
+			);
 			queryClient.setQueryData(projectsQueryOptions().queryKey, [
 				{
 					id: "-projects-alpha",
@@ -240,52 +350,93 @@ describe("useHomeNextSteps", () => {
 					lastActivity: new Date().toISOString(),
 				},
 			]);
-			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
-				exists: true,
-				isGitRepo: true,
-				headBranch: "main",
-				defaultBranch: "main",
-				uncommittedFiles: 0,
-			});
+			queryClient.setQueryData(
+				homeFolderStatusQueryOptions("/projects/alpha").queryKey,
+				{
+					exists: true,
+					isGitRepo: true,
+					headBranch: "main",
+					defaultBranch: "main",
+					uncommittedFiles: 0,
+				},
+			);
 			return queryClient;
 		}
 
-		it("suggests Turn on Worktree while a live CLI runs in the launch folder", async () => {
+		it("suggests Turn on Worktree while a live CLI runs in the launch folder", async () =>
+		{
 			vi.stubGlobal(
 				"fetch",
-				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+				vi.fn(async () =>
+					Promise.resolve(
+						new Response(
+							"{}",
+							{
+								status: 404,
+							},
+						),
+					),
+				),
 			);
 			const frames = await renderHook(folderClient("idle"));
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual(["Session running here"]);
 			});
 		});
 
-		it("doesn't for an ended session or one in another folder", async () => {
+		it("doesn't for an ended session or one in another folder", async () =>
+		{
 			vi.stubGlobal(
 				"fetch",
-				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+				vi.fn(async () =>
+					Promise.resolve(
+						new Response(
+							"{}",
+							{
+								status: 404,
+							},
+						),
+					),
+				),
 			);
 			const ended = await renderHook(folderClient("ended"));
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(ended.at(-1)).toStrictEqual([]);
 			});
 			cleanup();
 			const elsewhere = await renderHook(folderClient("idle", "-projects-alpha-sub"));
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(elsewhere.at(-1)).toStrictEqual([]);
 			});
 		});
 	});
 
-	describe("Hit an error", () => {
-		function erroredClient(sessions: SessionListItem[]): QueryClient {
+	describe("Hit an error", () =>
+	{
+		function erroredClient(sessions: SessionListItem[]): QueryClient
+		{
 			const queryClient = seededClient();
-			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-				pages: [{sessions, nextCursor: null}],
-				pageParams: [null],
-			});
-			queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions().queryKey,
+				{
+					pages: [
+						{
+							sessions,
+							nextCursor: null,
+						},
+					],
+					pageParams: [null],
+				},
+			);
+			queryClient.setQueryData(
+				approvalsQueryOptions().queryKey,
+				{
+					approvals: [],
+				},
+			);
 			queryClient.setQueryData(projectsQueryOptions().queryKey, [
 				{
 					id: "-projects-alpha",
@@ -299,17 +450,21 @@ describe("useHomeNextSteps", () => {
 					lastActivity: new Date().toISOString(),
 				},
 			]);
-			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
-				exists: true,
-				isGitRepo: true,
-				headBranch: "main",
-				defaultBranch: "main",
-				uncommittedFiles: 0,
-			});
+			queryClient.setQueryData(
+				homeFolderStatusQueryOptions("/projects/alpha").queryKey,
+				{
+					exists: true,
+					isGitRepo: true,
+					headBranch: "main",
+					defaultBranch: "main",
+					uncommittedFiles: 0,
+				},
+			);
 			return queryClient;
 		}
 
-		function errored(id: string, erroredAt: string, project = "-projects-alpha"): SessionListItem {
+		function errored(id: string, erroredAt: string, project = "-projects-alpha"): SessionListItem
+		{
 			return {
 				...listItem(id),
 				project,
@@ -323,10 +478,20 @@ describe("useHomeNextSteps", () => {
 		const describeRow = (candidate: NextStepCandidate) =>
 			`${candidate.id} ${candidate.title} · ${candidate.detail}`;
 
-		it("lists only the launch folder's newest errored session as a resume-session row, never as waiting", async () => {
+		it("lists only the launch folder's newest errored session as a resume-session row, never as waiting", async () =>
+		{
 			vi.stubGlobal(
 				"fetch",
-				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+				vi.fn(async () =>
+					Promise.resolve(
+						new Response(
+							"{}",
+							{
+								status: 404,
+							},
+						),
+					),
+				),
 			);
 			const frames = await renderHook(
 				erroredClient([
@@ -336,84 +501,138 @@ describe("useHomeNextSteps", () => {
 				]),
 				describeRow,
 			);
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual(["resume-session Title newer · Hit an error"]);
 			});
 		});
 
-		it("skips an errored session with a blank title, like upstream's folder scan", async () => {
+		it("skips an errored session with a blank title, like upstream's folder scan", async () =>
+		{
 			vi.stubGlobal(
 				"fetch",
-				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+				vi.fn(async () =>
+					Promise.resolve(
+						new Response(
+							"{}",
+							{
+								status: 404,
+							},
+						),
+					),
+				),
 			);
 			const describeWithSubject = (candidate: NextStepCandidate) =>
 				`${candidate.id} ${candidate.subject} ${candidate.title} · ${candidate.detail}`;
 			const frames = await renderHook(
 				erroredClient([
 					errored("older", "1999-12-31T00:00:01.000Z"),
-					{...errored("blank", "1999-12-31T00:00:02.000Z"), title: "  "},
+					{
+						...errored("blank", "1999-12-31T00:00:02.000Z"),
+						title: "  ",
+					},
 				]),
 				describeWithSubject,
 			);
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual(["resume-session older Title older · Hit an error"]);
 			});
 			cleanup();
 			const blankOnly = await renderHook(
-				erroredClient([{...errored("blank", "1999-12-31T00:00:02.000Z"), title: "  "}]),
+				erroredClient([
+					{
+						...errored("blank", "1999-12-31T00:00:02.000Z"),
+						title: "  ",
+					},
+				]),
 				describeWithSubject,
 			);
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(blankOnly.at(-1)).toStrictEqual([]);
 			});
 		});
 
-		it("lists nothing once the error is seen", async () => {
+		it("lists nothing once the error is seen", async () =>
+		{
 			vi.stubGlobal(
 				"fetch",
-				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+				vi.fn(async () =>
+					Promise.resolve(
+						new Response(
+							"{}",
+							{
+								status: 404,
+							},
+						),
+					),
+				),
 			);
 			const frames = await renderHook(
-				erroredClient([{...listItem("seen"), state: "ended", bucket: "done"}]),
+				erroredClient([
+					{
+						...listItem("seen"),
+						state: "ended",
+						bucket: "done",
+					},
+				]),
 				describeRow,
 			);
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual([]);
 			});
 		});
 	});
 
-	describe("folder PR", () => {
+	describe("folder PR", () =>
+	{
 		const FOLDER_PR_URL = "/api/home/folder-pr?path=%2Fprojects%2Falpha&branch=feat";
 
-		function prClient(headBranch: string): QueryClient {
+		function prClient(headBranch: string): QueryClient
+		{
 			const queryClient = seededClient();
-			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-				pages: [
-					{
-						sessions: [
-							{
-								...listItem("elsewhere"),
-								project: "-projects-beta",
-								state: "ended",
-								bucket: "done",
-								prStatus: {
-									number: 3,
-									state: "open",
-									url: "https://github.com/owner/beta/pull/3",
-									title: "Other PR",
-									checks: {passed: 0, failed: 1, pending: 0},
-									failingChecks: ["build"],
-									unresolvedReviewThreads: 2,
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions().queryKey,
+				{
+					pages: [
+						{
+							sessions: [
+								{
+									...listItem("elsewhere"),
+									project: "-projects-beta",
+									state: "ended",
+									bucket: "done",
+									prStatus:
+									{
+										number: 3,
+										state: "open",
+										url: "https://github.com/owner/beta/pull/3",
+										title: "Other PR",
+										checks:
+										{
+											passed: 0,
+											failed: 1,
+											pending: 0,
+										},
+										failingChecks: ["build"],
+										unresolvedReviewThreads: 2,
+									},
 								},
-							},
-						],
-						nextCursor: null,
-					},
-				],
-				pageParams: [null],
-			});
-			queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
+							],
+							nextCursor: null,
+						},
+					],
+					pageParams: [null],
+				},
+			);
+			queryClient.setQueryData(
+				approvalsQueryOptions().queryKey,
+				{
+					approvals: [],
+				},
+			);
 			queryClient.setQueryData(projectsQueryOptions().queryKey, [
 				{
 					id: "-projects-alpha",
@@ -427,44 +646,57 @@ describe("useHomeNextSteps", () => {
 					lastActivity: new Date().toISOString(),
 				},
 			]);
-			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
-				exists: true,
-				isGitRepo: true,
-				headBranch,
-				defaultBranch: "main",
-				uncommittedFiles: 0,
-			});
+			queryClient.setQueryData(
+				homeFolderStatusQueryOptions("/projects/alpha").queryKey,
+				{
+					exists: true,
+					isGitRepo: true,
+					headBranch,
+					defaultBranch: "main",
+					uncommittedFiles: 0,
+				},
+			);
 			return queryClient;
 		}
 
 		const fetchFolderPr = vi.fn<(url: string) => Promise<Response>>(async (url) =>
 			Promise.resolve(
 				url === FOLDER_PR_URL
-					? Response.json({
-							status: "found",
-							pr: {
-								repo: "owner/alpha",
-								number: 9,
-								title: "Alpha PR",
-								branch: "feat",
-								failing: true,
-								failureStamp: "sha",
-								unansweredReviewComments: 1,
-								newestReviewCommentId: 4,
+					? Response.json(
+							{
+								status: "found",
+								pr:
+								{
+									repo: "owner/alpha",
+									number: 9,
+									title: "Alpha PR",
+									branch: "feat",
+									failing: true,
+									failureStamp: "sha",
+									unansweredReviewComments: 1,
+									newestReviewCommentId: 4,
+								},
 							},
-						})
-					: new Response("{}", {status: 404}),
+						)
+					: new Response(
+							"{}",
+							{
+								status: 404,
+							},
+						),
 			),
 		);
 
 		const describeRow = (candidate: NextStepCandidate) =>
 			`${candidate.id} ${candidate.title} · ${candidate.detail}`;
 
-		it("shows only the launch folder branch's PR rows, not other sessions' PRs", async () => {
+		it("shows only the launch folder branch's PR rows, not other sessions' PRs", async () =>
+		{
 			fetchFolderPr.mockClear();
 			vi.stubGlobal("fetch", fetchFolderPr);
 			const frames = await renderHook(prClient("feat"), describeRow);
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual([
 					"pr-ci-failed Fix the failing checks · null",
 					"pr-review-comments Answer 1 review comment · Alpha PR",
@@ -472,17 +704,20 @@ describe("useHomeNextSteps", () => {
 			});
 		});
 
-		it("doesn't look up a PR for the default branch", async () => {
+		it("doesn't look up a PR for the default branch", async () =>
+		{
 			fetchFolderPr.mockClear();
 			vi.stubGlobal("fetch", fetchFolderPr);
 			const frames = await renderHook(prClient("main"), describeRow);
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual([]);
 			});
 			expect(fetchFolderPr.mock.calls.filter(([url]) => url.startsWith("/api/home/folder-pr"))).toStrictEqual([]);
 		});
 
-		it("drops the PR rows while launching and on a folder switch, with no frame of the old folder's rows", async () => {
+		it("drops the PR rows while launching and on a folder switch, with no frame of the old folder's rows", async () =>
+		{
 			fetchFolderPr.mockClear();
 			vi.stubGlobal("fetch", fetchFolderPr);
 			const queryClient = prClient("feat");
@@ -500,15 +735,19 @@ describe("useHomeNextSteps", () => {
 					lastActivity: new Date().toISOString(),
 				},
 			]);
-			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/beta").queryKey, {
-				exists: true,
-				isGitRepo: true,
-				headBranch: "main",
-				defaultBranch: "main",
-				uncommittedFiles: 0,
-			});
+			queryClient.setQueryData(
+				homeFolderStatusQueryOptions("/projects/beta").queryKey,
+				{
+					exists: true,
+					isGitRepo: true,
+					headBranch: "main",
+					defaultBranch: "main",
+					uncommittedFiles: 0,
+				},
+			);
 			let launchFolder: HomeLaunchFolder | undefined;
-			function Controls() {
+			function Controls()
+			{
 				launchFolder = useHomeLaunchFolder();
 				return null;
 			}
@@ -522,31 +761,39 @@ describe("useHomeNextSteps", () => {
 				"pr-ci-failed Fix the failing checks · null",
 				"pr-review-comments Answer 1 review comment · Alpha PR",
 			];
-			act(() => {
+			act(() =>
+			{
 				launchFolder?.select("-projects-alpha");
 			});
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual(prRows);
 			});
 
-			act(() => {
+			act(() =>
+			{
 				launchFolder?.setLaunching(true);
 			});
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual([]);
 			});
-			act(() => {
+			act(() =>
+			{
 				launchFolder?.setLaunching(false);
 			});
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual(prRows);
 			});
 
 			const switchedAt = frames.length;
-			act(() => {
+			act(() =>
+			{
 				launchFolder?.select("-projects-beta");
 			});
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual([]);
 			});
 			expect(
@@ -558,8 +805,10 @@ describe("useHomeNextSteps", () => {
 		});
 	});
 
-	describe("lifecycle", () => {
-		function project(name: string) {
+	describe("lifecycle", () =>
+	{
+		function project(name: string)
+		{
 			return {
 				id: `-projects-${name}`,
 				name,
@@ -573,52 +822,82 @@ describe("useHomeNextSteps", () => {
 			};
 		}
 
-		function lifecycleClient(): QueryClient {
+		function lifecycleClient(): QueryClient
+		{
 			const queryClient = seededClient();
-			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-				pages: [
-					{
-						sessions: [
-							{...listItem("live"), state: "idle", bucket: "done"},
-							{
-								...listItem("failed"),
-								state: "ended",
-								bucket: "blocked",
-								unseenError: true,
-								erroredAt: "1999-12-31T00:00:01.000Z",
-							},
-						],
-						nextCursor: null,
-					},
-				],
-				pageParams: [null],
-			});
-			queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions().queryKey,
+				{
+					pages: [
+						{
+							sessions: [
+								{
+									...listItem("live"),
+									state: "idle",
+									bucket: "done",
+								},
+								{
+									...listItem("failed"),
+									state: "ended",
+									bucket: "blocked",
+									unseenError: true,
+									erroredAt: "1999-12-31T00:00:01.000Z",
+								},
+							],
+							nextCursor: null,
+						},
+					],
+					pageParams: [null],
+				},
+			);
+			queryClient.setQueryData(
+				approvalsQueryOptions().queryKey,
+				{
+					approvals: [],
+				},
+			);
 			queryClient.setQueryData(projectsQueryOptions().queryKey, [project("alpha"), project("beta")]);
-			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
-				exists: true,
-				isGitRepo: true,
-				headBranch: "feature",
-				defaultBranch: "main",
-				uncommittedFiles: 2,
-			});
-			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/beta").queryKey, {
-				exists: true,
-				isGitRepo: true,
-				headBranch: "main",
-				defaultBranch: "main",
-				uncommittedFiles: 0,
-			});
+			queryClient.setQueryData(
+				homeFolderStatusQueryOptions("/projects/alpha").queryKey,
+				{
+					exists: true,
+					isGitRepo: true,
+					headBranch: "feature",
+					defaultBranch: "main",
+					uncommittedFiles: 2,
+				},
+			);
+			queryClient.setQueryData(
+				homeFolderStatusQueryOptions("/projects/beta").queryKey,
+				{
+					exists: true,
+					isGitRepo: true,
+					headBranch: "main",
+					defaultBranch: "main",
+					uncommittedFiles: 0,
+				},
+			);
 			return queryClient;
 		}
 
-		it("recomputes the folder rows when the folder changes and drops them all while launching", async () => {
+		it("recomputes the folder rows when the folder changes and drops them all while launching", async () =>
+		{
 			vi.stubGlobal(
 				"fetch",
-				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+				vi.fn(async () =>
+					Promise.resolve(
+						new Response(
+							"{}",
+							{
+								status: 404,
+							},
+						),
+					),
+				),
 			);
 			let launchFolder: HomeLaunchFolder | undefined;
-			function Controls() {
+			function Controls()
+			{
 				launchFolder = useHomeLaunchFolder();
 				return null;
 			}
@@ -632,10 +911,12 @@ describe("useHomeNextSteps", () => {
 					</HomeLaunchFolderProvider>
 				),
 			);
-			act(() => {
+			act(() =>
+			{
 				launchFolder?.select("-projects-alpha");
 			});
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual([
 					"resume-session Title failed",
 					"worktree-apart Turn on Worktree",
@@ -643,23 +924,29 @@ describe("useHomeNextSteps", () => {
 				]);
 			});
 
-			act(() => {
+			act(() =>
+			{
 				launchFolder?.select("-projects-beta");
 			});
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual([]);
 			});
 
-			act(() => {
+			act(() =>
+			{
 				launchFolder?.select("-projects-alpha");
 			});
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toHaveLength(3);
 			});
-			act(() => {
+			act(() =>
+			{
 				launchFolder?.setLaunching(true);
 			});
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(frames.at(-1)).toStrictEqual([]);
 			});
 		});

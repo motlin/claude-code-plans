@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -22,36 +23,63 @@ import type {NavSection} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
 import {installLocalStorage} from "./fake-storage";
 
-const BASE_SETTINGS = {
+const BASE_SETTINGS =
+{
 	terminalWritesEnabled: false,
 	terminalHost: "auto" as const,
 	shellPaneEnabled: true,
 	ignoredDirs: ["node_modules"],
 };
 
-function seedQueryClient(visibleNavSections: NavSection[]): QueryClient {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+function seedQueryClient(visibleNavSections: NavSection[]): QueryClient
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
-	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+	);
+	queryClient.setQueryData(
+		approvalsQueryOptions().queryKey,
+		{
+			approvals: [],
+		},
+	);
+	queryClient.setQueryData(
+		notificationsQueryOptions().queryKey,
+		{
+			notifications: [],
+		},
+	);
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
-	queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
-		...BASE_SETTINGS,
-		visibleNavSections,
-	});
+	queryClient.setQueryData(
+		applicationSettingsQueryOptions.queryKey,
+		{
+			...BASE_SETTINGS,
+			visibleNavSections,
+		},
+	);
 	return queryClient;
 }
 
 const puts: unknown[] = [];
 
-function stubFetch() {
+function stubFetch()
+{
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async (url: string, init?: RequestInit) => {
-			if (url === "/api/application-settings" && init?.method === "PUT") {
+		vi.fn(async (url: string, init?: RequestInit) =>
+		{
+			if (url === "/api/application-settings" && init?.method === "PUT")
+			{
 				const body: unknown = JSON.parse(String(init.body));
 				puts.push(body);
 				return Promise.resolve(Response.json(body));
@@ -64,168 +92,277 @@ function stubFetch() {
 async function renderSidebar(
 	visibleNavSections: NavSection[] = ["artifacts", "plans", "memories", "customize"],
 	initialPath = "/plans",
-) {
+)
+{
 	const queryClient = seedQueryClient(visibleNavSections);
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<SettingsProvider>
-						<Sidebar collapsed={false} />
-						<Outlet />
-					</SettingsProvider>
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const pageRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "$",
-		component: () => null,
-	});
-	const routinesRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "routines",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([routinesRoute, pageRoute]),
-		history: createMemoryHistory({initialEntries: [initialPath]}),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SettingsProvider>
+							<Sidebar collapsed={false} />
+							<Outlet />
+						</SettingsProvider>
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const pageRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "$",
+			component: () => null,
+		},
+	);
+	const routinesRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "routines",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([routinesRoute, pageRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [initialPath],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
-	await screen.findByRole("link", {name: "Plans"});
-	return {router, queryClient};
+	await screen.findByRole(
+		"link",
+		{
+			name: "Plans",
+		},
+	);
+	return {
+		router,
+		queryClient,
+	};
 }
 
-function sidebarNavLabels(): string[] {
+function sidebarNavLabels(): string[]
+{
 	// An open modal dialog marks the sidebar itself aria-hidden (the toast live region keeps
 	// its parent exposed), which also blanks its accessible name, so match the label directly.
 	const sidebar = screen
-		.getAllByRole("navigation", {hidden: true})
+		.getAllByRole(
+			"navigation",
+			{
+				hidden: true,
+			},
+		)
 		.find((nav) => nav.getAttribute("aria-label") === "Sidebar");
 	if (sidebar === undefined) throw new Error("no Sidebar navigation");
 	const footer = screen.getByTestId("sidebar-footer");
 	return within(sidebar)
-		.getAllByRole("link", {hidden: true})
+		.getAllByRole(
+			"link",
+			{
+				hidden: true,
+			},
+		)
 		.filter((link) => !footer.contains(link) && link.getAttribute("href") !== "/")
 		.map((link) => link.textContent);
 }
 
-async function openMoreMenu(): Promise<HTMLElement> {
-	fireEvent.click(screen.getByRole("button", {name: "More navigation items"}));
+async function openMoreMenu(): Promise<HTMLElement>
+{
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "More navigation items",
+			},
+		),
+	);
 	return screen.findByRole("menu");
 }
 
-async function openEditSidebar(): Promise<HTMLElement> {
+async function openEditSidebar(): Promise<HTMLElement>
+{
 	const menu = await openMoreMenu();
-	fireEvent.click(within(menu).getByRole("menuitem", {name: "Edit sidebar…"}));
-	return screen.findByRole("dialog", {name: "Edit sidebar"});
+	fireEvent.click(
+		within(menu).getByRole(
+			"menuitem",
+			{
+				name: "Edit sidebar…",
+			},
+		),
+	);
+	return screen.findByRole(
+		"dialog",
+		{
+			name: "Edit sidebar",
+		},
+	);
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	puts.length = 0;
 	stubFetch();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-describe("sidebar More menu", () => {
-	it("turns the More row into a selected Scheduled row named Scheduled that keeps the ⋯ icon on an overflow page, as upstream does", async () => {
+describe("sidebar More menu", () =>
+{
+	it("turns the More row into a selected Scheduled row named Scheduled that keeps the ⋯ icon on an overflow page, as upstream does", async () =>
+	{
 		await renderSidebar(["artifacts", "plans", "memories", "customize"], "/routines");
-		const more = screen.getByRole("button", {name: "Scheduled"});
+		const more = screen.getByRole(
+			"button",
+			{
+				name: "Scheduled",
+			},
+		);
 		const label = more.querySelector("span:not(.df-leading-slot)");
-		expect({
-			text: more.textContent,
-			selected: more.getAttribute("data-selected"),
-			leadingIcons: [...more.querySelectorAll(".df-leading-slot svg")].map((svg) =>
-				svg
-					.getAttribute("class")
-					?.split(" ")
-					.find((name) => name.startsWith("lucide-") && name !== "lucide-icon"),
-			),
-			labelClass: label?.className,
-		}).toStrictEqual({
-			text: "Scheduled",
-			selected: "focused",
-			leadingIcons: ["lucide-ellipsis"],
-			labelClass: "truncate flex items-center whitespace-nowrap",
-		});
+		expect(
+			{
+				text: more.textContent,
+				selected: more.getAttribute("data-selected"),
+				leadingIcons: [...more.querySelectorAll(".df-leading-slot svg")].map((svg) =>
+					svg
+						.getAttribute("class")
+						?.split(" ")
+						.find((name) => name.startsWith("lucide-") && name !== "lucide-icon"),
+				),
+				labelClass: label?.className,
+			},
+		).toStrictEqual(
+			{
+				text: "Scheduled",
+				selected: "focused",
+				leadingIcons: ["lucide-ellipsis"],
+				labelClass: "truncate flex items-center whitespace-nowrap",
+			},
+		);
 	});
 
-	it("names the More row More navigation items and labels it More off an overflow page", async () => {
+	it("names the More row More navigation items and labels it More off an overflow page", async () =>
+	{
 		await renderSidebar();
-		const more = screen.getByRole("button", {name: "More navigation items"});
-		expect({
-			text: more.textContent,
-			selected: more.getAttribute("data-selected"),
-			labelClass: more.querySelector("span:not(.df-leading-slot)")?.className,
-		}).toStrictEqual({text: "More", selected: null, labelClass: ""});
+		const more = screen.getByRole(
+			"button",
+			{
+				name: "More navigation items",
+			},
+		);
+		expect(
+			{
+				text: more.textContent,
+				selected: more.getAttribute("data-selected"),
+				labelClass: more.querySelector("span:not(.df-leading-slot)")?.className,
+			},
+		).toStrictEqual(
+			{
+				text: "More",
+				selected: null,
+				labelClass: "",
+			},
+		);
 	});
 
-	it("shows only the pinned sections as sidebar rows", async () => {
+	it("shows only the pinned sections as sidebar rows", async () =>
+	{
 		await renderSidebar();
 
 		expect(sidebarNavLabels()).toStrictEqual(["Artifacts", "Plans", "Memories", "Customize"]);
 	});
 
-	it("leads the More row with upstream's three-dot glyph in the normal nav ink", async () => {
+	it("leads the More row with upstream's three-dot glyph in the normal nav ink", async () =>
+	{
 		await renderSidebar();
-		const icon = screen.getByRole("button", {name: "More navigation items"}).querySelector("svg");
+		const icon = screen
+			.getByRole(
+				"button",
+				{
+					name: "More navigation items",
+				},
+			)
+			.querySelector("svg");
 		const label = screen
-			.getByRole("button", {name: "More navigation items"})
+			.getByRole(
+				"button",
+				{
+					name: "More navigation items",
+				},
+			)
 			.querySelector("span:not(.df-leading-slot)");
-		expect({
-			glyph: icon
-				?.getAttribute("class")
-				?.split(" ")
-				.find((name) => name.startsWith("lucide-")),
-			// Full opacity and the normal nav ink, like the other nav rows.
-			glyphDimmed: icon
-				?.getAttribute("class")
-				?.split(" ")
-				.some((name) => name.startsWith("opacity-")),
-			labelMuted: label?.className.split(" ").includes("text-ink-muted"),
-		}).toStrictEqual({glyph: "lucide-ellipsis", glyphDimmed: false, labelMuted: false});
+		expect(
+			{
+				glyph: icon
+					?.getAttribute("class")
+					?.split(" ")
+					.find((name) => name.startsWith("lucide-")),
+				// Full opacity and the normal nav ink, like the other nav rows.
+				glyphDimmed: icon
+					?.getAttribute("class")
+					?.split(" ")
+					.some((name) => name.startsWith("opacity-")),
+				labelMuted: label?.className.split(" ").includes("text-ink-muted"),
+			},
+		).toStrictEqual(
+			{
+				glyph: "lucide-ellipsis",
+				glyphDimmed: false,
+				labelMuted: false,
+			},
+		);
 	});
 
-	it("lists hidden sections, a separator, then Edit sidebar…", async () => {
+	it("lists hidden sections, a separator, then Edit sidebar…", async () =>
+	{
 		await renderSidebar();
 		const menu = await openMoreMenu();
 
-		expect({
-			items: within(menu)
-				.getAllByRole("menuitem")
-				.map((item) => item.textContent),
-			separators: within(menu).getAllByRole("separator").length,
-		}).toStrictEqual({
-			items: [
-				"Projects",
-				"Scheduled",
-				"Background jobs",
-				"Active",
-				"Terminals",
-				"Approvals",
-				"Notifications",
-				"Tasks",
-				"Sessions",
-				"Edit sidebar…",
-			],
-			separators: 1,
-		});
+		expect(
+			{
+				items: within(menu)
+					.getAllByRole("menuitem")
+					.map((item) => item.textContent),
+				separators: within(menu).getAllByRole("separator").length,
+			},
+		).toStrictEqual(
+			{
+				items: [
+					"Projects",
+					"Scheduled",
+					"Background jobs",
+					"Active",
+					"Terminals",
+					"Approvals",
+					"Notifications",
+					"Tasks",
+					"Sessions",
+					"Edit sidebar…",
+				],
+				separators: 1,
+			},
+		);
 	});
 
-	it("leads every item with upstream's 20px icon slot, empty on Edit sidebar…", async () => {
+	it("leads every item with upstream's 20px icon slot, empty on Edit sidebar…", async () =>
+	{
 		await renderSidebar();
 		const menu = await openMoreMenu();
 
 		const slots = within(menu)
 			.getAllByRole("menuitem")
-			.map((item) => {
+			.map((item) =>
+			{
 				const slot = item.firstElementChild;
 				const classes = slot?.className.split(" ") ?? [];
 				return {
@@ -235,152 +372,323 @@ describe("sidebar More menu", () => {
 				};
 			});
 		expect(slots).toStrictEqual([
-			{label: "Projects", slot: true, glyph: true},
-			{label: "Scheduled", slot: true, glyph: true},
-			{label: "Background jobs", slot: true, glyph: true},
-			{label: "Active", slot: true, glyph: true},
-			{label: "Terminals", slot: true, glyph: true},
-			{label: "Approvals", slot: true, glyph: true},
-			{label: "Notifications", slot: true, glyph: true},
-			{label: "Tasks", slot: true, glyph: true},
-			{label: "Sessions", slot: true, glyph: true},
-			{label: "Edit sidebar…", slot: true, glyph: false},
+			{
+				label: "Projects",
+				slot: true,
+				glyph: true,
+			},
+			{
+				label: "Scheduled",
+				slot: true,
+				glyph: true,
+			},
+			{
+				label: "Background jobs",
+				slot: true,
+				glyph: true,
+			},
+			{
+				label: "Active",
+				slot: true,
+				glyph: true,
+			},
+			{
+				label: "Terminals",
+				slot: true,
+				glyph: true,
+			},
+			{
+				label: "Approvals",
+				slot: true,
+				glyph: true,
+			},
+			{
+				label: "Notifications",
+				slot: true,
+				glyph: true,
+			},
+			{
+				label: "Tasks",
+				slot: true,
+				glyph: true,
+			},
+			{
+				label: "Sessions",
+				slot: true,
+				glyph: true,
+			},
+			{
+				label: "Edit sidebar…",
+				slot: true,
+				glyph: false,
+			},
 		]);
 	});
 
-	it("navigates when a hidden section is selected", async () => {
+	it("navigates when a hidden section is selected", async () =>
+	{
 		const {router} = await renderSidebar();
 		const menu = await openMoreMenu();
-		fireEvent.click(within(menu).getByRole("menuitem", {name: "Tasks"}));
+		fireEvent.click(
+			within(menu).getByRole(
+				"menuitem",
+				{
+					name: "Tasks",
+				},
+			),
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/tasks");
 		});
 	});
 });
 
-describe("Edit sidebar dialog", () => {
-	it("renders upstream's panels band, the description, a flush list, a 16px body and footer, and focuses Done", async () => {
+describe("Edit sidebar dialog", () =>
+{
+	it("renders upstream's panels band, the description, a flush list, a 16px body and footer, and focuses Done", async () =>
+	{
 		await renderSidebar();
 		const dialog = await openEditSidebar();
 		const band = dialog.querySelector("[data-cds-part=band]");
-		const done = within(dialog).getByRole("button", {name: "Done"});
-		await waitFor(() => {
+		const done = within(dialog).getByRole(
+			"button",
+			{
+				name: "Done",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(document.activeElement).toBe(done);
 		});
 		const list = within(dialog).getAllByRole("checkbox")[0]?.parentElement;
 		const pick = (element: Element | null | undefined, names: string[]) =>
 			names.filter((name) => (element?.className.split(" ") ?? []).includes(name));
-		expect({
-			band: [...(band?.children ?? [])].map(
-				(child) => `${child.tagName} ${child.textContent || child.getAttribute("aria-label")}`,
-			),
-			description: {
-				text: band?.nextElementSibling?.textContent,
-				mb: pick(band?.nextElementSibling, ["mb-4"]),
+		expect(
+			{
+				band: [...(band?.children ?? [])].map(
+					(child) => `${child.tagName} ${child.textContent || child.getAttribute("aria-label")}`,
+				),
+				description:
+				{
+					text: band?.nextElementSibling?.textContent,
+					mb: pick(band?.nextElementSibling, ["mb-4"]),
+				},
+				list: list?.className,
+				body: pick(band?.parentElement, ["p-4", "p-6", "scroll-fade-y", "break-words"]),
+				footer: pick(done.parentElement, ["mt-4", "mt-6"]),
+				fizzy: dialog.getAttribute("data-cds-fizzy"),
+				focused: document.activeElement === done,
 			},
-			list: list?.className,
-			body: pick(band?.parentElement, ["p-4", "p-6", "scroll-fade-y", "break-words"]),
-			footer: pick(done.parentElement, ["mt-4", "mt-6"]),
-			fizzy: dialog.getAttribute("data-cds-fizzy"),
-			focused: document.activeElement === done,
-		}).toStrictEqual({
-			band: ["H2 Edit sidebar", "BUTTON Close"],
-			description: {text: "Choose which items appear in your sidebar.", mb: ["mb-4"]},
-			list: "flex flex-col",
-			body: ["p-4", "scroll-fade-y", "break-words"],
-			footer: ["mt-4"],
-			fizzy: "",
-			focused: true,
-		});
+		).toStrictEqual(
+			{
+				band: ["H2 Edit sidebar", "BUTTON Close"],
+				description:
+				{
+					text: "Choose which items appear in your sidebar.",
+					mb: ["mb-4"],
+				},
+				list: "flex flex-col",
+				body: ["p-4", "scroll-fade-y", "break-words"],
+				footer: ["mt-4"],
+				fizzy: "",
+				focused: true,
+			},
+		);
 	});
 
-	it("lists every toggleable section with its current visibility", async () => {
+	it("lists every toggleable section with its current visibility", async () =>
+	{
 		await renderSidebar();
 		const dialog = await openEditSidebar();
 
 		expect(
 			within(dialog)
 				.getAllByRole("checkbox")
-				.map((checkbox) => ({
+				.map((checkbox) => (
+				{
 					label: checkbox.textContent,
 					checked: checkbox.getAttribute("aria-checked"),
 				})),
 		).toStrictEqual([
-			{label: "Projects", checked: "false"},
-			{label: "Artifacts", checked: "true"},
-			{label: "Scheduled", checked: "false"},
-			{label: "Background jobs", checked: "false"},
-			{label: "Active", checked: "false"},
-			{label: "Terminals", checked: "false"},
-			{label: "Approvals", checked: "false"},
-			{label: "Notifications", checked: "false"},
-			{label: "Tasks", checked: "false"},
-			{label: "Plans", checked: "true"},
-			{label: "Memories", checked: "true"},
-			{label: "Sessions", checked: "false"},
-			{label: "Customize", checked: "true"},
+			{
+				label: "Projects",
+				checked: "false",
+			},
+			{
+				label: "Artifacts",
+				checked: "true",
+			},
+			{
+				label: "Scheduled",
+				checked: "false",
+			},
+			{
+				label: "Background jobs",
+				checked: "false",
+			},
+			{
+				label: "Active",
+				checked: "false",
+			},
+			{
+				label: "Terminals",
+				checked: "false",
+			},
+			{
+				label: "Approvals",
+				checked: "false",
+			},
+			{
+				label: "Notifications",
+				checked: "false",
+			},
+			{
+				label: "Tasks",
+				checked: "false",
+			},
+			{
+				label: "Plans",
+				checked: "true",
+			},
+			{
+				label: "Memories",
+				checked: "true",
+			},
+			{
+				label: "Sessions",
+				checked: "false",
+			},
+			{
+				label: "Customize",
+				checked: "true",
+			},
 		]);
 	});
 
-	it("persists each toggle and updates the sidebar", async () => {
+	it("persists each toggle and updates the sidebar", async () =>
+	{
 		await renderSidebar();
 		const dialog = await openEditSidebar();
 
-		fireEvent.click(within(dialog).getByRole("checkbox", {name: "Terminals"}));
-		await waitFor(() => {
+		fireEvent.click(
+			within(dialog).getByRole(
+				"checkbox",
+				{
+					name: "Terminals",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(sidebarNavLabels()).toContain("Terminals");
 		});
-		fireEvent.click(within(dialog).getByRole("checkbox", {name: "Memories"}));
-		await waitFor(() => {
+		fireEvent.click(
+			within(dialog).getByRole(
+				"checkbox",
+				{
+					name: "Memories",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(puts).toHaveLength(2);
 		});
 
-		expect({puts, sidebar: sidebarNavLabels()}).toStrictEqual({
-			puts: [
-				{
-					...BASE_SETTINGS,
-					visibleNavSections: ["artifacts", "herdr", "plans", "memories", "customize"],
-				},
-				{...BASE_SETTINGS, visibleNavSections: ["artifacts", "herdr", "plans", "customize"]},
-			],
-			sidebar: ["Artifacts", "Terminals", "Plans", "Customize"],
-		});
+		expect(
+			{
+				puts,
+				sidebar: sidebarNavLabels(),
+			},
+		).toStrictEqual(
+			{
+				puts: [
+					{
+						...BASE_SETTINGS,
+						visibleNavSections: ["artifacts", "herdr", "plans", "memories", "customize"],
+					},
+					{
+						...BASE_SETTINGS,
+						visibleNavSections: ["artifacts", "herdr", "plans", "customize"],
+					},
+				],
+				sidebar: ["Artifacts", "Terminals", "Plans", "Customize"],
+			},
+		);
 	});
 
-	it("re-pins Sessions from More into the sidebar", async () => {
+	it("re-pins Sessions from More into the sidebar", async () =>
+	{
 		await renderSidebar();
 		const dialog = await openEditSidebar();
 
-		fireEvent.click(within(dialog).getByRole("checkbox", {name: "Sessions"}));
-		await waitFor(() => {
+		fireEvent.click(
+			within(dialog).getByRole(
+				"checkbox",
+				{
+					name: "Sessions",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(puts).toHaveLength(1);
 		});
 
-		expect({puts, sidebar: sidebarNavLabels()}).toStrictEqual({
-			puts: [{...BASE_SETTINGS, visibleNavSections: ["artifacts", "plans", "memories", "sessions", "customize"]}],
-			sidebar: ["Artifacts", "Plans", "Memories", "Sessions", "Customize"],
-		});
+		expect(
+			{
+				puts,
+				sidebar: sidebarNavLabels(),
+			},
+		).toStrictEqual(
+			{
+				puts: [
+					{
+						...BASE_SETTINGS,
+						visibleNavSections: ["artifacts", "plans", "memories", "sessions", "customize"],
+					},
+				],
+				sidebar: ["Artifacts", "Plans", "Memories", "Sessions", "Customize"],
+			},
+		);
 	});
 
-	it("closes on Done", async () => {
+	it("closes on Done", async () =>
+	{
 		await renderSidebar();
 		const dialog = await openEditSidebar();
 
-		fireEvent.click(within(dialog).getByRole("button", {name: "Done"}));
+		fireEvent.click(
+			within(dialog).getByRole(
+				"button",
+				{
+					name: "Done",
+				},
+			),
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 	});
 
-	it("closes on Escape", async () => {
+	it("closes on Escape", async () =>
+	{
 		await renderSidebar();
 		const dialog = await openEditSidebar();
 
-		fireEvent.keyDown(dialog, {key: "Escape"});
+		fireEvent.keyDown(
+			dialog,
+			{
+				key: "Escape",
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 	});

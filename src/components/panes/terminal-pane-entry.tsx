@@ -45,32 +45,44 @@ export function useRegisterTerminalPane(
 	sessionId: string,
 	{livePane, interactive, shells}: TerminalPaneAvailability,
 	openTerminalHere?: () => Promise<void>,
-): void {
+): void
+{
 	const [livePaneSeenFor, setLivePaneSeenFor] = useState<string | null>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (livePane) setLivePaneSeenFor(sessionId);
 	}, [livePane, sessionId]);
 	const claudeEnded = !livePane && livePaneSeenFor === sessionId;
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!livePane && !shells && !claudeEnded) return undefined;
-		return registerPane("terminal", {
-			title: "Terminal",
-			resetKey: sessionId,
-			header: "custom",
-			render: (chrome) => (
-				<DeferredTerminalPane
-					resetKey={sessionId}
-					chrome={chrome}
-					props={{
-						sessionId,
-						availability: {livePane, interactive, shells},
-						claudeEnded,
-						chrome,
-						onOpenTerminalHere: openTerminalHere,
-					}}
-				/>
-			),
-		});
+		return registerPane(
+			"terminal",
+			{
+				title: "Terminal",
+				resetKey: sessionId,
+				header: "custom",
+				render: (chrome) => (
+					<DeferredTerminalPane
+						resetKey={sessionId}
+						chrome={chrome}
+						props={
+						{
+							sessionId,
+							availability:
+							{
+								livePane,
+								interactive,
+								shells,
+							},
+							claudeEnded,
+							chrome,
+							onOpenTerminalHere: openTerminalHere,
+						}}
+					/>
+				),
+			},
+		);
 	}, [sessionId, livePane, interactive, shells, claudeEnded, openTerminalHere]);
 }

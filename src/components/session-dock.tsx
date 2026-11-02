@@ -6,50 +6,88 @@ import {SESSION_DOCK_COLUMN_CLASS} from "./dock-tokens";
 /** How far above the end the reader must be before the pill appears. */
 const AWAY_FROM_BOTTOM_PIXELS = 100;
 
-function useScrollToBottom(anchorRef: RefObject<HTMLElement | null>) {
+function useScrollToBottom(anchorRef: RefObject<HTMLElement | null>)
+{
 	const [awayFromBottom, setAwayFromBottom] = useState(false);
 	const scrollerRef = useRef<Element | null>(null);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const scroller = findScrollContainer(anchorRef.current);
 		scrollerRef.current = scroller;
-		function check() {
+		function check()
+		{
 			const distance = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
 			setAwayFromBottom(distance > AWAY_FROM_BOTTOM_PIXELS);
 		}
 		check();
-		scroller.addEventListener("scroll", check, {passive: true});
-		window.addEventListener("resize", check, {passive: true});
-		return () => {
+		scroller.addEventListener(
+			"scroll",
+			check,
+			{
+				passive: true,
+			},
+		);
+		window.addEventListener(
+			"resize",
+			check,
+			{
+				passive: true,
+			},
+		);
+		return () =>
+		{
 			scroller.removeEventListener("scroll", check);
 			window.removeEventListener("resize", check);
 			scrollerRef.current = null;
 		};
 	}, [anchorRef]);
 
-	const scrollToBottom = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+	const scrollToBottom = useCallback((event: MouseEvent<HTMLButtonElement>) =>
+	{
 		const scroller = scrollerRef.current;
 		if (!scroller) return;
 		// The pill becomes inert near the end. Move its focus first so that change
 		// does not interrupt the browser's smooth scroll or drop keyboard context.
-		if (scroller instanceof HTMLElement && document.activeElement === event.currentTarget) {
+		if (scroller instanceof HTMLElement && document.activeElement === event.currentTarget)
+		{
 			if (!scroller.hasAttribute("tabindex")) scroller.tabIndex = -1;
-			scroller.focus({preventScroll: true});
+			scroller.focus(
+				{
+					preventScroll: true,
+				},
+			);
 		}
-		scroller.scrollTo({top: scroller.scrollHeight, behavior: "smooth"});
+		scroller.scrollTo(
+			{
+				top: scroller.scrollHeight,
+				behavior: "smooth",
+			},
+		);
 	}, []);
 
 	/** Upstream's needs-input pill scrolls to the waiting question card rather than the end. */
 	const scrollToRequest = useCallback(
-		(event: MouseEvent<HTMLButtonElement>) => {
+		(event: MouseEvent<HTMLButtonElement>) =>
+		{
 			const card = scrollerRef.current?.querySelector('[data-approval-presentation="card"]');
 			if (card === null || card === undefined) scrollToBottom(event);
-			else card.scrollIntoView({behavior: "smooth", block: "center"});
+			else
+				card.scrollIntoView(
+					{
+						behavior: "smooth",
+						block: "center",
+					},
+				);
 		},
 		[scrollToBottom],
 	);
 
-	return {awayFromBottom, scrollToBottom, scrollToRequest};
+	return {
+		awayFromBottom,
+		scrollToBottom,
+		scrollToRequest,
+	};
 }
 
 const FADE = "transition-opacity duration-150";
@@ -72,10 +110,12 @@ export function SessionDock({
 	/** A question card waits for the reader's answer. */
 	needsInput?: boolean;
 	children?: ReactNode;
-}) {
+})
+{
 	const {awayFromBottom, scrollToBottom, scrollToRequest} = useScrollToBottom(anchorRef);
 
-	if (needsInput) {
+	if (needsInput)
+	{
 		return (
 			<div className={SESSION_DOCK_COLUMN_CLASS}>
 				<button

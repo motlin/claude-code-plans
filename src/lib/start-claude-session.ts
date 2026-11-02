@@ -3,7 +3,8 @@ import {launchHerdrSession} from "./api/herdr";
 import {buildClaudeCopyCommand} from "./claude-launch-command";
 import {writeClipboardText} from "./clipboard";
 
-export interface StartClaudeSessionDependencies {
+export interface StartClaudeSessionDependencies
+{
 	launch: (launch: {prompt: string}) => Promise<unknown>;
 	copy: (text: string) => Promise<boolean>;
 	toast: (options: ToastOptions) => void;
@@ -23,18 +24,50 @@ export async function startClaudeSession(
 		copy = writeClipboardText,
 		toast,
 	}: Partial<StartClaudeSessionDependencies> & Pick<StartClaudeSessionDependencies, "toast">,
-): Promise<StartClaudeSessionOutcome> {
-	try {
-		await launch({prompt});
-		toast({kind: "success", message: "Started a session in a new terminal tab"});
+): Promise<StartClaudeSessionOutcome>
+{
+	try
+	{
+		await launch(
+			{
+				prompt,
+			},
+		);
+		toast(
+			{
+				kind: "success",
+				message: "Started a session in a new terminal tab",
+			},
+		);
 		return "launched";
-	} catch {
+	}
+	catch
+	{
 		// Fall through to the copied command.
 	}
-	if (await copy(buildClaudeCopyCommand({prompt}))) {
-		toast({kind: "success", message: "Copied command — no terminal to launch in"});
+	if (
+		await copy(
+			buildClaudeCopyCommand(
+				{
+					prompt,
+				},
+			),
+		)
+	)
+	{
+		toast(
+			{
+				kind: "success",
+				message: "Copied command — no terminal to launch in",
+			},
+		);
 		return "copied";
 	}
-	toast({kind: "error", message: "Couldn’t start a session. Try again."});
+	toast(
+		{
+			kind: "error",
+			message: "Couldn’t start a session. Try again.",
+		},
+	);
 	return "failed";
 }

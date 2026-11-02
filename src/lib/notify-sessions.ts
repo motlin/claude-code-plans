@@ -12,59 +12,77 @@ let memorySessions: ReadonlySet<string> = new Set();
 let cachedRaw: string | null = null;
 let cachedSessions: ReadonlySet<string> = new Set();
 
-function parse(raw: string | null): ReadonlySet<string> {
+function parse(raw: string | null): ReadonlySet<string>
+{
 	if (raw === null) return new Set();
-	try {
+	try
+	{
 		const value: unknown = JSON.parse(raw);
 		return Array.isArray(value) ? new Set(value.filter((id): id is string => typeof id === "string")) : new Set();
-	} catch {
+	}
+	catch
+	{
 		return new Set();
 	}
 }
 
-export function readNotifySessions(): ReadonlySet<string> {
+export function readNotifySessions(): ReadonlySet<string>
+{
 	let raw: string | null;
-	try {
+	try
+	{
 		raw = localStorage.getItem(NOTIFY_SESSIONS_STORAGE_KEY);
-	} catch {
+	}
+	catch
+	{
 		return memorySessions;
 	}
 	// Keeps the snapshot referentially stable for useSyncExternalStore.
-	if (raw !== cachedRaw) {
+	if (raw !== cachedRaw)
+	{
 		cachedRaw = raw;
 		cachedSessions = parse(raw);
 	}
 	return cachedSessions;
 }
 
-export function isSessionNotifyOptedIn(sessionId: string): boolean {
+export function isSessionNotifyOptedIn(sessionId: string): boolean
+{
 	return readNotifySessions().has(sessionId);
 }
 
-export function optInSessionNotifications(sessionId: string): void {
+export function optInSessionNotifications(sessionId: string): void
+{
 	const next = new Set(readNotifySessions()).add(sessionId);
 	memorySessions = next;
-	try {
+	try
+	{
 		localStorage.setItem(NOTIFY_SESSIONS_STORAGE_KEY, JSON.stringify([...next]));
-	} catch {
+	}
+	catch
+	{
 		// Storage unavailable: the in-memory set covers this page load.
 	}
 	for (const listener of listeners) listener();
 }
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	listeners.add(listener);
-	const onStorage = (event: StorageEvent) => {
+	const onStorage = (event: StorageEvent) =>
+	{
 		if (event.key === NOTIFY_SESSIONS_STORAGE_KEY) listener();
 	};
 	window.addEventListener("storage", onStorage);
-	return () => {
+	return () =>
+	{
 		listeners.delete(listener);
 		window.removeEventListener("storage", onStorage);
 	};
 }
 
-export function useSessionNotifyOptedIn(sessionId: string): boolean {
+export function useSessionNotifyOptedIn(sessionId: string): boolean
+{
 	return useSyncExternalStore(
 		subscribe,
 		() => isSessionNotifyOptedIn(sessionId),

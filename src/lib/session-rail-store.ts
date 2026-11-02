@@ -26,7 +26,8 @@ export const RailSectionIdSchema = z.enum(RAIL_SECTION_IDS);
 export type RailSectionId = z.infer<typeof RailSectionIdSchema>;
 
 /** Upstream's card titles. */
-export const RAIL_SECTION_TITLES = {
+export const RAIL_SECTION_TITLES =
+{
 	environment: "Environment",
 	goal: "Goal",
 	settings: "Settings",
@@ -40,31 +41,44 @@ export const RAIL_SECTION_TITLES = {
 	backgroundTasks: "Background tasks",
 } satisfies Record<RailSectionId, string>;
 
-const RailShownStoredSchema = z.strictObject({
-	state: z.strictObject({shown: z.boolean()}),
-	version: z.literal(1),
-});
+const RailShownStoredSchema = z.strictObject(
+	{
+		state: z.strictObject(
+			{
+				shown: z.boolean(),
+			},
+		),
+		version: z.literal(1),
+	},
+);
 
-const RailFoldsSchema = z.strictObject({
-	collapsed: z.array(RailSectionIdSchema),
-	expanded: z.array(RailSectionIdSchema),
-});
+const RailFoldsSchema = z.strictObject(
+	{
+		collapsed: z.array(RailSectionIdSchema),
+		expanded: z.array(RailSectionIdSchema),
+	},
+);
 
-const RailSectionsStateSchema = z.strictObject({
-	foldsBySession: z.record(z.string(), RailFoldsSchema),
-	startsOpen: z.partialRecord(RailSectionIdSchema, z.boolean()),
-	hidden: z.array(RailSectionIdSchema),
-	order: z.array(RailSectionIdSchema),
-});
+const RailSectionsStateSchema = z.strictObject(
+	{
+		foldsBySession: z.record(z.string(), RailFoldsSchema),
+		startsOpen: z.partialRecord(RailSectionIdSchema, z.boolean()),
+		hidden: z.array(RailSectionIdSchema),
+		order: z.array(RailSectionIdSchema),
+	},
+);
 
-const RailSectionsStoredSchema = z.strictObject({
-	state: RailSectionsStateSchema,
-	version: z.literal(0),
-});
+const RailSectionsStoredSchema = z.strictObject(
+	{
+		state: RailSectionsStateSchema,
+		version: z.literal(0),
+	},
+);
 
 export type RailSectionsState = z.infer<typeof RailSectionsStateSchema>;
 
-export const DEFAULT_RAIL_SECTIONS_STATE: RailSectionsState = {
+export const DEFAULT_RAIL_SECTIONS_STATE: RailSectionsState =
+{
 	foldsBySession: {},
 	startsOpen: {},
 	hidden: [],
@@ -77,90 +91,126 @@ const CLOSED_BY_DEFAULT: ReadonlySet<RailSectionId> = new Set(["connectors", "co
 /** Upstream's `ci`: folds are kept for this many sessions, newest last. */
 const MAX_FOLDED_SESSIONS = 100;
 
-function defaultOpen(id: RailSectionId): boolean {
+function defaultOpen(id: RailSectionId): boolean
+{
 	return !CLOSED_BY_DEFAULT.has(id);
 }
 
 /** A tiny localStorage-backed store: corrupt, foreign or unreadable storage yields the fallback. */
-function createStore<T>(key: string, parse: (value: unknown) => T | null, fallback: T, wrap: (state: T) => unknown) {
+function createStore<T>(key: string, parse: (value: unknown) => T | null, fallback: T, wrap: (state: T) => unknown)
+{
 	const listeners = new Set<() => void>();
 	let cachedRaw: string | null | undefined;
 	let cached = fallback;
 
-	function read(): T {
+	function read(): T
+	{
 		let raw: string | null;
-		try {
+		try
+		{
 			raw = window.localStorage.getItem(key);
-		} catch {
+		}
+		catch
+		{
 			raw = null;
 		}
-		if (raw !== cachedRaw) {
+		if (raw !== cachedRaw)
+		{
 			cachedRaw = raw;
-			try {
+			try
+			{
 				cached = raw === null ? fallback : (parse(JSON.parse(raw)) ?? fallback);
-			} catch {
+			}
+			catch
+			{
 				cached = fallback;
 			}
 		}
 		return cached;
 	}
 
-	function write(state: T): void {
-		try {
+	function write(state: T): void
+	{
+		try
+		{
 			window.localStorage.setItem(key, JSON.stringify(wrap(state)));
-		} catch {
+		}
+		catch
+		{
 			// Storage can be denied or full; the rail keeps working for this render.
 		}
 		for (const listener of listeners) listener();
 	}
 
-	function subscribe(listener: () => void): () => void {
+	function subscribe(listener: () => void): () => void
+	{
 		listeners.add(listener);
 		return () => listeners.delete(listener);
 	}
 
-	function useValue(): T {
+	function useValue(): T
+	{
 		return useSyncExternalStore(subscribe, read, () => fallback);
 	}
 
-	return {read, write, useValue};
+	return {
+		read,
+		write,
+		useValue,
+	};
 }
 
 const shownStore = createStore(
 	SESSION_RAIL_STORAGE_KEY,
-	(value) => {
+	(value) =>
+	{
 		const result = RailShownStoredSchema.safeParse(value);
 		return result.success ? result.data.state.shown : null;
 	},
 	false,
-	(shown) => ({state: {shown}, version: 1}),
+	(shown) => (
+	{
+		state:
+		{
+			shown,
+		},
+		version: 1,
+	}),
 );
 
 const sectionsStore = createStore(
 	RAIL_SECTIONS_STORAGE_KEY,
-	(value) => {
+	(value) =>
+	{
 		const result = RailSectionsStoredSchema.safeParse(value);
 		return result.success ? result.data.state : null;
 	},
 	DEFAULT_RAIL_SECTIONS_STATE,
-	(state) => ({state, version: 0}),
+	(state) => (
+	{
+		state,
+		version: 0,
+	}),
 );
 
 export const readSessionRailShown = shownStore.read;
 export const useSessionRailShown = shownStore.useValue;
 
-export function setSessionRailShown(shown: boolean): void {
+export function setSessionRailShown(shown: boolean): void
+{
 	shownStore.write(shown);
 }
 
 export const readRailSectionsState = sectionsStore.read;
 export const useRailSectionsState = sectionsStore.useValue;
 
-function startsOpen(state: RailSectionsState, id: RailSectionId): boolean {
+function startsOpen(state: RailSectionsState, id: RailSectionId): boolean
+{
 	return state.startsOpen[id] ?? defaultOpen(id);
 }
 
-export function isRailSectionOpen(state: RailSectionsState, sessionId: string, id: RailSectionId): boolean {
+export function isRailSectionOpen(state: RailSectionsState, sessionId: string, id: RailSectionId): boolean
+{
 	const folds = state.foldsBySession[sessionId];
 	if (folds?.expanded.includes(id) === true) return true;
 	if (folds?.collapsed.includes(id) === true) return false;
@@ -174,10 +224,16 @@ function withSessionFolds(
 	foldsBySession: RailSectionsState["foldsBySession"],
 	sessionId: string,
 	folds: RailFolds | undefined,
-): RailSectionsState["foldsBySession"] {
+): RailSectionsState["foldsBySession"]
+{
 	const {[sessionId]: _replaced, ...rest} = foldsBySession;
 	if (folds === undefined || (folds.collapsed.length === 0 && folds.expanded.length === 0)) return rest;
-	const entries = Object.entries({...rest, [sessionId]: folds});
+	const entries = Object.entries(
+		{
+			...rest,
+			[sessionId]: folds,
+		},
+	);
 	return Object.fromEntries(entries.slice(Math.max(0, entries.length - MAX_FOLDED_SESSIONS)));
 }
 
@@ -187,34 +243,60 @@ function withOpen(
 	sessionId: string,
 	ids: readonly RailSectionId[],
 	open: boolean,
-): RailSectionsState["foldsBySession"] {
-	const folds = state.foldsBySession[sessionId] ?? {collapsed: [], expanded: []};
+): RailSectionsState["foldsBySession"]
+{
+	const folds = state.foldsBySession[sessionId] ??
+	{
+		collapsed: [],
+		expanded: [],
+	};
 	const touched = new Set(ids);
 	const collapsed = folds.collapsed.filter((id) => !touched.has(id));
 	const expanded = folds.expanded.filter((id) => !touched.has(id));
 	(open ? expanded : collapsed).push(...ids);
-	return withSessionFolds(state.foldsBySession, sessionId, {collapsed, expanded});
+	return withSessionFolds(
+		state.foldsBySession,
+		sessionId,
+		{
+			collapsed,
+			expanded,
+		},
+	);
 }
 
 /** Upstream's `setOpenByHand`: the session's fold, which also becomes the card's default for unfolded sessions. */
-export function toggleRailSection(sessionId: string, id: RailSectionId): void {
+export function toggleRailSection(sessionId: string, id: RailSectionId): void
+{
 	const state = readRailSectionsState();
 	const open = !isRailSectionOpen(state, sessionId, id);
-	sectionsStore.write({
-		...state,
-		foldsBySession: withOpen(state, sessionId, [id], open),
-		startsOpen: {...state.startsOpen, [id]: open},
-	});
+	sectionsStore.write(
+		{
+			...state,
+			foldsBySession: withOpen(state, sessionId, [id], open),
+			startsOpen:
+			{
+				...state.startsOpen,
+				[id]: open,
+			},
+		},
+	);
 }
 
 /** Upstream's Alt-click on a card header: every card takes that card's new state. */
-export function setRailSectionsOpen(sessionId: string, ids: readonly RailSectionId[], open: boolean): void {
+export function setRailSectionsOpen(sessionId: string, ids: readonly RailSectionId[], open: boolean): void
+{
 	const state = readRailSectionsState();
-	sectionsStore.write({...state, foldsBySession: withOpen(state, sessionId, ids, open)});
+	sectionsStore.write(
+		{
+			...state,
+			foldsBySession: withOpen(state, sessionId, ids, open),
+		},
+	);
 }
 
 /** A command's ask for one session's rail on screen; `seq` tells repeated asks apart. */
-export interface RailRaiseRequest {
+export interface RailRaiseRequest
+{
 	sessionId: string;
 	seq: number;
 }
@@ -223,17 +305,20 @@ let railRaiseRequest: RailRaiseRequest | null = null;
 const raiseListeners = new Set<() => void>();
 
 /** The latest raise request (in memory, never persisted). */
-export function readRailRaiseRequest(): RailRaiseRequest | null {
+export function readRailRaiseRequest(): RailRaiseRequest | null
+{
 	return railRaiseRequest;
 }
 
-function subscribeRailRaiseRequest(listener: () => void): () => void {
+function subscribeRailRaiseRequest(listener: () => void): () => void
+{
 	raiseListeners.add(listener);
 	return () => raiseListeners.delete(listener);
 }
 
 /** The latest raise request; a new one means that session's rail should come on screen if it isn't. */
-export function useRailRaiseRequest(): RailRaiseRequest | null {
+export function useRailRaiseRequest(): RailRaiseRequest | null
+{
 	return useSyncExternalStore(subscribeRailRaiseRequest, readRailRaiseRequest, () => null);
 }
 
@@ -243,9 +328,14 @@ export function useRailRaiseRequest(): RailRaiseRequest | null {
  * rail is asked to come on screen (`yq` raises it as an overlay when hidden or off screen).
  * A hidden Context card still records the fold; nothing card-specific shows.
  */
-export function requestRailContextCard(sessionId: string): void {
+export function requestRailContextCard(sessionId: string): void
+{
 	setRailSectionsOpen(sessionId, ["context"], true);
-	railRaiseRequest = {sessionId, seq: (railRaiseRequest?.seq ?? 0) + 1};
+	railRaiseRequest =
+	{
+		sessionId,
+		seq: (railRaiseRequest?.seq ?? 0) + 1,
+	};
 	for (const listener of raiseListeners) listener();
 }
 
@@ -260,14 +350,21 @@ export const HIDEABLE_RAIL_SECTIONS = [
 	"backgroundTasks",
 ] as const satisfies readonly RailSectionId[];
 
-export function toggleRailSectionHidden(id: RailSectionId): void {
+export function toggleRailSectionHidden(id: RailSectionId): void
+{
 	const state = readRailSectionsState();
 	const hidden = state.hidden.includes(id) ? state.hidden.filter((each) => each !== id) : [...state.hidden, id];
-	sectionsStore.write({...state, hidden});
+	sectionsStore.write(
+		{
+			...state,
+			hidden,
+		},
+	);
 }
 
 /** Upstream's `Di`: whether Reset to defaults has nothing to undo in this session. */
-export function isRailSectionsPristine(state: RailSectionsState, sessionId: string): boolean {
+export function isRailSectionsPristine(state: RailSectionsState, sessionId: string): boolean
+{
 	return (
 		state.hidden.length === 0 &&
 		mergeRailSectionOrder(state.order).every((id, index) => RAIL_SECTION_IDS[index] === id) &&
@@ -280,22 +377,37 @@ export function isRailSectionsPristine(state: RailSectionsState, sessionId: stri
 }
 
 /** Upstream's `resetSections`: hidden sections, order, defaults and this session's folds. */
-export function resetRailSections(sessionId: string): void {
+export function resetRailSections(sessionId: string): void
+{
 	const state = readRailSectionsState();
-	sectionsStore.write({
-		...DEFAULT_RAIL_SECTIONS_STATE,
-		foldsBySession: withSessionFolds(state.foldsBySession, sessionId, undefined),
-	});
+	sectionsStore.write(
+		{
+			...DEFAULT_RAIL_SECTIONS_STATE,
+			foldsBySession: withSessionFolds(state.foldsBySession, sessionId, undefined),
+		},
+	);
 }
 
 /** Upstream's `q`: ids added after orders were first saved, placed just before their anchor in an order that lacks them. */
-const RAIL_SECTION_ANCHORS: Partial<Record<RailSectionId, RailSectionId>> = {servers: "backgroundTasks"};
+const RAIL_SECTION_ANCHORS: Partial<Record<RailSectionId, RailSectionId>> =
+{
+	servers: "backgroundTasks",
+};
 
 /** Upstream's `J`: the saved ids fill the default slots they name, unsaved ids keep their default slot, and anchored ids sit before their anchor. */
-function mergeRailSectionOrder(order: readonly RailSectionId[]): RailSectionId[] {
-	const anchored = RAIL_SECTION_IDS.flatMap((id) => {
+function mergeRailSectionOrder(order: readonly RailSectionId[]): RailSectionId[]
+{
+	const anchored = RAIL_SECTION_IDS.flatMap((id) =>
+	{
 		const before = RAIL_SECTION_ANCHORS[id];
-		return before !== undefined && !order.includes(id) && order.includes(before) ? [{id, before}] : [];
+		return before !== undefined && !order.includes(id) && order.includes(before)
+			? [
+					{
+						id,
+						before,
+					},
+				]
+			: [];
 	});
 	const queue = [...order];
 	const merged = RAIL_SECTION_IDS.filter((id) => !anchored.some((each) => each.id === id)).map((id) =>
@@ -306,17 +418,24 @@ function mergeRailSectionOrder(order: readonly RailSectionId[]): RailSectionId[]
 }
 
 /** `ids` in upstream's merged order. */
-export function orderRailSections<T extends RailSectionId>(ids: readonly T[], order: readonly RailSectionId[]): T[] {
+export function orderRailSections<T extends RailSectionId>(ids: readonly T[], order: readonly RailSectionId[]): T[]
+{
 	return mergeRailSectionOrder(order).filter((id): id is T => (ids as readonly RailSectionId[]).includes(id));
 }
 
 /** Upstream's drop: `active` takes `over`'s slot, and every section's slot is saved, so hidden or empty sections keep theirs. */
-export function reorderRailSections(active: RailSectionId, over: RailSectionId): void {
+export function reorderRailSections(active: RailSectionId, over: RailSectionId): void
+{
 	const state = readRailSectionsState();
 	const order = mergeRailSectionOrder(state.order);
 	const from = order.indexOf(active);
 	const to = order.indexOf(over);
 	if (from === -1 || to === -1 || from === to) return;
 	order.splice(to, 0, ...order.splice(from, 1));
-	sectionsStore.write({...state, order});
+	sectionsStore.write(
+		{
+			...state,
+			order,
+		},
+	);
 }

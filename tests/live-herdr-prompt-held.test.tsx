@@ -5,7 +5,8 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {type DeliveryResult} from "../src/hooks/use-composer-queue";
 import {HerdrRequestError} from "../src/lib/api/herdr";
-import {
+import
+{
 	attachContext,
 	composePrompt,
 	getContextChips,
@@ -16,158 +17,302 @@ import {
 	type RejectedRefill,
 } from "../src/lib/context-attach";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	localStorage.clear();
 });
 
-type PostPrompt = (sessionId: string, prompt: string, options: {midTurn?: true}) => Promise<void>;
+type PostPrompt = (
+	sessionId: string,
+	prompt: string,
+	options:
+	{
+		midTurn?: true;
+	},
+) => Promise<void>;
 
 function renderHeld(
 	postPrompt: PostPrompt,
-	onRejected = vi.fn<(sessionId: string, prompt: string) => RejectedRefill>(() => ({restoredAttachments: false})),
-) {
+	onRejected = vi.fn<(sessionId: string, prompt: string) => RejectedRefill>(() => (
+	{
+		restoredAttachments: false,
+	})),
+)
+{
 	return renderHook(
 		({hasLivePane}: {hasLivePane: boolean}) =>
 			useLiveHerdrPrompt("session-alice", 100, [], postPrompt, onRejected, hasLivePane),
-		{initialProps: {hasLivePane: false}},
+		{
+			initialProps:
+			{
+				hasLivePane: false,
+			},
+		},
 	);
 }
 
-describe("useLiveHerdrPrompt held for the terminal", () => {
+describe("useLiveHerdrPrompt held for the terminal", () =>
+{
 	it.each(["session-not-found", "pane-not-found"])(
 		"holds a prompt rejected with %s instead of failing it",
-		async (code) => {
+		async (code) =>
+		{
 			const postPrompt = vi.fn<PostPrompt>().mockRejectedValue(new HerdrRequestError("no live pane", 502, code));
-			const onRejected = vi.fn<(sessionId: string, prompt: string) => RejectedRefill>(() => ({
+			const onRejected = vi.fn<(sessionId: string, prompt: string) => RejectedRefill>(() => (
+			{
 				restoredAttachments: false,
 			}));
 			const {result} = renderHeld(postPrompt, onRejected);
 
 			let delivery: DeliveryResult | undefined;
-			await act(async () => {
+			await act(async () =>
+			{
 				delivery = await result.current.send("Alice's prompt");
 			});
 
-			expect({delivery, state: result.current.state, refilled: onRejected.mock.calls}).toStrictEqual({
-				delivery: "failed",
-				state: {phase: "held", isPending: true, prompt: "Alice's prompt", rejection: null},
-				refilled: [],
-			});
+			expect(
+				{
+					delivery,
+					state: result.current.state,
+					refilled: onRejected.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					delivery: "failed",
+					state:
+					{
+						phase: "held",
+						isPending: true,
+						prompt: "Alice's prompt",
+						rejection: null,
+					},
+					refilled: [],
+				},
+			);
 		},
 	);
 
-	it("fails a 502 with another code rather than holding it", async () => {
+	it("fails a 502 with another code rather than holding it", async () =>
+	{
 		const postPrompt = vi
 			.fn<PostPrompt>()
 			.mockRejectedValue(new HerdrRequestError("herdr refused", 502, "agent_prompt_stalled"));
 		const {result} = renderHeld(postPrompt);
 
-		await act(async () => {
+		await act(async () =>
+		{
 			await result.current.send("Alice's prompt");
 		});
 
-		expect(result.current.state).toStrictEqual({
-			phase: "idle",
-			isPending: false,
-			prompt: "",
-			rejection: {prompt: "Alice's prompt", message: "herdr refused", nonResendable: false},
-		});
+		expect(result.current.state).toStrictEqual(
+			{
+				phase: "idle",
+				isPending: false,
+				prompt: "",
+				rejection:
+				{
+					prompt: "Alice's prompt",
+					message: "herdr refused",
+					nonResendable: false,
+				},
+			},
+		);
 	});
 
-	it("delivers the held prompt exactly once when the session gains a live pane", async () => {
+	it("delivers the held prompt exactly once when the session gains a live pane", async () =>
+	{
 		const postPrompt = vi
 			.fn<PostPrompt>()
 			.mockRejectedValueOnce(new HerdrRequestError("no live pane", 502, "session-not-found"))
 			.mockResolvedValue(undefined);
 		const {result, rerender} = renderHeld(postPrompt);
 
-		await act(async () => {
+		await act(async () =>
+		{
 			await result.current.send("Alice's prompt");
 		});
-		act(() => {
-			rerender({hasLivePane: true});
+		act(() =>
+		{
+			rerender(
+				{
+					hasLivePane: true,
+				},
+			);
 		});
 		// Let the auto-delivered POST settle before the next render.
-		await act(async () => {
+		await act(async () =>
+		{
 			await Promise.resolve();
 		});
-		act(() => {
-			rerender({hasLivePane: true});
+		act(() =>
+		{
+			rerender(
+				{
+					hasLivePane: true,
+				},
+			);
 		});
 
-		expect({calls: postPrompt.mock.calls, state: result.current.state}).toStrictEqual({
-			calls: [
-				["session-alice", "Alice's prompt", {}],
-				["session-alice", "Alice's prompt", {}],
-			],
-			state: {phase: "sent", isPending: true, prompt: "Alice's prompt", rejection: null},
-		});
+		expect(
+			{
+				calls: postPrompt.mock.calls,
+				state: result.current.state,
+			},
+		).toStrictEqual(
+			{
+				calls: [
+					["session-alice", "Alice's prompt", {}],
+					["session-alice", "Alice's prompt", {}],
+				],
+				state:
+				{
+					phase: "sent",
+					isPending: true,
+					prompt: "Alice's prompt",
+					rejection: null,
+				},
+			},
+		);
 	});
 
-	it("withdraw drops the held row and takes the prompt back into the composer", async () => {
+	it("withdraw drops the held row and takes the prompt back into the composer", async () =>
+	{
 		const postPrompt = vi
 			.fn<PostPrompt>()
 			.mockRejectedValue(new HerdrRequestError("no live pane", 502, "pane-not-found"));
 		const takeBack = vi.fn<(text: string) => boolean>().mockReturnValue(true);
-		const stop = registerComposer("session-alice", {insertText: () => {}, focus: () => {}, takeBack});
+		const stop = registerComposer(
+			"session-alice",
+			{
+				insertText: () =>
+				{
+				},
+				focus: () =>
+				{
+				},
+				takeBack,
+			},
+		);
 		const {result} = renderHeld(postPrompt);
 
-		await act(async () => {
+		await act(async () =>
+		{
 			await result.current.send("Alice's prompt");
 		});
-		act(() => {
+		act(() =>
+		{
 			result.current.withdraw();
 		});
 		stop();
 
-		expect({takeBack: takeBack.mock.calls, state: result.current.state}).toStrictEqual({
-			takeBack: [["Alice's prompt"]],
-			state: {phase: "idle", isPending: false, prompt: "", rejection: null},
-		});
+		expect(
+			{
+				takeBack: takeBack.mock.calls,
+				state: result.current.state,
+			},
+		).toStrictEqual(
+			{
+				takeBack: [["Alice's prompt"]],
+				state:
+				{
+					phase: "idle",
+					isPending: false,
+					prompt: "",
+					rejection: null,
+				},
+			},
+		);
 	});
 
-	it("withdraw takes back a held prompt's typed text and its tiles", async () => {
+	it("withdraw takes back a held prompt's typed text and its tiles", async () =>
+	{
 		const postPrompt = vi
 			.fn<PostPrompt>()
 			.mockRejectedValue(new HerdrRequestError("no live pane", 502, "pane-not-found"));
 		const takeBack = vi.fn<(text: string) => boolean>().mockReturnValue(true);
-		const stop = registerComposer("session-alice", {insertText: () => {}, focus: () => {}, takeBack});
-		attachContext("session-alice", {kind: "file", path: "alice.ts"});
+		const stop = registerComposer(
+			"session-alice",
+			{
+				insertText: () =>
+				{
+				},
+				focus: () =>
+				{
+				},
+				takeBack,
+			},
+		);
+		attachContext(
+			"session-alice",
+			{
+				kind: "file",
+				path: "alice.ts",
+			},
+		);
 		const sentChips = takeContextChips("session-alice");
 		const composed = composePrompt("Alice's prompt", sentChips, []);
 		recordSentAttachments("session-alice", composed, "Alice's prompt", sentChips);
 		const {result} = renderHeld(postPrompt);
 
-		await act(async () => {
+		await act(async () =>
+		{
 			await result.current.send(composed);
 		});
-		act(() => {
+		act(() =>
+		{
 			result.current.withdraw();
 		});
 		const chips = getContextChips("session-alice").map(({id: _id, ...rest}) => rest);
 		for (const chip of getContextChips("session-alice")) removeContextChip("session-alice", chip.id);
 		stop();
 
-		expect({takeBack: takeBack.mock.calls, chips, phase: result.current.state.phase}).toStrictEqual({
-			takeBack: [["Alice's prompt"]],
-			chips: [{kind: "file", path: "alice.ts"}],
-			phase: "idle",
-		});
+		expect(
+			{
+				takeBack: takeBack.mock.calls,
+				chips,
+				phase: result.current.state.phase,
+			},
+		).toStrictEqual(
+			{
+				takeBack: [["Alice's prompt"]],
+				chips: [
+					{
+						kind: "file",
+						path: "alice.ts",
+					},
+				],
+				phase: "idle",
+			},
+		);
 	});
 
-	it("withdraw keeps the held row when the composer refuses the take-back", async () => {
+	it("withdraw keeps the held row when the composer refuses the take-back", async () =>
+	{
 		const postPrompt = vi
 			.fn<PostPrompt>()
 			.mockRejectedValue(new HerdrRequestError("no live pane", 502, "pane-not-found"));
-		const stop = registerComposer("session-alice", {insertText: () => {}, focus: () => {}, takeBack: () => false});
+		const stop = registerComposer(
+			"session-alice",
+			{
+				insertText: () =>
+				{
+				},
+				focus: () =>
+				{
+				},
+				takeBack: () => false,
+			},
+		);
 		const {result} = renderHeld(postPrompt);
 
-		await act(async () => {
+		await act(async () =>
+		{
 			await result.current.send("Alice's prompt");
 		});
 		const held = result.current.state;
-		act(() => {
+		act(() =>
+		{
 			result.current.withdraw();
 		});
 		stop();
@@ -176,47 +321,88 @@ describe("useLiveHerdrPrompt held for the terminal", () => {
 	});
 });
 
-describe("useLiveHerdrPrompt held while the pane table already says live", () => {
-	function renderLiveHeld(postPrompt: PostPrompt) {
+describe("useLiveHerdrPrompt held while the pane table already says live", () =>
+{
+	function renderLiveHeld(postPrompt: PostPrompt)
+	{
 		return renderHook(
 			({livePaneKey}: {livePaneKey: string}) =>
 				useLiveHerdrPrompt("session-alice", 100, [], postPrompt, undefined, true, livePaneKey),
-			{initialProps: {livePaneKey: "pane-1@3"}},
+			{
+				initialProps:
+				{
+					livePaneKey: "pane-1@3",
+				},
+			},
 		);
 	}
 
-	it("re-sends the held prompt once when the session's herdr pane updates", async () => {
+	it("re-sends the held prompt once when the session's herdr pane updates", async () =>
+	{
 		const postPrompt = vi
 			.fn<PostPrompt>()
 			.mockRejectedValueOnce(new HerdrRequestError("no live pane", 502, "pane-not-found"))
 			.mockResolvedValue(undefined);
 		const {result, rerender} = renderLiveHeld(postPrompt);
 
-		await act(async () => {
+		await act(async () =>
+		{
 			await result.current.send("Alice's prompt");
 		});
 		const held = result.current.state;
-		await act(async () => {
-			rerender({livePaneKey: "pane-1@4"});
+		await act(async () =>
+		{
+			rerender(
+				{
+					livePaneKey: "pane-1@4",
+				},
+			);
 			await Promise.resolve();
 		});
-		act(() => {
-			rerender({livePaneKey: "pane-1@4"});
+		act(() =>
+		{
+			rerender(
+				{
+					livePaneKey: "pane-1@4",
+				},
+			);
 		});
 
-		expect({held, calls: postPrompt.mock.calls, state: result.current.state}).toStrictEqual({
-			held: {phase: "held", isPending: true, prompt: "Alice's prompt", rejection: null},
-			calls: [
-				["session-alice", "Alice's prompt", {}],
-				["session-alice", "Alice's prompt", {}],
-			],
-			state: {phase: "sent", isPending: true, prompt: "Alice's prompt", rejection: null},
-		});
+		expect(
+			{
+				held,
+				calls: postPrompt.mock.calls,
+				state: result.current.state,
+			},
+		).toStrictEqual(
+			{
+				held:
+				{
+					phase: "held",
+					isPending: true,
+					prompt: "Alice's prompt",
+					rejection: null,
+				},
+				calls: [
+					["session-alice", "Alice's prompt", {}],
+					["session-alice", "Alice's prompt", {}],
+				],
+				state:
+				{
+					phase: "sent",
+					isPending: true,
+					prompt: "Alice's prompt",
+					rejection: null,
+				},
+			},
+		);
 	});
 
-	it("retries on a doubling backoff while held, re-holding on the same 502 codes", async () => {
+	it("retries on a doubling backoff while held, re-holding on the same 502 codes", async () =>
+	{
 		vi.useFakeTimers();
-		try {
+		try
+		{
 			const postPrompt = vi
 				.fn<PostPrompt>()
 				.mockRejectedValueOnce(new HerdrRequestError("no live pane", 502, "pane-not-found"))
@@ -224,42 +410,66 @@ describe("useLiveHerdrPrompt held while the pane table already says live", () =>
 				.mockResolvedValue(undefined);
 			const {result} = renderLiveHeld(postPrompt);
 
-			await act(async () => {
+			await act(async () =>
+			{
 				await result.current.send("Alice's prompt");
 			});
-			await act(async () => {
+			await act(async () =>
+			{
 				await vi.advanceTimersByTimeAsync(1999);
 			});
 			const beforeFirstRetry = postPrompt.mock.calls.length;
-			await act(async () => {
+			await act(async () =>
+			{
 				await vi.advanceTimersByTimeAsync(1);
 			});
 			const reheld = result.current.state;
-			await act(async () => {
+			await act(async () =>
+			{
 				await vi.advanceTimersByTimeAsync(3999);
 			});
 			const beforeSecondRetry = postPrompt.mock.calls.length;
-			await act(async () => {
+			await act(async () =>
+			{
 				await vi.advanceTimersByTimeAsync(1);
 			});
-			await act(async () => {
+			await act(async () =>
+			{
 				await vi.advanceTimersByTimeAsync(60_000);
 			});
 
-			expect({
-				beforeFirstRetry,
-				reheld,
-				beforeSecondRetry,
-				calls: postPrompt.mock.calls.length,
-				state: result.current.state,
-			}).toStrictEqual({
-				beforeFirstRetry: 1,
-				reheld: {phase: "held", isPending: true, prompt: "Alice's prompt", rejection: null},
-				beforeSecondRetry: 2,
-				calls: 3,
-				state: {phase: "sent", isPending: true, prompt: "Alice's prompt", rejection: null},
-			});
-		} finally {
+			expect(
+				{
+					beforeFirstRetry,
+					reheld,
+					beforeSecondRetry,
+					calls: postPrompt.mock.calls.length,
+					state: result.current.state,
+				},
+			).toStrictEqual(
+				{
+					beforeFirstRetry: 1,
+					reheld:
+					{
+						phase: "held",
+						isPending: true,
+						prompt: "Alice's prompt",
+						rejection: null,
+					},
+					beforeSecondRetry: 2,
+					calls: 3,
+					state:
+					{
+						phase: "sent",
+						isPending: true,
+						prompt: "Alice's prompt",
+						rejection: null,
+					},
+				},
+			);
+		}
+		finally
+		{
 			vi.useRealTimers();
 		}
 	});

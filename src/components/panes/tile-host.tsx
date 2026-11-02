@@ -1,4 +1,5 @@
-import {
+import
+{
 	Component,
 	useCallback,
 	useEffect,
@@ -20,7 +21,8 @@ import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {PaneChromeHeader} from "./deferred-pane-status";
 import {PANE_CLOSE_CONTROL_CLASS, PaneHeaderRow} from "./pane-header-row";
 import {PaneCrashBoundary} from "./pane-crash-boundary";
-import {
+import
+{
 	closePane,
 	chatGutters,
 	chatShellPadding,
@@ -67,7 +69,8 @@ import {siblingMovedAhead, TileContentHosts} from "../../lib/tile-content-hosts"
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
-import {
+import
+{
 	ChatGutterContext,
 	PaneHostContext,
 	chatGutterAttributes,
@@ -98,7 +101,8 @@ const EXPANDED_SLOT_CLASSES = "fixed inset-[9px] z-40";
  * Upstream ca67f2c9d `rt`: a tile kept mounted while another is expanded leaves the flow but keeps its box,
  * and content-visibility keeps its rendering state (scroll offsets) without painting it.
  */
-const HIDDEN_TILE_STYLE = {
+const HIDDEN_TILE_STYLE =
+{
 	position: "absolute",
 	inset: 0,
 	visibility: "hidden",
@@ -109,7 +113,8 @@ const HIDDEN_TILE_STYLE = {
 type LayoutUpdate = (state: PaneLayoutState) => PaneLayoutState;
 
 /** Upstream's hide hand-off entry `He`: the hidden tile focus left, and where it landed. */
-interface FocusReturn {
+interface FocusReturn
+{
 	from: TileId;
 	landedOn: Element | null;
 }
@@ -118,23 +123,27 @@ interface FocusReturn {
 const MODIFIER_KEYS: ReadonlySet<string> = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock"]);
 
 /** Upstream `At`: a key press that counts as the user's input. */
-function isUserInputKey(event: KeyboardEvent): boolean {
+function isUserInputKey(event: KeyboardEvent): boolean
+{
 	return !event.ctrlKey && !event.metaKey && !event.altKey && !MODIFIER_KEYS.has(event.key);
 }
 
-interface PendingMove {
+interface PendingMove
+{
 	tileId: TileId;
 	direction: MoveDirection;
 }
 
 /** Where a pointer drag on Move would drop `tileId`: the `side` half of `targetId`. */
-interface PointerDrop {
+interface PointerDrop
+{
 	tileId: TileId;
 	targetId: TileId;
 	side: MoveDirection;
 }
 
-interface InternalHost {
+interface InternalHost
+{
 	definitions: ReadonlyMap<PaneKind, PaneDefinition>;
 	layout: PaneLayoutState;
 	update: (fn: LayoutUpdate) => void;
@@ -158,7 +167,11 @@ interface InternalHost {
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
 	rootRef: RefObject<HTMLDivElement | null>;
-	rootSize: {width: number; height: number};
+	rootSize:
+	{
+		width: number;
+		height: number;
+	};
 	/**
 	 * Upstream's render map (`walkResolvedFlexes` over the measured tile container): each child's resolved
 	 * flex and floors by path ("0", "1.0"). Null before the first measurement and on a phone.
@@ -169,23 +182,33 @@ interface InternalHost {
 	collapse: () => void;
 }
 
-function tileIdsOf(node: LayoutNode): TileId[] {
+function tileIdsOf(node: LayoutNode): TileId[]
+{
 	return node.kind === "tile" ? [node.tileId] : node.children.flatMap(tileIdsOf);
 }
 
-function isPaneKind(tileId: TileId): tileId is PaneKind {
+function isPaneKind(tileId: TileId): tileId is PaneKind
+{
 	return tileId !== "chat";
 }
 
 /** Drops panes whose kind has no registered renderer, e.g. a persisted pane not ported yet. */
-function pruneUnregistered(
-	state: PaneLayoutState,
-	definitions: ReadonlyMap<PaneKind, PaneDefinition>,
-): PaneLayoutState {
+function pruneUnregistered(state: PaneLayoutState, definitions: ReadonlyMap<PaneKind, PaneDefinition>): PaneLayoutState
+{
 	return tileIdsOf(state.root)
 		.filter(isPaneKind)
 		.filter((kind) => !definitions.has(kind))
-		.reduce((acc, kind) => closePane(acc, kind, {unprompted: true}), state);
+		.reduce(
+			(acc, kind) =>
+				closePane(
+					acc,
+					kind,
+					{
+						unprompted: true,
+					},
+				),
+			state,
+		);
 }
 
 /**
@@ -193,8 +216,10 @@ function pruneUnregistered(
  * root-row tiles' flex per kind (global, not per session) and passes the
  * layout through unchanged.
  */
-function rememberResize(resizedIds: readonly TileId[]): LayoutUpdate {
-	return (state) => {
+function rememberResize(resizedIds: readonly TileId[]): LayoutUpdate
+{
+	return (state) =>
+	{
 		const lastFlex = loadLastPaneFlex();
 		const next = rememberPaneFlex(state.root, resizedIds, lastFlex);
 		if (next !== lastFlex) saveLastPaneFlex(next);
@@ -206,55 +231,88 @@ function rememberResize(resizedIds: readonly TileId[]): LayoutUpdate {
  * Opens a pane, with the first split taking the kind's remembered flex. Given the tile root's measured
  * width, the result makes room for the chat (upstream `tileHost.fitOpenedLayout`).
  */
-function openWithMemory(kind: PaneKind, widthPx: number | undefined): LayoutUpdate {
-	return (state) => openPane(state, kind, loadLastPaneFlex(), widthPx === undefined ? undefined : {widthPx});
+function openWithMemory(kind: PaneKind, widthPx: number | undefined): LayoutUpdate
+{
+	return (state) =>
+		openPane(
+			state,
+			kind,
+			loadLastPaneFlex(),
+			widthPx === undefined
+				? undefined
+				:
+					{
+						widthPx,
+					},
+		);
 }
 
-function nodeTitle(node: LayoutNode, definitions: ReadonlyMap<PaneKind, PaneDefinition>): string {
+function nodeTitle(node: LayoutNode, definitions: ReadonlyMap<PaneKind, PaneDefinition>): string
+{
 	return tileIdsOf(node)
 		.map((tileId) => (tileId === "chat" ? "Chat" : (definitions.get(tileId)?.title ?? tileId)))
 		.join(", ");
 }
 
-function nodeKey(node: LayoutNode): string {
+function nodeKey(node: LayoutNode): string
+{
 	return node.kind === "tile" ? node.tileId : `stack:${tileIdsOf(node).join(",")}`;
 }
 
 /** The layout's shape without its flexes: a change re-parents or reorders tiles (upstream `Ct`'s structureKey). */
-function structureKey(node: LayoutNode): string {
+function structureKey(node: LayoutNode): string
+{
 	return node.kind === "tile" ? node.tileId : `${node.direction}(${node.children.map(structureKey).join(",")})`;
 }
 
 function usePersistedLayout(
 	sessionId: string,
 	definitions: ReadonlyMap<PaneKind, PaneDefinition>,
-): [PaneLayoutState, (fn: LayoutUpdate) => void, boolean] {
-	const [entry, setEntry] = useState<{
+): [PaneLayoutState, (fn: LayoutUpdate) => void, boolean]
+{
+	const [entry, setEntry] = useState<
+	{
 		sessionId: string | null;
 		layout: PaneLayoutState;
-	}>(() => ({
+	}>(() => (
+	{
 		sessionId: null,
 		layout: defaultPaneLayout(),
 	}));
 	const loadedRef = useRef<PaneLayoutState | null>(null);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const layout = loadPaneLayout(sessionId);
 		loadedRef.current = layout;
-		setEntry({sessionId, layout});
+		setEntry(
+			{
+				sessionId,
+				layout,
+			},
+		);
 	}, [sessionId]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (entry.sessionId === null || entry.layout === loadedRef.current) return;
 		savePaneLayout(entry.sessionId, entry.layout);
 	}, [entry]);
 
 	const update = useCallback(
-		(fn: LayoutUpdate) => {
-			setEntry((prev) => {
+		(fn: LayoutUpdate) =>
+		{
+			setEntry((prev) =>
+			{
 				if (prev.sessionId !== sessionId) return prev;
 				const next = fn(pruneUnregistered(prev.layout, definitions));
-				return next === prev.layout ? prev : {sessionId, layout: next};
+				return next === prev.layout
+					? prev
+					:
+						{
+							sessionId,
+							layout: next,
+						};
 			});
 		},
 		[sessionId, definitions],
@@ -266,38 +324,59 @@ function usePersistedLayout(
 	return [layout, update, loaded];
 }
 
-function useElementSize(ref: RefObject<HTMLElement | null>): {
+function useElementSize(ref: RefObject<HTMLElement | null>):
+{
 	width: number;
 	height: number;
-} {
-	const [size, setSize] = useState({width: 0, height: 0});
-	useEffect(() => {
+}
+{
+	const [size, setSize] = useState(
+		{
+			width: 0,
+			height: 0,
+		},
+	);
+	useEffect(() =>
+	{
 		const element = ref.current;
 		if (!element) return undefined;
-		const measure = () => {
+		const measure = () =>
+		{
 			const {width, height} = element.getBoundingClientRect();
-			setSize((prev) => (prev.width === width && prev.height === height ? prev : {width, height}));
+			setSize((prev) =>
+				prev.width === width && prev.height === height
+					? prev
+					:
+						{
+							width,
+							height,
+						},
+			);
 		};
 		measure();
 		if (typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [ref]);
 	return size;
 }
 
-function sizeAlong(element: HTMLElement | null, direction: Direction): number {
+function sizeAlong(element: HTMLElement | null, direction: Direction): number
+{
 	if (!element) return 0;
 	const rect = element.getBoundingClientRect();
 	return direction === "row" ? rect.width : rect.height;
 }
 
-function stackAt(root: StackNode, path: readonly number[]): StackNode | null {
+function stackAt(root: StackNode, path: readonly number[]): StackNode | null
+{
 	let node: LayoutNode = root;
-	for (const index of path) {
+	for (const index of path)
+	{
 		const child: LayoutNode | undefined = node.kind === "stack" ? node.children[index] : undefined;
 		if (child === undefined) return null;
 		node = child;
@@ -305,7 +384,8 @@ function stackAt(root: StackNode, path: readonly number[]): StackNode | null {
 	return node.kind === "stack" ? node : null;
 }
 
-function isRowStack(stack: StackNode): boolean {
+function isRowStack(stack: StackNode): boolean
+{
 	return stack.direction === "row";
 }
 
@@ -313,7 +393,8 @@ function isRowStack(stack: StackNode): boolean {
  * Upstream `Xt`: a divider starts from the stack's resolved flexes (`xe` over its children with the reachable
  * floors and line-mode 1px gaps), or null on a phone or before the stack is measured.
  */
-function dividerStartFlexes(stack: StackNode, sizePx: number, host: InternalHost): number[] | null {
+function dividerStartFlexes(stack: StackNode, sizePx: number, host: InternalHost): number[] | null
+{
 	if (host.phone || host.resolved === null || sizePx <= 0) return null;
 	return resolveFlexes(
 		stack.children.map((child) => child.flex),
@@ -339,7 +420,8 @@ function Divider({
 	/** Root dividers beside this column divider, keyed by the side they meet it on. */
 	corners: Partial<Record<"left" | "right", number>>;
 	host: InternalHost;
-}) {
+})
+{
 	const before = stack.children[index];
 	const after = stack.children[index + 1];
 	const dragRef = useRef<number | null>(null);
@@ -369,7 +451,8 @@ function Divider({
 				: tileFloor(node, stack.direction);
 	const bounds =
 		available > 0
-			? {
+			?
+				{
 					"aria-valuemin": Math.round(
 						(((prefixFlex / total) * available + floorOf(before)) / available) * 100,
 					),
@@ -384,7 +467,8 @@ function Divider({
 	const disabled = host.movingTile !== null;
 	const resizedIds = [...tileIdsOf(before), ...tileIdsOf(after)];
 
-	function resizeBy(deltaPx: number, remember = false) {
+	function resizeBy(deltaPx: number, remember = false)
+	{
 		const measured = sizeAlong(stackRef.current, stack.direction);
 		if (measured <= 0) return;
 		// A pointer drag floors the chat at its reachable 100px, a key step at its full 320px (upstream `Xt`).
@@ -392,8 +476,14 @@ function Divider({
 		const request =
 			measuredStart === null
 				? // The phone reducer subtracts 12px gaps; hand it the size those gaps would leave.
-					{path, index, deltaPx, sizePx: measured + (TILE_GAP_PX - gapPx) * (stack.children.length - 1)}
-				: {
+					{
+						path,
+						index,
+						deltaPx,
+						sizePx: measured + (TILE_GAP_PX - gapPx) * (stack.children.length - 1),
+					}
+				:
+					{
 						path,
 						index,
 						deltaPx,
@@ -401,13 +491,15 @@ function Divider({
 						startFlexes: measuredStart,
 						floor: remember ? ("full" as const) : ("reachable" as const),
 					};
-		host.update((state) => {
+		host.update((state) =>
+		{
 			const next = resizeDivider(state, request);
 			return remember ? rememberResize(resizedIds)(next) : next;
 		});
 	}
 
-	function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+	function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>)
+	{
 		if (disabled) return;
 		const decrease = isRow ? "ArrowLeft" : "ArrowUp";
 		const increase = isRow ? "ArrowRight" : "ArrowDown";
@@ -417,7 +509,8 @@ function Divider({
 		resizeBy(event.key === increase ? step : -step, true);
 	}
 
-	function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+	function onPointerDown(event: ReactPointerEvent<HTMLDivElement>)
+	{
 		if (disabled) return;
 		event.preventDefault();
 		event.currentTarget.setPointerCapture(event.pointerId);
@@ -425,7 +518,8 @@ function Divider({
 		setDragging(true);
 	}
 
-	function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+	function onPointerMove(event: ReactPointerEvent<HTMLDivElement>)
+	{
 		if (dragRef.current === null) return;
 		const position = isRow ? event.clientX : event.clientY;
 		const delta = position - dragRef.current;
@@ -435,7 +529,8 @@ function Divider({
 		resizeBy(delta);
 	}
 
-	function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+	function onPointerUp(event: ReactPointerEvent<HTMLDivElement>)
+	{
 		if (movedRef.current) host.update(rememberResize(resizedIds));
 		movedRef.current = false;
 		dragRef.current = null;
@@ -451,11 +546,35 @@ function Divider({
 		<div
 			role="separator"
 			tabIndex={disabled ? -1 : 0}
-			{...(disabled ? {"aria-disabled": true} : {})}
-			style={{zIndex: 4 + path.length, ...(disabled ? {pointerEvents: "none" as const} : {})}}
-			{...(corners.left === undefined ? {} : {"data-starts-at-divider": ""})}
+			{...(disabled
+				?
+					{
+						"aria-disabled": true,
+					}
+				: {})}
+			style={
+			{
+				zIndex: 4 + path.length,
+				...(disabled
+					?
+						{
+							pointerEvents: "none" as const,
+						}
+					: {}),
+			}}
+			{...(corners.left === undefined
+				? {}
+				:
+					{
+						"data-starts-at-divider": "",
+					})}
 			data-tile-divider
-			{...(dragging ? {"data-dragging": ""} : {})}
+			{...(dragging
+				?
+					{
+						"data-dragging": "",
+					}
+				: {})}
 			aria-orientation={isRow ? "vertical" : "horizontal"}
 			aria-valuenow={now}
 			{...bounds}
@@ -521,24 +640,39 @@ function TileCorner({
 	columnIndex: number;
 	columnRef: RefObject<HTMLDivElement | null>;
 	host: InternalHost;
-}) {
-	const dragRef = useRef<{x: number; y: number} | null>(null);
+})
+{
+	const dragRef = useRef<
+	{
+		x: number;
+		y: number;
+	} | null>(null);
 
-	function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+	function onPointerDown(event: ReactPointerEvent<HTMLDivElement>)
+	{
 		event.preventDefault();
 		event.stopPropagation();
 		event.currentTarget.setPointerCapture(event.pointerId);
-		dragRef.current = {x: event.clientX, y: event.clientY};
+		dragRef.current =
+		{
+			x: event.clientX,
+			y: event.clientY,
+		};
 	}
 
-	function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+	function onPointerMove(event: ReactPointerEvent<HTMLDivElement>)
+	{
 		const drag = dragRef.current;
 		if (drag === null) return;
 		event.stopPropagation();
 		const deltaX = event.clientX - drag.x;
 		const deltaY = event.clientY - drag.y;
 		if (deltaX === 0 && deltaY === 0) return;
-		dragRef.current = {x: event.clientX, y: event.clientY};
+		dragRef.current =
+		{
+			x: event.clientX,
+			y: event.clientY,
+		};
 		const rowPx = sizeAlong(host.rootRef.current, "row");
 		const columnPx = sizeAlong(columnRef.current, "column");
 		if (rowPx <= 0 || columnPx <= 0) return;
@@ -547,16 +681,25 @@ function TileCorner({
 		const columnStart = column === null ? null : dividerStartFlexes(column, columnPx, host);
 		// Both axes start from the rendered flexes, as a divider drag does (upstream `Xt`).
 		const resolvedRequest = (startFlexes: number[] | null) =>
-			startFlexes === null ? {} : {startFlexes, floor: "reachable" as const};
+			startFlexes === null
+				? {}
+				:
+					{
+						startFlexes,
+						floor: "reachable" as const,
+					};
 		host.update((state) =>
 			resizeDivider(
-				resizeDivider(state, {
-					path: [],
-					index: rootIndex,
-					deltaPx: deltaX,
-					sizePx: rowPx,
-					...resolvedRequest(rowStart),
-				}),
+				resizeDivider(
+					state,
+					{
+						path: [],
+						index: rootIndex,
+						deltaPx: deltaX,
+						sizePx: rowPx,
+						...resolvedRequest(rowStart),
+					},
+				),
 				{
 					path: columnPath,
 					index: columnIndex,
@@ -568,10 +711,13 @@ function TileCorner({
 		);
 	}
 
-	function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+	function onPointerUp(event: ReactPointerEvent<HTMLDivElement>)
+	{
 		event.stopPropagation();
-		if (dragRef.current !== null) {
-			host.update((state) => {
+		if (dragRef.current !== null)
+		{
+			host.update((state) =>
+			{
 				const row = state.root.children;
 				const ids = [row[rootIndex], row[rootIndex + 1]].flatMap((node) => (node ? tileIdsOf(node) : []));
 				return rememberResize(ids)(state);
@@ -594,7 +740,8 @@ function TileCorner({
 	);
 }
 
-function dropSide(rect: DOMRect, clientX: number, clientY: number): MoveDirection {
+function dropSide(rect: DOMRect, clientX: number, clientY: number): MoveDirection
+{
 	const x = rect.width > 0 ? (clientX - rect.left) / rect.width : 0.5;
 	const y = rect.height > 0 ? (clientY - rect.top) / rect.height : 0.5;
 	const edges: Array<[MoveDirection, number]> = [
@@ -607,16 +754,22 @@ function dropSide(rect: DOMRect, clientX: number, clientY: number): MoveDirectio
 }
 
 /** The tile under the pointer and the half nearest it, or null over the dragged tile or no tile. */
-function dropAt(tileId: TileId, clientX: number, clientY: number): PointerDrop | null {
+function dropAt(tileId: TileId, clientX: number, clientY: number): PointerDrop | null
+{
 	// The content host is display:contents and has no box, so measure the tile's slot around it.
 	const element = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-tile-slot]");
 	if (element === null || element === undefined) return null;
 	const targetId = parseTileId(element.dataset["tileSlot"]);
 	if (targetId === null || targetId === tileId) return null;
-	return {tileId, targetId, side: dropSide(element.getBoundingClientRect(), clientX, clientY)};
+	return {
+		tileId,
+		targetId,
+		side: dropSide(element.getBoundingClientRect(), clientX, clientY),
+	};
 }
 
-const MOVE_KEYS: Readonly<Record<string, MoveDirection>> = {
+const MOVE_KEYS: Readonly<Record<string, MoveDirection>> =
+{
 	ArrowLeft: "left",
 	ArrowRight: "right",
 	ArrowUp: "top",
@@ -630,18 +783,31 @@ const MOVE_HINT =
  * Upstream's Move grip. Arrows along the tile's stack move it straight away;
  * perpendicular arrows outline the split first, Enter commits and Escape cancels.
  */
-function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
+function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost})
+{
 	const hintId = `pane-move-hint-${tileId}`;
 	const pending = host.pendingMove?.tileId === tileId ? host.pendingMove : null;
-	const dragRef = useRef<{x: number; y: number; dragging: boolean} | null>(null);
+	const dragRef = useRef<
+	{
+		x: number;
+		y: number;
+		dragging: boolean;
+	} | null>(null);
 
-	function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+	function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>)
+	{
 		if (event.button !== 0) return;
 		event.currentTarget.setPointerCapture(event.pointerId);
-		dragRef.current = {x: event.clientX, y: event.clientY, dragging: false};
+		dragRef.current =
+		{
+			x: event.clientX,
+			y: event.clientY,
+			dragging: false,
+		};
 	}
 
-	function onPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+	function onPointerMove(event: ReactPointerEvent<HTMLButtonElement>)
+	{
 		const drag = dragRef.current;
 		if (drag === null) return;
 		if (!drag.dragging && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < DRAG_THRESHOLD_PX) return;
@@ -651,7 +817,8 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 		host.setPointerDrop(dropAt(tileId, event.clientX, event.clientY));
 	}
 
-	function onPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+	function onPointerUp(event: ReactPointerEvent<HTMLButtonElement>)
+	{
 		const drag = dragRef.current;
 		dragRef.current = null;
 		event.currentTarget.releasePointerCapture(event.pointerId);
@@ -661,15 +828,18 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 		if (drop !== null) host.update((state) => movePaneTo(state, tileId, drop.targetId, drop.side));
 	}
 
-	function onPointerCancel(event: ReactPointerEvent<HTMLButtonElement>) {
+	function onPointerCancel(event: ReactPointerEvent<HTMLButtonElement>)
+	{
 		dragRef.current = null;
 		event.currentTarget.releasePointerCapture(event.pointerId);
 		host.setPointerDrop(null);
 		host.setMovingTile(null);
 	}
 
-	function onKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
-		if (pending !== null && (event.key === "Enter" || event.key === "Escape")) {
+	function onKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>)
+	{
+		if (pending !== null && (event.key === "Enter" || event.key === "Escape"))
+		{
 			event.preventDefault();
 			event.stopPropagation();
 			host.setPendingMove(null);
@@ -679,8 +849,14 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 		const direction = MOVE_KEYS[event.key];
 		if (direction === undefined) return;
 		event.preventDefault();
-		if (movePreview(host.layout, tileId, direction) !== null) {
-			host.setPendingMove({tileId, direction});
+		if (movePreview(host.layout, tileId, direction) !== null)
+		{
+			host.setPendingMove(
+				{
+					tileId,
+					direction,
+				},
+			);
 			return;
 		}
 		host.setPendingMove(null);
@@ -699,7 +875,8 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 					onPointerMove={onPointerMove}
 					onPointerUp={onPointerUp}
 					onPointerCancel={onPointerCancel}
-					onBlur={() => {
+					onBlur={() =>
+					{
 						if (pending !== null) host.setPendingMove(null);
 					}}
 					className="group/move flex h-4 w-11 cursor-move touch-none items-center justify-center outline-none"
@@ -714,19 +891,22 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 	);
 }
 
-const PREVIEW_SIDE_CLASSES: Readonly<Record<MoveDirection, string>> = {
+const PREVIEW_SIDE_CLASSES: Readonly<Record<MoveDirection, string>> =
+{
 	left: "inset-y-0 left-0 w-1/2",
 	right: "inset-y-0 right-0 w-1/2",
 	top: "inset-x-0 top-0 h-1/2",
 	bottom: "inset-x-0 bottom-0 h-1/2",
 };
 
-function samePath(a: readonly number[], b: readonly number[]): boolean {
+function samePath(a: readonly number[], b: readonly number[]): boolean
+{
 	return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
 /** Outlines the half of the node at `path` that a pending split move will take. */
-function MovePreviewOutline({path, host}: {path: readonly number[]; host: InternalHost}) {
+function MovePreviewOutline({path, host}: {path: readonly number[]; host: InternalHost})
+{
 	const preview = host.preview;
 	if (preview === null || !samePath(preview.path, path)) return null;
 	return (
@@ -738,13 +918,15 @@ function MovePreviewOutline({path, host}: {path: readonly number[]; host: Intern
 	);
 }
 
-function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: PaneDefinition; host: InternalHost}) {
+function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: PaneDefinition; host: InternalHost})
+{
 	const expandKeys = useShortcutKeys("expand_collapse_pane");
 	const closeKeys = useShortcutKeys("close_pane");
 	const isExpanded = host.expanded === kind;
 	const toggleRef = useRef<HTMLButtonElement>(null);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (isExpanded || host.collapsedRef.current !== kind) return;
 		host.collapsedRef.current = null;
 		// Only when focus fell to the body: a return to the tile the expand took focus from, or a field, keeps it.
@@ -765,8 +947,14 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 					type="button"
 					aria-label={isExpanded ? "Collapse" : "Expand"}
 					aria-keyshortcuts={expandKeys.ariaKeyShortcuts}
-					{...(isExpanded ? {} : {"aria-haspopup": "dialog" as const})}
-					onClick={() => {
+					{...(isExpanded
+						? {}
+						:
+							{
+								"aria-haspopup": "dialog" as const,
+							})}
+					onClick={() =>
+					{
 						if (isExpanded) host.collapse();
 						else host.update((state) => expandPane(state, kind));
 					}}
@@ -780,10 +968,12 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 					type="button"
 					aria-label="Close"
 					aria-keyshortcuts={closeKeys.ariaKeyShortcuts}
-					onMouseDown={(event) => {
+					onMouseDown={(event) =>
+					{
 						event.preventDefault();
 					}}
-					onClick={() => {
+					onClick={() =>
+					{
 						host.update((state) => closePane(state, kind));
 					}}
 					className={`${PANE_HEADER_ICON_BUTTON_CLASS} ${PANE_CLOSE_CONTROL_CLASS}`}
@@ -811,9 +1001,23 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 			{definition.header === "custom" ? (
 				<PaneCrashBoundary
 					resetKey={crashResetKey}
-					header={<PaneChromeHeader title={definition.title} chrome={{moveHandle, controls}} />}
+					header={
+						<PaneChromeHeader
+							title={definition.title}
+							chrome={
+							{
+								moveHandle,
+								controls,
+							}}
+						/>
+					}
 				>
-					{definition.render({moveHandle, controls})}
+					{definition.render(
+						{
+							moveHandle,
+							controls,
+						},
+					)}
 				</PaneCrashBoundary>
 			) : (
 				<>
@@ -835,7 +1039,12 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 					<div data-pane-body className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
 						<div className="h-full scroll-py-2.5 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
 							<PaneCrashBoundary resetKey={crashResetKey}>
-								{definition.render({moveHandle, controls})}
+								{definition.render(
+									{
+										moveHandle,
+										controls,
+									},
+								)}
 							</PaneCrashBoundary>
 						</div>
 					</div>
@@ -849,7 +1058,8 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
  * Root dividers that meet a column divider: a column that is a root child
  * touches the divider before it (on its left) and after it (on its right).
  */
-function cornersOf(path: readonly number[], host: InternalHost): Partial<Record<"left" | "right", number>> {
+function cornersOf(path: readonly number[], host: InternalHost): Partial<Record<"left" | "right", number>>
+{
 	const [rootIndex, ...rest] = path;
 	if (rootIndex === undefined || rest.length > 0) return {};
 	const corners: Partial<Record<"left" | "right", number>> = {};
@@ -863,7 +1073,8 @@ function cornersOf(path: readonly number[], host: InternalHost): Partial<Record<
  * aheadKey its parent's plus a level listing the siblings before it (upstream `pt`, the URI-encoded node id; a local
  * stack has no id, so its React key stands in).
  */
-function childSlotKeys(stack: StackNode, orderKey: string, aheadKey: string) {
+function childSlotKeys(stack: StackNode, orderKey: string, aheadKey: string)
+{
 	const ids = stack.children.map((child) => encodeURIComponent(nodeKey(child)));
 	return {
 		orderKey: `${orderKey}/${ids.join(",")}`,
@@ -883,7 +1094,8 @@ function StackView({
 	orderKey: string;
 	aheadKey: string;
 	host: InternalHost;
-}) {
+})
+{
 	const localRef = useRef<HTMLDivElement>(null);
 	const isRoot = path.length === 0;
 	const ref = isRoot ? host.rootRef : localRef;
@@ -894,8 +1106,10 @@ function StackView({
 	const childKeys = childSlotKeys(stack, orderKey, aheadKey);
 	const items: ReactNode[] = [];
 	// Keep the expanded pane and chat on their keyed paths so their reader state survives.
-	stack.children.forEach((child, index) => {
-		if (host.expanded === null && index > 0) {
+	stack.children.forEach((child, index) =>
+	{
+		if (host.expanded === null && index > 0)
+		{
 			items.push(
 				<Divider
 					key={`divider:${nodeKey(stack.children[index - 1] ?? child)}|${nodeKey(child)}`}
@@ -928,11 +1142,34 @@ function StackView({
 			ref={ref}
 			data-tile-stack={stack.direction}
 			// Upstream's tiles viewport switches to `data-tiles-line` whenever its panels layout holds a pane.
-			{...(isRoot ? {"data-tiles-viewport": "", "data-tiles-mounted": String(host.mountedCount)} : {})}
-			{...(isRoot && tileIdsOf(stack).length > 1 ? {"data-tiles-line": ""} : {})}
-			{...(isRoot && host.movingTile !== null ? {"data-tiles-moving": ""} : {})}
+			{...(isRoot
+				?
+					{
+						"data-tiles-viewport": "",
+						"data-tiles-mounted": String(host.mountedCount),
+					}
+				: {})}
+			{...(isRoot && tileIdsOf(stack).length > 1
+				?
+					{
+						"data-tiles-line": "",
+					}
+				: {})}
+			{...(isRoot && host.movingTile !== null
+				?
+					{
+						"data-tiles-moving": "",
+					}
+				: {})}
 			className={`flex h-full min-h-0 min-w-0 items-stretch ${stack.direction === "row" ? "flex-row" : "flex-col"}`}
-			style={isRoot ? undefined : {flex: `${stack.flex} 1 0`}}
+			style={
+				isRoot
+					? undefined
+					:
+						{
+							flex: `${stack.flex} 1 0`,
+						}
+			}
 		>
 			{items}
 		</div>
@@ -956,8 +1193,14 @@ function NodeView({
 	host: InternalHost;
 	isRootChild: boolean;
 	parentDirection: Direction;
-}) {
-	const style = host.phone ? {flex: `${node.flex} 1 0`} : resolvedStyle(node, path, parentDirection, host.resolved);
+})
+{
+	const style = host.phone
+		?
+			{
+				flex: `${node.flex} 1 0`,
+			}
+		: resolvedStyle(node, path, parentDirection, host.resolved);
 	const phone = isRootChild && host.phone;
 	const holdsChat = tileIdsOf(node).includes("chat");
 	const phoneMin = holdsChat ? PHONE_CHAT_MIN_CLASS : PHONE_PANE_MIN_CLASS;
@@ -965,7 +1208,8 @@ function NodeView({
 	const slotClass = `relative min-h-0 ${phone ? phoneMin : host.phone ? "min-w-0" : ""}`.trimEnd();
 	// Upstream tile `Q` layers: the chat wrap at z-index 0 under its overflowing shell, panes at 1 above it.
 	const layered = !host.phone && tileIdsOf(host.layout.root).length > 1;
-	if (node.kind === "stack") {
+	if (node.kind === "stack")
+	{
 		// Upstream ft's `P`: a stack whose every tile is hidden or dropped merges rt; no `inert`, its tiles carry their own.
 		const hidden =
 			host.expanded !== null &&
@@ -973,15 +1217,29 @@ function NodeView({
 		return (
 			<div
 				className={`flex ${slotClass}`}
-				style={hidden ? {...style, ...HIDDEN_TILE_STYLE} : style}
-				{...(phone ? {"data-pane-phone": ""} : {})}
+				style={
+					hidden
+						?
+							{
+								...style,
+								...HIDDEN_TILE_STYLE,
+							}
+						: style
+				}
+				{...(phone
+					?
+						{
+							"data-pane-phone": "",
+						}
+					: {})}
 			>
 				<StackView stack={node} path={path} orderKey={orderKey} aheadKey={aheadKey} host={host} />
 				<MovePreviewOutline path={path} host={host} />
 			</div>
 		);
 	}
-	if (node.tileId === "chat") {
+	if (node.tileId === "chat")
+	{
 		const hidden = host.hidden.has("chat");
 		// Upstream's line-mode tile shell (shared-20 `it`): 8px at the bottom, and 8px on a side the chat touches
 		// without a gutter attribute. Not on a phone until a live 390px read shows upstream insets there.
@@ -1000,7 +1258,12 @@ function NodeView({
 				style={
 					gutters === null
 						? style
-						: {...style, "--tiles-padding": "8px", "--tile-shell-ground": "var(--color-page)"}
+						:
+							{
+								...style,
+								"--tiles-padding": "8px",
+								"--tile-shell-ground": "var(--color-page)",
+							}
 				}
 				hidden={hidden}
 				shellClassName={
@@ -1011,13 +1274,19 @@ function NodeView({
 				shellStyle={
 					gutters === null
 						? undefined
-						: {
+						:
+							{
 								[anchor]: 0,
 								padding: chatShellPadding(gutters),
 								"--tile-overflow-min": `${CHAT_OVERFLOW_MIN_PX}px`,
 							}
 				}
-				{...(gutters === null ? {} : {overflowAnchor: anchor})}
+				{...(gutters === null
+					? {}
+					:
+						{
+							overflowAnchor: anchor,
+						})}
 				{...chatGutterAttributes(gutters)}
 			>
 				<MovePreviewOutline path={path} host={host} />
@@ -1047,7 +1316,12 @@ function NodeView({
 			style={expanded ? undefined : style}
 			hidden={hidden}
 			phone={expanded ? host.phone : phone}
-			{...(expanded ? {"data-pane-overlay": true} : {})}
+			{...(expanded
+				?
+					{
+						"data-pane-overlay": true,
+					}
+				: {})}
 		>
 			<MovePreviewOutline path={path} host={host} />
 		</TileSlot>
@@ -1064,7 +1338,8 @@ function resolvedStyle(
 	path: readonly number[],
 	parentDirection: Direction,
 	resolved: ReadonlyMap<string, ResolvedNode> | null,
-): CSSProperties {
+): CSSProperties
+{
 	const entry = resolved?.get(path.join("."));
 	const isTile = node.kind === "tile";
 	const bareFloor = isTile || parentDirection === "row" ? tileFloor(node, "row") : 0;
@@ -1073,7 +1348,12 @@ function resolvedStyle(
 		// Six decimals, as the live upstream values were read; browsers serialise fewer digits anyway.
 		flex: `${entry === undefined ? node.flex : Math.round(entry.flex * 1e6) / 1e6} 1 0px`,
 		minWidth: `${entry?.minWidthPx ?? bareFloor}px`,
-		...(isTile && minHeight !== null ? {minHeight: `${minHeight}px`} : {}),
+		...(isTile && minHeight !== null
+			?
+				{
+					minHeight: `${minHeight}px`,
+				}
+			: {}),
 	};
 }
 
@@ -1096,7 +1376,8 @@ function TileSlot({
 	overflowAnchor,
 	children,
 	...data
-}: {
+}:
+{
 	tileId: TileId;
 	host: InternalHost;
 	/** The slot's sibling ids at every level; when they change, the host is snapshotted and restored around the move. */
@@ -1113,17 +1394,20 @@ function TileSlot({
 	overflowAnchor?: "left" | "right";
 	children: ReactNode;
 	"data-pane-overlay"?: boolean;
-} & ChatGutterAttributes) {
+} & ChatGutterAttributes)
+{
 	const {contentHosts} = host;
 	const edges = host.shellEdges.get(tileId);
 	const cellRef = useRef<HTMLDivElement | null>(null);
 	// Upstream's shell ref: adopt the host on mount; the cleanup snapshots and parks it if it is still here.
 	const adopt = useCallback(
-		(cell: HTMLDivElement | null) => {
+		(cell: HTMLDivElement | null) =>
+		{
 			cellRef.current = cell;
 			if (cell === null) return undefined;
 			const release = contentHosts.adopt(tileId, cell);
-			return () => {
+			return () =>
+			{
 				cellRef.current = null;
 				release();
 			};
@@ -1132,11 +1416,13 @@ function TileSlot({
 	);
 	// Upstream's orderKey effect: React moves a reordered shell with insertBefore, which resets scroll and focus.
 	const nextAheadKey = useEffectEvent(() => aheadKey);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const cell = cellRef.current;
 		if (cell === null) return undefined;
 		contentHosts.slotMoved(tileId, cell);
-		return () => {
+		return () =>
+		{
 			contentHosts.slotWillMove(tileId, cell, siblingMovedAhead(orderKey, aheadKey, nextAheadKey()));
 		};
 	}, [contentHosts, tileId, orderKey, aheadKey]);
@@ -1145,22 +1431,71 @@ function TileSlot({
 			data-tile-slot={tileId}
 			className={className}
 			// Upstream wt: the hide merges after the flex and floors, with the solo layout's min-width 0.
-			style={hidden ? {...style, minWidth: 0, ...HIDDEN_TILE_STYLE} : style}
+			style={
+				hidden
+					?
+						{
+							...style,
+							minWidth: 0,
+							...HIDDEN_TILE_STYLE,
+						}
+					: style
+			}
 			inert={hidden}
-			{...(phone ? {"data-pane-phone": ""} : {})}
-			{...(host.movingTile === tileId ? {"data-tile-moving": ""} : {})}
+			{...(phone
+				?
+					{
+						"data-pane-phone": "",
+					}
+				: {})}
+			{...(host.movingTile === tileId
+				?
+					{
+						"data-tile-moving": "",
+					}
+				: {})}
 			{...data}
 		>
 			<div
 				ref={adopt}
 				className={`tiles-shell ${shellClassName}`}
 				style={shellStyle}
-				{...(overflowAnchor === undefined ? {} : {"data-tile-overflow-anchor": overflowAnchor})}
-				{...(edges?.afterLineX === true ? {"data-after-line-x": ""} : {})}
-				{...(edges?.afterLineY === true ? {"data-after-line-y": ""} : {})}
-				{...(edges?.stripOverStart === true ? {"data-strip-over-start": ""} : {})}
-				{...(edges?.stripOverFoot === true ? {"data-strip-over-foot": ""} : {})}
-				{...(edges?.stripOverEnd === true ? {"data-strip-over-end": ""} : {})}
+				{...(overflowAnchor === undefined
+					? {}
+					:
+						{
+							"data-tile-overflow-anchor": overflowAnchor,
+						})}
+				{...(edges?.afterLineX === true
+					?
+						{
+							"data-after-line-x": "",
+						}
+					: {})}
+				{...(edges?.afterLineY === true
+					?
+						{
+							"data-after-line-y": "",
+						}
+					: {})}
+				{...(edges?.stripOverStart === true
+					?
+						{
+							"data-strip-over-start": "",
+						}
+					: {})}
+				{...(edges?.stripOverFoot === true
+					?
+						{
+							"data-strip-over-foot": "",
+						}
+					: {})}
+				{...(edges?.stripOverEnd === true
+					?
+						{
+							"data-strip-over-end": "",
+						}
+					: {})}
 			>
 				{children}
 			</div>
@@ -1168,10 +1503,14 @@ function TileSlot({
 	);
 }
 
-const CONTENTS_STYLE = {display: "contents"} as const satisfies CSSProperties;
+const CONTENTS_STYLE =
+{
+	display: "contents",
+} as const satisfies CSSProperties;
 
 /** The chat tile's content: its Move grip (once a pane shares the row) above the transcript. */
-function ChatTileContent({host, chat}: {host: InternalHost; chat: ReactNode}) {
+function ChatTileContent({host, chat}: {host: InternalHost; chat: ReactNode})
+{
 	const tiles = tileIdsOf(host.layout.root).length;
 	const layered = !host.phone && tiles > 1;
 	const root = host.layout.root;
@@ -1193,7 +1532,8 @@ function ChatTileContent({host, chat}: {host: InternalHost; chat: ReactNode}) {
  * Upstream `Tt`: a tile's content, portalled into its persistent host in a display:contents wrapper. Focus and presses
  * inside the host reach the focused-tile state through the registry's host listeners.
  */
-function TileContent({tileId, host, chat}: {tileId: TileId; host: InternalHost; chat: ReactNode}) {
+function TileContent({tileId, host, chat}: {tileId: TileId; host: InternalHost; chat: ReactNode})
+{
 	const definition = isPaneKind(tileId) ? host.definitions.get(tileId) : undefined;
 	if (isPaneKind(tileId) && definition === undefined) return null;
 	return createPortal(
@@ -1212,26 +1552,37 @@ function TileContent({tileId, host, chat}: {tileId: TileId; host: InternalHost; 
  * Upstream `Ct`: before a structural change commits, freeze every host's scrolls and box (a detached cell reads 0);
  * thaw once the new tree is in place.
  */
-class ScrollFreezer extends Component<{
+class ScrollFreezer extends Component<
+{
 	contentHosts: TileContentHosts;
 	structureKey: string;
 	liveTileIds: ReadonlySet<TileId>;
-}> {
-	override getSnapshotBeforeUpdate(previous: Readonly<{structureKey: string}>): null {
+}>
+{
+	override getSnapshotBeforeUpdate(
+		previous: Readonly<
+		{
+			structureKey: string;
+		}>,
+	): null
+	{
 		if (previous.structureKey !== this.props.structureKey)
 			this.props.contentHosts.freezeScrolls(this.props.liveTileIds);
 		return null;
 	}
 
-	override componentDidMount(): void {
+	override componentDidMount(): void
+	{
 		this.props.contentHosts.thawScrolls();
 	}
 
-	override componentDidUpdate(): void {
+	override componentDidUpdate(): void
+	{
 		this.props.contentHosts.thawScrolls();
 	}
 
-	override render(): null {
+	override render(): null
+	{
 		return null;
 	}
 }
@@ -1255,14 +1606,16 @@ export function TileHost({
 	requestedPane?: PaneKind | undefined;
 	onRequestedPaneHandled?: (() => void) | undefined;
 	children: ReactNode;
-}) {
+})
+{
 	const definitions = usePaneDefinitions();
 	const [savedLayout, saveUpdate, loaded] = usePersistedLayout(sessionId, definitions);
 	const phone = usePhoneSheet();
 	// A phone shows saved desktop columns stacked in one side column, and edits made there keep the saved columns.
 	const layout = useMemo(() => (phone ? fitPhoneLayout(savedLayout) : savedLayout), [phone, savedLayout]);
 	const update = useCallback(
-		(fn: LayoutUpdate) => {
+		(fn: LayoutUpdate) =>
+		{
 			saveUpdate(phone ? (state) => updatePhoneView(state, fn) : fn);
 		},
 		[phone, saveUpdate],
@@ -1279,12 +1632,14 @@ export function TileHost({
 		[phone],
 	);
 	const collapsedRef = useRef<PaneKind | null>(null);
-	const collapse = useCallback(() => {
+	const collapse = useCallback(() =>
+	{
 		collapsedRef.current = layout.expanded;
 		update(collapsePane);
 	}, [layout.expanded, update]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (requestedPane === undefined || !loaded) return;
 		if (definitions.has(requestedPane)) update(openWithMemory(requestedPane, fitWidth()));
 		onRequestedPaneHandled?.();
@@ -1311,18 +1666,30 @@ export function TileHost({
 		[layout.root, layout.expanded],
 	);
 	// Upstream `setInteractHandler(onTileInteract)`: focus entering a tile, or a press in it, makes it the focused tile.
-	useLayoutEffect(() => {
-		contentHosts.setInteractHandler((id) => {
+	useLayoutEffect(() =>
+	{
+		contentHosts.setInteractHandler((id) =>
+		{
 			const tileId = parseTileId(id);
 			if (tileId !== null) update((state) => focusPane(state, tileId));
 		});
 	}, [contentHosts, update]);
-	const focusScopeRef = useRef({sessionId, root: layout.root});
+	const focusScopeRef = useRef(
+		{
+			sessionId,
+			root: layout.root,
+		},
+	);
 	// Upstream's retain effect: when the tile holding focus closes and focus fell to the body, hand focus to the nearest
 	// neighbour with a focus target (usually the composer) and make the nearest neighbour the focused tile.
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const previous = focusScopeRef.current;
-		focusScopeRef.current = {sessionId, root: layout.root};
+		focusScopeRef.current =
+		{
+			sessionId,
+			root: layout.root,
+		};
 		const closed = parseTileId(contentHosts.retain(liveTileIds));
 		if (closed === null || previous.sessionId !== sessionId) return;
 		const before = new Set(tileIdsOf(previous.root));
@@ -1343,11 +1710,13 @@ export function TileHost({
 	const focusReturnRef = useRef<FocusReturn | null>(null);
 	// Upstream's hide effect: a tile hidden while it held focus hands it to the first visible tile, and showing it again
 	// takes focus back, unless focus moved off where it landed.
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const previous = hiddenRef.current;
 		hiddenRef.current = hidden;
 		const pending = focusReturnRef.current;
-		if (pending !== null && !hidden.has(pending.from)) {
+		if (pending !== null && !hidden.has(pending.from))
+		{
 			focusReturnRef.current = null;
 			if (document.activeElement === pending.landedOn) contentHosts.focusTile(pending.from);
 			return;
@@ -1357,26 +1726,35 @@ export function TileHost({
 		if (from === null) return;
 		const target = mountedTiles.find((id) => !hidden.has(id));
 		if (target !== undefined && contentHosts.focusTile(target))
-			focusReturnRef.current = {from, landedOn: document.activeElement};
+			focusReturnRef.current =
+			{
+				from,
+				landedOn: document.activeElement,
+			};
 	}, [contentHosts, mountedTiles, hidden]);
 	// Upstream `At`/`kt`: a press, or a key that is input (no Ctrl/Meta/Alt, not a lone modifier), cancels the return.
-	useEffect(() => {
-		const cancel = () => {
+	useEffect(() =>
+	{
+		const cancel = () =>
+		{
 			focusReturnRef.current = null;
 		};
-		const onKeyDown = (event: KeyboardEvent) => {
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			if (isUserInputKey(event)) cancel();
 		};
 		document.addEventListener("pointerdown", cancel, true);
 		document.addEventListener("keydown", onKeyDown, true);
-		return () => {
+		return () =>
+		{
 			document.removeEventListener("pointerdown", cancel, true);
 			document.removeEventListener("keydown", onKeyDown, true);
 		};
 	}, []);
 	// Passive, so it runs after the unmounting shells parked their hosts and the portals emptied them.
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			contentHosts.releaseParked();
 		},
 		[contentHosts],
@@ -1385,14 +1763,16 @@ export function TileHost({
 	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
 	const [pointerDrop, setPointerDrop] = useState<PointerDrop | null>(null);
 	const [movingTile, setMovingTile] = useState<TileId | null>(null);
-	const preview = useMemo(() => {
+	const preview = useMemo(() =>
+	{
 		if (pointerDrop !== null)
 			return dropPreview(layout, pointerDrop.tileId, pointerDrop.targetId, pointerDrop.side);
 		return pendingMove === null ? null : movePreview(layout, pendingMove.tileId, pendingMove.direction);
 	}, [layout, pendingMove, pointerDrop]);
 
 	const internal = useMemo<InternalHost>(
-		() => ({
+		() => (
+		{
 			definitions,
 			layout,
 			update,
@@ -1433,17 +1813,21 @@ export function TileHost({
 	);
 
 	const api = useMemo<PaneHostApi>(
-		() => ({
+		() => (
+		{
 			layout,
 			openKinds,
 			isOpen: (kind) => openKinds.includes(kind),
-			openPane: (kind) => {
+			openPane: (kind) =>
+			{
 				update(openWithMemory(kind, fitWidth()));
 			},
-			closePane: (kind) => {
+			closePane: (kind) =>
+			{
 				update((state) => closePane(state, kind));
 			},
-			togglePane: (kind) => {
+			togglePane: (kind) =>
+			{
 				const widthPx = fitWidth();
 				update((state) =>
 					tileIdsOf(state.root).includes(kind)
@@ -1455,20 +1839,24 @@ export function TileHost({
 		[layout, openKinds, update, fitWidth],
 	);
 
-	useShortcut("close_pane", () => {
+	useShortcut("close_pane", () =>
+	{
 		if (!isPaneKind(layout.focused)) return false;
 		const focused = layout.focused;
 		update((state) => closePane(state, focused));
 		return true;
 	});
 
-	useShortcut("expand_collapse_pane", () => {
-		if (layout.expanded !== null) {
+	useShortcut("expand_collapse_pane", () =>
+	{
+		if (layout.expanded !== null)
+		{
 			collapse();
 			return true;
 		}
 		const target = isPaneKind(layout.focused) ? layout.focused : openKinds.at(-1);
-		if (target !== undefined) {
+		if (target !== undefined)
+		{
 			update((state) => expandPane(state, target));
 			return true;
 		}

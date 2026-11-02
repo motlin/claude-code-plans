@@ -4,25 +4,29 @@ import {asRecord, isRecord} from "../narrow";
 import {RuntimeWorkflowProgressEntrySchema} from "../workflow-progress";
 
 /** What the index stores about the workflow run a subagent belongs to. */
-export interface WorkflowAgentInfo {
+export interface WorkflowAgentInfo
+{
 	runId: string;
 	phase: string | null;
 	phaseIndex: number | null;
 	label: string | null;
 }
 
-interface JournalStart {
+interface JournalStart
+{
 	label: string | null;
 	phase: string | null;
 }
 
-interface ParsedJournal {
+interface ParsedJournal
+{
 	starts: Map<string, JournalStart>;
 	/** Phase titles in first-seen order; a title's 1-based position is its fallback phase index. */
 	phaseOrder: string[];
 }
 
-interface ProgressAgent {
+interface ProgressAgent
+{
 	label: string | null;
 	phaseTitle: string | null;
 	phaseIndex: number | null;
@@ -34,13 +38,24 @@ const WORKFLOW_AGENT_PATH_RE = /[/\\]subagents[/\\]workflows[/\\](wf_[^/\\]+)[/\
 const MEMO_ENTRIES = 8;
 
 /** `parse` applied to a file's text, re-read only when its mtime or size changes; null when it cannot be read. */
-function memoizedByStat<T>(parse: (text: string) => T): (path: string) => Promise<T | null> {
-	const memo = new Map<string, {key: string; value: Promise<T | null>}>();
-	return async (path) => {
+function memoizedByStat<T>(parse: (text: string) => T): (path: string) => Promise<T | null>
+{
+	const memo = new Map<
+		string,
+		{
+			key: string;
+			value: Promise<T | null>;
+		}
+	>();
+	return async (path) =>
+	{
 		let fileStat: Awaited<ReturnType<typeof stat>>;
-		try {
+		try
+		{
 			fileStat = await stat(path);
-		} catch {
+		}
+		catch
+		{
 			return null;
 		}
 		const key = `${fileStat.mtimeMs}:${fileStat.size}`;
@@ -48,8 +63,15 @@ function memoizedByStat<T>(parse: (text: string) => T): (path: string) => Promis
 		if (cached?.key === key) return cached.value;
 		const value = readFile(path, "utf-8").then(parse, () => null);
 		memo.delete(path);
-		memo.set(path, {key, value});
-		if (memo.size > MEMO_ENTRIES) {
+		memo.set(
+			path,
+			{
+				key,
+				value,
+			},
+		);
+		if (memo.size > MEMO_ENTRIES)
+		{
 			const oldest = memo.keys().next().value;
 			if (oldest !== undefined) memo.delete(oldest);
 		}
@@ -57,51 +79,75 @@ function memoizedByStat<T>(parse: (text: string) => T): (path: string) => Promis
 	};
 }
 
-function stringOrNull(value: unknown): string | null {
+function stringOrNull(value: unknown): string | null
+{
 	return typeof value === "string" && value !== "" ? value : null;
 }
 
-function parseJournal(text: string): ParsedJournal {
+function parseJournal(text: string): ParsedJournal
+{
 	const starts = new Map<string, JournalStart>();
 	const phaseOrder: string[] = [];
-	for (const line of text.split("\n")) {
+	for (const line of text.split("\n"))
+	{
 		// `result` lines carry whole agent outputs; skip parsing anything that cannot be a `started` event.
 		if (!line.includes('"started"')) continue;
 		let event: unknown;
-		try {
+		try
+		{
 			event = JSON.parse(line);
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 		if (!isRecord(event) || event["type"] !== "started") continue;
 		const agentId = stringOrNull(event["agentId"]);
 		const phase = stringOrNull(event["phase"]);
 		if (phase !== null && !phaseOrder.includes(phase)) phaseOrder.push(phase);
-		if (agentId !== null && !starts.has(agentId)) starts.set(agentId, {label: stringOrNull(event["label"]), phase});
+		if (agentId !== null && !starts.has(agentId))
+			starts.set(
+				agentId,
+				{
+					label: stringOrNull(event["label"]),
+					phase,
+				},
+			);
 	}
-	return {starts, phaseOrder};
+	return {
+		starts,
+		phaseOrder,
+	};
 }
 
-function parseRunProgress(text: string): Map<string, ProgressAgent> {
+function parseRunProgress(text: string): Map<string, ProgressAgent>
+{
 	const agents = new Map<string, ProgressAgent>();
 	let run: unknown;
-	try {
+	try
+	{
 		run = JSON.parse(text);
-	} catch {
+	}
+	catch
+	{
 		return agents;
 	}
 	const progress = asRecord(run)?.["workflowProgress"];
 	if (!Array.isArray(progress)) return agents;
-	for (const raw of progress) {
+	for (const raw of progress)
+	{
 		const entry = RuntimeWorkflowProgressEntrySchema.safeParse(raw);
 		if (!entry.success || entry.data.type !== "workflow_agent") continue;
 		const {agentId, label, phaseIndex, phaseTitle} = entry.data;
 		if (agentId === undefined) continue;
-		agents.set(agentId, {
-			label: stringOrNull(label),
-			phaseTitle: stringOrNull(phaseTitle),
-			phaseIndex: phaseIndex ?? null,
-		});
+		agents.set(
+			agentId,
+			{
+				label: stringOrNull(label),
+				phaseTitle: stringOrNull(phaseTitle),
+				phaseIndex: phaseIndex ?? null,
+			},
+		);
 	}
 	return agents;
 }
@@ -115,8 +161,13 @@ const readRunProgress = memoizedByStat(parseRunProgress);
  */
 export async function readWorkflowAgentInfo(
 	filePath: string,
-	meta: {phase: string | null; description: string | null},
-): Promise<WorkflowAgentInfo | null> {
+	meta:
+	{
+		phase: string | null;
+		description: string | null;
+	},
+): Promise<WorkflowAgentInfo | null>
+{
 	const runId = WORKFLOW_AGENT_PATH_RE.exec(filePath)?.[1];
 	if (runId === undefined) return null;
 	const agentId = basename(filePath, ".jsonl").slice("agent-".length);

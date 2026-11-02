@@ -7,7 +7,8 @@ const DAYS_BEFORE = (RESETS_AT - 3 * 86_400) * 1000;
 const SAME_DAY = (RESETS_AT - 3 * 3600) * 1000;
 const WEEKLY_TEXT = "You've hit your weekly limit · resets Oct 20 at 4am (America/New_York)";
 
-function limit(overrides: Partial<UsageLimit> = {}): UsageLimit {
+function limit(overrides: Partial<UsageLimit> = {}): UsageLimit
+{
 	return {
 		resetsAt: RESETS_AT,
 		rateLimitType: "seven_day",
@@ -18,19 +19,38 @@ function limit(overrides: Partial<UsageLimit> = {}): UsageLimit {
 	};
 }
 
-describe("usageLimitCard", () => {
-	it("reads the kalshi specimen as upstream: extra usage off on the weekly window, with the reset day and time", () => {
-		expect(usageLimitCard(limit(), WEEKLY_TEXT, DAYS_BEFORE, "America/New_York")).toStrictEqual({
-			headline: "Weekly limit reached",
-			hint: "Turn on usage credits to keep working past your plan limit. Your weekly limit resets Oct 20 at 4:00 AM.",
-		});
+describe("usageLimitCard", () =>
+{
+	it("reads the kalshi specimen as upstream: extra usage off on the weekly window, with the reset day and time", () =>
+	{
+		expect(usageLimitCard(limit(), WEEKLY_TEXT, DAYS_BEFORE, "America/New_York")).toStrictEqual(
+			{
+				headline: "Weekly limit reached",
+				hint: "Turn on usage credits to keep working past your plan limit. Your weekly limit resets Oct 20 at 4:00 AM.",
+			},
+		);
 	});
 
-	it("names a plain session or weekly window with upstream's send-a-message hint, dropping the day on the reset's own day", () => {
+	it("names a plain session or weekly window with upstream's send-a-message hint, dropping the day on the reset's own day", () =>
+	{
 		expect([
-			usageLimitCard(limit({overageDisabledReason: ""}), WEEKLY_TEXT, DAYS_BEFORE, "America/New_York"),
 			usageLimitCard(
-				limit({rateLimitType: "five_hour", overageDisabledReason: ""}),
+				limit(
+					{
+						overageDisabledReason: "",
+					},
+				),
+				WEEKLY_TEXT,
+				DAYS_BEFORE,
+				"America/New_York",
+			),
+			usageLimitCard(
+				limit(
+					{
+						rateLimitType: "five_hour",
+						overageDisabledReason: "",
+					},
+				),
 				"You've hit your session limit",
 				SAME_DAY,
 				"America/New_York",
@@ -47,7 +67,8 @@ describe("usageLimitCard", () => {
 		]);
 	});
 
-	it("falls back to the message text once the reset has passed, or with no limit fields", () => {
+	it("falls back to the message text once the reset has passed, or with no limit fields", () =>
+	{
 		const after = (RESETS_AT + 60) * 1000;
 		expect([
 			usageLimitCard(limit(), WEEKLY_TEXT, after, "UTC"),
@@ -76,9 +97,19 @@ describe("usageLimitCard", () => {
 		]);
 	});
 
-	it("maps the overage causes to upstream's headlines and fixed hints", () => {
+	it("maps the overage causes to upstream's headlines and fixed hints", () =>
+	{
 		const card = (overageDisabledReason: string) =>
-			usageLimitCard(limit({overageDisabledReason}), WEEKLY_TEXT, DAYS_BEFORE, "America/New_York");
+			usageLimitCard(
+				limit(
+					{
+						overageDisabledReason,
+					},
+				),
+				WEEKLY_TEXT,
+				DAYS_BEFORE,
+				"America/New_York",
+			);
 		expect([card("out_of_credits"), card("org_spend_cap_reached"), card("seat_tier_level_disabled")]).toStrictEqual(
 			[
 				{

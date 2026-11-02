@@ -6,6 +6,7 @@ import {createContext, useContext} from "react";
  */
 export const TitlebarHiddenCountContext = createContext(0);
 
-export function useTitlebarHiddenCount(): number {
+export function useTitlebarHiddenCount(): number
+{
 	return useContext(TitlebarHiddenCountContext);
 }

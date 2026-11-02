@@ -2,19 +2,38 @@ import {describe, expect, it} from "vite-plus/test";
 
 import {backgroundNoticeSummary, type NoticeEntry} from "../src/lib/background-notice-summary";
 
-const shell = (status: NoticeEntry["status"]): NoticeEntry => ({status, kind: "shell"});
+const shell = (status: NoticeEntry["status"]): NoticeEntry => (
+{
+	status,
+	kind: "shell",
+});
 
-function text(entries: NoticeEntry[]): string {
+function text(entries: NoticeEntry[]): string
+{
 	return backgroundNoticeSummary(entries)
 		.map((part) => part.text)
 		.join(", ");
 }
 
-describe("backgroundNoticeSummary", () => {
-	it.each<{name: string; entries: NoticeEntry[]; expected: string}>([
+describe("backgroundNoticeSummary", () =>
+{
+	it.each<
+	{
+		name: string;
+		entries: NoticeEntry[];
+		expected: string;
+	}>([
 		{
 			name: "upstream's Klass row",
-			entries: [...Array.from({length: 23}, () => shell("completed")), shell("stopped")],
+			entries: [
+				...Array.from(
+					{
+						length: 23,
+					},
+					() => shell("completed"),
+				),
+				shell("stopped"),
+			],
 			expected: "23 background commands completed, 1 stopped",
 		},
 		{
@@ -48,21 +67,35 @@ describe("backgroundNoticeSummary", () => {
 		{
 			name: "agents",
 			entries: [
-				{status: "completed", kind: "agent"},
-				{status: "completed", kind: "agent"},
+				{
+					status: "completed",
+					kind: "agent",
+				},
+				{
+					status: "completed",
+					kind: "agent",
+				},
 			],
 			expected: "2 background agents completed",
 		},
 		{
 			name: "mixed kinds",
-			entries: [shell("completed"), {status: "completed", kind: "agent"}],
+			entries: [
+				shell("completed"),
+				{
+					status: "completed",
+					kind: "agent",
+				},
+			],
 			expected: "2 background tasks completed",
 		},
-	])("words $name as upstream does", ({entries, expected}) => {
+	])("words $name as upstream does", ({entries, expected}) =>
+	{
 		expect(text(entries)).toBe(expected);
 	});
 
-	it("marks only the failed part as danger", () => {
+	it("marks only the failed part as danger", () =>
+	{
 		expect(
 			backgroundNoticeSummary([shell("failed"), shell("completed"), shell("completed")]).map((part) => [
 				part.key,

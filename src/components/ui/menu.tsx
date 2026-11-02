@@ -1,7 +1,8 @@
 import {ContextMenu as BaseContextMenu} from "@base-ui/react/context-menu";
 import {Menu as BaseMenu} from "@base-ui/react/menu";
 import {Check, ChevronRight} from "lucide-react";
-import {
+import
+{
 	type ComponentProps,
 	createContext,
 	lazy,
@@ -22,7 +23,8 @@ import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
 import {DensityProvider} from "./density";
 import {useOpenMenuCount} from "./menu-open-count";
 import {type Density, useScopeDensity} from "./density-context";
-import {
+import
+{
 	DENSITY_CLASSES,
 	handleAcceleratorKey,
 	LABEL_CLASS,
@@ -52,13 +54,20 @@ import {overlayAttrs} from "../../lib/overlay";
 import {registerPopupOpener} from "../../lib/overlay-focus";
 
 const LazyRootSheetContent = lazy(async () =>
-	preloadMenuSheet().then((module) => ({default: module.RootSheetContent})),
+	preloadMenuSheet().then((module) => (
+	{
+		default: module.RootSheetContent,
+	})),
 );
 const LazyNestedSheetContent = lazy(async () =>
-	preloadMenuSheet().then((module) => ({default: module.NestedSheetContent})),
+	preloadMenuSheet().then((module) => (
+	{
+		default: module.NestedSheetContent,
+	})),
 );
 
-function RootSheet(props: SheetContentProps) {
+function RootSheet(props: SheetContentProps)
+{
 	const menuSheetModule = loadedMenuSheet();
 	if (menuSheetModule !== null) return <menuSheetModule.RootSheetContent {...props} />;
 	return (
@@ -68,7 +77,13 @@ function RootSheet(props: SheetContentProps) {
 	);
 }
 
-function NestedSheet(props: SheetContentProps & {treeId: string}) {
+function NestedSheet(
+	props: SheetContentProps &
+	{
+		treeId: string;
+	},
+)
+{
 	const menuSheetModule = loadedMenuSheet();
 	if (menuSheetModule !== null) return <menuSheetModule.NestedSheetContent {...props} />;
 	return (
@@ -97,7 +112,8 @@ const POPUP_CLASS = `relative flex max-h-[var(--available-height)] min-w-[128px]
 const SCROLLER_CLASS =
 	"relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] border-b border-transparent forced-colors:border-b-0 p-1";
 
-const ITEM_VARIANT_CLASS = {
+const ITEM_VARIANT_CLASS =
+{
 	default: "text-primary data-[highlighted]:bg-fill-ghost-hover",
 	danger: "text-danger-100 data-[highlighted]:bg-[var(--menu-danger-fill)] data-[highlighted]:text-[var(--menu-on-danger)] data-[highlighted]:[--shortcut-cap-ink:currentColor]",
 } as const;
@@ -117,7 +133,8 @@ const CHECK_ICON = <Icon name="Check" size="auto" bold className="text-fill-acce
 /** Hover dwell before a submenu opens. */
 const SUBMENU_HOVER_DELAY_MS = 100;
 /** Upstream's `size-icon` leading slot; a two-line row pins it to the first line. */
-function ItemIcon({icon, twoLine = false}: {icon: ReactNode; twoLine?: boolean}) {
+function ItemIcon({icon, twoLine = false}: {icon: ReactNode; twoLine?: boolean})
+{
 	const sizing = useMenuSizing();
 	if (icon === undefined) return null;
 	return (
@@ -131,8 +148,10 @@ function ItemIcon({icon, twoLine = false}: {icon: ReactNode; twoLine?: boolean})
 }
 
 /** A row's label, or upstream's two-line label over a wrapping muted description. */
-function ItemText({children, description}: {children: ReactNode; description: ReactNode}) {
-	if (description === undefined) {
+function ItemText({children, description}: {children: ReactNode; description: ReactNode})
+{
+	if (description === undefined)
+	{
 		return (
 			<span data-menu-item-title="" className={LABEL_CLASS}>
 				{children}
@@ -154,10 +173,14 @@ function ItemText({children, description}: {children: ReactNode; description: Re
 export type MenuItemVariant = keyof typeof ITEM_VARIANT_CLASS;
 export type AcceleratorVariant = "text" | "keycap";
 
-function acceleratorProps(accelerator: string | undefined) {
+function acceleratorProps(accelerator: string | undefined)
+{
 	if (accelerator === undefined) return {};
 	const key = accelerator.toLowerCase();
-	return {"aria-keyshortcuts": key, "data-accelerator": key};
+	return {
+		"aria-keyshortcuts": key,
+		"data-accelerator": key,
+	};
 }
 
 /** Whether the enclosing menu root latched a bottom-sheet presentation at open. */
@@ -166,26 +189,34 @@ const MenuSheetContext = createContext(false);
 type MenuActions = NonNullable<ComponentProps<typeof BaseMenu.Root>["actionsRef"]>;
 
 /** The root's imperative close, wired through Base UI's `actionsRef`. */
-function useRootDismiss(actionsRef: MenuActions | undefined) {
+function useRootDismiss(actionsRef: MenuActions | undefined)
+{
 	const ownRef = useRef<MenuActions extends RefObject<infer T> ? T : never>(null);
 	const ref = actionsRef ?? ownRef;
-	const dismiss = useCallback(() => {
+	const dismiss = useCallback(() =>
+	{
 		ref.current?.close();
 	}, [ref]);
-	return {ref, dismiss};
+	return {
+		ref,
+		dismiss,
+	};
 }
 
 /**
  * Upstream's tree close: the root marks every open level `data-cds-sheet-tree-closing` before Base UI
  * starts the exit, so drilled levels slide down with the root instead of sideways.
  */
-function markSheetTreeClosing(treeId: string, closing: boolean) {
-	for (const level of document.querySelectorAll(`[data-sheet-tree="${CSS.escape(treeId)}"]`)) {
+function markSheetTreeClosing(treeId: string, closing: boolean)
+{
+	for (const level of document.querySelectorAll(`[data-sheet-tree="${CSS.escape(treeId)}"]`))
+	{
 		level.toggleAttribute("data-cds-sheet-tree-closing", closing);
 	}
 }
 
-interface MenuRootProps {
+interface MenuRootProps
+{
 	open?: boolean | undefined;
 	defaultOpen?: boolean | undefined;
 	onOpenChange?: ((open: boolean, ...rest: never[]) => void) | undefined;
@@ -198,39 +229,57 @@ interface MenuRootProps {
  */
 function useMenuRootSheet<P extends MenuRootProps>(
 	props: P,
-): {
+):
+{
 	sheet: boolean;
 	open: boolean;
 	treeId: string;
-	rootProps: P & {onOpenChange: (open: boolean, ...rest: never[]) => void};
-} {
+	rootProps: P &
+	{
+		onOpenChange: (open: boolean, ...rest: never[]) => void;
+	};
+}
+{
 	const {open, defaultOpen, onOpenChange, onOpenChangeComplete} = props;
 	const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen ?? false);
 	const resolvedOpen = open ?? uncontrolledOpen;
-	const {sheet, onOpenChangeComplete: releaseLatch} = useSheetPresentation(resolvedOpen, {
-		closable: open === undefined || onOpenChange !== undefined,
-	});
+	const {sheet, onOpenChangeComplete: releaseLatch} = useSheetPresentation(
+		resolvedOpen,
+		{
+			closable: open === undefined || onOpenChange !== undefined,
+		},
+	);
 	const treeId = useId();
 	useOpenMenuCount(resolvedOpen);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (sheet) void preloadMenuSheet();
 	}, [sheet]);
-	const rootProps = {
+	const rootProps =
+	{
 		...props,
-		onOpenChange: (nextOpen: boolean, ...rest: never[]) => {
+		onOpenChange: (nextOpen: boolean, ...rest: never[]) =>
+		{
 			if (sheet) markSheetTreeClosing(treeId, !nextOpen);
 			setUncontrolledOpen(nextOpen);
 			onOpenChange?.(nextOpen, ...rest);
 		},
-		onOpenChangeComplete: (completedOpen: boolean) => {
+		onOpenChangeComplete: (completedOpen: boolean) =>
+		{
 			releaseLatch(completedOpen);
 			onOpenChangeComplete?.(completedOpen);
 		},
 	};
-	return {sheet, open: resolvedOpen, treeId, rootProps};
+	return {
+		sheet,
+		open: resolvedOpen,
+		treeId,
+		rootProps,
+	};
 }
 
-export function Menu(props: ComponentProps<typeof BaseMenu.Root>) {
+export function Menu(props: ComponentProps<typeof BaseMenu.Root>)
+{
 	const {sheet, treeId, rootProps} = useMenuRootSheet(props);
 	const {ref, dismiss} = useRootDismiss(props.actionsRef);
 	return (
@@ -248,7 +297,8 @@ export function Menu(props: ComponentProps<typeof BaseMenu.Root>) {
 
 export const MenuTrigger = BaseMenu.Trigger;
 
-export function ContextMenu(props: ComponentProps<typeof BaseContextMenu.Root>) {
+export function ContextMenu(props: ComponentProps<typeof BaseContextMenu.Root>)
+{
 	const {sheet, treeId, rootProps} = useMenuRootSheet(props);
 	const {ref, dismiss} = useRootDismiss(props.actionsRef);
 	return (
@@ -273,11 +323,15 @@ type CollisionAvoidance = NonNullable<ComponentProps<typeof BaseMenu.Positioner>
  * falls back below its trigger instead of flipping off-screen, matching
  * upstream's Base UI submenu default.
  */
-const SIDE_COLLISION_AVOIDANCE = {fallbackAxisSide: "end"} as const satisfies CollisionAvoidance;
+const SIDE_COLLISION_AVOIDANCE =
+{
+	fallbackAxisSide: "end",
+} as const satisfies CollisionAvoidance;
 type MenuSide = NonNullable<ComponentProps<typeof BaseMenu.Positioner>["side"]>;
 const INLINE_SIDES: ReadonlySet<MenuSide> = new Set(["left", "right", "inline-start", "inline-end"]);
 
-export interface MenuContentProps {
+export interface MenuContentProps
+{
 	/** Overrides the opener's density; nested popups inherit their parent's. */
 	density?: Density;
 	children: ReactNode;
@@ -315,7 +369,8 @@ type MenuPopupProps = Omit<
 > &
 	Partial<Record<`data-${string}`, string>>;
 
-interface MenuContentInternalProps extends MenuContentProps {
+interface MenuContentInternalProps extends MenuContentProps
+{
 	/** A submenu level: anchored beside its trigger, or drilled into the parent's sheet. */
 	nested?: boolean;
 }
@@ -338,7 +393,8 @@ export function MenuContent({
 	popupProps,
 	cds,
 	nested = false,
-}: MenuContentInternalProps) {
+}: MenuContentInternalProps)
+{
 	const resolvedCollisionAvoidance =
 		collisionAvoidance ?? (INLINE_SIDES.has(side) ? SIDE_COLLISION_AVOIDANCE : undefined);
 	const collisionFallback =
@@ -350,7 +406,8 @@ export function MenuContent({
 	const parentLevel = useContext(SheetLevelContext);
 	/* Upstream's si order: an override, then comfortable on (pointer: coarse), then the prop or opener's density. */
 	const scopeDensity = useScopeDensity(density);
-	const sheetProps = {
+	const sheetProps =
+	{
 		children: (
 			<>
 				{header}
@@ -382,21 +439,44 @@ export function MenuContent({
 						alignOffset={alignOffset}
 						data-side-offset={sideOffset}
 						data-align-offset={alignOffset}
-						{...(anchor === undefined ? {} : {anchor})}
+						{...(anchor === undefined
+							? {}
+							:
+								{
+									anchor,
+								})}
 						{...(resolvedCollisionAvoidance === undefined
 							? {}
-							: {collisionAvoidance: resolvedCollisionAvoidance})}
-						{...(collisionFallback === undefined ? {} : {"data-collision-fallback": collisionFallback})}
+							:
+								{
+									collisionAvoidance: resolvedCollisionAvoidance,
+								})}
+						{...(collisionFallback === undefined
+							? {}
+							:
+								{
+									"data-collision-fallback": collisionFallback,
+								})}
 					>
 						<BaseMenu.Popup
 							{...overlayAttrs}
 							{...popupProps}
 							ref={registerPopupOpener}
 							data-cds={cds ?? kind}
-							{...(sheet ? {"data-presentation": "sheet"} : {})}
+							{...(sheet
+								?
+									{
+										"data-presentation": "sheet",
+									}
+								: {})}
 							className={className ? `${popupClass} ${className}` : popupClass}
 							onKeyDown={handleAcceleratorKey}
-							{...(finalFocus === undefined ? {} : {finalFocus})}
+							{...(finalFocus === undefined
+								? {}
+								:
+									{
+										finalFocus,
+									})}
 						>
 							{header !== undefined && <div className="shrink-0 px-1 pt-1">{header}</div>}
 							<div
@@ -423,12 +503,14 @@ function ItemTrailing({
 	accelerator?: string;
 	shortcut?: string;
 	acceleratorVariant?: AcceleratorVariant;
-}) {
+})
+{
 	const sizing = useMenuSizing();
 	const keys = shortcut ?? accelerator;
 	if (keys === undefined) return null;
 	/* Upstream's boxed accelerator: a bare Kbd in the ms-md gap-xs trailing group, kept on touch. */
-	if (acceleratorVariant === "keycap" && shortcut === undefined && accelerator !== undefined) {
+	if (acceleratorVariant === "keycap" && shortcut === undefined && accelerator !== undefined)
+	{
 		return (
 			<span aria-hidden="true" className={sizing.trailingGroup}>
 				<Kbd>{accelerator.toUpperCase()}</Kbd>
@@ -442,7 +524,8 @@ function ItemTrailing({
 	);
 }
 
-function useAriaKeyShortcuts(accelerator?: string, shortcut?: string): string | undefined {
+function useAriaKeyShortcuts(accelerator?: string, shortcut?: string): string | undefined
+{
 	const isMac = useIsMac();
 	if (accelerator !== undefined) return accelerator.toLowerCase();
 	if (shortcut !== undefined) return toAriaKeyShortcuts(shortcut, isMac);
@@ -452,7 +535,8 @@ function useAriaKeyShortcuts(accelerator?: string, shortcut?: string): string | 
 export interface MenuItemProps extends Omit<
 	ComponentProps<typeof BaseMenu.Item>,
 	"onSelect" | "className" | "children"
-> {
+>
+{
 	children: ReactNode;
 	/** Leading 20px icon slot, as on upstream's icon rows. */
 	icon?: ReactNode;
@@ -487,7 +571,8 @@ export function MenuItem({
 	disabledReason,
 	onSelect,
 	...props
-}: MenuItemProps) {
+}: MenuItemProps)
+{
 	const itemClass = useItemClass(description !== undefined);
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
 	const reasonId = useId();
@@ -495,18 +580,48 @@ export function MenuItem({
 	const item = (
 		<BaseMenu.Item
 			{...props}
-			{...(reason === undefined ? {} : {"aria-describedby": reasonId})}
-			{...(onSelect ? {onClick: onSelect} : {})}
-			{...(ariaKeyShortcuts ? {"aria-keyshortcuts": ariaKeyShortcuts} : {})}
-			{...(accelerator ? {"data-accelerator": accelerator.toLowerCase()} : {})}
+			{...(reason === undefined
+				? {}
+				:
+					{
+						"aria-describedby": reasonId,
+					})}
+			{...(onSelect
+				?
+					{
+						onClick: onSelect,
+					}
+				: {})}
+			{...(ariaKeyShortcuts
+				?
+					{
+						"aria-keyshortcuts": ariaKeyShortcuts,
+					}
+				: {})}
+			{...(accelerator
+				?
+					{
+						"data-accelerator": accelerator.toLowerCase(),
+					}
+				: {})}
 			data-variant={variant}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS[variant]}`}
 		>
 			<ItemIcon icon={icon} twoLine={description !== undefined} />
 			<ItemText description={description}>{children}</ItemText>
 			<ItemTrailing
-				{...(accelerator === undefined ? {} : {accelerator})}
-				{...(shortcut === undefined ? {} : {shortcut})}
+				{...(accelerator === undefined
+					? {}
+					:
+						{
+							accelerator,
+						})}
+				{...(shortcut === undefined
+					? {}
+					:
+						{
+							shortcut,
+						})}
 				acceleratorVariant={acceleratorVariant}
 			/>
 			{trailing !== undefined && <span className={TRAILING_CLASS}>{trailing}</span>}
@@ -521,7 +636,8 @@ export function MenuItem({
 }
 
 /** The reason a disabled item is unavailable, or undefined when it is enabled or has none. */
-function activeDisabledReason(disabled: boolean | undefined, disabledReason: string | undefined): string | undefined {
+function activeDisabledReason(disabled: boolean | undefined, disabledReason: string | undefined): string | undefined
+{
 	return disabled === true && disabledReason !== undefined && disabledReason !== "" ? disabledReason : undefined;
 }
 
@@ -529,7 +645,8 @@ function activeDisabledReason(disabled: boolean | undefined, disabledReason: str
  * Upstream's UV: no tab stop; the pointer lands on the role=none row, so hovering a disabled item still opens its
  * reason tooltip on side right, and the hidden reason describes the item.
  */
-function DisabledReasonRow({reason, reasonId, children}: {reason: string; reasonId: string; children: ReactNode}) {
+function DisabledReasonRow({reason, reasonId, children}: {reason: string; reasonId: string; children: ReactNode})
+{
 	return (
 		<Tooltip content={reason} variant="reason" side="right" closeOnClick={false} portal className="w-full">
 			<div role="none" className="w-full">
@@ -545,7 +662,8 @@ function DisabledReasonRow({reason, reasonId, children}: {reason: string; reason
 export interface MenuCheckboxItemProps extends Omit<
 	ComponentProps<typeof BaseMenu.CheckboxItem>,
 	"className" | "children"
-> {
+>
+{
 	children: ReactNode;
 	accelerator?: string;
 	/** Global shortcut hint shown before the check, e.g. "ctrl+shift+y". */
@@ -579,11 +697,13 @@ export function MenuCheckboxItem({
 	leadingCheck = false,
 	hint,
 	...props
-}: MenuCheckboxItemProps) {
+}: MenuCheckboxItemProps)
+{
 	const itemClass = useItemClass();
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
 	const showCount = count !== undefined && count > 0 && props.checked !== true;
-	if (leadingCheck) {
+	if (leadingCheck)
+	{
 		return (
 			<BaseMenu.CheckboxItem
 				{...props}
@@ -621,7 +741,12 @@ export function MenuCheckboxItem({
 			{...props}
 			closeOnClick={closeOnClick}
 			{...acceleratorProps(accelerator)}
-			{...(ariaKeyShortcuts ? {"aria-keyshortcuts": ariaKeyShortcuts} : {})}
+			{...(ariaKeyShortcuts
+				?
+					{
+						"aria-keyshortcuts": ariaKeyShortcuts,
+					}
+				: {})}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
 			{icon !== undefined && (
@@ -649,7 +774,8 @@ export function MenuCheckboxItem({
 export interface MenuSwitchItemProps extends Omit<
 	ComponentProps<typeof BaseMenu.Item>,
 	"className" | "children" | "onClick" | "closeOnClick"
-> {
+>
+{
 	/** The row label, which also names the switch. */
 	children: string;
 	checked: boolean;
@@ -660,14 +786,16 @@ export interface MenuSwitchItemProps extends Omit<
  * Upstream's keepOpen switch row (the folder menu's Worktree item): a plain menuitem, with no aria-checked,
  * whose trailing xs switch carries the state. Click, Enter and Space toggle it and the menu stays open.
  */
-export function MenuSwitchItem({children, checked, onCheckedChange, ...props}: MenuSwitchItemProps) {
+export function MenuSwitchItem({children, checked, onCheckedChange, ...props}: MenuSwitchItemProps)
+{
 	const sizing = useMenuSizing();
 	const itemClass = useItemClass();
 	return (
 		<BaseMenu.Item
 			closeOnClick={false}
 			{...props}
-			onClick={() => {
+			onClick={() =>
+			{
 				onCheckedChange(!checked);
 			}}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
@@ -683,7 +811,8 @@ export function MenuSwitchItem({children, checked, onCheckedChange, ...props}: M
 export interface MenuCheckboxSwitchItemProps extends Omit<
 	ComponentProps<typeof BaseMenu.CheckboxItem>,
 	"className" | "children" | "checked"
-> {
+>
+{
 	/** The row label, which also names the switch. */
 	children: string;
 	icon?: ReactNode;
@@ -714,7 +843,8 @@ export function MenuCheckboxSwitchItem({
 	description,
 	disabledReason,
 	...props
-}: MenuCheckboxSwitchItemProps) {
+}: MenuCheckboxSwitchItemProps)
+{
 	const sizing = useMenuSizing();
 	// Upstream's `kk` row has no fixed height: a description line grows it, with the switch kept centred.
 	const itemClass = useItemClass().replace(
@@ -726,7 +856,12 @@ export function MenuCheckboxSwitchItem({
 	const item = (
 		<BaseMenu.CheckboxItem
 			{...props}
-			{...(reason === undefined ? {} : {"aria-describedby": reasonId})}
+			{...(reason === undefined
+				? {}
+				:
+					{
+						"aria-describedby": reasonId,
+					})}
 			checked={checked}
 			closeOnClick={closeOnClick}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
@@ -784,7 +919,12 @@ export function MenuRadioGroup({
 	labelClassName = MENU_HEADER_CLASS,
 	children,
 	...props
-}: ComponentProps<typeof BaseMenu.RadioGroup> & {label?: ReactNode; labelClassName?: string}) {
+}: ComponentProps<typeof BaseMenu.RadioGroup> &
+{
+	label?: ReactNode;
+	labelClassName?: string;
+})
+{
 	const labelId = useId();
 	if (label === undefined) return <BaseMenu.RadioGroup {...props}>{children}</BaseMenu.RadioGroup>;
 	return (
@@ -801,12 +941,14 @@ export function MenuRadioGroup({
 export const MENU_HEADER_CLASS = "px-2 comfortable:px-2.5 py-1 text-footnote font-medium text-[var(--menu-muted)]";
 
 /** One menu section, `role="group"`, as upstream wraps each run between separators. */
-export function MenuGroup(props: ComponentProps<typeof BaseMenu.Group>) {
+export function MenuGroup(props: ComponentProps<typeof BaseMenu.Group>)
+{
 	return <BaseMenu.Group {...props} />;
 }
 
 /** Upstream's digit row trailing: the check slot first, then the text digit, pinned to the first line. */
-function DigitTrailing({accelerator}: {accelerator: string}) {
+function DigitTrailing({accelerator}: {accelerator: string})
+{
 	const sizing = useMenuSizing();
 	return (
 		<span data-menu-item-trailing="" className={sizing.digitTrailing}>
@@ -821,7 +963,8 @@ function DigitTrailing({accelerator}: {accelerator: string}) {
 }
 
 /** Upstream's model row trailing (Bp): one check slot holding the muted digit, which the ✓ replaces when checked. */
-function SlotDigitTrailing({accelerator}: {accelerator: string}) {
+function SlotDigitTrailing({accelerator}: {accelerator: string})
+{
 	const sizing = useMenuSizing();
 	return (
 		<span data-menu-item-trailing="" className={sizing.trailingGroup}>
@@ -847,7 +990,8 @@ function SlotDigitTrailing({accelerator}: {accelerator: string}) {
 	);
 }
 
-export interface MenuRadioItemProps extends Omit<ComponentProps<typeof BaseMenu.RadioItem>, "className" | "children"> {
+export interface MenuRadioItemProps extends Omit<ComponentProps<typeof BaseMenu.RadioItem>, "className" | "children">
+{
 	children: ReactNode;
 	/** Muted wrapping second line, making the item upstream's 40.5px two-line row. */
 	description?: ReactNode;
@@ -865,7 +1009,8 @@ export function MenuRadioItem({
 	acceleratorInSlot = false,
 	disabledReason,
 	...props
-}: MenuRadioItemProps) {
+}: MenuRadioItemProps)
+{
 	const itemClass = useItemClass(description !== undefined);
 	const reasonId = useId();
 	const reason = activeDisabledReason(props.disabled, disabledReason);
@@ -877,7 +1022,8 @@ export function MenuRadioItem({
 		) : (
 			<DigitTrailing accelerator={accelerator} />
 		);
-	else if (description !== undefined) {
+	else if (description !== undefined)
+	{
 		trailing = (
 			<span data-menu-item-trailing="" className={FIRST_LINE_TRAILING_CLASS}>
 				{check}
@@ -888,7 +1034,12 @@ export function MenuRadioItem({
 		<BaseMenu.RadioItem
 			closeOnClick={false}
 			{...props}
-			{...(reason === undefined ? {} : {"aria-describedby": reasonId})}
+			{...(reason === undefined
+				? {}
+				:
+					{
+						"aria-describedby": reasonId,
+					})}
 			{...acceleratorProps(accelerator)}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
@@ -910,7 +1061,8 @@ const SubmenuTriggerContext = createContext<RefObject<HTMLElement | null> | null
  * Upstream's ss: a submenu re-runs the sheet gate at its own open rather than inheriting the root's.
  * Inside a sheet it drills in: open, it marks the parent level drilled, and its Back row closes it.
  */
-export function MenuSub(props: ComponentProps<typeof BaseMenu.SubmenuRoot>) {
+export function MenuSub(props: ComponentProps<typeof BaseMenu.SubmenuRoot>)
+{
 	const triggerRef = useRef<HTMLElement | null>(null);
 	const {sheet, open, rootProps} = useMenuRootSheet(props);
 	const parentLevel = useContext(SheetLevelContext);
@@ -918,18 +1070,22 @@ export function MenuSub(props: ComponentProps<typeof BaseMenu.SubmenuRoot>) {
 	const {defaultOpen: _defaultOpen, ...controlledProps} = rootProps;
 	const {onOpenChange} = rootProps;
 	const control = useMemo(
-		() => ({
+		() => (
+		{
 			triggerRef,
-			close: () => {
+			close: () =>
+			{
 				onOpenChange(false);
 			},
 		}),
 		[onOpenChange],
 	);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (parentLevel === null) return undefined;
 		parentLevel.setDrilled(drills && open);
-		return () => {
+		return () =>
+		{
 			parentLevel.setDrilled(false);
 		};
 	}, [parentLevel, drills, open]);
@@ -947,7 +1103,8 @@ export function MenuSub(props: ComponentProps<typeof BaseMenu.SubmenuRoot>) {
 export interface MenuSubTriggerProps extends Omit<
 	ComponentProps<typeof BaseMenu.SubmenuTrigger>,
 	"className" | "children"
-> {
+>
+{
 	children: ReactNode;
 	/** Leading 20px icon slot, as on upstream's icon rows. */
 	icon?: ReactNode;
@@ -960,7 +1117,8 @@ export interface MenuSubTriggerProps extends Omit<
 }
 
 /** Submenu trigger: opens on hover, click, Enter or ArrowRight. */
-export function MenuSubTrigger({children, icon, value, valueAccent, trailing, ...props}: MenuSubTriggerProps) {
+export function MenuSubTrigger({children, icon, value, valueAccent, trailing, ...props}: MenuSubTriggerProps)
+{
 	const itemClass = useItemClass();
 	const sizing = useMenuSizing();
 	const triggerRef = useContext(SubmenuTriggerContext);
@@ -1015,7 +1173,8 @@ export function MenuSubContent({
 	align?: MenuContentProps["align"];
 	/** From the parent popup's edge (cds' default 2); upstream's Copy ▸ passes -4. */
 	sideOffset?: number;
-}) {
+})
+{
 	const triggerRef = useContext(SubmenuTriggerContext);
 	const anchor = useMemo(() => (triggerRef === null ? undefined : submenuAnchor(triggerRef)), [triggerRef]);
 	return (
@@ -1025,15 +1184,26 @@ export function MenuSubContent({
 			align={align}
 			sideOffset={sideOffset}
 			alignOffset={0}
-			{...(anchor === undefined ? {} : {anchor})}
-			{...(className === undefined ? {} : {className})}
+			{...(anchor === undefined
+				? {}
+				:
+					{
+						anchor,
+					})}
+			{...(className === undefined
+				? {}
+				:
+					{
+						className,
+					})}
 		>
 			{children}
 		</MenuContent>
 	);
 }
 
-export function MenuSeparator() {
+export function MenuSeparator()
+{
 	const sizing = useMenuSizing();
 	return <BaseMenu.Separator className={`${sizing.separator} my-1 h-px bg-border`} />;
 }
@@ -1045,7 +1215,8 @@ export function MenuLabel({
 	children: ReactNode;
 	/** Replaces the default classes, e.g. upstream's 500-weight Mode header padded 4px 8px. */
 	className?: string;
-}) {
+})
+{
 	return (
 		<div data-menu-label="" className={className}>
 			{children}

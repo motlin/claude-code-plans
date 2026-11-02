@@ -3,11 +3,13 @@ import {currentPerfCounters, withPerfScope, type PerfCounters} from "./server-sc
 
 type FetchHandler = (request: Request) => Response | Promise<Response>;
 
-function formatMs(ms: number): string {
+function formatMs(ms: number): string
+{
 	return ms.toFixed(1);
 }
 
-function serverTimingHeader(totalMs: number, counters: PerfCounters): string {
+function serverTimingHeader(totalMs: number, counters: PerfCounters): string
+{
 	return [
 		`total;dur=${formatMs(totalMs)}`,
 		`db;dur=${formatMs(counters.sql.ms)};desc="q=${counters.sql.count}"`,
@@ -16,19 +18,31 @@ function serverTimingHeader(totalMs: number, counters: PerfCounters): string {
 	].join(", ");
 }
 
-function isEventStream(response: Response): boolean {
+function isEventStream(response: Response): boolean
+{
 	return response.headers.get("content-type")?.startsWith("text/event-stream") ?? false;
 }
 
-function withHeader(response: Response, value: string): Response {
-	try {
+function withHeader(response: Response, value: string): Response
+{
+	try
+	{
 		response.headers.set("Server-Timing", value);
 		return response;
-	} catch {
+	}
+	catch
+	{
 		// Responses like Response.redirect() have immutable headers.
 		const headers = new Headers(response.headers);
 		headers.set("Server-Timing", value);
-		return new Response(response.body, {status: response.status, statusText: response.statusText, headers});
+		return new Response(
+			response.body,
+			{
+				status: response.status,
+				statusText: response.statusText,
+				headers,
+			},
+		);
 	}
 }
 
@@ -38,29 +52,34 @@ function withHeader(response: Response, value: string): Response {
  * SSE responses are skipped: their handler time says nothing about the stream.
  * With CCB_PERF_LOG=1 each request also logs one JSON line to stdout.
  */
-export function withServerTiming(handler: FetchHandler): (request: Request) => Promise<Response> {
+export function withServerTiming(handler: FetchHandler): (request: Request) => Promise<Response>
+{
 	return async (request) =>
-		withPerfScope("http", async () => {
+		withPerfScope("http", async () =>
+		{
 			const start = performance.now();
 			const response = await handler(request);
 			const totalMs = performance.now() - start;
 			if (isEventStream(response)) return response;
 
 			const counters = defined(currentPerfCounters(), "withPerfScope provides perf counters");
-			if (process.env["CCB_PERF_LOG"] === "1") {
+			if (process.env["CCB_PERF_LOG"] === "1")
+			{
 				console.log(
-					JSON.stringify({
-						perf: "http",
-						method: request.method,
-						path: new URL(request.url).pathname,
-						status: response.status,
-						totalMs: Number(formatMs(totalMs)),
-						sqlCount: counters.sql.count,
-						sqlMs: Number(formatMs(counters.sql.ms)),
-						jsonlBytesRead: counters.jsonl.bytesRead,
-						jsonlFullScans: counters.jsonl.fullScans,
-						procSpawned: counters.proc.spawned,
-					}),
+					JSON.stringify(
+						{
+							perf: "http",
+							method: request.method,
+							path: new URL(request.url).pathname,
+							status: response.status,
+							totalMs: Number(formatMs(totalMs)),
+							sqlCount: counters.sql.count,
+							sqlMs: Number(formatMs(counters.sql.ms)),
+							jsonlBytesRead: counters.jsonl.bytesRead,
+							jsonlFullScans: counters.jsonl.fullScans,
+							procSpawned: counters.proc.spawned,
+						},
+					),
 				);
 			}
 			return withHeader(response, serverTimingHeader(totalMs, counters));

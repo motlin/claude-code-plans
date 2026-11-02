@@ -5,7 +5,13 @@ import {SubagentGantt} from "../src/components/subagent-gantt";
 import {layoutSwimlanes, type SwimlaneLayout} from "../src/components/subagent-gantt-layout";
 import type {DbSubagent} from "../src/lib/db/queries";
 
-function makeAgent(overrides: Partial<DbSubagent> & {id: string}): DbSubagent {
+function makeAgent(
+	overrides: Partial<DbSubagent> &
+	{
+		id: string;
+	},
+): DbSubagent
+{
 	return {
 		sessionId: "sess-1",
 		projectId: "proj-1",
@@ -23,48 +29,67 @@ function makeAgent(overrides: Partial<DbSubagent> & {id: string}): DbSubagent {
 	};
 }
 
-describe("layoutSwimlanes", () => {
-	it("returns empty layout when no agents have timing", () => {
-		const layout = layoutSwimlanes([makeAgent({id: "a"})]);
+describe("layoutSwimlanes", () =>
+{
+	it("returns empty layout when no agents have timing", () =>
+	{
+		const layout = layoutSwimlanes([
+			makeAgent(
+				{
+					id: "a",
+				},
+			),
+		]);
 		expect(layout.lanes).toStrictEqual([]);
 		expect(layout.startMs).toBe(0);
 		expect(layout.endMs).toBe(0);
 	});
 
-	it("returns empty layout for empty input", () => {
+	it("returns empty layout for empty input", () =>
+	{
 		const layout = layoutSwimlanes([]);
 		expect(layout.lanes).toStrictEqual([]);
 	});
 
-	it("produces one lane per agent with timing", () => {
+	it("produces one lane per agent with timing", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "a",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:10.000Z",
-			}),
-			makeAgent({
-				id: "b",
-				startedAt: "1999-12-31T00:00:15.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
+			makeAgent(
+				{
+					id: "a",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:10.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "b",
+					startedAt: "1999-12-31T00:00:15.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
 		];
 		const layout = layoutSwimlanes(agents);
 		expect(layout.lanes.map((l) => l.agent.id)).toStrictEqual(["a", "b"]);
 	});
 
-	it("computes overall time bounds", () => {
+	it("computes overall time bounds", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "a",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:10.000Z",
-			}),
-			makeAgent({
-				id: "b",
-				startedAt: "1999-12-31T00:00:15.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
+			makeAgent(
+				{
+					id: "a",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:10.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "b",
+					startedAt: "1999-12-31T00:00:15.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
 		];
 		const layout = layoutSwimlanes(agents);
 		expect(layout.startMs).toBe(new Date("1999-12-31T00:00:00.000Z").getTime());
@@ -72,42 +97,54 @@ describe("layoutSwimlanes", () => {
 		expect(layout.totalMs).toBe(25000);
 	});
 
-	it("orders lanes by start time, then by depth for tiebreaks", () => {
+	it("orders lanes by start time, then by depth for tiebreaks", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "parent",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:30.000Z",
-			}),
-			makeAgent({
-				id: "late",
-				startedAt: "1999-12-31T00:00:20.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
-			makeAgent({
-				id: "child",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:05.000Z",
-				finishedAt: "1999-12-31T00:00:10.000Z",
-			}),
+			makeAgent(
+				{
+					id: "parent",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:30.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "late",
+					startedAt: "1999-12-31T00:00:20.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "child",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:05.000Z",
+					finishedAt: "1999-12-31T00:00:10.000Z",
+				},
+			),
 		];
 		const layout = layoutSwimlanes(agents);
 		expect(layout.lanes.map((l) => l.agent.id)).toStrictEqual(["parent", "child", "late"]);
 	});
 
-	it("marks parent lane as hatched while child runs", () => {
+	it("marks parent lane as hatched while child runs", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "parent",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:30.000Z",
-			}),
-			makeAgent({
-				id: "child",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:20.000Z",
-			}),
+			makeAgent(
+				{
+					id: "parent",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:30.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "child",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:20.000Z",
+				},
+			),
 		];
 		const layout = layoutSwimlanes(agents);
 		const parentLane = layout.lanes.find((l) => l.agent.id === "parent")!;
@@ -119,25 +156,32 @@ describe("layoutSwimlanes", () => {
 		]);
 	});
 
-	it("merges overlapping waiting periods on parent", () => {
+	it("merges overlapping waiting periods on parent", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "parent",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:30.000Z",
-			}),
-			makeAgent({
-				id: "c1",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:05.000Z",
-				finishedAt: "1999-12-31T00:00:15.000Z",
-			}),
-			makeAgent({
-				id: "c2",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:20.000Z",
-			}),
+			makeAgent(
+				{
+					id: "parent",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:30.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "c1",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:05.000Z",
+					finishedAt: "1999-12-31T00:00:15.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "c2",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:20.000Z",
+				},
+			),
 		];
 		const layout = layoutSwimlanes(agents);
 		const parentLane = layout.lanes.find((l) => l.agent.id === "parent")!;
@@ -149,25 +193,32 @@ describe("layoutSwimlanes", () => {
 		]);
 	});
 
-	it("keeps parallel children at the same start position", () => {
+	it("keeps parallel children at the same start position", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "parent",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:30.000Z",
-			}),
-			makeAgent({
-				id: "p1",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:20.000Z",
-			}),
-			makeAgent({
-				id: "p2",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
+			makeAgent(
+				{
+					id: "parent",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:30.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "p1",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:20.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "p2",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
 		];
 		const layout = layoutSwimlanes(agents);
 		const p1 = layout.lanes.find((l) => l.agent.id === "p1")!;
@@ -176,25 +227,32 @@ describe("layoutSwimlanes", () => {
 		expect(p1.depth).toBe(p2.depth);
 	});
 
-	it("records depth for nested agents", () => {
+	it("records depth for nested agents", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "root",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:01:00.000Z",
-			}),
-			makeAgent({
-				id: "mid",
-				parentAgentId: "root",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:40.000Z",
-			}),
-			makeAgent({
-				id: "leaf",
-				parentAgentId: "mid",
-				startedAt: "1999-12-31T00:00:15.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
+			makeAgent(
+				{
+					id: "root",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:01:00.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "mid",
+					parentAgentId: "root",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:40.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "leaf",
+					parentAgentId: "mid",
+					startedAt: "1999-12-31T00:00:15.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
 		];
 		const layout = layoutSwimlanes(agents);
 		const root = layout.lanes.find((l) => l.agent.id === "root")!;
@@ -205,31 +263,43 @@ describe("layoutSwimlanes", () => {
 		expect(leaf.depth).toBe(2);
 	});
 
-	it("skips agents with missing timing but keeps siblings", () => {
+	it("skips agents with missing timing but keeps siblings", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "a",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:10.000Z",
-			}),
-			makeAgent({id: "b"}), // no timing
-			makeAgent({
-				id: "c",
-				startedAt: "1999-12-31T00:00:15.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
+			makeAgent(
+				{
+					id: "a",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:10.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "b",
+				},
+			), // no timing
+			makeAgent(
+				{
+					id: "c",
+					startedAt: "1999-12-31T00:00:15.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
 		];
 		const layout = layoutSwimlanes(agents);
 		expect(layout.lanes.map((l) => l.agent.id)).toStrictEqual(["a", "c"]);
 	});
 
-	it("produces tick marks proportional to total duration", () => {
+	it("produces tick marks proportional to total duration", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "a",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:01:00.000Z",
-			}),
+			makeAgent(
+				{
+					id: "a",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:01:00.000Z",
+				},
+			),
 		];
 		const layout: SwimlaneLayout = layoutSwimlanes(agents);
 		expect(layout.ticks.length).toBeGreaterThanOrEqual(2);
@@ -238,25 +308,34 @@ describe("layoutSwimlanes", () => {
 	});
 });
 
-describe("SubagentGantt", () => {
-	it("names each swimlane's own model rather than its raw id", () => {
+describe("SubagentGantt", () =>
+{
+	it("names each swimlane's own model rather than its raw id", () =>
+	{
 		const html = renderToStaticMarkup(
-			createElement(SubagentGantt, {
-				agents: [
-					makeAgent({
-						id: "a",
-						model: "claude-haiku-4-5-20251001",
-						startedAt: "1999-12-31T00:00:00.000Z",
-						finishedAt: "1999-12-31T00:00:10.000Z",
-					}),
-					makeAgent({
-						id: "b",
-						model: "opus[1m]",
-						startedAt: "1999-12-31T00:00:15.000Z",
-						finishedAt: "1999-12-31T00:00:25.000Z",
-					}),
-				],
-			}),
+			createElement(
+				SubagentGantt,
+				{
+					agents: [
+						makeAgent(
+							{
+								id: "a",
+								model: "claude-haiku-4-5-20251001",
+								startedAt: "1999-12-31T00:00:00.000Z",
+								finishedAt: "1999-12-31T00:00:10.000Z",
+							},
+						),
+						makeAgent(
+							{
+								id: "b",
+								model: "opus[1m]",
+								startedAt: "1999-12-31T00:00:15.000Z",
+								finishedAt: "1999-12-31T00:00:25.000Z",
+							},
+						),
+					],
+				},
+			),
 		);
 
 		expect(html).toContain("Haiku 4.5");
@@ -265,50 +344,132 @@ describe("SubagentGantt", () => {
 		expect(html).not.toContain("opus[1m]");
 	});
 
-	it("leaves the label blank for a lane whose agent names no model", () => {
+	it("leaves the label blank for a lane whose agent names no model", () =>
+	{
 		const html = renderToStaticMarkup(
-			createElement(SubagentGantt, {
-				agents: [
-					makeAgent({
-						id: "a",
-						model: "<synthetic>",
-						startedAt: "1999-12-31T00:00:00.000Z",
-						finishedAt: "1999-12-31T00:00:10.000Z",
-					}),
-				],
-			}),
+			createElement(
+				SubagentGantt,
+				{
+					agents: [
+						makeAgent(
+							{
+								id: "a",
+								model: "<synthetic>",
+								startedAt: "1999-12-31T00:00:00.000Z",
+								finishedAt: "1999-12-31T00:00:10.000Z",
+							},
+						),
+					],
+				},
+			),
 		);
 
 		expect(html).not.toContain("synthetic");
 	});
 });
 
-describe("layoutSwimlanes workflow runs", () => {
+describe("layoutSwimlanes workflow runs", () =>
+{
 	const at = (seconds: number) => `1999-12-31T00:00:${String(seconds).padStart(2, "0")}.000Z`;
 	const workflowAgents = [
-		makeAgent({id: "b1", workflowRunId: "wf_b", startedAt: at(30), finishedAt: at(40)}),
-		makeAgent({id: "a3", workflowRunId: "wf_a", workflowPhaseIndex: 1, startedAt: at(20), finishedAt: at(25)}),
-		makeAgent({id: "x", startedAt: at(15), finishedAt: at(18)}),
-		makeAgent({id: "a2", workflowRunId: "wf_a", workflowPhaseIndex: 2, startedAt: at(12), finishedAt: at(14)}),
-		makeAgent({id: "a1", workflowRunId: "wf_a", workflowPhaseIndex: 1, startedAt: at(10), finishedAt: at(11)}),
+		makeAgent(
+			{
+				id: "b1",
+				workflowRunId: "wf_b",
+				startedAt: at(30),
+				finishedAt: at(40),
+			},
+		),
+		makeAgent(
+			{
+				id: "a3",
+				workflowRunId: "wf_a",
+				workflowPhaseIndex: 1,
+				startedAt: at(20),
+				finishedAt: at(25),
+			},
+		),
+		makeAgent(
+			{
+				id: "x",
+				startedAt: at(15),
+				finishedAt: at(18),
+			},
+		),
+		makeAgent(
+			{
+				id: "a2",
+				workflowRunId: "wf_a",
+				workflowPhaseIndex: 2,
+				startedAt: at(12),
+				finishedAt: at(14),
+			},
+		),
+		makeAgent(
+			{
+				id: "a1",
+				workflowRunId: "wf_a",
+				workflowPhaseIndex: 1,
+				startedAt: at(10),
+				finishedAt: at(11),
+			},
+		),
 	];
 
-	it("groups lanes by run, then phase, sorting runs among other agents by their earliest start", () => {
-		const layout = layoutSwimlanes(workflowAgents, {workflowRuns: [{runId: "wf_a", workflowName: "poems"}]});
+	it("groups lanes by run, then phase, sorting runs among other agents by their earliest start", () =>
+	{
+		const layout = layoutSwimlanes(
+			workflowAgents,
+			{
+				workflowRuns: [
+					{
+						runId: "wf_a",
+						workflowName: "poems",
+					},
+				],
+			},
+		);
 		expect(layout.lanes.map((lane) => lane.agent.id)).toStrictEqual(["a1", "a3", "a2", "x", "b1"]);
 		expect(layout.groups).toStrictEqual([
-			{runId: "wf_a", name: "poems", phaseTitle: "Phase 1", firstLane: 0, laneCount: 2},
-			{runId: "wf_a", name: "poems", phaseTitle: "Phase 2", firstLane: 2, laneCount: 1},
-			{runId: "wf_b", name: "wf_b", phaseTitle: "Agents", firstLane: 4, laneCount: 1},
+			{
+				runId: "wf_a",
+				name: "poems",
+				phaseTitle: "Phase 1",
+				firstLane: 0,
+				laneCount: 2,
+			},
+			{
+				runId: "wf_a",
+				name: "poems",
+				phaseTitle: "Phase 2",
+				firstLane: 2,
+				laneCount: 1,
+			},
+			{
+				runId: "wf_b",
+				name: "wf_b",
+				phaseTitle: "Agents",
+				firstLane: 4,
+				laneCount: 1,
+			},
 		]);
 	});
 
-	it("labels a run once and each of its phases in the chart", () => {
+	it("labels a run once and each of its phases in the chart", () =>
+	{
 		const html = renderToStaticMarkup(
-			createElement(SubagentGantt, {
-				agents: workflowAgents,
-				workflowRuns: [{runId: "wf_a", workflowName: "poems"}],
-			}),
+			createElement(
+				SubagentGantt,
+				{
+					agents: workflowAgents,
+					workflowRuns: [
+						{
+							runId: "wf_a",
+							workflowName: "poems",
+						},
+					],
+				},
+			),
 		);
 		expect(html.match(/>poems</g)).toStrictEqual([">poems<"]);
 		expect(html).toContain(">Phase 1<");

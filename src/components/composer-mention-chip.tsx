@@ -40,7 +40,8 @@ export function ComposerMentionChip({
 	editorRef: RefObject<HTMLTextAreaElement | null>;
 	cwd: string | undefined;
 	children: ReactNode;
-}) {
+})
+{
 	const path = absoluteMentionPath(relPath, cwd);
 	return (
 		// Upstream `GZ`: the file-actions block (`Sl`, attach off) over a danger Delete; Delete alone without a path context.
@@ -53,12 +54,15 @@ export function ComposerMentionChip({
 				dir="auto"
 				className={CHIP_CLASS}
 				// Upstream `lI`: the editor's and transcript's own menus don't also open.
-				onContextMenu={(e: MouseEvent) => {
+				onContextMenu={(e: MouseEvent) =>
+				{
 					e.stopPropagation();
 				}}
-				onMouseDown={(e: MouseEvent) => {
+				onMouseDown={(e: MouseEvent) =>
+				{
 					// Upstream `yl`: only non-left presses stop here; a left press selects the atom.
-					if (e.button !== 0) {
+					if (e.button !== 0)
+					{
 						e.stopPropagation();
 						return;
 					}

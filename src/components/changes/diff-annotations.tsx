@@ -10,7 +10,8 @@ import {type FindingActions, ReviewFindingAnnotation} from "./review-finding-ann
 export type DiffLineRanges = Record<DiffSide, readonly (readonly [number, number])[]>;
 
 /** The line ranges each side of a single-file patch shows, one per hunk. */
-export function diffLineRanges(patch: string): DiffLineRanges {
+export function diffLineRanges(patch: string): DiffLineRanges
+{
 	const {hunks} = getSingularPatch(patch);
 	const ranges = (start: (typeof hunks)[number]["additionStart"], count: number) =>
 		count === 0 ? [] : [[start, start + count - 1] as const];
@@ -24,14 +25,17 @@ export function diffLineRanges(patch: string): DiffLineRanges {
  * The text of lines `start`-`end` on one side of a unified patch, without diff markers: context lines
  * count on both sides. Undefined when the diff shows none of them.
  */
-export function diffSideSnippet(patch: string, side: DiffSide, start: number, end: number): string | undefined {
+export function diffSideSnippet(patch: string, side: DiffSide, start: number, end: number): string | undefined
+{
 	const picked: string[] = [];
 	let oldLine = 0;
 	let newLine = 0;
 	let inHunk = false;
-	for (const row of patch.split("\n")) {
+	for (const row of patch.split("\n"))
+	{
 		const header = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(row);
-		if (header !== null) {
+		if (header !== null)
+		{
 			oldLine = Number(header[1]);
 			newLine = Number(header[2]);
 			inHunk = true;
@@ -54,11 +58,28 @@ export function diffSideSnippet(patch: string, side: DiffSide, start: number, en
  * nearest shown line on its side (or the file end), flagged outdated as upstream's "Outdated" badge.
  */
 function commentAnchor(
-	{side, line}: {side: DiffSide; line: number},
+	{
+		side,
+		line,
+	}:
+	{
+		side: DiffSide;
+		line: number;
+	},
 	lines: DiffLineRanges | undefined,
-): {side: DiffSide; lineNumber: number; outdated: boolean} {
+):
+{
+	side: DiffSide;
+	lineNumber: number;
+	outdated: boolean;
+}
+{
 	if (lines === undefined || lines[side].some(([start, end]) => line >= start && line <= end))
-		return {side, lineNumber: line, outdated: false};
+		return {
+			side,
+			lineNumber: line,
+			outdated: false,
+		};
 	const nearest = lines[side]
 		.map(([start, end]) => Math.min(Math.max(line, start), end))
 		.reduce<number | undefined>(
@@ -66,12 +87,27 @@ function commentAnchor(
 				best === undefined || Math.abs(candidate - line) < Math.abs(best - line) ? candidate : best,
 			undefined,
 		);
-	if (nearest !== undefined) return {side, lineNumber: nearest, outdated: true};
+	if (nearest !== undefined)
+		return {
+			side,
+			lineNumber: nearest,
+			outdated: true,
+		};
 	const otherSide: DiffSide = side === "additions" ? "deletions" : "additions";
 	const fileEnd = lines[otherSide].at(-1)?.[1];
 	return fileEnd === undefined
-		? {side, lineNumber: line, outdated: true}
-		: {side: otherSide, lineNumber: fileEnd, outdated: true};
+		?
+			{
+				side,
+				lineNumber: line,
+				outdated: true,
+			}
+		:
+			{
+				side: otherSide,
+				lineNumber: fileEnd,
+				outdated: true,
+			};
 }
 
 /**
@@ -84,13 +120,18 @@ export function commentAnnotations(
 	queued: readonly QueuedDiffComment[],
 	path: string,
 	lines?: DiffLineRanges,
-): DiffFileAnnotation[] {
+): DiffFileAnnotation[]
+{
 	return [
 		...queued
 			.filter((comment) => comment.path === path)
-			.map((comment) => {
+			.map((comment) =>
+			{
 				const {outdated, ...anchor} = commentAnchor(
-					{side: comment.side, line: comment.endLine ?? comment.line},
+					{
+						side: comment.side,
+						line: comment.endLine ?? comment.line,
+					},
 					lines,
 				);
 				return {
@@ -107,7 +148,8 @@ export function commentAnnotations(
 			}),
 		...drafts
 			.filter((draft) => draft.path === path)
-			.map((draft) => ({
+			.map((draft) => (
+			{
 				side: draft.side,
 				lineNumber: draft.endLine ?? draft.line,
 				content: <LineCommentCard key={draft.id} sessionId={sessionId} draft={draft} />,
@@ -120,10 +162,12 @@ export function findingAnnotations(
 	findings: readonly ReviewFinding[],
 	path: string,
 	actions: FindingActions,
-): DiffFileAnnotation[] {
+): DiffFileAnnotation[]
+{
 	return findings
 		.filter((finding) => !finding.resolved && finding.file === path)
-		.map((finding) => ({
+		.map((finding) => (
+		{
 			side: finding.side === "old" ? "deletions" : "additions",
 			lineNumber: finding.endLine ?? finding.line,
 			content: <ReviewFindingAnnotation key={finding.id} finding={finding} actions={actions} />,

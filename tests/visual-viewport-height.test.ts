@@ -1,45 +1,60 @@
 // @vitest-environment jsdom
 
 import {afterEach, describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	APP_VISUAL_VIEWPORT_HEIGHT_VAR,
 	installVisualViewportHeight,
 	type VisualViewportHost,
 } from "../src/lib/visual-viewport-height";
 
-class FakeVisualViewport extends EventTarget {
+class FakeVisualViewport extends EventTarget
+{
 	height: number;
-	constructor(height: number) {
+	constructor(height: number)
+	{
 		super();
 		this.height = height;
 	}
 }
 
-function makeHost(coarse: boolean, innerHeight: number) {
+function makeHost(coarse: boolean, innerHeight: number)
+{
 	const visualViewport = new FakeVisualViewport(innerHeight);
-	const host: VisualViewportHost = {
+	const host: VisualViewportHost =
+	{
 		innerHeight,
 		visualViewport,
-		matchMedia: (query: string) => ({matches: query === "(pointer: coarse)" && coarse}),
+		matchMedia: (query: string) => (
+		{
+			matches: query === "(pointer: coarse)" && coarse,
+		}),
 		document,
 	};
-	return {host, visualViewport};
+	return {
+		host,
+		visualViewport,
+	};
 }
 
-function readVar(): string {
+function readVar(): string
+{
 	return document.documentElement.style.getPropertyValue(APP_VISUAL_VIEWPORT_HEIGHT_VAR);
 }
 
-describe("installVisualViewportHeight", () => {
+describe("installVisualViewportHeight", () =>
+{
 	let uninstall: (() => void) | undefined;
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		uninstall?.();
 		uninstall = undefined;
 		document.documentElement.style.removeProperty(APP_VISUAL_VIEWPORT_HEIGHT_VAR);
 	});
 
-	it("sets the var while the soft keyboard shrinks the visual viewport and removes it when it closes", () => {
+	it("sets the var while the soft keyboard shrinks the visual viewport and removes it when it closes", () =>
+	{
 		const {host, visualViewport} = makeHost(true, 800);
 		uninstall = installVisualViewportHeight(host);
 		expect(readVar()).toBe("");
@@ -57,7 +72,8 @@ describe("installVisualViewportHeight", () => {
 		expect(readVar()).toBe("");
 	});
 
-	it("ignores sub-pixel differences between the visual viewport and innerHeight", () => {
+	it("ignores sub-pixel differences between the visual viewport and innerHeight", () =>
+	{
 		const {host, visualViewport} = makeHost(true, 800);
 		uninstall = installVisualViewportHeight(host);
 
@@ -66,13 +82,23 @@ describe("installVisualViewportHeight", () => {
 		expect(readVar()).toBe("");
 	});
 
-	it("is a no-op where the browser has no visualViewport", () => {
-		const host: VisualViewportHost = {innerHeight: 800, matchMedia: () => ({matches: true}), document};
+	it("is a no-op where the browser has no visualViewport", () =>
+	{
+		const host: VisualViewportHost =
+		{
+			innerHeight: 800,
+			matchMedia: () => (
+			{
+				matches: true,
+			}),
+			document,
+		};
 		uninstall = installVisualViewportHeight(host);
 		expect(readVar()).toBe("");
 	});
 
-	it("never sets the var with a fine pointer", () => {
+	it("never sets the var with a fine pointer", () =>
+	{
 		const {host, visualViewport} = makeHost(false, 800);
 		uninstall = installVisualViewportHeight(host);
 
@@ -81,7 +107,8 @@ describe("installVisualViewportHeight", () => {
 		expect(readVar()).toBe("");
 	});
 
-	it("stops tracking and clears the var on uninstall", () => {
+	it("stops tracking and clears the var on uninstall", () =>
+	{
 		const {host, visualViewport} = makeHost(true, 800);
 		uninstall = installVisualViewportHeight(host);
 

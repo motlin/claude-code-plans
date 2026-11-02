@@ -1,5 +1,6 @@
 import {useEffect, useId, useLayoutEffect, useMemo, useRef, useState} from "react";
-import {
+import
+{
 	MERMAID_DRAW_LIMIT_MS,
 	MERMAID_SHADOW_STYLE,
 	MERMAID_SHADOW_STYLE_AUTO_DIRECTION,
@@ -23,12 +24,30 @@ import {type MermaidThemeMode, themeFor} from "../lib/mermaid-theme";
 export type MermaidStatus = "loading" | "success" | "error";
 
 type DiagramState =
-	| {status: "loading"}
-	| {status: "success"; key: string; svg: string; scopeId: string; width: number}
-	| {status: "error"; cause: "refused" | "load" | "render"};
+	|
+	  {
+			status: "loading";
+	  }
+	|
+	  {
+			status: "success";
+			key: string;
+			svg: string;
+			scopeId: string;
+			width: number;
+	  }
+	|
+	  {
+			status: "error";
+			cause: "refused" | "load" | "render";
+	  };
 
 /** Upstream `GY`. */
-const REFUSED: DiagramState = {status: "error", cause: "refused"};
+const REFUSED: DiagramState =
+{
+	status: "error",
+	cause: "refused",
+};
 
 /**
  * Upstream's block shape, whose border and background use claude.ai's legacy numeric palette (border 400, background
@@ -52,50 +71,93 @@ export function MermaidDiagram({
 	mode: MermaidThemeMode;
 	autoLabelDirection?: boolean;
 	onStatusChange?: ((status: MermaidStatus) => void) | undefined;
-}) {
+})
+{
 	const scopeId = mermaidScopeId(useId());
 	const key = drawnKey(mode, code);
 	const cached = useMemo(() => cachedDiagram(key, `${scopeId}-c`), [key, scopeId]);
 	const refusal = refusalFor(code);
 	const [state, setState] = useState<DiagramState>(() =>
-		cached ? {status: "success", key, ...cached} : refusal === undefined ? {status: "loading"} : REFUSED,
+		cached
+			?
+				{
+					status: "success",
+					key,
+					...cached,
+				}
+			: refusal === undefined
+				?
+					{
+						status: "loading",
+					}
+				: REFUSED,
 	);
 	if (cached && (state.status !== "success" || state.svg !== cached.svg))
-		setState({status: "success", key, ...cached});
+		setState(
+			{
+				status: "success",
+				key,
+				...cached,
+			},
+		);
 	const knownRefusal = state.status === "success" && state.key === key ? undefined : refusal;
 	const shown = useMemo<DiagramState>(
-		() => (cached ? {status: "success", key, ...cached} : knownRefusal === undefined ? state : REFUSED),
+		() =>
+			cached
+				?
+					{
+						status: "success",
+						key,
+						...cached,
+					}
+				: knownRefusal === undefined
+					? state
+					: REFUSED,
 		[cached, key, knownRefusal, state],
 	);
 	const status = shown.status;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		onStatusChange?.(status);
 	}, [onStatusChange, status]);
 
 	// A drawing is cached when its fence unmounts, so scrolling back to it redraws nothing.
 	const latest = useRef(shown);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		latest.current = shown;
 	}, [shown]);
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			const last = latest.current;
 			if (last.status === "success")
-				rememberDrawn(last.key, {svg: last.svg, scopeId: last.scopeId, width: last.width});
+				rememberDrawn(
+					last.key,
+					{
+						svg: last.svg,
+						scopeId: last.scopeId,
+						width: last.width,
+					},
+				);
 		},
 		[],
 	);
 
-	useEffect(() => {
-		if (cached) {
+	useEffect(() =>
+	{
+		if (cached)
+		{
 			touchDrawn(key);
 			return undefined;
 		}
 		if (refusal !== undefined) return undefined;
 		const controller = new AbortController();
-		void (async () => {
+		void (async () =>
+		{
 			let loaded = false;
-			try {
+			try
+			{
 				const mermaid = await loadMermaidWithGuard();
 				loaded = true;
 				const result = await drawMermaid(
@@ -111,17 +173,25 @@ export function MermaidDiagram({
 					},
 					scopeId,
 					code,
-					{signal: controller.signal, limitMs: MERMAID_DRAW_LIMIT_MS, dimUnreadableBands: true},
+					{
+						signal: controller.signal,
+						limitMs: MERMAID_DRAW_LIMIT_MS,
+						dimUnreadableBands: true,
+					},
 				);
 				if (controller.signal.aborted) return;
-				setState({
-					status: "success",
-					svg: sanitizeMermaidSvg(result.svg, result.diagramId),
-					key,
-					scopeId: result.diagramId,
-					width: window.innerWidth,
-				});
-			} catch (error) {
+				setState(
+					{
+						status: "success",
+						svg: sanitizeMermaidSvg(result.svg, result.diagramId),
+						key,
+						scopeId: result.diagramId,
+						width: window.innerWidth,
+					},
+				);
+			}
+			catch (error)
+			{
 				// A refusal the guard will refuse again is remembered, so a remount does not draw it again.
 				const refusal = asMermaidRefusal(error);
 				if (refusal?.refusedBy !== undefined && rememberedRefusal(refusal))
@@ -129,9 +199,16 @@ export function MermaidDiagram({
 				if (controller.signal.aborted) return;
 				const drew = loaded && mermaidGuardLoaded();
 				setState(
-					refusal?.refusedBy === undefined ? {status: "error", cause: drew ? "render" : "load"} : REFUSED,
+					refusal?.refusedBy === undefined
+						?
+							{
+								status: "error",
+								cause: drew ? "render" : "load",
+							}
+						: REFUSED,
 				);
-				if (refusal?.refusedBy !== undefined) {
+				if (refusal?.refusedBy !== undefined)
+				{
 					console.info(`Mermaid diagram in markdown ${refusal.message}`);
 					return;
 				}
@@ -144,7 +221,8 @@ export function MermaidDiagram({
 				);
 			}
 		})();
-		return () => {
+		return () =>
+		{
 			controller.abort();
 		};
 	}, [cached, refusal, key, code, mode, scopeId]);
@@ -152,7 +230,8 @@ export function MermaidDiagram({
 	const host = useRef<HTMLDivElement>(null);
 	const svg = shown.status === "success" ? shown.svg : undefined;
 	const failed = shown.status === "error";
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const element = host.current;
 		if (!element || (svg === undefined && !element.shadowRoot)) return;
 		writeShadowSvg(

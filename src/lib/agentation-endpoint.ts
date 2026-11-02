@@ -12,7 +12,8 @@ const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
  * would count against the six HTTP/1.1 connections Chrome allows the app's origin, alongside each
  * tab's /api/events -- three tabs then leave none for the app's own fetches.
  */
-export function agentationEndpoint(location: Pick<URL, "protocol" | "hostname">): string {
+export function agentationEndpoint(location: Pick<URL, "protocol" | "hostname">): string
+{
 	return location.protocol === "http:" && LOOPBACK_HOSTNAMES.has(location.hostname)
 		? AGENTATION_SERVER
 		: AGENTATION_ENDPOINT;

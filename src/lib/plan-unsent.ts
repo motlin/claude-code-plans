@@ -4,7 +4,8 @@
  * unmounts at the click, so a refused answer brings its card back from here:
  * the Revise box open or not, the typed feedback and the refusal.
  */
-export interface UnsentPlan {
+export interface UnsentPlan
+{
 	revising: boolean;
 	feedback: string;
 	error: string | null;
@@ -12,18 +13,22 @@ export interface UnsentPlan {
 
 const unsent = new Map<string, UnsentPlan>();
 
-function unsentKey(sessionId: string, toolUseId: string): string {
+function unsentKey(sessionId: string, toolUseId: string): string
+{
 	return `${sessionId}:${toolUseId}`;
 }
 
-export function setUnsentPlan(sessionId: string, toolUseId: string, plan: UnsentPlan): void {
+export function setUnsentPlan(sessionId: string, toolUseId: string, plan: UnsentPlan): void
+{
 	unsent.set(unsentKey(sessionId, toolUseId), plan);
 }
 
-export function getUnsentPlan(sessionId: string, toolUseId: string): UnsentPlan | null {
+export function getUnsentPlan(sessionId: string, toolUseId: string): UnsentPlan | null
+{
 	return unsent.get(unsentKey(sessionId, toolUseId)) ?? null;
 }
 
-export function clearUnsentPlan(sessionId: string, toolUseId: string): void {
+export function clearUnsentPlan(sessionId: string, toolUseId: string): void
+{
 	unsent.delete(unsentKey(sessionId, toolUseId));
 }

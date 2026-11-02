@@ -14,147 +14,182 @@ import type {SessionStatusFilter} from "../session-groups";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
 
-const SessionPrLinkSchema = z.object({
-	number: z.number(),
-	url: z.string(),
-	repository: z.string(),
-});
+const SessionPrLinkSchema = z.object(
+	{
+		number: z.number(),
+		url: z.string(),
+		repository: z.string(),
+	},
+);
 
-const SessionListItemSchema = z.object({
-	id: z.string(),
-	title: z.string(),
-	/** `title` only stands in for a missing one (upstream `titleIsStandIn`): the folder, else "Untitled". */
-	titleIsStandIn: z.literal(true).optional(),
-	/** The CLI's latest ai-title, shown beside a differing /rename title. */
-	aiTitle: z.string().optional(),
-	summary: z.string().optional(),
-	/** The first line of the newest prompt the user typed, the described row's fallback message. */
-	lastUserMessage: z.string().optional(),
-	mtime: z.string(),
-	created: z.string(),
-	project: z.string(),
-	projectName: z.string(),
-	messageCount: z.number(),
-	gitBranch: z.string().optional(),
-	pr: SessionPrLinkSchema.optional(),
-	prStatus: PrStatusSchema.optional(),
-	forkedFromSessionId: z.string().optional(),
-	archived: z.boolean(),
-	/** Bridged to claude.ai/code by Remote Control. */
-	remoteControl: z.literal(true).optional(),
-	/** The live CLI's Remote Control bridge, from its registry entry; absent without a live process. */
-	remoteControlState: RemoteControlStateSchema.optional(),
-	/** The terminal host the session runs in (`herdr`, `herdr · <session>`, `tmux · <session>`); absent for Local. */
-	terminalHost: z.string().optional(),
-	state: SessionSummaryStateSchema,
-	/** Blocked on a tool permission prompt; the session page docks the permission card from it. */
-	awaitingPermission: z.literal(true).optional(),
-	/** When the session's live CLI process started; in-process teammates from before it are gone. */
-	processStartedAt: z.number().optional(),
-	bucket: SessionBucketSchema,
-	/** Blocked on an unseen errored turn (bucket reason `error`); the row draws a warning triangle. */
-	unseenError: z.literal(true).optional(),
-	/** When the unseen errored turn failed (ISO); present exactly when `unseenError` is. */
-	erroredAt: z.string().optional(),
-	liveAgentCount: z.number(),
-	unseen: z.boolean(),
-	blockedSince: z.string().nullable(),
-});
+const SessionListItemSchema = z.object(
+	{
+		id: z.string(),
+		title: z.string(),
+		/** `title` only stands in for a missing one (upstream `titleIsStandIn`): the folder, else "Untitled". */
+		titleIsStandIn: z.literal(true).optional(),
+		/** The CLI's latest ai-title, shown beside a differing /rename title. */
+		aiTitle: z.string().optional(),
+		summary: z.string().optional(),
+		/** The first line of the newest prompt the user typed, the described row's fallback message. */
+		lastUserMessage: z.string().optional(),
+		mtime: z.string(),
+		created: z.string(),
+		project: z.string(),
+		projectName: z.string(),
+		messageCount: z.number(),
+		gitBranch: z.string().optional(),
+		pr: SessionPrLinkSchema.optional(),
+		prStatus: PrStatusSchema.optional(),
+		forkedFromSessionId: z.string().optional(),
+		archived: z.boolean(),
+		/** Bridged to claude.ai/code by Remote Control. */
+		remoteControl: z.literal(true).optional(),
+		/** The live CLI's Remote Control bridge, from its registry entry; absent without a live process. */
+		remoteControlState: RemoteControlStateSchema.optional(),
+		/** The terminal host the session runs in (`herdr`, `herdr · <session>`, `tmux · <session>`); absent for Local. */
+		terminalHost: z.string().optional(),
+		state: SessionSummaryStateSchema,
+		/** Blocked on a tool permission prompt; the session page docks the permission card from it. */
+		awaitingPermission: z.literal(true).optional(),
+		/** When the session's live CLI process started; in-process teammates from before it are gone. */
+		processStartedAt: z.number().optional(),
+		bucket: SessionBucketSchema,
+		/** Blocked on an unseen errored turn (bucket reason `error`); the row draws a warning triangle. */
+		unseenError: z.literal(true).optional(),
+		/** When the unseen errored turn failed (ISO); present exactly when `unseenError` is. */
+		erroredAt: z.string().optional(),
+		liveAgentCount: z.number(),
+		unseen: z.boolean(),
+		blockedSince: z.string().nullable(),
+	},
+);
 export type SessionListItem = z.infer<typeof SessionListItemSchema>;
 /** Paginated, mtime-desc feed of recent sessions across all projects. */
-export const RecentSessionsResponse = z.object({
-	sessions: z.array(SessionListItemSchema),
-	nextCursor: z.string().nullable(),
-});
+export const RecentSessionsResponse = z.object(
+	{
+		sessions: z.array(SessionListItemSchema),
+		nextCursor: z.string().nullable(),
+	},
+);
 
 /** Sessions grouped by project, each capped to a preview slice with a total count. */
-const SessionGroupSummarySchema = z.object({
-	project: z.string(),
-	projectName: z.string(),
-	sessionCount: z.number(),
-	sessions: z.array(SessionListItemSchema),
-});
+const SessionGroupSummarySchema = z.object(
+	{
+		project: z.string(),
+		projectName: z.string(),
+		sessionCount: z.number(),
+		sessions: z.array(SessionListItemSchema),
+	},
+);
 export type ProjectSessionGroup = z.infer<typeof SessionGroupSummarySchema>;
 export const GroupedSessionsResponse = z.array(SessionGroupSummarySchema);
 
 /** Session rows looked up by id, e.g. this browser's pins; unknown ids are omitted. */
 export const SessionsByIdsResponse = z.array(SessionListItemSchema);
 
-export const SessionTitlesResponse = z.object({
-	titles: z.record(z.string(), z.string()),
-});
+export const SessionTitlesResponse = z.object(
+	{
+		titles: z.record(z.string(), z.string()),
+	},
+);
 
-const ActiveSessionSchema = z.object({
-	sessionId: z.string(),
-	projectDir: z.string(),
-	projectName: z.string(),
-	title: z.string(),
-	createdAt: z.number(),
-	lastModified: z.number(),
-	state: z.enum(["idle", "working", "waiting", "unknown"]),
-	unseen: z.boolean(),
-	blockedSince: z.string().nullable(),
-});
+const ActiveSessionSchema = z.object(
+	{
+		sessionId: z.string(),
+		projectDir: z.string(),
+		projectName: z.string(),
+		title: z.string(),
+		createdAt: z.number(),
+		lastModified: z.number(),
+		state: z.enum(["idle", "working", "waiting", "unknown"]),
+		unseen: z.boolean(),
+		blockedSince: z.string().nullable(),
+	},
+);
 export const ActiveSessionListResponse = z.array(ActiveSessionSchema);
 export type ActiveSessionListItem = z.infer<typeof ActiveSessionSchema>;
 
 export const SessionDetailResponse = z
-	.object({
-		title: z.string(),
-		/** `title` only stands in for a missing one (upstream `standInName`): the folder, else "Untitled". */
-		titleIsStandIn: z.literal(true).optional(),
-		/** The CLI's latest ai-title, shown beside a differing /rename title. */
-		aiTitle: z.string().optional(),
-		projectName: z.string(),
-		projectId: z.string(),
-		homeRoot: z.string(),
-		/** Unique Remote Control alias suitable for this local session's URL. */
-		canonicalRouteId: z.string().optional(),
-		/** This response predates completion of its Remote Control alias backfill. */
-		canonicalRoutePending: z.literal(true).optional(),
-		imageRoots: z.array(z.string()),
-		archived: z.boolean(),
-		summary: z.string().nullable(),
-		projectPath: z.string().nullable(),
-		gitBranch: z.string().nullable(),
-		cwd: z.string().nullable(),
-		gitSha: z.string().nullable(),
-		gitClean: z.boolean().nullable(),
-		messageCount: z.number(),
-		pendingTaskCount: z.number(),
-		viewedState: SessionViewedStateSchema,
-		parentSessionId: z.string().optional(),
-		attributionAgent: z.string().optional(),
-		/** Raw model id a subagent session ran on, e.g. `claude-haiku-4-5-20251001`. */
-		model: z.string().optional(),
-		entrypoint: z.string().optional(),
-		sessionKind: z.string().optional(),
-		teamNames: z.array(z.string()).optional(),
-		forkedFromSessionId: z.string().optional(),
-		pr: SessionPrLinkSchema.optional(),
-		/** The PR status service's best answer for this session, when it knows one. */
-		prStatus: PrStatusSchema.optional(),
-		/** The plan file linked to this session through `plan_sessions`. */
-		planFilename: z.string().optional(),
-		costState: SessionCostStateSchema.optional(),
-	})
+	.object(
+		{
+			title: z.string(),
+			/** `title` only stands in for a missing one (upstream `standInName`): the folder, else "Untitled". */
+			titleIsStandIn: z.literal(true).optional(),
+			/** The CLI's latest ai-title, shown beside a differing /rename title. */
+			aiTitle: z.string().optional(),
+			projectName: z.string(),
+			projectId: z.string(),
+			homeRoot: z.string(),
+			/** Unique Remote Control alias suitable for this local session's URL. */
+			canonicalRouteId: z.string().optional(),
+			/** This response predates completion of its Remote Control alias backfill. */
+			canonicalRoutePending: z.literal(true).optional(),
+			imageRoots: z.array(z.string()),
+			archived: z.boolean(),
+			summary: z.string().nullable(),
+			projectPath: z.string().nullable(),
+			gitBranch: z.string().nullable(),
+			cwd: z.string().nullable(),
+			gitSha: z.string().nullable(),
+			gitClean: z.boolean().nullable(),
+			messageCount: z.number(),
+			pendingTaskCount: z.number(),
+			viewedState: SessionViewedStateSchema,
+			parentSessionId: z.string().optional(),
+			attributionAgent: z.string().optional(),
+			/** Raw model id a subagent session ran on, e.g. `claude-haiku-4-5-20251001`. */
+			model: z.string().optional(),
+			entrypoint: z.string().optional(),
+			sessionKind: z.string().optional(),
+			teamNames: z.array(z.string()).optional(),
+			forkedFromSessionId: z.string().optional(),
+			pr: SessionPrLinkSchema.optional(),
+			/** The PR status service's best answer for this session, when it knows one. */
+			prStatus: PrStatusSchema.optional(),
+			/** The plan file linked to this session through `plan_sessions`. */
+			planFilename: z.string().optional(),
+			costState: SessionCostStateSchema.optional(),
+		},
+	)
 	.nullable();
 
 export const SessionOpenInResponse = z
-	.object({
-		cwd: z.string().nullable(),
-		/** The JSONL's last `bridge-session` id, for the Open in claude.ai menu items. */
-		bridgeSessionId: z.string().nullable(),
-		/** The live registry entry's Remote Control bridge for the rail's row; null without a live process. */
-		remoteControl: z.strictObject({state: RemoteControlStateSchema, url: z.string().nullable()}).nullable(),
-		/** Non-null when the CLI did not backfill the session's history to claude.ai, with the latest suppression cause's label. */
-		remoteHistory: z.strictObject({reason: z.string().nullable()}).nullable(),
-		/** The web URL of the session checkout's GitHub `origin`, or null when it has none. */
-		githubUrl: z.string().nullable(),
-	})
+	.object(
+		{
+			cwd: z.string().nullable(),
+			/** The JSONL's last `bridge-session` id, for the Open in claude.ai menu items. */
+			bridgeSessionId: z.string().nullable(),
+			/** The live registry entry's Remote Control bridge for the rail's row; null without a live process. */
+			remoteControl: z
+				.strictObject(
+					{
+						state: RemoteControlStateSchema,
+						url: z.string().nullable(),
+					},
+				)
+				.nullable(),
+			/** Non-null when the CLI did not backfill the session's history to claude.ai, with the latest suppression cause's label. */
+			remoteHistory: z
+				.strictObject(
+					{
+						reason: z.string().nullable(),
+					},
+				)
+				.nullable(),
+			/** The web URL of the session checkout's GitHub `origin`, or null when it has none. */
+			githubUrl: z.string().nullable(),
+		},
+	)
 	.strict();
 
-export const SessionIdentityResponse = z.object({sessionId: z.string()}).strict();
+export const SessionIdentityResponse = z
+	.object(
+		{
+			sessionId: z.string(),
+		},
+	)
+	.strict();
 
 export type SessionDetailData = NonNullable<z.infer<typeof SessionDetailResponse>>;
 
@@ -171,39 +206,43 @@ export const TranscriptRecordSchema = z.record(z.string(), JsonValueSchema);
  * pulled back or re-sent, whose subtree the reader no longer sees.
  */
 const TranscriptCutSchema = z
-	.object({
-		/** The parent the abandoned prompt and its replacement both hang off. */
-		parentUuid: z.string(),
-		/** The on-chain prompt that replaced the abandoned one. */
-		replacementUuid: z.string(),
-		/** The abandoned prompt's timestamp. */
-		at: z.string(),
-		/** Records in the hidden subtree, its root included. */
-		count: z.number(),
-	})
+	.object(
+		{
+			/** The parent the abandoned prompt and its replacement both hang off. */
+			parentUuid: z.string(),
+			/** The on-chain prompt that replaced the abandoned one. */
+			replacementUuid: z.string(),
+			/** The abandoned prompt's timestamp. */
+			at: z.string(),
+			/** Records in the hidden subtree, its root included. */
+			count: z.number(),
+		},
+	)
 	.strict();
 export type TranscriptCut = z.infer<typeof TranscriptCutSchema>;
 
-export const TranscriptResponse = z.object({
-	records: z.array(TranscriptRecordSchema),
-	byteOffset: z.number(),
-	/** Index of `records[0]` within the session's full JSONL record list. */
-	startIndex: z.number(),
-	/** Countable messages (message-count.ts) in the records before `startIndex`. */
-	precedingMessageCount: z.number(),
-	/**
-	 * Uuids of this window's records that sit on an abandoned branch. The
-	 * server computes the chain over the whole file, so a branch whose fork
-	 * point is on an unloaded page is still known.
-	 */
-	hiddenUuids: z.array(z.string()),
-	/** The cuts whose replacement prompt is inside this window. */
-	cuts: z.array(TranscriptCutSchema),
-	/** Identifies the set of cuts over the whole file; it changes only when the chain forks or switches branch. */
-	chainVersion: z.string(),
-	/** Claude's chapters across the whole file (session-chapters.ts), so the outline lists those on unloaded pages. */
-	chapters: z.array(ClaudeChapterEntrySchema),
-});
+export const TranscriptResponse = z.object(
+	{
+		records: z.array(TranscriptRecordSchema),
+		byteOffset: z.number(),
+		/** Index of `records[0]` within the session's full JSONL record list. */
+		startIndex: z.number(),
+		/** Countable messages (message-count.ts) in the records before `startIndex`. */
+		precedingMessageCount: z.number(),
+		/**
+		 * Uuids of this window's records that sit on an abandoned branch. The
+		 * server computes the chain over the whole file, so a branch whose fork
+		 * point is on an unloaded page is still known.
+		 */
+		hiddenUuids: z.array(z.string()),
+		/** The cuts whose replacement prompt is inside this window. */
+		cuts: z.array(TranscriptCutSchema),
+		/** Identifies the set of cuts over the whole file; it changes only when the chain forks or switches branch. */
+		chainVersion: z.string(),
+		/** Claude's chapters across the whole file (session-chapters.ts), so the outline lists those on unloaded pages. */
+		chapters: z.array(ClaudeChapterEntrySchema),
+	},
+);
 export type TranscriptData = z.infer<typeof TranscriptResponse>;
 
 /**
@@ -214,7 +253,8 @@ export type TranscriptData = z.infer<typeof TranscriptResponse>;
  * pre-dedupe span instead — would open a gap that the contiguity gate then
  * resolves by discarding the whole window.
  */
-export function transcriptEndIndex(transcript: TranscriptData): number {
+export function transcriptEndIndex(transcript: TranscriptData): number
+{
 	return transcript.startIndex + transcript.records.length;
 }
 
@@ -228,9 +268,11 @@ export function transcriptEndIndex(transcript: TranscriptData): number {
  * between were never fetched, and rendering across that hole would splice
  * unrelated turns together.
  */
-export function mergeTranscriptData(primary: TranscriptData, secondary: TranscriptData): TranscriptData {
+export function mergeTranscriptData(primary: TranscriptData, secondary: TranscriptData): TranscriptData
+{
 	const byIndex = new Map<number, TranscriptData["records"][number]>();
-	for (const source of [secondary, primary]) {
+	for (const source of [secondary, primary])
+	{
 		source.records.forEach((record, offset) => byIndex.set(source.startIndex + offset, record));
 	}
 	const indices = [...byIndex.keys()].toSorted((a, b) => a - b);
@@ -239,18 +281,21 @@ export function mergeTranscriptData(primary: TranscriptData, secondary: Transcri
 		let current = indices[runStart];
 		current !== undefined && indices[runStart - 1] === current - 1;
 		current = indices[runStart]
-	) {
+	)
+	{
 		runStart -= 1;
 	}
 	const contiguous = indices.slice(Math.max(runStart, 0));
 
 	const records: TranscriptData["records"] = [];
 	const seenUuids = new Set<string>();
-	for (const index of contiguous) {
+	for (const index of contiguous)
+	{
 		const record = byIndex.get(index);
 		if (record === undefined) continue;
 		const uuid = record["uuid"];
-		if (typeof uuid === "string") {
+		if (typeof uuid === "string")
+		{
 			if (seenUuids.has(uuid)) continue;
 			seenUuids.add(uuid);
 		}
@@ -262,7 +307,8 @@ export function mergeTranscriptData(primary: TranscriptData, secondary: Transcri
 	// and that window is the one that knows how many messages precede it.
 	const origin = primary.startIndex === startIndex ? primary : secondary;
 	const cuts = new Map<string, TranscriptCut>();
-	for (const cut of [...primary.cuts, ...secondary.cuts]) {
+	for (const cut of [...primary.cuts, ...secondary.cuts])
+	{
 		const key = `${cut.replacementUuid}\u0000${cut.parentUuid}\u0000${cut.at}`;
 		if (!cuts.has(key)) cuts.set(key, cut);
 	}
@@ -278,34 +324,42 @@ export function mergeTranscriptData(primary: TranscriptData, secondary: Transcri
 	};
 }
 
-const ResourceOccurrenceSchema = z.object({
-	source: z.enum(["visible", "tool", "thinking"]),
-	anchorIndex: z.number(),
-	anchorUuid: z.string().optional(),
-	role: z.enum(["user", "assistant"]),
-	tool: z.string().optional(),
-});
+const ResourceOccurrenceSchema = z.object(
+	{
+		source: z.enum(["visible", "tool", "thinking"]),
+		anchorIndex: z.number(),
+		anchorUuid: z.string().optional(),
+		role: z.enum(["user", "assistant"]),
+		tool: z.string().optional(),
+	},
+);
 
-const SessionFilesSchema = z.object({
-	files: z.array(
-		z.object({
-			path: z.string(),
-			absolutePath: z.string(),
-			occurrences: z.array(ResourceOccurrenceSchema),
-		}),
-	),
-	totalCount: z.number(),
-	counts: z.object({
-		userMessage: z.number(),
-		agentMessage: z.number(),
-		read: z.number(),
-		editWrite: z.number(),
-		bash: z.number(),
-		grepGlob: z.number(),
-		thinking: z.number(),
-		other: z.number(),
-	}),
-});
+const SessionFilesSchema = z.object(
+	{
+		files: z.array(
+			z.object(
+				{
+					path: z.string(),
+					absolutePath: z.string(),
+					occurrences: z.array(ResourceOccurrenceSchema),
+				},
+			),
+		),
+		totalCount: z.number(),
+		counts: z.object(
+			{
+				userMessage: z.number(),
+				agentMessage: z.number(),
+				read: z.number(),
+				editWrite: z.number(),
+				bash: z.number(),
+				grepGlob: z.number(),
+				thinking: z.number(),
+				other: z.number(),
+			},
+		),
+	},
+);
 
 /**
  * The whole session's file and link inventory, scanned on demand.
@@ -316,22 +370,38 @@ const SessionFilesSchema = z.object({
  * this page and on the reader's `linkCategoryRules`, neither of which the
  * server knows, so the browser groups them with `groupSessionLinks`.
  */
-export const SessionResourcesResponse = z.object({
-	files: SessionFilesSchema,
-	links: z.array(
-		z.object({
-			url: z.string(),
-			label: z.string(),
-			occurrences: z.array(ResourceOccurrenceSchema),
-		}),
-	),
-});
+export const SessionResourcesResponse = z.object(
+	{
+		files: SessionFilesSchema,
+		links: z.array(
+			z.object(
+				{
+					url: z.string(),
+					label: z.string(),
+					occurrences: z.array(ResourceOccurrenceSchema),
+				},
+			),
+		),
+	},
+);
 
 /** Loopback dev servers the session declared or printed, with a liveness probe. */
 export const SessionDevServersResponse = z
-	.object({
-		servers: z.array(z.object({url: z.string(), name: z.string().optional(), live: z.boolean()}).strict()),
-	})
+	.object(
+		{
+			servers: z.array(
+				z
+					.object(
+						{
+							url: z.string(),
+							name: z.string().optional(),
+							live: z.boolean(),
+						},
+					)
+					.strict(),
+			),
+		},
+	)
 	.strict();
 
 const DEFAULT_RECENT_PAGE_SIZE = 50;
@@ -349,7 +419,8 @@ const GROUPED_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "grouped"] as const;
 const ACTIVE_SESSIONS_QUERY_ROOT = [...SESSION_QUERY_ROOT, "active"] as const;
 const SESSION_IDENTITIES_QUERY_ROOT = [...SESSION_QUERY_ROOT, "identity"] as const;
 
-export const sessionQueryKeys = {
+export const sessionQueryKeys =
+{
 	all: () => SESSION_QUERY_ROOT,
 	identities: () => SESSION_IDENTITIES_QUERY_ROOT,
 	identity: (routeId: string) => [...SESSION_IDENTITIES_QUERY_ROOT, routeId] as const,
@@ -384,34 +455,60 @@ export const sessionQueryKeys = {
 
 /** Single page of recent sessions (no pagination) — for compact previews. */
 export const recentSessionsQueryOptions = (limit: number, status: SessionStatusFilter = "active") =>
-	queryOptions({
-		queryKey: sessionQueryKeys.recent(limit, status),
-		queryFn: async () =>
-			apiFetch(
-				`/api/sessions/recent?limit=${limit}${status === "active" ? "" : `&status=${status}`}`,
-				RecentSessionsResponse,
-			),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.recent(limit, status),
+			queryFn: async () =>
+				apiFetch(
+					`/api/sessions/recent?limit=${limit}${status === "active" ? "" : `&status=${status}`}`,
+					RecentSessionsResponse,
+				),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
 /**
  * The feed's first page also carries running sessions older than it, which a later
  * page reaches again by mtime; keep each session's first appearance only.
  */
-export function dedupeRecentPages<Data extends {pages: readonly {sessions: readonly {id: string}[]}[]}>(
-	data: Data,
-): Data {
+export function dedupeRecentPages<
+	Data extends
+	{
+		pages: readonly
+		{
+			sessions: readonly
+			{
+				id: string;
+			}[];
+		}[];
+	},
+>(data: Data): Data
+{
 	const seen = new Set<string>();
-	const pages = data.pages.map((page) => {
-		const sessions = page.sessions.filter((session) => {
+	const pages = data.pages.map((page) =>
+	{
+		const sessions = page.sessions.filter((session) =>
+		{
 			if (seen.has(session.id)) return false;
 			seen.add(session.id);
 			return true;
 		});
-		return sessions.length === page.sessions.length ? page : {...page, sessions};
+		return sessions.length === page.sessions.length
+			? page
+			:
+				{
+					...page,
+					sessions,
+				};
 	});
-	return pages.every((page, index) => page === data.pages[index]) ? data : {...data, pages};
+	return pages.every((page, index) => page === data.pages[index])
+		? data
+		:
+			{
+				...data,
+				pages,
+			};
 }
 
 /** Infinite, cursor-paginated recent sessions — for the main sessions list. */
@@ -419,94 +516,129 @@ export const recentSessionsInfiniteQueryOptions = (
 	limit: number = DEFAULT_RECENT_PAGE_SIZE,
 	status: SessionStatusFilter = "active",
 ) =>
-	infiniteQueryOptions({
-		queryKey: sessionQueryKeys.recentInfinite(limit, status),
-		queryFn: async ({pageParam}) => {
-			const cursor = pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : "";
-			const statusParam = status === "active" ? "" : `&status=${status}`;
-			return apiFetch(
-				`/api/sessions/recent?limit=${limit}${cursor}${statusParam}&live=1`,
-				RecentSessionsResponse,
-			);
+	infiniteQueryOptions(
+		{
+			queryKey: sessionQueryKeys.recentInfinite(limit, status),
+			queryFn: async ({pageParam}) =>
+			{
+				const cursor = pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : "";
+				const statusParam = status === "active" ? "" : `&status=${status}`;
+				return apiFetch(
+					`/api/sessions/recent?limit=${limit}${cursor}${statusParam}&live=1`,
+					RecentSessionsResponse,
+				);
+			},
+			initialPageParam: null as string | null,
+			getNextPageParam: (lastPage) => lastPage.nextCursor,
+			select: dedupeRecentPages,
+			staleTime: Infinity,
+			gcTime: Infinity,
 		},
-		initialPageParam: null as string | null,
-		getNextPageParam: (lastPage) => lastPage.nextCursor,
-		select: dedupeRecentPages,
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	);
 
 export const groupedSessionsQueryOptions = (perProject: number = SESSION_GROUP_PAGE_SIZE) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.grouped(perProject),
-		queryFn: async () => apiFetch(`/api/sessions/grouped?perProject=${perProject}`, GroupedSessionsResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.grouped(perProject),
+			queryFn: async () => apiFetch(`/api/sessions/grouped?perProject=${perProject}`, GroupedSessionsResponse),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
 export const sessionsByIdsQueryOptions = (ids: readonly string[]) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.byIds(ids),
-		queryFn: async () =>
-			ids.length === 0
-				? Promise.resolve([])
-				: apiFetch(
-						`/api/sessions/lookup?ids=${encodeURIComponent(ids.toSorted().join(","))}`,
-						SessionsByIdsResponse,
-					),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.byIds(ids),
+			queryFn: async () =>
+				ids.length === 0
+					? Promise.resolve([])
+					: apiFetch(
+							`/api/sessions/lookup?ids=${encodeURIComponent(ids.toSorted().join(","))}`,
+							SessionsByIdsResponse,
+						),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
 export const sessionTitlesQueryOptions = (ids: string[]) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.titles(ids),
-		queryFn: async () =>
-			apiFetch(`/api/sessions/titles?ids=${encodeURIComponent(ids.join(","))}`, SessionTitlesResponse),
-		enabled: ids.length > 0,
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.titles(ids),
+			queryFn: async () =>
+				apiFetch(`/api/sessions/titles?ids=${encodeURIComponent(ids.join(","))}`, SessionTitlesResponse),
+			enabled: ids.length > 0,
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
-export const activeSessionsQueryOptions = (activeTimeoutMs?: number) => {
+export const activeSessionsQueryOptions = (activeTimeoutMs?: number) =>
+{
 	const url =
 		activeTimeoutMs === undefined
 			? "/api/sessions/active"
 			: `/api/sessions/active?activeTimeoutMs=${activeTimeoutMs}`;
-	return queryOptions({
-		queryKey: sessionQueryKeys.active(activeTimeoutMs),
-		queryFn: async () => apiFetch(url, ActiveSessionListResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	return queryOptions(
+		{
+			queryKey: sessionQueryKeys.active(activeTimeoutMs),
+			queryFn: async () => apiFetch(url, ActiveSessionListResponse),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 };
 
 export const sessionDetailQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.detail(id),
-		// oxlint-disable-next-line typescript/promise-function-async -- an async wrapper settles detail a tick after the transcript, splitting the session open into extra commits (client-session-open perf ratchet)
-		queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}`, SessionDetailResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.detail(id),
+			// oxlint-disable-next-line typescript/promise-function-async -- an async wrapper settles detail a tick after the transcript, splitting the session open into extra commits (client-session-open perf ratchet)
+			queryFn: () => apiFetch(`/api/sessions/${encodeURIComponent(id)}`, SessionDetailResponse),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
 export const sessionOpenInQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.openIn(id),
-		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/open-in`, SessionOpenInResponse),
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.openIn(id),
+			queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/open-in`, SessionOpenInResponse),
+		},
+	);
 
 /** Reveal the session's own directory in Finder; the server resolves the path from the index. */
-export async function openSessionInFinder(sessionId: string): Promise<unknown> {
-	return apiFetch("/api/open-in-finder", z.object({ok: z.literal(true)}).strict(), {
-		method: "POST",
-		headers: {"Content-Type": "application/json"},
-		body: JSON.stringify({sessionId}),
-	});
+export async function openSessionInFinder(sessionId: string): Promise<unknown>
+{
+	return apiFetch(
+		"/api/open-in-finder",
+		z
+			.object(
+				{
+					ok: z.literal(true),
+				},
+			)
+			.strict(),
+		{
+			method: "POST",
+			headers:
+			{
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(
+				{
+					sessionId,
+				},
+			),
+		},
+	);
 }
 
 /** The transcript's tail window, as the session page first loads it. */
-export async function fetchTranscriptTail(id: string): Promise<TranscriptData> {
+export async function fetchTranscriptTail(id: string): Promise<TranscriptData>
+{
 	return apiFetch(`/api/sessions/${encodeURIComponent(id)}/transcript`, TranscriptResponse);
 }
 
@@ -518,32 +650,36 @@ const transcriptReplacements = new WeakSet<object>();
  * page. `setQueryData` runs the query's `structuralSharing`, which would merge
  * the old window back in by index, so the replacement is marked for it to skip.
  */
-export function replaceTranscriptData(queryClient: QueryClient, id: string, data: TranscriptData): void {
+export function replaceTranscriptData(queryClient: QueryClient, id: string, data: TranscriptData): void
+{
 	transcriptReplacements.add(data);
 	queryClient.setQueryData(sessionQueryKeys.transcript(id), data);
 }
 
 export const transcriptQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.transcript(id),
-		queryFn: async () => fetchTranscriptTail(id),
-		structuralSharing: (oldData, newData) => {
-			const refreshed = TranscriptResponse.parse(newData);
-			if (oldData === undefined) return refreshed;
-			// The CLI rewrote the file below the cached window (upstream re-snapshots by uuid): nothing cached survives.
-			if (typeof newData === "object" && newData !== null && transcriptReplacements.has(newData))
-				return refreshed;
-			const cached = TranscriptResponse.parse(oldData);
-			// The chain forked or switched branch since the cached pages were
-			// served, so their hidden rows are stale: start again from the tail
-			// and let scrolling back fetch earlier pages anew (upstream
-			// `verify_rewind` → `fetchFullTranscript` + `retireEarlierTranscript`).
-			if (refreshed.chainVersion !== cached.chainVersion) return refreshed;
-			return mergeTranscriptData(refreshed, cached);
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.transcript(id),
+			queryFn: async () => fetchTranscriptTail(id),
+			structuralSharing: (oldData, newData) =>
+			{
+				const refreshed = TranscriptResponse.parse(newData);
+				if (oldData === undefined) return refreshed;
+				// The CLI rewrote the file below the cached window (upstream re-snapshots by uuid): nothing cached survives.
+				if (typeof newData === "object" && newData !== null && transcriptReplacements.has(newData))
+					return refreshed;
+				const cached = TranscriptResponse.parse(oldData);
+				// The chain forked or switched branch since the cached pages were
+				// served, so their hidden rows are stale: start again from the tail
+				// and let scrolling back fetch earlier pages anew (upstream
+				// `verify_rewind` → `fetchFullTranscript` + `retireEarlierTranscript`).
+				if (refreshed.chainVersion !== cached.chainVersion) return refreshed;
+				return mergeTranscriptData(refreshed, cached);
+			},
+			staleTime: Infinity,
+			gcTime: Infinity,
 		},
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	);
 
 /**
  * Whole-session file and link inventory, fetched only once a drawer wants it.
@@ -555,53 +691,63 @@ export const transcriptQueryOptions = (id: string) =>
  * nothing -- the refetch happens when it is next open.
  */
 export const sessionResourcesQueryOptions = (id: string, enabled: boolean) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.resources(id),
-		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/resources`, SessionResourcesResponse),
-		enabled,
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.resources(id),
+			queryFn: async () =>
+				apiFetch(`/api/sessions/${encodeURIComponent(id)}/resources`, SessionResourcesResponse),
+			enabled,
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
 /**
  * The whole session's API request log (CLI 2.1.300+), fetched only once a
  * Request disclosure opens. Appended api-request records invalidate it.
  */
 export const sessionApiRequestsQueryOptions = (id: string, enabled: boolean) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.apiRequests(id),
-		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/api-requests`, ApiRequestLogSchema),
-		enabled,
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.apiRequests(id),
+			queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/api-requests`, ApiRequestLogSchema),
+			enabled,
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
 /**
  * The messages one API request appended (its tail), fetched only once the
  * Request disclosure's Messages section opens. Immutable once logged.
  */
 export const sessionApiRequestMessagesQueryOptions = (id: string, requestId: string) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.apiRequestMessages(id, requestId),
-		queryFn: async () =>
-			apiFetch(
-				`/api/sessions/${encodeURIComponent(id)}/api-requests/${encodeURIComponent(requestId)}`,
-				ApiRequestMessagesSchema,
-			),
-		staleTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.apiRequestMessages(id, requestId),
+			queryFn: async () =>
+				apiFetch(
+					`/api/sessions/${encodeURIComponent(id)}/api-requests/${encodeURIComponent(requestId)}`,
+					ApiRequestMessagesSchema,
+				),
+			staleTime: Infinity,
+		},
+	);
 
 /**
  * "Open dev server" links for the Links pane, fetched only while it is open.
  * Liveness goes stale quickly, so each opening re-probes.
  */
 export const sessionDevServersQueryOptions = (id: string, enabled: boolean) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.devServers(id),
-		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/dev-servers`, SessionDevServersResponse),
-		enabled,
-		staleTime: 0,
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.devServers(id),
+			queryFn: async () =>
+				apiFetch(`/api/sessions/${encodeURIComponent(id)}/dev-servers`, SessionDevServersResponse),
+			enabled,
+			staleTime: 0,
+		},
+	);
 
 /**
  * Pages already on the wire, keyed by session and by the window edge they were
@@ -613,7 +759,8 @@ export const sessionDevServersQueryOptions = (id: string, enabled: boolean) =>
  */
 const earlierTranscriptRequests = new WeakMap<QueryClient, Map<string, Promise<void>>>();
 
-function inFlightEarlierPages(queryClient: QueryClient): Map<string, Promise<void>> {
+function inFlightEarlierPages(queryClient: QueryClient): Map<string, Promise<void>>
+{
 	const existing = earlierTranscriptRequests.get(queryClient);
 	if (existing) return existing;
 	const created = new Map<string, Promise<void>>();
@@ -628,7 +775,8 @@ function inFlightEarlierPages(queryClient: QueryClient): Map<string, Promise<voi
  * overlap on the same page share one request; each landed page moves the
  * window, so the next call is a fresh request for the page before it.
  */
-export async function fetchEarlierTranscript(queryClient: QueryClient, sessionId: string): Promise<void> {
+export async function fetchEarlierTranscript(queryClient: QueryClient, sessionId: string): Promise<void>
+{
 	const queryKey = sessionQueryKeys.transcript(sessionId);
 	const cached = queryClient.getQueryData<TranscriptData>(queryKey);
 	if (!cached || cached.startIndex === 0) return Promise.resolve();
@@ -643,130 +791,207 @@ export async function fetchEarlierTranscript(queryClient: QueryClient, sessionId
 		`/api/sessions/${encodeURIComponent(sessionId)}/transcript?before=${before}`,
 		TranscriptResponse,
 	)
-		.then((page): "merged" | "chain-changed" | "page-newer" => {
+		.then((page): "merged" | "chain-changed" | "page-newer" =>
+		{
 			const current = queryClient.getQueryData<TranscriptData>(queryKey);
 			if (current && current.chainVersion !== cached.chainVersion) return "chain-changed";
 			if (page.chainVersion !== cached.chainVersion) return "page-newer";
 			queryClient.setQueryData<TranscriptData>(queryKey, (old) => (old ? mergeTranscriptData(old, page) : page));
 			return "merged";
 		})
-		.finally(() => {
+		.finally(() =>
+		{
 			inFlight.delete(key);
 		})
-		.then(async (outcome) => {
+		.then(async (outcome) =>
+		{
 			// A page cut under a different chain than the cache's carries the
 			// wrong hidden rows, so it is dropped (upstream `discarded_in_flight`).
 			// When the cache already moved to the new chain, page back from its
 			// new window; when only the server has, refetch the tail so the cache
 			// catches up and scrolling pages again from there.
 			if (outcome === "chain-changed") await fetchEarlierTranscript(queryClient, sessionId);
-			if (outcome === "page-newer") await queryClient.invalidateQueries({queryKey});
+			if (outcome === "page-newer")
+				await queryClient.invalidateQueries(
+					{
+						queryKey,
+					},
+				);
 		});
 	inFlight.set(key, request);
 	return request;
 }
 
-const SessionSubagentSchema = z.object({
-	id: z.string(),
-	sessionId: z.string(),
-	projectId: z.string(),
-	parentAgentId: z.string().nullable(),
-	agentType: z.string().nullable(),
-	attributionAgent: z.string().nullable(),
-	slug: z.string().nullable(),
-	description: z.string().nullable(),
-	model: z.string().nullable(),
-	startedAt: z.string().nullable(),
-	finishedAt: z.string().nullable(),
-	slowCommands: z.array(SlowCommandSchema).optional(),
-	taskKind: z.string().nullish(),
-	name: z.string().nullish(),
-	stopped: z.literal(true).optional(),
-	pendingCommand: z.string().nullish(),
-	idle: z.boolean().optional(),
-	workflowRunId: z.string().nullish(),
-	workflowPhase: z.string().nullish(),
-	workflowPhaseIndex: z.number().nullish(),
-	workflowState: z.enum(["done", "failed", "running", "ended"]).optional(),
-	workflowAttempt: z.enum(["final", "superseded"]).optional(),
-});
+const SessionSubagentSchema = z.object(
+	{
+		id: z.string(),
+		sessionId: z.string(),
+		projectId: z.string(),
+		parentAgentId: z.string().nullable(),
+		agentType: z.string().nullable(),
+		attributionAgent: z.string().nullable(),
+		slug: z.string().nullable(),
+		description: z.string().nullable(),
+		model: z.string().nullable(),
+		startedAt: z.string().nullable(),
+		finishedAt: z.string().nullable(),
+		slowCommands: z.array(SlowCommandSchema).optional(),
+		taskKind: z.string().nullish(),
+		name: z.string().nullish(),
+		stopped: z.literal(true).optional(),
+		pendingCommand: z.string().nullish(),
+		idle: z.boolean().optional(),
+		workflowRunId: z.string().nullish(),
+		workflowPhase: z.string().nullish(),
+		workflowPhaseIndex: z.number().nullish(),
+		workflowState: z.enum(["done", "failed", "running", "ended"]).optional(),
+		workflowAttempt: z.enum(["final", "superseded"]).optional(),
+	},
+);
 export const SessionSubagentsResponse = z.array(SessionSubagentSchema);
 export type SessionSubagentsData = z.infer<typeof SessionSubagentsResponse>;
 
 export const sessionSubagentsQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.subagents(id),
-		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/subagents`, SessionSubagentsResponse),
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.subagents(id),
+			queryFn: async () =>
+				apiFetch(`/api/sessions/${encodeURIComponent(id)}/subagents`, SessionSubagentsResponse),
+			staleTime: Infinity,
+			gcTime: Infinity,
+		},
+	);
 
 export type {SessionWorkflowRun} from "./session-workflow-runs";
 
 /** The response schema loads with the first fetch, so pages without workflows never download it. */
 export const sessionWorkflowRunsQueryOptions = (id: string) =>
-	queryOptions({
-		queryKey: sessionQueryKeys.workflows(id),
-		queryFn: async () => {
-			const {SessionWorkflowRunsResponse} = await import("./session-workflow-runs");
-			return apiFetch(`/api/sessions/${encodeURIComponent(id)}/workflows`, SessionWorkflowRunsResponse);
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.workflows(id),
+			queryFn: async () =>
+			{
+				const {SessionWorkflowRunsResponse} = await import("./session-workflow-runs");
+				return apiFetch(`/api/sessions/${encodeURIComponent(id)}/workflows`, SessionWorkflowRunsResponse);
+			},
+			staleTime: Infinity,
+			gcTime: Infinity,
 		},
-		staleTime: Infinity,
-		gcTime: Infinity,
-	});
+	);
 
-export const ArchivedMutationResponse = z.object({archived: z.boolean()});
+export const ArchivedMutationResponse = z.object(
+	{
+		archived: z.boolean(),
+	},
+);
 
 /** Set or clear the app-side archive flag, then refetch every list and the session's detail. */
-export async function requestSessionArchived(qc: QueryClient, sessionId: string, archived: boolean): Promise<void> {
-	await apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/archived`, ArchivedMutationResponse, {
-		method: archived ? "PUT" : "DELETE",
-	});
+export async function requestSessionArchived(qc: QueryClient, sessionId: string, archived: boolean): Promise<void>
+{
+	await apiFetch(
+		`/api/sessions/${encodeURIComponent(sessionId)}/archived`,
+		ArchivedMutationResponse,
+		{
+			method: archived ? "PUT" : "DELETE",
+		},
+	);
 	for (const queryKey of [
 		sessionQueryKeys.all(),
 		sessionQueryKeys.recentLists(),
 		sessionQueryKeys.groupedLists(),
 		sessionQueryKeys.activeLists(),
-	]) {
-		void qc.invalidateQueries({queryKey});
+	])
+	{
+		void qc.invalidateQueries(
+			{
+				queryKey,
+			},
+		);
 	}
 }
-export const RenameSessionBody = z.object({title: z.string()}).strict();
-const RenameSessionResponse = z.object({customTitle: z.string().nullable(), title: z.string()}).strict();
-export const useRenameSessionMutation = (sessionId: string) => {
-	const qc = useQueryClient();
-	return useMutation({
-		mutationFn: async (title: string) =>
-			apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/title`, RenameSessionResponse, {
-				method: "PUT",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({title}),
-			}),
-		onSuccess: () => {
-			for (const queryKey of [
-				sessionQueryKeys.all(),
-				sessionQueryKeys.recentLists(),
-				sessionQueryKeys.groupedLists(),
-				sessionQueryKeys.activeLists(),
-			]) {
-				void qc.invalidateQueries({queryKey});
-			}
+export const RenameSessionBody = z
+	.object(
+		{
+			title: z.string(),
 		},
-	});
+	)
+	.strict();
+const RenameSessionResponse = z
+	.object(
+		{
+			customTitle: z.string().nullable(),
+			title: z.string(),
+		},
+	)
+	.strict();
+export const useRenameSessionMutation = (sessionId: string) =>
+{
+	const qc = useQueryClient();
+	return useMutation(
+		{
+			mutationFn: async (title: string) =>
+				apiFetch(
+					`/api/sessions/${encodeURIComponent(sessionId)}/title`,
+					RenameSessionResponse,
+					{
+						method: "PUT",
+						headers:
+						{
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(
+							{
+								title,
+							},
+						),
+					},
+				),
+			onSuccess: () =>
+			{
+				for (const queryKey of [
+					sessionQueryKeys.all(),
+					sessionQueryKeys.recentLists(),
+					sessionQueryKeys.groupedLists(),
+					sessionQueryKeys.activeLists(),
+				])
+				{
+					void qc.invalidateQueries(
+						{
+							queryKey,
+						},
+					);
+				}
+			},
+		},
+	);
 };
 
-export const SummaryMutationResponse = z.object({
-	summary: z.string().nullable(),
-});
-export const useRequestSummary = (sessionId: string) => {
+export const SummaryMutationResponse = z.object(
+	{
+		summary: z.string().nullable(),
+	},
+);
+export const useRequestSummary = (sessionId: string) =>
+{
 	const qc = useQueryClient();
-	return useMutation({
-		mutationFn: async () =>
-			apiFetch(`/api/sessions/${encodeURIComponent(sessionId)}/summary`, SummaryMutationResponse, {
-				method: "POST",
-			}),
-		onSuccess: () => {
-			void qc.invalidateQueries({queryKey: sessionQueryKeys.detail(sessionId)});
+	return useMutation(
+		{
+			mutationFn: async () =>
+				apiFetch(
+					`/api/sessions/${encodeURIComponent(sessionId)}/summary`,
+					SummaryMutationResponse,
+					{
+						method: "POST",
+					},
+				),
+			onSuccess: () =>
+			{
+				void qc.invalidateQueries(
+					{
+						queryKey: sessionQueryKeys.detail(sessionId),
+					},
+				);
+			},
 		},
-	});
+	);
 };

@@ -14,14 +14,18 @@ type SummariesDb = BetterSQLite3Database<typeof schema>;
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
 const MAX_CHARS = 150_000;
 
-function extractText(msg: Record<string, unknown>): string | null {
+function extractText(msg: Record<string, unknown>): string | null
+{
 	const content = asRecord(msg["message"])?.["content"];
 	if (!content) return null;
 	if (typeof content === "string") return content;
-	if (Array.isArray(content)) {
+	if (Array.isArray(content))
+	{
 		const texts: string[] = [];
-		for (const block of content) {
-			if (isRecord(block) && block["type"] === "text" && typeof block["text"] === "string") {
+		for (const block of content)
+		{
+			if (isRecord(block) && block["type"] === "text" && typeof block["text"] === "string")
+			{
 				texts.push(block["text"]);
 			}
 		}
@@ -30,67 +34,114 @@ function extractText(msg: Record<string, unknown>): string | null {
 	return null;
 }
 
-async function readSessionMessages(sessionId: string): Promise<{
-	messages: Array<{role: string; text: string}>;
+async function readSessionMessages(sessionId: string): Promise<
+{
+	messages: Array<
+	{
+		role: string;
+		text: string;
+	}>;
 	lastMessageId: string | null;
-} | null> {
+} | null>
+{
 	let projectDirs: string[];
-	try {
+	try
+	{
 		projectDirs = await readdir(PROJECTS_DIR);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 
 	const filename = `${sessionId}.jsonl`;
 	let filePath: string | null = null;
 
-	for (const dir of projectDirs) {
+	for (const dir of projectDirs)
+	{
 		const candidate = join(PROJECTS_DIR, dir, filename);
-		try {
+		try
+		{
 			await stat(candidate);
 			filePath = candidate;
 			break;
-		} catch {
+		}
+		catch
+		{
 			// not here
 		}
 	}
 
 	if (!filePath) return null;
 
-	const messages: Array<{role: string; text: string}> = [];
+	const messages: Array<
+	{
+		role: string;
+		text: string;
+	}> = [];
 	let lastMessageId: string | null = null;
 
-	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
+	const rl = createLineReader(
+		createReadStream(
+			filePath,
+			{
+				encoding: "utf-8",
+			},
+		),
+	);
 
-	try {
-		for await (const line of rl) {
+	try
+	{
+		for await (const line of rl)
+		{
 			if (!line.trim()) continue;
-			try {
+			try
+			{
 				const obj: unknown = JSON.parse(line);
 				if (!isRecord(obj)) continue;
 				const type = obj["type"];
 				if (type !== "user" && type !== "assistant") continue;
 				const text = extractText(obj);
 				if (!text) continue;
-				messages.push({role: type, text});
+				messages.push(
+					{
+						role: type,
+						text,
+					},
+				);
 				if (typeof obj["uuid"] === "string" && obj["uuid"]) lastMessageId = obj["uuid"];
-			} catch {
+			}
+			catch
+			{
 				// skip
 			}
 		}
-	} finally {
+	}
+	finally
+	{
 		await rl.close();
 	}
 
-	return {messages, lastMessageId};
+	return {
+		messages,
+		lastMessageId,
+	};
 }
 
-function serializeForSummary(messages: Array<{role: string; text: string}>): string {
+function serializeForSummary(
+	messages: Array<
+	{
+		role: string;
+		text: string;
+	}>,
+): string
+{
 	if (messages.length === 0) return "";
 
 	const totalLen = messages.reduce((sum, m) => sum + m.text.length, 0);
 
-	if (totalLen <= MAX_CHARS) {
+	if (totalLen <= MAX_CHARS)
+	{
 		return messages.map((m) => `[${m.role}]\n${m.text}`).join("\n\n");
 	}
 
@@ -107,7 +158,8 @@ function serializeForSummary(messages: Array<{role: string; text: string}>): str
 	];
 
 	let result = parts.join("\n\n");
-	if (result.length > MAX_CHARS) {
+	if (result.length > MAX_CHARS)
+	{
 		result = result.slice(0, MAX_CHARS) + "\n[truncated]";
 	}
 	return result;
@@ -139,12 +191,14 @@ const BACKGROUND_ARGS = [
 	BACKGROUND_SYSTEM_PROMPT,
 ];
 
-function firstLine(text: string): string {
+function firstLine(text: string): string
+{
 	return text.trim().split("\n", 1)[0] ?? "";
 }
 
 /** A background failure as one log line: the error message's first line. */
-export function errorLine(err: unknown): string {
+export function errorLine(err: unknown): string
+{
 	return firstLine(err instanceof Error ? err.message : String(err));
 }
 
@@ -152,19 +206,28 @@ export function errorLine(err: unknown): string {
  * Run a one-shot haiku prompt isolated from the user's Claude Code config (see BACKGROUND_ARGS), with CLAUDE.md and
  * auto-memory disabled and a neutral working directory. Keeps OAuth/keychain auth, which `--bare` would drop.
  */
-export async function runClaude(prompt: string): Promise<string> {
-	return new Promise((resolve, reject) => {
+export async function runClaude(prompt: string): Promise<string>
+{
+	return new Promise((resolve, reject) =>
+	{
 		const child = execFile(
 			"claude",
 			BACKGROUND_ARGS,
 			{
 				cwd: tmpdir(),
-				env: {...process.env, CLAUDE_CODE_DISABLE_CLAUDE_MDS: "1", CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1"},
+				env:
+				{
+					...process.env,
+					CLAUDE_CODE_DISABLE_CLAUDE_MDS: "1",
+					CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1",
+				},
 				maxBuffer: 1024 * 1024,
 				timeout: 60_000,
 			},
-			(error, stdout, stderr) => {
-				if (error) {
+			(error, stdout, stderr) =>
+			{
+				if (error)
+				{
 					const detail = firstLine(stderr);
 					reject(new Error(`claude CLI failed: ${firstLine(error.message)}${detail ? `: ${detail}` : ""}`));
 					return;
@@ -179,11 +242,13 @@ export async function runClaude(prompt: string): Promise<string> {
 
 let generating = false;
 
-export async function generateSummary(summariesDb: SummariesDb, sessionId: string): Promise<string | null> {
+export async function generateSummary(summariesDb: SummariesDb, sessionId: string): Promise<string | null>
+{
 	if (generating) return null;
 	generating = true;
 
-	try {
+	try
+	{
 		const data = await readSessionMessages(sessionId);
 		if (!data || data.messages.length === 0) return null;
 
@@ -195,29 +260,37 @@ export async function generateSummary(summariesDb: SummariesDb, sessionId: strin
 
 		summariesDb
 			.insert(schema.summaries)
-			.values({
-				sessionId,
-				lastMessageId: data.lastMessageId ?? "unknown",
-				summary,
-				generatedAt: Date.now(),
-			})
-			.onConflictDoUpdate({
-				target: schema.summaries.sessionId,
-				set: {
+			.values(
+				{
+					sessionId,
 					lastMessageId: data.lastMessageId ?? "unknown",
 					summary,
 					generatedAt: Date.now(),
 				},
-			})
+			)
+			.onConflictDoUpdate(
+				{
+					target: schema.summaries.sessionId,
+					set:
+					{
+						lastMessageId: data.lastMessageId ?? "unknown",
+						summary,
+						generatedAt: Date.now(),
+					},
+				},
+			)
 			.run();
 
 		return summary;
-	} finally {
+	}
+	finally
+	{
 		generating = false;
 	}
 }
 
-export function getSummary(summariesDb: SummariesDb, sessionId: string): string | null {
+export function getSummary(summariesDb: SummariesDb, sessionId: string): string | null
+{
 	const row = summariesDb.select().from(schema.summaries).where(eq(schema.summaries.sessionId, sessionId)).get();
 	return row?.summary ?? null;
 }

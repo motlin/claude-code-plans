@@ -8,15 +8,24 @@ import {pluginInstallCommand} from "./plugin-view";
 import {useToggleWithToast} from "./use-toggle-with-toast";
 
 /** Enable/Disable for one installed plugin, written to `enabledPlugins[id]`. */
-export function PluginEnableMenuItem({pluginId, name}: {pluginId: string; name: string}) {
+export function PluginEnableMenuItem({pluginId, name}: {pluginId: string; name: string})
+{
 	const {data: state} = useQuery(customizeSettingsTogglesQueryOptions);
 	const toggle = useToggleWithToast();
 	const enabled = state === undefined || isPluginEnabled(state, pluginId);
 	return (
 		<MenuItem
 			disabled={state === undefined}
-			onSelect={() => {
-				toggle({kind: "plugin", id: pluginId, enabled: !enabled}, name);
+			onSelect={() =>
+			{
+				toggle(
+					{
+						kind: "plugin",
+						id: pluginId,
+						enabled: !enabled,
+					},
+					name,
+				);
 			}}
 		>
 			{enabled ? "Disable" : "Enable"}
@@ -40,11 +49,25 @@ export function PluginRowActions({
 	installPath: string;
 	/** Rows say "More actions for <name>"; the detail header says "More options for <name>". */
 	triggerLabel?: string;
-}) {
+})
+{
 	const toast = useToast();
-	const copy = async (text: string, message: string) => {
+	const copy = async (text: string, message: string) =>
+	{
 		const copied = await writeClipboardText(text);
-		toast(copied ? {kind: "success", message} : {kind: "error", message: "Copy failed"});
+		toast(
+			copied
+				?
+					{
+						kind: "success",
+						message,
+					}
+				:
+					{
+						kind: "error",
+						message: "Copy failed",
+					},
+		);
 	};
 
 	return (

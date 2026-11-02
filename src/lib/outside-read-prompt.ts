@@ -15,7 +15,8 @@ export type PermissionDialogKind = "generic" | "outsideReadFirstPrompt";
 const OUTSIDE_READ_TOOLS: ReadonlySet<string> = new Set(["Read", "Grep", "Glob"]);
 
 /** Everything the hook shows of the first-prompt dialog, before the global flag is checked. */
-function looksLikeOutsideReadFirstPrompt(request: PendingPermissionRequest): boolean {
+function looksLikeOutsideReadFirstPrompt(request: PendingPermissionRequest): boolean
+{
 	if (request.permissionMode !== "auto" || !OUTSIDE_READ_TOOLS.has(request.toolName)) return false;
 	if (request.suggestions.length !== 1) return false;
 	const [suggestion] = request.suggestions;
@@ -31,20 +32,26 @@ function looksLikeOutsideReadFirstPrompt(request: PendingPermissionRequest): boo
 }
 
 /** Whether the pending dialog is auto mode's first outside-read prompt rather than the ordinary one. */
-export function isOutsideReadFirstPrompt(request: PendingPermissionRequest, hasSeenPrompt: boolean): boolean {
+export function isOutsideReadFirstPrompt(request: PendingPermissionRequest, hasSeenPrompt: boolean): boolean
+{
 	return !hasSeenPrompt && looksLikeOutsideReadFirstPrompt(request);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown>
+{
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** Whether `<configDir>/.claude.json` says the CLI already showed the prompt; false when it can't be read. */
-export async function readHasSeenOutsideReadPrompt(configDir: string): Promise<boolean> {
-	try {
+export async function readHasSeenOutsideReadPrompt(configDir: string): Promise<boolean>
+{
+	try
+	{
 		const raw: unknown = JSON.parse(await readFile(join(configDir, ".claude.json"), "utf-8"));
 		return isRecord(raw) && raw["hasSeenAutoModeOutsideReadPrompt"] === true;
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
@@ -59,7 +66,8 @@ export async function outsideReadDialogKind(
 	claudeEnv: Readonly<Record<string, string>>,
 	readHasSeen: (configDir: string) => Promise<boolean> = readHasSeenOutsideReadPrompt,
 	home: string = homedir(),
-): Promise<PermissionDialogKind> {
+): Promise<PermissionDialogKind>
+{
 	if (request === undefined || !looksLikeOutsideReadFirstPrompt(request)) return "generic";
 	const hasSeen = await readHasSeen(claudeEnv["CLAUDE_CONFIG_DIR"] ?? home);
 	return isOutsideReadFirstPrompt(request, hasSeen) ? "outsideReadFirstPrompt" : "generic";

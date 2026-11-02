@@ -4,14 +4,16 @@ import {toggleUserChapterAt} from "../lib/chapter-store";
 import {FORK_NO_DIRECTORY_REASON} from "../lib/session-fork";
 import type {SessionLine} from "../lib/transcript";
 import {chapterFor, forkPointFor} from "../lib/transcript-action-targets";
-import {
+import
+{
 	type TranscriptActions,
 	TranscriptActionsContext,
 	type TranscriptMessageRef,
 } from "./transcript-actions-context";
 import {useToast} from "./toast-context";
 
-export interface TranscriptActionsProviderProps {
+export interface TranscriptActionsProviderProps
+{
 	sessionId: string;
 	/** The transcript lines on the page, which resolve a message's fork point and chapter label. */
 	lines: readonly SessionLine[];
@@ -43,42 +45,95 @@ export function TranscriptActionsProvider({
 	working = false,
 	archived = false,
 	children,
-}: TranscriptActionsProviderProps) {
+}: TranscriptActionsProviderProps)
+{
 	const toast = useToast();
 	// Read through a ref so the context value, and every toolbar under it, stays put as lines grow.
-	const latest = useRef({lines, rewind, fork});
-	useEffect(() => {
-		latest.current = {lines, rewind, fork};
+	const latest = useRef(
+		{
+			lines,
+			rewind,
+			fork,
+		},
+	);
+	useEffect(() =>
+	{
+		latest.current =
+		{
+			lines,
+			rewind,
+			fork,
+		};
 	});
 	const canFork = fork !== undefined;
 
-	const actions = useMemo<TranscriptActions>(() => {
-		const pinChapter = (message: TranscriptMessageRef) => {
+	const actions = useMemo<TranscriptActions>(() =>
+	{
+		const pinChapter = (message: TranscriptMessageRef) =>
+		{
 			const chapter = chapterFor(latest.current.lines, message.uuid);
 			if (chapter !== null)
 				toggleUserChapterAt(message.sessionId, chapter.afterId, chapter.title, chapter.recordIndex);
 		};
-		const rewindTo = (message: TranscriptMessageRef) => {
-			if (message.sessionId !== sessionId) {
-				toast({kind: "error", message: "Can’t rewind to this message."});
+		const rewindTo = (message: TranscriptMessageRef) =>
+		{
+			if (message.sessionId !== sessionId)
+			{
+				toast(
+					{
+						kind: "error",
+						message: "Can’t rewind to this message.",
+					},
+				);
 				return;
 			}
 			latest.current.rewind(message.uuid);
 		};
 		const rewindActions = archived
-			? {rewindHidden: true}
+			?
+				{
+					rewindHidden: true,
+				}
 			: working
-				? {rewindTo, rewindDisabledReason: REWIND_WORKING_REASON}
-				: {rewindTo};
-		if (!canFork) return {pinChapter, ...rewindActions, forkDisabledReason: FORK_NO_DIRECTORY_REASON};
-		const forkFrom = (message: TranscriptMessageRef) => {
-			if (message.sessionId !== sessionId) {
-				toast({kind: "error", message: "Only this session's own messages can be forked."});
+				?
+					{
+						rewindTo,
+						rewindDisabledReason: REWIND_WORKING_REASON,
+					}
+				:
+					{
+						rewindTo,
+					};
+		if (!canFork)
+			return {
+				pinChapter,
+				...rewindActions,
+				forkDisabledReason: FORK_NO_DIRECTORY_REASON,
+			};
+		const forkFrom = (message: TranscriptMessageRef) =>
+		{
+			if (message.sessionId !== sessionId)
+			{
+				toast(
+					{
+						kind: "error",
+						message: "Only this session's own messages can be forked.",
+					},
+				);
 				return;
 			}
-			latest.current.fork?.({sessionId, atMessage: forkPointFor(latest.current.lines, message.uuid)});
+			latest.current.fork?.(
+				{
+					sessionId,
+					atMessage: forkPointFor(latest.current.lines, message.uuid),
+				},
+			);
 		};
-		return {pinChapter, ...rewindActions, forkFrom};
+		return {
+			pinChapter,
+			...rewindActions,
+			forkFrom,
+		};
 	}, [archived, canFork, sessionId, toast, working]);
 
 	return <TranscriptActionsContext.Provider value={actions}>{children}</TranscriptActionsContext.Provider>;

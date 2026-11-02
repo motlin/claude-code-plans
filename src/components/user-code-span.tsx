@@ -5,7 +5,10 @@ import {FileRefsContext} from "./file-refs-context";
 import {PlainUserCode} from "./plain-user-code";
 
 const LinkedUserCode = lazy(async () =>
-	import("./linked-user-code").then((module) => ({default: module.LinkedUserCode})),
+	import("./linked-user-code").then((module) => (
+	{
+		default: module.LinkedUserCode,
+	})),
 );
 
 /**
@@ -14,7 +17,8 @@ const LinkedUserCode = lazy(async () =>
  * file link drawn as an underlined code chip; a nonInteractive (pending) row,
  * or a span naming no file, stays plain code.
  */
-export function UserCodeSpan({text, nonInteractive = false}: {text: string; nonInteractive?: boolean}) {
+export function UserCodeSpan({text, nonInteractive = false}: {text: string; nonInteractive?: boolean})
+{
 	const context = useContext(FileRefsContext);
 	if (nonInteractive || context === null || parseFileRefText(text) === null) return <PlainUserCode text={text} />;
 	return (

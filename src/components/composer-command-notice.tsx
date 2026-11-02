@@ -7,7 +7,8 @@ export function ComposerCommandNotice({
 	name: string;
 	suggestion: string | null;
 	onUse: (command: string) => void;
-}) {
+})
+{
 	return (
 		<div
 			data-composer-command-notice
@@ -18,7 +19,8 @@ export function ComposerCommandNotice({
 				<button
 					type="button"
 					className="inline-flex h-5 items-center rounded-r5 bg-fill-secondary px-1.5 text-footnote text-primary shadow-field-drop hover:bg-fill-secondary-hover focus-visible:shadow-focus focus-visible:outline-hidden"
-					onClick={() => {
+					onClick={() =>
+					{
 						onUse(suggestion);
 					}}
 				>

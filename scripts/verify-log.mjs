@@ -29,14 +29,16 @@ const KEPT_LOGS = 20;
  * @param {string} log the combined output of a failed run
  * @returns {string[]} the lines that name what failed, or the last lines when none do
  */
-export function summarizeFailure(log) {
+export function summarizeFailure(log)
+{
 	const lines = stripVTControlCharacters(log).split("\n");
 	const recipes = lines.filter((line) => RECIPE_LINE.test(line));
 	const counts = lines.filter((line) => COUNT_LINE.test(line));
 	const failLines = lines.filter((line) => FAIL_LINE.test(line));
 	const failures =
 		failLines.length > 0 ? failLines : lines.filter((line) => DETAIL_LINES.some((pattern) => pattern.test(line)));
-	if (recipes.length + counts.length + failures.length === 0) {
+	if (recipes.length + counts.length + failures.length === 0)
+	{
 		return lines.filter((line) => line.trim() !== "").slice(-FALLBACK_LINES);
 	}
 	const omitted = failures.length - MAX_FAILURES;
@@ -45,30 +47,58 @@ export function summarizeFailure(log) {
 	return [...recipes, ...counts, ...shown];
 }
 
-function logDirectory() {
-	const commonDir = spawnSync("git", ["rev-parse", "--git-common-dir"], {encoding: "utf8"});
+function logDirectory()
+{
+	const commonDir = spawnSync(
+		"git",
+		["rev-parse", "--git-common-dir"],
+		{
+			encoding: "utf8",
+		},
+	);
 	const base = commonDir.status === 0 ? resolve(commonDir.stdout.trim()) : tmpdir();
 	const directory = join(base, "verify-logs");
-	mkdirSync(directory, {recursive: true});
+	mkdirSync(
+		directory,
+		{
+			recursive: true,
+		},
+	);
 	return directory;
 }
 
-function pruneLogs(directory) {
+function pruneLogs(directory)
+{
 	const logs = readdirSync(directory)
 		.filter((name) => name.endsWith(".log"))
 		.toSorted();
-	for (const name of logs.slice(0, -KEPT_LOGS)) {
-		rmSync(join(directory, name), {force: true});
+	for (const name of logs.slice(0, -KEPT_LOGS))
+	{
+		rmSync(
+			join(directory, name),
+			{
+				force: true,
+			},
+		);
 	}
 }
 
-function main(argv) {
+function main(argv)
+{
 	const [command, ...args] = argv;
-	if (command === undefined) {
+	if (command === undefined)
+	{
 		process.stderr.write("Usage: node scripts/verify-log.mjs <command> [args...]\n");
 		return Promise.resolve(2);
 	}
-	const head = spawnSync("git", ["rev-parse", "--short", "HEAD"], {encoding: "utf8"}).stdout?.trim() || "nohead";
+	const head =
+		spawnSync(
+			"git",
+			["rev-parse", "--short", "HEAD"],
+			{
+				encoding: "utf8",
+			},
+		).stdout?.trim() || "nohead";
 	const stamp = new Date().toISOString().replaceAll(/[:.]/gu, "-");
 	const directory = logDirectory();
 	const logPath = join(directory, `${stamp}-${basename(process.cwd())}-${head}.log`);
@@ -76,25 +106,37 @@ function main(argv) {
 	/** @type {string[]} */
 	const chunks = [];
 
-	const child = spawn(command, args, {stdio: ["inherit", "pipe", "pipe"]});
-	const forward = (/** @type {Buffer} */ chunk) => {
+	const child = spawn(
+		command,
+		args,
+		{
+			stdio: ["inherit", "pipe", "pipe"],
+		},
+	);
+	const forward = (/** @type {Buffer} */ chunk) =>
+	{
 		process.stdout.write(chunk);
 		log.write(chunk);
 		chunks.push(chunk.toString("utf8"));
 	};
 	child.stdout.on("data", forward);
 	child.stderr.on("data", forward);
-	for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+	for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"])
+	{
 		process.on(signal, () => child.kill(signal));
 	}
 
-	return new Promise((resolvePromise) => {
-		child.on("error", (error) => {
+	return new Promise((resolvePromise) =>
+	{
+		child.on("error", (error) =>
+		{
 			forward(Buffer.from(`verify-log: could not run ${command}: ${error.message}\n`));
 		});
-		child.on("close", (code, signal) => {
+		child.on("close", (code, signal) =>
+		{
 			const exitCode = code === null ? 128 : code < 0 ? 127 : code;
-			if (exitCode !== 0) {
+			if (exitCode !== 0)
+			{
 				const summary = summarizeFailure(chunks.join(""));
 				const reason = signal === null ? `exit code ${exitCode}` : `signal ${signal}`;
 				const text = [
@@ -107,7 +149,8 @@ function main(argv) {
 				process.stdout.write(text);
 				log.write(text);
 			}
-			log.end(() => {
+			log.end(() =>
+			{
 				pruneLogs(directory);
 				resolvePromise(exitCode);
 			});
@@ -115,6 +158,7 @@ function main(argv) {
 	});
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href)
+{
 	process.exitCode = await main(process.argv.slice(2));
 }

@@ -5,17 +5,27 @@ import {CommandDetailFrame} from "../components/customize/detail-frames";
 import {userCommandFileQueryOptions} from "../lib/api/plugins";
 import {fromMdSlug} from "../lib/md-slug";
 
-export const Route = createFileRoute("/customize_/skills/command/$source/$filename")({
-	component: CommandDetailPage,
-	loader: ({context: {queryClient}, params}) => {
-		void queryClient.query(userCommandFileQueryOptions(params.source, fromMdSlug(params.filename))).catch(noop);
+export const Route = createFileRoute("/customize_/skills/command/$source/$filename")(
+	{
+		component: CommandDetailPage,
+		loader: ({context: {queryClient}, params}) =>
+		{
+			void queryClient.query(userCommandFileQueryOptions(params.source, fromMdSlug(params.filename))).catch(noop);
+		},
+		head: () => (
+		{
+			meta: [pageTitle("Command · Customize")],
+		}),
+		staticData:
+		{
+			pageGutter: "tight",
+		},
 	},
-	head: () => ({meta: [pageTitle("Command · Customize")]}),
-	staticData: {pageGutter: "tight"},
-});
+);
 
 /** A custom command's detail page: header over its rendered markdown. */
-function CommandDetailPage() {
+function CommandDetailPage()
+{
 	const {source, filename} = Route.useParams();
 	return (
 		<div className="flex w-full flex-col bg-surface-1 text-body text-primary">

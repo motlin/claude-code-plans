@@ -10,7 +10,8 @@ const FAILED_COUNT = / \((\d+) failed\)/g;
  * one file with several verbs ("Read, edited, and created x.ts"), so splitting
  * on ", " counts the parts.
  */
-export function withTrailingFailedCount(text: string): string {
+export function withTrailingFailedCount(text: string): string
+{
 	const counts = [...text.matchAll(FAILED_COUNT)].map((match) => Number(match[1]));
 	if (counts.length === 0) return text;
 	const stripped = text.replaceAll(FAILED_COUNT, "");

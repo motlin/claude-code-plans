@@ -9,52 +9,105 @@ import {ArtifactRenderer} from "./artifact-renderer";
 import {FallbackRenderer, InvalidInputRenderer} from "./fallback-renderer";
 import {TaskChecklistRenderer} from "./task-checklist-renderer";
 
-const EditRenderer = lazy(async () => import("./edit-renderer").then((m) => ({default: m.EditRenderer})));
-const BashRenderer = lazy(async () => import("./bash-renderer").then((m) => ({default: m.BashRenderer})));
-const ReadRenderer = lazy(async () => import("./read-renderer").then((m) => ({default: m.ReadRenderer})));
-const WriteRenderer = lazy(async () => import("./write-renderer").then((m) => ({default: m.WriteRenderer})));
-const GlobRenderer = lazy(async () => import("./glob-renderer").then((m) => ({default: m.GlobRenderer})));
-const GrepRenderer = lazy(async () => import("./grep-renderer").then((m) => ({default: m.GrepRenderer})));
-const AgentRenderer = lazy(async () => import("./agent-renderer").then((m) => ({default: m.AgentRenderer})));
+const EditRenderer = lazy(async () =>
+	import("./edit-renderer").then((m) => (
+	{
+		default: m.EditRenderer,
+	})),
+);
+const BashRenderer = lazy(async () =>
+	import("./bash-renderer").then((m) => (
+	{
+		default: m.BashRenderer,
+	})),
+);
+const ReadRenderer = lazy(async () =>
+	import("./read-renderer").then((m) => (
+	{
+		default: m.ReadRenderer,
+	})),
+);
+const WriteRenderer = lazy(async () =>
+	import("./write-renderer").then((m) => (
+	{
+		default: m.WriteRenderer,
+	})),
+);
+const GlobRenderer = lazy(async () =>
+	import("./glob-renderer").then((m) => (
+	{
+		default: m.GlobRenderer,
+	})),
+);
+const GrepRenderer = lazy(async () =>
+	import("./grep-renderer").then((m) => (
+	{
+		default: m.GrepRenderer,
+	})),
+);
+const AgentRenderer = lazy(async () =>
+	import("./agent-renderer").then((m) => (
+	{
+		default: m.AgentRenderer,
+	})),
+);
 const ExitPlanModeRenderer = lazy(async () =>
-	import("./exit-plan-mode-renderer").then((m) => ({
+	import("./exit-plan-mode-renderer").then((m) => (
+	{
 		default: m.ExitPlanModeRenderer,
 	})),
 );
 const EnterPlanModeRenderer = lazy(async () =>
-	import("./enter-plan-mode-renderer").then((m) => ({
+	import("./enter-plan-mode-renderer").then((m) => (
+	{
 		default: m.EnterPlanModeRenderer,
 	})),
 );
 const WebSearchRenderer = lazy(async () =>
-	import("./web-search-renderer").then((m) => ({
+	import("./web-search-renderer").then((m) => (
+	{
 		default: m.WebSearchRenderer,
 	})),
 );
 const SendMessageRenderer = lazy(async () =>
-	import("./send-message-renderer").then((m) => ({
+	import("./send-message-renderer").then((m) => (
+	{
 		default: m.SendMessageRenderer,
 	})),
 );
 const CronCreateRenderer = lazy(async () =>
-	import("./cron-create-renderer").then((m) => ({
+	import("./cron-create-renderer").then((m) => (
+	{
 		default: m.CronCreateRenderer,
 	})),
 );
-const SkillRenderer = lazy(async () => import("./skill-renderer").then((m) => ({default: m.SkillRenderer})));
-const WebFetchRenderer = lazy(async () => import("./webfetch-renderer").then((m) => ({default: m.WebFetchRenderer})));
+const SkillRenderer = lazy(async () =>
+	import("./skill-renderer").then((m) => (
+	{
+		default: m.SkillRenderer,
+	})),
+);
+const WebFetchRenderer = lazy(async () =>
+	import("./webfetch-renderer").then((m) => (
+	{
+		default: m.WebFetchRenderer,
+	})),
+);
 const ToolSearchRenderer = lazy(async () =>
-	import("./tool-search-renderer").then((m) => ({
+	import("./tool-search-renderer").then((m) => (
+	{
 		default: m.ToolSearchRenderer,
 	})),
 );
 const ReportFindingsRenderer = lazy(async () =>
-	import("./report-findings-renderer").then((m) => ({
+	import("./report-findings-renderer").then((m) => (
+	{
 		default: m.ReportFindingsRenderer,
 	})),
 );
 
-const registry: Record<string, ComponentType<ToolRendererProps>> = {
+const registry: Record<string, ComponentType<ToolRendererProps>> =
+{
 	Edit: EditRenderer,
 	MultiEdit: EditRenderer,
 	Bash: BashRenderer,
@@ -83,8 +136,10 @@ const registry: Record<string, ComponentType<ToolRendererProps>> = {
 	__fallback__: FallbackRenderer,
 };
 
-export function getToolRenderer(name: string): ComponentType<ToolRendererProps> {
-	if (name.startsWith("mcp__")) {
+export function getToolRenderer(name: string): ComponentType<ToolRendererProps>
+{
+	if (name.startsWith("mcp__"))
+	{
 		const server = name.slice(5).split("__")[0];
 		if (server) return getMcpRenderer(server);
 		return FallbackRenderer;
@@ -93,7 +148,8 @@ export function getToolRenderer(name: string): ComponentType<ToolRendererProps> 
 }
 
 /** The renderer for one call: its tool's own, or the raw input when the input failed the tool's schema. */
-export function getCallRenderer(call: Pick<ClientToolCall, "name" | "invalidInput">): ComponentType<ToolRendererProps> {
+export function getCallRenderer(call: Pick<ClientToolCall, "name" | "invalidInput">): ComponentType<ToolRendererProps>
+{
 	return call.invalidInput === true ? InvalidInputRenderer : getToolRenderer(call.name);
 }
 

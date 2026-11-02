@@ -7,7 +7,8 @@ let customizeDialogPanelModule: TrackedPromise<CustomizeDialogPanelModule> | und
 
 /** Starts loading the Customize panel; the nav calls it on hover/focus so the first open needn't wait. */
 // oxlint-disable-next-line typescript/promise-function-async -- returns the one cached download, which use() needs to be stable
-export function preloadCustomizeDialogPanel(): Promise<CustomizeDialogPanelModule> {
+export function preloadCustomizeDialogPanel(): Promise<CustomizeDialogPanelModule>
+{
 	customizeDialogPanelModule ??= trackFulfillment(import("../customize/customize-dialog-panel"));
 	return customizeDialogPanelModule;
 }

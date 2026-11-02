@@ -1,14 +1,19 @@
 import {formatCount} from "../lib/pluralize";
 
-function formatDate(iso: string): string {
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-	});
+function formatDate(iso: string): string
+{
+	return new Date(iso).toLocaleDateString(
+		"en-US",
+		{
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+		},
+	);
 }
 
-interface ProjectCounts {
+interface ProjectCounts
+{
 	activeCount: number;
 	sessionCount: number;
 	planCount: number;
@@ -17,7 +22,8 @@ interface ProjectCounts {
 	lastActivity: string;
 }
 
-export function ProjectCardCounts({project}: {project: ProjectCounts}) {
+export function ProjectCardCounts({project}: {project: ProjectCounts})
+{
 	return (
 		<div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-t6">
 			{project.activeCount > 0 && (

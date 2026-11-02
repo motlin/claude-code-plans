@@ -20,209 +20,321 @@ const TIMEOUT_RESULT =
 const ANSWERED_RESULT =
 	'Your questions have been answered: "Which test runner?"="Vitest". You can now continue with these answers in mind.';
 
-function makeCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall {
+function makeCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall
+{
 	return {
 		id: "tool-auq-1",
 		name: "AskUserQuestion",
 		param: "",
 		sourceUuid: "uuid-1",
-		input: {
+		input:
+		{
 			question: "Which test runner?",
 			options: [
-				{label: "Vitest", description: "Vite-native"},
-				{label: "Jest", description: "Widely adopted"},
+				{
+					label: "Vitest",
+					description: "Vite-native",
+				},
+				{
+					label: "Jest",
+					description: "Widely adopted",
+				},
 			],
 		},
 		...overrides,
 	};
 }
 
-describe("AskUserQuestionRenderer", () => {
-	describe("step body for a withdrawn question (upstream's _d)", () => {
-		const ANIMAL = {
+describe("AskUserQuestionRenderer", () =>
+{
+	describe("step body for a withdrawn question (upstream's _d)", () =>
+	{
+		const ANIMAL =
+		{
 			questions: [
 				{
 					question: "Which animal do you prefer?",
 					header: "Animal",
-					options: [{label: "Cat"}, {label: "Dog"}],
+					options: [
+						{
+							label: "Cat",
+						},
+						{
+							label: "Dog",
+						},
+					],
 					multiSelect: false,
 				},
 			],
 		};
-		const FRUIT_AND_SIZE = {
+		const FRUIT_AND_SIZE =
+		{
 			questions: [
 				{
 					question: "Which fruit?",
 					header: "Fruit",
-					options: [{label: "Apple"}, {label: "Pear"}],
+					options: [
+						{
+							label: "Apple",
+						},
+						{
+							label: "Pear",
+						},
+					],
 					multiSelect: false,
 				},
 				{
 					question: "Which size?",
 					header: "Size",
-					options: [{label: "Small"}, {label: "Large"}],
+					options: [
+						{
+							label: "Small",
+						},
+						{
+							label: "Large",
+						},
+					],
 					multiSelect: false,
 				},
 			],
 		};
 
-		function outcomeList(call: ClientToolCall) {
+		function outcomeList(call: ClientToolCall)
+		{
 			const {container} = render(<AskUserQuestionRenderer toolCall={call} />);
 			const list = container.firstElementChild;
 			return {
 				listClass: list?.className,
-				items: [...(list?.children ?? [])].map((item) => ({
+				items: [...(list?.children ?? [])].map((item) => (
+				{
 					className: item.className,
-					lines: [...item.children].map((line) => ({className: line.className, text: line.textContent})),
+					lines: [...item.children].map((line) => (
+					{
+						className: line.className,
+						text: line.textContent,
+					})),
 				})),
 				badges: container.querySelectorAll(".size-\\[30px\\]").length,
 				cards: container.querySelectorAll(".card-outline").length,
 			};
 		}
 
-		it("lists a single stopped question alone, with no outcome line and no options card", () => {
+		it("lists a single stopped question alone, with no outcome line and no options card", () =>
+		{
 			expect(
 				outcomeList(
-					makeCall({
-						input: ANIMAL,
-						result: REJECTION_RESULT,
-						isError: true,
-						stopped: true,
-					}),
+					makeCall(
+						{
+							input: ANIMAL,
+							result: REJECTION_RESULT,
+							isError: true,
+							stopped: true,
+						},
+					),
 				),
-			).toStrictEqual({
-				listClass: "flex flex-col gap-3 pt-1",
-				items: [
-					{
-						className: "flex flex-col text-body [overflow-wrap:anywhere]",
-						lines: [{className: "text-secondary", text: "Which animal do you prefer?"}],
-					},
-				],
-				badges: 0,
-				cards: 0,
-			});
-		});
-
-		it("paints code in the question as upstream's chip and leaves a URL as plain text", () => {
-			const {container} = render(
-				<AskUserQuestionRenderer
-					toolCall={makeCall({
-						input: {
-							questions: [
+			).toStrictEqual(
+				{
+					listClass: "flex flex-col gap-3 pt-1",
+					items: [
+						{
+							className: "flex flex-col text-body [overflow-wrap:anywhere]",
+							lines: [
 								{
-									question: "See `docs/a.md` or https://example.com/a",
-									header: "Doc",
-									options: [{label: "Yes"}, {label: "No"}],
-									multiSelect: false,
+									className: "text-secondary",
+									text: "Which animal do you prefer?",
 								},
 							],
 						},
-						result: REJECTION_RESULT,
-						isError: true,
-						stopped: true,
-					})}
+					],
+					badges: 0,
+					cards: 0,
+				},
+			);
+		});
+
+		it("paints code in the question as upstream's chip and leaves a URL as plain text", () =>
+		{
+			const {container} = render(
+				<AskUserQuestionRenderer
+					toolCall={makeCall(
+						{
+							input:
+							{
+								questions: [
+									{
+										question: "See `docs/a.md` or https://example.com/a",
+										header: "Doc",
+										options: [
+											{
+												label: "Yes",
+											},
+											{
+												label: "No",
+											},
+										],
+										multiSelect: false,
+									},
+								],
+							},
+							result: REJECTION_RESULT,
+							isError: true,
+							stopped: true,
+						},
+					)}
 				/>,
 			);
 			const line = container.querySelector(".text-secondary")!;
 
-			expect({
-				codes: Array.from(line.querySelectorAll("code")).map((code) => ({
-					className: code.className,
-					text: code.textContent,
-				})),
-				links: line.querySelectorAll("a").length,
-				text: line.textContent,
-			}).toStrictEqual({
-				codes: [
+			expect(
+				{
+					codes: Array.from(line.querySelectorAll("code")).map((code) => (
 					{
-						className:
-							"rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal",
-						text: "docs/a.md",
-					},
-				],
-				links: 0,
-				text: "See docs/a.md or https://example.com/a",
-			});
+						className: code.className,
+						text: code.textContent,
+					})),
+					links: line.querySelectorAll("a").length,
+					text: line.textContent,
+				},
+			).toStrictEqual(
+				{
+					codes: [
+						{
+							className:
+								"rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal",
+							text: "docs/a.md",
+						},
+					],
+					links: 0,
+					text: "See docs/a.md or https://example.com/a",
+				},
+			);
 		});
 
-		it("masks a secret in the question as upstream's Asked row does (ME before its chip paint)", () => {
+		it("masks a secret in the question as upstream's Asked row does (ME before its chip paint)", () =>
+		{
 			const fakeToken = `ghp_${"A".repeat(36)}`;
 			const masked = `ghp_AAAA${"\u2022".repeat(32)}`;
 			const {container} = render(
 				<AskUserQuestionRenderer
-					toolCall={makeCall({
-						input: {
-							questions: [
-								{
-									question: `Rotate ${fakeToken} or \`${fakeToken}\`?`,
-									header: "Token",
-									options: [{label: "Yes"}, {label: "No"}],
-									multiSelect: false,
-								},
-							],
+					toolCall={makeCall(
+						{
+							input:
+							{
+								questions: [
+									{
+										question: `Rotate ${fakeToken} or \`${fakeToken}\`?`,
+										header: "Token",
+										options: [
+											{
+												label: "Yes",
+											},
+											{
+												label: "No",
+											},
+										],
+										multiSelect: false,
+									},
+								],
+							},
+							result: REJECTION_RESULT,
+							isError: true,
+							stopped: true,
 						},
-						result: REJECTION_RESULT,
-						isError: true,
-						stopped: true,
-					})}
+					)}
 				/>,
 			);
 			const line = container.querySelector(".text-secondary")!;
 
-			expect({
-				codes: Array.from(line.querySelectorAll("code")).map((code) => code.textContent),
-				text: line.textContent,
-			}).toStrictEqual({
-				codes: [masked],
-				text: `Rotate ${masked} or ${masked}?`,
-			});
+			expect(
+				{
+					codes: Array.from(line.querySelectorAll("code")).map((code) => code.textContent),
+					text: line.textContent,
+				},
+			).toStrictEqual(
+				{
+					codes: [masked],
+					text: `Rotate ${masked} or ${masked}?`,
+				},
+			);
 		});
 
-		it("shows a bidi override in the question and answer as upstream's u9(ME(text)) does", () => {
+		it("shows a bidi override in the question and answer as upstream's u9(ME(text)) does", () =>
+		{
 			const fakeToken = `ghp_${"A".repeat(36)}`;
 			const masked = `ghp_AAAA${"•".repeat(32)}`;
 			const rlo = String.fromCodePoint(0x202e);
 			const question = `Ship ${rlo}exe.txt?`;
 			expect(
 				outcomeList(
-					makeCall({
-						input: {
-							questions: [
+					makeCall(
+						{
+							input:
+							{
+								questions: [
+									{
+										question,
+										header: "Ship",
+										options: [
+											{
+												label: "Yes",
+											},
+											{
+												label: "No",
+											},
+										],
+										multiSelect: false,
+									},
+								],
+							},
+							result: REJECTION_RESULT,
+							resultMeta:
+							{
+								answers:
 								{
-									question,
-									header: "Ship",
-									options: [{label: "Yes"}, {label: "No"}],
-									multiSelect: false,
+									[question]:
+									{
+										answer: `${rlo}ok ${fakeToken}`,
+										notes: null,
+									},
 								},
-							],
+							},
+							isError: true,
+							stopped: true,
 						},
-						result: REJECTION_RESULT,
-						resultMeta: {answers: {[question]: {answer: `${rlo}ok ${fakeToken}`, notes: null}}},
-						isError: true,
-						stopped: true,
-					}),
+					),
 				).items.map((item) => item.lines.map((line) => line.text)),
 			).toStrictEqual([["Ship [U+202E]exe.txt?", `[U+202E]ok ${masked}`]]);
 		});
 
-		it("draws **text** in the question as upstream's strong.font-medium around its chips, never inside a code span", () => {
+		it("draws **text** in the question as upstream's strong.font-medium around its chips, never inside a code span", () =>
+		{
 			const {container} = render(
 				<AskUserQuestionRenderer
-					toolCall={makeCall({
-						input: {
-							questions: [
-								{
-									question: "Pick **one `cmd` only** of `a**b**` or x**y**",
-									header: "Pick",
-									options: [{label: "Yes"}, {label: "No"}],
-									multiSelect: false,
-								},
-							],
+					toolCall={makeCall(
+						{
+							input:
+							{
+								questions: [
+									{
+										question: "Pick **one `cmd` only** of `a**b**` or x**y**",
+										header: "Pick",
+										options: [
+											{
+												label: "Yes",
+											},
+											{
+												label: "No",
+											},
+										],
+										multiSelect: false,
+									},
+								],
+							},
+							result: REJECTION_RESULT,
+							isError: true,
+							stopped: true,
 						},
-						result: REJECTION_RESULT,
-						isError: true,
-						stopped: true,
-					})}
+					)}
 				/>,
 			);
 			const chip = `<code dir="ltr" class="rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal">`;
@@ -232,111 +344,181 @@ describe("AskUserQuestionRenderer", () => {
 			);
 		});
 
-		it("prints Skipped under each question of an all-[No preference] call", () => {
+		it("prints Skipped under each question of an all-[No preference] call", () =>
+		{
 			expect(
 				outcomeList(
-					makeCall({
-						input: FRUIT_AND_SIZE,
-						result: 'The user answered: "Which fruit?"="[No preference]", "Which size?"="[No preference]". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.',
-						resultMeta: {
-							answers: {
-								"Which fruit?": {answer: "[No preference]", notes: null},
-								"Which size?": {answer: "[No preference]", notes: null},
+					makeCall(
+						{
+							input: FRUIT_AND_SIZE,
+							result: 'The user answered: "Which fruit?"="[No preference]", "Which size?"="[No preference]". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.',
+							resultMeta:
+							{
+								answers:
+								{
+									"Which fruit?":
+									{
+										answer: "[No preference]",
+										notes: null,
+									},
+									"Which size?":
+									{
+										answer: "[No preference]",
+										notes: null,
+									},
+								},
 							},
 						},
-					}),
+					),
 				),
-			).toStrictEqual({
-				listClass: "flex flex-col gap-3 pt-1",
-				items: [
-					{
-						className: "flex flex-col text-body [overflow-wrap:anywhere]",
-						lines: [
-							{className: "text-secondary", text: "Which fruit?"},
-							{className: "text-ink-muted", text: "Skipped"},
-						],
-					},
-					{
-						className: "flex flex-col text-body [overflow-wrap:anywhere]",
-						lines: [
-							{className: "text-secondary", text: "Which size?"},
-							{className: "text-ink-muted", text: "Skipped"},
-						],
-					},
-				],
-				badges: 0,
-				cards: 0,
-			});
+			).toStrictEqual(
+				{
+					listClass: "flex flex-col gap-3 pt-1",
+					items: [
+						{
+							className: "flex flex-col text-body [overflow-wrap:anywhere]",
+							lines: [
+								{
+									className: "text-secondary",
+									text: "Which fruit?",
+								},
+								{
+									className: "text-ink-muted",
+									text: "Skipped",
+								},
+							],
+						},
+						{
+							className: "flex flex-col text-body [overflow-wrap:anywhere]",
+							lines: [
+								{
+									className: "text-secondary",
+									text: "Which size?",
+								},
+								{
+									className: "text-ink-muted",
+									text: "Skipped",
+								},
+							],
+						},
+					],
+					badges: 0,
+					cards: 0,
+				},
+			);
 		});
 
-		it("lists only the questions for the CLI's terminal skip (answers: {})", () => {
+		it("lists only the questions for the CLI's terminal skip (answers: {})", () =>
+		{
 			expect(
 				outcomeList(
-					makeCall({
-						input: FRUIT_AND_SIZE,
-						result: "The user did not answer the questions.",
-						resultMeta: {answers: {}},
-					}),
+					makeCall(
+						{
+							input: FRUIT_AND_SIZE,
+							result: "The user did not answer the questions.",
+							resultMeta:
+							{
+								answers: {},
+							},
+						},
+					),
 				),
-			).toStrictEqual({
-				listClass: "flex flex-col gap-3 pt-1",
-				items: [
-					{
-						className: "flex flex-col text-body [overflow-wrap:anywhere]",
-						lines: [{className: "text-secondary", text: "Which fruit?"}],
-					},
-					{
-						className: "flex flex-col text-body [overflow-wrap:anywhere]",
-						lines: [{className: "text-secondary", text: "Which size?"}],
-					},
-				],
-				badges: 0,
-				cards: 0,
-			});
+			).toStrictEqual(
+				{
+					listClass: "flex flex-col gap-3 pt-1",
+					items: [
+						{
+							className: "flex flex-col text-body [overflow-wrap:anywhere]",
+							lines: [
+								{
+									className: "text-secondary",
+									text: "Which fruit?",
+								},
+							],
+						},
+						{
+							className: "flex flex-col text-body [overflow-wrap:anywhere]",
+							lines: [
+								{
+									className: "text-secondary",
+									text: "Which size?",
+								},
+							],
+						},
+					],
+					badges: 0,
+					cards: 0,
+				},
+			);
 		});
 	});
 
-	it("renders an answered question as upstream's 480px question receipt: question primary at the control weight, answer secondary", () => {
-		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall({result: ANSWERED_RESULT})} />);
+	it("renders an answered question as upstream's 480px question receipt: question primary at the control weight, answer secondary", () =>
+	{
+		const {container} = render(
+			<AskUserQuestionRenderer
+				toolCall={makeCall(
+					{
+						result: ANSWERED_RESULT,
+					},
+				)}
+			/>,
+		);
 
 		const cards = [...container.querySelectorAll(".card-ring")];
 		const card = cards[0]!;
-		const paragraphs = [...card.querySelectorAll("[data-answered-question] > div")].map((p) => ({
+		const paragraphs = [...card.querySelectorAll("[data-answered-question] > div")].map((p) => (
+		{
 			className: p.className,
 			text: p.textContent,
 		}));
 
-		expect({
-			cardCount: cards.length,
-			cardClassName: card.className,
-			rowClassNames: [...card.querySelectorAll("[data-answered-question]")].map((row) => row.className),
-			paragraphs,
-			mentionsUnchosen: container.textContent.includes("Jest"),
-			buttons: container.querySelectorAll("button").length,
-		}).toStrictEqual({
-			cardCount: 1,
-			cardClassName:
-				"card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
-			rowClassNames: ["flex flex-col gap-0.5 px-lg py-md"],
-			paragraphs: [
-				{
-					className: "text-body font-control text-primary break-words [unicode-bidi:plaintext]",
-					text: "Which test runner?",
-				},
-				{
-					className:
-						"max-h-[250px] overflow-y-auto whitespace-pre-wrap text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]",
-					text: "Vitest",
-				},
-			],
-			mentionsUnchosen: false,
-			buttons: 0,
-		});
+		expect(
+			{
+				cardCount: cards.length,
+				cardClassName: card.className,
+				rowClassNames: [...card.querySelectorAll("[data-answered-question]")].map((row) => row.className),
+				paragraphs,
+				mentionsUnchosen: container.textContent.includes("Jest"),
+				buttons: container.querySelectorAll("button").length,
+			},
+		).toStrictEqual(
+			{
+				cardCount: 1,
+				cardClassName:
+					"card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
+				rowClassNames: ["flex flex-col gap-0.5 px-lg py-md"],
+				paragraphs: [
+					{
+						className: "text-body font-control text-primary break-words [unicode-bidi:plaintext]",
+						text: "Which test runner?",
+					},
+					{
+						className:
+							"max-h-[250px] overflow-y-auto whitespace-pre-wrap text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]",
+						text: "Vitest",
+					},
+				],
+				mentionsUnchosen: false,
+				buttons: 0,
+			},
+		);
 	});
 
-	it("fades the receipt in (upstream's epitaxy-question-receipt-enter) only when its answer was sent from this page", () => {
-		const className = (id: string) => {
-			const view = render(<AskUserQuestionRenderer toolCall={makeCall({id, result: ANSWERED_RESULT})} />);
+	it("fades the receipt in (upstream's epitaxy-question-receipt-enter) only when its answer was sent from this page", () =>
+	{
+		const className = (id: string) =>
+		{
+			const view = render(
+				<AskUserQuestionRenderer
+					toolCall={makeCall(
+						{
+							id,
+							result: ANSWERED_RESULT,
+						},
+					)}
+				/>,
+			);
 			const value = view.container.querySelector(".card-ring")!.className;
 			cleanup();
 			return value;
@@ -344,53 +526,88 @@ describe("AskUserQuestionRenderer", () => {
 		const unseen = className("tool-auq-unseen");
 		markQuestionCardSeen("tool-auq-seen");
 		const seen = className("tool-auq-seen");
-		markQuestionCardSent("tool-auq-sent", {
-			page: 0,
-			drafts: [{selected: [0], other: "", otherChosen: false}],
-			skipped: [false],
-		});
-		const sent = className("tool-auq-sent");
-
-		expect({unseen, seen, sent}).toStrictEqual({
-			unseen: "card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
-			seen: "card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
-			sent: "card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
-		});
-	});
-
-	it("stacks every answered question in one card, with the Other text and its notes", () => {
-		const result =
-			'User has answered your questions: "How should the JOL test treat LinkedHashMap?"="Exact, JDK-version-aware", "Which runner?"="Bun" user notes: Fastest locally. You can now continue with the user\'s answers in mind.';
-		const toolCall = makeCall({
-			input: {
-				questions: [
+		markQuestionCardSent(
+			"tool-auq-sent",
+			{
+				page: 0,
+				drafts: [
 					{
-						question: "How should the JOL test treat LinkedHashMap?",
-						header: "LinkedHashMap",
-						options: [
-							{label: "Exact, JDK-version-aware", description: "Pin per JDK"},
-							{label: "Loose bounds", description: "Tolerate drift"},
-						],
-						multiSelect: false,
-					},
-					{
-						question: "Which runner?",
-						header: "Runner",
-						options: [
-							{label: "Vitest", description: "Vite-native"},
-							{label: "Jest", description: "Widely adopted"},
-						],
-						multiSelect: false,
+						selected: [0],
+						other: "",
+						otherChosen: false,
 					},
 				],
+				skipped: [false],
 			},
-			result,
-		});
+		);
+		const sent = className("tool-auq-sent");
+
+		expect(
+			{
+				unseen,
+				seen,
+				sent,
+			},
+		).toStrictEqual(
+			{
+				unseen: "card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
+				seen: "card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
+				sent: "card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
+			},
+		);
+	});
+
+	it("stacks every answered question in one card, with the Other text and its notes", () =>
+	{
+		const result =
+			'User has answered your questions: "How should the JOL test treat LinkedHashMap?"="Exact, JDK-version-aware", "Which runner?"="Bun" user notes: Fastest locally. You can now continue with the user\'s answers in mind.';
+		const toolCall = makeCall(
+			{
+				input:
+				{
+					questions: [
+						{
+							question: "How should the JOL test treat LinkedHashMap?",
+							header: "LinkedHashMap",
+							options: [
+								{
+									label: "Exact, JDK-version-aware",
+									description: "Pin per JDK",
+								},
+								{
+									label: "Loose bounds",
+									description: "Tolerate drift",
+								},
+							],
+							multiSelect: false,
+						},
+						{
+							question: "Which runner?",
+							header: "Runner",
+							options: [
+								{
+									label: "Vitest",
+									description: "Vite-native",
+								},
+								{
+									label: "Jest",
+									description: "Widely adopted",
+								},
+							],
+							multiSelect: false,
+						},
+					],
+				},
+				result,
+			},
+		);
 		const {container} = render(<AskUserQuestionRenderer toolCall={toolCall} />);
 
-		const cards = [...container.querySelectorAll(".card-ring")].map((card) => ({
+		const cards = [...container.querySelectorAll(".card-ring")].map((card) => (
+		{
 			className: card.className,
-			pairs: [...card.children].map((pair) => ({
+			pairs: [...card.children].map((pair) => (
+			{
 				className: pair.className,
 				lines: [...pair.children].map((line) => line.textContent),
 			})),
@@ -414,75 +631,138 @@ describe("AskUserQuestionRenderer", () => {
 		]);
 	});
 
-	it("draws a no-meta (no option selected) result as a receipt with its notes, not the raw result text", () => {
+	it("draws a no-meta (no option selected) result as a receipt with its notes, not the raw result text", () =>
+	{
 		const result =
 			'The user answered: "Java?"=(no option selected) notes: newest 21, "Node?"="LTS". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.';
-		const toolCall = makeCall({
-			input: {
-				questions: [
-					{question: "Java?", header: "Java", options: [{label: "17"}, {label: "21"}], multiSelect: false},
-					{
-						question: "Node?",
-						header: "Node",
-						options: [{label: "LTS"}, {label: "Current"}],
-						multiSelect: false,
-					},
-				],
+		const toolCall = makeCall(
+			{
+				input:
+				{
+					questions: [
+						{
+							question: "Java?",
+							header: "Java",
+							options: [
+								{
+									label: "17",
+								},
+								{
+									label: "21",
+								},
+							],
+							multiSelect: false,
+						},
+						{
+							question: "Node?",
+							header: "Node",
+							options: [
+								{
+									label: "LTS",
+								},
+								{
+									label: "Current",
+								},
+							],
+							multiSelect: false,
+						},
+					],
+				},
+				result,
 			},
-			result,
-		});
+		);
 		const {container} = render(<AskUserQuestionRenderer toolCall={toolCall} />);
 
-		expect({
-			rawFallback: container.querySelector("p.whitespace-pre-wrap")?.textContent,
-			pairs: [...container.querySelectorAll(".card-ring > div")].map((pair) =>
-				[...pair.children].map((line) => line.textContent),
-			),
-		}).toStrictEqual({
-			rawFallback: undefined,
-			pairs: [
-				["Java?", "(notes only)", "Notes: newest 21"],
-				["Node?", "LTS"],
-			],
-		});
+		expect(
+			{
+				rawFallback: container.querySelector("p.whitespace-pre-wrap")?.textContent,
+				pairs: [...container.querySelectorAll(".card-ring > div")].map((pair) =>
+					[...pair.children].map((line) => line.textContent),
+				),
+			},
+		).toStrictEqual(
+			{
+				rawFallback: undefined,
+				pairs: [
+					["Java?", "(notes only)", "Notes: newest 21"],
+					["Node?", "LTS"],
+				],
+			},
+		);
 	});
 
-	describe("receipt rows for unanswered questions (upstream's Wi + BT)", () => {
-		const TWO_QUESTIONS = {
+	describe("receipt rows for unanswered questions (upstream's Wi + BT)", () =>
+	{
+		const TWO_QUESTIONS =
+		{
 			questions: [
 				{
 					question: "Which color?",
 					header: "Color",
-					options: [{label: "Red"}, {label: "Blue"}],
+					options: [
+						{
+							label: "Red",
+						},
+						{
+							label: "Blue",
+						},
+					],
 					multiSelect: false,
 				},
 				{
 					question: "Which size?",
 					header: "Size",
-					options: [{label: "Small"}, {label: "Large"}],
+					options: [
+						{
+							label: "Small",
+						},
+						{
+							label: "Large",
+						},
+					],
 					multiSelect: false,
 				},
 			],
 		};
 
-		function receiptRows(answers: Record<string, string>, result: string): string[][] {
-			const resultMeta = {
+		function receiptRows(answers: Record<string, string>, result: string): string[][]
+		{
+			const resultMeta =
+			{
 				answers: Object.fromEntries(
-					Object.entries(answers).map(([question, answer]) => [question, {answer, notes: null}]),
+					Object.entries(answers).map(([question, answer]) => [
+						question,
+						{
+							answer,
+							notes: null,
+						},
+					]),
 				),
 			};
 			const {container} = render(
-				<AskUserQuestionRenderer toolCall={makeCall({input: TWO_QUESTIONS, result, resultMeta})} />,
+				<AskUserQuestionRenderer
+					toolCall={makeCall(
+						{
+							input: TWO_QUESTIONS,
+							result,
+							resultMeta,
+						},
+					)}
+				/>,
 			);
 			return [...container.querySelectorAll("[data-answered-question]")].map((row) =>
 				[...row.children].map((line) => line.textContent),
 			);
 		}
 
-		it("prints Skipped as the answer line of a question answered [No preference]", () => {
+		it("prints Skipped as the answer line of a question answered [No preference]", () =>
+		{
 			expect(
 				receiptRows(
-					{"Which color?": "Red", "Which size?": "[No preference]"},
+					{
+						"Which color?": "Red",
+						"Which size?": "[No preference]",
+					},
 					'The user answered: "Which color?"="Red", "Which size?"="[No preference]". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.',
 				),
 			).toStrictEqual([
@@ -491,7 +771,8 @@ describe("AskUserQuestionRenderer", () => {
 			]);
 		});
 
-		it("prints Not answered as the answer line of a dismissed question", () => {
+		it("prints Not answered as the answer line of a dismissed question", () =>
+		{
 			expect(
 				receiptRows(
 					{
@@ -506,30 +787,56 @@ describe("AskUserQuestionRenderer", () => {
 			]);
 		});
 
-		it("drops a question with no entry in the recorded answers", () => {
+		it("drops a question with no entry in the recorded answers", () =>
+		{
 			expect(
 				receiptRows(
-					{"Which color?": "Red"},
+					{
+						"Which color?": "Red",
+					},
 					'The user answered: "Which color?"="Red". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.',
 				),
 			).toStrictEqual([["Which color?", "Red"]]);
 		});
 	});
 
-	it("shows a pink status line when the user dismissed the question", () => {
+	it("shows a pink status line when the user dismissed the question", () =>
+	{
 		const {container} = render(
-			<AskUserQuestionRenderer toolCall={makeCall({result: REJECTION_RESULT, isError: true})} />,
+			<AskUserQuestionRenderer
+				toolCall={makeCall(
+					{
+						result: REJECTION_RESULT,
+						isError: true,
+					},
+				)}
+			/>,
 		);
 
-		expect({
-			status: container.querySelector(".text-extended-pink")?.textContent,
-			rawBoilerplate: container.textContent.includes("STOP what you are doing"),
-		}).toStrictEqual({status: "Question dismissed", rawBoilerplate: false});
+		expect(
+			{
+				status: container.querySelector(".text-extended-pink")?.textContent,
+				rawBoilerplate: container.textContent.includes("STOP what you are doing"),
+			},
+		).toStrictEqual(
+			{
+				status: "Question dismissed",
+				rawBoilerplate: false,
+			},
+		);
 	});
 
-	it("keeps the user's own words when they dismissed the question with feedback", () => {
+	it("keeps the user's own words when they dismissed the question with feedback", () =>
+	{
 		const {container} = render(
-			<AskUserQuestionRenderer toolCall={makeCall({result: REJECTION_WITH_FEEDBACK_RESULT, isError: true})} />,
+			<AskUserQuestionRenderer
+				toolCall={makeCall(
+					{
+						result: REJECTION_WITH_FEEDBACK_RESULT,
+						isError: true,
+					},
+				)}
+			/>,
 		);
 
 		expect(container.querySelector(".text-extended-pink")?.textContent).toStrictEqual(
@@ -537,97 +844,176 @@ describe("AskUserQuestionRenderer", () => {
 		);
 	});
 
-	it("shows a pink status line for the 60s no-response timeout", () => {
-		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall({result: TIMEOUT_RESULT})} />);
+	it("shows a pink status line for the 60s no-response timeout", () =>
+	{
+		const {container} = render(
+			<AskUserQuestionRenderer
+				toolCall={makeCall(
+					{
+						result: TIMEOUT_RESULT,
+					},
+				)}
+			/>,
+		);
 
-		expect({
-			status: container.querySelector(".text-extended-pink")?.textContent,
-			rawBoilerplate: container.textContent.includes("best judgment"),
-		}).toStrictEqual({status: "No response after 60s", rawBoilerplate: false});
+		expect(
+			{
+				status: container.querySelector(".text-extended-pink")?.textContent,
+				rawBoilerplate: container.textContent.includes("best judgment"),
+			},
+		).toStrictEqual(
+			{
+				status: "No response after 60s",
+				rawBoilerplate: false,
+			},
+		);
 	});
 
-	it("draws unanswered questions outside a session as upstream's gy > _y does: only the question lines, memory tags dropped, chips over u9(ME(question))", () => {
+	it("draws unanswered questions outside a session as upstream's gy > _y does: only the question lines, memory tags dropped, chips over u9(ME(question))", () =>
+	{
 		const rlo = String.fromCodePoint(0x202e);
 		const {container} = render(
 			<AskUserQuestionRenderer
-				toolCall={makeCall({
-					input: {
-						questions: [
-							{
-								question: `**Ship** ${rlo}\`exe.txt\` with ghp_${"A".repeat(36)}?`,
-								header: "Ship",
-								options: [{label: "Yes"}, {label: "No"}],
-								multiSelect: false,
-							},
-							{
-								question: "Keep<cc-memory>the</cc-memory> notes?",
-								header: "Notes",
-								options: [{label: "Keep"}, {label: "Drop"}],
-								multiSelect: false,
-							},
-						],
+				toolCall={makeCall(
+					{
+						input:
+						{
+							questions: [
+								{
+									question: `**Ship** ${rlo}\`exe.txt\` with ghp_${"A".repeat(36)}?`,
+									header: "Ship",
+									options: [
+										{
+											label: "Yes",
+										},
+										{
+											label: "No",
+										},
+									],
+									multiSelect: false,
+								},
+								{
+									question: "Keep<cc-memory>the</cc-memory> notes?",
+									header: "Notes",
+									options: [
+										{
+											label: "Keep",
+										},
+										{
+											label: "Drop",
+										},
+									],
+									multiSelect: false,
+								},
+							],
+						},
 					},
-				})}
+				)}
 			/>,
 		);
 		const list = container.firstElementChild;
 
-		expect({
-			className: list?.className,
-			lines: [...(list?.children ?? [])].map((line) => ({
-				className: line.className,
-				text: line.textContent,
-				chips: [...line.querySelectorAll("code")].map((code) => code.textContent),
-				strong: [...line.querySelectorAll("strong")].map((strong) => strong.textContent),
-			})),
-		}).toStrictEqual({
-			className: "flex flex-col gap-1 pt-xs",
-			lines: [
+		expect(
+			{
+				className: list?.className,
+				lines: [...(list?.children ?? [])].map((line) => (
 				{
-					className: "text-body text-secondary [overflow-wrap:anywhere]",
-					text: `Ship [U+202E]exe.txt with ghp_AAAA${"•".repeat(32)}?`,
-					chips: ["exe.txt"],
-					strong: ["Ship"],
-				},
-				{
-					className: "text-body text-secondary [overflow-wrap:anywhere]",
-					text: "Keepthe notes?",
-					chips: [],
-					strong: [],
-				},
-			],
-		});
+					className: line.className,
+					text: line.textContent,
+					chips: [...line.querySelectorAll("code")].map((code) => code.textContent),
+					strong: [...line.querySelectorAll("strong")].map((strong) => strong.textContent),
+				})),
+			},
+		).toStrictEqual(
+			{
+				className: "flex flex-col gap-1 pt-xs",
+				lines: [
+					{
+						className: "text-body text-secondary [overflow-wrap:anywhere]",
+						text: `Ship [U+202E]exe.txt with ghp_AAAA${"•".repeat(32)}?`,
+						chips: ["exe.txt"],
+						strong: ["Ship"],
+					},
+					{
+						className: "text-body text-secondary [overflow-wrap:anywhere]",
+						text: "Keepthe notes?",
+						chips: [],
+						strong: [],
+					},
+				],
+			},
+		);
 	});
 
-	it("draws an errored call with questions as upstream's generic tool body: its input rows under the error, no status line", () => {
+	it("draws an errored call with questions as upstream's generic tool body: its input rows under the error, no status line", () =>
+	{
 		const {container} = render(
 			<AskUserQuestionRenderer
-				toolCall={makeCall({
-					input: {
-						questions: [{question: "Ship it?", header: "Ship", options: [{label: "Yes"}, {label: "No"}]}],
+				toolCall={makeCall(
+					{
+						input:
+						{
+							questions: [
+								{
+									question: "Ship it?",
+									header: "Ship",
+									options: [
+										{
+											label: "Yes",
+										},
+										{
+											label: "No",
+										},
+									],
+								},
+							],
+						},
+						result: "Something else entirely.",
+						isError: true,
 					},
-					result: "Something else entirely.",
-					isError: true,
-				})}
+				)}
 			/>,
 		);
 
-		expect({
-			error: container.querySelector(".text-danger-ink")?.textContent,
-			keys: [...container.querySelectorAll(".font-mono.opacity-70")].map((key) => key.textContent),
-			pink: container.querySelector(".text-extended-pink"),
-			lines: container.querySelector(".pt-xs"),
-		}).toStrictEqual({error: "Something else entirely.", keys: ["questions:"], pink: null, lines: null});
+		expect(
+			{
+				error: container.querySelector(".text-danger-ink")?.textContent,
+				keys: [...container.querySelectorAll(".font-mono.opacity-70")].map((key) => key.textContent),
+				pink: container.querySelector(".text-extended-pink"),
+				lines: container.querySelector(".pt-xs"),
+			},
+		).toStrictEqual(
+			{
+				error: "Something else entirely.",
+				keys: ["questions:"],
+				pink: null,
+				lines: null,
+			},
+		);
 	});
 
-	it("still falls back to the raw result for an unrecognized envelope", () => {
+	it("still falls back to the raw result for an unrecognized envelope", () =>
+	{
 		const {container} = render(
-			<AskUserQuestionRenderer toolCall={makeCall({result: "Something else entirely."})} />,
+			<AskUserQuestionRenderer
+				toolCall={makeCall(
+					{
+						result: "Something else entirely.",
+					},
+				)}
+			/>,
 		);
 
-		expect({
-			pink: container.querySelector(".text-extended-pink"),
-			text: container.textContent.includes("Something else entirely."),
-		}).toStrictEqual({pink: null, text: true});
+		expect(
+			{
+				pink: container.querySelector(".text-extended-pink"),
+				text: container.textContent.includes("Something else entirely."),
+			},
+		).toStrictEqual(
+			{
+				pink: null,
+				text: true,
+			},
+		);
 	});
 });

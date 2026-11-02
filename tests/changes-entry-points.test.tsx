@@ -19,62 +19,106 @@ import {loadChangesScope, saveChangesScope} from "../src/lib/pane-layout";
 import type {ReviewFinding} from "../src/lib/review-diff";
 import {installLocalStorage} from "./fake-storage";
 
-const reviewOffers = vi.hoisted(() => ({listener: null as ((sessionId: string) => void) | null}));
+const reviewOffers = vi.hoisted(() => (
+{
+	listener: null as ((sessionId: string) => void) | null,
+}));
 
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
-	useSubscribeReviewOffers: () => (listener: (sessionId: string) => void) => {
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
+	useSubscribeReviewOffers: () => (listener: (sessionId: string) => void) =>
+	{
 		reviewOffers.listener = listener;
-		return () => {
+		return () =>
+		{
 			reviewOffers.listener = null;
 		};
 	},
 }));
-vi.mock("../src/lib/api/reviews", async (importOriginal) => ({
+vi.mock("../src/lib/api/reviews", async (importOriginal) => (
+{
 	...(await importOriginal<typeof import("../src/lib/api/reviews")>()),
 	createWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").createWorkingCopyReview>(async () =>
 		Promise.resolve("review-1"),
 	),
 	runWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").runWorkingCopyReview>(async () =>
-		Promise.resolve({
-			processId: "process-1",
-			completion: Promise.resolve(""),
-		}),
+		Promise.resolve(
+			{
+				processId: "process-1",
+				completion: Promise.resolve(""),
+			},
+		),
 	),
 	cancelWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").cancelWorkingCopyReview>(async () =>
 		Promise.resolve(true),
 	),
 }));
 
-class FakeObserver {
-	constructor(private readonly callback?: ResizeObserverCallback) {}
-	observe(target: Element) {
-		this.callback?.([{target, contentRect: {width: 800}} as unknown as ResizeObserverEntry], this);
+class FakeObserver
+{
+	constructor(private readonly callback?: ResizeObserverCallback)
+	{
 	}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+	observe(target: Element)
+	{
+		this.callback?.(
+			[
+				{
+					target,
+					contentRect:
+					{
+						width: 800,
+					},
+				} as unknown as ResizeObserverEntry,
+			],
+			this,
+		);
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-class SilentObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class SilentObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
 let scopeRequests: unknown[] = [];
 const recordScopeRequest = (event: Event) => scopeRequests.push((event as CustomEvent).detail);
-let unregisterChanges: () => void = () => {};
+let unregisterChanges: () => void = () =>
+{
+};
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	sessionStorage.clear();
 	vi.stubGlobal("ResizeObserver", FakeObserver);
@@ -82,17 +126,28 @@ beforeEach(() => {
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-		DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+		DOMRect.fromRect(
+			{
+				x: 0,
+				y: 0,
+				width: 1200,
+				height: 800,
+			},
+		),
 	);
 	scopeRequests = [];
 	window.addEventListener(CHANGES_SCOPE_REQUEST_EVENT, recordScopeRequest);
-	unregisterChanges = registerPane("changes", {
-		title: "Changes",
-		render: () => <div data-testid="changes-pane">Changes pane</div>,
-	});
+	unregisterChanges = registerPane(
+		"changes",
+		{
+			title: "Changes",
+			render: () => <div data-testid="changes-pane">Changes pane</div>,
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	unregisterChanges();
 	window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, recordScopeRequest);
@@ -100,11 +155,17 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-function inHost(sessionId: string, children: React.ReactNode) {
+function inHost(sessionId: string, children: React.ReactNode)
+{
 	return render(
 		<SettingsProvider>
 			<ToastProvider>
-				<TileHost sessionId={sessionId} onExpandWithoutPane={() => {}}>
+				<TileHost
+					sessionId={sessionId}
+					onExpandWithoutPane={() =>
+					{
+					}}
+				>
 					{children}
 				</TileHost>
 			</ToastProvider>
@@ -112,79 +173,137 @@ function inHost(sessionId: string, children: React.ReactNode) {
 	);
 }
 
-describe("Changes entry points", () => {
-	it("opens Changes on the branch scope from the branch strip's +N −M", () => {
+describe("Changes entry points", () =>
+{
+	it("opens Changes on the branch scope from the branch strip's +N −M", () =>
+	{
 		saveChangesScope("strip-session", "uncommitted");
 		inHost(
 			"strip-session",
 			<BranchStrip
 				sessionId="strip-session"
-				session={{
+				session={
+				{
 					projectName: "demo",
 					projectPath: "/work/demo",
 					cwd: "/work/demo",
 					gitBranch: "feature/x",
 				}}
-				statusline={{cost: {total_lines_added: 12, total_lines_removed: 3}}}
+				statusline={
+				{
+					cost:
+					{
+						total_lines_added: 12,
+						total_lines_removed: 3,
+					},
+				}}
 			/>,
 		);
 		const before = screen.queryByTestId("changes-pane");
-		act(() => {
-			fireEvent.click(screen.getByRole("button", {name: "12 additions, 3 deletions"}));
+		act(() =>
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "12 additions, 3 deletions",
+					},
+				),
+			);
 		});
 
-		expect({
-			before,
-			opened: screen.queryByTestId("changes-pane")?.textContent,
-			scope: loadChangesScope("strip-session"),
-			scopeRequests,
-		}).toStrictEqual({
-			before: null,
-			opened: "Changes pane",
-			scope: "branch",
-			scopeRequests: [{sessionId: "strip-session", scope: "branch"}],
-		});
+		expect(
+			{
+				before,
+				opened: screen.queryByTestId("changes-pane")?.textContent,
+				scope: loadChangesScope("strip-session"),
+				scopeRequests,
+			},
+		).toStrictEqual(
+			{
+				before: null,
+				opened: "Changes pane",
+				scope: "branch",
+				scopeRequests: [
+					{
+						sessionId: "strip-session",
+						scope: "branch",
+					},
+				],
+			},
+		);
 	});
 
-	it("opens Changes on the turn scope from a single-file turn card row", () => {
+	it("opens Changes on the turn scope from a single-file turn card row", () =>
+	{
 		inHost(
 			"turn-session",
 			<TurnChangesCard
 				undoable
 				sessionId="turn-session"
-				changes={{
+				changes={
+				{
 					turnUuid: "u-7",
 					anchorLineIndex: 0,
 					added: 1,
 					removed: 0,
-					files: [{path: "/repo/a.ts", added: 1, removed: 0, created: false}],
+					files: [
+						{
+							path: "/repo/a.ts",
+							added: 1,
+							removed: 0,
+							created: false,
+						},
+					],
 					soleVisibleEditToolRow: false,
 				}}
 			/>,
 		);
-		act(() => {
-			fireEvent.click(screen.getByRole("button", {name: /^a\.ts/}));
+		act(() =>
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^a\.ts/,
+					},
+				),
+			);
 		});
 
-		expect({
-			opened: screen.queryByTestId("changes-pane")?.textContent,
-			scope: loadChangesScope("turn-session"),
-			scopeRequests,
-		}).toStrictEqual({
-			opened: "Changes pane",
-			scope: "turn:u-7",
-			scopeRequests: [{sessionId: "turn-session", scope: "turn:u-7"}],
-		});
+		expect(
+			{
+				opened: screen.queryByTestId("changes-pane")?.textContent,
+				scope: loadChangesScope("turn-session"),
+				scopeRequests,
+			},
+		).toStrictEqual(
+			{
+				opened: "Changes pane",
+				scope: "turn:u-7",
+				scopeRequests: [
+					{
+						sessionId: "turn-session",
+						scope: "turn:u-7",
+					},
+				],
+			},
+		);
 	});
 
-	it("points the review banner's View findings at the session's Changes pane on the Uncommitted scope", async () => {
+	it("points the review banner's View findings at the session's Changes pane on the Uncommitted scope", async () =>
+	{
 		localStorage.setItem(STORAGE_KEYS.offerWorkingCopyReview, "true");
 		render(
 			<SettingsProvider>
 				<WorkingCopyReviewBanner
-					capability={{
+					capability={
+					{
 						enabled: true,
-						config: {offerMode: "offer"},
+						config:
+						{
+							offerMode: "offer",
+						},
 						installed: true,
 						available: true,
 						unavailabilityReason: null,
@@ -192,45 +311,86 @@ describe("Changes entry points", () => {
 				/>
 			</SettingsProvider>,
 		);
-		act(() => {
+		act(() =>
+		{
 			reviewOffers.listener?.("banner-session");
 		});
-		act(() => {
-			fireEvent.click(screen.getByRole("button", {name: "Review"}));
+		act(() =>
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Review",
+					},
+				),
+			);
 		});
-		const link = await screen.findByRole("link", {name: "View findings"});
-		act(() => {
-			link.addEventListener("click", (event) => {
+		const link = await screen.findByRole(
+			"link",
+			{
+				name: "View findings",
+			},
+		);
+		act(() =>
+		{
+			link.addEventListener("click", (event) =>
+			{
 				event.preventDefault();
 			});
 			fireEvent.click(link);
 		});
 
-		expect({
-			href: link.getAttribute("href"),
-			scope: loadChangesScope("banner-session"),
-			review: loadChangesReview("banner-session"),
-			scopeRequests,
-		}).toStrictEqual({
-			href: "/session/banner-session?pane=changes",
-			scope: "uncommitted",
-			review: "review-1",
-			scopeRequests: [{sessionId: "banner-session", scope: "uncommitted"}],
-		});
+		expect(
+			{
+				href: link.getAttribute("href"),
+				scope: loadChangesScope("banner-session"),
+				review: loadChangesReview("banner-session"),
+				scopeRequests,
+			},
+		).toStrictEqual(
+			{
+				href: "/session/banner-session?pane=changes",
+				scope: "uncommitted",
+				review: "review-1",
+				scopeRequests: [
+					{
+						sessionId: "banner-session",
+						scope: "uncommitted",
+					},
+				],
+			},
+		);
 	});
 
-	it("turns the /review/$reviewId deep link into the session with the Changes pane open", () => {
+	it("turns the /review/$reviewId deep link into the session with the Changes pane open", () =>
+	{
 		const target = openReviewInChanges("deep-session", "review-9");
 
-		expect({
-			target,
-			scope: loadChangesScope("deep-session"),
-			review: loadChangesReview("deep-session"),
-		}).toStrictEqual({
-			target: {to: "/session/$id", params: {id: "deep-session"}, search: {pane: "changes"}},
-			scope: "uncommitted",
-			review: "review-9",
-		});
+		expect(
+			{
+				target,
+				scope: loadChangesScope("deep-session"),
+				review: loadChangesReview("deep-session"),
+			},
+		).toStrictEqual(
+			{
+				target:
+				{
+					to: "/session/$id",
+					params:
+					{
+						id: "deep-session",
+					},
+					search:
+					{
+						pane: "changes",
+					},
+				},
+				scope: "uncommitted",
+				review: "review-9",
+			},
+		);
 	});
 });
 
@@ -246,11 +406,17 @@ index 1111111..2222222 100644
  }
 `;
 
-const DIFF: SessionDiffResponse = {
+const DIFF: SessionDiffResponse =
+{
 	scope: "uncommitted",
 	source: "git",
 	root: "/repo",
-	stats: {files: 1, additions: 2, deletions: 1},
+	stats:
+	{
+		files: 1,
+		additions: 2,
+		deletions: 1,
+	},
 	files: [
 		{
 			path: "src/greet.ts",
@@ -264,7 +430,8 @@ const DIFF: SessionDiffResponse = {
 	],
 };
 
-const FINDING: ReviewFinding = {
+const FINDING: ReviewFinding =
+{
 	id: "f-1",
 	file: "src/greet.ts",
 	side: "new",
@@ -275,8 +442,10 @@ const FINDING: ReviewFinding = {
 	resolved: false,
 };
 
-describe("Changes pane review findings", () => {
-	it("renders unresolved findings inline on their diff line with Fix this one and Dismiss finding", () => {
+describe("Changes pane review findings", () =>
+{
+	it("renders unresolved findings inline on their diff line with Fix this one and Dismiss finding", () =>
+	{
 		vi.stubGlobal("ResizeObserver", SilentObserver);
 		const onFix = vi.fn<(finding: ReviewFinding) => void>();
 		const onDismiss = vi.fn<(finding: ReviewFinding) => void>();
@@ -287,9 +456,19 @@ describe("Changes pane review findings", () => {
 						diff={DIFF}
 						scopes={undefined}
 						controls={null}
-						onRefresh={() => {}}
+						onRefresh={() =>
+						{
+						}}
 						scope="uncommitted"
-						findings={[FINDING, {...FINDING, id: "f-2", title: "Already handled", resolved: true}]}
+						findings={[
+							FINDING,
+							{
+								...FINDING,
+								id: "f-2",
+								title: "Already handled",
+								resolved: true,
+							},
+						]}
 						onFixFinding={onFix}
 						onDismissFinding={onDismiss}
 					/>
@@ -299,17 +478,35 @@ describe("Changes pane review findings", () => {
 		const slot = container.querySelector('[slot="annotation-additions-2"]');
 		expect(slot).not.toBeNull();
 		const card = within(slot as HTMLElement);
-		fireEvent.click(card.getByRole("button", {name: "Fix this one"}));
-		fireEvent.click(card.getByRole("button", {name: "Dismiss finding"}));
+		fireEvent.click(
+			card.getByRole(
+				"button",
+				{
+					name: "Fix this one",
+				},
+			),
+		);
+		fireEvent.click(
+			card.getByRole(
+				"button",
+				{
+					name: "Dismiss finding",
+				},
+			),
+		);
 
-		expect({
-			titles: [...container.querySelectorAll("[data-finding-title]")].map((el) => el.textContent),
-			fixed: onFix.mock.calls,
-			dismissed: onDismiss.mock.calls,
-		}).toStrictEqual({
-			titles: ["Greeting is hard-coded"],
-			fixed: [[FINDING]],
-			dismissed: [[FINDING]],
-		});
+		expect(
+			{
+				titles: [...container.querySelectorAll("[data-finding-title]")].map((el) => el.textContent),
+				fixed: onFix.mock.calls,
+				dismissed: onDismiss.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				titles: ["Greeting is hard-coded"],
+				fixed: [[FINDING]],
+				dismissed: [[FINDING]],
+			},
+		);
 	});
 });

@@ -9,4 +9,7 @@ export const TURN_STATUS_ROW_GEOMETRY =
 	"w-stretch px-xs ms-[calc(var(--cds-assistant-message-text-inset,0px)_-_var(--cds-outset-x,0px)_-_var(--cds-turn-status-hang,0px))] me-[calc(var(--cds-assistant-message-text-stop,0px)_-_var(--cds-outset-x,0px))]";
 
 /** Upstream shared-frame `JG`: the outset the row geometry's margins subtract. */
-export const TURN_STATUS_ROW_STYLE = {"--cds-outset-x": "var(--cds-pad-xs)"} as React.CSSProperties;
+export const TURN_STATUS_ROW_STYLE =
+{
+	"--cds-outset-x": "var(--cds-pad-xs)",
+} as React.CSSProperties;

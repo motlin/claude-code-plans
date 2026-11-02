@@ -7,10 +7,12 @@ import {SubagentOpenerProvider} from "./subagent-opener-context";
 import {type BackgroundTasksFocus, BackgroundTasksOpenerProvider} from "./background-tasks-opener-context";
 
 /** Lets a session page's Agent rows open the `subagents` pane focused on their agent. */
-export function SessionSubagentOpener({sessionId, children}: {sessionId: string; children: ReactNode}) {
+export function SessionSubagentOpener({sessionId, children}: {sessionId: string; children: ReactNode})
+{
 	const {openPane} = usePaneHost();
 	const open = useCallback(
-		(agentId: string) => {
+		(agentId: string) =>
+		{
 			requestSubagentFocus(sessionId, agentId);
 			openPane("subagents");
 		},
@@ -32,23 +34,36 @@ export function SessionBackgroundTasksOpener({
 	sessionId: string;
 	running: ReadonlyMap<string, string>;
 	children: ReactNode;
-}) {
+})
+{
 	// Read through a ref so the value stays put while the layout changes, sparing its consumers re-renders.
 	const {openPane: latestOpenPane} = usePaneHost();
 	const openPaneRef = useRef(latestOpenPane);
 	openPaneRef.current = latestOpenPane;
 	const value = useMemo(
-		() => ({
-			open: (focus?: BackgroundTasksFocus) => {
+		() => (
+		{
+			open: (focus?: BackgroundTasksFocus) =>
+			{
 				const openPane = openPaneRef.current;
 				const finished = focus?.finished === true;
 				if (finished) setFinishedExpanded(sessionId, true);
-				if (focus?.agentId === undefined) {
-					if (focus?.taskId !== undefined) {
-						requestBackgroundTaskFocus(sessionId, {taskId: focus.taskId, finished});
+				if (focus?.agentId === undefined)
+				{
+					if (focus?.taskId !== undefined)
+					{
+						requestBackgroundTaskFocus(
+							sessionId,
+							{
+								taskId: focus.taskId,
+								finished,
+							},
+						);
 					}
 					openPane("background-tasks");
-				} else {
+				}
+				else
+				{
 					requestSubagentFocus(sessionId, focus.agentId);
 					openPane("subagents");
 				}

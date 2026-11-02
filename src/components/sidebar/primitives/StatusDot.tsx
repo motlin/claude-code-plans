@@ -3,8 +3,10 @@
  * dot when active, a small muted dot when idle. Session rows use the upstream
  * `SessionStateIcon` (src/components/status-dot.tsx) instead.
  */
-export function StatusDot({active}: {active: boolean}) {
-	if (active) {
+export function StatusDot({active}: {active: boolean})
+{
+	if (active)
+	{
 		return (
 			<span className="relative flex h-2.5 w-2.5 shrink-0">
 				<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />

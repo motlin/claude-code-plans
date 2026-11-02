@@ -6,7 +6,8 @@ import {buildSessionSummaryPayloadFromDb} from "./session-summary";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-interface SessionArchiveActionArgs {
+interface SessionArchiveActionArgs
+{
 	db: IndexDb;
 	sessionId: string;
 	archived: boolean;
@@ -17,13 +18,21 @@ interface SessionArchiveActionArgs {
  * Set the app-side archive flag (the JSONL is never touched), then broadcast
  * the session summary so every open tab refetches its lists.
  */
-export function applySessionArchiveAction({db, sessionId, archived, broadcast}: SessionArchiveActionArgs): boolean {
+export function applySessionArchiveAction({db, sessionId, archived, broadcast}: SessionArchiveActionArgs): boolean
+{
 	const result = setSessionArchived(db, sessionId, archived);
 	const summary = buildSessionSummaryPayloadFromDb(db, sessionId);
-	if (summary) {
-		broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {
-			session: summary,
-		} satisfies {session: SessionSummaryPayload});
+	if (summary)
+	{
+		broadcast(
+			DOMAIN_EVENTS.SESSION_UPDATED,
+			{
+				session: summary,
+			} satisfies
+			{
+				session: SessionSummaryPayload;
+			},
+		);
 	}
 	return result;
 }

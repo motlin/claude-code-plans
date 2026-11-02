@@ -8,19 +8,54 @@ import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {getSessionPromptBehavior} from "../src/components/session-prompt-behavior";
 import {type SessionLine, processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/session-chat", () => ({
+vi.mock("../src/components/session-chat", () => (
+{
 	SessionChat: () => null,
 }));
 
-describe("session live input", () => {
-	it("selects the live route only for a writable matching herdr pane", () => {
-		const panes = [{sessionId: "session-test-100"}];
+describe("session live input", () =>
+{
+	it("selects the live route only for a writable matching herdr pane", () =>
+	{
+		const panes = [
+			{
+				sessionId: "session-test-100",
+			},
+		];
 
 		expect([
-			getSessionPromptBehavior("session-test-100", true, {panes, writesEnabled: true}),
-			getSessionPromptBehavior("session-test-100", true, {panes, writesEnabled: false}),
-			getSessionPromptBehavior("session-test-200", false, {panes, writesEnabled: true}),
-			getSessionPromptBehavior("session-test-200", true, {panes, writesEnabled: true}),
+			getSessionPromptBehavior(
+				"session-test-100",
+				true,
+				{
+					panes,
+					writesEnabled: true,
+				},
+			),
+			getSessionPromptBehavior(
+				"session-test-100",
+				true,
+				{
+					panes,
+					writesEnabled: false,
+				},
+			),
+			getSessionPromptBehavior(
+				"session-test-200",
+				false,
+				{
+					panes,
+					writesEnabled: true,
+				},
+			),
+			getSessionPromptBehavior(
+				"session-test-200",
+				true,
+				{
+					panes,
+					writesEnabled: true,
+				},
+			),
 		]).toStrictEqual([
 			{
 				disabled: false,
@@ -49,7 +84,8 @@ describe("session live input", () => {
 		]);
 	});
 
-	it("describes live delivery on Send without changing the composer's send contract", () => {
+	it("describes live delivery on Send without changing the composer's send contract", () =>
+	{
 		const onSend = vi.fn<(prompt: string) => void>();
 
 		render(
@@ -61,10 +97,26 @@ describe("session live input", () => {
 			/>,
 		);
 
-		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
-			target: {value: "Continue Alice's test"},
-		});
-		const send = screen.getByRole("button", {name: "Send"});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			),
+			{
+				target:
+				{
+					value: "Continue Alice's test",
+				},
+			},
+		);
+		const send = screen.getByRole(
+			"button",
+			{
+				name: "Send",
+			},
+		);
 		expect(document.getElementById(send.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
 			"Sends to the live terminal",
 		);
@@ -72,159 +124,262 @@ describe("session live input", () => {
 		expect(onSend.mock.calls).toStrictEqual([["Continue Alice's test", {}]]);
 	});
 
-	it("does not synchronously measure or resize the transcript textarea while typing", () => {
-		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
-		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+	it("does not synchronously measure or resize the transcript textarea while typing", () =>
+	{
+		render(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={() =>
+				{
+				}}
+			/>,
+		);
+		const textarea = screen.getByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
 		const readScrollHeight = vi.fn<() => number>(() => 100);
-		Object.defineProperty(textarea, "scrollHeight", {
-			configurable: true,
-			get: readScrollHeight,
-		});
+		Object.defineProperty(
+			textarea,
+			"scrollHeight",
+			{
+				configurable: true,
+				get: readScrollHeight,
+			},
+		);
 
-		fireEvent.input(textarea, {target: {value: "Continue Alice's test"}});
+		fireEvent.input(
+			textarea,
+			{
+				target:
+				{
+					value: "Continue Alice's test",
+				},
+			},
+		);
 
-		expect({
-			height: textarea.style.height,
-			scrollHeightReads: readScrollHeight.mock.calls,
-			value: textarea.value,
-		}).toStrictEqual({
-			height: "",
-			scrollHeightReads: [],
-			value: "Continue Alice's test",
-		});
+		expect(
+			{
+				height: textarea.style.height,
+				scrollHeightReads: readScrollHeight.mock.calls,
+				value: textarea.value,
+			},
+		).toStrictEqual(
+			{
+				height: "",
+				scrollHeightReads: [],
+				value: "Continue Alice's test",
+			},
+		);
 	});
 
-	it("reports an HTTP status instead of a JSON parser error for a malformed rejection", async () => {
+	it("reports an HTTP status instead of a JSON parser error for a malformed rejection", async () =>
+	{
 		const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-			new Response("Forbidden", {
-				status: 403,
-				headers: {"Content-Type": "application/json"},
-			}),
+			new Response(
+				"Forbidden",
+				{
+					status: 403,
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+				},
+			),
 		);
 		const {result} = renderHook(() => useChatStream());
 
-		await act(async () => {
+		await act(async () =>
+		{
 			await result.current.send("session-test-100", "Continue Alice's test");
 		});
 
-		expect({calls: fetchMock.mock.calls, state: result.current.state}).toStrictEqual({
-			calls: [
-				[
-					"/api/chat",
-					{
-						body: JSON.stringify({
-							sessionId: "session-test-100",
-							prompt: "Continue Alice's test",
-						}),
-						headers: {"Content-Type": "application/json"},
-						method: "POST",
-						signal: expect.any(AbortSignal),
-					},
-				],
-			],
-			state: {
-				error: "Request failed (403)",
-				isComplete: true,
-				isStreaming: false,
-				sentPrompt: "Continue Alice's test",
-				text: "",
+		expect(
+			{
+				calls: fetchMock.mock.calls,
+				state: result.current.state,
 			},
-		});
+		).toStrictEqual(
+			{
+				calls: [
+					[
+						"/api/chat",
+						{
+							body: JSON.stringify(
+								{
+									sessionId: "session-test-100",
+									prompt: "Continue Alice's test",
+								},
+							),
+							headers:
+							{
+								"Content-Type": "application/json",
+							},
+							method: "POST",
+							signal: expect.any(AbortSignal),
+						},
+					],
+				],
+				state:
+				{
+					error: "Request failed (403)",
+					isComplete: true,
+					isStreaming: false,
+					sentPrompt: "Continue Alice's test",
+					text: "",
+				},
+			},
+		);
 		fetchMock.mockRestore();
 	});
 
-	it("posts the composer launch options with a forked prompt", async () => {
-		const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("Forbidden", {status: 403}));
+	it("posts the composer launch options with a forked prompt", async () =>
+	{
+		const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response(
+				"Forbidden",
+				{
+					status: 403,
+				},
+			),
+		);
 		const {result} = renderHook(() => useChatStream());
 
-		await act(async () => {
-			await result.current.send("session-test-100", "Continue Alice's test", {
-				permissionMode: "plan",
-				effort: "max",
-			});
+		await act(async () =>
+		{
+			await result.current.send(
+				"session-test-100",
+				"Continue Alice's test",
+				{
+					permissionMode: "plan",
+					effort: "max",
+				},
+			);
 		});
 
-		expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toStrictEqual({
-			sessionId: "session-test-100",
-			prompt: "Continue Alice's test",
-			launchOptions: {permissionMode: "plan", effort: "max"},
-		});
+		expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toStrictEqual(
+			{
+				sessionId: "session-test-100",
+				prompt: "Continue Alice's test",
+				launchOptions:
+				{
+					permissionMode: "plan",
+					effort: "max",
+				},
+			},
+		);
 		fetchMock.mockRestore();
 	});
 
-	it("keeps a sent prompt pending until transcript delivery", async () => {
+	it("keeps a sent prompt pending until transcript delivery", async () =>
+	{
 		let finishPost: (() => void) | undefined;
 		const postPrompt = vi.fn<(sessionId: string, prompt: string) => Promise<void>>(
 			async () =>
-				new Promise<void>((resolve) => {
+				new Promise<void>((resolve) =>
+				{
 					finishPost = resolve;
 				}),
 		);
 		const {result, rerender} = renderHook(
 			({recordCount, lines}) => useLiveHerdrPrompt("session-test-100", recordCount, lines, postPrompt),
-			{initialProps: {recordCount: 100, lines: [] as SessionLine[]}},
+			{
+				initialProps:
+				{
+					recordCount: 100,
+					lines: [] as SessionLine[],
+				},
+			},
 		);
 
-		act(() => {
+		act(() =>
+		{
 			void result.current.send("Continue Alice's test");
 		});
-		expect(result.current.state).toStrictEqual({
-			phase: "sending",
-			isPending: true,
-			prompt: "Continue Alice's test",
-			rejection: null,
-		});
+		expect(result.current.state).toStrictEqual(
+			{
+				phase: "sending",
+				isPending: true,
+				prompt: "Continue Alice's test",
+				rejection: null,
+			},
+		);
 
-		await act(async () => {
+		await act(async () =>
+		{
 			if (!finishPost) throw new Error("Expected fabricated prompt request");
 			finishPost();
 			await Promise.resolve();
 		});
-		expect(result.current.state).toStrictEqual({
-			phase: "sent",
-			isPending: true,
-			prompt: "Continue Alice's test",
-			rejection: null,
-		});
+		expect(result.current.state).toStrictEqual(
+			{
+				phase: "sent",
+				isPending: true,
+				prompt: "Continue Alice's test",
+				rejection: null,
+			},
+		);
 
-		rerender({
-			recordCount: 101,
-			lines: processTranscript(
-				[
-					{
-						type: "user",
-						uuid: "u-1",
-						sessionId: "s-1",
-						message: {role: "user", content: "Continue Alice's test"},
-					},
-				],
-				100,
-			).lines,
-		});
-		await waitFor(() => {
-			expect(result.current.state).toStrictEqual({phase: "idle", isPending: false, prompt: "", rejection: null});
+		rerender(
+			{
+				recordCount: 101,
+				lines: processTranscript(
+					[
+						{
+							type: "user",
+							uuid: "u-1",
+							sessionId: "s-1",
+							message:
+							{
+								role: "user",
+								content: "Continue Alice's test",
+							},
+						},
+					],
+					100,
+				).lines,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(result.current.state).toStrictEqual(
+				{
+					phase: "idle",
+					isPending: false,
+					prompt: "",
+					rejection: null,
+				},
+			);
 		});
 	});
 
-	it("reports a POST error and leaves the input out of pending state", async () => {
+	it("reports a POST error and leaves the input out of pending state", async () =>
+	{
 		const postPrompt = vi
 			.fn<(sessionId: string, prompt: string) => Promise<void>>()
 			.mockRejectedValue(new Error("Fabricated live prompt failure"));
 		const {result} = renderHook(() => useLiveHerdrPrompt("session-test-100", 100, [], postPrompt));
 
-		await act(async () => {
+		await act(async () =>
+		{
 			await result.current.send("Continue Alice's test");
 		});
 
-		expect(result.current.state).toStrictEqual({
-			phase: "idle",
-			isPending: false,
-			prompt: "",
-			rejection: {
-				prompt: "Continue Alice's test",
-				message: "Fabricated live prompt failure",
-				nonResendable: false,
+		expect(result.current.state).toStrictEqual(
+			{
+				phase: "idle",
+				isPending: false,
+				prompt: "",
+				rejection:
+				{
+					prompt: "Continue Alice's test",
+					message: "Fabricated live prompt failure",
+					nonResendable: false,
+				},
 			},
-		});
+		);
 	});
 });

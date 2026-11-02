@@ -7,28 +7,35 @@ import {SHEET_QUERY, useSheetPresentation} from "../src/components/ui/sheet-pres
 let coarseNarrow = false;
 const listeners = new Set<() => void>();
 
-function setCoarseNarrow(value: boolean) {
+function setCoarseNarrow(value: boolean)
+{
 	coarseNarrow = value;
-	act(() => {
+	act(() =>
+	{
 		for (const listener of listeners) listener();
 	});
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	coarseNarrow = false;
 	listeners.clear();
 	vi.stubGlobal(
 		"matchMedia",
-		vi.fn((query: string) => ({
-			get matches() {
+		vi.fn((query: string) => (
+		{
+			get matches()
+			{
 				return query === SHEET_QUERY && coarseNarrow;
 			},
 			media: query,
 			onchange: null,
-			addEventListener: (_type: string, listener: () => void) => {
+			addEventListener: (_type: string, listener: () => void) =>
+			{
 				listeners.add(listener);
 			},
-			removeEventListener: (_type: string, listener: () => void) => {
+			removeEventListener: (_type: string, listener: () => void) =>
+			{
 				listeners.delete(listener);
 			},
 			addListener: () => undefined,
@@ -38,45 +45,79 @@ beforeEach(() => {
 	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-describe("useSheetPresentation", () => {
-	it("latches a sheet at open, holds it through the exit animation, and recomputes on the next open", () => {
+describe("useSheetPresentation", () =>
+{
+	it("latches a sheet at open, holds it through the exit animation, and recomputes on the next open", () =>
+	{
 		coarseNarrow = true;
-		const {result, rerender} = renderHook(({open}: {open: boolean}) => useSheetPresentation(open), {
-			initialProps: {open: false},
-		});
-		rerender({open: true});
+		const {result, rerender} = renderHook(
+			({open}: {open: boolean}) => useSheetPresentation(open),
+			{
+				initialProps:
+				{
+					open: false,
+				},
+			},
+		);
+		rerender(
+			{
+				open: true,
+			},
+		);
 		expect(result.current.sheet).toBe(true);
 
 		setCoarseNarrow(false);
 		expect(result.current.sheet).toBe(true);
 
-		rerender({open: false});
+		rerender(
+			{
+				open: false,
+			},
+		);
 		expect(result.current.sheet).toBe(true);
 
-		act(() => {
+		act(() =>
+		{
 			result.current.onOpenChangeComplete(false);
 		});
-		rerender({open: true});
+		rerender(
+			{
+				open: true,
+			},
+		);
 		expect(result.current.sheet).toBe(false);
 	});
 
-	it("keeps an anchored decision when the viewport turns coarse and narrow while open", () => {
-		const {result, rerender} = renderHook(({open}: {open: boolean}) => useSheetPresentation(open), {
-			initialProps: {open: false},
-		});
-		rerender({open: true});
+	it("keeps an anchored decision when the viewport turns coarse and narrow while open", () =>
+	{
+		const {result, rerender} = renderHook(
+			({open}: {open: boolean}) => useSheetPresentation(open),
+			{
+				initialProps:
+				{
+					open: false,
+				},
+			},
+		);
+		rerender(
+			{
+				open: true,
+			},
+		);
 		expect(result.current.sheet).toBe(false);
 
 		setCoarseNarrow(true);
 		expect(result.current.sheet).toBe(false);
 	});
 
-	it("follows the media query live while closed", () => {
+	it("follows the media query live while closed", () =>
+	{
 		const {result} = renderHook(() => useSheetPresentation(false));
 		const observed = [result.current.sheet];
 		setCoarseNarrow(true);
@@ -86,9 +127,17 @@ describe("useSheetPresentation", () => {
 		expect(observed).toStrictEqual([false, true, false]);
 	});
 
-	it("never sheets an uncloseable overlay under auto", () => {
+	it("never sheets an uncloseable overlay under auto", () =>
+	{
 		coarseNarrow = true;
-		const {result} = renderHook(() => useSheetPresentation(true, {closable: false}));
+		const {result} = renderHook(() =>
+			useSheetPresentation(
+				true,
+				{
+					closable: false,
+				},
+			),
+		);
 		expect(result.current.sheet).toBe(false);
 	});
 });

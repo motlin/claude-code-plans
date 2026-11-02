@@ -18,29 +18,42 @@ const typeFilter = typeIdx >= 0 ? args[typeIdx + 1] : undefined;
 
 const projectsDir = join(homedir(), ".claude", "projects");
 
-function findJsonlFiles(dir: string): string[] {
+function findJsonlFiles(dir: string): string[]
+{
 	const results: string[] = [];
-	for (const entry of readdirSync(dir, {withFileTypes: true})) {
+	for (const entry of readdirSync(
+		dir,
+		{
+			withFileTypes: true,
+		},
+	))
+	{
 		const full = join(dir, entry.name);
-		if (entry.isDirectory()) {
+		if (entry.isDirectory())
+		{
 			results.push(...findJsonlFiles(full));
-		} else if (entry.name.endsWith(".jsonl")) {
+		}
+		else if (entry.name.endsWith(".jsonl"))
+		{
 			results.push(full);
 		}
 	}
 	return results;
 }
 
-interface TypeStats {
+interface TypeStats
+{
 	total: number;
 	fields: Map<string, number>;
 }
 
 const statsByType = new Map<string, TypeStats>();
 
-function collectFieldPaths(obj: Record<string, unknown>, prefix: string): string[] {
+function collectFieldPaths(obj: Record<string, unknown>, prefix: string): string[]
+{
 	const paths: string[] = [];
-	for (const [key, value] of Object.entries(obj)) {
+	for (const [key, value] of Object.entries(obj))
+	{
 		const fieldPath = prefix ? `${prefix}.${key}` : key;
 		paths.push(fieldPath);
 		const nested = asRecord(value);
@@ -55,22 +68,30 @@ const filesToProcess = allFiles.slice(0, fileLimit);
 let totalRecords = 0;
 let parseFails = 0;
 
-for (const filePath of filesToProcess) {
+for (const filePath of filesToProcess)
+{
 	let content: string;
-	try {
+	try
+	{
 		content = readFileSync(filePath, "utf-8");
-	} catch {
+	}
+	catch
+	{
 		continue;
 	}
 
-	for (const line of content.split("\n")) {
+	for (const line of content.split("\n"))
+	{
 		const trimmed = line.trim();
 		if (!trimmed) continue;
 
 		let obj: Record<string, unknown> | undefined;
-		try {
+		try
+		{
 			obj = asRecord(JSON.parse(trimmed));
-		} catch {
+		}
+		catch
+		{
 			parseFails++;
 			continue;
 		}
@@ -82,13 +103,19 @@ for (const filePath of filesToProcess) {
 		totalRecords++;
 
 		let stats = statsByType.get(recordType);
-		if (!stats) {
-			stats = {total: 0, fields: new Map()};
+		if (!stats)
+		{
+			stats =
+			{
+				total: 0,
+				fields: new Map(),
+			};
 			statsByType.set(recordType, stats);
 		}
 		stats.total++;
 
-		for (const fieldPath of collectFieldPaths(obj, "")) {
+		for (const fieldPath of collectFieldPaths(obj, ""))
+		{
 			stats.fields.set(fieldPath, (stats.fields.get(fieldPath) ?? 0) + 1);
 		}
 	}
@@ -98,14 +125,16 @@ console.log(`Scanned ${filesToProcess.length} files, ${totalRecords} records, ${
 
 const sortedTypes = [...statsByType.entries()].toSorted((a, b) => b[1].total - a[1].total);
 
-for (const [typeName, stats] of sortedTypes) {
+for (const [typeName, stats] of sortedTypes)
+{
 	console.log(`\n${"=".repeat(70)}`);
 	console.log(`type: "${typeName}"  (${stats.total} records)`);
 	console.log("=".repeat(70));
 
 	const fieldEntries = [...stats.fields.entries()]
 		.filter(([f]) => f !== "type")
-		.toSorted((a, b) => {
+		.toSorted((a, b) =>
+		{
 			const aRate = a[1] / stats.total;
 			const bRate = b[1] / stats.total;
 			if (bRate !== aRate) return bRate - aRate;
@@ -117,7 +146,8 @@ for (const [typeName, stats] of sortedTypes) {
 	console.log(`${"Field".padEnd(maxFieldLen)}  ${"Present".padStart(8)}  ${"Rate".padStart(8)}  Status`);
 	console.log(`${"-".repeat(maxFieldLen)}  ${"-".repeat(8)}  ${"-".repeat(8)}  ------`);
 
-	for (const [field, count] of fieldEntries) {
+	for (const [field, count] of fieldEntries)
+	{
 		const rate = count / stats.total;
 		const pct = (rate * 100).toFixed(1).padStart(7) + "%";
 		const status =

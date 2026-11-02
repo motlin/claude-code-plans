@@ -8,28 +8,33 @@ import {readGhosttyConfig, type GhosttyConfig} from "./ghostty/config";
  */
 const NERD_FONT_FALLBACKS = '"MesloLGS Nerd Font Mono", "MesloLGS NF Web", "JetBrains Mono", monospace';
 
-export interface GhosttyAppearance {
+export interface GhosttyAppearance
+{
 	fontFamily: string;
 	fontSize: number;
-	theme: ITheme & {
+	theme: ITheme &
+	{
 		background: string;
 		foreground: string;
 	};
 }
 
-function compactTheme(theme: GhosttyConfig["theme"]): ITheme {
+function compactTheme(theme: GhosttyConfig["theme"]): ITheme
+{
 	const colorEntries = Object.entries(theme ?? {}).filter(
 		(entry): entry is [string, string] => entry[1] !== undefined,
 	);
 	return Object.fromEntries(colorEntries);
 }
 
-function resolveGhosttyAppearance(config: GhosttyConfig): GhosttyAppearance {
+function resolveGhosttyAppearance(config: GhosttyConfig): GhosttyAppearance
+{
 	const theme = compactTheme(config.theme);
 	return {
 		fontFamily: config.fontFamily ? `"${config.fontFamily}", ${NERD_FONT_FALLBACKS}` : NERD_FONT_FALLBACKS,
 		fontSize: config.fontSize ?? 13,
-		theme: {
+		theme:
+		{
 			...theme,
 			background: theme.background ?? "#111318",
 			foreground: theme.foreground ?? "#e6e6e6",
@@ -37,6 +42,8 @@ function resolveGhosttyAppearance(config: GhosttyConfig): GhosttyAppearance {
 	};
 }
 
-export const getGhosttyAppearance = createServerFn({method: "GET"}).handler(() =>
-	resolveGhosttyAppearance(readGhosttyConfig()),
-);
+export const getGhosttyAppearance = createServerFn(
+	{
+		method: "GET",
+	},
+).handler(() => resolveGhosttyAppearance(readGhosttyConfig()));

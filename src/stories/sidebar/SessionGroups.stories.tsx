@@ -7,7 +7,8 @@ import {createStoryQueryClient} from "./router-and-query";
 
 const MINUTE = 60 * 1000;
 
-function session(id: string, title: string, bucket: SessionBucket, minutesAgo: number) {
+function session(id: string, title: string, bucket: SessionBucket, minutesAgo: number)
+{
 	const mtime = new Date(Date.now() - minutesAgo * MINUTE).toISOString();
 	return {
 		id,
@@ -30,21 +31,36 @@ const sessions = [
 	session("sess-1", "Approve the migration plan", "blocked", 2),
 	session("sess-2", "Fix sidebar layout", "review", 5),
 	session("sess-3", "Refactor the hook dispatcher to ignore subagent events", "working", 1),
-	...Array.from({length: 24}, (_, index) =>
-		session(`done-${index}`, `Completed session ${index + 1}`, "done", 30 + index * 60),
+	...Array.from(
+		{
+			length: 24,
+		},
+		(_, index) => session(`done-${index}`, `Completed session ${index + 1}`, "done", 30 + index * 60),
 	),
 ];
 
-function seed(nextCursor: string | null = null) {
+function seed(nextCursor: string | null = null)
+{
 	const queryClient = createStoryQueryClient();
-	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [RecentSessionsResponse.parse({sessions, nextCursor})],
-		pageParams: [null],
-	});
+	queryClient.setQueryData(
+		recentSessionsInfiniteQueryOptions().queryKey,
+		{
+			pages: [
+				RecentSessionsResponse.parse(
+					{
+						sessions,
+						nextCursor,
+					},
+				),
+			],
+			pageParams: [null],
+		},
+	);
 	return queryClient;
 }
 
-const meta = {
+const meta =
+{
 	title: "Sidebar/SessionGroups",
 	component: SessionGroups,
 } satisfies Meta<typeof SessionGroups>;
@@ -52,7 +68,8 @@ const meta = {
 export default meta;
 type Story = StoryObj;
 
-export const ByState: Story = {
+export const ByState: Story =
+{
 	render: () => (
 		<StoryWrapper queryClient={seed()}>
 			<SessionGroups activeItemId="sess-2" />
@@ -60,7 +77,8 @@ export const ByState: Story = {
 	),
 };
 
-export const WithMorePages: Story = {
+export const WithMorePages: Story =
+{
 	render: () => (
 		<StoryWrapper queryClient={seed("cursor-2")}>
 			<SessionGroups activeItemId={null} />
@@ -68,9 +86,16 @@ export const WithMorePages: Story = {
 	),
 };
 
-export const Loading: Story = {
+export const Loading: Story =
+{
 	render: () => (
-		<StoryWrapper queryClient={createStoryQueryClient({enabled: false})}>
+		<StoryWrapper
+			queryClient={createStoryQueryClient(
+				{
+					enabled: false,
+				},
+			)}
+		>
 			<SessionGroups activeItemId={null} />
 		</StoryWrapper>
 	),

@@ -14,18 +14,25 @@ export async function probeDevServer(
 	url: string,
 	fetchImpl: typeof fetch = fetch,
 	timeoutMs = PROBE_TIMEOUT_MS,
-): Promise<DevServerProbe> {
+): Promise<DevServerProbe>
+{
 	const origin = loopbackOrigin(url);
 	if (origin === undefined) return "refused";
-	try {
-		const response = await fetchImpl(`${origin}/`, {
-			method: "HEAD",
-			redirect: "manual",
-			signal: AbortSignal.timeout(timeoutMs),
-		});
+	try
+	{
+		const response = await fetchImpl(
+			`${origin}/`,
+			{
+				method: "HEAD",
+				redirect: "manual",
+				signal: AbortSignal.timeout(timeoutMs),
+			},
+		);
 		await response.body?.cancel();
 		return "live";
-	} catch {
+	}
+	catch
+	{
 		return "down";
 	}
 }

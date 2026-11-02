@@ -8,7 +8,8 @@ const HEADING_CLASS_NAME = "text-body-semibold text-primary select-text scroll-m
 const INPUT_CLASS_NAME =
 	"min-w-0 max-w-full rounded-r2 border-0 bg-transparent p-0 outline outline-[1.5px] outline-fill-accent outline-offset-[1px] [field-sizing:content]";
 
-interface ChapterHeadingProps {
+interface ChapterHeadingProps
+{
 	/** The chapter's id: a chapter tool call's tool_use id, or a user chapter's `uch-` id. */
 	id: string;
 	title: string;
@@ -20,7 +21,8 @@ interface ChapterHeadingProps {
  * Upstream claude.ai/code's inline chapter heading (`FA`), inside the turn renderer's
  * assistant-text inset wrapper (`zfe`). It is not find-omitted, so find-in-page matches it.
  */
-export function ChapterHeading({id, title, onRename}: ChapterHeadingProps) {
+export function ChapterHeading({id, title, onRename}: ChapterHeadingProps)
+{
 	const [editing, setEditing] = useState(false);
 	const canRename = onRename !== undefined && title !== "";
 	return (
@@ -29,7 +31,8 @@ export function ChapterHeading({id, title, onRename}: ChapterHeadingProps) {
 				<h3 className={HEADING_CLASS_NAME}>
 					<ChapterTitleInput
 						title={title}
-						onDone={(next) => {
+						onDone={(next) =>
+						{
 							setEditing(false);
 							if (next !== undefined) onRename(next);
 						}}
@@ -44,7 +47,8 @@ export function ChapterHeading({id, title, onRename}: ChapterHeadingProps) {
 					className={`line-clamp-2 ${HEADING_CLASS_NAME}`}
 					onDoubleClick={
 						canRename
-							? () => {
+							? () =>
+								{
 									setEditing(true);
 								}
 							: undefined
@@ -61,14 +65,16 @@ export function ChapterHeading({id, title, onRename}: ChapterHeadingProps) {
  * One of Claude's chapters (upstream's `IA`): drawn under the user's rename of it, renamed in place
  * by double-click, and not drawn at all once the user deleted it from the outline.
  */
-export function ClaudeChapterHeading({sessionId, id, title}: {sessionId: string; id: string; title: string}) {
+export function ClaudeChapterHeading({sessionId, id, title}: {sessionId: string; id: string; title: string})
+{
 	const {hidden, renames} = useSessionChapters(sessionId);
 	if (hidden.includes(id)) return null;
 	return (
 		<ChapterHeading
 			id={id}
 			title={renames[id] ?? title}
-			onRename={(next) => {
+			onRename={(next) =>
+			{
 				renameChapter(sessionId, id, next);
 			}}
 		/>
@@ -76,17 +82,20 @@ export function ClaudeChapterHeading({sessionId, id, title}: {sessionId: string;
 }
 
 /** The rename input: Enter or blur commits a trimmed, non-empty, changed value; Escape cancels. */
-function ChapterTitleInput({title, onDone}: {title: string; onDone: (next: string | undefined) => void}) {
+function ChapterTitleInput({title, onDone}: {title: string; onDone: (next: string | undefined) => void})
+{
 	const [value, setValue] = useState(title);
 	const doneRef = useRef(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		inputRef.current?.focus();
 		inputRef.current?.select();
 	}, []);
 
-	const finish = (commit: boolean) => {
+	const finish = (commit: boolean) =>
+	{
 		if (doneRef.current) return;
 		doneRef.current = true;
 		const next = value.trim();
@@ -100,17 +109,23 @@ function ChapterTitleInput({title, onDone}: {title: string; onDone: (next: strin
 			size={Math.min(Math.max(title.length, 10), 40)}
 			className={INPUT_CLASS_NAME}
 			value={value}
-			onChange={(event) => {
+			onChange={(event) =>
+			{
 				setValue(event.target.value);
 			}}
-			onBlur={() => {
+			onBlur={() =>
+			{
 				finish(true);
 			}}
-			onKeyDown={(event) => {
-				if (event.key === "Enter") {
+			onKeyDown={(event) =>
+			{
+				if (event.key === "Enter")
+				{
 					event.preventDefault();
 					finish(true);
-				} else if (event.key === "Escape") {
+				}
+				else if (event.key === "Escape")
+				{
 					event.preventDefault();
 					// The session page binds Escape to stopping the response; a rename's Escape must not reach it.
 					event.stopPropagation();

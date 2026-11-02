@@ -13,7 +13,8 @@
  */
 
 import {execFileSync, spawn, type ChildProcess} from "node:child_process";
-import {
+import
+{
 	copyFileSync,
 	mkdirSync,
 	mkdtempSync,
@@ -43,14 +44,19 @@ const REAL_APP_PORT = 7526;
 const DEFAULT_RUNS = 5;
 const MIN_RAF_HZ = 50;
 const PREFLIGHT_FRAMES = 30;
-const VIEWPORT = {width: 1280, height: 800} as const;
+const VIEWPORT =
+{
+	width: 1280,
+	height: 800,
+} as const;
 
 /**
  * Reduced motion turns off the app's CSS transitions (motion-reduce:transition-none). An animated height, max-height
  * or grid-rows transition lays out once per frame, so its count varies with how many frames land in its 150ms: the ⌘K
  * palette's footer collapse and list resize took J6 from 25 to 41..47 layouts and made them drift run to run.
  */
-export const LAB_CONTEXT_OPTIONS = {
+export const LAB_CONTEXT_OPTIONS =
+{
 	viewport: VIEWPORT,
 	colorScheme: "dark",
 	locale: "en-US",
@@ -60,7 +66,8 @@ export const LAB_CONTEXT_OPTIONS = {
 export const JOURNEYS = ["J1", "J2", "J3", "J4", "J5", "J6"] as const;
 export type JourneyId = (typeof JOURNEYS)[number];
 
-export const JOURNEY_TITLES: Record<JourneyId, string> = {
+export const JOURNEY_TITLES: Record<JourneyId, string> =
+{
 	J1: "Cold launch to Home",
 	J2: "Open a session by URL (typical)",
 	J3: "Switch sessions from the sidebar",
@@ -69,47 +76,59 @@ export const JOURNEY_TITLES: Record<JourneyId, string> = {
 	J6: "⌘K palette open + search",
 };
 
-export interface CdpMetricsPayload {
-	metrics: Array<{name: string; value: number}>;
+export interface CdpMetricsPayload
+{
+	metrics: Array<
+	{
+		name: string;
+		value: number;
+	}>;
 }
 
-export interface MetricsDelta {
+export interface MetricsDelta
+{
 	recalcStyleCount: number;
 	layoutCount: number;
 	recalcStyleDurationMs: number;
 	layoutDurationMs: number;
 }
 
-export interface PreflightProbe {
+export interface PreflightProbe
+{
 	visibilityState: string;
 	rafTimestamps: number[];
 }
 
-export interface LayoutShiftEntry {
+export interface LayoutShiftEntry
+{
 	value: number;
 	hadRecentInput: boolean;
 }
 
-declare global {
+declare global
+{
 	/** Layout shifts the lab's init script records in the page under test. */
 	var __perfLabShifts: LayoutShiftEntry[];
 	/** Set on the document that took a journey's baseline, to tell SPA navigations from full reloads. */
 	var __perfLabMarker: boolean | undefined;
 }
 
-export interface JourneySample extends MetricsDelta {
+export interface JourneySample extends MetricsDelta
+{
 	requests: number;
 	layoutShift: number;
 }
 
-export interface Summary {
+export interface Summary
+{
 	min: number;
 	median: number;
 	max: number;
 	values: number[];
 }
 
-export interface LabArgs {
+export interface LabArgs
+{
 	port: number;
 	runs: number;
 	journeys: JourneyId[];
@@ -117,27 +136,32 @@ export interface LabArgs {
 	ratchet: boolean;
 }
 
-function metricValue(payload: CdpMetricsPayload, name: string): number {
+function metricValue(payload: CdpMetricsPayload, name: string): number
+{
 	const metric = payload.metrics.find((entry) => entry.name === name);
 	if (metric === undefined) throw new Error(`CDP Performance.getMetrics payload has no ${name} metric`);
 	return metric.value;
 }
 
-function counterDelta(before: CdpMetricsPayload, after: CdpMetricsPayload, name: string): number {
+function counterDelta(before: CdpMetricsPayload, after: CdpMetricsPayload, name: string): number
+{
 	const start = metricValue(before, name);
 	const end = metricValue(after, name);
-	if (end < start) {
+	if (end < start)
+	{
 		throw new Error(`${name} went backwards from ${start} to ${end}; the journey crossed a renderer swap`);
 	}
 	return end - start;
 }
 
 /** Durations arrive in seconds; report milliseconds rounded to the microsecond so float noise does not leak. */
-function secondsToMs(seconds: number): number {
+function secondsToMs(seconds: number): number
+{
 	return Math.round(seconds * 1_000_000) / 1000;
 }
 
-export function metricsDelta(before: CdpMetricsPayload, after: CdpMetricsPayload): MetricsDelta {
+export function metricsDelta(before: CdpMetricsPayload, after: CdpMetricsPayload): MetricsDelta
+{
 	return {
 		recalcStyleCount: counterDelta(before, after, "RecalcStyleCount"),
 		layoutCount: counterDelta(before, after, "LayoutCount"),
@@ -146,7 +170,8 @@ export function metricsDelta(before: CdpMetricsPayload, after: CdpMetricsPayload
 	};
 }
 
-export function rafRateHz(timestamps: readonly number[]): number {
+export function rafRateHz(timestamps: readonly number[]): number
+{
 	const first = timestamps[0];
 	const last = timestamps.at(-1);
 	if (timestamps.length < 2 || first === undefined || last === undefined || last <= first) return 0;
@@ -154,63 +179,87 @@ export function rafRateHz(timestamps: readonly number[]): number {
 }
 
 /** Reasons to abort: a hidden or throttled tab measures frame scheduling, not the app (the hidden-tab trap). */
-export function preflightFailures(probe: PreflightProbe): string[] {
+export function preflightFailures(probe: PreflightProbe): string[]
+{
 	const failures: string[] = [];
-	if (probe.visibilityState !== "visible") {
+	if (probe.visibilityState !== "visible")
+	{
 		failures.push(`document.visibilityState is "${probe.visibilityState}", expected "visible"`);
 	}
 	const hz = rafRateHz(probe.rafTimestamps);
-	if (hz < MIN_RAF_HZ) {
+	if (hz < MIN_RAF_HZ)
+	{
 		failures.push(`requestAnimationFrame runs at ${hz.toFixed(1)} Hz, expected at least ${MIN_RAF_HZ} Hz`);
 	}
 	return failures;
 }
 
 /** Lab CLS for one journey: the layout-shift values not excused by recent input. */
-export function layoutShiftSum(entries: readonly LayoutShiftEntry[]): number {
+export function layoutShiftSum(entries: readonly LayoutShiftEntry[]): number
+{
 	return entries.reduce((sum, entry) => (entry.hadRecentInput ? sum : sum + entry.value), 0);
 }
 
-export function summarize(values: number[]): Summary {
+export function summarize(values: number[]): Summary
+{
 	const sorted = values.toSorted((a, b) => a - b);
 	const middle = Math.floor(sorted.length / 2);
 	const median =
 		sorted.length % 2 === 1 ? (sorted[middle] ?? 0) : ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2;
-	return {min: sorted[0] ?? 0, median, max: sorted.at(-1) ?? 0, values};
+	return {
+		min: sorted[0] ?? 0,
+		median,
+		max: sorted.at(-1) ?? 0,
+		values,
+	};
 }
 
-function isJourney(value: string): value is JourneyId {
+function isJourney(value: string): value is JourneyId
+{
 	return (JOURNEYS as readonly string[]).includes(value);
 }
 
-function positiveInteger(flag: string, raw: string | undefined): number {
+function positiveInteger(flag: string, raw: string | undefined): number
+{
 	const value = Number(raw);
 	if (!Number.isInteger(value) || value <= 0) throw new Error(`${flag} must be a positive integer, got ${raw}`);
 	return value;
 }
 
-export function parseLabArgs(argv: readonly string[]): LabArgs {
+export function parseLabArgs(argv: readonly string[]): LabArgs
+{
 	let port = DEFAULT_PORT;
 	let runs = DEFAULT_RUNS;
 	let ratchetMode = false;
 	const journeys = new Set<JourneyId>();
-	for (let index = 0; index < argv.length; index += 1) {
+	for (let index = 0; index < argv.length; index += 1)
+	{
 		const argument = argv[index];
-		if (argument === "--port") {
+		if (argument === "--port")
+		{
 			port = positiveInteger("--port", argv[++index]);
-		} else if (argument === "--runs") {
+		}
+		else if (argument === "--runs")
+		{
 			runs = positiveInteger("--runs", argv[++index]);
-		} else if (argument === "--journey") {
+		}
+		else if (argument === "--journey")
+		{
 			const journey = argv[++index] ?? "";
 			if (!isJourney(journey)) throw new Error(`Unknown journey: ${journey}`);
 			journeys.add(journey);
-		} else if (argument === "--ratchet") {
+		}
+		else if (argument === "--ratchet")
+		{
 			ratchetMode = true;
-		} else {
+		}
+		else
+		{
 			throw new Error(`Unknown argument: ${argument}`);
 		}
 	}
-	if (port === REAL_APP_PORT) {
+	if (port === REAL_APP_PORT)
+	{
 		throw new Error(`Refusing port ${REAL_APP_PORT}: it is the user's real Claude Code Browser server`);
 	}
 	return {
@@ -228,7 +277,8 @@ export function parseLabArgs(argv: readonly string[]): LabArgs {
 /** The J2/J4 session's mtime, newest in the sidebar ahead of the screenshot fixtures. */
 const OPEN_SESSION_MTIME_MS = FIXED_TIME - 60_000;
 
-interface LabFixture {
+interface LabFixture
+{
 	root: string;
 	home: string;
 	/** Session opened cold by URL (J2) and appended to while open (J4), the typical shape. */
@@ -242,8 +292,10 @@ interface LabFixture {
 	switchSessionBytes: number;
 }
 
-function sessionIdOf(transcript: string): string {
-	for (const line of transcript.split("\n")) {
+function sessionIdOf(transcript: string): string
+{
+	for (const line of transcript.split("\n"))
+	{
 		const sessionId = asRecord(JSON.parse(line))?.["sessionId"];
 		if (typeof sessionId === "string") return sessionId;
 	}
@@ -256,29 +308,47 @@ function sessionIdOf(transcript: string): string {
  * (`-a-b-c` → `/a/b/c`) against the filesystem, and the session page shows its composer only when that resolves.
  * Decoding turns every `-` before the last segment into `/`, so the root's path must contain neither `-` nor `.`.
  */
-function createFixtureRoot(): string {
-	for (const base of [tmpdir(), "/tmp"]) {
+function createFixtureRoot(): string
+{
+	for (const base of [tmpdir(), "/tmp"])
+	{
 		const root = mkdtempSync(join(realpathSync(base), "ccblab"));
 		if (!/[-.]/.test(root)) return root;
-		rmSync(root, {recursive: true, force: true});
+		rmSync(
+			root,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	}
 	throw new Error("No temp directory without '-' or '.' in its path to host the perf lab fixture");
 }
 
-async function seedLabFixture(): Promise<LabFixture> {
+async function seedLabFixture(): Promise<LabFixture>
+{
 	const root = createFixtureRoot();
 	const home = seedFixtureHome(root);
 	const workDirectory = join(root, "perf-app");
 	mkdirSync(workDirectory);
 	const projectDirectory = join(home, ".claude", "projects", workDirectory.replaceAll("/", "-"));
-	mkdirSync(projectDirectory, {recursive: true});
-	const place = async (shape: (typeof PERF_SHAPES)["small"], seed: number, mtimeMs: number) => {
+	mkdirSync(
+		projectDirectory,
+		{
+			recursive: true,
+		},
+	);
+	const place = async (shape: (typeof PERF_SHAPES)["small"], seed: number, mtimeMs: number) =>
+	{
 		const source = await generateTranscript(shape, seed);
 		const sessionId = sessionIdOf(readFileSync(source, "utf8"));
 		const path = join(projectDirectory, `${sessionId}.jsonl`);
 		copyFileSync(source, path);
 		utimesSync(path, mtimeMs / 1000, mtimeMs / 1000);
-		return {sessionId, path};
+		return {
+			sessionId,
+			path,
+		};
 	};
 	// Newest first in the sidebar, ahead of the screenshot fixtures (which top out at FIXED_TIME - 1h).
 	const open = await place(PERF_SHAPES.typical, 1, OPEN_SESSION_MTIME_MS);
@@ -296,20 +366,30 @@ async function seedLabFixture(): Promise<LabFixture> {
 }
 
 /** A session as the server's index reports it. `mtime` is the last record's timestamp, not the file's mtime. */
-export interface IndexedSession {
+export interface IndexedSession
+{
 	messageCount: number;
 	mtime: string;
 }
 
 /** Whether the index holds the seeded transcript again: the row the server reported for it before the first run. */
-export function isSeededIndex(indexed: IndexedSession | undefined, seeded: IndexedSession): boolean {
+export function isSeededIndex(indexed: IndexedSession | undefined, seeded: IndexedSession): boolean
+{
 	return indexed?.messageCount === seeded.messageCount && indexed.mtime === seeded.mtime;
 }
 
 /** The open session as the server's index sees it: what the sidebar and session list are rendered from. */
-async function indexedOpenSession(baseUrl: string, fixture: LabFixture): Promise<IndexedSession | undefined> {
+async function indexedOpenSession(baseUrl: string, fixture: LabFixture): Promise<IndexedSession | undefined>
+{
 	const rows = z
-		.array(z.object({messageCount: z.number(), mtime: z.string()}))
+		.array(
+			z.object(
+				{
+					messageCount: z.number(),
+					mtime: z.string(),
+				},
+			),
+		)
 		.parse(JSON.parse(await httpGet(`${baseUrl}/api/sessions/lookup?ids=${fixture.openSessionId}`)));
 	return rows[0];
 }
@@ -321,65 +401,107 @@ async function indexedOpenSession(baseUrl: string, fixture: LabFixture): Promise
  * seeded transcript again, so the run does not race the watcher's re-index. The index dates a session by its last
  * record, so the reset is recognized by the seeded row the server reported, not by the restored file mtime.
  */
-async function resetOpenSession(baseUrl: string, fixture: LabFixture, seeded: IndexedSession): Promise<void> {
+async function resetOpenSession(baseUrl: string, fixture: LabFixture, seeded: IndexedSession): Promise<void>
+{
 	writeFileSync(fixture.openSessionPath, fixture.openSessionSeed);
 	utimesSync(fixture.openSessionPath, OPEN_SESSION_MTIME_MS / 1000, OPEN_SESSION_MTIME_MS / 1000);
-	for (let attempt = 0; attempt < 240; attempt += 1) {
+	for (let attempt = 0; attempt < 240; attempt += 1)
+	{
 		if (isSeededIndex(await indexedOpenSession(baseUrl, fixture).catch(() => undefined), seeded)) return;
-		await new Promise((resolvePromise) => {
+		await new Promise((resolvePromise) =>
+		{
 			setTimeout(resolvePromise, 250);
 		});
 	}
 	throw new Error(`The lab server did not re-index the reset session ${fixture.openSessionId} within 60 seconds`);
 }
 
-function startServer(fixture: LabFixture, port: number): {process: ChildProcess; output: string[]} {
+function startServer(
+	fixture: LabFixture,
+	port: number,
+):
+{
+	process: ChildProcess;
+	output: string[];
+}
+{
 	const output: string[] = [];
-	const server = spawn("pnpm", ["exec", "vp", "dev", "--host", "127.0.0.1", "--strictPort"], {
-		cwd: REPOSITORY_ROOT,
-		detached: process.platform !== "win32",
-		env: fixtureServerEnv(process.env, {fixtureRoot: fixture.root, fixtureHome: fixture.home, port}),
-		stdio: ["ignore", "pipe", "pipe"],
-	});
-	const remember = (chunk: Buffer) => {
+	const server = spawn(
+		"pnpm",
+		["exec", "vp", "dev", "--host", "127.0.0.1", "--strictPort"],
+		{
+			cwd: REPOSITORY_ROOT,
+			detached: process.platform !== "win32",
+			env: fixtureServerEnv(
+				process.env,
+				{
+					fixtureRoot: fixture.root,
+					fixtureHome: fixture.home,
+					port,
+				},
+			),
+			stdio: ["ignore", "pipe", "pipe"],
+		},
+	);
+	const remember = (chunk: Buffer) =>
+	{
 		output.push(chunk.toString());
 		if (output.length > 100) output.shift();
 	};
 	server.stdout.on("data", remember);
 	server.stderr.on("data", remember);
-	return {process: server, output};
+	return {
+		process: server,
+		output,
+	};
 }
 
 /**
  * Plain `node:http` rather than `fetch`: under heavy load Node's undici can throw `setTypeOfService EINVAL` from a
  * socket callback while the server is still starting, which no try/catch around `fetch` can intercept.
  */
-async function httpGet(url: string): Promise<string> {
-	return new Promise((resolvePromise, reject) => {
-		const request = get(url, {agent: false}, (response) => {
-			const chunks: Buffer[] = [];
-			response.on("data", (chunk: Buffer) => chunks.push(chunk));
-			response.on("error", reject);
-			response.on("end", () => {
-				if (response.statusCode === 200) resolvePromise(Buffer.concat(chunks).toString("utf8"));
-				else reject(new Error(`GET ${url} returned ${response.statusCode}`));
-			});
-		});
+async function httpGet(url: string): Promise<string>
+{
+	return new Promise((resolvePromise, reject) =>
+	{
+		const request = get(
+			url,
+			{
+				agent: false,
+			},
+			(response) =>
+			{
+				const chunks: Buffer[] = [];
+				response.on("data", (chunk: Buffer) => chunks.push(chunk));
+				response.on("error", reject);
+				response.on("end", () =>
+				{
+					if (response.statusCode === 200) resolvePromise(Buffer.concat(chunks).toString("utf8"));
+					else reject(new Error(`GET ${url} returned ${response.statusCode}`));
+				});
+			},
+		);
 		request.on("error", reject);
 	});
 }
 
-async function waitForIdleIndex(baseUrl: string, server: ChildProcess, output: string[]): Promise<void> {
-	for (let attempt = 0; attempt < 240; attempt += 1) {
+async function waitForIdleIndex(baseUrl: string, server: ChildProcess, output: string[]): Promise<void>
+{
+	for (let attempt = 0; attempt < 240; attempt += 1)
+	{
 		if (server.exitCode !== null)
 			throw new Error(`Lab dev server exited with ${server.exitCode}:\n${output.join("")}`);
-		try {
+		try
+		{
 			if (!IndexingStatusResponse.parse(JSON.parse(await httpGet(`${baseUrl}/api/indexing-status`))).isIndexing)
 				return;
-		} catch {
+		}
+		catch
+		{
 			// Still starting.
 		}
-		await new Promise((resolvePromise) => {
+		await new Promise((resolvePromise) =>
+		{
 			setTimeout(resolvePromise, 250);
 		});
 	}
@@ -418,7 +540,8 @@ const INIT_SCRIPT = `
   }
 `;
 
-interface Probe {
+interface Probe
+{
 	page: Page;
 	cdp: CDPSession;
 	requests: () => number;
@@ -433,12 +556,17 @@ interface Probe {
 const NETWORK_QUIET_MS = 300;
 const NETWORK_SETTLE_CAP_MS = 10_000;
 
-async function prepareContext(context: BrowserContext, blocked: string[]): Promise<void> {
-	await context.route("**/*", async (route) => {
+async function prepareContext(context: BrowserContext, blocked: string[]): Promise<void>
+{
+	await context.route("**/*", async (route) =>
+	{
 		const url = new URL(route.request().url());
-		if (url.hostname === "127.0.0.1") {
+		if (url.hostname === "127.0.0.1")
+		{
 			await route.continue();
-		} else {
+		}
+		else
+		{
 			// fonts.googleapis.com and anything else off-box: a network dependency would make the counts flaky.
 			blocked.push(url.hostname);
 			await route.abort();
@@ -447,16 +575,19 @@ async function prepareContext(context: BrowserContext, blocked: string[]): Promi
 	await context.addInitScript(INIT_SCRIPT);
 }
 
-async function openProbe(context: BrowserContext): Promise<Probe> {
+async function openProbe(context: BrowserContext): Promise<Probe>
+{
 	const page = await context.newPage();
 	let requests = 0;
 	let lastActivity = Date.now();
 	const urls: string[] = [];
 	const pending = new Set<Request>();
-	const done = (request: Request) => {
+	const done = (request: Request) =>
+	{
 		if (pending.delete(request)) lastActivity = Date.now();
 	};
-	page.on("request", (request) => {
+	page.on("request", (request) =>
+	{
 		requests += 1;
 		urls.push(request.url());
 		lastActivity = Date.now();
@@ -476,16 +607,29 @@ async function openProbe(context: BrowserContext): Promise<Probe> {
 	};
 }
 
-async function runPreflight(page: Page): Promise<void> {
+async function runPreflight(page: Page): Promise<void>
+{
 	await page.bringToFront();
 	const probe = await page.evaluate(
 		async (frames) =>
-			new Promise<{visibilityState: string; rafTimestamps: number[]}>((resolvePromise) => {
+			new Promise<
+			{
+				visibilityState: string;
+				rafTimestamps: number[];
+			}>((resolvePromise) =>
+			{
 				const rafTimestamps: number[] = [];
-				const tick = (timestamp: number) => {
+				const tick = (timestamp: number) =>
+				{
 					rafTimestamps.push(timestamp);
 					if (rafTimestamps.length <= frames) requestAnimationFrame(tick);
-					else resolvePromise({visibilityState: document.visibilityState, rafTimestamps});
+					else
+						resolvePromise(
+							{
+								visibilityState: document.visibilityState,
+								rafTimestamps,
+							},
+						);
 				};
 				requestAnimationFrame(tick);
 			}),
@@ -496,32 +640,40 @@ async function runPreflight(page: Page): Promise<void> {
 }
 
 /** Wait until the DOM has been quiet for 300 ms (3 s cap), then two frames so the last commit is painted. */
-async function settle(page: Page): Promise<void> {
+async function settle(page: Page): Promise<void>
+{
 	await page.evaluate(
 		async () =>
-			new Promise<void>((resolvePromise) => {
+			new Promise<void>((resolvePromise) =>
+			{
 				let quiet = setTimeout(finish, 300);
 				const cap = setTimeout(finish, 3_000);
-				const observer = new MutationObserver(() => {
+				const observer = new MutationObserver(() =>
+				{
 					clearTimeout(quiet);
 					quiet = setTimeout(finish, 300);
 				});
-				function finish(): void {
+				function finish(): void
+				{
 					clearTimeout(quiet);
 					clearTimeout(cap);
 					observer.disconnect();
 					requestAnimationFrame(() =>
-						requestAnimationFrame(() => {
+						requestAnimationFrame(() =>
+						{
 							resolvePromise();
 						}),
 					);
 				}
-				observer.observe(document.documentElement, {
-					attributes: true,
-					characterData: true,
-					childList: true,
-					subtree: true,
-				});
+				observer.observe(
+					document.documentElement,
+					{
+						attributes: true,
+						characterData: true,
+						childList: true,
+						subtree: true,
+					},
+				);
 			}),
 	);
 }
@@ -533,9 +685,11 @@ async function settle(page: Page): Promise<void> {
  * modules) and a lone `--journey J6` read 2 to ~125 (the session page's pane warm-ups). Waiting for the network to go
  * quiet as well charges each warm-up to the journey whose page scheduled it.
  */
-async function settleWithNetwork(probe: Probe): Promise<void> {
+async function settleWithNetwork(probe: Probe): Promise<void>
+{
 	const deadline = Date.now() + NETWORK_SETTLE_CAP_MS;
-	for (;;) {
+	for (;;)
+	{
 		await settle(probe.page);
 		const quietFor = Date.now() - probe.lastNetworkActivity();
 		if ((probe.inFlight() === 0 && quietFor >= NETWORK_QUIET_MS) || Date.now() >= deadline) return;
@@ -543,11 +697,13 @@ async function settleWithNetwork(probe: Probe): Promise<void> {
 	}
 }
 
-async function shiftCount(page: Page): Promise<number> {
+async function shiftCount(page: Page): Promise<number>
+{
 	return page.evaluate(() => globalThis.__perfLabShifts.length);
 }
 
-async function shiftsSince(page: Page, start: number): Promise<LayoutShiftEntry[]> {
+async function shiftsSince(page: Page, start: number): Promise<LayoutShiftEntry[]>
+{
 	return page.evaluate((from) => globalThis.__perfLabShifts.slice(from), start);
 }
 
@@ -560,7 +716,8 @@ async function measure(
 	id: JourneyId,
 	run: number,
 	interaction: () => Promise<void>,
-): Promise<JourneySample> {
+): Promise<JourneySample>
+{
 	const before = await probe.cdp.send("Performance.getMetrics");
 	const requestsBefore = probe.requests();
 	const shiftsBefore = await shiftCount(probe.page).catch(() => 0);
@@ -568,8 +725,14 @@ async function measure(
 	await interaction();
 	await settleWithNetwork(probe);
 	const requestLog = process.env["PERF_LAB_REQUEST_LOG"];
-	if (requestLog !== undefined) {
-		mkdirSync(requestLog, {recursive: true});
+	if (requestLog !== undefined)
+	{
+		mkdirSync(
+			requestLog,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(join(requestLog, `${id}-${run}.txt`), `${probe.urls.slice(requestsBefore).join("\n")}\n`);
 	}
 	const after = await probe.cdp.send("Performance.getMetrics");
@@ -583,12 +746,15 @@ async function measure(
 }
 
 /** True while the document that took the baseline is still the one on screen (SPA navigation). */
-async function sameDocument(page: Page): Promise<boolean> {
+async function sameDocument(page: Page): Promise<boolean>
+{
 	return page.evaluate(() => globalThis.__perfLabMarker === true);
 }
 
-async function markDocument(page: Page): Promise<void> {
-	await page.evaluate(() => {
+async function markDocument(page: Page): Promise<void>
+{
+	await page.evaluate(() =>
+	{
 		globalThis.__perfLabMarker = true;
 	});
 }
@@ -596,15 +762,18 @@ async function markDocument(page: Page): Promise<void> {
 const LAST_ROW = '[data-testid="transcript-row"][data-perf-last]';
 const ANY_ROW = '[data-testid="transcript-row"]';
 
-function sessionView(sessionId: string): string {
+function sessionView(sessionId: string): string
+{
 	return `[data-perf-session=${JSON.stringify(sessionId)}]`;
 }
 
-function appendedLines(fixture: LabFixture, run: number): string {
+function appendedLines(fixture: LabFixture, run: number): string
+{
 	const lines = readFileSync(fixture.openSessionPath, "utf8").trimEnd().split("\n");
 	const lastUuid = asRecord(JSON.parse(lines.at(-1) ?? "{}"))?.["uuid"];
 	const parentUuid = typeof lastUuid === "string" ? lastUuid : null;
-	const base = {
+	const base =
+	{
 		parentUuid,
 		isSidechain: false,
 		userType: "external",
@@ -614,28 +783,44 @@ function appendedLines(fixture: LabFixture, run: number): string {
 		gitBranch: "main",
 	};
 	const timestamp = new Date().toISOString();
-	const user = {
+	const user =
+	{
 		...base,
 		type: "user",
 		uuid: `00000000-0000-4000-8000-00000000${String(run).padStart(4, "0")}`,
 		timestamp,
-		message: {role: "user", content: `Perf lab live append ${run}: keep the row painted.`},
+		message:
+		{
+			role: "user",
+			content: `Perf lab live append ${run}: keep the row painted.`,
+		},
 	};
-	const assistant = {
+	const assistant =
+	{
 		...base,
 		parentUuid: user.uuid,
 		type: "assistant",
 		uuid: `00000000-0000-4000-8000-10000000${String(run).padStart(4, "0")}`,
 		timestamp,
-		message: {
+		message:
+		{
 			id: `msg_perf_lab_${run}`,
 			type: "message",
 			role: "assistant",
 			model: "claude-fixture",
-			content: [{type: "text", text: `Perf lab reply ${run}: appended while the session was open.`}],
+			content: [
+				{
+					type: "text",
+					text: `Perf lab reply ${run}: appended while the session was open.`,
+				},
+			],
 			stop_reason: "end_turn",
 			stop_sequence: null,
-			usage: {input_tokens: 1, output_tokens: 1},
+			usage:
+			{
+				input_tokens: 1,
+				output_tokens: 1,
+			},
 		},
 	};
 	return `${JSON.stringify(user)}\n${JSON.stringify(assistant)}\n`;
@@ -647,7 +832,8 @@ async function runJourneys(
 	fixture: LabFixture,
 	journeys: readonly JourneyId[],
 	run: number,
-): Promise<Partial<Record<JourneyId, JourneySample>>> {
+): Promise<Partial<Record<JourneyId, JourneySample>>>
+{
 	const probe = await openProbe(context);
 	const {page} = probe;
 	const samples: Partial<Record<JourneyId, JourneySample>> = {};
@@ -657,11 +843,23 @@ async function runJourneys(
 	await page.goto(blank);
 	await runPreflight(page);
 
-	const cold = async (id: JourneyId, path: string, anchor: string) => {
+	const cold = async (id: JourneyId, path: string, anchor: string) =>
+	{
 		await page.goto(blank);
-		samples[id] = await measure(probe, id, run, async () => {
-			await page.goto(`${baseUrl}${path}`, {waitUntil: "domcontentloaded"});
-			await page.locator(anchor).first().waitFor({state: "attached", timeout: 30_000});
+		samples[id] = await measure(probe, id, run, async () =>
+		{
+			await page.goto(
+				`${baseUrl}${path}`,
+				{
+					waitUntil: "domcontentloaded",
+				},
+			);
+			await page.locator(anchor).first().waitFor(
+				{
+					state: "attached",
+					timeout: 30_000,
+				},
+			);
 		});
 		await markDocument(page);
 	};
@@ -672,50 +870,103 @@ async function runJourneys(
 	if (!want.has("J2")) delete samples.J2;
 
 	// J4 right after J2: a deep link lands at the tail, so the appended rows mount inside the virtualized window.
-	if (want.has("J4")) {
+	if (want.has("J4"))
+	{
 		const marker = `Perf lab reply ${run}: appended while the session was open.`;
-		samples.J4 = await measure(probe, "J4", run, async () => {
-			writeFileSync(fixture.openSessionPath, appendedLines(fixture, run), {flag: "a"});
-			await page.getByText(marker).first().waitFor({state: "attached", timeout: 30_000});
+		samples.J4 = await measure(probe, "J4", run, async () =>
+		{
+			writeFileSync(
+				fixture.openSessionPath,
+				appendedLines(fixture, run),
+				{
+					flag: "a",
+				},
+			);
+			await page.getByText(marker).first().waitFor(
+				{
+					state: "attached",
+					timeout: 30_000,
+				},
+			);
 		});
 	}
 
 	const switchView = sessionView(fixture.switchSessionId);
 	const switchRow = page.locator(`a[data-row-main-button][href="/session/${fixture.switchSessionId}"]`).first();
-	if (want.has("J3")) {
+	if (want.has("J3"))
+	{
 		await switchRow.waitFor();
-		samples.J3 = await measure(probe, "J3", run, async () => {
+		samples.J3 = await measure(probe, "J3", run, async () =>
+		{
 			await switchRow.click();
-			await page.locator(`${switchView} ${LAST_ROW}`).first().waitFor({state: "attached", timeout: 30_000});
+			await page.locator(`${switchView} ${LAST_ROW}`).first().waitFor(
+				{
+					state: "attached",
+					timeout: 30_000,
+				},
+			);
 		});
-	} else {
+	}
+	else
+	{
 		await page.goto(`${baseUrl}/session/${fixture.switchSessionId}`);
-		await page.locator(`${switchView} ${ANY_ROW}`).first().waitFor({state: "attached", timeout: 30_000});
+		await page.locator(`${switchView} ${ANY_ROW}`).first().waitFor(
+			{
+				state: "attached",
+				timeout: 30_000,
+			},
+		);
 		await markDocument(page);
 	}
 
 	// J5 on the untouched session: an append makes a session active, and an active one without a live pane has no composer.
-	if (want.has("J5")) {
-		const prompt = page.getByRole("textbox", {name: "Prompt"});
+	if (want.has("J5"))
+	{
+		const prompt = page.getByRole(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
 		await prompt.click();
 		await settle(page);
-		samples.J5 = await measure(probe, "J5", run, async () => {
-			await page.keyboard.type("measure the composer keystrokes", {delay: 20});
+		samples.J5 = await measure(probe, "J5", run, async () =>
+		{
+			await page.keyboard.type(
+				"measure the composer keystrokes",
+				{
+					delay: 20,
+				},
+			);
 		});
 		await prompt.fill("");
 		await prompt.blur();
 		await settle(page);
 	}
 
-	if (want.has("J6")) {
-		samples.J6 = await measure(probe, "J6", run, async () => {
+	if (want.has("J6"))
+	{
+		samples.J6 = await measure(probe, "J6", run, async () =>
+		{
 			await page.keyboard.press("ControlOrMeta+k");
 			const palette = page.locator('[data-perf-overlay="command_palette"]');
-			await palette.waitFor({timeout: 10_000});
-			const searched = page.waitForResponse((response) => response.url().includes("/api/search"), {
-				timeout: 10_000,
-			});
-			await page.keyboard.type("fixture", {delay: 20});
+			await palette.waitFor(
+				{
+					timeout: 10_000,
+				},
+			);
+			const searched = page.waitForResponse(
+				(response) => response.url().includes("/api/search"),
+				{
+					timeout: 10_000,
+				},
+			);
+			await page.keyboard.type(
+				"fixture",
+				{
+					delay: 20,
+				},
+			);
 			await searched;
 		});
 		await page.keyboard.press("Escape");
@@ -725,10 +976,21 @@ async function runJourneys(
 	return samples;
 }
 
-export function gitSha(): string {
-	try {
-		return execFileSync("git", ["rev-parse", "--short", "HEAD"], {cwd: REPOSITORY_ROOT, encoding: "utf8"}).trim();
-	} catch {
+export function gitSha(): string
+{
+	try
+	{
+		return execFileSync(
+			"git",
+			["rev-parse", "--short", "HEAD"],
+			{
+				cwd: REPOSITORY_ROOT,
+				encoding: "utf8",
+			},
+		).trim();
+	}
+	catch
+	{
 		return "unknown";
 	}
 }
@@ -744,7 +1006,10 @@ export const METRIC_KEYS = [
 
 type MetricKey = (typeof METRIC_KEYS)[number];
 
-type JourneyReport = Record<MetricKey, Summary> & {title: string};
+type JourneyReport = Record<MetricKey, Summary> &
+{
+	title: string;
+};
 
 export type StableLabMetrics = Partial<Record<JourneyId, Partial<Record<MetricKey, number>>>>;
 
@@ -757,22 +1022,47 @@ export type StableLabMetrics = Partial<Record<JourneyId, Partial<Record<MetricKe
  * warm-ups until each journey waited for the network to go quiet (settleWithNetwork). J6 layout count drifted to medians of 39..43
  * while the palette's transitions ran; with reduced motion its medians read 25 or 26, so it keeps a 4% tolerance.
  */
-export const RATCHETED_LAB_METRICS: StableLabMetrics = {
-	J1: {requests: 0.02, layoutShift: 0},
-	J2: {requests: 0, layoutShift: 0},
-	J3: {layoutShift: 0},
-	J4: {layoutShift: 0},
-	J5: {layoutCount: 0, layoutShift: 0},
-	J6: {layoutCount: 0.04},
+export const RATCHETED_LAB_METRICS: StableLabMetrics =
+{
+	J1:
+	{
+		requests: 0.02,
+		layoutShift: 0,
+	},
+	J2:
+	{
+		requests: 0,
+		layoutShift: 0,
+	},
+	J3:
+	{
+		layoutShift: 0,
+	},
+	J4:
+	{
+		layoutShift: 0,
+	},
+	J5:
+	{
+		layoutCount: 0,
+		layoutShift: 0,
+	},
+	J6:
+	{
+		layoutCount: 0.04,
+	},
 };
 
 /** The median over `runs` of each stable metric, keyed `browser.<journey>.<metric>`, for the journeys that ran. */
-export function labRatchetValues(runs: readonly LabRun[], stable: StableLabMetrics): Record<string, number> {
+export function labRatchetValues(runs: readonly LabRun[], stable: StableLabMetrics): Record<string, number>
+{
 	const values: Record<string, number> = {};
-	for (const id of JOURNEYS) {
+	for (const id of JOURNEYS)
+	{
 		const samples = runs.flatMap((run) => (run[id] === undefined ? [] : [run[id]]));
 		if (samples.length === 0) continue;
-		for (const key of METRIC_KEYS) {
+		for (const key of METRIC_KEYS)
+		{
 			if (stable[id]?.[key] === undefined) continue;
 			values[`browser.${id}.${key}`] = summarize(samples.map((sample) => sample[key])).median;
 		}
@@ -781,25 +1071,33 @@ export function labRatchetValues(runs: readonly LabRun[], stable: StableLabMetri
 }
 
 /** Runs `check` on every value and returns the failure messages, so one regression does not hide the rest. */
-export function ratchetLab(values: Record<string, number>, check: (id: string, value: number) => void): string[] {
+export function ratchetLab(values: Record<string, number>, check: (id: string, value: number) => void): string[]
+{
 	const failures: string[] = [];
-	for (const [id, value] of Object.entries(values)) {
-		try {
+	for (const [id, value] of Object.entries(values))
+	{
+		try
+		{
 			check(id, value);
-		} catch (error) {
+		}
+		catch (error)
+		{
 			failures.push(error instanceof Error ? error.message : String(error));
 		}
 	}
 	return failures;
 }
 
-function buildReport(runs: LabRun[]): Partial<Record<JourneyId, JourneyReport>> {
+function buildReport(runs: LabRun[]): Partial<Record<JourneyId, JourneyReport>>
+{
 	const report: Partial<Record<JourneyId, JourneyReport>> = {};
-	for (const id of JOURNEYS) {
+	for (const id of JOURNEYS)
+	{
 		const samples = runs.flatMap((run) => (run[id] === undefined ? [] : [run[id]]));
 		if (samples.length === 0) continue;
 		const metric = (key: MetricKey) => summarize(samples.map((sample) => sample[key]));
-		report[id] = {
+		report[id] =
+		{
 			title: JOURNEY_TITLES[id],
 			recalcStyleCount: metric("recalcStyleCount"),
 			layoutCount: metric("layoutCount"),
@@ -812,10 +1110,12 @@ function buildReport(runs: LabRun[]): Partial<Record<JourneyId, JourneyReport>> 
 	return report;
 }
 
-function formatTable(report: Partial<Record<JourneyId, JourneyReport>>): string {
+function formatTable(report: Partial<Record<JourneyId, JourneyReport>>): string
+{
 	const cell = (summary: Summary) => `${summary.min}/${summary.median}/${summary.max}`;
 	const rows = [["journey", "recalcStyle", "layout", "requests", "CLS", "title"]];
-	for (const [id, entry] of Object.entries(report)) {
+	for (const [id, entry] of Object.entries(report))
+	{
 		rows.push([
 			id,
 			cell(entry.recalcStyleCount),
@@ -826,7 +1126,8 @@ function formatTable(report: Partial<Record<JourneyId, JourneyReport>>): string 
 		]);
 	}
 	const widths: number[] = [];
-	for (const row of rows) {
+	for (const row of rows)
+	{
 		for (const [column, value] of row.entries()) widths[column] = Math.max(widths[column] ?? 0, value.length);
 	}
 	return rows.map((row) => row.map((value, column) => value.padEnd(widths[column] ?? 0)).join("  ")).join("\n");
@@ -834,9 +1135,22 @@ function formatTable(report: Partial<Record<JourneyId, JourneyReport>>): string 
 
 export type LabRun = Partial<Record<JourneyId, JourneySample>>;
 
-export interface LabSession {
+export interface LabSession
+{
 	chromium: string;
-	fixture: {openSession: {shape: "typical"; bytes: number}; switchSession: {shape: "small"; bytes: number}};
+	fixture:
+	{
+		openSession:
+		{
+			shape: "typical";
+			bytes: number;
+		};
+		switchSession:
+		{
+			shape: "small";
+			bytes: number;
+		};
+	};
 	blockedHosts: string[];
 	runs: LabRun[];
 }
@@ -848,31 +1162,53 @@ export interface LabSession {
 export async function runLab(
 	args: Omit<LabArgs, "ratchet">,
 	onRun?: (run: number, sample: LabRun) => void,
-): Promise<LabSession> {
+): Promise<LabSession>
+{
 	const baseUrl = `http://127.0.0.1:${args.port}`;
 	const fixture = await seedLabFixture();
 	const server = startServer(fixture, args.port);
 	const blocked: string[] = [];
-	try {
+	try
+	{
 		await waitForIdleIndex(baseUrl, server.process, server.output);
 		const seeded = await indexedOpenSession(baseUrl, fixture);
 		if (seeded === undefined) throw new Error(`The lab server did not index ${fixture.openSessionId}`);
-		const browser = await chromium.launch({headless: true});
+		const browser = await chromium.launch(
+			{
+				headless: true,
+			},
+		);
 		const runs: LabRun[] = [];
-		try {
-			for (let run = 1; run <= args.runs; run += 1) {
+		try
+		{
+			for (let run = 1; run <= args.runs; run += 1)
+			{
 				await resetOpenSession(baseUrl, fixture, seeded);
 				await waitForIdleIndex(baseUrl, server.process, server.output);
 				const context = await browser.newContext(LAB_CONTEXT_OPTIONS);
-				try {
+				try
+				{
 					await prepareContext(context, blocked);
 					const sample = await runJourneys(context, baseUrl, fixture, args.journeys, run).catch(
-						async (error: unknown) => {
+						async (error: unknown) =>
+						{
 							const page = context.pages()[0];
-							if (page) {
+							if (page)
+							{
 								const failurePath = join(OUTPUT_DIRECTORY, "lab-browser-failure");
-								mkdirSync(OUTPUT_DIRECTORY, {recursive: true});
-								await page.screenshot({path: `${failurePath}.png`}).catch(() => undefined);
+								mkdirSync(
+									OUTPUT_DIRECTORY,
+									{
+										recursive: true,
+									},
+								);
+								await page
+									.screenshot(
+										{
+											path: `${failurePath}.png`,
+										},
+									)
+									.catch(() => undefined);
 								writeFileSync(`${failurePath}.html`, await page.content().catch(() => ""));
 								writeFileSync(`${failurePath}.log`, server.output.join(""));
 								console.error(`Saved ${failurePath}.{png,html,log} from ${page.url()}`);
@@ -882,35 +1218,59 @@ export async function runLab(
 					);
 					runs.push(sample);
 					onRun?.(run, sample);
-				} finally {
+				}
+				finally
+				{
 					await context.close();
 				}
 			}
 			return {
 				chromium: browser.version(),
-				fixture: {
-					openSession: {shape: "typical", bytes: fixture.openSessionBytes},
-					switchSession: {shape: "small", bytes: fixture.switchSessionBytes},
+				fixture:
+				{
+					openSession:
+					{
+						shape: "typical",
+						bytes: fixture.openSessionBytes,
+					},
+					switchSession:
+					{
+						shape: "small",
+						bytes: fixture.switchSessionBytes,
+					},
 				},
 				blockedHosts: [...new Set(blocked)].toSorted(),
 				runs,
 			};
-		} finally {
+		}
+		finally
+		{
 			await browser.close();
 		}
-	} finally {
+	}
+	finally
+	{
 		await stopDevServer(server.process);
-		rmSync(fixture.root, {recursive: true, force: true});
+		rmSync(
+			fixture.root,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	}
 }
 
-async function main(): Promise<void> {
+async function main(): Promise<void>
+{
 	const args = parseLabArgs(process.argv.slice(2));
-	const session = await runLab(args, (run) => {
+	const session = await runLab(args, (run) =>
+	{
 		console.log(`run ${run}/${args.runs} done`);
 	});
 	const sha = gitSha();
-	const result = {
+	const result =
+	{
 		sha,
 		createdAt: new Date().toISOString(),
 		chromium: session.chromium,
@@ -920,7 +1280,12 @@ async function main(): Promise<void> {
 		blockedHosts: session.blockedHosts,
 		journeys: buildReport(session.runs),
 	};
-	mkdirSync(OUTPUT_DIRECTORY, {recursive: true});
+	mkdirSync(
+		OUTPUT_DIRECTORY,
+		{
+			recursive: true,
+		},
+	);
 	const outputPath = join(OUTPUT_DIRECTORY, `lab-browser-${sha}.json`);
 	writeFileSync(outputPath, `${JSON.stringify(result, null, "\t")}\n`);
 	console.log(`\nmin/median/max over ${args.runs} runs\n`);
@@ -931,12 +1296,14 @@ async function main(): Promise<void> {
 	console.log(`\nRatcheting the medians of the stable metrics:`);
 	for (const [id, value] of Object.entries(values)) console.log(`${id}: ${value}`);
 	const failures = ratchetLab(values, ratchet);
-	if (failures.length > 0) {
+	if (failures.length > 0)
+	{
 		console.error(failures.join("\n"));
 		process.exitCode = 1;
 	}
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+{
 	await main();
 }

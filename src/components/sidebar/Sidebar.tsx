@@ -1,6 +1,7 @@
 import {Link, useMatches} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
-import {
+import
+{
 	useCallback,
 	useEffect,
 	useRef,
@@ -29,7 +30,8 @@ import {activeSessionsQueryOptions} from "../../lib/api/sessions";
 import {useFizzyLake} from "../../lib/fizzy-lake";
 import {ResizeHandle} from "../ui/resize-handle";
 import {RESIZE_GRIP_PILL, RESIZE_HANDLE_HALF_CLIP_CLASS, RESIZE_LINE_PILL, resizePillClass} from "../ui/resize-pill";
-import {
+import
+{
 	clearPeekSuppression,
 	isPeekSuppressed,
 	onPeekToggle,
@@ -61,7 +63,8 @@ export function Sidebar({
 	narrowViewport?: boolean;
 	/** Renders the phone-sheet contents (Close + wordmark header) instead of a docked sidebar. */
 	onPhoneSheetClose?: () => void;
-}) {
+})
+{
 	const {width} = useSidebarState();
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.fullPath ?? "/";
@@ -80,16 +83,30 @@ export function Sidebar({
 	/* Upstream pins aside.dframe-sidebar[data-density] to its own comfortable default, so a compact ancestor never pulls it along. */
 	const density = useScopeDensity("comfortable");
 
-	function badgeFor(section: Section): NavBadge | null {
-		if (section === "active") return {count: activeCount, title: `${activeCount} active`};
-		if (section === "approvals") {
-			return {count: approvalsCount, title: `${approvalsCount} awaiting approval`};
+	function badgeFor(section: Section): NavBadge | null
+	{
+		if (section === "active")
+			return {
+				count: activeCount,
+				title: `${activeCount} active`,
+			};
+		if (section === "approvals")
+		{
+			return {
+				count: approvalsCount,
+				title: `${approvalsCount} awaiting approval`,
+			};
 		}
-		if (section === "notifications") return {count: unreadCount, title: `${unreadCount} unread`};
+		if (section === "notifications")
+			return {
+				count: unreadCount,
+				title: `${unreadCount} unread`,
+			};
 		return null;
 	}
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!currentPath.startsWith("/notifications") || unreadCount === 0) return;
 		markNotificationsRead();
 	}, [currentPath, unreadCount, markNotificationsRead]);
@@ -114,7 +131,8 @@ export function Sidebar({
 					</div>
 					{/* Upstream pulls the nav block back over the header's h-1 spacer. */}
 					<div data-nav-block="" className="-mt-1 shrink-0">
-						{navigationItems.map((item) => {
+						{navigationItems.map((item) =>
+						{
 							const Glyph = item.icon;
 							const badge = badgeFor(item.section);
 							// Upstream's Artifacts row wraps its link with the "New from a template" + action.
@@ -171,7 +189,8 @@ export function Sidebar({
 		</>
 	);
 
-	if (onPhoneSheetClose) {
+	if (onPhoneSheetClose)
+	{
 		return (
 			<DensityProvider density={density}>
 				<nav
@@ -199,8 +218,14 @@ export function Sidebar({
 						<button
 							type="button"
 							data-prefetch="palette"
-							onClick={() => {
-								openCommandPalette("default", {source: "mobile"});
+							onClick={() =>
+							{
+								openCommandPalette(
+									"default",
+									{
+										source: "mobile",
+									},
+								);
 							}}
 							className="flex h-10 w-full items-center gap-1 rounded-r7 bg-fill-control px-4 text-[15px]/[22px] text-primary transition-colors"
 						>
@@ -214,7 +239,8 @@ export function Sidebar({
 		);
 	}
 
-	if (collapsed) {
+	if (collapsed)
+	{
 		return (
 			<DensityProvider density={density}>
 				<CollapsedSidebar narrowViewport={narrowViewport} density={density}>
@@ -234,7 +260,10 @@ export function Sidebar({
 				data-flat-look=""
 				data-hub-rail=""
 				data-focus-region="navigation"
-				style={{"--sidebar-width": `${width}px`}}
+				style={
+				{
+					"--sidebar-width": `${width}px`,
+				}}
 				className="dframe-sidebar group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[length:max(var(--cds-toolbar-line,0px),0.5px)] border-[color:var(--sidebar-seam)] bg-[var(--sb-bg)] min-[701px]:flex"
 			>
 				<div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
@@ -242,7 +271,13 @@ export function Sidebar({
 					<div data-testid="sidebar-toggle-slot" className="flex w-8 shrink-0 justify-center self-start pt-3">
 						<div className="flex opacity-70 transition-opacity duration-[120ms] ease-[cubic-bezier(.32,.72,0,1)] group-hover/sidebar:opacity-100 has-[:focus-visible]:opacity-100 pointer-coarse:opacity-100">
 							<SidebarToggleButton
-								{...(onToggle ? {onClick: onToggle, collapsed: false} : {})}
+								{...(onToggle
+									?
+										{
+											onClick: onToggle,
+											collapsed: false,
+										}
+									: {})}
 								className="flex size-6 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4"
 							/>
 						</div>
@@ -260,7 +295,8 @@ export function Sidebar({
 	);
 }
 
-function SidebarWordmark({className}: {className?: string}) {
+function SidebarWordmark({className}: {className?: string})
+{
 	return (
 		<Link
 			to="/"
@@ -277,17 +313,20 @@ function SidebarWordmark({className}: {className?: string}) {
  * `content: void 0` to its cds Tooltip, so none ever opens). A press that never moves past the drag
  * threshold, or Enter/Space, hides the sidebar like ⌘B.
  */
-function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void}) {
+function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void})
+{
 	const max = useSidebarMaxWidth();
-	const handleProps = useResizableWidth({
-		label: "Resize sidebar",
-		min: SIDEBAR_MIN_WIDTH,
-		max,
-		edge: "end",
-		value: width,
-		onChange: setSidebarWidth,
-		onClick: onHide,
-	});
+	const handleProps = useResizableWidth(
+		{
+			label: "Resize sidebar",
+			min: SIDEBAR_MIN_WIDTH,
+			max,
+			edge: "end",
+			value: width,
+			onChange: setSidebarWidth,
+			onClick: onHide,
+		},
+	);
 
 	return (
 		<ResizeHandle
@@ -313,58 +352,81 @@ const EDGE_CLICK_THRESHOLD_PX = 3;
 const SIDEBAR_CONTENT_RESERVE_PX = 330;
 
 /** Upstream's drag/End ceiling: `min(420, innerWidth − 330)`, never below the 232 floor. */
-function sidebarMaxWidth(): number {
+function sidebarMaxWidth(): number
+{
 	return Math.max(
 		SIDEBAR_MIN_WIDTH,
 		Math.min(SIDEBAR_MAX_WIDTH, Math.floor(window.innerWidth) - SIDEBAR_CONTENT_RESERVE_PX),
 	);
 }
 
-function subscribeToWindowResize(onChange: () => void): () => void {
+function subscribeToWindowResize(onChange: () => void): () => void
+{
 	window.addEventListener("resize", onChange);
-	return () => {
+	return () =>
+	{
 		window.removeEventListener("resize", onChange);
 	};
 }
 
 /** {@link sidebarMaxWidth}, recomputed on window resize; the fixed 420 during SSR. */
-function useSidebarMaxWidth(): number {
+function useSidebarMaxWidth(): number
+{
 	return useSyncExternalStore(subscribeToWindowResize, sidebarMaxWidth, () => SIDEBAR_MAX_WIDTH);
 }
 
 /** Expand or re-collapse live from an edge drag of `distance` px, like upstream's `aK`. */
-function applyEdgeDrag(distance: number): void {
+function applyEdgeDrag(distance: number): void
+{
 	const state = readSidebarState();
-	if (distance < SIDEBAR_MIN_WIDTH / 2) {
-		if (!state.collapsed) writeSidebarState({...state, collapsed: true});
+	if (distance < SIDEBAR_MIN_WIDTH / 2)
+	{
+		if (!state.collapsed)
+			writeSidebarState(
+				{
+					...state,
+					collapsed: true,
+				},
+			);
 		return;
 	}
 	const width = Math.round(Math.min(sidebarMaxWidth(), Math.max(SIDEBAR_MIN_WIDTH, distance)));
-	if (state.collapsed || state.width !== width) writeSidebarState({...state, collapsed: false, width});
+	if (state.collapsed || state.width !== width)
+		writeSidebarState(
+			{
+				...state,
+				collapsed: false,
+				width,
+			},
+		);
 }
 
 /**
  * Track an edge press on window listeners, since a drag that passes the threshold expands the
  * sidebar and unmounts the edge mid-gesture.
  */
-function startEdgeGesture(event: ReactPointerEvent<HTMLElement>, onDragging: (dragging: boolean) => void): void {
+function startEdgeGesture(event: ReactPointerEvent<HTMLElement>, onDragging: (dragging: boolean) => void): void
+{
 	const {pointerId, clientX: startX} = event;
 	onDragging(true);
 	const frame = event.currentTarget.closest<HTMLElement>('[data-testid="app-frame"]');
 	let dragging = false;
 
-	function onMove(moveEvent: PointerEvent): void {
+	function onMove(moveEvent: PointerEvent): void
+	{
 		if (moveEvent.pointerId !== pointerId) return;
 		const distance = moveEvent.clientX - startX;
 		if (!dragging && Math.abs(distance) < EDGE_CLICK_THRESHOLD_PX) return;
-		if (!dragging) {
+		if (!dragging)
+		{
 			dragging = true;
 			frame?.setAttribute("data-resizing", "");
 		}
 		applyEdgeDrag(distance);
 	}
 
-	function finish(endEvent: PointerEvent): void {
+	function finish(endEvent: PointerEvent): void
+	{
 		if (endEvent.pointerId !== pointerId) return;
 		window.removeEventListener("pointermove", onMove);
 		window.removeEventListener("pointerup", finish);
@@ -379,16 +441,24 @@ function startEdgeGesture(event: ReactPointerEvent<HTMLElement>, onDragging: (dr
 	window.addEventListener("pointercancel", finish);
 }
 
-function onEdgeKeyDown(event: ReactKeyboardEvent<HTMLElement>): void {
+function onEdgeKeyDown(event: ReactKeyboardEvent<HTMLElement>): void
+{
 	if (event.key !== "ArrowRight") return;
 	event.preventDefault();
-	writeSidebarState({...readSidebarState(), collapsed: false});
-	requestAnimationFrame(() => {
+	writeSidebarState(
+		{
+			...readSidebarState(),
+			collapsed: false,
+		},
+	);
+	requestAnimationFrame(() =>
+	{
 		document.querySelector<HTMLElement>('button[aria-label="Hide sidebar"]')?.focus();
 	});
 }
 
-export function SidebarEdgeHandle() {
+export function SidebarEdgeHandle()
+{
 	const pill = useFizzyLake("panels") ? RESIZE_LINE_PILL : RESIZE_GRIP_PILL;
 	const [dragging, setDragging] = useState(false);
 	return (
@@ -403,7 +473,8 @@ export function SidebarEdgeHandle() {
 			data-sidebar-edge=""
 			data-trigger-disabled=""
 			data-dragging={dragging ? "" : undefined}
-			onPointerDown={(event) => {
+			onPointerDown={(event) =>
+			{
 				if (event.button !== 0) return;
 				event.preventDefault();
 				startEdgeGesture(event, setDragging);
@@ -438,7 +509,8 @@ const PEEK_ID = "sidebar-peek-popover";
 const PEEK_CLOSE_GRACE_MS = 180;
 
 /** Upstream's `overflowMenuOpen`: a menu opened from a trigger inside the peek is open. */
-function isPeekMenuOpen(peek: HTMLElement | null): boolean {
+function isPeekMenuOpen(peek: HTMLElement | null): boolean
+{
 	return peek?.querySelector('[aria-haspopup][aria-expanded="true"]') != null;
 }
 
@@ -449,7 +521,8 @@ const PEEK_TOP_EXIT_PX = 46;
  * Whether the peek must stay open past its grace, as upstream re-arms the close while its More/sort
  * menu is open (`overflowMenuOpen`) or a text input inside the peek has focus.
  */
-function isPeekInUse(peek: HTMLElement | null): boolean {
+function isPeekInUse(peek: HTMLElement | null): boolean
+{
 	if (peek === null) return false;
 	if (isPeekMenuOpen(peek)) return true;
 	const active = document.activeElement;
@@ -466,7 +539,8 @@ function CollapsedSidebar({
 	narrowViewport: boolean;
 	density: Density;
 	children: ReactNode;
-}) {
+})
+{
 	// The peek's top padding follows upstream's `--frame-row-h`, which is still panels-gated in upstream CSS.
 	const panels = useFizzyLake("panels");
 	const [hovering, setHovering] = useState(false);
@@ -478,25 +552,31 @@ function CollapsedSidebar({
 	const topExitWaitRef = useRef<AbortController | undefined>(undefined);
 
 	// Upstream lands focus on the trigger when the peek hides around it (e.g. after a peek menu closes), not on BODY.
-	const focusTrigger = useCallback(() => {
+	const focusTrigger = useCallback(() =>
+	{
 		rootRef.current?.querySelector<HTMLElement>(`[aria-controls="${PEEK_ID}"]`)?.focus();
 	}, []);
 
-	const openPeek = useCallback(() => {
+	const openPeek = useCallback(() =>
+	{
 		setHovering(true);
 		setPeeked(true);
 	}, []);
 
-	const cancelClose = useCallback(() => {
+	const cancelClose = useCallback(() =>
+	{
 		clearTimeout(closeTimerRef.current);
 		closeTimerRef.current = undefined;
 	}, []);
 
 	// Upstream's `fu` → `RA`: leaving starts a grace that re-arms while the peek is still in use.
-	const scheduleClose = useCallback(() => {
+	const scheduleClose = useCallback(() =>
+	{
 		cancelClose();
-		closeTimerRef.current = setTimeout(() => {
-			if (isPeekInUse(document.getElementById(PEEK_ID))) {
+		closeTimerRef.current = setTimeout(() =>
+		{
+			if (isPeekInUse(document.getElementById(PEEK_ID)))
+			{
 				scheduleClose();
 				return;
 			}
@@ -507,7 +587,8 @@ function CollapsedSidebar({
 	}, [cancelClose, focusTrigger]);
 
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			cancelClose();
 			clearPeekSuppression();
 		},
@@ -515,9 +596,11 @@ function CollapsedSidebar({
 	);
 
 	// Narrow-band ⌘B (and the palette's Toggle sidebar) toggles the peek rather than the stored pref.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!narrowViewport) return undefined;
-		return onPeekToggle(() => {
+		return onPeekToggle(() =>
+		{
 			cancelClose();
 			setHovering((open) => !open);
 			setPeeked(true);
@@ -526,9 +609,11 @@ function CollapsedSidebar({
 
 	// Upstream's `U4`: a touch or pen press outside closes the peek at any width (it has no pointerleave),
 	// unless a menu opened from the peek is open. A narrow tapped-open peek closes on a mouse press too.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!hovering) return undefined;
-		const onPointerDown = (event: PointerEvent) => {
+		const onPointerDown = (event: PointerEvent) =>
+		{
 			if (event.pointerType === "mouse" && !narrowViewport) return;
 			const target = event.target;
 			if (target instanceof Node && rootRef.current?.contains(target)) return;
@@ -537,16 +622,19 @@ function CollapsedSidebar({
 			setHovering(false);
 		};
 		document.addEventListener("pointerdown", onPointerDown, true);
-		return () => {
+		return () =>
+		{
 			document.removeEventListener("pointerdown", onPointerDown, true);
 		};
 	}, [narrowViewport, hovering]);
 
 	// Upstream's window keydown: Escape closes the open peek and focuses the trigger, unless an Escape
 	// consumer (the composer, a field) prevented it first or a menu opened from the peek is open.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!hovering) return undefined;
-		const onKeyDown = (event: KeyboardEvent) => {
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			if (event.key !== "Escape" || event.defaultPrevented) return;
 			if (isPeekMenuOpen(document.getElementById(PEEK_ID))) return;
 			event.preventDefault();
@@ -555,54 +643,73 @@ function CollapsedSidebar({
 			focusTrigger();
 		};
 		window.addEventListener("keydown", onKeyDown);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("keydown", onKeyDown);
 		};
 	}, [hovering, cancelClose, focusTrigger]);
 
 	// Upstream's `c2`: track the last mouse clientY so a leave through the window's top edge can be told apart.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!hovering) return undefined;
-		const onPointerMove = (event: PointerEvent) => {
+		const onPointerMove = (event: PointerEvent) =>
+		{
 			if (event.pointerType === "mouse") lastClientYRef.current = event.clientY;
 		};
 		window.addEventListener("pointermove", onPointerMove, true);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("pointermove", onPointerMove, true);
 		};
 	}, [hovering]);
 
-	const cancelTopExitWait = useCallback(() => {
+	const cancelTopExitWait = useCallback(() =>
+	{
 		topExitWaitRef.current?.abort();
 		topExitWaitRef.current = undefined;
 	}, []);
 
 	// Upstream's `yn`: after leaving through the top, wait for the pointer's return. The first mouse
 	// pointerover outside the peek, or a window blur, starts the grace; one back inside cancels the wait.
-	const startTopExitWait = useCallback(() => {
+	const startTopExitWait = useCallback(() =>
+	{
 		cancelTopExitWait();
 		const controller = new AbortController();
 		topExitWaitRef.current = controller;
-		const close = () => {
+		const close = () =>
+		{
 			cancelTopExitWait();
 			scheduleClose();
 		};
 		window.addEventListener(
 			"pointerover",
-			(event) => {
+			(event) =>
+			{
 				if (event.pointerType !== "mouse") return;
-				if (event.target instanceof Node && rootRef.current?.contains(event.target)) {
+				if (event.target instanceof Node && rootRef.current?.contains(event.target))
+				{
 					cancelTopExitWait();
 					return;
 				}
 				close();
 			},
-			{capture: true, signal: controller.signal},
+			{
+				capture: true,
+				signal: controller.signal,
+			},
 		);
-		window.addEventListener("blur", close, {signal: controller.signal});
+		window.addEventListener(
+			"blur",
+			close,
+			{
+				signal: controller.signal,
+			},
+		);
 	}, [cancelTopExitWait, scheduleClose]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!hovering) cancelTopExitWait();
 	}, [hovering, cancelTopExitWait]);
 
@@ -614,19 +721,22 @@ function CollapsedSidebar({
 			data-testid="sidebar-collapsed"
 			data-hovering={hovering ? "" : undefined}
 			data-peeked={peeked ? "" : undefined}
-			onPointerEnter={(event) => {
+			onPointerEnter={(event) =>
+			{
 				if (event.pointerType !== "mouse" || isPeekSuppressed()) return;
 				cancelTopExitWait();
 				cancelClose();
 				openPeek();
 			}}
-			onPointerLeave={(event) => {
+			onPointerLeave={(event) =>
+			{
 				clearPeekSuppression();
 				if (event.pointerType !== "mouse") return;
 				const lastY = lastClientYRef.current;
 				// React reports a leave out of the window (native relatedTarget null) with the window as relatedTarget.
 				const leftWindow = !(event.relatedTarget instanceof Node);
-				if (leftWindow && lastY !== undefined && lastY < PEEK_TOP_EXIT_PX) {
+				if (leftWindow && lastY !== undefined && lastY < PEEK_TOP_EXIT_PX)
+				{
 					startTopExitWait();
 					return;
 				}
@@ -642,10 +752,16 @@ function CollapsedSidebar({
 			/>
 			<SidebarToggleButton
 				collapsed
-				controls={{id: PEEK_ID, expanded: hovering}}
+				controls={
+				{
+					id: PEEK_ID,
+					expanded: hovering,
+				}}
 				{...(narrowViewport
-					? {
-							onClick: () => {
+					?
+						{
+							onClick: () =>
+							{
 								openPeek();
 							},
 						}

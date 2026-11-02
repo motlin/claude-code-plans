@@ -12,42 +12,55 @@ import {asRecord, isRecord} from "../lib/narrow";
 import type {LinkedJsonContext} from "../components/linked-json-links";
 import {Bot, MessageSquare, Cpu, FileText, AlertTriangle} from "lucide-react";
 
-export const Route = createFileRoute("/session/$id_/source/$uuid")({
-	component: SourceViewPage,
-	// Identity and source data load inside their boundaries, so navigation can paint the app shell first.
-	loader: ({context: {queryClient}, params}) => {
-		const identity = isSessionRouteAlias(params.id)
-			? queryClient.getQueryState(sessionQueryKeys.identity(params.id))
-			: undefined;
-		return {
-			title:
-				identity?.status === "error"
-					? sessionIdentityFailure(identity.error).title
-					: `Source: ${params.uuid.slice(0, 8)}`,
-		};
+export const Route = createFileRoute("/session/$id_/source/$uuid")(
+	{
+		component: SourceViewPage,
+		// Identity and source data load inside their boundaries, so navigation can paint the app shell first.
+		loader: ({context: {queryClient}, params}) =>
+		{
+			const identity = isSessionRouteAlias(params.id)
+				? queryClient.getQueryState(sessionQueryKeys.identity(params.id))
+				: undefined;
+			return {
+				title:
+					identity?.status === "error"
+						? sessionIdentityFailure(identity.error).title
+						: `Source: ${params.uuid.slice(0, 8)}`,
+			};
+		},
+		head: ({params, loaderData}) => (
+		{
+			meta: [pageTitle(loaderData?.title ?? `Source: ${params.uuid.slice(0, 8)}`)],
+		}),
 	},
-	head: ({params, loaderData}) => ({
-		meta: [pageTitle(loaderData?.title ?? `Source: ${params.uuid.slice(0, 8)}`)],
-	}),
-});
+);
 
-function safeParse(raw: string): unknown {
-	try {
+function safeParse(raw: string): unknown
+{
+	try
+	{
 		return JSON.parse(raw);
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 }
 
-function prettyJsonl(raw: string): string {
-	try {
+function prettyJsonl(raw: string): string
+{
+	try
+	{
 		return JSON.stringify(JSON.parse(raw), null, 2);
-	} catch {
+	}
+	catch
+	{
 		return raw;
 	}
 }
 
-function CodeBlock({content, max = 50_000}: {content: string; max?: number}) {
+function CodeBlock({content, max = 50_000}: {content: string; max?: number})
+{
 	const truncated = content.length > max;
 	const display = truncated ? content.slice(0, max) + "\n\n... [truncated]" : content;
 	return (
@@ -57,16 +70,23 @@ function CodeBlock({content, max = 50_000}: {content: string; max?: number}) {
 	);
 }
 
-interface RecordSummary {
+interface RecordSummary
+{
 	type: string;
 	contentPreview: string;
 	toolNames: string[];
 }
 
-function summarizeRecord(raw: string): RecordSummary {
+function summarizeRecord(raw: string): RecordSummary
+{
 	const parsed = asRecord(safeParse(raw));
-	if (!parsed) {
-		return {type: "unknown", contentPreview: raw.slice(0, 80), toolNames: []};
+	if (!parsed)
+	{
+		return {
+			type: "unknown",
+			contentPreview: raw.slice(0, 80),
+			toolNames: [],
+		};
 	}
 
 	const type = typeof parsed["type"] === "string" ? parsed["type"] : "unknown";
@@ -75,28 +95,44 @@ function summarizeRecord(raw: string): RecordSummary {
 
 	const content = asRecord(parsed["message"])?.["content"];
 
-	if (Array.isArray(content)) {
-		for (const block of content) {
-			if (isRecord(block)) {
-				if (block["type"] === "text" && typeof block["text"] === "string" && !contentPreview) {
+	if (Array.isArray(content))
+	{
+		for (const block of content)
+		{
+			if (isRecord(block))
+			{
+				if (block["type"] === "text" && typeof block["text"] === "string" && !contentPreview)
+				{
 					contentPreview = block["text"].slice(0, 120).replace(/\n/g, " ");
-				} else if (block["type"] === "tool_use" && typeof block["name"] === "string") {
+				}
+				else if (block["type"] === "tool_use" && typeof block["name"] === "string")
+				{
 					toolNames.push(block["name"]);
-				} else if (block["type"] === "tool_result") {
+				}
+				else if (block["type"] === "tool_result")
+				{
 					toolNames.push("tool_result");
 				}
-			} else if (typeof block === "string" && !contentPreview) {
+			}
+			else if (typeof block === "string" && !contentPreview)
+			{
 				contentPreview = block.slice(0, 120).replace(/\n/g, " ");
 			}
 		}
 	}
 
-	return {type, contentPreview, toolNames};
+	return {
+		type,
+		contentPreview,
+		toolNames,
+	};
 }
 
-function recordTypeIcon(type: string) {
+function recordTypeIcon(type: string)
+{
 	const iconClass = "h-3.5 w-3.5 shrink-0";
-	switch (type) {
+	switch (type)
+	{
 		case "assistant":
 			return <Bot className={`${iconClass} text-accent-100`} />;
 		case "user":
@@ -112,14 +148,16 @@ function NeighborLink({
 	entry,
 	sessionId,
 }: {
-	entry: {
+	entry:
+	{
 		raw: string;
 		lineIndex: number;
 		uuid?: string | undefined;
 		parseError?: boolean | undefined;
 	};
 	sessionId: string;
-}) {
+})
+{
 	const summary = useMemo(() => summarizeRecord(entry.raw), [entry.raw]);
 
 	const toolLabel =
@@ -149,7 +187,8 @@ function NeighborLink({
 		</div>
 	);
 
-	if (entry.uuid) {
+	if (entry.uuid)
+	{
 		return (
 			<a href={`/session/${sessionId}/source/${entry.uuid}`} className="block mb-1 no-underline">
 				{inner}
@@ -160,23 +199,30 @@ function NeighborLink({
 	return <div className="mb-1">{inner}</div>;
 }
 
-function CopyButton({text}: {text: string}) {
+function CopyButton({text}: {text: string})
+{
 	const [copied, setCopied] = useState(false);
-	const copy = async () => {
-		try {
+	const copy = async () =>
+	{
+		try
+		{
 			await navigator.clipboard.writeText(text);
 			setCopied(true);
-			setTimeout(() => {
+			setTimeout(() =>
+			{
 				setCopied(false);
 			}, 1500);
-		} catch {
+		}
+		catch
+		{
 			// clipboard not available
 		}
 	};
 	return (
 		<button
 			type="button"
-			onClick={() => {
+			onClick={() =>
+			{
 				void copy();
 			}}
 			className="text-xs px-2 py-1 rounded bg-surface-0 hover:bg-fill-control text-secondary"
@@ -186,7 +232,8 @@ function CopyButton({text}: {text: string}) {
 	);
 }
 
-function SourceViewPage() {
+function SourceViewPage()
+{
 	const params = Route.useParams();
 	return (
 		<SessionRouteIdentity routeId={params.id}>
@@ -205,32 +252,53 @@ function SourceViewPage() {
 	);
 }
 
-function ResolvedSourceView({sessionId, recordUuid}: {sessionId: string; recordUuid: string}) {
+function ResolvedSourceView({sessionId, recordUuid}: {sessionId: string; recordUuid: string})
+{
 	const {data} = useSuspenseQuery(sessionSourceQueryOptions(sessionId, recordUuid, 5));
 	const router = useRouter();
 	const loaderData = Route.useLoaderData();
 	const title = `Source: ${recordUuid.slice(0, 8)}`;
-	useEffect(() => {
-		if (loaderData.title !== title) void router.invalidate({filter: (match) => match.routeId === Route.id});
+	useEffect(() =>
+	{
+		if (loaderData.title !== title)
+			void router.invalidate(
+				{
+					filter: (match) => match.routeId === Route.id,
+				},
+			);
 	}, [loaderData.title, title, router]);
 
 	const jsonCtx: LinkedJsonContext = useMemo(
-		() => ({
+		() => (
+		{
 			sessionId,
-			...(data?.projectId === undefined ? {} : {projectId: data.projectId}),
+			...(data?.projectId === undefined
+				? {}
+				:
+					{
+						projectId: data.projectId,
+					}),
 			knownUuids: new Set(data?.knownUuids ?? []),
 		}),
 		[sessionId, data?.projectId, data?.knownUuids],
 	);
 
-	if (!data) {
+	if (!data)
+	{
 		return (
 			<div className="mx-auto max-w-3xl p-6">
 				<h1 className="text-lg font-medium text-primary mb-2">Source not found</h1>
 				<p className="text-sm text-t6">
 					No JSONL entry with uuid {recordUuid} in session {sessionId}.
 				</p>
-				<Link to="/session/$id" params={{id: sessionId}} className="text-accent-100 text-sm hover:underline">
+				<Link
+					to="/session/$id"
+					params={
+					{
+						id: sessionId,
+					}}
+					className="text-accent-100 text-sm hover:underline"
+				>
 					Back to session
 				</Link>
 			</div>
@@ -246,7 +314,14 @@ function ResolvedSourceView({sessionId, recordUuid}: {sessionId: string; recordU
 	return (
 		<div className="mx-auto max-w-4xl p-6 space-y-6">
 			<div>
-				<Link to="/session/$id" params={{id: sessionId}} className="text-accent-100 text-sm hover:underline">
+				<Link
+					to="/session/$id"
+					params={
+					{
+						id: sessionId,
+					}}
+					className="text-accent-100 text-sm hover:underline"
+				>
 					← {sessionTitle}
 				</Link>
 				<h1 className="text-lg font-medium text-primary mt-1">

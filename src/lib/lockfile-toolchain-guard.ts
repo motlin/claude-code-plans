@@ -3,28 +3,33 @@
 // about 5% apart in `just perf-bundle` depending on which `vp` built it. The config's own `vite-plus` import always
 // resolves from node_modules, so comparing it with the running bundler catches the mismatch before anything is written.
 
-export interface ToolchainVersions {
+export interface ToolchainVersions
+{
 	viteVersion: string;
 	rolldownVersion: string;
 }
 
-interface BuildStartContext {
+interface BuildStartContext
+{
 	meta: ToolchainVersions;
 	error(message: string): never;
 }
 
-interface BuildPlugin {
+interface BuildPlugin
+{
 	name: string;
 	apply: "build";
 	buildStart(this: BuildStartContext): void;
 }
 
 /** Fails any build whose running vite or rolldown differs from the versions the lockfile's vite-plus ships. */
-export function lockfileToolchainGuard(expected: ToolchainVersions): BuildPlugin {
+export function lockfileToolchainGuard(expected: ToolchainVersions): BuildPlugin
+{
 	return {
 		name: "ccp:lockfile-toolchain-guard",
 		apply: "build",
-		buildStart() {
+		buildStart()
+		{
 			const {viteVersion, rolldownVersion} = this.meta;
 			if (viteVersion === expected.viteVersion && rolldownVersion === expected.rolldownVersion) return;
 			this.error(

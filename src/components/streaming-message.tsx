@@ -9,7 +9,8 @@ import styles from "./markdown-article.module.css";
 import {USER_MESSAGE_CLASS} from "./user-bubble";
 import {UserBubbleBox} from "./user-bubble-box";
 
-interface StreamingMessageProps {
+interface StreamingMessageProps
+{
 	text: string;
 	isComplete: boolean;
 	error?: string | undefined;
@@ -17,24 +18,38 @@ interface StreamingMessageProps {
 	sentPrompt?: string | undefined;
 }
 
-export function StreamingMessage({text, isComplete, error, forkedSessionId, sentPrompt}: StreamingMessageProps) {
+export function StreamingMessage({text, isComplete, error, forkedSessionId, sentPrompt}: StreamingMessageProps)
+{
 	const endRef = useRef<HTMLDivElement>(null);
 
 	// Scroll the streaming widget into view once per submission, so the user
 	// can see their prompt and the incoming response. Streaming tokens after
 	// that should not yank the viewport — the user is reading.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (sentPrompt === undefined) return;
-		endRef.current?.scrollIntoView({behavior: "smooth", block: "end"});
+		endRef.current?.scrollIntoView(
+			{
+				behavior: "smooth",
+				block: "end",
+			},
+		);
 	}, [sentPrompt]);
 
 	const highlighterVersion = useSyncExternalStore(subscribeHighlighter, getHighlighterVersion, () => 0);
 
 	const codeThemes = useCodeThemes();
 
-	const renderedHtml = useMemo(() => {
+	const renderedHtml = useMemo(() =>
+	{
 		void highlighterVersion;
-		return renderMarkdownWithHighlighting(text, getHighlighterSync(), {codeThemes});
+		return renderMarkdownWithHighlighting(
+			text,
+			getHighlighterSync(),
+			{
+				codeThemes,
+			},
+		);
 	}, [text, codeThemes, highlighterVersion]);
 
 	return (
@@ -65,7 +80,10 @@ export function StreamingMessage({text, isComplete, error, forkedSessionId, sent
 								<article
 									className={styles["markdown"]}
 									onClick={handleCodeCopyClick}
-									dangerouslySetInnerHTML={{__html: renderedHtml}}
+									dangerouslySetInnerHTML={
+									{
+										__html: renderedHtml,
+									}}
 								/>
 							) : null}
 							{!isComplete && <span className="inline-block h-3 w-0.5 animate-pulse bg-t6 ml-0.5" />}

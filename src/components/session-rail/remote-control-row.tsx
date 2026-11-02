@@ -27,7 +27,8 @@ const OPTIONS_WRAPPER_CLASS =
 const OPTIONS_TRIGGER_CLASS =
 	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover hover:text-primary data-[popup-open]:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-export interface RemoteControlRowProps {
+export interface RemoteControlRowProps
+{
 	state: RemoteControlState;
 	/** The bridged session's claude.ai link; the options menu needs it. */
 	url: string | null;
@@ -39,10 +40,17 @@ export interface RemoteControlRowProps {
 	 * Set when the CLI did not backfill the session's history to claude.ai (`bridge-session.noHistoryBackfill`),
 	 * with the latest `history-suppression` cause's label, or null for an unknown cause.
 	 */
-	historySuppressed?: {reason: string | null} | null | undefined;
+	historySuppressed?:
+		|
+		  {
+				reason: string | null;
+		  }
+		| null
+		| undefined;
 }
 
-function RemoteControlIcon() {
+function RemoteControlIcon()
+{
 	return (
 		<span className={ICON_SLOT_CLASS}>
 			<MousePointer2 aria-hidden />
@@ -51,7 +59,8 @@ function RemoteControlIcon() {
 }
 
 /** The hover title of the "History not synced" hint, naming the suppression cause when known. */
-function historyNoteTitle(reason: string | null): string {
+function historyNoteTitle(reason: string | null): string
+{
 	return reason === null
 		? "Remote history not synced to claude.ai"
 		: `Remote history not synced to claude.ai · ${reason}`;
@@ -64,7 +73,8 @@ export function RemoteControlRow({
 	toggleDisabled = false,
 	connecting = false,
 	historySuppressed = null,
-}: RemoteControlRowProps) {
+}: RemoteControlRowProps)
+{
 	const switchId = useId();
 	const toast = useToast();
 	const {rootProps: menuRootProps, onContextMenu: openMenuOnContextMenu} = useMenuOpensOnContextMenu();
@@ -73,7 +83,12 @@ export function RemoteControlRow({
 		<div
 			data-rail-remote-control=""
 			className={ROW_CLASS}
-			{...(optionsUrl === null ? {} : {onContextMenu: openMenuOnContextMenu})}
+			{...(optionsUrl === null
+				? {}
+				:
+					{
+						onContextMenu: openMenuOnContextMenu,
+					})}
 		>
 			<RemoteControlIcon />
 			<label data-rail-row-label="" htmlFor={switchId} className={LABEL_CLASS}>
@@ -98,17 +113,26 @@ export function RemoteControlRow({
 						</Tooltip>
 						<MenuContent side="bottom" align="end">
 							<MenuItem
-								onSelect={() => {
+								onSelect={() =>
+								{
 									window.open(optionsUrl, "_blank", "noopener,noreferrer");
 								}}
 							>
 								Open in claude.ai
 							</MenuItem>
 							<MenuItem
-								onSelect={() => {
+								onSelect={() =>
+								{
 									// Upstream `Mv` stays silent when the copy fails.
-									void writeClipboardText(optionsUrl).then((copied) => {
-										if (copied) toast({kind: "success", message: "Link copied"});
+									void writeClipboardText(optionsUrl).then((copied) =>
+									{
+										if (copied)
+											toast(
+												{
+													kind: "success",
+													message: "Link copied",
+												},
+											);
 									});
 								}}
 							>
@@ -134,14 +158,16 @@ export function RemoteControlRow({
 }
 
 /** Upstream `io("inline-start")`: left, or right under RTL. */
-function inlineStartSide(): "left" | "right" {
+function inlineStartSide(): "left" | "right"
+{
 	// Rendered on the server too, where there is no document to read a direction from.
 	if (typeof document === "undefined") return "left";
 	return document.documentElement.dir === "rtl" ? "right" : "left";
 }
 
 /** Upstream `Hk` pending: the row's name over a 28px skeleton while the bridge state loads. */
-export function RemoteControlRowPending() {
+export function RemoteControlRowPending()
+{
 	return (
 		<div data-rail-remote-control-pending="" className={ROW_CLASS}>
 			<RemoteControlIcon />
@@ -159,38 +185,58 @@ export function RemoteControlRowPending() {
  * the bridge reaches it or 15 s pass.
  */
 const PENDING_TIMEOUT_MS = 15_000;
-const pendingToggles = new Map<string, {on: boolean; timer: ReturnType<typeof setTimeout> | null}>();
+const pendingToggles = new Map<
+	string,
+	{
+		on: boolean;
+		timer: ReturnType<typeof setTimeout> | null;
+	}
+>();
 const pendingListeners = new Set<() => void>();
 
-function notifyPending(): void {
+function notifyPending(): void
+{
 	for (const listener of pendingListeners) listener();
 }
 
-function setPendingToggle(sessionId: string, on: boolean | null): void {
+function setPendingToggle(sessionId: string, on: boolean | null): void
+{
 	const previous = pendingToggles.get(sessionId);
 	if (previous?.timer != null) clearTimeout(previous.timer);
 	if (on === null) pendingToggles.delete(sessionId);
-	else pendingToggles.set(sessionId, {on, timer: null});
+	else
+		pendingToggles.set(
+			sessionId,
+			{
+				on,
+				timer: null,
+			},
+		);
 	notifyPending();
 }
 
 /** Starts the 15 s give-up once the send has gone through. */
-function armPendingTimeout(sessionId: string): void {
+function armPendingTimeout(sessionId: string): void
+{
 	const pending = pendingToggles.get(sessionId);
 	if (pending === undefined) return;
-	pending.timer = setTimeout(() => {
+	pending.timer = setTimeout(() =>
+	{
 		if (pendingToggles.get(sessionId) === pending) setPendingToggle(sessionId, null);
 	}, PENDING_TIMEOUT_MS);
 }
 
-function subscribePending(listener: () => void): () => void {
+function subscribePending(listener: () => void): () => void
+{
 	pendingListeners.add(listener);
-	return () => {
+	return () =>
+	{
 		pendingListeners.delete(listener);
 	};
 }
 
-function usePendingToggle(sessionId: string): boolean | null {
+function usePendingToggle(sessionId: string): boolean | null
+{
 	return useSyncExternalStore(
 		subscribePending,
 		() => pendingToggles.get(sessionId)?.on ?? null,
@@ -200,13 +246,20 @@ function usePendingToggle(sessionId: string): boolean | null {
 
 const TOGGLE_FAILED = "Couldn’t toggle Remote Control. Try again.";
 
-export interface RemoteControlToggleRowProps {
+export interface RemoteControlToggleRowProps
+{
 	sessionId: string;
 	state: RemoteControlState;
 	url: string | null;
 	/** A turn is running: upstream's `blockedByTurn` disables the switch. */
 	working: boolean;
-	historySuppressed?: {reason: string | null} | null | undefined;
+	historySuppressed?:
+		|
+		  {
+				reason: string | null;
+		  }
+		| null
+		| undefined;
 	send?: (sessionId: string, on: boolean) => Promise<void>;
 }
 
@@ -222,27 +275,45 @@ export function RemoteControlToggleRow({
 	working,
 	historySuppressed = null,
 	send = toggleRemoteControl,
-}: RemoteControlToggleRowProps) {
+}: RemoteControlToggleRowProps)
+{
 	const toast = useToast();
 	const pending = usePendingToggle(sessionId);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (pending === null || (state === "on") !== pending) return;
 		setPendingToggle(sessionId, null);
-		toast({kind: "success", message: pending ? "Remote Control turned on." : "Remote Control turned off."});
+		toast(
+			{
+				kind: "success",
+				message: pending ? "Remote Control turned on." : "Remote Control turned off.",
+			},
+		);
 	}, [pending, state, sessionId, toast]);
-	const onToggle = (on: boolean) => {
+	const onToggle = (on: boolean) =>
+	{
 		if (pendingToggles.has(sessionId)) return;
 		setPendingToggle(sessionId, on);
 		send(sessionId, on).then(
-			() => {
+			() =>
+			{
 				armPendingTimeout(sessionId);
 			},
-			(error: unknown) => {
+			(error: unknown) =>
+			{
 				setPendingToggle(sessionId, null);
 				toast(
 					error instanceof HerdrRequestError && error.status === 409
-						? {kind: "warning", message: error.message}
-						: {kind: "error", message: TOGGLE_FAILED},
+						?
+							{
+								kind: "warning",
+								message: error.message,
+							}
+						:
+							{
+								kind: "error",
+								message: TOGGLE_FAILED,
+							},
 				);
 			},
 		);

@@ -9,7 +9,8 @@ import {createContext, useContext} from "react";
  * `requestMessageJump` is how it hands the out-of-window case to the jump that
  * pages history in until the message arrives.
  */
-export interface JumpTargetWindow {
+export interface JumpTargetWindow
+{
 	/** Session-absolute JSONL index of the first record the page holds. */
 	windowStartIndex: number;
 	/** Ask for a message by uuid, or absent when the page cannot page history in. */
@@ -20,10 +21,15 @@ export interface JumpTargetWindow {
  * Everything is in-window by default, which is what a chip list rendered
  * outside a session page (a story, a test) should assume.
  */
-const JumpTargetContext = createContext<JumpTargetWindow>({windowStartIndex: 0});
+const JumpTargetContext = createContext<JumpTargetWindow>(
+	{
+		windowStartIndex: 0,
+	},
+);
 
 export const JumpTargetProvider = JumpTargetContext.Provider;
 
-export function useJumpTargetWindow(): JumpTargetWindow {
+export function useJumpTargetWindow(): JumpTargetWindow
+{
 	return useContext(JumpTargetContext);
 }

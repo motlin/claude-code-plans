@@ -1,15 +1,18 @@
-export function layoutGraph(tasks: GraphTask[]): {
+export function layoutGraph(tasks: GraphTask[]):
+{
 	nodes: NodePos[];
 	width: number;
 	height: number;
-} {
+}
+{
 	const byId = new Map(tasks.map((t) => [t.taskId, t]));
 	const taskIds = new Set(tasks.map((t) => t.taskId));
 
 	// Assign layers via longest path from roots (tasks with no blockedBy within this set)
 	const layerOf = new Map<string, number>();
 
-	function getLayer(id: string, visited: Set<string>): number {
+	function getLayer(id: string, visited: Set<string>): number
+	{
 		const cached = layerOf.get(id);
 		if (cached !== undefined) return cached;
 		if (visited.has(id)) return 0; // cycle guard
@@ -26,10 +29,12 @@ export function layoutGraph(tasks: GraphTask[]): {
 
 	// Group by layer
 	const layers = new Map<number, GraphTask[]>();
-	for (const t of tasks) {
+	for (const t of tasks)
+	{
 		const l = layerOf.get(t.taskId) ?? 0;
 		let list = layers.get(l);
-		if (!list) {
+		if (!list)
+		{
 			list = [];
 			layers.set(l, list);
 		}
@@ -39,25 +44,34 @@ export function layoutGraph(tasks: GraphTask[]): {
 	const maxLayer = Math.max(0, ...layers.keys());
 	const nodes: NodePos[] = [];
 
-	for (let l = 0; l <= maxLayer; l++) {
+	for (let l = 0; l <= maxLayer; l++)
+	{
 		const layerTasks = layers.get(l) ?? [];
-		for (const [i, task] of layerTasks.entries()) {
-			nodes.push({
-				x: PADDING + l * LAYER_GAP_X,
-				y: PADDING + i * NODE_GAP_Y,
-				layer: l,
-				task,
-			});
+		for (const [i, task] of layerTasks.entries())
+		{
+			nodes.push(
+				{
+					x: PADDING + l * LAYER_GAP_X,
+					y: PADDING + i * NODE_GAP_Y,
+					layer: l,
+					task,
+				},
+			);
 		}
 	}
 
 	const width = nodes.length > 0 ? Math.max(...nodes.map((n) => n.x)) + NODE_W + PADDING : 300;
 	const height = nodes.length > 0 ? Math.max(...nodes.map((n) => n.y)) + NODE_H + PADDING : 200;
 
-	return {nodes, width, height};
+	return {
+		nodes,
+		width,
+		height,
+	};
 }
 
-export interface GraphTask {
+export interface GraphTask
+{
 	taskId: string;
 	projectDir: string;
 	subject: string;
@@ -66,7 +80,8 @@ export interface GraphTask {
 	blockedBy: string[];
 }
 
-export interface NodePos {
+export interface NodePos
+{
 	x: number;
 	y: number;
 	layer: number;

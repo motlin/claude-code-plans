@@ -10,14 +10,18 @@ const EYES = "M750 600h250v250H750zM1750 600h250v250h-250z";
  * peeks over the next card's top-right corner. Only its painted pixels take clicks, and a click plays a short hop
  * (skipped under reduced motion).
  */
-export function ClawdMascot() {
+export function ClawdMascot()
+{
 	const [hopping, setHopping] = useState(false);
 
 	return (
 		<div
 			data-testid="start-card-clawd"
 			className="pointer-events-none relative h-0 -mb-3 w-80 max-w-full shrink-0"
-			style={{zIndex: 2}}
+			style={
+			{
+				zIndex: 2,
+			}}
 		>
 			<button
 				type="button"
@@ -25,10 +29,12 @@ export function ClawdMascot() {
 				aria-hidden="true"
 				data-clawd-mascot
 				data-hopping={hopping ? "" : undefined}
-				onClick={() => {
+				onClick={() =>
+				{
 					setHopping(true);
 				}}
-				onAnimationEnd={() => {
+				onAnimationEnd={() =>
+				{
 					setHopping(false);
 				}}
 				className="clawd-mascot pointer-events-none absolute right-[-13px] bottom-[calc(var(--cds-ring-outer,0px)-144px/11)] h-[80px] w-[80px] -scale-x-100 cursor-default border-0 bg-transparent p-0 outline-none [&_path]:pointer-events-auto"

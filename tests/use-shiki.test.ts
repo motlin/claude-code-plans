@@ -1,25 +1,43 @@
 import type {HighlighterCore, LanguageRegistration} from "@shikijs/core";
 import {describe, expect, it, vi} from "vite-plus/test";
 
-const shikiMocks = vi.hoisted(() => {
+const shikiMocks = vi.hoisted(() =>
+{
 	const importedLanguages: string[] = [];
 	const loadedLanguages: string[] = [];
-	const typeScriptRegistration = {
+	const typeScriptRegistration =
+	{
 		name: "typescript",
 		scopeName: "source.test.typescript",
 	} as LanguageRegistration;
-	const cppRegistration = {
+	const cppRegistration =
+	{
 		name: "cpp",
 		scopeName: "source.test.cpp",
 	} as LanguageRegistration;
-	const engine = {name: "test-engine"};
-	const claudeLight = {name: "claude-light", type: "light", settings: []};
-	const claudeDark = {name: "claude-dark", type: "dark", settings: []};
-	const loadLanguage = vi.fn<HighlighterCore["loadLanguage"]>(async () => {
+	const engine =
+	{
+		name: "test-engine",
+	};
+	const claudeLight =
+	{
+		name: "claude-light",
+		type: "light",
+		settings: [],
+	};
+	const claudeDark =
+	{
+		name: "claude-dark",
+		type: "dark",
+		settings: [],
+	};
+	const loadLanguage = vi.fn<HighlighterCore["loadLanguage"]>(async () =>
+	{
 		loadedLanguages.push("typescript", "ts", "cts", "mts");
 		return Promise.resolve();
 	});
-	const highlighter = {
+	const highlighter =
+	{
 		getLoadedLanguages: () => loadedLanguages,
 		loadLanguage,
 	} as unknown as HighlighterCore;
@@ -41,38 +59,51 @@ const shikiMocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock("@shikijs/core", () => ({
+vi.mock("@shikijs/core", () => (
+{
 	createHighlighterCore: shikiMocks.createHighlighterCore,
 }));
 
-vi.mock("@shikijs/engine-javascript", () => ({
+vi.mock("@shikijs/engine-javascript", () => (
+{
 	createJavaScriptRegexEngine: () => shikiMocks.engine,
 }));
 
-vi.mock("../src/lib/claude-light-theme", () => ({
+vi.mock("../src/lib/claude-light-theme", () => (
+{
 	claudeLight: shikiMocks.claudeLight,
 }));
 
-vi.mock("../src/lib/claude-dark-theme", () => ({
+vi.mock("../src/lib/claude-dark-theme", () => (
+{
 	claudeDark: shikiMocks.claudeDark,
 }));
 
-vi.mock("shiki/langs/typescript.mjs", () => {
+vi.mock("shiki/langs/typescript.mjs", () =>
+{
 	shikiMocks.importedLanguages.push("typescript");
-	return {default: [shikiMocks.typeScriptRegistration]};
+	return {
+		default: [shikiMocks.typeScriptRegistration],
+	};
 });
 
-vi.mock("shiki/langs/cpp.mjs", () => {
+vi.mock("shiki/langs/cpp.mjs", () =>
+{
 	shikiMocks.importedLanguages.push("cpp");
-	return {default: [shikiMocks.cppRegistration]};
+	return {
+		default: [shikiMocks.cppRegistration],
+	};
 });
 
 import {getHighlighterVersion, requestLanguage, subscribeHighlighter} from "../src/hooks/use-shiki";
 
-describe("requestLanguage", () => {
-	it("starts with no grammars, deduplicates aliases, and notifies after loading", async () => {
+describe("requestLanguage", () =>
+{
+	it("starts with no grammars, deduplicates aliases, and notifies after loading", async () =>
+	{
 		const notifiedVersions: number[] = [];
-		const unsubscribe = subscribeHighlighter(() => {
+		const unsubscribe = subscribeHighlighter(() =>
+		{
 			notifiedVersions.push(getHighlighterVersion());
 		});
 
@@ -83,26 +114,30 @@ describe("requestLanguage", () => {
 		await firstRequest;
 		unsubscribe();
 
-		expect({
-			createHighlighterCalls: shikiMocks.createHighlighterCore.mock.calls,
-			importedLanguages: shikiMocks.importedLanguages,
-			languageLoadCalls: shikiMocks.loadLanguage.mock.calls,
-			loadedLanguages: shikiMocks.loadedLanguages,
-			notifiedVersions,
-		}).toStrictEqual({
-			createHighlighterCalls: [
-				[
-					{
-						themes: [shikiMocks.claudeLight, shikiMocks.claudeDark],
-						langs: [],
-						engine: shikiMocks.engine,
-					},
+		expect(
+			{
+				createHighlighterCalls: shikiMocks.createHighlighterCore.mock.calls,
+				importedLanguages: shikiMocks.importedLanguages,
+				languageLoadCalls: shikiMocks.loadLanguage.mock.calls,
+				loadedLanguages: shikiMocks.loadedLanguages,
+				notifiedVersions,
+			},
+		).toStrictEqual(
+			{
+				createHighlighterCalls: [
+					[
+						{
+							themes: [shikiMocks.claudeLight, shikiMocks.claudeDark],
+							langs: [],
+							engine: shikiMocks.engine,
+						},
+					],
 				],
-			],
-			importedLanguages: ["typescript"],
-			languageLoadCalls: [[[shikiMocks.typeScriptRegistration]]],
-			loadedLanguages: ["typescript", "ts", "cts", "mts"],
-			notifiedVersions: [1, 2],
-		});
+				importedLanguages: ["typescript"],
+				languageLoadCalls: [[[shikiMocks.typeScriptRegistration]]],
+				loadedLanguages: ["typescript", "ts", "cts", "mts"],
+				notifiedVersions: [1, 2],
+			},
+		);
 	});
 });

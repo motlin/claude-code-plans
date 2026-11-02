@@ -11,143 +11,224 @@ import {applyAppearancePatch, GroupColorSchema, GroupIconSchema, type GroupAppea
  */
 export const SESSION_GROUP_STORAGE_KEY = "ccp-session-groups";
 
-const CustomSessionGroupSchema = z.strictObject({
-	id: z.string().min(1),
-	name: z.string().min(1),
-	icon: GroupIconSchema.optional(),
-	color: GroupColorSchema.optional(),
-});
+const CustomSessionGroupSchema = z.strictObject(
+	{
+		id: z.string().min(1),
+		name: z.string().min(1),
+		icon: GroupIconSchema.optional(),
+		color: GroupColorSchema.optional(),
+	},
+);
 
 const SessionGroupStateSchema = z
-	.strictObject({
-		groups: z.array(CustomSessionGroupSchema),
-		assignments: z.record(z.string(), z.string()),
-		order: z.record(z.string(), z.array(z.string())),
-	})
-	.superRefine((state, ctx) => {
+	.strictObject(
+		{
+			groups: z.array(CustomSessionGroupSchema),
+			assignments: z.record(z.string(), z.string()),
+			order: z.record(z.string(), z.array(z.string())),
+		},
+	)
+	.superRefine((state, ctx) =>
+	{
 		const ids = new Set(state.groups.map((group) => group.id));
-		if (ids.size !== state.groups.length) {
-			ctx.addIssue({code: "custom", message: "Duplicate group id"});
+		if (ids.size !== state.groups.length)
+		{
+			ctx.addIssue(
+				{
+					code: "custom",
+					message: "Duplicate group id",
+				},
+			);
 		}
-		for (const groupId of Object.values(state.assignments)) {
-			if (!ids.has(groupId)) ctx.addIssue({code: "custom", message: "Unknown assigned group"});
+		for (const groupId of Object.values(state.assignments))
+		{
+			if (!ids.has(groupId))
+				ctx.addIssue(
+					{
+						code: "custom",
+						message: "Unknown assigned group",
+					},
+				);
 		}
-		for (const groupId of Object.keys(state.order)) {
-			if (!ids.has(groupId)) ctx.addIssue({code: "custom", message: "Unknown ordered group"});
+		for (const groupId of Object.keys(state.order))
+		{
+			if (!ids.has(groupId))
+				ctx.addIssue(
+					{
+						code: "custom",
+						message: "Unknown ordered group",
+					},
+				);
 		}
 	});
 
 export type CustomSessionGroup = z.infer<typeof CustomSessionGroupSchema>;
 export type SessionGroupState = z.infer<typeof SessionGroupStateSchema>;
 
-const EMPTY_STATE: SessionGroupState = {groups: [], assignments: {}, order: {}};
+const EMPTY_STATE: SessionGroupState =
+{
+	groups: [],
+	assignments: {},
+	order: {},
+};
 
 const listeners = new Set<() => void>();
 let cachedRaw: string | null | undefined;
 let cachedState: SessionGroupState = EMPTY_STATE;
 
-function readRaw(): string | null {
-	try {
+function readRaw(): string | null
+{
+	try
+	{
 		return localStorage.getItem(SESSION_GROUP_STORAGE_KEY);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-function parse(raw: string | null): SessionGroupState {
+function parse(raw: string | null): SessionGroupState
+{
 	if (raw === null) return EMPTY_STATE;
-	try {
+	try
+	{
 		const result = SessionGroupStateSchema.safeParse(JSON.parse(raw));
 		return result.success ? result.data : EMPTY_STATE;
-	} catch {
+	}
+	catch
+	{
 		return EMPTY_STATE;
 	}
 }
 
 /** Current groups; absent, corrupt or unreadable storage yields no groups. */
-export function readSessionGroupState(): SessionGroupState {
+export function readSessionGroupState(): SessionGroupState
+{
 	const raw = readRaw();
-	if (raw !== cachedRaw) {
+	if (raw !== cachedRaw)
+	{
 		cachedRaw = raw;
 		cachedState = parse(raw);
 	}
 	return cachedState;
 }
 
-function notify(): void {
+function notify(): void
+{
 	for (const listener of listeners) listener();
 }
 
-function write(state: SessionGroupState): void {
-	try {
+function write(state: SessionGroupState): void
+{
+	try
+	{
 		localStorage.setItem(SESSION_GROUP_STORAGE_KEY, JSON.stringify(state));
-	} catch {
+	}
+	catch
+	{
 		// Storage can be denied or full; groups are best-effort per browser.
 	}
 	notify();
 }
 
 /** `order` with `sessionId` removed from every list, dropping lists that become empty. */
-function withoutOrdered(order: SessionGroupState["order"], sessionId: string): SessionGroupState["order"] {
+function withoutOrdered(order: SessionGroupState["order"], sessionId: string): SessionGroupState["order"]
+{
 	const next: SessionGroupState["order"] = {};
-	for (const [groupId, ids] of Object.entries(order)) {
+	for (const [groupId, ids] of Object.entries(order))
+	{
 		const rest = ids.filter((id) => id !== sessionId);
 		if (rest.length > 0) next[groupId] = rest;
 	}
 	return next;
 }
 
-export function listGroups(): CustomSessionGroup[] {
+export function listGroups(): CustomSessionGroup[]
+{
 	return readSessionGroupState().groups;
 }
 
 /** Append a new group named `name` (trimmed) as the last section. A blank name throws. */
-export function createGroup(name: string): CustomSessionGroup {
+export function createGroup(name: string): CustomSessionGroup
+{
 	const trimmed = name.trim();
 	if (trimmed === "") throw new Error("Group name must not be blank");
 	const state = readSessionGroupState();
-	const group: CustomSessionGroup = {id: `cg-${crypto.randomUUID()}`, name: trimmed};
-	write({...state, groups: [...state.groups, group]});
+	const group: CustomSessionGroup =
+	{
+		id: `cg-${crypto.randomUUID()}`,
+		name: trimmed,
+	};
+	write(
+		{
+			...state,
+			groups: [...state.groups, group],
+		},
+	);
 	return group;
 }
 
 /** Rename a group; a blank name or unknown id is ignored. */
-export function renameGroup(id: string, name: string): void {
+export function renameGroup(id: string, name: string): void
+{
 	const trimmed = name.trim();
 	const state = readSessionGroupState();
 	if (trimmed === "" || !state.groups.some((group) => group.id === id)) return;
-	write({
-		...state,
-		groups: state.groups.map((group) => (group.id === id ? {...group, name: trimmed} : group)),
-	});
+	write(
+		{
+			...state,
+			groups: state.groups.map((group) =>
+				group.id === id
+					?
+						{
+							...group,
+							name: trimmed,
+						}
+					: group,
+			),
+		},
+	);
 }
 
 /** Set or clear a group's header icon and color; unknown ids are ignored. */
-export function setGroupAppearance(id: string, patch: GroupAppearancePatch): void {
+export function setGroupAppearance(id: string, patch: GroupAppearancePatch): void
+{
 	const state = readSessionGroupState();
 	if (!state.groups.some((group) => group.id === id)) return;
-	write({
-		...state,
-		groups: state.groups.map((group) => (group.id === id ? applyAppearancePatch(group, patch) : group)),
-	});
+	write(
+		{
+			...state,
+			groups: state.groups.map((group) => (group.id === id ? applyAppearancePatch(group, patch) : group)),
+		},
+	);
 }
 
 /** Delete a group, returning its sessions to Ungrouped. Returns how many were released. */
-export function deleteGroup(id: string): number {
+export function deleteGroup(id: string): number
+{
 	const state = readSessionGroupState();
 	if (!state.groups.some((group) => group.id === id)) return 0;
 	const assignments: SessionGroupState["assignments"] = {};
 	let released = 0;
-	for (const [sessionId, groupId] of Object.entries(state.assignments)) {
+	for (const [sessionId, groupId] of Object.entries(state.assignments))
+	{
 		if (groupId === id) released += 1;
 		else assignments[sessionId] = groupId;
 	}
 	const {[id]: _removed, ...order} = state.order;
-	write({groups: state.groups.filter((group) => group.id !== id), assignments, order});
+	write(
+		{
+			groups: state.groups.filter((group) => group.id !== id),
+			assignments,
+			order,
+		},
+	);
 	return released;
 }
 
-export interface AssignOptions {
+export interface AssignOptions
+{
 	/**
 	 * Place the session in the group's manual order just before this session, or
 	 * at the end of it when null or not ordered. Omit to leave it unordered.
@@ -156,28 +237,38 @@ export interface AssignOptions {
 }
 
 /** Move a session into a group (leaving any other), or to Ungrouped with null. */
-export function assign(sessionId: string, groupId: string | null, options: AssignOptions = {}): void {
+export function assign(sessionId: string, groupId: string | null, options: AssignOptions = {}): void
+{
 	const state = readSessionGroupState();
 	if (groupId !== null && !state.groups.some((group) => group.id === groupId)) return;
 	const {[sessionId]: _previous, ...assignments} = state.assignments;
 	const order = withoutOrdered(state.order, sessionId);
-	if (groupId !== null) {
+	if (groupId !== null)
+	{
 		assignments[sessionId] = groupId;
 		const {before} = options;
-		if (before !== undefined) {
+		if (before !== undefined)
+		{
 			const rest = order[groupId] ?? [];
 			const index = before === null ? -1 : rest.indexOf(before);
 			order[groupId] =
 				index === -1 ? [...rest, sessionId] : [...rest.slice(0, index), sessionId, ...rest.slice(index)];
 		}
 	}
-	write({groups: state.groups, assignments, order});
+	write(
+		{
+			groups: state.groups,
+			assignments,
+			order,
+		},
+	);
 }
 
 let pendingLaunchGroupId: string | null = null;
 const pendingListeners = new Set<() => void>();
 
-function setPendingId(groupId: string | null): void {
+function setPendingId(groupId: string | null): void
+{
 	pendingLaunchGroupId = groupId;
 	for (const listener of pendingListeners) listener();
 }
@@ -186,74 +277,110 @@ function setPendingId(groupId: string | null): void {
  * Upstream `setDraftCustomGroupId`: the custom group the next session launched from home joins, set
  * by that group's +, or null to drop it.
  */
-export function setPendingLaunchGroup(groupId: string | null): void {
+export function setPendingLaunchGroup(groupId: string | null): void
+{
 	setPendingId(groupId);
 }
 
 /** Add a just-launched session to the pending launch group, if any, consuming it. */
-export function assignLaunchedSession(sessionId: string): void {
+export function assignLaunchedSession(sessionId: string): void
+{
 	const groupId = pendingLaunchGroupId;
 	setPendingId(null);
 	if (groupId !== null) assign(sessionId, groupId);
 }
 
 /** Calls `listener` whenever the pending launch group is set or consumed. */
-export function subscribePendingLaunchGroup(listener: () => void): () => void {
+export function subscribePendingLaunchGroup(listener: () => void): () => void
+{
 	pendingListeners.add(listener);
-	return () => {
+	return () =>
+	{
 		pendingListeners.delete(listener);
 	};
 }
 
-function readPendingLaunchGroupId(): string | null {
+function readPendingLaunchGroupId(): string | null
+{
 	return pendingLaunchGroupId;
 }
 
-function noPendingLaunchGroup(): null {
+function noPendingLaunchGroup(): null
+{
 	return null;
 }
 
 /** The pending launch group (upstream `$5`): null when none is set or its group no longer exists. */
-export function usePendingLaunchGroup(): {id: string; name: string} | null {
+export function usePendingLaunchGroup():
+{
+	id: string;
+	name: string;
+} | null
+{
 	const id = useSyncExternalStore(subscribePendingLaunchGroup, readPendingLaunchGroupId, noPendingLaunchGroup);
 	const {groups} = useSyncExternalStore(subscribeSessionGroups, readSessionGroupState, getServerSnapshot);
 	const name = id === null ? undefined : groups.find((group) => group.id === id)?.name;
-	return useMemo(() => (id === null || name === undefined ? null : {id, name}), [id, name]);
+	return useMemo(
+		() =>
+			id === null || name === undefined
+				? null
+				:
+					{
+						id,
+						name,
+					},
+		[id, name],
+	);
 }
 
 /** Replace a group's manual in-group order; an empty list clears it. Unknown groups are ignored. */
-export function setGroupOrder(groupId: string, sessionIds: readonly string[]): void {
+export function setGroupOrder(groupId: string, sessionIds: readonly string[]): void
+{
 	const state = readSessionGroupState();
 	if (!state.groups.some((group) => group.id === groupId)) return;
 	const {[groupId]: _previous, ...order} = state.order;
 	if (sessionIds.length > 0) order[groupId] = [...sessionIds];
-	write({...state, order});
+	write(
+		{
+			...state,
+			order,
+		},
+	);
 }
 
-function onStorage(event: StorageEvent): void {
+function onStorage(event: StorageEvent): void
+{
 	if (event.key === null || event.key === SESSION_GROUP_STORAGE_KEY) notify();
 }
 
 /** Calls `listener` whenever the groups change, here or in another tab. */
-export function subscribeSessionGroups(listener: () => void): () => void {
+export function subscribeSessionGroups(listener: () => void): () => void
+{
 	if (listeners.size === 0) window.addEventListener("storage", onStorage);
 	listeners.add(listener);
-	return () => {
+	return () =>
+	{
 		listeners.delete(listener);
 		if (listeners.size === 0) window.removeEventListener("storage", onStorage);
 	};
 }
 
-function getServerSnapshot(): SessionGroupState {
+function getServerSnapshot(): SessionGroupState
+{
 	return EMPTY_STATE;
 }
 
-export interface SessionGroupsSnapshot extends SessionGroupState {
+export interface SessionGroupsSnapshot extends SessionGroupState
+{
 	groupOf: (sessionId: string) => string | null;
 }
 
 /** Live custom groups for this browser, kept in sync across tabs via the `storage` event. */
-export function useSessionGroups(): SessionGroupsSnapshot {
+export function useSessionGroups(): SessionGroupsSnapshot
+{
 	const state = useSyncExternalStore(subscribeSessionGroups, readSessionGroupState, getServerSnapshot);
-	return {...state, groupOf: (sessionId) => state.assignments[sessionId] ?? null};
+	return {
+		...state,
+		groupOf: (sessionId) => state.assignments[sessionId] ?? null,
+	};
 }

@@ -3,7 +3,8 @@ import {access} from "node:fs/promises";
 import {constants} from "node:fs";
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
-import {
+import
+{
 	PersistedCapabilitiesSchema,
 	resolveServerCapabilities,
 	type CapabilityRuntimeFactsById,
@@ -11,23 +12,32 @@ import {
 } from "../../lib/capabilities";
 import {rejectCrossSite} from "../../lib/same-origin-guard";
 
-async function pathExists(path: string): Promise<boolean> {
-	try {
+async function pathExists(path: string): Promise<boolean>
+{
+	try
+	{
 		await access(path, constants.R_OK);
 		return true;
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
 
-async function executableExists(command: string): Promise<boolean> {
+async function executableExists(command: string): Promise<boolean>
+{
 	const directories = (process.env["PATH"] ?? "").split(delimiter).filter(Boolean);
 	const results = await Promise.all(
-		directories.map(async (directory) => {
-			try {
+		directories.map(async (directory) =>
+		{
+			try
+			{
 				await access(join(directory, command), constants.X_OK);
 				return true;
-			} catch {
+			}
+			catch
+			{
 				return false;
 			}
 		}),
@@ -35,44 +45,74 @@ async function executableExists(command: string): Promise<boolean> {
 	return results.some(Boolean);
 }
 
-async function databaseAvailable(): Promise<boolean> {
+async function databaseAvailable(): Promise<boolean>
+{
 	const {getDb} = await import("../../lib/db");
 	getDb();
 	return true;
 }
 
-type DatabaseUnavailabilityReason = Extract<RuntimeUnavailabilityReason, {type: "database-unavailable"}>;
+type DatabaseUnavailabilityReason = Extract<
+	RuntimeUnavailabilityReason,
+	{
+		type: "database-unavailable";
+	}
+>;
 
 type DatabaseProbeResult =
-	| {available: true; unavailabilityReason: null}
-	| {available: false; unavailabilityReason: DatabaseUnavailabilityReason};
+	|
+	  {
+			available: true;
+			unavailabilityReason: null;
+	  }
+	|
+	  {
+			available: false;
+			unavailabilityReason: DatabaseUnavailabilityReason;
+	  };
 
-async function probeDatabaseAvailability(checkAvailability: () => Promise<boolean>): Promise<DatabaseProbeResult> {
-	try {
-		if (await checkAvailability()) {
-			return {available: true, unavailabilityReason: null};
+async function probeDatabaseAvailability(checkAvailability: () => Promise<boolean>): Promise<DatabaseProbeResult>
+{
+	try
+	{
+		if (await checkAvailability())
+		{
+			return {
+				available: true,
+				unavailabilityReason: null,
+			};
 		}
 		return {
 			available: false,
-			unavailabilityReason: {type: "database-unavailable"},
+			unavailabilityReason:
+			{
+				type: "database-unavailable",
+			},
 		};
-	} catch (error) {
+	}
+	catch (error)
+	{
 		console.error("Capability database probe failed:", error);
 		return {
 			available: false,
-			unavailabilityReason: {type: "database-unavailable"},
+			unavailabilityReason:
+			{
+				type: "database-unavailable",
+			},
 		};
 	}
 }
 
-export interface CapabilityProbeDependencies {
+export interface CapabilityProbeDependencies
+{
 	pathExists(path: string): Promise<boolean>;
 	executableExists(command: string): Promise<boolean>;
 	databaseAvailable(): Promise<boolean>;
 	projectRoot: string;
 }
 
-async function probeCapabilityRuntime(dependencies: CapabilityProbeDependencies): Promise<CapabilityRuntimeFactsById> {
+async function probeCapabilityRuntime(dependencies: CapabilityProbeDependencies): Promise<CapabilityRuntimeFactsById>
+{
 	const [mcpInstalled, reviewSkillInstalled, contextBriefInstalled, claudeAvailable, databaseProbe] =
 		await Promise.all([
 			dependencies.pathExists(join(dependencies.projectRoot, "mcp-server", "index.ts")),
@@ -86,20 +126,29 @@ async function probeCapabilityRuntime(dependencies: CapabilityProbeDependencies)
 
 	const databaseReason = databaseProbe.unavailabilityReason;
 	const reviewReason: RuntimeUnavailabilityReason | null =
-		databaseReason ?? (claudeAvailable ? null : {type: "claude-not-found"});
+		databaseReason ??
+		(claudeAvailable
+			? null
+			:
+				{
+					type: "claude-not-found",
+				});
 
 	return {
-		readOnlyMcpServer: {
+		readOnlyMcpServer:
+		{
 			installed: mcpInstalled,
 			available: mcpInstalled && databaseProbe.available,
 			unavailabilityReason: databaseReason,
 		},
-		workingCopyReview: {
+		workingCopyReview:
+		{
 			installed: reviewSkillInstalled,
 			available: reviewSkillInstalled && claudeAvailable && databaseProbe.available,
 			unavailabilityReason: reviewReason,
 		},
-		sessionContextBrief: {
+		sessionContextBrief:
+		{
 			installed: contextBriefInstalled,
 			available: contextBriefInstalled && databaseProbe.available,
 			unavailabilityReason: databaseReason,
@@ -110,33 +159,57 @@ async function probeCapabilityRuntime(dependencies: CapabilityProbeDependencies)
 export async function handleCapabilitiesRequest(
 	request: Request,
 	dependencies: CapabilityProbeDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const json: unknown = await request.json().catch(() => null);
 	const persisted = PersistedCapabilitiesSchema.safeParse(json);
-	if (!persisted.success) {
-		return Response.json({error: "Invalid capabilities payload"}, {status: 400});
+	if (!persisted.success)
+	{
+		return Response.json(
+			{
+				error: "Invalid capabilities payload",
+			},
+			{
+				status: 400,
+			},
+		);
 	}
 
 	const runtimeFacts = await probeCapabilityRuntime(dependencies);
-	return Response.json(resolveServerCapabilities(persisted.data, runtimeFacts), {
-		headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
-	});
+	return Response.json(
+		resolveServerCapabilities(persisted.data, runtimeFacts),
+		{
+			headers:
+			{
+				"Cache-Control": "private, max-age=0, must-revalidate",
+			},
+		},
+	);
 }
 
-export const Route = createFileRoute("/api/capabilities")({
-	server: {
-		handlers: withMethodNotAllowed({
-			POST: async ({request}: {request: Request}) => {
-				const rejection = rejectCrossSite(request);
-				if (rejection) return rejection;
+export const Route = createFileRoute("/api/capabilities")(
+	{
+		server:
+		{
+			handlers: withMethodNotAllowed(
+				{
+					POST: async ({request}: {request: Request}) =>
+					{
+						const rejection = rejectCrossSite(request);
+						if (rejection) return rejection;
 
-				return handleCapabilitiesRequest(request, {
-					pathExists,
-					executableExists,
-					databaseAvailable,
-					projectRoot: process.cwd(),
-				});
-			},
-		}),
+						return handleCapabilitiesRequest(
+							request,
+							{
+								pathExists,
+								executableExists,
+								databaseAvailable,
+								projectRoot: process.cwd(),
+							},
+						);
+					},
+				},
+			),
+		},
 	},
-});
+);

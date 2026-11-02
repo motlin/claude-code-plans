@@ -4,30 +4,40 @@ import {describe, expect, it} from "vite-plus/test";
 const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 
 /** The at-rule preludes enclosing the first occurrence of `selector {`, outermost first. */
-function enclosingAtRules(selector: string): string[] {
+function enclosingAtRules(selector: string): string[]
+{
 	const end = styles.indexOf(`${selector} {`);
 	const stack: string[] = [];
 	let start = 0;
-	for (let i = 0; i < end; i++) {
-		if (styles[i] === "{") {
+	for (let i = 0; i < end; i++)
+	{
+		if (styles[i] === "{")
+		{
 			stack.push(styles.slice(start, i).trim());
 			start = i + 1;
-		} else if (styles[i] === "}") {
+		}
+		else if (styles[i] === "}")
+		{
 			stack.pop();
 			start = i + 1;
-		} else if (styles[i] === ";") {
+		}
+		else if (styles[i] === ";")
+		{
 			start = i + 1;
 		}
 	}
 	return stack.filter((prelude) => prelude.startsWith("@"));
 }
 
-function missing(rules: readonly string[]): string[] {
+function missing(rules: readonly string[]): string[]
+{
 	return rules.filter((rule) => !styles.includes(rule));
 }
 
-describe("sidebar search field CSS", () => {
-	it("copies upstream's .df-search-field resting, focus-visible and keys-hint rules", () => {
+describe("sidebar search field CSS", () =>
+{
+	it("copies upstream's .df-search-field resting, focus-visible and keys-hint rules", () =>
+	{
 		expect(
 			missing([
 				".df-search-field { transition: background-color 60ms cubic-bezier(0.165, 0.84, 0.44, 1); }",
@@ -39,7 +49,8 @@ describe("sidebar search field CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("shows the hover background, ring and keys hint only on hover-capable pointers", () => {
+	it("shows the hover background, ring and keys hint only on hover-capable pointers", () =>
+	{
 		expect(
 			missing([
 				"@media (hover: hover) { .df-search-field:hover { background-color: var(--sb-field-hover); } .df-search-field:hover:not(:focus-visible) { box-shadow: inset 0 0 0 1px var(--sb-field-hover-ring), 0 1px 2px 0 #0000000d; } .df-search-field:hover .df-search-field-keys { opacity: 1; } }",
@@ -47,7 +58,8 @@ describe("sidebar search field CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("extends the hit area by upstream's --cds-hit-row-reach-* vars (the hit grid, plus --cds-hit-gap-y below)", () => {
+	it("extends the hit area by upstream's --cds-hit-row-reach-* vars (the hit grid, plus --cds-hit-gap-y below)", () =>
+	{
 		expect(
 			missing([
 				".hit-row { position: relative; isolation: isolate; --cds-hit-row-reach-top: var(--cds-hit-grid-y, 0px); --cds-hit-row-reach-x: var(--cds-hit-grid-x, 0px); --cds-hit-row-reach-bottom: calc(var(--cds-hit-gap-y, 0px) + var(--cds-hit-grid-y, 0px)); }",
@@ -56,7 +68,8 @@ describe("sidebar search field CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("gives hit-gap-y-px lists a 1px row gap and their non-last rows a 1px hit gap, as upstream", () => {
+	it("gives hit-gap-y-px lists a 1px row gap and their non-last rows a 1px hit gap, as upstream", () =>
+	{
 		expect(
 			missing([
 				"@utility hit-gap-y-px { row-gap: 1px; & > :where(:not(:last-child)) { --cds-hit-gap-y: 1px; } }",
@@ -64,7 +77,8 @@ describe("sidebar search field CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("defines upstream's light and dark field tokens", () => {
+	it("defines upstream's light and dark field tokens", () =>
+	{
 		expect(
 			missing([
 				"--sb-field-bg: #ffffff80; --sb-field-ring: rgb(11 11 11 / 0.1); --sb-field-hover: rgb(11 11 11 / 0.05); --sb-field-hover-ring: rgb(11 11 11 / 0.1);",
@@ -73,14 +87,16 @@ describe("sidebar search field CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("keeps the field rules unlayered, as upstream does, so the hover background beats the bg utility", () => {
+	it("keeps the field rules unlayered, as upstream does, so the hover background beats the bg utility", () =>
+	{
 		expect([enclosingAtRules(".df-search-field"), enclosingAtRules(".df-search-field:hover")]).toStrictEqual([
 			[],
 			["@media (hover: hover)"],
 		]);
 	});
 
-	it("copies upstream's .df-fade-truncate label mask, its RTL flip, and .df-on-rail for the Search row", () => {
+	it("copies upstream's .df-fade-truncate label mask, its RTL flip, and .df-on-rail for the Search row", () =>
+	{
 		expect(
 			missing([
 				".df-fade-truncate { min-width: 0; margin: -4px 0; padding: 4px 12px 4px 0; overflow: hidden; mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent); }",
@@ -90,12 +106,20 @@ describe("sidebar search field CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("tints a keyboard-focused nav row with the hover background, under the selected background", () => {
+	it("tints a keyboard-focused nav row with the hover background, under the selected background", () =>
+	{
 		const focusVisible = styles.indexOf(".df-nav-row:focus-visible { background-color: var(--sb-hover); }");
 		const selected = styles.indexOf('.df-nav-row[data-selected="focused"] {');
-		expect({
-			focusVisible: focusVisible !== -1,
-			beforeSelected: focusVisible < selected,
-		}).toStrictEqual({focusVisible: true, beforeSelected: true});
+		expect(
+			{
+				focusVisible: focusVisible !== -1,
+				beforeSelected: focusVisible < selected,
+			},
+		).toStrictEqual(
+			{
+				focusVisible: true,
+				beforeSelected: true,
+			},
+		);
 	});
 });

@@ -2,25 +2,44 @@ import {lazy, type ComponentType} from "react";
 import type {ToolRendererProps} from "./types";
 
 const ChromeDevtoolsRenderer = lazy(async () =>
-	import("./chrome-devtools-renderer").then((m) => ({
+	import("./chrome-devtools-renderer").then((m) => (
+	{
 		default: m.ChromeDevtoolsRenderer,
 	})),
 );
-const GithubRenderer = lazy(async () => import("./github-renderer").then((m) => ({default: m.GithubRenderer})));
+const GithubRenderer = lazy(async () =>
+	import("./github-renderer").then((m) => (
+	{
+		default: m.GithubRenderer,
+	})),
+);
 const PlaywrightRenderer = lazy(async () =>
-	import("./playwright-renderer").then((m) => ({
+	import("./playwright-renderer").then((m) => (
+	{
 		default: m.PlaywrightRenderer,
 	})),
 );
 const ClaudeInChromeRenderer = lazy(async () =>
-	import("./claude-in-chrome-renderer").then((m) => ({
+	import("./claude-in-chrome-renderer").then((m) => (
+	{
 		default: m.ClaudeInChromeRenderer,
 	})),
 );
-const Context7Renderer = lazy(async () => import("./context7-renderer").then((m) => ({default: m.Context7Renderer})));
-const McpRenderer = lazy(async () => import("./mcp-renderer").then((m) => ({default: m.McpRenderer})));
+const Context7Renderer = lazy(async () =>
+	import("./context7-renderer").then((m) => (
+	{
+		default: m.Context7Renderer,
+	})),
+);
+const McpRenderer = lazy(async () =>
+	import("./mcp-renderer").then((m) => (
+	{
+		default: m.McpRenderer,
+	})),
+);
 
-const mcpRegistry: Record<string, ComponentType<ToolRendererProps>> = {
+const mcpRegistry: Record<string, ComponentType<ToolRendererProps>> =
+{
 	"chrome-devtools": ChromeDevtoolsRenderer,
 	"plugin_chrome-devtools-mcp_chrome-devtools": ChromeDevtoolsRenderer,
 	plugin_github_github: GithubRenderer,
@@ -29,6 +48,7 @@ const mcpRegistry: Record<string, ComponentType<ToolRendererProps>> = {
 	plugin_context7_context7: Context7Renderer,
 };
 
-export function getMcpRenderer(serverName: string): ComponentType<ToolRendererProps> {
+export function getMcpRenderer(serverName: string): ComponentType<ToolRendererProps>
+{
 	return mcpRegistry[serverName] ?? McpRenderer;
 }

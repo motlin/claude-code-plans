@@ -10,7 +10,8 @@ import {DensityOverride, DensityScope} from "../src/components/ui/density";
 import {FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {CompactScope, PanelsOff} from "./fizzy-lake-off";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
@@ -18,10 +19,22 @@ afterEach(() => {
 
 const WITHOUT_COLOR: readonly FizzyLakePart[] = ["panels", "type"];
 
-function metrics(wrap: (banner: ReactNode) => ReactNode, keyline?: "glyph" | "text") {
+function metrics(wrap: (banner: ReactNode) => ReactNode, keyline?: "glyph" | "text")
+{
 	const {container} = render(
 		wrap(
-			<NoticeBanner icon={<Gauge />} onDismiss={() => {}} {...(keyline === undefined ? {} : {keyline})}>
+			<NoticeBanner
+				icon={<Gauge />}
+				onDismiss={() =>
+				{
+				}}
+				{...(keyline === undefined
+					? {}
+					:
+						{
+							keyline,
+						})}
+			>
 				Notice
 			</NoticeBanner>,
 		),
@@ -43,14 +56,16 @@ const FIZZY_SURFACE = "bg-page shadow-card-ring text-primary [--card-ring-color:
 const ICON_SLOT = "flex min-h-[1lh] shrink-0 items-center ms-[4px] -me-[4px]";
 const BODY = "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1";
 const GLYPH_BODY = `${BODY} ms-[6px] compact:ms-[6px] comfortable:ms-[4px]`;
-const PANELS = {
+const PANELS =
+{
 	keyline: "glyph",
 	root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] ${TYPE} ${FIZZY_SURFACE}`,
 	iconSlot: `${ICON_SLOT} text-secondary`,
 	body: GLYPH_BODY,
 	dismissSlot: "-me-[2px] flex h-[1lh] shrink-0 items-center",
 };
-const BASE = {
+const BASE =
+{
 	keyline: "glyph",
 	root: `${LEAD} py-md ${TYPE} ${FIZZY_SURFACE}`,
 	iconSlot: `${ICON_SLOT} text-secondary`,
@@ -58,61 +73,94 @@ const BASE = {
 	dismissSlot: "-me-[4px] flex h-[1lh] shrink-0 items-center",
 };
 
-describe("NoticeBanner composer keyline", () => {
+describe("NoticeBanner composer keyline", () =>
+{
 	// Upstream's dock cards always pass composerCalibration (`rB()`), so `ah` takes its keyline branch:
 	// px-md, rounded-composer, the icon and body offsets and the keyline Dismiss margins.
-	it("takes upstream's panels keyline Banner under comfortable density: pad-md+2px block padding and the -2px Dismiss margin", () => {
-		expect(metrics((banner): ReactNode => banner)).toStrictEqual({...PANELS, scope: null});
+	it("takes upstream's panels keyline Banner under comfortable density: pad-md+2px block padding and the -2px Dismiss margin", () =>
+	{
+		expect(metrics((banner): ReactNode => banner)).toStrictEqual(
+			{
+				...PANELS,
+				scope: null,
+			},
+		);
 	});
 
-	it("keeps py-md and the glyph -4px Dismiss margin in the compact column with panels off", () => {
-		expect(metrics((banner) => <CompactScope>{banner}</CompactScope>)).toStrictEqual({...BASE, scope: "compact"});
+	it("keeps py-md and the glyph -4px Dismiss margin in the compact column with panels off", () =>
+	{
+		expect(metrics((banner) => <CompactScope>{banner}</CompactScope>)).toStrictEqual(
+			{
+				...BASE,
+				scope: "compact",
+			},
+		);
 	});
 
-	it("keeps py-md and the glyph -4px Dismiss margin in a comfortable scope with panels off", () => {
+	it("keeps py-md and the glyph -4px Dismiss margin in a comfortable scope with panels off", () =>
+	{
 		expect(
 			metrics((banner) => (
 				<PanelsOff>
 					<DensityScope density="comfortable">{banner}</DensityScope>
 				</PanelsOff>
 			)),
-		).toStrictEqual({...BASE, scope: "comfortable"});
+		).toStrictEqual(
+			{
+				...BASE,
+				scope: "comfortable",
+			},
+		);
 	});
 
-	it("takes the panels block padding at compact tokens when an override forces compact", () => {
+	it("takes the panels block padding at compact tokens when an override forces compact", () =>
+	{
 		expect(
 			metrics((banner) => (
 				<DensityOverride density="compact">
 					<DensityScope>{banner}</DensityScope>
 				</DensityOverride>
 			)),
-		).toStrictEqual({...PANELS, scope: "compact"});
+		).toStrictEqual(
+			{
+				...PANELS,
+				scope: "compact",
+			},
+		);
 	});
 
-	it("uses the text keyline's body offset and Dismiss margin for a composer with no leading item", () => {
-		expect(metrics((banner) => <CompactScope>{banner}</CompactScope>, "text")).toStrictEqual({
-			...BASE,
-			keyline: "text",
-			body: `${BODY} ms-[4px] compact:ms-[4px] comfortable:ms-[2px]`,
-			dismissSlot: "-me-[2px] compact:-me-[2px] comfortable:-me-[4px] flex h-[1lh] shrink-0 items-center",
-			scope: "compact",
-		});
+	it("uses the text keyline's body offset and Dismiss margin for a composer with no leading item", () =>
+	{
+		expect(metrics((banner) => <CompactScope>{banner}</CompactScope>, "text")).toStrictEqual(
+			{
+				...BASE,
+				keyline: "text",
+				body: `${BODY} ms-[4px] compact:ms-[4px] comfortable:ms-[2px]`,
+				dismissSlot: "-me-[2px] compact:-me-[2px] comfortable:-me-[4px] flex h-[1lh] shrink-0 items-center",
+				scope: "compact",
+			},
+		);
 	});
 });
 
-describe("NoticeBanner neutral surface", () => {
-	it("layers upstream's alpha-1 neutral tint over surface-1 and leaves the icon untinted with fizzy-lake color off", () => {
+describe("NoticeBanner neutral surface", () =>
+{
+	it("layers upstream's alpha-1 neutral tint over surface-1 and leaves the icon untinted with fizzy-lake color off", () =>
+	{
 		expect(
 			metrics((banner) => <FizzyLakeContext.Provider value={WITHOUT_COLOR}>{banner}</FizzyLakeContext.Provider>),
-		).toStrictEqual({
-			...PANELS,
-			root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] ${TYPE} bg-surface-1 bg-[linear-gradient(var(--color-alpha-1)_0_0)] shadow-card-ring text-primary @container`,
-			iconSlot: ICON_SLOT,
-			scope: null,
-		});
+		).toStrictEqual(
+			{
+				...PANELS,
+				root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] ${TYPE} bg-surface-1 bg-[linear-gradient(var(--color-alpha-1)_0_0)] shadow-card-ring text-primary @container`,
+				iconSlot: ICON_SLOT,
+				scope: null,
+			},
+		);
 	});
 
-	it("passes a test id through to the Banner root", () => {
+	it("passes a test id through to the Banner root", () =>
+	{
 		const {container} = render(
 			<NoticeBanner icon={null} data-testid="usage-limit-reached-card">
 				Notice
@@ -129,7 +177,8 @@ const ACTION_BASE =
 const IQ_GLYPH =
 	"me-[calc(8px-var(--cds-pad-md))] compact:me-[calc(8px-var(--cds-pad-md))] comfortable:me-[calc(4px-var(--cds-pad-md))]";
 
-function actionMetrics(banner: ReactNode) {
+function actionMetrics(banner: ReactNode)
+{
 	const {container} = render(banner);
 	const root = container.querySelector('[data-cds="Banner"]');
 	const body = root?.querySelector(":scope > div");
@@ -146,28 +195,39 @@ function actionMetrics(banner: ReactNode) {
 
 const textDiv = "div.max-w-full min-w-0 flex-auto";
 
-describe("NoticeBanner action slot", () => {
-	it("puts upstream's inline action span after the body text in the keyline card, beside a Dismiss", () => {
+describe("NoticeBanner action slot", () =>
+{
+	it("puts upstream's inline action span after the body text in the keyline card, beside a Dismiss", () =>
+	{
 		expect(
 			actionMetrics(
 				<CompactScope>
-					<NoticeBanner icon={<Gauge />} onDismiss={() => {}} action={<button type="button">A</button>}>
+					<NoticeBanner
+						icon={<Gauge />}
+						onDismiss={() =>
+						{
+						}}
+						action={<button type="button">A</button>}
+					>
 						Notice
 					</NoticeBanner>
 				</CompactScope>,
 			),
-		).toStrictEqual({
-			role: "none",
-			keyline: "glyph",
-			ctaLayout: "inline",
-			root: BASE.root,
-			iconSlot: BASE.iconSlot,
-			body: GLYPH_BODY,
-			bodyChildren: [textDiv, `span.${ACTION_BASE}`],
-		});
+		).toStrictEqual(
+			{
+				role: "none",
+				keyline: "glyph",
+				ctaLayout: "inline",
+				root: BASE.root,
+				iconSlot: BASE.iconSlot,
+				body: GLYPH_BODY,
+				bodyChildren: [textDiv, `span.${ACTION_BASE}`],
+			},
+		);
 	});
 
-	it("gives a keyline action with no Dismiss upstream's Iq end margin, and -2px under panels", () => {
+	it("gives a keyline action with no Dismiss upstream's Iq end margin, and -2px under panels", () =>
+	{
 		const withoutDismiss = (wrap: (banner: ReactNode) => ReactNode) =>
 			actionMetrics(
 				wrap(
@@ -182,7 +242,8 @@ describe("NoticeBanner action slot", () => {
 		expect(withoutDismiss((banner): ReactNode => banner)).toBe(`span.${ACTION_BASE} -me-[2px]`);
 	});
 
-	it("draws the uncalibrated Banner (px-lg, rounded-card, P9 action margin) with a role override", () => {
+	it("draws the uncalibrated Banner (px-lg, rounded-card, P9 action margin) with a role override", () =>
+	{
 		expect(
 			actionMetrics(
 				<CompactScope>
@@ -196,68 +257,109 @@ describe("NoticeBanner action slot", () => {
 					</NoticeBanner>
 				</CompactScope>,
 			),
-		).toStrictEqual({
-			role: "status",
-			keyline: null,
-			ctaLayout: "inline",
-			root: `${LEAD} py-md font-sans text-body font-normal break-words px-lg rounded-card ${FIZZY_SURFACE}`,
-			iconSlot: "flex min-h-[1lh] shrink-0 items-center text-secondary",
-			body: BODY,
-			bodyChildren: [textDiv, `span.${ACTION_BASE} -me-[calc(var(--cds-pad-md)-2px)]`],
-		});
+		).toStrictEqual(
+			{
+				role: "status",
+				keyline: null,
+				ctaLayout: "inline",
+				root: `${LEAD} py-md font-sans text-body font-normal break-words px-lg rounded-card ${FIZZY_SURFACE}`,
+				iconSlot: "flex min-h-[1lh] shrink-0 items-center text-secondary",
+				body: BODY,
+				bodyChildren: [textDiv, `span.${ACTION_BASE} -me-[calc(var(--cds-pad-md)-2px)]`],
+			},
+		);
 	});
 
-	it("takes upstream's panels !py-lg and b9 action margin on the uncalibrated Banner", () => {
+	it("takes upstream's panels !py-lg and b9 action margin on the uncalibrated Banner", () =>
+	{
 		const metrics = actionMetrics(
 			<NoticeBanner icon={<Gauge />} keyline={null} action={<button type="button">Try again</button>}>
 				x
 			</NoticeBanner>,
 		);
-		expect({root: metrics.root, action: metrics.bodyChildren[1]}).toStrictEqual({
-			root: `${LEAD} !py-lg font-sans text-body font-normal break-words px-lg rounded-card ${FIZZY_SURFACE}`,
-			action: `span.${ACTION_BASE} -me-[calc(var(--cds-pad-md)-6px)]`,
-		});
+		expect(
+			{
+				root: metrics.root,
+				action: metrics.bodyChildren[1],
+			},
+		).toStrictEqual(
+			{
+				root: `${LEAD} !py-lg font-sans text-body font-normal break-words px-lg rounded-card ${FIZZY_SURFACE}`,
+				action: `span.${ACTION_BASE} -me-[calc(var(--cds-pad-md)-6px)]`,
+			},
+		);
 	});
 });
 
 /** A ResizeObserver stub plus layout stubs: the action span sits `actionDrop` px below the text, the root is `width` wide. */
-function stubLayout() {
-	const layout = {actionDrop: 0, width: 600};
+function stubLayout()
+{
+	const layout =
+	{
+		actionDrop: 0,
+		width: 600,
+	};
 	const observers = new Set<() => void>();
 	vi.stubGlobal(
 		"ResizeObserver",
-		class {
+		class
+		{
 			readonly callback: () => void;
-			constructor(callback: () => void) {
+			constructor(callback: () => void)
+			{
 				this.callback = callback;
 			}
-			observe() {
+			observe()
+			{
 				observers.add(this.callback);
 			}
-			disconnect() {
+			disconnect()
+			{
 				observers.delete(this.callback);
 			}
 		},
 	);
 	vi.spyOn(window, "getComputedStyle").mockImplementation(
-		() => ({lineHeight: "20px"}) as unknown as CSSStyleDeclaration,
+		() =>
+			(
+			{
+				lineHeight: "20px",
+			}) as unknown as CSSStyleDeclaration,
 	);
-	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement)
+	{
 		const top = this.tagName === "SPAN" ? layout.actionDrop : 0;
-		return {top, bottom: top + 20, height: 20, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({})};
+		return {
+			top,
+			bottom: top + 20,
+			height: 20,
+			left: 0,
+			right: 0,
+			width: 0,
+			x: 0,
+			y: top,
+			toJSON: () => ({}),
+		};
 	});
 	vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(() => layout.width);
-	const resize = (next: Partial<typeof layout>) => {
+	const resize = (next: Partial<typeof layout>) =>
+	{
 		Object.assign(layout, next);
-		act(() => {
+		act(() =>
+		{
 			for (const callback of observers) callback();
 		});
 	};
-	return {layout, resize};
+	return {
+		layout,
+		resize,
+	};
 }
 
-describe("NoticeBanner CTA wrap measurement", () => {
-	it("marks an uncalibrated card wrapped when the action drops more than half a line: pb-lg and a wrapping action", () => {
+describe("NoticeBanner CTA wrap measurement", () =>
+{
+	it("marks an uncalibrated card wrapped when the action drops more than half a line: pb-lg and a wrapping action", () =>
+	{
 		const {layout} = stubLayout();
 		layout.actionDrop = 30;
 		const metrics = actionMetrics(
@@ -265,21 +367,32 @@ describe("NoticeBanner CTA wrap measurement", () => {
 				<NoticeBanner
 					icon={<Gauge />}
 					keyline={null}
-					onDismiss={() => {}}
+					onDismiss={() =>
+					{
+					}}
 					action={<button type="button">A</button>}
 				>
 					Notice
 				</NoticeBanner>
 			</CompactScope>,
 		);
-		expect({ctaLayout: metrics.ctaLayout, root: metrics.root, action: metrics.bodyChildren[1]}).toStrictEqual({
-			ctaLayout: "wrapped",
-			root: `${LEAD} py-md font-sans text-body font-normal break-words px-lg pb-lg rounded-card ${FIZZY_SURFACE}`,
-			action: "span.flex shrink-0 items-center gap-xs max-w-full flex-wrap",
-		});
+		expect(
+			{
+				ctaLayout: metrics.ctaLayout,
+				root: metrics.root,
+				action: metrics.bodyChildren[1],
+			},
+		).toStrictEqual(
+			{
+				ctaLayout: "wrapped",
+				root: `${LEAD} py-md font-sans text-body font-normal break-words px-lg pb-lg rounded-card ${FIZZY_SURFACE}`,
+				action: "span.flex shrink-0 items-center gap-xs max-w-full flex-wrap",
+			},
+		);
 	});
 
-	it("stays inline when the action sits within half a line of the text", () => {
+	it("stays inline when the action sits within half a line of the text", () =>
+	{
 		const {layout} = stubLayout();
 		layout.actionDrop = 8;
 		expect(
@@ -291,18 +404,26 @@ describe("NoticeBanner CTA wrap measurement", () => {
 		).toBe("inline");
 	});
 
-	it("stacks a wrapped keyline card, hides its neutral icon, and un-stacks only past 64px of growth", () => {
+	it("stacks a wrapped keyline card, hides its neutral icon, and un-stacks only past 64px of growth", () =>
+	{
 		const {layout, resize} = stubLayout();
 		layout.actionDrop = 30;
 		const banner = (
 			<CompactScope>
-				<NoticeBanner icon={<Gauge />} onDismiss={() => {}} action={<button type="button">A</button>}>
+				<NoticeBanner
+					icon={<Gauge />}
+					onDismiss={() =>
+					{
+					}}
+					action={<button type="button">A</button>}
+				>
 					Notice
 				</NoticeBanner>
 			</CompactScope>
 		);
 		const {container} = render(banner);
-		const read = () => {
+		const read = () =>
+		{
 			const root = container.querySelector('[data-cds="Banner"]');
 			const body = root?.querySelector(":scope > div");
 			return {
@@ -313,7 +434,8 @@ describe("NoticeBanner CTA wrap measurement", () => {
 				action: body?.children[1]?.className,
 			};
 		};
-		const stacked = {
+		const stacked =
+		{
 			ctaLayout: "stacked",
 			root: BASE.root,
 			first: "DIV",
@@ -321,19 +443,32 @@ describe("NoticeBanner CTA wrap measurement", () => {
 			action: "flex shrink-0 items-center gap-xs max-w-full flex-wrap basis-full -ms-[6px] compact:-ms-[6px] comfortable:-ms-[4px]",
 		};
 		expect(read()).toStrictEqual(stacked);
-		resize({width: 640, actionDrop: 0});
+		resize(
+			{
+				width: 640,
+				actionDrop: 0,
+			},
+		);
 		expect(read()).toStrictEqual(stacked);
-		resize({width: 670, actionDrop: 0});
-		expect(read()).toStrictEqual({
-			ctaLayout: "inline",
-			root: BASE.root,
-			first: "SPAN",
-			body: GLYPH_BODY,
-			action: ACTION_BASE,
-		});
+		resize(
+			{
+				width: 670,
+				actionDrop: 0,
+			},
+		);
+		expect(read()).toStrictEqual(
+			{
+				ctaLayout: "inline",
+				root: BASE.root,
+				first: "SPAN",
+				body: GLYPH_BODY,
+				action: ACTION_BASE,
+			},
+		);
 	});
 
-	it("adds the stacked panels top padding and body end margin when there is no Dismiss", () => {
+	it("adds the stacked panels top padding and body end margin when there is no Dismiss", () =>
+	{
 		const {layout} = stubLayout();
 		layout.actionDrop = 30;
 		const metrics = actionMetrics(
@@ -341,10 +476,18 @@ describe("NoticeBanner CTA wrap measurement", () => {
 				Notice
 			</NoticeBanner>,
 		);
-		expect({root: metrics.root, body: metrics.body, action: metrics.bodyChildren[1]}).toStrictEqual({
-			root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md pt-[calc(var(--cds-pad-md)-2px)] rounded-composer ${FIZZY_SURFACE}`,
-			body: "flex min-w-0 flex-wrap items-start gap-y-xs gap-x-md flex-1 me-[2px] ms-[6px] compact:ms-[6px] comfortable:ms-[4px]",
-			action: "span.flex shrink-0 items-center gap-xs max-w-full flex-wrap basis-full -me-[2px]",
-		});
+		expect(
+			{
+				root: metrics.root,
+				body: metrics.body,
+				action: metrics.bodyChildren[1],
+			},
+		).toStrictEqual(
+			{
+				root: `${LEAD} py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md pt-[calc(var(--cds-pad-md)-2px)] rounded-composer ${FIZZY_SURFACE}`,
+				body: "flex min-w-0 flex-wrap items-start gap-y-xs gap-x-md flex-1 me-[2px] ms-[6px] compact:ms-[6px] comfortable:ms-[4px]",
+				action: "span.flex shrink-0 items-center gap-xs max-w-full flex-wrap basis-full -me-[2px]",
+			},
+		);
 	});
 });

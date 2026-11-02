@@ -4,21 +4,34 @@ import {handleHerdrLaunch, type HerdrLaunchDependencies} from "../src/lib/herdr/
 import type {HerdrRequester} from "../src/lib/herdr/panes";
 import {rejectCrossSite} from "../src/lib/same-origin-guard";
 
-function request(body: unknown, headers?: HeadersInit): Request {
+function request(body: unknown, headers?: HeadersInit): Request
+{
 	const requestHeaders = new Headers(headers);
 	requestHeaders.set("Content-Type", "application/json");
-	return new Request("http://127.0.0.1:7526/api/herdr/launch", {
-		method: "POST",
-		headers: requestHeaders,
-		body: JSON.stringify(body),
-	});
+	return new Request(
+		"http://127.0.0.1:7526/api/herdr/launch",
+		{
+			method: "POST",
+			headers: requestHeaders,
+			body: JSON.stringify(body),
+		},
+	);
 }
 
-async function describeResponse(response: Response): Promise<{body: unknown; status: number}> {
-	return {body: await response.json(), status: response.status};
+async function describeResponse(response: Response): Promise<
+{
+	body: unknown;
+	status: number;
+}>
+{
+	return {
+		body: await response.json(),
+		status: response.status,
+	};
 }
 
-const rootPane = {
+const rootPane =
+{
 	pane_id: "w100:p100",
 	terminal_id: "terminal-test-100",
 	workspace_id: "w100",
@@ -29,9 +42,11 @@ const rootPane = {
 	revision: 0,
 };
 
-const tabCreated = {
+const tabCreated =
+{
 	type: "tab_created",
-	tab: {
+	tab:
+	{
 		tab_id: "w100:t100",
 		workspace_id: "w100",
 		number: 1,
@@ -43,11 +58,13 @@ const tabCreated = {
 	root_pane: rootPane,
 };
 
-function agentStarted(argv: string[]) {
+function agentStarted(argv: string[])
+{
 	return {
 		type: "agent_started",
 		argv,
-		agent: {
+		agent:
+		{
 			terminal_id: "terminal-test-100",
 			agent_status: "idle",
 			workspace_id: "w100",
@@ -57,7 +74,8 @@ function agentStarted(argv: string[]) {
 			revision: 3,
 			agent: "claude",
 			name: "ccp-test100",
-			agent_session: {
+			agent_session:
+			{
 				agent: "claude",
 				kind: "id",
 				source: "herdr:claude",
@@ -67,107 +85,237 @@ function agentStarted(argv: string[]) {
 	};
 }
 
-interface RecordedRequest {
+interface RecordedRequest
+{
 	request: object;
 	timeoutMs: number | undefined;
 }
 
-function fakeHerdr(responses: Record<string, HerdrResult<unknown>>): {
+function fakeHerdr(responses: Record<string, HerdrResult<unknown>>):
+{
 	requester: HerdrRequester;
 	requests: RecordedRequest[];
-} {
+}
+{
 	const requests: RecordedRequest[] = [];
-	const requester: HerdrRequester = async (requestValue, timeoutMs) => {
-		requests.push({request: requestValue, timeoutMs});
-		const method = (requestValue as {method: string}).method;
-		return Promise.resolve(responses[method] ?? {ok: false, code: "unexpected", message: method});
+	const requester: HerdrRequester = async (requestValue, timeoutMs) =>
+	{
+		requests.push(
+			{
+				request: requestValue,
+				timeoutMs,
+			},
+		);
+		const method = (
+			requestValue as
+			{
+				method: string;
+			}
+		).method;
+		return Promise.resolve(
+			responses[method] ??
+			{
+				ok: false,
+				code: "unexpected",
+				message: method,
+			},
+		);
 	};
-	return {requester, requests};
+	return {
+		requester,
+		requests,
+	};
 }
 
-function dependencies(overrides: Partial<HerdrLaunchDependencies> = {}): HerdrLaunchDependencies {
+function dependencies(overrides: Partial<HerdrLaunchDependencies> = {}): HerdrLaunchDependencies
+{
 	return {
 		rejectRequest: rejectCrossSite,
 		writesEnabled: () => true,
-		request: async () => Promise.resolve({ok: true, value: {type: "ok"}}),
+		request: async () =>
+			Promise.resolve(
+				{
+					ok: true,
+					value:
+					{
+						type: "ok",
+					},
+				},
+			),
 		createLaunchId: () => "test100",
-		wait: async () => {},
+		wait: async () =>
+		{
+		},
 		homeDir: () => "/Users/alice",
-		launchServer: () => ({session: null, socketPath: "/tmp/test/default/herdr.sock"}),
+		launchServer: () => (
+		{
+			session: null,
+			socketPath: "/tmp/test/default/herdr.sock",
+		}),
 		...overrides,
 	};
 }
 
 const trickyPrompt = `it's "quoted" $(rm -rf ~) \`id\`\nsecond line`;
 
-describe("herdr launch write handler", () => {
-	it("returns 403 before parsing when writes are disabled", async () => {
+describe("herdr launch write handler", () =>
+{
+	it("returns 403 before parsing when writes are disabled", async () =>
+	{
 		const sendRequest = vi.fn<HerdrRequester>();
 
 		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project"}),
-			dependencies({writesEnabled: () => false, request: sendRequest}),
+			request(
+				{
+					cwd: "/Users/alice/project",
+				},
+			),
+			dependencies(
+				{
+					writesEnabled: () => false,
+					request: sendRequest,
+				},
+			),
 		);
 
-		expect({
-			response: await describeResponse(response),
-			calls: sendRequest.mock.calls,
-		}).toStrictEqual({
-			response: {body: {error: "herdr writes are disabled"}, status: 403},
-			calls: [],
-		});
+		expect(
+			{
+				response: await describeResponse(response),
+				calls: sendRequest.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				response:
+				{
+					body:
+					{
+						error: "herdr writes are disabled",
+					},
+					status: 403,
+				},
+				calls: [],
+			},
+		);
 	});
 
-	it("rejects cross-site requests before checking the feature flag", async () => {
+	it("rejects cross-site requests before checking the feature flag", async () =>
+	{
 		const calls: string[] = [];
 
 		const response = await handleHerdrLaunch(
 			request(
-				{cwd: "/Users/alice/project"},
-				{Origin: "https://attacker.example.com", "Sec-Fetch-Site": "cross-site"},
+				{
+					cwd: "/Users/alice/project",
+				},
+				{
+					Origin: "https://attacker.example.com",
+					"Sec-Fetch-Site": "cross-site",
+				},
 			),
-			dependencies({
-				rejectRequest: (candidate) => {
-					calls.push("guard");
-					return rejectCrossSite(candidate);
+			dependencies(
+				{
+					rejectRequest: (candidate) =>
+					{
+						calls.push("guard");
+						return rejectCrossSite(candidate);
+					},
+					writesEnabled: () =>
+					{
+						calls.push("feature");
+						return true;
+					},
 				},
-				writesEnabled: () => {
-					calls.push("feature");
-					return true;
-				},
-			}),
+			),
 		);
 
-		expect({response: await describeResponse(response), calls}).toStrictEqual({
-			response: {body: {error: "Forbidden"}, status: 403},
-			calls: ["guard"],
-		});
+		expect(
+			{
+				response: await describeResponse(response),
+				calls,
+			},
+		).toStrictEqual(
+			{
+				response:
+				{
+					body:
+					{
+						error: "Forbidden",
+					},
+					status: 403,
+				},
+				calls: ["guard"],
+			},
+		);
 	});
 
 	it.each([
-		{name: "relative cwd", body: {cwd: "project"}},
-		{name: "empty prompt", body: {cwd: "/Users/alice/project", prompt: ""}},
-		{name: "unknown field", body: {cwd: "/Users/alice/project", shell: "zsh"}},
+		{
+			name: "relative cwd",
+			body:
+			{
+				cwd: "project",
+			},
+		},
+		{
+			name: "empty prompt",
+			body:
+			{
+				cwd: "/Users/alice/project",
+				prompt: "",
+			},
+		},
+		{
+			name: "unknown field",
+			body:
+			{
+				cwd: "/Users/alice/project",
+				shell: "zsh",
+			},
+		},
 		{
 			name: "unsupported claude argument",
-			body: {cwd: "/Users/alice/project", args: ["--dangerously-skip-permissions"]},
+			body:
+			{
+				cwd: "/Users/alice/project",
+				args: ["--dangerously-skip-permissions"],
+			},
 		},
 		{
 			name: "fork without resume",
-			body: {cwd: "/Users/alice/project", args: ["--fork-session"]},
+			body:
+			{
+				cwd: "/Users/alice/project",
+				args: ["--fork-session"],
+			},
 		},
-	])("returns 400 without contacting herdr for $name", async ({body}) => {
+	])("returns 400 without contacting herdr for $name", async ({body}) =>
+	{
 		const sendRequest = vi.fn<HerdrRequester>();
 
-		const response = await handleHerdrLaunch(request(body), dependencies({request: sendRequest}));
+		const response = await handleHerdrLaunch(
+			request(body),
+			dependencies(
+				{
+					request: sendRequest,
+				},
+			),
+		);
 
-		expect({
-			status: response.status,
-			calls: sendRequest.mock.calls,
-		}).toStrictEqual({status: 400, calls: []});
+		expect(
+			{
+				status: response.status,
+				calls: sendRequest.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				status: 400,
+				calls: [],
+			},
+		);
 	});
 
-	it("creates a tab, starts claude with an argv array, then submits the prompt verbatim", async () => {
+	it("creates a tab, starts claude with an argv array, then submits the prompt verbatim", async () =>
+	{
 		const args = [
 			"--resume",
 			"session-test-100",
@@ -179,119 +327,273 @@ describe("herdr launch write handler", () => {
 			"--permission-mode",
 			"plan",
 		];
-		const herdr = fakeHerdr({
-			"tab.create": {ok: true, value: tabCreated},
-			"agent.start": {ok: true, value: agentStarted(["claude", ...args])},
-			"agent.prompt": {ok: true, value: {type: "ok"}},
-		});
-
-		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project", prompt: trickyPrompt, args}),
-			dependencies({request: herdr.requester}),
-		);
-
-		expect({response: await describeResponse(response), requests: herdr.requests}).toStrictEqual({
-			response: {
-				body: {
+		const herdr = fakeHerdr(
+			{
+				"tab.create":
+				{
 					ok: true,
-					tabId: "w100:t100",
-					paneId: "w100:p100",
-					sessionId: "session-test-200",
+					value: tabCreated,
 				},
-				status: 200,
-			},
-			requests: [
+				"agent.start":
 				{
-					request: {
-						id: "ccp:launch:test100:tab.create",
-						method: "tab.create",
-						params: {cwd: "/Users/alice/project", focus: false},
+					ok: true,
+					value: agentStarted(["claude", ...args]),
+				},
+				"agent.prompt":
+				{
+					ok: true,
+					value:
+					{
+						type: "ok",
 					},
-					timeoutMs: undefined,
 				},
+			},
+		);
+
+		const response = await handleHerdrLaunch(
+			request(
 				{
-					request: {
-						id: "ccp:launch:test100:agent.start",
-						method: "agent.start",
-						params: {
-							name: "ccp-test100",
-							kind: "claude",
-							pane_id: "w100:p100",
-							args,
-							timeout_ms: 30000,
+					cwd: "/Users/alice/project",
+					prompt: trickyPrompt,
+					args,
+				},
+			),
+			dependencies(
+				{
+					request: herdr.requester,
+				},
+			),
+		);
+
+		expect(
+			{
+				response: await describeResponse(response),
+				requests: herdr.requests,
+			},
+		).toStrictEqual(
+			{
+				response:
+				{
+					body:
+					{
+						ok: true,
+						tabId: "w100:t100",
+						paneId: "w100:p100",
+						sessionId: "session-test-200",
+					},
+					status: 200,
+				},
+				requests: [
+					{
+						request:
+						{
+							id: "ccp:launch:test100:tab.create",
+							method: "tab.create",
+							params:
+							{
+								cwd: "/Users/alice/project",
+								focus: false,
+							},
 						},
+						timeoutMs: undefined,
 					},
-					timeoutMs: 35000,
-				},
-				{
-					request: {
-						id: "ccp:launch:test100:agent.prompt",
-						method: "agent.prompt",
-						params: {target: "w100:p100", text: trickyPrompt},
+					{
+						request:
+						{
+							id: "ccp:launch:test100:agent.start",
+							method: "agent.start",
+							params:
+							{
+								name: "ccp-test100",
+								kind: "claude",
+								pane_id: "w100:p100",
+								args,
+								timeout_ms: 30000,
+							},
+						},
+						timeoutMs: 35000,
 					},
-					timeoutMs: undefined,
-				},
-			],
-		});
-	});
-
-	it("starts claude with a valueless --worktree", async () => {
-		const herdr = fakeHerdr({
-			"tab.create": {ok: true, value: tabCreated},
-			"agent.start": {ok: true, value: agentStarted(["claude", "--model", "opus", "--worktree"])},
-		});
-
-		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project", args: ["--model", "opus", "--worktree"]}),
-			dependencies({request: herdr.requester}),
-		);
-
-		expect({
-			status: response.status,
-			startArgs: (herdr.requests[1]!.request as {params: {args: string[]}}).params.args,
-		}).toStrictEqual({status: 200, startArgs: ["--model", "opus", "--worktree"]});
-	});
-
-	it("does not send a prompt when none was given", async () => {
-		const herdr = fakeHerdr({
-			"tab.create": {ok: true, value: tabCreated},
-			"agent.start": {ok: true, value: agentStarted(["claude"])},
-		});
-
-		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project"}),
-			dependencies({request: herdr.requester}),
-		);
-
-		expect({
-			status: response.status,
-			methods: herdr.requests.map(({request: sent}) => (sent as {method: string}).method),
-			startArgs: (herdr.requests[1]!.request as {params: {args: string[]}}).params.args,
-		}).toStrictEqual({status: 200, methods: ["tab.create", "agent.start"], startArgs: []});
-	});
-
-	it("opens the tab in the home directory when no cwd is given", async () => {
-		const herdr = fakeHerdr({
-			"tab.create": {ok: true, value: tabCreated},
-			"agent.start": {ok: true, value: agentStarted(["claude"])},
-		});
-
-		const response = await handleHerdrLaunch(request({}), dependencies({request: herdr.requester}));
-
-		expect({
-			status: response.status,
-			tabCreate: herdr.requests[0]?.request,
-		}).toStrictEqual({
-			status: 200,
-			tabCreate: {
-				id: "ccp:launch:test100:tab.create",
-				method: "tab.create",
-				params: {cwd: "/Users/alice", focus: false},
+					{
+						request:
+						{
+							id: "ccp:launch:test100:agent.prompt",
+							method: "agent.prompt",
+							params:
+							{
+								target: "w100:p100",
+								text: trickyPrompt,
+							},
+						},
+						timeoutMs: undefined,
+					},
+				],
 			},
-		});
+		);
 	});
 
-	it("retries the prompt while herdr is still registering the new agent", async () => {
+	it("starts claude with a valueless --worktree", async () =>
+	{
+		const herdr = fakeHerdr(
+			{
+				"tab.create":
+				{
+					ok: true,
+					value: tabCreated,
+				},
+				"agent.start":
+				{
+					ok: true,
+					value: agentStarted(["claude", "--model", "opus", "--worktree"]),
+				},
+			},
+		);
+
+		const response = await handleHerdrLaunch(
+			request(
+				{
+					cwd: "/Users/alice/project",
+					args: ["--model", "opus", "--worktree"],
+				},
+			),
+			dependencies(
+				{
+					request: herdr.requester,
+				},
+			),
+		);
+
+		expect(
+			{
+				status: response.status,
+				startArgs: (
+					herdr.requests[1]!.request as
+					{
+						params:
+						{
+							args: string[];
+						};
+					}
+				).params.args,
+			},
+		).toStrictEqual(
+			{
+				status: 200,
+				startArgs: ["--model", "opus", "--worktree"],
+			},
+		);
+	});
+
+	it("does not send a prompt when none was given", async () =>
+	{
+		const herdr = fakeHerdr(
+			{
+				"tab.create":
+				{
+					ok: true,
+					value: tabCreated,
+				},
+				"agent.start":
+				{
+					ok: true,
+					value: agentStarted(["claude"]),
+				},
+			},
+		);
+
+		const response = await handleHerdrLaunch(
+			request(
+				{
+					cwd: "/Users/alice/project",
+				},
+			),
+			dependencies(
+				{
+					request: herdr.requester,
+				},
+			),
+		);
+
+		expect(
+			{
+				status: response.status,
+				methods: herdr.requests.map(
+					({request: sent}) =>
+						(
+							sent as
+							{
+								method: string;
+							}
+						).method,
+				),
+				startArgs: (
+					herdr.requests[1]!.request as
+					{
+						params:
+						{
+							args: string[];
+						};
+					}
+				).params.args,
+			},
+		).toStrictEqual(
+			{
+				status: 200,
+				methods: ["tab.create", "agent.start"],
+				startArgs: [],
+			},
+		);
+	});
+
+	it("opens the tab in the home directory when no cwd is given", async () =>
+	{
+		const herdr = fakeHerdr(
+			{
+				"tab.create":
+				{
+					ok: true,
+					value: tabCreated,
+				},
+				"agent.start":
+				{
+					ok: true,
+					value: agentStarted(["claude"]),
+				},
+			},
+		);
+
+		const response = await handleHerdrLaunch(
+			request({}),
+			dependencies(
+				{
+					request: herdr.requester,
+				},
+			),
+		);
+
+		expect(
+			{
+				status: response.status,
+				tabCreate: herdr.requests[0]?.request,
+			},
+		).toStrictEqual(
+			{
+				status: 200,
+				tabCreate:
+				{
+					id: "ccp:launch:test100:tab.create",
+					method: "tab.create",
+					params:
+					{
+						cwd: "/Users/alice",
+						focus: false,
+					},
+				},
+			},
+		);
+	});
+
+	it("retries the prompt while herdr is still registering the new agent", async () =>
+	{
 		const promptResults: HerdrResult<unknown>[] = [
 			{
 				ok: false,
@@ -303,185 +605,499 @@ describe("herdr launch write handler", () => {
 				code: "agent_not_ready",
 				message: "agent w100:p100 is not an active named agent",
 			},
-			{ok: true, value: {type: "ok"}},
+			{
+				ok: true,
+				value:
+				{
+					type: "ok",
+				},
+			},
 		];
 		const methods: string[] = [];
 		const waits: number[] = [];
-		const sendRequest: HerdrRequester = async (requestValue) => {
-			const method = (requestValue as {method: string}).method;
-			methods.push(method);
-			if (method === "tab.create") return Promise.resolve({ok: true, value: tabCreated});
-			if (method === "agent.start") return Promise.resolve({ok: true, value: agentStarted(["claude"])});
-			return Promise.resolve(promptResults.shift() ?? {ok: false, code: "unexpected", message: method});
-		};
-
-		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project", prompt: "hello"}),
-			dependencies({
-				request: sendRequest,
-				wait: async (ms) => {
-					waits.push(ms);
-					return Promise.resolve();
-				},
-			}),
-		);
-
-		expect({status: response.status, methods, waits}).toStrictEqual({
-			status: 200,
-			methods: ["tab.create", "agent.start", "agent.prompt", "agent.prompt", "agent.prompt"],
-			waits: [250, 250],
-		});
-	});
-
-	it("gives up on the prompt after herdr stays not-ready and reports the started session", async () => {
-		const methods: string[] = [];
-		const sendRequest: HerdrRequester = async (requestValue) => {
-			const method = (requestValue as {method: string}).method;
-			methods.push(method);
-			if (method === "tab.create") return Promise.resolve({ok: true, value: tabCreated});
-			if (method === "agent.start") return Promise.resolve({ok: true, value: agentStarted(["claude"])});
-			return Promise.resolve({ok: false, code: "agent_not_ready", message: "Fabricated never ready"});
-		};
-
-		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project", prompt: "hello"}),
-			dependencies({request: sendRequest}),
-		);
-
-		expect({
-			response: await describeResponse(response),
-			promptAttempts: methods.filter((method) => method === "agent.prompt").length,
-		}).toStrictEqual({
-			response: {
-				body: {error: "Fabricated never ready", code: "agent_prompt_failed", sessionId: "session-test-200"},
-				status: 502,
-			},
-			promptAttempts: 20,
-		});
-	});
-
-	it("closes the new tab and reports the herdr reason when claude fails to start", async () => {
-		const herdr = fakeHerdr({
-			"tab.create": {ok: true, value: tabCreated},
-			"agent.start": {ok: false, code: "agent_not_ready", message: "Fabricated startup stall"},
-			"tab.close": {ok: true, value: {type: "ok"}},
-		});
-
-		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project", prompt: "hello"}),
-			dependencies({request: herdr.requester}),
-		);
-
-		expect({
-			response: await describeResponse(response),
-			closeRequest: herdr.requests[2]?.request,
-			requestCount: herdr.requests.length,
-		}).toStrictEqual({
-			response: {body: {error: "Fabricated startup stall", code: "agent_not_ready"}, status: 409},
-			closeRequest: {
-				id: "ccp:launch:test100:tab.close",
-				method: "tab.close",
-				params: {tab_id: "w100:t100"},
-			},
-			requestCount: 3,
-		});
-	});
-
-	it("reports herdr's failure code with the error", async () => {
-		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project", prompt: "hello"}),
-			dependencies({launchClaude: async () => Promise.resolve({ok: false, code: "timeout", message: "x"})}),
-		);
-
-		expect(await describeResponse(response)).toStrictEqual({body: {error: "x", code: "timeout"}, status: 502});
-	});
-
-	it("keeps the started claude's tab open and names its session when the prompt can't be delivered", async () => {
-		const herdr = fakeHerdr({
-			"tab.create": {ok: true, value: tabCreated},
-			"agent.start": {ok: true, value: agentStarted(["claude"])},
-			"agent.prompt": {ok: false, code: "pane-not-found", message: "Fabricated pane gone"},
-		});
-
-		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project", prompt: "hello"}),
-			dependencies({request: herdr.requester}),
-		);
-
-		expect({
-			response: await describeResponse(response),
-			methods: herdr.requests.map(({request: sent}) => (sent as {method: string}).method),
-		}).toStrictEqual({
-			response: {
-				body: {error: "Fabricated pane gone", code: "agent_prompt_failed", sessionId: "session-test-200"},
-				status: 502,
-			},
-			methods: ["tab.create", "agent.start", "agent.prompt"],
-		});
-	});
-
-	it("returns 502 when herdr returns an unrecognized tab.create result", async () => {
-		const herdr = fakeHerdr({"tab.create": {ok: true, value: {type: "ok"}}});
-
-		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project"}),
-			dependencies({request: herdr.requester}),
-		);
-
-		expect({
-			response: await describeResponse(response),
-			requestCount: herdr.requests.length,
-		}).toStrictEqual({
-			response: {body: {error: "herdr returned an invalid tab.create result", code: "bad-response"}, status: 502},
-			requestCount: 1,
-		});
-	});
-
-	it("launches into the chosen named herdr server and answers with that server's qualified ids", async () => {
-		const requests: {method: string; params: unknown; socketPath: string | undefined}[] = [];
-		const responses: Record<string, HerdrResult<unknown>> = {
-			"tab.create": {ok: true, value: tabCreated},
-			"agent.start": {ok: true, value: agentStarted(["claude"])},
-			"agent.prompt": {ok: true, value: {type: "ok"}},
-		};
-		const requester: HerdrRequester = async (requestValue, _timeoutMs, socketPath) => {
-			const {method, params} = requestValue as {method: string; params: unknown};
-			requests.push({method, params, socketPath});
-			return Promise.resolve(responses[method] ?? {ok: false, code: "unexpected", message: method});
-		};
-
-		const response = await handleHerdrLaunch(
-			request({cwd: "/Users/alice/project", prompt: "hello"}),
-			dependencies({
-				request: requester,
-				launchServer: () => ({session: "later", socketPath: "/tmp/test/later/herdr.sock"}),
-			}),
-		);
-
-		expect({response: await describeResponse(response), requests}).toStrictEqual({
-			response: {
-				body: {ok: true, tabId: "w100:t100@later", paneId: "w100:p100@later", sessionId: "session-test-200"},
-				status: 200,
-			},
-			requests: [
+		const sendRequest: HerdrRequester = async (requestValue) =>
+		{
+			const method = (
+				requestValue as
 				{
-					method: "tab.create",
-					params: {cwd: "/Users/alice/project", focus: false},
-					socketPath: "/tmp/test/later/herdr.sock",
-				},
-				{
-					method: "agent.start",
-					params: {
-						name: "ccp-test100",
-						kind: "claude",
-						pane_id: "w100:p100@later",
-						args: [],
-						timeout_ms: 30000,
+					method: string;
+				}
+			).method;
+			methods.push(method);
+			if (method === "tab.create")
+				return Promise.resolve(
+					{
+						ok: true,
+						value: tabCreated,
 					},
-					socketPath: undefined,
+				);
+			if (method === "agent.start")
+				return Promise.resolve(
+					{
+						ok: true,
+						value: agentStarted(["claude"]),
+					},
+				);
+			return Promise.resolve(
+				promptResults.shift() ??
+				{
+					ok: false,
+					code: "unexpected",
+					message: method,
 				},
-				{method: "agent.prompt", params: {target: "w100:p100@later", text: "hello"}, socketPath: undefined},
-			],
-		});
+			);
+		};
+
+		const response = await handleHerdrLaunch(
+			request(
+				{
+					cwd: "/Users/alice/project",
+					prompt: "hello",
+				},
+			),
+			dependencies(
+				{
+					request: sendRequest,
+					wait: async (ms) =>
+					{
+						waits.push(ms);
+						return Promise.resolve();
+					},
+				},
+			),
+		);
+
+		expect(
+			{
+				status: response.status,
+				methods,
+				waits,
+			},
+		).toStrictEqual(
+			{
+				status: 200,
+				methods: ["tab.create", "agent.start", "agent.prompt", "agent.prompt", "agent.prompt"],
+				waits: [250, 250],
+			},
+		);
+	});
+
+	it("gives up on the prompt after herdr stays not-ready and reports the started session", async () =>
+	{
+		const methods: string[] = [];
+		const sendRequest: HerdrRequester = async (requestValue) =>
+		{
+			const method = (
+				requestValue as
+				{
+					method: string;
+				}
+			).method;
+			methods.push(method);
+			if (method === "tab.create")
+				return Promise.resolve(
+					{
+						ok: true,
+						value: tabCreated,
+					},
+				);
+			if (method === "agent.start")
+				return Promise.resolve(
+					{
+						ok: true,
+						value: agentStarted(["claude"]),
+					},
+				);
+			return Promise.resolve(
+				{
+					ok: false,
+					code: "agent_not_ready",
+					message: "Fabricated never ready",
+				},
+			);
+		};
+
+		const response = await handleHerdrLaunch(
+			request(
+				{
+					cwd: "/Users/alice/project",
+					prompt: "hello",
+				},
+			),
+			dependencies(
+				{
+					request: sendRequest,
+				},
+			),
+		);
+
+		expect(
+			{
+				response: await describeResponse(response),
+				promptAttempts: methods.filter((method) => method === "agent.prompt").length,
+			},
+		).toStrictEqual(
+			{
+				response:
+				{
+					body:
+					{
+						error: "Fabricated never ready",
+						code: "agent_prompt_failed",
+						sessionId: "session-test-200",
+					},
+					status: 502,
+				},
+				promptAttempts: 20,
+			},
+		);
+	});
+
+	it("closes the new tab and reports the herdr reason when claude fails to start", async () =>
+	{
+		const herdr = fakeHerdr(
+			{
+				"tab.create":
+				{
+					ok: true,
+					value: tabCreated,
+				},
+				"agent.start":
+				{
+					ok: false,
+					code: "agent_not_ready",
+					message: "Fabricated startup stall",
+				},
+				"tab.close":
+				{
+					ok: true,
+					value:
+					{
+						type: "ok",
+					},
+				},
+			},
+		);
+
+		const response = await handleHerdrLaunch(
+			request(
+				{
+					cwd: "/Users/alice/project",
+					prompt: "hello",
+				},
+			),
+			dependencies(
+				{
+					request: herdr.requester,
+				},
+			),
+		);
+
+		expect(
+			{
+				response: await describeResponse(response),
+				closeRequest: herdr.requests[2]?.request,
+				requestCount: herdr.requests.length,
+			},
+		).toStrictEqual(
+			{
+				response:
+				{
+					body:
+					{
+						error: "Fabricated startup stall",
+						code: "agent_not_ready",
+					},
+					status: 409,
+				},
+				closeRequest:
+				{
+					id: "ccp:launch:test100:tab.close",
+					method: "tab.close",
+					params:
+					{
+						tab_id: "w100:t100",
+					},
+				},
+				requestCount: 3,
+			},
+		);
+	});
+
+	it("reports herdr's failure code with the error", async () =>
+	{
+		const response = await handleHerdrLaunch(
+			request(
+				{
+					cwd: "/Users/alice/project",
+					prompt: "hello",
+				},
+			),
+			dependencies(
+				{
+					launchClaude: async () =>
+						Promise.resolve(
+							{
+								ok: false,
+								code: "timeout",
+								message: "x",
+							},
+						),
+				},
+			),
+		);
+
+		expect(await describeResponse(response)).toStrictEqual(
+			{
+				body:
+				{
+					error: "x",
+					code: "timeout",
+				},
+				status: 502,
+			},
+		);
+	});
+
+	it("keeps the started claude's tab open and names its session when the prompt can't be delivered", async () =>
+	{
+		const herdr = fakeHerdr(
+			{
+				"tab.create":
+				{
+					ok: true,
+					value: tabCreated,
+				},
+				"agent.start":
+				{
+					ok: true,
+					value: agentStarted(["claude"]),
+				},
+				"agent.prompt":
+				{
+					ok: false,
+					code: "pane-not-found",
+					message: "Fabricated pane gone",
+				},
+			},
+		);
+
+		const response = await handleHerdrLaunch(
+			request(
+				{
+					cwd: "/Users/alice/project",
+					prompt: "hello",
+				},
+			),
+			dependencies(
+				{
+					request: herdr.requester,
+				},
+			),
+		);
+
+		expect(
+			{
+				response: await describeResponse(response),
+				methods: herdr.requests.map(
+					({request: sent}) =>
+						(
+							sent as
+							{
+								method: string;
+							}
+						).method,
+				),
+			},
+		).toStrictEqual(
+			{
+				response:
+				{
+					body:
+					{
+						error: "Fabricated pane gone",
+						code: "agent_prompt_failed",
+						sessionId: "session-test-200",
+					},
+					status: 502,
+				},
+				methods: ["tab.create", "agent.start", "agent.prompt"],
+			},
+		);
+	});
+
+	it("returns 502 when herdr returns an unrecognized tab.create result", async () =>
+	{
+		const herdr = fakeHerdr(
+			{
+				"tab.create":
+				{
+					ok: true,
+					value:
+					{
+						type: "ok",
+					},
+				},
+			},
+		);
+
+		const response = await handleHerdrLaunch(
+			request(
+				{
+					cwd: "/Users/alice/project",
+				},
+			),
+			dependencies(
+				{
+					request: herdr.requester,
+				},
+			),
+		);
+
+		expect(
+			{
+				response: await describeResponse(response),
+				requestCount: herdr.requests.length,
+			},
+		).toStrictEqual(
+			{
+				response:
+				{
+					body:
+					{
+						error: "herdr returned an invalid tab.create result",
+						code: "bad-response",
+					},
+					status: 502,
+				},
+				requestCount: 1,
+			},
+		);
+	});
+
+	it("launches into the chosen named herdr server and answers with that server's qualified ids", async () =>
+	{
+		const requests:
+		{
+			method: string;
+			params: unknown;
+			socketPath: string | undefined;
+		}[] = [];
+		const responses: Record<string, HerdrResult<unknown>> =
+		{
+			"tab.create":
+			{
+				ok: true,
+				value: tabCreated,
+			},
+			"agent.start":
+			{
+				ok: true,
+				value: agentStarted(["claude"]),
+			},
+			"agent.prompt":
+			{
+				ok: true,
+				value:
+				{
+					type: "ok",
+				},
+			},
+		};
+		const requester: HerdrRequester = async (requestValue, _timeoutMs, socketPath) =>
+		{
+			const {method, params} = requestValue as
+			{
+				method: string;
+				params: unknown;
+			};
+			requests.push(
+				{
+					method,
+					params,
+					socketPath,
+				},
+			);
+			return Promise.resolve(
+				responses[method] ??
+				{
+					ok: false,
+					code: "unexpected",
+					message: method,
+				},
+			);
+		};
+
+		const response = await handleHerdrLaunch(
+			request(
+				{
+					cwd: "/Users/alice/project",
+					prompt: "hello",
+				},
+			),
+			dependencies(
+				{
+					request: requester,
+					launchServer: () => (
+					{
+						session: "later",
+						socketPath: "/tmp/test/later/herdr.sock",
+					}),
+				},
+			),
+		);
+
+		expect(
+			{
+				response: await describeResponse(response),
+				requests,
+			},
+		).toStrictEqual(
+			{
+				response:
+				{
+					body:
+					{
+						ok: true,
+						tabId: "w100:t100@later",
+						paneId: "w100:p100@later",
+						sessionId: "session-test-200",
+					},
+					status: 200,
+				},
+				requests: [
+					{
+						method: "tab.create",
+						params:
+						{
+							cwd: "/Users/alice/project",
+							focus: false,
+						},
+						socketPath: "/tmp/test/later/herdr.sock",
+					},
+					{
+						method: "agent.start",
+						params:
+						{
+							name: "ccp-test100",
+							kind: "claude",
+							pane_id: "w100:p100@later",
+							args: [],
+							timeout_ms: 30000,
+						},
+						socketPath: undefined,
+					},
+					{
+						method: "agent.prompt",
+						params:
+						{
+							target: "w100:p100@later",
+							text: "hello",
+						},
+						socketPath: undefined,
+					},
+				],
+			},
+		);
 	});
 });

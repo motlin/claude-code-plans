@@ -6,31 +6,62 @@ import type {SessionLine} from "../../lib/transcript";
 
 export type FileSourceSelection = Record<FileSourceKey, boolean>;
 
-const FileSourceSelectionSchema: z.ZodType<FileSourceSelection> = z.strictObject({
-	userMessage: z.boolean(),
-	agentMessage: z.boolean(),
-	read: z.boolean(),
-	editWrite: z.boolean(),
-	bash: z.boolean(),
-	grepGlob: z.boolean(),
-	thinking: z.boolean(),
-	other: z.boolean(),
-});
+const FileSourceSelectionSchema: z.ZodType<FileSourceSelection> = z.strictObject(
+	{
+		userMessage: z.boolean(),
+		agentMessage: z.boolean(),
+		read: z.boolean(),
+		editWrite: z.boolean(),
+		bash: z.boolean(),
+		grepGlob: z.boolean(),
+		thinking: z.boolean(),
+		other: z.boolean(),
+	},
+);
 
 export const FILE_SOURCE_SELECTION_STORAGE_KEY = "ccp-session-file-sources";
 
-export const FILE_SOURCE_OPTIONS: ReadonlyArray<{key: FileSourceKey; label: string}> = [
-	{key: "userMessage", label: "User message"},
-	{key: "agentMessage", label: "Agent message"},
-	{key: "read", label: "Read"},
-	{key: "editWrite", label: "Edit/Write"},
-	{key: "bash", label: "Bash"},
-	{key: "grepGlob", label: "Grep/Glob"},
-	{key: "thinking", label: "Thinking"},
-	{key: "other", label: "Other"},
+export const FILE_SOURCE_OPTIONS: ReadonlyArray<
+{
+	key: FileSourceKey;
+	label: string;
+}> = [
+	{
+		key: "userMessage",
+		label: "User message",
+	},
+	{
+		key: "agentMessage",
+		label: "Agent message",
+	},
+	{
+		key: "read",
+		label: "Read",
+	},
+	{
+		key: "editWrite",
+		label: "Edit/Write",
+	},
+	{
+		key: "bash",
+		label: "Bash",
+	},
+	{
+		key: "grepGlob",
+		label: "Grep/Glob",
+	},
+	{
+		key: "thinking",
+		label: "Thinking",
+	},
+	{
+		key: "other",
+		label: "Other",
+	},
 ];
 
-export const DEFAULT_FILE_SOURCE_SELECTION: FileSourceSelection = {
+export const DEFAULT_FILE_SOURCE_SELECTION: FileSourceSelection =
+{
 	userMessage: true,
 	agentMessage: true,
 	read: true,
@@ -41,7 +72,8 @@ export const DEFAULT_FILE_SOURCE_SELECTION: FileSourceSelection = {
 	other: true,
 };
 
-const UNSELECTED_FILE_SOURCES: FileSourceSelection = {
+const UNSELECTED_FILE_SOURCES: FileSourceSelection =
+{
 	userMessage: false,
 	agentMessage: false,
 	read: false,
@@ -52,10 +84,12 @@ const UNSELECTED_FILE_SOURCES: FileSourceSelection = {
 	other: false,
 };
 
-const EMPTY_SESSION_FILES: SessionFiles = {
+const EMPTY_SESSION_FILES: SessionFiles =
+{
 	files: [],
 	totalCount: 0,
-	counts: {
+	counts:
+	{
 		userMessage: 0,
 		agentMessage: 0,
 		read: 0,
@@ -67,46 +101,65 @@ const EMPTY_SESSION_FILES: SessionFiles = {
 	},
 };
 
-function parseFileSourceSelection(rawValue: string): FileSourceSelection | undefined {
+function parseFileSourceSelection(rawValue: string): FileSourceSelection | undefined
+{
 	let parsed: unknown;
-	try {
+	try
+	{
 		parsed = JSON.parse(rawValue);
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 	return FileSourceSelectionSchema.safeParse(parsed).data;
 }
 
 /** The session-files source checkboxes, hydrated from and persisted to localStorage. */
-export function useFileSourceSelection() {
+export function useFileSourceSelection()
+{
 	const [sourceSelection, setSourceSelection] = useState<FileSourceSelection>(DEFAULT_FILE_SOURCE_SELECTION);
 	const [storageHydrated, setStorageHydrated] = useState(false);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const storedSources = localStorage.getItem(FILE_SOURCE_SELECTION_STORAGE_KEY);
-		if (storedSources !== null) {
+		if (storedSources !== null)
+		{
 			const parsedSources = parseFileSourceSelection(storedSources);
 			if (parsedSources !== undefined) setSourceSelection(parsedSources);
 		}
 		setStorageHydrated(true);
 	}, []);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!storageHydrated) return;
 		localStorage.setItem(FILE_SOURCE_SELECTION_STORAGE_KEY, JSON.stringify(sourceSelection));
 	}, [sourceSelection, storageHydrated]);
 
-	const setSourceSelected = useCallback((source: FileSourceKey, selected: boolean) => {
-		setSourceSelection((current) => ({...current, [source]: selected}));
+	const setSourceSelected = useCallback((source: FileSourceKey, selected: boolean) =>
+	{
+		setSourceSelection((current) => (
+		{
+			...current,
+			[source]: selected,
+		}));
 	}, []);
-	const unselectAllSources = useCallback(() => {
+	const unselectAllSources = useCallback(() =>
+	{
 		setSourceSelection(UNSELECTED_FILE_SOURCES);
 	}, []);
 
-	return {sourceSelection, setSourceSelected, unselectAllSources};
+	return {
+		sourceSelection,
+		setSourceSelected,
+		unselectAllSources,
+	};
 }
 
-export function useExtractedSessionFiles(lines: SessionLine[], homeRoot: string | undefined): SessionFiles {
+export function useExtractedSessionFiles(lines: SessionLine[], homeRoot: string | undefined): SessionFiles
+{
 	return useMemo(
 		() => (homeRoot === undefined ? EMPTY_SESSION_FILES : extractSessionFiles(lines, homeRoot)),
 		[homeRoot, lines],
@@ -114,7 +167,8 @@ export function useExtractedSessionFiles(lines: SessionLine[], homeRoot: string 
 }
 
 /** A session file's row label: relative to the working directory, absolute outside it. */
-export function sessionFileLabel(absolutePath: string, cwd: string | undefined): string {
+export function sessionFileLabel(absolutePath: string, cwd: string | undefined): string
+{
 	if (cwd === undefined) return absolutePath;
 	const root = cwd.replace(/\/+$/, "");
 	if (root === "" || !absolutePath.startsWith(`${root}/`)) return absolutePath;

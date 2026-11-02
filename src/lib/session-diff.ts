@@ -16,7 +16,8 @@ const STABLE_DIFF_ARGUMENTS = [
 	"--full-index",
 ];
 
-export interface RunGitOptions {
+export interface RunGitOptions
+{
 	/** Treat exit code 1 as success (git diff --no-index exits 1 when files differ). */
 	allowDifferences?: boolean;
 }
@@ -25,13 +26,28 @@ export interface RunGitOptions {
 export type RunGit = (cwd: string, arguments_: string[], options?: RunGitOptions) => Promise<string>;
 
 const execRunGit: RunGit = async (cwd, arguments_, options = {}) =>
-	new Promise((resolve, reject) => {
+	new Promise((resolve, reject) =>
+	{
 		execFile(
 			"git",
 			arguments_,
-			{cwd, encoding: "utf8", maxBuffer: MAX_GIT_OUTPUT_BYTES},
-			(error: (Error & {code?: number | string}) | null, stdout: string) => {
-				if (error && !(options.allowDifferences === true && error.code === 1)) {
+			{
+				cwd,
+				encoding: "utf8",
+				maxBuffer: MAX_GIT_OUTPUT_BYTES,
+			},
+			(
+				error:
+					| (Error &
+					  {
+							code?: number | string;
+					  })
+					| null,
+				stdout: string,
+			) =>
+			{
+				if (error && !(options.allowDifferences === true && error.code === 1))
+				{
 					reject(error);
 					return;
 				}
@@ -40,11 +56,13 @@ const execRunGit: RunGit = async (cwd, arguments_, options = {}) =>
 		);
 	});
 
-export interface NoGit {
+export interface NoGit
+{
 	kind: "no-git";
 }
 
-export interface DiffBase {
+export interface DiffBase
+{
 	kind: "ok";
 	/** Display name of the default branch, e.g. "main". */
 	base: string;
@@ -53,7 +71,8 @@ export interface DiffBase {
 	mergeBase: string;
 }
 
-export interface CommitSummary {
+export interface CommitSummary
+{
 	sha: string;
 	shortSha: string;
 	subject: string;
@@ -62,7 +81,8 @@ export interface CommitSummary {
 	date: string;
 }
 
-export interface DiffScopes extends Omit<DiffBase, "kind"> {
+export interface DiffScopes extends Omit<DiffBase, "kind">
+{
 	kind: "ok";
 	/** Current branch name, or null when HEAD is detached. */
 	head: string | null;
@@ -72,15 +92,30 @@ export interface DiffScopes extends Omit<DiffBase, "kind"> {
 	totalCommits: number;
 }
 
-export type DiffScope = {kind: "branch"} | {kind: "uncommitted"} | {kind: "commit"; sha: string};
+export type DiffScope =
+	|
+	  {
+			kind: "branch";
+	  }
+	|
+	  {
+			kind: "uncommitted";
+	  }
+	|
+	  {
+			kind: "commit";
+			sha: string;
+	  };
 
-export interface ScopeDiffOptions {
+export interface ScopeDiffOptions
+{
 	hideWhitespace?: boolean;
 }
 
 export type DiffFileStatus = "added" | "deleted" | "modified" | "renamed";
 
-export interface DiffFile {
+export interface DiffFile
+{
 	path: string;
 	oldPath?: string;
 	status: DiffFileStatus;
@@ -90,71 +125,111 @@ export interface DiffFile {
 	patch: string;
 }
 
-export interface ScopeDiff {
+export interface ScopeDiff
+{
 	kind: "ok";
 	patch: string;
 	files: DiffFile[];
 }
 
-async function tryGit(runGit: RunGit, cwd: string, arguments_: string[]): Promise<string | null> {
-	try {
+async function tryGit(runGit: RunGit, cwd: string, arguments_: string[]): Promise<string | null>
+{
+	try
+	{
 		return (await runGit(cwd, arguments_)).trim();
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-async function isGitWorkTree(runGit: RunGit, cwd: string): Promise<boolean> {
+async function isGitWorkTree(runGit: RunGit, cwd: string): Promise<boolean>
+{
 	return (await tryGit(runGit, cwd, ["rev-parse", "--is-inside-work-tree"])) === "true";
 }
 
-async function findDefaultBranchRef(runGit: RunGit, cwd: string): Promise<string | null> {
+async function findDefaultBranchRef(runGit: RunGit, cwd: string): Promise<string | null>
+{
 	const originHead = await tryGit(runGit, cwd, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]);
 	if (originHead) return originHead;
 
-	for (const candidate of DEFAULT_BRANCH_CANDIDATES) {
+	for (const candidate of DEFAULT_BRANCH_CANDIDATES)
+	{
 		const sha = await tryGit(runGit, cwd, ["rev-parse", "--verify", "--quiet", `${candidate}^{commit}`]);
 		if (sha) return candidate;
 	}
 	return null;
 }
 
-async function resolveBaseInRepository(runGit: RunGit, cwd: string): Promise<Omit<DiffBase, "kind">> {
+async function resolveBaseInRepository(runGit: RunGit, cwd: string): Promise<Omit<DiffBase, "kind">>
+{
 	const baseRef = await findDefaultBranchRef(runGit, cwd);
-	if (baseRef) {
+	if (baseRef)
+	{
 		const mergeBase = await tryGit(runGit, cwd, ["merge-base", baseRef, "HEAD"]);
-		if (mergeBase) {
-			return {base: baseRef.replace(/^origin\//, ""), baseRef, mergeBase};
+		if (mergeBase)
+		{
+			return {
+				base: baseRef.replace(/^origin\//, ""),
+				baseRef,
+				mergeBase,
+			};
 		}
 	}
 
 	// No default branch (or unrelated history): diff against HEAD, or the empty tree before the first commit.
 	const head = await tryGit(runGit, cwd, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
-	if (head) return {base: "HEAD", baseRef: "HEAD", mergeBase: head};
+	if (head)
+		return {
+			base: "HEAD",
+			baseRef: "HEAD",
+			mergeBase: head,
+		};
 	const emptyTree = await runGit(cwd, ["hash-object", "-t", "tree", "/dev/null"]);
-	return {base: "HEAD", baseRef: "HEAD", mergeBase: emptyTree.trim()};
+	return {
+		base: "HEAD",
+		baseRef: "HEAD",
+		mergeBase: emptyTree.trim(),
+	};
 }
 
 /** Resolve the default branch (origin/HEAD, then main, then master) and its merge-base with HEAD. */
-export async function resolveDiffBase(cwd: string, runGit: RunGit = execRunGit): Promise<DiffBase | NoGit> {
-	if (!(await isGitWorkTree(runGit, cwd))) return {kind: "no-git"};
-	return {kind: "ok", ...(await resolveBaseInRepository(runGit, cwd))};
+export async function resolveDiffBase(cwd: string, runGit: RunGit = execRunGit): Promise<DiffBase | NoGit>
+{
+	if (!(await isGitWorkTree(runGit, cwd)))
+		return {
+			kind: "no-git",
+		};
+	return {
+		kind: "ok",
+		...(await resolveBaseInRepository(runGit, cwd)),
+	};
 }
 
-function parseCommitLog(output: string): CommitSummary[] {
+function parseCommitLog(output: string): CommitSummary[]
+{
 	return output
 		.split("\0")
 		.filter((record) => record.trim() !== "")
-		.map((record) => {
+		.map((record) =>
+		{
 			const [sha = "", shortSha = "", subject = "", author = "", date = ""] = record
 				.replace(/^\n/, "")
 				.split("\u001F");
-			return {sha, shortSha, subject, author, date};
+			return {
+				sha,
+				shortSha,
+				subject,
+				author,
+				date,
+			};
 		});
 }
 
 /** List the scopes the Changes pane offers: branch vs base, uncommitted, and per-commit. */
-export async function listScopes(cwd: string, runGit: RunGit = execRunGit): Promise<DiffScopes | NoGit> {
+export async function listScopes(cwd: string, runGit: RunGit = execRunGit): Promise<DiffScopes | NoGit>
+{
 	const resolved = await resolveDiffBase(cwd, runGit);
 	if (resolved.kind === "no-git") return resolved;
 
@@ -164,7 +239,8 @@ export async function listScopes(cwd: string, runGit: RunGit = execRunGit): Prom
 
 	let commits: CommitSummary[] = [];
 	let totalCommits = 0;
-	if (hasHead) {
+	if (hasHead)
+	{
 		const range = `${resolved.mergeBase}..HEAD`;
 		const log = await runGit(cwd, [
 			"log",
@@ -190,15 +266,19 @@ export async function listScopes(cwd: string, runGit: RunGit = execRunGit): Prom
 	};
 }
 
-async function untrackedDiffs(runGit: RunGit, cwd: string, whitespace: string[]): Promise<string[]> {
+async function untrackedDiffs(runGit: RunGit, cwd: string, whitespace: string[]): Promise<string[]>
+{
 	const untracked = await runGit(cwd, ["ls-files", "--others", "--exclude-standard", "-z"]);
 	const parts: string[] = [];
-	for (const file of untracked.split("\0").filter(Boolean)) {
+	for (const file of untracked.split("\0").filter(Boolean))
+	{
 		parts.push(
 			await runGit(
 				cwd,
 				["diff", ...STABLE_DIFF_ARGUMENTS, ...whitespace, "--no-index", "--", "/dev/null", file],
-				{allowDifferences: true},
+				{
+					allowDifferences: true,
+				},
 			),
 		);
 	}
@@ -211,24 +291,32 @@ export async function buildScopeDiff(
 	scope: DiffScope,
 	options: ScopeDiffOptions = {},
 	runGit: RunGit = execRunGit,
-): Promise<ScopeDiff | NoGit> {
-	if (!(await isGitWorkTree(runGit, cwd))) return {kind: "no-git"};
+): Promise<ScopeDiff | NoGit>
+{
+	if (!(await isGitWorkTree(runGit, cwd)))
+		return {
+			kind: "no-git",
+		};
 	const whitespace = options.hideWhitespace === true ? ["-w"] : [];
 
 	let parts: string[];
-	switch (scope.kind) {
-		case "branch": {
+	switch (scope.kind)
+	{
+		case "branch":
+		{
 			const {mergeBase} = await resolveBaseInRepository(runGit, cwd);
 			const tracked = await runGit(cwd, ["diff", ...STABLE_DIFF_ARGUMENTS, ...whitespace, mergeBase, "--"]);
 			parts = [tracked, ...(await untrackedDiffs(runGit, cwd, whitespace))];
 			break;
 		}
-		case "uncommitted": {
+		case "uncommitted":
+		{
 			const tracked = await runGit(cwd, ["diff", ...STABLE_DIFF_ARGUMENTS, ...whitespace, "HEAD", "--"]);
 			parts = [tracked, ...(await untrackedDiffs(runGit, cwd, whitespace))];
 			break;
 		}
-		case "commit": {
+		case "commit":
+		{
 			parts = [
 				await runGit(cwd, ["show", "--format=", ...STABLE_DIFF_ARGUMENTS, ...whitespace, scope.sha, "--"]),
 			];
@@ -237,14 +325,19 @@ export async function buildScopeDiff(
 	}
 
 	const patch = parts.join("");
-	return {kind: "ok", patch, files: parseDiffFiles(patch)};
+	return {
+		kind: "ok",
+		patch,
+		files: parseDiffFiles(patch),
+	};
 }
 
 /** A side larger than this is left unread: hydrating it would cost more than opening the file. */
 const MAX_FILE_SIDE_BYTES = 2 * 1024 * 1024;
 
 /** Both sides of one diff file, as upstream desktop's `getDiffFileContent` returns them; null = unreadable. */
-export interface DiffFileSides {
+export interface DiffFileSides
+{
 	oldText: string | null;
 	newText: string | null;
 }
@@ -252,36 +345,46 @@ export interface DiffFileSides {
 /** Reads a checkout-relative file from the working tree, or null when it's missing, outside, or too large. */
 export type ReadWorkingFile = (root: string, path: string) => Promise<string | null>;
 
-function isInside(root: string, target: string): boolean {
+function isInside(root: string, target: string): boolean
+{
 	const relativePath = relative(root, target);
 	return relativePath !== "" && !relativePath.startsWith("..") && !isAbsolute(relativePath);
 }
 
-const readWorkingTreeFile: ReadWorkingFile = async (root, path) => {
-	try {
+const readWorkingTreeFile: ReadWorkingFile = async (root, path) =>
+{
+	try
+	{
 		const realRoot = await realpath(root);
 		const target = await realpath(join(realRoot, path));
 		if (!isInside(realRoot, target)) return null;
 		const info = await stat(target);
 		if (!info.isFile() || info.size > MAX_FILE_SIDE_BYTES) return null;
 		return await readFile(target, "utf8");
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 };
 
 /** A checkout-relative path that stays inside the checkout (no absolute path, no climbing out with `..`). */
-function isCheckoutPath(path: string): boolean {
+function isCheckoutPath(path: string): boolean
+{
 	if (path === "" || isAbsolute(path)) return false;
 	const normalized = normalize(path);
 	return normalized !== ".." && !normalized.startsWith("../");
 }
 
-async function showBlob(runGit: RunGit, root: string, revision: string, path: string): Promise<string | null> {
-	try {
+async function showBlob(runGit: RunGit, root: string, revision: string, path: string): Promise<string | null>
+{
+	try
+	{
 		const text = await runGit(root, ["show", `${revision}:${path}`]);
 		return Buffer.byteLength(text, "utf8") > MAX_FILE_SIDE_BYTES ? null : text;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -294,15 +397,22 @@ async function showBlob(runGit: RunGit, root: string, revision: string, path: st
 export async function readDiffFileSides(
 	root: string,
 	scope: DiffScope,
-	file: {path: string; oldPath?: string | undefined; status: DiffFileStatus},
+	file:
+	{
+		path: string;
+		oldPath?: string | undefined;
+		status: DiffFileStatus;
+	},
 	runGit: RunGit = execRunGit,
 	readWorkingFile: ReadWorkingFile = readWorkingTreeFile,
-): Promise<DiffFileSides | null> {
+): Promise<DiffFileSides | null>
+{
 	const oldPath = file.oldPath ?? file.path;
 	if (!isCheckoutPath(file.path) || !isCheckoutPath(oldPath)) return null;
 
 	let oldRevision: string;
-	switch (scope.kind) {
+	switch (scope.kind)
+	{
 		case "branch":
 			oldRevision = (await resolveBaseInRepository(runGit, root)).mergeBase;
 			break;
@@ -315,16 +425,21 @@ export async function readDiffFileSides(
 	}
 	const oldText = file.status === "added" ? null : await showBlob(runGit, root, oldRevision, oldPath);
 	let newText: string | null = null;
-	if (file.status !== "deleted") {
+	if (file.status !== "deleted")
+	{
 		newText =
 			scope.kind === "commit"
 				? await showBlob(runGit, root, scope.sha, file.path)
 				: await readWorkingFile(root, file.path);
 	}
-	return {oldText, newText};
+	return {
+		oldText,
+		newText,
+	};
 }
 
-const C_ESCAPES: Record<string, number> = {
+const C_ESCAPES: Record<string, number> =
+{
 	a: 7,
 	b: 8,
 	t: 9,
@@ -337,14 +452,18 @@ const C_ESCAPES: Record<string, number> = {
 };
 
 /** Decode a git C-quoted string that starts with a double quote, stopping at the closing quote. */
-function unquote(text: string): string {
+function unquote(text: string): string
+{
 	const bytes: number[] = [];
 	let index = 1;
-	while (index < text.length && text[index] !== '"') {
+	while (index < text.length && text[index] !== '"')
+	{
 		const character = text[index] ?? "";
-		if (character === "\\") {
+		if (character === "\\")
+		{
 			const next = text[index + 1] ?? "";
-			if (/[0-7]/.test(next)) {
+			if (/[0-7]/.test(next))
+			{
 				bytes.push(Number.parseInt(text.slice(index + 1, index + 4), 8));
 				index += 4;
 				continue;
@@ -360,13 +479,15 @@ function unquote(text: string): string {
 }
 
 /** Decode a header path value: unquote if C-quoted and strip the given prefix. */
-function decodePath(raw: string, prefix: string): string {
+function decodePath(raw: string, prefix: string): string
+{
 	const value = raw.startsWith('"') ? unquote(raw) : raw.replace(/\t$/, "");
 	return value.startsWith(prefix) ? value.slice(prefix.length) : value;
 }
 
 /** Recover the path from a `diff --git a/X b/X` line when there are no ---/+++ or rename lines. */
-function pathFromDiffGitLine(line: string): string {
+function pathFromDiffGitLine(line: string): string
+{
 	const rest = line.slice("diff --git ".length);
 	if (rest.startsWith('"')) return decodePath(rest, "a/");
 	// Both sides are equal for non-renames, so the line is `a/P b/P`.
@@ -374,7 +495,8 @@ function pathFromDiffGitLine(line: string): string {
 	return rest.slice(2, 2 + pathLength);
 }
 
-function parseFileChunk(lines: string[]): DiffFile {
+function parseFileChunk(lines: string[]): DiffFile
+{
 	let status: DiffFileStatus = "modified";
 	let oldPath: string | undefined;
 	let newPath: string | undefined;
@@ -385,8 +507,10 @@ function parseFileChunk(lines: string[]): DiffFile {
 	let binary = false;
 	let inHunk = false;
 
-	for (const line of lines.slice(1)) {
-		if (inHunk) {
+	for (const line of lines.slice(1))
+	{
+		if (inHunk)
+		{
 			if (line.startsWith("+")) additions += 1;
 			else if (line.startsWith("-")) deletions += 1;
 			continue;
@@ -403,28 +527,55 @@ function parseFileChunk(lines: string[]): DiffFile {
 
 	const firstLine = lines[0] ?? "";
 	let path: string;
-	if (newPath !== undefined && oldPath !== undefined) {
+	if (newPath !== undefined && oldPath !== undefined)
+	{
 		status = "renamed";
 		path = newPath;
-	} else if (plusPath !== undefined && plusPath !== "/dev/null") {
+	}
+	else if (plusPath !== undefined && plusPath !== "/dev/null")
+	{
 		path = plusPath;
-	} else if (minusPath !== undefined && minusPath !== "/dev/null") {
+	}
+	else if (minusPath !== undefined && minusPath !== "/dev/null")
+	{
 		path = minusPath;
-	} else {
+	}
+	else
+	{
 		path = pathFromDiffGitLine(firstLine);
 	}
 
-	const common = {status, additions, deletions, binary, patch: `${lines.join("\n")}\n`};
-	return status === "renamed" && oldPath !== undefined ? {path, oldPath, ...common} : {path, ...common};
+	const common =
+	{
+		status,
+		additions,
+		deletions,
+		binary,
+		patch: `${lines.join("\n")}\n`,
+	};
+	return status === "renamed" && oldPath !== undefined
+		?
+			{
+				path,
+				oldPath,
+				...common,
+			}
+		:
+			{
+				path,
+				...common,
+			};
 }
 
 /** Split a multi-file unified git patch into per-file entries with status and line stats. */
-export function parseDiffFiles(patch: string): DiffFile[] {
+export function parseDiffFiles(patch: string): DiffFile[]
+{
 	const lines = patch.split("\n");
 	if (lines.at(-1) === "") lines.pop();
 
 	const chunks: string[][] = [];
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		if (line.startsWith("diff --git ")) chunks.push([line]);
 		else chunks.at(-1)?.push(line);
 	}

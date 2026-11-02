@@ -5,12 +5,16 @@
  * conversation shows, and this capture carries no `permission_mode` or
  * `error_details`.
  */
-export const stopFailureFixture = {
+export const stopFailureFixture =
+{
 	session_id: "abc-123",
 	transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
 	cwd: "/Users/u/projects/app",
 	prompt_id: "8a6a64ee-0b38-428d-a88b-6976f638626d",
-	effort: {level: "high"},
+	effort:
+	{
+		level: "high",
+	},
 	hook_event_name: "StopFailure" as const,
 	error: "model_not_found",
 	last_assistant_message:
@@ -18,7 +22,8 @@ export const stopFailureFixture = {
 };
 
 /** The hooks reference's rate-limit example, which also carries `error_details`. */
-export const stopFailureRateLimitFixture = {
+export const stopFailureRateLimitFixture =
+{
 	session_id: "abc-123",
 	transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
 	cwd: "/Users/u/projects/app",

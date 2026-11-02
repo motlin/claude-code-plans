@@ -6,13 +6,28 @@ import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
  * directory. Paths travel in the query string (`?dir=<rel>&q=<query>`)
  * because vp dev 404s dotted URL path segments.
  */
-export const Route = createFileRoute("/api/sessions/$id/files")({
-	server: {
-		handlers: withMethodNotAllowed({
-			GET: async ({params, request}: {params: {id: string}; request: Request}) => {
-				const {handleSessionFilesRequest} = await import("../../lib/workspace-files-handler");
-				return handleSessionFilesRequest(params.id, new URL(request.url).searchParams);
-			},
-		}),
+export const Route = createFileRoute("/api/sessions/$id/files")(
+	{
+		server:
+		{
+			handlers: withMethodNotAllowed(
+				{
+					GET: async ({
+						params,
+						request,
+					}: {
+						params:
+						{
+							id: string;
+						};
+						request: Request;
+					}) =>
+					{
+						const {handleSessionFilesRequest} = await import("../../lib/workspace-files-handler");
+						return handleSessionFilesRequest(params.id, new URL(request.url).searchParams);
+					},
+				},
+			),
+		},
 	},
-});
+);

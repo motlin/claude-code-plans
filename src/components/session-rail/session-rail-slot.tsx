@@ -1,5 +1,6 @@
 import {PanelRight} from "lucide-react";
-import {
+import
+{
 	Suspense,
 	useContext,
 	useEffect,
@@ -17,7 +18,8 @@ import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {TITLEBAR_RAIL_TOGGLE_CLASS} from "../titlebar-classes";
 import {MenuItem} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
-import {
+import
+{
 	SessionRailFitContext,
 	useSessionRailRaise,
 	useSessionRailVisible,
@@ -30,7 +32,8 @@ import {
  * While the rail doesn't fit the chat tile it raises (or lowers) the overlay instead,
  * and while a command has raised the overlay over a hidden rail it lowers that.
  */
-function useSessionRailToggle() {
+function useSessionRailToggle()
+{
 	const visible = useSessionRailVisible();
 	const raise = useSessionRailRaise();
 	const fit = useContext(SessionRailFitContext);
@@ -43,12 +46,18 @@ function useSessionRailToggle() {
 		commandRaised,
 		pressed,
 		label: pressed ? "Hide session rail" : "Show session rail",
-		toggle: () => {
-			if (raise !== null) {
+		toggle: () =>
+		{
+			if (raise !== null)
+			{
 				raise.setRaised(!raise.raised);
-			} else if (commandRaised) {
+			}
+			else if (commandRaised)
+			{
 				fit.setCommandRaised(false);
-			} else {
+			}
+			else
+			{
 				setShown(!visible);
 			}
 		},
@@ -59,10 +68,12 @@ function useSessionRailToggle() {
 export function SessionRailToggle({
 	onFocus,
 	onBlur,
-}: {
+}:
+{
 	onFocus?: (event: FocusEvent<HTMLElement>) => void;
 	onBlur?: (event: FocusEvent<HTMLElement>) => void;
-} = {}) {
+} = {})
+{
 	const {raise, fit, commandRaised, pressed, label, toggle} = useSessionRailToggle();
 	const controlsOverlay = raise ?? (commandRaised ? fit : null);
 	return (
@@ -74,7 +85,11 @@ export function SessionRailToggle({
 				aria-pressed={pressed}
 				{...(controlsOverlay === null
 					? {}
-					: {"aria-expanded": raise?.raised ?? true, "aria-controls": controlsOverlay.overlayId})}
+					:
+						{
+							"aria-expanded": raise?.raised ?? true,
+							"aria-controls": controlsOverlay.overlayId,
+						})}
 				onClick={toggle}
 				onFocus={onFocus}
 				onBlur={onBlur}
@@ -87,7 +102,8 @@ export function SessionRailToggle({
 }
 
 /** The toggle folded into View options while the chat tile is squeezed. */
-export function SessionRailMenuItem() {
+export function SessionRailMenuItem()
+{
 	const {label, toggle} = useSessionRailToggle();
 	return (
 		<MenuItem icon={<PanelRight aria-hidden="true" />} onSelect={toggle}>
@@ -102,14 +118,16 @@ export function SessionRailMenuItem() {
  * over the transcript as one card, 8px in from the tile's end. `render` is only
  * called while visible, so the rail's cards (a lazy chunk) load on first show.
  */
-export function SessionRailSlot({sessionId, render}: {sessionId?: string; render: () => ReactNode}) {
+export function SessionRailSlot({sessionId, render}: {sessionId?: string; render: () => ReactNode})
+{
 	const visible = useSessionRailVisible();
 	const phone = usePhoneSheet();
 	const raise = useSessionRailRaise();
 	const fit = useContext(SessionRailFitContext);
 	// Fitting again clears the raise, so narrowing later doesn't bring the overlay back;
 	// a command's raise ends once the rail shows or the toggle's own raise takes over.
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (raise === null && fit?.raised === true) fit.setRaised(false);
 		if ((visible || raise !== null) && fit?.commandRaised === true) fit.setCommandRaised(false);
 	}, [raise, fit, visible]);
@@ -124,7 +142,8 @@ export function SessionRailSlot({sessionId, render}: {sessionId?: string; render
 				render={render}
 			/>
 		) : null;
-	if (!visible) {
+	if (!visible)
+	{
 		if (fit?.commandRaised !== true) return null;
 		return (
 			<RaisedRailOverlay
@@ -158,33 +177,42 @@ function useCommandRaise(
 	fit: SessionRailFit | null,
 	raise: SessionRailFit | null,
 	visible: boolean,
-): void {
+): void
+{
 	const request = useRailRaiseRequest();
 	const seen = useRef(request);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (request === seen.current) return;
 		seen.current = request;
 		if (request?.sessionId !== sessionId || fit === null) return;
-		if (raise !== null) {
+		if (raise !== null)
+		{
 			if (!raise.raised) raise.setRaised(true, false);
-		} else if (!visible) {
+		}
+		else if (!visible)
+		{
 			fit.setCommandRaised(true);
 		}
 	}, [request, sessionId, fit, raise, visible]);
 }
 
 /** The composer dock's height, which the phone overlay ends 8px above. */
-function useSessionFooterHeight(ref: RefObject<HTMLElement | null>): number {
+function useSessionFooterHeight(ref: RefObject<HTMLElement | null>): number
+{
 	const [height, setHeight] = useState(0);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const footer = ref.current?.parentElement?.querySelector<HTMLElement>("[data-session-footer]");
 		if (footer === null || footer === undefined || typeof ResizeObserver === "undefined") return undefined;
 		setHeight(footer.offsetHeight);
-		const observer = new ResizeObserver(() => {
+		const observer = new ResizeObserver(() =>
+		{
 			setHeight(footer.offsetHeight);
 		});
 		observer.observe(footer);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [ref]);
@@ -204,7 +232,8 @@ function RailOverlay({
 	phone?: boolean;
 	style?: CSSProperties;
 	render: () => ReactNode;
-}) {
+})
+{
 	const end = phone ? "end-2" : "end-3";
 	return (
 		<div
@@ -242,40 +271,64 @@ function RaisedRailOverlay({
 	lower: (raised: false) => void;
 	toggleRef: RefObject<HTMLButtonElement | null>;
 	render: () => ReactNode;
-}) {
+})
+{
 	const ref = useRef<HTMLDivElement>(null);
 	const footerHeight = useSessionFooterHeight(ref);
 	const focusOnOpenRef = useRef(focusOnOpen);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const overlay = ref.current;
 		if (focusOnOpenRef.current) overlay?.focus();
-		const onPointerDown = (event: PointerEvent) => {
+		const onPointerDown = (event: PointerEvent) =>
+		{
 			const target = event.target;
 			if (!(target instanceof Node) || overlay?.contains(target) || toggleRef.current?.contains(target)) return;
 			lower(false);
 		};
-		const onKeyDown = (event: KeyboardEvent) => {
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			if (event.key !== "Escape" || event.defaultPrevented || !overlay?.contains(document.activeElement)) return;
 			lower(false);
 			toggleRef.current?.focus();
 		};
 		document.addEventListener("pointerdown", onPointerDown, true);
 		document.addEventListener("keydown", onKeyDown, true);
-		return () => {
+		return () =>
+		{
 			document.removeEventListener("pointerdown", onPointerDown, true);
 			document.removeEventListener("keydown", onKeyDown, true);
 		};
 	}, [lower, toggleRef]);
 	return phone ? (
-		<RailOverlay ref={ref} id={id} phone style={{bottom: footerHeight}} render={render} />
+		<RailOverlay
+			ref={ref}
+			id={id}
+			phone
+			style={
+			{
+				bottom: footerHeight,
+			}}
+			render={render}
+		/>
 	) : (
 		<RailOverlay ref={ref} id={id} render={render} />
 	);
 }
 
 /** Upstream's phone rail: the same card, ending 8px above the composer. */
-function PhoneRailOverlay({render}: {render: () => ReactNode}) {
+function PhoneRailOverlay({render}: {render: () => ReactNode})
+{
 	const ref = useRef<HTMLDivElement>(null);
 	const footerHeight = useSessionFooterHeight(ref);
-	return <RailOverlay ref={ref} style={{bottom: footerHeight}} render={render} />;
+	return (
+		<RailOverlay
+			ref={ref}
+			style={
+			{
+				bottom: footerHeight,
+			}}
+			render={render}
+		/>
+	);
 }

@@ -8,7 +8,8 @@ import {defaultTmuxSessionPaneSources, lookupTmuxSessionPanes, type TmuxSessionP
  * straight from tmux (via `window_index`/`window_name`) so they always match the
  * user's real windows, even when there are gaps from renumbering.
  */
-export interface TmuxWindow {
+export interface TmuxWindow
+{
 	sessionId: string;
 	projectName: string;
 	windowIndex: number;
@@ -18,13 +19,15 @@ export interface TmuxWindow {
 	socket: string;
 }
 
-export interface TmuxTerminalPlacement extends TerminalPlacementBase {
+export interface TmuxTerminalPlacement extends TerminalPlacementBase
+{
 	provider: "tmux";
 	tmuxWindow: TmuxWindow;
 }
 
 /** Writes go through `tmux send-keys`; events come from the 2 s `list-panes` poll in `tmux/pane-events.ts`. */
-const TMUX_CAPABILITIES = {
+const TMUX_CAPABILITIES =
+{
 	supportsWrite: TERMINAL_HOST_CAPABILITIES.tmux.canWrite,
 	supportsEvents: true,
 	supportsObserve: false,
@@ -36,10 +39,12 @@ const TMUX_CAPABILITIES = {
  */
 export async function getTmuxWindows(
 	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
-): Promise<TmuxWindow[]> {
+): Promise<TmuxWindow[]>
+{
 	const sessionPanes = await lookupTmuxSessionPanes(sources);
 	return sessionPanes
-		.map(({sessionId, cwd, pane}) => ({
+		.map(({sessionId, cwd, pane}) => (
+		{
 			sessionId,
 			projectName: cwd ? basename(cwd) : "",
 			windowIndex: pane.windowIndex,
@@ -51,9 +56,11 @@ export async function getTmuxWindows(
 		.toSorted((a, b) => a.windowIndex - b.windowIndex);
 }
 
-async function getTmuxPlacements(sources: TmuxSessionPaneSources): Promise<TmuxTerminalPlacement[]> {
+async function getTmuxPlacements(sources: TmuxSessionPaneSources): Promise<TmuxTerminalPlacement[]>
+{
 	const windows = await getTmuxWindows(sources);
-	return windows.map((window) => ({
+	return windows.map((window) => (
+	{
 		provider: "tmux",
 		sessionId: window.sessionId,
 		displayName: window.windowName,
@@ -67,7 +74,8 @@ async function getTmuxPlacements(sources: TmuxSessionPaneSources): Promise<TmuxT
 
 export function createTmuxPlacementProvider(
 	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
-): TerminalPlacementProvider {
+): TerminalPlacementProvider
+{
 	return {
 		id: "tmux",
 		capabilities: TMUX_CAPABILITIES,

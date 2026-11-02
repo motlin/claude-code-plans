@@ -24,36 +24,45 @@ export const MAX_JSONL_REPLAY_BYTES = 1024 * 1024;
  * in one `session:lines-appended` event, whose serialization blocks the event loop for hundreds of milliseconds, so
  * when that would replay more than `MAX_JSONL_REPLAY_BYTES` the read starts at the line the file now ends in.
  */
-export async function jsonlResumeOffset(db: IndexDb, filePath: string): Promise<number> {
+export async function jsonlResumeOffset(db: IndexDb, filePath: string): Promise<number>
+{
 	// The scan indexes transcripts under the resolved projects directory, while hooks name them by the unresolved one.
 	const indexedSize =
 		indexedSizeBytes(db, filePath) ?? indexedSizeBytes(db, await realpath(filePath).catch(() => ""));
 
 	let handle;
-	try {
+	try
+	{
 		handle = await open(filePath, "r");
-	} catch {
+	}
+	catch
+	{
 		return 0;
 	}
-	try {
+	try
+	{
 		const {size} = await handle.stat();
 		const resumeAt =
 			indexedSize === undefined || indexedSize <= 0 || indexedSize > size
 				? 0
 				: await lineStartAtOrBefore(handle, indexedSize);
 		return size - resumeAt > MAX_JSONL_REPLAY_BYTES ? await lineStartAtOrBefore(handle, size) : resumeAt;
-	} finally {
+	}
+	finally
+	{
 		await handle.close();
 	}
 }
 
 /** What a reader saw at its offset: the file's inode and the bytes right before the offset. */
-export interface JsonlOffsetWitness {
+export interface JsonlOffsetWitness
+{
 	ino: number;
 	signature: Buffer;
 }
 
-export interface JsonlReadStart {
+export interface JsonlReadStart
+{
 	offset: number;
 	/** True when the file no longer holds, before `offset`, what the `witness` saw there: the CLI removed or rewrote lines. */
 	rewritten: boolean;
@@ -71,15 +80,27 @@ export async function jsonlReadOffset(
 	filePath: string,
 	offset: number | undefined,
 	witness?: JsonlOffsetWitness,
-): Promise<JsonlReadStart> {
-	if (offset === undefined) return {offset: await jsonlResumeOffset(db, filePath), rewritten: false};
+): Promise<JsonlReadStart>
+{
+	if (offset === undefined)
+		return {
+			offset: await jsonlResumeOffset(db, filePath),
+			rewritten: false,
+		};
 	let handle;
-	try {
+	try
+	{
 		handle = await open(filePath, "r");
-	} catch {
-		return {offset, rewritten: false};
 	}
-	try {
+	catch
+	{
+		return {
+			offset,
+			rewritten: false,
+		};
+	}
+	try
+	{
 		const {size, ino} = await handle.stat();
 		const rewritten =
 			offset > size ||
@@ -87,49 +108,77 @@ export async function jsonlReadOffset(
 				(ino !== witness.ino ||
 					!(await bytesBefore(handle, offset, witness.signature.length)).equals(witness.signature)));
 		return rewritten
-			? {offset: await lineStartAtOrBefore(handle, size), rewritten: true}
-			: {offset, rewritten: false};
-	} finally {
+			?
+				{
+					offset: await lineStartAtOrBefore(handle, size),
+					rewritten: true,
+				}
+			:
+				{
+					offset,
+					rewritten: false,
+				};
+	}
+	finally
+	{
 		await handle.close();
 	}
 }
 
 /** The inode of `filePath` and the up to `SIGNATURE_BYTES` bytes before `offset`, for the next `jsonlReadOffset`. */
-export async function jsonlOffsetWitness(filePath: string, offset: number): Promise<JsonlOffsetWitness | undefined> {
+export async function jsonlOffsetWitness(filePath: string, offset: number): Promise<JsonlOffsetWitness | undefined>
+{
 	let handle;
-	try {
+	try
+	{
 		handle = await open(filePath, "r");
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
-	try {
+	try
+	{
 		const {ino} = await handle.stat();
-		return {ino, signature: await bytesBefore(handle, offset, Math.min(offset, SIGNATURE_BYTES))};
-	} finally {
+		return {
+			ino,
+			signature: await bytesBefore(handle, offset, Math.min(offset, SIGNATURE_BYTES)),
+		};
+	}
+	finally
+	{
 		await handle.close();
 	}
 }
 
-async function bytesBefore(handle: Awaited<ReturnType<typeof open>>, offset: number, length: number): Promise<Buffer> {
+async function bytesBefore(handle: Awaited<ReturnType<typeof open>>, offset: number, length: number): Promise<Buffer>
+{
 	const buffer = Buffer.alloc(length);
 	const {bytesRead} = await handle.read(buffer, 0, length, offset - length);
 	return buffer.subarray(0, bytesRead);
 }
 
-function indexedSizeBytes(db: IndexDb, path: string): number | undefined {
+function indexedSizeBytes(db: IndexDb, path: string): number | undefined
+{
 	if (path === "") return undefined;
 	return db
-		.select({sizeBytes: schema.indexedFiles.sizeBytes})
+		.select(
+			{
+				sizeBytes: schema.indexedFiles.sizeBytes,
+			},
+		)
 		.from(schema.indexedFiles)
 		.where(eq(schema.indexedFiles.path, path))
 		.get()?.sizeBytes;
 }
 
 /** The offset just past the last newline before `offset`, or zero when there is none. */
-async function lineStartAtOrBefore(handle: Awaited<ReturnType<typeof open>>, offset: number): Promise<number> {
+async function lineStartAtOrBefore(handle: Awaited<ReturnType<typeof open>>, offset: number): Promise<number>
+{
 	const buffer = Buffer.alloc(BACKWARD_READ_BYTES);
 	let end = offset;
-	while (end > 0) {
+	while (end > 0)
+	{
 		const start = Math.max(0, end - BACKWARD_READ_BYTES);
 		const {bytesRead} = await handle.read(buffer, 0, end - start, start);
 		const newline = buffer.subarray(0, bytesRead).lastIndexOf(NEWLINE);

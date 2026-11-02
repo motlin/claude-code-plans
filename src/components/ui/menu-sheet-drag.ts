@@ -20,7 +20,8 @@ export const SHEET_TEXT_ENTRY =
 	'input:not([type=button],[type=checkbox],[type=radio],[type=range],[type=submit],[type=reset],[type=color],[type=file],[type=image],[type=hidden],[readonly]), textarea:not([readonly]), [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]';
 
 /** The root sheet's frame: its tree, how to close it, and the detent the drag can move it to. */
-export interface SheetDragFrame {
+export interface SheetDragFrame
+{
 	treeId: string;
 	dismiss: () => void;
 	detent: SheetDetent;
@@ -31,12 +32,14 @@ export interface SheetDragFrame {
 
 export const SheetDragContext = createContext<SheetDragFrame | null>(null);
 
-interface DraggedLevel {
+interface DraggedLevel
+{
 	el: HTMLElement;
 	height: string;
 }
 
-interface Drag extends SheetGeometry {
+interface Drag extends SheetGeometry
+{
 	pointerId: number;
 	startY: number;
 	lastY: number;
@@ -50,37 +53,47 @@ interface Drag extends SheetGeometry {
 }
 
 /** Upstream's lt: write the followed height, slide and scrim opacity onto every level. */
-function applyDrag(drag: Drag, dy: number) {
+function applyDrag(drag: Drag, dy: number)
+{
 	const {height, slide, shown} = follow(drag, drag.raw - dy);
-	for (const {el} of drag.levels) {
+	for (const {el} of drag.levels)
+	{
 		el.style.height = `${height}px`;
 		el.style.translate = slide > 0 ? `0 ${slide}px` : "";
 	}
 	const opacity = shown < 1 ? shown.toFixed(3) : "";
-	for (const scrim of drag.scrims) {
+	for (const scrim of drag.scrims)
+	{
 		if (scrim.style.opacity !== opacity) scrim.style.opacity = opacity;
 	}
 }
 
 /** Upstream's K: hand the levels back to CSS, leaving dismissed levels off-screen for the exit. */
-function endDrag(drag: Drag, dismiss: boolean) {
-	for (const {el, height} of drag.levels) {
+function endDrag(drag: Drag, dismiss: boolean)
+{
+	for (const {el, height} of drag.levels)
+	{
 		el.style.transition = "";
-		if (dismiss) {
+		if (dismiss)
+		{
 			el.style.translate = `0 ${SHEET_OFFSCREEN}`;
-		} else {
+		}
+		else
+		{
 			el.style.height = height;
 			el.style.translate = "";
 		}
 	}
-	for (const scrim of drag.scrims) {
+	for (const scrim of drag.scrims)
+	{
 		scrim.style.transition = "";
 		scrim.style.opacity = "";
 	}
 }
 
 /** Upstream's bM: the viewport height below the positioner's top safe-area margin. */
-function availableHeight(popup: HTMLElement): number {
+function availableHeight(popup: HTMLElement): number
+{
 	const view = popup.ownerDocument.defaultView;
 	if (view === null) return popup.getBoundingClientRect().height;
 	const positioner = popup.parentElement;
@@ -90,7 +103,8 @@ function availableHeight(popup: HTMLElement): number {
 }
 
 /** Upstream's Hi: a level holding a text field, or whose rows overflow, can open the tall detent. */
-function contentGrows(popup: HTMLElement): boolean {
+function contentGrows(popup: HTMLElement): boolean
+{
 	if (popup.querySelector(SHEET_TEXT_ENTRY) !== null) return true;
 	return Array.from(popup.querySelectorAll("[data-cds-sheet-scroll]")).some(
 		(scroll) => scroll.scrollHeight > scroll.clientHeight + 1,
@@ -102,34 +116,42 @@ function contentGrows(popup: HTMLElement): boolean {
  * level of the tree; release dismisses past a quarter of the rest height or on a downward fling,
  * else settles on the default or tall detent.
  */
-export function useSheetDrag() {
+export function useSheetDrag()
+{
 	const frame = useContext(SheetDragContext);
 	const dragRef = useRef<Drag | null>(null);
-	return useMemo(() => {
+	return useMemo(() =>
+	{
 		if (frame === null) return {};
 		const tree = `[data-presentation="sheet"][data-sheet-tree="${CSS.escape(frame.treeId)}"]`;
-		const finish = (event: PointerEvent<HTMLElement>, commit: boolean) => {
+		const finish = (event: PointerEvent<HTMLElement>, commit: boolean) =>
+		{
 			const drag = dragRef.current;
 			if (drag === null || event.pointerId !== drag.pointerId) return;
 			dragRef.current = null;
-			if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+			if (event.currentTarget.hasPointerCapture(event.pointerId))
+			{
 				event.currentTarget.releasePointerCapture(event.pointerId);
 			}
-			const {dismiss, detent} = release(drag, {
-				detent: drag.detent,
-				rawAtGrab: drag.raw,
-				rawAtRelease: drag.raw - (drag.lastY - drag.startY),
-				caughtSlide: drag.caughtSlide,
-				velocity: drag.velocity,
-				msSinceMove: event.timeStamp - drag.lastT,
-				commit,
-			});
+			const {dismiss, detent} = release(
+				drag,
+				{
+					detent: drag.detent,
+					rawAtGrab: drag.raw,
+					rawAtRelease: drag.raw - (drag.lastY - drag.startY),
+					caughtSlide: drag.caughtSlide,
+					velocity: drag.velocity,
+					msSinceMove: event.timeStamp - drag.lastT,
+					commit,
+				},
+			);
 			endDrag(drag, dismiss);
 			if (dismiss) frame.dismiss();
 			else if (detent !== drag.detent) frame.setDetent(detent);
 		};
 		return {
-			onPointerDown: (event: PointerEvent<HTMLElement>) => {
+			onPointerDown: (event: PointerEvent<HTMLElement>) =>
+			{
 				if (event.button !== 0 || dragRef.current !== null || frame.keyboard === true) return;
 				if (event.target instanceof Element && event.target.closest(NO_DRAG_TARGET) !== null) return;
 				if (event.currentTarget.closest("[data-cds-sheet-covered]") !== null) return;
@@ -142,23 +164,35 @@ export function useSheetDrag() {
 				event.currentTarget.setPointerCapture(event.pointerId);
 				const doc = popup.ownerDocument;
 				const levels = Array.from(doc.querySelectorAll<HTMLElement>(`${tree}:not([data-ending-style])`)).map(
-					(el) => {
+					(el) =>
+					{
 						const saved = el.style.height;
 						el.style.transition = "none";
 						el.style.height = `${height}px`;
-						return {el, height: saved};
+						return {
+							el,
+							height: saved,
+						};
 					},
 				);
 				const canGrow = contentGrows(popup) || frame.detent === "tall";
 				const geometry = sheetGeometry(height, availableHeight(popup), TALL_FRACTION, canGrow);
-				const banded = isMotionReduced(doc) || !canGrow ? {...geometry, room: 0} : geometry;
+				const banded =
+					isMotionReduced(doc) || !canGrow
+						?
+							{
+								...geometry,
+								room: 0,
+							}
+						: geometry;
 				const scrims = Array.from(
 					doc.querySelectorAll<HTMLElement>(
 						`[data-presentation="sheet"][data-sheet-scrim="${CSS.escape(frame.treeId)}"]`,
 					),
 				);
 				for (const scrim of scrims) scrim.style.transition = "none";
-				const drag: Drag = {
+				const drag: Drag =
+				{
 					...banded,
 					pointerId: event.pointerId,
 					startY: event.clientY,
@@ -174,7 +208,8 @@ export function useSheetDrag() {
 				dragRef.current = drag;
 				applyDrag(drag, 0);
 			},
-			onPointerMove: (event: PointerEvent<HTMLElement>) => {
+			onPointerMove: (event: PointerEvent<HTMLElement>) =>
+			{
 				const drag = dragRef.current;
 				if (drag === null || event.pointerId !== drag.pointerId) return;
 				const elapsed = event.timeStamp - drag.lastT;
@@ -183,13 +218,16 @@ export function useSheetDrag() {
 				drag.lastT = event.timeStamp;
 				applyDrag(drag, event.clientY - drag.startY);
 			},
-			onPointerUp: (event: PointerEvent<HTMLElement>) => {
+			onPointerUp: (event: PointerEvent<HTMLElement>) =>
+			{
 				finish(event, true);
 			},
-			onPointerCancel: (event: PointerEvent<HTMLElement>) => {
+			onPointerCancel: (event: PointerEvent<HTMLElement>) =>
+			{
 				finish(event, false);
 			},
-			onLostPointerCapture: (event: PointerEvent<HTMLElement>) => {
+			onLostPointerCapture: (event: PointerEvent<HTMLElement>) =>
+			{
 				finish(event, false);
 			},
 		};

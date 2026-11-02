@@ -2,7 +2,8 @@ import {useRef} from "react";
 import {flushSync} from "react-dom";
 
 import {requestComposerAction} from "../../lib/context-attach";
-import {
+import
+{
 	type DiffCommentDraft,
 	type QueuedDiffComment,
 	activateDiffComment,
@@ -24,10 +25,19 @@ import {CommentEditor} from "../comment-editor";
  */
 function saveThenRequestComposer(
 	sessionId: string,
-	{submit, viaKeyboard}: {submit: boolean; viaKeyboard: boolean},
+	{
+		submit,
+		viaKeyboard,
+	}:
+	{
+		submit: boolean;
+		viaKeyboard: boolean;
+	},
 	save: () => void,
-): void {
-	if (!viaKeyboard) {
+): void
+{
+	if (!viaKeyboard)
+	{
 		save();
 		return;
 	}
@@ -37,7 +47,8 @@ function saveThenRequestComposer(
 }
 
 /** "Line 3", or "Lines 2–5" for a range. */
-function lineLabel({line, endLine}: {line: number; endLine?: number | undefined}) {
+function lineLabel({line, endLine}: {line: number; endLine?: number | undefined})
+{
 	return endLine === undefined || endLine === line ? `Line ${line}` : `Lines ${line}–${endLine}`;
 }
 
@@ -46,7 +57,8 @@ const NEUTRAL_XS_BADGE_CLASS =
 	"inline-flex h-[18px] shrink-0 items-center whitespace-nowrap rounded-[4.5px] bg-fill-ghost-hover px-1.5 font-sans text-[11px] leading-[14px] font-medium text-secondary";
 
 /** Upstream's input label: "Comment on line 3", or "Comment on lines 2–5". */
-function inputLabel({line, endLine}: {line: number; endLine?: number | undefined}) {
+function inputLabel({line, endLine}: {line: number; endLine?: number | undefined})
+{
 	return endLine === undefined || endLine === line
 		? `Comment on line ${line}`
 		: `Comment on lines ${line}–${endLine}`;
@@ -58,7 +70,8 @@ function inputLabel({line, endLine}: {line: number; endLine?: number | undefined
  * empty draft is discarded once focus leaves the card. The typed text lives in the store, so it outlives
  * the card.
  */
-export function LineCommentCard({sessionId, draft}: {sessionId: string; draft: DiffCommentDraft}) {
+export function LineCommentCard({sessionId, draft}: {sessionId: string; draft: DiffCommentDraft})
+{
 	const {bodies, activeId} = useDiffCommentEditing(sessionId);
 	const cardRef = useRef<HTMLDivElement>(null);
 	return (
@@ -71,20 +84,26 @@ export function LineCommentCard({sessionId, draft}: {sessionId: string; draft: D
 				inputLabel={inputLabel(draft)}
 				placeholder="Tell Claude what to change"
 				value={bodies[draft.id] ?? ""}
-				onChange={(text) => {
+				onChange={(text) =>
+				{
 					setDiffCommentDraftBody(sessionId, draft.id, text);
 				}}
-				onSave={(text, options) => {
-					saveThenRequestComposer(sessionId, options, () => {
+				onSave={(text, options) =>
+				{
+					saveThenRequestComposer(sessionId, options, () =>
+					{
 						saveDiffComment(sessionId, draft.id, text);
 					});
 				}}
-				onCancel={() => {
+				onCancel={() =>
+				{
 					discardDiffCommentDraft(sessionId, draft.id);
 				}}
-				onInputBlur={(event) => {
+				onInputBlur={(event) =>
+				{
 					if (event.relatedTarget instanceof Node && cardRef.current?.contains(event.relatedTarget)) return;
-					requestAnimationFrame(() => {
+					requestAnimationFrame(() =>
+					{
 						if ((getDiffCommentEditing(sessionId).bodies[draft.id] ?? "").trim() === "")
 							discardDiffCommentDraft(sessionId, draft.id);
 					});
@@ -109,7 +128,8 @@ export function SavedCommentCard({
 	comment: QueuedDiffComment;
 	/** The commented line is gone from the diff: the label gains upstream's neutral "Outdated" badge. */
 	outdated?: boolean;
-}) {
+})
+{
 	const {editBodies, activeId} = useDiffCommentEditing(sessionId);
 	const isEditing = activeId === comment.id;
 	return (
@@ -131,25 +151,31 @@ export function SavedCommentCard({
 				inputLabel={inputLabel(comment)}
 				placeholder="Tell Claude what to change"
 				value={isEditing ? (editBodies[comment.id] ?? comment.text) : comment.text}
-				onChange={(text) => {
+				onChange={(text) =>
+				{
 					setDiffCommentEditBody(sessionId, comment.id, text);
 				}}
-				onActivate={() => {
+				onActivate={() =>
+				{
 					activateDiffComment(sessionId, comment.id);
 				}}
 				onDelete={
 					isEditing
 						? undefined
-						: () => {
+						: () =>
+							{
 								removeQueuedDiffComment(sessionId, comment.id);
 							}
 				}
-				onSave={(text, options) => {
-					saveThenRequestComposer(sessionId, options, () => {
+				onSave={(text, options) =>
+				{
+					saveThenRequestComposer(sessionId, options, () =>
+					{
 						updateQueuedDiffComment(sessionId, comment.id, text);
 					});
 				}}
-				onCancel={() => {
+				onCancel={() =>
+				{
 					cancelDiffCommentEdit(sessionId, comment.id);
 				}}
 			/>

@@ -1,27 +1,39 @@
 import {readdirSync, readFileSync, statSync} from "node:fs";
 import {join} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
+import {ruleStart} from "./css-rule";
 
-function sources(dir: string): string[] {
-	return readdirSync(dir).flatMap((name) => {
+function sources(dir: string): string[]
+{
+	return readdirSync(dir).flatMap((name) =>
+	{
 		const path = join(dir, name);
 		if (statSync(path).isDirectory()) return sources(path);
 		return /\.tsx?$/.test(name) ? [path] : [];
 	});
 }
 
-describe("focus rings", () => {
-	it("rings rows and buttons only on keyboard focus, as upstream's focus-visible rings do", () => {
+describe("focus rings", () =>
+{
+	it("rings rows and buttons only on keyboard focus, as upstream's focus-visible rings do", () =>
+	{
 		const offenders = sources("src").filter((path) =>
 			/(?<![\w-])focus:ring-focus\b/.test(readFileSync(path, "utf8")),
 		);
 
-		expect({
-			offenders,
-			fileResult: readFileSync("src/components/file-search-results.tsx", "utf8").includes(
-				"hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
-			),
-		}).toStrictEqual({offenders: [], fileResult: true});
+		expect(
+			{
+				offenders,
+				fileResult: readFileSync("src/components/file-search-results.tsx", "utf8").includes(
+					"hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+				),
+			},
+		).toStrictEqual(
+			{
+				offenders: [],
+				fileResult: true,
+			},
+		);
 	});
 });
 
@@ -31,8 +43,10 @@ const INSET_FOCUS =
 const ROW_FOCUS =
 	"hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]";
 
-describe("hand-rolled focus rings", () => {
-	it("draws every keyboard ring with upstream's shadow-focus instead of hand-rolled outlines and rings", () => {
+describe("hand-rolled focus rings", () =>
+{
+	it("draws every keyboard ring with upstream's shadow-focus instead of hand-rolled outlines and rings", () =>
+	{
 		const banned =
 			/focus-visible:(?:shadow-\[0_0_0_2px_var\(--(?:color-)?accent-100\)\]|ring-[12](?![\w/[-])|ring-accent-100|ring-\[var\(--accent-100\)\]|outline-2|outline-offset-2|outline-accent-100|ring-inset)/;
 		// Upstream's approval card root draws its own 1px fill-accent outline, offset 2px.
@@ -53,117 +67,135 @@ describe("hand-rolled focus rings", () => {
 		expect(offenders).toStrictEqual([]);
 	});
 
-	it("hides focus outlines with outline-hidden so forced-colors mode keeps a transparent ring", () => {
+	it("hides focus outlines with outline-hidden so forced-colors mode keeps a transparent ring", () =>
+	{
 		const offenders = sources("src").filter((path) =>
 			readFileSync(path, "utf8").includes("focus-visible:outline-none"),
 		);
 		expect(offenders).toStrictEqual([]);
 	});
 
-	it("gives the overlapping feature controls upstream's ring recipes", () => {
+	it("gives the overlapping feature controls upstream's ring recipes", () =>
+	{
 		const has = (path: string, needle: string) => readFileSync(path, "utf8").includes(needle);
-		expect({
-			titlebar: has(
-				"src/components/session-titlebar.tsx",
-				`text-primary select-none hover:bg-fill-ghost-hover ${SHADOW_FOCUS}`,
-			),
-			chevron: has(
-				"src/components/session-titlebar.tsx",
-				`"} transition-colors hover:bg-fill-ghost-hover ${SHADOW_FOCUS} data-[popup-open]`,
-			),
-			segmented: has(
-				"src/components/settings/segmented-control.tsx",
-				`transition-shadow duration-[60ms] hover:text-primary ${SHADOW_FOCUS}`,
-			),
-			switch: has("src/components/settings/switch.tsx", `data-[disabled]:opacity-40 ${SHADOW_FOCUS}`),
-			messageActions: has(
-				"src/components/message-actions.tsx",
-				`text-plain-secondary outline-none ${SHADOW_FOCUS} transition-colors`,
-			),
-			customizeView: has(
-				"src/components/customize/list-row.tsx",
-				`absolute inset-0 rounded-card ${SHADOW_FOCUS}`,
-			),
-			skillKebab: has(
-				"src/components/customize/skill-row-actions.tsx",
-				`hover:bg-fill-ghost-hover ${SHADOW_FOCUS}`,
-			),
-			pluginKebab: has(
-				"src/components/customize/plugin-row-actions.tsx",
-				`hover:bg-fill-ghost-hover ${SHADOW_FOCUS}`,
-			),
-			shortcutsScroller: has("src/components/keyboard-shortcuts-dialog.tsx", `px-4 pb-4 ${INSET_FOCUS}`),
-			terminalPane: has(
-				"src/components/panes/terminal-pane.tsx",
-				`rounded-b-[inherit] outline-none ${INSET_FOCUS}`,
-			),
-			groupLabel: has("src/components/sidebar/session-group-section.tsx", `text-left ${ROW_FOCUS}`),
-			sessionRow: has(
-				"src/components/sidebar/session-group-section.tsx",
-				`\${rowClass} text-secondary ${ROW_FOCUS} data-[selected=focused]:text-primary`,
-			),
-			overflowRow: has(
-				"src/components/sidebar/session-group-section.tsx",
-				`\${ROW_CLASS} text-ink-muted ${ROW_FOCUS} hover:bg-[var(--sb-hover)]`,
-			),
-		}).toStrictEqual({
-			titlebar: true,
-			chevron: true,
-			segmented: true,
-			switch: true,
-			messageActions: true,
-			customizeView: true,
-			skillKebab: true,
-			pluginKebab: true,
-			shortcutsScroller: true,
-			terminalPane: true,
-			groupLabel: true,
-			sessionRow: true,
-			overflowRow: true,
-		});
+		expect(
+			{
+				titlebar: has(
+					"src/components/session-titlebar.tsx",
+					`text-primary select-none hover:bg-fill-ghost-hover ${SHADOW_FOCUS}`,
+				),
+				chevron: has(
+					"src/components/session-titlebar.tsx",
+					`"} transition-colors hover:bg-fill-ghost-hover ${SHADOW_FOCUS} data-[popup-open]`,
+				),
+				segmented: has(
+					"src/components/settings/segmented-control.tsx",
+					`transition-shadow duration-[60ms] hover:text-primary ${SHADOW_FOCUS}`,
+				),
+				switch: has("src/components/settings/switch.tsx", `data-[disabled]:opacity-40 ${SHADOW_FOCUS}`),
+				messageActions: has(
+					"src/components/message-actions.tsx",
+					`text-plain-secondary outline-none ${SHADOW_FOCUS} transition-colors`,
+				),
+				customizeView: has(
+					"src/components/customize/list-row.tsx",
+					`absolute inset-0 rounded-card ${SHADOW_FOCUS}`,
+				),
+				skillKebab: has(
+					"src/components/customize/skill-row-actions.tsx",
+					`hover:bg-fill-ghost-hover ${SHADOW_FOCUS}`,
+				),
+				pluginKebab: has(
+					"src/components/customize/plugin-row-actions.tsx",
+					`hover:bg-fill-ghost-hover ${SHADOW_FOCUS}`,
+				),
+				shortcutsScroller: has("src/components/keyboard-shortcuts-dialog.tsx", `px-4 pb-4 ${INSET_FOCUS}`),
+				terminalPane: has(
+					"src/components/panes/terminal-pane.tsx",
+					`rounded-b-[inherit] outline-none ${INSET_FOCUS}`,
+				),
+				groupLabel: has("src/components/sidebar/session-group-section.tsx", `text-left ${ROW_FOCUS}`),
+				sessionRow: has(
+					"src/components/sidebar/session-group-section.tsx",
+					`\${rowClass} text-secondary ${ROW_FOCUS} data-[selected=focused]:text-primary`,
+				),
+				overflowRow: has(
+					"src/components/sidebar/session-group-section.tsx",
+					`\${ROW_CLASS} text-ink-muted ${ROW_FOCUS} hover:bg-[var(--sb-hover)]`,
+				),
+			},
+		).toStrictEqual(
+			{
+				titlebar: true,
+				chevron: true,
+				segmented: true,
+				switch: true,
+				messageActions: true,
+				customizeView: true,
+				skillKebab: true,
+				pluginKebab: true,
+				shortcutsScroller: true,
+				terminalPane: true,
+				groupLabel: true,
+				sessionRow: true,
+				overflowRow: true,
+			},
+		);
 	});
 });
 
-describe("sidebar nav row focus ring", () => {
+describe("sidebar nav row focus ring", () =>
+{
 	/* Upstream's nav rows (`Xx` variant nav, 2026-11-01) also tint keyboard focus with the hover background; the account trigger doesn't. */
-	it("rings nav rows and the account trigger with upstream's inset row ring, tinting only the nav rows with the hover background", () => {
+	it("rings nav rows and the account trigger with upstream's inset row ring, tinting only the nav rows with the hover background", () =>
+	{
 		const css = readFileSync("src/styles/globals.css", "utf8");
 		const has = (path: string, needle: string) => readFileSync(path, "utf8").includes(needle);
-		expect({
-			cssBackgroundRule: /\.df-nav-row:focus-visible\s*\{/.test(css),
-			navLink: has("src/components/sidebar/Sidebar.tsx", `rounded-[var(--sb-radius)] ${ROW_FOCUS}"`),
-			newRow: has(
-				"src/components/sidebar/new-session-row.tsx",
-				`rounded-[var(--sb-radius)] flex-1 ${ROW_FOCUS} `,
-			),
-			moreRow: has("src/components/sidebar/more-menu.tsx", `rounded-[var(--sb-radius)] flex-1 ${ROW_FOCUS} `),
-			fallbackRow: has(
-				"src/components/app-shell-fallback.tsx",
-				`rounded-[var(--sb-radius)] flex-1 ${ROW_FOCUS}"`,
-			),
-			accountMenu: has("src/components/sidebar/account-menu.tsx", `pr-2 pl-0.5 text-left ${ROW_FOCUS} hover:`),
-			accountMenuBackground: has("src/components/sidebar/account-menu.tsx", "focus-visible:bg-"),
-		}).toStrictEqual({
-			cssBackgroundRule: true,
-			navLink: true,
-			newRow: true,
-			moreRow: true,
-			fallbackRow: true,
-			accountMenu: true,
-			accountMenuBackground: false,
-		});
+		expect(
+			{
+				cssBackgroundRule: /\.df-nav-row:focus-visible\s*\{/.test(css),
+				navLink: has("src/components/sidebar/Sidebar.tsx", `rounded-[var(--sb-radius)] ${ROW_FOCUS}"`),
+				newRow: has(
+					"src/components/sidebar/new-session-row.tsx",
+					`rounded-[var(--sb-radius)] flex-1 ${ROW_FOCUS} `,
+				),
+				moreRow: has("src/components/sidebar/more-menu.tsx", `rounded-[var(--sb-radius)] flex-1 ${ROW_FOCUS} `),
+				fallbackRow: has(
+					"src/components/app-shell-fallback.tsx",
+					`rounded-[var(--sb-radius)] flex-1 ${ROW_FOCUS}"`,
+				),
+				accountMenu: has(
+					"src/components/sidebar/account-menu.tsx",
+					`pr-2 pl-0.5 text-left ${ROW_FOCUS} hover:`,
+				),
+				accountMenuBackground: has("src/components/sidebar/account-menu.tsx", "focus-visible:bg-"),
+			},
+		).toStrictEqual(
+			{
+				cssBackgroundRule: true,
+				navLink: true,
+				newRow: true,
+				moreRow: true,
+				fallbackRow: true,
+				accountMenu: true,
+				accountMenuBackground: false,
+			},
+		);
 	});
 });
 
-describe("upstream base focus ring", () => {
+describe("upstream base focus ring", () =>
+{
 	const css = readFileSync("src/styles/globals.css", "utf8");
 
-	it("keeps hide-focus-ring as a pure opt-out marker with no rules of its own", () => {
+	it("keeps hide-focus-ring as a pure opt-out marker with no rules of its own", () =>
+	{
 		expect(/\.hide-focus-ring\s*[{,]/.test(css)).toBe(false);
 	});
 
-	it("rings bare links, buttons and fields on focus-visible unless they opt out", () => {
-		const base = css.slice(css.indexOf("@layer base {"));
+	it("rings bare links, buttons and fields on focus-visible unless they opt out", () =>
+	{
+		const base = css.slice(ruleStart(css, "@layer base"));
 		const match = base.match(
 			/(a:not\(\[role="menuitem"\]\):not\(\.hide-focus-ring\):focus-visible,\s*button:not\(\[role="menuitem"\]\):not\(\.hide-focus-ring\):focus-visible,\s*input:not\(\.hide-focus-ring\):not\(\.cds-input\):focus-visible,\s*textarea:not\(\.hide-focus-ring\):not\(\.cds-input\):focus-visible,\s*\.can-focus:focus-visible,\s*\.can-focus-within:focus-within)\s*\{([^}]*)\}/,
 		);
@@ -179,15 +211,17 @@ describe("upstream base focus ring", () => {
 		]);
 	});
 
-	it("colours the base ring with upstream --accent-100 in light and dark", () => {
+	it("colours the base ring with upstream --accent-100 in light and dark", () =>
+	{
 		expect([...css.matchAll(/--focus-outline-color:\s*([^;]+);/g)].map((m) => m[1])).toStrictEqual([
 			"hsl(212.824 70.8333% 47.0588%)",
 			"hsl(211.154 81.25% 62.3529%)",
 		]);
 	});
 
-	it("rests links, buttons and fields on a transparent accent outline so the ring fades in at constant width and offset", () => {
-		const base = css.slice(css.indexOf("@layer base {"));
+	it("rests links, buttons and fields on a transparent accent outline so the ring fades in at constant width and offset", () =>
+	{
+		const base = css.slice(ruleStart(css, "@layer base"));
 		const declarations = (body: string | undefined) =>
 			body
 				?.split(";")
@@ -197,18 +231,23 @@ describe("upstream base focus ring", () => {
 		const noneSelector =
 			/\.can-focus:not\(:where\(input, textarea, :focus-visible\)\),\s*a:not\(:where\(:focus-visible\)\),\s*button:not\(:where\(:focus-visible\)\)\s*\{([^}]*)\}/g;
 		const forced = base.match(/@media \(forced-colors: active\)\s*\{([\s\S]*?)\n\t\}/)?.[1] ?? "";
-		expect({
-			resting: declarations(resting),
-			none: [...base.matchAll(noneSelector)].map((m) => declarations(m[1])),
-			forced: [...forced.matchAll(noneSelector)].length,
-		}).toStrictEqual({
-			resting: ["outline: 2px solid hsl(from var(--focus-outline-color) h s l / 0%)", "outline-offset: 2px"],
-			none: [["outline-style: none"], ["outline-style: none"]],
-			forced: 1,
-		});
+		expect(
+			{
+				resting: declarations(resting),
+				none: [...base.matchAll(noneSelector)].map((m) => declarations(m[1])),
+				forced: [...forced.matchAll(noneSelector)].length,
+			},
+		).toStrictEqual(
+			{
+				resting: ["outline: 2px solid hsl(from var(--focus-outline-color) h s l / 0%)", "outline-offset: 2px"],
+				none: [["outline-style: none"], ["outline-style: none"]],
+				forced: 1,
+			},
+		);
 	});
 
-	it("draws ring-focus as upstream's shadow-focus box-shadow", () => {
+	it("draws ring-focus as upstream's shadow-focus box-shadow", () =>
+	{
 		const body = css.match(/@utility ring-focus\s*\{([^}]*)\}/)?.[1];
 		expect(
 			body
@@ -219,66 +258,77 @@ describe("upstream base focus ring", () => {
 	});
 });
 
-describe("upstream focus shadow tokens", () => {
+describe("upstream focus shadow tokens", () =>
+{
 	const css = readFileSync("src/styles/globals.css", "utf8");
 	const values = (name: string) => [...css.matchAll(new RegExp(`${name}:\\s*([^;]+);`, "g"))].map((m) => m[1]);
 
-	it("defines --focus-shadow and --focus-shadow-danger with upstream's inner page ring in light and dark", () => {
-		expect({
-			focus: values("--focus-shadow"),
-			danger: values("--focus-shadow-danger"),
-			utility: values("--shadow-focus-danger"),
-		}).toStrictEqual({
-			focus: [
-				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px #cde2fb",
-				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px rgb(23 87 172 / 0.6)",
-			],
-			danger: [
-				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px #fad6d6",
-				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px rgb(142 38 38 / 0.6)",
-			],
-			utility: ["var(--focus-shadow-danger)"],
-		});
+	it("defines --focus-shadow and --focus-shadow-danger with upstream's inner page ring in light and dark", () =>
+	{
+		expect(
+			{
+				focus: values("--focus-shadow"),
+				danger: values("--focus-shadow-danger"),
+				utility: values("--shadow-focus-danger"),
+			},
+		).toStrictEqual(
+			{
+				focus: [
+					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px #cde2fb",
+					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px rgb(23 87 172 / 0.6)",
+				],
+				danger: [
+					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px #fad6d6",
+					"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px rgb(142 38 38 / 0.6)",
+				],
+				utility: ["var(--focus-shadow-danger)"],
+			},
+		);
 	});
 });
 
-describe("upstream cds TextInput tokens", () => {
+describe("upstream cds TextInput tokens", () =>
+{
 	const css = readFileSync("src/styles/globals.css", "utf8");
 	const values = (name: string) => [...css.matchAll(new RegExp(`${name}:\\s*([^;]+);`, "g"))].map((m) => m[1]);
 
-	it("defines the nested control height, the invalid field ring and duration-fast", () => {
-		expect({
-			nested: values("--cds-h-control-nested"),
-			invalid: values("--field-invalid-shadow"),
-			invalidUtility: values("--shadow-field-invalid"),
-			durationFast: /@utility duration-fast \{\s*--tw-duration: 60ms;\s*transition-duration: 60ms;\s*\}/.test(
-				css,
-			),
-			searchCancel:
-				/input\.cds-input::-webkit-search-cancel-button \{\s*-webkit-appearance: none;\s*display: none;\s*\}/.test(
-					css,
-				),
-			// Upstream's `.cds-reset` rules, `.cds-root` being local `:root`, in the base layer.
-			cdsReset: [
-				...css
-					.slice(css.indexOf("@layer base {"))
-					.matchAll(/((?::where\(:root\) \.cds-reset:focus(?:-visible)?,?\s*)+)\{([^}]*)\}/g),
-			].map((m) => [m[1]?.replace(/\s+/g, " ").trim(), m[2]?.replace(/\s+/g, " ").trim()]),
-		}).toStrictEqual({
-			// :root is a comfortable context (like --cds-h-control), then [data-density=comfortable] and compact.
-			nested: [
-				"calc(1.375rem * var(--cds-rem-scale, 1))",
-				"calc(1.375rem * var(--cds-rem-scale, 1))",
-				"calc(1.125rem * var(--cds-rem-scale, 1))",
-			],
-			invalid: ["inset 0 0 0 1px #dc3c3d", "inset 0 0 0 1px #dc3c3d"],
-			invalidUtility: ["var(--field-invalid-shadow)"],
-			durationFast: true,
-			searchCancel: true,
-			cdsReset: [
-				[":where(:root) .cds-reset:focus, :where(:root) .cds-reset:focus-visible", "outline: none;"],
-				[":where(:root) .cds-reset:focus-visible", "outline-offset: 2px; outline: 2px solid #0000;"],
-			],
-		});
+	it("defines the nested control height, the invalid field ring and duration-fast", () =>
+	{
+		expect(
+			{
+				nested: values("--cds-h-control-nested"),
+				invalid: values("--field-invalid-shadow"),
+				invalidUtility: values("--shadow-field-invalid"),
+				durationFast:
+					/@utility duration-fast\s*\{\s*--tw-duration: 60ms;\s*transition-duration: 60ms;\s*\}/.test(css),
+				searchCancel:
+					/input\.cds-input::-webkit-search-cancel-button\s*\{\s*-webkit-appearance: none;\s*display: none;\s*\}/.test(
+						css,
+					),
+				// Upstream's `.cds-reset` rules, `.cds-root` being local `:root`, in the base layer.
+				cdsReset: [
+					...css
+						.slice(ruleStart(css, "@layer base"))
+						.matchAll(/((?::where\(:root\) \.cds-reset:focus(?:-visible)?,?\s*)+)\{([^}]*)\}/g),
+				].map((m) => [m[1]?.replace(/\s+/g, " ").trim(), m[2]?.replace(/\s+/g, " ").trim()]),
+			},
+		).toStrictEqual(
+			{
+				// :root is a comfortable context (like --cds-h-control), then [data-density=comfortable] and compact.
+				nested: [
+					"calc(1.375rem * var(--cds-rem-scale, 1))",
+					"calc(1.375rem * var(--cds-rem-scale, 1))",
+					"calc(1.125rem * var(--cds-rem-scale, 1))",
+				],
+				invalid: ["inset 0 0 0 1px #dc3c3d", "inset 0 0 0 1px #dc3c3d"],
+				invalidUtility: ["var(--field-invalid-shadow)"],
+				durationFast: true,
+				searchCancel: true,
+				cdsReset: [
+					[":where(:root) .cds-reset:focus, :where(:root) .cds-reset:focus-visible", "outline: none;"],
+					[":where(:root) .cds-reset:focus-visible", "outline-offset: 2px; outline: 2px solid #0000;"],
+				],
+			},
+		);
 	});
 });

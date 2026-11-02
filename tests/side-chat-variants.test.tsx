@@ -3,7 +3,8 @@
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-vi.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => (
+{
 	useNavigate: () => vi.fn<() => Promise<void>>(),
 }));
 
@@ -14,54 +15,79 @@ import {ToastProvider} from "../src/components/toast";
 import {askSideChat, getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadSideChatPanel();
 });
 
 const SESSION_ID = "session-side-chat-variants";
 
-class FakeStorage implements Storage {
+class FakeStorage implements Storage
+{
 	readonly values = new Map<string, string>();
 
-	get length(): number {
+	get length(): number
+	{
 		return this.values.size;
 	}
 
-	clear(): void {
+	clear(): void
+	{
 		this.values.clear();
 	}
 
-	getItem(key: string): string | null {
+	getItem(key: string): string | null
+	{
 		return this.values.get(key) ?? null;
 	}
 
-	key(index: number): string | null {
+	key(index: number): string | null
+	{
 		return [...this.values.keys()][index] ?? null;
 	}
 
-	removeItem(key: string): void {
+	removeItem(key: string): void
+	{
 		this.values.delete(key);
 	}
 
-	setItem(key: string, value: string): void {
+	setItem(key: string, value: string): void
+	{
 		this.values.set(key, value);
 	}
 }
 
-function ndjsonResponse(text: string): Response {
+function ndjsonResponse(text: string): Response
+{
 	const events = [
 		{
 			type: "stream_event",
-			event: {type: "content_block_delta", delta: {type: "text_delta", text}},
+			event:
+			{
+				type: "content_block_delta",
+				delta:
+				{
+					type: "text_delta",
+					text,
+				},
+			},
 		},
 	];
-	return new Response(events.map((event) => `${JSON.stringify(event)}\n`).join(""), {
-		status: 200,
-		headers: {"Content-Type": "application/x-ndjson", "X-Process-Id": "proc-1"},
-	});
+	return new Response(
+		events.map((event) => `${JSON.stringify(event)}\n`).join(""),
+		{
+			status: 200,
+			headers:
+			{
+				"Content-Type": "application/x-ndjson",
+				"X-Process-Id": "proc-1",
+			},
+		},
+	);
 }
 
-function renderInHost() {
+function renderInHost()
+{
 	return render(
 		<ToastProvider>
 			<TileHost sessionId={SESSION_ID}>
@@ -72,16 +98,19 @@ function renderInHost() {
 	);
 }
 
-function floatingCard(): HTMLElement | null {
+function floatingCard(): HTMLElement | null
+{
 	return document.querySelector<HTMLElement>('aside[aria-label="Side chat"][data-open]');
 }
 
-function dockedPane(): HTMLElement | null {
+function dockedPane(): HTMLElement | null
+{
 	return document.querySelector<HTMLElement>('[data-pane-root][data-pane-kind="side-chat"]');
 }
 
 /** Where the Q/A history is visible: floating card, docked pane, or neither. */
-function snapshot() {
+function snapshot()
+{
 	const floating = floatingCard();
 	const docked = dockedPane();
 	const surface = floating ?? docked;
@@ -98,7 +127,8 @@ function snapshot() {
 	};
 }
 
-async function askOneQuestion() {
+async function askOneQuestion()
+{
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async () => Promise.resolve(ndjsonResponse("It loads the config."))),
@@ -108,67 +138,167 @@ async function askOneQuestion() {
 
 const HISTORY = ["What does load() do?It loads the config.\nCopyBranch"];
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	resetSideChatStore();
 	vi.stubGlobal("localStorage", new FakeStorage());
 	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-		DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+		DOMRect.fromRect(
+			{
+				x: 0,
+				y: 0,
+				width: 1200,
+				height: 800,
+			},
+		),
 	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
 
-describe("SideChat variants", () => {
-	it("switches floating → docked → floating while keeping the Q/A history", async () => {
+describe("SideChat variants", () =>
+{
+	it("switches floating → docked → floating while keeping the Q/A history", async () =>
+	{
 		renderInHost();
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 		await askOneQuestion();
 		const floating = snapshot();
 
-		fireEvent.click(screen.getByRole("button", {name: "Dock side chat"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Dock side chat",
+				},
+			),
+		);
 		const docked = snapshot();
 		const dockedTitle = dockedPane()?.querySelector("h2")?.textContent;
 
-		fireEvent.click(screen.getByRole("button", {name: "Undock side chat"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Undock side chat",
+				},
+			),
+		);
 		const refloated = snapshot();
 
-		expect({floating, docked, dockedTitle, refloated}).toEqual({
-			floating: {mode: "floating", floating: true, docked: false, history: HISTORY},
-			docked: {mode: "docked", floating: false, docked: true, history: HISTORY},
-			dockedTitle: "Side chat",
-			refloated: {mode: "floating", floating: true, docked: false, history: HISTORY},
-		});
+		expect(
+			{
+				floating,
+				docked,
+				dockedTitle,
+				refloated,
+			},
+		).toEqual(
+			{
+				floating:
+				{
+					mode: "floating",
+					floating: true,
+					docked: false,
+					history: HISTORY,
+				},
+				docked:
+				{
+					mode: "docked",
+					floating: false,
+					docked: true,
+					history: HISTORY,
+				},
+				dockedTitle: "Side chat",
+				refloated:
+				{
+					mode: "floating",
+					floating: true,
+					docked: false,
+					history: HISTORY,
+				},
+			},
+		);
 	});
 
-	it("closes the docked pane with Close side chat and reopens docked with ⌘;-style toggles", async () => {
+	it("closes the docked pane with Close side chat and reopens docked with ⌘;-style toggles", async () =>
+	{
 		renderInHost();
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 		await askOneQuestion();
-		fireEvent.click(screen.getByRole("button", {name: "Dock side chat"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Dock side chat",
+				},
+			),
+		);
 
-		fireEvent.click(within(dockedPane() ?? document.body).getByRole("button", {name: "Close side chat"}));
-		const closed = {...snapshot(), open: getSideChat(SESSION_ID).open};
+		fireEvent.click(
+			within(dockedPane() ?? document.body).getByRole(
+				"button",
+				{
+					name: "Close side chat",
+				},
+			),
+		);
+		const closed =
+		{
+			...snapshot(),
+			open: getSideChat(SESSION_ID).open,
+		};
 
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
-		const reopened = {...snapshot(), open: getSideChat(SESSION_ID).open};
+		const reopened =
+		{
+			...snapshot(),
+			open: getSideChat(SESSION_ID).open,
+		};
 
-		expect({closed, reopened}).toEqual({
-			closed: {mode: "docked", floating: false, docked: false, history: [], open: false},
-			reopened: {mode: "docked", floating: false, docked: true, history: HISTORY, open: true},
-		});
+		expect(
+			{
+				closed,
+				reopened,
+			},
+		).toEqual(
+			{
+				closed:
+				{
+					mode: "docked",
+					floating: false,
+					docked: false,
+					history: [],
+					open: false,
+				},
+				reopened:
+				{
+					mode: "docked",
+					floating: false,
+					docked: true,
+					history: HISTORY,
+					open: true,
+				},
+			},
+		);
 	});
 
-	it("pops out into a new window and returns to floating when that window closes", async () => {
+	it("pops out into a new window and returns to floating when that window closes", async () =>
+	{
 		const frame = document.createElement("iframe");
 		document.body.append(frame);
 		const popup = frame.contentWindow;
@@ -178,13 +308,22 @@ describe("SideChat variants", () => {
 		vi.stubGlobal("open", open);
 
 		renderInHost();
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 		await askOneQuestion();
-		fireEvent.click(screen.getByRole("button", {name: "Open in new window"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Open in new window",
+				},
+			),
+		);
 
-		const popped = {
+		const popped =
+		{
 			mode: getSideChat(SESSION_ID).mode,
 			floating: floatingCard() !== null,
 			docked: dockedPane() !== null,
@@ -194,37 +333,70 @@ describe("SideChat variants", () => {
 			openCalls: open.mock.calls.length,
 		};
 
-		act(() => {
+		act(() =>
+		{
 			popup.dispatchEvent(new Event("pagehide"));
 		});
 		const returned = snapshot();
 
-		expect({popped, returned, closed: close.mock.calls.length > 0}).toEqual({
-			popped: {mode: "popout", floating: false, docked: false, history: HISTORY, openCalls: 1},
-			returned: {mode: "floating", floating: true, docked: false, history: HISTORY},
-			closed: true,
-		});
+		expect(
+			{
+				popped,
+				returned,
+				closed: close.mock.calls.length > 0,
+			},
+		).toEqual(
+			{
+				popped:
+				{
+					mode: "popout",
+					floating: false,
+					docked: false,
+					history: HISTORY,
+					openCalls: 1,
+				},
+				returned:
+				{
+					mode: "floating",
+					floating: true,
+					docked: false,
+					history: HISTORY,
+				},
+				closed: true,
+			},
+		);
 		frame.remove();
 	});
 
-	it("stays floating when the browser blocks the pop-out window", async () => {
+	it("stays floating when the browser blocks the pop-out window", async () =>
+	{
 		vi.stubGlobal(
 			"open",
 			vi.fn(() => null),
 		);
 		renderInHost();
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 		await askOneQuestion();
 
-		fireEvent.click(screen.getByRole("button", {name: "Open in new window"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Open in new window",
+				},
+			),
+		);
 
-		expect(snapshot()).toEqual({
-			mode: "floating",
-			floating: true,
-			docked: false,
-			history: HISTORY,
-		});
+		expect(snapshot()).toEqual(
+			{
+				mode: "floating",
+				floating: true,
+				docked: false,
+				history: HISTORY,
+			},
+		);
 	});
 });

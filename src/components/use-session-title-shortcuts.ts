@@ -19,39 +19,56 @@ export function useSessionTitleShortcuts({
 	prUrl,
 	cwd = null,
 	startEditing,
-}: SessionTitleShortcutOptions): void {
+}: SessionTitleShortcutOptions): void
+{
 	const queryClient = useQueryClient();
 	const setArchived = useSessionArchive(sessionId);
 	const toast = useToast();
 	const fork = useSessionFork();
-	useShortcut("rename_session", () => {
+	useShortcut("rename_session", () =>
+	{
 		startEditing();
 	});
-	useShortcut("archive_session", () => {
+	useShortcut("archive_session", () =>
+	{
 		setArchived(!archived);
 	});
-	useShortcut("toggle_read_session", () => {
+	useShortcut("toggle_read_session", () =>
+	{
 		toggleUnseen(sessionId);
 	});
 	useShortcut("copy_session_link", () => void copySessionLink(sessionId, toast, queryClient));
 	useShortcut(
 		"open_session_pr",
-		() => {
+		() =>
+		{
 			if (prUrl !== undefined) openPullRequest(prUrl);
 		},
-		{disabled: prUrl === undefined},
+		{
+			disabled: prUrl === undefined,
+		},
 	);
 	useShortcut(
 		"fork_session",
-		() => {
-			if (cwd !== null) fork({sessionId, cwd});
+		() =>
+		{
+			if (cwd !== null)
+				fork(
+					{
+						sessionId,
+						cwd,
+					},
+				);
 		},
-		{disabled: cwd === null},
+		{
+			disabled: cwd === null,
+		},
 	);
 	useSessionRenameRequest(sessionId, startEditing);
 }
 
-export interface SessionTitleShortcutOptions {
+export interface SessionTitleShortcutOptions
+{
 	sessionId: string;
 	archived: boolean;
 	prUrl?: string | undefined;

@@ -8,11 +8,15 @@ import {useEffect, useState} from "react";
  */
 export const AGENTATION_REPROBE_MS = 5 * 60_000;
 
-async function isHealthy(endpoint: string): Promise<boolean> {
-	try {
+async function isHealthy(endpoint: string): Promise<boolean>
+{
+	try
+	{
 		const response = await fetch(`${endpoint}/health`);
 		return response.ok;
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
@@ -22,17 +26,21 @@ async function isHealthy(endpoint: string): Promise<boolean> {
  * Re-probes every {@link AGENTATION_REPROBE_MS}, so a server started later is picked up and one that
  * stops is dropped.
  */
-export function useHealthyAgentationEndpoint(endpoint: string): string | undefined {
+export function useHealthyAgentationEndpoint(endpoint: string): string | undefined
+{
 	const [healthy, setHealthy] = useState<string | undefined>(undefined);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		let disposed = false;
-		const probe = async () => {
+		const probe = async () =>
+		{
 			const ok = await isHealthy(endpoint);
 			if (!disposed) setHealthy(ok ? endpoint : undefined);
 		};
 		void probe();
 		const interval = setInterval(() => void probe(), AGENTATION_REPROBE_MS);
-		return () => {
+		return () =>
+		{
 			disposed = true;
 			clearInterval(interval);
 		};

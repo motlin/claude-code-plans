@@ -4,7 +4,8 @@ import {useState} from "react";
 type ScrollRestorationEntry = ReturnType<typeof useElementScrollRestoration>;
 
 /** Presence means captured; an undefined entry means this visit has no saved offset. */
-export interface MainScrollRestorationSnapshot {
+export interface MainScrollRestorationSnapshot
+{
 	entry: ScrollRestorationEntry;
 }
 
@@ -18,11 +19,27 @@ export interface MainScrollRestorationSnapshot {
  * Call it from a component that renders with the new location, such as the route component, not from one that mounts
  * later (after data loads): its first read would already see the copied entry.
  */
-export function useMainScrollRestoration(locationKey: string): ScrollRestorationEntry {
-	const current = useElementScrollRestoration({id: "main"});
-	const [initial, setInitial] = useState({locationKey, entry: current});
-	if (initial.locationKey !== locationKey) {
-		setInitial({locationKey, entry: current});
+export function useMainScrollRestoration(locationKey: string): ScrollRestorationEntry
+{
+	const current = useElementScrollRestoration(
+		{
+			id: "main",
+		},
+	);
+	const [initial, setInitial] = useState(
+		{
+			locationKey,
+			entry: current,
+		},
+	);
+	if (initial.locationKey !== locationKey)
+	{
+		setInitial(
+			{
+				locationKey,
+				entry: current,
+			},
+		);
 		return current;
 	}
 	return initial.entry;

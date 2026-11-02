@@ -11,11 +11,13 @@ type ShutdownHook = () => void | Promise<void>;
 const REGISTRY = Symbol.for("claude-code-browser.server-shutdown-hooks");
 
 /** Only this module's copies write the registry slot, so a Set there holds shutdown hooks. */
-function isHookRegistry(value: unknown): value is Set<ShutdownHook> {
+function isHookRegistry(value: unknown): value is Set<ShutdownHook>
+{
 	return value instanceof Set;
 }
 
-function hooks(): Set<ShutdownHook> {
+function hooks(): Set<ShutdownHook>
+{
 	const existing: unknown = Reflect.get(globalThis, REGISTRY);
 	if (isHookRegistry(existing)) return existing;
 	const created = new Set<ShutdownHook>();
@@ -24,30 +26,36 @@ function hooks(): Set<ShutdownHook> {
 }
 
 /** Register cleanup that releases a long-lived handle when the server shuts down. */
-export function onServerShutdown(hook: ShutdownHook): () => void {
+export function onServerShutdown(hook: ShutdownHook): () => void
+{
 	hooks().add(hook);
-	return () => {
+	return () =>
+	{
 		hooks().delete(hook);
 	};
 }
 
 /** Unregister every hook, handing them back to run. */
-function takeHooks(): ShutdownHook[] {
+function takeHooks(): ShutdownHook[]
+{
 	const taken = [...hooks()];
 	hooks().clear();
 	return taken;
 }
 
 /** Run every given hook; a failing hook never skips the others. */
-async function runHooks(pending: readonly ShutdownHook[]): Promise<void> {
+async function runHooks(pending: readonly ShutdownHook[]): Promise<void>
+{
 	const results = await Promise.allSettled(pending.map(async (hook) => hook()));
-	for (const result of results) {
+	for (const result of results)
+	{
 		if (result.status === "rejected") console.error("Server shutdown hook failed:", result.reason);
 	}
 }
 
 /** Run and forget every registered hook; a failing hook never skips the others. */
-export async function runServerShutdownHooks(): Promise<void> {
+export async function runServerShutdownHooks(): Promise<void>
+{
 	await runHooks(takeHooks());
 }
 
@@ -61,17 +69,30 @@ const DEFAULT_ACK_WINDOW_MS = 250;
 const DEFAULT_RELEASE_TIMEOUT_MS = 15_000;
 
 const TakeoverMessageSchema = z.discriminatedUnion("type", [
-	z.strictObject({type: z.literal("takeover"), requestId: z.string()}),
-	z.strictObject({type: z.literal(["stopping", "released"]), requestId: z.string(), instanceId: z.string()}),
+	z.strictObject(
+		{
+			type: z.literal("takeover"),
+			requestId: z.string(),
+		},
+	),
+	z.strictObject(
+		{
+			type: z.literal(["stopping", "released"]),
+			requestId: z.string(),
+			instanceId: z.string(),
+		},
+	),
 ]);
 type TakeoverMessage = z.infer<typeof TakeoverMessageSchema>;
 
 /** The takeover message a channel event carries, or undefined for anything else. */
-function takeoverMessage(event: unknown): TakeoverMessage | undefined {
+function takeoverMessage(event: unknown): TakeoverMessage | undefined
+{
 	return TakeoverMessageSchema.safeParse(isRecord(event) ? event["data"] : undefined).data;
 }
 
-function openTakeoverChannel(): BroadcastChannel {
+function openTakeoverChannel(): BroadcastChannel
+{
 	const channel = new BroadcastChannel(TAKEOVER_CHANNEL);
 	channel.unref();
 	return channel;
@@ -82,27 +103,46 @@ function openTakeoverChannel(): BroadcastChannel {
  * takeover, acknowledging it before and after. Returns a function that stops
  * listening.
  */
-export function listenForTakeover(teardown: ShutdownHook): () => void {
+export function listenForTakeover(teardown: ShutdownHook): () => void
+{
 	const channel = openTakeoverChannel();
 	const instanceId = randomUUID();
 	let done = false;
-	channel.onmessage = (event) => {
+	channel.onmessage = (event) =>
+	{
 		const message = takeoverMessage(event);
 		if (done || message?.type !== "takeover") return;
 		done = true;
 		const {requestId} = message;
-		channel.postMessage({type: "stopping", requestId, instanceId} satisfies TakeoverMessage);
-		void (async () => {
-			try {
+		channel.postMessage(
+			{
+				type: "stopping",
+				requestId,
+				instanceId,
+			} satisfies TakeoverMessage,
+		);
+		void (async () =>
+		{
+			try
+			{
 				await teardown();
-			} catch (err) {
+			}
+			catch (err)
+			{
 				console.error("Server takeover teardown failed:", err);
 			}
-			channel.postMessage({type: "released", requestId, instanceId} satisfies TakeoverMessage);
+			channel.postMessage(
+				{
+					type: "released",
+					requestId,
+					instanceId,
+				} satisfies TakeoverMessage,
+			);
 			channel.close();
 		})();
 	};
-	return () => {
+	return () =>
+	{
 		if (done) return;
 		done = true;
 		channel.close();
@@ -116,38 +156,54 @@ export function listenForTakeover(teardown: ShutdownHook): () => void {
 export async function requestTakeover({
 	ackWindowMs = DEFAULT_ACK_WINDOW_MS,
 	releaseTimeoutMs = DEFAULT_RELEASE_TIMEOUT_MS,
-}: {ackWindowMs?: number; releaseTimeoutMs?: number} = {}): Promise<void> {
+}:
+{
+	ackWindowMs?: number;
+	releaseTimeoutMs?: number;
+} = {}): Promise<void>
+{
 	const channel = openTakeoverChannel();
 	const requestId = randomUUID();
 	const stopping = new Set<string>();
 	const released = new Set<string>();
-	return new Promise((resolve) => {
+	return new Promise((resolve) =>
+	{
 		let windowClosed = false;
-		const finish = () => {
+		const finish = () =>
+		{
 			clearTimeout(windowTimer);
 			clearTimeout(releaseTimer);
 			channel.close();
 			resolve();
 		};
-		const finishIfReleased = () => {
+		const finishIfReleased = () =>
+		{
 			if (windowClosed && [...stopping].every((id) => released.has(id))) finish();
 		};
-		channel.onmessage = (event) => {
+		channel.onmessage = (event) =>
+		{
 			const message = takeoverMessage(event);
 			if (message === undefined || message.type === "takeover" || message.requestId !== requestId) return;
 			stopping.add(message.instanceId);
 			if (message.type === "released") released.add(message.instanceId);
 			finishIfReleased();
 		};
-		const windowTimer = setTimeout(() => {
+		const windowTimer = setTimeout(() =>
+		{
 			windowClosed = true;
 			finishIfReleased();
 		}, ackWindowMs);
-		const releaseTimer = setTimeout(() => {
+		const releaseTimer = setTimeout(() =>
+		{
 			console.error("Timed out waiting for the previous server instance to shut down");
 			finish();
 		}, releaseTimeoutMs);
-		channel.postMessage({type: "takeover", requestId} satisfies TakeoverMessage);
+		channel.postMessage(
+			{
+				type: "takeover",
+				requestId,
+			} satisfies TakeoverMessage,
+		);
 	});
 }
 
@@ -162,10 +218,12 @@ export async function requestTakeover({
  * still running must check it after every step and stop, releasing anything
  * it created after the hook ran.
  */
-export async function takeOverServerShutdown(hook: ShutdownHook): Promise<AbortSignal> {
+export async function takeOverServerShutdown(hook: ShutdownHook): Promise<AbortSignal>
+{
 	const previous = takeHooks();
 	const stopping = new AbortController();
-	onServerShutdown(async () => {
+	onServerShutdown(async () =>
+	{
 		stopping.abort();
 		await hook();
 	});

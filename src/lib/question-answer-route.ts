@@ -20,7 +20,8 @@ export function questionAnswerRoute({
 	live: boolean | null;
 	hasLivePane: boolean | null;
 	writesEnabled: boolean;
-}): QuestionAnswerRoute {
+}): QuestionAnswerRoute
+{
 	if (hasLivePane === true) return writesEnabled ? "live-pane" : "read-only";
 	if (live === false && hasLivePane === false) return "fork";
 	return "read-only";
@@ -31,6 +32,7 @@ export function questionAnswerRoute({
  * with no pending request: nothing can answer it (the read-only route) and its
  * CLI is known to have stopped. Unknown liveness keeps the card.
  */
-export function orphansOpenQuestions(route: QuestionAnswerRoute, sessionLive: boolean | null | undefined): boolean {
+export function orphansOpenQuestions(route: QuestionAnswerRoute, sessionLive: boolean | null | undefined): boolean
+{
 	return route === "read-only" && sessionLive === false;
 }

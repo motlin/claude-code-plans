@@ -5,7 +5,8 @@ import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {PlanApprovalCard} from "./plan-approval-card";
 import type {PlanApprovalContextValue} from "./plan-approval-context";
 import {approvalEnterSeen, markApprovalEnterSeen} from "../lib/approval-enter-seen";
-import {
+import
+{
 	PLAN_LEAVE_TITLE,
 	PLAN_NOTHING_TO_REVIEW,
 	PLAN_PROPOSED_TITLE,
@@ -32,12 +33,21 @@ export function InlinePlanApproval({
 	/** The ExitPlanMode input's plan, if any. */
 	planText: string | undefined;
 	plan: PlanApprovalContextValue;
-}) {
+})
+{
 	const host = useOptionalPaneHost();
-	const proposed = text === undefined ? undefined : planText({plan: text});
+	const proposed =
+		text === undefined
+			? undefined
+			: planText(
+					{
+						plan: text,
+					},
+				);
 	const enterKey = `plan:${plan.sessionId}:${toolUseId}`;
 	const [enter] = useState(() => !approvalEnterSeen(enterKey));
-	useEffect(() => {
+	useEffect(() =>
+	{
 		markApprovalEnterSeen(enterKey);
 	}, [enterKey]);
 	const subtitle =
@@ -69,7 +79,8 @@ export function InlinePlanApproval({
 						{host !== null && proposed !== undefined && (
 							<span className="shrink-0 self-center">
 								<OpenPlanLink
-									onOpen={() => {
+									onOpen={() =>
+									{
 										host.openPane("plan");
 									}}
 								/>

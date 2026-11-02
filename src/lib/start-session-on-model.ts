@@ -13,21 +13,39 @@ export async function startSessionOnModel(
 		launch,
 		toast,
 		open,
-	}: {
+	}:
+	{
 		launch: (request: {cwd: string; args: string[]}) => Promise<HerdrLaunchResponse>;
 		toast: (options: ToastOptions) => void;
 		open: (sessionId: string) => void;
 	},
-): Promise<void> {
-	try {
-		const {sessionId} = await launch({cwd, args: ["--model", model]});
-		if (sessionId === null) toast({kind: "success", message: "Started a session in a new terminal tab"});
+): Promise<void>
+{
+	try
+	{
+		const {sessionId} = await launch(
+			{
+				cwd,
+				args: ["--model", model],
+			},
+		);
+		if (sessionId === null)
+			toast(
+				{
+					kind: "success",
+					message: "Started a session in a new terminal tab",
+				},
+			);
 		else open(sessionId);
-	} catch (error) {
-		toast({
-			kind: "error",
-			message: "Couldn’t start a session. Try again.",
-			description: error instanceof Error ? error.message : String(error),
-		});
+	}
+	catch (error)
+	{
+		toast(
+			{
+				kind: "error",
+				message: "Couldn’t start a session. Try again.",
+				description: error instanceof Error ? error.message : String(error),
+			},
+		);
 	}
 }

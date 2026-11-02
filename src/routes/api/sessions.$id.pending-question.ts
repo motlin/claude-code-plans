@@ -10,7 +10,8 @@ import {registrySessionAtPrompt} from "../../lib/session-registry-store";
  * while this server was down, which no hook reported. A question this process
  * saw asked stays until its own hooks resolve it, whatever the registry reads.
  */
-function currentPendingQuestion(sessionId: string) {
+function currentPendingQuestion(sessionId: string)
+{
 	const pending = getPendingQuestion(sessionId);
 	if (pending === null) return null;
 	if (!pendingQuestionWasReloaded(sessionId) || !registrySessionAtPrompt(sessionId)) return pending;
@@ -18,16 +19,37 @@ function currentPendingQuestion(sessionId: string) {
 	return null;
 }
 
-export function handlePendingQuestionRequest(sessionId: string): Response {
-	return Response.json({pendingQuestion: currentPendingQuestion(sessionId)} satisfies PendingQuestionData, {
-		headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
-	});
+export function handlePendingQuestionRequest(sessionId: string): Response
+{
+	return Response.json(
+		{
+			pendingQuestion: currentPendingQuestion(sessionId),
+		} satisfies PendingQuestionData,
+		{
+			headers:
+			{
+				"Cache-Control": "private, max-age=0, must-revalidate",
+			},
+		},
+	);
 }
 
-export const Route = createFileRoute("/api/sessions/$id/pending-question")({
-	server: {
-		handlers: withMethodNotAllowed({
-			GET: ({params}: {params: {id: string}}) => handlePendingQuestionRequest(params.id),
-		}),
+export const Route = createFileRoute("/api/sessions/$id/pending-question")(
+	{
+		server:
+		{
+			handlers: withMethodNotAllowed(
+				{
+					GET: ({
+						params,
+					}: {
+						params:
+						{
+							id: string;
+						};
+					}) => handlePendingQuestionRequest(params.id),
+				},
+			),
+		},
 	},
-});
+);

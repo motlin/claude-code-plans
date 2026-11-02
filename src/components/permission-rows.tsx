@@ -24,7 +24,8 @@ export function PermissionRowsList({
 	foldable?: boolean;
 	/** Leaves with `clampLines` clamp behind Show more; a gated panel draws every line. */
 	clamp?: boolean;
-}) {
+})
+{
 	return (
 		<ul role="list" aria-label={PERMISSION_ROWS_LABEL} className={LIST_GAPS_CLASS}>
 			<RowItems rows={rows} foldable={foldable} clamp={clamp} />
@@ -32,7 +33,8 @@ export function PermissionRowsList({
 	);
 }
 
-function RowItems({rows, foldable, clamp}: {rows: readonly PermissionRow[]; foldable: boolean; clamp: boolean}) {
+function RowItems({rows, foldable, clamp}: {rows: readonly PermissionRow[]; foldable: boolean; clamp: boolean})
+{
 	return (
 		<>
 			{rows.map((row, index) =>
@@ -51,7 +53,8 @@ function RowItems({rows, foldable, clamp}: {rows: readonly PermissionRow[]; fold
 	);
 }
 
-function RowLabel({row, id, inheritColor = false}: {row: PermissionRow; id?: string; inheritColor?: boolean}) {
+function RowLabel({row, id, inheritColor = false}: {row: PermissionRow; id?: string; inheritColor?: boolean})
+{
 	const className = `min-w-0 text-footnote select-text break-words ${inheritColor ? "" : "text-muted-as-secondary "}${
 		row.labelCode === true
 			? "font-mono whitespace-pre-wrap [unicode-bidi:bidi-override]"
@@ -64,7 +67,8 @@ function RowLabel({row, id, inheritColor = false}: {row: PermissionRow; id?: str
 	);
 }
 
-function RowGroup({row, foldable, clamp}: {row: PermissionRowGroup; foldable: boolean; clamp: boolean}) {
+function RowGroup({row, foldable, clamp}: {row: PermissionRowGroup; foldable: boolean; clamp: boolean})
+{
 	const id = useId();
 	const [open, setOpen] = useState(true);
 	const list = (
@@ -72,7 +76,8 @@ function RowGroup({row, foldable, clamp}: {row: PermissionRowGroup; foldable: bo
 			<RowItems rows={row.rows} foldable={foldable} clamp={clamp} />
 		</ul>
 	);
-	if (!foldable) {
+	if (!foldable)
+	{
 		return (
 			<div className={LIST_CLASS}>
 				<RowLabel row={row} id={id} />
@@ -95,25 +100,30 @@ function RowGroup({row, foldable, clamp}: {row: PermissionRowGroup; foldable: bo
 }
 
 /** Upstream `_`: the value overflows its clamp, re-checked as it resizes. */
-function watchOverflow(element: HTMLElement, onOverflow: (overflows: boolean) => void): (() => void) | undefined {
-	const check = () => {
+function watchOverflow(element: HTMLElement, onOverflow: (overflows: boolean) => void): (() => void) | undefined
+{
+	const check = () =>
+	{
 		onOverflow(element.scrollHeight > element.clientHeight + 1);
 	};
 	check();
 	if (typeof ResizeObserver === "undefined") return undefined;
 	const observer = new ResizeObserver(check);
 	observer.observe(element);
-	return () => {
+	return () =>
+	{
 		observer.disconnect();
 	};
 }
 
-function RowValue({row, clamp}: {row: PermissionRowLeaf; clamp: boolean}) {
+function RowValue({row, clamp}: {row: PermissionRowLeaf; clamp: boolean})
+{
 	const ref = useRef<HTMLSpanElement>(null);
 	const [expanded, setExpanded] = useState(false);
 	const [overflows, setOverflows] = useState(false);
 	const clamped = clamp && row.clampLines !== undefined;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const element = ref.current;
 		if (element === null || !clamped || expanded) return undefined;
 		return watchOverflow(element, setOverflows);
@@ -146,7 +156,8 @@ function RowValue({row, clamp}: {row: PermissionRowLeaf; clamp: boolean}) {
 					type="button"
 					className="self-start cursor-pointer rounded-r4 text-footnote text-muted-as-secondary hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 					aria-expanded={expanded}
-					onClick={() => {
+					onClick={() =>
+					{
 						setExpanded((was) => !was);
 					}}
 				>

@@ -12,27 +12,48 @@ let pluginPath: string;
 
 const MTIME = new Date("2026-09-15T12:00:00.000Z");
 
-function writeSkill(dir: string, content: string): void {
+function writeSkill(dir: string, content: string): void
+{
 	const file = join(dir, "SKILL.md");
-	mkdirSync(dirname(file), {recursive: true});
+	mkdirSync(
+		dirname(file),
+		{
+			recursive: true,
+		},
+	);
 	writeFileSync(file, content);
 	utimesSync(file, MTIME, MTIME);
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	root = mkdtempSync(join(tmpdir(), "customize-skills-"));
 	claudeDir = join(root, "claude");
 	projectPath = join(root, "repos", "my-app");
 	pluginPath = join(root, "plugin-cache", "tools", "1.0.0");
-	mkdirSync(claudeDir, {recursive: true});
+	mkdirSync(
+		claudeDir,
+		{
+			recursive: true,
+		},
+	);
 });
 
-afterEach(() => {
-	rmSync(root, {recursive: true, force: true});
+afterEach(() =>
+{
+	rmSync(
+		root,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("parseSkillFrontmatter", () => {
-	it("parses block scalars, quoted values, lists and maps", () => {
+describe("parseSkillFrontmatter", () =>
+{
+	it("parses block scalars, quoted values, lists and maps", () =>
+	{
 		const content = [
 			"---",
 			"name: alpha",
@@ -56,26 +77,35 @@ describe("parseSkillFrontmatter", () => {
 			"# Body",
 		].join("\n");
 
-		expect(parseSkillFrontmatter(content)).toStrictEqual({
-			name: "alpha",
-			description: "Folded text that spans two lines.",
-			"argument-hint": "What next?",
-			"user-invocable": "true",
-			"allowed-tools": ["Read", "Bash(ls *)"],
-			metadata: {author: "github", version: "0.1.0"},
-			notes: "line one\nline two",
-			quoted: "it's",
-		});
+		expect(parseSkillFrontmatter(content)).toStrictEqual(
+			{
+				name: "alpha",
+				description: "Folded text that spans two lines.",
+				"argument-hint": "What next?",
+				"user-invocable": "true",
+				"allowed-tools": ["Read", "Bash(ls *)"],
+				metadata:
+				{
+					author: "github",
+					version: "0.1.0",
+				},
+				notes: "line one\nline two",
+				quoted: "it's",
+			},
+		);
 	});
 
-	it("returns null without an opening or closing delimiter", () => {
+	it("returns null without an opening or closing delimiter", () =>
+	{
 		expect(parseSkillFrontmatter("# Just markdown")).toBeNull();
 		expect(parseSkillFrontmatter("---\nname: broken\nno close")).toBeNull();
 	});
 });
 
-describe("listSkills", () => {
-	it("lists personal, project and plugin skills with overrides applied", async () => {
+describe("listSkills", () =>
+{
+	it("lists personal, project and plugin skills with overrides applied", async () =>
+	{
 		writeSkill(
 			join(claudeDir, "skills", "alpha"),
 			[
@@ -98,7 +128,12 @@ describe("listSkills", () => {
 		// No frontmatter at all.
 		writeSkill(join(claudeDir, "skills", "plain"), "# Plain skill\n");
 		// Directory without SKILL.md and a stray file are ignored.
-		mkdirSync(join(claudeDir, "skills", "empty"), {recursive: true});
+		mkdirSync(
+			join(claudeDir, "skills", "empty"),
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(join(claudeDir, "skills", "stray.md"), "not a skill");
 		// Symlinked skill directories are followed.
 		writeSkill(join(root, "shared", "linked"), "---\nname: linked\ndescription: Linked\n---\n");
@@ -114,38 +149,62 @@ describe("listSkills", () => {
 			"---\nname: lint\ndescription: Lint code\nversion: 0.2.0\n---\n",
 		);
 		writeSkill(join(pluginPath, "skills", "format"), "---\nname: format\ndescription: Format code\n---\n");
-		mkdirSync(join(claudeDir, "plugins"), {recursive: true});
+		mkdirSync(
+			join(claudeDir, "plugins"),
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(claudeDir, "plugins", "installed_plugins.json"),
-			JSON.stringify({
-				version: 2,
-				plugins: {
-					"tools@market": [
-						{
-							scope: "user",
-							installPath: pluginPath,
-							version: "1.0.0",
-							installedAt: "2026-04-22T19:16:18.255Z",
-							lastUpdated: "2026-04-22T19:16:18.255Z",
-							gitCommitSha: "cf62a6c02dc03db88da8eb7c61bdb9fd88da6326",
-						},
-					],
+			JSON.stringify(
+				{
+					version: 2,
+					plugins:
+					{
+						"tools@market": [
+							{
+								scope: "user",
+								installPath: pluginPath,
+								version: "1.0.0",
+								installedAt: "2026-04-22T19:16:18.255Z",
+								lastUpdated: "2026-04-22T19:16:18.255Z",
+								gitCommitSha: "cf62a6c02dc03db88da8eb7c61bdb9fd88da6326",
+							},
+						],
+					},
 				},
-			}),
+			),
 		);
 
 		writeFileSync(
 			join(claudeDir, "settings.json"),
-			JSON.stringify({skillOverrides: {beta: "off", "tools:format": "off"}}),
+			JSON.stringify(
+				{
+					skillOverrides:
+					{
+						beta: "off",
+						"tools:format": "off",
+					},
+				},
+			),
 		);
 
-		const skills = await listSkills({
-			projects: [
-				{id: "-repos-my-app", projectPath},
-				{id: "-repos-missing", projectPath: join(root, "repos", "missing")},
-			],
-			claudeDir,
-		});
+		const skills = await listSkills(
+			{
+				projects: [
+					{
+						id: "-repos-my-app",
+						projectPath,
+					},
+					{
+						id: "-repos-missing",
+						projectPath: join(root, "repos", "missing"),
+					},
+				],
+				claudeDir,
+			},
+		);
 
 		const mtime = MTIME.getTime();
 		expect(skills).toStrictEqual([
@@ -233,17 +292,38 @@ describe("listSkills", () => {
 		expect(SkillListResponse.parse(skills)).toStrictEqual(skills);
 	});
 
-	it("returns an empty list when nothing is on disk", async () => {
-		expect(await listSkills({projects: [], claudeDir})).toStrictEqual([]);
+	it("returns an empty list when nothing is on disk", async () =>
+	{
+		expect(
+			await listSkills(
+				{
+					projects: [],
+					claudeDir,
+				},
+			),
+		).toStrictEqual([]);
 	});
 
-	it("treats malformed settings and plugin registry as absent", async () => {
+	it("treats malformed settings and plugin registry as absent", async () =>
+	{
 		writeSkill(join(claudeDir, "skills", "solo"), "---\nname: solo\ndescription: Solo\n---\n");
 		writeFileSync(join(claudeDir, "settings.json"), "{ not json");
-		mkdirSync(join(claudeDir, "plugins"), {recursive: true});
+		mkdirSync(
+			join(claudeDir, "plugins"),
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(join(claudeDir, "plugins", "installed_plugins.json"), '{"plugins": 5}');
 
-		expect(await listSkills({projects: [], claudeDir})).toStrictEqual([
+		expect(
+			await listSkills(
+				{
+					projects: [],
+					claudeDir,
+				},
+			),
+		).toStrictEqual([
 			{
 				id: "personal:solo",
 				name: "solo",
@@ -258,8 +338,10 @@ describe("listSkills", () => {
 	});
 });
 
-describe("readSkillDetail", () => {
-	it("reads invocation flags, allowed tools and the file tree", async () => {
+describe("readSkillDetail", () =>
+{
+	it("reads invocation flags, allowed tools and the file tree", async () =>
+	{
 		const dir = join(pluginPath, "skills", "lint");
 		writeSkill(
 			dir,
@@ -274,22 +356,16 @@ describe("readSkillDetail", () => {
 				"Body",
 			].join("\n"),
 		);
-		mkdirSync(join(dir, "scripts"), {recursive: true});
+		mkdirSync(
+			join(dir, "scripts"),
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(join(dir, "scripts", "run.py"), "print()\n");
 
-		const detail = await readSkillDetail({
-			id: "plugin:tools@market:lint",
-			name: "lint",
-			description: "Lint code",
-			source: "plugin",
-			sourceLabel: "tools",
-			dir,
-			mtime: MTIME.getTime(),
-			enabled: true,
-		});
-
-		expect(detail).toStrictEqual({
-			skill: {
+		const detail = await readSkillDetail(
+			{
 				id: "plugin:tools@market:lint",
 				name: "lint",
 				description: "Lint code",
@@ -299,12 +375,40 @@ describe("readSkillDetail", () => {
 				mtime: MTIME.getTime(),
 				enabled: true,
 			},
-			pluginId: "tools@market",
-			userInvocable: true,
-			modelInvocable: false,
-			allowedTools: ["Read", "Bash(git diff:*)"],
-			argumentHint: "<path>",
-			tree: [{path: "scripts", children: [{path: "scripts/run.py"}]}, {path: "SKILL.md"}],
-		});
+		);
+
+		expect(detail).toStrictEqual(
+			{
+				skill:
+				{
+					id: "plugin:tools@market:lint",
+					name: "lint",
+					description: "Lint code",
+					source: "plugin",
+					sourceLabel: "tools",
+					dir,
+					mtime: MTIME.getTime(),
+					enabled: true,
+				},
+				pluginId: "tools@market",
+				userInvocable: true,
+				modelInvocable: false,
+				allowedTools: ["Read", "Bash(git diff:*)"],
+				argumentHint: "<path>",
+				tree: [
+					{
+						path: "scripts",
+						children: [
+							{
+								path: "scripts/run.py",
+							},
+						],
+					},
+					{
+						path: "SKILL.md",
+					},
+				],
+			},
+		);
 	});
 });

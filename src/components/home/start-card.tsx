@@ -3,7 +3,8 @@ import {useId, useLayoutEffect, useRef, useState, type RefObject} from "react";
 
 import {useShortcut} from "../../hooks/use-shortcut";
 import {requestHomeComposerFocus, requestHomeComposerPrefill} from "../../lib/home-composer-focus";
-import {
+import
+{
 	nextStepKey,
 	selectNextSteps,
 	type NextStepCandidate,
@@ -31,18 +32,21 @@ const ROW_CLASS =
 	"flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-body leading-5 text-secondary-control";
 
 /** `/Users/me/x` or `/home/me/x` → `~/x`, like upstream's shortened local cwd. */
-function shortenCwd(path: string): string {
+function shortenCwd(path: string): string
+{
 	return path.replace(/^\/(?:Users|home)\/[^/]+(?=\/|$)/, "~");
 }
 
 /** The top three folders; a selection outside them takes the third seat. */
-function visibleRows(projects: readonly StartProject[], selected: StartProject | undefined): StartProject[] {
+function visibleRows(projects: readonly StartProject[], selected: StartProject | undefined): StartProject[]
+{
 	const top = projects.slice(0, ROW_LIMIT);
 	if (selected === undefined || top.some((p) => p.id === selected.id)) return top;
 	return [...top.slice(0, ROW_LIMIT - 1), selected];
 }
 
-interface StartCardProps {
+interface StartCardProps
+{
 	projects: readonly StartProject[];
 	selected: StartProject | undefined;
 	onSelect: (projectId: string) => void;
@@ -55,17 +59,20 @@ interface StartCardProps {
  * and "Choose environment" opens the composer's project picker, over the "Next steps" list of waiting
  * sessions and failing PRs. Upstream's cloud environments have no local equivalent.
  */
-export function StartCard({projects, selected, onSelect, nextSteps}: StartCardProps) {
+export function StartCard({projects, selected, onSelect, nextSteps}: StartCardProps)
+{
 	const chooseRef = useRef<HTMLButtonElement>(null);
 	const hasNextSteps = nextSteps !== undefined && nextSteps.rows.length > 0;
 	if (projects.length === 0 && !hasNextSteps) return null;
 
-	const choose = (projectId: string) => {
+	const choose = (projectId: string) =>
+	{
 		onSelect(projectId);
 		requestHomeComposerFocus();
 	};
 	// Upstream's keyboard-dismiss fallback once Next steps empties: the "Choose environment" row, else the composer.
-	const focusChooseEnvironment = () => {
+	const focusChooseEnvironment = () =>
+	{
 		const chooseButton = chooseRef.current;
 		if (chooseButton?.isConnected === true) chooseButton.focus();
 		else requestHomeComposerFocus();
@@ -93,11 +100,13 @@ function RecentEnvironments({
 	selected: StartProject | undefined;
 	choose: (projectId: string) => void;
 	chooseRef: RefObject<HTMLButtonElement | null>;
-}) {
+})
+{
 	const rows = visibleRows(projects, selected);
 	// Upstream's ⌥⌘1…9 picks the Nth environment preset; locally the Nth row. Digits past the
 	// list are still claimed (preventDefault), like upstream.
-	useShortcut("select_environment", (event) => {
+	useShortcut("select_environment", (event) =>
+	{
 		const project = rows[Number(event.code.slice("Digit".length)) - 1];
 		if (project !== undefined) choose(project.id);
 	});
@@ -106,10 +115,14 @@ function RecentEnvironments({
 			role="list"
 			aria-label="Recent folders"
 			data-testid="start-card-environments"
-			{...{[START_CARD_ENVIRONMENTS]: ""}}
+			{...
+			{
+				[START_CARD_ENVIRONMENTS]: "",
+			}}
 			className={CARD_CLASS}
 		>
-			{rows.map((project) => {
+			{rows.map((project) =>
+			{
 				const current = project.id === selected?.id;
 				const content = (
 					<>
@@ -135,7 +148,8 @@ function RecentEnvironments({
 							) : (
 								<button
 									type="button"
-									onClick={() => {
+									onClick={() =>
+									{
 										choose(project.id);
 									}}
 									className={`${ROW_CLASS} transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
@@ -151,7 +165,10 @@ function RecentEnvironments({
 				<div
 					aria-hidden="true"
 					className="border-t border-[var(--card-outline)]"
-					style={{marginInline: "var(--ring-inner, 1px)"}}
+					style={
+					{
+						marginInline: "var(--ring-inner, 1px)",
+					}}
 				/>
 				<div className="p-1">
 					<ProjectPicker
@@ -167,7 +184,8 @@ function RecentEnvironments({
 	);
 }
 
-export interface NextStepsListProps {
+export interface NextStepsListProps
+{
 	rows: readonly NextStepRow<NextStepCandidate>[];
 	/** Opens the row's session (its subject). */
 	onOpen: (subject: string) => void;
@@ -209,22 +227,26 @@ const SUBJECT_KEYED_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "
  * (`nextStepKey`): a folder row keeps its key while its subject changes (e.g. continue-branch's file count), so its
  * `li` stays mounted and keeps hover, tooltip and focus.
  */
-function candidateKey(candidate: NextStepCandidate): string {
+function candidateKey(candidate: NextStepCandidate): string
+{
 	return SUBJECT_KEYED_IDS.has(candidate.id) ? `${candidate.id}:${candidate.subject}` : candidate.id;
 }
 
-function nextStepRowKey(row: NextStepRow<NextStepCandidate>): string {
+function nextStepRowKey(row: NextStepRow<NextStepCandidate>): string
+{
 	return row.type === "row" ? candidateKey(row.candidate) : "blocked-sessions";
 }
 
-function rowCandidates(row: NextStepRow<NextStepCandidate>): NextStepCandidate[] {
+function rowCandidates(row: NextStepRow<NextStepCandidate>): NextStepCandidate[]
+{
 	return row.type === "row" ? [row.candidate] : row.rest;
 }
 
 /** Upstream's double-click window: a click this soon after one on a row that has since gone is swallowed. */
 const CLICK_GUARD_MS = 500;
 
-function StepSpacer() {
+function StepSpacer()
+{
 	return (
 		<span aria-hidden="true" data-next-step-spacer className={STEP_SPACER_CLASS}>
 			<span className="w-6" />
@@ -233,7 +255,15 @@ function StepSpacer() {
 }
 
 /** `listed`: a row inside the rest popup, which drops the "Waiting" status. */
-function StepLine({candidate, listed = false}: Readonly<{candidate: NextStepCandidate; listed?: boolean}>) {
+function StepLine({
+	candidate,
+	listed = false,
+}: Readonly<
+{
+	candidate: NextStepCandidate;
+	listed?: boolean;
+}>)
+{
 	return (
 		<span className="flex min-w-0 flex-1 items-center gap-1">
 			<span
@@ -269,31 +299,52 @@ export function NextStepsList({
 	onEmptyFocus = requestHomeComposerFocus,
 	onTurnOnWorktree,
 	onPrefill,
-}: Readonly<NextStepsListProps>) {
+}: Readonly<NextStepsListProps>)
+{
 	const [openRest, setOpenRest] = useState<string | null>(null);
 	const candidates = incoming.flatMap(rowCandidates);
-	const hold = useNextStepsHold({keys: candidates.map(candidateKey), pinned: openRest !== null});
+	const hold = useNextStepsHold(
+		{
+			keys: candidates.map(candidateKey),
+			pinned: openRest !== null,
+		},
+	);
 	const {held} = hold;
 	const rows =
 		held === null || candidates.every((c) => held.has(candidateKey(c)))
 			? incoming
-			: selectNextSteps({candidates: candidates.filter((c) => held.has(candidateKey(c))), dismissed: {}});
+			: selectNextSteps(
+					{
+						candidates: candidates.filter((c) => held.has(candidateKey(c))),
+						dismissed: {},
+					},
+				);
 	if (
 		hold.focus !== null &&
 		!rows.some(
 			(row) =>
 				nextStepRowKey(row) === hold.focus || rowCandidates(row).some((c) => candidateKey(c) === hold.focus),
 		)
-	) {
+	)
+	{
 		hold.dropFocus();
 	}
 	if (openRest !== null && !rows.some((row) => nextStepRowKey(row) === openRest)) setOpenRest(null);
-	const closeRest = () => {
+	const closeRest = () =>
+	{
 		setOpenRest(null);
 		hold.recheckPointer();
 	};
 	// The time and row key of the last click in the list, for upstream's double-click guard.
-	const lastClick = useRef<{at: number; key?: string | undefined}>({at: -Infinity});
+	const lastClick = useRef<
+	{
+		at: number;
+		key?: string | undefined;
+	}>(
+		{
+			at: -Infinity,
+		},
+	);
 	const listRef = hold.groupRef;
 	// The keys of a keyboard-dismissed row; its focus handoff waits until the dismissal's re-render drops them.
 	const pendingFocusKeys = useRef<ReadonlySet<string> | null>(null);
@@ -301,7 +352,8 @@ export function NextStepsList({
 	onEmptyFocusRef.current = onEmptyFocus;
 	const rowKeys = rows.map(nextStepRowKey);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const pending = pendingFocusKeys.current;
 		if (pending === null || rowKeys.some((key) => pending.has(key))) return;
 		pendingFocusKeys.current = null;
@@ -312,7 +364,8 @@ export function NextStepsList({
 	});
 	// The parent unmounts the list with its last row.
 	useLayoutEffect(
-		() => () => {
+		() => () =>
+		{
 			if (pendingFocusKeys.current !== null) onEmptyFocusRef.current();
 		},
 		[],
@@ -320,7 +373,8 @@ export function NextStepsList({
 
 	if (rows.length === 0) return null;
 
-	const dismiss = (button: HTMLButtonElement, key: string, candidates: NextStepCandidate[]) => {
+	const dismiss = (button: HTMLButtonElement, key: string, candidates: NextStepCandidate[]) =>
+	{
 		const keyboard = button.matches(":focus-visible");
 		pendingFocusKeys.current = keyboard ? new Set([key]) : null;
 		onDismiss(candidates);
@@ -335,34 +389,46 @@ export function NextStepsList({
 			data-testid="start-card-setup"
 			data-start-card-setup=""
 			className={`${CARD_CLASS} gap-0.5 p-1 ${START_CARD_SETUP_HIDE_CLASS}`}
-			onClickCapture={(event) => {
+			onClickCapture={(event) =>
+			{
 				if (event.detail === 0) return;
 				const at = performance.now();
 				const target = event.target instanceof Element ? event.target : null;
-				if (target === null || !event.currentTarget.contains(target)) {
-					lastClick.current = {at};
+				if (target === null || !event.currentTarget.contains(target))
+				{
+					lastClick.current =
+					{
+						at,
+					};
 					return;
 				}
 				const previous = lastClick.current;
 				if (
 					at - previous.at < CLICK_GUARD_MS &&
 					![...event.currentTarget.children].some((li) => li.getAttribute("data-row-key") === previous.key)
-				) {
+				)
+				{
 					event.stopPropagation();
 					return;
 				}
-				lastClick.current = {at, key: target.closest("li")?.getAttribute("data-row-key") ?? undefined};
+				lastClick.current =
+				{
+					at,
+					key: target.closest("li")?.getAttribute("data-row-key") ?? undefined,
+				};
 			}}
 			{...hold.groupProps}
 		>
-			{rows.map((row) => {
+			{rows.map((row) =>
+			{
 				const candidates = rowCandidates(row);
 				const key = nextStepRowKey(row);
 				const dismissLabel =
 					row.type === "row"
 						? (row.candidate.dismissLabel ?? `Dismiss “${row.candidate.title}”`)
 						: row.dismissLabel;
-				if (row.type === "row" && row.candidate.taken === true) {
+				if (row.type === "row" && row.candidate.taken === true)
+				{
 					return (
 						<li key={key} data-row-key={key}>
 							<WorktreeTakenRow />
@@ -385,7 +451,8 @@ export function NextStepsList({
 									rest={row.rest}
 									onOpen={onOpen}
 									open={openRest === key}
-									onOpenChange={(open) => {
+									onOpenChange={(open) =>
+									{
 										if (open) setOpenRest(key);
 										else closeRest();
 									}}
@@ -398,7 +465,8 @@ export function NextStepsList({
 										type="button"
 										data-next-step-dismiss
 										aria-label={dismissLabel}
-										onClick={(event) => {
+										onClick={(event) =>
+										{
 											if (row.type === "rest") closeRest();
 											dismiss(event.currentTarget, key, candidates);
 										}}
@@ -419,7 +487,8 @@ export function NextStepsList({
 /**
  * Upstream's pressed "Turn on Worktree" row (`T5`): static, with no hover, tooltip or dismiss, but it keeps its seat.
  */
-function WorktreeTakenRow() {
+function WorktreeTakenRow()
+{
 	return (
 		<div
 			data-testid="start-card-worktree-apart"
@@ -441,13 +510,15 @@ function StepRowButton({
 	onTurnOnWorktree,
 	onPrefill,
 	listed = false,
-}: Readonly<{
+}: Readonly<
+{
 	candidate: NextStepCandidate;
 	onOpen: (subject: string) => void;
 	onTurnOnWorktree?: ((candidate: NextStepCandidate) => void) | undefined;
 	onPrefill?: ((candidate: NextStepCandidate) => void) | undefined;
 	listed?: boolean;
-}>) {
+}>)
+{
 	const titleId = useId();
 	return (
 		<>
@@ -468,14 +539,20 @@ function StepRowButton({
 					data-testid={`start-card-${candidate.id}`}
 					data-next-step-open
 					aria-describedby={titleId}
-					onClick={() => {
-						if (candidate.kind === "worktree") {
+					onClick={() =>
+					{
+						if (candidate.kind === "worktree")
+						{
 							onTurnOnWorktree?.(candidate);
 							requestHomeComposerFocus();
-						} else if (candidate.kind === "prefill" && candidate.prefill !== undefined) {
+						}
+						else if (candidate.kind === "prefill" && candidate.prefill !== undefined)
+						{
 							requestHomeComposerPrefill(candidate.prefill);
 							onPrefill?.(candidate);
-						} else {
+						}
+						else
+						{
 							onOpen(candidate.subject);
 						}
 					}}
@@ -503,7 +580,8 @@ function RestRow({
 	open,
 	onOpenChange,
 	onPopupPointerEnter,
-}: Readonly<{
+}: Readonly<
+{
 	title: string;
 	rest: readonly NextStepCandidate[];
 	onOpen: (subject: string) => void;
@@ -511,15 +589,18 @@ function RestRow({
 	onOpenChange: (open: boolean) => void;
 	/** Entering the portalled popup counts as leaving the list, like upstream. */
 	onPopupPointerEnter: () => void;
-}>) {
-	const openListed = (subject: string) => {
+}>)
+{
+	const openListed = (subject: string) =>
+	{
 		onOpenChange(false);
 		onOpen(subject);
 	};
 	return (
 		<PopoverRoot
 			open={open}
-			onOpenChange={(next) => {
+			onOpenChange={(next) =>
+			{
 				onOpenChange(next);
 			}}
 		>
@@ -537,7 +618,8 @@ function RestRow({
 			>
 				<div className={POPOVER_SCROLL_BODY_CLASS}>
 					<ul role="list" className="flex flex-col gap-0.5 p-1">
-						{rest.map((candidate) => {
+						{rest.map((candidate) =>
+						{
 							const key = candidateKey(candidate);
 							return (
 								<li key={key} data-row-key={key} className="group/row relative">
@@ -553,7 +635,13 @@ function RestRow({
 }
 
 /** The start card bound to the shared home launch folder. */
-export function HomeStartCard({nextSteps}: Readonly<{nextSteps?: NextStepsListProps | undefined}>) {
+export function HomeStartCard({
+	nextSteps,
+}: Readonly<
+{
+	nextSteps?: NextStepsListProps | undefined;
+}>)
+{
 	const {projects, selected, select} = useHomeLaunchFolder();
 	const {takeFromRow} = useHomeWorktree();
 	const {markUsed} = useHomeDraftUsed();
@@ -565,12 +653,15 @@ export function HomeStartCard({nextSteps}: Readonly<{nextSteps?: NextStepsListPr
 			nextSteps={
 				nextSteps === undefined
 					? undefined
-					: {
+					:
+						{
 							...nextSteps,
-							onTurnOnWorktree: (candidate) => {
+							onTurnOnWorktree: (candidate) =>
+							{
 								takeFromRow(candidate.subject);
 							},
-							onPrefill: (candidate) => {
+							onPrefill: (candidate) =>
+							{
 								markUsed(nextStepKey(candidate));
 							},
 						}

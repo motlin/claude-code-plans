@@ -10,10 +10,14 @@ export function withAwaitingAck(
 	session: SessionListItem,
 	ackedAtMs: number | undefined,
 	liveApproval: boolean,
-): SessionListItem {
+): SessionListItem
+{
 	if (session.bucket !== "blocked" || liveApproval) return session;
 	if (ackedAtMs === undefined || ackedAtMs < Date.parse(session.mtime)) return session;
 	const {awaitingPermission: _awaiting, unseenError: _error, erroredAt: _erroredAt, ...rest} = session;
 	const prState = session.prStatus?.state;
-	return {...rest, bucket: prState === "open" || prState === "draft" ? "review" : "done"};
+	return {
+		...rest,
+		bucket: prState === "open" || prState === "draft" ? "review" : "done",
+	};
 }

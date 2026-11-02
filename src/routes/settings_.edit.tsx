@@ -6,17 +6,27 @@ import {useState} from "react";
 import {FormEditor, JsonEditor} from "../components/settings/settings-editors";
 import {settingsQueryOptions} from "../lib/api/settings";
 
-export const Route = createFileRoute("/settings_/edit")({
-	component: SettingsEditPage,
-	loader: async ({context: {queryClient}}) => queryClient.query({...settingsQueryOptions, staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Edit Settings")],
-	}),
-});
+export const Route = createFileRoute("/settings_/edit")(
+	{
+		component: SettingsEditPage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...settingsQueryOptions,
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Edit Settings")],
+		}),
+	},
+);
 
 type EditorTab = "form" | "json";
 
-function SettingsEditPage() {
+function SettingsEditPage()
+{
 	const {data: files} = useSuspenseQuery(settingsQueryOptions);
 	const [activeTab, setActiveTab] = useState<EditorTab>("form");
 
@@ -33,7 +43,8 @@ function SettingsEditPage() {
 					<div className="flex rounded-md border border-border">
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								setActiveTab("form");
 							}}
 							className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors first:rounded-l-md ${
@@ -45,7 +56,8 @@ function SettingsEditPage() {
 						</button>
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								setActiveTab("json");
 							}}
 							className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors last:rounded-r-md ${

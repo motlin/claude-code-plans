@@ -2,8 +2,10 @@ import {describe, expect, it} from "vite-plus/test";
 
 import {markdownToPlainText} from "../src/lib/markdown-plain-text";
 
-describe("markdownToPlainText", () => {
-	it("drops markers, link targets and fences and keeps block breaks", () => {
+describe("markdownToPlainText", () =>
+{
+	it("drops markers, link targets and fences and keeps block breaks", () =>
+	{
 		expect(
 			markdownToPlainText(
 				[

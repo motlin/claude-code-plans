@@ -6,23 +6,49 @@ import {OpenPlanLink} from "../src/components/open-plan-link";
 
 afterEach(cleanup);
 
-describe("OpenPlanLink", () => {
-	it("is upstream's footnote TextLink span with role=button, opened by click, Enter and Space", () => {
+describe("OpenPlanLink", () =>
+{
+	it("is upstream's footnote TextLink span with role=button, opened by click, Enter and Space", () =>
+	{
 		const onOpen = vi.fn<() => void>();
 		render(<OpenPlanLink onOpen={onOpen} />);
-		const link = screen.getByRole("button", {name: "Open plan"});
+		const link = screen.getByRole(
+			"button",
+			{
+				name: "Open plan",
+			},
+		);
 
 		fireEvent.click(link);
-		fireEvent.keyDown(link, {key: "Enter"});
-		fireEvent.keyDown(link, {key: " "});
-		fireEvent.keyDown(link, {key: "a"});
+		fireEvent.keyDown(
+			link,
+			{
+				key: "Enter",
+			},
+		);
+		fireEvent.keyDown(
+			link,
+			{
+				key: " ",
+			},
+		);
+		fireEvent.keyDown(
+			link,
+			{
+				key: "a",
+			},
+		);
 
-		expect({
-			outer: link.outerHTML,
-			calls: onOpen.mock.calls.length,
-		}).toStrictEqual({
-			outer: '<span role="button" tabindex="0" data-cds="TextLink" class="cds-reset text-link inline cursor-pointer text-footnote">Open plan</span>',
-			calls: 3,
-		});
+		expect(
+			{
+				outer: link.outerHTML,
+				calls: onOpen.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				outer: '<span role="button" tabindex="0" data-cds="TextLink" class="cds-reset text-link inline cursor-pointer text-footnote">Open plan</span>',
+				calls: 3,
+			},
+		);
 	});
 });

@@ -7,7 +7,8 @@ import {hmrPersist} from "./hmr-persist";
  * reported before a restart is still there after it. Every write rewrites the
  * file atomically; nothing is written until `persistTo` names one.
  */
-export interface PersistedSessionMap<T> {
+export interface PersistedSessionMap<T>
+{
 	/** Mirror the map to `file` from now on, first replacing it with what the file holds. */
 	persistTo(file: string): void;
 	get(sessionId: string): T | null;
@@ -20,13 +21,18 @@ export interface PersistedSessionMap<T> {
 	reset(): void;
 }
 
-export function persistedSessionMap<T>(key: string, schema: z.ZodType<T>): PersistedSessionMap<T> {
+export function persistedSessionMap<T>(key: string, schema: z.ZodType<T>): PersistedSessionMap<T>
+{
 	const store = hmrPersist(`${key}Store`, () => new Map<string, T>());
-	const persistence = hmrPersist(`${key}File`, () => ({file: null as string | null}));
+	const persistence = hmrPersist(`${key}File`, () => (
+	{
+		file: null as string | null,
+	}));
 	const reloaded = hmrPersist(`${key}Reloaded`, () => new Set<string>());
 	const fileSchema = z.record(z.string(), schema);
 
-	function save(): void {
+	function save(): void
+	{
 		const {file} = persistence;
 		if (file === null) return;
 		const temp = `${file}.tmp`;
@@ -35,37 +41,45 @@ export function persistedSessionMap<T>(key: string, schema: z.ZodType<T>): Persi
 	}
 
 	return {
-		persistTo(file) {
+		persistTo(file)
+		{
 			persistence.file = file;
 			store.clear();
 			reloaded.clear();
 			let json: unknown;
-			try {
+			try
+			{
 				json = JSON.parse(readFileSync(file, "utf8"));
-			} catch {
+			}
+			catch
+			{
 				return;
 			}
 			const saved = fileSchema.safeParse(json);
 			if (!saved.success) return;
-			for (const [sessionId, value] of Object.entries(saved.data)) {
+			for (const [sessionId, value] of Object.entries(saved.data))
+			{
 				store.set(sessionId, value);
 				reloaded.add(sessionId);
 			}
 		},
 		get: (sessionId) => store.get(sessionId) ?? null,
-		set(sessionId, value) {
+		set(sessionId, value)
+		{
 			store.set(sessionId, value);
 			reloaded.delete(sessionId);
 			save();
 		},
-		delete(sessionId) {
+		delete(sessionId)
+		{
 			reloaded.delete(sessionId);
 			const deleted = store.delete(sessionId);
 			if (deleted) save();
 			return deleted;
 		},
 		wasReloaded: (sessionId) => reloaded.has(sessionId),
-		reset() {
+		reset()
+		{
 			store.clear();
 			reloaded.clear();
 			persistence.file = null;

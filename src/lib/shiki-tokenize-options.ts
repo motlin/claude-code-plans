@@ -5,7 +5,8 @@
  * length instead (VS Code's `editor.maxTokenizationLineLength` default) so the
  * output depends only on the input.
  */
-export const SHIKI_TOKENIZE_OPTIONS = {
+export const SHIKI_TOKENIZE_OPTIONS =
+{
 	tokenizeTimeLimit: 0,
 	tokenizeMaxLineLength: 20_000,
 } as const;

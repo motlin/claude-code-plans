@@ -13,18 +13,21 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
 const SNIPPET_TOKENS = 24;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-interface Sentinels {
+interface Sentinels
+{
 	open: string;
 	close: string;
 }
 
-interface ProjectRow {
+interface ProjectRow
+{
 	id: string;
 	name: string;
 	project_path: string | null;
 }
 
-interface TitleHitRow {
+interface TitleHitRow
+{
 	session_id: string;
 	project_id: string;
 	mtime_ms: number;
@@ -33,7 +36,8 @@ interface TitleHitRow {
 	summary_snippet: string;
 }
 
-interface MessageHitRow {
+interface MessageHitRow
+{
 	session_id: string;
 	project_id: string;
 	mtime_ms: number;
@@ -41,7 +45,8 @@ interface MessageHitRow {
 	message_snippet: string;
 }
 
-interface DocHitRow {
+interface DocHitRow
+{
 	path: string;
 	kind: "plan" | "memory";
 	project_id: string;
@@ -50,7 +55,8 @@ interface DocHitRow {
 	content_snippet: string;
 }
 
-interface FileHitRow {
+interface FileHitRow
+{
 	path: string;
 	file_snippet: string;
 	mtime_ms: number;
@@ -60,11 +66,13 @@ interface FileHitRow {
  * Converts FTS5 `highlight()`/`snippet()` output delimited by `sentinels` into
  * plain text plus the matched ranges, as UTF-16 offsets into that text.
  */
-function parseHighlighted(highlighted: string, sentinels: Sentinels): Snippet {
+function parseHighlighted(highlighted: string, sentinels: Sentinels): Snippet
+{
 	let text = "";
 	const matches: TextMatch[] = [];
 	let index = 0;
-	while (index < highlighted.length) {
+	while (index < highlighted.length)
+	{
 		const openIndex = highlighted.indexOf(sentinels.open, index);
 		if (openIndex === -1) break;
 		const closeIndex = highlighted.indexOf(sentinels.close, openIndex + sentinels.open.length);
@@ -72,45 +80,65 @@ function parseHighlighted(highlighted: string, sentinels: Sentinels): Snippet {
 		text += highlighted.slice(index, openIndex);
 		const start = text.length;
 		text += highlighted.slice(openIndex + sentinels.open.length, closeIndex);
-		matches.push({start, end: text.length});
+		matches.push(
+			{
+				start,
+				end: text.length,
+			},
+		);
 		index = closeIndex + sentinels.close.length;
 	}
 	text += highlighted.slice(index);
-	return {text, matches};
+	return {
+		text,
+		matches,
+	};
 }
 
-function escapeRegExp(value: string): string {
+function escapeRegExp(value: string): string
+{
 	return value.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Case-insensitive, non-overlapping occurrences of any term in `text`. */
-function substringMatches(text: string, terms: readonly string[]): TextMatch[] {
+function substringMatches(text: string, terms: readonly string[]): TextMatch[]
+{
 	if (terms.length === 0) return [];
 	const pattern = new RegExp(terms.map(escapeRegExp).join("|"), "giu");
 	const matches: TextMatch[] = [];
-	for (const match of text.matchAll(pattern)) {
-		matches.push({start: match.index, end: match.index + match[0].length});
+	for (const match of text.matchAll(pattern))
+	{
+		matches.push(
+			{
+				start: match.index,
+				end: match.index + match[0].length,
+			},
+		);
 	}
 	return matches;
 }
 
-function dateCutoff(date: UnifiedSearchDate | undefined, now: number): number | null {
+function dateCutoff(date: UnifiedSearchDate | undefined, now: number): number | null
+{
 	if (date === undefined) return null;
-	if (date === "today") {
+	if (date === "today")
+	{
 		const today = new Date(now);
 		return new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
 	}
 	return now - (date === "week" ? 7 : 30) * DAY_MS;
 }
 
-function sessionFilters(project: string | undefined, cutoff: number | null, archived: boolean): SQL {
+function sessionFilters(project: string | undefined, cutoff: number | null, archived: boolean): SQL
+{
 	const projectFilter = project === undefined ? sql`` : sql` AND s.project_id = ${project}`;
 	const dateFilter = cutoff === null ? sql`` : sql` AND s.mtime_ms >= ${cutoff}`;
 	const archivedFilter = archived ? sql` AND s.id IN (SELECT session_id FROM archived_sessions)` : sql``;
 	return sql`${projectFilter}${dateFilter}${archivedFilter}`;
 }
 
-function usableSnippet(highlighted: string, title: string, sentinels: Sentinels): Snippet | null {
+function usableSnippet(highlighted: string, title: string, sentinels: Sentinels): Snippet | null
+{
 	const snippet = parseHighlighted(highlighted, sentinels);
 	if (snippet.matches.length === 0 || snippet.text === title) return null;
 	return snippet;
@@ -124,7 +152,8 @@ function searchSessions(
 	cutoff: number | null,
 	projectNames: Map<string, string>,
 	sentinels: Sentinels,
-): UnifiedSearchItem[] {
+): UnifiedSearchItem[]
+{
 	const filters = sessionFilters(params.project, cutoff, params.archived === true);
 	const {open, close} = sentinels;
 
@@ -140,12 +169,22 @@ function searchSessions(
 			LIMIT ${params.limit}`,
 	);
 
-	const messageHits = searchMessageContentSessions(db, terms, {
-		sessionFilters: sql` AND s.id IS NOT NULL${filters}`,
-		limit: params.limit + titleRows.length,
-		snippet: {open, close, tokens: SNIPPET_TOKENS},
-	});
-	const messageRows: MessageHitRow[] = messageHits.map((hit) => ({
+	const messageHits = searchMessageContentSessions(
+		db,
+		terms,
+		{
+			sessionFilters: sql` AND s.id IS NOT NULL${filters}`,
+			limit: params.limit + titleRows.length,
+			snippet:
+			{
+				open,
+				close,
+				tokens: SNIPPET_TOKENS,
+			},
+		},
+	);
+	const messageRows: MessageHitRow[] = messageHits.map((hit) => (
+	{
 		session_id: hit.session_id,
 		project_id: hit.project_id ?? "",
 		mtime_ms: hit.mtime_ms ?? 0,
@@ -154,14 +193,16 @@ function searchSessions(
 	}));
 
 	const messageSnippets = new Map<string, Snippet>();
-	for (const row of messageRows) {
+	for (const row of messageRows)
+	{
 		if (messageSnippets.has(row.session_id)) continue;
 		messageSnippets.set(row.session_id, parseHighlighted(row.message_snippet, sentinels));
 	}
 
 	const items: UnifiedSearchItem[] = [];
 	const seen = new Set<string>();
-	const baseItem = (sessionId: string, projectId: string, mtimeMs: number) => ({
+	const baseItem = (sessionId: string, projectId: string, mtimeMs: number) => (
+	{
 		kind: "session" as const,
 		id: sessionId,
 		projectId,
@@ -169,7 +210,8 @@ function searchSessions(
 		mtime: new Date(mtimeMs).toISOString(),
 	});
 
-	for (const row of titleRows) {
+	for (const row of titleRows)
+	{
 		if (seen.has(row.session_id)) continue;
 		seen.add(row.session_id);
 		const title = parseHighlighted(row.title_highlight, sentinels);
@@ -178,7 +220,8 @@ function searchSessions(
 			usableSnippet(row.prompt_snippet, title.text, sentinels) ??
 			messageSnippets.get(row.session_id) ??
 			null;
-		const item: UnifiedSearchItem = {
+		const item: UnifiedSearchItem =
+		{
 			...baseItem(row.session_id, row.project_id, row.mtime_ms),
 			title: title.text,
 			titleMatches: title.matches,
@@ -187,11 +230,13 @@ function searchSessions(
 		items.push(item);
 	}
 
-	for (const row of messageRows) {
+	for (const row of messageRows)
+	{
 		if (seen.has(row.session_id)) continue;
 		seen.add(row.session_id);
 		const snippet = messageSnippets.get(row.session_id);
-		const item: UnifiedSearchItem = {
+		const item: UnifiedSearchItem =
+		{
 			...baseItem(row.session_id, row.project_id, row.mtime_ms),
 			title: row.title,
 			titleMatches: [],
@@ -203,7 +248,8 @@ function searchSessions(
 	return items;
 }
 
-function docHref(row: DocHitRow): string {
+function docHref(row: DocHitRow): string
+{
 	const slug = toMdSlug(basename(row.path));
 	return row.kind === "plan" ? `/plan/${slug}` : `/memory/${row.project_id}/${slug}`;
 }
@@ -216,7 +262,8 @@ function searchDocs(
 	cutoff: number | null,
 	projectNames: Map<string, string>,
 	sentinels: Sentinels,
-): UnifiedSearchItem[] {
+): UnifiedSearchItem[]
+{
 	const {open, close} = sentinels;
 	const kindFilter = sql` AND d.kind IN (${sql.join(
 		kinds.map((kind) => sql`${kind}`),
@@ -236,9 +283,11 @@ function searchDocs(
 			LIMIT ${params.limit}`,
 	);
 
-	return rows.map((row) => {
+	return rows.map((row) =>
+	{
 		const title = parseHighlighted(row.title_highlight, sentinels);
-		const item: UnifiedSearchItem = {
+		const item: UnifiedSearchItem =
+		{
 			kind: row.kind,
 			id: row.path,
 			title: title.text,
@@ -254,15 +303,19 @@ function searchDocs(
 	});
 }
 
-function isWithin(path: string, root: string): boolean {
+function isWithin(path: string, root: string): boolean
+{
 	return path === root || path.startsWith(root.endsWith(sep) ? root : `${root}${sep}`);
 }
 
-function owningProject(path: string, projects: readonly ProjectRow[]): ProjectRow | null {
+function owningProject(path: string, projects: readonly ProjectRow[]): ProjectRow | null
+{
 	let best: ProjectRow | null = null;
-	for (const project of projects) {
+	for (const project of projects)
+	{
 		if (project.project_path === null || !isWithin(path, project.project_path)) continue;
-		if (best === null || project.project_path.length > (best.project_path?.length ?? 0)) {
+		if (best === null || project.project_path.length > (best.project_path?.length ?? 0))
+		{
 			best = project;
 		}
 	}
@@ -277,9 +330,11 @@ function searchFiles(
 	cutoff: number | null,
 	projects: readonly ProjectRow[],
 	sentinels: Sentinels,
-): UnifiedSearchItem[] {
+): UnifiedSearchItem[]
+{
 	let scopeFilter = sql``;
-	if (params.project !== undefined) {
+	if (params.project !== undefined)
+	{
 		const root = projects.find((project) => project.id === params.project)?.project_path ?? null;
 		if (root === null) return [];
 		const prefix = root.endsWith(sep) ? root : `${root}${sep}`;
@@ -299,7 +354,8 @@ function searchFiles(
 			LIMIT ${params.limit}`,
 	);
 
-	return rows.map((row) => {
+	return rows.map((row) =>
+	{
 		const project = owningProject(row.path, projects);
 		const title = project?.project_path == null ? row.path : relative(project.project_path, row.path);
 		const snippet = parseHighlighted(row.file_snippet, sentinels);
@@ -321,14 +377,16 @@ function searchFiles(
  * per session with title hits first), plans and memories (`docs_fts`), and
  * indexed files.
  */
-export function searchUnifiedDb(db: IndexDb, params: UnifiedSearchParams, now: number): UnifiedSearchItem[] {
+export function searchUnifiedDb(db: IndexDb, params: UnifiedSearchParams, now: number): UnifiedSearchItem[]
+{
 	const terms = tokenizeFileSearchQuery(params.query);
 	if (terms.length === 0) return [];
 
 	const ftsQuery = toFtsQuery(terms);
 	const cutoff = dateCutoff(params.date, now);
 	const identifier = randomUUID();
-	const sentinels: Sentinels = {
+	const sentinels: Sentinels =
+	{
 		open: `${identifier}-open`,
 		close: `${identifier}-close`,
 	};
@@ -336,7 +394,8 @@ export function searchUnifiedDb(db: IndexDb, params: UnifiedSearchParams, now: n
 	const projectNames = new Map(projects.map((project) => [project.id, project.name]));
 
 	const items: UnifiedSearchItem[] = [];
-	if (params.type === "all" || params.type === "sessions") {
+	if (params.type === "all" || params.type === "sessions")
+	{
 		items.push(...searchSessions(db, ftsQuery, terms, params, cutoff, projectNames, sentinels));
 	}
 	// Archiving applies to sessions only, so the Archived filter leaves no plan, memory or file hits.
@@ -344,10 +403,12 @@ export function searchUnifiedDb(db: IndexDb, params: UnifiedSearchParams, now: n
 	const docKinds: Array<DocHitRow["kind"]> = [];
 	if (params.type === "all" || params.type === "plans") docKinds.push("plan");
 	if (params.type === "all" || params.type === "memories") docKinds.push("memory");
-	if (docKinds.length > 0) {
+	if (docKinds.length > 0)
+	{
 		items.push(...searchDocs(db, ftsQuery, docKinds, params, cutoff, projectNames, sentinels));
 	}
-	if (params.type === "all" || params.type === "files") {
+	if (params.type === "all" || params.type === "files")
+	{
 		items.push(...searchFiles(db, ftsQuery, terms, params, cutoff, projects, sentinels));
 	}
 	return items.slice(0, params.limit);

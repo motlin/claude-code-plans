@@ -3,7 +3,8 @@ import {claudeDark} from "../src/lib/claude-dark-theme";
 import {claudeLight} from "../src/lib/claude-light-theme";
 import {loadCodeTheme} from "../src/lib/code-themes";
 import type {GhosttyAppearance} from "../src/lib/server-fns";
-import {
+import
+{
 	applyTerminalTheme,
 	DEFAULT_TERMINAL_APPEARANCE,
 	terminalBaseFromCodeTheme,
@@ -11,9 +12,11 @@ import {
 	TerminalAppearanceSchema,
 } from "../src/lib/terminal-theme";
 
-const FULL_THEME = {
+const FULL_THEME =
+{
 	name: "fixture-dark",
-	colors: {
+	colors:
+	{
 		"editor.background": "#101010",
 		"editor.foreground": "#eeeeee",
 		"terminal.background": "#0A0B0C",
@@ -40,45 +43,58 @@ const FULL_THEME = {
 	},
 };
 
-const GHOSTTY: GhosttyAppearance = {
+const GHOSTTY: GhosttyAppearance =
+{
 	fontFamily: '"Alice Mono", monospace',
 	fontSize: 16,
-	theme: {background: "#1d1f21", foreground: "#c5c8c6", cursor: "#dddddd", red: "#cc6666"},
+	theme:
+	{
+		background: "#1d1f21",
+		foreground: "#c5c8c6",
+		cursor: "#dddddd",
+		red: "#cc6666",
+	},
 };
 
-describe("terminalThemeFromCodeTheme", () => {
-	it("maps the 16 ANSI colours, cursor and selection from terminal.* keys, and the background from editor.background", () => {
-		expect(terminalThemeFromCodeTheme(FULL_THEME)).toStrictEqual({
-			background: "#101010",
-			foreground: "#d0d1d2",
-			cursor: "#ff00ff",
-			cursorAccent: "#112233",
-			selectionBackground: "#3a3d4180",
-			selectionForeground: "#d0d1d2",
-			black: "#000000",
-			red: "#aa0000",
-			green: "#00aa00",
-			yellow: "#aaaa00",
-			blue: "#0000aa",
-			magenta: "#aa00aa",
-			cyan: "#00aaaa",
-			white: "#aaaaaa",
-			brightBlack: "#555555",
-			brightRed: "#ff5555",
-			brightGreen: "#55ff55",
-			brightYellow: "#ffff55",
-			brightBlue: "#5555ff",
-			brightMagenta: "#ff55ff",
-			brightCyan: "#55ffff",
-			brightWhite: "#ffffff",
-		});
+describe("terminalThemeFromCodeTheme", () =>
+{
+	it("maps the 16 ANSI colours, cursor and selection from terminal.* keys, and the background from editor.background", () =>
+	{
+		expect(terminalThemeFromCodeTheme(FULL_THEME)).toStrictEqual(
+			{
+				background: "#101010",
+				foreground: "#d0d1d2",
+				cursor: "#ff00ff",
+				cursorAccent: "#112233",
+				selectionBackground: "#3a3d4180",
+				selectionForeground: "#d0d1d2",
+				black: "#000000",
+				red: "#aa0000",
+				green: "#00aa00",
+				yellow: "#aaaa00",
+				blue: "#0000aa",
+				magenta: "#aa00aa",
+				cyan: "#00aaaa",
+				white: "#aaaaaa",
+				brightBlack: "#555555",
+				brightRed: "#ff5555",
+				brightGreen: "#55ff55",
+				brightYellow: "#ffff55",
+				brightBlue: "#5555ff",
+				brightMagenta: "#ff55ff",
+				brightCyan: "#55ffff",
+				brightWhite: "#ffffff",
+			},
+		);
 	});
 
-	it("starts from the base theme and fills cursor keys from the foreground and background, like upstream's Ae", () => {
+	it("starts from the base theme and fills cursor keys from the foreground and background, like upstream's Ae", () =>
+	{
 		expect(
 			terminalThemeFromCodeTheme(
 				{
-					colors: {
+					colors:
+					{
 						"editor.background": "#FFFFFF",
 						"editor.foreground": "#24292eff",
 						"terminal.ansiRed": "#d73a49",
@@ -95,75 +111,129 @@ describe("terminalThemeFromCodeTheme", () => {
 					green: "#00aa00",
 				},
 			),
-		).toStrictEqual({
-			background: "#ffffff",
-			foreground: "#24292e",
-			cursor: "#24292e",
-			cursorAccent: "#ffffff",
-			selectionBackground: "#0099ff4d",
-			selectionForeground: "#24292e",
-			red: "#d73a49",
-			green: "#00aa00",
-		});
+		).toStrictEqual(
+			{
+				background: "#ffffff",
+				foreground: "#24292e",
+				cursor: "#24292e",
+				cursorAccent: "#ffffff",
+				selectionBackground: "#0099ff4d",
+				selectionForeground: "#24292e",
+				red: "#d73a49",
+				green: "#00aa00",
+			},
+		);
 	});
 
-	it("picks editor.foreground over a terminal.foreground below 10:1, raising a darker brightWhite to it", () => {
+	it("picks editor.foreground over a terminal.foreground below 10:1, raising a darker brightWhite to it", () =>
+	{
 		const theme = (terminalForeground: string) =>
-			terminalThemeFromCodeTheme({
-				colors: {
-					"editor.background": "#ffffff",
-					"editor.foreground": "#222222",
-					"terminal.foreground": terminalForeground,
-					"terminal.ansiBrightWhite": "#111111",
+			terminalThemeFromCodeTheme(
+				{
+					colors:
+					{
+						"editor.background": "#ffffff",
+						"editor.foreground": "#222222",
+						"terminal.foreground": terminalForeground,
+						"terminal.ansiBrightWhite": "#111111",
+					},
 				},
-			});
-		const pick = ({foreground, brightWhite}: ReturnType<typeof theme>) => ({foreground, brightWhite});
+			);
+		const pick = ({foreground, brightWhite}: ReturnType<typeof theme>) => (
+		{
+			foreground,
+			brightWhite,
+		});
 		expect([pick(theme("#888888")), pick(theme("#333333")), pick(theme("#888888cc"))]).toStrictEqual([
-			{foreground: "#222222", brightWhite: "#222222"},
-			{foreground: "#333333", brightWhite: "#111111"},
-			{foreground: "#888888", brightWhite: "#111111"},
+			{
+				foreground: "#222222",
+				brightWhite: "#222222",
+			},
+			{
+				foreground: "#333333",
+				brightWhite: "#111111",
+			},
+			{
+				foreground: "#888888",
+				brightWhite: "#111111",
+			},
 		]);
 	});
 
-	it("falls back to editor.selectionBackground when the theme has no terminal selection", () => {
+	it("falls back to editor.selectionBackground when the theme has no terminal selection", () =>
+	{
 		expect(
 			terminalThemeFromCodeTheme(
-				{colors: {"editor.background": "#ffffff", "editor.selectionBackground": "#11223344"}},
-				{foreground: "#000011", selectionBackground: "#0099ff4d", selectionForeground: "#ff0000"},
+				{
+					colors:
+					{
+						"editor.background": "#ffffff",
+						"editor.selectionBackground": "#11223344",
+					},
+				},
+				{
+					foreground: "#000011",
+					selectionBackground: "#0099ff4d",
+					selectionForeground: "#ff0000",
+				},
 			),
-		).toStrictEqual({
-			background: "#ffffff",
-			foreground: "#000011",
-			cursor: "#000011",
-			cursorAccent: "#ffffff",
-			selectionBackground: "#11223344",
-			selectionForeground: "#000011",
-		});
+		).toStrictEqual(
+			{
+				background: "#ffffff",
+				foreground: "#000011",
+				cursor: "#000011",
+				cursorAccent: "#ffffff",
+				selectionBackground: "#11223344",
+				selectionForeground: "#000011",
+			},
+		);
 	});
 
-	it("maps real themes the way upstream merges them over the Claude default for the mode", async () => {
+	it("maps real themes the way upstream merges them over the Claude default for the mode", async () =>
+	{
 		const [light, dark] = [
 			terminalBaseFromCodeTheme(await loadCodeTheme("claude-light")),
 			terminalBaseFromCodeTheme(await loadCodeTheme("claude-dark")),
 		];
 		const github = terminalThemeFromCodeTheme(await loadCodeTheme("github-light"), light);
 		const pierre = terminalThemeFromCodeTheme(await loadCodeTheme("pierre-dark"), dark);
-		expect({
-			github: {foreground: github.foreground, selectionBackground: github.selectionBackground},
-			pierre: {
-				background: pierre.background,
-				foreground: pierre.foreground,
-				brightWhite: pierre.brightWhite,
-				cursor: pierre.cursor,
+		expect(
+			{
+				github:
+				{
+					foreground: github.foreground,
+					selectionBackground: github.selectionBackground,
+				},
+				pierre:
+				{
+					background: pierre.background,
+					foreground: pierre.foreground,
+					brightWhite: pierre.brightWhite,
+					cursor: pierre.cursor,
+				},
 			},
-		}).toStrictEqual({
-			github: {foreground: "#24292e", selectionBackground: "#0366d625"},
-			pierre: {background: "#0a0a0a", foreground: "#fafafa", brightWhite: "#fafafa", cursor: "#fafafa"},
-		});
+		).toStrictEqual(
+			{
+				github:
+				{
+					foreground: "#24292e",
+					selectionBackground: "#0366d625",
+				},
+				pierre:
+				{
+					background: "#0a0a0a",
+					foreground: "#fafafa",
+					brightWhite: "#fafafa",
+					cursor: "#fafafa",
+				},
+			},
+		);
 	});
 
-	it("maps upstream's Claude Light and Claude Dark terminal colours exactly", () => {
-		const LIGHT = {
+	it("maps upstream's Claude Light and Claude Dark terminal colours exactly", () =>
+	{
+		const LIGHT =
+		{
 			background: "#ffffff",
 			foreground: "#14181f",
 			cursor: "#0073e6",
@@ -186,7 +256,8 @@ describe("terminalThemeFromCodeTheme", () => {
 			brightCyan: "#8e6bd9",
 			brightWhite: "#d6d6d6",
 		};
-		const DARK = {
+		const DARK =
+		{
 			background: "#191919",
 			foreground: "#eaecf0",
 			cursor: "#0099ff",
@@ -209,55 +280,93 @@ describe("terminalThemeFromCodeTheme", () => {
 			brightCyan: "#b796ff",
 			brightWhite: "#ededed",
 		};
-		expect({
-			light: terminalThemeFromCodeTheme(claudeLight),
-			dark: terminalThemeFromCodeTheme(claudeDark),
-			lightBase: terminalBaseFromCodeTheme(claudeLight),
-			darkBase: terminalBaseFromCodeTheme(claudeDark),
-		}).toStrictEqual({
-			light: {...LIGHT, selectionForeground: "#14181f"},
-			dark: {...DARK, selectionForeground: "#eaecf0"},
-			lightBase: LIGHT,
-			darkBase: DARK,
-		});
+		expect(
+			{
+				light: terminalThemeFromCodeTheme(claudeLight),
+				dark: terminalThemeFromCodeTheme(claudeDark),
+				lightBase: terminalBaseFromCodeTheme(claudeLight),
+				darkBase: terminalBaseFromCodeTheme(claudeDark),
+			},
+		).toStrictEqual(
+			{
+				light:
+				{
+					...LIGHT,
+					selectionForeground: "#14181f",
+				},
+				dark:
+				{
+					...DARK,
+					selectionForeground: "#eaecf0",
+				},
+				lightBase: LIGHT,
+				darkBase: DARK,
+			},
+		);
 	});
 
-	it("returns an empty theme when the code theme has no colours", () => {
+	it("returns an empty theme when the code theme has no colours", () =>
+	{
 		expect(terminalThemeFromCodeTheme({})).toStrictEqual({});
 	});
 });
 
-describe("applyTerminalTheme", () => {
-	it("keeps the Ghostty appearance untouched in ghostty mode", () => {
+describe("applyTerminalTheme", () =>
+{
+	it("keeps the Ghostty appearance untouched in ghostty mode", () =>
+	{
 		expect(applyTerminalTheme(GHOSTTY, null, null)).toBe(GHOSTTY);
 	});
 
-	it("sizes the terminal font from Settings ▸ Code font size when one is set", () => {
+	it("sizes the terminal font from Settings ▸ Code font size when one is set", () =>
+	{
 		expect([
 			applyTerminalTheme(GHOSTTY, null, 20).fontSize,
 			applyTerminalTheme(GHOSTTY, {}, 11).fontSize,
 		]).toStrictEqual([20, 11]);
 	});
 
-	it("replaces the Ghostty colours with the code theme, keeping its font and background fallbacks", () => {
-		expect(applyTerminalTheme(GHOSTTY, {red: "#d73a49", cursor: "#000000"}, null)).toStrictEqual({
-			fontFamily: '"Alice Mono", monospace',
-			fontSize: 16,
-			theme: {
-				background: "#1d1f21",
-				foreground: "#c5c8c6",
-				red: "#d73a49",
-				cursor: "#000000",
+	it("replaces the Ghostty colours with the code theme, keeping its font and background fallbacks", () =>
+	{
+		expect(
+			applyTerminalTheme(
+				GHOSTTY,
+				{
+					red: "#d73a49",
+					cursor: "#000000",
+				},
+				null,
+			),
+		).toStrictEqual(
+			{
+				fontFamily: '"Alice Mono", monospace',
+				fontSize: 16,
+				theme:
+				{
+					background: "#1d1f21",
+					foreground: "#c5c8c6",
+					red: "#d73a49",
+					cursor: "#000000",
+				},
 			},
-		});
+		);
 	});
 });
 
-describe("TerminalAppearanceSchema", () => {
-	it("follows the code theme by default, with Ghostty as the alternative", () => {
-		expect({
-			options: TerminalAppearanceSchema.options,
-			default: DEFAULT_TERMINAL_APPEARANCE,
-		}).toStrictEqual({options: ["code-theme", "ghostty"], default: "code-theme"});
+describe("TerminalAppearanceSchema", () =>
+{
+	it("follows the code theme by default, with Ghostty as the alternative", () =>
+	{
+		expect(
+			{
+				options: TerminalAppearanceSchema.options,
+				default: DEFAULT_TERMINAL_APPEARANCE,
+			},
+		).toStrictEqual(
+			{
+				options: ["code-theme", "ghostty"],
+				default: "code-theme",
+			},
+		);
 	});
 });

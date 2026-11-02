@@ -5,7 +5,8 @@ import {isBenignToolError} from "./tool-labels";
  * Minimal shape needed by summarizeToolCalls, categorize, and diffStatsForCall.
  * Satisfied by raw content blocks, readSession tool call objects, and test data alike.
  */
-export interface ToolCallLike {
+export interface ToolCallLike
+{
 	/** The tool_use id, which keys a call that names no file. */
 	id?: string | undefined;
 	name: string;
@@ -23,7 +24,17 @@ export interface ToolCallLike {
 	 * Whether a Write created its file or updated one that existed, and the
 	 * lines the result's patch says a file edit added and removed.
 	 */
-	resultMeta?: {writeType?: "create" | "update"; patchStats?: {added: number; removed: number}} | undefined;
+	resultMeta?:
+		|
+		  {
+				writeType?: "create" | "update";
+				patchStats?:
+				{
+					added: number;
+					removed: number;
+				};
+		  }
+		| undefined;
 }
 
 const COMMAND_MESSAGE_RE = /<command-message[^>]*>([\s\S]*?)<\/command-message>/;
@@ -43,20 +54,24 @@ const PASTED_CONTENT_RE = /(^|\n)<pasted_content id="([^"\n]*)">\n(?:([\s\S]*?)\
 const PASTED_CONTENT_TEXT = "$1$3";
 
 /** The prompt with each pasted_content wrapper replaced by the text it wraps. */
-export function unwrapPastedContent(text: string): string {
+export function unwrapPastedContent(text: string): string
+{
 	return text.replace(PASTED_CONTENT_RE, PASTED_CONTENT_TEXT);
 }
 
-function cleanCommandText(rawText: string): string {
+function cleanCommandText(rawText: string): string
+{
 	const text = rawText.replace(PASTED_CONTENT_RE, PASTED_CONTENT_TEXT);
 	const message = text.match(COMMAND_MESSAGE_RE)?.[1];
-	if (message !== undefined) {
+	if (message !== undefined)
+	{
 		return message.replace(STRIP_TAG_RE, "").trim();
 	}
 	return text.replace(STRIP_BLOCK_RE, "").replace(STRIP_TAG_RE, "").trim();
 }
 
-export function stripCommandTags(text: string): string {
+export function stripCommandTags(text: string): string
+{
 	return cleanCommandText(text);
 }
 
@@ -106,35 +121,66 @@ const HARNESS_TAG_RE = new RegExp(
 );
 
 /** The text with every harness tag element (a teammate message, a system reminder) removed, as upstream shows a user bubble. */
-export function stripHarnessTags(text: string): string {
+export function stripHarnessTags(text: string): string
+{
 	return text.replace(HARNESS_TAG_RE, "");
 }
 
 /** A prompt's bubble text, without command tags or the harness tags upstream hides; empty when nothing the user typed remains. */
-export function cleanPromptText(text: string): string {
+export function cleanPromptText(text: string): string
+{
 	return stripHarnessTags(stripCommandTags(text)).trim();
 }
 
 const BASH_INPUT_RE = /^\s*<bash-input>([\s\S]*?)<\/bash-input>\s*$/;
 const BASH_OUTPUT_RE = /^\s*<bash-stdout>([\s\S]*?)<\/bash-stdout>\s*<bash-stderr>([\s\S]*?)<\/bash-stderr>\s*$/;
 
-export function parseBashInput(text: string): {command: string} | null {
+export function parseBashInput(text: string):
+{
+	command: string;
+} | null
+{
 	const command = text.match(BASH_INPUT_RE)?.[1];
-	return command === undefined ? null : {command};
+	return command === undefined
+		? null
+		:
+			{
+				command,
+			};
 }
 
-export function parseBashOutput(text: string): {stdout: string; stderr: string} | null {
+export function parseBashOutput(text: string):
+{
+	stdout: string;
+	stderr: string;
+} | null
+{
 	const [, stdout, stderr] = text.match(BASH_OUTPUT_RE) ?? [];
 	if (stdout === undefined || stderr === undefined) return null;
-	return {stdout, stderr};
+	return {
+		stdout,
+		stderr,
+	};
 }
 
-export function parseCommandBlock(text: string): {name: string; args?: string} | null {
+export function parseCommandBlock(text: string):
+{
+	name: string;
+	args?: string;
+} | null
+{
 	const name = text.match(/<command-name>(.*?)<\/command-name>/)?.[1];
 	if (name === undefined) return null;
 	const argsMatch = text.match(/<command-args>(.*?)<\/command-args>/s);
 	const args = argsMatch?.[1]?.trim();
-	const result: {name: string; args?: string} = {name};
+	const result:
+	{
+		name: string;
+		args?: string;
+	} =
+	{
+		name,
+	};
 	if (args) result.args = args;
 	return result;
 }
@@ -154,10 +200,12 @@ const ARG_TAG_RE = /<\/?(?:description|instructions|arguments|args|user-request)
  * header lands in a separate record — so `isMeta` is the only signal that these
  * tags are template scaffolding and not something the user pasted.
  */
-function stripCommandBoilerplate(text: string): string {
+function stripCommandBoilerplate(text: string): string
+{
 	const match = text.match(ARG_BLOCK_RE);
 	const rawArgs = match?.[2];
-	if (match && rawArgs !== undefined) {
+	if (match && rawArgs !== undefined)
+	{
 		const args = rawArgs.trim();
 		if (args) return args;
 
@@ -173,7 +221,8 @@ const REQUEST_INTERRUPTED_RE = /^\[Request interrupted by user.*\]\s*$/;
  * Whether a user record is the marker the CLI writes in place of the turn the
  * user cut short with ESC. Nothing in it came from the keyboard.
  */
-export function isRequestInterrupted(text: string): boolean {
+export function isRequestInterrupted(text: string): boolean
+{
 	return REQUEST_INTERRUPTED_RE.test(text.trim());
 }
 
@@ -188,7 +237,8 @@ const SKILL_ARGUMENTS_RE = /\nARGUMENTS: ([\s\S]*)$/;
  * the slash command record itself carries no title, so this body is all a
  * session started by a bare skill has to be titled by.
  */
-function skillLaunchTitle(text: string): string | null {
+function skillLaunchTitle(text: string): string | null
+{
 	const dir = text.match(SKILL_LAUNCH_RE)?.[1];
 	if (dir === undefined) return null;
 	const args = text.match(SKILL_ARGUMENTS_RE)?.[1]?.trim();
@@ -199,7 +249,14 @@ function skillLaunchTitle(text: string): string | null {
 }
 
 /** The user's own words, with command scaffolding and line breaks removed. */
-function titleText(text: string, options?: {isMeta?: boolean}): string {
+function titleText(
+	text: string,
+	options?:
+	{
+		isMeta?: boolean;
+	},
+): string
+{
 	const command = cleanCommandText(text);
 	const skill = options?.isMeta === true ? skillLaunchTitle(command) : null;
 	if (skill !== null) return skill.replace(/\s+/g, " ").trim();
@@ -293,7 +350,14 @@ const MIN_INFORMATIVE_LENGTH = 3;
  * list cannot spell has no continuation words to find and counts as informative
  * on its length alone.
  */
-export function isInformativePrompt(text: string, options?: {isMeta?: boolean}): boolean {
+export function isInformativePrompt(
+	text: string,
+	options?:
+	{
+		isMeta?: boolean;
+	},
+): boolean
+{
 	const cleaned = titleText(text, options);
 	if (cleaned.length < MIN_INFORMATIVE_LENGTH) return false;
 	const words = cleaned.toLowerCase().match(/[a-z0-9']+/g);
@@ -301,7 +365,15 @@ export function isInformativePrompt(text: string, options?: {isMeta?: boolean}):
 	return !words.every((word) => CONTINUATION_WORDS.has(word));
 }
 
-export function extractSessionTitle(text: string, fallback?: string, options?: {isMeta?: boolean}): string {
+export function extractSessionTitle(
+	text: string,
+	fallback?: string,
+	options?:
+	{
+		isMeta?: boolean;
+	},
+): string
+{
 	const cleaned = titleText(text, options);
 	if (!cleaned) return fallback ?? "Untitled Session";
 
@@ -309,7 +381,8 @@ export function extractSessionTitle(text: string, fallback?: string, options?: {
 
 	const truncated = cleaned.slice(0, 80);
 	const lastSpace = truncated.lastIndexOf(" ");
-	if (lastSpace > 40) {
+	if (lastSpace > 40)
+	{
 		return truncated.slice(0, lastSpace) + "...";
 	}
 	return truncated + "...";
@@ -320,7 +393,8 @@ export function extractSessionTitle(text: string, fallback?: string, options?: {
  * Skill, ToolSearch, MCP tools, the Task* family, SendMessage, Artifact -- folds
  * into one trailing "used N tools" segment.
  */
-const CATEGORY_BY_TOOL = {
+const CATEGORY_BY_TOOL =
+{
 	Read: "read",
 	Write: "write",
 	Edit: "edit",
@@ -339,7 +413,8 @@ const CATEGORY_BY_TOOL = {
 
 type ToolCategory = (typeof CATEGORY_BY_TOOL)[keyof typeof CATEGORY_BY_TOOL];
 
-interface SegmentLabel {
+interface SegmentLabel
+{
 	verb: string;
 	/** The rest for a single call or file. */
 	one: string;
@@ -347,35 +422,115 @@ interface SegmentLabel {
 	many: string;
 }
 
-const FILE_NOUNS = {one: "a file", many: "{n} files"};
-
-const CATEGORY_LABELS: Record<ToolCategory, SegmentLabel> = {
-	read: {verb: "Read", ...FILE_NOUNS},
-	write: {verb: "Created", ...FILE_NOUNS},
-	edit: {verb: "Edited", ...FILE_NOUNS},
-	notebook: {verb: "Edited", one: "a notebook", many: "{n} notebooks"},
-	bash: {verb: "Ran", one: "a command", many: "{n} commands"},
-	grep: {verb: "Searched", one: "code", many: "code"},
-	glob: {verb: "Found", one: "files", many: "files"},
-	websearch: {verb: "Browsed", one: "the web", many: "the web"},
-	webfetch: {verb: "Fetched", one: "a page", many: "{n} pages"},
-	agent: {verb: "Ran", one: "an agent", many: "{n} agents"},
-	todo: {verb: "Updated", one: "todos", many: "todos"},
+const FILE_NOUNS =
+{
+	one: "a file",
+	many: "{n} files",
 };
 
-const OTHER_TOOLS_LABEL: SegmentLabel = {verb: "Used", one: "a tool", many: "{n} tools"};
-const RECEIVED_LABEL: SegmentLabel = {verb: "Received", one: "a message", many: "{n} messages"};
+const CATEGORY_LABELS: Record<ToolCategory, SegmentLabel> =
+{
+	read:
+	{
+		verb: "Read",
+		...FILE_NOUNS,
+	},
+	write:
+	{
+		verb: "Created",
+		...FILE_NOUNS,
+	},
+	edit:
+	{
+		verb: "Edited",
+		...FILE_NOUNS,
+	},
+	notebook:
+	{
+		verb: "Edited",
+		one: "a notebook",
+		many: "{n} notebooks",
+	},
+	bash:
+	{
+		verb: "Ran",
+		one: "a command",
+		many: "{n} commands",
+	},
+	grep:
+	{
+		verb: "Searched",
+		one: "code",
+		many: "code",
+	},
+	glob:
+	{
+		verb: "Found",
+		one: "files",
+		many: "files",
+	},
+	websearch:
+	{
+		verb: "Browsed",
+		one: "the web",
+		many: "the web",
+	},
+	webfetch:
+	{
+		verb: "Fetched",
+		one: "a page",
+		many: "{n} pages",
+	},
+	agent:
+	{
+		verb: "Ran",
+		one: "an agent",
+		many: "{n} agents",
+	},
+	todo:
+	{
+		verb: "Updated",
+		one: "todos",
+		many: "todos",
+	},
+};
+
+const OTHER_TOOLS_LABEL: SegmentLabel =
+{
+	verb: "Used",
+	one: "a tool",
+	many: "{n} tools",
+};
+const RECEIVED_LABEL: SegmentLabel =
+{
+	verb: "Received",
+	one: "a message",
+	many: "{n} messages",
+};
 
 /** Categories whose calls change a file, so their diff stats sum into the header. */
-function isMutation(cat: ToolCategory): boolean {
+function isMutation(cat: ToolCategory): boolean
+{
 	return cat === "edit" || cat === "write";
 }
 
 /** Categories that name a file, which collapse into one segment when the group touches only one file. */
 const FILE_CATEGORIES: ReadonlySet<ToolCategory> = new Set(["read", "write", "edit", "notebook"]);
 
-function countDiffLines(oldStr: string, newStr: string): {added: number; removed: number} {
-	if (oldStr === newStr) return {added: 0, removed: 0};
+function countDiffLines(
+	oldStr: string,
+	newStr: string,
+):
+{
+	added: number;
+	removed: number;
+}
+{
+	if (oldStr === newStr)
+		return {
+			added: 0,
+			removed: 0,
+		};
 	const oldLines = oldStr === "" ? [] : oldStr.split("\n");
 	const newLines = newStr === "" ? [] : newStr.split("\n");
 	const oldCounts = new Map<string, number>();
@@ -384,25 +539,32 @@ function countDiffLines(oldStr: string, newStr: string): {added: number; removed
 	for (const line of newLines) newCounts.set(line, (newCounts.get(line) ?? 0) + 1);
 
 	let added = 0;
-	for (const [line, count] of newCounts) {
+	for (const [line, count] of newCounts)
+	{
 		const inOld = oldCounts.get(line) ?? 0;
 		if (count > inOld) added += count - inOld;
 	}
 	let removed = 0;
-	for (const [line, count] of oldCounts) {
+	for (const [line, count] of oldCounts)
+	{
 		const inNew = newCounts.get(line) ?? 0;
 		if (count > inNew) removed += count - inNew;
 	}
-	return {added, removed};
+	return {
+		added,
+		removed,
+	};
 }
 
 /** One old/new string pair applied by an `Edit` or `MultiEdit` tool call. */
-export interface EditDiffEntry {
+export interface EditDiffEntry
+{
 	oldStr: string;
 	newStr: string;
 }
 
-function asString(value: unknown): string {
+function asString(value: unknown): string
+{
 	return typeof value === "string" ? value : "";
 }
 
@@ -411,63 +573,90 @@ function asString(value: unknown): string {
  * single pair at the top level; `MultiEdit` carries an `edits[]` array and falls
  * back to the top-level pair when that array is absent or empty.
  */
-export function editDiffEntries(input: Record<string, unknown>): EditDiffEntry[] {
+export function editDiffEntries(input: Record<string, unknown>): EditDiffEntry[]
+{
 	const edits = input["edits"];
-	if (Array.isArray(edits)) {
+	if (Array.isArray(edits))
+	{
 		const entries = edits
 			.filter((edit): edit is Record<string, unknown> => typeof edit === "object" && edit !== null)
-			.map((edit) => ({
+			.map((edit) => (
+			{
 				oldStr: asString(edit["old_string"]),
 				newStr: asString(edit["new_string"]),
 			}));
 		if (entries.length > 0) return entries;
 	}
 	if (typeof input["old_string"] !== "string") return [];
-	return [{oldStr: asString(input["old_string"]), newStr: asString(input["new_string"])}];
+	return [
+		{
+			oldStr: asString(input["old_string"]),
+			newStr: asString(input["new_string"]),
+		},
+	];
 }
 
-export function diffStatsForCall(call: ToolCallLike): {
+export function diffStatsForCall(call: ToolCallLike):
+{
 	added: number;
 	removed: number;
-} {
+}
+{
 	const input = call.input;
 	// Upstream trusts the result's patch over counting the call's own input.
 	const patchStats = call.resultMeta?.patchStats;
-	if (patchStats !== undefined && (call.name === "Write" || call.name === "Edit" || call.name === "MultiEdit")) {
+	if (patchStats !== undefined && (call.name === "Write" || call.name === "Edit" || call.name === "MultiEdit"))
+	{
 		return patchStats;
 	}
-	if (call.name === "Write") {
+	if (call.name === "Write")
+	{
 		const content = asString(input["content"]);
 		// A final newline ends the last line rather than starting another, as upstream counts it.
 		const added = content === "" ? 0 : content.split("\n").length - (content.endsWith("\n") ? 1 : 0);
-		return {added, removed: 0};
+		return {
+			added,
+			removed: 0,
+		};
 	}
-	if (call.name === "Edit" || call.name === "MultiEdit") {
+	if (call.name === "Edit" || call.name === "MultiEdit")
+	{
 		let added = 0;
 		let removed = 0;
-		for (const entry of editDiffEntries(input)) {
+		for (const entry of editDiffEntries(input))
+		{
 			const stats = countDiffLines(entry.oldStr, entry.newStr);
 			added += stats.added;
 			removed += stats.removed;
 		}
-		return {added, removed};
+		return {
+			added,
+			removed,
+		};
 	}
-	return {added: 0, removed: 0};
+	return {
+		added: 0,
+		removed: 0,
+	};
 }
 
 /** An MCP tool whose method is exactly `read` (Claude Docs' read), which upstream counts as reading a file. */
 const MCP_READ_TOOL = /^mcp__.+__read$/;
 
-function categorize(call: ToolCallLike): ToolCategory | null {
+function categorize(call: ToolCallLike): ToolCategory | null
+{
 	if (MCP_READ_TOOL.test(call.name)) return "read";
 	return isKeyOf(CATEGORY_BY_TOOL, call.name) ? CATEGORY_BY_TOOL[call.name] : null;
 }
 
-export function formatToolName(toolName: string): string {
-	if (toolName.startsWith("mcp__")) {
+export function formatToolName(toolName: string): string
+{
+	if (toolName.startsWith("mcp__"))
+	{
 		const withoutPrefix = toolName.slice("mcp__".length);
 		const serverName = withoutPrefix.split("__")[0] ?? withoutPrefix;
-		if (serverName.startsWith("plugin_")) {
+		if (serverName.startsWith("plugin_"))
+		{
 			const segments = serverName.split("_");
 			return segments.at(-1) ?? serverName;
 		}
@@ -476,11 +665,13 @@ export function formatToolName(toolName: string): string {
 	return toolName;
 }
 
-function lowercaseFirst(text: string): string {
+function lowercaseFirst(text: string): string
+{
 	return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
-function pluralize(count: number, singular: string, plural: string): string {
+function pluralize(count: number, singular: string, plural: string): string
+{
 	if (count === 1) return singular;
 	return plural.replace("{n}", String(count));
 }
@@ -489,12 +680,16 @@ function pluralize(count: number, singular: string, plural: string): string {
  * Extract text from a tool_result content field.
  * Content can be a plain string or an array of {type: 'text', text: string} blocks.
  */
-export function extractToolResultContent(content: unknown): string | undefined {
+export function extractToolResultContent(content: unknown): string | undefined
+{
 	if (typeof content === "string") return content;
-	if (Array.isArray(content)) {
+	if (Array.isArray(content))
+	{
 		const texts: string[] = [];
-		for (const item of content) {
-			if (isRecord(item) && item["type"] === "text" && typeof item["text"] === "string") {
+		for (const item of content)
+		{
+			if (isRecord(item) && item["type"] === "text" && typeof item["text"] === "string")
+			{
 				texts.push(item["text"]);
 			}
 		}
@@ -504,7 +699,8 @@ export function extractToolResultContent(content: unknown): string | undefined {
 }
 
 /** An image a tool result returned, as base64 data. */
-export interface ToolResultImage {
+export interface ToolResultImage
+{
 	mimeType: string;
 	data: string;
 }
@@ -516,10 +712,12 @@ const TOOL_RESULT_IMAGE_TYPES: ReadonlySet<string> = new Set(["image/jpeg", "ima
  * Extract the base64 images from a tool_result content field, in order: a Read
  * of an image file, a browser screenshot, or any MCP tool returning `image` blocks.
  */
-export function extractToolResultImages(content: unknown): ToolResultImage[] {
+export function extractToolResultImages(content: unknown): ToolResultImage[]
+{
 	if (!Array.isArray(content)) return [];
 	const images: ToolResultImage[] = [];
-	for (const item of content) {
+	for (const item of content)
+	{
 		if (!isRecord(item) || item["type"] !== "image") continue;
 		const source = item["source"];
 		if (!isRecord(source) || source["type"] !== "base64") continue;
@@ -527,7 +725,12 @@ export function extractToolResultImages(content: unknown): ToolResultImage[] {
 		const data = source["data"];
 		if (typeof mimeType !== "string" || typeof data !== "string") continue;
 		if (!TOOL_RESULT_IMAGE_TYPES.has(mimeType)) continue;
-		images.push({mimeType, data});
+		images.push(
+			{
+				mimeType,
+				data,
+			},
+		);
 	}
 	return images;
 }
@@ -535,7 +738,8 @@ export function extractToolResultImages(content: unknown): ToolResultImage[] {
 /**
  * Strip non-rendering wrapper tags from tool result text.
  */
-export function stripResultTags(text: string): string {
+export function stripResultTags(text: string): string
+{
 	let result = text;
 	result = result.replace(/<\/?tool_use_error>/g, "");
 	result = result.replace(/<\/?persisted-output>/g, "");
@@ -547,7 +751,8 @@ export function stripResultTags(text: string): string {
 /**
  * Truncate text to a maximum number of lines, appending a count of omitted lines.
  */
-export function truncateResult(text: string, maxLines: number): string {
+export function truncateResult(text: string, maxLines: number): string
+{
 	const lines = text.split("\n");
 	if (lines.length <= maxLines) return text;
 	const truncated = lines.slice(0, maxLines);
@@ -561,7 +766,8 @@ export function truncateResult(text: string, maxLines: number): string {
  *   <span class="text-body text-secondary">{verb}</span>
  *   <span class="text-secondary"> {rest}</span>
  */
-export interface SummarySegment {
+export interface SummarySegment
+{
 	verb: string;
 	rest: string;
 	/**
@@ -572,7 +778,8 @@ export interface SummarySegment {
 }
 
 /** The file a sole-file segment names; `preferDiff` once a write or edit to it succeeded. */
-export interface SummaryFile {
+export interface SummaryFile
+{
 	path: string;
 	preferDiff: boolean;
 }
@@ -582,20 +789,37 @@ export interface SummaryFile {
  * file, the phrases stop at its verb ("Ran 2 commands, read") and the name
  * leaves for the row's meta slot.
  */
-export function splitTrailingFile(
-	segments: readonly SummarySegment[],
-): {segments: SummarySegment[]; name: string; file: SummaryFile} | undefined {
+export function splitTrailingFile(segments: readonly SummarySegment[]):
+	|
+	  {
+			segments: SummarySegment[];
+			name: string;
+			file: SummaryFile;
+	  }
+	| undefined
+{
 	const last = segments.at(-1);
 	if (last?.file === undefined) return undefined;
 	return {
-		segments: [...segments.slice(0, -1).map(({verb, rest}) => ({verb, rest})), {verb: last.verb, rest: ""}],
+		segments: [
+			...segments.slice(0, -1).map(({verb, rest}) => (
+			{
+				verb,
+				rest,
+			})),
+			{
+				verb: last.verb,
+				rest: "",
+			},
+		],
 		name: last.rest,
 		file: last.file,
 	};
 }
 
 /** A background task whose completion notification folded into a tool group. */
-export interface BackgroundCompletionLike {
+export interface BackgroundCompletionLike
+{
 	/** A `run_in_background` Bash command rather than an agent or monitor. */
 	command: boolean;
 	status: "completed" | "failed" | "stopped";
@@ -604,14 +828,19 @@ export interface BackgroundCompletionLike {
 }
 
 /** Agent messages folded into a tool group: those before its first tool, and those after it. */
-export interface ReceivedMessages {
+export interface ReceivedMessages
+{
 	leading: number;
 	trailing: number;
 	/** A Stop hook's feedback re-prompted Claude straight into the group's first tool. */
 	reprompted?: boolean;
 }
 
-const NO_RECEIVED: ReceivedMessages = {leading: 0, trailing: 0};
+const NO_RECEIVED: ReceivedMessages =
+{
+	leading: 0,
+	trailing: 0,
+};
 
 /**
  * A summary row's label segments plus what upstream renders beside them: the
@@ -620,7 +849,8 @@ const NO_RECEIVED: ReceivedMessages = {leading: 0, trailing: 0};
  * git-coloured `+added -removed` span. `failed` and `blocked` total the whole
  * group's.
  */
-export interface ToolCallSummaryStats {
+export interface ToolCallSummaryStats
+{
 	segments: SummarySegment[];
 	/** The text after the phrases, or null when the label is the bare phrases. */
 	trailing: string | null;
@@ -631,22 +861,26 @@ export interface ToolCallSummaryStats {
 }
 
 /** The group's phrases as text, without the trailing part. */
-export function summaryNamesText(segments: readonly SummarySegment[]): string {
+export function summaryNamesText(segments: readonly SummarySegment[]): string
+{
 	return segments.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb)).join(", ");
 }
 
 /** The group header as text: its phrases, then the trailing part. */
-export function countedLabelText(stats: Pick<ToolCallSummaryStats, "segments" | "trailing">): string {
+export function countedLabelText(stats: Pick<ToolCallSummaryStats, "segments" | "trailing">): string
+{
 	return `${summaryNamesText(stats.segments)}${stats.trailing ?? ""}`;
 }
 
-function basenameFromPath(path: string): string {
+function basenameFromPath(path: string): string
+{
 	const lastSlash = path.lastIndexOf("/");
 	if (lastSlash === -1) return path;
 	return path.slice(lastSlash + 1);
 }
 
-function filePathOf(call: ToolCallLike): string | null {
+function filePathOf(call: ToolCallLike): string | null
+{
 	const path = call.input["file_path"] ?? call.input["notebook_path"];
 	return typeof path === "string" ? path : null;
 }
@@ -656,16 +890,20 @@ function filePathOf(call: ToolCallLike): string | null {
  * existing file counts as an edit. The first Write of a path to report either
  * decides for all of them, so a file the group created stays created.
  */
-function categorizeWithWrites(calls: ToolCallLike[]): (ToolCategory | null)[] {
+function categorizeWithWrites(calls: ToolCallLike[]): (ToolCategory | null)[]
+{
 	const firstWriteType = new Map<string, "create" | "update">();
-	for (const call of calls) {
+	for (const call of calls)
+	{
 		const path = filePathOf(call);
 		const writeType = call.resultMeta?.writeType;
-		if (call.name === "Write" && path !== null && writeType !== undefined && !firstWriteType.has(path)) {
+		if (call.name === "Write" && path !== null && writeType !== undefined && !firstWriteType.has(path))
+		{
 			firstWriteType.set(path, writeType);
 		}
 	}
-	return calls.map((call) => {
+	return calls.map((call) =>
+	{
 		const cat = categorize(call);
 		const path = filePathOf(call);
 		return cat === "write" && path !== null && firstWriteType.get(path) === "update" ? "edit" : cat;
@@ -677,9 +915,11 @@ function categorizeWithWrites(calls: ToolCallLike[]): (ToolCategory | null)[] {
  * named none or they touched several. Upstream then names the file instead of
  * counting: "Read and edited cache.ts", never "Read a.ts, edited b.ts".
  */
-function soleFilePath(calls: ToolCallLike[], categories: (ToolCategory | null)[]): string | null {
+function soleFilePath(calls: ToolCallLike[], categories: (ToolCategory | null)[]): string | null
+{
 	const paths = new Set<string>();
-	for (const [index, call] of calls.entries()) {
+	for (const [index, call] of calls.entries())
+	{
 		const cat = categories[index];
 		if (cat === null || cat === undefined || !FILE_CATEGORIES.has(cat)) continue;
 		const path = filePathOf(call);
@@ -689,7 +929,12 @@ function soleFilePath(calls: ToolCallLike[], categories: (ToolCategory | null)[]
 	return paths.size === 1 ? ([...paths][0] ?? null) : null;
 }
 
-const VERB_LIST = new Intl.ListFormat("en", {type: "conjunction"});
+const VERB_LIST = new Intl.ListFormat(
+	"en",
+	{
+		type: "conjunction",
+	},
+);
 
 /** Upstream's per-call outcome (c24951e9f `X`), less the pending and held ones local never counts. */
 type CallOutcome = "succeeded" | "failed" | "stopped" | "blocked";
@@ -700,7 +945,8 @@ type CallOutcome = "succeeded" | "failed" | "stopped" | "blocked";
  * the outcome of its last call, so a failed edit retried successfully is no
  * failure.
  */
-function callKey(call: ToolCallLike, index: number): string {
+function callKey(call: ToolCallLike, index: number): string
+{
 	const path = filePathOf(call);
 	if (path !== null) return `path:${path}`;
 	return call.id === undefined ? `index:${index}` : `id:${call.id}`;
@@ -711,7 +957,8 @@ function callKey(call: ToolCallLike, index: number): string {
  * classifier refused is "blocked" (c06cf64bb `Cl`/`qc`): upstream counts both
  * in the segment but neither as a failure.
  */
-function callOutcome(call: ToolCallLike, failedLaunches: ReadonlySet<string>): CallOutcome {
+function callOutcome(call: ToolCallLike, failedLaunches: ReadonlySet<string>): CallOutcome
+{
 	if (call.stopped === true || call.denied === true) return "stopped";
 	if (call.blocked === true) return "blocked";
 	// Upstream settles a benign error (`errorIsBenign`) done, so it is no failure.
@@ -725,26 +972,35 @@ function callOutcome(call: ToolCallLike, failedLaunches: ReadonlySet<string>): C
  * earlier outcome, so only a key whose every call stopped reads stopped; any
  * other outcome replaces it.
  */
-function mergeOutcome(prev: CallOutcome | undefined, next: CallOutcome): CallOutcome | undefined {
+function mergeOutcome(prev: CallOutcome | undefined, next: CallOutcome): CallOutcome | undefined
+{
 	return next === "stopped" && prev !== undefined ? prev : next;
 }
 
-function countOutcome(byKey: Map<string, CallOutcome | undefined>, outcome: CallOutcome): number {
+function countOutcome(byKey: Map<string, CallOutcome | undefined>, outcome: CallOutcome): number
+{
 	let count = 0;
 	for (const keyOutcome of byKey.values()) if (keyOutcome === outcome) count++;
 	return count;
 }
 
 /** The calls, files, or verbs in a segment that failed, stopped, or were blocked. */
-interface SegmentOutcomes {
+interface SegmentOutcomes
+{
 	failed: number;
 	stopped: number;
 	blocked: number;
 }
 
-const NO_OUTCOMES: SegmentOutcomes = {failed: 0, stopped: 0, blocked: 0};
+const NO_OUTCOMES: SegmentOutcomes =
+{
+	failed: 0,
+	stopped: 0,
+	blocked: 0,
+};
 
-function keyOutcomes(byKey: Map<string, CallOutcome | undefined>): SegmentOutcomes {
+function keyOutcomes(byKey: Map<string, CallOutcome | undefined>): SegmentOutcomes
+{
 	return {
 		failed: countOutcome(byKey, "failed"),
 		stopped: countOutcome(byKey, "stopped"),
@@ -756,7 +1012,8 @@ function keyOutcomes(byKey: Map<string, CallOutcome | undefined>): SegmentOutcom
  * A segment before its outcome notes, with the actions it stands for -- files,
  * calls, or verbs -- so a capped header can total the ones it drops.
  */
-interface CountedSegment extends SummarySegment, SegmentOutcomes {
+interface CountedSegment extends SummarySegment, SegmentOutcomes
+{
 	count: number;
 }
 
@@ -768,17 +1025,24 @@ interface CountedSegment extends SummarySegment, SegmentOutcomes {
 function soleFileSegment(
 	path: string,
 	outcomes: Map<ToolCategory, Map<string, CallOutcome | undefined>>,
-	link: {linkable: boolean; preferDiff: boolean},
-): CountedSegment {
+	link:
+	{
+		linkable: boolean;
+		preferDiff: boolean;
+	},
+): CountedSegment
+{
 	const byVerb = new Map<string, Set<CallOutcome | undefined>>();
-	for (const [cat, byKey] of outcomes) {
+	for (const [cat, byKey] of outcomes)
+	{
 		if (!FILE_CATEGORIES.has(cat)) continue;
 		const verb = CATEGORY_LABELS[cat].verb.toLowerCase();
 		byVerb.set(verb, new Set([...(byVerb.get(verb) ?? []), ...byKey.values()]));
 	}
 	const verbsHolding = (outcome: CallOutcome) => [...byVerb.values()].filter((held) => held.has(outcome)).length;
 	const verbs = VERB_LIST.format(byVerb.keys());
-	const segment: CountedSegment = {
+	const segment: CountedSegment =
+	{
 		verb: verbs.charAt(0).toUpperCase() + verbs.slice(1),
 		rest: basenameFromPath(path),
 		count: byVerb.size,
@@ -786,7 +1050,12 @@ function soleFileSegment(
 		stopped: verbsHolding("stopped"),
 		blocked: verbsHolding("blocked"),
 	};
-	if (link.linkable && !SUSPECT_PATH_CHARS.test(path)) segment.file = {path, preferDiff: link.preferDiff};
+	if (link.linkable && !SUSPECT_PATH_CHARS.test(path))
+		segment.file =
+		{
+			path,
+			preferDiff: link.preferDiff,
+		};
 	return segment;
 }
 
@@ -805,53 +1074,85 @@ function soleFileLink(
 	calls: ToolCallLike[],
 	categories: (ToolCategory | null)[],
 	failedLaunches: ReadonlySet<string>,
-): {linkable: boolean; preferDiff: boolean} {
+):
+{
+	linkable: boolean;
+	preferDiff: boolean;
+}
+{
 	let linkable = true;
 	let preferDiff = false;
-	for (const [index, call] of calls.entries()) {
+	for (const [index, call] of calls.entries())
+	{
 		const cat = categories[index];
 		if (cat === null || cat === undefined || !FILE_CATEGORIES.has(cat)) continue;
 		if (!FILE_LINK_TOOLS.has(call.name)) linkable = false;
 		if (cat !== "read" && callOutcome(call, failedLaunches) === "succeeded") preferDiff = true;
 	}
-	return {linkable, preferDiff};
+	return {
+		linkable,
+		preferDiff,
+	};
 }
 
-function labelledSegment(label: SegmentLabel, count: number, outcomes: SegmentOutcomes = NO_OUTCOMES): CountedSegment {
-	return {verb: label.verb, rest: pluralize(count, label.one, label.many), count, ...outcomes};
+function labelledSegment(label: SegmentLabel, count: number, outcomes: SegmentOutcomes = NO_OUTCOMES): CountedSegment
+{
+	return {
+		verb: label.verb,
+		rest: pluralize(count, label.one, label.many),
+		count,
+		...outcomes,
+	};
 }
 
 /**
  * A segment's inline note (c24951e9f `ye`): a block wins and drops any stop,
  * "(1 failed, 1 blocked)"; else stops and failures, "(1 failed, 1 stopped)".
  */
-function inlineNote({failed, stopped, blocked}: SegmentOutcomes): string | null {
+function inlineNote({failed, stopped, blocked}: SegmentOutcomes): string | null
+{
 	if (blocked > 0) return failed > 0 ? `(${failed} failed, ${blocked} blocked)` : `(${blocked} blocked)`;
 	if (stopped > 0) return failed > 0 ? `(${failed} failed, ${stopped} stopped)` : `(${stopped} stopped)`;
 	return failed > 0 ? `(${failed} failed)` : null;
 }
 
 /** The note left inline when failures and blocks trail (`plainMeta`): only an unblocked segment's stops. */
-function plainNote({stopped, blocked}: SegmentOutcomes): string | null {
+function plainNote({stopped, blocked}: SegmentOutcomes): string | null
+{
 	return blocked === 0 && stopped > 0 ? `(${stopped} stopped)` : null;
 }
 
 /** Upstream's outcomes part (`V`): "1 failed", "1 blocked", or "1 failed, 1 blocked". */
-function outcomesText(failed: number, blocked: number): string | null {
+function outcomesText(failed: number, blocked: number): string | null
+{
 	const parts = [failed > 0 ? `${failed} failed` : null, blocked > 0 ? `${blocked} blocked` : null];
 	const shown = parts.filter((part) => part !== null);
 	return shown.length > 0 ? shown.join(", ") : null;
 }
 
-function withNote(segment: CountedSegment, note: string | null): SummarySegment {
-	if (note === null) {
+function withNote(segment: CountedSegment, note: string | null): SummarySegment
+{
+	if (note === null)
+	{
 		// Upstream links the file only while its meta is undecorated and nothing on it failed or was blocked.
 		const clean = segment.failed === 0 && segment.blocked === 0;
 		return clean && segment.file !== undefined
-			? {verb: segment.verb, rest: segment.rest, file: segment.file}
-			: {verb: segment.verb, rest: segment.rest};
+			?
+				{
+					verb: segment.verb,
+					rest: segment.rest,
+					file: segment.file,
+				}
+			:
+				{
+					verb: segment.verb,
+					rest: segment.rest,
+				};
 	}
-	return {verb: segment.verb, rest: segment.rest ? `${segment.rest} ${note}` : note};
+	return {
+		verb: segment.verb,
+		rest: segment.rest ? `${segment.rest} ${note}` : note,
+	};
 }
 
 /** Segments upstream shows before folding the rest into "and N more actions". */
@@ -867,31 +1168,45 @@ const SHOWN_SEGMENTS = 3;
  * inline: "Ran 3 commands (1 failed, 1 stopped)". Trailing segments keep only
  * their stops inline.
  */
-function shapeSegments(segments: CountedSegment[]): {segments: SummarySegment[]; trailing: string | null} {
+function shapeSegments(segments: CountedSegment[]):
+{
+	segments: SummarySegment[];
+	trailing: string | null;
+}
+{
 	const outcomes = outcomesText(
 		segments.reduce((sum, segment) => sum + segment.failed, 0),
 		segments.reduce((sum, segment) => sum + segment.blocked, 0),
 	);
-	if (segments.length >= SHOWN_SEGMENTS + 2) {
+	if (segments.length >= SHOWN_SEGMENTS + 2)
+	{
 		const count = segments.slice(SHOWN_SEGMENTS).reduce((sum, segment) => sum + segment.count, 0);
 		const shown = segments
 			.slice(0, SHOWN_SEGMENTS)
 			.map(({file: _file, ...segment}) => withNote(segment, plainNote(segment)));
 		const last = shown.at(-1);
-		if (last !== undefined) {
+		if (last !== undefined)
+		{
 			if (last.rest) last.rest = `${last.rest},`;
 			else last.verb = `${last.verb},`;
 		}
 		const more = pluralize(count, "1 more action", "{n} more actions");
-		return {segments: shown, trailing: ` and ${more}${outcomes === null ? "" : `, ${outcomes}`}`};
+		return {
+			segments: shown,
+			trailing: ` and ${more}${outcomes === null ? "" : `, ${outcomes}`}`,
+		};
 	}
-	if (segments.length > 1 && outcomes !== null) {
+	if (segments.length > 1 && outcomes !== null)
+	{
 		return {
 			segments: segments.map(({file: _file, ...segment}) => withNote(segment, plainNote(segment))),
 			trailing: `, ${outcomes}`,
 		};
 	}
-	return {segments: segments.map((segment) => withNote(segment, inlineNote(segment))), trailing: null};
+	return {
+		segments: segments.map((segment) => withNote(segment, inlineNote(segment))),
+		trailing: null,
+	};
 }
 
 /**
@@ -904,21 +1219,34 @@ function attributeLaunchFailures(
 	calls: ToolCallLike[],
 	completions: readonly BackgroundCompletionLike[],
 	failedLaunches: ReadonlySet<string>,
-): {completions: BackgroundCompletionLike[]; failedLaunches: ReadonlySet<string>} {
+):
+{
+	completions: BackgroundCompletionLike[];
+	failedLaunches: ReadonlySet<string>;
+}
+{
 	const callIds = new Set(calls.flatMap((call) => (call.id === undefined ? [] : [call.id])));
 	const launches = new Set(failedLaunches);
-	for (const {status, toolUseId} of completions) {
+	for (const {status, toolUseId} of completions)
+	{
 		if (status === "failed" && toolUseId != null && callIds.has(toolUseId)) launches.add(toolUseId);
 	}
 	let toSettle = calls.filter(
 		(call) => call.isError !== true && call.id !== undefined && launches.has(call.id),
 	).length;
-	const settled = completions.map((completion) => {
+	const settled = completions.map((completion) =>
+	{
 		if (completion.status !== "failed" || toSettle === 0) return completion;
 		toSettle--;
-		return {...completion, status: "completed" as const};
+		return {
+			...completion,
+			status: "completed" as const,
+		};
 	});
-	return {completions: settled, failedLaunches: launches};
+	return {
+		completions: settled,
+		failedLaunches: launches,
+	};
 }
 
 function buildSummarySegments(
@@ -926,7 +1254,8 @@ function buildSummarySegments(
 	groupCompletions: readonly BackgroundCompletionLike[] = [],
 	knownFailedLaunches: ReadonlySet<string> = new Set(),
 	received: ReceivedMessages = NO_RECEIVED,
-): ToolCallSummaryStats {
+): ToolCallSummaryStats
+{
 	const {completions, failedLaunches} = attributeLaunchFailures(calls, groupCompletions, knownFailedLaunches);
 	// Insertion order carries the summary order: upstream Normal writes both
 	// "Updated todos, read 3 files" and "Read index.ts, updated todos", so
@@ -934,29 +1263,36 @@ function buildSummarySegments(
 	const outcomes = new Map<ToolCategory, Map<string, CallOutcome | undefined>>();
 	let otherTools = 0;
 	// Upstream's generic bucket notes failures and blocks only (`z`), never stops.
-	const otherOutcomes = {...NO_OUTCOMES};
+	const otherOutcomes =
+	{
+		...NO_OUTCOMES,
+	};
 	let added = 0;
 	let removed = 0;
 
 	const categories = categorizeWithWrites(calls);
-	calls.forEach((call, index) => {
+	calls.forEach((call, index) =>
+	{
 		const cat = categories[index] ?? null;
 		const outcome = callOutcome(call, failedLaunches);
-		if (cat === null) {
+		if (cat === null)
+		{
 			otherTools++;
 			if (outcome === "failed") otherOutcomes.failed++;
 			if (outcome === "blocked") otherOutcomes.blocked++;
 			return;
 		}
 		let byKey = outcomes.get(cat);
-		if (byKey === undefined) {
+		if (byKey === undefined)
+		{
 			byKey = new Map();
 			outcomes.set(cat, byKey);
 		}
 		const key = callKey(call, index);
 		byKey.set(key, mergeOutcome(byKey.get(key), outcome));
 		// A failed edit changed nothing, so upstream leaves it out of the totals.
-		if (isMutation(cat) && call.isError !== true) {
+		if (isMutation(cat) && call.isError !== true)
+		{
 			const s = diffStatsForCall(call);
 			added += s.added;
 			removed += s.removed;
@@ -968,8 +1304,10 @@ function buildSummarySegments(
 	const solePath = soleFilePath(calls, categories);
 	const link = soleFileLink(calls, categories, failedLaunches);
 	let soleFileNamed = false;
-	for (const [cat, byKey] of outcomes) {
-		if (solePath !== null && FILE_CATEGORIES.has(cat)) {
+	for (const [cat, byKey] of outcomes)
+	{
+		if (solePath !== null && FILE_CATEGORIES.has(cat))
+		{
 			if (!soleFileNamed) segments.push(soleFileSegment(solePath, outcomes, link));
 			soleFileNamed = true;
 			continue;
@@ -985,29 +1323,57 @@ function buildSummarySegments(
 	if (received.trailing > 0) segments.push(labelledSegment(RECEIVED_LABEL, received.trailing));
 	// Upstream leads with the re-prompt that started the run: "Hook re-prompted Claude, ran a command".
 	if (received.reprompted === true)
-		segments.unshift({verb: "Hook", rest: "re-prompted Claude", count: 1, ...NO_OUTCOMES});
+		segments.unshift(
+			{
+				verb: "Hook",
+				rest: "re-prompted Claude",
+				count: 1,
+				...NO_OUTCOMES,
+			},
+		);
 
 	// Upstream folds background completions in last: "Ran a command, finished
 	// a background command", "Used a tool, finished a background task (1 stopped)",
 	// but leads with them when one failed: "Finished a background command, ran a
 	// command (1 failed)". A group mixing failed and stopped completions is unobserved.
-	if (completions.length > 0) {
+	if (completions.length > 0)
+	{
 		const noun = completions.every((completion) => completion.command) ? "command" : "task";
 		const stopped = completions.filter((completion) => completion.status === "stopped").length;
 		const failedCompletions = completions.filter((completion) => completion.status === "failed").length;
 		const rest = pluralize(completions.length, `a background ${noun}`, `{n} background ${noun}s`);
 		const count = completions.length;
-		if (failedCompletions > 0) {
-			segments.unshift({verb: "Finished", rest, count, ...NO_OUTCOMES, failed: failedCompletions});
-		} else {
-			segments.push({verb: "Finished", rest, count, ...NO_OUTCOMES, stopped});
+		if (failedCompletions > 0)
+		{
+			segments.unshift(
+				{
+					verb: "Finished",
+					rest,
+					count,
+					...NO_OUTCOMES,
+					failed: failedCompletions,
+				},
+			);
+		}
+		else
+		{
+			segments.push(
+				{
+					verb: "Finished",
+					rest,
+					count,
+					...NO_OUTCOMES,
+					stopped,
+				},
+			);
 		}
 	}
 
 	const shaped = shapeSegments(segments);
 	// Upstream capitalizes only the leading verb: "Ran 2 commands, read cache.ts".
 	return {
-		segments: shaped.segments.map((segment, i) => ({
+		segments: shaped.segments.map((segment, i) => (
+		{
 			...segment,
 			verb: i === 0 ? segment.verb : lowercaseFirst(segment.verb),
 		})),
@@ -1029,21 +1395,25 @@ export function summarizeToolCallStats(
 	completions: readonly BackgroundCompletionLike[] = [],
 	failedLaunches: ReadonlySet<string> = new Set(),
 	received: ReceivedMessages = NO_RECEIVED,
-): ToolCallSummaryStats {
+): ToolCallSummaryStats
+{
 	return buildSummarySegments(calls, completions, failedLaunches, received);
 }
 
-export function summarizeToolCallsStructured(calls: ToolCallLike[]): SummarySegment[] {
+export function summarizeToolCallsStructured(calls: ToolCallLike[]): SummarySegment[]
+{
 	if (calls.length === 0) return [];
 	return buildSummarySegments(calls).segments;
 }
 
 /** Upstream shows both counts whenever either is non-zero: "+0 -28". */
-export function hasDiffStats(stats: {added: number; removed: number}): boolean {
+export function hasDiffStats(stats: {added: number; removed: number}): boolean
+{
 	return stats.added > 0 || stats.removed > 0;
 }
 
-export function summarizeToolCalls(calls: ToolCallLike[]): string {
+export function summarizeToolCalls(calls: ToolCallLike[]): string
+{
 	const summary = buildSummarySegments(calls);
 	const names = summary.segments.map((s) => `${lowercaseFirst(s.verb)} ${s.rest}`.trimEnd()).join(", ");
 	const label = `${names}${summary.trailing ?? ""}`;

@@ -8,38 +8,56 @@ import {DebugLink} from "../components/debug-link";
 import {ListPageHeader} from "../components/list-page-header";
 import {ListItemDate} from "../components/list-item-date";
 
-export const Route = createFileRoute("/memories")({
-	component: MemoriesPage,
-	loader: async ({context: {queryClient}}) => queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Claude Memories")],
-	}),
-});
+export const Route = createFileRoute("/memories")(
+	{
+		component: MemoriesPage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...projectsQueryOptions(),
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Claude Memories")],
+		}),
+	},
+);
 
-interface MemoryGroup {
+interface MemoryGroup
+{
 	project: string;
 	projectName: string;
 	memories: MemoryListItem[];
 }
 
-function MemoriesPage() {
+function MemoriesPage()
+{
 	const {data: projects} = useSuspenseQuery(projectsQueryOptions());
-	const memoryQueries = useQueries({
-		queries: projects.map((p) => projectMemoriesQueryOptions(p.id)),
-	});
+	const memoryQueries = useQueries(
+		{
+			queries: projects.map((p) => projectMemoriesQueryOptions(p.id)),
+		},
+	);
 
 	const groups: MemoryGroup[] = [];
-	for (let i = 0; i < projects.length; i++) {
+	for (let i = 0; i < projects.length; i++)
+	{
 		const data = memoryQueries[i]?.data;
-		if (data && data.memories.length > 0) {
-			groups.push({
-				project: data.project.id,
-				projectName: data.project.name,
-				memories: data.memories,
-			});
+		if (data && data.memories.length > 0)
+		{
+			groups.push(
+				{
+					project: data.project.id,
+					projectName: data.project.name,
+					memories: data.memories,
+				},
+			);
 		}
 	}
-	groups.sort((a, b) => {
+	groups.sort((a, b) =>
+	{
 		const aMax = Math.max(...a.memories.map((m) => new Date(m.mtime).getTime()));
 		const bMax = Math.max(...b.memories.map((m) => new Date(m.mtime).getTime()));
 		return bMax - aMax;
@@ -61,7 +79,11 @@ function MemoriesPage() {
 								<li key={`${mem.project}/${mem.filename}`} className="relative">
 									<Link
 										to="/memory/$project/$filename"
-										params={{project: mem.project, filename: toMdSlug(mem.filename)}}
+										params={
+										{
+											project: mem.project,
+											filename: toMdSlug(mem.filename),
+										}}
 										className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0"
 									>
 										<span className="text-sm font-medium">{mem.title}</span>

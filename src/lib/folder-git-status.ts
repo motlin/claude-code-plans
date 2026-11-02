@@ -5,7 +5,10 @@ import {trackedExecFile} from "./perf/tracked-process";
 
 export type FolderGitExec = typeof trackedExecFile;
 
-const NO_STORE = {"Cache-Control": "private, max-age=0, must-revalidate"};
+const NO_STORE =
+{
+	"Cache-Control": "private, max-age=0, must-revalidate",
+};
 const GIT_TIMEOUT_MS = 5000;
 
 /**
@@ -15,15 +18,23 @@ const GIT_TIMEOUT_MS = 5000;
 const SAFE_GIT_CONFIG = ["-c", "core.fsmonitor=false"];
 
 /** Raw stdouts of the three git commands; null when that command failed. */
-export interface FolderGitOutputs {
+export interface FolderGitOutputs
+{
 	head: string | null;
 	originHead: string | null;
 	porcelain: string | null;
 }
 
-export function parseFolderGitStatus({head, originHead, porcelain}: FolderGitOutputs): FolderGitStatus {
+export function parseFolderGitStatus({head, originHead, porcelain}: FolderGitOutputs): FolderGitStatus
+{
 	if (head === null)
-		return {exists: true, isGitRepo: false, headBranch: null, defaultBranch: null, uncommittedFiles: 0};
+		return {
+			exists: true,
+			isGitRepo: false,
+			headBranch: null,
+			defaultBranch: null,
+			uncommittedFiles: 0,
+		};
 	const branch = head.trim();
 	const defaultBranch = originHead?.trim().replace(/^origin\//, "") ?? "";
 	return {
@@ -39,31 +50,57 @@ export function parseFolderGitStatus({head, originHead, porcelain}: FolderGitOut
 export async function readFolderGitStatus(
 	folder: string,
 	exec: FolderGitExec = trackedExecFile,
-): Promise<FolderGitStatus> {
-	const options = {cwd: folder, timeout: GIT_TIMEOUT_MS, env: {...process.env, GIT_OPTIONAL_LOCKS: "0"}};
+): Promise<FolderGitStatus>
+{
+	const options =
+	{
+		cwd: folder,
+		timeout: GIT_TIMEOUT_MS,
+		env:
+		{
+			...process.env,
+			GIT_OPTIONAL_LOCKS: "0",
+		},
+	};
 	const run = async (args: string[]): Promise<string | null> =>
 		exec("git", [...SAFE_GIT_CONFIG, ...args], options).catch(() => null);
 	const head = await run(["rev-parse", "--abbrev-ref", "HEAD"]);
-	if (head === null) return parseFolderGitStatus({head, originHead: null, porcelain: null});
+	if (head === null)
+		return parseFolderGitStatus(
+			{
+				head,
+				originHead: null,
+				porcelain: null,
+			},
+		);
 	const [originHead, porcelain] = await Promise.all([
 		run(["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]),
 		run(["status", "--porcelain=v1", "--untracked-files=normal"]),
 	]);
-	return parseFolderGitStatus({head, originHead, porcelain});
+	return parseFolderGitStatus(
+		{
+			head,
+			originHead,
+			porcelain,
+		},
+	);
 }
 
-function wellFormedPath(path: string | null): path is string {
+function wellFormedPath(path: string | null): path is string
+{
 	return path !== null && !path.includes("\0") && isAbsolute(path) && normalize(path) === path;
 }
 
 /** An absolute, normalized path to an existing directory; anything else (a file, `..`, a relative path) is refused. */
-export async function validFolder(path: string | null): Promise<string | null> {
+export async function validFolder(path: string | null): Promise<string | null>
+{
 	if (!wellFormedPath(path)) return null;
 	const stats = await stat(path).catch(() => null);
 	return stats?.isDirectory() === true ? path : null;
 }
 
-const GONE: FolderGitStatus = {
+const GONE: FolderGitStatus =
+{
 	exists: false,
 	isGitRepo: false,
 	headBranch: null,
@@ -76,19 +113,41 @@ const GONE: FolderGitStatus = {
  * server, never file contents, and git runs only in an existing directory. A well-formed absolute path that no
  * longer exists answers `exists: false`, so the home bar can say the folder is gone.
  */
-export async function folderStatusResponse(request: Request, exec: FolderGitExec = trackedExecFile): Promise<Response> {
+export async function folderStatusResponse(request: Request, exec: FolderGitExec = trackedExecFile): Promise<Response>
+{
 	const path = new URL(request.url).searchParams.get("path");
 	if (!wellFormedPath(path)) return badRequest();
 	const stats = await stat(path).catch((error: unknown) => (isMissing(error) ? "missing" : null));
-	if (stats === "missing") return Response.json(GONE, {headers: NO_STORE});
+	if (stats === "missing")
+		return Response.json(
+			GONE,
+			{
+				headers: NO_STORE,
+			},
+		);
 	if (stats?.isDirectory() !== true) return badRequest();
-	return Response.json(FolderGitStatusSchema.parse(await readFolderGitStatus(path, exec)), {headers: NO_STORE});
+	return Response.json(
+		FolderGitStatusSchema.parse(await readFolderGitStatus(path, exec)),
+		{
+			headers: NO_STORE,
+		},
+	);
 }
 
-function badRequest(): Response {
-	return Response.json({error: "Expected ?path=<absolute directory>"}, {status: 400, headers: NO_STORE});
+function badRequest(): Response
+{
+	return Response.json(
+		{
+			error: "Expected ?path=<absolute directory>",
+		},
+		{
+			status: 400,
+			headers: NO_STORE,
+		},
+	);
 }
 
-function isMissing(error: unknown): boolean {
+function isMissing(error: unknown): boolean
+{
 	return error instanceof Error && "code" in error && (error.code === "ENOENT" || error.code === "ENOTDIR");
 }

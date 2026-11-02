@@ -11,27 +11,49 @@ import {SessionRow} from "../components/session-row";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {formatCount} from "../lib/pluralize";
 
-const sessionsSearchSchema = z.object({
-	branch: z.string().optional(),
-});
-
-export const Route = createFileRoute("/project/$id_/sessions")({
-	component: ProjectSessionsPage,
-	validateSearch: sessionsSearchSchema,
-	loader: async ({context: {queryClient}, params}) => {
-		const [detail] = await Promise.all([
-			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
-			queryClient.query({...projectSessionsQueryOptions(params.id), staleTime: "static"}),
-			queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
-		]);
-		return detail;
+const sessionsSearchSchema = z.object(
+	{
+		branch: z.string().optional(),
 	},
-	head: ({loaderData}) => ({
-		meta: [pageTitle(loaderData ? `${loaderData.name} sessions` : "Project Not Found")],
-	}),
-});
+);
 
-function ProjectSessionsPage() {
+export const Route = createFileRoute("/project/$id_/sessions")(
+	{
+		component: ProjectSessionsPage,
+		validateSearch: sessionsSearchSchema,
+		loader: async ({context: {queryClient}, params}) =>
+		{
+			const [detail] = await Promise.all([
+				queryClient.query(
+					{
+						...projectDetailQueryOptions(params.id),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...projectSessionsQueryOptions(params.id),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...projectsQueryOptions(),
+						staleTime: "static",
+					},
+				),
+			]);
+			return detail;
+		},
+		head: ({loaderData}) => (
+		{
+			meta: [pageTitle(loaderData ? `${loaderData.name} sessions` : "Project Not Found")],
+		}),
+	},
+);
+
+function ProjectSessionsPage()
+{
 	const {id} = Route.useParams();
 	const {data: project} = useSuspenseQuery(projectDetailQueryOptions(id));
 	const {data: allSessions} = useSuspenseQuery(projectSessionsQueryOptions(id));
@@ -45,17 +67,21 @@ function ProjectSessionsPage() {
 		[allSessions, branch],
 	);
 
-	const uniqueBranches = useMemo(() => {
+	const uniqueBranches = useMemo(() =>
+	{
 		const counts = new Map<string, number>();
-		for (const s of allSessions) {
-			if (s.gitBranch) {
+		for (const s of allSessions)
+		{
+			if (s.gitBranch)
+			{
 				counts.set(s.gitBranch, (counts.get(s.gitBranch) ?? 0) + 1);
 			}
 		}
 		return [...counts.entries()].toSorted((a, b) => b[1] - a[1]);
 	}, [allSessions]);
 
-	if (!project) {
+	if (!project)
+	{
 		return <NotFoundContent />;
 	}
 
@@ -73,7 +99,15 @@ function ProjectSessionsPage() {
 					{branch && (
 						<button
 							type="button"
-							onClick={() => void navigate({to: ".", search: {}, replace: true})}
+							onClick={() =>
+								void navigate(
+									{
+										to: ".",
+										search: {},
+										replace: true,
+									},
+								)
+							}
 							className="flex items-center gap-1 rounded-full bg-fill-accent px-2 py-0.5 text-[11px] font-medium text-oncolor-100 transition-colors hover:bg-fill-accent-hover"
 						>
 							<GitBranch className="h-3 w-3" />
@@ -87,11 +121,16 @@ function ProjectSessionsPage() {
 								key={b}
 								type="button"
 								onClick={() =>
-									void navigate({
-										to: ".",
-										search: {branch: b},
-										replace: true,
-									})
+									void navigate(
+										{
+											to: ".",
+											search:
+											{
+												branch: b,
+											},
+											replace: true,
+										},
+									)
 								}
 								className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-secondary transition-colors hover:bg-surface-0"
 							>

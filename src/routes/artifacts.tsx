@@ -5,7 +5,8 @@ import {Tabs} from "@base-ui/react/tabs";
 import {LayoutGrid, Link as LinkIcon, List, Lock, Pin, SlidersVertical} from "lucide-react";
 import {type CSSProperties, type ReactNode, useEffect, useId, useMemo, useState} from "react";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
-import {
+import
+{
 	coverBlankKind,
 	isTypeMediaIconWord,
 	resolveArtifactMark,
@@ -13,7 +14,8 @@ import {
 	type TypeMediaIconWord,
 } from "../lib/artifact-mark";
 import {ArtifactMark} from "../components/artifact-mark";
-import {
+import
+{
 	activeFilterCount,
 	applyArtifactFilters,
 	ARTIFACT_OPENED_RANGES,
@@ -48,7 +50,8 @@ import {writeClipboardText} from "../lib/clipboard";
 import {formatCount} from "../lib/pluralize";
 import {useToast} from "../components/toast-context";
 import {TOOLBAR_ICON_BUTTON, ToolbarSearch} from "../components/toolbar-search";
-import {
+import
+{
 	ContextMenu,
 	ContextMenuTrigger,
 	Menu,
@@ -71,7 +74,8 @@ import {Icon} from "../components/ui/icon";
 import {Tooltip} from "../components/ui/tooltip";
 
 /** The gallery's URL state: upstream's `?search=` and `?tab=`, plus the local Filter and sort picks. */
-export interface ArtifactsSearch {
+export interface ArtifactsSearch
+{
 	search?: string;
 	tab?: ArtifactTabParam;
 	/** Comma list of Type keys (`docs,other`); a single `?type=docs` reads the same. */
@@ -85,40 +89,100 @@ export interface ArtifactsSearch {
 	pinned?: 1;
 }
 
-export const Route = createFileRoute("/artifacts")({
-	component: ArtifactsPage,
-	staticData: {pageGutter: "none"},
-	validateSearch: (search: Record<string, unknown>): ArtifactsSearch => {
-		const query = search["search"];
-		const tab = tabParamFromSearch(search);
-		const types = parseList(search["type"], ARTIFACT_TYPE_KEYS);
-		const owners = parseList(search["owner"], ARTIFACT_OWNERS);
-		const opened = search["opened"];
-		const sharing = search["sharing"];
-		const pinned = search["pinned"];
-		return {
-			...(typeof query === "string" && query !== "" ? {search: query} : {}),
-			...(tab === undefined ? {} : {tab}),
-			...(types.length === 0 ? {} : {type: types.join(",")}),
-			...(search["sort"] === "edited" ? {sort: "edited" as const} : {}),
-			...(owners.length === 0 ? {} : {owner: owners.join(",")}),
-			...(isOneOf(opened, ARTIFACT_OPENED_RANGES) && opened !== "any" ? {opened} : {}),
-			...(isOneOf(sharing, ARTIFACT_SHARINGS) && sharing !== "any" ? {sharing} : {}),
-			...(pinned === 1 || pinned === "1" || pinned === true ? {pinned: 1 as const} : {}),
-		};
+export const Route = createFileRoute("/artifacts")(
+	{
+		component: ArtifactsPage,
+		staticData:
+		{
+			pageGutter: "none",
+		},
+		validateSearch: (search: Record<string, unknown>): ArtifactsSearch =>
+		{
+			const query = search["search"];
+			const tab = tabParamFromSearch(search);
+			const types = parseList(search["type"], ARTIFACT_TYPE_KEYS);
+			const owners = parseList(search["owner"], ARTIFACT_OWNERS);
+			const opened = search["opened"];
+			const sharing = search["sharing"];
+			const pinned = search["pinned"];
+			return {
+				...(typeof query === "string" && query !== ""
+					?
+						{
+							search: query,
+						}
+					: {}),
+				...(tab === undefined
+					? {}
+					:
+						{
+							tab,
+						}),
+				...(types.length === 0
+					? {}
+					:
+						{
+							type: types.join(","),
+						}),
+				...(search["sort"] === "edited"
+					?
+						{
+							sort: "edited" as const,
+						}
+					: {}),
+				...(owners.length === 0
+					? {}
+					:
+						{
+							owner: owners.join(","),
+						}),
+				...(isOneOf(opened, ARTIFACT_OPENED_RANGES) && opened !== "any"
+					?
+						{
+							opened,
+						}
+					: {}),
+				...(isOneOf(sharing, ARTIFACT_SHARINGS) && sharing !== "any"
+					?
+						{
+							sharing,
+						}
+					: {}),
+				...(pinned === 1 || pinned === "1" || pinned === true
+					?
+						{
+							pinned: 1 as const,
+						}
+					: {}),
+			};
+		},
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...artifactsQueryOptions,
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [
+				{
+					title: "Artifacts - Claude",
+				},
+				pageTitle("Artifacts"),
+			],
+		}),
 	},
-	loader: async ({context: {queryClient}}) => queryClient.query({...artifactsQueryOptions, staleTime: "static"}),
-	head: () => ({
-		meta: [{title: "Artifacts - Claude"}, pageTitle("Artifacts")],
-	}),
-});
+);
 
-function isOneOf<T extends string>(value: unknown, options: readonly T[]): value is T {
+function isOneOf<T extends string>(value: unknown, options: readonly T[]): value is T
+{
 	return options.some((option) => option === value);
 }
 
 /** A comma list param narrowed to known values, in the options' order, without repeats. */
-function parseList<T extends string>(value: unknown, options: readonly T[]): T[] {
+function parseList<T extends string>(value: unknown, options: readonly T[]): T[]
+{
 	if (typeof value !== "string") return [];
 	const picked = new Set(value.split(","));
 	return options.filter((option) => picked.has(option));
@@ -128,7 +192,8 @@ function parseList<T extends string>(value: unknown, options: readonly T[]): T[]
 type ArtifactTabParam = "mine" | "shared";
 
 /** Reads `?tab=mine|shared`, falling back to the legacy `?view=yours|shared` so old links keep working. */
-function tabParamFromSearch(search: Record<string, unknown>): ArtifactTabParam | undefined {
+function tabParamFromSearch(search: Record<string, unknown>): ArtifactTabParam | undefined
+{
 	const tab = search["tab"];
 	if (tab === "mine" || tab === "shared") return tab;
 	const view = search["view"];
@@ -137,23 +202,27 @@ function tabParamFromSearch(search: Record<string, unknown>): ArtifactTabParam |
 	return undefined;
 }
 
-function viewFromTabParam(tab: ArtifactTabParam | undefined): ArtifactView {
+function viewFromTabParam(tab: ArtifactTabParam | undefined): ArtifactView
+{
 	if (tab === "mine") return "yours";
 	if (tab === "shared") return "shared";
 	return "all";
 }
 
-function tabParamFromView(view: ArtifactView): ArtifactTabParam | undefined {
+function tabParamFromView(view: ArtifactView): ArtifactTabParam | undefined
+{
 	if (view === "yours") return "mine";
 	if (view === "shared") return "shared";
 	return undefined;
 }
 
-function isArtifactView(value: unknown): value is ArtifactView {
+function isArtifactView(value: unknown): value is ArtifactView
+{
 	return VIEW_TABS.some((tab) => tab.view === value);
 }
 
-function filtersFromSearch(search: ArtifactsSearch): ArtifactFilters {
+function filtersFromSearch(search: ArtifactsSearch): ArtifactFilters
+{
 	return {
 		types: parseList(search.type, ARTIFACT_TYPE_KEYS),
 		owners: parseList(search.owner, ARTIFACT_OWNERS),
@@ -173,22 +242,64 @@ function searchFromState({
 	view: ArtifactView;
 	filters: ArtifactFilters;
 	sort: ArtifactSort;
-}): ArtifactsSearch {
+}): ArtifactsSearch
+{
 	const tab = tabParamFromView(view);
 	return {
-		...(search === "" ? {} : {search}),
-		...(tab === undefined ? {} : {tab}),
-		...(filters.types.length === 0 ? {} : {type: filters.types.join(",")}),
-		...(sort === "edited" ? {sort: "edited" as const} : {}),
-		...(filters.owners.length === 0 ? {} : {owner: filters.owners.join(",")}),
-		...(filters.opened === "any" ? {} : {opened: filters.opened}),
-		...(filters.sharing === "any" ? {} : {sharing: filters.sharing}),
-		...(filters.pinned ? {pinned: 1 as const} : {}),
+		...(search === ""
+			? {}
+			:
+				{
+					search,
+				}),
+		...(tab === undefined
+			? {}
+			:
+				{
+					tab,
+				}),
+		...(filters.types.length === 0
+			? {}
+			:
+				{
+					type: filters.types.join(","),
+				}),
+		...(sort === "edited"
+			?
+				{
+					sort: "edited" as const,
+				}
+			: {}),
+		...(filters.owners.length === 0
+			? {}
+			:
+				{
+					owner: filters.owners.join(","),
+				}),
+		...(filters.opened === "any"
+			? {}
+			:
+				{
+					opened: filters.opened,
+				}),
+		...(filters.sharing === "any"
+			? {}
+			:
+				{
+					sharing: filters.sharing,
+				}),
+		...(filters.pinned
+			?
+				{
+					pinned: 1 as const,
+				}
+			: {}),
 	};
 }
 
 /** Upstream's type vocabulary: anything that is not a Doc (or a Slides/Design type we never see) is "Other". */
-const TYPE_LABELS: Record<ArtifactTypeKey, string> = {
+const TYPE_LABELS: Record<ArtifactTypeKey, string> =
+{
 	dashboard: "Dashboard",
 	design: "Design",
 	"design-system": "Design System",
@@ -197,11 +308,20 @@ const TYPE_LABELS: Record<ArtifactTypeKey, string> = {
 	other: "Other",
 };
 
-const OWNER_LABELS: Record<ArtifactOwner, string> = {me: "You", others: "Other people"};
+const OWNER_LABELS: Record<ArtifactOwner, string> =
+{
+	me: "You",
+	others: "Other people",
+};
 
-const SORT_LABELS: Record<ArtifactSort, string> = {opened: "Last opened", edited: "Last edited"};
+const SORT_LABELS: Record<ArtifactSort, string> =
+{
+	opened: "Last opened",
+	edited: "Last edited",
+};
 
-const OPENED_LABELS: Record<ArtifactOpenedRange, string> = {
+const OPENED_LABELS: Record<ArtifactOpenedRange, string> =
+{
 	any: "Any time",
 	today: "Today",
 	yesterday: "Yesterday",
@@ -209,32 +329,68 @@ const OPENED_LABELS: Record<ArtifactOpenedRange, string> = {
 	month: "Past 30 days",
 };
 
-const SHARING_LABELS: Record<ArtifactSharing, string> = {any: "Any", private: "Only you", shared: "Shared"};
+const SHARING_LABELS: Record<ArtifactSharing, string> =
+{
+	any: "Any",
+	private: "Only you",
+	shared: "Shared",
+};
 
 /** Upstream's Owner note on the tabs that already fix the owner. */
-const OWNER_TAB_NOTES: Partial<Record<ArtifactView, string>> = {
+const OWNER_TAB_NOTES: Partial<Record<ArtifactView, string>> =
+{
 	yours: "This tab lists only your own artifacts.",
 	shared: "This tab lists only other people’s artifacts.",
 };
 
-const VIEW_TABS: ReadonlyArray<{view: ArtifactView; label: string}> = [
-	{view: "all", label: "All"},
-	{view: "yours", label: "Yours"},
-	{view: "shared", label: "Shared with you"},
+const VIEW_TABS: ReadonlyArray<
+{
+	view: ArtifactView;
+	label: string;
+}> = [
+	{
+		view: "all",
+		label: "All",
+	},
+	{
+		view: "yours",
+		label: "Yours",
+	},
+	{
+		view: "shared",
+		label: "Shared with you",
+	},
 ];
 
 /** Upstream's EmptyState copy per tab (bundle `Rr` for Shared, `Lr` for Yours; Lr's "New artifact" CTA is cloud-only). */
-const EMPTY_STATE_COPY: Record<ArtifactView, {headline: string; description: string}> = {
-	all: {headline: "No artifacts yet", description: "Artifacts that Claude publishes in your sessions appear here."},
-	yours: {headline: "Create your first artifact", description: "Artifacts you build with Claude appear here."},
-	shared: {
+const EMPTY_STATE_COPY: Record<
+	ArtifactView,
+	{
+		headline: string;
+		description: string;
+	}
+> =
+{
+	all:
+	{
+		headline: "No artifacts yet",
+		description: "Artifacts that Claude publishes in your sessions appear here.",
+	},
+	yours:
+	{
+		headline: "Create your first artifact",
+		description: "Artifacts you build with Claude appear here.",
+	},
+	shared:
+	{
 		headline: "No shared artifacts yet",
 		description: "When someone shares an artifact with you, it appears here.",
 	},
 };
 
 /** Upstream's left-aligned cds EmptyState (`hideIllustration`, align start). */
-function ArtifactsEmptyState({view}: {view: ArtifactView}) {
+function ArtifactsEmptyState({view}: {view: ArtifactView})
+{
 	const {headline, description} = EMPTY_STATE_COPY[view];
 	return (
 		<div className="flex flex-col items-start gap-3 pb-12 text-start text-body">
@@ -248,17 +404,20 @@ function ArtifactsEmptyState({view}: {view: ArtifactView}) {
 const ARTIFACTS_BOX_CLASS = "mx-auto w-full max-w-5xl px-2 md:px-8";
 
 /** Upstream's Owner/Type multi-pick summary: "Any" (or "Anyone"), the one label, or "{n} picked". */
-function pickedSummary<T extends string>(picked: readonly T[], labels: Record<T, string>, none: string): string {
+function pickedSummary<T extends string>(picked: readonly T[], labels: Record<T, string>, none: string): string
+{
 	const [only] = picked;
 	if (only === undefined) return none;
 	return picked.length === 1 ? labels[only] : `${picked.length} picked`;
 }
 
-function toggled<T>(list: readonly T[], value: T, on: boolean): T[] {
+function toggled<T>(list: readonly T[], value: T, on: boolean): T[]
+{
 	return on ? [...list.filter((item) => item !== value), value] : list.filter((item) => item !== value);
 }
 
-function ArtifactsPage() {
+function ArtifactsPage()
+{
 	const {data: artifacts} = useSuspenseQuery(artifactsQueryOptions);
 	const params = Route.useSearch();
 	const {search = "", tab: tabParam} = params;
@@ -273,7 +432,8 @@ function ArtifactsPage() {
 	const now = useMemo(() => new Date(), []);
 	const {isPinned} = useArtifactPins();
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		setLayout(readArtifactsLayout());
 	}, []);
 
@@ -282,12 +442,22 @@ function ArtifactsPage() {
 		[artifacts, view],
 	);
 	// The Owner picks only apply on All; Yours and Shared already fix the owner.
-	const applied = view === "all" ? filters : {...filters, owners: []};
+	const applied =
+		view === "all"
+			? filters
+			:
+				{
+					...filters,
+					owners: [],
+				};
 	const visible = sortArtifacts(
 		applyArtifactFilters(
 			inView.filter((artifact) => artifactMatchesSearch(artifact.title, search)),
 			applied,
-			{now, isPinned: (artifact) => isPinned(artifact.url)},
+			{
+				now,
+				isPinned: (artifact) => isPinned(artifact.url),
+			},
 		),
 		sort,
 	);
@@ -300,29 +470,50 @@ function ArtifactsPage() {
 	const searching = search.trim() !== "";
 	const layoutLabel = layout === "grid" ? "List view" : "Grid view";
 
-	function toggleLayout() {
+	function toggleLayout()
+	{
 		const next: ArtifactsLayout = layout === "grid" ? "list" : "grid";
 		setLayout(next);
 		writeArtifactsLayout(next);
 	}
 
 	function updateSearch(
-		next: Partial<{search: string; view: ArtifactView; filters: ArtifactFilters; sort: ArtifactSort}>,
-	) {
-		void navigate({
-			to: "/artifacts",
-			search: searchFromState({search, view, filters, sort, ...next}),
-			replace: true,
-		});
+		next: Partial<
+		{
+			search: string;
+			view: ArtifactView;
+			filters: ArtifactFilters;
+			sort: ArtifactSort;
+		}>,
+	)
+	{
+		void navigate(
+			{
+				to: "/artifacts",
+				search: searchFromState(
+					{
+						search,
+						view,
+						filters,
+						sort,
+						...next,
+					},
+				),
+				replace: true,
+			},
+		);
 	}
 
 	let status = "";
-	if (searching) {
+	if (searching)
+	{
 		status =
 			visible.length === 0
 				? `No artifacts match “${search}”`
 				: `${formatCount(visible.length, "artifact")} matching “${search}”`;
-	} else if (sortLanded) {
+	}
+	else if (sortLanded)
+	{
 		status = `Sorted by ${SORT_LABELS[sort]}`;
 	}
 
@@ -330,14 +521,24 @@ function ArtifactsPage() {
 		<div data-cds="Page" data-width="content" className="flex w-full flex-col">
 			<CodePageHeader
 				title="Artifacts"
-				sticky={{box: ARTIFACTS_BOX_CLASS, onTitleTravel: setTitleTravel}}
+				sticky={
+				{
+					box: ARTIFACTS_BOX_CLASS,
+					onTitleTravel: setTitleTravel,
+				}}
 				searchOpen={searchOpen}
 				tabs={
 					<Tabs.Root
 						data-cds="Tabs"
 						value={view}
-						onValueChange={(next: unknown) => {
-							if (isArtifactView(next)) updateSearch({view: next});
+						onValueChange={(next: unknown) =>
+						{
+							if (isArtifactView(next))
+								updateSearch(
+									{
+										view: next,
+									},
+								);
 						}}
 					>
 						<Tabs.List activateOnFocus={false} aria-label="Artifacts" className={CDS_TAB_LIST_CLASS}>
@@ -356,8 +557,13 @@ function ArtifactsPage() {
 							placeholder="Search artifacts..."
 							search={search}
 							onOpenChange={setSearchOpen}
-							onSearch={(next) => {
-								updateSearch({search: next});
+							onSearch={(next) =>
+							{
+								updateSearch(
+									{
+										search: next,
+									},
+								);
 							}}
 						/>
 						<ArtifactFilterMenu
@@ -365,12 +571,22 @@ function ArtifactsPage() {
 							view={view}
 							filters={filters}
 							sort={sort}
-							onFilters={(next) => {
-								updateSearch({filters: next});
+							onFilters={(next) =>
+							{
+								updateSearch(
+									{
+										filters: next,
+									},
+								);
 							}}
-							onSort={(next) => {
+							onSort={(next) =>
+							{
 								setSortLanded(true);
-								updateSearch({sort: next});
+								updateSearch(
+									{
+										sort: next,
+									},
+								);
 							}}
 						/>
 						<Tooltip content={layoutLabel}>
@@ -415,8 +631,13 @@ function ArtifactsPage() {
 							<button
 								type="button"
 								className={FILTER_EMPTY_CLEAR_CLASS}
-								onClick={() => {
-									updateSearch({filters: NO_ARTIFACT_FILTERS});
+								onClick={() =>
+								{
+									updateSearch(
+										{
+											filters: NO_ARTIFACT_FILTERS,
+										},
+									);
 								}}
 							>
 								Clear filters
@@ -459,7 +680,8 @@ function ArtifactFilterMenu({
 	sort: ArtifactSort;
 	onFilters: (next: ArtifactFilters) => void;
 	onSort: (next: ArtifactSort) => void;
-}) {
+})
+{
 	const count = activeFilterCount(filters);
 	const label = count === 0 ? "Filter and sort" : `${count} ${count === 1 ? "filter" : "filters"} on`;
 	const countOf = (key: ArtifactTypeKey) =>
@@ -478,7 +700,8 @@ function ArtifactFilterMenu({
 					<MenuSubContent>
 						<MenuRadioGroup
 							value={sort}
-							onValueChange={(next: unknown) => {
+							onValueChange={(next: unknown) =>
+							{
 								if (next === "opened" || next === "edited") onSort(next);
 							}}
 						>
@@ -500,8 +723,14 @@ function ArtifactFilterMenu({
 									key={owner}
 									leadingCheck
 									checked={filters.owners.includes(owner)}
-									onCheckedChange={(checked) => {
-										onFilters({...filters, owners: toggled(filters.owners, owner, checked)});
+									onCheckedChange={(checked) =>
+									{
+										onFilters(
+											{
+												...filters,
+												owners: toggled(filters.owners, owner, checked),
+											},
+										);
 									}}
 								>
 									{OWNER_LABELS[owner]}
@@ -517,16 +746,28 @@ function ArtifactFilterMenu({
 				<MenuSub>
 					<MenuSubTrigger value={pickedSummary(filters.types, TYPE_LABELS, "Any")}>Type</MenuSubTrigger>
 					<MenuSubContent>
-						{ARTIFACT_TYPE_KEYS.map((key) => {
+						{ARTIFACT_TYPE_KEYS.map((key) =>
+						{
 							const total = countOf(key);
 							return (
 								<MenuCheckboxItem
 									key={key}
 									leadingCheck
 									checked={filters.types.includes(key)}
-									{...(total > 0 ? {hint: total} : {})}
-									onCheckedChange={(checked) => {
-										onFilters({...filters, types: toggled(filters.types, key, checked)});
+									{...(total > 0
+										?
+											{
+												hint: total,
+											}
+										: {})}
+									onCheckedChange={(checked) =>
+									{
+										onFilters(
+											{
+												...filters,
+												types: toggled(filters.types, key, checked),
+											},
+										);
 									}}
 								>
 									{TYPE_LABELS[key]}
@@ -540,8 +781,15 @@ function ArtifactFilterMenu({
 					<MenuSubContent>
 						<MenuRadioGroup
 							value={filters.opened}
-							onValueChange={(next: unknown) => {
-								if (isOneOf(next, ARTIFACT_OPENED_RANGES)) onFilters({...filters, opened: next});
+							onValueChange={(next: unknown) =>
+							{
+								if (isOneOf(next, ARTIFACT_OPENED_RANGES))
+									onFilters(
+										{
+											...filters,
+											opened: next,
+										},
+									);
 							}}
 						>
 							{ARTIFACT_OPENED_RANGES.map((range) => (
@@ -557,8 +805,15 @@ function ArtifactFilterMenu({
 					<MenuSubContent>
 						<MenuRadioGroup
 							value={filters.sharing}
-							onValueChange={(next: unknown) => {
-								if (isOneOf(next, ARTIFACT_SHARINGS)) onFilters({...filters, sharing: next});
+							onValueChange={(next: unknown) =>
+							{
+								if (isOneOf(next, ARTIFACT_SHARINGS))
+									onFilters(
+										{
+											...filters,
+											sharing: next,
+										},
+									);
 							}}
 						>
 							{ARTIFACT_SHARINGS.map((sharing) => (
@@ -577,8 +832,14 @@ function ArtifactFilterMenu({
 				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={filters.pinned}
-					onCheckedChange={(checked) => {
-						onFilters({...filters, pinned: checked});
+					onCheckedChange={(checked) =>
+					{
+						onFilters(
+							{
+								...filters,
+								pinned: checked,
+							},
+						);
 					}}
 				>
 					Pinned
@@ -587,7 +848,8 @@ function ArtifactFilterMenu({
 					<>
 						<MenuSeparator />
 						<MenuItem
-							onSelect={() => {
+							onSelect={() =>
+							{
 								onFilters(NO_ARTIFACT_FILTERS);
 							}}
 						>
@@ -600,7 +862,8 @@ function ArtifactFilterMenu({
 	);
 }
 
-function typeMediaIconWord(artifact: ArtifactSummary): TypeMediaIconWord {
+function typeMediaIconWord(artifact: ArtifactSummary): TypeMediaIconWord
+{
 	const {icon} = artifact;
 	if (icon !== null && isTypeMediaIconWord(icon)) return icon;
 	return artifact.kind === "docs" ? "doc" : "code";
@@ -609,17 +872,20 @@ function typeMediaIconWord(artifact: ArtifactSummary): TypeMediaIconWord {
 /** Upstream's cover and mark kinds: Docs draw a `document`, everything else a `file`. */
 type CoverKind = "file" | "document";
 
-function coverKind(kind: ArtifactKind): CoverKind {
+function coverKind(kind: ArtifactKind): CoverKind
+{
 	return kind === "docs" ? "document" : "file";
 }
 
 /** Upstream's cover tints (`--cds-<hue>-100/600`, dark `-700/200`). */
-const COVER_HUE: Record<CoverKind, string> = {
+const COVER_HUE: Record<CoverKind, string> =
+{
 	file: "bg-cds-gray-100 text-cds-gray-600 dark:bg-cds-gray-700 dark:text-cds-gray-200",
 	document: "bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
 };
 
-const COVER_FRONT_SIZE: Record<CoverKind, string> = {
+const COVER_FRONT_SIZE: Record<CoverKind, string> =
+{
 	file: "h-[190px] w-[min(232px,100%-24px)]",
 	document: "h-[200px] w-[182px]",
 };
@@ -628,7 +894,8 @@ const COVER_FRONT_SIZE: Record<CoverKind, string> = {
 const COVER_FADE_EASING = [
 	0, 0.013, 0.049, 0.104, 0.175, 0.259, 0.352, 0.45, 0.55, 0.648, 0.741, 0.825, 0.896, 0.951, 0.987, 1,
 ];
-const COVER_FADE_MASK = {
+const COVER_FADE_MASK =
+{
 	maskImage: [
 		`linear-gradient(to bottom, transparent, ${COVER_FADE_EASING.map(
 			(step, index) => `rgb(0 0 0 / ${(step * 0.3).toFixed(3)}) ${(67 + index * 2.2).toFixed(1)}%`,
@@ -645,8 +912,16 @@ const COVER_SURFACE_WASH = "absolute inset-0 bg-surface-2 opacity-40 dark:opacit
 type BlankBox = readonly [x: number, y: number, width: number, height: number, rx?: number];
 
 /** Upstream's blank drawings (`M` in c8a1f083a): the `other` 3 × 2 tile grid and the `document` page's text lines. */
-const BLANK_DRAWINGS: Record<"other" | "document", {width: number; boxes: readonly BlankBox[]}> = {
-	other: {
+const BLANK_DRAWINGS: Record<
+	"other" | "document",
+	{
+		width: number;
+		boxes: readonly BlankBox[];
+	}
+> =
+{
+	other:
+	{
 		width: 202,
 		boxes: [0, 1, 2, 3, 4, 5].map((index): BlankBox => [
 			16 + (index % 3) * 59.33,
@@ -656,7 +931,8 @@ const BLANK_DRAWINGS: Record<"other" | "document", {width: number; boxes: readon
 			6,
 		]),
 	},
-	document: {
+	document:
+	{
 		width: 180,
 		boxes: [
 			[18, 18, 92, 10],
@@ -669,7 +945,8 @@ const BLANK_DRAWINGS: Record<"other" | "document", {width: number; boxes: readon
 	},
 };
 
-function BlankBoxes({boxes}: {boxes: readonly BlankBox[]}) {
+function BlankBoxes({boxes}: {boxes: readonly BlankBox[]})
+{
 	return boxes.map(([x, y, width, height, rx]) => (
 		<rect key={`${x} ${y}`} x={x} y={y} width={width} height={height} rx={rx ?? Math.min(width, height) / 2} />
 	));
@@ -681,7 +958,8 @@ const SHEEN_STOP = "[stop-color:currentColor]";
  * Upstream's no-thumbnail front sheet (`R`): the skeleton drawing pinned to the sheet's top centre, overflowing its
  * 130px box, with a second copy filled by a sheen that fades from the skeleton ink to clear across its width.
  */
-function CoverBlank({artifact}: {artifact: ArtifactSummary}) {
+function CoverBlank({artifact}: {artifact: ArtifactSummary})
+{
 	const id = useId();
 	const blank = coverBlankKind(artifact);
 	const {width, boxes} = BLANK_DRAWINGS[blank];
@@ -720,7 +998,8 @@ function CoverBlank({artifact}: {artifact: ArtifactSummary}) {
 }
 
 /** Upstream's card cover: a tinted wash with a floating front sheet and a masked bottom fade. */
-function ArtifactCover({artifact}: {artifact: ArtifactSummary}) {
+function ArtifactCover({artifact}: {artifact: ArtifactSummary})
+{
 	const kind = coverKind(artifact.kind);
 	return (
 		<div
@@ -749,19 +1028,31 @@ function ArtifactCover({artifact}: {artifact: ArtifactSummary}) {
  * The gallery's ArtifactMark: Docs resolve to a `document` mark; an untyped publish (no mark upstream's `PO` would
  * draw) still gets a `file` tile, with its icon word as the declared glyph.
  */
-function GalleryMark({artifact, size}: {artifact: ArtifactSummary; size: "card" | "row"}) {
-	const kind = resolveArtifactMark({typeKind: artifact.kind})?.kind ?? "file";
+function GalleryMark({artifact, size}: {artifact: ArtifactSummary; size: "card" | "row"})
+{
+	const kind =
+		resolveArtifactMark(
+			{
+				typeKind: artifact.kind,
+			},
+		)?.kind ?? "file";
 	return (
 		<ArtifactMark
 			kind={kind}
 			size={size}
 			glyph={kind === "file" ? TYPE_MEDIA_ICONS[typeMediaIconWord(artifact)] : undefined}
-			{...(artifact.kind === "docs" ? {label: "Docs"} : {})}
+			{...(artifact.kind === "docs"
+				?
+					{
+						label: "Docs",
+					}
+				: {})}
 		/>
 	);
 }
 
-function RelativeTime({ms, now}: {ms: number; now: Date}) {
+function RelativeTime({ms, now}: {ms: number; now: Date})
+{
 	return (
 		<Tooltip content={formatArtifactTooltip(ms)} className="pointer-events-auto">
 			<time data-cds="RelativeTime" dateTime={new Date(ms).toISOString()}>
@@ -772,7 +1063,8 @@ function RelativeTime({ms, now}: {ms: number; now: Date}) {
 }
 
 /** The list row's lock, dot and "Edited/Viewed <t>" (list rows keep them until list view is re-verified). */
-function PrivacyAndDate({artifact, now}: {artifact: ArtifactSummary; now: Date}) {
+function PrivacyAndDate({artifact, now}: {artifact: ArtifactSummary; now: Date})
+{
 	const ms = artifactTimestamp(artifact);
 	return (
 		<>
@@ -794,22 +1086,53 @@ function PrivacyAndDate({artifact, now}: {artifact: ArtifactSummary; now: Date})
 }
 
 /** Upstream's card meta: "Opened <t>", else "Edited <publish>", else "Created <first seen>". */
-function cardMetaTime(artifact: ArtifactSummary): {verb: string; ms: number} {
-	if (artifact.lastOpenedAt !== null) return {verb: "Opened", ms: artifact.lastOpenedAt};
-	if (artifact.lastPublishedAt !== null) return {verb: "Edited", ms: artifact.lastPublishedAt};
-	return {verb: "Created", ms: artifact.firstSeenAt};
+function cardMetaTime(artifact: ArtifactSummary):
+{
+	verb: string;
+	ms: number;
+}
+{
+	if (artifact.lastOpenedAt !== null)
+		return {
+			verb: "Opened",
+			ms: artifact.lastOpenedAt,
+		};
+	if (artifact.lastPublishedAt !== null)
+		return {
+			verb: "Edited",
+			ms: artifact.lastPublishedAt,
+		};
+	return {
+		verb: "Created",
+		ms: artifact.firstSeenAt,
+	};
 }
 
-function ArtifactChips({artifact}: {artifact: ArtifactSummary}) {
+function ArtifactChips({artifact}: {artifact: ArtifactSummary})
+{
 	const chip =
 		"pointer-events-auto rounded-full border border-border px-2 py-0.5 text-caption text-secondary no-underline transition-colors hover:bg-fill-ghost-hover hover:text-primary";
 	return (
 		<>
-			<Link to="/session/$id" params={{id: artifact.sessionId}} className={chip}>
+			<Link
+				to="/session/$id"
+				params={
+				{
+					id: artifact.sessionId,
+				}}
+				className={chip}
+			>
 				Session
 			</Link>
 			{artifact.sourceExists && (
-				<Link to="/artifact/$id" params={{id: artifact.id}} className={chip}>
+				<Link
+					to="/artifact/$id"
+					params={
+					{
+						id: artifact.id,
+					}}
+					className={chip}
+				>
 					Preview
 				</Link>
 			)}
@@ -822,12 +1145,14 @@ function ArtifactChips({artifact}: {artifact: ArtifactSummary}) {
  * `je` section heading): focus-into-view and scrollIntoView land them below the pinned header band, not under it.
  */
 const LIST_SCROLL_MARGIN_CLASS = "[scroll-margin-top:var(--list-header-scroll-offset)]";
-const LIST_HEADER_SCROLL_OFFSET_STYLE = {
+const LIST_HEADER_SCROLL_OFFSET_STYLE =
+{
 	"--list-header-scroll-offset": "var(--cds-page-header-scroll-offset)",
 } as CSSProperties;
 
 // Upstream's primary link also carries `df-link-card`, which no local stylesheet defines.
-function PrimaryLink({artifact, className}: {artifact: ArtifactSummary; className: string}) {
+function PrimaryLink({artifact, className}: {artifact: ArtifactSummary; className: string})
+{
 	return (
 		<a
 			href={artifact.url}
@@ -843,25 +1168,37 @@ function PrimaryLink({artifact, className}: {artifact: ArtifactSummary; classNam
 const ROW_ACTION_CLASS =
 	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus group-hover/cdsrow:opacity-100 group-has-[:focus-visible]/cdsrow:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100 [scroll-margin-top:var(--list-header-scroll-offset)]";
 
-function useCopyArtifactLink() {
+function useCopyArtifactLink()
+{
 	const toast = useToast();
-	return async (artifact: ArtifactSummary) => {
+	return async (artifact: ArtifactSummary) =>
+	{
 		const copied = await writeClipboardText(artifact.url);
 		toast(
 			copied
-				? {kind: "success", message: "Link copied to clipboard."}
-				: {kind: "error", message: "Couldn’t copy the link. Try again."},
+				?
+					{
+						kind: "success",
+						message: "Link copied to clipboard.",
+					}
+				:
+					{
+						kind: "error",
+						message: "Couldn’t copy the link. Try again.",
+					},
 		);
 	};
 }
 
-function togglePin(artifact: ArtifactSummary, pinned: boolean): void {
+function togglePin(artifact: ArtifactSummary, pinned: boolean): void
+{
 	if (pinned) unpinArtifact(artifact.url);
 	else pinArtifact(artifact.url);
 }
 
 /** Upstream's row menu within local limits (Rename, Duplicate and Delete are cloud mutations), with its P / C keycaps. */
-function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinned: boolean}) {
+function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinned: boolean})
+{
 	const copyLink = useCopyArtifactLink();
 	return (
 		<>
@@ -869,7 +1206,8 @@ function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinne
 				icon={pinned ? <Pin aria-hidden="true" fill="currentColor" /> : <Pin aria-hidden="true" />}
 				accelerator="p"
 				data-artifact-row="pin"
-				onSelect={() => {
+				onSelect={() =>
+				{
 					togglePin(artifact, pinned);
 				}}
 			>
@@ -895,7 +1233,8 @@ function ArtifactPinButton({
 	artifact: ArtifactSummary;
 	pinned: boolean;
 	className?: string;
-}) {
+})
+{
 	const pinLabel = pinned ? "Unpin" : "Pin";
 	return (
 		<Tooltip content={pinLabel}>
@@ -904,11 +1243,21 @@ function ArtifactPinButton({
 				aria-label={pinLabel}
 				aria-pressed={pinned}
 				className={className}
-				onClick={() => {
+				onClick={() =>
+				{
 					togglePin(artifact, pinned);
 				}}
 			>
-				<Pin aria-hidden="true" className="size-4" {...(pinned ? {fill: "currentColor"} : {})} />
+				<Pin
+					aria-hidden="true"
+					className="size-4"
+					{...(pinned
+						?
+							{
+								fill: "currentColor",
+							}
+						: {})}
+				/>
 			</button>
 		</Tooltip>
 	);
@@ -933,7 +1282,8 @@ function ArtifactMoreMenu({
 	artifact: ArtifactSummary;
 	pinned: boolean;
 	className?: string;
-}) {
+})
+{
 	return (
 		<Menu>
 			<MenuTrigger aria-label={`More options for ${artifact.title}`} className={className}>
@@ -947,7 +1297,8 @@ function ArtifactMoreMenu({
 }
 
 /** The hover Pin button and the "More options" ⋮ menu at the end of an artifact row. */
-function ArtifactRowActions({artifact, pinned}: {artifact: ArtifactSummary; pinned: boolean}) {
+function ArtifactRowActions({artifact, pinned}: {artifact: ArtifactSummary; pinned: boolean})
+{
 	return (
 		<span className="flex shrink-0 items-center gap-0.5">
 			<ArtifactPinButton artifact={artifact} pinned={pinned} />
@@ -965,7 +1316,8 @@ function ArtifactContextMenu({
 	artifact: ArtifactSummary;
 	pinned: boolean;
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger className="contents">{children}</ContextMenuTrigger>
@@ -986,19 +1338,33 @@ function ArtifactList({
 	artifacts: ArtifactSummary[];
 	now: Date;
 	sort: ArtifactSort;
-}) {
+})
+{
 	const idPrefix = useId();
 	const timestamp =
 		sort === "opened"
 			? artifactOpenedTimestamp
 			: (artifact: ArtifactSummary) => artifactSortTimestamp(artifact, sort);
 	const groups = [
-		...(pinned.length > 0 ? [{label: "Pinned", items: pinned, pinned: true}] : []),
-		...groupArtifactsByDate(artifacts, now, timestamp).map((group) => ({...group, pinned: false})),
+		...(pinned.length > 0
+			? [
+					{
+						label: "Pinned",
+						items: pinned,
+						pinned: true,
+					},
+				]
+			: []),
+		...groupArtifactsByDate(artifacts, now, timestamp).map((group) => (
+		{
+			...group,
+			pinned: false,
+		})),
 	];
 	return (
 		<div className="-mx-3 flex flex-col gap-3">
-			{groups.map((group, index) => {
+			{groups.map((group, index) =>
+			{
 				const headingId = `${idPrefix}-group-${index}`;
 				return (
 					<section key={group.label} className="flex flex-col">
@@ -1043,16 +1409,30 @@ function ArtifactList({
 }
 
 /** Upstream's grid (bundle `kt`): once anything is pinned it splits into "Pinned" and "Other artifacts" sections. */
-function ArtifactGrid({pinned, artifacts, now}: {pinned: ArtifactSummary[]; artifacts: ArtifactSummary[]; now: Date}) {
+function ArtifactGrid({pinned, artifacts, now}: {pinned: ArtifactSummary[]; artifacts: ArtifactSummary[]; now: Date})
+{
 	const idPrefix = useId();
 	if (pinned.length === 0) return <ArtifactCardList artifacts={artifacts} now={now} pinned={false} />;
 	const sections = [
-		{label: "Pinned", items: pinned, pinned: true},
-		...(artifacts.length > 0 ? [{label: "Other artifacts", items: artifacts, pinned: false}] : []),
+		{
+			label: "Pinned",
+			items: pinned,
+			pinned: true,
+		},
+		...(artifacts.length > 0
+			? [
+					{
+						label: "Other artifacts",
+						items: artifacts,
+						pinned: false,
+					},
+				]
+			: []),
 	];
 	return (
 		<div className="flex flex-col gap-9">
-			{sections.map((section, index) => {
+			{sections.map((section, index) =>
+			{
 				const headingId = `${idPrefix}-section-${index}`;
 				return (
 					<section key={section.label} className="flex flex-col gap-2">
@@ -1082,7 +1462,8 @@ function ArtifactCardList({
 	now: Date;
 	pinned: boolean;
 	labelledBy?: string;
-}) {
+})
+{
 	return (
 		<ul
 			role="list"
@@ -1100,7 +1481,8 @@ function ArtifactCardList({
  * Upstream's grid card: the whole card grows to 103% on hover (and while its menu is open) around an r16
  * pressable holding the tinted cover and the 72px mark row; More and Pin float top-right over the cover.
  */
-function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: Date; pinned: boolean}) {
+function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: Date; pinned: boolean})
+{
 	const {verb, ms} = cardMetaTime(artifact);
 	return (
 		<li className="h-full">

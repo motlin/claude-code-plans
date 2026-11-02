@@ -8,11 +8,13 @@ import type {SlashCommand} from "../src/lib/slash-commands";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadComposerSurfaces();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	localStorage.clear();
 });
@@ -20,99 +22,217 @@ afterEach(() => {
 const HISTORY = ["water the basil", "plant tomatoes"];
 
 function renderComposer(
-	props: {
+	props:
+	{
 		queueItems?: readonly QueuedPrompt[];
 		onEditRemove?: (id: string) => void;
 		slashCommands?: readonly SlashCommand[];
 	} = {},
-) {
+)
+{
 	render(
 		<Composer
 			variant="session"
 			draftKey="session-alice"
-			onSend={() => {}}
+			onSend={() =>
+			{
+			}}
 			promptHistory={HISTORY}
 			slashCommands={props.slashCommands}
 			queue={
 				props.queueItems === undefined
 					? undefined
-					: {
+					:
+						{
 							items: props.queueItems,
-							sendNow: async () => {},
-							remove: props.onEditRemove ?? (() => {}),
-							clear: () => {},
+							sendNow: async () =>
+							{
+							},
+							remove:
+								props.onEditRemove ??
+								(() =>
+								{
+								}),
+							clear: () =>
+							{
+							},
 						}
 			}
 		/>,
 	);
-	return screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+	return screen.getByRole<HTMLTextAreaElement>(
+		"textbox",
+		{
+			name: "Prompt",
+		},
+	);
 }
 
-function type(textarea: HTMLTextAreaElement, value: string, caret = value.length) {
-	fireEvent.change(textarea, {target: {value}});
+function type(textarea: HTMLTextAreaElement, value: string, caret = value.length)
+{
+	fireEvent.change(
+		textarea,
+		{
+			target:
+			{
+				value,
+			},
+		},
+	);
 	textarea.setSelectionRange(caret, caret);
 }
 
-describe("Composer prompt history", () => {
-	it("walks prior prompts with ↑ and back to the draft with ↓", () => {
+describe("Composer prompt history", () =>
+{
+	it("walks prior prompts with ↑ and back to the draft with ↓", () =>
+	{
 		const textarea = renderComposer();
 		type(textarea, "draft");
 		const seen: string[] = [];
-		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowUp",
+			},
+		);
 		seen.push(textarea.value);
-		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowUp",
+			},
+		);
 		seen.push(textarea.value);
-		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowUp",
+			},
+		);
 		seen.push(textarea.value);
-		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowDown",
+			},
+		);
 		seen.push(textarea.value);
-		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowDown",
+			},
+		);
 		seen.push(textarea.value);
 		expect(seen).toStrictEqual(["water the basil", "plant tomatoes", "plant tomatoes", "water the basil", "draft"]);
 	});
 
-	it("restores the draft on Escape", () => {
+	it("restores the draft on Escape", () =>
+	{
 		const textarea = renderComposer();
 		type(textarea, "my draft");
-		fireEvent.keyDown(textarea, {key: "ArrowUp"});
-		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowUp",
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowUp",
+			},
+		);
 		const walked = textarea.value;
-		fireEvent.keyDown(textarea, {key: "Escape"});
-		expect({walked, restored: textarea.value}).toStrictEqual({
-			walked: "plant tomatoes",
-			restored: "my draft",
-		});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Escape",
+			},
+		);
+		expect(
+			{
+				walked,
+				restored: textarea.value,
+			},
+		).toStrictEqual(
+			{
+				walked: "plant tomatoes",
+				restored: "my draft",
+			},
+		);
 	});
 
-	it("leaves ↑ alone when the caret is below the first line", () => {
+	it("leaves ↑ alone when the caret is below the first line", () =>
+	{
 		const textarea = renderComposer();
 		type(textarea, "first\nsecond");
-		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowUp",
+			},
+		);
 		expect(textarea.value).toBe("first\nsecond");
 	});
 
-	it("lets the slash popup keep ↑/↓ while it is open", () => {
-		const textarea = renderComposer({
-			slashCommands: [{name: "model", description: "Switch model", source: "builtin"}],
-		});
+	it("lets the slash popup keep ↑/↓ while it is open", () =>
+	{
+		const textarea = renderComposer(
+			{
+				slashCommands: [
+					{
+						name: "model",
+						description: "Switch model",
+						source: "builtin",
+					},
+				],
+			},
+		);
 		type(textarea, "/mo");
-		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowUp",
+			},
+		);
 		expect(textarea.value).toBe("/mo");
 	});
 
-	it("recalls the last queued prompt for editing with ↑ in an empty editor", () => {
+	it("recalls the last queued prompt for editing with ↑ in an empty editor", () =>
+	{
 		const remove = vi.fn<(id: string) => void>();
-		const textarea = renderComposer({
-			queueItems: [
-				{id: "q1", text: "Alice's queued follow-up"},
-				{id: "q2", text: "Bob's queued follow-up"},
-			],
-			onEditRemove: remove,
-		});
-		fireEvent.keyDown(textarea, {key: "ArrowUp"});
-		expect({value: textarea.value, removed: remove.mock.calls}).toStrictEqual({
-			value: "Bob's queued follow-up",
-			removed: [["q2"]],
-		});
+		const textarea = renderComposer(
+			{
+				queueItems: [
+					{
+						id: "q1",
+						text: "Alice's queued follow-up",
+					},
+					{
+						id: "q2",
+						text: "Bob's queued follow-up",
+					},
+				],
+				onEditRemove: remove,
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowUp",
+			},
+		);
+		expect(
+			{
+				value: textarea.value,
+				removed: remove.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				value: "Bob's queued follow-up",
+				removed: [["q2"]],
+			},
+		);
 	});
 });

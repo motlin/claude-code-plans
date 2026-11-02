@@ -13,13 +13,28 @@ const UNSTYLED = new Set([
 	"components/settings/settings-dialog.tsx",
 ]);
 
-function sources(): {file: string; source: string}[] {
-	return readdirSync(SRC, {recursive: true, encoding: "utf8"})
+function sources():
+{
+	file: string;
+	source: string;
+}[]
+{
+	return readdirSync(
+		SRC,
+		{
+			recursive: true,
+			encoding: "utf8",
+		},
+	)
 		.filter((file) => file.endsWith(".tsx"))
 		.map((file) => file.split(path.sep).join("/"))
 		.filter((file) => !UNSTYLED.has(file))
 		.toSorted()
-		.map((file) => ({file, source: readFileSync(path.join(SRC, file), "utf8")}));
+		.map((file) => (
+		{
+			file,
+			source: readFileSync(path.join(SRC, file), "utf8"),
+		}));
 }
 
 /*
@@ -27,8 +42,10 @@ function sources(): {file: string; source: string}[] {
  * so styled dialogs render their popup through DialogPopup and take their pads from useDialogPad.
  * ConfirmDialog is an AlertDialog with its own panels body (panels-flag-flat-look T2).
  */
-describe("styled dialog popups", () => {
-	it("render Dialog.Popup only through DialogPopup", () => {
+describe("styled dialog popups", () =>
+{
+	it("render Dialog.Popup only through DialogPopup", () =>
+	{
 		expect(
 			sources()
 				.filter(
@@ -38,7 +55,8 @@ describe("styled dialog popups", () => {
 		).toStrictEqual([]);
 	});
 
-	it("hard-code no 20/24px body pad", () => {
+	it("hard-code no 20/24px body pad", () =>
+	{
 		expect(
 			sources()
 				.filter(({source}) => source.includes("<DialogPopup"))

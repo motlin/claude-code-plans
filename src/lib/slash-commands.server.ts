@@ -4,13 +4,15 @@ import {join} from "node:path";
 import {listSkills, parseSkillFrontmatter, readInstalledPlugins, readSkillInvocation} from "./customize/skills";
 import {BUILTIN_SLASH_COMMANDS, mergeSlashCommands, type SlashCommand, type SlashCommandSource} from "./slash-commands";
 
-function frontmatterString(frontmatter: Record<string, unknown> | null, key: string): string | undefined {
+function frontmatterString(frontmatter: Record<string, unknown> | null, key: string): string | undefined
+{
 	const value = frontmatter?.[key];
 	return typeof value === "string" && value !== "" ? value : undefined;
 }
 
 /** The description line the CLI falls back to: the first non-blank body line. */
-function firstBodyLine(content: string): string {
+function firstBodyLine(content: string): string
+{
 	const end = content.startsWith("---") ? content.indexOf("\n---", 3) : -1;
 	const body = end === -1 ? content : content.slice(end + 4);
 	const line = body.split("\n").find((l) => l.trim() !== "") ?? "";
@@ -18,36 +20,57 @@ function firstBodyLine(content: string): string {
 }
 
 /** `<dir>/*.md` command files, invoked as `/<basename>`, or `/<pluginName>:<basename>` for a plugin. */
-async function readCommandsDir(dir: string, source: SlashCommandSource, pluginName?: string): Promise<SlashCommand[]> {
+async function readCommandsDir(dir: string, source: SlashCommandSource, pluginName?: string): Promise<SlashCommand[]>
+{
 	const prefix = pluginName === undefined ? "" : `${pluginName}:`;
 	let entries: string[];
-	try {
+	try
+	{
 		entries = await readdir(dir);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 	const commands: SlashCommand[] = [];
-	for (const entry of entries.filter((e) => e.endsWith(".md")).toSorted()) {
+	for (const entry of entries.filter((e) => e.endsWith(".md")).toSorted())
+	{
 		let content: string;
-		try {
+		try
+		{
 			content = await readFile(join(dir, entry), "utf-8");
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 		const frontmatter = parseSkillFrontmatter(content);
 		const argumentHint = frontmatterString(frontmatter, "argument-hint");
-		commands.push({
-			name: `${prefix}${entry.slice(0, -".md".length)}`,
-			description: frontmatterString(frontmatter, "description") ?? firstBodyLine(content),
-			source,
-			...(argumentHint === undefined ? {} : {argumentHint}),
-			...(pluginName === undefined ? {} : {pluginName}),
-		});
+		commands.push(
+			{
+				name: `${prefix}${entry.slice(0, -".md".length)}`,
+				description: frontmatterString(frontmatter, "description") ?? firstBodyLine(content),
+				source,
+				...(argumentHint === undefined
+					? {}
+					:
+						{
+							argumentHint,
+						}),
+				...(pluginName === undefined
+					? {}
+					:
+						{
+							pluginName,
+						}),
+			},
+		);
 	}
 	return commands;
 }
 
-export interface ListSlashCommandsOptions {
+export interface ListSlashCommandsOptions
+{
 	/** The session's working directory; project skills and commands come from here. */
 	cwd: string | undefined;
 	/** Defaults to ~/.claude. */
@@ -62,32 +85,58 @@ export interface ListSlashCommandsOptions {
 export async function listSlashCommands({
 	cwd,
 	claudeDir = join(homedir(), ".claude"),
-}: ListSlashCommandsOptions): Promise<SlashCommand[]> {
-	const skills = await listSkills({
-		projects: cwd === undefined ? [] : [{id: "cwd", projectPath: cwd}],
-		claudeDir,
-	});
+}: ListSlashCommandsOptions): Promise<SlashCommand[]>
+{
+	const skills = await listSkills(
+		{
+			projects:
+				cwd === undefined
+					? []
+					: [
+							{
+								id: "cwd",
+								projectPath: cwd,
+							},
+						],
+			claudeDir,
+		},
+	);
 
-	const skillCommands: Record<"personal" | "project" | "plugin", SlashCommand[]> = {
+	const skillCommands: Record<"personal" | "project" | "plugin", SlashCommand[]> =
+	{
 		personal: [],
 		project: [],
 		plugin: [],
 	};
-	for (const skill of skills) {
+	for (const skill of skills)
+	{
 		if (!skill.enabled) continue;
 		const {userInvocable, argumentHint} = await readSkillInvocation(skill.dir);
 		if (!userInvocable) continue;
-		skillCommands[skill.source].push({
-			name: skill.source === "plugin" ? `${skill.sourceLabel}:${skill.name}` : skill.name,
-			description: skill.description,
-			source: `${skill.source}-skill`,
-			...(argumentHint === undefined ? {} : {argumentHint}),
-			...(skill.source === "plugin" ? {pluginName: skill.sourceLabel} : {}),
-		});
+		skillCommands[skill.source].push(
+			{
+				name: skill.source === "plugin" ? `${skill.sourceLabel}:${skill.name}` : skill.name,
+				description: skill.description,
+				source: `${skill.source}-skill`,
+				...(argumentHint === undefined
+					? {}
+					:
+						{
+							argumentHint,
+						}),
+				...(skill.source === "plugin"
+					?
+						{
+							pluginName: skill.sourceLabel,
+						}
+					: {}),
+			},
+		);
 	}
 
 	const pluginCommands: SlashCommand[] = [];
-	for (const plugin of await readInstalledPlugins(claudeDir)) {
+	for (const plugin of await readInstalledPlugins(claudeDir))
+	{
 		pluginCommands.push(
 			...(await readCommandsDir(join(plugin.installPath, "commands"), "plugin-command", plugin.name)),
 		);

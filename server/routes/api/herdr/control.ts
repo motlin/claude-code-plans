@@ -1,5 +1,6 @@
 import {defineWebSocketHandler} from "nitro";
-import {
+import
+{
 	authorizeTerminalControl,
 	getTerminalHost,
 	TerminalStreamQuerySchema,
@@ -9,7 +10,8 @@ import {
 import {hmrDispose} from "../../../../src/lib/hmr-persist";
 import {isLoopbackPeer, LOCAL_ONLY_CLOSE_REASON} from "../../../../src/lib/loopback-guard";
 
-interface Connection {
+interface Connection
+{
 	close: () => void;
 	controller: TerminalController | null;
 	/** Frames that arrive while the herdr target is still resolving. */
@@ -21,7 +23,8 @@ const MAXIMUM_PENDING_FRAMES = 256;
 
 const connections = new Map<string, Connection>();
 
-function stopConnection(peerId: string): void {
+function stopConnection(peerId: string): void
+{
 	const connection = connections.get(peerId);
 	if (!connection) return;
 	connection.stopped = true;
@@ -30,80 +33,114 @@ function stopConnection(peerId: string): void {
 }
 
 /** Interactive twin of `observe`, gated by the herdr writes setting. */
-export default defineWebSocketHandler({
-	upgrade(request) {
-		const rejection = authorizeTerminalControl(request);
-		if (rejection) throw rejection;
+export default defineWebSocketHandler(
+	{
+		upgrade(request)
+		{
+			const rejection = authorizeTerminalControl(request);
+			if (rejection) throw rejection;
 
-		const url = new URL(request.url);
-		const searchParams = Object.fromEntries(url.searchParams);
-		const query = TerminalStreamQuerySchema.safeParse(searchParams);
-		if (!query.success) throw new Response("Invalid terminal control query", {status: 400});
-		return {context: searchParams};
-	},
-	async open(peer) {
-		if (!isLoopbackPeer(peer.remoteAddress)) {
-			peer.close(1008, LOCAL_ONLY_CLOSE_REASON);
-			return;
-		}
-		const query = TerminalStreamQuerySchema.parse(peer.context);
-		const connection: Connection = {
-			close: () => {
-				peer.close(1012, "terminal control server restarted");
-			},
-			controller: null,
-			pending: [],
-			stopped: false,
-		};
-		stopConnection(peer.id);
-		connections.set(peer.id, connection);
-		const socket: TerminalObserverSocket = {
-			send: (message) => {
-				peer.send(message);
-			},
-			close: (code, reason) => {
-				peer.close(code, reason);
-			},
-		};
-
-		try {
-			const host = await getTerminalHost();
-			const {target, columns, rows} = query;
-			const controller =
-				target.kind === "pane"
-					? await host.controlPane(target.paneId, columns, rows, socket)
-					: await host.control(target.sessionId, columns, rows, socket);
-			if (connection.stopped) {
-				controller.stop();
+			const url = new URL(request.url);
+			const searchParams = Object.fromEntries(url.searchParams);
+			const query = TerminalStreamQuerySchema.safeParse(searchParams);
+			if (!query.success)
+				throw new Response(
+					"Invalid terminal control query",
+					{
+						status: 400,
+					},
+				);
+			return {
+				context: searchParams,
+			};
+		},
+		async open(peer)
+		{
+			if (!isLoopbackPeer(peer.remoteAddress))
+			{
+				peer.close(1008, LOCAL_ONLY_CLOSE_REASON);
 				return;
 			}
-			connection.controller = controller;
-			for (const message of connection.pending.splice(0)) controller.input(message);
-		} catch (error) {
-			connections.delete(peer.id);
-			const message = error instanceof Error ? error.message : String(error);
-			peer.send(JSON.stringify({type: "observer.error", message}));
-			peer.close(1011, "terminal control failed");
-		}
-	},
-	message(peer, message) {
-		const connection = connections.get(peer.id);
-		if (!connection || connection.stopped) return;
-		const text = message.text();
-		if (connection.controller) connection.controller.input(text);
-		else if (connection.pending.length < MAXIMUM_PENDING_FRAMES) connection.pending.push(text);
-		else peer.close(1008, "terminal control backlog exceeded");
-	},
-	close(peer) {
-		stopConnection(peer.id);
-	},
-	error(peer) {
-		stopConnection(peer.id);
-	},
-});
+			const query = TerminalStreamQuerySchema.parse(peer.context);
+			const connection: Connection =
+			{
+				close: () =>
+				{
+					peer.close(1012, "terminal control server restarted");
+				},
+				controller: null,
+				pending: [],
+				stopped: false,
+			};
+			stopConnection(peer.id);
+			connections.set(peer.id, connection);
+			const socket: TerminalObserverSocket =
+			{
+				send: (message) =>
+				{
+					peer.send(message);
+				},
+				close: (code, reason) =>
+				{
+					peer.close(code, reason);
+				},
+			};
 
-hmrDispose(() => {
-	for (const connection of connections.values()) {
+			try
+			{
+				const host = await getTerminalHost();
+				const {target, columns, rows} = query;
+				const controller =
+					target.kind === "pane"
+						? await host.controlPane(target.paneId, columns, rows, socket)
+						: await host.control(target.sessionId, columns, rows, socket);
+				if (connection.stopped)
+				{
+					controller.stop();
+					return;
+				}
+				connection.controller = controller;
+				for (const message of connection.pending.splice(0)) controller.input(message);
+			}
+			catch (error)
+			{
+				connections.delete(peer.id);
+				const message = error instanceof Error ? error.message : String(error);
+				peer.send(
+					JSON.stringify(
+						{
+							type: "observer.error",
+							message,
+						},
+					),
+				);
+				peer.close(1011, "terminal control failed");
+			}
+		},
+		message(peer, message)
+		{
+			const connection = connections.get(peer.id);
+			if (!connection || connection.stopped) return;
+			const text = message.text();
+			if (connection.controller) connection.controller.input(text);
+			else if (connection.pending.length < MAXIMUM_PENDING_FRAMES) connection.pending.push(text);
+			else peer.close(1008, "terminal control backlog exceeded");
+		},
+		close(peer)
+		{
+			stopConnection(peer.id);
+		},
+		error(peer)
+		{
+			stopConnection(peer.id);
+		},
+	},
+);
+
+hmrDispose(() =>
+{
+	for (const connection of connections.values())
+	{
 		connection.stopped = true;
 		connection.controller?.stop();
 		connection.close();

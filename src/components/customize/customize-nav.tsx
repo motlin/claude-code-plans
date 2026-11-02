@@ -4,23 +4,35 @@ import {type MouseEvent, type ReactNode, useContext} from "react";
 import {CustomizeNavContext, type CustomizeTarget, routeOptions} from "./customize-navigation";
 import type {CustomizeSectionId} from "./sections";
 
-interface CustomizeLinkProps {
+interface CustomizeLinkProps
+{
 	target: CustomizeTarget;
 	className: string;
 	children: ReactNode;
 }
 
 /** A link to a Customize target that marks itself `aria-current="page"` when it is the open place. */
-export function CustomizeLink({target, className, children}: CustomizeLinkProps) {
+export function CustomizeLink({target, className, children}: CustomizeLinkProps)
+{
 	const navigator = useContext(CustomizeNavContext);
-	if (navigator === null) {
+	if (navigator === null)
+	{
 		return (
-			<Link {...routeOptions(target)} activeOptions={{exact: true, includeSearch: false}} className={className}>
+			<Link
+				{...routeOptions(target)}
+				activeOptions={
+				{
+					exact: true,
+					includeSearch: false,
+				}}
+				className={className}
+			>
 				{children}
 			</Link>
 		);
 	}
-	const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
+	const onClick = (event: MouseEvent<HTMLAnchorElement>) =>
+	{
 		if (!plainClick(event)) return;
 		event.preventDefault();
 		navigator.go(target);
@@ -40,7 +52,8 @@ export function CustomizeLink({target, className, children}: CustomizeLinkProps)
 const BACK_LINK_CLASS =
 	"-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-primary no-underline hover:bg-fill-ghost-hover";
 
-function plainClick(event: MouseEvent<HTMLAnchorElement>): boolean {
+function plainClick(event: MouseEvent<HTMLAnchorElement>): boolean
+{
 	return !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0);
 }
 
@@ -48,12 +61,21 @@ function plainClick(event: MouseEvent<HTMLAnchorElement>): boolean {
  * A detail header's back link to its section list ("Your skills"), or upstream's
  * "Search" when the detail was opened from a unified search hit.
  */
-export function CustomizeBackLink({section, children}: {section: CustomizeSectionId; children: ReactNode}) {
+export function CustomizeBackLink({section, children}: {section: CustomizeSectionId; children: ReactNode})
+{
 	const searchReturn = useContext(CustomizeNavContext)?.searchReturn ?? null;
 	const arrow = <ArrowLeft aria-hidden="true" className="size-4 rtl:-scale-x-100" />;
-	if (searchReturn === null) {
+	if (searchReturn === null)
+	{
 		return (
-			<CustomizeLink target={{kind: "list", section}} className={BACK_LINK_CLASS}>
+			<CustomizeLink
+				target={
+				{
+					kind: "list",
+					section,
+				}}
+				className={BACK_LINK_CLASS}
+			>
 				{arrow}
 				{children}
 			</CustomizeLink>
@@ -62,7 +84,8 @@ export function CustomizeBackLink({section, children}: {section: CustomizeSectio
 	return (
 		<a
 			href={searchReturn.href}
-			onClick={(event) => {
+			onClick={(event) =>
+			{
 				if (!plainClick(event)) return;
 				event.preventDefault();
 				searchReturn.go();

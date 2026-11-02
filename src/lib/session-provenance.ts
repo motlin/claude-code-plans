@@ -4,7 +4,8 @@ import type {SessionCostState} from "./session-cost";
 import {costStateFromRecord} from "./session-cost-record";
 
 /** The session-level fields the detail endpoint reports from a transcript's records. */
-export interface SessionProvenance {
+export interface SessionProvenance
+{
 	/** The first record's `entrypoint`. */
 	entrypoint?: string;
 	sessionKind?: string;
@@ -15,7 +16,8 @@ export interface SessionProvenance {
 	costState?: SessionCostState;
 }
 
-interface ProvenanceState {
+interface ProvenanceState
+{
 	entrypoint: string | undefined;
 	sessionKind: string | undefined;
 	teamNames: Set<string>;
@@ -24,15 +26,18 @@ interface ProvenanceState {
 }
 
 /** Folds the fields as `readSession` reads them: first entrypoint, sessionKind and forkedFrom, every teamName, latest cost-state. */
-const PROVENANCE_FOLD: JsonlFold<ProvenanceState> = {
-	create: () => ({
+const PROVENANCE_FOLD: JsonlFold<ProvenanceState> =
+{
+	create: () => (
+	{
 		entrypoint: undefined,
 		sessionKind: undefined,
 		teamNames: new Set(),
 		forkedFromSessionId: undefined,
 		costState: undefined,
 	}),
-	add: (state, line) => {
+	add: (state, line) =>
+	{
 		// Only a line that names one of the fields can set it, so most lines skip JSON.parse altogether.
 		const wantsEntrypoint = state.entrypoint === undefined && line.includes('"entrypoint"');
 		const wantsSessionKind = state.sessionKind === undefined && line.includes('"sessionKind"');
@@ -41,16 +46,20 @@ const PROVENANCE_FOLD: JsonlFold<ProvenanceState> = {
 		const wantsCost = line.includes('"cost-state"');
 		if (!wantsEntrypoint && !wantsSessionKind && !wantsForkedFrom && !wantsTeamName && !wantsCost) return;
 		let record: unknown;
-		try {
+		try
+		{
 			record = JSON.parse(line);
-		} catch {
+		}
+		catch
+		{
 			return;
 		}
 		if (!isRecord(record)) return;
 		if (wantsEntrypoint && typeof record["entrypoint"] === "string") state.entrypoint = record["entrypoint"];
 		if (wantsSessionKind && typeof record["sessionKind"] === "string") state.sessionKind = record["sessionKind"];
 		if (wantsTeamName && typeof record["teamName"] === "string") state.teamNames.add(record["teamName"]);
-		if (wantsForkedFrom) {
+		if (wantsForkedFrom)
+		{
 			const forked = record["forkedFrom"];
 			if (typeof forked === "string") state.forkedFromSessionId = forked;
 			else if (isRecord(forked) && typeof forked["sessionId"] === "string")
@@ -66,7 +75,8 @@ const PROVENANCE_CACHE_ENTRIES = 512;
 
 let cache = new IncrementalJsonlCache<ProvenanceState>(PROVENANCE_CACHE_ENTRIES);
 
-export function resetSessionProvenanceCache(): void {
+export function resetSessionProvenanceCache(): void
+{
 	cache = new IncrementalJsonlCache(PROVENANCE_CACHE_ENTRIES);
 }
 
@@ -75,12 +85,16 @@ export function resetSessionProvenanceCache(): void {
  * what was appended since, so reopening a live 100MB+ session costs its new lines rather than another full parse.
  * A missing file has none.
  */
-export async function readSessionProvenance(filePath: string): Promise<SessionProvenance> {
+export async function readSessionProvenance(filePath: string): Promise<SessionProvenance>
+{
 	const current = cache;
 	let state: ProvenanceState;
-	try {
+	try
+	{
 		state = await current.exclusive(filePath, async () => foldJsonl(filePath, PROVENANCE_FOLD, current));
-	} catch {
+	}
+	catch
+	{
 		return {};
 	}
 	const provenance: SessionProvenance = {};

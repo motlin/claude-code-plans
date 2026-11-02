@@ -5,7 +5,8 @@ import {ACTIVE_SESSION_WINDOW_MS} from "../lib/active-session-window";
 import {DEFAULT_CAPABILITIES, PersistedCapabilitiesSchema, type PersistedCapabilities} from "../lib/capabilities";
 import {objectKeys} from "../lib/narrow";
 import {DEFAULT_SESSION_LIST_PREFS, migrateSessionListPrefs, type SessionListPrefs} from "../lib/session-groups";
-import {
+import
+{
 	CodeThemeDarkSchema,
 	CodeThemeLightSchema,
 	DEFAULT_CODE_THEMES,
@@ -16,7 +17,8 @@ import {
 } from "../lib/code-themes";
 import {DEFAULT_TERMINAL_APPEARANCE, TerminalAppearanceSchema, type TerminalAppearance} from "../lib/terminal-theme";
 import {TranscriptWidthSchema, type TranscriptWidth} from "../lib/transcript-width";
-import {
+import
+{
 	InterfaceFontSchema,
 	ResponseFontSchema,
 	TranscriptTextSizeSchema,
@@ -45,12 +47,14 @@ const NotificationSoundSchema = z.enum(["system", "none"]);
 export type NotificationSound = z.infer<typeof NotificationSoundSchema>;
 export type Motion = z.infer<typeof MotionSchema>;
 
-export interface LinkCategoryRule {
+export interface LinkCategoryRule
+{
 	label: string;
 	hostPattern: string;
 }
 
-export interface Settings {
+export interface Settings
+{
 	showThinking: boolean;
 	showTools: boolean;
 	showDebug: boolean;
@@ -145,7 +149,8 @@ export interface Settings {
 	seenDragPinHint: boolean;
 }
 
-export const DEFAULTS: Settings = {
+export const DEFAULTS: Settings =
+{
 	showThinking: false,
 	showTools: true,
 	showDebug: false,
@@ -213,7 +218,8 @@ export const DEFAULTS: Settings = {
 	seenDragPinHint: false,
 };
 
-export const STORAGE_KEYS: Record<keyof Settings, string> = {
+export const STORAGE_KEYS: Record<keyof Settings, string> =
+{
 	showThinking: "ccp-show-thinking",
 	showTools: "ccp-show-tools",
 	showDebug: "ccp-show-debug",
@@ -267,7 +273,8 @@ export const STORAGE_KEYS: Record<keyof Settings, string> = {
 };
 
 /** The localStorage key a setting persists under. */
-export function settingStorageKey(key: keyof Settings): string {
+export function settingStorageKey(key: keyof Settings): string
+{
 	return STORAGE_KEYS[key];
 }
 
@@ -277,11 +284,13 @@ const LEGACY_DESKTOP_NOTIFICATIONS_KEY = "ccp-desktop-notifications";
  * Splits the old single desktop-notifications toggle into the two upstream
  * kinds: its stored value carries over to both, unless a new key already exists.
  */
-export function migrateLegacyNotificationSetting(storage: Pick<Storage, "getItem" | "setItem" | "removeItem">): void {
+export function migrateLegacyNotificationSetting(storage: Pick<Storage, "getItem" | "setItem" | "removeItem">): void
+{
 	const legacy = storage.getItem(LEGACY_DESKTOP_NOTIFICATIONS_KEY);
 	if (legacy === null) return;
 	const value = legacy === "true" ? "true" : "false";
-	for (const key of ["notifyCompletions", "notifyPermissionRequests"] as const) {
+	for (const key of ["notifyCompletions", "notifyPermissionRequests"] as const)
+	{
 		if (storage.getItem(STORAGE_KEYS[key]) === null) storage.setItem(STORAGE_KEYS[key], value);
 	}
 	storage.removeItem(LEGACY_DESKTOP_NOTIFICATIONS_KEY);
@@ -290,24 +299,29 @@ export function migrateLegacyNotificationSetting(storage: Pick<Storage, "getItem
 /** Keys of settings that no longer exist; loading drops them from storage. */
 const RETIRED_STORAGE_KEYS = ["ccp-status-footer"] as const;
 
-export function dropRetiredSettings(storage: Pick<Storage, "removeItem">): void {
+export function dropRetiredSettings(storage: Pick<Storage, "removeItem">): void
+{
 	for (const key of RETIRED_STORAGE_KEYS) storage.removeItem(key);
 }
 
 const LINK_CATEGORY_RULES_SCHEMA = z.array(
 	z
-		.object({
-			label: z.string(),
-			hostPattern: z.string(),
-		})
+		.object(
+			{
+				label: z.string(),
+				hostPattern: z.string(),
+			},
+		)
 		.strict(),
 );
 // Presets gate whole content categories, never individual tool rows. The
 // 2026-08-10 claude.ai/code captures are all view:"verbose", so they carry no
 // evidence about upstream's Normal view; adding per-row gating here needs a
 // Normal-view specimen to diff against first.
-export const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
-	normal: {
+export const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> =
+{
+	normal:
+	{
 		showTools: true,
 		showThinking: false,
 		showPassedHooks: false,
@@ -317,7 +331,8 @@ export const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
 		showCompactSummaries: false,
 		showTranscriptOnly: false,
 	},
-	thinking: {
+	thinking:
+	{
 		showTools: true,
 		showThinking: true,
 		showPassedHooks: false,
@@ -327,7 +342,8 @@ export const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
 		showCompactSummaries: false,
 		showTranscriptOnly: false,
 	},
-	verbose: {
+	verbose:
+	{
 		showTools: true,
 		showThinking: true,
 		showPassedHooks: true,
@@ -342,37 +358,48 @@ export const VERBOSITY_PRESETS: Record<Verbosity, Partial<Settings>> = {
 export const VERBOSITY_KEYS = objectKeys(VERBOSITY_PRESETS.normal);
 
 /** The preset the transcript toggles match, or null when they have been customized. */
-export function matchedVerbosityPreset(settings: Settings): Verbosity | null {
-	for (const preset of ["normal", "thinking", "verbose"] as const) {
+export function matchedVerbosityPreset(settings: Settings): Verbosity | null
+{
+	for (const preset of ["normal", "thinking", "verbose"] as const)
+	{
 		const values = VERBOSITY_PRESETS[preset];
-		if (VERBOSITY_KEYS.every((key) => settings[key] === values[key])) {
+		if (VERBOSITY_KEYS.every((key) => settings[key] === values[key]))
+		{
 			return preset;
 		}
 	}
 	return null;
 }
 
-export function detectVerbosity(settings: Settings): Verbosity {
+export function detectVerbosity(settings: Settings): Verbosity
+{
 	return matchedVerbosityPreset(settings) ?? settings.verbosity;
 }
 
 type StoredValueReader<V> = (stored: string | null) => V | undefined;
 
-function readSchema<V>(schema: z.ZodType<V>): StoredValueReader<V> {
-	return (stored) => {
+function readSchema<V>(schema: z.ZodType<V>): StoredValueReader<V>
+{
+	return (stored) =>
+	{
 		if (stored === null) return undefined;
 		const parsed = schema.safeParse(stored);
 		return parsed.success ? parsed.data : undefined;
 	};
 }
 
-function readJsonSchema<V>(schema: z.ZodType<V>): StoredValueReader<V> {
-	return (stored) => {
+function readJsonSchema<V>(schema: z.ZodType<V>): StoredValueReader<V>
+{
+	return (stored) =>
+	{
 		if (stored === null) return undefined;
-		try {
+		try
+		{
 			const parsed = schema.safeParse(JSON.parse(stored));
 			return parsed.success ? parsed.data : undefined;
-		} catch {
+		}
+		catch
+		{
 			return undefined;
 		}
 	};
@@ -380,7 +407,8 @@ function readJsonSchema<V>(schema: z.ZodType<V>): StoredValueReader<V> {
 
 const readBoolean: StoredValueReader<boolean> = (stored) => (stored === null ? undefined : stored === "true");
 
-const readNumber: StoredValueReader<number> = (stored) => {
+const readNumber: StoredValueReader<number> = (stored) =>
+{
 	if (stored === null) return undefined;
 	const parsed = Number(stored);
 	return Number.isFinite(parsed) ? parsed : undefined;
@@ -388,7 +416,8 @@ const readNumber: StoredValueReader<number> = (stored) => {
 
 const readString: StoredValueReader<string> = (stored) => stored ?? undefined;
 
-const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K]>} = {
+const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K]>} =
+{
 	showThinking: readBoolean,
 	showTools: readBoolean,
 	showDebug: readBoolean,
@@ -413,7 +442,8 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	codeThemeDark: readSchema(CodeThemeDarkSchema),
 	codeFont: readString,
 	// Like upstream `ut()`, anything but one of the listed sizes reads as Default.
-	codeFontSize: (stored) => {
+	codeFontSize: (stored) =>
+	{
 		if (stored === null) return undefined;
 		const size = Number(stored);
 		return isCodeFontSize(size) ? size : null;
@@ -426,11 +456,13 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	sessionsGrouping: readSchema(SessionsGroupingSchema),
 	// Read even when unset: older installs stored the grouping and sort under separate keys.
 	sessionListPrefs: (stored) =>
-		migrateSessionListPrefs({
-			stored,
-			sessionsGrouping: localStorage.getItem(STORAGE_KEYS.sessionsGrouping),
-			sessionSort: localStorage.getItem(STORAGE_KEYS.sessionSort),
-		}),
+		migrateSessionListPrefs(
+			{
+				stored,
+				sessionsGrouping: localStorage.getItem(STORAGE_KEYS.sessionsGrouping),
+				sessionSort: localStorage.getItem(STORAGE_KEYS.sessionSort),
+			},
+		),
 	notifyCompletions: readBoolean,
 	notifyPermissionRequests: readBoolean,
 	notificationSound: readSchema(NotificationSoundSchema),
@@ -452,19 +484,22 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	seenDragPinHint: readBoolean,
 };
 
-export function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefined {
+export function readStoredValue<K extends keyof Settings>(key: K): Settings[K] | undefined
+{
 	const reader: StoredValueReader<Settings[K]> = STORED_VALUE_READERS[key];
 	return reader(localStorage.getItem(STORAGE_KEYS[key]));
 }
 
-export function writeStoredValue<K extends keyof Settings>(key: K, value: Settings[K]): void {
+export function writeStoredValue<K extends keyof Settings>(key: K, value: Settings[K]): void
+{
 	localStorage.setItem(
 		STORAGE_KEYS[key],
 		Array.isArray(value) || typeof value === "object" ? JSON.stringify(value) : String(value),
 	);
 }
 
-interface SettingsContextValue {
+interface SettingsContextValue
+{
 	settings: Settings;
 	loaded: boolean;
 	setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
@@ -472,14 +507,17 @@ interface SettingsContextValue {
 	resetAll: () => void;
 }
 
-export const SettingsContext = createContext<SettingsContextValue>({
-	settings: DEFAULTS,
-	loaded: false,
-	setSetting: () => undefined,
-	setVerbosity: () => undefined,
-	resetAll: () => undefined,
-});
+export const SettingsContext = createContext<SettingsContextValue>(
+	{
+		settings: DEFAULTS,
+		loaded: false,
+		setSetting: () => undefined,
+		setVerbosity: () => undefined,
+		resetAll: () => undefined,
+	},
+);
 
-export function useSettings(): SettingsContextValue {
+export function useSettings(): SettingsContextValue
+{
 	return useContext(SettingsContext);
 }

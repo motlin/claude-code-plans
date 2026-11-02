@@ -6,7 +6,8 @@ import {type LaunchPermissionMode, shiftTabCount} from "../lib/launch-options";
 import type {ToastOptions} from "./toast-context";
 import {usePermissionModeGuard} from "./use-permission-mode-guard";
 
-export interface AllowAndSwitchToAutoInput {
+export interface AllowAndSwitchToAutoInput
+{
 	/** The consent workspace key (`consentWorkspaceKey`). */
 	workspace: string;
 	/** The session's mode, as the chin reads it. */
@@ -36,25 +37,43 @@ export function useAllowAndSwitchToAuto({
 	answerAllow,
 	expectMode,
 	toast,
-}: AllowAndSwitchToAutoInput): {onAllowAndSwitch: () => Promise<void>; gate: ReactNode} {
+}: AllowAndSwitchToAutoInput):
+{
+	onAllowAndSwitch: () => Promise<void>;
+	gate: ReactNode;
+}
+{
 	const {guard, gate} = usePermissionModeGuard(workspace);
 	const onAllowAndSwitch = useCallback(
 		async () =>
-			new Promise<void>((resolve, reject) => {
-				const proceed = () => {
+			new Promise<void>((resolve, reject) =>
+			{
+				const proceed = () =>
+				{
 					const presses = shiftTabCount(mode, "auto", availableModes);
-					sendAllowAuto(presses === null || presses === 0 ? null : presses).then((via) => {
-						if (via === "none") toast({kind: "error", message: FAILURE_MESSAGE.mode});
+					sendAllowAuto(presses === null || presses === 0 ? null : presses).then((via) =>
+					{
+						if (via === "none")
+							toast(
+								{
+									kind: "error",
+									message: FAILURE_MESSAGE.mode,
+								},
+							);
 						else expectMode("auto");
 						resolve();
 					}, reject);
 				};
-				const decline = () => {
+				const decline = () =>
+				{
 					answerAllow().then(resolve, reject);
 				};
 				guard("auto", proceed, decline);
 			}),
 		[answerAllow, availableModes, expectMode, guard, mode, sendAllowAuto, toast],
 	);
-	return {onAllowAndSwitch, gate};
+	return {
+		onAllowAndSwitch,
+		gate,
+	};
 }

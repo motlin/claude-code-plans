@@ -16,30 +16,48 @@ import type {UnifiedSectionId} from "./unified-search-results";
 import {assertNever} from "../../lib/assert-never";
 
 /** The hash (without `#`) a Customize target opens inside the Settings dialog. */
-function targetHash(target: CustomizeTarget, withFile = true): string {
-	switch (target.kind) {
+function targetHash(target: CustomizeTarget, withFile = true): string
+{
+	switch (target.kind)
+	{
 		case "list":
-			return customizeHash({
-				section: target.section,
-				view: target.search?.view === "discover" ? "discover" : "yours",
-			});
+			return customizeHash(
+				{
+					section: target.section,
+					view: target.search?.view === "discover" ? "discover" : "yours",
+				},
+			);
 		case "skill":
-			return customizeHash({
-				section: "skills",
-				id: target.id,
-				tab: target.tab === "contents" ? "contents" : null,
-			});
+			return customizeHash(
+				{
+					section: "skills",
+					id: target.id,
+					tab: target.tab === "contents" ? "contents" : null,
+				},
+			);
 		case "plugin":
-			return customizeHash({
-				section: "plugins",
-				id: target.id,
-				tab: target.tab === "overview" ? null : target.tab,
-				file: withFile ? (target.file ?? null) : null,
-			});
+			return customizeHash(
+				{
+					section: "plugins",
+					id: target.id,
+					tab: target.tab === "overview" ? null : target.tab,
+					file: withFile ? (target.file ?? null) : null,
+				},
+			);
 		case "connector":
-			return customizeHash({section: "connectors", id: target.slug});
+			return customizeHash(
+				{
+					section: "connectors",
+					id: target.slug,
+				},
+			);
 		case "command":
-			return customizeHash({section: "skills", id: commandDetailId(target.source, target.filename)});
+			return customizeHash(
+				{
+					section: "skills",
+					id: commandDetailId(target.source, target.filename),
+				},
+			);
 		default:
 			return assertNever(target);
 	}
@@ -48,7 +66,8 @@ function targetHash(target: CustomizeTarget, withFile = true): string {
 const NO_SECTIONS: UnifiedSectionId[] = [];
 
 /** The detail a unified search hit opened, and the search to restore from its "Search" back link. */
-interface SearchReturn {
+interface SearchReturn
+{
 	section: CustomizeSection;
 	id: string;
 	listHash: string;
@@ -58,24 +77,43 @@ interface SearchReturn {
 }
 
 /** The detail `target` opens, as its section and id; null for a list or an external link. */
-function openedDetail(target: CustomizeTarget): {section: CustomizeSection; id: string} | null {
-	switch (target.kind) {
+function openedDetail(target: CustomizeTarget):
+{
+	section: CustomizeSection;
+	id: string;
+} | null
+{
+	switch (target.kind)
+	{
 		case "list":
 			return null;
 		case "skill":
-			return {section: "skills", id: target.id};
+			return {
+				section: "skills",
+				id: target.id,
+			};
 		case "plugin":
-			return {section: "plugins", id: target.id};
+			return {
+				section: "plugins",
+				id: target.id,
+			};
 		case "connector":
-			return {section: "connectors", id: target.slug};
+			return {
+				section: "connectors",
+				id: target.slug,
+			};
 		case "command":
-			return {section: "skills", id: commandDetailId(target.source, target.filename)};
+			return {
+				section: "skills",
+				id: commandDetailId(target.source, target.filename),
+			};
 		default:
 			return assertNever(target);
 	}
 }
 
-interface CustomizeDialogPanelProps {
+interface CustomizeDialogPanelProps
+{
 	location: CustomizeLocation;
 	/** Moves the dialog to `hash` (without `#`), replacing the history entry when asked. */
 	onNavigate: (hash: string, replace: boolean) => void;
@@ -90,37 +128,84 @@ interface CustomizeDialogPanelProps {
  * upstream, moving to another section clears it; the query belongs to the
  * section it was typed in, so a "Search" back link restores it there.
  */
-export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDialogPanelProps) {
+export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDialogPanelProps)
+{
 	const [searches, setSearches] = useState<Partial<Record<CustomizeSection, CustomizeSearch>>>({});
-	const [typed, setTyped] = useState<{section: CustomizeSection; query: string}>({
-		section: location.section,
-		query: "",
-	});
+	const [typed, setTyped] = useState<
+	{
+		section: CustomizeSection;
+		query: string;
+	}>(
+		{
+			section: location.section,
+			query: "",
+		},
+	);
 	// The section last rendered: arriving in another one drops a query typed elsewhere.
 	const [seenSection, setSeenSection] = useState(location.section);
-	if (location.section !== seenSection) {
+	if (location.section !== seenSection)
+	{
 		setSeenSection(location.section);
-		if (typed.section !== location.section) setTyped({section: location.section, query: ""});
+		if (typed.section !== location.section)
+			setTyped(
+				{
+					section: location.section,
+					query: "",
+				},
+			);
 	}
 	const query = typed.section === location.section ? typed.query : "";
 	// Show all state belongs to the query it was expanded for, so it survives opening a hit and coming back.
-	const [expanded, setExpanded] = useState<{query: string; sections: UnifiedSectionId[]}>({query: "", sections: []});
+	const [expanded, setExpanded] = useState<
+	{
+		query: string;
+		sections: UnifiedSectionId[];
+	}>(
+		{
+			query: "",
+			sections: [],
+		},
+	);
 	const [searchReturn, setSearchReturn] = useState<SearchReturn | null>(null);
 	const expandedSections = expanded.query === query ? expanded.sections : NO_SECTIONS;
 	const section = CUSTOMIZE_SECTIONS.find((config) => config.id === location.section) ?? CUSTOMIZE_SECTIONS[0];
 
-	const patchSearch = useCallback((id: CustomizeSection, patch: CustomizeSearch) => {
+	const patchSearch = useCallback((id: CustomizeSection, patch: CustomizeSearch) =>
+	{
 		const {q, ...rest} = patch;
-		if ("q" in patch) setTyped({section: id, query: q ?? ""});
-		setSearches((previous) => ({...previous, [id]: dropEmpty({...previous[id], ...rest, view: undefined})}));
+		if ("q" in patch)
+			setTyped(
+				{
+					section: id,
+					query: q ?? "",
+				},
+			);
+		setSearches((previous) => (
+		{
+			...previous,
+			[id]: dropEmpty(
+				{
+					...previous[id],
+					...rest,
+					view: undefined,
+				},
+			),
+		}));
 	}, []);
 
-	const current = customizeHash({...location, file: null});
+	const current = customizeHash(
+		{
+			...location,
+			file: null,
+		},
+	);
 	const navigator = useMemo(
-		(): CustomizeNavigator => ({
+		(): CustomizeNavigator => (
+		{
 			href: (target) => `#${targetHash(target)}`,
 			isCurrent: (target) => targetHash(target, false) === current,
-			go: (target) => {
+			go: (target) =>
+			{
 				if (target.kind === "list" && target.search !== undefined) patchSearch(target.section, target.search);
 				// Moving within the opened detail (its tabs) keeps the way back to the search; anything else drops it.
 				const opened = openedDetail(target);
@@ -133,11 +218,23 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 			},
 			searchReturn:
 				searchReturn !== null && location.section === searchReturn.section && location.id === searchReturn.id
-					? {
+					?
+						{
 							href: `#${searchReturn.listHash}`,
-							go: () => {
-								setTyped({section: searchReturn.listSection, query: searchReturn.query});
-								setExpanded({query: searchReturn.query, sections: searchReturn.expanded});
+							go: () =>
+							{
+								setTyped(
+									{
+										section: searchReturn.listSection,
+										query: searchReturn.query,
+									},
+								);
+								setExpanded(
+									{
+										query: searchReturn.query,
+										sections: searchReturn.expanded,
+									},
+								);
 								setSearchReturn(null);
 								onNavigate(searchReturn.listHash, false);
 							},
@@ -147,27 +244,43 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 		[current, onNavigate, patchSearch, searchReturn, location.section, location.id],
 	);
 
-	const search: CustomizeSearch = {
+	const search: CustomizeSearch =
+	{
 		...searches[section.id],
-		...(section.hasDiscover && location.view === "discover" ? {view: "discover" as const} : {}),
+		...(section.hasDiscover && location.view === "discover"
+			?
+				{
+					view: "discover" as const,
+				}
+			: {}),
 	};
 	const openHit = useCallback(
-		(hit: UnifiedHit) => {
+		(hit: UnifiedHit) =>
+		{
 			if (hit.open === null) return;
-			if (hit.open.kind === "external") {
+			if (hit.open.kind === "external")
+			{
 				window.open(hit.open.href, "_blank", "noopener,noreferrer");
 				return;
 			}
 			navigator.go(hit.open);
 			const opened = openedDetail(hit.open);
-			if (opened !== null) {
-				setSearchReturn({
-					...opened,
-					listHash: customizeHash({section: section.id, view: location.view}),
-					listSection: section.id,
-					query,
-					expanded: expandedSections,
-				});
+			if (opened !== null)
+			{
+				setSearchReturn(
+					{
+						...opened,
+						listHash: customizeHash(
+							{
+								section: section.id,
+								view: location.view,
+							},
+						),
+						listSection: section.id,
+						query,
+						expanded: expandedSections,
+					},
+				);
 			}
 		},
 		[navigator, section.id, location.view, query, expandedSections],
@@ -183,20 +296,41 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 					<CustomizeHeader
 						embedded
 						section={section}
-						onSectionSelect={(next) => {
+						onSectionSelect={(next) =>
+						{
 							// Upstream's header tabs replace the hash with the bare section (`#customize/skills`).
-							onNavigate(customizeHash({section: next, view: "discover"}), true);
+							onNavigate(
+								customizeHash(
+									{
+										section: next,
+										view: "discover",
+									},
+								),
+								true,
+							);
 						}}
-						search={query === "" ? search : {...search, q: query}}
-						onSearchChange={(patch) => {
+						search={
+							query === ""
+								? search
+								:
+									{
+										...search,
+										q: query,
+									}
+						}
+						onSearchChange={(patch) =>
+						{
 							const {view, ...rest} = patch;
 							if (Object.keys(rest).length > 0) patchSearch(section.id, rest);
-							if ("view" in patch && view !== search.view) {
+							if ("view" in patch && view !== search.view)
+							{
 								onNavigate(
-									customizeHash({
-										section: section.id,
-										view: view === "discover" ? "discover" : "yours",
-									}),
+									customizeHash(
+										{
+											section: section.id,
+											view: view === "discover" ? "discover" : "yours",
+										},
+									),
 									true,
 								);
 							}
@@ -213,8 +347,14 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 									surface="dialog"
 									onOpen={openHit}
 									expanded={expandedSections}
-									onExpandedChange={(sections) => {
-										setExpanded({query, sections});
+									onExpandedChange={(sections) =>
+									{
+										setExpanded(
+											{
+												query,
+												sections,
+											},
+										);
 									}}
 								/>
 							)}
@@ -228,8 +368,10 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 	);
 }
 
-function SectionBody({location, search}: {location: CustomizeLocation; search: CustomizeSearch}) {
-	switch (location.section) {
+function SectionBody({location, search}: {location: CustomizeLocation; search: CustomizeSearch})
+{
+	switch (location.section)
+	{
 		case "skills":
 			return <SkillsSection search={search} />;
 		case "connectors":
@@ -241,11 +383,15 @@ function SectionBody({location, search}: {location: CustomizeLocation; search: C
 	}
 }
 
-function DetailBody({location, id}: {location: CustomizeLocation; id: string}) {
-	switch (location.section) {
-		case "skills": {
+function DetailBody({location, id}: {location: CustomizeLocation; id: string})
+{
+	switch (location.section)
+	{
+		case "skills":
+		{
 			const command = parseCommandDetailId(id);
-			if (command !== null) {
+			if (command !== null)
+			{
 				return <CommandDetailFrame source={command.source} filename={command.filename} layout="dialog" />;
 			}
 			return (
@@ -269,8 +415,10 @@ function DetailBody({location, id}: {location: CustomizeLocation; id: string}) {
 		case "plugins":
 			return (
 				<PluginDetailFrame pluginId={id} layout="dialog">
-					{(detail) => {
-						switch (location.tab) {
+					{(detail) =>
+					{
+						switch (location.tab)
+						{
 							case null:
 								return <PluginOverview detail={detail} />;
 							case "contents":

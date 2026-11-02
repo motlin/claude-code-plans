@@ -1,5 +1,6 @@
 import {inputString, inputStringArray} from "../../lib/tool-utils";
-import {
+import
+{
 	CheckCircle,
 	Globe,
 	Camera,
@@ -28,24 +29,29 @@ import {defined} from "../../lib/defined";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function truncateUrl(url: string, max: number): string {
+function truncateUrl(url: string, max: number): string
+{
 	if (url.length <= max) return url;
 	return url.slice(0, max - 3) + "...";
 }
 
-function extractUrl(input: Record<string, unknown>): string {
+function extractUrl(input: Record<string, unknown>): string
+{
 	return inputString(input, "url") ?? "";
 }
 
-function extractRef(input: Record<string, unknown>): string {
+function extractRef(input: Record<string, unknown>): string
+{
 	return inputString(input, "ref", "element") ?? "";
 }
 
-function extractValue(input: Record<string, unknown>): string {
+function extractValue(input: Record<string, unknown>): string
+{
 	return inputString(input, "value", "text") ?? "";
 }
 
-function ResultSummary({resultText}: {resultText: string}) {
+function ResultSummary({resultText}: {resultText: string})
+{
 	if (!resultText) return null;
 	const lines = resultText.split("\n");
 	const preview = lines.slice(0, 5).join("\n");
@@ -70,7 +76,8 @@ function ActionResult({
 	label: string;
 	detail?: string | undefined;
 	resultText: string;
-}) {
+})
+{
 	return (
 		<div className="px-2 py-2 space-y-2">
 			<div className="flex items-center gap-2">
@@ -90,10 +97,12 @@ function ActionResult({
 /**
  * Strip the URL from result text when it duplicates the input URL.
  */
-function stripNavigateUrlFromResult(resultText: string, url: string): string {
+function stripNavigateUrlFromResult(resultText: string, url: string): string
+{
 	if (!url || !resultText) return resultText;
 	const lines = resultText.split("\n");
-	const filtered = lines.filter((line) => {
+	const filtered = lines.filter((line) =>
+	{
 		const trimmed = line.trim();
 		if (trimmed === url) return false;
 		if (/^navigated to\s+/i.test(trimmed) && trimmed.toLowerCase().includes(url.toLowerCase())) return false;
@@ -103,7 +112,8 @@ function stripNavigateUrlFromResult(resultText: string, url: string): string {
 	return filtered.join("\n").trim();
 }
 
-function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const url = extractUrl(input);
 	const isSuccess = !resultText || resultText.toLowerCase().includes("navigated to");
 	const cleanedResult = stripNavigateUrlFromResult(resultText, url);
@@ -124,7 +134,8 @@ function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; 
 	);
 }
 
-function SnapshotRenderer({resultText}: {resultText: string}) {
+function SnapshotRenderer({resultText}: {resultText: string})
+{
 	const rootMatch = /RootWebArea\s+"([^"]*)"(?:\s+url="([^"]*)")?/.exec(resultText);
 	const title = rootMatch?.[1] ?? "";
 	const url = rootMatch?.[2] ?? "";
@@ -161,7 +172,8 @@ function SnapshotRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function ScreenshotRenderer({resultText}: {resultText: string}) {
+function ScreenshotRenderer({resultText}: {resultText: string})
+{
 	const pathMatch = /Saved screenshot to (.+)/.exec(resultText) ?? /Screenshot saved to (.+)/.exec(resultText);
 	const path = pathMatch?.[1]?.trim() ?? "";
 
@@ -177,7 +189,8 @@ function ScreenshotRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function ClickRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function ClickRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const ref = extractRef(input);
 	return (
 		<ActionResult
@@ -189,7 +202,8 @@ function ClickRenderer({input, resultText}: {input: Record<string, unknown>; res
 	);
 }
 
-function FillFormRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function FillFormRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const ref = extractRef(input);
 	const value = extractValue(input);
 	const detail = [ref ? `ref=${ref}` : "", value ? `"${value}"` : ""].filter(Boolean).join(" ");
@@ -203,7 +217,8 @@ function FillFormRenderer({input, resultText}: {input: Record<string, unknown>; 
 	);
 }
 
-function TypeRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function TypeRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const ref = extractRef(input);
 	const text = extractValue(input);
 	const detail = [ref ? `ref=${ref}` : "", text ? `"${text}"` : ""].filter(Boolean).join(" ");
@@ -217,7 +232,8 @@ function TypeRenderer({input, resultText}: {input: Record<string, unknown>; resu
 	);
 }
 
-function PressKeyRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function PressKeyRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const key = inputString(input, "key") ?? "";
 	return (
 		<ActionResult
@@ -229,7 +245,8 @@ function PressKeyRenderer({input, resultText}: {input: Record<string, unknown>; 
 	);
 }
 
-function HoverRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function HoverRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const ref = extractRef(input);
 	return (
 		<ActionResult
@@ -241,7 +258,8 @@ function HoverRenderer({input, resultText}: {input: Record<string, unknown>; res
 	);
 }
 
-function SelectOptionRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function SelectOptionRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const ref = extractRef(input);
 	const rawValues = input["values"];
 	const values = Array.isArray(rawValues) ? rawValues.filter((value) => typeof value === "string") : [];
@@ -256,7 +274,8 @@ function SelectOptionRenderer({input, resultText}: {input: Record<string, unknow
 	);
 }
 
-function TabsRenderer({resultText}: {resultText: string}) {
+function TabsRenderer({resultText}: {resultText: string})
+{
 	const lines = resultText
 		.split("\n")
 		.map((l) => l.trim())
@@ -275,8 +294,10 @@ function TabsRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function logLevelIcon(level: string) {
-	switch (level) {
+function logLevelIcon(level: string)
+{
+	switch (level)
+	{
 		case "error":
 			return <XCircle className="h-4 w-4 text-red-500" />;
 		case "warning":
@@ -288,8 +309,10 @@ function logLevelIcon(level: string) {
 	}
 }
 
-function logLevelBadgeClasses(level: string): string {
-	switch (level) {
+function logLevelBadgeClasses(level: string): string
+{
+	switch (level)
+	{
 		case "error":
 			return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
 		case "warning":
@@ -301,23 +324,30 @@ function logLevelBadgeClasses(level: string): string {
 	}
 }
 
-function ConsoleMessagesRenderer({resultText}: {resultText: string}) {
+function ConsoleMessagesRenderer({resultText}: {resultText: string})
+{
 	const lines = resultText
 		.split("\n")
 		.map((l) => l.trim())
 		.filter(Boolean);
 
 	// Try to parse structured lines like "[level] message"
-	const messages = lines.map((line, i) => {
+	const messages = lines.map((line, i) =>
+	{
 		const m = /^\[(\w+)\]\s+(.+)$/.exec(line);
-		if (m) {
+		if (m)
+		{
 			return {
 				id: i,
 				level: defined(m[1], "console level group"),
 				message: defined(m[2], "console message group"),
 			};
 		}
-		return {id: i, level: "log", message: line};
+		return {
+			id: i,
+			level: "log",
+			message: line,
+		};
 	});
 
 	return (
@@ -341,8 +371,10 @@ function ConsoleMessagesRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function httpMethodClasses(method: string): string {
-	switch (method) {
+function httpMethodClasses(method: string): string
+{
+	switch (method)
+	{
 		case "GET":
 			return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
 		case "POST":
@@ -358,16 +390,19 @@ function httpMethodClasses(method: string): string {
 	}
 }
 
-function NetworkRequestsRenderer({resultText}: {resultText: string}) {
+function NetworkRequestsRenderer({resultText}: {resultText: string})
+{
 	const lines = resultText
 		.split("\n")
 		.map((l) => l.trim())
 		.filter(Boolean);
 
 	// Try to parse structured network lines
-	const requests = lines.map((line, i) => {
+	const requests = lines.map((line, i) =>
+	{
 		const m = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+(\S+)\s+(\d+)/.exec(line);
-		if (m) {
+		if (m)
+		{
 			return {
 				id: i,
 				method: defined(m[1], "network method group"),
@@ -375,7 +410,12 @@ function NetworkRequestsRenderer({resultText}: {resultText: string}) {
 				status: parseInt(defined(m[3], "network status group"), 10),
 			};
 		}
-		return {id: i, method: "", url: line, status: 0};
+		return {
+			id: i,
+			method: "",
+			url: line,
+			status: 0,
+		};
 	});
 
 	return (
@@ -413,7 +453,8 @@ function NetworkRequestsRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function EvaluateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function EvaluateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const expression = inputString(input, "expression", "code") ?? "";
 	return (
 		<div className="px-2 py-2 space-y-2">
@@ -438,7 +479,8 @@ function EvaluateRenderer({input, resultText}: {input: Record<string, unknown>; 
 	);
 }
 
-function DefaultPlaywrightRenderer({resultText}: {resultText: string}) {
+function DefaultPlaywrightRenderer({resultText}: {resultText: string})
+{
 	if (!resultText) return <span className="text-body text-secondary">Action completed</span>;
 	return (
 		<div className="bg-t1 rounded-r6 p-2 max-h-48 overflow-auto">
@@ -451,7 +493,8 @@ function DefaultPlaywrightRenderer({resultText}: {resultText: string}) {
 // Entry point
 // ---------------------------------------------------------------------------
 
-export function PlaywrightRenderer({toolCall}: ToolRendererProps) {
+export function PlaywrightRenderer({toolCall}: ToolRendererProps)
+{
 	// Extract tool name: "mcp__plugin_playwright_playwright__browser_navigate" -> "browser_navigate"
 	const tool = toolCall.name.split("__").slice(2).join("__");
 	const resultText = toolCall.result ?? "";
@@ -474,8 +517,10 @@ function PlaywrightContent({
 	tool: string;
 	input: Record<string, unknown>;
 	resultText: string;
-}) {
-	switch (tool) {
+})
+{
+	switch (tool)
+	{
 		case "browser_navigate":
 			return <NavigateRenderer input={input} resultText={resultText} />;
 		case "browser_navigate_back":

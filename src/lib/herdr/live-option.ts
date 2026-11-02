@@ -7,12 +7,15 @@ import type {HerdrRequester} from "./panes";
 import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} from "./prompt";
 import {assertNever} from "../assert-never";
 
-const HerdrLiveOptionSchema = z.strictObject({
-	sessionId: z.string().min(1),
-	change: LiveOptionChangeSchema,
-});
+const HerdrLiveOptionSchema = z.strictObject(
+	{
+		sessionId: z.string().min(1),
+		change: LiveOptionChangeSchema,
+	},
+);
 
-export interface HerdrLiveOptionDependencies {
+export interface HerdrLiveOptionDependencies
+{
 	rejectRequest: (request: Request) => Response | null;
 	writesEnabled: () => boolean;
 	resolveTarget: (sessionId: string) => Promise<HerdrResult<HerdrPromptTarget>>;
@@ -20,8 +23,10 @@ export interface HerdrLiveOptionDependencies {
 	createRequestId: () => string;
 }
 
-function errorStatus(code: string): number {
-	switch (code) {
+function errorStatus(code: string): number
+{
+	switch (code)
+	{
 		case "agent_not_ready":
 		case "agent_prompt_stalled":
 			return 409;
@@ -34,33 +39,74 @@ function errorStatus(code: string): number {
 }
 
 /** The herdr call for one chin pick: `/model`, `/effort` and `/fast` prompts, or shift+tab presses. */
-function liveOptionCall(paneId: string, change: LiveOptionChange): {method: string; params: Record<string, unknown>} {
-	switch (change.kind) {
+function liveOptionCall(
+	paneId: string,
+	change: LiveOptionChange,
+):
+{
+	method: string;
+	params: Record<string, unknown>;
+}
+{
+	switch (change.kind)
+	{
 		case "model":
-			return {method: "agent.prompt", params: {target: paneId, text: `/model ${change.model}`}};
+			return {
+				method: "agent.prompt",
+				params:
+				{
+					target: paneId,
+					text: `/model ${change.model}`,
+				},
+			};
 		case "effort":
 			return {
 				method: "agent.prompt",
-				params: {target: paneId, text: `/effort ${change.effort}`},
+				params:
+				{
+					target: paneId,
+					text: `/effort ${change.effort}`,
+				},
 			};
 		case "fast":
-			return {method: "agent.prompt", params: {target: paneId, text: `/fast ${change.on ? "on" : "off"}`}};
+			return {
+				method: "agent.prompt",
+				params:
+				{
+					target: paneId,
+					text: `/fast ${change.on ? "on" : "off"}`,
+				},
+			};
 		case "ultracode":
 			return {
 				method: "agent.prompt",
-				params: {target: paneId, text: `/effort ultracode ${change.on ? "on" : "off"}`},
+				params:
+				{
+					target: paneId,
+					text: `/effort ultracode ${change.on ? "on" : "off"}`,
+				},
 			};
 		case "mode":
 			return {
 				method: "agent.send_keys",
-				params: {target: paneId, keys: Array.from({length: change.presses}, () => "shift+tab")},
+				params:
+				{
+					target: paneId,
+					keys: Array.from(
+						{
+							length: change.presses,
+						},
+						() => "shift+tab",
+					),
+				},
 			};
 		default:
 			return assertNever(change);
 	}
 }
 
-export const defaultHerdrLiveOptionDependencies: HerdrLiveOptionDependencies = {
+export const defaultHerdrLiveOptionDependencies: HerdrLiveOptionDependencies =
+{
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
 	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
@@ -72,32 +118,71 @@ export const defaultHerdrLiveOptionDependencies: HerdrLiveOptionDependencies = {
 export async function handleHerdrLiveOption(
 	request: Request,
 	dependencies: HerdrLiveOptionDependencies = defaultHerdrLiveOptionDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;
 
-	if (!dependencies.writesEnabled()) {
-		return Response.json({error: "herdr writes are disabled"}, {status: 403});
+	if (!dependencies.writesEnabled())
+	{
+		return Response.json(
+			{
+				error: "herdr writes are disabled",
+			},
+			{
+				status: 403,
+			},
+		);
 	}
 
 	const json: unknown = await request.json();
 	const parsed = HerdrLiveOptionSchema.safeParse(json);
-	if (!parsed.success) {
-		return Response.json({error: "sessionId and a model, effort or mode change are required"}, {status: 400});
+	if (!parsed.success)
+	{
+		return Response.json(
+			{
+				error: "sessionId and a model, effort or mode change are required",
+			},
+			{
+				status: 400,
+			},
+		);
 	}
 
 	const target = await dependencies.resolveTarget(parsed.data.sessionId);
-	if (!target.ok) {
-		return Response.json({error: target.message}, {status: errorStatus(target.code)});
+	if (!target.ok)
+	{
+		return Response.json(
+			{
+				error: target.message,
+			},
+			{
+				status: errorStatus(target.code),
+			},
+		);
 	}
 
-	const response = await dependencies.request({
-		id: dependencies.createRequestId(),
-		...liveOptionCall(target.value.paneId, parsed.data.change),
-	});
-	if (!response.ok) {
-		return Response.json({error: response.message}, {status: errorStatus(response.code)});
+	const response = await dependencies.request(
+		{
+			id: dependencies.createRequestId(),
+			...liveOptionCall(target.value.paneId, parsed.data.change),
+		},
+	);
+	if (!response.ok)
+	{
+		return Response.json(
+			{
+				error: response.message,
+			},
+			{
+				status: errorStatus(response.code),
+			},
+		);
 	}
 
-	return Response.json({ok: true});
+	return Response.json(
+		{
+			ok: true,
+		},
+	);
 }

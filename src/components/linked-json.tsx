@@ -2,7 +2,8 @@ import {resolveLink} from "./linked-json-links";
 import type {LinkedJsonContext} from "./linked-json-links";
 import {isRecord} from "../lib/narrow";
 
-interface LinkedJsonProps {
+interface LinkedJsonProps
+{
 	value: unknown;
 	context: LinkedJsonContext;
 }
@@ -11,7 +12,8 @@ interface LinkedJsonProps {
  * Recursive JSON renderer that syntax-colors tokens and turns recognized
  * string values into navigable links. Keys stay inert; only values link.
  */
-export function LinkedJson({value, context}: LinkedJsonProps) {
+export function LinkedJson({value, context}: LinkedJsonProps)
+{
 	return (
 		<pre className="bg-surface-1 text-primary text-xs font-mono whitespace-pre-wrap break-all rounded p-3 overflow-x-auto leading-relaxed">
 			<JsonValue value={value} path={[]} ctx={context} indent={0} />
@@ -21,7 +23,8 @@ export function LinkedJson({value, context}: LinkedJsonProps) {
 
 const INDENT_SIZE = 2;
 
-function indentStr(level: number): string {
+function indentStr(level: number): string
+{
 	return " ".repeat(level * INDENT_SIZE);
 }
 
@@ -35,13 +38,15 @@ function JsonValue({
 	path: string[];
 	ctx: LinkedJsonContext;
 	indent: number;
-}) {
+})
+{
 	if (value === null) return <span className="text-t6 italic">null</span>;
 	if (value === undefined) return <span className="text-t6 italic">undefined</span>;
 	if (Array.isArray(value)) return <JsonArray items={value} path={path} ctx={ctx} indent={indent} />;
 	if (isRecord(value)) return <JsonObject obj={value} path={path} ctx={ctx} indent={indent} />;
 
-	switch (typeof value) {
+	switch (typeof value)
+	{
 		case "string":
 			return <StringValue value={value} path={path} ctx={ctx} />;
 		case "number":
@@ -63,7 +68,8 @@ function JsonArray({
 	path: string[];
 	ctx: LinkedJsonContext;
 	indent: number;
-}) {
+})
+{
 	if (items.length === 0) return <span className="text-secondary">[]</span>;
 
 	return (
@@ -94,7 +100,8 @@ function JsonObject({
 	path: string[];
 	ctx: LinkedJsonContext;
 	indent: number;
-}) {
+})
+{
 	const keys = Object.keys(obj);
 	if (keys.length === 0) return <span className="text-secondary">{"{}"}</span>;
 
@@ -120,7 +127,8 @@ function JsonObject({
 
 // --- Link resolution ---
 
-function StringValue({value, path, ctx}: {value: string; path: string[]; ctx: LinkedJsonContext}) {
+function StringValue({value, path, ctx}: {value: string; path: string[]; ctx: LinkedJsonContext})
+{
 	const key = path[path.length - 1] ?? "";
 	const resolved = resolveLink(value, key, ctx);
 
@@ -133,11 +141,13 @@ function StringValue({value, path, ctx}: {value: string; path: string[]; ctx: Li
 		.replace(/\r/g, "\\r")
 		.replace(/\t/g, "\\t");
 
-	if (!resolved) {
+	if (!resolved)
+	{
 		return <span className="text-[#ce9178]">"{escaped}"</span>;
 	}
 
-	if (resolved.isExternal) {
+	if (resolved.isExternal)
+	{
 		return (
 			<span className="text-[#ce9178]">
 				"

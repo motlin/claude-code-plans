@@ -15,7 +15,8 @@ const PANE_ROW =
 
 const KIND_BADGE = "rounded bg-surface-0/60 px-1.5 py-0.5 text-center text-[10px] text-t6";
 
-const PROCESS_DOT: Readonly<Record<HerdrTerminalPaneData["process"], string>> = {
+const PROCESS_DOT: Readonly<Record<HerdrTerminalPaneData["process"], string>> =
+{
 	idle: "bg-green-500",
 	running: "bg-yellow-500",
 	exited: "bg-gray-500",
@@ -23,7 +24,8 @@ const PROCESS_DOT: Readonly<Record<HerdrTerminalPaneData["process"], string>> = 
 };
 
 /** A shell's state in the agent status indicator's shape: is a command holding the foreground? */
-function ProcessIndicator({process}: {process: HerdrTerminalPaneData["process"]}) {
+function ProcessIndicator({process}: {process: HerdrTerminalPaneData["process"]})
+{
 	return (
 		<span
 			className="grid grid-cols-[0.625rem_minmax(0,1fr)] items-center gap-1.5 text-xs text-t6"
@@ -35,7 +37,8 @@ function ProcessIndicator({process}: {process: HerdrTerminalPaneData["process"]}
 	);
 }
 
-function PaneRow({pane}: {pane: HerdrTerminalPaneData}) {
+function PaneRow({pane}: {pane: HerdrTerminalPaneData})
+{
 	const {glyph, title} = splitTerminalTitleGlyph(pane.title);
 	const label = `Open live terminal for ${pane.title}`;
 	const cells = (
@@ -65,7 +68,10 @@ function PaneRow({pane}: {pane: HerdrTerminalPaneData}) {
 	return pane.claudeSessionId === null ? (
 		<Link
 			to="/terminals/pane/$paneId"
-			params={{paneId: pane.paneId}}
+			params={
+			{
+				paneId: pane.paneId,
+			}}
 			aria-label={label}
 			title={label}
 			className={PANE_ROW}
@@ -75,7 +81,10 @@ function PaneRow({pane}: {pane: HerdrTerminalPaneData}) {
 	) : (
 		<Link
 			to="/terminals/$sessionId"
-			params={{sessionId: pane.claudeSessionId}}
+			params={
+			{
+				sessionId: pane.claudeSessionId,
+			}}
 			aria-label={label}
 			title={label}
 			className={PANE_ROW}
@@ -97,7 +106,8 @@ export function HerdrTerminalList({
 }: {
 	workspaces: readonly HerdrTerminalWorkspaceData[];
 	manageable?: boolean;
-}) {
+})
+{
 	return (
 		<section aria-labelledby="all-herdr-terminals" className="mt-8">
 			<h2 id="all-herdr-terminals" className="border-b border-border pb-1 text-sm font-semibold">

@@ -3,7 +3,8 @@ import {join} from "node:path";
 import {homedir} from "node:os";
 import {extractTitle} from "./markdown-utils.server.js";
 
-interface MemoryEntry {
+interface MemoryEntry
+{
 	filename: string;
 	title: string;
 	mtime: Date;
@@ -11,25 +12,30 @@ interface MemoryEntry {
 	projectName: string;
 }
 
-interface ProjectGroup {
+interface ProjectGroup
+{
 	project: string;
 	projectName: string;
 	memories: MemoryEntry[];
 }
 
-export function encodeProjectPath(dirPath: string): string {
+export function encodeProjectPath(dirPath: string): string
+{
 	return dirPath.replace(/[^a-zA-Z0-9]/g, "-");
 }
 
-export function decodeProjectDir(encoded: string, projectPath?: string): string {
-	if (projectPath) {
+export function decodeProjectDir(encoded: string, projectPath?: string): string
+{
+	if (projectPath)
+	{
 		const segments = projectPath.split("/");
 		const last = segments[segments.length - 1];
 		if (last) return last;
 	}
 
 	const segments = encoded.split("-");
-	for (let index = segments.length - 1; index >= 0; index--) {
+	for (let index = segments.length - 1; index >= 0; index--)
+	{
 		const segment = segments[index];
 		if (segment) return segment;
 	}
@@ -38,8 +44,10 @@ export function decodeProjectDir(encoded: string, projectPath?: string): string 
 
 const resolvedProjectNames = new Map<string, string>();
 
-export async function resolveProjectName(encoded: string, projectPath?: string): Promise<string> {
-	if (projectPath) {
+export async function resolveProjectName(encoded: string, projectPath?: string): Promise<string>
+{
+	if (projectPath)
+	{
 		const segments = projectPath.split("/");
 		const last = segments[segments.length - 1];
 		if (last) return last;
@@ -49,7 +57,8 @@ export async function resolveProjectName(encoded: string, projectPath?: string):
 	if (cached) return cached;
 
 	const resolvedPath = await resolveProjectPath(encoded);
-	if (resolvedPath) {
+	if (resolvedPath)
+	{
 		const name = resolvedPath.split("/").at(-1) ?? resolvedPath;
 		resolvedProjectNames.set(encoded, name);
 		return name;
@@ -67,27 +76,34 @@ const resolvedProjectPaths = new Map<string, string | null>();
  * Resolve the filesystem path for a Claude project directory name.
  * e.g. "-Users-craig-projects-claude-code-plans" -> "/Users/craig/projects/claude-code-plans"
  */
-export async function resolveProjectPath(encoded: string): Promise<string | null> {
+export async function resolveProjectPath(encoded: string): Promise<string | null>
+{
 	const cached = resolvedProjectPaths.get(encoded);
 	if (cached !== undefined) return cached;
 
 	const chars = encoded.slice(1); // remove leading -
 	const hyphenPositions: number[] = [];
-	for (let i = 0; i < chars.length; i++) {
+	for (let i = 0; i < chars.length; i++)
+	{
 		if (chars[i] === "-") hyphenPositions.push(i);
 	}
 
-	for (const pos of hyphenPositions.toReversed()) {
+	for (const pos of hyphenPositions.toReversed())
+	{
 		const pathPart = "/" + chars.slice(0, pos).replace(/-/g, "/");
 		const namePart = chars.slice(pos + 1);
 		const candidate = pathPart + "/" + namePart;
-		try {
+		try
+		{
 			const s = await stat(candidate);
-			if (s.isDirectory()) {
+			if (s.isDirectory())
+			{
 				resolvedProjectPaths.set(encoded, candidate);
 				return candidate;
 			}
-		} catch {
+		}
+		catch
+		{
 			// not a valid path, try next
 		}
 	}
@@ -96,12 +112,16 @@ export async function resolveProjectPath(encoded: string): Promise<string | null
 	return null;
 }
 
-async function processProject(projectsDir: string, project: string): Promise<ProjectGroup | null> {
+async function processProject(projectsDir: string, project: string): Promise<ProjectGroup | null>
+{
 	const memDir = join(projectsDir, project, "memory");
 	let files: string[];
-	try {
+	try
+	{
 		files = await readdir(memDir);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 
@@ -111,9 +131,11 @@ async function processProject(projectsDir: string, project: string): Promise<Pro
 	const projectName = await resolveProjectName(project);
 
 	const entries = await Promise.all(
-		mdFiles.map(async (filename) => {
+		mdFiles.map(async (filename) =>
+		{
 			const filePath = join(memDir, filename);
-			try {
+			try
+			{
 				const fileStat = await stat(filePath);
 				const title = await extractTitle(filePath, filename);
 				return {
@@ -123,7 +145,9 @@ async function processProject(projectsDir: string, project: string): Promise<Pro
 					project,
 					projectName,
 				};
-			} catch {
+			}
+			catch
+			{
 				return null;
 			}
 		}),
@@ -132,14 +156,22 @@ async function processProject(projectsDir: string, project: string): Promise<Pro
 	if (memories.length === 0) return null;
 
 	memories.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
-	return {project, projectName, memories};
+	return {
+		project,
+		projectName,
+		memories,
+	};
 }
 
-export async function listMemories(projectsDir: string): Promise<ProjectGroup[]> {
+export async function listMemories(projectsDir: string): Promise<ProjectGroup[]>
+{
 	let projectDirs: string[];
-	try {
+	try
+	{
 		projectDirs = await readdir(projectsDir);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 
@@ -147,19 +179,27 @@ export async function listMemories(projectsDir: string): Promise<ProjectGroup[]>
 	const groups = results.filter((g): g is ProjectGroup => g !== null);
 
 	return groups
-		.map((group) => ({group, maxMtime: Math.max(...group.memories.map((m) => m.mtime.getTime()))}))
+		.map((group) => (
+		{
+			group,
+			maxMtime: Math.max(...group.memories.map((m) => m.mtime.getTime())),
+		}))
 		.toSorted((a, b) => b.maxMtime - a.maxMtime)
 		.map(({group}) => group);
 }
 
-export async function readMemory(projectsDir: string, project: string, filename: string): Promise<string | null> {
+export async function readMemory(projectsDir: string, project: string, filename: string): Promise<string | null>
+{
 	if (project.includes("..") || project.includes("/")) return null;
 	if (filename.includes("..") || filename.includes("/") || !filename.endsWith(".md")) return null;
 
-	try {
+	try
+	{
 		const filePath = join(projectsDir, project, "memory", filename);
 		return await readFile(filePath, "utf-8");
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -169,25 +209,31 @@ export async function writeMemory(
 	project: string,
 	filename: string,
 	content: string,
-): Promise<boolean> {
+): Promise<boolean>
+{
 	if (project.includes("..") || project.includes("/")) return false;
 	if (filename.includes("..") || filename.includes("/") || !filename.endsWith(".md")) return false;
 	await writeFile(join(projectsDir, project, "memory", filename), content, "utf-8");
 	return true;
 }
 
-export async function deleteMemory(projectsDir: string, project: string, filename: string): Promise<boolean> {
+export async function deleteMemory(projectsDir: string, project: string, filename: string): Promise<boolean>
+{
 	if (project.includes("..") || project.includes("/")) return false;
 	if (filename.includes("..") || filename.includes("/") || !filename.endsWith(".md")) return false;
 
-	try {
+	try
+	{
 		await unlink(join(projectsDir, project, "memory", filename));
 		return true;
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
 
-export function getProjectsDir(): string {
+export function getProjectsDir(): string
+{
 	return join(homedir(), ".claude", "projects");
 }

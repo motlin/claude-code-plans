@@ -6,7 +6,8 @@ import type {z} from "zod";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {indexSessionsIndex} from "../src/lib/db/indexer";
 import {initPendingApprovalsCache, updatePendingApprovalForSession} from "../src/lib/db/pending-approvals-cache";
-import {
+import
+{
 	HookBackgroundTaskPayloadSchema,
 	HookSessionCronPayloadSchema,
 	LiveSubagentNodeSchema,
@@ -18,7 +19,8 @@ import {
 } from "../src/lib/domain-event-payload-schemas";
 import {dispatchHookEvent, type HookDispatchDirs} from "../src/lib/hook-dispatcher";
 import {DOMAIN_EVENTS} from "../src/lib/hook-events";
-import {
+import
+{
 	addLiveSubagent,
 	clearLiveSubagents,
 	endLiveSubagent,
@@ -36,13 +38,24 @@ import {buildSessionSummaryPayloadFromDb, toSessionSummaryPayload} from "../src/
  * unchanged — so a field added on the server cannot be dropped on the floor.
  */
 
-type Broadcast = {type: string; data: Record<string, unknown>};
+type Broadcast =
+{
+	type: string;
+	data: Record<string, unknown>;
+};
 
 const typedBroadcasts: Broadcast[] = [];
 
-vi.mock("../src/lib/sse-broadcast", () => ({
-	broadcastTyped: (type: string, data: Record<string, unknown>) => {
-		typedBroadcasts.push({type, data});
+vi.mock("../src/lib/sse-broadcast", () => (
+{
+	broadcastTyped: (type: string, data: Record<string, unknown>) =>
+	{
+		typedBroadcasts.push(
+			{
+				type,
+				data,
+			},
+		);
 	},
 }));
 
@@ -51,21 +64,30 @@ const PROJECT_ID = "-tmp-test-alice-project";
 const SESSION_ID = "session-test-100";
 let db: AppDb;
 
-function overTheWire(value: unknown): unknown {
+function overTheWire(value: unknown): unknown
+{
 	return JSON.parse(JSON.stringify(value));
 }
 
-function expectAccepted<T>(schema: z.ZodType<T>, payload: T): void {
-	expect(schema.safeParse(overTheWire(payload))).toStrictEqual({success: true, data: payload});
+function expectAccepted<T>(schema: z.ZodType<T>, payload: T): void
+{
+	expect(schema.safeParse(overTheWire(payload))).toStrictEqual(
+		{
+			success: true,
+			data: payload,
+		},
+	);
 }
 
-function payloadOf(broadcasts: Broadcast[], type: string, key: string): unknown {
+function payloadOf(broadcasts: Broadcast[], type: string, key: string): unknown
+{
 	const broadcast = broadcasts.find((candidate) => candidate.type === type);
 	if (broadcast === undefined) throw new Error(`Expected a ${type} broadcast`);
 	return broadcast.data[key];
 }
 
-function makeDirs(): HookDispatchDirs {
+function makeDirs(): HookDispatchDirs
+{
 	return {
 		projectsDir: join(testDir, "projects"),
 		plansDir: join(testDir, "plans"),
@@ -76,36 +98,70 @@ function makeDirs(): HookDispatchDirs {
 	};
 }
 
-function makeStore() {
+function makeStore()
+{
 	return {
-		setSessionCrons: () => {},
-		setPendingPermissionRequest: () => {},
-		touchSubagentActivity: () => {},
-		setBackgroundTasks: () => {},
-		markSessionActive: () => {},
-		markSessionEnded: () => {},
-		setSessionState: () => {},
-		touchSession: () => {},
+		setSessionCrons: () =>
+		{
+		},
+		setPendingPermissionRequest: () =>
+		{
+		},
+		touchSubagentActivity: () =>
+		{
+		},
+		setBackgroundTasks: () =>
+		{
+		},
+		markSessionActive: () =>
+		{
+		},
+		markSessionEnded: () =>
+		{
+		},
+		setSessionState: () =>
+		{
+		},
+		touchSession: () =>
+		{
+		},
 		getActiveSessionEntry: () => null,
 	};
 }
 
-async function dispatch(event: Parameters<typeof dispatchHookEvent>[0]["event"]): Promise<Broadcast[]> {
+async function dispatch(event: Parameters<typeof dispatchHookEvent>[0]["event"]): Promise<Broadcast[]>
+{
 	const broadcasts: Broadcast[] = [];
-	await dispatchHookEvent({
-		event,
-		db: db.index,
-		store: makeStore(),
-		broadcast: (type, data) => broadcasts.push({type, data}),
-		dirs: makeDirs(),
-		reportHerdrState: () => {},
-		isSessionVisible: () => true,
-	});
+	await dispatchHookEvent(
+		{
+			event,
+			db: db.index,
+			store: makeStore(),
+			broadcast: (type, data) =>
+				broadcasts.push(
+					{
+						type,
+						data,
+					},
+				),
+			dirs: makeDirs(),
+			reportHerdrState: () =>
+			{
+			},
+			isSessionVisible: () => true,
+		},
+	);
 	return broadcasts;
 }
 
-beforeEach(async () => {
-	mkdirSync(testDir, {recursive: true});
+beforeEach(async () =>
+{
+	mkdirSync(
+		testDir,
+		{
+			recursive: true,
+		},
+	);
 	db = openTestDb();
 	typedBroadcasts.length = 0;
 	clearLiveSubagents();
@@ -113,34 +169,50 @@ beforeEach(async () => {
 	await initPendingApprovalsCache(db.index);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	clearLiveSubagents();
 	clearAllNotifications();
 	db.close();
-	rmSync(testDir, {recursive: true, force: true});
+	rmSync(
+		testDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("domain event payload schemas accept the payloads the server emits", () => {
-	it("SessionSummaryPayload from the index DB (no branch, PR, or fork)", async () => {
+describe("domain event payload schemas accept the payloads the server emits", () =>
+{
+	it("SessionSummaryPayload from the index DB (no branch, PR, or fork)", async () =>
+	{
 		const projectDir = join(testDir, PROJECT_ID);
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		const transcriptPath = join(projectDir, `${SESSION_ID}.jsonl`);
 		writeFileSync(transcriptPath, "");
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
-			JSON.stringify({
-				version: 1,
-				entries: [
-					{
-						sessionId: SESSION_ID,
-						fullPath: transcriptPath,
-						fileMtime: 946_598_400_000,
-						firstPrompt: "Fix the test login bug",
-						messageCount: 5,
-						projectPath: "/tmp/test/alice-project",
-					},
-				],
-			}),
+			JSON.stringify(
+				{
+					version: 1,
+					entries: [
+						{
+							sessionId: SESSION_ID,
+							fullPath: transcriptPath,
+							fileMtime: 946_598_400_000,
+							firstPrompt: "Fix the test login bug",
+							messageCount: 5,
+							projectPath: "/tmp/test/alice-project",
+						},
+					],
+				},
+			),
 		);
 		await indexSessionsIndex(db.index, projectDir, PROJECT_ID);
 
@@ -149,7 +221,8 @@ describe("domain event payload schemas accept the payloads the server emits", ()
 		expectAccepted(SessionSummaryPayloadSchema, payload);
 	});
 
-	it("SessionSummaryPayload with every optional field present", () => {
+	it("SessionSummaryPayload with every optional field present", () =>
+	{
 		const payload = toSessionSummaryPayload(
 			{
 				id: SESSION_ID,
@@ -164,19 +237,30 @@ describe("domain event payload schemas accept the payloads the server emits", ()
 				gitBranch: "feature/test-login",
 				isSidechain: false,
 				forkedFromSessionId: "session-test-200",
-				pr: {number: 100, url: "https://example.com/example/repo/pull/100", repository: "example/repo"},
+				pr:
+				{
+					number: 100,
+					url: "https://example.com/example/repo/pull/100",
+					repository: "example/repo",
+				},
 			},
 			{
 				unseen: true,
 				archived: true,
 				activeSession: null,
 				registrySession: null,
-				prStatus: {
+				prStatus:
+				{
 					number: 100,
 					state: "open",
 					url: "https://example.com/example/repo/pull/100",
 					title: "Fix the test login bug",
-					checks: {passed: 3, failed: 1, pending: 2},
+					checks:
+					{
+						passed: 3,
+						failed: 1,
+						pending: 2,
+					},
 					review: "APPROVED",
 				},
 				now: 946_598_500_000,
@@ -185,38 +269,49 @@ describe("domain event payload schemas accept the payloads the server emits", ()
 		expectAccepted(SessionSummaryPayloadSchema, payload);
 	});
 
-	it("PendingApprovalPayload for an unanswered AskUserQuestion", async () => {
+	it("PendingApprovalPayload for an unanswered AskUserQuestion", async () =>
+	{
 		const transcriptPath = join(testDir, `${SESSION_ID}.jsonl`);
 		writeFileSync(
 			transcriptPath,
-			`${JSON.stringify({
-				type: "assistant",
-				sessionId: SESSION_ID,
-				timestamp: "2026-05-14T10:00:00.000Z",
-				message: {
-					role: "assistant",
-					content: [
-						{
-							type: "tool_use",
-							id: "toolu_question",
-							name: "AskUserQuestion",
-							input: {
-								questions: [
-									{
-										question: "Which test fixture should we use?",
-										header: "Fixture",
-										multiSelect: false,
-										options: [
-											{label: "Alpha", description: "The alpha fixture"},
-											{label: "Beta", description: "The beta fixture"},
-										],
-									},
-								],
+			`${JSON.stringify(
+				{
+					type: "assistant",
+					sessionId: SESSION_ID,
+					timestamp: "2026-05-14T10:00:00.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_question",
+								name: "AskUserQuestion",
+								input:
+								{
+									questions: [
+										{
+											question: "Which test fixture should we use?",
+											header: "Fixture",
+											multiSelect: false,
+											options: [
+												{
+													label: "Alpha",
+													description: "The alpha fixture",
+												},
+												{
+													label: "Beta",
+													description: "The beta fixture",
+												},
+											],
+										},
+									],
+								},
 							},
-						},
-					],
+						],
+					},
 				},
-			})}\n`,
+			)}\n`,
 		);
 		const broadcasts: Broadcast[] = [];
 		await updatePendingApprovalForSession(
@@ -225,39 +320,59 @@ describe("domain event payload schemas accept the payloads the server emits", ()
 			transcriptPath,
 			PROJECT_ID,
 			"alice-project",
-			(type, data) => broadcasts.push({type, data}),
+			(type, data) =>
+				broadcasts.push(
+					{
+						type,
+						data,
+					},
+				),
 		);
 
 		const approval = PendingApprovalPayloadSchema.parse(
 			overTheWire(payloadOf(broadcasts, DOMAIN_EVENTS.APPROVAL_CHANGED, "approval")),
 		);
-		expect(approval).toStrictEqual({
-			sessionId: SESSION_ID,
-			projectId: PROJECT_ID,
-			projectName: "alice-project",
-			toolName: "AskUserQuestion",
-			toolUseId: "toolu_question",
-			blockedSince: "2026-05-14T10:00:00.000Z",
-			planFilename: null,
-			questionPreview: "Which test fixture should we use?",
-			questionOptions: ["Alpha", "Beta"],
-		});
+		expect(approval).toStrictEqual(
+			{
+				sessionId: SESSION_ID,
+				projectId: PROJECT_ID,
+				projectName: "alice-project",
+				toolName: "AskUserQuestion",
+				toolUseId: "toolu_question",
+				blockedSince: "2026-05-14T10:00:00.000Z",
+				planFilename: null,
+				questionPreview: "Which test fixture should we use?",
+				questionOptions: ["Alpha", "Beta"],
+			},
+		);
 	});
 
-	it("PlanSummaryPayload from a plan edit", async () => {
+	it("PlanSummaryPayload from a plan edit", async () =>
+	{
 		const dirs = makeDirs();
-		mkdirSync(dirs.plansDir, {recursive: true});
+		mkdirSync(
+			dirs.plansDir,
+			{
+				recursive: true,
+			},
+		);
 		const planPath = join(dirs.plansDir, "2026-05-20-test-plan.md");
 		writeFileSync(planPath, "# Test Plan Title\n\nBody.\n");
 
-		const broadcasts = await dispatch({
-			hook_event_name: "PostToolUse",
-			session_id: SESSION_ID,
-			transcript_path: "/tmp/missing.jsonl",
-			cwd: "/tmp",
-			tool_name: "Write",
-			tool_input: {file_path: planPath, content: "# Test Plan Title\n\nBody.\n"},
-		});
+		const broadcasts = await dispatch(
+			{
+				hook_event_name: "PostToolUse",
+				session_id: SESSION_ID,
+				transcript_path: "/tmp/missing.jsonl",
+				cwd: "/tmp",
+				tool_name: "Write",
+				tool_input:
+				{
+					file_path: planPath,
+					content: "# Test Plan Title\n\nBody.\n",
+				},
+			},
+		);
 
 		const plan = PlanSummaryPayloadSchema.safeParse(
 			overTheWire(payloadOf(broadcasts, DOMAIN_EVENTS.PLAN_CHANGED, "plan")),
@@ -266,21 +381,33 @@ describe("domain event payload schemas accept the payloads the server emits", ()
 		expect(plan.data?.title).toBe("Test Plan Title");
 	});
 
-	it("MemorySummaryPayload from a memory edit", async () => {
+	it("MemorySummaryPayload from a memory edit", async () =>
+	{
 		const dirs = makeDirs();
 		const memoryDir = join(dirs.projectsDir, PROJECT_ID, "memory");
-		mkdirSync(memoryDir, {recursive: true});
+		mkdirSync(
+			memoryDir,
+			{
+				recursive: true,
+			},
+		);
 		const memoryPath = join(memoryDir, "test-memory.md");
 		writeFileSync(memoryPath, "# Test Memory Title\n\nRemember this.\n");
 
-		const broadcasts = await dispatch({
-			hook_event_name: "PostToolUse",
-			session_id: SESSION_ID,
-			transcript_path: "/tmp/missing.jsonl",
-			cwd: "/tmp",
-			tool_name: "Write",
-			tool_input: {file_path: memoryPath, content: "# Test Memory Title\n\nRemember this.\n"},
-		});
+		const broadcasts = await dispatch(
+			{
+				hook_event_name: "PostToolUse",
+				session_id: SESSION_ID,
+				transcript_path: "/tmp/missing.jsonl",
+				cwd: "/tmp",
+				tool_name: "Write",
+				tool_input:
+				{
+					file_path: memoryPath,
+					content: "# Test Memory Title\n\nRemember this.\n",
+				},
+			},
+		);
 
 		const memory = MemorySummaryPayloadSchema.safeParse(
 			overTheWire(payloadOf(broadcasts, DOMAIN_EVENTS.MEMORY_CHANGED, "memory")),
@@ -290,26 +417,41 @@ describe("domain event payload schemas accept the payloads the server emits", ()
 	});
 
 	it.each([
-		["with a title", {title: "Claude Code"}],
+		[
+			"with a title",
+			{
+				title: "Claude Code",
+			},
+		],
 		["without a title", {}],
-	])("NotificationEntryPayload %s", async (_name, title) => {
-		await dispatch({
-			hook_event_name: "Notification",
-			session_id: SESSION_ID,
-			transcript_path: "/tmp/missing.jsonl",
-			cwd: "/tmp/test/alice-project",
-			message: "Claude needs your permission to use Bash",
-			notification_type: "permission_prompt",
-			...title,
-		});
+	])("NotificationEntryPayload %s", async (_name, title) =>
+	{
+		await dispatch(
+			{
+				hook_event_name: "Notification",
+				session_id: SESSION_ID,
+				transcript_path: "/tmp/missing.jsonl",
+				cwd: "/tmp/test/alice-project",
+				message: "Claude needs your permission to use Bash",
+				notification_type: "permission_prompt",
+				...title,
+			},
+		);
 
 		const sent = payloadOf(typedBroadcasts, DOMAIN_EVENTS.NOTIFICATION_ADDED, "notification");
 		const notification = NotificationEntryPayloadSchema.safeParse(overTheWire(sent));
-		expect(notification).toStrictEqual({success: true, data: sent});
+		expect(notification).toStrictEqual(
+			{
+				success: true,
+				data: sent,
+			},
+		);
 	});
 
-	it("NotificationEntryPayload with a persistent option and its saves", () => {
-		const sent = {
+	it("NotificationEntryPayload with a persistent option and its saves", () =>
+	{
+		const sent =
+		{
 			id: "notification-test-300",
 			sessionId: SESSION_ID,
 			projectId: "project-test-300",
@@ -319,70 +461,97 @@ describe("domain event payload schemas accept the payloads the server emits", ()
 			notificationType: "permission_prompt",
 			persistentAllow: "always",
 			persistentAllowSaves: [
-				{kind: "rule", toolName: "Bash", ruleContent: "npm run *"},
-				{kind: "acceptEditsMode"},
+				{
+					kind: "rule",
+					toolName: "Bash",
+					ruleContent: "npm run *",
+				},
+				{
+					kind: "acceptEditsMode",
+				},
 			],
 			createdAt: 1,
 			createdAtIso: "1970-01-01T00:00:00.001Z",
 		};
-		expect(NotificationEntryPayloadSchema.safeParse(overTheWire(sent))).toStrictEqual({success: true, data: sent});
+		expect(NotificationEntryPayloadSchema.safeParse(overTheWire(sent))).toStrictEqual(
+			{
+				success: true,
+				data: sent,
+			},
+		);
 	});
 
-	it("LiveSubagentNode in the subagents snapshot, running and ended", () => {
-		addLiveSubagent({
-			parentSessionId: SESSION_ID,
-			agentId: "agent-test-100",
-			agentType: "Explore",
-			description: "Inspect the example project",
-		});
-		addLiveSubagent({
-			parentSessionId: "agent-test-100",
-			agentId: "agent-test-200",
-			agentType: "general-purpose",
-			description: "Nested helper",
-		});
+	it("LiveSubagentNode in the subagents snapshot, running and ended", () =>
+	{
+		addLiveSubagent(
+			{
+				parentSessionId: SESSION_ID,
+				agentId: "agent-test-100",
+				agentType: "Explore",
+				description: "Inspect the example project",
+			},
+		);
+		addLiveSubagent(
+			{
+				parentSessionId: "agent-test-100",
+				agentId: "agent-test-200",
+				agentType: "general-purpose",
+				description: "Nested helper",
+			},
+		);
 		endLiveSubagent("agent-test-200");
 
 		const nodes = getLiveSubagentNodes();
 		expect(nodes.map((node) => node.endedAt === null)).toStrictEqual([true, false]);
-		for (const node of nodes) {
+		for (const node of nodes)
+		{
 			expectAccepted(LiveSubagentNodeSchema, node);
 		}
 	});
 
-	it("HookBackgroundTaskPayload and HookSessionCronPayload from a Stop hook", async () => {
-		const broadcasts = await dispatch({
-			hook_event_name: "Stop",
-			session_id: SESSION_ID,
-			transcript_path: "/tmp/missing.jsonl",
-			cwd: "/tmp/test/alice-project",
-			background_tasks: [
-				{
-					id: "task-test-100",
-					type: "local_bash",
-					status: "running",
-					description: "Run the test server",
-					command: "npm run dev",
-				},
-				{
-					id: "task-test-200",
-					type: "local_agent",
-					status: "running",
-					description: "Inspect the example project",
-					agent_type: "Explore",
-				},
-				{
-					id: "task-test-300",
-					type: "mcp_tool",
-					status: "running",
-					description: "Query the example server",
-					server: "example",
-					tool: "query",
-					name: "example-query",
-				},
-			],
-			session_crons: [{id: "cron-test-100", schedule: "0 * * * *", recurring: true, prompt: "Check the service"}],
-		});
+	it("HookBackgroundTaskPayload and HookSessionCronPayload from a Stop hook", async () =>
+	{
+		const broadcasts = await dispatch(
+			{
+				hook_event_name: "Stop",
+				session_id: SESSION_ID,
+				transcript_path: "/tmp/missing.jsonl",
+				cwd: "/tmp/test/alice-project",
+				background_tasks: [
+					{
+						id: "task-test-100",
+						type: "local_bash",
+						status: "running",
+						description: "Run the test server",
+						command: "npm run dev",
+					},
+					{
+						id: "task-test-200",
+						type: "local_agent",
+						status: "running",
+						description: "Inspect the example project",
+						agent_type: "Explore",
+					},
+					{
+						id: "task-test-300",
+						type: "mcp_tool",
+						status: "running",
+						description: "Query the example server",
+						server: "example",
+						tool: "query",
+						name: "example-query",
+					},
+				],
+				session_crons: [
+					{
+						id: "cron-test-100",
+						schedule: "0 * * * *",
+						recurring: true,
+						prompt: "Check the service",
+					},
+				],
+			},
+		);
 
 		const context = broadcasts.find((broadcast) => broadcast.type === DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED);
 		if (context === undefined) throw new Error("Expected a session:hook-context-changed broadcast");

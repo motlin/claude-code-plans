@@ -10,16 +10,25 @@ import {pillStyles} from "../components/pill-styles";
 import {DebugLink} from "../components/debug-link";
 import {useCallback, useState} from "react";
 
-export const Route = createFileRoute("/memory/$project/$filename")({
-	component: MemoryPage,
-	loader: async ({context: {queryClient}, params}) =>
-		queryClient.query({...memoryDetailQueryOptions(params.project, params.filename), staleTime: "static"}),
-	head: ({params}) => ({
-		meta: [pageTitle(fromMdSlug(params.filename))],
-	}),
-});
+export const Route = createFileRoute("/memory/$project/$filename")(
+	{
+		component: MemoryPage,
+		loader: async ({context: {queryClient}, params}) =>
+			queryClient.query(
+				{
+					...memoryDetailQueryOptions(params.project, params.filename),
+					staleTime: "static",
+				},
+			),
+		head: ({params}) => (
+		{
+			meta: [pageTitle(fromMdSlug(params.filename))],
+		}),
+	},
+);
 
-function MemoryPage() {
+function MemoryPage()
+{
 	const {project, filename: slug} = Route.useParams();
 	const filename = fromMdSlug(slug);
 	const {data} = useSuspenseQuery(memoryDetailQueryOptions(project, slug));
@@ -28,20 +37,30 @@ function MemoryPage() {
 	const removeMutation = useRemoveMemory(project, slug);
 	const deleting = removeMutation.isPending;
 
-	const handleDelete = useCallback(async () => {
-		try {
+	const handleDelete = useCallback(async () =>
+	{
+		try
+		{
 			const result = await removeMutation.mutateAsync();
-			if (result.ok) {
-				void navigate({to: "/memories"});
+			if (result.ok)
+			{
+				void navigate(
+					{
+						to: "/memories",
+					},
+				);
 				return;
 			}
-		} catch {
+		}
+		catch
+		{
 			// fall through
 		}
 		setConfirmingDelete(false);
 	}, [removeMutation, navigate]);
 
-	if (!data) {
+	if (!data)
+	{
 		return (
 			<div>
 				<DetailTopBar>
@@ -66,7 +85,11 @@ function MemoryPage() {
 				<span className="text-xs text-t6">{data.projectName}</span>
 				<Link
 					to="/memory/$project/$filename/edit"
-					params={{project, filename: slug}}
+					params={
+					{
+						project,
+						filename: slug,
+					}}
 					className={pillStyles.outline}
 				>
 					<Pencil className="h-3 w-3" />
@@ -78,7 +101,8 @@ function MemoryPage() {
 						<span className="text-danger-000">Delete this memory?</span>
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								void handleDelete();
 							}}
 							disabled={deleting}
@@ -88,7 +112,8 @@ function MemoryPage() {
 						</button>
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								setConfirmingDelete(false);
 							}}
 							className={pillStyles.outline}
@@ -99,7 +124,8 @@ function MemoryPage() {
 				) : (
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							setConfirmingDelete(true);
 						}}
 						className={`${pillStyles.outline} text-danger-000 hover:bg-danger-000/10`}

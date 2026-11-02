@@ -11,258 +11,593 @@ import {POPOVER_SCROLL_BODY_CLASS} from "../src/components/ui/popover";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import type {ComposerState} from "../src/lib/composer-state";
 import {refillComposer, requestComposerTakeBack} from "../src/lib/context-attach";
+import {ruleStart} from "./css-rule";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	localStorage.clear();
 	vi.useRealTimers();
 });
 
-describe("Composer", () => {
-	it("uses the upstream placeholder for each variant", () => {
-		const {unmount} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
-		const session = screen.getByRole("textbox", {name: "Prompt"}).getAttribute("aria-placeholder");
+describe("Composer", () =>
+{
+	it("uses the upstream placeholder for each variant", () =>
+	{
+		const {unmount} = render(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={() =>
+				{
+				}}
+			/>,
+		);
+		const session = screen
+			.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			)
+			.getAttribute("aria-placeholder");
 		unmount();
-		render(<Composer variant="home" draftKey="home" onSend={() => {}} />);
-		const home = screen.getByRole("textbox", {name: "Prompt"}).getAttribute("aria-placeholder");
+		render(
+			<Composer
+				variant="home"
+				draftKey="home"
+				onSend={() =>
+				{
+				}}
+			/>,
+		);
+		const home = screen
+			.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			)
+			.getAttribute("aria-placeholder");
 
-		expect({session, home}).toStrictEqual({
-			session: "Type / for commands",
-			home: "Describe a task or ask a question",
-		});
+		expect(
+			{
+				session,
+				home,
+			},
+		).toStrictEqual(
+			{
+				session: "Type / for commands",
+				home: "Describe a task or ask a question",
+			},
+		);
 	});
 
-	it("draws the placeholder as upstream's clipped overlay so it never sizes the empty editor", () => {
-		render(<Composer variant="home" draftKey="home" onSend={() => {}} />);
-		const textarea = screen.getByRole("textbox", {name: "Prompt"});
+	it("draws the placeholder as upstream's clipped overlay so it never sizes the empty editor", () =>
+	{
+		render(
+			<Composer
+				variant="home"
+				draftKey="home"
+				onSend={() =>
+				{
+				}}
+			/>,
+		);
+		const textarea = screen.getByRole(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
 		const overlay = screen.getByTestId("composer-placeholder");
 		const classes = overlay.className.split(" ");
 
-		expect({
-			// Upstream c2319b8e9 marks the editor as the chat tile's focus target for the tile focus hand-off.
-			focusTarget: textarea.getAttribute("data-tile-focus-target"),
-			nativePlaceholder: textarea.hasAttribute("placeholder"),
-			ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
-			text: overlay.textContent,
-			ariaHidden: overlay.getAttribute("aria-hidden"),
-			layout: [
-				"absolute",
-				"inset-y-0",
-				"left-[30px]",
-				"right-[30px]",
-				"pointer-coarse:right-[51px]",
-				"comfortable:left-[32px]",
-				"comfortable:right-[32px]",
-				"comfortable:pointer-coarse:right-[53px]",
-				"overflow-hidden",
-				"pointer-events-none",
-				"text-entry-floored",
-			].filter((name) => classes.includes(name)),
-		}).toStrictEqual({
-			focusTarget: "",
-			nativePlaceholder: false,
-			ariaPlaceholder: "Describe a task or ask a question",
-			text: "Describe a task or ask a question",
-			ariaHidden: "true",
-			layout: [
-				"absolute",
-				"inset-y-0",
-				"left-[30px]",
-				"right-[30px]",
-				"pointer-coarse:right-[51px]",
-				"comfortable:left-[32px]",
-				"comfortable:right-[32px]",
-				"comfortable:pointer-coarse:right-[53px]",
-				"overflow-hidden",
-				"pointer-events-none",
-				"text-entry-floored",
-			],
-		});
+		expect(
+			{
+				// Upstream c2319b8e9 marks the editor as the chat tile's focus target for the tile focus hand-off.
+				focusTarget: textarea.getAttribute("data-tile-focus-target"),
+				nativePlaceholder: textarea.hasAttribute("placeholder"),
+				ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
+				text: overlay.textContent,
+				ariaHidden: overlay.getAttribute("aria-hidden"),
+				layout: [
+					"absolute",
+					"inset-y-0",
+					"left-[30px]",
+					"right-[30px]",
+					"pointer-coarse:right-[51px]",
+					"comfortable:left-[32px]",
+					"comfortable:right-[32px]",
+					"comfortable:pointer-coarse:right-[53px]",
+					"overflow-hidden",
+					"pointer-events-none",
+					"text-entry-floored",
+				].filter((name) => classes.includes(name)),
+			},
+		).toStrictEqual(
+			{
+				focusTarget: "",
+				nativePlaceholder: false,
+				ariaPlaceholder: "Describe a task or ask a question",
+				text: "Describe a task or ask a question",
+				ariaHidden: "true",
+				layout: [
+					"absolute",
+					"inset-y-0",
+					"left-[30px]",
+					"right-[30px]",
+					"pointer-coarse:right-[51px]",
+					"comfortable:left-[32px]",
+					"comfortable:right-[32px]",
+					"comfortable:pointer-coarse:right-[53px]",
+					"overflow-hidden",
+					"pointer-events-none",
+					"text-entry-floored",
+				],
+			},
+		);
 
-		fireEvent.change(textarea, {target: {value: "hi"}});
-		expect({
-			overlay: screen.queryByTestId("composer-placeholder"),
-			ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
-		}).toStrictEqual({overlay: null, ariaPlaceholder: "Describe a task or ask a question"});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "hi",
+				},
+			},
+		);
+		expect(
+			{
+				overlay: screen.queryByTestId("composer-placeholder"),
+				ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
+			},
+		).toStrictEqual(
+			{
+				overlay: null,
+				ariaPlaceholder: "Describe a task or ask a question",
+			},
+		);
 	});
 
-	it("flips the composer's compact literals to upstream's comfortable sizes: 8px card gap, 8px cluster gaps and 8px button radii", () => {
-		const {container} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
-		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "hi"}});
+	it("flips the composer's compact literals to upstream's comfortable sizes: 8px card gap, 8px cluster gaps and 8px button radii", () =>
+	{
+		const {container} = render(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={() =>
+				{
+				}}
+			/>,
+		);
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			),
+			{
+				target:
+				{
+					value: "hi",
+				},
+			},
+		);
 		const comfortable = (element: Element | null | undefined) =>
 			(element?.className ?? "").split(" ").filter((name) => name.startsWith("comfortable:"));
-		const send = screen.getByRole("button", {name: "Send"});
+		const send = screen.getByRole(
+			"button",
+			{
+				name: "Send",
+			},
+		);
 
-		expect({
-			card: comfortable(container.querySelector("[data-cds=ChatComposer] .rounded-composer")),
-			editorRow: comfortable(screen.getByRole("textbox", {name: "Prompt"}).parentElement),
-			add: comfortable(screen.getByRole("button", {name: "Add"})),
-			send: comfortable(send),
-			sendSlot: comfortable(send.closest(".absolute")),
-		}).toStrictEqual({
-			card: ["comfortable:gap-y-2"],
-			editorRow: ["comfortable:pr-[32px]", "comfortable:pl-[32px]", "comfortable:pointer-coarse:pr-[53px]"],
-			add: ["comfortable:rounded-r6"],
-			send: ["comfortable:rounded-r6"],
-			sendSlot: ["comfortable:pl-2"],
-		});
+		expect(
+			{
+				card: comfortable(container.querySelector("[data-cds=ChatComposer] .rounded-composer")),
+				editorRow: comfortable(
+					screen.getByRole(
+						"textbox",
+						{
+							name: "Prompt",
+						},
+					).parentElement,
+				),
+				add: comfortable(
+					screen.getByRole(
+						"button",
+						{
+							name: "Add",
+						},
+					),
+				),
+				send: comfortable(send),
+				sendSlot: comfortable(send.closest(".absolute")),
+			},
+		).toStrictEqual(
+			{
+				card: ["comfortable:gap-y-2"],
+				editorRow: ["comfortable:pr-[32px]", "comfortable:pl-[32px]", "comfortable:pointer-coarse:pr-[53px]"],
+				add: ["comfortable:rounded-r6"],
+				send: ["comfortable:rounded-r6"],
+				sendSlot: ["comfortable:pl-2"],
+			},
+		);
 	});
 
-	it("rings the card faintly while idle and darkens the ring only while focused", () => {
-		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
-		const card = screen.getByRole("textbox", {name: "Prompt"}).closest("[data-composer-card]")!;
-		const shadowClasses = [...card.classList].filter((name) => name.includes("shadow-"));
-		const styles = readFileSync("src/styles/globals.css", "utf8");
-		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));
-		const dark = styles.slice(styles.indexOf(".dark {"));
-		const token = (block: string, name: string) => block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null;
-
-		expect({
-			shadowClasses,
-			lightIdle: token(light, "--composer-shadow-idle"),
-			lightFocus: token(light, "--composer-shadow-focus"),
-			darkIdle: token(dark, "--composer-shadow-idle"),
-			darkFocus: token(dark, "--composer-shadow-focus"),
-		}).toStrictEqual({
-			shadowClasses: [
-				"shadow-[var(--composer-shadow-idle)]",
-				"focus-within:shadow-[var(--composer-shadow-focus)]",
-			],
-			lightIdle: "0 4px 20px rgb(0 0 0 / 0.035), 0 0 0 1px rgb(11 11 11 / 0.1)",
-			lightFocus: "0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px rgb(11 11 11 / 0.2)",
-			darkIdle: "0 4px 20px rgb(0 0 0 / 0.035), inset 0 0 0 1px rgb(255 255 255 / 0.1)",
-			darkFocus: "0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.2)",
-		});
-	});
-
-	it("hides Send behind an aria-hidden spacer while the prompt is blank and shows it once text is typed", () => {
-		const {container} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
-		const slot = () => ({
-			send: screen.queryByRole<HTMLButtonElement>("button", {name: "Send"})?.disabled ?? null,
-			spacer: container.querySelectorAll("[data-send-spacer][aria-hidden=true][inert]").length,
-		});
-		const before = slot();
-
-		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
-			target: {value: "   "},
-		});
-		const whitespace = slot();
-		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
-			target: {value: "Continue Alice's test"},
-		});
-
-		expect({before, whitespace, after: slot()}).toStrictEqual({
-			before: {send: null, spacer: 1},
-			whitespace: {send: null, spacer: 1},
-			after: {send: false, spacer: 0},
-		});
-	});
-
-	it("sends the trimmed prompt on Enter and keeps Shift+Enter for newlines", () => {
-		const onSend = vi.fn<(prompt: string) => void>();
-		render(<Composer variant="session" draftKey="session-alice" onSend={onSend} />);
-		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-
-		fireEvent.change(textarea, {target: {value: "  Continue Bob's test  "}});
-		fireEvent.keyDown(textarea, {key: "Enter", shiftKey: true});
-		const afterShiftEnter = {calls: [...onSend.mock.calls], value: textarea.value};
-		fireEvent.keyDown(textarea, {key: "Enter"});
-
-		expect({
-			afterShiftEnter,
-			afterEnter: {calls: onSend.mock.calls, value: textarea.value},
-		}).toStrictEqual({
-			afterShiftEnter: {calls: [], value: "  Continue Bob's test  "},
-			afterEnter: {calls: [["Continue Bob's test", {}]], value: ""},
-		});
-	});
-
-	it("does not send while disabled", () => {
-		const onSend = vi.fn<(prompt: string) => void>();
-		render(<Composer variant="session" draftKey="session-alice" onSend={onSend} disabled />);
-		const textarea = screen.getByRole("textbox", {name: "Prompt"});
-
-		fireEvent.change(textarea, {target: {value: "Continue Alice's test"}});
-		fireEvent.keyDown(textarea, {key: "Enter"});
-
-		expect(onSend.mock.calls).toStrictEqual([]);
-	});
-
-	it("grows with content up to the upstream max height", () => {
-		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
-		const textarea = screen.getByRole("textbox", {name: "Prompt"});
-
-		expect({
-			maxHeight: textarea.style.maxHeight,
-			minHeight: textarea.style.minHeight,
-			rows: textarea.getAttribute("rows"),
-		}).toStrictEqual({
-			maxHeight: "min(24rem, 40svh)",
-			minHeight: "28px",
-			rows: "1",
-		});
-	});
-
-	it("exposes the delivery hint as the Send button description", () => {
+	it("rings the card faintly while idle and darkens the ring only while focused", () =>
+	{
 		render(
 			<Composer
 				variant="session"
 				draftKey="session-alice"
-				onSend={() => {}}
+				onSend={() =>
+				{
+				}}
+			/>,
+		);
+		const card = screen
+			.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			)
+			.closest("[data-composer-card]")!;
+		const shadowClasses = [...card.classList].filter((name) => name.includes("shadow-"));
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const light = styles.slice(ruleStart(styles, ":root"), ruleStart(styles, ".dark"));
+		const dark = styles.slice(ruleStart(styles, ".dark"));
+		const token = (block: string, name: string) => block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null;
+
+		expect(
+			{
+				shadowClasses,
+				lightIdle: token(light, "--composer-shadow-idle"),
+				lightFocus: token(light, "--composer-shadow-focus"),
+				darkIdle: token(dark, "--composer-shadow-idle"),
+				darkFocus: token(dark, "--composer-shadow-focus"),
+			},
+		).toStrictEqual(
+			{
+				shadowClasses: [
+					"shadow-[var(--composer-shadow-idle)]",
+					"focus-within:shadow-[var(--composer-shadow-focus)]",
+				],
+				lightIdle: "0 4px 20px rgb(0 0 0 / 0.035), 0 0 0 1px rgb(11 11 11 / 0.1)",
+				lightFocus: "0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px rgb(11 11 11 / 0.2)",
+				darkIdle: "0 4px 20px rgb(0 0 0 / 0.035), inset 0 0 0 1px rgb(255 255 255 / 0.1)",
+				darkFocus: "0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(255 255 255 / 0.2)",
+			},
+		);
+	});
+
+	it("hides Send behind an aria-hidden spacer while the prompt is blank and shows it once text is typed", () =>
+	{
+		const {container} = render(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={() =>
+				{
+				}}
+			/>,
+		);
+		const slot = () => (
+		{
+			send:
+				screen.queryByRole<HTMLButtonElement>(
+					"button",
+					{
+						name: "Send",
+					},
+				)?.disabled ?? null,
+			spacer: container.querySelectorAll("[data-send-spacer][aria-hidden=true][inert]").length,
+		});
+		const before = slot();
+
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			),
+			{
+				target:
+				{
+					value: "   ",
+				},
+			},
+		);
+		const whitespace = slot();
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			),
+			{
+				target:
+				{
+					value: "Continue Alice's test",
+				},
+			},
+		);
+
+		expect(
+			{
+				before,
+				whitespace,
+				after: slot(),
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					send: null,
+					spacer: 1,
+				},
+				whitespace:
+				{
+					send: null,
+					spacer: 1,
+				},
+				after:
+				{
+					send: false,
+					spacer: 0,
+				},
+			},
+		);
+	});
+
+	it("sends the trimmed prompt on Enter and keeps Shift+Enter for newlines", () =>
+	{
+		const onSend = vi.fn<(prompt: string) => void>();
+		render(<Composer variant="session" draftKey="session-alice" onSend={onSend} />);
+		const textarea = screen.getByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
+
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "  Continue Bob's test  ",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+				shiftKey: true,
+			},
+		);
+		const afterShiftEnter =
+		{
+			calls: [...onSend.mock.calls],
+			value: textarea.value,
+		};
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+
+		expect(
+			{
+				afterShiftEnter,
+				afterEnter:
+				{
+					calls: onSend.mock.calls,
+					value: textarea.value,
+				},
+			},
+		).toStrictEqual(
+			{
+				afterShiftEnter:
+				{
+					calls: [],
+					value: "  Continue Bob's test  ",
+				},
+				afterEnter:
+				{
+					calls: [["Continue Bob's test", {}]],
+					value: "",
+				},
+			},
+		);
+	});
+
+	it("does not send while disabled", () =>
+	{
+		const onSend = vi.fn<(prompt: string) => void>();
+		render(<Composer variant="session" draftKey="session-alice" onSend={onSend} disabled />);
+		const textarea = screen.getByRole(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
+
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "Continue Alice's test",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+
+		expect(onSend.mock.calls).toStrictEqual([]);
+	});
+
+	it("grows with content up to the upstream max height", () =>
+	{
+		render(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={() =>
+				{
+				}}
+			/>,
+		);
+		const textarea = screen.getByRole(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
+
+		expect(
+			{
+				maxHeight: textarea.style.maxHeight,
+				minHeight: textarea.style.minHeight,
+				rows: textarea.getAttribute("rows"),
+			},
+		).toStrictEqual(
+			{
+				maxHeight: "min(24rem, 40svh)",
+				minHeight: "28px",
+				rows: "1",
+			},
+		);
+	});
+
+	it("exposes the delivery hint as the Send button description", () =>
+	{
+		render(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={() =>
+				{
+				}}
 				deliveryHint="Sends to the live terminal"
 			/>,
 		);
-		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
-			target: {value: "Continue Alice's test"},
-		});
-		const send = screen.getByRole("button", {name: "Send"});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			),
+			{
+				target:
+				{
+					value: "Continue Alice's test",
+				},
+			},
+		);
+		const send = screen.getByRole(
+			"button",
+			{
+				name: "Send",
+			},
+		);
 		const describedBy = send.getAttribute("aria-describedby") ?? "";
 
-		expect({
-			description: describedBy
-				.split(" ")
-				.map((id) => document.getElementById(id)?.textContent)
-				.join(" "),
-		}).toStrictEqual({description: "Sends to the live terminal"});
+		expect(
+			{
+				description: describedBy
+					.split(" ")
+					.map((id) => document.getElementById(id)?.textContent)
+					.join(" "),
+			},
+		).toStrictEqual(
+			{
+				description: "Sends to the live terminal",
+			},
+		);
 	});
 
-	it("shows the Send ⏎ tooltip alongside the delivery hint", () => {
+	it("shows the Send ⏎ tooltip alongside the delivery hint", () =>
+	{
 		vi.useFakeTimers();
 		render(
 			<Composer
 				variant="session"
 				draftKey="session-alice"
-				onSend={() => {}}
+				onSend={() =>
+				{
+				}}
 				deliveryHint="Starts a forked session"
 			/>,
 		);
-		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
-			target: {value: "Continue Alice's test"},
-		});
-		const send = screen.getByRole("button", {name: "Send"});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			),
+			{
+				target:
+				{
+					value: "Continue Alice's test",
+				},
+			},
+		);
+		const send = screen.getByRole(
+			"button",
+			{
+				name: "Send",
+			},
+		);
 
 		fireEvent.pointerEnter(send);
-		act(() => {
+		act(() =>
+		{
 			vi.advanceTimersByTime(300);
 		});
 		const describedBy = send.getAttribute("aria-describedby") ?? "";
 
-		expect({
-			tooltip: screen.getByRole("tooltip").textContent,
-			descriptionCount: describedBy.split(" ").length,
-			hintKept: describedBy
-				.split(" ")
-				.some((id) => document.getElementById(id)?.textContent === "Starts a forked session"),
-		}).toStrictEqual({tooltip: "SendEnter", descriptionCount: 2, hintKept: true});
+		expect(
+			{
+				tooltip: screen.getByRole("tooltip").textContent,
+				descriptionCount: describedBy.split(" ").length,
+				hintKept: describedBy
+					.split(" ")
+					.some((id) => document.getElementById(id)?.textContent === "Starts a forked session"),
+			},
+		).toStrictEqual(
+			{
+				tooltip: "SendEnter",
+				descriptionCount: 2,
+				hintKept: true,
+			},
+		);
 	});
 
-	it("keeps the editor box 28 tall on coarse pointers, with the overlay aligned", async () => {
+	it("keeps the editor box 28 tall on coarse pointers, with the overlay aligned", async () =>
+	{
 		await preloadComposerSurfaces();
 		render(
 			<Composer
 				variant="home"
 				draftKey="home"
-				onSend={() => {}}
+				onSend={() =>
+				{
+				}}
 				slashCommands={[
 					{
 						name: "model",
@@ -273,379 +608,725 @@ describe("Composer", () => {
 				]}
 			/>,
 		);
-		const textarea = screen.getByRole("textbox", {name: "Prompt"});
-		fireEvent.change(textarea, {target: {value: "/mo"}});
-		fireEvent.keyDown(textarea, {key: "Enter"});
+		const textarea = screen.getByRole(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/mo",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
 		const overlay = screen.getByTestId("slash-argument-hint").parentElement;
 		const coarsePadding = (element: Element | null) =>
 			(element?.className ?? "").split(" ").filter((token) => token.startsWith("pointer-coarse:py-"));
 
 		// Upstream's coarse 22px line + 3px top and bottom = h28, same as fine 20px + py-1.
-		expect({textarea: coarsePadding(textarea), overlay: coarsePadding(overlay)}).toStrictEqual({
-			textarea: ["pointer-coarse:py-[3px]"],
-			overlay: ["pointer-coarse:py-[3px]"],
-		});
+		expect(
+			{
+				textarea: coarsePadding(textarea),
+				overlay: coarsePadding(overlay),
+			},
+		).toStrictEqual(
+			{
+				textarea: ["pointer-coarse:py-[3px]"],
+				overlay: ["pointer-coarse:py-[3px]"],
+			},
+		);
 	});
 
-	it("swaps Send for Stop while streaming", () => {
+	it("swaps Send for Stop while streaming", () =>
+	{
 		const onCancel = vi.fn<() => void>();
 		render(
-			<Composer variant="session" draftKey="session-alice" onSend={() => {}} onCancel={onCancel} isStreaming />,
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={() =>
+				{
+				}}
+				onCancel={onCancel}
+				isStreaming
+			/>,
 		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Stop"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Stop",
+				},
+			),
+		);
 
-		expect({
-			cancels: onCancel.mock.calls.length,
-			send: screen.queryByRole("button", {name: "Send"}),
-		}).toStrictEqual({cancels: 1, send: null});
+		expect(
+			{
+				cancels: onCancel.mock.calls.length,
+				send: screen.queryByRole(
+					"button",
+					{
+						name: "Send",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				cancels: 1,
+				send: null,
+			},
+		);
 	});
 
-	describe("chin readouts", () => {
+	describe("chin readouts", () =>
+	{
 		const NOW_MS = Date.UTC(2026, 8, 29, 12, 0, 0);
-		const CHIN: ComposerState = {
-			mode: {id: "acceptEdits", label: "Accept edits"},
+		const CHIN: ComposerState =
+		{
+			mode:
+			{
+				id: "acceptEdits",
+				label: "Accept edits",
+			},
 			model: "Opus 5.5",
 			modelId: "claude-opus-5-5",
 			settingsModelId: "claude-opus-5-5",
 			fastMode: false,
 			fastModeBlocked: null,
-			effort: {id: "xhigh", label: "Extra-high"},
-			usage: {
+			effort:
+			{
+				id: "xhigh",
+				label: "Extra-high",
+			},
+			usage:
+			{
 				contextTokens: 190_200,
 				contextWindowSize: 1_000_000,
 				contextPercent: 19,
-				fiveHour: {usedPercentage: 10, resetsAt: NOW_MS / 1000 + 4 * 3600 + 11 * 60},
-				weekly: {usedPercentage: 65, resetsAt: NOW_MS / 1000 + 14 * 3600 + 31 * 60},
+				fiveHour:
+				{
+					usedPercentage: 10,
+					resetsAt: NOW_MS / 1000 + 4 * 3600 + 11 * 60,
+				},
+				weekly:
+				{
+					usedPercentage: 65,
+					resetsAt: NOW_MS / 1000 + 14 * 3600 + 31 * 60,
+				},
 				updatedAt: new Date(NOW_MS - 3 * 3600 * 1000).toISOString(),
 			},
 		};
 
-		it("shows the model + effort picker, then the mode and the usage ring, all in upstream's trailing grid", () => {
-			vi.useFakeTimers({now: NOW_MS, toFake: ["Date"]});
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+		it("shows the model + effort picker, then the mode and the usage ring, all in upstream's trailing grid", () =>
+		{
+			vi.useFakeTimers(
+				{
+					now: NOW_MS,
+					toFake: ["Date"],
+				},
+			);
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+					chin={CHIN}
+				/>,
+			);
 			const chin = document.querySelector('[data-cds="ChatComposerChin"]');
 			const labels = Array.from(chin?.querySelectorAll("[aria-label], [data-chin-mode]") ?? []).map(
 				(element) => element.getAttribute("aria-label") ?? element.textContent,
 			);
 			const [leading, trailing] = Array.from(chin?.children ?? []);
 			const grid = trailing?.firstElementChild;
-			const ring = screen.getByRole("button", {name: /^Usage:/});
+			const ring = screen.getByRole(
+				"button",
+				{
+					name: /^Usage:/,
+				},
+			);
 
-			expect({
-				labels,
-				leading: {className: leading?.className, children: leading?.childElementCount},
-				trailing: trailing?.className,
-				grid: grid?.className,
-				gridChildren: Array.from(grid?.children ?? [], (child) =>
-					child.matches('[data-cds="ModelSelector"]') ? "model" : child.className,
-				),
-				mode: document.querySelector("[data-chin-mode]")?.closest(".inline-flex.min-w-0") !== null,
-				ringWrapper: ring.closest(".ms-px")?.parentElement === grid,
-			}).toStrictEqual({
-				labels: [
-					"Model: Opus 5.5 Extra",
-					"Accept edits",
-					"Usage: Weekly · all models: 65%, Resets in 14 hr 31 min",
-				],
-				leading: {className: "flex items-center self-start", children: 0},
-				trailing: "ms-auto flex min-w-0 items-center gap-1 ps-2",
-				grid: "grid min-w-0 grid-flow-col auto-cols-[minmax(0,max-content)] items-center gap-1 compact:me-1",
-				gridChildren: ["model", "inline-flex min-w-0", "flex shrink-0 ms-px", "sr-only"],
-				mode: true,
-				ringWrapper: true,
-			});
+			expect(
+				{
+					labels,
+					leading:
+					{
+						className: leading?.className,
+						children: leading?.childElementCount,
+					},
+					trailing: trailing?.className,
+					grid: grid?.className,
+					gridChildren: Array.from(grid?.children ?? [], (child) =>
+						child.matches('[data-cds="ModelSelector"]') ? "model" : child.className,
+					),
+					mode: document.querySelector("[data-chin-mode]")?.closest(".inline-flex.min-w-0") !== null,
+					ringWrapper: ring.closest(".ms-px")?.parentElement === grid,
+				},
+			).toStrictEqual(
+				{
+					labels: [
+						"Model: Opus 5.5 Extra",
+						"Accept edits",
+						"Usage: Weekly · all models: 65%, Resets in 14 hr 31 min",
+					],
+					leading:
+					{
+						className: "flex items-center self-start",
+						children: 0,
+					},
+					trailing: "ms-auto flex min-w-0 items-center gap-1 ps-2",
+					grid: "grid min-w-0 grid-flow-col auto-cols-[minmax(0,max-content)] items-center gap-1 compact:me-1",
+					gridChildren: ["model", "inline-flex min-w-0", "flex shrink-0 ms-px", "sr-only"],
+					mode: true,
+					ringWrapper: true,
+				},
+			);
 		});
 
-		it("lays the home bar's pickers out as upstream's: model, permissions, ring, each in its surface slot", () => {
+		it("lays the home bar's pickers out as upstream's: model, permissions, ring, each in its surface slot", () =>
+		{
 			render(
 				<Composer
 					variant="home"
 					draftKey="home-alice"
-					onSend={() => {}}
+					onSend={() =>
+					{
+					}}
 					chin={CHIN}
 					environment={<span>Alice's project</span>}
 				/>,
 			);
 			const row = screen.getByTestId("environment-bar-row");
 			const pickers = row.lastElementChild;
-			const model = screen.getByRole("button", {name: /^Model:/});
+			const model = screen.getByRole(
+				"button",
+				{
+					name: /^Model:/,
+				},
+			);
 			const name = model.firstElementChild?.firstElementChild;
 			const SLOT = "flex empty:hidden rounded bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))]";
 
-			expect({
-				pickers: pickers?.className,
-				order: Array.from(
-					pickers?.children ?? [],
-					(child) => child.getAttribute("data-testid") ?? child.className,
-				),
-				modelSlot: screen.getByTestId("environment-bar-model").className,
-				modelWrapper: model.parentElement?.closest(`[class="${SLOT}"]`) !== null,
-				mode: screen.getByTestId("environment-bar-mode").className,
-				ringSlot: screen.getByRole("button", {name: /^Usage:/}).closest(".ms-px")?.parentElement?.className,
-				label: model.firstElementChild?.className,
-				name: name?.className,
-				effort: name?.nextElementSibling?.className,
-				collapse: model.getAttribute("data-collapse"),
-			}).toStrictEqual({
-				pickers: "flex grow items-center justify-end gap-x-1",
-				order: ["environment-bar-model", "environment-bar-mode", SLOT],
-				modelSlot: "flex items-center gap-1",
-				modelWrapper: true,
-				mode: `${SLOT} shrink-0`,
-				ringSlot: SLOT,
-				label: "flex min-w-0 items-center gap-1",
-				name: "text-start whitespace-nowrap supports-[min-width:calc-size(auto,size)]:line-clamp-1 supports-[min-width:calc-size(auto,size)]:break-all supports-[min-width:calc-size(auto,size)]:whitespace-normal supports-[min-width:calc-size(auto,size)]:min-w-[calc-size(max-content,min(size,10ch))]",
-				effort: "shrink-0 whitespace-pre text-muted-as-secondary",
-				collapse: null,
-			});
+			expect(
+				{
+					pickers: pickers?.className,
+					order: Array.from(
+						pickers?.children ?? [],
+						(child) => child.getAttribute("data-testid") ?? child.className,
+					),
+					modelSlot: screen.getByTestId("environment-bar-model").className,
+					modelWrapper: model.parentElement?.closest(`[class="${SLOT}"]`) !== null,
+					mode: screen.getByTestId("environment-bar-mode").className,
+					ringSlot: screen
+						.getByRole(
+							"button",
+							{
+								name: /^Usage:/,
+							},
+						)
+						.closest(".ms-px")?.parentElement?.className,
+					label: model.firstElementChild?.className,
+					name: name?.className,
+					effort: name?.nextElementSibling?.className,
+					collapse: model.getAttribute("data-collapse"),
+				},
+			).toStrictEqual(
+				{
+					pickers: "flex grow items-center justify-end gap-x-1",
+					order: ["environment-bar-model", "environment-bar-mode", SLOT],
+					modelSlot: "flex items-center gap-1",
+					modelWrapper: true,
+					mode: `${SLOT} shrink-0`,
+					ringSlot: SLOT,
+					label: "flex min-w-0 items-center gap-1",
+					name: "text-start whitespace-nowrap supports-[min-width:calc-size(auto,size)]:line-clamp-1 supports-[min-width:calc-size(auto,size)]:break-all supports-[min-width:calc-size(auto,size)]:whitespace-normal supports-[min-width:calc-size(auto,size)]:min-w-[calc-size(max-content,min(size,10ch))]",
+					effort: "shrink-0 whitespace-pre text-muted-as-secondary",
+					collapse: null,
+				},
+			);
 		});
 
-		it("puts + inside the 44px composer card at its left edge, as upstream does", () => {
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+		it("puts + inside the 44px composer card at its left edge, as upstream does", () =>
+		{
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+					chin={CHIN}
+				/>,
+			);
 			const card = document.querySelector("[data-composer-card]");
-			const add = screen.getByRole("button", {name: "Add"});
-			expect({
-				inCard: card?.contains(add),
-				inChin: document.querySelector('[data-cds="ChatComposerChin"]')?.contains(add),
-				slot: add
-					.closest("[data-composer-add]")
-					?.className.split(" ")
-					.filter((name) => ["absolute", "left-0"].includes(name)),
-				padding: card?.className.split(" ").includes("p-2"),
-			}).toStrictEqual({
-				inCard: true,
-				inChin: false,
-				slot: ["absolute", "left-0"],
-				padding: true,
-			});
+			const add = screen.getByRole(
+				"button",
+				{
+					name: "Add",
+				},
+			);
+			expect(
+				{
+					inCard: card?.contains(add),
+					inChin: document.querySelector('[data-cds="ChatComposerChin"]')?.contains(add),
+					slot: add
+						.closest("[data-composer-add]")
+						?.className.split(" ")
+						.filter((name) => ["absolute", "left-0"].includes(name)),
+					padding: card?.className.split(" ").includes("p-2"),
+				},
+			).toStrictEqual(
+				{
+					inCard: true,
+					inChin: false,
+					slot: ["absolute", "left-0"],
+					padding: true,
+				},
+			);
 		});
 
-		it("inks the Add glyph with upstream's chin icon recipe under a group/btn trigger", () => {
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
-			const add = screen.getByRole("button", {name: "Add"});
+		it("inks the Add glyph with upstream's chin icon recipe under a group/btn trigger", () =>
+		{
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+					chin={CHIN}
+				/>,
+			);
+			const add = screen.getByRole(
+				"button",
+				{
+					name: "Add",
+				},
+			);
 
-			expect({
-				lead: add.className.split(" ").slice(0, 2),
-				icon: add.querySelector("svg")?.getAttribute("class"),
-			}).toStrictEqual({
-				lead: ["cds-reset", "group/btn"],
-				icon: "lucide lucide-plus size-[18px] text-secondary-control group-hover/btn:text-primary group-aria-pressed/btn:text-upstream-accent group-hover/btn:group-aria-pressed/btn:text-upstream-accent",
-			});
+			expect(
+				{
+					lead: add.className.split(" ").slice(0, 2),
+					icon: add.querySelector("svg")?.getAttribute("class"),
+				},
+			).toStrictEqual(
+				{
+					lead: ["cds-reset", "group/btn"],
+					icon: "lucide lucide-plus size-[18px] text-secondary-control group-hover/btn:text-primary group-aria-pressed/btn:text-upstream-accent group-hover/btn:group-aria-pressed/btn:text-upstream-accent",
+				},
+			);
 		});
 
-		it("uses upstream's card and chin tokens: r14 p8 card, 28px Add and Send, 24px 13/20 chin controls", () => {
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+		it("uses upstream's card and chin tokens: r14 p8 card, 28px Add and Send, 24px 13/20 chin controls", () =>
+		{
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+					chin={CHIN}
+				/>,
+			);
 			const classes = (element: Element | null | undefined) => element?.getAttribute("class")?.split(" ") ?? [];
 			const pick = (element: Element | null | undefined, tokens: readonly string[]) =>
 				tokens.filter((name) => classes(element).includes(name));
 			const card = document.querySelector("[data-composer-card]");
-			const add = screen.getByRole("button", {name: "Add"});
-			const textarea = screen.getByRole("textbox", {name: "Prompt"});
+			const add = screen.getByRole(
+				"button",
+				{
+					name: "Add",
+				},
+			);
+			const textarea = screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
 			const chin = document.querySelector('[data-cds="ChatComposerChin"]');
-			const model = screen.getByRole("button", {name: /^Model:/});
-			const ring = screen.getByRole("button", {name: /^Usage:/});
+			const model = screen.getByRole(
+				"button",
+				{
+					name: /^Model:/,
+				},
+			);
+			const ring = screen.getByRole(
+				"button",
+				{
+					name: /^Usage:/,
+				},
+			);
 			const ringSvg = ring.querySelector("svg");
 
-			expect({
-				card: pick(card, ["rounded-composer", "p-2", "rounded-card", "p-2.5"]),
-				add: pick(add, ["size-7", "h-6", "w-6"]),
-				addIcon: pick(add.querySelector("svg"), ["size-[18px]", "size-4"]),
-				addSlot: pick(add.closest("[data-composer-add]"), ["min-h-7"]),
-				spacer: pick(document.querySelector("[data-send-spacer] > span"), ["size-7"]),
-				editor: {
-					padding: pick(textarea, ["py-1", "pl-1"]),
-					minHeight: textarea.style.minHeight,
+			expect(
+				{
+					card: pick(card, ["rounded-composer", "p-2", "rounded-card", "p-2.5"]),
+					add: pick(add, ["size-7", "h-6", "w-6"]),
+					addIcon: pick(add.querySelector("svg"), ["size-[18px]", "size-4"]),
+					addSlot: pick(add.closest("[data-composer-add]"), ["min-h-7"]),
+					spacer: pick(document.querySelector("[data-send-spacer] > span"), ["size-7"]),
+					editor:
+					{
+						padding: pick(textarea, ["py-1", "pl-1"]),
+						minHeight: textarea.style.minHeight,
+					},
+					chin: pick(chin, ["mt-1.5", "min-h-6", "text-[13px]/[20px]", "text-secondary"]),
+					mode: pick(document.querySelector("[data-chin-mode]"), ["h-6", "px-1.5", "text-secondary-control"]),
+					model:
+					{
+						height: pick(model, ["h-6"]),
+						parts: Array.from(model.firstElementChild?.children ?? [], (part) => (
+						{
+							text: part.textContent,
+							classes: classes(part),
+						})),
+					},
+					ring:
+					{
+						height: pick(ring, ["h-6", "aspect-square"]),
+						svg: [ringSvg?.getAttribute("width"), ringSvg?.getAttribute("height")],
+					},
 				},
-				chin: pick(chin, ["mt-1.5", "min-h-6", "text-[13px]/[20px]", "text-secondary"]),
-				mode: pick(document.querySelector("[data-chin-mode]"), ["h-6", "px-1.5", "text-secondary-control"]),
-				model: {
-					height: pick(model, ["h-6"]),
-					parts: Array.from(model.firstElementChild?.children ?? [], (part) => ({
-						text: part.textContent,
-						classes: classes(part),
-					})),
+			).toStrictEqual(
+				{
+					card: ["rounded-composer", "p-2"],
+					add: ["size-7"],
+					addIcon: ["size-[18px]"],
+					addSlot: ["min-h-7"],
+					spacer: ["size-7"],
+					editor:
+					{
+						padding: ["py-1", "pl-1"],
+						minHeight: "28px",
+					},
+					chin: ["mt-1.5", "min-h-6", "text-[13px]/[20px]", "text-secondary"],
+					mode: ["h-6", "px-1.5", "text-secondary-control"],
+					model:
+					{
+						height: ["h-6"],
+						parts: [
+							{
+								text: "Opus 5.5",
+								classes: ["min-w-6", "truncate"],
+							},
+							{
+								text: " Extra",
+								classes: ["shrink-0", "whitespace-pre", "text-ink-muted", "ms-1"],
+							},
+						],
+					},
+					ring:
+					{
+						height: ["h-6", "aspect-square"],
+						svg: ["14", "14"],
+					},
 				},
-				ring: {
-					height: pick(ring, ["h-6", "aspect-square"]),
-					svg: [ringSvg?.getAttribute("width"), ringSvg?.getAttribute("height")],
-				},
-			}).toStrictEqual({
-				card: ["rounded-composer", "p-2"],
-				add: ["size-7"],
-				addIcon: ["size-[18px]"],
-				addSlot: ["min-h-7"],
-				spacer: ["size-7"],
-				editor: {padding: ["py-1", "pl-1"], minHeight: "28px"},
-				chin: ["mt-1.5", "min-h-6", "text-[13px]/[20px]", "text-secondary"],
-				mode: ["h-6", "px-1.5", "text-secondary-control"],
-				model: {
-					height: ["h-6"],
-					parts: [
-						{text: "Opus 5.5", classes: ["min-w-6", "truncate"]},
-						{text: " Extra", classes: ["shrink-0", "whitespace-pre", "text-ink-muted", "ms-1"]},
-					],
-				},
-				ring: {height: ["h-6", "aspect-square"], svg: ["14", "14"]},
-			});
+			);
 		});
 
-		it("draws the ring arc from the most-used plan limit on upstream's 14/r6 geometry", () => {
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
-			const svg = screen.getByRole("button", {name: /^Usage:/}).querySelector("svg");
+		it("draws the ring arc from the most-used plan limit on upstream's 14/r6 geometry", () =>
+		{
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+					chin={CHIN}
+				/>,
+			);
+			const svg = screen
+				.getByRole(
+					"button",
+					{
+						name: /^Usage:/,
+					},
+				)
+				.querySelector("svg");
 			const [track, arc] = Array.from(svg?.querySelectorAll("circle") ?? []);
 
-			expect({
-				viewBox: svg?.getAttribute("viewBox"),
-				track: [
-					track?.getAttribute("r"),
-					track?.getAttribute("stroke"),
-					track?.hasAttribute("data-ring-track"),
-				],
-				arcMarked: arc?.hasAttribute("data-ring-arc"),
-				arc: {
-					r: arc?.getAttribute("r"),
-					stroke: arc?.getAttribute("stroke"),
-					dasharray: arc?.getAttribute("stroke-dasharray"),
-					dashoffset: Number(arc?.getAttribute("stroke-dashoffset")).toFixed(4),
-					transition: arc?.getAttribute("class"),
+			expect(
+				{
+					viewBox: svg?.getAttribute("viewBox"),
+					track: [
+						track?.getAttribute("r"),
+						track?.getAttribute("stroke"),
+						track?.hasAttribute("data-ring-track"),
+					],
+					arcMarked: arc?.hasAttribute("data-ring-arc"),
+					arc:
+					{
+						r: arc?.getAttribute("r"),
+						stroke: arc?.getAttribute("stroke"),
+						dasharray: arc?.getAttribute("stroke-dasharray"),
+						dashoffset: Number(arc?.getAttribute("stroke-dashoffset")).toFixed(4),
+						transition: arc?.getAttribute("class"),
+					},
 				},
-			}).toStrictEqual({
-				viewBox: "0 0 14 14",
-				track: ["6", "var(--color-alpha-3)", true],
-				arcMarked: true,
-				arc: {
-					r: "6",
-					stroke: "var(--color-fill-accent)",
-					dasharray: "37.699",
-					dashoffset: (0.35 * 37.699).toFixed(4),
-					transition: "transition-[stroke-dashoffset] duration-300",
+			).toStrictEqual(
+				{
+					viewBox: "0 0 14 14",
+					track: ["6", "var(--color-alpha-3)", true],
+					arcMarked: true,
+					arc:
+					{
+						r: "6",
+						stroke: "var(--color-fill-accent)",
+						dasharray: "37.699",
+						dashoffset: (0.35 * 37.699).toFixed(4),
+						transition: "transition-[stroke-dashoffset] duration-300",
+					},
 				},
-			});
+			);
 		});
 
 		it.each([
-			{weekly: 74, stroke: "var(--color-fill-accent)"},
-			{weekly: 75, stroke: "var(--color-usage-warning)"},
-			{weekly: 90, stroke: "var(--color-usage-danger)"},
-		])("colours the arc $stroke at $weekly%", ({weekly, stroke}) => {
-			const usage = CHIN.usage && {
+			{
+				weekly: 74,
+				stroke: "var(--color-fill-accent)",
+			},
+			{
+				weekly: 75,
+				stroke: "var(--color-usage-warning)",
+			},
+			{
+				weekly: 90,
+				stroke: "var(--color-usage-danger)",
+			},
+		])("colours the arc $stroke at $weekly%", ({weekly, stroke}) =>
+		{
+			const usage = CHIN.usage &&
+			{
 				...CHIN.usage,
-				weekly: {...CHIN.usage.weekly!, usedPercentage: weekly},
+				weekly:
+				{
+					...CHIN.usage.weekly!,
+					usedPercentage: weekly,
+				},
 			};
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={{...CHIN, usage}} />);
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+					chin={
+					{
+						...CHIN,
+						usage,
+					}}
+				/>,
+			);
 			expect(document.querySelector("[data-ring-arc]")?.getAttribute("stroke")).toBe(stroke);
 		});
 
-		const renderWithAccount = (planDetail?: string) => {
+		const renderWithAccount = (planDetail?: string) =>
+		{
 			const queryClient = new QueryClient();
-			queryClient.setQueryData(localAccountQueryOptions.queryKey, {
-				name: "Craig",
-				firstName: "Craig",
-				initial: "C",
-				...(planDetail === undefined ? {} : {planDetail}),
-			});
+			queryClient.setQueryData(
+				localAccountQueryOptions.queryKey,
+				{
+					name: "Craig",
+					firstName: "Craig",
+					initial: "C",
+					...(planDetail === undefined
+						? {}
+						:
+							{
+								planDetail,
+							}),
+				},
+			);
 			render(
 				<QueryClientProvider client={queryClient}>
-					<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />
+					<Composer
+						variant="session"
+						draftKey="session-alice"
+						onSend={() =>
+						{
+						}}
+						chin={CHIN}
+					/>
 				</QueryClientProvider>,
 			);
 		};
 
-		it("opens upstream's 2026-10-20 usage popover: plan header, Session limit and weekly meters, no context window", async () => {
-			vi.useFakeTimers({now: NOW_MS, toFake: ["Date"]});
+		it("opens upstream's 2026-10-20 usage popover: plan header, Session limit and weekly meters, no context window", async () =>
+		{
+			vi.useFakeTimers(
+				{
+					now: NOW_MS,
+					toFake: ["Date"],
+				},
+			);
 			renderWithAccount("Max (20x)");
 
-			fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Usage:/,
+					},
+				),
+			);
 			const dialog = await screen.findByRole("dialog");
-			const group = within(dialog).getByRole("group", {name: "Usage limits"});
+			const group = within(dialog).getByRole(
+				"group",
+				{
+					name: "Usage limits",
+				},
+			);
 			const meters = within(group).getAllByRole("meter");
 
-			expect({
-				title: dialog.querySelector("h2.sr-only")?.textContent,
-				header: dialog.querySelector("[data-usage-popover-header] > span")?.textContent,
-				context: dialog.textContent.includes("Context window"),
-				updated: dialog.textContent.includes("Last updated"),
-				breakdown: within(dialog).queryByRole("button", {name: "See detailed breakdown"}),
-				rows: Array.from(group.querySelectorAll("[data-usage-row]"), (row) =>
-					[row.children[0], ...Array.from(row.children[1]?.children ?? [])]
-						.map((cell) => cell?.textContent)
-						.join(" | "),
-				),
-				percentsHidden: Array.from(
-					group.querySelectorAll("[data-usage-row] [aria-hidden=true]"),
-					(cell) => cell.textContent,
-				),
-				meters: meters.map((meter) => ({
-					now: meter.getAttribute("aria-valuenow"),
-					text: meter.getAttribute("aria-valuetext"),
-					label: document.getElementById(meter.getAttribute("aria-labelledby") ?? "")?.textContent,
-					description: document.getElementById(meter.getAttribute("aria-describedby") ?? "")?.textContent,
-					track: meter.classList.contains("bg-alpha-2"),
-					fill: (meter.firstElementChild as HTMLElement | null)?.style.transform,
-				})),
-				popup: [...dialog.classList].filter((name) => /^(?:w-|p-|text-\[)/.test(name)),
-			}).toStrictEqual({
-				title: "Usage",
-				header: "Plan usage limits · Max (20x)",
-				context: false,
-				updated: false,
-				breakdown: null,
-				rows: [
-					"Session limit | Resets in 4 hr 11 min | 10%",
-					"Weekly · all models | Resets in 14 hr 31 min | 65%",
-				],
-				percentsHidden: ["10%", "65%"],
-				meters: [
+			expect(
+				{
+					title: dialog.querySelector("h2.sr-only")?.textContent,
+					header: dialog.querySelector("[data-usage-popover-header] > span")?.textContent,
+					context: dialog.textContent.includes("Context window"),
+					updated: dialog.textContent.includes("Last updated"),
+					breakdown: within(dialog).queryByRole(
+						"button",
+						{
+							name: "See detailed breakdown",
+						},
+					),
+					rows: Array.from(group.querySelectorAll("[data-usage-row]"), (row) =>
+						[row.children[0], ...Array.from(row.children[1]?.children ?? [])]
+							.map((cell) => cell?.textContent)
+							.join(" | "),
+					),
+					percentsHidden: Array.from(
+						group.querySelectorAll("[data-usage-row] [aria-hidden=true]"),
+						(cell) => cell.textContent,
+					),
+					meters: meters.map((meter) => (
 					{
-						now: "10",
-						text: "10% used",
-						label: "Session limit",
-						description: "Resets in 4 hr 11 min",
-						track: true,
-						fill: "translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(10%, 4px)))))",
-					},
-					{
-						now: "65",
-						text: "65% used",
-						label: "Weekly · all models",
-						description: "Resets in 14 hr 31 min",
-						track: true,
-						fill: "translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(65%, 4px)))))",
-					},
-				],
-				popup: ["w-[360px]", "p-0", "text-[13px]/[19px]"],
-			});
+						now: meter.getAttribute("aria-valuenow"),
+						text: meter.getAttribute("aria-valuetext"),
+						label: document.getElementById(meter.getAttribute("aria-labelledby") ?? "")?.textContent,
+						description: document.getElementById(meter.getAttribute("aria-describedby") ?? "")?.textContent,
+						track: meter.classList.contains("bg-alpha-2"),
+						fill: (meter.firstElementChild as HTMLElement | null)?.style.transform,
+					})),
+					popup: [...dialog.classList].filter((name) => /^(?:w-|p-|text-\[)/.test(name)),
+				},
+			).toStrictEqual(
+				{
+					title: "Usage",
+					header: "Plan usage limits · Max (20x)",
+					context: false,
+					updated: false,
+					breakdown: null,
+					rows: [
+						"Session limit | Resets in 4 hr 11 min | 10%",
+						"Weekly · all models | Resets in 14 hr 31 min | 65%",
+					],
+					percentsHidden: ["10%", "65%"],
+					meters: [
+						{
+							now: "10",
+							text: "10% used",
+							label: "Session limit",
+							description: "Resets in 4 hr 11 min",
+							track: true,
+							fill: "translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(10%, 4px)))))",
+						},
+						{
+							now: "65",
+							text: "65% used",
+							label: "Weekly · all models",
+							description: "Resets in 14 hr 31 min",
+							track: true,
+							fill: "translateX(calc(var(--_meter-dir,-1) * (100% - min(100%, max(65%, 4px)))))",
+						},
+					],
+					popup: ["w-[360px]", "p-0", "text-[13px]/[19px]"],
+				},
+			);
 		});
 
-		it("drops the plan from the usage popover header when the plan is unknown", async () => {
+		it("drops the plan from the usage popover header when the plan is unknown", async () =>
+		{
 			renderWithAccount();
 
-			fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Usage:/,
+					},
+				),
+			);
 			const dialog = await screen.findByRole("dialog");
 
 			expect(dialog.querySelector("[data-usage-popover-header] > span")?.textContent).toBe("Plan usage limits");
 		});
 
-		it("tints the usage popover's meter fills by severity over an alpha-2 track with the inset ring", async () => {
-			const usage = CHIN.usage && {
+		it("tints the usage popover's meter fills by severity over an alpha-2 track with the inset ring", async () =>
+		{
+			const usage = CHIN.usage &&
+			{
 				...CHIN.usage,
-				fiveHour: {...CHIN.usage.fiveHour!, usedPercentage: 80},
-				weekly: {...CHIN.usage.weekly!, usedPercentage: 95},
+				fiveHour:
+				{
+					...CHIN.usage.fiveHour!,
+					usedPercentage: 80,
+				},
+				weekly:
+				{
+					...CHIN.usage.weekly!,
+					usedPercentage: 95,
+				},
 			};
 			render(
 				<QueryClientProvider client={new QueryClient()}>
-					<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={{...CHIN, usage}} />
+					<Composer
+						variant="session"
+						draftKey="session-alice"
+						onSend={() =>
+						{
+						}}
+						chin={
+						{
+							...CHIN,
+							usage,
+						}}
+					/>
 				</QueryClientProvider>,
 			);
 
-			fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Usage:/,
+					},
+				),
+			);
 			const dialog = await screen.findByRole("dialog");
 
 			expect(
 				within(dialog)
 					.getAllByRole("meter")
-					.map((meter) => ({
+					.map((meter) => (
+					{
 						variant: meter.getAttribute("data-variant"),
 						track: [...meter.classList].filter(
 							(name) => name.startsWith("bg-") || name.startsWith("shadow-"),
@@ -666,14 +1347,34 @@ describe("Composer", () => {
 			]);
 		});
 
-		it("previews the most-used limit and its reset in a two-row tooltip on the ring", () => {
-			vi.useFakeTimers({now: NOW_MS});
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
-			const anchor = screen.getByRole("button", {name: /^Usage:/}).parentElement;
+		it("previews the most-used limit and its reset in a two-row tooltip on the ring", () =>
+		{
+			vi.useFakeTimers(
+				{
+					now: NOW_MS,
+				},
+			);
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+					chin={CHIN}
+				/>,
+			);
+			const anchor = screen.getByRole(
+				"button",
+				{
+					name: /^Usage:/,
+				},
+			).parentElement;
 			if (anchor === null) throw new Error("ring has no tooltip anchor");
 
 			fireEvent.pointerEnter(anchor);
-			act(() => {
+			act(() =>
+			{
 				vi.advanceTimersByTime(400);
 			});
 
@@ -683,125 +1384,292 @@ describe("Composer", () => {
 			]);
 		});
 
-		it("hides the ring's tooltip while the usage popover is open", () => {
-			vi.useFakeTimers({now: NOW_MS});
+		it("hides the ring's tooltip while the usage popover is open", () =>
+		{
+			vi.useFakeTimers(
+				{
+					now: NOW_MS,
+				},
+			);
 			renderWithAccount();
-			const ring = screen.getByRole("button", {name: /^Usage:/});
+			const ring = screen.getByRole(
+				"button",
+				{
+					name: /^Usage:/,
+				},
+			);
 			const anchor = ring.parentElement;
 			if (anchor === null) throw new Error("ring has no tooltip anchor");
 
 			fireEvent.click(ring);
 			fireEvent.pointerEnter(anchor);
 			fireEvent.focus(ring);
-			act(() => {
+			act(() =>
+			{
 				vi.advanceTimersByTime(400);
 			});
 
-			expect({
-				expanded: ring.getAttribute("aria-expanded"),
-				tooltip: screen.queryByRole("tooltip"),
-			}).toStrictEqual({
-				expanded: "true",
-				tooltip: null,
-			});
+			expect(
+				{
+					expanded: ring.getAttribute("aria-expanded"),
+					tooltip: screen.queryByRole("tooltip"),
+				},
+			).toStrictEqual(
+				{
+					expanded: "true",
+					tooltip: null,
+				},
+			);
 		});
 
-		it("links the usage popover header's gauge to Settings › Usage", async () => {
+		it("links the usage popover header's gauge to Settings › Usage", async () =>
+		{
 			renderWithAccount("Max (20x)");
 
-			fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Usage:/,
+					},
+				),
+			);
 			const dialog = await screen.findByRole("dialog");
-			const link = within(dialog).getByRole("link", {name: "View usage in Settings"});
+			const link = within(dialog).getByRole(
+				"link",
+				{
+					name: "View usage in Settings",
+				},
+			);
 
-			expect({
-				href: link.getAttribute("href"),
-				link: link.className.match(/\bsize-5\b|\brounded-r4\b|-me-1\b/g),
-				icon: link.querySelector("svg")?.classList.contains("lucide-gauge"),
-				className: dialog.className.match(/rounded-\S+|max-h-\S+|overflow-\S+/g),
-				body: dialog.firstElementChild?.className,
-			}).toStrictEqual({
-				href: "#settings/usage",
-				link: ["-me-1", "size-5", "rounded-r4"],
-				icon: true,
-				className: ["max-h-[min(var(--available-height),640px)]", "rounded-r7"],
-				body: POPOVER_SCROLL_BODY_CLASS,
-			});
+			expect(
+				{
+					href: link.getAttribute("href"),
+					link: link.className.match(/\bsize-5\b|\brounded-r4\b|-me-1\b/g),
+					icon: link.querySelector("svg")?.classList.contains("lucide-gauge"),
+					className: dialog.className.match(/rounded-\S+|max-h-\S+|overflow-\S+/g),
+					body: dialog.firstElementChild?.className,
+				},
+			).toStrictEqual(
+				{
+					href: "#settings/usage",
+					link: ["-me-1", "size-5", "rounded-r4"],
+					icon: true,
+					className: ["max-h-[min(var(--available-height),640px)]", "rounded-r7"],
+					body: POPOVER_SCROLL_BODY_CLASS,
+				},
+			);
 
 			fireEvent.click(link);
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(screen.queryByRole("dialog")).toBeNull();
 			});
 		});
 
-		it("inserts a slash from the Add menu", async () => {
+		it("inserts a slash from the Add menu", async () =>
+		{
 			const queryClient = new QueryClient();
 			queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
 			render(
 				<QueryClientProvider client={queryClient}>
-					<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />
+					<Composer
+						variant="session"
+						draftKey="session-alice"
+						onSend={() =>
+						{
+						}}
+						chin={CHIN}
+					/>
 				</QueryClientProvider>,
 			);
 
-			fireEvent.click(screen.getByRole("button", {name: "Add"}));
-			fireEvent.click(await screen.findByRole("menuitem", {name: "Slash commands"}));
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Add",
+					},
+				),
+			);
+			fireEvent.click(
+				await screen.findByRole(
+					"menuitem",
+					{
+						name: "Slash commands",
+					},
+				),
+			);
 
-			expect(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"}).value).toBe("/");
+			expect(
+				screen.getByRole<HTMLTextAreaElement>(
+					"textbox",
+					{
+						name: "Prompt",
+					},
+				).value,
+			).toBe("/");
 		});
 
-		it("renders an empty chin without chin state", () => {
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		it("renders an empty chin without chin state", () =>
+		{
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+				/>,
+			);
 			expect(document.querySelector('[data-cds="ChatComposerChin"]')?.childElementCount).toBe(0);
 		});
 	});
 
-	describe("taking a cancelled steer back", () => {
-		it("puts the text in an empty composer and focuses it", () => {
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
-			const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+	describe("taking a cancelled steer back", () =>
+	{
+		it("puts the text in an empty composer and focuses it", () =>
+		{
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+				/>,
+			);
+			const textarea = screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
 			let delivered = false;
-			act(() => {
+			act(() =>
+			{
 				delivered = requestComposerTakeBack("session-alice", "Alice's steer");
 			});
-			expect({
-				delivered,
-				other: requestComposerTakeBack("session-bob", "Bob's steer"),
-				value: textarea.value,
-				focused: document.activeElement === textarea,
-			}).toStrictEqual({delivered: true, other: false, value: "Alice's steer", focused: true});
+			expect(
+				{
+					delivered,
+					other: requestComposerTakeBack("session-bob", "Bob's steer"),
+					value: textarea.value,
+					focused: document.activeElement === textarea,
+				},
+			).toStrictEqual(
+				{
+					delivered: true,
+					other: false,
+					value: "Alice's steer",
+					focused: true,
+				},
+			);
 		});
 
-		it("merges the steer ahead of a draft, as upstream's local take-back does", () => {
-			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
-			const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-			fireEvent.change(textarea, {target: {value: "Carol's draft"}});
-			act(() => {
+		it("merges the steer ahead of a draft, as upstream's local take-back does", () =>
+		{
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+				/>,
+			);
+			const textarea = screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value: "Carol's draft",
+					},
+				},
+			);
+			act(() =>
+			{
 				requestComposerTakeBack("session-alice", "Alice's steer");
 			});
 			expect(textarea.value).toBe("Alice's steer\n\nCarol's draft");
 		});
 	});
 
-	describe("refilling a rejected send", () => {
-		it("puts the rejected prompt in an empty composer and focuses it", () => {
-			render(<Composer variant="session" draftKey="s1" onSend={() => {}} />);
-			const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+	describe("refilling a rejected send", () =>
+	{
+		it("puts the rejected prompt in an empty composer and focuses it", () =>
+		{
+			render(
+				<Composer
+					variant="session"
+					draftKey="s1"
+					onSend={() =>
+					{
+					}}
+				/>,
+			);
+			const textarea = screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
 			let refilled = false;
-			act(() => {
+			act(() =>
+			{
 				refilled = refillComposer("s1", "hi");
 			});
-			expect({
-				refilled,
-				other: refillComposer("session-bob", "Bob's prompt"),
-				value: textarea.value,
-				focused: document.activeElement === textarea,
-			}).toStrictEqual({refilled: true, other: false, value: "hi", focused: true});
+			expect(
+				{
+					refilled,
+					other: refillComposer("session-bob", "Bob's prompt"),
+					value: textarea.value,
+					focused: document.activeElement === textarea,
+				},
+			).toStrictEqual(
+				{
+					refilled: true,
+					other: false,
+					value: "hi",
+					focused: true,
+				},
+			);
 		});
 
-		it("keeps text typed while the send was in flight below the rejected prompt", () => {
-			render(<Composer variant="session" draftKey="s1" onSend={() => {}} />);
-			const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-			fireEvent.change(textarea, {target: {value: "new"}});
-			act(() => {
+		it("keeps text typed while the send was in flight below the rejected prompt", () =>
+		{
+			render(
+				<Composer
+					variant="session"
+					draftKey="s1"
+					onSend={() =>
+					{
+					}}
+				/>,
+			);
+			const textarea = screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value: "new",
+					},
+				},
+			);
+			act(() =>
+			{
 				refillComposer("s1", "hi");
 			});
 			expect(textarea.value).toBe("hi\n\nnew");

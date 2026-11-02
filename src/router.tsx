@@ -9,36 +9,54 @@ import {installStaleChunkReload} from "./lib/stale-chunk-reload";
 // Before hydration, so a tab left open across a redeploy recovers from its first stale lazy chunk.
 if (typeof window !== "undefined") installStaleChunkReload(window);
 
-export function getRouter() {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {
-				refetchOnWindowFocus: false,
-				retry: shouldRetryQuery,
+export function getRouter()
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					refetchOnWindowFocus: false,
+					retry: shouldRetryQuery,
+				},
 			},
 		},
-	});
+	);
 
-	const router = createRouter({
-		routeTree,
-		scrollRestoration: true,
-		defaultPreload: "intent",
-		defaultErrorComponent: DefaultErrorComponent,
-		// Query manages data freshness; always run loaders so their static-staleTime query() calls can serve from cache.
-		defaultPreloadStaleTime: 0,
-		context: {queryClient},
-	});
+	const router = createRouter(
+		{
+			routeTree,
+			scrollRestoration: true,
+			defaultPreload: "intent",
+			defaultErrorComponent: DefaultErrorComponent,
+			// Query manages data freshness; always run loaders so their static-staleTime query() calls can serve from cache.
+			defaultPreloadStaleTime: 0,
+			context:
+			{
+				queryClient,
+			},
+		},
+	);
 
-	setupRouterSsrQueryIntegration({router, queryClient});
+	setupRouterSsrQueryIntegration(
+		{
+			router,
+			queryClient,
+		},
+	);
 
 	return router;
 }
 
-declare module "@tanstack/react-router" {
-	interface Register {
+declare module "@tanstack/react-router"
+{
+	interface Register
+	{
 		router: ReturnType<typeof getRouter>;
 	}
-	interface StaticDataRouteOption {
+	interface StaticDataRouteOption
+	{
 		/** Render the route edge to edge, without the root layout's horizontal padding. */
 		fullBleed?: boolean;
 		/** Home/chat have bounded tiles with their own scrollports. */

@@ -8,7 +8,8 @@ import {fileSearchViewerNavigation} from "./file-search-viewer-target";
 import {HighlightRuns} from "./highlight-runs";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {encodeFilePath} from "../lib/api/file";
-import {
+import
+{
 	unifiedSearchQueryOptions,
 	UnifiedSearchTypeSchema,
 	type UnifiedSearchItem,
@@ -24,7 +25,8 @@ const PAGE_LIMIT = 100;
 const QUERY_DEBOUNCE_MS = 150;
 const RESULTS_ID = "search-results";
 
-const KIND_ICONS = {
+const KIND_ICONS =
+{
 	session: <MessageSquare />,
 	plan: <FileText />,
 	memory: <Brain />,
@@ -32,7 +34,8 @@ const KIND_ICONS = {
 } as const satisfies Record<UnifiedSearchItem["kind"], ReactNode>;
 
 /** The palette's search-row anatomy: kind icon, title runs, quoted snippet, then muted project and bucket meta. */
-export function SearchResultCard({item, now}: {item: UnifiedSearchItem; now: number}) {
+export function SearchResultCard({item, now}: {item: UnifiedSearchItem; now: number})
+{
 	const bucket = relativeBucket(Date.parse(item.mtime), now);
 	return (
 		<span data-item-type={item.kind} className="flex min-w-0 flex-1 items-center gap-2 max-sm:items-start">
@@ -75,7 +78,8 @@ export function SearchResultCard({item, now}: {item: UnifiedSearchItem; now: num
 }
 
 /** The "all results" page: the palette's rows and type tabs over `/api/search`, plus files mode. */
-export function SearchView({q, type}: {q: string; type: UnifiedSearchType}) {
+export function SearchView({q, type}: {q: string; type: UnifiedSearchType})
+{
 	const navigate = useNavigate();
 
 	return (
@@ -83,30 +87,65 @@ export function SearchView({q, type}: {q: string; type: UnifiedSearchType}) {
 			<CodePageHeader title="Search" />
 			<TypeTabs
 				value={type}
-				onChange={(next) => {
-					void navigate({to: "/search", search: {q, type: next}, replace: true});
+				onChange={(next) =>
+				{
+					void navigate(
+						{
+							to: "/search",
+							search:
+							{
+								q,
+								type: next,
+							},
+							replace: true,
+						},
+					);
 				}}
 			/>
 			{type === "files" ? (
 				<FileSearchResults
 					initialQuery={q}
-					onQueryChange={(nextQuery) => {
-						void navigate({
-							to: "/search",
-							search: {q: nextQuery, type: "files"},
-							replace: true,
-						});
+					onQueryChange={(nextQuery) =>
+					{
+						void navigate(
+							{
+								to: "/search",
+								search:
+								{
+									q: nextQuery,
+									type: "files",
+								},
+								replace: true,
+							},
+						);
 					}}
-					onOpen={(absolutePath, lineNumber) => {
+					onOpen={(absolutePath, lineNumber) =>
+					{
 						const destination = fileSearchViewerNavigation(absolutePath, lineNumber);
-						void navigate({
-							to: "/file/$",
-							params: {_splat: destination.pathToken},
-							hash: destination.hash,
-						});
+						void navigate(
+							{
+								to: "/file/$",
+								params:
+								{
+									_splat: destination.pathToken,
+								},
+								hash: destination.hash,
+							},
+						);
 					}}
-					onClose={() => {
-						void navigate({to: "/search", search: {q, type: "all"}, replace: true});
+					onClose={() =>
+					{
+						void navigate(
+							{
+								to: "/search",
+								search:
+								{
+									q,
+									type: "all",
+								},
+								replace: true,
+							},
+						);
 					}}
 				/>
 			) : (
@@ -116,10 +155,12 @@ export function SearchView({q, type}: {q: string; type: UnifiedSearchType}) {
 	);
 }
 
-function TypeTabs({value, onChange}: {value: UnifiedSearchType; onChange: (type: UnifiedSearchType) => void}) {
+function TypeTabs({value, onChange}: {value: UnifiedSearchType; onChange: (type: UnifiedSearchType) => void})
+{
 	return (
 		<div role="tablist" aria-label="Type" className="mt-3 flex items-center gap-1 overflow-x-auto">
-			{UnifiedSearchTypeSchema.options.map((type) => {
+			{UnifiedSearchTypeSchema.options.map((type) =>
+			{
 				const selected = type === value;
 				return (
 					<button
@@ -127,7 +168,8 @@ function TypeTabs({value, onChange}: {value: UnifiedSearchType; onChange: (type:
 						type="button"
 						role="tab"
 						aria-selected={selected}
-						onClick={() => {
+						onClick={() =>
+						{
 							onChange(type);
 						}}
 						className={`h-7 shrink-0 rounded-r6 px-2 text-sm transition-colors hover:bg-fill-ghost-hover hover:text-primary ${
@@ -142,73 +184,140 @@ function TypeTabs({value, onChange}: {value: UnifiedSearchType; onChange: (type:
 	);
 }
 
-function optionId(item: UnifiedSearchItem): string {
+function optionId(item: UnifiedSearchItem): string
+{
 	return `search-result-${item.kind}-${item.id}`;
 }
 
-function UnifiedResults({q, type}: {q: string; type: Exclude<UnifiedSearchType, "files">}) {
+function UnifiedResults({q, type}: {q: string; type: Exclude<UnifiedSearchType, "files">})
+{
 	const navigate = useNavigate();
 	const [query, setQuery] = useState(q);
 	const debouncedQuery = useDebouncedValue(query.trim(), QUERY_DEBOUNCE_MS);
 	const lastDebouncedQuery = useRef(debouncedQuery);
 
 	// Only a settled edit writes the URL, so back/forward can change `q` without being overwritten.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (debouncedQuery === lastDebouncedQuery.current) return;
 		lastDebouncedQuery.current = debouncedQuery;
-		void navigate({to: "/search", search: {q: debouncedQuery, type}, replace: true});
+		void navigate(
+			{
+				to: "/search",
+				search:
+				{
+					q: debouncedQuery,
+					type,
+				},
+				replace: true,
+			},
+		);
 	}, [debouncedQuery, navigate, type]);
 
 	const trimmedQ = q.trim();
-	const search = useQuery({
-		...unifiedSearchQueryOptions({query: trimmedQ, type, limit: PAGE_LIMIT}),
-		enabled: trimmedQ !== "",
-	});
+	const search = useQuery(
+		{
+			...unifiedSearchQueryOptions(
+				{
+					query: trimmedQ,
+					type,
+					limit: PAGE_LIMIT,
+				},
+			),
+			enabled: trimmedQ !== "",
+		},
+	);
 	const items = trimmedQ === "" ? undefined : search.data?.items;
 
 	// The selection belongs to one result list; a new list starts at its first row.
-	const [selection, setSelection] = useState<{items: unknown; index: number}>({
-		items: undefined,
-		index: 0,
-	});
+	const [selection, setSelection] = useState<
+	{
+		items: unknown;
+		index: number;
+	}>(
+		{
+			items: undefined,
+			index: 0,
+		},
+	);
 	const selectedIndex = selection.items === items ? selection.index : 0;
 	const selected = items?.[selectedIndex];
 
-	function select(index: number) {
+	function select(index: number)
+	{
 		if (items === undefined || items.length === 0) return;
 		const clamped = Math.min(Math.max(index, 0), items.length - 1);
-		setSelection({items, index: clamped});
+		setSelection(
+			{
+				items,
+				index: clamped,
+			},
+		);
 		const target = items[clamped];
-		if (target !== undefined) {
-			document.getElementById(optionId(target))?.scrollIntoView({block: "nearest"});
+		if (target !== undefined)
+		{
+			document.getElementById(optionId(target))?.scrollIntoView(
+				{
+					block: "nearest",
+				},
+			);
 		}
 	}
 
-	function openItem(item: UnifiedSearchItem) {
-		switch (item.kind) {
+	function openItem(item: UnifiedSearchItem)
+	{
+		switch (item.kind)
+		{
 			case "session":
-				void navigate({to: "/session/$id", params: {id: item.id}});
+				void navigate(
+					{
+						to: "/session/$id",
+						params:
+						{
+							id: item.id,
+						},
+					},
+				);
 				return;
 			case "file":
-				void navigate({to: "/file/$", params: {_splat: encodeFilePath(item.id)}});
+				void navigate(
+					{
+						to: "/file/$",
+						params:
+						{
+							_splat: encodeFilePath(item.id),
+						},
+					},
+				);
 				return;
 			case "plan":
 			case "memory":
-				if (item.href !== undefined) void navigate({href: item.href});
+				if (item.href !== undefined)
+					void navigate(
+						{
+							href: item.href,
+						},
+					);
 				return;
 			default:
 				assertNever(item.kind);
 		}
 	}
 
-	function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-		if (event.key === "ArrowDown") {
+	function handleKeyDown(event: KeyboardEvent<HTMLInputElement>)
+	{
+		if (event.key === "ArrowDown")
+		{
 			event.preventDefault();
 			select(selectedIndex + 1);
-		} else if (event.key === "ArrowUp") {
+		}
+		else if (event.key === "ArrowUp")
+		{
 			event.preventDefault();
 			select(selectedIndex - 1);
-		} else if (event.key === "Enter" && selected !== undefined) {
+		}
+		else if (event.key === "Enter" && selected !== undefined)
+		{
 			event.preventDefault();
 			openItem(selected);
 		}
@@ -224,9 +333,15 @@ function UnifiedResults({q, type}: {q: string; type: Exclude<UnifiedSearchType, 
 				aria-label="Search"
 				aria-controls={RESULTS_ID}
 				aria-expanded={items !== undefined && items.length > 0}
-				{...(selected === undefined ? {} : {"aria-activedescendant": optionId(selected)})}
+				{...(selected === undefined
+					? {}
+					:
+						{
+							"aria-activedescendant": optionId(selected),
+						})}
 				value={query}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					setQuery(event.target.value);
 				}}
 				onKeyDown={handleKeyDown}
@@ -259,10 +374,18 @@ function UnifiedResults({q, type}: {q: string; type: Exclude<UnifiedSearchType, 
 						id={optionId(item)}
 						role="option"
 						aria-selected={index === selectedIndex}
-						onMouseMove={() => {
-							if (index !== selectedIndex) setSelection({items, index});
+						onMouseMove={() =>
+						{
+							if (index !== selectedIndex)
+								setSelection(
+									{
+										items,
+										index,
+									},
+								);
 						}}
-						onClick={() => {
+						onClick={() =>
+						{
 							openItem(item);
 						}}
 						className="group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-sm leading-5 text-secondary select-none aria-selected:bg-fill-ghost-hover aria-selected:text-primary"

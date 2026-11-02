@@ -1,8 +1,10 @@
 import {describe, expect, it} from "vite-plus/test";
 import {mermaidSourceDrawable} from "../src/lib/mermaid-gate";
 
-describe("mermaidSourceDrawable (upstream pre-gate Z)", () => {
-	it("draws sources up to 262144 chars with no secret in them", () => {
+describe("mermaidSourceDrawable (upstream pre-gate Z)", () =>
+{
+	it("draws sources up to 262144 chars with no secret in them", () =>
+	{
 		expect(
 			[
 				["short", "graph TD; A-->B"],

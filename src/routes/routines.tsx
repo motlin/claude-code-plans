@@ -5,7 +5,8 @@ import {useSuspenseQuery} from "@tanstack/react-query";
 import {ArrowUpDown, SlidersHorizontal} from "lucide-react";
 import {useMemo, useState} from "react";
 import {routinesQueryOptions, type Routine} from "../lib/api/routines";
-import {
+import
+{
 	DEFAULT_ROUTINE_VIEW,
 	filterRoutines,
 	formatNextRun,
@@ -17,7 +18,8 @@ import {
 	sortRoutines,
 	type RoutineView,
 } from "../lib/routines";
-import {
+import
+{
 	routineKindLabels,
 	routineScheduleFilterLabels,
 	routineSortLabels,
@@ -25,7 +27,8 @@ import {
 } from "../lib/schema-choices";
 import {TOOLBAR_ICON_BUTTON, ToolbarSearch} from "../components/toolbar-search";
 import {Tooltip} from "../components/ui/tooltip";
-import {
+import
+{
 	Menu,
 	MenuCheckboxItem,
 	MenuContent,
@@ -36,13 +39,22 @@ import {
 	MenuTrigger,
 } from "../components/ui/menu";
 
-export const Route = createFileRoute("/routines")({
-	component: RoutinesPage,
-	loader: async ({context: {queryClient}}) => queryClient.query({...routinesQueryOptions, staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Scheduled tasks")],
-	}),
-});
+export const Route = createFileRoute("/routines")(
+	{
+		component: RoutinesPage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...routinesQueryOptions,
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Scheduled tasks")],
+		}),
+	},
+);
 
 /**
  * Read-only local counterpart of claude.ai/code's Routines page: the scheduled
@@ -50,15 +62,20 @@ export const Route = createFileRoute("/routines")({
  * no Templates tab or "New routine" button, since routines are only created from
  * inside a session here.
  */
-function RoutinesPage() {
+function RoutinesPage()
+{
 	// Relative times are measured from when this data arrived, so they stay stable across re-renders.
 	const {data: routines, dataUpdatedAt: now} = useSuspenseQuery(routinesQueryOptions);
 	const [view, setView] = useState<RoutineView>(DEFAULT_ROUTINE_VIEW);
 	const [searchOpen, setSearchOpen] = useState(false);
 
-	const {visible, hiddenCompleted} = useMemo(() => {
+	const {visible, hiddenCompleted} = useMemo(() =>
+	{
 		const filtered = filterRoutines(routines, view);
-		return {...filtered, visible: sortRoutines(filtered.visible, view.sort)};
+		return {
+			...filtered,
+			visible: sortRoutines(filtered.visible, view.sort),
+		};
 	}, [routines, view]);
 	const completedCount = routines.filter((routine) => routine.status === "completed").length;
 
@@ -74,8 +91,13 @@ function RoutinesPage() {
 							placeholder="Search scheduled tasks..."
 							search={view.search}
 							onOpenChange={setSearchOpen}
-							onSearch={(search) => {
-								setView((current) => ({...current, search}));
+							onSearch={(search) =>
+							{
+								setView((current) => (
+								{
+									...current,
+									search,
+								}));
 							}}
 						/>
 						<FilterMenu view={view} onChange={setView} />
@@ -109,7 +131,8 @@ function RoutinesPage() {
 	);
 }
 
-function routineMeta(routine: Routine, now: number): string {
+function routineMeta(routine: Routine, now: number): string
+{
 	const parts = [routine.recurring ? (routine.humanSchedule ?? routine.schedule ?? "Recurring") : "One-time"];
 	if (routine.kind !== "cron") parts.push(routineKindLabels[routine.kind]);
 	if (routine.status === "completed") parts.push("Completed");
@@ -117,7 +140,8 @@ function routineMeta(routine: Routine, now: number): string {
 	return parts.join(" · ");
 }
 
-function RoutineRow({routine, now}: {routine: Routine; now: number}) {
+function RoutineRow({routine, now}: {routine: Routine; now: number})
+{
 	const title = routineTitle(routine);
 	const primaryClass =
 		"absolute inset-0 rounded outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -126,7 +150,10 @@ function RoutineRow({routine, now}: {routine: Routine; now: number}) {
 			{routine.recordUuid === null ? (
 				<Link
 					to="/session/$id"
-					params={{id: routine.sessionId}}
+					params={
+					{
+						id: routine.sessionId,
+					}}
 					data-primary="true"
 					aria-label={title}
 					className={primaryClass}
@@ -134,7 +161,11 @@ function RoutineRow({routine, now}: {routine: Routine; now: number}) {
 			) : (
 				<Link
 					to="/session/$id/source/$uuid"
-					params={{id: routine.sessionId, uuid: routine.recordUuid}}
+					params={
+					{
+						id: routine.sessionId,
+						uuid: routine.recordUuid,
+					}}
 					data-primary="true"
 					aria-label={title}
 					className={primaryClass}
@@ -155,7 +186,10 @@ function RoutineRow({routine, now}: {routine: Routine; now: number}) {
 				</div>
 				<Link
 					to="/session/$id"
-					params={{id: routine.sessionId}}
+					params={
+					{
+						id: routine.sessionId,
+					}}
 					className="pointer-events-auto max-w-56 truncate rounded-full border border-border px-2 py-0.5 text-caption text-secondary no-underline transition-colors hover:bg-fill-ghost-hover hover:text-primary"
 				>
 					{routine.sessionTitle ?? "Session"}
@@ -171,7 +205,8 @@ function FilterMenu({
 }: {
 	view: RoutineView;
 	onChange: (update: (current: RoutineView) => RoutineView) => void;
-}) {
+})
+{
 	return (
 		<Menu>
 			<Tooltip content="Filter scheduled tasks">
@@ -187,9 +222,15 @@ function FilterMenu({
 				<MenuLabel>Schedule</MenuLabel>
 				<MenuRadioGroup
 					value={view.schedule}
-					onValueChange={(next: unknown) => {
+					onValueChange={(next: unknown) =>
+					{
 						const parsed = RoutineScheduleFilterSchema.safeParse(next);
-						if (parsed.success) onChange((current) => ({...current, schedule: parsed.data}));
+						if (parsed.success)
+							onChange((current) => (
+							{
+								...current,
+								schedule: parsed.data,
+							}));
 					}}
 				>
 					{RoutineScheduleFilterSchema.options.map((option) => (
@@ -202,9 +243,15 @@ function FilterMenu({
 				<MenuLabel>Status</MenuLabel>
 				<MenuRadioGroup
 					value={view.status}
-					onValueChange={(next: unknown) => {
+					onValueChange={(next: unknown) =>
+					{
 						const parsed = RoutineStatusFilterSchema.safeParse(next);
-						if (parsed.success) onChange((current) => ({...current, status: parsed.data}));
+						if (parsed.success)
+							onChange((current) => (
+							{
+								...current,
+								status: parsed.data,
+							}));
 					}}
 				>
 					{RoutineStatusFilterSchema.options.map((option) => (
@@ -226,7 +273,8 @@ function SortMenu({
 	view: RoutineView;
 	completedCount: number;
 	onChange: (update: (current: RoutineView) => RoutineView) => void;
-}) {
+})
+{
 	return (
 		<Menu>
 			<Tooltip content="Sort scheduled tasks">
@@ -237,9 +285,15 @@ function SortMenu({
 			<MenuContent align="end">
 				<MenuRadioGroup
 					value={view.sort}
-					onValueChange={(next: unknown) => {
+					onValueChange={(next: unknown) =>
+					{
 						const parsed = RoutineSortSchema.safeParse(next);
-						if (parsed.success) onChange((current) => ({...current, sort: parsed.data}));
+						if (parsed.success)
+							onChange((current) => (
+							{
+								...current,
+								sort: parsed.data,
+							}));
 					}}
 				>
 					{RoutineSortSchema.options.map((option) => (
@@ -251,8 +305,13 @@ function SortMenu({
 				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={view.includeCompleted}
-					onCheckedChange={(checked: boolean) => {
-						onChange((current) => ({...current, includeCompleted: checked}));
+					onCheckedChange={(checked: boolean) =>
+					{
+						onChange((current) => (
+						{
+							...current,
+							includeCompleted: checked,
+						}));
 					}}
 				>
 					<span className="flex w-full items-center justify-between gap-4">

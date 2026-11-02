@@ -11,14 +11,16 @@ import {useTimedFlag} from "../hooks/use-timed-flag";
 
 type HookStatus = z.infer<typeof HookStatusResponse>;
 
-function keeping(foreignCommands: readonly string[]): string {
+function keeping(foreignCommands: readonly string[]): string
+{
 	if (foreignCommands.length === 0) return "";
 	const noun = foreignCommands.length === 1 ? "hook" : "hooks";
 	return `, keeping ${foreignCommands.length} other ${noun}: ${foreignCommands.join("; ")}`;
 }
 
 /** What Install would write, event by event: additions, then updates, then stray removals. */
-function pendingChanges(status: HookStatus): string[] {
+function pendingChanges(status: HookStatus): string[]
+{
 	const adds = status.events
 		.filter((event) => event.state === "missing")
 		.map((event) => `Add ${event.event}${keeping(event.foreignCommands)}`);
@@ -31,23 +33,27 @@ function pendingChanges(status: HookStatus): string[] {
 	return [...adds, ...updates, ...removals];
 }
 
-function featureState(feature: HookStatus["features"][number]): string {
+function featureState(feature: HookStatus["features"][number]): string
+{
 	if (feature.state === "on") return "On";
 	if (feature.state === "partial") return `Partial — missing optional ${feature.missingOptional.join(", ")}`;
 	return `Off — needs ${feature.missingRequired.join(", ")}`;
 }
 
-const FEATURE_STATE_CLASS = {
+const FEATURE_STATE_CLASS =
+{
 	on: "text-green-700 dark:text-green-400",
 	partial: "text-amber-700 dark:text-amber-400",
 	off: "text-secondary",
 } as const;
 
-export function HookSetup() {
+export function HookSetup()
+{
 	const {settings} = useSettings();
 	const [port, setPort] = useState(DEFAULT_HOOK_PORT);
 	const [copied, showCopied] = useTimedFlag(1500);
-	const [message, setMessage] = useState<{
+	const [message, setMessage] = useState<
+	{
 		type: "success" | "error";
 		text: string;
 	} | null>(null);
@@ -60,9 +66,15 @@ export function HookSetup() {
 	const uninstalling = uninstallMutation.isPending;
 
 	const includeContextBrief = settings.capabilities.sessionContextBrief.enabled;
-	const json = generateHooksJson({port, includeContextBrief});
+	const json = generateHooksJson(
+		{
+			port,
+			includeContextBrief,
+		},
+	);
 
-	function handleCopy() {
+	function handleCopy()
+	{
 		void navigator.clipboard.writeText(json);
 		showCopied();
 	}
@@ -72,32 +84,60 @@ export function HookSetup() {
 	const updateOnly =
 		status?.missingEvents.length === 0 && (status.outdatedEvents.length > 0 || status.strayEvents.length > 0);
 
-	async function handleInstall() {
+	async function handleInstall()
+	{
 		setMessage(null);
-		try {
-			const result = await installMutation.mutateAsync({
-				port,
-				capabilities: settings.capabilities,
-			});
-			setMessage({
-				type: "success",
-				text: `Hooks installed to ${result.settingsPath}${result.backupPath === undefined ? "" : ` (previous file saved as ${result.backupPath})`}`,
-			});
-		} catch (err) {
-			setMessage({type: "error", text: errorMessage(err)});
+		try
+		{
+			const result = await installMutation.mutateAsync(
+				{
+					port,
+					capabilities: settings.capabilities,
+				},
+			);
+			setMessage(
+				{
+					type: "success",
+					text: `Hooks installed to ${result.settingsPath}${result.backupPath === undefined ? "" : ` (previous file saved as ${result.backupPath})`}`,
+				},
+			);
+		}
+		catch (err)
+		{
+			setMessage(
+				{
+					type: "error",
+					text: errorMessage(err),
+				},
+			);
 		}
 	}
 
-	async function handleUninstall() {
+	async function handleUninstall()
+	{
 		setMessage(null);
-		try {
-			const result = await uninstallMutation.mutateAsync({port});
-			setMessage({
-				type: "success",
-				text: `Hooks removed from ${result.settingsPath}${result.backupPath === undefined ? "" : ` (previous file saved as ${result.backupPath})`}`,
-			});
-		} catch (err) {
-			setMessage({type: "error", text: errorMessage(err)});
+		try
+		{
+			const result = await uninstallMutation.mutateAsync(
+				{
+					port,
+				},
+			);
+			setMessage(
+				{
+					type: "success",
+					text: `Hooks removed from ${result.settingsPath}${result.backupPath === undefined ? "" : ` (previous file saved as ${result.backupPath})`}`,
+				},
+			);
+		}
+		catch (err)
+		{
+			setMessage(
+				{
+					type: "error",
+					text: errorMessage(err),
+				},
+			);
 		}
 	}
 
@@ -200,7 +240,8 @@ export function HookSetup() {
 					id="hook-port"
 					type="number"
 					value={port}
-					onChange={(e) => {
+					onChange={(e) =>
+					{
 						setPort(Number(e.target.value) || DEFAULT_HOOK_PORT);
 					}}
 					className="w-24 rounded-md border border-border bg-surface-1 px-2 py-1 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
@@ -211,7 +252,8 @@ export function HookSetup() {
 				{status?.installed ? (
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							void handleUninstall();
 						}}
 						disabled={uninstalling}
@@ -223,7 +265,8 @@ export function HookSetup() {
 				) : (
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							void handleInstall();
 						}}
 						disabled={installing}
@@ -235,7 +278,8 @@ export function HookSetup() {
 				)}
 				<button
 					type="button"
-					onClick={() => {
+					onClick={() =>
+					{
 						setShowJson(!showJson);
 					}}
 					className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"

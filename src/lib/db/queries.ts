@@ -20,16 +20,22 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
  * Session list filter for the app-side archive flag: "active" (the default)
  * hides archived sessions, "archived" shows only them, "all" shows both.
  */
-function archiveCondition(status: SessionStatusFilter = "active"): SQL | undefined {
+function archiveCondition(status: SessionStatusFilter = "active"): SQL | undefined
+{
 	if (status === "all") return undefined;
 	const archived = sql`${schema.sessions.id} IN (SELECT ${schema.archivedSessions.sessionId} FROM ${schema.archivedSessions})`;
 	return status === "archived" ? archived : sql`NOT (${archived})`;
 }
 
 /** Distinct non-null project paths available as zero-config file-search roots. */
-export function listFileSearchProjectPathsFromDb(db: IndexDb): string[] {
+export function listFileSearchProjectPathsFromDb(db: IndexDb): string[]
+{
 	return db
-		.selectDistinct({projectPath: schema.projects.projectPath})
+		.selectDistinct(
+			{
+				projectPath: schema.projects.projectPath,
+			},
+		)
 		.from(schema.projects)
 		.where(isNotNull(schema.projects.projectPath))
 		.orderBy(asc(schema.projects.projectPath))
@@ -38,43 +44,95 @@ export function listFileSearchProjectPathsFromDb(db: IndexDb): string[] {
 }
 
 /** Indexed projects with their working directory, for scanning `<cwd>/.claude/commands`. */
-export function listProjectCommandSourcesFromDb(db: IndexDb): {id: string; projectPath: string}[] {
+export function listProjectCommandSourcesFromDb(db: IndexDb):
+{
+	id: string;
+	projectPath: string;
+}[]
+{
 	return db
-		.select({id: schema.projects.id, projectPath: schema.projects.projectPath})
+		.select(
+			{
+				id: schema.projects.id,
+				projectPath: schema.projects.projectPath,
+			},
+		)
 		.from(schema.projects)
 		.where(isNotNull(schema.projects.projectPath))
 		.orderBy(asc(schema.projects.id))
 		.all()
-		.flatMap((row) => (row.projectPath === null ? [] : [{id: row.id, projectPath: row.projectPath}]));
+		.flatMap((row) =>
+			row.projectPath === null
+				? []
+				: [
+						{
+							id: row.id,
+							projectPath: row.projectPath,
+						},
+					],
+		);
 }
 
-function getProjectNameMap(db: IndexDb): Map<string, string> {
-	const rows = db.select({id: schema.projects.id, name: schema.projects.name}).from(schema.projects).all();
+function getProjectNameMap(db: IndexDb): Map<string, string>
+{
+	const rows = db
+		.select(
+			{
+				id: schema.projects.id,
+				name: schema.projects.name,
+			},
+		)
+		.from(schema.projects)
+		.all();
 	return new Map(rows.map((r) => [r.id, r.name]));
 }
 
 type SessionRow = typeof schema.sessions.$inferSelect;
 
 /** A sessions row plus its Remote Control flag, for rows that become `SessionEntry`s. */
-const SESSION_ENTRY_COLUMNS = {...getTableColumns(schema.sessions), remoteControl: sessionRemoteControlColumn};
-type SessionEntryRow = SessionRow & {remoteControl: number};
+const SESSION_ENTRY_COLUMNS =
+{
+	...getTableColumns(schema.sessions),
+	remoteControl: sessionRemoteControlColumn,
+};
+type SessionEntryRow = SessionRow &
+{
+	remoteControl: number;
+};
 
-function remoteControlField(remoteControl: number): {remoteControl?: true} {
-	return remoteControl === 1 ? {remoteControl: true} : {};
+function remoteControlField(remoteControl: number):
+{
+	remoteControl?: true;
+}
+{
+	return remoteControl === 1
+		?
+			{
+				remoteControl: true,
+			}
+		: {};
 }
 
-function sessionPrLink(row: Pick<SessionRow, "prNumber" | "prUrl" | "prRepository">): SessionPrLink | undefined {
+function sessionPrLink(row: Pick<SessionRow, "prNumber" | "prUrl" | "prRepository">): SessionPrLink | undefined
+{
 	if (row.prNumber === null || row.prUrl === null || row.prRepository === null) return undefined;
-	return {number: row.prNumber, url: row.prUrl, repository: row.prRepository};
+	return {
+		number: row.prNumber,
+		url: row.prUrl,
+		repository: row.prRepository,
+	};
 }
 
-export function getSessionPrLink(db: IndexDb, sessionId: string): SessionPrLink | null {
+export function getSessionPrLink(db: IndexDb, sessionId: string): SessionPrLink | null
+{
 	const row = db
-		.select({
-			prNumber: schema.sessions.prNumber,
-			prUrl: schema.sessions.prUrl,
-			prRepository: schema.sessions.prRepository,
-		})
+		.select(
+			{
+				prNumber: schema.sessions.prNumber,
+				prUrl: schema.sessions.prUrl,
+				prRepository: schema.sessions.prRepository,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
@@ -88,11 +146,22 @@ export function getSessionPrLink(db: IndexDb, sessionId: string): SessionPrLink 
 function rowTitle(
 	row: Pick<SessionRow, "id" | "title" | "customTitle" | "cwd">,
 	remoteControl: number,
-): SessionDisplayTitle {
-	return sessionDisplayTitle(displayedSessionTitle({...row, bridged: remoteControl === 1}), row.id, row.cwd);
+): SessionDisplayTitle
+{
+	return sessionDisplayTitle(
+		displayedSessionTitle(
+			{
+				...row,
+				bridged: remoteControl === 1,
+			},
+		),
+		row.id,
+		row.cwd,
+	);
 }
 
-function rowToSessionEntry(row: SessionEntryRow, projectNames: Map<string, string>): SessionEntry {
+function rowToSessionEntry(row: SessionEntryRow, projectNames: Map<string, string>): SessionEntry
+{
 	return {
 		id: row.id,
 		...rowTitle(row, row.remoteControl),
@@ -112,7 +181,12 @@ function rowToSessionEntry(row: SessionEntryRow, projectNames: Map<string, strin
 		forkedFromSessionId: row.forkedFromSessionId ?? undefined,
 		pr: sessionPrLink(row),
 		turnEndedAt: row.turnEndedAt ?? undefined,
-		...(row.erroredAt === null ? {} : {erroredAt: row.erroredAt}),
+		...(row.erroredAt === null
+			? {}
+			:
+				{
+					erroredAt: row.erroredAt,
+				}),
 		...remoteControlField(row.remoteControl),
 	};
 }
@@ -121,27 +195,32 @@ function rowToSessionEntry(row: SessionEntryRow, projectNames: Map<string, strin
 // Batch session lookup helper
 // ---------------------------------------------------------------------------
 
-function batchFetchSessionTitles(db: IndexDb, sessionIds: string[]): Map<string, SessionDisplayTitle> {
+function batchFetchSessionTitles(db: IndexDb, sessionIds: string[]): Map<string, SessionDisplayTitle>
+{
 	const map = new Map<string, SessionDisplayTitle>();
 	if (sessionIds.length === 0) return map;
 	const rows = db
-		.select({
-			id: schema.sessions.id,
-			title: schema.sessions.title,
-			customTitle: schema.sessions.customTitle,
-			cwd: schema.sessions.cwd,
-			remoteControl: sessionRemoteControlColumn,
-		})
+		.select(
+			{
+				id: schema.sessions.id,
+				title: schema.sessions.title,
+				customTitle: schema.sessions.customTitle,
+				cwd: schema.sessions.cwd,
+				remoteControl: sessionRemoteControlColumn,
+			},
+		)
 		.from(schema.sessions)
 		.where(inArray(schema.sessions.id, sessionIds))
 		.all();
-	for (const r of rows) {
+	for (const r of rows)
+	{
 		map.set(r.id, rowTitle(r, r.remoteControl));
 	}
 	return map;
 }
 
-function batchFetchSessions(db: IndexDb, sessionIds: string[]) {
+function batchFetchSessions(db: IndexDb, sessionIds: string[])
+{
 	if (sessionIds.length === 0) return new Map<string, SessionEntryRow>();
 	const rows = db
 		.select(SESSION_ENTRY_COLUMNS)
@@ -151,7 +230,8 @@ function batchFetchSessions(db: IndexDb, sessionIds: string[]) {
 	return new Map(rows.map((r) => [r.id, r]));
 }
 
-interface DbProjectSummary {
+interface DbProjectSummary
+{
 	id: string;
 	name: string;
 	projectPath: string | null;
@@ -159,15 +239,18 @@ interface DbProjectSummary {
 	lastActivity: number;
 }
 
-export function listProjectsFromDb(db: IndexDb): DbProjectSummary[] {
+export function listProjectsFromDb(db: IndexDb): DbProjectSummary[]
+{
 	const rows = db
-		.select({
-			id: schema.projects.id,
-			name: schema.projects.name,
-			projectPath: schema.projects.projectPath,
-			sessionCount: sql<number>`count(case when ${schema.sessions.isSidechain} = 0 then 1 end)`,
-			lastActivity: sql<number>`coalesce(max(${schema.sessions.mtimeMs}), ${schema.projects.updatedAt})`,
-		})
+		.select(
+			{
+				id: schema.projects.id,
+				name: schema.projects.name,
+				projectPath: schema.projects.projectPath,
+				sessionCount: sql<number>`count(case when ${schema.sessions.isSidechain} = 0 then 1 end)`,
+				lastActivity: sql<number>`coalesce(max(${schema.sessions.mtimeMs}), ${schema.projects.updatedAt})`,
+			},
+		)
 		.from(schema.projects)
 		.leftJoin(schema.sessions, eq(schema.sessions.projectId, schema.projects.id))
 		.groupBy(schema.projects.id)
@@ -177,15 +260,22 @@ export function listProjectsFromDb(db: IndexDb): DbProjectSummary[] {
 	return rows;
 }
 
-export interface ContextBriefProject {
+export interface ContextBriefProject
+{
 	id: string;
 	name: string;
 }
 
 /** Resolve a hook cwd to the most recently indexed project with that exact path. */
-export function getContextBriefProject(db: IndexDb, cwd: string): ContextBriefProject | null {
+export function getContextBriefProject(db: IndexDb, cwd: string): ContextBriefProject | null
+{
 	const row = db
-		.select({id: schema.projects.id, name: schema.projects.name})
+		.select(
+			{
+				id: schema.projects.id,
+				name: schema.projects.name,
+			},
+		)
 		.from(schema.projects)
 		.where(eq(schema.projects.projectPath, cwd))
 		.orderBy(desc(schema.projects.updatedAt), asc(schema.projects.id))
@@ -198,12 +288,14 @@ export function getContextBriefProject(db: IndexDb, cwd: string): ContextBriefPr
  * on (mtimeMs, id) so ties on mtimeMs never drop or duplicate rows at a page
  * boundary.
  */
-export interface SessionCursor {
+export interface SessionCursor
+{
 	mtimeMs: number;
 	id: string;
 }
 
-export interface RecentSessionsPage {
+export interface RecentSessionsPage
+{
 	sessions: SessionEntry[];
 	nextCursor: SessionCursor | null;
 }
@@ -217,13 +309,15 @@ export interface RecentSessionsPage {
  */
 export function listRecentSessionsFromDb(
 	db: IndexDb,
-	opts: {
+	opts:
+	{
 		limit: number;
 		before?: SessionCursor;
 		status?: SessionStatusFilter;
 		liveSessionIds?: readonly string[];
 	},
-): RecentSessionsPage {
+): RecentSessionsPage
+{
 	const {limit, before, status, liveSessionIds = []} = opts;
 	const condition = and(
 		eq(schema.sessions.isSidechain, 0),
@@ -263,11 +357,22 @@ export function listRecentSessionsFromDb(
 					.all();
 	const sessions = [...page, ...liveRows].map((row) => rowToSessionEntry(row, projectNames));
 	const last = page[page.length - 1];
-	const nextCursor = hasMore && last ? {mtimeMs: last.mtimeMs, id: last.id} : null;
-	return {sessions, nextCursor};
+	const nextCursor =
+		hasMore && last
+			?
+				{
+					mtimeMs: last.mtimeMs,
+					id: last.id,
+				}
+			: null;
+	return {
+		sessions,
+		nextCursor,
+	};
 }
 
-export interface SessionGroupSummary {
+export interface SessionGroupSummary
+{
 	project: string;
 	projectName: string;
 	/** Total non-sidechain sessions in the project (not just the returned slice). */
@@ -284,18 +389,25 @@ const DEFAULT_PER_PROJECT = 10;
  */
 export function listSessionGroupsFromDb(
 	db: IndexDb,
-	opts: {perProject?: number; status?: SessionStatusFilter} = {},
-): SessionGroupSummary[] {
+	opts:
+	{
+		perProject?: number;
+		status?: SessionStatusFilter;
+	} = {},
+): SessionGroupSummary[]
+{
 	const perProject = opts.perProject ?? DEFAULT_PER_PROJECT;
 	const projectNames = getProjectNameMap(db);
 	const statusCondition = archiveCondition(opts.status);
 
 	const stats = db
-		.select({
-			projectId: schema.sessions.projectId,
-			count: sql<number>`count(*)`,
-			maxMtime: sql<number>`max(${schema.sessions.mtimeMs})`,
-		})
+		.select(
+			{
+				projectId: schema.sessions.projectId,
+				count: sql<number>`count(*)`,
+				maxMtime: sql<number>`max(${schema.sessions.mtimeMs})`,
+			},
+		)
 		.from(schema.sessions)
 		.where(and(eq(schema.sessions.isSidechain, 0), statusCondition))
 		.groupBy(schema.sessions.projectId)
@@ -304,7 +416,10 @@ export function listSessionGroupsFromDb(
 
 	// Top-N per project via a window function, ordered so rows arrive grouped by
 	// project and newest-first within each project.
-	const cappedRows = db.all<{id: string}>(
+	const cappedRows = db.all<
+	{
+		id: string;
+	}>(
 		sql`SELECT id FROM (
           SELECT id, project_id,
                  row_number() OVER (PARTITION BY project_id ORDER BY mtime_ms DESC, id DESC) AS rn
@@ -320,7 +435,8 @@ export function listSessionGroupsFromDb(
 	);
 
 	const grouped = new Map<string, SessionEntry[]>();
-	for (const {id} of cappedRows) {
+	for (const {id} of cappedRows)
+	{
 		const row = sessionMap.get(id);
 		if (!row) continue;
 		const entry = rowToSessionEntry(row, projectNames);
@@ -330,13 +446,16 @@ export function listSessionGroupsFromDb(
 	}
 
 	const groups: SessionGroupSummary[] = [];
-	for (const [project, sessions] of grouped) {
-		groups.push({
-			project,
-			projectName: projectNames.get(project) ?? project,
-			sessionCount: statByProject.get(project)?.count ?? sessions.length,
-			sessions,
-		});
+	for (const [project, sessions] of grouped)
+	{
+		groups.push(
+			{
+				project,
+				projectName: projectNames.get(project) ?? project,
+				sessionCount: statByProject.get(project)?.count ?? sessions.length,
+				sessions,
+			},
+		);
 	}
 
 	groups.sort(
@@ -346,7 +465,8 @@ export function listSessionGroupsFromDb(
 }
 
 /** Map of session id -> title for the given ids (unknown ids are omitted). */
-export function getSessionTitlesByIds(db: IndexDb, ids: string[]): Record<string, string> {
+export function getSessionTitlesByIds(db: IndexDb, ids: string[]): Record<string, string>
+{
 	const titles = batchFetchSessionTitles(db, ids);
 	const out: Record<string, string> = {};
 	for (const [id, {title}] of titles) out[id] = title;
@@ -354,10 +474,16 @@ export function getSessionTitlesByIds(db: IndexDb, ids: string[]): Record<string
 }
 
 /** Indexed display names for the given project ids; ids without a projects row are absent. */
-export function getProjectNamesByIds(db: IndexDb, ids: string[]): Map<string, string> {
+export function getProjectNamesByIds(db: IndexDb, ids: string[]): Map<string, string>
+{
 	if (ids.length === 0) return new Map();
 	const rows = db
-		.select({id: schema.projects.id, name: schema.projects.name})
+		.select(
+			{
+				id: schema.projects.id,
+				name: schema.projects.name,
+			},
+		)
 		.from(schema.projects)
 		.where(inArray(schema.projects.id, ids))
 		.all();
@@ -365,10 +491,15 @@ export function getProjectNamesByIds(db: IndexDb, ids: string[]): Map<string, st
 }
 
 /** Subset of `ids` that exist in the sessions table. */
-export function getIndexedSessionIds(db: IndexDb, ids: string[]): Set<string> {
+export function getIndexedSessionIds(db: IndexDb, ids: string[]): Set<string>
+{
 	if (ids.length === 0) return new Set();
 	const rows = db
-		.select({id: schema.sessions.id})
+		.select(
+			{
+				id: schema.sessions.id,
+			},
+		)
 		.from(schema.sessions)
 		.where(inArray(schema.sessions.id, ids))
 		.all();
@@ -378,8 +509,12 @@ export function getIndexedSessionIds(db: IndexDb, ids: string[]): Set<string> {
 export function listSessionsForProjectFromDb(
 	db: IndexDb,
 	projectId: string,
-	opts: {status?: SessionStatusFilter} = {},
-): SessionEntry[] {
+	opts:
+	{
+		status?: SessionStatusFilter;
+	} = {},
+): SessionEntry[]
+{
 	const projectRow = db.select().from(schema.projects).where(eq(schema.projects.id, projectId)).get();
 	const projectName = projectRow?.name ?? projectId;
 
@@ -400,19 +535,23 @@ export function listSessionsForProjectFromDb(
 	return rows.map((row) => rowToSessionEntry(row, projectNames));
 }
 
-interface DbBranchSummary {
+interface DbBranchSummary
+{
 	branch: string;
 	sessionCount: number;
 	lastActivity: number;
 }
 
-export function listBranchesForProject(db: IndexDb, projectId: string): DbBranchSummary[] {
+export function listBranchesForProject(db: IndexDb, projectId: string): DbBranchSummary[]
+{
 	const rows = db
-		.select({
-			branch: schema.sessions.gitBranch,
-			sessionCount: sql<number>`count(*)`,
-			lastActivity: sql<number>`max(${schema.sessions.mtimeMs})`,
-		})
+		.select(
+			{
+				branch: schema.sessions.gitBranch,
+				sessionCount: sql<number>`count(*)`,
+				lastActivity: sql<number>`max(${schema.sessions.mtimeMs})`,
+			},
+		)
 		.from(schema.sessions)
 		.where(
 			and(
@@ -426,15 +565,24 @@ export function listBranchesForProject(db: IndexDb, projectId: string): DbBranch
 		.all();
 
 	return rows
-		.filter((r): r is typeof r & {branch: string} => r.branch !== null)
-		.map((r) => ({
+		.filter(
+			(
+				r,
+			): r is typeof r &
+			{
+				branch: string;
+			} => r.branch !== null,
+		)
+		.map((r) => (
+		{
 			branch: r.branch,
 			sessionCount: r.sessionCount,
 			lastActivity: r.lastActivity,
 		}));
 }
 
-export function listSessionsForBranch(db: IndexDb, projectId: string, branch: string): SessionEntry[] {
+export function listSessionsForBranch(db: IndexDb, projectId: string, branch: string): SessionEntry[]
+{
 	const projectRow = db.select().from(schema.projects).where(eq(schema.projects.id, projectId)).get();
 	const projectName = projectRow?.name ?? projectId;
 
@@ -451,7 +599,8 @@ export function listSessionsForBranch(db: IndexDb, projectId: string, branch: st
 		.orderBy(desc(schema.sessions.mtimeMs))
 		.all();
 
-	return rows.map((row) => ({
+	return rows.map((row) => (
+	{
 		id: row.id,
 		...rowTitle(row, row.remoteControl),
 		firstPrompt: row.firstPrompt ?? undefined,
@@ -471,19 +620,23 @@ export function listSessionsForBranch(db: IndexDb, projectId: string, branch: st
 	}));
 }
 
-interface DbCwdSummary {
+interface DbCwdSummary
+{
 	cwd: string;
 	sessionCount: number;
 	lastActivity: number;
 }
 
-export function listCwdsForProject(db: IndexDb, projectId: string): DbCwdSummary[] {
+export function listCwdsForProject(db: IndexDb, projectId: string): DbCwdSummary[]
+{
 	const rows = db
-		.select({
-			cwd: schema.sessions.cwd,
-			sessionCount: sql<number>`count(*)`,
-			lastActivity: sql<number>`max(${schema.sessions.mtimeMs})`,
-		})
+		.select(
+			{
+				cwd: schema.sessions.cwd,
+				sessionCount: sql<number>`count(*)`,
+				lastActivity: sql<number>`max(${schema.sessions.mtimeMs})`,
+			},
+		)
 		.from(schema.sessions)
 		.where(
 			and(
@@ -497,15 +650,24 @@ export function listCwdsForProject(db: IndexDb, projectId: string): DbCwdSummary
 		.all();
 
 	return rows
-		.filter((r): r is typeof r & {cwd: string} => r.cwd !== null)
-		.map((r) => ({
+		.filter(
+			(
+				r,
+			): r is typeof r &
+			{
+				cwd: string;
+			} => r.cwd !== null,
+		)
+		.map((r) => (
+		{
 			cwd: r.cwd,
 			sessionCount: r.sessionCount,
 			lastActivity: r.lastActivity,
 		}));
 }
 
-interface DbPlanSessionLink {
+interface DbPlanSessionLink
+{
 	planFilename: string;
 	sessionId: string;
 	projectId: string;
@@ -513,9 +675,14 @@ interface DbPlanSessionLink {
 	sessionTitle: string | null;
 }
 
-export function getPlanFilenameForSession(db: IndexDb, sessionId: string): string | null {
+export function getPlanFilenameForSession(db: IndexDb, sessionId: string): string | null
+{
 	const row = db
-		.select({planFilename: schema.planSessions.planFilename})
+		.select(
+			{
+				planFilename: schema.planSessions.planFilename,
+			},
+		)
 		.from(schema.planSessions)
 		.where(eq(schema.planSessions.sessionId, sessionId))
 		.get();
@@ -523,14 +690,22 @@ export function getPlanFilenameForSession(db: IndexDb, sessionId: string): strin
 }
 
 /** A plan link plus where its project lives and when its session last changed, for the plan page's context header. */
-interface DbPlanContextLink extends DbPlanSessionLink {
+interface DbPlanContextLink extends DbPlanSessionLink
+{
 	projectPath: string | null;
 	sessionMtimeMs: number | null;
 }
 
-export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanContextLink[] {
+export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanContextLink[]
+{
 	const projectRows = db
-		.select({id: schema.projects.id, name: schema.projects.name, projectPath: schema.projects.projectPath})
+		.select(
+			{
+				id: schema.projects.id,
+				name: schema.projects.name,
+				projectPath: schema.projects.projectPath,
+			},
+		)
 		.from(schema.projects)
 		.all();
 	const projects = new Map(projectRows.map((r) => [r.id, r]));
@@ -544,13 +719,20 @@ export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanCo
 		sessionIds.length === 0
 			? []
 			: db
-					.select({id: schema.sessions.id, title: schema.sessions.title, mtimeMs: schema.sessions.mtimeMs})
+					.select(
+						{
+							id: schema.sessions.id,
+							title: schema.sessions.title,
+							mtimeMs: schema.sessions.mtimeMs,
+						},
+					)
 					.from(schema.sessions)
 					.where(inArray(schema.sessions.id, sessionIds))
 					.all();
 	const sessions = new Map(sessionRows.map((r) => [r.id, r]));
 
-	return rows.map((row) => {
+	return rows.map((row) =>
+	{
 		const project = projects.get(row.projectId);
 		const session = sessions.get(row.sessionId);
 		return {
@@ -565,7 +747,8 @@ export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanCo
 	});
 }
 
-interface DbProjectDetail {
+interface DbProjectDetail
+{
 	id: string;
 	name: string;
 	projectPath: string | null;
@@ -574,7 +757,8 @@ interface DbProjectDetail {
 	subagentCount: number;
 }
 
-export function getProjectDetailFromDb(db: IndexDb, projectId: string): DbProjectDetail | null {
+export function getProjectDetailFromDb(db: IndexDb, projectId: string): DbProjectDetail | null
+{
 	const projectRow = db.select().from(schema.projects).where(eq(schema.projects.id, projectId)).get();
 	if (!projectRow) return null;
 
@@ -583,7 +767,11 @@ export function getProjectDetailFromDb(db: IndexDb, projectId: string): DbProjec
 
 	const subagentCount =
 		db
-			.select({count: sql<number>`count(*)`})
+			.select(
+				{
+					count: sql<number>`count(*)`,
+				},
+			)
 			.from(schema.subagents)
 			.where(eq(schema.subagents.projectId, projectId))
 			.get()?.count ?? 0;
@@ -598,11 +786,13 @@ export function getProjectDetailFromDb(db: IndexDb, projectId: string): DbProjec
 	};
 }
 
-function realTitle(title: SessionDisplayTitle | undefined): string | null {
+function realTitle(title: SessionDisplayTitle | undefined): string | null
+{
 	return title === undefined || title.titleIsStandIn === true ? null : title.title;
 }
 
-function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSessionLink[] {
+function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSessionLink[]
+{
 	const projectNames = getProjectNameMap(db);
 	const projectName = projectNames.get(projectId) ?? projectId;
 
@@ -613,7 +803,8 @@ function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSes
 		rows.map((r) => r.sessionId),
 	);
 
-	return rows.map((row) => ({
+	return rows.map((row) => (
+	{
 		planFilename: row.planFilename,
 		sessionId: row.sessionId,
 		projectId: row.projectId,
@@ -623,7 +814,8 @@ function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSes
 	}));
 }
 
-export interface DbSearchResult {
+export interface DbSearchResult
+{
 	sessionId: string;
 	title: string;
 	titleHtml: string;
@@ -637,14 +829,16 @@ export interface DbSearchResult {
 	rank: number;
 }
 
-export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult[] {
+export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult[]
+{
 	const terms = tokenizeFileSearchQuery(query);
 	if (terms.length === 0) return [];
 
 	const ftsQuery = toFtsQuery(terms);
 	const projectNames = getProjectNameMap(db);
 
-	const rows = db.all<{
+	const rows = db.all<
+	{
 		session_id: string;
 		title: string;
 		first_prompt: string;
@@ -669,7 +863,8 @@ export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult
 		rows.map((r) => r.session_id),
 	);
 
-	return rows.map((row) => {
+	return rows.map((row) =>
+	{
 		const session = sessionMap.get(row.session_id);
 		const secondary =
 			differentiateSnippet(row.summary_snippet, row.title) ?? differentiateSnippet(row.prompt_snippet, row.title);
@@ -690,7 +885,8 @@ export function searchSessionsFromDb(db: IndexDb, query: string): DbSearchResult
 	});
 }
 
-export interface DbSubagent {
+export interface DbSubagent
+{
 	id: string;
 	sessionId: string;
 	projectId: string;
@@ -722,7 +918,8 @@ export interface DbSubagent {
 	mtimeMs: number;
 }
 
-export interface DbMessageSearchResult {
+export interface DbMessageSearchResult
+{
 	sessionId: string;
 	title: string;
 	snippet: string;
@@ -733,7 +930,8 @@ export interface DbMessageSearchResult {
 	rank: number;
 }
 
-export interface MessageContentSessionHit {
+export interface MessageContentSessionHit
+{
 	session_id: string;
 	rank: number;
 	snippet: string;
@@ -743,11 +941,17 @@ export interface MessageContentSessionHit {
 	title: string | null;
 }
 
-export interface MessageContentSearchOptions {
+export interface MessageContentSearchOptions
+{
 	/** Extra `AND ...` conditions on the session row, aliased `s` (null when the session is not indexed). */
 	sessionFilters?: SQL;
 	limit: number;
-	snippet: {open: string; close: string; tokens: number};
+	snippet:
+	{
+		open: string;
+		close: string;
+		tokens: number;
+	};
 }
 
 /**
@@ -759,7 +963,8 @@ export function searchMessageContentSessions(
 	db: IndexDb,
 	terms: readonly string[],
 	{sessionFilters = sql``, limit, snippet}: MessageContentSearchOptions,
-): MessageContentSessionHit[] {
+): MessageContentSessionHit[]
+{
 	if (terms.length === 0) return [];
 	const anyTerm = terms.map((term) => toFtsQuery([term])).join(" OR ");
 	const everyTerm =
@@ -799,22 +1004,33 @@ export function searchMessageContentSessions(
 	);
 }
 
-export function searchMessageContentDb(db: IndexDb, query: string, limit = 50): DbMessageSearchResult[] {
+export function searchMessageContentDb(db: IndexDb, query: string, limit = 50): DbMessageSearchResult[]
+{
 	const terms = tokenizeFileSearchQuery(query);
 	if (terms.length === 0) return [];
 
 	const projectNames = getProjectNameMap(db);
-	const rows = searchMessageContentSessions(db, terms, {
-		limit,
-		snippet: {open: "<mark>", close: "</mark>", tokens: 48},
-	});
+	const rows = searchMessageContentSessions(
+		db,
+		terms,
+		{
+			limit,
+			snippet:
+			{
+				open: "<mark>",
+				close: "</mark>",
+				tokens: 48,
+			},
+		},
+	);
 
 	const sessionMap = batchFetchSessions(
 		db,
 		rows.map((r) => r.session_id),
 	);
 
-	return rows.map((row) => {
+	return rows.map((row) =>
+	{
 		const session = sessionMap.get(row.session_id);
 		return {
 			sessionId: row.session_id,
@@ -829,12 +1045,14 @@ export function searchMessageContentDb(db: IndexDb, query: string, limit = 50): 
 	});
 }
 
-export interface DbFileSearchMatch {
+export interface DbFileSearchMatch
+{
 	lineNumber: number;
 	snippet: string;
 }
 
-export interface DbFileSearchFile {
+export interface DbFileSearchFile
+{
 	path: string;
 	matchCount: number;
 	matches: DbFileSearchMatch[];
@@ -842,14 +1060,16 @@ export interface DbFileSearchFile {
 	rank: number;
 }
 
-export interface DbFileSearchResult {
+export interface DbFileSearchResult
+{
 	files: DbFileSearchFile[];
 	totalResults: number;
 	totalFiles: number;
 	isTruncated: boolean;
 }
 
-interface FileSearchRow {
+interface FileSearchRow
+{
 	path: string;
 	highlighted_content: string;
 	fallback_snippet: string;
@@ -857,7 +1077,8 @@ interface FileSearchRow {
 	mtime_ms: number;
 }
 
-interface FileSearchPathRow {
+interface FileSearchPathRow
+{
 	path: string;
 	mtime_ms: number;
 }
@@ -865,7 +1086,8 @@ interface FileSearchPathRow {
 const FILE_SEARCH_FILE_LIMIT = 100;
 const FILE_SEARCH_MATCH_LIMIT = 50;
 
-function escapeHtml(value: string): string {
+function escapeHtml(value: string): string
+{
 	return value
 		.replaceAll("&", "&amp;")
 		.replaceAll("<", "&lt;")
@@ -874,7 +1096,8 @@ function escapeHtml(value: string): string {
 		.replaceAll("'", "&#39;");
 }
 
-function sanitizeFtsHighlight(value: string, highlightStart: string, highlightEnd: string): string {
+function sanitizeFtsHighlight(value: string, highlightStart: string, highlightEnd: string): string
+{
 	return escapeHtml(value).replaceAll(highlightStart, "<mark>").replaceAll(highlightEnd, "</mark>");
 }
 
@@ -882,7 +1105,8 @@ const MARK_OPEN = "<mark>";
 const MARK_CLOSE = "</mark>";
 const ELLIPSIS = "...";
 
-function stripMarkTags(value: string): string {
+function stripMarkTags(value: string): string
+{
 	return value.replaceAll(MARK_OPEN, "").replaceAll(MARK_CLOSE, "");
 }
 
@@ -892,7 +1116,8 @@ function stripMarkTags(value: string): string {
  * is only an echo of the title prefix (titles are derived from the first
  * prompt, so the leading prompt snippet often repeats the title verbatim).
  */
-function differentiateSnippet(candidate: string, title: string): string | null {
+function differentiateSnippet(candidate: string, title: string): string | null
+{
 	if (!candidate.includes(MARK_OPEN)) return null;
 
 	const titlePrefix = title.endsWith(ELLIPSIS) ? title.slice(0, -ELLIPSIS.length) : title;
@@ -901,12 +1126,18 @@ function differentiateSnippet(candidate: string, title: string): string | null {
 	// Skip past the echoed title prefix, ignoring highlight tags along the way.
 	let index = 0;
 	let consumed = 0;
-	while (index < candidate.length && consumed < titlePrefix.length) {
-		if (candidate.startsWith(MARK_OPEN, index)) {
+	while (index < candidate.length && consumed < titlePrefix.length)
+	{
+		if (candidate.startsWith(MARK_OPEN, index))
+		{
 			index += MARK_OPEN.length;
-		} else if (candidate.startsWith(MARK_CLOSE, index)) {
+		}
+		else if (candidate.startsWith(MARK_CLOSE, index))
+		{
 			index += MARK_CLOSE.length;
-		} else {
+		}
+		else
+		{
 			index++;
 			consumed++;
 		}
@@ -918,23 +1149,28 @@ function differentiateSnippet(candidate: string, title: string): string | null {
 	return ELLIPSIS + remainder;
 }
 
-function sanitizeFtsSnippet(value: string): string {
+function sanitizeFtsSnippet(value: string): string
+{
 	return escapeHtml(value).replaceAll("&lt;mark&gt;", "<mark>").replaceAll("&lt;/mark&gt;", "</mark>");
 }
 
-export function tokenizeFileSearchQuery(query: string): string[] {
+export function tokenizeFileSearchQuery(query: string): string[]
+{
 	return query.normalize("NFKC").match(/[\p{L}\p{N}_]+/gu) ?? [];
 }
 
-export function toFtsQuery(terms: readonly string[]): string {
+export function toFtsQuery(terms: readonly string[]): string
+{
 	return terms.map((term) => `"${term.replaceAll('"', '""')}"`).join(" AND ");
 }
 
-function pathBoost(path: string, scopeRoot: string, terms: readonly string[]): number {
+function pathBoost(path: string, scopeRoot: string, terms: readonly string[]): number
+{
 	const fileName = basename(path).toLowerCase();
 	const directory = relative(scopeRoot, dirname(path)).toLowerCase();
 	let boost = 0;
-	for (const term of terms) {
+	for (const term of terms)
+	{
 		const normalizedTerm = term.toLowerCase();
 		if (fileName.includes(normalizedTerm)) boost += 1_000;
 		else if (directory.includes(normalizedTerm)) boost += 200;
@@ -942,7 +1178,8 @@ function pathBoost(path: string, scopeRoot: string, terms: readonly string[]): n
 	return boost;
 }
 
-function boundedHighlightedLine(line: string, highlightStart: string): string {
+function boundedHighlightedLine(line: string, highlightStart: string): string
+{
 	const trimmedLine = line.trimEnd();
 	const tokens = trimmedLine.split(/\s+/);
 	if (tokens.length <= 48) return trimmedLine;
@@ -960,28 +1197,49 @@ function lineMatches(
 	fallbackSnippet: string,
 	highlightStart: string,
 	highlightEnd: string,
-): DbFileSearchMatch[] {
+): DbFileSearchMatch[]
+{
 	const matches: DbFileSearchMatch[] = [];
 	const lines = highlightedContent.split(/\r?\n/);
-	for (const [index, line] of lines.entries()) {
+	for (const [index, line] of lines.entries())
+	{
 		if (!line.includes(highlightStart)) continue;
-		matches.push({
-			lineNumber: index + 1,
-			snippet: sanitizeFtsHighlight(boundedHighlightedLine(line, highlightStart), highlightStart, highlightEnd),
-		});
+		matches.push(
+			{
+				lineNumber: index + 1,
+				snippet: sanitizeFtsHighlight(
+					boundedHighlightedLine(line, highlightStart),
+					highlightStart,
+					highlightEnd,
+				),
+			},
+		);
 	}
 
-	if (matches.length === 0 && fallbackSnippet.includes("<mark>")) {
-		return [{lineNumber: 1, snippet: sanitizeFtsSnippet(fallbackSnippet)}];
+	if (matches.length === 0 && fallbackSnippet.includes("<mark>"))
+	{
+		return [
+			{
+				lineNumber: 1,
+				snippet: sanitizeFtsSnippet(fallbackSnippet),
+			},
+		];
 	}
 	return matches;
 }
 
 /** Search indexed file contents within one already-authorized real directory. */
-export function searchFileContentDb(db: IndexDb, query: string, scopeRoot: string): DbFileSearchResult {
+export function searchFileContentDb(db: IndexDb, query: string, scopeRoot: string): DbFileSearchResult
+{
 	const terms = tokenizeFileSearchQuery(query);
-	if (terms.length === 0) {
-		return {files: [], totalResults: 0, totalFiles: 0, isTruncated: false};
+	if (terms.length === 0)
+	{
+		return {
+			files: [],
+			totalResults: 0,
+			totalFiles: 0,
+			isTruncated: false,
+		};
 	}
 
 	const ftsQuery = toFtsQuery(terms);
@@ -1011,20 +1269,26 @@ export function searchFileContentDb(db: IndexDb, query: string, scopeRoot: strin
 		WHERE file_content.path = ${scopeRoot}
 			OR substr(file_content.path, 1, ${scopePrefix.length}) = ${scopePrefix}`,
 	);
-	for (const row of pathRows) {
+	for (const row of pathRows)
+	{
 		const relativePath = relative(scopeRoot, row.path).toLowerCase();
-		if (!rowsByPath.has(row.path) && terms.every((term) => relativePath.includes(term.toLowerCase()))) {
-			rowsByPath.set(row.path, {
-				...row,
-				highlighted_content: "",
-				fallback_snippet: "",
-				body_rank: 0,
-			});
+		if (!rowsByPath.has(row.path) && terms.every((term) => relativePath.includes(term.toLowerCase())))
+		{
+			rowsByPath.set(
+				row.path,
+				{
+					...row,
+					highlighted_content: "",
+					fallback_snippet: "",
+					body_rank: 0,
+				},
+			);
 		}
 	}
 
 	const rankedFiles = [...rowsByPath.values()]
-		.map((row) => {
+		.map((row) =>
+		{
 			const allMatches = lineMatches(row.highlighted_content, row.fallback_snippet, highlightStart, highlightEnd);
 			return {
 				path: row.path,
@@ -1034,7 +1298,8 @@ export function searchFileContentDb(db: IndexDb, query: string, scopeRoot: strin
 				rank: row.body_rank - pathBoost(row.path, scopeRoot, terms),
 			};
 		})
-		.toSorted((left, right) => {
+		.toSorted((left, right) =>
+		{
 			if (left.rank !== right.rank) return left.rank - right.rank;
 			const mtimeComparison = right.mtime.localeCompare(left.mtime);
 			return mtimeComparison === 0 ? left.path.localeCompare(right.path) : mtimeComparison;
@@ -1053,15 +1318,18 @@ export function searchFileContentDb(db: IndexDb, query: string, scopeRoot: strin
 	};
 }
 
-export function getSubagentById(db: IndexDb, agentId: string): DbSubagent | undefined {
+export function getSubagentById(db: IndexDb, agentId: string): DbSubagent | undefined
+{
 	return db.select().from(schema.subagents).where(eq(schema.subagents.id, agentId)).get();
 }
 
-export function getSubagentsForSession(db: IndexDb, sessionId: string): DbSubagent[] {
+export function getSubagentsForSession(db: IndexDb, sessionId: string): DbSubagent[]
+{
 	return db.select().from(schema.subagents).where(eq(schema.subagents.sessionId, sessionId)).all();
 }
 
-export function getSubagentsForProject(db: IndexDb, projectId: string): DbSubagent[] {
+export function getSubagentsForProject(db: IndexDb, projectId: string): DbSubagent[]
+{
 	return db.select().from(schema.subagents).where(eq(schema.subagents.projectId, projectId)).all();
 }
 
@@ -1069,19 +1337,29 @@ export function getSubagentsForProject(db: IndexDb, projectId: string): DbSubage
 export function getSessionsByIds(
 	db: IndexDb,
 	ids: readonly string[],
-	opts: {status?: SessionStatusFilter} = {},
-): SessionEntry[] {
+	opts:
+	{
+		status?: SessionStatusFilter;
+	} = {},
+): SessionEntry[]
+{
 	if (ids.length === 0) return [];
 	const projectNames = getProjectNameMap(db);
 
 	const rows = db
-		.select({session: schema.sessions, remoteControl: sessionRemoteControlColumn})
+		.select(
+			{
+				session: schema.sessions,
+				remoteControl: sessionRemoteControlColumn,
+			},
+		)
 		.from(schema.sessions)
 		.where(and(inArray(schema.sessions.id, [...ids]), archiveCondition(opts.status)))
 		.orderBy(desc(schema.sessions.mtimeMs), asc(schema.sessions.id))
 		.all();
 
-	return rows.map((row) => ({
+	return rows.map((row) => (
+	{
 		id: row.session.id,
 		...rowTitle(row.session, row.remoteControl),
 		firstPrompt: row.session.firstPrompt ?? undefined,
@@ -1101,7 +1379,8 @@ export function getSessionsByIds(
 	}));
 }
 
-export function isSessionArchived(db: IndexDb, sessionId: string): boolean {
+export function isSessionArchived(db: IndexDb, sessionId: string): boolean
+{
 	const row = db.select().from(schema.archivedSessions).where(eq(schema.archivedSessions.sessionId, sessionId)).get();
 	return !!row;
 }
@@ -1116,47 +1395,92 @@ export function setSessionArchived(
 	sessionId: string,
 	archived: boolean,
 	now: number = Date.now(),
-): boolean {
-	if (archived) {
-		db.insert(schema.archivedSessions).values({sessionId, archivedAt: now}).onConflictDoNothing().run();
-	} else {
+): boolean
+{
+	if (archived)
+	{
+		db.insert(schema.archivedSessions)
+			.values(
+				{
+					sessionId,
+					archivedAt: now,
+				},
+			)
+			.onConflictDoNothing()
+			.run();
+	}
+	else
+	{
 		const {changes} = db
 			.delete(schema.archivedSessions)
 			.where(eq(schema.archivedSessions.sessionId, sessionId))
 			.run();
-		if (changes > 0) {
+		if (changes > 0)
+		{
 			db.insert(schema.unarchivedSessions)
-				.values({sessionId, unarchivedAt: now})
-				.onConflictDoUpdate({target: schema.unarchivedSessions.sessionId, set: {unarchivedAt: now}})
+				.values(
+					{
+						sessionId,
+						unarchivedAt: now,
+					},
+				)
+				.onConflictDoUpdate(
+					{
+						target: schema.unarchivedSessions.sessionId,
+						set:
+						{
+							unarchivedAt: now,
+						},
+					},
+				)
 				.run();
 		}
 	}
 	return archived;
 }
 
-export function getArchivedSessionIds(db: IndexDb): Set<string> {
-	const rows = db.select({sessionId: schema.archivedSessions.sessionId}).from(schema.archivedSessions).all();
+export function getArchivedSessionIds(db: IndexDb): Set<string>
+{
+	const rows = db
+		.select(
+			{
+				sessionId: schema.archivedSessions.sessionId,
+			},
+		)
+		.from(schema.archivedSessions)
+		.all();
 	return new Set(rows.map((r) => r.sessionId));
 }
 
-interface DbPlanProjectMapping {
+interface DbPlanProjectMapping
+{
 	planFilename: string;
 	projectId: string;
 	projectName: string;
 }
 
-export function getSessionProjectId(db: IndexDb, sessionId: string): string | null {
+export function getSessionProjectId(db: IndexDb, sessionId: string): string | null
+{
 	const row = db
-		.select({projectId: schema.sessions.projectId})
+		.select(
+			{
+				projectId: schema.sessions.projectId,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
 	return row?.projectId ?? null;
 }
 
-export function getSessionProjectPath(db: IndexDb, sessionId: string): string | null {
+export function getSessionProjectPath(db: IndexDb, sessionId: string): string | null
+{
 	const row = db
-		.select({projectPath: schema.projects.projectPath})
+		.select(
+			{
+				projectPath: schema.projects.projectPath,
+			},
+		)
 		.from(schema.sessions)
 		.innerJoin(schema.projects, eq(schema.projects.id, schema.sessions.projectId))
 		.where(eq(schema.sessions.id, sessionId))
@@ -1165,14 +1489,20 @@ export function getSessionProjectPath(db: IndexDb, sessionId: string): string | 
 }
 
 /** The directory a session runs in: its anchored cwd, else its project's path. */
-export function getSessionDirectory(db: IndexDb, sessionId: string): string | null {
+export function getSessionDirectory(db: IndexDb, sessionId: string): string | null
+{
 	return getSessionMeta(db, sessionId)?.cwd ?? getSessionProjectPath(db, sessionId);
 }
 
 /** Return the latest assistant text row that contains prose, skipping tool-only turns. */
-export function getLastSubstantiveAssistantText(db: IndexDb, sessionId: string): string | null {
+export function getLastSubstantiveAssistantText(db: IndexDb, sessionId: string): string | null
+{
 	const row = db
-		.select({text: schema.sessionMessages.text})
+		.select(
+			{
+				text: schema.sessionMessages.text,
+			},
+		)
 		.from(schema.sessionMessages)
 		.where(
 			and(
@@ -1189,19 +1519,23 @@ export function getLastSubstantiveAssistantText(db: IndexDb, sessionId: string):
 export function getSessionMeta(
 	db: IndexDb,
 	sessionId: string,
-): {
+):
+{
 	gitBranch: string | null;
 	cwd: string | null;
 	messageCount: number;
 	projectName: string | null;
-} | null {
+} | null
+{
 	const row = db
-		.select({
-			gitBranch: schema.sessions.gitBranch,
-			cwd: schema.sessions.cwd,
-			messageCount: schema.sessions.messageCount,
-			projectId: schema.sessions.projectId,
-		})
+		.select(
+			{
+				gitBranch: schema.sessions.gitBranch,
+				cwd: schema.sessions.cwd,
+				messageCount: schema.sessions.messageCount,
+				projectId: schema.sessions.projectId,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
@@ -1215,19 +1549,23 @@ export function getSessionMeta(
 	};
 }
 
-interface DbPlanListEntry {
+interface DbPlanListEntry
+{
 	filename: string;
 	title: string;
 	mtimeMs: number;
 }
 
-export function listPlansFromDb(db: IndexDb): DbPlanListEntry[] {
+export function listPlansFromDb(db: IndexDb): DbPlanListEntry[]
+{
 	const rows = db
-		.select({
-			filename: schema.plans.filename,
-			title: schema.plans.title,
-			mtimeMs: schema.plans.mtimeMs,
-		})
+		.select(
+			{
+				filename: schema.plans.filename,
+				title: schema.plans.title,
+				mtimeMs: schema.plans.mtimeMs,
+			},
+		)
 		.from(schema.plans)
 		.orderBy(desc(schema.plans.mtimeMs))
 		.all();
@@ -1235,17 +1573,21 @@ export function listPlansFromDb(db: IndexDb): DbPlanListEntry[] {
 	return rows;
 }
 
-export function getRecentPlansForProject(db: IndexDb, projectId: string, limit: number): DbPlanListEntry[] {
-	if (!Number.isInteger(limit) || limit < 1) {
+export function getRecentPlansForProject(db: IndexDb, projectId: string, limit: number): DbPlanListEntry[]
+{
+	if (!Number.isInteger(limit) || limit < 1)
+	{
 		throw new Error("Context brief plan limit must be a positive integer");
 	}
 
 	return db
-		.selectDistinct({
-			filename: schema.plans.filename,
-			title: schema.plans.title,
-			mtimeMs: schema.plans.mtimeMs,
-		})
+		.selectDistinct(
+			{
+				filename: schema.plans.filename,
+				title: schema.plans.title,
+				mtimeMs: schema.plans.mtimeMs,
+			},
+		)
 		.from(schema.plans)
 		.innerJoin(schema.planSessions, eq(schema.planSessions.planFilename, schema.plans.filename))
 		.where(eq(schema.planSessions.projectId, projectId))
@@ -1254,18 +1596,22 @@ export function getRecentPlansForProject(db: IndexDb, projectId: string, limit: 
 		.all();
 }
 
-export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[] {
+export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[]
+{
 	const projectNames = getProjectNameMap(db);
 
 	const rows = db
-		.selectDistinct({
-			planFilename: schema.planSessions.planFilename,
-			projectId: schema.planSessions.projectId,
-		})
+		.selectDistinct(
+			{
+				planFilename: schema.planSessions.planFilename,
+				projectId: schema.planSessions.projectId,
+			},
+		)
 		.from(schema.planSessions)
 		.all();
 
-	return rows.map((row) => ({
+	return rows.map((row) => (
+	{
 		planFilename: row.planFilename,
 		projectId: row.projectId,
 		projectName: projectNames.get(row.projectId) ?? row.projectId,
@@ -1276,7 +1622,8 @@ export function getPlanProjectMappings(db: IndexDb): DbPlanProjectMapping[] {
 // Tasks
 // ---------------------------------------------------------------------------
 
-export interface TaskRow {
+export interface TaskRow
+{
 	taskId: string;
 	projectDir: string;
 	subject: string;
@@ -1289,7 +1636,8 @@ export interface TaskRow {
 	metadata: Record<string, unknown>;
 }
 
-interface TaskProjectGroup {
+interface TaskProjectGroup
+{
 	projectDir: string;
 	projectId: string;
 	projectName: string;
@@ -1311,7 +1659,8 @@ function parseTaskRow(row: {
 	blocksJson: string;
 	blockedByJson: string;
 	metadataJson: string;
-}): TaskRow {
+}): TaskRow
+{
 	return {
 		taskId: row.taskId,
 		projectDir: row.projectDir,
@@ -1334,32 +1683,37 @@ function parseTaskRow(row: {
  * task reader must go through this function so the /projects card count, the
  * project detail list, and the /tasks grouping cannot disagree.
  */
-function getRawTaskRowsForProject(db: IndexDb, projectId: string) {
+function getRawTaskRowsForProject(db: IndexDb, projectId: string)
+{
 	const rows = db
-		.select({
-			filePath: schema.tasks.filePath,
-			taskId: schema.tasks.taskId,
-			projectDir: schema.tasks.projectDir,
-			subject: schema.tasks.subject,
-			description: schema.tasks.description,
-			status: schema.tasks.status,
-			activeForm: schema.tasks.activeForm,
-			owner: schema.tasks.owner,
-			blocksJson: schema.tasks.blocksJson,
-			blockedByJson: schema.tasks.blockedByJson,
-			metadataJson: schema.tasks.metadataJson,
-			mtimeMs: schema.tasks.mtimeMs,
-			sessionProjectId: schema.sessions.projectId,
-		})
+		.select(
+			{
+				filePath: schema.tasks.filePath,
+				taskId: schema.tasks.taskId,
+				projectDir: schema.tasks.projectDir,
+				subject: schema.tasks.subject,
+				description: schema.tasks.description,
+				status: schema.tasks.status,
+				activeForm: schema.tasks.activeForm,
+				owner: schema.tasks.owner,
+				blocksJson: schema.tasks.blocksJson,
+				blockedByJson: schema.tasks.blockedByJson,
+				metadataJson: schema.tasks.metadataJson,
+				mtimeMs: schema.tasks.mtimeMs,
+				sessionProjectId: schema.sessions.projectId,
+			},
+		)
 		.from(schema.tasks)
 		.leftJoin(schema.sessions, eq(schema.sessions.id, schema.tasks.projectDir))
 		.all();
 
 	const resolvedDirProjects = new Map<string, string>();
-	return rows.filter((row) => {
+	return rows.filter((row) =>
+	{
 		if (row.sessionProjectId !== null) return row.sessionProjectId === projectId;
 		let resolved = resolvedDirProjects.get(row.projectDir);
-		if (resolved === undefined) {
+		if (resolved === undefined)
+		{
 			resolved = resolveUnmatchedTaskDir(db, row.projectDir).projectId;
 			resolvedDirProjects.set(row.projectDir, resolved);
 		}
@@ -1368,7 +1722,8 @@ function getRawTaskRowsForProject(db: IndexDb, projectId: string) {
 }
 
 /** Return all tasks attributed to a project, including completed tasks. */
-export function getTasksForProject(db: IndexDb, projectId: string): TaskRow[] {
+export function getTasksForProject(db: IndexDb, projectId: string): TaskRow[]
+{
 	return getRawTaskRowsForProject(db, projectId).map(parseTaskRow);
 }
 
@@ -1377,8 +1732,20 @@ export function getTasksForProject(db: IndexDb, projectId: string): TaskRow[] {
  * only unique within one task list, so the file path is the task's identity
  * when tasks from several lists are compared.
  */
-export function getTaskFilesForProject(db: IndexDb, projectId: string): {filePath: string; task: TaskRow}[] {
-	return getRawTaskRowsForProject(db, projectId).map((row) => ({filePath: row.filePath, task: parseTaskRow(row)}));
+export function getTaskFilesForProject(
+	db: IndexDb,
+	projectId: string,
+):
+{
+	filePath: string;
+	task: TaskRow;
+}[]
+{
+	return getRawTaskRowsForProject(db, projectId).map((row) => (
+	{
+		filePath: row.filePath,
+		task: parseTaskRow(row),
+	}));
 }
 
 /**
@@ -1386,9 +1753,14 @@ export function getTaskFilesForProject(db: IndexDb, projectId: string): {filePat
  * rules getRawTaskRowsForProject applies: a session id joins its session, and
  * any other name (`session-<prefix>`, a project name) resolves as unmatched.
  */
-export function resolveTaskDirProjectId(db: IndexDb, taskDir: string): string {
+export function resolveTaskDirProjectId(db: IndexDb, taskDir: string): string
+{
 	const session = db
-		.select({projectId: schema.sessions.projectId})
+		.select(
+			{
+				projectId: schema.sessions.projectId,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, taskDir))
 		.get();
@@ -1396,8 +1768,10 @@ export function resolveTaskDirProjectId(db: IndexDb, taskDir: string): string {
 }
 
 /** Return open tasks attributed to a project, in-progress first, newest first. */
-export function getOpenTasksForProject(db: IndexDb, projectId: string, limit: number): TaskRow[] {
-	if (!Number.isInteger(limit) || limit < 1) {
+export function getOpenTasksForProject(db: IndexDb, projectId: string, limit: number): TaskRow[]
+{
+	if (!Number.isInteger(limit) || limit < 1)
+	{
 		throw new Error("Context brief task limit must be a positive integer");
 	}
 
@@ -1416,14 +1790,16 @@ export function getOpenTasksForProject(db: IndexDb, projectId: string, limit: nu
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SESSION_PREFIX_PATTERN = /^session-([0-9a-f]{4,})$/i;
 
-interface ResolvedTaskDirLabels {
+interface ResolvedTaskDirLabels
+{
 	projectId: string;
 	projectName: string;
 	sessionId: string | null;
 	sessionTitle: string;
 }
 
-interface TaskDirProject {
+interface TaskDirProject
+{
 	id: string;
 	name: string;
 }
@@ -1435,8 +1811,13 @@ interface TaskDirProject {
  * match alone misses those; the encoded id keeps the dashed form. Ambiguous
  * matches resolve to undefined rather than guessing.
  */
-function findProjectForTaskDir(db: IndexDb, projectDir: string): TaskDirProject | undefined {
-	const columns = {id: schema.projects.id, name: schema.projects.name};
+function findProjectForTaskDir(db: IndexDb, projectDir: string): TaskDirProject | undefined
+{
+	const columns =
+	{
+		id: schema.projects.id,
+		name: schema.projects.name,
+	};
 	const namedProjects = db
 		.select(columns)
 		.from(schema.projects)
@@ -1458,9 +1839,14 @@ function findProjectForTaskDir(db: IndexDb, projectDir: string): TaskDirProject 
 }
 
 /** Up to `limit` indexed session IDs starting with a hex `prefix`, so a caller can tell unique from ambiguous. */
-export function getSessionIdsByPrefix(db: IndexDb, prefix: string, limit: number): string[] {
+export function getSessionIdsByPrefix(db: IndexDb, prefix: string, limit: number): string[]
+{
 	return db
-		.select({id: schema.sessions.id})
+		.select(
+			{
+				id: schema.sessions.id,
+			},
+		)
 		.from(schema.sessions)
 		.where(like(schema.sessions.id, `${prefix}%`))
 		.limit(limit)
@@ -1478,23 +1864,30 @@ export function getSessionIdsByPrefix(db: IndexDb, prefix: string, limit: number
  * the same string for projectName and sessionTitle, so the /tasks page cannot
  * render one identifier twice.
  */
-function resolveUnmatchedTaskDir(db: IndexDb, projectDir: string): ResolvedTaskDirLabels {
+function resolveUnmatchedTaskDir(db: IndexDb, projectDir: string): ResolvedTaskDirLabels
+{
 	const idPrefix = SESSION_PREFIX_PATTERN.exec(projectDir)?.[1];
-	if (idPrefix !== undefined) {
+	if (idPrefix !== undefined)
+	{
 		const candidates = db
-			.select({
-				sessionId: schema.sessions.id,
-				projectId: schema.sessions.projectId,
-				projectName: schema.projects.name,
-				sessionTitle: sql<string | null>`coalesce(${schema.sessions.customTitle}, ${schema.sessions.title})`,
-			})
+			.select(
+				{
+					sessionId: schema.sessions.id,
+					projectId: schema.sessions.projectId,
+					projectName: schema.projects.name,
+					sessionTitle: sql<
+						string | null
+					>`coalesce(${schema.sessions.customTitle}, ${schema.sessions.title})`,
+				},
+			)
 			.from(schema.sessions)
 			.leftJoin(schema.projects, eq(schema.projects.id, schema.sessions.projectId))
 			.where(like(schema.sessions.id, `${idPrefix}%`))
 			.limit(2)
 			.all();
 		const match = candidates.length === 1 ? candidates[0] : undefined;
-		if (match) {
+		if (match)
+		{
 			return {
 				projectId: match.projectId,
 				projectName: match.projectName ?? match.projectId,
@@ -1503,7 +1896,8 @@ function resolveUnmatchedTaskDir(db: IndexDb, projectDir: string): ResolvedTaskD
 			};
 		}
 	}
-	if (idPrefix !== undefined || UUID_PATTERN.test(projectDir)) {
+	if (idPrefix !== undefined || UUID_PATTERN.test(projectDir))
+	{
 		const shortId = idPrefix ?? projectDir.slice(0, 8);
 		return {
 			projectId: ORPHANED_TASKS_PROJECT_ID,
@@ -1521,24 +1915,27 @@ function resolveUnmatchedTaskDir(db: IndexDb, projectDir: string): ResolvedTaskD
 	};
 }
 
-export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGroup[] {
+export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGroup[]
+{
 	const rows = db
-		.select({
-			taskId: schema.tasks.taskId,
-			projectDir: schema.tasks.projectDir,
-			subject: schema.tasks.subject,
-			description: schema.tasks.description,
-			status: schema.tasks.status,
-			activeForm: schema.tasks.activeForm,
-			owner: schema.tasks.owner,
-			blocksJson: schema.tasks.blocksJson,
-			blockedByJson: schema.tasks.blockedByJson,
-			metadataJson: schema.tasks.metadataJson,
-			sessionId: schema.sessions.id,
-			projectId: schema.sessions.projectId,
-			projectName: schema.projects.name,
-			sessionTitle: sql<string | null>`coalesce(${schema.sessions.customTitle}, ${schema.sessions.title})`,
-		})
+		.select(
+			{
+				taskId: schema.tasks.taskId,
+				projectDir: schema.tasks.projectDir,
+				subject: schema.tasks.subject,
+				description: schema.tasks.description,
+				status: schema.tasks.status,
+				activeForm: schema.tasks.activeForm,
+				owner: schema.tasks.owner,
+				blocksJson: schema.tasks.blocksJson,
+				blockedByJson: schema.tasks.blockedByJson,
+				metadataJson: schema.tasks.metadataJson,
+				sessionId: schema.sessions.id,
+				projectId: schema.sessions.projectId,
+				projectName: schema.projects.name,
+				sessionTitle: sql<string | null>`coalesce(${schema.sessions.customTitle}, ${schema.sessions.title})`,
+			},
+		)
 		.from(schema.tasks)
 		.leftJoin(schema.sessions, eq(schema.sessions.id, schema.tasks.projectDir))
 		.leftJoin(schema.projects, eq(schema.projects.id, schema.sessions.projectId))
@@ -1555,43 +1952,54 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
 			tasks: TaskRow[];
 		}
 	>();
-	for (const row of rows) {
+	for (const row of rows)
+	{
 		const task = parseTaskRow(row);
 		let session = sessionMap.get(row.projectDir);
-		if (!session) {
+		if (!session)
+		{
 			const labels: ResolvedTaskDirLabels =
 				row.sessionId !== null && row.projectId !== null
-					? {
+					?
+						{
 							projectId: row.projectId,
 							projectName: row.projectName ?? row.projectId,
 							sessionId: row.sessionId,
 							sessionTitle: row.sessionTitle ?? `Session ${row.sessionId.slice(0, 8)}`,
 						}
 					: resolveUnmatchedTaskDir(db, row.projectDir);
-			session = {...labels, tasks: []};
+			session =
+			{
+				...labels,
+				tasks: [],
+			};
 			sessionMap.set(row.projectDir, session);
 		}
 		session.tasks.push(task);
 	}
 
 	const result: TaskProjectGroup[] = [];
-	for (const [projectDir, session] of sessionMap) {
+	for (const [projectDir, session] of sessionMap)
+	{
 		let totalPending = 0;
 		let totalInProgress = 0;
-		for (const task of session.tasks) {
+		for (const task of session.tasks)
+		{
 			if (task.status === "pending") totalPending++;
 			if (task.status === "in_progress") totalInProgress++;
 		}
-		result.push({
-			projectDir,
-			projectId: session.projectId,
-			projectName: session.projectName,
-			sessionId: session.sessionId,
-			sessionTitle: session.sessionTitle,
-			tasks: session.tasks,
-			totalPending,
-			totalInProgress,
-		});
+		result.push(
+			{
+				projectDir,
+				projectId: session.projectId,
+				projectName: session.projectName,
+				sessionId: session.sessionId,
+				sessionTitle: session.sessionTitle,
+				tasks: session.tasks,
+				totalPending,
+				totalInProgress,
+			},
+		);
 	}
 
 	// Orphaned groups name no project the user can act on, so they sink below
@@ -1606,37 +2014,54 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
 export function getTaskCountsForProject(
 	db: IndexDb,
 	projectId: string,
-): {total: number; pending: number; inProgress: number; completed: number} {
+):
+{
+	total: number;
+	pending: number;
+	inProgress: number;
+	completed: number;
+}
+{
 	let total = 0;
 	let pending = 0;
 	let inProgress = 0;
 	let completed = 0;
-	for (const row of getRawTaskRowsForProject(db, projectId)) {
+	for (const row of getRawTaskRowsForProject(db, projectId))
+	{
 		total++;
 		if (row.status === "pending") pending++;
 		else if (row.status === "in_progress") inProgress++;
 		else if (row.status === "completed") completed++;
 	}
 
-	return {total, pending, inProgress, completed};
+	return {
+		total,
+		pending,
+		inProgress,
+		completed,
+	};
 }
 
 // ---------------------------------------------------------------------------
 // Memories
 // ---------------------------------------------------------------------------
 
-export interface MemoryRow {
+export interface MemoryRow
+{
 	filename: string;
 	title: string;
 	mtimeMs: number;
 }
 
-export function getMemoryCountsForProjects(db: IndexDb): Map<string, number> {
+export function getMemoryCountsForProjects(db: IndexDb): Map<string, number>
+{
 	const rows = db
-		.select({
-			projectId: schema.memories.projectId,
-			count: sql<number>`count(*)`,
-		})
+		.select(
+			{
+				projectId: schema.memories.projectId,
+				count: sql<number>`count(*)`,
+			},
+		)
 		.from(schema.memories)
 		.groupBy(schema.memories.projectId)
 		.all();
@@ -1644,13 +2069,16 @@ export function getMemoryCountsForProjects(db: IndexDb): Map<string, number> {
 	return new Map(rows.map((r) => [r.projectId, r.count]));
 }
 
-export function getMemoriesForProject(db: IndexDb, projectId: string): MemoryRow[] {
+export function getMemoriesForProject(db: IndexDb, projectId: string): MemoryRow[]
+{
 	return db
-		.select({
-			filename: schema.memories.filename,
-			title: schema.memories.title,
-			mtimeMs: schema.memories.mtimeMs,
-		})
+		.select(
+			{
+				filename: schema.memories.filename,
+				title: schema.memories.title,
+				mtimeMs: schema.memories.mtimeMs,
+			},
+		)
 		.from(schema.memories)
 		.where(eq(schema.memories.projectId, projectId))
 		.orderBy(desc(schema.memories.mtimeMs), asc(schema.memories.filename))
@@ -1658,9 +2086,14 @@ export function getMemoriesForProject(db: IndexDb, projectId: string): MemoryRow
 }
 
 /** Every distinct `mcp__<server>__<tool>` name any indexed transcript called, sorted. */
-export function listMcpToolNames(db: IndexDb): string[] {
+export function listMcpToolNames(db: IndexDb): string[]
+{
 	return db
-		.selectDistinct({toolName: schema.sessionMcpTools.toolName})
+		.selectDistinct(
+			{
+				toolName: schema.sessionMcpTools.toolName,
+			},
+		)
 		.from(schema.sessionMcpTools)
 		.orderBy(asc(schema.sessionMcpTools.toolName))
 		.all()

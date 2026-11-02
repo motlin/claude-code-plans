@@ -10,12 +10,24 @@ import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 
 const spawnMock = vi.hoisted(() => vi.fn<typeof import("node:child_process").spawn>());
-const state = vi.hoisted(() => ({db: undefined as unknown, broadcasts: 0}));
+const state = vi.hoisted(() => (
+{
+	db: undefined as unknown,
+	broadcasts: 0,
+}));
 
-vi.mock("node:child_process", () => ({spawn: spawnMock}));
-vi.mock("../src/lib/db", () => ({getDb: () => state.db}));
-vi.mock("../src/lib/watcher", () => ({
-	broadcast: () => {
+vi.mock("node:child_process", () => (
+{
+	spawn: spawnMock,
+}));
+vi.mock("../src/lib/db", () => (
+{
+	getDb: () => state.db,
+}));
+vi.mock("../src/lib/watcher", () => (
+{
+	broadcast: () =>
+	{
 		state.broadcasts += 1;
 	},
 }));
@@ -32,7 +44,8 @@ let home: string;
 let projectsDir: string;
 let db: AppDb;
 
-function fakeChildProcess(): ChildProcess {
+function fakeChildProcess(): ChildProcess
+{
 	const child = new EventEmitter() as ChildProcess;
 	child.stdin = new PassThrough();
 	child.stdout = new PassThrough();
@@ -41,13 +54,19 @@ function fakeChildProcess(): ChildProcess {
 	return child;
 }
 
-beforeEach(async () => {
+beforeEach(async () =>
+{
 	spawnMock.mockReset();
 	state.broadcasts = 0;
 	home = mkdtempSync(join(tmpdir(), "side-chat-api-test-"));
 	vi.stubEnv("HOME", home);
 	projectsDir = join(home, ".claude", "projects");
-	await mkdir(join(projectsDir, PROJECT), {recursive: true});
+	await mkdir(
+		join(projectsDir, PROJECT),
+		{
+			recursive: true,
+		},
+	);
 	const sessionPath = join(projectsDir, PROJECT, `${SESSION_ID}.jsonl`);
 	const records = [
 		{
@@ -56,7 +75,11 @@ beforeEach(async () => {
 			sessionId: SESSION_ID,
 			timestamp: "2026-09-01T00:00:00.000Z",
 			cwd: "/Users/alice/proj",
-			message: {role: "user", content: "Fix the flaky build"},
+			message:
+			{
+				role: "user",
+				content: "Fix the flaky build",
+			},
 		},
 	];
 	await writeFile(sessionPath, records.map((r) => JSON.stringify(r)).join("\n") + "\n");
@@ -64,51 +87,89 @@ beforeEach(async () => {
 	state.db = db;
 	db.index
 		.insert(schema.projects)
-		.values({id: PROJECT, name: "proj", projectPath: "/Users/alice/proj", updatedAt: 0})
+		.values(
+			{
+				id: PROJECT,
+				name: "proj",
+				projectPath: "/Users/alice/proj",
+				updatedAt: 0,
+			},
+		)
 		.run();
 	db.index
 		.insert(schema.sessions)
-		.values({
-			id: SESSION_ID,
-			projectId: PROJECT,
-			title: "Fix the flaky build",
-			firstPrompt: "Fix the flaky build",
-			summary: null,
-			customTitle: null,
-			messageCount: 1,
-			gitBranch: null,
-			cwd: "/Users/alice/proj",
-			isSidechain: 0,
-			createdAt: 1_788_220_800_000,
-			mtimeMs: 1_788_220_800_000,
-			filePath: sessionPath,
-		})
+		.values(
+			{
+				id: SESSION_ID,
+				projectId: PROJECT,
+				title: "Fix the flaky build",
+				firstPrompt: "Fix the flaky build",
+				summary: null,
+				customTitle: null,
+				messageCount: 1,
+				gitBranch: null,
+				cwd: "/Users/alice/proj",
+				isSidechain: 0,
+				createdAt: 1_788_220_800_000,
+				mtimeMs: 1_788_220_800_000,
+				filePath: sessionPath,
+			},
+		)
 		.run();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(home, {recursive: true, force: true});
+	rmSync(
+		home,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 	vi.unstubAllEnvs();
 });
 
-async function post(body: unknown): Promise<Response> {
+async function post(body: unknown): Promise<Response>
+{
 	const {Route} = await import("../src/routes/api/side-chat");
-	const handlers = (Route as unknown as {options: {server: {handlers: Record<string, ApiHandler>}}}).options.server
-		.handlers;
-	return handlers["POST"]!({
-		request: new Request("http://localhost/api/side-chat", {
-			method: "POST",
-			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify(body),
-		}),
-	});
+	const handlers = (
+		Route as unknown as
+		{
+			options:
+			{
+				server:
+				{
+					handlers: Record<string, ApiHandler>;
+				};
+			};
+		}
+	).options.server.handlers;
+	return handlers["POST"]!(
+		{
+			request: new Request(
+				"http://localhost/api/side-chat",
+				{
+					method: "POST",
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(body),
+				},
+			),
+		},
+	);
 }
 
-describe("spawnClaude ephemeral option", () => {
-	it("appends --no-session-persistence only when ephemeral", () => {
+describe("spawnClaude ephemeral option", () =>
+{
+	it("appends --no-session-persistence only when ephemeral", () =>
+	{
 		spawnMock.mockImplementation(() => fakeChildProcess());
-		const base = {
+		const base =
+		{
 			sessionId: SESSION_ID,
 			prompt: "What does the build do?",
 			projectDir: "/Users/alice/proj",
@@ -116,7 +177,12 @@ describe("spawnClaude ephemeral option", () => {
 		};
 
 		spawnClaude(base);
-		spawnClaude({...base, ephemeral: true});
+		spawnClaude(
+			{
+				...base,
+				ephemeral: true,
+			},
+		);
 
 		const expectedBase = [
 			"--resume",
@@ -135,17 +201,26 @@ describe("spawnClaude ephemeral option", () => {
 	});
 });
 
-describe("buildSideChatPrompt", () => {
-	it("returns the bare question when there are no prior messages", () => {
+describe("buildSideChatPrompt", () =>
+{
+	it("returns the bare question when there are no prior messages", () =>
+	{
 		expect(buildSideChatPrompt([], "Why is the build flaky?")).toBe("Why is the build flaky?");
 	});
 
-	it("prepends prior Q/A pairs as a quoted preamble", () => {
+	it("prepends prior Q/A pairs as a quoted preamble", () =>
+	{
 		expect(
 			buildSideChatPrompt(
 				[
-					{q: "Why is the build flaky?", a: "A race in the watcher.\nSee watcher.ts."},
-					{q: "Which test?", a: "watcher.test.ts"},
+					{
+						q: "Why is the build flaky?",
+						a: "A race in the watcher.\nSee watcher.ts.",
+					},
+					{
+						q: "Which test?",
+						a: "watcher.test.ts",
+					},
 				],
 				"How do I fix it?",
 			),
@@ -166,59 +241,108 @@ describe("buildSideChatPrompt", () => {
 	});
 });
 
-describe("POST /api/side-chat", () => {
-	it("returns 400 when the question is missing", async () => {
-		const response = await post({sessionId: SESSION_ID, messages: []});
-		expect({status: response.status, body: await response.json()}).toStrictEqual({
-			status: 400,
-			body: {error: "sessionId and question are required"},
-		});
+describe("POST /api/side-chat", () =>
+{
+	it("returns 400 when the question is missing", async () =>
+	{
+		const response = await post(
+			{
+				sessionId: SESSION_ID,
+				messages: [],
+			},
+		);
+		expect(
+			{
+				status: response.status,
+				body: await response.json(),
+			},
+		).toStrictEqual(
+			{
+				status: 400,
+				body:
+				{
+					error: "sessionId and question are required",
+				},
+			},
+		);
 		expect(spawnMock).not.toHaveBeenCalled();
 	});
 
-	it("returns 400 when the question is blank", async () => {
-		const response = await post({sessionId: SESSION_ID, messages: [], question: "   "});
+	it("returns 400 when the question is blank", async () =>
+	{
+		const response = await post(
+			{
+				sessionId: SESSION_ID,
+				messages: [],
+				question: "   ",
+			},
+		);
 		expect(response.status).toBe(400);
 		expect(spawnMock).not.toHaveBeenCalled();
 	});
 
-	it("returns 404 for an unknown session", async () => {
-		const response = await post({
-			sessionId: "99999999-0000-0000-0000-000000000000",
-			messages: [],
-			question: "Why?",
-		});
-		expect({status: response.status, body: await response.json()}).toStrictEqual({
-			status: 404,
-			body: {error: "Could not determine project directory for session"},
-		});
+	it("returns 404 for an unknown session", async () =>
+	{
+		const response = await post(
+			{
+				sessionId: "99999999-0000-0000-0000-000000000000",
+				messages: [],
+				question: "Why?",
+			},
+		);
+		expect(
+			{
+				status: response.status,
+				body: await response.json(),
+			},
+		).toStrictEqual(
+			{
+				status: 404,
+				body:
+				{
+					error: "Could not determine project directory for session",
+				},
+			},
+		);
 		expect(spawnMock).not.toHaveBeenCalled();
 	});
 
-	it("streams an ephemeral forked answer and writes no JSONL", async () => {
+	it("streams an ephemeral forked answer and writes no JSONL", async () =>
+	{
 		const child = fakeChildProcess();
 		spawnMock.mockReturnValue(child);
 		const before = await readdir(join(projectsDir, PROJECT));
 
-		const response = await post({
-			sessionId: SESSION_ID,
-			messages: [{q: "Why is the build flaky?", a: "A race."}],
-			question: "How do I fix it?",
-		});
+		const response = await post(
+			{
+				sessionId: SESSION_ID,
+				messages: [
+					{
+						q: "Why is the build flaky?",
+						a: "A race.",
+					},
+				],
+				question: "How do I fix it?",
+			},
+		);
 		child.stdout!.emit("data", Buffer.from('{"type":"result"}\n'));
 		child.emit("close", 0);
 
-		expect({
-			status: response.status,
-			contentType: response.headers.get("Content-Type"),
-			hasProcessId: response.headers.get("X-Process-Id")?.startsWith(`${SESSION_ID}-`),
-			body: await response.text(),
-		}).toStrictEqual({
-			status: 200,
-			contentType: "application/x-ndjson",
-			hasProcessId: true,
-			body: '{"type":"result"}\n',
-		});
+		expect(
+			{
+				status: response.status,
+				contentType: response.headers.get("Content-Type"),
+				hasProcessId: response.headers.get("X-Process-Id")?.startsWith(`${SESSION_ID}-`),
+				body: await response.text(),
+			},
+		).toStrictEqual(
+			{
+				status: 200,
+				contentType: "application/x-ndjson",
+				hasProcessId: true,
+				body: '{"type":"result"}\n',
+			},
+		);
 		expect(spawnMock.mock.calls).toStrictEqual([
 			[
 				"claude",
@@ -233,7 +357,11 @@ describe("POST /api/side-chat", () => {
 					"--include-partial-messages",
 					"--no-session-persistence",
 				],
-				expect.objectContaining({cwd: "/Users/alice/proj"}),
+				expect.objectContaining(
+					{
+						cwd: "/Users/alice/proj",
+					},
+				),
 			],
 		]);
 		expect(String((child.stdin as PassThrough).read())).toBe(
@@ -243,15 +371,31 @@ describe("POST /api/side-chat", () => {
 		expect(state.broadcasts).toBe(0);
 	});
 
-	it("cancels a running side question", async () => {
+	it("cancels a running side question", async () =>
+	{
 		const child = fakeChildProcess();
 		spawnMock.mockReturnValue(child);
-		const started = await post({sessionId: SESSION_ID, messages: [], question: "Why?"});
+		const started = await post(
+			{
+				sessionId: SESSION_ID,
+				messages: [],
+				question: "Why?",
+			},
+		);
 		const processId = started.headers.get("X-Process-Id");
 
-		const cancelled = await post({action: "cancel", processId});
+		const cancelled = await post(
+			{
+				action: "cancel",
+				processId,
+			},
+		);
 
-		expect(await cancelled.json()).toStrictEqual({ok: true});
+		expect(await cancelled.json()).toStrictEqual(
+			{
+				ok: true,
+			},
+		);
 		expect(child.kill).toHaveBeenCalledWith("SIGTERM");
 	});
 });

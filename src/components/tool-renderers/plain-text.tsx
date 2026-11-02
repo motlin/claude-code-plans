@@ -12,7 +12,8 @@ const CLOAK_LIMIT = 262_144;
 /** Upstream `_e`: the text carries ANSI escape sequences to paint. */
 const ANSI_ESCAPE = "\u001b[";
 
-function styled(part: AnsiPart, text: string, key: string): ReactElement {
+function styled(part: AnsiPart, text: string, key: string): ReactElement
+{
 	return (
 		<span key={key} style={ansiPartStyle(part)}>
 			{text}
@@ -25,11 +26,13 @@ function cloakPlain(
 	text: string,
 	secrets: readonly SecretMatch[],
 	renderPlain: (text: string) => ReactNode,
-): ReactNode[] {
+): ReactNode[]
+{
 	if (secrets.length === 0) return [<Fragment key="p0">{renderPlain(text)}</Fragment>];
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
-	for (const secret of secrets) {
+	for (const secret of secrets)
+	{
 		if (secret.start > cursor)
 			nodes.push(<Fragment key={`p${cursor}`}>{renderPlain(text.slice(cursor, secret.start))}</Fragment>);
 		nodes.push(<SecretCloak key={`s${secret.start}`} match={secret} />);
@@ -40,18 +43,22 @@ function cloakPlain(
 }
 
 /** Upstream cb557955f `i` (`C`): styled ANSI runs, cut around each secret's cloak. */
-function cloakAnsi(parts: readonly AnsiPart[], secrets: readonly SecretMatch[]): ReactNode[] {
+function cloakAnsi(parts: readonly AnsiPart[], secrets: readonly SecretMatch[]): ReactNode[]
+{
 	const nodes: ReactNode[] = [];
-	const push = (part: AnsiPart, text: string, at: number) => {
+	const push = (part: AnsiPart, text: string, at: number) =>
+	{
 		if (text !== "") nodes.push(styled(part, text, `t${at}`));
 	};
 	let runStart = 0;
 	let next = 0;
 	let resumeAt = 0;
-	for (const part of parts) {
+	for (const part of parts)
+	{
 		const runEnd = runStart + part.text.length;
 		let from = Math.max(runStart, resumeAt);
-		for (let secret = secrets[next]; secret !== undefined && secret.start < runEnd; secret = secrets[next]) {
+		for (let secret = secrets[next]; secret !== undefined && secret.start < runEnd; secret = secrets[next])
+		{
 			push(part, part.text.slice(from - runStart, secret.start - runStart), from);
 			nodes.push(<SecretCloak key={`s${secret.start}`} match={secret} />);
 			resumeAt = secret.end;
@@ -65,7 +72,8 @@ function cloakAnsi(parts: readonly AnsiPart[], secrets: readonly SecretMatch[]):
 	return nodes;
 }
 
-function identity(text: string): ReactNode {
+function identity(text: string): ReactNode
+{
 	return text;
 }
 
@@ -80,17 +88,21 @@ export function PlainText({
 }: {
 	children: string;
 	renderPlain?: (text: string) => ReactNode;
-}) {
+})
+{
 	const parts = text.includes(ANSI_ESCAPE) ? parseAnsiCodes(text) : null;
 	const plain = parts === null ? text : parts.map((part) => part.text).join("");
-	if (plain.length > CLOAK_LIMIT) {
+	if (plain.length > CLOAK_LIMIT)
+	{
 		const masked = maskSecrets(plain);
-		if (masked !== plain) {
+		if (masked !== plain)
+		{
 			if (parts === null) return <>{renderPlain(masked)}</>;
 			let cursor = 0;
 			return (
 				<>
-					{parts.map((part, index) => {
+					{parts.map((part, index) =>
+					{
 						const slice = masked.slice(cursor, cursor + part.text.length);
 						cursor += part.text.length;
 						return styled(part, slice, `t${index}`);

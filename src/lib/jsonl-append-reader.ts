@@ -26,7 +26,8 @@ const readChains = new WeakMap<Map<string, number>, Map<string, Promise<unknown>
  */
 const offsetWitnesses = new WeakMap<Map<string, number>, Map<string, JsonlOffsetWitness>>();
 
-export interface AppendedJsonlLines {
+export interface AppendedJsonlLines
+{
 	lines: Record<string, JsonValue>[];
 	nextByteOffset: number;
 	/**
@@ -45,9 +46,11 @@ export async function readAppendedJsonlLines(
 	db: IndexDb,
 	path: string,
 	offsets: Map<string, number>,
-): Promise<AppendedJsonlLines> {
+): Promise<AppendedJsonlLines>
+{
 	let chains = readChains.get(offsets);
-	if (chains === undefined) {
+	if (chains === undefined)
+	{
 		chains = new Map();
 		readChains.set(offsets, chains);
 	}
@@ -57,16 +60,21 @@ export async function readAppendedJsonlLines(
 		async () => readFromOffset(db, path, offsets),
 	);
 	chains.set(path, read);
-	try {
+	try
+	{
 		return await read;
-	} finally {
+	}
+	finally
+	{
 		if (chains.get(path) === read) chains.delete(path);
 	}
 }
 
-async function readFromOffset(db: IndexDb, path: string, offsets: Map<string, number>): Promise<AppendedJsonlLines> {
+async function readFromOffset(db: IndexDb, path: string, offsets: Map<string, number>): Promise<AppendedJsonlLines>
+{
 	let witnesses = offsetWitnesses.get(offsets);
-	if (witnesses === undefined) {
+	if (witnesses === undefined)
+	{
 		witnesses = new Map();
 		offsetWitnesses.set(offsets, witnesses);
 	}
@@ -78,7 +86,10 @@ async function readFromOffset(db: IndexDb, path: string, offsets: Map<string, nu
 	const witness = await jsonlOffsetWitness(path, result.nextByteOffset);
 	if (witness === undefined) witnesses.delete(path);
 	else witnesses.set(path, witness);
-	return {...result, rewritten: start.rewritten};
+	return {
+		...result,
+		rewritten: start.rewritten,
+	};
 }
 
 /**
@@ -92,14 +103,20 @@ export async function broadcastAppendedJsonl(
 	read: AppendedJsonlLines,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
 	dedupeTtlMs: number,
-): Promise<void> {
-	if (read.rewritten) {
+): Promise<void>
+{
+	if (read.rewritten)
+	{
 		const {ino, size} = await stat(path);
 		const key = `${DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN}:${sessionId}:${ino}:${size}`;
-		if (!recentlyBroadcast(key, dedupeTtlMs)) {
-			broadcast(DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN, {
-				sessionId,
-			} satisfies SessionTranscriptRewrittenPayload);
+		if (!recentlyBroadcast(key, dedupeTtlMs))
+		{
+			broadcast(
+				DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN,
+				{
+					sessionId,
+				} satisfies SessionTranscriptRewrittenPayload,
+			);
 		}
 		return;
 	}
@@ -107,9 +124,12 @@ export async function broadcastAppendedJsonl(
 	const key = `${DOMAIN_EVENTS.SESSION_LINES_APPENDED}:${sessionId}:${read.nextByteOffset}`;
 	if (recentlyBroadcast(key, dedupeTtlMs)) return;
 	const {jsonlWrittenAt} = await import("./sessions");
-	broadcast(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
-		sessionId,
-		lines: read.lines,
-		writtenAt: await jsonlWrittenAt(path),
-	} satisfies SessionLinesAppendedPayload);
+	broadcast(
+		DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+		{
+			sessionId,
+			lines: read.lines,
+			writtenAt: await jsonlWrittenAt(path),
+		} satisfies SessionLinesAppendedPayload,
+	);
 }

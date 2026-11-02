@@ -3,52 +3,94 @@ import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {SourceFileResponse} from "../../lib/api/source";
 import {filesEtag, notModifiedResponse, validatorHeaders} from "../../lib/conditional-get";
 
-export const Route = createFileRoute("/api/source/$kind/$")({
-	server: {
-		handlers: withMethodNotAllowed({
-			GET: async ({params, request}: {params: {kind: string; _splat?: string}; request: Request}) => {
-				const {homedir} = await import("node:os");
-				const {join} = await import("node:path");
-				const {buildSourceConfig, isValidSourceKind, readSourceFile} = await import("../../lib/source-view");
+export const Route = createFileRoute("/api/source/$kind/$")(
+	{
+		server:
+		{
+			handlers: withMethodNotAllowed(
+				{
+					GET: async ({
+						params,
+						request,
+					}: {
+						params:
+						{
+							kind: string;
+							_splat?: string;
+						};
+						request: Request;
+					}) =>
+					{
+						const {homedir} = await import("node:os");
+						const {join} = await import("node:path");
+						const {buildSourceConfig, isValidSourceKind, readSourceFile} =
+							await import("../../lib/source-view");
 
-				const claudeHome = join(homedir(), ".claude");
-				const {kind} = params;
-				const relativePath = params._splat ?? "";
+						const claudeHome = join(homedir(), ".claude");
+						const {kind} = params;
+						const relativePath = params._splat ?? "";
 
-				if (!isValidSourceKind(kind)) {
-					return Response.json(SourceFileResponse.parse(null), {
-						headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
-					});
-				}
+						if (!isValidSourceKind(kind))
+						{
+							return Response.json(
+								SourceFileResponse.parse(null),
+								{
+									headers:
+									{
+										"Cache-Control": "private, max-age=0, must-revalidate",
+									},
+								},
+							);
+						}
 
-				const config = buildSourceConfig(kind, claudeHome);
-				if (!config) {
-					return Response.json(SourceFileResponse.parse(null), {
-						headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
-					});
-				}
+						const config = buildSourceConfig(kind, claudeHome);
+						if (!config)
+						{
+							return Response.json(
+								SourceFileResponse.parse(null),
+								{
+									headers:
+									{
+										"Cache-Control": "private, max-age=0, must-revalidate",
+									},
+								},
+							);
+						}
 
-				const file = await readSourceFile(kind, config, relativePath);
-				if (!file) {
-					return Response.json(SourceFileResponse.parse(null), {
-						headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
-					});
-				}
+						const file = await readSourceFile(kind, config, relativePath);
+						if (!file)
+						{
+							return Response.json(
+								SourceFileResponse.parse(null),
+								{
+									headers:
+									{
+										"Cache-Control": "private, max-age=0, must-revalidate",
+									},
+								},
+							);
+						}
 
-				const etag = filesEtag([file.version]);
-				const notModified = notModifiedResponse(request, etag);
-				if (notModified) return notModified;
+						const etag = filesEtag([file.version]);
+						const notModified = notModifiedResponse(request, etag);
+						if (notModified) return notModified;
 
-				return Response.json(
-					SourceFileResponse.parse({
-						language: file.language,
-						content: file.content,
-						relativePath: file.relativePath,
-						absolutePath: file.absolutePath,
-					}),
-					{headers: validatorHeaders(etag)},
-				);
-			},
-		}),
+						return Response.json(
+							SourceFileResponse.parse(
+								{
+									language: file.language,
+									content: file.content,
+									relativePath: file.relativePath,
+									absolutePath: file.absolutePath,
+								},
+							),
+							{
+								headers: validatorHeaders(etag),
+							},
+						);
+					},
+				},
+			),
+		},
 	},
-});
+);

@@ -13,10 +13,12 @@ const OPEN_DIALOG_SELECTOR = '[role="dialog"]:not([inert]), [role="alertdialog"]
  * The trimmed document selection when every range lies inside `container` and
  * it has at least two characters, else null (upstream `uC`'s guard).
  */
-function transcriptSelection(container: Element): string | null {
+function transcriptSelection(container: Element): string | null
+{
 	const selection = container.ownerDocument.getSelection();
 	if (selection === null || selection.rangeCount === 0) return null;
-	for (let index = 0; index < selection.rangeCount; index++) {
+	for (let index = 0; index < selection.rangeCount; index++)
+	{
 		const range = selection.getRangeAt(index);
 		if (!container.contains(range.startContainer) || !container.contains(range.endContainer)) return null;
 	}
@@ -29,19 +31,32 @@ function transcriptSelection(container: Element): string | null {
  * composer as an Excerpt, like upstream's `uC`. Declines otherwise so the Files
  * viewer and Terminal handlers still claim the key.
  */
-export function useTranscriptSelectionAttach(sessionId: string, containerRef: RefObject<Element | null>): void {
+export function useTranscriptSelectionAttach(sessionId: string, containerRef: RefObject<Element | null>): void
+{
 	useShortcut(
 		"attach_selection",
-		() => {
+		() =>
+		{
 			const container = containerRef.current;
 			if (container === null) return false;
 			if (container.ownerDocument.querySelector(OPEN_DIALOG_SELECTOR) !== null) return false;
 			const text = transcriptSelection(container);
 			if (text === null) return false;
-			if (!attachContext(sessionId, {kind: "excerpt", text})) return false;
+			if (
+				!attachContext(
+					sessionId,
+					{
+						kind: "excerpt",
+						text,
+					},
+				)
+			)
+				return false;
 			container.ownerDocument.getSelection()?.removeAllRanges();
 			return true;
 		},
-		{allowInEditable: false},
+		{
+			allowInEditable: false,
+		},
 	);
 }

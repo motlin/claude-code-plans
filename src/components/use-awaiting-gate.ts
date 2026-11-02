@@ -9,7 +9,8 @@ import {isQuickReplyQuestion, resolveAwaitingGate, type AwaitingGate} from "../l
 import {PERMISSION_PROMPT_NOTIFICATION} from "../lib/permission-prompt";
 import type {QuestionAnswerRoute} from "../lib/question-answer-route";
 
-export interface AwaitingGateState {
+export interface AwaitingGateState
+{
 	/** Null until the session's pending question has loaded. */
 	gate: AwaitingGate | null;
 	/**
@@ -23,16 +24,24 @@ export interface AwaitingGateState {
 
 /** Whether the card can answer: typing into the live pane needs the hook's question; a fork answers by label. */
 export function questionAnswerable(
-	gate: Extract<AwaitingGate, {kind: "question"}>,
+	gate: Extract<
+		AwaitingGate,
+		{
+			kind: "question";
+		}
+	>,
 	route: QuestionAnswerRoute,
-): boolean {
+): boolean
+{
 	if (!isQuickReplyQuestion(gate.questions)) return false;
 	return route === "fork" || (route === "live-pane" && gate.answerable);
 }
 
-function isInteractive(gate: AwaitingGate | null, route: QuestionAnswerRoute): boolean {
+function isInteractive(gate: AwaitingGate | null, route: QuestionAnswerRoute): boolean
+{
 	if (gate === null) return false;
-	switch (gate.kind) {
+	switch (gate.kind)
+	{
 		case "question":
 			return questionAnswerable(gate, route);
 		case "plan":
@@ -46,25 +55,40 @@ function isInteractive(gate: AwaitingGate | null, route: QuestionAnswerRoute): b
 }
 
 /** What a Needs input row's open hover card answers, and where its answer goes. */
-export function useAwaitingGate(sessionId: string): AwaitingGateState {
+export function useAwaitingGate(sessionId: string): AwaitingGateState
+{
 	const pending = useQuery(pendingQuestionQueryOptions(sessionId));
-	const approval = useQuery({
-		...approvalsQueryOptions(),
-		select: (data) => data.approvals.find((entry) => entry.sessionId === sessionId),
-	}).data;
+	const approval = useQuery(
+		{
+			...approvalsQueryOptions(),
+			select: (data) => data.approvals.find((entry) => entry.sessionId === sessionId),
+		},
+	).data;
 	const permission =
-		useQuery({
-			...notificationsQueryOptions(),
-			select: (data) =>
-				data.notifications.find(
-					(entry) =>
-						entry.sessionId === sessionId && entry.notificationType === PERMISSION_PROMPT_NOTIFICATION,
-				)?.message ?? null,
-		}).data ?? null;
+		useQuery(
+			{
+				...notificationsQueryOptions(),
+				select: (data) =>
+					data.notifications.find(
+						(entry) =>
+							entry.sessionId === sessionId && entry.notificationType === PERMISSION_PROMPT_NOTIFICATION,
+					)?.message ?? null,
+			},
+		).data ?? null;
 	const route = useQuestionAnswerRoute(sessionId);
 	const gate =
 		pending.data === undefined
 			? null
-			: resolveAwaitingGate({pendingQuestion: pending.data.pendingQuestion, approval, permission});
-	return {gate, route, interactive: isInteractive(gate, route)};
+			: resolveAwaitingGate(
+					{
+						pendingQuestion: pending.data.pendingQuestion,
+						approval,
+						permission,
+					},
+				);
+	return {
+		gate,
+		route,
+		interactive: isInteractive(gate, route),
+	};
 }

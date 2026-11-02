@@ -16,7 +16,8 @@ import type {SessionDiffFile, SessionDiffResponse} from "../src/lib/api/session-
 import {isAnotherOverlayOpen} from "../src/lib/overlay";
 import {installLocalStorage} from "./fake-storage";
 
-const GREET_FILE: SessionDiffFile = {
+const GREET_FILE: SessionDiffFile =
+{
 	path: "src/greet.ts",
 	status: "modified",
 	additions: 1,
@@ -33,27 +34,47 @@ index 1111111..2222222 100644
 `,
 };
 
-const DIFF: SessionDiffResponse = {
+const DIFF: SessionDiffResponse =
+{
 	scope: "branch",
 	source: "git",
 	root: "/repo",
-	stats: {files: 1, additions: 1, deletions: 1},
+	stats:
+	{
+		files: 1,
+		additions: 1,
+		deletions: 1,
+	},
 	files: [GREET_FILE],
 };
 
-class FakeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-function renderSession() {
+function renderSession()
+{
 	return render(
 		<SettingsProvider>
-			<TileHost sessionId="changes-shortcuts" onExpandWithoutPane={() => {}}>
+			<TileHost
+				sessionId="changes-shortcuts"
+				onExpandWithoutPane={() =>
+				{
+				}}
+			>
 				<ChangesPaneShortcut />
 				<SessionPaneControls facts={{}} />
 			</TileHost>
@@ -61,29 +82,74 @@ function renderSession() {
 	);
 }
 
-function press(init: KeyboardEventInit): KeyboardEvent {
-	const event = new KeyboardEvent("keydown", {bubbles: true, cancelable: true, ...init});
-	act(() => {
+function press(init: KeyboardEventInit): KeyboardEvent
+{
+	const event = new KeyboardEvent(
+		"keydown",
+		{
+			bubbles: true,
+			cancelable: true,
+			...init,
+		},
+	);
+	act(() =>
+	{
 		document.body.dispatchEvent(event);
 	});
 	return event;
 }
 
-const CTRL_SHIFT_D = {key: "D", code: "KeyD", ctrlKey: true, shiftKey: true};
-const CTRL_SHIFT_Y = {key: "Y", code: "KeyY", ctrlKey: true, shiftKey: true};
-const CMD_P = {key: "p", code: "KeyP", metaKey: true};
+const CTRL_SHIFT_D =
+{
+	key: "D",
+	code: "KeyD",
+	ctrlKey: true,
+	shiftKey: true,
+};
+const CTRL_SHIFT_Y =
+{
+	key: "Y",
+	code: "KeyY",
+	ctrlKey: true,
+	shiftKey: true,
+};
+const CMD_P =
+{
+	key: "p",
+	code: "KeyP",
+	metaKey: true,
+};
 
-function changesPressed(): string | null {
-	return screen.getByRole("button", {name: "Changes"}).getAttribute("aria-pressed");
+function changesPressed(): string | null
+{
+	return screen
+		.getByRole(
+			"button",
+			{
+				name: "Changes",
+			},
+		)
+		.getAttribute("aria-pressed");
 }
 
-function showFilesState(): string | null {
-	return screen.getByRole("button", {name: /^(Show|Hide) files$/}).getAttribute("aria-pressed");
+function showFilesState(): string | null
+{
+	return screen
+		.getByRole(
+			"button",
+			{
+				name: /^(Show|Hide) files$/,
+			},
+		)
+		.getAttribute("aria-pressed");
 }
 
-let unregister: () => void = () => {};
+let unregister: () => void = () =>
+{
+};
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	vi.stubGlobal("ResizeObserver", FakeObserver);
 	vi.stubGlobal("IntersectionObserver", FakeObserver);
@@ -91,16 +157,37 @@ beforeEach(() => {
 		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
 	);
 	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-		DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+		DOMRect.fromRect(
+			{
+				x: 0,
+				y: 0,
+				width: 1200,
+				height: 800,
+			},
+		),
 	);
-	unregister = registerPane("changes", {
-		title: "Changes",
-		render: () => <ChangesPaneView diff={DIFF} scopes={undefined} controls={<span />} onRefresh={() => {}} />,
-	});
+	unregister = registerPane(
+		"changes",
+		{
+			title: "Changes",
+			render: () => (
+				<ChangesPaneView
+					diff={DIFF}
+					scopes={undefined}
+					controls={<span />}
+					onRefresh={() =>
+					{
+					}}
+				/>
+			),
+		},
+	);
 });
 
-afterEach(() => {
-	act(() => {
+afterEach(() =>
+{
+	act(() =>
+	{
 		setKeyboardShortcutsOpen(false);
 	});
 	unregister();
@@ -109,28 +196,35 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe("Changes pane shortcuts", () => {
-	it("⌃⇧D toggles the Changes pane", () => {
+describe("Changes pane shortcuts", () =>
+{
+	it("⌃⇧D toggles the Changes pane", () =>
+	{
 		renderSession();
 		const before = changesPressed();
 		const opened = press(CTRL_SHIFT_D);
 		const afterOpen = changesPressed();
 		const closed = press(CTRL_SHIFT_D);
 
-		expect({
-			before,
-			afterOpen,
-			afterClose: changesPressed(),
-			prevented: [opened.defaultPrevented, closed.defaultPrevented],
-		}).toStrictEqual({
-			before: "false",
-			afterOpen: "true",
-			afterClose: "false",
-			prevented: [true, true],
-		});
+		expect(
+			{
+				before,
+				afterOpen,
+				afterClose: changesPressed(),
+				prevented: [opened.defaultPrevented, closed.defaultPrevented],
+			},
+		).toStrictEqual(
+			{
+				before: "false",
+				afterOpen: "true",
+				afterClose: "false",
+				prevented: [true, true],
+			},
+		);
 	});
 
-	it("⌃⇧Y toggles the file list only while the Changes pane is open", () => {
+	it("⌃⇧Y toggles the file list only while the Changes pane is open", () =>
+	{
 		renderSession();
 		const whileClosed = press(CTRL_SHIFT_Y);
 		press(CTRL_SHIFT_D);
@@ -139,42 +233,62 @@ describe("Changes pane shortcuts", () => {
 		const afterShow = showFilesState();
 		press(CTRL_SHIFT_Y);
 
-		expect({
-			closedPrevented: whileClosed.defaultPrevented,
-			before,
-			shownPrevented: shown.defaultPrevented,
-			afterShow,
-			afterHide: showFilesState(),
-		}).toStrictEqual({
-			closedPrevented: false,
-			before: "false",
-			shownPrevented: true,
-			afterShow: "true",
-			afterHide: "false",
-		});
+		expect(
+			{
+				closedPrevented: whileClosed.defaultPrevented,
+				before,
+				shownPrevented: shown.defaultPrevented,
+				afterShow,
+				afterHide: showFilesState(),
+			},
+		).toStrictEqual(
+			{
+				closedPrevented: false,
+				before: "false",
+				shownPrevented: true,
+				afterShow: "true",
+				afterHide: "false",
+			},
+		);
 	});
 
-	it("⌘P opens Go to file only while the Changes pane is open", () => {
+	it("⌘P opens Go to file only while the Changes pane is open", () =>
+	{
 		renderSession();
 		const whileClosed = press(CMD_P);
-		const closedCombobox = screen.queryByRole("combobox", {name: "Search changed files"});
+		const closedCombobox = screen.queryByRole(
+			"combobox",
+			{
+				name: "Search changed files",
+			},
+		);
 		press(CTRL_SHIFT_D);
 		const whileOpen = press(CMD_P);
 
-		expect({
-			closedPrevented: whileClosed.defaultPrevented,
-			closedCombobox,
-			openPrevented: whileOpen.defaultPrevented,
-			openCombobox: screen.getByRole("combobox", {name: "Search changed files"}).tagName,
-		}).toStrictEqual({
-			closedPrevented: false,
-			closedCombobox: null,
-			openPrevented: true,
-			openCombobox: "INPUT",
-		});
+		expect(
+			{
+				closedPrevented: whileClosed.defaultPrevented,
+				closedCombobox,
+				openPrevented: whileOpen.defaultPrevented,
+				openCombobox: screen.getByRole(
+					"combobox",
+					{
+						name: "Search changed files",
+					},
+				).tagName,
+			},
+		).toStrictEqual(
+			{
+				closedPrevented: false,
+				closedCombobox: null,
+				openPrevented: true,
+				openCombobox: "INPUT",
+			},
+		);
 	});
 
-	it("⌘P still opens Go to file while another overlay is open, as upstream's Changes popup is ungated", () => {
+	it("⌘P still opens Go to file while another overlay is open, as upstream's Changes popup is ungated", () =>
+	{
 		renderSession();
 		press(CTRL_SHIFT_D);
 		render(
@@ -185,26 +299,47 @@ describe("Changes pane shortcuts", () => {
 				</PopoverContent>
 			</PopoverRoot>,
 		);
-		act(() => {
+		act(() =>
+		{
 			(document.activeElement as HTMLElement | null)?.blur();
 		});
 		const overlayOpen = isAnotherOverlayOpen(document);
 		const event = press(CMD_P);
 
-		expect({
-			overlayOpen,
-			prevented: event.defaultPrevented,
-			combobox: screen.getByRole("combobox", {name: "Search changed files"}).tagName,
-		}).toStrictEqual({overlayOpen: true, prevented: true, combobox: "INPUT"});
+		expect(
+			{
+				overlayOpen,
+				prevented: event.defaultPrevented,
+				combobox: screen.getByRole(
+					"combobox",
+					{
+						name: "Search changed files",
+					},
+				).tagName,
+			},
+		).toStrictEqual(
+			{
+				overlayOpen: true,
+				prevented: true,
+				combobox: "INPUT",
+			},
+		);
 	});
 
-	it("lists the three Changes shortcuts in the shortcuts dialog", async () => {
+	it("lists the three Changes shortcuts in the shortcuts dialog", async () =>
+	{
 		render(<KeyboardShortcutsDialog />);
-		act(() => {
+		act(() =>
+		{
 			setKeyboardShortcutsOpen(true);
 		});
 
-		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Keyboard shortcuts",
+			},
+		);
 		const labels = within(dialog)
 			.getAllByText(/changes/i)
 			.map((element) => element.textContent);

@@ -11,21 +11,63 @@ import {cutUnterminatedPrivateKey, maskSecretsFixed} from "./secret-mask";
  * `thinking` is an assistant record whose last block is a thinking block.
  */
 export type WorkingMarkerEvent =
-	| {kind: "prompt"; at: number}
-	| {kind: "tool"; at: number; label: string}
-	| {kind: "progress"; at: number}
-	| {kind: "thinking"; at: number}
-	| {kind: "retry"; at: number; attempt: number; maxRetries: number; error: string}
-	| {kind: "interrupt"; at: number}
-	| {kind: "stop"; at: number};
+	|
+	  {
+			kind: "prompt";
+			at: number;
+	  }
+	|
+	  {
+			kind: "tool";
+			at: number;
+			label: string;
+	  }
+	|
+	  {
+			kind: "progress";
+			at: number;
+	  }
+	|
+	  {
+			kind: "thinking";
+			at: number;
+	  }
+	|
+	  {
+			kind: "retry";
+			at: number;
+			attempt: number;
+			maxRetries: number;
+			error: string;
+	  }
+	|
+	  {
+			kind: "interrupt";
+			at: number;
+	  }
+	|
+	  {
+			kind: "stop";
+			at: number;
+	  };
 
 /** Upstream claude.ai/code's transcript tail marker (busy / stopping / retrying / hidden). */
 export type WorkingMarkerState =
-	| {status: "idle"}
-	| {status: "stopping"}
+	|
+	  {
+			status: "idle";
+	  }
+	|
+	  {
+			status: "stopping";
+	  }
 	/** Blocked on a tool permission prompt: a still spark with no status text. */
-	| {status: "waiting"}
-	| {
+	|
+	  {
+			status: "waiting";
+	  }
+	|
+	  {
 			status: "working";
 			label: string;
 			thinking: boolean;
@@ -34,7 +76,8 @@ export type WorkingMarkerState =
 			turnStartedAt: number;
 			elapsedSeconds: number;
 	  }
-	| {
+	|
+	  {
 			status: "retrying";
 			error: string;
 			attempt: number;
@@ -45,20 +88,30 @@ export type WorkingMarkerState =
 
 const WORKING_LABEL = "Working…";
 
-interface Turn {
+interface Turn
+{
 	startedAt: number;
 	label: string;
-	retry: {attempt: number; maxRetries: number; error: string} | null;
+	retry:
+	{
+		attempt: number;
+		maxRetries: number;
+		error: string;
+	} | null;
 	stopping: boolean;
 	thinking: boolean;
 	replied: boolean;
 }
 
-export function workingMarkerState(events: readonly WorkingMarkerEvent[], now: number): WorkingMarkerState {
+export function workingMarkerState(events: readonly WorkingMarkerEvent[], now: number): WorkingMarkerState
+{
 	let turn: Turn | null = null;
-	for (const event of events) {
-		if (event.kind === "prompt") {
-			turn = {
+	for (const event of events)
+	{
+		if (event.kind === "prompt")
+		{
+			turn =
+			{
 				startedAt: event.at,
 				label: WORKING_LABEL,
 				retry: null,
@@ -69,24 +122,56 @@ export function workingMarkerState(events: readonly WorkingMarkerEvent[], now: n
 			continue;
 		}
 		if (turn === null) continue;
-		switch (event.kind) {
+		switch (event.kind)
+		{
 			case "tool":
-				turn = {...turn, label: event.label, retry: null, thinking: false, replied: true};
+				turn =
+				{
+					...turn,
+					label: event.label,
+					retry: null,
+					thinking: false,
+					replied: true,
+				};
 				break;
 			case "progress":
-				turn = {...turn, label: WORKING_LABEL, retry: null, thinking: false, replied: true};
+				turn =
+				{
+					...turn,
+					label: WORKING_LABEL,
+					retry: null,
+					thinking: false,
+					replied: true,
+				};
 				break;
 			case "thinking":
-				turn = {...turn, label: WORKING_LABEL, retry: null, thinking: true, replied: true};
+				turn =
+				{
+					...turn,
+					label: WORKING_LABEL,
+					retry: null,
+					thinking: true,
+					replied: true,
+				};
 				break;
 			case "retry":
-				turn = {
+				turn =
+				{
 					...turn,
-					retry: {attempt: event.attempt, maxRetries: event.maxRetries, error: event.error},
+					retry:
+					{
+						attempt: event.attempt,
+						maxRetries: event.maxRetries,
+						error: event.error,
+					},
 				};
 				break;
 			case "interrupt":
-				turn = {...turn, stopping: true};
+				turn =
+				{
+					...turn,
+					stopping: true,
+				};
 				break;
 			case "stop":
 				turn = null;
@@ -94,10 +179,17 @@ export function workingMarkerState(events: readonly WorkingMarkerEvent[], now: n
 		}
 	}
 
-	if (turn === null) return {status: "idle"};
-	if (turn.stopping) return {status: "stopping"};
+	if (turn === null)
+		return {
+			status: "idle",
+		};
+	if (turn.stopping)
+		return {
+			status: "stopping",
+		};
 	const elapsedSeconds = Math.max(0, Math.floor((now - turn.startedAt) / 1000));
-	if (turn.retry !== null) {
+	if (turn.retry !== null)
+	{
 		return {
 			status: "retrying",
 			...turn.retry,
@@ -116,23 +208,42 @@ export function workingMarkerState(events: readonly WorkingMarkerEvent[], now: n
 }
 
 const ELAPSED_UNITS = [
-	{unit: "day", seconds: 86_400},
-	{unit: "hour", seconds: 3600},
-	{unit: "minute", seconds: 60},
-	{unit: "second", seconds: 1},
+	{
+		unit: "day",
+		seconds: 86_400,
+	},
+	{
+		unit: "hour",
+		seconds: 3600,
+	},
+	{
+		unit: "minute",
+		seconds: 60,
+	},
+	{
+		unit: "second",
+		seconds: 1,
+	},
 ] as const;
 
 type ElapsedUnit = (typeof ELAPSED_UNITS)[number]["unit"];
 
-function formatUnit(value: number, unit: ElapsedUnit, pad = false): string {
-	try {
-		return new Intl.NumberFormat("en", {
-			style: "unit",
-			unit,
-			unitDisplay: "narrow",
-			minimumIntegerDigits: pad ? 2 : 1,
-		}).format(value);
-	} catch {
+function formatUnit(value: number, unit: ElapsedUnit, pad = false): string
+{
+	try
+	{
+		return new Intl.NumberFormat(
+			"en",
+			{
+				style: "unit",
+				unit,
+				unitDisplay: "narrow",
+				minimumIntegerDigits: pad ? 2 : 1,
+			},
+		).format(value);
+	}
+	catch
+	{
 		return `${String(value).padStart(pad ? 2 : 1, "0")}${unit[0]}`;
 	}
 }
@@ -141,12 +252,14 @@ function formatUnit(value: number, unit: ElapsedUnit, pad = false): string {
  * Upstream's elapsed format (`nW`): up to three consecutive units starting at
  * the largest non-zero one, zero units dropped, no padding ("1m 5s", "1h 2m 5s").
  */
-export function formatElapsed(totalSeconds: number): string {
+export function formatElapsed(totalSeconds: number): string
+{
 	const start = ELAPSED_UNITS.findIndex(({seconds}) => totalSeconds >= seconds);
 	if (start === -1) return formatUnit(0, "second");
 	let remaining = totalSeconds;
 	const parts: string[] = [];
-	for (const {unit, seconds} of ELAPSED_UNITS.slice(start, start + 3)) {
+	for (const {unit, seconds} of ELAPSED_UNITS.slice(start, start + 3))
+	{
 		const value = Math.floor(remaining / seconds);
 		remaining -= value * seconds;
 		if (value > 0) parts.push(formatUnit(value, unit));
@@ -159,12 +272,14 @@ export function formatElapsed(totalSeconds: number): string {
  * three consecutive units from the largest non-zero one, zeros kept, every
  * unit after the first except days two digits wide ("1m 05s", "1h 00m 00s").
  */
-export function formatPaddedElapsed(totalSeconds: number): string {
+export function formatPaddedElapsed(totalSeconds: number): string
+{
 	const start = ELAPSED_UNITS.findIndex(({seconds}) => totalSeconds >= seconds);
 	if (start === -1) return formatUnit(0, "second");
 	let remaining = totalSeconds;
 	return ELAPSED_UNITS.slice(start, start + 3)
-		.map(({unit, seconds}, i) => {
+		.map(({unit, seconds}, i) =>
+		{
 			const value = Math.floor(remaining / seconds);
 			remaining -= value * seconds;
 			return formatUnit(value, unit, i > 0 && unit !== "day");
@@ -177,20 +292,29 @@ const THINKING_STAT = "Thinking";
 /** Upstream shows a live elapsed clock only from 2s (`R=u>=2?u:void 0`). */
 export const ELAPSED_MIN_SECONDS = 2;
 
-function liveElapsedStats(elapsedSeconds: number): string[] {
+function liveElapsedStats(elapsedSeconds: number): string[]
+{
 	return elapsedSeconds < ELAPSED_MIN_SECONDS ? [] : [formatElapsed(elapsedSeconds)];
 }
 
-const COMPACT_TOKENS = new Intl.NumberFormat("en", {notation: "compact", maximumFractionDigits: 1});
+const COMPACT_TOKENS = new Intl.NumberFormat(
+	"en",
+	{
+		notation: "compact",
+		maximumFractionDigits: 1,
+	},
+);
 
 /** Upstream's token stat: "1 token", else "{n} tokens" with a compact lowercase count ("50.2k tokens"). */
-export function formatTokenEstimate(tokens: number): string {
+export function formatTokenEstimate(tokens: number): string
+{
 	if (tokens === 1) return "1 token";
 	return `${COMPACT_TOKENS.format(tokens).toLowerCase()} tokens`;
 }
 
 /** Upstream shows the token stat with the clock (from 2s) and only once the count is non-zero. */
-function tokenStats(elapsedSeconds: number, tokens: number): string[] {
+function tokenStats(elapsedSeconds: number, tokens: number): string[]
+{
 	return elapsedSeconds < ELAPSED_MIN_SECONDS || tokens <= 0 ? [] : [formatTokenEstimate(tokens)];
 }
 
@@ -199,7 +323,8 @@ function tokenStats(elapsedSeconds: number, tokens: number): string[] {
  * in-flight call as its own busy row: upstream keeps the line mounted but
  * invisible, so there is no second status line. Stopping and retrying still show.
  */
-export function tailMarkerQuiet(state: WorkingMarkerState, inFlightRow: boolean): boolean {
+export function tailMarkerQuiet(state: WorkingMarkerState, inFlightRow: boolean): boolean
+{
 	return inFlightRow && state.status === "working";
 }
 
@@ -212,7 +337,13 @@ export function workingLineWaitsOnUser({
 	awaitingPermission,
 	sessionState,
 	cardShown,
-}: Readonly<{awaitingPermission: boolean; sessionState: SessionSummaryState | null; cardShown: boolean}>): boolean {
+}: Readonly<
+{
+	awaitingPermission: boolean;
+	sessionState: SessionSummaryState | null;
+	cardShown: boolean;
+}>): boolean
+{
 	return (awaitingPermission || sessionState === "waiting") && !cardShown;
 }
 
@@ -222,14 +353,16 @@ export function workingLineWaitsOnUser({
  * `unspoken` words come from a grouped step, so the line announces them;
  * `since` is the call's clock start (`toolLabelSince`), null for the turn's.
  */
-export interface WorkingLineToolLabel {
+export interface WorkingLineToolLabel
+{
 	words: string;
 	unspoken: boolean;
 	since: number | null;
 }
 
 /** Upstream's working-activity label (`ct`): every secret becomes seven bullets, then an unterminated private key is cut. */
-export function maskWorkingLabel(words: string): string {
+export function maskWorkingLabel(words: string): string
+{
 	return cutUnterminatedPrivateKey(maskSecretsFixed(words));
 }
 
@@ -240,11 +373,13 @@ export function workingLineLabelSource({
 	state,
 	phase,
 	toolLabel,
-}: Readonly<{
+}: Readonly<
+{
 	state: WorkingMarkerState;
 	phase: string | null;
 	toolLabel: WorkingLineToolLabel | null;
-}>): WorkingLineLabelSource {
+}>): WorkingLineLabelSource
+{
 	if (state.status === "stopping") return "stopping";
 	if (state.status === "retrying") return "retry";
 	if (phase !== null) return "phase";
@@ -252,13 +387,15 @@ export function workingLineLabelSource({
 }
 
 /** One permission-wait interval; `to` is null while it is still open. */
-export interface PermissionWait {
+export interface PermissionWait
+{
 	from: number;
 	to: number | null;
 }
 
 /** Upstream's `waitedMsSince`: the permission-wait time after `since`, an open wait counting nothing. */
-export function waitedMsSince(waits: readonly PermissionWait[], since: number): number {
+export function waitedMsSince(waits: readonly PermissionWait[], since: number): number
+{
 	return waits.reduce((sum, {from, to}) => sum + Math.max(0, (to ?? from) - Math.max(from, since)), 0);
 }
 
@@ -267,7 +404,13 @@ export function toolLabelSince({
 	callStartedAt,
 	turnStartedAt,
 	waits,
-}: Readonly<{callStartedAt: number | null; turnStartedAt: number; waits: readonly PermissionWait[]}>): number {
+}: Readonly<
+{
+	callStartedAt: number | null;
+	turnStartedAt: number;
+	waits: readonly PermissionWait[];
+}>): number
+{
 	const start = Math.max(callStartedAt ?? turnStartedAt, turnStartedAt);
 	return start + waitedMsSince(waits, start);
 }
@@ -275,7 +418,15 @@ export function toolLabelSince({
 /** Upstream's `clockNotBefore = toolLabelEndedAt + 2e3`: no clock for 2s after a call's words clear. */
 export const TOOL_CLOCK_HOLD_MS = 2000;
 
-export function clockHidden({now, endedAt}: Readonly<{now: number; endedAt: number | null}>): boolean {
+export function clockHidden({
+	now,
+	endedAt,
+}: Readonly<
+{
+	now: number;
+	endedAt: number | null;
+}>): boolean
+{
 	return endedAt !== null && now < endedAt + TOOL_CLOCK_HOLD_MS;
 }
 
@@ -284,10 +435,16 @@ export function clockHidden({now, endedAt}: Readonly<{now: number; endedAt: numb
  * and the token stat, never the Thinking word.
  */
 export function toolLabelStats(
-	state: Extract<WorkingMarkerState, {status: "working"}>,
+	state: Extract<
+		WorkingMarkerState,
+		{
+			status: "working";
+		}
+	>,
 	since: number | null,
 	tokens: number,
-): string[] {
+): string[]
+{
 	const now = state.turnStartedAt + state.elapsedSeconds * 1000;
 	const elapsed = Math.max(0, Math.floor((now - (since ?? state.turnStartedAt)) / 1000));
 	return [...liveElapsedStats(elapsed), ...tokenStats(elapsed, tokens)];
@@ -300,7 +457,8 @@ export const PHASE_SETTLE_MS = 150;
 export const CONNECTING_PHASE_LABEL = "Connecting…";
 
 /** Upstream's `K`: a phase word drops its trailing ellipsis for the visible label and sr status. */
-export function stripTrailingEllipsis(label: string): string {
+export function stripTrailingEllipsis(label: string): string
+{
 	return label.replace(/(…|\.\.\.)$/u, "").trimEnd();
 }
 
@@ -313,13 +471,20 @@ export function phaseLabel({
 	sending,
 	promptSeen,
 	firstAssistantSeen,
-}: Readonly<{sending: boolean; promptSeen: boolean; firstAssistantSeen: boolean}>): string | null {
+}: Readonly<
+{
+	sending: boolean;
+	promptSeen: boolean;
+	firstAssistantSeen: boolean;
+}>): string | null
+{
 	if (promptSeen) return firstAssistantSeen ? null : "Waiting for Claude…";
 	return sending ? "Sending…" : null;
 }
 
 /** The working line's visible pieces: an optional label, then "·"-joined stats. */
-export interface WorkingLineParts {
+export interface WorkingLineParts
+{
 	label: string;
 	stats: string[];
 }
@@ -328,14 +493,22 @@ export interface WorkingLineParts {
  * `tokens` is the turn's token estimate (`turnTokenEstimate`), shown only while working.
  * `showClock` false drops the elapsed clock (upstream's 2s hold after a call's words clear).
  */
-export function workingLineParts(state: WorkingMarkerState, tokens = 0, showClock = true): WorkingLineParts {
-	switch (state.status) {
+export function workingLineParts(state: WorkingMarkerState, tokens = 0, showClock = true): WorkingLineParts
+{
+	switch (state.status)
+	{
 		case "idle":
 		case "waiting":
-			return {label: "", stats: []};
+			return {
+				label: "",
+				stats: [],
+			};
 		case "stopping":
 			// Upstream's e2() strips the trailing ellipsis: "Stopping", with no clock.
-			return {label: "Stopping", stats: []};
+			return {
+				label: "Stopping",
+				stats: [],
+			};
 		case "working":
 			// Upstream's order is "{elapsed} · {tokens} · Thinking", with Thinking a plain stat while a thinking block streams.
 			return {
@@ -356,14 +529,17 @@ export function workingLineParts(state: WorkingMarkerState, tokens = 0, showCloc
 	}
 }
 
-export function workingMarkerText(state: WorkingMarkerState, tokens = 0): string {
+export function workingMarkerText(state: WorkingMarkerState, tokens = 0): string
+{
 	const {label, stats} = workingLineParts(state, tokens);
 	return [label, ...stats].filter((part) => part !== "").join(" · ");
 }
 
 /** The polite sr-only status: upstream announces "Working…", never the ticking clock. */
-export function workingLineAnnouncement(state: WorkingMarkerState): string {
-	switch (state.status) {
+export function workingLineAnnouncement(state: WorkingMarkerState): string
+{
+	switch (state.status)
+	{
 		case "idle":
 		case "waiting":
 			return "";
@@ -377,31 +553,40 @@ export function workingLineAnnouncement(state: WorkingMarkerState): string {
 	}
 }
 
-function basename(path: string): string {
+function basename(path: string): string
+{
 	return path.split(/[\\/]/).pop() ?? path;
 }
 
-function hostname(url: string): string {
-	try {
+function hostname(url: string): string
+{
+	try
+	{
 		return new URL(url).hostname;
-	} catch {
+	}
+	catch
+	{
 		return url;
 	}
 }
 
-const ToolInputFieldsSchema = z.object({
-	file_path: z.string().optional(),
-	pattern: z.string().optional(),
-	description: z.string().optional(),
-	url: z.string().optional(),
-});
+const ToolInputFieldsSchema = z.object(
+	{
+		file_path: z.string().optional(),
+		pattern: z.string().optional(),
+		description: z.string().optional(),
+		url: z.string().optional(),
+	},
+);
 
 /** The status-line label for a running tool; `input` is unknown for hook-only pending tools. */
-export function toolActivityLabel(name: string, input: unknown): string {
+export function toolActivityLabel(name: string, input: unknown): string
+{
 	const parsed = ToolInputFieldsSchema.safeParse(input);
 	const fields = parsed.success ? parsed.data : {};
 	const file = fields.file_path === undefined ? "file" : basename(fields.file_path);
-	switch (name) {
+	switch (name)
+	{
 		case "Read":
 			return `Reading ${file}`;
 		case "Edit":
@@ -428,41 +613,54 @@ export function toolActivityLabel(name: string, input: unknown): string {
 	}
 }
 
-const ContentBlockSchema = z.object({
-	type: z.string(),
-	text: z.string().optional(),
-	thinking: z.string().optional(),
-	content: z.unknown().optional(),
-	name: z.string().optional(),
-	input: z.unknown().optional(),
-});
+const ContentBlockSchema = z.object(
+	{
+		type: z.string(),
+		text: z.string().optional(),
+		thinking: z.string().optional(),
+		content: z.unknown().optional(),
+		name: z.string().optional(),
+		input: z.unknown().optional(),
+	},
+);
 
-const MarkerRecordSchema = z.object({
-	type: z.string(),
-	subtype: z.string().optional(),
-	timestamp: z.string().optional(),
-	isMeta: z.boolean().optional(),
-	isSidechain: z.boolean().optional(),
-	isCompactSummary: z.boolean().optional(),
-	retryAttempt: z.number().optional(),
-	maxRetries: z.number().optional(),
-	retryInMs: z.number().optional(),
-	error: z.unknown().optional(),
-	message: z.object({content: z.union([z.string(), z.array(ContentBlockSchema)]).optional()}).optional(),
-});
+const MarkerRecordSchema = z.object(
+	{
+		type: z.string(),
+		subtype: z.string().optional(),
+		timestamp: z.string().optional(),
+		isMeta: z.boolean().optional(),
+		isSidechain: z.boolean().optional(),
+		isCompactSummary: z.boolean().optional(),
+		retryAttempt: z.number().optional(),
+		maxRetries: z.number().optional(),
+		retryInMs: z.number().optional(),
+		error: z.unknown().optional(),
+		message: z
+			.object(
+				{
+					content: z.union([z.string(), z.array(ContentBlockSchema)]).optional(),
+				},
+			)
+			.optional(),
+	},
+);
 
 type MarkerRecord = z.infer<typeof MarkerRecordSchema>;
 
-const ErrorObjectSchema = z.object({
-	status: z.number().optional(),
-	formatted: z.string().optional(),
-	message: z.string().optional(),
-});
+const ErrorObjectSchema = z.object(
+	{
+		status: z.number().optional(),
+		formatted: z.string().optional(),
+		message: z.string().optional(),
+	},
+);
 
 const NO_RESPONSE = "No response from the API";
 
 /** Upstream's short retry phrases (`je`/`xO`), matched on the HTTP status or the error text. */
-function errorHeadline(error: unknown): string {
+function errorHeadline(error: unknown): string
+{
 	const parsed = ErrorObjectSchema.safeParse(error);
 	const status = parsed.success ? parsed.data.status : undefined;
 	const raw = typeof error === "string" ? error : error === undefined ? "" : JSON.stringify(error);
@@ -481,47 +679,85 @@ const ONCE_MORE_PREFIX = "Trying once more";
  * The retry line's headline: upstream's short phrase, or "Trying once more,
  * for up to {minutes} min" for a single no-response retry whose wait is known.
  */
-function retryHeadline(record: MarkerRecord): string {
+function retryHeadline(record: MarkerRecord): string
+{
 	const headline = errorHeadline(record.error);
 	if (headline !== NO_RESPONSE || record.maxRetries !== 1 || record.retryInMs === undefined) return headline;
 	return `${ONCE_MORE_PREFIX}, for up to ${Math.max(1, Math.ceil(record.retryInMs / 60_000))} min`;
 }
 
 /** "{headline} · Retrying (n/m)", except the once-more sentence stands alone. */
-function retryLabel({error, attempt, maxRetries}: Readonly<{error: string; attempt: number; maxRetries: number}>) {
+function retryLabel({
+	error,
+	attempt,
+	maxRetries,
+}: Readonly<
+{
+	error: string;
+	attempt: number;
+	maxRetries: number;
+}>)
+{
 	return error.startsWith(ONCE_MORE_PREFIX) ? error : `${error} · Retrying (${attempt}/${maxRetries})`;
 }
 
-function userEvent(record: MarkerRecord, at: number): WorkingMarkerEvent | null {
+function userEvent(record: MarkerRecord, at: number): WorkingMarkerEvent | null
+{
 	if (record.isMeta === true || record.isCompactSummary === true) return null;
 	const content = record.message?.content;
 	if (content === undefined) return null;
-	if (typeof content === "string") {
-		return {kind: isRequestInterrupted(content) ? "stop" : "prompt", at};
+	if (typeof content === "string")
+	{
+		return {
+			kind: isRequestInterrupted(content) ? "stop" : "prompt",
+			at,
+		};
 	}
 	if (content.length === 0) return null;
-	if (content.some((block) => block.type === "tool_result")) return {kind: "progress", at};
+	if (content.some((block) => block.type === "tool_result"))
+		return {
+			kind: "progress",
+			at,
+		};
 	const text = content
 		.filter((block) => block.type === "text")
 		.map((block) => block.text ?? "")
 		.join("");
-	return {kind: isRequestInterrupted(text) ? "stop" : "prompt", at};
+	return {
+		kind: isRequestInterrupted(text) ? "stop" : "prompt",
+		at,
+	};
 }
 
-function assistantEvent(record: MarkerRecord, at: number): WorkingMarkerEvent {
+function assistantEvent(record: MarkerRecord, at: number): WorkingMarkerEvent
+{
 	const content = record.message?.content;
 	const tools = Array.isArray(content) ? content.filter((block) => block.type === "tool_use") : [];
 	const last = tools.at(-1);
-	if (last === undefined) {
+	if (last === undefined)
+	{
 		const final = Array.isArray(content) ? content.at(-1) : undefined;
-		return {kind: final?.type === "thinking" ? "thinking" : "progress", at};
+		return {
+			kind: final?.type === "thinking" ? "thinking" : "progress",
+			at,
+		};
 	}
-	return {kind: "tool", at, label: toolActivityLabel(last.name ?? "", last.input)};
+	return {
+		kind: "tool",
+		at,
+		label: toolActivityLabel(last.name ?? "", last.input),
+	};
 }
 
-function systemEvent(record: MarkerRecord, at: number): WorkingMarkerEvent | null {
-	if (record.subtype === "turn_duration") return {kind: "stop", at};
-	if (record.subtype === "api_error" && record.retryAttempt !== undefined && record.maxRetries !== undefined) {
+function systemEvent(record: MarkerRecord, at: number): WorkingMarkerEvent | null
+{
+	if (record.subtype === "turn_duration")
+		return {
+			kind: "stop",
+			at,
+		};
+	if (record.subtype === "api_error" && record.retryAttempt !== undefined && record.maxRetries !== undefined)
+	{
 		return {
 			kind: "retry",
 			at,
@@ -535,18 +771,28 @@ function systemEvent(record: MarkerRecord, at: number): WorkingMarkerEvent | nul
 
 const ToolResultContentSchema = z.union([
 	z.string(),
-	z.array(z.object({type: z.string(), text: z.string().optional()})),
+	z.array(
+		z.object(
+			{
+				type: z.string(),
+				text: z.string().optional(),
+			},
+		),
+	),
 ]);
 
-function toolResultLength(content: unknown): number {
+function toolResultLength(content: unknown): number
+{
 	const parsed = ToolResultContentSchema.safeParse(content);
 	if (!parsed.success) return 0;
 	if (typeof parsed.data === "string") return parsed.data.length;
 	return parsed.data.reduce((sum, block) => sum + (block.text?.length ?? 0), 0);
 }
 
-function streamedLength(block: z.infer<typeof ContentBlockSchema>): number {
-	switch (block.type) {
+function streamedLength(block: z.infer<typeof ContentBlockSchema>): number
+{
+	switch (block.type)
+	{
 		case "text":
 			return block.text?.length ?? 0;
 		case "thinking":
@@ -565,9 +811,11 @@ function streamedLength(block: z.infer<typeof ContentBlockSchema>): number {
  * since the turn's prompt (assistant text, thinking and tool_use input JSON,
  * and tool_result content) divided by 4. Scans back only to that prompt.
  */
-export function turnTokenEstimate(records: readonly unknown[]): number {
+export function turnTokenEstimate(records: readonly unknown[]): number
+{
 	let characters = 0;
-	for (let i = records.length - 1; i >= 0; i--) {
+	for (let i = records.length - 1; i >= 0; i--)
+	{
 		const parsed = MarkerRecordSchema.safeParse(records[i]);
 		if (!parsed.success || parsed.data.isSidechain === true) continue;
 		const record = parsed.data;
@@ -581,10 +829,12 @@ export function turnTokenEstimate(records: readonly unknown[]): number {
 }
 
 /** The main thread's turn signals from raw JSONL records, oldest first. */
-export function markerEventsFromRecords(records: readonly unknown[]): WorkingMarkerEvent[] {
+export function markerEventsFromRecords(records: readonly unknown[]): WorkingMarkerEvent[]
+{
 	const events: WorkingMarkerEvent[] = [];
 	let lastAt = 0;
-	for (const raw of records) {
+	for (const raw of records)
+	{
 		const parsed = MarkerRecordSchema.safeParse(raw);
 		if (!parsed.success || parsed.data.isSidechain === true) continue;
 		const record = parsed.data;

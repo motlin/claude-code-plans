@@ -16,78 +16,99 @@ type ObserverChild = ChildProcessByStdio<null, Readable, Readable>;
 type SpawnObserver = (
 	command: string,
 	arguments_: readonly string[],
-	options: {stdio: ["ignore", "pipe", "pipe"]; env?: NodeJS.ProcessEnv},
+	options:
+	{
+		stdio: ["ignore", "pipe", "pipe"];
+		env?: NodeJS.ProcessEnv;
+	},
 ) => ObserverChild;
 
-export interface TerminalObserverSocket {
+export interface TerminalObserverSocket
+{
 	send: (message: string) => void;
 	close: (code?: number, reason?: string) => void;
 }
 
-export interface ObserverOptions {
+export interface ObserverOptions
+{
 	target: string;
 	columns: number;
 	rows: number;
 }
 
-export interface TerminalObserver {
+export interface TerminalObserver
+{
 	stop: () => void;
 	shutdown: () => void;
 }
 
-interface RecordParser {
+interface RecordParser
+{
 	push: (chunk: Buffer | string) => void;
 	end: () => void;
 }
 
-export interface TerminalObserverDependencies {
+export interface TerminalObserverDependencies
+{
 	resolveTarget: (sessionId: string) => Promise<string>;
 	spawnObserver: SpawnObserver;
 }
 
-function parseRecord(line: string): HerdrTerminalRecord {
+function parseRecord(line: string): HerdrTerminalRecord
+{
 	return HerdrTerminalRecordSchema.parse(JSON.parse(line));
 }
 
 export function createTerminalRecordParser(
 	onRecord: (record: HerdrTerminalRecord) => void,
 	onError: (error: Error) => void,
-): RecordParser {
+): RecordParser
+{
 	let buffer = "";
 	let stopped = false;
 
-	const fail = (error: unknown): void => {
+	const fail = (error: unknown): void =>
+	{
 		if (stopped) return;
 		stopped = true;
 		onError(error instanceof Error ? error : new Error(String(error)));
 	};
 
 	return {
-		push(chunk) {
+		push(chunk)
+		{
 			if (stopped) return;
 			buffer += chunk.toString();
-			if (Buffer.byteLength(buffer) > MAXIMUM_LINE_BYTES && !buffer.includes("\n")) {
+			if (Buffer.byteLength(buffer) > MAXIMUM_LINE_BYTES && !buffer.includes("\n"))
+			{
 				fail(new Error("terminal observer record exceeds 5 MiB"));
 				return;
 			}
 
 			let newlineIndex = buffer.indexOf("\n");
 			// oxlint-disable-next-line typescript/no-unnecessary-condition -- fail() stops the observer mid-loop
-			while (newlineIndex !== -1 && !stopped) {
+			while (newlineIndex !== -1 && !stopped)
+			{
 				const line = buffer.slice(0, newlineIndex);
 				buffer = buffer.slice(newlineIndex + 1);
-				if (line.length > 0) {
-					try {
+				if (line.length > 0)
+				{
+					try
+					{
 						onRecord(parseRecord(line));
-					} catch (error) {
+					}
+					catch (error)
+					{
 						fail(error);
 					}
 				}
 				newlineIndex = buffer.indexOf("\n");
 			}
 		},
-		end() {
-			if (!stopped && buffer.length > 0) {
+		end()
+		{
+			if (!stopped && buffer.length > 0)
+			{
 				fail(new Error("terminal observer ended with an incomplete record"));
 			}
 		},
@@ -97,7 +118,8 @@ export function createTerminalRecordParser(
 const activeObservers = new Set<TerminalObserver>();
 
 /** The stdout/stderr half shared by the observe and control streams. */
-export interface TerminalStreamChild {
+export interface TerminalStreamChild
+{
 	stdout: Readable;
 	stderr: Readable;
 	exitCode: number | null;
@@ -109,14 +131,23 @@ export interface TerminalStreamChild {
 	off(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown;
 }
 
-export function parseViewport(columns: number, rows: number): {columns: number; rows: number} {
+export function parseViewport(
+	columns: number,
+	rows: number,
+):
+{
+	columns: number;
+	rows: number;
+}
+{
 	return {
 		columns: ViewportDimensionSchema.parse(columns),
 		rows: ViewportDimensionSchema.parse(rows),
 	};
 }
 
-export function sessionStreamArguments(mode: "observe" | "control", options: ObserverOptions): string[] {
+export function sessionStreamArguments(mode: "observe" | "control", options: ObserverOptions): string[]
+{
 	return [
 		"terminal",
 		"session",
@@ -133,14 +164,17 @@ export function sessionStreamArguments(mode: "observe" | "control", options: Obs
  * Forward herdr's NDJSON frame stream to the socket, enforcing a keyframe
  * first and monotonic sequence numbers, until terminal.closed or failure.
  */
-export function bridgeTerminalStream(child: TerminalStreamChild, socket: TerminalObserverSocket): TerminalObserver {
+export function bridgeTerminalStream(child: TerminalStreamChild, socket: TerminalObserverSocket): TerminalObserver
+{
 	let stopped = false;
 	let receivedClosed = false;
 	let lastSequence: number | null = null;
 	let standardError = "";
 
-	const observer: TerminalObserver = {
-		stop() {
+	const observer: TerminalObserver =
+	{
+		stop()
+		{
 			if (stopped) return;
 			stopped = true;
 			activeObservers.delete(observer);
@@ -151,22 +185,33 @@ export function bridgeTerminalStream(child: TerminalStreamChild, socket: Termina
 			child.off("exit", onChildExit);
 			if (child.exitCode === null && child.signalCode === null) child.kill("SIGTERM");
 		},
-		shutdown() {
+		shutdown()
+		{
 			if (stopped) return;
 			socket.close(1012, "terminal observer server stopped");
 			observer.stop();
 		},
 	};
 
-	const fail = (message: string): void => {
+	const fail = (message: string): void =>
+	{
 		if (stopped) return;
-		socket.send(JSON.stringify({type: "observer.error", message}));
+		socket.send(
+			JSON.stringify(
+				{
+					type: "observer.error",
+					message,
+				},
+			),
+		);
 		socket.close(1011, "terminal observer failed");
 		observer.stop();
 	};
 
-	const onRecord = (record: HerdrTerminalRecord): void => {
-		if (record.type === "terminal.closed") {
+	const onRecord = (record: HerdrTerminalRecord): void =>
+	{
+		if (record.type === "terminal.closed")
+		{
 			receivedClosed = true;
 			socket.send(JSON.stringify(record));
 			socket.close(1000, "terminal closed");
@@ -174,11 +219,13 @@ export function bridgeTerminalStream(child: TerminalStreamChild, socket: Termina
 			return;
 		}
 
-		if (lastSequence === null && !record.full) {
+		if (lastSequence === null && !record.full)
+		{
 			fail("terminal observer did not begin with a full keyframe");
 			return;
 		}
-		if (lastSequence !== null && record.seq <= lastSequence) {
+		if (lastSequence !== null && record.seq <= lastSequence)
+		{
 			fail("terminal frame sequence did not advance");
 			return;
 		}
@@ -187,22 +234,28 @@ export function bridgeTerminalStream(child: TerminalStreamChild, socket: Termina
 		socket.send(JSON.stringify(record));
 	};
 
-	const parser = createTerminalRecordParser(onRecord, (error) => {
+	const parser = createTerminalRecordParser(onRecord, (error) =>
+	{
 		fail(error.message);
 	});
-	const onStandardOutput = (chunk: Buffer | string): void => {
+	const onStandardOutput = (chunk: Buffer | string): void =>
+	{
 		parser.push(chunk);
 	};
-	const onStandardOutputEnd = (): void => {
+	const onStandardOutputEnd = (): void =>
+	{
 		parser.end();
 	};
-	const onStandardError = (chunk: Buffer | string): void => {
+	const onStandardError = (chunk: Buffer | string): void =>
+	{
 		standardError = `${standardError}${chunk.toString()}`.slice(-2000);
 	};
-	const onChildError = (error: Error): void => {
+	const onChildError = (error: Error): void =>
+	{
 		fail(error.message);
 	};
-	const onChildExit = (code: number | null, signal: NodeJS.Signals | null): void => {
+	const onChildExit = (code: number | null, signal: NodeJS.Signals | null): void =>
+	{
 		if (stopped || receivedClosed) return;
 		const detail = standardError.trim() || `exit ${String(code)} signal ${String(signal)}`;
 		fail(`herdr observer stopped before terminal.closed: ${detail}`);
@@ -221,27 +274,59 @@ export function bridgeTerminalStream(child: TerminalStreamChild, socket: Termina
  * Split a session-qualified terminal target (`term_x@later`) into herdr's own
  * terminal id and the environment that points the herdr CLI at that session's socket.
  */
-export function herdrTerminalSpawnTarget(qualifiedTarget: string): {target: string; env?: NodeJS.ProcessEnv} {
+export function herdrTerminalSpawnTarget(qualifiedTarget: string):
+{
+	target: string;
+	env?: NodeJS.ProcessEnv;
+}
+{
 	const {id, session} = splitHerdrId(qualifiedTarget);
-	if (session === null) return {target: id};
-	return {target: id, env: {...process.env, HERDR_SOCKET_PATH: herdrSocketPathForServer(session)}};
+	if (session === null)
+		return {
+			target: id,
+		};
+	return {
+		target: id,
+		env:
+		{
+			...process.env,
+			HERDR_SOCKET_PATH: herdrSocketPathForServer(session),
+		},
+	};
 }
 
 export function startTerminalObserver(
 	options: ObserverOptions,
 	socket: TerminalObserverSocket,
 	spawnObserver: SpawnObserver = spawn,
-): TerminalObserver {
+): TerminalObserver
+{
 	const viewport = parseViewport(options.columns, options.rows);
 	const {target, env} = herdrTerminalSpawnTarget(options.target);
-	const child = spawnObserver("herdr", sessionStreamArguments("observe", {target, ...viewport}), {
-		stdio: ["ignore", "pipe", "pipe"],
-		...(env ? {env} : {}),
-	});
+	const child = spawnObserver(
+		"herdr",
+		sessionStreamArguments(
+			"observe",
+			{
+				target,
+				...viewport,
+			},
+		),
+		{
+			stdio: ["ignore", "pipe", "pipe"],
+			...(env
+				?
+					{
+						env,
+					}
+				: {}),
+		},
+	);
 	return bridgeTerminalStream(child, socket);
 }
 
-async function livePanesOn(servers: HerdrServerLister): Promise<HerdrPaneLink[]> {
+async function livePanesOn(servers: HerdrServerLister): Promise<HerdrPaneLink[]>
+{
 	return getHerdrPanes(undefined, undefined, undefined, undefined, servers);
 }
 
@@ -250,7 +335,8 @@ export async function resolveSessionTerminal(
 	sessionId: string,
 	listPanes: (servers: HerdrServerLister) => Promise<HerdrPaneLink[]> = livePanesOn,
 	servers: HerdrServerLister = knownOrDiscoveredHerdrServers,
-): Promise<string> {
+): Promise<string>
+{
 	const pane = (await listPanes(servers)).find((candidate) => candidate.sessionId === sessionId);
 	if (!pane) throw new Error("No live herdr pane is linked to this session");
 	return qualifyHerdrId(pane.terminalId, splitHerdrId(pane.paneId).session);
@@ -260,8 +346,18 @@ export async function resolveSessionTerminal(
  * Any herdr pane's terminal id by pane id, Claude or not (a plain shell has no
  * session to resolve through), qualified by the pane's herdr session.
  */
-export async function resolvePaneTerminal(paneId: string, request: HerdrRequester = herdrRequest): Promise<string> {
-	const response = await request({id: "ccp:terminal:pane", method: "pane.get", params: {pane_id: paneId}});
+export async function resolvePaneTerminal(paneId: string, request: HerdrRequester = herdrRequest): Promise<string>
+{
+	const response = await request(
+		{
+			id: "ccp:terminal:pane",
+			method: "pane.get",
+			params:
+			{
+				pane_id: paneId,
+			},
+		},
+	);
 	const parsed = response.ok ? HerdrPaneInfoResultSchema.safeParse(response.value) : null;
 	if (!parsed?.success) throw new Error(`No live herdr pane ${paneId}`);
 	return qualifyHerdrId(parsed.data.pane.terminal_id, splitHerdrId(paneId).session);
@@ -274,12 +370,22 @@ export async function observeHerdrPane(
 	rows: number,
 	socket: TerminalObserverSocket,
 	spawnObserver: SpawnObserver = spawn,
-): Promise<TerminalObserver> {
+): Promise<TerminalObserver>
+{
 	const target = await resolvePaneTerminal(paneId);
-	return startTerminalObserver({target, columns, rows}, socket, spawnObserver);
+	return startTerminalObserver(
+		{
+			target,
+			columns,
+			rows,
+		},
+		socket,
+		spawnObserver,
+	);
 }
 
-const defaultDependencies: TerminalObserverDependencies = {
+const defaultDependencies: TerminalObserverDependencies =
+{
 	resolveTarget: resolveSessionTerminal,
 	spawnObserver: spawn,
 };
@@ -290,17 +396,28 @@ export async function observeHerdrSession(
 	rows: number,
 	socket: TerminalObserverSocket,
 	dependencies: TerminalObserverDependencies = defaultDependencies,
-): Promise<TerminalObserver> {
+): Promise<TerminalObserver>
+{
 	const target = await dependencies.resolveTarget(sessionId);
-	return startTerminalObserver({target, columns, rows}, socket, dependencies.spawnObserver);
+	return startTerminalObserver(
+		{
+			target,
+			columns,
+			rows,
+		},
+		socket,
+		dependencies.spawnObserver,
+	);
 }
 
-export function stopAllTerminalObservers(): void {
+export function stopAllTerminalObservers(): void
+{
 	for (const observer of activeObservers) observer.shutdown();
 }
 
 hmrDispose(stopAllTerminalObservers);
 
-export const __testing = {
+export const __testing =
+{
 	activeObserverCount: () => activeObservers.size,
 };

@@ -7,19 +7,33 @@ import {COARSE_POINTER_QUERY, useCoarsePointer} from "../src/lib/use-phone-sheet
 
 type Listener = () => void;
 
-function stubMatchMedia(matching: ReadonlySet<string>) {
-	const lists = new Map<string, {matches: boolean; listeners: Set<Listener>}>();
+function stubMatchMedia(matching: ReadonlySet<string>)
+{
+	const lists = new Map<
+		string,
+		{
+			matches: boolean;
+			listeners: Set<Listener>;
+		}
+	>();
 	vi.stubGlobal(
 		"matchMedia",
-		vi.fn((query: string) => {
+		vi.fn((query: string) =>
+		{
 			let state = lists.get(query);
-			if (!state) {
-				state = {matches: matching.has(query), listeners: new Set()};
+			if (!state)
+			{
+				state =
+				{
+					matches: matching.has(query),
+					listeners: new Set(),
+				};
 				lists.set(query, state);
 			}
 			const entry = state;
 			return {
-				get matches() {
+				get matches()
+				{
 					return entry.matches;
 				},
 				media: query,
@@ -33,7 +47,8 @@ function stubMatchMedia(matching: ReadonlySet<string>) {
 		}),
 	);
 	return {
-		flip(query: string, matches: boolean) {
+		flip(query: string, matches: boolean)
+		{
 			const state = lists.get(query);
 			if (!state) throw new Error(`no list for ${query}`);
 			state.matches = matches;
@@ -42,43 +57,52 @@ function stubMatchMedia(matching: ReadonlySet<string>) {
 	};
 }
 
-function Probe() {
+function Probe()
+{
 	return <span>{String(useCoarsePointer())}</span>;
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-describe("useCoarsePointer", () => {
-	it("uses exactly upstream's (pointer: coarse) query", () => {
+describe("useCoarsePointer", () =>
+{
+	it("uses exactly upstream's (pointer: coarse) query", () =>
+	{
 		expect(COARSE_POINTER_QUERY).toStrictEqual("(pointer: coarse)");
 	});
 
-	it("is true when (pointer: coarse) matches", () => {
+	it("is true when (pointer: coarse) matches", () =>
+	{
 		stubMatchMedia(new Set(["(pointer: coarse)"]));
 		const {container} = render(<Probe />);
 		expect(container.textContent).toStrictEqual("true");
 	});
 
-	it("ignores (hover: none) on a fine pointer", () => {
+	it("ignores (hover: none) on a fine pointer", () =>
+	{
 		stubMatchMedia(new Set(["(hover: none)", "(pointer: coarse), (hover: none)"]));
 		const {container} = render(<Probe />);
 		expect(container.textContent).toStrictEqual("false");
 	});
 
-	it("re-renders live when the pointer type changes", () => {
+	it("re-renders live when the pointer type changes", () =>
+	{
 		const media = stubMatchMedia(new Set());
 		const {container} = render(<Probe />);
 		expect(container.textContent).toStrictEqual("false");
-		act(() => {
+		act(() =>
+		{
 			media.flip("(pointer: coarse)", true);
 		});
 		expect(container.textContent).toStrictEqual("true");
 	});
 
-	it("renders false on the server", () => {
+	it("renders false on the server", () =>
+	{
 		stubMatchMedia(new Set(["(pointer: coarse)"]));
 		expect(renderToString(<Probe />)).toStrictEqual("<span>false</span>");
 	});

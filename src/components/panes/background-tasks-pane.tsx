@@ -5,7 +5,8 @@ import {type RefObject, useEffect, useId, useRef, useState} from "react";
 
 import type {SessionWorkflowRun} from "../../lib/api/session-workflow-runs";
 import {taskOutputQueryOptions} from "../../lib/api/task-output";
-import {
+import
+{
 	type BackgroundTaskFocus,
 	onBackgroundTaskFocusRequest,
 	setFinishedExpanded,
@@ -36,12 +37,14 @@ const OUTPUT_REGION = `${REGION_CAP} whitespace-pre-wrap break-all rounded-r6 bg
 const NOTE = "text-caption text-ink-muted";
 const MISSING_COPY = "Output no longer available";
 
-function taskTitle(task: BackgroundTask): string {
+function taskTitle(task: BackgroundTask): string
+{
 	return nonEmpty(task.description) ?? nonEmpty(task.command) ?? task.id;
 }
 
 /** The card title, with an artifact word linked to its URL as the transcript's task-event rows do. */
-function TaskTitle({task, title}: {task: BackgroundTask; title: string}) {
+function TaskTitle({task, title}: {task: BackgroundTask; title: string})
+{
 	const segments =
 		title === task.description
 			? taskDescriptionSegments(title, task.kind === "bash" ? "local_bash" : task.kind)
@@ -49,7 +52,8 @@ function TaskTitle({task, title}: {task: BackgroundTask; title: string}) {
 	return segments === undefined ? title : <TaskDescriptionLinks segments={segments} />;
 }
 
-function OutputRegion({title, output}: {title: string; output: string}) {
+function OutputRegion({title, output}: {title: string; output: string})
+{
 	return (
 		<pre role="region" aria-label={`Output for ${title}`} className={OUTPUT_REGION}>
 			<AnsiText content={output} />
@@ -58,7 +62,8 @@ function OutputRegion({title, output}: {title: string; output: string}) {
 }
 
 /** Output the transcript itself carries: TaskOutput reads, Monitor events, or an agent's result. */
-function InlineOutput({task, title}: {task: BackgroundTask; title: string}) {
+function InlineOutput({task, title}: {task: BackgroundTask; title: string})
+{
 	if (task.output === null) return <p className={NOTE}>{task.summary ?? "No output recorded."}</p>;
 	return <OutputRegion title={title} output={task.output} />;
 }
@@ -77,10 +82,12 @@ function OutputFile({
 	file: string;
 	task: BackgroundTask;
 	title: string;
-}) {
+})
+{
 	const {data, isError} = useQuery(taskOutputQueryOptions(sessionId, file, task.status === "running"));
 	if (data === undefined) return isError ? <InlineOutput task={task} title={title} /> : null;
-	if (data.status === "missing") {
+	if (data.status === "missing")
+	{
 		return task.output === null ? (
 			<p className={NOTE}>{MISSING_COPY}</p>
 		) : (
@@ -110,7 +117,8 @@ function BackgroundTaskCard({
 	sessionId: string | undefined;
 	expanded: boolean;
 	onToggle: () => void;
-}) {
+})
+{
 	const detailsId = useId();
 	const title = taskTitle(task);
 	// Upstream renders a failed or stopped task's summary inline on touch, where there is no tooltip.
@@ -123,7 +131,8 @@ function BackgroundTaskCard({
 				aria-label={`Background task: ${title}`}
 				aria-expanded={expanded}
 				aria-controls={detailsId}
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					// A title's artifact link opens its artifact without toggling the card.
 					if (event.target instanceof Element && event.target.closest("a[data-artifact-link]") !== null)
 						return;
@@ -173,7 +182,8 @@ function BackgroundTaskCard({
 }
 
 /** The run a workflow task launched: by its harness task id, else by any of the run's launches. */
-function runOf(task: BackgroundTask, runs: readonly SessionWorkflowRun[]): SessionWorkflowRun | undefined {
+function runOf(task: BackgroundTask, runs: readonly SessionWorkflowRun[]): SessionWorkflowRun | undefined
+{
 	return (
 		runs.find((run) => run.taskId === task.id) ??
 		(task.toolUseId === null ? undefined : runs.find((run) => run.toolUseIds.includes(task.toolUseId ?? "")))
@@ -192,11 +202,14 @@ function TaskCards({
 	openRows: ReadonlyMap<string, boolean>;
 	setRowOpen: (taskId: string, open: boolean) => void;
 	workflowRuns: readonly SessionWorkflowRun[];
-}) {
+})
+{
 	return (
 		<ul className="flex flex-col gap-1.5">
-			{tasks.map((task) => {
-				if (task.kind === "workflow") {
+			{tasks.map((task) =>
+			{
+				if (task.kind === "workflow")
+				{
 					return (
 						<li key={task.id} data-task-id={task.id}>
 							<WorkflowTaskCard task={task} run={runOf(task, workflowRuns)} />
@@ -210,7 +223,8 @@ function TaskCards({
 						task={task}
 						sessionId={sessionId}
 						expanded={expanded}
-						onToggle={() => {
+						onToggle={() =>
+						{
 							setRowOpen(task.id, !expanded);
 						}}
 					/>
@@ -225,28 +239,33 @@ function TaskCards({
  * across pane remounts until reload, like upstream), or component state when
  * there is no session.
  */
-function usePaneViewState(sessionId: string | undefined) {
+function usePaneViewState(sessionId: string | undefined)
+{
 	const sessionFinished = useFinishedExpanded(sessionId);
 	const sessionRows = useOpenTaskRows(sessionId);
 	const [localFinished, setLocalFinished] = useState<boolean | undefined>(undefined);
 	const [localRows, setLocalRows] = useState<ReadonlyMap<string, boolean>>(new Map());
-	if (sessionId === undefined) {
+	if (sessionId === undefined)
+	{
 		return {
 			finishedExpanded: localFinished,
 			setFinished: setLocalFinished,
 			openRows: localRows,
-			setRowOpen: (taskId: string, open: boolean) => {
+			setRowOpen: (taskId: string, open: boolean) =>
+			{
 				setLocalRows((rows) => new Map(rows).set(taskId, open));
 			},
 		};
 	}
 	return {
 		finishedExpanded: sessionFinished,
-		setFinished: (open: boolean) => {
+		setFinished: (open: boolean) =>
+		{
 			setFinishedExpanded(sessionId, open);
 		},
 		openRows: sessionRows,
-		setRowOpen: (taskId: string, open: boolean) => {
+		setRowOpen: (taskId: string, open: boolean) =>
+		{
 			setTaskRowsOpen(sessionId, [taskId], open);
 		},
 	};
@@ -261,32 +280,47 @@ function useTaskFocusRequests(
 	sessionId: string | undefined,
 	finished: readonly BackgroundTask[],
 	rootRef: RefObject<HTMLDivElement | null>,
-) {
+)
+{
 	const finishedRef = useRef(finished);
 	finishedRef.current = finished;
-	const [scrollTarget, setScrollTarget] = useState<{taskId: string} | null>(null);
+	const [scrollTarget, setScrollTarget] = useState<
+	{
+		taskId: string;
+	} | null>(null);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (sessionId === undefined) return undefined;
-		const handle = ({taskId}: BackgroundTaskFocus) => {
+		const handle = ({taskId}: BackgroundTaskFocus) =>
+		{
 			if (taskId === undefined) return;
 			setTaskRowsOpen(sessionId, [taskId], true);
 			if (finishedRef.current.some((task) => task.id === taskId)) setFinishedExpanded(sessionId, true);
-			setScrollTarget({taskId});
+			setScrollTarget(
+				{
+					taskId,
+				},
+			);
 		};
 		const pending = takePendingBackgroundTaskFocus(sessionId);
 		if (pending !== null) handle(pending);
 		return onBackgroundTaskFocusRequest(sessionId, handle);
 	}, [sessionId]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (scrollTarget === null) return undefined;
-		const frame = requestAnimationFrame(() => {
-			rootRef.current
-				?.querySelector(`[data-task-id="${CSS.escape(scrollTarget.taskId)}"]`)
-				?.scrollIntoView({block: "start"});
+		const frame = requestAnimationFrame(() =>
+		{
+			rootRef.current?.querySelector(`[data-task-id="${CSS.escape(scrollTarget.taskId)}"]`)?.scrollIntoView(
+				{
+					block: "start",
+				},
+			);
 		});
-		return () => {
+		return () =>
+		{
 			cancelAnimationFrame(frame);
 		};
 	}, [scrollTarget, rootRef]);
@@ -309,8 +343,13 @@ export function BackgroundTasksList({
 	/** The session whose task output files the cards may read. */
 	sessionId?: string;
 	/** The session's subagents, linked to their tree/Gantt page. */
-	subagents?: {sessionId: string; count: number};
-}) {
+	subagents?:
+	{
+		sessionId: string;
+		count: number;
+	};
+})
+{
 	const [clearedIds, setClearedIds] = useState<ReadonlySet<string>>(new Set());
 	const finished = groups.finished.filter((task) => !clearedIds.has(task.id));
 	const subagentCount = subagents?.count ?? 0;
@@ -320,7 +359,8 @@ export function BackgroundTasksList({
 	const rootRef = useRef<HTMLDivElement>(null);
 	useTaskFocusRequests(sessionId, finished, rootRef);
 
-	if (groups.running.length === 0 && finished.length === 0 && subagentCount === 0) {
+	if (groups.running.length === 0 && finished.length === 0 && subagentCount === 0)
+	{
 		return <p className="px-3 py-6 text-center text-body text-ink-muted">{EMPTY_COPY}</p>;
 	}
 	return (
@@ -344,7 +384,8 @@ export function BackgroundTasksList({
 							<button
 								type="button"
 								aria-expanded={finishedOpen}
-								onClick={() => {
+								onClick={() =>
+								{
 									setFinished(!finishedOpen);
 								}}
 								className="flex cursor-pointer items-center gap-0.5 hover:text-primary"
@@ -360,7 +401,8 @@ export function BackgroundTasksList({
 							<button
 								type="button"
 								aria-label="Clear finished tasks"
-								onClick={() => {
+								onClick={() =>
+								{
 									setClearedIds(new Set([...clearedIds, ...finished.map((task) => task.id)]));
 								}}
 								className={ICON_BUTTON}
@@ -383,7 +425,10 @@ export function BackgroundTasksList({
 			{subagents !== undefined && subagentCount > 0 && (
 				<Link
 					to="/session/$id/subagents"
-					params={{id: subagents.sessionId}}
+					params={
+					{
+						id: subagents.sessionId,
+					}}
 					className="self-start text-caption text-secondary underline-offset-2 hover:text-primary hover:underline"
 				>
 					{subagentCount} subagent{subagentCount === 1 ? "" : "s"}

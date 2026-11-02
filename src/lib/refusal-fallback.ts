@@ -5,7 +5,8 @@ const KNOWN_CATEGORIES = ["cyber", "bio", "frontier_llm", "reasoning_extraction"
 export type RefusalCategory = (typeof KNOWN_CATEGORIES)[number];
 
 /** A live safeguards refusal that moved the turn to a fallback model (upstream's `refusalFallback`). */
-export interface RefusalFallback {
+export interface RefusalFallback
+{
 	originalModel: string;
 	fallbackModel: string;
 	apiRefusalCategory: RefusalCategory | null;
@@ -21,20 +22,24 @@ export interface RefusalFallback {
 
 type RawRecord = Readonly<Record<string, unknown>>;
 
-function str(value: unknown): string | null {
+function str(value: unknown): string | null
+{
 	return typeof value === "string" && value !== "" ? value : null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown>
+{
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function category(raw: string | null): RefusalCategory | null {
+function category(raw: string | null): RefusalCategory | null
+{
 	return KNOWN_CATEGORIES.find((known) => known === raw) ?? null;
 }
 
 /** Upstream `Lg`: a real human prompt, not meta, a compact summary or only tool results. */
-function isHumanPrompt(record: RawRecord): boolean {
+function isHumanPrompt(record: RawRecord): boolean
+{
 	if (record["type"] !== "user" || record["isMeta"] === true || record["isCompactSummary"] === true) return false;
 	const message = record["message"];
 	if (!isRecord(message)) return false;
@@ -45,7 +50,8 @@ function isHumanPrompt(record: RawRecord): boolean {
 }
 
 /** An assistant reply's model, or null when none (or the synthetic sentinel) is recorded. */
-function replyModel(record: RawRecord): string | null {
+function replyModel(record: RawRecord): string | null
+{
 	if (record["type"] !== "assistant") return null;
 	const message = record["message"];
 	if (!isRecord(message)) return null;
@@ -53,7 +59,8 @@ function replyModel(record: RawRecord): string | null {
 	return model === SYNTHETIC_MODEL ? null : model;
 }
 
-function sameModel(a: string, b: string): boolean {
+function sameModel(a: string, b: string): boolean
+{
 	return a === b || formatModelName(a) === formatModelName(b);
 }
 
@@ -72,16 +79,19 @@ export function activeRefusalFallback(
 	startIndex: number,
 	liveSinceIndex: number,
 	hidden: ReadonlySet<string> = new Set(),
-): RefusalFallback | null {
+): RefusalFallback | null
+{
 	let strike = 0;
 	let turnRefused = false;
 	let origin: string | null = null;
 	let active: RefusalFallback | null = null;
-	for (const [offset, record] of records.entries()) {
+	for (const [offset, record] of records.entries())
+	{
 		if (record["isSidechain"] === true) continue;
 		const uuid = str(record["uuid"]);
 		if (uuid !== null && hidden.has(uuid)) continue;
-		if (record["type"] === "system" && record["subtype"] === "model_refusal_fallback") {
+		if (record["type"] === "system" && record["subtype"] === "model_refusal_fallback")
+		{
 			const originalModel = str(record["originalModel"]);
 			const fallbackModel = str(record["fallbackModel"]);
 			if (record["direction"] !== "retry" || originalModel === null || fallbackModel === null) continue;
@@ -93,7 +103,8 @@ export function activeRefusalFallback(
 			active =
 				index < liveSinceIndex
 					? null
-					: {
+					:
+						{
 							originalModel,
 							fallbackModel,
 							apiRefusalCategory: category(raw),
@@ -105,15 +116,18 @@ export function activeRefusalFallback(
 						};
 			continue;
 		}
-		if (record["type"] === "system" && record["subtype"] === "turn_duration") {
-			if (!turnRefused) {
+		if (record["type"] === "system" && record["subtype"] === "turn_duration")
+		{
+			if (!turnRefused)
+			{
 				strike = 0;
 				origin = null;
 			}
 			turnRefused = false;
 			continue;
 		}
-		if (isHumanPrompt(record)) {
+		if (isHumanPrompt(record))
+		{
 			turnRefused = false;
 			active = null;
 			continue;

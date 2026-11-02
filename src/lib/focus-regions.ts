@@ -32,13 +32,15 @@ const REGION_ORDER = [
 /** Regions F6 skips unless focus is already inside one, like upstream's `ye`. */
 const SKIP_UNLESS_CURRENT = new Set(["question"]);
 
-function regionRank(region: HTMLElement): number {
+function regionRank(region: HTMLElement): number
+{
 	const rank = REGION_ORDER.indexOf(region.getAttribute(FOCUS_REGION_ATTR) ?? "");
 	return rank === -1 ? REGION_ORDER.length : rank;
 }
 
 /** Whether a region (or any landing target) is shown: not hidden, inert or aria-hidden. */
-export function isAvailable(region: HTMLElement): boolean {
+export function isAvailable(region: HTMLElement): boolean
+{
 	if (region.closest('[hidden],[inert],[aria-hidden="true"]') !== null) return false;
 	return typeof region.checkVisibility === "function" ? region.checkVisibility() : true;
 }
@@ -68,7 +70,8 @@ const MODIFIER_KEYS = new Set([
 /** The clear function of each document's live landing; a new landing clears the old one first. */
 const liveLandings = new WeakMap<Document, () => void>();
 
-type LandOptions = {
+type LandOptions =
+{
 	/** False lands without a landing ring, for stops that draw their own focus-visible ring (upstream's `ring:!1`). */
 	ring?: boolean;
 	/** The element that draws the ring when it isn't the focused element (the composer card around its prompt). */
@@ -85,44 +88,63 @@ type LandOptions = {
  * The ring clears when focus moves elsewhere (except into an unrelated dialog),
  * on pointerdown on the ring element, or on input for `clearOnInput` landings.
  */
-function landFocus(target: HTMLElement, {ring = true, ringOn = target, clearOnInput = false}: LandOptions = {}): void {
+function landFocus(target: HTMLElement, {ring = true, ringOn = target, clearOnInput = false}: LandOptions = {}): void
+{
 	const doc = target.ownerDocument;
 	const view = doc.defaultView;
 	liveLandings.get(doc)?.();
 
 	let addedTabIndex = !target.hasAttribute("tabindex") && target.tabIndex < 0;
 	const tabIndexObserver = view === null ? undefined : new view.MutationObserver(() => (addedTabIndex = false));
-	if (addedTabIndex) {
+	if (addedTabIndex)
+	{
 		target.setAttribute("tabindex", "-1");
-		tabIndexObserver?.observe(target, {attributeFilter: ["tabindex"]});
+		tabIndexObserver?.observe(
+			target,
+			{
+				attributeFilter: ["tabindex"],
+			},
+		);
 	}
-	if (ring) {
+	if (ring)
+	{
 		const position = view?.getComputedStyle(ringOn).position ?? "";
 		ringOn.setAttribute(FOCUS_REGION_LANDING_ATTR, POSITIONED.has(position) ? "overlay" : "");
-		if (ringOn !== target) {
+		if (ringOn !== target)
+		{
 			ringOn.setAttribute(AROUND_ATTR, "");
 			target.setAttribute(INSIDE_ATTR, "");
 		}
 	}
-	target.focus({preventScroll: true, focusVisible: true});
+	target.focus(
+		{
+			preventScroll: true,
+			focusVisible: true,
+		},
+	);
 
-	const onKeyDown = (event: KeyboardEvent) => {
+	const onKeyDown = (event: KeyboardEvent) =>
+	{
 		if (!MODIFIER_KEYS.has(event.key)) clear();
 	};
-	const onFocusMoved = (next: EventTarget | null) => {
+	const onFocusMoved = (next: EventTarget | null) =>
+	{
 		if (next === target) return;
 		const dialog =
 			next instanceof Element ? next.closest('[role="dialog"], [role="alertdialog"], [data-cds="Toast"]') : null;
 		if (dialog !== null && !dialog.contains(ringOn) && !ringOn.contains(dialog)) return;
 		clear();
 	};
-	const onFocusIn = (event: FocusEvent) => {
+	const onFocusIn = (event: FocusEvent) =>
+	{
 		onFocusMoved(event.target);
 	};
-	const onBlur = () => {
+	const onBlur = () =>
+	{
 		onFocusMoved(doc.activeElement);
 	};
-	function clear() {
+	function clear()
+	{
 		if (addedTabIndex && (tabIndexObserver?.takeRecords().length ?? 0) === 0) target.removeAttribute("tabindex");
 		tabIndexObserver?.disconnect();
 		ringOn.removeAttribute(FOCUS_REGION_LANDING_ATTR);
@@ -136,32 +158,56 @@ function landFocus(target: HTMLElement, {ring = true, ringOn = target, clearOnIn
 		if (liveLandings.get(doc) === clear) liveLandings.delete(doc);
 	}
 
-	if (doc.activeElement !== target) {
+	if (doc.activeElement !== target)
+	{
 		clear();
 		return;
 	}
 	doc.addEventListener("focusin", onFocusIn, true);
 	view?.addEventListener("blur", onBlur);
 	ringOn.addEventListener("pointerdown", clear);
-	if (clearOnInput) {
+	if (clearOnInput)
+	{
 		target.addEventListener("keydown", onKeyDown);
 		target.addEventListener("beforeinput", clear);
 	}
 	liveLandings.set(doc, clear);
 }
 
-function focusRegion(region: HTMLElement, {ring = true}: {ring?: boolean} = {}): void {
+function focusRegion(
+	region: HTMLElement,
+	{
+		ring = true,
+	}:
+	{
+		ring?: boolean;
+	} = {},
+): void
+{
 	const entry = [...region.querySelectorAll<HTMLElement>(`[${FOCUS_REGION_ENTRY_ATTR}]`)].find(
 		(candidate) => candidate.closest(`[${FOCUS_REGION_ATTR}]`) === region,
 	);
-	if (entry !== undefined) {
+	if (entry !== undefined)
+	{
 		// The composer's ring goes on its card, as upstream rings `[data-cds="ChatComposer"] > *`.
 		const card = entry.closest<HTMLElement>("[data-composer-card]");
-		landFocus(entry, {ring, ringOn: card !== null && region.contains(card) ? card : entry, clearOnInput: true});
+		landFocus(
+			entry,
+			{
+				ring,
+				ringOn: card !== null && region.contains(card) ? card : entry,
+				clearOnInput: true,
+			},
+		);
 		return;
 	}
 	// A button stop (the session title, the collapsed sidebar's Show sidebar) shows its own focus-visible ring.
-	landFocus(region, {ring: ring && !region.matches("button")});
+	landFocus(
+		region,
+		{
+			ring: ring && !region.matches("button"),
+		},
+	);
 }
 
 /**
@@ -170,13 +216,15 @@ function focusRegion(region: HTMLElement, {ring = true}: {ring?: boolean} = {}):
  * drops out when a header stop exists, and a question is only a stop while
  * focus is inside it.
  */
-export function cycleFocusRegion(root: Document, direction: FocusRegionDirection): boolean {
+export function cycleFocusRegion(root: Document, direction: FocusRegionDirection): boolean
+{
 	const available = [...root.querySelectorAll<HTMLElement>(`[${FOCUS_REGION_ATTR}]`)].filter(isAvailable);
 	const hasHeader = available.some((region) => region.getAttribute(FOCUS_REGION_ATTR) === "header");
 	const active = root.activeElement;
 	const current = active?.closest<HTMLElement>(`[${FOCUS_REGION_ATTR}]`) ?? null;
 	const regions = available
-		.filter((region) => {
+		.filter((region) =>
+		{
 			const name = region.getAttribute(FOCUS_REGION_ATTR) ?? "";
 			if (name === "main" && hasHeader) return false;
 			return region === current || !SKIP_UNLESS_CURRENT.has(name);
@@ -199,7 +247,15 @@ export type JumpRegionName = "navigation" | "main" | "composer";
  * Focus the first available region with this name (its entry when it has one); false when there is none.
  * `ring: false` lands without the landing ring, like upstream's `G(name, {asRow: false})` composer focus.
  */
-export function focusRegionByName(root: Document, name: JumpRegionName, options: {ring?: boolean} = {}): boolean {
+export function focusRegionByName(
+	root: Document,
+	name: JumpRegionName,
+	options:
+	{
+		ring?: boolean;
+	} = {},
+): boolean
+{
 	const region = [...root.querySelectorAll<HTMLElement>(`[${FOCUS_REGION_ATTR}="${name}"]`)].find(isAvailable);
 	if (region === undefined) return false;
 	focusRegion(region, options);
@@ -216,13 +272,18 @@ const WAITING_CARD_SELECTOR = "[data-approval-card-root]";
  * active and no other waiting card remains in the container, focus the
  * composer without a ring, so the next keys go to the prompt. Returns the disarm.
  */
-function armAnsweredCardRefocus(card: HTMLElement): () => void {
+function armAnsweredCardRefocus(card: HTMLElement): () => void
+{
 	const doc = card.ownerDocument;
 	const view = doc.defaultView;
 	const container = card.closest<HTMLElement>('[role="article"]') ?? doc.body;
-	if (view === null) return () => {};
+	if (view === null)
+		return () =>
+		{
+		};
 	let pointerUsed = false;
-	const observer = new view.MutationObserver(() => {
+	const observer = new view.MutationObserver(() =>
+	{
 		if (card.isConnected) return;
 		disarm();
 		const active = doc.activeElement;
@@ -232,20 +293,35 @@ function armAnsweredCardRefocus(card: HTMLElement): () => void {
 			doc.hasFocus() &&
 			container.querySelector(WAITING_CARD_SELECTOR) === null
 		)
-			focusRegionByName(doc, "composer", {ring: false});
+			focusRegionByName(
+				doc,
+				"composer",
+				{
+					ring: false,
+				},
+			);
 	});
-	const onPointerDown = () => {
+	const onPointerDown = () =>
+	{
 		pointerUsed = true;
 	};
-	const onClick = () => {
+	const onClick = () =>
+	{
 		if (pointerUsed) disarm();
 	};
-	function disarm() {
+	function disarm()
+	{
 		observer.disconnect();
 		doc.removeEventListener("pointerdown", onPointerDown, true);
 		doc.removeEventListener("click", onClick, true);
 	}
-	observer.observe(container, {childList: true, subtree: true});
+	observer.observe(
+		container,
+		{
+			childList: true,
+			subtree: true,
+		},
+	);
 	doc.addEventListener("pointerdown", onPointerDown, true);
 	doc.addEventListener("click", onClick, true);
 	return disarm;
@@ -257,28 +333,41 @@ function armAnsweredCardRefocus(card: HTMLElement): () => void {
  * card as upstream's question region does. A focus that a pointerdown caused
  * does not arm. Returns the uninstall.
  */
-export function watchAnsweredCards(doc: Document): () => void {
-	let armed: {card: HTMLElement; disarm: () => void} | null = null;
+export function watchAnsweredCards(doc: Document): () => void
+{
+	let armed:
+	{
+		card: HTMLElement;
+		disarm: () => void;
+	} | null = null;
 	let pointerPressed = false;
-	const onPointerDown = () => {
+	const onPointerDown = () =>
+	{
 		pointerPressed = true;
 	};
-	const onKeyDown = () => {
+	const onKeyDown = () =>
+	{
 		pointerPressed = false;
 	};
-	const onFocusIn = (event: FocusEvent) => {
+	const onFocusIn = (event: FocusEvent) =>
+	{
 		const fromPointer = pointerPressed;
 		pointerPressed = false;
 		const card =
 			event.target instanceof Element ? event.target.closest<HTMLElement>(QUESTION_REGION_SELECTOR) : null;
 		if (card === null || card === armed?.card || fromPointer) return;
 		armed?.disarm();
-		armed = {card, disarm: armAnsweredCardRefocus(card)};
+		armed =
+		{
+			card,
+			disarm: armAnsweredCardRefocus(card),
+		};
 	};
 	doc.addEventListener("pointerdown", onPointerDown, true);
 	doc.addEventListener("keydown", onKeyDown, true);
 	doc.addEventListener("focusin", onFocusIn, true);
-	return () => {
+	return () =>
+	{
 		armed?.disarm();
 		doc.removeEventListener("pointerdown", onPointerDown, true);
 		doc.removeEventListener("keydown", onKeyDown, true);

@@ -5,53 +5,90 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-		configurable: true,
-		value: vi.fn<HTMLElement["scrollIntoView"]>(),
-	});
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: vi.fn<HTMLElement["scrollIntoView"]>(),
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
 
-const assistant = (uuid: string, timestamp: string, text: string) => ({
+const assistant = (uuid: string, timestamp: string, text: string) => (
+{
 	type: "assistant",
 	uuid,
 	timestamp,
 	sessionId: "s-1",
-	message: {role: "assistant", content: [{type: "text", text}]},
+	message:
+	{
+		role: "assistant",
+		content: [
+			{
+				type: "text",
+				text,
+			},
+		],
+	},
 });
 
-const enqueue = (timestamp: string, content: string) => ({
+const enqueue = (timestamp: string, content: string) => (
+{
 	type: "queue-operation",
 	operation: "enqueue",
 	timestamp,
@@ -59,7 +96,8 @@ const enqueue = (timestamp: string, content: string) => ({
 	content,
 });
 
-function renderRecords(records: unknown[], sessionLive: boolean, onSendNow?: () => void): HTMLElement {
+function renderRecords(records: unknown[], sessionLive: boolean, onSendNow?: () => void): HTMLElement
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
@@ -75,13 +113,16 @@ function renderRecords(records: unknown[], sessionLive: boolean, onSendNow?: () 
 }
 
 const waitingRows = (container: HTMLElement) =>
-	[...container.querySelectorAll("[data-take-back-entry]")].map((row) => ({
+	[...container.querySelectorAll("[data-take-back-entry]")].map((row) => (
+	{
 		entry: row.getAttribute("data-take-back-entry"),
 		text: row.querySelector(".user-message-bubble")?.textContent,
 	}));
 
-describe("JSONL waiting rows at the transcript tail", () => {
-	it("draws a waiting prompt after the assistant text written after its enqueue", () => {
+describe("JSONL waiting rows at the transcript tail", () =>
+{
+	it("draws a waiting prompt after the assistant text written after its enqueue", () =>
+	{
 		const container = renderRecords(
 			[
 				assistant("a-1", "1999-12-31T00:00:01Z", "first reply"),
@@ -90,7 +131,12 @@ describe("JSONL waiting rows at the transcript tail", () => {
 			],
 			true,
 		);
-		expect(waitingRows(container)).toStrictEqual([{entry: "queued-1", text: "hi"}]);
+		expect(waitingRows(container)).toStrictEqual([
+			{
+				entry: "queued-1",
+				text: "hi",
+			},
+		]);
 		const second = [...container.querySelectorAll("p")].find((p) => p.textContent === "second reply");
 		const row = container.querySelector("[data-take-back-entry]");
 		expect(second === undefined || row === null ? null : second.compareDocumentPosition(row)).toBe(
@@ -98,7 +144,8 @@ describe("JSONL waiting rows at the transcript tail", () => {
 		);
 	});
 
-	it("draws no waiting row once the session is no longer live", () => {
+	it("draws no waiting row once the session is no longer live", () =>
+	{
 		const container = renderRecords(
 			[assistant("a-1", "1999-12-31T00:00:01Z", "first reply"), enqueue("1999-12-31T00:00:02Z", "hi")],
 			false,
@@ -106,7 +153,8 @@ describe("JSONL waiting rows at the transcript tail", () => {
 		expect(waitingRows(container)).toStrictEqual([]);
 	});
 
-	it("stacks several waiting prompts in enqueue order", () => {
+	it("stacks several waiting prompts in enqueue order", () =>
+	{
 		const container = renderRecords(
 			[
 				assistant("a-1", "1999-12-31T00:00:01Z", "first reply"),
@@ -117,12 +165,19 @@ describe("JSONL waiting rows at the transcript tail", () => {
 			true,
 		);
 		expect(waitingRows(container)).toStrictEqual([
-			{entry: "queued-1", text: "one"},
-			{entry: "queued-2", text: "two"},
+			{
+				entry: "queued-1",
+				text: "one",
+			},
+			{
+				entry: "queued-2",
+				text: "two",
+			},
 		]);
 	});
 
-	it("puts Send now on the head waiting row only, wired to the interrupt", () => {
+	it("puts Send now on the head waiting row only, wired to the interrupt", () =>
+	{
 		const onSendNow = vi.fn<() => void>();
 		const container = renderRecords(
 			[
@@ -144,22 +199,30 @@ describe("JSONL waiting rows at the transcript tail", () => {
 	});
 });
 
-describe("pickup announcement", () => {
-	const user = (uuid: string, timestamp: string, text: string) => ({
+describe("pickup announcement", () =>
+{
+	const user = (uuid: string, timestamp: string, text: string) => (
+	{
 		type: "user",
 		uuid,
 		timestamp,
 		sessionId: "s-1",
-		message: {role: "user", content: text},
+		message:
+		{
+			role: "user",
+			content: text,
+		},
 	});
-	const dequeue = (timestamp: string) => ({
+	const dequeue = (timestamp: string) => (
+	{
 		type: "queue-operation",
 		operation: "dequeue",
 		timestamp,
 		sessionId: "s-1",
 	});
 
-	function chat(records: unknown[]) {
+	function chat(records: unknown[])
+	{
 		const {lines, toolResultMap} = processTranscript(records);
 		return (
 			<SessionChat
@@ -173,7 +236,8 @@ describe("pickup announcement", () => {
 		);
 	}
 
-	it("announces read once the live session takes a waiting prompt into the transcript", () => {
+	it("announces read once the live session takes a waiting prompt into the transcript", () =>
+	{
 		const waiting = [assistant("a-1", "2026-01-01T00:00:00Z", "working"), enqueue("2026-01-01T00:00:01Z", "hi")];
 		const {container, rerender} = render(chat(waiting));
 		const statuses = () =>
@@ -184,17 +248,30 @@ describe("pickup announcement", () => {
 
 		rerender(chat([...waiting, dequeue("2026-01-01T00:00:02Z"), user("u-1", "2026-01-01T00:00:02Z", "hi")]));
 
-		expect({before, after: statuses()}).toStrictEqual({before: ["unread", ""], after: ["read"]});
+		expect(
+			{
+				before,
+				after: statuses(),
+			},
+		).toStrictEqual(
+			{
+				before: ["unread", ""],
+				after: ["read"],
+			},
+		);
 	});
 
-	it("mounts no pickup live region once the session is no longer live", () => {
+	it("mounts no pickup live region once the session is no longer live", () =>
+	{
 		const container = renderRecords([enqueue("2026-01-01T00:00:01Z", "hi")], false);
 		expect(container.querySelectorAll("[data-waiting-pickup-status]").length).toBe(0);
 	});
 });
 
-describe("head waiting row Send now focus", () => {
-	it("hands a mouse click's focus to the session composer", async () => {
+describe("head waiting row Send now focus", () =>
+{
+	it("hands a mouse click's focus to the session composer", async () =>
+	{
 		const onFocusComposer = vi.fn<() => void>();
 		const {lines, toolResultMap} = processTranscript([
 			assistant("a-1", "1999-12-31T00:00:01Z", "first reply"),
@@ -208,14 +285,22 @@ describe("head waiting row Send now focus", () => {
 				shouldScrollToEnd={false}
 				transcriptMode="normal"
 				sessionLive
-				onSendNow={async () => {}}
+				onSendNow={async () =>
+				{
+				}}
 				onFocusComposer={onFocusComposer}
 			/>,
 		);
 		const sendNow = container.querySelector<HTMLButtonElement>("[data-testid=awaiting-turn-send-now]");
 		sendNow?.focus();
-		if (sendNow !== null) {
-			fireEvent.pointerDown(sendNow, {pointerType: "mouse"});
+		if (sendNow !== null)
+		{
+			fireEvent.pointerDown(
+				sendNow,
+				{
+					pointerType: "mouse",
+				},
+			);
 			fireEvent.click(sendNow);
 		}
 		await act(async () => {});
@@ -223,10 +308,12 @@ describe("head waiting row Send now focus", () => {
 	});
 });
 
-describe("JSONL head row Send now stays busy until the CLI takes the prompt", () => {
+describe("JSONL head row Send now stays busy until the CLI takes the prompt", () =>
+{
 	// CLI 2.1.312, checked in a scratch pane: Esc with prompts queued interrupts the turn and the
 	// CLI dequeues and sends every queued prompt itself, so Send now is the interrupt alone.
-	function chat(records: unknown[], onSendNow: () => Promise<void>) {
+	function chat(records: unknown[], onSendNow: () => Promise<void>)
+	{
 		const {lines, toolResultMap} = processTranscript(records);
 		return (
 			<SessionChat
@@ -246,14 +333,17 @@ describe("JSONL head row Send now stays busy until the CLI takes the prompt", ()
 			button.getAttribute("aria-busy"),
 		);
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		vi.useRealTimers();
 	});
 
-	it("interrupts once and stays busy after the interrupt settles, ignoring a second click", async () => {
+	it("interrupts once and stays busy after the interrupt settles, ignoring a second click", async () =>
+	{
 		const onSendNow = vi.fn<() => Promise<void>>(async () => {});
 		const {container, rerender} = render(chat(waiting, onSendNow));
-		const click = () => {
+		const click = () =>
+		{
 			const button = container.querySelector("[data-testid=awaiting-turn-send-now]");
 			if (button !== null) fireEvent.click(button);
 		};
@@ -262,29 +352,47 @@ describe("JSONL head row Send now stays busy until the CLI takes the prompt", ()
 		click();
 		rerender(chat([...waiting, assistant("a-2", "2026-01-01T00:00:02Z", "still working")], onSendNow));
 		await act(async () => {});
-		expect({calls: onSendNow.mock.calls.length, busy: sendNowState(container)}).toStrictEqual({
-			calls: 1,
-			busy: ["true"],
-		});
+		expect(
+			{
+				calls: onSendNow.mock.calls.length,
+				busy: sendNowState(container),
+			},
+		).toStrictEqual(
+			{
+				calls: 1,
+				busy: ["true"],
+			},
+		);
 	});
 
-	it("clears busy after the pickup timeout without interrupting again", async () => {
+	it("clears busy after the pickup timeout without interrupting again", async () =>
+	{
 		vi.useFakeTimers();
 		const onSendNow = vi.fn<() => Promise<void>>(async () => {});
 		const {container} = render(chat(waiting, onSendNow));
 		const button = container.querySelector("[data-testid=awaiting-turn-send-now]");
 		if (button !== null) fireEvent.click(button);
-		await act(async () => {
+		await act(async () =>
+		{
 			await vi.advanceTimersByTimeAsync(2999);
 		});
 		const before = sendNowState(container);
-		await act(async () => {
+		await act(async () =>
+		{
 			await vi.advanceTimersByTimeAsync(1);
 		});
-		expect({calls: onSendNow.mock.calls.length, before, after: sendNowState(container)}).toStrictEqual({
-			calls: 1,
-			before: ["true"],
-			after: [null],
-		});
+		expect(
+			{
+				calls: onSendNow.mock.calls.length,
+				before,
+				after: sendNowState(container),
+			},
+		).toStrictEqual(
+			{
+				calls: 1,
+				before: ["true"],
+				after: [null],
+			},
+		);
 	});
 });

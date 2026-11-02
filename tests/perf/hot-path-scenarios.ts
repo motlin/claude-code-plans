@@ -1,6 +1,7 @@
 import {readFileSync} from "node:fs";
 import {basename} from "node:path";
-import {
+import
+{
 	mergeTranscriptData,
 	transcriptEndIndex,
 	TranscriptRecordSchema,
@@ -26,39 +27,70 @@ import {defined} from "../../src/lib/defined";
 
 const APPENDED_LINES = 20;
 
-function isShapeName(shape: string): shape is PerfShapeName {
+function isShapeName(shape: string): shape is PerfShapeName
+{
 	return Object.hasOwn(PERF_SHAPES, shape);
 }
 
-async function prepareShaped(fn: HotPathShapedFn, shape: string): Promise<() => unknown> {
+async function prepareShaped(fn: HotPathShapedFn, shape: string): Promise<() => unknown>
+{
 	if (!isShapeName(shape)) throw new Error(`unknown perf shape ${shape}`);
 	const file = await generateTranscript(PERF_SHAPES[shape]);
 	const sessionId = basename(file, ".jsonl");
 	const db = openTestDb();
-	db.index.insert(schema.projects).values({id: "-repo", name: "repo", updatedAt: 0}).run();
+	db.index
+		.insert(schema.projects)
+		.values(
+			{
+				id: "-repo",
+				name: "repo",
+				updatedAt: 0,
+			},
+		)
+		.run();
 	db.index
 		.insert(schema.sessions)
-		.values({id: sessionId, projectId: "-repo", title: sessionId, createdAt: 0, mtimeMs: 0, filePath: file})
+		.values(
+			{
+				id: sessionId,
+				projectId: "-repo",
+				title: sessionId,
+				createdAt: 0,
+				mtimeMs: 0,
+				filePath: file,
+			},
+		)
 		.run();
 
-	switch (fn) {
+	switch (fn)
+	{
 		case "readStructuredTranscript":
 			// Measure the cold read that builds the file index, not the cached window read that follows it.
-			return () => {
+			return () =>
+			{
 				clearTranscriptFileIndexCache();
 				return readStructuredTranscript(db.index, sessionId);
 			};
-		case "processTranscript": {
+		case "processTranscript":
+		{
 			const {records} = readStructuredTranscript(db.index, sessionId);
 			return () => processTranscript(records);
 		}
-		case "mergeTranscriptData": {
+		case "mergeTranscriptData":
+		{
 			// The live-append path: the cached tail window, then the next lines the watcher sends.
 			const lines = readFileSync(file, "utf8")
 				.split("\n")
 				.filter((line) => line.trim());
-			const old = readStructuredTranscript(db.index, sessionId, {before: lines.length - APPENDED_LINES});
-			const appended: TranscriptData = {
+			const old = readStructuredTranscript(
+				db.index,
+				sessionId,
+				{
+					before: lines.length - APPENDED_LINES,
+				},
+			);
+			const appended: TranscriptData =
+			{
 				records: lines.slice(-APPENDED_LINES).map((line) => TranscriptRecordSchema.parse(JSON.parse(line))),
 				byteOffset: old.byteOffset,
 				startIndex: transcriptEndIndex(old),
@@ -76,7 +108,8 @@ async function prepareShaped(fn: HotPathShapedFn, shape: string): Promise<() => 
 }
 
 /** Ten sessions, each walking one lifecycle of twenty events, interleaved. */
-function replayEvents(): ClaudeEventsAction[] {
+function replayEvents(): ClaudeEventsAction[]
+{
 	const steps = [
 		SSE_EVENTS.SESSION_START,
 		DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
@@ -101,29 +134,37 @@ function replayEvents(): ClaudeEventsAction[] {
 	];
 	const sessions = 10;
 	const events: ClaudeEventsAction[] = [];
-	for (const [step, eventType] of steps.entries()) {
-		for (let session = 0; session < sessions; session += 1) {
+	for (const [step, eventType] of steps.entries())
+	{
+		for (let session = 0; session < sessions; session += 1)
+		{
 			const sessionId = `session-${session}`;
-			events.push({
-				type: "SSE_EVENT",
-				eventType,
-				timestamp: 1_700_000_000_000 + events.length * 1000,
-				data: {
-					sessionId,
-					session: {id: sessionId},
-					cwd: `/repo/${session}`,
-					model: "claude-opus",
-					sessionTitle: `Session ${session}`,
-					permissionMode: "default",
-					toolName: "Bash",
-					toolUseId: `tool-${session}-${step}`,
-					error: "exit 1",
-					message: "Claude is waiting for your input",
-					agentType: "Explore",
-					agentId: `agent-${session}`,
-					description: "Search the codebase",
+			events.push(
+				{
+					type: "SSE_EVENT",
+					eventType,
+					timestamp: 1_700_000_000_000 + events.length * 1000,
+					data:
+					{
+						sessionId,
+						session:
+						{
+							id: sessionId,
+						},
+						cwd: `/repo/${session}`,
+						model: "claude-opus",
+						sessionTitle: `Session ${session}`,
+						permissionMode: "default",
+						toolName: "Bash",
+						toolUseId: `tool-${session}-${step}`,
+						error: "exit 1",
+						message: "Claude is waiting for your input",
+						agentType: "Explore",
+						agentId: `agent-${session}`,
+						description: "Search the codebase",
+					},
 				},
-			});
+			);
 		}
 	}
 	return events;
@@ -151,29 +192,42 @@ const TITLE_WORDS = [
 ];
 
 /** Session titles from a fixed linear congruential sequence, so every run sees the same 500 titles. */
-function paletteTitles(count: number): string[] {
+function paletteTitles(count: number): string[]
+{
 	let seed = 1;
-	const next = () => {
+	const next = () =>
+	{
 		seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
 		return seed;
 	};
-	return Array.from({length: count}, () =>
-		Array.from({length: 3 + (next() % 6)}, () =>
-			defined(TITLE_WORDS[next() % TITLE_WORDS.length], "word index is in range"),
-		).join(" "),
+	return Array.from(
+		{
+			length: count,
+		},
+		() =>
+			Array.from(
+				{
+					length: 3 + (next() % 6),
+				},
+				() => defined(TITLE_WORDS[next() % TITLE_WORDS.length], "word index is in range"),
+			).join(" "),
 	);
 }
 
 const PALETTE_QUERIES = ["fix", "perf test", "session sidebar", "zzz", "the cache"];
 
-function prepareFixed(fn: HotPathFixedFn): () => unknown {
-	switch (fn) {
-		case "claudeEventsReducer": {
+function prepareFixed(fn: HotPathFixedFn): () => unknown
+{
+	switch (fn)
+	{
+		case "claudeEventsReducer":
+		{
 			const events = replayEvents();
 			const initial = emptyClaudeEventsState();
 			return () => events.reduce(claudeEventsReducer, initial);
 		}
-		case "paletteRanking": {
+		case "paletteRanking":
+		{
 			// The palette's instant rows: every cached session title against the query, as the user types it.
 			const titles = paletteTitles(500);
 			return () => PALETTE_QUERIES.map((query) => titles.filter((title) => titleMatches(title, query) !== null));
@@ -183,8 +237,10 @@ function prepareFixed(fn: HotPathFixedFn): () => unknown {
 	}
 }
 
-export async function prepareHotPath(fn: HotPathFn, shape: string): Promise<() => unknown> {
-	if (fn === "claudeEventsReducer" || fn === "paletteRanking") {
+export async function prepareHotPath(fn: HotPathFn, shape: string): Promise<() => unknown>
+{
+	if (fn === "claudeEventsReducer" || fn === "paletteRanking")
+	{
 		if (shape !== HOT_PATH_FIXED_SHAPES[fn]) throw new Error(`${fn} runs only on ${HOT_PATH_FIXED_SHAPES[fn]}`);
 		return prepareFixed(fn);
 	}

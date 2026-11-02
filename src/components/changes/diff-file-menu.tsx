@@ -11,7 +11,8 @@ import type {DiffFileMark} from "./diff-file-menu-gate";
 /** How much of the file the diff shows: `unread` = the loader failed, `locked` = a finding or comment pins it open. */
 export type WholeFileState = "folded" | "unread" | "shown" | "locked";
 
-export interface DiffFileMenuItemsProps {
+export interface DiffFileMenuItemsProps
+{
 	/** The diff path: repo-root-relative for git, cwd-relative or absolute for session edits. */
 	path: string;
 	/** Offers Copy ▸ Absolute path. */
@@ -28,15 +29,19 @@ export interface DiffFileMenuItemsProps {
 	renderFileMenuItems?: ((options: {separatorBefore: boolean; isDirectory: boolean}) => ReactNode) | undefined;
 }
 
-function baseName(path: string): string {
+function baseName(path: string): string
+{
 	return path.slice(path.lastIndexOf("/") + 1) || path;
 }
 
-function wholeFileReason(state: WholeFileState, canOpen: boolean): string | undefined {
-	if (state === "unread") {
+function wholeFileReason(state: WholeFileState, canOpen: boolean): string | undefined
+{
+	if (state === "unread")
+	{
 		return `This file’s unmodified lines couldn’t be read.${canOpen ? " Open the file to see all of it." : ""}`;
 	}
-	if (state === "locked") {
+	if (state === "locked")
+	{
 		return "This file has a review finding, or a comment on an unmodified line. Dismiss the finding or delete the comment to show changes only.";
 	}
 	return undefined;
@@ -53,7 +58,8 @@ export function DiffFileMenuItems({
 	onShowWholeFile,
 	mark,
 	renderFileMenuItems,
-}: DiffFileMenuItemsProps) {
+}: DiffFileMenuItemsProps)
+{
 	const showWholeFile = wholeFile !== undefined && onShowWholeFile !== undefined;
 	const folded = wholeFile === "folded" || wholeFile === "unread";
 	return (
@@ -73,7 +79,8 @@ export function DiffFileMenuItems({
 							<MenuItem
 								disabled={wholeFile === "unread" || wholeFile === "locked"}
 								disabledReason={wholeFileReason(wholeFile, onOpenFile !== undefined)}
-								onSelect={() => {
+								onSelect={() =>
+								{
 									onShowWholeFile(path, folded);
 								}}
 							>
@@ -84,7 +91,8 @@ export function DiffFileMenuItems({
 							<MenuItem
 								disabled={!mark.canMark}
 								disabledReason="This file can’t be marked as viewed. Later changes to it wouldn’t be detected."
-								onSelect={() => {
+								onSelect={() =>
+								{
 									mark.setMarked(mark.status !== "marked");
 								}}
 							>
@@ -99,13 +107,23 @@ export function DiffFileMenuItems({
 					<MenuSeparator />
 					<MenuItem
 						onSelect={onOpenFile}
-						{...(openFileShortcut === undefined ? {} : {shortcut: openFileShortcut})}
+						{...(openFileShortcut === undefined
+							? {}
+							:
+								{
+									shortcut: openFileShortcut,
+								})}
 					>
 						Open file
 					</MenuItem>
 				</>
 			)}
-			{renderFileMenuItems?.({separatorBefore: onOpenFile === undefined, isDirectory})}
+			{renderFileMenuItems?.(
+				{
+					separatorBefore: onOpenFile === undefined,
+					isDirectory,
+				},
+			)}
 		</>
 	);
 }

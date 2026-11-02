@@ -14,7 +14,8 @@ export const GHOST_ICON_BUTTON = `flex h-6 w-6 shrink-0 cursor-pointer items-cen
 
 const SHELL_TAB_HINT_ID = "terminal-tab-hint";
 
-export interface TerminalTabActions {
+export interface TerminalTabActions
+{
 	rename: (id: string, title: string) => void;
 	close: (id: string) => void;
 	closeOthers: (id: string) => void;
@@ -42,7 +43,8 @@ export function TerminalTabStrip({
 	actions: TerminalTabActions;
 	/** A tab was chosen by pointer or menu: move focus into its terminal. */
 	onActivate: (id: string) => void;
-}) {
+})
+{
 	const listRef = useRef<HTMLDivElement>(null);
 	const [overflowing, setOverflowing] = useState(false);
 	const [renaming, setRenaming] = useState<string | null>(null);
@@ -50,44 +52,52 @@ export function TerminalTabStrip({
 	const afterMenuClose = useRef<(() => void) | null>(null);
 	const tabCount = tabs.length + (showClaude ? 1 : 0);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const list = listRef.current;
 		if (!list) return undefined;
-		const measure = () => {
+		const measure = () =>
+		{
 			setOverflowing(list.scrollWidth > list.clientWidth);
 		};
 		measure();
 		const observer = new ResizeObserver(measure);
 		observer.observe(list);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [tabCount]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const id = refocus.current;
 		if (id === null) return;
 		refocus.current = null;
 		listRef.current?.querySelector<HTMLElement>(`[data-tab-id="${CSS.escape(id)}"]`)?.focus();
 	});
 
-	const onMenuOpenChangeComplete = (open: boolean) => {
+	const onMenuOpenChangeComplete = (open: boolean) =>
+	{
 		if (open) return;
 		const action = afterMenuClose.current;
 		afterMenuClose.current = null;
 		action?.();
 	};
 
-	const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, id: string) => {
+	const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, id: string) =>
+	{
 		if (id === CLAUDE_TAB_ID) return;
 		const plain = !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
-		if (plain && (event.key === "Delete" || event.key === "Backspace")) {
+		if (plain && (event.key === "Delete" || event.key === "Backspace"))
+		{
 			event.preventDefault();
 			actions.close(id);
 			return;
 		}
 		const moveChord = event.ctrlKey && event.shiftKey && !event.metaKey && !event.altKey;
-		if (moveChord && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+		if (moveChord && (event.key === "ArrowLeft" || event.key === "ArrowRight"))
+		{
 			event.preventDefault();
 			event.stopPropagation();
 			refocus.current = id;
@@ -103,10 +113,12 @@ export function TerminalTabStrip({
 			aria-selected={active === id}
 			aria-controls={`terminal-pane-${id}`}
 			aria-describedby={shell ? SHELL_TAB_HINT_ID : undefined}
-			onClick={() => {
+			onClick={() =>
+			{
 				onActivate(id);
 			}}
-			onKeyDown={(event) => {
+			onKeyDown={(event) =>
+			{
 				onTabKeyDown(event, id);
 			}}
 			className={TAB_CLASS}
@@ -129,7 +141,8 @@ export function TerminalTabStrip({
 	const closeOthersItem = (id: string) => (
 		<MenuItem
 			disabled={tabs.every((tab) => tab.id === id)}
-			onSelect={() => {
+			onSelect={() =>
+			{
 				actions.closeOthers(id);
 			}}
 		>
@@ -160,12 +173,14 @@ export function TerminalTabStrip({
 									value={tab.title}
 									ariaLabel="Rename terminal"
 									className="h-6 w-24 px-1.5"
-									onCommit={(title) => {
+									onCommit={(title) =>
+									{
 										actions.rename(tab.id, title);
 										refocus.current = tab.id;
 										setRenaming(null);
 									}}
-									onCancel={() => {
+									onCancel={() =>
+									{
 										refocus.current = tab.id;
 										setRenaming(null);
 									}}
@@ -177,7 +192,8 @@ export function TerminalTabStrip({
 								type="button"
 								aria-label={`Close ${tab.title}`}
 								disabled={tab.closing}
-								onClick={() => {
+								onClick={() =>
+								{
 									actions.close(tab.id);
 								}}
 								className={GHOST_ICON_BUTTON}
@@ -187,8 +203,10 @@ export function TerminalTabStrip({
 						</>,
 						<>
 							<MenuItem
-								onSelect={() => {
-									afterMenuClose.current = () => {
+								onSelect={() =>
+								{
+									afterMenuClose.current = () =>
+									{
 										setRenaming(tab.id);
 									};
 								}}
@@ -196,7 +214,8 @@ export function TerminalTabStrip({
 								Rename terminal
 							</MenuItem>
 							<MenuItem
-								onSelect={() => {
+								onSelect={() =>
+								{
 									actions.close(tab.id);
 								}}
 							>
@@ -219,7 +238,8 @@ export function TerminalTabStrip({
 					<MenuContent>
 						{showClaude && (
 							<MenuItem
-								onSelect={() => {
+								onSelect={() =>
+								{
 									onActivate(CLAUDE_TAB_ID);
 								}}
 							>
@@ -229,7 +249,8 @@ export function TerminalTabStrip({
 						{tabs.map((tab) => (
 							<MenuItem
 								key={tab.id}
-								onSelect={() => {
+								onSelect={() =>
+								{
 									onActivate(tab.id);
 								}}
 							>

@@ -13,7 +13,8 @@ import {fileURLToPath, pathToFileURL} from "node:url";
 import {register} from "tsx/esm/api";
 
 const [fn, shape] = process.argv.slice(2);
-if (fn === undefined || shape === undefined) {
+if (fn === undefined || shape === undefined)
+{
 	console.error("usage: run-hot-path.mjs <fn> <shape>");
 	process.exit(2);
 }
@@ -29,9 +30,11 @@ const session = new Session();
 session.connect();
 
 /** Posts synchronously: an in-thread inspector session answers before `post` returns. */
-function post(method, params) {
+function post(method, params)
+{
 	let response;
-	session.post(method, params, (error, result) => {
+	session.post(method, params, (error, result) =>
+	{
 		if (error) throw error;
 		response = result;
 	});
@@ -40,7 +43,13 @@ function post(method, params) {
 }
 
 post("Profiler.enable");
-post("Profiler.startPreciseCoverage", {callCount: true, detailed: true});
+post(
+	"Profiler.startPreciseCoverage",
+	{
+		callCount: true,
+		detailed: true,
+	},
+);
 // Taking coverage resets the counters, so the count below holds the measured run alone.
 post("Profiler.takePreciseCoverage");
 run();
@@ -49,10 +58,19 @@ post("Profiler.stopPreciseCoverage");
 session.disconnect();
 
 let calls = 0;
-for (const script of result) {
+for (const script of result)
+{
 	if (!script.url.startsWith(SRC_URL)) continue;
 	for (const fnCoverage of script.functions) calls += fnCoverage.ranges[0]?.count ?? 0;
 }
 
-process.stdout.write(`${JSON.stringify({fn, shape, calls})}\n`);
+process.stdout.write(
+	`${JSON.stringify(
+		{
+			fn,
+			shape,
+			calls,
+		},
+	)}\n`,
+);
 process.exit(0);

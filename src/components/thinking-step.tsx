@@ -37,7 +37,8 @@ const PANEL_CLASS =
 const SCOPE_BASE = "flex min-w-0 items-start gap-xs font-sans text-body font-normal text-secondary not-italic";
 const SCOPE_RESET = "[--cds-assistant-message-text-inset:0px] [--cds-assistant-message-text-stop:0px]";
 
-export interface ThinkingStepProps {
+export interface ThinkingStepProps
+{
 	text: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -54,7 +55,8 @@ export interface ThinkingStepProps {
  * with the thinking's summary line. A settled block with a summary opens in place, its markdown body replacing
  * the label inside the row; a live block, or one with no content line ("Thinking…"), opens below its row.
  */
-export function ThinkingStep({text, open, onOpenChange, live = false, title, actions}: ThinkingStepProps) {
+export function ThinkingStep({text, open, onOpenChange, live = false, title, actions}: ThinkingStepProps)
+{
 	const id = useId();
 	const restInk = useRestInk();
 	const {rootRef} = useStepCollapseFocusReturn(open);
@@ -113,8 +115,21 @@ export function ThinkingStep({text, open, onOpenChange, live = false, title, act
 		>
 			<div
 				data-cds-row=""
-				{...(openInPlace ? {"data-cds-open-text": ""} : {"data-cds-row-title": label})}
-				{...(title === undefined ? {} : {title})}
+				{...(openInPlace
+					?
+						{
+							"data-cds-open-text": "",
+						}
+					:
+						{
+							"data-cds-row-title": label,
+						})}
+				{...(title === undefined
+					? {}
+					:
+						{
+							title,
+						})}
 				className={`${ROW_CLASS} ${openInPlace ? "items-start" : "items-center"} relative isolate rounded${openInPlace ? "" : " select-none"}`}
 				style={TURN_STATUS_ROW_STYLE}
 			>
@@ -133,7 +148,13 @@ export function ThinkingStep({text, open, onOpenChange, live = false, title, act
 				)}
 				<BaseCollapsible.Trigger
 					data-cds-row-toggle=""
-					{...(stretched ? {"data-cds-row-toggle-stretched": "", "aria-owns": labelledBy} : {})}
+					{...(stretched
+						?
+							{
+								"data-cds-row-toggle-stretched": "",
+								"aria-owns": labelledBy,
+							}
+						: {})}
 					aria-labelledby={labelledBy}
 					className={`${stretched ? TOGGLE_STRETCHED : TOGGLE_UNSTRETCHED}${inPlace ? " order-last" : ""}`}
 				>
@@ -143,7 +164,12 @@ export function ThinkingStep({text, open, onOpenChange, live = false, title, act
 					>
 						<span
 							data-step-chevron=""
-							{...(open ? {"data-open": ""} : {})}
+							{...(open
+								?
+									{
+										"data-open": "",
+									}
+								: {})}
 							className={`inline-flex transition-transform duration-[60ms] motion-reduce:transition-none${open ? "" : " -rotate-90 page-rtl:rotate-90"}`}
 						>
 							<ChevronIcon expanded size={12} />

@@ -6,36 +6,43 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {measureInteraction} from "./measure-interaction";
 import {createRenderCensus} from "./render-census";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
 const ThemeContext = createContext("light");
 
-function ThemeProvider({children}: {children: ReactNode}) {
+function ThemeProvider({children}: {children: ReactNode})
+{
 	return <ThemeContext value="dark">{children}</ThemeContext>;
 }
 
-function Themed() {
+function Themed()
+{
 	return <span>{useContext(ThemeContext)}</span>;
 }
 
-const Pure = memo(function Pure() {
+const Pure = memo(function Pure()
+{
 	return <Themed />;
 });
 
-function Count({value}: {value: number}) {
+function Count({value}: {value: number})
+{
 	return <output>{value}</output>;
 }
 
-function Counter() {
+function Counter()
+{
 	const [count, setCount] = useState(0);
 	return (
 		<div>
 			<button
 				type="button"
-				onClick={() => {
+				onClick={() =>
+				{
 					setCount((value) => value + 1);
 				}}
 			>
@@ -48,10 +55,13 @@ function Counter() {
 	);
 }
 
-describe("createRenderCensus", () => {
-	it("records the components each step rendered, skipping memoized bailouts, and counts context consumers", async () => {
+describe("createRenderCensus", () =>
+{
+	it("records the components each step rendered, skipping memoized bailouts, and counts context consumers", async () =>
+	{
 		const census = createRenderCensus();
-		const click = () => {
+		const click = () =>
+		{
 			fireEvent.click(screen.getByRole("button"));
 		};
 
@@ -64,30 +74,45 @@ describe("createRenderCensus", () => {
 				</census.Root>
 			),
 			[
-				() => {
+				() =>
+				{
 					census.startStep();
 					click();
 				},
-				() => {
+				() =>
+				{
 					census.startStep();
 					click();
 				},
 			],
-			{fixtures: {}},
+			{
+				fixtures: {},
+			},
 		);
 		census.stop();
 
-		expect({
-			steps: census.steps(),
-			distinct: census.steps().map((step) => Object.keys(step).length),
-			consumers: census.contextConsumers(ThemeProvider),
-		}).toStrictEqual({
-			steps: [
-				{Count: 1, Counter: 1},
-				{Count: 1, Counter: 1, Themed: 1},
-			],
-			distinct: [2, 3],
-			consumers: 2,
-		});
+		expect(
+			{
+				steps: census.steps(),
+				distinct: census.steps().map((step) => Object.keys(step).length),
+				consumers: census.contextConsumers(ThemeProvider),
+			},
+		).toStrictEqual(
+			{
+				steps: [
+					{
+						Count: 1,
+						Counter: 1,
+					},
+					{
+						Count: 1,
+						Counter: 1,
+						Themed: 1,
+					},
+				],
+				distinct: [2, 3],
+				consumers: 2,
+			},
+		);
 	});
 });

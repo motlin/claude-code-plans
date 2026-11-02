@@ -11,24 +11,76 @@ import type {IconName} from "../components/ui/icon";
 export type ArtifactMarkHue = "blue" | "orange" | "violet" | "red" | "aqua" | "yellow" | "magenta" | "green" | "gray";
 
 /** Upstream `HB`: every kind's outline Anthropicons glyph and hue (`file` is the fallback). */
-export const ARTIFACT_MARK_KINDS = {
-	document: {icon: "File", hue: "blue"},
-	slides: {icon: "Slides", hue: "orange"},
-	design: {icon: "Palette", hue: "violet"},
-	chart: {icon: "Chart", hue: "red"},
-	animation: {icon: "Animation", hue: "aqua"},
-	web: {icon: "Globe", hue: "yellow"},
-	video: {icon: "Play", hue: "magenta"},
-	code: {icon: "Code", hue: "gray"},
-	image: {icon: "Image", hue: "red"},
-	diagram: {icon: "Diagram", hue: "green"},
-	file: {icon: "Artifacts", hue: "gray"},
-} as const satisfies Record<string, {icon: IconName; hue: ArtifactMarkHue}>;
+export const ARTIFACT_MARK_KINDS =
+{
+	document:
+	{
+		icon: "File",
+		hue: "blue",
+	},
+	slides:
+	{
+		icon: "Slides",
+		hue: "orange",
+	},
+	design:
+	{
+		icon: "Palette",
+		hue: "violet",
+	},
+	chart:
+	{
+		icon: "Chart",
+		hue: "red",
+	},
+	animation:
+	{
+		icon: "Animation",
+		hue: "aqua",
+	},
+	web:
+	{
+		icon: "Globe",
+		hue: "yellow",
+	},
+	video:
+	{
+		icon: "Play",
+		hue: "magenta",
+	},
+	code:
+	{
+		icon: "Code",
+		hue: "gray",
+	},
+	image:
+	{
+		icon: "Image",
+		hue: "red",
+	},
+	diagram:
+	{
+		icon: "Diagram",
+		hue: "green",
+	},
+	file:
+	{
+		icon: "Artifacts",
+		hue: "gray",
+	},
+} as const satisfies Record<
+	string,
+	{
+		icon: IconName;
+		hue: ArtifactMarkHue;
+	}
+>;
 
 export type ArtifactMarkKind = keyof typeof ARTIFACT_MARK_KINDS;
 
 /** Upstream `vL`: a tile's tint background and ink. */
-const MARK_TILE_TONE: Record<ArtifactMarkHue, string> = {
+const MARK_TILE_TONE: Record<ArtifactMarkHue, string> =
+{
 	blue: "bg-tint-blue text-tint-blue",
 	orange: "bg-tint-orange text-tint-orange",
 	violet: "bg-tint-violet text-tint-violet",
@@ -41,7 +93,8 @@ const MARK_TILE_TONE: Record<ArtifactMarkHue, string> = {
 };
 
 /** Upstream `NH`: a bare glyph's ink. */
-export const MARK_INK: Record<ArtifactMarkHue, string> = {
+export const MARK_INK: Record<ArtifactMarkHue, string> =
+{
 	blue: "text-tint-blue",
 	orange: "text-tint-orange",
 	violet: "text-tint-violet",
@@ -54,17 +107,41 @@ export const MARK_INK: Record<ArtifactMarkHue, string> = {
 };
 
 /** Upstream `Go`: tile sizes carry a box; menu sizes are bare glyphs (md 20px / sm 16px whatever the density). */
-export const ARTIFACT_MARK_SIZES = {
-	card: {box: "size-10 shrink-0 overflow-hidden rounded-lg", glyph: "md"},
-	row: {box: "size-7 shrink-0 overflow-hidden rounded-[25%]", glyph: "sm"},
-	menu: {box: undefined, glyph: "md"},
-	"menu-small": {box: undefined, glyph: "sm"},
-} as const satisfies Record<string, {box: string | undefined; glyph: "sm" | "md"}>;
+export const ARTIFACT_MARK_SIZES =
+{
+	card:
+	{
+		box: "size-10 shrink-0 overflow-hidden rounded-lg",
+		glyph: "md",
+	},
+	row:
+	{
+		box: "size-7 shrink-0 overflow-hidden rounded-[25%]",
+		glyph: "sm",
+	},
+	menu:
+	{
+		box: undefined,
+		glyph: "md",
+	},
+	"menu-small":
+	{
+		box: undefined,
+		glyph: "sm",
+	},
+} as const satisfies Record<
+	string,
+	{
+		box: string | undefined;
+		glyph: "sm" | "md";
+	}
+>;
 
 export type ArtifactMarkSize = keyof typeof ARTIFACT_MARK_SIZES;
 
 /** The publish's icon word → its declared glyph: a file-kind mark's local stand-in for upstream's `declaredGlyph`. */
-export const TYPE_MEDIA_ICONS = {
+export const TYPE_MEDIA_ICONS =
+{
 	chart: "Chart",
 	doc: "File",
 	code: "Code",
@@ -74,12 +151,14 @@ export const TYPE_MEDIA_ICONS = {
 
 export type TypeMediaIconWord = keyof typeof TYPE_MEDIA_ICONS;
 
-export function isTypeMediaIconWord(word: string): word is TypeMediaIconWord {
+export function isTypeMediaIconWord(word: string): word is TypeMediaIconWord
+{
 	return Object.hasOwn(TYPE_MEDIA_ICONS, word);
 }
 
 /** The span's classes: upstream `n8`'s tile (`{box} {vL}`) or bare (`{NH}`) branch. */
-export function artifactMarkClassName(kind: ArtifactMarkKind, size: ArtifactMarkSize): string {
+export function artifactMarkClassName(kind: ArtifactMarkKind, size: ArtifactMarkSize): string
+{
 	const {hue} = ARTIFACT_MARK_KINDS[kind];
 	const {box} = ARTIFACT_MARK_SIZES[size];
 	return box === undefined
@@ -88,15 +167,20 @@ export function artifactMarkClassName(kind: ArtifactMarkKind, size: ArtifactMark
 }
 
 /** The gallery kind of each known Artifact type, keyed by the type's URL (upstream's typeSlug → `F0`). */
-export const ARTIFACT_TYPE_KINDS: Readonly<Record<string, ArtifactSummary["kind"]>> = {
+export const ARTIFACT_TYPE_KINDS: Readonly<Record<string, ArtifactSummary["kind"]>> =
+{
 	"https://claude.ai/artifact/Rp9naXUCj2xozpUkyQy19W": "docs",
 };
 
 /** A known type's mark kind (upstream `CV`): only Docs is a type locally; `html` means untyped. */
-const TYPE_KIND_MARKS: Partial<Record<ArtifactSummary["kind"], ArtifactMarkKind>> = {docs: "document"};
+const TYPE_KIND_MARKS: Partial<Record<ArtifactSummary["kind"], ArtifactMarkKind>> =
+{
+	docs: "document",
+};
 
 /** Upstream `vj`: a type's trimmed, lower-cased name → kind. */
-const TYPE_NAME_MARKS: Readonly<Record<string, ArtifactMarkKind>> = {
+const TYPE_NAME_MARKS: Readonly<Record<string, ArtifactMarkKind>> =
+{
 	docs: "document",
 	doc: "document",
 	document: "document",
@@ -112,7 +196,8 @@ const TYPE_NAME_MARKS: Readonly<Record<string, ArtifactMarkKind>> = {
 };
 
 /** Upstream `w2` (lower-cased) plus the local publish icon words: a declared glyph → kind. */
-const GLYPH_WORD_MARKS: Readonly<Record<string, ArtifactMarkKind>> = {
+const GLYPH_WORD_MARKS: Readonly<Record<string, ArtifactMarkKind>> =
+{
 	doc: "document",
 	file: "document",
 	note: "document",
@@ -134,11 +219,13 @@ const GLYPH_WORD_MARKS: Readonly<Record<string, ArtifactMarkKind>> = {
 function lookup(
 	table: Readonly<Record<string, ArtifactMarkKind>>,
 	key: string | undefined,
-): ArtifactMarkKind | undefined {
+): ArtifactMarkKind | undefined
+{
 	return key !== undefined && Object.hasOwn(table, key) ? table[key] : undefined;
 }
 
-export interface ArtifactMarkInput {
+export interface ArtifactMarkInput
+{
 	typeKind?: ArtifactSummary["kind"] | undefined;
 	typeName?: string | undefined;
 	iconWord?: string | null | undefined;
@@ -149,9 +236,14 @@ export interface ArtifactMarkInput {
  * counts for a typed artifact (upstream c33ae67d6 `z()`/`rL` drop an untyped publish's icon), and an untyped
  * `file` gets no mark at all, so callers draw their own fallback.
  */
-export function resolveArtifactMark(
-	input: ArtifactMarkInput,
-): {kind: ArtifactMarkKind; hue: ArtifactMarkHue} | undefined {
+export function resolveArtifactMark(input: ArtifactMarkInput):
+	|
+	  {
+			kind: ArtifactMarkKind;
+			hue: ArtifactMarkHue;
+	  }
+	| undefined
+{
 	const typeKind = input.typeKind === undefined ? undefined : TYPE_KIND_MARKS[input.typeKind];
 	const typed = typeKind !== undefined || input.typeName !== undefined;
 	if (!typed) return undefined;
@@ -160,7 +252,10 @@ export function resolveArtifactMark(
 		lookup(TYPE_NAME_MARKS, input.typeName?.trim().toLowerCase()) ??
 		lookup(GLYPH_WORD_MARKS, input.iconWord?.toLowerCase()) ??
 		"file";
-	return {kind, hue: ARTIFACT_MARK_KINDS[kind].hue};
+	return {
+		kind,
+		hue: ARTIFACT_MARK_KINDS[kind].hue,
+	};
 }
 
 /**
@@ -168,6 +263,7 @@ export function resolveArtifactMark(
  * typed, and an untyped publish's icon never reaches the resolver (c33ae67d6 `z()` keeps `icon` only for typed
  * or tinted artifacts), so the icon word is never read here.
  */
-export function coverBlankKind(artifact: Pick<ArtifactSummary, "kind" | "icon">): "document" | "other" {
+export function coverBlankKind(artifact: Pick<ArtifactSummary, "kind" | "icon">): "document" | "other"
+{
 	return artifact.kind === "docs" ? "document" : "other";
 }

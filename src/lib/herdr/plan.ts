@@ -8,7 +8,8 @@ import {OPTION_LINE} from "./dialog-rows";
 import {readHerdrScreen} from "./read-screen";
 import type {HerdrRequester} from "./panes";
 import {defaultHerdrPermissionDependencies} from "./permission";
-import {
+import
+{
 	BRACKETED_PASTE_END,
 	BRACKETED_PASTE_START,
 	herdrWritesEnabled,
@@ -28,7 +29,8 @@ const FEEDBACK_ROW = "Tell Claude what to change";
 const FEEDBACK_HINT = "shift+tab to approve with this feedback";
 const MANUAL_ROW = "Yes, manually approve edits";
 /** The keep-context rows that carry on in a forward mode (CLI 2.1.302's wording). */
-const FORWARD_ROWS: Readonly<Record<string, PlanForwardMode>> = {
+const FORWARD_ROWS: Readonly<Record<string, PlanForwardMode>> =
+{
 	"Yes, and use auto mode": "auto",
 	"Yes, auto-accept edits": "acceptEdits",
 	"Yes, and auto-accept edits": "acceptEdits",
@@ -36,8 +38,13 @@ const FORWARD_ROWS: Readonly<Record<string, PlanForwardMode>> = {
 };
 
 /** The dialog's row numbers for each choice ccp can type; null rows are not on offer. */
-export interface PlanDialogRows {
-	forward: {mode: PlanForwardMode; row: number} | null;
+export interface PlanDialogRows
+{
+	forward:
+	{
+		mode: PlanForwardMode;
+		row: number;
+	} | null;
 	manual: number | null;
 	feedback: number;
 }
@@ -48,12 +55,14 @@ export interface PlanDialogRows {
  * rows run 1…n (n ≤ 9, one digit each) and end on the empty feedback field, so
  * a different dialog, or one the user already typed feedback into, is refused.
  */
-export function parsePlanDialog(screen: string): PlanDialogRows | null {
+export function parsePlanDialog(screen: string): PlanDialogRows | null
+{
 	const lines = screen.split("\n");
 	const start = lines.findLastIndex((line) => line.includes(DIALOG_QUESTION));
 	if (start < 0) return null;
 	const labels: string[] = [];
-	for (const line of lines.slice(start + 1)) {
+	for (const line of lines.slice(start + 1))
+	{
 		const trimmed = line.trim();
 		if (trimmed === "" || trimmed === FEEDBACK_HINT) continue;
 		const match = OPTION_LINE.exec(line);
@@ -66,15 +75,26 @@ export function parsePlanDialog(screen: string): PlanDialogRows | null {
 	const forwardMode = forwardIndex < 0 ? undefined : FORWARD_ROWS[labels[forwardIndex] ?? ""];
 	const manualIndex = labels.indexOf(MANUAL_ROW);
 	return {
-		forward: forwardMode === undefined ? null : {mode: forwardMode, row: forwardIndex + 1},
+		forward:
+			forwardMode === undefined
+				? null
+				:
+					{
+						mode: forwardMode,
+						row: forwardIndex + 1,
+					},
 		manual: manualIndex < 0 ? null : manualIndex + 1,
 		feedback: labels.length,
 	};
 }
 
 /** What the card may offer for the dialog on screen. */
-function planDialogShape(rows: PlanDialogRows): PlanDialog {
-	return {forwardMode: rows.forward?.mode ?? null, manual: rows.manual !== null};
+function planDialogShape(rows: PlanDialogRows): PlanDialog
+{
+	return {
+		forwardMode: rows.forward?.mode ?? null,
+		manual: rows.manual !== null,
+	};
 }
 
 /**
@@ -84,27 +104,55 @@ function planDialogShape(rows: PlanDialogRows): PlanDialog {
  * would submit, so multi-line feedback goes in as a bracketed paste, which the
  * field keeps line for line (CLI 2.1.312). Null when the dialog lacks the choice.
  */
-export function planDecisionSteps(rows: PlanDialogRows, decision: PlanDecision): QuestionAnswerStep[] | null {
-	if (decision.kind === "accept") {
+export function planDecisionSteps(rows: PlanDialogRows, decision: PlanDecision): QuestionAnswerStep[] | null
+{
+	if (decision.kind === "accept")
+	{
 		const row =
 			decision.mode === "default" ? rows.manual : rows.forward?.mode === decision.mode ? rows.forward.row : null;
-		return row === null ? null : [{key: String(row)}];
+		return row === null
+			? null
+			: [
+					{
+						key: String(row),
+					},
+				];
 	}
 	const feedback = decision.feedback.trim();
-	const focus = {key: String(rows.feedback)};
-	if (feedback === "") return [focus, {key: "enter"}];
+	const focus =
+	{
+		key: String(rows.feedback),
+	};
+	if (feedback === "")
+		return [
+			focus,
+			{
+				key: "enter",
+			},
+		];
 	const text = feedback.includes("\n")
 		? `${BRACKETED_PASTE_START}${feedback}${BRACKETED_PASTE_END}`
 		: feedback.replace(/\s+/g, " ");
-	return [focus, {text}, {key: "enter"}];
+	return [
+		focus,
+		{
+			text,
+		},
+		{
+			key: "enter",
+		},
+	];
 }
 
-const HerdrPlanSchema = z.strictObject({
-	sessionId: z.string().min(1),
-	decision: PlanDecisionSchema,
-});
+const HerdrPlanSchema = z.strictObject(
+	{
+		sessionId: z.string().min(1),
+		decision: PlanDecisionSchema,
+	},
+);
 
-export interface HerdrPlanDependencies {
+export interface HerdrPlanDependencies
+{
 	rejectRequest: (request: Request) => Response | null;
 	writesEnabled: () => boolean;
 	/** Whether the session's PermissionRequest hook says the ExitPlanMode dialog is open. */
@@ -123,31 +171,45 @@ export interface HerdrPlanDependencies {
 
 const STEP_PAUSE_MS = 80;
 
-export const defaultHerdrPlanDependencies: HerdrPlanDependencies = {
+export const defaultHerdrPlanDependencies: HerdrPlanDependencies =
+{
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
 	hasPendingPlan: (sessionId) =>
 		getActiveSessionEntry(sessionId)?.pendingPermissionRequest?.toolName === "ExitPlanMode",
 	clearPendingPlan: defaultHerdrPermissionDependencies.clearPendingPermission,
-	clearHookPlan: (sessionId) => {
+	clearHookPlan: (sessionId) =>
+	{
 		if (!clearStoredPendingPlan(sessionId)) return;
-		broadcastTyped(DOMAIN_EVENTS.SESSION_PENDING_PLAN_CHANGED, {
-			sessionId,
-			pendingPlan: null,
-		} satisfies SessionPendingPlanChangedPayload);
+		broadcastTyped(
+			DOMAIN_EVENTS.SESSION_PENDING_PLAN_CHANGED,
+			{
+				sessionId,
+				pendingPlan: null,
+			} satisfies SessionPendingPlanChangedPayload,
+		);
 	},
 	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
 	readScreen: async (_sessionId, paneId) => readHerdrScreen(paneId),
 	request: herdrRequest,
 	createRequestId: () => `ccp:plan:${crypto.randomUUID()}`,
 	pause: async () =>
-		new Promise((resolve) => {
+		new Promise((resolve) =>
+		{
 			setTimeout(resolve, STEP_PAUSE_MS);
 		}),
 };
 
-function errorResponse(error: string, status: number): Response {
-	return Response.json({error}, {status});
+function errorResponse(error: string, status: number): Response
+{
+	return Response.json(
+		{
+			error,
+		},
+		{
+			status,
+		},
+	);
 }
 
 const NOT_PENDING = "No plan approval is pending";
@@ -162,38 +224,112 @@ async function readPlanDialog(
 	request: Request,
 	sessionId: string | null,
 	dependencies: HerdrPlanDependencies,
-): Promise<{ok: true; paneId: string; rows: PlanDialogRows} | {ok: false; response: Response}> {
+): Promise<
+	|
+	  {
+			ok: true;
+			paneId: string;
+			rows: PlanDialogRows;
+	  }
+	|
+	  {
+			ok: false;
+			response: Response;
+	  }
+>
+{
 	const rejection = dependencies.rejectRequest(request);
-	if (rejection) return {ok: false, response: rejection};
-	if (!dependencies.writesEnabled()) return {ok: false, response: errorResponse("herdr writes are disabled", 403)};
-	if (sessionId === null) {
-		return {ok: false, response: errorResponse("sessionId and a plan decision are required", 400)};
+	if (rejection)
+		return {
+			ok: false,
+			response: rejection,
+		};
+	if (!dependencies.writesEnabled())
+		return {
+			ok: false,
+			response: errorResponse("herdr writes are disabled", 403),
+		};
+	if (sessionId === null)
+	{
+		return {
+			ok: false,
+			response: errorResponse("sessionId and a plan decision are required", 400),
+		};
 	}
-	if (!dependencies.hasPendingPlan(sessionId)) return {ok: false, response: errorResponse(NOT_PENDING, 409)};
+	if (!dependencies.hasPendingPlan(sessionId))
+		return {
+			ok: false,
+			response: errorResponse(NOT_PENDING, 409),
+		};
 	const target = await dependencies.resolveTarget(sessionId);
-	if (!target.ok) return {ok: false, response: errorResponse(target.message, 502)};
+	if (!target.ok)
+		return {
+			ok: false,
+			response: errorResponse(target.message, 502),
+		};
 	const screen = await dependencies.readScreen(sessionId, target.value.paneId);
-	if (!screen.ok) return {ok: false, response: errorResponse(screen.message, 502)};
+	if (!screen.ok)
+		return {
+			ok: false,
+			response: errorResponse(screen.message, 502),
+		};
 	const rows = parsePlanDialog(screen.value);
-	if (rows === null) return {ok: false, response: errorResponse(NOT_SHOWN, 409)};
-	return {ok: true, paneId: target.value.paneId, rows};
+	if (rows === null)
+		return {
+			ok: false,
+			response: errorResponse(NOT_SHOWN, 409),
+		};
+	return {
+		ok: true,
+		paneId: target.value.paneId,
+		rows,
+	};
 }
 
 /** GET: what the session's open plan dialog offers, so the card shows only choices it can type. */
 export async function handleHerdrPlanDialog(
 	request: Request,
 	dependencies: HerdrPlanDependencies = defaultHerdrPlanDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const sessionId = new URL(request.url).searchParams.get("sessionId");
 	const dialog = await readPlanDialog(request, sessionId === "" ? null : sessionId, dependencies);
 	if (!dialog.ok) return dialog.response;
-	return Response.json({dialog: planDialogShape(dialog.rows)});
+	return Response.json(
+		{
+			dialog: planDialogShape(dialog.rows),
+		},
+	);
 }
 
-function stepCall(paneId: string, step: QuestionAnswerStep): {method: string; params: Record<string, unknown>} {
+function stepCall(
+	paneId: string,
+	step: QuestionAnswerStep,
+):
+{
+	method: string;
+	params: Record<string, unknown>;
+}
+{
 	return "key" in step
-		? {method: "agent.send_keys", params: {target: paneId, keys: [step.key]}}
-		: {method: "pane.send_text", params: {pane_id: paneId, text: step.text}};
+		?
+			{
+				method: "agent.send_keys",
+				params:
+				{
+					target: paneId,
+					keys: [step.key],
+				},
+			}
+		:
+			{
+				method: "pane.send_text",
+				params:
+				{
+					pane_id: paneId,
+					text: step.text,
+				},
+			};
 }
 
 /**
@@ -204,7 +340,8 @@ function stepCall(paneId: string, step: QuestionAnswerStep): {method: string; pa
 export async function handleHerdrPlan(
 	request: Request,
 	dependencies: HerdrPlanDependencies = defaultHerdrPlanDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const parsed = HerdrPlanSchema.safeParse(await request.json());
 	const dialog = await readPlanDialog(request, parsed.success ? parsed.data.sessionId : null, dependencies);
 	if (!dialog.ok) return dialog.response;
@@ -213,18 +350,26 @@ export async function handleHerdrPlan(
 	const steps = planDecisionSteps(dialog.rows, parsed.data.decision);
 	if (steps === null) return errorResponse("The plan approval dialog does not offer that choice", 409);
 
-	for (const [index, step] of steps.entries()) {
+	for (const [index, step] of steps.entries())
+	{
 		if (index > 0) await dependencies.pause();
-		const response = await dependencies.request({
-			id: dependencies.createRequestId(),
-			...stepCall(dialog.paneId, step),
-		});
-		if (!response.ok) {
+		const response = await dependencies.request(
+			{
+				id: dependencies.createRequestId(),
+				...stepCall(dialog.paneId, step),
+			},
+		);
+		if (!response.ok)
+		{
 			return errorResponse(response.message, response.code === "agent_not_ready" ? 409 : 502);
 		}
 	}
 	// A rejection ends the turn with Stop (idle), which never clears the prompt.
 	dependencies.clearPendingPlan(parsed.data.sessionId);
 	dependencies.clearHookPlan(parsed.data.sessionId);
-	return Response.json({ok: true});
+	return Response.json(
+		{
+			ok: true,
+		},
+	);
 }

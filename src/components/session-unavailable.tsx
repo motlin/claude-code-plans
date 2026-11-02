@@ -15,7 +15,14 @@ export function SessionUnavailable({
 	children,
 	actions,
 	alert = false,
-}: Readonly<{heading: ReactNode; children: ReactNode; actions: ReactNode; alert?: boolean}>) {
+}: Readonly<
+{
+	heading: ReactNode;
+	children: ReactNode;
+	actions: ReactNode;
+	alert?: boolean;
+}>)
+{
 	return (
 		<div className="flex h-full flex-col">
 			<div aria-hidden="true" className="h-8 shrink-0" />
@@ -33,7 +40,8 @@ export function SessionUnavailable({
 }
 
 /** A session that doesn't exist: upstream's copy, with Start a new session doing what the sidebar New row does. */
-export function SessionNotFound() {
+export function SessionNotFound()
+{
 	const navigate = useNavigate();
 	return (
 		<SessionUnavailable
@@ -42,7 +50,13 @@ export function SessionNotFound() {
 				<button
 					type="button"
 					className={SESSION_UNAVAILABLE_BUTTON_CLASS}
-					onClick={() => void navigate({to: "/"}).then(requestHomeComposerFocus)}
+					onClick={() =>
+						void navigate(
+							{
+								to: "/",
+							},
+						).then(requestHomeComposerFocus)
+					}
 				>
 					Start a new session
 				</button>

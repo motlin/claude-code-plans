@@ -12,7 +12,8 @@ export const AUTO_SWITCH_LABEL = "Allow and switch to Auto";
 /** Upstream `/AOfoe`. */
 export const AUTO_SWITCH_DESCRIPTION = "Auto reviews the rest of this session.";
 
-export interface AutoSwitchOfferInput {
+export interface AutoSwitchOfferInput
+{
 	/** The session's mode, as the chin reads it. */
 	mode: string;
 	/** Modes in the CLI's shift+tab cycle for this session. */
@@ -41,7 +42,8 @@ export function autoSwitchOffered({
 	readGated,
 	elicitation,
 	dialog,
-}: AutoSwitchOfferInput): boolean {
+}: AutoSwitchOfferInput): boolean
+{
 	if (mode !== "default" && mode !== "acceptEdits") return false;
 	if (!availableModes.includes("auto") || !canAnswer || readGated || elicitation) return false;
 	if (dialog === undefined || dialog === "unknown" || dialog.denyFirst) return false;
@@ -62,7 +64,8 @@ export function allowMenuItems({
 	persistent: boolean;
 	lead: ApprovalLeadingAllow;
 	autoOffered: boolean;
-}): AllowMenuItem[] {
+}): AllowMenuItem[]
+{
 	const items: AllowMenuItem[] = persistent ? [lead === "always" ? "once" : "persistent"] : [];
 	return autoOffered ? [...items, "auto"] : items;
 }

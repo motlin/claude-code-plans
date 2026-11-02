@@ -6,15 +6,25 @@ import {CodePageHeader} from "../components/code-page-header";
 import {ProjectCardCounts} from "../components/project-card-counts";
 import {formatCount} from "../lib/pluralize";
 
-export const Route = createFileRoute("/projects")({
-	component: ProjectsPage,
-	loader: async ({context: {queryClient}}) => queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Projects")],
-	}),
-});
+export const Route = createFileRoute("/projects")(
+	{
+		component: ProjectsPage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...projectsQueryOptions(),
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Projects")],
+		}),
+	},
+);
 
-function ProjectsPage() {
+function ProjectsPage()
+{
 	const {data: projects} = useSuspenseQuery(projectsQueryOptions());
 
 	return (
@@ -31,10 +41,20 @@ function ProjectsPage() {
 						<Link
 							key={project.id}
 							to="/project/$id"
-							params={{id: project.id}}
+							params={
+							{
+								id: project.id,
+							}}
 							className="group block rounded-lg border border-border p-4 transition-colors hover:bg-surface-0"
 						>
-							<div className="truncate font-medium" style={{fontSize: "14px", fontWeight: 500}}>
+							<div
+								className="truncate font-medium"
+								style={
+								{
+									fontSize: "14px",
+									fontWeight: 500,
+								}}
+							>
 								{project.projectPath ? project.projectPath.split("/").pop() : project.name}
 							</div>
 							{project.projectPath && (

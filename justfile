@@ -75,9 +75,9 @@ lint: install
 # Run formatter
 format: install
     pre-commit run just-fmt --all-files
-    vp fmt {{ if ci != "" { "--check" } else { "" } }}
+    oxfmt-next-line {{ if ci != "" { "--check" } else { "" } }}
 
-# Run checks (format + lint; `typecheck` runs tsc)
+# Run checks (lint; formatting is `just format`, `typecheck` runs tsc)
 check *args: install
     scripts/clean-env.sh vp run --cache check {{ if ci != "" { "" } else { "--fix" } }} {{ args }}
 
@@ -192,7 +192,7 @@ pre-commit: install
 
 # Run all pre-commit checks
 [arg("quick", long, value="true", help="Skip tests")]
-verify quick="": (check "--quiet") _fallow-fix _verify-read-only (_verify-test quick)
+verify quick="": (check "--quiet") format _fallow-fix _verify-read-only (_verify-test quick)
     @echo "All pre-commit checks passed!"
 
 # Read-only gates, once the fixers have rewritten the tree. Pre-commit's own fixers can run here too: they fail the run whenever they rewrite a file
@@ -200,7 +200,7 @@ verify quick="": (check "--quiet") _fallow-fix _verify-read-only (_verify-test q
 [private]
 _verify-read-only: _build-bundle fallow-check _verify-pre-commit
 
-# `check --fix` already formatted and `_fallow-fix` already applied Fallow's fixes
+# `format` already formatted and `_fallow-fix` already applied Fallow's fixes
 [private]
 _verify-pre-commit: install
     SKIP=oxfmt,fallow pre-commit run --all-files

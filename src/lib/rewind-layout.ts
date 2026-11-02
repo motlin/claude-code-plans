@@ -10,7 +10,8 @@
 import type {TranscriptCut} from "./api/sessions";
 import type {SessionLine} from "./sessions";
 
-export interface RewindMarkerPlacement {
+export interface RewindMarkerPlacement
+{
 	cut: TranscriptCut;
 	/** Upstream `l_`: the cut's time is shown only when two or more cuts share a parent. */
 	label: string;
@@ -20,7 +21,8 @@ export interface RewindMarkerPlacement {
 	hasRows: boolean;
 }
 
-export interface RewindLayout {
+export interface RewindLayout
+{
 	lines: SessionLine[];
 	/**
 	 * Markers keyed by the lineIndex of the row they are drawn just before: the
@@ -35,9 +37,16 @@ const NO_MARKERS: ReadonlyMap<number, readonly RewindMarkerPlacement[]> = new Ma
 const NO_GREYED: ReadonlySet<number> = new Set();
 
 /** Upstream's middot-and-time suffix after the label, with every space in the time made non-breaking. */
-function rewindMarkerLabel(cut: TranscriptCut, sharesParent: boolean): string {
+function rewindMarkerLabel(cut: TranscriptCut, sharesParent: boolean): string
+{
 	if (!sharesParent) return "Rewound here";
-	const time = new Date(cut.at).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"});
+	const time = new Date(cut.at).toLocaleTimeString(
+		[],
+		{
+			hour: "numeric",
+			minute: "2-digit",
+		},
+	);
 	return `Rewound here \u00B7\u00A0${time.replace(/\s/g, "\u00A0")}`;
 }
 
@@ -47,20 +56,29 @@ export function rewindLayout(
 	rewound: ReadonlySet<string>,
 	verbose: boolean,
 	openCuts: ReadonlySet<string>,
-): RewindLayout {
-	if (cutsByReplacement.size === 0) return {lines, markersBefore: NO_MARKERS, greyed: NO_GREYED};
+): RewindLayout
+{
+	if (cutsByReplacement.size === 0)
+		return {
+			lines,
+			markersBefore: NO_MARKERS,
+			greyed: NO_GREYED,
+		};
 	const parentCounts = new Map<string, number>();
-	for (const cuts of cutsByReplacement.values()) {
+	for (const cuts of cutsByReplacement.values())
+	{
 		for (const cut of cuts) parentCounts.set(cut.parentUuid, (parentCounts.get(cut.parentUuid) ?? 0) + 1);
 	}
 	const markersBefore = new Map<number, RewindMarkerPlacement[]>();
 	const closed = new Set<number>();
 	const greyed = new Set<number>();
 	let pending: SessionLine[] = [];
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		const uuid = "uuid" in line ? line.uuid : undefined;
 		if (uuid === undefined) continue;
-		if (rewound.has(uuid)) {
+		if (rewound.has(uuid))
+		{
 			pending.push(line);
 			continue;
 		}
@@ -74,7 +92,8 @@ export function rewindLayout(
 		const anchor = rows[0] ?? line;
 		markersBefore.set(
 			anchor.lineIndex,
-			cuts.map((cut) => ({
+			cuts.map((cut) => (
+			{
 				cut,
 				label: rewindMarkerLabel(cut, (parentCounts.get(cut.parentUuid) ?? 0) > 1),
 				replacementUuid,

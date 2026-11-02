@@ -21,23 +21,36 @@ export const NAV_ROW_HINT_CLASS =
  * Upstream's sticky "New" row: goes home and focuses the composer, exactly like ⇧⌘O, and reveals
  * the ⇧⌘O shortcut text at its trailing edge on hover.
  */
-export function NewSessionRow() {
+export function NewSessionRow()
+{
 	const navigate = useNavigate();
 	const shortcut = useShortcutKeys("new_session");
 
-	function onClick(event: MouseEvent<HTMLAnchorElement>) {
+	function onClick(event: MouseEvent<HTMLAnchorElement>)
+	{
 		// Modified clicks keep the browser's open-in-new-tab behavior.
 		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 		event.preventDefault();
-		void navigate({to: "/"}).then(requestHomeComposerFocus);
+		void navigate(
+			{
+				to: "/",
+			},
+		).then(requestHomeComposerFocus);
 	}
 
 	return (
 		<div className="flex items-center">
 			<Link
 				to="/"
-				activeOptions={{exact: true, includeSearch: false}}
-				activeProps={{"data-selected": "focused"}}
+				activeOptions={
+				{
+					exact: true,
+					includeSearch: false,
+				}}
+				activeProps={
+				{
+					"data-selected": "focused",
+				}}
 				onClick={onClick}
 				data-row=""
 				data-row-nav=""

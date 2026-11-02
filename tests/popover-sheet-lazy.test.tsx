@@ -5,16 +5,20 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {PopoverRoot, PopoverTrigger, PopoverContent} from "../src/components/ui/popover";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-describe("Popover sheet chunk", () => {
-	it("loads the lazy sheet presentation on a cold open and renders the sheet once it arrives", async () => {
+describe("Popover sheet chunk", () =>
+{
+	it("loads the lazy sheet presentation on a cold open and renders the sheet once it arrives", async () =>
+	{
 		vi.stubGlobal(
 			"matchMedia",
-			vi.fn((query: string) => ({
+			vi.fn((query: string) => (
+			{
 				matches: query === "(pointer: coarse)" || query === "(pointer: coarse) and (max-width: 639.98px)",
 				media: query,
 				onchange: null,
@@ -33,12 +37,27 @@ describe("Popover sheet chunk", () => {
 				</PopoverContent>
 			</PopoverRoot>,
 		);
-		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Usage",
+				},
+			),
+		);
 		const popup = await screen.findByRole("dialog");
-		expect({
-			presentation: popup.getAttribute("data-presentation"),
-			scrim: document.querySelector("[data-sheet-scrim]") !== null,
-			body: popup.querySelector("[data-cds-popover-body]")?.textContent,
-		}).toStrictEqual({presentation: "sheet", scrim: true, body: "Body"});
+		expect(
+			{
+				presentation: popup.getAttribute("data-presentation"),
+				scrim: document.querySelector("[data-sheet-scrim]") !== null,
+				body: popup.querySelector("[data-cds-popover-body]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				presentation: "sheet",
+				scrim: true,
+				body: "Body",
+			},
+		);
 	});
 });

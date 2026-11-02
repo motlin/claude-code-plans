@@ -2,7 +2,8 @@ import type {Meta, StoryObj} from "@storybook/react-vite";
 import {DetailTopBar} from "../../components/detail-top-bar";
 import {pillStyles} from "../../components/pill-styles";
 
-const meta = {
+const meta =
+{
 	title: "Shared/DetailTopBar",
 	component: DetailTopBar,
 } satisfies Meta<typeof DetailTopBar>;
@@ -10,8 +11,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const WithTitleAndPills: Story = {
-	args: {
+export const WithTitleAndPills: Story =
+{
+	args:
+	{
 		children: (
 			<>
 				<h1 className="text-sm font-semibold">Session Details</h1>
@@ -26,21 +29,30 @@ export const WithTitleAndPills: Story = {
 	},
 };
 
-export const Empty: Story = {
-	args: {
+export const Empty: Story =
+{
+	args:
+	{
 		children: null,
 	},
 };
 
-export const OverflowPills: Story = {
-	args: {
+export const OverflowPills: Story =
+{
+	args:
+	{
 		children: (
 			<>
-				{Array.from({length: 12}, (_, i) => (
-					<a key={i} href="/sessions" className={pillStyles.primary}>
-						Pill {i + 1}
-					</a>
-				))}
+				{Array.from(
+					{
+						length: 12,
+					},
+					(_, i) => (
+						<a key={i} href="/sessions" className={pillStyles.primary}>
+							Pill {i + 1}
+						</a>
+					),
+				)}
 			</>
 		),
 	},

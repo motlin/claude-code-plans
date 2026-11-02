@@ -7,7 +7,8 @@
 const RECAP_CAP = 500;
 const CONTROL_OR_FORMAT = /(?![\u200c\u200d])[\p{Cc}\p{Cf}]/gu;
 
-export function recapText(text: string): string | undefined {
+export function recapText(text: string): string | undefined
+{
 	const collapsed = text
 		.replace(/[\u2028\u2029]/g, "\n")
 		.replace(/\s+/g, " ")

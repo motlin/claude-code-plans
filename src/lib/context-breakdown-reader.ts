@@ -10,16 +10,37 @@ import {ContextMirrorFileSchema} from "./runtime-schemas";
 /** Where the `ccb-context-mirror` CLI mod (`mods/ccb-context-mirror`) writes one breakdown file per session. */
 export const CONTEXT_MIRROR_DIR = join(homedir(), ".claude", "plugins", "data", "ccb-context-mirror", "context");
 
-export function breakdownFromMirror(file: ContextMirrorFile): ContextBreakdown {
+export function breakdownFromMirror(file: ContextMirrorFile): ContextBreakdown
+{
 	const {breakdown} = file;
 	return {
-		categories: breakdown.categories.map(({name, tokens, kind}) => ({name, tokens, kind})),
+		categories: breakdown.categories.map(({name, tokens, kind}) => (
+		{
+			name,
+			tokens,
+			kind,
+		})),
 		totalTokens: breakdown.totalTokens,
 		rawMaxTokens: breakdown.rawMaxTokens,
 		percentage: breakdown.percentage,
-		mcpTools: breakdown.mcpTools.map(({name, serverName, tokens}) => ({name, serverName, tokens})),
-		memoryFiles: breakdown.memoryFiles.map(({path, type, tokens}) => ({path, type, tokens})),
-		agents: breakdown.agents.map(({agentType, source, tokens}) => ({agentType, source, tokens})),
+		mcpTools: breakdown.mcpTools.map(({name, serverName, tokens}) => (
+		{
+			name,
+			serverName,
+			tokens,
+		})),
+		memoryFiles: breakdown.memoryFiles.map(({path, type, tokens}) => (
+		{
+			path,
+			type,
+			tokens,
+		})),
+		agents: breakdown.agents.map(({agentType, source, tokens}) => (
+		{
+			agentType,
+			source,
+			tokens,
+		})),
 		fetchedAt: file.fetchedAt,
 		source: "mod",
 	};
@@ -29,18 +50,25 @@ export function breakdownFromMirror(file: ContextMirrorFile): ContextBreakdown {
 export async function readContextMirror(
 	sessionId: string,
 	dir: string = CONTEXT_MIRROR_DIR,
-): Promise<ContextBreakdown | null> {
+): Promise<ContextBreakdown | null>
+{
 	if (!SESSION_ID_PATTERN.test(sessionId)) return null;
 	let raw: string;
-	try {
+	try
+	{
 		raw = await readFile(join(dir, `${sessionId}.json`), "utf-8");
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 	let json: unknown;
-	try {
+	try
+	{
 		json = JSON.parse(raw);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 	const parsed = ContextMirrorFileSchema.safeParse(json);
@@ -53,13 +81,21 @@ type BroadcastFn = (type: string, data: Record<string, unknown>) => void;
  * Route a watcher event in the mirror directory: a `<sessionId>.json` write broadcasts
  * `session:context-breakdown-changed` for that session. True when `path` is in the directory.
  */
-export function handleContextMirrorEvent(path: string, mirrorRoot: string, broadcast: BroadcastFn): boolean {
+export function handleContextMirrorEvent(path: string, mirrorRoot: string, broadcast: BroadcastFn): boolean
+{
 	if (!mirrorRoot || dirname(path) !== mirrorRoot) return false;
 	const name = basename(path);
-	if (name.endsWith(".json")) {
+	if (name.endsWith(".json"))
+	{
 		const sessionId = name.slice(0, -".json".length);
-		if (SESSION_ID_PATTERN.test(sessionId)) {
-			broadcast(DOMAIN_EVENTS.SESSION_CONTEXT_BREAKDOWN_CHANGED, {sessionId});
+		if (SESSION_ID_PATTERN.test(sessionId))
+		{
+			broadcast(
+				DOMAIN_EVENTS.SESSION_CONTEXT_BREAKDOWN_CHANGED,
+				{
+					sessionId,
+				},
+			);
 		}
 	}
 	return true;

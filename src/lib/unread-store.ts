@@ -15,72 +15,95 @@ const unseenBySession = new Map<string, boolean>();
 
 let persist: Persist = async (sessionId, action) => updateSessionViewedState(sessionId, action);
 
-function emitChange(): void {
+function emitChange(): void
+{
 	for (const listener of listeners) listener();
 }
 
-function setUnseen(sessionId: string, unseen: boolean): boolean {
+function setUnseen(sessionId: string, unseen: boolean): boolean
+{
 	if ((unseenBySession.get(sessionId) ?? false) === unseen) return false;
 	unseenBySession.set(sessionId, unseen);
 	return true;
 }
 
 /** Adopt the server's flag for every summary; notifies subscribers once if anything changed. */
-export function syncUnseenFromSummaries(summaries: Iterable<{id: string; unseen: boolean}>): void {
+export function syncUnseenFromSummaries(
+	summaries: Iterable<
+	{
+		id: string;
+		unseen: boolean;
+	}>,
+): void
+{
 	let changed = false;
-	for (const summary of summaries) {
+	for (const summary of summaries)
+	{
 		if (setUnseen(summary.id, summary.unseen)) changed = true;
 	}
 	if (changed) emitChange();
 }
 
-function applyOptimistically(sessionId: string, unseen: boolean): void {
+function applyOptimistically(sessionId: string, unseen: boolean): void
+{
 	const previous = unseenBySession.get(sessionId) ?? false;
 	if (setUnseen(sessionId, unseen)) emitChange();
 	void Promise.resolve()
 		.then(async () => persist(sessionId, unseen ? "unreviewed" : "reviewed"))
-		.catch((error: unknown) => {
+		.catch((error: unknown) =>
+		{
 			console.warn("[unread-store] failed to persist unseen flag", error);
 			// Roll back only if nothing (such as an SSE summary) has replaced the optimistic value.
-			if (unseenBySession.get(sessionId) === unseen && setUnseen(sessionId, previous)) {
+			if (unseenBySession.get(sessionId) === unseen && setUnseen(sessionId, previous))
+			{
 				emitChange();
 			}
 		});
 }
 
-export function markUnseen(sessionId: string): void {
+export function markUnseen(sessionId: string): void
+{
 	applyOptimistically(sessionId, true);
 }
 
-export function markSeen(sessionId: string): void {
+export function markSeen(sessionId: string): void
+{
 	applyOptimistically(sessionId, false);
 }
 
-export function toggleUnseen(sessionId: string): void {
+export function toggleUnseen(sessionId: string): void
+{
 	if (hasUnseenWork(sessionId)) markSeen(sessionId);
 	else markUnseen(sessionId);
 }
 
-export function clearAll(): void {
-	for (const [sessionId, unseen] of unseenBySession) {
+export function clearAll(): void
+{
+	for (const [sessionId, unseen] of unseenBySession)
+	{
 		if (unseen) markSeen(sessionId);
 	}
 }
 
-export function hasUnseenWork(sessionId: string): boolean {
+export function hasUnseenWork(sessionId: string): boolean
+{
 	return unseenBySession.get(sessionId) === true;
 }
 
-export function subscribeUnseenWork(listener: () => void): () => void {
+export function subscribeUnseenWork(listener: () => void): () => void
+{
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
 
-export const __unreadStoreTesting = {
-	setPersist(next: Persist): void {
+export const __unreadStoreTesting =
+{
+	setPersist(next: Persist): void
+	{
 		persist = next;
 	},
-	reset(): void {
+	reset(): void
+	{
 		unseenBySession.clear();
 		emitChange();
 	},

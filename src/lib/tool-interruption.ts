@@ -41,7 +41,8 @@ const STOPPED_WHILE_RUNNING_NOTICES: ReadonlySet<string> = new Set([
 	STOPPED_WHILE_RUNNING + MEMORY_NOTE,
 ]);
 
-export interface ToolResultInterruptionInput {
+export interface ToolResultInterruptionInput
+{
 	/** The result's full text. */
 	text: string;
 	/** The result record's `toolUseResult`; upstream reads it only when the record holds this one result. */
@@ -56,7 +57,8 @@ export interface ToolResultInterruptionInput {
  * text "Tool execution was interrupted.", text starting with "[Request interrupted by user", an
  * unfinished or skipped-call notice (`ze`), or the stopped-while-running correction (`Be`).
  */
-export function isInterruptedToolResult({text, toolUseResult, toolDenialKind}: ToolResultInterruptionInput): boolean {
+export function isInterruptedToolResult({text, toolUseResult, toolDenialKind}: ToolResultInterruptionInput): boolean
+{
 	return (
 		toolDenialKind === "interrupted" ||
 		toolDenialKind === "cancelled" ||

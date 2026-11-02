@@ -28,7 +28,8 @@ const CODE_CHIP_CLASS =
 /** How an inline code span is drawn: a user message's code span, or upstream's question-text chip. */
 type CodeLook = "message" | "chip";
 
-interface UserInlineTextProps {
+interface UserInlineTextProps
+{
 	text: string;
 	/** False keeps backticks literal (an option description). */
 	codeSpans?: boolean;
@@ -52,11 +53,16 @@ export function UserInlineText({
 	codeLook = "message",
 	links = true,
 	revealCloaks = false,
-}: UserInlineTextProps) {
+}: UserInlineTextProps)
+{
 	if (revealCloaks && codeLook === "chip") return <>{chipText(raw, cloakPaint)}</>;
 	const text = maskSecrets(raw);
 	// Upstream's option description (c2f6611a3 `bt`) paints through `xr` under the option card's link policy.
-	const paint = linkPaint({policy: "option"});
+	const paint = linkPaint(
+		{
+			policy: "option",
+		},
+	);
 	if (!codeSpans) return <>{links ? paint(text, 0) : text}</>;
 	if (codeLook === "message") return <>{renderInline(text, paint)}</>;
 	return <>{chipText(text, links ? paint : undefined)}</>;
@@ -65,22 +71,49 @@ export function UserInlineText({
 /** Upstream's question-text code span (`h` in c8a73d209): any backtick-free run, newlines included. */
 const CHIP_CODE_SPAN = /`[^`]+`/g;
 
-interface ChipPart {
+interface ChipPart
+{
 	text: string;
 	isCode: boolean;
 }
 
 /** Upstream's `j` (c8a73d209): the text split into code spans (backticks dropped) and the runs between. */
-function chipCodeParts(text: string): ChipPart[] {
+function chipCodeParts(text: string): ChipPart[]
+{
 	const parts: ChipPart[] = [];
 	let cursor = 0;
-	for (const match of text.matchAll(CHIP_CODE_SPAN)) {
-		if (match.index > cursor) parts.push({text: text.slice(cursor, match.index), isCode: false});
-		parts.push({text: match[0].slice(1, -1), isCode: true});
+	for (const match of text.matchAll(CHIP_CODE_SPAN))
+	{
+		if (match.index > cursor)
+			parts.push(
+				{
+					text: text.slice(cursor, match.index),
+					isCode: false,
+				},
+			);
+		parts.push(
+			{
+				text: match[0].slice(1, -1),
+				isCode: true,
+			},
+		);
 		cursor = match.index + match[0].length;
 	}
-	if (cursor < text.length) parts.push({text: text.slice(cursor), isCode: false});
-	return parts.length > 0 ? parts : [{text, isCode: false}];
+	if (cursor < text.length)
+		parts.push(
+			{
+				text: text.slice(cursor),
+				isCode: false,
+			},
+		);
+	return parts.length > 0
+		? parts
+		: [
+				{
+					text,
+					isCode: false,
+				},
+			];
 }
 
 /** Upstream's `po`: a single-line code span, or a `**` run whose inner text neither starts nor ends with space or `*`. */
@@ -88,26 +121,39 @@ const CHIP_MARKUP = /(`[^`\n]+`|\*\*[^\s*](?:[^*\n]*[^\s*])?\*\*)/;
 /** Upstream's `mo`: a `**` run flanked by one of these stays literal. */
 const BOLD_FLANK = /[\p{L}\p{N}/*]/u;
 
-interface BoldPart {
+interface BoldPart
+{
 	text: string;
 	bold: boolean;
 }
 
 /** Upstream's `ho` (c59c32499): bold runs split out with their `**` dropped; a double backtick anywhere disables both. */
-function boldParts(text: string): BoldPart[] {
-	if (text.includes("``")) return [{text, bold: false}];
-	return text.split(CHIP_MARKUP).map((part, index, parts) => {
+function boldParts(text: string): BoldPart[]
+{
+	if (text.includes("``"))
+		return [
+			{
+				text,
+				bold: false,
+			},
+		];
+	return text.split(CHIP_MARKUP).map((part, index, parts) =>
+	{
 		const bold =
 			index % 2 === 1 &&
 			part.startsWith("**") &&
 			!BOLD_FLANK.test(parts[index - 1]?.at(-1) ?? "") &&
 			!BOLD_FLANK.test(parts[index + 1]?.[0] ?? "");
-		return {text: bold ? part.slice(2, -2) : part, bold};
+		return {
+			text: bold ? part.slice(2, -2) : part,
+			bold,
+		};
 	});
 }
 
 /** Upstream's `uo`: the text as read, code backticks dropped. */
-function chipPlainText(text: string): string {
+function chipPlainText(text: string): string
+{
 	return text.includes("``")
 		? text
 		: chipCodeParts(text)
@@ -124,7 +170,8 @@ const PAINT_URL = /https?:\/\/[^\s<>"]+/g;
 const INERT_LINK_CLASS =
 	"text-upstream-accent underline underline-offset-[3px] decoration-[color-mix(in_srgb,currentColor,transparent_60%)]";
 
-interface TextLinkProps {
+interface TextLinkProps
+{
 	href: string;
 	policy: LinkPolicy;
 	nonInteractive: boolean;
@@ -138,7 +185,8 @@ interface TextLinkProps {
  * (a Figma frame card, needing a connected Figma MCP server), the side-pane preview (`ownAddress`/`bare`, `Tt`,
  * `Zn`) and the flag-gated model-authored `gr` confirm, which need surfaces this app lacks.
  */
-function TextLink({href, policy, nonInteractive, children}: TextLinkProps) {
+function TextLink({href, policy, nonInteractive, children}: TextLinkProps)
+{
 	const link = resolveLink(href, policy);
 	if (link.treatment === "words") return <span dir="ltr">{children}</span>;
 	if (nonInteractive)
@@ -165,7 +213,8 @@ function TextLink({href, policy, nonInteractive, children}: TextLinkProps) {
 const TOKEN_PILL_CLASS =
 	"inline-flex items-center px-0.75 rounded-full bg-alpha-1 font-medium [overflow-wrap:anywhere]";
 
-interface LinkPaintOptions {
+interface LinkPaintOptions
+{
 	policy: LinkPolicy;
 	/** Upstream's `revealCloaks`: runs shown through `u9`, each secret cloaked behind its own reveal button. */
 	reveal?: boolean;
@@ -180,15 +229,19 @@ interface LinkPaintOptions {
  * `is`) as TextLinks drawn as their masked form (`$2`). The question header (c2f6611a3 `Zt`) paints with
  * `revealCloaks`; a user turn (c8a6d9da5 `Z`) and an option description (c2f6611a3 `bt`) without.
  */
-function linkPaint({policy, reveal = false, nonInteractive = false}: LinkPaintOptions): Paint {
+function linkPaint({policy, reveal = false, nonInteractive = false}: LinkPaintOptions): Paint
+{
 	const run = (text: string, key: string, inert = nonInteractive): ReactNode =>
 		reveal ? <CloakedText key={key} text={text} nonInteractive={inert} /> : <Fragment key={key}>{text}</Fragment>;
-	const paint: Paint = (part, at) => {
+	const paint: Paint = (part, at) =>
+	{
 		const pieces = (from: number, to: number) => paint(part.slice(from, to), at + from);
-		if (part.includes("<@") || part.includes("<#")) {
+		if (part.includes("<@") || part.includes("<#"))
+		{
 			const nodes: ReactNode[] = [];
 			let cursor = 0;
-			for (const match of part.matchAll(SLACK_TOKEN)) {
+			for (const match of part.matchAll(SLACK_TOKEN))
+			{
 				if (match.index > cursor) nodes.push(...pieces(cursor, match.index));
 				nodes.push(
 					<span
@@ -202,15 +255,18 @@ function linkPaint({policy, reveal = false, nonInteractive = false}: LinkPaintOp
 				);
 				cursor = match.index + match[0].length;
 			}
-			if (cursor > 0) {
+			if (cursor > 0)
+			{
 				if (cursor < part.length) nodes.push(...pieces(cursor, part.length));
 				return nodes;
 			}
 		}
-		if (part.includes("](")) {
+		if (part.includes("]("))
+		{
 			const nodes: ReactNode[] = [];
 			let cursor = 0;
-			for (const match of part.matchAll(MARKDOWN_LINK)) {
+			for (const match of part.matchAll(MARKDOWN_LINK))
+			{
 				if (match.index > cursor) nodes.push(...pieces(cursor, match.index));
 				const label = (match[1] ?? "").replace(BIDI_CONTROLS, "");
 				const target = markdownLinkTarget(label, match[2] ?? "");
@@ -233,7 +289,8 @@ function linkPaint({policy, reveal = false, nonInteractive = false}: LinkPaintOp
 				);
 				cursor = match.index + match[0].length;
 			}
-			if (cursor > 0) {
+			if (cursor > 0)
+			{
 				if (cursor < part.length) nodes.push(...pieces(cursor, part.length));
 				return nodes;
 			}
@@ -241,7 +298,8 @@ function linkPaint({policy, reveal = false, nonInteractive = false}: LinkPaintOp
 		if (!part.includes("://")) return [run(part, `${at}-t`)];
 		const nodes: ReactNode[] = [];
 		let cursor = 0;
-		for (const match of part.matchAll(PAINT_URL)) {
+		for (const match of part.matchAll(PAINT_URL))
+		{
 			const [url, tail] = splitUrlTail(match[0]);
 			if (match.index > cursor) nodes.push(run(part.slice(cursor, match.index), `${at}-t${cursor}`));
 			const shown = maskUrlSecrets(url);
@@ -260,13 +318,19 @@ function linkPaint({policy, reveal = false, nonInteractive = false}: LinkPaintOp
 }
 
 /** The question header's paint (c2f6611a3 `Zt`): `xr` with `revealCloaks`, under the transcript's link policy. */
-const cloakPaint = linkPaint({policy: "transcript", reveal: true});
+const cloakPaint = linkPaint(
+	{
+		policy: "transcript",
+		reveal: true,
+	},
+);
 
 /** Upstream's `lo`: the text as is. */
 const unpainted: Paint = (part) => [part];
 
 /** Upstream's `fo`: code spans as its chip, the rest painted. */
-function chipCode(text: string, paint: Paint, key: string): ReactNode[] {
+function chipCode(text: string, paint: Paint, key: string): ReactNode[]
+{
 	if (text.includes("``")) return paint(text, 0);
 	return chipCodeParts(text).map((part, index) =>
 		part.isCode ? (
@@ -285,7 +349,8 @@ function chipCode(text: string, paint: Paint, key: string): ReactNode[] {
  * split, the masked read text is drawn unstyled. With a paint, when `u9` of the masked read text differs
  * from the read text, the read text itself (unmasked) is painted unstyled.
  */
-function chipText(text: string, paint: Paint | undefined): ReactNode[] {
+function chipText(text: string, paint: Paint | undefined): ReactNode[]
+{
 	const parts = boldParts(text);
 	const read = parts.map((part) => chipPlainText(part.text)).join("");
 	const masked = maskSecrets(read);
@@ -304,15 +369,23 @@ function chipText(text: string, paint: Paint | undefined): ReactNode[] {
 }
 
 /** Upstream's user turn paint (c8a6d9da5 `Z`): `xr` under the transcript's link policy, no `revealCloaks`. */
-function userPaint(nonInteractive: boolean): Paint {
-	return linkPaint({policy: "transcript", nonInteractive});
+function userPaint(nonInteractive: boolean): Paint
+{
+	return linkPaint(
+		{
+			policy: "transcript",
+			nonInteractive,
+		},
+	);
 }
 
 /** Single-backtick code spans as code, the runs between through `paint`. */
-function renderInline(text: string, paint: Paint, nonInteractive = false): ReactNode[] {
+function renderInline(text: string, paint: Paint, nonInteractive = false): ReactNode[]
+{
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
-	for (const match of text.matchAll(CODE_SPAN)) {
+	for (const match of text.matchAll(CODE_SPAN))
+	{
 		if (match.index > cursor) nodes.push(...paint(text.slice(cursor, match.index), cursor));
 		nodes.push(<UserCodeSpan key={match.index} text={match[1] ?? ""} nonInteractive={nonInteractive} />);
 		cursor = match.index + match[0].length;
@@ -329,7 +402,8 @@ const LIST_CLASS =
  * Upstream's user text root: `div[data-testid=user-message]` grid > the 5px-gap block column that spaces a
  * prompt's paragraphs, lists and code snippets.
  */
-function UserMessageText({children}: {children: ReactNode}) {
+function UserMessageText({children}: {children: ReactNode})
+{
 	return (
 		<div data-testid="user-message" className="relative grid min-w-0 grid-cols-1 gap-2">
 			<div className="flex min-w-0 flex-col gap-1.25">{children}</div>
@@ -341,7 +415,8 @@ function UserMessageText({children}: {children: ReactNode}) {
 const BULLET_ITEM = /^((?: {3})*)\*(?: (.*))?$/;
 const ORDERED_ITEM = /^((?: {3})*)(\d+)\.(?: (.*))?$/;
 
-interface ListEntry {
+interface ListEntry
+{
 	level: number;
 	ordered: boolean;
 	/** The ordered item's number. */
@@ -349,19 +424,41 @@ interface ListEntry {
 	text: string;
 }
 
-function listEntry(line: string, isLast: boolean): ListEntry | null {
+function listEntry(line: string, isLast: boolean): ListEntry | null
+{
 	const bullet = BULLET_ITEM.exec(line);
-	if (bullet !== null && (bullet[2] !== undefined || isLast)) {
-		return {level: (bullet[1] ?? "").length / 3, ordered: false, start: 1, text: bullet[2] ?? ""};
+	if (bullet !== null && (bullet[2] !== undefined || isLast))
+	{
+		return {
+			level: (bullet[1] ?? "").length / 3,
+			ordered: false,
+			start: 1,
+			text: bullet[2] ?? "",
+		};
 	}
 	const ordered = ORDERED_ITEM.exec(line);
 	const number = ordered?.[2];
 	if (ordered === null || number === undefined || String(Number(number)) !== number) return null;
 	if (ordered[3] === undefined && !isLast) return null;
-	return {level: (ordered[1] ?? "").length / 3, ordered: true, start: Number(number), text: ordered[3] ?? ""};
+	return {
+		level: (ordered[1] ?? "").length / 3,
+		ordered: true,
+		start: Number(number),
+		text: ordered[3] ?? "",
+	};
 }
 
-type Block = {kind: "text"; text: string} | {kind: "list"; entries: ListEntry[]};
+type Block =
+	|
+	  {
+			kind: "text";
+			text: string;
+	  }
+	|
+	  {
+			kind: "list";
+			entries: ListEntry[];
+	  };
 
 /**
  * Split a prompt into runs of literal text and the lists upstream lifts out of
@@ -369,20 +466,30 @@ type Block = {kind: "text"; text: string} | {kind: "list"; entries: ListEntry[]}
  * item at the start of the prompt or after a blank line, never straight after
  * text; it takes deeper items and continuation lines, and ends at a blank line.
  */
-function splitBlocks(text: string): Block[] {
+function splitBlocks(text: string): Block[]
+{
 	const lines = text.split("\n");
 	const blocks: Block[] = [];
 	let textLines: string[] = [];
-	const flushText = () => {
+	const flushText = () =>
+	{
 		while (textLines.at(-1)?.trim() === "") textLines.pop();
-		if (textLines.length > 0) blocks.push({kind: "text", text: textLines.join("\n")});
+		if (textLines.length > 0)
+			blocks.push(
+				{
+					kind: "text",
+					text: textLines.join("\n"),
+				},
+			);
 		textLines = [];
 	};
 	let i = 0;
-	for (let head = lines[i]; head !== undefined; head = lines[i]) {
+	for (let head = lines[i]; head !== undefined; head = lines[i])
+	{
 		const first = listEntry(head, i === lines.length - 1);
 		const afterText = (textLines.at(-1)?.trim() ?? "") !== "";
-		if (first?.level !== 0 || afterText) {
+		if (first?.level !== 0 || afterText)
+		{
 			textLines.push(head);
 			i++;
 			continue;
@@ -390,32 +497,49 @@ function splitBlocks(text: string): Block[] {
 		flushText();
 		const entries = [first];
 		i++;
-		for (let line = lines[i]; line !== undefined && line.trim() !== ""; line = lines[i]) {
+		for (let line = lines[i]; line !== undefined && line.trim() !== ""; line = lines[i])
+		{
 			const entry = listEntry(line, i === lines.length - 1);
-			if (entry === null) {
+			if (entry === null)
+			{
 				const last = defined(entries.at(-1), "a list has its first entry");
 				last.text += `\n${line.trim()}`;
-			} else {
+			}
+			else
+			{
 				const parent = entries.at(-1)?.level ?? 0;
-				entries.push({...entry, level: Math.min(entry.level, parent + 1)});
+				entries.push(
+					{
+						...entry,
+						level: Math.min(entry.level, parent + 1),
+					},
+				);
 			}
 			i++;
 		}
 		while (lines[i]?.trim() === "") i++;
-		blocks.push({kind: "list", entries});
+		blocks.push(
+			{
+				kind: "list",
+				entries,
+			},
+		);
 	}
 	flushText();
 	return blocks;
 }
 
 /** Runs of same-kind sibling entries at `level`, each with the deeper entries under it. */
-function renderList(entries: readonly ListEntry[], level: number, key: number, nonInteractive: boolean): ReactNode[] {
+function renderList(entries: readonly ListEntry[], level: number, key: number, nonInteractive: boolean): ReactNode[]
+{
 	const lists: ReactNode[] = [];
 	let index = 0;
-	while (index < entries.length) {
+	while (index < entries.length)
+	{
 		const head = defined(entries[index], "index is in range");
 		const items: ReactNode[] = [];
-		while (index < entries.length) {
+		while (index < entries.length)
+		{
 			const entry = defined(entries[index], "index is in range");
 			if (entry.level !== level || entry.ordered !== head.ordered) break;
 			let end = index + 1;
@@ -448,7 +572,12 @@ function renderList(entries: readonly ListEntry[], level: number, key: number, n
 	return lists;
 }
 
-const UserCodeBlock = lazy(async () => import("./user-code-block").then((module) => ({default: module.UserCodeBlock})));
+const UserCodeBlock = lazy(async () =>
+	import("./user-code-block").then((module) => (
+	{
+		default: module.UserCodeBlock,
+	})),
+);
 
 /**
  * Upstream's user-message fence: a column-0 run of 3+ backticks with a spaceless
@@ -456,28 +585,55 @@ const UserCodeBlock = lazy(async () => import("./user-code-block").then((module)
  */
 const FENCE = /^(`{3,})(\S*)\n([\s\S]*?)\n\1[ \t]*$/gm;
 
-type Segment = {kind: "text"; text: string} | {kind: "code"; code: string; lang: string};
+type Segment =
+	|
+	  {
+			kind: "text";
+			text: string;
+	  }
+	|
+	  {
+			kind: "code";
+			code: string;
+			lang: string;
+	  };
 
 /** Split out the fences, trimming the text between them, as upstream does before parsing lists. */
-function splitFences(text: string): Segment[] {
+function splitFences(text: string): Segment[]
+{
 	const segments: Segment[] = [];
 	let cursor = 0;
-	const pushText = (part: string) => {
+	const pushText = (part: string) =>
+	{
 		const trimmed = part.trim();
-		if (trimmed !== "") segments.push({kind: "text", text: trimmed});
+		if (trimmed !== "")
+			segments.push(
+				{
+					kind: "text",
+					text: trimmed,
+				},
+			);
 	};
-	for (const match of text.matchAll(FENCE)) {
+	for (const match of text.matchAll(FENCE))
+	{
 		pushText(text.slice(cursor, match.index));
 		const code = (match[3] ?? "").replace(/\r?\n$/, "").replace(/\r(?!\n)/g, "\u240d");
 		const info = match[2] ?? "";
-		segments.push({kind: "code", code, lang: info === "" ? "text" : info});
+		segments.push(
+			{
+				kind: "code",
+				code,
+				lang: info === "" ? "text" : info,
+			},
+		);
 		cursor = match.index + match[0].length;
 	}
 	pushText(text.slice(cursor));
 	return segments;
 }
 
-interface UserTextProps {
+interface UserTextProps
+{
 	text: string;
 	prefix?: ReactNode;
 	/** Upstream's `nonInteractive` (queued or pending prompts): code spans never become file links. */
@@ -488,7 +644,8 @@ interface UserTextProps {
  * A user prompt as upstream shows it: ``` fences as code snippets, lists in the
  * text between them drawn as lists, the rest kept as typed.
  */
-export function UserPlainText({text, prefix, nonInteractive = false}: UserTextProps) {
+export function UserPlainText({text, prefix, nonInteractive = false}: UserTextProps)
+{
 	// Upstream (c59c32499) masks secrets in a user turn with plain `XF`: no reveal control.
 	return (
 		<UserMessageText>
@@ -497,7 +654,8 @@ export function UserPlainText({text, prefix, nonInteractive = false}: UserTextPr
 	);
 }
 
-function UserPlainBlocks({text, prefix, nonInteractive = false}: UserTextProps) {
+function UserPlainBlocks({text, prefix, nonInteractive = false}: UserTextProps)
+{
 	const segments = text.includes("```") ? splitFences(text) : [];
 	if (!segments.some((segment) => segment.kind === "code"))
 		return <UserTextBlocks text={text} prefix={prefix} nonInteractive={nonInteractive} />;
@@ -505,8 +663,10 @@ function UserPlainBlocks({text, prefix, nonInteractive = false}: UserTextProps) 
 	return (
 		<>
 			{!prefixed && prefix !== undefined && <p className={USER_PARAGRAPH_CLASS}>{prefix}</p>}
-			{segments.map((segment, index) => {
-				if (segment.kind === "text") {
+			{segments.map((segment, index) =>
+			{
+				if (segment.kind === "text")
+				{
 					return (
 						<div key={index} className="flex flex-col gap-1.25">
 							<UserTextBlocks
@@ -543,9 +703,11 @@ function UserPlainBlocks({text, prefix, nonInteractive = false}: UserTextProps) 
  * optional leading slash-command chip) are styled and bare http(s) URLs outside
  * code spans become accent links.
  */
-function UserTextBlocks({text, prefix, nonInteractive = false}: UserTextProps) {
+function UserTextBlocks({text, prefix, nonInteractive = false}: UserTextProps)
+{
 	const blocks = splitBlocks(text);
-	if (!blocks.some((block) => block.kind === "list")) {
+	if (!blocks.some((block) => block.kind === "list"))
+	{
 		return (
 			<p className={USER_PARAGRAPH_CLASS}>
 				{prefix}
@@ -558,8 +720,10 @@ function UserTextBlocks({text, prefix, nonInteractive = false}: UserTextProps) {
 	return (
 		<>
 			{leadingPrefix && <p className={USER_PARAGRAPH_CLASS}>{prefix}</p>}
-			{blocks.map((block, index) => {
-				if (block.kind === "text") {
+			{blocks.map((block, index) =>
+			{
+				if (block.kind === "text")
+				{
 					return (
 						<p key={index} className={USER_PARAGRAPH_CLASS}>
 							{index === 0 && prefix}

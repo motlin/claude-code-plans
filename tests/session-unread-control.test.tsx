@@ -9,9 +9,14 @@ import type {SessionBucket} from "../src/lib/session-state";
 import {TOUCH_HIT} from "../src/lib/touch-reveal";
 import {__unreadStoreTesting as __testing, syncUnseenFromSummaries, toggleUnseen} from "../src/lib/unread-store";
 
-type PersistCall = {sessionId: string; action: "reviewed" | "unreviewed"};
+type PersistCall =
+{
+	sessionId: string;
+	action: "reviewed" | "unreviewed";
+};
 
-function listItem(bucket: SessionBucket, overrides: Partial<SessionListItem> = {}): SessionListItem {
+function listItem(bucket: SessionBucket, overrides: Partial<SessionListItem> = {}): SessionListItem
+{
 	return {
 		id: "session-test-100",
 		title: "Fix the flaky test",
@@ -30,90 +35,181 @@ function listItem(bucket: SessionBucket, overrides: Partial<SessionListItem> = {
 	};
 }
 
-function shownDot(container: HTMLElement): {toggle: string | null; kind: string} {
+function shownDot(container: HTMLElement):
+{
+	toggle: string | null;
+	kind: string;
+}
+{
 	return {
 		toggle: screen.queryByRole("button")?.getAttribute("aria-label") ?? null,
 		kind: container.querySelector("[data-kind]")?.getAttribute("data-kind") ?? "idle",
 	};
 }
 
-describe("SessionRowStatusDot", () => {
+describe("SessionRowStatusDot", () =>
+{
 	let calls: PersistCall[];
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		__testing.reset();
 		calls = [];
-		__testing.setPersist(async (sessionId, action) => {
-			calls.push({sessionId, action});
+		__testing.setPersist(async (sessionId, action) =>
+		{
+			calls.push(
+				{
+					sessionId,
+					action,
+				},
+			);
 			return Promise.resolve();
 		});
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 	});
 
-	it("shows the idle ring on a read row and marks an unread row read from its ready dot", async () => {
+	it("shows the idle ring on a read row and marks an unread row read from its ready dot", async () =>
+	{
 		const {container} = render(<SessionRowStatusDot session={listItem("done")} />);
 		const before = shownDot(container);
 
-		act(() => {
+		act(() =>
+		{
 			toggleUnseen("session-test-100");
 		});
 		const afterMarkUnread = shownDot(container);
-		fireEvent.click(screen.getByRole("button", {name: "Click to mark as read"}));
-		await act(async () => {
-			await new Promise((resolve) => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Click to mark as read",
+				},
+			),
+		);
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		});
 
-		expect({before, afterMarkUnread, after: shownDot(container), calls}).toStrictEqual({
-			before: {toggle: null, kind: "idle"},
-			afterMarkUnread: {toggle: "Click to mark as read", kind: "ready"},
-			after: {toggle: null, kind: "idle"},
-			calls: [
-				{sessionId: "session-test-100", action: "unreviewed"},
-				{sessionId: "session-test-100", action: "reviewed"},
-			],
-		});
+		expect(
+			{
+				before,
+				afterMarkUnread,
+				after: shownDot(container),
+				calls,
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					toggle: null,
+					kind: "idle",
+				},
+				afterMarkUnread:
+				{
+					toggle: "Click to mark as read",
+					kind: "ready",
+				},
+				after:
+				{
+					toggle: null,
+					kind: "idle",
+				},
+				calls: [
+					{
+						sessionId: "session-test-100",
+						action: "unreviewed",
+					},
+					{
+						sessionId: "session-test-100",
+						action: "reviewed",
+					},
+				],
+			},
+		);
 	});
 
-	it("shows the ready dot when the server summary reports the session unseen", () => {
+	it("shows the ready dot when the server summary reports the session unseen", () =>
+	{
 		const {container} = render(<SessionRowStatusDot session={listItem("done")} />);
 
-		act(() => {
-			syncUnseenFromSummaries([{id: "session-test-100", unseen: true}]);
+		act(() =>
+		{
+			syncUnseenFromSummaries([
+				{
+					id: "session-test-100",
+					unseen: true,
+				},
+			]);
 		});
 
-		expect(shownDot(container)).toStrictEqual({toggle: "Click to mark as read", kind: "ready"});
+		expect(shownDot(container)).toStrictEqual(
+			{
+				toggle: "Click to mark as read",
+				kind: "ready",
+			},
+		);
 	});
 
-	it("keeps a review row the server did not flag unseen (an open PR) on the ready dot", () => {
+	it("keeps a review row the server did not flag unseen (an open PR) on the ready dot", () =>
+	{
 		const {container} = render(<SessionRowStatusDot session={listItem("review")} />);
 
-		expect(shownDot(container)).toStrictEqual({toggle: null, kind: "ready"});
+		expect(shownDot(container)).toStrictEqual(
+			{
+				toggle: null,
+				kind: "ready",
+			},
+		);
 	});
 
 	it.each([
 		["working", "running"],
 		["blocked", "awaiting"],
-	] as const)("offers no toggle on a %s row and persists nothing", (bucket, kind) => {
+	] as const)("offers no toggle on a %s row and persists nothing", (bucket, kind) =>
+	{
 		const {container} = render(<SessionRowStatusDot session={listItem(bucket)} />);
 
-		expect({dot: shownDot(container), calls}).toStrictEqual({
-			dot: {toggle: null, kind},
-			calls: [],
-		});
+		expect(
+			{
+				dot: shownDot(container),
+				calls,
+			},
+		).toStrictEqual(
+			{
+				dot:
+				{
+					toggle: null,
+					kind,
+				},
+				calls: [],
+			},
+		);
 	});
 
-	it("gives the 14px mark-as-read toggle a 44px touch hit area", () => {
+	it("gives the 14px mark-as-read toggle a 44px touch hit area", () =>
+	{
 		render(<SessionRowStatusDot session={listItem("done")} />);
-		act(() => {
+		act(() =>
+		{
 			toggleUnseen("session-test-100");
 		});
 
-		expect(screen.getByRole("button", {name: "Click to mark as read"}).className).toBe(
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Click to mark as read",
+				},
+			).className,
+		).toBe(
 			`flex cursor-pointer items-center justify-center rounded-full hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${TOUCH_HIT}`,
 		);
 	});

@@ -10,7 +10,8 @@ import {SettingsFlashContext, SettingsRowContext, SettingsTabContext} from "./se
  */
 
 /** Upstream's section ids are the title in kebab case (`#code-appearance`). */
-function sectionId(title: string): string {
+function sectionId(title: string): string
+{
 	return title
 		.toLowerCase()
 		.replaceAll(/[^a-z0-9]+/g, "-")
@@ -29,7 +30,8 @@ export function SettingsSection({
 	title?: string;
 	subtitle?: ReactNode;
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<section
 			id={id ?? (title === undefined ? undefined : sectionId(title))}
@@ -56,7 +58,8 @@ export function SettingsSection({
 	);
 }
 
-interface SettingsRowProps {
+interface SettingsRowProps
+{
 	slug: string;
 	title: string;
 	description?: ReactNode;
@@ -82,7 +85,8 @@ export function SettingsRow({
 	below,
 	className,
 	descriptionHidden = false,
-}: SettingsRowProps) {
+}: SettingsRowProps)
+{
 	const baseId = useId();
 	const titleId = `${baseId}-title`;
 	const descriptionId = description === undefined ? undefined : `${baseId}-description`;
@@ -91,10 +95,24 @@ export function SettingsRow({
 	const flashing = flash?.row === slug;
 	const lit = flashing && flash.lit;
 	const rowRef = useRef<HTMLDivElement>(null);
-	const rowIds = useMemo(() => ({titleId, descriptionId}), [titleId, descriptionId]);
+	const rowIds = useMemo(
+		() => (
+		{
+			titleId,
+			descriptionId,
+		}),
+		[titleId, descriptionId],
+	);
 
-	useEffect(() => {
-		if (flashing && !flash.lit) rowRef.current?.scrollIntoView({block: "center", behavior: "smooth"});
+	useEffect(() =>
+	{
+		if (flashing && !flash.lit)
+			rowRef.current?.scrollIntoView(
+				{
+					block: "center",
+					behavior: "smooth",
+				},
+			);
 	}, [flash, flashing]);
 
 	const inner = (

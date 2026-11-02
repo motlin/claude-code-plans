@@ -14,7 +14,8 @@ import {consumePendingTerminalFocus} from "./pending-terminal-focus";
 import {GHOST_ICON_BUTTON, type TerminalTabActions, TerminalTabStrip} from "./terminal-tab-strip";
 import {useOptionalPaneHost} from "./pane-host-context";
 
-const STATUS_LABELS: Readonly<Record<ConnectionStatus, string>> = {
+const STATUS_LABELS: Readonly<Record<ConnectionStatus, string>> =
+{
 	connecting: "Connecting",
 	live: "Live",
 	reconnecting: "Reconnecting",
@@ -22,7 +23,8 @@ const STATUS_LABELS: Readonly<Record<ConnectionStatus, string>> = {
 	error: "Error",
 };
 
-function StatusChip({status}: {status: ConnectionStatus}) {
+function StatusChip({status}: {status: ConnectionStatus})
+{
 	return (
 		<span
 			data-terminal-status={status}
@@ -40,19 +42,45 @@ function StatusChip({status}: {status: ConnectionStatus}) {
 	);
 }
 
-const ShellCreatedResponse = z.object({ptyKey: z.string().min(1)}).strict();
-const ShellErrorResponse = z.object({error: z.string().min(1)}).strict();
-const ShellBusyResponse = z.object({busy: z.array(z.string())}).strict();
+const ShellCreatedResponse = z
+	.object(
+		{
+			ptyKey: z.string().min(1),
+		},
+	)
+	.strict();
+const ShellErrorResponse = z
+	.object(
+		{
+			error: z.string().min(1),
+		},
+	)
+	.strict();
+const ShellBusyResponse = z
+	.object(
+		{
+			busy: z.array(z.string()),
+		},
+	)
+	.strict();
 
-async function startShell(sessionId: string): Promise<string> {
-	const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/shell`, {
-		method: "POST",
-		credentials: "same-origin",
-		headers: {"Content-Type": "application/json"},
-		body: JSON.stringify({}),
-	});
+async function startShell(sessionId: string): Promise<string>
+{
+	const response = await fetch(
+		`/api/sessions/${encodeURIComponent(sessionId)}/shell`,
+		{
+			method: "POST",
+			credentials: "same-origin",
+			headers:
+			{
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({}),
+		},
+	);
 	const body: unknown = await response.json().catch(() => null);
-	if (!response.ok) {
+	if (!response.ok)
+	{
 		const failure = ShellErrorResponse.safeParse(body);
 		throw new Error(failure.success ? failure.data.error : "Failed to start shell");
 	}
@@ -60,22 +88,37 @@ async function startShell(sessionId: string): Promise<string> {
 }
 
 /** The shells still running a foreground command; none when the server cannot say. */
-async function busyShells(ptyKeys: readonly string[]): Promise<ReadonlySet<string>> {
-	try {
-		const response = await fetch("/api/shell-busy", {
-			method: "POST",
-			credentials: "same-origin",
-			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify({ptyKeys}),
-		});
+async function busyShells(ptyKeys: readonly string[]): Promise<ReadonlySet<string>>
+{
+	try
+	{
+		const response = await fetch(
+			"/api/shell-busy",
+			{
+				method: "POST",
+				credentials: "same-origin",
+				headers:
+				{
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(
+					{
+						ptyKeys,
+					},
+				),
+			},
+		);
 		if (!response.ok) return new Set();
 		return new Set(ShellBusyResponse.parse(await response.json()).busy);
-	} catch {
+	}
+	catch
+	{
 		return new Set();
 	}
 }
 
-export interface TerminalPaneAvailability {
+export interface TerminalPaneAvailability
+{
 	/** herdr has a live pane running this session's TUI: show the Claude tab. */
 	livePane: boolean;
 	/** The Claude tab accepts input (herdr writes enabled). */
@@ -84,8 +127,14 @@ export interface TerminalPaneAvailability {
 	shells: boolean;
 }
 
-interface PendingClose {
-	guard: Extract<CloseGuard, {confirm: true}>;
+interface PendingClose
+{
+	guard: Extract<
+		CloseGuard,
+		{
+			confirm: true;
+		}
+	>;
 	apply: () => void;
 }
 
@@ -93,14 +142,16 @@ const PANEL_CLASS =
 	"flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit] outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),inset_0_0_6px_1px_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]";
 
 /** The Claude tab once herdr closes the session's pane: the TUI is gone, the transcript stays. */
-function SessionEnded({sessionId}: {sessionId: string}) {
+function SessionEnded({sessionId}: {sessionId: string})
+{
 	const host = useOptionalPaneHost();
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center gap-1 p-4 text-center">
 			<p className="text-body text-primary">Session ended</p>
 			<a
 				href={`/session/${encodeURIComponent(sessionId)}`}
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					if (host === null) return;
 					if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
 					event.preventDefault();
@@ -115,7 +166,8 @@ function SessionEnded({sessionId}: {sessionId: string}) {
 }
 
 /** The `/terminals/$sessionId` pop-out of a session's Terminal pane. */
-function terminalPopOutHref(sessionId: string): string {
+function terminalPopOutHref(sessionId: string): string
+{
 	return `/terminals/${encodeURIComponent(sessionId)}`;
 }
 
@@ -129,7 +181,8 @@ function PaneHeaderMenu({
 }: {
 	sessionId: string;
 	onOpenTerminalHere?: (() => void) | undefined;
-}) {
+})
+{
 	return (
 		<Menu>
 			<MenuTrigger aria-label="More options" title="More options" className={GHOST_ICON_BUTTON}>
@@ -171,7 +224,8 @@ export function TerminalPane({
 	standalone?: boolean;
 	/** Opens a herdr shell in the session's directory; a rejection shows in the pane's error line. */
 	onOpenTerminalHere?: (() => Promise<void>) | undefined;
-}) {
+})
+{
 	const {livePane, interactive, shells} = availability;
 	const showClaude = livePane || claudeEnded;
 	const focusRef = useRef<HTMLDivElement>(null);
@@ -187,31 +241,54 @@ export function TerminalPane({
 	const active =
 		shellTabs.active !== null && tabIds.includes(shellTabs.active) ? shellTabs.active : (tabIds[0] ?? null);
 
-	const newTerminal = useCallback(async () => {
+	const newTerminal = useCallback(async () =>
+	{
 		setStarting(true);
 		setError("");
-		try {
-			dispatchTerminalTabs(sessionId, {type: "add", ptyKey: await startShell(sessionId)});
-		} catch (cause) {
+		try
+		{
+			dispatchTerminalTabs(
+				sessionId,
+				{
+					type: "add",
+					ptyKey: await startShell(sessionId),
+				},
+			);
+		}
+		catch (cause)
+		{
 			setError(cause instanceof Error ? cause.message : String(cause));
-		} finally {
+		}
+		finally
+		{
 			setStarting(false);
 		}
 	}, [sessionId]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (consumePendingTerminalFocus()) focusRef.current?.focus();
 	}, []);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (showClaude || !shells || shellTabs.tabs.length > 0 || autoStarted.current) return;
 		autoStarted.current = true;
 		void newTerminal();
 	}, [showClaude, shells, shellTabs.tabs.length, newTerminal]);
 
 	const shellStatusChange = useCallback(
-		(id: string) => (status: ConnectionStatus) => {
-			setShellStatuses((current) => (current[id] === status ? current : {...current, [id]: status}));
+		(id: string) => (status: ConnectionStatus) =>
+		{
+			setShellStatuses((current) =>
+				current[id] === status
+					? current
+					:
+						{
+							...current,
+							[id]: status,
+						},
+			);
 		},
 		[],
 	);
@@ -224,8 +301,15 @@ export function TerminalPane({
 			new Map(
 				shellTabs.tabs.map((tab) => [
 					tab.id,
-					() => {
-						dispatchTerminalTabs(sessionId, {type: "remove", id: tab.id});
+					() =>
+					{
+						dispatchTerminalTabs(
+							sessionId,
+							{
+								type: "remove",
+								id: tab.id,
+							},
+						);
 					},
 				]),
 			),
@@ -236,42 +320,92 @@ export function TerminalPane({
 			new Map(
 				shellTabs.tabs.map((tab) => [
 					tab.id,
-					async () => {
+					async () =>
+					{
 						const ptyKey = await startShell(sessionId);
-						dispatchTerminalTabs(sessionId, {type: "restart", id: tab.id, ptyKey});
+						dispatchTerminalTabs(
+							sessionId,
+							{
+								type: "restart",
+								id: tab.id,
+								ptyKey,
+							},
+						);
 					},
 				]),
 			),
 		[shellTabs.tabs, sessionId],
 	);
 
-	const activate = (id: string) => {
-		dispatchTerminalTabs(sessionId, {type: "select", id});
+	const activate = (id: string) =>
+	{
+		dispatchTerminalTabs(
+			sessionId,
+			{
+				type: "select",
+				id,
+			},
+		);
 		requestAnimationFrame(() => focusRef.current?.focus());
 	};
 
-	const guardedClose = async (kind: "close" | "close-others", id: string) => {
+	const guardedClose = async (kind: "close" | "close-others", id: string) =>
+	{
 		const targets = shellTabs.tabs.filter((tab) => (kind === "close" ? tab.id === id : tab.id !== id));
 		if (targets.length === 0) return;
-		const apply = () => {
+		const apply = () =>
+		{
 			dispatchTerminalTabs(
 				sessionId,
-				kind === "close" ? {type: "request-close", ids: [id]} : {type: "close-others", id},
+				kind === "close"
+					?
+						{
+							type: "request-close",
+							ids: [id],
+						}
+					:
+						{
+							type: "close-others",
+							id,
+						},
 			);
 		};
 		const guard = closeGuard(kind, targets, await busyShells(targets.map((tab) => tab.ptyKey)));
-		if (guard.confirm) setPendingClose({guard, apply});
+		if (guard.confirm)
+			setPendingClose(
+				{
+					guard,
+					apply,
+				},
+			);
 		else apply();
 	};
 
-	const tabActions: TerminalTabActions = {
-		rename: (id, title) => {
-			dispatchTerminalTabs(sessionId, {type: "rename", id, title});
+	const tabActions: TerminalTabActions =
+	{
+		rename: (id, title) =>
+		{
+			dispatchTerminalTabs(
+				sessionId,
+				{
+					type: "rename",
+					id,
+					title,
+				},
+			);
 		},
 		close: (id) => void guardedClose("close", id),
 		closeOthers: (id) => void guardedClose("close-others", id),
-		move: (id, delta) => {
-			dispatchTerminalTabs(sessionId, {type: "move", id, delta});
+		move: (id, delta) =>
+		{
+			dispatchTerminalTabs(
+				sessionId,
+				{
+					type: "move",
+					id,
+					delta,
+				},
+			);
 		},
 	};
 
@@ -320,9 +454,11 @@ export function TerminalPane({
 								onOpenTerminalHere={
 									onOpenTerminalHere === undefined
 										? undefined
-										: () => {
+										: () =>
+											{
 												setError("");
-												onOpenTerminalHere().catch((cause: unknown) => {
+												onOpenTerminalHere().catch((cause: unknown) =>
+												{
 													setError(cause instanceof Error ? cause.message : String(cause));
 												});
 											}
@@ -390,7 +526,8 @@ export function TerminalPane({
 			))}
 			<ConfirmDialog
 				open={pendingClose !== null}
-				onOpenChange={(open) => {
+				onOpenChange={(open) =>
+				{
 					if (!open) setPendingClose(null);
 				}}
 				title={pendingClose?.guard.title ?? ""}
@@ -415,6 +552,10 @@ export function TerminalPane({
 	);
 }
 
-function noop(): void {}
+function noop(): void
+{
+}
 
-async function resolved(): Promise<void> {}
+async function resolved(): Promise<void>
+{
+}

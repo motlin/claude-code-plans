@@ -2,7 +2,8 @@ import {Link} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
 import {type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useRef, useState} from "react";
 import {ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2} from "lucide-react";
-import {
+import
+{
 	DEFAULTS,
 	matchedVerbosityPreset,
 	useSettings,
@@ -11,7 +12,8 @@ import {
 	type Settings,
 	type Verbosity,
 } from "../settings-context";
-import {
+import
+{
 	INTERFACE_FONT_FAMILIES,
 	type InterfaceFont,
 	InterfaceFontSchema,
@@ -19,7 +21,8 @@ import {
 } from "../../lib/appearance";
 import {useFizzyLake} from "../../lib/fizzy-lake";
 import type {CapabilityId} from "../../lib/capabilities";
-import {
+import
+{
 	CODE_FONT_SIZES,
 	CodeThemeDarkSchema,
 	CodeThemeLightSchema,
@@ -28,7 +31,8 @@ import {
 	type CodeThemeDark,
 	type CodeThemeLight,
 } from "../../lib/code-themes";
-import {
+import
+{
 	codeThemeDarkLabels,
 	codeThemeLightLabels,
 	interfaceFontLabels,
@@ -38,7 +42,8 @@ import {
 import {TerminalHostSettingSchema} from "../../lib/terminal-host-setting";
 import {TerminalAppearanceSchema} from "../../lib/terminal-theme";
 import type {TranscriptWidth} from "../../lib/transcript-width";
-import {
+import
+{
 	NOTIFICATIONS_BLOCKED_COPY,
 	NOTIFICATIONS_UNAVAILABLE_COPY,
 	type NotificationPermissionState,
@@ -76,20 +81,23 @@ type StringSettingKey = {
 	[K in keyof Settings]: Settings[K] extends string ? K : never;
 }[keyof Settings];
 
-function toSlug(label: string): string {
+function toSlug(label: string): string
+{
 	return label
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, "-")
 		.replace(/^-|-$/g, "");
 }
 
-interface ToggleRowProps {
+interface ToggleRowProps
+{
 	label: string;
 	description: string;
 	settingKey: BooleanSettingKey;
 }
 
-function ToggleRow({label, description, settingKey}: ToggleRowProps) {
+function ToggleRow({label, description, settingKey}: ToggleRowProps)
+{
 	const {settings, setSetting} = useSettings();
 	const checked = settings[settingKey];
 
@@ -97,7 +105,8 @@ function ToggleRow({label, description, settingKey}: ToggleRowProps) {
 		<SettingsRow slug={toSlug(label)} title={label} description={description}>
 			<Switch
 				checked={checked}
-				onCheckedChange={(next) => {
+				onCheckedChange={(next) =>
+				{
 					setSetting(settingKey, next);
 				}}
 			/>
@@ -113,7 +122,8 @@ function CapabilityToggleRow({
 	capabilityId: CapabilityId;
 	label: string;
 	description: string;
-}) {
+})
+{
 	const {settings, setSetting} = useSettings();
 	const checked = settings.capabilities[capabilityId].enabled;
 
@@ -121,11 +131,19 @@ function CapabilityToggleRow({
 		<SettingsRow slug={toSlug(label)} title={label} description={description}>
 			<Switch
 				checked={checked}
-				onCheckedChange={(enabled) => {
-					setSetting("capabilities", {
-						...settings.capabilities,
-						[capabilityId]: {...settings.capabilities[capabilityId], enabled},
-					});
+				onCheckedChange={(enabled) =>
+				{
+					setSetting(
+						"capabilities",
+						{
+							...settings.capabilities,
+							[capabilityId]:
+							{
+								...settings.capabilities[capabilityId],
+								enabled,
+							},
+						},
+					);
 				}}
 			/>
 		</SettingsRow>
@@ -133,11 +151,18 @@ function CapabilityToggleRow({
 }
 
 const REVIEW_MODE_OPTIONS = [
-	{value: "offer", label: "Offer"},
-	{value: "auto", label: "Auto"},
+	{
+		value: "offer",
+		label: "Offer",
+	},
+	{
+		value: "auto",
+		label: "Auto",
+	},
 ] as const;
 
-function WorkingCopyReviewModeRow() {
+function WorkingCopyReviewModeRow()
+{
 	const {settings, setSetting} = useSettings();
 	const mode = settings.capabilities.workingCopyReview.config.offerMode;
 
@@ -150,21 +175,30 @@ function WorkingCopyReviewModeRow() {
 			<SegmentedControl
 				value={mode}
 				options={REVIEW_MODE_OPTIONS}
-				onValueChange={(offerMode) => {
-					setSetting("capabilities", {
-						...settings.capabilities,
-						workingCopyReview: {
-							...settings.capabilities.workingCopyReview,
-							config: {offerMode},
+				onValueChange={(offerMode) =>
+				{
+					setSetting(
+						"capabilities",
+						{
+							...settings.capabilities,
+							workingCopyReview:
+							{
+								...settings.capabilities.workingCopyReview,
+								config:
+								{
+									offerMode,
+								},
+							},
 						},
-					});
+					);
 				}}
 			/>
 		</SettingsRow>
 	);
 }
 
-interface NotificationRowProps {
+interface NotificationRowProps
+{
 	slug: string;
 	title: string;
 	description: string;
@@ -180,12 +214,14 @@ function NotificationRow({
 	settingKey,
 	notificationPermission: {supported, permission, requestPermission},
 	footnote,
-}: NotificationRowProps) {
+}: NotificationRowProps)
+{
 	const {settings, setSetting} = useSettings();
 	const granted = supported && permission === "granted";
 	const blocked = supported && permission === "denied";
 
-	const handleToggle = async (next: boolean) => {
+	const handleToggle = async (next: boolean) =>
+	{
 		if (!supported) return;
 		if (next && (await requestPermission()) !== "granted") return;
 		setSetting(settingKey, next);
@@ -202,7 +238,8 @@ function NotificationRow({
 	);
 }
 
-function NotificationsSection() {
+function NotificationsSection()
+{
 	const notificationPermission = useNotificationPermission();
 	const {supported, permission} = notificationPermission;
 
@@ -237,7 +274,8 @@ function NotificationsSection() {
 }
 
 /** Upstream's desktop Notification sound select; here it sets the browser notification's `silent`. */
-function NotificationSoundRow() {
+function NotificationSoundRow()
+{
 	const {settings, setSetting} = useSettings();
 
 	return (
@@ -251,7 +289,8 @@ function NotificationSoundRow() {
 					aria-label="Notification sound"
 					value={settings.notificationSound}
 					options={NOTIFICATION_SOUND_OPTIONS}
-					onValueChange={(next) => {
+					onValueChange={(next) =>
+					{
 						setSetting("notificationSound", next);
 					}}
 					className="w-full"
@@ -261,19 +300,35 @@ function NotificationSoundRow() {
 	);
 }
 
-const NOTIFICATION_SOUND_OPTIONS: Array<{value: NotificationSound; label: string}> = [
-	{value: "system", label: "System sound"},
-	{value: "none", label: "None"},
+const NOTIFICATION_SOUND_OPTIONS: Array<
+{
+	value: NotificationSound;
+	label: string;
+}> = [
+	{
+		value: "system",
+		label: "System sound",
+	},
+	{
+		value: "none",
+		label: "None",
+	},
 ];
 
-interface SelectRowProps {
+interface SelectRowProps
+{
 	label: string;
 	description: string;
 	settingKey: StringSettingKey;
-	options: Array<{value: Settings[StringSettingKey]; label: string}>;
+	options: Array<
+	{
+		value: Settings[StringSettingKey];
+		label: string;
+	}>;
 }
 
-function SelectRow({label, description, settingKey, options}: SelectRowProps) {
+function SelectRow({label, description, settingKey, options}: SelectRowProps)
+{
 	const {settings, setSetting} = useSettings();
 
 	return (
@@ -282,7 +337,8 @@ function SelectRow({label, description, settingKey, options}: SelectRowProps) {
 				aria-label={label}
 				value={settings[settingKey]}
 				options={options}
-				onValueChange={(next) => {
+				onValueChange={(next) =>
+				{
 					setSetting(settingKey, next);
 				}}
 			/>
@@ -290,7 +346,8 @@ function SelectRow({label, description, settingKey, options}: SelectRowProps) {
 	);
 }
 
-interface NumberRowProps {
+interface NumberRowProps
+{
 	label: string;
 	description: string;
 	settingKey: NumberSettingKey;
@@ -298,7 +355,8 @@ interface NumberRowProps {
 	max?: number;
 }
 
-function NumberRow({label, description, settingKey, min, max}: NumberRowProps) {
+function NumberRow({label, description, settingKey, min, max}: NumberRowProps)
+{
 	const {settings, setSetting} = useSettings();
 	const current = settings[settingKey];
 
@@ -310,9 +368,11 @@ function NumberRow({label, description, settingKey, min, max}: NumberRowProps) {
 				value={current}
 				min={min}
 				max={max}
-				onChange={(e) => {
+				onChange={(e) =>
+				{
 					const parsed = Number(e.target.value);
-					if (Number.isFinite(parsed)) {
+					if (Number.isFinite(parsed))
+					{
 						setSetting(settingKey, parsed);
 					}
 				}}
@@ -322,27 +382,67 @@ function NumberRow({label, description, settingKey, min, max}: NumberRowProps) {
 	);
 }
 
-const VERBOSITY_OPTIONS: Array<{value: Verbosity; label: string}> = [
-	{value: "normal", label: "Normal"},
-	{value: "thinking", label: "Thinking"},
-	{value: "verbose", label: "Verbose"},
+const VERBOSITY_OPTIONS: Array<
+{
+	value: Verbosity;
+	label: string;
+}> = [
+	{
+		value: "normal",
+		label: "Normal",
+	},
+	{
+		value: "thinking",
+		label: "Thinking",
+	},
+	{
+		value: "verbose",
+		label: "Verbose",
+	},
 ];
 
-const INTERFACE_FONT_OPTIONS = InterfaceFontSchema.options.map((value) => ({
+const INTERFACE_FONT_OPTIONS = InterfaceFontSchema.options.map((value) => (
+{
 	value,
 	label: interfaceFontLabels[value],
 }));
 
-const TRANSCRIPT_TEXT_SIZE_OPTIONS: Array<{value: TranscriptTextSize; label: string}> = [
-	{value: "sm", label: "Small"},
-	{value: "md", label: "Medium"},
-	{value: "lg", label: "Large"},
+const TRANSCRIPT_TEXT_SIZE_OPTIONS: Array<
+{
+	value: TranscriptTextSize;
+	label: string;
+}> = [
+	{
+		value: "sm",
+		label: "Small",
+	},
+	{
+		value: "md",
+		label: "Medium",
+	},
+	{
+		value: "lg",
+		label: "Large",
+	},
 ];
 
-const TRANSCRIPT_WIDTH_OPTIONS: Array<{value: TranscriptWidth; label: string}> = [
-	{value: "narrow", label: "Narrow"},
-	{value: "medium", label: "Medium"},
-	{value: "wide", label: "Wide"},
+const TRANSCRIPT_WIDTH_OPTIONS: Array<
+{
+	value: TranscriptWidth;
+	label: string;
+}> = [
+	{
+		value: "narrow",
+		label: "Narrow",
+	},
+	{
+		value: "medium",
+		label: "Medium",
+	},
+	{
+		value: "wide",
+		label: "Wide",
+	},
 ];
 
 /*
@@ -351,27 +451,39 @@ const TRANSCRIPT_WIDTH_OPTIONS: Array<{value: TranscriptWidth; label: string}> =
  * default, so both write `sans` and the trigger reads "Default · Sans" for it.
  */
 const INTERFACE_FONT_DEFAULT = "default";
-const INTERFACE_FONT_COMBOBOX_OPTIONS: Array<{
+const INTERFACE_FONT_COMBOBOX_OPTIONS: Array<
+{
 	value: typeof INTERFACE_FONT_DEFAULT | InterfaceFont;
 	label: string;
-	labelStyle: {fontFamily: string};
+	labelStyle:
+	{
+		fontFamily: string;
+	};
 }> = [
 	{
 		value: INTERFACE_FONT_DEFAULT,
 		label: `Default · ${interfaceFontLabels[DEFAULTS.interfaceFont]}`,
-		labelStyle: {fontFamily: INTERFACE_FONT_FAMILIES[DEFAULTS.interfaceFont]},
+		labelStyle:
+		{
+			fontFamily: INTERFACE_FONT_FAMILIES[DEFAULTS.interfaceFont],
+		},
 	},
-	...InterfaceFontSchema.options.map((value) => ({
+	...InterfaceFontSchema.options.map((value) => (
+	{
 		value,
 		label: interfaceFontLabels[value],
-		labelStyle: {fontFamily: INTERFACE_FONT_FAMILIES[value]},
+		labelStyle:
+		{
+			fontFamily: INTERFACE_FONT_FAMILIES[value],
+		},
 	})),
 ];
 
 const INTERFACE_FONT_DESCRIPTION = "Font for the whole interface — menus, sidebars, and panels.";
 
 /** General ▸ Appearance ▸ Interface font, after Theme (moved from Claude Code in upstream's 2026-11 build). */
-function InterfaceFontRow() {
+function InterfaceFontRow()
+{
 	const {settings, setSetting} = useSettings();
 	const typeLed = useFizzyLake("type");
 
@@ -382,8 +494,13 @@ function InterfaceFontRow() {
 			slug="interface-font"
 			title="Interface font"
 			{...(typeLed
-				? {description: INTERFACE_FONT_DESCRIPTION, descriptionHidden: true}
-				: {
+				?
+					{
+						description: INTERFACE_FONT_DESCRIPTION,
+						descriptionHidden: true,
+					}
+				:
+					{
 						description: (
 							<>
 								{INTERFACE_FONT_DESCRIPTION}{" "}
@@ -405,7 +522,8 @@ function InterfaceFontRow() {
 							: settings.interfaceFont
 					}
 					options={INTERFACE_FONT_COMBOBOX_OPTIONS}
-					onValueChange={(next) => {
+					onValueChange={(next) =>
+					{
 						setSetting("interfaceFont", next === INTERFACE_FONT_DEFAULT ? DEFAULTS.interfaceFont : next);
 					}}
 				/>
@@ -413,7 +531,8 @@ function InterfaceFontRow() {
 				<SegmentedControl
 					value={settings.interfaceFont}
 					options={INTERFACE_FONT_OPTIONS}
-					onValueChange={(next) => {
+					onValueChange={(next) =>
+					{
 						setSetting("interfaceFont", next);
 					}}
 				/>
@@ -422,7 +541,8 @@ function InterfaceFontRow() {
 	);
 }
 
-function AppearanceSection() {
+function AppearanceSection()
+{
 	const {settings, setVerbosity} = useSettings();
 
 	return (
@@ -438,7 +558,8 @@ function AppearanceSection() {
 	);
 }
 
-function CustomTranscriptViewNote() {
+function CustomTranscriptViewNote()
+{
 	const {settings} = useSettings();
 	if (matchedVerbosityPreset(settings) !== null) return null;
 	const preset = VERBOSITY_OPTIONS.find((option) => option.value === settings.verbosity);
@@ -451,14 +572,36 @@ function CustomTranscriptViewNote() {
 }
 
 const THEME_OPTIONS = [
-	{value: "system", label: "System", icon: <Monitor aria-hidden="true" />},
-	{value: "light", label: "Light", icon: <Sun aria-hidden="true" />},
-	{value: "dark", label: "Dark", icon: <Moon aria-hidden="true" />},
+	{
+		value: "system",
+		label: "System",
+		icon: <Monitor aria-hidden="true" />,
+	},
+	{
+		value: "light",
+		label: "Light",
+		icon: <Sun aria-hidden="true" />,
+	},
+	{
+		value: "dark",
+		label: "Dark",
+		icon: <Moon aria-hidden="true" />,
+	},
 ] as const;
 
-const MOTION_OPTIONS: Array<{value: Motion; label: string}> = [
-	{value: "system", label: "System"},
-	{value: "reduced", label: "Reduced"},
+const MOTION_OPTIONS: Array<
+{
+	value: Motion;
+	label: string;
+}> = [
+	{
+		value: "system",
+		label: "System",
+	},
+	{
+		value: "reduced",
+		label: "Reduced",
+	},
 ];
 
 /*
@@ -481,12 +624,18 @@ function AppearanceChoiceRow<T extends string>({
 	/** Upstream's registry drops some descriptions under `type` (Transcript text size has none). */
 	typeLedDescription: boolean;
 	value: T;
-	options: Array<{value: T; label: string}>;
+	options: Array<
+	{
+		value: T;
+		label: string;
+	}>;
 	onValueChange: (next: T) => void;
-}) {
+})
+{
 	const typeLed = useFizzyLake("type");
 
-	if (!typeLed) {
+	if (!typeLed)
+	{
 		return (
 			<SettingsRow slug={slug} title={title} description={description}>
 				<SegmentedControl value={value} options={options} onValueChange={onValueChange} />
@@ -495,7 +644,17 @@ function AppearanceChoiceRow<T extends string>({
 	}
 
 	return (
-		<SettingsRow slug={slug} title={title} {...(typeLedDescription ? {description, descriptionHidden: true} : {})}>
+		<SettingsRow
+			slug={slug}
+			title={title}
+			{...(typeLedDescription
+				?
+					{
+						description,
+						descriptionHidden: true,
+					}
+				: {})}
+		>
 			<ThemedCombobox
 				aria-label={title}
 				variant="ghost"
@@ -508,7 +667,8 @@ function AppearanceChoiceRow<T extends string>({
 	);
 }
 
-function TranscriptTextSizeRow() {
+function TranscriptTextSizeRow()
+{
 	const {settings, setSetting} = useSettings();
 
 	return (
@@ -519,14 +679,16 @@ function TranscriptTextSizeRow() {
 			typeLedDescription={false}
 			value={settings.transcriptTextSize}
 			options={TRANSCRIPT_TEXT_SIZE_OPTIONS}
-			onValueChange={(next) => {
+			onValueChange={(next) =>
+			{
 				setSetting("transcriptTextSize", next);
 			}}
 		/>
 	);
 }
 
-function TranscriptWidthRow() {
+function TranscriptWidthRow()
+{
 	const {settings, setSetting} = useSettings();
 
 	return (
@@ -537,14 +699,16 @@ function TranscriptWidthRow() {
 			typeLedDescription
 			value={settings.transcriptWidth}
 			options={TRANSCRIPT_WIDTH_OPTIONS}
-			onValueChange={(next) => {
+			onValueChange={(next) =>
+			{
 				setSetting("transcriptWidth", next);
 			}}
 		/>
 	);
 }
 
-function MotionRow() {
+function MotionRow()
+{
 	const {settings, setSetting} = useSettings();
 
 	return (
@@ -555,14 +719,16 @@ function MotionRow() {
 			typeLedDescription
 			value={settings.motion}
 			options={MOTION_OPTIONS}
-			onValueChange={(next) => {
+			onValueChange={(next) =>
+			{
 				setSetting("motion", next);
 			}}
 		/>
 	);
 }
 
-function ThemeRow() {
+function ThemeRow()
+{
 	const {theme, setTheme} = useTheme();
 
 	return (
@@ -572,18 +738,21 @@ function ThemeRow() {
 	);
 }
 
-export function LinkCategoryRulesSection() {
+export function LinkCategoryRulesSection()
+{
 	const {settings, setSetting} = useSettings();
 	const rules = settings.linkCategoryRules;
 
-	function replaceRule(index: number, nextRule: Settings["linkCategoryRules"][number]): void {
+	function replaceRule(index: number, nextRule: Settings["linkCategoryRules"][number]): void
+	{
 		setSetting(
 			"linkCategoryRules",
 			rules.map((rule, ruleIndex) => (ruleIndex === index ? nextRule : rule)),
 		);
 	}
 
-	function moveRule(index: number, destinationIndex: number): void {
+	function moveRule(index: number, destinationIndex: number): void
+	{
 		if (destinationIndex < 0 || destinationIndex >= rules.length) return;
 
 		const reordered = [...rules];
@@ -618,8 +787,15 @@ export function LinkCategoryRulesSection() {
 								<input
 									type="text"
 									value={rule.label}
-									onChange={(event) => {
-										replaceRule(index, {...rule, label: event.target.value});
+									onChange={(event) =>
+									{
+										replaceRule(
+											index,
+											{
+												...rule,
+												label: event.target.value,
+											},
+										);
 									}}
 									className="mt-1 block w-full rounded-md border border-border bg-surface-1 px-2 py-1.5 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 								/>
@@ -630,11 +806,15 @@ export function LinkCategoryRulesSection() {
 									type="text"
 									value={rule.hostPattern}
 									placeholder="*.example.com"
-									onChange={(event) => {
-										replaceRule(index, {
-											...rule,
-											hostPattern: event.target.value,
-										});
+									onChange={(event) =>
+									{
+										replaceRule(
+											index,
+											{
+												...rule,
+												hostPattern: event.target.value,
+											},
+										);
 									}}
 									className="mt-1 block w-full rounded-md border border-border bg-surface-1 px-2 py-1.5 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-100"
 								/>
@@ -645,7 +825,8 @@ export function LinkCategoryRulesSection() {
 									aria-label={`Move rule ${index + 1} up`}
 									title="Move up"
 									disabled={index === 0}
-									onClick={() => {
+									onClick={() =>
+									{
 										moveRule(index, index - 1);
 									}}
 									className="rounded-md border border-border p-1.5 text-secondary transition-colors hover:bg-surface-0 disabled:cursor-not-allowed disabled:opacity-40"
@@ -657,7 +838,8 @@ export function LinkCategoryRulesSection() {
 									aria-label={`Move rule ${index + 1} down`}
 									title="Move down"
 									disabled={index === rules.length - 1}
-									onClick={() => {
+									onClick={() =>
+									{
 										moveRule(index, index + 1);
 									}}
 									className="rounded-md border border-border p-1.5 text-secondary transition-colors hover:bg-surface-0 disabled:cursor-not-allowed disabled:opacity-40"
@@ -668,7 +850,8 @@ export function LinkCategoryRulesSection() {
 									type="button"
 									aria-label={`Delete rule ${index + 1}`}
 									title="Delete rule"
-									onClick={() => {
+									onClick={() =>
+									{
 										setSetting(
 											"linkCategoryRules",
 											rules.filter((_, ruleIndex) => ruleIndex !== index),
@@ -685,8 +868,15 @@ export function LinkCategoryRulesSection() {
 
 				<button
 					type="button"
-					onClick={() => {
-						setSetting("linkCategoryRules", [...rules, {label: "", hostPattern: ""}]);
+					onClick={() =>
+					{
+						setSetting("linkCategoryRules", [
+							...rules,
+							{
+								label: "",
+								hostPattern: "",
+							},
+						]);
 					}}
 					className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
 				>
@@ -698,11 +888,13 @@ export function LinkCategoryRulesSection() {
 	);
 }
 
-export function ApplicationConfigurationSection() {
+export function ApplicationConfigurationSection()
+{
 	const applicationSettings = useQuery(applicationSettingsQueryOptions);
 	const saveSettings = useSaveApplicationSettings();
 
-	if (applicationSettings.isPending) {
+	if (applicationSettings.isPending)
+	{
 		return (
 			<SettingsSection title="Application">
 				<p className="py-2 text-sm text-t6">Loading server settings…</p>
@@ -710,7 +902,8 @@ export function ApplicationConfigurationSection() {
 		);
 	}
 
-	if (applicationSettings.isError) {
+	if (applicationSettings.isError)
+	{
 		return (
 			<SettingsSection title="Application">
 				<p className="py-2 text-sm text-red-600">Could not load server settings.</p>
@@ -719,8 +912,14 @@ export function ApplicationConfigurationSection() {
 	}
 
 	const settings = applicationSettings.data;
-	const save = (next: typeof settings) => {
-		saveSettings.mutate({...next, ignoredDirs: next.ignoredDirs.toSorted()});
+	const save = (next: typeof settings) =>
+	{
+		saveSettings.mutate(
+			{
+				...next,
+				ignoredDirs: next.ignoredDirs.toSorted(),
+			},
+		);
 	};
 	const savedIgnoredDirectories = settings.ignoredDirs.toSorted().join("\n");
 
@@ -734,12 +933,19 @@ export function ApplicationConfigurationSection() {
 				<ThemedCombobox
 					aria-label="Terminal host"
 					value={settings.terminalHost}
-					options={TerminalHostSettingSchema.options.map((value) => ({
+					options={TerminalHostSettingSchema.options.map((value) => (
+					{
 						value,
 						label: terminalHostSettingLabels[value],
 					}))}
-					onValueChange={(terminalHost) => {
-						save({...settings, terminalHost});
+					onValueChange={(terminalHost) =>
+					{
+						save(
+							{
+								...settings,
+								terminalHost,
+							},
+						);
 					}}
 				/>
 			</SettingsRow>
@@ -749,11 +955,14 @@ export function ApplicationConfigurationSection() {
 				description="Allow prompts, interrupts, and state reports for live terminal panes. Applies immediately without a server restart."
 				checked={settings.terminalWritesEnabled}
 				disabled={saveSettings.isPending}
-				onToggle={() => {
-					save({
-						...settings,
-						terminalWritesEnabled: !settings.terminalWritesEnabled,
-					});
+				onToggle={() =>
+				{
+					save(
+						{
+							...settings,
+							terminalWritesEnabled: !settings.terminalWritesEnabled,
+						},
+					);
 				}}
 			/>
 
@@ -762,19 +971,28 @@ export function ApplicationConfigurationSection() {
 				description="Open login shells in the session folder from the Terminal pane. Only served to this computer."
 				checked={settings.shellPaneEnabled}
 				disabled={saveSettings.isPending}
-				onToggle={() => {
-					save({
-						...settings,
-						shellPaneEnabled: !settings.shellPaneEnabled,
-					});
+				onToggle={() =>
+				{
+					save(
+						{
+							...settings,
+							shellPaneEnabled: !settings.shellPaneEnabled,
+						},
+					);
 				}}
 			/>
 
 			<IgnoredDirectoriesField
 				savedIgnoredDirectories={savedIgnoredDirectories}
 				disabled={saveSettings.isPending}
-				onSave={(ignoredDirs) => {
-					save({...settings, ignoredDirs});
+				onSave={(ignoredDirs) =>
+				{
+					save(
+						{
+							...settings,
+							ignoredDirs,
+						},
+					);
 				}}
 			/>
 
@@ -793,10 +1011,12 @@ function IgnoredDirectoriesField({
 	savedIgnoredDirectories: string;
 	disabled: boolean;
 	onSave: (ignoredDirs: string[]) => void;
-}) {
+})
+{
 	const [ignoredDirectories, setIgnoredDirectories] = useState(savedIgnoredDirectories);
 	const [renderedSavedIgnoredDirectories, setRenderedSavedIgnoredDirectories] = useState(savedIgnoredDirectories);
-	if (renderedSavedIgnoredDirectories !== savedIgnoredDirectories) {
+	if (renderedSavedIgnoredDirectories !== savedIgnoredDirectories)
+	{
 		setRenderedSavedIgnoredDirectories(savedIgnoredDirectories);
 		setIgnoredDirectories(savedIgnoredDirectories);
 	}
@@ -813,7 +1033,8 @@ function IgnoredDirectoriesField({
 				id="application-ignored-directories"
 				aria-label="Ignored watcher directories"
 				value={ignoredDirectories}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					setIgnoredDirectories(event.target.value);
 				}}
 				rows={6}
@@ -822,7 +1043,8 @@ function IgnoredDirectoriesField({
 			<button
 				type="button"
 				disabled={disabled}
-				onClick={() => {
+				onClick={() =>
+				{
 					onSave(
 						ignoredDirectories
 							.split("\n")
@@ -850,7 +1072,8 @@ function ApplicationToggleRow({
 	checked: boolean;
 	disabled: boolean;
 	onToggle: () => void;
-}) {
+})
+{
 	return (
 		<SettingsRow slug={toSlug(label)} title={label} description={description}>
 			<Switch checked={checked} disabled={disabled} onCheckedChange={onToggle} />
@@ -864,26 +1087,30 @@ const RESET_DANGER_BUTTON =
 	"h-8 rounded-r6 bg-[#d03b3b] px-3 text-body font-medium text-white transition-colors hover:bg-[#b93333] focus-visible:shadow-focus focus-visible:outline-hidden";
 
 /** Local-only (upstream has no reset); kept in the shared row anatomy with an inline confirm in the control slot. */
-function ResetAllSettings() {
+function ResetAllSettings()
+{
 	const {resetAll} = useSettings();
 	const [confirmReset, setConfirmReset] = useState(false);
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	const cancelRef = useRef<HTMLButtonElement>(null);
 	const restoreFocus = useRef(false);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (confirmReset) cancelRef.current?.focus();
 		else if (restoreFocus.current) triggerRef.current?.focus();
 		restoreFocus.current = false;
 	}, [confirmReset]);
 
-	const close = () => {
+	const close = () =>
+	{
 		restoreFocus.current = true;
 		setConfirmReset(false);
 	};
 
 	// Escape backs out of the confirm without reaching the dialog, which would close.
-	const cancelOnEscape = (event: KeyboardEvent<HTMLButtonElement>) => {
+	const cancelOnEscape = (event: KeyboardEvent<HTMLButtonElement>) =>
+	{
 		if (event.key !== "Escape") return;
 		event.preventDefault();
 		event.stopPropagation();
@@ -910,7 +1137,8 @@ function ResetAllSettings() {
 						</button>
 						<button
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								resetAll();
 								close();
 							}}
@@ -924,7 +1152,8 @@ function ResetAllSettings() {
 					<button
 						ref={triggerRef}
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							setConfirmReset(true);
 						}}
 						className={RESET_QUIET_BUTTON}
@@ -938,7 +1167,8 @@ function ResetAllSettings() {
 }
 
 // Upstream also shows Chat font (claude.ai chat only, no effect on Code transcripts), Tasks › Preferred browser (Cowork) and Voice; not applicable locally.
-export function GeneralSettings() {
+export function GeneralSettings()
+{
 	return (
 		<>
 			<SettingsSection title="General">
@@ -960,29 +1190,57 @@ export function GeneralSettings() {
 }
 
 /** Upstream's grouped Notifications row: its own panel, moved out of General. */
-export function NotificationsSettings() {
+export function NotificationsSettings()
+{
 	return <NotificationsSection />;
 }
 
 // Lazy so the Settings dialog, which the root mounts, keeps Shiki out of the entry bundle.
 const CodeThemePreview = lazy(async () =>
-	import("./code-theme-preview").then((module) => ({default: module.CodeThemePreview})),
+	import("./code-theme-preview").then((module) => (
+	{
+		default: module.CodeThemePreview,
+	})),
 );
 
-const CODE_THEME_LIGHT_OPTIONS: Array<{value: CodeThemeLight; label: string}> = CodeThemeLightSchema.options.map(
-	(value) => ({value, label: codeThemeLightLabels[value]}),
-);
-const CODE_THEME_DARK_OPTIONS: Array<{value: CodeThemeDark; label: string}> = CodeThemeDarkSchema.options.map(
-	(value) => ({value, label: codeThemeDarkLabels[value]}),
-);
+const CODE_THEME_LIGHT_OPTIONS: Array<
+{
+	value: CodeThemeLight;
+	label: string;
+}> = CodeThemeLightSchema.options.map((value) => (
+{
+	value,
+	label: codeThemeLightLabels[value],
+}));
+const CODE_THEME_DARK_OPTIONS: Array<
+{
+	value: CodeThemeDark;
+	label: string;
+}> = CodeThemeDarkSchema.options.map((value) => (
+{
+	value,
+	label: codeThemeDarkLabels[value],
+}));
 
 /** Upstream's Code font size options: "Default · 13 px", then each size. */
-const CODE_FONT_SIZE_OPTIONS: Array<{value: string; label: string}> = [
-	{value: "default", label: `Default · ${DEFAULT_CODE_FONT_SIZE} px`},
-	...CODE_FONT_SIZES.map((size) => ({value: String(size), label: `${size} px`})),
+const CODE_FONT_SIZE_OPTIONS: Array<
+{
+	value: string;
+	label: string;
+}> = [
+	{
+		value: "default",
+		label: `Default · ${DEFAULT_CODE_FONT_SIZE} px`,
+	},
+	...CODE_FONT_SIZES.map((size) => (
+	{
+		value: String(size),
+		label: `${size} px`,
+	})),
 ];
 
-function CodeFontSizeRow() {
+function CodeFontSizeRow()
+{
 	const {settings, setSetting} = useSettings();
 
 	return (
@@ -997,7 +1255,8 @@ function CodeFontSizeRow() {
 					value={settings.codeFontSize === null ? "default" : String(settings.codeFontSize)}
 					options={CODE_FONT_SIZE_OPTIONS}
 					filterable={false}
-					onValueChange={(next) => {
+					onValueChange={(next) =>
+					{
 						const size = Number(next);
 						setSetting("codeFontSize", isCodeFontSize(size) ? size : null);
 					}}
@@ -1009,7 +1268,8 @@ function CodeFontSizeRow() {
 }
 
 /** Upstream's GeneralCodeLooks: the "Code" section (`id=code-appearance`) on Appearance, after General. */
-function CodeAppearanceSection() {
+function CodeAppearanceSection()
+{
 	const {settings, setSetting} = useSettings();
 
 	return (
@@ -1020,7 +1280,8 @@ function CodeAppearanceSection() {
 						aria-label="Light code theme"
 						value={settings.codeThemeLight}
 						options={CODE_THEME_LIGHT_OPTIONS}
-						onValueChange={(next) => {
+						onValueChange={(next) =>
+						{
 							setSetting("codeThemeLight", next);
 						}}
 						className="w-full"
@@ -1038,7 +1299,8 @@ function CodeAppearanceSection() {
 						aria-label="Dark code theme"
 						value={settings.codeThemeDark}
 						options={CODE_THEME_DARK_OPTIONS}
-						onValueChange={(next) => {
+						onValueChange={(next) =>
+						{
 							setSetting("codeThemeDark", next);
 						}}
 						className="w-full"
@@ -1056,7 +1318,8 @@ function CodeAppearanceSection() {
 				label="Terminal colors"
 				description="Follow the light and dark code theme, or use your Ghostty config."
 				settingKey="terminalAppearance"
-				options={TerminalAppearanceSchema.options.map((value) => ({
+				options={TerminalAppearanceSchema.options.map((value) => (
+				{
 					value,
 					label: terminalAppearanceLabels[value],
 				}))}
@@ -1072,7 +1335,8 @@ function CodeAppearanceSection() {
 						settings.interfaceFont === "dyslexic" ? "e.g. OpenDyslexic Mono" : "e.g. JetBrains Mono"
 					}
 					value={settings.codeFont}
-					onChange={(event) => {
+					onChange={(event) =>
+					{
 						setSetting("codeFont", event.target.value);
 					}}
 					className="w-56"
@@ -1107,7 +1371,8 @@ function ClaudeCodeSwitchRow({
 	/** The value to write for each position; undefined deletes the key. */
 	valueFor: (on: boolean) => string | boolean | undefined;
 	disabledReason?: (state: ClaudeCodeSettingsState) => string | null;
-}) {
+})
+{
 	const setting = useClaudeCodeSetting(settingKey);
 	const reason = setting.state === undefined ? null : (disabledReason?.(setting.state) ?? null);
 	const checked = isOn(setting.value);
@@ -1123,7 +1388,8 @@ function ClaudeCodeSwitchRow({
 				<Switch
 					checked={checked}
 					disabled={setting.loading || setting.unavailable || reason !== null}
-					onCheckedChange={(next) => {
+					onCheckedChange={(next) =>
+					{
 						setting.write(valueFor(next));
 					}}
 				/>
@@ -1136,7 +1402,8 @@ function ClaudeCodeSwitchRow({
  * Upstream's Output style select: Default, the CLI built-ins and the installed custom styles, written
  * to settings.json `outputStyle` (Default deletes the key).
  */
-function OutputStyleRow() {
+function OutputStyleRow()
+{
 	const setting = useClaudeCodeSetting("outputStyle");
 	const styles = useQuery(outputStylesQueryOptions);
 	const {value, options} = outputStyleOptions(
@@ -1161,7 +1428,8 @@ function OutputStyleRow() {
 					value={value}
 					options={options}
 					disabled={setting.loading || setting.unavailable}
-					onValueChange={(next) => {
+					onValueChange={(next) =>
+					{
 						if (next === value) return;
 						setting.write(next === DEFAULT_OUTPUT_STYLE ? undefined : next);
 					}}
@@ -1177,7 +1445,8 @@ function OutputStyleRow() {
  * the server's sweeper archives sessions with no JSONL activity for that many days, never one that
  * is running, waiting, in a live pane, pinned or open.
  */
-function ArchiveInactiveSessionsRow() {
+function ArchiveInactiveSessionsRow()
+{
 	const setting = useQuery(autoArchiveQueryOptions);
 	const save = useSaveAutoArchiveDays();
 	const days = setting.data?.days ?? 0;
@@ -1199,7 +1468,8 @@ function ArchiveInactiveSessionsRow() {
 					value={String(days)}
 					options={autoArchiveDayOptions(days)}
 					disabled={setting.data === undefined}
-					onValueChange={(next) => {
+					onValueChange={(next) =>
+					{
 						const nextDays = Number(next);
 						if (nextDays === days) return;
 						save.mutate(nextDays);
@@ -1215,7 +1485,8 @@ function ArchiveInactiveSessionsRow() {
  * Upstream's desktop Sessions section (`#local-sessions`), whose rows write Claude Code's own
  * settings.json. Local sessions are Claude Code CLIs on this computer, so the rows apply here too.
  */
-function LocalSessionsSection() {
+function LocalSessionsSection()
+{
 	return (
 		<SettingsSection id="local-sessions" title="Sessions">
 			<ClaudeCodeSwitchRow
@@ -1266,7 +1537,8 @@ function LocalSessionsSection() {
  * the default switch. Locally it writes settings.json `remoteControlAtStartup`; off writes `false`
  * rather than deleting, because the CLI's own default is off.
  */
-function RemoteControlSection() {
+function RemoteControlSection()
+{
 	return (
 		<SettingsSection id="remote-control" title="Remote Control">
 			<ClaudeCodeSwitchRow
@@ -1281,7 +1553,8 @@ function RemoteControlSection() {
 	);
 }
 
-export function ClaudeCodeSettings() {
+export function ClaudeCodeSettings()
+{
 	return (
 		<>
 			<AppearanceSection />
@@ -1291,7 +1564,8 @@ export function ClaudeCodeSettings() {
 	);
 }
 
-export function TranscriptSettings() {
+export function TranscriptSettings()
+{
 	return (
 		<>
 			<SettingsSection title="Session Display">
@@ -1355,7 +1629,8 @@ export function TranscriptSettings() {
 	);
 }
 
-export function SessionsSettings() {
+export function SessionsSettings()
+{
 	return (
 		<>
 			<SettingsSection title="Active sessions">
@@ -1364,8 +1639,14 @@ export function SessionsSettings() {
 					description="Prioritize sessions needing attention or keep creation order stable"
 					settingKey="sessionSort"
 					options={[
-						{value: "urgency", label: "Urgency"},
-						{value: "stable", label: "Stable"},
+						{
+							value: "urgency",
+							label: "Urgency",
+						},
+						{
+							value: "stable",
+							label: "Stable",
+						},
 					]}
 				/>
 				<SelectRow
@@ -1373,8 +1654,14 @@ export function SessionsSettings() {
 					description="Group the Sessions page by project or by time"
 					settingKey="sessionsGrouping"
 					options={[
-						{value: "project", label: "Project"},
-						{value: "time", label: "Time"},
+						{
+							value: "project",
+							label: "Project",
+						},
+						{
+							value: "time",
+							label: "Time",
+						},
 					]}
 				/>
 				<NumberRow
@@ -1413,9 +1700,18 @@ export function SessionsSettings() {
 					description="Initial view mode for sub-agent visualizations"
 					settingKey="defaultSubagentView"
 					options={[
-						{value: "tree", label: "Tree"},
-						{value: "gantt", label: "Gantt"},
-						{value: "sequence", label: "Sequence"},
+						{
+							value: "tree",
+							label: "Tree",
+						},
+						{
+							value: "gantt",
+							label: "Gantt",
+						},
+						{
+							value: "sequence",
+							label: "Sequence",
+						},
 					]}
 				/>
 			</SettingsSection>
@@ -1423,7 +1719,8 @@ export function SessionsSettings() {
 	);
 }
 
-export function AiFeaturesSettings() {
+export function AiFeaturesSettings()
+{
 	return (
 		<SettingsSection title="AI Features">
 			<ToggleRow
@@ -1451,7 +1748,8 @@ export function AiFeaturesSettings() {
 	);
 }
 
-export function ClaudeConfigSettings() {
+export function ClaudeConfigSettings()
+{
 	return (
 		<SettingsSection title="Claude Config">
 			<SettingsRow
@@ -1470,7 +1768,8 @@ export function ClaudeConfigSettings() {
 	);
 }
 
-export function SetupSettings() {
+export function SetupSettings()
+{
 	return (
 		<>
 			<p className="text-sm text-t6">

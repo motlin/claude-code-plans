@@ -47,9 +47,11 @@ repos:
         pass_filenames: false
         types: [file]
       - id: oxfmt
-        name: vp fmt
-        entry: pnpm exec vp fmt --no-error-on-unmatched-pattern
+        name: oxfmt-next-line
+        entry: oxfmt-next-line --no-error-on-unmatched-pattern
         language: system
+        # Show "Finished in Xms on N files" so every run proves formatting happened.
+        verbose: true
       - id: check-action-pins
         name: check action pins
         entry: node scripts/check-action-pins.mjs

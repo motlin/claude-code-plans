@@ -7,10 +7,13 @@ import {afterEach, describe, expect, it} from "vite-plus/test";
 import {FIELD_DEFINITIONS, OBJECT_EDITORS} from "../src/lib/settings-fields";
 import {FormEditor} from "../src/components/settings/settings-editors";
 
-function scalarFixture(): Record<string, unknown> {
+function scalarFixture(): Record<string, unknown>
+{
 	const result: Record<string, unknown> = {};
-	for (const field of FIELD_DEFINITIONS) {
-		switch (field.type) {
+	for (const field of FIELD_DEFINITIONS)
+	{
+		switch (field.type)
+		{
 			case "boolean":
 				result[field.key] = true;
 				break;
@@ -31,12 +34,16 @@ function scalarFixture(): Record<string, unknown> {
 	return result;
 }
 
-function objectEditorsFixture(): Record<string, unknown> {
+function objectEditorsFixture(): Record<string, unknown>
+{
 	const result: Record<string, unknown> = {};
-	for (const def of OBJECT_EDITORS) {
+	for (const def of OBJECT_EDITORS)
+	{
 		const value: Record<string, unknown> = {};
-		for (const subField of def.fields) {
-			switch (subField.type) {
+		for (const subField of def.fields)
+		{
+			switch (subField.type)
+			{
 				case "boolean":
 					value[subField.key] = true;
 					break;
@@ -56,25 +63,65 @@ function objectEditorsFixture(): Record<string, unknown> {
 	return result;
 }
 
-const settings = {
+const settings =
+{
 	...scalarFixture(),
-	env: {FOO: "bar", BAZ: "qux"},
-	permissions: {allow: ["Bash(ls:*)"], deny: ["Read(.env)"], ask: ["Write"], defaultMode: "plan"},
-	statusLine: {type: "command", command: "~/.claude/statusline.sh", padding: 1},
-	hooks: {PreToolUse: [{matcher: "Bash", hooks: [{type: "command", command: "echo hi"}]}]},
-	enabledPlugins: {"alpha@market": true, "beta@market": false},
+	env:
+	{
+		FOO: "bar",
+		BAZ: "qux",
+	},
+	permissions:
+	{
+		allow: ["Bash(ls:*)"],
+		deny: ["Read(.env)"],
+		ask: ["Write"],
+		defaultMode: "plan",
+	},
+	statusLine:
+	{
+		type: "command",
+		command: "~/.claude/statusline.sh",
+		padding: 1,
+	},
+	hooks:
+	{
+		PreToolUse: [
+			{
+				matcher: "Bash",
+				hooks: [
+					{
+						type: "command",
+						command: "echo hi",
+					},
+				],
+			},
+		],
+	},
+	enabledPlugins:
+	{
+		"alpha@market": true,
+		"beta@market": false,
+	},
 	enabledMcpjsonServers: ["server-a"],
 	additionalDirectories: ["/path/to/dir"],
-	extraKnownMarketplaces: {
-		"motlin/claude-code-plugins": {
-			source: {source: "github", repo: "motlin/claude-code-plugins"},
+	extraKnownMarketplaces:
+	{
+		"motlin/claude-code-plugins":
+		{
+			source:
+			{
+				source: "github",
+				repo: "motlin/claude-code-plugins",
+			},
 			autoUpdate: true,
 		},
 	},
 	...objectEditorsFixture(),
 };
 
-function renderEditor(): void {
+function renderEditor(): void
+{
 	const queryClient = new QueryClient();
 	render(
 		<QueryClientProvider client={queryClient}>
@@ -85,41 +132,118 @@ function renderEditor(): void {
 			/>
 		</QueryClientProvider>,
 	);
-	fireEvent.click(screen.getByRole("button", {name: /PreToolUse/}));
-	fireEvent.click(screen.getByRole("button", {name: "motlin/claude-code-plugins"}));
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: /PreToolUse/,
+			},
+		),
+	);
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "motlin/claude-code-plugins",
+			},
+		),
+	);
 }
 
-function unnamed(role: string): string[] {
-	return screen.queryAllByRole(role, {name: (name) => name.trim() === ""}).map((el) => el.outerHTML.slice(0, 120));
+function unnamed(role: string): string[]
+{
+	return screen
+		.queryAllByRole(
+			role,
+			{
+				name: (name) => name.trim() === "",
+			},
+		)
+		.map((el) => el.outerHTML.slice(0, 120));
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 });
 
-describe("settings form editor accessible names", () => {
-	it("renders the controls being checked", () => {
+describe("settings form editor accessible names", () =>
+{
+	it("renders the controls being checked", () =>
+	{
 		renderEditor();
 		expect(screen.getAllByRole("switch").length).toBeGreaterThan(10);
 		expect(screen.getAllByRole("textbox").length).toBeGreaterThan(20);
 	});
 
-	it("gives every form control a non-empty accessible name", () => {
+	it("gives every form control a non-empty accessible name", () =>
+	{
 		renderEditor();
-		expect({
-			switch: unnamed("switch"),
-			textbox: unnamed("textbox"),
-			combobox: unnamed("combobox"),
-			spinbutton: unnamed("spinbutton"),
-		}).toStrictEqual({switch: [], textbox: [], combobox: [], spinbutton: []});
+		expect(
+			{
+				switch: unnamed("switch"),
+				textbox: unnamed("textbox"),
+				combobox: unnamed("combobox"),
+				spinbutton: unnamed("spinbutton"),
+			},
+		).toStrictEqual(
+			{
+				switch: [],
+				textbox: [],
+				combobox: [],
+				spinbutton: [],
+			},
+		);
 	});
 
-	it("names switches and fields after their setting labels", () => {
+	it("names switches and fields after their setting labels", () =>
+	{
 		renderEditor();
-		expect(screen.getByRole("switch", {name: "Enabled"}).getAttribute("aria-checked")).toBe("true");
-		expect(screen.getByRole("switch", {name: "alpha@market"}).getAttribute("aria-checked")).toBe("true");
-		expect(screen.getByRole("switch", {name: "Auto-update"}).getAttribute("aria-checked")).toBe("true");
-		expect(screen.getByRole<HTMLInputElement>("textbox", {name: "Command"}).value).toBe("~/.claude/statusline.sh");
-		expect(screen.getByRole<HTMLInputElement>("textbox", {name: "Repo"}).value).toBe("motlin/claude-code-plugins");
+		expect(
+			screen
+				.getByRole(
+					"switch",
+					{
+						name: "Enabled",
+					},
+				)
+				.getAttribute("aria-checked"),
+		).toBe("true");
+		expect(
+			screen
+				.getByRole(
+					"switch",
+					{
+						name: "alpha@market",
+					},
+				)
+				.getAttribute("aria-checked"),
+		).toBe("true");
+		expect(
+			screen
+				.getByRole(
+					"switch",
+					{
+						name: "Auto-update",
+					},
+				)
+				.getAttribute("aria-checked"),
+		).toBe("true");
+		expect(
+			screen.getByRole<HTMLInputElement>(
+				"textbox",
+				{
+					name: "Command",
+				},
+			).value,
+		).toBe("~/.claude/statusline.sh");
+		expect(
+			screen.getByRole<HTMLInputElement>(
+				"textbox",
+				{
+					name: "Repo",
+				},
+			).value,
+		).toBe("motlin/claude-code-plugins");
 	});
 });

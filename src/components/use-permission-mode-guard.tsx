@@ -3,7 +3,8 @@ import type {LaunchPermissionMode} from "../lib/launch-options";
 import type {ConsentMode} from "../lib/permission-mode-consent";
 import {type GuardRequest, PermissionModeConsentGate} from "./permission-mode-consent-dialog";
 
-function isConsentMode(mode: LaunchPermissionMode): mode is ConsentMode {
+function isConsentMode(mode: LaunchPermissionMode): mode is ConsentMode
+{
 	return mode === "auto" || mode === "bypassPermissions";
 }
 
@@ -13,28 +14,49 @@ function isConsentMode(mode: LaunchPermissionMode): mode is ConsentMode {
  * confirms the dialog. Cancel, Escape and the backdrop drop the pick, calling `decline` when given (upstream's card
  * still allows the tool once). Render `gate` beside the menu.
  */
-export function usePermissionModeGuard(workspace: string): {
+export function usePermissionModeGuard(workspace: string):
+{
 	guard: (mode: LaunchPermissionMode, proceed: () => void, decline?: () => void) => void;
 	gate: ReactNode;
-} {
+}
+{
 	const [request, setRequest] = useState<GuardRequest | null>(null);
 	const [gateMounted, setGateMounted] = useState(false);
-	const guard = (mode: LaunchPermissionMode, proceed: () => void, decline?: () => void) => {
-		if (!isConsentMode(mode)) {
+	const guard = (mode: LaunchPermissionMode, proceed: () => void, decline?: () => void) =>
+	{
+		if (!isConsentMode(mode))
+		{
 			proceed();
 			return;
 		}
 		setGateMounted(true);
-		setRequest(decline === undefined ? {mode, proceed} : {mode, proceed, decline});
+		setRequest(
+			decline === undefined
+				?
+					{
+						mode,
+						proceed,
+					}
+				:
+					{
+						mode,
+						proceed,
+						decline,
+					},
+		);
 	};
 	const gate = gateMounted ? (
 		<PermissionModeConsentGate
 			request={request}
 			workspace={workspace}
-			onSettled={() => {
+			onSettled={() =>
+			{
 				setRequest(null);
 			}}
 		/>
 	) : null;
-	return {guard, gate};
+	return {
+		guard,
+		gate,
+	};
 }

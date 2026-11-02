@@ -16,7 +16,8 @@ export const DensityContext = createContext<Density>("comfortable");
 /* Upstream's `He` context / `experimental.densityOverride`: wins over the coarse-pointer swap. */
 export const DensityOverrideContext = createContext<Density | undefined>(undefined);
 
-export function useDensity(): Density {
+export function useDensity(): Density
+{
 	return useContext(DensityContext);
 }
 
@@ -25,7 +26,8 @@ export function useDensity(): Density {
  * comfortable under fizzy-lake `panels`, then comfortable on a coarse pointer (live,
  * `false` on the server), then the scope's own density, then the inherited one.
  */
-export function useScopeDensity(density?: Density): Density {
+export function useScopeDensity(density?: Density): Density
+{
 	const override = useContext(DensityOverrideContext);
 	const panels = useFizzyLake("panels");
 	const coarse = useCoarsePointer();

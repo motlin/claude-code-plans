@@ -1,4 +1,5 @@
-export function TaskOwner({owner}: {owner: string | null}) {
+export function TaskOwner({owner}: {owner: string | null})
+{
 	if (!owner) return null;
 
 	return (

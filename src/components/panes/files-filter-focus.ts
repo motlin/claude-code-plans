@@ -4,11 +4,13 @@
  */
 let pendingFilterFocus = false;
 
-export function setPendingFilterFocus(pending: boolean): void {
+export function setPendingFilterFocus(pending: boolean): void
+{
 	pendingFilterFocus = pending;
 }
 
-export function consumePendingFilterFocus(): boolean {
+export function consumePendingFilterFocus(): boolean
+{
 	const pending = pendingFilterFocus;
 	pendingFilterFocus = false;
 	return pending;

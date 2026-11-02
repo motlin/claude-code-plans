@@ -26,24 +26,28 @@ const NO_ANNOTATIONS: readonly DiffAnnotation[] = [];
 const NAME_MAX_CHARS = 60;
 
 /** Upstream `Oi`: an unlabelled excerpt's accessible name, its first non-empty line capped at 60 chars. */
-function excerptName(text: string): string {
+function excerptName(text: string): string
+{
 	const line = (text.split("\n").find((each) => each.trim() !== "") ?? text).trim();
 	return line.length > NAME_MAX_CHARS ? `${line.slice(0, NAME_MAX_CHARS - 1)}…` : line;
 }
 
-function basename(path: string): string {
+function basename(path: string): string
+{
 	return path.slice(path.lastIndexOf("/") + 1) || path;
 }
 
 /** Upstream `Ei`: a comment's file name and line or range, marked when it is on the old side. */
-function annotationWhere({filePath, startLine, endLine, oldSide}: DiffAnnotation): string {
+function annotationWhere({filePath, startLine, endLine, oldSide}: DiffAnnotation): string
+{
 	const lines = endLine !== undefined && endLine !== startLine ? `${startLine}-${endLine}` : `${startLine}`;
 	const where = `${basename(filePath)}:${lines}`;
 	return oldSide ? `${where} (before changes)` : where;
 }
 
 /** Upstream `Ig`: a badge whose hint shows in a top tooltip on hover or keyboard focus, and describes it. */
-function HintBadge({badge, hint}: {badge: string; hint: string}) {
+function HintBadge({badge, hint}: {badge: string; hint: string})
+{
 	const hintId = useId();
 	const content = useMemo(() => <bdi>{hint}</bdi>, [hint]);
 	return (
@@ -71,7 +75,8 @@ function HintBadge({badge, hint}: {badge: string; hint: string}) {
 }
 
 /** Upstream's MessageAttachments.Quote as a sent tile: an sr-only name over the quote and its badge. */
-function QuoteTile({name, text, badge, hint}: {name: string; text: string; badge: string; hint: string | undefined}) {
+function QuoteTile({name, text, badge, hint}: {name: string; text: string; badge: string; hint: string | undefined})
+{
 	return (
 		<div tabIndex={-1} data-cds="MessageAttachmentsQuote" data-cds-attachment="" className={SENT_TILE_CLASS}>
 			<div data-cds="Card" data-size="xs" className={CARD_CLASS}>
@@ -99,7 +104,8 @@ export function MessageQuoteTiles({
 }: {
 	snippets: readonly AttachSnippet[];
 	annotations?: readonly DiffAnnotation[];
-}) {
+})
+{
 	if (snippets.length === 0 && annotations.length === 0) return null;
 	return (
 		<div
@@ -118,7 +124,8 @@ export function MessageQuoteTiles({
 					hint={snippet.label}
 				/>
 			))}
-			{annotations.map((annotation, index) => {
+			{annotations.map((annotation, index) =>
+			{
 				const where = annotationWhere(annotation);
 				return (
 					<QuoteTile

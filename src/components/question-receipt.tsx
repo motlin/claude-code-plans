@@ -4,7 +4,8 @@ import {stripMemoryTags} from "../lib/task-checklist";
 import {revealSpoofing} from "../lib/visible-text";
 
 /** One answered question of a receipt: the question, the answer line, and the user's notes when they add something. */
-export interface QuestionReceiptRow {
+export interface QuestionReceiptRow
+{
 	question: string;
 	answer: string;
 	notes: string | null;
@@ -15,7 +16,8 @@ export interface QuestionReceiptRow {
  * When the user picks 'Other' and types a custom answer, Claude Code echoes
  * the same string in both fields; suppress that redundant duplicate.
  */
-function notesAddInformation(notes: string | null, answerValue: string): notes is string {
+function notesAddInformation(notes: string | null, answerValue: string): notes is string
+{
 	if (notes === null) return false;
 	const trimmed = notes.trim();
 	return trimmed !== "" && trimmed !== answerValue.trim();
@@ -25,7 +27,8 @@ function notesAddInformation(notes: string | null, answerValue: string): notes i
  * Upstream's `Hc` (cb6930dae): memory tags dropped, secrets masked, the lines trimmed with blank ones
  * dropped and joined by `separator`, then spoofing characters revealed (`u9(ME(Ee(text)))`).
  */
-function receiptText(text: string, separator: string): string {
+function receiptText(text: string, separator: string): string
+{
 	return revealSpoofing(
 		maskSecrets(stripMemoryTags(text))
 			.split("\n")
@@ -40,7 +43,8 @@ function receiptText(text: string, separator: string): string {
  * chosen answer (or the Other text, or the unanswered outcome's word) in secondary,
  * its newlines kept and capped at 250px with its own scroll. Unchosen options are omitted.
  */
-function AnsweredQuestion({question, answer, notes}: QuestionReceiptRow) {
+function AnsweredQuestion({question, answer, notes}: QuestionReceiptRow)
+{
 	const shown = receiptText(answer, "\n");
 	return (
 		<div data-answered-question className="flex flex-col gap-0.5 px-lg py-md">
@@ -68,7 +72,8 @@ function AnsweredQuestion({question, answer, notes}: QuestionReceiptRow) {
  * Like upstream's `wd` it reads `enters` once, so a later `true` never restarts the
  * fade; a later `false` drops the class, which ends it without replaying.
  */
-export function QuestionReceipt({rows, enters}: {rows: readonly QuestionReceiptRow[]; enters: boolean}) {
+export function QuestionReceipt({rows, enters}: {rows: readonly QuestionReceiptRow[]; enters: boolean})
+{
 	const [entersAtMount] = useState(enters);
 	const fades = entersAtMount && enters;
 	return (

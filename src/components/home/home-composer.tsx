@@ -20,7 +20,8 @@ import {resolveComposerState, withComposerAccountLimits} from "../../lib/compose
 import {buildLaunchFlags, type LaunchOptions, modeMenuItems} from "../../lib/launch-options";
 import {useFolderModeMemory} from "../../hooks/use-folder-mode-memory";
 import {draftPermissionMode} from "../../lib/folder-permission-mode";
-import {
+import
+{
 	onHomeComposerFocusRequest,
 	onHomeComposerPrefillRequest,
 	requestHomeComposerFocus,
@@ -43,7 +44,8 @@ import {WorktreeToggleChip} from "./worktree-toggle-chip";
 export {HOME_RECENT_LIMIT} from "./launch-folder";
 
 /** Upstream's saved-environment `gone` reason, adapted to a selected folder that no longer exists. */
-function folderGoneReason(name: string, path: string): string {
+function folderGoneReason(name: string, path: string): string
+{
 	return `${name} can’t start: ${path} no longer exists.`;
 }
 
@@ -57,27 +59,41 @@ const HOME_DOCK_CHUNKS = [loadSendRejectedCard];
  * equivalent shell command instead. A `prefill` replaces the draft once on mount (nothing is sent), then
  * `onPrefillApplied` lets the caller drop whatever asked for it.
  */
-function dropPendingGroup(): void {
+function dropPendingGroup(): void
+{
 	setPendingLaunchGroup(null);
 }
 
 export function HomeComposer({
 	prefill,
 	onPrefillApplied,
-}: Readonly<{prefill?: string | undefined; onPrefillApplied?: (() => void) | undefined}> = {}) {
+}: Readonly<
+{
+	prefill?: string | undefined;
+	onPrefillApplied?: (() => void) | undefined;
+}> = {})
+{
 	const navigate = useNavigate();
 	const toast = useToast();
 	const activeSessions = useActiveSessionsIfAvailable();
 	const {data: defaults} = useQuery(composerDefaultsQueryOptions);
 	useIdlePrefetch(HOME_DOCK_CHUNKS);
-	const [pendingLaunch, setPendingLaunch] = useState<(PendingLaunch & {worktree: boolean}) | null>(null);
+	const [pendingLaunch, setPendingLaunch] = useState<
+		| (PendingLaunch &
+		  {
+				worktree: boolean;
+		  })
+		| null
+	>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 	// Upstream keeps the failed start's display error in memory only: a reload or remount drops the card.
 	const [startFailure, setStartFailure] = useState<StartFailure | null>(null);
 	const mountedRef = useRef(true);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		mountedRef.current = true;
-		return () => {
+		return () =>
+		{
 			mountedRef.current = false;
 		};
 	}, []);
@@ -85,15 +101,22 @@ export function HomeComposer({
 		() =>
 			startFailure === null
 				? null
-				: {prompt: startFailure.restoredDraft, message: startFailure.message, nonResendable: false},
+				:
+					{
+						prompt: startFailure.restoredDraft,
+						message: startFailure.message,
+						nonResendable: false,
+					},
 		[startFailure],
 	);
-	const clearStartFailure = useCallback(() => {
+	const clearStartFailure = useCallback(() =>
+	{
 		setStartFailure(null);
 	}, []);
 	const {retryRejection, dismissRejection} = useSendRejectionActions("home", rejection, clearStartFailure);
 
-	const {
+	const
+	{
 		projects: startProjects,
 		selected: project,
 		select: setChosenProjectId,
@@ -113,7 +136,8 @@ export function HomeComposer({
 		() =>
 			project === undefined || !folderGone
 				? null
-				: {
+				:
+					{
 						kind: "blocking",
 						content: (
 							<>
@@ -130,13 +154,15 @@ export function HomeComposer({
 	const bypassPermissionsAllowed = defaults?.bypassPermissionsAllowed ?? false;
 	const draftMode = useMemo(
 		() =>
-			draftPermissionMode({
-				cwd: project?.projectPath,
-				modes: folderModes.modes,
-				userSettingsDefault: defaults?.defaultMode ?? null,
-				repoSettingsDefault: folderDefaults?.repoDefaultMode ?? null,
-				available: modeMenuItems(bypassPermissionsAllowed).map((item) => item.id),
-			}),
+			draftPermissionMode(
+				{
+					cwd: project?.projectPath,
+					modes: folderModes.modes,
+					userSettingsDefault: defaults?.defaultMode ?? null,
+					repoSettingsDefault: folderDefaults?.repoDefaultMode ?? null,
+					available: modeMenuItems(bypassPermissionsAllowed).map((item) => item.id),
+				},
+			),
 		[
 			project?.projectPath,
 			folderModes.modes,
@@ -155,22 +181,24 @@ export function HomeComposer({
 			defaults === undefined
 				? undefined
 				: withComposerAccountLimits(
-						resolveComposerState({
-							hookPermissionMode: null,
-							jsonlPermissionMode: null,
-							settingsDefaultMode: draftMode.mode,
-							statuslineModel: null,
-							statuslineModelId: null,
-							lastAssistantModel: null,
-							lastAssistantUsage: null,
-							lastAssistantEffort: null,
-							fastMode: defaults.fastMode,
-							fastModeBlocked: defaults.fastModeBlocked,
-							settingsModel: defaults.model,
-							settingsEffortLevel: defaults.effortLevel,
-							statusline: null,
-							statuslineUpdatedAt: null,
-						}),
+						resolveComposerState(
+							{
+								hookPermissionMode: null,
+								jsonlPermissionMode: null,
+								settingsDefaultMode: draftMode.mode,
+								statuslineModel: null,
+								statuslineModelId: null,
+								lastAssistantModel: null,
+								lastAssistantUsage: null,
+								lastAssistantEffort: null,
+								fastMode: defaults.fastMode,
+								fastModeBlocked: defaults.fastModeBlocked,
+								settingsModel: defaults.model,
+								settingsEffortLevel: defaults.effortLevel,
+								statusline: null,
+								statuslineUpdatedAt: null,
+							},
+						),
 						accountUsage,
 					),
 		[defaults, accountUsage, draftMode.mode],
@@ -178,85 +206,172 @@ export function HomeComposer({
 
 	useEffect(
 		() =>
-			onHomeComposerFocusRequest(() => {
+			onHomeComposerFocusRequest(() =>
+			{
 				rootRef.current?.querySelector<HTMLTextAreaElement>("textarea")?.focus();
 			}),
 		[],
 	);
 
 	// Runs after the Composer's own mount effects, so the prefill wins over the restored draft.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (prefill === undefined) return;
 		requestHomeComposerPrefill(prefill);
 		onPrefillApplied?.();
 	}, [prefill, onPrefillApplied]);
 
 	// The launched session opens once its SessionStart hook arrives over SSE.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (pendingLaunch === null) return;
 		const id = findLaunchedSession(activeSessions.values(), pendingLaunch);
 		if (id === null) return;
 		setPendingLaunch(null);
 		assignLaunchedSession(id);
-		void navigate({to: "/session/$id", params: {id}});
+		void navigate(
+			{
+				to: "/session/$id",
+				params:
+				{
+					id,
+				},
+			},
+		);
 	}, [pendingLaunch, activeSessions, navigate]);
 
 	/**
 	 * Upstream's failed-start restore: the prompt and its tiles go back into the composer under the
 	 * start-failed card, or, when home has unmounted, into the stored draft with a toast.
 	 */
-	function restoreFailedStart(prompt: string, error: unknown) {
-		if (!mountedRef.current) {
+	function restoreFailedStart(prompt: string, error: unknown)
+	{
+		if (!mountedRef.current)
+		{
 			restoreStoredDraft("home", restoreRejectedAttachments("home", prompt, toast) ?? prompt);
-			toast({kind: "error", message: startFailedOffscreenToast({promptIsBack: prompt.trim() !== ""})});
+			toast(
+				{
+					kind: "error",
+					message: startFailedOffscreenToast(
+						{
+							promptIsBack: prompt.trim() !== "",
+						},
+					),
+				},
+			);
 			return;
 		}
 		refillRejectedSend("home", prompt, toast);
 		const message = error instanceof Error && error.message !== "" ? error.message : "Send failed";
-		setStartFailure({message, restoredDraft: getComposerText("home") ?? prompt});
+		setStartFailure(
+			{
+				message,
+				restoredDraft: getComposerText("home") ?? prompt,
+			},
+		);
 	}
 
 	/** `stay` (⌘⏎) launches without opening the session, leaving home ready for the next prompt. */
-	async function launch(prompt: string, launchOptions: LaunchOptions, stay = false) {
-		if (project === undefined) {
-			toast({kind: "error", message: "Choose a project to start a session in."});
+	async function launch(prompt: string, launchOptions: LaunchOptions, stay = false)
+	{
+		if (project === undefined)
+		{
+			toast(
+				{
+					kind: "error",
+					message: "Choose a project to start a session in.",
+				},
+			);
 			return;
 		}
-		if (folderGone) {
+		if (folderGone)
+		{
 			// The composer clears its draft right after handing the prompt over, so the refill waits for that.
-			queueMicrotask(() => {
+			queueMicrotask(() =>
+			{
 				refillRejectedSend("home", prompt, toast);
 			});
-			toast({kind: "error", message: folderGoneReason(project.name, project.projectPath)});
+			toast(
+				{
+					kind: "error",
+					message: folderGoneReason(project.name, project.projectPath),
+				},
+			);
 			return;
 		}
 		// The remembered mode goes on the command line only when the CLI wouldn't start in it by itself.
 		const withMode =
 			launchOptions.permissionMode === undefined && draftMode.launchFlag !== undefined
-				? {...launchOptions, permissionMode: draftMode.launchFlag}
+				?
+					{
+						...launchOptions,
+						permissionMode: draftMode.launchFlag,
+					}
 				: launchOptions;
-		const args = buildLaunchFlags(worktree.useWorktree ? {...withMode, worktree: true} : withMode);
-		const request = {cwd: project.projectPath, prompt, ...(args.length > 0 ? {args} : {})};
+		const args = buildLaunchFlags(
+			worktree.useWorktree
+				?
+					{
+						...withMode,
+						worktree: true,
+					}
+				: withMode,
+		);
+		const request =
+		{
+			cwd: project.projectPath,
+			prompt,
+			...(args.length > 0
+				?
+					{
+						args,
+					}
+				: {}),
+		};
 		const since = Date.now();
 		loadSendRejectedCard().catch(() => {});
 		// A new start clears the last failure's card, as upstream does.
 		setStartFailure(null);
 		setLaunching(true);
-		try {
+		try
+		{
 			const {sessionId} = await launchHerdrSession(request);
 			// The launch ends this draft, so its Worktree override goes back to the preference.
 			worktree.endDraft();
-			if (stay) {
+			if (stay)
+			{
 				if (sessionId === null) setPendingLaunchGroup(null);
 				else assignLaunchedSession(sessionId);
-				toast({kind: "success", message: `Started a session in ${project.name}`});
-			} else {
-				setPendingLaunch({cwd: request.cwd, since, sessionId, worktree: worktree.useWorktree});
+				toast(
+					{
+						kind: "success",
+						message: `Started a session in ${project.name}`,
+					},
+				);
 			}
-		} catch (error) {
+			else
+			{
+				setPendingLaunch(
+					{
+						cwd: request.cwd,
+						since,
+						sessionId,
+						worktree: worktree.useWorktree,
+					},
+				);
+			}
+		}
+		catch (error)
+		{
 			// Without a terminal host the shell command is the way to start; a copy that fails falls back to the card.
-			if (isNoTerminalHost(error) && (await writeClipboardText(buildClaudeCopyCommand(request)))) {
-				toast({kind: "success", message: "Copied command — no terminal to launch in"});
+			if (isNoTerminalHost(error) && (await writeClipboardText(buildClaudeCopyCommand(request))))
+			{
+				toast(
+					{
+						kind: "success",
+						message: "Copied command — no terminal to launch in",
+					},
+				);
 				return;
 			}
 			restoreFailedStart(prompt, error);
@@ -266,10 +381,20 @@ export function HomeComposer({
 				error instanceof HerdrRequestError &&
 				error.code === "agent_prompt_failed" &&
 				error.sessionId !== undefined
-			) {
-				setPendingLaunch({cwd: request.cwd, since, sessionId: error.sessionId, worktree: worktree.useWorktree});
+			)
+			{
+				setPendingLaunch(
+					{
+						cwd: request.cwd,
+						since,
+						sessionId: error.sessionId,
+						worktree: worktree.useWorktree,
+					},
+				);
 			}
-		} finally {
+		}
+		finally
+		{
 			setLaunching(false);
 		}
 	}
@@ -284,7 +409,10 @@ export function HomeComposer({
 						rejection={rejection}
 						onRetry={retryRejection}
 						onDismiss={dismissRejection}
-						data={{"data-start-failed": ""}}
+						data={
+						{
+							"data-start-failed": "",
+						}}
 					/>
 				)}
 			</div>

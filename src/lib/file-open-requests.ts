@@ -9,9 +9,11 @@ const pendingBySession = new Map<string, FileRef>();
  * Ask the session's Files pane to open `ref` as a preview tab. A mounted pane
  * handles it at once; otherwise it waits until the pane mounts and takes it.
  */
-export function requestFileOpen(sessionId: string, ref: FileRef): void {
+export function requestFileOpen(sessionId: string, ref: FileRef): void
+{
 	const sessionListeners = listeners.get(sessionId);
-	if (sessionListeners === undefined || sessionListeners.size === 0) {
+	if (sessionListeners === undefined || sessionListeners.size === 0)
+	{
 		pendingBySession.set(sessionId, ref);
 		return;
 	}
@@ -19,17 +21,20 @@ export function requestFileOpen(sessionId: string, ref: FileRef): void {
 }
 
 /** Take the request made while the session's Files pane was closed, if any. */
-export function takePendingFileOpen(sessionId: string): FileRef | null {
+export function takePendingFileOpen(sessionId: string): FileRef | null
+{
 	const ref = pendingBySession.get(sessionId) ?? null;
 	pendingBySession.delete(sessionId);
 	return ref;
 }
 
-export function onFileOpenRequest(sessionId: string, listener: Listener): () => void {
+export function onFileOpenRequest(sessionId: string, listener: Listener): () => void
+{
 	const sessionListeners = listeners.get(sessionId) ?? new Set();
 	sessionListeners.add(listener);
 	listeners.set(sessionId, sessionListeners);
-	return () => {
+	return () =>
+	{
 		sessionListeners.delete(listener);
 		if (sessionListeners.size === 0) listeners.delete(sessionId);
 	};

@@ -17,30 +17,54 @@ import {sessionQueryKeys, type TranscriptData} from "../src/lib/api/sessions";
 
 let intersect: (...states: boolean[]) => void = () => undefined;
 
-class TestIntersectionObserver {
-	constructor(private readonly callback: IntersectionObserverCallback) {
-		intersect = (...states: boolean[]) => {
+class TestIntersectionObserver
+{
+	constructor(private readonly callback: IntersectionObserverCallback)
+	{
+		intersect = (...states: boolean[]) =>
+		{
 			this.callback(
-				states.map((isIntersecting) => ({isIntersecting}) as IntersectionObserverEntry),
+				states.map(
+					(isIntersecting) =>
+						(
+						{
+							isIntersecting,
+						}) as IntersectionObserverEntry,
+				),
 				this as unknown as IntersectionObserver,
 			);
 		};
 	}
-	observe() {}
-	disconnect() {}
+	observe()
+	{
+	}
+	disconnect()
+	{
+	}
 }
 
 vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 
-afterEach(() => {
+afterEach(() =>
+{
 	vi.restoreAllMocks();
 });
 
-function record(index: number): Record<string, unknown> {
-	return {type: "user", uuid: `u-${index}`, message: {role: "user", content: `m${index}`}};
+function record(index: number): Record<string, unknown>
+{
+	return {
+		type: "user",
+		uuid: `u-${index}`,
+		message:
+		{
+			role: "user",
+			content: `m${index}`,
+		},
+	};
 }
 
-function renderLoader(cached: TranscriptData) {
+function renderLoader(cached: TranscriptData)
+{
 	const queryClient = new QueryClient();
 	queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), cached);
 	const view = render(
@@ -48,32 +72,51 @@ function renderLoader(cached: TranscriptData) {
 			<TranscriptHistoryLoader sessionId="sess-1" startIndex={cached.startIndex} />
 		</QueryClientProvider>,
 	);
-	const rerenderWithStartIndex = (startIndex: number) => {
+	const rerenderWithStartIndex = (startIndex: number) =>
+	{
 		view.rerender(
 			<QueryClientProvider client={queryClient}>
 				<TranscriptHistoryLoader sessionId="sess-1" startIndex={startIndex} />
 			</QueryClientProvider>,
 		);
 	};
-	return {queryClient, rerenderWithStartIndex};
+	return {
+		queryClient,
+		rerenderWithStartIndex,
+	};
 }
 
-function mockEarlierPage(page: TranscriptData) {
+function mockEarlierPage(page: TranscriptData)
+{
 	return vi.spyOn(globalThis, "fetch").mockResolvedValue(
-		new Response(JSON.stringify(page), {
-			status: 200,
-			headers: {"Content-Type": "application/json"},
-		}),
+		new Response(
+			JSON.stringify(page),
+			{
+				status: 200,
+				headers:
+				{
+					"Content-Type": "application/json",
+				},
+			},
+		),
 	);
 }
 
 /** Serves a two-record page for whatever `?before=` the client asks for. */
-function mockPagedHistory() {
-	return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+function mockPagedHistory()
+{
+	return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
+	{
 		const before = Number(new URL(String(input), "http://localhost").searchParams.get("before"));
 		const startIndex = Math.max(0, before - 2);
-		const page: TranscriptData = {
-			records: Array.from({length: before - startIndex}, (_, i) => record(startIndex + i)),
+		const page: TranscriptData =
+		{
+			records: Array.from(
+				{
+					length: before - startIndex,
+				},
+				(_, i) => record(startIndex + i),
+			),
 			byteOffset: 900,
 			startIndex,
 			precedingMessageCount: startIndex,
@@ -83,15 +126,22 @@ function mockPagedHistory() {
 			chapters: [],
 		};
 		return Promise.resolve(
-			new Response(JSON.stringify(page), {
-				status: 200,
-				headers: {"Content-Type": "application/json"},
-			}),
+			new Response(
+				JSON.stringify(page),
+				{
+					status: 200,
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+				},
+			),
 		);
 	});
 }
 
-const TAIL: TranscriptData = {
+const TAIL: TranscriptData =
+{
 	records: [record(2), record(3)],
 	byteOffset: 900,
 	startIndex: 2,
@@ -101,7 +151,8 @@ const TAIL: TranscriptData = {
 	chainVersion: "v1",
 	chapters: [],
 };
-const EARLIER_PAGE: TranscriptData = {
+const EARLIER_PAGE: TranscriptData =
+{
 	records: [record(0), record(1)],
 	byteOffset: 900,
 	startIndex: 0,
@@ -112,43 +163,57 @@ const EARLIER_PAGE: TranscriptData = {
 	chapters: [],
 };
 
-describe("TranscriptHistoryLoader", () => {
-	it("renders nothing once the window reaches the first record", () => {
-		renderLoader({...EARLIER_PAGE, records: [record(0), record(1)]});
+describe("TranscriptHistoryLoader", () =>
+{
+	it("renders nothing once the window reaches the first record", () =>
+	{
+		renderLoader(
+			{
+				...EARLIER_PAGE,
+				records: [record(0), record(1)],
+			},
+		);
 
 		expect(screen.queryByTestId("transcript-history-loader")).toBeNull();
 	});
 
-	it("loads the earlier page when the reader scrolls it into view", async () => {
+	it("loads the earlier page when the reader scrolls it into view", async () =>
+	{
 		mockEarlierPage(EARLIER_PAGE);
 		const {queryClient} = renderLoader(TAIL);
 
 		intersect(false);
 		intersect(true);
 
-		await waitFor(() => {
-			expect(queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))).toStrictEqual({
-				records: [record(0), record(1), record(2), record(3)],
-				byteOffset: 900,
-				startIndex: 0,
-				precedingMessageCount: 0,
-				hiddenUuids: [],
-				cuts: [],
-				chainVersion: "v1",
-				chapters: [],
-			});
+		await waitFor(() =>
+		{
+			expect(queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))).toStrictEqual(
+				{
+					records: [record(0), record(1), record(2), record(3)],
+					byteOffset: 900,
+					startIndex: 0,
+					precedingMessageCount: 0,
+					hiddenUuids: [],
+					cuts: [],
+					chainVersion: "v1",
+					chapters: [],
+				},
+			);
 		});
 	});
 
-	it("offers no button, and shows upstream's Loading... spinner while the earlier page is in flight", async () => {
+	it("offers no button, and shows upstream's Loading... spinner while the earlier page is in flight", async () =>
+	{
 		let resolveFetch: (response: Response) => void = () => undefined;
 		vi.spyOn(globalThis, "fetch").mockReturnValue(
-			new Promise<Response>((resolve) => {
+			new Promise<Response>((resolve) =>
+			{
 				resolveFetch = resolve;
 			}),
 		);
 		renderLoader(TAIL);
-		const idle = {
+		const idle =
+		{
 			buttons: screen.queryAllByRole("button").length,
 			earlierRecordsText: screen.queryByText(/earlier records/) === null,
 			status: screen.queryByRole("status"),
@@ -158,7 +223,8 @@ describe("TranscriptHistoryLoader", () => {
 		intersect(false);
 		intersect(true);
 		const status = await screen.findByRole("status");
-		const loading = {
+		const loading =
+		{
 			buttons: screen.queryAllByRole("button").length,
 			text: status.textContent,
 			srOnly: status.querySelector(".sr-only")?.textContent,
@@ -166,49 +232,85 @@ describe("TranscriptHistoryLoader", () => {
 			slot: screen.getByTestId("transcript-history-spinner-slot").className,
 		};
 		resolveFetch(
-			new Response(JSON.stringify(EARLIER_PAGE), {status: 200, headers: {"Content-Type": "application/json"}}),
+			new Response(
+				JSON.stringify(EARLIER_PAGE),
+				{
+					status: 200,
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+				},
+			),
 		);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("status")).toBeNull();
 		});
 
-		expect({idle, loading}).toStrictEqual({
-			// The spinner's row is reserved either way, so its coming and going never moves the transcript.
-			idle: {buttons: 0, earlierRecordsText: true, status: null, slot: "flex h-4 justify-center"},
-			loading: {
-				buttons: 0,
-				text: "Loading...",
-				srOnly: "Loading...",
-				spinner: true,
-				slot: "flex h-4 justify-center",
+		expect(
+			{
+				idle,
+				loading,
 			},
-		});
+		).toStrictEqual(
+			{
+				// The spinner's row is reserved either way, so its coming and going never moves the transcript.
+				idle:
+				{
+					buttons: 0,
+					earlierRecordsText: true,
+					status: null,
+					slot: "flex h-4 justify-center",
+				},
+				loading:
+				{
+					buttons: 0,
+					text: "Loading...",
+					srOnly: "Loading...",
+					spinner: true,
+					slot: "flex h-4 justify-center",
+				},
+			},
+		);
 	});
 
-	it("ignores the opening frame, where the view has not yet scrolled to the newest message", async () => {
+	it("ignores the opening frame, where the view has not yet scrolled to the newest message", async () =>
+	{
 		const fetchSpy = mockEarlierPage(EARLIER_PAGE);
 		renderLoader(TAIL);
 
 		intersect(true);
 
 		await Promise.resolve();
-		expect({fetches: fetchSpy.mock.calls, status: screen.queryByRole("status")}).toStrictEqual({
-			fetches: [],
-			status: null,
-		});
+		expect(
+			{
+				fetches: fetchSpy.mock.calls,
+				status: screen.queryByRole("status"),
+			},
+		).toStrictEqual(
+			{
+				fetches: [],
+				status: null,
+			},
+		);
 	});
 
 	/** Lays the document scroller out at `clientHeight` over `scrollHeight` of content, scrolled to `scrollTop`. */
-	function layOutScroller(clientHeight: number, scrollHeight: number, scrollTop: number) {
+	function layOutScroller(clientHeight: number, scrollHeight: number, scrollTop: number)
+	{
 		const scroller = document.documentElement;
 		vi.spyOn(scroller, "clientHeight", "get").mockReturnValue(clientHeight);
 		vi.spyOn(scroller, "scrollHeight", "get").mockReturnValue(scrollHeight);
 		vi.spyOn(scroller, "scrollTop", "get").mockReturnValue(scrollTop);
 	}
 
-	async function settleFrames() {
-		for (let frame = 0; frame < 3; frame++) {
-			await new Promise((resolve) => {
+	async function settleFrames()
+	{
+		for (let frame = 0; frame < 3; frame++)
+		{
+			await new Promise((resolve) =>
+			{
 				requestAnimationFrame(resolve);
 			});
 		}
@@ -219,7 +321,8 @@ describe("TranscriptHistoryLoader", () => {
 		["overflows by less than the 600px lookahead", 1206],
 	])(
 		"loads when the transcript %s, so scrolling to the newest message leaves the sentinel in view",
-		async (_, scrollHeight) => {
+		async (_, scrollHeight) =>
+		{
 			// Session 76b11aac: its byte-capped tail is one short turn, so the sentinel sat in view forever, unarmed.
 			mockEarlierPage(EARLIER_PAGE);
 			layOutScroller(900, scrollHeight, scrollHeight - 900);
@@ -227,7 +330,8 @@ describe("TranscriptHistoryLoader", () => {
 
 			intersect(true);
 
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(
 					queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))?.startIndex,
 				).toBe(0);
@@ -235,7 +339,8 @@ describe("TranscriptHistoryLoader", () => {
 		},
 	);
 
-	it("still ignores the opening frame once layout settles while the view has not reached the newest message", async () => {
+	it("still ignores the opening frame once layout settles while the view has not reached the newest message", async () =>
+	{
 		const fetchSpy = mockEarlierPage(EARLIER_PAGE);
 		layOutScroller(900, 4000, 0);
 		renderLoader(TAIL);
@@ -243,96 +348,134 @@ describe("TranscriptHistoryLoader", () => {
 		intersect(true);
 
 		await settleFrames();
-		expect({fetches: fetchSpy.mock.calls, status: screen.queryByRole("status")}).toStrictEqual({
-			fetches: [],
-			status: null,
-		});
+		expect(
+			{
+				fetches: fetchSpy.mock.calls,
+				status: screen.queryByRole("status"),
+			},
+		).toStrictEqual(
+			{
+				fetches: [],
+				status: null,
+			},
+		);
 	});
 
-	it("loads when one callback carries both the exit and the return", async () => {
+	it("loads when one callback carries both the exit and the return", async () =>
+	{
 		// A fast scroll down and back up is delivered as a single batch.
 		mockEarlierPage(EARLIER_PAGE);
 		const {queryClient} = renderLoader(TAIL);
 
 		intersect(false, true);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))?.startIndex).toBe(0);
 		});
 	});
 
-	it("keeps paging when the landed page is too short to move the sentinel out of view", async () => {
+	it("keeps paging when the landed page is too short to move the sentinel out of view", async () =>
+	{
 		// A page that renders shorter than the 600px rootMargin leaves the sentinel
 		// intersecting, so the observer watching the next page has only its opening
 		// delivery to go on -- and that delivery says "still intersecting".
 		const fetchSpy = mockPagedHistory();
-		const {rerenderWithStartIndex} = renderLoader({...TAIL, startIndex: 6});
+		const {rerenderWithStartIndex} = renderLoader(
+			{
+				...TAIL,
+				startIndex: 6,
+			},
+		);
 
 		intersect(false);
 		intersect(true);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(fetchSpy.mock.calls.length).toBe(1);
 		});
 		rerenderWithStartIndex(4);
 		intersect(true);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(fetchSpy.mock.calls.length).toBe(2);
 		});
 	});
 
-	it("still ignores the opening frame after a page lands without the reader scrolling", async () => {
+	it("still ignores the opening frame after a page lands without the reader scrolling", async () =>
+	{
 		// The deep-link path pages backwards on its own. Those landings re-run the
 		// observer effect, but the reader never scrolled, so the sentinel sitting
 		// in view is still the opening frame and must not fetch.
 		const fetchSpy = mockPagedHistory();
-		const {rerenderWithStartIndex} = renderLoader({...TAIL, startIndex: 6});
+		const {rerenderWithStartIndex} = renderLoader(
+			{
+				...TAIL,
+				startIndex: 6,
+			},
+		);
 
 		rerenderWithStartIndex(4);
 		intersect(true);
 
 		await Promise.resolve();
-		expect({fetches: fetchSpy.mock.calls, status: screen.queryByRole("status")}).toStrictEqual({
-			fetches: [],
-			status: null,
-		});
+		expect(
+			{
+				fetches: fetchSpy.mock.calls,
+				status: screen.queryByRole("status"),
+			},
+		).toStrictEqual(
+			{
+				fetches: [],
+				status: null,
+			},
+		);
 	});
 
-	it("surfaces a failure instead of silently leaving the history unreachable", async () => {
+	it("surfaces a failure instead of silently leaving the history unreachable", async () =>
+	{
 		vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("fabricated network failure"));
 		renderLoader(TAIL);
 
 		intersect(false);
 		intersect(true);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.getByText("fabricated network failure")).toBeDefined();
 		});
 	});
 });
 
-describe("toObserverRoot", () => {
-	it("measures against the scrolling element the transcript lives in", () => {
+describe("toObserverRoot", () =>
+{
+	it("measures against the scrolling element the transcript lives in", () =>
+	{
 		const main = document.createElement("main");
 		document.body.append(main);
 
 		expect(toObserverRoot(main)).toBe(main);
 	});
 
-	it("measures against the viewport when the document itself scrolls", () => {
+	it("measures against the viewport when the document itself scrolls", () =>
+	{
 		expect(toObserverRoot(document.documentElement)).toBeNull();
 	});
 });
 
-describe("findScrollContainer", () => {
-	it("falls back to the document scroller when nothing above scrolls", () => {
+describe("findScrollContainer", () =>
+{
+	it("falls back to the document scroller when nothing above scrolls", () =>
+	{
 		const node = document.createElement("div");
 		document.body.append(node);
 
 		expect(findScrollContainer(node)).toBe(document.documentElement);
 	});
 
-	it("finds the scrolling ancestor the transcript actually lives in", () => {
+	it("finds the scrolling ancestor the transcript actually lives in", () =>
+	{
 		// Mirrors the app shell: <main class="overflow-y-auto"> scrolls, not the
 		// window, so anchoring against `window.scrollY` would move nothing.
 		const main = document.createElement("main");

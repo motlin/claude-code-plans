@@ -2,19 +2,22 @@ import {ExternalLink} from "lucide-react";
 import {useSettings} from "./settings-context";
 
 type DebugLinkProps =
-	| {
+	|
+	  {
 			sessionId: string;
 			uuid: string | undefined;
 			className?: string;
 	  }
-	| {
+	|
+	  {
 			kind: "plan" | "memory" | "task" | "command";
 			relativePath: string;
 			label?: string;
 			className?: string;
 	  };
 
-export function DebugLink(props: DebugLinkProps) {
+export function DebugLink(props: DebugLinkProps)
+{
 	const {settings} = useSettings();
 	const enabled = settings.showDebug;
 	const className = props.className ?? "";
@@ -23,11 +26,14 @@ export function DebugLink(props: DebugLinkProps) {
 
 	let href: string;
 	let title: string;
-	if ("sessionId" in props) {
+	if ("sessionId" in props)
+	{
 		if (!props.uuid) return null;
 		href = `/session/${props.sessionId}/source/${props.uuid}`;
 		title = `View source JSONL for ${props.uuid.slice(0, 8)}`;
-	} else {
+	}
+	else
+	{
 		const segments = props.relativePath.split("/").map(encodeURIComponent).join("/");
 		href = `/source/${props.kind}/${segments}`;
 		title = props.label ?? `View source ${props.kind} (${props.relativePath})`;
@@ -39,7 +45,8 @@ export function DebugLink(props: DebugLinkProps) {
 			target="_blank"
 			rel="noopener noreferrer"
 			title={title}
-			onClick={(e) => {
+			onClick={(e) =>
+			{
 				e.stopPropagation();
 			}}
 			className={`inline-flex items-center justify-center text-t6 hover:text-primary transition-colors z-20 ${className}`}

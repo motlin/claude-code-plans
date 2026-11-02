@@ -19,40 +19,65 @@ import {MenuCheckboxSwitchItem, MenuItem, MenuSeparator, MenuSub, MenuSubContent
  * for the composer's cwd, and same-named servers collapse to the one the CLI resolves.
  */
 
-const SCOPE_PRECEDENCE: Record<McpScope, number> = {local: 0, project: 1, user: 2, plugin: 3};
+const SCOPE_PRECEDENCE: Record<McpScope, number> =
+{
+	local: 0,
+	project: 1,
+	user: 2,
+	plugin: 3,
+};
 
 /** The servers a session in `cwd` loads: one per name, local > project > user > plugin. */
-function sessionMcpServers(servers: readonly McpServerSummary[], cwd: string | undefined): McpServerSummary[] {
+function sessionMcpServers(servers: readonly McpServerSummary[], cwd: string | undefined): McpServerSummary[]
+{
 	const byName = new Map<string, McpServerSummary>();
-	for (const server of servers) {
+	for (const server of servers)
+	{
 		const projectScoped = server.scope === "local" || server.scope === "project";
 		if (projectScoped && (cwd === undefined || server.projectPath !== cwd)) continue;
 		const existing = byName.get(server.name);
-		if (existing === undefined || SCOPE_PRECEDENCE[server.scope] < SCOPE_PRECEDENCE[existing.scope]) {
+		if (existing === undefined || SCOPE_PRECEDENCE[server.scope] < SCOPE_PRECEDENCE[existing.scope])
+		{
 			byName.set(server.name, server);
 		}
 	}
 	return [...byName.values()];
 }
 
-function reconnectionNote(servers: readonly McpServerSummary[]): string | undefined {
+function reconnectionNote(servers: readonly McpServerSummary[]): string | undefined
+{
 	const count = servers.filter((server) => server.needsAuth).length;
 	return count === 0 ? undefined : `${count} ${count === 1 ? "needs" : "need"} reconnection`;
 }
 
-export function ComposerConnectorsMenu({cwd}: {cwd?: string | undefined}) {
+export function ComposerConnectorsMenu({cwd}: {cwd?: string | undefined})
+{
 	const navigate = useNavigate();
 	const {data: allServers = [], isPending} = useQuery(customizeMcpServersQueryOptions);
 	const servers = sessionMcpServers(allServers, cwd);
 	const note = reconnectionNote(servers);
 	const connected = servers.filter((server) => !server.needsAuth);
 	const reconnect = servers.filter((server) => server.needsAuth);
-	const openConnectors = () => void navigate({to: "/customize/connectors"});
+	const openConnectors = () =>
+		void navigate(
+			{
+				to: "/customize/connectors",
+			},
+		);
 	const openServer = (server: McpServerSummary) =>
-		void navigate({to: "/customize/connectors/id/$serverId", params: {serverId: toConnectorSlug(server.id)}});
+		void navigate(
+			{
+				to: "/customize/connectors/id/$serverId",
+				params:
+				{
+					serverId: toConnectorSlug(server.id),
+				},
+			},
+		);
 
 	if (isPending) return <ConnectorsLoadingItem />;
-	if (servers.length === 0) {
+	if (servers.length === 0)
+	{
 		return (
 			<MenuItem icon={<Blocks />} onSelect={openConnectors}>
 				Add connectors
@@ -61,7 +86,15 @@ export function ComposerConnectorsMenu({cwd}: {cwd?: string | undefined}) {
 	}
 	return (
 		<MenuSub>
-			<MenuSubTrigger icon={<Blocks />} {...(note === undefined ? {} : {value: note})}>
+			<MenuSubTrigger
+				icon={<Blocks />}
+				{...(note === undefined
+					? {}
+					:
+						{
+							value: note,
+						})}
+			>
 				Connectors
 			</MenuSubTrigger>
 			<MenuSubContent>
@@ -79,7 +112,8 @@ export function ComposerConnectorsMenu({cwd}: {cwd?: string | undefined}) {
 						icon={<Blocks />}
 						checked={server.enabled}
 						closeOnClick
-						onCheckedChange={() => {
+						onCheckedChange={() =>
+						{
 							openServer(server);
 						}}
 					>
@@ -91,7 +125,8 @@ export function ComposerConnectorsMenu({cwd}: {cwd?: string | undefined}) {
 						key={server.id}
 						icon={<CloudOff />}
 						description="Reconnect"
-						onSelect={() => {
+						onSelect={() =>
+						{
 							openServer(server);
 						}}
 					>

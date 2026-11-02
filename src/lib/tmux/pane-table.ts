@@ -13,7 +13,8 @@ export const TMUX_PANE_TABLE_MAX_AGE_MS = 10_000;
  * request handlers read them from memory instead of running `tmux list-panes`
  * and `ps` per request. While it is not current, readers ask tmux directly.
  */
-export interface TmuxPaneTable {
+export interface TmuxPaneTable
+{
 	/** A poll's panes, current for `TMUX_PANE_TABLE_MAX_AGE_MS`. */
 	update(panes: readonly TmuxSessionPane[]): void;
 	/** Panes that stay current until the next update or invalidate, as while tmux is not installed. */
@@ -23,19 +24,36 @@ export interface TmuxPaneTable {
 	current(): readonly TmuxSessionPane[] | null;
 }
 
-export function createTmuxPaneTable(now: () => number = Date.now): TmuxPaneTable {
-	let state: {panes: readonly TmuxSessionPane[]; expiresAt: number} | null = null;
+export function createTmuxPaneTable(now: () => number = Date.now): TmuxPaneTable
+{
+	let state:
+	{
+		panes: readonly TmuxSessionPane[];
+		expiresAt: number;
+	} | null = null;
 	return {
-		update(panes) {
-			state = {panes, expiresAt: now() + TMUX_PANE_TABLE_MAX_AGE_MS};
+		update(panes)
+		{
+			state =
+			{
+				panes,
+				expiresAt: now() + TMUX_PANE_TABLE_MAX_AGE_MS,
+			};
 		},
-		hold(panes) {
-			state = {panes, expiresAt: Number.POSITIVE_INFINITY};
+		hold(panes)
+		{
+			state =
+			{
+				panes,
+				expiresAt: Number.POSITIVE_INFINITY,
+			};
 		},
-		invalidate() {
+		invalidate()
+		{
 			state = null;
 		},
-		current() {
+		current()
+		{
 			if (state === null || now() > state.expiresAt) return null;
 			return state.panes;
 		},

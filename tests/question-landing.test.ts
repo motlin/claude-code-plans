@@ -3,15 +3,18 @@
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {findWaitingCard, landOnWaitingCard, WAITING_CARD_SELECTOR} from "../src/lib/question-landing";
 
-afterEach(() => {
+afterEach(() =>
+{
 	document.body.innerHTML = "";
 });
 
-function mount(html: string): void {
+function mount(html: string): void
+{
 	document.body.innerHTML = html;
 }
 
-function byId(id: string): HTMLElement {
+function byId(id: string): HTMLElement
+{
 	const element = document.getElementById(id);
 	if (element === null) throw new Error(`No #${id}`);
 	return element;
@@ -19,17 +22,21 @@ function byId(id: string): HTMLElement {
 
 const LANDING = "data-focus-region-landing";
 
-describe("findWaitingCard", () => {
-	it("selects approval card roots", () => {
+describe("findWaitingCard", () =>
+{
+	it("selects approval card roots", () =>
+	{
 		expect(WAITING_CARD_SELECTOR).toBe("[data-approval-card-root]");
 	});
 
-	it("returns null with no cards", () => {
+	it("returns null with no cards", () =>
+	{
 		mount(`<main><p>Nothing pending</p></main><div><div data-focus-region="composer"></div></div>`);
 		expect(findWaitingCard(document)).toBeNull();
 	});
 
-	it("prefers the dock card beside the composer over an earlier transcript card", () => {
+	it("prefers the dock card beside the composer over an earlier transcript card", () =>
+	{
 		mount(`
 			<main><div id="transcript-card" data-approval-card-root tabindex="-1"></div></main>
 			<footer>
@@ -39,7 +46,8 @@ describe("findWaitingCard", () => {
 		expect(findWaitingCard(document)?.id).toBe("dock-card");
 	});
 
-	it("falls back to transcript cards in document order", () => {
+	it("falls back to transcript cards in document order", () =>
+	{
 		mount(`
 			<main>
 				<div id="first" data-approval-card-root></div>
@@ -49,7 +57,8 @@ describe("findWaitingCard", () => {
 		expect(findWaitingCard(document)?.id).toBe("first");
 	});
 
-	it("skips cards inside hidden, inert or aria-hidden subtrees", () => {
+	it("skips cards inside hidden, inert or aria-hidden subtrees", () =>
+	{
 		mount(`
 			<div hidden><div data-approval-card-root id="hidden"></div></div>
 			<div inert><div data-approval-card-root id="inert"></div></div>
@@ -59,7 +68,8 @@ describe("findWaitingCard", () => {
 	});
 });
 
-describe("findWaitingCard cycling from the focus origin", () => {
+describe("findWaitingCard cycling from the focus origin", () =>
+{
 	const THREE = `
 		<main>
 			<div id="a" data-approval-card-root></div>
@@ -69,7 +79,8 @@ describe("findWaitingCard cycling from the focus origin", () => {
 		<button id="outside">Elsewhere</button>
 		<footer><div data-focus-region="composer"></div></footer>`;
 
-	it("lands on the card after the one holding focus, wrapping to the first", () => {
+	it("lands on the card after the one holding focus, wrapping to the first", () =>
+	{
 		mount(THREE);
 		const ids = [byId("a"), byId("b"), byId("c"), null, byId("outside"), byId("in-b")].map(
 			(from) => findWaitingCard(document, from)?.id,
@@ -77,7 +88,8 @@ describe("findWaitingCard cycling from the focus origin", () => {
 		expect(ids).toStrictEqual(["b", "c", "a", "a", "a", "c"]);
 	});
 
-	it("orders the dock card first, then transcript cards", () => {
+	it("orders the dock card first, then transcript cards", () =>
+	{
 		mount(`
 			<main><div id="a" data-approval-card-root></div></main>
 			<footer>
@@ -88,7 +100,8 @@ describe("findWaitingCard cycling from the focus origin", () => {
 		expect(ids).toStrictEqual(["a", "d"]);
 	});
 
-	it("skips a hidden card after the one holding focus", () => {
+	it("skips a hidden card after the one holding focus", () =>
+	{
 		mount(`
 			<div id="a" data-approval-card-root></div>
 			<div hidden><div id="h" data-approval-card-root></div></div>
@@ -97,8 +110,10 @@ describe("findWaitingCard cycling from the focus origin", () => {
 	});
 });
 
-describe("landOnWaitingCard", () => {
-	it("clears the previous card's landing ring when landing on another", () => {
+describe("landOnWaitingCard", () =>
+{
+	it("clears the previous card's landing ring when landing on another", () =>
+	{
 		mount(`
 			<div role="dialog"><div id="a" data-approval-card-root tabindex="-1"></div>
 			<div id="b" data-approval-card-root tabindex="-1"></div></div>`);
@@ -109,7 +124,8 @@ describe("landOnWaitingCard", () => {
 		expect([a.getAttribute(LANDING), b.getAttribute(LANDING)]).toStrictEqual([null, "overlay"]);
 	});
 
-	function landed(): HTMLElement {
+	function landed(): HTMLElement
+	{
 		mount(
 			`<div data-approval-card-root role="group" tabindex="-1" id="card"><button id="inner">Pick</button></div>`,
 		);
@@ -118,46 +134,99 @@ describe("landOnWaitingCard", () => {
 		return card;
 	}
 
-	it("focuses the card and marks the overlay landing", () => {
+	it("focuses the card and marks the overlay landing", () =>
+	{
 		const card = landed();
 		expect([document.activeElement === card, card.getAttribute(LANDING)]).toStrictEqual([true, "overlay"]);
 	});
 
-	it("keeps the ring through a modifier keydown and clears it on the next key", () => {
+	it("keeps the ring through a modifier keydown and clears it on the next key", () =>
+	{
 		const card = landed();
-		card.dispatchEvent(new KeyboardEvent("keydown", {key: "Shift", bubbles: true}));
+		card.dispatchEvent(
+			new KeyboardEvent(
+				"keydown",
+				{
+					key: "Shift",
+					bubbles: true,
+				},
+			),
+		);
 		const afterShift = card.getAttribute(LANDING);
-		card.dispatchEvent(new KeyboardEvent("keydown", {key: "a", bubbles: true}));
+		card.dispatchEvent(
+			new KeyboardEvent(
+				"keydown",
+				{
+					key: "a",
+					bubbles: true,
+				},
+			),
+		);
 		expect([afterShift, card.getAttribute(LANDING)]).toStrictEqual(["overlay", null]);
 	});
 
-	it("clears the ring on beforeinput", () => {
+	it("clears the ring on beforeinput", () =>
+	{
 		const card = landed();
-		card.dispatchEvent(new Event("beforeinput", {bubbles: true}));
+		card.dispatchEvent(
+			new Event(
+				"beforeinput",
+				{
+					bubbles: true,
+				},
+			),
+		);
 		expect(card.getAttribute(LANDING)).toBeNull();
 	});
 
-	it("clears the ring on a pointerdown inside the card", () => {
+	it("clears the ring on a pointerdown inside the card", () =>
+	{
 		const card = landed();
-		byId("inner").dispatchEvent(new Event("pointerdown", {bubbles: true}));
+		byId("inner").dispatchEvent(
+			new Event(
+				"pointerdown",
+				{
+					bubbles: true,
+				},
+			),
+		);
 		expect(card.getAttribute(LANDING)).toBeNull();
 	});
 
-	it("clears the ring when focus leaves the card", () => {
+	it("clears the ring when focus leaves the card", () =>
+	{
 		const card = landed();
-		card.dispatchEvent(new FocusEvent("focusout", {bubbles: true, relatedTarget: document.body}));
+		card.dispatchEvent(
+			new FocusEvent(
+				"focusout",
+				{
+					bubbles: true,
+					relatedTarget: document.body,
+				},
+			),
+		);
 		expect(card.getAttribute(LANDING)).toBeNull();
 	});
 
-	it("clears the ring on window blur", () => {
+	it("clears the ring on window blur", () =>
+	{
 		const card = landed();
 		window.dispatchEvent(new Event("blur"));
 		expect(card.getAttribute(LANDING)).toBeNull();
 	});
 
-	it("stops listening once cleared, so a later landing is not cleared by stale listeners", () => {
+	it("stops listening once cleared, so a later landing is not cleared by stale listeners", () =>
+	{
 		const card = landed();
-		card.dispatchEvent(new KeyboardEvent("keydown", {key: "a", bubbles: true}));
+		card.dispatchEvent(
+			new KeyboardEvent(
+				"keydown",
+				{
+					key: "a",
+					bubbles: true,
+				},
+			),
+		);
 		card.setAttribute(LANDING, "overlay");
 		window.dispatchEvent(new Event("blur"));
 		expect(card.getAttribute(LANDING)).toBe("overlay");

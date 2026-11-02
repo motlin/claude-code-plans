@@ -11,10 +11,23 @@ const LINE = "df-meta-line flex min-w-0 flex-1 items-center gap-2";
 const ITEM = "shrink-0 whitespace-nowrap";
 const PLACE = "df-meta-place shrink-0 whitespace-nowrap";
 
-describe("MetaLine", () => {
-	it("renders upstream's slots: the warning Waiting word, the reason bdi, then the place bdi", () => {
+describe("MetaLine", () =>
+{
+	it("renders upstream's slots: the warning Waiting word, the reason bdi, then the place bdi", () =>
+	{
 		const {container} = render(
-			<MetaLine line={{word: "blocked", text: "Asked a question", place: {text: "ccp", spoken: true}}} />,
+			<MetaLine
+				line={
+				{
+					word: "blocked",
+					text: "Asked a question",
+					place:
+					{
+						text: "ccp",
+						spoken: true,
+					},
+				}}
+			/>,
 		);
 		expect(container.innerHTML).toBe(
 			`<span class="${SLOTS}" title="Waiting, Asked a question, ccp">` +
@@ -27,8 +40,16 @@ describe("MetaLine", () => {
 		);
 	});
 
-	it("leaves the Idle word spoken", () => {
-		const {container} = render(<MetaLine line={{word: "idle"}} />);
+	it("leaves the Idle word spoken", () =>
+	{
+		const {container} = render(
+			<MetaLine
+				line={
+				{
+					word: "idle",
+				}}
+			/>,
+		);
 		expect(container.innerHTML).toBe(
 			`<span class="${SLOTS}" title="Idle">` +
 				`<span class="${LINE}">` +
@@ -38,8 +59,20 @@ describe("MetaLine", () => {
 		);
 	});
 
-	it("hides the whole line from assistive tech when it holds only an unspoken place", () => {
-		const {container} = render(<MetaLine line={{place: {text: "ccp", spoken: false}}} />);
+	it("hides the whole line from assistive tech when it holds only an unspoken place", () =>
+	{
+		const {container} = render(
+			<MetaLine
+				line={
+				{
+					place:
+					{
+						text: "ccp",
+						spoken: false,
+					},
+				}}
+			/>,
+		);
 		expect(container.innerHTML).toBe(
 			`<span class="${SLOTS}" title="ccp" aria-hidden="true">` +
 				`<span class="${LINE}"></span>` +
@@ -48,9 +81,18 @@ describe("MetaLine", () => {
 		);
 	});
 
-	it("labels every status word as upstream does", () => {
-		const words = (["idle", "unread", "working", "blocked", "error"] as const).map((word) => {
-			const {container} = render(<MetaLine line={{word}} />);
+	it("labels every status word as upstream does", () =>
+	{
+		const words = (["idle", "unread", "working", "blocked", "error"] as const).map((word) =>
+		{
+			const {container} = render(
+				<MetaLine
+					line={
+					{
+						word,
+					}}
+				/>,
+			);
 			const text = container.querySelector(".df-meta-line > span")?.textContent;
 			cleanup();
 			return text;

@@ -2,7 +2,8 @@ import {hmrPersist} from "./hmr-persist";
 
 const VISIBILITY_LEASE_MS = 30_000;
 
-interface VisibilityLease {
+interface VisibilityLease
+{
 	sessionId: string;
 	expiresAt: number;
 }
@@ -14,9 +15,17 @@ export function setSessionVisibility(
 	sessionId: string,
 	visible: boolean,
 	now: number = Date.now(),
-): void {
-	if (visible) {
-		leases.set(clientId, {sessionId, expiresAt: now + VISIBILITY_LEASE_MS});
+): void
+{
+	if (visible)
+	{
+		leases.set(
+			clientId,
+			{
+				sessionId,
+				expiresAt: now + VISIBILITY_LEASE_MS,
+			},
+		);
 		return;
 	}
 
@@ -24,10 +33,13 @@ export function setSessionVisibility(
 	if (lease?.sessionId === sessionId) leases.delete(clientId);
 }
 
-export function isSessionVisible(sessionId: string, now: number = Date.now()): boolean {
+export function isSessionVisible(sessionId: string, now: number = Date.now()): boolean
+{
 	let visible = false;
-	for (const [clientId, lease] of leases) {
-		if (lease.expiresAt <= now) {
+	for (const [clientId, lease] of leases)
+	{
+		if (lease.expiresAt <= now)
+		{
 			leases.delete(clientId);
 			continue;
 		}
@@ -36,8 +48,10 @@ export function isSessionVisible(sessionId: string, now: number = Date.now()): b
 	return visible;
 }
 
-export const __testing = {
-	clear(): void {
+export const __testing =
+{
+	clear(): void
+	{
 		leases.clear();
 	},
 };

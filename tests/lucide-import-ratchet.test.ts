@@ -8,8 +8,10 @@ import {describe, expect, it} from "vite-plus/test";
 const LUCIDE_IMPORT_CEILING = 164;
 const ICON_MODULES = new Set(["src/lib/icon-glyphs.ts", "src/components/ui/icon.tsx"]);
 
-describe("lucide-react import ratchet", () => {
-	it(`keeps the files importing lucide-react directly at or below ${LUCIDE_IMPORT_CEILING}`, () => {
+describe("lucide-react import ratchet", () =>
+{
+	it(`keeps the files importing lucide-react directly at or below ${LUCIDE_IMPORT_CEILING}`, () =>
+	{
 		const offenders = globSync("src/**/*.{ts,tsx}")
 			.filter((path) => !ICON_MODULES.has(path))
 			.filter((path) => readFileSync(path, "utf8").includes('from "lucide-react"'))

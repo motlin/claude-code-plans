@@ -1,6 +1,7 @@
 import {describe, expect, it, vi, afterEach} from "vite-plus/test";
 import {QueryClient} from "@tanstack/react-query";
-import {
+import
+{
 	fetchEarlierTranscript,
 	mergeTranscriptData,
 	sessionQueryKeys,
@@ -15,17 +16,33 @@ import {
  * in the file, and `fetchEarlierTranscript` pulls the page before the window.
  */
 
-afterEach(() => {
+afterEach(() =>
+{
 	vi.restoreAllMocks();
 });
 
-function record(index: number): Record<string, unknown> {
-	return {type: "user", uuid: `u-${index}`, message: {role: "user", content: `m${index}`}};
+function record(index: number): Record<string, unknown>
+{
+	return {
+		type: "user",
+		uuid: `u-${index}`,
+		message:
+		{
+			role: "user",
+			content: `m${index}`,
+		},
+	};
 }
 
-function window_(startIndex: number, count: number, overrides?: Partial<TranscriptData>) {
+function window_(startIndex: number, count: number, overrides?: Partial<TranscriptData>)
+{
 	return {
-		records: Array.from({length: count}, (_, i) => record(startIndex + i)),
+		records: Array.from(
+			{
+				length: count,
+			},
+			(_, i) => record(startIndex + i),
+		),
 		byteOffset: 0,
 		startIndex,
 		precedingMessageCount: startIndex,
@@ -37,155 +54,256 @@ function window_(startIndex: number, count: number, overrides?: Partial<Transcri
 	};
 }
 
-describe("mergeTranscriptData", () => {
-	it("unions both pages' hidden uuids and cuts and keeps the primary's chain version", () => {
-		const cut = {parentUuid: "u-0", replacementUuid: "u-4", at: "2026-10-20T10:05:00.000Z", count: 2};
-		const tail = window_(3, 2, {hiddenUuids: ["u-3"], cuts: [cut], chainVersion: "v2"});
-		const earlier = window_(0, 3, {hiddenUuids: ["u-2", "u-3"], cuts: [cut]});
+describe("mergeTranscriptData", () =>
+{
+	it("unions both pages' hidden uuids and cuts and keeps the primary's chain version", () =>
+	{
+		const cut =
+		{
+			parentUuid: "u-0",
+			replacementUuid: "u-4",
+			at: "2026-10-20T10:05:00.000Z",
+			count: 2,
+		};
+		const tail = window_(
+			3,
+			2,
+			{
+				hiddenUuids: ["u-3"],
+				cuts: [cut],
+				chainVersion: "v2",
+			},
+		);
+		const earlier = window_(
+			0,
+			3,
+			{
+				hiddenUuids: ["u-2", "u-3"],
+				cuts: [cut],
+			},
+		);
 
-		expect(mergeTranscriptData(tail, earlier)).toStrictEqual({
-			records: [record(0), record(1), record(2), record(3), record(4)],
-			byteOffset: 0,
-			startIndex: 0,
-			precedingMessageCount: 0,
-			hiddenUuids: ["u-3", "u-2"],
-			cuts: [cut],
-			chainVersion: "v2",
-			chapters: [],
-		});
+		expect(mergeTranscriptData(tail, earlier)).toStrictEqual(
+			{
+				records: [record(0), record(1), record(2), record(3), record(4)],
+				byteOffset: 0,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: ["u-3", "u-2"],
+				cuts: [cut],
+				chainVersion: "v2",
+				chapters: [],
+			},
+		);
 	});
 
-	it("keeps an earlier page ahead of the tail it was paged back from", () => {
-		const tail = window_(3, 2, {byteOffset: 900});
+	it("keeps an earlier page ahead of the tail it was paged back from", () =>
+	{
+		const tail = window_(
+			3,
+			2,
+			{
+				byteOffset: 900,
+			},
+		);
 		const earlier = window_(0, 3);
 
-		expect(mergeTranscriptData(tail, earlier)).toStrictEqual({
-			records: [record(0), record(1), record(2), record(3), record(4)],
-			byteOffset: 900,
-			startIndex: 0,
-			precedingMessageCount: 0,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: "v1",
-			chapters: [],
-		});
+		expect(mergeTranscriptData(tail, earlier)).toStrictEqual(
+			{
+				records: [record(0), record(1), record(2), record(3), record(4)],
+				byteOffset: 900,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
+				chapters: [],
+			},
+		);
 	});
 
-	it("takes the primary window's copy of an overlapping record", () => {
-		const refreshed = {...window_(1, 2), records: [{...record(1), edited: true}, record(2)]};
+	it("takes the primary window's copy of an overlapping record", () =>
+	{
+		const refreshed =
+		{
+			...window_(1, 2),
+			records: [
+				{
+					...record(1),
+					edited: true,
+				},
+				record(2),
+			],
+		};
 
 		expect(mergeTranscriptData(refreshed, window_(0, 3)).records).toStrictEqual([
 			record(0),
-			{...record(1), edited: true},
+			{
+				...record(1),
+				edited: true,
+			},
 			record(2),
 		]);
 	});
 
-	it("drops a stale window that no longer touches the newest records", () => {
+	it("drops a stale window that no longer touches the newest records", () =>
+	{
 		// A long gap means the client missed records; rendering across the hole
 		// would silently splice unrelated turns together.
-		expect(mergeTranscriptData(window_(50, 2), window_(0, 3))).toStrictEqual({
-			records: [record(50), record(51)],
-			byteOffset: 0,
-			startIndex: 50,
-			precedingMessageCount: 50,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: "v1",
-			chapters: [],
-		});
+		expect(mergeTranscriptData(window_(50, 2), window_(0, 3))).toStrictEqual(
+			{
+				records: [record(50), record(51)],
+				byteOffset: 0,
+				startIndex: 50,
+				precedingMessageCount: 50,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
+				chapters: [],
+			},
+		);
 	});
 
-	it("never repeats a record that both windows carry under different indices", () => {
-		const shifted = {...window_(2, 1), records: [record(1)]};
+	it("never repeats a record that both windows carry under different indices", () =>
+	{
+		const shifted =
+		{
+			...window_(2, 1),
+			records: [record(1)],
+		};
 
 		expect(mergeTranscriptData(shifted, window_(0, 2)).records).toStrictEqual([record(0), record(1)]);
 	});
 
-	it("keeps every held record when a re-broadcast of already-seen lines precedes an append", () => {
+	it("keeps every held record when a re-broadcast of already-seen lines precedes an append", () =>
+	{
 		// The watcher re-sends lines the window already holds, so the dedupe drops
 		// them; the next append must not land on top of the records that survived.
 		const cached = window_(0, 5);
 
-		const rebroadcast = mergeTranscriptData(cached, {
-			records: [record(3), record(4)],
-			byteOffset: cached.byteOffset,
-			startIndex: transcriptEndIndex(cached),
-			precedingMessageCount: cached.precedingMessageCount,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: cached.chainVersion,
-			chapters: [],
-		});
-		const appended = mergeTranscriptData(rebroadcast, {
-			records: [record(5), record(6)],
-			byteOffset: rebroadcast.byteOffset,
-			startIndex: transcriptEndIndex(rebroadcast),
-			precedingMessageCount: rebroadcast.precedingMessageCount,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: rebroadcast.chainVersion,
-			chapters: [],
-		});
+		const rebroadcast = mergeTranscriptData(
+			cached,
+			{
+				records: [record(3), record(4)],
+				byteOffset: cached.byteOffset,
+				startIndex: transcriptEndIndex(cached),
+				precedingMessageCount: cached.precedingMessageCount,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: cached.chainVersion,
+				chapters: [],
+			},
+		);
+		const appended = mergeTranscriptData(
+			rebroadcast,
+			{
+				records: [record(5), record(6)],
+				byteOffset: rebroadcast.byteOffset,
+				startIndex: transcriptEndIndex(rebroadcast),
+				precedingMessageCount: rebroadcast.precedingMessageCount,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: rebroadcast.chainVersion,
+				chapters: [],
+			},
+		);
 
-		expect(appended).toStrictEqual({
-			records: [record(0), record(1), record(2), record(3), record(4), record(5), record(6)],
-			byteOffset: 0,
-			startIndex: 0,
-			precedingMessageCount: 0,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: "v1",
-			chapters: [],
-		});
+		expect(appended).toStrictEqual(
+			{
+				records: [record(0), record(1), record(2), record(3), record(4), record(5), record(6)],
+				byteOffset: 0,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
+				chapters: [],
+			},
+		);
 	});
 });
 
-describe("fetchEarlierTranscript", () => {
-	it("requests the page before the cached window and prepends it", async () => {
+describe("fetchEarlierTranscript", () =>
+{
+	it("requests the page before the cached window and prepends it", async () =>
+	{
 		const queryClient = new QueryClient();
 		const queryKey = sessionQueryKeys.transcript("sess-1");
-		queryClient.setQueryData(queryKey, window_(3, 2, {byteOffset: 900}));
+		queryClient.setQueryData(
+			queryKey,
+			window_(
+				3,
+				2,
+				{
+					byteOffset: 900,
+				},
+			),
+		);
 		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-			new Response(JSON.stringify(window_(0, 3)), {
-				status: 200,
-				headers: {"Content-Type": "application/json"},
-			}),
+			new Response(
+				JSON.stringify(window_(0, 3)),
+				{
+					status: 200,
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+				},
+			),
 		);
 
 		await fetchEarlierTranscript(queryClient, "sess-1");
 
 		expect(
-			fetchSpy.mock.calls.map((call) => {
+			fetchSpy.mock.calls.map((call) =>
+			{
 				const url = new URL(String(call[0]));
 				return url.pathname + url.search;
 			}),
 		).toStrictEqual(["/api/sessions/sess-1/transcript?before=3"]);
-		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
-			records: [record(0), record(1), record(2), record(3), record(4)],
-			byteOffset: 900,
-			startIndex: 0,
-			precedingMessageCount: 0,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: "v1",
-			chapters: [],
-		});
+		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual(
+			{
+				records: [record(0), record(1), record(2), record(3), record(4)],
+				byteOffset: 900,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
+				chapters: [],
+			},
+		);
 	});
 
-	it("serves concurrent callers one request for the same page", async () => {
+	it("serves concurrent callers one request for the same page", async () =>
+	{
 		// The scroll sentinel and the deep-link anchor both page backwards, and
 		// they page over the same window, so two overlapping asks for the page
 		// before it must not become two trips to the server.
 		const queryClient = new QueryClient();
 		const queryKey = sessionQueryKeys.transcript("sess-1");
-		queryClient.setQueryData(queryKey, window_(3, 2, {byteOffset: 900}));
+		queryClient.setQueryData(
+			queryKey,
+			window_(
+				3,
+				2,
+				{
+					byteOffset: 900,
+				},
+			),
+		);
 		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
 			Promise.resolve(
-				new Response(JSON.stringify(window_(0, 3)), {
-					status: 200,
-					headers: {"Content-Type": "application/json"},
-				}),
+				new Response(
+					JSON.stringify(window_(0, 3)),
+					{
+						status: 200,
+						headers:
+						{
+							"Content-Type": "application/json",
+						},
+					},
+				),
 			),
 		);
 
@@ -195,29 +313,39 @@ describe("fetchEarlierTranscript", () => {
 		]);
 
 		expect(fetchSpy.mock.calls.length).toBe(1);
-		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
-			records: [record(0), record(1), record(2), record(3), record(4)],
-			byteOffset: 900,
-			startIndex: 0,
-			precedingMessageCount: 0,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: "v1",
-			chapters: [],
-		});
+		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual(
+			{
+				records: [record(0), record(1), record(2), record(3), record(4)],
+				byteOffset: 900,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v1",
+				chapters: [],
+			},
+		);
 	});
 
-	it("pages again once the previous page has landed", async () => {
+	it("pages again once the previous page has landed", async () =>
+	{
 		const queryClient = new QueryClient();
 		const queryKey = sessionQueryKeys.transcript("sess-1");
 		queryClient.setQueryData(queryKey, window_(4, 1));
-		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
+		{
 			const before = Number(new URL(String(input)).searchParams.get("before"));
 			return Promise.resolve(
-				new Response(JSON.stringify(window_(before - 2, 2)), {
-					status: 200,
-					headers: {"Content-Type": "application/json"},
-				}),
+				new Response(
+					JSON.stringify(window_(before - 2, 2)),
+					{
+						status: 200,
+						headers:
+						{
+							"Content-Type": "application/json",
+						},
+					},
+				),
 			);
 		});
 
@@ -227,7 +355,8 @@ describe("fetchEarlierTranscript", () => {
 		expect(queryClient.getQueryData<TranscriptData>(queryKey)?.startIndex).toBe(0);
 	});
 
-	it("does not call the endpoint when the window already starts at the first record", async () => {
+	it("does not call the endpoint when the window already starts at the first record", async () =>
+	{
 		const queryClient = new QueryClient();
 		queryClient.setQueryData(sessionQueryKeys.transcript("sess-1"), window_(0, 3));
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
@@ -237,71 +366,125 @@ describe("fetchEarlierTranscript", () => {
 		expect(fetchSpy.mock.calls).toStrictEqual([]);
 	});
 
-	it("discards a page that lands after the chain changed and pages again from the new window", async () => {
+	it("discards a page that lands after the chain changed and pages again from the new window", async () =>
+	{
 		// A forking prompt replaced the cached pages with the new tail while an
 		// earlier page was on the wire. That page was cut under the old chain, so
 		// its hidden rows are wrong (upstream `discarded_in_flight`).
 		const queryClient = new QueryClient();
 		const queryKey = sessionQueryKeys.transcript("sess-1");
 		queryClient.setQueryData(queryKey, window_(3, 2));
-		let resolveStale: (response: Response) => void = () => {};
-		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+		let resolveStale: (response: Response) => void = () =>
+		{
+		};
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
+		{
 			const before = Number(new URL(String(input)).searchParams.get("before"));
-			if (before === 3) {
-				return new Promise<Response>((resolve) => {
+			if (before === 3)
+			{
+				return new Promise<Response>((resolve) =>
+				{
 					resolveStale = resolve;
 				});
 			}
 			return Promise.resolve(
-				new Response(JSON.stringify(window_(4, 2, {chainVersion: "v2"})), {
-					status: 200,
-					headers: {"Content-Type": "application/json"},
-				}),
+				new Response(
+					JSON.stringify(
+						window_(
+							4,
+							2,
+							{
+								chainVersion: "v2",
+							},
+						),
+					),
+					{
+						status: 200,
+						headers:
+						{
+							"Content-Type": "application/json",
+						},
+					},
+				),
 			);
 		});
 
 		const pending = fetchEarlierTranscript(queryClient, "sess-1");
-		await vi.waitFor(() => {
+		await vi.waitFor(() =>
+		{
 			expect(fetchSpy.mock.calls.length).toBe(1);
 		});
-		queryClient.setQueryData(queryKey, window_(6, 2, {chainVersion: "v2"}));
+		queryClient.setQueryData(
+			queryKey,
+			window_(
+				6,
+				2,
+				{
+					chainVersion: "v2",
+				},
+			),
+		);
 		resolveStale(
-			new Response(JSON.stringify(window_(0, 3)), {
-				status: 200,
-				headers: {"Content-Type": "application/json"},
-			}),
+			new Response(
+				JSON.stringify(window_(0, 3)),
+				{
+					status: 200,
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+				},
+			),
 		);
 		await pending;
 
 		expect(
-			fetchSpy.mock.calls.map((call) => {
+			fetchSpy.mock.calls.map((call) =>
+			{
 				const url = new URL(String(call[0]));
 				return url.pathname + url.search;
 			}),
 		).toStrictEqual(["/api/sessions/sess-1/transcript?before=3", "/api/sessions/sess-1/transcript?before=6"]);
-		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
-			records: [record(4), record(5), record(6), record(7)],
-			byteOffset: 0,
-			startIndex: 4,
-			precedingMessageCount: 4,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: "v2",
-			chapters: [],
-		});
+		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual(
+			{
+				records: [record(4), record(5), record(6), record(7)],
+				byteOffset: 0,
+				startIndex: 4,
+				precedingMessageCount: 4,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: "v2",
+				chapters: [],
+			},
+		);
 	});
 
-	it("discards a page cut under a newer chain than the cache and refetches the tail", async () => {
+	it("discards a page cut under a newer chain than the cache and refetches the tail", async () =>
+	{
 		// The server saw the fork before the cache did: merging would splice a
 		// post-fork page onto pre-fork rows, so the tail is refetched instead.
 		const queryClient = new QueryClient();
 		const queryKey = sessionQueryKeys.transcript("sess-1");
 		queryClient.setQueryData(queryKey, window_(3, 2));
 		vi.spyOn(globalThis, "fetch").mockResolvedValue(
-			new Response(JSON.stringify(window_(0, 3, {chainVersion: "v2"})), {
-				status: 200,
-				headers: {"Content-Type": "application/json"},
-			}),
+			new Response(
+				JSON.stringify(
+					window_(
+						0,
+						3,
+						{
+							chainVersion: "v2",
+						},
+					),
+				),
+				{
+					status: 200,
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+				},
+			),
 		);
 
 		await fetchEarlierTranscript(queryClient, "sess-1");
@@ -310,7 +493,8 @@ describe("fetchEarlierTranscript", () => {
 		expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true);
 	});
 
-	it("does not call the endpoint when nothing is cached yet", async () => {
+	it("does not call the endpoint when nothing is cached yet", async () =>
+	{
 		const queryClient = new QueryClient();
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
 

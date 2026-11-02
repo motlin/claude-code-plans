@@ -22,7 +22,8 @@ import {instructionsLoadedFixture} from "./fixtures/instructions-loaded";
 import {messageDisplayFixture} from "./fixtures/message-display";
 import {postCompactFixture} from "./fixtures/post-compact";
 import {postToolUseFailureFixture} from "./fixtures/post-tool-use-failure";
-import {
+import
+{
 	postToolUseWithScratchpadFixture,
 	preToolUseWithScratchpadFixture,
 	stopWithScratchpadFixture,
@@ -39,7 +40,8 @@ import {worktreeRemoveFixture} from "./fixtures/worktree-remove";
 // plus terminal identity vars present when Claude runs inside tmux or herdr.
 // We pre-stage these via the `env` option to execFileSync so the jq filter's
 // `$ENV` reflects what the real hook would see.
-const HOOK_ENV: Record<string, string> = {
+const HOOK_ENV: Record<string, string> =
+{
 	PATH: process.env["PATH"] ?? "",
 	CLAUDE_CODE_ENTRYPOINT: "cli",
 	CLAUDE_CODE_EXECPATH: "/Users/u/.local/share/claude/versions/2.1.119",
@@ -59,27 +61,42 @@ const HOOK_ENV: Record<string, string> = {
 	HOME: "/Users/u",
 };
 
-function jqRoundTrip(stdinPayload: object): unknown {
+function jqRoundTrip(stdinPayload: object): unknown
+{
 	let result: SpawnSyncReturns<Buffer> | undefined;
-	try {
-		const stdout = execFileSync("jq", ["-c", HOOK_PAYLOAD_JQ_FILTER], {
-			input: JSON.stringify(stdinPayload),
-			env: HOOK_ENV,
-			stdio: ["pipe", "pipe", "pipe"],
-		});
+	try
+	{
+		const stdout = execFileSync(
+			"jq",
+			["-c", HOOK_PAYLOAD_JQ_FILTER],
+			{
+				input: JSON.stringify(stdinPayload),
+				env: HOOK_ENV,
+				stdio: ["pipe", "pipe", "pipe"],
+			},
+		);
 		return JSON.parse(stdout.toString("utf8")) as unknown;
-	} catch (err) {
+	}
+	catch (err)
+	{
 		result = err as SpawnSyncReturns<Buffer>;
-		throw new Error(`jq failed: ${result.stderr.toString("utf8")}`, {cause: err});
+		throw new Error(
+			`jq failed: ${result.stderr.toString("utf8")}`,
+			{
+				cause: err,
+			},
+		);
 	}
 }
 
-interface Case {
+interface Case
+{
 	name: HookEventName;
 	payload: Record<string, unknown>;
 }
 
-const baseEnvelope = {
+const baseEnvelope =
+{
 	session_id: "abc-123",
 	transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
 	cwd: "/Users/u/projects/app",
@@ -88,7 +105,8 @@ const baseEnvelope = {
 const cases: Case[] = [
 	{
 		name: "SessionStart",
-		payload: {
+		payload:
+		{
 			...baseEnvelope,
 			hook_event_name: "SessionStart",
 			source: "startup",
@@ -96,7 +114,8 @@ const cases: Case[] = [
 	},
 	{
 		name: "SessionEnd",
-		payload: {
+		payload:
+		{
 			...baseEnvelope,
 			hook_event_name: "SessionEnd",
 			reason: "logout",
@@ -104,7 +123,8 @@ const cases: Case[] = [
 	},
 	{
 		name: "Stop",
-		payload: {
+		payload:
+		{
 			...baseEnvelope,
 			hook_event_name: "Stop",
 			stop_hook_active: false,
@@ -116,11 +136,16 @@ const cases: Case[] = [
 	},
 	{
 		name: "SubagentStop",
-		payload: {...baseEnvelope, hook_event_name: "SubagentStop"},
+		payload:
+		{
+			...baseEnvelope,
+			hook_event_name: "SubagentStop",
+		},
 	},
 	{
 		name: "UserPromptSubmit",
-		payload: {
+		payload:
+		{
 			...baseEnvelope,
 			hook_event_name: "UserPromptSubmit",
 			prompt: "fix the bug",
@@ -128,7 +153,8 @@ const cases: Case[] = [
 	},
 	{
 		name: "Notification",
-		payload: {
+		payload:
+		{
 			...baseEnvelope,
 			hook_event_name: "Notification",
 			message: "idle",
@@ -136,7 +162,8 @@ const cases: Case[] = [
 	},
 	{
 		name: "PreCompact",
-		payload: {
+		payload:
+		{
 			...baseEnvelope,
 			hook_event_name: "PreCompact",
 			trigger: "auto",
@@ -148,21 +175,33 @@ const cases: Case[] = [
 	},
 	{
 		name: "PreToolUse",
-		payload: {
+		payload:
+		{
 			...baseEnvelope,
 			hook_event_name: "PreToolUse",
 			tool_name: "Read",
-			tool_input: {file_path: "/etc/hosts"},
+			tool_input:
+			{
+				file_path: "/etc/hosts",
+			},
 		},
 	},
 	{
 		name: "PostToolUse",
-		payload: {
+		payload:
+		{
 			...baseEnvelope,
 			hook_event_name: "PostToolUse",
 			tool_name: "Bash",
-			tool_input: {command: "ls"},
-			tool_response: {stdout: "a.txt\nb.txt", stderr: ""},
+			tool_input:
+			{
+				command: "ls",
+			},
+			tool_response:
+			{
+				stdout: "a.txt\nb.txt",
+				stderr: "",
+			},
 		},
 	},
 	{
@@ -175,7 +214,8 @@ const cases: Case[] = [
 	},
 	{
 		name: "TaskCompleted",
-		payload: {
+		payload:
+		{
 			...baseEnvelope,
 			hook_event_name: "TaskCompleted",
 			task_id: "t-1",
@@ -184,7 +224,8 @@ const cases: Case[] = [
 	},
 	{
 		name: "WorktreeCreate",
-		payload: {
+		payload:
+		{
 			...baseEnvelope,
 			hook_event_name: "WorktreeCreate",
 			name: "wt-foo",
@@ -211,26 +252,63 @@ const cases: Case[] = [
 		payload: messageDisplayFixture,
 	},
 	// Claude Code 2.1.296 sends scratchpad_dir on every event.
-	{name: "PreToolUse", payload: preToolUseWithScratchpadFixture},
-	{name: "PostToolUse", payload: postToolUseWithScratchpadFixture},
-	{name: "Stop", payload: stopWithScratchpadFixture},
-	{name: "StopFailure", payload: stopFailureFixture},
-	{name: "StopFailure", payload: stopFailureRateLimitFixture},
-	{name: "PermissionDenied", payload: permissionDeniedFixture},
-	{name: "PostModelSwitch", payload: postModelSwitchFixture},
-	{name: "PostModelSwitch", payload: postModelSwitchAutoFixture},
-	{name: "Elicitation", payload: elicitationFormFixture},
-	{name: "Elicitation", payload: elicitationUrlFixture},
-	{name: "ElicitationResult", payload: elicitationResultFixture},
+	{
+		name: "PreToolUse",
+		payload: preToolUseWithScratchpadFixture,
+	},
+	{
+		name: "PostToolUse",
+		payload: postToolUseWithScratchpadFixture,
+	},
+	{
+		name: "Stop",
+		payload: stopWithScratchpadFixture,
+	},
+	{
+		name: "StopFailure",
+		payload: stopFailureFixture,
+	},
+	{
+		name: "StopFailure",
+		payload: stopFailureRateLimitFixture,
+	},
+	{
+		name: "PermissionDenied",
+		payload: permissionDeniedFixture,
+	},
+	{
+		name: "PostModelSwitch",
+		payload: postModelSwitchFixture,
+	},
+	{
+		name: "PostModelSwitch",
+		payload: postModelSwitchAutoFixture,
+	},
+	{
+		name: "Elicitation",
+		payload: elicitationFormFixture,
+	},
+	{
+		name: "Elicitation",
+		payload: elicitationUrlFixture,
+	},
+	{
+		name: "ElicitationResult",
+		payload: elicitationResultFixture,
+	},
 ];
 
-describe("hook stdin -> jq filter -> HookEventEnvelope round-trip", () => {
-	for (const {name, payload} of cases) {
-		it(`${name} payload survives the real jq filter and parses cleanly`, () => {
+describe("hook stdin -> jq filter -> HookEventEnvelope round-trip", () =>
+{
+	for (const {name, payload} of cases)
+	{
+		it(`${name} payload survives the real jq filter and parses cleanly`, () =>
+		{
 			const transformed = jqRoundTrip(payload);
 
 			const parsed = HookEventEnvelope.safeParse(transformed);
-			if (!parsed.success) {
+			if (!parsed.success)
+			{
 				throw new Error(
 					`HookEventEnvelope rejected jq output for ${name}: ${JSON.stringify(parsed.error.issues)}`,
 				);
@@ -239,35 +317,45 @@ describe("hook stdin -> jq filter -> HookEventEnvelope round-trip", () => {
 		});
 	}
 
-	it("attaches every CLAUDE-prefixed env var plus tmux and herdr identity under claude_env", () => {
-		const transformed = jqRoundTrip({
-			...baseEnvelope,
-			hook_event_name: "Stop",
-		}) as {
+	it("attaches every CLAUDE-prefixed env var plus tmux and herdr identity under claude_env", () =>
+	{
+		const transformed = jqRoundTrip(
+			{
+				...baseEnvelope,
+				hook_event_name: "Stop",
+			},
+		) as
+		{
 			claude_env?: Record<string, string>;
 		};
 
-		expect(transformed.claude_env).toStrictEqual({
-			CLAUDE_CODE_ENTRYPOINT: "cli",
-			CLAUDE_CODE_EXECPATH: "/Users/u/.local/share/claude/versions/2.1.119",
-			CLAUDECODE: "1",
-			CLAUDE_PROJECT_DIR: "/Users/u/projects/app",
-			HERDR_ENV: "1",
-			HERDR_PANE_ID: "pane-100",
-			HERDR_SESSION: "later",
-			HERDR_SOCKET_PATH: "/tmp/test/herdr.sock",
-			HERDR_TAB_ID: "tab-100",
-			HERDR_WORKSPACE_ID: "workspace-100",
-			TMUX: "/private/tmp/tmux-501/default,12345,0",
-			TMUX_PANE: "%593",
-		});
+		expect(transformed.claude_env).toStrictEqual(
+			{
+				CLAUDE_CODE_ENTRYPOINT: "cli",
+				CLAUDE_CODE_EXECPATH: "/Users/u/.local/share/claude/versions/2.1.119",
+				CLAUDECODE: "1",
+				CLAUDE_PROJECT_DIR: "/Users/u/projects/app",
+				HERDR_ENV: "1",
+				HERDR_PANE_ID: "pane-100",
+				HERDR_SESSION: "later",
+				HERDR_SOCKET_PATH: "/tmp/test/herdr.sock",
+				HERDR_TAB_ID: "tab-100",
+				HERDR_WORKSPACE_ID: "workspace-100",
+				TMUX: "/private/tmp/tmux-501/default,12345,0",
+				TMUX_PANE: "%593",
+			},
+		);
 	});
 
-	it("does not leak non-CLAUDE-prefixed env vars", () => {
-		const transformed = jqRoundTrip({
-			...baseEnvelope,
-			hook_event_name: "Stop",
-		}) as {
+	it("does not leak non-CLAUDE-prefixed env vars", () =>
+	{
+		const transformed = jqRoundTrip(
+			{
+				...baseEnvelope,
+				hook_event_name: "Stop",
+			},
+		) as
+		{
 			claude_env?: Record<string, string>;
 		};
 
@@ -275,17 +363,29 @@ describe("hook stdin -> jq filter -> HookEventEnvelope round-trip", () => {
 		expect(transformed.claude_env?.["PATH"]).toBeUndefined();
 	});
 
-	it("preserves all original stdin fields untouched", () => {
-		const stdinPayload = {
+	it("preserves all original stdin fields untouched", () =>
+	{
+		const stdinPayload =
+		{
 			...baseEnvelope,
 			hook_event_name: "PostToolUse",
 			tool_name: "Edit",
-			tool_input: {file_path: "/tmp/x.ts", old_string: "a", new_string: "b"},
-			tool_response: {filePath: "/tmp/x.ts", userModified: false},
+			tool_input:
+			{
+				file_path: "/tmp/x.ts",
+				old_string: "a",
+				new_string: "b",
+			},
+			tool_response:
+			{
+				filePath: "/tmp/x.ts",
+				userModified: false,
+			},
 		};
 		const transformed = jqRoundTrip(stdinPayload) as Record<string, unknown>;
 
-		for (const [key, value] of Object.entries(stdinPayload)) {
+		for (const [key, value] of Object.entries(stdinPayload))
+		{
 			expect(transformed[key]).toStrictEqual(value);
 		}
 	});

@@ -8,7 +8,8 @@ import {defined} from "./defined";
 
 type DiffOp = readonly ["equal", string] | readonly ["remove", string] | readonly ["add", string];
 
-interface DiffData {
+interface DiffData
+{
 	ops: DiffOp[];
 	added: number;
 	removed: number;
@@ -20,13 +21,15 @@ interface DiffData {
 
 const MAX_LCS_MATRIX_CELLS = 250_000;
 
-function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
+function computeDiff(oldLines: string[], newLines: string[]): DiffOp[]
+{
 	let prefixLength = 0;
 	while (
 		prefixLength < oldLines.length &&
 		prefixLength < newLines.length &&
 		oldLines[prefixLength] === newLines[prefixLength]
-	) {
+	)
+	{
 		prefixLength++;
 	}
 
@@ -35,7 +38,8 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
 		suffixLength < oldLines.length - prefixLength &&
 		suffixLength < newLines.length - prefixLength &&
 		oldLines[oldLines.length - suffixLength - 1] === newLines[newLines.length - suffixLength - 1]
-	) {
+	)
+	{
 		suffixLength++;
 	}
 
@@ -44,7 +48,8 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
 	const prefix = oldLines.slice(0, prefixLength).map((line) => ["equal", line] as const);
 	const suffix = oldLines.slice(oldLines.length - suffixLength).map((line) => ["equal", line] as const);
 
-	if ((oldMiddle.length + 1) * (newMiddle.length + 1) > MAX_LCS_MATRIX_CELLS) {
+	if ((oldMiddle.length + 1) * (newMiddle.length + 1) > MAX_LCS_MATRIX_CELLS)
+	{
 		return [
 			...prefix,
 			...oldMiddle.map((line) => ["remove", line] as const),
@@ -57,11 +62,24 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
 	const n = newMiddle.length;
 
 	// LCS via dynamic programming
-	const dp: number[][] = Array.from({length: m + 1}, () => Array.from({length: n + 1}, () => 0));
-	for (let i = 1; i <= m; i++) {
+	const dp: number[][] = Array.from(
+		{
+			length: m + 1,
+		},
+		() =>
+			Array.from(
+				{
+					length: n + 1,
+				},
+				() => 0,
+			),
+	);
+	for (let i = 1; i <= m; i++)
+	{
 		const row = defined(dp[i], "LCS row out of range");
 		const previousRow = defined(dp[i - 1], "LCS row out of range");
-		for (let j = 1; j <= n; j++) {
+		for (let j = 1; j <= n; j++)
+		{
 			row[j] =
 				oldMiddle[i - 1] === newMiddle[j - 1]
 					? (previousRow[j - 1] ?? 0) + 1
@@ -73,17 +91,23 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
 	const ops: DiffOp[] = [];
 	let i = m;
 	let j = n;
-	while (i > 0 || j > 0) {
+	while (i > 0 || j > 0)
+	{
 		const oldLine = oldMiddle[i - 1];
 		const newLine = newMiddle[j - 1];
-		if (oldLine !== undefined && newLine !== undefined && oldLine === newLine) {
+		if (oldLine !== undefined && newLine !== undefined && oldLine === newLine)
+		{
 			ops.push(["equal", oldLine]);
 			i--;
 			j--;
-		} else if (newLine !== undefined && (i === 0 || (dp[i]?.[j - 1] ?? 0) >= (dp[i - 1]?.[j] ?? 0))) {
+		}
+		else if (newLine !== undefined && (i === 0 || (dp[i]?.[j - 1] ?? 0) >= (dp[i - 1]?.[j] ?? 0)))
+		{
 			ops.push(["add", newLine]);
 			j--;
-		} else {
+		}
+		else
+		{
 			ops.push(["remove", defined(oldLine, "LCS backtrack ran past the old lines")]);
 			i--;
 		}
@@ -92,15 +116,21 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffOp[] {
 	return [...prefix, ...ops, ...suffix];
 }
 
-export function computeDiffData(oldStr: string, newStr: string): DiffData {
+export function computeDiffData(oldStr: string, newStr: string): DiffData
+{
 	const ops = computeDiff(oldStr.split("\n"), newStr.split("\n"));
 	let added = 0;
 	let removed = 0;
-	for (const [type] of ops) {
+	for (const [type] of ops)
+	{
 		if (type === "add") added++;
 		else if (type === "remove") removed++;
 	}
-	return {ops, added, removed};
+	return {
+		ops,
+		added,
+		removed,
+	};
 }
 
 /**
@@ -108,7 +138,8 @@ export function computeDiffData(oldStr: string, newStr: string): DiffData {
  * than one empty line. `"".split("\n")` yields `[""]`, which would claim a side
  * has a single blank line that the diff renderer would show as a changed row.
  */
-function splitDiffLines(text: string): string[] {
+function splitDiffLines(text: string): string[]
+{
 	return text === "" ? [] : text.split("\n");
 }
 
@@ -122,13 +153,15 @@ function splitDiffLines(text: string): string[] {
  * An empty side uses git's `0,0` convention (as for file creation, which is how
  * the Write tool renders), since a missing side starts at line 0, not line 1.
  */
-export function buildUnifiedHunk(oldStr: string, newStr: string, filePath = "file"): string {
+export function buildUnifiedHunk(oldStr: string, newStr: string, filePath = "file"): string
+{
 	const oldLines = splitDiffLines(oldStr);
 	const newLines = splitDiffLines(newStr);
 	const ops = computeDiff(oldLines, newLines);
 
 	const body: string[] = [];
-	for (const [type, line] of ops) {
+	for (const [type, line] of ops)
+	{
 		if (type === "equal") body.push(" " + line);
 		else if (type === "add") body.push("+" + line);
 		else body.push("-" + line);
@@ -151,13 +184,20 @@ export function buildUnifiedHunk(oldStr: string, newStr: string, filePath = "fil
  * edits separated by a context row holding "…".
  */
 export function buildMultiEditHunk(
-	edits: ReadonlyArray<{oldString: string; newString: string}>,
+	edits: ReadonlyArray<
+	{
+		oldString: string;
+		newString: string;
+	}>,
 	filePath = "file",
-): string {
+): string
+{
 	const body: string[] = [];
-	edits.forEach(({oldString, newString}, index) => {
+	edits.forEach(({oldString, newString}, index) =>
+	{
 		if (index > 0) body.push(" …");
-		for (const [type, line] of computeDiff(splitDiffLines(oldString), splitDiffLines(newString))) {
+		for (const [type, line] of computeDiff(splitDiffLines(oldString), splitDiffLines(newString)))
+		{
 			body.push((type === "equal" ? " " : type === "add" ? "+" : "-") + line);
 		}
 	});
@@ -172,20 +212,23 @@ export function buildMultiEditHunk(
 	].join("\n");
 }
 
-interface FilePatch {
+interface FilePatch
+{
 	patch: string;
 	additions: number;
 	deletions: number;
 }
 
 /** File content as lines; a single trailing newline terminates the last line rather than adding an empty one. */
-function contentLines(text: string): string[] {
+function contentLines(text: string): string[]
+{
 	if (text === "") return [];
 	return (text.endsWith("\n") ? text.slice(0, -1) : text).split("\n");
 }
 
 /** One unified-diff hunk, as a tool's `structuredPatch` holds it: each line led by " ", "-" or "+". */
-export interface PatchHunk {
+export interface PatchHunk
+{
 	oldStart: number;
 	oldLines: number;
 	newStart: number;
@@ -197,7 +240,8 @@ export interface PatchHunk {
  * The hunks of a line diff of two full file versions with `context` lines
  * around each change, merging changes whose context would overlap.
  */
-export function buildFileHunks(oldText: string, newText: string, context = 3): PatchHunk[] {
+export function buildFileHunks(oldText: string, newText: string, context = 3): PatchHunk[]
+{
 	const ops = computeDiff(contentLines(oldText), contentLines(newText));
 
 	const oldLineBefore: number[] = [];
@@ -205,7 +249,8 @@ export function buildFileHunks(oldText: string, newText: string, context = 3): P
 	const changed: number[] = [];
 	let oldLine = 0;
 	let newLine = 0;
-	ops.forEach(([type], index) => {
+	ops.forEach(([type], index) =>
+	{
 		oldLineBefore.push(oldLine);
 		newLineBefore.push(newLine);
 		if (type !== "add") oldLine++;
@@ -213,17 +258,31 @@ export function buildFileHunks(oldText: string, newText: string, context = 3): P
 		if (type !== "equal") changed.push(index);
 	});
 
-	const groups: Array<{first: number; last: number}> = [];
-	for (const index of changed) {
+	const groups: Array<
+	{
+		first: number;
+		last: number;
+	}> = [];
+	for (const index of changed)
+	{
 		const current = groups.at(-1);
-		if (current !== undefined && index - current.last - 1 <= 2 * context) {
+		if (current !== undefined && index - current.last - 1 <= 2 * context)
+		{
 			current.last = index;
-		} else {
-			groups.push({first: index, last: index});
+		}
+		else
+		{
+			groups.push(
+				{
+					first: index,
+					last: index,
+				},
+			);
 		}
 	}
 
-	return groups.map(({first, last}) => {
+	return groups.map(({first, last}) =>
+	{
 		const from = Math.max(0, first - context);
 		const to = Math.min(ops.length - 1, last + context);
 		const hunkOps = ops.slice(from, to + 1);
@@ -244,14 +303,17 @@ export function buildFileHunks(oldText: string, newText: string, context = 3): P
  * lines around each change, merging changes whose context would overlap.
  * `oldText === null` marks a newly created file.
  */
-export function buildFilePatch(oldText: string | null, newText: string, filePath: string, context = 3): FilePatch {
+export function buildFilePatch(oldText: string | null, newText: string, filePath: string, context = 3): FilePatch
+{
 	const hunks = buildFileHunks(oldText ?? "", newText, context);
 	const body: string[] = [];
 	let additions = 0;
 	let deletions = 0;
-	for (const hunk of hunks) {
+	for (const hunk of hunks)
+	{
 		body.push(`@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`);
-		for (const line of hunk.lines) {
+		for (const line of hunk.lines)
+		{
 			body.push(line);
 			if (line.startsWith("+")) additions++;
 			else if (line.startsWith("-")) deletions++;
@@ -274,7 +336,8 @@ export function buildFilePatch(oldText: string | null, newText: string, filePath
  * Render tool-reported `structuredPatch` hunks as a git-style unified diff.
  */
 export function buildPatchFromHunks(
-	hunks: ReadonlyArray<{
+	hunks: ReadonlyArray<
+	{
 		oldStart: number;
 		oldLines: number;
 		newStart: number;
@@ -282,14 +345,17 @@ export function buildPatchFromHunks(
 		lines: readonly string[];
 	}>,
 	filePath: string,
-): FilePatch {
+): FilePatch
+{
 	const path = filePath.replace(/^\/+/, "");
 	const body: string[] = [];
 	let additions = 0;
 	let deletions = 0;
-	for (const hunk of hunks) {
+	for (const hunk of hunks)
+	{
 		body.push(`@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`);
-		for (const line of hunk.lines) {
+		for (const line of hunk.lines)
+		{
 			body.push(line);
 			if (line.startsWith("+")) additions++;
 			else if (line.startsWith("-")) deletions++;
@@ -310,21 +376,26 @@ export function buildPatchFromHunks(
  * - startLine: the starting line number (or 1 if not found)
  * - hasLineNumbers: whether line numbers were detected in the original text
  */
-export function extractLineNumbers(text: string): {
+export function extractLineNumbers(text: string):
+{
 	text: string;
 	startLine: number;
 	hasLineNumbers: boolean;
-} {
+}
+{
 	const lines = text.split("\n");
 	let startLine = 1;
 	let hasLineNumbers = false as boolean;
 
-	const processedLines = lines.map((line, index) => {
+	const processedLines = lines.map((line, index) =>
+	{
 		// Match line number prefix patterns: "  1→" or "1→" or "1\t"
 		const match = line.match(/^\s*(\d+)[→\t]/);
-		if (match) {
+		if (match)
+		{
 			hasLineNumbers = true;
-			if (index === 0) {
+			if (index === 0)
+			{
 				startLine = parseInt(defined(match[1], "line-number group missing"), 10);
 			}
 			// Remove the prefix and preserve the rest of the line
@@ -344,7 +415,8 @@ export function extractLineNumbers(text: string): {
  * Map from file extension (without leading dot) to Shiki language identifier.
  * Only includes languages commonly seen in Claude Code tool results.
  */
-const EXTENSION_TO_LANGUAGE: Record<string, string> = {
+const EXTENSION_TO_LANGUAGE: Record<string, string> =
+{
 	ts: "typescript",
 	tsx: "tsx",
 	js: "javascript",
@@ -410,7 +482,8 @@ const EXTENSION_TO_LANGUAGE: Record<string, string> = {
  * Detect a Shiki language identifier from a file path.
  * Returns null when the extension is unrecognized.
  */
-export function detectLanguage(filePath: string): string | null {
+export function detectLanguage(filePath: string): string | null
+{
 	const lastDot = filePath.lastIndexOf(".");
 	if (lastDot === -1) return null;
 	const extension = filePath.slice(lastDot + 1).toLowerCase();

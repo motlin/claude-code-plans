@@ -39,24 +39,28 @@ const DECISION_KEYWORD_STOP_WORDS = new Set([
 	"with",
 ]);
 
-export interface ContextBriefInput {
+export interface ContextBriefInput
+{
 	projectName: string;
 	openTaskTitles: readonly string[];
 	recentPlanTitles: readonly string[];
 	decisionTitles: readonly string[];
 }
 
-function normalizeText(value: string): string {
+function normalizeText(value: string): string
+{
 	return value.replace(/\s+/g, " ").trim();
 }
 
-function truncateText(value: string, limit: number): string {
+function truncateText(value: string, limit: number): string
+{
 	const normalized = normalizeText(value);
 	if (normalized.length <= limit) return normalized;
 	return `${normalized.slice(0, limit - 3).trimEnd()}...`;
 }
 
-function decisionKeywordBase(title: string): string {
+function decisionKeywordBase(title: string): string
+{
 	const terms = normalizeText(title)
 		.normalize("NFKD")
 		.replace(/[\u0300-\u036f]/g, "")
@@ -69,11 +73,13 @@ function decisionKeywordBase(title: string): string {
 	return keyword.slice(0, DECISION_KEYWORD_LIMIT).replace(/-+$/, "");
 }
 
-function buildDecisionIndex(titles: readonly string[]): string[] {
+function buildDecisionIndex(titles: readonly string[]): string[]
+{
 	const usedKeywords = new Set<string>();
 	const entries: string[] = [];
 
-	for (const rawTitle of titles) {
+	for (const rawTitle of titles)
+	{
 		if (entries.length === CONTEXT_BRIEF_DECISION_LIMIT) break;
 		const title = truncateText(rawTitle, ENTRY_TEXT_LIMIT);
 		if (!title) continue;
@@ -81,7 +87,8 @@ function buildDecisionIndex(titles: readonly string[]): string[] {
 		const base = decisionKeywordBase(title);
 		let keyword = base;
 		let suffix = 2;
-		while (usedKeywords.has(keyword)) {
+		while (usedKeywords.has(keyword))
+		{
 			const suffixText = `-${suffix}`;
 			keyword = `${base.slice(0, DECISION_KEYWORD_LIMIT - suffixText.length)}${suffixText}`;
 			suffix += 1;
@@ -94,7 +101,8 @@ function buildDecisionIndex(titles: readonly string[]): string[] {
 }
 
 /** Build the complete, bounded plain-text payload injected by SessionStart. */
-export function buildContextBrief(input: ContextBriefInput): string {
+export function buildContextBrief(input: ContextBriefInput): string
+{
 	const projectName = truncateText(input.projectName, PROJECT_NAME_LIMIT);
 	const taskLines = input.openTaskTitles
 		.slice(0, CONTEXT_BRIEF_TASK_LIMIT)
@@ -122,7 +130,8 @@ export function buildContextBrief(input: ContextBriefInput): string {
 	];
 	const brief = `${lines.join("\n")}\n`;
 
-	if (brief.length > CONTEXT_BRIEF_MAX_CHARACTERS) {
+	if (brief.length > CONTEXT_BRIEF_MAX_CHARACTERS)
+	{
 		throw new Error("Context brief exceeded its deterministic character budget");
 	}
 	return brief;

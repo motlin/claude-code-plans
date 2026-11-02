@@ -31,15 +31,20 @@ type AnsiPart = ReturnType<typeof parseAnsiCodes>[number];
  * Upstream's ansi code card masks secrets on the visible text with offsets carried across the styled
  * runs (c5071af19 `Ft`). Masking keeps the text length, so each run takes its slice of the masked text.
  */
-function maskAnsiParts(parts: AnsiPart[]): AnsiPart[] {
+function maskAnsiParts(parts: AnsiPart[]): AnsiPart[]
+{
 	const plain = parts.map((part) => part.text).join("");
 	const masked = maskSecrets(plain);
 	if (masked === plain) return parts;
 	let pos = 0;
-	return parts.map((part) => {
+	return parts.map((part) =>
+	{
 		const text = masked.slice(pos, pos + part.text.length);
 		pos += part.text.length;
-		return {...part, text};
+		return {
+			...part,
+			text,
+		};
 	});
 }
 
@@ -49,9 +54,11 @@ const NAVIGATE_URL_CLASS = "text-body text-accent-100 truncate min-w-0";
  * A navigate call's target URL. Upstream masks a URL that holds a secret
  * (`$2`, keeping the host legible) and does not link it.
  */
-export function NavigateUrl({url}: {url: string}) {
+export function NavigateUrl({url}: {url: string})
+{
 	const masked = maskUrlSecrets(url);
-	if (masked !== url) {
+	if (masked !== url)
+	{
 		return (
 			<span data-navigate-url className={NAVIGATE_URL_CLASS}>
 				{masked}
@@ -72,7 +79,8 @@ export function NavigateUrl({url}: {url: string}) {
 }
 
 /** Draws ANSI-styled output; secrets are masked unless `masked` is false (revealed). */
-export function AnsiText({content, masked = true}: {content: string; masked?: boolean}) {
+export function AnsiText({content, masked = true}: {content: string; masked?: boolean})
+{
 	const parsed = parseAnsiCodes(content);
 	const parts = masked ? maskAnsiParts(parsed) : parsed;
 
@@ -90,11 +98,13 @@ export function AnsiText({content, masked = true}: {content: string; masked?: bo
 /** Link styling for a tool path that opens in the Files pane. */
 const FILE_REF_CLASSES = "cursor-pointer hover:text-accent-000 hover:underline";
 
-function withFileRefClasses(className: string, linked: boolean): string {
+function withFileRefClasses(className: string, linked: boolean): string
+{
 	return linked ? `${className} ${FILE_REF_CLASSES}` : className;
 }
 
-export function FilePath({path}: {path: string}) {
+export function FilePath({path}: {path: string})
+{
 	return (
 		<FileRefTarget
 			path={path}
@@ -118,19 +128,30 @@ export function FilePath({path}: {path: string}) {
  * The suffix always includes the filename and enough parent directories
  * to land near the midpoint of the full path on a `/` boundary.
  */
-function splitPath(filePath: string): {prefix: string; suffix: string} {
+function splitPath(filePath: string):
+{
+	prefix: string;
+	suffix: string;
+}
+{
 	const midpoint = Math.floor(filePath.length / 2);
 	let splitIndex = -1;
 
-	for (let i = midpoint; i >= 0; i--) {
-		if (filePath[i] === "/") {
+	for (let i = midpoint; i >= 0; i--)
+	{
+		if (filePath[i] === "/")
+		{
 			splitIndex = i;
 			break;
 		}
 	}
 
-	if (splitIndex <= 0) {
-		return {prefix: "", suffix: filePath};
+	if (splitIndex <= 0)
+	{
+		return {
+			prefix: "",
+			suffix: filePath,
+		};
 	}
 
 	return {
@@ -145,7 +166,8 @@ function splitPath(filePath: string): {prefix: string; suffix: string} {
  * lets the tail ellipsize too, so a long final segment shrinks instead of
  * pushing the copy button out of the card.
  */
-export function TruncatedFilePathHeader({filePath}: {filePath: string}) {
+export function TruncatedFilePathHeader({filePath}: {filePath: string})
+{
 	const {prefix, suffix} = splitPath(filePath);
 
 	return (
@@ -181,7 +203,8 @@ const DIFF_STAT_SEGMENT = "flex items-center gap-[1px] px-1";
  * the git added/removed tints, both drawn even when one side is 0, with the
  * counts spelled out for screen readers.
  */
-export function DiffStatPill({added, removed}: {added: number; removed: number}) {
+export function DiffStatPill({added, removed}: {added: number; removed: number})
+{
 	return (
 		<span
 			data-diff-stat-pill=""
@@ -207,7 +230,8 @@ export function DiffStatPill({added, removed}: {added: number; removed: number})
 	);
 }
 
-export function DiffStats({added, removed}: {added: number; removed: number}) {
+export function DiffStats({added, removed}: {added: number; removed: number})
+{
 	if (added === 0 && removed === 0) return null;
 	return (
 		<span className="inline-flex">
@@ -224,7 +248,8 @@ export function DiffStats({added, removed}: {added: number; removed: number}) {
  * the whole body renders in `text-danger-ink` (upstream danger red), with no border or padding
  * shift anywhere.
  */
-export function ErrorBorder({isError, children}: {isError?: boolean | undefined; children: ReactNode}) {
+export function ErrorBorder({isError, children}: {isError?: boolean | undefined; children: ReactNode})
+{
 	if (!isError) return <>{children}</>;
 	return <div className="text-danger-ink">{children}</div>;
 }
@@ -235,7 +260,8 @@ export function ErrorBorder({isError, children}: {isError?: boolean | undefined;
  * the same mono `text-code` type and the output takes the Bash card's body
  * treatment — wrapped, and capped at 400px with its own scroller.
  */
-export function TerminalOutput({content}: {content: string}) {
+export function TerminalOutput({content}: {content: string})
+{
 	// Extract exit code if present at the start of the content
 	const exitCodeMatch = content.match(/^Exit code (\d+)\n?/);
 	const exitCode = exitCodeMatch?.[1] ? parseInt(exitCodeMatch[1], 10) : null;
@@ -274,7 +300,11 @@ export function SecretRevealButton({
 	revealed,
 	onToggle,
 	size,
-}: Pick<SecretReveal, "count" | "revealed" | "onToggle"> & {size?: "xs"}) {
+}: Pick<SecretReveal, "count" | "revealed" | "onToggle"> &
+{
+	size?: "xs";
+})
+{
 	if (count === 0) return null;
 	const label = secretToggleLabel(count, revealed);
 	return (
@@ -284,7 +314,8 @@ export function SecretRevealButton({
 				data-reveal-secrets=""
 				aria-pressed={revealed}
 				aria-label={label}
-				onMouseDown={(event) => {
+				onMouseDown={(event) =>
+				{
 					event.preventDefault();
 				}}
 				onClick={onToggle}
@@ -309,11 +340,13 @@ export function ExpandableBlock({
 	lineCount: number;
 	maxLines?: number;
 	children: ReactNode;
-}) {
+})
+{
 	const [expanded, setExpanded] = useState(false);
 	const needsCap = lineCount > maxLines;
 
-	if (!needsCap || expanded) {
+	if (!needsCap || expanded)
+	{
 		return <div>{children}</div>;
 	}
 
@@ -323,13 +356,20 @@ export function ExpandableBlock({
 
 	return (
 		<div>
-			<div className="relative overflow-hidden" style={{maxHeight}}>
+			<div
+				className="relative overflow-hidden"
+				style={
+				{
+					maxHeight,
+				}}
+			>
 				{children}
 				<div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-surface-2 to-transparent pointer-events-none" />
 			</div>
 			<button
 				type="button"
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded(true);
 				}}
 				className="mt-1 text-xs text-t6 hover:text-primary transition cursor-pointer"
@@ -340,7 +380,8 @@ export function ExpandableBlock({
 	);
 }
 
-export function ChevronIcon({expanded, size = 14}: {expanded: boolean; size?: number}) {
+export function ChevronIcon({expanded, size = 14}: {expanded: boolean; size?: number})
+{
 	return (
 		<svg width={size} height={size} viewBox="0 0 16 16" fill="none" className="shrink-0">
 			<path
@@ -355,11 +396,22 @@ export function ChevronIcon({expanded, size = 14}: {expanded: boolean; size?: nu
 	);
 }
 
-const TOOL_CALL_DETAILS_REGION = {role: "group", "aria-label": "Tool call details", tabIndex: 0} as const;
+const TOOL_CALL_DETAILS_REGION =
+{
+	role: "group",
+	"aria-label": "Tool call details",
+	tabIndex: 0,
+} as const;
 /** Upstream's `Z slot="details-input"`. */
-const TOOL_CALL_INPUT_REGION = {role: "group", "aria-label": "Tool call input", tabIndex: 0} as const;
+const TOOL_CALL_INPUT_REGION =
+{
+	role: "group",
+	"aria-label": "Tool call input",
+	tabIndex: 0,
+} as const;
 
-function CopyIcon({size}: {size: number}) {
+function CopyIcon({size}: {size: number})
+{
 	return (
 		<svg width={size} height={size} viewBox="0 0 12 12" fill="none" className="shrink-0">
 			<path d={COPY_ICON_PATH} fill="currentColor" />
@@ -367,7 +419,8 @@ function CopyIcon({size}: {size: number}) {
 	);
 }
 
-function CheckIcon({size}: {size: number}) {
+function CheckIcon({size}: {size: number})
+{
 	return (
 		<svg width={size} height={size} viewBox="0 0 12 12" fill="none" className="shrink-0">
 			<path
@@ -403,10 +456,12 @@ export function CopyButton({
 	/** Label and tooltip while the Check icon shows, like upstream's "Copied". */
 	copiedLabel?: string;
 	resetMs?: number;
-}) {
+})
+{
 	const [copied, showCopied] = useTimedFlag(resetMs);
 
-	const handleClick = useCallback(() => {
+	const handleClick = useCallback(() =>
+	{
 		void navigator.clipboard.writeText(text);
 		onCopied?.();
 		showCopied();
@@ -441,7 +496,8 @@ export function CopyButton({
  * The button sits outside any `ErrorBorder`, so a failed call recolors its body
  * without recoloring the copy affordance.
  */
-export function CopyableBody({copyText, children}: {copyText: string; children: ReactNode}) {
+export function CopyableBody({copyText, children}: {copyText: string; children: ReactNode})
+{
 	return (
 		<div className="flex w-full">
 			<div className="flex-1 min-w-0">{children}</div>
@@ -459,7 +515,8 @@ export function CollapsibleSection({
 	label: ReactNode;
 	defaultOpen?: boolean;
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<Collapsible.Root defaultOpen={defaultOpen}>
 			<Collapsible.Trigger className="text-footnote">{label}</Collapsible.Trigger>
@@ -472,7 +529,8 @@ export function CollapsibleSection({
 	);
 }
 
-export interface KeyValueParam {
+export interface KeyValueParam
+{
 	key: string;
 	value: string;
 	/** When true, render the value as markdown instead of plain text. */
@@ -488,7 +546,8 @@ const POLICY_REASON_CLASS = "text-primary whitespace-pre-wrap break-words select
  * button, so it is left out. The reason is masked with spoofing characters revealed, as cf67ed396's
  * `u9(ME(reason))` (2026-11-10).
  */
-export function PolicyDenialReason({call}: {call: PolicyDenial}) {
+export function PolicyDenialReason({call}: {call: PolicyDenial})
+{
 	return (
 		<div className="flex flex-col items-start gap-xs font-sans text-body text-secondary">
 			{call.blockedNoVerdict === "unanswered" ? (
@@ -518,7 +577,8 @@ const PATH_PARAM_KEYS = new Set(["file_path", "notebook_path"]);
  * blocked path keeps the chip inside the disabled-reason wrapper (`Ia` > `Jr`). Both are left-to-right on a
  * right-to-left page.
  */
-function PathParamValue({path}: {path: string}) {
+function PathParamValue({path}: {path: string})
+{
 	const text = revealSpoofing(maskSecrets(path));
 	const dir = pageIsRtl() ? "ltr" : undefined;
 	return (
@@ -546,7 +606,8 @@ function PathParamValue({path}: {path: string}) {
  * Upstream's `Zv` (cb6930dae, 2026-11-10): any other plain value through the transcript's plain renderer (`eo`),
  * each secret cloaked behind its own reveal button and its URLs linked (`Iv`).
  */
-function PlainParamValue({value}: {value: string}) {
+function PlainParamValue({value}: {value: string})
+{
 	return (
 		<span className="min-w-0 break-words">
 			<PlainText renderPlain={linkifyToolText}>{value}</PlainText>
@@ -558,7 +619,8 @@ function PlainParamValue({value}: {value: string}) {
  * The param rows: a muted mono key, a space, then the value (upstream's generic row). Every string value first
  * goes through upstream's `fm` (`paramValueText`); a path key's value is drawn as `Xv`, any other as `Zv`.
  */
-function ParamRows({params}: {params: KeyValueParam[]}) {
+function ParamRows({params}: {params: KeyValueParam[]})
+{
 	return (
 		<div className="text-secondary flex flex-col gap-g2">
 			{params.map((p) => (
@@ -613,7 +675,8 @@ export function KeyValueCard({
 	/** Renders the result as the failure message: danger red, above the params. */
 	isError?: boolean | undefined;
 	children?: ReactNode;
-}) {
+})
+{
 	// A blocked call's raw denial gives way to upstream's reason line (`kx`).
 	const blocked = useContext(BlockedCallContext);
 	const shownResult = blocked === null ? result : undefined;
@@ -623,18 +686,34 @@ export function KeyValueCard({
 	const allowMarkdown = call === undefined || allowsMarkdownBody(call.name);
 	const awaitingResult = useContext(ToolAwaitingResultContext);
 	const hasParams = params.length > 0;
-	const output = useMemo(() => {
+	const output = useMemo(() =>
+	{
 		if (failed) return {};
 		// Upstream `Hp`'s waiting status, shown (`Lv`) only while `xu` holds and only below an Input section (`ym`).
 		if (!shownResult && outputShape === undefined)
-			return awaitingResult && hasParams ? {status: "waiting" as const} : {};
-		return resolveToolOutput(outputShape ?? (shownResult ? {body: shownResult} : {}), {
-			allowMarkdown,
-			json: resultJson,
-		});
+			return awaitingResult && hasParams
+				?
+					{
+						status: "waiting" as const,
+					}
+				: {};
+		return resolveToolOutput(
+			outputShape ??
+				(shownResult
+					?
+						{
+							body: shownResult,
+						}
+					: {}),
+			{
+				allowMarkdown,
+				json: resultJson,
+			},
+		);
 	}, [failed, outputShape, shownResult, allowMarkdown, resultJson, awaitingResult, hasParams]);
 
-	if (failed) {
+	if (failed)
+	{
 		const derivedCopyText = [
 			...params.map((p) => `${p.key}: ${p.value}`),
 			...(shownResult ? [shownResult] : []),
@@ -688,10 +767,12 @@ export function KeyValueCard({
 	);
 }
 
-export function ToolMeta({children}: {children: ReactNode}) {
+export function ToolMeta({children}: {children: ReactNode})
+{
 	return <span className="text-xs text-t6">{children}</span>;
 }
 
-export function DurationBadge({duration}: {duration: number}) {
+export function DurationBadge({duration}: {duration: number})
+{
 	return <span className="text-xs text-t6 ml-1.5">{formatDuration(duration)}</span>;
 }

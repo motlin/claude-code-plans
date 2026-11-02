@@ -10,11 +10,18 @@ import {useSettings} from "./settings-context";
 const VIRTUALIZE_OVER_LINES = 2000;
 const CHUNK_LINES = 200;
 
-function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
+function HighlightedLine({tokens}: {tokens: ThemedToken[]})
+{
 	return (
 		<>
 			{tokens.map((token, index) => (
-				<span key={`${token.offset}-${index}`} style={{color: token.color}}>
+				<span
+					key={`${token.offset}-${index}`}
+					style={
+					{
+						color: token.color,
+					}}
+				>
 					{token.content}
 				</span>
 			))}
@@ -22,13 +29,15 @@ function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
 	);
 }
 
-interface Selection {
+interface Selection
+{
 	start: number;
 	end: number;
 	nonce: number;
 }
 
-export interface FileViewerProps {
+export interface FileViewerProps
+{
 	file: FileViewerData;
 	/** Soft-wrap long lines instead of scrolling sideways. */
 	wrap?: boolean;
@@ -47,17 +56,22 @@ export interface FileViewerProps {
  * they near the viewport and unmounts them as they leave, remembering each
  * chunk's rendered height so the placeholder keeps the scroll position steady.
  */
-function useMountedChunks(containerRef: RefObject<HTMLDivElement | null>, virtualized: boolean) {
+function useMountedChunks(containerRef: RefObject<HTMLDivElement | null>, virtualized: boolean)
+{
 	const [mounted, setMounted] = useState<ReadonlySet<number>>(() => new Set([0]));
 	const heights = useRef(new Map<number, number>());
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!virtualized || typeof IntersectionObserver === "undefined") return undefined;
 		const observer = new IntersectionObserver(
-			(entries) => {
-				setMounted((previous) => {
+			(entries) =>
+			{
+				setMounted((previous) =>
+				{
 					let next: Set<number> | null = null;
-					for (const entry of entries) {
+					for (const entry of entries)
+					{
 						const chunk = Number(
 							entry.target instanceof HTMLElement ? entry.target.dataset["chunk"] : undefined,
 						);
@@ -70,21 +84,30 @@ function useMountedChunks(containerRef: RefObject<HTMLDivElement | null>, virtua
 					return next ?? previous;
 				});
 			},
-			{rootMargin: "1500px 0px"},
+			{
+				rootMargin: "1500px 0px",
+			},
 		);
-		for (const element of containerRef.current?.querySelectorAll("[data-chunk]") ?? []) {
+		for (const element of containerRef.current?.querySelectorAll("[data-chunk]") ?? [])
+		{
 			observer.observe(element);
 		}
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [containerRef, virtualized]);
 
-	const mount = useCallback((chunk: number) => {
+	const mount = useCallback((chunk: number) =>
+	{
 		setMounted((previous) => (previous.has(chunk) ? previous : new Set(previous).add(chunk)));
 	}, []);
 
-	return {mounted, heights: heights.current, mount};
+	return {
+		mounted,
+		heights: heights.current,
+		mount,
+	};
 }
 
 /** Read-only source lines with a line-number gutter, line targeting and optional wrap. */
@@ -96,7 +119,8 @@ export function FileViewer({
 	endLine,
 	hashNavigation = true,
 	revealLine,
-}: FileViewerProps) {
+}: FileViewerProps)
+{
 	const containerRef = useRef<HTMLDivElement>(null);
 	const lines = useMemo(() => file.content.split("\n"), [file.content]);
 	const tokens = useHighlightedLines(file.content, fileViewerLanguage(file.path));
@@ -111,59 +135,75 @@ export function FileViewer({
 	const lineCount = lines.length;
 
 	const select = useCallback(
-		(start: number, end: number) => {
-			if (start > lineCount) {
+		(start: number, end: number) =>
+		{
+			if (start > lineCount)
+			{
 				setSelection(null);
 				return;
 			}
 			nonceRef.current += 1;
 			pendingScrollRef.current = nonceRef.current;
-			setSelection({
-				start,
-				end: Math.min(Math.max(start, end), lineCount),
-				nonce: nonceRef.current,
-			});
+			setSelection(
+				{
+					start,
+					end: Math.min(Math.max(start, end), lineCount),
+					nonce: nonceRef.current,
+				},
+			);
 			mount(Math.floor((start - 1) / CHUNK_LINES));
 		},
 		[lineCount, mount],
 	);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (selection === null || pendingScrollRef.current !== selection.nonce) return;
 		const element = containerRef.current?.querySelector<HTMLElement>(`#L${selection.start}`);
 		if (!element) return;
 		pendingScrollRef.current = null;
-		element.scrollIntoView({block: "center"});
+		element.scrollIntoView(
+			{
+				block: "center",
+			},
+		);
 	}, [selection, chunks.mounted]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!hashNavigation) return undefined;
-		const handleHashChange = () => {
+		const handleHashChange = () =>
+		{
 			const range = parseFileLineRangeHash(window.location.hash);
 			if (range === null) setSelection(null);
 			else select(range.line, range.endLine);
 		};
 		handleHashChange();
 		window.addEventListener("hashchange", handleHashChange);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("hashchange", handleHashChange);
 		};
 	}, [hashNavigation, select, file.path]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (line !== undefined) select(line, endLine ?? line);
 	}, [line, endLine, select]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (revealLine !== undefined) mount(Math.floor((revealLine - 1) / CHUNK_LINES));
 	}, [revealLine, mount]);
 
-	const selectLine = (lineNumber: number) => {
+	const selectLine = (lineNumber: number) =>
+	{
 		if (hashNavigation) window.history.pushState(null, "", `#L${lineNumber}`);
 		select(lineNumber, lineNumber);
 	};
 
-	const renderRow = (index: number) => {
+	const renderRow = (index: number) =>
+	{
 		const lineNumber = index + 1;
 		const lineId = `L${lineNumber}`;
 		const isHighlighted = selection !== null && lineNumber >= selection.start && lineNumber <= selection.end;
@@ -182,7 +222,8 @@ export function FileViewer({
 						aria-label={`Go to line ${lineNumber}`}
 						data-find-ignore=""
 						className="text-t6 hover:text-accent-100"
-						onClick={(event) => {
+						onClick={(event) =>
+						{
 							event.preventDefault();
 							selectLine(lineNumber);
 						}}
@@ -203,7 +244,12 @@ export function FileViewer({
 	};
 
 	const rowRange = (from: number, to: number) =>
-		Array.from({length: to - from}, (_, offset) => renderRow(from + offset));
+		Array.from(
+			{
+				length: to - from,
+			},
+			(_, offset) => renderRow(from + offset),
+		);
 
 	return (
 		<div ref={containerRef} className={`rounded-lg border border-strong ${wrap ? "" : "overflow-x-auto"}`}>
@@ -211,28 +257,41 @@ export function FileViewer({
 				data-file-source=""
 				className={`epitaxy-diff epitaxy-file-rows bg-surface-1 py-2 font-mono text-xs leading-5 ${wrap ? "" : "min-w-max"}`}
 				role="table"
-				style={{tabSize}}
+				style={
+				{
+					tabSize,
+				}}
 			>
 				{virtualized
-					? Array.from({length: Math.ceil(lines.length / CHUNK_LINES)}, (_, chunk) => {
-							const from = chunk * CHUNK_LINES;
-							const to = Math.min(from + CHUNK_LINES, lines.length);
-							const isMounted = chunks.mounted.has(chunk);
-							return (
-								<div
-									key={chunk}
-									data-chunk={chunk}
-									role="rowgroup"
-									style={
-										isMounted
-											? undefined
-											: {height: chunks.heights.get(chunk) ?? (to - from) * estimatedLinePx}
-									}
-								>
-									{isMounted ? rowRange(from, to) : null}
-								</div>
-							);
-						})
+					? Array.from(
+							{
+								length: Math.ceil(lines.length / CHUNK_LINES),
+							},
+							(_, chunk) =>
+							{
+								const from = chunk * CHUNK_LINES;
+								const to = Math.min(from + CHUNK_LINES, lines.length);
+								const isMounted = chunks.mounted.has(chunk);
+								return (
+									<div
+										key={chunk}
+										data-chunk={chunk}
+										role="rowgroup"
+										style={
+											isMounted
+												? undefined
+												:
+													{
+														height:
+															chunks.heights.get(chunk) ?? (to - from) * estimatedLinePx,
+													}
+										}
+									>
+										{isMounted ? rowRange(from, to) : null}
+									</div>
+								);
+							},
+						)
 					: rowRange(0, lines.length)}
 			</div>
 		</div>

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRouteWithContext,
 	createRoute,
@@ -37,7 +38,8 @@ import {ratchet} from "./ratchet";
 import {preloadComposerSurfaces} from "../../src/components/composer-surfaces-entry";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadComposerSurfaces();
 });
 
@@ -49,11 +51,13 @@ beforeAll(async () => {
  * and the localStorage writes the debounced draft makes.
  */
 
-vi.mock(import("../../src/lib/hmr-persist"), async (importOriginal) => {
+vi.mock(import("../../src/lib/hmr-persist"), async (importOriginal) =>
+{
 	const cache = new Map<string, unknown>();
 	return {
 		...(await importOriginal()),
-		hmrPersist: <T,>(key: string, initialize: () => T): T => {
+		hmrPersist: <T,>(key: string, initialize: () => T): T =>
+		{
 			if (!cache.has(key)) cache.set(key, initialize());
 			return cache.get(key) as T;
 		},
@@ -73,39 +77,133 @@ const TYPED_TEXT = "fix tests!";
 
 type ApiHandler = (context: {params: Record<string, string>; request: Request}) => Response | Promise<Response>;
 
-const FRAME_ENDPOINTS: Array<{path: string; module: string}> = [
-	{path: "/api/projects", module: "../../src/routes/api/projects"},
-	{path: "/api/plans", module: "../../src/routes/api/plans"},
-	{path: "/api/sessions/recent?limit=50&live=1", module: "../../src/routes/api/sessions.recent"},
-	{path: "/api/sessions/grouped?perProject=5", module: "../../src/routes/api/sessions.grouped"},
-	{path: "/api/plugins", module: "../../src/routes/api/plugins"},
-	{path: "/api/plugins/user-commands", module: "../../src/routes/api/plugins.user-commands"},
-	{path: "/api/sessions/active?activeTimeoutMs=60000", module: "../../src/routes/api/sessions.active"},
-	{path: "/api/sessions/active?activeTimeoutMs=300000", module: "../../src/routes/api/sessions.active"},
-	{path: "/api/approvals", module: "../../src/routes/api/approvals"},
-	{path: "/api/notifications", module: "../../src/routes/api/notifications"},
-	{path: "/api/local-account", module: "../../src/routes/api/local-account"},
-	{path: "/api/application-settings", module: "../../src/routes/api/application-settings"},
+const FRAME_ENDPOINTS: Array<
+{
+	path: string;
+	module: string;
+}> = [
+	{
+		path: "/api/projects",
+		module: "../../src/routes/api/projects",
+	},
+	{
+		path: "/api/plans",
+		module: "../../src/routes/api/plans",
+	},
+	{
+		path: "/api/sessions/recent?limit=50&live=1",
+		module: "../../src/routes/api/sessions.recent",
+	},
+	{
+		path: "/api/sessions/grouped?perProject=5",
+		module: "../../src/routes/api/sessions.grouped",
+	},
+	{
+		path: "/api/plugins",
+		module: "../../src/routes/api/plugins",
+	},
+	{
+		path: "/api/plugins/user-commands",
+		module: "../../src/routes/api/plugins.user-commands",
+	},
+	{
+		path: "/api/sessions/active?activeTimeoutMs=60000",
+		module: "../../src/routes/api/sessions.active",
+	},
+	{
+		path: "/api/sessions/active?activeTimeoutMs=300000",
+		module: "../../src/routes/api/sessions.active",
+	},
+	{
+		path: "/api/approvals",
+		module: "../../src/routes/api/approvals",
+	},
+	{
+		path: "/api/notifications",
+		module: "../../src/routes/api/notifications",
+	},
+	{
+		path: "/api/local-account",
+		module: "../../src/routes/api/local-account",
+	},
+	{
+		path: "/api/application-settings",
+		module: "../../src/routes/api/application-settings",
+	},
 ];
 
 /** Request paths the session page fetches, each answered by its real GET handler. */
-function sessionEndpoints(id: string): Array<{path: string; module: string; params: Record<string, string>}> {
+function sessionEndpoints(id: string): Array<
+{
+	path: string;
+	module: string;
+	params: Record<string, string>;
+}>
+{
 	return [
-		{path: `/api/sessions/${id}`, module: "../../src/routes/api/sessions.$id", params: {id}},
-		{path: `/api/sessions/${id}/transcript`, module: "../../src/routes/api/sessions.$id.transcript", params: {id}},
-		{path: `/api/sessions/${id}/subagents`, module: "../../src/routes/api/sessions.$id.subagents", params: {id}},
-		{path: `/api/sessions/${id}/workflows`, module: "../../src/routes/api/sessions.$id.workflows", params: {id}},
+		{
+			path: `/api/sessions/${id}`,
+			module: "../../src/routes/api/sessions.$id",
+			params:
+			{
+				id,
+			},
+		},
+		{
+			path: `/api/sessions/${id}/transcript`,
+			module: "../../src/routes/api/sessions.$id.transcript",
+			params:
+			{
+				id,
+			},
+		},
+		{
+			path: `/api/sessions/${id}/subagents`,
+			module: "../../src/routes/api/sessions.$id.subagents",
+			params:
+			{
+				id,
+			},
+		},
+		{
+			path: `/api/sessions/${id}/workflows`,
+			module: "../../src/routes/api/sessions.$id.workflows",
+			params:
+			{
+				id,
+			},
+		},
 		{
 			path: `/api/sessions/${id}/context-breakdown`,
 			module: "../../src/routes/api/sessions.$id.context-breakdown",
-			params: {id},
+			params:
+			{
+				id,
+			},
 		},
-		{path: `/api/sessions/${id}/artifacts`, module: "../../src/routes/api/sessions.$id.artifacts", params: {id}},
-		{path: `/api/sessions/${id}/statusline`, module: "../../src/routes/api/sessions.$id.statusline", params: {id}},
+		{
+			path: `/api/sessions/${id}/artifacts`,
+			module: "../../src/routes/api/sessions.$id.artifacts",
+			params:
+			{
+				id,
+			},
+		},
+		{
+			path: `/api/sessions/${id}/statusline`,
+			module: "../../src/routes/api/sessions.$id.statusline",
+			params:
+			{
+				id,
+			},
+		},
 		{
 			path: `/api/sessions/${id}/composer-state`,
 			module: "../../src/routes/api/sessions.$id.composer-state",
-			params: {id},
+			params:
+			{
+				id,
+			},
 		},
 	];
 }
@@ -114,26 +212,64 @@ function sessionEndpoints(id: string): Array<{path: string; module: string; para
 function composerEndpoints(
 	id: string,
 	projectPath: string,
-): Array<{path: string; module: string; params: Record<string, string>}> {
+): Array<
+{
+	path: string;
+	module: string;
+	params: Record<string, string>;
+}>
+{
 	return [
 		{
 			path: `/api/commands?cwd=${encodeURIComponent(projectPath)}`,
 			module: "../../src/routes/api/commands",
 			params: {},
 		},
-		{path: `/api/prompt-history?sessionId=${id}`, module: "../../src/routes/api/prompt-history", params: {}},
-		{path: "/api/prompt-history", module: "../../src/routes/api/prompt-history", params: {}},
-		{path: "/api/commands", module: "../../src/routes/api/commands", params: {}},
-		{path: "/api/composer-defaults", module: "../../src/routes/api/composer-defaults", params: {}},
+		{
+			path: `/api/prompt-history?sessionId=${id}`,
+			module: "../../src/routes/api/prompt-history",
+			params: {},
+		},
+		{
+			path: "/api/prompt-history",
+			module: "../../src/routes/api/prompt-history",
+			params: {},
+		},
+		{
+			path: "/api/commands",
+			module: "../../src/routes/api/commands",
+			params: {},
+		},
+		{
+			path: "/api/composer-defaults",
+			module: "../../src/routes/api/composer-defaults",
+			params: {},
+		},
 		{
 			path: `/api/composer-defaults?cwd=${encodeURIComponent(projectPath)}`,
 			module: "../../src/routes/api/composer-defaults",
 			params: {},
 		},
-		{path: "/api/home/dismissals", module: "../../src/routes/api/home.dismissals", params: {}},
-		{path: "/api/home-stats", module: "../../src/routes/api/home-stats", params: {}},
-		{path: "/api/usage", module: "../../src/routes/api/usage", params: {}},
-		{path: "/api/sessions/recent?limit=25", module: "../../src/routes/api/sessions.recent", params: {}},
+		{
+			path: "/api/home/dismissals",
+			module: "../../src/routes/api/home.dismissals",
+			params: {},
+		},
+		{
+			path: "/api/home-stats",
+			module: "../../src/routes/api/home-stats",
+			params: {},
+		},
+		{
+			path: "/api/usage",
+			module: "../../src/routes/api/usage",
+			params: {},
+		},
+		{
+			path: "/api/sessions/recent?limit=25",
+			module: "../../src/routes/api/sessions.recent",
+			params: {},
+		},
 	];
 }
 
@@ -141,9 +277,15 @@ function composerEndpoints(
  * herdr is a live process the lab never talks to; it answers as an installation with no panes. The fixture cwd
  * isn't a real directory, so the launch folder's git status answers as a clean checkout of its default branch.
  */
-const STATIC_FIXTURES: Record<string, unknown> = {
-	"/api/herdr-panes": {panes: [], writesEnabled: false},
-	[`/api/home/folder-status?path=${encodeURIComponent(FIXTURE_CWD)}`]: {
+const STATIC_FIXTURES: Record<string, unknown> =
+{
+	"/api/herdr-panes":
+	{
+		panes: [],
+		writesEnabled: false,
+	},
+	[`/api/home/folder-status?path=${encodeURIComponent(FIXTURE_CWD)}`]:
+	{
 		exists: true,
 		isGitRepo: true,
 		headBranch: "main",
@@ -157,37 +299,71 @@ let db: AppDb;
 let fixtures: Record<string, unknown>;
 let sessionId: string;
 
-async function handlerFor(module: string): Promise<ApiHandler> {
-	const {Route} = (await import(module)) as {Route: {options: {server: {handlers: Record<string, ApiHandler>}}}};
+async function handlerFor(module: string): Promise<ApiHandler>
+{
+	const {Route} = (await import(module)) as
+	{
+		Route:
+		{
+			options:
+			{
+				server:
+				{
+					handlers: Record<string, ApiHandler>;
+				};
+			};
+		};
+	};
 	return Route.options.server.handlers["GET"]!;
 }
 
 async function serveFromHandlers(
-	endpoints: Array<{path: string; module: string; params: Record<string, string>}>,
-): Promise<void> {
-	for (const {path, module, params} of endpoints) {
+	endpoints: Array<
+	{
+		path: string;
+		module: string;
+		params: Record<string, string>;
+	}>,
+): Promise<void>
+{
+	for (const {path, module, params} of endpoints)
+	{
 		const handler = await handlerFor(module);
-		const response = await handler({params, request: new Request(`http://localhost${path}`)});
+		const response = await handler(
+			{
+				params,
+				request: new Request(`http://localhost${path}`),
+			},
+		);
 		// Responses carry the temp HOME; drop it so the served bytes are the same on every machine.
 		fixtures[path] = JSON.parse((await response.text()).replaceAll(root, "/fixture"));
 	}
 }
 
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	// Census the steady state: the session composer preloads the lazy mention icons on mount, long before a real `@`.
 	await preloadFileTypeIcons();
 	vi.setSystemTime(FIXED_NOW);
 	root = mkdtempSync(join(tmpdir(), "perf-client-composer-"));
 	const home = join(root, "home");
 	const projectDir = join(home, ".claude", "projects", PROJECT);
-	mkdirSync(projectDir, {recursive: true});
+	mkdirSync(
+		projectDir,
+		{
+			recursive: true,
+		},
+	);
 	vi.stubEnv("HOME", home);
 	vi.stubEnv("XDG_CONFIG_HOME", join(root, "config"));
 	vi.stubEnv("XDG_CACHE_HOME", join(root, "cache"));
 
 	const {openTestDb} = await import("../../src/lib/db/connection");
 	db = openTestDb();
-	vi.doMock("../../src/lib/db", () => ({getDb: () => db}));
+	vi.doMock("../../src/lib/db", () => (
+	{
+		getDb: () => db,
+	}));
 
 	const cached = await generateTranscript(PERF_SHAPES.small);
 	const file = join(projectDir, basename(cached));
@@ -195,34 +371,56 @@ beforeAll(async () => {
 	utimesSync(file, FIXTURE_MTIME, FIXTURE_MTIME);
 	[sessionId] = (await seedFixtureDb(db, [file])) as [string];
 
-	fixtures = {
+	fixtures =
+	{
 		...STATIC_FIXTURES,
-		[`/api/sessions/${sessionId}/files?markIgnored=1`]: {
+		[`/api/sessions/${sessionId}/files?markIgnored=1`]:
+		{
 			kind: "listing",
 			dir: FIXTURE_CWD,
 			entries: [
-				{name: "src", relPath: "src", isDirectory: true},
-				{name: "package.json", relPath: "package.json", isDirectory: false},
+				{
+					name: "src",
+					relPath: "src",
+					isDirectory: true,
+				},
+				{
+					name: "package.json",
+					relPath: "package.json",
+					isDirectory: false,
+				},
 			],
 			partial: false,
 		},
 	};
 	await serveFromHandlers([
-		...FRAME_ENDPOINTS.map((endpoint) => ({...endpoint, params: {}})),
+		...FRAME_ENDPOINTS.map((endpoint) => (
+		{
+			...endpoint,
+			params: {},
+		})),
 		...sessionEndpoints(sessionId),
 	]);
 	await serveFromHandlers(composerEndpoints(sessionId, FIXTURE_CWD));
 }, 600_000);
 
-afterAll(() => {
+afterAll(() =>
+{
 	db.close();
-	rmSync(root, {recursive: true, force: true});
+	rmSync(
+		root,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 	vi.doUnmock("../../src/lib/db");
 	vi.unstubAllEnvs();
 	vi.useRealTimers();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
@@ -230,99 +428,173 @@ afterEach(() => {
 	localStorage.clear();
 });
 
-function installBrowserStubs(): void {
+function installBrowserStubs(): void
+{
 	installFakeEventSource();
-	installFixedResizeObserver({width: 800, height: ROW_HEIGHT});
-	vi.stubGlobal("matchMedia", (media: string) => ({
+	installFixedResizeObserver(
+		{
+			width: 800,
+			height: ROW_HEIGHT,
+		},
+	);
+	vi.stubGlobal("matchMedia", (media: string) => (
+	{
 		matches: false,
 		media,
 		onchange: null,
-		addEventListener: () => {},
-		removeEventListener: () => {},
-		addListener: () => {},
-		removeListener: () => {},
+		addEventListener: () =>
+		{
+		},
+		removeEventListener: () =>
+		{
+		},
+		addListener: () =>
+		{
+		},
+		removeListener: () =>
+		{
+		},
 		dispatchEvent: () => false,
 	}));
 	vi.stubGlobal("scrollTo", () => {});
 	vi.stubGlobal("IntersectionObserver", InertIntersectionObserver);
 	// jsdom has no layout, so scrolling an element into view is a no-op it does not implement.
-	Element.prototype.scrollIntoView = () => {};
+	Element.prototype.scrollIntoView = () =>
+	{
+	};
 }
 
 /** Nothing scrolls in jsdom, so no observed element ever intersects; the observer never calls back. */
-class InertIntersectionObserver {
+class InertIntersectionObserver
+{
 	readonly root = null;
 	readonly rootMargin = "0px";
 	readonly thresholds: ReadonlyArray<number> = [0];
 
-	observe(): void {}
+	observe(): void
+	{
+	}
 
-	unobserve(): void {}
+	unobserve(): void
+	{
+	}
 
-	disconnect(): void {}
+	disconnect(): void
+	{
+	}
 
-	takeRecords(): Array<IntersectionObserverEntry> {
+	takeRecords(): Array<IntersectionObserverEntry>
+	{
 		return [];
 	}
 }
 
-const rootLoader = RootRoute.options.loader as (args: {context: {queryClient: QueryClient}}) => void;
+const rootLoader = RootRoute.options.loader as (args: {
+	context:
+	{
+		queryClient: QueryClient;
+	};
+}) => void;
 
 /** The root layout's frame (providers, sidebar, main) with the real root loader and the real home and session routes. */
-function createAppRouter(queryClient: QueryClient, initialPath: string) {
-	const rootRoute = createRootRouteWithContext<{queryClient: QueryClient}>()({
-		loader: ({context}) => {
-			rootLoader({context});
+function createAppRouter(queryClient: QueryClient, initialPath: string)
+{
+	const rootRoute = createRootRouteWithContext<
+	{
+		queryClient: QueryClient;
+	}>()(
+		{
+			loader: ({context}) =>
+			{
+				rootLoader(
+					{
+						context,
+					},
+				);
+			},
+			component: () => (
+				<ThemeProvider>
+					<SettingsProvider>
+						<ClaudeEventsProvider>
+							<ToastProvider>
+								<AppFrame collapsed={false}>
+									<Outlet />
+								</AppFrame>
+							</ToastProvider>
+						</ClaudeEventsProvider>
+					</SettingsProvider>
+				</ThemeProvider>
+			),
 		},
-		component: () => (
-			<ThemeProvider>
-				<SettingsProvider>
-					<ClaudeEventsProvider>
-						<ToastProvider>
-							<AppFrame collapsed={false}>
-								<Outlet />
-							</AppFrame>
-						</ToastProvider>
-					</ClaudeEventsProvider>
-				</SettingsProvider>
-			</ThemeProvider>
-		),
-	});
-	const homeRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: HomeRoute.options.component!,
-	});
-	const sessionRoute = SessionRoute.update({
-		id: "/session/$id",
-		path: "/session/$id",
-		getParentRoute: () => rootRoute,
-	} as never);
-	return createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute as never]),
-		history: createMemoryHistory({initialEntries: [initialPath]}),
-		context: {queryClient},
-	});
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: HomeRoute.options.component!,
+		},
+	);
+	const sessionRoute = SessionRoute.update(
+		{
+			id: "/session/$id",
+			path: "/session/$id",
+			getParentRoute: () => rootRoute,
+		} as never,
+	);
+	return createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, sessionRoute as never]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [initialPath],
+				},
+			),
+			context:
+			{
+				queryClient,
+			},
+		},
+	);
 }
 
-const SURFACES = {
-	session: {path: () => `/session/${sessionId}`, placeholder: "Type / for commands"},
-	home: {path: () => "/", placeholder: "Describe a task or ask a question"},
+const SURFACES =
+{
+	session:
+	{
+		path: () => `/session/${sessionId}`,
+		placeholder: "Type / for commands",
+	},
+	home:
+	{
+		path: () => "/",
+		placeholder: "Describe a task or ask a question",
+	},
 } as const;
 type Surface = keyof typeof SURFACES;
 
 /** One keystroke: the composer's value grows to `value`, then the typist's pause (plus `extraMs`) elapses. */
-function keystroke(placeholder: string, value: string, extraMs = 0): () => void {
-	return () => {
+function keystroke(placeholder: string, value: string, extraMs = 0): () => void
+{
+	return () =>
+	{
 		// The composer's placeholder is an aria-hidden overlay; the textarea carries it as `aria-placeholder`.
 		const textarea = document.querySelector(`textarea[aria-placeholder="${placeholder}"]`);
 		if (textarea === null) throw new Error(`No composer with placeholder ${placeholder}`);
-		fireEvent.change(textarea, {target: {value}});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value,
+				},
+			},
+		);
 		vi.advanceTimersByTime(KEYSTROKE_INTERVAL_MS + extraMs);
 	};
 }
 
-interface ComposerCase {
+interface ComposerCase
+{
 	name: string;
 	surfaces: ReadonlyArray<Surface>;
 	keystrokes: (placeholder: string) => Array<() => void>;
@@ -336,12 +608,16 @@ const CASES: Array<ComposerCase> = [
 		surfaces: ["session", "home"],
 		// The last keystroke also waits out the draft debounce, so the one coalesced localStorage write lands.
 		keystrokes: (placeholder) =>
-			Array.from({length: TYPED_TEXT.length}, (_, index) =>
-				keystroke(
-					placeholder,
-					TYPED_TEXT.slice(0, index + 1),
-					index === TYPED_TEXT.length - 1 ? COMPOSER_DRAFT_DEBOUNCE_MS : 0,
-				),
+			Array.from(
+				{
+					length: TYPED_TEXT.length,
+				},
+				(_, index) =>
+					keystroke(
+						placeholder,
+						TYPED_TEXT.slice(0, index + 1),
+						index === TYPED_TEXT.length - 1 ? COMPOSER_DRAFT_DEBOUNCE_MS : 0,
+					),
 			),
 	},
 	{
@@ -370,19 +646,25 @@ type ComposerMetric =
 	| "localStorageWrites";
 
 /** Checks every count before failing, so one run records all of them in results.json for `just perf-ceilings`. */
-function ratchetAll(values: Record<string, number>): void {
+function ratchetAll(values: Record<string, number>): void
+{
 	const failures: string[] = [];
-	for (const [id, value] of Object.entries(values)) {
-		try {
+	for (const [id, value] of Object.entries(values))
+	{
+		try
+		{
 			ratchet(id, value);
-		} catch (error) {
+		}
+		catch (error)
+		{
 			failures.push((error as Error).message);
 		}
 	}
 	if (failures.length > 0) throw new Error(failures.join("\n"));
 }
 
-async function measureComposer(surface: Surface, composerCase: ComposerCase): Promise<Record<ComposerMetric, number>> {
+async function measureComposer(surface: Surface, composerCase: ComposerCase): Promise<Record<ComposerMetric, number>>
+{
 	installBrowserStubs();
 	vi.useFakeTimers();
 	vi.setSystemTime(FIXED_NOW);
@@ -392,10 +674,21 @@ async function measureComposer(surface: Surface, composerCase: ComposerCase): Pr
 	let writesBefore = 0;
 
 	const census = createRenderCensus();
-	const queryClient = new QueryClient({defaultOptions: {queries: {refetchOnWindowFocus: false}}});
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					refetchOnWindowFocus: false,
+				},
+			},
+		},
+	);
 	const router = createAppRouter(queryClient, SURFACES[surface].path());
 	const keystrokes = composerCase.keystrokes(SURFACES[surface].placeholder);
-	const steps: Array<Interaction> = keystrokes.map((press, index) => () => {
+	const steps: Array<Interaction> = keystrokes.map((press, index) => () =>
+	{
 		if (index === 0) writesBefore = storageWrites();
 		census.startStep();
 		press();
@@ -407,11 +700,15 @@ async function measureComposer(surface: Surface, composerCase: ComposerCase): Pr
 			</census.Root>
 		),
 		steps,
-		{fixtures, queryClient},
+		{
+			fixtures,
+			queryClient,
+		},
 	);
 	census.stop();
 
-	if (composerCase.opensMenu !== undefined) {
+	if (composerCase.opensMenu !== undefined)
+	{
 		expect(screen.getByLabelText(composerCase.opensMenu)).toBeTruthy();
 	}
 	const perKeystroke = (total: number) => total / keystrokes.length;
@@ -428,19 +725,30 @@ async function measureComposer(surface: Surface, composerCase: ComposerCase): Pr
 	};
 }
 
-describe("client lab: composer keystroke census", () => {
-	for (const composerCase of CASES) {
-		for (const surface of composerCase.surfaces) {
-			it(`${surface} ${composerCase.name}`, async () => {
+describe("client lab: composer keystroke census", () =>
+{
+	for (const composerCase of CASES)
+	{
+		for (const surface of composerCase.surfaces)
+		{
+			it(`${surface} ${composerCase.name}`, async () =>
+			{
 				const {sessionChatRendersPerKeystroke, ...metrics} = await measureComposer(surface, composerCase);
 
 				const prefix = `client.composer.${surface}.${composerCase.name}`;
-				ratchetAll({
-					...metricIds<Exclude<ComposerMetric, "sessionChatRendersPerKeystroke">>(prefix, metrics),
-					...(surface === "session"
-						? metricIds<"sessionChatRendersPerKeystroke">(prefix, {sessionChatRendersPerKeystroke})
-						: {}),
-				});
+				ratchetAll(
+					{
+						...metricIds<Exclude<ComposerMetric, "sessionChatRendersPerKeystroke">>(prefix, metrics),
+						...(surface === "session"
+							? metricIds<"sessionChatRendersPerKeystroke">(
+									prefix,
+									{
+										sessionChatRendersPerKeystroke,
+									},
+								)
+							: {}),
+					},
+				);
 			});
 		}
 	}

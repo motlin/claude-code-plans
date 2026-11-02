@@ -8,13 +8,24 @@ import {type AllowAndSwitchToAutoInput, useAllowAndSwitchToAuto} from "../src/co
 import type {PermissionModeConsent} from "../src/lib/api/permission-mode-consent";
 import type {HerdrAllowAutoVia} from "../src/lib/api/herdr";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 });
 
-const NOT_CONSENTED: PermissionModeConsent = {autoModeIsDefault: false, autoConsented: false, acks: []};
-const AUTO_DEFAULT: PermissionModeConsent = {autoModeIsDefault: true, autoConsented: false, acks: []};
+const NOT_CONSENTED: PermissionModeConsent =
+{
+	autoModeIsDefault: false,
+	autoConsented: false,
+	acks: [],
+};
+const AUTO_DEFAULT: PermissionModeConsent =
+{
+	autoModeIsDefault: true,
+	autoConsented: false,
+	acks: [],
+};
 
 function setup({
 	consent,
@@ -26,17 +37,28 @@ function setup({
 	mode?: string;
 	via?: HerdrAllowAutoVia;
 	sendError?: Error | null;
-}) {
+})
+{
 	const posts: unknown[] = [];
-	vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+	vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
+	{
 		if (String(input) !== "/api/permission-mode-consent") throw new Error(`unexpected fetch ${String(input)}`);
-		if (init?.method === "POST") {
+		if (init?.method === "POST")
+		{
 			posts.push(JSON.parse(String(init.body)));
-			return Promise.resolve(Response.json({...consent, autoConsented: true}));
+			return Promise.resolve(
+				Response.json(
+					{
+						...consent,
+						autoConsented: true,
+					},
+				),
+			);
 		}
 		return Promise.resolve(Response.json(consent));
 	});
-	const input = {
+	const input =
+	{
 		workspace: "/w",
 		mode,
 		availableModes: ["default", "acceptEdits", "plan", "auto"],
@@ -47,19 +69,31 @@ function setup({
 		expectMode: vi.fn<AllowAndSwitchToAutoInput["expectMode"]>(),
 		toast: vi.fn<AllowAndSwitchToAutoInput["toast"]>(),
 	} satisfies AllowAndSwitchToAutoInput;
-	const outcome: {settled: "resolved" | "rejected" | null; error: unknown} = {settled: null, error: null};
-	function Harness() {
+	const outcome:
+	{
+		settled: "resolved" | "rejected" | null;
+		error: unknown;
+	} =
+	{
+		settled: null,
+		error: null,
+	};
+	function Harness()
+	{
 		const {onAllowAndSwitch, gate} = useAllowAndSwitchToAuto(input);
 		return (
 			<>
 				<button
 					type="button"
-					onClick={() => {
+					onClick={() =>
+					{
 						onAllowAndSwitch().then(
-							() => {
+							() =>
+							{
 								outcome.settled = "resolved";
 							},
-							(error: unknown) => {
+							(error: unknown) =>
+							{
 								outcome.settled = "rejected";
 								outcome.error = error;
 							},
@@ -72,16 +106,31 @@ function setup({
 			</>
 		);
 	}
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	render(
 		<QueryClientProvider client={queryClient}>
 			<Harness />
 		</QueryClientProvider>,
 	);
-	return {input, outcome, posts};
+	return {
+		input,
+		outcome,
+		posts,
+	};
 }
 
-function calls(input: ReturnType<typeof setup>["input"]) {
+function calls(input: ReturnType<typeof setup>["input"])
+{
 	return {
 		sends: [...input.sendAllowAuto.mock.calls],
 		allows: input.answerAllow.mock.calls.length,
@@ -90,93 +139,245 @@ function calls(input: ReturnType<typeof setup>["input"]) {
 	};
 }
 
-describe("useAllowAndSwitchToAuto", () => {
-	it("allows and switches at once when Auto is the default, and shows Auto until the hook confirms", async () => {
-		const {input, outcome} = setup({consent: AUTO_DEFAULT});
-		fireEvent.click(screen.getByRole("button", {name: "Switch"}));
-		await waitFor(() => {
+describe("useAllowAndSwitchToAuto", () =>
+{
+	it("allows and switches at once when Auto is the default, and shows Auto until the hook confirms", async () =>
+	{
+		const {input, outcome} = setup(
+			{
+				consent: AUTO_DEFAULT,
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Switch",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(outcome.settled).toBe("resolved");
 		});
-		expect({...calls(input), dialog: screen.queryByRole("alertdialog")}).toStrictEqual({
-			sends: [[3]],
-			allows: 0,
-			expected: [["auto"]],
-			toasts: [],
-			dialog: null,
-		});
+		expect(
+			{
+				...calls(input),
+				dialog: screen.queryByRole("alertdialog"),
+			},
+		).toStrictEqual(
+			{
+				sends: [[3]],
+				allows: 0,
+				expected: [["auto"]],
+				toasts: [],
+				dialog: null,
+			},
+		);
 	});
 
-	it("sends no shift+tab count from a mode shift+tab can't step from", async () => {
-		const {input, outcome} = setup({consent: AUTO_DEFAULT, mode: "dontAsk"});
-		fireEvent.click(screen.getByRole("button", {name: "Switch"}));
-		await waitFor(() => {
+	it("sends no shift+tab count from a mode shift+tab can't step from", async () =>
+	{
+		const {input, outcome} = setup(
+			{
+				consent: AUTO_DEFAULT,
+				mode: "dontAsk",
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Switch",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(outcome.settled).toBe("resolved");
 		});
 		expect(input.sendAllowAuto.mock.calls).toStrictEqual([[null]]);
 	});
 
-	it("toasts the mode failure when only the allow went through", async () => {
-		const {input, outcome} = setup({consent: AUTO_DEFAULT, via: "none"});
-		fireEvent.click(screen.getByRole("button", {name: "Switch"}));
-		await waitFor(() => {
+	it("toasts the mode failure when only the allow went through", async () =>
+	{
+		const {input, outcome} = setup(
+			{
+				consent: AUTO_DEFAULT,
+				via: "none",
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Switch",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(outcome.settled).toBe("resolved");
 		});
-		expect(calls(input)).toStrictEqual({
-			sends: [[3]],
-			allows: 0,
-			expected: [],
-			toasts: [[{kind: "error", message: "Mode change couldn’t be applied. You can try again."}]],
-		});
+		expect(calls(input)).toStrictEqual(
+			{
+				sends: [[3]],
+				allows: 0,
+				expected: [],
+				toasts: [
+					[
+						{
+							kind: "error",
+							message: "Mode change couldn’t be applied. You can try again.",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("asks for consent first, then switches on Enable auto mode", async () => {
-		const {input, outcome, posts} = setup({consent: NOT_CONSENTED});
-		fireEvent.click(screen.getByRole("button", {name: "Switch"}));
+	it("asks for consent first, then switches on Enable auto mode", async () =>
+	{
+		const {input, outcome, posts} = setup(
+			{
+				consent: NOT_CONSENTED,
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Switch",
+				},
+			),
+		);
 		const dialog = await screen.findByRole("alertdialog");
 		const title = within(dialog).getByRole("heading").textContent;
 		const before = calls(input);
-		fireEvent.click(within(dialog).getByRole("button", {name: "Enable auto mode"}));
-		await waitFor(() => {
+		fireEvent.click(
+			within(dialog).getByRole(
+				"button",
+				{
+					name: "Enable auto mode",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(outcome.settled).toBe("resolved");
 		});
-		expect({title, before, after: calls(input), posts}).toStrictEqual({
-			title: "Enable auto mode?",
-			before: {sends: [], allows: 0, expected: [], toasts: []},
-			after: {sends: [[3]], allows: 0, expected: [["auto"]], toasts: []},
-			posts: [{mode: "auto", workspace: "/w"}],
-		});
+		expect(
+			{
+				title,
+				before,
+				after: calls(input),
+				posts,
+			},
+		).toStrictEqual(
+			{
+				title: "Enable auto mode?",
+				before:
+				{
+					sends: [],
+					allows: 0,
+					expected: [],
+					toasts: [],
+				},
+				after:
+				{
+					sends: [[3]],
+					allows: 0,
+					expected: [["auto"]],
+					toasts: [],
+				},
+				posts: [
+					{
+						mode: "auto",
+						workspace: "/w",
+					},
+				],
+			},
+		);
 	});
 
-	it("still allows once when the consent dialog is cancelled, as upstream", async () => {
-		const {input, outcome, posts} = setup({consent: NOT_CONSENTED});
-		fireEvent.click(screen.getByRole("button", {name: "Switch"}));
+	it("still allows once when the consent dialog is cancelled, as upstream", async () =>
+	{
+		const {input, outcome, posts} = setup(
+			{
+				consent: NOT_CONSENTED,
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Switch",
+				},
+			),
+		);
 		const dialog = await screen.findByRole("alertdialog");
-		fireEvent.click(within(dialog).getByRole("button", {name: "Cancel"}));
-		await waitFor(() => {
+		fireEvent.click(
+			within(dialog).getByRole(
+				"button",
+				{
+					name: "Cancel",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(outcome.settled).toBe("resolved");
 		});
-		expect({...calls(input), posts}).toStrictEqual({
-			sends: [],
-			allows: 1,
-			expected: [],
-			toasts: [],
-			posts: [],
-		});
+		expect(
+			{
+				...calls(input),
+				posts,
+			},
+		).toStrictEqual(
+			{
+				sends: [],
+				allows: 1,
+				expected: [],
+				toasts: [],
+				posts: [],
+			},
+		);
 	});
 
-	it("rejects when the pane refuses, so the card comes back with the error", async () => {
+	it("rejects when the pane refuses, so the card comes back with the error", async () =>
+	{
 		const refusal = new Error("The terminal’s permission dialog doesn’t match this card");
-		const {input, outcome} = setup({consent: AUTO_DEFAULT, sendError: refusal});
-		fireEvent.click(screen.getByRole("button", {name: "Switch"}));
-		await waitFor(() => {
+		const {input, outcome} = setup(
+			{
+				consent: AUTO_DEFAULT,
+				sendError: refusal,
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Switch",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(outcome.settled).toBe("rejected");
 		});
-		expect({...calls(input), error: outcome.error}).toStrictEqual({
-			sends: [[3]],
-			allows: 0,
-			expected: [],
-			toasts: [],
-			error: refusal,
-		});
+		expect(
+			{
+				...calls(input),
+				error: outcome.error,
+			},
+		).toStrictEqual(
+			{
+				sends: [[3]],
+				allows: 0,
+				expected: [],
+				toasts: [],
+				error: refusal,
+			},
+		);
 	});
 });

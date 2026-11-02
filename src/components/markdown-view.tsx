@@ -12,11 +12,29 @@ export function MarkdownView({
 	mdLinkBase?: string | undefined;
 	/** Render as a markdown document, where soft line breaks wrap as spaces (upstream's Plan pane). */
 	document?: boolean | undefined;
-}) {
+})
+{
 	return <MarkdownArticle markdown={markdown} typographer mdLinkBase={mdLinkBase} document={document} />;
 }
 
-export function MarkdownInline({markdown}: {markdown: string}) {
-	const html = useMemo(() => renderInlineMarkdownToHtml(markdown, {typographer: true}), [markdown]);
-	return <span dangerouslySetInnerHTML={{__html: html}} />;
+export function MarkdownInline({markdown}: {markdown: string})
+{
+	const html = useMemo(
+		() =>
+			renderInlineMarkdownToHtml(
+				markdown,
+				{
+					typographer: true,
+				},
+			),
+		[markdown],
+	);
+	return (
+		<span
+			dangerouslySetInnerHTML={
+			{
+				__html: html,
+			}}
+		/>
+	);
 }

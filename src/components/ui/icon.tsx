@@ -14,7 +14,8 @@
 import type {ReactElement, SVGAttributes} from "react";
 
 import {FILLED_GLYPHS, ICON_GLYPHS, ICON_MIRRORED} from "../../lib/icon-glyphs";
-import {
+import
+{
 	ICON_SIZE_TABLE,
 	ICON_SLOT_CLASS,
 	ICON_SLOT_FIRST_LINE_CLASS,
@@ -28,7 +29,8 @@ import {useDensity} from "./density-context";
 type GlyphName = keyof typeof ICON_GLYPHS | keyof typeof FILLED_GLYPHS;
 export type IconName = GlyphName | "DotsVertical";
 
-export interface IconProps extends Omit<SVGAttributes<SVGSVGElement>, "name" | "rotate" | "children"> {
+export interface IconProps extends Omit<SVGAttributes<SVGSVGElement>, "name" | "rotate" | "children">
+{
 	name: IconName;
 	size?: IconSizeProp;
 	/** A px size off the table; the stroke follows the nearest table size. */
@@ -43,12 +45,14 @@ export interface IconProps extends Omit<SVGAttributes<SVGSVGElement>, "name" | "
 const GLYPHS: Record<
 	GlyphName,
 	(typeof ICON_GLYPHS)[keyof typeof ICON_GLYPHS] | (typeof FILLED_GLYPHS)[keyof typeof FILLED_GLYPHS]
-> = {
+> =
+{
 	...ICON_GLYPHS,
 	...FILLED_GLYPHS,
 };
 
-export function Icon({name, size, customSize, bold = false, rotate, alt, className, style, ...rest}: IconProps) {
+export function Icon({name, size, customSize, bold = false, rotate, alt, className, style, ...rest}: IconProps)
+{
 	const density = useDensity();
 	const glyphName: GlyphName = name === "DotsVertical" ? "DotsHorizontal" : name;
 	const tableSize = customSize === undefined ? resolveIconSize(size, density) : nearestIconSize(customSize);
@@ -67,13 +71,20 @@ export function Icon({name, size, customSize, bold = false, rotate, alt, classNa
 			data-cds="Icon"
 			data-cds-mirror={ICON_MIRRORED.has(glyphName) ? "" : undefined}
 			data-cds-rotate={rotated ? "" : undefined}
-			style={{
+			style={
+			{
 				flexShrink: 0,
 				fontSize: iconFontSize(px),
-				...(rotated && {"--cds-icon-rotate": `${rotate}deg`}),
+				...(rotated &&
+				{
+					"--cds-icon-rotate": `${rotate}deg`,
+				}),
 				...style,
 			}}
-			{...(className !== undefined && {className})}
+			{...(className !== undefined &&
+			{
+				className,
+			})}
 			{...rest}
 			role={alt === undefined ? undefined : "img"}
 			aria-hidden={alt === undefined ? "true" : undefined}
@@ -83,7 +94,8 @@ export function Icon({name, size, customSize, bold = false, rotate, alt, classNa
 }
 
 /** Upstream's `nd` leading slot: an `auto` Icon in the `size-icon` box, or with `firstLine` a `w-icon` box pinned to the first line. */
-export function IconSlot({icon, firstLine = false}: {icon: IconName | ReactElement; firstLine?: boolean}) {
+export function IconSlot({icon, firstLine = false}: {icon: IconName | ReactElement; firstLine?: boolean})
+{
 	return (
 		<span className={firstLine ? ICON_SLOT_FIRST_LINE_CLASS : ICON_SLOT_CLASS}>
 			{typeof icon === "string" ? <Icon name={icon} size="auto" /> : icon}

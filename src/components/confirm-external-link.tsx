@@ -1,6 +1,7 @@
 import {type MouseEvent, type ReactNode, useEffect, useId, useState} from "react";
 
-import {
+import
+{
 	deceptiveHost,
 	displayUrl,
 	embeddedCredentialsHost,
@@ -21,12 +22,14 @@ const RTL_TEXT_END = "[&:where(:root[dir=rtl]_*)]:text-right";
 const ACTIVATION_DELAY_MS = 400;
 
 /** Upstream `kv`: open the link in a new window without handing it this page. */
-function openExternally(url: string): void {
+function openExternally(url: string): void
+{
 	window.open(url, "_blank", "noopener,noreferrer");
 }
 
 /** Upstream `Ja`: a red warning box with the real destination. */
-function DeceptionWarning({message, detail, testId}: {message: string; detail: string; testId?: string}) {
+function DeceptionWarning({message, detail, testId}: {message: string; detail: string; testId?: string})
+{
 	return (
 		<div data-testid={testId} className="mt-3 rounded-lg border border-danger bg-danger p-3">
 			<div className="flex items-start gap-2">
@@ -43,17 +46,22 @@ function DeceptionWarning({message, detail, testId}: {message: string; detail: s
 }
 
 /** Upstream `CL`, simplified to a timer from when the dialog opens (upstream counts only visible, focused time). */
-function useArmed(open: boolean): boolean {
+function useArmed(open: boolean): boolean
+{
 	const [armed, setArmed] = useState(false);
-	useEffect(() => {
-		if (!open) {
+	useEffect(() =>
+	{
+		if (!open)
+		{
 			setArmed(false);
 			return undefined;
 		}
-		const timer = setTimeout(() => {
+		const timer = setTimeout(() =>
+		{
 			setArmed(true);
 		}, ACTIVATION_DELAY_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 		};
 	}, [open]);
@@ -74,7 +82,8 @@ function ExternalLinkDialog({
 	url: string;
 	onClose: () => void;
 	onConfirm: () => void;
-}) {
+})
+{
 	const armed = useArmed(open);
 	const [dontAskAgain, setDontAskAgain] = useState(false);
 	const checkboxId = useId();
@@ -84,8 +93,10 @@ function ExternalLinkDialog({
 	return (
 		<ConfirmDialog
 			open={open}
-			onOpenChange={(next) => {
-				if (!next) {
+			onOpenChange={(next) =>
+			{
+				if (!next)
+				{
 					setDontAskAgain(false);
 					onClose();
 				}
@@ -95,7 +106,8 @@ function ExternalLinkDialog({
 			size="md"
 			confirmLabel="Open link"
 			confirmDisabled={!armed}
-			onConfirm={() => {
+			onConfirm={() =>
+			{
 				if (dontAskAgain) trustDomain(url);
 				setDontAskAgain(false);
 				onConfirm();
@@ -114,7 +126,8 @@ function ExternalLinkDialog({
 							type="checkbox"
 							disabled={!armed}
 							checked={dontAskAgain}
-							onChange={(event) => {
+							onChange={(event) =>
+							{
 								if (armed) setDontAskAgain(event.currentTarget.checked);
 							}}
 						/>
@@ -157,12 +170,14 @@ export function ConfirmExternalLink({
 	href: string;
 	children: ReactNode;
 	className?: string;
-}) {
+})
+{
 	const [asking, setAsking] = useState(false);
 	// Upstream `hz` mounts the dialog only once it is wanted (and keeps it through its exit).
 	const [dialogMounted, setDialogMounted] = useState(false);
 	const hintId = useId();
-	const ask = () => {
+	const ask = () =>
+	{
 		setDialogMounted(true);
 		setAsking(true);
 	};
@@ -174,19 +189,23 @@ export function ConfirmExternalLink({
 			!isNonWebLink(href) &&
 			deceptiveHost(href).punycode === null &&
 			embeddedCredentialsHost(href) === null);
-	const onClick = (event: MouseEvent) => {
+	const onClick = (event: MouseEvent) =>
+	{
 		if (direct) return;
 		event.preventDefault();
-		if (skipsDialog(event.shiftKey || event.ctrlKey || event.metaKey)) {
+		if (skipsDialog(event.shiftKey || event.ctrlKey || event.metaKey))
+		{
 			openExternally(href);
 			return;
 		}
 		ask();
 	};
-	const onAuxClick = (event: MouseEvent) => {
+	const onAuxClick = (event: MouseEvent) =>
+	{
 		if (event.button !== 1 || direct) return;
 		event.preventDefault();
-		if (skipsDialog(false)) {
+		if (skipsDialog(false))
+		{
 			openExternally(href);
 			return;
 		}
@@ -212,10 +231,12 @@ export function ConfirmExternalLink({
 				<ExternalLinkDialog
 					open={asking}
 					url={href}
-					onClose={() => {
+					onClose={() =>
+					{
 						setAsking(false);
 					}}
-					onConfirm={() => {
+					onConfirm={() =>
+					{
 						setAsking(false);
 						openExternally(href);
 					}}

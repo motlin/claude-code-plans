@@ -17,11 +17,13 @@ const K = new Uint32Array([
 
 const INITIAL = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
 
-function rotr(value: number, bits: number): number {
+function rotr(value: number, bits: number): number
+{
 	return (value >>> bits) | (value << (32 - bits));
 }
 
-export function sha256Hex(text: string): string {
+export function sha256Hex(text: string): string
+{
 	const bytes = new TextEncoder().encode(text);
 	const bitLength = bytes.length * 8;
 	// Message, the 0x80 terminator, zero padding, then the 64-bit big-endian bit length, to a multiple of 64 bytes.
@@ -34,9 +36,11 @@ export function sha256Hex(text: string): string {
 
 	const hash = Uint32Array.from(INITIAL);
 	const w = new Uint32Array(64);
-	for (let offset = 0; offset < padded.length; offset += 64) {
+	for (let offset = 0; offset < padded.length; offset += 64)
+	{
 		for (let index = 0; index < 16; index++) w[index] = view.getUint32(offset + index * 4);
-		for (let index = 16; index < 64; index++) {
+		for (let index = 16; index < 64; index++)
+		{
 			const w15 = w[index - 15] ?? 0;
 			const w2 = w[index - 2] ?? 0;
 			const s0 = rotr(w15, 7) ^ rotr(w15, 18) ^ (w15 >>> 3);
@@ -44,7 +48,8 @@ export function sha256Hex(text: string): string {
 			w[index] = (w[index - 16] ?? 0) + s0 + (w[index - 7] ?? 0) + s1;
 		}
 		let [a = 0, b = 0, c = 0, d = 0, e = 0, f = 0, g = 0, h = 0] = hash;
-		for (let index = 0; index < 64; index++) {
+		for (let index = 0; index < 64; index++)
+		{
 			const s1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
 			const choice = (e & f) ^ (~e & g);
 			const t1 = (h + s1 + choice + (K[index] ?? 0) + (w[index] ?? 0)) >>> 0;

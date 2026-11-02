@@ -28,7 +28,8 @@ const TEXT_ALIGN = /^text-(?:left|center|right|justify|start|end)$/;
 const TEXT_WRAP = /^text-(?:wrap|nowrap|balance|pretty|ellipsis|clip)$/;
 
 /** The conflict group of one class, or null when it never conflicts. Only the groups the cds callers pass are known. */
-function conflictGroup(token: string): string | null {
+function conflictGroup(token: string): string | null
+{
 	const split = token.lastIndexOf(":");
 	const variant = token.slice(0, split + 1);
 	const utility = token.slice(split + 1);
@@ -44,16 +45,19 @@ function conflictGroup(token: string): string | null {
  * A narrow stand-in for upstream's tailwind-merge (`XZ`): a later class replaces an earlier one in the same group
  * (text size, ink, alignment, wrap, transition property), so a caller's `text-footnote` drops `text-body`.
  */
-export function mergeClassNames(base: string, extra: string | undefined): string {
+export function mergeClassNames(base: string, extra: string | undefined): string
+{
 	if (extra === undefined || extra === "") return base;
 	const tokens = [...base.split(" "), ...extra.split(" ")].filter((token) => token !== "");
 	const lastIndexOfGroup = new Map<string, number>();
-	tokens.forEach((token, index) => {
+	tokens.forEach((token, index) =>
+	{
 		const group = conflictGroup(token);
 		if (group !== null) lastIndexOfGroup.set(group, index);
 	});
 	return tokens
-		.filter((token, index) => {
+		.filter((token, index) =>
+		{
 			const group = conflictGroup(token);
 			return group === null || lastIndexOfGroup.get(group) === index;
 		})

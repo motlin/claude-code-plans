@@ -5,7 +5,8 @@ import {sendHerdrPrompt} from "./api/herdr";
 const SHELL_COMMAND_TEXT = /^!\s+\S/;
 
 /** Upstream `zR`: text that would run as a shell command, sent from a composer that can't run one. */
-export function isShellCommandText(text: string): boolean {
+export function isShellCommandText(text: string): boolean
+{
 	return SHELL_COMMAND_TEXT.test(text);
 }
 
@@ -13,7 +14,8 @@ export function isShellCommandText(text: string): boolean {
  * Upstream's refusal: feQzH0 for a local session without a runner (a local CLI session with no live pane),
  * AYbIPZ before any session exists.
  */
-export function shellCommandUnavailableMessage(variant: "session" | "home"): string {
+export function shellCommandUnavailableMessage(variant: "session" | "home"): string
+{
 	return variant === "home"
 		? "Start a local session first to run shell commands."
 		: "Shell command runner unavailable.";
@@ -29,10 +31,14 @@ const KEYCAP_FLAG = String.raw`\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3|\u
 const ZWJ_PART = String.raw`(?:${KEYCAP_FLAG}|(?!\p{Regional_Indicator})\p{Emoji_Presentation}\uFE0F?${SKIN_TONE}?|\p{Extended_Pictographic}(?:\uFE0F${SKIN_TONE}?|${SKIN_TONE}))`;
 const LONE_EMOJI = String.raw`(?:${KEYCAP_FLAG}|\p{Extended_Pictographic}[\uFE0E\uFE0F]?${SKIN_TONE}?)`;
 const EMOJI_SEQUENCE = new RegExp(String.raw`${ZWJ_PART}(?:\u200D${ZWJ_PART})+|${LONE_EMOJI}`, "gu");
-const RGI_ZWJ_SEQUENCE = ((): RegExp | null => {
-	try {
+const RGI_ZWJ_SEQUENCE = ((): RegExp | null =>
+{
+	try
+	{
 		return new RegExp(String.raw`^\p{RGI_Emoji_ZWJ_Sequence}$`, "v");
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 })();
@@ -42,7 +48,8 @@ const INVISIBLE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]|\p{Default_Ignorable
 const ODD_SPACE = /(?:[^\P{Zs} ]|[\u{2800}\u{fffc}\u{1d159}\u{13441}\u{13442}\u{16910}\u{16fe4}])/u;
 
 /** Upstream `D`: zero-width, bidi-control and look-alike space characters, newlines read as spaces and RGI emoji spared. */
-export function hasHiddenCharacters(text: string): boolean {
+export function hasHiddenCharacters(text: string): boolean
+{
 	const stripped = text
 		.replace(/\r?\n/g, " ")
 		.replace(EMOJI_SEQUENCE, (match) =>
@@ -51,7 +58,8 @@ export function hasHiddenCharacters(text: string): boolean {
 	return INVISIBLE.test(stripped) || ODD_SPACE.test(stripped);
 }
 
-interface RunShellCommandDependencies {
+interface RunShellCommandDependencies
+{
 	post?: (sessionId: string, prompt: string) => Promise<void>;
 	toast: (options: ToastOptions) => void;
 }
@@ -64,16 +72,22 @@ export async function runShellCommandInPane(
 	sessionId: string,
 	command: string,
 	{post = async (id, prompt) => sendHerdrPrompt(id, prompt), toast}: RunShellCommandDependencies,
-): Promise<boolean> {
-	try {
+): Promise<boolean>
+{
+	try
+	{
 		await post(sessionId, `!${command}`);
 		return true;
-	} catch (error) {
-		toast({
-			kind: "error",
-			message: "Couldn’t run the shell command",
-			description: error instanceof Error ? error.message : String(error),
-		});
+	}
+	catch (error)
+	{
+		toast(
+			{
+				kind: "error",
+				message: "Couldn’t run the shell command",
+				description: error instanceof Error ? error.message : String(error),
+			},
+		);
 		return false;
 	}
 }

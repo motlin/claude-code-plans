@@ -12,12 +12,14 @@ import {isArtifactCard, type ClientToolCall, type ToolRendererProps} from "./typ
 
 type ArtifactKind = ArtifactSummary["kind"];
 
-function basename(path: string): string {
+function basename(path: string): string
+{
 	return path.split("/").pop() ?? path;
 }
 
 /** Upstream's card label: the artifact's title, else its file's name, else its id. */
-function artifactLabel(artifact: ParsedArtifact, input: ClientToolCall["input"]): string {
+function artifactLabel(artifact: ParsedArtifact, input: ClientToolCall["input"]): string
+{
 	if (artifact.title !== undefined) return artifact.title;
 	const filePath = artifact.path ?? input["file_path"];
 	if (typeof filePath === "string" && filePath !== "") return basename(filePath);
@@ -25,7 +27,8 @@ function artifactLabel(artifact: ParsedArtifact, input: ClientToolCall["input"])
 }
 
 /** Whether the sandboxed source preview can show the local file a publish came from. */
-function previewableSource(artifact: ParsedArtifact, input: ClientToolCall["input"]): boolean {
+function previewableSource(artifact: ParsedArtifact, input: ClientToolCall["input"]): boolean
+{
 	const filePath = artifact.path ?? input["file_path"];
 	return typeof filePath === "string" && isPreviewableSourcePath(filePath);
 }
@@ -47,9 +50,15 @@ export function ArtifactCard({
 	previewHref: string | undefined;
 	/** The artifact's type kind, when it was made from a known type. */
 	typeKind?: ArtifactKind | undefined;
-}) {
-	const mark = resolveArtifactMark({typeKind});
-	const onKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) => {
+})
+{
+	const mark = resolveArtifactMark(
+		{
+			typeKind,
+		},
+	);
+	const onKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) =>
+	{
 		if (event.key !== " ") return;
 		event.preventDefault();
 		window.open(url, "_blank", "noopener,noreferrer");
@@ -95,15 +104,18 @@ export function ArtifactCard({
 }
 
 /** A publish's known type kind, from the type it was created from. */
-function publishTypeKind(input: ClientToolCall["input"]): ArtifactKind | undefined {
+function publishTypeKind(input: ClientToolCall["input"]): ArtifactKind | undefined
+{
 	const typeUrl = input["type_url"];
 	return typeof typeUrl === "string" && Object.hasOwn(ARTIFACT_TYPE_KINDS, typeUrl)
 		? ARTIFACT_TYPE_KINDS[typeUrl]
 		: undefined;
 }
 
-function ArtifactListBody({toolCall, artifacts}: {toolCall: ClientToolCall; artifacts: ArtifactListEntry[]}) {
-	const params = Object.entries(toolCall.input).map(([key, value]) => ({
+function ArtifactListBody({toolCall, artifacts}: {toolCall: ClientToolCall; artifacts: ArtifactListEntry[]})
+{
+	const params = Object.entries(toolCall.input).map(([key, value]) => (
+	{
 		key,
 		value: typeof value === "string" ? value : JSON.stringify(value),
 	}));
@@ -135,8 +147,10 @@ function ArtifactListBody({toolCall, artifacts}: {toolCall: ClientToolCall; arti
  * Artifact body: an "Open artifact" card for a publish or open, link rows for
  * a list, and the key/value body for every other action or a failure.
  */
-export function ArtifactRenderer({toolCall}: ToolRendererProps) {
-	if (isArtifactCard(toolCall) && toolCall.artifact !== undefined) {
+export function ArtifactRenderer({toolCall}: ToolRendererProps)
+{
+	if (isArtifactCard(toolCall) && toolCall.artifact !== undefined)
+	{
 		return (
 			<ArtifactCard
 				url={toolCall.artifact.url}
@@ -150,7 +164,8 @@ export function ArtifactRenderer({toolCall}: ToolRendererProps) {
 			/>
 		);
 	}
-	if (toolCall.artifactList !== undefined && !toolCall.isError) {
+	if (toolCall.artifactList !== undefined && !toolCall.isError)
+	{
 		return <ArtifactListBody toolCall={toolCall} artifacts={toolCall.artifactList} />;
 	}
 	return <FallbackRenderer toolCall={toolCall} />;

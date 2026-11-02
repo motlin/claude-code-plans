@@ -148,10 +148,12 @@
 			"exports": ["ratchet"],
 		},
 	],
-	"duplicates": {
+	"duplicates":
+	{
 		"minOccurrences": 3,
 	},
-	"rules": {
+	"rules":
+	{
 		"unused-dependencies": "error",
 		"unused-types": "error",
 		"unused-exports": "error",

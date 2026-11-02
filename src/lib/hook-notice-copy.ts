@@ -6,18 +6,22 @@ import {assertNever} from "./assert-never";
 import {capDetails} from "./hook-prompt-block";
 import type {HookNotice, HookNoticeMessage} from "./transcript";
 
-function plural(n: number, one: string, other: string): string {
+function plural(n: number, one: string, other: string): string
+{
 	return n === 1 ? `1 ${one}` : `${n} ${other}`;
 }
 
-export function hookNoticeText(message: HookNoticeMessage): string {
+export function hookNoticeText(message: HookNoticeMessage): string
+{
 	if (typeof message === "string") return message;
-	switch (message.notice) {
+	switch (message.notice)
+	{
 		case "away_summary":
 			return `Recap: ${message.recap}`;
 		case "agents_killed":
 			return "All background agents stopped";
-		case "memory_saved": {
+		case "memory_saved":
+		{
 			const parts: string[] = [];
 			if (message.count > 0) parts.push(plural(message.count, "memory", "memories"));
 			if (message.teamCount > 0) parts.push(plural(message.teamCount, "team memory", "team memories"));
@@ -40,7 +44,8 @@ export function hookNoticeText(message: HookNoticeMessage): string {
  * Whether a "Claude Code notice" line may roll up into the tool run before it (upstream
  * `eu["notice-without-warning-or-recap"]`): every notice is notice-level and none is a recap (`$l`).
  */
-export function foldsIntoToolRun(notices: readonly HookNotice[]): boolean {
+export function foldsIntoToolRun(notices: readonly HookNotice[]): boolean
+{
 	return notices.every(
 		(notice) =>
 			notice.level === "notice" &&

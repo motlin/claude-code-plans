@@ -4,17 +4,27 @@ import {createFileRoute} from "@tanstack/react-router";
 import {ConnectorDetailFrame} from "../components/customize/detail-frames";
 import {customizeMcpServerDetailQueryOptions} from "../lib/api/customize";
 
-export const Route = createFileRoute("/customize_/connectors/id/$serverId")({
-	component: ConnectorDetailPage,
-	loader: ({context: {queryClient}, params}) => {
-		void queryClient.query(customizeMcpServerDetailQueryOptions(params.serverId)).catch(noop);
+export const Route = createFileRoute("/customize_/connectors/id/$serverId")(
+	{
+		component: ConnectorDetailPage,
+		loader: ({context: {queryClient}, params}) =>
+		{
+			void queryClient.query(customizeMcpServerDetailQueryOptions(params.serverId)).catch(noop);
+		},
+		head: () => (
+		{
+			meta: [pageTitle("Connector · Customize")],
+		}),
+		staticData:
+		{
+			pageGutter: "tight",
+		},
 	},
-	head: () => ({meta: [pageTitle("Connector · Customize")]}),
-	staticData: {pageGutter: "tight"},
-});
+);
 
 /** Local MCP server detail: header, copyable URL or command, and tool permissions. */
-function ConnectorDetailPage() {
+function ConnectorDetailPage()
+{
 	const {serverId} = Route.useParams();
 	return (
 		<div className="flex w-full flex-col bg-surface-1 text-body text-primary">

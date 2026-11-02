@@ -29,7 +29,8 @@ export const NEVER_INSTALLED_HOOK_EVENTS: readonly HookEventName[] = ["WorktreeC
  * why. Together with `KNOWN_HOOK_EVENTS` this accounts for every event in the
  * hooks reference, so a new CLI event shows up as an unaccounted test failure.
  */
-export const DECLINED_HOOK_EVENTS = {
+export const DECLINED_HOOK_EVENTS =
+{
 	Setup: "Fires only for `claude --init` / `--maintenance` runs, before there is a session to show.",
 	UserPromptExpansion:
 		"UserPromptSubmit already carries the prompt a slash command or MCP prompt expanded to; no view needs the unexpanded command.",
@@ -53,7 +54,8 @@ export const HOOK_EVENT_NAMES: readonly HookEventName[] = KNOWN_HOOK_EVENTS.filt
 	(eventName) => !NEVER_INSTALLED_HOOK_EVENTS.includes(eventName),
 );
 
-export interface HookFeature {
+export interface HookFeature
+{
 	id: string;
 	label: string;
 	/** Events the feature does nothing without. */
@@ -85,18 +87,48 @@ export const HOOK_FEATURES: readonly HookFeature[] = [
 		required: ["PreToolUse", "PostToolUse", "PermissionRequest"],
 		optional: ["PermissionDenied"],
 	},
-	{id: "notifications", label: "Notifications", required: ["Notification"], optional: []},
+	{
+		id: "notifications",
+		label: "Notifications",
+		required: ["Notification"],
+		optional: [],
+	},
 	{
 		id: "terminalPanes",
 		label: "Mapping sessions to tmux and herdr panes",
 		required: ["SessionStart", "UserPromptSubmit"],
 		optional: [],
 	},
-	{id: "subagents", label: "Background agent tracking", required: ["SubagentStart", "SubagentStop"], optional: []},
-	{id: "compaction", label: "Compaction indicator", required: ["PreCompact", "PostCompact"], optional: []},
-	{id: "tasks", label: "Instant task updates", required: ["TaskCreated", "TaskCompleted"], optional: []},
-	{id: "streamingText", label: "Streaming assistant text", required: ["MessageDisplay"], optional: []},
-	{id: "modelSwitches", label: "Live model after a mid-session switch", required: ["PostModelSwitch"], optional: []},
+	{
+		id: "subagents",
+		label: "Background agent tracking",
+		required: ["SubagentStart", "SubagentStop"],
+		optional: [],
+	},
+	{
+		id: "compaction",
+		label: "Compaction indicator",
+		required: ["PreCompact", "PostCompact"],
+		optional: [],
+	},
+	{
+		id: "tasks",
+		label: "Instant task updates",
+		required: ["TaskCreated", "TaskCompleted"],
+		optional: [],
+	},
+	{
+		id: "streamingText",
+		label: "Streaming assistant text",
+		required: ["MessageDisplay"],
+		optional: [],
+	},
+	{
+		id: "modelSwitches",
+		label: "Live model after a mid-session switch",
+		required: ["PostModelSwitch"],
+		optional: [],
+	},
 	{
 		id: "mcpElicitations",
 		label: "MCP server input requests",
@@ -105,17 +137,20 @@ export const HOOK_FEATURES: readonly HookFeature[] = [
 	},
 ];
 
-interface HookEntry {
+interface HookEntry
+{
 	type: "command";
 	command: string;
 }
 
-interface HookMatcher {
+interface HookMatcher
+{
 	matcher?: string;
 	hooks: HookEntry[];
 }
 
-interface HooksConfig {
+interface HooksConfig
+{
 	hooks: Record<string, HookMatcher[]>;
 }
 
@@ -147,30 +182,35 @@ const FORWARDED_ENV_NAMES = [
 
 export const HOOK_PAYLOAD_JQ_FILTER = `. + {claude_env: ($ENV | with_entries(select(.key | startswith("CLAUDE")${FORWARDED_ENV_NAMES.map((name) => ` or . == "${name}"`).join("")})))}`;
 
-function curlPost(port: number): string {
+function curlPost(port: number): string
+{
 	// --connect-timeout 0.1 + `|| true` guarantee the hook never blocks Claude:
 	// if the viewer isn't running the curl returns immediately and the shell
 	// exits 0 regardless.
 	return `jq -c '${HOOK_PAYLOAD_JQ_FILTER}' | curl -sX POST --connect-timeout 0.1 http://localhost:${port}/api/hook -H 'Content-Type: application/json' --data-binary @- >/dev/null 2>&1 || true`;
 }
 
-function curlContextBrief(port: number): string {
+function curlContextBrief(port: number): string
+{
 	// This response must reach hook stdout because Claude injects it as session
 	// context. URL encoding preserves cwd paths containing spaces or punctuation.
 	return `curl -s --get --connect-timeout 0.5 --data-urlencode "cwd=$(pwd)" "http://localhost:${port}/api/context-brief" 2>/dev/null || true`;
 }
 
-interface GenerateOptions {
+interface GenerateOptions
+{
 	port?: number;
 	includeContextBrief?: boolean;
 }
 
-export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
+export function generateHooksConfig(options?: GenerateOptions): HooksConfig
+{
 	const port = options?.port ?? DEFAULT_HOOK_PORT;
 	const hooks: Record<string, HookMatcher[]> = {};
 	const command = curlPost(port);
 
-	for (const eventName of HOOK_EVENT_NAMES) {
+	for (const eventName of HOOK_EVENT_NAMES)
+	{
 		hooks[eventName] = [
 			{
 				hooks: [
@@ -183,34 +223,43 @@ export function generateHooksConfig(options?: GenerateOptions): HooksConfig {
 		];
 	}
 
-	if (options?.includeContextBrief === true) {
+	if (options?.includeContextBrief === true)
+	{
 		const sessionStartHooks = hooks["SessionStart"];
-		if (!sessionStartHooks) {
+		if (!sessionStartHooks)
+		{
 			throw new Error("SessionStart must be a known hook event");
 		}
-		sessionStartHooks.push({
-			matcher: "startup|resume",
-			hooks: [
-				{
-					type: "command",
-					command: curlContextBrief(port),
-				},
-			],
-		});
+		sessionStartHooks.push(
+			{
+				matcher: "startup|resume",
+				hooks: [
+					{
+						type: "command",
+						command: curlContextBrief(port),
+					},
+				],
+			},
+		);
 	}
 
-	return {hooks};
+	return {
+		hooks,
+	};
 }
 
 type InstallState = "current" | "outdated" | "missing";
 
 /** The `command` strings of every hook under one event of a written settings.json. */
-function installedCommands(entries: unknown): string[] {
+function installedCommands(entries: unknown): string[]
+{
 	if (!Array.isArray(entries)) return [];
-	return entries.flatMap((entry: unknown) => {
+	return entries.flatMap((entry: unknown) =>
+	{
 		const hooks = asRecord(entry)?.["hooks"];
 		if (!Array.isArray(hooks)) return [];
-		return hooks.flatMap((hook: unknown) => {
+		return hooks.flatMap((hook: unknown) =>
+		{
 			const command = asRecord(hook)?.["command"];
 			return typeof command === "string" ? [command] : [];
 		});
@@ -218,7 +267,8 @@ function installedCommands(entries: unknown): string[] {
 }
 
 /** A command this helper wrote, on any port: the forwarder or the context brief. */
-function isManagedCommand(command: string): boolean {
+function isManagedCommand(command: string): boolean
+{
 	return /http:\/\/localhost:\d+\/api\/(hook|context-brief)(?![\w/-])/.test(command);
 }
 
@@ -230,22 +280,33 @@ const FORWARDER_PORT = /http:\/\/localhost:(\d+)\/api\/hook(?![\w/-])/;
  * Matchers left with no hooks are dropped; entries that are not matcher
  * objects pass through untouched.
  */
-export function removeManagedHooks(entries: readonly unknown[]): unknown[] {
-	return entries.flatMap((entry) => {
+export function removeManagedHooks(entries: readonly unknown[]): unknown[]
+{
+	return entries.flatMap((entry) =>
+	{
 		const record = asRecord(entry);
 		const hooks = record?.["hooks"];
 		if (record === undefined || !Array.isArray(hooks)) return [entry];
-		const kept = hooks.filter((hook: unknown) => {
+		const kept = hooks.filter((hook: unknown) =>
+		{
 			const command = asRecord(hook)?.["command"];
 			return typeof command !== "string" || !isManagedCommand(command);
 		});
 		if (kept.length === hooks.length) return [entry];
-		return kept.length === 0 ? [] : [{...record, hooks: kept}];
+		return kept.length === 0
+			? []
+			: [
+					{
+						...record,
+						hooks: kept,
+					},
+				];
 	});
 }
 
 /** Why an installed forwarder differs from the one this build generates. */
-function outdatedReasons(command: string, port: number): string[] {
+function outdatedReasons(command: string, port: number): string[]
+{
 	const reasons: string[] = [];
 	const installedPort = Number(FORWARDER_PORT.exec(command)?.[1]);
 	if (installedPort !== port) reasons.push(`posts to port ${installedPort}, not ${port}`);
@@ -254,7 +315,8 @@ function outdatedReasons(command: string, port: number): string[] {
 	return reasons.length > 0 ? reasons : ["differs from the command this server now generates"];
 }
 
-export interface HookEventStatus {
+export interface HookEventStatus
+{
 	event: HookEventName;
 	/**
 	 * `current` when a matcher carries the exact command we would generate,
@@ -268,24 +330,42 @@ export interface HookEventStatus {
 	foreignCommands: string[];
 }
 
-function eventStatuses(installed: Record<string, unknown> | undefined, options?: GenerateOptions): HookEventStatus[] {
+function eventStatuses(installed: Record<string, unknown> | undefined, options?: GenerateOptions): HookEventStatus[]
+{
 	const port = options?.port ?? DEFAULT_HOOK_PORT;
 	const desired = generateHooksConfig(options);
-	return HOOK_EVENT_NAMES.map((eventName) => {
+	return HOOK_EVENT_NAMES.map((eventName) =>
+	{
 		const desiredCommand = desired.hooks[eventName]?.[0]?.hooks[0]?.command;
 		const commands = installedCommands(installed?.[eventName]);
 		const foreignCommands = commands.filter((command) => !isManagedCommand(command));
 		const forwarder = commands.find((command) => FORWARDER_PORT.test(command));
 		if (commands.includes(desiredCommand ?? ""))
-			return {event: eventName, state: "current", reasons: [], foreignCommands};
+			return {
+				event: eventName,
+				state: "current",
+				reasons: [],
+				foreignCommands,
+			};
 		if (forwarder !== undefined)
-			return {event: eventName, state: "outdated", reasons: outdatedReasons(forwarder, port), foreignCommands};
-		return {event: eventName, state: "missing", reasons: [], foreignCommands};
+			return {
+				event: eventName,
+				state: "outdated",
+				reasons: outdatedReasons(forwarder, port),
+				foreignCommands,
+			};
+		return {
+			event: eventName,
+			state: "missing",
+			reasons: [],
+			foreignCommands,
+		};
 	});
 }
 
 /** True when one of an event's commands is a forwarder posting to `port`, current or not. */
-function forwardsTo(entries: unknown, port: number): boolean {
+function forwardsTo(entries: unknown, port: number): boolean
+{
 	return installedCommands(entries).some((command) => Number(FORWARDER_PORT.exec(command)?.[1]) === port);
 }
 
@@ -302,13 +382,15 @@ function forwardsTo(entries: unknown, port: number): boolean {
 export function missingHookEvents(
 	installed: Record<string, unknown> | undefined,
 	options?: GenerateOptions,
-): HookEventName[] {
+): HookEventName[]
+{
 	return eventStatuses(installed, options)
 		.filter((status) => status.state === "missing")
 		.map((status) => status.event);
 }
 
-export interface HookFeatureStatus {
+export interface HookFeatureStatus
+{
 	id: string;
 	label: string;
 	/** `on` with every event delivering, `partial` when only optional ones are not, `off` otherwise. */
@@ -317,7 +399,8 @@ export interface HookFeatureStatus {
 	missingOptional: HookEventName[];
 }
 
-export interface HookInstallStatus {
+export interface HookInstallStatus
+{
 	/** Every event carries the exact command this build generates, and none is stray. */
 	installed: boolean;
 	/** Some events are absent while others are present (current or outdated). */
@@ -338,7 +421,8 @@ export interface HookInstallStatus {
 export function hookInstallStatus(
 	installed: Record<string, unknown> | undefined,
 	options?: GenerateOptions,
-): HookInstallStatus {
+): HookInstallStatus
+{
 	const port = options?.port ?? DEFAULT_HOOK_PORT;
 	const events = eventStatuses(installed, options);
 	const namesIn = (wanted: InstallState) =>
@@ -349,11 +433,18 @@ export function hookInstallStatus(
 		installedCommands(installed?.[eventName]).some(isManagedCommand),
 	);
 	const delivering = new Set(HOOK_EVENT_NAMES.filter((eventName) => forwardsTo(installed?.[eventName], port)));
-	const features = HOOK_FEATURES.map((feature): HookFeatureStatus => {
+	const features = HOOK_FEATURES.map((feature): HookFeatureStatus =>
+	{
 		const missingRequired = feature.required.filter((eventName) => !delivering.has(eventName));
 		const missingOptional = feature.optional.filter((eventName) => !delivering.has(eventName));
 		const state = missingRequired.length > 0 ? "off" : missingOptional.length > 0 ? "partial" : "on";
-		return {id: feature.id, label: feature.label, state, missingRequired, missingOptional};
+		return {
+			id: feature.id,
+			label: feature.label,
+			state,
+			missingRequired,
+			missingOptional,
+		};
 	});
 	const installedCount = HOOK_EVENT_NAMES.length - missingEvents.length;
 	return {
@@ -373,6 +464,7 @@ export function hookInstallStatus(
  * Return a pretty-printed JSON string of just the hooks block,
  * suitable for copying into ~/.claude/settings.json.
  */
-export function generateHooksJson(options?: GenerateOptions): string {
+export function generateHooksJson(options?: GenerateOptions): string
+{
 	return JSON.stringify(generateHooksConfig(options), null, 2);
 }

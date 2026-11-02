@@ -12,7 +12,8 @@ import {useLiveApprovalIds} from "../../lib/live-approval-sessions";
 import {closeDragPinHint} from "../../lib/drag-pin-hint";
 import {readPinState, unpin, usePins, writePinState} from "../../lib/pin-store";
 import {dropOutcome, placePin, splitPinned, type SplitPinned} from "../../lib/pinned-sessions";
-import {
+import
+{
 	groupDropOutcome,
 	groupHeaderZoneId,
 	groupListId,
@@ -24,7 +25,8 @@ import {
 	UNGROUP_ZONE,
 	UNGROUPED_SECTION_ZONE,
 } from "../../lib/group-drop";
-import {
+import
+{
 	buildSidebarSections,
 	customGroupIdOfKey,
 	DEFAULT_SESSION_LIST_PREFS,
@@ -39,14 +41,16 @@ import {
 	shouldLoadNextPage,
 } from "../../lib/session-groups";
 import {assign, readSessionGroupState, setGroupOrder, useSessionGroups} from "../../lib/session-group-store";
-import {
+import
+{
 	moveSidebarSection,
 	readSidebarSections,
 	type SidebarSection,
 	useSidebarSections,
 } from "../../lib/sidebar-sections";
 import {slotToIndex} from "../../lib/sidebar-drag";
-import {
+import
+{
 	EMPTY_SELECTION,
 	selectionClickKind,
 	sidebarSelectionReducer,
@@ -84,22 +88,33 @@ export function SessionGroups({
 	/** Recents' Group and sort: at the end of each of its group headers, or of the empty-list header. */
 	filterSlot?: ReactNode;
 	prefs?: SessionListPrefs;
-}) {
-	const {data, hasNextPage, isFetchingNextPage, fetchNextPage, isError, refetch} = useInfiniteQuery({
-		...recentSessionsInfiniteQueryOptions(undefined, prefs.statusFilter),
-		// Keep the current rows (and the filter button) up while a new Status loads.
-		placeholderData: keepPreviousData,
-	});
+})
+{
+	const {data, hasNextPage, isFetchingNextPage, fetchNextPage, isError, refetch} = useInfiniteQuery(
+		{
+			...recentSessionsInfiniteQueryOptions(undefined, prefs.statusFilter),
+			// Keep the current rows (and the filter button) up while a new Status loads.
+			placeholderData: keepPreviousData,
+		},
+	);
 	const {collapsedGroups, collapsedFamilies} = useSidebarState();
 	const [selection, dispatchSelection] = useReducer(sidebarSelectionReducer, EMPTY_SELECTION);
 	const hasSelection = selection.ids.length > 0;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!hasSelection) return undefined;
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") dispatchSelection({type: "clear"});
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
+			if (event.key === "Escape")
+				dispatchSelection(
+					{
+						type: "clear",
+					},
+				);
 		};
 		window.addEventListener("keydown", onKeyDown);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("keydown", onKeyDown);
 		};
 	}, [hasSelection]);
@@ -114,7 +129,8 @@ export function SessionGroups({
 	// A row marked completed in this browser draws idle until new activity, as upstream's acked row does.
 	const ackVersion = useAwaitingAckVersion();
 	const liveApprovalIds = useLiveApprovalIds();
-	const split = useMemo(() => {
+	const split = useMemo(() =>
+	{
 		if (data === undefined) return undefined;
 		const rows = data.pages.flatMap((page) =>
 			page.sessions.map((session) =>
@@ -126,7 +142,14 @@ export function SessionGroups({
 				),
 			),
 		);
-		return splitPinned(rows, {pinnedIds, pinnedOrder}, sessionRowComparator(prefs.sortBy, prefs.sortDirection));
+		return splitPinned(
+			rows,
+			{
+				pinnedIds,
+				pinnedOrder,
+			},
+			sessionRowComparator(prefs.sortBy, prefs.sortDirection),
+		);
 		// ackVersion re-runs the memo when an ack changes; ackedAt reads the store.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [data, answeredIds, ackVersion, liveApprovalIds, prefs.sortBy, prefs.sortDirection, pinnedIds, pinnedOrder]);
@@ -134,7 +157,8 @@ export function SessionGroups({
 	const toast = useToast();
 	const {settings, setSetting} = useSettings();
 	// The first successful drag pin retires the one-time "drag to pin" tip.
-	const markDragPinHintSeen = () => {
+	const markDragPinHintSeen = () =>
+	{
 		closeDragPinHint();
 		if (!settings.seenDragPinHint) setSetting("seenDragPinHint", true);
 	};
@@ -142,25 +166,35 @@ export function SessionGroups({
 	latestSplit.current = split;
 	const latestManual = useRef<ManualSectionGroups<SidebarSessionRow>[]>([]);
 	const recentsRef = useRef<HTMLDivElement>(null);
-	const {drag, rowProps, listRef, zoneRef} = useSidebarDrag({
-		onDrop: (drop) => {
-			const sectionGroupId = sectionOfDragId(drop.srcId);
-			if (sectionGroupId !== null) {
-				applySectionDrop(sectionGroupId, drop);
-				return;
-			}
-			const selected = latestSelected.current;
-			if (selected.length > 1 && selected.includes(drop.srcId)) {
-				if (applyMultiGroupDrop(selected, drop, latestManual.current, latestSplit.current)) {
-					dispatchSelection({type: "clear"});
+	const {drag, rowProps, listRef, zoneRef} = useSidebarDrag(
+		{
+			onDrop: (drop) =>
+			{
+				const sectionGroupId = sectionOfDragId(drop.srcId);
+				if (sectionGroupId !== null)
+				{
+					applySectionDrop(sectionGroupId, drop);
+					return;
 				}
-				return;
-			}
-			if (applyGroupDrop(drop, latestManual.current, latestSplit.current)) return;
-			applyPinDrop(drop, () => latestSplit.current, toast, markDragPinHintSeen);
+				const selected = latestSelected.current;
+				if (selected.length > 1 && selected.includes(drop.srcId))
+				{
+					if (applyMultiGroupDrop(selected, drop, latestManual.current, latestSplit.current))
+					{
+						dispatchSelection(
+							{
+								type: "clear",
+							},
+						);
+					}
+					return;
+				}
+				if (applyGroupDrop(drop, latestManual.current, latestSplit.current)) return;
+				applyPinDrop(drop, () => latestSplit.current, toast, markDragPinHintSeen);
+			},
+			getScrollContainer: () => recentsRef.current?.closest("[data-testid=nav-scroll]") ?? null,
 		},
-		getScrollContainer: () => recentsRef.current?.closest("[data-testid=nav-scroll]") ?? null,
-	});
+	);
 
 	const {assignments, order} = useSessionGroups();
 	const sections = useSidebarSections();
@@ -169,11 +203,17 @@ export function SessionGroups({
 		() =>
 			split === undefined
 				? undefined
-				: buildSidebarSections(split.rest, prefs, Date.now(), revealed, {
-						sections: manualSections,
-						assignments,
-						order,
-					}),
+				: buildSidebarSections(
+						split.rest,
+						prefs,
+						Date.now(),
+						revealed,
+						{
+							sections: manualSections,
+							assignments,
+							order,
+						},
+					),
 		[split, prefs, revealed, manualSections, assignments, order],
 	);
 	const groups = built?.sessions;
@@ -184,28 +224,40 @@ export function SessionGroups({
 		hasNextPage && !isFetchingNextPage && shouldLoadNextPage(visibleGroups, loadedRows, prefs, Date.now());
 	const loadOnScroll = groups !== undefined && canLoadNextPage(groups);
 	const listEndRef = useRef<HTMLDivElement>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const end = listEndRef.current;
 		if (!loadOnScroll || end === null || typeof IntersectionObserver === "undefined") return undefined;
 		const observer = new IntersectionObserver(
-			(entries) => {
+			(entries) =>
+			{
 				if (entries.some((entry) => entry.isIntersecting)) void fetchNextPage();
 			},
-			{root: end.closest("[data-testid=nav-scroll]"), rootMargin: "200px"},
+			{
+				root: end.closest("[data-testid=nav-scroll]"),
+				rootMargin: "200px",
+			},
 		);
 		observer.observe(end);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [loadOnScroll, fetchNextPage]);
 
-	if (split === undefined || built === undefined || groups === undefined) {
-		if (isError) {
+	if (split === undefined || built === undefined || groups === undefined)
+	{
+		if (isError)
+		{
 			return (
 				<EmptyGroupSection
 					label={EMPTY_LIST_GROUP_LABELS[prefs.groupBy]}
 					filterSlot={filterSlot}
-					reason={{kind: "failed", onRetry: () => void refetch()}}
+					reason={
+					{
+						kind: "failed",
+						onRetry: () => void refetch(),
+					}}
 				/>
 			);
 		}
@@ -225,29 +277,59 @@ export function SessionGroups({
 	const displayOrder = displayedRowIds(split, manual, groups, collapsed, new Set(collapsedFamilies));
 	const selectedIds = visibleSelection(selection, displayOrder);
 	latestSelected.current = selectedIds;
-	const selectionApi: SidebarSelectionApi = {
+	const selectionApi: SidebarSelectionApi =
+	{
 		selectedIds,
 		sessions: new Map(
 			[...split.pinned, ...split.rest].map((row): [string, SessionListItem] => [row.id, row.session]),
 		),
-		onRowClick: (id, modifiers) => {
+		onRowClick: (id, modifiers) =>
+		{
 			const kind = selectionClickKind(modifiers);
-			if (kind === "plain") {
-				dispatchSelection({type: "clear"});
+			if (kind === "plain")
+			{
+				dispatchSelection(
+					{
+						type: "clear",
+					},
+				);
 				return false;
 			}
 			dispatchSelection(
 				kind === "toggle"
-					? {type: "toggle", id, order: displayOrder}
-					: {type: "extend", id, order: displayOrder, focusedId: activeItemId},
+					?
+						{
+							type: "toggle",
+							id,
+							order: displayOrder,
+						}
+					:
+						{
+							type: "extend",
+							id,
+							order: displayOrder,
+							focusedId: activeItemId,
+						},
 			);
 			return true;
 		},
-		selectAll: (ids) => {
-			dispatchSelection({type: "add", ids, order: displayOrder});
+		selectAll: (ids) =>
+		{
+			dispatchSelection(
+				{
+					type: "add",
+					ids,
+					order: displayOrder,
+				},
+			);
 		},
-		clear: () => {
-			dispatchSelection({type: "clear"});
+		clear: () =>
+		{
+			dispatchSelection(
+				{
+					type: "clear",
+				},
+			);
 		},
 	};
 	const sectionDrag = drag !== null && sectionOfDragId(drag.srcId) !== null;
@@ -286,11 +368,23 @@ export function SessionGroups({
 		(data?.pages.every((page) => page.sessions.length === 0) ?? false) &&
 		prefs.statusFilter === DEFAULT_SESSION_LIST_PREFS.statusFilter &&
 		prefs.activityDays === DEFAULT_SESSION_LIST_PREFS.activityDays
-			? {kind: "none"}
-			: {
+			?
+				{
+					kind: "none",
+				}
+			:
+				{
 					kind: "filtered",
-					onShowAll: () => {
-						setSetting("sessionListPrefs", {...prefs, statusFilter: "all", activityDays: "all"});
+					onShowAll: () =>
+					{
+						setSetting(
+							"sessionListPrefs",
+							{
+								...prefs,
+								statusFilter: "all",
+								activityDays: "all",
+							},
+						);
 					},
 				};
 	return (
@@ -304,11 +398,18 @@ export function SessionGroups({
 					dragging={rowDrag && !multiDrag}
 					dropRowHot={drag?.target?.type === "zone" && drag.target.zoneId === PIN_DROP_ZONE}
 					// A multi-row drag cannot pin, so Pinned is no drop target while one is under way.
-					{...(multiDrag ? {} : {listRef: listRef(PINNED_LIST), dropRowRef: zoneRef(PIN_DROP_ZONE)})}
+					{...(multiDrag
+						? {}
+						:
+							{
+								listRef: listRef(PINNED_LIST),
+								dropRowRef: zoneRef(PIN_DROP_ZONE),
+							})}
 					dragRowProps={rowProps}
 				/>
 				<div data-testid="sidebar-sections" className="df-sortable-section contents" data-gap-after="">
-					{manual.map((section) => {
+					{manual.map((section) =>
+					{
 						const view = sectionById.get(section.id);
 						const groupId = section.id;
 						return (
@@ -318,7 +419,12 @@ export function SessionGroups({
 								groupBy={prefs.groupBy}
 								subgroups={section.subgroups}
 								collapsedKeys={collapsed}
-								{...(view === undefined ? {} : {showMetadata: view.show.metadata})}
+								{...(view === undefined
+									? {}
+									:
+										{
+											showMetadata: view.show.metadata,
+										})}
 								expanded={!collapsed.has(section.group.key)}
 								activeItemId={activeItemId}
 								filterSlot={
@@ -326,8 +432,12 @@ export function SessionGroups({
 										<SectionViewMenu section={view} statusFilter={prefs.statusFilter} />
 									)
 								}
-								onShowMore={() => {}}
-								onShowLess={() => {}}
+								onShowMore={() =>
+								{
+								}}
+								onShowLess={() =>
+								{
+								}}
 								dragRowProps={rowProps}
 								familyHeadIds={familyHeadIds}
 								sectionKeys={sectionKeys}
@@ -337,14 +447,18 @@ export function SessionGroups({
 								// Inner date or status headings reorder the rows, so slots only make sense in a flat section.
 								{...(sectionDrag || section.subgroups !== null
 									? {}
-									: {rowsRef: listRef(groupListId(groupId))})}
+									:
+										{
+											rowsRef: listRef(groupListId(groupId)),
+										})}
 							/>
 						);
 					})}
 					{ungroupRow}
 				</div>
 				<div
-					ref={(element) => {
+					ref={(element) =>
+					{
 						recentsRef.current = element;
 						zoneRef(UNGROUPED_SECTION_ZONE)(element);
 					}}
@@ -361,21 +475,29 @@ export function SessionGroups({
 							expanded={!collapsed.has(group.key)}
 							activeItemId={activeItemId}
 							filterSlot={filterSlot}
-							onShowMore={() => {
-								setRevealed((previous) => ({
+							onShowMore={() =>
+							{
+								setRevealed((previous) => (
+								{
 									...previous,
 									[group.key]: (previous[group.key] ?? 0) + 1,
 								}));
 								if (
 									group.hiddenCount <= GROUP_PAGE_SIZE &&
 									canLoadNextPage(groups.filter((other) => other.key !== group.key))
-								) {
+								)
+								{
 									setLoadingKey(group.key);
 									void fetchNextPage();
 								}
 							}}
-							onShowLess={() => {
-								setRevealed((previous) => ({...previous, [group.key]: 0}));
+							onShowLess={() =>
+							{
+								setRevealed((previous) => (
+								{
+									...previous,
+									[group.key]: 0,
+								}));
 							}}
 							loadingMore={isFetchingNextPage && loadingKey === group.key}
 							dragRowProps={rowProps}
@@ -410,9 +532,11 @@ function displayedRowIds(
 	groups: readonly SessionGroup<SidebarSessionRow>[],
 	collapsed: ReadonlySet<string>,
 	collapsedFamilies: ReadonlySet<string>,
-): string[] {
+): string[]
+{
 	const pinned = collapsed.has(PINNED_GROUP_KEY) ? [] : split.pinned.map((row) => row.id);
-	const manualGroups = manual.flatMap((section) => {
+	const manualGroups = manual.flatMap((section) =>
+	{
 		if (collapsed.has(section.group.key)) return [];
 		return section.subgroups ?? [section.group];
 	});
@@ -430,10 +554,17 @@ function displayedRowIds(
 }
 
 /** Move a dragged manual section header to the manual section it was dropped on. */
-function applySectionDrop(groupId: string, {target}: SidebarDrop): void {
+function applySectionDrop(groupId: string, {target}: SidebarDrop): void
+{
 	const sections = readSidebarSections();
 	const manual = sections.filter((section) => section.kind === "manual");
-	const outcome = sectionDropOutcome({groupId, target, groupIds: manual.map((section) => section.id)});
+	const outcome = sectionDropOutcome(
+		{
+			groupId,
+			target,
+			groupIds: manual.map((section) => section.id),
+		},
+	);
 	const onto = outcome === null ? undefined : manual[outcome.toIndex];
 	if (outcome !== null && onto !== undefined) moveSidebarSection(outcome.groupId, sections.indexOf(onto));
 }
@@ -441,14 +572,20 @@ function applySectionDrop(groupId: string, {target}: SidebarDrop): void {
 /** Each manual section's displayed rows in DOM order, families included. */
 function groupLists(
 	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
-): Record<string, GroupDropGeometry["lists"][string]> {
+): Record<string, GroupDropGeometry["lists"][string]>
+{
 	const lists: Record<string, GroupDropGeometry["lists"][string]> = {};
-	for (const {group} of manual) {
+	for (const {group} of manual)
+	{
 		const groupId = customGroupIdOfKey(group.key);
 		if (groupId === null) continue;
 		lists[groupId] = group.rows.flatMap((row) => [
-			{id: row.sessionId, nested: false},
-			...(group.nested.get(row.sessionId) ?? []).map((child) => ({
+			{
+				id: row.sessionId,
+				nested: false,
+			},
+			...(group.nested.get(row.sessionId) ?? []).map((child) => (
+			{
 				id: child.sessionId,
 				nested: true,
 			})),
@@ -467,23 +604,28 @@ function applyMultiGroupDrop(
 	{target}: SidebarDrop,
 	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
 	split: SplitPinned<SidebarSessionRow> | undefined,
-): boolean {
+): boolean
+{
 	const lists = groupLists(manual);
 	const {assignments} = readSessionGroupState();
-	const outcome = multiGroupDropOutcome({
-		srcIds,
-		srcGroupIds: srcIds.map((id) => assignments[id] ?? null),
-		target,
-		lists,
-	});
+	const outcome = multiGroupDropOutcome(
+		{
+			srcIds,
+			srcGroupIds: srcIds.map((id) => assignments[id] ?? null),
+			target,
+			lists,
+		},
+	);
 	if (outcome === null) return false;
 	const pinned = new Set(split?.pinned.map((row) => row.id));
 	for (const id of srcIds) if (pinned.has(id)) unpin(id);
-	switch (outcome.type) {
+	switch (outcome.type)
+	{
 		case "ungroup":
 			for (const id of srcIds) assign(id, null);
 			return true;
-		case "group": {
+		case "group":
+		{
 			const selected = new Set(srcIds);
 			setGroupOrder(
 				outcome.groupId,
@@ -491,7 +633,14 @@ function applyMultiGroupDrop(
 					.filter((row) => !row.nested && !selected.has(row.id))
 					.map((row) => row.id),
 			);
-			for (const id of srcIds) assign(id, outcome.groupId, {before: outcome.before});
+			for (const id of srcIds)
+				assign(
+					id,
+					outcome.groupId,
+					{
+						before: outcome.before,
+					},
+				);
 			return true;
 		}
 		default:
@@ -508,22 +657,38 @@ function applyGroupDrop(
 	{srcId, target}: SidebarDrop,
 	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
 	split: SplitPinned<SidebarSessionRow> | undefined,
-): boolean {
+): boolean
+{
 	const lists = groupLists(manual);
 	const srcGroupId = readSessionGroupState().assignments[srcId] ?? null;
-	const outcome = groupDropOutcome({srcId, srcGroupId, target, lists});
+	const outcome = groupDropOutcome(
+		{
+			srcId,
+			srcGroupId,
+			target,
+			lists,
+		},
+	);
 	if (outcome === null) return false;
 	if (split?.pinned.some((row) => row.id === srcId) === true) unpin(srcId);
-	switch (outcome.type) {
+	switch (outcome.type)
+	{
 		case "ungroup":
 			assign(srcId, null);
 			return true;
-		case "group": {
+		case "group":
+		{
 			const displayed = (lists[outcome.groupId] ?? [])
 				.filter((row) => !row.nested && row.id !== srcId)
 				.map((row) => row.id);
 			setGroupOrder(outcome.groupId, displayed);
-			assign(srcId, outcome.groupId, {before: outcome.before});
+			assign(
+				srcId,
+				outcome.groupId,
+				{
+					before: outcome.before,
+				},
+			);
 			return true;
 		}
 		default:
@@ -537,7 +702,8 @@ function applyPinDrop(
 	getSplit: () => SplitPinned<SidebarSessionRow> | undefined,
 	toast: ReturnType<typeof useToast>,
 	onPin: () => void,
-): void {
+): void
+{
 	const split = getSplit();
 	if (split === undefined) return;
 	const displayed = split.pinned.map((row) => row.id);
@@ -546,40 +712,49 @@ function applyPinDrop(
 	if (target.type === "slot" && target.listId === PINNED_LIST) slot = target.slot;
 	if (target.type === "zone" && target.zoneId === PIN_DROP_ZONE) slot = displayed.length;
 	// Every target outside Pinned (the recents zone, a custom group section) is below it.
-	const outcome = dropOutcome({
-		srcPinned: srcIdx !== -1,
-		slot,
-		belowPinnedBottom:
-			!(target.type === "slot" && target.listId === PINNED_LIST) &&
-			!(target.type === "zone" && target.zoneId === PIN_DROP_ZONE),
-	});
-	switch (outcome) {
+	const outcome = dropOutcome(
+		{
+			srcPinned: srcIdx !== -1,
+			slot,
+			belowPinnedBottom:
+				!(target.type === "slot" && target.listId === PINNED_LIST) &&
+				!(target.type === "zone" && target.zoneId === PIN_DROP_ZONE),
+		},
+	);
+	switch (outcome)
+	{
 		case "pin":
-		case "reorder": {
+		case "reorder":
+		{
 			if (slot === null) return;
 			const index = slotToIndex(slot, srcIdx === -1 ? null : srcIdx);
 			writePinState(placePin(readPinState(), displayed, srcId, index));
 			if (outcome === "pin") onPin();
 			return;
 		}
-		case "unpin": {
+		case "unpin":
+		{
 			const title = split.pinned[srcIdx]?.title ?? srcId;
 			unpin(srcId);
-			toast({
-				kind: "success",
-				message: `Unpinned ${title}`,
-				action: {
-					label: "Undo",
-					onAction: () => {
-						const pins = readPinState();
-						const now = getSplit();
-						if (pins.pinnedIds.includes(srcId) || now === undefined) return;
-						if (!now.rest.some((row) => row.id === srcId)) return;
-						const pinnedNow = now.pinned.map((row) => row.id);
-						writePinState(placePin(pins, pinnedNow, srcId, srcIdx));
+			toast(
+				{
+					kind: "success",
+					message: `Unpinned ${title}`,
+					action:
+					{
+						label: "Undo",
+						onAction: () =>
+						{
+							const pins = readPinState();
+							const now = getSplit();
+							if (pins.pinnedIds.includes(srcId) || now === undefined) return;
+							if (!now.rest.some((row) => row.id === srcId)) return;
+							const pinnedNow = now.pinned.map((row) => row.id);
+							writePinState(placePin(pins, pinnedNow, srcId, srcIdx));
+						},
 					},
 				},
-			});
+			);
 			return;
 		}
 		case "cancel":
@@ -590,7 +765,8 @@ function applyPinDrop(
 }
 
 /** The drop row shown under the manual sections while a row in one is dragged (upstream `dragRemove`). */
-function UngroupDropRow({ref, hot, label}: {ref: (element: HTMLElement | null) => void; hot: boolean; label: string}) {
+function UngroupDropRow({ref, hot, label}: {ref: (element: HTMLElement | null) => void; hot: boolean; label: string})
+{
 	return (
 		<div
 			ref={ref}

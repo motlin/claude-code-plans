@@ -4,14 +4,16 @@ import {filterIndexedSessions, linkHerdrPanes, type IndexedSessionFilter} from "
 import {terminalHostLabel} from "./session-environment";
 import {tmuxPaneTable, type TmuxPaneTable} from "./tmux/pane-table";
 
-export interface SessionTerminalHostSources {
+export interface SessionTerminalHostSources
+{
 	herdr: HerdrPaneReader;
 	tmux: Pick<TmuxPaneTable, "current">;
 	entries: () => ActiveSessionEntry[];
 	indexedSessionFilter: IndexedSessionFilter;
 }
 
-const defaultSources: SessionTerminalHostSources = {
+const defaultSources: SessionTerminalHostSources =
+{
 	herdr: herdrPaneTable,
 	tmux: tmuxPaneTable,
 	entries: getActiveSessionEntries,
@@ -27,19 +29,29 @@ const defaultSources: SessionTerminalHostSources = {
  */
 export function getSessionTerminalHosts(
 	sources: SessionTerminalHostSources = defaultSources,
-): ReadonlyMap<string, string> {
+): ReadonlyMap<string, string>
+{
 	const labels = new Map<string, string>();
 	const herdr = sources.herdr.current();
-	if (herdr !== null) {
-		for (const link of linkHerdrPanes(herdr, sources.entries(), sources.indexedSessionFilter)) {
+	if (herdr !== null)
+	{
+		for (const link of linkHerdrPanes(herdr, sources.entries(), sources.indexedSessionFilter))
+		{
 			if (!labels.has(link.sessionId)) labels.set(link.sessionId, terminalHostLabel(link));
 		}
 	}
-	for (const {sessionId, pane} of sources.tmux.current() ?? []) {
+	for (const {sessionId, pane} of sources.tmux.current() ?? [])
+	{
 		if (!labels.has(sessionId))
 			labels.set(
 				sessionId,
-				terminalHostLabel({host: "tmux", paneId: pane.paneId, workspaceId: pane.sessionName}),
+				terminalHostLabel(
+					{
+						host: "tmux",
+						paneId: pane.paneId,
+						workspaceId: pane.sessionName,
+					},
+				),
 			);
 	}
 	return labels;

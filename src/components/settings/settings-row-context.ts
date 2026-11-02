@@ -2,7 +2,8 @@ import {createContext, useContext} from "react";
 
 import type {SettingsTab} from "../../lib/settings-hash";
 
-export interface SettingsRowIds {
+export interface SettingsRowIds
+{
 	titleId: string;
 	descriptionId: string | undefined;
 }
@@ -10,7 +11,8 @@ export interface SettingsRowIds {
 export const SettingsRowContext = createContext<SettingsRowIds | null>(null);
 
 /** The enclosing row's title/description ids, so controls can label themselves. */
-export function useSettingsRowIds(): SettingsRowIds | null {
+export function useSettingsRowIds(): SettingsRowIds | null
+{
 	return useContext(SettingsRowContext);
 }
 
@@ -18,7 +20,8 @@ export function useSettingsRowIds(): SettingsRowIds | null {
  * A deep-linked row to scroll to and flash; a new object re-flashes the same row.
  * The row scrolls into view at once and is `lit` (upstream's highlight classes) a beat later.
  */
-export interface SettingsFlash {
+export interface SettingsFlash
+{
 	row: string;
 	lit: boolean;
 }

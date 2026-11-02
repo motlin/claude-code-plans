@@ -9,7 +9,8 @@ import {GHOST_DISMISS_CLASS} from "./error-card-shell";
  * layer. Under fizzy-lake `color` its `stacks:` overrides (`TP`) swap both for the page fill and ring
  * the card in `--cds-fizzy-lake-color-banner-line`.
  */
-const SURFACE_CLASS = {
+const SURFACE_CLASS =
+{
 	fizzy: "bg-page shadow-card-ring text-primary [--card-ring-color:var(--banner-line)]",
 	base: "bg-surface-1 bg-[linear-gradient(var(--color-alpha-1)_0_0)] shadow-card-ring text-primary",
 };
@@ -22,24 +23,32 @@ export type ComposerKeyline = "glyph" | "text";
 
 /* Upstream's keyline maps: the body offset (`jC`), the Dismiss slot margin (`we`), the stacked action's
    start pull (`w1`) and a Dismiss-less action's end margin (`Iq`). */
-const BODY_OFFSET: Record<ComposerKeyline, string> = {
+const BODY_OFFSET: Record<ComposerKeyline, string> =
+{
 	glyph: "ms-[6px] compact:ms-[6px] comfortable:ms-[4px]",
 	text: "ms-[4px] compact:ms-[4px] comfortable:ms-[2px]",
 };
-const DISMISS_MARGIN: Record<ComposerKeyline, string> = {
+const DISMISS_MARGIN: Record<ComposerKeyline, string> =
+{
 	glyph: "-me-[4px]",
 	text: "-me-[2px] compact:-me-[2px] comfortable:-me-[4px]",
 };
-const STACKED_ACTION_START: Record<ComposerKeyline, string> = {
+const STACKED_ACTION_START: Record<ComposerKeyline, string> =
+{
 	glyph: "-ms-[6px] compact:-ms-[6px] comfortable:-ms-[4px]",
 	text: "-ms-[4px] compact:-ms-[4px] comfortable:-ms-[2px]",
 };
-const ACTION_END: Record<ComposerKeyline, string> = {
+const ACTION_END: Record<ComposerKeyline, string> =
+{
 	glyph: "me-[calc(8px-var(--cds-pad-md))] compact:me-[calc(8px-var(--cds-pad-md))] comfortable:me-[calc(4px-var(--cds-pad-md))]",
 	text: "me-[calc(6px-var(--cds-pad-md))] compact:me-[calc(6px-var(--cds-pad-md))] comfortable:me-[calc(5px-var(--cds-pad-md))]",
 };
 /* The uncalibrated end margin: `P9`, and under fizzy-lake `panels` `b9`. */
-const UNCALIBRATED_END = {base: "-me-[calc(var(--cds-pad-md)-2px)]", panels: "-me-[calc(var(--cds-pad-md)-6px)]"};
+const UNCALIBRATED_END =
+{
+	base: "-me-[calc(var(--cds-pad-md)-2px)]",
+	panels: "-me-[calc(var(--cds-pad-md)-6px)]",
+};
 /* Upstream `k5`: the inline action is a control-high row centred on the first text line. */
 const ACTION_INLINE = "min-h-[var(--cds-h-control)] my-[calc((1lh-var(--cds-h-control))/2)]";
 /* Upstream `ki`: a stacked keyline card un-stacks only once the root grows this far past its stacking width. */
@@ -47,7 +56,8 @@ const UNSTACK_HYSTERESIS_PX = 64;
 
 type CtaLayout = "inline" | "wrapped" | "stacked";
 
-function rootClass(keyline: ComposerKeyline | null, panels: boolean, layout: CtaLayout, dismissible: boolean): string {
+function rootClass(keyline: ComposerKeyline | null, panels: boolean, layout: CtaLayout, dismissible: boolean): string
+{
 	const calibrated = keyline !== null;
 	let py = "py-md";
 	if (panels) py = calibrated ? "py-[calc(var(--cds-pad-md)+2px)]" : "!py-lg";
@@ -63,27 +73,26 @@ function rootClass(keyline: ComposerKeyline | null, panels: boolean, layout: Cta
 	return classes.join(" ");
 }
 
-function actionClass(
-	keyline: ComposerKeyline | null,
-	panels: boolean,
-	layout: CtaLayout,
-	dismissible: boolean,
-): string {
+function actionClass(keyline: ComposerKeyline | null, panels: boolean, layout: CtaLayout, dismissible: boolean): string
+{
 	const classes = ["flex shrink-0 items-center gap-xs"];
 	if (layout === "inline") classes.push(ACTION_INLINE, "-ms-[2px]");
 	else classes.push("max-w-full flex-wrap");
-	if (layout === "stacked") {
+	if (layout === "stacked")
+	{
 		classes.push("basis-full");
 		if (!panels && keyline !== null) classes.push(STACKED_ACTION_START[keyline]);
 	}
-	if (!dismissible) {
+	if (!dismissible)
+	{
 		if (keyline === null) classes.push(panels ? UNCALIBRATED_END.panels : UNCALIBRATED_END.base);
 		else classes.push(panels ? "-me-[2px]" : ACTION_END[keyline]);
 	}
 	return classes.join(" ");
 }
 
-function bodyClass(keyline: ComposerKeyline | null, panels: boolean, layout: CtaLayout, dismissible: boolean): string {
+function bodyClass(keyline: ComposerKeyline | null, panels: boolean, layout: CtaLayout, dismissible: boolean): string
+{
 	// Upstream appends gap-y-xs after gap-y-sm when stacked; one row gap keeps the winner deterministic.
 	const classes = [
 		"flex min-w-0 flex-wrap items-start",
@@ -101,21 +110,25 @@ function bodyClass(keyline: ComposerKeyline | null, panels: boolean, layout: Cta
  * action's top sits more than half a text line below the text's top. A wrapped keyline card records
  * the root width and stacks; it un-stacks only once the root grows `ki` (64px) past that width.
  */
-function useCtaLayout(hasAction: boolean, calibrated: boolean) {
+function useCtaLayout(hasAction: boolean, calibrated: boolean)
+{
 	const rootRef = useRef<HTMLDivElement>(null);
 	const textRef = useRef<HTMLDivElement>(null);
 	const actionRef = useRef<HTMLSpanElement>(null);
 	const stackedWidth = useRef(0);
 	const [wrapped, setWrapped] = useState(false);
 	const stacked = calibrated && hasAction && wrapped;
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (!calibrated || !hasAction) stackedWidth.current = 0;
 		if (!hasAction) return undefined;
 		const root = rootRef.current;
 		const Observer = root?.ownerDocument.defaultView?.ResizeObserver;
 		if (root === null || Observer === undefined) return undefined;
-		const measure = () => {
-			if (stacked) {
+		const measure = () =>
+		{
+			if (stacked)
+			{
 				if (root.offsetWidth > stackedWidth.current + UNSTACK_HYSTERESIS_PX) setWrapped(false);
 				return;
 			}
@@ -131,14 +144,20 @@ function useCtaLayout(hasAction: boolean, calibrated: boolean) {
 		measure();
 		const observer = new Observer(measure);
 		observer.observe(root);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [hasAction, calibrated, stacked]);
 	let layout: CtaLayout = "inline";
 	if (stacked) layout = "stacked";
 	else if (hasAction && wrapped) layout = "wrapped";
-	return {rootRef, textRef, actionRef, layout};
+	return {
+		rootRef,
+		textRef,
+		actionRef,
+		layout,
+	};
 }
 
 /**
@@ -168,7 +187,8 @@ export function NoticeBanner({
 	role?: "none" | "status" | "alert";
 	"data-testid"?: string;
 	children: ReactNode;
-}) {
+})
+{
 	const color = useFizzyLake("color");
 	const surface = color ? SURFACE_CLASS.fizzy : SURFACE_CLASS.base;
 	const panels = useFizzyLake("panels");

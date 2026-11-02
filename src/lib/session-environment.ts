@@ -4,7 +4,8 @@ import type {RemoteControlState} from "./session-state";
 import type {TerminalPaneHost} from "./terminal-host-capabilities";
 
 /** What the rail's Remote Control row shows: the bridge state and, while on, its claude.ai session url. */
-export interface RemoteControl {
+export interface RemoteControl
+{
 	state: RemoteControlState;
 	url: string | null;
 }
@@ -16,22 +17,38 @@ export interface RemoteControl {
  * or from an older CLI that does not write the field, so the row stays hidden
  * where no toggle is possible.
  */
-export function registryRemoteControl(entry: {bridgeSessionId?: string | null} | null): RemoteControl | null {
+export function registryRemoteControl(
+	entry:
+	{
+		bridgeSessionId?: string | null;
+	} | null,
+): RemoteControl | null
+{
 	if (entry?.bridgeSessionId === undefined) return null;
 	return entry.bridgeSessionId === null
-		? {state: "off", url: null}
-		: {state: "on", url: claudeAiSessionUrl(entry.bridgeSessionId)};
+		?
+			{
+				state: "off",
+				url: null,
+			}
+		:
+			{
+				state: "on",
+				url: claudeAiSessionUrl(entry.bridgeSessionId),
+			};
 }
 
 /** The fields of a terminal-host pane link that say where a session runs. */
-export interface EnvironmentPane {
+export interface EnvironmentPane
+{
 	host: TerminalPaneHost;
 	paneId: string;
 	/** For tmux, the tmux session name. */
 	workspaceId: string;
 }
 
-export interface SessionEnvironment {
+export interface SessionEnvironment
+{
 	/** Where the session runs: `herdr`, `herdr · <named session>`, `tmux · <session>`, or `Local`. */
 	label: string;
 	/** The live CLI's Remote Control bridge state; null when no live process reports one. */
@@ -51,12 +68,17 @@ export function sessionEnvironment({
 }: {
 	terminalHost: string | null;
 	remoteControl: RemoteControlState | null;
-}): SessionEnvironment {
-	return {label: terminalHost ?? "Local", remoteControl};
+}): SessionEnvironment
+{
+	return {
+		label: terminalHost ?? "Local",
+		remoteControl,
+	};
 }
 
 /** Where a pane runs: `herdr`, `herdr · <named session>`, or `tmux · <session>`. */
-export function terminalHostLabel(pane: EnvironmentPane): string {
+export function terminalHostLabel(pane: EnvironmentPane): string
+{
 	if (pane.host === "tmux") return `tmux · ${pane.workspaceId}`;
 	const {session} = splitHerdrId(pane.paneId);
 	return session === null ? "herdr" : `herdr · ${session}`;

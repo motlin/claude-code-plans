@@ -8,7 +8,8 @@ import type {SessionDiffFile} from "../../lib/api/session-diff";
 export const LARGE_DIFF_MAX_FILES = 100;
 export const LARGE_DIFF_MAX_LINES = 10_000;
 
-export function isLargeDiff(files: readonly SessionDiffFile[]): boolean {
+export function isLargeDiff(files: readonly SessionDiffFile[]): boolean
+{
 	if (files.length > LARGE_DIFF_MAX_FILES) return true;
 	const lines = files.reduce((sum, file) => sum + file.additions + file.deletions, 0);
 	return lines > LARGE_DIFF_MAX_LINES;

@@ -15,7 +15,8 @@ import {useTimedFlag} from "../hooks/use-timed-flag";
 /** How long upstream's Copy details button shows "Copied" with a check. */
 const COPIED_MS = 1200;
 
-export interface ApiErrorCardProps {
+export interface ApiErrorCardProps
+{
 	/** The error message's text, e.g. "API Error: 529 Overloaded…". */
 	text: string;
 	/** The JSONL record's `errorDetails`, shown in place of the text when present. */
@@ -33,7 +34,8 @@ export interface ApiErrorCardProps {
 }
 
 /** What the session can do from the card; a missing handler hides its action. */
-export interface ApiErrorRecovery {
+export interface ApiErrorRecovery
+{
 	onRetry?: () => void;
 	onCompact?: () => void;
 	onRewind?: () => void;
@@ -43,14 +45,16 @@ export interface ApiErrorRecovery {
 	currentModel?: string;
 }
 
-function numericStatus(status: number | string | undefined): number | undefined {
+function numericStatus(status: number | string | undefined): number | undefined
+{
 	if (typeof status === "number") return status;
 	if (status === undefined || !/^\d+$/.test(status)) return undefined;
 	return Number(status);
 }
 
 /** Upstream's ghost icon-only "Copy details" (cb1a6e506 `C`): Check + "Copied" for 1200ms. */
-function CopyDetailsButton({details}: {details: string}) {
+function CopyDetailsButton({details}: {details: string})
+{
 	const [copied, showCopied] = useTimedFlag(COPIED_MS);
 	const label = copied ? "Copied" : "Copy details";
 	const Icon = copied ? Check : Copy;
@@ -60,11 +64,14 @@ function CopyDetailsButton({details}: {details: string}) {
 				type="button"
 				aria-label={label}
 				className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-				onMouseDown={(event) => {
+				onMouseDown={(event) =>
+				{
 					event.preventDefault();
 				}}
-				onClick={() => {
-					void writeClipboardText(details).then((ok) => {
+				onClick={() =>
+				{
+					void writeClipboardText(details).then((ok) =>
+					{
 						if (!ok) return;
 						showCopied();
 					});
@@ -98,7 +105,8 @@ export function ErrorDetails({
 	inCard: boolean;
 	/** Upstream's action group, pushed to the row's trailing edge. */
 	actions?: ReactNode;
-}) {
+})
+{
 	const {body, raw, status, requestId, messageId} = details ?? {};
 	const [open, setOpen] = useState(false);
 	const facts =
@@ -156,7 +164,8 @@ export function ErrorDetails({
 }
 
 /** What View details shows. */
-export interface ErrorDetailsContent {
+export interface ErrorDetailsContent
+{
 	/** The parsed body (upstream's `eX`): no API Error prefix, a JSON body unwrapped. */
 	body?: string;
 	/** The unparsed error text, which Copy details copies. */
@@ -166,7 +175,8 @@ export interface ErrorDetailsContent {
 	messageId?: string;
 }
 
-interface ResolvedApiError {
+interface ResolvedApiError
+{
 	category: ApiErrorCategory;
 	status?: number;
 	rewindHelps: boolean;
@@ -194,18 +204,42 @@ function resolveApiError({
 	messageId,
 	code,
 	stopReason,
-	hint: hintContext = {canRewind: false, canRetry: false, hasComposer: false},
-}: ApiErrorCardProps & {
+	hint: hintContext =
+	{
+		canRewind: false,
+		canRetry: false,
+		hasComposer: false,
+	},
+}: ApiErrorCardProps &
+{
 	hint?: Parameters<typeof errorCopy>[1];
-}): ResolvedApiError {
+}): ResolvedApiError
+{
 	const numeric = numericStatus(status);
-	const category = classifyApiError({
-		text,
-		...(code !== undefined && {code}),
-		...(stopReason !== undefined && {stopReason}),
-		...(numeric !== undefined && {status: numeric}),
-	});
-	const copy = errorCopy(category, {...hintContext, text});
+	const category = classifyApiError(
+		{
+			text,
+			...(code !== undefined &&
+			{
+				code,
+			}),
+			...(stopReason !== undefined &&
+			{
+				stopReason,
+			}),
+			...(numeric !== undefined &&
+			{
+				status: numeric,
+			}),
+		},
+	);
+	const copy = errorCopy(
+		category,
+		{
+			...hintContext,
+			text,
+		},
+	);
 	// Upstream's passthrough: a refusal's own text replaces the hint, drops Learn more, and leaves View details.
 	const passthrough = category === "usage_policy" && stopReason === "refusal" ? refusalPassthrough(text) : undefined;
 	const raw = details ?? (text === "" ? undefined : text);
@@ -217,62 +251,104 @@ function resolveApiError({
 	const learnMoreUrl = passthrough === undefined ? copy.learnMoreUrl : undefined;
 	return {
 		category,
-		...(numeric !== undefined && {status: numeric}),
+		...(numeric !== undefined &&
+		{
+			status: numeric,
+		}),
 		rewindHelps: copy.rewindHelps,
 		headline: copy.headline,
 		markerLabel: copy.markerLabel,
 		hint: passthrough?.body ?? copy.hint,
 		icon: category === "rate_limit" ? "gauge" : "warning",
-		...(learnMoreUrl !== undefined && {learnMoreUrl}),
-		...(showDetails && {
-			details: {
-				...(body !== undefined && {body}),
-				...(raw !== undefined && {raw}),
-				...(detailsStatus !== undefined && {status: detailsStatus}),
-				...(requestId !== undefined && {requestId}),
-				...(messageId !== undefined && {messageId}),
+		...(learnMoreUrl !== undefined &&
+		{
+			learnMoreUrl,
+		}),
+		...(showDetails &&
+		{
+			details:
+			{
+				...(body !== undefined &&
+				{
+					body,
+				}),
+				...(raw !== undefined &&
+				{
+					raw,
+				}),
+				...(detailsStatus !== undefined &&
+				{
+					status: detailsStatus,
+				}),
+				...(requestId !== undefined &&
+				{
+					requestId,
+				}),
+				...(messageId !== undefined &&
+				{
+					messageId,
+				}),
 			},
 		}),
 	};
 }
 
 /** Upstream's transcript API-error card (c44e562e8 `DW` over the shared card): the headline, hint and View details. */
-export function ApiErrorCard(props: ApiErrorCardProps) {
+export function ApiErrorCard(props: ApiErrorCardProps)
+{
 	const [retried, setRetried] = useState(false);
 	const {recovery} = props;
 	const canRetry = recovery?.onRetry !== undefined && !retried;
-	const error = resolveApiError({
-		...props,
-		hint: {
-			canRewind: recovery?.onRewind !== undefined,
-			canRetry,
-			hasComposer: recovery !== undefined,
+	const error = resolveApiError(
+		{
+			...props,
+			hint:
+			{
+				canRewind: recovery?.onRewind !== undefined,
+				canRetry,
+				hasComposer: recovery !== undefined,
+			},
 		},
-	});
+	);
 	const {actions, handlers} =
-		recovery === undefined ? {actions: [], handlers: undefined} : cardRecovery(error, recovery, retried);
+		recovery === undefined
+			?
+				{
+					actions: [],
+					handlers: undefined,
+				}
+			: cardRecovery(error, recovery, retried);
 	return (
 		<ErrorCardShell
-			data={{"data-api-error-card": ""}}
+			data={
+			{
+				"data-api-error-card": "",
+			}}
 			headline={error.headline}
 			hint={error.hint}
 			icon={error.icon}
-			{...(error.learnMoreUrl !== undefined && {
+			{...(error.learnMoreUrl !== undefined &&
+			{
 				learnMoreUrl: error.learnMoreUrl,
 			})}
-			{...(recovery !== undefined && {status: retried ? error.hint : ""})}
+			{...(recovery !== undefined &&
+			{
+				status: retried ? error.hint : "",
+			})}
 		>
 			{(error.details !== undefined || actions.length > 0) && (
 				<ErrorDetails
 					details={error.details}
 					inCard={true}
 					{...(handlers !== undefined &&
-						actions.length > 0 && {
+						actions.length > 0 &&
+						{
 							actions: (
 								<DeferredErrorRecoveryActions
 									actions={actions}
 									handlers={handlers}
-									onActed={() => {
+									onActed={() =>
+									{
 										setRetried(true);
 									}}
 								/>
@@ -289,40 +365,78 @@ function cardRecovery(
 	error: ResolvedApiError,
 	recovery: ApiErrorRecovery,
 	retried: boolean,
-): {actions: RecoveryAction[]; handlers: RecoveryHandlers} {
+):
+{
+	actions: RecoveryAction[];
+	handlers: RecoveryHandlers;
+}
+{
 	const {currentModel, onRetry, onCompact, onRewind, onRetryWithModel} = recovery;
 	const current = primaryModelMenuValue(currentModel);
 	const fallback = currentModel === undefined ? undefined : fallbackModel(currentModel);
-	const actions = recoveryActions({
-		...categoryRecoveryHelps(error.category, error.status),
-		rewindHelps: error.rewindHelps,
-		retried,
-		canRetry: onRetry !== undefined,
-		canRewind: onRewind !== undefined,
-		canCompact: onCompact !== undefined,
-		canFallback: onRetryWithModel !== undefined && fallback !== undefined,
-		currentModelLabel: current === "" ? (currentModel ?? "") : modelLabel(current),
-		...(fallback !== undefined && {fallbackModelLabel: fallback.label}),
-		...(onRetryWithModel !== undefined &&
-			currentModel !== undefined && {
-				modelItems: PRIMARY_MODELS.map((model) => ({value: model.id, checked: model.id === current})),
+	const actions = recoveryActions(
+		{
+			...categoryRecoveryHelps(error.category, error.status),
+			rewindHelps: error.rewindHelps,
+			retried,
+			canRetry: onRetry !== undefined,
+			canRewind: onRewind !== undefined,
+			canCompact: onCompact !== undefined,
+			canFallback: onRetryWithModel !== undefined && fallback !== undefined,
+			currentModelLabel: current === "" ? (currentModel ?? "") : modelLabel(current),
+			...(fallback !== undefined &&
+			{
+				fallbackModelLabel: fallback.label,
 			}),
-	});
-	const handlers: RecoveryHandlers = {
-		...(onRetry !== undefined && {onRetry}),
-		...(onCompact !== undefined && {onCompact}),
-		...(onRewind !== undefined && {onRewind}),
-		...(onRetryWithModel !== undefined && {onRetryWithModel}),
-		...(fallback !== undefined && {fallbackAlias: fallback.alias}),
-		...(current !== "" && {currentModelValue: current}),
+			...(onRetryWithModel !== undefined &&
+				currentModel !== undefined &&
+				{
+					modelItems: PRIMARY_MODELS.map((model) => (
+					{
+						value: model.id,
+						checked: model.id === current,
+					})),
+				}),
+		},
+	);
+	const handlers: RecoveryHandlers =
+	{
+		...(onRetry !== undefined &&
+		{
+			onRetry,
+		}),
+		...(onCompact !== undefined &&
+		{
+			onCompact,
+		}),
+		...(onRewind !== undefined &&
+		{
+			onRewind,
+		}),
+		...(onRetryWithModel !== undefined &&
+		{
+			onRetryWithModel,
+		}),
+		...(fallback !== undefined &&
+		{
+			fallbackAlias: fallback.alias,
+		}),
+		...(current !== "" &&
+		{
+			currentModelValue: current,
+		}),
 	};
-	return {actions, handlers};
+	return {
+		actions,
+		handlers,
+	};
 }
 
 const MARKER_ICON_CLASS = "size-4 shrink-0 text-danger-000";
 
 /** The marker's danger warning icon, shared with the hook-blocked prompt marker. */
-export function MarkerWarningIcon() {
+export function MarkerWarningIcon()
+{
 	return <TriangleAlert aria-hidden="true" className={MARKER_ICON_CLASS} />;
 }
 
@@ -335,7 +449,8 @@ export const MARKER_ROOT_CLASS =
  * last entry (c44e562e8 `$U`, gated by `G_e`): the danger icon, the past-tense
  * marker label (else the headline), and View details without the card chrome.
  */
-export function ApiErrorMarker(props: ApiErrorCardProps) {
+export function ApiErrorMarker(props: ApiErrorCardProps)
+{
 	const error = resolveApiError(props);
 	const Icon = error.icon === "gauge" ? Gauge : TriangleAlert;
 	return (

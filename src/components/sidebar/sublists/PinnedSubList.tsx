@@ -13,7 +13,8 @@ import type {SidebarSessionRow} from "../sidebar-session-row";
 /** Drop row states: idle (revealed without a drag), a drag in progress, or the pointer over it. */
 type PinDropRowState = "idle" | "dragging" | "hot";
 
-const DROP_ROW_LABELS: Record<PinDropRowState, string> = {
+const DROP_ROW_LABELS: Record<PinDropRowState, string> =
+{
 	idle: "Drag to pin",
 	dragging: "Drop here",
 	hot: "Let go",
@@ -48,11 +49,13 @@ export function PinnedSubList({
 	/** Registers the drop row as a drag zone. */
 	dropRowRef?: (element: HTMLElement | null) => void;
 	dragRowProps?: (id: string) => SidebarDragRowProps;
-}) {
+})
+{
 	const [revealed, setRevealed] = useState<RevealedPages>({});
 	const [section, setSection] = useState<HTMLElement | null>(null);
 	const sectionRef = useCallback(
-		(element: HTMLElement | null) => {
+		(element: HTMLElement | null) =>
+		{
 			setSection(element);
 			listRef?.(element);
 		},
@@ -79,14 +82,24 @@ export function PinnedSubList({
 				expanded={expanded}
 				activeItemId={activeItemId}
 				filterSlot={null}
-				onShowMore={() => {
-					setRevealed((previous) => ({[PINNED_GROUP_KEY]: (previous[PINNED_GROUP_KEY] ?? 0) + 1}));
+				onShowMore={() =>
+				{
+					setRevealed((previous) => (
+					{
+						[PINNED_GROUP_KEY]: (previous[PINNED_GROUP_KEY] ?? 0) + 1,
+					}));
 				}}
-				onShowLess={() => {
+				onShowLess={() =>
+				{
 					setRevealed({});
 				}}
 				pinnedIds={pinnedIds}
-				{...(dragRowProps === undefined ? {} : {dragRowProps})}
+				{...(dragRowProps === undefined
+					? {}
+					:
+						{
+							dragRowProps,
+						})}
 			/>
 			{dragging ? (
 				<PinDropRow ref={dropRowRef} state={dropRowHot ? "hot" : "dragging"} />
@@ -105,20 +118,23 @@ export function PinnedSubList({
 }
 
 /** The drag-to-pin tip: requested by a menu pin, shown once while the sidebar is expanded. */
-function useDragPinHint() {
+function useDragPinHint()
+{
 	const requested = useDragPinHintRequested();
 	const {collapsed} = useSidebarState();
 	const {settings, loaded, setSetting} = useSettings();
 	return {
 		open: requested && loaded && !settings.seenDragPinHint && !collapsed,
-		dismiss: () => {
+		dismiss: () =>
+		{
 			setSetting("seenDragPinHint", true);
 			closeDragPinHint();
 		},
 	};
 }
 
-function PinDropRow({ref, state}: {ref: ((element: HTMLElement | null) => void) | undefined; state: PinDropRowState}) {
+function PinDropRow({ref, state}: {ref: ((element: HTMLElement | null) => void) | undefined; state: PinDropRowState})
+{
 	return (
 		<div
 			ref={ref}

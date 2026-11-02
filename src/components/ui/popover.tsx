@@ -1,5 +1,6 @@
 import {Popover as BasePopover} from "@base-ui/react/popover";
-import {
+import
+{
 	type ComponentProps,
 	createContext,
 	lazy,
@@ -20,7 +21,8 @@ import {useSheetPresentation} from "./sheet-presentation";
 import {overlayAttrs} from "../../lib/overlay";
 import {registerPopupOpener} from "../../lib/overlay-focus";
 
-interface PopoverSheet {
+interface PopoverSheet
+{
 	sheet: boolean;
 	treeId: string;
 	/** Closes the root, as a drag past the dismiss threshold does. */
@@ -28,11 +30,13 @@ interface PopoverSheet {
 }
 
 /** Whether the enclosing root latched a bottom-sheet presentation at open, its sheet tree id and its close. */
-const PopoverSheetContext = createContext<PopoverSheet>({
-	sheet: false,
-	treeId: "",
-	dismiss: () => undefined,
-});
+const PopoverSheetContext = createContext<PopoverSheet>(
+	{
+		sheet: false,
+		treeId: "",
+		dismiss: () => undefined,
+	},
+);
 
 type PopoverActions = NonNullable<ComponentProps<typeof BasePopover.Root>["actionsRef"]>;
 
@@ -40,22 +44,36 @@ type PopoverActions = NonNullable<ComponentProps<typeof BasePopover.Root>["actio
  * Upstream's `Bl` → `r3`: tracks the root's open state (controlled or not) and runs the sheet gate with
  * `closable = !(open !== undefined && !consumerHandlesOpenChange)`, latched from open through the exit.
  */
-export function PopoverRoot(props: ComponentProps<typeof BasePopover.Root>) {
+export function PopoverRoot(props: ComponentProps<typeof BasePopover.Root>)
+{
 	const {open, defaultOpen, onOpenChange, onOpenChangeComplete, actionsRef} = props;
 	const ownActionsRef = useRef<PopoverActions extends RefObject<infer T> ? T : never>(null);
 	const actions = actionsRef ?? ownActionsRef;
-	const dismiss = useCallback(() => {
+	const dismiss = useCallback(() =>
+	{
 		actions.current?.close();
 	}, [actions]);
 	const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen ?? false);
-	const {sheet, onOpenChangeComplete: releaseLatch} = useSheetPresentation(open ?? uncontrolledOpen, {
-		closable: !(open !== undefined && onOpenChange === undefined),
-	});
+	const {sheet, onOpenChangeComplete: releaseLatch} = useSheetPresentation(
+		open ?? uncontrolledOpen,
+		{
+			closable: !(open !== undefined && onOpenChange === undefined),
+		},
+	);
 	const treeId = useId();
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (sheet) void preloadPopoverSheet();
 	}, [sheet]);
-	const context = useMemo(() => ({sheet, treeId, dismiss}), [sheet, treeId, dismiss]);
+	const context = useMemo(
+		() => (
+		{
+			sheet,
+			treeId,
+			dismiss,
+		}),
+		[sheet, treeId, dismiss],
+	);
 	return (
 		<PopoverSheetContext.Provider value={context}>
 			<BasePopover.Root
@@ -63,11 +81,13 @@ export function PopoverRoot(props: ComponentProps<typeof BasePopover.Root>) {
 				actionsRef={actions}
 				/* Upstream's uK returns `modal: true` for a sheet: body scroll locks and the page behind goes inert. */
 				modal={sheet || props.modal}
-				onOpenChange={(nextOpen, details) => {
+				onOpenChange={(nextOpen, details) =>
+				{
 					setUncontrolledOpen(nextOpen);
 					onOpenChange?.(nextOpen, details);
 				}}
-				onOpenChangeComplete={(completedOpen) => {
+				onOpenChangeComplete={(completedOpen) =>
+				{
 					releaseLatch(completedOpen);
 					onOpenChangeComplete?.(completedOpen);
 				}}
@@ -88,7 +108,8 @@ export const POPOVER_SCROLL_BODY_CLASS =
 export const PopoverTrigger = BasePopover.Trigger;
 export const PopoverTitle = BasePopover.Title;
 
-export interface PopoverContentProps {
+export interface PopoverContentProps
+{
 	children: ReactNode;
 	side?: ComponentProps<typeof BasePopover.Positioner>["side"];
 	align?: ComponentProps<typeof BasePopover.Positioner>["align"];
@@ -107,10 +128,14 @@ export interface PopoverContentProps {
 }
 
 const LazyPopoverSheetContent = lazy(async () =>
-	preloadPopoverSheet().then((module) => ({default: module.PopoverSheetContent})),
+	preloadPopoverSheet().then((module) => (
+	{
+		default: module.PopoverSheetContent,
+	})),
 );
 
-function PopoverSheet(props: ComponentProps<typeof LazyPopoverSheetContent>) {
+function PopoverSheet(props: ComponentProps<typeof LazyPopoverSheetContent>)
+{
 	const popoverSheetModule = loadedPopoverSheet();
 	if (popoverSheetModule !== null) return <popoverSheetModule.PopoverSheetContent {...props} />;
 	return (
@@ -130,9 +155,11 @@ export function PopoverContent({
 	structurallyAnchored = false,
 	closeLabel = "Close",
 	onPointerEnter,
-}: PopoverContentProps) {
+}: PopoverContentProps)
+{
 	const {sheet, treeId, dismiss} = useContext(PopoverSheetContext);
-	if (sheet && !structurallyAnchored) {
+	if (sheet && !structurallyAnchored)
+	{
 		return (
 			<PopoverSheet className={className} closeLabel={closeLabel} treeId={treeId} dismiss={dismiss}>
 				{children}
@@ -146,8 +173,18 @@ export function PopoverContent({
 					data-cds="Popover"
 					{...overlayAttrs}
 					ref={registerPopupOpener}
-					{...(className === undefined ? {} : {className})}
-					{...(onPointerEnter === undefined ? {} : {onPointerEnter})}
+					{...(className === undefined
+						? {}
+						:
+							{
+								className,
+							})}
+					{...(onPointerEnter === undefined
+						? {}
+						:
+							{
+								onPointerEnter,
+							})}
 				>
 					{children}
 				</BasePopover.Popup>

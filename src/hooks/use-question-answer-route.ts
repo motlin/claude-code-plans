@@ -11,11 +11,22 @@ export function sessionLiveness({
 	summary,
 }: {
 	hookActive: boolean;
-	summary: {state: SessionSummaryState} | undefined;
-}): boolean | null {
+	summary:
+		|
+		  {
+				state: SessionSummaryState;
+		  }
+		| undefined;
+}): boolean | null
+{
 	return !hookActive && summary === undefined
 		? null
-		: sessionProcessLive({hookActive, summaryState: summary?.state ?? null});
+		: sessionProcessLive(
+				{
+					hookActive,
+					summaryState: summary?.state ?? null,
+				},
+			);
 }
 
 /**
@@ -31,19 +42,40 @@ export function sessionAnswerRoute({
 }: {
 	sessionId: string;
 	hookActive: boolean;
-	summary: {state: SessionSummaryState} | undefined;
+	summary:
+		|
+		  {
+				state: SessionSummaryState;
+		  }
+		| undefined;
 	herdr: HerdrPaneIndexData | undefined;
-}): QuestionAnswerRoute {
-	return questionAnswerRoute({
-		live: sessionLiveness({hookActive, summary}),
-		hasLivePane: herdr === undefined ? null : herdr.panes.some((pane) => pane.sessionId === sessionId),
-		writesEnabled: herdr?.writesEnabled ?? false,
-	});
+}): QuestionAnswerRoute
+{
+	return questionAnswerRoute(
+		{
+			live: sessionLiveness(
+				{
+					hookActive,
+					summary,
+				},
+			),
+			hasLivePane: herdr === undefined ? null : herdr.panes.some((pane) => pane.sessionId === sessionId),
+			writesEnabled: herdr?.writesEnabled ?? false,
+		},
+	);
 }
 
 /** `sessionAnswerRoute` for a card outside the session page, reading the cached session list and panes. */
-export function useQuestionAnswerRoute(sessionId: string): QuestionAnswerRoute {
+export function useQuestionAnswerRoute(sessionId: string): QuestionAnswerRoute
+{
 	const herdr = useQuery(herdrPanesQueryOptions).data;
 	const summary = useCachedSessionSummary(sessionId);
-	return sessionAnswerRoute({sessionId, hookActive: false, summary, herdr});
+	return sessionAnswerRoute(
+		{
+			sessionId,
+			hookActive: false,
+			summary,
+			herdr,
+		},
+	);
 }

@@ -13,21 +13,49 @@ import {installLocalStorage} from "./fake-storage";
 const SESSION_ID = "session-alice";
 
 const {lines} = processTranscript([
-	{type: "user", uuid: "prompt-1", message: {role: "user", content: "Set up the repo"}},
+	{
+		type: "user",
+		uuid: "prompt-1",
+		message:
+		{
+			role: "user",
+			content: "Set up the repo",
+		},
+	},
 	{
 		type: "assistant",
 		uuid: "reply-1",
 		parentUuid: "prompt-1",
-		message: {role: "assistant", content: [{type: "text", text: "The repo is ready."}]},
+		message:
+		{
+			role: "assistant",
+			content: [
+				{
+					type: "text",
+					text: "The repo is ready.",
+				},
+			],
+		},
 	},
-	{type: "user", uuid: "prompt-2", parentUuid: "reply-1", message: {role: "user", content: "Now add tests"}},
+	{
+		type: "user",
+		uuid: "prompt-2",
+		parentUuid: "reply-1",
+		message:
+		{
+			role: "user",
+			content: "Now add tests",
+		},
+	},
 ]);
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 });
@@ -36,8 +64,11 @@ function renderTranscript(
 	fork: ((target: {sessionId: string; atMessage: string}) => void) | undefined,
 	working = false,
 	archived = false,
-	rewind: (uuid: string) => void = () => {},
-) {
+	rewind: (uuid: string) => void = () =>
+	{
+	},
+)
+{
 	return render(
 		<ToastProvider>
 			<TranscriptActionsProvider
@@ -50,14 +81,22 @@ function renderTranscript(
 			>
 				<div data-turn="reply-1">
 					<AssistantMessageActions
-						message={{sessionId: SESSION_ID, uuid: "reply-1"}}
+						message={
+						{
+							sessionId: SESSION_ID,
+							uuid: "reply-1",
+						}}
 						text="The repo is ready."
 						details={[]}
 					/>
 				</div>
 				<div data-turn="prompt-2">
 					<UserMessageActions
-						message={{sessionId: SESSION_ID, uuid: "prompt-2"}}
+						message={
+						{
+							sessionId: SESSION_ID,
+							uuid: "prompt-2",
+						}}
 						text="Now add tests"
 						details={[]}
 					/>
@@ -67,12 +106,15 @@ function renderTranscript(
 	).container;
 }
 
-function turnButton(container: HTMLElement, turn: string, label: string): HTMLButtonElement {
+function turnButton(container: HTMLElement, turn: string, label: string): HTMLButtonElement
+{
 	return container.querySelector<HTMLButtonElement>(`[data-turn="${turn}"] button[aria-label="${label}"]`)!;
 }
 
-describe("TranscriptActionsProvider", () => {
-	it("forks an assistant turn at itself and a prompt at the turn before it", () => {
+describe("TranscriptActionsProvider", () =>
+{
+	it("forks an assistant turn at itself and a prompt at the turn before it", () =>
+	{
 		const fork = vi.fn<(target: {sessionId: string; atMessage: string}) => void>();
 		const container = renderTranscript(fork);
 
@@ -80,40 +122,67 @@ describe("TranscriptActionsProvider", () => {
 		fireEvent.click(turnButton(container, "prompt-2", "Fork from here"));
 
 		expect(fork.mock.calls).toStrictEqual([
-			[{sessionId: SESSION_ID, atMessage: "reply-1"}],
-			[{sessionId: SESSION_ID, atMessage: "reply-1"}],
+			[
+				{
+					sessionId: SESSION_ID,
+					atMessage: "reply-1",
+				},
+			],
+			[
+				{
+					sessionId: SESSION_ID,
+					atMessage: "reply-1",
+				},
+			],
 		]);
 	});
 
-	it("disables Fork with a reason when the session has no directory to fork in", () => {
+	it("disables Fork with a reason when the session has no directory to fork in", () =>
+	{
 		const container = renderTranscript(undefined);
 		const fork = turnButton(container, "reply-1", "Fork from here");
 		const describedBy = fork.closest("[data-cds-disabled-reason-wrapper]")?.getAttribute("aria-describedby");
 
-		expect({
-			disabled: fork.disabled,
-			reason:
-				describedBy === undefined || describedBy === null
-					? null
-					: document.getElementById(describedBy)?.textContent,
-		}).toStrictEqual({disabled: true, reason: "Session directory is unknown"});
+		expect(
+			{
+				disabled: fork.disabled,
+				reason:
+					describedBy === undefined || describedBy === null
+						? null
+						: document.getElementById(describedBy)?.textContent,
+			},
+		).toStrictEqual(
+			{
+				disabled: true,
+				reason: "Session directory is unknown",
+			},
+		);
 	});
 
-	it("disables Rewind with upstream's reason while Claude is working", () => {
+	it("disables Rewind with upstream's reason while Claude is working", () =>
+	{
 		const container = renderTranscript(undefined, true);
 		const rewind = turnButton(container, "prompt-2", "Rewind to here");
 		const describedBy = rewind.closest("[data-cds-disabled-reason-wrapper]")?.getAttribute("aria-describedby");
 
-		expect({
-			disabled: rewind.disabled,
-			reason:
-				describedBy === undefined || describedBy === null
-					? null
-					: document.getElementById(describedBy)?.textContent,
-		}).toStrictEqual({disabled: true, reason: "Rewind is unavailable while Claude is working"});
+		expect(
+			{
+				disabled: rewind.disabled,
+				reason:
+					describedBy === undefined || describedBy === null
+						? null
+						: document.getElementById(describedBy)?.textContent,
+			},
+		).toStrictEqual(
+			{
+				disabled: true,
+				reason: "Rewind is unavailable while Claude is working",
+			},
+		);
 	});
 
-	it("drops Rewind from an archived session's user toolbar, like upstream's showRewind false", () => {
+	it("drops Rewind from an archived session's user toolbar, like upstream's showRewind false", () =>
+	{
 		const container = renderTranscript(vi.fn(), false, true);
 		const labels = [...container.querySelectorAll('[data-turn="prompt-2"] button[aria-label]')].map((button) =>
 			button.getAttribute("aria-label"),
@@ -122,27 +191,50 @@ describe("TranscriptActionsProvider", () => {
 		expect(labels).toStrictEqual(["Show message actions for You said: Now add tests", "Copy", "Fork from here"]);
 	});
 
-	it("pins a turn as a chapter titled by its first line, and unpins it on a second press", () => {
+	it("pins a turn as a chapter titled by its first line, and unpins it on a second press", () =>
+	{
 		vi.spyOn(crypto, "randomUUID").mockReturnValue("fake-uuid-1" as ReturnType<typeof crypto.randomUUID>);
 		const container = renderTranscript(undefined);
 
 		fireEvent.click(turnButton(container, "reply-1", "Pin as chapter"));
-		const pinned = {
+		const pinned =
+		{
 			stored: readSessionChapters(SESSION_ID).userChapters,
 			pressed: turnButton(container, "reply-1", "Pin as chapter").getAttribute("aria-pressed"),
 		};
 		fireEvent.click(turnButton(container, "reply-1", "Pin as chapter"));
 
-		expect({pinned, after: readSessionChapters(SESSION_ID)}).toStrictEqual({
-			pinned: {
-				stored: [{id: "uch-fake-uuid-1", afterId: "reply-1", title: "The repo is ready.", recordIndex: 1}],
-				pressed: "true",
+		expect(
+			{
+				pinned,
+				after: readSessionChapters(SESSION_ID),
 			},
-			after: {renames: {}, hidden: [], userChapters: []},
-		});
+		).toStrictEqual(
+			{
+				pinned:
+				{
+					stored: [
+						{
+							id: "uch-fake-uuid-1",
+							afterId: "reply-1",
+							title: "The repo is ready.",
+							recordIndex: 1,
+						},
+					],
+					pressed: "true",
+				},
+				after:
+				{
+					renames: {},
+					hidden: [],
+					userChapters: [],
+				},
+			},
+		);
 	});
 
-	it("hands a prompt's Rewind to the session's rewind request", () => {
+	it("hands a prompt's Rewind to the session's rewind request", () =>
+	{
 		const rewind = vi.fn<(uuid: string) => void>();
 		const container = renderTranscript(undefined, false, false, rewind);
 

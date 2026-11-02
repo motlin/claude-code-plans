@@ -15,8 +15,14 @@ const CONTENT_TYPES = new Map<string, string>([
 	[".webp", "image/webp"],
 ]);
 
-function textResponse(body: string, status: number): Response {
-	return new Response(body, {status});
+function textResponse(body: string, status: number): Response
+{
+	return new Response(
+		body,
+		{
+			status,
+		},
+	);
 }
 
 /**
@@ -28,24 +34,32 @@ export async function handleImageRequest(
 	request: Request,
 	configPath?: string,
 	builtInRoots: readonly string[] = [attachmentsDir()],
-): Promise<Response> {
+): Promise<Response>
+{
 	const requestedPath = new URL(request.url).searchParams.get("path");
-	if (requestedPath === null || !isAbsolute(requestedPath)) {
+	if (requestedPath === null || !isAbsolute(requestedPath))
+	{
 		return textResponse("An absolute image path is required", 400);
 	}
 
 	let resolvedPath: string;
-	try {
+	try
+	{
 		resolvedPath = await realpath(requestedPath);
-	} catch {
+	}
+	catch
+	{
 		return textResponse("Image not found", 404);
 	}
 
 	const configuredRoots = readConfig(configPath)?.image_roots ?? [];
 	let resolvedRoots: string[];
-	try {
+	try
+	{
 		resolvedRoots = await Promise.all(configuredRoots.map(async (root) => realpath(root)));
-	} catch {
+	}
+	catch
+	{
 		return textResponse("Image path is not allowed", 403);
 	}
 
@@ -53,44 +67,63 @@ export async function handleImageRequest(
 	resolvedRoots.push(...resolvedBuiltIns.filter((root) => root !== null));
 
 	const isContained = resolvedRoots.some((root) => resolvedPath === root || resolvedPath.startsWith(root + sep));
-	if (!isContained) {
+	if (!isContained)
+	{
 		return textResponse("Image path is not allowed", 403);
 	}
 
 	let imageStat: Awaited<ReturnType<typeof stat>>;
-	try {
+	try
+	{
 		imageStat = await stat(resolvedPath);
-	} catch {
+	}
+	catch
+	{
 		return textResponse("Image not found", 404);
 	}
-	if (!imageStat.isFile()) {
+	if (!imageStat.isFile())
+	{
 		return textResponse("Image path is not a regular file", 403);
 	}
 
 	const contentType = CONTENT_TYPES.get(extname(resolvedPath).toLowerCase());
-	if (contentType === undefined) {
+	if (contentType === undefined)
+	{
 		return textResponse("Image type is not supported", 415);
 	}
 
-	if (imageStat.size > MAXIMUM_IMAGE_SIZE) {
+	if (imageStat.size > MAXIMUM_IMAGE_SIZE)
+	{
 		return textResponse("Image exceeds the 50 MB size limit", 413);
 	}
 
 	const etag = `"${imageStat.mtimeMs}-${imageStat.size}"`;
-	const cacheHeaders = {
+	const cacheHeaders =
+	{
 		"Cache-Control": CACHE_CONTROL,
 		ETag: etag,
 	};
-	if (request.headers.get("If-None-Match") === etag) {
-		return new Response(null, {status: 304, headers: cacheHeaders});
+	if (request.headers.get("If-None-Match") === etag)
+	{
+		return new Response(
+			null,
+			{
+				status: 304,
+				headers: cacheHeaders,
+			},
+		);
 	}
 
 	const body = request.method === "HEAD" ? null : fileBodyStream(resolvedPath);
-	return new Response(body, {
-		headers: {
-			...cacheHeaders,
-			"Content-Length": imageStat.size.toString(),
-			"Content-Type": contentType,
+	return new Response(
+		body,
+		{
+			headers:
+			{
+				...cacheHeaders,
+				"Content-Length": imageStat.size.toString(),
+				"Content-Type": contentType,
+			},
 		},
-	});
+	);
 }

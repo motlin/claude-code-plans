@@ -6,21 +6,41 @@ import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false}}),
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+		},
+	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class NoopResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords(): ResizeObserverEntry[] {
+class NoopResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords(): ResizeObserverEntry[]
+	{
 		return [];
 	}
 }
@@ -29,7 +49,8 @@ globalThis.ResizeObserver = NoopResizeObserver;
 
 afterEach(cleanup);
 
-interface ToolUse {
+interface ToolUse
+{
 	id: string;
 	name: string;
 	input: Record<string, unknown>;
@@ -37,14 +58,17 @@ interface ToolUse {
 }
 
 /** One assistant turn issuing `uses`, each followed by its own tool result. */
-function toolCallRecords(uses: ToolUse[]): unknown[] {
+function toolCallRecords(uses: ToolUse[]): unknown[]
+{
 	return [
 		{
 			type: "assistant",
 			uuid: "a1",
-			message: {
+			message:
+			{
 				role: "assistant",
-				content: uses.map(({id, name, input}) => ({
+				content: uses.map(({id, name, input}) => (
+				{
 					type: "tool_use",
 					id,
 					name,
@@ -52,26 +76,39 @@ function toolCallRecords(uses: ToolUse[]): unknown[] {
 				})),
 			},
 		},
-		...uses.map(({id, result}) => ({
+		...uses.map(({id, result}) => (
+		{
 			type: "user",
 			uuid: `r-${id}`,
 			parentUuid: "a1",
-			message: {
+			message:
+			{
 				role: "user",
-				content: [{type: "tool_result", tool_use_id: id, content: result}],
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: id,
+						content: result,
+					},
+				],
 			},
 		})),
 	];
 }
 
-const GREPS: ToolUse[] = [1, 2].map((n) => ({
+const GREPS: ToolUse[] = [1, 2].map((n) => (
+{
 	id: `t${n}`,
 	name: "Grep",
-	input: {pattern: `pattern-${n}`},
+	input:
+	{
+		pattern: `pattern-${n}`,
+	},
 	result: `${n} match`,
 }));
 
-function transcript(records: unknown[], transcriptMode: TranscriptMode) {
+function transcript(records: unknown[], transcriptMode: TranscriptMode)
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	return (
 		<SessionChat
@@ -85,12 +122,14 @@ function transcript(records: unknown[], transcriptMode: TranscriptMode) {
 	);
 }
 
-interface Disclosure {
+interface Disclosure
+{
 	expanded: string | null;
 	body: string | null;
 }
 
-function disclosure(element: Element): Disclosure {
+function disclosure(element: Element): Disclosure
+{
 	const controlled = element.getAttribute("aria-controls") ?? "";
 	return {
 		expanded: element.getAttribute("aria-expanded"),
@@ -98,7 +137,8 @@ function disclosure(element: Element): Disclosure {
 	};
 }
 
-function disclosures(container: HTMLElement): Disclosure[] {
+function disclosures(container: HTMLElement): Disclosure[]
+{
 	return [...container.querySelectorAll("[aria-expanded]")].map(disclosure);
 }
 
@@ -107,38 +147,59 @@ const EXPANDED_GROUP: Disclosure[] = [
 		expanded: "true",
 		body: "Searched pattern-1Inputpattern: pattern-1Output1 matchSearched pattern-2Inputpattern: pattern-2Output2 match",
 	},
-	{expanded: "true", body: "Inputpattern: pattern-1Output1 match"},
-	{expanded: "true", body: "Inputpattern: pattern-2Output2 match"},
+	{
+		expanded: "true",
+		body: "Inputpattern: pattern-1Output1 match",
+	},
+	{
+		expanded: "true",
+		body: "Inputpattern: pattern-2Output2 match",
+	},
 ];
-const COLLAPSED_GROUP: Disclosure[] = [{expanded: "false", body: null}];
+const COLLAPSED_GROUP: Disclosure[] = [
+	{
+		expanded: "false",
+		body: null,
+	},
+];
 
-describe("Verbose transcript mode pre-expands tool rows", () => {
-	it("expands the group and every nested row in verbose", async () => {
+describe("Verbose transcript mode pre-expands tool rows", () =>
+{
+	it("expands the group and every nested row in verbose", async () =>
+	{
 		const {container} = render(transcript(toolCallRecords(GREPS), "verbose"));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(disclosures(container)).toStrictEqual(EXPANDED_GROUP);
 		});
 	});
 
-	it.each(["normal", "thinking"] as const)("keeps the group collapsed in %s", (mode) => {
+	it.each(["normal", "thinking"] as const)("keeps the group collapsed in %s", (mode) =>
+	{
 		const {container} = render(transcript(toolCallRecords(GREPS), mode));
 
 		expect(disclosures(container)).toStrictEqual(COLLAPSED_GROUP);
 	});
 
-	it("expands a single Agent row to its params card and result in verbose", async () => {
+	it("expands a single Agent row to its params card and result in verbose", async () =>
+	{
 		const records = toolCallRecords([
 			{
 				id: "t1",
 				name: "Agent",
-				input: {description: "Find the schema", prompt: "Look for schema.ts"},
+				input:
+				{
+					description: "Find the schema",
+					prompt: "Look for schema.ts",
+				},
 				result: "Found it in src/lib/db",
 			},
 		]);
 		const {container} = render(transcript(records, "verbose"));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(disclosures(container)).toStrictEqual([
 				{
 					expanded: "true",
@@ -148,10 +209,12 @@ describe("Verbose transcript mode pre-expands tool rows", () => {
 		});
 	});
 
-	it("keeps a user toggle until the mode changes, then resets to the mode's default", async () => {
+	it("keeps a user toggle until the mode changes, then resets to the mode's default", async () =>
+	{
 		const records = toolCallRecords(GREPS);
 		const {container, rerender} = render(transcript(records, "verbose"));
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(disclosures(container)).toStrictEqual(EXPANDED_GROUP);
 		});
 
@@ -170,25 +233,35 @@ describe("Verbose transcript mode pre-expands tool rows", () => {
 		rerender(transcript(records, "verbose"));
 		const backToVerbose = disclosures(container);
 
-		expect({
-			toggledInVerbose,
-			afterNormal,
-			toggledInNormal,
-			afterThinking,
-			backToVerbose,
-		}).toStrictEqual({
-			toggledInVerbose: COLLAPSED_GROUP,
-			afterNormal: COLLAPSED_GROUP,
-			toggledInNormal: [
-				{
-					expanded: "true",
-					body: "Searched pattern-1Searched pattern-2",
-				},
-				{expanded: "false", body: null},
-				{expanded: "false", body: null},
-			],
-			afterThinking: COLLAPSED_GROUP,
-			backToVerbose: EXPANDED_GROUP,
-		});
+		expect(
+			{
+				toggledInVerbose,
+				afterNormal,
+				toggledInNormal,
+				afterThinking,
+				backToVerbose,
+			},
+		).toStrictEqual(
+			{
+				toggledInVerbose: COLLAPSED_GROUP,
+				afterNormal: COLLAPSED_GROUP,
+				toggledInNormal: [
+					{
+						expanded: "true",
+						body: "Searched pattern-1Searched pattern-2",
+					},
+					{
+						expanded: "false",
+						body: null,
+					},
+					{
+						expanded: "false",
+						body: null,
+					},
+				],
+				afterThinking: COLLAPSED_GROUP,
+				backToVerbose: EXPANDED_GROUP,
+			},
+		);
 	});
 });

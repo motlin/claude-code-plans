@@ -63,7 +63,8 @@ const loadIni = async () => import("shiki/langs/ini.mjs");
 const loadDotenv = async () => import("shiki/langs/dotenv.mjs");
 const loadFish = async () => import("shiki/langs/fish.mjs");
 
-const shikiLanguageLoaders: Record<string, DynamicImportLanguageRegistration> = {
+const shikiLanguageLoaders: Record<string, DynamicImportLanguageRegistration> =
+{
 	astro: loadAstro,
 	bash: loadShellScript,
 	c: loadC,
@@ -133,25 +134,31 @@ const shikiLanguageLoaders: Record<string, DynamicImportLanguageRegistration> = 
 let version = 0;
 const subscribers = new Set<() => void>();
 
-function notify(): void {
+function notify(): void
+{
 	version++;
-	for (const callback of subscribers) {
+	for (const callback of subscribers)
+	{
 		callback();
 	}
 }
 
-function subscribe(callback: () => void): () => void {
+function subscribe(callback: () => void): () => void
+{
 	subscribers.add(callback);
-	return () => {
+	return () =>
+	{
 		subscribers.delete(callback);
 	};
 }
 
-function getVersion(): number {
+function getVersion(): number
+{
 	return version;
 }
 
-async function initHighlighter(): Promise<HighlighterCore> {
+async function initHighlighter(): Promise<HighlighterCore>
+{
 	const [{createHighlighterCore}, {createJavaScriptRegexEngine}, {claudeLight}, {claudeDark}] = await Promise.all([
 		import("@shikijs/core"),
 		import("@shikijs/engine-javascript"),
@@ -159,11 +166,13 @@ async function initHighlighter(): Promise<HighlighterCore> {
 		import("../lib/claude-dark-theme"),
 	]);
 
-	const highlighter = await createHighlighterCore({
-		themes: [claudeLight, claudeDark],
-		langs: [],
-		engine: createJavaScriptRegexEngine(),
-	});
+	const highlighter = await createHighlighterCore(
+		{
+			themes: [claudeLight, claudeDark],
+			langs: [],
+			engine: createJavaScriptRegexEngine(),
+		},
+	);
 
 	highlighterInstance = highlighter;
 	notify();
@@ -175,15 +184,18 @@ async function initHighlighter(): Promise<HighlighterCore> {
  * Callers that need async access (e.g., markdown-it integration) use this.
  */
 // oxlint-disable-next-line typescript/promise-function-async -- returns the one shared highlighter promise
-function getHighlighterInstance(): Promise<HighlighterCore> {
+function getHighlighterInstance(): Promise<HighlighterCore>
+{
 	highlighterPromise ??= initHighlighter();
 	return highlighterPromise;
 }
 
 /** Load a supported grammar once and notify subscribers when it becomes available. */
 // oxlint-disable-next-line typescript/promise-function-async -- concurrent requests share one in-flight promise
-export function requestLanguage(language: string): Promise<void> {
-	if (highlighterInstance?.getLoadedLanguages().includes(language)) {
+export function requestLanguage(language: string): Promise<void>
+{
+	if (highlighterInstance?.getLoadedLanguages().includes(language))
+	{
 		return Promise.resolve();
 	}
 
@@ -194,12 +206,14 @@ export function requestLanguage(language: string): Promise<void> {
 	if (pendingLoad) return pendingLoad;
 
 	const languageLoad = Promise.all([getHighlighterInstance(), loadLanguage()])
-		.then(async ([highlighter, languageModule]) => {
+		.then(async ([highlighter, languageModule]) =>
+		{
 			if (highlighter.getLoadedLanguages().includes(language)) return;
 			await highlighter.loadLanguage(languageModule.default);
 			notify();
 		})
-		.finally(() => {
+		.finally(() =>
+		{
 			languageLoadPromises.delete(loadLanguage);
 		});
 	languageLoadPromises.set(loadLanguage, languageLoad);
@@ -208,19 +222,22 @@ export function requestLanguage(language: string): Promise<void> {
 
 /** Load a code theme once and notify subscribers when it becomes available. */
 // oxlint-disable-next-line typescript/promise-function-async -- concurrent requests share one in-flight promise
-export function requestTheme(theme: CodeThemeId): Promise<void> {
+export function requestTheme(theme: CodeThemeId): Promise<void>
+{
 	if (highlighterInstance?.getLoadedThemes().includes(theme)) return Promise.resolve();
 
 	const pendingLoad = themeLoadPromises.get(theme);
 	if (pendingLoad) return pendingLoad;
 
 	const themeLoad = Promise.all([getHighlighterInstance(), loadCodeTheme(theme)])
-		.then(async ([highlighter, registration]) => {
+		.then(async ([highlighter, registration]) =>
+		{
 			if (highlighter.getLoadedThemes().includes(theme)) return;
 			await highlighter.loadTheme(registration);
 			notify();
 		})
-		.finally(() => {
+		.finally(() =>
+		{
 			themeLoadPromises.delete(theme);
 		});
 	themeLoadPromises.set(theme, themeLoad);
@@ -231,14 +248,16 @@ export function requestTheme(theme: CodeThemeId): Promise<void> {
  * The chosen theme if the highlighter has it, else the mode's default while
  * the chosen one loads (subscribers are notified when it arrives).
  */
-export function themeOrRequest<T extends CodeThemeId>(highlighter: HighlighterCore, theme: T, fallback: T): T {
+export function themeOrRequest<T extends CodeThemeId>(highlighter: HighlighterCore, theme: T, fallback: T): T
+{
 	const usable = loadedThemeOr(highlighter, theme, fallback);
 	if (usable !== theme) void requestTheme(theme);
 	return usable;
 }
 
 // Kick off loading on first import so the highlighter is ready sooner.
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined")
+{
 	void getHighlighterInstance();
 }
 
@@ -247,17 +266,20 @@ if (typeof window !== "undefined") {
 // ---------------------------------------------------------------------------
 
 /** Returns the highlighter if already loaded, otherwise null. */
-export function getHighlighterSync(): HighlighterCore | null {
+export function getHighlighterSync(): HighlighterCore | null
+{
 	return highlighterInstance;
 }
 
 /** Subscribe to highlighter readiness changes. */
-export function subscribeHighlighter(callback: () => void): () => void {
+export function subscribeHighlighter(callback: () => void): () => void
+{
 	return subscribe(callback);
 }
 
 /** Snapshot function for useSyncExternalStore. */
-export function getHighlighterVersion(): number {
+export function getHighlighterVersion(): number
+{
 	return getVersion();
 }
 
@@ -270,36 +292,45 @@ export function getHighlighterVersion(): number {
  * Returns `null` while the highlighter is loading or when `language` is null.
  * Falls back to null for unknown/unloaded languages.
  */
-export function useHighlightedLines(code: string, language: string | null): ThemedToken[][] | null {
+export function useHighlightedLines(code: string, language: string | null): ThemedToken[][] | null
+{
 	const resolvedTheme = useResolvedTheme();
 	const codeThemes = useCodeThemes();
 
 	// Subscribe to highlighter readiness via useSyncExternalStore.
 	const highlighterVersion = useSyncExternalStore(subscribe, getVersion, () => 0);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!language || highlighterInstance?.getLoadedLanguages().includes(language)) return;
 		void requestLanguage(language);
 	}, [language, highlighterVersion]);
 
-	return useMemo(() => {
+	return useMemo(() =>
+	{
 		void highlighterVersion;
 		if (!highlighterInstance || !language) return null;
 
 		const mode = resolvedTheme === "dark" ? "dark" : "light";
 		const themeName = themeOrRequest(highlighterInstance, codeThemes[mode], DEFAULT_CODE_THEMES[mode]);
 
-		try {
+		try
+		{
 			const loadedLanguages = highlighterInstance.getLoadedLanguages();
 			if (!loadedLanguages.includes(language)) return null;
 
-			const result = highlighterInstance.codeToTokens(code, {
-				...SHIKI_TOKENIZE_OPTIONS,
-				lang: language,
-				theme: themeName,
-			});
+			const result = highlighterInstance.codeToTokens(
+				code,
+				{
+					...SHIKI_TOKENIZE_OPTIONS,
+					lang: language,
+					theme: themeName,
+				},
+			);
 			return result.tokens;
-		} catch {
+		}
+		catch
+		{
 			return null;
 		}
 	}, [code, language, resolvedTheme, codeThemes, highlighterVersion]);

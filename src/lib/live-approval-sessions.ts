@@ -11,17 +11,20 @@ const counts = new Map<string, number>();
 const listeners = new Set<() => void>();
 let snapshot: ReadonlySet<string> = EMPTY;
 
-function emitChange(): void {
+function emitChange(): void
+{
 	snapshot = counts.size === 0 ? EMPTY : new Set(counts.keys());
 	for (const listener of listeners) listener();
 }
 
 /** Mark the session's approval live in this tab; the returned dispose releases this registration once. */
-export function registerLiveApproval(sessionId: string): () => void {
+export function registerLiveApproval(sessionId: string): () => void
+{
 	counts.set(sessionId, (counts.get(sessionId) ?? 0) + 1);
 	emitChange();
 	let disposed = false;
-	return () => {
+	return () =>
+	{
 		if (disposed) return;
 		disposed = true;
 		const count = counts.get(sessionId) ?? 0;
@@ -31,27 +34,33 @@ export function registerLiveApproval(sessionId: string): () => void {
 	};
 }
 
-export function liveApprovalIds(): ReadonlySet<string> {
+export function liveApprovalIds(): ReadonlySet<string>
+{
 	return snapshot;
 }
 
-export function subscribeLiveApprovals(listener: () => void): () => void {
+export function subscribeLiveApprovals(listener: () => void): () => void
+{
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
 
 /** The ids of every session with a live approval in this tab; the same empty set while none has. */
-export function useLiveApprovalIds(): ReadonlySet<string> {
+export function useLiveApprovalIds(): ReadonlySet<string>
+{
 	return useSyncExternalStore(subscribeLiveApprovals, liveApprovalIds, () => EMPTY);
 }
 
 /** Registers the session's approval as live while `live` holds. */
-export function useLiveApproval(sessionId: string, live: boolean): void {
+export function useLiveApproval(sessionId: string, live: boolean): void
+{
 	useEffect(() => (live ? registerLiveApproval(sessionId) : undefined), [sessionId, live]);
 }
 
-export const __liveApprovalTesting = {
-	reset(): void {
+export const __liveApprovalTesting =
+{
+	reset(): void
+	{
 		counts.clear();
 		emitChange();
 	},

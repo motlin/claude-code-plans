@@ -15,14 +15,19 @@ import {loadedSettingsDialog} from "../src/components/settings/settings-dialog-l
  */
 
 // The download outlasts the first render, as on a real network, so the fallback commits and the retry is a fresh render.
-vi.mock("../src/components/settings/settings-dialog", async () => {
-	await new Promise((resolve) => {
+vi.mock("../src/components/settings/settings-dialog", async () =>
+{
+	await new Promise((resolve) =>
+	{
 		setTimeout(resolve, 50);
 	});
-	return {SettingsDialog: () => <div>Settings dialog stub</div>};
+	return {
+		SettingsDialog: () => <div>Settings dialog stub</div>,
+	};
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	vi.restoreAllMocks();
 });
 
@@ -30,30 +35,37 @@ afterEach(() => {
  * Mounts the loader on a real root outside act(), so React schedules the post-download retry as a browser would:
  * act() would flush it as an in-place replay, which never reaches the warning.
  */
-async function renderLoader() {
+async function renderLoader()
+{
 	const actEnvironment: unknown = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT");
 	Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", false);
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
-	try {
+	try
+	{
 		root.render(
 			<Suspense fallback={<div>Loading</div>}>
 				<SettingsDialogLoader />
 			</Suspense>,
 		);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(container.textContent).toBe("Settings dialog stub");
 		});
-	} finally {
+	}
+	finally
+	{
 		root.unmount();
 		container.remove();
 		Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", actEnvironment);
 	}
 }
 
-describe("SettingsDialogLoader", () => {
-	it("suspends on the first open and then renders the downloaded dialog without a console error", async () => {
+describe("SettingsDialogLoader", () =>
+{
+	it("suspends on the first open and then renders the downloaded dialog without a console error", async () =>
+	{
 		const consoleError = vi.spyOn(console, "error");
 		expect(loadedSettingsDialog()).toBeUndefined();
 
@@ -62,7 +74,8 @@ describe("SettingsDialogLoader", () => {
 		expect(consoleError.mock.calls).toStrictEqual([]);
 	});
 
-	it("renders the already-downloaded dialog in the same pass without a console error", async () => {
+	it("renders the already-downloaded dialog in the same pass without a console error", async () =>
+	{
 		const consoleError = vi.spyOn(console, "error");
 		expect(loadedSettingsDialog()).toBeDefined();
 

@@ -15,14 +15,16 @@ const PLUGIN_CREATOR_PROMPT = "Create a new Claude Code plugin";
 const MARKETPLACE_ADD_COMMAND = "claude plugin marketplace add ";
 const MCP_ADD_COMMAND = "claude mcp add ";
 
-const ADD_LABEL: Record<CustomizeSectionId, string> = {
+const ADD_LABEL: Record<CustomizeSectionId, string> =
+{
 	skills: "Add skill",
 	plugins: "Add plugin",
 	connectors: "Add connector",
 };
 
 /** `/skill-creator` when that skill is installed, else a plain request Claude can act on. */
-function skillCreatorPrompt(skillNames: readonly string[]): string {
+function skillCreatorPrompt(skillNames: readonly string[]): string
+{
 	return skillNames.includes(SKILL_CREATOR) ? `/${SKILL_CREATOR}` : "Create a new skill";
 }
 
@@ -32,17 +34,38 @@ function skillCreatorPrompt(skillNames: readonly string[]): string {
  * marketplace and connector items copy the CLI command to finish in a
  * terminal. Upload and the Create-a-… forms need claude.ai storage.
  */
-export function CustomizeAddMenu({section}: {section: CustomizeSectionId}) {
+export function CustomizeAddMenu({section}: {section: CustomizeSectionId})
+{
 	const toast = useToast();
-	const {data: skills} = useQuery({...customizeSkillsQueryOptions, enabled: section === "skills"});
+	const {data: skills} = useQuery(
+		{
+			...customizeSkillsQueryOptions,
+			enabled: section === "skills",
+		},
+	);
 
-	const create = (prompt: string) => void startClaudeSession(prompt, {toast});
-	const copyCommand = async (command: string) => {
+	const create = (prompt: string) =>
+		void startClaudeSession(
+			prompt,
+			{
+				toast,
+			},
+		);
+	const copyCommand = async (command: string) =>
+	{
 		const copied = await writeClipboardText(command);
 		toast(
 			copied
-				? {kind: "success", message: `Command copied: ${command.trim()}`}
-				: {kind: "error", message: "Copy failed"},
+				?
+					{
+						kind: "success",
+						message: `Command copied: ${command.trim()}`,
+					}
+				:
+					{
+						kind: "error",
+						message: "Copy failed",
+					},
 		);
 	};
 
@@ -56,7 +79,8 @@ export function CustomizeAddMenu({section}: {section: CustomizeSectionId}) {
 			<MenuContent align="end">
 				{section === "skills" && (
 					<MenuItem
-						onSelect={() => {
+						onSelect={() =>
+						{
 							create(skillCreatorPrompt((skills ?? []).map((skill) => skill.name)));
 						}}
 					>
@@ -67,7 +91,8 @@ export function CustomizeAddMenu({section}: {section: CustomizeSectionId}) {
 					<>
 						<MenuItem onSelect={() => void copyCommand(MARKETPLACE_ADD_COMMAND)}>Add marketplace</MenuItem>
 						<MenuItem
-							onSelect={() => {
+							onSelect={() =>
+							{
 								create(PLUGIN_CREATOR_PROMPT);
 							}}
 						>

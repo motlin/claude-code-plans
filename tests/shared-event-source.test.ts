@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
 import type {StreamStatus} from "../src/lib/reconnecting-event-source";
-import {
+import
+{
 	openSharedEventSource,
 	type SharedEventSourceDeps,
 	type SharedEventSourceOptions,
@@ -8,21 +9,37 @@ import {
 } from "../src/lib/shared-event-source";
 
 /** One browser origin: the Web Locks manager and the BroadcastChannel bus that every tab of it shares. */
-class FakeOrigin {
+class FakeOrigin
+{
 	private readonly holders = new Map<string, symbol>();
 	private readonly waiters = new Map<string, Array<() => void>>();
 	private readonly channels = new Set<FakeChannel>();
 	readonly streams: FakeStream[] = [];
-	snapshot: SnapshotEvent[] = [{type: "subagents:snapshot", data: '{"subagents":[]}'}];
+	snapshot: SnapshotEvent[] = [
+		{
+			type: "subagents:snapshot",
+			data: '{"subagents":[]}',
+		},
+	];
 	snapshotFetches = 0;
 
-	readonly locks: SharedEventSourceDeps["locks"] = {
-		request: async (name, options, callback) => {
-			const tryGrant = (): Promise<unknown> | undefined => {
+	readonly locks: SharedEventSourceDeps["locks"] =
+	{
+		request: async (name, options, callback) =>
+		{
+			const tryGrant = (): Promise<unknown> | undefined =>
+			{
 				if (this.holders.has(name)) return undefined;
 				const token = Symbol(name);
 				this.holders.set(name, token);
-				return Promise.resolve(callback({name})).finally(() => {
+				return Promise.resolve(
+					callback(
+						{
+							name,
+						},
+					),
+				).finally(() =>
+				{
 					this.holders.delete(name);
 					const next = this.waiters.get(name)?.shift();
 					next?.();
@@ -31,13 +48,16 @@ class FakeOrigin {
 			const granted = tryGrant();
 			if (granted) return granted;
 			if (options.ifAvailable) return Promise.resolve(callback(null));
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve, reject) =>
+			{
 				const queue = this.waiters.get(name) ?? [];
-				const grant = () => {
+				const grant = () =>
+				{
 					options.signal?.removeEventListener("abort", abort);
 					tryGrant()!.then(resolve, reject);
 				};
-				const abort = () => {
+				const abort = () =>
+				{
 					queue.splice(queue.indexOf(grant), 1);
 					reject(new DOMException("aborted", "AbortError"));
 				};
@@ -48,134 +68,217 @@ class FakeOrigin {
 		},
 	};
 
-	createChannel = (name: string): FakeChannel => {
+	createChannel = (name: string): FakeChannel =>
+	{
 		const channel = new FakeChannel(name, this.channels);
 		this.channels.add(channel);
 		return channel;
 	};
 
 	/** A tab of this origin, recording what its consumer's listeners and resync callback saw. */
-	openTab(options: {locks?: boolean} = {}): FakeTab {
-		const tab: FakeTab = {received: [], resyncs: 0, statuses: [], close: () => {}};
-		const consumer: SharedEventSourceOptions = {
-			attach(target) {
-				for (const type of ["session:start", "subagents:snapshot"]) {
+	openTab(
+		options:
+		{
+			locks?: boolean;
+		} = {},
+	): FakeTab
+	{
+		const tab: FakeTab =
+		{
+			received: [],
+			resyncs: 0,
+			statuses: [],
+			close: () =>
+			{
+			},
+		};
+		const consumer: SharedEventSourceOptions =
+		{
+			attach(target)
+			{
+				for (const type of ["session:start", "subagents:snapshot"])
+				{
 					target.addEventListener(type, (e) => tab.received.push(`${e.type} ${(e as MessageEvent).data}`));
 				}
 			},
 			onReconnected: () => tab.resyncs++,
 			onStatus: (status) => tab.statuses.push(status),
 		};
-		tab.close = openSharedEventSource("/api/events", consumer, {
-			locks: options.locks === false ? undefined : this.locks,
-			createChannel: this.createChannel,
-			openStream: (url, streamOptions) => {
-				const stream = new FakeStream(
-					url,
-					streamOptions.resumeAfterGap === true,
-					() => {
-						streamOptions.onReconnected();
-					},
-					(status) => streamOptions.onStatus?.(status),
-				);
-				streamOptions.attach(stream as unknown as EventSource);
-				this.streams.push(stream);
-				return () => {
-					stream.closed = true;
-				};
+		tab.close = openSharedEventSource(
+			"/api/events",
+			consumer,
+			{
+				locks: options.locks === false ? undefined : this.locks,
+				createChannel: this.createChannel,
+				openStream: (url, streamOptions) =>
+				{
+					const stream = new FakeStream(
+						url,
+						streamOptions.resumeAfterGap === true,
+						() =>
+						{
+							streamOptions.onReconnected();
+						},
+						(status) => streamOptions.onStatus?.(status),
+					);
+					streamOptions.attach(stream as unknown as EventSource);
+					this.streams.push(stream);
+					return () =>
+					{
+						stream.closed = true;
+					};
+				},
+				fetchSnapshot: async () =>
+				{
+					this.snapshotFetches++;
+					return Promise.resolve(this.snapshot);
+				},
 			},
-			fetchSnapshot: async () => {
-				this.snapshotFetches++;
-				return Promise.resolve(this.snapshot);
-			},
-		});
+		);
 		return tab;
 	}
 
-	openStreams(): FakeStream[] {
+	openStreams(): FakeStream[]
+	{
 		return this.streams.filter((stream) => !stream.closed);
 	}
 }
 
-interface FakeTab {
+interface FakeTab
+{
 	received: string[];
 	resyncs: number;
 	statuses: StreamStatus[];
 	close: () => void;
 }
 
-class FakeChannel {
+class FakeChannel
+{
 	onmessage: ((event: MessageEvent) => void) | null = null;
 	constructor(
 		readonly name: string,
 		private readonly bus: Set<FakeChannel>,
-	) {}
+	)
+	{
+	}
 
-	postMessage(message: unknown): void {
-		for (const other of this.bus) {
+	postMessage(message: unknown): void
+	{
+		for (const other of this.bus)
+		{
 			if (other === this || other.name !== this.name) continue;
-			queueMicrotask(() => other.onmessage?.(new MessageEvent("message", {data: message})));
+			queueMicrotask(() =>
+				other.onmessage?.(
+					new MessageEvent(
+						"message",
+						{
+							data: message,
+						},
+					),
+				),
+			);
 		}
 	}
 
-	close(): void {
+	close(): void
+	{
 		this.bus.delete(this);
 	}
 }
 
-class FakeStream extends EventTarget {
+class FakeStream extends EventTarget
+{
 	closed = false;
 	constructor(
 		readonly url: string,
 		readonly resumeAfterGap: boolean,
 		private readonly onReconnected: () => void,
 		readonly status: (status: StreamStatus) => void,
-	) {
+	)
+	{
 		super();
 	}
 
-	emit(type: string, data: string): void {
-		this.dispatchEvent(new MessageEvent(type, {data}));
+	emit(type: string, data: string): void
+	{
+		this.dispatchEvent(
+			new MessageEvent(
+				type,
+				{
+					data,
+				},
+			),
+		);
 	}
 
 	/** The stream opened, after a gap when the tab started it as a takeover or after an error. */
-	open(): void {
+	open(): void
+	{
 		if (this.resumeAfterGap) this.onReconnected();
 	}
 
-	reconnect(): void {
+	reconnect(): void
+	{
 		this.onReconnected();
 	}
 }
 
-async function settle(): Promise<void> {
+async function settle(): Promise<void>
+{
 	for (let i = 0; i < 10; i++)
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 }
 
-describe("openSharedEventSource", () => {
-	it("opens one stream for every tab of the origin and fans its events out to all of them", async () => {
+describe("openSharedEventSource", () =>
+{
+	it("opens one stream for every tab of the origin and fans its events out to all of them", async () =>
+	{
 		const origin = new FakeOrigin();
-		const tabs = Array.from({length: 8}, () => origin.openTab());
+		const tabs = Array.from(
+			{
+				length: 8,
+			},
+			() => origin.openTab(),
+		);
 		await settle();
 
 		origin.openStreams()[0]!.emit("session:start", '{"sessionId":"a"}');
 		await settle();
 
-		expect({
-			streams: origin.openStreams().map((stream) => ({url: stream.url, resumeAfterGap: stream.resumeAfterGap})),
-			received: tabs.map((tab) => tab.received.filter((line) => line.startsWith("session:start"))),
-			resyncs: tabs.map((tab) => tab.resyncs),
-		}).toStrictEqual({
-			streams: [{url: "/api/events", resumeAfterGap: false}],
-			received: Array.from({length: 8}, () => ['session:start {"sessionId":"a"}']),
-			resyncs: [0, 0, 0, 0, 0, 0, 0, 0],
-		});
+		expect(
+			{
+				streams: origin.openStreams().map((stream) => (
+				{
+					url: stream.url,
+					resumeAfterGap: stream.resumeAfterGap,
+				})),
+				received: tabs.map((tab) => tab.received.filter((line) => line.startsWith("session:start"))),
+				resyncs: tabs.map((tab) => tab.resyncs),
+			},
+		).toStrictEqual(
+			{
+				streams: [
+					{
+						url: "/api/events",
+						resumeAfterGap: false,
+					},
+				],
+				received: Array.from(
+					{
+						length: 8,
+					},
+					() => ['session:start {"sessionId":"a"}'],
+				),
+				resyncs: [0, 0, 0, 0, 0, 0, 0, 0],
+			},
+		);
 	});
 
-	it("gives a following tab the stream's connect-time snapshot before any relayed event", async () => {
+	it("gives a following tab the stream's connect-time snapshot before any relayed event", async () =>
+	{
 		const origin = new FakeOrigin();
 		origin.openTab();
 		await settle();
@@ -183,13 +286,21 @@ describe("openSharedEventSource", () => {
 		origin.openStreams()[0]!.emit("session:start", '{"sessionId":"a"}');
 		await settle();
 
-		expect({fetches: origin.snapshotFetches, received: follower.received}).toStrictEqual({
-			fetches: 1,
-			received: ['subagents:snapshot {"subagents":[]}', 'session:start {"sessionId":"a"}'],
-		});
+		expect(
+			{
+				fetches: origin.snapshotFetches,
+				received: follower.received,
+			},
+		).toStrictEqual(
+			{
+				fetches: 1,
+				received: ['subagents:snapshot {"subagents":[]}', 'session:start {"sessionId":"a"}'],
+			},
+		);
 	});
 
-	it("catches every tab up when the leading tab's stream reconnects", async () => {
+	it("catches every tab up when the leading tab's stream reconnects", async () =>
+	{
 		const origin = new FakeOrigin();
 		const tabs = [origin.openTab(), origin.openTab(), origin.openTab()];
 		await settle();
@@ -200,7 +311,8 @@ describe("openSharedEventSource", () => {
 		expect(tabs.map((tab) => tab.resyncs)).toStrictEqual([1, 1, 1]);
 	});
 
-	it("hands the stream to another tab when the leading tab closes, catching every remaining tab up once it opens", async () => {
+	it("hands the stream to another tab when the leading tab closes, catching every remaining tab up once it opens", async () =>
+	{
 		const origin = new FakeOrigin();
 		const [leader, ...followers] = [origin.openTab(), origin.openTab(), origin.openTab()];
 		await settle();
@@ -213,23 +325,38 @@ describe("openSharedEventSource", () => {
 		takeover!.emit("session:start", '{"sessionId":"b"}');
 		await settle();
 
-		expect({
-			streams: origin.streams.map((stream) => ({closed: stream.closed, resumeAfterGap: stream.resumeAfterGap})),
-			resyncsBeforeOpen,
-			resyncs: followers.map((tab) => tab.resyncs),
-			received: followers.map((tab) => tab.received.at(-1)),
-		}).toStrictEqual({
-			streams: [
-				{closed: true, resumeAfterGap: false},
-				{closed: false, resumeAfterGap: true},
-			],
-			resyncsBeforeOpen: [0, 0],
-			resyncs: [1, 1],
-			received: ['session:start {"sessionId":"b"}', 'session:start {"sessionId":"b"}'],
-		});
+		expect(
+			{
+				streams: origin.streams.map((stream) => (
+				{
+					closed: stream.closed,
+					resumeAfterGap: stream.resumeAfterGap,
+				})),
+				resyncsBeforeOpen,
+				resyncs: followers.map((tab) => tab.resyncs),
+				received: followers.map((tab) => tab.received.at(-1)),
+			},
+		).toStrictEqual(
+			{
+				streams: [
+					{
+						closed: true,
+						resumeAfterGap: false,
+					},
+					{
+						closed: false,
+						resumeAfterGap: true,
+					},
+				],
+				resyncsBeforeOpen: [0, 0],
+				resyncs: [1, 1],
+				received: ['session:start {"sessionId":"b"}', 'session:start {"sessionId":"b"}'],
+			},
+		);
 	});
 
-	it("relays every status change of the leading tab's stream to the other tabs", async () => {
+	it("relays every status change of the leading tab's stream to the other tabs", async () =>
+	{
 		const origin = new FakeOrigin();
 		const tabs = [origin.openTab(), origin.openTab(), origin.openTab()];
 		await settle();
@@ -241,11 +368,17 @@ describe("openSharedEventSource", () => {
 		await settle();
 
 		expect(tabs.map((tab) => tab.statuses)).toStrictEqual(
-			Array.from({length: 3}, () => ["connecting", "connected", "reconnecting"]),
+			Array.from(
+				{
+					length: 3,
+				},
+				() => ["connecting", "connected", "reconnecting"],
+			),
 		);
 	});
 
-	it("tells a tab that joins later the stream's current status", async () => {
+	it("tells a tab that joins later the stream's current status", async () =>
+	{
 		const origin = new FakeOrigin();
 		const leader = origin.openTab();
 		await settle();
@@ -256,16 +389,37 @@ describe("openSharedEventSource", () => {
 		const follower = origin.openTab();
 		await settle();
 
-		expect({
-			leader: {statuses: leader.statuses, resyncs: leader.resyncs},
-			follower: {statuses: follower.statuses, resyncs: follower.resyncs},
-		}).toStrictEqual({
-			leader: {statuses: ["connecting", "connected"], resyncs: 0},
-			follower: {statuses: ["connected"], resyncs: 0},
-		});
+		expect(
+			{
+				leader:
+				{
+					statuses: leader.statuses,
+					resyncs: leader.resyncs,
+				},
+				follower:
+				{
+					statuses: follower.statuses,
+					resyncs: follower.resyncs,
+				},
+			},
+		).toStrictEqual(
+			{
+				leader:
+				{
+					statuses: ["connecting", "connected"],
+					resyncs: 0,
+				},
+				follower:
+				{
+					statuses: ["connected"],
+					resyncs: 0,
+				},
+			},
+		);
 	});
 
-	it("stops waiting for the stream once a following tab closes", async () => {
+	it("stops waiting for the stream once a following tab closes", async () =>
+	{
 		const origin = new FakeOrigin();
 		const leader = origin.openTab();
 		const follower = origin.openTab();
@@ -278,27 +432,44 @@ describe("openSharedEventSource", () => {
 		expect(origin.openStreams()).toStrictEqual([]);
 	});
 
-	it("opens a stream per tab when the browser has no Web Locks", async () => {
+	it("opens a stream per tab when the browser has no Web Locks", async () =>
+	{
 		const origin = new FakeOrigin();
-		const tabs = [origin.openTab({locks: false}), origin.openTab({locks: false})];
+		const tabs = [
+			origin.openTab(
+				{
+					locks: false,
+				},
+			),
+			origin.openTab(
+				{
+					locks: false,
+				},
+			),
+		];
 		await settle();
 
-		for (const stream of origin.openStreams()) {
+		for (const stream of origin.openStreams())
+		{
 			stream.emit("session:start", "{}");
 			stream.status("connected");
 		}
 		await settle();
 
-		expect({
-			streams: origin.openStreams().length,
-			received: tabs.map((tab) => tab.received),
-			statuses: tabs.map((tab) => tab.statuses),
-			fetches: origin.snapshotFetches,
-		}).toStrictEqual({
-			streams: 2,
-			received: [["session:start {}"], ["session:start {}"]],
-			statuses: [["connected"], ["connected"]],
-			fetches: 0,
-		});
+		expect(
+			{
+				streams: origin.openStreams().length,
+				received: tabs.map((tab) => tab.received),
+				statuses: tabs.map((tab) => tab.statuses),
+				fetches: origin.snapshotFetches,
+			},
+		).toStrictEqual(
+			{
+				streams: 2,
+				received: [["session:start {}"], ["session:start {}"]],
+				statuses: [["connected"], ["connected"]],
+				fetches: 0,
+			},
+		);
 	});
 });

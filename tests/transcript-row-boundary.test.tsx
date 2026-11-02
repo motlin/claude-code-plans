@@ -9,13 +9,15 @@ import {TranscriptRowBoundary} from "../src/components/transcript-row-boundary";
 let consoleError: ReturnType<typeof vi.spyOn>;
 let now = 1000;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 	now = 1000;
 	vi.spyOn(performance, "now").mockImplementation(() => now);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 });
@@ -23,23 +25,40 @@ afterEach(() => {
 let crashSerial = 0;
 
 /** Each test throws from its own call site name so the module-wide report dedupe sees a new crash. */
-function crash(message: string): Error {
+function crash(message: string): Error
+{
 	crashSerial += 1;
 	const error = new Error(message);
 	error.name = `RowCrash${crashSerial}`;
 	return error;
 }
 
-function Thrower({error}: {error: Error}): ReactNode {
+function Thrower({error}: {error: Error}): ReactNode
+{
 	throw error;
 }
 
-class Outer extends Component<{children: ReactNode}, {caught: boolean}> {
-	override state = {caught: false};
-	static getDerivedStateFromError() {
-		return {caught: true};
+class Outer extends Component<
+	{
+		children: ReactNode;
+	},
+	{
+		caught: boolean;
 	}
-	override render(): ReactNode {
+>
+{
+	override state =
+	{
+		caught: false,
+	};
+	static getDerivedStateFromError()
+	{
+		return {
+			caught: true,
+		};
+	}
+	override render(): ReactNode
+	{
 		return this.state.caught ? <p>outer caught</p> : this.props.children;
 	}
 }
@@ -47,27 +66,38 @@ class Outer extends Component<{children: ReactNode}, {caught: boolean}> {
 let root: HTMLElement = document.body;
 
 /** Renders into a fresh container; the shared DOM pool can hold other files' leftovers in the body. */
-function mount(ui: ReactNode) {
+function mount(ui: ReactNode)
+{
 	const view = render(ui);
 	root = view.container;
 	return view;
 }
 
-const screen = {
+const screen =
+{
 	getByText: (text: string) => within(root).getByText(text),
 	queryByText: (text: string) => within(root).queryByText(text),
 	getAllByRole: (role: string) => within(root).getAllByRole(role),
-	getByRole: (role: string, options: {name: string}) => within(root).getByRole(role, options),
+	getByRole: (
+		role: string,
+		options:
+		{
+			name: string;
+		},
+	) => within(root).getByRole(role, options),
 	queryByRole: (role: string) => within(root).queryByRole(role),
 	getByTestId: (id: string) => within(root).getByTestId(id),
 };
 
-function rowLogs(): number {
+function rowLogs(): number
+{
 	return consoleError.mock.calls.filter((args: unknown[]) => args[0] === "[transcript-row]").length;
 }
 
-describe("TranscriptRowBoundary", () => {
-	it("replaces only the crashed row with upstream's neutral banner", () => {
+describe("TranscriptRowBoundary", () =>
+{
+	it("replaces only the crashed row with upstream's neutral banner", () =>
+	{
 		const error = crash("boom");
 		const {container} = mount(
 			<div>
@@ -92,7 +122,8 @@ describe("TranscriptRowBoundary", () => {
 		expect(screen.queryByText("boom")).toBeNull();
 	});
 
-	it("words an assistant reply's crash as a response", () => {
+	it("words an assistant reply's crash as a response", () =>
+	{
 		mount(
 			<TranscriptRowBoundary kind="reply" resetOn="a">
 				<Thrower error={crash("boom")} />
@@ -104,7 +135,8 @@ describe("TranscriptRowBoundary", () => {
 		expect(screen.getByText("This response didn’t load.").tagName).toEqual("SPAN");
 	});
 
-	it("rethrows a stale-chunk error to the route", () => {
+	it("rethrows a stale-chunk error to the route", () =>
+	{
 		mount(
 			<Outer>
 				<TranscriptRowBoundary kind="row" resetOn="a">
@@ -116,7 +148,8 @@ describe("TranscriptRowBoundary", () => {
 		expect(root.querySelector("[data-transcript-row-crashed]")).toBeNull();
 	});
 
-	it("logs the same crash once", () => {
+	it("logs the same crash once", () =>
+	{
 		const error = crash("boom");
 		const {rerender} = mount(
 			<TranscriptRowBoundary kind="row" resetOn="a">
@@ -132,7 +165,8 @@ describe("TranscriptRowBoundary", () => {
 		expect(rowLogs()).toEqual(1);
 	});
 
-	it("redraws the row when its data changes", () => {
+	it("redraws the row when its data changes", () =>
+	{
 		const {rerender} = mount(
 			<TranscriptRowBoundary kind="row" resetOn="a">
 				<Thrower error={crash("boom")} />
@@ -146,10 +180,12 @@ describe("TranscriptRowBoundary", () => {
 		expect(screen.getByText("row body").tagName).toEqual("SPAN");
 	});
 
-	it("draws the row again after Try again", () => {
+	it("draws the row again after Try again", () =>
+	{
 		let fail = true;
 		const error = crash("boom");
-		function Flaky() {
+		function Flaky()
+		{
 			if (fail) throw error;
 			return <span>row body</span>;
 		}
@@ -159,18 +195,33 @@ describe("TranscriptRowBoundary", () => {
 			</TranscriptRowBoundary>,
 		);
 		fail = false;
-		fireEvent.click(screen.getByRole("button", {name: "Try again"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Try again",
+				},
+			),
+		);
 		expect(screen.getByText("row body").tagName).toEqual("SPAN");
 	});
 
-	it("drops the button when a retry crashes again within 10 seconds", () => {
+	it("drops the button when a retry crashes again within 10 seconds", () =>
+	{
 		const error = crash("boom");
 		const {rerender} = mount(
 			<TranscriptRowBoundary kind="row" resetOn="a">
 				<Thrower error={error} />
 			</TranscriptRowBoundary>,
 		);
-		fireEvent.click(screen.getByRole("button", {name: "Try again"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Try again",
+				},
+			),
+		);
 		expect(screen.queryByRole("button")).toBeNull();
 		expect(screen.getByText("Couldn’t load this.").tagName).toEqual("SPAN");
 
@@ -180,13 +231,22 @@ describe("TranscriptRowBoundary", () => {
 				<Thrower error={error} />
 			</TranscriptRowBoundary>,
 		);
-		expect(screen.getByRole("button", {name: "Try again"}).textContent).toEqual("Try again");
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Try again",
+				},
+			).textContent,
+		).toEqual("Try again");
 	});
 
-	it("keeps the button when the retry's crash comes after 10 seconds", () => {
+	it("keeps the button when the retry's crash comes after 10 seconds", () =>
+	{
 		let fail = true;
 		const error = crash("boom");
-		function Later() {
+		function Later()
+		{
 			if (fail) throw error;
 			return <span>row body</span>;
 		}
@@ -196,7 +256,14 @@ describe("TranscriptRowBoundary", () => {
 			</TranscriptRowBoundary>,
 		);
 		fail = false;
-		fireEvent.click(screen.getByRole("button", {name: "Try again"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Try again",
+				},
+			),
+		);
 		now += 10_001;
 		fail = true;
 		rerender(
@@ -204,12 +271,21 @@ describe("TranscriptRowBoundary", () => {
 				<Later />
 			</TranscriptRowBoundary>,
 		);
-		expect(screen.getByRole("button", {name: "Try again"}).textContent).toEqual("Try again");
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Try again",
+				},
+			).textContent,
+		).toEqual("Try again");
 	});
 
-	it("returns focus to the row article after Try again", () => {
+	it("returns focus to the row article after Try again", () =>
+	{
 		const frames: FrameRequestCallback[] = [];
-		vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+		vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) =>
+		{
 			frames.push(callback);
 			return frames.length;
 		});
@@ -222,14 +298,26 @@ describe("TranscriptRowBoundary", () => {
 		);
 		const article = screen.getByTestId("article");
 		const focus = vi.spyOn(article, "focus");
-		const button = screen.getByRole("button", {name: "Try again"});
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Try again",
+			},
+		);
 		button.focus();
 		fireEvent.click(button);
 		expect(document.activeElement).toEqual(document.body);
-		act(() => {
+		act(() =>
+		{
 			for (const frame of frames) frame(0);
 		});
-		expect(focus.mock.calls).toEqual([[{preventScroll: true}]]);
+		expect(focus.mock.calls).toEqual([
+			[
+				{
+					preventScroll: true,
+				},
+			],
+		]);
 		expect(document.activeElement).toEqual(article);
 	});
 });

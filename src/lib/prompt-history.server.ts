@@ -7,10 +7,14 @@ import {readSessionPrompts, resolveSessionFilePath} from "./sessions";
 /** How many prompts (and, separately, shell commands) the composer's ↑ history can reach. */
 const PROMPT_HISTORY_LIMIT = 500;
 
-async function readHistoryFile(claudeDir: string): Promise<string> {
-	try {
+async function readHistoryFile(claudeDir: string): Promise<string>
+{
+	try
+	{
 		return await readFile(join(claudeDir, "history.jsonl"), "utf-8");
-	} catch {
+	}
+	catch
+	{
 		return "";
 	}
 }
@@ -18,13 +22,25 @@ async function readHistoryFile(claudeDir: string): Promise<string> {
 async function readTranscript(
 	claudeDir: string,
 	sessionId: string,
-): Promise<{prompts: string[]; bashCommands: string[]}> {
-	const empty = {prompts: [], bashCommands: []};
+): Promise<
+{
+	prompts: string[];
+	bashCommands: string[];
+}>
+{
+	const empty =
+	{
+		prompts: [],
+		bashCommands: [],
+	};
 	const resolved = await resolveSessionFilePath(join(claudeDir, "projects"), sessionId);
 	if (resolved === null) return empty;
-	try {
+	try
+	{
 		return await readSessionPrompts(resolved.filePath);
-	} catch {
+	}
+	catch
+	{
 		return empty;
 	}
 }
@@ -33,11 +49,13 @@ async function readTranscript(
 const HISTORY_BASH_LINE = /^!\s*/;
 
 /** Consecutive repeats dropped, as upstream's bash history (`Pn`) does. */
-function dropConsecutiveRepeats(commands: readonly string[]): string[] {
+function dropConsecutiveRepeats(commands: readonly string[]): string[]
+{
 	return commands.filter((command, index) => command !== commands[index - 1]);
 }
 
-export interface PromptHistory {
+export interface PromptHistory
+{
 	/** Chat prompts for ↑/↓, newest first. */
 	prompts: string[];
 	/** Shell commands for ↑/↓ in bash mode, newest first. */
@@ -55,11 +73,17 @@ export async function readPromptHistory({
 }: {
 	claudeDir?: string;
 	sessionId?: string | undefined;
-}): Promise<PromptHistory> {
+}): Promise<PromptHistory>
+{
 	const [historyText, transcript] = await Promise.all([
 		readHistoryFile(claudeDir),
 		sessionId === undefined
-			? Promise.resolve({prompts: [], bashCommands: []})
+			? Promise.resolve(
+					{
+						prompts: [],
+						bashCommands: [],
+					},
+				)
 			: readTranscript(claudeDir, sessionId),
 	]);
 	const history = parseHistoryJsonl(historyText);

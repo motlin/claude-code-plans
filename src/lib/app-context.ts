@@ -4,7 +4,8 @@ import {openAppDb, type AppDb} from "./db/connection";
 import {fullScan} from "./db/indexer";
 import {type ActiveSessionEntry, SWEEP_INTERVAL_MS, sweepSessions} from "./active-session-store";
 
-export interface AppContextConfig {
+export interface AppContextConfig
+{
 	projectsDir: string;
 	plansDir: string;
 	commandsDir: string;
@@ -14,7 +15,8 @@ export interface AppContextConfig {
 	cacheDir?: string;
 }
 
-interface AppContext {
+interface AppContext
+{
 	db: AppDb;
 	watcher: FSWatcher;
 	sseClients: Set<ReadableStreamDefaultController>;
@@ -23,11 +25,19 @@ interface AppContext {
 	config: AppContextConfig;
 }
 
-export async function createAppContext(config: AppContextConfig): Promise<AppContext> {
-	const db = openAppDb({cacheDir: config.cacheDir});
-	try {
+export async function createAppContext(config: AppContextConfig): Promise<AppContext>
+{
+	const db = openAppDb(
+		{
+			cacheDir: config.cacheDir,
+		},
+	);
+	try
+	{
 		await fullScan(db.index, db.summaries, config.projectsDir, config.tasksDir, config.plansDir);
-	} catch (err) {
+	}
+	catch (err)
+	{
 		db.close();
 		throw err;
 	}
@@ -46,25 +56,42 @@ export async function createAppContext(config: AppContextConfig): Promise<AppCon
 		],
 		{
 			ignoreInitial: true,
-			awaitWriteFinish: {stabilityThreshold: 300, pollInterval: 100},
+			awaitWriteFinish:
+			{
+				stabilityThreshold: 300,
+				pollInterval: 100,
+			},
 		},
 	);
 
-	const sweepTimer = setInterval(() => {
+	const sweepTimer = setInterval(() =>
+	{
 		sweepSessions(sessionStore);
 	}, SWEEP_INTERVAL_MS);
 
-	return {db, watcher, sseClients, sessionStore, sweepTimer, config};
+	return {
+		db,
+		watcher,
+		sseClients,
+		sessionStore,
+		sweepTimer,
+		config,
+	};
 }
 
-export async function disposeAppContext(ctx: AppContext): Promise<void> {
+export async function disposeAppContext(ctx: AppContext): Promise<void>
+{
 	clearInterval(ctx.sweepTimer);
 	await ctx.watcher.close();
 
-	for (const client of ctx.sseClients) {
-		try {
+	for (const client of ctx.sseClients)
+	{
+		try
+		{
 			client.close();
-		} catch {
+		}
+		catch
+		{
 			// already closed
 		}
 	}

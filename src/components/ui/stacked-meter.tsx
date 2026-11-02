@@ -1,4 +1,5 @@
-import {
+import
+{
 	createContext,
 	type CSSProperties,
 	type FocusEvent,
@@ -17,7 +18,8 @@ import {
 	useState,
 } from "react";
 
-import {
+import
+{
 	assignMeterColors,
 	type ChartColor,
 	chartInk,
@@ -36,7 +38,8 @@ import type {StackedMeterReadoutRow} from "./stacked-meter-readout";
 
 /* Upstream's cds StackedMeterGroup / StackedMeter (c91b6e9db): a group declares the categories, each meter draws values. */
 
-export interface StackedMeterCategory extends MeterRowCategory {
+export interface StackedMeterCategory extends MeterRowCategory
+{
 	label: string;
 	color?: ChartColor | undefined;
 	hidden?: boolean | undefined;
@@ -45,7 +48,8 @@ export interface StackedMeterCategory extends MeterRowCategory {
 
 export type StackedMeterSize = "xs" | "sm" | "md" | "lg";
 
-interface MeterSeries {
+interface MeterSeries
+{
 	id: string;
 	label: string;
 	paint: string;
@@ -54,7 +58,8 @@ interface MeterSeries {
 	value?: MeterRowCategory["value"];
 }
 
-interface StackedMeterConfig {
+interface StackedMeterConfig
+{
 	series: MeterSeries[];
 	visible: MeterSeries[];
 	formatAmount: (n: number) => string;
@@ -66,7 +71,13 @@ interface StackedMeterConfig {
 
 const StackedMeterContext = createContext<StackedMeterConfig | null>(null);
 
-const SHARE = new Intl.NumberFormat("en-US", {style: "percent", maximumSignificantDigits: 2});
+const SHARE = new Intl.NumberFormat(
+	"en-US",
+	{
+		style: "percent",
+		maximumSignificantDigits: 2,
+	},
+);
 const formatShare = (share: number) => SHARE.format(share);
 
 /** Upstream's `pe`: paints, formatters and thickness for a group's meters. */
@@ -75,9 +86,11 @@ function configure(
 	size: StackedMeterSize | undefined,
 	valueLabels: "amount" | "share" | undefined,
 	formatValue: ((n: number) => string) | undefined,
-): StackedMeterConfig {
+): StackedMeterConfig
+{
 	const colors = assignMeterColors(categories);
-	const series = categories.map((category, i) => {
+	const series = categories.map((category, i) =>
+	{
 		const color = colors[i] ?? "muted";
 		return {
 			id: category.id,
@@ -85,7 +98,12 @@ function configure(
 			paint: chartPaint(color),
 			ink: chartInk(color),
 			hidden: category.hidden ?? false,
-			...(category.value === undefined ? {} : {value: category.value}),
+			...(category.value === undefined
+				? {}
+				:
+					{
+						value: category.value,
+					}),
 		};
 	});
 	const labels = size === "lg" ? valueLabels : undefined;
@@ -117,7 +135,8 @@ export function StackedMeterGroup({
 	valueLabels?: "amount" | "share" | undefined;
 	formatValue?: ((n: number) => string) | undefined;
 	children: ReactNode;
-}) {
+})
+{
 	const config = useMemo(
 		() => configure(categories, size, valueLabels, formatValue),
 		[categories, size, valueLabels, formatValue],
@@ -126,7 +145,14 @@ export function StackedMeterGroup({
 }
 
 /** A legend swatch in a series' paint (upstream's `ChartLegend.Swatch`); nothing for hidden or unknown series. */
-export function StackedMeterSwatch({series, ...props}: {series: string} & HTMLAttributes<HTMLSpanElement>) {
+export function StackedMeterSwatch({
+	series,
+	...props
+}:
+{
+	series: string;
+} & HTMLAttributes<HTMLSpanElement>)
+{
 	const config = useContext(StackedMeterContext);
 	const found = config?.visible.find((s) => s.id === series);
 	if (found === undefined) return null;
@@ -135,7 +161,8 @@ export function StackedMeterSwatch({series, ...props}: {series: string} & HTMLAt
 			{...props}
 			aria-hidden
 			className="shrink-0 forced-color-adjust-none"
-			style={{
+			style={
+			{
 				width: 10,
 				height: 10,
 				borderRadius: 2,
@@ -149,19 +176,23 @@ export function StackedMeterSwatch({series, ...props}: {series: string} & HTMLAt
 /** Upstream's `R`: the meter's width, 640 until it has been measured. */
 const INITIAL_WIDTH = 640;
 
-function useMeasuredWidth(ref: RefObject<HTMLElement | null>): number {
+function useMeasuredWidth(ref: RefObject<HTMLElement | null>): number
+{
 	const [width, setWidth] = useState(INITIAL_WIDTH);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const element = ref.current;
 		if (element === null) return undefined;
-		const measure = () => {
+		const measure = () =>
+		{
 			const measured = element.getBoundingClientRect().width;
 			if (measured > 0) setWidth(measured);
 		};
 		measure();
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [ref]);
@@ -169,9 +200,11 @@ function useMeasuredWidth(ref: RefObject<HTMLElement | null>): number {
 }
 
 /** Whether the meter sits in a right-to-left subtree (upstream's direction hook). */
-function useRtl(ref: RefObject<HTMLElement | null>): boolean {
+function useRtl(ref: RefObject<HTMLElement | null>): boolean
+{
 	const [rtl, setRtl] = useState(false);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		setRtl(ref.current?.closest("[dir]")?.getAttribute("dir") === "rtl");
 	}, [ref]);
 	return rtl;
@@ -180,19 +213,31 @@ function useRtl(ref: RefObject<HTMLElement | null>): boolean {
 /** Strong right-to-left characters (Hebrew, Arabic and their presentation forms), upstream's `HW`. */
 const STRONG_RTL = /[֐-ࣿיִ-﷿ﹰ-ﻼ]/;
 
-type Pointed = {x: number | null; category: string | null; touch: boolean};
+type Pointed =
+{
+	x: number | null;
+	category: string | null;
+	touch: boolean;
+};
 
 /** The pointed block of an lg meter, and the handlers that track it (upstream's `le`). */
-function useReadoutPointer() {
+function useReadoutPointer()
+{
 	const [state, setState] = useState<Pointed | "dismissed" | null>(null);
 	const touch = state !== null && state !== "dismissed" && state.touch;
-	const point = (event: PointerEvent<HTMLDivElement>): Pointed => {
+	const point = (event: PointerEvent<HTMLDivElement>): Pointed =>
+	{
 		const root = event.currentTarget;
 		const rect = root.getBoundingClientRect();
 		const scale = root.offsetWidth > 0 ? rect.width / root.offsetWidth : 1;
-		const blocks = Array.from(root.querySelectorAll<HTMLElement>("[data-category]"), (block) => {
+		const blocks = Array.from(root.querySelectorAll<HTMLElement>("[data-category]"), (block) =>
+		{
 			const {left, right} = block.getBoundingClientRect();
-			return {category: block.dataset["category"] ?? "", left, right};
+			return {
+				category: block.dataset["category"] ?? "",
+				left,
+				right,
+			};
 		});
 		const hit = blocks.find((block) => event.clientX >= block.left && event.clientX < block.right);
 		return {
@@ -201,20 +246,25 @@ function useReadoutPointer() {
 			touch: touch || event.pointerType === "touch",
 		};
 	};
-	const close = () => {
+	const close = () =>
+	{
 		setState(null);
 	};
 	return {
 		pointed: state === "dismissed" ? null : state,
-		dismiss: () => {
+		dismiss: () =>
+		{
 			setState("dismissed");
 		},
 		close,
-		handlers: {
-			onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
+		handlers:
+		{
+			onPointerDown: (event: PointerEvent<HTMLDivElement>) =>
+			{
 				setState(point(event));
 			},
-			onPointerMove: (event: PointerEvent<HTMLDivElement>) => {
+			onPointerMove: (event: PointerEvent<HTMLDivElement>) =>
+			{
 				if (state === "dismissed") return;
 				const next = point(event);
 				setState((prev) =>
@@ -223,8 +273,16 @@ function useReadoutPointer() {
 			},
 			onPointerLeave: close,
 			onPointerCancel: close,
-			onFocus: (event: FocusEvent<HTMLDivElement>) => {
-				if (event.currentTarget.matches(":focus-visible")) setState({x: null, category: null, touch});
+			onFocus: (event: FocusEvent<HTMLDivElement>) =>
+			{
+				if (event.currentTarget.matches(":focus-visible"))
+					setState(
+						{
+							x: null,
+							category: null,
+							touch,
+						},
+					);
 			},
 			onBlur: close,
 		},
@@ -232,29 +290,44 @@ function useReadoutPointer() {
 }
 
 const loadReadout = async () => import("./stacked-meter-readout");
-const ReadoutCard = lazy(async () => ({default: (await loadReadout()).StackedMeterReadoutCard}));
+const ReadoutCard = lazy(async () => (
+{
+	default: (await loadReadout()).StackedMeterReadoutCard,
+}));
 
 /** Upstream idle-preloads the readout chunk once an lg meter has rows (timeout 2000, fallback delay 200). */
-function usePreloadReadout(enabled: boolean) {
-	useEffect(() => {
+function usePreloadReadout(enabled: boolean)
+{
+	useEffect(() =>
+	{
 		if (!enabled) return undefined;
-		const warm = () => {
+		const warm = () =>
+		{
 			loadReadout().catch(() => {});
 		};
-		if (typeof window.requestIdleCallback === "function") {
-			const handle = window.requestIdleCallback(warm, {timeout: 2000});
-			return () => {
+		if (typeof window.requestIdleCallback === "function")
+		{
+			const handle = window.requestIdleCallback(
+				warm,
+				{
+					timeout: 2000,
+				},
+			);
+			return () =>
+			{
 				window.cancelIdleCallback(handle);
 			};
 		}
 		const handle = setTimeout(warm, 200);
-		return () => {
+		return () =>
+		{
 			clearTimeout(handle);
 		};
 	}, [enabled]);
 }
 
-interface FormattedRow extends StackedMeterReadoutRow {
+interface FormattedRow extends StackedMeterReadoutRow
+{
 	line: string;
 }
 
@@ -274,9 +347,11 @@ export function StackedMeter({
 	label?: string | undefined;
 	className?: string | undefined;
 	style?: CSSProperties | undefined;
-}) {
+})
+{
 	const config = useContext(StackedMeterContext);
-	if (config === null) {
+	if (config === null)
+	{
 		throw new Error("<StackedMeter> must be rendered inside a <StackedMeterGroup>, which declares its categories.");
 	}
 	const {visible, thickness, printed} = config;
@@ -294,7 +369,8 @@ export function StackedMeter({
 	);
 	const formatted: FormattedRow[] =
 		readout || printed !== null
-			? rows.flatMap((row, i) => {
+			? rows.flatMap((row, i) =>
+				{
 					const series = visible[i];
 					if (series === undefined) return [];
 					const amount = config.formatAmount(row.amount);
@@ -344,10 +420,16 @@ export function StackedMeter({
 		[tips],
 	);
 	const paint = (index: number) => visible[index]?.paint;
-	const segmentChildren = () => {
+	const segmentChildren = () =>
+	{
 		if (lg) return null;
-		if (layout.kind === "dot") {
-			const dotStyle = {width: thickness, backgroundColor: paint(layout.index)};
+		if (layout.kind === "dot")
+		{
+			const dotStyle =
+			{
+				width: thickness,
+				backgroundColor: paint(layout.index),
+			};
 			const dotClass = "absolute inset-y-0 start-0 rounded-full forced-color-adjust-none";
 			if (!hasRows) return <div className={dotClass} style={dotStyle} />;
 			return (
@@ -357,26 +439,34 @@ export function StackedMeter({
 			);
 		}
 		if (layout.kind !== "segments") return null;
-		return layout.segments.map((segment) => {
+		return layout.segments.map((segment) =>
+		{
 			const series = visible[segment.index];
 			if (series === undefined) return null;
-			const position = {
+			const position =
+			{
 				insetInlineStart: `calc(${meterPercent(segment.start)}% + ${segment.seam}px)`,
 				width: `calc(${meterPercent(segment.width)}% - ${segment.seam}px)`,
 			};
-			const fill = {
+			const fill =
+			{
 				backgroundColor: series.paint,
 				borderStartStartRadius: segment.radiusStart,
 				borderEndStartRadius: segment.radiusStart,
 				borderStartEndRadius: segment.radiusEnd,
 				borderEndEndRadius: segment.radiusEnd,
 			};
-			if (!hasRows) {
+			if (!hasRows)
+			{
 				return (
 					<div
 						key={series.id}
 						className="absolute inset-y-0 forced-color-adjust-none"
-						style={{...position, ...fill}}
+						style={
+						{
+							...position,
+							...fill,
+						}}
 					/>
 				);
 			}
@@ -394,11 +484,25 @@ export function StackedMeter({
 			);
 		});
 	};
-	const dataSize = config.size !== undefined && !lg ? {"data-size": config.size} : {};
+	const dataSize =
+		config.size !== undefined && !lg
+			?
+				{
+					"data-size": config.size,
+				}
+			: {};
 	const parts = formatted.map((row) => row.line).join("; ");
 	const a11y = hasRows
-		? {role: "img", "aria-label": label ? `${label}: ${parts}` : parts, tabIndex: 0}
-		: {"aria-hidden": true};
+		?
+			{
+				role: "img",
+				"aria-label": label ? `${label}: ${parts}` : parts,
+				tabIndex: 0,
+			}
+		:
+			{
+				"aria-hidden": true,
+			};
 	const meter = (
 		<div
 			ref={root}
@@ -417,7 +521,8 @@ export function StackedMeter({
 			]
 				.filter(Boolean)
 				.join(" ")}
-			style={{
+			style={
+			{
 				backgroundColor: total === undefined || lg ? undefined : "var(--chart-reference-tint)",
 				borderRadius: lg ? 4 : undefined,
 				gap: lg ? 2 : undefined,
@@ -476,14 +581,19 @@ function MeterBlocks({
 	printed,
 	rtl,
 }: {
-	rows: readonly {amount: number; share: number}[];
+	rows: readonly
+	{
+		amount: number;
+		share: number;
+	}[];
 	series: readonly MeterSeries[];
 	width: number;
 	thickness: number;
 	hasTotal: boolean;
 	printed: ((amount: number, share: number) => string) | null;
 	rtl: boolean;
-}) {
+})
+{
 	const {run, blocks, rest} = layoutStackedMeterBlocks(
 		rows.map((row) => row.share),
 		width,
@@ -491,8 +601,17 @@ function MeterBlocks({
 	return (
 		<>
 			{blocks.length > 0 && (
-				<div className="flex shrink-0" style={{width: `${meterPercent(run)}%`, minWidth: 4, gap: 2}}>
-					{blocks.map(({index, grow}) => {
+				<div
+					className="flex shrink-0"
+					style={
+					{
+						width: `${meterPercent(run)}%`,
+						minWidth: 4,
+						gap: 2,
+					}}
+				>
+					{blocks.map(({index, grow}) =>
+					{
 						const row = rows[index];
 						const category = series[index];
 						if (row === undefined || category === undefined) return null;
@@ -502,11 +621,21 @@ function MeterBlocks({
 								key={index}
 								data-category={category.id}
 								className="flex min-w-0 flex-wrap items-center overflow-clip forced-color-adjust-none"
-								style={{flex: `${grow} 1 0`, backgroundColor: category.paint, borderRadius: 4}}
+								style={
+								{
+									flex: `${grow} 1 0`,
+									backgroundColor: category.paint,
+									borderRadius: 4,
+								}}
 							>
 								{text !== undefined && (
 									<>
-										<span style={{height: thickness}} />
+										<span
+											style={
+											{
+												height: thickness,
+											}}
+										/>
 										<span
 											className={`text-caption font-semibold tabular-nums px-sm whitespace-nowrap select-none ${category.ink}`}
 										>
@@ -520,7 +649,14 @@ function MeterBlocks({
 				</div>
 			)}
 			{hasTotal && rest && (
-				<div className="flex-1" style={{backgroundColor: "var(--chart-reference-tint)", borderRadius: 4}} />
+				<div
+					className="flex-1"
+					style={
+					{
+						backgroundColor: "var(--chart-reference-tint)",
+						borderRadius: 4,
+					}}
+				/>
 			)}
 		</>
 	);

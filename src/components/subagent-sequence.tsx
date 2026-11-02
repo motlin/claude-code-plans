@@ -5,7 +5,8 @@ import type {Subagent} from "../lib/subagents";
 import {formatDuration} from "../lib/format-duration";
 import {layoutSequence, type SequenceLayout} from "./subagent-sequence-layout";
 
-const AGENT_BAR_COLORS: Record<string, string> = {
+const AGENT_BAR_COLORS: Record<string, string> =
+{
 	Explore: "#3b82f6",
 	Plan: "#a855f7",
 	"build:precommit-runner": "#eab308",
@@ -15,12 +16,14 @@ const AGENT_BAR_COLORS: Record<string, string> = {
 	"general-purpose": "#6b7280",
 };
 
-function getBarColor(agentType: string | null): string {
+function getBarColor(agentType: string | null): string
+{
 	if (!agentType) return "#6b7280";
 	return AGENT_BAR_COLORS[agentType] ?? "#6b7280";
 }
 
-function getShortType(agentType: string | null): string {
+function getShortType(agentType: string | null): string
+{
 	if (!agentType) return "agent";
 	return agentType.split(":").at(-1) ?? agentType;
 }
@@ -38,17 +41,20 @@ const MIN_BAR_HEIGHT = 2;
 const ZOOM_LEVELS = [1, 2, 4, 8, 16] as const;
 type ZoomLevel = (typeof ZOOM_LEVELS)[number];
 
-function timeAt(offsetMs: number, totalMs: number, plotHeight: number): number {
+function timeAt(offsetMs: number, totalMs: number, plotHeight: number): number
+{
 	if (totalMs === 0) return 0;
 	return (offsetMs / totalMs) * plotHeight;
 }
 
-function truncate(text: string, max: number): string {
+function truncate(text: string, max: number): string
+{
 	if (text.length <= max) return text;
 	return text.slice(0, max - 1) + "\u2026";
 }
 
-interface RunSpan {
+interface RunSpan
+{
 	runId: string;
 	name: string;
 	firstColumn: number;
@@ -56,19 +62,26 @@ interface RunSpan {
 }
 
 /** Each run's column range: its phases are adjacent, so it spans from its first phase to its last. */
-function runSpans(layout: SequenceLayout): RunSpan[] {
+function runSpans(layout: SequenceLayout): RunSpan[]
+{
 	const spans: RunSpan[] = [];
-	for (const group of layout.groups) {
+	for (const group of layout.groups)
+	{
 		const last = spans.at(-1);
-		if (last?.runId === group.runId) {
+		if (last?.runId === group.runId)
+		{
 			last.columnCount = group.firstColumn + group.columnCount - last.firstColumn;
-		} else {
-			spans.push({
-				runId: group.runId,
-				name: group.name,
-				firstColumn: group.firstColumn,
-				columnCount: group.columnCount,
-			});
+		}
+		else
+		{
+			spans.push(
+				{
+					runId: group.runId,
+					name: group.name,
+					firstColumn: group.firstColumn,
+					columnCount: group.columnCount,
+				},
+			);
 		}
 	}
 	return spans;
@@ -80,13 +93,24 @@ export function SubagentSequence({
 }: {
 	agents: Subagent[];
 	workflowRuns?: readonly WorkflowRunInfo[] | undefined;
-}) {
-	const layout = useMemo(() => layoutSequence(agents, {workflowRuns}), [agents, workflowRuns]);
+})
+{
+	const layout = useMemo(
+		() =>
+			layoutSequence(
+				agents,
+				{
+					workflowRuns,
+				},
+			),
+		[agents, workflowRuns],
+	);
 	const runs = useMemo(() => runSpans(layout), [layout]);
 	const [zoom, setZoom] = useState<ZoomLevel>(1);
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-	if (layout.lifelines.length === 0) {
+	if (layout.lifelines.length === 0)
+	{
 		return null;
 	}
 
@@ -113,7 +137,8 @@ export function SubagentSequence({
 						<button
 							key={z}
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								setZoom(z);
 							}}
 							aria-pressed={zoom === z}
@@ -222,20 +247,24 @@ export function SubagentSequence({
 					)}
 
 					<g transform={`translate(0, ${PADDING_Y + bandHeight})`} className="text-t6">
-						{layout.lifelines.map((lane) => {
+						{layout.lifelines.map((lane) =>
+						{
 							const x = columnX(lane.column);
 							const dimmed = hoveredId !== null && hoveredId !== lane.agent.id;
 							return (
 								<g
 									key={`header-${lane.agent.id}`}
-									style={{
+									style={
+									{
 										opacity: dimmed ? 0.35 : 1,
 										transition: "opacity 0.15s",
 									}}
-									onMouseEnter={() => {
+									onMouseEnter={() =>
+									{
 										setHoveredId(lane.agent.id);
 									}}
-									onMouseLeave={() => {
+									onMouseLeave={() =>
+									{
 										setHoveredId(null);
 									}}
 								>
@@ -297,7 +326,8 @@ export function SubagentSequence({
 					</g>
 
 					<g transform={`translate(0, ${PADDING_Y + bandHeight + HEADER_HEIGHT})`} className="text-t6">
-						{layout.ticks.map((tick, i) => {
+						{layout.ticks.map((tick, i) =>
+						{
 							const y = timeAt(tick.offsetMs, layout.totalMs, plotHeight);
 							return (
 								<g key={i}>
@@ -323,7 +353,8 @@ export function SubagentSequence({
 							);
 						})}
 
-						{layout.lifelines.map((lane) => {
+						{layout.lifelines.map((lane) =>
+						{
 							const x = columnX(lane.column);
 							const yStart = timeAt(lane.startMs - layout.startMs, layout.totalMs, plotHeight);
 							const yEnd = timeAt(lane.endMs - layout.startMs, layout.totalMs, plotHeight);
@@ -334,14 +365,17 @@ export function SubagentSequence({
 							return (
 								<g
 									key={`lifeline-${lane.agent.id}`}
-									style={{
+									style={
+									{
 										opacity: dimmed ? 0.35 : 1,
 										transition: "opacity 0.15s",
 									}}
-									onMouseEnter={() => {
+									onMouseEnter={() =>
+									{
 										setHoveredId(lane.agent.id);
 									}}
-									onMouseLeave={() => {
+									onMouseLeave={() =>
+									{
 										setHoveredId(null);
 									}}
 								>
@@ -367,7 +401,8 @@ export function SubagentSequence({
 											{`${getShortType(lane.agent.agentType)} · ${formatDuration(lane.endMs - lane.startMs)}`}
 										</title>
 									</rect>
-									{lane.waiting.map((range, j) => {
+									{lane.waiting.map((range, j) =>
+									{
 										const wy = timeAt(range.startMs - layout.startMs, layout.totalMs, plotHeight);
 										const wEnd = timeAt(range.endMs - layout.startMs, layout.totalMs, plotHeight);
 										const wHeight = Math.max(wEnd - wy, MIN_BAR_HEIGHT);
@@ -389,7 +424,8 @@ export function SubagentSequence({
 							);
 						})}
 
-						{layout.spawns.map((arrow, i) => {
+						{layout.spawns.map((arrow, i) =>
+						{
 							const x1 = columnX(arrow.parentColumn);
 							const x2 = columnX(arrow.childColumn);
 							const y = timeAt(arrow.atMs - layout.startMs, layout.totalMs, plotHeight);
@@ -414,7 +450,8 @@ export function SubagentSequence({
 							);
 						})}
 
-						{layout.returns.map((arrow, i) => {
+						{layout.returns.map((arrow, i) =>
+						{
 							const x1 = columnX(arrow.childColumn);
 							const x2 = columnX(arrow.parentColumn);
 							const y = timeAt(arrow.atMs - layout.startMs, layout.totalMs, plotHeight);
@@ -444,13 +481,21 @@ export function SubagentSequence({
 			</div>
 			<div className="mt-2 flex items-center gap-3 text-[10px] text-t6">
 				<span className="flex items-center gap-1">
-					<span className="inline-block w-3 h-3 rounded-sm" style={{background: "#6b7280", opacity: 0.85}} />
+					<span
+						className="inline-block w-3 h-3 rounded-sm"
+						style={
+						{
+							background: "#6b7280",
+							opacity: 0.85,
+						}}
+					/>
 					active
 				</span>
 				<span className="flex items-center gap-1">
 					<span
 						className="inline-block w-3 h-3 rounded-sm border border-t6/30"
-						style={{
+						style={
+						{
 							backgroundImage:
 								"repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 4px)",
 							color: "rgb(107 114 128 / 0.6)",

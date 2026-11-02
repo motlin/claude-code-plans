@@ -13,7 +13,8 @@ export type ShortcutModifier = "cmd" | "ctrl" | "alt" | "shift";
 export type ShortcutPlatform = "mac" | "non-mac" | "windows" | "linux";
 export type ShortcutGroup = "general" | "panes" | "composer" | "terminals";
 
-export interface Binding {
+export interface Binding
+{
 	/** `KeyboardEvent.key`, lower-cased. */
 	key: string;
 	/** `KeyboardEvent.code`; when set, matching is layout-independent. */
@@ -23,7 +24,8 @@ export interface Binding {
 	platform?: ShortcutPlatform;
 }
 
-export interface ShortcutDefinition {
+export interface ShortcutDefinition
+{
 	description: string;
 	group: ShortcutGroup;
 	bindings: readonly Binding[];
@@ -34,7 +36,13 @@ export interface ShortcutDefinition {
 	 * Keys string for display when the bindings are a range ("1…9") or a sequence ("esc esc"),
 	 * optionally split by platform when the modifiers differ.
 	 */
-	displayKeys?: string | {mac: string; nonMac: string};
+	displayKeys?:
+		| string
+		|
+		  {
+				mac: string;
+				nonMac: string;
+		  };
 	/**
 	 * Another entry that deliberately uses the same chord on a different surface, e.g. ⌘⏎ queues
 	 * on a working session and sends-and-stays on the home composer.
@@ -51,203 +59,303 @@ function macAndNonMac(
 	macModifiers: readonly ShortcutModifier[],
 	nonMacModifiers: readonly ShortcutModifier[],
 	code?: string,
-): Binding[] {
-	const codePart = code === undefined ? {} : {code};
+): Binding[]
+{
+	const codePart =
+		code === undefined
+			? {}
+			:
+				{
+					code,
+				};
 	return [
-		{key, ...codePart, modifiers: macModifiers, platform: "mac"},
-		{key, ...codePart, modifiers: nonMacModifiers, platform: "non-mac"},
+		{
+			key,
+			...codePart,
+			modifiers: macModifiers,
+			platform: "mac",
+		},
+		{
+			key,
+			...codePart,
+			modifiers: nonMacModifiers,
+			platform: "non-mac",
+		},
 	];
 }
 
 /** ⌘ on mac, Ctrl elsewhere, plus the shared extra modifiers. */
-function cmdOrCtrl(key: string, extra: readonly ShortcutModifier[] = [], code?: string): Binding[] {
+function cmdOrCtrl(key: string, extra: readonly ShortcutModifier[] = [], code?: string): Binding[]
+{
 	return macAndNonMac(key, ["cmd", ...extra], ["ctrl", ...extra], code);
 }
 
 /** The same physical Ctrl chord on every platform. */
-function ctrlEverywhere(key: string, extra: readonly ShortcutModifier[] = [], code?: string): Binding[] {
+function ctrlEverywhere(key: string, extra: readonly ShortcutModifier[] = [], code?: string): Binding[]
+{
 	const modifiers: ShortcutModifier[] = ["ctrl", ...extra];
 	return macAndNonMac(key, modifiers, modifiers, code);
 }
 
 /** One binding shared by every platform. */
-function everywhere(key: string, modifiers: readonly ShortcutModifier[], code?: string): Binding {
-	return code === undefined ? {key, modifiers} : {key, code, modifiers};
+function everywhere(key: string, modifiers: readonly ShortcutModifier[], code?: string): Binding
+{
+	return code === undefined
+		?
+			{
+				key,
+				modifiers,
+			}
+		:
+			{
+				key,
+				code,
+				modifiers,
+			};
 }
 
-function letterCode(letter: string): string {
+function letterCode(letter: string): string
+{
 	return `Key${letter.toUpperCase()}`;
 }
 
 const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 
 /** Upstream's preset keys: ⌥⌘digit on mac, Alt+digit on Windows, none on Linux web. */
-function environmentPresetBindings(digit: string): Binding[] {
+function environmentPresetBindings(digit: string): Binding[]
+{
 	const code = `Digit${digit}`;
 	return [
-		{key: digit, code, modifiers: ["cmd", "alt"], platform: "mac"},
-		{key: digit, code, modifiers: ["alt"], platform: "windows"},
+		{
+			key: digit,
+			code,
+			modifiers: ["cmd", "alt"],
+			platform: "mac",
+		},
+		{
+			key: digit,
+			code,
+			modifiers: ["alt"],
+			platform: "windows",
+		},
 	];
 }
 
 /** Upstream's diff-change keys: an Alt+F5 chord (not on Linux) or the bare F7 key. */
-function diffChangeBindings(extra: readonly ShortcutModifier[]): Binding[] {
-	const f5: Binding = {key: "f5", code: "F5", modifiers: [...extra, "alt"]};
+function diffChangeBindings(extra: readonly ShortcutModifier[]): Binding[]
+{
+	const f5: Binding =
+	{
+		key: "f5",
+		code: "F5",
+		modifiers: [...extra, "alt"],
+	};
 	return [
-		{...f5, platform: "mac"},
-		{...f5, platform: "windows"},
-		{key: "f7", code: "F7", modifiers: [...extra]},
+		{
+			...f5,
+			platform: "mac",
+		},
+		{
+			...f5,
+			platform: "windows",
+		},
+		{
+			key: "f7",
+			code: "F7",
+			modifiers: [...extra],
+		},
 	];
 }
 
-export const SHORTCUTS = {
+export const SHORTCUTS =
+{
 	// General
-	search_or_start: {
+	search_or_start:
+	{
 		description: "Search or start a session",
 		group: "general",
 		bindings: cmdOrCtrl("k"),
 		ownerSlug: "search-or-start",
 		enabled: true,
 	},
-	search: {
+	search:
+	{
 		description: "Search",
 		group: "general",
 		bindings: cmdOrCtrl("k", ["shift"]),
 		ownerSlug: "search",
 		enabled: true,
 	},
-	switch_recents: {
+	switch_recents:
+	{
 		description: "Switch between recents",
 		group: "general",
 		bindings: [
-			{key: "q", code: "KeyQ", modifiers: ["ctrl"], platform: "mac"},
-			{key: "q", code: "KeyQ", modifiers: ["ctrl"], platform: "linux"},
-			{key: "q", code: "KeyQ", modifiers: ["alt"], platform: "windows"},
+			{
+				key: "q",
+				code: "KeyQ",
+				modifiers: ["ctrl"],
+				platform: "mac",
+			},
+			{
+				key: "q",
+				code: "KeyQ",
+				modifiers: ["ctrl"],
+				platform: "linux",
+			},
+			{
+				key: "q",
+				code: "KeyQ",
+				modifiers: ["alt"],
+				platform: "windows",
+			},
 		],
 		ownerSlug: "switch-recents",
 		enabled: true,
 	},
-	toggle_sidebar: {
+	toggle_sidebar:
+	{
 		description: "Toggle sidebar",
 		group: "general",
 		bindings: cmdOrCtrl("b"),
 		ownerSlug: "sidebar-shell",
 		enabled: true,
 	},
-	shortcuts_modal: {
+	shortcuts_modal:
+	{
 		description: "Keyboard shortcuts",
 		group: "general",
 		bindings: cmdOrCtrl("/", [], "Slash"),
 		ownerSlug: "shortcuts-dialog",
 		enabled: true,
 	},
-	settings: {
+	settings:
+	{
 		description: "Settings",
 		group: "general",
 		bindings: cmdOrCtrl(",", ["shift"], "Comma"),
 		ownerSlug: "account-menu",
 		enabled: true,
 	},
-	focus_next_region: {
+	focus_next_region:
+	{
 		description: "Focus next page area",
 		group: "general",
 		bindings: [everywhere("f6", [], "F6"), ...cmdOrCtrl("f6", [], "F6")],
 		ownerSlug: "focus-regions",
 		enabled: true,
 	},
-	focus_previous_region: {
+	focus_previous_region:
+	{
 		description: "Focus previous page area",
 		group: "general",
 		bindings: [everywhere("f6", ["shift"], "F6"), ...cmdOrCtrl("f6", ["shift"], "F6")],
 		ownerSlug: "focus-regions",
 		enabled: true,
 	},
-	new_session: {
+	new_session:
+	{
 		description: "New session",
 		group: "general",
 		bindings: cmdOrCtrl("o", ["shift"]),
 		ownerSlug: "home-page",
 		enabled: true,
 	},
-	select_environment: {
+	select_environment:
+	{
 		description: "Select environment",
 		group: "general",
 		bindings: DIGITS.flatMap(environmentPresetBindings),
 		ownerSlug: "home-start-card-states",
 		enabled: true,
-		displayKeys: {mac: "cmd+alt+1…9", nonMac: "alt+1…9"},
+		displayKeys:
+		{
+			mac: "cmd+alt+1…9",
+			nonMac: "alt+1…9",
+		},
 	},
-	new_environment: {
+	new_environment:
+	{
 		description: "New environment",
 		group: "general",
 		bindings: environmentPresetBindings("0"),
 		ownerSlug: "home-start-card-states",
 		enabled: true,
 	},
-	rename_session: {
+	rename_session:
+	{
 		description: "Rename session",
 		group: "general",
 		bindings: cmdOrCtrl("r", ["alt"], letterCode("r")),
 		ownerSlug: "session-row-actions",
 		enabled: true,
 	},
-	archive_session: {
+	archive_session:
+	{
 		description: "Archive session",
 		group: "general",
 		bindings: cmdOrCtrl("a", ["alt"], letterCode("a")),
 		ownerSlug: "session-row-actions",
 		enabled: true,
 	},
-	toggle_read_session: {
+	toggle_read_session:
+	{
 		description: "Mark session as read/unread",
 		group: "general",
 		bindings: cmdOrCtrl("u", ["alt"], letterCode("u")),
 		ownerSlug: "session-row-actions",
 		enabled: true,
 	},
-	copy_session_link: {
+	copy_session_link:
+	{
 		description: "Copy session link",
 		group: "general",
 		bindings: cmdOrCtrl("l", ["alt"], letterCode("l")),
 		ownerSlug: "session-row-actions",
 		enabled: true,
 	},
-	open_session_pr: {
+	open_session_pr:
+	{
 		description: "Open session PR",
 		group: "general",
 		bindings: cmdOrCtrl("g", ["alt"], letterCode("g")),
 		ownerSlug: "pr-status",
 		enabled: true,
 	},
-	fork_session: {
+	fork_session:
+	{
 		description: "Fork session",
 		group: "general",
 		bindings: cmdOrCtrl("o", ["alt"], letterCode("o")),
 		ownerSlug: "session-row-actions",
 		enabled: true,
 	},
-	jump_prev_prompt: {
+	jump_prev_prompt:
+	{
 		description: "Jump to previous prompt",
 		group: "general",
 		bindings: macAndNonMac("arrowup", ["cmd", "alt"], ["alt"], "ArrowUp"),
 		ownerSlug: "prompt-jump",
 		enabled: true,
 	},
-	jump_next_prompt: {
+	jump_next_prompt:
+	{
 		description: "Jump to next prompt",
 		group: "general",
 		bindings: macAndNonMac("arrowdown", ["cmd", "alt"], ["alt"], "ArrowDown"),
 		ownerSlug: "prompt-jump",
 		enabled: true,
 	},
-	transcript_view: {
+	transcript_view:
+	{
 		description: "Transcript view",
 		group: "general",
 		bindings: ctrlEverywhere("o", [], letterCode("o")),
 		ownerSlug: "transcript-view",
 		enabled: true,
 	},
-	page_search: {
+	page_search:
+	{
 		description: "Search this page",
 		group: "general",
 		bindings: cmdOrCtrl("f"),
@@ -255,7 +363,8 @@ export const SHORTCUTS = {
 		enabled: true,
 		hiddenFromDialog: true,
 	},
-	settings_search: {
+	settings_search:
+	{
 		description: "Search settings",
 		group: "general",
 		bindings: cmdOrCtrl("f"),
@@ -265,14 +374,16 @@ export const SHORTCUTS = {
 		// Bound only while the Settings dialog is open, where it outranks the page toolbar's ⌘F.
 		sharesBindingWith: "page_search",
 	},
-	stop_response: {
+	stop_response:
+	{
 		description: "Stop Claude’s response",
 		group: "general",
 		bindings: macAndNonMac("escape", [], []),
 		ownerSlug: "stop-response",
 		enabled: true,
 	},
-	rewind_session: {
+	rewind_session:
+	{
 		description: "Rewind the session to an earlier message",
 		group: "general",
 		// Each step of upstream's "esc esc" sequence; the owner adds the double-press timing.
@@ -284,21 +395,24 @@ export const SHORTCUTS = {
 		sharesBindingWith: "stop_response",
 	},
 	// Panes
-	toggle_changes: {
+	toggle_changes:
+	{
 		description: "Toggle changes",
 		group: "panes",
 		bindings: ctrlEverywhere("d", ["shift"]),
 		ownerSlug: "panes-changes",
 		enabled: true,
 	},
-	toggle_changes_file_list: {
+	toggle_changes_file_list:
+	{
 		description: "Toggle file list in changes or files",
 		group: "panes",
 		bindings: ctrlEverywhere("y", ["shift"]),
 		ownerSlug: "panes-changes",
 		enabled: true,
 	},
-	next_change: {
+	next_change:
+	{
 		description: "Next change in changes",
 		group: "panes",
 		bindings: diffChangeBindings([]),
@@ -306,7 +420,8 @@ export const SHORTCUTS = {
 		enabled: false,
 		dialogShowsAllBindings: true,
 	},
-	prev_change: {
+	prev_change:
+	{
 		description: "Previous change in changes",
 		group: "panes",
 		bindings: diffChangeBindings(["shift"]),
@@ -314,63 +429,72 @@ export const SHORTCUTS = {
 		enabled: false,
 		dialogShowsAllBindings: true,
 	},
-	go_to_file_in_changes: {
+	go_to_file_in_changes:
+	{
 		description: "Go to file in changes or files",
 		group: "panes",
 		bindings: cmdOrCtrl("p"),
 		ownerSlug: "panes-changes",
 		enabled: true,
 	},
-	toggle_preview: {
+	toggle_preview:
+	{
 		description: "Toggle Browser",
 		group: "panes",
 		bindings: cmdOrCtrl("p", ["alt"], letterCode("p")),
 		ownerSlug: "panes-preview",
 		enabled: false,
 	},
-	select_element_in_preview: {
+	select_element_in_preview:
+	{
 		description: "Select element in Browser",
 		group: "panes",
 		bindings: cmdOrCtrl("s", ["shift"]),
 		ownerSlug: "panes-preview",
 		enabled: false,
 	},
-	toggle_files: {
+	toggle_files:
+	{
 		description: "Toggle Files",
 		group: "panes",
 		bindings: cmdOrCtrl("f", ["shift"]),
 		ownerSlug: "panes-files",
 		enabled: true,
 	},
-	attach_selection: {
+	attach_selection:
+	{
 		description: "Attach selection as context",
 		group: "panes",
 		bindings: cmdOrCtrl("l", ["shift"]),
 		ownerSlug: "composer",
 		enabled: true,
 	},
-	toggle_terminal: {
+	toggle_terminal:
+	{
 		description: "Toggle terminal",
 		group: "panes",
 		bindings: ctrlEverywhere("`", [], "Backquote"),
 		ownerSlug: "panes-terminal",
 		enabled: true,
 	},
-	close_pane: {
+	close_pane:
+	{
 		description: "Close pane",
 		group: "panes",
 		bindings: cmdOrCtrl("\\", [], "Backslash"),
 		ownerSlug: "panes-mgmt",
 		enabled: true,
 	},
-	expand_collapse_pane: {
+	expand_collapse_pane:
+	{
 		description: "Expand or collapse pane",
 		group: "panes",
 		bindings: cmdOrCtrl("\\", ["shift"], "Backslash"),
 		ownerSlug: "panes-mgmt",
 		enabled: true,
 	},
-	toggle_side_chat: {
+	toggle_side_chat:
+	{
 		description: "Toggle side chat",
 		group: "panes",
 		bindings: cmdOrCtrl(";", [], "Semicolon"),
@@ -378,31 +502,36 @@ export const SHORTCUTS = {
 		enabled: true,
 	},
 	// Composer
-	open_mode_menu: {
+	open_mode_menu:
+	{
 		description: "Open mode menu",
 		group: "composer",
 		bindings: cmdOrCtrl("m", ["alt"], letterCode("m")),
 		ownerSlug: "composer",
 		enabled: true,
 	},
-	open_model_menu: {
+	open_model_menu:
+	{
 		description: "Open model menu",
 		group: "composer",
 		bindings: cmdOrCtrl("i", ["shift"]),
 		ownerSlug: "composer",
 		enabled: true,
 	},
-	open_effort_selector: {
+	open_effort_selector:
+	{
 		description: "Open effort selector",
 		group: "composer",
 		bindings: cmdOrCtrl("e", ["shift"]),
 		ownerSlug: "composer",
 		enabled: true,
 	},
-	select_menu_item: {
+	select_menu_item:
+	{
 		description: "Select menu item",
 		group: "composer",
-		bindings: DIGITS.map((digit): Binding => ({
+		bindings: DIGITS.map((digit): Binding => (
+		{
 			key: digit,
 			code: `Digit${digit}`,
 			modifiers: [],
@@ -411,7 +540,8 @@ export const SHORTCUTS = {
 		enabled: true,
 		displayKeys: "1…9",
 	},
-	toggle_fast_mode: {
+	toggle_fast_mode:
+	{
 		description: "Toggle fast mode",
 		group: "composer",
 		bindings: cmdOrCtrl("f", ["alt"], letterCode("f")),
@@ -420,21 +550,24 @@ export const SHORTCUTS = {
 		// Upstream lists the row only in the desktop app (`setFastMode !== undefined`), never on web.
 		hiddenFromDialog: true,
 	},
-	add_files: {
+	add_files:
+	{
 		description: "Add files or photos",
 		group: "composer",
 		bindings: cmdOrCtrl("u"),
 		ownerSlug: "composer",
 		enabled: true,
 	},
-	queue_for_later: {
+	queue_for_later:
+	{
 		description: "Queue for later (while Claude is working)",
 		group: "composer",
 		bindings: cmdOrCtrl("enter", [], "Enter"),
 		ownerSlug: "composer-queue-steer",
 		enabled: true,
 	},
-	send_and_stay: {
+	send_and_stay:
+	{
 		description: "Send and stay on the new session page",
 		group: "composer",
 		bindings: cmdOrCtrl("enter", [], "Enter"),
@@ -442,7 +575,8 @@ export const SHORTCUTS = {
 		enabled: true,
 		sharesBindingWith: "queue_for_later",
 	},
-	fork_with_prompt: {
+	fork_with_prompt:
+	{
 		description: "Fork with this prompt",
 		group: "composer",
 		bindings: cmdOrCtrl("enter", ["alt"], "Enter"),
@@ -455,21 +589,24 @@ export const SHORTCUTS = {
 	 * are bookmark and history keys) and no plain shell control key; `terminalHandlesKey` lets them
 	 * out of the focused terminal.
 	 */
-	split_terminal_right: {
+	split_terminal_right:
+	{
 		description: "Split terminal right",
 		group: "terminals",
 		bindings: cmdOrCtrl("d", ["alt"], letterCode("d")),
 		ownerSlug: "herdr-web",
 		enabled: true,
 	},
-	split_terminal_down: {
+	split_terminal_down:
+	{
 		description: "Split terminal down",
 		group: "terminals",
 		bindings: cmdOrCtrl("d", ["alt", "shift"], letterCode("d")),
 		ownerSlug: "herdr-web",
 		enabled: true,
 	},
-	close_terminal_pane: {
+	close_terminal_pane:
+	{
 		description: "Close terminal pane",
 		group: "terminals",
 		// ⌘\ closes an app pane; ⌥ makes it the herdr pane.
@@ -477,21 +614,24 @@ export const SHORTCUTS = {
 		ownerSlug: "herdr-web",
 		enabled: true,
 	},
-	rename_terminal_tab: {
+	rename_terminal_tab:
+	{
 		description: "Rename terminal tab",
 		group: "terminals",
 		bindings: cmdOrCtrl("e", ["alt"], letterCode("e")),
 		ownerSlug: "herdr-web",
 		enabled: true,
 	},
-	next_terminal_pane: {
+	next_terminal_pane:
+	{
 		description: "Next pane in terminal tab",
 		group: "terminals",
 		bindings: cmdOrCtrl("]", ["alt"], "BracketRight"),
 		ownerSlug: "herdr-web",
 		enabled: true,
 	},
-	prev_terminal_pane: {
+	prev_terminal_pane:
+	{
 		description: "Previous pane in terminal tab",
 		group: "terminals",
 		bindings: cmdOrCtrl("[", ["alt"], "BracketLeft"),
@@ -505,11 +645,13 @@ export type ShortcutId = keyof typeof SHORTCUTS;
 /** Registry ids in upstream dialog order. */
 export const SHORTCUT_IDS: ShortcutId[] = objectKeys(SHORTCUTS);
 
-export function getShortcut(id: ShortcutId): ShortcutDefinition {
+export function getShortcut(id: ShortcutId): ShortcutDefinition
+{
 	return SHORTCUTS[id];
 }
 
 /** "cmd+shift+k"-style keys string for one binding, in the order written. */
-export function bindingToKeys(binding: Binding): string {
+export function bindingToKeys(binding: Binding): string
+{
 	return [...binding.modifiers, binding.key].join("+");
 }

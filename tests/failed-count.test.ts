@@ -1,6 +1,7 @@
 import {withTrailingFailedCount} from "./failed-count";
 
-describe("withTrailingFailedCount", () => {
+describe("withTrailingFailedCount", () =>
+{
 	it.each([
 		{
 			specimen: "Ran 2 commands (1 failed), finished a background command",
@@ -14,10 +15,20 @@ describe("withTrailingFailedCount", () => {
 			specimen: "status: Hook re-prompted Claude, ran a command (1 failed)",
 			expected: "status: Hook re-prompted Claude, ran a command, 1 failed",
 		},
-		{specimen: "Ran 3 commands (1 failed)", expected: "Ran 3 commands (1 failed)"},
-		{specimen: "status: Ran 3 commands (1 failed)", expected: "status: Ran 3 commands (1 failed)"},
-		{specimen: "Ran 2 commands, read a file", expected: "Ran 2 commands, read a file"},
-	])("reads $specimen as $expected", ({specimen, expected}) => {
+		{
+			specimen: "Ran 3 commands (1 failed)",
+			expected: "Ran 3 commands (1 failed)",
+		},
+		{
+			specimen: "status: Ran 3 commands (1 failed)",
+			expected: "status: Ran 3 commands (1 failed)",
+		},
+		{
+			specimen: "Ran 2 commands, read a file",
+			expected: "Ran 2 commands, read a file",
+		},
+	])("reads $specimen as $expected", ({specimen, expected}) =>
+	{
 		expect(withTrailingFailedCount(specimen)).toBe(expected);
 	});
 });

@@ -9,7 +9,8 @@ import {useCallback, useSyncExternalStore} from "react";
  */
 export type ClientRowKind = "status" | "usage";
 
-export interface ClientRow {
+export interface ClientRow
+{
 	id: string;
 	kind: ClientRowKind;
 	/** The user row's text: the command as sent ("/status", "/cost"). */
@@ -24,18 +25,22 @@ const rowsBySession = new Map<string, readonly ClientRow[]>();
 const listeners = new Set<() => void>();
 let sequence = 0;
 
-function notify(): void {
+function notify(): void
+{
 	for (const listener of listeners) listener();
 }
 
-export function subscribeClientRows(listener: () => void): () => void {
+export function subscribeClientRows(listener: () => void): () => void
+{
 	listeners.add(listener);
-	return () => {
+	return () =>
+	{
 		listeners.delete(listener);
 	};
 }
 
-export function readClientRows(sessionId: string): readonly ClientRow[] {
+export function readClientRows(sessionId: string): readonly ClientRow[]
+{
 	return rowsBySession.get(sessionId) ?? NO_ROWS;
 }
 
@@ -43,22 +48,32 @@ export function appendClientRow(
 	sessionId: string,
 	{kind, text, afterUuid}: Pick<ClientRow, "kind" | "text" | "afterUuid">,
 	now: number = Date.now(),
-): ClientRow {
+): ClientRow
+{
 	sequence += 1;
-	const row: ClientRow = {id: `client-${kind}-${now}-${sequence}`, kind, text, afterUuid, createdAt: now};
+	const row: ClientRow =
+	{
+		id: `client-${kind}-${now}-${sequence}`,
+		kind,
+		text,
+		afterUuid,
+		createdAt: now,
+	};
 	rowsBySession.set(sessionId, [...readClientRows(sessionId), row]);
 	notify();
 	return row;
 }
 
 /** Drops every session's rows, as a reload does. */
-export function clearClientRows(): void {
+export function clearClientRows(): void
+{
 	rowsBySession.clear();
 	sequence = 0;
 	notify();
 }
 
-export function useClientRows(sessionId: string): readonly ClientRow[] {
+export function useClientRows(sessionId: string): readonly ClientRow[]
+{
 	const read = useCallback(() => readClientRows(sessionId), [sessionId]);
 	return useSyncExternalStore(subscribeClientRows, read, () => NO_ROWS);
 }

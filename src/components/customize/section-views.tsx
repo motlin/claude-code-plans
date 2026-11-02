@@ -1,6 +1,7 @@
 import {useQuery} from "@tanstack/react-query";
 import {Puzzle, Scroll} from "lucide-react";
-import {
+import
+{
 	customizeClaudeAiConnectorsQueryOptions,
 	customizeMcpServersQueryOptions,
 	customizeSettingsTogglesQueryOptions,
@@ -22,20 +23,23 @@ import {CUSTOMIZE_SECTIONS, type CustomizeSearch, resolveOption} from "./section
 import {SkillRowActions} from "./skill-row-actions";
 import {commandRows, filterSkills, groupSkills, sortSkills} from "./skills-view";
 
-interface SectionProps {
+interface SectionProps
+{
 	search: CustomizeSearch;
 }
 
 const SKILLS_SECTION = CUSTOMIZE_SECTIONS[0];
 
 /** The Skills list body under the Customize header (Yours, or Discover when it has one). */
-export function SkillsSection({search}: SectionProps) {
+export function SkillsSection({search}: SectionProps)
+{
 	const go = useCustomizeGo();
 	const sortValue = useSectionSort(SKILLS_SECTION.sortStorageKey, search.sort);
 	const {data: skills, isPending} = useQuery(customizeSkillsQueryOptions);
 	const {data: commands} = useQuery(userCommandsQueryOptions);
 
-	if (search.view === "discover") {
+	if (search.view === "discover")
+	{
 		return <CustomizeDiscover section="skills" category={search.category} order={search.order} />;
 	}
 	if (isPending || skills === undefined) return <CustomizeSectionSkeleton />;
@@ -43,17 +47,26 @@ export function SkillsSection({search}: SectionProps) {
 	const source = resolveOption(SKILLS_SECTION.filter.options, search.filter).value;
 	const sort = resolveOption(SKILLS_SECTION.sort ?? [], sortValue).value;
 	const groups = groupSkills(sortSkills(filterSkills(skills, source, undefined), sort));
-	const commandGroup = {
+	const commandGroup =
+	{
 		key: "commands",
 		title: "Custom commands",
-		items: commandRows(commands ?? [], source, undefined).map((row) => ({
+		items: commandRows(commands ?? [], source, undefined).map((row) => (
+		{
 			key: row.key,
 			title: row.invocation,
 			source: `from ${row.sourceName}`,
 			subtitle: row.description,
 			meta: <ScopeBadge>Custom command</ScopeBadge>,
-			onView: () => {
-				go({kind: "command", source: row.source, filename: row.filename});
+			onView: () =>
+			{
+				go(
+					{
+						kind: "command",
+						source: row.source,
+						filename: row.filename,
+					},
+				);
 			},
 		})),
 	};
@@ -67,26 +80,45 @@ export function SkillsSection({search}: SectionProps) {
 					title="Add your first skills"
 					body="Skills teach Claude how you work. Add them from Discover, or create your own."
 					action="Discover skills"
-					onAction={() => {
-						go({kind: "list", section: "skills", search: {view: "discover"}});
+					onAction={() =>
+					{
+						go(
+							{
+								kind: "list",
+								section: "skills",
+								search:
+								{
+									view: "discover",
+								},
+							},
+						);
 					}}
 				/>
 			)}
 			<CustomizeList
 				icon={Scroll}
 				groups={[
-					...groups.map((group) => ({
+					...groups.map((group) => (
+					{
 						key: group.key,
 						title: group.title,
-						items: group.skills.map((skill) => ({
+						items: group.skills.map((skill) => (
+						{
 							key: skill.id,
 							title: skill.name,
 							source: `from ${skill.sourceLabel}`,
 							subtitle: skill.description,
 							meta: <ShortDate ms={skill.mtime} />,
 							actions: <SkillRowActions skill={skill} />,
-							onView: () => {
-								go({kind: "skill", id: skill.id, tab: "overview"});
+							onView: () =>
+							{
+								go(
+									{
+										kind: "skill",
+										id: skill.id,
+										tab: "overview",
+									},
+								);
 							},
 						})),
 					})),
@@ -108,12 +140,14 @@ export function SkillsSection({search}: SectionProps) {
 const CONNECTORS_SECTION = CUSTOMIZE_SECTIONS[1];
 
 /** The Connectors list body under the Customize header (Yours, or Discover when it has one). */
-export function ConnectorsSection({search}: SectionProps) {
+export function ConnectorsSection({search}: SectionProps)
+{
 	const go = useCustomizeGo();
 	const {data: servers, isPending} = useQuery(customizeMcpServersQueryOptions);
 	const {data: claudeAi = []} = useQuery(customizeClaudeAiConnectorsQueryOptions);
 
-	if (isPending || servers === undefined) {
+	if (isPending || servers === undefined)
+	{
 		return <CustomizeSectionSkeleton />;
 	}
 
@@ -122,7 +156,8 @@ export function ConnectorsSection({search}: SectionProps) {
 	// claude.ai connectors have no local enabled state, so only "All" lists them.
 	const visibleClaudeAi = show === "all" ? claudeAi : [];
 
-	if (visibleServers.length === 0 && visibleClaudeAi.length === 0) {
+	if (visibleServers.length === 0 && visibleClaudeAi.length === 0)
+	{
 		return (
 			<CustomizeNotice
 				title="No connectors yet"
@@ -135,8 +170,14 @@ export function ConnectorsSection({search}: SectionProps) {
 		<ConnectorsTable
 			servers={visibleServers}
 			claudeAi={visibleClaudeAi}
-			onView={(server) => {
-				go({kind: "connector", slug: toConnectorSlug(server.id)});
+			onView={(server) =>
+			{
+				go(
+					{
+						kind: "connector",
+						slug: toConnectorSlug(server.id),
+					},
+				);
 			}}
 		/>
 	);
@@ -145,15 +186,18 @@ export function ConnectorsSection({search}: SectionProps) {
 const PLUGINS_SECTION = CUSTOMIZE_SECTIONS[2];
 
 /** The Plugins list body under the Customize header (Yours, or Discover when it has one). */
-export function PluginsSection({search}: SectionProps) {
+export function PluginsSection({search}: SectionProps)
+{
 	const go = useCustomizeGo();
 	const {data: plugins, isPending} = useQuery(pluginsQueryOptions);
 	const {data: toggles} = useQuery(customizeSettingsTogglesQueryOptions);
 
-	if (search.view === "discover") {
+	if (search.view === "discover")
+	{
 		return <CustomizeDiscover section="plugins" category={search.category} order={search.order} />;
 	}
-	if (isPending || plugins === undefined) {
+	if (isPending || plugins === undefined)
+	{
 		return <CustomizeSectionSkeleton />;
 	}
 
@@ -162,12 +206,23 @@ export function PluginsSection({search}: SectionProps) {
 	const marketplaces = groupPluginsByMarketplace(plugins).filter(
 		(group) => show === "all" || group.isOfficial === (show === "official"),
 	);
-	const byName = (a: {title: string}, b: {title: string}) => a.title.localeCompare(b.title);
-	const marketplaceGroups = marketplaces.map((group) => ({
+	const byName = (
+		a:
+		{
+			title: string;
+		},
+		b:
+		{
+			title: string;
+		},
+	) => a.title.localeCompare(b.title);
+	const marketplaceGroups = marketplaces.map((group) => (
+	{
 		key: group.marketplace.id,
 		title: group.marketplace.displayName,
 		items: group.plugins
-			.map((plugin) => ({
+			.map((plugin) => (
+			{
 				key: plugin.id,
 				title: plugin.name,
 				source: `from ${group.marketplace.displayName}`,
@@ -179,8 +234,15 @@ export function PluginsSection({search}: SectionProps) {
 					</>
 				),
 				actions: <PluginRowActions pluginId={plugin.id} name={plugin.name} installPath={plugin.installPath} />,
-				onView: () => {
-					go({kind: "plugin", id: plugin.id, tab: "overview"});
+				onView: () =>
+				{
+					go(
+						{
+							kind: "plugin",
+							id: plugin.id,
+							tab: "overview",
+						},
+					);
 				},
 			}))
 			.toSorted(byName),
@@ -196,14 +258,25 @@ export function PluginsSection({search}: SectionProps) {
 				]
 			: marketplaceGroups;
 
-	if (plugins.length === 0) {
+	if (plugins.length === 0)
+	{
 		return (
 			<CustomizeFirstRunCard
 				title="Add your first plugins"
 				body="Give Claude role-level expertise with plugins. Add them from Discover, or create your own."
 				action="Discover plugins"
-				onAction={() => {
-					go({kind: "list", section: "plugins", search: {view: "discover"}});
+				onAction={() =>
+				{
+					go(
+						{
+							kind: "list",
+							section: "plugins",
+							search:
+							{
+								view: "discover",
+							},
+						},
+					);
 				}}
 			/>
 		);

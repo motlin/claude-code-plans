@@ -7,15 +7,25 @@ import type {Job, JobState} from "../lib/jobs";
 import {formatNarrowRelativeTime} from "../lib/relative-time";
 import {jobChildKindLabels, jobStateLabels} from "../lib/schema-choices";
 
-export const Route = createFileRoute("/jobs")({
-	component: JobsPage,
-	loader: async ({context: {queryClient}}) => queryClient.query({...jobsQueryOptions, staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Background jobs")],
-	}),
-});
+export const Route = createFileRoute("/jobs")(
+	{
+		component: JobsPage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...jobsQueryOptions,
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Background jobs")],
+		}),
+	},
+);
 
-const STATE_PILL_CLASSES = {
+const STATE_PILL_CLASSES =
+{
 	working: "bg-accent-900 text-accent-000",
 	running: "bg-accent-900 text-accent-000",
 	blocked: "bg-warning-100/15 text-warning-000",
@@ -29,7 +39,8 @@ const STATE_PILL_CLASSES = {
  * analogue of claude.ai's Dispatch Tasks panel. Each row links to the job's
  * session transcript when its `linkScanPath` names one.
  */
-function JobsPage() {
+function JobsPage()
+{
 	// Relative times are measured from when this data arrived, so they stay stable across re-renders.
 	const {data: jobs, dataUpdatedAt: now} = useSuspenseQuery(jobsQueryOptions);
 
@@ -54,7 +65,8 @@ function JobsPage() {
 	);
 }
 
-function StatePill({state}: {state: JobState}) {
+function StatePill({state}: {state: JobState})
+{
 	return (
 		<span
 			data-job-state=""
@@ -65,14 +77,18 @@ function StatePill({state}: {state: JobState}) {
 	);
 }
 
-function JobRow({job, now}: {job: Job; now: number}) {
+function JobRow({job, now}: {job: Job; now: number})
+{
 	const timeline = job.timeline.toReversed();
 	return (
 		<li className="group/cdsrow relative">
 			{job.sessionId !== null && (
 				<Link
 					to="/session/$id"
-					params={{id: job.sessionId}}
+					params={
+					{
+						id: job.sessionId,
+					}}
 					data-primary="true"
 					aria-label={job.name}
 					className="absolute inset-0 rounded outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"

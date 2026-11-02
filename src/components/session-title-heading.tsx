@@ -16,9 +16,11 @@ export function SessionTitleButton({
 	rename: SessionRename;
 	className: string;
 	summary?: string | null;
-}) {
+})
+{
 	const hasSummary = summary !== null && summary !== "";
-	if (rename.editing) {
+	if (rename.editing)
+	{
 		return <InlineRenameInput value={rename.initialValue} onCommit={rename.commit} onCancel={rename.cancel} />;
 	}
 	return (
@@ -26,7 +28,12 @@ export function SessionTitleButton({
 			<button
 				type="button"
 				aria-label={`${rename.title}, rename session`}
-				{...(hasSummary ? {"aria-description": summary} : {})}
+				{...(hasSummary
+					?
+						{
+							"aria-description": summary,
+						}
+					: {})}
 				onClick={rename.startEditing}
 				data-titlebar-title=""
 				data-pane-title=""
@@ -53,9 +60,18 @@ export function SessionTitleHeading({
 	prUrl?: string | undefined;
 	/** The session's directory; forking needs it. */
 	cwd?: string | null;
-}) {
+})
+{
 	const rename = useSessionRename(sessionId, title);
-	useSessionTitleShortcuts({sessionId, archived, prUrl, cwd, startEditing: rename.startEditing});
+	useSessionTitleShortcuts(
+		{
+			sessionId,
+			archived,
+			prUrl,
+			cwd,
+			startEditing: rename.startEditing,
+		},
+	);
 
 	return (
 		<h1 className="flex min-w-0 items-center gap-2 text-lg font-semibold">

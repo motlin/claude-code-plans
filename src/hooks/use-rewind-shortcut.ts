@@ -4,7 +4,8 @@ import {getComposerText} from "../lib/context-attach";
 import {canOpenRewindPicker, REWIND_ESC_WINDOW_MS} from "../lib/rewind-picker";
 import {isInKeystrokeSink} from "../lib/shortcuts/match";
 
-export interface RewindPickerOptions {
+export interface RewindPickerOptions
+{
 	sessionId: string;
 	/** A live pane that accepts writes, on a session that isn't archived. */
 	available: boolean;
@@ -13,7 +14,8 @@ export interface RewindPickerOptions {
 	now?: () => number;
 }
 
-export interface RewindPickerState {
+export interface RewindPickerState
+{
 	open: boolean;
 	/** The picker has opened at least once on this session, so its lazy chunk is wanted. */
 	used: boolean;
@@ -25,7 +27,8 @@ export interface RewindPickerState {
 	close: () => void;
 }
 
-function isPlainEscape(event: KeyboardEvent): boolean {
+function isPlainEscape(event: KeyboardEvent): boolean
+{
 	return (
 		event.key === "Escape" &&
 		!event.repeat &&
@@ -45,45 +48,84 @@ function isPlainEscape(event: KeyboardEvent): boolean {
  * first Escape can still close a menu or stop Claude) and `requestOpen` for
  * `/rewind`.
  */
-export function useRewindPicker({sessionId, available, busy, now = Date.now}: RewindPickerOptions): RewindPickerState {
+export function useRewindPicker({sessionId, available, busy, now = Date.now}: RewindPickerOptions): RewindPickerState
+{
 	const [open, setOpen] = useState(false);
 	const [used, setUsed] = useState(false);
 	const closedAtRef = useRef<number | null>(null);
 	const lastEscapeRef = useRef<number | null>(null);
-	const gateRef = useRef({sessionId, available, busy, now});
-	gateRef.current = {sessionId, available, busy, now};
+	const gateRef = useRef(
+		{
+			sessionId,
+			available,
+			busy,
+			now,
+		},
+	);
+	gateRef.current =
+	{
+		sessionId,
+		available,
+		busy,
+		now,
+	};
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		setOpen(false);
 		setUsed(false);
 		closedAtRef.current = null;
 		lastEscapeRef.current = null;
 	}, [sessionId]);
 
-	const requestOpen = useCallback(({fromComposer = false}: {fromComposer?: boolean} = {}) => {
-		const gate = gateRef.current;
-		const draft = fromComposer ? "" : (getComposerText(gate.sessionId) ?? "");
-		if (canOpenRewindPicker({...gate, draft, now: gate.now(), closedAt: closedAtRef.current})) {
-			setOpen(true);
-			setUsed(true);
-		}
-	}, []);
+	const requestOpen = useCallback(
+		({
+			fromComposer = false,
+		}:
+		{
+			fromComposer?: boolean;
+		} = {}) =>
+		{
+			const gate = gateRef.current;
+			const draft = fromComposer ? "" : (getComposerText(gate.sessionId) ?? "");
+			if (
+				canOpenRewindPicker(
+					{
+						...gate,
+						draft,
+						now: gate.now(),
+						closedAt: closedAtRef.current,
+					},
+				)
+			)
+			{
+				setOpen(true);
+				setUsed(true);
+			}
+		},
+		[],
+	);
 
-	const close = useCallback(() => {
+	const close = useCallback(() =>
+	{
 		closedAtRef.current = gateRef.current.now();
 		setOpen(false);
 	}, []);
 
-	useEffect(() => {
-		const onKeyDown = (event: KeyboardEvent) => {
+	useEffect(() =>
+	{
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			// Upstream's `Yi`: Escapes inside a keystroke sink (the terminal) belong to it.
-			if (!isPlainEscape(event) || isInKeystrokeSink(event.target)) {
+			if (!isPlainEscape(event) || isInKeystrokeSink(event.target))
+			{
 				lastEscapeRef.current = null;
 				return;
 			}
 			const at = gateRef.current.now();
 			const last = lastEscapeRef.current;
-			if (last === null || at - last > REWIND_ESC_WINDOW_MS) {
+			if (last === null || at - last > REWIND_ESC_WINDOW_MS)
+			{
 				lastEscapeRef.current = at;
 				return;
 			}
@@ -92,10 +134,16 @@ export function useRewindPicker({sessionId, available, busy, now = Date.now}: Re
 			requestOpen();
 		};
 		window.addEventListener("keydown", onKeyDown);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("keydown", onKeyDown);
 		};
 	}, [requestOpen]);
 
-	return {open, used, requestOpen, close};
+	return {
+		open,
+		used,
+		requestOpen,
+		close,
+	};
 }

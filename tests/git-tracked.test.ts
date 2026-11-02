@@ -3,11 +3,13 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-const filesystemState = vi.hoisted(() => ({
+const filesystemState = vi.hoisted(() => (
+{
 	vanishedGitMarkers: new Set<string>(),
 }));
 
-vi.mock("node:fs", async (importOriginal) => {
+vi.mock("node:fs", async (importOriginal) =>
+{
 	const actual = await importOriginal<typeof import("node:fs")>();
 	return {
 		...actual,
@@ -19,52 +21,69 @@ vi.mock("node:fs", async (importOriginal) => {
 import {isGitRepository, listTrackedFiles, TrackedFileIndex} from "../src/lib/git-tracked";
 import {runGit} from "./git-fixture";
 
-describe("git-tracked", () => {
+describe("git-tracked", () =>
+{
 	let fixtureDirectory: string;
 	let repositoryDirectory: string;
 
-	function git(...arguments_: string[]): void {
+	function git(...arguments_: string[]): void
+	{
 		runGit(repositoryDirectory, arguments_);
 	}
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		fixtureDirectory = mkdtempSync(join(tmpdir(), "git-tracked-test-"));
 		repositoryDirectory = join(fixtureDirectory, "repository");
 		mkdirSync(repositoryDirectory);
 		git("init", "--quiet", "--initial-branch=main");
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		filesystemState.vanishedGitMarkers.clear();
-		rmSync(fixtureDirectory, {recursive: true, force: true});
+		rmSync(
+			fixtureDirectory,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("detects repositories with directory and file git markers", () => {
+	it("detects repositories with directory and file git markers", () =>
+	{
 		const worktreeDirectory = join(fixtureDirectory, "worktree");
 		const plainDirectory = join(fixtureDirectory, "plain");
 		mkdirSync(worktreeDirectory);
 		mkdirSync(plainDirectory);
 		writeFileSync(join(worktreeDirectory, ".git"), "gitdir: ../repository/.git/worktrees/example\n");
 
-		expect({
-			repository: isGitRepository(repositoryDirectory),
-			worktree: isGitRepository(worktreeDirectory),
-			plain: isGitRepository(plainDirectory),
-		}).toStrictEqual({
-			repository: true,
-			worktree: true,
-			plain: false,
-		});
+		expect(
+			{
+				repository: isGitRepository(repositoryDirectory),
+				worktree: isGitRepository(worktreeDirectory),
+				plain: isGitRepository(plainDirectory),
+			},
+		).toStrictEqual(
+			{
+				repository: true,
+				worktree: true,
+				plain: false,
+			},
+		);
 	});
 
-	it("returns false when a repository vanishes during inspection", () => {
+	it("returns false when a repository vanishes during inspection", () =>
+	{
 		const vanishedDirectory = join(fixtureDirectory, "vanished");
 		filesystemState.vanishedGitMarkers.add(join(vanishedDirectory, ".git"));
 
 		expect(isGitRepository(vanishedDirectory)).toBe(false);
 	});
 
-	it("lists only tracked files as absolute paths", async () => {
+	it("lists only tracked files as absolute paths", async () =>
+	{
 		const trackedPath = join(repositoryDirectory, "tracked.txt");
 		writeFileSync(trackedPath, "tracked\n");
 		writeFileSync(join(repositoryDirectory, "untracked.txt"), "untracked\n");
@@ -78,7 +97,8 @@ describe("git-tracked", () => {
 		]);
 	});
 
-	it("refreshes its tracked-file set after git add", async () => {
+	it("refreshes its tracked-file set after git add", async () =>
+	{
 		const firstPath = join(repositoryDirectory, "first.txt");
 		const secondPath = join(repositoryDirectory, "second.txt");
 		writeFileSync(firstPath, "first\n");

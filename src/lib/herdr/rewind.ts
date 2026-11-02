@@ -29,13 +29,15 @@ const RULE_LINE = /^─+$/;
 const PLACEHOLDER = /^Try ".*"$/;
 
 /** The CLI option each restore choice picks on the confirm step. */
-const RESTORE_LABELS = {
+const RESTORE_LABELS =
+{
 	conversation: "Restore conversation",
 	both: "Restore code and conversation",
 } as const;
 
 /** The block under the last "Rewind" header whose next non-empty line passes `subtitle`. */
-function rewindBlock(screen: string, subtitle: (line: string) => boolean): string[] | null {
+function rewindBlock(screen: string, subtitle: (line: string) => boolean): string[] | null
+{
 	const lines = screen.split("\n");
 	const start = lines.findLastIndex((line) => line.trim() === SELECTOR_TITLE);
 	if (start < 0) return null;
@@ -46,20 +48,33 @@ function rewindBlock(screen: string, subtitle: (line: string) => boolean): strin
 }
 
 /** The selector's selected row ("(current)" for the end row), or null when the list is not on screen. */
-export function parseMessageSelector(screen: string): {selected: string} | null {
+export function parseMessageSelector(screen: string):
+{
+	selected: string;
+} | null
+{
 	const block = rewindBlock(screen, (line) => SELECTOR_SUBTITLE.test(line));
 	if (block === null) return null;
 	const footer = block.findIndex((line) => line.includes(SELECTOR_FOOTER));
 	if (footer < 0) return null;
-	for (const line of block.slice(0, footer)) {
+	for (const line of block.slice(0, footer))
+	{
 		const match = SELECTED_ROW.exec(line);
-		if (match !== null) return {selected: match[1] ?? ""};
+		if (match !== null)
+			return {
+				selected: match[1] ?? "",
+			};
 	}
 	return null;
 }
 
 /** The confirm step's quoted prompt and its numbered options by label, or null when it is not on screen. */
-export function parseRewindConfirm(screen: string): {quote: string; options: Record<string, number>} | null {
+export function parseRewindConfirm(screen: string):
+{
+	quote: string;
+	options: Record<string, number>;
+} | null
+{
 	const block = rewindBlock(screen, (line) => line.startsWith(CONFIRM_SUBTITLE));
 	if (block === null) return null;
 	const quote = block
@@ -67,16 +82,21 @@ export function parseRewindConfirm(screen: string): {quote: string; options: Rec
 		.find((match) => match !== null)?.[1]
 		?.trim();
 	const options: Record<string, number> = {};
-	for (const line of block) {
+	for (const line of block)
+	{
 		const match = OPTION_LINE.exec(line);
 		if (match !== null) options[match[2] ?? ""] = Number(match[1]);
 	}
 	if (quote === undefined || Object.keys(options).length === 0) return null;
-	return {quote, options};
+	return {
+		quote,
+		options,
+	};
 }
 
 /** The text in the CLI's input box (between its last two rules), "" when empty, or null when no box shows. */
-export function readComposerInput(screen: string): string | null {
+export function readComposerInput(screen: string): string | null
+{
 	const lines = screen.split("\n");
 	const rules = lines.flatMap((line, index) => (RULE_LINE.test(line.trim()) ? [index] : []));
 	const end = rules.at(-1);
@@ -99,16 +119,27 @@ const ESCAPE = /\u001b\[([0-9;:?]*)([A-Za-z])|\u001b\][^\u0007\u001b]*(?:\u0007|
  * drawn faint (SGR 2) is left out: the CLI draws its prompt suggestion in an
  * empty input box that way, so a dim-only input box reads as empty.
  */
-export function visibleText(screen: string, {dropDim = false}: {dropDim?: boolean} = {}): string {
+export function visibleText(
+	screen: string,
+	{
+		dropDim = false,
+	}:
+	{
+		dropDim?: boolean;
+	} = {},
+): string
+{
 	let dim = false;
 	let text = "";
 	let last = 0;
-	for (const match of screen.matchAll(ESCAPE)) {
+	for (const match of screen.matchAll(ESCAPE))
+	{
 		if (!(dropDim && dim)) text += screen.slice(last, match.index);
 		last = match.index + match[0].length;
 		if (match[2] !== "m") continue;
 		const codes = (match[1] ?? "").split(/[;:]/);
-		for (let index = 0; index < codes.length; index++) {
+		for (let index = 0; index < codes.length; index++)
+		{
 			const code = codes[index];
 			// Extended colours carry their own numbers: 38;5;n or 38;2;r;g;b (and 48, 58).
 			if (code === "38" || code === "48" || code === "58") index += codes[index + 1] === "5" ? 2 : 4;
@@ -120,31 +151,37 @@ export function visibleText(screen: string, {dropDim = false}: {dropDim?: boolea
 	return text;
 }
 
-function compact(text: string): string {
+function compact(text: string): string
+{
 	return text.replace(/\s+/g, "");
 }
 
 /** Whether a row or quote the CLI drew (perhaps cut short with "…") shows this prompt. */
-function showsPrompt(drawn: string, prompt: string): boolean {
+function showsPrompt(drawn: string, prompt: string): boolean
+{
 	const shown = compact(drawn);
 	const full = compact(prompt);
-	if (shown.endsWith("…")) {
+	if (shown.endsWith("…"))
+	{
 		const prefix = shown.slice(0, -1);
 		return prefix !== "" && full.startsWith(prefix);
 	}
 	return shown === full;
 }
 
-const HerdrRewindSchema = z.strictObject({
-	sessionId: z.string().min(1),
-	/** Up presses from the "(current)" row: 1 is the newest prompt. */
-	stepsBack: z.number().int().min(1).max(500),
-	/** The target prompt's text, checked against the selected row before Enter. */
-	text: z.string().min(1),
-	restore: z.enum(["conversation", "both"]).optional(),
-});
+const HerdrRewindSchema = z.strictObject(
+	{
+		sessionId: z.string().min(1),
+		/** Up presses from the "(current)" row: 1 is the newest prompt. */
+		stepsBack: z.number().int().min(1).max(500),
+		/** The target prompt's text, checked against the selected row before Enter. */
+		text: z.string().min(1),
+		restore: z.enum(["conversation", "both"]).optional(),
+	},
+);
 
-export interface HerdrRewindDependencies {
+export interface HerdrRewindDependencies
+{
 	rejectRequest: (request: Request) => Response | null;
 	writesEnabled: () => boolean;
 	/** Whether the session is idle with no question or permission dialog open, per the hook store. */
@@ -162,10 +199,12 @@ const STEP_PAUSE_MS = 80;
 /** Screen reads before giving up on the CLI drawing the next step (about 2 s at the step pause). */
 const SCREEN_ATTEMPTS = 25;
 
-export const defaultHerdrRewindDependencies: HerdrRewindDependencies = {
+export const defaultHerdrRewindDependencies: HerdrRewindDependencies =
+{
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
-	ready: (sessionId) => {
+	ready: (sessionId) =>
+	{
 		const entry = getActiveSessionEntry(sessionId);
 		return (
 			entry?.state === "idle" &&
@@ -178,18 +217,29 @@ export const defaultHerdrRewindDependencies: HerdrRewindDependencies = {
 	request: herdrRequest,
 	createRequestId: () => `ccp:rewind:${crypto.randomUUID()}`,
 	pause: async () =>
-		new Promise((resolve) => {
+		new Promise((resolve) =>
+		{
 			setTimeout(resolve, STEP_PAUSE_MS);
 		}),
 };
 
 const CANT_REWIND = "Can’t rewind to this message.";
 
-function errorResponse(error: string, status: number): Response {
-	return Response.json({error}, {status});
+function errorResponse(error: string, status: number): Response
+{
+	return Response.json(
+		{
+			error,
+		},
+		{
+			status,
+		},
+	);
 }
 
-class RewindAborted extends Error {}
+class RewindAborted extends Error
+{
+}
 
 /**
  * POST: rewind the session's conversation to a prompt through the live CLI.
@@ -200,7 +250,8 @@ class RewindAborted extends Error {}
 export async function handleHerdrRewind(
 	request: Request,
 	dependencies: HerdrRewindDependencies = defaultHerdrRewindDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;
 	if (!dependencies.writesEnabled()) return errorResponse("herdr writes are disabled", 403);
@@ -211,28 +262,53 @@ export async function handleHerdrRewind(
 
 	if (!dependencies.ready(sessionId)) return errorResponse("Rewind is unavailable while Claude is working", 409);
 	const target = await dependencies.resolveTarget(sessionId);
-	if (!target.ok) {
+	if (!target.ok)
+	{
 		return errorResponse("Rewind is unavailable while the computer running this session is offline", 409);
 	}
 	const {paneId} = target.value;
 
 	/** The screen as plain text, and its input box with any dim prompt suggestion left out. */
-	const read = async (): Promise<{text: string; input: string | null}> => {
+	const read = async (): Promise<
+	{
+		text: string;
+		input: string | null;
+	}> =>
+	{
 		const screen = await dependencies.readScreen(sessionId, paneId);
 		if (!screen.ok) throw new RewindAborted(screen.message);
-		return {text: visibleText(screen.value), input: readComposerInput(visibleText(screen.value, {dropDim: true}))};
+		return {
+			text: visibleText(screen.value),
+			input: readComposerInput(
+				visibleText(
+					screen.value,
+					{
+						dropDim: true,
+					},
+				),
+			),
+		};
 	};
-	const press = async (key: string): Promise<void> => {
-		const response = await dependencies.request({
-			id: dependencies.createRequestId(),
-			method: "agent.send_keys",
-			params: {target: paneId, keys: [key]},
-		});
+	const press = async (key: string): Promise<void> =>
+	{
+		const response = await dependencies.request(
+			{
+				id: dependencies.createRequestId(),
+				method: "agent.send_keys",
+				params:
+				{
+					target: paneId,
+					keys: [key],
+				},
+			},
+		);
 		if (!response.ok) throw new RewindAborted(response.message);
 	};
 	/** Reads until `accept` takes the screen, for at most SCREEN_ATTEMPTS reads. */
-	const waitFor = async <T>(accept: (screen: {text: string; input: string | null}) => T | null): Promise<T> => {
-		for (let attempt = 0; attempt < SCREEN_ATTEMPTS; attempt++) {
+	const waitFor = async <T>(accept: (screen: {text: string; input: string | null}) => T | null): Promise<T> =>
+	{
+		for (let attempt = 0; attempt < SCREEN_ATTEMPTS; attempt++)
+		{
 			if (attempt > 0) await dependencies.pause();
 			const value = accept(await read());
 			if (value !== null) return value;
@@ -240,17 +316,20 @@ export async function handleHerdrRewind(
 		throw new RewindAborted("the terminal did not show the expected rewind step");
 	};
 
-	if ((await read()).input !== "") {
+	if ((await read()).input !== "")
+	{
 		return errorResponse("Clear the terminal's input before rewinding", 409);
 	}
 
-	try {
+	try
+	{
 		await press("esc");
 		await dependencies.pause();
 		await press("esc");
 		const opened = await waitFor((screen) => parseMessageSelector(screen.text));
 		if (opened.selected !== CURRENT_ROW) throw new RewindAborted("the selector did not open on (current)");
-		for (let step = 0; step < stepsBack; step++) {
+		for (let step = 0; step < stepsBack; step++)
+		{
 			if (step > 0 && parseMessageSelector((await read()).text) === null)
 				throw new RewindAborted("the selector closed");
 			await press("up");
@@ -260,14 +339,25 @@ export async function handleHerdrRewind(
 		if (!showsPrompt(selected.selected, text)) throw new RewindAborted("the selected row is another prompt");
 		await press("enter");
 
-		const next = await waitFor(({text: screen, input}) => {
+		const next = await waitFor(({text: screen, input}) =>
+		{
 			const confirm = parseRewindConfirm(screen);
-			if (confirm !== null) return {confirm};
-			return input !== null && input !== "" && parseMessageSelector(screen) === null ? {confirm: null} : null;
+			if (confirm !== null)
+				return {
+					confirm,
+				};
+			return input !== null && input !== "" && parseMessageSelector(screen) === null
+				?
+					{
+						confirm: null,
+					}
+				: null;
 		});
-		if (next.confirm !== null) {
+		if (next.confirm !== null)
+		{
 			const row = next.confirm.options[restoreLabel];
-			if (!showsPrompt(next.confirm.quote, text) || row === undefined || row > 9) {
+			if (!showsPrompt(next.confirm.quote, text) || row === undefined || row > 9)
+			{
 				throw new RewindAborted("the confirm step does not match");
 			}
 			await press(String(row));
@@ -275,14 +365,20 @@ export async function handleHerdrRewind(
 		await waitFor(({text: screen, input}) =>
 			input !== null && parseMessageSelector(screen) === null && showsPrompt(input, text) ? true : null,
 		);
-	} catch (error) {
+	}
+	catch (error)
+	{
 		if (!(error instanceof RewindAborted)) throw error;
 		await backOut(read, press, dependencies.pause);
 		return errorResponse(CANT_REWIND, 409);
 	}
 	// The browser composer gets the prompt instead: agent.prompt appends to a non-empty CLI input.
 	if (!(await clearInput(read, press, dependencies.pause))) return errorResponse(STILL_IN_INPUT, 409);
-	return Response.json({ok: true});
+	return Response.json(
+		{
+			ok: true,
+		},
+	);
 }
 
 const STILL_IN_INPUT = "Rewound, but the prompt is still in the terminal’s input; send it from there";
@@ -295,14 +391,20 @@ const MAX_CLEARS = 200;
  * emptied line onto the one above) per press, until it reads empty.
  */
 async function clearInput(
-	read: () => Promise<{input: string | null}>,
+	read: () => Promise<
+	{
+		input: string | null;
+	}>,
 	press: (key: string) => Promise<void>,
 	pause: () => Promise<void>,
-): Promise<boolean> {
-	try {
+): Promise<boolean>
+{
+	try
+	{
 		let last = (await read()).input;
 		let stale = 0;
-		for (let attempt = 0; attempt < MAX_CLEARS && stale < STALE_CLEARS; attempt++) {
+		for (let attempt = 0; attempt < MAX_CLEARS && stale < STALE_CLEARS; attempt++)
+		{
 			await press("ctrl+u");
 			await pause();
 			const {input} = await read();
@@ -311,7 +413,9 @@ async function clearInput(
 			last = input;
 		}
 		return false;
-	} catch (error) {
+	}
+	catch (error)
+	{
 		if (!(error instanceof RewindAborted)) throw error;
 		return false;
 	}
@@ -319,19 +423,27 @@ async function clearInput(
 
 /** Escape once, then again while the selector or its confirm step is still drawn (at most twice more). */
 async function backOut(
-	read: () => Promise<{text: string}>,
+	read: () => Promise<
+	{
+		text: string;
+	}>,
 	press: (key: string) => Promise<void>,
 	pause: () => Promise<void>,
-): Promise<void> {
-	try {
+): Promise<void>
+{
+	try
+	{
 		await press("esc");
-		for (let extra = 0; extra < 2; extra++) {
+		for (let extra = 0; extra < 2; extra++)
+		{
 			await pause();
 			const screen = (await read()).text;
 			if (parseMessageSelector(screen) === null && parseRewindConfirm(screen) === null) return;
 			await press("esc");
 		}
-	} catch (error) {
+	}
+	catch (error)
+	{
 		if (!(error instanceof RewindAborted)) throw error;
 	}
 }

@@ -3,29 +3,46 @@ import {renderToStaticMarkup} from "react-dom/server";
 import {MarketplacesEditor, ObjectFieldsEditor, StringListEditor} from "../src/components/settings/settings-editors";
 import {OBJECT_EDITORS} from "../src/lib/settings-fields";
 
-const noop = () => {};
+const noop = () =>
+{
+};
 
-function editorDef(key: string) {
+function editorDef(key: string)
+{
 	const def = OBJECT_EDITORS.find((d) => d.key === key);
 	if (!def) throw new Error(`No OBJECT_EDITORS entry for ${key}`);
 	return def;
 }
 
-describe("settings form editors", () => {
-	it("renders sandbox toggle rows via ObjectFieldsEditor", () => {
+describe("settings form editors", () =>
+{
+	it("renders sandbox toggle rows via ObjectFieldsEditor", () =>
+	{
 		const html = renderToStaticMarkup(
-			<ObjectFieldsEditor def={editorDef("sandbox")} value={{enabled: true}} onChange={noop} />,
+			<ObjectFieldsEditor
+				def={editorDef("sandbox")}
+				value={
+				{
+					enabled: true,
+				}}
+				onChange={noop}
+			/>,
 		);
 		expect(html).toContain("Sandbox");
 		expect(html).toContain("Enabled");
 		expect(html).toContain("Auto-allow Bash if sandboxed");
 	});
 
-	it("renders sandbox excludedCommands entries via ObjectFieldsEditor stringList sub-field", () => {
+	it("renders sandbox excludedCommands entries via ObjectFieldsEditor stringList sub-field", () =>
+	{
 		const html = renderToStaticMarkup(
 			<ObjectFieldsEditor
 				def={editorDef("sandbox")}
-				value={{enabled: true, excludedCommands: ["docker *", "git push"]}}
+				value={
+				{
+					enabled: true,
+					excludedCommands: ["docker *", "git push"],
+				}}
 				onChange={noop}
 			/>,
 		);
@@ -34,12 +51,19 @@ describe("settings form editors", () => {
 		expect(html).toContain('value="git push"');
 	});
 
-	it("renders marketplace name and repo via MarketplacesEditor", () => {
+	it("renders marketplace name and repo via MarketplacesEditor", () =>
+	{
 		const html = renderToStaticMarkup(
 			<MarketplacesEditor
-				value={{
-					"motlin/claude-code-plugins": {
-						source: {source: "github", repo: "motlin/claude-code-plugins"},
+				value={
+				{
+					"motlin/claude-code-plugins":
+					{
+						source:
+						{
+							source: "github",
+							repo: "motlin/claude-code-plugins",
+						},
 					},
 				}}
 				onChange={noop}
@@ -49,11 +73,16 @@ describe("settings form editors", () => {
 		expect(html).toContain("Marketplaces");
 	});
 
-	it("renders spinnerVerbs verbs list via ObjectFieldsEditor stringList sub-field", () => {
+	it("renders spinnerVerbs verbs list via ObjectFieldsEditor stringList sub-field", () =>
+	{
 		const html = renderToStaticMarkup(
 			<ObjectFieldsEditor
 				def={editorDef("spinnerVerbs")}
-				value={{mode: "replace", verbs: ["a", "b"]}}
+				value={
+				{
+					mode: "replace",
+					verbs: ["a", "b"],
+				}}
 				onChange={noop}
 			/>,
 		);
@@ -62,7 +91,8 @@ describe("settings form editors", () => {
 		expect(html).toContain('value="b"');
 	});
 
-	it("renders additionalDirectories entries in StringListEditor", () => {
+	it("renders additionalDirectories entries in StringListEditor", () =>
+	{
 		const html = renderToStaticMarkup(
 			<StringListEditor
 				label="Additional directories"

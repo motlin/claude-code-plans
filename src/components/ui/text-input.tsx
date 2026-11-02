@@ -17,7 +17,8 @@
  * only matters here for a consumer width, so a `w-*` className drops `w-full`.
  */
 import {Field as BaseField} from "@base-ui/react/field";
-import {
+import
+{
 	type ChangeEvent,
 	type ComponentProps,
 	createContext,
@@ -36,7 +37,8 @@ import {Icon} from "./icon";
 
 const FIELD_CLASS = "flex flex-col gap-xs font-sans";
 
-interface FieldState {
+interface FieldState
+{
 	invalid: boolean;
 	disabled: boolean;
 }
@@ -45,13 +47,39 @@ interface FieldState {
 const FieldStateContext = createContext<FieldState | null>(null);
 
 /** Upstream `pb`: one stable state object per (disabled, invalid) pair. */
-const FIELD_STATES = {
-	false: {false: {invalid: false, disabled: false}, true: {invalid: true, disabled: false}},
-	true: {false: {invalid: false, disabled: true}, true: {invalid: true, disabled: true}},
+const FIELD_STATES =
+{
+	false:
+	{
+		false:
+		{
+			invalid: false,
+			disabled: false,
+		},
+		true:
+		{
+			invalid: true,
+			disabled: false,
+		},
+	},
+	true:
+	{
+		false:
+		{
+			invalid: false,
+			disabled: true,
+		},
+		true:
+		{
+			invalid: true,
+			disabled: true,
+		},
+	},
 } as const;
 
 /** Upstream `Tb`: Field.Root's render, a div under the state provider. */
-function renderField(props: HTMLAttributes<HTMLDivElement>, state: BaseField.Root.State) {
+function renderField(props: HTMLAttributes<HTMLDivElement>, state: BaseField.Root.State)
+{
 	return (
 		<FieldStateContext value={FIELD_STATES[`${state.disabled}`][`${state.valid === false}`]}>
 			<div {...props} />
@@ -60,7 +88,8 @@ function renderField(props: HTMLAttributes<HTMLDivElement>, state: BaseField.Roo
 }
 
 /** Upstream `$_`: cds Field, Base UI Field.Root. */
-export function Field({className, validationMode = "onBlur", ...props}: ComponentProps<typeof BaseField.Root>) {
+export function Field({className, validationMode = "onBlur", ...props}: ComponentProps<typeof BaseField.Root>)
+{
 	return (
 		<BaseField.Root
 			data-cds="Field"
@@ -97,8 +126,14 @@ const NESTED_BUTTON_SIZING =
 	"[&_[data-cds=Button]:not([data-cds-ghost])]:h-[var(--fhn)] [&_[data-cds=Button]:not([data-cds-ghost])]:rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] [&_[data-cds=Button][data-cds-icon-only]:not([data-cds-ghost])]:w-[var(--fhn)]";
 const END_SLOT_CLASS = `flex shrink-0 items-center gap-[var(--cds-pad-sm,6px)] ${SLOT_INK} [--fh:var(--cds-h-control)] [--fr:var(--upstream-radius)] [--fhn:var(--cds-h-control-nested)] ${NESTED_BUTTON_SIZING}`;
 /** Upstream `ta`: a non-base size is marked with `data-size`. */
-function sizeAttr(size: TextInputSize | undefined) {
-	return size !== undefined && size !== "base" ? {"data-size": size} : {};
+function sizeAttr(size: TextInputSize | undefined)
+{
+	return size !== undefined && size !== "base"
+		?
+			{
+				"data-size": size,
+			}
+		: {};
 }
 
 /** Upstream's sm ghost icon-only Button with the nested `!size-[var(--fhn)]` / radius overrides. */
@@ -106,25 +141,29 @@ export const TEXT_INPUT_CLEAR_CLASS =
 	"flex shrink-0 items-center justify-center size-[var(--fhn)] rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's tailwind-merge drops `w-full` under a consumer width such as Customize's `w-64`. */
-function withConsumer(base: string, className: string | undefined): string {
+function withConsumer(base: string, className: string | undefined): string
+{
 	if (className === undefined || className === "") return base;
 	const sized = className.split(" ").some((name) => name.startsWith("w-"));
 	const kept = sized ? base.split(" ").filter((name) => name !== "w-full") : base.split(" ");
 	return [...kept, className].join(" ");
 }
 
-function preventMouseDown(event: MouseEvent) {
+function preventMouseDown(event: MouseEvent)
+{
 	event.preventDefault();
 }
 
-function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
+function assignRef<T>(ref: Ref<T> | undefined, value: T | null)
+{
 	if (typeof ref === "function") ref(value);
 	else if (ref) ref.current = value;
 }
 
 export type TextInputSize = "xs" | "sm" | "base" | "lg";
 
-export interface TextInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
+export interface TextInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size">
+{
 	ref?: Ref<HTMLInputElement>;
 	size?: TextInputSize;
 	/** Fill the container (default); off leaves the width to the consumer. */
@@ -154,10 +193,16 @@ export function TextInput({
 	"aria-invalid": ariaInvalidProp,
 	disabled: disabledProp,
 	...props
-}: TextInputProps) {
+}: TextInputProps)
+{
 	const field = useContext(FieldStateContext);
 	const fieldInvalid = field?.invalid ?? false;
-	const control = {id, "aria-describedby": ariaDescribedBy, disabled: disabledProp};
+	const control =
+	{
+		id,
+		"aria-describedby": ariaDescribedBy,
+		disabled: disabledProp,
+	};
 	const inputRef = useRef<HTMLInputElement | null>(null);
 	const clearingEscape = useRef(false);
 	const controlled = props.value !== undefined;
@@ -168,21 +213,32 @@ export function TextInput({
 	const disabled = disabledProp === true || (field?.disabled ?? false);
 	const ariaInvalid = fieldInvalid || ariaInvalidProp;
 
-	const setRef = (element: HTMLInputElement | null) => {
+	const setRef = (element: HTMLInputElement | null) =>
+	{
 		inputRef.current = element;
 		assignRef(ref, element);
 	};
 
-	const change = (event: ChangeEvent<HTMLInputElement>) => {
+	const change = (event: ChangeEvent<HTMLInputElement>) =>
+	{
 		if (clearable !== false && !controlled) setUncontrolledFilled(event.target.value.length > 0);
 		onChange?.(event);
 	};
 
-	const clear = () => {
+	const clear = () =>
+	{
 		const input = inputRef.current;
-		if (!controlled && input) {
+		if (!controlled && input)
+		{
 			Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "");
-			input.dispatchEvent(new Event("input", {bubbles: true}));
+			input.dispatchEvent(
+				new Event(
+					"input",
+					{
+						bubbles: true,
+					},
+				),
+			);
 			setUncontrolledFilled(false);
 		}
 		onClear?.();
@@ -193,7 +249,8 @@ export function TextInput({
 	// Clear only stays out of the tab order (and owns Escape) while it has something to clear.
 	const clearsValue = showClear && filled && (!controlled || onClear !== undefined) && props.readOnly !== true;
 
-	const keyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+	const keyDown = (event: KeyboardEvent<HTMLInputElement>) =>
+	{
 		onKeyDown?.(event);
 		if (event.key === "Escape" && !event.repeat) clearingEscape.current = false;
 		if (
@@ -207,26 +264,31 @@ export function TextInput({
 			event.nativeEvent.keyCode === 229 ||
 			event.defaultPrevented ||
 			event.isPropagationStopped()
-		) {
+		)
+		{
 			return;
 		}
-		const stop = () => {
+		const stop = () =>
+		{
 			event.preventDefault();
 			event.stopPropagation();
 			event.nativeEvent.stopImmediatePropagation();
 		};
-		if (event.repeat) {
+		if (event.repeat)
+		{
 			if (clearingEscape.current) stop();
 			return;
 		}
 		clearingEscape.current = clearsValue && event.currentTarget.value !== "";
-		if (clearingEscape.current) {
+		if (clearingEscape.current)
+		{
 			stop();
 			clear();
 		}
 	};
 
-	if (slotStart === undefined && slotEnd === undefined && clearable === false) {
+	if (slotStart === undefined && slotEnd === undefined && clearable === false)
+	{
 		return (
 			<BaseField.Control
 				ref={setRef}
@@ -288,7 +350,8 @@ export function TextInput({
 			data-cds="TextInput"
 			{...sizeAttr(size)}
 			data-invalid={fieldInvalid ? "" : undefined}
-			onMouseDown={(event) => {
+			onMouseDown={(event) =>
+			{
 				const input = inputRef.current;
 				if (disabled || input === null || event.target === input) return;
 				if (event.target instanceof Element && event.target.closest("button, a, input, [role=button]") !== null)

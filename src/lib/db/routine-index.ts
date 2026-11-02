@@ -9,13 +9,22 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
 /** Replaces the routines one primary transcript scheduled, so a reindex is idempotent. */
 export function replaceRoutines(
 	db: IndexDb,
-	source: {filePath: string; sessionId: string; projectId: string},
+	source:
+	{
+		filePath: string;
+		sessionId: string;
+		projectId: string;
+	},
 	routines: readonly ExtractedRoutine[],
-): void {
-	db.transaction((transaction) => {
+): void
+{
+	db.transaction((transaction) =>
+	{
 		transaction.delete(schema.routines).where(eq(schema.routines.filePath, source.filePath)).run();
-		for (const routine of routines) {
-			const row: typeof schema.routines.$inferInsert = {
+		for (const routine of routines)
+		{
+			const row: typeof schema.routines.$inferInsert =
+			{
 				...routine,
 				recurring: routine.recurring ? 1 : 0,
 				durable: routine.durable ? 1 : 0,
@@ -26,13 +35,19 @@ export function replaceRoutines(
 			transaction
 				.insert(schema.routines)
 				.values(row)
-				.onConflictDoUpdate({target: schema.routines.toolUseId, set: row})
+				.onConflictDoUpdate(
+					{
+						target: schema.routines.toolUseId,
+						set: row,
+					},
+				)
 				.run();
 		}
 	});
 }
 
-export function deleteRoutinesForSessions(db: IndexDb, sessionIds: readonly string[]): void {
+export function deleteRoutinesForSessions(db: IndexDb, sessionIds: readonly string[]): void
+{
 	if (sessionIds.length === 0) return;
 	db.delete(schema.routines)
 		.where(inArray(schema.routines.sessionId, [...sessionIds]))
@@ -45,17 +60,32 @@ export function deleteRoutinesForSessions(db: IndexDb, sessionIds: readonly stri
  */
 export function getRoutines(
 	db: IndexDb,
-	{now, liveSessions}: {now: number; liveSessions: ReadonlyMap<string, LiveSessionRoutines>},
-): Routine[] {
+	{
+		now,
+		liveSessions,
+	}:
+	{
+		now: number;
+		liveSessions: ReadonlyMap<string, LiveSessionRoutines>;
+	},
+): Routine[]
+{
 	const rows = db
-		.select({routine: schema.routines, sessionTitle: schema.sessions.title})
+		.select(
+			{
+				routine: schema.routines,
+				sessionTitle: schema.sessions.title,
+			},
+		)
 		.from(schema.routines)
 		.leftJoin(schema.sessions, eq(schema.sessions.id, schema.routines.sessionId))
 		.orderBy(desc(schema.routines.createdAt), desc(schema.routines.toolUseId))
 		.all();
 
-	return rows.map(({routine: row, sessionTitle}): Routine => {
-		const extracted: ExtractedRoutine = {
+	return rows.map(({routine: row, sessionTitle}): Routine =>
+	{
+		const extracted: ExtractedRoutine =
+		{
 			toolUseId: row.toolUseId,
 			recordUuid: row.recordUuid,
 			kind: row.kind,

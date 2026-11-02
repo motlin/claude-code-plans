@@ -9,43 +9,65 @@ import {CAPABILITY_IDS, DEFAULT_CAPABILITIES, PersistedCapabilitiesSchema} from 
  * key turns this test red until it gets an editable field, dedicated editor,
  * or read-only summary (reflected in COVERED_SETTINGS_KEYS).
  */
-describe("settings field coverage", () => {
-	it("every ClaudeSettingsSchema key has form coverage", () => {
+describe("settings field coverage", () =>
+{
+	it("every ClaudeSettingsSchema key has form coverage", () =>
+	{
 		const schemaKeys = Object.keys(ClaudeSettingsSchema.shape);
 		const uncovered = schemaKeys.filter((key) => !COVERED_SETTINGS_KEYS.has(key)).toSorted();
 		expect(uncovered).toEqual([]);
 	});
 
-	it("every COVERED_SETTINGS_KEYS member is a schema key or $schema", () => {
+	it("every COVERED_SETTINGS_KEYS member is a schema key or $schema", () =>
+	{
 		const schemaKeys = new Set(Object.keys(ClaudeSettingsSchema.shape));
 		const stale = [...COVERED_SETTINGS_KEYS].filter((key) => key !== "$schema" && !schemaKeys.has(key)).toSorted();
 		expect(stale).toEqual([]);
 	});
 });
 
-describe("ccp capability settings coverage", () => {
-	it("keeps every capability schema entry pre-seeded with intentional defaults", () => {
-		expect({
-			ids: CAPABILITY_IDS,
-			schemaKeys: Object.keys(PersistedCapabilitiesSchema.shape),
-			defaults: DEFAULT_CAPABILITIES,
-		}).toStrictEqual({
-			ids: ["readOnlyMcpServer", "workingCopyReview", "sessionContextBrief"],
-			schemaKeys: ["readOnlyMcpServer", "workingCopyReview", "sessionContextBrief"],
-			defaults: {
-				readOnlyMcpServer: {
-					enabled: false,
-					config: {includePendingApprovals: true},
-				},
-				workingCopyReview: {
-					enabled: true,
-					config: {offerMode: "offer"},
-				},
-				sessionContextBrief: {
-					enabled: false,
-					config: {includeDecisions: true},
+describe("ccp capability settings coverage", () =>
+{
+	it("keeps every capability schema entry pre-seeded with intentional defaults", () =>
+	{
+		expect(
+			{
+				ids: CAPABILITY_IDS,
+				schemaKeys: Object.keys(PersistedCapabilitiesSchema.shape),
+				defaults: DEFAULT_CAPABILITIES,
+			},
+		).toStrictEqual(
+			{
+				ids: ["readOnlyMcpServer", "workingCopyReview", "sessionContextBrief"],
+				schemaKeys: ["readOnlyMcpServer", "workingCopyReview", "sessionContextBrief"],
+				defaults:
+				{
+					readOnlyMcpServer:
+					{
+						enabled: false,
+						config:
+						{
+							includePendingApprovals: true,
+						},
+					},
+					workingCopyReview:
+					{
+						enabled: true,
+						config:
+						{
+							offerMode: "offer",
+						},
+					},
+					sessionContextBrief:
+					{
+						enabled: false,
+						config:
+						{
+							includeDecisions: true,
+						},
+					},
 				},
 			},
-		});
+		);
 	});
 });

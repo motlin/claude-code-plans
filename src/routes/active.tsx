@@ -14,16 +14,25 @@ import {hasUnseenWork, markSeen, subscribeUnseenWork} from "../lib/unread-store"
 
 type ActiveSession = z.infer<typeof ActiveSessionListResponse>[number];
 
-export const Route = createFileRoute("/active")({
-	component: ActivePage,
-	loader: async ({context: {queryClient}}) =>
-		queryClient.query({...activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000), staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Active Sessions")],
-	}),
-});
+export const Route = createFileRoute("/active")(
+	{
+		component: ActivePage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000),
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Active Sessions")],
+		}),
+	},
+);
 
-function formatRelativeTime(lastModified: number): string {
+function formatRelativeTime(lastModified: number): string
+{
 	const diffMs = Date.now() - lastModified;
 	const seconds = Math.floor(diffMs / 1000);
 	if (seconds < 60) return `modified ${seconds}s ago`;
@@ -49,13 +58,15 @@ const ACTIVE_ROW_COLUMNS =
 const ACTIVE_TRANSCRIPT_COLUMNS =
 	"grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:basis-full max-sm:ps-0 max-sm:pb-1";
 
-function labelFromCwd(cwd: string): string {
+function labelFromCwd(cwd: string): string
+{
 	const trimmed = cwd.replace(/\/+$/, "");
 	const base = trimmed.slice(trimmed.lastIndexOf("/") + 1);
 	return base || cwd;
 }
 
-function ActivePage() {
+function ActivePage()
+{
 	const {settings} = useSettings();
 	const [now, setNow] = useState(Date.now);
 	const [, setUnseenWorkVersion] = useState(0);
@@ -63,18 +74,23 @@ function ActivePage() {
 	const {data: loaderSessions} = useSuspenseQuery(activeSessionsQueryOptions(activeTimeoutMs));
 	const {activeSessions} = useClaudeEvents();
 
-	useEffect(() => {
-		const timer = window.setInterval(() => {
+	useEffect(() =>
+	{
+		const timer = window.setInterval(() =>
+		{
 			setNow(Date.now());
 		}, 60_000);
-		return () => {
+		return () =>
+		{
 			window.clearInterval(timer);
 		};
 	}, []);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		setUnseenWorkVersion((version) => version + 1);
-		return subscribeUnseenWork(() => {
+		return subscribeUnseenWork(() =>
+		{
 			setUnseenWorkVersion((version) => version + 1);
 		});
 	}, []);
@@ -84,25 +100,40 @@ function ActivePage() {
 	// reducer-only entries (a session that just became active before the refetch lands)
 	// are surfaced with a display label derived from their cwd.
 	const merged = new Map<string, ActiveSession>();
-	for (const s of loaderSessions) {
+	for (const s of loaderSessions)
+	{
 		const pushed = activeSessions.get(s.sessionId);
-		merged.set(s.sessionId, pushed ? {...s, lastModified: pushed.lastActivity} : s);
+		merged.set(
+			s.sessionId,
+			pushed
+				?
+					{
+						...s,
+						lastModified: pushed.lastActivity,
+					}
+				: s,
+		);
 	}
-	for (const [sessionId, info] of activeSessions) {
+	for (const [sessionId, info] of activeSessions)
+	{
 		if (merged.has(sessionId)) continue;
-		merged.set(sessionId, {
+		merged.set(
 			sessionId,
-			projectDir: info.cwd,
-			projectName: labelFromCwd(info.cwd),
-			title: sessionId,
-			createdAt: info.startedAt,
-			lastModified: info.lastActivity,
-			state: "unknown",
-			unseen: false,
-			blockedSince: null,
-		});
+			{
+				sessionId,
+				projectDir: info.cwd,
+				projectName: labelFromCwd(info.cwd),
+				title: sessionId,
+				createdAt: info.startedAt,
+				lastModified: info.lastActivity,
+				state: "unknown",
+				unseen: false,
+				blockedSince: null,
+			},
+		);
 	}
-	const sessions = [...merged.values()].map((session) => ({
+	const sessions = [...merged.values()].map((session) => (
+	{
 		...session,
 		displayState: displayState(session.state, hasUnseenWork(session.sessionId)),
 	}));
@@ -121,7 +152,10 @@ function ActivePage() {
 						<div key={session.sessionId} className={ACTIVE_ROW_COLUMNS}>
 							<Link
 								to="/session/$id"
-								params={{id: session.sessionId}}
+								params={
+								{
+									id: session.sessionId,
+								}}
 								aria-label={`Open session transcript for ${session.title}`}
 								title={`Open session transcript for ${session.title}. Project ${session.projectName}`}
 								className={ACTIVE_TRANSCRIPT_COLUMNS}
@@ -141,7 +175,8 @@ function ActivePage() {
 							<div className="justify-self-end max-sm:ms-auto">
 								{session.displayState === "review" && (
 									<SessionReviewAction
-										onReview={async () => {
+										onReview={async () =>
+										{
 											markSeen(session.sessionId);
 											return Promise.resolve();
 										}}

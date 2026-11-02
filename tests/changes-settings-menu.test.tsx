@@ -20,7 +20,8 @@ index 1111111..2222222 100644
  }
 `;
 
-const GREET_FILE: SessionDiffFile = {
+const GREET_FILE: SessionDiffFile =
+{
 	path: "src/greet.ts",
 	status: "modified",
 	additions: 2,
@@ -30,7 +31,8 @@ const GREET_FILE: SessionDiffFile = {
 	patch: GREET_PATCH,
 };
 
-const SCOPES: SessionDiffScopesResponse = {
+const SCOPES: SessionDiffScopesResponse =
+{
 	kind: "git",
 	base: "main",
 	baseRef: "origin/main",
@@ -41,12 +43,14 @@ const SCOPES: SessionDiffScopesResponse = {
 	totalCommits: 0,
 };
 
-function diffOf(files: SessionDiffFile[]): SessionDiffResponse {
+function diffOf(files: SessionDiffFile[]): SessionDiffResponse
+{
 	return {
 		scope: "branch",
 		source: "git",
 		root: "/repo",
-		stats: {
+		stats:
+		{
 			files: files.length,
 			additions: files.reduce((sum, file) => sum + file.additions, 0),
 			deletions: files.reduce((sum, file) => sum + file.deletions, 0),
@@ -61,58 +65,107 @@ let paneWidth = 800;
  * Reports `paneWidth` as the pane header's content width as soon as it is
  * observed. The diff library's own observers get nothing, as with FakeObserver.
  */
-class WidthObserver {
-	constructor(private readonly callback: ResizeObserverCallback) {}
-	observe(target: Element) {
+class WidthObserver
+{
+	constructor(private readonly callback: ResizeObserverCallback)
+	{
+	}
+	observe(target: Element)
+	{
 		if (target.querySelector('[aria-label="Changes settings"]') === null) return;
-		this.callback([{target, contentRect: {width: paneWidth}} as unknown as ResizeObserverEntry], this);
+		this.callback(
+			[
+				{
+					target,
+					contentRect:
+					{
+						width: paneWidth,
+					},
+				} as unknown as ResizeObserverEntry,
+			],
+			this,
+		);
 	}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-class FakeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	paneWidth = 800;
 	installLocalStorage();
 	vi.stubGlobal("ResizeObserver", WidthObserver);
 	vi.stubGlobal("IntersectionObserver", FakeObserver);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-function renderPane() {
+function renderPane()
+{
 	return render(
 		<SettingsProvider>
-			<ChangesPaneView diff={diffOf([GREET_FILE])} scopes={SCOPES} controls={null} onRefresh={() => {}} />
+			<ChangesPaneView
+				diff={diffOf([GREET_FILE])}
+				scopes={SCOPES}
+				controls={null}
+				onRefresh={() =>
+				{
+				}}
+			/>
 		</SettingsProvider>,
 	);
 }
 
-async function openSettings() {
-	fireEvent.click(screen.getByRole("button", {name: "Changes settings"}));
-	await act(async () => {
-		await new Promise((resolve) => {
+async function openSettings()
+{
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "Changes settings",
+			},
+		),
+	);
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-function menuRows(): Array<[string | null, string, string | null]> {
+function menuRows(): Array<[string | null, string, string | null]>
+{
 	const menu = screen.getByRole("menu");
 	return [...menu.querySelectorAll<HTMLElement>("[role^=menuitem]")].map((item) => [
 		item.getAttribute("role"),
@@ -121,8 +174,10 @@ function menuRows(): Array<[string | null, string, string | null]> {
 	]);
 }
 
-describe("Changes settings menu", () => {
-	it("lists upstream's items in order with their default checked state", async () => {
+describe("Changes settings menu", () =>
+{
+	it("lists upstream's items in order with their default checked state", async () =>
+	{
 		renderPane();
 		await openSettings();
 
@@ -140,7 +195,8 @@ describe("Changes settings menu", () => {
 		]);
 	});
 
-	it("hides Side by side when the pane is narrower than 560px", async () => {
+	it("hides Side by side when the pane is narrower than 560px", async () =>
+	{
 		paneWidth = 559;
 		renderPane();
 		await openSettings();
@@ -158,7 +214,8 @@ describe("Changes settings menu", () => {
 		]);
 	});
 
-	it("persists every toggle across remounts", async () => {
+	it("persists every toggle across remounts", async () =>
+	{
 		const first = renderPane();
 		await openSettings();
 		for (const label of [
@@ -169,75 +226,118 @@ describe("Changes settings menu", () => {
 			"Word wrap",
 			"Highlight changed words",
 			"Hide whitespace changes",
-		]) {
-			fireEvent.click(screen.getByRole("menuitemcheckbox", {name: new RegExp(`^${label}`)}));
+		])
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"menuitemcheckbox",
+					{
+						name: new RegExp(`^${label}`),
+					},
+				),
+			);
 		}
 		first.unmount();
 
 		renderPane();
-		await act(async () => {
-			await new Promise((resolve) => {
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		});
-		const showFilesPressed = screen.getByRole("button", {name: "Hide files"}).getAttribute("aria-pressed");
+		const showFilesPressed = screen
+			.getByRole(
+				"button",
+				{
+					name: "Hide files",
+				},
+			)
+			.getAttribute("aria-pressed");
 		await openSettings();
 
-		expect({
-			showFilesPressed,
-			rows: menuRows(),
-			stored: {
-				tree: localStorage.getItem("ccp-diff-show-tree"),
-				folder: localStorage.getItem("ccp-diff-group-by-folder"),
-				kind: localStorage.getItem("ccp-diff-group-by-kind"),
-				style: localStorage.getItem("ccp-diff-style"),
-				wrap: localStorage.getItem("ccp-diff-word-wrap"),
-				words: localStorage.getItem("ccp-diff-word-diff"),
-				whitespace: localStorage.getItem("ccp-diff-hide-whitespace"),
+		expect(
+			{
+				showFilesPressed,
+				rows: menuRows(),
+				stored:
+				{
+					tree: localStorage.getItem("ccp-diff-show-tree"),
+					folder: localStorage.getItem("ccp-diff-group-by-folder"),
+					kind: localStorage.getItem("ccp-diff-group-by-kind"),
+					style: localStorage.getItem("ccp-diff-style"),
+					wrap: localStorage.getItem("ccp-diff-word-wrap"),
+					words: localStorage.getItem("ccp-diff-word-diff"),
+					whitespace: localStorage.getItem("ccp-diff-hide-whitespace"),
+				},
 			},
-		}).toStrictEqual({
-			showFilesPressed: "true",
-			rows: [
-				["menuitemcheckbox", "Show filesCtrl+Shift+Y", "true"],
-				["menuitemcheckbox", "Group files by folder", "false"],
-				["menuitemcheckbox", "Separate test, build, and generated files", "true"],
-				["menuitem", "Collapse all files", null],
-				["menuitem", "Expand all files", null],
-				["menuitemcheckbox", "Side by side", "true"],
-				["menuitemcheckbox", "Word wrap", "false"],
-				["menuitemcheckbox", "Highlight changed words", "false"],
-				["menuitemcheckbox", "Hide whitespace changes", "true"],
-				["menuitem", "Refresh", null],
-			],
-			stored: {
-				tree: "true",
-				folder: "false",
-				kind: "true",
-				style: "split",
-				wrap: "false",
-				words: "false",
-				whitespace: "true",
+		).toStrictEqual(
+			{
+				showFilesPressed: "true",
+				rows: [
+					["menuitemcheckbox", "Show filesCtrl+Shift+Y", "true"],
+					["menuitemcheckbox", "Group files by folder", "false"],
+					["menuitemcheckbox", "Separate test, build, and generated files", "true"],
+					["menuitem", "Collapse all files", null],
+					["menuitem", "Expand all files", null],
+					["menuitemcheckbox", "Side by side", "true"],
+					["menuitemcheckbox", "Word wrap", "false"],
+					["menuitemcheckbox", "Highlight changed words", "false"],
+					["menuitemcheckbox", "Hide whitespace changes", "true"],
+					["menuitem", "Refresh", null],
+				],
+				stored:
+				{
+					tree: "true",
+					folder: "false",
+					kind: "true",
+					style: "split",
+					wrap: "false",
+					words: "false",
+					whitespace: "true",
+				},
 			},
-		});
+		);
 	});
 
-	it("ignores a stored diff style outside the strict schema", async () => {
+	it("ignores a stored diff style outside the strict schema", async () =>
+	{
 		localStorage.setItem("ccp-diff-style", "side-by-side");
 		renderPane();
-		await act(async () => {
-			await new Promise((resolve) => {
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		});
 		await openSettings();
 
-		expect(screen.getByRole("menuitemcheckbox", {name: "Side by side"}).getAttribute("aria-checked")).toBe("false");
+		expect(
+			screen
+				.getByRole(
+					"menuitemcheckbox",
+					{
+						name: "Side by side",
+					},
+				)
+				.getAttribute("aria-checked"),
+		).toBe("false");
 	});
 
-	it("offers only Refresh when there are no changes", async () => {
+	it("offers only Refresh when there are no changes", async () =>
+	{
 		render(
 			<SettingsProvider>
-				<ChangesPaneView diff={diffOf([])} scopes={SCOPES} controls={null} onRefresh={() => {}} />
+				<ChangesPaneView
+					diff={diffOf([])}
+					scopes={SCOPES}
+					controls={null}
+					onRefresh={() =>
+					{
+					}}
+				/>
 			</SettingsProvider>,
 		);
 		await openSettings();

@@ -5,17 +5,27 @@ import {PluginDetailFrame} from "../components/customize/detail-frames";
 import {PluginDetailPage} from "../components/customize/plugin-detail";
 import {customizePluginDetailQueryOptions} from "../lib/api/customize";
 
-export const Route = createFileRoute("/customize_/plugins/id/$pluginId")({
-	component: PluginDetailLayout,
-	loader: ({context: {queryClient}, params}) => {
-		void queryClient.query(customizePluginDetailQueryOptions(params.pluginId)).catch(noop);
+export const Route = createFileRoute("/customize_/plugins/id/$pluginId")(
+	{
+		component: PluginDetailLayout,
+		loader: ({context: {queryClient}, params}) =>
+		{
+			void queryClient.query(customizePluginDetailQueryOptions(params.pluginId)).catch(noop);
+		},
+		head: () => (
+		{
+			meta: [pageTitle("Plugin · Customize")],
+		}),
+		staticData:
+		{
+			pageGutter: "tight",
+		},
 	},
-	head: () => ({meta: [pageTitle("Plugin · Customize")]}),
-	staticData: {pageGutter: "tight"},
-});
+);
 
 /** Plugin detail shell: header and the Overview · Contents · … tabs over the active tab. */
-function PluginDetailLayout() {
+function PluginDetailLayout()
+{
 	const {pluginId} = Route.useParams();
 	return (
 		<PluginDetailPage>

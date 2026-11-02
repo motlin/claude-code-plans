@@ -1,7 +1,8 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
 import {SidebarToggleIcon} from "../../components/sidebar/primitives/SidebarToggleIcon";
 
-const meta = {
+const meta =
+{
 	title: "Sidebar/SidebarToggleIcon",
 	component: SidebarToggleIcon,
 } satisfies Meta<typeof SidebarToggleIcon>;
@@ -11,12 +12,14 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-export const InButton: Story = {
+export const InButton: Story =
+{
 	decorators: [
 		(Story) => (
 			<button
 				type="button"
-				style={{
+				style={
+				{
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "center",

@@ -11,40 +11,66 @@ import {withTrailingFailedCount} from "./failed-count";
 import specimens from "./fixtures/group-label-specimens.json";
 import rowSpecimens from "./fixtures/transcript-row-specimens.json";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	// A tall viewport, so the virtualized list mounts every row.
 	vi.stubGlobal("innerHeight", 10_000);
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-		configurable: true,
-		value: vi.fn<HTMLElement["scrollIntoView"]>(),
-	});
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: vi.fn<HTMLElement["scrollIntoView"]>(),
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
@@ -55,7 +81,8 @@ afterEach(() => {
  * Golden specimens that also carry the session's JSONL records behind the
  * group, rendered through processTranscript and SessionChat as the live UI does.
  */
-interface RecordedSpecimen {
+interface RecordedSpecimen
+{
 	session: string;
 	line: number;
 	upstream: string;
@@ -64,19 +91,35 @@ interface RecordedSpecimen {
 	skip?: string;
 }
 
-const recorded = (specimens as {records?: unknown[]}[]).filter(
-	(specimen): specimen is RecordedSpecimen => specimen.records !== undefined,
-);
+const recorded = (
+	specimens as
+	{
+		records?: unknown[];
+	}[]
+).filter((specimen): specimen is RecordedSpecimen => specimen.records !== undefined);
 
 /** The session the records came from, as the live UI renders them under it. */
-function recordedSessionId(records: unknown[]): string {
+function recordedSessionId(records: unknown[]): string
+{
 	const withId = records.find(
-		(record): record is {sessionId: string} => typeof (record as {sessionId?: unknown}).sessionId === "string",
+		(
+			record,
+		): record is
+		{
+			sessionId: string;
+		} =>
+			typeof (
+				record as
+				{
+					sessionId?: unknown;
+				}
+			).sessionId === "string",
 	);
 	return withId?.sessionId ?? "test-session";
 }
 
-function renderRecords(records: unknown[], subagents: Subagent[] = []): HTMLElement {
+function renderRecords(records: unknown[], subagents: Subagent[] = []): HTMLElement
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
@@ -96,7 +139,8 @@ function renderRecords(records: unknown[], subagents: Subagent[] = []): HTMLElem
  * beside the toggle ("Ran 2 commands, read" + "settings.json"), read through
  * the toggle's aria-labelledby as upstream's accessible name joins them.
  */
-function groupHeaderText(toggle: Element): string | null {
+function groupHeaderText(toggle: Element): string | null
+{
 	const ids = toggle.getAttribute("aria-labelledby")?.split(" ") ?? [];
 	if (ids.at(-1)?.endsWith("-meta") !== true)
 		return toggle.querySelector(":scope > span:first-child")?.textContent ?? null;
@@ -104,20 +148,21 @@ function groupHeaderText(toggle: Element): string | null {
 	return ids.map((id) => root?.querySelector(`[id="${id}"]`)?.textContent ?? "").join(" ");
 }
 
-function groupLabels(records: unknown[]): (string | null)[] {
+function groupLabels(records: unknown[]): (string | null)[]
+{
 	const container = renderRecords(records);
 	return Array.from(container.querySelectorAll("[data-turn-status] button[aria-expanded]"), groupHeaderText);
 }
 
-describe("group label golden specimens rendered from JSONL", () => {
-	it.each(recorded.filter((specimen) => specimen.skip === undefined))(
-		"$session:$line reads $upstream",
-		(specimen) => {
-			expect(groupLabels(specimen.records)).toStrictEqual([withTrailingFailedCount(specimen.upstream)]);
-		},
-	);
+describe("group label golden specimens rendered from JSONL", () =>
+{
+	it.each(recorded.filter((specimen) => specimen.skip === undefined))("$session:$line reads $upstream", (specimen) =>
+	{
+		expect(groupLabels(specimen.records)).toStrictEqual([withTrailingFailedCount(specimen.upstream)]);
+	});
 
-	it.for(recorded.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) => {
+	it.for(recorded.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) =>
+	{
 		skip(specimen.skip);
 		expect(groupLabels(specimen.records)).toStrictEqual([withTrailingFailedCount(specimen.upstream)]);
 	});
@@ -130,7 +175,8 @@ describe("group label golden specimens rendered from JSONL", () => {
  * and "changes" after the row that draws the turn's changes card when the
  * records reach the turn's real end (`turnEnd`), as a cut-off turn draws its card early.
  */
-interface RowSpecimen {
+interface RowSpecimen
+{
 	session: string;
 	line: number;
 	/** Upstream's rows as captured, or null for a sequence guard with no upstream capture yet. */
@@ -143,12 +189,14 @@ interface RowSpecimen {
 }
 
 /** A row label part's text, with a diff stat's counts spaced as they read: "+59 −0". */
-function spanText(span: Element): string {
+function spanText(span: Element): string
+{
 	const counts = Array.from(span.querySelectorAll("[class*='text-diff-']"), (count) => count.textContent);
 	return counts.length > 0 ? counts.join(" ") : span.textContent;
 }
 
-function statusText(status: Element): string {
+function statusText(status: Element): string
+{
 	const groupToggle = status.querySelector(":scope > button, :scope > [data-cds-row] > button[aria-expanded]");
 	if (groupToggle !== null) return `status: ${groupHeaderText(groupToggle)}`;
 	const marker = status.querySelector(":scope > [data-turn-status-marker]");
@@ -158,7 +206,8 @@ function statusText(status: Element): string {
 	return `status: ${parts.join(" ")}`;
 }
 
-function rowContentTexts(row: Element): string[] {
+function rowContentTexts(row: Element): string[]
+{
 	const kind = row.getAttribute("data-perf-row");
 	if (kind === "assistant_text") return ["prose"];
 	const sender = row.querySelector("[data-agent-message-from] bdi");
@@ -180,29 +229,42 @@ function rowContentTexts(row: Element): string[] {
 }
 
 /** A row's texts, then "changes" where it ends its turn with the end-of-turn changes card. */
-function rowTexts(row: Element, withCards: boolean): string[] {
+function rowTexts(row: Element, withCards: boolean): string[]
+{
 	const cards = withCards ? Array.from(row.querySelectorAll("[data-turn-changes-card]"), () => "changes") : [];
 	return [...rowContentTexts(row), ...cards];
 }
 
-function transcriptRows({records, turnEnd, subagents}: RowSpecimen): string[] {
+function transcriptRows({records, turnEnd, subagents}: RowSpecimen): string[]
+{
 	const container = renderRecords(records, subagents);
 	return Array.from(container.querySelectorAll("[data-testid=transcript-row]")).flatMap((row) =>
 		rowTexts(row, turnEnd === true),
 	);
 }
 
-describe("transcript row golden specimens rendered from JSONL", () => {
+describe("transcript row golden specimens rendered from JSONL", () =>
+{
 	const captured = (rowSpecimens as RowSpecimen[]).flatMap((specimen) =>
-		specimen.upstream === null ? [] : [{...specimen, upstream: specimen.upstream}],
+		specimen.upstream === null
+			? []
+			: [
+					{
+						...specimen,
+						upstream: specimen.upstream,
+					},
+				],
 	);
-	it.each(captured)("$session:$line", (specimen) => {
+	it.each(captured)("$session:$line", (specimen) =>
+	{
 		expect(transcriptRows(specimen)).toStrictEqual(specimen.upstream.map(withTrailingFailedCount));
 	});
 });
 
-describe("an agent message folded into a tool group", () => {
-	it("lists the message as the first step of the expanded group, before the tool it led", () => {
+describe("an agent message folded into a tool group", () =>
+{
+	it("lists the message as the first step of the expanded group, before the tool it led", () =>
+	{
 		const specimen = recorded.find((candidate) => candidate.session === "54e53f89" && candidate.line === 1079)!;
 		const container = renderRecords(specimen.records);
 		fireEvent.click(container.querySelector("[data-turn-status] > button")!);
@@ -217,15 +279,18 @@ describe("an agent message folded into a tool group", () => {
 	});
 });
 
-describe("consecutive user rows", () => {
-	it("leaves upstream's 20px row gap between the 79a0ad58:91 queued bubbles, keeping the last one's reply boundary", () => {
+describe("consecutive user rows", () =>
+{
+	it("leaves upstream's 20px row gap between the 79a0ad58:91 queued bubbles, keeping the last one's reply boundary", () =>
+	{
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "79a0ad58" && candidate.line === 91,
 		)!;
 		const container = renderRecords(specimen.records);
 		const bubbleRows = Array.from(container.querySelectorAll("[data-testid=transcript-row]"))
 			.filter((row) => row.querySelector(".user-message-bubble") !== null)
-			.map((row) => ({
+			.map((row) => (
+			{
 				userRowGap: row
 					.querySelector(":scope > [data-record-index]")
 					?.classList.contains("pb-[var(--chat-user-row-gap)]"),
@@ -234,35 +299,60 @@ describe("consecutive user rows", () => {
 					?.classList.contains("pb-[var(--chat-turn-gap)]"),
 			}));
 		expect(bubbleRows).toStrictEqual([
-			{userRowGap: true, turnGap: false},
-			{userRowGap: false, turnGap: false},
+			{
+				userRowGap: true,
+				turnGap: false,
+			},
+			{
+				userRowGap: false,
+				turnGap: false,
+			},
 		]);
 	});
 });
 
-describe("compaction marker", () => {
+describe("compaction marker", () =>
+{
 	const specimen = () =>
 		(rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "01d132c8" && candidate.line === 1249,
 		)!;
 
-	it("draws 01d132c8:1261 inside the prose's span as upstream: a plain marker 12px under the prose, the span's actions after it", () => {
+	it("draws 01d132c8:1261 inside the prose's span as upstream: a plain marker 12px under the prose, the span's actions after it", () =>
+	{
 		const rows = Array.from(renderRecords(specimen().records).querySelectorAll("[data-testid=transcript-row]"));
 		expect(
-			rows.map((row) => ({
+			rows.map((row) => (
+			{
 				status: row.querySelector("[data-turn-status]")?.textContent ?? null,
 				precedesStatus: row.querySelector(":scope > [data-precedes-turn-status]") !== null,
 				footer: row.querySelector("[data-assistant-span-footer]") !== null,
 				disclosures: row.querySelectorAll("[data-turn-status] [aria-expanded]").length,
 			})),
 		).toStrictEqual([
-			{status: null, precedesStatus: true, footer: false, disclosures: 0},
-			{status: "Compacted session · saved 260.8k tokens", precedesStatus: false, footer: true, disclosures: 0},
-			{status: null, precedesStatus: false, footer: false, disclosures: 0},
+			{
+				status: null,
+				precedesStatus: true,
+				footer: false,
+				disclosures: 0,
+			},
+			{
+				status: "Compacted session · saved 260.8k tokens",
+				precedesStatus: false,
+				footer: true,
+				disclosures: 0,
+			},
+			{
+				status: null,
+				precedesStatus: false,
+				footer: false,
+				disclosures: 0,
+			},
 		]);
 	});
 
-	it("keeps the summary behind a disclosure in Verbose", () => {
+	it("keeps the summary behind a disclosure in Verbose", () =>
+	{
 		const {lines, toolResultMap} = processTranscript(specimen().records);
 		const container = render(
 			<SessionChat
@@ -282,8 +372,10 @@ describe("compaction marker", () => {
 	});
 });
 
-describe("local command", () => {
-	it("keeps the 5f402159:2276 /model command and its output as Verbose rows", () => {
+describe("local command", () =>
+{
+	it("keeps the 5f402159:2276 /model command and its output as Verbose rows", () =>
+	{
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "5f402159" && candidate.line === 2276,
 		)!;
@@ -303,12 +395,14 @@ describe("local command", () => {
 	});
 });
 
-describe("local command output", () => {
+describe("local command output", () =>
+{
 	it.each([
 		["5f402159", 2267, ["Kept model as Fable 5.1"]],
 		["f83bfc85", 2931, ["Session renamed to: daily"]],
 		["543f9fb3", 243, ["Diff panel shown", "Diff panel hidden"]],
-	])("draws %s:%i's system-record stdout as upstream's prose, without its tags", (session, line, texts) => {
+	])("draws %s:%i's system-record stdout as upstream's prose, without its tags", (session, line, texts) =>
+	{
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === session && candidate.line === line,
 		)!;
@@ -321,8 +415,10 @@ describe("local command output", () => {
 	});
 });
 
-describe("agent completion row placement", () => {
-	const rows = (session: string, line: number) => {
+describe("agent completion row placement", () =>
+{
+	const rows = (session: string, line: number) =>
+	{
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === session && candidate.line === line,
 		)!;
@@ -336,7 +432,8 @@ describe("agent completion row placement", () => {
 		);
 	};
 
-	it("draws 79a0ad58:153's completion above its launch, as upstream does when no hand-back from the agent came first", () => {
+	it("draws 79a0ad58:153's completion above its launch, as upstream does when no hand-back from the agent came first", () =>
+	{
 		expect(rows("79a0ad58", 153)).toStrictEqual([
 			"user",
 			"Committed local changes· took 20s",
@@ -346,7 +443,8 @@ describe("agent completion row placement", () => {
 		]);
 	});
 
-	it("keeps 5f402159:2172's completion where its notification arrived, after the agent's hand-back", () => {
+	it("keeps 5f402159:2172's completion where its notification arrived, after the agent's hand-back", () =>
+	{
 		expect(rows("5f402159", 2172)).toStrictEqual([
 			"Claude responded: The crank change is co",
 			"Committed crank sensitivity change· took 27s",
@@ -355,7 +453,8 @@ describe("agent completion row placement", () => {
 	});
 });
 
-describe("plain status marker gaps", () => {
+describe("plain status marker gaps", () =>
+{
 	const styles = () => readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
 	const rule = (comment: string, padding: number) =>
 		new RegExp(`/\\* ${comment}[^*]*\\*/\\s*([^{]+)\\{\\s*padding-bottom: ${padding}px;`)
@@ -373,7 +472,8 @@ describe("plain status marker gaps", () => {
 		["5f402159", 2172, [0]],
 	])(
 		"leaves upstream's 16px between %s:%i's prose and its plain marker, not a tool status's 12px",
-		(session, line, prose) => {
+		(session, line, prose) =>
+		{
 			const specimen = (rowSpecimens as RowSpecimen[]).find(
 				(candidate) => candidate.session === session && candidate.line === line,
 			)!;
@@ -381,10 +481,17 @@ describe("plain status marker gaps", () => {
 			container.classList.add("transcript-text");
 			const matched = (selector: string) =>
 				Array.from(container.querySelectorAll(selector), (element) => rowIndex(container, element));
-			expect({
-				marker: matched(rule("Assistant prose followed by a plain status marker", 16)),
-				status: matched(rule("Assistant prose followed by a status", 12)),
-			}).toStrictEqual({marker: prose, status: []});
+			expect(
+				{
+					marker: matched(rule("Assistant prose followed by a plain status marker", 16)),
+					status: matched(rule("Assistant prose followed by a status", 12)),
+				},
+			).toStrictEqual(
+				{
+					marker: prose,
+					status: [],
+				},
+			);
 		},
 	);
 
@@ -393,46 +500,62 @@ describe("plain status marker gaps", () => {
 		["5f402159", 2172, false],
 	])(
 		"draws %s:%i's task-event row 20px tall, 16px above the next prose or 5px above the span's actions",
-		(session, line, footer) => {
+		(session, line, footer) =>
+		{
 			const specimen = (rowSpecimens as RowSpecimen[]).find(
 				(candidate) => candidate.session === session && candidate.line === line,
 			)!;
 			const row = renderRecords(specimen.records).querySelector("[data-task-event-row]")!;
-			expect({
-				markerPadding: row.querySelector("[data-turn-status-marker]")?.classList.contains("py-0.5"),
-				classes: row.className
-					.split(" ")
-					.filter((name) => name.startsWith("pb-") || name.includes(":pb-") || name.includes(":mt-")),
-				footer: row.querySelector(":scope > [data-assistant-span-footer]") !== null,
-			}).toStrictEqual({
-				markerPadding: false,
-				classes: [
-					"pb-4",
-					"comfortable:pb-5",
-					"has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)]",
-					"[&>[data-assistant-span-footer]]:mt-[5px]",
-				],
-				footer,
-			});
+			expect(
+				{
+					markerPadding: row.querySelector("[data-turn-status-marker]")?.classList.contains("py-0.5"),
+					classes: row.className
+						.split(" ")
+						.filter((name) => name.startsWith("pb-") || name.includes(":pb-") || name.includes(":mt-")),
+					footer: row.querySelector(":scope > [data-assistant-span-footer]") !== null,
+				},
+			).toStrictEqual(
+				{
+					markerPadding: false,
+					classes: [
+						"pb-4",
+						"comfortable:pb-5",
+						"has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)]",
+						"[&>[data-assistant-span-footer]]:mt-[5px]",
+					],
+					footer,
+				},
+			);
 		},
 	);
 });
 
-describe("user bubble line box", () => {
-	it("sets the bubble on upstream's text-heading (14px/18px compact), as the streaming bubble does, leaving the prompt paragraph on text-prose (14px/20px compact)", () => {
+describe("user bubble line box", () =>
+{
+	it("sets the bubble on upstream's text-heading (14px/18px compact), as the streaming bubble does, leaving the prompt paragraph on text-prose (14px/20px compact)", () =>
+	{
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "79a0ad58" && candidate.line === 91,
 		)!;
 		const bubble = renderRecords(specimen.records).querySelector(".user-message-bubble")!;
-		expect({
-			bubble: bubble.classList.contains("text-heading"),
-			paragraph: bubble.querySelector("p")?.classList.contains("text-prose"),
-		}).toStrictEqual({bubble: true, paragraph: true});
+		expect(
+			{
+				bubble: bubble.classList.contains("text-heading"),
+				paragraph: bubble.querySelector("p")?.classList.contains("text-prose"),
+			},
+		).toStrictEqual(
+			{
+				bubble: true,
+				paragraph: true,
+			},
+		);
 	});
 });
 
-describe("user bubble markdown", () => {
-	it("spaces the 75f9847c:129 ordered list as upstream: 5px below the paragraph (the block column's gap-1.25), items 6px apart, text 20px in with no item padding", () => {
+describe("user bubble markdown", () =>
+{
+	it("spaces the 75f9847c:129 ordered list as upstream: 5px below the paragraph (the block column's gap-1.25), items 6px apart, text 20px in with no item padding", () =>
+	{
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "75f9847c" && candidate.line === 129,
 		)!;
@@ -440,47 +563,58 @@ describe("user bubble markdown", () => {
 		const list = bubble.querySelector("ol")!;
 		const classes = (element: Element, names: string[]) =>
 			Object.fromEntries(names.map((name) => [name, element.classList.contains(name)]));
-		expect({
-			list: classes(list, [
-				"mt-[5px]",
-				"flex",
-				"flex-col",
-				"gap-[6px]",
-				"ps-5",
-				"list-decimal",
-				"ps-7",
-				"mt-[7px]",
-			]),
-			itemPadding: list.className.includes("[&>li]:ps-"),
-			columnGap: list.parentElement?.classList.contains("gap-1.25"),
-		}).toStrictEqual({
-			list: {
-				"mt-[5px]": false,
-				flex: true,
-				"flex-col": true,
-				"gap-[6px]": true,
-				"ps-5": true,
-				"list-decimal": true,
-				"ps-7": false,
-				"mt-[7px]": false,
+		expect(
+			{
+				list: classes(list, [
+					"mt-[5px]",
+					"flex",
+					"flex-col",
+					"gap-[6px]",
+					"ps-5",
+					"list-decimal",
+					"ps-7",
+					"mt-[7px]",
+				]),
+				itemPadding: list.className.includes("[&>li]:ps-"),
+				columnGap: list.parentElement?.classList.contains("gap-1.25"),
 			},
-			itemPadding: false,
-			columnGap: true,
-		});
+		).toStrictEqual(
+			{
+				list:
+				{
+					"mt-[5px]": false,
+					flex: true,
+					"flex-col": true,
+					"gap-[6px]": true,
+					"ps-5": true,
+					"list-decimal": true,
+					"ps-7": false,
+					"mt-[7px]": false,
+				},
+				itemPadding: false,
+				columnGap: true,
+			},
+		);
 	});
 
-	it("draws the 75f9847c:129 numbered prompt as upstream's paragraph and ordered list", () => {
+	it("draws the 75f9847c:129 numbered prompt as upstream's paragraph and ordered list", () =>
+	{
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "75f9847c" && candidate.line === 129,
 		)!;
 		const bubble = renderRecords(specimen.records).querySelector(".user-message-bubble")!;
-		const blocks = Array.from(bubble.querySelectorAll("p, ol, ul"), (block) => ({
+		const blocks = Array.from(bubble.querySelectorAll("p, ol, ul"), (block) => (
+		{
 			tag: block.tagName,
 			text: block.tagName === "P" ? block.textContent : null,
 			items: block.tagName === "P" ? null : Array.from(block.children, (item) => item.textContent),
 		}));
 		expect(blocks).toStrictEqual([
-			{tag: "P", text: "Two more things for you to try:", items: null},
+			{
+				tag: "P",
+				text: "Two more things for you to try:",
+				items: null,
+			},
 			{
 				tag: "OL",
 				text: null,
@@ -493,16 +627,19 @@ describe("user bubble markdown", () => {
 	});
 });
 
-describe("background task stopped row", () => {
+describe("background task stopped row", () =>
+{
 	const specimen = () =>
 		(rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "5f402159" && candidate.line === 2267,
 		)!;
 
-	it('draws 5f402159:2267 at the end of the span as upstream, under the "Kept model" prose: a plain secondary row with no disclosure, the span\'s actions after it, then the bubble', () => {
+	it('draws 5f402159:2267 at the end of the span as upstream, under the "Kept model" prose: a plain secondary row with no disclosure, the span\'s actions after it, then the bubble', () =>
+	{
 		const rows = Array.from(renderRecords(specimen().records).querySelectorAll("[data-testid=transcript-row]"));
 		expect(
-			rows.map((row) => ({
+			rows.map((row) => (
+			{
 				status: row.querySelector("[data-turn-status]")?.textContent ?? null,
 				secondary: Array.from(
 					row.querySelectorAll("[data-turn-status-marker] > * > span > span"),
@@ -574,14 +711,17 @@ describe("background task stopped row", () => {
 	});
 });
 
-describe("agent completion row", () => {
-	it("draws 5f402159:2172 inside the reply's span as upstream: a plain secondary row with no bubble or disclosure, 16px under the prose, the span's actions after the next prose", () => {
+describe("agent completion row", () =>
+{
+	it("draws 5f402159:2172 inside the reply's span as upstream: a plain secondary row with no bubble or disclosure, 16px under the prose, the span's actions after the next prose", () =>
+	{
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "5f402159" && candidate.line === 2172,
 		)!;
 		const rows = Array.from(renderRecords(specimen.records).querySelectorAll("[data-testid=transcript-row]"));
 		expect(
-			rows.map((row) => ({
+			rows.map((row) => (
+			{
 				status: row.querySelector("[data-turn-status]")?.textContent ?? null,
 				secondary: Array.from(row.querySelectorAll("[data-turn-status-marker] > * > span > span"), (span) =>
 					span.classList.contains("text-secondary"),
@@ -592,7 +732,14 @@ describe("agent completion row", () => {
 				bubble: row.querySelector(".user-message-bubble") !== null,
 			})),
 		).toStrictEqual([
-			{status: null, secondary: [], precedesStatus: true, footer: false, disclosures: 0, bubble: false},
+			{
+				status: null,
+				secondary: [],
+				precedesStatus: true,
+				footer: false,
+				disclosures: 0,
+				bubble: false,
+			},
 			{
 				status: "Committed crank sensitivity change· took 27s",
 				secondary: [true, true],
@@ -601,7 +748,14 @@ describe("agent completion row", () => {
 				disclosures: 0,
 				bubble: false,
 			},
-			{status: null, secondary: [], precedesStatus: false, footer: true, disclosures: 0, bubble: false},
+			{
+				status: null,
+				secondary: [],
+				precedesStatus: false,
+				footer: true,
+				disclosures: 0,
+				bubble: false,
+			},
 		]);
 	});
 });

@@ -2,16 +2,24 @@ import {describe, expect, it} from "vite-plus/test";
 import {renderToStaticMarkup} from "react-dom/server";
 import {TaskMetadata} from "../src/components/task-metadata";
 
-describe("TaskMetadata", () => {
-	it("renders scalar fields and nested objects as key-value pairs", () => {
+describe("TaskMetadata", () =>
+{
+	it("renders scalar fields and nested objects as key-value pairs", () =>
+	{
 		const html = renderToStaticMarkup(
 			<TaskMetadata
-				metadata={{
+				metadata={
+				{
 					commit_sha: "fac216c",
 					test_results: ["unit", "typecheck"],
-					verification: {
+					verification:
+					{
 						status: "passed",
-						checks: {completed: 12, failed: 0},
+						checks:
+						{
+							completed: 12,
+							failed: 0,
+						},
 					},
 				}}
 			/>,
@@ -29,7 +37,8 @@ describe("TaskMetadata", () => {
 		expect(html).toContain("12");
 	});
 
-	it("renders nothing for empty metadata", () => {
+	it("renders nothing for empty metadata", () =>
+	{
 		expect(renderToStaticMarkup(<TaskMetadata metadata={{}} />)).toBe("");
 	});
 });

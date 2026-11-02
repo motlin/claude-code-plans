@@ -18,7 +18,8 @@ export const HIDDEN_MENTION_NAMES: ReadonlySet<string> = new Set([
 /** Upstream's `textBetween(parentOffset - 50, parentOffset)` trigger window. */
 const FILE_MENTION_TRIGGER_WINDOW = 50;
 
-export interface FileMentionTrigger {
+export interface FileMentionTrigger
+{
 	/** Index of the `@`. */
 	start: number;
 	/** The token typed after the `@`, up to the caret. */
@@ -31,13 +32,17 @@ export interface FileMentionTrigger {
  * Like upstream, only the last {@link FILE_MENTION_TRIGGER_WINDOW} characters of
  * the caret's line are searched, and the window's start counts as a line start.
  */
-export function fileMentionTrigger(text: string, caret: number): FileMentionTrigger | null {
+export function fileMentionTrigger(text: string, caret: number): FileMentionTrigger | null
+{
 	const lineStart = text.lastIndexOf("\n", caret - 1) + 1;
 	const lineTail = text.slice(Math.max(lineStart, caret - FILE_MENTION_TRIGGER_WINDOW), caret);
 	const match = /(?:^|\s)@(\S*)$/.exec(lineTail);
 	if (match === null) return null;
 	const query = match[1] ?? "";
-	return {start: caret - query.length - 1, query};
+	return {
+		start: caret - query.length - 1,
+		query,
+	};
 }
 
 /**
@@ -45,13 +50,20 @@ export function fileMentionTrigger(text: string, caret: number): FileMentionTrig
  * upstream keeps the menu closed while the token extends the dismissed one, but a
  * dismissed bare `@` only suppresses an exact `@`.
  */
-export function isMentionSuppressed(suppressed: string | null, token: string): boolean {
+export function isMentionSuppressed(suppressed: string | null, token: string): boolean
+{
 	if (suppressed === null) return false;
 	return suppressed === "@" ? token === "@" : token.startsWith(suppressed);
 }
 
 /** Upstream's popup width: 560px when any row has a dirname caption, else 420px. */
-export function fileMentionMenuWidth(entries: readonly {relPath: string}[]): number {
+export function fileMentionMenuWidth(
+	entries: readonly
+	{
+		relPath: string;
+	}[],
+): number
+{
 	return entries.some((entry) => entry.relPath.includes("/")) ? 560 : 420;
 }
 
@@ -72,14 +84,31 @@ export function fileMentionMenuPosition({
 	width,
 	viewportWidth,
 }: {
-	at: {left: number; bottom: number};
+	at:
+	{
+		left: number;
+		bottom: number;
+	};
 	/** The editor's scroll box: the @ glyph's bottom is clamped to [top, bottom + lineHeight], like upstream. */
-	editor: {top: number; bottom: number};
+	editor:
+	{
+		top: number;
+		bottom: number;
+	};
 	lineHeight: number;
-	container: {left: number; bottom: number};
+	container:
+	{
+		left: number;
+		bottom: number;
+	};
 	width: number;
 	viewportWidth: number;
-}): {left: number; bottom: number} {
+}):
+{
+	left: number;
+	bottom: number;
+}
+{
 	const shown = Math.min(width, viewportWidth - 2 * MENTION_COLLISION_PADDING);
 	const left = Math.max(
 		MENTION_COLLISION_PADDING,
@@ -87,11 +116,15 @@ export function fileMentionMenuPosition({
 	);
 	const anchorBottom = Math.min(Math.max(at.bottom, editor.top), editor.bottom + lineHeight);
 	const popupBottom = anchorBottom + MENTION_ANCHOR_GAP - MENTION_SIDE_OFFSET;
-	return {left: left - container.left, bottom: container.bottom - popupBottom};
+	return {
+		left: left - container.left,
+		bottom: container.bottom - popupBottom,
+	};
 }
 
 /** `@path`, quoted when the path holds whitespace (the CLI reads `@"a b.ts"`). */
-function mentionToken(relPath: string): string {
+function mentionToken(relPath: string): string
+{
 	return /\s/.test(relPath) ? `@"${relPath}"` : `@${relPath}`;
 }
 
@@ -101,7 +134,12 @@ export function insertFileMention(
 	trigger: FileMentionTrigger,
 	caret: number,
 	relPath: string,
-): {text: string; caret: number} {
+):
+{
+	text: string;
+	caret: number;
+}
+{
 	const inserted = `${mentionToken(relPath)} `;
 	return {
 		text: text.slice(0, trigger.start) + inserted + text.slice(caret),

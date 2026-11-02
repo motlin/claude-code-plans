@@ -4,14 +4,16 @@
  * captured live, because provoking a classifier denial needs a command the
  * classifier treats as dangerous.
  */
-export const permissionDeniedFixture = {
+export const permissionDeniedFixture =
+{
 	session_id: "abc-123",
 	transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
 	cwd: "/Users/u/projects/app",
 	permission_mode: "auto",
 	hook_event_name: "PermissionDenied" as const,
 	tool_name: "Bash" as const,
-	tool_input: {
+	tool_input:
+	{
 		command: "rm -rf /tmp/build",
 		description: "Clean build directory",
 	},

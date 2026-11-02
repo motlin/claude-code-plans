@@ -6,7 +6,8 @@ import {extname, join} from "node:path";
 
 const ASSET_PATH = /^\/assets\/([\w-][\w.-]*)$/;
 
-const CONTENT_TYPES: Record<string, string> = {
+const CONTENT_TYPES: Record<string, string> =
+{
 	".css": "text/css; charset=utf-8",
 	".js": "text/javascript; charset=utf-8",
 	".json": "application/json; charset=utf-8",
@@ -19,25 +20,31 @@ const CONTENT_TYPES: Record<string, string> = {
 	".woff2": "font/woff2",
 };
 
-export interface PreviousAsset {
+export interface PreviousAsset
+{
 	body: Buffer;
 	headers: Record<string, string>;
 }
 
 /** Reads `/assets/<file>` from the previous build's assets, or null when it isn't there. */
-export async function readPreviousAsset(dir: string, pathname: string): Promise<PreviousAsset | null> {
+export async function readPreviousAsset(dir: string, pathname: string): Promise<PreviousAsset | null>
+{
 	const name = ASSET_PATH.exec(pathname)?.[1];
 	if (name === undefined) return null;
-	try {
+	try
+	{
 		const body = await readFile(join(dir, name));
 		return {
 			body,
-			headers: {
+			headers:
+			{
 				"Cache-Control": "public, max-age=31536000, immutable",
 				"Content-Type": CONTENT_TYPES[extname(name)] ?? "application/octet-stream",
 			},
 		};
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }

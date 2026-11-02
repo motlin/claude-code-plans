@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	buildSettingsResultRows,
 	layoutSettingsResultRows,
 	normalizeSettingsQuery,
@@ -11,15 +12,27 @@ import {
 	splitMatch,
 } from "../src/lib/settings-search";
 
-describe("SETTINGS_INDEX", () => {
-	it("has one entry per tab and row slug", () => {
+describe("SETTINGS_INDEX", () =>
+{
+	it("has one entry per tab and row slug", () =>
+	{
 		const keys = SETTINGS_INDEX.map((entry) => `${entry.tab}/${entry.rowSlug}`);
 		expect(new Set(keys).size).toBe(keys.length);
 	});
 });
 
-describe("rankSettingsSections grouping", () => {
-	it.each<[string, Array<{tab: string; rows: Array<[string, string]>}>]>([
+describe("rankSettingsSections grouping", () =>
+{
+	it.each<
+		[
+			string,
+			Array<
+			{
+				tab: string;
+				rows: Array<[string, string]>;
+			}>,
+		]
+	>([
 		["", []],
 		["   ", []],
 		["zzz-no-such-setting", []],
@@ -75,19 +88,70 @@ describe("rankSettingsSections grouping", () => {
 				},
 			],
 		],
-		["dark mode", [{tab: "general", rows: [["theme", "Theme"]]}]],
+		[
+			"dark mode",
+			[
+				{
+					tab: "general",
+					rows: [["theme", "Theme"]],
+				},
+			],
+		],
 		// Upstream's Code font size search phrases.
-		["editor font size", [{tab: "general", rows: [["code-font-size", "Code font size"]]}]],
-		["terminal font size", [{tab: "general", rows: [["code-font-size", "Code font size"]]}]],
-		["terse", [{tab: "claude-code", rows: [["output-style", "Output style"]]}]],
-		["response style", [{tab: "claude-code", rows: [["output-style", "Output style"]]}]],
+		[
+			"editor font size",
+			[
+				{
+					tab: "general",
+					rows: [["code-font-size", "Code font size"]],
+				},
+			],
+		],
+		[
+			"terminal font size",
+			[
+				{
+					tab: "general",
+					rows: [["code-font-size", "Code font size"]],
+				},
+			],
+		],
+		[
+			"terse",
+			[
+				{
+					tab: "claude-code",
+					rows: [["output-style", "Output style"]],
+				},
+			],
+		],
+		[
+			"response style",
+			[
+				{
+					tab: "claude-code",
+					rows: [["output-style", "Output style"]],
+				},
+			],
+		],
 		// A keyword-only section hit has no rows.
-		["tmux", [{tab: "application", rows: []}]],
+		[
+			"tmux",
+			[
+				{
+					tab: "application",
+					rows: [],
+				},
+			],
+		],
 		// A section-name match outranks row matches elsewhere.
 		[
 			"sessions",
 			[
-				{tab: "sessions", rows: [["sessions-page-grouping", "Sessions page grouping"]]},
+				{
+					tab: "sessions",
+					rows: [["sessions-page-grouping", "Sessions page grouping"]],
+				},
 				{
 					tab: "claude-code",
 					rows: [
@@ -98,10 +162,34 @@ describe("rankSettingsSections grouping", () => {
 			],
 		],
 		// Case-insensitive, and title-only: section headings ("Code appearance") are not indexed.
-		["THEME", [{tab: "general", rows: [["theme", "Theme"]]}]],
+		[
+			"THEME",
+			[
+				{
+					tab: "general",
+					rows: [["theme", "Theme"]],
+				},
+			],
+		],
 		// The nav renames General to Appearance, so its new name finds the whole section.
-		["appearance", [{tab: "general", rows: []}]],
-		["width", [{tab: "general", rows: [["transcript-width", "Transcript width"]]}]],
+		[
+			"appearance",
+			[
+				{
+					tab: "general",
+					rows: [],
+				},
+			],
+		],
+		[
+			"width",
+			[
+				{
+					tab: "general",
+					rows: [["transcript-width", "Transcript width"]],
+				},
+			],
+		],
 		// Title prefix matches outrank word-start matches, which outrank mid-word matches,
 		// and groups follow their best-ranked row.
 		[
@@ -149,8 +237,10 @@ describe("rankSettingsSections grouping", () => {
 				},
 			],
 		],
-	])("groups results for %j", (query, expected) => {
-		const actual = rankSettingsSections(query).map((section) => ({
+	])("groups results for %j", (query, expected) =>
+	{
+		const actual = rankSettingsSections(query).map((section) => (
+		{
 			tab: section.tab,
 			rows: section.rows.map(({entry}) => [entry.rowSlug, entry.title]),
 		}));
@@ -158,7 +248,8 @@ describe("rankSettingsSections grouping", () => {
 	});
 });
 
-describe("settingsMatchStart", () => {
+describe("settingsMatchStart", () =>
+{
 	it.each<[string, string, number]>([
 		["Code font", "FONT", 5],
 		["Interface font", " font ", 10],
@@ -169,12 +260,14 @@ describe("settingsMatchStart", () => {
 		["Transcript text size", "font size", -1],
 		["Code font", "codefont", -1],
 		["Code font", "font code", -1],
-	])("locates %j in %j at %d", (label, query, expected) => {
+	])("locates %j in %j at %d", (label, query, expected) =>
+	{
 		expect(settingsMatchStart(label, query)).toBe(expected);
 	});
 });
 
-describe("normalizeSettingsQuery", () => {
+describe("normalizeSettingsQuery", () =>
+{
 	it.each<[string, string]>([
 		["Ünïcode–Font_size", "unicode font size"],
 		["  Code   FONT ", "code font"],
@@ -182,12 +275,14 @@ describe("normalizeSettingsQuery", () => {
 		["\u2018it\u2019s\u201b \u201cquoted\u201d", "'it's' \"quoted\""],
 		["café", "cafe"],
 		["", ""],
-	])("normalizes %j to %j", (query, expected) => {
+	])("normalizes %j to %j", (query, expected) =>
+	{
 		expect(normalizeSettingsQuery(query)).toBe(expected);
 	});
 });
 
-describe("rankSettingsLabel", () => {
+describe("rankSettingsLabel", () =>
+{
 	it.each<[string, string, number]>([
 		["code font", "Code font", 0],
 		["codefont", "Code font", 0],
@@ -201,32 +296,62 @@ describe("rankSettingsLabel", () => {
 		["size font", "Transcript text size", -1],
 		["zzz", "Code font", -1],
 		["", "Code font", -1],
-	])("ranks %j against %j as %d", (query, label, expected) => {
+	])("ranks %j against %j as %d", (query, label, expected) =>
+	{
 		expect(rankSettingsLabel(query, label)).toBe(expected);
 	});
 });
 
-describe("SETTINGS_SECTION_KEYWORDS", () => {
-	it("matches the local keyword map", () => {
-		expect(SETTINGS_SECTION_KEYWORDS).toStrictEqual({
-			usage: ["overage", "extra usage", "spend limit", "usage credits"],
-			"claude-config": ["settings.json"],
-			application: ["herdr", "tmux"],
-		});
+describe("SETTINGS_SECTION_KEYWORDS", () =>
+{
+	it("matches the local keyword map", () =>
+	{
+		expect(SETTINGS_SECTION_KEYWORDS).toStrictEqual(
+			{
+				usage: ["overage", "extra usage", "spend limit", "usage credits"],
+				"claude-config": ["settings.json"],
+				application: ["herdr", "tmux"],
+			},
+		);
 	});
 });
 
-describe("rankSettingsSections", () => {
-	it.each<[string, Array<{tab: string; score: number; keyword?: string; rows: Array<[string, number]>}>]>([
+describe("rankSettingsSections", () =>
+{
+	it.each<
+		[
+			string,
+			Array<
+			{
+				tab: string;
+				score: number;
+				keyword?: string;
+				rows: Array<[string, number]>;
+			}>,
+		]
+	>([
 		["", []],
 		["zzzq", []],
 		// Name rank 0-3 wins outright.
-		["general", [{tab: "general", score: 0, rows: []}]],
+		[
+			"general",
+			[
+				{
+					tab: "general",
+					score: 0,
+					rows: [],
+				},
+			],
+		],
 		[
 			"code",
 			[
 				// The nav renames Claude Code to Code, an exact name match.
-				{tab: "claude-code", score: 0, rows: []},
+				{
+					tab: "claude-code",
+					score: 0,
+					rows: [],
+				},
 				// The Code looks moved to Appearance (upstream GeneralCodeLooks).
 				{
 					tab: "general",
@@ -236,51 +361,88 @@ describe("rankSettingsSections", () => {
 						["code-font-size", 1],
 					],
 				},
-				{tab: "notifications", score: 6, rows: [["code-permission-requests", 1]]},
-				{tab: "claude-config", score: 7, rows: [["claude-code-settings-files", 2]]},
+				{
+					tab: "notifications",
+					score: 6,
+					rows: [["code-permission-requests", 1]],
+				},
+				{
+					tab: "claude-config",
+					score: 7,
+					rows: [["claude-code-settings-files", 2]],
+				},
 			],
 		],
 		// 5 + best row rank; phrases score 4.
 		[
 			"mode",
 			[
-				{tab: "claude-code", score: 7, rows: [["allow-bypass-permissions-mode", 2]]},
-				{tab: "general", score: 9, rows: [["theme", 4]]},
+				{
+					tab: "claude-code",
+					score: 7,
+					rows: [["allow-bypass-permissions-mode", 2]],
+				},
+				{
+					tab: "general",
+					score: 9,
+					rows: [["theme", 4]],
+				},
 			],
 		],
-	])("scores sections for %j", (query, expected) => {
-		const actual = rankSettingsSections(query).map((section) => ({
+	])("scores sections for %j", (query, expected) =>
+	{
+		const actual = rankSettingsSections(query).map((section) => (
+		{
 			tab: section.tab,
 			score: section.score,
-			...(section.keyword === undefined ? {} : {keyword: section.keyword}),
+			...(section.keyword === undefined
+				? {}
+				:
+					{
+						keyword: section.keyword,
+					}),
 			rows: section.rows.map((row) => [row.entry.rowSlug, row.rank]),
 		}));
 		expect(actual).toStrictEqual(expected);
 	});
 
-	it("scores a keyword-only hit 10 and reports the keyword", () => {
+	it("scores a keyword-only hit 10 and reports the keyword", () =>
+	{
 		expect(
-			rankSettingsSections("overage").map((section) => ({
+			rankSettingsSections("overage").map((section) => (
+			{
 				tab: section.tab,
 				score: section.score,
 				keyword: section.keyword,
 				rows: section.rows,
 			})),
-		).toStrictEqual([{tab: "usage", score: 10, keyword: "overage", rows: []}]);
+		).toStrictEqual([
+			{
+				tab: "usage",
+				score: 10,
+				keyword: "overage",
+				rows: [],
+			},
+		]);
 	});
 });
 
-describe("splitMatch", () => {
-	it("splits a title around the matched range", () => {
-		expect(splitMatch("Interface font", 10, 4)).toStrictEqual({
-			before: "Interface ",
-			match: "font",
-			after: "",
-		});
+describe("splitMatch", () =>
+{
+	it("splits a title around the matched range", () =>
+	{
+		expect(splitMatch("Interface font", 10, 4)).toStrictEqual(
+			{
+				before: "Interface ",
+				match: "font",
+				after: "",
+			},
+		);
 	});
 });
 
-describe("buildSettingsResultRows", () => {
+describe("buildSettingsResultRows", () =>
+{
 	it.each<[string, ReturnType<typeof buildSettingsResultRows>]>([
 		["", []],
 		["zzzq", []],
@@ -288,28 +450,76 @@ describe("buildSettingsResultRows", () => {
 		[
 			"font",
 			[
-				{kind: "hit", tab: "general"},
-				{kind: "child", tab: "general", rowSlug: "interface-font", title: "Interface font"},
-				{kind: "child", tab: "general", rowSlug: "code-font", title: "Code font"},
-				{kind: "child", tab: "general", rowSlug: "code-font-size", title: "Code font size"},
-				{kind: "more", tab: "general", count: 1},
+				{
+					kind: "hit",
+					tab: "general",
+				},
+				{
+					kind: "child",
+					tab: "general",
+					rowSlug: "interface-font",
+					title: "Interface font",
+				},
+				{
+					kind: "child",
+					tab: "general",
+					rowSlug: "code-font",
+					title: "Code font",
+				},
+				{
+					kind: "child",
+					tab: "general",
+					rowSlug: "code-font-size",
+					title: "Code font size",
+				},
+				{
+					kind: "more",
+					tab: "general",
+					count: 1,
+				},
 			],
 		],
-		["theme", [{kind: "hit", tab: "general", via: "Theme", rowSlug: "theme"}]],
+		[
+			"theme",
+			[
+				{
+					kind: "hit",
+					tab: "general",
+					via: "Theme",
+					rowSlug: "theme",
+				},
+			],
+		],
 		// A section-name match lists its matching rows as children even when there is one.
 		[
 			"transcript",
 			[
-				{kind: "hit", tab: "transcript"},
+				{
+					kind: "hit",
+					tab: "transcript",
+				},
 				{
 					kind: "child",
 					tab: "transcript",
 					rowSlug: "show-transcript-only-system-records",
 					title: "Show transcript-only system records",
 				},
-				{kind: "hit", tab: "general"},
-				{kind: "child", tab: "general", rowSlug: "transcript-text-size", title: "Transcript text size"},
-				{kind: "child", tab: "general", rowSlug: "transcript-width", title: "Transcript width"},
+				{
+					kind: "hit",
+					tab: "general",
+				},
+				{
+					kind: "child",
+					tab: "general",
+					rowSlug: "transcript-text-size",
+					title: "Transcript text size",
+				},
+				{
+					kind: "child",
+					tab: "general",
+					rowSlug: "transcript-width",
+					title: "Transcript width",
+				},
 				{
 					kind: "hit",
 					tab: "claude-code",
@@ -319,13 +529,34 @@ describe("buildSettingsResultRows", () => {
 			],
 		],
 		// A section-name match with no matching rows is a bare hit.
-		["appearance", [{kind: "hit", tab: "general"}]],
+		[
+			"appearance",
+			[
+				{
+					kind: "hit",
+					tab: "general",
+				},
+			],
+		],
 		// A renamed section found by its old name shows that alias on its via line.
-		["general", [{kind: "hit", tab: "general", via: "General"}]],
+		[
+			"general",
+			[
+				{
+					kind: "hit",
+					tab: "general",
+					via: "General",
+				},
+			],
+		],
 		[
 			"claude code",
 			[
-				{kind: "hit", tab: "claude-code", via: "Claude Code"},
+				{
+					kind: "hit",
+					tab: "claude-code",
+					via: "Claude Code",
+				},
 				{
 					kind: "hit",
 					tab: "claude-config",
@@ -335,15 +566,42 @@ describe("buildSettingsResultRows", () => {
 			],
 		],
 		// A keyword-only hit shows the keyword on its via line and has no row.
-		["tmux", [{kind: "hit", tab: "application", via: "tmux"}]],
+		[
+			"tmux",
+			[
+				{
+					kind: "hit",
+					tab: "application",
+					via: "tmux",
+				},
+			],
+		],
 		// More than three matches: three children, then "+N more".
 		[
 			"hook",
 			[
-				{kind: "hit", tab: "transcript"},
-				{kind: "child", tab: "transcript", rowSlug: "hook-warnings", title: "Hook warnings"},
-				{kind: "child", tab: "transcript", rowSlug: "hook-errors", title: "Hook errors"},
-				{kind: "child", tab: "transcript", rowSlug: "passed-hooks", title: "Passed hooks"},
+				{
+					kind: "hit",
+					tab: "transcript",
+				},
+				{
+					kind: "child",
+					tab: "transcript",
+					rowSlug: "hook-warnings",
+					title: "Hook warnings",
+				},
+				{
+					kind: "child",
+					tab: "transcript",
+					rowSlug: "hook-errors",
+					title: "Hook errors",
+				},
+				{
+					kind: "child",
+					tab: "transcript",
+					rowSlug: "passed-hooks",
+					title: "Passed hooks",
+				},
 			],
 		],
 		// One character: one hit per section, each with its best row on a via line; name-only
@@ -351,14 +609,50 @@ describe("buildSettingsResultRows", () => {
 		[
 			"s",
 			[
-				{kind: "hit", tab: "sessions", via: "Sessions page grouping", rowSlug: "sessions-page-grouping"},
-				{kind: "hit", tab: "setup"},
-				{kind: "hit", tab: "notifications", via: "Notification sound", rowSlug: "notification-sound"},
-				{kind: "hit", tab: "usage"},
-				{kind: "hit", tab: "transcript", via: "System banners", rowSlug: "system-banners"},
-				{kind: "hit", tab: "ai-features", via: "Summary button", rowSlug: "summary-button"},
-				{kind: "hit", tab: "application", via: "Shell tabs", rowSlug: "shell-tabs"},
-				{kind: "hit", tab: "general", via: "Transcript text size", rowSlug: "transcript-text-size"},
+				{
+					kind: "hit",
+					tab: "sessions",
+					via: "Sessions page grouping",
+					rowSlug: "sessions-page-grouping",
+				},
+				{
+					kind: "hit",
+					tab: "setup",
+				},
+				{
+					kind: "hit",
+					tab: "notifications",
+					via: "Notification sound",
+					rowSlug: "notification-sound",
+				},
+				{
+					kind: "hit",
+					tab: "usage",
+				},
+				{
+					kind: "hit",
+					tab: "transcript",
+					via: "System banners",
+					rowSlug: "system-banners",
+				},
+				{
+					kind: "hit",
+					tab: "ai-features",
+					via: "Summary button",
+					rowSlug: "summary-button",
+				},
+				{
+					kind: "hit",
+					tab: "application",
+					via: "Shell tabs",
+					rowSlug: "shell-tabs",
+				},
+				{
+					kind: "hit",
+					tab: "general",
+					via: "Transcript text size",
+					rowSlug: "transcript-text-size",
+				},
 				{
 					kind: "hit",
 					tab: "claude-code",
@@ -373,111 +667,298 @@ describe("buildSettingsResultRows", () => {
 				},
 			],
 		],
-	])("lays out rows for %j", (query, expected) => {
+	])("lays out rows for %j", (query, expected) =>
+	{
 		expect(buildSettingsResultRows(query, new Set())).toStrictEqual(expected);
 	});
 
-	it("caps a section at three children and counts the rest in a more row, unless expanded", () => {
-		const entries = ["Alpha one", "Alpha two", "Alpha three", "Alpha four", "Alpha five"].map((title, index) => ({
-			entry: {tab: "general" as const, rowSlug: `row-${index}`, title},
+	it("caps a section at three children and counts the rest in a more row, unless expanded", () =>
+	{
+		const entries = ["Alpha one", "Alpha two", "Alpha three", "Alpha four", "Alpha five"].map((title, index) => (
+		{
+			entry:
+			{
+				tab: "general" as const,
+				rowSlug: `row-${index}`,
+				title,
+			},
 			rank: 1,
 		}));
-		const sections = [{tab: "general" as const, score: 6, rows: entries}];
+		const sections = [
+			{
+				tab: "general" as const,
+				score: 6,
+				rows: entries,
+			},
+		];
 
 		expect(layoutSettingsResultRows(sections, "alpha", new Set())).toStrictEqual([
-			{kind: "hit", tab: "general"},
-			{kind: "child", tab: "general", rowSlug: "row-0", title: "Alpha one"},
-			{kind: "child", tab: "general", rowSlug: "row-1", title: "Alpha two"},
-			{kind: "child", tab: "general", rowSlug: "row-2", title: "Alpha three"},
-			{kind: "more", tab: "general", count: 2},
+			{
+				kind: "hit",
+				tab: "general",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "row-0",
+				title: "Alpha one",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "row-1",
+				title: "Alpha two",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "row-2",
+				title: "Alpha three",
+			},
+			{
+				kind: "more",
+				tab: "general",
+				count: 2,
+			},
 		]);
 		expect(layoutSettingsResultRows(sections, "alpha", new Set(["general"]))).toStrictEqual([
-			{kind: "hit", tab: "general"},
-			{kind: "child", tab: "general", rowSlug: "row-0", title: "Alpha one"},
-			{kind: "child", tab: "general", rowSlug: "row-1", title: "Alpha two"},
-			{kind: "child", tab: "general", rowSlug: "row-2", title: "Alpha three"},
-			{kind: "child", tab: "general", rowSlug: "row-3", title: "Alpha four"},
-			{kind: "child", tab: "general", rowSlug: "row-4", title: "Alpha five"},
+			{
+				kind: "hit",
+				tab: "general",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "row-0",
+				title: "Alpha one",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "row-1",
+				title: "Alpha two",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "row-2",
+				title: "Alpha three",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "row-3",
+				title: "Alpha four",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "row-4",
+				title: "Alpha five",
+			},
 		]);
 	});
 
-	it("gives an alias match a via hit followed by its matching rows as children", () => {
+	it("gives an alias match a via hit followed by its matching rows as children", () =>
+	{
 		const sections = [
 			{
 				tab: "general" as const,
 				score: 1,
 				alias: "General",
-				rows: [{entry: {tab: "general" as const, rowSlug: "a", title: "General row"}, rank: 1}],
+				rows: [
+					{
+						entry:
+						{
+							tab: "general" as const,
+							rowSlug: "a",
+							title: "General row",
+						},
+						rank: 1,
+					},
+				],
 			},
 		];
 
 		expect(layoutSettingsResultRows(sections, "gen", new Set())).toStrictEqual([
-			{kind: "hit", tab: "general", via: "General"},
-			{kind: "child", tab: "general", rowSlug: "a", title: "General row"},
+			{
+				kind: "hit",
+				tab: "general",
+				via: "General",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "a",
+				title: "General row",
+			},
 		]);
 	});
 
-	it("drops a row label already shown under an earlier section", () => {
+	it("drops a row label already shown under an earlier section", () =>
+	{
 		const sections = [
 			{
 				tab: "general" as const,
 				score: 6,
 				rows: [
-					{entry: {tab: "general" as const, rowSlug: "a", title: "Shared"}, rank: 1},
-					{entry: {tab: "general" as const, rowSlug: "b", title: "Shared two"}, rank: 1},
+					{
+						entry:
+						{
+							tab: "general" as const,
+							rowSlug: "a",
+							title: "Shared",
+						},
+						rank: 1,
+					},
+					{
+						entry:
+						{
+							tab: "general" as const,
+							rowSlug: "b",
+							title: "Shared two",
+						},
+						rank: 1,
+					},
 				],
 			},
 			{
 				tab: "sessions" as const,
 				score: 6,
 				rows: [
-					{entry: {tab: "sessions" as const, rowSlug: "c", title: "Shared"}, rank: 1},
-					{entry: {tab: "sessions" as const, rowSlug: "d", title: "Shared three"}, rank: 1},
+					{
+						entry:
+						{
+							tab: "sessions" as const,
+							rowSlug: "c",
+							title: "Shared",
+						},
+						rank: 1,
+					},
+					{
+						entry:
+						{
+							tab: "sessions" as const,
+							rowSlug: "d",
+							title: "Shared three",
+						},
+						rank: 1,
+					},
 				],
 			},
 		];
 
 		expect(layoutSettingsResultRows(sections, "shared", new Set())).toStrictEqual([
-			{kind: "hit", tab: "general"},
-			{kind: "child", tab: "general", rowSlug: "a", title: "Shared"},
-			{kind: "child", tab: "general", rowSlug: "b", title: "Shared two"},
-			{kind: "hit", tab: "sessions", via: "Shared three", rowSlug: "d"},
+			{
+				kind: "hit",
+				tab: "general",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "a",
+				title: "Shared",
+			},
+			{
+				kind: "child",
+				tab: "general",
+				rowSlug: "b",
+				title: "Shared two",
+			},
+			{
+				kind: "hit",
+				tab: "sessions",
+				via: "Shared three",
+				rowSlug: "d",
+			},
 		]);
 	});
 });
 
-describe("rankSettingsSections search names (upstream bc() + gn alsoFoundBy)", () => {
-	const appearance = {general: {name: "Appearance", alsoFoundBy: ["General"]}} as const;
+describe("rankSettingsSections search names (upstream bc() + gn alsoFoundBy)", () =>
+{
+	const appearance =
+	{
+		general:
+		{
+			name: "Appearance",
+			alsoFoundBy: ["General"],
+		},
+	} as const;
 
-	it("finds a renamed section through its old name as an alias", () => {
-		expect(rankSettingsSections("general", appearance)[0]).toStrictEqual({
-			tab: "general",
-			score: 0,
-			alias: "General",
-			rows: [],
-		});
+	it("finds a renamed section through its old name as an alias", () =>
+	{
+		expect(rankSettingsSections("general", appearance)[0]).toStrictEqual(
+			{
+				tab: "general",
+				score: 0,
+				alias: "General",
+				rows: [],
+			},
+		);
 	});
 
-	it("ignores aliases for 1-character queries", () => {
+	it("ignores aliases for 1-character queries", () =>
+	{
 		expect(rankSettingsSections("g", appearance).filter((section) => "alias" in section)).toStrictEqual([]);
 	});
 
-	it("matches the renamed name itself", () => {
+	it("matches the renamed name itself", () =>
+	{
 		expect(rankSettingsSections("appearance", appearance)[0]?.tab).toBe("general");
 	});
 
-	it("drops a row titled like its renamed section", () => {
-		const renamed = {general: {name: "Motion", alsoFoundBy: ["General"]}};
-		expect(rankSettingsSections("motion", renamed)).toStrictEqual([{tab: "general", score: 0, rows: []}]);
+	it("drops a row titled like its renamed section", () =>
+	{
+		const renamed =
+		{
+			general:
+			{
+				name: "Motion",
+				alsoFoundBy: ["General"],
+			},
+		};
+		expect(rankSettingsSections("motion", renamed)).toStrictEqual([
+			{
+				tab: "general",
+				score: 0,
+				rows: [],
+			},
+		]);
 	});
 
-	it("uses the real nav table by default: Appearance via General, Code via Claude Code", () => {
-		expect(rankSettingsSections("claude code").map(({tab, score, alias}) => ({tab, score, alias}))).toStrictEqual([
-			{tab: "claude-code", score: 0, alias: "Claude Code"},
-			{tab: "claude-config", score: 6, alias: undefined},
+	it("uses the real nav table by default: Appearance via General, Code via Claude Code", () =>
+	{
+		expect(
+			rankSettingsSections("claude code").map(({tab, score, alias}) => (
+			{
+				tab,
+				score,
+				alias,
+			})),
+		).toStrictEqual([
+			{
+				tab: "claude-code",
+				score: 0,
+				alias: "Claude Code",
+			},
+			{
+				tab: "claude-config",
+				score: 6,
+				alias: undefined,
+			},
 		]);
-		expect(rankSettingsSections("appearance").map(({tab, score}) => ({tab, score}))).toStrictEqual([
-			{tab: "general", score: 0},
+		expect(
+			rankSettingsSections("appearance").map(({tab, score}) => (
+			{
+				tab,
+				score,
+			})),
+		).toStrictEqual([
+			{
+				tab: "general",
+				score: 0,
+			},
 		]);
 	});
 });

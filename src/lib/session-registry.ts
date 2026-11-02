@@ -23,23 +23,27 @@ export const SESSION_REGISTRY_DIR = join(homedir(), ".claude", "sessions");
 
 const REGISTRY_FILE_NAME = /^\d+\.json$/;
 
-export function isRegistryFileName(name: string): boolean {
+export function isRegistryFileName(name: string): boolean
+{
 	return REGISTRY_FILE_NAME.test(name);
 }
 
 const reportedDrift = new Set<string>();
 
 /** Warn once per file and drift, so a new CLI field or status is visible while its session reads ended. */
-function warnDriftOnce(name: string, message: string): void {
+function warnDriftOnce(name: string, message: string): void
+{
 	const key = `${name}\0${message}`;
 	if (reportedDrift.has(key)) return;
 	reportedDrift.add(key);
 	console.warn(`Session registry ${name} failed strict validation (schema drift): ${message}`);
 }
 
-function valueAt(raw: unknown, path: readonly PropertyKey[]): unknown {
+function valueAt(raw: unknown, path: readonly PropertyKey[]): unknown
+{
 	let value = raw;
-	for (const key of path) {
+	for (const key of path)
+	{
 		if (!isRecord(value)) return undefined;
 		value = value[String(key)];
 	}
@@ -48,10 +52,12 @@ function valueAt(raw: unknown, path: readonly PropertyKey[]): unknown {
 
 const MAX_SHOWN_STRING = 40;
 
-function describeValue(value: unknown): string {
+function describeValue(value: unknown): string
+{
 	if (value === null) return "null";
 	if (Array.isArray(value)) return "array";
-	if (typeof value === "string") {
+	if (typeof value === "string")
+	{
 		const shown = value.length > MAX_SHOWN_STRING ? `${value.slice(0, MAX_SHOWN_STRING)}…` : value;
 		return `string ${JSON.stringify(shown)}`;
 	}
@@ -63,9 +69,11 @@ function describeValue(value: unknown): string {
  * Each issue as its path, zod code, and the offending value's type. The production
  * bundle drops zod's English messages, leaving every one a bare "Invalid input".
  */
-function describeDriftIssues(raw: unknown, issues: readonly z.core.$ZodIssue[]): string {
+function describeDriftIssues(raw: unknown, issues: readonly z.core.$ZodIssue[]): string
+{
 	return issues
-		.map((issue) => {
+		.map((issue) =>
+		{
 			const path = issue.path.length === 0 ? "(root)" : issue.path.map(String).join(".");
 			const detail =
 				issue.code === "unrecognized_keys"
@@ -83,19 +91,27 @@ function describeDriftIssues(raw: unknown, issues: readonly z.core.$ZodIssue[]):
 export async function readSessionRegistry(
 	dir: string = SESSION_REGISTRY_DIR,
 	reportDrift: (name: string, message: string) => void = warnDriftOnce,
-): Promise<SessionRegistryEntry[]> {
+): Promise<SessionRegistryEntry[]>
+{
 	let names: string[];
-	try {
+	try
+	{
 		names = await readdir(dir);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 	const entries = await Promise.all(
-		names.filter(isRegistryFileName).map(async (name) => {
+		names.filter(isRegistryFileName).map(async (name) =>
+		{
 			let raw: unknown;
-			try {
+			try
+			{
 				raw = parseIgnoringStaleTail(await readFile(join(dir, name), "utf8"));
-			} catch {
+			}
+			catch
+			{
 				return null;
 			}
 			// The strict parse reports drift; the lenient twin still keeps the entry.
@@ -112,23 +128,30 @@ export async function readSessionRegistry(
 type KillFn = (pid: number, signal: 0) => unknown;
 
 /** Signal 0 probes a pid without signalling it; EPERM means it exists under another user. */
-export function isPidAlive(pid: number, kill: KillFn = (target, signal) => process.kill(target, signal)): boolean {
-	try {
+export function isPidAlive(pid: number, kill: KillFn = (target, signal) => process.kill(target, signal)): boolean
+{
+	try
+	{
 		kill(pid, 0);
 		return true;
-	} catch (error) {
+	}
+	catch (error)
+	{
 		return errnoCode(error) === "EPERM";
 	}
 }
 
-function normalizeStartTime(value: string): string {
+function normalizeStartTime(value: string): string
+{
 	return value.trim().replace(/\s+/g, " ");
 }
 
 /** Parse `ps -o pid=,lstart=` output into pid → whitespace-normalized start time. */
-export function parsePsStartTimes(output: string): Map<number, string> {
+export function parsePsStartTimes(output: string): Map<number, string>
+{
 	const times = new Map<number, string>();
-	for (const line of output.split("\n")) {
+	for (const line of output.split("\n"))
+	{
 		const [, pid, startTime] = /^\s*(\d+)\s+(.+)$/.exec(line) ?? [];
 		if (pid !== undefined && startTime !== undefined) times.set(Number(pid), normalizeStartTime(startTime));
 	}
@@ -140,16 +163,34 @@ export function parsePsStartTimes(output: string): Map<number, string> {
  * `ps` exits non-zero when some pids are gone but still prints the rest.
  * Null when `ps` cannot run at all.
  */
-async function readProcessStartTimes(pids: readonly number[]): Promise<Map<number, string> | null> {
+async function readProcessStartTimes(pids: readonly number[]): Promise<Map<number, string> | null>
+{
 	if (pids.length === 0) return Promise.resolve(new Map());
-	return new Promise((resolve) => {
+	return new Promise((resolve) =>
+	{
 		execFile(
 			"ps",
 			["-o", "pid=,lstart=", "-p", pids.join(",")],
-			{env: {...process.env, TZ: "UTC", LC_ALL: "C"}, timeout: 5000},
-			(error, stdout) => {
-				if (error && (typeof stdout !== "string" || stdout.trim() === "")) {
-					const exitedWithStatus = typeof (error as {code?: unknown}).code === "number";
+			{
+				env:
+				{
+					...process.env,
+					TZ: "UTC",
+					LC_ALL: "C",
+				},
+				timeout: 5000,
+			},
+			(error, stdout) =>
+			{
+				if (error && (typeof stdout !== "string" || stdout.trim() === ""))
+				{
+					const exitedWithStatus =
+						typeof (
+							error as
+							{
+								code?: unknown;
+							}
+						).code === "number";
 					resolve(exitedWithStatus ? new Map() : null);
 					return;
 				}
@@ -163,7 +204,8 @@ async function readProcessStartTimes(pids: readonly number[]): Promise<Map<numbe
  * Start time in clock ticks, field 22 of `/proc/<pid>/stat`. The comm field
  * (2) can hold spaces and parentheses, so fields are counted after the last ")".
  */
-export function parseStatStartTicks(stat: string): string | null {
+export function parseStatStartTicks(stat: string): string | null
+{
 	const commEnd = stat.lastIndexOf(")");
 	if (commEnd === -1) return null;
 	const fields = stat
@@ -174,21 +216,27 @@ export function parseStatStartTicks(stat: string): string | null {
 }
 
 /** Null when `/proc` is unavailable (macOS) or the pid is gone. */
-function readStatStartTicks(pid: number): string | null {
-	try {
+function readStatStartTicks(pid: number): string | null
+{
+	try
+	{
 		return parseStatStartTicks(readFileSync(`/proc/${pid}/stat`, "utf8"));
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-export interface LivenessProbe {
+export interface LivenessProbe
+{
 	isAlive: (pid: number) => boolean;
 	readStartTimes: (pids: readonly number[]) => Promise<Map<number, string> | null>;
 	readStatStartTicks?: (pid: number) => string | null;
 }
 
-const defaultProbe: LivenessProbe = {
+const defaultProbe: LivenessProbe =
+{
 	isAlive: (pid) => isPidAlive(pid),
 	readStartTimes: readProcessStartTimes,
 	readStatStartTicks,
@@ -208,11 +256,14 @@ const CLOCK_TICK_PROC_START = /^\d+$/;
 export async function liveRegistryEntries(
 	entries: readonly SessionRegistryEntry[],
 	probe: LivenessProbe = defaultProbe,
-): Promise<SessionRegistryEntry[]> {
+): Promise<SessionRegistryEntry[]>
+{
 	const running = entries.filter((entry) => probe.isAlive(entry.pid));
 	const startTimes = await probe.readStartTimes(running.map((entry) => entry.pid));
-	return running.filter((entry) => {
-		if (CLOCK_TICK_PROC_START.test(entry.procStart)) {
+	return running.filter((entry) =>
+	{
+		if (CLOCK_TICK_PROC_START.test(entry.procStart))
+		{
 			const ticks = probe.readStatStartTicks?.(entry.pid) ?? null;
 			return ticks === null || ticks === entry.procStart;
 		}

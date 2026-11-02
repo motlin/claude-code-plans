@@ -5,7 +5,8 @@ import {canonicalPath} from "../canonical-path";
 import {createLineReader} from "../line-reader";
 import {eq, ne, notInArray, sql} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
-import {
+import
+{
 	SessionsIndexSchema,
 	FileHistorySnapshotSchema,
 	AttachmentRecordSchema,
@@ -18,7 +19,8 @@ import {ActiveChainMessageCounter} from "../message-count";
 import {deriveProjectDisplayName, lastEncodedSegment} from "../project-display-name";
 import {normalizeGitBranch} from "../git-branch";
 import {SYNTHETIC_MODEL} from "../model-name";
-import {
+import
+{
 	FirstUserMessageCollector,
 	isTitleSourceLine,
 	resolveFirstPrompt,
@@ -41,7 +43,8 @@ import {RoutineCollector} from "../routines";
 import {UsageCollector} from "../home-stats";
 import {unwrapPastedContent} from "../session-utils";
 import {deleteUsageDailyForSessions, replaceUsageDaily} from "./usage-index";
-import {
+import
+{
 	BridgeSessionCollector,
 	backfillSessionBridgeAliases,
 	deleteSessionBridgeAliases,
@@ -65,7 +68,8 @@ const SESSION_MESSAGE_INSERT_BATCH_SIZE = 200;
 export const FILE_CONTENT_SIZE_CAP_BYTES = 5 * 1024 * 1024;
 const resolvedProjectsDirectories = new Map<string, string>();
 
-interface NormalizedProjectFile {
+interface NormalizedProjectFile
+{
 	project: string;
 	relativeParts: string[];
 }
@@ -124,22 +128,30 @@ const NON_SEARCHABLE_FILE_EXTENSIONS = new Set([
 ]);
 
 /** Reject known binary files and generated source maps before opening them. */
-export function isFileContentIndexable(filePath: string): boolean {
+export function isFileContentIndexable(filePath: string): boolean
+{
 	return !NON_SEARCHABLE_FILE_EXTENSIONS.has(extname(filePath).toLowerCase());
 }
 
-function persistProject(db: IndexDb, project: string, projectPath: string | null, updatedAt: number): void {
+function persistProject(db: IndexDb, project: string, projectPath: string | null, updatedAt: number): void
+{
 	const existingProject = db
-		.select({name: schema.projects.name})
+		.select(
+			{
+				name: schema.projects.name,
+			},
+		)
 		.from(schema.projects)
 		.where(eq(schema.projects.id, project))
 		.get();
 	const knownProjects = db
-		.select({
-			id: schema.projects.id,
-			name: schema.projects.name,
-			projectPath: schema.projects.projectPath,
-		})
+		.select(
+			{
+				id: schema.projects.id,
+				name: schema.projects.name,
+				projectPath: schema.projects.projectPath,
+			},
+		)
 		.from(schema.projects)
 		.where(ne(schema.projects.id, project))
 		.all();
@@ -157,47 +169,63 @@ function persistProject(db: IndexDb, project: string, projectPath: string | null
 			: existingProject.name;
 
 	db.insert(schema.projects)
-		.values({
-			id: project,
-			name: projectName,
-			projectPath,
-			updatedAt,
-		})
-		.onConflictDoUpdate({
-			target: schema.projects.id,
-			set: {name: projectName, projectPath, updatedAt},
-		})
+		.values(
+			{
+				id: project,
+				name: projectName,
+				projectPath,
+				updatedAt,
+			},
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.projects.id,
+				set:
+				{
+					name: projectName,
+					projectPath,
+					updatedAt,
+				},
+			},
+		)
 		.run();
 }
 
-function repairProjectDisplayNames(db: IndexDb): void {
+function repairProjectDisplayNames(db: IndexDb): void
+{
 	const projects = db
-		.select({
-			id: schema.projects.id,
-			projectPath: schema.projects.projectPath,
-			updatedAt: schema.projects.updatedAt,
-		})
+		.select(
+			{
+				id: schema.projects.id,
+				projectPath: schema.projects.projectPath,
+				updatedAt: schema.projects.updatedAt,
+			},
+		)
 		.from(schema.projects)
 		.all();
 
 	// Shortest ids first, so a parent project's name is repaired before the
 	// worktrees and nested checkouts that derive their names from it.
 	projects.sort((a, b) => a.id.length - b.id.length);
-	for (const project of projects) {
+	for (const project of projects)
+	{
 		persistProject(db, project.id, project.projectPath, project.updatedAt);
 	}
 }
 
-function fileContentCachePath(filePath: string): string {
+function fileContentCachePath(filePath: string): string
+{
 	// `indexed_files.path` is also consumed by transcript, plan, task, and
 	// memory indexers. A namespaced key gives file content its own exact
 	// ownership without letting one consumer short-circuit or delete another.
 	return `${FILE_CONTENT_CACHE_PREFIX}${filePath}`;
 }
 
-export function isPathInsideFileContentRoots(filePath: string, roots: readonly string[]): boolean {
+export function isPathInsideFileContentRoots(filePath: string, roots: readonly string[]): boolean
+{
 	const normalizedPath = resolve(filePath);
-	return roots.some((root) => {
+	return roots.some((root) =>
+	{
 		const relativePath = relative(root, normalizedPath);
 		return (
 			relativePath === "" ||
@@ -207,7 +235,8 @@ export function isPathInsideFileContentRoots(filePath: string, roots: readonly s
 }
 
 /** Resolve and cache the canonical projects root for the lifetime of the process. */
-export function resolveProjectsDirectory(projectsDir: string): string {
+export function resolveProjectsDirectory(projectsDir: string): string
+{
 	const unresolvedProjectsDir = resolve(projectsDir);
 	const cachedProjectsDir = resolvedProjectsDirectories.get(unresolvedProjectsDir);
 	if (cachedProjectsDir) return cachedProjectsDir;
@@ -217,11 +246,13 @@ export function resolveProjectsDirectory(projectsDir: string): string {
 	return resolvedProjectsDir;
 }
 
-function normalizeProjectFile(filePath: string, projectsDir: string): NormalizedProjectFile | null {
+function normalizeProjectFile(filePath: string, projectsDir: string): NormalizedProjectFile | null
+{
 	const unresolvedProjectsDir = resolve(projectsDir);
 	const resolvedProjectsDir = resolveProjectsDirectory(unresolvedProjectsDir);
 	const unresolvedFilePath = resolve(filePath);
-	if (!isPathInsideFileContentRoots(unresolvedFilePath, [unresolvedProjectsDir, resolvedProjectsDir])) {
+	if (!isPathInsideFileContentRoots(unresolvedFilePath, [unresolvedProjectsDir, resolvedProjectsDir]))
+	{
 		return null;
 	}
 
@@ -231,11 +262,16 @@ function normalizeProjectFile(filePath: string, projectsDir: string): Normalized
 	const relativeParts = relative(resolvedProjectsDir, resolvedFilePath).split(sep);
 	const project = relativeParts[0];
 	if (!project || project === ".") return null;
-	return {project, relativeParts};
+	return {
+		project,
+		relativeParts,
+	};
 }
 
-function deleteFileContentRows(db: IndexDb, filePath: string): void {
-	db.transaction((transaction) => {
+function deleteFileContentRows(db: IndexDb, filePath: string): void
+{
+	db.transaction((transaction) =>
+	{
 		transaction.run(sql`DELETE FROM file_content WHERE path = ${filePath}`);
 		transaction
 			.delete(schema.indexedFiles)
@@ -245,7 +281,8 @@ function deleteFileContentRows(db: IndexDb, filePath: string): void {
 }
 
 /** Remove content-search data owned by one exact filesystem path. */
-export function deleteFileContent(db: IndexDb, filePath: string): void {
+export function deleteFileContent(db: IndexDb, filePath: string): void
+{
 	deleteFileContentRows(db, resolve(filePath));
 }
 
@@ -254,75 +291,119 @@ export async function indexFileContent(
 	db: IndexDb,
 	filePath: string,
 	roots: readonly string[],
-): Promise<{changed: boolean}> {
+): Promise<
+{
+	changed: boolean;
+}>
+{
 	const normalizedPath = resolve(filePath);
-	if (!isPathInsideFileContentRoots(normalizedPath, roots)) return {changed: false};
-	if (!isFileContentIndexable(normalizedPath)) return {changed: false};
+	if (!isPathInsideFileContentRoots(normalizedPath, roots))
+		return {
+			changed: false,
+		};
+	if (!isFileContentIndexable(normalizedPath))
+		return {
+			changed: false,
+		};
 
 	let resolvedPath: string;
 	let fileStat: Awaited<ReturnType<typeof stat>>;
-	try {
+	try
+	{
 		// Do not follow symlinked entries. A link under an allowed root could
 		// otherwise make the content index read a target outside that root.
-		if (!(await lstat(normalizedPath)).isFile()) return {changed: false};
+		if (!(await lstat(normalizedPath)).isFile())
+			return {
+				changed: false,
+			};
 		resolvedPath = await realpath(normalizedPath);
-		if (!isPathInsideFileContentRoots(resolvedPath, roots)) return {changed: false};
+		if (!isPathInsideFileContentRoots(resolvedPath, roots))
+			return {
+				changed: false,
+			};
 		fileStat = await stat(resolvedPath);
-	} catch {
-		return {changed: false};
+	}
+	catch
+	{
+		return {
+			changed: false,
+		};
 	}
 
 	const cachePath = fileContentCachePath(resolvedPath);
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, cachePath)).get();
-	if (existing && existing.mtimeMs === fileStat.mtimeMs && existing.sizeBytes === fileStat.size) {
-		return {changed: false};
+	if (existing && existing.mtimeMs === fileStat.mtimeMs && existing.sizeBytes === fileStat.size)
+	{
+		return {
+			changed: false,
+		};
 	}
 
-	if (fileStat.size > FILE_CONTENT_SIZE_CAP_BYTES) {
+	if (fileStat.size > FILE_CONTENT_SIZE_CAP_BYTES)
+	{
 		deleteFileContentRows(db, resolvedPath);
-		return {changed: true};
+		return {
+			changed: true,
+		};
 	}
 
 	let contents: Buffer;
-	try {
+	try
+	{
 		contents = await readFile(resolvedPath);
-	} catch {
-		return {changed: false};
 	}
-	if (contents.byteLength > FILE_CONTENT_SIZE_CAP_BYTES || contents.subarray(0, 512).includes(0)) {
+	catch
+	{
+		return {
+			changed: false,
+		};
+	}
+	if (contents.byteLength > FILE_CONTENT_SIZE_CAP_BYTES || contents.subarray(0, 512).includes(0))
+	{
 		deleteFileContentRows(db, resolvedPath);
-		return {changed: true};
+		return {
+			changed: true,
+		};
 	}
 
 	const indexedAt = Date.now();
-	db.transaction((transaction) => {
+	db.transaction((transaction) =>
+	{
 		transaction.run(sql`DELETE FROM file_content WHERE path = ${resolvedPath}`);
 		transaction.run(
 			sql`INSERT INTO file_content(path, content) VALUES (${resolvedPath}, ${contents.toString("utf8")})`,
 		);
 		transaction
 			.insert(schema.indexedFiles)
-			.values({
-				path: cachePath,
-				mtimeMs: fileStat.mtimeMs,
-				sizeBytes: fileStat.size,
-				indexedAt,
-			})
-			.onConflictDoUpdate({
-				target: schema.indexedFiles.path,
-				set: {
+			.values(
+				{
+					path: cachePath,
 					mtimeMs: fileStat.mtimeMs,
 					sizeBytes: fileStat.size,
 					indexedAt,
 				},
-			})
+			)
+			.onConflictDoUpdate(
+				{
+					target: schema.indexedFiles.path,
+					set:
+					{
+						mtimeMs: fileStat.mtimeMs,
+						sizeBytes: fileStat.size,
+						indexedAt,
+					},
+				},
+			)
 			.run();
 	});
 
-	return {changed: true};
+	return {
+		changed: true,
+	};
 }
 
-function pathContainsIgnoredDirectory(path: string, ignoredDirNames: ReadonlySet<string>): boolean {
+function pathContainsIgnoredDirectory(path: string, ignoredDirNames: ReadonlySet<string>): boolean
+{
 	return path.split(sep).some((segment) => ignoredDirNames.has(segment));
 }
 
@@ -332,48 +413,65 @@ export async function scanFileContentRoots(
 	roots: readonly string[],
 	ignoredDirNames: ReadonlySet<string>,
 	signal?: AbortSignal,
-): Promise<void> {
+): Promise<void>
+{
 	const discoveredPaths = new Set<string>();
 	let scanComplete = true;
-	const cachedFiles = db.all<{path: string; mtime_ms: number; size_bytes: number}>(
-		sql`SELECT path, mtime_ms, size_bytes FROM indexed_files WHERE path LIKE ${`${FILE_CONTENT_CACHE_PREFIX}%`}`,
-	);
+	const cachedFiles = db.all<
+	{
+		path: string;
+		mtime_ms: number;
+		size_bytes: number;
+	}>(sql`SELECT path, mtime_ms, size_bytes FROM indexed_files WHERE path LIKE ${`${FILE_CONTENT_CACHE_PREFIX}%`}`);
 	const cachedMetadataByPath = new Map(
 		cachedFiles.map((file) => [
 			file.path.slice(FILE_CONTENT_CACHE_PREFIX.length),
-			{mtimeMs: file.mtime_ms, sizeBytes: file.size_bytes},
+			{
+				mtimeMs: file.mtime_ms,
+				sizeBytes: file.size_bytes,
+			},
 		]),
 	);
 
-	for (const root of roots) {
+	for (const root of roots)
+	{
 		if (pathContainsIgnoredDirectory(root, ignoredDirNames)) continue;
 
 		let trackedPaths: string[];
-		try {
+		try
+		{
 			trackedPaths = await listTrackedFiles(root);
-		} catch {
+		}
+		catch
+		{
 			scanComplete = false;
 			continue;
 		}
 
-		for (const trackedPath of trackedPaths) {
+		for (const trackedPath of trackedPaths)
+		{
 			signal?.throwIfAborted();
 			if (
 				pathContainsIgnoredDirectory(relative(root, trackedPath), ignoredDirNames) ||
 				!isFileContentIndexable(trackedPath)
-			) {
+			)
+			{
 				continue;
 			}
 
 			const resolvedPath = resolve(trackedPath);
-			try {
+			try
+			{
 				const fileStat = await stat(trackedPath);
 				discoveredPaths.add(resolvedPath);
 				const cachedMetadata = cachedMetadataByPath.get(resolvedPath);
-				if (cachedMetadata?.mtimeMs === fileStat.mtimeMs && cachedMetadata.sizeBytes === fileStat.size) {
+				if (cachedMetadata?.mtimeMs === fileStat.mtimeMs && cachedMetadata.sizeBytes === fileStat.size)
+				{
 					continue;
 				}
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 			await trackActivity(`file-content scan ${trackedPath}`, async () =>
@@ -382,7 +480,10 @@ export async function scanFileContentRoots(
 		}
 	}
 
-	const indexedPaths = db.all<{path: string}>(sql`SELECT path FROM file_content`);
+	const indexedPaths = db.all<
+	{
+		path: string;
+	}>(sql`SELECT path FROM file_content`);
 	const stalePaths = indexedPaths
 		.map((indexedPath) => indexedPath.path)
 		.filter(
@@ -390,12 +491,16 @@ export async function scanFileContentRoots(
 				!isPathInsideFileContentRoots(indexedPath, roots) ||
 				(scanComplete && !discoveredPaths.has(indexedPath)),
 		);
-	for (let offset = 0; offset < stalePaths.length; offset += FILE_CONTENT_CLEANUP_BATCH_SIZE) {
+	for (let offset = 0; offset < stalePaths.length; offset += FILE_CONTENT_CLEANUP_BATCH_SIZE)
+	{
 		signal?.throwIfAborted();
 		const batch = stalePaths.slice(offset, offset + FILE_CONTENT_CLEANUP_BATCH_SIZE);
-		await retryWhileBusy(() => {
-			db.transaction((transaction) => {
-				for (const stalePath of batch) {
+		await retryWhileBusy(() =>
+		{
+			db.transaction((transaction) =>
+			{
+				for (const stalePath of batch)
+				{
 					transaction.run(sql`DELETE FROM file_content WHERE path = ${stalePath}`);
 					transaction
 						.delete(schema.indexedFiles)
@@ -404,18 +509,23 @@ export async function scanFileContentRoots(
 				}
 			});
 		}, signal);
-		await new Promise<void>((resolveYield) => {
+		await new Promise<void>((resolveYield) =>
+		{
 			setImmediate(resolveYield);
 		});
 	}
 }
 
-export async function indexSessionsIndex(db: IndexDb, projectDir: string, project: string): Promise<void> {
+export async function indexSessionsIndex(db: IndexDb, projectDir: string, project: string): Promise<void>
+{
 	const indexPath = join(projectDir, "sessions-index.json");
 	let fileStat: Awaited<ReturnType<typeof stat>>;
-	try {
+	try
+	{
 		fileStat = await stat(indexPath);
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
 
@@ -423,16 +533,22 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 	if (existing && existing.mtimeMs === fileStat.mtimeMs) return;
 
 	let raw: string;
-	try {
+	try
+	{
 		raw = await readFile(indexPath, "utf-8");
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
 
 	let parsed: unknown;
-	try {
+	try
+	{
 		parsed = JSON.parse(raw);
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
 
@@ -447,7 +563,8 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 	persistProject(db, project, projectPath, fileStat.mtimeMs);
 
 	// Upsert sessions
-	for (const entry of result.data.entries) {
+	for (const entry of result.data.entries)
+	{
 		const fp = await resolveFirstPrompt(entry.firstPrompt, entry.fullPath);
 		const summ = entry.summary;
 		const branch = normalizeGitBranch(entry.gitBranch);
@@ -455,105 +572,126 @@ export async function indexSessionsIndex(db: IndexDb, projectDir: string, projec
 		const sidechain = entry.isSidechain;
 		// Transcript-derived titles (custom, then ai) outrank anything
 		// sessions-index.json knows; the coalesce below keeps them on rewrite.
-		const title = resolveSessionTitle({
-			summary: summ,
-			firstPrompt: fp ?? undefined,
-			sessionId: entry.sessionId,
-		});
+		const title = resolveSessionTitle(
+			{
+				summary: summ,
+				firstPrompt: fp ?? undefined,
+				sessionId: entry.sessionId,
+			},
+		);
 		const createdAt = entry.created ? new Date(entry.created).getTime() : entry.fileMtime;
 
 		db.insert(schema.sessions)
-			.values({
-				id: entry.sessionId,
-				projectId: project,
-				title,
-				firstPrompt: fp?.text ?? null,
-				summary: summ ?? null,
-				customTitle: null,
-				aiTitle: null,
-				// sessions-index.json counts messages with Claude Code's own
-				// definition, which disagrees with ours (see message-count.ts).
-				// indexJsonlFile owns message_count; a fresh row starts at 0 until
-				// the transcript itself is indexed.
-				messageCount: 0,
-				gitBranch: branch,
-				cwd: entryProjectPath ?? null,
-				isSidechain: sidechain ? 1 : 0,
-				createdAt,
-				mtimeMs: entry.fileMtime,
-				filePath: entry.fullPath,
-			})
-			.onConflictDoUpdate({
-				target: schema.sessions.id,
-				set: {
-					// Mirrors resolveSessionTitle, with the transcript's indexed bridge record standing in for `bridged`
-					// and a custom title pushed to claude.ai/code lifting it, as in TitleRecordCollector.finish.
-					title: sql<string>`CASE WHEN ${sessionRemoteControlColumn}
-						AND ${schema.sessions.customTitle} IS NOT ${bridgePushedTitle(entry.sessionId)}
-						THEN coalesce(${schema.sessions.aiTitle}, ${schema.sessions.customTitle}, ${title})
-						ELSE coalesce(${schema.sessions.customTitle}, ${schema.sessions.aiTitle}, ${title}) END`,
+			.values(
+				{
+					id: entry.sessionId,
+					projectId: project,
+					title,
 					firstPrompt: fp?.text ?? null,
 					summary: summ ?? null,
+					customTitle: null,
+					aiTitle: null,
+					// sessions-index.json counts messages with Claude Code's own
+					// definition, which disagrees with ours (see message-count.ts).
+					// indexJsonlFile owns message_count; a fresh row starts at 0 until
+					// the transcript itself is indexed.
+					messageCount: 0,
 					gitBranch: branch,
 					cwd: entryProjectPath ?? null,
 					isSidechain: sidechain ? 1 : 0,
-					// indexJsonlFile owns mtime_ms once the row exists, dating it by the transcript's last record.
+					createdAt,
+					mtimeMs: entry.fileMtime,
+					filePath: entry.fullPath,
 				},
-			})
+			)
+			.onConflictDoUpdate(
+				{
+					target: schema.sessions.id,
+					set:
+					{
+						// Mirrors resolveSessionTitle, with the transcript's indexed bridge record standing in for `bridged`
+						// and a custom title pushed to claude.ai/code lifting it, as in TitleRecordCollector.finish.
+						title: sql<string>`CASE WHEN ${sessionRemoteControlColumn}
+						AND ${schema.sessions.customTitle} IS NOT ${bridgePushedTitle(entry.sessionId)}
+						THEN coalesce(${schema.sessions.aiTitle}, ${schema.sessions.customTitle}, ${title})
+						ELSE coalesce(${schema.sessions.customTitle}, ${schema.sessions.aiTitle}, ${title}) END`,
+						firstPrompt: fp?.text ?? null,
+						summary: summ ?? null,
+						gitBranch: branch,
+						cwd: entryProjectPath ?? null,
+						isSidechain: sidechain ? 1 : 0,
+						// indexJsonlFile owns mtime_ms once the row exists, dating it by the transcript's last record.
+					},
+				},
+			)
 			.run();
 	}
 
 	// Update indexed_files
 	db.insert(schema.indexedFiles)
-		.values({
-			path: indexPath,
-			mtimeMs: fileStat.mtimeMs,
-			sizeBytes: fileStat.size,
-			indexedAt: Date.now(),
-		})
-		.onConflictDoUpdate({
-			target: schema.indexedFiles.path,
-			set: {
+		.values(
+			{
+				path: indexPath,
 				mtimeMs: fileStat.mtimeMs,
 				sizeBytes: fileStat.size,
 				indexedAt: Date.now(),
 			},
-		})
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.indexedFiles.path,
+				set:
+				{
+					mtimeMs: fileStat.mtimeMs,
+					sizeBytes: fileStat.size,
+					indexedAt: Date.now(),
+				},
+			},
+		)
 		.run();
 }
 
 /** Agent → subagent links found in a transcript, applied to the subagents table by applySubagentLinks. */
-interface SubagentLink {
+interface SubagentLink
+{
 	agentId: string;
 	description: string | null;
 }
 
 /** Pairs each Agent tool_use with the tool_result that names the subagent it started. */
-class SubagentLinkCollector {
+class SubagentLinkCollector
+{
 	private readonly toolCallDescriptions = new Map<string, string>();
 	readonly links: SubagentLink[] = [];
 
-	add(record: unknown): void {
+	add(record: unknown): void
+	{
 		const content = asRecord(asRecord(record)?.["message"])?.["content"];
 		if (!Array.isArray(content)) return;
 
-		for (const block of content) {
+		for (const block of content)
+		{
 			if (!isRecord(block)) continue;
 			const id = stringField(block, "id");
 			const toolUseId = stringField(block, "tool_use_id");
 
 			// Track Agent tool_use calls by their id + description
-			if (block["type"] === "tool_use" && block["name"] === "Agent" && id) {
+			if (block["type"] === "tool_use" && block["name"] === "Agent" && id)
+			{
 				this.toolCallDescriptions.set(id, stringField(block["input"], "description") ?? "");
 			}
 
 			// Extract agentId from tool_result
-			if (block["type"] === "tool_result" && toolUseId && this.toolCallDescriptions.has(toolUseId)) {
+			if (block["type"] === "tool_result" && toolUseId && this.toolCallDescriptions.has(toolUseId))
+			{
 				let resultText = "";
 				const resultContent = block["content"];
-				if (typeof resultContent === "string") {
+				if (typeof resultContent === "string")
+				{
 					resultText = resultContent;
-				} else if (Array.isArray(resultContent)) {
+				}
+				else if (Array.isArray(resultContent))
+				{
 					resultText = resultContent
 						.flatMap((b: unknown) =>
 							isRecord(b) && b["type"] === "text" ? (stringField(b, "text") ?? []) : [],
@@ -561,19 +699,24 @@ class SubagentLinkCollector {
 						.join(" ");
 				}
 				const match = AGENT_ID_RE.exec(resultText);
-				if (match?.[1]) {
-					this.links.push({
-						agentId: `agent-${match[1]}`,
-						description: nonEmpty(this.toolCallDescriptions.get(toolUseId)) ?? null,
-					});
+				if (match?.[1])
+				{
+					this.links.push(
+						{
+							agentId: `agent-${match[1]}`,
+							description: nonEmpty(this.toolCallDescriptions.get(toolUseId)) ?? null,
+						},
+					);
 				}
 			}
 		}
 	}
 }
 
-function applySubagentLinks(db: IndexDb, links: readonly SubagentLink[], parentAgentId: string | null): void {
-	for (const {agentId, description} of links) {
+function applySubagentLinks(db: IndexDb, links: readonly SubagentLink[], parentAgentId: string | null): void
+{
+	for (const {agentId, description} of links)
+	{
 		// COALESCE keeps existing parentAgentId so the root-session
 		// pass doesn't overwrite nested parent links.
 		db.run(
@@ -582,7 +725,8 @@ function applySubagentLinks(db: IndexDb, links: readonly SubagentLink[], parentA
 	}
 }
 
-interface IndexedMessage {
+interface IndexedMessage
+{
 	sessionId: string;
 	messageIndex: number;
 	role: "user" | "assistant";
@@ -592,16 +736,23 @@ interface IndexedMessage {
 /** Upstream trims a described row's message to one line; this keeps the stored copy short. */
 const LAST_USER_MESSAGE_MAX = 200;
 
-function firstLine(text: string): string {
+function firstLine(text: string): string
+{
 	return text.trim().split(/\r?\n/, 1)[0]?.trim() ?? "";
 }
 
 /** Everything indexJsonlFile derives from a session transcript, folded one line at a time. */
-class SessionIndexState {
+class SessionIndexState
+{
 	readonly bridgeSessions = new BridgeSessionCollector();
 	readonly planFilenames = new Set<string>();
 	readonly titleRecords = new TitleRecordCollector();
-	latestPrLink: {prNumber: number; prUrl: string; prRepository: string} | null = null;
+	latestPrLink:
+	{
+		prNumber: number;
+		prUrl: string;
+		prRepository: string;
+	} | null = null;
 	forkedFromSessionId: string | null = null;
 	lastSessionCwd: string | undefined;
 	anchoredSessionCwd: string | undefined;
@@ -635,20 +786,27 @@ class SessionIndexState {
 	constructor(
 		readonly sessionId: string,
 		readonly project: string,
-	) {}
+	)
+	{
+	}
 
 	/** Track TaskStop and KillShell calls, keeping the targets of the ones that succeeded. */
-	private collectStops(obj: Record<string, unknown>): void {
+	private collectStops(obj: Record<string, unknown>): void
+	{
 		const content = asRecord(obj["message"])?.["content"];
 		if (!Array.isArray(content)) return;
-		for (const block of content) {
+		for (const block of content)
+		{
 			if (!isRecord(block)) continue;
-			if (block["type"] === "tool_use" && (block["name"] === "TaskStop" || block["name"] === "KillShell")) {
+			if (block["type"] === "tool_use" && (block["name"] === "TaskStop" || block["name"] === "KillShell"))
+			{
 				const input = asRecord(block["input"]);
 				const target = stringField(input, "task_id") ?? stringField(input, "shell_id");
 				const id = stringField(block, "id");
 				if (target !== null && id !== null) this.pendingStops.set(id, target);
-			} else if (block["type"] === "tool_result") {
+			}
+			else if (block["type"] === "tool_result")
+			{
 				const id = stringField(block, "tool_use_id");
 				const target = id === null ? undefined : this.pendingStops.get(id);
 				if (id === null || target === undefined) continue;
@@ -658,171 +816,231 @@ class SessionIndexState {
 		}
 	}
 
-	add(line: string): void {
+	add(line: string): void
+	{
 		this.firstPrompt.add(line);
 
-		if (line.includes("file-history-snapshot")) {
-			try {
+		if (line.includes("file-history-snapshot"))
+		{
+			try
+			{
 				const parsed: unknown = JSON.parse(line);
 				const result = FileHistorySnapshotSchema.safeParse(parsed);
-				if (result.success) {
-					for (const key of Object.keys(result.data.snapshot.trackedFileBackups)) {
+				if (result.success)
+				{
+					for (const key of Object.keys(result.data.snapshot.trackedFileBackups))
+					{
 						const match = PLAN_PATH_RE.exec(key);
 						if (match?.[1]) this.planFilenames.add(match[1]);
 					}
 				}
-			} catch {
+			}
+			catch
+			{
 				// skip
 			}
 		}
 
 		// plan_mode attachments link a session to its plan file even before
 		// the plan is edited (file-history-snapshot only fires after edits).
-		if (line.includes('"plan_mode"')) {
-			try {
+		if (line.includes('"plan_mode"'))
+		{
+			try
+			{
 				const parsed: unknown = JSON.parse(line);
 				const result = AttachmentRecordSchema.safeParse(parsed);
-				if (result.success && result.data.attachment.type === "plan_mode") {
+				if (result.success && result.data.attachment.type === "plan_mode")
+				{
 					const planPath = result.data.attachment.planFilePath;
-					if (planPath) {
+					if (planPath)
+					{
 						const match = PLAN_PATH_RE.exec(planPath);
 						if (match?.[1]) this.planFilenames.add(match[1]);
 					}
 				}
-			} catch {
+			}
+			catch
+			{
 				// skip
 			}
 		}
 
-		if (line.includes('"cwd"')) {
-			try {
+		if (line.includes('"cwd"'))
+		{
+			try
+			{
 				const cwd = stringField(JSON.parse(line), "cwd");
-				if (cwd !== null) {
+				if (cwd !== null)
+				{
 					this.lastSessionCwd = cwd;
-					if (encodeProjectPath(cwd) === this.project) {
+					if (encodeProjectPath(cwd) === this.project)
+					{
 						this.anchoredSessionCwd = cwd;
 					}
 				}
-			} catch {
+			}
+			catch
+			{
 				// skip
 			}
 		}
 
 		// Extract gitBranch from early lines. Detached-HEAD lines normalize to
 		// null, so keep scanning until a real branch name appears (if any).
-		if (!this.sessionGitBranch && line.includes('"gitBranch"')) {
-			try {
+		if (!this.sessionGitBranch && line.includes('"gitBranch"'))
+		{
+			try
+			{
 				const gitBranch = stringField(JSON.parse(line), "gitBranch");
-				if (gitBranch !== null) {
+				if (gitBranch !== null)
+				{
 					this.sessionGitBranch = normalizeGitBranch(gitBranch);
 				}
-			} catch {
+			}
+			catch
+			{
 				// skip
 			}
 		}
 
 		// Latest wins: a session that opened a second PR links to the newer one.
-		if (line.includes('"pr-link"')) {
-			try {
+		if (line.includes('"pr-link"'))
+		{
+			try
+			{
 				const result = PrLinkRecordSchema.safeParse(JSON.parse(line));
 				if (result.success) this.latestPrLink = result.data;
-			} catch {
+			}
+			catch
+			{
 				// skip
 			}
 		}
 
 		// First wins: every record of a branched session carries the same lineage.
-		if (this.forkedFromSessionId === null && line.includes('"forkedFrom"')) {
-			try {
+		if (this.forkedFromSessionId === null && line.includes('"forkedFrom"'))
+		{
+			try
+			{
 				const result = ForkedFromSchema.safeParse(asRecord(JSON.parse(line))?.["forkedFrom"]);
-				if (result.success) {
+				if (result.success)
+				{
 					this.forkedFromSessionId = typeof result.data === "string" ? result.data : result.data.sessionId;
 				}
-			} catch {
+			}
+			catch
+			{
 				// skip
 			}
 		}
 
-		if (isTitleSourceLine(line)) {
-			try {
+		if (isTitleSourceLine(line))
+		{
+			try
+			{
 				this.titleRecords.add(JSON.parse(line));
-			} catch {
+			}
+			catch
+			{
 				// skip
 			}
 		}
 
 		let obj: unknown;
-		try {
+		try
+		{
 			obj = JSON.parse(line);
-		} catch {
+		}
+		catch
+		{
 			return; // skip malformed lines
 		}
 		if (!isRecord(obj)) return;
 		const type = obj["type"];
 		if (type === "bridge-session") this.bridgeSessions.add(obj, this.sessionId);
 		const timestamp = obj["timestamp"];
-		if ((type === "user" || type === "assistant") && obj["isSidechain"] !== true && obj["isMeta"] !== true) {
+		if ((type === "user" || type === "assistant") && obj["isSidechain"] !== true && obj["isMeta"] !== true)
+		{
 			this.erroredAt =
 				type === "assistant" && obj["isApiErrorMessage"] === true && typeof timestamp === "string"
 					? Date.parse(timestamp)
 					: null;
 		}
-		if (typeof timestamp === "string") {
+		if (typeof timestamp === "string")
+		{
 			const recordAt = Date.parse(timestamp);
 			if (recordAt > (this.lastRecordAt ?? -Infinity)) this.lastRecordAt = recordAt;
 			if (
 				type === "system" &&
 				TURN_END_SUBTYPES.has(obj["subtype"]) &&
 				recordAt > (this.lastTurnEndAt ?? -Infinity)
-			) {
+			)
+			{
 				this.lastTurnEndAt = recordAt;
 			}
 		}
 
-		try {
+		try
+		{
 			this.subagentLinks.add(obj);
-		} catch {
+		}
+		catch
+		{
 			// malformed content blocks
 		}
 		this.collectStops(obj);
 
 		// Extract text content for FTS indexing
-		try {
+		try
+		{
 			this.messages.add(obj);
 			this.artifactEvents.add(obj);
 			this.routines.add(obj);
 			this.usage.add(obj);
-			if (type === "user") {
+			if (type === "user")
+			{
 				const prompt = typedRecordPromptText(obj);
 				if (prompt !== null) this.lastUserMessage = firstLine(prompt).slice(0, LAST_USER_MESSAGE_MAX);
 			}
-			if (type === "user" || type === "assistant") {
+			if (type === "user" || type === "assistant")
+			{
 				const content = asRecord(obj["message"])?.["content"];
 				const messageText: string[] = [];
 				const userText = (text: string) => (type === "user" ? unwrapPastedContent(text) : text);
-				if (typeof content === "string") {
+				if (typeof content === "string")
+				{
 					messageText.push(userText(content));
-				} else if (Array.isArray(content)) {
-					for (const block of content) {
+				}
+				else if (Array.isArray(content))
+				{
+					for (const block of content)
+					{
 						if (!isRecord(block)) continue;
 						const text = stringField(block, "text");
 						const name = stringField(block, "name");
-						if (block["type"] === "text" && text !== null) {
+						if (block["type"] === "text" && text !== null)
+						{
 							messageText.push(userText(text));
-						} else if (block["type"] === "tool_use" && name?.startsWith("mcp__")) {
+						}
+						else if (block["type"] === "tool_use" && name?.startsWith("mcp__"))
+						{
 							this.mcpToolNames.add(name);
 						}
 					}
 				}
 				const substantiveText = messageText.join("\n").trim();
-				this.indexedMessages.push({
-					sessionId: this.sessionId,
-					messageIndex: this.indexedMessages.length,
-					role: type,
-					text: substantiveText === "" ? null : substantiveText,
-				});
+				this.indexedMessages.push(
+					{
+						sessionId: this.sessionId,
+						messageIndex: this.indexedMessages.length,
+						role: type,
+						text: substantiveText === "" ? null : substantiveText,
+					},
+				);
 			}
-		} catch {
+		}
+		catch
+		{
 			// skip malformed lines
 		}
 	}
@@ -834,14 +1052,16 @@ export type JsonlIndexCache = IncrementalJsonlCache<SessionIndexState>;
 /** Each entry holds a whole transcript's parse state; a handful covers the sessions being written right now. */
 const JSONL_INDEX_CACHE_ENTRIES = 8;
 
-export function createJsonlIndexCache(): JsonlIndexCache {
+export function createJsonlIndexCache(): JsonlIndexCache
+{
 	return new IncrementalJsonlCache(JSONL_INDEX_CACHE_ENTRIES);
 }
 
 /** The cache the watcher and the hook dispatcher share for the transcripts being written right now. */
 export const liveJsonlIndexCache = createJsonlIndexCache();
 
-export interface IndexJsonlOptions {
+export interface IndexJsonlOptions
+{
 	/** Resume from, and keep, the file's parse state here instead of reading the whole transcript. */
 	cache?: JsonlIndexCache;
 }
@@ -851,9 +1071,15 @@ export async function indexJsonlFile(
 	filePath: string,
 	project: string,
 	options: IndexJsonlOptions = {},
-): Promise<{linkedPlans: string[]}> {
+): Promise<
+{
+	linkedPlans: string[];
+}>
+{
 	const {linkedPlans} = await indexJsonlFileWithLinks(db, filePath, project, options);
-	return {linkedPlans};
+	return {
+		linkedPlans,
+	};
 }
 
 /** indexJsonlFile, plus the subagent links of the transcript when they are known without another read. */
@@ -862,59 +1088,86 @@ async function indexJsonlFileWithLinks(
 	reportedFilePath: string,
 	project: string,
 	{cache}: IndexJsonlOptions,
-): Promise<{linkedPlans: string[]; subagentLinks?: readonly SubagentLink[]}> {
+): Promise<
+{
+	linkedPlans: string[];
+	subagentLinks?: readonly SubagentLink[];
+}>
+{
 	// One transcript keeps one indexed_files row, cache entry and sessions.filePath
 	// whether it was reached through a symlinked ~/.claude or its real path.
 	const filePath = canonicalPath(reportedFilePath);
 	let fileStat: Stats;
-	try {
+	try
+	{
 		fileStat = await stat(filePath);
-	} catch {
-		return {linkedPlans: []};
+	}
+	catch
+	{
+		return {
+			linkedPlans: [],
+		};
 	}
 
 	const sessionId = basename(filePath, ".jsonl");
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
-	if (existing && existing.mtimeMs === fileStat.mtimeMs) {
+	if (existing && existing.mtimeMs === fileStat.mtimeMs)
+	{
 		// Only trust the mtime skip when the session row actually exists; a
 		// stale indexed_files row must not leave a re-inserted session at
 		// messageCount 0 forever.
 		const sessionRow = db
-			.select({
-				id: schema.sessions.id,
-				filePath: schema.sessions.filePath,
-				bridgeMetadataKey: schema.metadata.key,
-			})
+			.select(
+				{
+					id: schema.sessions.id,
+					filePath: schema.sessions.filePath,
+					bridgeMetadataKey: schema.metadata.key,
+				},
+			)
 			.from(schema.sessions)
 			.leftJoin(schema.metadata, eq(schema.metadata.key, sessionBridgeMetadataKey(sessionId)))
 			.where(eq(schema.sessions.id, sessionId))
 			.get();
-		if (sessionRow) {
-			if (sessionRow.filePath === filePath && sessionRow.bridgeMetadataKey === null) {
+		if (sessionRow)
+		{
+			if (sessionRow.filePath === filePath && sessionRow.bridgeMetadataKey === null)
+			{
 				await backfillSessionBridgeAliases(db, filePath, sessionId);
 			}
 			const current =
 				cache === undefined ? undefined : await currentJsonlState(cache, filePath).catch(() => undefined);
 			return current?.project === project
-				? {linkedPlans: [], subagentLinks: current.subagentLinks.links}
-				: {linkedPlans: []};
+				?
+					{
+						linkedPlans: [],
+						subagentLinks: current.subagentLinks.links,
+					}
+				:
+					{
+						linkedPlans: [],
+					};
 		}
 	}
 
-	const parseAndPersist = async () => {
+	const parseAndPersist = async () =>
+	{
 		if (cache !== undefined && cache.get(filePath)?.state.project !== project) cache.delete(filePath);
 		const state = await foldJsonl(
 			filePath,
 			{
 				create: () => new SessionIndexState(sessionId, project),
-				add: (folded, line) => {
+				add: (folded, line) =>
+				{
 					folded.add(line);
 				},
 			},
 			cache,
 		);
 		const linkedPlans = await persistSessionIndexState(db, filePath, project, fileStat, state);
-		return {linkedPlans, subagentLinks: state.subagentLinks.links};
+		return {
+			linkedPlans,
+			subagentLinks: state.subagentLinks.links,
+		};
 	};
 	return cache === undefined ? parseAndPersist() : cache.exclusive(filePath, parseAndPersist);
 }
@@ -925,7 +1178,8 @@ async function persistSessionIndexState(
 	project: string,
 	fileStat: Stats,
 	state: SessionIndexState,
-): Promise<string[]> {
+): Promise<string[]>
+{
 	const {sessionId} = state;
 	const {customTitle, aiTitle, bridged} = await state.titleRecords.finish(filePath);
 	const sessionCwd = state.anchoredSessionCwd ?? state.lastSessionCwd;
@@ -936,10 +1190,17 @@ async function persistSessionIndexState(
 
 	// Upsert plan links, keeping the ones this pass added: a re-parse after an append must not re-announce old links.
 	const newlyLinkedPlans: string[] = [];
-	for (const planFilename of state.planFilenames) {
+	for (const planFilename of state.planFilenames)
+	{
 		const {changes} = db
 			.insert(schema.planSessions)
-			.values({planFilename, sessionId, projectId: project})
+			.values(
+				{
+					planFilename,
+					sessionId,
+					projectId: project,
+				},
+			)
 			.onConflictDoNothing()
 			.run();
 		if (changes > 0) newlyLinkedPlans.push(planFilename);
@@ -952,8 +1213,10 @@ async function persistSessionIndexState(
 	const projectPath = state.anchoredSessionCwd ?? (await resolveProjectPath(project));
 
 	persistProject(db, project, projectPath, fileStat.mtimeMs);
-	if (existingSession) {
-		const updates: Record<string, unknown> = {
+	if (existingSession)
+	{
+		const updates: Record<string, unknown> =
+		{
 			mtimeMs: activityAt,
 			messageCount,
 			turnEndedAt: state.lastTurnEndAt,
@@ -970,55 +1233,65 @@ async function persistSessionIndexState(
 		updates["prUrl"] = latestPrLink?.prUrl ?? null;
 		updates["prRepository"] = latestPrLink?.prRepository ?? null;
 		updates["forkedFromSessionId"] = forkedFromSessionId;
-		updates["title"] = resolveSessionTitle({
-			customTitle,
-			aiTitle,
-			bridged,
-			summary: existingSession.summary ?? undefined,
-			firstPrompt: firstPrompt ?? undefined,
-			sessionId,
-		});
-		if (sessionCwd) {
+		updates["title"] = resolveSessionTitle(
+			{
+				customTitle,
+				aiTitle,
+				bridged,
+				summary: existingSession.summary ?? undefined,
+				firstPrompt: firstPrompt ?? undefined,
+				sessionId,
+			},
+		);
+		if (sessionCwd)
+		{
 			updates["cwd"] = sessionCwd;
 		}
-		if (sessionGitBranch) {
+		if (sessionGitBranch)
+		{
 			updates["gitBranch"] = sessionGitBranch;
 		}
 		db.update(schema.sessions).set(updates).where(eq(schema.sessions.id, sessionId)).run();
-	} else {
-		const title = resolveSessionTitle({
-			customTitle,
-			aiTitle,
-			bridged,
-			firstPrompt: firstPrompt ?? undefined,
-			sessionId,
-		});
+	}
+	else
+	{
+		const title = resolveSessionTitle(
+			{
+				customTitle,
+				aiTitle,
+				bridged,
+				firstPrompt: firstPrompt ?? undefined,
+				sessionId,
+			},
+		);
 
 		db.insert(schema.sessions)
-			.values({
-				id: sessionId,
-				projectId: project,
-				title,
-				firstPrompt: firstPrompt?.text ?? null,
-				lastUserMessage: state.lastUserMessage,
-				summary: null,
-				customTitle: customTitle ?? null,
-				aiTitle: aiTitle ?? null,
-				prNumber: latestPrLink?.prNumber ?? null,
-				prUrl: latestPrLink?.prUrl ?? null,
-				prRepository: latestPrLink?.prRepository ?? null,
-				forkedFromSessionId,
-				messageCount,
-				gitBranch: sessionGitBranch,
-				cwd: sessionCwd ?? null,
-				isSidechain: 0,
-				createdAt: fileStat.birthtimeMs,
-				mtimeMs: activityAt,
-				filePath,
-				turnEndedAt: state.lastTurnEndAt,
-				erroredAt: state.erroredAt,
-				stoppedTaskIdsJson: JSON.stringify([...state.stoppedTaskIds]),
-			})
+			.values(
+				{
+					id: sessionId,
+					projectId: project,
+					title,
+					firstPrompt: firstPrompt?.text ?? null,
+					lastUserMessage: state.lastUserMessage,
+					summary: null,
+					customTitle: customTitle ?? null,
+					aiTitle: aiTitle ?? null,
+					prNumber: latestPrLink?.prNumber ?? null,
+					prUrl: latestPrLink?.prUrl ?? null,
+					prRepository: latestPrLink?.prRepository ?? null,
+					forkedFromSessionId,
+					messageCount,
+					gitBranch: sessionGitBranch,
+					cwd: sessionCwd ?? null,
+					isSidechain: 0,
+					createdAt: fileStat.birthtimeMs,
+					mtimeMs: activityAt,
+					filePath,
+					turnEndedAt: state.lastTurnEndAt,
+					erroredAt: state.erroredAt,
+					stoppedTaskIdsJson: JSON.stringify([...state.stoppedTaskIds]),
+				},
+			)
 			.run();
 	}
 
@@ -1028,22 +1301,29 @@ async function persistSessionIndexState(
 	// live append tokenizes only the new messages.
 	const {indexedMessages, persistedMessages} = state;
 	let contentRows = 0;
-	db.transaction((transaction) => {
+	db.transaction((transaction) =>
+	{
 		const persisted =
 			persistedMessages > 0
-				? transaction.get<{messages: number; content: number}>(
+				? transaction.get<
+					{
+						messages: number;
+						content: number;
+					}>(
 						sql`SELECT
 							(SELECT count(*) FROM session_messages WHERE session_id = ${sessionId}) AS messages,
 							(SELECT count(*) FROM message_content WHERE session_id = ${sessionId}) AS content`,
 					)
 				: undefined;
 		const resumed = persisted?.messages === persistedMessages && persisted.content === state.persistedContentRows;
-		if (!resumed) {
+		if (!resumed)
+		{
 			transaction.delete(schema.sessionMessages).where(eq(schema.sessionMessages.sessionId, sessionId)).run();
 			transaction.run(sql`DELETE FROM message_content WHERE session_id = ${sessionId}`);
 		}
 		const firstNew = resumed ? persistedMessages : 0;
-		for (let offset = firstNew; offset < indexedMessages.length; offset += SESSION_MESSAGE_INSERT_BATCH_SIZE) {
+		for (let offset = firstNew; offset < indexedMessages.length; offset += SESSION_MESSAGE_INSERT_BATCH_SIZE)
+		{
 			transaction
 				.insert(schema.sessionMessages)
 				.values(indexedMessages.slice(offset, offset + SESSION_MESSAGE_INSERT_BATCH_SIZE))
@@ -1063,88 +1343,140 @@ async function persistSessionIndexState(
 	state.persistedMessages = indexedMessages.length;
 	state.persistedContentRows = contentRows;
 
-	db.transaction((transaction) => {
+	db.transaction((transaction) =>
+	{
 		transaction.delete(schema.sessionMcpTools).where(eq(schema.sessionMcpTools.sessionId, sessionId)).run();
-		if (state.mcpToolNames.size > 0) {
+		if (state.mcpToolNames.size > 0)
+		{
 			transaction
 				.insert(schema.sessionMcpTools)
-				.values(Array.from(state.mcpToolNames, (toolName) => ({sessionId, toolName})))
+				.values(
+					Array.from(state.mcpToolNames, (toolName) => (
+					{
+						sessionId,
+						toolName,
+					})),
+				)
 				.run();
 		}
 	});
 
 	replaceArtifactEvents(
 		db,
-		{filePath, sessionId, projectId: project, isSubagent: false},
+		{
+			filePath,
+			sessionId,
+			projectId: project,
+			isSubagent: false,
+		},
 		state.artifactEvents.events(),
 	);
-	replaceRoutines(db, {filePath, sessionId, projectId: project}, state.routines.routines());
-	replaceUsageDaily(db, {filePath, sessionId}, state.usage.rows());
+	replaceRoutines(
+		db,
+		{
+			filePath,
+			sessionId,
+			projectId: project,
+		},
+		state.routines.routines(),
+	);
+	replaceUsageDaily(
+		db,
+		{
+			filePath,
+			sessionId,
+		},
+		state.usage.rows(),
+	);
 	replaceSessionBridgeAliases(db, sessionId, state.bridgeSessions);
 
 	// Update indexed_files
 	db.insert(schema.indexedFiles)
-		.values({
-			path: filePath,
-			mtimeMs: fileStat.mtimeMs,
-			sizeBytes: fileStat.size,
-			indexedAt: Date.now(),
-		})
-		.onConflictDoUpdate({
-			target: schema.indexedFiles.path,
-			set: {
+		.values(
+			{
+				path: filePath,
 				mtimeMs: fileStat.mtimeMs,
 				sizeBytes: fileStat.size,
 				indexedAt: Date.now(),
 			},
-		})
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.indexedFiles.path,
+				set:
+				{
+					mtimeMs: fileStat.mtimeMs,
+					sizeBytes: fileStat.size,
+					indexedAt: Date.now(),
+				},
+			},
+		)
 		.run();
 	return newlyLinkedPlans;
 }
 
 /** Foreground Bash calls still waiting on their result, newest last. */
-class PendingCommandCollector {
+class PendingCommandCollector
+{
 	private readonly pending = new Map<string, string>();
 
-	add(obj: unknown): void {
+	add(obj: unknown): void
+	{
 		const content = asRecord(asRecord(obj)?.["message"])?.["content"];
 		if (!Array.isArray(content)) return;
-		for (const block of content) {
+		for (const block of content)
+		{
 			if (!isRecord(block)) continue;
 			const id = stringField(block, "id");
-			if (block["type"] === "tool_use" && block["name"] === "Bash" && id !== null) {
+			if (block["type"] === "tool_use" && block["name"] === "Bash" && id !== null)
+			{
 				const input = asRecord(block["input"]);
 				if (input?.["run_in_background"] === true) continue;
 				this.pending.set(id, stringField(input, "description") ?? stringField(input, "command") ?? "Bash");
-			} else if (block["type"] === "tool_result") {
+			}
+			else if (block["type"] === "tool_result")
+			{
 				const toolUseId = stringField(block, "tool_use_id");
 				if (toolUseId !== null) this.pending.delete(toolUseId);
 			}
 		}
 	}
 
-	latest(): string | null {
+	latest(): string | null
+	{
 		return [...this.pending.values()].at(-1) ?? null;
 	}
 }
 
 /** Whether an agent's transcript ends idle: its last message is an end_turn reply that no later user record woke. */
-class IdleCollector {
-	private last: {type: string; stopReason: string | null} | null = null;
+class IdleCollector
+{
+	private last:
+	{
+		type: string;
+		stopReason: string | null;
+	} | null = null;
 
-	add(obj: unknown): void {
+	add(obj: unknown): void
+	{
 		const type = stringField(obj, "type");
 		if (type !== "user" && type !== "assistant") return;
-		this.last = {type, stopReason: stringField(asRecord(obj)?.["message"], "stop_reason")};
+		this.last =
+		{
+			type,
+			stopReason: stringField(asRecord(obj)?.["message"], "stop_reason"),
+		};
 	}
 
-	idle(): boolean {
+	idle(): boolean
+	{
 		return this.last?.type === "assistant" && this.last.stopReason === "end_turn";
 	}
 }
 
 /** Everything indexSubagentFile derives from a subagent transcript, folded one line at a time. */
-class SubagentIndexState {
+class SubagentIndexState
+{
 	slug: string | null = null;
 	attributionAgent: string | null = null;
 	resolvedModel: string | null = null;
@@ -1156,11 +1488,15 @@ class SubagentIndexState {
 	readonly idleness = new IdleCollector();
 	readonly subagentLinks = new SubagentLinkCollector();
 
-	add(line: string): void {
+	add(line: string): void
+	{
 		let obj: unknown;
-		try {
+		try
+		{
 			obj = JSON.parse(line);
-		} catch {
+		}
+		catch
+		{
 			return;
 		}
 		const recordAttributionAgent = stringField(obj, "attributionAgent");
@@ -1170,7 +1506,8 @@ class SubagentIndexState {
 		const recordModel = stringField(asRecord(obj)?.["message"], "model");
 		if (recordModel && recordModel !== SYNTHETIC_MODEL && !this.resolvedModel) this.resolvedModel = recordModel;
 		const timestamp = stringField(obj, "timestamp");
-		if (timestamp) {
+		if (timestamp)
+		{
 			this.startedAt ??= timestamp;
 			this.finishedAt = timestamp;
 		}
@@ -1188,7 +1525,8 @@ export type SubagentIndexCache = IncrementalJsonlCache<SubagentIndexState>;
 /** Subagent states are small next to a session's message rows, and a busy session runs many subagents at once. */
 const SUBAGENT_INDEX_CACHE_ENTRIES = 32;
 
-export function createSubagentIndexCache(): SubagentIndexCache {
+export function createSubagentIndexCache(): SubagentIndexCache
+{
 	return new IncrementalJsonlCache(SUBAGENT_INDEX_CACHE_ENTRIES);
 }
 
@@ -1202,7 +1540,8 @@ export async function indexSubagentFile(
 	sessionId: string,
 	project: string,
 	cache?: SubagentIndexCache,
-): Promise<boolean> {
+): Promise<boolean>
+{
 	return (await indexSubagentFileWithLinks(db, filePath, sessionId, project, cache)).changed;
 }
 
@@ -1213,34 +1552,59 @@ async function indexSubagentFileWithLinks(
 	sessionId: string,
 	project: string,
 	cache: SubagentIndexCache | undefined,
-): Promise<{changed: boolean; subagentLinks?: readonly SubagentLink[]}> {
+): Promise<
+{
+	changed: boolean;
+	subagentLinks?: readonly SubagentLink[];
+}>
+{
 	let fileStat: Awaited<ReturnType<typeof stat>>;
-	try {
+	try
+	{
 		fileStat = await stat(filePath);
-	} catch {
-		return {changed: false};
+	}
+	catch
+	{
+		return {
+			changed: false,
+		};
 	}
 
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
-	if (existing && existing.mtimeMs === fileStat.mtimeMs) {
+	if (existing && existing.mtimeMs === fileStat.mtimeMs)
+	{
 		const current =
 			cache === undefined ? undefined : await currentJsonlState(cache, filePath).catch(() => undefined);
-		return current === undefined ? {changed: false} : {changed: false, subagentLinks: current.subagentLinks.links};
+		return current === undefined
+			?
+				{
+					changed: false,
+				}
+			:
+				{
+					changed: false,
+					subagentLinks: current.subagentLinks.links,
+				};
 	}
 
-	const parseAndPersist = async () => {
+	const parseAndPersist = async () =>
+	{
 		const state = await foldJsonl(
 			filePath,
 			{
 				create: () => new SubagentIndexState(),
-				add: (folded, line) => {
+				add: (folded, line) =>
+				{
 					folded.add(line);
 				},
 			},
 			cache,
 		);
 		const changed = await persistSubagentIndexState(db, filePath, sessionId, project, fileStat, state);
-		return {changed, subagentLinks: state.subagentLinks.links};
+		return {
+			changed,
+			subagentLinks: state.subagentLinks.links,
+		};
 	};
 	return cache === undefined ? parseAndPersist() : cache.exclusive(filePath, parseAndPersist);
 }
@@ -1252,7 +1616,8 @@ async function persistSubagentIndexState(
 	project: string,
 	fileStat: Stats,
 	state: SubagentIndexState,
-): Promise<boolean> {
+): Promise<boolean>
+{
 	const agentFilename = basename(filePath, ".jsonl");
 	const metaPath = filePath.replace(/\.jsonl$/, ".meta.json");
 	let agentType: string | null = null;
@@ -1261,7 +1626,8 @@ async function persistSubagentIndexState(
 	let taskKind: string | null = null;
 	let teammateName: string | null = null;
 	let metaWorkflowPhase: string | null = null;
-	try {
+	try
+	{
 		const meta: unknown = JSON.parse(await readFile(metaPath, "utf-8"));
 		agentType = stringField(meta, "agentType");
 		metaDescription = stringField(meta, "description");
@@ -1269,10 +1635,18 @@ async function persistSubagentIndexState(
 		taskKind = stringField(meta, "taskKind");
 		teammateName = stringField(meta, "name");
 		metaWorkflowPhase = stringField(meta, "workflowPhase");
-	} catch {
+	}
+	catch
+	{
 		// no meta file
 	}
-	const workflow = await readWorkflowAgentInfo(filePath, {phase: metaWorkflowPhase, description: metaDescription});
+	const workflow = await readWorkflowAgentInfo(
+		filePath,
+		{
+			phase: metaWorkflowPhase,
+			description: metaDescription,
+		},
+	);
 	const description = workflow?.label ?? metaDescription;
 	const workflowRunId = workflow?.runId ?? null;
 	const workflowPhase = workflow?.phase ?? null;
@@ -1284,41 +1658,21 @@ async function persistSubagentIndexState(
 	const pendingCommand = state.pendingCommands.latest();
 	const idle = state.idleness.idle();
 	const previous = db
-		.select({pendingCommand: schema.subagents.pendingCommand, idle: schema.subagents.idle})
+		.select(
+			{
+				pendingCommand: schema.subagents.pendingCommand,
+				idle: schema.subagents.idle,
+			},
+		)
 		.from(schema.subagents)
 		.where(eq(schema.subagents.id, agentFilename))
 		.get();
 
 	db.insert(schema.subagents)
-		.values({
-			id: agentFilename,
-			sessionId,
-			projectId: project,
-			agentType: agentType ?? attributionAgent,
-			attributionAgent,
-			slug,
-			description,
-			model: resolvedModel ?? requestedModel,
-			startedAt,
-			finishedAt,
-			slowCommandsJson,
-			taskKind,
-			name: teammateName,
-			pendingCommand,
-			idle,
-			workflowRunId,
-			workflowPhase,
-			workflowPhaseIndex,
-			filePath,
-			mtimeMs: fileStat.mtimeMs,
-		})
-		.onConflictDoUpdate({
-			target: schema.subagents.id,
-			set: {
-				taskKind,
-				name: teammateName,
-				pendingCommand,
-				idle,
+		.values(
+			{
+				id: agentFilename,
+				sessionId,
 				projectId: project,
 				agentType: agentType ?? attributionAgent,
 				attributionAgent,
@@ -1328,33 +1682,77 @@ async function persistSubagentIndexState(
 				startedAt,
 				finishedAt,
 				slowCommandsJson,
+				taskKind,
+				name: teammateName,
+				pendingCommand,
+				idle,
 				workflowRunId,
 				workflowPhase,
 				workflowPhaseIndex,
 				filePath,
 				mtimeMs: fileStat.mtimeMs,
 			},
-		})
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.subagents.id,
+				set:
+				{
+					taskKind,
+					name: teammateName,
+					pendingCommand,
+					idle,
+					projectId: project,
+					agentType: agentType ?? attributionAgent,
+					attributionAgent,
+					slug,
+					description,
+					model: resolvedModel ?? requestedModel,
+					startedAt,
+					finishedAt,
+					slowCommandsJson,
+					workflowRunId,
+					workflowPhase,
+					workflowPhaseIndex,
+					filePath,
+					mtimeMs: fileStat.mtimeMs,
+				},
+			},
+		)
 		.run();
 
 	const artifactEvents: ArtifactEventCollector = state.artifactEvents;
-	replaceArtifactEvents(db, {filePath, sessionId, projectId: project, isSubagent: true}, artifactEvents.events());
+	replaceArtifactEvents(
+		db,
+		{
+			filePath,
+			sessionId,
+			projectId: project,
+			isSubagent: true,
+		},
+		artifactEvents.events(),
+	);
 
 	db.insert(schema.indexedFiles)
-		.values({
-			path: filePath,
-			mtimeMs: fileStat.mtimeMs,
-			sizeBytes: fileStat.size,
-			indexedAt: Date.now(),
-		})
-		.onConflictDoUpdate({
-			target: schema.indexedFiles.path,
-			set: {
+		.values(
+			{
+				path: filePath,
 				mtimeMs: fileStat.mtimeMs,
 				sizeBytes: fileStat.size,
 				indexedAt: Date.now(),
 			},
-		})
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.indexedFiles.path,
+				set:
+				{
+					mtimeMs: fileStat.mtimeMs,
+					sizeBytes: fileStat.size,
+					indexedAt: Date.now(),
+				},
+			},
+		)
 		.run();
 	return (previous?.pendingCommand ?? null) !== pendingCommand || (previous?.idle ?? false) !== idle;
 }
@@ -1362,63 +1760,91 @@ async function persistSubagentIndexState(
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
 /** `value[key]` when `value` is an object whose `key` holds a string. */
-function stringField(value: unknown, key: string): string | null {
+function stringField(value: unknown, key: string): string | null
+{
 	const field = isRecord(value) ? value[key] : undefined;
 	return typeof field === "string" ? field : null;
 }
 
-export async function linkSubagentParents(db: IndexDb, jsonlPath: string, parentAgentId: string | null): Promise<void> {
-	const rl = createLineReader(createReadStream(jsonlPath, {encoding: "utf-8"}));
+export async function linkSubagentParents(db: IndexDb, jsonlPath: string, parentAgentId: string | null): Promise<void>
+{
+	const rl = createLineReader(
+		createReadStream(
+			jsonlPath,
+			{
+				encoding: "utf-8",
+			},
+		),
+	);
 	const collector = new SubagentLinkCollector();
 	let applied = 0;
-	try {
-		for await (const line of rl) {
+	try
+	{
+		for await (const line of rl)
+		{
 			if (!line.trim()) continue;
-			try {
+			try
+			{
 				collector.add(JSON.parse(line));
-			} catch {
+			}
+			catch
+			{
 				// skip malformed lines
 			}
 			applySubagentLinks(db, collector.links.slice(applied), parentAgentId);
 			applied = collector.links.length;
 		}
-	} finally {
+	}
+	finally
+	{
 		await rl.close();
 	}
 }
 
 /** Delete a task file's `tasks` row and its `indexed_files` cache entry. Idempotent. */
-export function deleteTaskFile(db: IndexDb, filePath: string): void {
+export function deleteTaskFile(db: IndexDb, filePath: string): void
+{
 	db.delete(schema.tasks).where(eq(schema.tasks.filePath, filePath)).run();
 	db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).run();
 }
 
-export async function indexTaskFile(db: IndexDb, filePath: string, projectDir: string): Promise<void> {
+export async function indexTaskFile(db: IndexDb, filePath: string, projectDir: string): Promise<void>
+{
 	let fileStat: Awaited<ReturnType<typeof stat>>;
-	try {
+	try
+	{
 		fileStat = await stat(filePath);
-	} catch {
+	}
+	catch
+	{
 		deleteTaskFile(db, filePath);
 		return;
 	}
 
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
-	if (existing && existing.mtimeMs === fileStat.mtimeMs) {
+	if (existing && existing.mtimeMs === fileStat.mtimeMs)
+	{
 		const taskRow = db.select().from(schema.tasks).where(eq(schema.tasks.filePath, filePath)).get();
 		if (taskRow) return;
 	}
 
 	let raw: string;
-	try {
+	try
+	{
 		raw = await readFile(filePath, "utf-8");
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
 
 	let parsed: unknown;
-	try {
+	try
+	{
 		parsed = JSON.parse(raw);
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
 
@@ -1428,24 +1854,11 @@ export async function indexTaskFile(db: IndexDb, filePath: string, projectDir: s
 	const task = result.data;
 
 	db.insert(schema.tasks)
-		.values({
-			filePath,
-			taskId: task.id,
-			projectDir,
-			subject: task.subject,
-			description: task.description,
-			status: task.status,
-			activeForm: task.activeForm ?? null,
-			owner: task.owner ?? null,
-			blocksJson: JSON.stringify(task.blocks),
-			blockedByJson: JSON.stringify(task.blockedBy),
-			metadataJson: JSON.stringify(task.metadata ?? {}),
-			mtimeMs: fileStat.mtimeMs,
-		})
-		.onConflictDoUpdate({
-			target: schema.tasks.filePath,
-			set: {
+		.values(
+			{
+				filePath,
 				taskId: task.id,
+				projectDir,
 				subject: task.subject,
 				description: task.description,
 				status: task.status,
@@ -1456,54 +1869,89 @@ export async function indexTaskFile(db: IndexDb, filePath: string, projectDir: s
 				metadataJson: JSON.stringify(task.metadata ?? {}),
 				mtimeMs: fileStat.mtimeMs,
 			},
-		})
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.tasks.filePath,
+				set:
+				{
+					taskId: task.id,
+					subject: task.subject,
+					description: task.description,
+					status: task.status,
+					activeForm: task.activeForm ?? null,
+					owner: task.owner ?? null,
+					blocksJson: JSON.stringify(task.blocks),
+					blockedByJson: JSON.stringify(task.blockedBy),
+					metadataJson: JSON.stringify(task.metadata ?? {}),
+					mtimeMs: fileStat.mtimeMs,
+				},
+			},
+		)
 		.run();
 
 	db.insert(schema.indexedFiles)
-		.values({
-			path: filePath,
-			mtimeMs: fileStat.mtimeMs,
-			sizeBytes: fileStat.size,
-			indexedAt: Date.now(),
-		})
-		.onConflictDoUpdate({
-			target: schema.indexedFiles.path,
-			set: {
+		.values(
+			{
+				path: filePath,
 				mtimeMs: fileStat.mtimeMs,
 				sizeBytes: fileStat.size,
 				indexedAt: Date.now(),
 			},
-		})
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.indexedFiles.path,
+				set:
+				{
+					mtimeMs: fileStat.mtimeMs,
+					sizeBytes: fileStat.size,
+					indexedAt: Date.now(),
+				},
+			},
+		)
 		.run();
 }
 
-export async function scanTasksDir(db: IndexDb, tasksDir: string): Promise<void> {
+export async function scanTasksDir(db: IndexDb, tasksDir: string): Promise<void>
+{
 	let projectDirs: string[];
-	try {
+	try
+	{
 		projectDirs = await readdir(tasksDir);
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
 
 	const indexedPaths = new Set<string>();
 
-	for (const projectDir of projectDirs) {
+	for (const projectDir of projectDirs)
+	{
 		const projectPath = join(tasksDir, projectDir);
-		try {
+		try
+		{
 			const dirStat = await stat(projectPath);
 			if (!dirStat.isDirectory()) continue;
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 
 		let files: string[];
-		try {
+		try
+		{
 			files = await readdir(projectPath);
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 
-		for (const file of files) {
+		for (const file of files)
+		{
 			if (!file.endsWith(".json")) continue;
 			const filePath = join(projectPath, file);
 			indexedPaths.add(filePath);
@@ -1512,15 +1960,24 @@ export async function scanTasksDir(db: IndexDb, tasksDir: string): Promise<void>
 	}
 
 	// Clean up deleted files
-	const allTasks = db.select({filePath: schema.tasks.filePath}).from(schema.tasks).all();
-	for (const row of allTasks) {
+	const allTasks = db
+		.select(
+			{
+				filePath: schema.tasks.filePath,
+			},
+		)
+		.from(schema.tasks)
+		.all();
+	for (const row of allTasks)
+	{
 		if (!indexedPaths.has(row.filePath)) deleteTaskFile(db, row.filePath);
 	}
 }
 
 type DocKind = "plan" | "memory";
 
-interface DocContent {
+interface DocContent
+{
 	path: string;
 	kind: DocKind;
 	projectId: string;
@@ -1534,8 +1991,10 @@ interface DocContent {
  * one plan or memory file. Deletes seek the unique `path` index, and the
  * trigger removes the FTS row by rowid, so no statement scans `docs_fts`.
  */
-function replaceDocContent(db: IndexDb, doc: DocContent): void {
-	db.transaction((transaction) => {
+function replaceDocContent(db: IndexDb, doc: DocContent): void
+{
+	db.transaction((transaction) =>
+	{
 		transaction.run(sql`DELETE FROM docs_content WHERE path = ${doc.path}`);
 		transaction.run(
 			sql`INSERT INTO docs_content(path, kind, project_id, mtime_ms, title, content)
@@ -1544,36 +2003,46 @@ function replaceDocContent(db: IndexDb, doc: DocContent): void {
 	});
 }
 
-function deleteDocContent(db: IndexDb, path: string): void {
+function deleteDocContent(db: IndexDb, path: string): void
+{
 	db.run(sql`DELETE FROM docs_content WHERE path = ${path}`);
 }
 
 /** Remove every index row owned by one memory markdown file. Idempotent. */
-export function deleteMemoryFile(db: IndexDb, filePath: string): void {
+export function deleteMemoryFile(db: IndexDb, filePath: string): void
+{
 	db.delete(schema.memories).where(eq(schema.memories.filePath, filePath)).run();
 	db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).run();
 	deleteDocContent(db, filePath);
 }
 
-export async function indexMemoryFile(db: IndexDb, filePath: string, projectId: string): Promise<void> {
+export async function indexMemoryFile(db: IndexDb, filePath: string, projectId: string): Promise<void>
+{
 	let fileStat: Awaited<ReturnType<typeof stat>>;
-	try {
+	try
+	{
 		fileStat = await stat(filePath);
-	} catch {
+	}
+	catch
+	{
 		deleteMemoryFile(db, filePath);
 		return;
 	}
 
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
-	if (existing && existing.mtimeMs === fileStat.mtimeMs) {
+	if (existing && existing.mtimeMs === fileStat.mtimeMs)
+	{
 		const memoryRow = db.select().from(schema.memories).where(eq(schema.memories.filePath, filePath)).get();
 		if (memoryRow) return;
 	}
 
 	let content: string;
-	try {
+	try
+	{
 		content = await readFile(filePath, "utf-8");
-	} catch {
+	}
+	catch
+	{
 		deleteMemoryFile(db, filePath);
 		return;
 	}
@@ -1582,71 +2051,94 @@ export async function indexMemoryFile(db: IndexDb, filePath: string, projectId: 
 	const title = extractTitleFromContent(content, filename);
 
 	db.insert(schema.memories)
-		.values({
-			filePath,
-			projectId,
-			filename,
-			title,
-			mtimeMs: fileStat.mtimeMs,
-		})
-		.onConflictDoUpdate({
-			target: schema.memories.filePath,
-			set: {
+		.values(
+			{
+				filePath,
 				projectId,
 				filename,
 				title,
 				mtimeMs: fileStat.mtimeMs,
 			},
-		})
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.memories.filePath,
+				set:
+				{
+					projectId,
+					filename,
+					title,
+					mtimeMs: fileStat.mtimeMs,
+				},
+			},
+		)
 		.run();
 
-	replaceDocContent(db, {
-		path: filePath,
-		kind: "memory",
-		projectId,
-		mtimeMs: fileStat.mtimeMs,
-		title,
-		content,
-	});
+	replaceDocContent(
+		db,
+		{
+			path: filePath,
+			kind: "memory",
+			projectId,
+			mtimeMs: fileStat.mtimeMs,
+			title,
+			content,
+		},
+	);
 
 	db.insert(schema.indexedFiles)
-		.values({
-			path: filePath,
-			mtimeMs: fileStat.mtimeMs,
-			sizeBytes: fileStat.size,
-			indexedAt: Date.now(),
-		})
-		.onConflictDoUpdate({
-			target: schema.indexedFiles.path,
-			set: {
+		.values(
+			{
+				path: filePath,
 				mtimeMs: fileStat.mtimeMs,
 				sizeBytes: fileStat.size,
 				indexedAt: Date.now(),
 			},
-		})
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.indexedFiles.path,
+				set:
+				{
+					mtimeMs: fileStat.mtimeMs,
+					sizeBytes: fileStat.size,
+					indexedAt: Date.now(),
+				},
+			},
+		)
 		.run();
 }
 
-export async function scanMemoriesForProject(db: IndexDb, projectsDir: string, projectId: string): Promise<void> {
+export async function scanMemoriesForProject(db: IndexDb, projectsDir: string, projectId: string): Promise<void>
+{
 	const memoryDir = join(projectsDir, projectId, "memory");
 	let files: string[];
-	try {
+	try
+	{
 		files = await readdir(memoryDir);
-	} catch {
+	}
+	catch
+	{
 		// memory dir missing — prune any stale rows for this project and return
 		const stale = db
-			.select({filePath: schema.memories.filePath})
+			.select(
+				{
+					filePath: schema.memories.filePath,
+				},
+			)
 			.from(schema.memories)
 			.where(eq(schema.memories.projectId, projectId))
 			.all();
-		for (const row of stale) {
+		for (const row of stale)
+		{
 			deleteMemoryFile(db, row.filePath);
 		}
 		return;
 	}
 
 	const indexedPaths = new Set<string>();
-	for (const file of files) {
+	for (const file of files)
+	{
 		if (!file.endsWith(".md")) continue;
 		const filePath = join(memoryDir, file);
 		indexedPaths.add(filePath);
@@ -1655,12 +2147,18 @@ export async function scanMemoriesForProject(db: IndexDb, projectsDir: string, p
 
 	// Prune memory rows for this project whose filePath is missing on disk
 	const existingRows = db
-		.select({filePath: schema.memories.filePath})
+		.select(
+			{
+				filePath: schema.memories.filePath,
+			},
+		)
 		.from(schema.memories)
 		.where(eq(schema.memories.projectId, projectId))
 		.all();
-	for (const row of existingRows) {
-		if (!indexedPaths.has(row.filePath)) {
+	for (const row of existingRows)
+	{
+		if (!indexedPaths.has(row.filePath))
+		{
 			deleteMemoryFile(db, row.filePath);
 		}
 	}
@@ -1672,18 +2170,23 @@ export async function scanMemoriesForProject(db: IndexDb, projectsDir: string, p
  * directory itself is unreadable — we never want a transient fs hiccup to wipe
  * the entire linkage table.
  */
-export async function pruneStalePlanLinks(db: IndexDb, plansDir: string): Promise<number> {
+export async function pruneStalePlanLinks(db: IndexDb, plansDir: string): Promise<number>
+{
 	let entries: string[];
-	try {
+	try
+	{
 		entries = await readdir(plansDir);
-	} catch {
+	}
+	catch
+	{
 		return 0;
 	}
 
 	const existingPlans = entries.filter((f) => f.endsWith(".md"));
 
 	// notInArray with an empty list is a no-op SQL-wise, so short-circuit.
-	if (existingPlans.length === 0) {
+	if (existingPlans.length === 0)
+	{
 		const result = db.delete(schema.planSessions).run();
 		return result.changes;
 	}
@@ -1699,7 +2202,8 @@ export async function pruneStalePlanLinks(db: IndexDb, plansDir: string): Promis
  * Delete the row for `filename` from the `plans` table, along with its
  * matching `indexed_files` cache entry. Idempotent — running twice is fine.
  */
-export function deletePlan(db: IndexDb, plansDir: string, filename: string): void {
+export function deletePlan(db: IndexDb, plansDir: string, filename: string): void
+{
 	const filePath = join(plansDir, filename);
 	db.delete(schema.plans).where(eq(schema.plans.filename, filename)).run();
 	db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).run();
@@ -1714,66 +2218,109 @@ export function deletePlan(db: IndexDb, plansDir: string, filename: string): voi
  * - Otherwise read content, compute a display title, upsert the `plans` row
  *   keyed on `filename`, and upsert the `indexed_files` row.
  */
-export async function indexPlanFile(db: IndexDb, plansDir: string, filename: string): Promise<{changed: boolean}> {
+export async function indexPlanFile(
+	db: IndexDb,
+	plansDir: string,
+	filename: string,
+): Promise<
+{
+	changed: boolean;
+}>
+{
 	const filePath = join(plansDir, filename);
 	let fileStat: Awaited<ReturnType<typeof stat>>;
-	try {
+	try
+	{
 		fileStat = await stat(filePath);
-	} catch {
+	}
+	catch
+	{
 		deletePlan(db, plansDir, filename);
-		return {changed: true};
+		return {
+			changed: true,
+		};
 	}
 
 	const existing = db.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get();
-	if (existing && existing.mtimeMs === fileStat.mtimeMs) {
-		return {changed: false};
+	if (existing && existing.mtimeMs === fileStat.mtimeMs)
+	{
+		return {
+			changed: false,
+		};
 	}
 
 	let content: string;
-	try {
+	try
+	{
 		content = await readFile(filePath, "utf-8");
-	} catch {
+	}
+	catch
+	{
 		deletePlan(db, plansDir, filename);
-		return {changed: true};
+		return {
+			changed: true,
+		};
 	}
 
 	const title = extractTitleFromContent(content, filename);
 
 	db.insert(schema.plans)
-		.values({filename, title, mtimeMs: fileStat.mtimeMs})
-		.onConflictDoUpdate({
-			target: schema.plans.filename,
-			set: {title, mtimeMs: fileStat.mtimeMs},
-		})
+		.values(
+			{
+				filename,
+				title,
+				mtimeMs: fileStat.mtimeMs,
+			},
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.plans.filename,
+				set:
+				{
+					title,
+					mtimeMs: fileStat.mtimeMs,
+				},
+			},
+		)
 		.run();
 
-	replaceDocContent(db, {
-		path: filePath,
-		kind: "plan",
-		projectId: "",
-		mtimeMs: fileStat.mtimeMs,
-		title,
-		content,
-	});
+	replaceDocContent(
+		db,
+		{
+			path: filePath,
+			kind: "plan",
+			projectId: "",
+			mtimeMs: fileStat.mtimeMs,
+			title,
+			content,
+		},
+	);
 
 	db.insert(schema.indexedFiles)
-		.values({
-			path: filePath,
-			mtimeMs: fileStat.mtimeMs,
-			sizeBytes: fileStat.size,
-			indexedAt: Date.now(),
-		})
-		.onConflictDoUpdate({
-			target: schema.indexedFiles.path,
-			set: {
+		.values(
+			{
+				path: filePath,
 				mtimeMs: fileStat.mtimeMs,
 				sizeBytes: fileStat.size,
 				indexedAt: Date.now(),
 			},
-		})
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.indexedFiles.path,
+				set:
+				{
+					mtimeMs: fileStat.mtimeMs,
+					sizeBytes: fileStat.size,
+					indexedAt: Date.now(),
+				},
+			},
+		)
 		.run();
 
-	return {changed: true};
+	return {
+		changed: true,
+	};
 }
 
 /**
@@ -1784,25 +2331,39 @@ export async function indexPlanFile(db: IndexDb, plansDir: string, filename: str
  * The `indexed_files` mtime short-circuit inside `indexPlanFile` makes repeat
  * passes cheap — only changed files do real work.
  */
-export async function scanPlansDir(db: IndexDb, plansDir: string): Promise<void> {
+export async function scanPlansDir(db: IndexDb, plansDir: string): Promise<void>
+{
 	let entries: string[];
-	try {
+	try
+	{
 		entries = await readdir(plansDir);
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
 
 	const indexedFilenames = new Set<string>();
-	for (const entry of entries) {
+	for (const entry of entries)
+	{
 		if (!entry.endsWith(".md")) continue;
 		indexedFilenames.add(entry);
 		await indexPlanFile(db, plansDir, entry);
 	}
 
 	// Prune plans rows whose filename is missing on disk.
-	const existingPlans = db.select({filename: schema.plans.filename}).from(schema.plans).all();
-	for (const row of existingPlans) {
-		if (!indexedFilenames.has(row.filename)) {
+	const existingPlans = db
+		.select(
+			{
+				filename: schema.plans.filename,
+			},
+		)
+		.from(schema.plans)
+		.all();
+	for (const row of existingPlans)
+	{
+		if (!indexedFilenames.has(row.filename))
+		{
 			deletePlan(db, plansDir, row.filename);
 		}
 	}
@@ -1810,7 +2371,8 @@ export async function scanPlansDir(db: IndexDb, plansDir: string): Promise<void>
 
 let indexingInProgress = false;
 let initialBuildInProgress = false;
-export function isCurrentlyIndexing(): boolean {
+export function isCurrentlyIndexing(): boolean
+{
 	return indexingInProgress;
 }
 
@@ -1819,33 +2381,55 @@ export function isCurrentlyIndexing(): boolean {
  * no indexed files (first run or schema rebuild), when search results are
  * actually incomplete; the routine incremental startup scan reports false.
  */
-export function getIndexingStatus(): {isIndexing: boolean; isInitialBuild: boolean} {
-	return {isIndexing: indexingInProgress, isInitialBuild: indexingInProgress && initialBuildInProgress};
+export function getIndexingStatus():
+{
+	isIndexing: boolean;
+	isInitialBuild: boolean;
+}
+{
+	return {
+		isIndexing: indexingInProgress,
+		isInitialBuild: indexingInProgress && initialBuildInProgress,
+	};
 }
 
 /** Max concurrent session files indexed during a full scan. */
 const SCAN_CONCURRENCY = 8;
 
 /** Run `fn` over `items` with at most `limit` in flight at once. */
-async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void>
+{
 	// One shared iterator: each worker pulls the next unclaimed item.
 	const remaining = items.values();
-	const workers = Array.from({length: Math.min(limit, items.length)}, async () => {
-		for (const item of remaining) await fn(item);
-	});
+	const workers = Array.from(
+		{
+			length: Math.min(limit, items.length),
+		},
+		async () =>
+		{
+			for (const item of remaining) await fn(item);
+		},
+	);
 	await Promise.all(workers);
 }
 
 /** Snapshot of indexed_files mtimes, so the scan can detect changes in memory. */
-function loadIndexedFileMtimes(db: IndexDb): Map<string, number> {
+function loadIndexedFileMtimes(db: IndexDb): Map<string, number>
+{
 	const rows = db
-		.select({path: schema.indexedFiles.path, mtimeMs: schema.indexedFiles.mtimeMs})
+		.select(
+			{
+				path: schema.indexedFiles.path,
+				mtimeMs: schema.indexedFiles.mtimeMs,
+			},
+		)
 		.from(schema.indexedFiles)
 		.all();
 	return new Map(rows.map((r) => [r.path, r.mtimeMs]));
 }
 
-function isPrimaryTranscriptPath(projectsDir: string, filePath: string): boolean {
+function isPrimaryTranscriptPath(projectsDir: string, filePath: string): boolean
+{
 	const relativePath = relative(projectsDir, filePath);
 	const pathParts = relativePath.split(sep);
 	return (
@@ -1857,13 +2441,19 @@ function isPrimaryTranscriptPath(projectsDir: string, filePath: string): boolean
 }
 
 /** Delete every indexed row belonging to one session, including its subagents' file cache rows. */
-function deleteSessionRows(indexDb: IndexDb, summariesDb: IndexDb, sessionId: string): void {
+function deleteSessionRows(indexDb: IndexDb, summariesDb: IndexDb, sessionId: string): void
+{
 	const subagentPaths = indexDb
-		.select({filePath: schema.subagents.filePath})
+		.select(
+			{
+				filePath: schema.subagents.filePath,
+			},
+		)
 		.from(schema.subagents)
 		.where(eq(schema.subagents.sessionId, sessionId))
 		.all();
-	for (const subagent of subagentPaths) {
+	for (const subagent of subagentPaths)
+	{
 		indexDb.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, subagent.filePath)).run();
 	}
 
@@ -1883,11 +2473,15 @@ function deleteSessionRows(indexDb: IndexDb, summariesDb: IndexDb, sessionId: st
 }
 
 /** True when `<sessionId>.jsonl` exists as a primary transcript in any project directory. */
-function sessionTranscriptExistsElsewhere(projectsDir: string, sessionId: string): boolean {
+function sessionTranscriptExistsElsewhere(projectsDir: string, sessionId: string): boolean
+{
 	let projects: string[];
-	try {
+	try
+	{
 		projects = readdirSync(projectsDir);
-	} catch {
+	}
+	catch
+	{
 		// An unreadable projects directory cannot prove the session is gone.
 		return true;
 	}
@@ -1904,13 +2498,19 @@ export function pruneDeletedTranscript(
 	summariesDb: IndexDb,
 	projectsDir: string,
 	filePath: string,
-): void {
+): void
+{
 	if (!isPrimaryTranscriptPath(projectsDir, filePath) || existsSync(filePath)) return;
-	indexDb.transaction(() => {
+	indexDb.transaction(() =>
+	{
 		indexDb.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).run();
 		indexDb.delete(schema.usageDaily).where(eq(schema.usageDaily.filePath, filePath)).run();
 		const session = indexDb
-			.select({id: schema.sessions.id})
+			.select(
+				{
+					id: schema.sessions.id,
+				},
+			)
 			.from(schema.sessions)
 			.where(eq(schema.sessions.filePath, filePath))
 			.get();
@@ -1929,28 +2529,37 @@ function pruneDeletedSessions(
 	summariesDb: IndexDb,
 	projectsDir: string,
 	discoveredPaths: Set<string>,
-): void {
+): void
+{
 	const onDiskPaths = new Set(
 		Array.from(discoveredPaths).filter((path) => isPrimaryTranscriptPath(projectsDir, path)),
 	);
 	const existingSessions = indexDb
-		.select({id: schema.sessions.id, filePath: schema.sessions.filePath})
+		.select(
+			{
+				id: schema.sessions.id,
+				filePath: schema.sessions.filePath,
+			},
+		)
 		.from(schema.sessions)
 		.all();
 	// A transcript created after the scan listed its directory can already be
 	// indexed (on demand by the session page), so it is on disk though undiscovered.
-	for (const session of existingSessions) {
+	for (const session of existingSessions)
+	{
 		if (
 			!onDiskPaths.has(session.filePath) &&
 			isPrimaryTranscriptPath(projectsDir, session.filePath) &&
 			existsSync(session.filePath)
-		) {
+		)
+		{
 			onDiskPaths.add(session.filePath);
 		}
 	}
 	const onDiskIds = new Set(Array.from(onDiskPaths, (path) => basename(path, ".jsonl")));
 
-	for (const session of existingSessions) {
+	for (const session of existingSessions)
+	{
 		if (onDiskPaths.has(session.filePath)) continue;
 
 		indexDb.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, session.filePath)).run();
@@ -1961,9 +2570,18 @@ function pruneDeletedSessions(
 
 	// Re-indexing a moved session updates sessions.filePath before pruning runs,
 	// so remove stale primary transcript cache rows independently of session rows.
-	const indexedPaths = indexDb.select({path: schema.indexedFiles.path}).from(schema.indexedFiles).all();
-	for (const indexedFile of indexedPaths) {
-		if (isPrimaryTranscriptPath(projectsDir, indexedFile.path) && !onDiskPaths.has(indexedFile.path)) {
+	const indexedPaths = indexDb
+		.select(
+			{
+				path: schema.indexedFiles.path,
+			},
+		)
+		.from(schema.indexedFiles)
+		.all();
+	for (const indexedFile of indexedPaths)
+	{
+		if (isPrimaryTranscriptPath(projectsDir, indexedFile.path) && !onDiskPaths.has(indexedFile.path))
+		{
 			indexDb.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, indexedFile.path)).run();
 			indexDb.delete(schema.usageDaily).where(eq(schema.usageDaily.filePath, indexedFile.path)).run();
 		}
@@ -1978,10 +2596,16 @@ export const BRIDGED_TITLE_REINDEX_KEY = "bridged_title_reindex";
 const BRIDGED_TITLE_REINDEX_VERSION = "1";
 
 /** Forget the indexed mtimes of bridged transcripts once, so the scan re-indexes them and recomputes their titles. */
-function invalidateBridgedTitlesOnce(db: IndexDb): void {
-	db.transaction(() => {
+function invalidateBridgedTitlesOnce(db: IndexDb): void
+{
+	db.transaction(() =>
+	{
 		const marker = db
-			.select({value: schema.metadata.value})
+			.select(
+				{
+					value: schema.metadata.value,
+				},
+			)
 			.from(schema.metadata)
 			.where(eq(schema.metadata.key, BRIDGED_TITLE_REINDEX_KEY))
 			.get();
@@ -1994,8 +2618,21 @@ function invalidateBridgedTitlesOnce(db: IndexDb): void {
 			)
 			.run();
 		db.insert(schema.metadata)
-			.values({key: BRIDGED_TITLE_REINDEX_KEY, value: BRIDGED_TITLE_REINDEX_VERSION})
-			.onConflictDoUpdate({target: schema.metadata.key, set: {value: BRIDGED_TITLE_REINDEX_VERSION}})
+			.values(
+				{
+					key: BRIDGED_TITLE_REINDEX_KEY,
+					value: BRIDGED_TITLE_REINDEX_VERSION,
+				},
+			)
+			.onConflictDoUpdate(
+				{
+					target: schema.metadata.key,
+					set:
+					{
+						value: BRIDGED_TITLE_REINDEX_VERSION,
+					},
+				},
+			)
 			.run();
 	});
 }
@@ -2008,10 +2645,16 @@ export const SKILL_LAUNCH_TITLE_REINDEX_KEY = "skill_launch_title_reindex";
 const SKILL_LAUNCH_TITLE_REINDEX_VERSION = "1";
 
 /** Forget the indexed mtimes of skill-launched transcripts once, so the scan re-indexes them and recomputes their titles. */
-function invalidateSkillLaunchTitlesOnce(db: IndexDb): void {
-	db.transaction(() => {
+function invalidateSkillLaunchTitlesOnce(db: IndexDb): void
+{
+	db.transaction(() =>
+	{
 		const marker = db
-			.select({value: schema.metadata.value})
+			.select(
+				{
+					value: schema.metadata.value,
+				},
+			)
 			.from(schema.metadata)
 			.where(eq(schema.metadata.key, SKILL_LAUNCH_TITLE_REINDEX_KEY))
 			.get();
@@ -2025,8 +2668,21 @@ function invalidateSkillLaunchTitlesOnce(db: IndexDb): void {
 			)
 			.run();
 		db.insert(schema.metadata)
-			.values({key: SKILL_LAUNCH_TITLE_REINDEX_KEY, value: SKILL_LAUNCH_TITLE_REINDEX_VERSION})
-			.onConflictDoUpdate({target: schema.metadata.key, set: {value: SKILL_LAUNCH_TITLE_REINDEX_VERSION}})
+			.values(
+				{
+					key: SKILL_LAUNCH_TITLE_REINDEX_KEY,
+					value: SKILL_LAUNCH_TITLE_REINDEX_VERSION,
+				},
+			)
+			.onConflictDoUpdate(
+				{
+					target: schema.metadata.key,
+					set:
+					{
+						value: SKILL_LAUNCH_TITLE_REINDEX_VERSION,
+					},
+				},
+			)
 			.run();
 	});
 }
@@ -2048,30 +2704,42 @@ async function indexTranscriptsWrittenSince(
 	readDirectory: ReadDirectory,
 	indexTranscript: (path: string, project: string) => Promise<void>,
 	signal?: AbortSignal,
-): Promise<void> {
+): Promise<void>
+{
 	let projectDirs: string[];
-	try {
+	try
+	{
 		projectDirs = await readDirectory(projectsDir);
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
-	for (const project of projectDirs) {
+	for (const project of projectDirs)
+	{
 		signal?.throwIfAborted();
 		const projectPath = join(projectsDir, project);
 		let files: string[];
-		try {
+		try
+		{
 			if (!(await stat(projectPath)).isDirectory()) continue;
 			files = await readDirectory(projectPath);
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
-		for (const file of files) {
+		for (const file of files)
+		{
 			if (!file.endsWith(".jsonl")) continue;
 			const path = join(projectPath, file);
 			let mtimeMs: number;
-			try {
+			try
+			{
 				mtimeMs = (await stat(path)).mtimeMs;
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 			if (mtimeMs >= sinceMs) await indexTranscript(path, project);
@@ -2090,25 +2758,48 @@ async function listSubagentTranscripts(
 	subagentsDir: string,
 	subFiles: readonly string[],
 	readDirectory: ReadDirectory,
-): Promise<{path: string; workflow: boolean}[]> {
-	const paths = subFiles.filter(isAgentTranscript).map((name) => ({path: join(subagentsDir, name), workflow: false}));
+): Promise<
+	{
+		path: string;
+		workflow: boolean;
+	}[]
+>
+{
+	const paths = subFiles.filter(isAgentTranscript).map((name) => (
+	{
+		path: join(subagentsDir, name),
+		workflow: false,
+	}));
 	if (!subFiles.includes("workflows")) return paths;
 	const workflowsDir = join(subagentsDir, "workflows");
 	let runDirs: string[];
-	try {
+	try
+	{
 		runDirs = await readDirectory(workflowsDir);
-	} catch {
+	}
+	catch
+	{
 		return paths;
 	}
-	for (const runId of runDirs) {
+	for (const runId of runDirs)
+	{
 		const runDir = join(workflowsDir, runId);
 		let runFiles: string[];
-		try {
+		try
+		{
 			runFiles = await readDirectory(runDir);
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
-		paths.push(...runFiles.filter(isAgentTranscript).map((name) => ({path: join(runDir, name), workflow: true})));
+		paths.push(
+			...runFiles.filter(isAgentTranscript).map((name) => (
+			{
+				path: join(runDir, name),
+				workflow: true,
+			})),
+		);
 	}
 	return paths;
 }
@@ -2121,7 +2812,8 @@ export async function fullScan(
 	plansDir?: string,
 	readDirectory: ReadDirectory = readdir,
 	signal?: AbortSignal,
-): Promise<void> {
+): Promise<void>
+{
 	// Scan under the real path the watcher and hooks key transcripts by, so
 	// discovered paths match indexed_files and pruning compares like with like.
 	const projectsDir = canonicalPath(configuredProjectsDir);
@@ -2133,23 +2825,38 @@ export async function fullScan(
 
 	indexingInProgress = true;
 	initialBuildInProgress =
-		indexDb.select({path: schema.indexedFiles.path}).from(schema.indexedFiles).limit(1).get() === undefined;
+		indexDb
+			.select(
+				{
+					path: schema.indexedFiles.path,
+				},
+			)
+			.from(schema.indexedFiles)
+			.limit(1)
+			.get() === undefined;
 	const scanStartMs = Date.now() - SCAN_START_MTIME_SLACK_MS;
-	try {
-		await step("project names", () => {
+	try
+	{
+		await step("project names", () =>
+		{
 			repairProjectDisplayNames(indexDb);
 		});
-		await step("bridged titles", () => {
+		await step("bridged titles", () =>
+		{
 			invalidateBridgedTitlesOnce(indexDb);
 		});
-		await step("skill launch titles", () => {
+		await step("skill launch titles", () =>
+		{
 			invalidateSkillLaunchTitlesOnce(indexDb);
 		});
 
 		let projectDirs: string[];
-		try {
+		try
+		{
 			projectDirs = await readDirectory(projectsDir);
-		} catch {
+		}
+		catch
+		{
 			// The root was not enumerable, so this pass cannot prove anything was deleted.
 			return;
 		}
@@ -2158,28 +2865,46 @@ export async function fullScan(
 		// active projects are indexed first and fresh sessions surface within
 		// seconds rather than after the whole scan completes.
 		let scanComplete = true;
-		const projects: {project: string; projectPath: string; recency: number}[] = [];
-		for (const project of projectDirs) {
+		const projects:
+		{
+			project: string;
+			projectPath: string;
+			recency: number;
+		}[] = [];
+		for (const project of projectDirs)
+		{
 			const projectPath = join(projectsDir, project);
 			let recency: number;
-			try {
+			try
+			{
 				const dirStat = await stat(projectPath);
 				if (!dirStat.isDirectory()) continue;
 				recency = dirStat.mtimeMs;
-			} catch {
+			}
+			catch
+			{
 				scanComplete = false;
 				continue;
 			}
 			// sessions-index.json is rewritten as a project's sessions change, so it
 			// is a better recency signal than the dir mtime on filesystems that don't
 			// bump the dir when an existing file is appended to.
-			try {
+			try
+			{
 				const idxStat = await stat(join(projectPath, "sessions-index.json"));
 				recency = Math.max(recency, idxStat.mtimeMs);
-			} catch {
+			}
+			catch
+			{
 				// no sessions-index.json
 			}
-			projects.push({project, projectPath, recency});
+			projects.push(
+				{
+					project,
+					projectPath,
+					recency,
+				},
+			);
 		}
 		projects.sort((a, b) => b.recency - a.recency);
 
@@ -2188,40 +2913,54 @@ export async function fullScan(
 		const knownMtimes = loadIndexedFileMtimes(indexDb);
 		const onDiskPaths = new Set<string>();
 
-		for (const {project, projectPath} of projects) {
+		for (const {project, projectPath} of projects)
+		{
 			signal?.throwIfAborted();
 			// Index sessions-index.json
 			await step(`sessions-index ${projectPath}`, async () => indexSessionsIndex(indexDb, projectPath, project));
 
 			// Discover session JSONL files with their mtimes, newest first.
 			let files: string[];
-			try {
+			try
+			{
 				files = await readDirectory(projectPath);
-			} catch {
+			}
+			catch
+			{
 				scanComplete = false;
 				continue;
 			}
 			const sessionFiles = await Promise.all(
 				files
 					.filter((f) => f.endsWith(".jsonl"))
-					.map(async (f) => {
+					.map(async (f) =>
+					{
 						const path = join(projectPath, f);
 						let mtimeMs = 0;
-						try {
+						try
+						{
 							mtimeMs = (await stat(path)).mtimeMs;
-						} catch {
+						}
+						catch
+						{
 							// unreadable; indexJsonlFile will skip it too
 						}
-						return {sessionId: f.replace(/\.jsonl$/, ""), path, mtimeMs};
+						return {
+							sessionId: f.replace(/\.jsonl$/, ""),
+							path,
+							mtimeMs,
+						};
 					}),
 			);
-			for (const sessionFile of sessionFiles) {
+			for (const sessionFile of sessionFiles)
+			{
 				onDiskPaths.add(sessionFile.path);
 			}
 			sessionFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
 
 			// Index JSONL files with bounded concurrency.
-			await mapLimit(sessionFiles, SCAN_CONCURRENCY, async ({path}) => {
+			await mapLimit(sessionFiles, SCAN_CONCURRENCY, async ({path}) =>
+			{
 				signal?.throwIfAborted();
 				await step(`jsonl ${path}`, async () => indexJsonlFile(indexDb, path, project));
 			});
@@ -2229,12 +2968,16 @@ export async function fullScan(
 			// Index subagents and (re)link parent-child relationships. Linking
 			// re-streams whole JSONL files, so only do it for sessions whose root or
 			// subagent files actually changed since the last scan.
-			for (const {sessionId, path: sessionJsonlPath, mtimeMs: sessionMtime} of sessionFiles) {
+			for (const {sessionId, path: sessionJsonlPath, mtimeMs: sessionMtime} of sessionFiles)
+			{
 				const subagentsDir = join(projectPath, sessionId, "subagents");
 				let subFiles: string[];
-				try {
+				try
+				{
 					subFiles = await readDirectory(subagentsDir);
-				} catch {
+				}
+				catch
+				{
 					continue;
 				}
 
@@ -2245,11 +2988,15 @@ export async function fullScan(
 					subagentsDir,
 					subFiles,
 					readDirectory,
-				)) {
+				))
+				{
 					let sfMtime = 0;
-					try {
+					try
+					{
 						sfMtime = (await stat(sfPath)).mtimeMs;
-					} catch {
+					}
+					catch
+					{
 						continue;
 					}
 					const fileChanged = knownMtimes.get(sfPath) !== sfMtime;
@@ -2265,8 +3012,10 @@ export async function fullScan(
 					if (!workflow || fileChanged) linkPaths.push(sfPath);
 				}
 
-				if (changed && hasTranscripts) {
-					for (const saPath of linkPaths) {
+				if (changed && hasTranscripts)
+				{
+					for (const saPath of linkPaths)
+					{
 						await step(`subagent links ${saPath}`, async () =>
 							linkSubagentParents(indexDb, saPath, basename(saPath, ".jsonl")),
 						);
@@ -2283,8 +3032,10 @@ export async function fullScan(
 
 		// Pruning is only safe after every project directory was enumerated. A
 		// transient permission or mount failure must leave the existing index intact.
-		if (scanComplete) {
-			await step("prune deleted sessions", () => {
+		if (scanComplete)
+		{
+			await step("prune deleted sessions", () =>
+			{
 				pruneDeletedSessions(indexDb, summariesDb, projectsDir, onDiskPaths);
 			});
 		}
@@ -2293,17 +3044,20 @@ export async function fullScan(
 			projectsDir,
 			scanStartMs,
 			readDirectory,
-			async (path, project) => {
+			async (path, project) =>
+			{
 				await step(`late jsonl ${path}`, async () => indexJsonlFile(indexDb, path, project));
 			},
 			signal,
 		);
 
-		if (tasksDir) {
+		if (tasksDir)
+		{
 			await step(`tasks ${tasksDir}`, async () => scanTasksDir(indexDb, tasksDir));
 		}
 
-		if (plansDir) {
+		if (plansDir)
+		{
 			await step(`plans ${plansDir}`, async () => scanPlansDir(indexDb, plansDir));
 			await step("prune plan links", async () => pruneStalePlanLinks(indexDb, plansDir));
 		}
@@ -2311,10 +3065,13 @@ export async function fullScan(
 		// The scan visits projects in recency order, so a worktree can be
 		// persisted before the parent project it derives its display name from.
 		// A final pass renames it once every parent is present.
-		await step("project names", () => {
+		await step("project names", () =>
+		{
 			repairProjectDisplayNames(indexDb);
 		});
-	} finally {
+	}
+	finally
+	{
 		indexingInProgress = false;
 		initialBuildInProgress = false;
 	}
@@ -2325,49 +3082,78 @@ export async function indexFile(
 	filePath: string,
 	projectsDir: string,
 	plansDir?: string,
-	options: {jsonlCache?: JsonlIndexCache; subagentCache?: SubagentIndexCache} = {},
-): Promise<{linkedPlans: string[]; subagentsChangedFor?: string}> {
+	options:
+	{
+		jsonlCache?: JsonlIndexCache;
+		subagentCache?: SubagentIndexCache;
+	} = {},
+): Promise<
+{
+	linkedPlans: string[];
+	subagentsChangedFor?: string;
+}>
+{
 	// Task file: ~/.claude/tasks/{projectDir}/{id}.json
-	if (filePath.includes("/tasks/") && filePath.endsWith(".json")) {
+	if (filePath.includes("/tasks/") && filePath.endsWith(".json"))
+	{
 		const parts = filePath.split("/");
 		const tasksIdx = parts.lastIndexOf("tasks");
 		const projectDir = parts[tasksIdx + 1];
-		if (projectDir) {
+		if (projectDir)
+		{
 			await indexTaskFile(db, filePath, projectDir);
 		}
-		return {linkedPlans: []};
+		return {
+			linkedPlans: [],
+		};
 	}
 
 	// Plan markdown file: ~/.claude/plans/{filename}.md
-	if (filePath.endsWith(".md") && plansDir && filePath.startsWith(plansDir)) {
+	if (filePath.endsWith(".md") && plansDir && filePath.startsWith(plansDir))
+	{
 		const filename = basename(filePath);
 		await indexPlanFile(db, plansDir, filename);
-		return {linkedPlans: []};
+		return {
+			linkedPlans: [],
+		};
 	}
 
 	const normalizedProjectFile = normalizeProjectFile(filePath, projectsDir);
-	if (!normalizedProjectFile) return {linkedPlans: []};
+	if (!normalizedProjectFile)
+		return {
+			linkedPlans: [],
+		};
 
 	// Memory markdown file: {projectsDir}/{project}/memory/{filename}.md
-	if (filePath.endsWith(".md")) {
-		if (normalizedProjectFile.relativeParts.length === 3 && normalizedProjectFile.relativeParts[1] === "memory") {
+	if (filePath.endsWith(".md"))
+	{
+		if (normalizedProjectFile.relativeParts.length === 3 && normalizedProjectFile.relativeParts[1] === "memory")
+		{
 			await indexMemoryFile(db, filePath, normalizedProjectFile.project);
-			return {linkedPlans: []};
+			return {
+				linkedPlans: [],
+			};
 		}
 	}
 
 	// Determine what kind of file changed and index accordingly
-	if (filePath.endsWith("sessions-index.json")) {
+	if (filePath.endsWith("sessions-index.json"))
+	{
 		const projectDir = join(projectsDir, normalizedProjectFile.project);
 		await indexSessionsIndex(db, projectDir, normalizedProjectFile.project);
-		return {linkedPlans: []};
+		return {
+			linkedPlans: [],
+		};
 	}
 
-	if (filePath.endsWith(".jsonl")) {
+	if (filePath.endsWith(".jsonl"))
+	{
 		// Check if this is a subagent file
-		if (filePath.includes("/subagents/") && basename(filePath).startsWith("agent-")) {
+		if (filePath.includes("/subagents/") && basename(filePath).startsWith("agent-"))
+		{
 			const subagentsIdx = normalizedProjectFile.relativeParts.indexOf("subagents");
-			if (subagentsIdx >= 2) {
+			if (subagentsIdx >= 2)
+			{
 				const sessionId = defined(
 					normalizedProjectFile.relativeParts[subagentsIdx - 1],
 					"A subagents directory at index >= 2 has a session directory before it",
@@ -2383,9 +3169,15 @@ export async function indexFile(
 				const agentFilename = basename(filePath, ".jsonl");
 				if (subagentLinks === undefined) await linkSubagentParents(db, filePath, agentFilename);
 				else applySubagentLinks(db, subagentLinks, agentFilename);
-				if (commandChanged) return {linkedPlans: [], subagentsChangedFor: sessionId};
+				if (commandChanged)
+					return {
+						linkedPlans: [],
+						subagentsChangedFor: sessionId,
+					};
 			}
-			return {linkedPlans: []};
+			return {
+				linkedPlans: [],
+			};
 		}
 
 		// Regular session JSONL
@@ -2393,13 +3185,22 @@ export async function indexFile(
 			db,
 			filePath,
 			normalizedProjectFile.project,
-			options.jsonlCache === undefined ? {} : {cache: options.jsonlCache},
+			options.jsonlCache === undefined
+				? {}
+				:
+					{
+						cache: options.jsonlCache,
+					},
 		);
 		// Link parent-child relationships from root session JSONL
 		if (subagentLinks === undefined) await linkSubagentParents(db, filePath, null);
 		else applySubagentLinks(db, subagentLinks, null);
-		return {linkedPlans};
+		return {
+			linkedPlans,
+		};
 	}
 
-	return {linkedPlans: []};
+	return {
+		linkedPlans: [],
+	};
 }

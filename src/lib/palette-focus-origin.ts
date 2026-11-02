@@ -9,23 +9,28 @@ const FOCUS_GUARD_SELECTOR = "[data-base-ui-focus-guard]";
 
 let origin: WeakRef<Element> | null = null;
 
-export function paletteFocusOrigin(): Element | null {
+export function paletteFocusOrigin(): Element | null
+{
 	return origin?.deref() ?? null;
 }
 
-export function installPaletteFocusOrigin(doc: Document): () => void {
-	const onFocusIn = (event: FocusEvent) => {
+export function installPaletteFocusOrigin(doc: Document): () => void
+{
+	const onFocusIn = (event: FocusEvent) =>
+	{
 		const target = event.target;
 		if (!(target instanceof Element)) return;
 		if (target.closest(PALETTE_SELECTOR) !== null || target.closest(FOCUS_GUARD_SELECTOR) !== null) return;
 		origin = new WeakRef(target);
 	};
-	const onFocusOut = (event: FocusEvent) => {
+	const onFocusOut = (event: FocusEvent) =>
+	{
 		if (event.relatedTarget === null && doc.querySelector(PALETTE_SELECTOR) === null) origin = null;
 	};
 	doc.addEventListener("focusin", onFocusIn, true);
 	doc.addEventListener("focusout", onFocusOut, true);
-	return () => {
+	return () =>
+	{
 		doc.removeEventListener("focusin", onFocusIn, true);
 		doc.removeEventListener("focusout", onFocusOut, true);
 		origin = null;

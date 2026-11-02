@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useId, useLayoutEffect, useRef, useState} from "react";
 
-import {
+import
+{
 	COLD_RESUME_COPY,
 	coldResumeDetail,
 	coldResumeRecord,
@@ -21,14 +22,18 @@ const CHECK_INTERVAL_MS = 60_000;
  * tab is visible, at mount, on window focus, on visibilitychange to visible, on focusin/keydown inside
  * the session footer and every minute. Returns the time of the last check that ran, or null.
  */
-function useIdleCheckTime(): number | null {
+function useIdleCheckTime(): number | null
+{
 	const [checkedAt, setCheckedAt] = useState<number | null>(null);
-	useEffect(() => {
-		const check = () => {
+	useEffect(() =>
+	{
+		const check = () =>
+		{
 			if (document.visibilityState === "hidden" || !document.hasFocus()) return;
 			setCheckedAt(Date.now());
 		};
-		const inFooter = (event: Event) => {
+		const inFooter = (event: Event) =>
+		{
 			if (event.target instanceof Element && event.target.closest("[data-session-footer]") !== null) check();
 		};
 		check();
@@ -37,7 +42,8 @@ function useIdleCheckTime(): number | null {
 		document.addEventListener("focusin", inFooter);
 		document.addEventListener("keydown", inFooter);
 		const interval = setInterval(check, CHECK_INTERVAL_MS);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("focus", check);
 			document.removeEventListener("visibilitychange", check);
 			document.removeEventListener("focusin", inFooter);
@@ -48,7 +54,8 @@ function useIdleCheckTime(): number | null {
 	return checkedAt;
 }
 
-function TippedAction({label, tip, onClick}: {label: string; tip: string; onClick: () => void}) {
+function TippedAction({label, tip, onClick}: {label: string; tip: string; onClick: () => void})
+{
 	const tipId = useId();
 	return (
 		<>
@@ -97,18 +104,26 @@ export function ColdResumeNotice({
 	onNewSession?: (() => void) | undefined;
 	/** Upstream `coldResumeNoticeHolds`: whether the card is showing, so the stale-compact line yields. */
 	onHoldChange?: ((holds: boolean) => void) | undefined;
-}) {
+})
+{
 	const checkedAt = useIdleCheckTime();
 	const [, setVersion] = useState(0);
-	const since = idleSince({lastRecordMs, lastActivityMs});
+	const since = idleSince(
+		{
+			lastRecordMs,
+			lastActivityMs,
+		},
+	);
 	const busy = running || heldInput;
 	const busyRef = useRef(busy);
 	busyRef.current = busy;
 	const record = coldResumeRecord(sessionId);
 
 	// Upstream `T.current = since`: a send over an idle stretch retires it for good.
-	useLayoutEffect(() => {
-		if (busy && since !== null && coldResumeRecord(sessionId).sentOverSince !== since) {
+	useLayoutEffect(() =>
+	{
+		if (busy && since !== null && coldResumeRecord(sessionId).sentOverSince !== since)
+		{
 			coldResumeRecord(sessionId).sentOverSince = since;
 			setVersion((version) => version + 1);
 		}
@@ -117,22 +132,25 @@ export function ColdResumeNotice({
 	const decision =
 		checkedAt === null
 			? null
-			: decideColdResume({
-					nowMs: checkedAt,
-					since,
-					contextTokens,
-					fiveHourPct,
-					anyWindowSpent,
-					running,
-					heldInput,
-					focused: true,
-					visible: true,
-					answeredSince: record.answeredSince,
-					sentOverSince: record.sentOverSince,
-				});
+			: decideColdResume(
+					{
+						nowMs: checkedAt,
+						since,
+						contextTokens,
+						fiveHourPct,
+						anyWindowSpent,
+						running,
+						heldInput,
+						focused: true,
+						visible: true,
+						answeredSince: record.answeredSince,
+						sentOverSince: record.sentOverSince,
+					},
+				);
 
 	const answer = useCallback(
-		(answeredSince: number, then?: () => void) => {
+		(answeredSince: number, then?: () => void) =>
+		{
 			const current = coldResumeRecord(sessionId);
 			if (current.answeredSince === answeredSince) return;
 			current.answeredSince = answeredSince;
@@ -143,22 +161,26 @@ export function ColdResumeNotice({
 	);
 
 	let notice = null;
-	if (decision !== null) {
+	if (decision !== null)
+	{
 		const answeredSince = decision.since;
-		notice = {
+		notice =
+		{
 			id: `${sessionId}:${answeredSince}`,
 			content: (
 				<NoticeBanner
 					icon={<Icon name="Info" size="auto" />}
 					data-testid="cold-resume-card"
-					onDismiss={() => {
+					onDismiss={() =>
+					{
 						answer(answeredSince);
 					}}
 					action={
 						<div className="flex min-w-0 flex-wrap items-center gap-xs">
 							<ApprovalActionButton
 								variant="secondary"
-								onClick={() => {
+								onClick={() =>
+								{
 									answer(answeredSince, onStay);
 								}}
 							>
@@ -168,7 +190,8 @@ export function ColdResumeNotice({
 								<TippedAction
 									label={COLD_RESUME_COPY.newSession}
 									tip={COLD_RESUME_COPY.newSessionTip}
-									onClick={() => {
+									onClick={() =>
+									{
 										answer(answeredSince, onNewSession);
 									}}
 								/>
@@ -177,7 +200,8 @@ export function ColdResumeNotice({
 								<TippedAction
 									label={COLD_RESUME_COPY.compact}
 									tip={COLD_RESUME_COPY.compactTip}
-									onClick={() => {
+									onClick={() =>
+									{
 										if (busyRef.current) return;
 										answer(answeredSince, onCompact);
 									}}
@@ -195,11 +219,13 @@ export function ColdResumeNotice({
 		};
 	}
 	const holds = decision !== null;
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		onHoldChange?.(holds);
 	}, [onHoldChange, holds]);
 	useLayoutEffect(
-		() => () => {
+		() => () =>
+		{
 			onHoldChange?.(false);
 		},
 		[onHoldChange],

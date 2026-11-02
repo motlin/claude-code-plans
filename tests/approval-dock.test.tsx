@@ -15,7 +15,8 @@ import {QuestionCard} from "../src/components/question-card";
 import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
-import {
+import
+{
 	findFirstPendingToolUse,
 	findLastPendingToolUse,
 	findPendingAskUserQuestion,
@@ -26,7 +27,8 @@ import {
 	toolUseProgress,
 } from "../src/lib/approval-dock";
 import type {QuestionLike} from "../src/lib/ask-user-question";
-import {
+import
+{
 	clearSentQuestionCard,
 	markQuestionCardSeen,
 	markQuestionCardSent,
@@ -41,207 +43,665 @@ const QUESTIONS: QuestionLike[] = [
 		question: "Which test runner?",
 		header: "Runner",
 		options: [
-			{label: "Vitest", description: "Vite-native"},
-			{label: "Jest", description: "Widely adopted"},
+			{
+				label: "Vitest",
+				description: "Vite-native",
+			},
+			{
+				label: "Jest",
+				description: "Widely adopted",
+			},
 		],
 	},
 	{
 		question: "Which features?",
 		header: "Features",
 		multiSelect: true,
-		options: [{label: "Coverage"}, {label: "Watch"}, {label: "UI"}],
+		options: [
+			{
+				label: "Coverage",
+			},
+			{
+				label: "Watch",
+			},
+			{
+				label: "UI",
+			},
+		],
 	},
 ];
 
-function assistantToolUse(id: string, name: string, input: Record<string, unknown>, extra = {}) {
+function assistantToolUse(id: string, name: string, input: Record<string, unknown>, extra = {})
+{
 	return {
 		type: "assistant",
-		message: {content: [{type: "tool_use", id, name, input}]},
+		message:
+		{
+			content: [
+				{
+					type: "tool_use",
+					id,
+					name,
+					input,
+				},
+			],
+		},
 		...extra,
 	};
 }
 
-function toolResult(id: string) {
+function toolResult(id: string)
+{
 	return {
 		type: "user",
-		message: {content: [{type: "tool_result", tool_use_id: id, content: "ok"}]},
+		message:
+		{
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: id,
+					content: "ok",
+				},
+			],
+		},
 	};
 }
 
-describe("findPendingToolUses", () => {
-	it("lists a serial batch's unanswered calls in record order, and the first is the one the CLI asks about", () => {
+describe("findPendingToolUses", () =>
+{
+	it("lists a serial batch's unanswered calls in record order, and the first is the one the CLI asks about", () =>
+	{
 		const records = [
-			assistantToolUse("e1", "Edit", {file_path: "/repo/a.ts"}),
-			assistantToolUse("w1", "Write", {file_path: "/repo/b.ts", content: "x"}),
-			assistantToolUse("b1", "Bash", {command: "ls"}),
+			assistantToolUse(
+				"e1",
+				"Edit",
+				{
+					file_path: "/repo/a.ts",
+				},
+			),
+			assistantToolUse(
+				"w1",
+				"Write",
+				{
+					file_path: "/repo/b.ts",
+					content: "x",
+				},
+			),
+			assistantToolUse(
+				"b1",
+				"Bash",
+				{
+					command: "ls",
+				},
+			),
 		];
 		expect(findPendingToolUses(records)).toStrictEqual([
-			{id: "e1", name: "Edit", input: {file_path: "/repo/a.ts"}},
-			{id: "w1", name: "Write", input: {file_path: "/repo/b.ts", content: "x"}},
-			{id: "b1", name: "Bash", input: {command: "ls"}},
+			{
+				id: "e1",
+				name: "Edit",
+				input:
+				{
+					file_path: "/repo/a.ts",
+				},
+			},
+			{
+				id: "w1",
+				name: "Write",
+				input:
+				{
+					file_path: "/repo/b.ts",
+					content: "x",
+				},
+			},
+			{
+				id: "b1",
+				name: "Bash",
+				input:
+				{
+					command: "ls",
+				},
+			},
 		]);
-		expect(findFirstPendingToolUse(records)).toStrictEqual({
-			id: "e1",
-			name: "Edit",
-			input: {file_path: "/repo/a.ts"},
-		});
+		expect(findFirstPendingToolUse(records)).toStrictEqual(
+			{
+				id: "e1",
+				name: "Edit",
+				input:
+				{
+					file_path: "/repo/a.ts",
+				},
+			},
+		);
 	});
 
-	it("keeps a parallel ask whose later sibling already finished, which the last-block lookup misses", () => {
+	it("keeps a parallel ask whose later sibling already finished, which the last-block lookup misses", () =>
+	{
 		const records = [
-			assistantToolUse("f1", "WebFetch", {url: "https://a"}),
-			assistantToolUse("r1", "Read", {file_path: "/repo/a.ts"}),
+			assistantToolUse(
+				"f1",
+				"WebFetch",
+				{
+					url: "https://a",
+				},
+			),
+			assistantToolUse(
+				"r1",
+				"Read",
+				{
+					file_path: "/repo/a.ts",
+				},
+			),
 			toolResult("r1"),
 		];
-		expect(findPendingToolUses(records)).toStrictEqual([{id: "f1", name: "WebFetch", input: {url: "https://a"}}]);
+		expect(findPendingToolUses(records)).toStrictEqual([
+			{
+				id: "f1",
+				name: "WebFetch",
+				input:
+				{
+					url: "https://a",
+				},
+			},
+		]);
 		expect(findLastPendingToolUse(records)).toBeNull();
 	});
 
-	it("counts a re-written block once", () => {
+	it("counts a re-written block once", () =>
+	{
 		const records = [
-			assistantToolUse("e1", "Edit", {file_path: "/repo/a.ts"}),
-			assistantToolUse("w1", "Write", {file_path: "/repo/b.ts"}),
-			assistantToolUse("e1", "Edit", {file_path: "/repo/a.ts"}),
+			assistantToolUse(
+				"e1",
+				"Edit",
+				{
+					file_path: "/repo/a.ts",
+				},
+			),
+			assistantToolUse(
+				"w1",
+				"Write",
+				{
+					file_path: "/repo/b.ts",
+				},
+			),
+			assistantToolUse(
+				"e1",
+				"Edit",
+				{
+					file_path: "/repo/a.ts",
+				},
+			),
 		];
 		expect(findPendingToolUses(records)).toStrictEqual([
-			{id: "e1", name: "Edit", input: {file_path: "/repo/a.ts"}},
-			{id: "w1", name: "Write", input: {file_path: "/repo/b.ts"}},
+			{
+				id: "e1",
+				name: "Edit",
+				input:
+				{
+					file_path: "/repo/a.ts",
+				},
+			},
+			{
+				id: "w1",
+				name: "Write",
+				input:
+				{
+					file_path: "/repo/b.ts",
+				},
+			},
 		]);
 	});
 
-	it("ignores a sidechain call", () => {
+	it("ignores a sidechain call", () =>
+	{
 		const records = [
-			assistantToolUse("s1", "Bash", {command: "ls"}, {isSidechain: true}),
-			assistantToolUse("b1", "Bash", {command: "pwd"}),
+			assistantToolUse(
+				"s1",
+				"Bash",
+				{
+					command: "ls",
+				},
+				{
+					isSidechain: true,
+				},
+			),
+			assistantToolUse(
+				"b1",
+				"Bash",
+				{
+					command: "pwd",
+				},
+			),
 		];
-		expect(findPendingToolUses(records)).toStrictEqual([{id: "b1", name: "Bash", input: {command: "pwd"}}]);
+		expect(findPendingToolUses(records)).toStrictEqual([
+			{
+				id: "b1",
+				name: "Bash",
+				input:
+				{
+					command: "pwd",
+				},
+			},
+		]);
 		expect(findFirstPendingToolUse([records[0]])).toBeNull();
 	});
 });
 
-describe("matchPendingToolUse", () => {
+describe("matchPendingToolUse", () =>
+{
 	const pending = [
-		{id: "f1", name: "WebFetch", input: {url: "https://a", prompt: "p"}},
-		{id: "f2", name: "WebFetch", input: {url: "https://b", prompt: "p"}},
+		{
+			id: "f1",
+			name: "WebFetch",
+			input:
+			{
+				url: "https://a",
+				prompt: "p",
+			},
+		},
+		{
+			id: "f2",
+			name: "WebFetch",
+			input:
+			{
+				url: "https://b",
+				prompt: "p",
+			},
+		},
 	];
 
-	it("matches the ask by tool name and deep-equal input", () => {
+	it("matches the ask by tool name and deep-equal input", () =>
+	{
 		expect(
-			matchPendingToolUse(pending, {toolName: "WebFetch", toolInput: {prompt: "p", url: "https://b"}}),
-		).toStrictEqual({id: "f2", name: "WebFetch", input: {url: "https://b", prompt: "p"}});
+			matchPendingToolUse(
+				pending,
+				{
+					toolName: "WebFetch",
+					toolInput:
+					{
+						prompt: "p",
+						url: "https://b",
+					},
+				},
+			),
+		).toStrictEqual(
+			{
+				id: "f2",
+				name: "WebFetch",
+				input:
+				{
+					url: "https://b",
+					prompt: "p",
+				},
+			},
+		);
 	});
 
-	it("matches nested input regardless of key order", () => {
-		const nested = [{id: "m1", name: "mcp__x__y", input: {a: [1, {b: null, c: "d"}]}}];
+	it("matches nested input regardless of key order", () =>
+	{
+		const nested = [
+			{
+				id: "m1",
+				name: "mcp__x__y",
+				input:
+				{
+					a: [
+						1,
+						{
+							b: null,
+							c: "d",
+						},
+					],
+				},
+			},
+		];
 		expect(
-			matchPendingToolUse(nested, {toolName: "mcp__x__y", toolInput: {a: [1, {c: "d", b: null}]}}),
-		).toStrictEqual({id: "m1", name: "mcp__x__y", input: {a: [1, {b: null, c: "d"}]}});
+			matchPendingToolUse(
+				nested,
+				{
+					toolName: "mcp__x__y",
+					toolInput:
+					{
+						a: [
+							1,
+							{
+								c: "d",
+								b: null,
+							},
+						],
+					},
+				},
+			),
+		).toStrictEqual(
+			{
+				id: "m1",
+				name: "mcp__x__y",
+				input:
+				{
+					a: [
+						1,
+						{
+							b: null,
+							c: "d",
+						},
+					],
+				},
+			},
+		);
 	});
 
-	it("finds nothing for another tool, a different input or an extra key", () => {
-		expect(matchPendingToolUse(pending, {toolName: "Read", toolInput: {url: "https://b", prompt: "p"}})).toBeNull();
+	it("finds nothing for another tool, a different input or an extra key", () =>
+	{
 		expect(
-			matchPendingToolUse(pending, {toolName: "WebFetch", toolInput: {url: "https://c", prompt: "p"}}),
+			matchPendingToolUse(
+				pending,
+				{
+					toolName: "Read",
+					toolInput:
+					{
+						url: "https://b",
+						prompt: "p",
+					},
+				},
+			),
 		).toBeNull();
 		expect(
-			matchPendingToolUse(pending, {toolName: "WebFetch", toolInput: {url: "https://b", prompt: "p", x: 1}}),
+			matchPendingToolUse(
+				pending,
+				{
+					toolName: "WebFetch",
+					toolInput:
+					{
+						url: "https://c",
+						prompt: "p",
+					},
+				},
+			),
 		).toBeNull();
-		expect(matchPendingToolUse(pending, {toolName: "WebFetch", toolInput: null})).toBeNull();
+		expect(
+			matchPendingToolUse(
+				pending,
+				{
+					toolName: "WebFetch",
+					toolInput:
+					{
+						url: "https://b",
+						prompt: "p",
+						x: 1,
+					},
+				},
+			),
+		).toBeNull();
+		expect(
+			matchPendingToolUse(
+				pending,
+				{
+					toolName: "WebFetch",
+					toolInput: null,
+				},
+			),
+		).toBeNull();
 	});
 });
 
-describe("findPendingAskUserQuestion", () => {
-	it("finds an unanswered AskUserQuestion that is the last assistant tool_use", () => {
+describe("findPendingAskUserQuestion", () =>
+{
+	it("finds an unanswered AskUserQuestion that is the last assistant tool_use", () =>
+	{
 		const records = [
-			assistantToolUse("t1", "Bash", {command: "ls"}),
+			assistantToolUse(
+				"t1",
+				"Bash",
+				{
+					command: "ls",
+				},
+			),
 			toolResult("t1"),
-			assistantToolUse("t2", "AskUserQuestion", {questions: QUESTIONS}),
+			assistantToolUse(
+				"t2",
+				"AskUserQuestion",
+				{
+					questions: QUESTIONS,
+				},
+			),
 		];
-		expect(findPendingAskUserQuestion(records)).toStrictEqual({
-			toolUseId: "t2",
-			questions: QUESTIONS,
-		});
+		expect(findPendingAskUserQuestion(records)).toStrictEqual(
+			{
+				toolUseId: "t2",
+				questions: QUESTIONS,
+			},
+		);
 	});
 
-	it("returns null once the question has a tool_result", () => {
-		const records = [assistantToolUse("t2", "AskUserQuestion", {questions: QUESTIONS}), toolResult("t2")];
+	it("returns null once the question has a tool_result", () =>
+	{
+		const records = [
+			assistantToolUse(
+				"t2",
+				"AskUserQuestion",
+				{
+					questions: QUESTIONS,
+				},
+			),
+			toolResult("t2"),
+		];
 		expect(findPendingAskUserQuestion(records)).toBeNull();
 	});
 
-	it("returns null when a later tool_use follows the question", () => {
+	it("returns null when a later tool_use follows the question", () =>
+	{
 		const records = [
-			assistantToolUse("t2", "AskUserQuestion", {questions: QUESTIONS}),
-			assistantToolUse("t3", "Bash", {command: "ls"}),
+			assistantToolUse(
+				"t2",
+				"AskUserQuestion",
+				{
+					questions: QUESTIONS,
+				},
+			),
+			assistantToolUse(
+				"t3",
+				"Bash",
+				{
+					command: "ls",
+				},
+			),
 		];
 		expect(findPendingAskUserQuestion(records)).toBeNull();
 	});
 
-	it("ignores sidechain records", () => {
+	it("ignores sidechain records", () =>
+	{
 		const records = [
-			assistantToolUse("t2", "AskUserQuestion", {questions: QUESTIONS}),
-			assistantToolUse("s1", "Bash", {command: "ls"}, {isSidechain: true}),
+			assistantToolUse(
+				"t2",
+				"AskUserQuestion",
+				{
+					questions: QUESTIONS,
+				},
+			),
+			assistantToolUse(
+				"s1",
+				"Bash",
+				{
+					command: "ls",
+				},
+				{
+					isSidechain: true,
+				},
+			),
 		];
 		expect(findPendingAskUserQuestion(records)?.toolUseId).toStrictEqual("t2");
 	});
 
-	it("normalizes the single-question form", () => {
+	it("normalizes the single-question form", () =>
+	{
 		const records = [
-			assistantToolUse("t4", "AskUserQuestion", {
-				question: "Pick?",
-				options: [{label: "A"}, {label: "B"}],
-			}),
+			assistantToolUse(
+				"t4",
+				"AskUserQuestion",
+				{
+					question: "Pick?",
+					options: [
+						{
+							label: "A",
+						},
+						{
+							label: "B",
+						},
+					],
+				},
+			),
 		];
-		expect(findPendingAskUserQuestion(records)).toStrictEqual({
-			toolUseId: "t4",
-			questions: [{question: "Pick?", options: [{label: "A"}, {label: "B"}]}],
-		});
+		expect(findPendingAskUserQuestion(records)).toStrictEqual(
+			{
+				toolUseId: "t4",
+				questions: [
+					{
+						question: "Pick?",
+						options: [
+							{
+								label: "A",
+							},
+							{
+								label: "B",
+							},
+						],
+					},
+				],
+			},
+		);
 	});
 });
 
-describe("toolUseProgress", () => {
-	it("tells a main-thread tool call missing from the records, awaiting its result, or answered", () => {
-		const asked = [assistantToolUse("t2", "AskUserQuestion", {questions: QUESTIONS})];
+describe("toolUseProgress", () =>
+{
+	it("tells a main-thread tool call missing from the records, awaiting its result, or answered", () =>
+	{
+		const asked = [
+			assistantToolUse(
+				"t2",
+				"AskUserQuestion",
+				{
+					questions: QUESTIONS,
+				},
+			),
+		];
 		expect([
 			toolUseProgress([], "t2"),
 			toolUseProgress(asked, "t2"),
 			toolUseProgress([...asked, toolResult("t2")], "t2"),
-			toolUseProgress([assistantToolUse("t2", "AskUserQuestion", {}, {isSidechain: true})], "t2"),
+			toolUseProgress(
+				[
+					assistantToolUse(
+						"t2",
+						"AskUserQuestion",
+						{},
+						{
+							isSidechain: true,
+						},
+					),
+				],
+				"t2",
+			),
 		]).toStrictEqual(["absent", "pending", "answered", "absent"]);
 	});
 });
 
-describe("hook question across the answer", () => {
-	const HOOK_QUESTION = {toolUseId: "t2", questions: QUESTIONS};
-	const asked = [assistantToolUse("t2", "AskUserQuestion", {questions: QUESTIONS})];
+describe("hook question across the answer", () =>
+{
+	const HOOK_QUESTION =
+	{
+		toolUseId: "t2",
+		questions: QUESTIONS,
+	};
+	const asked = [
+		assistantToolUse(
+			"t2",
+			"AskUserQuestion",
+			{
+				questions: QUESTIONS,
+			},
+		),
+	];
 	const answered = [...asked, toolResult("t2")];
 
-	it("never draws the hook copy again once the transcript holds the answer the hook hasn't caught up to", () => {
+	it("never draws the hook copy again once the transcript holds the answer the hook hasn't caught up to", () =>
+	{
 		// Frames: hook-only; record on disk awaiting; answer on disk while the hook
 		// state is still the stale "waiting" one; the hook confirms.
 		const frames = [
-			{state: "waiting", hookQuestion: HOOK_QUESTION, records: []},
-			{state: "waiting", hookQuestion: HOOK_QUESTION, records: asked},
-			{state: "waiting", hookQuestion: HOOK_QUESTION, records: answered},
-			{state: "working", hookQuestion: null, records: answered},
+			{
+				state: "waiting",
+				hookQuestion: HOOK_QUESTION,
+				records: [],
+			},
+			{
+				state: "waiting",
+				hookQuestion: HOOK_QUESTION,
+				records: asked,
+			},
+			{
+				state: "waiting",
+				hookQuestion: HOOK_QUESTION,
+				records: answered,
+			},
+			{
+				state: "working",
+				hookQuestion: null,
+				records: answered,
+			},
 		] as const;
-		expect(frames.map((frame) => hookQuestionCardShown({...frame, sent: false}))).toStrictEqual([
-			true,
-			false,
-			false,
-			false,
-		]);
+		expect(
+			frames.map((frame) =>
+				hookQuestionCardShown(
+					{
+						...frame,
+						sent: false,
+					},
+				),
+			),
+		).toStrictEqual([true, false, false, false]);
 	});
 
-	it("keeps a sent hook copy's receipt while the summary runs ahead of the record, until the record lands", () => {
+	it("keeps a sent hook copy's receipt while the summary runs ahead of the record, until the record lands", () =>
+	{
 		expect([
-			hookQuestionCardShown({state: "working", hookQuestion: HOOK_QUESTION, records: [], sent: true}),
-			hookQuestionCardShown({state: "working", hookQuestion: HOOK_QUESTION, records: [], sent: false}),
-			hookQuestionCardShown({state: "working", hookQuestion: HOOK_QUESTION, records: asked, sent: true}),
-			hookQuestionCardShown({state: "working", hookQuestion: null, records: [], sent: true}),
+			hookQuestionCardShown(
+				{
+					state: "working",
+					hookQuestion: HOOK_QUESTION,
+					records: [],
+					sent: true,
+				},
+			),
+			hookQuestionCardShown(
+				{
+					state: "working",
+					hookQuestion: HOOK_QUESTION,
+					records: [],
+					sent: false,
+				},
+			),
+			hookQuestionCardShown(
+				{
+					state: "working",
+					hookQuestion: HOOK_QUESTION,
+					records: asked,
+					sent: true,
+				},
+			),
+			hookQuestionCardShown(
+				{
+					state: "working",
+					hookQuestion: null,
+					records: [],
+					sent: true,
+				},
+			),
 		]).toStrictEqual([true, false, false, false]);
 	});
 
-	it("drops a hook question the transcript already answered, so the composer stops gating on it", () => {
+	it("drops a hook question the transcript already answered, so the composer stops gating on it", () =>
+	{
 		expect([
 			liveHookQuestion(HOOK_QUESTION, []),
 			liveHookQuestion(HOOK_QUESTION, asked),
@@ -251,174 +711,417 @@ describe("hook question across the answer", () => {
 	});
 });
 
-describe("QuestionCard", () => {
-	it("draws upstream's card: the question in a grey header with an N of M pager, radio rows with descriptions, and Other", () => {
-		render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
-		const card = screen.getByRole("group", {name: "Which test runner?"});
+describe("QuestionCard", () =>
+{
+	it("draws upstream's card: the question in a grey header with an N of M pager, radio rows with descriptions, and Other", () =>
+	{
+		render(
+			<QuestionCard
+				questions={QUESTIONS}
+				onSubmit={async () =>
+				{
+				}}
+			/>,
+		);
+		const card = screen.getByRole(
+			"group",
+			{
+				name: "Which test runner?",
+			},
+		);
 
-		expect({
-			card: card.className
-				.split(" ")
-				.filter((name) => ["@container", "max-w-[480px]", "card-ring", "rounded-card"].includes(name)),
-			header: card.firstElementChild?.textContent,
-			pagerMargins: screen
-				.getByRole("button", {name: "Show previous question"})
-				.parentElement?.className.split(" ")
-				.filter((name) => name.startsWith("-m")),
-			pager: [
-				screen.getByRole("button", {name: "Show previous question"}).hasAttribute("disabled"),
-				screen.getByRole("button", {name: "Show next question"}).hasAttribute("disabled"),
-			],
-			options: within(card)
-				.getAllByRole("button")
-				.filter((button) => button.hasAttribute("aria-pressed"))
-				.map((button) => [
-					button.getAttribute("aria-label") ?? button.textContent,
-					button.getAttribute("aria-pressed"),
-				]),
-			otherBox: screen.queryByRole("textbox", {name: "Other option"}),
-			actions: [
-				screen.getByRole("button", {name: "Skip"}).textContent,
-				screen.getByRole("button", {name: /^Next/}).hasAttribute("disabled"),
-			],
-			actionsGap: screen
-				.getByRole("button", {name: "Skip"})
-				.parentElement?.className.split(" ")
-				.filter((name) => name.startsWith("gap-")),
-		}).toStrictEqual({
-			card: ["card-ring", "@container", "max-w-[480px]", "rounded-card"],
-			header: "Which test runner?1 of 2",
-			pagerMargins: ["-my-xs", "-me-sm"],
-			pager: [true, false],
-			options: [
-				["VitestVite-native", "true"],
-				["JestWidely adopted", "false"],
-				["Other", "false"],
-			],
-			otherBox: null,
-			actions: ["Skip", false],
-			actionsGap: ["gap-sm"],
-		});
+		expect(
+			{
+				card: card.className
+					.split(" ")
+					.filter((name) => ["@container", "max-w-[480px]", "card-ring", "rounded-card"].includes(name)),
+				header: card.firstElementChild?.textContent,
+				pagerMargins: screen
+					.getByRole(
+						"button",
+						{
+							name: "Show previous question",
+						},
+					)
+					.parentElement?.className.split(" ")
+					.filter((name) => name.startsWith("-m")),
+				pager: [
+					screen
+						.getByRole(
+							"button",
+							{
+								name: "Show previous question",
+							},
+						)
+						.hasAttribute("disabled"),
+					screen
+						.getByRole(
+							"button",
+							{
+								name: "Show next question",
+							},
+						)
+						.hasAttribute("disabled"),
+				],
+				options: within(card)
+					.getAllByRole("button")
+					.filter((button) => button.hasAttribute("aria-pressed"))
+					.map((button) => [
+						button.getAttribute("aria-label") ?? button.textContent,
+						button.getAttribute("aria-pressed"),
+					]),
+				otherBox: screen.queryByRole(
+					"textbox",
+					{
+						name: "Other option",
+					},
+				),
+				actions: [
+					screen.getByRole(
+						"button",
+						{
+							name: "Skip",
+						},
+					).textContent,
+					screen
+						.getByRole(
+							"button",
+							{
+								name: /^Next/,
+							},
+						)
+						.hasAttribute("disabled"),
+				],
+				actionsGap: screen
+					.getByRole(
+						"button",
+						{
+							name: "Skip",
+						},
+					)
+					.parentElement?.className.split(" ")
+					.filter((name) => name.startsWith("gap-")),
+			},
+		).toStrictEqual(
+			{
+				card: ["card-ring", "@container", "max-w-[480px]", "rounded-card"],
+				header: "Which test runner?1 of 2",
+				pagerMargins: ["-my-xs", "-me-sm"],
+				pager: [true, false],
+				options: [
+					["VitestVite-native", "true"],
+					["JestWidely adopted", "false"],
+					["Other", "false"],
+				],
+				otherBox: null,
+				actions: ["Skip", false],
+				actionsGap: ["gap-sm"],
+			},
+		);
 	});
 
-	describe("small DOM parity with upstream's card", () => {
-		const DUPLICATES: QuestionLike = {
+	describe("small DOM parity with upstream's card", () =>
+	{
+		const DUPLICATES: QuestionLike =
+		{
 			question: "Which ones?",
 			header: "Ones",
 			multiSelect: true,
-			options: [{label: "Same"}, {label: "Same"}],
+			options: [
+				{
+					label: "Same",
+				},
+				{
+					label: "Same",
+				},
+			],
 		};
 
-		it("renders two options with the same label and toggles them independently, keyed by index and label", () => {
+		it("renders two options with the same label and toggles them independently, keyed by index and label", () =>
+		{
 			const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-			render(<QuestionCard questions={[DUPLICATES]} onSubmit={async () => {}} />);
-			const [first, second] = screen.getAllByRole("button", {name: "Same"});
+			render(
+				<QuestionCard
+					questions={[DUPLICATES]}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
+			const [first, second] = screen.getAllByRole(
+				"button",
+				{
+					name: "Same",
+				},
+			);
 			fireEvent.click(first!);
 			const keyWarnings = consoleError.mock.calls.filter((call) => String(call[0]).includes("same key"));
 			consoleError.mockRestore();
 
-			expect({
-				pressed: screen
-					.getAllByRole("button", {name: "Same"})
-					.map((button) => button.getAttribute("aria-pressed")),
-				second: second?.getAttribute("aria-pressed"),
-				keyWarnings,
-			}).toStrictEqual({pressed: ["true", "false"], second: "false", keyWarnings: []});
+			expect(
+				{
+					pressed: screen
+						.getAllByRole(
+							"button",
+							{
+								name: "Same",
+							},
+						)
+						.map((button) => button.getAttribute("aria-pressed")),
+					second: second?.getAttribute("aria-pressed"),
+					keyWarnings,
+				},
+			).toStrictEqual(
+				{
+					pressed: ["true", "false"],
+					second: "false",
+					keyWarnings: [],
+				},
+			);
 		});
 
-		it("stops a click inside the card from reaching a parent onClick, as upstream's root stopPropagation", () => {
+		it("stops a click inside the card from reaching a parent onClick, as upstream's root stopPropagation", () =>
+		{
 			const parentClick = vi.fn<() => void>();
-			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+			render(
+				<QuestionCard
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
 			document.body.addEventListener("click", parentClick);
-			fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Jest/,
+					},
+				),
+			);
 			document.body.removeEventListener("click", parentClick);
 
-			expect({
-				calls: parentClick.mock.calls.length,
-				pressed: screen.getByRole("button", {name: /^Jest/}).getAttribute("aria-pressed"),
-			}).toStrictEqual({calls: 0, pressed: "true"});
+			expect(
+				{
+					calls: parentClick.mock.calls.length,
+					pressed: screen
+						.getByRole(
+							"button",
+							{
+								name: /^Jest/,
+							},
+						)
+						.getAttribute("aria-pressed"),
+				},
+			).toStrictEqual(
+				{
+					calls: 0,
+					pressed: "true",
+				},
+			);
 		});
 
-		it("wraps the options in a data-approval-allow contents span, rings focus with a shadow, keeps label and description bidi-plaintext, and draws control-height square pager buttons", () => {
-			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
-			const option = screen.getByRole("button", {name: /^Vitest/});
+		it("wraps the options in a data-approval-allow contents span, rings focus with a shadow, keeps label and description bidi-plaintext, and draws control-height square pager buttons", () =>
+		{
+			render(
+				<QuestionCard
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
+			const option = screen.getByRole(
+				"button",
+				{
+					name: /^Vitest/,
+				},
+			);
 			const [label, description] = Array.from(option.querySelector(".select-text")?.children ?? []);
 			const wrapper = option.parentElement?.parentElement;
-			const previous = screen.getByRole("button", {name: "Show previous question"});
+			const previous = screen.getByRole(
+				"button",
+				{
+					name: "Show previous question",
+				},
+			);
 
-			expect({
-				wrapper: [wrapper?.tagName, wrapper?.className, wrapper?.getAttribute("data-approval-allow")],
-				focus: option.className.split(" ").filter((name) => /focus|outline|ring/.test(name)),
-				label: label?.className,
-				description: description?.className,
-				pager: previous.className.split(" ").filter((name) => /^(size-|h-|aspect-|rounded-)/.test(name)),
-				caret: previous
-					.querySelector("svg")
-					?.getAttribute("class")
-					?.split(" ")
-					.filter((name) => name.startsWith("size-")),
-			}).toStrictEqual({
-				wrapper: ["SPAN", "contents", ""],
-				focus: ["focus-visible:outline-hidden", "hide-focus-ring", "focus-visible:shadow-focus"],
-				label: "text-body text-primary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
-				description:
-					"whitespace-pre-wrap text-body text-secondary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
-				pager: ["h-control", "aspect-square", "rounded-[var(--upstream-radius)]"],
-				caret: ["size-icon"],
-			});
+			expect(
+				{
+					wrapper: [wrapper?.tagName, wrapper?.className, wrapper?.getAttribute("data-approval-allow")],
+					focus: option.className.split(" ").filter((name) => /focus|outline|ring/.test(name)),
+					label: label?.className,
+					description: description?.className,
+					pager: previous.className.split(" ").filter((name) => /^(size-|h-|aspect-|rounded-)/.test(name)),
+					caret: previous
+						.querySelector("svg")
+						?.getAttribute("class")
+						?.split(" ")
+						.filter((name) => name.startsWith("size-")),
+				},
+			).toStrictEqual(
+				{
+					wrapper: ["SPAN", "contents", ""],
+					focus: ["focus-visible:outline-hidden", "hide-focus-ring", "focus-visible:shadow-focus"],
+					label: "text-body text-primary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
+					description:
+						"whitespace-pre-wrap text-body text-secondary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
+					pager: ["h-control", "aspect-square", "rounded-[var(--upstream-radius)]"],
+					caret: ["size-icon"],
+				},
+			);
 		});
 	});
 
-	it("reveals the Other box only once Other is chosen, and sends an empty Other as Something else", async () => {
+	it("reveals the Other box only once Other is chosen, and sends an empty Other as Something else", async () =>
+	{
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 		render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={onSubmit} />);
-		fireEvent.click(screen.getByRole("button", {name: "Other"}));
-		const box = screen.getByRole("textbox", {name: "Other option"});
-		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
-		await vi.waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Other",
+				},
+			),
+		);
+		const box = screen.getByRole(
+			"textbox",
+			{
+				name: "Other option",
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			),
+		);
+		await vi.waitFor(() =>
+		{
 			expect(onSubmit).toHaveBeenCalledTimes(1);
 		});
 
-		expect({placeholder: box.getAttribute("placeholder"), answers: onSubmit.mock.calls[0]?.[0]}).toStrictEqual({
-			placeholder: "Type your own answer here",
-			answers: [{selected: [], other: "Something else"}],
-		});
+		expect(
+			{
+				placeholder: box.getAttribute("placeholder"),
+				answers: onSubmit.mock.calls[0]?.[0],
+			},
+		).toStrictEqual(
+			{
+				placeholder: "Type your own answer here",
+				answers: [
+					{
+						selected: [],
+						other: "Something else",
+					},
+				],
+			},
+		);
 	});
 
-	it("swaps the card for upstream's receipt of the submitted answers the moment it submits, before the send settles", () => {
+	it("swaps the card for upstream's receipt of the submitted answers the moment it submits, before the send settles", () =>
+	{
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => new Promise<void>(() => {}));
 		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 		const {container} = render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);
 		now.mockReturnValue(1400);
-		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-		fireEvent.click(screen.getByRole("button", {name: /^Watch/}));
-		fireEvent.click(screen.getByRole("button", {name: "Other"}));
-		fireEvent.change(screen.getByRole("textbox", {name: "Other option"}), {target: {value: "Mutation"}});
-		fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
-		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Next/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Watch/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Other",
+				},
+			),
+		);
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Other option",
+				},
+			),
+			{
+				target:
+				{
+					value: "Mutation",
+				},
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Coverage/,
+				},
+			),
+		);
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
 		const receipt = container.querySelector("[data-question-receipt]");
 		now.mockRestore();
 
-		expect({
-			card: container.querySelector("[data-approval-card-root]") !== null,
-			className: receipt?.className,
-			rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) =>
-				[...row.children].map((line) => line.textContent),
-			),
-			calls: onSubmit.mock.calls,
-		}).toStrictEqual({
-			card: false,
-			className:
-				"card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
-			rows: [
-				["Which test runner?", "Vitest"],
-				["Which features?", "Mutation, Coverage, Watch"],
-			],
-			calls: [[[{selected: [0]}, {selected: [0, 1], other: "Mutation"}]]],
-		});
+		expect(
+			{
+				card: container.querySelector("[data-approval-card-root]") !== null,
+				className: receipt?.className,
+				rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) =>
+					[...row.children].map((line) => line.textContent),
+				),
+				calls: onSubmit.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				card: false,
+				className:
+					"card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
+				rows: [
+					["Which test runner?", "Vitest"],
+					["Which features?", "Mutation, Coverage, Watch"],
+				],
+				calls: [
+					[
+						[
+							{
+								selected: [0],
+							},
+							{
+								selected: [0, 1],
+								other: "Mutation",
+							},
+						],
+					],
+				],
+			},
+		);
 	});
 
-	it("holds its session as answered the moment ⌘⏎ submits, and releases it when the send rejects", async () => {
+	it("holds its session as answered the moment ⌘⏎ submits, and releases it when the send rejects", async () =>
+	{
 		let reject!: (reason: Error) => void;
 		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 		render(
@@ -427,32 +1130,56 @@ describe("QuestionCard", () => {
 				draftKey="toolu_card"
 				questions={[QUESTIONS[0]!]}
 				onSubmit={async () =>
-					new Promise<void>((_, onReject) => {
+					new Promise<void>((_, onReject) =>
+					{
 						reject = onReject;
 					})
 				}
 			/>,
 		);
-		fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Jest/,
+				},
+			),
+		);
 		now.mockReturnValue(1400);
-		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
 		now.mockRestore();
 		const sending = isAnsweredHeld("s-card");
-		await act(async () => {
+		await act(async () =>
+		{
 			reject(new Error("pane gone"));
 			return Promise.resolve();
 		});
 		const failed = isAnsweredHeld("s-card");
 		releaseAnswered("s-card");
 
-		expect({sending, failed, error: screen.queryByText("pane gone") !== null}).toStrictEqual({
-			sending: true,
-			failed: false,
-			error: true,
-		});
+		expect(
+			{
+				sending,
+				failed,
+				error: screen.queryByText("pane gone") !== null,
+			},
+		).toStrictEqual(
+			{
+				sending: true,
+				failed: false,
+				error: true,
+			},
+		);
 	});
 
-	it("persists a delivered answer as acknowledged, so a reload while the result is due redraws its receipt, not the card", async () => {
+	it("persists a delivered answer as acknowledged, so a reload while the result is due redraws its receipt, not the card", async () =>
+	{
 		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 		render(
 			<QuestionCard
@@ -462,10 +1189,24 @@ describe("QuestionCard", () => {
 				onSubmit={async () => Promise.resolve()}
 			/>,
 		);
-		fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Jest/,
+				},
+			),
+		);
 		now.mockReturnValue(1400);
-		await act(async () => {
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		await act(async () =>
+		{
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 			return Promise.resolve();
 		});
 		now.mockRestore();
@@ -489,32 +1230,40 @@ describe("QuestionCard", () => {
 		const sentAfterReload = store.isQuestionCardSent("toolu_ack_card");
 		store.clearSentQuestionCard("toolu_ack_card");
 
-		expect({
-			stored,
-			card: container.querySelector("[data-approval-card-root]") !== null,
-			rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) =>
-				[...row.children].map((line) => line.textContent),
-			),
-			sentAfterReload,
-			sentStorage: window.sessionStorage.getItem("question-card-sent:toolu_ack_card"),
-		}).toStrictEqual({
-			stored: {
-				"s-ack-card": {
-					toolu_ack_card: {
-						toolUseId: "toolu_ack_card",
-						toolName: "AskUserQuestion",
-						acknowledgedAt: expect.any(Number) as number,
+		expect(
+			{
+				stored,
+				card: container.querySelector("[data-approval-card-root]") !== null,
+				rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) =>
+					[...row.children].map((line) => line.textContent),
+				),
+				sentAfterReload,
+				sentStorage: window.sessionStorage.getItem("question-card-sent:toolu_ack_card"),
+			},
+		).toStrictEqual(
+			{
+				stored:
+				{
+					"s-ack-card":
+					{
+						toolu_ack_card:
+						{
+							toolUseId: "toolu_ack_card",
+							toolName: "AskUserQuestion",
+							acknowledgedAt: expect.any(Number) as number,
+						},
 					},
 				},
+				card: false,
+				rows: [["Which test runner?", "Jest"]],
+				sentAfterReload: true,
+				sentStorage: null,
 			},
-			card: false,
-			rows: [["Which test runner?", "Jest"]],
-			sentAfterReload: true,
-			sentStorage: null,
-		});
+		);
 	});
 
-	it("draws the editable card after a reload when the answer was never delivered", async () => {
+	it("draws the editable card after a reload when the answer was never delivered", async () =>
+	{
 		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 		render(
 			<QuestionCard
@@ -524,9 +1273,22 @@ describe("QuestionCard", () => {
 				onSubmit={async () => new Promise<void>(() => {})}
 			/>,
 		);
-		fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Jest/,
+				},
+			),
+		);
 		now.mockReturnValue(1400);
-		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
 		now.mockRestore();
 		releaseAnswered("s-unacked-card");
 		cleanup();
@@ -542,17 +1304,39 @@ describe("QuestionCard", () => {
 			/>,
 		);
 
-		expect({
-			card: container.querySelector("[data-approval-card-root]") !== null,
-			receipt: container.querySelector("[data-question-receipt]") !== null,
-		}).toStrictEqual({card: true, receipt: false});
+		expect(
+			{
+				card: container.querySelector("[data-approval-card-root]") !== null,
+				receipt: container.querySelector("[data-question-receipt]") !== null,
+			},
+		).toStrictEqual(
+			{
+				card: true,
+				receipt: false,
+			},
+		);
 		window.sessionStorage.removeItem("question-card-sent:toolu_unacked_card");
 	});
 
-	it("reads a skipped question as Skipped in the submitted receipt", () => {
+	it("reads a skipped question as Skipped in the submitted receipt", () =>
+	{
 		const {container} = render(<QuestionCard questions={QUESTIONS} onSubmit={async () => new Promise(() => {})} />);
-		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-		fireEvent.click(screen.getByRole("button", {name: "Skip"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Next/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Skip",
+				},
+			),
+		);
 
 		expect(
 			[...container.querySelectorAll("[data-answered-question]")].map((row) =>
@@ -564,97 +1348,268 @@ describe("QuestionCard", () => {
 		]);
 	});
 
-	it("brings the card back, editable with the error, when the send rejects", async () => {
+	it("brings the card back, editable with the error, when the send rejects", async () =>
+	{
 		const {container} = render(
 			<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={async () => Promise.reject(new Error("pane gone"))} />,
 		);
-		fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
-		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Jest/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			),
+		);
 		const whileSending = container.querySelector("[data-approval-card-root]") !== null;
 		await screen.findByText("pane gone");
 
-		expect({
-			whileSending,
-			receipt: container.querySelector("[data-question-receipt]") !== null,
-			jest: screen.getByRole("button", {name: /^Jest/}).getAttribute("aria-pressed"),
-			submitDisabled: screen.getByRole("button", {name: /^Submit/}).hasAttribute("disabled"),
-		}).toStrictEqual({whileSending: false, receipt: false, jest: "true", submitDisabled: false});
+		expect(
+			{
+				whileSending,
+				receipt: container.querySelector("[data-question-receipt]") !== null,
+				jest: screen
+					.getByRole(
+						"button",
+						{
+							name: /^Jest/,
+						},
+					)
+					.getAttribute("aria-pressed"),
+				submitDisabled: screen
+					.getByRole(
+						"button",
+						{
+							name: /^Submit/,
+						},
+					)
+					.hasAttribute("disabled"),
+			},
+		).toStrictEqual(
+			{
+				whileSending: false,
+				receipt: false,
+				jest: "true",
+				submitDisabled: false,
+			},
+		);
 	});
 
-	it("focuses the Other box as Other is chosen, single- or multi-select, as upstream's flushSync-then-focus", () => {
-		render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
-		fireEvent.click(screen.getByRole("button", {name: "Other"}));
-		const single = document.activeElement === screen.getByRole("textbox", {name: "Other option"});
-		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-		fireEvent.click(screen.getByRole("button", {name: "Other"}));
-		const multi = document.activeElement === screen.getByRole("textbox", {name: "Other option"});
+	it("focuses the Other box as Other is chosen, single- or multi-select, as upstream's flushSync-then-focus", () =>
+	{
+		render(
+			<QuestionCard
+				questions={QUESTIONS}
+				onSubmit={async () =>
+				{
+				}}
+			/>,
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Other",
+				},
+			),
+		);
+		const single =
+			document.activeElement ===
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Other option",
+				},
+			);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Next/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Other",
+				},
+			),
+		);
+		const multi =
+			document.activeElement ===
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Other option",
+				},
+			);
 
-		expect({single, multi}).toStrictEqual({single: true, multi: true});
+		expect(
+			{
+				single,
+				multi,
+			},
+		).toStrictEqual(
+			{
+				single: true,
+				multi: true,
+			},
+		);
 	});
 
-	it("styles the Other box as upstream's cds TextArea field: body type, one-line minimum, field fill and ring, pad-sm/pad-md padding, hover ring, focus-visible ring, disabled opacity", () => {
-		render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={async () => {}} />);
-		fireEvent.click(screen.getByRole("button", {name: "Other"}));
-		const box = screen.getByRole("textbox", {name: "Other option"});
+	it("styles the Other box as upstream's cds TextArea field: body type, one-line minimum, field fill and ring, pad-sm/pad-md padding, hover ring, focus-visible ring, disabled opacity", () =>
+	{
+		render(
+			<QuestionCard
+				questions={[QUESTIONS[0]!]}
+				onSubmit={async () =>
+				{
+				}}
+			/>,
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Other",
+				},
+			),
+		);
+		const box = screen.getByRole(
+			"textbox",
+			{
+				name: "Other option",
+			},
+		);
 
-		expect({
-			dir: box.getAttribute("dir"),
-			classes: box.className
-				.split(" ")
-				.filter((name) =>
-					/^(rounded-|bg-|px-|py-|shadow-|hover:shadow-|focus-visible:shadow-|max-h-|min-h-|font-|text-|disabled:|transition|duration-)/.test(
-						name,
+		expect(
+			{
+				dir: box.getAttribute("dir"),
+				classes: box.className
+					.split(" ")
+					.filter((name) =>
+						/^(rounded-|bg-|px-|py-|shadow-|hover:shadow-|focus-visible:shadow-|max-h-|min-h-|font-|text-|disabled:|transition|duration-)/.test(
+							name,
+						),
 					),
-				),
-		}).toStrictEqual({
-			dir: "auto",
-			classes: [
-				"min-h-[calc(1lh+2*var(--cds-pad-sm))]",
-				"max-h-[calc(4lh+2*var(--cds-pad-sm))]",
-				"rounded-[var(--upstream-radius)]",
-				"bg-fill-field",
-				"px-md",
-				"py-sm",
-				"font-sans",
-				"text-body",
-				"text-primary",
-				"shadow-field-ring",
-				"transition",
-				"duration-150",
-				"hover:shadow-field-hover",
-				"focus-visible:shadow-focus",
-				"disabled:opacity-50",
-			],
-		});
+			},
+		).toStrictEqual(
+			{
+				dir: "auto",
+				classes: [
+					"min-h-[calc(1lh+2*var(--cds-pad-sm))]",
+					"max-h-[calc(4lh+2*var(--cds-pad-sm))]",
+					"rounded-[var(--upstream-radius)]",
+					"bg-fill-field",
+					"px-md",
+					"py-sm",
+					"font-sans",
+					"text-body",
+					"text-primary",
+					"shadow-field-ring",
+					"transition",
+					"duration-150",
+					"hover:shadow-field-hover",
+					"focus-visible:shadow-focus",
+					"disabled:opacity-50",
+				],
+			},
+		);
 	});
 
-	it("walks Next to the last question, which waits until answered or skipped, then submits one answer each", async () => {
+	it("walks Next to the last question, which waits until answered or skipped, then submits one answer each", async () =>
+	{
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 		render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);
 		now.mockReturnValue(1400);
-		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-		const submit = screen.getByRole("button", {name: /^Submit/});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Next/,
+				},
+			),
+		);
+		const submit = screen.getByRole(
+			"button",
+			{
+				name: /^Submit/,
+			},
+		);
 		const waiting = submit.hasAttribute("disabled");
-		fireEvent.click(screen.getByRole("button", {name: /^Watch/}));
-		fireEvent.click(screen.getByRole("button", {name: /^UI/}));
-		fireEvent.keyDown(screen.getByRole("button", {name: /^Submit/}), {key: "Enter", metaKey: true});
-		await vi.waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Watch/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^UI/,
+				},
+			),
+		);
+		fireEvent.keyDown(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			),
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
+		await vi.waitFor(() =>
+		{
 			expect(onSubmit).toHaveBeenCalledTimes(1);
 		});
 
-		expect({waiting, answers: onSubmit.mock.calls[0]?.[0]}).toStrictEqual({
-			waiting: true,
-			answers: [{selected: [0]}, {selected: [1, 2]}],
-		});
+		expect(
+			{
+				waiting,
+				answers: onSubmit.mock.calls[0]?.[0],
+			},
+		).toStrictEqual(
+			{
+				waiting: true,
+				answers: [
+					{
+						selected: [0],
+					},
+					{
+						selected: [1, 2],
+					},
+				],
+			},
+		);
 	});
 
-	describe("Cmd/Ctrl+Enter as upstream's approval hotkey", () => {
-		afterEach(() => {
+	describe("Cmd/Ctrl+Enter as upstream's approval hotkey", () =>
+	{
+		afterEach(() =>
+		{
 			vi.restoreAllMocks();
 		});
 
-		function renderArmed(onSubmit: (answers: unknown[]) => Promise<void>, extra?: ReactNode) {
+		function renderArmed(onSubmit: (answers: unknown[]) => Promise<void>, extra?: ReactNode)
+		{
 			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 			const view = render(
 				<>
@@ -666,11 +1621,18 @@ describe("QuestionCard", () => {
 			return view;
 		}
 
-		it("submits from the page body and from the session composer", () => {
+		it("submits from the page body and from the session composer", () =>
+		{
 			const fromBody = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 			renderArmed(fromBody);
 			document.body.focus();
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 			cleanup();
 			const fromComposer = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 			renderArmed(
@@ -679,28 +1641,57 @@ describe("QuestionCard", () => {
 					<textarea aria-label="Prompt" />
 				</div>,
 			);
-			const composer = screen.getByRole("textbox", {name: "Prompt"});
+			const composer = screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
 			composer.focus();
-			const composerEvent = new KeyboardEvent("keydown", {
-				key: "Enter",
-				ctrlKey: true,
-				bubbles: true,
-				cancelable: true,
-			});
+			const composerEvent = new KeyboardEvent(
+				"keydown",
+				{
+					key: "Enter",
+					ctrlKey: true,
+					bubbles: true,
+					cancelable: true,
+				},
+			);
 			composer.dispatchEvent(composerEvent);
 
-			expect({
-				body: fromBody.mock.calls,
-				composer: fromComposer.mock.calls,
-				prevented: composerEvent.defaultPrevented,
-			}).toStrictEqual({
-				body: [[[{selected: [0]}]]],
-				composer: [[[{selected: [0]}]]],
-				prevented: true,
-			});
+			expect(
+				{
+					body: fromBody.mock.calls,
+					composer: fromComposer.mock.calls,
+					prevented: composerEvent.defaultPrevented,
+				},
+			).toStrictEqual(
+				{
+					body: [
+						[
+							[
+								{
+									selected: [0],
+								},
+							],
+						],
+					],
+					composer: [
+						[
+							[
+								{
+									selected: [0],
+								},
+							],
+						],
+					],
+					prevented: true,
+				},
+			);
 		});
 
-		it("ignores the hotkey within 400ms of mount, on repeat, during IME composition, or with a composer popup open", () => {
+		it("ignores the hotkey within 400ms of mount, on repeat, during IME composition, or with a composer popup open", () =>
+		{
 			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 			render(
@@ -712,44 +1703,114 @@ describe("QuestionCard", () => {
 				</>,
 			);
 			now.mockReturnValue(1399);
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 			now.mockReturnValue(1400);
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true, repeat: true});
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true, isComposing: true});
-			const composer = screen.getByRole("textbox", {name: "Prompt"});
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+					repeat: true,
+				},
+			);
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+					isComposing: true,
+				},
+			);
+			const composer = screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
 			composer.focus();
-			fireEvent.keyDown(composer, {key: "Enter", metaKey: true});
+			fireEvent.keyDown(
+				composer,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 
 			expect(onSubmit.mock.calls.length).toBe(0);
 		});
 
-		it("ignores the hotkey while the card is scrolled off-screen, or with focus in another field", () => {
+		it("ignores the hotkey while the card is scrolled off-screen, or with focus in another field", () =>
+		{
 			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 			renderArmed(onSubmit, <input aria-label="Elsewhere" />);
-			const elsewhere = screen.getByRole("textbox", {name: "Elsewhere"});
-			elsewhere.focus();
-			fireEvent.keyDown(elsewhere, {key: "Enter", metaKey: true});
-			elsewhere.blur();
-			const card = screen.getByRole("group", {name: "Which test runner?"});
-			vi.spyOn(card, "getBoundingClientRect").mockReturnValue(
-				DOMRect.fromRect({x: 0, y: window.innerHeight + 200, width: 480, height: 300}),
+			const elsewhere = screen.getByRole(
+				"textbox",
+				{
+					name: "Elsewhere",
+				},
 			);
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			elsewhere.focus();
+			fireEvent.keyDown(
+				elsewhere,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
+			elsewhere.blur();
+			const card = screen.getByRole(
+				"group",
+				{
+					name: "Which test runner?",
+				},
+			);
+			vi.spyOn(card, "getBoundingClientRect").mockReturnValue(
+				DOMRect.fromRect(
+					{
+						x: 0,
+						y: window.innerHeight + 200,
+						width: 480,
+						height: 300,
+					},
+				),
+			);
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 
 			expect(onSubmit.mock.calls.length).toBe(0);
 		});
 
 		/** Sends ⌘⏎ from the session composer and reports whether the card swallowed it. */
-		function pressFromComposer(init: KeyboardEventInit = {}) {
-			const composer = screen.getByRole("textbox", {name: "Prompt"});
+		function pressFromComposer(init: KeyboardEventInit = {})
+		{
+			const composer = screen.getByRole(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
 			composer.focus();
-			const event = new KeyboardEvent("keydown", {
-				key: "Enter",
-				metaKey: true,
-				bubbles: true,
-				cancelable: true,
-				...init,
-			});
+			const event = new KeyboardEvent(
+				"keydown",
+				{
+					key: "Enter",
+					metaKey: true,
+					bubbles: true,
+					cancelable: true,
+					...init,
+				},
+			);
 			composer.dispatchEvent(event);
 			return event.defaultPrevented;
 		}
@@ -760,7 +1821,8 @@ describe("QuestionCard", () => {
 			</div>
 		);
 
-		it("lets ⌘⏎ reach the composer while the card can't advance, and always lets ⌥⌘⏎ through", () => {
+		it("lets ⌘⏎ reach the composer while the card can't advance, and always lets ⌥⌘⏎ through", () =>
+		{
 			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 			render(
@@ -771,17 +1833,37 @@ describe("QuestionCard", () => {
 			);
 			now.mockReturnValue(1400);
 			const unanswered = pressFromComposer();
-			fireEvent.click(screen.getByRole("button", {name: /^Watch/}));
-			const withAlt = pressFromComposer({altKey: true});
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Watch/,
+					},
+				),
+			);
+			const withAlt = pressFromComposer(
+				{
+					altKey: true,
+				},
+			);
 
-			expect({unanswered, withAlt, calls: onSubmit.mock.calls}).toStrictEqual({
-				unanswered: false,
-				withAlt: false,
-				calls: [],
-			});
+			expect(
+				{
+					unanswered,
+					withAlt,
+					calls: onSubmit.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					unanswered: false,
+					withAlt: false,
+					calls: [],
+				},
+			);
 		});
 
-		it("swallows ⌘⏎ without acting on key repeat, within the 400ms arm grace, and with ⇧", () => {
+		it("swallows ⌘⏎ without acting on key repeat, within the 400ms arm grace, and with ⇧", () =>
+		{
 			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 			render(
@@ -793,77 +1875,248 @@ describe("QuestionCard", () => {
 			now.mockReturnValue(1100);
 			const inGrace = pressFromComposer();
 			now.mockReturnValue(1400);
-			const repeat = pressFromComposer({repeat: true});
-			const shift = pressFromComposer({shiftKey: true});
+			const repeat = pressFromComposer(
+				{
+					repeat: true,
+				},
+			);
+			const shift = pressFromComposer(
+				{
+					shiftKey: true,
+				},
+			);
 
-			expect({inGrace, repeat, shift, calls: onSubmit.mock.calls}).toStrictEqual({
-				inGrace: true,
-				repeat: true,
-				shift: true,
-				calls: [],
-			});
+			expect(
+				{
+					inGrace,
+					repeat,
+					shift,
+					calls: onSubmit.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					inGrace: true,
+					repeat: true,
+					shift: true,
+					calls: [],
+				},
+			);
 		});
 	});
 
-	describe("keeping focus inside the card, as upstream's tabIndex -1 root", () => {
-		it("refocuses the card root after paging with focus inside, so ⌘⏎ keeps reaching it", () => {
-			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
-			const card = screen.getByRole("group", {name: "Which test runner?"});
-			screen.getByRole("button", {name: /^Next/}).focus();
-			fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-			const afterNext = document.activeElement === screen.getByRole("group", {name: "Which features?"});
-			fireEvent.click(screen.getByRole("button", {name: "Show previous question"}));
+	describe("keeping focus inside the card, as upstream's tabIndex -1 root", () =>
+	{
+		it("refocuses the card root after paging with focus inside, so ⌘⏎ keeps reaching it", () =>
+		{
+			render(
+				<QuestionCard
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
+			const card = screen.getByRole(
+				"group",
+				{
+					name: "Which test runner?",
+				},
+			);
+			screen
+				.getByRole(
+					"button",
+					{
+						name: /^Next/,
+					},
+				)
+				.focus();
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Next/,
+					},
+				),
+			);
+			const afterNext =
+				document.activeElement ===
+				screen.getByRole(
+					"group",
+					{
+						name: "Which features?",
+					},
+				);
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Show previous question",
+					},
+				),
+			);
 			const afterPrevious = document.activeElement === card;
 
-			expect({tabIndex: card.tabIndex, afterNext, afterPrevious}).toStrictEqual({
-				tabIndex: -1,
-				afterNext: true,
-				afterPrevious: true,
-			});
+			expect(
+				{
+					tabIndex: card.tabIndex,
+					afterNext,
+					afterPrevious,
+				},
+			).toStrictEqual(
+				{
+					tabIndex: -1,
+					afterNext: true,
+					afterPrevious: true,
+				},
+			);
 		});
 
-		it("leaves focus alone when paging with focus outside the card", () => {
-			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
-			fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		it("leaves focus alone when paging with focus outside the card", () =>
+		{
+			render(
+				<QuestionCard
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Next/,
+					},
+				),
+			);
 
 			expect(document.activeElement).toBe(document.body);
 		});
 
-		it("keeps mousedown on Skip, Next and Submit from moving focus", () => {
-			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
-			const skip = fireEvent.mouseDown(screen.getByRole("button", {name: "Skip"}));
-			const next = fireEvent.mouseDown(screen.getByRole("button", {name: /^Next/}));
-			fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-			fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
-			const submit = fireEvent.mouseDown(screen.getByRole("button", {name: /^Submit/}));
+		it("keeps mousedown on Skip, Next and Submit from moving focus", () =>
+		{
+			render(
+				<QuestionCard
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
+			const skip = fireEvent.mouseDown(
+				screen.getByRole(
+					"button",
+					{
+						name: "Skip",
+					},
+				),
+			);
+			const next = fireEvent.mouseDown(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Next/,
+					},
+				),
+			);
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Next/,
+					},
+				),
+			);
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Coverage/,
+					},
+				),
+			);
+			const submit = fireEvent.mouseDown(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Submit/,
+					},
+				),
+			);
 
-			expect({skip, next, submit}).toStrictEqual({skip: false, next: false, submit: false});
+			expect(
+				{
+					skip,
+					next,
+					submit,
+				},
+			).toStrictEqual(
+				{
+					skip: false,
+					next: false,
+					submit: false,
+				},
+			);
 		});
 
-		it("moves focus out of the Other box when Skip submits the last page, leaving it on the page as the receipt replaces the card", async () => {
+		it("moves focus out of the Other box when Skip submits the last page, leaving it on the page as the receipt replaces the card", async () =>
+		{
 			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 			const {container} = render(<QuestionCard questions={[QUESTIONS[1]!]} onSubmit={onSubmit} />);
-			fireEvent.click(screen.getByRole("button", {name: "Other"}));
-			const otherFocused = document.activeElement === screen.getByRole("textbox", {name: "Other option"});
-			fireEvent.click(screen.getByRole("button", {name: "Skip"}));
-			await vi.waitFor(() => {
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Other",
+					},
+				),
+			);
+			const otherFocused =
+				document.activeElement ===
+				screen.getByRole(
+					"textbox",
+					{
+						name: "Other option",
+					},
+				);
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Skip",
+					},
+				),
+			);
+			await vi.waitFor(() =>
+			{
 				expect(onSubmit).toHaveBeenCalledTimes(1);
 			});
 
-			expect({
-				otherFocused,
-				focus: document.activeElement === document.body,
-				receipt: container.querySelector("[data-question-receipt]") !== null,
-			}).toStrictEqual({otherFocused: true, focus: true, receipt: true});
+			expect(
+				{
+					otherFocused,
+					focus: document.activeElement === document.body,
+					receipt: container.querySelector("[data-question-receipt]") !== null,
+				},
+			).toStrictEqual(
+				{
+					otherFocused: true,
+					focus: true,
+					receipt: true,
+				},
+			);
 		});
 	});
 
-	describe("ignoring a click that ends a drag-select inside its own row, as upstream", () => {
-		afterEach(() => {
+	describe("ignoring a click that ends a drag-select inside its own row, as upstream", () =>
+	{
+		afterEach(() =>
+		{
 			window.getSelection()?.removeAllRanges();
 		});
 
-		function select(node: Node) {
+		function select(node: Node)
+		{
 			const range = document.createRange();
 			range.selectNodeContents(node);
 			const selection = window.getSelection();
@@ -871,124 +2124,263 @@ describe("QuestionCard", () => {
 			selection?.addRange(range);
 		}
 
-		it("still picks an option while a selection sits outside the card", () => {
+		it("still picks an option while a selection sits outside the card", () =>
+		{
 			render(
 				<>
 					<p>Transcript paragraph</p>
-					<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={async () => {}} />
+					<QuestionCard
+						questions={[QUESTIONS[0]!]}
+						onSubmit={async () =>
+						{
+						}}
+					/>
 				</>,
 			);
 			select(screen.getByText("Transcript paragraph"));
-			const jest = screen.getByRole("button", {name: /^Jest/});
+			const jest = screen.getByRole(
+				"button",
+				{
+					name: /^Jest/,
+				},
+			);
 			fireEvent.click(jest);
 
 			expect(jest.getAttribute("aria-pressed")).toBe("true");
 		});
 
-		it("ignores an option or Other click when the selection is inside that row", () => {
-			render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={async () => {}} />);
-			const jest = screen.getByRole("button", {name: /^Jest/});
+		it("ignores an option or Other click when the selection is inside that row", () =>
+		{
+			render(
+				<QuestionCard
+					questions={[QUESTIONS[0]!]}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
+			const jest = screen.getByRole(
+				"button",
+				{
+					name: /^Jest/,
+				},
+			);
 			select(jest);
 			fireEvent.click(jest);
-			const other = screen.getByRole("button", {name: "Other"});
+			const other = screen.getByRole(
+				"button",
+				{
+					name: "Other",
+				},
+			);
 			select(other.parentElement!);
 			fireEvent.click(other);
 
-			expect({
-				jest: jest.getAttribute("aria-pressed"),
-				other: other.getAttribute("aria-pressed"),
-				box: screen.queryByRole("textbox", {name: "Other option"}),
-			}).toStrictEqual({jest: "false", other: "false", box: null});
+			expect(
+				{
+					jest: jest.getAttribute("aria-pressed"),
+					other: other.getAttribute("aria-pressed"),
+					box: screen.queryByRole(
+						"textbox",
+						{
+							name: "Other option",
+						},
+					),
+				},
+			).toStrictEqual(
+				{
+					jest: "false",
+					other: "false",
+					box: null,
+				},
+			);
 		});
 	});
 
-	it("Skip on the last open question submits it as null", async () => {
+	it("Skip on the last open question submits it as null", async () =>
+	{
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 		render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);
-		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-		fireEvent.click(screen.getByRole("button", {name: "Skip"}));
-		await vi.waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Next/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Skip",
+				},
+			),
+		);
+		await vi.waitFor(() =>
+		{
 			expect(onSubmit).toHaveBeenCalledTimes(1);
 		});
 
-		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([{selected: [0]}, null]);
+		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([
+			{
+				selected: [0],
+			},
+			null,
+		]);
 	});
 
-	it("Skip on a page that isn't last advances to the next page instead of submitting", async () => {
+	it("Skip on a page that isn't last advances to the next page instead of submitting", async () =>
+	{
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
-		const single: QuestionLike[] = [QUESTIONS[0]!, {...QUESTIONS[0]!, question: "Which linter?", header: "Linter"}];
+		const single: QuestionLike[] = [
+			QUESTIONS[0]!,
+			{
+				...QUESTIONS[0]!,
+				question: "Which linter?",
+				header: "Linter",
+			},
+		];
 		render(<QuestionCard questions={single} onSubmit={onSubmit} />);
-		fireEvent.click(screen.getByRole("button", {name: "Skip"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Skip",
+				},
+			),
+		);
 
-		expect({
-			page: screen.getByRole("group").getAttribute("aria-label"),
-			pager: screen.getByText(/of 2/).textContent,
-			calls: onSubmit.mock.calls.length,
-		}).toStrictEqual({page: "Which linter?", pager: "2 of 2", calls: 0});
+		expect(
+			{
+				page: screen.getByRole("group").getAttribute("aria-label"),
+				pager: screen.getByText(/of 2/).textContent,
+				calls: onSubmit.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				page: "Which linter?",
+				pager: "2 of 2",
+				calls: 0,
+			},
+		);
 
-		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
-		await vi.waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			),
+		);
+		await vi.waitFor(() =>
+		{
 			expect(onSubmit).toHaveBeenCalledTimes(1);
 		});
 
-		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([null, {selected: [0]}]);
+		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([
+			null,
+			{
+				selected: [0],
+			},
+		]);
 	});
 
-	it("draws the header question's code as upstream's chip and links its URLs as upstream's TextLink, keeps option labels plain, and links option descriptions", () => {
+	it("draws the header question's code as upstream's chip and links its URLs as upstream's TextLink, keeps option labels plain, and links option descriptions", () =>
+	{
 		render(
 			<QuestionCard
 				questions={[
 					{
 						question: "Use the docs at https://example.com/guide? Run `npm test`.",
 						header: "Docs",
-						options: [{label: "Yes, https://example.com/yes", description: "Read https://example.com/d"}],
+						options: [
+							{
+								label: "Yes, https://example.com/yes",
+								description: "Read https://example.com/d",
+							},
+						],
 					},
 				]}
-				onSubmit={async () => {}}
+				onSubmit={async () =>
+				{
+				}}
 			/>,
 		);
-		const card = screen.getByRole("group", {name: /^Use the docs/});
+		const card = screen.getByRole(
+			"group",
+			{
+				name: /^Use the docs/,
+			},
+		);
 		const header = card.firstElementChild!.firstElementChild!;
 
-		expect({
-			headerText: header.textContent,
-			headerLinks: [...header.querySelectorAll("a")].map((a) => ({
-				href: a.getAttribute("href"),
-				text: a.textContent,
-				target: a.getAttribute("target"),
-				rel: a.getAttribute("rel"),
-				dir: a.getAttribute("dir"),
-				className: a.className,
-			})),
-			headerCode: header.querySelectorAll("code").length,
-			links: within(card)
-				.getAllByRole("link")
-				.map((a) => a.getAttribute("href")),
-		}).toStrictEqual({
-			headerText: "Use the docs at https://example.com/guide? Run npm test.",
-			headerLinks: [
+		expect(
+			{
+				headerText: header.textContent,
+				headerLinks: [...header.querySelectorAll("a")].map((a) => (
 				{
-					href: "https://example.com/guide",
-					text: "https://example.com/guide",
-					target: "_blank",
-					rel: "noreferrer",
-					dir: "ltr",
-					className: "cds-reset text-link inline cursor-pointer",
-				},
-			],
-			headerCode: 1,
-			links: ["https://example.com/guide", "https://example.com/d"],
-		});
+					href: a.getAttribute("href"),
+					text: a.textContent,
+					target: a.getAttribute("target"),
+					rel: a.getAttribute("rel"),
+					dir: a.getAttribute("dir"),
+					className: a.className,
+				})),
+				headerCode: header.querySelectorAll("code").length,
+				links: within(card)
+					.getAllByRole("link")
+					.map((a) => a.getAttribute("href")),
+			},
+		).toStrictEqual(
+			{
+				headerText: "Use the docs at https://example.com/guide? Run npm test.",
+				headerLinks: [
+					{
+						href: "https://example.com/guide",
+						text: "https://example.com/guide",
+						target: "_blank",
+						rel: "noreferrer",
+						dir: "ltr",
+						className: "cds-reset text-link inline cursor-pointer",
+					},
+				],
+				headerCode: 1,
+				links: ["https://example.com/guide", "https://example.com/d"],
+			},
+		);
 	});
 
-	it("explains a disabled Next or Submit in a tooltip, as upstream's disabled reasons", () => {
+	it("explains a disabled Next or Submit in a tooltip, as upstream's disabled reasons", () =>
+	{
 		vi.useFakeTimers();
-		render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
-		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-		const reason = () => {
-			const anchor = screen.getByRole("button", {name: /^Submit/}).parentElement!;
+		render(
+			<QuestionCard
+				questions={QUESTIONS}
+				onSubmit={async () =>
+				{
+				}}
+			/>,
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Next/,
+				},
+			),
+		);
+		const reason = () =>
+		{
+			const anchor = screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			).parentElement!;
 			fireEvent.pointerEnter(anchor);
-			act(() => {
+			act(() =>
+			{
 				vi.advanceTimersByTime(1000);
 			});
 			const tip = screen.queryByRole("tooltip")?.textContent ?? null;
@@ -996,23 +2388,63 @@ describe("QuestionCard", () => {
 			return tip;
 		};
 		const unanswered = reason();
-		fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Coverage/,
+				},
+			),
+		);
 		const answered = reason();
 		vi.useRealTimers();
 
-		expect({unanswered, answered}).toStrictEqual({
-			unanswered: "Choose an option or skip this question",
-			answered: null,
-		});
+		expect(
+			{
+				unanswered,
+				answered,
+			},
+		).toStrictEqual(
+			{
+				unanswered: "Choose an option or skip this question",
+				answered: null,
+			},
+		);
 	});
 
-	it("wraps the primary in a disabled-reason tab stop that stays mounted across enable, as upstream's DisabledReason", () => {
-		render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
-		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-		const state = () => {
-			const button = screen.getByRole("button", {name: /^Submit/});
+	it("wraps the primary in a disabled-reason tab stop that stays mounted across enable, as upstream's DisabledReason", () =>
+	{
+		render(
+			<QuestionCard
+				questions={QUESTIONS}
+				onSubmit={async () =>
+				{
+				}}
+			/>,
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Next/,
+				},
+			),
+		);
+		const state = () =>
+		{
+			const button = screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			);
 			const wrapper = button.closest("[data-cds-disabled-reason-wrapper]");
-			const skip = screen.getByRole("button", {name: "Skip"});
+			const skip = screen.getByRole(
+				"button",
+				{
+					name: "Skip",
+				},
+			);
 			const tabbable = [...screen.getByRole("group").querySelectorAll<HTMLElement>("button, [tabindex]")].filter(
 				(element) => element.tabIndex >= 0 && !(element instanceof HTMLButtonElement && element.disabled),
 			);
@@ -1027,48 +2459,99 @@ describe("QuestionCard", () => {
 			};
 		};
 		const unanswered = state();
-		fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Coverage/,
+				},
+			),
+		);
 		const answered = state();
 
-		expect({
-			unanswered: {...unanswered, elements: undefined},
-			answered: {...answered, elements: undefined},
-			sameElements: answered.elements.every((element, at) => element === unanswered.elements[at]),
-		}).toStrictEqual({
-			unanswered: {
-				elements: undefined,
-				hasWrapper: true,
-				afterSkip: true,
-				tabIndex: 0,
-				description: "Choose an option or skip this question",
-				buttonDescribedBy: null,
+		expect(
+			{
+				unanswered:
+				{
+					...unanswered,
+					elements: undefined,
+				},
+				answered:
+				{
+					...answered,
+					elements: undefined,
+				},
+				sameElements: answered.elements.every((element, at) => element === unanswered.elements[at]),
 			},
-			answered: {
-				elements: undefined,
-				hasWrapper: true,
-				afterSkip: false,
-				tabIndex: -1,
-				description: null,
-				buttonDescribedBy: null,
+		).toStrictEqual(
+			{
+				unanswered:
+				{
+					elements: undefined,
+					hasWrapper: true,
+					afterSkip: true,
+					tabIndex: 0,
+					description: "Choose an option or skip this question",
+					buttonDescribedBy: null,
+				},
+				answered:
+				{
+					elements: undefined,
+					hasWrapper: true,
+					afterSkip: false,
+					tabIndex: -1,
+					description: null,
+					buttonDescribedBy: null,
+				},
+				sameElements: true,
 			},
-			sameElements: true,
-		});
+		);
 	});
 
-	it("names the first other unanswered page on the last page only once the current page is answered, as upstream", () => {
+	it("names the first other unanswered page on the last page only once the current page is answered, as upstream", () =>
+	{
 		vi.useFakeTimers();
-		const multi = (header: string): QuestionLike => ({
+		const multi = (header: string): QuestionLike => (
+		{
 			question: `Which ${header}?`,
 			header,
 			multiSelect: true,
-			options: [{label: `${header} A`}, {label: `${header} B`}],
+			options: [
+				{
+					label: `${header} A`,
+				},
+				{
+					label: `${header} B`,
+				},
+			],
 		});
-		render(<QuestionCard questions={[multi("First"), multi("Second")]} onSubmit={async () => {}} />);
-		fireEvent.click(screen.getByRole("button", {name: "Show next question"}));
-		const reason = () => {
-			const anchor = screen.getByRole("button", {name: /^Submit/}).parentElement!;
+		render(
+			<QuestionCard
+				questions={[multi("First"), multi("Second")]}
+				onSubmit={async () =>
+				{
+				}}
+			/>,
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show next question",
+				},
+			),
+		);
+		const reason = () =>
+		{
+			const anchor = screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			).parentElement!;
 			fireEvent.pointerEnter(anchor);
-			act(() => {
+			act(() =>
+			{
 				vi.advanceTimersByTime(1000);
 			});
 			const tip = screen.queryByRole("tooltip")?.textContent ?? null;
@@ -1076,31 +2559,96 @@ describe("QuestionCard", () => {
 			return tip;
 		};
 		const bothEmpty = reason();
-		fireEvent.click(screen.getByRole("button", {name: /^Second A/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Second A/,
+				},
+			),
+		);
 		const currentAnswered = reason();
 		vi.useRealTimers();
 
-		expect({bothEmpty, currentAnswered}).toStrictEqual({
-			bothEmpty: "Choose an option or skip this question",
-			currentAnswered: "Question 1 is unanswered",
-		});
+		expect(
+			{
+				bothEmpty,
+				currentAnswered,
+			},
+		).toStrictEqual(
+			{
+				bothEmpty: "Choose an option or skip this question",
+				currentAnswered: "Question 1 is unanswered",
+			},
+		);
 	});
 
-	describe("keeping drafts and page across remounts, as upstream's per-tool draft store", () => {
-		const pickAndType = () => {
-			fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
-			fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-			fireEvent.click(screen.getByRole("button", {name: "Other"}));
-			fireEvent.change(screen.getByRole("textbox", {name: "Other option"}), {target: {value: "Mutation"}});
+	describe("keeping drafts and page across remounts, as upstream's per-tool draft store", () =>
+	{
+		const pickAndType = () =>
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Jest/,
+					},
+				),
+			);
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Next/,
+					},
+				),
+			);
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Other",
+					},
+				),
+			);
+			fireEvent.change(
+				screen.getByRole(
+					"textbox",
+					{
+						name: "Other option",
+					},
+				),
+				{
+					target:
+					{
+						value: "Mutation",
+					},
+				},
+			);
 		};
-		const snapshot = () => {
+		const snapshot = () =>
+		{
 			const card = screen.getByRole("group");
-			const onPage = {
+			const onPage =
+			{
 				question: card.getAttribute("aria-label"),
-				other: screen.queryByRole<HTMLTextAreaElement>("textbox", {name: "Other option"})?.value ?? null,
+				other:
+					screen.queryByRole<HTMLTextAreaElement>(
+						"textbox",
+						{
+							name: "Other option",
+						},
+					)?.value ?? null,
 				skipEnter: card.hasAttribute("data-skip-approval-enter"),
 			};
-			fireEvent.click(screen.getByRole("button", {name: "Show previous question"}));
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Show previous question",
+					},
+				),
+			);
 			return {
 				...onPage,
 				firstPage: within(screen.getByRole("group"))
@@ -1110,7 +2658,8 @@ describe("QuestionCard", () => {
 			};
 		};
 
-		const snapshotFresh = () => {
+		const snapshotFresh = () =>
+		{
 			const card = screen.getByRole("group");
 			return {
 				question: card.getAttribute("aria-label"),
@@ -1118,61 +2667,127 @@ describe("QuestionCard", () => {
 			};
 		};
 
-		it("restores picks, Other text and page when a card with the same key remounts", () => {
-			const first = render(<QuestionCard draftKey="remount-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+		it("restores picks, Other text and page when a card with the same key remounts", () =>
+		{
+			const first = render(
+				<QuestionCard
+					draftKey="remount-1"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
 			pickAndType();
 			first.unmount();
-			render(<QuestionCard draftKey="remount-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+			render(
+				<QuestionCard
+					draftKey="remount-1"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
 
-			expect(snapshot()).toStrictEqual({
-				question: "Which features?",
-				other: "Mutation",
-				skipEnter: true,
-				firstPage: ["false", "true", "false"],
-			});
+			expect(snapshot()).toStrictEqual(
+				{
+					question: "Which features?",
+					other: "Mutation",
+					skipEnter: true,
+					firstPage: ["false", "true", "false"],
+				},
+			);
 		});
 
-		it("restores from session storage when the in-memory store has no entry", () => {
+		it("restores from session storage when the in-memory store has no entry", () =>
+		{
 			window.sessionStorage.setItem(
 				"question-card-draft:stored-1",
-				JSON.stringify({
-					page: 1,
-					drafts: [
-						{selected: [1], other: "", otherChosen: false},
-						{selected: [], other: "Mutation", otherChosen: true},
-					],
-					skipped: [false, false],
-				}),
+				JSON.stringify(
+					{
+						page: 1,
+						drafts: [
+							{
+								selected: [1],
+								other: "",
+								otherChosen: false,
+							},
+							{
+								selected: [],
+								other: "Mutation",
+								otherChosen: true,
+							},
+						],
+						skipped: [false, false],
+					},
+				),
 			);
-			render(<QuestionCard draftKey="stored-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+			render(
+				<QuestionCard
+					draftKey="stored-1"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
 
-			expect(snapshot()).toStrictEqual({
-				question: "Which features?",
-				other: "Mutation",
-				skipEnter: true,
-				firstPage: ["false", "true", "false"],
-			});
+			expect(snapshot()).toStrictEqual(
+				{
+					question: "Which features?",
+					other: "Mutation",
+					skipEnter: true,
+					firstPage: ["false", "true", "false"],
+				},
+			);
 		});
 
-		it("starts fresh once the sent answer's result lands", async () => {
+		it("starts fresh once the sent answer's result lands", async () =>
+		{
 			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
 			const first = render(<QuestionCard draftKey="remount-2" questions={QUESTIONS} onSubmit={onSubmit} />);
 			pickAndType();
-			fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
-			await vi.waitFor(() => {
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Submit/,
+					},
+				),
+			);
+			await vi.waitFor(() =>
+			{
 				expect(onSubmit).toHaveBeenCalledTimes(1);
 			});
 			first.unmount();
 			clearSentQuestionCard("remount-2");
-			render(<QuestionCard draftKey="remount-2" questions={QUESTIONS} onSubmit={async () => {}} />);
+			render(
+				<QuestionCard
+					draftKey="remount-2"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
 
-			expect({
-				...snapshotFresh(),
-				stored: window.sessionStorage.getItem("question-card-draft:remount-2"),
-			}).toStrictEqual({question: "Which test runner?", skipEnter: true, stored: null});
+			expect(
+				{
+					...snapshotFresh(),
+					stored: window.sessionStorage.getItem("question-card-draft:remount-2"),
+				},
+			).toStrictEqual(
+				{
+					question: "Which test runner?",
+					skipEnter: true,
+					stored: null,
+				},
+			);
 		});
 
-		it("keeps the card gone, redrawing the receipt without a fade, when a card remounts while sending (a stale refetch)", () => {
+		it("keeps the card gone, redrawing the receipt without a fade, when a card remounts while sending (a stale refetch)", () =>
+		{
 			const first = render(
 				<QuestionCard
 					draftKey="sending-1"
@@ -1181,294 +2796,657 @@ describe("QuestionCard", () => {
 				/>,
 			);
 			pickAndType();
-			fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Submit/,
+					},
+				),
+			);
 			first.unmount();
 			const {container} = render(
-				<QuestionCard draftKey="sending-1" questions={QUESTIONS} onSubmit={async () => {}} />,
+				<QuestionCard
+					draftKey="sending-1"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
 			);
 			const receipt = container.querySelector("[data-question-receipt]");
 
-			expect({
-				card: container.querySelector("[data-approval-card-root]") !== null,
-				fades: receipt?.classList.contains("animate-question-receipt-enter"),
-				rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) =>
-					[...row.children].map((line) => line.textContent),
-				),
-			}).toStrictEqual({
-				card: false,
-				fades: false,
-				rows: [
-					["Which test runner?", "Jest"],
-					["Which features?", "Mutation"],
-				],
-			});
+			expect(
+				{
+					card: container.querySelector("[data-approval-card-root]") !== null,
+					fades: receipt?.classList.contains("animate-question-receipt-enter"),
+					rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) =>
+						[...row.children].map((line) => line.textContent),
+					),
+				},
+			).toStrictEqual(
+				{
+					card: false,
+					fades: false,
+					rows: [
+						["Which test runner?", "Jest"],
+						["Which features?", "Mutation"],
+					],
+				},
+			);
 		});
 
-		it("drops the sent entry and restores the draft when sending fails", async () => {
+		it("drops the sent entry and restores the draft when sending fails", async () =>
+		{
 			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () =>
 				Promise.reject(new Error("pane gone")),
 			);
 			const first = render(<QuestionCard draftKey="sending-2" questions={QUESTIONS} onSubmit={onSubmit} />);
 			pickAndType();
-			fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Submit/,
+					},
+				),
+			);
 			await screen.findByText("pane gone");
 			first.unmount();
-			render(<QuestionCard draftKey="sending-2" questions={QUESTIONS} onSubmit={async () => {}} />);
-			const submit = screen.getByRole("button", {name: /^Submit/});
+			render(
+				<QuestionCard
+					draftKey="sending-2"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
+			const submit = screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			);
 
-			expect({
-				sent: readSentQuestionCard("sending-2", QUESTIONS.length),
-				busy: submit.getAttribute("aria-busy"),
-				other: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Other option"}).value,
-			}).toStrictEqual({sent: null, busy: null, other: "Mutation"});
+			expect(
+				{
+					sent: readSentQuestionCard("sending-2", QUESTIONS.length),
+					busy: submit.getAttribute("aria-busy"),
+					other: screen.getByRole<HTMLTextAreaElement>(
+						"textbox",
+						{
+							name: "Other option",
+						},
+					).value,
+				},
+			).toStrictEqual(
+				{
+					sent: null,
+					busy: null,
+					other: "Mutation",
+				},
+			);
 		});
 
-		it("leaves the busy state with the restored draft and error when a send fails after the card remounted", async () => {
-			let rejectSend: (error: Error) => void = () => {};
+		it("leaves the busy state with the restored draft and error when a send fails after the card remounted", async () =>
+		{
+			let rejectSend: (error: Error) => void = () =>
+			{
+			};
 			const first = render(
 				<QuestionCard
 					draftKey="sending-3"
 					questions={QUESTIONS}
 					onSubmit={async () =>
-						new Promise((_, reject) => {
+						new Promise((_, reject) =>
+						{
 							rejectSend = reject;
 						})
 					}
 				/>,
 			);
 			pickAndType();
-			fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Submit/,
+					},
+				),
+			);
 			first.unmount();
-			render(<QuestionCard draftKey="sending-3" questions={QUESTIONS} onSubmit={async () => {}} />);
+			render(
+				<QuestionCard
+					draftKey="sending-3"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
 			rejectSend(new Error("pane gone"));
 			await screen.findByText("pane gone");
-			const submit = screen.getByRole("button", {name: /^Submit/});
+			const submit = screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			);
 
-			expect({
-				sent: readSentQuestionCard("sending-3", QUESTIONS.length),
-				busy: submit.getAttribute("aria-busy"),
-				ariaDisabled: submit.getAttribute("aria-disabled"),
-				other: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Other option"}).value,
-				otherDisabled: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Other option"}).disabled,
-			}).toStrictEqual({sent: null, busy: null, ariaDisabled: null, other: "Mutation", otherDisabled: false});
+			expect(
+				{
+					sent: readSentQuestionCard("sending-3", QUESTIONS.length),
+					busy: submit.getAttribute("aria-busy"),
+					ariaDisabled: submit.getAttribute("aria-disabled"),
+					other: screen.getByRole<HTMLTextAreaElement>(
+						"textbox",
+						{
+							name: "Other option",
+						},
+					).value,
+					otherDisabled: screen.getByRole<HTMLTextAreaElement>(
+						"textbox",
+						{
+							name: "Other option",
+						},
+					).disabled,
+				},
+			).toStrictEqual(
+				{
+					sent: null,
+					busy: null,
+					ariaDisabled: null,
+					other: "Mutation",
+					otherDisabled: false,
+				},
+			);
 		});
 
-		it("ignores a stored draft whose question count no longer matches", () => {
+		it("ignores a stored draft whose question count no longer matches", () =>
+		{
 			window.sessionStorage.setItem(
 				"question-card-draft:stale-1",
-				JSON.stringify({page: 0, drafts: [{selected: [1], other: "", otherChosen: false}], skipped: [false]}),
+				JSON.stringify(
+					{
+						page: 0,
+						drafts: [
+							{
+								selected: [1],
+								other: "",
+								otherChosen: false,
+							},
+						],
+						skipped: [false],
+					},
+				),
 			);
-			render(<QuestionCard draftKey="stale-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+			render(
+				<QuestionCard
+					draftKey="stale-1"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
 
-			expect(snapshotFresh()).toStrictEqual({question: "Which test runner?", skipEnter: false});
+			expect(snapshotFresh()).toStrictEqual(
+				{
+					question: "Which test runner?",
+					skipEnter: false,
+				},
+			);
 		});
 	});
 
-	describe("fading in on first appearance, as upstream's epitaxy-approval-inline-enter", () => {
+	describe("fading in on first appearance, as upstream's epitaxy-approval-inline-enter", () =>
+	{
 		const enterClasses = () =>
 			screen
 				.getByRole("group")
 				.className.split(" ")
 				.filter((name) => name.includes("animate-"));
 
-		it("fades a fresh card in, without motion under reduced motion", () => {
-			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
+		it("fades a fresh card in, without motion under reduced motion", () =>
+		{
+			render(
+				<QuestionCard
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
 
 			expect(enterClasses()).toStrictEqual(["animate-approval-inline-enter", "motion-reduce:animate-none"]);
 		});
 
-		it("skips the fade for a card restored from a saved draft", () => {
-			const first = render(<QuestionCard draftKey="enter-1" questions={QUESTIONS} onSubmit={async () => {}} />);
-			fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+		it("skips the fade for a card restored from a saved draft", () =>
+		{
+			const first = render(
+				<QuestionCard
+					draftKey="enter-1"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: /^Jest/,
+					},
+				),
+			);
 			first.unmount();
-			render(<QuestionCard draftKey="enter-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+			render(
+				<QuestionCard
+					draftKey="enter-1"
+					questions={QUESTIONS}
+					onSubmit={async () =>
+					{
+					}}
+				/>,
+			);
 
 			expect(enterClasses()).toStrictEqual([]);
 		});
 
-		describe("remembering cards seen in this page, as upstream's IntersectionObserver-filled seen map", () => {
-			const observed: {
+		describe("remembering cards seen in this page, as upstream's IntersectionObserver-filled seen map", () =>
+		{
+			const observed:
+			{
 				target: Element;
 				callback: IntersectionObserverCallback;
 				observer: IntersectionObserver;
 			}[] = [];
 
-			class TestIntersectionObserver {
+			class TestIntersectionObserver
+			{
 				readonly root = null;
 				readonly rootMargin = "";
 				readonly thresholds: readonly number[] = [];
-				constructor(private readonly callback: IntersectionObserverCallback) {}
-				observe(target: Element): void {
-					observed.push({
-						target,
-						callback: this.callback,
-						observer: this as unknown as IntersectionObserver,
-					});
+				constructor(private readonly callback: IntersectionObserverCallback)
+				{
 				}
-				unobserve(): void {}
-				disconnect(): void {}
-				takeRecords(): IntersectionObserverEntry[] {
+				observe(target: Element): void
+				{
+					observed.push(
+						{
+							target,
+							callback: this.callback,
+							observer: this as unknown as IntersectionObserver,
+						},
+					);
+				}
+				unobserve(): void
+				{
+				}
+				disconnect(): void
+				{
+				}
+				takeRecords(): IntersectionObserverEntry[]
+				{
 					return [];
 				}
 			}
 
-			const intersect = (isIntersecting: boolean) => {
-				act(() => {
-					for (const {target, callback, observer} of observed) {
-						callback([{target, isIntersecting} as unknown as IntersectionObserverEntry], observer);
+			const intersect = (isIntersecting: boolean) =>
+			{
+				act(() =>
+				{
+					for (const {target, callback, observer} of observed)
+					{
+						callback(
+							[
+								{
+									target,
+									isIntersecting,
+								} as unknown as IntersectionObserverEntry,
+							],
+							observer,
+						);
 					}
 				});
 			};
 
-			afterEach(() => {
+			afterEach(() =>
+			{
 				observed.length = 0;
 				vi.unstubAllGlobals();
 			});
 
-			const skipState = () => {
+			const skipState = () =>
+			{
 				const card = screen.getByRole("group");
-				return {skipEnter: card.hasAttribute("data-skip-approval-enter"), animation: enterClasses()};
+				return {
+					skipEnter: card.hasAttribute("data-skip-approval-enter"),
+					animation: enterClasses(),
+				};
 			};
 
-			it("skips the fade when a card already seen in this page remounts without a draft", () => {
+			it("skips the fade when a card already seen in this page remounts without a draft", () =>
+			{
 				vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 				const first = render(
-					<QuestionCard draftKey="seen-1" questions={QUESTIONS} onSubmit={async () => {}} />,
+					<QuestionCard
+						draftKey="seen-1"
+						questions={QUESTIONS}
+						onSubmit={async () =>
+						{
+						}}
+					/>,
 				);
 				const firstMount = skipState();
 				intersect(true);
 				first.unmount();
-				render(<QuestionCard draftKey="seen-1" questions={QUESTIONS} onSubmit={async () => {}} />);
+				render(
+					<QuestionCard
+						draftKey="seen-1"
+						questions={QUESTIONS}
+						onSubmit={async () =>
+						{
+						}}
+					/>,
+				);
 
-				expect({firstMount, remount: skipState()}).toStrictEqual({
-					firstMount: {
-						skipEnter: false,
-						animation: ["animate-approval-inline-enter", "motion-reduce:animate-none"],
+				expect(
+					{
+						firstMount,
+						remount: skipState(),
 					},
-					remount: {skipEnter: true, animation: []},
-				});
+				).toStrictEqual(
+					{
+						firstMount:
+						{
+							skipEnter: false,
+							animation: ["animate-approval-inline-enter", "motion-reduce:animate-none"],
+						},
+						remount:
+						{
+							skipEnter: true,
+							animation: [],
+						},
+					},
+				);
 			});
 
-			it("still fades a remounted card that never intersected", () => {
+			it("still fades a remounted card that never intersected", () =>
+			{
 				vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
 				const first = render(
-					<QuestionCard draftKey="seen-2" questions={QUESTIONS} onSubmit={async () => {}} />,
+					<QuestionCard
+						draftKey="seen-2"
+						questions={QUESTIONS}
+						onSubmit={async () =>
+						{
+						}}
+					/>,
 				);
 				intersect(false);
 				first.unmount();
-				render(<QuestionCard draftKey="seen-2" questions={QUESTIONS} onSubmit={async () => {}} />);
+				render(
+					<QuestionCard
+						draftKey="seen-2"
+						questions={QUESTIONS}
+						onSubmit={async () =>
+						{
+						}}
+					/>,
+				);
 
-				expect(skipState()).toStrictEqual({
-					skipEnter: false,
-					animation: ["animate-approval-inline-enter", "motion-reduce:animate-none"],
-				});
+				expect(skipState()).toStrictEqual(
+					{
+						skipEnter: false,
+						animation: ["animate-approval-inline-enter", "motion-reduce:animate-none"],
+					},
+				);
 			});
 
-			it("marks the card seen at once where IntersectionObserver is unavailable", () => {
+			it("marks the card seen at once where IntersectionObserver is unavailable", () =>
+			{
 				vi.stubGlobal("IntersectionObserver", undefined);
 				const first = render(
-					<QuestionCard draftKey="seen-3" questions={QUESTIONS} onSubmit={async () => {}} />,
+					<QuestionCard
+						draftKey="seen-3"
+						questions={QUESTIONS}
+						onSubmit={async () =>
+						{
+						}}
+					/>,
 				);
 				first.unmount();
-				render(<QuestionCard draftKey="seen-3" questions={QUESTIONS} onSubmit={async () => {}} />);
+				render(
+					<QuestionCard
+						draftKey="seen-3"
+						questions={QUESTIONS}
+						onSubmit={async () =>
+						{
+						}}
+					/>,
+				);
 
-				expect(skipState()).toStrictEqual({skipEnter: true, animation: []});
+				expect(skipState()).toStrictEqual(
+					{
+						skipEnter: true,
+						animation: [],
+					},
+				);
 			});
 		});
 	});
 
-	it("disables every control without onSubmit", () => {
+	it("disables every control without onSubmit", () =>
+	{
 		render(<QuestionCard questions={QUESTIONS} />);
 
 		expect(
 			[
-				screen.getByRole("button", {name: /^Vitest/}),
-				screen.getByRole("button", {name: "Skip"}),
-				screen.getByRole("button", {name: /^Next/}),
+				screen.getByRole(
+					"button",
+					{
+						name: /^Vitest/,
+					},
+				),
+				screen.getByRole(
+					"button",
+					{
+						name: "Skip",
+					},
+				),
+				screen.getByRole(
+					"button",
+					{
+						name: /^Next/,
+					},
+				),
 			].map((button) => button.hasAttribute("disabled")),
 		).toStrictEqual([true, true, true]);
 	});
 });
 
-describe("AskUserQuestionRenderer pending", () => {
-	const call: ClientToolCall = {
+describe("AskUserQuestionRenderer pending", () =>
+{
+	const call: ClientToolCall =
+	{
 		id: "tool-q",
 		name: "AskUserQuestion",
-		input: {questions: QUESTIONS},
+		input:
+		{
+			questions: QUESTIONS,
+		},
 		param: "",
 		sourceUuid: "u-q",
 	};
 
-	it("draws a pending question inline as upstream's card, with no Asking row, answering through the session", async () => {
+	it("draws a pending question inline as upstream's card, with no Asking row, answering through the session", async () =>
+	{
 		const submitAnswer = vi.fn<(submission: unknown) => Promise<void>>(async () => {});
 		render(
-			<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer}}>
+			<AskUserQuestionProvider
+				value={
+				{
+					answerRoute: "live-pane",
+					submitAnswer,
+				}}
+			>
 				<AskUserQuestionRenderer toolCall={call} />
 			</AskUserQuestionProvider>,
 		);
 		const asking = screen.queryByText(/^Asking/);
-		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-		fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
-		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
-		await vi.waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Next/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Coverage/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			),
+		);
+		await vi.waitFor(() =>
+		{
 			expect(submitAnswer).toHaveBeenCalledTimes(1);
 		});
 
-		expect({
-			asking,
-			card: screen.queryByRole("group", {name: "Which features?"}) !== null,
-			submission: submitAnswer.mock.calls[0]?.[0],
-		}).toStrictEqual({
-			asking: null,
-			card: false,
-			submission: {
-				toolUseId: "tool-q",
-				questions: QUESTIONS,
-				picks: [{selected: [0]}, {selected: [0]}],
+		expect(
+			{
+				asking,
+				card:
+					screen.queryByRole(
+						"group",
+						{
+							name: "Which features?",
+						},
+					) !== null,
+				submission: submitAnswer.mock.calls[0]?.[0],
 			},
-		});
+		).toStrictEqual(
+			{
+				asking: null,
+				card: false,
+				submission:
+				{
+					toolUseId: "tool-q",
+					questions: QUESTIONS,
+					picks: [
+						{
+							selected: [0],
+						},
+						{
+							selected: [0],
+						},
+					],
+				},
+			},
+		);
 	});
-	it("clears the sent answer once the call's result lands, so the card stops redrawing busy", async () => {
+	it("clears the sent answer once the call's result lands, so the card stops redrawing busy", async () =>
+	{
 		const submitAnswer = vi.fn<(submission: unknown) => Promise<void>>(async () => {});
 		const tree = (toolCall: ClientToolCall) => (
-			<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer}}>
+			<AskUserQuestionProvider
+				value={
+				{
+					answerRoute: "live-pane",
+					submitAnswer,
+				}}
+			>
 				<AskUserQuestionRenderer toolCall={toolCall} />
 			</AskUserQuestionProvider>
 		);
-		const sentCall = {...call, id: "tool-q-sent"};
+		const sentCall =
+		{
+			...call,
+			id: "tool-q-sent",
+		};
 		const view = render(tree(sentCall));
-		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-		fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
-		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
-		await vi.waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Next/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Coverage/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Submit/,
+				},
+			),
+		);
+		await vi.waitFor(() =>
+		{
 			expect(submitAnswer).toHaveBeenCalledTimes(1);
 		});
 		const whileSending = readSentQuestionCard("tool-q-sent", QUESTIONS.length) !== null;
 		view.rerender(
-			tree({
-				...sentCall,
-				result: 'User has answered your questions: "Which test runner?"="Vitest", "Which features?"="Coverage".',
-			}),
+			tree(
+				{
+					...sentCall,
+					result: 'User has answered your questions: "Which test runner?"="Vitest", "Which features?"="Coverage".',
+				},
+			),
 		);
 
-		expect({whileSending, afterResult: readSentQuestionCard("tool-q-sent", QUESTIONS.length)}).toStrictEqual({
-			whileSending: true,
-			afterResult: null,
-		});
+		expect(
+			{
+				whileSending,
+				afterResult: readSentQuestionCard("tool-q-sent", QUESTIONS.length),
+			},
+		).toStrictEqual(
+			{
+				whileSending: true,
+				afterResult: null,
+			},
+		);
 	});
 });
 
-describe("answering a hook question until the transcript confirms it", () => {
+describe("answering a hook question until the transcript confirms it", () =>
+{
 	const RESULT =
 		'Your questions have been answered: "Which test runner?"="Jest", "Which features?"="Watch". You can now continue with these answers in mind.';
-	const call: ClientToolCall = {
+	const call: ClientToolCall =
+	{
 		id: "tool-q-hook",
 		name: "AskUserQuestion",
-		input: {questions: QUESTIONS},
+		input:
+		{
+			questions: QUESTIONS,
+		},
 		param: "",
 		sourceUuid: "u-q",
 	};
-	const frame = (container: HTMLElement) => {
+	const frame = (container: HTMLElement) =>
+	{
 		const receipt = container.querySelector("[data-question-receipt]");
 		return {
 			card: container.querySelector("[data-approval-card-root]") !== null,
@@ -1479,11 +3457,15 @@ describe("answering a hook question until the transcript confirms it", () => {
 		};
 	};
 
-	it("hides the card on ⌘⏎ and keeps it hidden through a stale refetch, the pending record and the result", async () => {
-		let resolveSend: () => void = () => {};
+	it("hides the card on ⌘⏎ and keeps it hidden through a stale refetch, the pending record and the result", async () =>
+	{
+		let resolveSend: () => void = () =>
+		{
+		};
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(
 			async () =>
-				new Promise<void>((resolve) => {
+				new Promise<void>((resolve) =>
+				{
 					resolveSend = resolve;
 				}),
 		);
@@ -1492,106 +3474,241 @@ describe("answering a hook question until the transcript confirms it", () => {
 		const hookCard = <QuestionCard key="hook" draftKey={call.id} questions={QUESTIONS} onSubmit={onSubmit} />;
 		const view = render(hookCard);
 		now.mockReturnValue(1400);
-		fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
-		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
-		fireEvent.click(screen.getByRole("button", {name: /^Watch/}));
-		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Jest/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Next/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Watch/,
+				},
+			),
+		);
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
 		now.mockRestore();
 		const afterHotkey = frame(view.container);
 		// A refetch returning the stale pending question remounts the hook card.
 		view.rerender(<></>);
 		view.rerender(hookCard);
 		const staleRefetch = frame(view.container);
-		await act(async () => {
+		await act(async () =>
+		{
 			resolveSend();
 			await Promise.resolve();
 		});
 		const afterSend = frame(view.container);
 		const transcript = (toolCall: ClientToolCall) => (
-			<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer}}>
+			<AskUserQuestionProvider
+				value={
+				{
+					answerRoute: "live-pane",
+					submitAnswer,
+				}}
+			>
 				<AskUserQuestionRenderer toolCall={toolCall} />
 			</AskUserQuestionProvider>
 		);
 		view.rerender(transcript(call));
 		const pendingRecord = frame(view.container);
-		view.rerender(transcript({...call, result: RESULT}));
+		view.rerender(
+			transcript(
+				{
+					...call,
+					result: RESULT,
+				},
+			),
+		);
 		const answered = frame(view.container);
 
-		const sentReceipt = {
+		const sentReceipt =
+		{
 			card: false,
 			rows: [
 				["Which test runner?", "Jest"],
 				["Which features?", "Watch"],
 			],
 		};
-		expect({
-			afterHotkey,
-			staleRefetch,
-			afterSend,
-			pendingRecord,
-			answered,
-			submitted: submitAnswer.mock.calls,
-		}).toStrictEqual({
-			afterHotkey: {...sentReceipt, fades: true},
-			staleRefetch: {...sentReceipt, fades: false},
-			afterSend: {...sentReceipt, fades: false},
-			pendingRecord: {...sentReceipt, fades: false},
-			answered: {...sentReceipt, fades: false},
-			submitted: [],
-		});
+		expect(
+			{
+				afterHotkey,
+				staleRefetch,
+				afterSend,
+				pendingRecord,
+				answered,
+				submitted: submitAnswer.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				afterHotkey:
+				{
+					...sentReceipt,
+					fades: true,
+				},
+				staleRefetch:
+				{
+					...sentReceipt,
+					fades: false,
+				},
+				afterSend:
+				{
+					...sentReceipt,
+					fades: false,
+				},
+				pendingRecord:
+				{
+					...sentReceipt,
+					fades: false,
+				},
+				answered:
+				{
+					...sentReceipt,
+					fades: false,
+				},
+				submitted: [],
+			},
+		);
 	});
 });
 
-describe("question cards by answer route", () => {
-	const call: ClientToolCall = {
+describe("question cards by answer route", () =>
+{
+	const call: ClientToolCall =
+	{
 		id: "tool-q",
 		name: "AskUserQuestion",
-		input: {questions: [QUESTIONS[0]]},
+		input:
+		{
+			questions: [QUESTIONS[0]],
+		},
 		param: "",
 		sourceUuid: "u-q",
 	};
-	function renderRoute(answerRoute: "live-pane" | "fork" | "read-only") {
+	function renderRoute(answerRoute: "live-pane" | "fork" | "read-only")
+	{
 		return render(
-			<AskUserQuestionProvider value={{answerRoute, submitAnswer: async () => {}}}>
+			<AskUserQuestionProvider
+				value={
+				{
+					answerRoute,
+					submitAnswer: async () =>
+					{
+					},
+				}}
+			>
 				<AskUserQuestionRenderer toolCall={call} />
 			</AskUserQuestionProvider>,
 		);
 	}
 
-	it("labels the fork route's submit button explicitly", () => {
+	it("labels the fork route's submit button explicitly", () =>
+	{
 		renderRoute("fork");
 
-		expect(screen.getByRole("button", {name: /^Answer in a new fork/}).hasAttribute("disabled")).toBe(false);
+		expect(
+			screen
+				.getByRole(
+					"button",
+					{
+						name: /^Answer in a new fork/,
+					},
+				)
+				.hasAttribute("disabled"),
+		).toBe(false);
 	});
 
-	it("disables a read-only route's card and points at the terminal", () => {
+	it("disables a read-only route's card and points at the terminal", () =>
+	{
 		const {container} = renderRoute("read-only");
 
-		expect({
-			option: screen.getByRole("button", {name: /^Vitest/}).hasAttribute("disabled"),
-			submit: screen.getByRole("button", {name: /^Submit/}).hasAttribute("disabled"),
-			hint: container.querySelector("[data-approval-read-only]")?.textContent,
-		}).toStrictEqual({option: true, submit: true, hint: "Answer in the terminal"});
+		expect(
+			{
+				option: screen
+					.getByRole(
+						"button",
+						{
+							name: /^Vitest/,
+						},
+					)
+					.hasAttribute("disabled"),
+				submit: screen
+					.getByRole(
+						"button",
+						{
+							name: /^Submit/,
+						},
+					)
+					.hasAttribute("disabled"),
+				hint: container.querySelector("[data-approval-read-only]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				option: true,
+				submit: true,
+				hint: "Answer in the terminal",
+			},
+		);
 	});
 });
 
-describe("question receipt across the answer", () => {
+describe("question receipt across the answer", () =>
+{
 	const COLOR: QuestionLike[] = [
-		{question: "Which color?", header: "Color", options: [{label: "Red (Recommended)"}, {label: "Blue"}]},
+		{
+			question: "Which color?",
+			header: "Color",
+			options: [
+				{
+					label: "Red (Recommended)",
+				},
+				{
+					label: "Blue",
+				},
+			],
+		},
 	];
 	const RED_RESULT =
 		'User has answered your questions: "Which color?"="Red (Recommended)". You can now continue with the user\'s answers in mind.';
-	function colorCall(id: string, result?: string): ClientToolCall {
+	function colorCall(id: string, result?: string): ClientToolCall
+	{
 		return {
 			id,
 			name: "AskUserQuestion",
-			input: {questions: COLOR},
+			input:
+			{
+				questions: COLOR,
+			},
 			param: "",
 			sourceUuid: "u",
-			...(result === undefined ? {} : {result}),
+			...(result === undefined
+				? {}
+				:
+					{
+						result,
+					}),
 		};
 	}
-	function frame(container: HTMLElement) {
+	function frame(container: HTMLElement)
+	{
 		const receipt = container.querySelector("[data-question-receipt]");
 		return {
 			card: container.querySelector("[data-approval-card-root]") !== null,
@@ -1600,80 +3717,165 @@ describe("question receipt across the answer", () => {
 			rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) => row.textContent),
 		};
 	}
-	function tree(toolCall: ClientToolCall) {
+	function tree(toolCall: ClientToolCall)
+	{
 		return (
-			<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer: async () => {}}}>
+			<AskUserQuestionProvider
+				value={
+				{
+					answerRoute: "live-pane",
+					submitAnswer: async () =>
+					{
+					},
+				}}
+			>
 				<AskUserQuestionRenderer toolCall={toolCall} />
 			</AskUserQuestionProvider>
 		);
 	}
 
-	it("fades the receipt once and keeps its node when the hook copy was seen, the transcript card is answered with ⌘⏎, and the result lands", async () => {
+	it("fades the receipt once and keeps its node when the hook copy was seen, the transcript card is answered with ⌘⏎, and the result lands", async () =>
+	{
 		// jsdom has no IntersectionObserver, so mounting marks the hook copy seen at once.
-		render(<QuestionCard key="hook" draftKey="toolu_sim" questions={COLOR} onSubmit={async () => {}} />).unmount();
+		render(
+			<QuestionCard
+				key="hook"
+				draftKey="toolu_sim"
+				questions={COLOR}
+				onSubmit={async () =>
+				{
+				}}
+			/>,
+		).unmount();
 		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
 		const view = render(tree(colorCall("toolu_sim")));
 		const pending = frame(view.container);
 		now.mockReturnValue(5000);
-		fireEvent.click(screen.getByRole("button", {name: /^Red/}));
-		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Red/,
+				},
+			),
+		);
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
 		now.mockRestore();
-		await act(async () => {
+		await act(async () =>
+		{
 			await Promise.resolve();
 		});
 		const sent = frame(view.container);
 		const sentNode = view.container.querySelector("[data-question-receipt]");
 		view.rerender(tree(colorCall("toolu_sim", RED_RESULT)));
 
-		expect({
-			pending,
-			sent,
-			answered: {
-				...frame(view.container),
-				sameNode: view.container.querySelector("[data-question-receipt]") === sentNode,
+		expect(
+			{
+				pending,
+				sent,
+				answered:
+				{
+					...frame(view.container),
+					sameNode: view.container.querySelector("[data-question-receipt]") === sentNode,
+				},
 			},
-		}).toStrictEqual({
-			pending: {card: true, receipt: false, fades: null, rows: []},
-			sent: {card: false, receipt: true, fades: true, rows: ["Which color?Red (Recommended)"]},
-			answered: {
-				card: false,
-				receipt: true,
-				fades: false,
-				rows: ["Which color?Red (Recommended)"],
-				sameNode: true,
+		).toStrictEqual(
+			{
+				pending:
+				{
+					card: true,
+					receipt: false,
+					fades: null,
+					rows: [],
+				},
+				sent:
+				{
+					card: false,
+					receipt: true,
+					fades: true,
+					rows: ["Which color?Red (Recommended)"],
+				},
+				answered:
+				{
+					card: false,
+					receipt: true,
+					fades: false,
+					rows: ["Which color?Red (Recommended)"],
+					sameNode: true,
+				},
 			},
-		});
+		);
 	});
 
-	it("draws the receipt without a fade when a seen card is answered in the terminal", () => {
+	it("draws the receipt without a fade when a seen card is answered in the terminal", () =>
+	{
 		markQuestionCardSeen("toolu_terminal");
 		const view = render(tree(colorCall("toolu_terminal")));
 		const pending = frame(view.container);
 		view.rerender(tree(colorCall("toolu_terminal", RED_RESULT)));
 
-		expect({pending, answered: frame(view.container)}).toStrictEqual({
-			pending: {card: true, receipt: false, fades: null, rows: []},
-			answered: {card: false, receipt: true, fades: false, rows: ["Which color?Red (Recommended)"]},
-		});
+		expect(
+			{
+				pending,
+				answered: frame(view.container),
+			},
+		).toStrictEqual(
+			{
+				pending:
+				{
+					card: true,
+					receipt: false,
+					fades: null,
+					rows: [],
+				},
+				answered:
+				{
+					card: false,
+					receipt: true,
+					fades: false,
+					rows: ["Which color?Red (Recommended)"],
+				},
+			},
+		);
 	});
 });
 
-describe("useQuestionCardSent", () => {
-	it("re-renders as the card's answer starts and stops sending", () => {
+describe("useQuestionCardSent", () =>
+{
+	it("re-renders as the card's answer starts and stops sending", () =>
+	{
 		const seen: boolean[] = [];
-		function Probe() {
+		function Probe()
+		{
 			seen.push(useQuestionCardSent("toolu_hook"));
 			return null;
 		}
 		render(<Probe />);
-		act(() => {
-			markQuestionCardSent("toolu_hook", {
-				page: 0,
-				drafts: [{selected: [0], other: "", otherChosen: false}],
-				skipped: [false],
-			});
+		act(() =>
+		{
+			markQuestionCardSent(
+				"toolu_hook",
+				{
+					page: 0,
+					drafts: [
+						{
+							selected: [0],
+							other: "",
+							otherChosen: false,
+						},
+					],
+					skipped: [false],
+				},
+			);
 		});
-		act(() => {
+		act(() =>
+		{
 			clearSentQuestionCard("toolu_hook");
 		});
 
@@ -1681,26 +3883,41 @@ describe("useQuestionCardSent", () => {
 	});
 });
 
-describe("the session approval slot", () => {
-	afterEach(() => {
+describe("the session approval slot", () =>
+{
+	afterEach(() =>
+	{
 		endEnterSwallows();
 		clearLanding(window);
 		vi.useRealTimers();
 	});
 
-	function PermissionDock({sessionId, onDecision}: {sessionId: string; onDecision: () => Promise<void>}) {
+	function PermissionDock({sessionId, onDecision}: {sessionId: string; onDecision: () => Promise<void>})
+	{
 		const answered = useApprovalAnswered(sessionId, "toolu_slot");
-		const slot = sessionApprovalSlotCard({
-			permission: answered ? null : {key: "toolu_slot", dialog: undefined},
-			planId: null,
-			questionId: null,
-		});
+		const slot = sessionApprovalSlotCard(
+			{
+				permission: answered
+					? null
+					:
+						{
+							key: "toolu_slot",
+							dialog: undefined,
+						},
+				planId: null,
+				questionId: null,
+			},
+		);
 		return (
 			<div>
 				<ApprovalSlot sessionId={sessionId} {...slot}>
 					{!answered && (
 						<PermissionCard
-							title={{action: "run this command", meta: null}}
+							title={
+							{
+								action: "run this command",
+								meta: null,
+							}}
 							detail="ls"
 							canAnswer
 							sessionId={sessionId}
@@ -1714,63 +3931,179 @@ describe("the session approval slot", () => {
 		);
 	}
 
-	it("hands focus to the composer when a keyboard-answered permission card leaves, and swallows a held Enter", async () => {
-		vi.useFakeTimers({toFake: ["performance"]});
+	it("hands focus to the composer when a keyboard-answered permission card leaves, and swallows a held Enter", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["performance"],
+			},
+		);
 		const sessionId = "slot-session";
 		const onDecision = vi.fn<() => Promise<void>>(async () => {});
 		render(<PermissionDock sessionId={sessionId} onDecision={onDecision} />);
-		const composer = screen.getByRole("textbox", {name: "Prompt"});
-		const unregister = registerComposer(sessionId, {
-			insertText: () => undefined,
-			focus: () => {
-				composer.focus();
+		const composer = screen.getByRole(
+			"textbox",
+			{
+				name: "Prompt",
 			},
-			getText: () => (composer as HTMLTextAreaElement).value,
-		});
+		);
+		const unregister = registerComposer(
+			sessionId,
+			{
+				insertText: () => undefined,
+				focus: () =>
+				{
+					composer.focus();
+				},
+				getText: () => (composer as HTMLTextAreaElement).value,
+			},
+		);
 		vi.advanceTimersByTime(500);
 		const root = document.querySelector<HTMLElement>("[data-approval-card-root]")!;
 		root.focus();
-		await act(async () => {
-			fireEvent.keyDown(root, {key: "Enter", metaKey: true});
+		await act(async () =>
+		{
+			fireEvent.keyDown(
+				root,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 			await Promise.resolve();
 		});
 		const active = document.activeElement === composer;
 		vi.advanceTimersByTime(100);
-		const held = fireEvent.keyDown(composer, {key: "Enter"});
+		const held = fireEvent.keyDown(
+			composer,
+			{
+				key: "Enter",
+			},
+		);
 		unregister();
 		clearApprovalAnswered(sessionId, "toolu_slot");
 		releaseAnswered(sessionId);
-		expect({decisions: onDecision.mock.calls, active, held}).toStrictEqual({
-			decisions: [["allow"]],
-			active: true,
-			held: false,
-		});
+		expect(
+			{
+				decisions: onDecision.mock.calls,
+				active,
+				held,
+			},
+		).toStrictEqual(
+			{
+				decisions: [["allow"]],
+				active: true,
+				held: false,
+			},
+		);
 	});
 
-	it("draws the first waiting card as the slot's card, and a deny-first permission doesn't take focus", () => {
+	it("draws the first waiting card as the slot's card, and a deny-first permission doesn't take focus", () =>
+	{
 		expect([
-			sessionApprovalSlotCard({permission: {key: "p", dialog: undefined}, planId: "plan", questionId: "q"}),
-			sessionApprovalSlotCard({
-				permission: {key: "p", dialog: {denyFirst: true, persistent: false, auto: false}},
-				planId: null,
-				questionId: null,
-			}),
-			sessionApprovalSlotCard({permission: {key: "p", dialog: "unknown"}, planId: null, questionId: null}),
-			sessionApprovalSlotCard({permission: null, planId: "plan", questionId: "q"}),
-			sessionApprovalSlotCard({permission: null, planId: null, questionId: "q"}),
-			sessionApprovalSlotCard({permission: null, planId: null, questionId: null}),
+			sessionApprovalSlotCard(
+				{
+					permission:
+					{
+						key: "p",
+						dialog: undefined,
+					},
+					planId: "plan",
+					questionId: "q",
+				},
+			),
+			sessionApprovalSlotCard(
+				{
+					permission:
+					{
+						key: "p",
+						dialog:
+						{
+							denyFirst: true,
+							persistent: false,
+							auto: false,
+						},
+					},
+					planId: null,
+					questionId: null,
+				},
+			),
+			sessionApprovalSlotCard(
+				{
+					permission:
+					{
+						key: "p",
+						dialog: "unknown",
+					},
+					planId: null,
+					questionId: null,
+				},
+			),
+			sessionApprovalSlotCard(
+				{
+					permission: null,
+					planId: "plan",
+					questionId: "q",
+				},
+			),
+			sessionApprovalSlotCard(
+				{
+					permission: null,
+					planId: null,
+					questionId: "q",
+				},
+			),
+			sessionApprovalSlotCard(
+				{
+					permission: null,
+					planId: null,
+					questionId: null,
+				},
+			),
 		]).toStrictEqual([
-			{card: "permission:p", takesFocus: true, chordActsAnywhere: false},
-			{card: "permission:p", takesFocus: false, chordActsAnywhere: false},
-			{card: "permission:p", takesFocus: false, chordActsAnywhere: false},
-			{card: "plan:plan", takesFocus: true, chordActsAnywhere: true},
-			{card: "ask_user_question:q", takesFocus: true, chordActsAnywhere: false},
-			{card: undefined, takesFocus: false, chordActsAnywhere: false},
+			{
+				card: "permission:p",
+				takesFocus: true,
+				chordActsAnywhere: false,
+			},
+			{
+				card: "permission:p",
+				takesFocus: false,
+				chordActsAnywhere: false,
+			},
+			{
+				card: "permission:p",
+				takesFocus: false,
+				chordActsAnywhere: false,
+			},
+			{
+				card: "plan:plan",
+				takesFocus: true,
+				chordActsAnywhere: true,
+			},
+			{
+				card: "ask_user_question:q",
+				takesFocus: true,
+				chordActsAnywhere: false,
+			},
+			{
+				card: undefined,
+				takesFocus: false,
+				chordActsAnywhere: false,
+			},
 		]);
 	});
 });
 
 /** Ends any Enter swallow a landing left on the shared document (it ends on the next plain key). */
-function endEnterSwallows() {
-	document.dispatchEvent(new KeyboardEvent("keydown", {key: "Unidentified"}));
+function endEnterSwallows()
+{
+	document.dispatchEvent(
+		new KeyboardEvent(
+			"keydown",
+			{
+				key: "Unidentified",
+			},
+		),
+	);
 }

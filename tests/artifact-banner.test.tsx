@@ -5,7 +5,8 @@ import {ArtifactLinkBanner, ArtifactWatchBanner} from "../src/components/artifac
 const url = "https://claude.ai/code/artifact/29d89ae8-e33b-4f55-bbbd-874d5d316169";
 
 /** The artifact link cards in `html`, as [href, title] pairs. */
-function cards(html: string): [string, string][] {
+function cards(html: string): [string, string][]
+{
 	return Array.from(
 		html.matchAll(
 			/<a href="([^"]*)"[^>]*class="artifact-link-card"[^>]*><span class="artifact-link-card-title">([^<]*)<\/span>/g,
@@ -14,11 +15,14 @@ function cards(html: string): [string, string][] {
 	);
 }
 
-describe("ArtifactLinkBanner", () => {
-	it("links out to the published artifact as a link card", () => {
+describe("ArtifactLinkBanner", () =>
+{
+	it("links out to the published artifact as a link card", () =>
+	{
 		const html = renderToStaticMarkup(
 			<ArtifactLinkBanner
-				line={{
+				line={
+				{
 					type: "artifact-link",
 					frameUrl: url,
 					title: "Quarto Oracle",
@@ -32,23 +36,42 @@ describe("ArtifactLinkBanner", () => {
 		expect(html).toContain("/tmp/test/page.html");
 	});
 
-	it("titles an untitled artifact with its URL", () => {
+	it("titles an untitled artifact with its URL", () =>
+	{
 		const html = renderToStaticMarkup(
-			<ArtifactLinkBanner line={{type: "artifact-link", frameUrl: url, lineIndex: 0}} />,
+			<ArtifactLinkBanner
+				line={
+				{
+					type: "artifact-link",
+					frameUrl: url,
+					lineIndex: 0,
+				}}
+			/>,
 		);
 		expect(cards(html)).toStrictEqual([[url, url]]);
 	});
 });
 
-describe("ArtifactWatchBanner", () => {
-	it("lists each watched artifact with non-default state and comment threads", () => {
+describe("ArtifactWatchBanner", () =>
+{
+	it("lists each watched artifact with non-default state and comment threads", () =>
+	{
 		const html = renderToStaticMarkup(
 			<ArtifactWatchBanner
-				line={{
+				line={
+				{
 					type: "artifact-watch",
 					artifacts: [
-						{url, title: "Quarto Oracle", state: "armed", commentThreads: 1},
-						{url: "https://claude.ai/artifact/some-slug", state: "paused"},
+						{
+							url,
+							title: "Quarto Oracle",
+							state: "armed",
+							commentThreads: 1,
+						},
+						{
+							url: "https://claude.ai/artifact/some-slug",
+							state: "paused",
+						},
 					],
 					lineIndex: 0,
 				}}

@@ -8,24 +8,33 @@ import type {RoutineKind} from "../routines";
 // rebuilt; there are no migrations.
 export const SCHEMA_VERSION = "1";
 
-export const metadata = sqliteTable("metadata", {
-	key: text("key").primaryKey(),
-	value: text("value").notNull(),
-});
+export const metadata = sqliteTable(
+	"metadata",
+	{
+		key: text("key").primaryKey(),
+		value: text("value").notNull(),
+	},
+);
 
-export const indexedFiles = sqliteTable("indexed_files", {
-	path: text("path").primaryKey(),
-	mtimeMs: integer("mtime_ms").notNull(),
-	sizeBytes: integer("size_bytes").notNull(),
-	indexedAt: integer("indexed_at").notNull(),
-});
+export const indexedFiles = sqliteTable(
+	"indexed_files",
+	{
+		path: text("path").primaryKey(),
+		mtimeMs: integer("mtime_ms").notNull(),
+		sizeBytes: integer("size_bytes").notNull(),
+		indexedAt: integer("indexed_at").notNull(),
+	},
+);
 
-export const projects = sqliteTable("projects", {
-	id: text("id").primaryKey(),
-	name: text("name").notNull(),
-	projectPath: text("project_path"),
-	updatedAt: integer("updated_at").notNull(),
-});
+export const projects = sqliteTable(
+	"projects",
+	{
+		id: text("id").primaryKey(),
+		name: text("name").notNull(),
+		projectPath: text("project_path"),
+		updatedAt: integer("updated_at").notNull(),
+	},
+);
 
 export const sessions = sqliteTable(
 	"sessions",
@@ -73,17 +82,24 @@ export const sessionMessages = sqliteTable(
 		text: text("text"),
 	},
 	(table) => [
-		primaryKey({columns: [table.sessionId, table.messageIndex]}),
+		primaryKey(
+			{
+				columns: [table.sessionId, table.messageIndex],
+			},
+		),
 		index("session_messages_latest_idx").on(table.sessionId, table.role, table.messageIndex),
 	],
 );
 
-export const sessionViewStates = sqliteTable("session_view_states", {
-	sessionId: text("session_id").primaryKey(),
-	lastViewedMessageIndex: integer("last_viewed_message_index").notNull().default(-1),
-	reviewTargetMessageIndex: integer("review_target_message_index").notNull().default(-1),
-	updatedAt: integer("updated_at").notNull(),
-});
+export const sessionViewStates = sqliteTable(
+	"session_view_states",
+	{
+		sessionId: text("session_id").primaryKey(),
+		lastViewedMessageIndex: integer("last_viewed_message_index").notNull().default(-1),
+		reviewTargetMessageIndex: integer("review_target_message_index").notNull().default(-1),
+		updatedAt: integer("updated_at").notNull(),
+	},
+);
 
 export const herdrTerminalViewStates = sqliteTable(
 	"herdr_terminal_view_states",
@@ -104,7 +120,11 @@ export const sessionMcpTools = sqliteTable(
 		toolName: text("tool_name").notNull(),
 	},
 	(table) => [
-		primaryKey({columns: [table.sessionId, table.toolName]}),
+		primaryKey(
+			{
+				columns: [table.sessionId, table.toolName],
+			},
+		),
 		index("session_mcp_tools_tool_name_idx").on(table.toolName),
 	],
 );
@@ -231,7 +251,11 @@ export const planSessions = sqliteTable(
 		projectId: text("project_id").notNull(),
 	},
 	(table) => [
-		primaryKey({columns: [table.planFilename, table.sessionId]}),
+		primaryKey(
+			{
+				columns: [table.planFilename, table.sessionId],
+			},
+		),
 		index("plan_sessions_plan_idx").on(table.planFilename),
 		index("plan_sessions_session_idx").on(table.sessionId),
 	],
@@ -260,7 +284,14 @@ export const subagents = sqliteTable(
 		/** The description of the agent's foreground Bash call still waiting on its result, if any. */
 		pendingCommand: text("pending_command"),
 		/** The agent's last turn ended (its final message is an end_turn) and nothing has woken it since. */
-		idle: integer("idle", {mode: "boolean"}).notNull().default(false),
+		idle: integer(
+			"idle",
+			{
+				mode: "boolean",
+			},
+		)
+			.notNull()
+			.default(false),
 		/** The workflow run (`wf_…`) this agent ran in, from its `subagents/workflows/<runId>/` directory. */
 		workflowRunId: text("workflow_run_id"),
 		/** The workflow phase title: meta `workflowPhase`, else the journal `started.phase`, else the run JSON `phaseTitle`. */
@@ -319,64 +350,85 @@ export const plans = sqliteTable(
 );
 
 /** App-side archive flag: the session's JSONL is never touched. */
-export const archivedSessions = sqliteTable("archived_sessions", {
-	sessionId: text("session_id").primaryKey(),
-	archivedAt: integer("archived_at").notNull(),
-});
+export const archivedSessions = sqliteTable(
+	"archived_sessions",
+	{
+		sessionId: text("session_id").primaryKey(),
+		archivedAt: integer("archived_at").notNull(),
+	},
+);
 
 /** When each session was last unarchived; the auto-archive sweeper counts it as activity. */
-export const unarchivedSessions = sqliteTable("unarchived_sessions", {
-	sessionId: text("session_id").primaryKey(),
-	unarchivedAt: integer("unarchived_at").notNull(),
-});
+export const unarchivedSessions = sqliteTable(
+	"unarchived_sessions",
+	{
+		sessionId: text("session_id").primaryKey(),
+		unarchivedAt: integer("unarchived_at").notNull(),
+	},
+);
 
 /** Home "Sessions" dismissals: a row stays hidden until the session has newer activity. */
-export const homeDismissals = sqliteTable("home_dismissals", {
-	sessionId: text("session_id").primaryKey(),
-	dismissedAt: integer("dismissed_at").notNull(),
-});
+export const homeDismissals = sqliteTable(
+	"home_dismissals",
+	{
+		sessionId: text("session_id").primaryKey(),
+		dismissedAt: integer("dismissed_at").notNull(),
+	},
+);
 
 /** Upstream's per-workspace Bypass permissions acks (`epitaxy-perm-mode-acks-v2`), `${workspace}:bypassPermissions`. */
-export const permissionModeAcks = sqliteTable("permission_mode_acks", {
-	key: text("key").primaryKey(),
-	ackedAt: integer("acked_at").notNull(),
-});
+export const permissionModeAcks = sqliteTable(
+	"permission_mode_acks",
+	{
+		key: text("key").primaryKey(),
+		ackedAt: integer("acked_at").notNull(),
+	},
+);
 
-export const summaries = sqliteTable("summaries", {
-	sessionId: text("session_id").primaryKey(),
-	lastMessageId: text("last_message_id").notNull(),
-	summary: text("summary").notNull(),
-	generatedAt: integer("generated_at").notNull(),
-});
+export const summaries = sqliteTable(
+	"summaries",
+	{
+		sessionId: text("session_id").primaryKey(),
+		lastMessageId: text("last_message_id").notNull(),
+		summary: text("summary").notNull(),
+		generatedAt: integer("generated_at").notNull(),
+	},
+);
 
 /**
  * The post-turn verdict on a session's final main-thread assistant turn (upstream
  * `post_turn_summary.status_category`): whether it asks the user to decide or act.
  * `turnUuid` keys the model call; `turnEndedAt` is the session's turn end it answers for.
  */
-export const turnVerdicts = sqliteTable("turn_verdicts", {
-	sessionId: text("session_id").primaryKey(),
-	turnUuid: text("turn_uuid").notNull(),
-	turnEndedAt: integer("turn_ended_at").notNull(),
-	needsInput: integer("needs_input").notNull(),
-	generatedAt: integer("generated_at").notNull(),
-});
+export const turnVerdicts = sqliteTable(
+	"turn_verdicts",
+	{
+		sessionId: text("session_id").primaryKey(),
+		turnUuid: text("turn_uuid").notNull(),
+		turnEndedAt: integer("turn_ended_at").notNull(),
+		needsInput: integer("needs_input").notNull(),
+		generatedAt: integer("generated_at").notNull(),
+	},
+);
 
 /**
  * A conversation title generated for a Remote Control bridged session whose only name is its pane name (upstream
  * retitles bridged sessions on the claude.ai server and never writes those titles to disk). `customTitle` is the
  * custom title the row judged; `paneNamed` says it equals the agent name or cwd basename, so the title applies.
  */
-export const generatedTitles = sqliteTable("generated_titles", {
-	sessionId: text("session_id").primaryKey(),
-	customTitle: text("custom_title").notNull(),
-	paneNamed: integer("pane_named").notNull(),
-	agentName: text("agent_name"),
-	cwdBasename: text("cwd_basename"),
-	title: text("title"),
-	messageCount: integer("message_count").notNull(),
-	generatedAt: integer("generated_at").notNull(),
-});
+export const generatedTitles = sqliteTable(
+	"generated_titles",
+	{
+		sessionId: text("session_id").primaryKey(),
+		customTitle: text("custom_title").notNull(),
+		paneNamed: integer("pane_named").notNull(),
+		agentName: text("agent_name"),
+		cwdBasename: text("cwd_basename"),
+		title: text("title"),
+		messageCount: integer("message_count").notNull(),
+		generatedAt: integer("generated_at").notNull(),
+	},
+);
 
 /**
  * The last whole-transcript file and link scan per JSONL (see
@@ -384,19 +436,32 @@ export const generatedTitles = sqliteTable("generated_titles", {
  * session. A row answers only while the file's size and mtime, the home root
  * and the scan version all still match. `resources` is the JSON result.
  */
-export const sessionResourceScans = sqliteTable("session_resource_scans", {
-	filePath: text("file_path").primaryKey(),
-	homeRoot: text("home_root").notNull(),
-	size: integer("size").notNull(),
-	mtimeMs: real("mtime_ms").notNull(),
-	scanVersion: integer("scan_version").notNull(),
-	resources: text("resources").notNull(),
-});
+export const sessionResourceScans = sqliteTable(
+	"session_resource_scans",
+	{
+		filePath: text("file_path").primaryKey(),
+		homeRoot: text("home_root").notNull(),
+		size: integer("size").notNull(),
+		mtimeMs: real("mtime_ms").notNull(),
+		scanVersion: integer("scan_version").notNull(),
+		resources: text("resources").notNull(),
+	},
+);
 
-export const reviews = sqliteTable("reviews", {
-	reviewId: text("review_id").primaryKey(),
-	bundle: text("bundle", {mode: "json"}).$type<ReviewBundle>().notNull(),
-});
+export const reviews = sqliteTable(
+	"reviews",
+	{
+		reviewId: text("review_id").primaryKey(),
+		bundle: text(
+			"bundle",
+			{
+				mode: "json",
+			},
+		)
+			.$type<ReviewBundle>()
+			.notNull(),
+	},
+);
 
 export const hookSchemaDrift = sqliteTable(
 	"hook_schema_drift",
@@ -410,7 +475,11 @@ export const hookSchemaDrift = sqliteTable(
 		lastSeenAt: integer("last_seen_at").notNull(),
 	},
 	(table) => [
-		primaryKey({columns: [table.hookEventName, table.issueSignature]}),
+		primaryKey(
+			{
+				columns: [table.hookEventName, table.issueSignature],
+			},
+		),
 		index("hook_schema_drift_last_seen_idx").on(table.lastSeenAt),
 	],
 );

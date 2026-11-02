@@ -1,5 +1,6 @@
 import {inputString} from "../../lib/tool-utils";
-import {
+import
+{
 	Globe,
 	CheckCircle,
 	MousePointer,
@@ -27,10 +28,12 @@ import {defined} from "../../lib/defined";
  * Renders JSON with Shiki syntax highlighting, falling back to plain text
  * while the highlighter loads.
  */
-function HighlightedJson({code}: {code: string}) {
+function HighlightedJson({code}: {code: string})
+{
 	const tokens = useHighlightedLines(code, "json");
 
-	if (!tokens) {
+	if (!tokens)
+	{
 		return (
 			<pre className="bg-surface-0 text-primary rounded-r6 leading-relaxed p-2 whitespace-pre-wrap break-all text-code font-mono">
 				{code}
@@ -43,7 +46,13 @@ function HighlightedJson({code}: {code: string}) {
 			{tokens.map((line: ThemedToken[], lineIndex: number) => (
 				<div key={lineIndex}>
 					{line.map((token: ThemedToken, tokenIndex: number) => (
-						<span key={tokenIndex} style={{color: token.color}}>
+						<span
+							key={tokenIndex}
+							style={
+							{
+								color: token.color,
+							}}
+						>
 							{token.content}
 						</span>
 					))}
@@ -57,12 +66,19 @@ function HighlightedJson({code}: {code: string}) {
  * Renders tool result content by detecting whether it is markdown, JSON, or
  * plain text and choosing the appropriate rendering strategy.
  */
-function SmartResultContent({text, maxLines = 20}: {text: string; maxLines?: number}) {
+function SmartResultContent({text, maxLines = 20}: {text: string; maxLines?: number})
+{
 	if (!text) return null;
 
 	// Upstream's generic body kinds (`o_`), kept in this renderer's richer local frame.
-	const body = classifyToolBody(text, {allowMarkdown: true});
-	if (body.kind === "markdown") {
+	const body = classifyToolBody(
+		text,
+		{
+			allowMarkdown: true,
+		},
+	);
+	if (body.kind === "markdown")
+	{
 		const lineCount = text.split("\n").length;
 		return (
 			<ExpandableBlock lineCount={lineCount} maxLines={maxLines}>
@@ -73,7 +89,8 @@ function SmartResultContent({text, maxLines = 20}: {text: string; maxLines?: num
 		);
 	}
 
-	if (body.kind === "json") {
+	if (body.kind === "json")
+	{
 		const lineCount = body.text.split("\n").length;
 		return (
 			<ExpandableBlock lineCount={lineCount} maxLines={maxLines}>
@@ -92,7 +109,8 @@ function SmartResultContent({text, maxLines = 20}: {text: string; maxLines?: num
 	);
 }
 
-function ResultSummary({resultText, maxLines = 10}: {resultText: string; maxLines?: number}) {
+function ResultSummary({resultText, maxLines = 10}: {resultText: string; maxLines?: number})
+{
 	if (!resultText) return null;
 	const lines = resultText.split("\n");
 	const preview = lines.slice(0, maxLines).join("\n");
@@ -107,8 +125,10 @@ function ResultSummary({resultText, maxLines = 10}: {resultText: string; maxLine
 	);
 }
 
-function logLevelIcon(level: string) {
-	switch (level) {
+function logLevelIcon(level: string)
+{
+	switch (level)
+	{
 		case "error":
 			return <XCircle className="h-4 w-4 text-red-500" />;
 		case "warning":
@@ -121,8 +141,10 @@ function logLevelIcon(level: string) {
 	}
 }
 
-function logLevelBadgeClasses(level: string): string {
-	switch (level) {
+function logLevelBadgeClasses(level: string): string
+{
+	switch (level)
+	{
 		case "error":
 			return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
 		case "warning":
@@ -143,11 +165,13 @@ function logLevelBadgeClasses(level: string): string {
  * Strip the URL from result text when it duplicates the input URL.
  * Common result patterns: "Navigated to https://..." or "Page loaded: https://..."
  */
-function stripNavigateUrlFromResult(resultText: string, url: string): string {
+function stripNavigateUrlFromResult(resultText: string, url: string): string
+{
 	if (!url || !resultText) return resultText;
 	// Remove lines that are the URL or "Navigated to <url>"
 	const lines = resultText.split("\n");
-	const filtered = lines.filter((line) => {
+	const filtered = lines.filter((line) =>
+	{
 		const trimmed = line.trim();
 		if (trimmed === url) return false;
 		if (/^navigated to\s+/i.test(trimmed) && trimmed.toLowerCase().includes(url.toLowerCase())) return false;
@@ -157,7 +181,8 @@ function stripNavigateUrlFromResult(resultText: string, url: string): string {
 	return filtered.join("\n").trim();
 }
 
-function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const url = inputString(input, "url") ?? "";
 	const isSuccess = resultText.toLowerCase().includes("navigated to");
 	const cleanedResult = stripNavigateUrlFromResult(resultText, url);
@@ -178,7 +203,8 @@ function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; 
 	);
 }
 
-function ReadPageRenderer({resultText}: {resultText: string}) {
+function ReadPageRenderer({resultText}: {resultText: string})
+{
 	return (
 		<div className="px-2 py-2 space-y-2">
 			<div className="flex items-center gap-2">
@@ -193,7 +219,8 @@ function ReadPageRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function ComputerRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function ComputerRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const action = inputString(input, "action") ?? "";
 	const coordinateValue = input["coordinate"];
 	const coordinate =
@@ -221,7 +248,8 @@ function ComputerRenderer({input, resultText}: {input: Record<string, unknown>; 
 	);
 }
 
-function FindRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function FindRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const description = inputString(input, "description", "query") ?? "";
 
 	return (
@@ -236,7 +264,8 @@ function FindRenderer({input, resultText}: {input: Record<string, unknown>; resu
 	);
 }
 
-function TabsContextRenderer({resultText}: {resultText: string}) {
+function TabsContextRenderer({resultText}: {resultText: string})
+{
 	const lines = resultText
 		.split("\n")
 		.map((l) => l.trim())
@@ -255,7 +284,8 @@ function TabsContextRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function JavaScriptToolRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function JavaScriptToolRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const code = inputString(input, "code", "expression", "javascript") ?? "";
 
 	return (
@@ -279,23 +309,30 @@ function JavaScriptToolRenderer({input, resultText}: {input: Record<string, unkn
 	);
 }
 
-function ReadConsoleMessagesRenderer({resultText}: {resultText: string}) {
+function ReadConsoleMessagesRenderer({resultText}: {resultText: string})
+{
 	const lines = resultText
 		.split("\n")
 		.map((l) => l.trim())
 		.filter(Boolean);
 
-	const messages = lines.map((line, i) => {
+	const messages = lines.map((line, i) =>
+	{
 		// Try "[level] message" format
 		const m = /^\[(\w+)\]\s+(.+)$/.exec(line);
-		if (m) {
+		if (m)
+		{
 			return {
 				id: i,
 				level: defined(m[1], "console level group"),
 				message: defined(m[2], "console message group"),
 			};
 		}
-		return {id: i, level: "log", message: line};
+		return {
+			id: i,
+			level: "log",
+			message: line,
+		};
 	});
 
 	return (
@@ -319,7 +356,8 @@ function ReadConsoleMessagesRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function DefaultRenderer({resultText}: {resultText: string}) {
+function DefaultRenderer({resultText}: {resultText: string})
+{
 	if (!resultText) return <span className="text-body text-t6">Action completed</span>;
 	return <SmartResultContent text={resultText} />;
 }
@@ -328,7 +366,8 @@ function DefaultRenderer({resultText}: {resultText: string}) {
 // Entry point
 // ---------------------------------------------------------------------------
 
-export function ClaudeInChromeRenderer({toolCall}: ToolRendererProps) {
+export function ClaudeInChromeRenderer({toolCall}: ToolRendererProps)
+{
 	const tool = toolCall.name.split("__").slice(2).join("__");
 	const resultText = toolCall.result ?? "";
 	const input = toolCall.input as Record<string, unknown>;
@@ -350,8 +389,10 @@ function ClaudeInChromeContent({
 	tool: string;
 	input: Record<string, unknown>;
 	resultText: string;
-}) {
-	switch (tool) {
+})
+{
+	switch (tool)
+	{
 		case "navigate":
 			return <NavigateRenderer input={input} resultText={resultText} />;
 		case "read_page":

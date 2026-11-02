@@ -6,12 +6,15 @@ const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g,
 const WAVE =
 	"url(\"data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'8'%20height%3D'5'%3E%3Cpath%20d%3D'M0%202.5%20Q2%200.75%204%202.5%20Q6%204.25%208%202.5'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'1.3'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E\")";
 
-function missing(rules: readonly string[]): string[] {
+function missing(rules: readonly string[]): string[]
+{
 	return rules.filter((rule) => !styles.includes(rule));
 }
 
-describe("settings deep-link flash CSS", () => {
-	it("copies upstream's row wash and wavy title underline", () => {
+describe("settings deep-link flash CSS", () =>
+{
+	it("copies upstream's row wash and wavy title underline", () =>
+	{
 		expect(
 			missing([
 				".feature-anchor-row-fill { isolation: isolate; position: relative; }",
@@ -26,7 +29,8 @@ describe("settings deep-link flash CSS", () => {
 
 	// Upstream's 2026-11 stylesheet: a section header's wash hugs its title (inset-block 4px minus pad-md, 12px
 	// at comfortable), and under RTL the underline wipes in from the right.
-	it("copies upstream's section-header wash inset and the RTL underline wipe", () => {
+	it("copies upstream's section-header wash inset and the RTL underline wipe", () =>
+	{
 		expect(
 			missing([
 				".feature-anchor-row-fill[data-settings-group-header]::before { inset-block: calc(4px - 12px); }",
@@ -36,7 +40,8 @@ describe("settings deep-link flash CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("shows both static under the OS reduced-motion preference and the Motion: Reduced setting", () => {
+	it("shows both static under the OS reduced-motion preference and the Motion: Reduced setting", () =>
+	{
 		expect(
 			missing([
 				"@media (prefers-reduced-motion: reduce) { .feature-anchor-highlight::after { clip-path: inset(0px); opacity: 1; animation: none; } .feature-anchor-row-fill::before { opacity: 1; animation: none; } }",
@@ -46,7 +51,8 @@ describe("settings deep-link flash CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("drops the old straight-underline flash", () => {
+	it("drops the old straight-underline flash", () =>
+	{
 		expect(["settings-row-flash", "data-settings-flash"].filter((name) => styles.includes(name))).toStrictEqual([]);
 	});
 });

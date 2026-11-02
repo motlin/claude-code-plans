@@ -6,7 +6,8 @@ import {act, cleanup, render, screen} from "@testing-library/react";
 import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
-import {
+import
+{
 	sessionDetailQueryOptions,
 	sessionSubagentsQueryOptions,
 	transcriptQueryOptions,
@@ -18,60 +19,79 @@ import {SettingsProvider} from "../src/components/settings-provider";
 import {preloadSessionPageChunks} from "./session-page-chunks";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadSessionPageChunks();
 });
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate.
-vi.mock("../src/components/session-chat", () => ({
+vi.mock("../src/components/session-chat", () => (
+{
 	SessionChat: () => null,
 }));
 
-class TestEventSource extends EventTarget {
+class TestEventSource extends EventTarget
+{
 	readonly close = vi.fn<() => void>();
 	onerror: ((event: Event) => void) | null = null;
 }
 
-class FakeStorage implements Storage {
+class FakeStorage implements Storage
+{
 	readonly values = new Map<string, string>();
 
-	get length(): number {
+	get length(): number
+	{
 		return this.values.size;
 	}
 
-	clear(): void {
+	clear(): void
+	{
 		this.values.clear();
 	}
 
-	getItem(key: string): string | null {
+	getItem(key: string): string | null
+	{
 		return this.values.get(key) ?? null;
 	}
 
-	key(index: number): string | null {
+	key(index: number): string | null
+	{
 		return [...this.values.keys()][index] ?? null;
 	}
 
-	removeItem(key: string): void {
+	removeItem(key: string): void
+	{
 		this.values.delete(key);
 	}
 
-	setItem(key: string, value: string): void {
+	setItem(key: string, value: string): void
+	{
 		this.values.set(key, value);
 	}
 }
 
-class TestIntersectionObserver {
-	observe(): void {}
-	unobserve(): void {}
-	disconnect(): void {}
-	takeRecords(): IntersectionObserverEntry[] {
+class TestIntersectionObserver
+{
+	observe(): void
+	{
+	}
+	unobserve(): void
+	{
+	}
+	disconnect(): void
+	{
+	}
+	takeRecords(): IntersectionObserverEntry[]
+	{
 		return [];
 	}
 }
 
 const SESSION_ID = "session-test-100";
 
-const detail: SessionDetailData = {
+const detail: SessionDetailData =
+{
 	title: "Alice's chrome shortcut test",
 	projectName: "example",
 	projectId: "project-test-100",
@@ -86,7 +106,8 @@ const detail: SessionDetailData = {
 	gitClean: null,
 	messageCount: 1,
 	pendingTaskCount: 0,
-	viewedState: {
+	viewedState:
+	{
 		currentMessageIndex: 0,
 		lastViewedMessageIndex: 0,
 		reviewTargetMessageIndex: 0,
@@ -97,92 +118,139 @@ const detail: SessionDetailData = {
 	},
 };
 
-function seededQueryClient() {
-	const queryClient = new QueryClient({
-		defaultOptions: {queries: {retry: false}},
-	});
-	queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, detail);
-	queryClient.setQueryData(transcriptQueryOptions(SESSION_ID).queryKey, {
-		records: [
+function seededQueryClient()
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
 			{
-				type: "assistant",
-				uuid: "uuid-test-100",
-				message: {
-					role: "assistant",
-					content: [
-						{
-							type: "tool_use",
-							id: "tool-use-read-example",
-							name: "Read",
-							input: {file_path: "/home/alice/example/read.ts"},
-						},
-					],
+				queries:
+				{
+					retry: false,
 				},
 			},
-		],
-		byteOffset: 0,
-		startIndex: 0,
-		precedingMessageCount: 0,
-		hiddenUuids: [],
-		cuts: [],
-		chainVersion: "v1",
-		chapters: [],
-	});
+		},
+	);
+	queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, detail);
+	queryClient.setQueryData(
+		transcriptQueryOptions(SESSION_ID).queryKey,
+		{
+			records: [
+				{
+					type: "assistant",
+					uuid: "uuid-test-100",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "tool-use-read-example",
+								name: "Read",
+								input:
+								{
+									file_path: "/home/alice/example/read.ts",
+								},
+							},
+						],
+					},
+				},
+			],
+			byteOffset: 0,
+			startIndex: 0,
+			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
+			chapters: [],
+		},
+	);
 	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, []);
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {
-		panes: [],
-		writesEnabled: false,
-	});
+	queryClient.setQueryData(
+		herdrPanesQueryOptions.queryKey,
+		{
+			panes: [],
+			writesEnabled: false,
+		},
+	);
 	return queryClient;
 }
 
-async function renderSession() {
+async function renderSession()
+{
 	const queryClient = seededQueryClient();
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<SettingsProvider>
-					<ClaudeEventsProvider>
-						<ToastProvider>
-							<SessionPage sessionId={SESSION_ID} />
-						</ToastProvider>
-					</ClaudeEventsProvider>
-				</SettingsProvider>
-			</QueryClientProvider>
-		),
-	});
-	const router = createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({
-			initialEntries: [`/session/${SESSION_ID}`],
-		}),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<SettingsProvider>
+						<ClaudeEventsProvider>
+							<ToastProvider>
+								<SessionPage sessionId={SESSION_ID} />
+							</ToastProvider>
+						</ClaudeEventsProvider>
+					</SettingsProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: [`/session/${SESSION_ID}`],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	await screen.findByTestId("session-titlebar");
 }
 
-function press(init: KeyboardEventInit): void {
-	act(() => {
-		document.body.dispatchEvent(new KeyboardEvent("keydown", {bubbles: true, cancelable: true, ...init}));
+function press(init: KeyboardEventInit): void
+{
+	act(() =>
+	{
+		document.body.dispatchEvent(
+			new KeyboardEvent(
+				"keydown",
+				{
+					bubbles: true,
+					cancelable: true,
+					...init,
+				},
+			),
+		);
 	});
 }
 
-function chromeState() {
+function chromeState()
+{
 	return {
 		titlebar: screen.queryByTestId("session-titlebar") !== null,
-		showChromeButton: screen.queryByRole("button", {name: "Show chrome"}) !== null,
+		showChromeButton:
+			screen.queryByRole(
+				"button",
+				{
+					name: "Show chrome",
+				},
+			) !== null,
 	};
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
 
-describe("session page chrome toggle shortcut", () => {
-	it("toggles chromeHidden with ⇧⌘\\ and leaves ⌘⇧F free for the Files pane", async () => {
+describe("session page chrome toggle shortcut", () =>
+{
+	it("toggles chromeHidden with ⇧⌘\\ and leaves ⌘⇧F free for the Files pane", async () =>
+	{
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.stubGlobal("localStorage", new FakeStorage());
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
@@ -196,22 +264,83 @@ describe("session page chrome toggle shortcut", () => {
 
 		await renderSession();
 		const initial = chromeState();
-		press({key: "f", code: "KeyF", metaKey: true, shiftKey: true});
-		const afterCmdShiftF = {
+		press(
+			{
+				key: "f",
+				code: "KeyF",
+				metaKey: true,
+				shiftKey: true,
+			},
+		);
+		const afterCmdShiftF =
+		{
 			...chromeState(),
-			filesPane: screen.queryByRole("region", {name: "Files"}) !== null,
+			filesPane:
+				screen.queryByRole(
+					"region",
+					{
+						name: "Files",
+					},
+				) !== null,
 		};
-		press({key: "f", code: "KeyF", metaKey: true, shiftKey: true});
-		press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});
+		press(
+			{
+				key: "f",
+				code: "KeyF",
+				metaKey: true,
+				shiftKey: true,
+			},
+		);
+		press(
+			{
+				key: "|",
+				code: "Backslash",
+				metaKey: true,
+				shiftKey: true,
+			},
+		);
 		const afterHide = chromeState();
-		press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});
+		press(
+			{
+				key: "|",
+				code: "Backslash",
+				metaKey: true,
+				shiftKey: true,
+			},
+		);
 		const afterShow = chromeState();
 
-		expect({initial, afterCmdShiftF, afterHide, afterShow}).toStrictEqual({
-			initial: {titlebar: true, showChromeButton: false},
-			afterCmdShiftF: {titlebar: true, showChromeButton: false, filesPane: true},
-			afterHide: {titlebar: false, showChromeButton: true},
-			afterShow: {titlebar: true, showChromeButton: false},
-		});
+		expect(
+			{
+				initial,
+				afterCmdShiftF,
+				afterHide,
+				afterShow,
+			},
+		).toStrictEqual(
+			{
+				initial:
+				{
+					titlebar: true,
+					showChromeButton: false,
+				},
+				afterCmdShiftF:
+				{
+					titlebar: true,
+					showChromeButton: false,
+					filesPane: true,
+				},
+				afterHide:
+				{
+					titlebar: false,
+					showChromeButton: true,
+				},
+				afterShow:
+				{
+					titlebar: true,
+					showChromeButton: false,
+				},
+			},
+		);
 	});
 });

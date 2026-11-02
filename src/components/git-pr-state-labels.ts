@@ -1,6 +1,7 @@
 import type {GitPrState} from "../lib/pr-status";
 
-export const GIT_PR_STATE_LABELS = {
+export const GIT_PR_STATE_LABELS =
+{
 	opened: "Open",
 	draft: "Draft",
 	merged: "Merged",

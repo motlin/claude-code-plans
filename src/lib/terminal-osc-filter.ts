@@ -23,45 +23,59 @@ type State = "ground" | "escape" | "command" | "drop" | "drop-escape";
  * of an undecided prefix (`ESC`, `ESC ]`, `ESC ] 13`) are held until the
  * command number is known.
  */
-export function createOscFilter(): (chunk: Uint8Array) => Uint8Array {
+export function createOscFilter(): (chunk: Uint8Array) => Uint8Array
+{
 	let state: State = "ground";
 	let command = "";
 
-	return (chunk) => {
+	return (chunk) =>
+	{
 		const output: number[] = [];
-		const flushPrefix = (): void => {
+		const flushPrefix = (): void =>
+		{
 			output.push(ESC, OSC_INTRODUCER);
 			for (let index = 0; index < command.length; index++) output.push(command.charCodeAt(index));
 			command = "";
 		};
 
-		for (let index = 0; index < chunk.length; index++) {
+		for (let index = 0; index < chunk.length; index++)
+		{
 			const byte = chunk[index] ?? 0;
 			let pending = true;
-			while (pending) {
+			while (pending)
+			{
 				pending = false;
-				switch (state) {
+				switch (state)
+				{
 					case "ground":
 						if (byte === ESC) state = "escape";
 						else output.push(byte);
 						break;
 					case "escape":
-						if (byte === OSC_INTRODUCER) {
+						if (byte === OSC_INTRODUCER)
+						{
 							state = "command";
-						} else {
+						}
+						else
+						{
 							output.push(ESC);
 							state = "ground";
 							pending = true;
 						}
 						break;
 					case "command":
-						if (byte >= DIGIT_0 && byte <= DIGIT_9 && command.length < MAX_COMMAND_DIGITS) {
+						if (byte >= DIGIT_0 && byte <= DIGIT_9 && command.length < MAX_COMMAND_DIGITS)
+						{
 							command += String.fromCharCode(byte);
-						} else if (DROPPED_COMMANDS.has(command)) {
+						}
+						else if (DROPPED_COMMANDS.has(command))
+						{
 							command = "";
 							state = "drop";
 							pending = byte !== SEPARATOR;
-						} else {
+						}
+						else
+						{
 							flushPrefix();
 							state = "ground";
 							pending = true;
@@ -72,9 +86,12 @@ export function createOscFilter(): (chunk: Uint8Array) => Uint8Array {
 						else if (byte === ESC) state = "drop-escape";
 						break;
 					case "drop-escape":
-						if (byte === STRING_TERMINATOR) {
+						if (byte === STRING_TERMINATOR)
+						{
 							state = "ground";
-						} else {
+						}
+						else
+						{
 							state = "escape";
 							pending = true;
 						}

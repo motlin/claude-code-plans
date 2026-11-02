@@ -4,14 +4,16 @@ import type {QuestionLike} from "../lib/ask-user-question";
 import type {QuestionAnswer} from "../lib/hook-events";
 import type {QuestionAnswerRoute} from "../lib/question-answer-route";
 
-export interface AnswerSubmission {
+export interface AnswerSubmission
+{
 	toolUseId: string;
 	questions: readonly QuestionLike[];
 	/** The card's picks, one per question, null for a skip. */
 	picks: ReadonlyArray<QuestionAnswer | null>;
 }
 
-export interface AskUserQuestionContextValue {
+export interface AskUserQuestionContextValue
+{
 	/** The session the questions belong to; a live answer holds it as answered. */
 	sessionId?: string;
 	/**
@@ -37,6 +39,7 @@ export const AskUserQuestionProvider = AskUserQuestionContext.Provider;
  * Renderers used outside a session view (e.g. source view, tests) get null and
  * fall back to read-only display.
  */
-export function useAskUserQuestionContext(): AskUserQuestionContextValue | null {
+export function useAskUserQuestionContext(): AskUserQuestionContextValue | null
+{
 	return useContext(AskUserQuestionContext);
 }

@@ -14,7 +14,8 @@ const testDir = join(tmpdir(), `claude-pr-link-test-${process.pid}`);
 const projectId = "-Users-alice-projects-repository";
 const sessionId = "session-alice-100";
 
-function prLink(prNumber: number) {
+function prLink(prNumber: number)
+{
 	return {
 		type: "pr-link",
 		prUrl: `https://example.com/alice/repository/pull/${prNumber}`,
@@ -25,7 +26,8 @@ function prLink(prNumber: number) {
 	};
 }
 
-const userRecord = {
+const userRecord =
+{
 	type: "user",
 	uuid: "u1",
 	parentUuid: null,
@@ -35,71 +37,117 @@ const userRecord = {
 	userType: "external",
 	cwd: "/Users/alice/projects/repository",
 	version: "2.1.71",
-	message: {role: "user", content: "Open a pull request"},
+	message:
+	{
+		role: "user",
+		content: "Open a pull request",
+	},
 };
 
 let db: AppDb;
 
-function writeTranscript(records: unknown[]): string {
+function writeTranscript(records: unknown[]): string
+{
 	const filePath = join(testDir, projectId, `${sessionId}.jsonl`);
 	writeFileSync(filePath, records.map((record) => JSON.stringify(record)).join("\n") + "\n");
 	return filePath;
 }
 
-beforeEach(() => {
-	mkdirSync(join(testDir, projectId), {recursive: true});
+beforeEach(() =>
+{
+	mkdirSync(
+		join(testDir, projectId),
+		{
+			recursive: true,
+		},
+	);
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(testDir, {recursive: true, force: true});
+	rmSync(
+		testDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("PrLinkRecordSchema", () => {
-	it("parses a pr-link record", () => {
+describe("PrLinkRecordSchema", () =>
+{
+	it("parses a pr-link record", () =>
+	{
 		expect(PrLinkRecordSchema.parse(prLink(100))).toStrictEqual(prLink(100));
 	});
 
-	it("rejects unknown keys", () => {
-		expect(PrLinkRecordSchema.safeParse({...prLink(100), prTitle: "x"}).success).toBe(false);
+	it("rejects unknown keys", () =>
+	{
+		expect(
+			PrLinkRecordSchema.safeParse(
+				{
+					...prLink(100),
+					prTitle: "x",
+				},
+			).success,
+		).toBe(false);
 	});
 });
 
-describe("pr-link indexing", () => {
-	it("indexes the latest pr-link per session", async () => {
+describe("pr-link indexing", () =>
+{
+	it("indexes the latest pr-link per session", async () =>
+	{
 		const filePath = writeTranscript([userRecord, prLink(100), prLink(101)]);
 		await indexJsonlFile(db.index, filePath, projectId);
 
-		const expected = {
+		const expected =
+		{
 			number: 101,
 			url: "https://example.com/alice/repository/pull/101",
 			repository: "alice/repository",
 		};
 		expect(getSessionPrLink(db.index, sessionId)).toStrictEqual(expected);
-		expect(listRecentSessionsFromDb(db.index, {limit: 10}).sessions.map((session) => session.pr)).toStrictEqual([
-			expected,
-		]);
+		expect(
+			listRecentSessionsFromDb(
+				db.index,
+				{
+					limit: 10,
+				},
+			).sessions.map((session) => session.pr),
+		).toStrictEqual([expected]);
 		expect(listSessionsForProjectFromDb(db.index, projectId).map((session) => session.pr)).toStrictEqual([
 			expected,
 		]);
 		expect(buildSessionSummaryPayloadFromDb(db.index, sessionId, () => null)?.pr).toStrictEqual(expected);
 	});
 
-	it("has no PR when the transcript has no pr-link", async () => {
+	it("has no PR when the transcript has no pr-link", async () =>
+	{
 		const filePath = writeTranscript([userRecord]);
 		await indexJsonlFile(db.index, filePath, projectId);
 
 		expect(getSessionPrLink(db.index, sessionId)).toBeNull();
-		expect(listRecentSessionsFromDb(db.index, {limit: 10}).sessions[0]?.pr).toBeUndefined();
+		expect(
+			listRecentSessionsFromDb(
+				db.index,
+				{
+					limit: 10,
+				},
+			).sessions[0]?.pr,
+		).toBeUndefined();
 	});
 });
 
-describe("Open PR in the session menu model", () => {
+describe("Open PR in the session menu model", () =>
+{
 	const PR_URL = "https://example.com/alice/repository/pull/101";
 	const capabilities = new Set<SessionMenuCapability>(["openPr", "openFinder", "pin"]);
 
-	function menuSession(overrides: Partial<SessionMenuSession> = {}): SessionMenuSession {
+	function menuSession(overrides: Partial<SessionMenuSession> = {}): SessionMenuSession
+	{
 		return {
 			title: "Open a pull request",
 			pinned: false,
@@ -114,35 +162,102 @@ describe("Open PR in the session menu model", () => {
 		};
 	}
 
-	it("shows Open PR with upstream's visible g shortcut when there is no Open in submenu", () => {
-		expect(getSessionMenuItems(menuSession(), capabilities, {surface: "row"})).toEqual([
-			{kind: "item", id: "open-pr", label: "Open PR", accelerator: "g"},
-			{kind: "separator"},
-			{kind: "item", id: "pin", label: "Pin", accelerator: "p"},
+	it("shows Open PR with upstream's visible g shortcut when there is no Open in submenu", () =>
+	{
+		expect(
+			getSessionMenuItems(
+				menuSession(),
+				capabilities,
+				{
+					surface: "row",
+				},
+			),
+		).toEqual([
+			{
+				kind: "item",
+				id: "open-pr",
+				label: "Open PR",
+				accelerator: "g",
+			},
+			{
+				kind: "separator",
+			},
+			{
+				kind: "item",
+				id: "pin",
+				label: "Pin",
+				accelerator: "p",
+			},
 		]);
 	});
 
-	it("lists Open PR before the Open in submenu, as upstream's open group does", () => {
+	it("lists Open PR before the Open in submenu, as upstream's open group does", () =>
+	{
 		expect(
-			getSessionMenuItems(menuSession({cwd: "/Users/alice/projects/repository"}), capabilities, {
-				surface: "row",
-			}),
+			getSessionMenuItems(
+				menuSession(
+					{
+						cwd: "/Users/alice/projects/repository",
+					},
+				),
+				capabilities,
+				{
+					surface: "row",
+				},
+			),
 		).toEqual([
-			{kind: "item", id: "open-pr", label: "Open PR", accelerator: "g"},
+			{
+				kind: "item",
+				id: "open-pr",
+				label: "Open PR",
+				accelerator: "g",
+			},
 			{
 				kind: "item",
 				id: "open-in",
 				label: "Open in",
-				submenu: [{kind: "item", id: "open-finder", label: "Finder", accelerator: "1"}],
+				submenu: [
+					{
+						kind: "item",
+						id: "open-finder",
+						label: "Finder",
+						accelerator: "1",
+					},
+				],
 			},
-			{kind: "separator"},
-			{kind: "item", id: "pin", label: "Pin", accelerator: "p"},
+			{
+				kind: "separator",
+			},
+			{
+				kind: "item",
+				id: "pin",
+				label: "Pin",
+				accelerator: "p",
+			},
 		]);
 	});
 
-	it("offers no Open PR entry without a PR", () => {
-		expect(getSessionMenuItems(menuSession({prUrl: null}), capabilities, {surface: "row"})).toEqual([
-			{kind: "item", id: "pin", label: "Pin", accelerator: "p"},
+	it("offers no Open PR entry without a PR", () =>
+	{
+		expect(
+			getSessionMenuItems(
+				menuSession(
+					{
+						prUrl: null,
+					},
+				),
+				capabilities,
+				{
+					surface: "row",
+				},
+			),
+		).toEqual([
+			{
+				kind: "item",
+				id: "pin",
+				label: "Pin",
+				accelerator: "p",
+			},
 		]);
 	});
 });

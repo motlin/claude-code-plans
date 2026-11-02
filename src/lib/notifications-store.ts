@@ -19,7 +19,8 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
  * is the freeform discriminator (`agent_needs_input` / `agent_completed` /
  * unknown) classified in the presentation layer.
  */
-export interface NotificationEntry {
+export interface NotificationEntry
+{
 	id: string;
 	sessionId: string;
 	projectId: string;
@@ -66,24 +67,43 @@ const NOTIFICATIONS_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
  * approvals cache uses. Falls back to `basename(cwd)` for both fields when the
  * session is not yet indexed (the hook can arrive before the JSONL is scanned).
  */
-function resolveProject(db: IndexDb, sessionId: string, cwd: string): {projectId: string; projectName: string} {
+function resolveProject(
+	db: IndexDb,
+	sessionId: string,
+	cwd: string,
+):
+{
+	projectId: string;
+	projectName: string;
+}
+{
 	const row = db
-		.select({
-			projectId: schema.sessions.projectId,
-			projectName: schema.projects.name,
-		})
+		.select(
+			{
+				projectId: schema.sessions.projectId,
+				projectName: schema.projects.name,
+			},
+		)
 		.from(schema.sessions)
 		.innerJoin(schema.projects, eq(schema.projects.id, schema.sessions.projectId))
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
-	if (row) {
-		return {projectId: row.projectId, projectName: row.projectName};
+	if (row)
+	{
+		return {
+			projectId: row.projectId,
+			projectName: row.projectName,
+		};
 	}
 	const fallback = basename(cwd);
-	return {projectId: fallback, projectName: fallback};
+	return {
+		projectId: fallback,
+		projectName: fallback,
+	};
 }
 
-function toPayload(entry: NotificationEntry): NotificationEntryPayload {
+function toPayload(entry: NotificationEntry): NotificationEntryPayload
+{
 	return {
 		id: entry.id,
 		sessionId: entry.sessionId,
@@ -94,8 +114,18 @@ function toPayload(entry: NotificationEntry): NotificationEntryPayload {
 		notificationType: entry.notificationType,
 		createdAt: entry.createdAt,
 		createdAtIso: entry.createdAtIso,
-		...(entry.persistentAllow === undefined ? {} : {persistentAllow: entry.persistentAllow}),
-		...(entry.persistentAllowSaves === undefined ? {} : {persistentAllowSaves: entry.persistentAllowSaves}),
+		...(entry.persistentAllow === undefined
+			? {}
+			:
+				{
+					persistentAllow: entry.persistentAllow,
+				}),
+		...(entry.persistentAllowSaves === undefined
+			? {}
+			:
+				{
+					persistentAllowSaves: entry.persistentAllowSaves,
+				}),
 	};
 }
 
@@ -105,8 +135,10 @@ function toPayload(entry: NotificationEntry): NotificationEntryPayload {
  * order is age order and the first key is always the oldest — FIFO eviction
  * (same idiom as the markdown promise cache), no per-insert scan.
  */
-function enforceMaxEntries(): void {
-	while (store.size > MAX_ENTRIES) {
+function enforceMaxEntries(): void
+{
+	while (store.size > MAX_ENTRIES)
+	{
 		const oldestId = store.keys().next().value;
 		if (oldestId === undefined) break;
 		store.delete(oldestId);
@@ -120,7 +152,8 @@ function enforceMaxEntries(): void {
  * notification when the session emits a new one, and to clear a session's
  * notifications outright when it resumes working.
  */
-export function clearNotificationsForSession(sessionId: string): void {
+export function clearNotificationsForSession(sessionId: string): void
+{
 	broadcastNotificationsCleared(takeNotificationsForSession(sessionId));
 }
 
@@ -129,10 +162,13 @@ export function clearNotificationsForSession(sessionId: string): void {
  * removed ids, so a caller can broadcast the session's new summary first and
  * then {@link broadcastNotificationsCleared}.
  */
-export function takeNotificationsForSession(sessionId: string): string[] {
+export function takeNotificationsForSession(sessionId: string): string[]
+{
 	const ids: string[] = [];
-	for (const [id, entry] of store) {
-		if (entry.sessionId === sessionId) {
+	for (const [id, entry] of store)
+	{
+		if (entry.sessionId === sessionId)
+		{
 			store.delete(id);
 			readIds.delete(id);
 			ids.push(id);
@@ -141,24 +177,41 @@ export function takeNotificationsForSession(sessionId: string): string[] {
 	return ids;
 }
 
-export function broadcastNotificationsCleared(ids: readonly string[]): void {
-	for (const id of ids) broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, {id});
+export function broadcastNotificationsCleared(ids: readonly string[]): void
+{
+	for (const id of ids)
+		broadcastTyped(
+			DOMAIN_EVENTS.NOTIFICATION_CLEARED,
+			{
+				id,
+			},
+		);
 }
 
 /** Drop the session's tool permission prompt once its turn has ended (Stop or SessionEnd). */
-export function clearPermissionPromptsForSession(sessionId: string): void {
-	for (const [id, entry] of store) {
-		if (entry.sessionId === sessionId && entry.notificationType === PERMISSION_PROMPT_NOTIFICATION) {
+export function clearPermissionPromptsForSession(sessionId: string): void
+{
+	for (const [id, entry] of store)
+	{
+		if (entry.sessionId === sessionId && entry.notificationType === PERMISSION_PROMPT_NOTIFICATION)
+		{
 			store.delete(id);
 			readIds.delete(id);
-			broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, {id});
+			broadcastTyped(
+				DOMAIN_EVENTS.NOTIFICATION_CLEARED,
+				{
+					id,
+				},
+			);
 		}
 	}
 }
 
 /** The session's standing tool permission prompt, which no working or turn-end hook has cleared yet. */
-export function hasPermissionPromptForSession(sessionId: string): boolean {
-	for (const entry of store.values()) {
+export function hasPermissionPromptForSession(sessionId: string): boolean
+{
+	for (const entry of store.values())
+	{
 		if (entry.sessionId === sessionId && entry.notificationType === PERMISSION_PROMPT_NOTIFICATION) return true;
 	}
 	return false;
@@ -166,7 +219,8 @@ export function hasPermissionPromptForSession(sessionId: string): boolean {
 
 export function addNotification(
 	db: IndexDb,
-	input: {
+	input:
+	{
 		sessionId: string;
 		cwd: string;
 		message: string;
@@ -175,10 +229,12 @@ export function addNotification(
 		persistentAllow?: PersistentAllowKind;
 		persistentAllowSaves?: PersistentAllowSave[];
 	},
-): NotificationEntry {
+): NotificationEntry
+{
 	const {projectId, projectName} = resolveProject(db, input.sessionId, input.cwd);
 	const createdAt = Date.now();
-	const entry: NotificationEntry = {
+	const entry: NotificationEntry =
+	{
 		id: randomUUID(),
 		sessionId: input.sessionId,
 		projectId,
@@ -198,41 +254,62 @@ export function addNotification(
 	clearNotificationsForSession(input.sessionId);
 	store.set(entry.id, entry);
 	enforceMaxEntries();
-	broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_ADDED, {
-		notification: toPayload(entry),
-	});
+	broadcastTyped(
+		DOMAIN_EVENTS.NOTIFICATION_ADDED,
+		{
+			notification: toPayload(entry),
+		},
+	);
 	return entry;
 }
 
-export function getNotifications(): NotificationEntry[] {
+export function getNotifications(): NotificationEntry[]
+{
 	return [...store.values()].toSorted((a, b) => b.createdAt - a.createdAt);
 }
 
-export function getNotificationsForProject(projectId: string): NotificationEntry[] {
+export function getNotificationsForProject(projectId: string): NotificationEntry[]
+{
 	return getNotifications().filter((entry) => entry.projectId === projectId);
 }
 
-export function dismissNotification(id: string): void {
-	if (store.delete(id)) {
+export function dismissNotification(id: string): void
+{
+	if (store.delete(id))
+	{
 		readIds.delete(id);
-		broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, {id});
+		broadcastTyped(
+			DOMAIN_EVENTS.NOTIFICATION_CLEARED,
+			{
+				id,
+			},
+		);
 	}
 }
 
-export function clearAllNotifications(): void {
+export function clearAllNotifications(): void
+{
 	store.clear();
 	readIds.clear();
-	broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, {all: true});
+	broadcastTyped(
+		DOMAIN_EVENTS.NOTIFICATION_CLEARED,
+		{
+			all: true,
+		},
+	);
 }
 
 /** Mark every current entry read; viewing `/notifications` drops the badge to 0. */
-export function markAllNotificationsRead(): void {
-	for (const id of store.keys()) {
+export function markAllNotificationsRead(): void
+{
+	for (const id of store.keys())
+	{
 		readIds.add(id);
 	}
 }
 
-export function isNotificationUnread(id: string): boolean {
+export function isNotificationUnread(id: string): boolean
+{
 	return !readIds.has(id);
 }
 
@@ -241,26 +318,32 @@ export function isNotificationUnread(id: string): boolean {
  * `sweepSessions`) so a test can drive it with injected timestamps rather than
  * real `Date.now`/sleep.
  */
-export function sweepNotifications(target: Map<string, NotificationEntry>): void {
+export function sweepNotifications(target: Map<string, NotificationEntry>): void
+{
 	const cutoff = Date.now() - NOTIFICATION_TTL_MS;
-	for (const [id, entry] of target) {
-		if (entry.createdAt < cutoff) {
+	for (const [id, entry] of target)
+	{
+		if (entry.createdAt < cutoff)
+		{
 			target.delete(id);
 			readIds.delete(id);
 		}
 	}
 }
 
-function sweep(): void {
+function sweep(): void
+{
 	sweepNotifications(store);
 }
 
-export function startNotificationsSweep(): void {
+export function startNotificationsSweep(): void
+{
 	stopNotificationsSweep();
 	sweepTimer = setInterval(sweep, NOTIFICATIONS_SWEEP_INTERVAL_MS);
 }
 
-export function stopNotificationsSweep(): void {
+export function stopNotificationsSweep(): void
+{
 	if (sweepTimer) clearInterval(sweepTimer);
 	sweepTimer = null;
 }

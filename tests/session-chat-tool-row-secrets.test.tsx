@@ -5,43 +5,70 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal("innerHeight", 4000);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 });
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
 
-const prompt = {
+const prompt =
+{
 	type: "user",
 	uuid: "u-prompt",
-	message: {role: "user", content: "Fabricated request"},
+	message:
+	{
+		role: "user",
+		content: "Fabricated request",
+	},
 };
 
-interface Call {
+interface Call
+{
 	id: string;
 	name: string;
 	input: Record<string, unknown>;
@@ -52,31 +79,46 @@ interface Call {
 }
 
 /** One assistant message making every call, then each call's result. */
-function turn(calls: Call[]): unknown[] {
+function turn(calls: Call[]): unknown[]
+{
 	return [
 		prompt,
 		{
 			type: "assistant",
 			uuid: "a1",
-			message: {
+			message:
+			{
 				id: "msg-1",
 				role: "assistant",
-				content: calls.map(({id, name, input}) => ({type: "tool_use", id, name, input})),
+				content: calls.map(({id, name, input}) => (
+				{
+					type: "tool_use",
+					id,
+					name,
+					input,
+				})),
 			},
 		},
 		...calls
 			.filter((call) => call.pending !== true)
-			.map(({id, result, isError}) => ({
+			.map(({id, result, isError}) => (
+			{
 				type: "user",
 				uuid: `r-${id}`,
-				message: {
+				message:
+				{
 					role: "user",
 					content: [
 						{
 							type: "tool_result",
 							tool_use_id: id,
 							content: result ?? "ok",
-							...(isError === true ? {is_error: true} : {}),
+							...(isError === true
+								?
+									{
+										is_error: true,
+									}
+								: {}),
 						},
 					],
 				},
@@ -84,7 +126,8 @@ function turn(calls: Call[]): unknown[] {
 	];
 }
 
-function draw(calls: Call[]): HTMLElement {
+function draw(calls: Call[]): HTMLElement
+{
 	const {lines, toolResultMap} = processTranscript(turn(calls));
 	return render(
 		<SessionChat
@@ -99,7 +142,8 @@ function draw(calls: Call[]): HTMLElement {
 	).container;
 }
 
-function headers(container: HTMLElement): (string | null)[] {
+function headers(container: HTMLElement): (string | null)[]
+{
 	return [...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button')].map(
 		(row) => row.textContent,
 	);
@@ -110,13 +154,18 @@ const FAKE_GH = `ghp_${"A".repeat(36)}`;
 /** A right-to-left override and a zero-width space, which upstream's Iv strips from tool labels. */
 const CONTROLS = "\u202E\u200B";
 
-describe("tool row labels mask secrets (upstream Iv)", () => {
-	it("masks a Bash command preview and strips its display controls", () => {
+describe("tool row labels mask secrets (upstream Iv)", () =>
+{
+	it("masks a Bash command preview and strips its display controls", () =>
+	{
 		const container = draw([
 			{
 				id: "b1",
 				name: "Bash",
-				input: {command: `git push https://${FAKE_GH}@example.invalid/r${CONTROLS}.git`},
+				input:
+				{
+					command: `git push https://${FAKE_GH}@example.invalid/r${CONTROLS}.git`,
+				},
 			},
 		]);
 		expect(headers(container)).toStrictEqual([
@@ -124,30 +173,58 @@ describe("tool row labels mask secrets (upstream Iv)", () => {
 		]);
 	});
 
-	it("masks a tool's meta param", () => {
-		const container = draw([{id: "g1", name: "Grep", input: {pattern: `token=${FAKE_GH}${CONTROLS}`}}]);
+	it("masks a tool's meta param", () =>
+	{
+		const container = draw([
+			{
+				id: "g1",
+				name: "Grep",
+				input:
+				{
+					pattern: `token=${FAKE_GH}${CONTROLS}`,
+				},
+			},
+		]);
 		expect(headers(container)).toStrictEqual(["Searchedtoken=ghp_AAAA••••••••••••••••••••••••••••••••"]);
 	});
 
-	it("masks a pending call's running label", () => {
+	it("masks a pending call's running label", () =>
+	{
 		const container = draw([
 			{
 				id: "b1",
 				name: "Bash",
-				input: {command: "true", description: `Use ${FAKE_GH}${CONTROLS}`},
+				input:
+				{
+					command: "true",
+					description: `Use ${FAKE_GH}${CONTROLS}`,
+				},
 				pending: true,
 			},
 		]);
 		expect(headers(container)).toStrictEqual(["Using ghp_AAAA••••••••••••••••••••••••••••••••running"]);
 	});
 
-	it("masks the group header's running label", () => {
+	it("masks the group header's running label", () =>
+	{
 		const container = draw([
-			{id: "r1", name: "Read", input: {file_path: "/repo/a.ts"}, result: "1\tx"},
+			{
+				id: "r1",
+				name: "Read",
+				input:
+				{
+					file_path: "/repo/a.ts",
+				},
+				result: "1\tx",
+			},
 			{
 				id: "b1",
 				name: "Bash",
-				input: {command: "true", description: `Use ${FAKE_GH}${CONTROLS}`},
+				input:
+				{
+					command: "true",
+					description: `Use ${FAKE_GH}${CONTROLS}`,
+				},
 				pending: true,
 			},
 		]);
@@ -156,14 +233,32 @@ describe("tool row labels mask secrets (upstream Iv)", () => {
 	});
 });
 
-describe("settled group header keeps raw phrases (upstream c24951e9f)", () => {
-	function settled(path: string): HTMLElement {
+describe("settled group header keeps raw phrases (upstream c24951e9f)", () =>
+{
+	function settled(path: string): HTMLElement
+	{
 		return draw([
-			{id: "b1", name: "Bash", input: {command: "true"}},
-			{id: "r1", name: "Read", input: {file_path: path}, result: "1\tx"},
+			{
+				id: "b1",
+				name: "Bash",
+				input:
+				{
+					command: "true",
+				},
+			},
+			{
+				id: "r1",
+				name: "Read",
+				input:
+				{
+					file_path: path,
+				},
+				result: "1\tx",
+			},
 		]);
 	}
-	function texts(container: HTMLElement) {
+	function texts(container: HTMLElement)
+	{
 		return {
 			label: container.querySelector("[data-cds-row-toggle]")?.textContent ?? null,
 			announcement: container.querySelector('[data-turn-status] [role="status"]')?.textContent ?? null,
@@ -171,31 +266,40 @@ describe("settled group header keeps raw phrases (upstream c24951e9f)", () => {
 		};
 	}
 
-	it("keeps a secret raw in the phrases and drops the link only for the path's display controls", () => {
+	it("keeps a secret raw in the phrases and drops the link only for the path's display controls", () =>
+	{
 		const name = `${FAKE_GH}${CONTROLS}.txt`;
 		const container = settled(`/repo/${name}`);
-		expect(texts(container)).toStrictEqual({
-			label: `Ran a command, read ${name}`,
-			announcement: `Ran a command, read ${name}`,
-			titles: [],
-		});
+		expect(texts(container)).toStrictEqual(
+			{
+				label: `Ran a command, read ${name}`,
+				announcement: `Ran a command, read ${name}`,
+				titles: [],
+			},
+		);
 	});
 
-	it("keeps the file link and hover path when a secret sits in the file's directory", () => {
+	it("keeps the file link and hover path when a secret sits in the file's directory", () =>
+	{
 		const container = settled(`/repo/${FAKE_GH}/a.ts`);
-		expect(texts(container)).toStrictEqual({
-			label: "",
-			announcement: "Ran a command, read a.ts",
-			titles: [`/repo/${FAKE_GH}/a.ts`, `/repo/${FAKE_GH}/a.ts`],
-		});
+		expect(texts(container)).toStrictEqual(
+			{
+				label: "",
+				announcement: "Ran a command, read a.ts",
+				titles: [`/repo/${FAKE_GH}/a.ts`, `/repo/${FAKE_GH}/a.ts`],
+			},
+		);
 	});
 
-	it("keeps a clean trailing file as a linked meta", () => {
+	it("keeps a clean trailing file as a linked meta", () =>
+	{
 		const container = settled("/repo/a.ts");
-		expect(texts(container)).toStrictEqual({
-			label: "",
-			announcement: "Ran a command, read a.ts",
-			titles: ["/repo/a.ts", "/repo/a.ts"],
-		});
+		expect(texts(container)).toStrictEqual(
+			{
+				label: "",
+				announcement: "Ran a command, read a.ts",
+				titles: ["/repo/a.ts", "/repo/a.ts"],
+			},
+		);
 	});
 });

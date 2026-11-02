@@ -8,25 +8,36 @@ import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {OA, SA, WA} from "../src/components/changes/diffs-config";
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-function toolCall(name: string, input: Record<string, unknown>): ClientToolCall {
+function toolCall(name: string, input: Record<string, unknown>): ClientToolCall
+{
 	return {
 		id: "tool-call-64",
 		name,
@@ -37,27 +48,32 @@ function toolCall(name: string, input: Record<string, unknown>): ClientToolCall 
 	};
 }
 
-function shadowRoots(container: HTMLElement): ShadowRoot[] {
-	return [...container.querySelectorAll("diffs-container")].map((host) => {
+function shadowRoots(container: HTMLElement): ShadowRoot[]
+{
+	return [...container.querySelectorAll("diffs-container")].map((host) =>
+	{
 		if (!host.shadowRoot) throw new Error("diffs-container has no shadow root yet");
 		return host.shadowRoot;
 	});
 }
 
-interface InlineDiffMarkup {
+interface InlineDiffMarkup
+{
 	rows: string[];
 	pre: Record<string, string | null>;
 	hasLibraryHeader: boolean;
 }
 
-function inlineDiffMarkup(root: ShadowRoot): InlineDiffMarkup {
+function inlineDiffMarkup(root: ShadowRoot): InlineDiffMarkup
+{
 	const pre = root.querySelector("pre[data-diff]");
 	if (!pre) throw new Error("no rendered <pre> yet");
 	return {
 		rows: [...root.querySelectorAll("[data-content] > [data-line-type]")].map(
 			(row) => `${row.getAttribute("data-line-type")}:${row.textContent}`,
 		),
-		pre: {
+		pre:
+		{
 			diffType: pre.getAttribute("data-diff-type"),
 			overflow: pre.getAttribute("data-overflow"),
 			indicators: pre.getAttribute("data-indicators"),
@@ -66,11 +82,14 @@ function inlineDiffMarkup(root: ShadowRoot): InlineDiffMarkup {
 	};
 }
 
-describe("inline Edit/Write diffs render with @pierre/diffs", () => {
+describe("inline Edit/Write diffs render with @pierre/diffs", () =>
+{
 	// Upstream _a keeps --diffs-line-height: var(--cds-leading-code) unless a caller passes metrics.lineHeight (ca7ba268c za).
-	it("reads the scope's density code tokens on the host rather than a fixed 12/17", async () => {
+	it("reads the scope's density code tokens on the host rather than a fixed 12/17", async () =>
+	{
 		const hostVars = (container: HTMLElement) =>
-			[...container.querySelectorAll<HTMLElement>("[data-cds=FileDiff]")].map((host) => ({
+			[...container.querySelectorAll<HTMLElement>("[data-cds=FileDiff]")].map((host) => (
+			{
 				size: host.style.getPropertyValue("--diffs-font-size"),
 				leading: host.style.getPropertyValue("--diffs-line-height"),
 			}));
@@ -84,34 +103,47 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () => {
 				</div>
 			</>,
 		);
-		const tokens = {
+		const tokens =
+		{
 			size: "var(--code-size, var(--upstream-text-code))",
 			leading: "var(--code-leading, var(--upstream-leading-code))",
 		};
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(hostVars(container)).toStrictEqual([tokens, tokens]);
 		});
 	});
 
-	it("injects upstream's za() list led by Sa (header disabled) and paints the transcript's surface-1 background", async () => {
+	it("injects upstream's za() list led by Sa (header disabled) and paints the transcript's surface-1 background", async () =>
+	{
 		const {container} = render(
 			<InlineDiff filePath="/test/alice.ts" oldStr="const alice = 1;" newStr="const alice = 2;" />,
 		);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			const [root] = shadowRoots(container);
 			const text = [...(root?.querySelectorAll("style") ?? [])].map((style) => style.textContent).join("");
 			const layer = text.slice(text.indexOf("@layer unsafe"));
 			const host = container.querySelector<HTMLElement>("[data-cds=FileDiff]");
-			expect({
-				leadsWithSa: layer.replace(/^@layer unsafe\s*\{\s*/, "").startsWith(SA + WA),
-				oa: layer.includes(OA),
-				bg: host?.style.getPropertyValue("--cds-filediff-bg"),
-			}).toStrictEqual({leadsWithSa: true, oa: true, bg: "var(--cds-surface-1)"});
+			expect(
+				{
+					leadsWithSa: layer.replace(/^@layer unsafe\s*\{\s*/, "").startsWith(SA + WA),
+					oa: layer.includes(OA),
+					bg: host?.style.getPropertyValue("--cds-filediff-bg"),
+				},
+			).toStrictEqual(
+				{
+					leadsWithSa: true,
+					oa: true,
+					bg: "var(--cds-surface-1)",
+				},
+			);
 		});
 	});
 
 	// Upstream c81f2e888 transcript FileDiff: ne() = Q(true, false), merged into style + onPostRender.
-	it("adopts upstream's rails sheet and marks change runs, never with data-add-button", async () => {
+	it("adopts upstream's rails sheet and marks change runs, never with data-add-button", async () =>
+	{
 		const {container} = render(
 			<InlineDiff
 				filePath="/test/alice.ts"
@@ -119,53 +151,63 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () => {
 				newStr={"const alice = 2;\nconst bob = 1;\nconst carol = 2;"}
 			/>,
 		);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			const host = container.querySelector("diffs-container");
 			const [root] = shadowRoots(container);
 			if (!root) throw new Error("no shadow root");
 			const wrapper = container.querySelector<HTMLElement>("[data-cds=FileDiff]");
-			expect({
-				rails: root.adoptedStyleSheets.some((sheet) =>
-					[...sheet.cssRules].some((rule) => rule.cssText.includes("--diff-rail-added")),
-				),
-				marks: [...root.querySelectorAll("[data-gutter] > [data-line-type]")].map((row) =>
-					[
-						row.getAttribute("data-line-type"),
-						row.hasAttribute("data-rail-start") ? "start" : "",
-						row.hasAttribute("data-rail-end") ? "end" : "",
-					]
-						.filter(Boolean)
-						.join(":"),
-				),
-				addButton: host?.hasAttribute("data-add-button"),
-				word: wrapper?.style.getPropertyValue("--diff-word-removed"),
-			}).toStrictEqual({
-				rails: true,
-				marks: [
-					"change-deletion:start",
-					"change-addition:end",
-					"context",
-					"change-deletion:start",
-					"change-addition:end",
-				],
-				addButton: false,
-				word: '"removed"',
-			});
+			expect(
+				{
+					rails: root.adoptedStyleSheets.some((sheet) =>
+						[...sheet.cssRules].some((rule) => rule.cssText.includes("--diff-rail-added")),
+					),
+					marks: [...root.querySelectorAll("[data-gutter] > [data-line-type]")].map((row) =>
+						[
+							row.getAttribute("data-line-type"),
+							row.hasAttribute("data-rail-start") ? "start" : "",
+							row.hasAttribute("data-rail-end") ? "end" : "",
+						]
+							.filter(Boolean)
+							.join(":"),
+					),
+					addButton: host?.hasAttribute("data-add-button"),
+					word: wrapper?.style.getPropertyValue("--diff-word-removed"),
+				},
+			).toStrictEqual(
+				{
+					rails: true,
+					marks: [
+						"change-deletion:start",
+						"change-addition:end",
+						"context",
+						"change-deletion:start",
+						"change-addition:end",
+					],
+					addButton: false,
+					word: '"removed"',
+				},
+			);
 		});
 	});
 
-	it("renders an Edit as a unified, wrapped diff with no file header", async () => {
+	it("renders an Edit as a unified, wrapped diff with no file header", async () =>
+	{
 		const {container} = render(
 			<EditRenderer
-				toolCall={toolCall("Edit", {
-					file_path: "/test/alice.ts",
-					old_string: "const alice = 100;\nconst bob = 1;",
-					new_string: "const alice = 200;\nconst bob = 1;",
-				})}
+				toolCall={toolCall(
+					"Edit",
+					{
+						file_path: "/test/alice.ts",
+						old_string: "const alice = 100;\nconst bob = 1;",
+						new_string: "const alice = 200;\nconst bob = 1;",
+					},
+				)}
 			/>,
 		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(shadowRoots(container).map(inlineDiffMarkup)).toStrictEqual([
 				{
 					rows: [
@@ -173,7 +215,12 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () => {
 						"change-addition:const alice = 200;",
 						"context:const bob = 1;",
 					],
-					pre: {diffType: "single", overflow: "wrap", indicators: "classic"},
+					pre:
+					{
+						diffType: "single",
+						overflow: "wrap",
+						indicators: "classic",
+					},
 					hasLibraryHeader: false,
 				},
 			]);
@@ -181,20 +228,31 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () => {
 		expect(container.querySelector(".diff-tailwindcss-wrapper")).toBe(null);
 	});
 
-	it("renders one diff per MultiEdit replacement", async () => {
+	it("renders one diff per MultiEdit replacement", async () =>
+	{
 		const {container} = render(
 			<EditRenderer
-				toolCall={toolCall("MultiEdit", {
-					file_path: "/test/alice.ts",
-					edits: [
-						{old_string: "const a = 1;", new_string: "const a = 2;"},
-						{old_string: "", new_string: "const d = 3;"},
-					],
-				})}
+				toolCall={toolCall(
+					"MultiEdit",
+					{
+						file_path: "/test/alice.ts",
+						edits: [
+							{
+								old_string: "const a = 1;",
+								new_string: "const a = 2;",
+							},
+							{
+								old_string: "",
+								new_string: "const d = 3;",
+							},
+						],
+					},
+				)}
 			/>,
 		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(shadowRoots(container).map((root) => inlineDiffMarkup(root).rows)).toStrictEqual([
 				["change-deletion:const a = 1;", "change-addition:const a = 2;"],
 				["change-addition:const d = 3;"],
@@ -202,21 +260,31 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () => {
 		});
 	});
 
-	it("renders a Write as an all-additions diff with no file header", async () => {
+	it("renders a Write as an all-additions diff with no file header", async () =>
+	{
 		const {container} = render(
 			<WriteRenderer
-				toolCall={toolCall("Write", {
-					file_path: "/test/alice.ts",
-					content: "const alice = 100;\nconst bob = 1;",
-				})}
+				toolCall={toolCall(
+					"Write",
+					{
+						file_path: "/test/alice.ts",
+						content: "const alice = 100;\nconst bob = 1;",
+					},
+				)}
 			/>,
 		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(shadowRoots(container).map(inlineDiffMarkup)).toStrictEqual([
 				{
 					rows: ["change-addition:const alice = 100;", "change-addition:const bob = 1;"],
-					pre: {diffType: "single", overflow: "wrap", indicators: "classic"},
+					pre:
+					{
+						diffType: "single",
+						overflow: "wrap",
+						indicators: "classic",
+					},
 					hasLibraryHeader: false,
 				},
 			]);

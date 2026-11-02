@@ -3,7 +3,8 @@ import {tmpdir} from "node:os";
 import {dirname, join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {SlashCommandListResponse} from "../src/lib/api/commands";
-import {
+import
+{
 	BUILTIN_SLASH_COMMANDS,
 	CLI_COMMAND_NAMES,
 	SESSION_SLASH_COMMANDS,
@@ -19,35 +20,53 @@ import {
 } from "../src/lib/slash-commands";
 import {listSlashCommands} from "../src/lib/slash-commands.server";
 
-function write(file: string, content: string): void {
-	mkdirSync(dirname(file), {recursive: true});
+function write(file: string, content: string): void
+{
+	mkdirSync(
+		dirname(file),
+		{
+			recursive: true,
+		},
+	);
 	writeFileSync(file, content);
 }
 
-describe("SESSION_SLASH_COMMANDS", () => {
-	it("holds the built-ins upstream offers only inside a session, which /api/commands leaves out", () => {
-		expect({
-			session: SESSION_SLASH_COMMANDS,
-			inBuiltins: BUILTIN_SLASH_COMMANDS.some((c) => c.name === "rewind" || c.name === "autocompact"),
-			knowsAutocompact: isKnownSlashCommand("autocompact", SESSION_SLASH_COMMANDS),
-		}).toStrictEqual({
-			session: [
-				{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"},
-				{
-					name: "autocompact",
-					description: "Show context usage or set when auto-compact runs",
-					source: "builtin",
-					argumentHint: "[auto|<tokens>]",
-				},
-			],
-			inBuiltins: false,
-			knowsAutocompact: true,
-		});
+describe("SESSION_SLASH_COMMANDS", () =>
+{
+	it("holds the built-ins upstream offers only inside a session, which /api/commands leaves out", () =>
+	{
+		expect(
+			{
+				session: SESSION_SLASH_COMMANDS,
+				inBuiltins: BUILTIN_SLASH_COMMANDS.some((c) => c.name === "rewind" || c.name === "autocompact"),
+				knowsAutocompact: isKnownSlashCommand("autocompact", SESSION_SLASH_COMMANDS),
+			},
+		).toStrictEqual(
+			{
+				session: [
+					{
+						name: "rewind",
+						description: "Rewind the session to an earlier message",
+						source: "builtin",
+					},
+					{
+						name: "autocompact",
+						description: "Show context usage or set when auto-compact runs",
+						source: "builtin",
+						argumentHint: "[auto|<tokens>]",
+					},
+				],
+				inBuiltins: false,
+				knowsAutocompact: true,
+			},
+		);
 	});
 });
 
-describe("BUILTIN_SLASH_COMMANDS", () => {
-	it("uses upstream's strings, hints and aliases, then the local-only built-ins", () => {
+describe("BUILTIN_SLASH_COMMANDS", () =>
+{
+	it("uses upstream's strings, hints and aliases, then the local-only built-ins", () =>
+	{
 		expect(BUILTIN_SLASH_COMMANDS).toStrictEqual([
 			{
 				name: "model",
@@ -61,7 +80,12 @@ describe("BUILTIN_SLASH_COMMANDS", () => {
 				source: "builtin",
 				argumentHint: "[level]",
 			},
-			{name: "fast", description: "Turn fast mode on or off", source: "builtin", argumentHint: "[on|off]"},
+			{
+				name: "fast",
+				description: "Turn fast mode on or off",
+				source: "builtin",
+				argumentHint: "[on|off]",
+			},
 			{
 				name: "plan",
 				description: "Switch to plan mode or view this session’s plan",
@@ -74,7 +98,11 @@ describe("BUILTIN_SLASH_COMMANDS", () => {
 				source: "builtin",
 				aliases: ["allowed-tools"],
 			},
-			{name: "skills", description: "Browse and manage your skills", source: "builtin"},
+			{
+				name: "skills",
+				description: "Browse and manage your skills",
+				source: "builtin",
+			},
 			{
 				name: "workflows",
 				description: "Browse workflow history (running and completed)",
@@ -87,21 +115,35 @@ describe("BUILTIN_SLASH_COMMANDS", () => {
 				source: "builtin",
 				aliases: ["stats", "cost"],
 			},
-			{name: "config", description: "Open Claude Code settings", source: "builtin", aliases: ["settings"]},
+			{
+				name: "config",
+				description: "Open Claude Code settings",
+				source: "builtin",
+				aliases: ["settings"],
+			},
 			{
 				name: "theme",
 				description: "Set the appearance (system, light, or dark)",
 				source: "builtin",
 				argumentHint: "[system|light|dark]",
 			},
-			{name: "help", description: "Get help and support", source: "builtin"},
+			{
+				name: "help",
+				description: "Get help and support",
+				source: "builtin",
+			},
 			{
 				name: "btw",
 				description: "Ask a quick side question without adding to the session",
 				source: "builtin",
 				argumentHint: "<question>",
 			},
-			{name: "rename", description: "Rename this session", source: "builtin", argumentHint: "[name]"},
+			{
+				name: "rename",
+				description: "Rename this session",
+				source: "builtin",
+				argumentHint: "[name]",
+			},
 			{
 				name: "status",
 				description: "Show this session’s version, model, environment, and account",
@@ -113,9 +155,21 @@ describe("BUILTIN_SLASH_COMMANDS", () => {
 				source: "builtin",
 				argumentHint: "<optional custom summarization instructions>",
 			},
-			{name: "clear", description: "Start a new session with empty context", source: "builtin"},
-			{name: "context", description: "Show current context usage", source: "builtin"},
-			{name: "recap", description: "Generate a one-line session recap", source: "builtin"},
+			{
+				name: "clear",
+				description: "Start a new session with empty context",
+				source: "builtin",
+			},
+			{
+				name: "context",
+				description: "Show current context usage",
+				source: "builtin",
+			},
+			{
+				name: "recap",
+				description: "Generate a one-line session recap",
+				source: "builtin",
+			},
 			{
 				name: "review",
 				description: "Review the current diff or a PR for bugs and cleanups",
@@ -131,73 +185,183 @@ describe("BUILTIN_SLASH_COMMANDS", () => {
 	});
 });
 
-describe("mergeSlashCommands", () => {
-	it("keeps the first command for each name, in group order", () => {
+describe("mergeSlashCommands", () =>
+{
+	it("keeps the first command for each name, in group order", () =>
+	{
 		const merged = mergeSlashCommands([
-			[{name: "model", description: "Built-in model", source: "builtin"}],
 			[
-				{name: "deploy", description: "Personal deploy", source: "personal-skill"},
-				{name: "model", description: "Shadowed model", source: "personal-skill"},
+				{
+					name: "model",
+					description: "Built-in model",
+					source: "builtin",
+				},
 			],
-			[{name: "deploy", description: "Project deploy", source: "project-command"}],
-			[{name: "tools:lint", description: "Lint", source: "plugin-skill"}],
+			[
+				{
+					name: "deploy",
+					description: "Personal deploy",
+					source: "personal-skill",
+				},
+				{
+					name: "model",
+					description: "Shadowed model",
+					source: "personal-skill",
+				},
+			],
+			[
+				{
+					name: "deploy",
+					description: "Project deploy",
+					source: "project-command",
+				},
+			],
+			[
+				{
+					name: "tools:lint",
+					description: "Lint",
+					source: "plugin-skill",
+				},
+			],
 		]);
 
 		expect(merged).toStrictEqual([
-			{name: "model", description: "Built-in model", source: "builtin"},
-			{name: "deploy", description: "Personal deploy", source: "personal-skill"},
-			{name: "model", description: "Shadowed model", source: "personal-skill", shadowsHost: true},
-			{name: "tools:lint", description: "Lint", source: "plugin-skill"},
+			{
+				name: "model",
+				description: "Built-in model",
+				source: "builtin",
+			},
+			{
+				name: "deploy",
+				description: "Personal deploy",
+				source: "personal-skill",
+			},
+			{
+				name: "model",
+				description: "Shadowed model",
+				source: "personal-skill",
+				shadowsHost: true,
+			},
+			{
+				name: "tools:lint",
+				description: "Lint",
+				source: "plugin-skill",
+			},
 		]);
 	});
 });
 
-describe("mergeSlashCommands with built-in collisions", () => {
-	it("keeps the first non-built-in entry that shares a built-in's name or alias, after it, marked shadowsHost", () => {
+describe("mergeSlashCommands with built-in collisions", () =>
+{
+	it("keeps the first non-built-in entry that shares a built-in's name or alias, after it, marked shadowsHost", () =>
+	{
 		const merged = mergeSlashCommands([
 			[
-				{name: "review", description: "Built-in review", source: "builtin"},
-				{name: "config", description: "Built-in config", source: "builtin", aliases: ["settings"]},
+				{
+					name: "review",
+					description: "Built-in review",
+					source: "builtin",
+				},
+				{
+					name: "config",
+					description: "Built-in config",
+					source: "builtin",
+					aliases: ["settings"],
+				},
 			],
 			[
-				{name: "review", description: "Skill review", source: "personal-skill"},
-				{name: "tab-color", description: "Color the tab", source: "personal-skill"},
+				{
+					name: "review",
+					description: "Skill review",
+					source: "personal-skill",
+				},
+				{
+					name: "tab-color",
+					description: "Color the tab",
+					source: "personal-skill",
+				},
 			],
 			[
-				{name: "review", description: "Command review", source: "personal-command"},
-				{name: "settings", description: "My settings", source: "personal-command"},
+				{
+					name: "review",
+					description: "Command review",
+					source: "personal-command",
+				},
+				{
+					name: "settings",
+					description: "My settings",
+					source: "personal-command",
+				},
 			],
 		]);
 
 		expect(merged).toStrictEqual([
-			{name: "review", description: "Built-in review", source: "builtin"},
-			{name: "config", description: "Built-in config", source: "builtin", aliases: ["settings"]},
-			{name: "review", description: "Skill review", source: "personal-skill", shadowsHost: true},
-			{name: "tab-color", description: "Color the tab", source: "personal-skill"},
-			{name: "settings", description: "My settings", source: "personal-command", shadowsHost: true},
+			{
+				name: "review",
+				description: "Built-in review",
+				source: "builtin",
+			},
+			{
+				name: "config",
+				description: "Built-in config",
+				source: "builtin",
+				aliases: ["settings"],
+			},
+			{
+				name: "review",
+				description: "Skill review",
+				source: "personal-skill",
+				shadowsHost: true,
+			},
+			{
+				name: "tab-color",
+				description: "Color the tab",
+				source: "personal-skill",
+			},
+			{
+				name: "settings",
+				description: "My settings",
+				source: "personal-command",
+				shadowsHost: true,
+			},
 		]);
 	});
 });
 
-describe("listSlashCommands", () => {
+describe("listSlashCommands", () =>
+{
 	let root: string;
 	let claudeDir: string;
 	let cwd: string;
 	let pluginPath: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		root = mkdtempSync(join(tmpdir(), "slash-commands-"));
 		claudeDir = join(root, "claude");
 		cwd = join(root, "repos", "my-app");
 		pluginPath = join(root, "plugin-cache", "tools", "1.0.0");
-		mkdirSync(claudeDir, {recursive: true});
+		mkdirSync(
+			claudeDir,
+			{
+				recursive: true,
+			},
+		);
 	});
 
-	afterEach(() => {
-		rmSync(root, {recursive: true, force: true});
+	afterEach(() =>
+	{
+		rmSync(
+			root,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	it("merges built-ins, skills, commands and plugin entries with skills shadowing commands", async () => {
+	it("merges built-ins, skills, commands and plugin entries with skills shadowing commands", async () =>
+	{
 		write(
 			join(claudeDir, "skills", "deploy", "SKILL.md"),
 			'---\nname: deploy\ndescription: Personal deploy skill\nargument-hint: "[env]"\n---\n',
@@ -207,7 +371,17 @@ describe("listSlashCommands", () => {
 			"---\nname: hidden\ndescription: Model only\nuser-invocable: false\n---\n",
 		);
 		write(join(claudeDir, "skills", "off", "SKILL.md"), "---\nname: off\ndescription: Disabled\n---\n");
-		write(join(claudeDir, "settings.json"), JSON.stringify({skillOverrides: {off: "off"}}));
+		write(
+			join(claudeDir, "settings.json"),
+			JSON.stringify(
+				{
+					skillOverrides:
+					{
+						off: "off",
+					},
+				},
+			),
+		);
 		write(
 			join(cwd, ".claude", "skills", "deploy", "SKILL.md"),
 			"---\nname: deploy\ndescription: Project deploy skill\n---\n",
@@ -232,23 +406,31 @@ describe("listSlashCommands", () => {
 		);
 		write(
 			join(claudeDir, "plugins", "installed_plugins.json"),
-			JSON.stringify({
-				version: 2,
-				plugins: {
-					"tools@market": [
-						{
-							scope: "user",
-							installPath: pluginPath,
-							version: "1.0.0",
-							installedAt: "2026-04-22T19:16:18.255Z",
-							lastUpdated: "2026-04-22T19:16:18.255Z",
-						},
-					],
+			JSON.stringify(
+				{
+					version: 2,
+					plugins:
+					{
+						"tools@market": [
+							{
+								scope: "user",
+								installPath: pluginPath,
+								version: "1.0.0",
+								installedAt: "2026-04-22T19:16:18.255Z",
+								lastUpdated: "2026-04-22T19:16:18.255Z",
+							},
+						],
+					},
 				},
-			}),
+			),
 		);
 
-		const commands = await listSlashCommands({claudeDir, cwd});
+		const commands = await listSlashCommands(
+			{
+				claudeDir,
+				cwd,
+			},
+		);
 
 		expect(SlashCommandListResponse.parse(commands)).toStrictEqual([
 			...BUILTIN_SLASH_COMMANDS,
@@ -258,16 +440,34 @@ describe("listSlashCommands", () => {
 				source: "personal-skill",
 				argumentHint: "[env]",
 			},
-			{name: "release", description: "Cut a release", source: "project-skill"},
-			{name: "model", description: "My model command", source: "personal-command", shadowsHost: true},
+			{
+				name: "release",
+				description: "Cut a release",
+				source: "project-skill",
+			},
+			{
+				name: "model",
+				description: "My model command",
+				source: "personal-command",
+				shadowsHost: true,
+			},
 			{
 				name: "standup",
 				description: "Write my standup",
 				source: "personal-command",
 				argumentHint: "[date]",
 			},
-			{name: "triage", description: "Triage the open issues", source: "project-command"},
-			{name: "tools:lint", description: "Lint code", source: "plugin-skill", pluginName: "tools"},
+			{
+				name: "triage",
+				description: "Triage the open issues",
+				source: "project-command",
+			},
+			{
+				name: "tools:lint",
+				description: "Lint code",
+				source: "plugin-skill",
+				pluginName: "tools",
+			},
 			{
 				name: "tools:fix",
 				description: "Fix lint errors",
@@ -278,26 +478,60 @@ describe("listSlashCommands", () => {
 		]);
 	});
 
-	it("lists only personal and plugin entries without a cwd", async () => {
+	it("lists only personal and plugin entries without a cwd", async () =>
+	{
 		write(join(claudeDir, "commands", "standup.md"), "---\ndescription: Write my standup\n---\n");
 
-		expect(await listSlashCommands({claudeDir, cwd: undefined})).toStrictEqual([
+		expect(
+			await listSlashCommands(
+				{
+					claudeDir,
+					cwd: undefined,
+				},
+			),
+		).toStrictEqual([
 			...BUILTIN_SLASH_COMMANDS,
-			{name: "standup", description: "Write my standup", source: "personal-command"},
+			{
+				name: "standup",
+				description: "Write my standup",
+				source: "personal-command",
+			},
 		]);
 	});
 });
 
 const COMMANDS: SlashCommand[] = [
-	{name: "model", description: "Set the model for this session", source: "builtin"},
-	{name: "plan", description: "Plan before coding", source: "builtin"},
-	{name: "compact", description: "Summarize the conversation", source: "builtin"},
-	{name: "git:commit", description: "Commit local changes", source: "plugin-skill"},
-	{name: "autocompact", description: "Custom compaction", source: "personal-command"},
+	{
+		name: "model",
+		description: "Set the model for this session",
+		source: "builtin",
+	},
+	{
+		name: "plan",
+		description: "Plan before coding",
+		source: "builtin",
+	},
+	{
+		name: "compact",
+		description: "Summarize the conversation",
+		source: "builtin",
+	},
+	{
+		name: "git:commit",
+		description: "Commit local changes",
+		source: "plugin-skill",
+	},
+	{
+		name: "autocompact",
+		description: "Custom compaction",
+		source: "personal-command",
+	},
 ];
 
-describe("filterSlashCommands", () => {
-	it("lists every command in list order for an empty query", () => {
+describe("filterSlashCommands", () =>
+{
+	it("lists every command in list order for an empty query", () =>
+	{
 		expect(filterSlashCommands(COMMANDS, "").map((c) => c.name)).toStrictEqual([
 			"model",
 			"plan",
@@ -307,7 +541,8 @@ describe("filterSlashCommands", () => {
 		]);
 	});
 
-	it("ranks name prefix over name contains over description matches, case-insensitively", () => {
+	it("ranks name prefix over name contains over description matches, case-insensitively", () =>
+	{
 		expect(filterSlashCommands(COMMANDS, "CO").map((c) => c.name)).toStrictEqual([
 			"compact",
 			"git:commit",
@@ -316,19 +551,52 @@ describe("filterSlashCommands", () => {
 		]);
 	});
 
-	it("returns nothing when no name or description matches", () => {
+	it("returns nothing when no name or description matches", () =>
+	{
 		expect(filterSlashCommands(COMMANDS, "zzz")).toStrictEqual([]);
 	});
 
-	it("ranks upstream's tiers: exact name, exact alias, name prefix, alias prefix, contains, then description", () => {
+	it("ranks upstream's tiers: exact name, exact alias, name prefix, alias prefix, contains, then description", () =>
+	{
 		const commands: SlashCommand[] = [
-			{name: "described", description: "Mentions set in prose", source: "builtin"},
-			{name: "reset", description: "", source: "builtin"},
-			{name: "theme", description: "", source: "builtin", aliases: ["colorset"]},
-			{name: "config", description: "", source: "builtin", aliases: ["settings"]},
-			{name: "setup", description: "", source: "builtin"},
-			{name: "permissions", description: "", source: "builtin", aliases: ["set"]},
-			{name: "set", description: "", source: "builtin"},
+			{
+				name: "described",
+				description: "Mentions set in prose",
+				source: "builtin",
+			},
+			{
+				name: "reset",
+				description: "",
+				source: "builtin",
+			},
+			{
+				name: "theme",
+				description: "",
+				source: "builtin",
+				aliases: ["colorset"],
+			},
+			{
+				name: "config",
+				description: "",
+				source: "builtin",
+				aliases: ["settings"],
+			},
+			{
+				name: "setup",
+				description: "",
+				source: "builtin",
+			},
+			{
+				name: "permissions",
+				description: "",
+				source: "builtin",
+				aliases: ["set"],
+			},
+			{
+				name: "set",
+				description: "",
+				source: "builtin",
+			},
 		];
 
 		expect(filterSlashCommands(commands, "Set").map((c) => c.name)).toStrictEqual([
@@ -342,9 +610,14 @@ describe("filterSlashCommands", () => {
 		]);
 	});
 
-	it("puts config first for its settings alias", () => {
+	it("puts config first for its settings alias", () =>
+	{
 		const commands: SlashCommand[] = [
-			{name: "plugin-dev:plugin-settings", description: "", source: "plugin-skill"},
+			{
+				name: "plugin-dev:plugin-settings",
+				description: "",
+				source: "plugin-skill",
+			},
 			{
 				name: "config",
 				description: "Open Claude Code settings",
@@ -359,103 +632,206 @@ describe("filterSlashCommands", () => {
 		]);
 	});
 
-	it("finds permissions among the built-ins by its allowed-tools alias prefix", () => {
+	it("finds permissions among the built-ins by its allowed-tools alias prefix", () =>
+	{
 		expect(filterSlashCommands(BUILTIN_SLASH_COMMANDS, "allowed").map((c) => c.name)).toStrictEqual([
 			"permissions",
 		]);
 	});
 
-	it("returns nothing for a query over 50 characters", () => {
-		const commands: SlashCommand[] = [{name: "a".repeat(51), description: "", source: "builtin"}];
+	it("returns nothing for a query over 50 characters", () =>
+	{
+		const commands: SlashCommand[] = [
+			{
+				name: "a".repeat(51),
+				description: "",
+				source: "builtin",
+			},
+		];
 
-		expect({
-			fifty: filterSlashCommands(commands, "a".repeat(50)).length,
-			fiftyOne: filterSlashCommands(commands, "a".repeat(51)),
-		}).toStrictEqual({fifty: 1, fiftyOne: []});
+		expect(
+			{
+				fifty: filterSlashCommands(commands, "a".repeat(50)).length,
+				fiftyOne: filterSlashCommands(commands, "a".repeat(51)),
+			},
+		).toStrictEqual(
+			{
+				fifty: 1,
+				fiftyOne: [],
+			},
+		);
 	});
 });
 
-describe("plugin skills", () => {
-	const devServer: SlashCommand = {
+describe("plugin skills", () =>
+{
+	const devServer: SlashCommand =
+	{
 		name: "build:dev-server",
 		description: "Start a dev server",
 		source: "plugin-skill",
 		pluginName: "build",
 	};
 	const commands: SlashCommand[] = [
-		{name: "redevelop", description: "", source: "builtin"},
+		{
+			name: "redevelop",
+			description: "",
+			source: "builtin",
+		},
 		devServer,
-		{name: "build", description: "", source: "builtin"},
+		{
+			name: "build",
+			description: "",
+			source: "builtin",
+		},
 	];
 
-	it("labels a plugin skill by its bare name and leaves other commands unchanged", () => {
-		expect({
-			plugin: slashCommandLabel(devServer),
-			builtin: slashCommandLabel({name: "model", description: "", source: "builtin"}),
-			unprefixed: slashCommandLabel({...devServer, name: "dev-server"}),
-		}).toStrictEqual({plugin: "dev-server", builtin: "model", unprefixed: "dev-server"});
+	it("labels a plugin skill by its bare name and leaves other commands unchanged", () =>
+	{
+		expect(
+			{
+				plugin: slashCommandLabel(devServer),
+				builtin: slashCommandLabel(
+					{
+						name: "model",
+						description: "",
+						source: "builtin",
+					},
+				),
+				unprefixed: slashCommandLabel(
+					{
+						...devServer,
+						name: "dev-server",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				plugin: "dev-server",
+				builtin: "model",
+				unprefixed: "dev-server",
+			},
+		);
 	});
 
-	it("ranks the bare label as the name and still matches plugin:name queries", () => {
-		expect({
-			dev: filterSlashCommands(commands, "dev").map((c) => c.name),
-			exact: filterSlashCommands(commands, "dev-server").map((c) => c.name),
-			namespaced: filterSlashCommands(commands, "build:dev").map((c) => c.name),
-		}).toStrictEqual({
-			dev: ["build:dev-server", "redevelop"],
-			exact: ["build:dev-server"],
-			namespaced: ["build:dev-server"],
-		});
+	it("ranks the bare label as the name and still matches plugin:name queries", () =>
+	{
+		expect(
+			{
+				dev: filterSlashCommands(commands, "dev").map((c) => c.name),
+				exact: filterSlashCommands(commands, "dev-server").map((c) => c.name),
+				namespaced: filterSlashCommands(commands, "build:dev").map((c) => c.name),
+			},
+		).toStrictEqual(
+			{
+				dev: ["build:dev-server", "redevelop"],
+				exact: ["build:dev-server"],
+				namespaced: ["build:dev-server"],
+			},
+		);
 	});
 });
 
-describe("highlightMatches", () => {
-	it("bolds only the first case-insensitive match", () => {
+describe("highlightMatches", () =>
+{
+	it("bolds only the first case-insensitive match", () =>
+	{
 		expect([
 			highlightMatches("status", "s"),
 			highlightMatches("Browse and manage your skills", "s"),
 			highlightMatches("Autocompact compaction", "COMP"),
 		]).toStrictEqual([
 			[
-				{text: "s", match: true},
-				{text: "tatus", match: false},
+				{
+					text: "s",
+					match: true,
+				},
+				{
+					text: "tatus",
+					match: false,
+				},
 			],
 			[
-				{text: "Brow", match: false},
-				{text: "s", match: true},
-				{text: "e and manage your skills", match: false},
+				{
+					text: "Brow",
+					match: false,
+				},
+				{
+					text: "s",
+					match: true,
+				},
+				{
+					text: "e and manage your skills",
+					match: false,
+				},
 			],
 			[
-				{text: "Auto", match: false},
-				{text: "comp", match: true},
-				{text: "act compaction", match: false},
+				{
+					text: "Auto",
+					match: false,
+				},
+				{
+					text: "comp",
+					match: true,
+				},
+				{
+					text: "act compaction",
+					match: false,
+				},
 			],
 		]);
 	});
 
-	it("returns the whole text unmatched when the query does not occur", () => {
-		expect(highlightMatches("model", "zz")).toStrictEqual([{text: "model", match: false}]);
+	it("returns the whole text unmatched when the query does not occur", () =>
+	{
+		expect(highlightMatches("model", "zz")).toStrictEqual([
+			{
+				text: "model",
+				match: false,
+			},
+		]);
 	});
 
-	it("returns the whole text unmatched for an empty query", () => {
-		expect(highlightMatches("model", "")).toStrictEqual([{text: "model", match: false}]);
+	it("returns the whole text unmatched for an empty query", () =>
+	{
+		expect(highlightMatches("model", "")).toStrictEqual([
+			{
+				text: "model",
+				match: false,
+			},
+		]);
 	});
 });
 
-describe("slashTrigger", () => {
+describe("slashTrigger", () =>
+{
 	const at = (prompt: string) => slashTrigger(prompt, prompt.length);
 
-	it("opens selected at the start of the prompt while the first token is being typed", () => {
+	it("opens selected at the start of the prompt while the first token is being typed", () =>
+	{
 		expect([at("/"), at("/mo"), at("/model "), at("/mo/"), slashTrigger("/mo\nnext", 3)]).toStrictEqual([
-			{start: 0, query: "", atStart: true},
-			{start: 0, query: "mo", atStart: true},
+			{
+				start: 0,
+				query: "",
+				atStart: true,
+			},
+			{
+				start: 0,
+				query: "mo",
+				atStart: true,
+			},
 			null,
 			null,
-			{start: 0, query: "mo", atStart: true},
+			{
+				start: 0,
+				query: "mo",
+				atStart: true,
+			},
 		]);
 	});
 
-	it("opens unselected after text or at the start of a later line, but not for an empty mid-line query", () => {
+	it("opens unselected after text or at the start of a later line, but not for an empty mid-line query", () =>
+	{
 		expect([
 			at("hello /mo"),
 			at("line one\n/ef"),
@@ -464,19 +840,37 @@ describe("slashTrigger", () => {
 			slashTrigger("hello /mo there", 9),
 			slashTrigger("hello /model", 9),
 		]).toStrictEqual([
-			{start: 6, query: "mo", atStart: false},
-			{start: 9, query: "ef", atStart: false},
+			{
+				start: 6,
+				query: "mo",
+				atStart: false,
+			},
+			{
+				start: 9,
+				query: "ef",
+				atStart: false,
+			},
 			null,
 			null,
-			{start: 6, query: "mo", atStart: false},
+			{
+				start: 6,
+				query: "mo",
+				atStart: false,
+			},
 			null,
 		]);
 	});
 });
 
-describe("skillChipArgumentHint", () => {
-	it("shows an accepted chip's argument hint while only whitespace follows it", () => {
-		const chip = {name: "model", argumentHint: "[model]"};
+describe("skillChipArgumentHint", () =>
+{
+	it("shows an accepted chip's argument hint while only whitespace follows it", () =>
+	{
+		const chip =
+		{
+			name: "model",
+			argumentHint: "[model]",
+		};
 		expect([
 			skillChipArgumentHint(chip, "/model "),
 			skillChipArgumentHint(chip, "/model   "),
@@ -485,8 +879,13 @@ describe("skillChipArgumentHint", () => {
 		]).toStrictEqual(["[model]", "[model]", "[model]", "[model]"]);
 	});
 
-	it("hides the hint with no separator, typed arguments, a long prompt or no hint", () => {
-		const chip = {name: "model", argumentHint: "[model]"};
+	it("hides the hint with no separator, typed arguments, a long prompt or no hint", () =>
+	{
+		const chip =
+		{
+			name: "model",
+			argumentHint: "[model]",
+		};
 		expect([
 			skillChipArgumentHint(chip, "/model"),
 			skillChipArgumentHint(chip, "/model x"),
@@ -494,34 +893,66 @@ describe("skillChipArgumentHint", () => {
 			skillChipArgumentHint(chip, "/model\n"),
 			skillChipArgumentHint(chip, `/model ${" ".repeat(122)}`),
 			skillChipArgumentHint(chip, `/model ${" ".repeat(121)}`),
-			skillChipArgumentHint({name: "model", argumentHint: undefined}, "/model "),
-			skillChipArgumentHint({name: "model", argumentHint: ""}, "/model "),
+			skillChipArgumentHint(
+				{
+					name: "model",
+					argumentHint: undefined,
+				},
+				"/model ",
+			),
+			skillChipArgumentHint(
+				{
+					name: "model",
+					argumentHint: "",
+				},
+				"/model ",
+			),
 		]).toStrictEqual([null, null, null, null, null, "[model]", null, null]);
 	});
 });
 
-describe("splitLeadingSlashCommand", () => {
-	it("splits a leading command token from the rest of the prompt", () => {
-		expect({
-			loop: splitLeadingSlashCommand("/loop Check PR 1954"),
-			pluginSkill: splitLeadingSlashCommand("/orchestration:finish"),
-			multiline: splitLeadingSlashCommand("/review\nthe diff"),
-			path: splitLeadingSlashCommand("/Users/fabricated/file.ts is broken"),
-			midText: splitLeadingSlashCommand("please /loop"),
-			bareSlash: splitLeadingSlashCommand("/ nothing"),
-		}).toStrictEqual({
-			loop: {name: "loop", rest: "Check PR 1954"},
-			pluginSkill: {name: "orchestration:finish", rest: ""},
-			multiline: {name: "review", rest: "the diff"},
-			path: null,
-			midText: null,
-			bareSlash: null,
-		});
+describe("splitLeadingSlashCommand", () =>
+{
+	it("splits a leading command token from the rest of the prompt", () =>
+	{
+		expect(
+			{
+				loop: splitLeadingSlashCommand("/loop Check PR 1954"),
+				pluginSkill: splitLeadingSlashCommand("/orchestration:finish"),
+				multiline: splitLeadingSlashCommand("/review\nthe diff"),
+				path: splitLeadingSlashCommand("/Users/fabricated/file.ts is broken"),
+				midText: splitLeadingSlashCommand("please /loop"),
+				bareSlash: splitLeadingSlashCommand("/ nothing"),
+			},
+		).toStrictEqual(
+			{
+				loop:
+				{
+					name: "loop",
+					rest: "Check PR 1954",
+				},
+				pluginSkill:
+				{
+					name: "orchestration:finish",
+					rest: "",
+				},
+				multiline:
+				{
+					name: "review",
+					rest: "the diff",
+				},
+				path: null,
+				midText: null,
+				bareSlash: null,
+			},
+		);
 	});
 });
 
-describe("CLI_COMMAND_NAMES", () => {
-	it("contains every curated built-in and the CLI's other built-ins and aliases", () => {
+describe("CLI_COMMAND_NAMES", () =>
+{
+	it("contains every curated built-in and the CLI's other built-ins and aliases", () =>
+	{
 		const expected = [
 			...BUILTIN_SLASH_COMMANDS.flatMap((command) => [command.name, ...(command.aliases ?? [])]),
 			"doctor",
@@ -546,41 +977,49 @@ describe("CLI_COMMAND_NAMES", () => {
 		expect(expected.filter((name) => !CLI_COMMAND_NAMES.has(name))).toStrictEqual([]);
 	});
 
-	it("holds only lowercase command names", () => {
+	it("holds only lowercase command names", () =>
+	{
 		expect([...CLI_COMMAND_NAMES].filter((name) => !/^[a-z][a-z0-9-]*$/.test(name))).toStrictEqual([]);
 	});
 });
 
-describe("isKnownSlashCommand", () => {
-	const pluginSkill: SlashCommand = {
+describe("isKnownSlashCommand", () =>
+{
+	const pluginSkill: SlashCommand =
+	{
 		name: "plugin:skill",
 		description: "A plugin skill",
 		source: "plugin-skill",
 		pluginName: "plugin",
 	};
-	const aliased: SlashCommand = {
+	const aliased: SlashCommand =
+	{
 		name: "deploy",
 		description: "Deploy",
 		source: "project-command",
 		aliases: ["ship"],
 	};
 
-	it("knows a CLI built-in without any listed commands", () => {
+	it("knows a CLI built-in without any listed commands", () =>
+	{
 		expect(isKnownSlashCommand("doctor", [])).toBe(true);
 	});
 
-	it("rejects a typo", () => {
+	it("rejects a typo", () =>
+	{
 		expect(isKnownSlashCommand("statuss", [])).toBe(false);
 	});
 
-	it("matches case-insensitively", () => {
+	it("matches case-insensitively", () =>
+	{
 		expect([isKnownSlashCommand("STATUS", []), isKnownSlashCommand("Plugin:Skill", [pluginSkill])]).toStrictEqual([
 			true,
 			true,
 		]);
 	});
 
-	it("knows a listed plugin skill by its full name and by the part after the last colon", () => {
+	it("knows a listed plugin skill by its full name and by the part after the last colon", () =>
+	{
 		expect([
 			isKnownSlashCommand("plugin:skill", [pluginSkill]),
 			isKnownSlashCommand("skill", [pluginSkill]),
@@ -588,7 +1027,8 @@ describe("isKnownSlashCommand", () => {
 		]).toStrictEqual([true, true, false]);
 	});
 
-	it("knows a listed command's aliases", () => {
+	it("knows a listed command's aliases", () =>
+	{
 		expect([isKnownSlashCommand("deploy", [aliased]), isKnownSlashCommand("ship", [aliased])]).toStrictEqual([
 			true,
 			true,

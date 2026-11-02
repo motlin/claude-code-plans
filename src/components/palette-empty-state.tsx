@@ -26,7 +26,8 @@ export function PaletteEmptyState({
 	message: string;
 	onSearchAll: () => void;
 	onCompose: () => void;
-}) {
+})
+{
 	if (kind === "silent") return null;
 	return (
 		<div
@@ -40,7 +41,8 @@ export function PaletteEmptyState({
 				<button
 					type="button"
 					// Keep focus in the palette input, as upstream does.
-					onMouseDown={(event) => {
+					onMouseDown={(event) =>
+					{
 						event.preventDefault();
 					}}
 					onClick={onSearchAll}

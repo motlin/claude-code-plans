@@ -7,12 +7,25 @@
 const SEPARATOR = "@";
 
 /** `session` is null for the default server. */
-export function qualifyHerdrId(id: string, session: string | null): string {
+export function qualifyHerdrId(id: string, session: string | null): string
+{
 	return session === null ? id : `${id}${SEPARATOR}${session}`;
 }
 
-export function splitHerdrId(qualifiedId: string): {id: string; session: string | null} {
+export function splitHerdrId(qualifiedId: string):
+{
+	id: string;
+	session: string | null;
+}
+{
 	const index = qualifiedId.indexOf(SEPARATOR);
-	if (index === -1) return {id: qualifiedId, session: null};
-	return {id: qualifiedId.slice(0, index), session: qualifiedId.slice(index + 1)};
+	if (index === -1)
+		return {
+			id: qualifiedId,
+			session: null,
+		};
+	return {
+		id: qualifiedId.slice(0, index),
+		session: qualifiedId.slice(index + 1),
+	};
 }

@@ -1,7 +1,8 @@
 import {readFileSync} from "node:fs";
 import {describe, expect, it} from "vite-plus/test";
 
-import {
+import
+{
 	ADD_BUTTON_CLASS,
 	CHIN_TRIGGER_CLASS,
 	COMPOSER_CARD_CLASS,
@@ -12,16 +13,19 @@ import {
 } from "../src/components/composer-tokens";
 import {SESSION_DOCK_COLUMN_CLASS} from "../src/components/dock-tokens";
 import {FIZZY_LAKE_PANELS_FINE_POINTER_QUERY} from "../src/lib/fizzy-lake";
+import {ruleStart} from "./css-rule";
 
 const styles = readFileSync("src/styles/globals.css", "utf8");
 
-function block(selector: string): string {
-	const start = styles.indexOf(`${selector} {`);
+function block(selector: string): string
+{
+	const start = ruleStart(styles, selector);
 	if (start === -1) return "";
 	return styles.slice(start, styles.indexOf("}", start));
 }
 
-function token(source: string, name: string): string | null {
+function token(source: string, name: string): string | null
+{
 	return source.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1] ?? null;
 }
 
@@ -40,119 +44,156 @@ const TYPE_TOKENS = [
 	"--upstream-leading-heading",
 ] as const;
 
-function typeTokens(source: string): Record<string, string | null> {
+function typeTokens(source: string): Record<string, string | null>
+{
 	return Object.fromEntries(TYPE_TOKENS.map((name) => [name, token(source, name)]));
 }
 
-describe("density type tokens", () => {
-	it("uses upstream's comfortable type scale on :root and [data-density=comfortable] and the compact scale under [data-density=compact]", () => {
+describe("density type tokens", () =>
+{
+	it("uses upstream's comfortable type scale on :root and [data-density=comfortable] and the compact scale under [data-density=compact]", () =>
+	{
 		const theme = block("@theme inline");
 		const compact = block('[data-density="compact"]');
 		const comfortable = block('[data-density="comfortable"]');
 
-		expect({
-			root: typeTokens(block(":root")),
-			comfortable: typeTokens(comfortable),
-			comfortableDeclarations: comfortable.match(/--[\w-]+:/g)?.length ?? 0,
-			compact: typeTokens(compact),
-			compactDeclarations: compact.match(/--[\w-]+:/g)?.length ?? 0,
-			caption: token(theme, "--text-caption"),
-			captionLeading: token(theme, "--text-caption--line-height"),
-		}).toStrictEqual({
-			root: {
-				"--upstream-text-body": "14px",
-				"--upstream-leading-body": "20px",
-				"--upstream-text-footnote": "13px",
-				"--upstream-leading-footnote": "17px",
-				"--upstream-text-code": "13px",
-				"--upstream-leading-code": "19px",
-				"--upstream-text-caption": "12px",
-				"--upstream-leading-caption": "17px",
-				"--upstream-text-prose": "16px",
-				"--upstream-leading-prose": "24px",
-				"--upstream-text-heading": "15px",
-				"--upstream-leading-heading": "20px",
+		expect(
+			{
+				root: typeTokens(block(":root")),
+				comfortable: typeTokens(comfortable),
+				comfortableDeclarations: comfortable.match(/--[\w-]+:/g)?.length ?? 0,
+				compact: typeTokens(compact),
+				compactDeclarations: compact.match(/--[\w-]+:/g)?.length ?? 0,
+				caption: token(theme, "--text-caption"),
+				captionLeading: token(theme, "--text-caption--line-height"),
 			},
-			comfortable: {
-				"--upstream-text-body": "14px",
-				"--upstream-leading-body": "20px",
-				"--upstream-text-footnote": "13px",
-				"--upstream-leading-footnote": "17px",
-				"--upstream-text-code": "13px",
-				"--upstream-leading-code": "19px",
-				"--upstream-text-caption": "12px",
-				"--upstream-leading-caption": "17px",
-				"--upstream-text-prose": "16px",
-				"--upstream-leading-prose": "24px",
-				"--upstream-text-heading": "15px",
-				"--upstream-leading-heading": "20px",
+		).toStrictEqual(
+			{
+				root:
+				{
+					"--upstream-text-body": "14px",
+					"--upstream-leading-body": "20px",
+					"--upstream-text-footnote": "13px",
+					"--upstream-leading-footnote": "17px",
+					"--upstream-text-code": "13px",
+					"--upstream-leading-code": "19px",
+					"--upstream-text-caption": "12px",
+					"--upstream-leading-caption": "17px",
+					"--upstream-text-prose": "16px",
+					"--upstream-leading-prose": "24px",
+					"--upstream-text-heading": "15px",
+					"--upstream-leading-heading": "20px",
+				},
+				comfortable:
+				{
+					"--upstream-text-body": "14px",
+					"--upstream-leading-body": "20px",
+					"--upstream-text-footnote": "13px",
+					"--upstream-leading-footnote": "17px",
+					"--upstream-text-code": "13px",
+					"--upstream-leading-code": "19px",
+					"--upstream-text-caption": "12px",
+					"--upstream-leading-caption": "17px",
+					"--upstream-text-prose": "16px",
+					"--upstream-leading-prose": "24px",
+					"--upstream-text-heading": "15px",
+					"--upstream-leading-heading": "20px",
+				},
+				comfortableDeclarations: 45,
+				compact:
+				{
+					"--upstream-text-body": "13px",
+					"--upstream-leading-body": "19px",
+					"--upstream-text-footnote": "12px",
+					"--upstream-leading-footnote": "15px",
+					"--upstream-text-code": "12px",
+					"--upstream-leading-code": "17px",
+					"--upstream-text-caption": "11px",
+					"--upstream-leading-caption": "17px",
+					"--upstream-text-prose": "14px",
+					"--upstream-leading-prose": "20px",
+					"--upstream-text-heading": "14px",
+					"--upstream-leading-heading": "18px",
+				},
+				compactDeclarations: 45,
+				caption: "var(--upstream-text-caption)",
+				captionLeading: "var(--upstream-leading-caption)",
 			},
-			comfortableDeclarations: 45,
-			compact: {
-				"--upstream-text-body": "13px",
-				"--upstream-leading-body": "19px",
-				"--upstream-text-footnote": "12px",
-				"--upstream-leading-footnote": "15px",
-				"--upstream-text-code": "12px",
-				"--upstream-leading-code": "17px",
-				"--upstream-text-caption": "11px",
-				"--upstream-leading-caption": "17px",
-				"--upstream-text-prose": "14px",
-				"--upstream-leading-prose": "20px",
-				"--upstream-text-heading": "14px",
-				"--upstream-leading-heading": "18px",
-			},
-			compactDeclarations: 45,
-			caption: "var(--upstream-text-caption)",
-			captionLeading: "var(--upstream-leading-caption)",
-		});
+		);
 	});
 });
 
-describe("control height token", () => {
-	it("copies upstream's --cds-h-control: 24px compact, 32px comfortable (and on :root), 28px comfortable under panels on a fine pointer, where cds Buttons cap their pad at 9px", () => {
+describe("control height token", () =>
+{
+	it("copies upstream's --cds-h-control: 24px compact, 32px comfortable (and on :root), 28px comfortable under panels on a fine pointer, where cds Buttons cap their pad at 9px", () =>
+	{
 		const mediaStart = styles.indexOf(
-			`@media ${FIZZY_LAKE_PANELS_FINE_POINTER_QUERY} {\n\t[data-cds-fizzy-lake~="panels"][data-density="comfortable"]`,
+			`@media ${FIZZY_LAKE_PANELS_FINE_POINTER_QUERY}\n{\n\t[data-cds-fizzy-lake~="panels"][data-density="comfortable"]`,
 		);
 		const panels = mediaStart === -1 ? "" : styles.slice(mediaStart, styles.indexOf("}", mediaStart));
 
-		expect({
-			root: token(block(":root"), "--cds-h-control"),
-			comfortable: token(block('[data-density="comfortable"]'), "--cds-h-control"),
-			compact: token(block('[data-density="compact"]'), "--cds-h-control"),
-			panelsComfortable: panels.slice(panels.indexOf("{\n\t") + 3),
-		}).toStrictEqual({
-			root: "calc(2rem * var(--cds-rem-scale, 1))",
-			comfortable: "calc(2rem * var(--cds-rem-scale, 1))",
-			compact: "calc(1.5rem * var(--cds-rem-scale, 1))",
-			panelsComfortable:
-				'[data-cds-fizzy-lake~="panels"][data-density="comfortable"],\n\t[data-cds-fizzy-lake~="panels"] [data-density="comfortable"] {\n\t\t--cds-h-control: calc(1.75rem * var(--cds-rem-scale, 1));\n\t\t--cds-button-pad-max: calc(0.5625rem * var(--cds-rem-scale, 1));\n\t',
-		});
+		expect(
+			{
+				root: token(block(":root"), "--cds-h-control"),
+				comfortable: token(block('[data-density="comfortable"]'), "--cds-h-control"),
+				compact: token(block('[data-density="compact"]'), "--cds-h-control"),
+				panelsComfortable: panels.slice(panels.indexOf("{\n\t") + 3),
+			},
+		).toStrictEqual(
+			{
+				root: "calc(2rem * var(--cds-rem-scale, 1))",
+				comfortable: "calc(2rem * var(--cds-rem-scale, 1))",
+				compact: "calc(1.5rem * var(--cds-rem-scale, 1))",
+				panelsComfortable:
+					'[data-cds-fizzy-lake~="panels"][data-density="comfortable"],\n\t[data-cds-fizzy-lake~="panels"] [data-density="comfortable"]\n\t{\n\t\t--cds-h-control: calc(1.75rem * var(--cds-rem-scale, 1));\n\t\t--cds-button-pad-max: calc(0.5625rem * var(--cds-rem-scale, 1));\n\t',
+			},
+		);
 	});
 });
 
-describe("checkbox tokens", () => {
-	it("copies upstream's --cds-checkbox and --cds-checkbox-radius: 16px / 4px on the base and compact, 20px / 5px comfortable", () => {
-		const pair = (source: string) => ({
+describe("checkbox tokens", () =>
+{
+	it("copies upstream's --cds-checkbox and --cds-checkbox-radius: 16px / 4px on the base and compact, 20px / 5px comfortable", () =>
+	{
+		const pair = (source: string) => (
+		{
 			size: token(source, "--cds-checkbox"),
 			radius: token(source, "--cds-checkbox-radius"),
 		});
 
-		expect({
-			base: pair(block("@theme")),
-			compact: pair(block('[data-density="compact"]')),
-			comfortable: pair(block('[data-density="comfortable"]')),
-		}).toStrictEqual({
-			base: {size: "1rem", radius: "0.25rem"},
-			compact: {size: "1rem", radius: "0.25rem"},
-			comfortable: {size: "1.25rem", radius: "0.3125rem"},
-		});
+		expect(
+			{
+				base: pair(block("@theme")),
+				compact: pair(block('[data-density="compact"]')),
+				comfortable: pair(block('[data-density="comfortable"]')),
+			},
+		).toStrictEqual(
+			{
+				base:
+				{
+					size: "1rem",
+					radius: "0.25rem",
+				},
+				compact:
+				{
+					size: "1rem",
+					radius: "0.25rem",
+				},
+				comfortable:
+				{
+					size: "1.25rem",
+					radius: "0.3125rem",
+				},
+			},
+		);
 	});
 });
 
-describe("density sidebar geometry", () => {
+describe("density sidebar geometry", () =>
+{
 	// Upstream `Us()` defaults the web sidebar to comfortable; the 26px compact rows are the desktop app's default only.
-	it("locks the web sidebar geometry tokens on :root at upstream's comfortable values", () => {
+	it("locks the web sidebar geometry tokens on :root at upstream's comfortable values", () =>
+	{
 		const root = block(":root");
 		const names = [
 			"--sb-row-h",
@@ -166,28 +207,39 @@ describe("density sidebar geometry", () => {
 			"--sb-radius",
 		];
 
-		expect(Object.fromEntries(names.map((name) => [name, token(root, name)]))).toStrictEqual({
-			"--sb-row-h": "32px",
-			"--sb-row-font": "14px",
-			"--sb-group-font": "13px",
-			"--sb-icon": "20px",
-			"--sb-leading-slot": "28px",
-			"--sb-row-ctl": "24px",
-			"--sb-row-gap": "4px",
-			"--sb-group-pt": "0px",
-			"--sb-radius": "8px",
-		});
+		expect(Object.fromEntries(names.map((name) => [name, token(root, name)]))).toStrictEqual(
+			{
+				"--sb-row-h": "32px",
+				"--sb-row-font": "14px",
+				"--sb-group-font": "13px",
+				"--sb-icon": "20px",
+				"--sb-leading-slot": "28px",
+				"--sb-row-ctl": "24px",
+				"--sb-row-gap": "4px",
+				"--sb-group-pt": "0px",
+				"--sb-radius": "8px",
+			},
+		);
 	});
 
 	/* Upstream `.dframe-root[data-variant="web"] .dframe-sidebar-body [data-row] { margin-bottom: var(--df-row-stack-gap) }`: a 34px nav pitch. */
-	it("spaces every sidebar-body row by one 2px stack gap, leaving the nav row class without its own margin", () => {
-		expect({
-			rows: token(block("\n[data-nav-block] [data-row]:not(.df-search-field)"), "margin-bottom"),
-			navRow: token(block("\n\t.df-nav-row"), "margin-bottom"),
-		}).toStrictEqual({rows: "var(--sb-row-stack-gap)", navRow: null});
+	it("spaces every sidebar-body row by one 2px stack gap, leaving the nav row class without its own margin", () =>
+	{
+		expect(
+			{
+				rows: token(block("\n[data-nav-block] [data-row]:not(.df-search-field)"), "margin-bottom"),
+				navRow: token(block("\n\t.df-nav-row"), "margin-bottom"),
+			},
+		).toStrictEqual(
+			{
+				rows: "var(--sb-row-stack-gap)",
+				navRow: null,
+			},
+		);
 	});
 
-	it("bands desktop group labels with upstream's df-session-list tokens: 18px web band margin + row-height band, 2px stack, 8px iconless pad", () => {
+	it("bands desktop group labels with upstream's df-session-list tokens: 18px web band margin + row-height band, 2px stack, 8px iconless pad", () =>
+	{
 		const root = block(":root");
 		const names = [
 			"--sb-row-stack-gap",
@@ -199,26 +251,31 @@ describe("density sidebar geometry", () => {
 			"--sb-iconless-pad",
 		];
 
-		expect(Object.fromEntries(names.map((name) => [name, token(root, name)]))).toStrictEqual({
-			"--sb-row-stack-gap": "2px",
-			"--sb-group-band-mt": "calc(var(--sb-group-pt-token) + 4px - var(--sb-row-stack-gap))",
-			"--sb-group-band-h": "var(--sb-row-h)",
-			"--sb-group-pt": "0px",
-			"--sb-group-label-pb": "0px",
-			"--sb-group-pb": "var(--sb-row-stack-gap)",
-			"--sb-iconless-pad": "8px",
-		});
+		expect(Object.fromEntries(names.map((name) => [name, token(root, name)]))).toStrictEqual(
+			{
+				"--sb-row-stack-gap": "2px",
+				"--sb-group-band-mt": "calc(var(--sb-group-pt-token) + 4px - var(--sb-row-stack-gap))",
+				"--sb-group-band-h": "var(--sb-row-h)",
+				"--sb-group-pt": "0px",
+				"--sb-group-label-pb": "0px",
+				"--sb-group-pb": "var(--sb-row-stack-gap)",
+				"--sb-iconless-pad": "8px",
+			},
+		);
 	});
 
-	it("insets group labels by the row padding plus upstream's iconless pad (10px), as .df-label-inset", () => {
+	it("insets group labels by the row padding plus upstream's iconless pad (10px), as .df-label-inset", () =>
+	{
 		expect(token(block("\n.df-label-inset").replaceAll(/\s+/g, " "), "padding-left")).toBe(
 			"calc(var(--sb-row-px) + var(--sb-iconless-pad, calc((var(--sb-leading-slot) - var(--sb-icon)) / 2)))",
 		);
 	});
 });
 
-describe("described session rows", () => {
-	function declarations(selector: string): Record<string, string> {
+describe("described session rows", () =>
+{
+	function declarations(selector: string): Record<string, string>
+	{
 		return Object.fromEntries(
 			[
 				...block(`\n${selector}`)
@@ -228,55 +285,83 @@ describe("described session rows", () => {
 		);
 	}
 
-	it("adds upstream's described tuck/trim tokens on :root and the 24px described line on the phone sheet", () => {
+	it("adds upstream's described tuck/trim tokens on :root and the 24px described line on the phone sheet", () =>
+	{
 		const root = block(":root");
 		const sheet = block("\n.phone-sheet");
-		expect({
-			tuck: token(root, "--sb-described-tuck"),
-			trim: token(root, "--sb-described-trim"),
-			rootLine: token(root, "--sb-described-line"),
-			phoneLine: token(sheet, "--sb-described-line"),
-		}).toStrictEqual({
-			tuck: "4px",
-			trim: "calc(var(--sb-described-tuck) / 2)",
-			rootLine: null,
-			phoneLine: "24px",
-		});
+		expect(
+			{
+				tuck: token(root, "--sb-described-tuck"),
+				trim: token(root, "--sb-described-trim"),
+				rootLine: token(root, "--sb-described-line"),
+				phoneLine: token(sheet, "--sb-described-line"),
+			},
+		).toStrictEqual(
+			{
+				tuck: "4px",
+				trim: "calc(var(--sb-described-tuck) / 2)",
+				rootLine: null,
+				phoneLine: "24px",
+			},
+		);
 	});
 
-	it("copies upstream's .df-described-row, .df-row-description and .df-meta-line rules", () => {
-		expect({
-			row: declarations(".df-described-row"),
-			lines: declarations(".df-described-title,\n.df-row-description"),
-			description: declarations(".df-row-description"),
-			metaLine: declarations(".df-meta-line"),
-			metaLineRtl: declarations('.df-meta-line:where(:root[dir="rtl"] :dir(rtl))'),
-		}).toStrictEqual({
-			row: {
-				"padding-block":
-					"calc((var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim))",
-				"row-gap": "2px",
+	it("copies upstream's .df-described-row, .df-row-description and .df-meta-line rules", () =>
+	{
+		expect(
+			{
+				row: declarations(".df-described-row"),
+				lines: declarations(".df-described-title,\n.df-row-description"),
+				description: declarations(".df-row-description"),
+				metaLine: declarations(".df-meta-line"),
+				metaLineRtl: declarations('.df-meta-line:where(:root[dir="rtl"] :dir(rtl))'),
 			},
-			lines: {height: "calc(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck))"},
-			description: {"font-size": "var(--sb-group-font)", "line-height": "16px", gap: "6px"},
-			metaLine: {
-				overflow: "clip",
-				"padding-inline-end": "12px",
-				"mask-image": "linear-gradient(90deg, #000 calc(100% - 12px), transparent)",
+		).toStrictEqual(
+			{
+				row:
+				{
+					"padding-block":
+						"calc((var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim))",
+					"row-gap": "2px",
+				},
+				lines:
+				{
+					height: "calc(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck))",
+				},
+				description:
+				{
+					"font-size": "var(--sb-group-font)",
+					"line-height": "16px",
+					gap: "6px",
+				},
+				metaLine:
+				{
+					overflow: "clip",
+					"padding-inline-end": "12px",
+					"mask-image": "linear-gradient(90deg, #000 calc(100% - 12px), transparent)",
+				},
+				metaLineRtl:
+				{
+					"mask-image": "linear-gradient(270deg, #000 calc(100% - 12px), transparent)",
+				},
 			},
-			metaLineRtl: {"mask-image": "linear-gradient(270deg, #000 calc(100% - 12px), transparent)"},
-		});
+		);
 	});
 
-	it("centres a described row's decoration and kebab on the title line, as upstream's described top", () => {
-		expect(declarations("[data-described] :is([data-row-decoration], [data-row-action])")).toStrictEqual({
-			top: "calc(var(--sb-row-h) / 2 + var(--sb-described-tuck) / 2 - var(--sb-described-trim))",
-		});
+	it("centres a described row's decoration and kebab on the title line, as upstream's described top", () =>
+	{
+		expect(declarations("[data-described] :is([data-row-decoration], [data-row-action])")).toStrictEqual(
+			{
+				top: "calc(var(--sb-row-h) / 2 + var(--sb-described-tuck) / 2 - var(--sb-described-trim))",
+			},
+		);
 	});
 });
 
-describe("density variants", () => {
-	it("defines compact: and comfortable: variants keyed on the nearest [data-density] scope", () => {
+describe("density variants", () =>
+{
+	it("defines compact: and comfortable: variants keyed on the nearest [data-density] scope", () =>
+	{
 		const variants = Object.fromEntries(
 			[...styles.matchAll(/@custom-variant (compact|comfortable) \((.+)\);/g)].map((match) => [
 				match[1],
@@ -284,44 +369,61 @@ describe("density variants", () => {
 			]),
 		);
 
-		expect(variants).toStrictEqual({
-			compact:
-				'&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *))))',
-			comfortable:
-				'&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *))))',
-		});
+		expect(variants).toStrictEqual(
+			{
+				compact:
+					'&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *))))',
+				comfortable:
+					'&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *))))',
+			},
+		);
 	});
 });
 
-describe("main-column comfortable variants", () => {
-	it("opens the dock column gap to 8px at comfortable, and pads the environment bar by viewport, not density, as upstream", () => {
+describe("main-column comfortable variants", () =>
+{
+	it("opens the dock column gap to 8px at comfortable, and pads the environment bar by viewport, not density, as upstream", () =>
+	{
 		const comfortable = (classes: string) => classes.split(" ").filter((name) => name.startsWith("comfortable:"));
 
-		expect({dock: comfortable(SESSION_DOCK_COLUMN_CLASS), bar: ENVIRONMENT_BAR_CLASS}).toStrictEqual({
-			dock: ["comfortable:gap-2"],
-			bar: "@container flex w-full min-w-0 flex-col pt-0.5 -mb-0.5 md:pt-0 md:mb-0",
-		});
+		expect(
+			{
+				dock: comfortable(SESSION_DOCK_COLUMN_CLASS),
+				bar: ENVIRONMENT_BAR_CLASS,
+			},
+		).toStrictEqual(
+			{
+				dock: ["comfortable:gap-2"],
+				bar: "@container flex w-full min-w-0 flex-col pt-0.5 -mb-0.5 md:pt-0 md:mb-0",
+			},
+		);
 	});
 });
 
-describe("composer comfortable variants", () => {
-	it("flips the composer to upstream's comfortable literals: 8px card gap, 32px editor insets, 8px Add and env-pill radii, 6px chin-pill radius and an 8px place-label gap", () => {
+describe("composer comfortable variants", () =>
+{
+	it("flips the composer to upstream's comfortable literals: 8px card gap, 32px editor insets, 8px Add and env-pill radii, 6px chin-pill radius and an 8px place-label gap", () =>
+	{
 		const comfortable = (classes: string) => classes.split(" ").filter((name) => name.startsWith("comfortable:"));
 
-		expect({
-			card: comfortable(COMPOSER_CARD_CLASS),
-			editorRow: comfortable(COMPOSER_EDITOR_ROW_CLASS),
-			add: comfortable(ADD_BUTTON_CLASS),
-			chinTrigger: comfortable(CHIN_TRIGGER_CLASS),
-			envRow: comfortable(ENVIRONMENT_BAR_ROW_CLASS),
-			placeChip: comfortable(PLACE_CHIP_CLASS),
-		}).toStrictEqual({
-			card: ["comfortable:gap-y-2"],
-			editorRow: ["comfortable:pr-[32px]", "comfortable:pl-[32px]"],
-			add: ["comfortable:rounded-r6"],
-			chinTrigger: ["comfortable:rounded-r5"],
-			envRow: ["comfortable:[&_button]:rounded-r6"],
-			placeChip: ["comfortable:gap-2"],
-		});
+		expect(
+			{
+				card: comfortable(COMPOSER_CARD_CLASS),
+				editorRow: comfortable(COMPOSER_EDITOR_ROW_CLASS),
+				add: comfortable(ADD_BUTTON_CLASS),
+				chinTrigger: comfortable(CHIN_TRIGGER_CLASS),
+				envRow: comfortable(ENVIRONMENT_BAR_ROW_CLASS),
+				placeChip: comfortable(PLACE_CHIP_CLASS),
+			},
+		).toStrictEqual(
+			{
+				card: ["comfortable:gap-y-2"],
+				editorRow: ["comfortable:pr-[32px]", "comfortable:pl-[32px]"],
+				add: ["comfortable:rounded-r6"],
+				chinTrigger: ["comfortable:rounded-r5"],
+				envRow: ["comfortable:[&_button]:rounded-r6"],
+				placeChip: ["comfortable:gap-2"],
+			},
+		);
 	});
 });

@@ -1,5 +1,6 @@
 import {useNavigate} from "@tanstack/react-router";
-import {
+import
+{
 	ArrowUp,
 	Check,
 	Copy,
@@ -15,7 +16,8 @@ import {type ReactNode, useEffect, useRef, useState} from "react";
 
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {writeClipboardText} from "../lib/clipboard";
-import {
+import
+{
 	askSideChat,
 	branchSideChatEntry,
 	clearSideChat,
@@ -61,7 +63,8 @@ export function SideChatPanel({
 	active: boolean;
 	canDock: boolean;
 	chrome?: PaneChrome;
-}) {
+})
+{
 	const {entries, excerpts} = useSideChat(sessionId);
 	const shortcut = useShortcutKeys("toggle_side_chat");
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -71,16 +74,19 @@ export function SideChatPanel({
 	const lastEntry = entries.at(-1);
 
 	// Opening, and each excerpt the transcript selection bar sends, lands focus in the input.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (active) inputRef.current?.focus();
 	}, [active, excerpts.length]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const list = listRef.current;
 		if (list !== null) list.scrollTop = list.scrollHeight;
 	}, [lastEntry?.answer, entries.length]);
 
-	function send() {
+	function send()
+	{
 		const question = draft.trim();
 		if (question === "" || pending) return;
 		setDraft("");
@@ -90,7 +96,8 @@ export function SideChatPanel({
 	return (
 		<div
 			className="flex min-h-0 flex-1 flex-col"
-			onKeyDownCapture={(event) => {
+			onKeyDownCapture={(event) =>
+			{
 				if (event.key !== "Escape") return;
 				event.preventDefault();
 				event.stopPropagation();
@@ -104,7 +111,8 @@ export function SideChatPanel({
 				{entries.length > 0 && (
 					<HeaderButton
 						label="Clear side chat"
-						onClick={() => {
+						onClick={() =>
+						{
 							clearSideChat(sessionId);
 						}}
 					>
@@ -114,7 +122,8 @@ export function SideChatPanel({
 				{variant === "floating" && canDock && (
 					<HeaderButton
 						label="Dock side chat"
-						onClick={() => {
+						onClick={() =>
+						{
 							setSideChatMode(sessionId, "docked");
 						}}
 					>
@@ -124,7 +133,8 @@ export function SideChatPanel({
 				{variant === "docked" && (
 					<HeaderButton
 						label="Undock side chat"
-						onClick={() => {
+						onClick={() =>
+						{
 							setSideChatMode(sessionId, "floating");
 						}}
 					>
@@ -134,7 +144,8 @@ export function SideChatPanel({
 				{variant !== "popout" && (
 					<HeaderButton
 						label="Open in new window"
-						onClick={() => {
+						onClick={() =>
+						{
 							setSideChatMode(sessionId, "popout");
 						}}
 					>
@@ -144,7 +155,8 @@ export function SideChatPanel({
 				<HeaderButton
 					label="Close side chat"
 					ariaKeyShortcuts={variant === "popout" ? undefined : shortcut.ariaKeyShortcuts}
-					onClick={() => {
+					onClick={() =>
+					{
 						closeSideChat(sessionId);
 					}}
 				>
@@ -178,11 +190,14 @@ export function SideChatPanel({
 						value={draft}
 						rows={1}
 						placeholder={entries.length > 0 ? "Follow up…" : "Ask a quick question…"}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							setDraft(event.target.value);
 						}}
-						onKeyDown={(event) => {
-							if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+						onKeyDown={(event) =>
+						{
+							if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing)
+							{
 								event.preventDefault();
 								send();
 							}
@@ -195,7 +210,8 @@ export function SideChatPanel({
 								type="button"
 								aria-label="Stop"
 								className={ICON_BUTTON_CLASS}
-								onClick={() => {
+								onClick={() =>
+								{
 									if (lastEntry !== undefined) void stopEntry(sessionId, lastEntry.id);
 								}}
 							>
@@ -222,7 +238,8 @@ export function SideChatPanel({
 }
 
 /** A pending excerpt as upstream's 120px Excerpt quote tile, with its hover remove button. */
-function ExcerptTile({sessionId, excerpt}: {sessionId: string; excerpt: SideChatExcerpt}) {
+function ExcerptTile({sessionId, excerpt}: {sessionId: string; excerpt: SideChatExcerpt})
+{
 	return (
 		<li data-cds="MessageAttachmentsQuote" data-cds-attachment="" className={TILE_CLASS}>
 			<div data-cds="Card" data-size="xs" className={CARD_CLASS}>
@@ -234,10 +251,12 @@ function ExcerptTile({sessionId, excerpt}: {sessionId: string; excerpt: SideChat
 			<button
 				type="button"
 				aria-label={`Remove ${excerpt.text}`}
-				onMouseDown={(event) => {
+				onMouseDown={(event) =>
+				{
 					event.preventDefault();
 				}}
-				onClick={() => {
+				onClick={() =>
+				{
 					removeSideChatExcerpt(sessionId, excerpt.id);
 				}}
 				className={TILE_REMOVE_CLASS}
@@ -258,7 +277,8 @@ function HeaderButton({
 	ariaKeyShortcuts?: string | undefined;
 	onClick: () => void;
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<Tooltip content={label} side="bottom">
 			<button
@@ -274,42 +294,71 @@ function HeaderButton({
 	);
 }
 
-function pendingLabel(entry: SideChatEntry): string {
+function pendingLabel(entry: SideChatEntry): string
+{
 	if (entry.stopping === true) return "Stopping…";
 	return entry.activity ?? "Thinking…";
 }
 
-function SideChatItem({sessionId, entry}: {sessionId: string; entry: SideChatEntry}) {
+function SideChatItem({sessionId, entry}: {sessionId: string; entry: SideChatEntry})
+{
 	const navigate = useNavigate();
 	const toast = useToast();
 	const [copied, showCopied] = useTimedFlag(1500);
 
-	async function copy() {
-		if (await writeClipboardText(entry.answer)) {
+	async function copy()
+	{
+		if (await writeClipboardText(entry.answer))
+		{
 			showCopied();
 		}
 	}
 
-	async function branch() {
-		try {
+	async function branch()
+	{
+		try
+		{
 			const forkedId = await branchSideChatEntry(sessionId, entry.id);
-			if (forkedId === null) {
-				toast({kind: "error", message: "Couldn’t branch to a new chat."});
+			if (forkedId === null)
+			{
+				toast(
+					{
+						kind: "error",
+						message: "Couldn’t branch to a new chat.",
+					},
+				);
 				return;
 			}
-			void navigate({to: "/session/$id", params: {id: forkedId}});
-		} catch (err) {
-			toast({
-				kind: "error",
-				message: "Couldn’t branch to a new chat.",
-				description: err instanceof Error ? err.message : String(err),
-			});
+			void navigate(
+				{
+					to: "/session/$id",
+					params:
+					{
+						id: forkedId,
+					},
+				},
+			);
+		}
+		catch (err)
+		{
+			toast(
+				{
+					kind: "error",
+					message: "Couldn’t branch to a new chat.",
+					description: err instanceof Error ? err.message : String(err),
+				},
+			);
 		}
 	}
 
 	return (
 		<li className="flex flex-col gap-1.5">
-			<MessageExcerptTiles snippets={(entry.excerpts ?? []).map((text) => ({text}))} />
+			<MessageExcerptTiles
+				snippets={(entry.excerpts ?? []).map((text) => (
+				{
+					text,
+				}))}
+			/>
 			<div className="self-end max-w-[85%] rounded-r7 bg-user-msg-bg px-3 py-1.5 text-body whitespace-pre-wrap break-words text-user-msg-text">
 				{entry.question}
 			</div>

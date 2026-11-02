@@ -9,30 +9,52 @@ const DASHES = "-".repeat(5);
 const KEY_KIND = ["RSA", "PRIVATE", "KEY"].join(" ");
 
 /** A host div holding `<svg>` built from `markup`, the way a diagram layer holds its drawing. */
-function layer(markup: string): HTMLElement {
+function layer(markup: string): HTMLElement
+{
 	const host = document.createElement("div");
 	host.innerHTML = `<svg xmlns="${SVG_NS}">${markup}</svg>`;
 	return host;
 }
 
-function tspans(count: number): string {
-	return `<text>${Array.from({length: count}, () => "<tspan>x</tspan>").join("")}</text>`;
+function tspans(count: number): string
+{
+	return `<text>${Array.from(
+		{
+			length: count,
+		},
+		() => "<tspan>x</tspan>",
+	).join("")}</text>`;
 }
 
-function shadowHost(markup: string): HTMLElement {
+function shadowHost(markup: string): HTMLElement
+{
 	const outer = document.createElement("div");
 	const host = document.createElement("div");
 	outer.append(host);
-	host.attachShadow({mode: "open"}).innerHTML = `<svg xmlns="${SVG_NS}">${markup}</svg>`;
+	host.attachShadow(
+		{
+			mode: "open",
+		},
+	).innerHTML = `<svg xmlns="${SVG_NS}">${markup}</svg>`;
 	return outer;
 }
 
-describe("svgWithheld (upstream c9e4d0c57 post-draw audit)", () => {
-	it("withholds drawings that are missing, hold a secret, or bend glyphs, and passes clean ones", () => {
+describe("svgWithheld (upstream c9e4d0c57 post-draw audit)", () =>
+{
+	it("withholds drawings that are missing, hold a secret, or bend glyphs, and passes clean ones", () =>
+	{
 		const fakeToken = `ghp_${"x".repeat(36)}`;
 		const cases: [string, HTMLElement | null][] = [
 			["null", null],
-			["no svg", Object.assign(document.createElement("div"), {innerHTML: "<p>Start</p>"})],
+			[
+				"no svg",
+				Object.assign(
+					document.createElement("div"),
+					{
+						innerHTML: "<p>Start</p>",
+					},
+				),
+			],
 			["clean", layer("<text>Start</text>")],
 			["token in one label", layer(`<text>${fakeToken}</text>`)],
 			[
@@ -84,7 +106,8 @@ describe("svgWithheld (upstream c9e4d0c57 post-draw audit)", () => {
 		]);
 	});
 
-	it("ignores script text and does not count labels nested inside another label twice", () => {
+	it("ignores script text and does not count labels nested inside another label twice", () =>
+	{
 		expect([
 			svgWithheld(layer(`<script>ghp_${"x".repeat(36)}</script><text>Start</text>`)),
 			svgWithheld(layer("<text>Start<title>End</title></text>")),

@@ -11,7 +11,8 @@ const ROW_WIDTHS = [
 ] as const;
 
 /** Upstream's list-rows skeleton: a section-heading bar over six comfortable-density rows (the Settings dialog is comfortable). */
-export function CustomizeListRowsSkeleton() {
+export function CustomizeListRowsSkeleton()
+{
 	return (
 		<div aria-hidden="true" className="flex flex-col">
 			<div aria-hidden="true" data-testid="list-rows-skeleton-heading" className="flex min-h-7 items-center">
@@ -49,7 +50,8 @@ export function CustomizeListRowsSkeleton() {
 }
 
 /** A Customize section body while its list query is pending. */
-export function CustomizeSectionSkeleton() {
+export function CustomizeSectionSkeleton()
+{
 	return (
 		<div aria-busy="true" data-testid="customize-section-skeleton">
 			<span role="status" className="sr-only">
@@ -64,7 +66,8 @@ export function CustomizeSectionSkeleton() {
  * Upstream's cold-load Customize panel: the section header, then the list-rows
  * skeleton, inside the busy wrapper the dialog shows while the panel's module loads.
  */
-export function CustomizePanelSkeleton({title}: {title: string}) {
+export function CustomizePanelSkeleton({title}: {title: string})
+{
 	return (
 		<div aria-busy="true" data-testid="settings-content-skeleton" className="relative flex min-h-0 flex-1 flex-col">
 			<div className="min-h-0 flex-1 overflow-hidden">

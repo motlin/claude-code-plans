@@ -1,4 +1,5 @@
-import {
+import
+{
 	type ClipboardEvent,
 	type KeyboardEvent,
 	useCallback,
@@ -20,16 +21,22 @@ const POPOVER_CLASS = `fixed left-0 top-0 isolate z-[90] w-[320px] break-words r
 
 const SELECTION_HIGHLIGHT = "plan-selection";
 
-function highlightRegistry(): HighlightRegistry | undefined {
+function highlightRegistry(): HighlightRegistry | undefined
+{
 	return typeof CSS !== "undefined" && "highlights" in CSS ? CSS.highlights : undefined;
 }
 
 /** Keeps the commented range painted after the window selection is cleared, as upstream's selection highlight does. */
-function paintSelection(range: Range): () => void {
+function paintSelection(range: Range): () => void
+{
 	const registry = highlightRegistry();
-	if (registry === undefined || typeof Highlight === "undefined") return () => {};
+	if (registry === undefined || typeof Highlight === "undefined")
+		return () =>
+		{
+		};
 	registry.set(SELECTION_HIGHLIGHT, new Highlight(range));
-	return () => {
+	return () =>
+	{
 		registry.delete(SELECTION_HIGHLIGHT);
 	};
 }
@@ -38,7 +45,16 @@ function paintSelection(range: Range): () => void {
  * Upstream's placement: centred 8px under the selection's last line, flipped above its first line
  * when there is no room below, clamped to the pane horizontally and to the viewport vertically.
  */
-function placement(range: Range, bounds: DOMRect, height: number): {x: number; y: number} | null {
+function placement(
+	range: Range,
+	bounds: DOMRect,
+	height: number,
+):
+{
+	x: number;
+	y: number;
+} | null
+{
 	if (typeof range.getClientRects !== "function") return null;
 	const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 || rect.height > 0);
 	const first = rects[0];
@@ -51,7 +67,10 @@ function placement(range: Range, bounds: DOMRect, height: number): {x: number; y
 	const x = minX > maxX ? (minX + maxX) / 2 : Math.min(Math.max(centre, minX), maxX);
 	const below = last.bottom + GAP;
 	const y = below + height + MARGIN <= window.innerHeight ? below : first.top - GAP - height;
-	return {x, y: Math.min(Math.max(y, MARGIN), window.innerHeight - height - MARGIN)};
+	return {
+		x,
+		y: Math.min(Math.max(y, MARGIN), window.innerHeight - height - MARGIN),
+	};
 }
 
 /**
@@ -86,26 +105,35 @@ export function PlanCommentPopover({
 	/** Editing an existing comment: shows Delete, and leaves the range unpainted as upstream does. */
 	onDelete?: (() => void) | undefined;
 	onClose: () => void;
-}) {
+})
+{
 	const dialogRef = useRef<HTMLDivElement>(null);
 	// Unplaced, it stays focusable but invisible (not `visibility: hidden`, which would drop the autofocus).
-	const [position, setPosition] = useState<{x: number; y: number} | null>(null);
+	const [position, setPosition] = useState<
+	{
+		x: number;
+		y: number;
+	} | null>(null);
 
 	const editing = onDelete !== undefined;
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		document.getSelection()?.removeAllRanges();
 		return editing ? undefined : paintSelection(range);
 	}, [range, editing]);
 
-	const reposition = useCallback(() => {
+	const reposition = useCallback(() =>
+	{
 		const height = dialogRef.current?.offsetHeight ?? 0;
 		setPosition(placement(range, boundary.getBoundingClientRect(), height));
 	}, [range, boundary]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		reposition();
 		let frame = 0;
-		const schedule = () => {
+		const schedule = () =>
+		{
 			cancelAnimationFrame(frame);
 			frame = requestAnimationFrame(reposition);
 		};
@@ -114,7 +142,8 @@ export function PlanCommentPopover({
 		const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
 		observer?.observe(boundary);
 		if (dialogRef.current !== null) observer?.observe(dialogRef.current);
-		return () => {
+		return () =>
+		{
 			cancelAnimationFrame(frame);
 			window.removeEventListener("scroll", schedule, true);
 			window.removeEventListener("resize", schedule);
@@ -123,18 +152,22 @@ export function PlanCommentPopover({
 	}, [reposition, boundary]);
 
 	const unchanged = value.trim() === "" || value === initialValue;
-	useEffect(() => {
-		const onPointerDown = (event: PointerEvent) => {
+	useEffect(() =>
+	{
+		const onPointerDown = (event: PointerEvent) =>
+		{
 			if (event.target instanceof Node && dialogRef.current?.contains(event.target) === true) return;
 			if (unchanged) onClose();
 		};
 		document.addEventListener("pointerdown", onPointerDown, true);
-		return () => {
+		return () =>
+		{
 			document.removeEventListener("pointerdown", onPointerDown, true);
 		};
 	}, [unchanged, onClose]);
 
-	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) =>
+	{
 		if (event.key !== "Tab") return;
 		const focusable = Array.from(
 			event.currentTarget.querySelectorAll<HTMLElement>("textarea, button:not([disabled])"),
@@ -147,7 +180,8 @@ export function PlanCommentPopover({
 	};
 
 	/** Copy or cut with a bare caret in the draft copies the selected plan text, as upstream does. */
-	const onCopy = (event: ClipboardEvent<HTMLDivElement>) => {
+	const onCopy = (event: ClipboardEvent<HTMLDivElement>) =>
+	{
 		const target = event.target;
 		if (!(target instanceof HTMLTextAreaElement) || target.selectionStart !== target.selectionEnd) return;
 		event.preventDefault();
@@ -165,8 +199,15 @@ export function PlanCommentPopover({
 			className={POPOVER_CLASS}
 			style={
 				position === null
-					? {opacity: 0, pointerEvents: "none"}
-					: {transform: `translate(${position.x}px, ${position.y}px) translateX(-50%)`}
+					?
+						{
+							opacity: 0,
+							pointerEvents: "none",
+						}
+					:
+						{
+							transform: `translate(${position.x}px, ${position.y}px) translateX(-50%)`,
+						}
 			}
 			onKeyDown={onKeyDown}
 			onCopy={onCopy}
@@ -179,12 +220,18 @@ export function PlanCommentPopover({
 				autoFocus
 				value={value}
 				onChange={onChange}
-				onSave={(text) => {
+				onSave={(text) =>
+				{
 					onSave(text);
 				}}
 				onCancel={onClose}
 				onDelete={onDelete}
-				{...(value.trim() === "" ? {} : {saveShortcut: "enter"})}
+				{...(value.trim() === ""
+					? {}
+					:
+						{
+							saveShortcut: "enter",
+						})}
 			/>
 		</div>,
 		document.body,

@@ -25,16 +25,23 @@ function UsageBandShell({
 	detail: ReactNode;
 	danger?: boolean;
 	onDismiss?: () => void;
-}) {
+})
+{
 	// Inside the notice region the band is a cds Banner card (upstream `vr` → `tF` → `ah`): its
 	// list is the live region and its item reveals in, and the card inks nothing danger. Upstream `ir`
 	// test ids: the reached card, else the approaching one.
-	if (useInNoticeRegion()) {
+	if (useInNoticeRegion())
+	{
 		return (
 			<NoticeBanner
 				icon={<Gauge className="size-4" aria-hidden="true" data-testid="usage-limit-card-gauge" />}
 				data-testid={danger ? "usage-limit-reached-card" : "usage-limit-approaching-card"}
-				{...(onDismiss ? {onDismiss} : {})}
+				{...(onDismiss
+					?
+						{
+							onDismiss,
+						}
+					: {})}
 			>
 				<span aria-atomic="true" className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75">
 					<span className="min-w-0">{headline}</span>
@@ -91,7 +98,8 @@ export function UsagePaceBand({
 	usedPct?: number;
 	resetText: string;
 	onDismiss: () => void;
-}) {
+})
+{
 	return (
 		<UsageBandShell
 			headline={headline}
@@ -106,7 +114,8 @@ export function UsagePaceBand({
  * countdown. It cannot be dismissed. Upstream's "Get more usage to keep working" prefix is billing
  * copy (admins with extra usage off) and has no local meaning.
  */
-export function UsageLimitBand({headline, resetsAt}: {headline: string; resetsAt: number}) {
+export function UsageLimitBand({headline, resetsAt}: {headline: string; resetsAt: number})
+{
 	const inNoticeCard = useInNoticeRegion();
 	return (
 		<UsageBandShell
@@ -122,18 +131,30 @@ export function UsageLimitBand({headline, resetsAt}: {headline: string; resetsAt
  * else the approaching or on-pace band unless dismissed for its window's threshold and reset. Under
  * a composer notice region it registers as the `limit` slot instead of rendering inline.
  */
-export function UsagePaceBanner() {
+export function UsagePaceBanner()
+{
 	const band = useUsageBandElement();
-	const claimed = useComposerNotice("limit", band === null ? null : {id: "code_usage_limit", content: band});
+	const claimed = useComposerNotice(
+		"limit",
+		band === null
+			? null
+			:
+				{
+					id: "code_usage_limit",
+					content: band,
+				},
+	);
 	return claimed ? null : band;
 }
 
-function useUsageBandElement(): ReactElement | null {
+function useUsageBandElement(): ReactElement | null
+{
 	const {data: usage, dataUpdatedAt} = useQuery(usageQueryOptions);
 	const dismissals = useUsageBandDismissals();
 	if (usage === undefined) return null;
 	const reached = limitReached(usage, dataUpdatedAt);
-	if (reached !== null) {
+	if (reached !== null)
+	{
 		return <UsageLimitBand headline={reached.headline} resetsAt={reached.resetsAt} />;
 	}
 	const band = usageBand(usage, dataUpdatedAt, dismissals);
@@ -142,10 +163,22 @@ function useUsageBandElement(): ReactElement | null {
 	return (
 		<UsagePaceBand
 			headline={band.headline}
-			{...(band.kind === "pace" ? {usedPct: band.usedPct} : {})}
+			{...(band.kind === "pace"
+				?
+					{
+						usedPct: band.usedPct,
+					}
+				: {})}
 			resetText={formatPaceBannerReset(resetsAt, Date.now())}
-			onDismiss={() => {
-				writeUsageBandDismissal(window, {validUntil: resetsAt, threshold});
+			onDismiss={() =>
+			{
+				writeUsageBandDismissal(
+					window,
+					{
+						validUntil: resetsAt,
+						threshold,
+					},
+				);
 			}}
 		/>
 	);

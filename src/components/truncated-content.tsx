@@ -10,12 +10,14 @@ const TRUNCATE_THRESHOLD_PX = 256;
  * Upstream's UserMessage body: `div#id` (no class at rest, the clamp only while collapsed) >
  * `div.cds-user-message-body`, with the Show more button as the next sibling, a flex item of the bubble.
  */
-export function TruncatedContent({children}: {children: React.ReactNode}) {
+export function TruncatedContent({children}: {children: React.ReactNode})
+{
 	const id = useId();
 	const [isTruncated, setIsTruncated] = useState(false);
 	const [expanded, setExpanded] = useState(false);
 
-	const measureRef = useCallback((node: HTMLDivElement | null) => {
+	const measureRef = useCallback((node: HTMLDivElement | null) =>
+	{
 		if (node) setIsTruncated(node.scrollHeight > TRUNCATE_THRESHOLD_PX);
 	}, []);
 
@@ -28,7 +30,8 @@ export function TruncatedContent({children}: {children: React.ReactNode}) {
 				<button
 					type="button"
 					aria-expanded={expanded}
-					onClick={() => {
+					onClick={() =>
+					{
 						setExpanded((value) => !value);
 					}}
 					className="self-start h-5 cursor-pointer rounded-r4 px-1.5 text-caption font-normal text-primary transition-colors hover:bg-alpha-1"

@@ -4,20 +4,24 @@ import type {HighlighterCore} from "@shikijs/core";
 import {act, cleanup, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-const shikiMocks = vi.hoisted(() => {
-	const state: {
+const shikiMocks = vi.hoisted(() =>
+{
+	const state:
+	{
 		highlighter: HighlighterCore | null;
 		loadedLanguages: string[];
 		subscriber: (() => void) | null;
 		version: number;
-	} = {
+	} =
+	{
 		highlighter: null,
 		loadedLanguages: [],
 		subscriber: null,
 		version: 0,
 	};
 	const codeToHtml = vi.fn<() => string>(() => '<pre class="shiki"><code>highlighted</code></pre>');
-	const highlighter = {
+	const highlighter =
+	{
 		getLoadedLanguages: () => state.loadedLanguages,
 		codeToHtml,
 	} as unknown as HighlighterCore;
@@ -31,9 +35,11 @@ const shikiMocks = vi.hoisted(() => {
 		Promise.resolve(),
 	);
 	const subscribeHighlighter = vi.fn<typeof import("../src/hooks/use-shiki").subscribeHighlighter>(
-		(subscriber: () => void) => {
+		(subscriber: () => void) =>
+		{
 			state.subscriber = subscriber;
-			return () => {
+			return () =>
+			{
 				if (state.subscriber === subscriber) state.subscriber = null;
 			};
 		},
@@ -50,7 +56,8 @@ const shikiMocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock("../src/hooks/use-shiki", () => ({
+vi.mock("../src/hooks/use-shiki", () => (
+{
 	getHighlighterSync: shikiMocks.getHighlighterSync,
 	getHighlighterVersion: shikiMocks.getHighlighterVersion,
 	requestLanguage: shikiMocks.requestLanguage,
@@ -59,7 +66,8 @@ vi.mock("../src/hooks/use-shiki", () => ({
 
 import {MarkdownInline, MarkdownView} from "../src/components/markdown-view";
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	shikiMocks.state.highlighter = null;
 	shikiMocks.state.loadedLanguages.length = 0;
 	shikiMocks.state.subscriber = null;
@@ -73,31 +81,43 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe("MarkdownView", () => {
-	it("renders synchronously without a Suspense ancestor", () => {
+describe("MarkdownView", () =>
+{
+	it("renders synchronously without a Suspense ancestor", () =>
+	{
 		const {container} = render(<MarkdownView markdown="# Hi" />);
 
 		expect(container.querySelector("article")?.innerHTML).toBe("<h1>Hi</h1>\n");
 	});
 
 	// Upstream's markdown document view (`.epitaxy-document-prose`) keeps code at the default size.
-	it("marks only a document with upstream's epitaxy-document-prose code size exemption", () => {
+	it("marks only a document with upstream's epitaxy-document-prose code size exemption", () =>
+	{
 		const document = render(<MarkdownView markdown="# Hi" document />).container;
 		const chat = render(<MarkdownView markdown="# Hi" />).container;
 
-		expect({
-			document: document.querySelector("article")?.classList.contains("epitaxy-document-prose"),
-			chat: chat.querySelector("article")?.classList.contains("epitaxy-document-prose"),
-		}).toStrictEqual({document: true, chat: false});
+		expect(
+			{
+				document: document.querySelector("article")?.classList.contains("epitaxy-document-prose"),
+				chat: chat.querySelector("article")?.classList.contains("epitaxy-document-prose"),
+			},
+		).toStrictEqual(
+			{
+				document: true,
+				chat: false,
+			},
+		);
 	});
 
-	it("preserves typographer output", () => {
+	it("preserves typographer output", () =>
+	{
 		const {container} = render(<MarkdownView markdown={'He said "hi" -- ok'} />);
 
 		expect(container.querySelector("article")?.innerHTML).toBe("<p>He said “hi” – ok</p>\n");
 	});
 
-	it("rewrites relative .md links against the supplied base but leaves external ones", () => {
+	it("rewrites relative .md links against the supplied base but leaves external ones", () =>
+	{
 		const {container} = render(
 			<MarkdownView markdown="[a](notes.md) [b](https://example.com/notes.md)" mdLinkBase="/memory/proj" />,
 		);
@@ -108,7 +128,8 @@ describe("MarkdownView", () => {
 		]);
 	});
 
-	it("requests an unloaded fence language", () => {
+	it("requests an unloaded fence language", () =>
+	{
 		shikiMocks.state.highlighter = shikiMocks.highlighter;
 
 		render(<MarkdownView markdown={"```typescript\nconst alice = 100;\n```"} />);
@@ -116,7 +137,8 @@ describe("MarkdownView", () => {
 		expect(shikiMocks.requestLanguage.mock.calls).toStrictEqual([["typescript"]]);
 	});
 
-	it("upgrades a plain fence when its grammar arrives", () => {
+	it("upgrades a plain fence when its grammar arrives", () =>
+	{
 		const {container} = render(<MarkdownView markdown={"```typescript\nconst alice = 100;\n```"} />);
 
 		expect(container.querySelector("pre")?.outerHTML).toBe(
@@ -132,18 +154,24 @@ describe("MarkdownView", () => {
 	});
 });
 
-describe("MarkdownInline", () => {
-	it("renders synchronously without paragraph wrapping or a highlighter subscription", () => {
+describe("MarkdownInline", () =>
+{
+	it("renders synchronously without paragraph wrapping or a highlighter subscription", () =>
+	{
 		const {container} = render(<MarkdownInline markdown="**a** b" />);
 
-		expect({
-			html: container.firstElementChild?.innerHTML,
-			subscriptionCalls: shikiMocks.subscribeHighlighter.mock.calls,
-			tagName: container.firstElementChild?.tagName,
-		}).toStrictEqual({
-			html: "<strong>a</strong> b",
-			subscriptionCalls: [],
-			tagName: "SPAN",
-		});
+		expect(
+			{
+				html: container.firstElementChild?.innerHTML,
+				subscriptionCalls: shikiMocks.subscribeHighlighter.mock.calls,
+				tagName: container.firstElementChild?.tagName,
+			},
+		).toStrictEqual(
+			{
+				html: "<strong>a</strong> b",
+				subscriptionCalls: [],
+				tagName: "SPAN",
+			},
+		);
 	});
 });

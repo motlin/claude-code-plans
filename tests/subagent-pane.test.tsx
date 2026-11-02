@@ -8,7 +8,8 @@ import {useRegisterSubagentPane} from "../src/components/panes/subagent-pane-ent
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {sessionQueryKeys, type TranscriptData} from "../src/lib/api/sessions";
-import {
+import
+{
 	defaultPaneLayout,
 	loadSubagentPaneAgent,
 	openPane,
@@ -19,10 +20,13 @@ import {requestSubagentFocus} from "../src/lib/subagent-focus-requests";
 import {extractAgentPrompts, type Subagent} from "../src/lib/subagents";
 import {installLocalStorage} from "./fake-storage";
 
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 	hmrTake: () => undefined,
-	hmrDispose: () => {},
+	hmrDispose: () =>
+	{
+	},
 }));
 
 const SESSION_ID = "parent-session";
@@ -63,14 +67,20 @@ const PARENT_RECORDS = [
 		type: "assistant",
 		timestamp: "2026-09-30T10:00:00.000Z",
 		sessionId: SESSION_ID,
-		message: {
+		message:
+		{
 			role: "assistant",
 			content: [
 				{
 					type: "tool_use",
 					id: "toolu_1",
 					name: "Agent",
-					input: {description: "Audit pane registrations", prompt: PROMPT, subagent_type: "Explore"},
+					input:
+					{
+						description: "Audit pane registrations",
+						prompt: PROMPT,
+						subagent_type: "Explore",
+					},
 				},
 			],
 		},
@@ -79,14 +89,22 @@ const PARENT_RECORDS = [
 		type: "user",
 		timestamp: "2026-09-30T10:00:30.000Z",
 		sessionId: SESSION_ID,
-		message: {
+		message:
+		{
 			role: "user",
-			content: [{type: "tool_result", tool_use_id: "toolu_1", content: "Done.\nagentId: a1 (use SendMessage)"}],
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: "toolu_1",
+					content: "Done.\nagentId: a1 (use SendMessage)",
+				},
+			],
 		},
 	},
 ];
 
-const EMPTY_TRANSCRIPT: TranscriptData = {
+const EMPTY_TRANSCRIPT: TranscriptData =
+{
 	records: [],
 	byteOffset: 0,
 	startIndex: 0,
@@ -97,27 +115,58 @@ const EMPTY_TRANSCRIPT: TranscriptData = {
 	chapters: [],
 };
 
-class FakeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-function Harness() {
-	useRegisterSubagentPane({sessionId: SESSION_ID, subagents: SUBAGENTS, records: PARENT_RECORDS});
+function Harness()
+{
+	useRegisterSubagentPane(
+		{
+			sessionId: SESSION_ID,
+			subagents: SUBAGENTS,
+			records: PARENT_RECORDS,
+		},
+	);
 	return null;
 }
 
-function renderPane(): void {
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+function renderPane(): void
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	for (const agent of SUBAGENTS) queryClient.setQueryData(sessionQueryKeys.transcript(agent.id), EMPTY_TRANSCRIPT);
 	render(
 		<QueryClientProvider client={queryClient}>
 			<SettingsProvider>
-				<TileHost sessionId={SESSION_ID} onExpandWithoutPane={() => {}}>
+				<TileHost
+					sessionId={SESSION_ID}
+					onExpandWithoutPane={() =>
+					{
+					}}
+				>
 					<Harness />
 				</TileHost>
 			</SettingsProvider>
@@ -125,22 +174,37 @@ function renderPane(): void {
 	);
 }
 
-function pane(): HTMLElement {
-	return screen.getByRole("region", {name: "Subagents"});
+function pane(): HTMLElement
+{
+	return screen.getByRole(
+		"region",
+		{
+			name: "Subagents",
+		},
+	);
 }
 
-function header(): HTMLElement {
+function header(): HTMLElement
+{
 	const element = pane().querySelector<HTMLElement>("[data-subagent-header]");
 	if (element === null) throw new Error("missing Subagent pane header");
 	return element;
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	vi.stubGlobal("ResizeObserver", FakeObserver);
 	vi.stubGlobal("IntersectionObserver", FakeObserver);
 	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-		DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+		DOMRect.fromRect(
+			{
+				x: 0,
+				y: 0,
+				width: 1200,
+				height: 800,
+			},
+		),
 	);
 	// jsdom lays nothing out; report a prompt taller than its 16rem clamp.
 	vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(600);
@@ -148,92 +212,166 @@ beforeEach(() => {
 	savePaneLayout(SESSION_ID, openPane(defaultPaneLayout(), "subagents"));
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
 
-describe("extractAgentPrompts", () => {
-	it("maps each finished Agent call's agent id to the prompt it was given", () => {
+describe("extractAgentPrompts", () =>
+{
+	it("maps each finished Agent call's agent id to the prompt it was given", () =>
+	{
 		expect([...extractAgentPrompts(PARENT_RECORDS)]).toEqual([["agent-a1", PROMPT]]);
 	});
 });
 
-describe("Subagent pane", () => {
-	it("shows the focused agent with upstream's header, model footnote, clamped prompt and empty activity", () => {
+describe("Subagent pane", () =>
+{
+	it("shows the focused agent with upstream's header, model footnote, clamped prompt and empty activity", () =>
+	{
 		saveSubagentPaneAgent(SESSION_ID, "agent-a1");
 		renderPane();
 		const region = within(pane());
 		const headerRow = within(header());
 
-		expect({
-			controls: headerRow.getAllByRole("button").map((button) => button.getAttribute("aria-label")),
-			title: headerRow.getByRole("heading").textContent,
-			footnote: region.getByText(/^Model /).textContent,
-			prompt: region.getByText(PROMPT).closest("[data-subagent-prompt]")?.getAttribute("data-clamped"),
-			showMore: region.getByRole("button", {name: "Show more"}).getAttribute("aria-expanded"),
-			activity: region.getByText("No activity yet").tagName,
-		}).toEqual({
-			controls: ["Back", "Expand", "Close", "Move"],
-			title: "Audit pane registrations",
-			footnote: "Model Fable 5.1",
-			prompt: "true",
-			showMore: "false",
-			activity: "P",
-		});
+		expect(
+			{
+				controls: headerRow.getAllByRole("button").map((button) => button.getAttribute("aria-label")),
+				title: headerRow.getByRole("heading").textContent,
+				footnote: region.getByText(/^Model /).textContent,
+				prompt: region.getByText(PROMPT).closest("[data-subagent-prompt]")?.getAttribute("data-clamped"),
+				showMore: region
+					.getByRole(
+						"button",
+						{
+							name: "Show more",
+						},
+					)
+					.getAttribute("aria-expanded"),
+				activity: region.getByText("No activity yet").tagName,
+			},
+		).toEqual(
+			{
+				controls: ["Back", "Expand", "Close", "Move"],
+				title: "Audit pane registrations",
+				footnote: "Model Fable 5.1",
+				prompt: "true",
+				showMore: "false",
+				activity: "P",
+			},
+		);
 	});
 
-	it("expands the prompt with Show more", () => {
+	it("expands the prompt with Show more", () =>
+	{
 		saveSubagentPaneAgent(SESSION_ID, "agent-a1");
 		renderPane();
-		fireEvent.click(within(pane()).getByRole("button", {name: "Show more"}));
+		fireEvent.click(
+			within(pane()).getByRole(
+				"button",
+				{
+					name: "Show more",
+				},
+			),
+		);
 
-		expect({
-			clamped: within(pane()).getByText(PROMPT).closest("[data-subagent-prompt]")?.getAttribute("data-clamped"),
-			showMore: within(pane()).queryByRole("button", {name: "Show more"}),
-		}).toEqual({clamped: "false", showMore: null});
+		expect(
+			{
+				clamped: within(pane())
+					.getByText(PROMPT)
+					.closest("[data-subagent-prompt]")
+					?.getAttribute("data-clamped"),
+				showMore: within(pane()).queryByRole(
+					"button",
+					{
+						name: "Show more",
+					},
+				),
+			},
+		).toEqual(
+			{
+				clamped: "false",
+				showMore: null,
+			},
+		);
 	});
 
-	it("Back returns to the subagents list, and picking a row focuses that agent", () => {
+	it("Back returns to the subagents list, and picking a row focuses that agent", () =>
+	{
 		saveSubagentPaneAgent(SESSION_ID, "agent-a1");
 		renderPane();
-		fireEvent.click(within(pane()).getByRole("button", {name: "Back"}));
+		fireEvent.click(
+			within(pane()).getByRole(
+				"button",
+				{
+					name: "Back",
+				},
+			),
+		);
 		const list = within(pane())
-			.getAllByRole("button", {name: /^Open subagent /})
+			.getAllByRole(
+				"button",
+				{
+					name: /^Open subagent /,
+				},
+			)
 			.map((row) => row.textContent);
 		const afterBack = loadSubagentPaneAgent(SESSION_ID);
-		fireEvent.click(within(pane()).getByRole("button", {name: "Open subagent Plan the follow-up"}));
+		fireEvent.click(
+			within(pane()).getByRole(
+				"button",
+				{
+					name: "Open subagent Plan the follow-up",
+				},
+			),
+		);
 
-		expect({
-			list,
-			afterBack,
-			afterPick: loadSubagentPaneAgent(SESSION_ID),
-			title: within(header()).getByRole("heading").textContent,
-			footnote: within(pane()).queryByText(/^Model /),
-		}).toEqual({
-			list: ["Audit pane registrations", "Plan the follow-up"],
-			afterBack: null,
-			afterPick: "agent-b2",
-			title: "Plan the follow-up",
-			footnote: null,
-		});
+		expect(
+			{
+				list,
+				afterBack,
+				afterPick: loadSubagentPaneAgent(SESSION_ID),
+				title: within(header()).getByRole("heading").textContent,
+				footnote: within(pane()).queryByText(/^Model /),
+			},
+		).toEqual(
+			{
+				list: ["Audit pane registrations", "Plan the follow-up"],
+				afterBack: null,
+				afterPick: "agent-b2",
+				title: "Plan the follow-up",
+				footnote: null,
+			},
+		);
 	});
-	it("focuses the agent an Agent row requests while the pane is already open", () => {
+	it("focuses the agent an Agent row requests while the pane is already open", () =>
+	{
 		renderPane();
 		const before = within(header()).getByRole("heading").textContent;
-		act(() => {
+		act(() =>
+		{
 			requestSubagentFocus(SESSION_ID, "agent-b2");
 		});
 
-		expect({
-			before,
-			after: within(header()).getByRole("heading").textContent,
-			saved: loadSubagentPaneAgent(SESSION_ID),
-		}).toEqual({before: "Subagents", after: "Plan the follow-up", saved: "agent-b2"});
+		expect(
+			{
+				before,
+				after: within(header()).getByRole("heading").textContent,
+				saved: loadSubagentPaneAgent(SESSION_ID),
+			},
+		).toEqual(
+			{
+				before: "Subagents",
+				after: "Plan the follow-up",
+				saved: "agent-b2",
+			},
+		);
 	});
 
-	it("opens on the requested agent when the request arrives before the pane mounts", () => {
+	it("opens on the requested agent when the request arrives before the pane mounts", () =>
+	{
 		requestSubagentFocus(SESSION_ID, "agent-a1");
 		renderPane();
 

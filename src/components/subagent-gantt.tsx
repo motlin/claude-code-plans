@@ -6,7 +6,8 @@ import {formatDuration} from "../lib/format-duration";
 import {formatModelName} from "../lib/model-name";
 import {layoutSwimlanes, type SwimlaneLayout} from "./subagent-gantt-layout";
 
-const AGENT_BAR_COLORS: Record<string, string> = {
+const AGENT_BAR_COLORS: Record<string, string> =
+{
 	Explore: "#3b82f6",
 	Plan: "#a855f7",
 	"build:precommit-runner": "#eab308",
@@ -16,12 +17,14 @@ const AGENT_BAR_COLORS: Record<string, string> = {
 	"general-purpose": "#6b7280",
 };
 
-function getBarColor(agentType: string | null): string {
+function getBarColor(agentType: string | null): string
+{
 	if (!agentType) return "#6b7280";
 	return AGENT_BAR_COLORS[agentType] ?? "#6b7280";
 }
 
-function getShortType(agentType: string | null): string {
+function getShortType(agentType: string | null): string
+{
 	if (!agentType) return "agent";
 	return agentType.split(":").at(-1) ?? agentType;
 }
@@ -39,12 +42,14 @@ const MIN_BAR_WIDTH = 2;
 const ZOOM_LEVELS = [1, 2, 4, 8, 16] as const;
 type ZoomLevel = (typeof ZOOM_LEVELS)[number];
 
-function timeAt(offsetMs: number, totalMs: number, plotWidth: number): number {
+function timeAt(offsetMs: number, totalMs: number, plotWidth: number): number
+{
 	if (totalMs === 0) return 0;
 	return (offsetMs / totalMs) * plotWidth;
 }
 
-interface GanttHeaderRow {
+interface GanttHeaderRow
+{
 	key: string;
 	row: number;
 	label: string;
@@ -52,12 +57,14 @@ interface GanttHeaderRow {
 }
 
 /** Places each lane on a row, inserting a run header row and a phase sub-header row before each workflow group. */
-function layoutRows(layout: SwimlaneLayout): {
+function layoutRows(layout: SwimlaneLayout):
+{
 	laneRows: number[];
 	laneIndents: number[];
 	headers: GanttHeaderRow[];
 	rowCount: number;
-} {
+}
+{
 	const groupAt = new Map(layout.groups.map((group) => [group.firstLane, group]));
 	const laneRows: number[] = [];
 	const laneIndents: number[] = [];
@@ -65,20 +72,42 @@ function layoutRows(layout: SwimlaneLayout): {
 	let row = 0;
 	let previousRunId: string | null = null;
 	let groupEnd = 0;
-	for (let lane = 0; lane < layout.lanes.length; lane++) {
+	for (let lane = 0; lane < layout.lanes.length; lane++)
+	{
 		const group = groupAt.get(lane);
-		if (group !== undefined) {
-			if (group.runId !== previousRunId) {
-				headers.push({key: `run-${group.runId}`, row: row++, label: group.name, kind: "run"});
+		if (group !== undefined)
+		{
+			if (group.runId !== previousRunId)
+			{
+				headers.push(
+					{
+						key: `run-${group.runId}`,
+						row: row++,
+						label: group.name,
+						kind: "run",
+					},
+				);
 				previousRunId = group.runId;
 			}
-			headers.push({key: `phase-${group.runId}-${lane}`, row: row++, label: group.phaseTitle, kind: "phase"});
+			headers.push(
+				{
+					key: `phase-${group.runId}-${lane}`,
+					row: row++,
+					label: group.phaseTitle,
+					kind: "phase",
+				},
+			);
 			groupEnd = lane + group.laneCount;
 		}
 		laneIndents.push(lane < groupEnd ? 2 : 0);
 		laneRows.push(row++);
 	}
-	return {laneRows, laneIndents, headers, rowCount: row};
+	return {
+		laneRows,
+		laneIndents,
+		headers,
+		rowCount: row,
+	};
 }
 
 export function SubagentGantt({
@@ -87,13 +116,24 @@ export function SubagentGantt({
 }: {
 	agents: Subagent[];
 	workflowRuns?: readonly WorkflowRunInfo[] | undefined;
-}) {
-	const layout = useMemo(() => layoutSwimlanes(agents, {workflowRuns}), [agents, workflowRuns]);
+})
+{
+	const layout = useMemo(
+		() =>
+			layoutSwimlanes(
+				agents,
+				{
+					workflowRuns,
+				},
+			),
+		[agents, workflowRuns],
+	);
 	const rows = useMemo(() => layoutRows(layout), [layout]);
 	const [zoom, setZoom] = useState<ZoomLevel>(1);
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-	if (layout.lanes.length === 0) {
+	if (layout.lanes.length === 0)
+	{
 		return null;
 	}
 
@@ -115,7 +155,8 @@ export function SubagentGantt({
 						<button
 							key={z}
 							type="button"
-							onClick={() => {
+							onClick={() =>
+							{
 								setZoom(z);
 							}}
 							aria-pressed={zoom === z}
@@ -157,7 +198,8 @@ export function SubagentGantt({
 					</defs>
 
 					<g transform={`translate(${LABEL_COL_W + PADDING_X}, ${PADDING_Y})`} className="text-t6">
-						{layout.ticks.map((tick, i) => {
+						{layout.ticks.map((tick, i) =>
+						{
 							const x = timeAt(tick.offsetMs, layout.totalMs, plotWidth);
 							return (
 								<g key={i}>
@@ -200,7 +242,8 @@ export function SubagentGantt({
 								{header.label}
 							</text>
 						))}
-						{layout.lanes.map((lane, i) => {
+						{layout.lanes.map((lane, i) =>
+						{
 							const y = (rows.laneRows[i] ?? i) * (LANE_HEIGHT + LANE_GAP);
 							const indent = lane.depth + (rows.laneIndents[i] ?? 0);
 							const xStart = timeAt(lane.startMs - layout.startMs, layout.totalMs, plotWidth);
@@ -212,13 +255,16 @@ export function SubagentGantt({
 							return (
 								<g
 									key={lane.agent.id}
-									onMouseEnter={() => {
+									onMouseEnter={() =>
+									{
 										setHoveredId(lane.agent.id);
 									}}
-									onMouseLeave={() => {
+									onMouseLeave={() =>
+									{
 										setHoveredId(null);
 									}}
-									style={{
+									style={
+									{
 										opacity: dimmed ? 0.35 : 1,
 										transition: "opacity 0.15s",
 									}}
@@ -278,7 +324,8 @@ export function SubagentGantt({
 												{`${getShortType(lane.agent.agentType)} · ${formatDuration(lane.endMs - lane.startMs)}`}
 											</title>
 										</rect>
-										{lane.waiting.map((range, j) => {
+										{lane.waiting.map((range, j) =>
+										{
 											const wxStart = timeAt(
 												range.startMs - layout.startMs,
 												layout.totalMs,
@@ -313,13 +360,21 @@ export function SubagentGantt({
 			</div>
 			<div className="mt-2 flex items-center gap-3 text-[10px] text-t6">
 				<span className="flex items-center gap-1">
-					<span className="inline-block w-3 h-3 rounded-sm" style={{background: "#6b7280", opacity: 0.85}} />
+					<span
+						className="inline-block w-3 h-3 rounded-sm"
+						style={
+						{
+							background: "#6b7280",
+							opacity: 0.85,
+						}}
+					/>
 					active
 				</span>
 				<span className="flex items-center gap-1">
 					<span
 						className="inline-block w-3 h-3 rounded-sm border border-t6/30"
-						style={{
+						style={
+						{
 							backgroundImage:
 								"repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 4px)",
 							color: "rgb(107 114 128 / 0.6)",
@@ -332,7 +387,8 @@ export function SubagentGantt({
 	);
 }
 
-function truncate(text: string, max: number): string {
+function truncate(text: string, max: number): string
+{
 	if (text.length <= max) return text;
 	return text.slice(0, max - 1) + "\u2026";
 }

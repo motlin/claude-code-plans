@@ -25,12 +25,14 @@ const ROW_BUTTON_CLASS =
 const ROW_DASH_CLASS = "block h-[2px] rounded-full shrink-0 transition-[background-color] duration-150";
 
 /** Whether a row's title is clipped, the only case its full-title tooltip opens (upstream's OverflowTooltip). */
-function titleOverflows(anchor: HTMLElement): boolean {
+function titleOverflows(anchor: HTMLElement): boolean
+{
 	const title = anchor.querySelector("[data-chapter-title]");
 	return title !== null && title.scrollWidth > title.clientWidth;
 }
 
-interface SessionChaptersTocProps {
+interface SessionChaptersTocProps
+{
 	sessionId: string;
 	/** The outline's rows (`buildSessionChapters`); memoized by the caller, since the scroll tracker re-reads on a new list. */
 	chapters: readonly SessionChapter[];
@@ -51,32 +53,44 @@ export const SessionChaptersToc = memo(function SessionChaptersToc({
 	scrollRef,
 	scrollKey,
 	onJump,
-}: SessionChaptersTocProps) {
+}: SessionChaptersTocProps)
+{
 	const [expanded, setExpanded] = useState(false);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const editingRef = useRef(false);
 	const menuOpenRef = useRef(false);
 	const navRef = useRef<HTMLElement>(null);
-	const active = useActiveChapter({chapters, scrollRef, scrollKey});
+	const active = useActiveChapter(
+		{
+			chapters,
+			scrollRef,
+			scrollKey,
+		},
+	);
 
-	const startRename = useCallback((id: string | null) => {
+	const startRename = useCallback((id: string | null) =>
+	{
 		editingRef.current = id !== null;
 		setEditingId(id);
 	}, []);
-	const expand = useCallback(() => {
+	const expand = useCallback(() =>
+	{
 		setExpanded(true);
 	}, []);
 	// An open row menu or a rename in progress holds the list open.
-	const collapse = useCallback(() => {
+	const collapse = useCallback(() =>
+	{
 		if (menuOpenRef.current || editingRef.current) return;
 		setExpanded(false);
 		startRename(null);
 	}, [startRename]);
 	const onContextMenuOpenChange = useCallback(
-		(open: boolean) => {
+		(open: boolean) =>
+		{
 			menuOpenRef.current = open;
 			if (open) return;
-			requestAnimationFrame(() => {
+			requestAnimationFrame(() =>
+			{
 				if (navRef.current !== null && !navRef.current.matches(":hover")) collapse();
 			});
 		},
@@ -95,7 +109,8 @@ export const SessionChaptersToc = memo(function SessionChaptersToc({
 				tabIndex={0}
 				onMouseLeave={collapse}
 				onFocus={expand}
-				onBlur={(event) => {
+				onBlur={(event) =>
+				{
 					if (!event.currentTarget.contains(event.relatedTarget)) collapse();
 				}}
 				className={NAV_CLASS}
@@ -141,7 +156,8 @@ export const SessionChaptersToc = memo(function SessionChaptersToc({
 	);
 });
 
-interface ChapterRowProps {
+interface ChapterRowProps
+{
 	chapter: SessionChapter;
 	sessionId: string;
 	isActive: boolean;
@@ -161,18 +177,21 @@ const ChapterRow = memo(function ChapterRow({
 	onJump,
 	onStartRename,
 	onContextMenuOpenChange,
-}: ChapterRowProps) {
+}: ChapterRowProps)
+{
 	const summaryId = useId();
 	// Rename mounts the input while the menu is still closing, so the menu must not hand focus back to its row.
 	const renamePicked = useRef(false);
 
-	if (isEditing) {
+	if (isEditing)
+	{
 		return (
 			<li className="flex items-center gap-sm px-1.25 h-list-row rounded-r4">
 				<span aria-hidden className="block h-[2px] w-[10px] rounded-full bg-alpha-8 shrink-0" />
 				<ChapterRowInput
 					title={chapter.title}
-					onDone={(next) => {
+					onDone={(next) =>
+					{
 						if (next !== undefined) renameChapter(sessionId, chapter.id, next);
 						onStartRename(null);
 					}}
@@ -185,13 +204,15 @@ const ChapterRow = memo(function ChapterRow({
 	const button = (
 		<button
 			type="button"
-			onClick={() => {
+			onClick={() =>
+			{
 				onJump(chapter);
 			}}
 			onDoubleClick={
 				isSessionStart
 					? undefined
-					: () => {
+					: () =>
+						{
 							onStartRename(chapter.id);
 						}
 			}
@@ -216,7 +237,12 @@ const ChapterRow = memo(function ChapterRow({
 	);
 	const describedBy = chapter.summary === undefined ? undefined : summaryId;
 	/** Upstream's summary tooltip: the summary as the tip's detail, under the title while the list is open. */
-	const withSummary = (row: React.ReactElement<{"aria-describedby"?: string}>) =>
+	const withSummary = (
+		row: React.ReactElement<
+		{
+			"aria-describedby"?: string;
+		}>,
+	) =>
 		chapter.summary === undefined ? (
 			row
 		) : (
@@ -236,7 +262,8 @@ const ChapterRow = memo(function ChapterRow({
 	return (
 		<li className="hit-row">
 			<ContextMenu
-				onOpenChange={(open) => {
+				onOpenChange={(open) =>
+				{
 					if (open) renamePicked.current = false;
 					onContextMenuOpenChange(open);
 				}}
@@ -244,7 +271,8 @@ const ChapterRow = memo(function ChapterRow({
 				{withSummary(<ContextMenuTrigger render={button} aria-describedby={describedBy} />)}
 				<MenuContent finalFocus={() => !renamePicked.current}>
 					<MenuItem
-						onSelect={() => {
+						onSelect={() =>
+						{
 							renamePicked.current = true;
 							onStartRename(chapter.id);
 						}}
@@ -254,7 +282,8 @@ const ChapterRow = memo(function ChapterRow({
 					<MenuSeparator />
 					<MenuItem
 						variant="danger"
-						onSelect={() => {
+						onSelect={() =>
+						{
 							if (chapter.source === "user") removeUserChapter(sessionId, chapter.id);
 							else setChapterHidden(sessionId, chapter.id, true);
 						}}
@@ -268,16 +297,19 @@ const ChapterRow = memo(function ChapterRow({
 });
 
 /** The row's rename input: Enter or blur commits a trimmed, non-empty, changed title; Escape cancels. */
-function ChapterRowInput({title, onDone}: {title: string; onDone: (next: string | undefined) => void}) {
+function ChapterRowInput({title, onDone}: {title: string; onDone: (next: string | undefined) => void})
+{
 	const inputRef = useRef<HTMLInputElement>(null);
 	const doneRef = useRef(false);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		inputRef.current?.focus();
 		inputRef.current?.select();
 	}, []);
 
-	const finish = (commit: boolean) => {
+	const finish = (commit: boolean) =>
+	{
 		if (doneRef.current) return;
 		doneRef.current = true;
 		const next = inputRef.current?.value.trim() ?? "";
@@ -291,14 +323,19 @@ function ChapterRowInput({title, onDone}: {title: string; onDone: (next: string 
 			size={Math.max(title.length, 1)}
 			aria-label="Chapter title"
 			className="flex-1 min-w-0 [field-sizing:content] bg-transparent text-body text-primary focus-visible:outline-hidden focus-visible:shadow-focus"
-			onBlur={() => {
+			onBlur={() =>
+			{
 				finish(true);
 			}}
-			onKeyDown={(event) => {
-				if (event.key === "Enter") {
+			onKeyDown={(event) =>
+			{
+				if (event.key === "Enter")
+				{
 					event.preventDefault();
 					finish(true);
-				} else if (event.key === "Escape") {
+				}
+				else if (event.key === "Escape")
+				{
 					event.preventDefault();
 					// The session page binds Escape to stopping the response; a rename's Escape must not reach it.
 					event.stopPropagation();

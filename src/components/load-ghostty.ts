@@ -4,10 +4,12 @@ import {getGhosttyAppearance, type GhosttyAppearance} from "../lib/server-fns";
  * Ghostty parses VT sequences in WebAssembly, so the module has to finish
  * instantiating before a terminal can be constructed.
  */
-export async function loadGhostty(): Promise<{
+export async function loadGhostty(): Promise<
+{
 	ghostty: typeof import("ghostty-web");
 	appearance: GhosttyAppearance;
-}> {
+}>
+{
 	const [ghostty, appearance] = await Promise.all([import("ghostty-web"), getGhosttyAppearance()]);
 	await ghostty.init();
 	/**
@@ -21,5 +23,8 @@ export async function loadGhostty(): Promise<{
 		document.fonts.load(`${appearance.fontSize}px ${appearance.fontFamily}`).catch(() => []),
 		document.fonts.ready,
 	]);
-	return {ghostty, appearance};
+	return {
+		ghostty,
+		appearance,
+	};
 }

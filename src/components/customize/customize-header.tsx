@@ -1,7 +1,8 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ArrowDownUp, Search, SlidersHorizontal} from "lucide-react";
-import {
+import
+{
 	type KeyboardEvent as ReactKeyboardEvent,
 	type ReactNode,
 	type RefObject,
@@ -22,7 +23,8 @@ import {Tooltip} from "../ui/tooltip";
 import {CustomizeAddMenu} from "./customize-add-menu";
 import {DISCOVER_SORT_OPTIONS, discoverCategoryOptions, discoverForSection} from "./discover-view";
 import {useSectionSort, writeStoredSort} from "./persisted-sort";
-import {
+import
+{
 	CUSTOMIZE_SECTIONS,
 	type CustomizeSearch,
 	type CustomizeSectionConfig,
@@ -34,11 +36,18 @@ const ICON_BUTTON_CLASS =
 	"inline-flex size-8 shrink-0 items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:text-primary disabled:pointer-events-none disabled:opacity-50";
 
 const VIEW_OPTIONS = [
-	{value: "yours", label: "Yours"},
-	{value: "discover", label: "Discover"},
+	{
+		value: "yours",
+		label: "Yours",
+	},
+	{
+		value: "discover",
+		label: "Discover",
+	},
 ] as const;
 
-interface CustomizeHeaderProps {
+interface CustomizeHeaderProps
+{
 	section: CustomizeSectionConfig;
 	search: CustomizeSearch;
 	/** Applies a change to the search state; an `undefined` value clears that key. */
@@ -50,7 +59,12 @@ interface CustomizeHeaderProps {
 }
 
 /** The dialog's Customize row members, in upstream's member order (Connectors, Skills, Plugins). */
-const DIALOG_TAB_SECTIONS = navRowFor({kind: "customize", section: "connectors"}).members.flatMap((member) =>
+const DIALOG_TAB_SECTIONS = navRowFor(
+	{
+		kind: "customize",
+		section: "connectors",
+	},
+).members.flatMap((member) =>
 	member.kind === "customize" ? CUSTOMIZE_SECTIONS.filter((config) => config.id === member.section) : [],
 );
 
@@ -64,9 +78,11 @@ function DialogSectionTabs({
 }: {
 	current: CustomizeSectionConfig["id"];
 	onSelect: ((section: CustomizeSectionConfig["id"]) => void) | undefined;
-}) {
+})
+{
 	const listRef = useRef<HTMLDivElement>(null);
-	const moveFocus = (event: ReactKeyboardEvent<HTMLButtonElement>, index: number) => {
+	const moveFocus = (event: ReactKeyboardEvent<HTMLButtonElement>, index: number) =>
+	{
 		const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
 		if (step === 0) return;
 		event.preventDefault();
@@ -78,7 +94,8 @@ function DialogSectionTabs({
 			<div className="contents">
 				<div data-cds-part="scroll-pager-scroller" className="contents">
 					<div ref={listRef} role="tablist" aria-label="Customize" className={`${CDS_TAB_LIST_CLASS} -ms-3`}>
-						{DIALOG_TAB_SECTIONS.map((tab, index) => {
+						{DIALOG_TAB_SECTIONS.map((tab, index) =>
+						{
 							const active = tab.id === current;
 							return (
 								<button
@@ -88,10 +105,12 @@ function DialogSectionTabs({
 									aria-selected={active}
 									data-active={active ? "" : undefined}
 									tabIndex={active ? 0 : -1}
-									onClick={() => {
+									onClick={() =>
+									{
 										if (!active) onSelect?.(tab.id);
 									}}
-									onKeyDown={(event) => {
+									onKeyDown={(event) =>
+									{
 										moveFocus(event, index);
 									}}
 									className={CDS_TAB_CLASS}
@@ -117,12 +136,18 @@ export function CustomizeHeader({
 	onSearchChange: updateSearch,
 	embedded = false,
 	onSectionSelect,
-}: CustomizeHeaderProps) {
+}: CustomizeHeaderProps)
+{
 	// Upstream's dialog keeps Filter and Sort live over its unified results; the page still disables them.
 	const menusLocked = !embedded && (search.q ?? "") !== "";
 	// Discover swaps the Yours Filter and Sort for category and catalog-order menus.
 	const discover = section.hasDiscover && search.view === "discover";
-	const {data: catalog} = useQuery({...customizeDiscoverQueryOptions, enabled: discover});
+	const {data: catalog} = useQuery(
+		{
+			...customizeDiscoverQueryOptions,
+			enabled: discover,
+		},
+	);
 	const sortOptions = section.sort;
 	const sort = useSectionSort(section.sortStorageKey, search.sort);
 	// Upstream's width gate: at ≥768px the dialog keeps its nav and shows the always-visible field.
@@ -160,7 +185,10 @@ export function CustomizeHeader({
 												to={tab.to}
 												search={
 													tab.hasDiscover && search.view !== undefined
-														? {view: search.view}
+														?
+															{
+																view: search.view,
+															}
 														: {}
 												}
 												id={`customize-tab-${tab.id}`}
@@ -193,8 +221,13 @@ export function CustomizeHeader({
 						<SegmentedControl<"yours" | "discover">
 							aria-label={section.label}
 							value={search.view ?? "yours"}
-							onValueChange={(view) => {
-								updateSearch({view: view === "yours" ? undefined : view});
+							onValueChange={(view) =>
+							{
+								updateSearch(
+									{
+										view: view === "yours" ? undefined : view,
+									},
+								);
 							}}
 							options={VIEW_OPTIONS}
 						/>
@@ -213,16 +246,26 @@ export function CustomizeHeader({
 					<FixedSearchField
 						placeholder={section.searchPlaceholder}
 						value={search.q ?? ""}
-						onChange={(q) => {
-							updateSearch({q});
+						onChange={(q) =>
+						{
+							updateSearch(
+								{
+									q,
+								},
+							);
 						}}
 					/>
 				) : (
 					<CollapsibleSearchField
 						placeholder={section.searchPlaceholder}
 						value={search.q ?? ""}
-						onChange={(q) => {
-							updateSearch({q});
+						onChange={(q) =>
+						{
+							updateSearch(
+								{
+									q,
+								},
+							);
 						}}
 						findShortcut={embedded}
 					/>
@@ -241,8 +284,13 @@ export function CustomizeHeader({
 							)}
 							value={search.category}
 							disabled={menusLocked}
-							onChange={(category) => {
-								updateSearch({category});
+							onChange={(category) =>
+							{
+								updateSearch(
+									{
+										category,
+									},
+								);
 							}}
 						/>
 						<OptionMenu
@@ -252,8 +300,13 @@ export function CustomizeHeader({
 							options={DISCOVER_SORT_OPTIONS}
 							value={search.order}
 							disabled={menusLocked}
-							onChange={(order) => {
-								updateSearch({order});
+							onChange={(order) =>
+							{
+								updateSearch(
+									{
+										order,
+									},
+								);
 							}}
 						/>
 					</>
@@ -266,8 +319,13 @@ export function CustomizeHeader({
 						options={section.filter.options}
 						value={search.filter}
 						disabled={menusLocked}
-						onChange={(filter) => {
-							updateSearch({filter});
+						onChange={(filter) =>
+						{
+							updateSearch(
+								{
+									filter,
+								},
+							);
 						}}
 					/>
 				)}
@@ -279,12 +337,18 @@ export function CustomizeHeader({
 						options={sortOptions}
 						value={sort}
 						disabled={menusLocked}
-						onChange={(next) => {
+						onChange={(next) =>
+						{
 							const {sortStorageKey} = section;
-							if (sortStorageKey !== undefined) {
+							if (sortStorageKey !== undefined)
+							{
 								writeStoredSort(sortStorageKey, resolveOption(sortOptions, next).value);
 							}
-							updateSearch({sort: next});
+							updateSearch(
+								{
+									sort: next,
+								},
+							);
 						}}
 					/>
 				)}
@@ -294,19 +358,22 @@ export function CustomizeHeader({
 	);
 }
 
-interface SearchFieldProps {
+interface SearchFieldProps
+{
 	placeholder: string;
 	value: string;
 	onChange: (value: string) => void;
 }
 
-function isEditableTarget(target: EventTarget | null): boolean {
+function isEditableTarget(target: EventTarget | null): boolean
+{
 	if (!(target instanceof HTMLElement)) return false;
 	return target.isContentEditable || target.closest("input, textarea, select, [contenteditable]") !== null;
 }
 
 /** Upstream's shortcut guard: skip a field that is aria-hidden, inert, or behind another modal dialog. */
-function isHiddenFromShortcuts(element: HTMLElement | null): boolean {
+function isHiddenFromShortcuts(element: HTMLElement | null): boolean
+{
 	if (element === null) return false;
 	if (element.closest('[aria-hidden="true"], [inert]') !== null) return true;
 	const modals = document.querySelectorAll(
@@ -315,7 +382,8 @@ function isHiddenFromShortcuts(element: HTMLElement | null): boolean {
 	return [...modals].some((modal) => !modal.contains(element));
 }
 
-interface SearchShortcutOptions {
+interface SearchShortcutOptions
+{
 	input: RefObject<HTMLInputElement | null>;
 	anchor: RefObject<HTMLElement | null>;
 	onTrigger: () => void;
@@ -324,11 +392,14 @@ interface SearchShortcutOptions {
 }
 
 /** Upstream's search shortcuts: "/" outside a field, and ⌘F within the Settings dialog on a fine pointer. */
-function useSearchShortcut({input, anchor, onTrigger, findShortcut}: SearchShortcutOptions) {
+function useSearchShortcut({input, anchor, onTrigger, findShortcut}: SearchShortcutOptions)
+{
 	const coarse = useCoarsePointer();
 	const trigger = useEffectEvent(onTrigger);
-	useEffect(() => {
-		const onKeyDown = (event: KeyboardEvent) => {
+	useEffect(() =>
+	{
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			const active = document.activeElement;
 			const find =
 				findShortcut &&
@@ -343,32 +414,53 @@ function useSearchShortcut({input, anchor, onTrigger, findShortcut}: SearchShort
 			event.preventDefault();
 			trigger();
 		};
-		document.addEventListener("keydown", onKeyDown, {capture: true});
-		return () => {
-			document.removeEventListener("keydown", onKeyDown, {capture: true});
+		document.addEventListener(
+			"keydown",
+			onKeyDown,
+			{
+				capture: true,
+			},
+		);
+		return () =>
+		{
+			document.removeEventListener(
+				"keydown",
+				onKeyDown,
+				{
+					capture: true,
+				},
+			);
 		};
 	}, [input, anchor, findShortcut, coarse]);
 	return coarse;
 }
 
 /** Local draft keeps the caret stable while each keystroke updates `?q=`. */
-function useSearchDraft(value: string, onChange: (value: string) => void) {
+function useSearchDraft(value: string, onChange: (value: string) => void)
+{
 	const [draft, setDraft] = useState(value);
 	const [syncedValue, setSyncedValue] = useState(value);
-	if (value !== syncedValue) {
+	if (value !== syncedValue)
+	{
 		setSyncedValue(value);
 		setDraft(value);
 	}
-	const change = (next: string) => {
+	const change = (next: string) =>
+	{
 		setDraft(next);
 		onChange(next);
 	};
 	return [draft, change] as const;
 }
 
-function focusAtEnd(input: HTMLInputElement | null) {
+function focusAtEnd(input: HTMLInputElement | null)
+{
 	if (input === null) return;
-	input.focus({preventScroll: true});
+	input.focus(
+		{
+			preventScroll: true,
+		},
+	);
 	input.setSelectionRange(input.value.length, input.value.length);
 }
 
@@ -377,17 +469,21 @@ function focusAtEnd(input: HTMLInputElement | null) {
  * field. Escape with text clears it without closing the dialog; on an empty field Escape reaches the
  * dialog. Clear search shows only while there is text.
  */
-function FixedSearchField({placeholder, value, onChange}: SearchFieldProps) {
+function FixedSearchField({placeholder, value, onChange}: SearchFieldProps)
+{
 	const [draft, change] = useSearchDraft(value, onChange);
 	const input = useRef<HTMLInputElement>(null);
-	useSearchShortcut({
-		input,
-		anchor: input,
-		onTrigger: () => {
-			focusAtEnd(input.current);
+	useSearchShortcut(
+		{
+			input,
+			anchor: input,
+			onTrigger: () =>
+			{
+				focusAtEnd(input.current);
+			},
+			findShortcut: false,
 		},
-		findShortcut: false,
-	});
+	);
 
 	return (
 		<TextInput
@@ -397,7 +493,8 @@ function FixedSearchField({placeholder, value, onChange}: SearchFieldProps) {
 			aria-label="Search"
 			maxLength={200}
 			value={draft}
-			onChange={(event) => {
+			onChange={(event) =>
+			{
 				change(event.target.value);
 			}}
 			data-testid="customize-header-search"
@@ -405,14 +502,16 @@ function FixedSearchField({placeholder, value, onChange}: SearchFieldProps) {
 			slotStart={<Icon name="Search" size="sm" />}
 			clearable
 			clearLabel="Clear search"
-			onClear={() => {
+			onClear={() =>
+			{
 				change("");
 			}}
 		/>
 	);
 }
 
-interface CollapsibleSearchFieldProps extends SearchFieldProps {
+interface CollapsibleSearchFieldProps extends SearchFieldProps
+{
 	/** Inside the Settings dialog, ⌘F opens the search too (fine pointers only). */
 	findShortcut: boolean;
 }
@@ -423,7 +522,8 @@ interface CollapsibleSearchFieldProps extends SearchFieldProps {
  * clears the text first (without closing the Settings dialog), then collapses; Clear search and
  * blurring an empty field collapse it too, handing focus back to the magnifier.
  */
-function CollapsibleSearchField({placeholder, value, onChange, findShortcut}: CollapsibleSearchFieldProps) {
+function CollapsibleSearchField({placeholder, value, onChange, findShortcut}: CollapsibleSearchFieldProps)
+{
 	const [draft, change] = useSearchDraft(value, onChange);
 	const [expanded, setExpanded] = useState(false);
 	const phone = useMediaQuery(PHONE_SHEET_QUERY);
@@ -433,28 +533,43 @@ function CollapsibleSearchField({placeholder, value, onChange, findShortcut}: Co
 	const focusButton = useRef(false);
 	const open = expanded || draft !== "";
 
-	const collapse = () => {
+	const collapse = () =>
+	{
 		focusButton.current = true;
 		setExpanded(false);
 	};
-	const coarse = useSearchShortcut({
-		input,
-		anchor: open ? input : button,
-		onTrigger: () => {
-			if (input.current) {
-				focusAtEnd(input.current);
-				return;
-			}
-			setExpanded(true);
+	const coarse = useSearchShortcut(
+		{
+			input,
+			anchor: open ? input : button,
+			onTrigger: () =>
+			{
+				if (input.current)
+				{
+					focusAtEnd(input.current);
+					return;
+				}
+				setExpanded(true);
+			},
+			findShortcut,
 		},
-		findShortcut,
-	});
+	);
 
-	if (!open) {
+	if (!open)
+	{
 		return (
-			<Tooltip content="Search" {...(findShortcut && !coarse ? {shortcut: "cmd+f"} : {})}>
+			<Tooltip
+				content="Search"
+				{...(findShortcut && !coarse
+					?
+						{
+							shortcut: "cmd+f",
+						}
+					: {})}
+			>
 				<button
-					ref={(element) => {
+					ref={(element) =>
+					{
 						button.current = element;
 						if (element === null || !focusButton.current) return;
 						focusButton.current = false;
@@ -462,7 +577,8 @@ function CollapsibleSearchField({placeholder, value, onChange, findShortcut}: Co
 					}}
 					type="button"
 					aria-label="Search"
-					onClick={() => {
+					onClick={() =>
+					{
 						setExpanded(true);
 					}}
 					className="inline-flex size-8 shrink-0 items-center justify-center rounded-r6 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
@@ -488,15 +604,18 @@ function CollapsibleSearchField({placeholder, value, onChange, findShortcut}: Co
 				aria-label="Search"
 				maxLength={200}
 				value={draft}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					change(event.target.value);
 				}}
-				onKeyDown={(event) => {
+				onKeyDown={(event) =>
+				{
 					if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
 					// An empty field lets Escape reach the Settings dialog, which closes. With text, Escape only
 					// clears it (the preventDefault keeps the TextInput's own Escape-clear, which collapses, out):
 					// stopping propagation keeps Base UI's dismiss from closing the dialog too.
-					if (draft === "") {
+					if (draft === "")
+					{
 						collapse();
 						return;
 					}
@@ -504,7 +623,8 @@ function CollapsibleSearchField({placeholder, value, onChange, findShortcut}: Co
 					event.stopPropagation();
 					change("");
 				}}
-				onBlur={() => {
+				onBlur={() =>
+				{
 					if (draft === "") setExpanded(false);
 				}}
 				className="flex-1 md:max-w-sm"
@@ -512,7 +632,8 @@ function CollapsibleSearchField({placeholder, value, onChange, findShortcut}: Co
 				// Upstream's open field always offers Clear search, which also collapses it.
 				clearable="always"
 				clearLabel="Clear search"
-				onClear={() => {
+				onClear={() =>
+				{
 					change("");
 					collapse();
 				}}
@@ -521,7 +642,8 @@ function CollapsibleSearchField({placeholder, value, onChange, findShortcut}: Co
 	);
 }
 
-interface OptionMenuProps {
+interface OptionMenuProps
+{
 	label: string;
 	groupLabel: string;
 	icon: ReactNode;
@@ -531,7 +653,8 @@ interface OptionMenuProps {
 	onChange: (value: string | undefined) => void;
 }
 
-function OptionMenu({label, groupLabel, icon, options, value, disabled, onChange}: OptionMenuProps) {
+function OptionMenu({label, groupLabel, icon, options, value, disabled, onChange}: OptionMenuProps)
+{
 	const selected = resolveOption(options, value);
 	const defaultValue = options[0]?.value;
 	return (
@@ -543,7 +666,8 @@ function OptionMenu({label, groupLabel, icon, options, value, disabled, onChange
 				<MenuLabel>{groupLabel}</MenuLabel>
 				<MenuRadioGroup
 					value={selected.value}
-					onValueChange={(next: string) => {
+					onValueChange={(next: string) =>
+					{
 						onChange(next === defaultValue ? undefined : next);
 					}}
 				>

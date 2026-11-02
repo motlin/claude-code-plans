@@ -8,16 +8,31 @@ import {LaunchFolderContext, useWorktreeState} from "./launch-folder";
  * start card and the docked composer. The folder starts from one requested before home mounted and
  * follows later requests.
  */
-export function HomeLaunchFolderProvider({children}: Readonly<{children: ReactNode}>) {
+export function HomeLaunchFolderProvider({
+	children,
+}: Readonly<
+{
+	children: ReactNode;
+}>)
+{
 	const chosen = useState<string | null>(null);
 	const launching = useState(false);
 	const worktree = useWorktreeState();
 	const [, setChosenId] = chosen;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const pending = takePendingHomeLaunchFolder();
 		if (pending !== null) setChosenId(pending);
 		return onHomeLaunchFolderRequest(setChosenId);
 	}, [setChosenId]);
-	const shared = useMemo(() => ({chosen, launching, worktree}), [chosen, launching, worktree]);
+	const shared = useMemo(
+		() => (
+		{
+			chosen,
+			launching,
+			worktree,
+		}),
+		[chosen, launching, worktree],
+	);
 	return <LaunchFolderContext.Provider value={shared}>{children}</LaunchFolderContext.Provider>;
 }

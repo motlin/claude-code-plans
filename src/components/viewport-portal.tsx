@@ -4,8 +4,11 @@ import {createPortal} from "react-dom";
 import {DensityScope} from "./ui/density";
 import {useDensity} from "./ui/density-context";
 
-function subscribeNever(): () => void {
-	return () => {};
+function subscribeNever(): () => void
+{
+	return () =>
+	{
+	};
 }
 
 /**
@@ -18,7 +21,8 @@ function subscribeNever(): () => void {
  * a `display: contents` wrapper marked `data-cds-portal` and carrying the
  * opener's density, as upstream's cds Portal wrapper copies `data-density`.
  */
-export function ViewportPortal({children}: {children: ReactNode}) {
+export function ViewportPortal({children}: {children: ReactNode})
+{
 	const isClient = useSyncExternalStore(
 		subscribeNever,
 		() => true,

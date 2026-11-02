@@ -1,6 +1,7 @@
 {
 	"extends": "./tsconfig.json",
-	"compilerOptions": {
+	"compilerOptions":
+	{
 		"noEmit": true
 	},
 	"include": ["src/**/*", "tests/**/*", "scripts/**/*", "vitest.config.ts", "vite.config.ts", ".storybook/**/*"]

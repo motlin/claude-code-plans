@@ -25,7 +25,11 @@ const FIXTURE_PARENT = join(REPOSITORY_ROOT, ".llm");
 const PORT = 7537;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 export const FIXED_TIME = Date.parse("2000-01-02T12:00:00.000Z");
-const VIEWPORT = {width: 1280, height: 718} as const;
+const VIEWPORT =
+{
+	width: 1280,
+	height: 718,
+} as const;
 const DEVICE_SCALE_FACTOR = 2;
 const COLOR_SCHEME = "dark" as const;
 const TIMEZONE = "UTC";
@@ -45,22 +49,26 @@ const GENERIC_FONT_FAMILIES = new Set([
 	"ui-serif",
 ]);
 
-interface FontStackResolution {
+interface FontStackResolution
+{
 	requested: string[];
 	resolved: string;
 }
 
-interface RendererManifest {
+interface RendererManifest
+{
 	playwrightVersion: string;
 	chromiumVersion: string;
-	viewport: {
+	viewport:
+	{
 		width: number;
 		height: number;
 		deviceScaleFactor: number;
 	};
 	colorScheme: typeof COLOR_SCHEME;
 	timezone: string;
-	platform: {
+	platform:
+	{
 		operatingSystem: NodeJS.Platform;
 		architecture: string;
 	};
@@ -69,36 +77,58 @@ interface RendererManifest {
 	fontsMissing: string[];
 }
 
-interface ScreenshotTarget {
+interface ScreenshotTarget
+{
 	filename: string;
 	path: string;
 	heading: string;
 }
 
 const TARGETS: ScreenshotTarget[] = [
-	{filename: "sessions.png", path: "/sessions", heading: "Claude Sessions"},
+	{
+		filename: "sessions.png",
+		path: "/sessions",
+		heading: "Claude Sessions",
+	},
 	{
 		filename: "session-detail.png",
 		path: `/session/${SESSION_ID}`,
 		heading: "Prepare the fixture release",
 	},
-	{filename: "projects.png", path: "/projects", heading: "Projects"},
+	{
+		filename: "projects.png",
+		path: "/projects",
+		heading: "Projects",
+	},
 	{
 		filename: "project-detail.png",
 		path: `/project/${PROJECT_ID}`,
 		heading: "alice",
 	},
-	{filename: "tasks.png", path: "/tasks", heading: "Tasks"},
+	{
+		filename: "tasks.png",
+		path: "/tasks",
+		heading: "Tasks",
+	},
 	{
 		filename: "search.png",
 		path: "/search?q=fixture",
 		heading: "Search",
 	},
-	{filename: "plans.png", path: "/plans", heading: "Claude Plans"},
-	{filename: "memories.png", path: "/memories", heading: "Claude Memories"},
+	{
+		filename: "plans.png",
+		path: "/plans",
+		heading: "Claude Plans",
+	},
+	{
+		filename: "memories.png",
+		path: "/memories",
+		heading: "Claude Memories",
+	},
 ];
 
-function printHelp(): void {
+function printHelp(): void
+{
 	console.log(`Usage: pnpm tsx scripts/screenshots.ts [--update-manifest]
 
 Regenerates all eight README screenshots from an isolated fixture database.
@@ -109,28 +139,47 @@ machine is reported before screenshots are replaced.
   --help             Show this help`);
 }
 
-function parseArguments(arguments_: string[]): {updateManifest: boolean} {
+function parseArguments(arguments_: string[]):
+{
+	updateManifest: boolean;
+}
+{
 	let updateManifest = false;
-	for (const argument of arguments_) {
-		if (argument === "--update-manifest") {
+	for (const argument of arguments_)
+	{
+		if (argument === "--update-manifest")
+		{
 			updateManifest = true;
-		} else if (argument === "--help") {
+		}
+		else if (argument === "--help")
+		{
 			printHelp();
 			process.exit(0);
-		} else {
+		}
+		else
+		{
 			throw new Error(`Unknown argument: ${argument}`);
 		}
 	}
-	return {updateManifest};
+	return {
+		updateManifest,
+	};
 }
 
-function writeFixtureFile(path: string, contents: string, mtimeMs: number): void {
-	mkdirSync(dirname(path), {recursive: true});
+function writeFixtureFile(path: string, contents: string, mtimeMs: number): void
+{
+	mkdirSync(
+		dirname(path),
+		{
+			recursive: true,
+		},
+	);
 	writeFileSync(path, contents);
 	utimesSync(path, mtimeMs / 1000, mtimeMs / 1000);
 }
 
-function jsonLines(records: ReadonlyArray<Record<string, unknown>>): string {
+function jsonLines(records: ReadonlyArray<Record<string, unknown>>): string
+{
 	return `${records.map((record) => JSON.stringify(record)).join("\n")}\n`;
 }
 
@@ -139,7 +188,8 @@ function messageRecord(
 	uuid: string,
 	timestamp: string,
 	content: string | Array<Record<string, unknown>>,
-): Record<string, unknown> {
+): Record<string, unknown>
+{
 	return {
 		type,
 		uuid,
@@ -150,11 +200,16 @@ function messageRecord(
 		gitBranch: "docs/screenshots",
 		version: "2.0.0-fixture",
 		entrypoint: "cli",
-		message: {role: type, content},
+		message:
+		{
+			role: type,
+			content,
+		},
 	};
 }
 
-export function seedFixtureHome(fixtureRoot: string): string {
+export function seedFixtureHome(fixtureRoot: string): string
+{
 	const fixtureHome = join(fixtureRoot, "home");
 	const claudeHome = join(fixtureHome, ".claude");
 	const projectsDirectory = join(claudeHome, "projects");
@@ -182,7 +237,10 @@ export function seedFixtureHome(fixtureRoot: string): string {
 				type: "tool_use",
 				id: "fixture-tool-100",
 				name: "Read",
-				input: {file_path: "/fixture/alice-app/README.md"},
+				input:
+				{
+					file_path: "/fixture/alice-app/README.md",
+				},
 			},
 		]),
 		messageRecord("user", "fixture-user-200", "2000-01-02T10:01:01.000Z", [
@@ -202,10 +260,12 @@ export function seedFixtureHome(fixtureRoot: string): string {
 			type: "file-history-snapshot",
 			messageId: "fixture-message-100",
 			isSnapshotUpdate: false,
-			snapshot: {
+			snapshot:
+			{
 				messageId: "fixture-message-100",
 				timestamp: "2000-01-02T10:02:00.000Z",
-				trackedFileBackups: {
+				trackedFileBackups:
+				{
 					"/fixture/.claude/plans/alice-release.md": "fixture-backup-100",
 				},
 			},
@@ -287,68 +347,72 @@ export function seedFixtureHome(fixtureRoot: string): string {
 
 	writeFixtureFile(
 		join(primaryProjectDirectory, "sessions-index.json"),
-		JSON.stringify({
-			version: 1,
-			entries: [
-				{
-					sessionId: SESSION_ID,
-					fullPath: primaryPath,
-					fileMtime: firstMtime,
-					firstPrompt: "Prepare the fixture release and automate the documentation screenshots.",
-					summary: "Prepare the fixture release",
-					messageCount: 4,
-					created: "2000-01-02T10:00:00.000Z",
-					modified: "2000-01-02T10:02:00.000Z",
-					gitBranch: "docs/screenshots",
-					projectPath: "/fixture/alice-app",
-				},
-				{
-					sessionId: "session-alice-200",
-					fullPath: secondPath,
-					fileMtime: secondMtime,
-					firstPrompt: "Review the fixture search experience.",
-					summary: "Review the fixture search experience",
-					messageCount: 2,
-					created: "2000-01-01T09:00:00.000Z",
-					modified: "2000-01-01T09:02:00.000Z",
-					gitBranch: "feature/search",
-					projectPath: "/fixture/alice-app",
-				},
-				{
-					sessionId: "session-alice-300",
-					fullPath: thirdPath,
-					fileMtime: thirdMtime,
-					firstPrompt: "Add project memories for the fixture team.",
-					summary: "Add project memories",
-					messageCount: 2,
-					created: "1999-12-29T09:00:00.000Z",
-					modified: "1999-12-29T09:03:00.000Z",
-					gitBranch: "feature/memories",
-					projectPath: "/fixture/alice-app",
-				},
-			],
-		}),
+		JSON.stringify(
+			{
+				version: 1,
+				entries: [
+					{
+						sessionId: SESSION_ID,
+						fullPath: primaryPath,
+						fileMtime: firstMtime,
+						firstPrompt: "Prepare the fixture release and automate the documentation screenshots.",
+						summary: "Prepare the fixture release",
+						messageCount: 4,
+						created: "2000-01-02T10:00:00.000Z",
+						modified: "2000-01-02T10:02:00.000Z",
+						gitBranch: "docs/screenshots",
+						projectPath: "/fixture/alice-app",
+					},
+					{
+						sessionId: "session-alice-200",
+						fullPath: secondPath,
+						fileMtime: secondMtime,
+						firstPrompt: "Review the fixture search experience.",
+						summary: "Review the fixture search experience",
+						messageCount: 2,
+						created: "2000-01-01T09:00:00.000Z",
+						modified: "2000-01-01T09:02:00.000Z",
+						gitBranch: "feature/search",
+						projectPath: "/fixture/alice-app",
+					},
+					{
+						sessionId: "session-alice-300",
+						fullPath: thirdPath,
+						fileMtime: thirdMtime,
+						firstPrompt: "Add project memories for the fixture team.",
+						summary: "Add project memories",
+						messageCount: 2,
+						created: "1999-12-29T09:00:00.000Z",
+						modified: "1999-12-29T09:03:00.000Z",
+						gitBranch: "feature/memories",
+						projectPath: "/fixture/alice-app",
+					},
+				],
+			},
+		),
 		firstMtime,
 	);
 	writeFixtureFile(
 		join(secondaryProjectDirectory, "sessions-index.json"),
-		JSON.stringify({
-			version: 1,
-			entries: [
-				{
-					sessionId: "session-bob-100",
-					fullPath: bobPath,
-					fileMtime: secondMtime - 2 * 60 * 60 * 1000,
-					firstPrompt: "Polish the Bob fixture project overview.",
-					summary: "Polish the Bob fixture project overview",
-					messageCount: 2,
-					created: "1999-12-31T08:00:00.000Z",
-					modified: "1999-12-31T08:04:00.000Z",
-					gitBranch: "main",
-					projectPath: "/fixture/bob-service",
-				},
-			],
-		}),
+		JSON.stringify(
+			{
+				version: 1,
+				entries: [
+					{
+						sessionId: "session-bob-100",
+						fullPath: bobPath,
+						fileMtime: secondMtime - 2 * 60 * 60 * 1000,
+						firstPrompt: "Polish the Bob fixture project overview.",
+						summary: "Polish the Bob fixture project overview",
+						messageCount: 2,
+						created: "1999-12-31T08:00:00.000Z",
+						modified: "1999-12-31T08:04:00.000Z",
+						gitBranch: "main",
+						projectPath: "/fixture/bob-service",
+					},
+				],
+			},
+		),
 		secondMtime,
 	);
 
@@ -394,7 +458,10 @@ export function seedFixtureHome(fixtureRoot: string): string {
 			blockedBy: [],
 			activeForm: "Capturing documentation routes",
 			owner: "alice",
-			metadata: {category: "documentation"},
+			metadata:
+			{
+				category: "documentation",
+			},
 		},
 		{
 			id: "200",
@@ -404,7 +471,10 @@ export function seedFixtureHome(fixtureRoot: string): string {
 			blocks: [],
 			blockedBy: ["100"],
 			owner: "bob",
-			metadata: {category: "release"},
+			metadata:
+			{
+				category: "release",
+			},
 		},
 		{
 			id: "300",
@@ -414,10 +484,14 @@ export function seedFixtureHome(fixtureRoot: string): string {
 			blocks: [],
 			blockedBy: [],
 			owner: "charlie",
-			metadata: {category: "documentation"},
+			metadata:
+			{
+				category: "documentation",
+			},
 		},
 	];
-	for (const task of tasks) {
+	for (const task of tasks)
+	{
 		writeFixtureFile(join(tasksDirectory, PROJECT_ID, `${task.id}.json`), JSON.stringify(task), firstMtime);
 	}
 
@@ -440,10 +514,21 @@ export function seedFixtureHome(fixtureRoot: string): string {
  */
 export function fixtureServerEnv(
 	inheritedEnv: NodeJS.ProcessEnv,
-	{fixtureRoot, fixtureHome, port}: {fixtureRoot: string; fixtureHome: string; port: number},
-): NodeJS.ProcessEnv {
+	{
+		fixtureRoot,
+		fixtureHome,
+		port,
+	}:
+	{
+		fixtureRoot: string;
+		fixtureHome: string;
+		port: number;
+	},
+): NodeJS.ProcessEnv
+{
 	const env: NodeJS.ProcessEnv = {};
-	for (const [key, value] of Object.entries(inheritedEnv)) {
+	for (const [key, value] of Object.entries(inheritedEnv))
+	{
 		if (!key.startsWith("HERDR_")) env[key] = value;
 	}
 	return {
@@ -461,85 +546,130 @@ export function fixtureServerEnv(
 function startDevServer(
 	fixtureRoot: string,
 	fixtureHome: string,
-): {
+):
+{
 	process: ChildProcess;
 	output: string[];
-} {
+}
+{
 	const output: string[] = [];
-	const server = spawn("pnpm", ["exec", "vp", "dev", "--host", "127.0.0.1", "--strictPort"], {
-		cwd: REPOSITORY_ROOT,
-		detached: process.platform !== "win32",
-		env: fixtureServerEnv(process.env, {fixtureRoot, fixtureHome, port: PORT}),
-		stdio: ["ignore", "pipe", "pipe"],
-	});
-	const rememberOutput = (chunk: Buffer) => {
+	const server = spawn(
+		"pnpm",
+		["exec", "vp", "dev", "--host", "127.0.0.1", "--strictPort"],
+		{
+			cwd: REPOSITORY_ROOT,
+			detached: process.platform !== "win32",
+			env: fixtureServerEnv(
+				process.env,
+				{
+					fixtureRoot,
+					fixtureHome,
+					port: PORT,
+				},
+			),
+			stdio: ["ignore", "pipe", "pipe"],
+		},
+	);
+	const rememberOutput = (chunk: Buffer) =>
+	{
 		output.push(chunk.toString());
 		if (output.length > 100) output.shift();
 	};
 	server.stdout.on("data", rememberOutput);
 	server.stderr.on("data", rememberOutput);
-	return {process: server, output};
+	return {
+		process: server,
+		output,
+	};
 }
 
-async function assertPortAvailable(): Promise<void> {
+async function assertPortAvailable(): Promise<void>
+{
 	const probe = createServer();
-	await new Promise<void>((resolvePromise, rejectPromise) => {
-		probe.once("error", (error) => {
+	await new Promise<void>((resolvePromise, rejectPromise) =>
+	{
+		probe.once("error", (error) =>
+		{
 			rejectPromise(error);
 		});
-		probe.listen(PORT, "127.0.0.1", () => {
-			probe.close((error) => {
+		probe.listen(PORT, "127.0.0.1", () =>
+		{
+			probe.close((error) =>
+			{
 				if (error) rejectPromise(error);
 				else resolvePromise();
 			});
 		});
-	}).catch((error: unknown) => {
-		throw new Error(`Screenshot port ${PORT} must be free before starting the fixture server.`, {
-			cause: error,
-		});
+	}).catch((error: unknown) =>
+	{
+		throw new Error(
+			`Screenshot port ${PORT} must be free before starting the fixture server.`,
+			{
+				cause: error,
+			},
+		);
 	});
 }
 
-async function waitForServer(server: ChildProcess, output: string[]): Promise<void> {
-	for (let attempt = 0; attempt < 120; attempt += 1) {
-		if (server.exitCode !== null) {
+async function waitForServer(server: ChildProcess, output: string[]): Promise<void>
+{
+	for (let attempt = 0; attempt < 120; attempt += 1)
+	{
+		if (server.exitCode !== null)
+		{
 			throw new Error(`Fixture dev server exited with ${server.exitCode}:\n${output.join("")}`);
 		}
-		try {
+		try
+		{
 			const response = await fetch(`${BASE_URL}/api/indexing-status`);
 			if (response.ok) return;
-		} catch {
+		}
+		catch
+		{
 			// The dev server is still starting.
 		}
-		await new Promise((resolvePromise) => {
+		await new Promise((resolvePromise) =>
+		{
 			setTimeout(resolvePromise, 250);
 		});
 	}
 	throw new Error(`Fixture dev server was not ready after 30 seconds:\n${output.join("")}`);
 }
 
-export async function stopDevServer(server: ChildProcess): Promise<void> {
-	const signal = (name: NodeJS.Signals): void => {
-		if (process.platform !== "win32" && server.pid !== undefined) {
-			try {
+export async function stopDevServer(server: ChildProcess): Promise<void>
+{
+	const signal = (name: NodeJS.Signals): void =>
+	{
+		if (process.platform !== "win32" && server.pid !== undefined)
+		{
+			try
+			{
 				process.kill(-server.pid, name);
-			} catch {
+			}
+			catch
+			{
 				// The isolated process group already exited.
 			}
-		} else {
+		}
+		else
+		{
 			server.kill(name);
 		}
 	};
 	signal("SIGTERM");
 	if (server.exitCode !== null) return;
 	await Promise.race([
-		new Promise<void>((resolvePromise) => {
-			server.once("exit", () => {
+		new Promise<void>((resolvePromise) =>
+		{
+			server.once("exit", () =>
+			{
 				resolvePromise();
 			});
 		}),
-		new Promise<void>((resolvePromise) => {
-			setTimeout(() => {
+		new Promise<void>((resolvePromise) =>
+		{
+			setTimeout(() =>
+			{
 				signal("SIGKILL");
 				resolvePromise();
 			}, 5_000);
@@ -547,36 +677,56 @@ export async function stopDevServer(server: ChildProcess): Promise<void> {
 	]);
 }
 
-async function waitForIndexing(): Promise<void> {
-	for (let attempt = 0; attempt < 120; attempt += 1) {
+async function waitForIndexing(): Promise<void>
+{
+	for (let attempt = 0; attempt < 120; attempt += 1)
+	{
 		const response = await fetch(`${BASE_URL}/api/indexing-status`);
 		const status = IndexingStatusResponse.parse(await response.json());
 		if (!status.isIndexing) return;
-		await new Promise((resolvePromise) => {
+		await new Promise((resolvePromise) =>
+		{
 			setTimeout(resolvePromise, 100);
 		});
 	}
 	throw new Error("Fixture database indexing did not finish after 12 seconds.");
 }
 
-function parseFontStack(stack: string): string[] {
+function parseFontStack(stack: string): string[]
+{
 	return stack
 		.split(",")
 		.map((family) => family.trim().replace(/^(?:"|')|(?:"|')$/g, ""))
 		.filter(Boolean);
 }
 
-async function collectRendererManifest(page: Page, chromiumVersion: string): Promise<RendererManifest> {
-	await page.goto(`${BASE_URL}/sessions`, {waitUntil: "domcontentloaded"});
-	await page.getByRole("heading", {name: "Claude Sessions", exact: true}).waitFor();
+async function collectRendererManifest(page: Page, chromiumVersion: string): Promise<RendererManifest>
+{
+	await page.goto(
+		`${BASE_URL}/sessions`,
+		{
+			waitUntil: "domcontentloaded",
+		},
+	);
+	await page
+		.getByRole(
+			"heading",
+			{
+				name: "Claude Sessions",
+				exact: true,
+			},
+		)
+		.waitFor();
 	await page.evaluate(async () => document.fonts.ready);
 
-	const fontData = await page.evaluate(() => {
+	const fontData = await page.evaluate(() =>
+	{
 		const monoProbe = document.createElement("code");
 		monoProbe.className = "font-mono";
 		monoProbe.textContent = "fixture";
 		document.body.append(monoProbe);
-		const stacks = {
+		const stacks =
+		{
 			sans: getComputedStyle(document.body).fontFamily,
 			mono: getComputedStyle(monoProbe).fontFamily,
 		};
@@ -586,31 +736,40 @@ async function collectRendererManifest(page: Page, chromiumVersion: string): Pro
 		const context = canvas.getContext("2d");
 		if (!context) throw new Error("Canvas font probe is unavailable.");
 		const sample = "mmmmmmmmmmWWWWWWWWWWiiiiiiiiii0123456789@#%";
-		const width = (fontFamily: string): number => {
+		const width = (fontFamily: string): number =>
+		{
 			context.font = `72px ${fontFamily}`;
 			return context.measureText(sample).width;
 		};
-		const baselines = {
+		const baselines =
+		{
 			monospace: width("monospace"),
 			"sans-serif": width("sans-serif"),
 			serif: width("serif"),
 		};
-		return {stacks, baselines, sampleWidths: {}};
+		return {
+			stacks,
+			baselines,
+			sampleWidths: {},
+		};
 	});
 
 	const stacks = Object.fromEntries(
 		Object.entries(fontData.stacks).map(([name, stack]) => [name, parseFontStack(stack)]),
 	);
 	const requestedFamilies = [...new Set(Object.values(stacks).flat())].toSorted();
-	const sampleWidths = await page.evaluate((families) => {
+	const sampleWidths = await page.evaluate((families) =>
+	{
 		const canvas = document.createElement("canvas");
 		const context = canvas.getContext("2d");
 		if (!context) throw new Error("Canvas font probe is unavailable.");
 		const sample = "mmmmmmmmmmWWWWWWWWWWiiiiiiiiii0123456789@#%";
 		const widths: Record<string, Record<string, number>> = {};
-		for (const family of families) {
+		for (const family of families)
+		{
 			widths[family] = {};
-			for (const fallback of ["monospace", "sans-serif", "serif"]) {
+			for (const fallback of ["monospace", "sans-serif", "serif"])
+			{
 				context.font = `72px "${family.replaceAll('"', '\\"')}", ${fallback}`;
 				widths[family][fallback] = context.measureText(sample).width;
 			}
@@ -619,8 +778,10 @@ async function collectRendererManifest(page: Page, chromiumVersion: string): Pro
 	}, requestedFamilies);
 
 	const fontAvailability: Record<string, boolean> = {};
-	for (const family of requestedFamilies) {
-		if (GENERIC_FONT_FAMILIES.has(family)) {
+	for (const family of requestedFamilies)
+	{
+		if (GENERIC_FONT_FAMILIES.has(family))
+		{
 			fontAvailability[family] = true;
 			continue;
 		}
@@ -641,17 +802,29 @@ async function collectRendererManifest(page: Page, chromiumVersion: string): Pro
 		]),
 	);
 	const packageJson = z
-		.object({version: z.string()})
+		.object(
+			{
+				version: z.string(),
+			},
+		)
 		.loose()
 		.parse(JSON.parse(readFileSync(join(REPOSITORY_ROOT, "node_modules", "playwright", "package.json"), "utf8")));
 
 	return {
 		playwrightVersion: packageJson.version,
 		chromiumVersion,
-		viewport: {...VIEWPORT, deviceScaleFactor: DEVICE_SCALE_FACTOR},
+		viewport:
+		{
+			...VIEWPORT,
+			deviceScaleFactor: DEVICE_SCALE_FACTOR,
+		},
 		colorScheme: COLOR_SCHEME,
 		timezone: TIMEZONE,
-		platform: {operatingSystem: platform(), architecture: arch()},
+		platform:
+		{
+			operatingSystem: platform(),
+			architecture: arch(),
+		},
 		fontResolution,
 		fontAvailability,
 		fontsMissing: Object.entries(fontAvailability)
@@ -661,39 +834,50 @@ async function collectRendererManifest(page: Page, chromiumVersion: string): Pro
 	};
 }
 
-function flattenManifest(value: unknown, path = ""): Map<string, string> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
+function flattenManifest(value: unknown, path = ""): Map<string, string>
+{
+	if (value === null || typeof value !== "object" || Array.isArray(value))
+	{
 		return new Map([[path, JSON.stringify(value)]]);
 	}
 	const flattened = new Map<string, string>();
-	for (const [key, child] of Object.entries(value)) {
-		for (const [childPath, childValue] of flattenManifest(child, path ? `${path}.${key}` : key)) {
+	for (const [key, child] of Object.entries(value))
+	{
+		for (const [childPath, childValue] of flattenManifest(child, path ? `${path}.${key}` : key))
+		{
 			flattened.set(childPath, childValue);
 		}
 	}
 	return flattened;
 }
 
-export function diffRendererManifests(expected: unknown, actual: unknown): string[] {
+export function diffRendererManifests(expected: unknown, actual: unknown): string[]
+{
 	const expectedFields = flattenManifest(expected);
 	const actualFields = flattenManifest(actual);
 	const fields = new Set([...expectedFields.keys(), ...actualFields.keys()]);
 	return [...fields].filter((field) => expectedFields.get(field) !== actualFields.get(field)).toSorted();
 }
 
-function printDriftBanner(fields: string[]): void {
+function printDriftBanner(fields: string[]): void
+{
 	console.error("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	console.error("!! SCREENSHOT RENDERER DRIFT — PNG OUTPUT MAY CHANGE      !!");
 	for (const field of fields) console.error(`!! changed: ${field}`);
 	console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 }
 
-function verifyOrUpdateManifest(manifest: RendererManifest, updateManifest: boolean): void {
+function verifyOrUpdateManifest(manifest: RendererManifest, updateManifest: boolean): void
+{
 	let expected: unknown;
-	try {
+	try
+	{
 		expected = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
-	} catch {
-		if (!updateManifest) {
+	}
+	catch
+	{
+		if (!updateManifest)
+		{
 			throw new Error(`Renderer manifest is missing. Run with --update-manifest to create ${MANIFEST_PATH}.`);
 		}
 		writeFileSync(MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`);
@@ -704,19 +888,25 @@ function verifyOrUpdateManifest(manifest: RendererManifest, updateManifest: bool
 	const changedFields = diffRendererManifests(expected, manifest);
 	if (changedFields.length === 0) return;
 	printDriftBanner(changedFields);
-	if (!updateManifest) {
+	if (!updateManifest)
+	{
 		throw new Error("Renderer drift detected. Re-run with --update-manifest to accept it.");
 	}
 	writeFileSync(MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`);
 	console.log(`Updated renderer manifest: ${MANIFEST_PATH}`);
 }
 
-async function prepareContext(context: BrowserContext): Promise<void> {
-	await context.route("**/*", async (route) => {
+async function prepareContext(context: BrowserContext): Promise<void>
+{
+	await context.route("**/*", async (route) =>
+	{
 		const requestUrl = new URL(route.request().url());
-		if (requestUrl.hostname === "127.0.0.1") {
+		if (requestUrl.hostname === "127.0.0.1")
+		{
 			await route.continue();
-		} else {
+		}
+		else
+		{
 			await route.abort();
 		}
 	});
@@ -741,10 +931,25 @@ async function prepareContext(context: BrowserContext): Promise<void> {
   `);
 }
 
-async function captureScreenshots(page: Page): Promise<void> {
-	for (const target of TARGETS) {
-		await page.goto(`${BASE_URL}${target.path}`, {waitUntil: "domcontentloaded"});
-		await page.getByRole("heading", {name: target.heading, exact: true}).waitFor();
+async function captureScreenshots(page: Page): Promise<void>
+{
+	for (const target of TARGETS)
+	{
+		await page.goto(
+			`${BASE_URL}${target.path}`,
+			{
+				waitUntil: "domcontentloaded",
+			},
+		);
+		await page
+			.getByRole(
+				"heading",
+				{
+					name: target.heading,
+					exact: true,
+				},
+			)
+			.waitFor();
 		await page.evaluate(async () => document.fonts.ready);
 		// Markdown and syntax highlighting resolve through Suspense after the route
 		// heading appears. Give those imports a deterministic window, then require
@@ -752,29 +957,36 @@ async function captureScreenshots(page: Page): Promise<void> {
 		await page.waitForTimeout(1_000);
 		await page.evaluate(
 			async () =>
-				new Promise<void>((resolvePromise) => {
+				new Promise<void>((resolvePromise) =>
+				{
 					let quietTimer = setTimeout(finish, 250);
 					const maximumTimer = setTimeout(finish, 3_000);
-					const observer = new MutationObserver(() => {
+					const observer = new MutationObserver(() =>
+					{
 						clearTimeout(quietTimer);
 						quietTimer = setTimeout(finish, 250);
 					});
-					function finish(): void {
+					function finish(): void
+					{
 						clearTimeout(quietTimer);
 						clearTimeout(maximumTimer);
 						observer.disconnect();
 						resolvePromise();
 					}
-					observer.observe(document.body, {
-						attributes: true,
-						characterData: true,
-						childList: true,
-						subtree: true,
-					});
+					observer.observe(
+						document.body,
+						{
+							attributes: true,
+							characterData: true,
+							childList: true,
+							subtree: true,
+						},
+					);
 				}),
 		);
-		await page.addStyleTag({
-			content: `
+		await page.addStyleTag(
+			{
+				content: `
         *, *::before, *::after {
           animation: none !important;
           caret-color: transparent !important;
@@ -787,60 +999,95 @@ async function captureScreenshots(page: Page): Promise<void> {
           display: none !important;
         }
       `,
-		});
-		await page.locator("[data-agentation-root]").evaluateAll((elements) => {
+			},
+		);
+		await page.locator("[data-agentation-root]").evaluateAll((elements) =>
+		{
 			for (const element of elements) element.remove();
 		});
-		await page.locator('button[aria-label="Open Tanstack query devtools"]').evaluateAll((buttons) => {
+		await page.locator('button[aria-label="Open Tanstack query devtools"]').evaluateAll((buttons) =>
+		{
 			for (const button of buttons) button.parentElement?.remove();
 		});
-		await page.screenshot({
-			path: join(SCREENSHOTS_DIRECTORY, target.filename),
-			animations: "disabled",
-			caret: "hide",
-			fullPage: false,
-		});
+		await page.screenshot(
+			{
+				path: join(SCREENSHOTS_DIRECTORY, target.filename),
+				animations: "disabled",
+				caret: "hide",
+				fullPage: false,
+			},
+		);
 		console.log(`Captured screenshots/${target.filename}`);
 	}
 }
 
-async function main(): Promise<void> {
+async function main(): Promise<void>
+{
 	const {updateManifest} = parseArguments(process.argv.slice(2));
 	await assertPortAvailable();
-	mkdirSync(FIXTURE_PARENT, {recursive: true});
-	mkdirSync(SCREENSHOTS_DIRECTORY, {recursive: true});
+	mkdirSync(
+		FIXTURE_PARENT,
+		{
+			recursive: true,
+		},
+	);
+	mkdirSync(
+		SCREENSHOTS_DIRECTORY,
+		{
+			recursive: true,
+		},
+	);
 	const fixtureRoot = mkdtempSync(join(FIXTURE_PARENT, "screenshots-fixture-"));
 	const fixtureHome = seedFixtureHome(fixtureRoot);
 	const server = startDevServer(fixtureRoot, fixtureHome);
 	let context: BrowserContext | undefined;
 
-	try {
+	try
+	{
 		await waitForServer(server.process, server.output);
 		await waitForIndexing();
-		const browser = await chromium.launch({headless: true});
-		try {
-			context = await browser.newContext({
-				viewport: VIEWPORT,
-				deviceScaleFactor: DEVICE_SCALE_FACTOR,
-				colorScheme: COLOR_SCHEME,
-				timezoneId: TIMEZONE,
-				locale: "en-US",
-			});
+		const browser = await chromium.launch(
+			{
+				headless: true,
+			},
+		);
+		try
+		{
+			context = await browser.newContext(
+				{
+					viewport: VIEWPORT,
+					deviceScaleFactor: DEVICE_SCALE_FACTOR,
+					colorScheme: COLOR_SCHEME,
+					timezoneId: TIMEZONE,
+					locale: "en-US",
+				},
+			);
 			await prepareContext(context);
 			const page = await context.newPage();
 			const manifest = await collectRendererManifest(page, browser.version());
 			verifyOrUpdateManifest(manifest, updateManifest);
 			await captureScreenshots(page);
-		} finally {
+		}
+		finally
+		{
 			await context?.close();
 			await browser.close();
 		}
-	} finally {
+	}
+	finally
+	{
 		await stopDevServer(server.process);
-		rmSync(fixtureRoot, {recursive: true, force: true});
+		rmSync(
+			fixtureRoot,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	}
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+{
 	await main();
 }

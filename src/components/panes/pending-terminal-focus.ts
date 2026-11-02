@@ -2,13 +2,15 @@
 let pendingTerminalFocus = false;
 
 /** Whether ⌃` just opened the Terminal pane; clears the request so only the pane it opened takes focus. */
-export function consumePendingTerminalFocus(): boolean {
+export function consumePendingTerminalFocus(): boolean
+{
 	const pending = pendingTerminalFocus;
 	pendingTerminalFocus = false;
 	return pending;
 }
 
 /** Asks the Terminal pane that mounts next to take focus. */
-export function requestTerminalFocus(): void {
+export function requestTerminalFocus(): void
+{
 	pendingTerminalFocus = true;
 }

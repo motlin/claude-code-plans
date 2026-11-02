@@ -2,14 +2,16 @@ import type {PendingPlan} from "./hook-events";
 import {isRecord} from "./narrow";
 import type {SessionLine} from "./transcript";
 
-export interface PlanTodo {
+export interface PlanTodo
+{
 	content: string;
 	status: string;
 	activeForm?: string;
 }
 
 /** What upstream's Plan pane shows: the latest ExitPlanMode plan text and the session's checklist. */
-export interface SessionPlanModel {
+export interface SessionPlanModel
+{
 	content: string | null;
 	todos: PlanTodo[];
 	/** Whether the session wrote or edited a `~/.claude/plans/*.md` file. */
@@ -18,9 +20,11 @@ export interface SessionPlanModel {
 
 const PLAN_FILE_PATH = /\/\.claude\/plans\/[^/]+\.md$/;
 
-function todoOf(value: unknown): PlanTodo | null {
+function todoOf(value: unknown): PlanTodo | null
+{
 	if (!isRecord(value) || typeof value["content"] !== "string") return null;
-	const todo: PlanTodo = {
+	const todo: PlanTodo =
+	{
 		content: value["content"],
 		status: typeof value["status"] === "string" ? value["status"] : "pending",
 	};
@@ -33,17 +37,21 @@ function todoOf(value: unknown): PlanTodo | null {
  * ExitPlanMode `plan` or Write to a plan file, and the checklist from TodoWrite (replacing it) or TaskCreate / TaskUpdate
  * (task ids numbered in creation order, as the CLI's task list numbers them).
  */
-export function sessionPlanModel(lines: readonly SessionLine[]): SessionPlanModel {
+export function sessionPlanModel(lines: readonly SessionLine[]): SessionPlanModel
+{
 	let content: string | null = null;
 	let todos: PlanTodo[] = [];
 	let editsPlanFile = false;
 	const tasks = new Map<string, PlanTodo>();
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		if (line.type !== "assistant" || !Array.isArray(line.message?.content)) continue;
-		for (const block of line.message.content) {
+		for (const block of line.message.content)
+		{
 			if (block.type !== "tool_use" || !isRecord(block.input)) continue;
 			const input = block.input;
-			switch (block.name) {
+			switch (block.name)
+			{
 				case "ExitPlanMode":
 					if (typeof input["plan"] === "string" && input["plan"] !== "") content = input["plan"];
 					break;
@@ -54,20 +62,27 @@ export function sessionPlanModel(lines: readonly SessionLine[]): SessionPlanMode
 					if (block.name === "Write" && typeof input["content"] === "string") content = input["content"];
 					break;
 				case "TodoWrite":
-					if (Array.isArray(input["todos"])) {
+					if (Array.isArray(input["todos"]))
+					{
 						todos = input["todos"].flatMap((todo) => todoOf(todo) ?? []);
 						tasks.clear();
 					}
 					break;
-				case "TaskCreate": {
+				case "TaskCreate":
+				{
 					if (typeof input["subject"] !== "string") break;
-					const task: PlanTodo = {content: input["subject"], status: "pending"};
+					const task: PlanTodo =
+					{
+						content: input["subject"],
+						status: "pending",
+					};
 					if (typeof input["activeForm"] === "string") task.activeForm = input["activeForm"];
 					tasks.set(String(tasks.size + 1), task);
 					todos = [...tasks.values()];
 					break;
 				}
-				case "TaskUpdate": {
+				case "TaskUpdate":
+				{
 					const id = input["taskId"] ?? input["id"];
 					const task = tasks.get(String(id));
 					if (task === undefined) break;
@@ -81,13 +96,24 @@ export function sessionPlanModel(lines: readonly SessionLine[]): SessionPlanMode
 			}
 		}
 	}
-	return {content, todos, editsPlanFile};
+	return {
+		content,
+		todos,
+		editsPlanFile,
+	};
 }
 
 /**
  * The Plan pane's model while the session waits on an ExitPlanMode the CLI has not written to the
  * JSONL yet: the hook-stored plan is newer than any transcript plan, so it shows in their place.
  */
-export function withPendingPlan(model: SessionPlanModel, pendingPlan: PendingPlan | null): SessionPlanModel {
-	return pendingPlan === null ? model : {...model, content: pendingPlan.plan};
+export function withPendingPlan(model: SessionPlanModel, pendingPlan: PendingPlan | null): SessionPlanModel
+{
+	return pendingPlan === null
+		? model
+		:
+			{
+				...model,
+				content: pendingPlan.plan,
+			};
 }

@@ -4,22 +4,29 @@ import {handleSessionStatuslineRequest} from "../src/routes/api/sessions.$id.sta
 import {handleStatuslineBatchRequest} from "../src/routes/api/sessions.statusline";
 
 // Captured Claude Code statusline shape with identifying values replaced.
-const CAPTURED_STATUSLINE = {
+const CAPTURED_STATUSLINE =
+{
 	session_id: "session-100",
 	transcript_path: "/tmp/test/project/session-100.jsonl",
 	cwd: "/tmp/test/project",
-	effort: {level: "high"},
-	model: {
+	effort:
+	{
+		level: "high",
+	},
+	model:
+	{
 		id: "claude-test-model",
 		display_name: "Claude Test Model",
 	},
-	workspace: {
+	workspace:
+	{
 		current_dir: "/tmp/test/project",
 		project_dir: "/tmp/test/project",
 		added_dirs: [],
 	},
 	version: "1.0.0-test",
-	cost: {
+	cost:
+	{
 		total_cost_usd: 2.5,
 		total_duration_ms: 120_000,
 		total_api_duration_ms: 60_000,
@@ -28,7 +35,8 @@ const CAPTURED_STATUSLINE = {
 		total_input_tokens: 10_000,
 		total_output_tokens: 1_000,
 	},
-	context_window: {
+	context_window:
+	{
 		total_input_tokens: 10_000,
 		total_output_tokens: 1_000,
 		context_window_size: 200_000,
@@ -38,9 +46,11 @@ const CAPTURED_STATUSLINE = {
 	exceeds_200k_tokens: false,
 };
 
-const CAPTURED_STATUSLINE_WITH_NULL_CONTEXT = {
+const CAPTURED_STATUSLINE_WITH_NULL_CONTEXT =
+{
 	...CAPTURED_STATUSLINE,
-	context_window: {
+	context_window:
+	{
 		total_input_tokens: 0,
 		total_output_tokens: 0,
 		context_window_size: 1_000_000,
@@ -50,109 +60,22 @@ const CAPTURED_STATUSLINE_WITH_NULL_CONTEXT = {
 	},
 };
 
-describe("StatuslineSchema", () => {
-	it("parses a captured statusline and maps its list metrics", () => {
+describe("StatuslineSchema", () =>
+{
+	it("parses a captured statusline and maps its list metrics", () =>
+	{
 		const statusline = StatuslineSchema.parse(CAPTURED_STATUSLINE);
 
-		expect({statusline, metrics: toSessionMetrics(statusline)}).toStrictEqual({
-			statusline: CAPTURED_STATUSLINE,
-			metrics: {
-				model: "Claude Test Model",
-				contextRemainingPct: 75,
-				costUsd: 2.5,
-				linesAdded: 100,
-				linesRemoved: 20,
-				elapsedMs: 120_000,
+		expect(
+			{
+				statusline,
+				metrics: toSessionMetrics(statusline),
 			},
-		});
-	});
-
-	it("parses a captured statusline with null context percentages", () => {
-		const statusline = StatuslineSchema.parse(CAPTURED_STATUSLINE_WITH_NULL_CONTEXT);
-
-		expect({statusline, metrics: toSessionMetrics(statusline)}).toStrictEqual({
-			statusline: CAPTURED_STATUSLINE_WITH_NULL_CONTEXT,
-			metrics: {
-				model: "Claude Test Model",
-				contextRemainingPct: null,
-				costUsd: 2.5,
-				linesAdded: 100,
-				linesRemoved: 20,
-				elapsedMs: 120_000,
-			},
-		});
-	});
-
-	it("keeps the snapshot when rate_limits gains a window the schema does not know", () => {
-		const parsed = StatuslineSchema.safeParse({
-			context_window: {context_window_size: 200_000, used_percentage: 3},
-			rate_limits: {
-				seven_day: {used_percentage: 40, resets_at: 1_794_297_600},
-				seven_day_fable: {used_percentage: 5, resets_at: 1_794_297_600},
-			},
-		});
-		expect({success: parsed.success, usedPercentage: parsed.data?.context_window?.used_percentage}).toStrictEqual({
-			success: true,
-			usedPercentage: 3,
-		});
-	});
-
-	it("preserves unknown fields from future Claude Code releases", () => {
-		const statuslineWithUnknownFields = {
-			...CAPTURED_STATUSLINE,
-			model: {
-				...CAPTURED_STATUSLINE.model,
-				future_model_field: "alice",
-			},
-			future_status_field: {
-				enabled: true,
-			},
-		};
-
-		expect(StatuslineSchema.parse(statuslineWithUnknownFields)).toStrictEqual(statuslineWithUnknownFields);
-	});
-
-	it("declares fast_mode, the CLI's live fast-mode toggle (true during cooldown)", () => {
-		const parsed = StatuslineSchema.parse({fast_mode: true});
-		expect(parsed.fast_mode).toBe(true);
-		expectTypeOf(parsed.fast_mode).toEqualTypeOf<boolean | undefined>();
-		expect(StatuslineSchema.parse({}).fast_mode).toBeUndefined();
-		expect(StatuslineSchema.safeParse({fast_mode: "yes"}).success).toBe(false);
-	});
-
-	it("maps absent optional fields to null instead of zero", () => {
-		expect(toSessionMetrics(StatuslineSchema.parse({}))).toStrictEqual({
-			model: null,
-			contextRemainingPct: null,
-			costUsd: null,
-			linesAdded: null,
-			linesRemoved: null,
-			elapsedMs: null,
-		});
-	});
-});
-
-describe("statusline batch API", () => {
-	it("returns normalized metrics and null for missing files without reading invalid ids", async () => {
-		const readStatusline = vi.fn<(sessionId: string) => Promise<unknown>>(async (sessionId) => {
-			if (sessionId === "alice-session") return Promise.resolve(CAPTURED_STATUSLINE);
-			return Promise.reject(new Error("ENOENT: fabricated missing statusline"));
-		});
-		const url = new URL("http://127.0.0.1:7526/api/sessions/statusline");
-		url.searchParams.set("ids", "alice-session,bob-session,../not-a-session,alice-session");
-
-		const response = await handleStatuslineBatchRequest(new Request(url), {readStatusline});
-		const body: unknown = await response.json();
-
-		expect({
-			body,
-			cacheControl: response.headers.get("Cache-Control"),
-			readCalls: readStatusline.mock.calls,
-			schemaResult: SessionMetricsBatchResponse.safeParse(body).success,
-			status: response.status,
-		}).toStrictEqual({
-			body: {
-				"alice-session": {
+		).toStrictEqual(
+			{
+				statusline: CAPTURED_STATUSLINE,
+				metrics:
+				{
 					model: "Claude Test Model",
 					contextRemainingPct: 75,
 					costUsd: 2.5,
@@ -160,19 +83,183 @@ describe("statusline batch API", () => {
 					linesRemoved: 20,
 					elapsedMs: 120_000,
 				},
-				"bob-session": null,
 			},
-			cacheControl: "private, max-age=0, must-revalidate",
-			readCalls: [["alice-session"], ["bob-session"]],
-			schemaResult: true,
-			status: 200,
-		});
+		);
+	});
+
+	it("parses a captured statusline with null context percentages", () =>
+	{
+		const statusline = StatuslineSchema.parse(CAPTURED_STATUSLINE_WITH_NULL_CONTEXT);
+
+		expect(
+			{
+				statusline,
+				metrics: toSessionMetrics(statusline),
+			},
+		).toStrictEqual(
+			{
+				statusline: CAPTURED_STATUSLINE_WITH_NULL_CONTEXT,
+				metrics:
+				{
+					model: "Claude Test Model",
+					contextRemainingPct: null,
+					costUsd: 2.5,
+					linesAdded: 100,
+					linesRemoved: 20,
+					elapsedMs: 120_000,
+				},
+			},
+		);
+	});
+
+	it("keeps the snapshot when rate_limits gains a window the schema does not know", () =>
+	{
+		const parsed = StatuslineSchema.safeParse(
+			{
+				context_window:
+				{
+					context_window_size: 200_000,
+					used_percentage: 3,
+				},
+				rate_limits:
+				{
+					seven_day:
+					{
+						used_percentage: 40,
+						resets_at: 1_794_297_600,
+					},
+					seven_day_fable:
+					{
+						used_percentage: 5,
+						resets_at: 1_794_297_600,
+					},
+				},
+			},
+		);
+		expect(
+			{
+				success: parsed.success,
+				usedPercentage: parsed.data?.context_window?.used_percentage,
+			},
+		).toStrictEqual(
+			{
+				success: true,
+				usedPercentage: 3,
+			},
+		);
+	});
+
+	it("preserves unknown fields from future Claude Code releases", () =>
+	{
+		const statuslineWithUnknownFields =
+		{
+			...CAPTURED_STATUSLINE,
+			model:
+			{
+				...CAPTURED_STATUSLINE.model,
+				future_model_field: "alice",
+			},
+			future_status_field:
+			{
+				enabled: true,
+			},
+		};
+
+		expect(StatuslineSchema.parse(statuslineWithUnknownFields)).toStrictEqual(statuslineWithUnknownFields);
+	});
+
+	it("declares fast_mode, the CLI's live fast-mode toggle (true during cooldown)", () =>
+	{
+		const parsed = StatuslineSchema.parse(
+			{
+				fast_mode: true,
+			},
+		);
+		expect(parsed.fast_mode).toBe(true);
+		expectTypeOf(parsed.fast_mode).toEqualTypeOf<boolean | undefined>();
+		expect(StatuslineSchema.parse({}).fast_mode).toBeUndefined();
+		expect(
+			StatuslineSchema.safeParse(
+				{
+					fast_mode: "yes",
+				},
+			).success,
+		).toBe(false);
+	});
+
+	it("maps absent optional fields to null instead of zero", () =>
+	{
+		expect(toSessionMetrics(StatuslineSchema.parse({}))).toStrictEqual(
+			{
+				model: null,
+				contextRemainingPct: null,
+				costUsd: null,
+				linesAdded: null,
+				linesRemoved: null,
+				elapsedMs: null,
+			},
+		);
 	});
 });
 
-describe("statusline session API", () => {
-	it("returns null without reading files for a traversal session id", async () => {
-		const fileContents = {
+describe("statusline batch API", () =>
+{
+	it("returns normalized metrics and null for missing files without reading invalid ids", async () =>
+	{
+		const readStatusline = vi.fn<(sessionId: string) => Promise<unknown>>(async (sessionId) =>
+		{
+			if (sessionId === "alice-session") return Promise.resolve(CAPTURED_STATUSLINE);
+			return Promise.reject(new Error("ENOENT: fabricated missing statusline"));
+		});
+		const url = new URL("http://127.0.0.1:7526/api/sessions/statusline");
+		url.searchParams.set("ids", "alice-session,bob-session,../not-a-session,alice-session");
+
+		const response = await handleStatuslineBatchRequest(
+			new Request(url),
+			{
+				readStatusline,
+			},
+		);
+		const body: unknown = await response.json();
+
+		expect(
+			{
+				body,
+				cacheControl: response.headers.get("Cache-Control"),
+				readCalls: readStatusline.mock.calls,
+				schemaResult: SessionMetricsBatchResponse.safeParse(body).success,
+				status: response.status,
+			},
+		).toStrictEqual(
+			{
+				body:
+				{
+					"alice-session":
+					{
+						model: "Claude Test Model",
+						contextRemainingPct: 75,
+						costUsd: 2.5,
+						linesAdded: 100,
+						linesRemoved: 20,
+						elapsedMs: 120_000,
+					},
+					"bob-session": null,
+				},
+				cacheControl: "private, max-age=0, must-revalidate",
+				readCalls: [["alice-session"], ["bob-session"]],
+				schemaResult: true,
+				status: 200,
+			},
+		);
+	});
+});
+
+describe("statusline session API", () =>
+{
+	it("returns null without reading files for a traversal session id", async () =>
+	{
+		const fileContents =
+		{
 			name: "fabricated-package",
 			private: true,
 		};
@@ -180,20 +267,27 @@ describe("statusline session API", () => {
 			Promise.resolve(fileContents),
 		);
 
-		const response = await handleSessionStatuslineRequest("../../../fixture/project/package/statusline", {
-			readStatusline,
-		});
+		const response = await handleSessionStatuslineRequest(
+			"../../../fixture/project/package/statusline",
+			{
+				readStatusline,
+			},
+		);
 
-		expect({
-			body: await response.json(),
-			cacheControl: response.headers.get("Cache-Control"),
-			readCalls: readStatusline.mock.calls,
-			status: response.status,
-		}).toStrictEqual({
-			body: null,
-			cacheControl: "private, max-age=0, must-revalidate",
-			readCalls: [],
-			status: 200,
-		});
+		expect(
+			{
+				body: await response.json(),
+				cacheControl: response.headers.get("Cache-Control"),
+				readCalls: readStatusline.mock.calls,
+				status: response.status,
+			},
+		).toStrictEqual(
+			{
+				body: null,
+				cacheControl: "private, max-age=0, must-revalidate",
+				readCalls: [],
+				status: 200,
+			},
+		);
 	});
 });

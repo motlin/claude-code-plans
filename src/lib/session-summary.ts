@@ -29,7 +29,8 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
  * broadcast on `session:started`. Both shapes are already structurally
  * identical — this helper exists so callers don't depend on that detail.
  */
-export function toActiveSessionPayload(entry: ActiveSessionEntry): ActiveSessionPayload {
+export function toActiveSessionPayload(entry: ActiveSessionEntry): ActiveSessionPayload
+{
 	return {
 		sessionId: entry.sessionId,
 		cwd: entry.cwd,
@@ -39,7 +40,8 @@ export function toActiveSessionPayload(entry: ActiveSessionEntry): ActiveSession
 	};
 }
 
-interface SessionSummaryOptions {
+interface SessionSummaryOptions
+{
 	/** The durable viewed-state `unseen` flag (see `getUnseenSessionIds`). */
 	unseen?: boolean;
 	/** The app-side archive flag (see `getArchivedSessionIds`). */
@@ -61,9 +63,11 @@ interface SessionSummaryOptions {
 export function toSessionSummaryPayload(
 	indexedEntry: SessionEntry,
 	options: SessionSummaryOptions = {},
-): SessionSummaryPayload {
+): SessionSummaryPayload
+{
 	const entry = withOwnRepositoryPr(indexedEntry);
-	const {
+	const
+	{
 		unseen = false,
 		archived = false,
 		activeSession = getActiveSessionEntry(entry.id),
@@ -78,11 +82,13 @@ export function toSessionSummaryPayload(
 	const liveAgentCount = getLiveSubagentNodes().filter(
 		(node) => node.sessionId === entry.id && node.endedAt === null,
 	).length;
-	const main = resolveMainState({
-		hook: activeSession,
-		registry: registrySession,
-		turnEndedAt: entry.turnEndedAt ?? null,
-	});
+	const main = resolveMainState(
+		{
+			hook: activeSession,
+			registry: registrySession,
+			turnEndedAt: entry.turnEndedAt ?? null,
+		},
+	);
 	// Only live sessions can wait on a transcript-derived approval; a missing
 	// entry is an ended session, even if the approval survived a server restart.
 	// The registry knows the live status outright, and the CLI only flushes a
@@ -93,54 +99,116 @@ export function toSessionSummaryPayload(
 	// writes nothing while it waits, so the session goes quiet but is not done.
 	const awaitingPermission = sessionAwaitingPermission(entry.id, registrySession);
 	// Upstream judges every finished turn; ours judges only the turns an unread row could show as waiting.
-	if (unseen && entry.turnEndedAt !== undefined && main.state !== "working") {
+	if (unseen && entry.turnEndedAt !== undefined && main.state !== "working")
+	{
 		requestTurnVerdict(entry.id, entry.project, entry.turnEndedAt, now);
 	}
-	const {bucket, reason} = resolveSessionBucket({
-		mainState: main.state,
-		bridged: entry.remoteControl === true,
-		pendingInput,
-		awaitingPermission,
-		unseenError: unseen && entry.erroredAt !== undefined,
-		liveAgentCount,
-		backgroundTasks: activeSession?.backgroundTasks ?? [],
-		lastSubagentActivityAt: activeSession?.lastSubagentActivityAt ?? null,
-		herdrStatus: null,
-		prState: prStatus?.state ?? null,
-		unseen,
-		verdictNeedsInput: turnVerdictNeedsInput(entry.id, entry.turnEndedAt),
-		fileMtime: entry.mtime.getTime(),
-		now,
-	});
+	const {bucket, reason} = resolveSessionBucket(
+		{
+			mainState: main.state,
+			bridged: entry.remoteControl === true,
+			pendingInput,
+			awaitingPermission,
+			unseenError: unseen && entry.erroredAt !== undefined,
+			liveAgentCount,
+			backgroundTasks: activeSession?.backgroundTasks ?? [],
+			lastSubagentActivityAt: activeSession?.lastSubagentActivityAt ?? null,
+			herdrStatus: null,
+			prState: prStatus?.state ?? null,
+			unseen,
+			verdictNeedsInput: turnVerdictNeedsInput(entry.id, entry.turnEndedAt),
+			fileMtime: entry.mtime.getTime(),
+			now,
+		},
+	);
 	const title = bridgedSessionTitle(entry, now);
 	const aiTitle = secondaryAiTitle(title, entry.aiTitle);
 	const remoteControl = registryRemoteControl(registrySession);
 	return {
 		id: entry.id,
 		title,
-		...(entry.titleIsStandIn === true ? {titleIsStandIn: true} : {}),
+		...(entry.titleIsStandIn === true
+			?
+				{
+					titleIsStandIn: true,
+				}
+			: {}),
 		summary: entry.summary,
-		...(aiTitle === null ? {} : {aiTitle}),
-		...(entry.lastUserMessage === undefined ? {} : {lastUserMessage: entry.lastUserMessage}),
+		...(aiTitle === null
+			? {}
+			:
+				{
+					aiTitle,
+				}),
+		...(entry.lastUserMessage === undefined
+			? {}
+			:
+				{
+					lastUserMessage: entry.lastUserMessage,
+				}),
 		mtime: entry.mtime.toISOString(),
 		created: entry.created.toISOString(),
 		project: entry.project,
 		projectName: entry.projectName,
 		messageCount: entry.messageCount,
 		gitBranch: entry.gitBranch,
-		...(entry.pr === undefined ? {} : {pr: entry.pr}),
-		...(prStatus === null ? {} : {prStatus}),
-		...(entry.forkedFromSessionId === undefined ? {} : {forkedFromSessionId: entry.forkedFromSessionId}),
+		...(entry.pr === undefined
+			? {}
+			:
+				{
+					pr: entry.pr,
+				}),
+		...(prStatus === null
+			? {}
+			:
+				{
+					prStatus,
+				}),
+		...(entry.forkedFromSessionId === undefined
+			? {}
+			:
+				{
+					forkedFromSessionId: entry.forkedFromSessionId,
+				}),
 		archived,
-		...(entry.remoteControl === true ? {remoteControl: true} : {}),
-		...(remoteControl === null ? {} : {remoteControlState: remoteControl.state}),
-		...(terminalHost === null ? {} : {terminalHost}),
+		...(entry.remoteControl === true
+			?
+				{
+					remoteControl: true,
+				}
+			: {}),
+		...(remoteControl === null
+			? {}
+			:
+				{
+					remoteControlState: remoteControl.state,
+				}),
+		...(terminalHost === null
+			? {}
+			:
+				{
+					terminalHost,
+				}),
 		state: pendingInput || awaitingPermission ? "waiting" : main.state,
-		...(awaitingPermission ? {awaitingPermission: true} : {}),
-		...(registrySession === null ? {} : {processStartedAt: registrySession.startedAt}),
+		...(awaitingPermission
+			?
+				{
+					awaitingPermission: true,
+				}
+			: {}),
+		...(registrySession === null
+			? {}
+			:
+				{
+					processStartedAt: registrySession.startedAt,
+				}),
 		bucket,
 		...(reason === "error" && entry.erroredAt !== undefined
-			? {unseenError: true, erroredAt: new Date(entry.erroredAt).toISOString()}
+			?
+				{
+					unseenError: true,
+					erroredAt: new Date(entry.erroredAt).toISOString(),
+				}
 			: {}),
 		liveAgentCount,
 		unseen,
@@ -152,7 +220,8 @@ export function toSessionSummaryPayload(
  * The indexed title, or for a bridged session named only by its pane name the title generated from its conversation,
  * as claude.ai/code retitles it. Queues a (re)generation when one is due.
  */
-function bridgedSessionTitle(entry: SessionEntry, now: number): string {
+function bridgedSessionTitle(entry: SessionEntry, now: number): string
+{
 	if (entry.remoteControl !== true || entry.customTitle === undefined) return entry.title;
 	requestSessionTitle(
 		{
@@ -165,11 +234,17 @@ function bridgedSessionTitle(entry: SessionEntry, now: number): string {
 		},
 		now,
 	);
-	return displayedSessionTitle({...entry, bridged: true});
+	return displayedSessionTitle(
+		{
+			...entry,
+			bridged: true,
+		},
+	);
 }
 
 /** The entry without a PR it only touched in another repository, as session detail shows it. */
-function withOwnRepositoryPr(entry: SessionEntry): SessionEntry {
+function withOwnRepositoryPr(entry: SessionEntry): SessionEntry
+{
 	if (entry.pr === undefined || entry.cwd === undefined) return entry;
 	const pr = ownRepositoryPr(entry.pr, readOriginRepoName(entry.cwd));
 	if (pr !== null) return entry;
@@ -180,10 +255,17 @@ function withOwnRepositoryPr(entry: SessionEntry): SessionEntry {
 function blockedSince(
 	main: ReturnType<typeof resolveMainState>,
 	registrySession: RegistrySessionState | null,
-	pendingApproval: {blockedSince: string} | undefined,
-): string | null {
+	pendingApproval:
+		|
+		  {
+				blockedSince: string;
+		  }
+		| undefined,
+): string | null
+{
 	if (pendingApproval !== undefined) return pendingApproval.blockedSince;
-	if (main.source === "registry" && main.state === "waiting" && registrySession !== null) {
+	if (main.source === "registry" && main.state === "waiting" && registrySession !== null)
+	{
 		return new Date(registrySession.statusUpdatedAt).toISOString();
 	}
 	return null;
@@ -199,9 +281,15 @@ export function buildSessionSummaryPayloadFromDb(
 	db: IndexDb,
 	sessionId: string,
 	activeSessionLookup: (sessionId: string) => ActiveSessionEntry | null = getActiveSessionEntry,
-): SessionSummaryPayload | null {
+): SessionSummaryPayload | null
+{
 	const row = db
-		.select({...getTableColumns(schema.sessions), remoteControl: sessionRemoteControlColumn})
+		.select(
+			{
+				...getTableColumns(schema.sessions),
+				remoteControl: sessionRemoteControlColumn,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
@@ -230,8 +318,18 @@ export function buildSessionSummaryPayloadFromDb(
 			forkedFromSessionId: row.forkedFromSessionId ?? undefined,
 			pr: getSessionPrLink(db, sessionId) ?? undefined,
 			turnEndedAt: row.turnEndedAt ?? undefined,
-			...(row.erroredAt === null ? {} : {erroredAt: row.erroredAt}),
-			...(row.remoteControl === 1 ? {remoteControl: true} : {}),
+			...(row.erroredAt === null
+				? {}
+				:
+					{
+						erroredAt: row.erroredAt,
+					}),
+			...(row.remoteControl === 1
+				?
+					{
+						remoteControl: true,
+					}
+				: {}),
 		},
 		{
 			unseen: isSessionUnseen(db, sessionId),

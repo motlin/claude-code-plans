@@ -1,7 +1,8 @@
 import {useQuery} from "@tanstack/react-query";
 import {useMemo} from "react";
 import {slashCommandsQueryOptions} from "../lib/api/commands";
-import {
+import
+{
 	BUILTIN_SLASH_COMMANDS,
 	mergeSlashCommands,
 	SESSION_SLASH_COMMANDS,
@@ -14,7 +15,8 @@ const SLASH_COMMANDS_FAILED_HEADER = "Some commands didn’t load.\nType / again
 /** Upstream's `w51ki9qEWN` header for a session whose command list can't be known yet (`lt`). */
 const SLASH_COMMANDS_NOT_RUNNING_HEADER = "More commands available once the session is running";
 
-export interface ComposerSlashCommands {
+export interface ComposerSlashCommands
+{
 	slashCommands: readonly SlashCommand[] | undefined;
 	slashMenuHeader: string | undefined;
 	/** The list is still being fetched: upstream's `ft` replaces the whole menu with one skeleton row. */
@@ -29,10 +31,18 @@ export interface ComposerSlashCommands {
  * query (no session directory) shows the built-ins under upstream's not-running header.
  * A `session` composer also lists the session-only built-ins (`/rewind`) first.
  */
-export function useSlashCommands(cwd: string | undefined, enabled = true, session = false): ComposerSlashCommands {
-	const query = useQuery({...slashCommandsQueryOptions(cwd), enabled, retry: false});
+export function useSlashCommands(cwd: string | undefined, enabled = true, session = false): ComposerSlashCommands
+{
+	const query = useQuery(
+		{
+			...slashCommandsQueryOptions(cwd),
+			enabled,
+			retry: false,
+		},
+	);
 	const withSession = useSessionCommands(session);
-	if (!enabled) {
+	if (!enabled)
+	{
 		return {
 			slashCommands: withSession(BUILTIN_SLASH_COMMANDS),
 			slashMenuHeader: SLASH_COMMANDS_NOT_RUNNING_HEADER,
@@ -40,7 +50,8 @@ export function useSlashCommands(cwd: string | undefined, enabled = true, sessio
 			onSlashMenuOpen: undefined,
 		};
 	}
-	if (!query.isError) {
+	if (!query.isError)
+	{
 		return {
 			slashCommands: query.data === undefined ? undefined : withSession(query.data),
 			slashMenuHeader: undefined,
@@ -59,11 +70,14 @@ export function useSlashCommands(cwd: string | undefined, enabled = true, sessio
 }
 
 /** Prepends {@link SESSION_SLASH_COMMANDS} for a session, memoized per list so the menu sees a stable array. */
-function useSessionCommands(session: boolean): (list: readonly SlashCommand[]) => readonly SlashCommand[] {
-	return useMemo(() => {
+function useSessionCommands(session: boolean): (list: readonly SlashCommand[]) => readonly SlashCommand[]
+{
+	return useMemo(() =>
+	{
 		if (!session) return (list) => list;
 		const cache = new WeakMap<readonly SlashCommand[], readonly SlashCommand[]>();
-		return (list) => {
+		return (list) =>
+		{
 			const cached = cache.get(list);
 			if (cached !== undefined) return cached;
 			const merged = mergeSlashCommands([SESSION_SLASH_COMMANDS, list]);

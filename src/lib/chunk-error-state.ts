@@ -2,7 +2,8 @@
 export type ChunkErrorState = "retry" | "waiting" | "waiting-reload" | "updated" | "reload";
 
 /** Upstream `dg`: the ErrorView copy per state. */
-export const CHUNK_ERROR_COPY: Readonly<Record<ChunkErrorState, string>> = {
+export const CHUNK_ERROR_COPY: Readonly<Record<ChunkErrorState, string>> =
+{
 	retry: "Couldn’t load this.",
 	waiting: "You’re offline.",
 	"waiting-reload": "You’re offline.",
@@ -11,7 +12,8 @@ export const CHUNK_ERROR_COPY: Readonly<Record<ChunkErrorState, string>> = {
 };
 
 /** Upstream `NT`: the states whose button reloads the page instead of retrying the download. */
-export function reloadsPage(state: ChunkErrorState): boolean {
+export function reloadsPage(state: ChunkErrorState): boolean
+{
 	return state === "reload" || state === "updated" || state === "waiting-reload";
 }
 
@@ -28,7 +30,8 @@ export function chunkErrorState({
 	online: boolean;
 	reloadUsed: boolean;
 	retried: boolean;
-}): ChunkErrorState {
+}): ChunkErrorState
+{
 	if (!online) return reloadUsed ? "waiting-reload" : "waiting";
 	if (reloadUsed) return "reload";
 	return retried ? "updated" : "retry";

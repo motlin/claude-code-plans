@@ -15,7 +15,8 @@ import {FileColumnResizeShield} from "../ui/file-column-resize-shield";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {ResizeHandle} from "../ui/resize-handle";
 import {RESIZE_HANDLE_HALF_CLIP_CLASS} from "../ui/resize-pill";
-import {
+import
+{
 	buildChangedFileTree,
 	type ChangedFileInput,
 	type ChangedFileTreeFile,
@@ -29,7 +30,8 @@ const ROW_CLASS =
 	"flex h-6 w-full shrink-0 cursor-pointer select-none items-center gap-1 rounded-r5 pr-2 text-left text-body text-primary outline-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover aria-[current=true]:bg-fill-control";
 
 /** ArrowUp/ArrowDown/Home/End roving focus over the rows matching `selector`. */
-function moveRowFocus(event: KeyboardEvent<HTMLElement>, selector: string): void {
+function moveRowFocus(event: KeyboardEvent<HTMLElement>, selector: string): void
+{
 	const rows = [...event.currentTarget.querySelectorAll<HTMLElement>(selector)];
 	if (rows.length === 0) return;
 	const active = document.activeElement;
@@ -44,7 +46,8 @@ function moveRowFocus(event: KeyboardEvent<HTMLElement>, selector: string): void
 	rows[next]?.focus();
 }
 
-export function DiffCounts({additions, deletions}: {additions: number; deletions: number}) {
+export function DiffCounts({additions, deletions}: {additions: number; deletions: number})
+{
 	return (
 		<span className="flex shrink-0 items-center gap-0.5 text-footnote tabular-nums">
 			<span className="text-diff-added">+{additions}</span>
@@ -63,7 +66,8 @@ function withRowMenu(
 	path: string,
 	isDirectory: boolean,
 	rowMenu: ChangedFileRowMenu | undefined,
-): ReactElement {
+): ReactElement
+{
 	if (rowMenu === undefined) return row;
 	return (
 		<ContextMenu key={key}>
@@ -73,7 +77,8 @@ function withRowMenu(
 	);
 }
 
-interface TreeRowsProps {
+interface TreeRowsProps
+{
 	nodes: readonly ChangedFileTreeNode[];
 	sectionKey: string;
 	flat: boolean;
@@ -93,10 +98,13 @@ function TreeRows({
 	activePath,
 	onFileClick,
 	rowMenu,
-}: TreeRowsProps) {
-	return nodes.map((node) => {
+}: TreeRowsProps)
+{
+	return nodes.map((node) =>
+	{
 		const paddingLeft = INDENT_PX * (node.depth + 1);
-		if (node.type === "dir") {
+		if (node.type === "dir")
+		{
 			const key = `${sectionKey}:${node.path}`;
 			const expanded = !collapsedDirs.has(key);
 			return (
@@ -111,11 +119,15 @@ function TreeRows({
 							aria-level={node.depth + 1}
 							aria-expanded={expanded}
 							title={node.path}
-							onClick={() => {
+							onClick={() =>
+							{
 								onToggleDir(key);
 							}}
 							className={ROW_CLASS}
-							style={{paddingLeft}}
+							style={
+							{
+								paddingLeft,
+							}}
 						>
 							<ChevronRight
 								aria-hidden="true"
@@ -159,10 +171,15 @@ function TreeRows({
 }
 
 const TREE_ICON_PX = `${String(FILE_TYPE_ICON_SIZE_PX.xs)}px`;
-const TREE_ICON_BOX = {width: TREE_ICON_PX, height: TREE_ICON_PX};
+const TREE_ICON_BOX =
+{
+	width: TREE_ICON_PX,
+	height: TREE_ICON_PX,
+};
 
 /** Upstream `Ec`: the check a mark slot shows on hover. */
-function HoverCheck() {
+function HoverCheck()
+{
 	return (
 		<span className="hidden group-hover/mark:contents">
 			<Icon name="CheckCircle" size="xs" className="text-secondary" />
@@ -171,7 +188,8 @@ function HoverCheck() {
 }
 
 /** Upstream `Dc`: the file icon, which a markable row turns into a hover check. */
-function UnmarkedFileIcon({name, markable}: {name: string; markable: boolean}) {
+function UnmarkedFileIcon({name, markable}: {name: string; markable: boolean})
+{
 	// FileTypeIcon adds upstream's `shrink-0` itself.
 	if (!markable) return <FileTypeIcon fileName={name} size="xs" className="text-muted-control" />;
 	return (
@@ -185,8 +203,10 @@ function UnmarkedFileIcon({name, markable}: {name: string; markable: boolean}) {
 }
 
 /** Upstream `Oc`: a marked row's filled check, or a stale row's accent dot that turns into the check on hover. */
-function FileMarkGlyph({stale}: {stale: boolean}) {
-	if (!stale) {
+function FileMarkGlyph({stale}: {stale: boolean})
+{
+	if (!stale)
+	{
 		return (
 			<Icon
 				name="CheckCircleFilled"
@@ -215,7 +235,8 @@ function FileMarkGlyph({stale}: {stale: boolean}) {
  * Upstream `Tc`: a click toggles the mark only from inside the mark slot, without ⌘/Ctrl, a touch pointer, or a
  * text selection in the row's document.
  */
-function isMarkToggleClick(event: MouseEvent<HTMLButtonElement>): boolean {
+function isMarkToggleClick(event: MouseEvent<HTMLButtonElement>): boolean
+{
 	const native = event.nativeEvent;
 	if (event.metaKey || event.ctrlKey) return false;
 	if ("pointerType" in native && native.pointerType === "touch") return false;
@@ -240,7 +261,8 @@ function FileRow({
 	active: boolean;
 	onFileClick: (event: MouseEvent<HTMLButtonElement>, path: string) => void;
 	rowMenu: ChangedFileRowMenu | undefined;
-}) {
+})
+{
 	const mark = useTreeFileMark(node.path);
 	const marked = mark !== undefined && mark.status !== "none";
 	const nameInk = mark?.status === "marked" && !active ? " text-muted-as-secondary" : "";
@@ -255,15 +277,20 @@ function FileRow({
 			aria-current={active ? "true" : undefined}
 			title={node.path}
 			draggable
-			onDragStart={(event) => {
+			onDragStart={(event) =>
+			{
 				event.dataTransfer.setData("text/plain", node.path);
 			}}
-			onClick={(event) => {
+			onClick={(event) =>
+			{
 				if (mark?.canMark === true && isMarkToggleClick(event)) mark.setMarked(mark.status !== "marked");
 				else onFileClick(event, node.path);
 			}}
 			className={ROW_CLASS}
-			style={{paddingLeft}}
+			style={
+			{
+				paddingLeft,
+			}}
 		>
 			{!marked && <UnmarkedFileIcon name={node.name} markable={mark?.canMark === true} />}
 			<span className={`flex min-w-0 flex-1 items-baseline gap-1${nameInk}`}>
@@ -281,7 +308,8 @@ function FileRow({
 	);
 }
 
-export interface ChangedFileCommit {
+export interface ChangedFileCommit
+{
 	sha: string;
 	shortSha: string;
 	subject: string;
@@ -299,7 +327,8 @@ function CommitList({
 	selectedCommitSha: string | null;
 	onSelectCommit: (sha: string | null) => void;
 	onCopyCommitSha: (sha: string) => void;
-}) {
+})
+{
 	const rowClass =
 		"w-full cursor-pointer rounded-r5 px-1 py-[6px] text-left text-body text-primary outline-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover aria-pressed:bg-fill-control";
 	return (
@@ -309,7 +338,8 @@ function CommitList({
 				aria-orientation="vertical"
 				aria-label="Commits"
 				tabIndex={0}
-				onKeyDown={(event) => {
+				onKeyDown={(event) =>
+				{
 					moveRowFocus(event, "[data-commit-row]");
 				}}
 				className="flex flex-col gap-[2px] py-2 outline-none"
@@ -319,7 +349,8 @@ function CommitList({
 					data-commit-row
 					tabIndex={-1}
 					aria-pressed={selectedCommitSha === null}
-					onClick={() => {
+					onClick={() =>
+					{
 						onSelectCommit(null);
 					}}
 					className={rowClass}
@@ -334,7 +365,8 @@ function CommitList({
 							tabIndex={-1}
 							aria-pressed={selectedCommitSha === commit.sha}
 							title={commit.subject}
-							onClick={() => {
+							onClick={() =>
+							{
 								onSelectCommit(commit.sha);
 							}}
 							className={`flex flex-col items-start gap-[2px] pr-7 ${rowClass}`}
@@ -354,7 +386,8 @@ function CommitList({
 							type="button"
 							aria-label="Copy commit SHA"
 							title="Copy commit SHA"
-							onClick={() => {
+							onClick={() =>
+							{
 								onCopyCommitSha(commit.sha);
 							}}
 							className="absolute top-1 right-1 flex size-5 cursor-pointer items-center justify-center rounded-r5 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100"
@@ -368,7 +401,8 @@ function CommitList({
 	);
 }
 
-export interface ChangedFilesSidebarProps extends ChangedFileTreeOptions {
+export interface ChangedFilesSidebarProps extends ChangedFileTreeOptions
+{
 	files: readonly ChangedFileInput[];
 	/** The file currently in view in the diff body. */
 	activePath: string | null;
@@ -406,29 +440,43 @@ export function ChangedFilesSidebar({
 	onCopyCommitSha,
 	shown = true,
 	onShownChange,
-}: ChangedFilesSidebarProps) {
+}: ChangedFilesSidebarProps)
+{
 	const {settings, setSetting} = useSettings();
 	const [collapsedDirs, setCollapsedDirs] = useState<ReadonlySet<string>>(new Set());
-	const {columnRef, columnStyle, resizing, handleProps, edgeHandleProps} = useFileColumnResize({
-		width: clampFileColumnWidth(settings.diffTreeWidth),
-		onWidthChange: (next) => {
-			setSetting("diffTreeWidth", next);
+	const {columnRef, columnStyle, resizing, handleProps, edgeHandleProps} = useFileColumnResize(
+		{
+			width: clampFileColumnWidth(settings.diffTreeWidth),
+			onWidthChange: (next) =>
+			{
+				setSetting("diffTreeWidth", next);
+			},
+			shown,
+			onShownChange,
 		},
-		shown,
-		onShownChange,
-	});
-	const sections = buildChangedFileTree(files, {groupByFolder, groupByKind});
+	);
+	const sections = buildChangedFileTree(
+		files,
+		{
+			groupByFolder,
+			groupByKind,
+		},
+	);
 
-	function toggleDir(key: string): void {
-		setCollapsedDirs((previous) => {
+	function toggleDir(key: string): void
+	{
+		setCollapsedDirs((previous) =>
+		{
 			const next = new Set(previous);
 			if (!next.delete(key)) next.add(key);
 			return next;
 		});
 	}
 
-	function handleFileClick(event: MouseEvent<HTMLButtonElement>, path: string): void {
-		if ((event.metaKey || event.ctrlKey) && onOpenFile) {
+	function handleFileClick(event: MouseEvent<HTMLButtonElement>, path: string): void
+	{
+		if ((event.metaKey || event.ctrlKey) && onOpenFile)
+		{
 			onOpenFile(path);
 			return;
 		}
@@ -450,12 +498,14 @@ export function ChangedFilesSidebar({
 						role="tree"
 						aria-label="Changed files"
 						tabIndex={0}
-						onKeyDown={(event) => {
+						onKeyDown={(event) =>
+						{
 							moveRowFocus(event, "[data-diff-tree-row]");
 						}}
 						className="flex h-full flex-col overflow-y-auto px-1 py-1.25 outline-none"
 					>
-						{sections.map((section) => {
+						{sections.map((section) =>
+						{
 							const sectionKey = section.kind ?? "all";
 							return (
 								<div key={sectionKey} role="group" className="flex flex-col">
@@ -496,7 +546,10 @@ export function ChangedFilesSidebar({
 						aria-label="Resize file list"
 						onBorder
 						className={RESIZE_HANDLE_HALF_CLIP_CLASS}
-						style={{zIndex: FILE_COLUMN_HANDLE_Z}}
+						style={
+						{
+							zIndex: FILE_COLUMN_HANDLE_Z,
+						}}
 					/>
 				)}
 			</div>

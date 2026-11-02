@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	answerForQuestion,
 	formatAnswerPrompt,
 	isWithdrawnQuestion,
@@ -15,64 +16,128 @@ import {
 import {processTranscript} from "../src/lib/transcript";
 import shapes from "./fixtures/question-outcome-shapes.json";
 
-describe("formatAnswerPrompt", () => {
-	it("formats a single answer as the canonical Claude Code reply text", () => {
-		const result = formatAnswerPrompt("toolu_abc", [{question: "Continue?", response: "Yes"}]);
+describe("formatAnswerPrompt", () =>
+{
+	it("formats a single answer as the canonical Claude Code reply text", () =>
+	{
+		const result = formatAnswerPrompt("toolu_abc", [
+			{
+				question: "Continue?",
+				response: "Yes",
+			},
+		]);
 		expect(result).toContain("toolu_abc");
 		expect(result).toContain('"Continue?"="Yes"');
 		expect(result).toContain("Your questions have been answered:");
 		expect(result).toContain("with these answers in mind");
 	});
 
-	it("joins multiple question/answer pairs with commas", () => {
+	it("joins multiple question/answer pairs with commas", () =>
+	{
 		const result = formatAnswerPrompt("toolu_xyz", [
-			{question: "Q1", response: "A1"},
-			{question: "Q2", response: "A2"},
+			{
+				question: "Q1",
+				response: "A1",
+			},
+			{
+				question: "Q2",
+				response: "A2",
+			},
 		]);
 		expect(result).toContain('"Q1"="A1", "Q2"="A2"');
 	});
 
-	it("escapes embedded double quotes in question and answer text", () => {
-		const result = formatAnswerPrompt("toolu_q", [{question: 'Say "hi"?', response: 'No "thanks"'}]);
+	it("escapes embedded double quotes in question and answer text", () =>
+	{
+		const result = formatAnswerPrompt("toolu_q", [
+			{
+				question: 'Say "hi"?',
+				response: 'No "thanks"',
+			},
+		]);
 		expect(result).toContain('\\"hi\\"');
 		expect(result).toContain('\\"thanks\\"');
 	});
 });
 
-describe("formatAnswerPrompt, as CLI 2.1.318's tool_result pairs", () => {
+describe("formatAnswerPrompt, as CLI 2.1.318's tool_result pairs", () =>
+{
 	const ANSWERS = [
-		{question: "Which tool?", response: ["x", "Hammer"]},
-		{question: "Layout", response: "Grid", preview: "<grid/>"},
+		{
+			question: "Which tool?",
+			response: ["x", "Hammer"],
+		},
+		{
+			question: "Layout",
+			response: "Grid",
+			preview: "<grid/>",
+		},
 	];
 
-	it("joins an array response with commas and appends the selected preview", () => {
+	it("joins an array response with commas and appends the selected preview", () =>
+	{
 		expect(formatAnswerPrompt("toolu_x", ANSWERS)).toBe(
 			'(Answering AskUserQuestion toolu_x from the web viewer.) Your questions have been answered: "Which tool?"="x, Hammer", "Layout"="Grid" selected preview:\n<grid/>. You can now continue with these answers in mind.',
 		);
 	});
 
-	it("reads back as the answers it was written from", () => {
+	it("reads back as the answers it was written from", () =>
+	{
 		const prompt = formatAnswerPrompt("toolu_x", ANSWERS);
 		const text = prompt.slice(prompt.indexOf("Your questions"));
 		expect(
 			parseAnswerResult(text, [
-				{question: "Which tool?", multiSelect: true, options: [{label: "Hammer"}]},
-				{question: "Layout", options: [{label: "Grid", preview: "<grid/>"}]},
+				{
+					question: "Which tool?",
+					multiSelect: true,
+					options: [
+						{
+							label: "Hammer",
+						},
+					],
+				},
+				{
+					question: "Layout",
+					options: [
+						{
+							label: "Grid",
+							preview: "<grid/>",
+						},
+					],
+				},
 			]),
 		).toStrictEqual([
-			{question: "Which tool?", answer: "x, Hammer", notes: null},
-			{question: "Layout", answer: "Grid", notes: null},
+			{
+				question: "Which tool?",
+				answer: "x, Hammer",
+				notes: null,
+			},
+			{
+				question: "Layout",
+				answer: "Grid",
+				notes: null,
+			},
 		]);
 	});
 });
 
-describe("normalizeQuestions", () => {
-	it("returns the multi-question list unchanged when present", () => {
-		const input = {
+describe("normalizeQuestions", () =>
+{
+	it("returns the multi-question list unchanged when present", () =>
+	{
+		const input =
+		{
 			questions: [
 				{
 					question: "Pick one",
-					options: [{label: "A"}, {label: "B"}],
+					options: [
+						{
+							label: "A",
+						},
+						{
+							label: "B",
+						},
+					],
 					multiSelect: false,
 				},
 			],
@@ -82,10 +147,19 @@ describe("normalizeQuestions", () => {
 		expect(result.map((r) => r.question)).toStrictEqual(["Pick one"]);
 	});
 
-	it("wraps a single-question shape into a one-element list", () => {
-		const input = {
+	it("wraps a single-question shape into a one-element list", () =>
+	{
+		const input =
+		{
 			question: "Continue?",
-			options: [{label: "Yes"}, {label: "No"}],
+			options: [
+				{
+					label: "Yes",
+				},
+				{
+					label: "No",
+				},
+			],
 			multiSelect: true,
 			header: "Confirm",
 		};
@@ -93,42 +167,95 @@ describe("normalizeQuestions", () => {
 		expect(result).toStrictEqual([
 			{
 				question: "Continue?",
-				options: [{label: "Yes"}, {label: "No"}],
+				options: [
+					{
+						label: "Yes",
+					},
+					{
+						label: "No",
+					},
+				],
 				multiSelect: true,
 				header: "Confirm",
 			},
 		]);
 	});
 
-	it("returns null when input has neither shape", () => {
+	it("returns null when input has neither shape", () =>
+	{
 		expect(normalizeQuestions({})).toBe(null);
-		expect(normalizeQuestions({question: "Q", options: []})).toBe(null);
-		expect(normalizeQuestions({questions: []})).toBe(null);
+		expect(
+			normalizeQuestions(
+				{
+					question: "Q",
+					options: [],
+				},
+			),
+		).toBe(null);
+		expect(
+			normalizeQuestions(
+				{
+					questions: [],
+				},
+			),
+		).toBe(null);
 	});
 });
 
-describe("answerForQuestion", () => {
-	const single: QuestionLike = {
+describe("answerForQuestion", () =>
+{
+	const single: QuestionLike =
+	{
 		question: "Pick one",
-		options: [{label: "A"}, {label: "B"}, {label: "C"}],
+		options: [
+			{
+				label: "A",
+			},
+			{
+				label: "B",
+			},
+			{
+				label: "C",
+			},
+		],
 	};
-	const multi: QuestionLike = {
+	const multi: QuestionLike =
+	{
 		question: "Pick any",
-		options: [{label: "A"}, {label: "B"}, {label: "C"}],
+		options: [
+			{
+				label: "A",
+			},
+			{
+				label: "B",
+			},
+			{
+				label: "C",
+			},
+		],
 		multiSelect: true,
 	};
 
-	it("returns null when nothing is selected", () => {
+	it("returns null when nothing is selected", () =>
+	{
 		expect(answerForQuestion(single, makeInitialDraft())).toBe(null);
 	});
 
-	it("returns the single selected label for non-multi questions", () => {
-		const draft = {selected: new Set(["B"]), otherText: "", useOther: false};
+	it("returns the single selected label for non-multi questions", () =>
+	{
+		const draft =
+		{
+			selected: new Set(["B"]),
+			otherText: "",
+			useOther: false,
+		};
 		expect(answerForQuestion(single, draft)).toBe("B");
 	});
 
-	it("joins selected labels for multi-select questions", () => {
-		const draft = {
+	it("joins selected labels for multi-select questions", () =>
+	{
+		const draft =
+		{
 			selected: new Set(["A", "C"]),
 			otherText: "",
 			useOther: false,
@@ -138,8 +265,10 @@ describe("answerForQuestion", () => {
 		expect(result!.split(", ").toSorted()).toStrictEqual(["A", "C"]);
 	});
 
-	it("returns the trimmed Other text when useOther is true", () => {
-		const draft = {
+	it("returns the trimmed Other text when useOther is true", () =>
+	{
+		const draft =
+		{
 			selected: new Set<string>(),
 			otherText: "  custom value  ",
 			useOther: true,
@@ -147,8 +276,10 @@ describe("answerForQuestion", () => {
 		expect(answerForQuestion(single, draft)).toBe("custom value");
 	});
 
-	it("returns null when Other is selected but the text is empty", () => {
-		const draft = {
+	it("returns null when Other is selected but the text is empty", () =>
+	{
+		const draft =
+		{
 			selected: new Set<string>(),
 			otherText: "   ",
 			useOther: true,
@@ -157,8 +288,17 @@ describe("answerForQuestion", () => {
 	});
 });
 
-describe("parseAnswerResult", () => {
-	const q = (question: string, options: Array<{label: string; preview?: string}> = []): QuestionLike => ({
+describe("parseAnswerResult", () =>
+{
+	const q = (
+		question: string,
+		options: Array<
+		{
+			label: string;
+			preview?: string;
+		}> = [],
+	): QuestionLike => (
+	{
 		question,
 		options,
 	});
@@ -166,126 +306,291 @@ describe("parseAnswerResult", () => {
 		". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.";
 	const ANSWERED_SUFFIX = ". You can now continue with these answers in mind.";
 
-	it('reads the " notes: " marker the CLI writes today', () => {
+	it('reads the " notes: " marker the CLI writes today', () =>
+	{
 		const text = `The user answered: "Pick?"="Option A" notes: check my assumption${READ_CAREFULLY}`;
-		const result = parseAnswerResult(text, [q("Pick?", [{label: "Option A"}])]);
-		expect(result).toStrictEqual([{question: "Pick?", answer: "Option A", notes: "check my assumption"}]);
+		const result = parseAnswerResult(text, [
+			q("Pick?", [
+				{
+					label: "Option A",
+				},
+			]),
+		]);
+		expect(result).toStrictEqual([
+			{
+				question: "Pick?",
+				answer: "Option A",
+				notes: "check my assumption",
+			},
+		]);
 	});
 
-	it('reads " notes: " written after the selected preview', () => {
+	it('reads " notes: " written after the selected preview', () =>
+	{
 		const preview = 'int[] a = {1, 2};\nString[] b = {"x"};';
 		const text = `The user answered: "Arrays?"="Add an option" selected preview:\n${preview} notes: on or off?${READ_CAREFULLY}`;
-		const result = parseAnswerResult(text, [q("Arrays?", [{label: "Add an option", preview}])]);
-		expect(result).toStrictEqual([{question: "Arrays?", answer: "Add an option", notes: "on or off?"}]);
+		const result = parseAnswerResult(text, [
+			q("Arrays?", [
+				{
+					label: "Add an option",
+					preview,
+				},
+			]),
+		]);
+		expect(result).toStrictEqual([
+			{
+				question: "Arrays?",
+				answer: "Add an option",
+				notes: "on or off?",
+			},
+		]);
 	});
 
-	it('reads " notes: " containing commas before a plain second pair', () => {
+	it('reads " notes: " containing commas before a plain second pair', () =>
+	{
 		const text = `The user answered: "Q1"="A1" notes: a, b, "Q2"="A2"${READ_CAREFULLY}`;
-		const result = parseAnswerResult(text, [q("Q1", [{label: "A1"}]), q("Q2", [{label: "A2"}])]);
+		const result = parseAnswerResult(text, [
+			q("Q1", [
+				{
+					label: "A1",
+				},
+			]),
+			q("Q2", [
+				{
+					label: "A2",
+				},
+			]),
+		]);
 		expect(result).toStrictEqual([
-			{question: "Q1", answer: "A1", notes: "a, b"},
-			{question: "Q2", answer: "A2", notes: null},
+			{
+				question: "Q1",
+				answer: "A1",
+				notes: "a, b",
+			},
+			{
+				question: "Q2",
+				answer: "A2",
+				notes: null,
+			},
 		]);
 	});
 
-	it("reads a notes-only answer written as (no option selected)", () => {
+	it("reads a notes-only answer written as (no option selected)", () =>
+	{
 		const text = `The user answered: "Java?"=(no option selected) notes: newest 21, "Node?"="LTS"${READ_CAREFULLY}`;
-		const result = parseAnswerResult(text, [q("Java?"), q("Node?", [{label: "LTS"}])]);
+		const result = parseAnswerResult(text, [
+			q("Java?"),
+			q("Node?", [
+				{
+					label: "LTS",
+				},
+			]),
+		]);
 		expect(result).toStrictEqual([
-			{question: "Java?", answer: "(notes only)", notes: "newest 21"},
-			{question: "Node?", answer: "LTS", notes: null},
+			{
+				question: "Java?",
+				answer: "(notes only)",
+				notes: "newest 21",
+			},
+			{
+				question: "Node?",
+				answer: "LTS",
+				notes: null,
+			},
 		]);
 	});
 
-	it("skips a question the CLI omitted because it had no answer and no notes", () => {
+	it("skips a question the CLI omitted because it had no answer and no notes", () =>
+	{
 		const text = `Your questions have been answered: "Q2"="A2"${ANSWERED_SUFFIX}`;
-		const result = parseAnswerResult(text, [q("Q1"), q("Q2", [{label: "A2"}])]);
-		expect(result).toStrictEqual([{question: "Q2", answer: "A2", notes: null}]);
+		const result = parseAnswerResult(text, [
+			q("Q1"),
+			q("Q2", [
+				{
+					label: "A2",
+				},
+			]),
+		]);
+		expect(result).toStrictEqual([
+			{
+				question: "Q2",
+				answer: "A2",
+				notes: null,
+			},
+		]);
 	});
 
-	it("reads questions and answers whose double quotes the CLI writes raw", () => {
+	it("reads questions and answers whose double quotes the CLI writes raw", () =>
+	{
 		const text = `Your questions have been answered: "Fix ("payments failed")?"="Make it "public""${ANSWERED_SUFFIX}`;
-		const result = parseAnswerResult(text, [q('Fix ("payments failed")?', [{label: 'Make it "public"'}])]);
-		expect(result).toStrictEqual([{question: 'Fix ("payments failed")?', answer: 'Make it "public"', notes: null}]);
+		const result = parseAnswerResult(text, [
+			q('Fix ("payments failed")?', [
+				{
+					label: 'Make it "public"',
+				},
+			]),
+		]);
+		expect(result).toStrictEqual([
+			{
+				question: 'Fix ("payments failed")?',
+				answer: 'Make it "public"',
+				notes: null,
+			},
+		]);
 	});
 
-	it("reads a raw-quoted free-text answer followed by another pair", () => {
+	it("reads a raw-quoted free-text answer followed by another pair", () =>
+	{
 		const text = `Your questions have been answered: "Say "hi"?"="I said "no"", "Q2"="A2"${ANSWERED_SUFFIX}`;
 		const result = parseAnswerResult(text, [q('Say "hi"?'), q("Q2")]);
 		expect(result).toStrictEqual([
-			{question: 'Say "hi"?', answer: 'I said "no"', notes: null},
-			{question: "Q2", answer: "A2", notes: null},
+			{
+				question: 'Say "hi"?',
+				answer: 'I said "no"',
+				notes: null,
+			},
+			{
+				question: "Q2",
+				answer: "A2",
+				notes: null,
+			},
 		]);
 	});
 
-	it("parses a single Q/A pair without notes", () => {
+	it("parses a single Q/A pair without notes", () =>
+	{
 		const text =
 			'User has answered your questions: "Continue?"="Yes". You can now continue with the user\'s answers in mind.';
-		const result = parseAnswerResult(text, [q("Continue?", [{label: "Yes"}, {label: "No"}])]);
-		expect(result).toStrictEqual([{question: "Continue?", answer: "Yes", notes: null}]);
+		const result = parseAnswerResult(text, [
+			q("Continue?", [
+				{
+					label: "Yes",
+				},
+				{
+					label: "No",
+				},
+			]),
+		]);
+		expect(result).toStrictEqual([
+			{
+				question: "Continue?",
+				answer: "Yes",
+				notes: null,
+			},
+		]);
 	});
 
-	it("parses a single Q/A pair with user notes", () => {
+	it("parses a single Q/A pair with user notes", () =>
+	{
 		const text =
 			'User has answered your questions: "Continue?"="Other thing" user notes: Other thing.' +
 			" You can now continue with the user's answers in mind.";
-		const result = parseAnswerResult(text, [q("Continue?", [{label: "Yes"}])]);
-		expect(result).toStrictEqual([{question: "Continue?", answer: "Other thing", notes: "Other thing"}]);
+		const result = parseAnswerResult(text, [
+			q("Continue?", [
+				{
+					label: "Yes",
+				},
+			]),
+		]);
+		expect(result).toStrictEqual([
+			{
+				question: "Continue?",
+				answer: "Other thing",
+				notes: "Other thing",
+			},
+		]);
 	});
 
-	it("parses multiple Q/A pairs separated by commas", () => {
+	it("parses multiple Q/A pairs separated by commas", () =>
+	{
 		const text =
 			'User has answered your questions: "Q1"="A1", "Q2"="A2".' +
 			" You can now continue with the user's answers in mind.";
 		const result = parseAnswerResult(text, [q("Q1"), q("Q2")]);
 		expect(result).toStrictEqual([
-			{question: "Q1", answer: "A1", notes: null},
-			{question: "Q2", answer: "A2", notes: null},
+			{
+				question: "Q1",
+				answer: "A1",
+				notes: null,
+			},
+			{
+				question: "Q2",
+				answer: "A2",
+				notes: null,
+			},
 		]);
 	});
 
-	it("parses multiple Q/A pairs where notes contain commas", () => {
+	it("parses multiple Q/A pairs where notes contain commas", () =>
+	{
 		const text =
 			'User has answered your questions: "Q1"="Other" user notes: foo, bar, baz, "Q2"="A2" user notes: hello, world.' +
 			" You can now continue with the user's answers in mind.";
 		const result = parseAnswerResult(text, [q("Q1"), q("Q2")]);
 		expect(result).toStrictEqual([
-			{question: "Q1", answer: "Other", notes: "foo, bar, baz"},
-			{question: "Q2", answer: "A2", notes: "hello, world"},
+			{
+				question: "Q1",
+				answer: "Other",
+				notes: "foo, bar, baz",
+			},
+			{
+				question: "Q2",
+				answer: "A2",
+				notes: "hello, world",
+			},
 		]);
 	});
 
-	it("handles legacy escaped double quotes in questions and answers", () => {
+	it("handles legacy escaped double quotes in questions and answers", () =>
+	{
 		const text =
 			'User has answered your questions: "Say \\"hi\\"?"="No \\"thanks\\"".' +
 			" You can now continue with the user's answers in mind.";
 		const result = parseAnswerResult(text, [q('Say "hi"?')]);
-		expect(result).toStrictEqual([{question: 'Say "hi"?', answer: 'No "thanks"', notes: null}]);
+		expect(result).toStrictEqual([
+			{
+				question: 'Say "hi"?',
+				answer: 'No "thanks"',
+				notes: null,
+			},
+		]);
 	});
 
-	it("handles questions containing newlines", () => {
+	it("handles questions containing newlines", () =>
+	{
 		const text =
 			'User has answered your questions: "Item 1\nDetails"="Accept", "Item 2\nMore"="Other" user notes: Other.' +
 			" You can now continue with the user's answers in mind.";
 		const result = parseAnswerResult(text, [q("Item 1\nDetails"), q("Item 2\nMore")]);
 		expect(result).toStrictEqual([
-			{question: "Item 1\nDetails", answer: "Accept", notes: null},
-			{question: "Item 2\nMore", answer: "Other", notes: "Other"},
+			{
+				question: "Item 1\nDetails",
+				answer: "Accept",
+				notes: null,
+			},
+			{
+				question: "Item 2\nMore",
+				answer: "Other",
+				notes: "Other",
+			},
 		]);
 	});
 
-	it("returns null when the text does not match the expected envelope", () => {
+	it("returns null when the text does not match the expected envelope", () =>
+	{
 		expect(parseAnswerResult("garbage text", [q("Q1")])).toBe(null);
 		expect(parseAnswerResult("", [q("Q1")])).toBe(null);
 	});
 
-	it("returns null when no questions are provided", () => {
+	it("returns null when no questions are provided", () =>
+	{
 		const text =
 			'User has answered your questions: "Q1"="A1". You can now continue with the user\'s answers in mind.';
 		expect(parseAnswerResult(text, [])).toBe(null);
 	});
 
-	it('handles "selected preview:" annotations in the remainder', () => {
+	it('handles "selected preview:" annotations in the remainder', () =>
+	{
 		const preview =
 			"┌─ user side ──────────────────┐\n│ $ git status                 │\n└──────────────────────────────┘";
 		const text =
@@ -294,8 +599,16 @@ describe("parseAnswerResult", () => {
 			', "How should stderr render?"="Red error styling".' +
 			" You can now continue with the user's answers in mind.";
 		const result = parseAnswerResult(text, [
-			q("How should it render?", [{label: "Combined bubble"}]),
-			q("How should stderr render?", [{label: "Red error styling"}]),
+			q("How should it render?", [
+				{
+					label: "Combined bubble",
+				},
+			]),
+			q("How should stderr render?", [
+				{
+					label: "Red error styling",
+				},
+			]),
 		]);
 		expect(result).toStrictEqual([
 			{
@@ -311,23 +624,50 @@ describe("parseAnswerResult", () => {
 		]);
 	});
 
-	it('handles both "user notes:" and "selected preview:" annotations', () => {
+	it('handles both "user notes:" and "selected preview:" annotations', () =>
+	{
 		const text =
 			'User has answered your questions: "Pick one?"="Option A" user notes: some detail selected preview:\nfoo.' +
 			" You can now continue with the user's answers in mind.";
-		const result = parseAnswerResult(text, [q("Pick one?", [{label: "Option A"}])]);
-		expect(result).toStrictEqual([{question: "Pick one?", answer: "Option A", notes: "some detail"}]);
+		const result = parseAnswerResult(text, [
+			q("Pick one?", [
+				{
+					label: "Option A",
+				},
+			]),
+		]);
+		expect(result).toStrictEqual([
+			{
+				question: "Pick one?",
+				answer: "Option A",
+				notes: "some detail",
+			},
+		]);
 	});
 
-	it("handles unknown annotations in the remainder without failing", () => {
+	it("handles unknown annotations in the remainder without failing", () =>
+	{
 		const text =
 			'User has answered your questions: "Q1?"="A1" some future annotation: data.' +
 			" You can now continue with the user's answers in mind.";
-		const result = parseAnswerResult(text, [q("Q1?", [{label: "A1"}])]);
-		expect(result).toStrictEqual([{question: "Q1?", answer: "A1", notes: null}]);
+		const result = parseAnswerResult(text, [
+			q("Q1?", [
+				{
+					label: "A1",
+				},
+			]),
+		]);
+		expect(result).toStrictEqual([
+			{
+				question: "Q1?",
+				answer: "A1",
+				notes: null,
+			},
+		]);
 	});
 
-	it('parses the real eclipse-collections "Other" answer where notes echo the value', () => {
+	it('parses the real eclipse-collections "Other" answer where notes echo the value', () =>
+	{
 		// Real example from session 01f99877 - the bug screenshot referenced in
 		// task #48. Both questions used 'Other' and the notes are duplicates of
 		// the answer values, so the parsed result should mark notes==answer.
@@ -355,32 +695,66 @@ describe("parseAnswerResult", () => {
 	});
 });
 
-describe("parseAnswerResult with the current answer envelope", () => {
-	const q = (question: string, options: Array<{label: string}> = []): QuestionLike => ({
+describe("parseAnswerResult with the current answer envelope", () =>
+{
+	const q = (
+		question: string,
+		options: Array<
+		{
+			label: string;
+		}> = [],
+	): QuestionLike => (
+	{
 		question,
 		options,
 	});
 
-	it("parses a single Q/A pair", () => {
+	it("parses a single Q/A pair", () =>
+	{
 		const text =
 			'Your questions have been answered: "Continue?"="Yes".' +
 			" You can now continue with these answers in mind.";
-		const result = parseAnswerResult(text, [q("Continue?", [{label: "Yes"}, {label: "No"}])]);
-		expect(result).toStrictEqual([{question: "Continue?", answer: "Yes", notes: null}]);
+		const result = parseAnswerResult(text, [
+			q("Continue?", [
+				{
+					label: "Yes",
+				},
+				{
+					label: "No",
+				},
+			]),
+		]);
+		expect(result).toStrictEqual([
+			{
+				question: "Continue?",
+				answer: "Yes",
+				notes: null,
+			},
+		]);
 	});
 
-	it("parses multiple Q/A pairs where notes contain commas", () => {
+	it("parses multiple Q/A pairs where notes contain commas", () =>
+	{
 		const text =
 			'Your questions have been answered: "Q1"="Other" user notes: foo, bar, baz, "Q2"="A2".' +
 			" You can now continue with these answers in mind.";
 		const result = parseAnswerResult(text, [q("Q1"), q("Q2")]);
 		expect(result).toStrictEqual([
-			{question: "Q1", answer: "Other", notes: "foo, bar, baz"},
-			{question: "Q2", answer: "A2", notes: null},
+			{
+				question: "Q1",
+				answer: "Other",
+				notes: "foo, bar, baz",
+			},
+			{
+				question: "Q2",
+				answer: "A2",
+				notes: null,
+			},
 		]);
 	});
 
-	it('handles " selected preview:" annotations in the remainder', () => {
+	it('handles " selected preview:" annotations in the remainder', () =>
+	{
 		const preview = "\u250c\u2500 user side \u2500\u2510\n\u2502 $ git status \u2502\n\u2514\u2500\u2500\u2518";
 		const text =
 			'Your questions have been answered: "How should it render?"="Combined bubble" selected preview:\n' +
@@ -388,35 +762,63 @@ describe("parseAnswerResult with the current answer envelope", () => {
 			', "How should stderr render?"="Red error styling".' +
 			" You can now continue with these answers in mind.";
 		const result = parseAnswerResult(text, [
-			q("How should it render?", [{label: "Combined bubble"}]),
-			q("How should stderr render?", [{label: "Red error styling"}]),
+			q("How should it render?", [
+				{
+					label: "Combined bubble",
+				},
+			]),
+			q("How should stderr render?", [
+				{
+					label: "Red error styling",
+				},
+			]),
 		]);
 		expect(result).toStrictEqual([
-			{question: "How should it render?", answer: "Combined bubble", notes: null},
-			{question: "How should stderr render?", answer: "Red error styling", notes: null},
+			{
+				question: "How should it render?",
+				answer: "Combined bubble",
+				notes: null,
+			},
+			{
+				question: "How should stderr render?",
+				answer: "Red error styling",
+				notes: null,
+			},
 		]);
 	});
 
-	it("returns null when the current prefix appears without its suffix", () => {
+	it("returns null when the current prefix appears without its suffix", () =>
+	{
 		const text = 'Your questions have been answered: "Q1"="A1"';
 		expect(parseAnswerResult(text, [q("Q1")])).toBe(null);
 	});
 });
 
-describe("parseAnswerResult with the read-carefully answer envelope", () => {
+describe("parseAnswerResult with the read-carefully answer envelope", () =>
+{
 	const SUFFIX =
 		". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.";
-	const q = (question: string): QuestionLike => ({question, options: []});
+	const q = (question: string): QuestionLike => (
+	{
+		question,
+		options: [],
+	});
 
-	it("parses the 45b93197:179 single answer", () => {
+	it("parses the 45b93197:179 single answer", () =>
+	{
 		const question = "How do you want to get in without risking a lockout?";
 		const text = `The user answered: "${question}"="I think the passkey is NOT getting used, how can I change that"${SUFFIX}`;
 		expect(parseAnswerResult(text, [q(question)])).toStrictEqual([
-			{question, answer: "I think the passkey is NOT getting used, how can I change that", notes: null},
+			{
+				question,
+				answer: "I think the passkey is NOT getting used, how can I change that",
+				notes: null,
+			},
 		]);
 	});
 
-	it("parses the 42d634a9 three-question answer set", () => {
+	it("parses the 42d634a9 three-question answer set", () =>
+	{
 		const questions = [
 			"What should the new site be built with? You said you'll add content later, so how you'll add it matters.",
 			"Where will the new site be hosted? The domain is on Cloudflare now.",
@@ -424,15 +826,29 @@ describe("parseAnswerResult with the read-carefully answer envelope", () => {
 		];
 		const text = `The user answered: "${questions[0]}"="#1, and I want to be able to add guitar tab", "${questions[1]}"="Cloudflare Pages (Recommended)", "${questions[2]}"="all three and let us pick"${SUFFIX}`;
 		expect(parseAnswerResult(text, questions.map(q))).toStrictEqual([
-			{question: questions[0], answer: "#1, and I want to be able to add guitar tab", notes: null},
-			{question: questions[1], answer: "Cloudflare Pages (Recommended)", notes: null},
-			{question: questions[2], answer: "all three and let us pick", notes: null},
+			{
+				question: questions[0],
+				answer: "#1, and I want to be able to add guitar tab",
+				notes: null,
+			},
+			{
+				question: questions[1],
+				answer: "Cloudflare Pages (Recommended)",
+				notes: null,
+			},
+			{
+				question: questions[2],
+				answer: "all three and let us pick",
+				notes: null,
+			},
 		]);
 	});
 });
 
-describe("questionOutcome", () => {
-	it("classifies each upstream non-answer sentence and leaves a real answer unclassified", () => {
+describe("questionOutcome", () =>
+{
+	it("classifies each upstream non-answer sentence and leaves a real answer unclassified", () =>
+	{
 		const answers = [
 			"",
 			"[No preference]",
@@ -451,64 +867,152 @@ describe("questionOutcome", () => {
 		]);
 	});
 
-	it("labels each outcome with upstream's words", () => {
-		expect(OUTCOME_LABEL).toStrictEqual({
-			skipped: "Skipped",
-			replied: "Replied in chat",
-			dismissed: "Not answered",
-		});
+	it("labels each outcome with upstream's words", () =>
+	{
+		expect(OUTCOME_LABEL).toStrictEqual(
+			{
+				skipped: "Skipped",
+				replied: "Replied in chat",
+				dismissed: "Not answered",
+			},
+		);
 	});
 });
 
-describe("questionOutcomes", () => {
-	const input = {
+describe("questionOutcomes", () =>
+{
+	const input =
+	{
 		questions: [
-			{question: "Q1", header: "First", options: [{label: "Red"}, {label: "Blue"}]},
-			{question: "Q2", header: "Second", options: [{label: "Cat"}, {label: "Dog"}]},
+			{
+				question: "Q1",
+				header: "First",
+				options: [
+					{
+						label: "Red",
+					},
+					{
+						label: "Blue",
+					},
+				],
+			},
+			{
+				question: "Q2",
+				header: "Second",
+				options: [
+					{
+						label: "Cat",
+					},
+					{
+						label: "Dog",
+					},
+				],
+			},
 		],
 	};
 
-	it("gives a question with no recorded answer neither an answer nor an outcome", () => {
-		const call = {input, result: "The user did not answer the questions.", resultMeta: {answers: {}}};
-		expect(questionOutcomes(call)).toStrictEqual([{question: "Q1"}, {question: "Q2"}]);
-	});
-
-	it("splits real answers from classified non-answers", () => {
-		const call = {
+	it("gives a question with no recorded answer neither an answer nor an outcome", () =>
+	{
+		const call =
+		{
 			input,
-			result: 'Your questions have been answered: "Q1"="Red", "Q2"="[No preference]". You can now continue with these answers in mind.',
-			resultMeta: {
-				answers: {Q1: {answer: "Red", notes: null}, Q2: {answer: "[No preference]", notes: null}},
+			result: "The user did not answer the questions.",
+			resultMeta:
+			{
+				answers: {},
 			},
 		};
 		expect(questionOutcomes(call)).toStrictEqual([
-			{question: "Q1", answer: "Red"},
-			{question: "Q2", unanswered: "skipped"},
+			{
+				question: "Q1",
+			},
+			{
+				question: "Q2",
+			},
 		]);
 	});
 
-	it("falls back to the result text when no structured answers were recorded", () => {
-		const call = {
+	it("splits real answers from classified non-answers", () =>
+	{
+		const call =
+		{
+			input,
+			result: 'Your questions have been answered: "Q1"="Red", "Q2"="[No preference]". You can now continue with these answers in mind.',
+			resultMeta:
+			{
+				answers:
+				{
+					Q1:
+					{
+						answer: "Red",
+						notes: null,
+					},
+					Q2:
+					{
+						answer: "[No preference]",
+						notes: null,
+					},
+				},
+			},
+		};
+		expect(questionOutcomes(call)).toStrictEqual([
+			{
+				question: "Q1",
+				answer: "Red",
+			},
+			{
+				question: "Q2",
+				unanswered: "skipped",
+			},
+		]);
+	});
+
+	it("falls back to the result text when no structured answers were recorded", () =>
+	{
+		const call =
+		{
 			input,
 			result: 'Your questions have been answered: "Q1"="Blue", "Q2"="[User dismissed — do not proceed, wait for next instruction]". You can now continue with these answers in mind.',
 		};
 		expect(questionOutcomes(call)).toStrictEqual([
-			{question: "Q1", answer: "Blue"},
-			{question: "Q2", unanswered: "dismissed"},
+			{
+				question: "Q1",
+				answer: "Blue",
+			},
+			{
+				question: "Q2",
+				unanswered: "dismissed",
+			},
 		]);
 	});
 });
 
-describe("question outcomes of real JSONL shapes", () => {
+describe("question outcomes of real JSONL shapes", () =>
+{
 	/** The fixture's AskUserQuestion call as processTranscript pairs it with its result. */
-	function classify(name: string) {
+	function classify(name: string)
+	{
 		const shape = shapes.find((candidate) => candidate.name === name);
 		if (shape === undefined) throw new Error(`No question outcome shape named ${name}`);
-		const [use] = shape.records as {message: {content: {id: string; input: Record<string, unknown>}[]}}[];
+		const [use] = shape.records as
+		{
+			message:
+			{
+				content:
+				{
+					id: string;
+					input: Record<string, unknown>;
+				}[];
+			};
+		}[];
 		const toolUse = use?.message.content[0];
 		if (toolUse === undefined) throw new Error("Expected the shape to open with its tool_use.");
 		const result = processTranscript(shape.records).toolResultMap.get(toolUse.id);
-		const call = {input: toolUse.input, ...result};
+		const call =
+		{
+			input: toolUse.input,
+			...result,
+		};
 		return {
 			stopped: result?.stopped === true,
 			withdrawn: isWithdrawnQuestion(call),
@@ -517,66 +1021,107 @@ describe("question outcomes of real JSONL shapes", () => {
 		};
 	}
 
-	it("classifies a two-question reply in chat as replied", () => {
-		expect(classify("replied in chat, two questions")).toStrictEqual({
-			stopped: false,
-			withdrawn: true,
-			note: "Replied in chat",
-			outcomes: [
-				{question: "Approve the two parser fixes?", unanswered: "replied"},
-				{question: "How to resolve the lint disagreements?", unanswered: "replied"},
-			],
-		});
+	it("classifies a two-question reply in chat as replied", () =>
+	{
+		expect(classify("replied in chat, two questions")).toStrictEqual(
+			{
+				stopped: false,
+				withdrawn: true,
+				note: "Replied in chat",
+				outcomes: [
+					{
+						question: "Approve the two parser fixes?",
+						unanswered: "replied",
+					},
+					{
+						question: "How to resolve the lint disagreements?",
+						unanswered: "replied",
+					},
+				],
+			},
+		);
 	});
 
-	it("classifies a dismissed question as dismissed", () => {
-		expect(classify("dismissed, one question")).toStrictEqual({
-			stopped: false,
-			withdrawn: true,
-			note: "Not answered",
-			outcomes: [
-				{
-					question:
-						"The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?",
-					unanswered: "dismissed",
-				},
-			],
-		});
+	it("classifies a dismissed question as dismissed", () =>
+	{
+		expect(classify("dismissed, one question")).toStrictEqual(
+			{
+				stopped: false,
+				withdrawn: true,
+				note: "Not answered",
+				outcomes: [
+					{
+						question:
+							"The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?",
+						unanswered: "dismissed",
+					},
+				],
+			},
+		);
 	});
 
-	it("gives the CLI terminal skip (answers: {}) no outcome and no note", () => {
-		expect(classify("CLI terminal skip, answers {}")).toStrictEqual({
-			stopped: false,
-			withdrawn: true,
-			note: undefined,
-			outcomes: [{question: "Gee?"}, {question: "Aitch?"}],
-		});
+	it("gives the CLI terminal skip (answers: {}) no outcome and no note", () =>
+	{
+		expect(classify("CLI terminal skip, answers {}")).toStrictEqual(
+			{
+				stopped: false,
+				withdrawn: true,
+				note: undefined,
+				outcomes: [
+					{
+						question: "Gee?",
+					},
+					{
+						question: "Aitch?",
+					},
+				],
+			},
+		);
 	});
 
-	it("marks the Stop / Esc rejection stopped", () => {
-		expect(classify("stopped by Stop / Esc")).toStrictEqual({
-			stopped: true,
-			withdrawn: true,
-			note: undefined,
-			outcomes: [{question: 'Game "Raw" resource-panel screenshot — where does it belong?'}],
-		});
+	it("marks the Stop / Esc rejection stopped", () =>
+	{
+		expect(classify("stopped by Stop / Esc")).toStrictEqual(
+			{
+				stopped: true,
+				withdrawn: true,
+				note: undefined,
+				outcomes: [
+					{
+						question: 'Game "Raw" resource-panel screenshot — where does it belong?',
+					},
+				],
+			},
+		);
 	});
 
-	it('classifies upstream\'s "[No preference]" skips as skipped', () => {
+	it('classifies upstream\'s "[No preference]" skips as skipped', () =>
+	{
 		expect([classify("[No preference], one question"), classify("[No preference], two questions")]).toStrictEqual([
 			{
 				stopped: false,
 				withdrawn: true,
 				note: "Skipped",
-				outcomes: [{question: "Which color do you prefer?", unanswered: "skipped"}],
+				outcomes: [
+					{
+						question: "Which color do you prefer?",
+						unanswered: "skipped",
+					},
+				],
 			},
 			{
 				stopped: false,
 				withdrawn: true,
 				note: "Skipped",
 				outcomes: [
-					{question: "Which fruit do you prefer?", unanswered: "skipped"},
-					{question: "Which sizes do you want?", unanswered: "skipped"},
+					{
+						question: "Which fruit do you prefer?",
+						unanswered: "skipped",
+					},
+					{
+						question: "Which sizes do you want?",
+						unanswered: "skipped",
+					},
 				],
 			},
 		]);

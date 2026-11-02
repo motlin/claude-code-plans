@@ -1,6 +1,7 @@
 import {useQuery} from "@tanstack/react-query";
 import {useMemo} from "react";
-import {
+import
+{
 	customizeClaudeAiConnectorsQueryOptions,
 	customizeDiscoverQueryOptions,
 	customizeMcpServersQueryOptions,
@@ -10,7 +11,8 @@ import {pluginsQueryOptions, userCommandsQueryOptions} from "../../lib/api/plugi
 import {buildUnifiedSearch, type UnifiedHit} from "./unified-search";
 import {UnifiedSearchResults, type UnifiedSearchSurface, type UnifiedSectionId} from "./unified-search-results";
 
-interface CustomizeUnifiedSearchProps {
+interface CustomizeUnifiedSearchProps
+{
 	q: string;
 	surface: UnifiedSearchSurface;
 	onOpen: (hit: UnifiedHit) => void;
@@ -20,7 +22,8 @@ interface CustomizeUnifiedSearchProps {
 }
 
 /** Upstream's unified results, fed from every Customize source plus the plugin catalog. */
-export function CustomizeUnifiedSearch({q, surface, onOpen, expanded, onExpandedChange}: CustomizeUnifiedSearchProps) {
+export function CustomizeUnifiedSearch({q, surface, onOpen, expanded, onExpandedChange}: CustomizeUnifiedSearchProps)
+{
 	const skillsQuery = useQuery(customizeSkillsQueryOptions);
 	const commandsQuery = useQuery(userCommandsQueryOptions);
 	const serversQuery = useQuery(customizeMcpServersQueryOptions);
@@ -38,7 +41,17 @@ export function CustomizeUnifiedSearch({q, surface, onOpen, expanded, onExpanded
 	);
 	const search = useMemo(
 		() =>
-			buildUnifiedSearch({skills, commands, servers, claudeAi, plugins, catalog: catalog.data?.plugins ?? []}, q),
+			buildUnifiedSearch(
+				{
+					skills,
+					commands,
+					servers,
+					claudeAi,
+					plugins,
+					catalog: catalog.data?.plugins ?? [],
+				},
+				q,
+			),
 		[skills, commands, servers, claudeAi, plugins, catalog.data, q],
 	);
 	return (
@@ -51,8 +64,18 @@ export function CustomizeUnifiedSearch({q, surface, onOpen, expanded, onExpanded
 			retrying={catalog.isError && catalog.isFetching}
 			onRetry={() => void catalog.refetch()}
 			onOpen={onOpen}
-			{...(expanded === undefined ? {} : {expanded})}
-			{...(onExpandedChange === undefined ? {} : {onExpandedChange})}
+			{...(expanded === undefined
+				? {}
+				:
+					{
+						expanded,
+					})}
+			{...(onExpandedChange === undefined
+				? {}
+				:
+					{
+						onExpandedChange,
+					})}
 		/>
 	);
 }

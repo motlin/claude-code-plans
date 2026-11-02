@@ -14,21 +14,30 @@ import {sessionDiffQueryOptions, sessionDiffScopesQueryOptions} from "../src/lib
 import {defaultPaneLayout, loadPaneLayout, openPane, savePaneLayout, type PaneKind} from "../src/lib/pane-layout";
 import {installLocalStorage} from "./fake-storage";
 
-const harness = vi.hoisted(() => {
+const harness = vi.hoisted(() =>
+{
 	let finish!: () => void;
-	const ready = new Promise<void>((resolve) => {
+	const ready = new Promise<void>((resolve) =>
+	{
 		finish = resolve;
 	});
-	return {ready, finish, fail: true, imports: 0};
+	return {
+		ready,
+		finish,
+		fail: true,
+		imports: 0,
+	};
 });
 
-vi.mock("../src/components/changes/changes-pane", async (importOriginal) => {
+vi.mock("../src/components/changes/changes-pane", async (importOriginal) =>
+{
 	harness.imports++;
 	await harness.ready;
 	const actual = await importOriginal<typeof import("../src/components/changes/changes-pane")>();
 	return {
 		...actual,
-		get ChangesPane() {
+		get ChangesPane()
+		{
 			if (harness.fail)
 				throw new Error(
 					"Failed to fetch dynamically imported module: https://example.com/assets/changes-pane.js",
@@ -38,7 +47,8 @@ vi.mock("../src/components/changes/changes-pane", async (importOriginal) => {
 	};
 });
 
-const LOADED_STATE = {
+const LOADED_STATE =
+{
 	buttons: ["Diff scope: Session edits", "Changes settings", "Expand", "Close", "Move"],
 	error: null,
 	loading: null,
@@ -47,18 +57,27 @@ const LOADED_STATE = {
 const SESSION = "session-alice";
 let queryClient: QueryClient;
 
-class FakeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
+class FakeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
 }
 
-function OpenChanges() {
+function OpenChanges()
+{
 	const host = usePaneHost();
 	return (
 		<button
 			type="button"
-			onClick={() => {
+			onClick={() =>
+			{
 				host.openPane("changes");
 			}}
 		>
@@ -67,15 +86,19 @@ function OpenChanges() {
 	);
 }
 
-function App({requested}: {requested?: PaneKind}) {
+function App({requested}: {requested?: PaneKind})
+{
 	useRegisterChangesPane(SESSION);
 	const [requestedPane, setRequestedPane] = useState(requested);
 	return (
 		<TileHost
 			sessionId={SESSION}
-			onExpandWithoutPane={() => {}}
+			onExpandWithoutPane={() =>
+			{
+			}}
 			requestedPane={requestedPane}
-			onRequestedPaneHandled={() => {
+			onRequestedPaneHandled={() =>
+			{
 				setRequestedPane(undefined);
 			}}
 		>
@@ -84,28 +107,48 @@ function App({requested}: {requested?: PaneKind}) {
 	);
 }
 
-function renderApp(requested?: PaneKind) {
+function renderApp(requested?: PaneKind)
+{
 	return render(
 		<QueryClientProvider client={queryClient}>
 			<SettingsProvider>
 				<ToastProvider>
-					<App {...(requested === undefined ? {} : {requested})} />
+					<App
+						{...(requested === undefined
+							? {}
+							:
+								{
+									requested,
+								})}
+					/>
 				</ToastProvider>
 			</SettingsProvider>
 		</QueryClientProvider>,
 	);
 }
 
-function chunkErrorOf(pane: HTMLElement) {
+function chunkErrorOf(pane: HTMLElement)
+{
 	const root = pane.querySelector<HTMLElement>("[data-chunk-error]");
 	const copy = root?.querySelector(":scope > div:last-child > span.text-muted-as-secondary");
 	return root === null
 		? null
-		: {state: root.dataset["chunkError"], copy: copy?.textContent, role: copy?.getAttribute("role")};
+		:
+			{
+				state: root.dataset["chunkError"],
+				copy: copy?.textContent,
+				role: copy?.getAttribute("role"),
+			};
 }
 
-function paneState() {
-	const pane = screen.getByRole("region", {name: "Changes"});
+function paneState()
+{
+	const pane = screen.getByRole(
+		"region",
+		{
+			name: "Changes",
+		},
+	);
 	return {
 		loading: within(pane).queryByRole("status")?.textContent ?? null,
 		error: within(pane).queryByRole("alert")?.textContent ?? null,
@@ -116,134 +159,292 @@ function paneState() {
 	};
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
-	queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
-	queryClient.setQueryData(
-		sessionDiffQueryOptions(SESSION, "branch", {hideWhitespace: DEFAULTS.diffHideWhitespace}).queryKey,
-		{scope: "branch", source: "git", root: "/repo", stats: {files: 0, additions: 0, deletions: 0}, files: []},
+	queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
 	);
-	queryClient.setQueryData(sessionDiffScopesQueryOptions(SESSION).queryKey, {kind: "no-git"});
+	queryClient.setQueryData(
+		sessionDiffQueryOptions(
+			SESSION,
+			"branch",
+			{
+				hideWhitespace: DEFAULTS.diffHideWhitespace,
+			},
+		).queryKey,
+		{
+			scope: "branch",
+			source: "git",
+			root: "/repo",
+			stats:
+			{
+				files: 0,
+				additions: 0,
+				deletions: 0,
+			},
+			files: [],
+		},
+	);
+	queryClient.setQueryData(
+		sessionDiffScopesQueryOptions(SESSION).queryKey,
+		{
+			kind: "no-git",
+		},
+	);
 	vi.stubGlobal("ResizeObserver", FakeObserver);
 	vi.stubGlobal("IntersectionObserver", FakeObserver);
 	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-		DOMRect.fromRect({width: 1200, height: 800}),
+		DOMRect.fromRect(
+			{
+				width: 1200,
+				height: 800,
+			},
+		),
 	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	queryClient.clear();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
 
-describe("deferred Changes renderer", () => {
-	it("loads only when opened, keeps controls on load failure, retries, and reopens the actual pane without a fallback", async () => {
+describe("deferred Changes renderer", () =>
+{
+	it("loads only when opened, keeps controls on load failure, retries, and reopens the actual pane without a fallback", async () =>
+	{
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		renderApp();
-		const closed = {imports: harness.imports, pane: screen.queryByRole("region", {name: "Changes"})};
+		const closed =
+		{
+			imports: harness.imports,
+			pane: screen.queryByRole(
+				"region",
+				{
+					name: "Changes",
+				},
+			),
+		};
 		cleanup();
 		savePaneLayout(SESSION, openPane(defaultPaneLayout(), "changes"));
 		renderApp();
 		const loading = paneState();
 		const coldSaved = loadPaneLayout(SESSION);
-		act(() => {
+		act(() =>
+		{
 			harness.finish();
 		});
-		await within(screen.getByRole("region", {name: "Changes"})).findByText(
+		await within(
+			screen.getByRole(
+				"region",
+				{
+					name: "Changes",
+				},
+			),
+		).findByText(
 			"Couldn’t load this.",
 			{},
-			{timeout: 10_000},
+			{
+				timeout: 10_000,
+			},
 		);
 		const failed = paneState();
 		harness.fail = false;
-		fireEvent.click(screen.getByRole("button", {name: "Retry"}));
-		await screen.findByText("No changes to show", {}, {timeout: 10_000});
-		const loaded = paneState();
-		fireEvent.click(screen.getByRole("button", {name: "Close"}));
-		fireEvent.click(screen.getByRole("button", {name: "Open changes"}));
-		expect({
-			closed,
-			coldSaved,
-			loading,
-			failed,
-			loaded,
-			reopened: paneState(),
-			body: screen.getByText("No changes to show").textContent,
-			imports: harness.imports,
-		}).toStrictEqual({
-			closed: {imports: 0, pane: null},
-			coldSaved: {
-				expanded: null,
-				focused: "changes",
-				root: {
-					kind: "stack",
-					direction: "row",
-					flex: 1,
-					children: [
-						{kind: "tile", tileId: "chat", flex: 2},
-						{kind: "tile", tileId: "changes", flex: 3},
-					],
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Retry",
 				},
+			),
+		);
+		await screen.findByText(
+			"No changes to show",
+			{},
+			{
+				timeout: 10_000,
 			},
-			loading: {buttons: ["Expand", "Close", "Move"], error: null, loading: "Loading changes…", chunkError: null},
-			failed: {
-				buttons: ["Expand", "Close", "Move", "Retry"],
-				error: null,
-				loading: "Couldn’t load this.",
-				chunkError: {state: "retry", copy: "Couldn’t load this.", role: "status"},
+		);
+		const loaded = paneState();
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Close",
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Open changes",
+				},
+			),
+		);
+		expect(
+			{
+				closed,
+				coldSaved,
+				loading,
+				failed,
+				loaded,
+				reopened: paneState(),
+				body: screen.getByText("No changes to show").textContent,
+				imports: harness.imports,
 			},
-			loaded: LOADED_STATE,
-			reopened: LOADED_STATE,
-			body: "No changes to show",
-			imports: 1,
-		});
+		).toStrictEqual(
+			{
+				closed:
+				{
+					imports: 0,
+					pane: null,
+				},
+				coldSaved:
+				{
+					expanded: null,
+					focused: "changes",
+					root:
+					{
+						kind: "stack",
+						direction: "row",
+						flex: 1,
+						children: [
+							{
+								kind: "tile",
+								tileId: "chat",
+								flex: 2,
+							},
+							{
+								kind: "tile",
+								tileId: "changes",
+								flex: 3,
+							},
+						],
+					},
+				},
+				loading:
+				{
+					buttons: ["Expand", "Close", "Move"],
+					error: null,
+					loading: "Loading changes…",
+					chunkError: null,
+				},
+				failed:
+				{
+					buttons: ["Expand", "Close", "Move", "Retry"],
+					error: null,
+					loading: "Couldn’t load this.",
+					chunkError:
+					{
+						state: "retry",
+						copy: "Couldn’t load this.",
+						role: "status",
+					},
+				},
+				loaded: LOADED_STATE,
+				reopened: LOADED_STATE,
+				body: "No changes to show",
+				imports: 1,
+			},
+		);
 
 		// Exercise restored and requested entry points with the same successfully loaded module.
-		for (const entry of ["saved", "requested"] as const) {
+		for (const entry of ["saved", "requested"] as const)
+		{
 			cleanup();
 			installLocalStorage();
 			if (entry === "saved") savePaneLayout(SESSION, openPane(defaultPaneLayout(), "changes"));
 			renderApp(entry === "requested" ? "changes" : undefined);
-			await screen.findByText("No changes to show", {}, {timeout: 10_000});
+			await screen.findByText(
+				"No changes to show",
+				{},
+				{
+					timeout: 10_000,
+				},
+			);
 			const loaded = paneState();
 			const saved = loadPaneLayout(SESSION);
-			fireEvent.click(screen.getByRole("button", {name: "Close"}));
-			expect({
-				loaded,
-				saved,
-				closed: screen.queryByRole("region", {name: "Changes"}),
-				savedAfterClose: loadPaneLayout(SESSION),
-			}).toStrictEqual({
-				loaded: LOADED_STATE,
-				saved: {
-					expanded: null,
-					focused: "changes",
-					root: {
-						kind: "stack",
-						direction: "row",
-						flex: 1,
-						// Changes as the only side pane takes upstream's 2:3 first split, measured or not.
-						children: [
-							{kind: "tile", tileId: "chat", flex: 2},
-							{kind: "tile", tileId: "changes", flex: 3},
-						],
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Close",
+					},
+				),
+			);
+			expect(
+				{
+					loaded,
+					saved,
+					closed: screen.queryByRole(
+						"region",
+						{
+							name: "Changes",
+						},
+					),
+					savedAfterClose: loadPaneLayout(SESSION),
+				},
+			).toStrictEqual(
+				{
+					loaded: LOADED_STATE,
+					saved:
+					{
+						expanded: null,
+						focused: "changes",
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							// Changes as the only side pane takes upstream's 2:3 first split, measured or not.
+							children: [
+								{
+									kind: "tile",
+									tileId: "chat",
+									flex: 2,
+								},
+								{
+									kind: "tile",
+									tileId: "changes",
+									flex: 3,
+								},
+							],
+						},
+					},
+					closed: null,
+					savedAfterClose:
+					{
+						// Closing the last side pane records no slot (upstream Xc), so it reopens at the default split.
+						expanded: null,
+						focused: "chat",
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children: [
+								{
+									kind: "tile",
+									tileId: "chat",
+									flex: 1,
+								},
+							],
+						},
 					},
 				},
-				closed: null,
-				savedAfterClose: {
-					// Closing the last side pane records no slot (upstream Xc), so it reopens at the default split.
-					expanded: null,
-					focused: "chat",
-					root: {
-						kind: "stack",
-						direction: "row",
-						flex: 1,
-						children: [{kind: "tile", tileId: "chat", flex: 1}],
-					},
-				},
-			});
+			);
 		}
 	});
 });

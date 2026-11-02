@@ -2,7 +2,8 @@ import {readFileSync} from "node:fs";
 import {describe, expect, it} from "vite-plus/test";
 
 /* Whitespace-normalised, with no padding inside parentheses, so formatter line breaks don't matter. */
-function normalized(path: string): string {
+function normalized(path: string): string
+{
 	return readFileSync(path, "utf8").replaceAll(/\s+/g, " ").replaceAll("( ", "(").replaceAll(" )", ")");
 }
 
@@ -13,12 +14,15 @@ const globals = normalized("src/styles/globals.css");
 const S =
 	":global([data-cds-reply-type]) .markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)";
 
-function missing(css: string, rules: string[]): string[] {
+function missing(css: string, rules: string[]): string[]
+{
 	return rules.filter((rule) => !css.includes(rule));
 }
 
-describe("reply-type prose tables (cds-type-experiment-gate T5)", () => {
-	it("drops the table frame and cell wash, pads cells like upstream and keeps message-line borders", () => {
+describe("reply-type prose tables (cds-type-experiment-gate T5)", () =>
+{
+	it("drops the table frame and cell wash, pads cells like upstream and keeps message-line borders", () =>
+	{
 		expect(
 			missing(markdown, [
 				`${S} > :global(.markdown-table-wrapper), ${S} :is(li, blockquote, details) :global(.markdown-table-wrapper) { border-width: 0; border-radius: 0; }`,
@@ -30,13 +34,16 @@ describe("reply-type prose tables (cds-type-experiment-gate T5)", () => {
 		).toStrictEqual([]);
 	});
 
-	it("keeps the message-line token in both modes", () => {
+	it("keeps the message-line token in both modes", () =>
+	{
 		expect(missing(globals, ["--message-line: #0000001a;", "--message-line: #ffffff1a;"])).toStrictEqual([]);
 	});
 });
 
-describe("reply-type inline code and weights (cds-type-experiment-gate T6)", () => {
-	it("draws the ghost-wash primary-ink chip and upstream's 501 / 520 weights", () => {
+describe("reply-type inline code and weights (cds-type-experiment-gate T6)", () =>
+{
+	it("draws the ghost-wash primary-ink chip and upstream's 501 / 520 weights", () =>
+	{
 		expect(
 			missing(markdown, [
 				`@media screen and (forced-colors: none) { ${S} code:not(pre code) { background: var(--upstream-fill-ghost-hover); color: var(--upstream-text-primary); border: 0; border-radius: 4px; padding: 1px 4px; } }`,
@@ -47,7 +54,8 @@ describe("reply-type inline code and weights (cds-type-experiment-gate T6)", () 
 		).toStrictEqual([]);
 	});
 
-	it("leaves the base chip for markdown outside a reply", () => {
+	it("leaves the base chip for markdown outside a reply", () =>
+	{
 		expect(
 			missing(markdown, [
 				".markdown code { font-family: var(--font-mono); font-size: 0.9em; font-weight: 400; line-height: 1; background: var(--color-alpha-1); border: none; color: var(--color-code-ink); border-radius: 0.4em; padding: 0.0625em 0.25em; }",
@@ -57,8 +65,10 @@ describe("reply-type inline code and weights (cds-type-experiment-gate T6)", () 
 	});
 });
 
-describe("reply-type tool rows follow the prose size (cds-type-experiment-gate T7)", () => {
-	it("sizes TurnStatus rows and steps inside a reply at the transcript prose size, comfortable scale in a comfortable scope", () => {
+describe("reply-type tool rows follow the prose size (cds-type-experiment-gate T7)", () =>
+{
+	it("sizes TurnStatus rows and steps inside a reply at the transcript prose size, comfortable scale in a comfortable scope", () =>
+	{
 		const guard = ":not([data-cds-reply-type] [data-cds]:not([data-cds-reply-type]) *)";
 		expect(
 			missing(globals, [

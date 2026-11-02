@@ -12,8 +12,15 @@ import {fileURLToPath} from "node:url";
 
 type Histogram = Record<string, number>;
 
-export interface RecordMix {
-	totals: {files: number; subagentFiles: number; lines: number; bytes: number};
+export interface RecordMix
+{
+	totals:
+	{
+		files: number;
+		subagentFiles: number;
+		lines: number;
+		bytes: number;
+	};
 	fileBytes: Histogram;
 	fileLines: Histogram;
 	recordTypes: Record<string, number>;
@@ -31,62 +38,90 @@ const MCP = "(mcp)";
 const OUTPUT_PATH = fileURLToPath(new URL("../tests/perf/fixtures/record-mix.json", import.meta.url));
 
 /** Lower bound of the power-of-two bucket holding `size`: 700 lands in "512", meaning [512, 1024). */
-function bucket(size: number): string {
+function bucket(size: number): string
+{
 	return size <= 0 ? "0" : String(2 ** Math.floor(Math.log2(size)));
 }
 
-function increment(counts: Record<string, number>, key: string): void {
+function increment(counts: Record<string, number>, key: string): void
+{
 	counts[key] = (counts[key] ?? 0) + 1;
 }
 
-function record(histograms: Record<string, Histogram>, key: string, size: number): void {
+function record(histograms: Record<string, Histogram>, key: string, size: number): void
+{
 	increment((histograms[key] ??= {}), bucket(size));
 }
 
-function toolKey(name: string): string {
+function toolKey(name: string): string
+{
 	return name.toLowerCase().startsWith("mcp__") ? MCP : name;
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+function isObject(value: unknown): value is Record<string, unknown>
+{
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function containsImage(value: unknown): boolean {
-	if (Array.isArray(value)) {
+function containsImage(value: unknown): boolean
+{
+	if (Array.isArray(value))
+	{
 		return value.some(containsImage);
 	}
-	if (!isObject(value)) {
+	if (!isObject(value))
+	{
 		return false;
 	}
 	return value["type"] === "image" || containsImage(value["content"]);
 }
 
-function contentBlocks(parsed: Record<string, unknown>): Record<string, unknown>[] {
+function contentBlocks(parsed: Record<string, unknown>): Record<string, unknown>[]
+{
 	const message = parsed["message"];
 	const content = isObject(message) ? message["content"] : undefined;
 	return Array.isArray(content) ? content.filter(isObject) : [];
 }
 
-function sortKeys<T>(object: Record<string, T>): Record<string, T> {
+function sortKeys<T>(object: Record<string, T>): Record<string, T>
+{
 	return Object.fromEntries(Object.entries(object).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
-function listJsonl(dir: string): string[] {
+function listJsonl(dir: string): string[]
+{
 	const found: string[] = [];
-	for (const entry of readdirSync(dir, {withFileTypes: true})) {
+	for (const entry of readdirSync(
+		dir,
+		{
+			withFileTypes: true,
+		},
+	))
+	{
 		const path = join(dir, entry.name);
-		if (entry.isDirectory()) {
+		if (entry.isDirectory())
+		{
 			found.push(...listJsonl(path));
-		} else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+		}
+		else if (entry.isFile() && entry.name.endsWith(".jsonl"))
+		{
 			found.push(path);
 		}
 	}
 	return found.toSorted();
 }
 
-export function scanRecordMix(projectsDir: string): RecordMix {
-	const mix: RecordMix = {
-		totals: {files: 0, subagentFiles: 0, lines: 0, bytes: 0},
+export function scanRecordMix(projectsDir: string): RecordMix
+{
+	const mix: RecordMix =
+	{
+		totals:
+		{
+			files: 0,
+			subagentFiles: 0,
+			lines: 0,
+			bytes: 0,
+		},
 		fileBytes: {},
 		fileLines: {},
 		recordTypes: {},
@@ -98,18 +133,22 @@ export function scanRecordMix(projectsDir: string): RecordMix {
 		imageLineFraction: 0,
 	};
 
-	for (const file of listJsonl(projectsDir)) {
+	for (const file of listJsonl(projectsDir))
+	{
 		const text = readFileSync(file, "utf8");
 		const toolNamesById = new Map<string, string>();
 		let fileLineCount = 0;
 		mix.totals.files += 1;
-		if (file.includes(`${sep}subagents${sep}`)) {
+		if (file.includes(`${sep}subagents${sep}`))
+		{
 			mix.totals.subagentFiles += 1;
 		}
 		increment(mix.fileBytes, bucket(Buffer.byteLength(text, "utf8")));
 
-		for (const lineText of text.split("\n")) {
-			if (lineText.trim() === "") {
+		for (const lineText of text.split("\n"))
+		{
+			if (lineText.trim() === "")
+			{
 				continue;
 			}
 			const size = Buffer.byteLength(lineText, "utf8");
@@ -118,12 +157,16 @@ export function scanRecordMix(projectsDir: string): RecordMix {
 			mix.totals.bytes += size;
 
 			let parsed: unknown;
-			try {
+			try
+			{
 				parsed = JSON.parse(lineText);
-			} catch {
+			}
+			catch
+			{
 				parsed = undefined;
 			}
-			if (!isObject(parsed)) {
+			if (!isObject(parsed))
+			{
 				increment(mix.recordTypes, UNPARSEABLE);
 				record(mix.lineBytesByType, UNPARSEABLE, size);
 				continue;
@@ -136,26 +179,34 @@ export function scanRecordMix(projectsDir: string): RecordMix {
 			const blocks = contentBlocks(parsed);
 			const toolUses = new Set<string>();
 			const toolResults = new Set<string>();
-			for (const block of blocks) {
-				if (block["type"] === "tool_use" && typeof block["name"] === "string") {
+			for (const block of blocks)
+			{
+				if (block["type"] === "tool_use" && typeof block["name"] === "string")
+				{
 					const name = toolKey(block["name"]);
 					increment(mix.toolNames, name);
 					toolUses.add(name);
-					if (typeof block["id"] === "string") {
+					if (typeof block["id"] === "string")
+					{
 						toolNamesById.set(block["id"], name);
 					}
-				} else if (block["type"] === "tool_result") {
+				}
+				else if (block["type"] === "tool_result")
+				{
 					const id = block["tool_use_id"];
 					toolResults.add((typeof id === "string" ? toolNamesById.get(id) : undefined) ?? UNKNOWN);
 				}
 			}
-			for (const name of toolUses) {
+			for (const name of toolUses)
+			{
 				record(mix.toolUseLineBytes, name, size);
 			}
-			for (const name of toolResults) {
+			for (const name of toolResults)
+			{
 				record(mix.toolResultLineBytes, name, size);
 			}
-			if (containsImage(blocks)) {
+			if (containsImage(blocks))
+			{
 				mix.imageLines += 1;
 			}
 		}
@@ -171,7 +222,8 @@ export function scanRecordMix(projectsDir: string): RecordMix {
 	return mix;
 }
 
-function main(): void {
+function main(): void
+{
 	const projectsDir = process.argv[2] ?? join(homedir(), ".claude", "projects");
 	const mix = scanRecordMix(projectsDir);
 	writeFileSync(OUTPUT_PATH, `${JSON.stringify(mix, null, "\t")}\n`);
@@ -180,6 +232,7 @@ function main(): void {
 	);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+{
 	main();
 }

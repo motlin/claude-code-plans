@@ -28,10 +28,12 @@ parentPort.on("message", (ms) => {
 // nitro resolves, so the test exercises exactly what the dev server runs.
 const nitroRequire = createRequire(createRequire(import.meta.url).resolve("nitro/vite"));
 const envRunnerRequire = createRequire(nitroRequire.resolve("env-runner"));
-const {proxyFetch} = (await import(pathToFileURL(envRunnerRequire.resolve("httpxy")).href)) as {
+const {proxyFetch} = (await import(pathToFileURL(envRunnerRequire.resolve("httpxy")).href)) as
+{
 	proxyFetch: (addr: string, input: Request) => Promise<Response>;
 };
-const {NodeRequest, sendNodeResponse} = (await import(pathToFileURL(nitroRequire.resolve("srvx/node")).href)) as {
+const {NodeRequest, sendNodeResponse} = (await import(pathToFileURL(nitroRequire.resolve("srvx/node")).href)) as
+{
 	NodeRequest: new (context: {req: IncomingMessage; res: ServerResponse}) => Request;
 	sendNodeResponse: (res: ServerResponse, response: Response) => Promise<void>;
 };
@@ -41,13 +43,31 @@ type Middleware = (req: IncomingMessage, res: ServerResponse, next: () => void) 
 // The stalled-worker tests run concurrently, so each registers its own teardown on its own test.
 type OnTestFinished = TestContext["onTestFinished"];
 
-async function startWorker(onTestFinished: OnTestFinished): Promise<{worker: Worker; port: number}> {
-	const worker = new Worker(WORKER_SOURCE, {eval: true});
-	onTestFinished(async () => {
+async function startWorker(onTestFinished: OnTestFinished): Promise<
+{
+	worker: Worker;
+	port: number;
+}>
+{
+	const worker = new Worker(
+		WORKER_SOURCE,
+		{
+			eval: true,
+		},
+	);
+	onTestFinished(async () =>
+	{
 		await worker.terminate();
 	});
-	const [message] = (await once(worker, "message")) as [{port: number}];
-	return {worker, port: message.port};
+	const [message] = (await once(worker, "message")) as [
+		{
+			port: number;
+		},
+	];
+	return {
+		worker,
+		port: message.port,
+	};
 }
 
 // Mirrors nitro's dev middleware: wrap the node request and proxy it to the worker with httpxy.
@@ -55,26 +75,47 @@ async function startFront(
 	workerPort: number,
 	middlewares: Middleware[],
 	onTestFinished: OnTestFinished,
-): Promise<{url: string; errors: unknown[]}> {
+): Promise<
+{
+	url: string;
+	errors: unknown[];
+}>
+{
 	const errors: unknown[] = [];
-	const server: Server = createServer((req, res) => {
-		const forward = async () => {
-			try {
-				const upstream = await proxyFetch(`http://127.0.0.1:${workerPort}`, new NodeRequest({req, res}));
+	const server: Server = createServer((req, res) =>
+	{
+		const forward = async () =>
+		{
+			try
+			{
+				const upstream = await proxyFetch(
+					`http://127.0.0.1:${workerPort}`,
+					new NodeRequest(
+						{
+							req,
+							res,
+						},
+					),
+				);
 				await sendNodeResponse(res, upstream);
-			} catch (error) {
+			}
+			catch (error)
+			{
 				errors.push(error);
 				res.statusCode = 500;
 				res.end();
 			}
 		};
-		const run = (index: number): void => {
+		const run = (index: number): void =>
+		{
 			const middleware = middlewares[index];
-			if (middleware === undefined) {
+			if (middleware === undefined)
+			{
 				void forward();
 				return;
 			}
-			middleware(req, res, () => {
+			middleware(req, res, () =>
+			{
 				run(index + 1);
 			});
 		};
@@ -84,26 +125,37 @@ async function startFront(
 	await once(server, "listening");
 	onTestFinished(
 		async () =>
-			new Promise<void>((resolve) => {
-				server.close(() => {
+			new Promise<void>((resolve) =>
+			{
+				server.close(() =>
+				{
 					resolve();
 				});
 			}),
 	);
-	return {url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/`, errors};
+	return {
+		url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/`,
+		errors,
+	};
 }
 
 async function requestWhileWorkerStalls(
 	middlewares: Middleware[],
 	onTestFinished: OnTestFinished,
-): Promise<{statuses: number[]; errors: string[]}> {
+): Promise<
+{
+	statuses: number[];
+	errors: string[];
+}>
+{
 	const {worker, port} = await startWorker(onTestFinished);
 	const front = await startFront(port, middlewares, onTestFinished);
 	const first = await fetch(front.url);
 	await first.text();
 	const unblocked = once(worker, "message");
 	worker.postMessage(2300);
-	await new Promise((resolve) => {
+	await new Promise((resolve) =>
+	{
 		setTimeout(resolve, 50);
 	});
 	const second = await fetch(front.url);
@@ -115,71 +167,143 @@ async function requestWhileWorkerStalls(
 	};
 }
 
-describe("dev worker proxy", () => {
+describe("dev worker proxy", () =>
+{
 	// Each waits out the worker's real 2s keep-alive timeout, so they wait side by side.
 	it.concurrent("reproduces the stale keep-alive reset when the worker's event loop stalls", async ({
 		expect,
 		onTestFinished,
-	}) => {
-		expect(await requestWhileWorkerStalls([], onTestFinished)).toStrictEqual({
-			statuses: [200, 500],
-			errors: ["ECONNRESET"],
-		});
+	}) =>
+	{
+		expect(await requestWhileWorkerStalls([], onTestFinished)).toStrictEqual(
+			{
+				statuses: [200, 500],
+				errors: ["ECONNRESET"],
+			},
+		);
 	});
 
 	it.concurrent("does not reuse worker connections, so a stalled worker delays requests instead of resetting them", async ({
 		expect,
 		onTestFinished,
-	}) => {
-		expect(await requestWhileWorkerStalls([closeWorkerConnection], onTestFinished)).toStrictEqual({
-			statuses: [200, 200],
-			errors: [],
-		});
+	}) =>
+	{
+		expect(await requestWhileWorkerStalls([closeWorkerConnection], onTestFinished)).toStrictEqual(
+			{
+				statuses: [200, 200],
+				errors: [],
+			},
+		);
 	});
 
-	it("marks the forwarded request close whether or not the browser sent a Connection header", () => {
-		const withHeader = {headers: {connection: "keep-alive"}, rawHeaders: ["Host", "x", "Connection", "keep-alive"]};
-		const withoutHeader = {headers: {}, rawHeaders: ["Host", "x"]};
-		const next = () => {};
+	it("marks the forwarded request close whether or not the browser sent a Connection header", () =>
+	{
+		const withHeader =
+		{
+			headers:
+			{
+				connection: "keep-alive",
+			},
+			rawHeaders: ["Host", "x", "Connection", "keep-alive"],
+		};
+		const withoutHeader =
+		{
+			headers: {},
+			rawHeaders: ["Host", "x"],
+		};
+		const next = () =>
+		{
+		};
 
 		closeWorkerConnection(withHeader, {}, next);
 		closeWorkerConnection(withoutHeader, {}, next);
 
 		expect([withHeader, withoutHeader]).toEqual([
-			{headers: {connection: "close"}, rawHeaders: ["Host", "x", "Connection", "close"]},
-			{headers: {connection: "close"}, rawHeaders: ["Host", "x", "Connection", "close"]},
+			{
+				headers:
+				{
+					connection: "close",
+				},
+				rawHeaders: ["Host", "x", "Connection", "close"],
+			},
+			{
+				headers:
+				{
+					connection: "close",
+				},
+				rawHeaders: ["Host", "x", "Connection", "close"],
+			},
 		]);
 	});
 
-	it("swallows disconnect errors once the browser has gone away", () => {
+	it("swallows disconnect errors once the browser has gone away", () =>
+	{
 		const forwarded: unknown[] = [];
-		const error = Object.assign(new Error("read ECONNRESET"), {code: "ECONNRESET"});
+		const error = Object.assign(
+			new Error("read ECONNRESET"),
+			{
+				code: "ECONNRESET",
+			},
+		);
 
 		devRequestErrorHandler(
 			error,
-			{method: "GET", url: "/api/events", socket: {destroyed: true}},
-			{destroyed: true},
+			{
+				method: "GET",
+				url: "/api/events",
+				socket:
+				{
+					destroyed: true,
+				},
+			},
+			{
+				destroyed: true,
+			},
 			(err) => forwarded.push(err),
 		);
 
 		expect(forwarded).toEqual([]);
 	});
 
-	it("still reports genuine failures, naming the route", () => {
+	it("still reports genuine failures, naming the route", () =>
+	{
 		const forwarded: unknown[] = [];
-		const reset = Object.assign(new Error("read ECONNRESET"), {code: "ECONNRESET"});
+		const reset = Object.assign(
+			new Error("read ECONNRESET"),
+			{
+				code: "ECONNRESET",
+			},
+		);
 		const broken = new Error("handler exploded");
 
 		devRequestErrorHandler(
 			reset,
-			{method: "GET", url: "/api/sessions", socket: {destroyed: false}},
-			{destroyed: false},
+			{
+				method: "GET",
+				url: "/api/sessions",
+				socket:
+				{
+					destroyed: false,
+				},
+			},
+			{
+				destroyed: false,
+			},
 			(err) => forwarded.push(err),
 		);
 		devRequestErrorHandler(
 			broken,
-			{method: "POST", url: "/api/chat", socket: {destroyed: true}},
-			{destroyed: true},
+			{
+				method: "POST",
+				url: "/api/chat",
+				socket:
+				{
+					destroyed: true,
+				},
+			},
+			{
+				destroyed: true,
+			},
 			(err) => forwarded.push(err),
 		);
 
@@ -190,23 +314,34 @@ describe("dev worker proxy", () => {
 		expect(forwarded).toEqual([reset, broken]);
 	});
 
-	it("registers the connection middleware before nitro and the error handler after it", () => {
+	it("registers the connection middleware before nitro and the error handler after it", () =>
+	{
 		const registered: string[] = [];
-		const server = {middlewares: {use: (fn: {name: string}) => registered.push(fn.name)}};
+		const server =
+		{
+			middlewares:
+			{
+				use: (fn: {name: string}) => registered.push(fn.name),
+			},
+		};
 		const [pre, post] = devWorkerProxy();
 
 		const preResult = pre.configureServer(server);
 		const postHook = post.configureServer(server);
 		postHook?.();
 
-		expect({
-			enforce: [pre.enforce, post.enforce],
-			preResult,
-			registered,
-		}).toEqual({
-			enforce: ["pre", undefined],
-			preResult: undefined,
-			registered: ["closeWorkerConnection", "devRequestErrorHandler"],
-		});
+		expect(
+			{
+				enforce: [pre.enforce, post.enforce],
+				preResult,
+				registered,
+			},
+		).toEqual(
+			{
+				enforce: ["pre", undefined],
+				preResult: undefined,
+				registered: ["closeWorkerConnection", "devRequestErrorHandler"],
+			},
+		);
 	});
 });

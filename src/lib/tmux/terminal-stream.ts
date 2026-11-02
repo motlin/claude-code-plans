@@ -26,29 +26,51 @@ const SEND_KEYS_CHUNK_BYTES = 512;
 const MAXIMUM_LINE_BYTES = 5 * 1024 * 1024;
 
 export type TmuxControlNotification =
-	| {type: "output"; paneId: string; bytes: Buffer}
-	| {type: "layout-change"; windowId: string}
-	| {type: "window-close"; windowId: string}
-	| {type: "exit"};
+	|
+	  {
+			type: "output";
+			paneId: string;
+			bytes: Buffer;
+	  }
+	|
+	  {
+			type: "layout-change";
+			windowId: string;
+	  }
+	|
+	  {
+			type: "window-close";
+			windowId: string;
+	  }
+	|
+	  {
+			type: "exit";
+	  };
 
 const BACKSLASH = 0x5c;
 
-function isOctalDigit(byte: number | undefined): byte is number {
+function isOctalDigit(byte: number | undefined): byte is number
+{
 	return byte !== undefined && byte >= 0x30 && byte <= 0x37;
 }
 
 /** Undo control mode's escaping: bytes below 0x20 and `\` arrive as `\ooo`; everything else is raw. */
-export function unescapeTmuxOutput(value: Buffer): Buffer {
+export function unescapeTmuxOutput(value: Buffer): Buffer
+{
 	const bytes: number[] = [];
-	for (let index = 0; index < value.length; index += 1) {
+	for (let index = 0; index < value.length; index += 1)
+	{
 		const byte = value[index] ?? 0;
 		const first = value[index + 1];
 		const second = value[index + 2];
 		const third = value[index + 3];
-		if (byte === BACKSLASH && isOctalDigit(first) && isOctalDigit(second) && isOctalDigit(third)) {
+		if (byte === BACKSLASH && isOctalDigit(first) && isOctalDigit(second) && isOctalDigit(third))
+		{
 			bytes.push(((first - 0x30) * 64 + (second - 0x30) * 8 + (third - 0x30)) & 0xff);
 			index += 3;
-		} else {
+		}
+		else
+		{
 			bytes.push(byte);
 		}
 	}
@@ -57,23 +79,44 @@ export function unescapeTmuxOutput(value: Buffer): Buffer {
 
 const OUTPUT_PREFIX = "%output ";
 
-function parseNotification(line: Buffer): TmuxControlNotification | null {
-	if (line.subarray(0, OUTPUT_PREFIX.length).toString("latin1") === OUTPUT_PREFIX) {
+function parseNotification(line: Buffer): TmuxControlNotification | null
+{
+	if (line.subarray(0, OUTPUT_PREFIX.length).toString("latin1") === OUTPUT_PREFIX)
+	{
 		const space = line.indexOf(0x20, OUTPUT_PREFIX.length);
 		const end = space === -1 ? line.length : space;
 		const paneId = line.subarray(OUTPUT_PREFIX.length, end).toString("latin1");
 		const data = space === -1 ? Buffer.alloc(0) : line.subarray(space + 1);
-		return {type: "output", paneId, bytes: unescapeTmuxOutput(data)};
+		return {
+			type: "output",
+			paneId,
+			bytes: unescapeTmuxOutput(data),
+		};
 	}
 	const [name, id] = line.toString("utf8").split(" ");
-	switch (name) {
+	switch (name)
+	{
 		case "%layout-change":
-			return id === undefined ? null : {type: "layout-change", windowId: id};
+			return id === undefined
+				? null
+				:
+					{
+						type: "layout-change",
+						windowId: id,
+					};
 		case "%window-close":
 		case "%unlinked-window-close":
-			return id === undefined ? null : {type: "window-close", windowId: id};
+			return id === undefined
+				? null
+				:
+					{
+						type: "window-close",
+						windowId: id,
+					};
 		case "%exit":
-			return {type: "exit"};
+			return {
+				type: "exit",
+			};
 		default:
 			return null;
 	}
@@ -84,24 +127,33 @@ function parseNotification(line: Buffer): TmuxControlNotification | null {
  * UTF-8 character across chunks stays whole; command replies between
  * `%begin` and `%end`/`%error` are skipped, as are notifications ccp ignores.
  */
-export function createTmuxControlParser(onNotification: (notification: TmuxControlNotification) => void): {
+export function createTmuxControlParser(onNotification: (notification: TmuxControlNotification) => void):
+{
 	push: (chunk: Buffer | string) => void;
-} {
+}
+{
 	let buffer = Buffer.alloc(0);
 	let inBlock = false;
 	return {
-		push(chunk) {
+		push(chunk)
+		{
 			buffer = Buffer.concat([buffer, typeof chunk === "string" ? Buffer.from(chunk) : chunk]);
 			let newline = buffer.indexOf(0x0a);
-			while (newline !== -1) {
+			while (newline !== -1)
+			{
 				const line = buffer.subarray(0, newline);
 				buffer = buffer.subarray(newline + 1);
 				const head = line.subarray(0, 7).toString("latin1");
-				if (inBlock) {
+				if (inBlock)
+				{
 					if (head.startsWith("%end ") || head.startsWith("%error ")) inBlock = false;
-				} else if (head.startsWith("%begin ")) {
+				}
+				else if (head.startsWith("%begin "))
+				{
 					inBlock = true;
-				} else {
+				}
+				else
+				{
 					const notification = parseNotification(line);
 					if (notification !== null) onNotification(notification);
 				}
@@ -112,7 +164,8 @@ export function createTmuxControlParser(onNotification: (notification: TmuxContr
 	};
 }
 
-export interface TmuxPaneGeometry {
+export interface TmuxPaneGeometry
+{
 	sessionId: string;
 	windowId: string;
 	width: number;
@@ -138,14 +191,29 @@ const GeometryNumber = z.coerce.number().int().nonnegative();
 const DimensionNumber = z.coerce.number().int().positive().max(1000);
 
 /** Parse `display-message -p -t %N TMUX_PANE_GEOMETRY_FORMAT`; null for anything else. */
-export function parseTmuxPaneGeometry(stdout: string): TmuxPaneGeometry | null {
+export function parseTmuxPaneGeometry(stdout: string): TmuxPaneGeometry | null
+{
 	const [sessionId, windowId, width, height, cursorX, cursorY, cursorFlag, paneDead, ...rest] = stdout
 		.trim()
 		.split("\t");
 	if (rest.length > 0 || !sessionId?.startsWith("$") || !windowId?.startsWith("@")) return null;
 	const parsed = z
-		.object({width: DimensionNumber, height: DimensionNumber, cursorX: GeometryNumber, cursorY: GeometryNumber})
-		.safeParse({width, height, cursorX, cursorY});
+		.object(
+			{
+				width: DimensionNumber,
+				height: DimensionNumber,
+				cursorX: GeometryNumber,
+				cursorY: GeometryNumber,
+			},
+		)
+		.safeParse(
+			{
+				width,
+				height,
+				cursorX,
+				cursorY,
+			},
+		);
 	if (!parsed.success) return null;
 	return {
 		sessionId,
@@ -162,7 +230,8 @@ export function parseTmuxPaneGeometry(stdout: string): TmuxPaneGeometry | null {
  * lines are left to the clear, and no line beyond the pane's height is drawn,
  * so the screen never scrolls.
  */
-export function buildTmuxKeyframe(capture: string, geometry: TmuxPaneGeometry): Buffer {
+export function buildTmuxKeyframe(capture: string, geometry: TmuxPaneGeometry): Buffer
+{
 	const lines = capture.split("\n").slice(0, geometry.height);
 	while (lines.length > 0 && lines.at(-1) === "") lines.pop();
 	const cursor = `\x1b[${String(geometry.cursorY + 1)};${String(geometry.cursorX + 1)}H`;
@@ -171,7 +240,8 @@ export function buildTmuxKeyframe(capture: string, geometry: TmuxPaneGeometry): 
 }
 
 /** Control mode with `ignore-size` and `read-only` client flags arrived in tmux 3.2. */
-export function tmuxSupportsControlStreams(versionOutput: string): boolean {
+export function tmuxSupportsControlStreams(versionOutput: string): boolean
+{
 	const version = versionOutput.trim().replace(/^tmux\s+/, "");
 	if (version === "master" || version.startsWith("next-")) return true;
 	const match = /^(\d+)\.(\d+)/.exec(version);
@@ -182,10 +252,12 @@ export function tmuxSupportsControlStreams(versionOutput: string): boolean {
 }
 
 /** Raw terminal input as `send-keys -H` commands: one hex byte per key, so control bytes and UTF-8 survive. */
-export function tmuxSendKeysCommands(paneId: string, text: string, chunkBytes = SEND_KEYS_CHUNK_BYTES): string[][] {
+export function tmuxSendKeysCommands(paneId: string, text: string, chunkBytes = SEND_KEYS_CHUNK_BYTES): string[][]
+{
 	const bytes = Buffer.from(text);
 	const commands: string[][] = [];
-	for (let offset = 0; offset < bytes.length; offset += chunkBytes) {
+	for (let offset = 0; offset < bytes.length; offset += chunkBytes)
+	{
 		const hex = [...bytes.subarray(offset, offset + chunkBytes)].map((byte) => byte.toString(16).padStart(2, "0"));
 		commands.push(["send-keys", "-t", paneId, "-H", ...hex]);
 	}
@@ -195,8 +267,13 @@ export function tmuxSendKeysCommands(paneId: string, text: string, chunkBytes = 
 type Timer = ReturnType<typeof setTimeout>;
 
 /** A spawned `tmux -C attach` client. */
-export interface TmuxControlChild {
-	stdin: {write: (text: string) => boolean; end: () => void};
+export interface TmuxControlChild
+{
+	stdin:
+	{
+		write: (text: string) => boolean;
+		end: () => void;
+	};
 	stdout: Readable;
 	stderr: Readable;
 	exitCode: number | null;
@@ -206,7 +283,8 @@ export interface TmuxControlChild {
 	on(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown;
 }
 
-export interface TmuxTerminalStreamIo {
+export interface TmuxTerminalStreamIo
+{
 	/** Runs `tmux <args>` and resolves its stdout; rejects when tmux fails. */
 	output: (args: readonly string[]) => Promise<string>;
 	spawnControl: (args: readonly string[]) => TmuxControlChild;
@@ -214,28 +292,49 @@ export interface TmuxTerminalStreamIo {
 	cancel: (timer: Timer | number) => void;
 }
 
-export interface TmuxStreamPane {
+export interface TmuxStreamPane
+{
 	paneId: string;
 	/** The tmux server socket; empty for the default server. */
 	socketPath: string;
 }
 
-export interface TmuxTerminalStreamOptions {
+export interface TmuxTerminalStreamOptions
+{
 	pane: TmuxStreamPane;
 	/** Interactive streams attach without `read-only` and type data frames. */
 	interactive: boolean;
 }
 
 const TerminalControlFrameSchema = z.discriminatedUnion("type", [
-	z.object({type: z.literal("data"), data: z.string().max(64 * 1024)}).strict(),
-	z.object({type: z.literal("resize"), cols: ViewportDimensionSchema, rows: ViewportDimensionSchema}).strict(),
+	z
+		.object(
+			{
+				type: z.literal("data"),
+				data: z.string().max(64 * 1024),
+			},
+		)
+		.strict(),
+	z
+		.object(
+			{
+				type: z.literal("resize"),
+				cols: ViewportDimensionSchema,
+				rows: ViewportDimensionSchema,
+			},
+		)
+		.strict(),
 ]);
 
-function parseControlFrame(message: string): z.infer<typeof TerminalControlFrameSchema> | null {
-	try {
+function parseControlFrame(message: string): z.infer<typeof TerminalControlFrameSchema> | null
+{
+	try
+	{
 		const parsed = TerminalControlFrameSchema.safeParse(JSON.parse(message));
 		return parsed.success ? parsed.data : null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -251,15 +350,20 @@ export async function startTmuxTerminalStream(
 	{pane, interactive}: TmuxTerminalStreamOptions,
 	socket: TerminalObserverSocket,
 	io: TmuxTerminalStreamIo = defaultTmuxTerminalStreamIo,
-): Promise<TerminalController> {
+): Promise<TerminalController>
+{
 	const server = pane.socketPath === "" ? [] : ["-S", pane.socketPath];
-	const readGeometry = async (): Promise<TmuxPaneGeometry | null> => {
-		try {
+	const readGeometry = async (): Promise<TmuxPaneGeometry | null> =>
+	{
+		try
+		{
 			const geometry = parseTmuxPaneGeometry(
 				await io.output([...server, "display-message", "-p", "-t", pane.paneId, TMUX_PANE_GEOMETRY_FORMAT]),
 			);
 			return geometry === null || geometry.dead ? null : geometry;
-		} catch {
+		}
+		catch
+		{
 			return null;
 		}
 	};
@@ -280,45 +384,58 @@ export async function startTmuxTerminalStream(
 	let mode: "control" | "poll" = "poll";
 	let typing: Promise<unknown> = Promise.resolve();
 
-	const send = (record: Record<string, unknown>): void => {
+	const send = (record: Record<string, unknown>): void =>
+	{
 		socket.send(JSON.stringify(record));
 	};
 
-	const sendFrame = (bytes: Buffer, full: boolean, size: TmuxPaneGeometry): void => {
+	const sendFrame = (bytes: Buffer, full: boolean, size: TmuxPaneGeometry): void =>
+	{
 		sequence += 1;
-		send({
-			type: "terminal.frame",
-			seq: sequence,
-			encoding: "ansi",
-			width: size.width,
-			height: size.height,
-			full,
-			bytes: bytes.toString("base64"),
-		});
+		send(
+			{
+				type: "terminal.frame",
+				seq: sequence,
+				encoding: "ansi",
+				width: size.width,
+				height: size.height,
+				full,
+				bytes: bytes.toString("base64"),
+			},
+		);
 	};
 
-	const schedule = (delayMs: number): void => {
+	const schedule = (delayMs: number): void =>
+	{
 		if (timer !== null || stopped) return;
-		timer = io.schedule(() => {
+		timer = io.schedule(() =>
+		{
 			timer = null;
 			void keyframe();
 		}, delayMs);
 	};
 
-	const releaseResources = (): void => {
+	const releaseResources = (): void =>
+	{
 		stopped = true;
 		activeStreams.delete(stream);
 		if (timer !== null) io.cancel(timer);
 		timer = null;
-		if (control !== null) {
+		if (control !== null)
+		{
 			control.stdin.end();
 			if (control.exitCode === null && control.signalCode === null) control.kill("SIGTERM");
 		}
 	};
 
-	const close = (): void => {
+	const close = (): void =>
+	{
 		if (stopped) return;
-		send({type: "terminal.closed"});
+		send(
+			{
+				type: "terminal.closed",
+			},
+		);
 		socket.close(1000, "terminal closed");
 		releaseResources();
 	};
@@ -327,7 +444,8 @@ export async function startTmuxTerminalStream(
 	/** Output or a layout change arrives while a capture is awaited. */
 	const wasRaced = (): boolean => raced;
 
-	async function keyframe(): Promise<void> {
+	async function keyframe(): Promise<void>
+	{
 		if (stopped) return;
 		capturing = true;
 		raced = false;
@@ -336,7 +454,8 @@ export async function startTmuxTerminalStream(
 			io.output([...server, "capture-pane", "-p", "-e", "-t", pane.paneId]).catch(() => null),
 		]);
 		if (isStopped()) return;
-		if (next === null || capture === null) {
+		if (next === null || capture === null)
+		{
 			close();
 			return;
 		}
@@ -344,7 +463,8 @@ export async function startTmuxTerminalStream(
 		capturing = false;
 		const bytes = buildTmuxKeyframe(capture, next);
 		const screen = `${String(next.width)}x${String(next.height)}\0${bytes.toString("latin1")}`;
-		if (mode === "poll") {
+		if (mode === "poll")
+		{
 			if (screen !== lastKeyframe) sendFrame(bytes, true, next);
 			lastKeyframe = screen;
 			schedule(POLL_INTERVAL_MS);
@@ -355,21 +475,25 @@ export async function startTmuxTerminalStream(
 		if (wasRaced()) schedule(KEYFRAME_REFRESH_MS);
 	}
 
-	const requestKeyframe = (): void => {
+	const requestKeyframe = (): void =>
+	{
 		if (capturing) raced = true;
 		else void keyframe();
 	};
 
-	const fallBackToPolling = (): void => {
+	const fallBackToPolling = (): void =>
+	{
 		if (stopped || mode === "poll") return;
 		mode = "poll";
 		control = null;
 		if (!capturing) void keyframe();
 	};
 
-	const onNotification = (notification: TmuxControlNotification): void => {
+	const onNotification = (notification: TmuxControlNotification): void =>
+	{
 		if (stopped || geometry === null) return;
-		switch (notification.type) {
+		switch (notification.type)
+		{
 			case "output":
 				if (notification.paneId !== pane.paneId) return;
 				if (capturing) raced = true;
@@ -386,25 +510,36 @@ export async function startTmuxTerminalStream(
 		}
 	};
 
-	const typeText = (text: string): void => {
+	const typeText = (text: string): void =>
+	{
 		const commands = tmuxSendKeysCommands(pane.paneId, text);
 		const client = mode === "control" ? control : null;
-		if (client !== null) {
+		if (client !== null)
+		{
 			for (const command of commands) client.stdin.write(`${command.join(" ")}\n`);
 			return;
 		}
-		typing = typing.then(async () => {
+		typing = typing.then(async () =>
+		{
 			for (const command of commands) await io.output([...server, ...command]);
 		});
 		typing = typing.catch(() => undefined);
 	};
 
-	const stream: TerminalController = {
-		input(message) {
+	const stream: TerminalController =
+	{
+		input(message)
+		{
 			if (stopped || !interactive) return;
 			const frame = parseControlFrame(message);
-			if (frame === null) {
-				send({type: "observer.error", message: "invalid terminal control frame"});
+			if (frame === null)
+			{
+				send(
+					{
+						type: "observer.error",
+						message: "invalid terminal control frame",
+					},
+				);
 				socket.close(1008, "invalid terminal control frame");
 				releaseResources();
 				return;
@@ -412,7 +547,8 @@ export async function startTmuxTerminalStream(
 			if (frame.type === "data") typeText(frame.data);
 		},
 		stop: releaseResources,
-		shutdown() {
+		shutdown()
+		{
 			if (stopped) return;
 			socket.close(1012, "terminal observer server stopped");
 			releaseResources();
@@ -420,11 +556,13 @@ export async function startTmuxTerminalStream(
 	};
 	activeStreams.add(stream);
 
-	if (tmuxSupportsControlStreams(version)) {
+	if (tmuxSupportsControlStreams(version))
+	{
 		const flags = interactive ? "ignore-size" : "ignore-size,read-only";
 		const child = io.spawnControl([...server, "-C", "attach-session", "-t", geometry.sessionId, "-f", flags]);
 		const parser = createTmuxControlParser(onNotification);
-		child.stdout.on("data", (chunk: Buffer | string) => {
+		child.stdout.on("data", (chunk: Buffer | string) =>
+		{
 			parser.push(chunk);
 		});
 		child.stderr.on("data", () => undefined);
@@ -438,7 +576,8 @@ export async function startTmuxTerminalStream(
 	return stream;
 }
 
-export function stopAllTmuxTerminalStreams(): void {
+export function stopAllTmuxTerminalStreams(): void
+{
 	for (const stream of activeStreams) stream.shutdown();
 }
 
@@ -446,22 +585,36 @@ hmrDispose(stopAllTmuxTerminalStreams);
 
 const TMUX_STREAM_COMMAND_TIMEOUT_MS = 2000;
 
-export const defaultTmuxTerminalStreamIo: TmuxTerminalStreamIo = {
+export const defaultTmuxTerminalStreamIo: TmuxTerminalStreamIo =
+{
 	output: async (args) =>
-		new Promise((resolve, reject) => {
+		new Promise((resolve, reject) =>
+		{
 			execFile(
 				"tmux",
 				[...args],
-				{timeout: TMUX_STREAM_COMMAND_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024},
-				(error: Error | null, stdout: string) => {
+				{
+					timeout: TMUX_STREAM_COMMAND_TIMEOUT_MS,
+					maxBuffer: 8 * 1024 * 1024,
+				},
+				(error: Error | null, stdout: string) =>
+				{
 					if (error) reject(error);
 					else resolve(stdout);
 				},
 			);
 		}),
-	spawnControl: (args) => spawn("tmux", [...args], {stdio: ["pipe", "pipe", "pipe"]}),
+	spawnControl: (args) =>
+		spawn(
+			"tmux",
+			[...args],
+			{
+				stdio: ["pipe", "pipe", "pipe"],
+			},
+		),
 	schedule: setTimeout,
-	cancel: (timer) => {
+	cancel: (timer) =>
+	{
 		clearTimeout(timer);
 	},
 };

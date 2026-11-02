@@ -15,7 +15,8 @@ import {removeMemoryTags} from "../../lib/task-checklist";
 import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
 import type {QuestionAnswer} from "../../lib/hook-events";
 import {clearSentQuestionCard, isQuestionCardSent, useQuestionCardSent} from "../../lib/question-card-store";
-import {
+import
+{
 	describeAskUserQuestionResult,
 	isWithdrawnQuestion,
 	normalizeQuestions,
@@ -38,7 +39,8 @@ const CARD_SHELL = "flex flex-col card-outline rounded-r6 overflow-clip divide-y
  * each with its memory tags dropped (`Zp` over `sh`) and drawn as `_i({text: u9(ME(question))})` in
  * secondary text; no header and no options. Nothing when no question has text.
  */
-function UnansweredQuestions({questions}: {questions: QuestionLike[]}) {
+function UnansweredQuestions({questions}: {questions: QuestionLike[]})
+{
 	const lines = questions.flatMap((q) => (q.question ? [removeMemoryTags(q.question)] : []));
 	if (lines.length === 0) return null;
 	return (
@@ -61,11 +63,13 @@ function UnansweredQuestions({questions}: {questions: QuestionLike[]}) {
  * (cb6930dae, 2026-11-10), where ME is the secret masker, u9 shows spoofing characters as
  * `[U+XXXX]` and `_i` paints code chips. The answer line is `u9(ME(answer))` as plain text.
  */
-function QuestionOutcomeList({toolCall}: {toolCall: ClientToolCall}) {
+function QuestionOutcomeList({toolCall}: {toolCall: ClientToolCall})
+{
 	const entries = questionOutcomes(toolCall);
 	return (
 		<div className="flex flex-col gap-3 pt-1">
-			{entries.map((entry, i) => {
+			{entries.map((entry, i) =>
+			{
 				const kind = entry.unanswered ?? (toolCall.stopped === true ? "dismissed" : undefined);
 				const line =
 					entry.answer === undefined
@@ -90,7 +94,8 @@ function QuestionOutcomeList({toolCall}: {toolCall: ClientToolCall}) {
 	);
 }
 
-function StatusLine({status}: {status: AskUserQuestionStatus}) {
+function StatusLine({status}: {status: AskUserQuestionStatus})
+{
 	return (
 		<div className="text-body text-extended-pink">
 			<div>{status.text}</div>
@@ -104,23 +109,29 @@ function recordedNotes(
 	meta: ClientToolCall["resultMeta"],
 	result: string | undefined,
 	questions: QuestionLike[],
-): Map<string, string | null> {
+): Map<string, string | null>
+{
 	const notes = new Map<string, string | null>();
-	if (meta?.answers !== undefined) {
+	if (meta?.answers !== undefined)
+	{
 		for (const [question, entry] of Object.entries(meta.answers)) notes.set(question, entry.notes);
-	} else if (result !== undefined) {
+	}
+	else if (result !== undefined)
+	{
 		for (const entry of parseAnswerResult(result, questions) ?? []) notes.set(entry.question, entry.notes);
 	}
 	return notes;
 }
 
-export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
+export function AskUserQuestionRenderer({toolCall}: ToolRendererProps)
+{
 	const ctx = useAskUserQuestionContext();
 	const questions = normalizeQuestions(toolCall.input);
 	const {result} = toolCall;
 	const isPending = result === undefined;
 	// Upstream's sent store holds the submitted answers only until the call's result lands.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!isPending) clearSentQuestionCard(toolCall.id);
 	}, [isPending, toolCall.id]);
 	// Whether this renderer's own card sent the answer while the call was pending:
@@ -138,16 +149,19 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	if (isPending && questions !== null && ctx === null) return <UnansweredQuestions questions={questions} />;
 
 	// Upstream draws a pending question as its card, inline where the call is; it answers along the session's route.
-	if (isPending && questions !== null) {
+	if (isPending && questions !== null)
+	{
 		const route = ctx?.answerRoute ?? "read-only";
 		const submit =
 			ctx !== null && route !== "read-only"
 				? async (answers: Array<QuestionAnswer | null>) =>
-						ctx.submitAnswer({
-							toolUseId: toolCall.id,
-							questions,
-							picks: answers,
-						})
+						ctx.submitAnswer(
+							{
+								toolUseId: toolCall.id,
+								questions,
+								picks: answers,
+							},
+						)
 				: undefined;
 		const card = (
 			<QuestionCard
@@ -156,7 +170,12 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 				onSubmit={submit}
 				// A fork answers in a new session, so only a live answer holds this one as working.
 				sessionId={route === "live-pane" ? ctx?.sessionId : undefined}
-				{...(route === "fork" ? {submitLabel: FORK_ANSWER_LABEL} : {})}
+				{...(route === "fork"
+					?
+						{
+							submitLabel: FORK_ANSWER_LABEL,
+						}
+					: {})}
 			/>
 		);
 		if (ctx?.sessionId === undefined) return card;
@@ -164,7 +183,13 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		return (
 			<ApprovalSlot
 				sessionId={ctx.sessionId}
-				{...sessionApprovalSlotCard({permission: null, planId: null, questionId: sentNow ? null : toolCall.id})}
+				{...sessionApprovalSlotCard(
+					{
+						permission: null,
+						planId: null,
+						questionId: sentNow ? null : toolCall.id,
+					},
+				)}
 			>
 				{card}
 			</ApprovalSlot>
@@ -173,7 +198,8 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 
 	const status = describeAskUserQuestionResult(result);
 
-	if (!questions) {
+	if (!questions)
+	{
 		const singleQuestion = inputString(toolCall.input, "question") ?? "";
 		return (
 			<div className={CARD_SHELL}>
@@ -197,7 +223,8 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		toolCall.resultMeta?.answers === undefined &&
 		parseAnswerResult(result, questions) === null;
 
-	if (isWithdrawnQuestion(toolCall)) {
+	if (isWithdrawnQuestion(toolCall))
+	{
 		return (
 			<>
 				<QuestionOutcomeList toolCall={toolCall} />
@@ -211,9 +238,11 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	const receipt = questionOutcomes(toolCall).filter(
 		(entry) => entry.answer !== undefined || entry.unanswered !== undefined,
 	);
-	if (receipt.length > 0) {
+	if (receipt.length > 0)
+	{
 		const notes = recordedNotes(toolCall.resultMeta, result, questions);
-		const rows = receipt.map((entry) => ({
+		const rows = receipt.map((entry) => (
+		{
 			question: entry.question,
 			answer: entry.answer ?? (entry.unanswered === undefined ? "" : OUTCOME_LABEL[entry.unanswered]),
 			notes: notes.get(entry.question) ?? null,

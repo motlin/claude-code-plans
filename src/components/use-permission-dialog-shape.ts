@@ -16,16 +16,19 @@ export function usePermissionDialogShape(
 	sessionId: string,
 	permissionKey: string | null,
 	enabled: boolean,
-): PermissionDialogShape | "unknown" | undefined {
+): PermissionDialogShape | "unknown" | undefined
+{
 	const live = enabled && permissionKey !== null;
-	const {data} = useQuery({
-		queryKey: ["herdr", "permission-dialog", sessionId, permissionKey] as const,
-		queryFn: async () => fetchHerdrPermissionDialog(sessionId),
-		enabled: live,
-		staleTime: Infinity,
-		retry: (failures, error) => failures < NOT_SHOWN_RETRIES && isPermissionDialogNotShown(error),
-		retryDelay: NOT_SHOWN_RETRY_MS,
-	});
+	const {data} = useQuery(
+		{
+			queryKey: ["herdr", "permission-dialog", sessionId, permissionKey] as const,
+			queryFn: async () => fetchHerdrPermissionDialog(sessionId),
+			enabled: live,
+			staleTime: Infinity,
+			retry: (failures, error) => failures < NOT_SHOWN_RETRIES && isPermissionDialogNotShown(error),
+			retryDelay: NOT_SHOWN_RETRY_MS,
+		},
+	);
 	if (!live) return undefined;
 	return data ?? "unknown";
 }

@@ -1,14 +1,19 @@
 import {nonEmpty} from "./non-empty";
-function firstHeaderValue(value: string | null): string | null {
+function firstHeaderValue(value: string | null): string | null
+{
 	const first = value?.split(",", 1)[0]?.trim();
 	return nonEmpty(first) ?? null;
 }
 
-function originMatchesRequest(request: Request, origin: string): boolean {
+function originMatchesRequest(request: Request, origin: string): boolean
+{
 	let originUrl: URL;
-	try {
+	try
+	{
 		originUrl = new URL(origin);
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 
@@ -22,15 +27,24 @@ function originMatchesRequest(request: Request, origin: string): boolean {
 	return publicHosts.some((host) => host?.toLowerCase() === originUrl.host.toLowerCase());
 }
 
-export function rejectCrossSite(request: Request): Response | null {
+export function rejectCrossSite(request: Request): Response | null
+{
 	const origin = request.headers.get("Origin");
 	const secFetchSite = request.headers.get("Sec-Fetch-Site");
 
 	if (
 		(origin !== null && !originMatchesRequest(request, origin)) ||
 		(secFetchSite !== null && secFetchSite !== "same-origin")
-	) {
-		return Response.json({error: "Forbidden"}, {status: 403});
+	)
+	{
+		return Response.json(
+			{
+				error: "Forbidden",
+			},
+			{
+				status: 403,
+			},
+		);
 	}
 
 	return null;

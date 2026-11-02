@@ -2,13 +2,18 @@ import {askUserQuestionTimeoutLabels} from "./schema-choices";
 
 export type FieldType = "boolean" | "string" | "number" | "enum" | "object";
 
-export interface FieldDefinition {
+export interface FieldDefinition
+{
 	key: string;
 	label: string;
 	description: string;
 	type: FieldType;
 	section: string;
-	options?: Array<{value: string; label: string}>;
+	options?: Array<
+	{
+		value: string;
+		label: string;
+	}>;
 	min?: number;
 	max?: number;
 }
@@ -28,10 +33,22 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		type: "enum",
 		section: "General",
 		options: [
-			{value: "light", label: "Light"},
-			{value: "dark", label: "Dark"},
-			{value: "light-daltonized", label: "Light (daltonized)"},
-			{value: "dark-daltonized", label: "Dark (daltonized)"},
+			{
+				value: "light",
+				label: "Light",
+			},
+			{
+				value: "dark",
+				label: "Dark",
+			},
+			{
+				value: "light-daltonized",
+				label: "Light (daltonized)",
+			},
+			{
+				value: "dark-daltonized",
+				label: "Dark (daltonized)",
+			},
 		],
 	},
 	{
@@ -41,8 +58,14 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		type: "enum",
 		section: "General",
 		options: [
-			{value: "fullscreen", label: "Fullscreen"},
-			{value: "inline", label: "Inline"},
+			{
+				value: "fullscreen",
+				label: "Fullscreen",
+			},
+			{
+				value: "inline",
+				label: "Inline",
+			},
 		],
 	},
 	{
@@ -102,9 +125,18 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		type: "enum",
 		section: "Updates",
 		options: [
-			{value: "latest", label: "Latest (stable)"},
-			{value: "beta", label: "Beta"},
-			{value: "disabled", label: "Disabled"},
+			{
+				value: "latest",
+				label: "Latest (stable)",
+			},
+			{
+				value: "beta",
+				label: "Beta",
+			},
+			{
+				value: "disabled",
+				label: "Disabled",
+			},
 		],
 	},
 	{
@@ -135,8 +167,14 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		type: "enum",
 		section: "Advanced",
 		options: [
-			{value: "in-process", label: "In-process"},
-			{value: "detached", label: "Detached"},
+			{
+				value: "in-process",
+				label: "In-process",
+			},
+			{
+				value: "detached",
+				label: "Detached",
+			},
 		],
 	},
 	{
@@ -145,7 +183,11 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		description: "How long an AskUserQuestion prompt waits for an answer",
 		type: "enum",
 		section: "Advanced",
-		options: Object.entries(askUserQuestionTimeoutLabels).map(([value, label]) => ({value, label})),
+		options: Object.entries(askUserQuestionTimeoutLabels).map(([value, label]) => (
+		{
+			value,
+			label,
+		})),
 	},
 	{
 		key: "preferredNotifChannel",
@@ -264,14 +306,16 @@ const SUMMARY_SETTINGS_KEYS = new Set(["skillOverrides"]);
 
 export type ObjectSubFieldType = "boolean" | "string" | "number" | "stringList";
 
-export interface ObjectSubField {
+export interface ObjectSubField
+{
 	key: string;
 	label: string;
 	description?: string;
 	type: ObjectSubFieldType;
 }
 
-export interface ObjectEditorDef {
+export interface ObjectEditorDef
+{
 	key: string;
 	label: string;
 	description: string;
@@ -286,7 +330,11 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
 		description: "Sandboxed execution settings",
 		section: "Permissions",
 		fields: [
-			{key: "enabled", label: "Enabled", type: "boolean"},
+			{
+				key: "enabled",
+				label: "Enabled",
+				type: "boolean",
+			},
 			{
 				key: "autoAllowBashIfSandboxed",
 				label: "Auto-allow Bash if sandboxed",
@@ -305,7 +353,13 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
 		label: "Remote",
 		description: "Remote environment settings",
 		section: "Advanced",
-		fields: [{key: "defaultEnvironmentId", label: "Default environment ID", type: "string"}],
+		fields: [
+			{
+				key: "defaultEnvironmentId",
+				label: "Default environment ID",
+				type: "string",
+			},
+		],
 	},
 	{
 		key: "worktree",
@@ -313,8 +367,16 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
 		description: "Git worktree settings",
 		section: "Advanced",
 		fields: [
-			{key: "baseRef", label: "Base ref", type: "string"},
-			{key: "bgIsolation", label: "Background isolation", type: "string"},
+			{
+				key: "baseRef",
+				label: "Base ref",
+				type: "string",
+			},
+			{
+				key: "bgIsolation",
+				label: "Background isolation",
+				type: "string",
+			},
 		],
 	},
 	{
@@ -323,8 +385,16 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
 		description: "Custom verbs shown while the spinner is animating",
 		section: "Advanced",
 		fields: [
-			{key: "mode", label: "Mode", type: "string"},
-			{key: "verbs", label: "Verbs", type: "stringList"},
+			{
+				key: "mode",
+				label: "Mode",
+				type: "string",
+			},
+			{
+				key: "verbs",
+				label: "Verbs",
+				type: "stringList",
+			},
 		],
 	},
 	{
@@ -332,7 +402,13 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
 		label: "Attribution",
 		description: "Attribution added to commits and pull requests",
 		section: "Advanced",
-		fields: [{key: "sessionUrl", label: "Session URL", type: "boolean"}],
+		fields: [
+			{
+				key: "sessionUrl",
+				label: "Session URL",
+				type: "boolean",
+			},
+		],
 	},
 	{
 		key: "autoMode",
@@ -340,9 +416,21 @@ export const OBJECT_EDITORS: ObjectEditorDef[] = [
 		description: "Auto mode classifier context",
 		section: "Permissions",
 		fields: [
-			{key: "allow", label: "Allow", type: "stringList"},
-			{key: "soft_deny", label: "Soft deny", type: "stringList"},
-			{key: "environment", label: "Environment", type: "stringList"},
+			{
+				key: "allow",
+				label: "Allow",
+				type: "stringList",
+			},
+			{
+				key: "soft_deny",
+				label: "Soft deny",
+				type: "stringList",
+			},
+			{
+				key: "environment",
+				label: "Environment",
+				type: "stringList",
+			},
 		],
 	},
 ];

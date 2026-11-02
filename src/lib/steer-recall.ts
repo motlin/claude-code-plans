@@ -10,7 +10,8 @@ export function recallLastHeldSteer(
 	sessionId: string,
 	held: readonly QueuedPrompt[],
 	remove: (id: string) => void,
-): boolean {
+): boolean
+{
 	const last = held.at(-1);
 	if (last === undefined) return false;
 	if ((getComposerText(sessionId) ?? "").trim() !== "") return false;

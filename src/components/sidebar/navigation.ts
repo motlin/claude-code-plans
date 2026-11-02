@@ -1,4 +1,5 @@
-import {
+import
+{
 	Briefcase,
 	Clock,
 	Shapes,
@@ -20,7 +21,8 @@ import {applicationSettingsQueryOptions} from "../../lib/api/application-setting
 import {DEFAULT_VISIBLE_NAV_SECTIONS, NAV_SECTIONS, type NavSection} from "../../lib/nav-sections";
 import type {Section} from "./types";
 
-interface NavEntry {
+interface NavEntry
+{
 	to: string;
 	label: string;
 	icon: LucideIcon;
@@ -34,81 +36,95 @@ interface NavEntry {
  * entry (or vice versa) is a compile error — the sidebar, its More menu and the
  * app-shell fallback all derive from `navItems` and cannot drift apart.
  */
-const navEntries = {
-	artifacts: {
+const navEntries =
+{
+	artifacts:
+	{
 		to: "/artifacts",
 		navItemId: "epitaxy-apps",
 		label: "Artifacts",
 		icon: Shapes,
 	},
-	routines: {
+	routines:
+	{
 		to: "/routines",
 		navItemId: "local-routines",
 		// Upstream's nav label for its Scheduled tasks page
 		label: "Scheduled",
 		icon: Clock,
 	},
-	jobs: {
+	jobs:
+	{
 		to: "/jobs",
 		navItemId: "local-jobs",
 		label: "Background jobs",
 		icon: Briefcase,
 	},
-	active: {
+	active:
+	{
 		to: "/active",
 		navItemId: "local-active",
 		label: "Active",
 		icon: Radio,
 	},
-	herdr: {
+	herdr:
+	{
 		to: "/terminals",
 		navItemId: "local-herdr",
 		label: "Terminals",
 		icon: SquareTerminal,
 	},
-	approvals: {
+	approvals:
+	{
 		to: "/approvals",
 		navItemId: "local-approvals",
 		label: "Approvals",
 		icon: Inbox,
 	},
-	notifications: {
+	notifications:
+	{
 		to: "/notifications",
 		navItemId: "local-notifications",
 		label: "Notifications",
 		icon: Bell,
 	},
-	tasks: {
+	tasks:
+	{
 		to: "/tasks",
 		navItemId: "local-tasks",
 		label: "Tasks",
 		icon: ListTodo,
 	},
-	projects: {
+	projects:
+	{
 		to: "/projects",
 		navItemId: "local-projects",
 		label: "Projects",
 		icon: FolderOpen,
 	},
-	plans: {
+	plans:
+	{
 		to: "/plans",
 		navItemId: "local-plans",
 		label: "Plans",
 		icon: FileText,
 	},
-	memories: {
+	memories:
+	{
 		to: "/memories",
 		navItemId: "local-memories",
 		label: "Memories",
 		icon: Brain,
 	},
-	sessions: {
+	sessions:
+	{
 		to: "/sessions",
 		navItemId: "local-sessions",
 		label: "Sessions",
 		icon: MessageSquare,
 	},
-	customize: {
+	customize:
+	{
 		to: "/customize",
 		navItemId: "customize",
 		label: "Customize",
@@ -117,7 +133,8 @@ const navEntries = {
 } satisfies Record<Section, NavEntry>;
 
 /** In `NAV_SECTIONS` order. */
-export const navItems = NAV_SECTIONS.map((section) => ({
+export const navItems = NAV_SECTIONS.map((section) => (
+{
 	section,
 	...navEntries[section],
 }));
@@ -125,26 +142,45 @@ export const navItems = NAV_SECTIONS.map((section) => ({
 export type NavItem = (typeof navItems)[number];
 
 /** Split the nav into sidebar rows and the More ▸ overflow, both in nav order. */
-export function getVisibleNavItems<T extends {section: Section}>(
+export function getVisibleNavItems<
+	T extends
+	{
+		section: Section;
+	},
+>(
 	all: readonly T[],
 	visible: readonly NavSection[],
-): {pinned: T[]; overflow: T[]} {
+):
+{
+	pinned: T[];
+	overflow: T[];
+}
+{
 	const visibleSet = new Set<Section>(visible);
 	const pinned: T[] = [];
 	const overflow: T[] = [];
-	for (const item of all) {
+	for (const item of all)
+	{
 		if (visibleSet.has(item.section)) pinned.push(item);
 		else overflow.push(item);
 	}
-	return {pinned, overflow};
+	return {
+		pinned,
+		overflow,
+	};
 }
 
-export function useVisibleNavItems() {
+export function useVisibleNavItems()
+{
 	const applicationSettings = useQuery(applicationSettingsQueryOptions);
 	const visibleNavSections = applicationSettings.data?.visibleNavSections ?? DEFAULT_VISIBLE_NAV_SECTIONS;
 
 	return useMemo(
-		() => ({...getVisibleNavItems(navItems, visibleNavSections), visibleNavSections}),
+		() => (
+		{
+			...getVisibleNavItems(navItems, visibleNavSections),
+			visibleNavSections,
+		}),
 		[visibleNavSections],
 	);
 }

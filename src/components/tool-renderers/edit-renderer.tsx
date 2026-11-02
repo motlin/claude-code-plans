@@ -22,7 +22,8 @@ function EditDiffCard({
 	newStr: string;
 	copyText: string;
 	separated: boolean;
-}) {
+})
+{
 	return (
 		<div className={separated ? "border-t border-[var(--card-outline)]" : undefined}>
 			<div className="flex items-center gap-g3 px-p6 py-p5">
@@ -37,19 +38,22 @@ function EditDiffCard({
 	);
 }
 
-export function EditRenderer({toolCall}: ToolRendererProps) {
+export function EditRenderer({toolCall}: ToolRendererProps)
+{
 	const {input, result, isError} = toolCall;
 	const filePath = inputString(input, "file_path") ?? "";
 	const entries = useMemo(() => editDiffEntries(input), [input]);
 
-	if (toolCall.blocked === true && entries.length === 0) {
+	if (toolCall.blocked === true && entries.length === 0)
+	{
 		return (
 			<div className="px-p6 py-p5">
 				<PolicyDenialReason call={toolCall} />
 			</div>
 		);
 	}
-	if (entries.length === 0) {
+	if (entries.length === 0)
+	{
 		return (
 			<div className="px-p6 py-p5">
 				<pre

@@ -5,59 +5,89 @@ import {currentPerfCounters, withPerfScope, type PerfCounters} from "../../src/l
 
 let db: AppDb;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
 });
 
-function selectMetadata(): void {
+function selectMetadata(): void
+{
 	db.index.select().from(metadata).all();
 }
 
-function withoutMs(counters: PerfCounters | undefined): unknown {
+function withoutMs(counters: PerfCounters | undefined): unknown
+{
 	if (counters === undefined) return undefined;
-	return {...counters, sql: {count: counters.sql.count}};
+	return {
+		...counters,
+		sql:
+		{
+			count: counters.sql.count,
+		},
+	};
 }
 
-describe("withPerfScope", () => {
-	it("counts each SQL statement run inside the scope", () => {
-		const counters = withPerfScope("three-selects", () => {
+describe("withPerfScope", () =>
+{
+	it("counts each SQL statement run inside the scope", () =>
+	{
+		const counters = withPerfScope("three-selects", () =>
+		{
 			selectMetadata();
 			selectMetadata();
 			db.summaries.select().from(summaries).all();
 			return currentPerfCounters();
 		});
 
-		expect(withoutMs(counters)).toStrictEqual({
-			sql: {count: 3},
-			jsonl: {bytesRead: 0, fullScans: 0},
-			proc: {spawned: 0},
-		});
+		expect(withoutMs(counters)).toStrictEqual(
+			{
+				sql:
+				{
+					count: 3,
+				},
+				jsonl:
+				{
+					bytesRead: 0,
+					fullScans: 0,
+				},
+				proc:
+				{
+					spawned: 0,
+				},
+			},
+		);
 		expect(counters?.sql.ms).toBeGreaterThanOrEqual(0);
 	});
 
-	it("returns the value of the wrapped function", () => {
+	it("returns the value of the wrapped function", () =>
+	{
 		expect(withPerfScope("value", () => 42)).toBe(42);
 	});
 
-	it("keeps concurrent scopes separate", async () => {
+	it("keeps concurrent scopes separate", async () =>
+	{
 		const tick = async (): Promise<void> =>
-			new Promise((resolve) => {
+			new Promise((resolve) =>
+			{
 				setImmediate(resolve);
 			});
 
 		const [a, b] = await Promise.all([
-			withPerfScope("a", async () => {
+			withPerfScope("a", async () =>
+			{
 				selectMetadata();
 				await tick();
 				selectMetadata();
 				await tick();
 				return currentPerfCounters()?.sql.count;
 			}),
-			withPerfScope("b", async () => {
+			withPerfScope("b", async () =>
+			{
 				await tick();
 				selectMetadata();
 				await tick();
@@ -68,10 +98,21 @@ describe("withPerfScope", () => {
 			}),
 		]);
 
-		expect({a, b}).toStrictEqual({a: 2, b: 4});
+		expect(
+			{
+				a,
+				b,
+			},
+		).toStrictEqual(
+			{
+				a: 2,
+				b: 4,
+			},
+		);
 	});
 
-	it("counts nothing outside a scope", () => {
+	it("counts nothing outside a scope", () =>
+	{
 		selectMetadata();
 		expect(currentPerfCounters()).toBeUndefined();
 

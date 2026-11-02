@@ -19,93 +19,164 @@ const FAILURE_TOAST = "Couldn’t save the new name. Try again.";
 
 const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 
-function okResponse(title: string): Response {
-	return Response.json({customTitle: title, title});
+function okResponse(title: string): Response
+{
+	return Response.json(
+		{
+			customTitle: title,
+			title,
+		},
+	);
 }
 
-function renameCalls(): Array<{url: string; method: string | undefined; body: unknown}> {
-	return fetchMock.mock.calls.map(([input, init]) => ({
+function renameCalls(): Array<
+{
+	url: string;
+	method: string | undefined;
+	body: unknown;
+}>
+{
+	return fetchMock.mock.calls.map(([input, init]) => (
+	{
 		url: String(input),
 		method: init?.method,
 		body: typeof init?.body === "string" ? JSON.parse(init.body) : init?.body,
 	}));
 }
 
-async function flush() {
-	await act(async () => {
-		await new Promise((resolve) => {
+async function flush()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-async function renderWithProviders(content: ReactNode) {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
-			mutations: {retry: false},
+async function renderWithProviders(content: ReactNode)
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+				mutations:
+				{
+					retry: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
-	queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
-		cwd: null,
-		bridgeSessionId: null,
-		remoteControl: null,
-		remoteHistory: null,
-		githubUrl: null,
-	});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>{content}</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const router = createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	);
+	queryClient.setQueryData(
+		herdrPanesQueryOptions.queryKey,
+		{
+			panes: [],
+			writesEnabled: false,
+		},
+	);
+	queryClient.setQueryData(
+		sessionOpenInQueryOptions(SESSION_ID).queryKey,
+		{
+			cwd: null,
+			bridgeSessionId: null,
+			remoteControl: null,
+			remoteHistory: null,
+			githubUrl: null,
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>{content}</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	await flush();
 }
 
-async function renderHeading() {
+async function renderHeading()
+{
 	return renderWithProviders(<SessionTitleHeading sessionId={SESSION_ID} title={OLD_TITLE} archived={false} />);
 }
 
-function openHeadingRename(): HTMLInputElement {
-	fireEvent.click(screen.getByRole("button", {name: `${OLD_TITLE}, rename session`}));
-	return screen.getByRole<HTMLInputElement>("textbox", {name: "Rename"});
+function openHeadingRename(): HTMLInputElement
+{
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: `${OLD_TITLE}, rename session`,
+			},
+		),
+	);
+	return screen.getByRole<HTMLInputElement>(
+		"textbox",
+		{
+			name: "Rename",
+		},
+	);
 }
 
-function toastText(): string | null | undefined {
+function toastText(): string | null | undefined
+{
 	return document.querySelector("[data-toast-message]")?.textContent;
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	fetchMock.mockReset();
 	vi.stubGlobal("fetch", fetchMock);
 	__unreadStoreTesting.reset();
 	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	__unreadStoreTesting.reset();
 });
 
-describe("session title inline rename", () => {
-	it("renders the title as a rename button", async () => {
+describe("session title inline rename", () =>
+{
+	it("renders the title as a rename button", async () =>
+	{
 		await renderHeading();
 
-		const button = screen.getByRole("button", {name: `${OLD_TITLE}, rename session`});
+		const button = screen.getByRole(
+			"button",
+			{
+				name: `${OLD_TITLE}, rename session`,
+			},
+		);
 		expect(button.closest("h1")?.textContent).toBe(OLD_TITLE);
 	});
 
-	it("opens an input with the whole title selected", async () => {
+	it("opens an input with the whole title selected", async () =>
+	{
 		await renderHeading();
 
 		const input = openHeadingRename();
@@ -114,45 +185,113 @@ describe("session title inline rename", () => {
 		expect([input.value, input.selectionStart, input.selectionEnd]).toEqual([OLD_TITLE, 0, OLD_TITLE.length]);
 	});
 
-	it("commits the trimmed title on Enter", async () => {
+	it("commits the trimmed title on Enter", async () =>
+	{
 		fetchMock.mockResolvedValue(okResponse("New name"));
 		await renderHeading();
 
 		const input = openHeadingRename();
-		fireEvent.change(input, {target: {value: "  New name  "}});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "  New name  ",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 		await flush();
 
 		expect(renameCalls()).toEqual([
 			{
 				url: `/api/sessions/${SESSION_ID}/title`,
 				method: "PUT",
-				body: {title: "New name"},
+				body:
+				{
+					title: "New name",
+				},
 			},
 		]);
-		expect(screen.queryByRole("textbox", {name: "Rename"})).toBeNull();
-		expect(screen.getByRole("heading", {level: 1}).textContent).toBe("New name");
+		expect(
+			screen.queryByRole(
+				"textbox",
+				{
+					name: "Rename",
+				},
+			),
+		).toBeNull();
+		expect(
+			screen.getByRole(
+				"heading",
+				{
+					level: 1,
+				},
+			).textContent,
+		).toBe("New name");
 	});
 
-	it("cancels on Escape without calling the API", async () => {
+	it("cancels on Escape without calling the API", async () =>
+	{
 		await renderHeading();
 
 		const input = openHeadingRename();
-		fireEvent.change(input, {target: {value: "Discarded"}});
-		fireEvent.keyDown(input, {key: "Escape"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "Discarded",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Escape",
+			},
+		);
 		await flush();
 
 		expect(fetchMock).not.toHaveBeenCalled();
-		expect(screen.queryByRole("textbox", {name: "Rename"})).toBeNull();
-		expect(screen.getByRole("heading", {level: 1}).textContent).toBe(OLD_TITLE);
+		expect(
+			screen.queryByRole(
+				"textbox",
+				{
+					name: "Rename",
+				},
+			),
+		).toBeNull();
+		expect(
+			screen.getByRole(
+				"heading",
+				{
+					level: 1,
+				},
+			).textContent,
+		).toBe(OLD_TITLE);
 	});
 
-	it("commits on blur", async () => {
+	it("commits on blur", async () =>
+	{
 		fetchMock.mockResolvedValue(okResponse("Blurred name"));
 		await renderHeading();
 
 		const input = openHeadingRename();
-		fireEvent.change(input, {target: {value: "Blurred name"}});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "Blurred name",
+				},
+			},
+		);
 		fireEvent.blur(input);
 		await flush();
 
@@ -160,54 +299,137 @@ describe("session title inline rename", () => {
 			{
 				url: `/api/sessions/${SESSION_ID}/title`,
 				method: "PUT",
-				body: {title: "Blurred name"},
+				body:
+				{
+					title: "Blurred name",
+				},
 			},
 		]);
-		expect(screen.getByRole("heading", {level: 1}).textContent).toBe("Blurred name");
+		expect(
+			screen.getByRole(
+				"heading",
+				{
+					level: 1,
+				},
+			).textContent,
+		).toBe("Blurred name");
 	});
 
-	it("does not call the API when the title is unchanged or blank", async () => {
+	it("does not call the API when the title is unchanged or blank", async () =>
+	{
 		await renderHeading();
 
-		fireEvent.keyDown(openHeadingRename(), {key: "Enter"});
+		fireEvent.keyDown(
+			openHeadingRename(),
+			{
+				key: "Enter",
+			},
+		);
 		await flush();
 		const input = openHeadingRename();
-		fireEvent.change(input, {target: {value: "   "}});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "   ",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 		await flush();
 
 		expect(fetchMock).not.toHaveBeenCalled();
-		expect(screen.getByRole("heading", {level: 1}).textContent).toBe(OLD_TITLE);
+		expect(
+			screen.getByRole(
+				"heading",
+				{
+					level: 1,
+				},
+			).textContent,
+		).toBe(OLD_TITLE);
 	});
 
-	it("restores the old title and toasts when saving fails", async () => {
-		fetchMock.mockResolvedValue(Response.json({error: "boom"}, {status: 500}));
+	it("restores the old title and toasts when saving fails", async () =>
+	{
+		fetchMock.mockResolvedValue(
+			Response.json(
+				{
+					error: "boom",
+				},
+				{
+					status: 500,
+				},
+			),
+		);
 		await renderHeading();
 
 		const input = openHeadingRename();
-		fireEvent.change(input, {target: {value: "Doomed name"}});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "Doomed name",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(toastText()).toBe(FAILURE_TOAST);
 		});
-		expect(screen.getByRole("heading", {level: 1}).textContent).toBe(OLD_TITLE);
+		expect(
+			screen.getByRole(
+				"heading",
+				{
+					level: 1,
+				},
+			).textContent,
+		).toBe(OLD_TITLE);
 	});
 
-	it("focuses the rename input on ⌥⌘R", async () => {
+	it("focuses the rename input on ⌥⌘R", async () =>
+	{
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
 		await renderHeading();
 
-		fireEvent.keyDown(document.body, {key: "®", code: "KeyR", metaKey: true, altKey: true});
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "®",
+				code: "KeyR",
+				metaKey: true,
+				altKey: true,
+			},
+		);
 		await flush();
 
-		const input = screen.getByRole("textbox", {name: "Rename"});
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Rename",
+			},
+		);
 		expect(document.activeElement).toBe(input);
 	});
 });
 
-describe("sidebar row inline rename", () => {
-	const session: SessionListItem = {
+describe("sidebar row inline rename", () =>
+{
+	const session: SessionListItem =
+	{
 		id: SESSION_ID,
 		title: OLD_TITLE,
 		mtime: "2026-09-28T10:00:00.000Z",
@@ -223,7 +445,8 @@ describe("sidebar row inline rename", () => {
 		blockedSince: null,
 	};
 
-	async function renderRow() {
+	async function renderRow()
+	{
 		return renderWithProviders(
 			<SessionActionsMenu session={session}>
 				<a href={`/session/${SESSION_ID}`} data-testid="row-link">
@@ -233,28 +456,61 @@ describe("sidebar row inline rename", () => {
 		);
 	}
 
-	it("turns the row title into an input from the menu's Rename item", async () => {
+	it("turns the row title into an input from the menu's Rename item", async () =>
+	{
 		fetchMock.mockResolvedValue(okResponse("Renamed row"));
 		await renderRow();
 
-		fireEvent.contextMenu(screen.getByText(OLD_TITLE), {clientX: 40, clientY: 50});
+		fireEvent.contextMenu(
+			screen.getByText(OLD_TITLE),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
 		await flush();
-		fireEvent.keyDown(screen.getByRole("menu"), {key: "r"});
+		fireEvent.keyDown(
+			screen.getByRole("menu"),
+			{
+				key: "r",
+			},
+		);
 		await flush();
 
-		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Rename"});
+		const input = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Rename",
+			},
+		);
 		expect(document.activeElement).toBe(input);
 		expect([input.value, input.selectionStart, input.selectionEnd]).toEqual([OLD_TITLE, 0, OLD_TITLE.length]);
 
-		fireEvent.change(input, {target: {value: "Renamed row"}});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "Renamed row",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 		await flush();
 
 		expect(renameCalls()).toEqual([
 			{
 				url: `/api/sessions/${SESSION_ID}/title`,
 				method: "PUT",
-				body: {title: "Renamed row"},
+				body:
+				{
+					title: "Renamed row",
+				},
 			},
 		]);
 		expect(screen.getByTestId("row-link").textContent).toBe("Renamed row");

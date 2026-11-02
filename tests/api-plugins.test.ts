@@ -1,7 +1,8 @@
 import {describe, it, expect} from "vite-plus/test";
 import {groupPluginsByMarketplace, type PluginInfoData} from "../src/lib/api/plugins";
 
-function makePlugin(id: string, name: string): PluginInfoData {
+function makePlugin(id: string, name: string): PluginInfoData
+{
 	const [, marketplace = ""] = id.split("@");
 	return {
 		id,
@@ -18,8 +19,10 @@ function makePlugin(id: string, name: string): PluginInfoData {
 	};
 }
 
-describe("groupPluginsByMarketplace", () => {
-	it("groups plugins by marketplace", () => {
+describe("groupPluginsByMarketplace", () =>
+{
+	it("groups plugins by marketplace", () =>
+	{
 		const plugins = [
 			makePlugin("hookify@claude-code-plugins", "hookify"),
 			makePlugin("playwright@claude-plugins-official", "playwright"),
@@ -32,18 +35,21 @@ describe("groupPluginsByMarketplace", () => {
 		expect(groups[1]!.plugins.length).toBe(2);
 	});
 
-	it("derives display names for unknown marketplaces from the id", () => {
+	it("derives display names for unknown marketplaces from the id", () =>
+	{
 		const plugins = [makePlugin("my-plugin@custom-marketplace", "my-plugin")];
 		const groups = groupPluginsByMarketplace(plugins);
 		expect(groups.length).toBe(1);
 		expect(groups[0]!.marketplace.displayName).toBe("Custom Marketplace");
 	});
 
-	it("returns empty array for no plugins", () => {
+	it("returns empty array for no plugins", () =>
+	{
 		expect(groupPluginsByMarketplace([])).toStrictEqual([]);
 	});
 
-	it("sorts official marketplaces before third-party, then alphabetically by displayName", () => {
+	it("sorts official marketplaces before third-party, then alphabetically by displayName", () =>
+	{
 		const plugins = [
 			makePlugin("a@zzz-marketplace", "a"),
 			makePlugin("b@anthropic-agent-skills", "b"),
@@ -59,7 +65,8 @@ describe("groupPluginsByMarketplace", () => {
 		]);
 	});
 
-	it("flags isOfficial for known official marketplaces only", () => {
+	it("flags isOfficial for known official marketplaces only", () =>
+	{
 		const plugins = [
 			makePlugin("a@claude-plugins-official", "a"),
 			makePlugin("b@anthropic-agent-skills", "b"),
@@ -67,10 +74,12 @@ describe("groupPluginsByMarketplace", () => {
 		];
 		const groups = groupPluginsByMarketplace(plugins);
 		const byId = Object.fromEntries(groups.map((g) => [g.marketplace.id, g.isOfficial]));
-		expect(byId).toStrictEqual({
-			"claude-plugins-official": true,
-			"anthropic-agent-skills": true,
-			"some-third-party": false,
-		});
+		expect(byId).toStrictEqual(
+			{
+				"claude-plugins-official": true,
+				"anthropic-agent-skills": true,
+				"some-third-party": false,
+			},
+		);
 	});
 });

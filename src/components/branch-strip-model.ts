@@ -7,7 +7,8 @@ export type BranchStripSession = Pick<
 >;
 
 /** `feature/abc…xyz`: keeps the start and end of a name longer than `max` characters. */
-export function middleTruncate(text: string, max: number): string {
+export function middleTruncate(text: string, max: number): string
+{
 	if (text.length <= max) return text;
 	const kept = max - 1;
 	const head = Math.ceil(kept / 2);
@@ -15,13 +16,15 @@ export function middleTruncate(text: string, max: number): string {
 	return `${text.slice(0, head)}…${text.slice(text.length - tail)}`;
 }
 
-export interface LineCounts {
+export interface LineCounts
+{
 	additions: number;
 	deletions: number;
 }
 
 /** Show known PR metadata, or the existing session branch and line-count strip before a PR. */
-export function branchStripVisible(session: BranchStripSession, counts: LineCounts | null): boolean {
+export function branchStripVisible(session: BranchStripSession, counts: LineCounts | null): boolean
+{
 	if (session.pr !== undefined || session.prStatus !== undefined) return true;
 	return session.gitBranch !== null || counts !== null;
 }

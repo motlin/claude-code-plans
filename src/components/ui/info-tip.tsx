@@ -30,7 +30,8 @@ export function InfoTip({
 	side?: "top" | "bottom" | "left" | "right";
 	className?: string;
 	tabIndex?: number;
-}) {
+})
+{
 	return (
 		<Popover.Root>
 			<Popover.Trigger
@@ -40,7 +41,12 @@ export function InfoTip({
 				openOnHover
 				delay={delay}
 				className={className === undefined ? TRIGGER_CLASS : `${TRIGGER_CLASS} ${className}`}
-				{...(tabIndex === undefined ? {} : {tabIndex})}
+				{...(tabIndex === undefined
+					? {}
+					:
+						{
+							tabIndex,
+						})}
 			>
 				{icon}
 			</Popover.Trigger>

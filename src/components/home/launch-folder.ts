@@ -12,7 +12,8 @@ export const HOME_RECENT_LIMIT = 25;
 type ChosenFolder = [string | null, Dispatch<SetStateAction<string | null>>];
 type Launching = [boolean, Dispatch<SetStateAction<boolean>>];
 
-export interface WorktreeState {
+export interface WorktreeState
+{
 	/** The persisted, browser-wide preference. */
 	pref: boolean;
 	/** This draft's override (upstream's per-opening `Jp` state); null follows the preference. */
@@ -28,24 +29,29 @@ export interface WorktreeState {
 	endDraft: () => void;
 }
 
-export interface SharedLaunchFolder {
+export interface SharedLaunchFolder
+{
 	chosen: ChosenFolder;
 	launching: Launching;
 	worktree: WorktreeState;
 }
 
 /** Upstream `n0`'s state: the preference starts off and loads after mount, so SSR and hydration agree. */
-export function useWorktreeState(): WorktreeState {
+export function useWorktreeState(): WorktreeState
+{
 	const [pref, setPref] = useState(false);
 	const [draft, setDraft] = useState<boolean | null>(null);
 	const [taken, setTaken] = useState<ReadonlySet<string>>(() => new Set());
 	const [used, setUsed] = useState<ReadonlySet<string>>(() => new Set());
-	useEffect(() => {
+	useEffect(() =>
+	{
 		setPref(readHomeWorktreePref());
 	}, []);
-	return useMemo(() => {
+	return useMemo(() =>
+	{
 		// A hand toggle clears the draft override and writes the preference, as upstream's `set`.
-		const set = (enabled: boolean) => {
+		const set = (enabled: boolean) =>
+		{
 			setDraft(null);
 			setPref(enabled);
 			writeHomeWorktreePref(enabled);
@@ -58,16 +64,19 @@ export function useWorktreeState(): WorktreeState {
 			taken,
 			used,
 			set,
-			markUsed: (key: string) => {
+			markUsed: (key: string) =>
+			{
 				setUsed((previous) => new Set(previous).add(key));
 			},
 			setForDraft: setDraft,
 			// Upstream's worktree-apart press: `set(true)` (it writes the pref) and records the row taken.
-			takeFromRow: (folder: string) => {
+			takeFromRow: (folder: string) =>
+			{
 				set(true);
 				setTaken((previous) => new Set(previous).add(folder));
 			},
-			endDraft: () => {
+			endDraft: () =>
+			{
 				setDraft(null);
 				setTaken(new Set());
 				setUsed(new Set());
@@ -78,7 +87,8 @@ export function useWorktreeState(): WorktreeState {
 
 export const LaunchFolderContext = createContext<SharedLaunchFolder | null>(null);
 
-export interface HomeLaunchFolder {
+export interface HomeLaunchFolder
+{
 	/** Launchable folders, most recently used first. */
 	projects: StartProject[];
 	selected: StartProject | undefined;
@@ -89,7 +99,8 @@ export interface HomeLaunchFolder {
 }
 
 /** The home launch folder (the chosen one, or the most recent) and its launching flag; local state outside a provider. */
-export function useHomeLaunchFolder(): HomeLaunchFolder {
+export function useHomeLaunchFolder(): HomeLaunchFolder
+{
 	const shared = useContext(LaunchFolderContext);
 	const localChosen = useState<string | null>(null);
 	const localLaunching = useState(false);
@@ -116,7 +127,8 @@ export function useHomeLaunchFolder(): HomeLaunchFolder {
 	};
 }
 
-export interface HomeWorktree {
+export interface HomeWorktree
+{
 	/** The draft override, else the preference (upstream `draft ?? pref`). */
 	enabled: boolean;
 	/** False only for a folder known not to be a git repo; assumed true while its status is unknown. */
@@ -141,7 +153,8 @@ export interface HomeWorktree {
  * The home draft's Worktree switch state, shared under `HomeLaunchFolderProvider` (local outside one).
  * `isGitRepo` is the selected folder's git status, undefined while unknown.
  */
-export function useHomeWorktree(isGitRepo?: boolean): HomeWorktree {
+export function useHomeWorktree(isGitRepo?: boolean): HomeWorktree
+{
 	const shared = useContext(LaunchFolderContext);
 	const local = useWorktreeState();
 	const {pref, draft, taken, set, setForDraft, takeFromRow, endDraft} = shared?.worktree ?? local;
@@ -160,16 +173,21 @@ export function useHomeWorktree(isGitRepo?: boolean): HomeWorktree {
 	};
 }
 
-export interface HomeDraftUsed {
+export interface HomeDraftUsed
+{
 	/** Keys of the Next steps rows whose press prefilled this draft; they stay hidden until it ends. */
 	used: ReadonlySet<string>;
 	markUsed: (key: string) => void;
 }
 
 /** The home draft's used Next steps rows, shared under `HomeLaunchFolderProvider` (local outside one). */
-export function useHomeDraftUsed(): HomeDraftUsed {
+export function useHomeDraftUsed(): HomeDraftUsed
+{
 	const shared = useContext(LaunchFolderContext);
 	const local = useWorktreeState();
 	const {used, markUsed} = shared?.worktree ?? local;
-	return {used, markUsed};
+	return {
+		used,
+		markUsed,
+	};
 }

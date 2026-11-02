@@ -11,36 +11,55 @@ import {pillStyles} from "../components/pill-styles";
 import {DebugLink} from "../components/debug-link";
 import {PlanContextHeader} from "../components/plan-context-header";
 
-function formatDate(iso: string): string {
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-		timeZone: "UTC",
-	});
+function formatDate(iso: string): string
+{
+	return new Date(iso).toLocaleDateString(
+		"en-US",
+		{
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+			timeZone: "UTC",
+		},
+	);
 }
 
-export const Route = createFileRoute("/plan/$filename")({
-	component: PlanPage,
-	loader: async ({context: {queryClient}, params}) =>
-		Promise.all([
-			queryClient.query({...planQueryOptions(params.filename), staleTime: "static"}),
-			queryClient.query({...planLinksQueryOptions(params.filename), staleTime: "static"}),
-		]),
-	head: ({params}) => ({
-		meta: [pageTitle(fromMdSlug(params.filename))],
-	}),
-});
+export const Route = createFileRoute("/plan/$filename")(
+	{
+		component: PlanPage,
+		loader: async ({context: {queryClient}, params}) =>
+			Promise.all([
+				queryClient.query(
+					{
+						...planQueryOptions(params.filename),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...planLinksQueryOptions(params.filename),
+						staleTime: "static",
+					},
+				),
+			]),
+		head: ({params}) => (
+		{
+			meta: [pageTitle(fromMdSlug(params.filename))],
+		}),
+	},
+);
 
-function PlanPage() {
+function PlanPage()
+{
 	const {filename: slug} = Route.useParams();
 	const filename = fromMdSlug(slug);
 	const {data: plan} = useSuspenseQuery(planQueryOptions(slug));
 	const {data: links} = useSuspenseQuery(planLinksQueryOptions(slug));
 
-	if (!plan) {
+	if (!plan)
+	{
 		return (
 			<div>
 				<DetailTopBar>
@@ -62,7 +81,14 @@ function PlanPage() {
 					<ArrowLeft className="h-3.5 w-3.5" />
 					All Plans
 				</Link>
-				<Link to="/plan/$filename/edit" params={{filename: slug}} className={pillStyles.outline}>
+				<Link
+					to="/plan/$filename/edit"
+					params={
+					{
+						filename: slug,
+					}}
+					className={pillStyles.outline}
+				>
 					<Pencil className="h-3 w-3" />
 					Edit
 				</Link>

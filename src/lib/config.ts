@@ -20,14 +20,16 @@ import {AutoArchiveDaysSchema, DEFAULT_AUTO_ARCHIVE_DAYS} from "./auto-archive-o
  * `~/.claude/`, which belongs to Claude Code itself and must not be written
  * to or extended by this app.
  */
-function getConfigDir(): string {
+function getConfigDir(): string
+{
 	const xdg = process.env["XDG_CONFIG_HOME"];
 	const base = nonEmpty(xdg) ?? join(homedir(), ".config");
 	return join(base, "claude-code-plans");
 }
 
 /** Path to this application's config file. */
-export function getConfigPath(): string {
+export function getConfigPath(): string
+{
 	return join(getConfigDir(), "config.json");
 }
 
@@ -37,42 +39,46 @@ export function getConfigPath(): string {
  * the whole file fails to validate. New settings must be added here.
  */
 const AppConfigObjectSchema = z
-	.object({
-		/** Directory basenames the file watcher never descends into. */
-		ignored_dirs: z.array(z.string().trim().min(1)).min(1).optional(),
-		/** Absolute directory paths whose image files may be served by the app. */
-		image_roots: z.array(z.string()).optional(),
-		/** Absolute directory paths whose text files are indexed for content search. */
-		file_roots: z
-			.array(z.string().trim().min(1).refine(isAbsolute, "File roots must be absolute paths"))
-			.optional(),
-		/** Live terminal input: permit ccp to send input and state updates to live terminal panes. */
-		terminal_writes_enabled: z.boolean().optional(),
-		/** Retired by `terminal_writes_enabled`; read only to migrate, dropped on the next save. */
-		herdr_writes_enabled: z.boolean().optional(),
-		/** Terminal multiplexer driven for live sessions: auto, herdr or tmux. */
-		terminal_host: TerminalHostSettingSchema.optional(),
-		/** Offer Shell tabs (login `$SHELL` PTYs in the session folder) in the Terminal pane. */
-		shell_pane_enabled: z.boolean().optional(),
-		/** Sidebar sections pinned outside the More ▸ menu, in nav order. */
-		visible_nav_sections: z.preprocess(renameLegacyNavSections, VisibleNavSectionsSchema).optional(),
-		/** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
-		show_herdr_section: z.boolean().optional(),
-		/** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
-		show_tmux_section: z.boolean().optional(),
-		/** Archive inactive sessions: days without JSONL activity before the sweeper archives a session; 0 is Never. */
-		auto_archive_inactive_days: AutoArchiveDaysSchema.optional(),
-	})
+	.object(
+		{
+			/** Directory basenames the file watcher never descends into. */
+			ignored_dirs: z.array(z.string().trim().min(1)).min(1).optional(),
+			/** Absolute directory paths whose image files may be served by the app. */
+			image_roots: z.array(z.string()).optional(),
+			/** Absolute directory paths whose text files are indexed for content search. */
+			file_roots: z
+				.array(z.string().trim().min(1).refine(isAbsolute, "File roots must be absolute paths"))
+				.optional(),
+			/** Live terminal input: permit ccp to send input and state updates to live terminal panes. */
+			terminal_writes_enabled: z.boolean().optional(),
+			/** Retired by `terminal_writes_enabled`; read only to migrate, dropped on the next save. */
+			herdr_writes_enabled: z.boolean().optional(),
+			/** Terminal multiplexer driven for live sessions: auto, herdr or tmux. */
+			terminal_host: TerminalHostSettingSchema.optional(),
+			/** Offer Shell tabs (login `$SHELL` PTYs in the session folder) in the Terminal pane. */
+			shell_pane_enabled: z.boolean().optional(),
+			/** Sidebar sections pinned outside the More ▸ menu, in nav order. */
+			visible_nav_sections: z.preprocess(renameLegacyNavSections, VisibleNavSectionsSchema).optional(),
+			/** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
+			show_herdr_section: z.boolean().optional(),
+			/** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
+			show_tmux_section: z.boolean().optional(),
+			/** Archive inactive sessions: days without JSONL activity before the sweeper archives a session; 0 is Never. */
+			auto_archive_inactive_days: AutoArchiveDaysSchema.optional(),
+		},
+	)
 	.strict();
 
-function stripLegacyWatcherPolling(value: unknown): unknown {
+function stripLegacyWatcherPolling(value: unknown): unknown
+{
 	if (
 		typeof value !== "object" ||
 		value === null ||
 		Array.isArray(value) ||
 		!("watcher_polling" in value) ||
 		typeof value.watcher_polling !== "boolean"
-	) {
+	)
+	{
 		return value;
 	}
 
@@ -89,17 +95,24 @@ export type AppConfig = z.infer<typeof AppConfigSchema>;
  * file is missing, unreadable, not valid JSON, or fails schema validation —
  * callers treat every one of those cases as "no config, use defaults".
  */
-export function readConfig(configPath: string = getConfigPath()): AppConfig | null {
+export function readConfig(configPath: string = getConfigPath()): AppConfig | null
+{
 	let raw: string;
-	try {
+	try
+	{
 		raw = readFileSync(configPath, "utf8");
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 	let parsed: unknown;
-	try {
+	try
+	{
 		parsed = JSON.parse(raw);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 	const result = AppConfigSchema.safeParse(parsed);
@@ -114,7 +127,8 @@ export function readConfig(configPath: string = getConfigPath()): AppConfig | nu
  * a setting changed through the UI cannot be silently overridden by the
  * server process environment.
  */
-const DEFAULT_APPLICATION_POLICY = {
+const DEFAULT_APPLICATION_POLICY =
+{
 	terminalWritesEnabled: false,
 	shellPaneEnabled: true,
 } as const;
@@ -137,18 +151,21 @@ export const DEFAULT_IGNORED_DIR_NAMES = [
 ] as const;
 
 export const ApplicationSettingsSchema = z
-	.object({
-		terminalWritesEnabled: z.boolean(),
-		terminalHost: TerminalHostSettingSchema,
-		shellPaneEnabled: z.boolean(),
-		visibleNavSections: VisibleNavSectionsSchema,
-		ignoredDirs: z.array(z.string().trim().min(1)).min(1),
-	})
+	.object(
+		{
+			terminalWritesEnabled: z.boolean(),
+			terminalHost: TerminalHostSettingSchema,
+			shellPaneEnabled: z.boolean(),
+			visibleNavSections: VisibleNavSectionsSchema,
+			ignoredDirs: z.array(z.string().trim().min(1)).min(1),
+		},
+	)
 	.strict();
 
 export type ApplicationSettings = z.infer<typeof ApplicationSettingsSchema>;
 
-export function readApplicationSettings(configPath: string = getConfigPath()): ApplicationSettings {
+export function readApplicationSettings(configPath: string = getConfigPath()): ApplicationSettings
+{
 	const config = readConfig(configPath);
 	return {
 		terminalWritesEnabled:
@@ -159,57 +176,91 @@ export function readApplicationSettings(configPath: string = getConfigPath()): A
 		shellPaneEnabled: config?.shell_pane_enabled ?? DEFAULT_APPLICATION_POLICY.shellPaneEnabled,
 		visibleNavSections:
 			config?.visible_nav_sections ??
-			migrateLegacyNavFlags({
-				showHerdrSection: config?.show_herdr_section,
-				showTmuxSection: config?.show_tmux_section,
-			}),
+			migrateLegacyNavFlags(
+				{
+					showHerdrSection: config?.show_herdr_section,
+					showTmuxSection: config?.show_tmux_section,
+				},
+			),
 		ignoredDirs: config?.ignored_dirs ?? [...DEFAULT_IGNORED_DIR_NAMES],
 	};
 }
 
 /** The Live terminal input setting: whether ccp may type into and report state to live panes. */
-export function terminalWritesEnabled(configPath: string = getConfigPath()): boolean {
+export function terminalWritesEnabled(configPath: string = getConfigPath()): boolean
+{
 	return readApplicationSettings(configPath).terminalWritesEnabled;
 }
 
-export function terminalHostSetting(configPath: string = getConfigPath()): ApplicationSettings["terminalHost"] {
+export function terminalHostSetting(configPath: string = getConfigPath()): ApplicationSettings["terminalHost"]
+{
 	return readApplicationSettings(configPath).terminalHost;
 }
 
-export function shellPaneEnabled(configPath: string = getConfigPath()): boolean {
+export function shellPaneEnabled(configPath: string = getConfigPath()): boolean
+{
 	return readApplicationSettings(configPath).shellPaneEnabled;
 }
 
 /** Atomically replace a valid config while preserving all fields outside the patch. */
-async function updateConfig(patch: Partial<AppConfig>, configPath: string = getConfigPath()): Promise<AppConfig> {
+async function updateConfig(patch: Partial<AppConfig>, configPath: string = getConfigPath()): Promise<AppConfig>
+{
 	const parsedPatch = AppConfigPatchSchema.parse(patch);
 	const current = readConfig(configPath);
-	if (current === null) {
+	if (current === null)
+	{
 		let existing = false;
-		try {
+		try
+		{
 			await stat(configPath);
 			existing = true;
-		} catch {
+		}
+		catch
+		{
 			// A missing config starts from an empty, valid document.
 		}
-		if (existing) {
+		if (existing)
+		{
 			throw new Error("Cannot update an invalid application config");
 		}
 	}
 
-	const next = AppConfigSchema.parse({...current, ...parsedPatch});
+	const next = AppConfigSchema.parse(
+		{
+			...current,
+			...parsedPatch,
+		},
+	);
 	const directory = parse(configPath).dir;
 	const temporaryPath = join(directory, `.config-${crypto.randomUUID()}.tmp`);
-	await mkdir(directory, {recursive: true, mode: 0o700});
-	try {
-		await writeFile(temporaryPath, `${JSON.stringify(next, null, 2)}\n`, {
-			encoding: "utf8",
-			mode: 0o600,
-			flag: "wx",
-		});
+	await mkdir(
+		directory,
+		{
+			recursive: true,
+			mode: 0o700,
+		},
+	);
+	try
+	{
+		await writeFile(
+			temporaryPath,
+			`${JSON.stringify(next, null, 2)}\n`,
+			{
+				encoding: "utf8",
+				mode: 0o600,
+				flag: "wx",
+			},
+		);
 		await rename(temporaryPath, configPath);
-	} catch (error) {
-		await rm(temporaryPath, {force: true});
+	}
+	catch (error)
+	{
+		await rm(
+			temporaryPath,
+			{
+				force: true,
+			},
+		);
 		throw error;
 	}
 	return next;
@@ -218,7 +269,8 @@ async function updateConfig(patch: Partial<AppConfig>, configPath: string = getC
 export async function updateApplicationSettings(
 	settings: ApplicationSettings,
 	configPath: string = getConfigPath(),
-): Promise<ApplicationSettings> {
+): Promise<ApplicationSettings>
+{
 	const parsed = ApplicationSettingsSchema.parse(settings);
 	const ignoredDirs = parsed.ignoredDirs.toSorted();
 	await updateConfig(
@@ -238,19 +290,27 @@ export async function updateApplicationSettings(
 }
 
 /** The Archive inactive sessions setting in days; Never (0) unless a valid config sets it. */
-export function readAutoArchiveInactiveDays(configPath: string = getConfigPath()): number {
+export function readAutoArchiveInactiveDays(configPath: string = getConfigPath()): number
+{
 	return readConfig(configPath)?.auto_archive_inactive_days ?? DEFAULT_AUTO_ARCHIVE_DAYS;
 }
 
 export async function updateAutoArchiveInactiveDays(
 	days: number,
 	configPath: string = getConfigPath(),
-): Promise<number> {
-	await updateConfig({auto_archive_inactive_days: AutoArchiveDaysSchema.parse(days)}, configPath);
+): Promise<number>
+{
+	await updateConfig(
+		{
+			auto_archive_inactive_days: AutoArchiveDaysSchema.parse(days),
+		},
+		configPath,
+	);
 	return readAutoArchiveInactiveDays(configPath);
 }
 
-function isContainedPath(path: string, root: string): boolean {
+function isContainedPath(path: string, root: string): boolean
+{
 	const relativePath = relative(root, path);
 	return (
 		relativePath === "" ||
@@ -258,11 +318,15 @@ function isContainedPath(path: string, root: string): boolean {
 	);
 }
 
-async function resolveRealDirectory(root: string): Promise<string | null> {
-	try {
+async function resolveRealDirectory(root: string): Promise<string | null>
+{
+	try
+	{
 		const resolvedRoot = await realpath(root);
 		return (await stat(resolvedRoot)).isDirectory() ? resolvedRoot : null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -271,13 +335,15 @@ export async function resolveDirectoryRoots(
 	roots: readonly string[],
 	excludedResolvedRoots: ReadonlySet<string> = new Set(),
 	overlapPreference: "widest" | "narrowest" = "widest",
-): Promise<string[]> {
+): Promise<string[]>
+{
 	// Resolve every root concurrently: awaiting them one by one queued each
 	// filesystem call behind the rest of the server's work in turn.
 	const realRoots = await Promise.all(roots.map(resolveRealDirectory));
 	const resolvedRoots: string[] = [];
 
-	for (const resolvedRoot of realRoots) {
+	for (const resolvedRoot of realRoots)
+	{
 		if (resolvedRoot === null) continue;
 		if (excludedResolvedRoots.has(resolvedRoot)) continue;
 		if (
@@ -286,19 +352,22 @@ export async function resolveDirectoryRoots(
 					? isContainedPath(resolvedRoot, root)
 					: isContainedPath(root, resolvedRoot),
 			)
-		) {
+		)
+		{
 			continue;
 		}
 
 		// Keep roots non-overlapping so chokidar and the initial scan traverse
 		// each file only once.
-		for (let index = resolvedRoots.length - 1; index >= 0; index -= 1) {
+		for (let index = resolvedRoots.length - 1; index >= 0; index -= 1)
+		{
 			const existingRoot = defined(resolvedRoots[index], "index counts down within resolvedRoots");
 			const shouldReplace =
 				overlapPreference === "widest"
 					? isContainedPath(existingRoot, resolvedRoot)
 					: isContainedPath(resolvedRoot, existingRoot);
-			if (shouldReplace) {
+			if (shouldReplace)
+			{
 				resolvedRoots.splice(index, 1);
 			}
 		}
@@ -312,7 +381,8 @@ export async function resolveDirectoryRoots(
 export async function resolveConfiguredFileRoots(
 	configPath: string = getConfigPath(),
 	defaultRoots: readonly string[] = [],
-): Promise<string[]> {
+): Promise<string[]>
+{
 	return resolveFileRootsCached(readConfig(configPath)?.file_roots ?? defaultRoots);
 }
 
@@ -320,9 +390,11 @@ export async function resolveConfiguredFileRoots(
 export async function resolveFileSearchRoots(
 	indexDatabase: BetterSQLite3Database<typeof schema>,
 	configPath: string = getConfigPath(),
-): Promise<string[]> {
+): Promise<string[]>
+{
 	const configuredRoots = readConfig(configPath)?.file_roots;
-	if (configuredRoots !== undefined) {
+	if (configuredRoots !== undefined)
+	{
 		return resolveFileRootsCached(configuredRoots.filter(isGitRepository));
 	}
 
@@ -330,7 +402,8 @@ export async function resolveFileSearchRoots(
 }
 
 /** Real paths of the home, filesystem root and temporary directories, which are never inferred as roots. */
-async function resolveBroadRoots(): Promise<Set<string>> {
+async function resolveBroadRoots(): Promise<Set<string>>
+{
 	const resolvedHome = await realpath(homedir());
 	const filesystemRoot = parse(resolvedHome).root;
 	const broadRootCandidates = [
@@ -358,9 +431,16 @@ async function resolveBroadRoots(): Promise<Set<string>> {
  */
 export const FILE_ROOTS_CACHE_TTL_MILLISECONDS = 10_000;
 
-const fileRootsCache = new Map<string, {expiresAt: number; roots: Promise<string[]>}>();
+const fileRootsCache = new Map<
+	string,
+	{
+		expiresAt: number;
+		roots: Promise<string[]>;
+	}
+>();
 
-export function clearFileRootsCache(): void {
+export function clearFileRootsCache(): void
+{
 	fileRootsCache.clear();
 }
 
@@ -372,9 +452,11 @@ export function clearFileRootsCache(): void {
 async function resolveFileRootsCached(
 	roots: readonly string[],
 	mode: "explicit" | "inferred" = "explicit",
-): Promise<string[]> {
+): Promise<string[]>
+{
 	const now = Date.now();
-	for (const [key, entry] of fileRootsCache) {
+	for (const [key, entry] of fileRootsCache)
+	{
 		if (entry.expiresAt <= now) fileRootsCache.delete(key);
 	}
 	const key = JSON.stringify([mode, roots]);
@@ -386,7 +468,13 @@ async function resolveFileRootsCached(
 		mode === "explicit"
 			? resolveDirectoryRoots(roots)
 			: resolveBroadRoots().then(async (broadRoots) => resolveDirectoryRoots(roots, broadRoots, "narrowest"));
-	fileRootsCache.set(key, {expiresAt: now + FILE_ROOTS_CACHE_TTL_MILLISECONDS, roots: resolved});
+	fileRootsCache.set(
+		key,
+		{
+			expiresAt: now + FILE_ROOTS_CACHE_TTL_MILLISECONDS,
+			roots: resolved,
+		},
+	);
 	resolved.catch(() => fileRootsCache.delete(key));
 	return resolved.then((resolvedRoots) => [...resolvedRoots]);
 }
@@ -396,12 +484,16 @@ export async function resolveFileSearchScope(
 	scopeRoot: string,
 	configPath: string = getConfigPath(),
 	defaultRoots: readonly string[] = [],
-): Promise<string | null> {
+): Promise<string | null>
+{
 	let resolvedScope: string;
-	try {
+	try
+	{
 		resolvedScope = await realpath(scopeRoot);
 		if (!(await stat(resolvedScope)).isDirectory()) return null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 

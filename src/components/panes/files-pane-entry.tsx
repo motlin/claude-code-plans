@@ -15,21 +15,33 @@ export function useRegisterFilesPane({
 	windowFiles,
 	windowStartIndex,
 	jumpTargetWindow,
-}: Omit<FilesPaneProps, "chrome">): void {
+}: Omit<FilesPaneProps, "chrome">): void
+{
 	useEffect(
 		() =>
-			registerPane("files", {
-				title: "Files",
-				resetKey: sessionId,
-				header: "custom",
-				render: (chrome) => (
-					<DeferredFilesPane
-						resetKey={sessionId}
-						chrome={chrome}
-						props={{sessionId, cwd, chrome, windowFiles, windowStartIndex, jumpTargetWindow}}
-					/>
-				),
-			}),
+			registerPane(
+				"files",
+				{
+					title: "Files",
+					resetKey: sessionId,
+					header: "custom",
+					render: (chrome) => (
+						<DeferredFilesPane
+							resetKey={sessionId}
+							chrome={chrome}
+							props={
+							{
+								sessionId,
+								cwd,
+								chrome,
+								windowFiles,
+								windowStartIndex,
+								jumpTargetWindow,
+							}}
+						/>
+					),
+				},
+			),
 		[sessionId, cwd, windowFiles, windowStartIndex, jumpTargetWindow],
 	);
 }

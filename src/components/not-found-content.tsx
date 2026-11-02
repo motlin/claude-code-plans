@@ -9,7 +9,13 @@ import {Spark} from "./spark";
  * below sm) and the gutter's bottom padding (32px, 96px below sm). Subtracting 72px on desktop (not
  * 68px) centres the stack on upstream's line: at 1680x916 the heading lands at y=423 vs upstream's 422.
  */
-export function NotFoundContent({detail}: Readonly<{detail?: string}>) {
+export function NotFoundContent({
+	detail,
+}: Readonly<
+{
+	detail?: string;
+}>)
+{
 	return (
 		<div
 			data-not-found=""

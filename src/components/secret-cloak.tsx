@@ -11,7 +11,8 @@ const CLOAK_BUTTON_CLASS =
  * Upstream cb557955f `y`: a secret drawn masked, announced as "Redacted <kind>", with its own Eye button that
  * shows and hides the raw value. The React twin of client-markdown's `secretCloakHtml`.
  */
-export function SecretCloak({match}: {match: Pick<SecretMatch, "value" | "patternId" | "keep">}) {
+export function SecretCloak({match}: {match: Pick<SecretMatch, "value" | "patternId" | "keep">})
+{
 	const [revealed, setRevealed] = useState(false);
 	const label = secretLabel(match.patternId);
 	return (
@@ -32,7 +33,8 @@ export function SecretCloak({match}: {match: Pick<SecretMatch, "value" | "patter
 				type="button"
 				aria-pressed={revealed}
 				aria-label={`${revealed ? "Hide" : "Reveal"} ${label}`}
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					event.stopPropagation();
 					setRevealed((shown) => !shown);
 				}}

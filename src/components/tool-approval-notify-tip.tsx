@@ -2,7 +2,8 @@ import {Bell, BellOff, CircleCheck, Loader2} from "lucide-react";
 import {useEffect, useRef, useState} from "react";
 
 import {useNotificationPermission} from "../hooks/use-notification-permission";
-import {
+import
+{
 	NOTIFY_TIP_MAX_SHOWS,
 	NOTIFY_TIP_ON_MS,
 	readNotifyTipShows,
@@ -16,25 +17,44 @@ import {CDS_BUTTON_DISABLED} from "./ui/cds-button-disabled";
 type TipPhase = "idle" | "popup" | "registering" | "on" | "gone" | "blocked";
 type TipState = "offer" | "asking" | "on" | "blocked";
 
-const TIP_COPY: Record<TipState, string> = {
+const TIP_COPY: Record<TipState, string> =
+{
 	offer: "Get notified when you’re needed",
 	asking: "Choose Allow in your browser’s popup",
 	on: "Notifications on",
 	blocked: "Notifications are blocked",
 };
 
-const TIP_LOOK = {
-	offer: {Icon: Bell, tone: "text-secondary"},
-	asking: {Icon: Bell, tone: "text-secondary"},
-	on: {Icon: CircleCheck, tone: "text-success"},
-	blocked: {Icon: BellOff, tone: "text-danger"},
+const TIP_LOOK =
+{
+	offer:
+	{
+		Icon: Bell,
+		tone: "text-secondary",
+	},
+	asking:
+	{
+		Icon: Bell,
+		tone: "text-secondary",
+	},
+	on:
+	{
+		Icon: CircleCheck,
+		tone: "text-success",
+	},
+	blocked:
+	{
+		Icon: BellOff,
+		tone: "text-danger",
+	},
 } as const;
 
 /** Upstream's ghost xs cds Button: busy while registering (no disabled look), disabled while hidden. */
 const TURN_ON_CLASS = `inline-flex h-6 cursor-pointer items-center gap-1 rounded-r5 px-2 text-footnote text-primary hover:bg-alpha-2 ${CDS_BUTTON_DISABLED}`;
 
 /** Upstream's mapping from the tip's phase to the line it shows; null keeps it mounted but invisible. */
-function tipState(phase: TipPhase, offer: boolean): TipState | null {
+function tipState(phase: TipPhase, offer: boolean): TipState | null
+{
 	if (phase === "on" || phase === "gone") return "on";
 	if (phase === "blocked") return "blocked";
 	if (phase === "popup") return "asking";
@@ -47,7 +67,8 @@ function tipState(phase: TipPhase, offer: boolean): TipState | null {
  * the browser refused, but only after the user came back from 30s away and at most three times.
  * Turn on asks the browser when needed and switches on Code permission requests.
  */
-export function ToolApprovalNotifyTip({sessionId}: {sessionId: string}) {
+export function ToolApprovalNotifyTip({sessionId}: {sessionId: string})
+{
 	const {settings, setSetting} = useSettings();
 	const {supported, permission, requestPermission} = useNotificationPermission();
 	const optedIn = useSessionNotifyOptedIn(sessionId);
@@ -65,7 +86,8 @@ export function ToolApprovalNotifyTip({sessionId}: {sessionId: string}) {
 			blockedBefore={blockedBefore}
 			askFirst={permission === "default"}
 			requestPermission={requestPermission}
-			turnOn={() => {
+			turnOn={() =>
+			{
 				setSetting("notifyPermissionRequests", true);
 			}}
 		/>
@@ -87,7 +109,8 @@ function NotifyTip({
 	askFirst: boolean;
 	requestPermission: () => Promise<NotificationPermission>;
 	turnOn: () => void;
-}) {
+})
+{
 	const [phase, setPhase] = useState<TipPhase>(blockedBefore ? "blocked" : "idle");
 	// Decided once, so the tip stays through its own state changes.
 	const [shown] = useState(offer || blockedBefore);
@@ -98,19 +121,23 @@ function NotifyTip({
 
 	useCountNotifyTipShow(sessionId, shown && !hidden);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (phase !== "on") return undefined;
-		const timer = setTimeout(() => {
+		const timer = setTimeout(() =>
+		{
 			setPhase("gone");
 		}, NOTIFY_TIP_ON_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 		};
 	}, [phase]);
 
 	if (!shown) return null;
 
-	const onTurnOn = async () => {
+	const onTurnOn = async () =>
+	{
 		if (pending.current) return;
 		pending.current = true;
 		setPhase(askFirst ? "popup" : "registering");

@@ -10,14 +10,16 @@ import {installLocalStorage} from "./fake-storage";
 
 const SESSION_ID = "session-alice";
 
-const START: SessionChapter = {
+const START: SessionChapter =
+{
 	id: "session-start",
 	title: "Session start",
 	source: "session",
 	uuid: "u-0",
 	recordIndex: 0,
 };
-const PLAN: SessionChapter = {
+const PLAN: SessionChapter =
+{
 	id: "toolu_plan",
 	title: "Plan the work",
 	summary: "Read the queue",
@@ -25,7 +27,14 @@ const PLAN: SessionChapter = {
 	uuid: "a-1",
 	recordIndex: 10,
 };
-const PIN: SessionChapter = {id: "uch-fake-uuid-1", title: "Kickoff", source: "user", uuid: "u-2", recordIndex: 20};
+const PIN: SessionChapter =
+{
+	id: "uch-fake-uuid-1",
+	title: "Kickoff",
+	source: "user",
+	uuid: "u-2",
+	recordIndex: 20,
+};
 const CHAPTERS = [START, PLAN, PIN];
 
 const ROOT_CLASS =
@@ -41,22 +50,51 @@ const RAIL_DASH_CLASS =
 const ROW_DASH_CLASS = "block h-[2px] rounded-full shrink-0 transition-[background-color] duration-150";
 
 /** A scroller whose reading line sits past the Plan heading only, so Plan is the active chapter. */
-function buildScroller(): HTMLDivElement {
+function buildScroller(): HTMLDivElement
+{
 	const scroller = document.createElement("div");
-	scroller.getBoundingClientRect = () => ({top: 100, bottom: 700}) as DOMRect;
-	Object.defineProperty(scroller, "scrollHeight", {get: () => 3000});
-	Object.defineProperty(scroller, "clientHeight", {get: () => 600});
+	scroller.getBoundingClientRect = () =>
+		(
+		{
+			top: 100,
+			bottom: 700,
+		}) as DOMRect;
+	Object.defineProperty(
+		scroller,
+		"scrollHeight",
+		{
+			get: () => 3000,
+		},
+	);
+	Object.defineProperty(
+		scroller,
+		"clientHeight",
+		{
+			get: () => 600,
+		},
+	);
 	const row = document.createElement("div");
 	row.setAttribute("data-transcript-entry-index", "0");
 	row.setAttribute("data-perf-line", "0");
-	row.getBoundingClientRect = () => ({top: 100, bottom: 900}) as DOMRect;
+	row.getBoundingClientRect = () =>
+		(
+		{
+			top: 100,
+			bottom: 900,
+		}) as DOMRect;
 	for (const [id, top] of [
 		["toolu_plan", 120],
 		["uch-fake-uuid-1", 500],
-	] as const) {
+	] as const)
+	{
 		const heading = document.createElement("h3");
 		heading.id = `epitaxy-ch-${id}`;
-		heading.getBoundingClientRect = () => ({top, bottom: top + 20}) as DOMRect;
+		heading.getBoundingClientRect = () =>
+			(
+			{
+				top,
+				bottom: top + 20,
+			}) as DOMRect;
 		row.append(heading);
 	}
 	scroller.append(row);
@@ -64,11 +102,12 @@ function buildScroller(): HTMLDivElement {
 	return scroller;
 }
 
-function renderToc(
-	chapters: readonly SessionChapter[] = CHAPTERS,
-	onJump = vi.fn<(chapter: SessionChapter) => void>(),
-) {
-	const scrollRef = {current: buildScroller()};
+function renderToc(chapters: readonly SessionChapter[] = CHAPTERS, onJump = vi.fn<(chapter: SessionChapter) => void>())
+{
+	const scrollRef =
+	{
+		current: buildScroller(),
+	};
 	const view = render(
 		<SessionChaptersToc
 			sessionId={SESSION_ID}
@@ -78,7 +117,10 @@ function renderToc(
 			onJump={onJump}
 		/>,
 	);
-	return {...view, onJump};
+	return {
+		...view,
+		onJump,
+	};
 }
 
 // By selector, not role: an open row menu makes everything outside it inert.
@@ -90,12 +132,20 @@ const rowButton = (title: string) =>
 const isOpen = () => popover().className === `${POPOVER_CLASS} ${POPOVER_OPEN}`;
 const stored = (): unknown => JSON.parse(localStorage.getItem(CHAPTER_STORAGE_KEY) ?? "null");
 
-function openMenuOn(element: Element): HTMLElement | undefined {
-	fireEvent.contextMenu(element, {clientX: 10, clientY: 10});
+function openMenuOn(element: Element): HTMLElement | undefined
+{
+	fireEvent.contextMenu(
+		element,
+		{
+			clientX: 10,
+			clientY: 10,
+		},
+	);
 	return screen.queryAllByRole("menu").at(-1);
 }
 
-function clickItem(menu: HTMLElement, title: string): void {
+function clickItem(menu: HTMLElement, title: string): void
+{
 	const item = [...menu.querySelectorAll('[role="menuitem"]')].find(
 		(row) => row.querySelector("[data-menu-item-title]")?.textContent === title,
 	);
@@ -103,35 +153,42 @@ function clickItem(menu: HTMLElement, title: string): void {
 	fireEvent.click(item);
 }
 
-describe("SessionChaptersToc", () => {
+describe("SessionChaptersToc", () =>
+{
 	let frames: FrameRequestCallback[] = [];
-	const flushFrames = () => {
+	const flushFrames = () =>
+	{
 		const due = frames;
 		frames = [];
-		act(() => {
+		act(() =>
+		{
 			for (const frame of due) frame(0);
 		});
 	};
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		installLocalStorage();
 		frames = [];
 		vi.spyOn(crypto, "randomUUID").mockReturnValue("fake-uuid-1" as ReturnType<typeof crypto.randomUUID>);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 		document.body.replaceChildren();
 	});
 
-	it("renders nothing for a session whose only chapter is its start", () => {
+	it("renders nothing for a session whose only chapter is its start", () =>
+	{
 		const {container} = renderToc([START]);
 		expect(container.innerHTML).toBe("");
 	});
 
-	it("draws upstream's rail and closed popover, the active chapter marked on both", () => {
+	it("draws upstream's rail and closed popover, the active chapter marked on both", () =>
+	{
 		renderToc();
 		const root = nav().parentElement!;
 		const list = popover().querySelector("ol")!;
@@ -140,96 +197,132 @@ describe("SessionChaptersToc", () => {
 		const planButton = rowButton("Plan the work");
 		const summary = planButton.querySelector("span[hidden]")!;
 
-		expect({
-			root: root.className,
-			nav: {className: nav().className, tabIndex: nav().tabIndex},
-			rail: {className: rail().className, ariaHidden: rail().getAttribute("aria-hidden")},
-			dashItems: dashes.map((item) => item.className),
-			dashes: dashes.map((item) => item.firstElementChild?.className),
-			popover: popover().className,
-			list: {className: list.className, role: list.getAttribute("role")},
-			rows: rows.map((row) => row.className),
-			buttons: [...list.querySelectorAll("button")].map((button) => ({
-				type: button.type,
-				className: button.className,
-				current: button.getAttribute("aria-current"),
-				dash: button.firstElementChild?.className,
-				dashHidden: button.firstElementChild?.getAttribute("aria-hidden"),
-				text: button.textContent,
-			})),
-			summary: {
-				text: summary.textContent,
-				describes: planButton.getAttribute("aria-describedby") === summary.id,
-				others: [rowButton("Session start"), rowButton("Kickoff")].map((button) =>
-					button.getAttribute("aria-describedby"),
-				),
-			},
-		}).toStrictEqual({
-			root: `${ROOT_CLASS} epitaxy-toc-fade-in`,
-			nav: {
-				className:
-					"relative h-full w-[var(--chat-gutter)] [.epitaxy-chat-panel_&]:[@container_tile-slot_(max-width:560px)]:[--chat-gutter:16px] focus-visible:outline-hidden focus-visible:shadow-focus",
-				tabIndex: 0,
-			},
-			rail: {
-				className:
-					"max-h-full flex flex-col py-1.25 ps-[calc(var(--chat-gutter)*3/16)] overflow-hidden pointer-events-auto",
-				ariaHidden: "true",
-			},
-			dashItems: ["h-[8px] flex items-center", "h-[8px] flex items-center", "h-[8px] flex items-center"],
-			dashes: [
-				`${RAIL_DASH_CLASS} scale-x-[calc(9/14)] bg-alpha-3`,
-				`${RAIL_DASH_CLASS} bg-alpha-8`,
-				`${RAIL_DASH_CLASS} scale-x-[calc(9/14)] bg-alpha-3`,
-			],
-			popover: `${POPOVER_CLASS} ${POPOVER_CLOSED}`,
-			list: {className: "flex-1 min-h-0 flex flex-col hit-gap-y-0.75 overflow-y-auto px-xs", role: "list"},
-			rows: ["hit-row", "hit-row", "hit-row"],
-			buttons: [
+		expect(
+			{
+				root: root.className,
+				nav:
 				{
-					type: "button",
-					className: `${ROW_BUTTON_CLASS} text-secondary hover:text-primary`,
-					current: null,
-					dash: `${ROW_DASH_CLASS} w-[9px] bg-alpha-3 group-hover/ch:bg-alpha-5`,
-					dashHidden: "true",
-					text: "Session start",
+					className: nav().className,
+					tabIndex: nav().tabIndex,
 				},
+				rail:
 				{
-					type: "button",
-					className: `${ROW_BUTTON_CLASS} text-primary`,
-					current: "true",
-					dash: `${ROW_DASH_CLASS} w-[14px] bg-alpha-8`,
-					dashHidden: "true",
-					text: "Plan the workRead the queue",
+					className: rail().className,
+					ariaHidden: rail().getAttribute("aria-hidden"),
 				},
+				dashItems: dashes.map((item) => item.className),
+				dashes: dashes.map((item) => item.firstElementChild?.className),
+				popover: popover().className,
+				list:
 				{
-					type: "button",
-					className: `${ROW_BUTTON_CLASS} text-secondary hover:text-primary`,
-					current: null,
-					dash: `${ROW_DASH_CLASS} w-[9px] bg-alpha-3 group-hover/ch:bg-alpha-5`,
-					dashHidden: "true",
-					text: "Kickoff",
+					className: list.className,
+					role: list.getAttribute("role"),
 				},
-			],
-			summary: {text: "Read the queue", describes: true, others: [null, null]},
-		});
+				rows: rows.map((row) => row.className),
+				buttons: [...list.querySelectorAll("button")].map((button) => (
+				{
+					type: button.type,
+					className: button.className,
+					current: button.getAttribute("aria-current"),
+					dash: button.firstElementChild?.className,
+					dashHidden: button.firstElementChild?.getAttribute("aria-hidden"),
+					text: button.textContent,
+				})),
+				summary:
+				{
+					text: summary.textContent,
+					describes: planButton.getAttribute("aria-describedby") === summary.id,
+					others: [rowButton("Session start"), rowButton("Kickoff")].map((button) =>
+						button.getAttribute("aria-describedby"),
+					),
+				},
+			},
+		).toStrictEqual(
+			{
+				root: `${ROOT_CLASS} epitaxy-toc-fade-in`,
+				nav:
+				{
+					className:
+						"relative h-full w-[var(--chat-gutter)] [.epitaxy-chat-panel_&]:[@container_tile-slot_(max-width:560px)]:[--chat-gutter:16px] focus-visible:outline-hidden focus-visible:shadow-focus",
+					tabIndex: 0,
+				},
+				rail:
+				{
+					className:
+						"max-h-full flex flex-col py-1.25 ps-[calc(var(--chat-gutter)*3/16)] overflow-hidden pointer-events-auto",
+					ariaHidden: "true",
+				},
+				dashItems: ["h-[8px] flex items-center", "h-[8px] flex items-center", "h-[8px] flex items-center"],
+				dashes: [
+					`${RAIL_DASH_CLASS} scale-x-[calc(9/14)] bg-alpha-3`,
+					`${RAIL_DASH_CLASS} bg-alpha-8`,
+					`${RAIL_DASH_CLASS} scale-x-[calc(9/14)] bg-alpha-3`,
+				],
+				popover: `${POPOVER_CLASS} ${POPOVER_CLOSED}`,
+				list:
+				{
+					className: "flex-1 min-h-0 flex flex-col hit-gap-y-0.75 overflow-y-auto px-xs",
+					role: "list",
+				},
+				rows: ["hit-row", "hit-row", "hit-row"],
+				buttons: [
+					{
+						type: "button",
+						className: `${ROW_BUTTON_CLASS} text-secondary hover:text-primary`,
+						current: null,
+						dash: `${ROW_DASH_CLASS} w-[9px] bg-alpha-3 group-hover/ch:bg-alpha-5`,
+						dashHidden: "true",
+						text: "Session start",
+					},
+					{
+						type: "button",
+						className: `${ROW_BUTTON_CLASS} text-primary`,
+						current: "true",
+						dash: `${ROW_DASH_CLASS} w-[14px] bg-alpha-8`,
+						dashHidden: "true",
+						text: "Plan the workRead the queue",
+					},
+					{
+						type: "button",
+						className: `${ROW_BUTTON_CLASS} text-secondary hover:text-primary`,
+						current: null,
+						dash: `${ROW_DASH_CLASS} w-[9px] bg-alpha-3 group-hover/ch:bg-alpha-5`,
+						dashHidden: "true",
+						text: "Kickoff",
+					},
+				],
+				summary:
+				{
+					text: "Read the queue",
+					describes: true,
+					others: [null, null],
+				},
+			},
+		);
 	});
 
-	it("is invisible until the active chapter is first computed", () => {
+	it("is invisible until the active chapter is first computed", () =>
+	{
 		const scroller = document.createElement("div");
 		const {container} = render(
 			<SessionChaptersToc
 				sessionId={SESSION_ID}
 				chapters={CHAPTERS}
-				scrollRef={{current: scroller}}
+				scrollRef={
+				{
+					current: scroller,
+				}}
 				scrollKey="visit"
-				onJump={() => {}}
+				onJump={() =>
+				{
+				}}
 			/>,
 		);
 		expect(container.firstElementChild?.className).toBe(`${ROOT_CLASS} invisible`);
 	});
 
-	it("opens on entering the rail or focusing the nav, and closes on leaving it or blurring outside", () => {
+	it("opens on entering the rail or focusing the nav, and closes on leaving it or blurring outside", () =>
+	{
 		renderToc();
 		const atRest = isOpen();
 		fireEvent.mouseEnter(rail());
@@ -238,11 +331,30 @@ describe("SessionChaptersToc", () => {
 		const afterLeave = isOpen();
 		fireEvent.focus(nav());
 		const afterFocus = isOpen();
-		fireEvent.blur(nav(), {relatedTarget: rowButton("Kickoff")});
+		fireEvent.blur(
+			nav(),
+			{
+				relatedTarget: rowButton("Kickoff"),
+			},
+		);
 		const afterBlurInside = isOpen();
-		fireEvent.blur(rowButton("Kickoff"), {relatedTarget: document.body});
+		fireEvent.blur(
+			rowButton("Kickoff"),
+			{
+				relatedTarget: document.body,
+			},
+		);
 
-		expect({atRest, afterEnter, afterLeave, afterFocus, afterBlurInside, afterBlurOutside: isOpen()}).toStrictEqual(
+		expect(
+			{
+				atRest,
+				afterEnter,
+				afterLeave,
+				afterFocus,
+				afterBlurInside,
+				afterBlurOutside: isOpen(),
+			},
+		).toStrictEqual(
 			{
 				atRest: false,
 				afterEnter: true,
@@ -254,7 +366,8 @@ describe("SessionChaptersToc", () => {
 		);
 	});
 
-	it("jumps to the clicked chapter", () => {
+	it("jumps to the clicked chapter", () =>
+	{
 		const {onJump} = renderToc();
 		fireEvent.mouseEnter(rail());
 		fireEvent.click(rowButton("Session start"));
@@ -263,7 +376,8 @@ describe("SessionChaptersToc", () => {
 		expect(onJump.mock.calls).toStrictEqual([[START], [PIN]]);
 	});
 
-	it("offers Rename and Delete on a chapter row but no menu on Session start, and stays open under the menu", () => {
+	it("offers Rename and Delete on a chapter row but no menu on Session start, and stays open under the menu", () =>
+	{
 		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
 		renderToc();
 		fireEvent.mouseEnter(rail());
@@ -274,100 +388,189 @@ describe("SessionChaptersToc", () => {
 		);
 		fireEvent.mouseLeave(nav());
 		const underMenu = isOpen();
-		act(() => {
-			fireEvent.keyDown(menu, {key: "Escape"});
+		act(() =>
+		{
+			fireEvent.keyDown(
+				menu,
+				{
+					key: "Escape",
+				},
+			);
 		});
 		flushFrames();
 
-		expect({startMenu, rows, underMenu, afterMenuClosed: isOpen()}).toStrictEqual({
-			startMenu: undefined,
-			rows: ["Rename", "---", "Delete"],
-			underMenu: true,
-			afterMenuClosed: false,
-		});
+		expect(
+			{
+				startMenu,
+				rows,
+				underMenu,
+				afterMenuClosed: isOpen(),
+			},
+		).toStrictEqual(
+			{
+				startMenu: undefined,
+				rows: ["Rename", "---", "Delete"],
+				underMenu: true,
+				afterMenuClosed: false,
+			},
+		);
 	});
 
-	it("starts a rename from the row menu, with the list held open once the menu has closed", () => {
+	it("starts a rename from the row menu, with the list held open once the menu has closed", () =>
+	{
 		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => frames.push(callback));
 		renderToc();
 		fireEvent.mouseEnter(rail());
 		const menu = openMenuOn(rowButton("Plan the work"))!;
-		act(() => {
+		act(() =>
+		{
 			clickItem(menu, "Rename");
 		});
 		flushFrames();
 		const input = document.querySelector<HTMLInputElement>("input[aria-label='Chapter title']");
 
-		expect({value: input?.value, focused: document.activeElement === input, open: isOpen()}).toStrictEqual({
-			value: "Plan the work",
-			focused: true,
-			open: true,
-		});
+		expect(
+			{
+				value: input?.value,
+				focused: document.activeElement === input,
+				open: isOpen(),
+			},
+		).toStrictEqual(
+			{
+				value: "Plan the work",
+				focused: true,
+				open: true,
+			},
+		);
 	});
 
-	it("deletes a Claude chapter by hiding it and a user chapter by removing it", () => {
+	it("deletes a Claude chapter by hiding it and a user chapter by removing it", () =>
+	{
 		addUserChapter(SESSION_ID, "u-2", "Kickoff", 20);
 		renderToc();
 		fireEvent.mouseEnter(rail());
 		const claudeMenu = openMenuOn(rowButton("Plan the work"))!;
-		act(() => {
+		act(() =>
+		{
 			clickItem(claudeMenu, "Delete");
 		});
 		const afterClaude = stored();
 		const userMenu = openMenuOn(rowButton("Kickoff"))!;
-		act(() => {
+		act(() =>
+		{
 			clickItem(userMenu, "Delete");
 		});
 
-		expect({afterClaude, afterUser: stored()}).toStrictEqual({
-			afterClaude: {
-				[SESSION_ID]: {
-					renames: {},
-					hidden: ["toolu_plan"],
-					userChapters: [{id: "uch-fake-uuid-1", afterId: "u-2", title: "Kickoff", recordIndex: 20}],
+		expect(
+			{
+				afterClaude,
+				afterUser: stored(),
+			},
+		).toStrictEqual(
+			{
+				afterClaude:
+				{
+					[SESSION_ID]:
+					{
+						renames: {},
+						hidden: ["toolu_plan"],
+						userChapters: [
+							{
+								id: "uch-fake-uuid-1",
+								afterId: "u-2",
+								title: "Kickoff",
+								recordIndex: 20,
+							},
+						],
+					},
+				},
+				afterUser:
+				{
+					[SESSION_ID]:
+					{
+						renames: {},
+						hidden: ["toolu_plan"],
+						userChapters: [],
+					},
 				},
 			},
-			afterUser: {[SESSION_ID]: {renames: {}, hidden: ["toolu_plan"], userChapters: []}},
-		});
+		);
 	});
 
-	it("reveals a row's changed title with upstream's NA and draws a first title plain", () => {
+	it("reveals a row's changed title with upstream's NA and draws a first title plain", () =>
+	{
 		const {rerender} = renderToc();
 		const titleOf = () => rowButton("Plan").querySelector<HTMLElement>("[data-chapter-title]")!;
 		const initial = titleOf().innerHTML;
 		rerender(
 			<SessionChaptersToc
 				sessionId={SESSION_ID}
-				chapters={[START, {...PLAN, title: "Planning"}, PIN]}
-				scrollRef={{current: document.querySelector("div")}}
+				chapters={[
+					START,
+					{
+						...PLAN,
+						title: "Planning",
+					},
+					PIN,
+				]}
+				scrollRef={
+				{
+					current: document.querySelector("div"),
+				}}
 				scrollKey="visit"
 				onJump={vi.fn<(chapter: SessionChapter) => void>()}
 			/>,
 		);
 		const title = titleOf();
 
-		expect({
-			initial,
-			srOnly: title.querySelector(".sr-only")?.textContent,
-			fading: title.querySelector<HTMLElement>("[aria-hidden='true']")?.style.opacity,
-		}).toStrictEqual({initial: "Plan the work", srOnly: "Planning", fading: "0"});
+		expect(
+			{
+				initial,
+				srOnly: title.querySelector(".sr-only")?.textContent,
+				fading: title.querySelector<HTMLElement>("[aria-hidden='true']")?.style.opacity,
+			},
+		).toStrictEqual(
+			{
+				initial: "Plan the work",
+				srOnly: "Planning",
+				fading: "0",
+			},
+		);
 	});
 
-	it("renames a row in place on double-click: Enter and blur commit, Escape cancels, and the list holds open", () => {
+	it("renames a row in place on double-click: Enter and blur commit, Escape cancels, and the list holds open", () =>
+	{
 		const onDocumentKeyDown = vi.fn<(event: KeyboardEvent) => void>();
 		document.addEventListener("keydown", onDocumentKeyDown);
 		addUserChapter(SESSION_ID, "u-2", "Kickoff", 20);
-		const pinned = {id: "uch-fake-uuid-1", afterId: "u-2", title: "Kickoff", recordIndex: 20};
+		const pinned =
+		{
+			id: "uch-fake-uuid-1",
+			afterId: "u-2",
+			title: "Kickoff",
+			recordIndex: 20,
+		};
 		renderToc();
 		fireEvent.mouseEnter(rail());
 
 		fireEvent.doubleClick(rowButton("Session start"));
-		const startInput = screen.queryByRole("textbox", {name: "Chapter title"});
+		const startInput = screen.queryByRole(
+			"textbox",
+			{
+				name: "Chapter title",
+			},
+		);
 
 		fireEvent.doubleClick(rowButton("Plan the work"));
-		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Chapter title"});
+		const input = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Chapter title",
+			},
+		);
 		const row = input.parentElement!;
-		const editing = {
+		const editing =
+		{
 			row: row.className,
 			dash: row.firstElementChild?.className,
 			input: input.className,
@@ -378,66 +581,175 @@ describe("SessionChaptersToc", () => {
 		};
 		fireEvent.mouseLeave(nav());
 		const heldOpen = isOpen();
-		fireEvent.change(input, {target: {value: "  Planning  "}});
-		act(() => {
-			fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "  Planning  ",
+				},
+			},
+		);
+		act(() =>
+		{
+			fireEvent.keyDown(
+				input,
+				{
+					key: "Enter",
+				},
+			);
 		});
-		const afterEnter = {stored: stored(), input: screen.queryByRole("textbox", {name: "Chapter title"})};
+		const afterEnter =
+		{
+			stored: stored(),
+			input: screen.queryByRole(
+				"textbox",
+				{
+					name: "Chapter title",
+				},
+			),
+		};
 
 		fireEvent.doubleClick(rowButton("Plan the work"));
-		const second = screen.getByRole("textbox", {name: "Chapter title"});
-		fireEvent.change(second, {target: {value: "Abandoned"}});
-		act(() => {
-			fireEvent.keyDown(second, {key: "Escape"});
+		const second = screen.getByRole(
+			"textbox",
+			{
+				name: "Chapter title",
+			},
+		);
+		fireEvent.change(
+			second,
+			{
+				target:
+				{
+					value: "Abandoned",
+				},
+			},
+		);
+		act(() =>
+		{
+			fireEvent.keyDown(
+				second,
+				{
+					key: "Escape",
+				},
+			);
 		});
-		const afterEscape = {stored: stored(), input: screen.queryByRole("textbox", {name: "Chapter title"})};
+		const afterEscape =
+		{
+			stored: stored(),
+			input: screen.queryByRole(
+				"textbox",
+				{
+					name: "Chapter title",
+				},
+			),
+		};
 
 		fireEvent.doubleClick(rowButton("Kickoff"));
-		const third = screen.getByRole("textbox", {name: "Chapter title"});
-		fireEvent.change(third, {target: {value: "Opening moves"}});
-		act(() => {
-			fireEvent.blur(third, {relatedTarget: document.body});
+		const third = screen.getByRole(
+			"textbox",
+			{
+				name: "Chapter title",
+			},
+		);
+		fireEvent.change(
+			third,
+			{
+				target:
+				{
+					value: "Opening moves",
+				},
+			},
+		);
+		act(() =>
+		{
+			fireEvent.blur(
+				third,
+				{
+					relatedTarget: document.body,
+				},
+			);
 		});
 		document.removeEventListener("keydown", onDocumentKeyDown);
 
-		expect({
-			startInput,
-			editing,
-			heldOpen,
-			afterEnter,
-			afterEscape,
-			afterBlur: stored(),
-			closedAfterBlurOutside: !isOpen(),
-			escapeReachedDocument: onDocumentKeyDown.mock.calls.some(([event]) => event.key === "Escape"),
-		}).toStrictEqual({
-			startInput: null,
-			editing: {
-				row: "flex items-center gap-sm px-1.25 h-list-row rounded-r4",
-				dash: "block h-[2px] w-[10px] rounded-full bg-alpha-8 shrink-0",
-				input: "flex-1 min-w-0 [field-sizing:content] bg-transparent text-body text-primary focus-visible:outline-hidden focus-visible:shadow-focus",
-				size: 13,
-				value: "Plan the work",
-				selected: "Plan the work",
-				focused: true,
+		expect(
+			{
+				startInput,
+				editing,
+				heldOpen,
+				afterEnter,
+				afterEscape,
+				afterBlur: stored(),
+				closedAfterBlurOutside: !isOpen(),
+				escapeReachedDocument: onDocumentKeyDown.mock.calls.some(([event]) => event.key === "Escape"),
 			},
-			heldOpen: true,
-			afterEnter: {
-				stored: {[SESSION_ID]: {renames: {toolu_plan: "Planning"}, hidden: [], userChapters: [pinned]}},
-				input: null,
-			},
-			afterEscape: {
-				stored: {[SESSION_ID]: {renames: {toolu_plan: "Planning"}, hidden: [], userChapters: [pinned]}},
-				input: null,
-			},
-			afterBlur: {
-				[SESSION_ID]: {
-					renames: {toolu_plan: "Planning"},
-					hidden: [],
-					userChapters: [{...pinned, title: "Opening moves"}],
+		).toStrictEqual(
+			{
+				startInput: null,
+				editing:
+				{
+					row: "flex items-center gap-sm px-1.25 h-list-row rounded-r4",
+					dash: "block h-[2px] w-[10px] rounded-full bg-alpha-8 shrink-0",
+					input: "flex-1 min-w-0 [field-sizing:content] bg-transparent text-body text-primary focus-visible:outline-hidden focus-visible:shadow-focus",
+					size: 13,
+					value: "Plan the work",
+					selected: "Plan the work",
+					focused: true,
 				},
+				heldOpen: true,
+				afterEnter:
+				{
+					stored:
+					{
+						[SESSION_ID]:
+						{
+							renames:
+							{
+								toolu_plan: "Planning",
+							},
+							hidden: [],
+							userChapters: [pinned],
+						},
+					},
+					input: null,
+				},
+				afterEscape:
+				{
+					stored:
+					{
+						[SESSION_ID]:
+						{
+							renames:
+							{
+								toolu_plan: "Planning",
+							},
+							hidden: [],
+							userChapters: [pinned],
+						},
+					},
+					input: null,
+				},
+				afterBlur:
+				{
+					[SESSION_ID]:
+					{
+						renames:
+						{
+							toolu_plan: "Planning",
+						},
+						hidden: [],
+						userChapters: [
+							{
+								...pinned,
+								title: "Opening moves",
+							},
+						],
+					},
+				},
+				closedAfterBlurOutside: true,
+				escapeReachedDocument: false,
 			},
-			closedAfterBlurOutside: true,
-			escapeReachedDocument: false,
-		});
+		);
 	});
 });

@@ -4,13 +4,23 @@ import {describe, expect, it} from "vite-plus/test";
 
 const ROUTES_DIR = resolve(__dirname, "..", "src", "routes");
 
-function collectRouteFiles(dir: string): string[] {
+function collectRouteFiles(dir: string): string[]
+{
 	const files: string[] = [];
-	for (const entry of readdirSync(dir, {withFileTypes: true})) {
+	for (const entry of readdirSync(
+		dir,
+		{
+			withFileTypes: true,
+		},
+	))
+	{
 		const fullPath = join(dir, entry.name);
-		if (entry.isDirectory()) {
+		if (entry.isDirectory())
+		{
 			files.push(...collectRouteFiles(fullPath));
-		} else if (entry.name.endsWith(".tsx")) {
+		}
+		else if (entry.name.endsWith(".tsx"))
+		{
 			files.push(fullPath);
 		}
 	}
@@ -24,21 +34,27 @@ const EXPORTED_DECLARATION = /^export\s+(?:async\s+)?(?:function|const|let|var|c
 
 const EXPORTED_SPECIFIER_LIST = /^export\s*\{([^}]*)\}/gm;
 
-function routeComponentNames(source: string): Set<string> {
+function routeComponentNames(source: string): Set<string>
+{
 	const names = new Set<string>();
-	for (const match of source.matchAll(ROUTE_COMPONENT_OPTION)) {
+	for (const match of source.matchAll(ROUTE_COMPONENT_OPTION))
+	{
 		names.add(match[1]!);
 	}
 	return names;
 }
 
-function exportedNames(source: string): Set<string> {
+function exportedNames(source: string): Set<string>
+{
 	const names = new Set<string>();
-	for (const match of source.matchAll(EXPORTED_DECLARATION)) {
+	for (const match of source.matchAll(EXPORTED_DECLARATION))
+	{
 		names.add(match[1]!);
 	}
-	for (const match of source.matchAll(EXPORTED_SPECIFIER_LIST)) {
-		for (const specifier of match[1]!.split(",")) {
+	for (const match of source.matchAll(EXPORTED_SPECIFIER_LIST))
+	{
+		for (const specifier of match[1]!.split(","))
+		{
 			const local = specifier
 				.trim()
 				.split(/\s+as\s+/)[0]
@@ -49,15 +65,20 @@ function exportedNames(source: string): Set<string> {
 	return names;
 }
 
-describe("route components must not be exported from route files", () => {
-	it("no route file exports a component it passes to a route option", () => {
+describe("route components must not be exported from route files", () =>
+{
+	it("no route file exports a component it passes to a route option", () =>
+	{
 		const violations: string[] = [];
 
-		for (const file of collectRouteFiles(ROUTES_DIR)) {
+		for (const file of collectRouteFiles(ROUTES_DIR))
+		{
 			const source = readFileSync(file, "utf8");
 			const exported = exportedNames(source);
-			for (const component of routeComponentNames(source)) {
-				if (exported.has(component)) {
+			for (const component of routeComponentNames(source))
+			{
+				if (exported.has(component))
+				{
 					violations.push(`${file.slice(ROUTES_DIR.length + 1)}: ${component}`);
 				}
 			}
@@ -66,15 +87,19 @@ describe("route components must not be exported from route files", () => {
 		expect(violations).toStrictEqual([]);
 	});
 
-	it("no split route file exports a component, which would pin its imports to the route tree every page loads", () => {
+	it("no split route file exports a component, which would pin its imports to the route tree every page loads", () =>
+	{
 		const violations: string[] = [];
 
-		for (const file of collectRouteFiles(ROUTES_DIR)) {
+		for (const file of collectRouteFiles(ROUTES_DIR))
+		{
 			// The root route renders on every page and is never code-split.
 			if (file.endsWith("__root.tsx")) continue;
 			const source = readFileSync(file, "utf8");
-			for (const name of exportedNames(source)) {
-				if (name !== "Route" && /^[A-Z]/.test(name)) {
+			for (const name of exportedNames(source))
+			{
+				if (name !== "Route" && /^[A-Z]/.test(name))
+				{
 					violations.push(`${file.slice(ROUTES_DIR.length + 1)}: ${name}`);
 				}
 			}

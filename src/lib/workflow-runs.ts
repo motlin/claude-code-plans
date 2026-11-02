@@ -16,7 +16,8 @@ import {trackedReadFileSync} from "./perf/tracked-fs";
 import type * as schema from "./db/schema";
 import {JsonValueSchema} from "./json-value-schema";
 import {transcriptFilePath} from "./structured-transcript";
-import {
+import
+{
 	RuntimeWorkflowProgressEntrySchema,
 	type WorkflowAgentEntry,
 	type WorkflowProgressEntry,
@@ -35,85 +36,105 @@ export const WorkflowLaunchTaskTypeSchema = z.enum(["local_workflow", "remote_ag
  * existed, `runId` is absent for `remote_launched`, and a compile failure
  * carries `error` with no `transcriptDir`/`scriptPath`.
  */
-export const WorkflowLaunchResultSchema = z.strictObject({
-	status: WorkflowLaunchStatusSchema,
-	taskId: z.string(),
-	taskType: WorkflowLaunchTaskTypeSchema.optional(),
-	workflowName: z.string().optional(),
-	runId: z.string().optional(),
-	summary: z.string().optional(),
-	transcriptDir: z.string().optional(),
-	scriptPath: z.string().optional(),
-	/** CCR session URL, only for `remote_launched`. */
-	sessionUrl: z.string().optional(),
-	/** Non-blocking heads-up for a remote launch. */
-	warning: z.string().optional(),
-	/** Set when the script failed its syntax check and nothing launched. */
-	error: z.string().optional(),
-});
+export const WorkflowLaunchResultSchema = z.strictObject(
+	{
+		status: WorkflowLaunchStatusSchema,
+		taskId: z.string(),
+		taskType: WorkflowLaunchTaskTypeSchema.optional(),
+		workflowName: z.string().optional(),
+		runId: z.string().optional(),
+		summary: z.string().optional(),
+		transcriptDir: z.string().optional(),
+		scriptPath: z.string().optional(),
+		/** CCR session URL, only for `remote_launched`. */
+		sessionUrl: z.string().optional(),
+		/** Non-blocking heads-up for a remote launch. */
+		warning: z.string().optional(),
+		/** Set when the script failed its syntax check and nothing launched. */
+		error: z.string().optional(),
+	},
+);
 
 export const WorkflowRunFileStatusSchema = z.enum(["completed", "failed", "killed"]);
 
 /** `<session>/workflows/<runId>.json`, written when a run ends. */
-export const WorkflowRunFileSchema = z.strictObject({
-	runId: z.string(),
-	timestamp: z.string(),
-	taskId: z.string(),
-	script: z.string(),
-	scriptPath: z.string(),
-	args: JsonValueSchema.optional(),
-	result: JsonValueSchema,
-	error: z.string().optional(),
-	agentCount: z.number(),
-	logs: z.array(JsonValueSchema),
-	durationMs: z.number(),
-	summary: z.string(),
-	workflowName: z.string(),
-	status: WorkflowRunFileStatusSchema,
-	startTime: z.number(),
-	phases: z.array(JsonValueSchema),
-	defaultModel: z.string(),
-	workflowProgress: z.array(JsonValueSchema),
-	totalTokens: z.number(),
-	totalToolCalls: z.number(),
-});
+export const WorkflowRunFileSchema = z.strictObject(
+	{
+		runId: z.string(),
+		timestamp: z.string(),
+		taskId: z.string(),
+		script: z.string(),
+		scriptPath: z.string(),
+		args: JsonValueSchema.optional(),
+		result: JsonValueSchema,
+		error: z.string().optional(),
+		agentCount: z.number(),
+		logs: z.array(JsonValueSchema),
+		durationMs: z.number(),
+		summary: z.string(),
+		workflowName: z.string(),
+		status: WorkflowRunFileStatusSchema,
+		startTime: z.number(),
+		phases: z.array(JsonValueSchema),
+		defaultModel: z.string(),
+		workflowProgress: z.array(JsonValueSchema),
+		totalTokens: z.number(),
+		totalToolCalls: z.number(),
+	},
+);
 
 /** One line of `subagents/workflows/<runId>/journal.jsonl`. */
 export const WorkflowJournalEventSchema = z.discriminatedUnion("type", [
-	z.strictObject({type: z.literal("launched")}),
-	z.strictObject({
-		type: z.literal("started"),
-		key: z.string(),
-		agentId: z.string(),
-		label: z.string().optional(),
-		phase: z.string().optional(),
-	}),
-	z.strictObject({
-		type: z.literal("result"),
-		key: z.string(),
-		agentId: z.string(),
-		result: JsonValueSchema,
-		// Whether the agent's result reported on a Remote Control device.
-		remoteControlDeviceReport: z.boolean().optional(),
-		// Whether the agent's result carried content read from another person's artifact.
-		foreignArtifactContent: z.boolean().optional(),
-		toolsUsed: z.array(z.string()).optional(),
-	}),
-	z.strictObject({type: z.literal("failed"), key: z.string(), agentId: z.string()}),
+	z.strictObject(
+		{
+			type: z.literal("launched"),
+		},
+	),
+	z.strictObject(
+		{
+			type: z.literal("started"),
+			key: z.string(),
+			agentId: z.string(),
+			label: z.string().optional(),
+			phase: z.string().optional(),
+		},
+	),
+	z.strictObject(
+		{
+			type: z.literal("result"),
+			key: z.string(),
+			agentId: z.string(),
+			result: JsonValueSchema,
+			// Whether the agent's result reported on a Remote Control device.
+			remoteControlDeviceReport: z.boolean().optional(),
+			// Whether the agent's result carried content read from another person's artifact.
+			foreignArtifactContent: z.boolean().optional(),
+			toolsUsed: z.array(z.string()).optional(),
+		},
+	),
+	z.strictObject(
+		{
+			type: z.literal("failed"),
+			key: z.string(),
+			agentId: z.string(),
+		},
+	),
 ]);
 
 /** `subagents/workflows/<runId>/agent-<agentId>.meta.json`. */
-export const WorkflowAgentMetaSchema = z.strictObject({
-	agentType: z.string(),
-	isBuiltIn: z.boolean().optional(),
-	description: z.string().optional(),
-	workflowPhase: z.string().optional(),
-	spawnDepth: z.number(),
-	requestShape: z.string().optional(),
-	requestNonInteractive: z.boolean().optional(),
-	model: z.string().optional(),
-	pickedEffortModel: z.string().optional(),
-});
+export const WorkflowAgentMetaSchema = z.strictObject(
+	{
+		agentType: z.string(),
+		isBuiltIn: z.boolean().optional(),
+		description: z.string().optional(),
+		workflowPhase: z.string().optional(),
+		spawnDepth: z.number(),
+		requestShape: z.string().optional(),
+		requestNonInteractive: z.boolean().optional(),
+		model: z.string().optional(),
+		pickedEffortModel: z.string().optional(),
+	},
+);
 
 const RuntimeLaunchResultSchema = /* @__PURE__ */ toLenient(WorkflowLaunchResultSchema);
 const RuntimeRunFileSchema = /* @__PURE__ */ toLenient(WorkflowRunFileSchema);
@@ -121,7 +142,8 @@ const RuntimeJournalEventSchema = /* @__PURE__ */ toLenient(WorkflowJournalEvent
 type JournalEvent = z.infer<typeof RuntimeJournalEventSchema>;
 const RuntimeAgentMetaSchema = /* @__PURE__ */ toLenient(WorkflowAgentMetaSchema);
 
-export interface WorkflowRun {
+export interface WorkflowRun
+{
 	runId: string;
 	/** The latest launch's background task id. */
 	taskId: string;
@@ -143,14 +165,16 @@ export interface WorkflowRun {
 	progress: WorkflowProgressEntry[];
 }
 
-interface Launch {
+interface Launch
+{
 	toolUseId: string;
 	timestamp: string | null;
 	runId: string;
 	result: z.infer<typeof RuntimeLaunchResultSchema>;
 }
 
-interface Notification {
+interface Notification
+{
 	taskId: string | null;
 	toolUseId: string | null;
 	status: Exclude<WorkflowRunStatus, "running">;
@@ -158,16 +182,19 @@ interface Notification {
 	durationMs: number | null;
 }
 
-function asString(value: unknown): string | null {
+function asString(value: unknown): string | null
+{
 	return typeof value === "string" ? value : null;
 }
 
-function tag(text: string, name: string): string | null {
+function tag(text: string, name: string): string | null
+{
 	const match = new RegExp(`<${name}>([\\s\\S]*?)</${name}>`).exec(text);
 	return match?.[1] === undefined ? null : match[1].trim();
 }
 
-function parseNotification(text: string): Notification | null {
+function parseNotification(text: string): Notification | null
+{
 	if (!text.trimStart().startsWith("<task-notification>")) return null;
 	const status = notificationStatus(tag(text, "status"));
 	if (status === null) return null;
@@ -182,12 +209,15 @@ function parseNotification(text: string): Notification | null {
 }
 
 /** Every text a record could carry a `<task-notification>` in: a user turn, a queued_command attachment, a queue enqueue. */
-function notificationTexts(record: Readonly<Record<string, unknown>>): string[] {
-	if (record["type"] === "queue-operation" && record["operation"] === "enqueue") {
+function notificationTexts(record: Readonly<Record<string, unknown>>): string[]
+{
+	if (record["type"] === "queue-operation" && record["operation"] === "enqueue")
+	{
 		const content = asString(record["content"]);
 		return content === null ? [] : [content];
 	}
-	if (record["type"] === "attachment") {
+	if (record["type"] === "attachment")
+	{
 		const attachment = asRecord(record["attachment"]);
 		const prompt = attachment?.["type"] === "queued_command" ? asString(attachment["prompt"]) : null;
 		return prompt === null ? [] : [prompt];
@@ -196,13 +226,15 @@ function notificationTexts(record: Readonly<Record<string, unknown>>): string[] 
 	const content = asRecord(record["message"])?.["content"];
 	if (typeof content === "string") return [content];
 	if (!Array.isArray(content)) return [];
-	return content.flatMap((block) => {
+	return content.flatMap((block) =>
+	{
 		const text = asRecord(block)?.["type"] === "text" ? asString(asRecord(block)?.["text"]) : null;
 		return text === null ? [] : [text];
 	});
 }
 
-function launchOf(record: Readonly<Record<string, unknown>>): Launch | null {
+function launchOf(record: Readonly<Record<string, unknown>>): Launch | null
+{
 	const parsed = RuntimeLaunchResultSchema.safeParse(record["toolUseResult"]);
 	if (!parsed.success) return null;
 	// A compile-failed launch (`error`, or an `is_error` tool_result) never started a run, like upstream `Et`.
@@ -212,12 +244,18 @@ function launchOf(record: Readonly<Record<string, unknown>>): Launch | null {
 	if (runId === undefined) return null;
 	const content = asRecord(record["message"])?.["content"];
 	if (!Array.isArray(content)) return null;
-	for (const block of content) {
+	for (const block of content)
+	{
 		const toolResult = asRecord(block);
 		const toolUseId = asString(toolResult?.["tool_use_id"]);
 		if (toolUseId === null) continue;
 		if (toolResult?.["is_error"] === true) return null;
-		return {toolUseId, timestamp: asString(record["timestamp"]), runId, result: parsed.data};
+		return {
+			toolUseId,
+			timestamp: asString(record["timestamp"]),
+			runId,
+			result: parsed.data,
+		};
 	}
 	return null;
 }
@@ -226,55 +264,76 @@ function launchOf(record: Readonly<Record<string, unknown>>): Launch | null {
  * Only these lines can hold a launch result or a notification; skip parsing the rest.
  * Pre-field transcripts whose launch has no `taskType` are deliberately skipped.
  */
-function mightMatter(line: string): boolean {
+function mightMatter(line: string): boolean
+{
 	return line.includes("local_workflow") || line.includes("<task-notification>");
 }
 
-function readJson(path: string): unknown {
-	try {
+function readJson(path: string): unknown
+{
+	try
+	{
 		return JSON.parse(readFileSync(path, "utf8"));
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 }
 
-function mtimeMs(path: string): number | undefined {
-	try {
+function mtimeMs(path: string): number | undefined
+{
+	try
+	{
 		return statSync(path).mtimeMs;
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 }
 
-function readRunFile(sessionDir: string, runId: string): z.infer<typeof WorkflowRunFileSchema> | null {
+function readRunFile(sessionDir: string, runId: string): z.infer<typeof WorkflowRunFileSchema> | null
+{
 	const parsed = RuntimeRunFileSchema.safeParse(readJson(join(sessionDir, "workflows", `${runId}.json`)));
 	return parsed.success ? parsed.data : null;
 }
 
-function runFileStatus(status: string): Exclude<WorkflowRunStatus, "running"> {
+function runFileStatus(status: string): Exclude<WorkflowRunStatus, "running">
+{
 	return notificationStatus(status) ?? "completed";
 }
 
-function progressEntries(raw: readonly unknown[]): WorkflowProgressEntry[] {
-	return raw.flatMap((entry) => {
+function progressEntries(raw: readonly unknown[]): WorkflowProgressEntry[]
+{
+	return raw.flatMap((entry) =>
+	{
 		const parsed = RuntimeWorkflowProgressEntrySchema.safeParse(entry);
 		return parsed.success ? [parsed.data] : [];
 	});
 }
 
-function journalEvents(transcriptDir: string): JournalEvent[] {
+function journalEvents(transcriptDir: string): JournalEvent[]
+{
 	let lines: string[];
-	try {
+	try
+	{
 		lines = readFileSync(join(transcriptDir, "journal.jsonl"), "utf8").split("\n");
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
-	return lines.flatMap((line) => {
+	return lines.flatMap((line) =>
+	{
 		if (line === "") return [];
 		let raw: unknown;
-		try {
+		try
+		{
 			raw = JSON.parse(line);
-		} catch {
+		}
+		catch
+		{
 			return [];
 		}
 		const parsed = RuntimeJournalEventSchema.safeParse(raw);
@@ -283,23 +342,33 @@ function journalEvents(transcriptDir: string): JournalEvent[] {
 }
 
 /** Each agent's `toolsUsed` from its journal `result` event; the latest result wins. */
-function journalToolsUsed(events: readonly JournalEvent[]): Map<string, string[]> {
+function journalToolsUsed(events: readonly JournalEvent[]): Map<string, string[]>
+{
 	const toolsUsed = new Map<string, string[]>();
-	for (const event of events) {
+	for (const event of events)
+	{
 		if (event.type === "result" && event.toolsUsed !== undefined) toolsUsed.set(event.agentId, event.toolsUsed);
 	}
 	return toolsUsed;
 }
 
 /** A completed run's file entries, with each agent's `toolsUsed` from the journal. */
-function withJournalToolsUsed(entries: WorkflowProgressEntry[], transcriptDir: string): WorkflowProgressEntry[] {
+function withJournalToolsUsed(entries: WorkflowProgressEntry[], transcriptDir: string): WorkflowProgressEntry[]
+{
 	const toolsUsed = journalToolsUsed(journalEvents(transcriptDir));
 	if (toolsUsed.size === 0) return entries;
-	return entries.map((entry) => {
+	return entries.map((entry) =>
+	{
 		if (entry.type !== "workflow_agent" || entry.toolsUsed !== undefined || entry.agentId === undefined)
 			return entry;
 		const tools = toolsUsed.get(entry.agentId);
-		return tools === undefined ? entry : {...entry, toolsUsed: tools};
+		return tools === undefined
+			? entry
+			:
+				{
+					...entry,
+					toolsUsed: tools,
+				};
 	});
 }
 
@@ -310,37 +379,55 @@ function withJournalToolsUsed(entries: WorkflowProgressEntry[], transcriptDir: s
  * fills in a missing label or phase and the model; its mtime is the start time
  * and its transcript's mtime the last progress.
  */
-function journalProgress(transcriptDir: string): WorkflowProgressEntry[] {
+function journalProgress(transcriptDir: string): WorkflowProgressEntry[]
+{
 	const events = journalEvents(transcriptDir);
 	const toolsUsed = journalToolsUsed(events);
-	const agents = new Map<string, {label?: string; phase?: string; state: WorkflowAgentEntry["state"]}>();
-	for (const event of events) {
+	const agents = new Map<
+		string,
+		{
+			label?: string;
+			phase?: string;
+			state: WorkflowAgentEntry["state"];
+		}
+	>();
+	for (const event of events)
+	{
 		if (event.type === "launched") continue;
-		const agent = agents.get(event.agentId) ?? {state: "progress"};
+		const agent = agents.get(event.agentId) ??
+		{
+			state: "progress",
+		};
 		agents.set(event.agentId, agent);
-		if (event.type === "started") {
+		if (event.type === "started")
+		{
 			if (event.label !== undefined) agent.label = event.label;
 			if (event.phase !== undefined) agent.phase = event.phase;
 			if (agent.state !== "done") agent.state = "progress";
-		} else {
+		}
+		else
+		{
 			agent.state = event.type === "result" ? "done" : "error";
 		}
 	}
 
 	const phases = new Map<string, number>();
 	const entries: WorkflowAgentEntry[] = [];
-	for (const [agentId, agent] of agents) {
+	for (const [agentId, agent] of agents)
+	{
 		const metaPath = join(transcriptDir, `agent-${agentId}.meta.json`);
 		const meta = RuntimeAgentMetaSchema.safeParse(readJson(metaPath));
 		const phaseTitle = agent.phase ?? (meta.success ? meta.data.workflowPhase : undefined);
-		const entry: WorkflowAgentEntry = {
+		const entry: WorkflowAgentEntry =
+		{
 			type: "workflow_agent",
 			index: entries.length + 1,
 			label: agent.label ?? (meta.success ? meta.data.description : undefined) ?? agentId,
 			agentId,
 			state: agent.state,
 		};
-		if (phaseTitle !== undefined) {
+		if (phaseTitle !== undefined)
+		{
 			const phaseIndex = phases.get(phaseTitle) ?? phases.size + 1;
 			phases.set(phaseTitle, phaseIndex);
 			entry.phaseIndex = phaseIndex;
@@ -357,7 +444,8 @@ function journalProgress(transcriptDir: string): WorkflowProgressEntry[] {
 		if (lastProgressAt !== undefined) entry.lastProgressAt = lastProgressAt;
 		entries.push(entry);
 	}
-	const phaseEntries = [...phases].map(([title, index]): WorkflowProgressEntry => ({
+	const phaseEntries = [...phases].map(([title, index]): WorkflowProgressEntry => (
+	{
 		type: "workflow_phase",
 		index,
 		title,
@@ -365,34 +453,44 @@ function journalProgress(transcriptDir: string): WorkflowProgressEntry[] {
 	return [...phaseEntries, ...entries];
 }
 
-function epochMs(timestamp: string | null): number | null {
+function epochMs(timestamp: string | null): number | null
+{
 	if (timestamp === null) return null;
 	const ms = Date.parse(timestamp);
 	return Number.isNaN(ms) ? null : ms;
 }
 
 /** The workflow runs of the session whose transcript is `transcriptPath`, in launch order of each run's latest launch. */
-export function readWorkflowRuns(transcriptPath: string): WorkflowRun[] {
+export function readWorkflowRuns(transcriptPath: string): WorkflowRun[]
+{
 	let text: string;
-	try {
+	try
+	{
 		text = trackedReadFileSync(transcriptPath);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 	const sessionDir = transcriptPath.replace(/\.jsonl$/, "");
 	const launches = new Map<string, Launch[]>();
 	const notifications: Notification[] = [];
-	for (const line of text.split("\n")) {
+	for (const line of text.split("\n"))
+	{
 		if (!mightMatter(line)) continue;
 		let record: Record<string, unknown> | undefined;
-		try {
+		try
+		{
 			record = asRecord(JSON.parse(line));
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 		if (record === undefined) continue;
 		const launch = launchOf(record);
-		if (launch !== null) {
+		if (launch !== null)
+		{
 			const {runId} = launch;
 			// Re-insert so the map orders runs by their latest launch.
 			const previous = launches.get(runId) ?? [];
@@ -400,13 +498,15 @@ export function readWorkflowRuns(transcriptPath: string): WorkflowRun[] {
 			launches.set(runId, [...previous, launch]);
 			continue;
 		}
-		for (const content of notificationTexts(record)) {
+		for (const content of notificationTexts(record))
+		{
 			const notification = parseNotification(content);
 			if (notification !== null) notifications.push(notification);
 		}
 	}
 
-	return [...launches].flatMap(([runId, runLaunches]): WorkflowRun[] => {
+	return [...launches].flatMap(([runId, runLaunches]): WorkflowRun[] =>
+	{
 		const latest = runLaunches.at(-1);
 		if (latest === undefined) return [];
 		const {taskId} = latest.result;
@@ -449,7 +549,8 @@ export function readWorkflowRuns(transcriptPath: string): WorkflowRun[] {
  * (`<session>/workflows/<runId>.json`) or anything in a run's transcript
  * directory (`<session>/subagents/workflows/<runId>/…`). Null for any other path.
  */
-export function workflowSessionIdForPath(path: string, projectsDir: string): string | null {
+export function workflowSessionIdForPath(path: string, projectsDir: string): string | null
+{
 	const rel = relative(projectsDir, path);
 	if (rel.startsWith("..")) return null;
 	const parts = rel.split(sep);
@@ -462,14 +563,16 @@ export function workflowSessionIdForPath(path: string, projectsDir: string): str
 		second === "workflows" &&
 		third !== undefined &&
 		fourth !== undefined
-	) {
+	)
+	{
 		return session;
 	}
 	return null;
 }
 
 /** The workflow runs of session `id`, or none when the index has no transcript for it. */
-export function readSessionWorkflowRuns(db: IndexDb, id: string): WorkflowRun[] {
+export function readSessionWorkflowRuns(db: IndexDb, id: string): WorkflowRun[]
+{
 	const filePath = transcriptFilePath(db, id);
 	return filePath ? readWorkflowRuns(filePath) : [];
 }

@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	autocompactCommand,
 	extraLinesBody,
 	fastCommandArg,
@@ -12,42 +13,202 @@ import {
 } from "../src/lib/composer-host-commands";
 import {EFFORT_LEVELS, effortLevelsFor, MORE_MODELS, PRIMARY_MODELS} from "../src/lib/launch-options";
 
-const ctx: HostCommandContext = {
+const ctx: HostCommandContext =
+{
 	effortLevels: EFFORT_LEVELS,
 	models: [...PRIMARY_MODELS, ...MORE_MODELS].map((model) => model.id),
 	menusAvailable: true,
 };
-const locked: HostCommandContext = {...ctx, menusAvailable: false};
+const locked: HostCommandContext =
+{
+	...ctx,
+	menusAvailable: false,
+};
 
-describe("parseHostCommand", () => {
+describe("parseHostCommand", () =>
+{
 	it.each([
-		["/model", {kind: "open", menu: "model", name: "model"}],
-		["  /MODEL  ", {kind: "open", menu: "model", name: "model"}],
-		["/effort", {kind: "open", menu: "effort", name: "effort"}],
-		["/permissions", {kind: "open", menu: "mode", name: "permissions"}],
-		["/allowed-tools", {kind: "open", menu: "mode", name: "allowed-tools"}],
-		["/effort high", {kind: "effort", level: "high", name: "effort"}],
-		["/effort HIGH", {kind: "effort", level: "high", name: "effort"}],
-		["/model opus", {kind: "model", model: "opus", name: "model"}],
-		["/model:opus", {kind: "model", model: "opus", name: "model"}],
-		["/model, opus", {kind: "model", model: "opus", name: "model"}],
-		["/model.opus", {kind: "model", model: "opus", name: "model"}],
-		["/model OPUS", {kind: "model", model: "opus", name: "model"}],
-		["/model claude-opus-4-6", {kind: "model", model: "claude-opus-4-6", name: "model"}],
-		["/model default", {kind: "model", model: "default", name: "model"}],
-		["/model DEFAULT", {kind: "model", model: "default", name: "model"}],
-		["/model best", {kind: "model", model: "best", name: "model"}],
-		["/model opusplan", {kind: "model", model: "opusplan", name: "model"}],
-		["/model mythos", {kind: "model", model: "mythos", name: "model"}],
-		["/model claude-opus-4-6-20260101", {kind: "model", model: "claude-opus-4-6", name: "model"}],
-		["/model claude-opus-4-6-20260101[1m]", {kind: "model", model: "claude-opus-4-6", name: "model"}],
-		["/model claude-haiku-4-5-20251001", {kind: "model", model: "claude-haiku-4-5-20251001", name: "model"}],
-	])("%j opens or applies", (text, expected) => {
+		[
+			"/model",
+			{
+				kind: "open",
+				menu: "model",
+				name: "model",
+			},
+		],
+		[
+			"  /MODEL  ",
+			{
+				kind: "open",
+				menu: "model",
+				name: "model",
+			},
+		],
+		[
+			"/effort",
+			{
+				kind: "open",
+				menu: "effort",
+				name: "effort",
+			},
+		],
+		[
+			"/permissions",
+			{
+				kind: "open",
+				menu: "mode",
+				name: "permissions",
+			},
+		],
+		[
+			"/allowed-tools",
+			{
+				kind: "open",
+				menu: "mode",
+				name: "allowed-tools",
+			},
+		],
+		[
+			"/effort high",
+			{
+				kind: "effort",
+				level: "high",
+				name: "effort",
+			},
+		],
+		[
+			"/effort HIGH",
+			{
+				kind: "effort",
+				level: "high",
+				name: "effort",
+			},
+		],
+		[
+			"/model opus",
+			{
+				kind: "model",
+				model: "opus",
+				name: "model",
+			},
+		],
+		[
+			"/model:opus",
+			{
+				kind: "model",
+				model: "opus",
+				name: "model",
+			},
+		],
+		[
+			"/model, opus",
+			{
+				kind: "model",
+				model: "opus",
+				name: "model",
+			},
+		],
+		[
+			"/model.opus",
+			{
+				kind: "model",
+				model: "opus",
+				name: "model",
+			},
+		],
+		[
+			"/model OPUS",
+			{
+				kind: "model",
+				model: "opus",
+				name: "model",
+			},
+		],
+		[
+			"/model claude-opus-4-6",
+			{
+				kind: "model",
+				model: "claude-opus-4-6",
+				name: "model",
+			},
+		],
+		[
+			"/model default",
+			{
+				kind: "model",
+				model: "default",
+				name: "model",
+			},
+		],
+		[
+			"/model DEFAULT",
+			{
+				kind: "model",
+				model: "default",
+				name: "model",
+			},
+		],
+		[
+			"/model best",
+			{
+				kind: "model",
+				model: "best",
+				name: "model",
+			},
+		],
+		[
+			"/model opusplan",
+			{
+				kind: "model",
+				model: "opusplan",
+				name: "model",
+			},
+		],
+		[
+			"/model mythos",
+			{
+				kind: "model",
+				model: "mythos",
+				name: "model",
+			},
+		],
+		[
+			"/model claude-opus-4-6-20260101",
+			{
+				kind: "model",
+				model: "claude-opus-4-6",
+				name: "model",
+			},
+		],
+		[
+			"/model claude-opus-4-6-20260101[1m]",
+			{
+				kind: "model",
+				model: "claude-opus-4-6",
+				name: "model",
+			},
+		],
+		[
+			"/model claude-haiku-4-5-20251001",
+			{
+				kind: "model",
+				model: "claude-haiku-4-5-20251001",
+				name: "model",
+			},
+		],
+	])("%j opens or applies", (text, expected) =>
+	{
 		expect(parseHostCommand(text, ctx)).toStrictEqual(expected);
 	});
 
 	it.each([
-		["/model gpt5", {kind: "refuse", toast: "“gpt5” isn’t an available model."}],
+		[
+			"/model gpt5",
+			{
+				kind: "refuse",
+				toast: "“gpt5” isn’t an available model.",
+			},
+		],
 		[
 			"/permissions plan",
 			{
@@ -62,69 +223,209 @@ describe("parseHostCommand", () => {
 				text: "/permissions only works on a single line. Remove the extra lines, then send it again.",
 			},
 		],
-	])("%j refuses with copy", (text, expected) => {
+	])("%j refuses with copy", (text, expected) =>
+	{
 		expect(parseHostCommand(text, ctx)).toStrictEqual(expected);
 	});
 
 	it.each([
-		["/model", {kind: "refuse", toast: "Model can’t be changed for this session right now."}],
-		["/model opus", {kind: "refuse", toast: "Model can’t be changed for this session right now."}],
-		["/effort", {kind: "refuse", toast: "The model is still loading. Try /effort again in a moment."}],
-		["/effort high", {kind: "refuse", toast: "The model is still loading. Try /effort again in a moment."}],
-		["/permissions", {kind: "refuse", toast: "The permission mode can’t be changed for this session."}],
-		["/allowed-tools", {kind: "refuse", toast: "The permission mode can’t be changed for this session."}],
-	])("%j refuses while menus are unavailable", (text, expected) => {
+		[
+			"/model",
+			{
+				kind: "refuse",
+				toast: "Model can’t be changed for this session right now.",
+			},
+		],
+		[
+			"/model opus",
+			{
+				kind: "refuse",
+				toast: "Model can’t be changed for this session right now.",
+			},
+		],
+		[
+			"/effort",
+			{
+				kind: "refuse",
+				toast: "The model is still loading. Try /effort again in a moment.",
+			},
+		],
+		[
+			"/effort high",
+			{
+				kind: "refuse",
+				toast: "The model is still loading. Try /effort again in a moment.",
+			},
+		],
+		[
+			"/permissions",
+			{
+				kind: "refuse",
+				toast: "The permission mode can’t be changed for this session.",
+			},
+		],
+		[
+			"/allowed-tools",
+			{
+				kind: "refuse",
+				toast: "The permission mode can’t be changed for this session.",
+			},
+		],
+	])("%j refuses while menus are unavailable", (text, expected) =>
+	{
 		expect(parseHostCommand(text, locked)).toStrictEqual(expected);
 	});
 
 	it.each(["/effort foo", "/modelx", "/btw hi", "hello /model", "", "/", "/compact"])(
 		"%j is sent as typed",
-		(text) => {
+		(text) =>
+		{
 			expect(parseHostCommand(text, ctx)).toBeNull();
 		},
 	);
 
-	it("sends /effort xhigh as typed on a model whose catalog has no Extra, as an unknown level is", () => {
+	it("sends /effort xhigh as typed on a model whose catalog has no Extra, as an unknown level is", () =>
+	{
 		expect(
-			parseHostCommand("/effort xhigh", {...ctx, effortLevels: effortLevelsFor("claude-sonnet-4-6")}),
+			parseHostCommand(
+				"/effort xhigh",
+				{
+					...ctx,
+					effortLevels: effortLevelsFor("claude-sonnet-4-6"),
+				},
+			),
 		).toBeNull();
 	});
 
-	it("leaves /effort ultracode to the CLI, whose /effort toggles it", () => {
+	it("leaves /effort ultracode to the CLI, whose /effort toggles it", () =>
+	{
 		expect(parseHostCommand("/effort ultracode", ctx)).toBeNull();
 	});
 
-	it("leaves /effort to the CLI when the model has no effort levels", () => {
-		expect(parseHostCommand("/effort", {...ctx, effortLevels: []})).toBeNull();
+	it("leaves /effort to the CLI when the model has no effort levels", () =>
+	{
+		expect(
+			parseHostCommand(
+				"/effort",
+				{
+					...ctx,
+					effortLevels: [],
+				},
+			),
+		).toBeNull();
 	});
 
-	it("opens the Model menu for /effort when the model offers at most one level", () => {
-		expect(parseHostCommand("/effort", {...ctx, effortLevels: ["high"]})).toStrictEqual({
-			kind: "open",
-			menu: "model",
-			name: "effort",
-		});
+	it("opens the Model menu for /effort when the model offers at most one level", () =>
+	{
+		expect(
+			parseHostCommand(
+				"/effort",
+				{
+					...ctx,
+					effortLevels: ["high"],
+				},
+			),
+		).toStrictEqual(
+			{
+				kind: "open",
+				menu: "model",
+				name: "effort",
+			},
+		);
 	});
 });
 
-describe("routeFastCommand", () => {
+describe("routeFastCommand", () =>
+{
 	it.each([
-		[{arg: "on", on: true, canToggle: true}, "noop"],
-		[{arg: "off", on: false, canToggle: true}, "noop"],
-		[{arg: "OFF", on: false, canToggle: true}, "noop"],
-		[{arg: "", on: false, canToggle: true}, "toggle"],
-		[{arg: "", on: true, canToggle: true}, "toggle"],
-		[{arg: "on", on: false, canToggle: true}, "toggle"],
-		[{arg: "off", on: true, canToggle: true}, "toggle"],
-		[{arg: "turbo", on: false, canToggle: true}, "unhandled"],
-		[{arg: "", on: false, canToggle: false}, "unhandled"],
-		[{arg: "on", on: false, canToggle: false}, "unhandled"],
-	] as const)("%j routes to %s", (input, expected) => {
+		[
+			{
+				arg: "on",
+				on: true,
+				canToggle: true,
+			},
+			"noop",
+		],
+		[
+			{
+				arg: "off",
+				on: false,
+				canToggle: true,
+			},
+			"noop",
+		],
+		[
+			{
+				arg: "OFF",
+				on: false,
+				canToggle: true,
+			},
+			"noop",
+		],
+		[
+			{
+				arg: "",
+				on: false,
+				canToggle: true,
+			},
+			"toggle",
+		],
+		[
+			{
+				arg: "",
+				on: true,
+				canToggle: true,
+			},
+			"toggle",
+		],
+		[
+			{
+				arg: "on",
+				on: false,
+				canToggle: true,
+			},
+			"toggle",
+		],
+		[
+			{
+				arg: "off",
+				on: true,
+				canToggle: true,
+			},
+			"toggle",
+		],
+		[
+			{
+				arg: "turbo",
+				on: false,
+				canToggle: true,
+			},
+			"unhandled",
+		],
+		[
+			{
+				arg: "",
+				on: false,
+				canToggle: false,
+			},
+			"unhandled",
+		],
+		[
+			{
+				arg: "on",
+				on: false,
+				canToggle: false,
+			},
+			"unhandled",
+		],
+	] as const)("%j routes to %s", (input, expected) =>
+	{
 		expect(routeFastCommand(input)).toBe(expected);
 	});
 });
 
-describe("fastCommandArg", () => {
+describe("fastCommandArg", () =>
+{
 	it.each([
 		["/fast", ""],
 		["  /fast  ", ""],
@@ -134,34 +435,88 @@ describe("fastCommandArg", () => {
 		["/faster", null],
 		["/model", null],
 		["hello /fast", null],
-	])("%j has arg %j", (text, expected) => {
+	])("%j has arg %j", (text, expected) =>
+	{
 		expect(fastCommandArg(text)).toBe(expected);
 	});
 });
 
-describe("parseCommandShape", () => {
+describe("parseCommandShape", () =>
+{
 	const names = ["permissions", "allowed-tools"];
 
 	it.each([
-		["/permissions", {kind: "run", name: "permissions"}],
-		["  /permissions  ", {kind: "run", name: "permissions"}],
-		["/permissions plan", {kind: "trailing_args", name: "permissions"}],
-		["/permissions\nx", {kind: "extra_lines", name: "permissions"}],
-		["/permissions\rx", {kind: "extra_lines", name: "permissions"}],
-		["/permissions plan\nx", {kind: "extra_lines", name: "permissions"}],
-		["/PERMISSIONS", {kind: "run", name: "permissions"}],
-		["/Allowed-Tools x", {kind: "trailing_args", name: "allowed-tools"}],
-	])("%j", (text, expected) => {
+		[
+			"/permissions",
+			{
+				kind: "run",
+				name: "permissions",
+			},
+		],
+		[
+			"  /permissions  ",
+			{
+				kind: "run",
+				name: "permissions",
+			},
+		],
+		[
+			"/permissions plan",
+			{
+				kind: "trailing_args",
+				name: "permissions",
+			},
+		],
+		[
+			"/permissions\nx",
+			{
+				kind: "extra_lines",
+				name: "permissions",
+			},
+		],
+		[
+			"/permissions\rx",
+			{
+				kind: "extra_lines",
+				name: "permissions",
+			},
+		],
+		[
+			"/permissions plan\nx",
+			{
+				kind: "extra_lines",
+				name: "permissions",
+			},
+		],
+		[
+			"/PERMISSIONS",
+			{
+				kind: "run",
+				name: "permissions",
+			},
+		],
+		[
+			"/Allowed-Tools x",
+			{
+				kind: "trailing_args",
+				name: "allowed-tools",
+			},
+		],
+	])("%j", (text, expected) =>
+	{
 		expect(parseCommandShape(names, text)).toStrictEqual(expected);
 	});
 
-	it.each(["/permissionsx", "permissions", "/status", "x /permissions"])("%j is not one of the names", (text) => {
+	it.each(["/permissionsx", "permissions", "/status", "x /permissions"])("%j is not one of the names", (text) =>
+	{
 		expect(parseCommandShape(names, text)).toBeNull();
 	});
 });
 
-describe("band bodies", () => {
-	it("match upstream's literal strings", () => {
+describe("band bodies", () =>
+{
+	it("match upstream's literal strings", () =>
+	{
 		expect([trailingArgsBody("permissions"), extraLinesBody("permissions")]).toStrictEqual([
 			"/permissions doesn\u2019t take arguments here. Remove the text after the command, then send it again.",
 			"/permissions only works on a single line. Remove the extra lines, then send it again.",
@@ -169,8 +524,10 @@ describe("band bodies", () => {
 	});
 });
 
-describe("autocompactCommand", () => {
-	it("opens on a bare /autocompact (any case, surrounding spaces) and lets an argument reach the CLI", () => {
+describe("autocompactCommand", () =>
+{
+	it("opens on a bare /autocompact (any case, surrounding spaces) and lets an argument reach the CLI", () =>
+	{
 		const inputs = [
 			"/autocompact",
 			"/AutoCompact",
@@ -182,19 +539,22 @@ describe("autocompactCommand", () => {
 			"/context",
 		];
 
-		expect(Object.fromEntries(inputs.map((input) => [input, autocompactCommand(input)]))).toStrictEqual({
-			"/autocompact": "open",
-			"/AutoCompact": "open",
-			"  /autocompact   ": "open",
-			"/autocompact 50000": null,
-			"/autocompact auto": null,
-			"/autocompactx": null,
-			"/autocompact\nmore": null,
-			"/context": null,
-		});
+		expect(Object.fromEntries(inputs.map((input) => [input, autocompactCommand(input)]))).toStrictEqual(
+			{
+				"/autocompact": "open",
+				"/AutoCompact": "open",
+				"  /autocompact   ": "open",
+				"/autocompact 50000": null,
+				"/autocompact auto": null,
+				"/autocompactx": null,
+				"/autocompact\nmore": null,
+				"/context": null,
+			},
+		);
 	});
 
-	it("exports upstream's slash-name pattern", () => {
+	it("exports upstream's slash-name pattern", () =>
+	{
 		expect(SLASH_NAME.exec("/plugin:skill-x rest")?.[1]).toBe("plugin:skill-x");
 	});
 });

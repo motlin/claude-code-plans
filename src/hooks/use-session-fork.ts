@@ -6,18 +6,23 @@ import {writeClipboardText} from "../lib/clipboard";
 import {type ForkTarget, forkSession, setPendingFork} from "../lib/session-fork";
 
 /** Fork (menu `f`, ⌥⌘O, "Fork from here"): launch the fork in herdr, else copy its command. */
-export function useSessionFork(): (target: ForkTarget) => void {
+export function useSessionFork(): (target: ForkTarget) => void
+{
 	const {data: herdr} = useQuery(herdrPanesQueryOptions);
 	const toast = useToast();
 	const herdrWritable = herdr?.writesEnabled ?? false;
-	return (target) => {
-		void forkSession(target, {
-			herdrWritable,
-			launch: async (launch) => launchHerdrSession(launch),
-			copy: writeClipboardText,
-			toast,
-			onLaunched: setPendingFork,
-			now: Date.now,
-		});
+	return (target) =>
+	{
+		void forkSession(
+			target,
+			{
+				herdrWritable,
+				launch: async (launch) => launchHerdrSession(launch),
+				copy: writeClipboardText,
+				toast,
+				onLaunched: setPendingFork,
+				now: Date.now,
+			},
+		);
 	};
 }

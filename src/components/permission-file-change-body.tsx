@@ -8,7 +8,8 @@ import {fileContentUrl, FileViewerResponse} from "../lib/api/file";
 import {resolveUrl} from "../lib/api/client";
 import {buildMultiEditHunk, buildPatchFromHunks, buildUnifiedHunk} from "../lib/diff-utils";
 import {asRecord} from "../lib/narrow";
-import {
+import
+{
 	analyzeFileChange,
 	type FileChangeRead,
 	plainFileChangeParts,
@@ -26,7 +27,8 @@ const SCROLLER_MAX_PX = 400;
 /** Upstream's in-card `Yx` scroller (`Lx` + the code card); local's `card-ring` stands in for `epitaxy-code-card`'s ring. */
 const SCROLLER_CLASS = "max-h-[400px] overflow-y-auto epitaxy-diff card-ring rounded-lg overflow-clip";
 
-function stringField(input: Record<string, unknown>, key: string): string | undefined {
+function stringField(input: Record<string, unknown>, key: string): string | undefined
+{
 	const value = input[key];
 	return typeof value === "string" ? value : undefined;
 }
@@ -36,50 +38,91 @@ const settledReads = new WeakMap<object, FileChangeRead>();
 const pendingReads = new WeakMap<object, Promise<FileChangeRead>>();
 
 /** Upstream's `Eu`: the file's text, unreadable when the server refuses the path, else nothing to compare. */
-async function readFileChange(name: string, input: Record<string, unknown>, path: string): Promise<FileChangeRead> {
-	try {
-		const response = await fetch(resolveUrl(fileContentUrl(path)), {credentials: "same-origin"});
-		if (response.status === 403) return {kind: "unreadable"};
-		if (!response.ok) return {kind: "none"};
+async function readFileChange(name: string, input: Record<string, unknown>, path: string): Promise<FileChangeRead>
+{
+	try
+	{
+		const response = await fetch(
+			resolveUrl(fileContentUrl(path)),
+			{
+				credentials: "same-origin",
+			},
+		);
+		if (response.status === 403)
+			return {
+				kind: "unreadable",
+			};
+		if (!response.ok)
+			return {
+				kind: "none",
+			};
 		const {content} = FileViewerResponse.parse(await response.json());
 		return content.includes("\0")
-			? {kind: "none"}
-			: {kind: "read", analysis: analyzeFileChange(name, input, content)};
-	} catch {
-		return {kind: "none"};
+			?
+				{
+					kind: "none",
+				}
+			:
+				{
+					kind: "read",
+					analysis: analyzeFileChange(name, input, content),
+				};
+	}
+	catch
+	{
+		return {
+			kind: "none",
+		};
 	}
 }
 
 /** Upstream's `Ou`/`ku`: only a Write or Edit reads its file; null while the read is pending. */
-function useFileChangeRead(name: string, input: Record<string, unknown>): FileChangeRead | null {
+function useFileChangeRead(name: string, input: Record<string, unknown>): FileChangeRead | null
+{
 	const path = stringField(input, "file_path");
 	const reads = path !== undefined && (name === "Write" || name === "Edit");
 	const [read, setRead] = useState<FileChangeRead | null>(() =>
-		reads ? (settledReads.get(input) ?? null) : {kind: "none"},
+		reads
+			? (settledReads.get(input) ?? null)
+			:
+				{
+					kind: "none",
+				},
 	);
-	useEffect(() => {
-		if (!reads) {
-			setRead({kind: "none"});
+	useEffect(() =>
+	{
+		if (!reads)
+		{
+			setRead(
+				{
+					kind: "none",
+				},
+			);
 			return undefined;
 		}
 		const settled = settledReads.get(input);
-		if (settled !== undefined) {
+		if (settled !== undefined)
+		{
 			setRead(settled);
 			return undefined;
 		}
 		let cancelled = false;
 		let pending = pendingReads.get(input);
-		if (pending === undefined) {
-			pending = readFileChange(name, input, path).then((result) => {
+		if (pending === undefined)
+		{
+			pending = readFileChange(name, input, path).then((result) =>
+			{
 				settledReads.set(input, result);
 				return result;
 			});
 			pendingReads.set(input, pending);
 		}
-		void pending.then((result) => {
+		void pending.then((result) =>
+		{
 			if (!cancelled) setRead(result);
 		});
-		return () => {
+		return () =>
+		{
 			cancelled = true;
 		};
 	}, [reads, name, input, path]);
@@ -102,7 +145,8 @@ export function PermissionFileChangePreview({
 	/** The copy's own note ("Replaces every match in the file."), which a disk note replaces. */
 	copyNote: string | null;
 	drawDetail: (note: string | null) => ReactNode;
-}) {
+})
+{
 	const read = useFileChangeRead(toolName, toolInput);
 	// Upstream keys the touch to the tool call (`d === t.id`); the input object stands for it here.
 	const [usedInput, setUsedInput] = useState<object | null>(null);
@@ -118,7 +162,8 @@ export function PermissionFileChangePreview({
 					<PlainFileChange
 						toolName={toolName}
 						toolInput={toolInput}
-						onUsed={() => {
+						onUsed={() =>
+						{
 							setUsedInput(toolInput);
 						}}
 					/>
@@ -149,20 +194,24 @@ function PlainFileChange({
 	toolName: string;
 	toolInput: Record<string, unknown>;
 	onUsed: () => void;
-}) {
+})
+{
 	const parts = useMemo(() => plainFileChangeParts(toolName, toolInput), [toolName, toolInput]);
 	const ref = useRef<HTMLDivElement>(null);
 	const [overflows, setOverflows] = useState(false);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const node = ref.current;
 		if (node === null) return undefined;
-		const measure = () => {
+		const measure = () =>
+		{
 			setOverflows(node.scrollHeight > node.clientHeight);
 		};
 		measure();
 		const observer = new ResizeObserver(measure);
 		observer.observe(node);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [parts]);
@@ -172,7 +221,14 @@ function PlainFileChange({
 			data-testid="approval-file-change-plain"
 			data-fixed-code-size=""
 			className={PLAIN_CLASS}
-			{...(overflows ? {tabIndex: 0, role: "group", "aria-label": "Code"} : {})}
+			{...(overflows
+				?
+					{
+						tabIndex: 0,
+						role: "group",
+						"aria-label": "Code",
+					}
+				: {})}
 			onFocus={onUsed}
 			onPointerDown={onUsed}
 			onScroll={onUsed}
@@ -191,49 +247,93 @@ function PlainFileChange({
 }
 
 /** Upstream's `Jx`: the rows a text draws, a final newline not starting another. */
-function textRows(text: string): number {
+function textRows(text: string): number
+{
 	return text.split("\n").length - (text.endsWith("\n") && text !== "" ? 1 : 0);
 }
 
 /** The rows of a patch's hunks: every line after the first hunk header that isn't another hunk header. */
-function patchRows(patch: string): number {
+function patchRows(patch: string): number
+{
 	const lines = patch.split("\n");
 	const first = lines.findIndex((line) => line.startsWith("@@"));
 	return first === -1 ? 0 : lines.slice(first).filter((line) => /^[ +-]/.test(line)).length;
 }
 
 type FileChangeView =
-	| {kind: "patch"; patch: string; numbered: boolean; rows: number}
-	| {kind: "additions"; content: string; rows: number};
+	|
+	  {
+			kind: "patch";
+			patch: string;
+			numbered: boolean;
+			rows: number;
+	  }
+	|
+	  {
+			kind: "additions";
+			content: string;
+			rows: number;
+	  };
 
-function fileChangeView(name: string, input: Record<string, unknown>, read: FileChangeRead): FileChangeView {
+function fileChangeView(name: string, input: Record<string, unknown>, read: FileChangeRead): FileChangeView
+{
 	const path = String(input["file_path"]);
 	const fileName = path.replace(/^.*[\\/]/, "");
 	const fromDisk = read.kind === "read" ? read.analysis.patch : undefined;
-	if (fromDisk !== undefined) {
+	if (fromDisk !== undefined)
+	{
 		const {patch} = buildPatchFromHunks(fromDisk.hunks, fileName);
-		return {kind: "patch", patch, numbered: true, rows: patchRows(patch)};
+		return {
+			kind: "patch",
+			patch,
+			numbered: true,
+			rows: patchRows(patch),
+		};
 	}
-	if (name === "Write") {
+	if (name === "Write")
+	{
 		const content = stringField(input, "content") ?? "";
-		return {kind: "additions", content, rows: textRows(content)};
+		return {
+			kind: "additions",
+			content,
+			rows: textRows(content),
+		};
 	}
-	if (name === "MultiEdit") {
-		const edits = (Array.isArray(input["edits"]) ? input["edits"] : []).flatMap((edit: unknown) => {
+	if (name === "MultiEdit")
+	{
+		const edits = (Array.isArray(input["edits"]) ? input["edits"] : []).flatMap((edit: unknown) =>
+		{
 			const record = asRecord(edit);
 			const oldString = record === undefined ? undefined : stringField(record, "old_string");
 			const newString = record === undefined ? undefined : stringField(record, "new_string");
-			return oldString === undefined || newString === undefined ? [] : [{oldString, newString}];
+			return oldString === undefined || newString === undefined
+				? []
+				: [
+						{
+							oldString,
+							newString,
+						},
+					];
 		});
 		const patch = buildMultiEditHunk(edits, fileName);
-		return {kind: "patch", patch, numbered: false, rows: patchRows(patch)};
+		return {
+			kind: "patch",
+			patch,
+			numbered: false,
+			rows: patchRows(patch),
+		};
 	}
 	const patch = buildUnifiedHunk(
 		stringField(input, "old_string") ?? "",
 		stringField(input, "new_string") ?? "",
 		fileName,
 	);
-	return {kind: "patch", patch, numbered: false, rows: patchRows(patch)};
+	return {
+		kind: "patch",
+		patch,
+		numbered: false,
+		rows: patchRows(patch),
+	};
 }
 
 /**
@@ -248,10 +348,17 @@ function FileChangeBody({
 	toolName: string;
 	toolInput: Record<string, unknown>;
 	read: FileChangeRead;
-}) {
+})
+{
 	const view = useMemo(() => fileChangeView(toolName, toolInput, read), [toolName, toolInput, read]);
 	const background = useCodeThemeBackground();
-	const hostStyle = useMemo(() => ({"--cds-filediff-bg": background}), [background]);
+	const hostStyle = useMemo(
+		() => (
+		{
+			"--cds-filediff-bg": background,
+		}),
+		[background],
+	);
 	return (
 		<div data-file-change-body="" className="group/body flex w-full flex-col">
 			<div
@@ -260,7 +367,11 @@ function FileChangeBody({
 				role="group"
 				aria-label="Code"
 				className={SCROLLER_CLASS}
-				style={{background, minHeight: Math.min(view.rows * ROW_RESERVE_PX, SCROLLER_MAX_PX)}}
+				style={
+				{
+					background,
+					minHeight: Math.min(view.rows * ROW_RESERVE_PX, SCROLLER_MAX_PX),
+				}}
 			>
 				{view.kind === "patch" ? (
 					<InlinePatchDiff patch={view.patch} disableLineNumbers={!view.numbered} hostStyle={hostStyle} />
@@ -283,18 +394,38 @@ const ADDITIONS_CSS =
 	'[data-line]{background:var(--diffs-bg-addition);}[data-line-number-content]::before{content:"+ ";display:inline-block;min-width:1ch;color:light-dark(rgb(0 0 0 / 0.6),rgb(255 255 255 / 0.6));}';
 
 /** Upstream's `QS` pure side: a new file's lines, every one an addition, numbered from 1. */
-function PureAdditions({path, content, hostStyle}: {path: string; content: string; hostStyle: CSSProperties}) {
+function PureAdditions({path, content, hostStyle}: {path: string; content: string; hostStyle: CSSProperties})
+{
 	const themeType = useResolvedTheme();
 	const theme = useCodeThemes();
-	const file = useMemo(() => {
+	const file = useMemo(() =>
+	{
 		const name = path.replace(/^.*[\\/]/, "");
-		return {name, contents: content, cacheKey: `permission-write:${path}:${content}`};
+		return {
+			name,
+			contents: content,
+			cacheKey: `permission-write:${path}:${content}`,
+		};
 	}, [path, content]);
 	const options = useMemo<FileOptions<undefined, undefined>>(
-		() => ({theme, themeType, disableFileHeader: true, overflow: "wrap", unsafeCSS: FILE_BASE_CSS + ADDITIONS_CSS}),
+		() => (
+		{
+			theme,
+			themeType,
+			disableFileHeader: true,
+			overflow: "wrap",
+			unsafeCSS: FILE_BASE_CSS + ADDITIONS_CSS,
+		}),
 		[theme, themeType],
 	);
-	const style = useMemo(() => ({...INLINE_DIFFS_STYLE_OVERRIDES, ...hostStyle}), [hostStyle]);
+	const style = useMemo(
+		() => (
+		{
+			...INLINE_DIFFS_STYLE_OVERRIDES,
+			...hostStyle,
+		}),
+		[hostStyle],
+	);
 	return (
 		<div data-cds="FileDiff" dir="ltr" className={DIFFS_HOST_CLASS} style={style}>
 			<File file={file} options={options} disableWorkerPool />

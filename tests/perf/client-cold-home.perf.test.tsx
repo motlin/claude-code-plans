@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRouteWithContext,
 	createRoute,
@@ -38,11 +39,13 @@ import {ratchet} from "./ratchet";
  * response bytes, and the React commits it takes before the sidebar recents and the home main region both show rows.
  */
 
-vi.mock(import("../../src/lib/hmr-persist"), async (importOriginal) => {
+vi.mock(import("../../src/lib/hmr-persist"), async (importOriginal) =>
+{
 	const cache = new Map<string, unknown>();
 	return {
 		...(await importOriginal()),
-		hmrPersist: <T,>(key: string, initialize: () => T): T => {
+		hmrPersist: <T,>(key: string, initialize: () => T): T =>
+		{
 			if (!cache.has(key)) cache.set(key, initialize());
 			return cache.get(key) as T;
 		},
@@ -50,10 +53,23 @@ vi.mock(import("../../src/lib/hmr-persist"), async (importOriginal) => {
 });
 
 // /api/local-account falls back to the OS username, which differs per machine and moves the response bytes.
-vi.mock(import("node:os"), async (importOriginal) => {
+vi.mock(import("node:os"), async (importOriginal) =>
+{
 	const os = await importOriginal();
-	const userInfo = (() => ({...os.userInfo(), username: "alice"})) as typeof os.userInfo;
-	return {...os, userInfo, default: {...os.default, userInfo}};
+	const userInfo = (() => (
+	{
+		...os.userInfo(),
+		username: "alice",
+	})) as typeof os.userInfo;
+	return {
+		...os,
+		userInfo,
+		default:
+		{
+			...os.default,
+			userInfo,
+		},
+	};
 });
 
 const CASES = ["default"] as const;
@@ -69,35 +85,103 @@ const MEMORY_FILENAME = "build-gotchas.md";
 type ApiHandler = (context: {params: Record<string, string>; request: Request}) => Response | Promise<Response>;
 
 /** Request paths a cold launch of `/` fetches, each answered by its real GET handler. */
-const ENDPOINTS: Array<{path: string; module: string; params?: Record<string, string>}> = [
-	{path: "/api/projects", module: "../../src/routes/api/projects"},
-	{path: "/api/plans", module: "../../src/routes/api/plans"},
-	{path: "/api/sessions/recent?limit=50&live=1", module: "../../src/routes/api/sessions.recent"},
-	{path: "/api/sessions/recent?limit=25", module: "../../src/routes/api/sessions.recent"},
-	{path: "/api/sessions/grouped?perProject=5", module: "../../src/routes/api/sessions.grouped"},
-	{path: "/api/plugins", module: "../../src/routes/api/plugins"},
-	{path: "/api/plugins/user-commands", module: "../../src/routes/api/plugins.user-commands"},
-	{path: "/api/sessions/active?activeTimeoutMs=60000", module: "../../src/routes/api/sessions.active"},
-	{path: "/api/sessions/active?activeTimeoutMs=300000", module: "../../src/routes/api/sessions.active"},
-	{path: "/api/approvals", module: "../../src/routes/api/approvals"},
-	{path: "/api/notifications", module: "../../src/routes/api/notifications"},
-	{path: "/api/local-account", module: "../../src/routes/api/local-account"},
-	{path: "/api/application-settings", module: "../../src/routes/api/application-settings"},
-	{path: "/api/prompt-history", module: "../../src/routes/api/prompt-history"},
-	{path: "/api/commands", module: "../../src/routes/api/commands"},
-	{path: `/api/commands?cwd=${encodeURIComponent(FIXTURE_CWD)}`, module: "../../src/routes/api/commands"},
-	{path: "/api/composer-defaults", module: "../../src/routes/api/composer-defaults"},
+const ENDPOINTS: Array<
+{
+	path: string;
+	module: string;
+	params?: Record<string, string>;
+}> = [
+	{
+		path: "/api/projects",
+		module: "../../src/routes/api/projects",
+	},
+	{
+		path: "/api/plans",
+		module: "../../src/routes/api/plans",
+	},
+	{
+		path: "/api/sessions/recent?limit=50&live=1",
+		module: "../../src/routes/api/sessions.recent",
+	},
+	{
+		path: "/api/sessions/recent?limit=25",
+		module: "../../src/routes/api/sessions.recent",
+	},
+	{
+		path: "/api/sessions/grouped?perProject=5",
+		module: "../../src/routes/api/sessions.grouped",
+	},
+	{
+		path: "/api/plugins",
+		module: "../../src/routes/api/plugins",
+	},
+	{
+		path: "/api/plugins/user-commands",
+		module: "../../src/routes/api/plugins.user-commands",
+	},
+	{
+		path: "/api/sessions/active?activeTimeoutMs=60000",
+		module: "../../src/routes/api/sessions.active",
+	},
+	{
+		path: "/api/sessions/active?activeTimeoutMs=300000",
+		module: "../../src/routes/api/sessions.active",
+	},
+	{
+		path: "/api/approvals",
+		module: "../../src/routes/api/approvals",
+	},
+	{
+		path: "/api/notifications",
+		module: "../../src/routes/api/notifications",
+	},
+	{
+		path: "/api/local-account",
+		module: "../../src/routes/api/local-account",
+	},
+	{
+		path: "/api/application-settings",
+		module: "../../src/routes/api/application-settings",
+	},
+	{
+		path: "/api/prompt-history",
+		module: "../../src/routes/api/prompt-history",
+	},
+	{
+		path: "/api/commands",
+		module: "../../src/routes/api/commands",
+	},
+	{
+		path: `/api/commands?cwd=${encodeURIComponent(FIXTURE_CWD)}`,
+		module: "../../src/routes/api/commands",
+	},
+	{
+		path: "/api/composer-defaults",
+		module: "../../src/routes/api/composer-defaults",
+	},
 	{
 		path: `/api/composer-defaults?cwd=${encodeURIComponent(FIXTURE_CWD)}`,
 		module: "../../src/routes/api/composer-defaults",
 	},
-	{path: "/api/home/dismissals", module: "../../src/routes/api/home.dismissals"},
-	{path: "/api/home-stats", module: "../../src/routes/api/home-stats"},
-	{path: "/api/usage", module: "../../src/routes/api/usage"},
+	{
+		path: "/api/home/dismissals",
+		module: "../../src/routes/api/home.dismissals",
+	},
+	{
+		path: "/api/home-stats",
+		module: "../../src/routes/api/home-stats",
+	},
+	{
+		path: "/api/usage",
+		module: "../../src/routes/api/usage",
+	},
 	{
 		path: `/api/projects/${PROJECT}/memories`,
 		module: "../../src/routes/api/projects.$id.memories",
-		params: {id: PROJECT},
+		params:
+		{
+			id: PROJECT,
+		},
 	},
 ];
 
@@ -105,9 +189,15 @@ const ENDPOINTS: Array<{path: string; module: string; params?: Record<string, st
  * herdr is a live process the lab never talks to; it answers as an installation with no panes. The fixture cwd
  * isn't a real directory, so the launch folder's git status answers as a clean checkout of its default branch.
  */
-const STATIC_FIXTURES: Record<string, unknown> = {
-	"/api/herdr-panes": {panes: [], writesEnabled: false},
-	[`/api/home/folder-status?path=${encodeURIComponent(FIXTURE_CWD)}`]: {
+const STATIC_FIXTURES: Record<string, unknown> =
+{
+	"/api/herdr-panes":
+	{
+		panes: [],
+		writesEnabled: false,
+	},
+	[`/api/home/folder-status?path=${encodeURIComponent(FIXTURE_CWD)}`]:
+	{
 		exists: true,
 		isGitRepo: true,
 		headBranch: "main",
@@ -120,20 +210,44 @@ let root: string;
 let db: AppDb;
 let fixtures: Record<string, unknown>;
 
-async function handlerFor(module: string): Promise<ApiHandler> {
-	const {Route} = (await import(module)) as {Route: {options: {server: {handlers: Record<string, ApiHandler>}}}};
+async function handlerFor(module: string): Promise<ApiHandler>
+{
+	const {Route} = (await import(module)) as
+	{
+		Route:
+		{
+			options:
+			{
+				server:
+				{
+					handlers: Record<string, ApiHandler>;
+				};
+			};
+		};
+	};
 	return Route.options.server.handlers["GET"]!;
 }
 
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	vi.setSystemTime(FIXED_NOW);
 	root = mkdtempSync(join(tmpdir(), "perf-client-cold-home-"));
 	const home = join(root, "home");
 	const projectDir = join(home, ".claude", "projects", PROJECT);
 	const memoryDir = join(projectDir, "memory");
 	const plansDir = join(home, ".claude", "plans");
-	mkdirSync(memoryDir, {recursive: true});
-	mkdirSync(plansDir, {recursive: true});
+	mkdirSync(
+		memoryDir,
+		{
+			recursive: true,
+		},
+	);
+	mkdirSync(
+		plansDir,
+		{
+			recursive: true,
+		},
+	);
 	vi.stubEnv("HOME", home);
 	vi.stubEnv("XDG_CONFIG_HOME", join(root, "config"));
 	vi.stubEnv("XDG_CACHE_HOME", join(root, "cache"));
@@ -141,7 +255,10 @@ beforeAll(async () => {
 	const {openTestDb} = await import("../../src/lib/db/connection");
 	const {indexMemoryFile, indexPlanFile} = await import("../../src/lib/db/indexer");
 	db = openTestDb();
-	vi.doMock("../../src/lib/db", () => ({getDb: () => db}));
+	vi.doMock("../../src/lib/db", () => (
+	{
+		getDb: () => db,
+	}));
 
 	const cached = await generateTranscript(PERF_SHAPES.small);
 	const file = join(projectDir, basename(cached));
@@ -158,108 +275,179 @@ beforeAll(async () => {
 	utimesSync(memoryFile, FIXTURE_MTIME, FIXTURE_MTIME);
 	await indexMemoryFile(db.index, memoryFile, PROJECT);
 
-	fixtures = {...STATIC_FIXTURES};
-	for (const {path, module, params = {}} of ENDPOINTS) {
+	fixtures =
+	{
+		...STATIC_FIXTURES,
+	};
+	for (const {path, module, params = {}} of ENDPOINTS)
+	{
 		const handler = await handlerFor(module);
-		const response = await handler({params, request: new Request(`http://localhost${path}`)});
+		const response = await handler(
+			{
+				params,
+				request: new Request(`http://localhost${path}`),
+			},
+		);
 		// Responses carry the temp HOME; drop it so the served bytes are the same on every machine.
 		fixtures[path] = JSON.parse((await response.text()).replaceAll(root, "/fixture"));
 	}
 }, 600_000);
 
-afterAll(() => {
+afterAll(() =>
+{
 	db.close();
-	rmSync(root, {recursive: true, force: true});
+	rmSync(
+		root,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 	vi.doUnmock("../../src/lib/db");
 	vi.unstubAllEnvs();
 	vi.useRealTimers();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.useRealTimers();
 	localStorage.clear();
 });
 
-function installBrowserStubs(): void {
+function installBrowserStubs(): void
+{
 	installFakeEventSource();
-	installFixedResizeObserver({width: 800, height: ESTIMATED_TURN_HEIGHT_PIXELS});
-	vi.stubGlobal("matchMedia", (media: string) => ({
+	installFixedResizeObserver(
+		{
+			width: 800,
+			height: ESTIMATED_TURN_HEIGHT_PIXELS,
+		},
+	);
+	vi.stubGlobal("matchMedia", (media: string) => (
+	{
 		matches: false,
 		media,
 		onchange: null,
-		addEventListener: () => {},
-		removeEventListener: () => {},
-		addListener: () => {},
-		removeListener: () => {},
+		addEventListener: () =>
+		{
+		},
+		removeEventListener: () =>
+		{
+		},
+		addListener: () =>
+		{
+		},
+		removeListener: () =>
+		{
+		},
 		dispatchEvent: () => false,
 	}));
 	vi.stubGlobal("scrollTo", () => {});
 	vi.stubGlobal("IntersectionObserver", InertIntersectionObserver);
 	// jsdom has no layout, so scrolling an element into view is a no-op it does not implement.
-	Element.prototype.scrollIntoView = () => {};
+	Element.prototype.scrollIntoView = () =>
+	{
+	};
 }
 
 /** Nothing scrolls in jsdom, so no observed element ever intersects; the observer never calls back. */
-class InertIntersectionObserver {
+class InertIntersectionObserver
+{
 	readonly root = null;
 	readonly rootMargin = "0px";
 	readonly thresholds: ReadonlyArray<number> = [0];
 
-	observe(): void {}
+	observe(): void
+	{
+	}
 
-	unobserve(): void {}
+	unobserve(): void
+	{
+	}
 
-	disconnect(): void {}
+	disconnect(): void
+	{
+	}
 
-	takeRecords(): Array<IntersectionObserverEntry> {
+	takeRecords(): Array<IntersectionObserverEntry>
+	{
 		return [];
 	}
 }
 
-const rootLoader = RootRoute.options.loader as (args: {context: {queryClient: QueryClient}}) => void;
+const rootLoader = RootRoute.options.loader as (args: {
+	context:
+	{
+		queryClient: QueryClient;
+	};
+}) => void;
 
 /** The root layout's frame (providers, sidebar, main) with the real root loader and the real home route. */
-function createAppRouter(queryClient: QueryClient) {
-	const rootRoute = createRootRouteWithContext<{queryClient: QueryClient}>()({
-		loader: ({context}) => {
-			rootLoader({context});
+function createAppRouter(queryClient: QueryClient)
+{
+	const rootRoute = createRootRouteWithContext<
+	{
+		queryClient: QueryClient;
+	}>()(
+		{
+			loader: ({context}) =>
+			{
+				rootLoader(
+					{
+						context,
+					},
+				);
+			},
+			component: () => (
+				<ThemeProvider>
+					<SettingsProvider>
+						<ClaudeEventsProvider>
+							<ToastProvider>
+								<AppFrame collapsed={false}>
+									<Outlet />
+								</AppFrame>
+							</ToastProvider>
+						</ClaudeEventsProvider>
+					</SettingsProvider>
+				</ThemeProvider>
+			),
 		},
-		component: () => (
-			<ThemeProvider>
-				<SettingsProvider>
-					<ClaudeEventsProvider>
-						<ToastProvider>
-							<AppFrame collapsed={false}>
-								<Outlet />
-							</AppFrame>
-						</ToastProvider>
-					</ClaudeEventsProvider>
-				</SettingsProvider>
-			</ThemeProvider>
-		),
-	});
-	const homeRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: HomeRoute.options.component!,
-	});
-	return createRouter({
-		routeTree: rootRoute.addChildren([homeRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-		context: {queryClient},
-	});
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: HomeRoute.options.component!,
+		},
+	);
+	return createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+			context:
+			{
+				queryClient,
+			},
+		},
+	);
 }
 
-function sidebarRecentsRows(): number {
+function sidebarRecentsRows(): number
+{
 	return document.querySelectorAll("[data-testid=sidebar-recents] a[data-row-main-button]").length;
 }
 
 /**
  * Rows in the home main region: the start card's Recent folders and Next steps rows.
  */
-function homeMainRows(): number {
+function homeMainRows(): number
+{
 	return document.querySelectorAll("[data-home-action-center] li").length;
 }
 
@@ -267,25 +455,31 @@ function homeMainRows(): number {
  * Mounts nothing until launched, so the measured interaction is the whole cold mount. Every commit after the launch is
  * counted, and the first one whose DOM shows both the sidebar recents and home main rows is remembered.
  */
-function createLauncher(queryClient: QueryClient) {
+function createLauncher(queryClient: QueryClient)
+{
 	const router = createAppRouter(queryClient);
-	let launch: () => void = () => {
+	let launch: () => void = () =>
+	{
 		throw new Error("launcher is not mounted");
 	};
 	let commits = 0;
 	let commitsToRows: number | undefined;
 
-	function Launcher() {
+	function Launcher()
+	{
 		const [launched, setLaunched] = useState(false);
-		launch = () => {
+		launch = () =>
+		{
 			setLaunched(true);
 		};
 		return launched ? (
 			<Profiler
 				id="cold-launch"
-				onRender={() => {
+				onRender={() =>
+				{
 					commits++;
-					if (commitsToRows === undefined && sidebarRecentsRows() > 0 && homeMainRows() > 0) {
+					if (commitsToRows === undefined && sidebarRecentsRows() > 0 && homeMainRows() > 0)
+					{
 						commitsToRows = commits;
 					}
 				}}
@@ -297,7 +491,8 @@ function createLauncher(queryClient: QueryClient) {
 
 	return {
 		Launcher,
-		launch: () => {
+		launch: () =>
+		{
 			launch();
 		},
 		commitsToRows: () => commitsToRows,
@@ -307,30 +502,52 @@ function createLauncher(queryClient: QueryClient) {
 type ColdHomeMetric = "fetches" | "responseBytes" | "commitsToRows";
 
 /** Checks every count before failing, so one run records all of them in results.json for `just perf-ceilings`. */
-function ratchetAll(values: Record<string, number>): void {
+function ratchetAll(values: Record<string, number>): void
+{
 	const failures: string[] = [];
-	for (const [id, value] of Object.entries(values)) {
-		try {
+	for (const [id, value] of Object.entries(values))
+	{
+		try
+		{
 			ratchet(id, value);
-		} catch (error) {
+		}
+		catch (error)
+		{
 			failures.push((error as Error).message);
 		}
 	}
 	if (failures.length > 0) throw new Error(failures.join("\n"));
 }
 
-describe("client lab: cold launch of the home page", () => {
-	for (const name of CASES) {
-		it(name, async () => {
+describe("client lab: cold launch of the home page", () =>
+{
+	for (const name of CASES)
+	{
+		it(name, async () =>
+		{
 			installBrowserStubs();
 			vi.useFakeTimers();
 			vi.setSystemTime(FIXED_NOW);
-			const queryClient = new QueryClient({defaultOptions: {queries: {refetchOnWindowFocus: false}}});
+			const queryClient = new QueryClient(
+				{
+					defaultOptions:
+					{
+						queries:
+						{
+							refetchOnWindowFocus: false,
+						},
+					},
+				},
+			);
 			const launcher = createLauncher(queryClient);
-			const measurement = await measureInteraction(() => <launcher.Launcher />, launcher.launch, {
-				fixtures,
-				queryClient,
-			});
+			const measurement = await measureInteraction(
+				() => <launcher.Launcher />,
+				launcher.launch,
+				{
+					fixtures,
+					queryClient,
+				},
+			);
 
 			expect(sidebarRecentsRows()).toBeGreaterThan(0);
 			// Each row's terminal host rides on the session list rows, so the sidebar reads no herdr panes.
@@ -339,11 +556,14 @@ describe("client lab: cold launch of the home page", () => {
 			const commitsToRows = launcher.commitsToRows();
 			if (commitsToRows === undefined) throw new Error("no commit showed both the sidebar recents and home rows");
 			ratchetAll(
-				metricIds<ColdHomeMetric>(`client.coldHome.${name}`, {
-					fetches: measurement.fetches.count,
-					responseBytes: measurement.fetches.bytes,
-					commitsToRows,
-				}),
+				metricIds<ColdHomeMetric>(
+					`client.coldHome.${name}`,
+					{
+						fetches: measurement.fetches.count,
+						responseBytes: measurement.fetches.bytes,
+						commitsToRows,
+					},
+				),
 			);
 		});
 	}

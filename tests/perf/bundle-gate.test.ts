@@ -8,75 +8,113 @@ import {loadCeilings} from "./ratchet";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-function just(...args: string[]): string {
-	return execFileSync("just", ["--justfile", join(REPO_ROOT, "justfile"), ...args], {
-		cwd: REPO_ROOT,
-		encoding: "utf8",
-		stdio: "pipe",
-	});
+function just(...args: string[]): string
+{
+	return execFileSync(
+		"just",
+		["--justfile", join(REPO_ROOT, "justfile"), ...args],
+		{
+			cwd: REPO_ROOT,
+			encoding: "utf8",
+			stdio: "pipe",
+		},
+	);
 }
 
-const JustDumpSchema = z.object({
-	recipes: z.record(
-		z.string(),
-		z.object({
-			attributes: z.array(
-				z.union([z.string(), z.object({arg: z.object({name: z.string()})}), z.object({group: z.string()})]),
+const JustDumpSchema = z.object(
+	{
+		recipes: z.record(
+			z.string(),
+			z.object(
+				{
+					attributes: z.array(
+						z.union([
+							z.string(),
+							z.object(
+								{
+									arg: z.object(
+										{
+											name: z.string(),
+										},
+									),
+								},
+							),
+							z.object(
+								{
+									group: z.string(),
+								},
+							),
+						]),
+					),
+					dependencies: z.array(
+						z.object(
+							{
+								recipe: z.string(),
+								// A string literal argument dumps as the string, a variable as ["variable", name].
+								arguments: z.array(z.union([z.string(), z.tuple([z.literal("variable"), z.string()])])),
+							},
+						),
+					),
+				},
 			),
-			dependencies: z.array(
-				z.object({
-					recipe: z.string(),
-					// A string literal argument dumps as the string, a variable as ["variable", name].
-					arguments: z.array(z.union([z.string(), z.tuple([z.literal("variable"), z.string()])])),
-				}),
-			),
-		}),
-	),
-});
+		),
+	},
+);
 
-describe("bundle byte gate", () => {
-	it("runs every recipe with the lockfile's vite-plus ahead of any global vp on PATH", () => {
+describe("bundle byte gate", () =>
+{
+	it("runs every recipe with the lockfile's vite-plus ahead of any global vp on PATH", () =>
+	{
 		expect(just("--evaluate", "PATH").split(":")[0]).toBe(join(REPO_ROOT, "node_modules", ".bin"));
 	});
 
-	it("ratchets the bundle bytes and runs tsc in `just verify` right after the build, beside the other read-only gates, before the tests read .output", () => {
+	it("ratchets the bundle bytes and runs tsc in `just verify` right after the build, beside the other read-only gates, before the tests read .output", () =>
+	{
 		const {recipes} = JustDumpSchema.parse(JSON.parse(just("--dump", "--dump-format", "json")));
 		const dependenciesOf = (name: string) =>
 			recipes[name]?.dependencies.map(({recipe, arguments: args}) =>
 				[recipe, ...args.map((arg) => (typeof arg === "string" ? arg : arg[1]))].join(" "),
 			);
-		expect({
-			verify: dependenciesOf("verify"),
-			readOnly: dependenciesOf("_verify-read-only"),
-			readOnlyRunsInParallel: recipes["_verify-read-only"]?.attributes.includes("parallel"),
-			buildThenBundle: dependenciesOf("_build-bundle"),
-		}).toStrictEqual({
-			verify: ["check --quiet", "_fallow-fix", "_verify-read-only", "_verify-test quick"],
-			readOnly: ["_build-bundle", "fallow-check", "_verify-pre-commit"],
-			readOnlyRunsInParallel: true,
-			// typecheck follows the build, which regenerates the gitignored src/routeTree.gen.ts that tsc reads.
-			buildThenBundle: ["build", "perf-bundle", "client-boundaries", "typecheck"],
-		});
+		expect(
+			{
+				verify: dependenciesOf("verify"),
+				readOnly: dependenciesOf("_verify-read-only"),
+				readOnlyRunsInParallel: recipes["_verify-read-only"]?.attributes.includes("parallel"),
+				buildThenBundle: dependenciesOf("_build-bundle"),
+			},
+		).toStrictEqual(
+			{
+				verify: ["check --quiet", "format", "_fallow-fix", "_verify-read-only", "_verify-test quick"],
+				readOnly: ["_build-bundle", "fallow-check", "_verify-pre-commit"],
+				readOnlyRunsInParallel: true,
+				// typecheck follows the build, which regenerates the gitignored src/routeTree.gen.ts that tsc reads.
+				buildThenBundle: ["build", "perf-bundle", "client-boundaries", "typecheck"],
+			},
+		);
 	});
 
-	it("skips the pre-commit hooks that repeat `check --fix` and `fallow` inside `just verify`", () => {
+	it("skips the pre-commit hooks that repeat `format` and `fallow` inside `just verify`", () =>
+	{
 		expect(just("--show", "_verify-pre-commit").trim().split("\n").at(-1)?.trim()).toBe(
 			"SKIP=oxfmt,fallow pre-commit run --all-files",
 		);
 	});
 
-	it("gives every bundle byte ceiling the ±1% band", () => {
+	it("gives every bundle byte ceiling the ±1% band", () =>
+	{
 		const tolerances = Object.fromEntries(
 			Object.entries(loadCeilings())
 				.filter(([id]) => id.startsWith("bundle."))
 				.map(([id, entry]) => [id, entry.tolerance]),
 		);
-		expect(tolerances).toStrictEqual({
-			"bundle.home.gzip": BUNDLE_BYTES_TOLERANCE,
-			"bundle.home.raw": BUNDLE_BYTES_TOLERANCE,
-			"bundle.session.gzip": BUNDLE_BYTES_TOLERANCE,
-			"bundle.session.raw": BUNDLE_BYTES_TOLERANCE,
-		});
+		expect(tolerances).toStrictEqual(
+			{
+				"bundle.home.gzip": BUNDLE_BYTES_TOLERANCE,
+				"bundle.home.raw": BUNDLE_BYTES_TOLERANCE,
+				"bundle.session.gzip": BUNDLE_BYTES_TOLERANCE,
+				"bundle.session.raw": BUNDLE_BYTES_TOLERANCE,
+			},
+		);
 		expect(BUNDLE_BYTES_TOLERANCE).toBe(0.01);
 	});
 });

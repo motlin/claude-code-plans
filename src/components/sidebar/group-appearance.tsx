@@ -1,4 +1,5 @@
-import {
+import
+{
 	BookOpen,
 	Bookmark,
 	Briefcase,
@@ -14,7 +15,8 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 
-import {
+import
+{
 	GroupColorSchema,
 	GroupIconSchema,
 	type GroupAppearance,
@@ -23,7 +25,8 @@ import {
 	type GroupIcon,
 } from "../../lib/group-appearance";
 import {groupColorLabels, groupIconLabels} from "../../lib/schema-choices";
-import {
+import
+{
 	MenuLabel,
 	MenuRadioGroup,
 	MenuRadioItem,
@@ -33,7 +36,8 @@ import {
 	MenuSubTrigger,
 } from "../ui/menu";
 
-const ICONS = {
+const ICONS =
+{
 	folder: Folder,
 	star: Star,
 	heart: Heart,
@@ -48,7 +52,8 @@ const ICONS = {
 	home: House,
 } as const satisfies Record<GroupIcon, LucideIcon>;
 
-const TEXT_COLORS = {
+const TEXT_COLORS =
+{
 	gray: "text-gray-500 dark:text-gray-400",
 	red: "text-red-600 dark:text-red-400",
 	orange: "text-orange-600 dark:text-orange-400",
@@ -60,7 +65,8 @@ const TEXT_COLORS = {
 	pink: "text-pink-600 dark:text-pink-400",
 } as const satisfies Record<GroupColor, string>;
 
-const DOT_COLORS = {
+const DOT_COLORS =
+{
 	gray: "bg-gray-500 dark:bg-gray-400",
 	red: "bg-red-600 dark:bg-red-400",
 	orange: "bg-orange-600 dark:bg-orange-400",
@@ -75,17 +81,20 @@ const DOT_COLORS = {
 const NONE = "none";
 
 /** A section header's icon (tinted by its color), a color dot alone, or nothing. */
-export function GroupAppearanceMark({appearance}: {appearance: GroupAppearance | undefined}) {
+export function GroupAppearanceMark({appearance}: {appearance: GroupAppearance | undefined})
+{
 	const icon = appearance?.icon;
 	const color = appearance?.color;
 	if (icon === undefined && color === undefined) return null;
-	const markProps = {
+	const markProps =
+	{
 		"data-group-appearance": "",
 		"data-group-icon": icon,
 		"data-group-color": color,
 		"aria-hidden": true,
 	} as const;
-	if (icon === undefined) {
+	if (icon === undefined)
+	{
 		return (
 			<span className="flex size-3.5 shrink-0 items-center justify-center" {...markProps}>
 				<span className={`size-2 rounded-full ${color === undefined ? "" : DOT_COLORS[color]}`} />
@@ -107,7 +116,8 @@ export function GroupAppearanceSubmenu({
 }: {
 	appearance: GroupAppearance | undefined;
 	onChange: (patch: GroupAppearancePatch) => void;
-}) {
+})
+{
 	return (
 		<MenuSub>
 			<MenuSubTrigger>Icon and color</MenuSubTrigger>
@@ -115,13 +125,19 @@ export function GroupAppearanceSubmenu({
 				<MenuLabel>Icon</MenuLabel>
 				<MenuRadioGroup
 					value={appearance?.icon ?? NONE}
-					onValueChange={(value: unknown) => {
+					onValueChange={(value: unknown) =>
+					{
 						const parsed = GroupIconSchema.safeParse(value);
-						onChange({icon: parsed.success ? parsed.data : null});
+						onChange(
+							{
+								icon: parsed.success ? parsed.data : null,
+							},
+						);
 					}}
 				>
 					<MenuRadioItem value={NONE}>None</MenuRadioItem>
-					{GroupIconSchema.options.map((icon) => {
+					{GroupIconSchema.options.map((icon) =>
+					{
 						const Icon = ICONS[icon];
 						return (
 							<MenuRadioItem key={icon} value={icon}>
@@ -137,9 +153,14 @@ export function GroupAppearanceSubmenu({
 				<MenuLabel>Color</MenuLabel>
 				<MenuRadioGroup
 					value={appearance?.color ?? NONE}
-					onValueChange={(value: unknown) => {
+					onValueChange={(value: unknown) =>
+					{
 						const parsed = GroupColorSchema.safeParse(value);
-						onChange({color: parsed.success ? parsed.data : null});
+						onChange(
+							{
+								color: parsed.success ? parsed.data : null,
+							},
+						);
 					}}
 				>
 					<MenuRadioItem value={NONE}>Default</MenuRadioItem>

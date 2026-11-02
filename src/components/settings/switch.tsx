@@ -8,7 +8,8 @@ import {useSettingsRowIds} from "./settings-row-context";
  * A focusable span with role=switch; Space and Enter toggle it. Inside a SettingsRow it is labelled by the row title.
  */
 
-interface SwitchProps {
+interface SwitchProps
+{
 	checked: boolean;
 	onCheckedChange: (checked: boolean) => void;
 	disabled?: boolean;
@@ -22,16 +23,20 @@ export function Switch({
 	disabled = false,
 	"aria-label": ariaLabel,
 	"aria-labelledby": ariaLabelledBy,
-}: SwitchProps) {
+}: SwitchProps)
+{
 	const row = useSettingsRowIds();
 	const labelledBy = ariaLabel === undefined ? (ariaLabelledBy ?? row?.titleId) : undefined;
 
-	const toggle = () => {
+	const toggle = () =>
+	{
 		if (!disabled) onCheckedChange(!checked);
 	};
 
-	const handleKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
-		if (event.key === " " || event.key === "Enter") {
+	const handleKeyDown = (event: KeyboardEvent<HTMLSpanElement>) =>
+	{
+		if (event.key === " " || event.key === "Enter")
+		{
 			event.preventDefault();
 			toggle();
 		}

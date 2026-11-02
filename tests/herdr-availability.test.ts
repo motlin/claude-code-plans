@@ -5,42 +5,60 @@ import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {__testing, probeAnyHerdr, probeHerdr} from "../src/lib/herdr/availability";
 
-describe("probeHerdr", () => {
+describe("probeHerdr", () =>
+{
 	const originalSocketPath = process.env["HERDR_SOCKET_PATH"];
 	let directory: string;
 	let server: Server | undefined;
 	let socketPath: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		__testing.clearCache();
 		directory = mkdtempSync(join(tmpdir(), "herdr-availability-test-"));
 		socketPath = join(directory, "herdr.sock");
 		process.env["HERDR_SOCKET_PATH"] = socketPath;
 	});
 
-	afterEach(async () => {
+	afterEach(async () =>
+	{
 		__testing.clearCache();
-		if (server) {
-			await new Promise<void>((resolve) => {
-				server?.close(() => {
+		if (server)
+		{
+			await new Promise<void>((resolve) =>
+			{
+				server?.close(() =>
+				{
 					resolve();
 				});
 			});
 			server = undefined;
 		}
-		rmSync(directory, {recursive: true, force: true});
-		if (originalSocketPath === undefined) {
+		rmSync(
+			directory,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
+		if (originalSocketPath === undefined)
+		{
 			delete process.env["HERDR_SOCKET_PATH"];
-		} else {
+		}
+		else
+		{
 			process.env["HERDR_SOCKET_PATH"] = originalSocketPath;
 		}
 	});
 
-	async function listen(connectionHandler: (socket: Socket) => void): Promise<void> {
+	async function listen(connectionHandler: (socket: Socket) => void): Promise<void>
+	{
 		const candidate = createServer(connectionHandler);
-		await new Promise<void>((resolve, reject) => {
+		await new Promise<void>((resolve, reject) =>
+		{
 			candidate.once("error", reject);
-			candidate.listen(socketPath, () => {
+			candidate.listen(socketPath, () =>
+			{
 				candidate.off("error", reject);
 				resolve();
 			});
@@ -48,31 +66,40 @@ describe("probeHerdr", () => {
 		server = candidate;
 	}
 
-	it("reports a missing socket without throwing", async () => {
-		await expect(probeHerdr()).resolves.toStrictEqual({
-			available: false,
-			socketPath,
-			reason: "no-socket",
-		});
+	it("reports a missing socket without throwing", async () =>
+	{
+		await expect(probeHerdr()).resolves.toStrictEqual(
+			{
+				available: false,
+				socketPath,
+				reason: "no-socket",
+			},
+		);
 	});
 
-	it("returns pong metadata and caches rapid probes", async () => {
+	it("returns pong metadata and caches rapid probes", async () =>
+	{
 		let connectionCount = 0;
 		const receivedRequests: unknown[] = [];
-		await listen((socket) => {
+		await listen((socket) =>
+		{
 			connectionCount += 1;
-			socket.once("data", (chunk) => {
+			socket.once("data", (chunk) =>
+			{
 				receivedRequests.push(JSON.parse(chunk.toString().trimEnd()));
 				socket.end(
-					`${JSON.stringify({
-						id: "ccp:ping",
-						result: {
-							type: "pong",
-							version: "99.0.0-test",
-							protocol: 100,
-							capabilities: ["test-capability"],
+					`${JSON.stringify(
+						{
+							id: "ccp:ping",
+							result:
+							{
+								type: "pong",
+								version: "99.0.0-test",
+								protocol: 100,
+								capabilities: ["test-capability"],
+							},
 						},
-					})}\n`,
+					)}\n`,
 				);
 			});
 		});
@@ -80,50 +107,96 @@ describe("probeHerdr", () => {
 		const first = await probeHerdr();
 		const second = await probeHerdr();
 
-		expect({connectionCount, receivedRequests, first, second}).toStrictEqual({
-			connectionCount: 1,
-			receivedRequests: [{id: "ccp:ping", method: "ping", params: {}}],
-			first: {
-				available: true,
-				socketPath,
-				version: "99.0.0-test",
-				protocol: 100,
+		expect(
+			{
+				connectionCount,
+				receivedRequests,
+				first,
+				second,
 			},
-			second: {
-				available: true,
-				socketPath,
-				version: "99.0.0-test",
-				protocol: 100,
+		).toStrictEqual(
+			{
+				connectionCount: 1,
+				receivedRequests: [
+					{
+						id: "ccp:ping",
+						method: "ping",
+						params: {},
+					},
+				],
+				first:
+				{
+					available: true,
+					socketPath,
+					version: "99.0.0-test",
+					protocol: 100,
+				},
+				second:
+				{
+					available: true,
+					socketPath,
+					version: "99.0.0-test",
+					protocol: 100,
+				},
 			},
-		});
+		);
 	});
 
-	it("rejects a malformed pong as a bad response", async () => {
-		await listen((socket) => {
-			socket.once("data", () => {
-				socket.end(`${JSON.stringify({id: "ccp:ping", result: {type: "pong"}})}\n`);
+	it("rejects a malformed pong as a bad response", async () =>
+	{
+		await listen((socket) =>
+		{
+			socket.once("data", () =>
+			{
+				socket.end(
+					`${JSON.stringify(
+						{
+							id: "ccp:ping",
+							result:
+							{
+								type: "pong",
+							},
+						},
+					)}\n`,
+				);
 			});
 		});
 
-		await expect(probeHerdr()).resolves.toStrictEqual({
-			available: false,
-			socketPath,
-			reason: "bad-response",
-		});
+		await expect(probeHerdr()).resolves.toStrictEqual(
+			{
+				available: false,
+				socketPath,
+				reason: "bad-response",
+			},
+		);
 	});
 });
 
-describe("probeAnyHerdr", () => {
-	const probe = (live: readonly string[], calls: string[]) => async (socketPath: string) => {
+describe("probeAnyHerdr", () =>
+{
+	const probe = (live: readonly string[], calls: string[]) => async (socketPath: string) =>
+	{
 		calls.push(socketPath);
 		return Promise.resolve(
 			live.includes(socketPath)
-				? {available: true, socketPath, version: "1", protocol: 22}
-				: {available: false, socketPath, reason: "no-socket" as const},
+				?
+					{
+						available: true,
+						socketPath,
+						version: "1",
+						protocol: 22,
+					}
+				:
+					{
+						available: false,
+						socketPath,
+						reason: "no-socket" as const,
+					},
 		);
 	};
 
-	it("reports herdr available when only a named session answers", async () => {
+	it("reports herdr available when only a named session answers", async () =>
+	{
 		const calls: string[] = [];
 		await expect(
 			probeAnyHerdr(["/tmp/test/default.sock", "/tmp/test/later.sock"], probe(["/tmp/test/later.sock"], calls)),
@@ -131,7 +204,8 @@ describe("probeAnyHerdr", () => {
 		expect(calls).toStrictEqual(["/tmp/test/default.sock", "/tmp/test/later.sock"]);
 	});
 
-	it("reports herdr unavailable when no server answers", async () => {
+	it("reports herdr unavailable when no server answers", async () =>
+	{
 		await expect(probeAnyHerdr(["/tmp/test/default.sock", "/tmp/test/later.sock"], probe([], []))).resolves.toBe(
 			false,
 		);

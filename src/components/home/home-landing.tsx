@@ -11,7 +11,13 @@ import {useHomeNextSteps} from "./use-home-next-steps";
  * "New session" titlebar and the docked composer, which share one launch folder. Like upstream, the
  * env card is centred above the composer and Next steps hides when it doesn't fit.
  */
-export function HomeLanding({dock}: Readonly<{dock?: ReactNode}>) {
+export function HomeLanding({
+	dock,
+}: Readonly<
+{
+	dock?: ReactNode;
+}>)
+{
 	return (
 		<HomeLaunchFolderProvider>
 			<HomeLandingBody dock={dock} />
@@ -20,7 +26,13 @@ export function HomeLanding({dock}: Readonly<{dock?: ReactNode}>) {
 }
 
 /** Inside the provider, so Next steps reads the composer's launch folder and Worktree state. */
-function HomeLandingBody({dock}: Readonly<{dock?: ReactNode}>) {
+function HomeLandingBody({
+	dock,
+}: Readonly<
+{
+	dock?: ReactNode;
+}>)
+{
 	const nextSteps = useHomeNextSteps();
 	const placementRef = useStartCardPlacement();
 

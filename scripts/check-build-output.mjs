@@ -23,45 +23,62 @@ const EXPECTED_LINES = [
  * @param {string} log the build's combined output
  * @returns {string[]} the lines that are not the build's own progress, with colors stripped
  */
-export function unexpectedBuildLines(log) {
+export function unexpectedBuildLines(log)
+{
 	return stripVTControlCharacters(log)
 		.split("\n")
 		.filter((line) => !EXPECTED_LINES.some((pattern) => pattern.test(line)));
 }
 
-function main(argv) {
+function main(argv)
+{
 	const [command, ...args] = argv;
-	if (command === undefined) {
+	if (command === undefined)
+	{
 		process.stderr.write("Usage: node scripts/check-build-output.mjs <command> [args...]\n");
 		return Promise.resolve(2);
 	}
 	/** @type {string[]} */
 	const chunks = [];
-	const child = spawn(command, args, {stdio: ["inherit", "pipe", "pipe"]});
-	child.stdout.on("data", (/** @type {Buffer} */ chunk) => {
+	const child = spawn(
+		command,
+		args,
+		{
+			stdio: ["inherit", "pipe", "pipe"],
+		},
+	);
+	child.stdout.on("data", (/** @type {Buffer} */ chunk) =>
+	{
 		process.stdout.write(chunk);
 		chunks.push(chunk.toString("utf8"));
 	});
-	child.stderr.on("data", (/** @type {Buffer} */ chunk) => {
+	child.stderr.on("data", (/** @type {Buffer} */ chunk) =>
+	{
 		process.stderr.write(chunk);
 		chunks.push(chunk.toString("utf8"));
 	});
-	for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+	for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"])
+	{
 		process.on(signal, () => child.kill(signal));
 	}
-	return new Promise((resolvePromise) => {
-		child.on("error", (error) => {
+	return new Promise((resolvePromise) =>
+	{
+		child.on("error", (error) =>
+		{
 			process.stderr.write(`check-build-output: could not run ${command}: ${error.message}\n`);
 			resolvePromise(127);
 		});
-		child.on("close", (code) => {
+		child.on("close", (code) =>
+		{
 			const exitCode = code ?? 128;
-			if (exitCode !== 0) {
+			if (exitCode !== 0)
+			{
 				resolvePromise(exitCode);
 				return;
 			}
 			const unexpected = unexpectedBuildLines(chunks.join(""));
-			if (unexpected.length > 0) {
+			if (unexpected.length > 0)
+			{
 				process.stderr.write(
 					[
 						"",
@@ -78,6 +95,7 @@ function main(argv) {
 	});
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href)
+{
 	process.exitCode = await main(process.argv.slice(2));
 }

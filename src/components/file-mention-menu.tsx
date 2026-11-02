@@ -14,11 +14,13 @@ const ROW_CLASS =
 	"flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-start text-[13px]/[19px] text-primary outline-none data-[highlighted]:bg-fill-ghost-hover";
 
 /** Upstream's row tooltip text: the full path (directories keep their trailing `/`) with a ZWSP after every `/`. */
-function mentionTooltip(entry: SessionFilesEntry): string {
+function mentionTooltip(entry: SessionFilesEntry): string
+{
 	return `${entry.relPath}${entry.isDirectory ? "/" : ""}`.replaceAll("/", "/\u200B");
 }
 
-function EntryIcon({entry, icons}: {entry: SessionFilesEntry; icons: FileTypeIconModule | undefined}) {
+function EntryIcon({entry, icons}: {entry: SessionFilesEntry; icons: FileTypeIconModule | undefined})
+{
 	if (entry.isDirectory) return <Folder aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />;
 	if (icons === undefined) return <span aria-hidden="true" className="size-4 shrink-0" />;
 	return <icons.FileTypeIcon fileName={entry.name} size="sm" />;
@@ -43,18 +45,25 @@ export function FileMentionMenu({
 	highlighted: number;
 	onHighlight: (index: number) => void;
 	onAccept: (entry: SessionFilesEntry) => void;
-}) {
+})
+{
 	const listRef = useRef<HTMLDivElement>(null);
 	const icons = useFileTypeIcons();
 	// Upstream's `k.current`: a highlight set by hover must not scroll the list under the pointer.
 	const hoverHighlightRef = useRef(false);
 
-	useLayoutEffect(() => {
-		if (hoverHighlightRef.current) {
+	useLayoutEffect(() =>
+	{
+		if (hoverHighlightRef.current)
+		{
 			hoverHighlightRef.current = false;
 			return;
 		}
-		listRef.current?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView({block: "nearest"});
+		listRef.current?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView(
+			{
+				block: "nearest",
+			},
+		);
 	}, [highlighted, entries]);
 
 	return (
@@ -67,12 +76,17 @@ export function FileMentionMenu({
 			data-cds="MentionDropdown"
 			tabIndex={-1}
 			className={POPUP_CLASS}
-			style={{width: fileMentionMenuWidth(entries)}}
-			onMouseDown={(e) => {
+			style={
+			{
+				width: fileMentionMenuWidth(entries),
+			}}
+			onMouseDown={(e) =>
+			{
 				e.preventDefault();
 			}}
 		>
-			{entries.map((entry, index) => {
+			{entries.map((entry, index) =>
+			{
 				const slash = entry.relPath.lastIndexOf("/");
 				const dirname = slash === -1 ? "" : entry.relPath.slice(0, slash);
 				return (
@@ -96,13 +110,15 @@ export function FileMentionMenu({
 							aria-selected={index === highlighted}
 							data-highlighted={index === highlighted ? "" : undefined}
 							className={ROW_CLASS}
-							onMouseMove={(e) => {
+							onMouseMove={(e) =>
+							{
 								// Skip the zero-movement move a browser fires when the list scrolls under a still pointer.
 								if (index === highlighted || (e.movementX === 0 && e.movementY === 0)) return;
 								hoverHighlightRef.current = true;
 								onHighlight(index);
 							}}
-							onClick={() => {
+							onClick={() =>
+							{
 								onAccept(entry);
 							}}
 						>

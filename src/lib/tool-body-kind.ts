@@ -7,9 +7,23 @@ import {JSON_TILE_MAX_LINES, MAX_CHARS, prettyJson} from "./pretty-json";
 import {stripMemoryTags} from "./task-checklist";
 
 export type ToolBodyKind =
-	| {kind: "json"; text: string; tile: boolean}
-	| {kind: "markdown"; text: string}
-	| {kind: "text"; text: string; columns: boolean};
+	|
+	  {
+			kind: "json";
+			text: string;
+			tile: boolean;
+	  }
+	|
+	  {
+			kind: "markdown";
+			text: string;
+	  }
+	|
+	  {
+			kind: "text";
+			text: string;
+			columns: boolean;
+	  };
 
 /** Jg */
 const MARKDOWN_SIGNS = [
@@ -19,13 +33,15 @@ const MARKDOWN_SIGNS = [
 ];
 
 /** Yg: an opening fence line with a closing fence somewhere after it. */
-function hasClosedFence(text: string): boolean {
+function hasClosedFence(text: string): boolean
+{
 	const open = /^```[^\n]*\n/m.exec(text);
 	return open !== null && /^``` *$/m.test(text.slice(open.index + open[0].length));
 }
 
 /** Xg: whether the text reads as markdown (a table, bold, an http link, a fence, or an h2+ heading with a bullet). */
-export function sniffMarkdown(text: string): boolean {
+export function sniffMarkdown(text: string): boolean
+{
 	return (
 		MARKDOWN_SIGNS.some((sign) => sign.test(text)) ||
 		hasClosedFence(text) ||
@@ -37,7 +53,8 @@ export function sniffMarkdown(text: string): boolean {
 const COLUMNS_LINE = /^.*(?:\S(?: {2,}|\t)\S|^(?: {2,}|\t)\S).*$/gm;
 
 /** Qg: at least two lines with an interior run of 2+ spaces or a tab, or a leading indent. */
-export function isColumns(text: string): boolean {
+export function isColumns(text: string): boolean
+{
 	const lines = text.matchAll(COLUMNS_LINE);
 	lines.next();
 	return lines.next().done === false;
@@ -54,32 +71,53 @@ const MATH = /\$\$|\\\(|\\\[|(?:```|~~~)\s*math(?!\S)/;
  * markdown (upstream renders it only when the parse holds no math node); the secret checks use the local
  * port of upstream's masker on the source text rather than on the rendered text.
  */
-function markdownAllowed(text: string): boolean {
+function markdownAllowed(text: string): boolean
+{
 	const stripped = stripMemoryTags(text);
 	if (ANSI.test(stripped) || !sniffMarkdown(stripped)) return false;
 	return !MATH.test(stripped) && maskSecrets(text) === text;
 }
 
 /** qe */
-function lineCount(text: string): number {
+function lineCount(text: string): number
+{
 	return text.split("\n").length;
 }
 
 /** o_: the body's kind. Callers pass `allowMarkdown: !["Grep", "Glob"].includes(name)` (upstream `Hg`). */
-export function classifyToolBody(text: string, {allowMarkdown}: {allowMarkdown: boolean}): ToolBodyKind {
+export function classifyToolBody(
+	text: string,
+	{
+		allowMarkdown,
+	}:
+	{
+		allowMarkdown: boolean;
+	},
+): ToolBodyKind
+{
 	const pretty = prettyJson(text);
-	if (pretty !== undefined) {
+	if (pretty !== undefined)
+	{
 		return {
 			kind: "json",
 			text: pretty,
 			tile: lineCount(pretty) <= JSON_TILE_MAX_LINES && maskSecrets(pretty) === pretty,
 		};
 	}
-	if (allowMarkdown && text.length <= MAX_CHARS && markdownAllowed(text)) return {kind: "markdown", text};
-	return {kind: "text", text, columns: text.length <= MAX_CHARS && isColumns(text)};
+	if (allowMarkdown && text.length <= MAX_CHARS && markdownAllowed(text))
+		return {
+			kind: "markdown",
+			text,
+		};
+	return {
+		kind: "text",
+		text,
+		columns: text.length <= MAX_CHARS && isColumns(text),
+	};
 }
 
 /** Hg: tools whose output never renders as markdown. */
-export function allowsMarkdownBody(toolName: string): boolean {
+export function allowsMarkdownBody(toolName: string): boolean
+{
 	return toolName !== "Grep" && toolName !== "Glob";
 }

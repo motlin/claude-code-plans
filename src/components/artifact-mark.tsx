@@ -1,4 +1,5 @@
-import {
+import
+{
 	ARTIFACT_MARK_KINDS,
 	ARTIFACT_MARK_SIZES,
 	artifactMarkClassName,
@@ -12,7 +13,11 @@ import {Spinner} from "./ui/spinner";
  * The glyph's 1em box, pinned inline: upstream's glyph is a font character, so a host's `[&_svg]:size-*` rule
  * (the menu icon slot, the palette row) never resizes it; an inline size keeps the lucide svg the same.
  */
-const GLYPH_BOX = {width: "1em", height: "1em"} as const;
+const GLYPH_BOX =
+{
+	width: "1em",
+	height: "1em",
+} as const;
 
 /** Upstream's cds `Icon` at a mark glyph size, pinned to its 1em box; hidden unless labelled. */
 export function ArtifactGlyph({
@@ -25,14 +30,25 @@ export function ArtifactGlyph({
 	size: "sm" | "md";
 	label?: string | undefined;
 	className?: string;
-}) {
+})
+{
 	return (
 		<Icon
 			name={icon}
 			size={size}
 			style={GLYPH_BOX}
-			{...(className === undefined ? {} : {className})}
-			{...(label === undefined ? {} : {alt: label})}
+			{...(className === undefined
+				? {}
+				:
+					{
+						className,
+					})}
+			{...(label === undefined
+				? {}
+				:
+					{
+						alt: label,
+					})}
 		/>
 	);
 }
@@ -54,7 +70,8 @@ export function ArtifactMark({
 	label?: string;
 	busy?: boolean;
 	glyph?: IconName | undefined;
-}) {
+})
+{
 	return (
 		<span data-artifact-mark={kind} data-artifact-mark-size={size} className={artifactMarkClassName(kind, size)}>
 			{busy ? (

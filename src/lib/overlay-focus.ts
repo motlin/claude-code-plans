@@ -25,28 +25,42 @@ export const handoffTargets = new WeakMap<Element, Element>();
 export const parentRefocus = new WeakMap<Element, Element>();
 
 /** Upstream `FV` (modal) / `Kb` (non-modal), the dialog popup's ref callback. */
-export function registerDialogPopup(element: Element | null, modal: boolean): void {
+export function registerDialogPopup(element: Element | null, modal: boolean): void
+{
 	if (element !== null) dialogs.set(element, modal);
 }
 
 /** Upstream `Ha`. */
-export function isModalDialog(element: Element): boolean {
+export function isModalDialog(element: Element): boolean
+{
 	return dialogs.get(element) === true;
 }
 
 /** Upstream `Sh`: a Menu/Popover popup's "who opened me" getter. */
-export function registerOpenerReturn(popup: Element, getter: () => Element | null): void {
+export function registerOpenerReturn(popup: Element, getter: () => Element | null): void
+{
 	openerReturns.set(popup, getter);
 }
 
 /** Upstream `Wm`: menu triggers between the opener and the dialog that holds it. */
-export function walkOpenerChain(opener: Element | null): {targets: Element[]; dialog: Element | null} {
+export function walkOpenerChain(opener: Element | null):
+{
+	targets: Element[];
+	dialog: Element | null;
+}
+{
 	const targets: Element[] = [];
 	let node = opener;
-	while (node !== null && targets.length < MAX_CHAIN) {
-		if (dialogs.has(node)) return {targets, dialog: node};
+	while (node !== null && targets.length < MAX_CHAIN)
+	{
+		if (dialogs.has(node))
+			return {
+				targets,
+				dialog: node,
+			};
 		const getter = openerReturns.get(node);
-		if (getter === undefined) {
+		if (getter === undefined)
+		{
 			node = node.parentElement;
 			continue;
 		}
@@ -55,11 +69,15 @@ export function walkOpenerChain(opener: Element | null): {targets: Element[]; di
 		targets.push(next);
 		node = next;
 	}
-	return {targets, dialog: null};
+	return {
+		targets,
+		dialog: null,
+	};
 }
 
 /** Upstream `bD`: the open overlay holding focus, unless focus is idle or inside `popup`. */
-export function overlayHoldingFocus(doc: Document, popup: Element | null): Element | null {
+export function overlayHoldingFocus(doc: Document, popup: Element | null): Element | null
+{
 	const active = doc.activeElement;
 	if (active === null || active === doc.body || popup?.contains(active) === true) return null;
 	const overlay = active.closest(`[${OVERLAY_ATTR}]`);
@@ -67,13 +85,16 @@ export function overlayHoldingFocus(doc: Document, popup: Element | null): Eleme
 }
 
 /** Upstream `uY`: the first open overlay after `element` in document order, outside inert/aria-hidden trees. */
-export function nextOpenOverlayAfter(doc: Document, element: Element): Element | null {
-	for (const node of doc.querySelectorAll(OPEN_OVERLAY_SELECTOR)) {
+export function nextOpenOverlayAfter(doc: Document, element: Element): Element | null
+{
+	for (const node of doc.querySelectorAll(OPEN_OVERLAY_SELECTOR))
+	{
 		if (
 			node !== element &&
 			node.closest(INERT_SELECTOR) === null &&
 			(element.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
-		) {
+		)
+		{
 			return node;
 		}
 	}
@@ -81,8 +102,10 @@ export function nextOpenOverlayAfter(doc: Document, element: Element): Element |
 }
 
 /** Upstream `op`: the nearest open registered modal dialog at or above `element`. */
-export function openModalAncestor(element: Element): Element | null {
-	for (let node: Element | null = element; node !== null; node = node.parentElement) {
+export function openModalAncestor(element: Element): Element | null
+{
+	for (let node: Element | null = element; node !== null; node = node.parentElement)
+	{
 		if (isModalDialog(node) && node.hasAttribute("data-open")) return node;
 	}
 	return null;
@@ -92,13 +115,19 @@ export function openModalAncestor(element: Element): Element | null {
  * Upstream `TH`: the target to hand Base UI, or `false` to leave focus alone. A `tabIndex<0` target is focused
  * here (Base UI would focus its first tabbable child instead).
  */
-export function safeFocusTarget(target: Element | null | undefined, popup: Element | null): HTMLElement | false {
+export function safeFocusTarget(target: Element | null | undefined, popup: Element | null): HTMLElement | false
+{
 	if (target?.isConnected !== true || !(target instanceof HTMLElement)) return false;
 	const active = target.ownerDocument.activeElement;
 	if (active !== null && active.matches(EDITABLE_SELECTOR) && popup?.contains(active) !== true) return false;
 	if (active !== null && openModalAncestor(active)?.contains(target) === false) return false;
-	if (target.tabIndex < 0) {
-		target.focus({preventScroll: true});
+	if (target.tabIndex < 0)
+	{
+		target.focus(
+			{
+				preventScroll: true,
+			},
+		);
 		return false;
 	}
 	return target;
@@ -109,7 +138,8 @@ export function safeFocusTarget(target: Element | null | undefined, popup: Eleme
  * the trigger is the element whose `aria-controls` names the popup, and the opener is what held focus when
  * the popup mounted.
  */
-export function registerPopupOpener(popup: HTMLElement | null): void {
+export function registerPopupOpener(popup: HTMLElement | null): void
+{
 	if (popup === null) return;
 	const doc = popup.ownerDocument;
 	const active = doc.activeElement;

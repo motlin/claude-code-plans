@@ -1,11 +1,13 @@
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
-export function FallbackRenderer({toolCall}: ToolRendererProps) {
+export function FallbackRenderer({toolCall}: ToolRendererProps)
+{
 	const {input, result, isError} = toolCall;
 	const entries = Object.entries(input).filter(([k]) => k !== "type");
 
-	const params = entries.map(([key, value]) => ({
+	const params = entries.map(([key, value]) => (
+	{
 		key,
 		value: typeof value === "string" ? value : JSON.stringify(value),
 	}));
@@ -14,7 +16,8 @@ export function FallbackRenderer({toolCall}: ToolRendererProps) {
 }
 
 /** A call whose input failed its tool's schema: the input exactly as written, then the result. */
-export function InvalidInputRenderer({toolCall}: ToolRendererProps) {
+export function InvalidInputRenderer({toolCall}: ToolRendererProps)
+{
 	const {input, result, isError} = toolCall;
 	const json = JSON.stringify(input, null, 2);
 	return (

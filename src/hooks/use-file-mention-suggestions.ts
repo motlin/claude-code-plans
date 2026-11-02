@@ -4,7 +4,8 @@ import {apiFetch} from "../lib/api/client";
 import {fileMentionsUrl, type SessionFilesEntry, SessionFilesResponseSchema} from "../lib/api/session-files";
 import {FILE_MENTION_CAP, FILE_MENTION_DEBOUNCE_MS, HIDDEN_MENTION_NAMES} from "../lib/file-mentions";
 
-export interface FileMentionSuggestions {
+export interface FileMentionSuggestions
+{
 	/** The mention query these entries answer. */
 	query: string;
 	entries: SessionFilesEntry[];
@@ -19,36 +20,54 @@ export interface FileMentionSuggestions {
 export function useFileMentionSuggestions(
 	sessionId: string | undefined,
 	query: string | null,
-): FileMentionSuggestions | null {
+): FileMentionSuggestions | null
+{
 	const [suggestions, setSuggestions] = useState<FileMentionSuggestions | null>(null);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (sessionId === undefined || query === null) return undefined;
 		const controller = new AbortController();
-		const timer = setTimeout(() => {
-			apiFetch(fileMentionsUrl(sessionId, query), SessionFilesResponseSchema, {
-				signal: controller.signal,
-			}).then(
-				(response) => {
+		const timer = setTimeout(() =>
+		{
+			apiFetch(
+				fileMentionsUrl(sessionId, query),
+				SessionFilesResponseSchema,
+				{
+					signal: controller.signal,
+				},
+			).then(
+				(response) =>
+				{
 					const entries =
 						response.kind === "listing"
 							? response.entries
 							: response.kind === "search"
 								? response.results
 								: [];
-					setSuggestions({
-						query,
-						entries: entries
-							.filter((entry) => !HIDDEN_MENTION_NAMES.has(entry.name))
-							.slice(0, FILE_MENTION_CAP),
-					});
+					setSuggestions(
+						{
+							query,
+							entries: entries
+								.filter((entry) => !HIDDEN_MENTION_NAMES.has(entry.name))
+								.slice(0, FILE_MENTION_CAP),
+						},
+					);
 				},
-				() => {
-					if (!controller.signal.aborted) setSuggestions({query, entries: []});
+				() =>
+				{
+					if (!controller.signal.aborted)
+						setSuggestions(
+							{
+								query,
+								entries: [],
+							},
+						);
 				},
 			);
 		}, FILE_MENTION_DEBOUNCE_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 			controller.abort();
 		};

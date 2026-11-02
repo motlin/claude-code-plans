@@ -17,17 +17,20 @@ const TRACK_TAIL =
 const KNOB_TAIL =
 	"rounded-full bg-white shadow-sm transition-transform duration-[120ms] ease-[cubic-bezier(0.34,1.3,0.64,1)] motion-reduce:transition-none";
 
-const TRACK_CLASS = {
+const TRACK_CLASS =
+{
 	xs: `relative inline-flex h-[14px] w-[25.2px] ${TRACK_TAIL}`,
 	xxs: `relative inline-flex h-[var(--cds-switch-h)] w-[calc(var(--cds-switch-h)*1.8)] ${TRACK_TAIL}`,
 } as const;
 
-const KNOB_CLASS = {
+const KNOB_CLASS =
+{
 	xs: `block size-[10px] ${KNOB_TAIL} data-[checked]:translate-x-[11.2px] rtl:data-[checked]:-translate-x-[11.2px]`,
 	xxs: `block size-[calc(var(--cds-switch-h)-4px)] ${KNOB_TAIL} data-[checked]:translate-x-[calc(var(--cds-switch-h)*0.8)] rtl:data-[checked]:-translate-x-[calc(var(--cds-switch-h)*0.8)]`,
 } as const;
 
-export interface SwitchProps {
+export interface SwitchProps
+{
 	id?: string | undefined;
 	checked: boolean;
 	/** `xs` is a fixed 14px track; `xxs` follows the scope's `--cds-switch-h`. */
@@ -66,27 +69,80 @@ export function Switch({
 	"aria-label": ariaLabel,
 	disabledReason,
 	disabledReasonSide,
-}: SwitchProps) {
-	const state = checked ? {"data-checked": ""} : {"data-unchecked": ""};
+}: SwitchProps)
+{
+	const state = checked
+		?
+			{
+				"data-checked": "",
+			}
+		:
+			{
+				"data-unchecked": "",
+			};
 	const track = (
 		<button
-			{...(id === undefined ? {} : {id})}
+			{...(id === undefined
+				? {}
+				:
+					{
+						id,
+					})}
 			type="button"
 			role="switch"
 			aria-checked={checked}
-			{...(ariaLabel === undefined ? {} : {"aria-label": ariaLabel})}
-			{...(labelledBy === undefined ? {} : {"aria-labelledby": labelledBy})}
-			{...(describedBy === undefined ? {} : {"aria-describedby": describedBy})}
-			{...(busy ? {"aria-busy": true, "aria-disabled": true} : {})}
-			{...(onCheckedChange === undefined ? {"aria-readonly": true} : {})}
-			{...(disabled ? {disabled: true, "data-disabled": ""} : {})}
-			{...(testId === undefined ? {} : {"data-testid": testId})}
+			{...(ariaLabel === undefined
+				? {}
+				:
+					{
+						"aria-label": ariaLabel,
+					})}
+			{...(labelledBy === undefined
+				? {}
+				:
+					{
+						"aria-labelledby": labelledBy,
+					})}
+			{...(describedBy === undefined
+				? {}
+				:
+					{
+						"aria-describedby": describedBy,
+					})}
+			{...(busy
+				?
+					{
+						"aria-busy": true,
+						"aria-disabled": true,
+					}
+				: {})}
+			{...(onCheckedChange === undefined
+				?
+					{
+						"aria-readonly": true,
+					}
+				: {})}
+			{...(disabled
+				?
+					{
+						disabled: true,
+						"data-disabled": "",
+					}
+				: {})}
+			{...(testId === undefined
+				? {}
+				:
+					{
+						"data-testid": testId,
+					})}
 			data-size={size}
 			{...state}
-			onClick={() => {
+			onClick={() =>
+			{
 				if (!busy) onCheckedChange?.(!checked);
 			}}
-			onKeyDown={(event) => {
+			onKeyDown={(event) =>
+			{
 				// Upstream swallows a held Enter so it can't flip the switch over and over.
 				if (event.repeat && event.key === "Enter") event.preventDefault();
 			}}
@@ -99,7 +155,12 @@ export function Switch({
 	return (
 		<DisabledReason
 			reason={disabled ? disabledReason : null}
-			{...(disabledReasonSide === undefined ? {} : {side: disabledReasonSide})}
+			{...(disabledReasonSide === undefined
+				? {}
+				:
+					{
+						side: disabledReasonSide,
+					})}
 		>
 			{track}
 		</DisabledReason>

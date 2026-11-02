@@ -1,5 +1,6 @@
 import {inputString} from "../../lib/tool-utils";
-import {
+import
+{
 	CheckCircle,
 	Globe,
 	File,
@@ -15,7 +16,8 @@ import {
 } from "lucide-react";
 import type {ToolRendererProps} from "./types";
 import {CopyableBody, ErrorBorder, NavigateUrl} from "./shared";
-import {
+import
+{
 	type ConsoleMessage,
 	type NetworkRequest,
 	type PageInfo,
@@ -30,8 +32,10 @@ import {asRecord} from "../../lib/narrow";
 // Style helpers
 // ---------------------------------------------------------------------------
 
-function logLevelBadgeClasses(level: string): string {
-	switch (level) {
+function logLevelBadgeClasses(level: string): string
+{
+	switch (level)
+	{
 		case "error":
 			return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
 		case "warn":
@@ -45,8 +49,10 @@ function logLevelBadgeClasses(level: string): string {
 	}
 }
 
-function logLevelIcon(level: string) {
-	switch (level) {
+function logLevelIcon(level: string)
+{
+	switch (level)
+	{
 		case "error":
 			return <XCircle className="h-4 w-4 text-red-500" />;
 		case "warn":
@@ -60,8 +66,10 @@ function logLevelIcon(level: string) {
 	}
 }
 
-function httpMethodClasses(method: string): string {
-	switch (method) {
+function httpMethodClasses(method: string): string
+{
+	switch (method)
+	{
 		case "GET":
 			return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
 		case "POST":
@@ -77,25 +85,31 @@ function httpMethodClasses(method: string): string {
 	}
 }
 
-function statusCodeClasses(status: string, code?: number): string {
-	if (status === "failed" || (code !== undefined && code >= 400)) {
+function statusCodeClasses(status: string, code?: number): string
+{
+	if (status === "failed" || (code !== undefined && code >= 400))
+	{
 		return "bg-red-100 text-red-700";
 	}
-	if (code !== undefined && code >= 300 && code < 400) {
+	if (code !== undefined && code >= 300 && code < 400)
+	{
 		return "bg-amber-100 text-amber-700";
 	}
-	if (status === "success" || (code !== undefined && code >= 200 && code < 300)) {
+	if (status === "success" || (code !== undefined && code >= 200 && code < 300))
+	{
 		return "bg-green-100 text-green-700";
 	}
 	return "bg-gray-100 text-gray-600";
 }
 
-function truncateUrlEnd(url: string, max: number): string {
+function truncateUrlEnd(url: string, max: number): string
+{
 	if (url.length <= max) return url;
 	return "..." + url.slice(url.length - (max - 3));
 }
 
-function isHttpUrl(url: string): boolean {
+function isHttpUrl(url: string): boolean
+{
 	return url.startsWith("http://") || url.startsWith("https://");
 }
 
@@ -103,7 +117,8 @@ function isHttpUrl(url: string): boolean {
 // Shared components
 // ---------------------------------------------------------------------------
 
-function PageList({pages}: {pages: PageInfo[]}) {
+function PageList({pages}: {pages: PageInfo[]})
+{
 	if (pages.length === 0) return null;
 	return (
 		<div className="space-y-0.5">
@@ -141,7 +156,8 @@ function PageList({pages}: {pages: PageInfo[]}) {
 // Sub-renderers
 // ---------------------------------------------------------------------------
 
-function NavigatePageRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string}) {
+function NavigatePageRenderer({input, resultText}: {input: Record<string, unknown>; resultText: string})
+{
 	const url = inputString(input, "url") ?? "";
 	const pages = parsePageList(resultText);
 
@@ -157,7 +173,8 @@ function NavigatePageRenderer({input, resultText}: {input: Record<string, unknow
 	);
 }
 
-function NewPageRenderer({resultText}: {resultText: string}) {
+function NewPageRenderer({resultText}: {resultText: string})
+{
 	const pages = parsePageList(resultText);
 	return (
 		<div className="px-2 py-2 space-y-2">
@@ -170,7 +187,8 @@ function NewPageRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function ClosePageRenderer({resultText}: {resultText: string}) {
+function ClosePageRenderer({resultText}: {resultText: string})
+{
 	const pages = parsePageList(resultText);
 	return (
 		<div className="px-2 py-2 space-y-2">
@@ -183,7 +201,8 @@ function ClosePageRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function ListPagesRenderer({resultText}: {resultText: string}) {
+function ListPagesRenderer({resultText}: {resultText: string})
+{
 	const pages = parsePageList(resultText);
 	return (
 		<div className="px-2 py-2">
@@ -196,16 +215,21 @@ function ListPagesRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function ListConsoleMessagesRenderer({resultText}: {resultText: string}) {
+function ListConsoleMessagesRenderer({resultText}: {resultText: string})
+{
 	const lines = resultText.split("\n").filter((l) => l.trim());
 	const messages: ConsoleMessage[] = [];
 	let totalLine: string | undefined;
 
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		const parsed = parseConsoleMessage(line);
-		if (parsed) {
+		if (parsed)
+		{
 			messages.push(parsed);
-		} else if (/^\d+\s+messages?\s+total$/i.test(line.trim()) || /^Showing\s+/i.test(line.trim())) {
+		}
+		else if (/^\d+\s+messages?\s+total$/i.test(line.trim()) || /^Showing\s+/i.test(line.trim()))
+		{
 			totalLine = line.trim();
 		}
 	}
@@ -228,7 +252,8 @@ function ListConsoleMessagesRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function GetConsoleMessageRenderer({resultText}: {resultText: string}) {
+function GetConsoleMessageRenderer({resultText}: {resultText: string})
+{
 	// Parse ID, level, message, and arguments
 	const idMatch = /^ID:\s*(\d+)/m.exec(resultText);
 	const msgMatch = /^Message:\s*(\w+)>\s*(.+)/m.exec(resultText);
@@ -238,14 +263,22 @@ function GetConsoleMessageRenderer({resultText}: {resultText: string}) {
 
 	// Parse arguments section
 	const argsSection = resultText.split("### Arguments")[1];
-	const args: Array<{index: number; value: string}> = [];
-	if (argsSection) {
+	const args: Array<
+	{
+		index: number;
+		value: string;
+	}> = [];
+	if (argsSection)
+	{
 		const argMatches = argsSection.matchAll(/Arg\s+#(\d+):\s*([\s\S]*?)(?=Arg\s+#|\s*$)/g);
-		for (const m of argMatches) {
-			args.push({
-				index: parseInt(defined(m[1], "argument index group"), 10),
-				value: defined(m[2], "argument value group").trim(),
-			});
+		for (const m of argMatches)
+		{
+			args.push(
+				{
+					index: parseInt(defined(m[1], "argument index group"), 10),
+					value: defined(m[2], "argument value group").trim(),
+				},
+			);
 		}
 	}
 
@@ -260,14 +293,18 @@ function GetConsoleMessageRenderer({resultText}: {resultText: string}) {
 			{args.length > 0 && (
 				<div className="space-y-1 border-l-2 border-border pl-3 mt-2">
 					<div className="text-body text-secondary font-medium">Arguments</div>
-					{args.map((arg) => {
+					{args.map((arg) =>
+					{
 						let isJson = false;
 						let formatted = arg.value;
-						try {
+						try
+						{
 							const parsed: unknown = JSON.parse(arg.value);
 							formatted = JSON.stringify(parsed, null, 2);
 							isJson = true;
-						} catch {
+						}
+						catch
+						{
 							// plain text
 						}
 						return (
@@ -289,7 +326,8 @@ function GetConsoleMessageRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function TakeScreenshotRenderer({resultText}: {resultText: string}) {
+function TakeScreenshotRenderer({resultText}: {resultText: string})
+{
 	const pathMatch = /Saved screenshot to (.+)/.exec(resultText);
 	const path = pathMatch?.[1]?.trim() ?? "";
 
@@ -304,7 +342,8 @@ function TakeScreenshotRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function ScreenshotRenderer({path}: {path: string}) {
+function ScreenshotRenderer({path}: {path: string})
+{
 	return (
 		<div className="px-2 py-2 space-y-2">
 			<div className="flex items-center gap-2">
@@ -316,7 +355,8 @@ function ScreenshotRenderer({path}: {path: string}) {
 	);
 }
 
-function TakeSnapshotRenderer({resultText}: {resultText: string}) {
+function TakeSnapshotRenderer({resultText}: {resultText: string})
+{
 	// Extract page title and URL from RootWebArea line
 	const rootMatch = /RootWebArea\s+"([^"]*)"(?:\s+url="([^"]*)")?/.exec(resultText);
 	const title = rootMatch?.[1] ?? "";
@@ -354,13 +394,16 @@ function TakeSnapshotRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function ListNetworkRequestsRenderer({resultText}: {resultText: string}) {
+function ListNetworkRequestsRenderer({resultText}: {resultText: string})
+{
 	const lines = resultText.split("\n").filter((l) => l.trim());
 	const requests: NetworkRequest[] = [];
 
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		const parsed = parseNetworkRequest(line);
-		if (parsed) {
+		if (parsed)
+		{
 			requests.push(parsed);
 		}
 	}
@@ -402,7 +445,16 @@ function ListNetworkRequestsRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function HeadersList({headers}: {headers: Array<{name: string; value: string}>}) {
+function HeadersList({
+	headers,
+}: {
+	headers: Array<
+	{
+		name: string;
+		value: string;
+	}>;
+})
+{
 	return (
 		<div className="mt-1 bg-t1 rounded-r6 p-2 max-h-32 overflow-auto">
 			{headers.map((h, i) => (
@@ -415,7 +467,8 @@ function HeadersList({headers}: {headers: Array<{name: string; value: string}>})
 	);
 }
 
-function GetNetworkRequestRenderer({resultText}: {resultText: string}) {
+function GetNetworkRequestRenderer({resultText}: {resultText: string})
+{
 	// Parse URL from "## Request <url>"
 	const urlMatch = /^##\s+Request\s+(.+)/m.exec(resultText);
 	const url = urlMatch?.[1]?.trim() ?? "";
@@ -426,12 +479,28 @@ function GetNetworkRequestRenderer({resultText}: {resultText: string}) {
 	const statusCode = statusMatch?.[2] ? parseInt(statusMatch[2], 10) : undefined;
 
 	// Parse headers (- Name: Value lines)
-	function parseHeaders(section: string): Array<{name: string; value: string}> {
-		const headers: Array<{name: string; value: string}> = [];
-		for (const line of section.split("\n")) {
+	function parseHeaders(section: string): Array<
+	{
+		name: string;
+		value: string;
+	}>
+	{
+		const headers: Array<
+		{
+			name: string;
+			value: string;
+		}> = [];
+		for (const line of section.split("\n"))
+		{
 			const m = /^-\s+(.+?):\s+(.+)/.exec(line.trim());
-			if (m) {
-				headers.push({name: defined(m[1], "header name group"), value: defined(m[2], "header value group")});
+			if (m)
+			{
+				headers.push(
+					{
+						name: defined(m[1], "header name group"),
+						value: defined(m[2], "header value group"),
+					},
+				);
 			}
 		}
 		return headers;
@@ -448,12 +517,17 @@ function GetNetworkRequestRenderer({resultText}: {resultText: string}) {
 	const reqBody = reqBodySection.trim();
 	const resBody = resBodySection.trim();
 
-	function formatBody(body: string): string {
+	function formatBody(body: string): string
+	{
 		if (!body) return body;
-		if (body.startsWith("{") || body.startsWith("[")) {
-			try {
+		if (body.startsWith("{") || body.startsWith("["))
+		{
+			try
+			{
 				return JSON.stringify(JSON.parse(body), null, 2);
-			} catch {
+			}
+			catch
+			{
 				// not valid JSON
 			}
 		}
@@ -537,7 +611,8 @@ function GetNetworkRequestRenderer({resultText}: {resultText: string}) {
 	);
 }
 
-function DefaultCdpRenderer({resultText}: {resultText: string}) {
+function DefaultCdpRenderer({resultText}: {resultText: string})
+{
 	return (
 		<div className="bg-t1 rounded-r6 p-3 max-h-64 overflow-auto">
 			<pre className="text-primary text-code font-mono whitespace-pre-wrap">{resultText}</pre>
@@ -549,7 +624,8 @@ function DefaultCdpRenderer({resultText}: {resultText: string}) {
 // Entry point
 // ---------------------------------------------------------------------------
 
-export function ChromeDevtoolsRenderer({toolCall}: ToolRendererProps) {
+export function ChromeDevtoolsRenderer({toolCall}: ToolRendererProps)
+{
 	const tool = toolCall.name.split("__").slice(2).join("__");
 	const resultText = toolCall.result ?? "";
 	const input = toolCall.input as Record<string, unknown>;
@@ -571,22 +647,28 @@ function ChromeDevtoolsContent({
 	tool: string;
 	input: Record<string, unknown>;
 	resultText: string;
-}) {
+})
+{
 	let parsedResult: Record<string, unknown> | undefined;
-	try {
+	try
+	{
 		parsedResult = asRecord(JSON.parse(resultText));
-	} catch {
+	}
+	catch
+	{
 		/* text result */
 	}
 
 	const screenshotPath = parsedResult && inputString(parsedResult, "screenshot_path", "path");
-	if (screenshotPath && /\.(png|jpg|jpeg|gif|webp)$/i.test(screenshotPath)) {
+	if (screenshotPath && /\.(png|jpg|jpeg|gif|webp)$/i.test(screenshotPath))
+	{
 		return <ScreenshotRenderer path={screenshotPath} />;
 	}
 
 	if (!resultText) return <span className="text-body text-secondary">No result</span>;
 
-	switch (tool) {
+	switch (tool)
+	{
 		case "navigate_page":
 			return <NavigatePageRenderer input={input} resultText={resultText} />;
 		case "new_page":

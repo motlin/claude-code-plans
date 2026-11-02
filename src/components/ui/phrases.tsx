@@ -11,7 +11,8 @@ import {useRowCut} from "../../lib/use-row-cut";
  * probe for the phrase-boundary measurer (turn-status-phrase-clip T2), which has not
  * landed, so that path still clips by CSS alone.
  */
-export function Phrases({children}: {children: string | readonly string[]}) {
+export function Phrases({children}: {children: string | readonly string[]})
+{
 	const phrases = (typeof children === "string" ? [children] : children).filter((phrase) => phrase !== "");
 	const type = useFizzyLake("type");
 	const measures = phrases.length > 1 && !type;

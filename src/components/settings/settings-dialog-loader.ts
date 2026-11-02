@@ -8,14 +8,17 @@ let loadedDialog: SettingsDialogModule["SettingsDialog"] | undefined;
 
 /** The Settings modal's one module download, shared by its lazy boundary and the idle and intent warm-ups. */
 // oxlint-disable-next-line typescript/promise-function-async -- returns the one cached download, which use() needs to be stable
-export function loadSettingsDialog(): Promise<SettingsDialogModule> {
+export function loadSettingsDialog(): Promise<SettingsDialogModule>
+{
 	dialogModule ??= trackFulfillment(
 		import("./settings-dialog")
-			.then((module) => {
+			.then((module) =>
+			{
 				loadedDialog = module.SettingsDialog;
 				return module;
 			})
-			.catch((error: unknown) => {
+			.catch((error: unknown) =>
+			{
 				// A failed download is retried on the next open.
 				dialogModule = undefined;
 				throw error;
@@ -25,6 +28,7 @@ export function loadSettingsDialog(): Promise<SettingsDialogModule> {
 }
 
 /** The Settings modal once its module has downloaded, so it renders without suspending. */
-export function loadedSettingsDialog(): SettingsDialogModule["SettingsDialog"] | undefined {
+export function loadedSettingsDialog(): SettingsDialogModule["SettingsDialog"] | undefined
+{
 	return loadedDialog;
 }

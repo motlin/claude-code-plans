@@ -7,16 +7,19 @@ import type {SystemLine} from "./system-banner-text";
 
 export type CompactMetadata = SystemLine["compactMetadata"];
 
-function formatMs(ms: number): string {
+function formatMs(ms: number): string
+{
 	if (ms >= 60_000) return `${(ms / 60_000).toFixed(1)}m`;
 	if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
 	return `${Math.round(ms)}ms`;
 }
 
 /** Headline for the error union (string, or a record with formatted/message). */
-function errorHeadline(error: SystemLine["error"]): string | undefined {
+function errorHeadline(error: SystemLine["error"]): string | undefined
+{
 	if (typeof error === "string") return error;
-	if (error && typeof error === "object") {
+	if (error && typeof error === "object")
+	{
 		const formatted = error["formatted"];
 		if (typeof formatted === "string") return formatted;
 		const message = error["message"];
@@ -25,7 +28,8 @@ function errorHeadline(error: SystemLine["error"]): string | undefined {
 	return undefined;
 }
 
-function jsonText(value: unknown): string {
+function jsonText(value: unknown): string
+{
 	return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
@@ -35,9 +39,12 @@ function jsonText(value: unknown): string {
  * model_refusal_no_fallback) as a compact informational banner, mirroring
  * the visual language of AttachmentBanner.
  */
-export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: string | undefined}) {
-	switch (line.subtype) {
-		case "compact_boundary": {
+export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: string | undefined})
+{
+	switch (line.subtype)
+	{
+		case "compact_boundary":
+		{
 			const meta = line.compactMetadata;
 			const preserved = meta?.preservedMessages;
 			const segment = meta?.preservedSegment;
@@ -63,7 +70,8 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 				</Banner>
 			);
 		}
-		case "stop_hook_summary": {
+		case "stop_hook_summary":
+		{
 			const errorCount = line.hookErrors?.length ?? 0;
 			const contextCount = line.hookAdditionalContext?.length ?? 0;
 			return (
@@ -133,7 +141,8 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 					)}
 				</Banner>
 			);
-		case "scheduled_task_fire": {
+		case "scheduled_task_fire":
+		{
 			const streak = line.noOpStreak ?? 0;
 			return (
 				<Banner
@@ -145,7 +154,12 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 					{line.cron !== undefined && (
 						<span
 							className="font-mono"
-							{...(line.taskId === undefined ? {} : {title: `task ${line.taskId}`})}
+							{...(line.taskId === undefined
+								? {}
+								:
+									{
+										title: `task ${line.taskId}`,
+									})}
 						>
 							{line.cron}
 						</span>
@@ -164,7 +178,8 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 				</Banner>
 			);
 		}
-		case "local_command": {
+		case "local_command":
+		{
 			const run = line.commandRun;
 			const commandText =
 				run === undefined ? "Local command" : `/${run.command}${run.args ? ` ${run.args}` : ""}`;
@@ -210,7 +225,15 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 						<span className="font-mono text-danger-000">{line.apiRefusalCategory}</span>
 					)}
 					{line.originalModel !== undefined && (
-						<span className="font-mono" {...(line.requestId === undefined ? {} : {title: line.requestId})}>
+						<span
+							className="font-mono"
+							{...(line.requestId === undefined
+								? {}
+								:
+									{
+										title: line.requestId,
+									})}
+						>
 							{line.originalModel}
 						</span>
 					)}

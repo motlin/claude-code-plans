@@ -13,7 +13,8 @@ import {TOOL_OUTPUT_CLAMP, TOOL_OUTPUT_REGION} from "./tool-output-region";
  * Upstream's code tile (`Hv` > `$c`, the Bash command card's look): no header or line numbers, wrapped lines,
  * always left-to-right, on the code theme's background (`Zr`).
  */
-function JsonTile({code}: {code: string}) {
+function JsonTile({code}: {code: string})
+{
 	const tokens = useHighlightedLines(code, "json");
 	const background = useCodeThemeBackground();
 	return (
@@ -21,7 +22,10 @@ function JsonTile({code}: {code: string}) {
 			<div
 				dir="ltr"
 				className="epitaxy-diff epitaxy-code-card rounded-lg flex overflow-clip px-md py-xs text-code"
-				style={{background}}
+				style={
+				{
+					background,
+				}}
 			>
 				<div className="min-w-0 flex-1">
 					{tokens === null
@@ -30,7 +34,13 @@ function JsonTile({code}: {code: string}) {
 								<span key={lineIndex}>
 									{lineIndex > 0 && "\n"}
 									{line.map((token: ThemedToken, tokenIndex: number) => (
-										<span key={tokenIndex} style={{color: token.color}}>
+										<span
+											key={tokenIndex}
+											style={
+											{
+												color: token.color,
+											}}
+										>
 											{token.content}
 										</span>
 									))}
@@ -48,7 +58,8 @@ function JsonTile({code}: {code: string}) {
  * when too long or holding a secret); columns text in `text-code`; plain text bare. Non-markdown text goes through
  * the transcript's plain renderer: ANSI painted, secrets cloaked, and plain runs linking at most 200 URLs.
  */
-export function ToolOutputBody({body}: {body: ToolBodyKind}) {
+export function ToolOutputBody({body}: {body: ToolBodyKind})
+{
 	const json = body.kind === "json";
 	return (
 		<div {...TOOL_OUTPUT_REGION} className={TOOL_OUTPUT_CLAMP}>
@@ -60,8 +71,15 @@ export function ToolOutputBody({body}: {body: ToolBodyKind}) {
 				<JsonTile code={body.text} />
 			) : (
 				<div
-					{...((json || body.columns) && {className: "text-code"})}
-					{...(json && pageIsRtl() && {dir: "ltr"})}
+					{...((json || body.columns) &&
+					{
+						className: "text-code",
+					})}
+					{...(json &&
+						pageIsRtl() &&
+						{
+							dir: "ltr",
+						})}
 				>
 					<PlainText renderPlain={linkifyToolText}>{body.text}</PlainText>
 				</div>

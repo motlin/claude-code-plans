@@ -10,14 +10,16 @@ const AllowedPromptsSchema = z.array(ExitPlanModeAllowedPromptSchema);
  * Read the `allowedPrompts` field of an `ExitPlanMode` input. Anything that
  * does not match the on-disk shape is dropped rather than rendered raw.
  */
-export function parseAllowedPrompts(value: unknown): ExitPlanModeAllowedPrompt[] {
+export function parseAllowedPrompts(value: unknown): ExitPlanModeAllowedPrompt[]
+{
 	const parsed = AllowedPromptsSchema.safeParse(value);
 	return parsed.success ? parsed.data : [];
 }
 
 export type ExitPlanModeStatusTone = "approved" | "rejected" | "error" | "info";
 
-export interface ExitPlanModeStatus {
+export interface ExitPlanModeStatus
+{
 	tone: ExitPlanModeStatusTone;
 	text: string;
 	/** The user's own words, when they rejected the plan with feedback. */
@@ -30,7 +32,8 @@ const APPROVAL_PREFIX = "User has approved";
 export type ExitPlanModeState = "ready" | "approved" | "rejected" | "not-approved";
 
 /** Upstream's words for each plan state ("Plan ready" card eyebrow, tool body, and tool summary). */
-export const EXIT_PLAN_MODE_STATE_LABEL: Record<ExitPlanModeState, string> = {
+export const EXIT_PLAN_MODE_STATE_LABEL: Record<ExitPlanModeState, string> =
+{
 	ready: "Plan ready",
 	approved: "Plan approved",
 	rejected: "Plan rejected",
@@ -45,7 +48,8 @@ export const OPEN_PLAN_ACTION_LABEL = "Open plan";
 export const PLAN_FILE_ACTION_LABEL = "Open plan file";
 
 /** The plan state an `ExitPlanMode` result records; no result yet means it awaits approval. */
-export function exitPlanModeState(result: string | undefined, isError: boolean | undefined): ExitPlanModeState {
+export function exitPlanModeState(result: string | undefined, isError: boolean | undefined): ExitPlanModeState
+{
 	const trimmed = result?.trim();
 	if (!trimmed) return "ready";
 	if (trimmed.startsWith(APPROVAL_PREFIX)) return "approved";
@@ -65,22 +69,35 @@ export function exitPlanModeState(result: string | undefined, isError: boolean |
 export function describeExitPlanModeResult(
 	result: string | undefined,
 	isError: boolean | undefined,
-): ExitPlanModeStatus | null {
+): ExitPlanModeStatus | null
+{
 	const trimmed = result?.trim();
 	if (!trimmed) return null;
 
-	if (trimmed.startsWith(APPROVAL_PREFIX)) {
-		return {tone: "approved", text: EXIT_PLAN_MODE_STATE_LABEL.approved};
+	if (trimmed.startsWith(APPROVAL_PREFIX))
+	{
+		return {
+			tone: "approved",
+			text: EXIT_PLAN_MODE_STATE_LABEL.approved,
+		};
 	}
 
 	const rejection = parseToolRejection(trimmed);
-	if (rejection) {
-		const status: ExitPlanModeStatus = {tone: "rejected", text: EXIT_PLAN_MODE_STATE_LABEL.rejected};
+	if (rejection)
+	{
+		const status: ExitPlanModeStatus =
+		{
+			tone: "rejected",
+			text: EXIT_PLAN_MODE_STATE_LABEL.rejected,
+		};
 		if (rejection.feedback) status.detail = rejection.feedback;
 		return status;
 	}
 
-	return {tone: isError ? "error" : "info", text: trimmed};
+	return {
+		tone: isError ? "error" : "info",
+		text: trimmed,
+	};
 }
 
 /** Upstream's plan block: the plan text as typed, set off by a 2px start border. */
@@ -93,7 +110,8 @@ const BIDI_CONTROL_RE = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\u{E0000}-
 /** A `` `code` `` run never crosses a line, as in upstream's plan block. */
 const INLINE_CODE_RE = /`[^`\n]+`/g;
 
-export interface PlanBlockSegment {
+export interface PlanBlockSegment
+{
 	code: boolean;
 	text: string;
 }
@@ -102,21 +120,41 @@ export interface PlanBlockSegment {
  * The plan block's text with Bidi controls stripped, split so each inline
  * `` `code` `` run can sit in its own `dir="ltr"` span, as upstream's does.
  */
-export function planBlockSegments(plan: string): PlanBlockSegment[] {
+export function planBlockSegments(plan: string): PlanBlockSegment[]
+{
 	const text = plan.replace(BIDI_CONTROL_RE, "");
 	const segments: PlanBlockSegment[] = [];
 	let last = 0;
-	for (const match of text.matchAll(INLINE_CODE_RE)) {
-		if (match.index > last) segments.push({code: false, text: text.slice(last, match.index)});
-		segments.push({code: true, text: match[0]});
+	for (const match of text.matchAll(INLINE_CODE_RE))
+	{
+		if (match.index > last)
+			segments.push(
+				{
+					code: false,
+					text: text.slice(last, match.index),
+				},
+			);
+		segments.push(
+			{
+				code: true,
+				text: match[0],
+			},
+		);
 		last = match.index + match[0].length;
 	}
-	if (last < text.length) segments.push({code: false, text: text.slice(last)});
+	if (last < text.length)
+		segments.push(
+			{
+				code: false,
+				text: text.slice(last),
+			},
+		);
 	return segments;
 }
 
 /** Upstream's `zc`: an ExitPlanMode input's plan when it has any non-space text, else undefined (a planless call). */
-export function planText(input: Record<string, unknown>): string | undefined {
+export function planText(input: Record<string, unknown>): string | undefined
+{
 	const plan = input["plan"];
 	return typeof plan === "string" && plan.trim() !== "" ? plan : undefined;
 }
@@ -126,7 +164,8 @@ export const PLAN_LEAVE_TITLE = "Claude wants to leave plan mode";
 export const PLAN_NOTHING_TO_REVIEW = "Claude hasn’t written a plan, so there’s nothing to review.";
 
 /** Upstream's card subtitle (`Kc`, then `so`): the plan's first non-empty line, its heading mark and Bidi controls dropped. */
-export function planSubtitleLine(plan: string): string {
+export function planSubtitleLine(plan: string): string
+{
 	const line = plan.split("\n").find((candidate) => candidate.trim() !== "") ?? "";
 	return line
 		.trim()
@@ -142,7 +181,8 @@ const HEADING_RE = /^#{1,6}[ \t]+(.+)$/m;
  * Markdown heading before any code fence, its closing `#`s trimmed, links
  * reduced to their text and `*`, `` ` `` and `_` emphasis dropped.
  */
-export function planHeadingMeta(plan: string | undefined): string | undefined {
+export function planHeadingMeta(plan: string | undefined): string | undefined
+{
 	const head = plan?.split(FENCE_RE, 1)[0] ?? "";
 	const match = HEADING_RE.exec(head);
 	if (match?.[1] === undefined) return undefined;

@@ -3,7 +3,8 @@ import {asRecord} from "./narrow";
 import type {MessageSessionLine, SessionLine} from "./transcript";
 
 /** A user line's text blocks, joined and trimmed. */
-export function userText(line: MessageSessionLine): string {
+export function userText(line: MessageSessionLine): string
+{
 	const content = line.message?.content;
 	if (content === undefined) return "";
 	if (typeof content === "string") return content;
@@ -13,12 +14,16 @@ export function userText(line: MessageSessionLine): string {
 		.trim();
 }
 
-function queuedPrompt(attachmentJson: string): string | null {
-	try {
+function queuedPrompt(attachmentJson: string): string | null
+{
+	try
+	{
 		const record = asRecord(JSON.parse(attachmentJson));
 		const prompt = record?.["prompt"];
 		return record?.["type"] === "queued_command" && typeof prompt === "string" ? prompt : null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -28,8 +33,10 @@ function queuedPrompt(attachmentJson: string): string | null {
  * A notification queued while the turn ran arrives as a queued_command
  * attachment instead of a user line.
  */
-export function taskNotificationOf(line: SessionLine): TaskNotification | null {
-	if (line.type === "attachment") {
+export function taskNotificationOf(line: SessionLine): TaskNotification | null
+{
+	if (line.type === "attachment")
+	{
 		const prompt = queuedPrompt(line.attachmentJson);
 		return prompt === null ? null : parseTaskNotification(prompt);
 	}
@@ -41,7 +48,8 @@ export function taskNotificationOf(line: SessionLine): TaskNotification | null {
  * The completed background Agent a user record's notification reports, which
  * upstream draws as "<done description> · took Ns" with no bubble.
  */
-export function agentCompletionOf(line: SessionLine): TaskNotification | null {
+export function agentCompletionOf(line: SessionLine): TaskNotification | null
+{
 	if (line.type !== "user") return null;
 	const notification = taskNotificationOf(line);
 	return notification?.status === "completed" && notification.agent ? notification : null;
@@ -52,7 +60,8 @@ export function agentCompletionOf(line: SessionLine): TaskNotification | null {
  * (upstream `gN` taskEvents), or null. An agent completion draws its own row
  * instead, so it never folds.
  */
-export function foldedTaskNotificationOf(line: SessionLine): TaskNotification | null {
+export function foldedTaskNotificationOf(line: SessionLine): TaskNotification | null
+{
 	const notification = taskNotificationOf(line);
 	return notification !== null && agentCompletionOf(line) === null ? notification : null;
 }

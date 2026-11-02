@@ -1,7 +1,9 @@
 import type {PlanListItem} from "../lib/api/plans";
 
-export function selectPlanFilenames(plans: PlanListItem[]): Set<string> {
-	if (plans !== memoSource) {
+export function selectPlanFilenames(plans: PlanListItem[]): Set<string>
+{
+	if (plans !== memoSource)
+	{
 		memoSource = plans;
 		memoSet = new Set(plans.map((plan) => plan.filename));
 	}

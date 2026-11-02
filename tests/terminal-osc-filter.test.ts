@@ -4,21 +4,26 @@ import {createOscFilter} from "../src/lib/terminal-osc-filter";
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-function run(chunks: readonly string[]): string {
+function run(chunks: readonly string[]): string
+{
 	const filter = createOscFilter();
 	return chunks.map((chunk) => decoder.decode(filter(encoder.encode(chunk)))).join("");
 }
 
-function everySplit(input: string): string[] {
+function everySplit(input: string): string[]
+{
 	const outputs: string[] = [];
-	for (let index = 0; index <= input.length; index++) {
+	for (let index = 0; index <= input.length; index++)
+	{
 		outputs.push(run([input.slice(0, index), input.slice(index)]));
 	}
 	return outputs;
 }
 
-describe("createOscFilter", () => {
-	it("drops the iTerm2 shell-integration and tab-colour sequences zsh emits", () => {
+describe("createOscFilter", () =>
+{
+	it("drops the iTerm2 shell-integration and tab-colour sequences zsh emits", () =>
+	{
 		const input =
 			"\u001B]1337;RemoteHost=craig@host.local\u0007" +
 			"\u001B]1337;CurrentDir=/Users/craig/projects/klass\u0007" +
@@ -30,12 +35,14 @@ describe("createOscFilter", () => {
 		expect(run([input])).toBe("prompt% ");
 	});
 
-	it("drops them when split across chunks at any byte", () => {
+	it("drops them when split across chunks at any byte", () =>
+	{
 		const input = "a\u001B]1337;CurrentDir=/tmp\u0007b\u001B]6;1;bg;red;brightness;35\u001B\\c";
 		expect(new Set(everySplit(input))).toEqual(new Set(["abc"]));
 	});
 
-	it("passes title, hyperlink, cwd, and semantic-prompt sequences through untouched", () => {
+	it("passes title, hyperlink, cwd, and semantic-prompt sequences through untouched", () =>
+	{
 		const input =
 			"\u001B]0;title\u0007" +
 			"\u001B]2;window\u001B\\" +
@@ -47,7 +54,8 @@ describe("createOscFilter", () => {
 		expect(new Set(everySplit(input))).toEqual(new Set([input]));
 	});
 
-	it("passes other escape sequences and plain bytes through", () => {
+	it("passes other escape sequences and plain bytes through", () =>
+	{
 		const input = "\u001B[1;31mred\u001B[0m \u001B(B\u001B\u001B]xé";
 		expect(new Set(everySplit(input))).toEqual(new Set([input]));
 	});

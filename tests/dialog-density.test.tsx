@@ -9,28 +9,37 @@ import {setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-ope
 import {NewGroupDialog} from "../src/components/new-group-dialog";
 import {DensityScope} from "../src/components/ui/density";
 
-afterEach(() => {
-	act(() => {
+afterEach(() =>
+{
+	act(() =>
+	{
 		setKeyboardShortcutsOpen(false);
 	});
 	cleanup();
 });
 
-function scopeOf(popup: HTMLElement) {
+function scopeOf(popup: HTMLElement)
+{
 	return popup.parentElement?.closest("[data-density]")?.getAttribute("data-density") ?? null;
 }
 
 /* Upstream wraps confirm, rename and the shortcuts dialog in `si density:"comfortable"`, so they stay comfortable when opened from the compact main column. */
-describe("dialogs opened from the compact main column", () => {
-	it("forces comfortable on the confirm dialog", async () => {
+describe("dialogs opened from the compact main column", () =>
+{
+	it("forces comfortable on the confirm dialog", async () =>
+	{
 		render(
 			<DensityScope density="compact">
 				<ConfirmDialog
 					open
-					onOpenChange={() => {}}
+					onOpenChange={() =>
+					{
+					}}
 					title="Delete session?"
 					confirmLabel="Delete"
-					onConfirm={() => {}}
+					onConfirm={() =>
+					{
+					}}
 				/>
 			</DensityScope>,
 		);
@@ -38,26 +47,55 @@ describe("dialogs opened from the compact main column", () => {
 		expect(scopeOf(await screen.findByRole("alertdialog"))).toBe("comfortable");
 	});
 
-	it("forces comfortable on the new-section dialog", async () => {
+	it("forces comfortable on the new-section dialog", async () =>
+	{
 		render(
 			<DensityScope density="compact">
-				<NewGroupDialog open onOpenChange={() => {}} onCreate={() => {}} />
+				<NewGroupDialog
+					open
+					onOpenChange={() =>
+					{
+					}}
+					onCreate={() =>
+					{
+					}}
+				/>
 			</DensityScope>,
 		);
 
-		expect(scopeOf(await screen.findByRole("dialog", {name: "New section"}))).toBe("comfortable");
+		expect(
+			scopeOf(
+				await screen.findByRole(
+					"dialog",
+					{
+						name: "New section",
+					},
+				),
+			),
+		).toBe("comfortable");
 	});
 
-	it("forces comfortable on the keyboard shortcuts dialog", async () => {
+	it("forces comfortable on the keyboard shortcuts dialog", async () =>
+	{
 		render(
 			<DensityScope density="compact">
 				<KeyboardShortcutsDialog />
 			</DensityScope>,
 		);
-		act(() => {
+		act(() =>
+		{
 			setKeyboardShortcutsOpen(true);
 		});
 
-		expect(scopeOf(await screen.findByRole("dialog", {name: "Keyboard shortcuts"}))).toBe("comfortable");
+		expect(
+			scopeOf(
+				await screen.findByRole(
+					"dialog",
+					{
+						name: "Keyboard shortcuts",
+					},
+				),
+			),
+		).toBe("comfortable");
 	});
 });

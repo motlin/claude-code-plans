@@ -5,13 +5,16 @@ import type {SessionCostState} from "./session-cost";
 // parses the API's cost totals, doesn't download the transcript schemas.
 
 /** The totals a `cost-state` record carries, or null when `record` is not a valid one. */
-export function costStateFromRecord(record: unknown): SessionCostState | null {
+export function costStateFromRecord(record: unknown): SessionCostState | null
+{
 	const parsed = CostStateRecordSchema.safeParse(record);
 	if (!parsed.success) return null;
 	const cost = parsed.data;
 	const models = Object.entries(cost.modelUsage ?? {})
-		.map(([model, usage]) => {
-			const entry: SessionCostState["models"][number] = {
+		.map(([model, usage]) =>
+		{
+			const entry: SessionCostState["models"][number] =
+			{
 				model,
 				costUSD: usage.costUSD ?? 0,
 				inputTokens: usage.inputTokens ?? 0,
@@ -19,16 +22,19 @@ export function costStateFromRecord(record: unknown): SessionCostState | null {
 				cacheReadInputTokens: usage.cacheReadInputTokens ?? 0,
 				cacheCreationInputTokens: usage.cacheCreationInputTokens ?? 0,
 			};
-			if (usage.cacheCreationEphemeral5mInputTokens !== undefined) {
+			if (usage.cacheCreationEphemeral5mInputTokens !== undefined)
+			{
 				entry.cacheCreation5mInputTokens = usage.cacheCreationEphemeral5mInputTokens;
 			}
-			if (usage.cacheCreationEphemeral1hInputTokens !== undefined) {
+			if (usage.cacheCreationEphemeral1hInputTokens !== undefined)
+			{
 				entry.cacheCreation1hInputTokens = usage.cacheCreationEphemeral1hInputTokens;
 			}
 			return entry;
 		})
 		.toSorted((a, b) => b.costUSD - a.costUSD);
-	const state: SessionCostState = {
+	const state: SessionCostState =
+	{
 		totalCostUSD: cost.totalCostUSD ?? 0,
 		linesAdded: cost.totalLinesAdded ?? 0,
 		linesRemoved: cost.totalLinesRemoved ?? 0,

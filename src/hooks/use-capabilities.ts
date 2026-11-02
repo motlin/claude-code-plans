@@ -3,7 +3,8 @@ import {useSettings} from "../components/settings-context";
 import {capabilitiesQueryOptions} from "../lib/api/capabilities";
 import type {Capabilities, CapabilityId, PersistedCapabilities} from "../lib/capabilities";
 
-export interface CapabilityFlags {
+export interface CapabilityFlags
+{
 	loaded: boolean;
 	pending: boolean;
 	error: Error | null;
@@ -13,21 +14,25 @@ export interface CapabilityFlags {
 	showSessionContextBrief: boolean;
 }
 
-function unresolvedCapabilities(persisted: PersistedCapabilities): Capabilities {
+function unresolvedCapabilities(persisted: PersistedCapabilities): Capabilities
+{
 	return {
-		readOnlyMcpServer: {
+		readOnlyMcpServer:
+		{
 			...persisted.readOnlyMcpServer,
 			installed: true,
 			available: false,
 			unavailabilityReason: null,
 		},
-		workingCopyReview: {
+		workingCopyReview:
+		{
 			...persisted.workingCopyReview,
 			installed: true,
 			available: false,
 			unavailabilityReason: null,
 		},
-		sessionContextBrief: {
+		sessionContextBrief:
+		{
 			...persisted.sessionContextBrief,
 			installed: true,
 			available: false,
@@ -36,7 +41,8 @@ function unresolvedCapabilities(persisted: PersistedCapabilities): Capabilities 
 	};
 }
 
-export interface CapabilityQueryState {
+export interface CapabilityQueryState
+{
 	data: Capabilities | undefined;
 	isPending: boolean;
 	error: Error | null;
@@ -46,7 +52,8 @@ export function resolveCapabilityFlags(
 	persisted: PersistedCapabilities,
 	loaded: boolean,
 	query: CapabilityQueryState,
-): CapabilityFlags {
+): CapabilityFlags
+{
 	return {
 		loaded,
 		pending: loaded && query.isPending,
@@ -62,16 +69,20 @@ export function capabilityVisible(
 	loaded: boolean,
 	capabilities: PersistedCapabilities,
 	capabilityId: CapabilityId,
-): boolean {
+): boolean
+{
 	return !loaded || capabilities[capabilityId].enabled;
 }
 
 /** Client boundary: collapse capability state into the few booleans used by view call sites. */
-export function useCapabilities(): CapabilityFlags {
+export function useCapabilities(): CapabilityFlags
+{
 	const {settings, loaded} = useSettings();
-	const query = useQuery({
-		...capabilitiesQueryOptions(settings.capabilities),
-		enabled: loaded,
-	});
+	const query = useQuery(
+		{
+			...capabilitiesQueryOptions(settings.capabilities),
+			enabled: loaded,
+		},
+	);
 	return resolveCapabilityFlags(settings.capabilities, loaded, query);
 }

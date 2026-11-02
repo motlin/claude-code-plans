@@ -4,7 +4,8 @@ import type {CSSProperties} from "react";
  * Upstream's cds Skeleton: a tinted block with a shimmer sweep and an sr-only
  * "Loading" status. Callers pass the shape (`h-[1em] rounded w-28`, `size-9 rounded-card`).
  */
-export function Skeleton({className, style}: {className: string; style?: CSSProperties}) {
+export function Skeleton({className, style}: {className: string; style?: CSSProperties})
+{
 	// An overlay passes `absolute`; otherwise the shimmer is positioned against the block itself.
 	const position = /(^|\s)absolute(\s|$)/.test(className) ? "" : "relative ";
 	return (

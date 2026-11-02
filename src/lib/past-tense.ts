@@ -6,7 +6,8 @@
  */
 
 /** Verbs whose past tense no suffix rule produces. */
-const IRREGULAR_PAST: Record<string, string> = {
+const IRREGULAR_PAST: Record<string, string> =
+{
 	begin: "began",
 	bind: "bound",
 	bring: "brought",
@@ -357,7 +358,8 @@ const NOUN_CONTEXT_RE =
 	/^(?:\s+\w+){0,2}\s+(?:is|are|was|were|has|have|do|does|did|will|would|should|can|could|passes|passed|fails|failed|exists|works|worked|succeeds|succeeded|stays|remains|looks|runs|ran|not|if|when|unless|whether)(?:n['’]t)?\b/;
 
 /** A bare, uninflected word: no -ing, -ed, or plural -s, not an acronym, not already past. */
-function isBareWord(word: string): boolean {
+function isBareWord(word: string): boolean
+{
 	if (!/^[A-Za-z]{2,16}$/.test(word) || word === word.toUpperCase()) return false;
 	const lower = word.toLowerCase();
 	if (PAST_FORMS.has(lower)) return false;
@@ -368,12 +370,14 @@ function isBareWord(word: string): boolean {
 	return /[aeiouy]/i.test(word);
 }
 
-function vowelCount(word: string): number {
+function vowelCount(word: string): number
+{
 	return (word.match(/[aeiou]/gi) ?? []).length;
 }
 
 /** The past tense of a known verb, keeping the word's own letter case. */
-function pastOf(word: string): string {
+function pastOf(word: string): string
+{
 	const lower = word.toLowerCase();
 	const irregular = IRREGULAR_PAST[lower];
 	if (irregular !== undefined) return irregular;
@@ -386,13 +390,16 @@ function pastOf(word: string): string {
 	return `${word}ed`;
 }
 
-function matchCapital(original: string, replacement: string): string {
+function matchCapital(original: string, replacement: string): string
+{
 	return /^[A-Z]/.test(original) ? replacement.charAt(0).toUpperCase() + replacement.slice(1) : replacement;
 }
 
 /** Past-tense each known verb joined on by "and"/"then"; comma-separated verbs stay as written. */
-function pastTenseFollowingVerbs(text: string): string {
-	return text.replace(FOLLOWING_VERB_RE, (whole: string, joiners: string, verb: string, offset: number) => {
+function pastTenseFollowingVerbs(text: string): string
+{
+	return text.replace(FOLLOWING_VERB_RE, (whole: string, joiners: string, verb: string, offset: number) =>
+	{
 		if (!KNOWN_VERBS.has(verb) || UNCHANGED_FOLLOWERS.has(verb)) return whole;
 		if (NOUN_CONTEXT_RE.test(text.slice(offset + whole.length))) return whole;
 		return joiners + pastOf(verb);
@@ -400,7 +407,8 @@ function pastTenseFollowingVerbs(text: string): string {
 }
 
 /** A hyphen-prefixed verb ("Re-run") in past tense ("Re-ran"), or null when it is not a known verb. */
-function pastOfPrefixed(word: string): string | null {
+function pastOfPrefixed(word: string): string | null
+{
 	const [, prefix, base] = VERB_PREFIX_RE.exec(word) ?? [];
 	if (prefix === undefined || base === undefined || !isBareWord(base)) return null;
 	const joined = (prefix + base).toLowerCase();
@@ -413,12 +421,14 @@ function pastOfPrefixed(word: string): string | null {
 }
 
 /** Whether a description opens with a base-form verb ("Do task" yes, "Mobile audit" no). */
-export function startsWithKnownVerb(description: string): boolean {
+export function startsWithKnownVerb(description: string): boolean
+{
 	const [, word] = /^\s*([A-Za-z]+)(?![-\w])/.exec(description) ?? [];
 	return word !== undefined && KNOWN_VERBS.has(word.toLowerCase());
 }
 
-export function pastTense(description: string): string {
+export function pastTense(description: string): string
+{
 	const trimmed = description.trimStart();
 	const indent = description.slice(0, description.length - trimmed.length);
 	const [, word, rest] = /^(\S+)([\s\S]*)$/.exec(trimmed) ?? [];
@@ -430,7 +440,8 @@ export function pastTense(description: string): string {
 }
 
 /** The known base verb a progressive word ("running", "writing", "polling") inflects, if any. */
-function baseOfProgressive(word: string): string | undefined {
+function baseOfProgressive(word: string): string | undefined
+{
 	if (word.length <= 4 || !word.endsWith("ing")) return undefined;
 	const stem = word.slice(0, -3);
 	const candidates = [stem, `${stem}e`, stem.slice(0, -1), stem.endsWith("y") ? `${stem.slice(0, -1)}ie` : ""];
@@ -443,7 +454,8 @@ function baseOfProgressive(word: string): string | undefined {
  * leading progressive verb ("Running tests" -> "run tests"). Undefined when the
  * description opens with no verb upstream knows.
  */
-export function infinitive(description: string): string | undefined {
+export function infinitive(description: string): string | undefined
+{
 	const [, word, rest] = /^\s*([A-Za-z]+)((?![-\w])[\s\S]*)$/.exec(description) ?? [];
 	if (word === undefined || rest === undefined) return undefined;
 	const lower = word.toLowerCase();

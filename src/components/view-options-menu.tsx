@@ -19,15 +19,29 @@ import {Tooltip} from "./ui/tooltip";
 import {viewOptionsItems} from "./view-options-items";
 import type {ViewOptionsFacts, ViewOptionsItem, PaneMenuEntry} from "./view-options-items";
 
-type MainPaneEntry = PaneMenuEntry & {shortcut: ShortcutId};
+type MainPaneEntry = PaneMenuEntry &
+{
+	shortcut: ShortcutId;
+};
 
 /** Upstream's trail pane toggles, Changes then Files; each shows once its pane kind is registered. */
 const MAIN_PANE_TOGGLES: readonly MainPaneEntry[] = [
-	{kind: "changes", label: "Changes", icon: FileDiff, shortcut: "toggle_changes"},
-	{kind: "files", label: "Files", icon: Files, shortcut: "toggle_files"},
+	{
+		kind: "changes",
+		label: "Changes",
+		icon: FileDiff,
+		shortcut: "toggle_changes",
+	},
+	{
+		kind: "files",
+		label: "Files",
+		icon: Files,
+		shortcut: "toggle_files",
+	},
 ];
 
-function MainPaneToggle({entry}: {entry: MainPaneEntry}) {
+function MainPaneToggle({entry}: {entry: MainPaneEntry})
+{
 	const host = usePaneHost();
 	const keys = useShortcutKeys(entry.shortcut);
 	const open = host.isOpen(entry.kind);
@@ -39,7 +53,8 @@ function MainPaneToggle({entry}: {entry: MainPaneEntry}) {
 				aria-label={entry.label}
 				aria-pressed={open}
 				aria-keyshortcuts={keys.ariaKeyShortcuts}
-				onClick={() => {
+				onClick={() =>
+				{
 					host.togglePane(entry.kind);
 				}}
 				className={TITLEBAR_ICON_BUTTON_CLASS}
@@ -61,7 +76,8 @@ function ViewOptionsMenu({
 	railFolded: boolean;
 	entries: readonly ViewOptionsItem[];
 	onExpandChat: (() => void) | undefined;
-}) {
+})
+{
 	const host = usePaneHost();
 	const isMac = useIsMac();
 	const expandKeys = useShortcutKeys("expand_collapse_pane");
@@ -74,7 +90,8 @@ function ViewOptionsMenu({
 			</Tooltip>
 			<MenuContent align="end" sideOffset={6}>
 				{railFolded && <SessionRailMenuItem />}
-				{entries.map((entry) => {
+				{entries.map((entry) =>
+				{
 					const binding = entry.shortcut === undefined ? undefined : bindingsFor(entry.shortcut, isMac)[0];
 					const Glyph = entry.icon;
 					return (
@@ -82,11 +99,22 @@ function ViewOptionsMenu({
 							key={entry.kind}
 							closeOnClick
 							checked={host.isOpen(entry.kind)}
-							onCheckedChange={() => {
+							onCheckedChange={() =>
+							{
 								host.togglePane(entry.kind);
 							}}
-							{...(binding === undefined ? {} : {shortcut: bindingToKeys(binding)})}
-							{...(entry.badge === undefined ? {} : {count: entry.badge})}
+							{...(binding === undefined
+								? {}
+								:
+									{
+										shortcut: bindingToKeys(binding),
+									})}
+							{...(entry.badge === undefined
+								? {}
+								:
+									{
+										count: entry.badge,
+									})}
 							icon={<Glyph aria-hidden="true" className="size-4 shrink-0 text-primary" />}
 						>
 							{entry.label}
@@ -125,21 +153,34 @@ export function SessionPaneControls({
 	railAvailable?: boolean;
 	/** Hides the header and footer; offered as View options ▸ Expand chat. */
 	onExpandChat?: () => void;
-}) {
+})
+{
 	const host = usePaneHost();
 	const definitions = usePaneDefinitions();
-	const {railToggleFolded, hiddenMainPanes} = foldBudget({
-		railToggleFoldable: railAvailable,
-		hiddenCount: useTitlebarHiddenCount(),
-	});
+	const {railToggleFolded, hiddenMainPanes} = foldBudget(
+		{
+			railToggleFoldable: railAvailable,
+			hiddenCount: useTitlebarHiddenCount(),
+		},
+	);
 	const registered = new Set(definitions.keys());
-	const shown = MAIN_PANE_TOGGLES.filter((entry) => registered.has(entry.kind)).map((entry) => ({
+	const shown = MAIN_PANE_TOGGLES.filter((entry) => registered.has(entry.kind)).map((entry) => (
+	{
 		...entry,
 		active: host.isOpen(entry.kind),
 	}));
 	const {folded, inline} = splitPanes(shown, hiddenMainPanes);
 	const {togglesRef, triggerRef, railFocusProps, togglesFocusProps} = useFoldFocus();
-	const menuEntries = [...folded, ...viewOptionsItems({registered, isOpen: host.isOpen, facts})];
+	const menuEntries = [
+		...folded,
+		...viewOptionsItems(
+			{
+				registered,
+				isOpen: host.isOpen,
+				facts,
+			},
+		),
+	];
 	return (
 		<>
 			{railAvailable && !railToggleFolded && (
@@ -150,7 +191,10 @@ export function SessionPaneControls({
 			)}
 			<div
 				ref={togglesRef}
-				{...{[TITLEBAR_TOGGLES_ATTRIBUTE]: ""}}
+				{...
+				{
+					[TITLEBAR_TOGGLES_ATTRIBUTE]: "",
+				}}
 				{...togglesFocusProps}
 				className="flex items-center gap-1 empty:hidden"
 			>

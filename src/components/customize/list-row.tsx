@@ -3,7 +3,8 @@ import {Fragment, type ReactNode} from "react";
 import {Tooltip} from "../ui/tooltip";
 import {IconTile} from "./icon-tile";
 
-interface BaseListRowProps {
+interface BaseListRowProps
+{
 	icon: LucideIcon;
 	title: string;
 	/** Leading source text, rendered as "<source> · <subtitle>". */
@@ -18,12 +19,14 @@ interface BaseListRowProps {
 	testId?: string;
 }
 
-interface RestingListRowProps extends BaseListRowProps {
+interface RestingListRowProps extends BaseListRowProps
+{
 	variant?: "resting";
 }
 
 /** Upstream unified search hit row: 16px gaps (`gap-md`) and the kind-led hit text, 61px tall. */
-interface HitListRowProps extends BaseListRowProps {
+interface HitListRowProps extends BaseListRowProps
+{
 	variant: "hit";
 	/** The kind word ("Skill", "Plugin", …) that leads the second line. */
 	kind: string;
@@ -37,7 +40,8 @@ type ListRowProps = RestingListRowProps | HitListRowProps;
 
 const MUTED_FOOTNOTE = "text-footnote leading-4 text-muted-as-secondary";
 
-function HighlightedName({title, match}: {title: string; match: readonly [number, number] | null}) {
+function HighlightedName({title, match}: {title: string; match: readonly [number, number] | null})
+{
 	if (match === null) return <span>{title}</span>;
 	const [start, end] = match;
 	return (
@@ -62,7 +66,8 @@ function HitText({
 	match: readonly [number, number] | null;
 	verified: boolean;
 	parts: readonly (string | undefined)[];
-}) {
+})
+{
 	const present = parts.filter((part): part is string => part !== undefined && part !== "");
 	const lead = [kind, ...present.slice(0, -1)];
 	const last = present.at(-1);
@@ -129,7 +134,8 @@ function HitText({
  * under every row except the last; it disappears on the hovered row and the
  * row above it, and the fill clears while a trailing control is hovered.
  */
-export function ListRow(props: ListRowProps) {
+export function ListRow(props: ListRowProps)
+{
 	const {icon, title, source, subtitle, meta, actions, onView, testId = "customize-list-row"} = props;
 	// Comfortable trailing clusters: the hit row's is `gap-xs` (8), the resting row's `gap-lg` (28).
 	const trailingGap = props.variant === "hit" ? "gap-2" : "gap-7";

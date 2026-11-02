@@ -1,5 +1,6 @@
 import React from "react";
-import {
+import
+{
 	backgroundNoticeSummary,
 	NOTICE_NOUNS,
 	type NoticeKind,
@@ -11,7 +12,8 @@ import {formatElapsed} from "../lib/working-marker";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 
 /** One background task event a task-event row draws. */
-export interface TaskEvent {
+export interface TaskEvent
+{
 	taskId: string | null;
 	status: BackgroundTaskStatus;
 	kind: NoticeKind;
@@ -29,7 +31,8 @@ const INK = "text-secondary group-hover/tool:text-primary";
  * Upstream's `CS` segments: description text with each "artifact" word drawn as a link to the
  * artifact its URL named.
  */
-export function TaskDescriptionLinks({segments}: {segments: readonly TaskDescriptionSegment[]}) {
+export function TaskDescriptionLinks({segments}: {segments: readonly TaskDescriptionSegment[]})
+{
 	return segments.map((segment, index) =>
 		typeof segment === "string" ? (
 			// biome-ignore lint/suspicious/noArrayIndexKey: segments are positional and never reorder
@@ -51,12 +54,14 @@ export function TaskDescriptionLinks({segments}: {segments: readonly TaskDescrip
 }
 
 /** The artifact link segments a lone settled event draws, which make its row inert upstream. */
-function singleEventSegments(event: TaskEvent): TaskDescriptionSegment[] | undefined {
+function singleEventSegments(event: TaskEvent): TaskDescriptionSegment[] | undefined
+{
 	return event.phrase === undefined ? taskDescriptionSegments(event.description, event.taskType) : undefined;
 }
 
 /** Upstream's `YX` settled single row: label, "·", description, then "· took {elapsed}". */
-function SingleEvent({event}: {event: TaskEvent}) {
+function SingleEvent({event}: {event: TaskEvent})
+{
 	const failed = event.status === "failed";
 	const segments = singleEventSegments(event);
 	return (
@@ -92,7 +97,8 @@ function SingleEvent({event}: {event: TaskEvent}) {
 }
 
 /** Upstream's `qX` parts: the lead part, then ", " and each later part, failed parts in danger ink. */
-export function NoticeParts({parts}: {parts: readonly NoticePart[]}) {
+export function NoticeParts({parts}: {parts: readonly NoticePart[]})
+{
 	const [lead, ...rest] = parts;
 	return (
 		<>
@@ -110,7 +116,8 @@ export function NoticeParts({parts}: {parts: readonly NoticePart[]}) {
 }
 
 /** Upstream's run text, wrapping inside the row at narrow widths. */
-function RunSummary({events}: {events: readonly TaskEvent[]}) {
+function RunSummary({events}: {events: readonly TaskEvent[]})
+{
 	return (
 		<span className={`text-body ${INK} min-w-0 break-words`}>
 			<NoticeParts parts={backgroundNoticeSummary(events)} />
@@ -123,7 +130,8 @@ function RunSummary({events}: {events: readonly TaskEvent[]}) {
  * completed · <description> · took 12s", two or more as one "N background commands completed,
  * 1 failed" summary that wraps at narrow widths.
  */
-export function TaskEventRun({events}: {events: readonly TaskEvent[]}) {
+export function TaskEventRun({events}: {events: readonly TaskEvent[]})
+{
 	const opener = useBackgroundTasksOpener();
 	const [first] = events;
 	if (first === undefined) return null;
@@ -146,8 +154,20 @@ export function TaskEventRun({events}: {events: readonly TaskEvent[]}) {
 					type="button"
 					data-transcript-keeps-pin=""
 					className="group/tool flex flex-col gap-1 py-0 max-w-full items-start text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm"
-					onClick={() => {
-						opener.open(first.taskId === null ? {finished: true} : {taskId: first.taskId, finished: true});
+					onClick={() =>
+					{
+						opener.open(
+							first.taskId === null
+								?
+									{
+										finished: true,
+									}
+								:
+									{
+										taskId: first.taskId,
+										finished: true,
+									},
+						);
 					}}
 				>
 					{content}

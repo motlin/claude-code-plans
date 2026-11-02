@@ -10,7 +10,8 @@
 // `parasol_call`), which split at task events. No local producer exists yet.
 export type ToolBucket = "default" | "standalone";
 
-export interface RunCall {
+export interface RunCall
+{
 	id: string;
 	name: string;
 	input: Record<string, unknown>;
@@ -36,20 +37,24 @@ const ARTIFACT_SURFACE_ACTIONS: ReadonlySet<unknown> = new Set([undefined, "publ
 
 const NOT_SENT = /not sent/i;
 
-export function toolBucket(call: Pick<RunCall, "name" | "input" | "result" | "isError" | "pending">): ToolBucket {
+export function toolBucket(call: Pick<RunCall, "name" | "input" | "result" | "isError" | "pending">): ToolBucket
+{
 	if (STANDALONE_TOOL_NAMES.has(call.name)) return "standalone";
-	if (call.name === "Artifact") {
+	if (call.name === "Artifact")
+	{
 		const surface = Object.keys(call.input).length > 0 && ARTIFACT_SURFACE_ACTIONS.has(call.input["action"]);
 		return surface ? "standalone" : "default";
 	}
-	if (call.name === "PushNotification") {
+	if (call.name === "PushNotification")
+	{
 		const sent = call.pending !== true && call.isError !== true && !NOT_SENT.test(call.result ?? "");
 		return sent ? "default" : "standalone";
 	}
 	return "default";
 }
 
-const FILE_VERBS: Readonly<Record<string, string>> = {
+const FILE_VERBS: Readonly<Record<string, string>> =
+{
 	Read: "Read",
 	Write: "Write",
 	Edit: "Edit",
@@ -58,7 +63,8 @@ const FILE_VERBS: Readonly<Record<string, string>> = {
 };
 
 /** Upstream `S`: `<verb> <path>`, with NotebookEdit's verb carrying its edit_mode (default "replace"). */
-export function targetKey(call: Pick<RunCall, "name" | "input">): string | null {
+export function targetKey(call: Pick<RunCall, "name" | "input">): string | null
+{
 	const baseVerb = FILE_VERBS[call.name];
 	if (baseVerb === undefined) return null;
 	const mode = call.input["edit_mode"];
@@ -67,7 +73,14 @@ export function targetKey(call: Pick<RunCall, "name" | "input">): string | null 
 	return typeof path === "string" ? `${verb} ${path}` : null;
 }
 
-export function rendersBare(calls: readonly RunCall[], options: {showThinking: boolean}): boolean {
+export function rendersBare(
+	calls: readonly RunCall[],
+	options:
+	{
+		showThinking: boolean;
+	},
+): boolean
+{
 	const first = calls[0];
 	if (first === undefined) return false;
 	const key = targetKey(first);
@@ -80,10 +93,12 @@ export function rendersBare(calls: readonly RunCall[], options: {showThinking: b
 	);
 }
 
-export function splitRuns<T extends RunCall>(calls: readonly T[]): T[][] {
+export function splitRuns<T extends RunCall>(calls: readonly T[]): T[][]
+{
 	const runs: T[][] = [];
 	let previousJoinable = false;
-	for (const c of calls) {
+	for (const c of calls)
+	{
 		const joinable = toolBucket(c) === "default";
 		const last = runs.at(-1);
 		if (joinable && previousJoinable && last !== undefined) last.push(c);
@@ -94,7 +109,8 @@ export function splitRuns<T extends RunCall>(calls: readonly T[]): T[][] {
 }
 
 /** Upstream `w`: one call, or every call on one file with one verb. */
-export function sameTarget(calls: readonly Pick<RunCall, "name" | "input">[]): boolean {
+export function sameTarget(calls: readonly Pick<RunCall, "name" | "input">[]): boolean
+{
 	const first = calls[0];
 	if (first === undefined) return false;
 	if (calls.length === 1) return true;
@@ -103,7 +119,8 @@ export function sameTarget(calls: readonly Pick<RunCall, "name" | "input">[]): b
 }
 
 /** A stretch of 2+ consecutive same-target calls, drawn as one step. */
-export interface SameTargetRun<T> {
+export interface SameTargetRun<T>
+{
 	kind: "run";
 	key: string;
 	members: T[];
@@ -114,10 +131,12 @@ export interface SameTargetRun<T> {
  * target into a run. Shown thinking before a call (`precedingThinking`, set by
  * callers only when thinking is shown) or task events after one break a stretch.
  */
-export function coalesceSameTarget<T extends RunCall>(calls: readonly T[]): (T | SameTargetRun<T>)[] {
+export function coalesceSameTarget<T extends RunCall>(calls: readonly T[]): (T | SameTargetRun<T>)[]
+{
 	const stretches: T[][] = [];
 	let previousKey: string | null = null;
-	for (const c of calls) {
+	for (const c of calls)
+	{
 		const key = targetKey(c);
 		const last = stretches.at(-1);
 		const joins =
@@ -131,11 +150,21 @@ export function coalesceSameTarget<T extends RunCall>(calls: readonly T[]): (T |
 		previousKey = key;
 	}
 	const items: (T | SameTargetRun<T>)[] = [];
-	for (const stretch of stretches) {
+	for (const stretch of stretches)
+	{
 		const [first, ...rest] = stretch;
 		if (first === undefined) continue;
 		const key = targetKey(first);
-		items.push(rest.length > 0 && key !== null ? {kind: "run", key, members: stretch} : first);
+		items.push(
+			rest.length > 0 && key !== null
+				?
+					{
+						kind: "run",
+						key,
+						members: stretch,
+					}
+				: first,
+		);
 	}
 	return items;
 }
@@ -145,14 +174,16 @@ export function coalesceSameTarget<T extends RunCall>(calls: readonly T[]): (T |
  * written these as strings on disk (`"offset": "55, "`), so parse rather than
  * cast, and treat anything non-positive as absent.
  */
-function readBound(value: unknown): number | null {
+function readBound(value: unknown): number | null
+{
 	const parsed = typeof value === "number" ? value : typeof value === "string" ? Number.parseInt(value, 10) : NaN;
 	if (!Number.isFinite(parsed) || parsed < 1) return null;
 	return Math.trunc(parsed);
 }
 
 /** The lines a Read result reports it returned, from its `toolUseResult.file`. */
-export interface ReadFileLines {
+export interface ReadFileLines
+{
 	filePath: string;
 	startLine: number;
 	numLines: number;
@@ -161,19 +192,22 @@ export interface ReadFileLines {
 	endsWithNewline: boolean;
 }
 
-export interface RunSuffixCall {
+export interface RunSuffixCall
+{
 	name: string;
 	input: Record<string, unknown>;
 	readFile?: ReadFileLines | undefined;
 }
 
 /** Upstream `v`: a partial Read's line range, or null for a whole-file read. */
-function readRange(call: RunSuffixCall): string | null {
+function readRange(call: RunSuffixCall): string | null
+{
 	const offset = readBound(call.input["offset"]);
 	const limit = readBound(call.input["limit"]);
 	if (offset === null && limit === null) return null;
 	const file = call.readFile;
-	if (file !== undefined && file.filePath === call.input["file_path"] && file.numLines > 0) {
+	if (file !== undefined && file.filePath === call.input["file_path"] && file.numLines > 0)
+	{
 		const start = Math.max(file.startLine, 1);
 		const end = start + file.numLines - 1;
 		const shown = file.numLines > 1 && file.endsWithNewline && end === file.totalLines ? end - 1 : end;
@@ -187,10 +221,12 @@ function readRange(call: RunSuffixCall): string | null {
  * Upstream `_`: the suffix a run's row trails with: `×N` for 2+ NotebookEdit
  * inserts or deletes, the ranges of Reads that each read a range, else none.
  */
-export function runSuffix(calls: readonly RunSuffixCall[]): string | undefined {
+export function runSuffix(calls: readonly RunSuffixCall[]): string | undefined
+{
 	const first = calls[0];
 	if (first === undefined) return undefined;
-	if (first.name === "NotebookEdit") {
+	if (first.name === "NotebookEdit")
+	{
 		const mode = first.input["edit_mode"];
 		return (mode === "insert" || mode === "delete") && calls.length > 1 ? `×${calls.length}` : undefined;
 	}

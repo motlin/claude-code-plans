@@ -10,17 +10,20 @@ import {Tooltip} from "../ui/tooltip";
 import {TabMenuItems} from "./file-context-menu";
 import {mentionPath} from "./mention-path";
 
-function baseName(path: string): string {
+function baseName(path: string): string
+{
 	return path.slice(path.lastIndexOf("/") + 1) || path;
 }
 
 /** The tab's folder as the tooltip shows it: relative inside the working directory, empty at its root. */
-function folderOf(path: string, cwd: string | undefined): string {
+function folderOf(path: string, cwd: string | undefined): string
+{
 	const shown = mentionPath(path, cwd);
 	return shown.slice(0, Math.max(0, shown.lastIndexOf("/")));
 }
 
-interface FileTabsStripProps {
+interface FileTabsStripProps
+{
 	state: FileTabsState;
 	dispatch: (action: FileTabsAction) => void;
 	/** The working directory; paths inside it copy and attach relative to it. */
@@ -35,15 +38,31 @@ interface FileTabsStripProps {
  * title once a file is open. Preview tabs are italic; a double-click pins.
  * Delete/Backspace closes the focused tab and ⌃⇧←/→ reorders it.
  */
-export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealInTree}: FileTabsStripProps) {
+export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealInTree}: FileTabsStripProps)
+{
 	const hintId = useId();
-	function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, path: string): void {
-		if (event.key === "Delete" || event.key === "Backspace") {
+	function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, path: string): void
+	{
+		if (event.key === "Delete" || event.key === "Backspace")
+		{
 			event.preventDefault();
-			dispatch({type: "close", path});
-		} else if (event.ctrlKey && event.shiftKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+			dispatch(
+				{
+					type: "close",
+					path,
+				},
+			);
+		}
+		else if (event.ctrlKey && event.shiftKey && (event.key === "ArrowLeft" || event.key === "ArrowRight"))
+		{
 			event.preventDefault();
-			dispatch({type: "move", path, delta: event.key === "ArrowLeft" ? -1 : 1});
+			dispatch(
+				{
+					type: "move",
+					path,
+					delta: event.key === "ArrowLeft" ? -1 : 1,
+				},
+			);
 		}
 	}
 
@@ -53,7 +72,8 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 			aria-label="Open files"
 			className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none]"
 		>
-			{state.tabs.map((tab) => {
+			{state.tabs.map((tab) =>
+			{
 				const name = baseName(tab.path);
 				const active = tab.path === state.active;
 				const folder = folderOf(tab.path, cwd);
@@ -76,13 +96,26 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 									aria-selected={active}
 									tabIndex={active ? 0 : -1}
 									aria-describedby={`${hintId}-close ${hintId}-move`}
-									onClick={() => {
-										dispatch({type: "reveal", path: tab.path});
+									onClick={() =>
+									{
+										dispatch(
+											{
+												type: "reveal",
+												path: tab.path,
+											},
+										);
 									}}
-									onDoubleClick={() => {
-										dispatch({type: "pin", path: tab.path});
+									onDoubleClick={() =>
+									{
+										dispatch(
+											{
+												type: "pin",
+												path: tab.path,
+											},
+										);
 									}}
-									onKeyDown={(event) => {
+									onKeyDown={(event) =>
+									{
 										handleKeyDown(event, tab.path);
 									}}
 									className={`flex h-5 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-r5 pr-[22px] pl-1.5 text-left text-pane outline-none transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${active ? "bg-fill-control" : "bg-transparent hover:bg-fill-ghost-hover"} ${tab.preview ? "italic" : ""}`}
@@ -96,8 +129,14 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 								type="button"
 								tabIndex={-1}
 								aria-label={`Close ${name}`}
-								onClick={() => {
-									dispatch({type: "close", path: tab.path});
+								onClick={() =>
+								{
+									dispatch(
+										{
+											type: "close",
+											path: tab.path,
+										},
+									);
 								}}
 								className={`absolute right-0 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r3 transition-opacity group-hover/tab:opacity-100 hover:bg-fill-ghost-hover hover:text-primary ${active ? "text-primary opacity-100" : `text-t6 opacity-0 ${TOUCH_REVEAL}`}`}
 							>

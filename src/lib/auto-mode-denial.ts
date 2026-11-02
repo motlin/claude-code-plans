@@ -1,5 +1,6 @@
 /** What the auto-mode classifier's refusal leaves on a tool call; upstream's `policyDenied` fields. */
-export interface AutoModeDenial {
+export interface AutoModeDenial
+{
 	blocked: true;
 	/** The classifier's stated reason, absent when it gave none or only a placeholder. */
 	blockedReason?: string;
@@ -21,7 +22,8 @@ const NO_REASON_PLACEHOLDERS: ReadonlySet<string> = new Set([
 ]);
 
 /** Upstream `Uc`/`zc`: the reason between the classifier prefix and its boilerplate tail, normalized. */
-function classifierReason(resultText: string): string | undefined {
+function classifierReason(resultText: string): string | undefined
+{
 	if (!resultText.startsWith(CLASSIFIER_DENIAL_PREFIX)) return undefined;
 	const rest = resultText.slice(CLASSIFIER_DENIAL_PREFIX.length);
 	const tail = rest.indexOf(CLASSIFIER_DENIAL_TAIL);
@@ -37,11 +39,25 @@ function classifierReason(resultText: string): string | undefined {
  * settles the call "Blocked". Any other kind, notably `permission-rule`, is not one.
  * Pass the full result text, not the truncated preview.
  */
-export function autoModeDenial(kind: string | undefined, resultText: string): AutoModeDenial | null {
-	if (kind === "automode-unavailable" || kind === "automode-parsing-error") {
-		return {blocked: true, blockedNoVerdict: "unanswered"};
+export function autoModeDenial(kind: string | undefined, resultText: string): AutoModeDenial | null
+{
+	if (kind === "automode-unavailable" || kind === "automode-parsing-error")
+	{
+		return {
+			blocked: true,
+			blockedNoVerdict: "unanswered",
+		};
 	}
 	if (kind !== "automode-blocked") return null;
 	const reason = classifierReason(resultText);
-	return reason === undefined ? {blocked: true} : {blocked: true, blockedReason: reason};
+	return reason === undefined
+		?
+			{
+				blocked: true,
+			}
+		:
+			{
+				blocked: true,
+				blockedReason: reason,
+			};
 }

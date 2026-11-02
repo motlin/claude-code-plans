@@ -24,16 +24,27 @@ export function SessionRouteIdentity({
 		scrollKey: string,
 		scrollRestoration?: MainScrollRestorationSnapshot,
 	) => ReactNode;
-}): ReactNode {
+}): ReactNode
+{
 	const router = useRouter();
 	const location = useLocation();
 	const alias = isSessionRouteAlias(routeId);
 	const queries: ReturnType<typeof sessionIdentityQueryOptions>[] = alias
 		? [sessionIdentityQueryOptions(routeId)]
 		: [];
-	const [identity] = useQueries({queries});
+	const [identity] = useQueries(
+		{
+			queries,
+		},
+	);
 	const locationEntryKey = sessionScrollKey(location, routeId);
-	const [visit, setVisit] = useState({entryKey: locationEntryKey, sessionId: null as string | null, routeId});
+	const [visit, setVisit] = useState(
+		{
+			entryKey: locationEntryKey,
+			sessionId: null as string | null,
+			routeId,
+		},
+	);
 	const paramsMatchLocation = decodeURIComponent(location.pathname.split("/")[2] ?? "") === routeId;
 	// Location advances before params during navigation; keep the old page tied to its old visit until they agree.
 	const entryKey = paramsMatchLocation ? locationEntryKey : visit.entryKey;
@@ -45,40 +56,56 @@ export function SessionRouteIdentity({
 	// A fresh mount measures its actual URL; cosmetic replacements keep this mounted visit's launch ID.
 	const initialRouteId = visit.entryKey === entryKey ? visit.routeId : routeId;
 	if (visit.entryKey !== entryKey || visit.sessionId !== owner)
-		setVisit({entryKey, sessionId: owner, routeId: initialRouteId});
+		setVisit(
+			{
+				entryKey,
+				sessionId: owner,
+				routeId: initialRouteId,
+			},
+		);
 	const lostOwner =
 		alias && owner !== null && (identity?.isError === true || (freshOwner !== null && freshOwner !== owner));
 	const failure = sessionIdentityFailure(identity?.error);
 	const unresolvedError = identity?.isError && owner === null;
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!paramsMatchLocation || !unresolvedError || resolvedPageTitle(router.state.matches) === failure.title)
 			return;
 		if (router.latestLocation.state.__TSR_key !== location.state.__TSR_key) return;
 		// The loader reads cached errors without retrying; this only updates its title snapshot.
-		void router.invalidate({filter: (match) => "id" in match.params && match.params.id === routeId});
+		void router.invalidate(
+			{
+				filter: (match) => "id" in match.params && match.params.id === routeId,
+			},
+		);
 	}, [paramsMatchLocation, unresolvedError, failure.title, router, routeId, location.state.__TSR_key]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!paramsMatchLocation || !lostOwner || owner === null) return;
 		if (router.latestLocation.state.__TSR_key !== location.state.__TSR_key) return;
-		void router.navigate({
-			to: location.pathname.replace(`/session/${routeId}`, `/session/${owner}`),
-			search: true,
-			hash: true,
-			state: {
-				...location.state,
-				sessionIdentity: {
-					sessionId: owner,
-					scrollKey: entryKey,
-					routeId: initialRouteId,
-					aliasRouteId: routeId,
+		void router.navigate(
+			{
+				to: location.pathname.replace(`/session/${routeId}`, `/session/${owner}`),
+				search: true,
+				hash: true,
+				state:
+				{
+					...location.state,
+					sessionIdentity:
+					{
+						sessionId: owner,
+						scrollKey: entryKey,
+						routeId: initialRouteId,
+						aliasRouteId: routeId,
+					},
 				},
+				replace: true,
+				resetScroll: false,
+				hashScrollIntoView: false,
 			},
-			replace: true,
-			resetScroll: false,
-			hashScrollIntoView: false,
-		});
+		);
 	}, [
 		paramsMatchLocation,
 		lostOwner,
@@ -91,7 +118,8 @@ export function SessionRouteIdentity({
 		entryKey,
 	]);
 
-	const renderVisit = (scrollRestoration?: MainScrollRestorationSnapshot): ReactNode => {
+	const renderVisit = (scrollRestoration?: MainScrollRestorationSnapshot): ReactNode =>
+	{
 		const renderResolved = (sessionId: string): ReactNode =>
 			scrollRestoration === undefined
 				? children(sessionId, initialRouteId, entryKey)
@@ -138,7 +166,12 @@ function SessionVisitScrollSnapshot({
 }: {
 	entryKey: string;
 	children: (snapshot: MainScrollRestorationSnapshot) => ReactNode;
-}): ReactNode {
+}): ReactNode
+{
 	const entry = useMainScrollRestoration(entryKey);
-	return children({entry});
+	return children(
+		{
+			entry,
+		},
+	);
 }

@@ -12,7 +12,8 @@ const ESCAPE_SEQUENCE_RE =
  * bulleted in place with the escape sequences stripped, then each sequence listed on its own line. Any other
  * secret is left for the row's renderer to cloak.
  */
-export function paramValueText(value: string): string {
+export function paramValueText(value: string): string
+{
 	const stripped = value.replace(ESCAPE_SEQUENCE_RE, "");
 	const masked = maskSecrets(stripped);
 	const hasControls = revealControlChars(value) !== value;

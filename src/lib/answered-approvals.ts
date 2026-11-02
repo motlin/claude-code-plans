@@ -15,18 +15,22 @@ const listeners = new Set<() => void>();
 /** Bumped on every mark and clear, like upstream's `u3` counter. */
 let version = 0;
 
-function answerKey(sessionId: string, id: string): string {
+function answerKey(sessionId: string, id: string): string
+{
 	return `${sessionId}:${id}`;
 }
 
-function notify(): void {
+function notify(): void
+{
 	version += 1;
 	for (const listener of [...listeners]) listener();
 }
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	listeners.add(listener);
-	return () => {
+	return () =>
+	{
 		listeners.delete(listener);
 	};
 }
@@ -46,24 +50,39 @@ const ACKNOWLEDGED_PER_SESSION = 10;
 
 const AcknowledgedSchema = z.record(
 	z.string(),
-	z.record(z.string(), z.object({toolUseId: z.string(), toolName: z.string(), acknowledgedAt: z.number()})),
+	z.record(
+		z.string(),
+		z.object(
+			{
+				toolUseId: z.string(),
+				toolName: z.string(),
+				acknowledgedAt: z.number(),
+			},
+		),
+	),
 );
 
 type Acknowledged = z.infer<typeof AcknowledgedSchema>;
 
-function browserLocalStorage(): Storage | null {
+function browserLocalStorage(): Storage | null
+{
 	if (typeof window === "undefined") return null;
-	try {
+	try
+	{
 		return window.localStorage;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
 /** Drops entries past the TTL and sessions left empty. */
-function pruneAcknowledged(store: Acknowledged, now: number): Acknowledged {
+function pruneAcknowledged(store: Acknowledged, now: number): Acknowledged
+{
 	const pruned: Acknowledged = {};
-	for (const [sessionId, entries] of Object.entries(store)) {
+	for (const [sessionId, entries] of Object.entries(store))
+	{
 		const live = Object.entries(entries).filter(([, entry]) => now - entry.acknowledgedAt <= ACKNOWLEDGED_TTL_MS);
 		if (live.length > 0) pruned[sessionId] = Object.fromEntries(live);
 	}
@@ -71,8 +90,10 @@ function pruneAcknowledged(store: Acknowledged, now: number): Acknowledged {
 }
 
 /** Upstream's `C0`: the stored decisions, pruned on load; unreadable or corrupt storage reads as none. */
-function loadAcknowledged(): Acknowledged {
-	try {
+function loadAcknowledged(): Acknowledged
+{
+	try
+	{
 		const raw = browserLocalStorage()?.getItem(ACKNOWLEDGED_STORAGE_KEY) ?? null;
 		if (raw === null) return {};
 		const parsed = AcknowledgedSchema.safeParse(JSON.parse(raw));
@@ -80,28 +101,36 @@ function loadAcknowledged(): Acknowledged {
 		const pruned = pruneAcknowledged(parsed.data, Date.now());
 		saveAcknowledged(pruned);
 		return pruned;
-	} catch {
+	}
+	catch
+	{
 		return {};
 	}
 }
 
-function saveAcknowledged(store: Acknowledged): void {
-	try {
+function saveAcknowledged(store: Acknowledged): void
+{
+	try
+	{
 		browserLocalStorage()?.setItem(ACKNOWLEDGED_STORAGE_KEY, JSON.stringify(store));
-	} catch {
+	}
+	catch
+	{
 		// Quota or denied storage: the in-memory copy still covers this page.
 	}
 }
 
 let acknowledged: Acknowledged | null = null;
 
-function acknowledgedStore(): Acknowledged {
+function acknowledgedStore(): Acknowledged
+{
 	acknowledged ??= loadAcknowledged();
 	return acknowledged;
 }
 
 /** Upstream's `Iw`: the session's call was acknowledged under 5 minutes ago. */
-function isAcknowledged(sessionId: string, id: string): boolean {
+function isAcknowledged(sessionId: string, id: string): boolean
+{
 	const entry = acknowledgedStore()[sessionId]?.[id];
 	return entry !== undefined && Date.now() - entry.acknowledgedAt <= ACKNOWLEDGED_TTL_MS;
 }
@@ -111,12 +140,22 @@ function isAcknowledged(sessionId: string, id: string): boolean {
  * reload within 5 minutes still reads the call as answered. Keeps the newest
  * 10 per session.
  */
-export function acknowledgeApproval(sessionId: string, id: string, toolName: string): void {
+export function acknowledgeApproval(sessionId: string, id: string, toolName: string): void
+{
 	const now = Date.now();
 	const store = pruneAcknowledged(acknowledgedStore(), now);
 	const entries = Object.entries(store[sessionId] ?? {})
 		.filter(([key]) => key !== id)
-		.concat([[id, {toolUseId: id, toolName, acknowledgedAt: now}]])
+		.concat([
+			[
+				id,
+				{
+					toolUseId: id,
+					toolName,
+					acknowledgedAt: now,
+				},
+			],
+		])
 		.toSorted(([, a], [, b]) => a.acknowledgedAt - b.acknowledgedAt)
 		.slice(-ACKNOWLEDGED_PER_SESSION);
 	store[sessionId] = Object.fromEntries(entries);
@@ -125,7 +164,8 @@ export function acknowledgeApproval(sessionId: string, id: string, toolName: str
 	notify();
 }
 
-function forgetAcknowledged(sessionId: string, id: string): void {
+function forgetAcknowledged(sessionId: string, id: string): void
+{
 	const store = acknowledgedStore();
 	const entries = store[sessionId];
 	if (entries?.[id] === undefined) return;
@@ -135,35 +175,43 @@ function forgetAcknowledged(sessionId: string, id: string): void {
 	saveAcknowledged(acknowledged);
 }
 
-export function markApprovalAnswered(sessionId: string, id: string): void {
+export function markApprovalAnswered(sessionId: string, id: string): void
+{
 	answered.add(answerKey(sessionId, id));
 	notify();
 }
 
-export function clearApprovalAnswered(sessionId: string, id: string): void {
+export function clearApprovalAnswered(sessionId: string, id: string): void
+{
 	answered.delete(answerKey(sessionId, id));
 	forgetAcknowledged(sessionId, id);
 	notify();
 }
 
-export function isApprovalAnswered(sessionId: string, id: string): boolean {
+export function isApprovalAnswered(sessionId: string, id: string): boolean
+{
 	return answered.has(answerKey(sessionId, id)) || isAcknowledged(sessionId, id);
 }
 
 /** Drops every mark and the acknowledged cache with its stored copy, as a fresh page starts; tests call it between cases. */
-export function resetAnsweredApprovals(): void {
+export function resetAnsweredApprovals(): void
+{
 	answered.clear();
 	acknowledged = null;
-	try {
+	try
+	{
 		browserLocalStorage()?.removeItem(ACKNOWLEDGED_STORAGE_KEY);
-	} catch {
+	}
+	catch
+	{
 		// Denied storage holds nothing to clear.
 	}
 	notify();
 }
 
 /** Upstream's `YS`: re-renders whenever any approval is marked or cleared. */
-function useAnsweredApprovalsVersion(): number {
+function useAnsweredApprovalsVersion(): number
+{
 	return useSyncExternalStore(
 		subscribe,
 		() => version,
@@ -172,7 +220,8 @@ function useAnsweredApprovalsVersion(): number {
 }
 
 /** Whether this tab answered the session's approval `id`; a null id never is. */
-export function useApprovalAnswered(sessionId: string, id: string | null): boolean {
+export function useApprovalAnswered(sessionId: string, id: string | null): boolean
+{
 	useAnsweredApprovalsVersion();
 	return id !== null && isApprovalAnswered(sessionId, id);
 }
@@ -183,9 +232,11 @@ export function useApprovalAnswered(sessionId: string, id: string | null): boole
  * Drop that mark once the hook stops reporting the plan. A real id is never
  * reused, so its mark stays until the record lands and the card goes for good.
  */
-export function useForgetAnsweredHookPlan(sessionId: string, hookPlanId: string | null): void {
+export function useForgetAnsweredHookPlan(sessionId: string, hookPlanId: string | null): void
+{
 	const previous = useRef(hookPlanId);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const last = previous.current;
 		previous.current = hookPlanId;
 		if (last === "" && hookPlanId !== "") clearApprovalAnswered(sessionId, "");

@@ -11,7 +11,8 @@ import {cutUnterminatedPrivateKey, maskAndCap, stripDisplayControls} from "../li
 import type {HookNotice} from "../lib/transcript";
 import {Icon} from "./ui/icon";
 
-function WarningIcon() {
+function WarningIcon()
+{
 	return <Icon name="Warning" size="sm" className="shrink-0 text-danger" alt="Warning" />;
 }
 
@@ -19,7 +20,8 @@ function WarningIcon() {
  * Upstream's notice text (shared-12 `Fx`): secrets masked and capped (`AK`), cut before an unterminated
  * private key (`_h`) with a note saying so, and display controls stripped.
  */
-function NoticeText({text}: {text: string}) {
+function NoticeText({text}: {text: string})
+{
 	const masked = maskAndCap(text);
 	const cut = cutUnterminatedPrivateKey(masked);
 	return (
@@ -34,7 +36,8 @@ function NoticeText({text}: {text: string}) {
 	);
 }
 
-export function HookNoticeLine({notice, markWarning}: {notice: HookNotice; markWarning: boolean}) {
+export function HookNoticeLine({notice, markWarning}: {notice: HookNotice; markWarning: boolean})
+{
 	return (
 		<div className="flex items-start gap-1 select-text">
 			{markWarning && notice.level === "warning" && (
@@ -49,10 +52,15 @@ export function HookNoticeLine({notice, markWarning}: {notice: HookNotice; markW
 	);
 }
 
-export function HookNoticeRow({notices, verbose}: {notices: readonly HookNotice[]; verbose: boolean}) {
+export function HookNoticeRow({notices, verbose}: {notices: readonly HookNotice[]; verbose: boolean})
+{
 	const hasWarning = notices.some((notice) => notice.level === "warning");
 	// A toggle only holds while the warning state it was made under does (upstream `hadWarning`).
-	const [toggle, setToggle] = useState<{expanded: boolean; hadWarning: boolean}>();
+	const [toggle, setToggle] = useState<
+	{
+		expanded: boolean;
+		hadWarning: boolean;
+	}>();
 	const expanded = verbose || (toggle?.hadWarning === hasWarning ? toggle.expanded : hasWarning);
 	// Upstream's expanding body renders nothing until first opened, then stays mounted and hidden.
 	const [mounted, setMounted] = useState(false);
@@ -67,8 +75,15 @@ export function HookNoticeRow({notices, verbose}: {notices: readonly HookNotice[
 			<button
 				type="button"
 				aria-expanded={expanded}
-				onClick={() => {
-					if (!verbose) setToggle({expanded: !expanded, hadWarning: hasWarning});
+				onClick={() =>
+				{
+					if (!verbose)
+						setToggle(
+							{
+								expanded: !expanded,
+								hadWarning: hasWarning,
+							},
+						);
 				}}
 				className="relative group/tool flex self-start max-w-full items-center py-0 gap-1 text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm"
 			>

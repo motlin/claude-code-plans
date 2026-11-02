@@ -16,12 +16,14 @@ import {mergeRefill} from "./send-rejection";
  * the prompt on send.
  */
 
-export interface LineRange {
+export interface LineRange
+{
 	start: number;
 	end: number;
 }
 
-export interface AttachContextInput {
+export interface AttachContextInput
+{
 	/** Path relative to the working directory, or absolute outside it. */
 	path: string;
 	range?: LineRange | undefined;
@@ -31,31 +33,36 @@ export interface AttachContextInput {
 	language?: string | null | undefined;
 }
 
-function lineSuffix(range: LineRange | undefined): string {
+function lineSuffix(range: LineRange | undefined): string
+{
 	if (range === undefined) return "";
 	return range.start === range.end ? `#L${range.start}` : `#L${range.start}-${range.end}`;
 }
 
 /** A backtick fence longer than any backtick run inside `text`. */
-function fenceFor(text: string): string {
+function fenceFor(text: string): string
+{
 	const longestRun = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
 	return "`".repeat(Math.max(3, longestRun + 1));
 }
 
 /** `text` in a code fence that its own backticks cannot close. */
-function formatFencedExcerpt(text: string, language?: string | null): string {
+function formatFencedExcerpt(text: string, language?: string | null): string
+{
 	const fence = fenceFor(text);
 	return `${fence}${language ?? ""}\n${text}\n${fence}`;
 }
 
-export function formatAttachContext({path, range, text, language}: AttachContextInput): string {
+export function formatAttachContext({path, range, text, language}: AttachContextInput): string
+{
 	const mention = `@${path}${lineSuffix(range)}`;
 	if (text === undefined) return mention;
 	return `${mention}\n${formatFencedExcerpt(text, language)}`;
 }
 
 /** A diff comment on a line, or a range of lines, of a diff. */
-export interface ReviewComment {
+export interface ReviewComment
+{
 	path: string;
 	/** "deletions" comments on the old side, serialized as "(before changes)". */
 	side?: "additions" | "deletions" | undefined;
@@ -69,12 +76,14 @@ export interface ReviewComment {
 }
 
 /** Upstream `jl`: a path that can't break the header line or its backtick quoting. */
-function headerPath(path: string): string {
+function headerPath(path: string): string
+{
 	return path.replace(/[\r\n\u2028\u2029]+/g, " ").replace(/`/g, "'");
 }
 
 /** One comment as upstream's `In \`path\` at line N:` header, fenced snippet and body. */
-function formatDiffAnnotation({path, side, line, endLine, text, snippet, lang}: ReviewComment): string {
+function formatDiffAnnotation({path, side, line, endLine, text, snippet, lang}: ReviewComment): string
+{
 	const lines = endLine === undefined || endLine === line ? `line ${line}` : `lines ${line}-${endLine}`;
 	const parts = [`In \`${headerPath(path)}\` at ${lines}${side === "deletions" ? " (before changes)" : ""}:`];
 	if (snippet !== undefined) parts.push(formatFencedExcerpt(snippet, lang));
@@ -86,7 +95,8 @@ function formatDiffAnnotation({path, side, line, endLine, text, snippet, lang}: 
  * Upstream's diff-annotation serializer `dl`: comments grouped by file in first-seen order and sorted by
  * line, blocks joined by a blank line, then `\n\n\n` and the prompt when there is one.
  */
-export function formatDiffAnnotations(comments: readonly ReviewComment[], prompt: string): string {
+export function formatDiffAnnotations(comments: readonly ReviewComment[], prompt: string): string
+{
 	if (comments.length === 0) return prompt;
 	const byPath = new Map<string, ReviewComment[]>();
 	for (const comment of comments) byPath.set(comment.path, [...(byPath.get(comment.path) ?? []), comment]);
@@ -102,7 +112,8 @@ export function formatDiffAnnotations(comments: readonly ReviewComment[], prompt
  * a fenced excerpt starts on its own line, and either leaves the caret ready
  * for more typing.
  */
-export function appendAttachment(prompt: string, snippet: string): string {
+export function appendAttachment(prompt: string, snippet: string): string
+{
 	const multiline = snippet.includes("\n");
 	const separator = prompt === "" || /\s$/.test(prompt) ? "" : multiline ? "\n" : " ";
 	return `${prompt}${separator}${snippet}${multiline ? "\n" : " "}`;
@@ -127,7 +138,8 @@ export const ContextAttachmentKindSchema = z.enum([
 ]);
 export type ContextAttachmentKind = z.infer<typeof ContextAttachmentKindSchema>;
 
-export interface ContextAttachment {
+export interface ContextAttachment
+{
 	kind: ContextAttachmentKind;
 	/**
 	 * File or folder mention path; folders end in "/". An image's saved absolute
@@ -151,7 +163,8 @@ export interface ContextAttachment {
 export type AttachContextHandler = (attachment: ContextAttachment) => void;
 
 /** A context attachment waiting in the composer's chip strip. */
-export interface ContextChip extends ContextAttachment {
+export interface ContextChip extends ContextAttachment
+{
 	id: string;
 }
 
@@ -159,7 +172,8 @@ export interface ContextChip extends ContextAttachment {
  * Upstream's unlabeled snippet wire format (codec `w(e)`): an attach marker,
  * then every line of the text quoted, splitting on CR, LF, CRLF, U+2028 and U+2029.
  */
-function formatExcerpt(text: string): string {
+function formatExcerpt(text: string): string
+{
 	const quoted = text.split(/\r\n?|[\n\u2028\u2029]/).map((line) => `> ${line}`);
 	return `<!-- attach -->\n${quoted.join("\n")}`;
 }
@@ -169,16 +183,26 @@ function formatExcerpt(text: string): string {
  * An image is its saved path, which the CLI attaches. A transcript excerpt is
  * upstream's `<!-- attach -->` quote block. Pasted text is inlined.
  */
-export function formatContextAttachment({kind, path, range, text, language}: ContextAttachment): string {
+export function formatContextAttachment({kind, path, range, text, language}: ContextAttachment): string
+{
 	if (kind === "pasted-text") return text ?? "";
 	if (kind === "excerpt") return formatExcerpt(text ?? "");
 	if (kind === "image" && path !== undefined) return path;
 	if (kind === "terminal" || path === undefined) return formatFencedExcerpt(text ?? "");
-	return formatAttachContext({path, range, text, language});
+	return formatAttachContext(
+		{
+			path,
+			range,
+			text,
+			language,
+		},
+	);
 }
 
-export function contextChipLabel({kind, path, range, text, name: displayName}: ContextAttachment): string {
-	if (kind === "pasted-text") {
+export function contextChipLabel({kind, path, range, text, name: displayName}: ContextAttachment): string
+{
+	if (kind === "pasted-text")
+	{
 		const lines = (text ?? "").split("\n").length;
 		return `Pasted text · ${lines} ${lines === 1 ? "line" : "lines"}`;
 	}
@@ -197,14 +221,16 @@ export function composePrompt(
 	prompt: string,
 	context: readonly ContextAttachment[],
 	comments: readonly ReviewComment[],
-): string {
+): string
+{
 	const blocks = context.map(formatContextAttachment);
 	if (prompt !== "") blocks.push(prompt);
 	return formatDiffAnnotations(comments, blocks.join("\n\n"));
 }
 
 /** A mounted composer: text requests land in its prompt, attachments as chips. */
-export interface ComposerHandle {
+export interface ComposerHandle
+{
 	insertText: (text: string) => void;
 	focus: () => void;
 	/** Replaces the prompt text and focuses; absent, with getText, where no send can be rejected. */
@@ -231,7 +257,8 @@ const chipListeners = new Set<() => void>();
 let nextChipId = 1;
 const NO_CHIPS: readonly ContextChip[] = [];
 
-function setChips(sessionId: string, next: readonly ContextChip[]): void {
+function setChips(sessionId: string, next: readonly ContextChip[]): void
+{
 	chips = new Map(chips);
 	if (next.length === 0) chips.delete(sessionId);
 	else chips.set(sessionId, next);
@@ -242,57 +269,94 @@ function setChips(sessionId: string, next: readonly ContextChip[]): void {
 const STAGED_CHIPS_PREFIX = "ccp-composer-attachments:";
 
 /** What a reload can bring back of a tile: no bytes, no blob preview, nothing still uploading. */
-const StagedChipSchema = z.object({
-	kind: ContextAttachmentKindSchema,
-	path: z.string().optional(),
-	range: z.object({start: z.number(), end: z.number()}).optional(),
-	text: z.string().optional(),
-	language: z.string().nullable().optional(),
-	name: z.string().optional(),
-});
+const StagedChipSchema = z.object(
+	{
+		kind: ContextAttachmentKindSchema,
+		path: z.string().optional(),
+		range: z
+			.object(
+				{
+					start: z.number(),
+					end: z.number(),
+				},
+			)
+			.optional(),
+		text: z.string().optional(),
+		language: z.string().nullable().optional(),
+		name: z.string().optional(),
+	},
+);
 type StagedChip = z.infer<typeof StagedChipSchema>;
 
-function browserLocalStorage(): Storage | null {
+function browserLocalStorage(): Storage | null
+{
 	if (typeof window === "undefined") return null;
-	try {
+	try
+	{
 		return window.localStorage;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-function stagedChip({kind, path, range, text, language, name}: ContextChip): StagedChip {
+function stagedChip({kind, path, range, text, language, name}: ContextChip): StagedChip
+{
 	return {
 		kind,
-		...(path !== undefined && {path}),
-		...(range !== undefined && {range}),
-		...(text !== undefined && {text}),
-		...(language !== undefined && {language}),
-		...(name !== undefined && {name}),
+		...(path !== undefined &&
+		{
+			path,
+		}),
+		...(range !== undefined &&
+		{
+			range,
+		}),
+		...(text !== undefined &&
+		{
+			text,
+		}),
+		...(language !== undefined &&
+		{
+			language,
+		}),
+		...(name !== undefined &&
+		{
+			name,
+		}),
 	};
 }
 
 /** Upstream saves staged attachments with the draft (`stagedImages`); settled tiles only, as their bytes stay in memory. */
-function saveStagedChips(sessionId: string, next: readonly ContextChip[]): void {
-	try {
+function saveStagedChips(sessionId: string, next: readonly ContextChip[]): void
+{
+	try
+	{
 		const storage = browserLocalStorage();
 		if (storage === null) return;
 		const key = `${STAGED_CHIPS_PREFIX}${sessionId}`;
 		const settled = next.filter((chip) => chip.status !== "pending").map(stagedChip);
 		if (settled.length === 0) storage.removeItem(key);
 		else storage.setItem(key, JSON.stringify(settled));
-	} catch {
+	}
+	catch
+	{
 		// Saved tiles are best-effort: storage can be denied or full.
 	}
 }
 
-function readStagedChips(sessionId: string): readonly StagedChip[] {
-	try {
+function readStagedChips(sessionId: string): readonly StagedChip[]
+{
+	try
+	{
 		const raw = browserLocalStorage()?.getItem(`${STAGED_CHIPS_PREFIX}${sessionId}`);
 		if (raw === null || raw === undefined) return [];
 		const parsed = z.array(StagedChipSchema).safeParse(JSON.parse(raw));
 		return parsed.success ? parsed.data : [];
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 }
@@ -300,10 +364,14 @@ function readStagedChips(sessionId: string): readonly StagedChip[] {
 /** Ids of tiles put back from storage: upstream's restored tiles, which skip the enter motion. */
 const restoredIds = new Set<string>();
 
-function restoredChip(attachment: ContextAttachment): ContextChip {
+function restoredChip(attachment: ContextAttachment): ContextChip
+{
 	const id = `context-chip-${nextChipId++}`;
 	restoredIds.add(id);
-	return {...attachment, id};
+	return {
+		...attachment,
+		id,
+	};
 }
 
 /**
@@ -311,19 +379,26 @@ function restoredChip(attachment: ContextAttachment): ContextChip {
  * for images; false, changing nothing, when the strip already holds tiles or
  * nothing was saved.
  */
-export function hydrateStagedChips(sessionId: string): boolean {
+export function hydrateStagedChips(sessionId: string): boolean
+{
 	if (getContextChips(sessionId).length > 0) return false;
 	const saved = readStagedChips(sessionId);
 	if (saved.length === 0) return false;
 	const restored = saved.map((chip) =>
-		restoredChip({
-			...chip,
-			...(chip.kind === "image" &&
-				chip.path !== undefined && {previewUrl: `/api/image?path=${encodeURIComponent(chip.path)}`}),
-		}),
+		restoredChip(
+			{
+				...chip,
+				...(chip.kind === "image" &&
+					chip.path !== undefined &&
+					{
+						previewUrl: `/api/image?path=${encodeURIComponent(chip.path)}`,
+					}),
+			},
+		),
 	);
 	setChips(sessionId, restored);
-	for (const chip of restored) {
+	for (const chip of restored)
+	{
 		if (chip.kind === "image" && chip.previewUrl !== undefined) dropIfGone(sessionId, chip.id, chip.previewUrl);
 	}
 	return true;
@@ -333,18 +408,27 @@ export function hydrateStagedChips(sessionId: string): boolean {
  * Drops a restored image tile, silently, once its saved file turns out to be
  * gone, as upstream skips a stored image it can't use; a failed check keeps it.
  */
-function dropIfGone(sessionId: string, id: string, previewUrl: string): void {
-	fetch(previewUrl, {method: "HEAD"}).then(
-		(response) => {
+function dropIfGone(sessionId: string, id: string, previewUrl: string): void
+{
+	fetch(
+		previewUrl,
+		{
+			method: "HEAD",
+		},
+	).then(
+		(response) =>
+		{
 			if (response.status === 404 || response.status === 403) removeContextChip(sessionId, id);
 		},
-		() => {
+		() =>
+		{
 			// Offline or interrupted: the file may well still be there.
 		},
 	);
 }
 
-interface SentAttachments {
+interface SentAttachments
+{
 	prompt: string;
 	/** The typed text alone, without tiles or comments. */
 	text: string;
@@ -366,18 +450,32 @@ export function recordSentAttachments(
 	text: string,
 	sent: readonly ContextChip[],
 	comments: readonly QueuedDiffComment[] = [],
-): void {
+): void
+{
 	if (sent.length === 0 && comments.length === 0) return;
 	const recent = (sentAttachments.get(sessionId) ?? []).filter((each) => each.prompt !== prompt);
-	sentAttachments.set(sessionId, [...recent, {prompt, text, chips: sent, comments}].slice(-MAX_SENT_ATTACHMENTS));
+	sentAttachments.set(
+		sessionId,
+		[
+			...recent,
+			{
+				prompt,
+				text,
+				chips: sent,
+				comments,
+			},
+		].slice(-MAX_SENT_ATTACHMENTS),
+	);
 }
 
-function findSent(sessionId: string, prompt: string): SentAttachments | undefined {
+function findSent(sessionId: string, prompt: string): SentAttachments | undefined
+{
 	return sentAttachments.get(sessionId)?.find((each) => each.prompt === prompt);
 }
 
 /** Puts a recorded send's tiles and comments back and forgets the record. */
-function restoreSent(sessionId: string, match: SentAttachments, notify?: (options: ToastOptions) => void): void {
+function restoreSent(sessionId: string, match: SentAttachments, notify?: (options: ToastOptions) => void): void
+{
 	sentAttachments.set(
 		sessionId,
 		(sentAttachments.get(sessionId) ?? []).filter((each) => each !== match),
@@ -394,20 +492,34 @@ function appendRestoredChips(
 	sessionId: string,
 	restored: readonly ContextChip[],
 	notify?: (options: ToastOptions) => void,
-): void {
+): void
+{
 	if (restored.length === 0) return;
 	const current = getContextChips(sessionId);
 	let room = MAX_IMAGES - current.filter((chip) => chip.kind === "image").length;
 	const fresh: ContextChip[] = [];
-	for (const {id: _id, ...chip} of restored) {
-		if (chip.kind === "image") {
+	for (const {id: _id, ...chip} of restored)
+	{
+		if (chip.kind === "image")
+		{
 			if (room <= 0) continue;
 			room--;
 		}
-		fresh.push({...chip, id: `context-chip-${nextChipId++}`});
+		fresh.push(
+			{
+				...chip,
+				id: `context-chip-${nextChipId++}`,
+			},
+		);
 	}
 	if (fresh.length < restored.length)
-		notify?.({kind: "warning", message: MAX_IMAGES_MESSAGE, durationMs: ATTACH_WARNING_MS});
+		notify?.(
+			{
+				kind: "warning",
+				message: MAX_IMAGES_MESSAGE,
+				durationMs: ATTACH_WARNING_MS,
+			},
+		);
 	setChips(sessionId, [...current, ...fresh]);
 }
 
@@ -420,7 +532,8 @@ export function restoreRejectedAttachments(
 	sessionId: string,
 	prompt: string,
 	notify?: (options: ToastOptions) => void,
-): string | null {
+): string | null
+{
 	const match = findSent(sessionId, prompt);
 	if (match === undefined) return null;
 	restoreSent(sessionId, match, notify);
@@ -431,23 +544,27 @@ export function restoreRejectedAttachments(
  * Upstream's take-back (held withdraw, cancelled steer, Esc recall): the composer gets the typed text and
  * the tiles come back; false, keeping the record and adding nothing, when the composer refuses it.
  */
-export function takeBackSend(sessionId: string, prompt: string, notify?: (options: ToastOptions) => void): boolean {
+export function takeBackSend(sessionId: string, prompt: string, notify?: (options: ToastOptions) => void): boolean
+{
 	const match = findSent(sessionId, prompt);
 	if (!requestComposerTakeBack(sessionId, match?.text ?? prompt)) return false;
 	if (match !== undefined) restoreSent(sessionId, match, notify);
 	return true;
 }
 
-function mounted(sessionId: string): readonly ComposerHandle[] {
+function mounted(sessionId: string): readonly ComposerHandle[]
+{
 	return [...(composers.get(sessionId) ?? [])];
 }
 
 /** Whether a composer is mounted for the session, so attachments have somewhere to land. */
-export function hasComposer(sessionId: string): boolean {
+export function hasComposer(sessionId: string): boolean
+{
 	return (composers.get(sessionId)?.size ?? 0) > 0;
 }
 
-export function getContextChips(sessionId: string): readonly ContextChip[] {
+export function getContextChips(sessionId: string): readonly ContextChip[]
+{
 	return chips.get(sessionId) ?? NO_CHIPS;
 }
 
@@ -455,52 +572,85 @@ export function getContextChips(sessionId: string): readonly ContextChip[] {
  * Adds a context chip to the session's composer and focuses it; false, adding
  * nothing, when no composer is mounted for the session.
  */
-export function attachContext(sessionId: string, attachment: ContextAttachment): boolean {
+export function attachContext(sessionId: string, attachment: ContextAttachment): boolean
+{
 	return addChip(sessionId, attachment) !== undefined;
 }
 
-function addChip(sessionId: string, attachment: ContextAttachment): string | undefined {
+function addChip(sessionId: string, attachment: ContextAttachment): string | undefined
+{
 	const handles = mounted(sessionId);
 	if (handles.length === 0) return undefined;
-	const chip: ContextChip = {...attachment, id: `context-chip-${nextChipId++}`};
+	const chip: ContextChip =
+	{
+		...attachment,
+		id: `context-chip-${nextChipId++}`,
+	};
 	setChips(sessionId, [...getContextChips(sessionId), chip]);
 	for (const handle of handles) handle.focus();
 	return chip.id;
 }
 
 /** Adds a pending tile for an upload in flight; its id, or undefined when no composer is mounted. */
-export function attachPendingUpload(sessionId: string, attachment: ContextAttachment): string | undefined {
-	return addChip(sessionId, {...attachment, status: "pending"});
+export function attachPendingUpload(sessionId: string, attachment: ContextAttachment): string | undefined
+{
+	return addChip(
+		sessionId,
+		{
+			...attachment,
+			status: "pending",
+		},
+	);
 }
 
 /** Swaps a pending tile for the saved attachment in place; false when it was removed meanwhile. */
-export function resolvePendingUpload(sessionId: string, id: string, attachment: ContextAttachment): boolean {
+export function resolvePendingUpload(sessionId: string, id: string, attachment: ContextAttachment): boolean
+{
 	const current = getContextChips(sessionId);
 	if (!current.some((chip) => chip.id === id)) return false;
 	setChips(
 		sessionId,
-		current.map((chip) => (chip.id === id ? {...attachment, id} : chip)),
+		current.map((chip) =>
+			chip.id === id
+				?
+					{
+						...attachment,
+						id,
+					}
+				: chip,
+		),
 	);
 	return true;
 }
 
 /** Keeps a restored tile's fetched bytes on it in place, so its preview opens without another fetch; false when it was removed meanwhile. */
-export function cacheChipFile(sessionId: string, id: string, file: File): boolean {
+export function cacheChipFile(sessionId: string, id: string, file: File): boolean
+{
 	const current = getContextChips(sessionId);
 	if (!current.some((chip) => chip.id === id)) return false;
 	setChips(
 		sessionId,
-		current.map((chip) => (chip.id === id ? {...chip, file} : chip)),
+		current.map((chip) =>
+			chip.id === id
+				?
+					{
+						...chip,
+						file,
+					}
+				: chip,
+		),
 	);
 	return true;
 }
 
 /** Removes a pending tile whose upload failed. */
-export function dropPendingUpload(sessionId: string, id: string): void {
+export function dropPendingUpload(sessionId: string, id: string): void
+{
 	removeContextChip(sessionId, id);
 }
 
-export function removeContextChip(sessionId: string, id: string): void {
+export function removeContextChip(sessionId: string, id: string): void
+{
 	setChips(
 		sessionId,
 		getContextChips(sessionId).filter((chip) => chip.id !== id),
@@ -508,7 +658,8 @@ export function removeContextChip(sessionId: string, id: string): void {
 }
 
 /** Returns the settled chips and removes them from the strip, as sending a prompt does; pending uploads stay. */
-export function takeContextChips(sessionId: string): readonly ContextChip[] {
+export function takeContextChips(sessionId: string): readonly ContextChip[]
+{
 	const current = getContextChips(sessionId);
 	const taken = current.filter((chip) => chip.status !== "pending");
 	if (taken.length > 0)
@@ -520,11 +671,14 @@ export function takeContextChips(sessionId: string): readonly ContextChip[] {
 }
 
 /** Resolves once none of the session's chips is still uploading, as upstream's `waitForImagesReady`. */
-export async function waitForPendingUploads(sessionId: string): Promise<void> {
+export async function waitForPendingUploads(sessionId: string): Promise<void>
+{
 	const settled = () => !getContextChips(sessionId).some((chip) => chip.status === "pending");
 	if (settled()) return;
-	await new Promise<void>((resolve) => {
-		const listener = () => {
+	await new Promise<void>((resolve) =>
+	{
+		const listener = () =>
+		{
 			if (!settled()) return;
 			chipListeners.delete(listener);
 			resolve();
@@ -538,7 +692,8 @@ export async function waitForPendingUploads(sessionId: string): Promise<void> {
  * session: upstream's restored tiles, which skip the enter motion. The strip
  * itself mounts with the first new chip, so it can't tell on its own.
  */
-export function useRestoredChipIds(sessionId: string): ReadonlySet<string> {
+export function useRestoredChipIds(sessionId: string): ReadonlySet<string>
+{
 	const current = useContextChips(sessionId);
 	const atMount = useMemo(() => new Set(getContextChips(sessionId).map((chip) => chip.id)), [sessionId]);
 	return useMemo(
@@ -547,9 +702,11 @@ export function useRestoredChipIds(sessionId: string): ReadonlySet<string> {
 	);
 }
 
-export function useContextChips(sessionId: string): readonly ContextChip[] {
+export function useContextChips(sessionId: string): readonly ContextChip[]
+{
 	return useSyncExternalStore(
-		(listener) => {
+		(listener) =>
+		{
 			chipListeners.add(listener);
 			return () => chipListeners.delete(listener);
 		},
@@ -559,33 +716,39 @@ export function useContextChips(sessionId: string): readonly ContextChip[] {
 }
 
 /** Put text, such as a "Fix this" prompt, into the session's prompt; false when no composer is mounted. */
-export function requestComposerInsert(sessionId: string, text: string): boolean {
+export function requestComposerInsert(sessionId: string, text: string): boolean
+{
 	const handles = mounted(sessionId);
 	for (const handle of handles) handle.insertText(text);
 	return handles.length > 0;
 }
 
 /** Upstream's `requestComposerAction` after a keyboard comment save: focus the composer, or send its prompt. */
-export function requestComposerAction(sessionId: string, action: "focus" | "submit"): boolean {
+export function requestComposerAction(sessionId: string, action: "focus" | "submit"): boolean
+{
 	return action === "submit" ? submitComposer(sessionId) : focusComposer(sessionId);
 }
 
 /** Upstream's local take-back join: the cancelled message, a blank line, then the draft. */
-export function mergeTakeBack(text: string, draft: string): string {
+export function mergeTakeBack(text: string, draft: string): string
+{
 	return draft.trim() === "" ? text : `${text}\n\n${draft}`;
 }
 
 /** Puts a cancelled steer back into the session's composer; false when none takes it. */
-export function requestComposerTakeBack(sessionId: string, text: string): boolean {
+export function requestComposerTakeBack(sessionId: string, text: string): boolean
+{
 	let taken = false;
-	for (const handle of mounted(sessionId)) {
+	for (const handle of mounted(sessionId))
+	{
 		if (handle.takeBack?.(text) === true) taken = true;
 	}
 	return taken;
 }
 
 /** Puts a rejected prompt back into the session's first composer, above anything typed meanwhile; false when none is mounted. */
-export function refillComposer(sessionId: string, text: string): boolean {
+export function refillComposer(sessionId: string, text: string): boolean
+{
 	const handle = mounted(sessionId).find((each) => each.setText !== undefined && each.getText !== undefined);
 	if (handle?.setText === undefined || handle.getText === undefined) return false;
 	if (text !== "") handle.setText(mergeRefill(text, handle.getText()));
@@ -593,7 +756,8 @@ export function refillComposer(sessionId: string, text: string): boolean {
 }
 
 /** What a rejected send put back: with tiles or comments, the prompt can't be resent as is (upstream `nonResendable`). */
-export interface RejectedRefill {
+export interface RejectedRefill
+{
 	restoredAttachments: boolean;
 }
 
@@ -606,15 +770,19 @@ export function refillRejectedSend(
 	sessionId: string,
 	prompt: string,
 	notify?: (options: ToastOptions) => void,
-): RejectedRefill {
+): RejectedRefill
+{
 	const text = restoreRejectedAttachments(sessionId, prompt, notify);
 	const refill = text ?? prompt;
 	if (!refillComposer(sessionId, refill) && refill !== "") storeRejectedDraft(sessionId, refill);
-	return {restoredAttachments: text !== null};
+	return {
+		restoredAttachments: text !== null,
+	};
 }
 
 /** The session's first composer's prompt text, or null when none can report it. */
-export function getComposerText(sessionId: string): string | null {
+export function getComposerText(sessionId: string): string | null
+{
 	return (
 		mounted(sessionId)
 			.find((each) => each.getText !== undefined)
@@ -623,14 +791,16 @@ export function getComposerText(sessionId: string): string | null {
 }
 
 /** Submits the session's first composer as Enter would; false when none can submit. */
-export function submitComposer(sessionId: string): boolean {
+export function submitComposer(sessionId: string): boolean
+{
 	const handle = mounted(sessionId).find((each) => each.submit !== undefined);
 	handle?.submit?.();
 	return handle !== undefined;
 }
 
 /** Focuses the session's composer; false when no composer is mounted. */
-export function focusComposer(sessionId: string): boolean {
+export function focusComposer(sessionId: string): boolean
+{
 	const handles = mounted(sessionId);
 	for (const handle of handles) handle.focus();
 	return handles.length > 0;
@@ -638,16 +808,19 @@ export function focusComposer(sessionId: string): boolean {
 
 const composerListeners = new Set<() => void>();
 
-function notifyComposers(): void {
+function notifyComposers(): void
+{
 	for (const listener of composerListeners) listener();
 }
 
-export function registerComposer(sessionId: string, handle: ComposerHandle): () => void {
+export function registerComposer(sessionId: string, handle: ComposerHandle): () => void
+{
 	const sessionComposers = composers.get(sessionId) ?? new Set();
 	sessionComposers.add(handle);
 	composers.set(sessionId, sessionComposers);
 	notifyComposers();
-	return () => {
+	return () =>
+	{
 		sessionComposers.delete(handle);
 		if (sessionComposers.size === 0) composers.delete(sessionId);
 		notifyComposers();
@@ -655,9 +828,11 @@ export function registerComposer(sessionId: string, handle: ComposerHandle): () 
 }
 
 /** Whether a composer is mounted for the session, re-rendering as composers mount and unmount. */
-export function useHasComposer(sessionId: string): boolean {
+export function useHasComposer(sessionId: string): boolean
+{
 	return useSyncExternalStore(
-		(listener) => {
+		(listener) =>
+		{
 			composerListeners.add(listener);
 			return () => composerListeners.delete(listener);
 		},
@@ -670,13 +845,15 @@ export function useHasComposer(sessionId: string): boolean {
  * Upstream's prefill join (`C8`): the text goes at the end of the draft with no separator, except one
  * space when the draft ends in an @mention token that has none after it.
  */
-export function joinPrefill(draft: string, text: string): string {
+export function joinPrefill(draft: string, text: string): string
+{
 	const spaced = /(?:^|\s)@\S*$/.test(draft) && !/^\s/.test(text);
 	return `${draft}${spaced ? " " : ""}${text}`;
 }
 
 /** Hands text to the session's first composer that takes a prefill; false when none is mounted or it refused. */
-export function prefillComposer(sessionId: string, text: string): boolean {
+export function prefillComposer(sessionId: string, text: string): boolean
+{
 	const handle = mounted(sessionId).find((each) => each.prefill !== undefined);
 	return handle?.prefill?.(text) ?? false;
 }
@@ -685,7 +862,8 @@ export function prefillComposer(sessionId: string, text: string): boolean {
 const IMAGE_UPLOAD_FAILED = "Failed to process image. You can try again.";
 
 /** Upstream's failed-file toast copy (CCR `Te`), the closest Claude Code string for a file. */
-function fileUploadFailedMessage(name: string): string {
+function fileUploadFailedMessage(name: string): string
+{
 	return `Failed to upload ${name}. It won’t be attached.`;
 }
 
@@ -703,11 +881,13 @@ const ATTACH_WARNING_MS = 8000;
 /** Upstream's image lane types (`Yt`); any other file, BMP or SVG included, goes to the file lane. */
 const IMAGE_TYPES: ReadonlySet<string> = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
-function isImageType(mediaType: string): boolean {
+function isImageType(mediaType: string): boolean
+{
 	return IMAGE_TYPES.has(mediaType);
 }
 
-function isImage(file: File): boolean {
+function isImage(file: File): boolean
+{
 	return isImageType(file.type);
 }
 
@@ -720,21 +900,36 @@ function withinImageCaps(
 	sessionId: string,
 	files: readonly File[],
 	notify: (options: ToastOptions) => void,
-): readonly File[] {
+): readonly File[]
+{
 	const sized = files.filter((file) => !isImage(file) || file.size <= MAX_ATTACHMENT_BYTES);
 	if (sized.length < files.length)
-		notify({kind: "warning", message: IMAGES_TOO_LARGE_MESSAGE, durationMs: ATTACH_WARNING_MS});
+		notify(
+			{
+				kind: "warning",
+				message: IMAGES_TOO_LARGE_MESSAGE,
+				durationMs: ATTACH_WARNING_MS,
+			},
+		);
 	let room = MAX_IMAGES - getContextChips(sessionId).filter((chip) => chip.kind === "image").length;
 	const accepted: File[] = [];
-	for (const file of sized) {
+	for (const file of sized)
+	{
 		if (!isImage(file)) accepted.push(file);
-		else if (room > 0) {
+		else if (room > 0)
+		{
 			room--;
 			accepted.push(file);
 		}
 	}
 	if (accepted.length < sized.length)
-		notify({kind: "warning", message: MAX_IMAGES_MESSAGE, durationMs: ATTACH_WARNING_MS});
+		notify(
+			{
+				kind: "warning",
+				message: MAX_IMAGES_MESSAGE,
+				durationMs: ATTACH_WARNING_MS,
+			},
+		);
 	return accepted;
 }
 
@@ -748,43 +943,64 @@ export function attachUploadedFiles(
 	sessionId: string,
 	files: readonly File[],
 	notify: (options: ToastOptions) => void,
-): void {
-	for (const file of withinImageCaps(sessionId, files, notify)) {
+): void
+{
+	for (const file of withinImageCaps(sessionId, files, notify))
+	{
 		const image = isImage(file);
 		const previewUrl = image && typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : undefined;
-		const id = attachPendingUpload(sessionId, {
-			kind: image ? "image" : "file",
-			name: file.name,
-			...(previewUrl === undefined ? {} : {previewUrl}),
-		});
-		const revokePreview = () => {
+		const id = attachPendingUpload(
+			sessionId,
+			{
+				kind: image ? "image" : "file",
+				name: file.name,
+				...(previewUrl === undefined
+					? {}
+					:
+						{
+							previewUrl,
+						}),
+			},
+		);
+		const revokePreview = () =>
+		{
 			if (previewUrl !== undefined && typeof URL.revokeObjectURL === "function") URL.revokeObjectURL(previewUrl);
 		};
 		uploadAttachment(file).then(
-			(saved) => {
+			(saved) =>
+			{
 				const savedImage = isImageType(saved.mediaType);
-				const attachment: ContextAttachment = {
+				const attachment: ContextAttachment =
+				{
 					kind: savedImage ? "image" : "file",
 					path: saved.path,
 					name: saved.name,
 				};
-				if (savedImage) {
+				if (savedImage)
+				{
 					const url =
 						previewUrl ??
 						(typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : undefined);
 					if (url !== undefined) attachment.previewUrl = url;
 				}
-				if (!savedImage) {
+				if (!savedImage)
+				{
 					revokePreview();
 					attachment.file = file;
 				}
 				if (id === undefined) attachContext(sessionId, attachment);
 				else if (!resolvePendingUpload(sessionId, id, attachment)) revokePreview();
 			},
-			() => {
+			() =>
+			{
 				if (id !== undefined) dropPendingUpload(sessionId, id);
 				revokePreview();
-				notify({kind: "error", message: image ? IMAGE_UPLOAD_FAILED : fileUploadFailedMessage(file.name)});
+				notify(
+					{
+						kind: "error",
+						message: image ? IMAGE_UPLOAD_FAILED : fileUploadFailedMessage(file.name),
+					},
+				);
 			},
 		);
 	}

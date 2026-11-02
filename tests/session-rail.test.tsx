@@ -11,7 +11,8 @@ import {railSectionAccessibility} from "../src/components/session-rail/rail-sect
 import {SessionRail, type RailCard} from "../src/components/session-rail/session-rail";
 import {SessionRailSlot} from "../src/components/session-rail/session-rail-slot";
 import {railFit, railFits} from "../src/components/session-rail/rail-fit";
-import {
+import
+{
 	SessionRailFitContext,
 	useSessionRailDocked,
 	useSessionRailFitState,
@@ -21,7 +22,8 @@ import {TitlebarHiddenCountContext} from "../src/components/titlebar-fold-contex
 import {SessionPaneControls} from "../src/components/view-options-menu";
 import type {PaneKind} from "../src/lib/pane-layout";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
-import {
+import
+{
 	RAIL_SECTIONS_STORAGE_KEY,
 	readRailSectionsState,
 	readSessionRailShown,
@@ -30,54 +32,86 @@ import {
 } from "../src/lib/session-rail-store";
 import {installLocalStorage} from "./fake-storage";
 
-class FakeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
 const unregisters: Array<() => void> = [];
 
-function registerKinds(...kinds: PaneKind[]): void {
-	for (const kind of kinds) {
-		unregisters.push(registerPane(kind, {title: kind, render: () => <p>{`${kind} pane body`}</p>}));
+function registerKinds(...kinds: PaneKind[]): void
+{
+	for (const kind of kinds)
+	{
+		unregisters.push(
+			registerPane(
+				kind,
+				{
+					title: kind,
+					render: () => <p>{`${kind} pane body`}</p>,
+				},
+			),
+		);
 	}
 }
 
-async function settle() {
-	await act(async () => {
-		await new Promise((resolve) => {
+async function settle()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	vi.stubGlobal("ResizeObserver", FakeObserver);
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
 		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
 	);
 	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-		DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+		DOMRect.fromRect(
+			{
+				x: 0,
+				y: 0,
+				width: 1200,
+				height: 800,
+			},
+		),
 	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	for (const unregister of unregisters.splice(0)) unregister();
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
 
-function DockedProbe() {
+function DockedProbe()
+{
 	return <output data-testid="docked">{String(useSessionRailDocked())}</output>;
 }
 
-function renderSession() {
+function renderSession()
+{
 	return render(
 		<SettingsProvider>
 			<TileHost sessionId="rail-session">
@@ -90,15 +124,18 @@ function renderSession() {
 }
 
 /** The titlebar's toggles; a pane's own Move, Expand and Close carry no pressed state. */
-function trail(): Array<[string, string | null]> {
+function trail(): Array<[string, string | null]>
+{
 	return screen
 		.queryAllByRole("button")
 		.filter((button) => button.hasAttribute("aria-pressed"))
 		.map((button) => [button.getAttribute("aria-label") ?? "", button.getAttribute("aria-pressed")]);
 }
 
-describe("session rail toggle", () => {
-	it("leads upstream's trail, before Changes and Files, unpressed while hidden", () => {
+describe("session rail toggle", () =>
+{
+	it("leads upstream's trail, before Changes and Files, unpressed while hidden", () =>
+	{
 		registerKinds("changes", "files");
 		renderSession();
 
@@ -109,49 +146,100 @@ describe("session rail toggle", () => {
 		]);
 	});
 
-	it("shows the rail, persists the global flag, and hides it again", async () => {
+	it("shows the rail, persists the global flag, and hides it again", async () =>
+	{
 		renderSession();
-		fireEvent.click(screen.getByRole("button", {name: "Show session rail"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show session rail",
+				},
+			),
+		);
 		await settle();
-		const shown = {
+		const shown =
+		{
 			trail: trail(),
 			stored: readSessionRailShown(),
 			docked: screen.getByTestId("docked").textContent,
 			rail: (await screen.findByText("rail body")).tagName,
 		};
-		fireEvent.click(screen.getByRole("button", {name: "Hide session rail"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Hide session rail",
+				},
+			),
+		);
 		await settle();
 
-		expect({
-			shown,
-			hidden: {
-				trail: trail(),
-				stored: readSessionRailShown(),
-				docked: screen.getByTestId("docked").textContent,
-				rail: screen.queryByText("rail body"),
+		expect(
+			{
+				shown,
+				hidden:
+				{
+					trail: trail(),
+					stored: readSessionRailShown(),
+					docked: screen.getByTestId("docked").textContent,
+					rail: screen.queryByText("rail body"),
+				},
 			},
-		}).toStrictEqual({
-			shown: {trail: [["Hide session rail", "true"]], stored: true, docked: "true", rail: "P"},
-			hidden: {trail: [["Show session rail", "false"]], stored: false, docked: "false", rail: null},
-		});
+		).toStrictEqual(
+			{
+				shown:
+				{
+					trail: [["Hide session rail", "true"]],
+					stored: true,
+					docked: "true",
+					rail: "P",
+				},
+				hidden:
+				{
+					trail: [["Show session rail", "false"]],
+					stored: false,
+					docked: "false",
+					rail: null,
+				},
+			},
+		);
 	});
 
-	it("paints the pressed rail toggle ghost-selected with primary ink, not the accent blue", async () => {
+	it("paints the pressed rail toggle ghost-selected with primary ink, not the accent blue", async () =>
+	{
 		renderSession();
-		fireEvent.click(screen.getByRole("button", {name: "Show session rail"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show session rail",
+				},
+			),
+		);
 		await settle();
-		const rail = screen.getByRole("button", {name: "Hide session rail"});
+		const rail = screen.getByRole(
+			"button",
+			{
+				name: "Hide session rail",
+			},
+		);
 
-		expect({
-			pressed: rail.getAttribute("aria-pressed"),
-			pressedPaint: rail.className.split(" ").filter((c) => c.startsWith("aria-pressed:")),
-		}).toStrictEqual({
-			pressed: "true",
-			pressedPaint: ["aria-pressed:bg-fill-ghost-selected", "aria-pressed:text-primary"],
-		});
+		expect(
+			{
+				pressed: rail.getAttribute("aria-pressed"),
+				pressedPaint: rail.className.split(" ").filter((c) => c.startsWith("aria-pressed:")),
+			},
+		).toStrictEqual(
+			{
+				pressed: "true",
+				pressedPaint: ["aria-pressed:bg-fill-ghost-selected", "aria-pressed:text-primary"],
+			},
+		);
 	});
 
-	it("lays out upstream's trail: rail toggle, a bare 1x16 span separator, the Changes/Files group, then ⋮", () => {
+	it("lays out upstream's trail: rail toggle, a bare 1x16 span separator, the Changes/Files group, then ⋮", () =>
+	{
 		registerKinds("terminal", "changes", "files");
 		render(
 			<SettingsProvider>
@@ -169,30 +257,36 @@ describe("session rail toggle", () => {
 			child.firstElementChild?.tagName === "BUTTON" && !child.hasAttribute("role")
 				? child.firstElementChild
 				: child;
-		const children = [...trailElement.children].map((child) => {
+		const children = [...trailElement.children].map((child) =>
+		{
 			const element = control(child);
 			const label = element.getAttribute("aria-label") ?? element.getAttribute("role");
 			return label === null ? element.tagName : `${element.tagName}:${label}`;
 		});
 		const group = [...trailElement.children].find((child) => child.tagName === "DIV");
 
-		expect({
-			children,
-			groupClasses: group?.className,
-			group:
-				group === undefined
-					? []
-					: [...group.children].map((child) => control(child).getAttribute("aria-label")),
-			separatorClasses: screen.getByRole("separator").className,
-		}).toStrictEqual({
-			children: ["BUTTON:Show session rail", "SPAN:separator", "DIV", "BUTTON:View options"],
-			groupClasses: "flex items-center gap-1 empty:hidden",
-			group: ["Changes", "Files"],
-			separatorClasses: "h-4 w-px shrink-0 bg-border",
-		});
+		expect(
+			{
+				children,
+				groupClasses: group?.className,
+				group:
+					group === undefined
+						? []
+						: [...group.children].map((child) => control(child).getAttribute("aria-label")),
+				separatorClasses: screen.getByRole("separator").className,
+			},
+		).toStrictEqual(
+			{
+				children: ["BUTTON:Show session rail", "SPAN:separator", "DIV", "BUTTON:View options"],
+				groupClasses: "flex items-center gap-1 empty:hidden",
+				group: ["Changes", "Files"],
+				separatorClasses: "h-4 w-px shrink-0 bg-border",
+			},
+		);
 	});
 
-	function renderFolded(hiddenCount: number) {
+	function renderFolded(hiddenCount: number)
+	{
 		const tree = (count: number) => (
 			<SettingsProvider>
 				<TileHost sessionId="rail-session">
@@ -203,30 +297,62 @@ describe("session rail toggle", () => {
 			</SettingsProvider>
 		);
 		const {rerender} = render(tree(hiddenCount));
-		return (count: number) => {
+		return (count: number) =>
+		{
 			rerender(tree(count));
 		};
 	}
 
 	/** Tabs onto a trail button, so it matches `:focus-visible` like keyboard focus. */
-	function keyboardFocus(name: string) {
-		fireEvent.keyDown(document.body, {key: "Tab"});
-		screen.getByRole("button", {name}).focus();
+	function keyboardFocus(name: string)
+	{
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Tab",
+			},
+		);
+		screen
+			.getByRole(
+				"button",
+				{
+					name,
+				},
+			)
+			.focus();
 	}
 
-	async function foldedState() {
+	async function foldedState()
+	{
 		const buttons = screen.queryAllByRole("button").map((button) => button.getAttribute("aria-label") ?? "");
-		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
 		await settle();
 		const rows = [...screen.getByRole("menu").querySelectorAll<HTMLElement>("[role^=menuitem]")].map(
 			(item) => item.textContent,
 		);
-		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		fireEvent.keyDown(
+			screen.getByRole("menu"),
+			{
+				key: "Escape",
+			},
+		);
 		await settle();
-		return {buttons, rows, separators: screen.queryAllByRole("separator").length};
+		return {
+			buttons,
+			rows,
+			separators: screen.queryAllByRole("separator").length,
+		};
 	}
 
-	it("folds the rail first, then Changes, then Files into View options, as upstream's measured fold", async () => {
+	it("folds the rail first, then Changes, then Files into View options, as upstream's measured fold", async () =>
+	{
 		registerKinds("changes", "files");
 		const setHidden = renderFolded(1);
 		const one = await foldedState();
@@ -234,57 +360,108 @@ describe("session rail toggle", () => {
 		const two = await foldedState();
 		setHidden(3);
 		const three = await foldedState();
-		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
 		await settle();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Show session rail"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Show session rail",
+				},
+			),
+		);
 		await settle();
 
-		expect({one, two, three, stored: readSessionRailShown()}).toStrictEqual({
-			one: {buttons: ["Changes", "Files", "View options"], rows: ["Show session rail"], separators: 0},
-			two: {
-				buttons: ["Files", "View options"],
-				rows: ["Show session rail", "Changes⌃Control⇧ShiftD"],
-				separators: 0,
+		expect(
+			{
+				one,
+				two,
+				three,
+				stored: readSessionRailShown(),
 			},
-			three: {
-				buttons: ["View options"],
-				rows: ["Show session rail", "Changes⌃Control⇧ShiftD", "Files⇧Shift⌘CommandF"],
-				separators: 0,
+		).toStrictEqual(
+			{
+				one:
+				{
+					buttons: ["Changes", "Files", "View options"],
+					rows: ["Show session rail"],
+					separators: 0,
+				},
+				two:
+				{
+					buttons: ["Files", "View options"],
+					rows: ["Show session rail", "Changes⌃Control⇧ShiftD"],
+					separators: 0,
+				},
+				three:
+				{
+					buttons: ["View options"],
+					rows: ["Show session rail", "Changes⌃Control⇧ShiftD", "Files⇧Shift⌘CommandF"],
+					separators: 0,
+				},
+				stored: true,
 			},
-			stored: true,
-		});
+		);
 	});
 
-	it("folds inactive panes before the open one, as upstream", async () => {
+	it("folds inactive panes before the open one, as upstream", async () =>
+	{
 		registerKinds("changes", "files");
 		const setHidden = renderFolded(0);
-		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Changes",
+				},
+			),
+		);
 		await settle();
 		setHidden(2);
 
 		expect(trail()).toStrictEqual([["Changes", "true"]]);
 	});
 
-	it("moves keyboard focus to the last inline toggle when the focused one folds past the end", async () => {
+	it("moves keyboard focus to the last inline toggle when the focused one folds past the end", async () =>
+	{
 		registerKinds("changes", "files");
 		const setHidden = renderFolded(1);
-		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Changes",
+				},
+			),
+		);
 		await settle();
 		keyboardFocus("Files");
 		setHidden(2);
 		const afterFilesFolded = document.activeElement?.getAttribute("aria-label");
 		setHidden(3);
 
-		expect({
-			afterFilesFolded,
-			afterAllFolded: document.activeElement?.getAttribute("aria-label"),
-		}).toStrictEqual({
-			afterFilesFolded: "Changes",
-			afterAllFolded: "View options",
-		});
+		expect(
+			{
+				afterFilesFolded,
+				afterAllFolded: document.activeElement?.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				afterFilesFolded: "Changes",
+				afterAllFolded: "View options",
+			},
+		);
 	});
 
-	it("moves keyboard focus from the focused Changes toggle to Files when Changes folds", () => {
+	it("moves keyboard focus from the focused Changes toggle to Files when Changes folds", () =>
+	{
 		registerKinds("changes", "files");
 		const setHidden = renderFolded(1);
 		keyboardFocus("Changes");
@@ -293,7 +470,8 @@ describe("session rail toggle", () => {
 		expect(document.activeElement?.getAttribute("aria-label")).toBe("Files");
 	});
 
-	it("moves keyboard focus from the rail toggle to View options when the rail folds", () => {
+	it("moves keyboard focus from the rail toggle to View options when the rail folds", () =>
+	{
 		registerKinds("changes", "files");
 		const setHidden = renderFolded(0);
 		keyboardFocus("Show session rail");
@@ -302,17 +480,26 @@ describe("session rail toggle", () => {
 		expect(document.activeElement?.getAttribute("aria-label")).toBe("View options");
 	});
 
-	it("leaves focus alone when an unfocused toggle folds", () => {
+	it("leaves focus alone when an unfocused toggle folds", () =>
+	{
 		registerKinds("changes", "files");
 		const setHidden = renderFolded(1);
 		keyboardFocus("Files");
-		screen.getByRole("button", {name: "Files"}).blur();
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "Files",
+				},
+			)
+			.blur();
 		setHidden(2);
 
 		expect(document.activeElement).toBe(document.body);
 	});
 
-	it("is absent when the session supplies no rail", () => {
+	it("is absent when the session supplies no rail", () =>
+	{
 		render(
 			<SettingsProvider>
 				<TileHost sessionId="rail-session">
@@ -321,15 +508,25 @@ describe("session rail toggle", () => {
 			</SettingsProvider>,
 		);
 
-		expect(screen.queryByRole("button", {name: /session rail/})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: /session rail/,
+				},
+			),
+		).toBeNull();
 	});
 });
 
-describe("session rail on a phone", () => {
-	beforeEach(() => {
+describe("session rail on a phone", () =>
+{
+	beforeEach(() =>
+	{
 		vi.stubGlobal(
 			"matchMedia",
-			vi.fn((query: string) => ({
+			vi.fn((query: string) => (
+			{
 				matches: query === PHONE_SHEET_QUERY,
 				media: query,
 				onchange: null,
@@ -342,126 +539,229 @@ describe("session rail on a phone", () => {
 		);
 	});
 
-	it("keeps the toggle in the trail and opens the rail as an overlay card over the transcript", async () => {
+	it("keeps the toggle in the trail and opens the rail as an overlay card over the transcript", async () =>
+	{
 		registerKinds("changes", "files");
 		renderSession();
 		const before = trail();
-		fireEvent.click(screen.getByRole("button", {name: "Show session rail"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show session rail",
+				},
+			),
+		);
 		await settle();
-		const overlay = await screen.findByRole("group", {name: "Session details"});
-		const shown = {
+		const overlay = await screen.findByRole(
+			"group",
+			{
+				name: "Session details",
+			},
+		);
+		const shown =
+		{
 			trail: trail(),
 			docked: screen.getByTestId("docked").textContent,
 			body: within(overlay).getByText("rail body").tagName,
 			overlay: overlay.hasAttribute("data-session-rail-overlay"),
 			card: overlay.firstElementChild?.className,
 		};
-		fireEvent.click(screen.getByRole("button", {name: "Hide session rail"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Hide session rail",
+				},
+			),
+		);
 		await settle();
 
-		expect({before, shown, closed: screen.queryByRole("group", {name: "Session details"})}).toStrictEqual({
-			before: [
-				["Show session rail", "false"],
-				["Changes", "false"],
-				["Files", "false"],
-			],
-			shown: {
-				trail: [
-					["Hide session rail", "true"],
+		expect(
+			{
+				before,
+				shown,
+				closed: screen.queryByRole(
+					"group",
+					{
+						name: "Session details",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				before: [
+					["Show session rail", "false"],
 					["Changes", "false"],
 					["Files", "false"],
 				],
-				docked: "false",
-				body: "P",
-				overlay: true,
-				card: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-out motion-reduce:transition-none starting:opacity-0 [--session-rail-w:100%]",
+				shown:
+				{
+					trail: [
+						["Hide session rail", "true"],
+						["Changes", "false"],
+						["Files", "false"],
+					],
+					docked: "false",
+					body: "P",
+					overlay: true,
+					card: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-out motion-reduce:transition-none starting:opacity-0 [--session-rail-w:100%]",
+				},
+				closed: null,
 			},
-			closed: null,
-		});
+		);
 	});
 });
 
-describe("session rail and side panes", () => {
-	it("swaps out for an open pane and comes back when the pane closes", async () => {
+describe("session rail and side panes", () =>
+{
+	it("swaps out for an open pane and comes back when the pane closes", async () =>
+	{
 		registerKinds("changes");
 		setSessionRailShown(true);
 		renderSession();
 		await screen.findByText("rail body");
-		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Changes",
+				},
+			),
+		);
 		await settle();
-		const withPane = {
+		const withPane =
+		{
 			trail: trail(),
 			rail: screen.queryByText("rail body"),
 			stored: readSessionRailShown(),
 		};
-		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Changes",
+				},
+			),
+		);
 		await settle();
 
-		expect({withPane, closed: (await screen.findByText("rail body")).tagName}).toStrictEqual({
-			withPane: {
-				trail: [
-					["Show session rail", "false"],
-					["Changes", "true"],
-				],
-				rail: null,
-				stored: true,
+		expect(
+			{
+				withPane,
+				closed: (await screen.findByText("rail body")).tagName,
 			},
-			closed: "P",
-		});
+		).toStrictEqual(
+			{
+				withPane:
+				{
+					trail: [
+						["Show session rail", "false"],
+						["Changes", "true"],
+					],
+					rail: null,
+					stored: true,
+				},
+				closed: "P",
+			},
+		);
 	});
 
-	it("closes the open pane when shown from the titlebar", async () => {
+	it("closes the open pane when shown from the titlebar", async () =>
+	{
 		registerKinds("changes");
 		renderSession();
-		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Changes",
+				},
+			),
+		);
 		await settle();
-		fireEvent.click(screen.getByRole("button", {name: "Show session rail"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show session rail",
+				},
+			),
+		);
 		await settle();
 
-		expect({
-			pane: screen.queryByRole("region", {name: "changes"}),
-			rail: (await screen.findByText("rail body")).tagName,
-			trail: trail(),
-		}).toStrictEqual({
-			pane: null,
-			rail: "P",
-			trail: [
-				["Hide session rail", "true"],
-				["Changes", "false"],
-			],
-		});
+		expect(
+			{
+				pane: screen.queryByRole(
+					"region",
+					{
+						name: "changes",
+					},
+				),
+				rail: (await screen.findByText("rail body")).tagName,
+				trail: trail(),
+			},
+		).toStrictEqual(
+			{
+				pane: null,
+				rail: "P",
+				trail: [
+					["Hide session rail", "true"],
+					["Changes", "false"],
+				],
+			},
+		);
 	});
 });
 
-describe("session rail fit by chat-panel width", () => {
+describe("session rail fit by chat-panel width", () =>
+{
 	let tileWidth = 600;
 	const observers: Array<() => void> = [];
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		tileWidth = 600;
 		vi.stubGlobal(
 			"ResizeObserver",
-			class {
-				constructor(callback: ResizeObserverCallback) {
-					observers.push(() => {
+			class
+			{
+				constructor(callback: ResizeObserverCallback)
+				{
+					observers.push(() =>
+					{
 						callback([], this);
 					});
 				}
-				observe() {}
-				unobserve() {}
-				disconnect() {}
+				observe()
+				{
+				}
+				unobserve()
+				{
+				}
+				disconnect()
+				{
+				}
 			},
 		);
-		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-			return DOMRect.fromRect({width: this.hasAttribute("data-tile") ? tileWidth : 1200, height: 800});
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement)
+		{
+			return DOMRect.fromRect(
+				{
+					width: this.hasAttribute("data-tile") ? tileWidth : 1200,
+					height: 800,
+				},
+			);
 		});
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		observers.splice(0);
 	});
 
-	function FitTile({children}: {children: ReactNode}) {
+	function FitTile({children}: {children: ReactNode})
+	{
 		const fit = useSessionRailFitState();
 		return (
 			<SessionRailFitContext.Provider value={fit}>
@@ -472,7 +772,8 @@ describe("session rail fit by chat-panel width", () => {
 		);
 	}
 
-	function renderFitSession() {
+	function renderFitSession()
+	{
 		return render(
 			<SettingsProvider>
 				<TileHost sessionId="rail-session">
@@ -487,15 +788,23 @@ describe("session rail fit by chat-panel width", () => {
 		);
 	}
 
-	function resizeTile(width: number) {
+	function resizeTile(width: number)
+	{
 		tileWidth = width;
-		act(() => {
+		act(() =>
+		{
 			for (const fire of observers) fire();
 		});
 	}
 
-	function toggleState() {
-		const toggle = screen.getByRole("button", {name: /session rail/});
+	function toggleState()
+	{
+		const toggle = screen.getByRole(
+			"button",
+			{
+				name: /session rail/,
+			},
+		);
 		return {
 			label: toggle.getAttribute("aria-label"),
 			pressed: toggle.getAttribute("aria-pressed"),
@@ -504,7 +813,8 @@ describe("session rail fit by chat-panel width", () => {
 		};
 	}
 
-	it("thresholds the fit at upstream's panels 640px alone and 800px beside a pane", () => {
+	it("thresholds the fit at upstream's panels 640px alone and 800px beside a pane", () =>
+	{
 		expect([railFit(639, true), railFit(640, true), railFit(799, true), railFit(800, true)]).toStrictEqual([
 			"none",
 			"alone",
@@ -518,7 +828,8 @@ describe("session rail fit by chat-panel width", () => {
 		]);
 	});
 
-	it("keeps upstream's pre-panels 611px alone and 771px beside a pane when panels is off", () => {
+	it("keeps upstream's pre-panels 611px alone and 771px beside a pane when panels is off", () =>
+	{
 		expect([railFit(610, false), railFit(611, false), railFit(770, false), railFit(771, false)]).toStrictEqual([
 			"none",
 			"alone",
@@ -527,280 +838,539 @@ describe("session rail fit by chat-panel width", () => {
 		]);
 	});
 
-	it("doesn't dock alone at upstream's live 640px viewport (tile 632) but docks at a 640px tile", async () => {
+	it("doesn't dock alone at upstream's live 640px viewport (tile 632) but docks at a 640px tile", async () =>
+	{
 		setSessionRailShown(true);
 		tileWidth = 632;
 		renderFitSession();
 		await settle();
-		const narrow = {
+		const narrow =
+		{
 			column: document.querySelector("[data-epitaxy-rail-column]"),
 			toggle: toggleState(),
 		};
 		resizeTile(640);
 		await settle();
 
-		expect({
-			narrow,
-			wide: document.querySelector("[data-epitaxy-rail-column]") !== null,
-		}).toStrictEqual({
-			narrow: {
-				column: null,
-				toggle: {
-					label: "Show session rail",
-					pressed: "false",
-					expanded: "false",
-					controls: narrow.toggle.controls,
-				},
+		expect(
+			{
+				narrow,
+				wide: document.querySelector("[data-epitaxy-rail-column]") !== null,
 			},
-			wide: true,
-		});
+		).toStrictEqual(
+			{
+				narrow:
+				{
+					column: null,
+					toggle:
+					{
+						label: "Show session rail",
+						pressed: "false",
+						expanded: "false",
+						controls: narrow.toggle.controls,
+					},
+				},
+				wide: true,
+			},
+		);
 	});
 
-	it("doesn't dock below the fit and raises an unpersisted overlay from the toggle, as upstream", async () => {
+	it("doesn't dock below the fit and raises an unpersisted overlay from the toggle, as upstream", async () =>
+	{
 		setSessionRailShown(true);
 		renderFitSession();
 		await settle();
-		const before = {
+		const before =
+		{
 			column: document.querySelector("[data-epitaxy-rail-column]"),
 			docked: screen.getByTestId("docked").textContent,
 			toggle: toggleState(),
 		};
-		fireEvent.click(screen.getByRole("button", {name: /session rail/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /session rail/,
+				},
+			),
+		);
 		await settle();
-		const overlay = screen.getByRole("group", {name: "Session details"});
+		const overlay = screen.getByRole(
+			"group",
+			{
+				name: "Session details",
+			},
+		);
 		const card = overlay.firstElementChild as HTMLElement;
 
-		expect({
-			before,
-			toggle: toggleState(),
-			overlay: {
-				id: overlay.id,
-				tabIndex: overlay.tabIndex,
-				className: overlay.className,
-				focused: document.activeElement === overlay,
-				card: card.className,
-				flat: card.hasAttribute("data-session-rail-flat"),
-				body: within(overlay).getByText("rail body").tagName,
+		expect(
+			{
+				before,
+				toggle: toggleState(),
+				overlay:
+				{
+					id: overlay.id,
+					tabIndex: overlay.tabIndex,
+					className: overlay.className,
+					focused: document.activeElement === overlay,
+					card: card.className,
+					flat: card.hasAttribute("data-session-rail-flat"),
+					body: within(overlay).getByText("rail body").tagName,
+				},
+				stored: readSessionRailShown(),
 			},
-			stored: readSessionRailShown(),
-		}).toStrictEqual({
-			before: {
-				column: null,
-				docked: "false",
-				toggle: {label: "Show session rail", pressed: "false", expanded: "false", controls: overlay.id},
+		).toStrictEqual(
+			{
+				before:
+				{
+					column: null,
+					docked: "false",
+					toggle:
+					{
+						label: "Show session rail",
+						pressed: "false",
+						expanded: "false",
+						controls: overlay.id,
+					},
+				},
+				toggle:
+				{
+					label: "Hide session rail",
+					pressed: "true",
+					expanded: "true",
+					controls: overlay.id,
+				},
+				overlay:
+				{
+					id: overlay.id,
+					tabIndex: -1,
+					className:
+						"absolute inset-y-0 end-3 z-10 flex w-[var(--session-rail-w,17.5rem)] flex-col pt-3 pb-2 outline-none",
+					focused: true,
+					card: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-out motion-reduce:transition-none starting:opacity-0 [--session-rail-w:100%]",
+					flat: true,
+					body: "P",
+				},
+				stored: true,
 			},
-			toggle: {label: "Hide session rail", pressed: "true", expanded: "true", controls: overlay.id},
-			overlay: {
-				id: overlay.id,
-				tabIndex: -1,
-				className:
-					"absolute inset-y-0 end-3 z-10 flex w-[var(--session-rail-w,17.5rem)] flex-col pt-3 pb-2 outline-none",
-				focused: true,
-				card: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-out motion-reduce:transition-none starting:opacity-0 [--session-rail-w:100%]",
-				flat: true,
-				body: "P",
-			},
-			stored: true,
-		});
+		);
 	});
 
-	it("closes the overlay on an outside pointerdown or Escape, but not on the toggle", async () => {
+	it("closes the overlay on an outside pointerdown or Escape, but not on the toggle", async () =>
+	{
 		renderFitSession();
 		await settle();
-		const toggle = screen.getByRole("button", {name: /session rail/});
+		const toggle = screen.getByRole(
+			"button",
+			{
+				name: /session rail/,
+			},
+		);
 		fireEvent.click(toggle);
 		await settle();
 		fireEvent.pointerDown(toggle);
-		const afterToggleDown = screen.queryByRole("group", {name: "Session details"}) !== null;
+		const afterToggleDown =
+			screen.queryByRole(
+				"group",
+				{
+					name: "Session details",
+				},
+			) !== null;
 		fireEvent.pointerDown(screen.getByText("transcript"));
 		await settle();
-		const afterOutside = screen.queryByRole("group", {name: "Session details"});
+		const afterOutside = screen.queryByRole(
+			"group",
+			{
+				name: "Session details",
+			},
+		);
 		fireEvent.click(toggle);
 		await settle();
-		fireEvent.keyDown(screen.getByRole("group", {name: "Session details"}), {key: "Escape"});
+		fireEvent.keyDown(
+			screen.getByRole(
+				"group",
+				{
+					name: "Session details",
+				},
+			),
+			{
+				key: "Escape",
+			},
+		);
 		await settle();
 
-		expect({
-			afterToggleDown,
-			afterOutside,
-			afterEscape: screen.queryByRole("group", {name: "Session details"}),
-			refocused: document.activeElement === toggle,
-			toggle: toggleState(),
-			stored: readSessionRailShown(),
-		}).toStrictEqual({
-			afterToggleDown: true,
-			afterOutside: null,
-			afterEscape: null,
-			refocused: true,
-			toggle: {
-				label: "Show session rail",
-				pressed: "false",
-				expanded: "false",
-				controls: toggle.getAttribute("aria-controls"),
+		expect(
+			{
+				afterToggleDown,
+				afterOutside,
+				afterEscape: screen.queryByRole(
+					"group",
+					{
+						name: "Session details",
+					},
+				),
+				refocused: document.activeElement === toggle,
+				toggle: toggleState(),
+				stored: readSessionRailShown(),
 			},
-			stored: false,
-		});
+		).toStrictEqual(
+			{
+				afterToggleDown: true,
+				afterOutside: null,
+				afterEscape: null,
+				refocused: true,
+				toggle:
+				{
+					label: "Show session rail",
+					pressed: "false",
+					expanded: "false",
+					controls: toggle.getAttribute("aria-controls"),
+				},
+				stored: false,
+			},
+		);
 	});
 
-	it("docks once the tile widens past the fit, clearing the overlay, and doesn't re-raise when it narrows", async () => {
+	it("docks once the tile widens past the fit, clearing the overlay, and doesn't re-raise when it narrows", async () =>
+	{
 		setSessionRailShown(true);
 		renderFitSession();
 		await settle();
-		fireEvent.click(screen.getByRole("button", {name: /session rail/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /session rail/,
+				},
+			),
+		);
 		await settle();
 		resizeTile(700);
 		await settle();
-		const wide = {
+		const wide =
+		{
 			column: document.querySelector("[data-epitaxy-rail-column]") !== null,
-			overlay: screen.queryByRole("group", {name: "Session details"}),
+			overlay: screen.queryByRole(
+				"group",
+				{
+					name: "Session details",
+				},
+			),
 			docked: screen.getByTestId("docked").textContent,
-			toggle: screen.getByRole("button", {name: /session rail/}).getAttribute("aria-expanded"),
+			toggle: screen
+				.getByRole(
+					"button",
+					{
+						name: /session rail/,
+					},
+				)
+				.getAttribute("aria-expanded"),
 		};
 		resizeTile(600);
 		await settle();
 
-		expect({
-			wide,
-			narrow: {
-				column: document.querySelector("[data-epitaxy-rail-column]"),
-				overlay: screen.queryByRole("group", {name: "Session details"}),
-				docked: screen.getByTestId("docked").textContent,
+		expect(
+			{
+				wide,
+				narrow:
+				{
+					column: document.querySelector("[data-epitaxy-rail-column]"),
+					overlay: screen.queryByRole(
+						"group",
+						{
+							name: "Session details",
+						},
+					),
+					docked: screen.getByTestId("docked").textContent,
+				},
 			},
-		}).toStrictEqual({
-			wide: {column: true, overlay: null, docked: "true", toggle: null},
-			narrow: {column: null, overlay: null, docked: "false"},
-		});
+		).toStrictEqual(
+			{
+				wide:
+				{
+					column: true,
+					overlay: null,
+					docked: "true",
+					toggle: null,
+				},
+				narrow:
+				{
+					column: null,
+					overlay: null,
+					docked: "false",
+				},
+			},
+		);
 	});
 
-	it("docks beside an open pane once the tile is 800px, as upstream under panels", async () => {
+	it("docks beside an open pane once the tile is 800px, as upstream under panels", async () =>
+	{
 		registerKinds("changes");
 		setSessionRailShown(true);
 		tileWidth = 800;
 		renderFitSession();
 		await settle();
-		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Changes",
+				},
+			),
+		);
 		await settle();
-		const shown = {
+		const shown =
+		{
 			column: document.querySelector("[data-epitaxy-rail-column]") !== null,
 			docked: screen.getByTestId("docked").textContent,
-			pane: screen.queryByRole("region", {name: "changes"}) !== null,
+			pane:
+				screen.queryByRole(
+					"region",
+					{
+						name: "changes",
+					},
+				) !== null,
 			toggle: toggleState(),
 		};
-		fireEvent.click(screen.getByRole("button", {name: /session rail/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /session rail/,
+				},
+			),
+		);
 		await settle();
-		const hidden = {
+		const hidden =
+		{
 			column: document.querySelector("[data-epitaxy-rail-column]"),
-			pane: screen.queryByRole("region", {name: "changes"}) !== null,
+			pane:
+				screen.queryByRole(
+					"region",
+					{
+						name: "changes",
+					},
+				) !== null,
 			stored: readSessionRailShown(),
 		};
-		fireEvent.click(screen.getByRole("button", {name: /session rail/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /session rail/,
+				},
+			),
+		);
 		await settle();
 
-		expect({
-			shown,
-			hidden,
-			reshown: {
-				column: document.querySelector("[data-epitaxy-rail-column]") !== null,
-				pane: screen.queryByRole("region", {name: "changes"}) !== null,
-				stored: readSessionRailShown(),
+		expect(
+			{
+				shown,
+				hidden,
+				reshown:
+				{
+					column: document.querySelector("[data-epitaxy-rail-column]") !== null,
+					pane:
+						screen.queryByRole(
+							"region",
+							{
+								name: "changes",
+							},
+						) !== null,
+					stored: readSessionRailShown(),
+				},
 			},
-		}).toStrictEqual({
-			shown: {
-				column: true,
-				docked: "true",
-				pane: true,
-				toggle: {label: "Hide session rail", pressed: "true", expanded: null, controls: null},
+		).toStrictEqual(
+			{
+				shown:
+				{
+					column: true,
+					docked: "true",
+					pane: true,
+					toggle:
+					{
+						label: "Hide session rail",
+						pressed: "true",
+						expanded: null,
+						controls: null,
+					},
+				},
+				hidden:
+				{
+					column: null,
+					pane: true,
+					stored: false,
+				},
+				reshown:
+				{
+					column: true,
+					pane: true,
+					stored: true,
+				},
 			},
-			hidden: {column: null, pane: true, stored: false},
-			reshown: {column: true, pane: true, stored: true},
-		});
+		);
 	});
 
-	it("doesn't dock beside an open pane at a 799px tile under panels", async () => {
+	it("doesn't dock beside an open pane at a 799px tile under panels", async () =>
+	{
 		registerKinds("changes");
 		setSessionRailShown(true);
 		tileWidth = 799;
 		renderFitSession();
 		await settle();
-		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Changes",
+				},
+			),
+		);
 		await settle();
 		const toggle = toggleState();
 
-		expect({
-			column: document.querySelector("[data-epitaxy-rail-column]"),
-			pane: screen.queryByRole("region", {name: "changes"}) !== null,
-			toggle,
-		}).toStrictEqual({
-			column: null,
-			pane: true,
-			toggle: {label: "Show session rail", pressed: "false", expanded: "false", controls: toggle.controls},
-		});
+		expect(
+			{
+				column: document.querySelector("[data-epitaxy-rail-column]"),
+				pane:
+					screen.queryByRole(
+						"region",
+						{
+							name: "changes",
+						},
+					) !== null,
+				toggle,
+			},
+		).toStrictEqual(
+			{
+				column: null,
+				pane: true,
+				toggle:
+				{
+					label: "Show session rail",
+					pressed: "false",
+					expanded: "false",
+					controls: toggle.controls,
+				},
+			},
+		);
 	});
 
-	it("raises the overlay beside a pane below 800px, leaving the pane open", async () => {
+	it("raises the overlay beside a pane below 800px, leaving the pane open", async () =>
+	{
 		registerKinds("changes");
 		setSessionRailShown(true);
 		tileWidth = 799;
 		renderFitSession();
 		await settle();
-		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Changes",
+				},
+			),
+		);
 		await settle();
-		const before = {
+		const before =
+		{
 			column: document.querySelector("[data-epitaxy-rail-column]"),
 			docked: screen.getByTestId("docked").textContent,
 		};
-		fireEvent.click(screen.getByRole("button", {name: /session rail/}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /session rail/,
+				},
+			),
+		);
 		await settle();
 
-		expect({
-			before,
-			overlay: within(screen.getByRole("group", {name: "Session details"})).getByText("rail body").tagName,
-			pane: screen.queryByRole("region", {name: "changes"}) !== null,
-			stored: readSessionRailShown(),
-		}).toStrictEqual({
-			before: {column: null, docked: "false"},
-			overlay: "P",
-			pane: true,
-			stored: true,
-		});
+		expect(
+			{
+				before,
+				overlay: within(
+					screen.getByRole(
+						"group",
+						{
+							name: "Session details",
+						},
+					),
+				).getByText("rail body").tagName,
+				pane:
+					screen.queryByRole(
+						"region",
+						{
+							name: "changes",
+						},
+					) !== null,
+				stored: readSessionRailShown(),
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					column: null,
+					docked: "false",
+				},
+				overlay: "P",
+				pane: true,
+				stored: true,
+			},
+		);
 	});
 
-	describe("raised by /autocompact", () => {
-		function focusedPrompt(): HTMLTextAreaElement {
+	describe("raised by /autocompact", () =>
+	{
+		function focusedPrompt(): HTMLTextAreaElement
+		{
 			const prompt = document.createElement("textarea");
 			document.body.append(prompt);
 			prompt.focus();
 			return prompt;
 		}
 
-		async function requestContext() {
-			act(() => {
+		async function requestContext()
+		{
+			act(() =>
+			{
 				requestRailContextCard("rail-session");
 			});
 			await settle();
 		}
 
-		it("leaves a shown, fitting rail docked and raises nothing", async () => {
+		it("leaves a shown, fitting rail docked and raises nothing", async () =>
+		{
 			setSessionRailShown(true);
 			tileWidth = 1200;
 			renderFitSession();
 			await settle();
 			await requestContext();
 
-			expect({
-				overlay: document.querySelector("[data-session-rail-overlay]"),
-				column: document.querySelector("[data-epitaxy-rail-column]") !== null,
-			}).toStrictEqual({overlay: null, column: true});
+			expect(
+				{
+					overlay: document.querySelector("[data-session-rail-overlay]"),
+					column: document.querySelector("[data-epitaxy-rail-column]") !== null,
+				},
+			).toStrictEqual(
+				{
+					overlay: null,
+					column: true,
+				},
+			);
 		});
 
-		it("raises a hidden, fitting rail as an unpersisted overlay without taking focus, and lowers it on an outside pointerdown", async () => {
+		it("raises a hidden, fitting rail as an unpersisted overlay without taking focus, and lowers it on an outside pointerdown", async () =>
+		{
 			tileWidth = 1200;
 			renderFitSession();
 			await settle();
 			const prompt = focusedPrompt();
 			await requestContext();
 			const overlay = document.querySelector<HTMLElement>("[data-session-rail-overlay]");
-			const raised = {
+			const raised =
+			{
 				role: overlay?.getAttribute("role"),
 				label: overlay?.getAttribute("aria-label"),
 				body: overlay === null ? null : within(overlay).getByText("rail body").tagName,
@@ -811,61 +1381,103 @@ describe("session rail fit by chat-panel width", () => {
 			fireEvent.pointerDown(document.body);
 			await settle();
 
-			expect({
-				raised,
-				lowered: {
-					overlay: document.querySelector("[data-session-rail-overlay]"),
-					stored: readSessionRailShown(),
-					pressed: toggleState().pressed,
+			expect(
+				{
+					raised,
+					lowered:
+					{
+						overlay: document.querySelector("[data-session-rail-overlay]"),
+						stored: readSessionRailShown(),
+						pressed: toggleState().pressed,
+					},
 				},
-			}).toStrictEqual({
-				raised: {
-					role: "group",
-					label: "Session details",
-					body: "P",
-					focusKept: true,
-					stored: false,
-					toggle: {label: "Hide session rail", pressed: "true", expanded: "true", controls: overlay?.id},
+			).toStrictEqual(
+				{
+					raised:
+					{
+						role: "group",
+						label: "Session details",
+						body: "P",
+						focusKept: true,
+						stored: false,
+						toggle:
+						{
+							label: "Hide session rail",
+							pressed: "true",
+							expanded: "true",
+							controls: overlay?.id,
+						},
+					},
+					lowered:
+					{
+						overlay: null,
+						stored: false,
+						pressed: "false",
+					},
 				},
-				lowered: {overlay: null, stored: false, pressed: "false"},
-			});
+			);
 		});
 
-		it("lowers the command-raised overlay from the toggle without showing the rail", async () => {
+		it("lowers the command-raised overlay from the toggle without showing the rail", async () =>
+		{
 			tileWidth = 1200;
 			renderFitSession();
 			await settle();
 			await requestContext();
-			const toggle = screen.getByRole("button", {name: /session rail/});
+			const toggle = screen.getByRole(
+				"button",
+				{
+					name: /session rail/,
+				},
+			);
 			fireEvent.pointerDown(toggle);
 			fireEvent.click(toggle);
 			await settle();
 
-			expect({
-				overlay: document.querySelector("[data-session-rail-overlay]"),
-				column: document.querySelector("[data-epitaxy-rail-column]"),
-				stored: readSessionRailShown(),
-			}).toStrictEqual({overlay: null, column: null, stored: false});
+			expect(
+				{
+					overlay: document.querySelector("[data-session-rail-overlay]"),
+					column: document.querySelector("[data-epitaxy-rail-column]"),
+					stored: readSessionRailShown(),
+				},
+			).toStrictEqual(
+				{
+					overlay: null,
+					column: null,
+					stored: false,
+				},
+			);
 		});
 
-		it("raises the overlay below the fit without moving focus", async () => {
+		it("raises the overlay below the fit without moving focus", async () =>
+		{
 			renderFitSession();
 			await settle();
 			const prompt = focusedPrompt();
 			await requestContext();
 
-			expect({
-				overlay: document.querySelector("[data-session-rail-overlay]") !== null,
-				focusKept: document.activeElement === prompt,
-				toggle: toggleState().expanded,
-			}).toStrictEqual({overlay: true, focusKept: true, toggle: "true"});
+			expect(
+				{
+					overlay: document.querySelector("[data-session-rail-overlay]") !== null,
+					focusKept: document.activeElement === prompt,
+					toggle: toggleState().expanded,
+				},
+			).toStrictEqual(
+				{
+					overlay: true,
+					focusKept: true,
+					toggle: "true",
+				},
+			);
 		});
 
-		it("ignores another session's request", async () => {
+		it("ignores another session's request", async () =>
+		{
 			tileWidth = 1200;
 			renderFitSession();
 			await settle();
-			act(() => {
+			act(() =>
+			{
 				requestRailContextCard("other-session");
 			});
 			await settle();
@@ -876,15 +1488,35 @@ describe("session rail fit by chat-panel width", () => {
 });
 
 const CARDS: RailCard[] = [
-	{id: "environment", body: <p>env body</p>},
-	{id: "context", summary: "12%", body: <p>context body</p>},
-	{id: "progress", summary: "1 of 3", body: <p>progress body</p>},
+	{
+		id: "environment",
+		body: <p>env body</p>,
+	},
+	{
+		id: "context",
+		summary: "12%",
+		body: <p>context body</p>,
+	},
+	{
+		id: "progress",
+		summary: "1 of 3",
+		body: <p>progress body</p>,
+	},
 ];
 
-function cardStates(): Array<[string, string | null, boolean]> {
-	return within(screen.getByRole("complementary", {name: "Session details"}))
+function cardStates(): Array<[string, string | null, boolean]>
+{
+	return within(
+		screen.getByRole(
+			"complementary",
+			{
+				name: "Session details",
+			},
+		),
+	)
 		.getAllByRole("region")
-		.map((section) => {
+		.map((section) =>
+		{
 			const button = section.querySelector("button[aria-expanded]");
 			return [
 				button?.textContent ?? "",
@@ -894,8 +1526,10 @@ function cardStates(): Array<[string, string | null, boolean]> {
 		});
 }
 
-describe("session rail cards", () => {
-	it("renders upstream's titled cards, every one open by default except Context", () => {
+describe("session rail cards", () =>
+{
+	it("renders upstream's titled cards, every one open by default except Context", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 
 		expect(cardStates()).toStrictEqual([
@@ -905,34 +1539,79 @@ describe("session rail cards", () => {
 		]);
 	});
 
-	it("toggles one card from its header, and the toggle becomes the default for other sessions", () => {
+	it("toggles one card from its header, and the toggle becomes the default for other sessions", () =>
+	{
 		const {unmount} = render(<SessionRail sessionId="s1" cards={CARDS} />);
-		fireEvent.click(screen.getByRole("button", {name: /^Context/}));
-		fireEvent.click(screen.getByRole("button", {name: /^Environment/}));
-		const s1 = {cards: cardStates(), folds: readRailSectionsState().foldsBySession};
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Context/,
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Environment/,
+				},
+			),
+		);
+		const s1 =
+		{
+			cards: cardStates(),
+			folds: readRailSectionsState().foldsBySession,
+		};
 		unmount();
 		render(<SessionRail sessionId="s2" cards={CARDS} />);
 
-		expect({s1, s2: cardStates()}).toStrictEqual({
-			s1: {
-				cards: [
+		expect(
+			{
+				s1,
+				s2: cardStates(),
+			},
+		).toStrictEqual(
+			{
+				s1:
+				{
+					cards: [
+						["Environment", "false", false],
+						["Context12%", "true", true],
+						["Progress1 of 3", "true", true],
+					],
+					folds:
+					{
+						s1:
+						{
+							collapsed: ["environment"],
+							expanded: ["context"],
+						},
+					},
+				},
+				s2: [
 					["Environment", "false", false],
 					["Context12%", "true", true],
 					["Progress1 of 3", "true", true],
 				],
-				folds: {s1: {collapsed: ["environment"], expanded: ["context"]}},
 			},
-			s2: [
-				["Environment", "false", false],
-				["Context12%", "true", true],
-				["Progress1 of 3", "true", true],
-			],
-		});
+		);
 	});
 
-	it("Alt-click sets every card to the clicked card's new state", () => {
+	it("Alt-click sets every card to the clicked card's new state", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		fireEvent.click(screen.getByRole("button", {name: /^Context/}), {altKey: true});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Context/,
+				},
+			),
+			{
+				altKey: true,
+			},
+		);
 
 		expect(cardStates()).toStrictEqual([
 			["Environment", "true", true],
@@ -942,33 +1621,78 @@ describe("session rail cards", () => {
 	});
 });
 
-describe("session rail card summary", () => {
-	function summaryOf(name: RegExp) {
-		const summary = screen.getByRole("button", {name}).querySelector<HTMLElement>("[data-rail-summary]");
-		return {invisible: summary?.classList.contains("invisible"), ariaHidden: summary?.getAttribute("aria-hidden")};
+describe("session rail card summary", () =>
+{
+	function summaryOf(name: RegExp)
+	{
+		const summary = screen
+			.getByRole(
+				"button",
+				{
+					name,
+				},
+			)
+			.querySelector<HTMLElement>("[data-rail-summary]");
+		return {
+			invisible: summary?.classList.contains("invisible"),
+			ariaHidden: summary?.getAttribute("aria-hidden"),
+		};
 	}
 
-	it("hides an open card's summary like upstream, and shows a collapsed one's", () => {
+	it("hides an open card's summary like upstream, and shows a collapsed one's", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 
-		expect({open: summaryOf(/^Progress/), collapsed: summaryOf(/^Context/)}).toStrictEqual({
-			open: {invisible: true, ariaHidden: "true"},
-			collapsed: {invisible: false, ariaHidden: null},
-		});
+		expect(
+			{
+				open: summaryOf(/^Progress/),
+				collapsed: summaryOf(/^Context/),
+			},
+		).toStrictEqual(
+			{
+				open:
+				{
+					invisible: true,
+					ariaHidden: "true",
+				},
+				collapsed:
+				{
+					invisible: false,
+					ariaHidden: null,
+				},
+			},
+		);
 	});
 
-	it("renders a rollup percentage with upstream's 24x10 mini meter, filled by severity", () => {
+	it("renders a rollup percentage with upstream's 24x10 mini meter, filled by severity", () =>
+	{
 		render(
 			<SessionRail
 				sessionId="s1"
 				cards={[
-					{id: "context", rollupPct: 18, body: <p>context body</p>},
-					{id: "environment", rollupPct: 80, body: <p>env body</p>},
+					{
+						id: "context",
+						rollupPct: 18,
+						body: <p>context body</p>,
+					},
+					{
+						id: "environment",
+						rollupPct: 80,
+						body: <p>env body</p>,
+					},
 				]}
 			/>,
 		);
-		const meter = (name: RegExp) => {
-			const summary = screen.getByRole("button", {name}).querySelector<HTMLElement>("[data-rail-summary]");
+		const meter = (name: RegExp) =>
+		{
+			const summary = screen
+				.getByRole(
+					"button",
+					{
+						name,
+					},
+				)
+				.querySelector<HTMLElement>("[data-rail-summary]");
 			const track = summary?.querySelector<HTMLElement>(".h-2\\.5.w-6");
 			const fill = track?.firstElementChild as HTMLElement | null | undefined;
 			return {
@@ -980,27 +1704,38 @@ describe("session rail card summary", () => {
 			};
 		};
 
-		expect({context: meter(/^Context/), environment: meter(/^Environment/)}).toStrictEqual({
-			context: {
-				text: "18%",
-				track: "flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5",
-				trackHidden: "true",
-				fill: "h-full min-w-1.5 rounded-full bg-fill-accent",
-				width: "18%",
+		expect(
+			{
+				context: meter(/^Context/),
+				environment: meter(/^Environment/),
 			},
-			environment: {
-				text: "80%",
-				track: "flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5",
-				trackHidden: "true",
-				fill: "h-full min-w-1.5 rounded-full bg-usage-warning",
-				width: "80%",
+		).toStrictEqual(
+			{
+				context:
+				{
+					text: "18%",
+					track: "flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5",
+					trackHidden: "true",
+					fill: "h-full min-w-1.5 rounded-full bg-fill-accent",
+					width: "18%",
+				},
+				environment:
+				{
+					text: "80%",
+					track: "flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5",
+					trackHidden: "true",
+					fill: "h-full min-w-1.5 rounded-full bg-usage-warning",
+					width: "80%",
+				},
 			},
-		});
+		);
 	});
 });
 
-describe("session rail header menu", () => {
-	function menuRows(): Array<[string | null, string, string | null]> {
+describe("session rail header menu", () =>
+{
+	function menuRows(): Array<[string | null, string, string | null]>
+	{
 		const menu = screen.getByRole("menu");
 		return [...menu.querySelectorAll<HTMLElement>("[role^=menuitem], [data-menu-label]")].map((item) => [
 			item.getAttribute("role"),
@@ -1009,18 +1744,28 @@ describe("session rail header menu", () => {
 		]);
 	}
 
-	async function openHeaderMenu(title: RegExp) {
-		fireEvent.contextMenu(screen.getByRole("button", {name: title}));
+	async function openHeaderMenu(title: RegExp)
+	{
+		fireEvent.contextMenu(
+			screen.getByRole(
+				"button",
+				{
+					name: title,
+				},
+			),
+		);
 		await settle();
 	}
 
-	function cardIds(): string[] {
+	function cardIds(): string[]
+	{
 		return [...document.querySelectorAll<HTMLElement>("[data-rail-section]")].map(
 			(section) => section.dataset["railSection"] ?? "",
 		);
 	}
 
-	it("lists upstream's Show checkboxes and a disabled Reset to defaults on right-click", async () => {
+	it("lists upstream's Show checkboxes and a disabled Reset to defaults on right-click", async () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 		await openHeaderMenu(/^Progress/);
 		const widthClasses = [...screen.getByRole("menu").classList].filter(
@@ -1041,41 +1786,84 @@ describe("session rail header menu", () => {
 		]);
 	});
 
-	it("hides a section from the Show group, and Reset to defaults brings it back", async () => {
+	it("hides a section from the Show group, and Reset to defaults brings it back", async () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 		await openHeaderMenu(/^Environment/);
-		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Context"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Context",
+				},
+			),
+		);
 		await settle();
-		const hidden = {cards: cardIds(), stored: readRailSectionsState().hidden};
-		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		const hidden =
+		{
+			cards: cardIds(),
+			stored: readRailSectionsState().hidden,
+		};
+		fireEvent.keyDown(
+			screen.getByRole("menu"),
+			{
+				key: "Escape",
+			},
+		);
 		await settle();
 		await openHeaderMenu(/^Environment/);
-		const reset = screen.getByRole("menuitem", {name: "Reset to defaults"});
+		const reset = screen.getByRole(
+			"menuitem",
+			{
+				name: "Reset to defaults",
+			},
+		);
 		const resetDisabled = reset.getAttribute("aria-disabled");
 		fireEvent.click(reset);
 		await settle();
 
-		expect({hidden, resetDisabled, restored: cardIds()}).toStrictEqual({
-			hidden: {cards: ["environment", "progress"], stored: ["context"]},
-			resetDisabled: null,
-			restored: ["environment", "context", "progress"],
-		});
+		expect(
+			{
+				hidden,
+				resetDisabled,
+				restored: cardIds(),
+			},
+		).toStrictEqual(
+			{
+				hidden:
+				{
+					cards: ["environment", "progress"],
+					stored: ["context"],
+				},
+				resetDisabled: null,
+				restored: ["environment", "context", "progress"],
+			},
+		);
 	});
 });
 
-describe("session rail reorder", () => {
-	it("draws the cards in the saved order", () => {
+describe("session rail reorder", () =>
+{
+	it("draws the cards in the saved order", () =>
+	{
 		localStorage.setItem(
 			RAIL_SECTIONS_STORAGE_KEY,
-			JSON.stringify({
-				state: {
-					foldsBySession: {},
-					startsOpen: {environment: true, context: true},
-					hidden: [],
-					order: ["progress", "environment"],
+			JSON.stringify(
+				{
+					state:
+					{
+						foldsBySession: {},
+						startsOpen:
+						{
+							environment: true,
+							context: true,
+						},
+						hidden: [],
+						order: ["progress", "environment"],
+					},
+					version: 0,
 				},
-				version: 0,
-			}),
+			),
 		);
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 
@@ -1083,28 +1871,51 @@ describe("session rail reorder", () => {
 		expect(cardStates().map(([title]) => title)).toStrictEqual(["Progress1 of 3", "Context12%", "Environment"]);
 	});
 
-	it("gives each header upstream's hover-only Reorder grip, a keyboard-sortable handle", () => {
+	it("gives each header upstream's hover-only Reorder grip, a keyboard-sortable handle", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		const grip = screen.getByRole("button", {name: "Reorder Progress"});
+		const grip = screen.getByRole(
+			"button",
+			{
+				name: "Reorder Progress",
+			},
+		);
 
-		expect({
-			grip: grip.hasAttribute("data-rail-grip"),
-			roledescription: grip.getAttribute("aria-roledescription"),
-			tabIndex: grip.tabIndex,
-			hoverOnly: grip.className.split(" ").filter((c) => c.includes("opacity")),
-			grips: screen.getAllByRole("button", {name: /^Reorder /}).map((each) => each.getAttribute("aria-label")),
-		}).toStrictEqual({
-			grip: true,
-			roledescription: "Draggable section",
-			tabIndex: 0,
-			hoverOnly: ["opacity-0", "group-hover/railtop:opacity-100", "focus-visible:opacity-100"],
-			grips: ["Reorder Environment", "Reorder Context", "Reorder Progress"],
-		});
+		expect(
+			{
+				grip: grip.hasAttribute("data-rail-grip"),
+				roledescription: grip.getAttribute("aria-roledescription"),
+				tabIndex: grip.tabIndex,
+				hoverOnly: grip.className.split(" ").filter((c) => c.includes("opacity")),
+				grips: screen
+					.getAllByRole(
+						"button",
+						{
+							name: /^Reorder /,
+						},
+					)
+					.map((each) => each.getAttribute("aria-label")),
+			},
+		).toStrictEqual(
+			{
+				grip: true,
+				roledescription: "Draggable section",
+				tabIndex: 0,
+				hoverOnly: ["opacity-0", "group-hover/railtop:opacity-100", "focus-visible:opacity-100"],
+				grips: ["Reorder Environment", "Reorder Context", "Reorder Progress"],
+			},
+		);
 	});
 
-	it("describes each grip with upstream's section pick-up instructions", () => {
+	it("describes each grip with upstream's section pick-up instructions", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		const grip = screen.getByRole("button", {name: "Reorder Context"});
+		const grip = screen.getByRole(
+			"button",
+			{
+				name: "Reorder Context",
+			},
+		);
 		const describedBy = grip.getAttribute("aria-describedby") ?? "";
 
 		expect(document.getElementById(describedBy)?.textContent).toBe(
@@ -1112,25 +1923,56 @@ describe("session rail reorder", () => {
 		);
 	});
 
-	it("announces a keyboard pick-up, move-over and cancel with upstream's section strings", async () => {
-		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+	it("announces a keyboard pick-up, move-over and cancel with upstream's section strings", async () =>
+	{
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement)
+		{
 			const slot = this.closest("[data-rail-card]");
 			const index = slot ? [...document.querySelectorAll("[data-rail-card]")].indexOf(slot) : 0;
-			return DOMRect.fromRect({x: 0, y: index * 100, width: 280, height: 80});
+			return DOMRect.fromRect(
+				{
+					x: 0,
+					y: index * 100,
+					width: 280,
+					height: 80,
+				},
+			);
 		});
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		const grip = screen.getByRole("button", {name: "Reorder Context"});
+		const grip = screen.getByRole(
+			"button",
+			{
+				name: "Reorder Context",
+			},
+		);
 		const announced: string[] = [];
-		const observer = new MutationObserver(() => {
+		const observer = new MutationObserver(() =>
+		{
 			const text = document.querySelector("[aria-live]")?.textContent ?? "";
 			if (text !== "" && announced.at(-1) !== text) announced.push(text);
 		});
-		observer.observe(document.body, {subtree: true, childList: true, characterData: true});
+		observer.observe(
+			document.body,
+			{
+				subtree: true,
+				childList: true,
+				characterData: true,
+			},
+		);
 
-		for (const key of [" ", "Escape"]) {
-			await act(async () => {
-				fireEvent.keyDown(grip, {code: key === " " ? "Space" : key, key});
-				await new Promise((resolve) => {
+		for (const key of [" ", "Escape"])
+		{
+			await act(async () =>
+			{
+				fireEvent.keyDown(
+					grip,
+					{
+						code: key === " " ? "Space" : key,
+						key,
+					},
+				);
+				await new Promise((resolve) =>
+				{
 					setTimeout(resolve, 0);
 				});
 			});
@@ -1141,18 +1983,39 @@ describe("session rail reorder", () => {
 		expect(announced).toStrictEqual(["Context is now section 2 of 3.", "Moving Context was cancelled."]);
 	});
 
-	it("words every pick-up, move, drop and cancel announcement with the section's position", () => {
+	it("words every pick-up, move, drop and cancel announcement with the section's position", () =>
+	{
 		const {announcements} = railSectionAccessibility(["environment", "context", "progress"]);
-		const context = {id: "context"};
-		const progress = {id: "progress"};
-		const event = {active: context, over: progress} as unknown as Parameters<typeof announcements.onDragOver>[0];
+		const context =
+		{
+			id: "context",
+		};
+		const progress =
+		{
+			id: "progress",
+		};
+		const event =
+		{
+			active: context,
+			over: progress,
+		} as unknown as Parameters<typeof announcements.onDragOver>[0];
 
 		expect([
 			announcements.onDragStart(event),
 			announcements.onDragOver(event),
-			announcements.onDragOver({...event, over: null}),
+			announcements.onDragOver(
+				{
+					...event,
+					over: null,
+				},
+			),
 			announcements.onDragEnd(event),
-			announcements.onDragEnd({...event, over: null}),
+			announcements.onDragEnd(
+				{
+					...event,
+					over: null,
+				},
+			),
 			announcements.onDragCancel(event),
 		]).toStrictEqual([
 			"Picked up Context. It is section 2 of 3.",
@@ -1164,37 +2027,71 @@ describe("session rail reorder", () => {
 		]);
 	});
 
-	it("rings the grip's 20px dot frame on keyboard focus like upstream", () => {
+	it("rings the grip's 20px dot frame on keyboard focus like upstream", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		const grip = screen.getByRole("button", {name: "Reorder Context"});
+		const grip = screen.getByRole(
+			"button",
+			{
+				name: "Reorder Context",
+			},
+		);
 		const frame = grip.firstElementChild;
 
-		expect({
-			gripOutline: grip.className.split(" ").filter((c) => c.includes("outline")),
-			frame: frame?.className,
-			dots: frame?.firstElementChild?.className,
-			dotClasses: [...(frame?.firstElementChild?.children ?? [])].map((dot) => `${dot.tagName}.${dot.className}`),
-		}).toStrictEqual({
-			gripOutline: ["outline-hidden"],
-			frame: "flex size-5 items-center justify-center rounded group-focus-visible/railgrip:shadow-focus",
-			dots: "grid grid-cols-2 gap-[3px] scale-75",
-			dotClasses: Array.from({length: 6}, () => "I.size-0.5 rounded-full bg-current"),
-		});
+		expect(
+			{
+				gripOutline: grip.className.split(" ").filter((c) => c.includes("outline")),
+				frame: frame?.className,
+				dots: frame?.firstElementChild?.className,
+				dotClasses: [...(frame?.firstElementChild?.children ?? [])].map(
+					(dot) => `${dot.tagName}.${dot.className}`,
+				),
+			},
+		).toStrictEqual(
+			{
+				gripOutline: ["outline-hidden"],
+				frame: "flex size-5 items-center justify-center rounded group-focus-visible/railgrip:shadow-focus",
+				dots: "grid grid-cols-2 gap-[3px] scale-75",
+				dotClasses: Array.from(
+					{
+						length: 6,
+					},
+					() => "I.size-0.5 rounded-full bg-current",
+				),
+			},
+		);
 	});
 
-	it("uses upstream's lined 10px word gap between row slots and gap-xs 6px across the header row", () => {
+	it("uses upstream's lined 10px word gap between row slots and gap-xs 6px across the header row", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		const railtop = screen.getByRole("button", {name: "Reorder Progress"}).closest(".group\\/railtop");
+		const railtop = screen
+			.getByRole(
+				"button",
+				{
+					name: "Reorder Progress",
+				},
+			)
+			.closest(".group\\/railtop");
 		const gaps = (className: string | undefined) => className?.split(" ").filter((c) => c.startsWith("gap-"));
 
-		expect({row: gaps(RAIL_ROW_ACTION_CLASS), railtop: gaps(railtop?.className)}).toStrictEqual({
-			row: ["gap-2.5"],
-			railtop: ["gap-1.5"],
-		});
+		expect(
+			{
+				row: gaps(RAIL_ROW_ACTION_CLASS),
+				railtop: gaps(railtop?.className),
+			},
+		).toStrictEqual(
+			{
+				row: ["gap-2.5"],
+				railtop: ["gap-1.5"],
+			},
+		);
 	});
-	it("wraps each card in upstream's div[data-rail-card] sortable slot, in card order", () => {
+	it("wraps each card in upstream's div[data-rail-card] sortable slot, in card order", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		const slots = [...document.querySelectorAll<HTMLElement>("section[data-rail-section]")].map((section) => {
+		const slots = [...document.querySelectorAll<HTMLElement>("section[data-rail-section]")].map((section) =>
+		{
 			const parent = section.parentElement;
 			return {
 				section: section.dataset["railSection"],
@@ -1204,76 +2101,112 @@ describe("session rail reorder", () => {
 			};
 		});
 
-		expect({
-			slots,
-			order: [...document.querySelectorAll<HTMLElement>("[data-rail-card]")].map(
-				(each) => each.dataset["railCard"],
-			),
-		}).toStrictEqual({
-			slots: ["environment", "context", "progress"].map((id) => ({
-				section: id,
-				tag: "DIV",
-				railCard: id,
-				className: "relative flex flex-col rounded-r7",
-			})),
-			order: ["environment", "context", "progress"],
-		});
+		expect(
+			{
+				slots,
+				order: [...document.querySelectorAll<HTMLElement>("[data-rail-card]")].map(
+					(each) => each.dataset["railCard"],
+				),
+			},
+		).toStrictEqual(
+			{
+				slots: ["environment", "context", "progress"].map((id) => (
+				{
+					section: id,
+					tag: "DIV",
+					railCard: id,
+					className: "relative flex flex-col rounded-r7",
+				})),
+				order: ["environment", "context", "progress"],
+			},
+		);
 	});
 
-	it("lifts the slot with bg-page and z-index 1 while a keyboard drag is active, leaving the section untransformed", async () => {
+	it("lifts the slot with bg-page and z-index 1 while a keyboard drag is active, leaving the section untransformed", async () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		const grip = screen.getByRole("button", {name: "Reorder Context"});
-		await act(async () => {
-			fireEvent.keyDown(grip, {code: "Space", key: " "});
-			await new Promise((resolve) => {
+		const grip = screen.getByRole(
+			"button",
+			{
+				name: "Reorder Context",
+			},
+		);
+		await act(async () =>
+		{
+			fireEvent.keyDown(
+				grip,
+				{
+					code: "Space",
+					key: " ",
+				},
+			);
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		});
 		const slot = document.querySelector<HTMLElement>('[data-rail-card="context"]');
 		const section = document.querySelector<HTMLElement>('[data-rail-section="context"]');
 
-		expect({
-			slotClasses: slot?.className.split(" ").filter((c) => c === "bg-page"),
-			zIndex: slot?.style.zIndex,
-			slotDragging: slot?.hasAttribute("data-dragging"),
-			sectionStyle: section?.getAttribute("style"),
-		}).toStrictEqual({
-			slotClasses: ["bg-page"],
-			zIndex: "1",
-			slotDragging: true,
-			sectionStyle: null,
-		});
+		expect(
+			{
+				slotClasses: slot?.className.split(" ").filter((c) => c === "bg-page"),
+				zIndex: slot?.style.zIndex,
+				slotDragging: slot?.hasAttribute("data-dragging"),
+				sectionStyle: section?.getAttribute("style"),
+			},
+		).toStrictEqual(
+			{
+				slotClasses: ["bg-page"],
+				zIndex: "1",
+				slotDragging: true,
+				sectionStyle: null,
+			},
+		);
 	});
 });
 
-describe("session rail lined layout", () => {
+describe("session rail lined layout", () =>
+{
 	/** The classes of `element` that appear in `wanted`, in `wanted`'s order. */
-	function picked(element: Element | null | undefined, wanted: readonly string[]): string[] {
+	function picked(element: Element | null | undefined, wanted: readonly string[]): string[]
+	{
 		const classes = new Set(element?.getAttribute("class")?.split(" "));
 		return wanted.filter((each) => classes.has(each));
 	}
 
-	it("lines each card like upstream: a 24px header, 8px row pad, a 4px body top pad and pb 6px while open", () => {
+	it("lines each card like upstream: a 24px header, 8px row pad, a 4px body top pad and pb 6px while open", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 		const section = document.querySelector('[data-rail-section="progress"]');
-		const button = screen.getByRole("button", {name: /^Progress/});
+		const button = screen.getByRole(
+			"button",
+			{
+				name: /^Progress/,
+			},
+		);
 		const railtop = button.closest(".group\\/railtop");
 		const body = section?.querySelector("[data-rail-body]");
 
-		expect({
-			section: picked(section, ["epitaxy-rail-lined", "pt-2", "pb-2", "data-open:pb-1.5"]),
-			railtop: picked(railtop, ["min-h-6", "min-h-6.5", "gap-1.5", "px-1.5", "px-2"]),
-			button: picked(button, ["relative", "min-h-6", "min-h-6.5", "px-1", "px-2", "text-[12px]/[16px]"]),
-			body: picked(body, ["flex", "flex-col", "px-1.5", "px-2", "pt-1"]),
-		}).toStrictEqual({
-			section: ["epitaxy-rail-lined", "pt-2", "pb-2", "data-open:pb-1.5"],
-			railtop: ["min-h-6", "gap-1.5", "px-1.5"],
-			button: ["relative", "min-h-6", "px-2", "text-[12px]/[16px]"],
-			body: ["flex", "flex-col", "px-1.5", "pt-1"],
-		});
+		expect(
+			{
+				section: picked(section, ["epitaxy-rail-lined", "pt-2", "pb-2", "data-open:pb-1.5"]),
+				railtop: picked(railtop, ["min-h-6", "min-h-6.5", "gap-1.5", "px-1.5", "px-2"]),
+				button: picked(button, ["relative", "min-h-6", "min-h-6.5", "px-1", "px-2", "text-[12px]/[16px]"]),
+				body: picked(body, ["flex", "flex-col", "px-1.5", "px-2", "pt-1"]),
+			},
+		).toStrictEqual(
+			{
+				section: ["epitaxy-rail-lined", "pt-2", "pb-2", "data-open:pb-1.5"],
+				railtop: ["min-h-6", "gap-1.5", "px-1.5"],
+				button: ["relative", "min-h-6", "px-2", "text-[12px]/[16px]"],
+				body: ["flex", "flex-col", "px-1.5", "pt-1"],
+			},
+		);
 	});
 
-	it("gives rows upstream's 32px list-row height, 10px word gap and 8px row pad", () => {
+	it("gives rows upstream's 32px list-row height, 10px word gap and 8px row pad", () =>
+	{
 		const row = RAIL_ROW_ACTION_CLASS.split(" ");
 
 		expect(["min-h-8", "min-h-6.5", "gap-2.5", "px-2", "px-1"].filter((each) => row.includes(each))).toStrictEqual([
@@ -1283,9 +2216,18 @@ describe("session rail lined layout", () => {
 		]);
 	});
 
-	it("hides an open card's caret until the header is hovered, focused within or touched", () => {
+	it("hides an open card's caret until the header is hovered, focused within or touched", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		const caret = (name: RegExp) => screen.getByRole("button", {name}).querySelector("svg");
+		const caret = (name: RegExp) =>
+			screen
+				.getByRole(
+					"button",
+					{
+						name,
+					},
+				)
+				.querySelector("svg");
 		const fade = [
 			"opacity-0",
 			"group-hover/railtop:opacity-100",
@@ -1293,41 +2235,90 @@ describe("session rail lined layout", () => {
 			"touch:opacity-100",
 		];
 
-		expect({open: picked(caret(/^Progress/), fade), collapsed: picked(caret(/^Context/), fade)}).toStrictEqual({
-			open: fade,
-			collapsed: [],
-		});
+		expect(
+			{
+				open: picked(caret(/^Progress/), fade),
+				collapsed: picked(caret(/^Context/), fade),
+			},
+		).toStrictEqual(
+			{
+				open: fade,
+				collapsed: [],
+			},
+		);
 	});
 
-	it("toggles a card from a click on the grab zone inside the header button", () => {
+	it("toggles a card from a click on the grab zone inside the header button", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
-		const button = screen.getByRole("button", {name: /^Progress/});
+		const button = screen.getByRole(
+			"button",
+			{
+				name: /^Progress/,
+			},
+		);
 		const grab = button.querySelector<HTMLElement>("[data-rail-grab]");
 		if (grab === null) throw new Error("no grab zone");
-		fireEvent.pointerDown(grab, {button: 0, isPrimary: true, clientX: 260, clientY: 10});
-		fireEvent.pointerUp(grab, {button: 0, isPrimary: true, clientX: 260, clientY: 10});
+		fireEvent.pointerDown(
+			grab,
+			{
+				button: 0,
+				isPrimary: true,
+				clientX: 260,
+				clientY: 10,
+			},
+		);
+		fireEvent.pointerUp(
+			grab,
+			{
+				button: 0,
+				isPrimary: true,
+				clientX: 260,
+				clientY: 10,
+			},
+		);
 		fireEvent.click(grab);
 
-		expect({
-			grab: [
-				grab.getAttribute("aria-hidden"),
-				picked(grab, ["absolute", "inset-y-0", "end-0", "w-20", "cursor-grab"]),
-			],
-			open: document.querySelector('[data-rail-section="progress"]')?.hasAttribute("data-open"),
-		}).toStrictEqual({
-			grab: ["true", ["absolute", "inset-y-0", "end-0", "w-20", "cursor-grab"]],
-			open: false,
-		});
+		expect(
+			{
+				grab: [
+					grab.getAttribute("aria-hidden"),
+					picked(grab, ["absolute", "inset-y-0", "end-0", "w-20", "cursor-grab"]),
+				],
+				open: document.querySelector('[data-rail-section="progress"]')?.hasAttribute("data-open"),
+			},
+		).toStrictEqual(
+			{
+				grab: ["true", ["absolute", "inset-y-0", "end-0", "w-20", "cursor-grab"]],
+				open: false,
+			},
+		);
 	});
 
-	it("keeps the grip keyboard-only and labels each card by a div, like upstream", () => {
+	it("keeps the grip keyboard-only and labels each card by a div, like upstream", () =>
+	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 		const section = document.querySelector('[data-rail-section="context"]');
 		const labelledBy = section?.getAttribute("aria-labelledby") ?? "";
 
-		expect({
-			grip: picked(screen.getByRole("button", {name: "Reorder Context"}), ["pointer-events-none"]),
-			label: document.getElementById(labelledBy)?.tagName,
-		}).toStrictEqual({grip: ["pointer-events-none"], label: "DIV"});
+		expect(
+			{
+				grip: picked(
+					screen.getByRole(
+						"button",
+						{
+							name: "Reorder Context",
+						},
+					),
+					["pointer-events-none"],
+				),
+				label: document.getElementById(labelledBy)?.tagName,
+			},
+		).toStrictEqual(
+			{
+				grip: ["pointer-events-none"],
+				label: "DIV",
+			},
+		);
 	});
 });

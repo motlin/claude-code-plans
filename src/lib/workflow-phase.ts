@@ -9,7 +9,8 @@ import type {PhaseStatus, WorkflowPhase, WorkflowProgressCounts} from "./workflo
 export const UNPHASED_INDEX = 2 ** 53 - 1;
 
 /** Upstream `he`. */
-export function phaseStatus(counts: WorkflowProgressCounts, settled: boolean): PhaseStatus {
+export function phaseStatus(counts: WorkflowProgressCounts, settled: boolean): PhaseStatus
+{
 	if (counts.error > 0) return "error";
 	if (counts.running > 0) return settled ? "done" : "running";
 	if (counts.total === 0 || counts.pending === counts.total) return settled ? "notRun" : "pending";
@@ -17,7 +18,8 @@ export function phaseStatus(counts: WorkflowProgressCounts, settled: boolean): P
 }
 
 /** Upstream `q$`: a phase's status. */
-const PHASE_STATUS_LABELS: Record<PhaseStatus, string> = {
+const PHASE_STATUS_LABELS: Record<PhaseStatus, string> =
+{
 	pending: "Pending",
 	running: "Running",
 	done: "Done",
@@ -25,12 +27,14 @@ const PHASE_STATUS_LABELS: Record<PhaseStatus, string> = {
 	notRun: "Not run",
 };
 
-function agentsDone(done: number, total: number): string {
+function agentsDone(done: number, total: number): string
+{
 	return `${done} of ${total} ${total === 1 ? "agent" : "agents"} done`;
 }
 
 /** Upstream `$me`'s aria-label: "Phase: {title}, {status}, {done} of {total} agent(s) done". */
-export function phaseAriaLabel(phase: Pick<WorkflowPhase, "index" | "title" | "counts" | "status">): string {
+export function phaseAriaLabel(phase: Pick<WorkflowPhase, "index" | "title" | "counts" | "status">): string
+{
 	const status = phase.status === "done" && phase.counts.stopped > 0 ? "Stopped" : PHASE_STATUS_LABELS[phase.status];
 	const {done, total} = phase.counts;
 	if (phase.index === UNPHASED_INDEX) return `${phase.title}, ${status}, ${agentsDone(done, total)}`;

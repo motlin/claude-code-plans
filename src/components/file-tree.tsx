@@ -5,8 +5,10 @@ import type {FileTreeNodeData as FileTreeNode} from "../lib/api/plugins";
 import {toPluginFileSlug} from "../lib/md-slug";
 
 /** The plugin tree keeps upstream's "classic" folder-tree look: monochrome glyphs, not file-type icons. */
-function getFileIcon(name: string) {
-	switch (name.split(".").pop()?.toLowerCase()) {
+function getFileIcon(name: string)
+{
+	switch (name.split(".").pop()?.toLowerCase())
+	{
 		case "md":
 			return FileText;
 		case "ts":
@@ -23,29 +25,39 @@ function getFileIcon(name: string) {
 	}
 }
 
-function getName(node: FileTreeNode) {
+function getName(node: FileTreeNode)
+{
 	const i = node.path.lastIndexOf("/");
 	return i === -1 ? node.path : node.path.slice(i + 1);
 }
 
-function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: string; depth: number}) {
+function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: string; depth: number})
+{
 	const [expanded, setExpanded] = useState(depth < 1);
 	const name = getName(node);
 
-	if (node.children) {
+	if (node.children)
+	{
 		return (
 			<div>
 				<button
 					type="button"
-					onClick={() => {
+					onClick={() =>
+					{
 						setExpanded(!expanded);
 					}}
 					className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-secondary transition-colors hover:bg-surface-0"
-					style={{paddingLeft: `${depth * 16 + 8}px`}}
+					style={
+					{
+						paddingLeft: `${depth * 16 + 8}px`,
+					}}
 				>
 					<ChevronRight
 						className="h-3 w-3 shrink-0 text-t6 transition-transform motion-reduce:transition-none duration-200"
-						style={{transform: expanded ? "rotate(90deg)" : "rotate(0deg)"}}
+						style={
+						{
+							transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+						}}
 					/>
 					<Folder className="h-3.5 w-3.5 shrink-0 text-t6" />
 					<span className="truncate">{name}</span>
@@ -68,17 +80,22 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 
 	const isMd = name.endsWith(".md");
 
-	if (isMd && filePath) {
+	if (isMd && filePath)
+	{
 		return (
 			<Link
 				to="/plugin/$id/$type/$"
-				params={{
+				params={
+				{
 					id: pluginId,
 					type,
 					_splat: filePath.split("/").map(toPluginFileSlug).join("/"),
 				}}
 				className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-secondary no-underline transition-colors hover:bg-surface-0 hover:text-secondary"
-				style={{paddingLeft: `${depth * 16 + 8}px`}}
+				style={
+				{
+					paddingLeft: `${depth * 16 + 8}px`,
+				}}
 			>
 				<span className="w-3" />
 				<Icon className="h-3.5 w-3.5 shrink-0 text-t6" />
@@ -90,7 +107,10 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 	return (
 		<div
 			className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-t6"
-			style={{paddingLeft: `${depth * 16 + 8}px`}}
+			style={
+			{
+				paddingLeft: `${depth * 16 + 8}px`,
+			}}
 		>
 			<span className="w-3" />
 			<Icon className="h-3.5 w-3.5 shrink-0 text-t6" />
@@ -99,8 +119,10 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 	);
 }
 
-export function FileTree({tree, pluginId}: {tree: FileTreeNode; pluginId: string}) {
-	if (!tree.children || tree.children.length === 0) {
+export function FileTree({tree, pluginId}: {tree: FileTreeNode; pluginId: string})
+{
+	if (!tree.children || tree.children.length === 0)
+	{
 		return <p className="px-2 py-1 text-xs text-t6">No files found.</p>;
 	}
 

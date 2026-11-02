@@ -1,7 +1,8 @@
 import {Dialog} from "@base-ui/react/dialog";
 import {useLocation, useNavigate} from "@tanstack/react-router";
 import {ChevronLeft, ChevronRight, X} from "lucide-react";
-import {
+import
+{
 	type ComponentProps,
 	Fragment,
 	Suspense,
@@ -16,14 +17,16 @@ import {
 } from "react";
 import {DialogPopup} from "../ui/dialog-popup";
 import {customizeSectionLabels} from "../../lib/schema-choices";
-import {
+import
+{
 	customizeHash,
 	parseCustomizeHash,
 	parseSettingsHash,
 	settingsHash,
 	type SettingsTab,
 } from "../../lib/settings-hash";
-import {
+import
+{
 	AiFeaturesSettings,
 	ApplicationConfigurationSection,
 	ClaudeCodeSettings,
@@ -44,7 +47,8 @@ import {SETTINGS_PHONE_QUERY, useMediaQuery} from "../../lib/use-phone-sheet";
 import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
 import {DensityScope} from "../ui/density";
 import {DIALOG_BODY_CLASS} from "../ui/dialog-classes";
-import {
+import
+{
 	navRowFor,
 	navRowLabel,
 	SETTINGS_NAV_ROWS,
@@ -53,7 +57,8 @@ import {
 	settingsNavGroups,
 } from "../../lib/settings-nav";
 
-const TAB_PANELS = {
+const TAB_PANELS =
+{
 	general: GeneralSettings,
 	notifications: NotificationsSettings,
 	usage: UsageSettings,
@@ -70,7 +75,8 @@ type CustomizeDialogPanelModule = typeof import("../customize/customize-dialog-p
 type CustomizeDialogPanelProps = ComponentProps<CustomizeDialogPanelModule["default"]>;
 
 /** Event-handler form of {@link preloadCustomizeDialogPanel}, for hover and focus. */
-function warmCustomizeDialogPanel(): void {
+function warmCustomizeDialogPanel(): void
+{
 	void preloadCustomizeDialogPanel();
 }
 
@@ -80,7 +86,8 @@ function warmCustomizeDialogPanel(): void {
  * panel renders in the same pass. use() runs on every render: the download tags itself fulfilled, so a loaded module
  * returns synchronously rather than skipping use(), which React flags as conditional use() after a suspension.
  */
-export function CustomizeDialogPanel(props: CustomizeDialogPanelProps) {
+export function CustomizeDialogPanel(props: CustomizeDialogPanelProps)
+{
 	const Panel = use(preloadCustomizeDialogPanel()).default;
 	return <Panel {...props} />;
 }
@@ -89,9 +96,14 @@ export function CustomizeDialogPanel(props: CustomizeDialogPanelProps) {
 const NAV_ROW_GROUPS = settingsNavGroups();
 
 /** Hover and focus handlers that warm the lazily loaded Customize panel before a customize row is chosen. */
-function navRowWarmers(row: SettingsNavRow) {
+function navRowWarmers(row: SettingsNavRow)
+{
 	return row.members[0].kind === "customize"
-		? {onPointerEnter: warmCustomizeDialogPanel, onFocus: warmCustomizeDialogPanel}
+		?
+			{
+				onPointerEnter: warmCustomizeDialogPanel,
+				onFocus: warmCustomizeDialogPanel,
+			}
 		: {};
 }
 
@@ -100,7 +112,8 @@ const NAV_ROW_CLASS =
 	"hit-row hit-row-main flex h-8 w-full items-center gap-3 rounded-r6 px-2 text-start text-body focus-visible:outline-hidden not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_#cde2fb] dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)]";
 
 /** Upstream S6's classes: `MV`, `pe-xs` unless the row stands for customize sections (`Ko`), then `Mc(active)`. */
-function navRowClass(row: SettingsNavRow, selected: boolean): string {
+function navRowClass(row: SettingsNavRow, selected: boolean): string
+{
 	const end = row.members[0].kind === "customize" ? "" : " pe-1.5";
 	const state = selected
 		? "bg-fill-ghost-selected hover:layers-1-fill-ghost-hover font-medium text-primary"
@@ -121,43 +134,72 @@ function PhoneTabStrip({
 }: {
 	isSelected: (row: SettingsNavRow) => boolean;
 	onSelect: (row: SettingsNavRow) => void;
-}) {
+})
+{
 	const listRef = useRef<HTMLDivElement>(null);
 	const selectedRow = SETTINGS_NAV_ROWS.find(isSelected);
-	const [edges, setEdges] = useState({atStart: true, atEnd: true});
-	const measure = useCallback(() => {
+	const [edges, setEdges] = useState(
+		{
+			atStart: true,
+			atEnd: true,
+		},
+	);
+	const measure = useCallback(() =>
+	{
 		const list = listRef.current;
 		if (list === null) return;
 		const atStart = list.scrollLeft <= 0;
 		const atEnd = list.scrollLeft + list.clientWidth >= list.scrollWidth - 1;
 		setEdges((previous) =>
-			previous.atStart === atStart && previous.atEnd === atEnd ? previous : {atStart, atEnd},
+			previous.atStart === atStart && previous.atEnd === atEnd
+				? previous
+				:
+					{
+						atStart,
+						atEnd,
+					},
 		);
 	}, []);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		measure();
 		const list = listRef.current;
 		if (list === null || typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver(measure);
 		observer.observe(list);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [measure]);
 
-	const page = (direction: 1 | -1, fraction: number) => {
+	const page = (direction: 1 | -1, fraction: number) =>
+	{
 		const list = listRef.current;
-		if (list !== null && typeof list.scrollBy === "function") {
-			list.scrollBy({left: direction * list.clientWidth * fraction, behavior: "smooth"});
+		if (list !== null && typeof list.scrollBy === "function")
+		{
+			list.scrollBy(
+				{
+					left: direction * list.clientWidth * fraction,
+					behavior: "smooth",
+				},
+			);
 		}
 	};
 	const pagerClass =
 		"flex size-8 shrink-0 items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover";
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const tab = listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
-		if (typeof tab?.scrollIntoView === "function") tab.scrollIntoView({block: "nearest", inline: "nearest"});
+		if (typeof tab?.scrollIntoView === "function")
+			tab.scrollIntoView(
+				{
+					block: "nearest",
+					inline: "nearest",
+				},
+			);
 	}, [selectedRow]);
 
 	return (
@@ -169,7 +211,8 @@ function PhoneTabStrip({
 						aria-label="Scroll back"
 						data-toward="start"
 						hidden={edges.atStart}
-						onClick={() => {
+						onClick={() =>
+						{
 							page(-1, 1);
 						}}
 						className={pagerClass}
@@ -184,7 +227,8 @@ function PhoneTabStrip({
 						aria-orientation="horizontal"
 						className={`${CDS_TAB_LIST_CLASS} min-w-0 flex-1 overflow-x-auto overscroll-x-contain ps-2 [scrollbar-width:none]`}
 					>
-						{SETTINGS_NAV_ROWS.map((row) => {
+						{SETTINGS_NAV_ROWS.map((row) =>
+						{
 							const selected = isSelected(row);
 							return (
 								<button
@@ -195,7 +239,8 @@ function PhoneTabStrip({
 									aria-selected={selected}
 									data-active={selected ? "" : undefined}
 									{...navRowWarmers(row)}
-									onClick={() => {
+									onClick={() =>
+									{
 										onSelect(row);
 									}}
 									className={CDS_TAB_CLASS}
@@ -210,7 +255,8 @@ function PhoneTabStrip({
 						aria-label="Scroll forward"
 						data-toward="end"
 						hidden={edges.atEnd}
-						onClick={() => {
+						onClick={() =>
+						{
 							page(1, 0.8);
 						}}
 						className={pagerClass}
@@ -233,9 +279,14 @@ const FLASH_MS = 1950;
  * is `#settings/<tab>[/<row>]` or `#customize/<section>/…`; closing clears the
  * hash and restores focus to whatever was focused when it opened.
  */
-export function SettingsDialog() {
+export function SettingsDialog()
+{
 	const titleId = useId();
-	const hash = useLocation({select: (location) => location.hash});
+	const hash = useLocation(
+		{
+			select: (location) => location.hash,
+		},
+	);
 	const navigate = useNavigate();
 	const current = parseSettingsHash(hash);
 	const customize = current === null ? parseCustomizeHash(hash) : null;
@@ -244,52 +295,63 @@ export function SettingsDialog() {
 
 	// The first render with a settings hash runs before Base UI moves focus into
 	// the popup, so this still sees whatever the hash change was triggered from.
-	if (open && returnFocusRef.current === null) {
+	if (open && returnFocusRef.current === null)
+	{
 		const active = document.activeElement;
 		if (active instanceof HTMLElement && active !== document.body) returnFocusRef.current = active;
 	}
 
-	const close = useCallback(() => {
-		void navigate({
-			to: ".",
-			search: true,
-			params: true,
-			resetScroll: false,
-			hashScrollIntoView: false,
-		});
-	}, [navigate]);
-
-	const selectTab = useCallback(
-		(tab: SettingsTab, row?: string) => {
-			void navigate({
+	const close = useCallback(() =>
+	{
+		void navigate(
+			{
 				to: ".",
 				search: true,
 				params: true,
-				hash: settingsHash(tab, row),
-				replace: true,
 				resetScroll: false,
 				hashScrollIntoView: false,
-			});
+			},
+		);
+	}, [navigate]);
+
+	const selectTab = useCallback(
+		(tab: SettingsTab, row?: string) =>
+		{
+			void navigate(
+				{
+					to: ".",
+					search: true,
+					params: true,
+					hash: settingsHash(tab, row),
+					replace: true,
+					resetScroll: false,
+					hashScrollIntoView: false,
+				},
+			);
 		},
 		[navigate],
 	);
 
 	const navigateHash = useCallback(
-		(nextHash: string, replace: boolean) => {
-			void navigate({
-				to: ".",
-				search: true,
-				params: true,
-				hash: nextHash,
-				replace,
-				resetScroll: false,
-				hashScrollIntoView: false,
-			});
+		(nextHash: string, replace: boolean) =>
+		{
+			void navigate(
+				{
+					to: ".",
+					search: true,
+					params: true,
+					hash: nextHash,
+					replace,
+					resetScroll: false,
+					hashScrollIntoView: false,
+				},
+			);
 		},
 		[navigate],
 	);
 
-	const finalFocus = useCallback(() => {
+	const finalFocus = useCallback(() =>
+	{
 		const target = returnFocusRef.current;
 		returnFocusRef.current = null;
 		return target?.isConnected === true ? target : true;
@@ -298,10 +360,16 @@ export function SettingsDialog() {
 	// Upstream's search focuses its input on open (focusVisible:false, so no focus ring), not the trigger
 	// wrapper div that Base UI's default (first tabbable) would pick. The phone layout has no search.
 	const searchInputRef = useRef<HTMLInputElement>(null);
-	const initialFocus = useCallback(() => {
+	const initialFocus = useCallback(() =>
+	{
 		const input = searchInputRef.current;
 		if (input === null) return true;
-		input.focus({preventScroll: true, focusVisible: false});
+		input.focus(
+			{
+				preventScroll: true,
+				focusVisible: false,
+			},
+		);
 		return false;
 	}, []);
 
@@ -324,23 +392,40 @@ export function SettingsDialog() {
 	const [flash, setFlash] = useState<SettingsFlash | null>(null);
 	const deepLinkRow = current?.row ?? null;
 	const [seenDeepLinkRow, setSeenDeepLinkRow] = useState<string | null>(null);
-	if (deepLinkRow !== seenDeepLinkRow) {
+	if (deepLinkRow !== seenDeepLinkRow)
+	{
 		setSeenDeepLinkRow(deepLinkRow);
-		if (deepLinkRow !== null) setFlash({row: deepLinkRow, lit: false});
+		if (deepLinkRow !== null)
+			setFlash(
+				{
+					row: deepLinkRow,
+					lit: false,
+				},
+			);
 	}
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (deepLinkRow !== null) selectTab(tab);
 	}, [selectTab, tab, deepLinkRow]);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (flash === null) return undefined;
 		const timer = flash.lit
-			? setTimeout(() => {
+			? setTimeout(() =>
+				{
 					setFlash(null);
 				}, FLASH_MS)
-			: setTimeout(() => {
-					setFlash({row: flash.row, lit: true});
+			: setTimeout(() =>
+				{
+					setFlash(
+						{
+							row: flash.row,
+							lit: true,
+						},
+					);
 				}, FLASH_DELAY_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 		};
 	}, [flash]);
@@ -348,14 +433,33 @@ export function SettingsDialog() {
 	// Upstream's phone layout (tab strip, no search) applies at ≤767px, not the sidebar sheet's 640px.
 	const phone = useMediaQuery(SETTINGS_PHONE_QUERY);
 	const currentMember: SettingsNavMember =
-		customize === null ? {kind: "settings", tab} : {kind: "customize", section: customize.section};
+		customize === null
+			?
+				{
+					kind: "settings",
+					tab,
+				}
+			:
+				{
+					kind: "customize",
+					section: customize.section,
+				};
 	// Upstream's standsFor: a row is current for every member, so Customize is current on any customize section.
 	const isRowSelected = (row: SettingsNavRow) => navRowFor(currentMember) === row;
 	// A row selects its first member; Customize replaces the entry and is a no-op while that member is current.
-	const selectRow = (row: SettingsNavRow) => {
+	const selectRow = (row: SettingsNavRow) =>
+	{
 		const [first] = row.members;
 		if (first.kind === "settings") selectTab(first.tab);
-		else if (customize?.section !== first.section) navigateHash(customizeHash({section: first.section}), true);
+		else if (customize?.section !== first.section)
+			navigateHash(
+				customizeHash(
+					{
+						section: first.section,
+					},
+				),
+				true,
+			);
 	};
 
 	const closeButton = (
@@ -379,7 +483,16 @@ export function SettingsDialog() {
 				<SettingsTabContext.Provider value={shownTab}>
 					<SettingsFlashContext.Provider value={flash}>
 						{/* Upstream's panel opens with an sr-only h2 named by its nav row ("Appearance", "Code"…). */}
-						<h2 className="sr-only">{navRowLabel(navRowFor({kind: "settings", tab: shownTab}))}</h2>
+						<h2 className="sr-only">
+							{navRowLabel(
+								navRowFor(
+									{
+										kind: "settings",
+										tab: shownTab,
+									},
+								),
+							)}
+						</h2>
 						<Panel />
 					</SettingsFlashContext.Provider>
 				</SettingsTabContext.Provider>
@@ -394,7 +507,8 @@ export function SettingsDialog() {
 	return (
 		<Dialog.Root
 			open={open}
-			onOpenChange={(nextOpen) => {
+			onOpenChange={(nextOpen) =>
+			{
 				if (!nextOpen) close();
 			}}
 		>
@@ -450,7 +564,8 @@ export function SettingsDialog() {
 													<div aria-hidden="true" className="mx-2 border-t border-alpha-2" />
 												)}
 												<ul className="flex flex-col hit-gap-y-px">
-													{group.rows.map((row) => {
+													{group.rows.map((row) =>
+													{
 														const selected = isRowSelected(row);
 														const [first] = row.members;
 														const Icon =
@@ -463,7 +578,8 @@ export function SettingsDialog() {
 																	type="button"
 																	aria-current={selected ? "page" : undefined}
 																	{...navRowWarmers(row)}
-																	onClick={() => {
+																	onClick={() =>
+																	{
 																		selectRow(row);
 																	}}
 																	className={navRowClass(row, selected)}

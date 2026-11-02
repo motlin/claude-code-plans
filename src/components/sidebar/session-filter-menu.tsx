@@ -3,7 +3,8 @@ import {useState} from "react";
 
 import {recentSessionsInfiniteQueryOptions} from "../../lib/api/sessions";
 import {sessionActivityDaysLabels, sessionGroupByLabels, sessionStatusFilterLabels} from "../../lib/schema-choices";
-import {
+import
+{
 	DEFAULT_SESSION_LIST_PREFS,
 	SessionActivityDaysSchema,
 	SessionStatusFilterSchema,
@@ -11,7 +12,8 @@ import {
 } from "../../lib/session-groups";
 import {useSettings} from "../settings-context";
 import {Menu, MenuCheckboxItem, MenuContent, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "../ui/menu";
-import {
+import
+{
 	ChoiceGroup,
 	GroupBySubmenu,
 	GroupSortFooter,
@@ -43,7 +45,8 @@ function SessionFilterMenu({
 	prefs: SessionListPrefs;
 	onChange: (next: SessionListPrefs) => void;
 	hasPrData: boolean;
-}) {
+})
+{
 	const [newSectionOpen, setNewSectionOpen] = useState(false);
 	// Upstream `tz` atDefaults: only the grouping and sort count; the local Show filters keep their own values.
 	const atDefaults =
@@ -61,18 +64,36 @@ function SessionFilterMenu({
 						options={GROUP_BY_ORDER}
 						none="none"
 						labels={sessionGroupByLabels}
-						onSelect={(next) => {
-							onChange({...prefs, groupBy: next});
+						onSelect={(next) =>
+						{
+							onChange(
+								{
+									...prefs,
+									groupBy: next,
+								},
+							);
 						}}
 					/>
 					<SortBySubmenu
 						sortBy={prefs.sortBy}
 						sortDirection={prefs.sortDirection}
-						onSortBy={(next) => {
-							onChange({...prefs, sortBy: next});
+						onSortBy={(next) =>
+						{
+							onChange(
+								{
+									...prefs,
+									sortBy: next,
+								},
+							);
 						}}
-						onSortDirection={(next) => {
-							onChange({...prefs, sortDirection: next});
+						onSortDirection={(next) =>
+						{
+							onChange(
+								{
+									...prefs,
+									sortDirection: next,
+								},
+							);
 						}}
 					/>
 					<MenuSub>
@@ -80,8 +101,14 @@ function SessionFilterMenu({
 						<MenuSubContent>
 							<MenuCheckboxItem
 								checked={prefs.showMetadata}
-								onCheckedChange={(checked) => {
-									onChange({...prefs, showMetadata: checked});
+								onCheckedChange={(checked) =>
+								{
+									onChange(
+										{
+											...prefs,
+											showMetadata: checked,
+										},
+									);
 								}}
 							>
 								Metadata
@@ -89,8 +116,14 @@ function SessionFilterMenu({
 							<MenuSeparator />
 							<MenuCheckboxItem
 								checked={prefs.showEmptyGroups}
-								onCheckedChange={(checked) => {
-									onChange({...prefs, showEmptyGroups: checked});
+								onCheckedChange={(checked) =>
+								{
+									onChange(
+										{
+											...prefs,
+											showEmptyGroups: checked,
+										},
+									);
 								}}
 							>
 								Empty groups
@@ -98,8 +131,14 @@ function SessionFilterMenu({
 							{hasPrData && (
 								<MenuCheckboxItem
 									checked={prefs.showPrStatus}
-									onCheckedChange={(checked) => {
-										onChange({...prefs, showPrStatus: checked});
+									onCheckedChange={(checked) =>
+									{
+										onChange(
+											{
+												...prefs,
+												showPrStatus: checked,
+											},
+										);
 									}}
 								>
 									PR status
@@ -111,8 +150,14 @@ function SessionFilterMenu({
 								value={prefs.statusFilter}
 								options={SessionStatusFilterSchema.options}
 								labels={sessionStatusFilterLabels}
-								onSelect={(next) => {
-									onChange({...prefs, statusFilter: next});
+								onSelect={(next) =>
+								{
+									onChange(
+										{
+											...prefs,
+											statusFilter: next,
+										},
+									);
 								}}
 							/>
 							<MenuSeparator />
@@ -121,23 +166,33 @@ function SessionFilterMenu({
 								value={prefs.activityDays}
 								options={SessionActivityDaysSchema.options}
 								labels={sessionActivityDaysLabels}
-								onSelect={(next) => {
-									onChange({...prefs, activityDays: next});
+								onSelect={(next) =>
+								{
+									onChange(
+										{
+											...prefs,
+											activityDays: next,
+										},
+									);
 								}}
 							/>
 						</MenuSubContent>
 					</MenuSub>
 					<GroupSortFooter
 						atDefaults={atDefaults}
-						onReset={() => {
-							onChange({
-								...prefs,
-								groupBy: DEFAULT_SESSION_LIST_PREFS.groupBy,
-								sortBy: DEFAULT_SESSION_LIST_PREFS.sortBy,
-								sortDirection: DEFAULT_SESSION_LIST_PREFS.sortDirection,
-							});
+						onReset={() =>
+						{
+							onChange(
+								{
+									...prefs,
+									groupBy: DEFAULT_SESSION_LIST_PREFS.groupBy,
+									sortBy: DEFAULT_SESSION_LIST_PREFS.sortBy,
+									sortDirection: DEFAULT_SESSION_LIST_PREFS.sortDirection,
+								},
+							);
 						}}
-						onNewSection={() => {
+						onNewSection={() =>
+						{
 							setNewSectionOpen(true);
 						}}
 						statusFilter={prefs.statusFilter}
@@ -150,7 +205,8 @@ function SessionFilterMenu({
 }
 
 /** The sidebar session list wired to the persisted Filter & group prefs. */
-export function SidebarSessionGroups({activeItemId}: {activeItemId: string | null}) {
+export function SidebarSessionGroups({activeItemId}: {activeItemId: string | null})
+{
 	const {settings, setSetting} = useSettings();
 	const prefs = settings.sessionListPrefs;
 	// Shares the list's query cache, so this adds no request.
@@ -164,7 +220,8 @@ export function SidebarSessionGroups({activeItemId}: {activeItemId: string | nul
 			filterSlot={
 				<SessionFilterMenu
 					prefs={prefs}
-					onChange={(next) => {
+					onChange={(next) =>
+					{
 						setSetting("sessionListPrefs", next);
 					}}
 					hasPrData={hasPrData}

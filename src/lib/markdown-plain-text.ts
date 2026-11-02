@@ -2,13 +2,20 @@ import MarkdownIt from "markdown-it";
 
 type Token = ReturnType<MarkdownIt["parse"]>[number];
 
-const parser = new MarkdownIt({html: false});
+const parser = new MarkdownIt(
+	{
+		html: false,
+	},
+);
 
-function inlineText(token: Token): string {
+function inlineText(token: Token): string
+{
 	return (token.children ?? [])
-		.map((child) => {
+		.map((child) =>
+		{
 			if (child.type === "softbreak" || child.type === "hardbreak") return "\n";
-			if (child.type === "text" || child.type === "code_inline" || child.type === "image") {
+			if (child.type === "text" || child.type === "code_inline" || child.type === "image")
+			{
 				return child.content;
 			}
 			return "";
@@ -21,22 +28,26 @@ function inlineText(token: Token): string {
  * dropped, blocks are separated by a blank line, list items and table rows by
  * a newline, and table cells by a tab.
  */
-export function markdownToPlainText(markdown: string): string {
+export function markdownToPlainText(markdown: string): string
+{
 	const blocks: string[] = [];
 	let listDepth = 0;
 	let row: string[] | null = null;
 	let tableRows: string[] | null = null;
 	let joinTight = false;
 
-	function push(text: string): void {
+	function push(text: string): void
+	{
 		if (blocks.length > 0 && joinTight) blocks.push("\n");
 		else if (blocks.length > 0) blocks.push("\n\n");
 		blocks.push(text);
 		joinTight = listDepth > 0;
 	}
 
-	for (const token of parser.parse(markdown, {})) {
-		switch (token.type) {
+	for (const token of parser.parse(markdown, {}))
+	{
+		switch (token.type)
+		{
 			case "bullet_list_open":
 			case "ordered_list_open":
 				listDepth++;

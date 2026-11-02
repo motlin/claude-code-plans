@@ -5,7 +5,8 @@ import {Icon} from "../ui/icon";
 import {NAV_ROW_CLASS, NAV_ROW_HINT_CLASS} from "./new-session-row";
 
 /** The Search row's icon, fade-truncated label and text ⌘K hint, shared with the pre-hydration fallback. */
-export function SearchRowContents({keys}: {keys: string}) {
+export function SearchRowContents({keys}: {keys: string})
+{
 	return (
 		<>
 			<span data-leading-slot="" className="df-on-rail df-leading-slot">
@@ -24,7 +25,8 @@ export function SearchRowContents({keys}: {keys: string}) {
  * `panels`): a plain nav row right under New, in the nav block's tab stop, that opens the ⌘K
  * "search or start" palette.
  */
-export function SidebarSearchRow() {
+export function SidebarSearchRow()
+{
 	const {keys, ariaKeyShortcuts} = useShortcutKeys("search_or_start");
 
 	return (
@@ -37,11 +39,18 @@ export function SidebarSearchRow() {
 			data-prefetch="palette"
 			aria-keyshortcuts={ariaKeyShortcuts}
 			// Upstream prevents mousedown so a click never focuses the row; focus returns to whatever held it.
-			onMouseDown={(event) => {
+			onMouseDown={(event) =>
+			{
 				event.preventDefault();
 			}}
-			onClick={() => {
-				openCommandPalette("default", {source: "sidebar_field"});
+			onClick={() =>
+			{
+				openCommandPalette(
+					"default",
+					{
+						source: "sidebar_field",
+					},
+				);
 			}}
 			className={NAV_ROW_CLASS}
 		>

@@ -3,7 +3,8 @@ import {renderToStaticMarkup} from "react-dom/server";
 import {AgentRenderer} from "../src/components/tool-renderers/agent-renderer";
 import type {ClientToolCall, SubagentInlineInfo} from "../src/components/tool-renderers/types";
 
-function makeSubagentInfo(overrides: Partial<SubagentInlineInfo> = {}): SubagentInlineInfo {
+function makeSubagentInfo(overrides: Partial<SubagentInlineInfo> = {}): SubagentInlineInfo
+{
 	return {
 		agentId: "agent-abc123",
 		agentType: "Code",
@@ -17,11 +18,16 @@ function makeSubagentInfo(overrides: Partial<SubagentInlineInfo> = {}): Subagent
 	};
 }
 
-function makeCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall {
+function makeCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall
+{
 	return {
 		id: "tool-agent-1",
 		name: "Agent",
-		input: {description: "Fix auth test failures", prompt: "Fix the failing auth tests"},
+		input:
+		{
+			description: "Fix auth test failures",
+			prompt: "Fix the failing auth tests",
+		},
 		param: "Fix auth test failures",
 		result: "agentId: abc123\nAll 12 tests pass.",
 		sourceUuid: "uuid-1",
@@ -29,12 +35,14 @@ function makeCall(overrides: Partial<ClientToolCall> = {}): ClientToolCall {
 	};
 }
 
-function renderAgent(overrides: Partial<ClientToolCall> = {}): string {
+function renderAgent(overrides: Partial<ClientToolCall> = {}): string
+{
 	return renderToStaticMarkup(<AgentRenderer toolCall={makeCall(overrides)} />);
 }
 
 /** Everything the renderer draws above the KeyValueCard, verbatim. */
-function aboveCard(html: string): string {
+function aboveCard(html: string): string
+{
 	const cardStart = html.indexOf('<div class="flex w-full">');
 	expect(cardStart, "no KeyValueCard in AgentRenderer output").toBeGreaterThan(-1);
 	return html.slice(0, cardStart);
@@ -42,63 +50,117 @@ function aboveCard(html: string): string {
 
 const NOTE = '<div class="mb-1 text-body text-secondary">';
 
-describe("AgentRenderer status chrome", () => {
-	it("draws no status pill for a finished agent, which upstream never labels", () => {
-		const html = renderAgent({subagentInfo: makeSubagentInfo()});
+describe("AgentRenderer status chrome", () =>
+{
+	it("draws no status pill for a finished agent, which upstream never labels", () =>
+	{
+		const html = renderAgent(
+			{
+				subagentInfo: makeSubagentInfo(),
+			},
+		);
 
 		expect(aboveCard(html)).toStrictEqual("");
 	});
 
-	it("draws no status pill for a failed agent, whose failure the danger-red body already carries", () => {
-		const html = renderAgent({
-			isError: true,
-			result: "agentId: abc123\nBuild failed.",
-			subagentInfo: makeSubagentInfo({status: "error"}),
-		});
+	it("draws no status pill for a failed agent, whose failure the danger-red body already carries", () =>
+	{
+		const html = renderAgent(
+			{
+				isError: true,
+				result: "agentId: abc123\nBuild failed.",
+				subagentInfo: makeSubagentInfo(
+					{
+						status: "error",
+					},
+				),
+			},
+		);
 
-		expect({
-			aboveCard: aboveCard(html),
-			dangerBody: html.includes("text-danger-ink"),
-		}).toStrictEqual({aboveCard: "", dangerBody: true});
+		expect(
+			{
+				aboveCard: aboveCard(html),
+				dangerBody: html.includes("text-danger-ink"),
+			},
+		).toStrictEqual(
+			{
+				aboveCard: "",
+				dangerBody: true,
+			},
+		);
 	});
 
-	it("keeps a still-running agent flagged, as plain body text rather than a pill", () => {
-		const html = renderAgent({
-			subagentInfo: makeSubagentInfo({finishedAt: null, status: "running"}),
-		});
+	it("keeps a still-running agent flagged, as plain body text rather than a pill", () =>
+	{
+		const html = renderAgent(
+			{
+				subagentInfo: makeSubagentInfo(
+					{
+						finishedAt: null,
+						status: "running",
+					},
+				),
+			},
+		);
 
 		expect(aboveCard(html)).toStrictEqual(`${NOTE}running</div>`);
 	});
 
-	it("renders a parallel batch as plain body text rather than a pill", () => {
-		const html = renderAgent({
-			subagentInfo: makeSubagentInfo({parallelGroupKey: "pg-0", parallelGroupSize: 3}),
-		});
+	it("renders a parallel batch as plain body text rather than a pill", () =>
+	{
+		const html = renderAgent(
+			{
+				subagentInfo: makeSubagentInfo(
+					{
+						parallelGroupKey: "pg-0",
+						parallelGroupSize: 3,
+					},
+				),
+			},
+		);
 
 		expect(aboveCard(html)).toStrictEqual(`${NOTE}parallel ×3</div>`);
 	});
 
-	it("flags a running agent inside a parallel batch with one note", () => {
-		const html = renderAgent({
-			subagentInfo: makeSubagentInfo({
-				finishedAt: null,
-				status: "running",
-				parallelGroupKey: "pg-0",
-				parallelGroupSize: 2,
-			}),
-		});
+	it("flags a running agent inside a parallel batch with one note", () =>
+	{
+		const html = renderAgent(
+			{
+				subagentInfo: makeSubagentInfo(
+					{
+						finishedAt: null,
+						status: "running",
+						parallelGroupKey: "pg-0",
+						parallelGroupSize: 2,
+					},
+				),
+			},
+		);
 
 		expect(aboveCard(html)).toStrictEqual(`${NOTE}running · parallel ×2</div>`);
 	});
 });
 
-describe("AgentRenderer subagent link", () => {
-	it("renders no View subagent session link, since the agent row opens the Subagent pane", () => {
-		const html = renderAgent({subagentInfo: makeSubagentInfo()});
+describe("AgentRenderer subagent link", () =>
+{
+	it("renders no View subagent session link, since the agent row opens the Subagent pane", () =>
+	{
+		const html = renderAgent(
+			{
+				subagentInfo: makeSubagentInfo(),
+			},
+		);
 
-		expect({link: html.includes("<a "), text: html.includes("View subagent session")}).toStrictEqual({
-			link: false,
-			text: false,
-		});
+		expect(
+			{
+				link: html.includes("<a "),
+				text: html.includes("View subagent session"),
+			},
+		).toStrictEqual(
+			{
+				link: false,
+				text: false,
+			},
+		);
 	});
 });

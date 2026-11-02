@@ -7,46 +7,107 @@ import {resetWorkingMarkSheetsForTest} from "../src/lib/working-mark-sheets";
 import {toolMarkActivity, WORKING_MARK_FRAMES, workingLineActivity} from "../src/lib/working-mark-activity";
 
 /** An `Image` whose `decode()` settles only when the test says so, as a sheet download would. */
-class FakeImage {
-	static pending: {src: string; resolve: () => void; reject: (error: Error) => void}[] = [];
+class FakeImage
+{
+	static pending:
+	{
+		src: string;
+		resolve: () => void;
+		reject: (error: Error) => void;
+	}[] = [];
 	src = "";
-	async decode(): Promise<void> {
-		return new Promise((resolve, reject) => {
-			FakeImage.pending.push({src: this.src, resolve, reject});
+	async decode(): Promise<void>
+	{
+		return new Promise((resolve, reject) =>
+		{
+			FakeImage.pending.push(
+				{
+					src: this.src,
+					resolve,
+					reject,
+				},
+			);
 		});
 	}
 }
 
-async function loadSheets(): Promise<string[]> {
+async function loadSheets(): Promise<string[]>
+{
 	const loaded = FakeImage.pending.map(({src}) => src);
-	await act(async () => {
+	await act(async () =>
+	{
 		for (const {resolve} of FakeImage.pending.splice(0)) resolve();
 		await Promise.resolve();
 	});
 	return loaded;
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	FakeImage.pending = [];
 	resetWorkingMarkSheetsForTest();
 	vi.stubGlobal("Image", FakeImage);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-describe("toolMarkActivity", () => {
-	it("ports upstream's activity resolver", () => {
+describe("toolMarkActivity", () =>
+{
+	it("ports upstream's activity resolver", () =>
+	{
 		const cases: [string, Record<string, unknown>][] = [
-			["Bash", {command: "ls"}],
-			["Bash", {command: "cat x", description: "Read the config"}],
-			["Bash", {command: "cat x", description: "Reading the config"}],
-			["Bash", {command: "echo x > y", description: "Write the file"}],
-			["Bash", {command: "rm x", description: "Removes the temp dir"}],
-			["Bash", {command: "pnpm test", description: "Run the tests"}],
-			["PowerShell", {command: "dir", description: "List files"}],
+			[
+				"Bash",
+				{
+					command: "ls",
+				},
+			],
+			[
+				"Bash",
+				{
+					command: "cat x",
+					description: "Read the config",
+				},
+			],
+			[
+				"Bash",
+				{
+					command: "cat x",
+					description: "Reading the config",
+				},
+			],
+			[
+				"Bash",
+				{
+					command: "echo x > y",
+					description: "Write the file",
+				},
+			],
+			[
+				"Bash",
+				{
+					command: "rm x",
+					description: "Removes the temp dir",
+				},
+			],
+			[
+				"Bash",
+				{
+					command: "pnpm test",
+					description: "Run the tests",
+				},
+			],
+			[
+				"PowerShell",
+				{
+					command: "dir",
+					description: "List files",
+				},
+			],
 			["Read", {}],
 			["Glob", {}],
 			["Grep", {}],
@@ -95,109 +156,150 @@ describe("toolMarkActivity", () => {
 		]);
 	});
 
-	it("plays think on the working line while thinking, else default", () => {
+	it("plays think on the working line while thinking, else default", () =>
+	{
 		expect([workingLineActivity(true), workingLineActivity(false)]).toStrictEqual(["think", "default"]);
 	});
 
-	it("uses upstream's loop sheet frame counts", () => {
-		expect(WORKING_MARK_FRAMES).toStrictEqual({
-			default: 40,
-			think: 110,
-			search: 20,
-			read: 60,
-			code: 75,
-			write: 60,
-			compose: 62,
-			blocked: 30,
-		});
+	it("uses upstream's loop sheet frame counts", () =>
+	{
+		expect(WORKING_MARK_FRAMES).toStrictEqual(
+			{
+				default: 40,
+				think: 110,
+				search: 20,
+				read: 60,
+				code: 75,
+				write: 60,
+				compose: 62,
+				blocked: 30,
+			},
+		);
 	});
 });
 
-describe("WorkingMark", () => {
-	it("draws upstream's 7px clay dot until the activity's sheet has decoded, then its strip", async () => {
+describe("WorkingMark", () =>
+{
+	it("draws upstream's 7px clay dot until the activity's sheet has decoded, then its strip", async () =>
+	{
 		const {container} = render(<WorkingMark activity="read" />);
 		const mark = container.querySelector('[data-cds="WorkingMark"]');
 		const before = Array.from(mark?.children ?? [], (child) => [child.className, child.getAttribute("style")]);
 		const requested = await loadSheets();
-		expect({
-			before,
-			requested,
-			after: mark?.querySelector("[data-working-mark-strip]") !== null,
-			dot: mark?.querySelector(".rounded-full") ?? null,
-		}).toStrictEqual({
-			before: [["absolute inset-0 m-auto block rounded-full bg-current", "width: 7px; height: 7px;"]],
-			requested: ["/working-mark/read.webp"],
-			after: true,
-			dot: null,
-		});
+		expect(
+			{
+				before,
+				requested,
+				after: mark?.querySelector("[data-working-mark-strip]") !== null,
+				dot: mark?.querySelector(".rounded-full") ?? null,
+			},
+		).toStrictEqual(
+			{
+				before: [["absolute inset-0 m-auto block rounded-full bg-current", "width: 7px; height: 7px;"]],
+				requested: ["/working-mark/read.webp"],
+				after: true,
+				dot: null,
+			},
+		);
 	});
 
-	it("keeps the dot when the sheet fails to decode", async () => {
+	it("keeps the dot when the sheet fails to decode", async () =>
+	{
 		const {container} = render(<WorkingMark activity="code" />);
-		await act(async () => {
+		await act(async () =>
+		{
 			for (const {reject} of FakeImage.pending.splice(0)) reject(new Error("EncodingError"));
 			await Promise.resolve();
 		});
-		expect({
-			strip: container.querySelector("[data-working-mark-strip]"),
-			dot: container.querySelector(".rounded-full") !== null,
-		}).toStrictEqual({strip: null, dot: true});
+		expect(
+			{
+				strip: container.querySelector("[data-working-mark-strip]"),
+				dot: container.querySelector(".rounded-full") !== null,
+			},
+		).toStrictEqual(
+			{
+				strip: null,
+				dot: true,
+			},
+		);
 	});
 
-	it("draws a decoded sheet's strip at once on a later mount", async () => {
+	it("draws a decoded sheet's strip at once on a later mount", async () =>
+	{
 		render(<WorkingMark activity="write" />);
 		await loadSheets();
 		cleanup();
 		const {container} = render(<WorkingMark activity="write" />);
-		expect({
-			strip: container.querySelector("[data-working-mark-strip]") !== null,
-			requests: FakeImage.pending.length,
-		}).toStrictEqual({strip: true, requests: 0});
+		expect(
+			{
+				strip: container.querySelector("[data-working-mark-strip]") !== null,
+				requests: FakeImage.pending.length,
+			},
+		).toStrictEqual(
+			{
+				strip: true,
+				requests: 0,
+			},
+		);
 	});
 
-	it("plays the activity's 20px loop strip in 33.33ms steps", async () => {
+	it("plays the activity's 20px loop strip in 33.33ms steps", async () =>
+	{
 		const {container} = render(<WorkingMark activity="read" />);
 		await loadSheets();
 		const mark = container.querySelector('[data-cds="WorkingMark"]');
 		const strip = mark?.querySelector<HTMLElement>("[data-working-mark-strip]");
-		expect({
-			activity: mark?.getAttribute("data-activity"),
-			animated: mark?.getAttribute("data-animated"),
-			hidden: mark?.getAttribute("aria-hidden"),
-			className: mark?.className,
-			style: mark?.getAttribute("style"),
-			layerClass: strip?.parentElement?.className,
-			width: strip?.style.width,
-			height: strip?.style.height,
-			image: strip?.style.backgroundImage,
-			size: strip?.style.backgroundSize,
-			end: strip?.style.getPropertyValue("--working-mark-end"),
-			animation: strip?.style.animation,
-		}).toStrictEqual({
-			activity: "read",
-			animated: "true",
-			hidden: "true",
-			className: "relative block shrink-0 select-none",
-			style: "width: 20px; height: 20px; color: var(--color-clay);",
-			layerClass: "absolute inset-0 overflow-clip",
-			width: "20px",
-			height: "1200px",
-			image: 'url("/working-mark/read.webp")',
-			size: "100% 100%",
-			end: "-1180px",
-			animation: "working-mark-strip 2000ms steps(60, jump-none) infinite",
-		});
+		expect(
+			{
+				activity: mark?.getAttribute("data-activity"),
+				animated: mark?.getAttribute("data-animated"),
+				hidden: mark?.getAttribute("aria-hidden"),
+				className: mark?.className,
+				style: mark?.getAttribute("style"),
+				layerClass: strip?.parentElement?.className,
+				width: strip?.style.width,
+				height: strip?.style.height,
+				image: strip?.style.backgroundImage,
+				size: strip?.style.backgroundSize,
+				end: strip?.style.getPropertyValue("--working-mark-end"),
+				animation: strip?.style.animation,
+			},
+		).toStrictEqual(
+			{
+				activity: "read",
+				animated: "true",
+				hidden: "true",
+				className: "relative block shrink-0 select-none",
+				style: "width: 20px; height: 20px; color: var(--color-clay);",
+				layerClass: "absolute inset-0 overflow-clip",
+				width: "20px",
+				height: "1200px",
+				image: 'url("/working-mark/read.webp")',
+				size: "100% 100%",
+				end: "-1180px",
+				animation: "working-mark-strip 2000ms steps(60, jump-none) infinite",
+			},
+		);
 	});
 
-	it("holds frame 0 when not animated", async () => {
+	it("holds frame 0 when not animated", async () =>
+	{
 		const {container} = render(<WorkingMark activity="think" animated={false} className="me-1.5" />);
 		await loadSheets();
 		const mark = container.querySelector('[data-cds="WorkingMark"]');
 		const strip = mark?.querySelector<HTMLElement>("[data-working-mark-strip]");
-		expect({
-			animated: mark?.getAttribute("data-animated"),
-			className: mark?.className,
-			animation: strip?.style.animation,
-		}).toStrictEqual({animated: "false", className: "relative block shrink-0 select-none me-1.5", animation: ""});
+		expect(
+			{
+				animated: mark?.getAttribute("data-animated"),
+				className: mark?.className,
+				animation: strip?.style.animation,
+			},
+		).toStrictEqual(
+			{
+				animated: "false",
+				className: "relative block shrink-0 select-none me-1.5",
+				animation: "",
+			},
+		);
 	});
 });

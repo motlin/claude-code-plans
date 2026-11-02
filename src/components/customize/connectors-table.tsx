@@ -8,7 +8,8 @@ const TH_CLASS = "h-8 truncate px-3 text-left text-footnote font-medium text-sec
 const TD_CLASS =
 	"box-content h-7 border-b border-border bg-clip-padding px-3 py-2 group-first/row:border-t group-hover/row:border-transparent group-hover/row:bg-fill-ghost-hover group-hover/row:first:rounded-l-r6 group-hover/row:last:rounded-r-r6";
 
-export function ScopeBadge({children}: {children: ReactNode}) {
+export function ScopeBadge({children}: {children: ReactNode})
+{
 	return (
 		<span className="inline-flex h-5 shrink-0 items-center rounded-full bg-fill-ghost-hover px-2 text-caption font-medium text-secondary">
 			{children}
@@ -16,15 +17,19 @@ export function ScopeBadge({children}: {children: ReactNode}) {
 	);
 }
 
-interface RowProps {
+interface RowProps
+{
 	label: string;
 	onView?: () => void;
 	children: ReactNode;
 }
 
-function Row({label, onView, children}: RowProps) {
-	const onKeyDown = (event: KeyboardEvent<HTMLTableRowElement>) => {
-		if (onView !== undefined && (event.key === "Enter" || event.key === " ")) {
+function Row({label, onView, children}: RowProps)
+{
+	const onKeyDown = (event: KeyboardEvent<HTMLTableRowElement>) =>
+	{
+		if (onView !== undefined && (event.key === "Enter" || event.key === " "))
+		{
 			event.preventDefault();
 			onView();
 		}
@@ -42,7 +47,8 @@ function Row({label, onView, children}: RowProps) {
 	);
 }
 
-function NameCell({name, domain}: {name: string; domain: string | null}) {
+function NameCell({name, domain}: {name: string; domain: string | null})
+{
 	return (
 		<td className={TD_CLASS}>
 			<div className="flex min-w-0 items-center gap-2">
@@ -53,7 +59,8 @@ function NameCell({name, domain}: {name: string; domain: string | null}) {
 	);
 }
 
-function TypeCell({type, badge}: {type: string; badge: string}) {
+function TypeCell({type, badge}: {type: string; badge: string})
+{
 	return (
 		<td className={`${TD_CLASS} text-secondary max-sm:hidden`}>
 			<div className="flex min-w-0 items-center gap-1 overflow-hidden">
@@ -63,7 +70,8 @@ function TypeCell({type, badge}: {type: string; badge: string}) {
 	);
 }
 
-interface ConnectorsTableProps {
+interface ConnectorsTableProps
+{
 	servers: readonly McpServerSummary[];
 	claudeAi: readonly ClaudeAiConnectorSummary[];
 	onView: (server: McpServerSummary) => void;
@@ -74,7 +82,8 @@ interface ConnectorsTableProps {
  * detail page; claude.ai connectors are managed in the cloud, so their rows
  * only link out.
  */
-export function ConnectorsTable({servers, claudeAi, onView}: ConnectorsTableProps) {
+export function ConnectorsTable({servers, claudeAi, onView}: ConnectorsTableProps)
+{
 	return (
 		<table className="w-full table-fixed border-separate border-spacing-0 text-body whitespace-nowrap text-primary sm:min-w-xl">
 			<thead>
@@ -95,7 +104,8 @@ export function ConnectorsTable({servers, claudeAi, onView}: ConnectorsTableProp
 					<Row
 						key={server.id}
 						label={`View ${server.name}`}
-						onView={() => {
+						onView={() =>
+						{
 							onView(server);
 						}}
 					>

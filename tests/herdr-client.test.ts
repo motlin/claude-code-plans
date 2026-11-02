@@ -5,40 +5,58 @@ import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {herdrRequest} from "../src/lib/herdr/client";
 
-describe("herdrRequest", () => {
+describe("herdrRequest", () =>
+{
 	const originalSocketPath = process.env["HERDR_SOCKET_PATH"];
 	let directory: string;
 	let server: Server | undefined;
 	let socketPath: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		directory = mkdtempSync(join(tmpdir(), "herdr-client-test-"));
 		socketPath = join(directory, "herdr.sock");
 		process.env["HERDR_SOCKET_PATH"] = socketPath;
 	});
 
-	afterEach(async () => {
-		if (server) {
-			await new Promise<void>((resolve) => {
-				server?.close(() => {
+	afterEach(async () =>
+	{
+		if (server)
+		{
+			await new Promise<void>((resolve) =>
+			{
+				server?.close(() =>
+				{
 					resolve();
 				});
 			});
 			server = undefined;
 		}
-		rmSync(directory, {recursive: true, force: true});
-		if (originalSocketPath === undefined) {
+		rmSync(
+			directory,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
+		if (originalSocketPath === undefined)
+		{
 			delete process.env["HERDR_SOCKET_PATH"];
-		} else {
+		}
+		else
+		{
 			process.env["HERDR_SOCKET_PATH"] = originalSocketPath;
 		}
 	});
 
-	async function listen(connectionHandler: (socket: Socket) => void): Promise<void> {
+	async function listen(connectionHandler: (socket: Socket) => void): Promise<void>
+	{
 		const candidate = createServer(connectionHandler);
-		await new Promise<void>((resolve, reject) => {
+		await new Promise<void>((resolve, reject) =>
+		{
 			candidate.once("error", reject);
-			candidate.listen(socketPath, () => {
+			candidate.listen(socketPath, () =>
+			{
 				candidate.off("error", reject);
 				resolve();
 			});
@@ -46,53 +64,88 @@ describe("herdrRequest", () => {
 		server = candidate;
 	}
 
-	it("buffers a large response line and supplies omitted params", async () => {
+	it("buffers a large response line and supplies omitted params", async () =>
+	{
 		const receivedRequests: unknown[] = [];
 		const content = "x".repeat(90 * 1024);
-		await listen((socket) => {
+		await listen((socket) =>
+		{
 			let requestBuffer = "";
-			socket.on("data", (chunk) => {
+			socket.on("data", (chunk) =>
+			{
 				requestBuffer += chunk.toString();
 				const newlineIndex = requestBuffer.indexOf("\n");
 				if (newlineIndex === -1) return;
 				receivedRequests.push(JSON.parse(requestBuffer.slice(0, newlineIndex)));
 
-				const response = `${JSON.stringify({
-					id: "response-100",
-					result: {type: "snapshot", content},
-				})}\n`;
+				const response = `${JSON.stringify(
+					{
+						id: "response-100",
+						result:
+						{
+							type: "snapshot",
+							content,
+						},
+					},
+				)}\n`;
 				const splitIndex = 40 * 1024;
 				socket.write(response.slice(0, splitIndex));
 				setTimeout(() => socket.end(response.slice(splitIndex)), 5);
 			});
 		});
 
-		const result = await herdrRequest({
-			id: "request-100",
-			method: "session.snapshot",
-		});
-
-		expect({receivedRequests, result}).toStrictEqual({
-			receivedRequests: [
-				{
-					id: "request-100",
-					method: "session.snapshot",
-					params: {},
-				},
-			],
-			result: {
-				ok: true,
-				value: {type: "snapshot", content},
+		const result = await herdrRequest(
+			{
+				id: "request-100",
+				method: "session.snapshot",
 			},
-		});
+		);
+
+		expect(
+			{
+				receivedRequests,
+				result,
+			},
+		).toStrictEqual(
+			{
+				receivedRequests: [
+					{
+						id: "request-100",
+						method: "session.snapshot",
+						params: {},
+					},
+				],
+				result:
+				{
+					ok: true,
+					value:
+					{
+						type: "snapshot",
+						content,
+					},
+				},
+			},
+		);
 	});
 
-	it("decodes a multibyte character split across two socket chunks intact", async () => {
+	it("decodes a multibyte character split across two socket chunks intact", async () =>
+	{
 		const title = "✳ Claude Code";
-		await listen((socket) => {
-			socket.once("data", () => {
+		await listen((socket) =>
+		{
+			socket.once("data", () =>
+			{
 				const response = Buffer.from(
-					`${JSON.stringify({id: "response-100", result: {type: "snapshot", title}})}\n`,
+					`${JSON.stringify(
+						{
+							id: "response-100",
+							result:
+							{
+								type: "snapshot",
+								title,
+							},
+						},
+					)}\n`,
 				);
 				const splitIndex = response.indexOf(Buffer.from("✳")) + 1;
 				socket.write(response.subarray(0, splitIndex));
@@ -100,153 +153,371 @@ describe("herdrRequest", () => {
 			});
 		});
 
-		const result = await herdrRequest({id: "request-100", method: "session.snapshot"});
+		const result = await herdrRequest(
+			{
+				id: "request-100",
+				method: "session.snapshot",
+			},
+		);
 
-		expect(result).toStrictEqual({ok: true, value: {type: "snapshot", title}});
+		expect(result).toStrictEqual(
+			{
+				ok: true,
+				value:
+				{
+					type: "snapshot",
+					title,
+				},
+			},
+		);
 	});
 
-	it("routes a request for a named-server pane to that server's socket with the raw pane id", async () => {
+	it("routes a request for a named-server pane to that server's socket with the raw pane id", async () =>
+	{
 		const otherSocketPath = join(directory, "other.sock");
-		const received: Record<string, unknown[]> = {default: [], other: []};
-		const answer = (bucket: unknown[]) => (socket: Socket) => {
-			socket.once("data", (chunk) => {
+		const received: Record<string, unknown[]> =
+		{
+			default: [],
+			other: [],
+		};
+		const answer = (bucket: unknown[]) => (socket: Socket) =>
+		{
+			socket.once("data", (chunk) =>
+			{
 				bucket.push(JSON.parse(chunk.toString()));
-				socket.end(`${JSON.stringify({id: "response-100", result: {type: "ok"}})}\n`);
+				socket.end(
+					`${JSON.stringify(
+						{
+							id: "response-100",
+							result:
+							{
+								type: "ok",
+							},
+						},
+					)}\n`,
+				);
 			});
 		};
 		await listen(answer(received["default"] ?? []));
 		const other = createServer(answer(received["other"] ?? []));
-		await new Promise<void>((resolve) => {
+		await new Promise<void>((resolve) =>
+		{
 			other.listen(otherSocketPath, resolve);
 		});
 
-		try {
+		try
+		{
 			const results = [
-				await herdrRequest({
-					id: "request-100",
-					method: "pane.send_text",
-					params: {pane_id: `wM:p1@${otherSocketPath}`, text: "hi"},
-				}),
-				await herdrRequest({
-					id: "request-200",
-					method: "pane.send_text",
-					params: {pane_id: "w1:p1", text: "hi"},
-				}),
-				await herdrRequest({id: "request-300", method: "ping", params: {}}, 5000, otherSocketPath),
+				await herdrRequest(
+					{
+						id: "request-100",
+						method: "pane.send_text",
+						params:
+						{
+							pane_id: `wM:p1@${otherSocketPath}`,
+							text: "hi",
+						},
+					},
+				),
+				await herdrRequest(
+					{
+						id: "request-200",
+						method: "pane.send_text",
+						params:
+						{
+							pane_id: "w1:p1",
+							text: "hi",
+						},
+					},
+				),
+				await herdrRequest(
+					{
+						id: "request-300",
+						method: "ping",
+						params: {},
+					},
+					5000,
+					otherSocketPath,
+				),
 			];
-			expect({received, results}).toStrictEqual({
-				received: {
-					default: [{id: "request-200", method: "pane.send_text", params: {pane_id: "w1:p1", text: "hi"}}],
-					other: [
-						{id: "request-100", method: "pane.send_text", params: {pane_id: "wM:p1", text: "hi"}},
-						{id: "request-300", method: "ping", params: {}},
+			expect(
+				{
+					received,
+					results,
+				},
+			).toStrictEqual(
+				{
+					received:
+					{
+						default: [
+							{
+								id: "request-200",
+								method: "pane.send_text",
+								params:
+								{
+									pane_id: "w1:p1",
+									text: "hi",
+								},
+							},
+						],
+						other: [
+							{
+								id: "request-100",
+								method: "pane.send_text",
+								params:
+								{
+									pane_id: "wM:p1",
+									text: "hi",
+								},
+							},
+							{
+								id: "request-300",
+								method: "ping",
+								params: {},
+							},
+						],
+					},
+					results: [
+						{
+							ok: true,
+							value:
+							{
+								type: "ok",
+							},
+						},
+						{
+							ok: true,
+							value:
+							{
+								type: "ok",
+							},
+						},
+						{
+							ok: true,
+							value:
+							{
+								type: "ok",
+							},
+						},
 					],
 				},
-				results: [
-					{ok: true, value: {type: "ok"}},
-					{ok: true, value: {type: "ok"}},
-					{ok: true, value: {type: "ok"}},
-				],
-			});
-		} finally {
-			await new Promise<void>((resolve) => {
-				other.close(() => {
+			);
+		}
+		finally
+		{
+			await new Promise<void>((resolve) =>
+			{
+				other.close(() =>
+				{
 					resolve();
 				});
 			});
 		}
 	});
 
-	it("returns the server error even when its response id is empty", async () => {
-		await listen((socket) => {
-			socket.once("data", () => {
+	it("returns the server error even when its response id is empty", async () =>
+	{
+		await listen((socket) =>
+		{
+			socket.once("data", () =>
+			{
 				socket.end(
-					`${JSON.stringify({
-						id: "",
-						error: {code: "invalid_request", message: "invalid test request"},
-					})}\n`,
+					`${JSON.stringify(
+						{
+							id: "",
+							error:
+							{
+								code: "invalid_request",
+								message: "invalid test request",
+							},
+						},
+					)}\n`,
 				);
 			});
 		});
 
-		await expect(herdrRequest({id: "request-100", method: "ping", params: {}})).resolves.toStrictEqual({
-			ok: false,
-			code: "invalid_request",
-			message: "invalid test request",
-		});
+		await expect(
+			herdrRequest(
+				{
+					id: "request-100",
+					method: "ping",
+					params: {},
+				},
+			),
+		).resolves.toStrictEqual(
+			{
+				ok: false,
+				code: "invalid_request",
+				message: "invalid test request",
+			},
+		);
 	});
 
-	it("uses a fresh connection for every request", async () => {
+	it("uses a fresh connection for every request", async () =>
+	{
 		let connectionCount = 0;
-		await listen((socket) => {
+		await listen((socket) =>
+		{
 			connectionCount += 1;
-			socket.once("data", () => {
-				socket.end(`${JSON.stringify({id: "response-100", result: {type: "pong"}})}\n`);
+			socket.once("data", () =>
+			{
+				socket.end(
+					`${JSON.stringify(
+						{
+							id: "response-100",
+							result:
+							{
+								type: "pong",
+							},
+						},
+					)}\n`,
+				);
 			});
 		});
 
 		const results = await Promise.all([
-			herdrRequest({id: "request-100", method: "ping", params: {}}),
-			herdrRequest({id: "request-200", method: "ping", params: {}}),
+			herdrRequest(
+				{
+					id: "request-100",
+					method: "ping",
+					params: {},
+				},
+			),
+			herdrRequest(
+				{
+					id: "request-200",
+					method: "ping",
+					params: {},
+				},
+			),
 		]);
 
-		expect({connectionCount, results}).toStrictEqual({
-			connectionCount: 2,
-			results: [
-				{ok: true, value: {type: "pong"}},
-				{ok: true, value: {type: "pong"}},
-			],
-		});
+		expect(
+			{
+				connectionCount,
+				results,
+			},
+		).toStrictEqual(
+			{
+				connectionCount: 2,
+				results: [
+					{
+						ok: true,
+						value:
+						{
+							type: "pong",
+						},
+					},
+					{
+						ok: true,
+						value:
+						{
+							type: "pong",
+						},
+					},
+				],
+			},
+		);
 	});
 
-	it("returns connect-failed when the socket is absent", async () => {
-		const result = await herdrRequest({id: "request-100", method: "ping", params: {}});
+	it("returns connect-failed when the socket is absent", async () =>
+	{
+		const result = await herdrRequest(
+			{
+				id: "request-100",
+				method: "ping",
+				params: {},
+			},
+		);
 		if (result.ok) throw new Error("expected the request to fail");
 		const {message, ...stableResult} = result;
 
-		expect(stableResult).toStrictEqual({ok: false, code: "connect-failed"});
+		expect(stableResult).toStrictEqual(
+			{
+				ok: false,
+				code: "connect-failed",
+			},
+		);
 		expect(typeof message).toBe("string");
 	});
 
-	it("returns bad-response for malformed JSON", async () => {
-		await listen((socket) => {
+	it("returns bad-response for malformed JSON", async () =>
+	{
+		await listen((socket) =>
+		{
 			socket.once("data", () => socket.end("not-json\n"));
 		});
 
-		await expect(herdrRequest({id: "request-100", method: "ping", params: {}})).resolves.toStrictEqual({
-			ok: false,
-			code: "bad-response",
-			message: "herdr returned invalid JSON",
-		});
+		await expect(
+			herdrRequest(
+				{
+					id: "request-100",
+					method: "ping",
+					params: {},
+				},
+			),
+		).resolves.toStrictEqual(
+			{
+				ok: false,
+				code: "bad-response",
+				message: "herdr returned invalid JSON",
+			},
+		);
 	});
 
-	it("returns closed when the server closes without a response", async () => {
-		await listen((socket) => {
+	it("returns closed when the server closes without a response", async () =>
+	{
+		await listen((socket) =>
+		{
 			socket.once("data", () => socket.end());
 		});
 
-		await expect(herdrRequest({id: "request-100", method: "ping", params: {}})).resolves.toStrictEqual({
-			ok: false,
-			code: "closed",
-			message: "herdr closed without a response",
-		});
+		await expect(
+			herdrRequest(
+				{
+					id: "request-100",
+					method: "ping",
+					params: {},
+				},
+			),
+		).resolves.toStrictEqual(
+			{
+				ok: false,
+				code: "closed",
+				message: "herdr closed without a response",
+			},
+		);
 	});
 
-	it("destroys the connection after a timeout", async () => {
+	it("destroys the connection after a timeout", async () =>
+	{
 		let connectionClosed: Promise<void> | undefined;
-		await listen((socket) => {
+		await listen((socket) =>
+		{
 			socket.on("error", () => undefined);
-			connectionClosed = new Promise((resolve) => {
+			connectionClosed = new Promise((resolve) =>
+			{
 				socket.once("close", resolve);
 			});
 			socket.resume();
 		});
 
-		await expect(herdrRequest({id: "request-100", method: "ping", params: {}}, 10)).resolves.toStrictEqual({
-			ok: false,
-			code: "timeout",
-			message: "herdr request timed out",
-		});
+		await expect(
+			herdrRequest(
+				{
+					id: "request-100",
+					method: "ping",
+					params: {},
+				},
+				10,
+			),
+		).resolves.toStrictEqual(
+			{
+				ok: false,
+				code: "timeout",
+				message: "herdr request timed out",
+			},
+		);
 		await connectionClosed;
 	});
 });

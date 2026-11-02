@@ -18,22 +18,26 @@ import {rowAttention, useRowIconKind} from "./use-row-icon-kind";
  * row's glyph is a plain icon, and only the unread dot is a button that marks the row read
  * (the row menu's "Mark as unread" handles the other direction).
  */
-export function SessionRowStatusDot({session, tabIndex}: {session: SessionListItem; tabIndex?: number}) {
+export function SessionRowStatusDot({session, tabIndex}: {session: SessionListItem; tabIndex?: number})
+{
 	const unseen = useHasUnseenWork(session.id);
 	const {settings} = useSettings();
 	// The server bucket lags a manual toggle until the next summary arrives, so a finished
 	// row's icon follows the local unseen flag.
-	const kind = sessionRowIconKind({
-		bucket: session.bucket,
-		unseen,
-		serverUnseen: session.unseen,
-		unseenError: session.unseenError === true,
-		prStatus: session.prStatus,
-		showPrStatus: settings.sessionListPrefs.showPrStatus,
-	});
+	const kind = sessionRowIconKind(
+		{
+			bucket: session.bucket,
+			unseen,
+			serverUnseen: session.unseen,
+			unseenError: session.unseenError === true,
+			prStatus: session.prStatus,
+			showPrStatus: settings.sessionListPrefs.showPrStatus,
+		},
+	);
 	const readState = sessionMenuReadState(session.bucket, unseen);
 	const icon = <SessionStateIcon kind={kind} />;
-	if (readState === "working" || readState === "awaiting") {
+	if (readState === "working" || readState === "awaiting")
+	{
 		return <Tooltip content={readState === "awaiting" ? "Awaiting input" : "Running"}>{icon}</Tooltip>;
 	}
 	if (readState === "read") return icon;
@@ -43,10 +47,16 @@ export function SessionRowStatusDot({session, tabIndex}: {session: SessionListIt
 		<Tooltip content={label}>
 			<button
 				type="button"
-				{...(tabIndex === undefined ? {} : {tabIndex})}
+				{...(tabIndex === undefined
+					? {}
+					:
+						{
+							tabIndex,
+						})}
 				aria-label={label}
 				className={`flex cursor-pointer items-center justify-center rounded-full hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${TOUCH_HIT}`}
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					event.preventDefault();
 					event.stopPropagation();
 					toggleUnseen(session.id);
@@ -58,7 +68,8 @@ export function SessionRowStatusDot({session, tabIndex}: {session: SessionListIt
 	);
 }
 
-const SR_ROW_STATUS_LABELS = {
+const SR_ROW_STATUS_LABELS =
+{
 	working: " Running",
 	awaiting: " Awaiting input",
 	unread: " Unread response",
@@ -74,10 +85,12 @@ const SR_ROW_ERROR_LABEL = ` ${sessionStateKindLabels.error}`;
  * the CLI lives or Offline once it ended, then the PR state.
  * Upstream (shared-18) drops the PR when Show PR status is off or the row is archived.
  */
-function rowEnvironmentText(session: SessionListItem, showPrStatus: boolean): string {
+function rowEnvironmentText(session: SessionListItem, showPrStatus: boolean): string
+{
 	const name = session.terminalHost ?? (session.projectName || "Remote Control");
 	const parts = [name, isLiveSessionState(session.state) ? "Connected" : "Offline"];
-	if (showPrStatus && !session.archived && session.prStatus !== undefined) {
+	if (showPrStatus && !session.archived && session.prStatus !== undefined)
+	{
 		parts.push(GIT_PR_STATE_LABELS[prGlyph(session.prStatus).state]);
 	}
 	return ` ${parts.join(" · ")}`;
@@ -87,7 +100,8 @@ function rowEnvironmentText(session: SessionListItem, showPrStatus: boolean): st
  * Upstream's `bridge` environment glyph (a local CLI is what upstream calls a Remote Control bridge):
  * a Laptop, or LaptopSlash with `data-env-offline` once a bridged CLI has gone offline.
  */
-function BridgeEnvGlyph({offline}: {offline: boolean}) {
+function BridgeEnvGlyph({offline}: {offline: boolean})
+{
 	return (
 		<span aria-hidden="true" className="flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center">
 			<Laptop
@@ -109,10 +123,20 @@ function BridgeEnvGlyph({offline}: {offline: boolean}) {
  * takes the same 24px slot; an open context menu leaves it visible, as upstream. The mark is an aria-hidden `role=img`; screen readers get
  * `SidebarRowSrText` inside the title instead.
  */
-export function SidebarRowDecoration({session, envGlyph}: {session: SessionListItem; envGlyph: boolean}) {
+export function SidebarRowDecoration({session, envGlyph}: {session: SessionListItem; envGlyph: boolean})
+{
 	const {kind} = useRowIconKind(session);
 	const mark = (
-		<SessionStateIcon kind={kind} live={false} {...(kind === "ready" ? {label: "Unread response"} : {})} />
+		<SessionStateIcon
+			kind={kind}
+			live={false}
+			{...(kind === "ready"
+				?
+					{
+						label: "Unread response",
+					}
+				: {})}
+		/>
 	);
 	return (
 		<span
@@ -145,7 +169,8 @@ export function SidebarRowDecoration({session, envGlyph}: {session: SessionListI
  * accessible name: a status region (" Awaiting input", " Error", " Running", " Unread response") and the
  * environment (" herdr · Connected", " claude-code-plans · Offline").
  */
-export function SidebarRowSrText({session}: {session: SessionListItem}) {
+export function SidebarRowSrText({session}: {session: SessionListItem})
+{
 	const {unseen, kind, showPrStatus} = useRowIconKind(session);
 	const srClass = "sr-only [[role=tooltip]_&]:hidden";
 	return (

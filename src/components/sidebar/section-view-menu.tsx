@@ -7,13 +7,15 @@ import {recentSessionsInfiniteQueryOptions} from "../../lib/api/sessions";
 import {sectionGroupByLabels, sessionSortByLabels, sessionSortDirectionLabels} from "../../lib/schema-choices";
 import {SessionSortDirectionSchema, type SessionListPrefs} from "../../lib/session-groups";
 import {createGroup} from "../../lib/session-group-store";
-import {
+import
+{
 	DEFAULT_SECTION_VIEW,
 	type SectionGroupBy,
 	setSidebarSectionView,
 	type SidebarSection,
 } from "../../lib/sidebar-sections";
-import {
+import
+{
 	Menu,
 	MenuCheckboxItem,
 	MenuContent,
@@ -57,11 +59,13 @@ export function ChoiceGroup<Value extends string>({
 	options: readonly Value[];
 	labels: Record<Value, string>;
 	onSelect: (next: Value) => void;
-}) {
+})
+{
 	return (
 		<MenuRadioGroup
 			value={value}
-			onValueChange={(next: unknown) => {
+			onValueChange={(next: unknown) =>
+			{
 				const selected = options.find((option) => option === next);
 				if (selected !== undefined) onSelect(selected);
 			}}
@@ -95,7 +99,8 @@ export function GroupBySubmenu<Value extends string>({
 	none: Value;
 	labels: Record<Value, string>;
 	onSelect: (next: Value) => void;
-}) {
+})
+{
 	return (
 		<MenuSub>
 			<MenuSubTrigger value={labels[value]} valueAccent={accent}>
@@ -104,7 +109,8 @@ export function GroupBySubmenu<Value extends string>({
 			<MenuSubContent>
 				<MenuRadioGroup
 					value={value}
-					onValueChange={(next: unknown) => {
+					onValueChange={(next: unknown) =>
+					{
 						const selected = [...options, none].find((option) => option === next);
 						if (selected !== undefined) onSelect(selected);
 					}}
@@ -133,7 +139,8 @@ export function SortBySubmenu({
 	sortDirection: SessionListPrefs["sortDirection"];
 	onSortBy: (next: SessionListPrefs["sortBy"]) => void;
 	onSortDirection: (next: SessionListPrefs["sortDirection"]) => void;
-}) {
+})
+{
 	return (
 		<MenuSub>
 			<MenuSubTrigger
@@ -159,7 +166,8 @@ export function SortBySubmenu({
 }
 
 /** Upstream's `df-chrome-btn` "Group and sort" header trigger: 24px, with a 20px header glyph. */
-export function GroupSortTrigger() {
+export function GroupSortTrigger()
+{
 	return (
 		<Tooltip content="Group and sort" className="-my-1 shrink-0">
 			<MenuTrigger
@@ -178,7 +186,8 @@ export function GroupSortTrigger() {
  * Upstream `GN` View all: it opens the Sessions page, waits with "Loading…" while the list loads, and
  * is disabled with a reason while there are no sessions at all.
  */
-function ViewAllItem({statusFilter}: {statusFilter: SessionListPrefs["statusFilter"]}) {
+function ViewAllItem({statusFilter}: {statusFilter: SessionListPrefs["statusFilter"]})
+{
 	const navigate = useNavigate();
 	// Shares the list's query cache, so this adds no request.
 	const {data, isPending} = useInfiniteQuery(recentSessionsInfiniteQueryOptions(undefined, statusFilter));
@@ -187,8 +196,19 @@ function ViewAllItem({statusFilter}: {statusFilter: SessionListPrefs["statusFilt
 		<MenuItem
 			disabled={isPending || empty}
 			disabledReason={isPending ? undefined : NOTHING_TO_VIEW_REASON}
-			{...(isPending ? {trailing: "Loading…"} : {})}
-			onSelect={() => void navigate({to: "/sessions"})}
+			{...(isPending
+				?
+					{
+						trailing: "Loading…",
+					}
+				: {})}
+			onSelect={() =>
+				void navigate(
+					{
+						to: "/sessions",
+					},
+				)
+			}
 		>
 			View all
 		</MenuItem>
@@ -206,7 +226,8 @@ export function GroupSortFooter({
 	onReset: () => void;
 	onNewSection: () => void;
 	statusFilter: SessionListPrefs["statusFilter"];
-}) {
+})
+{
 	return (
 		<Fragment>
 			<MenuSeparator />
@@ -221,12 +242,14 @@ export function GroupSortFooter({
 }
 
 /** The New section dialog behind a Group and sort menu's New section; creating one changes no grouping. */
-export function NewSectionDialog({open, onOpenChange}: {open: boolean; onOpenChange: (open: boolean) => void}) {
+export function NewSectionDialog({open, onOpenChange}: {open: boolean; onOpenChange: (open: boolean) => void})
+{
 	return (
 		<NewGroupDialog
 			open={open}
 			onOpenChange={onOpenChange}
-			onCreate={(name) => {
+			onCreate={(name) =>
+			{
 				createGroup(name);
 			}}
 		/>
@@ -243,7 +266,8 @@ export function SectionViewMenu({
 }: {
 	section: SidebarSection;
 	statusFilter: SessionListPrefs["statusFilter"];
-}) {
+})
+{
 	const [newSectionOpen, setNewSectionOpen] = useState(false);
 	const groupBy = section.groupBy === "date" || section.groupBy === "status" ? section.groupBy : "none";
 	const atDefaults =
@@ -261,18 +285,36 @@ export function SectionViewMenu({
 						options={MANUAL_GROUP_BY_ORDER}
 						none="none"
 						labels={sectionGroupByLabels}
-						onSelect={(next) => {
-							setSidebarSectionView(section.id, {groupBy: next === "none" ? null : next});
+						onSelect={(next) =>
+						{
+							setSidebarSectionView(
+								section.id,
+								{
+									groupBy: next === "none" ? null : next,
+								},
+							);
 						}}
 					/>
 					<SortBySubmenu
 						sortBy={section.sortBy}
 						sortDirection={section.sortDirection}
-						onSortBy={(next) => {
-							setSidebarSectionView(section.id, {sortBy: next});
+						onSortBy={(next) =>
+						{
+							setSidebarSectionView(
+								section.id,
+								{
+									sortBy: next,
+								},
+							);
 						}}
-						onSortDirection={(next) => {
-							setSidebarSectionView(section.id, {sortDirection: next});
+						onSortDirection={(next) =>
+						{
+							setSidebarSectionView(
+								section.id,
+								{
+									sortDirection: next,
+								},
+							);
 						}}
 					/>
 					<MenuSub>
@@ -280,8 +322,17 @@ export function SectionViewMenu({
 						<MenuSubContent>
 							<MenuCheckboxItem
 								checked={section.show.metadata}
-								onCheckedChange={(checked) => {
-									setSidebarSectionView(section.id, {show: {metadata: checked}});
+								onCheckedChange={(checked) =>
+								{
+									setSidebarSectionView(
+										section.id,
+										{
+											show:
+											{
+												metadata: checked,
+											},
+										},
+									);
 								}}
 							>
 								Metadata
@@ -290,14 +341,19 @@ export function SectionViewMenu({
 					</MenuSub>
 					<GroupSortFooter
 						atDefaults={atDefaults}
-						onReset={() => {
-							setSidebarSectionView(section.id, {
-								groupBy: null,
-								sortBy: DEFAULT_SECTION_VIEW.sortBy,
-								sortDirection: DEFAULT_SECTION_VIEW.sortDirection,
-							});
+						onReset={() =>
+						{
+							setSidebarSectionView(
+								section.id,
+								{
+									groupBy: null,
+									sortBy: DEFAULT_SECTION_VIEW.sortBy,
+									sortDirection: DEFAULT_SECTION_VIEW.sortDirection,
+								},
+							);
 						}}
-						onNewSection={() => {
+						onNewSection={() =>
+						{
 							setNewSectionOpen(true);
 						}}
 						statusFilter={statusFilter}

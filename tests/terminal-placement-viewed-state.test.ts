@@ -4,7 +4,8 @@ import {markSessionCompletionUnreviewed, markSessionReviewed} from "../src/lib/d
 import {addViewedStateToTerminalPlacements} from "../src/lib/terminal-placement-viewed-state";
 import type {TmuxTerminalPlacement} from "../src/lib/tmux-windows";
 
-function tmuxPlacement(sessionId: string): TmuxTerminalPlacement {
+function tmuxPlacement(sessionId: string): TmuxTerminalPlacement
+{
 	return {
 		provider: "tmux",
 		sessionId,
@@ -12,8 +13,14 @@ function tmuxPlacement(sessionId: string): TmuxTerminalPlacement {
 		active: false,
 		paneHandle: "%1",
 		scopeHandle: "/private/tmp/tmux-501/default",
-		capabilities: {supportsWrite: false, supportsEvents: true, supportsObserve: false},
-		tmuxWindow: {
+		capabilities:
+		{
+			supportsWrite: false,
+			supportsEvents: true,
+			supportsObserve: false,
+		},
+		tmuxWindow:
+		{
 			sessionId,
 			projectName: "alice-project",
 			windowIndex: 1,
@@ -25,10 +32,13 @@ function tmuxPlacement(sessionId: string): TmuxTerminalPlacement {
 	};
 }
 
-describe("terminal placement viewed state", () => {
-	it("marks a tmux session unread after its Stop hook, with no herdr involved", () => {
+describe("terminal placement viewed state", () =>
+{
+	it("marks a tmux session unread after its Stop hook, with no herdr involved", () =>
+	{
 		const db = openTestDb();
-		try {
+		try
+		{
 			markSessionReviewed(db.index, "session-test-done", 0, 1_000);
 			markSessionCompletionUnreviewed(db.index, "session-test-unread", 0, 1_000);
 
@@ -40,7 +50,8 @@ describe("terminal placement viewed state", () => {
 			).toStrictEqual([
 				{
 					...tmuxPlacement("session-test-unread"),
-					viewedState: {
+					viewedState:
+					{
 						currentMessageIndex: -1,
 						lastViewedMessageIndex: -1,
 						reviewTargetMessageIndex: 0,
@@ -52,7 +63,8 @@ describe("terminal placement viewed state", () => {
 				},
 				{
 					...tmuxPlacement("session-test-done"),
-					viewedState: {
+					viewedState:
+					{
 						currentMessageIndex: -1,
 						lastViewedMessageIndex: 0,
 						reviewTargetMessageIndex: 0,
@@ -63,7 +75,9 @@ describe("terminal placement viewed state", () => {
 					},
 				},
 			]);
-		} finally {
+		}
+		finally
+		{
 			db.close();
 		}
 	});

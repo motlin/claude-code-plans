@@ -7,49 +7,60 @@ import {DIAGNOSTIC_FAMILIES, diagnosticFamily, loadCeilings} from "./ratchet";
 
 const LARGE_SHAPES = ["large-long", "large-wide"] as const;
 
-describe("large perf tier", () => {
+describe("large perf tier", () =>
+{
 	const original = process.env["PERF_LARGE"];
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		if (original === undefined) delete process.env["PERF_LARGE"];
 		else process.env["PERF_LARGE"] = original;
 	});
 
-	it("runs large-long and large-wide with PERF_LARGE=1", () => {
+	it("runs large-long and large-wide with PERF_LARGE=1", () =>
+	{
 		process.env["PERF_LARGE"] = "1";
 		const names: ReadonlySet<string> = new Set(perfShapes().map((shape) => shape.name));
 		expect(LARGE_SHAPES.filter((name) => names.has(name))).toStrictEqual([...LARGE_SHAPES]);
 	});
 
-	it.each(LARGE_SHAPES)("has a ceiling for exactly the ids the perf tests ratchet for %s", (shape) => {
+	it.each(LARGE_SHAPES)("has a ceiling for exactly the ids the perf tests ratchet for %s", (shape) =>
+	{
 		const ceilingIds = Object.keys(loadCeilings()).filter((id) => id.includes(`.${shape}.`));
 		const ratcheted = shapeMetricIds(shape).filter((id) => diagnosticFamily(id, DIAGNOSTIC_FAMILIES) === undefined);
 		expect(ceilingIds).toStrictEqual(ratcheted.toSorted());
 	});
 
-	it("has a measured id behind every diagnostic family", () => {
+	it("has a measured id behind every diagnostic family", () =>
+	{
 		const measured = new Set(shapeMetricIds("typical").map((id) => diagnosticFamily(id, DIAGNOSTIC_FAMILIES)));
 		expect(Object.keys(DIAGNOSTIC_FAMILIES).filter((family) => !measured.has(family))).toStrictEqual([]);
 	});
 });
 
-describe("CI workflow", () => {
+describe("CI workflow", () =>
+{
 	const workflow = readFileSync(join(__dirname, "..", "..", ".github", "workflows", "merge-group.yml"), "utf8");
 	const testJob = /\n {2}test:\n([\s\S]*?)(?=\n {2}\S)/.exec(workflow)?.[1] ?? "";
 
-	it("runs tests/perf once, in a PERF_LARGE suite run that covers every tier, with the fixture cache keyed on the generator version", () => {
+	it("runs tests/perf once, in a PERF_LARGE suite run that covers every tier, with the fixture cache keyed on the generator version", () =>
+	{
 		const runs = [...testJob.matchAll(/^\s+(?:- )?run: (.+)$/gm)].map((match) => match[1]);
-		expect({
-			runs: runs.slice(-2),
-			cachePath: testJob.includes("path: node_modules/.cache/ccb-perf/fixtures"),
-			versionKey: testJob.includes("key: ccb-perf-fixtures-v${{ steps.perf-generator.outputs.version }}"),
-			versionStep: testJob.includes("GENERATOR_VERSION"),
-		}).toStrictEqual({
-			runs: ["PERF_LARGE=1 just test", "just perf-table"],
-			cachePath: true,
-			versionKey: true,
-			versionStep: true,
-		});
+		expect(
+			{
+				runs: runs.slice(-2),
+				cachePath: testJob.includes("path: node_modules/.cache/ccb-perf/fixtures"),
+				versionKey: testJob.includes("key: ccb-perf-fixtures-v${{ steps.perf-generator.outputs.version }}"),
+				versionStep: testJob.includes("GENERATOR_VERSION"),
+			},
+		).toStrictEqual(
+			{
+				runs: ["PERF_LARGE=1 just test", "just perf-table"],
+				cachePath: true,
+				versionKey: true,
+				versionStep: true,
+			},
+		);
 		expect(GENERATOR_VERSION).toBeGreaterThan(0);
 	});
 });

@@ -1,4 +1,5 @@
-import {
+import
+{
 	GitMerge,
 	GitMergeConflict,
 	GitPullRequest,
@@ -19,7 +20,8 @@ import {Tooltip} from "./ui/tooltip";
 const DOT_WRAPPER = "flex min-h-3.5 min-w-3.5 shrink-0 items-center justify-center";
 
 /** Upstream `Xs` PR glyphs, with the nearest lucide icon where upstream's has none (queued). */
-const PR_GLYPH_ICONS = {
+const PR_GLYPH_ICONS =
+{
 	opened: GitPullRequest,
 	draft: GitPullRequestDraft,
 	merged: GitMerge,
@@ -32,21 +34,32 @@ const PR_GLYPH_ICONS = {
 const PR_GLYPH_CLASS =
 	"flex h-[var(--sb-row-ctl)] min-w-[var(--sb-row-ctl)] shrink-0 items-center justify-end gap-0.5 ps-[calc((var(--sb-row-ctl)-var(--df-pr-glyph))/2)] pe-[calc((var(--sb-row-ctl)-var(--df-pr-glyph))/2+max(0px,var(--df-heading-pitch,0px)-var(--sb-row-ctl)))] text-footnote text-muted-as-secondary";
 
-const PR_GLYPH_STYLE = {"--df-pr-glyph": "16px"} as CSSProperties;
+const PR_GLYPH_STYLE =
+{
+	"--df-pr-glyph": "16px",
+} as CSSProperties;
 
 /** Upstream's PR glyph (`tT`): a git-coloured icon with a "Pull request · {state}" tooltip. */
-export function PrTailGlyph({state}: {state: GitPrState}) {
+export function PrTailGlyph({state}: {state: GitPrState})
+{
 	const Icon = PR_GLYPH_ICONS[state];
 	return (
 		<Tooltip content={`Pull request · ${GIT_PR_STATE_LABELS[state]}`}>
 			<span aria-hidden="true" data-pr-glyph={state} className={PR_GLYPH_CLASS} style={PR_GLYPH_STYLE}>
-				<Icon size={16} style={{color: `var(--color-git-${state})`}} />
+				<Icon
+					size={16}
+					style={
+					{
+						color: `var(--color-git-${state})`,
+					}}
+				/>
 			</span>
 		</Tooltip>
 	);
 }
 
-const STATUS_PULSE_COLORS = {
+const STATUS_PULSE_COLORS =
+{
 	awaiting: "var(--cds-fill-warning)",
 	ready: "var(--cds-fill-accent)",
 	running: "var(--cds-text-muted)",
@@ -56,13 +69,19 @@ const STATUS_PULSE_COLORS = {
  * Upstream's sidebar status Pulse (`QY` → `Io`): a static cds Pulse inside a `contents` wrapper
  * that turns its page-bg ring off. The wrapper keeps the local `.status-dot[data-kind]` hook.
  */
-export function StatusPulse({kind}: {kind: keyof typeof STATUS_PULSE_COLORS}) {
+export function StatusPulse({kind}: {kind: keyof typeof STATUS_PULSE_COLORS})
+{
 	return (
 		<span className="status-dot contents [--cds-page-bg:transparent]" data-kind={kind}>
 			<Pulse
 				animate={false}
 				color={STATUS_PULSE_COLORS[kind]}
-				{...(kind === "running" ? {className: "df-tab-dot-running"} : {})}
+				{...(kind === "running"
+					?
+						{
+							className: "df-tab-dot-running",
+						}
+					: {})}
 			/>
 		</span>
 	);
@@ -86,10 +105,18 @@ export function SessionStateIcon({
 	live?: boolean;
 	/** Set by a wrapping Tooltip so the glyph is described by its tooltip. */
 	"aria-describedby"?: string;
-}) {
-	const describedByProps = describedBy === undefined ? {} : {"aria-describedby": describedBy};
+})
+{
+	const describedByProps =
+		describedBy === undefined
+			? {}
+			:
+				{
+					"aria-describedby": describedBy,
+				};
 	const ariaLabel = label ?? sessionStateKindLabels[kind];
-	if (kind === "idle") {
+	if (kind === "idle")
+	{
 		return (
 			<span role="img" aria-label={ariaLabel} className={DOT_WRAPPER} {...describedByProps}>
 				<span

@@ -10,68 +10,88 @@ type FrontmatterValue = string | string[] | Record<string, string>;
 
 const BooleanStringSchema = z.enum(["true", "false"]);
 
-const SkillFrontmatterSchema = z.strictObject({
-	name: z.string().min(1).optional(),
-	description: z.string().optional(),
-	version: z.string().optional(),
-	license: z.string().optional(),
-	model: z.string().optional(),
-	tools: z.string().optional(),
-	"allowed-tools": z.union([z.string(), z.array(z.string())]).optional(),
-	"argument-hint": z.string().optional(),
-	"user-invocable": BooleanStringSchema.optional(),
-	"disable-model-invocation": BooleanStringSchema.optional(),
-	metadata: z.record(z.string(), z.string()).optional(),
-});
+const SkillFrontmatterSchema = z.strictObject(
+	{
+		name: z.string().min(1).optional(),
+		description: z.string().optional(),
+		version: z.string().optional(),
+		license: z.string().optional(),
+		model: z.string().optional(),
+		tools: z.string().optional(),
+		"allowed-tools": z.union([z.string(), z.array(z.string())]).optional(),
+		"argument-hint": z.string().optional(),
+		"user-invocable": BooleanStringSchema.optional(),
+		"disable-model-invocation": BooleanStringSchema.optional(),
+		metadata: z.record(z.string(), z.string()).optional(),
+	},
+);
 type SkillFrontmatter = z.infer<typeof SkillFrontmatterSchema>;
 
-const InstalledPluginsSchema = z.strictObject({
-	version: z.number(),
-	plugins: z.record(
-		z.string(),
-		z.array(
-			z.strictObject({
-				scope: z.enum(["user", "project", "local"]),
-				installPath: z.string(),
-				version: z.string(),
-				installedAt: z.string(),
-				lastUpdated: z.string(),
-				gitCommitSha: z.string().optional(),
-				projectPath: z.string().optional(),
-			}),
+const InstalledPluginsSchema = z.strictObject(
+	{
+		version: z.number(),
+		plugins: z.record(
+			z.string(),
+			z.array(
+				z.strictObject(
+					{
+						scope: z.enum(["user", "project", "local"]),
+						installPath: z.string(),
+						version: z.string(),
+						installedAt: z.string(),
+						lastUpdated: z.string(),
+						gitCommitSha: z.string().optional(),
+						projectPath: z.string().optional(),
+					},
+				),
+			),
 		),
-	),
-});
+	},
+);
 
-function unquote(value: string): string {
-	if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
-		try {
+function unquote(value: string): string
+{
+	if (value.length >= 2 && value.startsWith('"') && value.endsWith('"'))
+	{
+		try
+		{
 			return z.string().parse(JSON.parse(value));
-		} catch {
+		}
+		catch
+		{
 			return value.slice(1, -1);
 		}
 	}
-	if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
+	if (value.length >= 2 && value.startsWith("'") && value.endsWith("'"))
+	{
 		return value.slice(1, -1).replaceAll("''", "'");
 	}
 	return value;
 }
 
-function foldLines(lines: readonly string[]): string {
+function foldLines(lines: readonly string[]): string
+{
 	let out = "";
-	for (const line of lines) {
-		if (line === "") {
+	for (const line of lines)
+	{
+		if (line === "")
+		{
 			out += "\n";
-		} else if (out === "" || out.endsWith("\n")) {
+		}
+		else if (out === "" || out.endsWith("\n"))
+		{
 			out += line;
-		} else {
+		}
+		else
+		{
 			out += ` ${line}`;
 		}
 	}
 	return out;
 }
 
-function parseBlock(indicator: string, lines: readonly string[]): FrontmatterValue {
+function parseBlock(indicator: string, lines: readonly string[]): FrontmatterValue
+{
 	const nonEmpty = lines.filter((line) => line.trim() !== "");
 	const indent = Math.min(...nonEmpty.map((line) => line.length - line.trimStart().length));
 	const dedented = lines.map((line) => line.slice(indent).trimEnd());
@@ -80,11 +100,13 @@ function parseBlock(indicator: string, lines: readonly string[]): FrontmatterVal
 	if (indicator.startsWith(">")) return foldLines(dedented).replace(/\n+$/, "");
 
 	const items = dedented.filter((line) => line !== "");
-	if (items.every((line) => line.startsWith("- "))) {
+	if (items.every((line) => line.startsWith("- ")))
+	{
 		return items.map((line) => unquote(line.slice(2).trim()));
 	}
 	const map: Record<string, string> = {};
-	for (const line of items) {
+	for (const line of items)
+	{
 		const colon = line.indexOf(":");
 		if (colon === -1) continue;
 		map[line.slice(0, colon).trim()] = unquote(line.slice(colon + 1).trim());
@@ -97,7 +119,8 @@ function parseBlock(indicator: string, lines: readonly string[]): FrontmatterVal
  * (plain or quoted), `|` / `>` block scalars, and one level of indented list
  * or map. Returns null when the file has no complete `---` fenced block.
  */
-export function parseSkillFrontmatter(content: string): Record<string, FrontmatterValue> | null {
+export function parseSkillFrontmatter(content: string): Record<string, FrontmatterValue> | null
+{
 	if (!content.startsWith("---")) return null;
 	const end = content.indexOf("\n---", 3);
 	if (end === -1) return null;
@@ -105,7 +128,8 @@ export function parseSkillFrontmatter(content: string): Record<string, Frontmatt
 	const lines = content.slice(4, end).split("\n");
 	const result: Record<string, FrontmatterValue> = {};
 	let i = 0;
-	while (i < lines.length) {
+	while (i < lines.length)
+	{
 		const line = lines[i] ?? "";
 		i++;
 		const match = /^([A-Za-z0-9_-]+):(.*)$/.exec(line);
@@ -114,7 +138,8 @@ export function parseSkillFrontmatter(content: string): Record<string, Frontmatt
 		const rest = (match[2] ?? "").trim();
 
 		const block: string[] = [];
-		while (i < lines.length) {
+		while (i < lines.length)
+		{
 			const next = lines[i] ?? "";
 			if (next.trim() !== "" && !/^\s/.test(next)) break;
 			block.push(next);
@@ -122,31 +147,39 @@ export function parseSkillFrontmatter(content: string): Record<string, Frontmatt
 		}
 		while (block.length > 0 && (block[block.length - 1] ?? "").trim() === "") block.pop();
 
-		if (block.length > 0 && (rest === "" || /^[|>][-+]?$/.test(rest))) {
+		if (block.length > 0 && (rest === "" || /^[|>][-+]?$/.test(rest)))
+		{
 			result[key] = parseBlock(rest, block);
-		} else {
+		}
+		else
+		{
 			result[key] = unquote(rest);
 		}
 	}
 	return result;
 }
 
-interface ParsedSkill {
+interface ParsedSkill
+{
 	name: string;
 	description: string;
 	dir: string;
 	mtime: number;
 }
 
-async function readSkill(dir: string, dirName: string): Promise<ParsedSkill | null> {
+async function readSkill(dir: string, dirName: string): Promise<ParsedSkill | null>
+{
 	const skillFile = join(dir, "SKILL.md");
 	let content: string;
 	let mtime: number;
-	try {
+	try
+	{
 		const [text, stats] = await Promise.all([readFile(skillFile, "utf-8"), stat(skillFile)]);
 		content = text;
 		mtime = Math.trunc(stats.mtimeMs);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 
@@ -161,20 +194,28 @@ async function readSkill(dir: string, dirName: string): Promise<ParsedSkill | nu
 	};
 }
 
-async function scanSkillsDir(skillsDir: string): Promise<ParsedSkill[]> {
+async function scanSkillsDir(skillsDir: string): Promise<ParsedSkill[]>
+{
 	let entries: string[];
-	try {
+	try
+	{
 		entries = await readdir(skillsDir);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 
 	const skills: ParsedSkill[] = [];
-	for (const entry of entries) {
+	for (const entry of entries)
+	{
 		const dir = join(skillsDir, entry);
-		try {
+		try
+		{
 			if (!(await stat(dir)).isDirectory()) continue;
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 		const skill = await readSkill(dir, entry);
@@ -183,42 +224,61 @@ async function scanSkillsDir(skillsDir: string): Promise<ParsedSkill[]> {
 	return skills.toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function readJson(path: string): Promise<unknown> {
-	try {
+export async function readJson(path: string): Promise<unknown>
+{
+	try
+	{
 		return JSON.parse(await readFile(path, "utf-8"));
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 }
 
-async function readSkillOverrides(claudeDir: string): Promise<Record<string, string>> {
+async function readSkillOverrides(claudeDir: string): Promise<Record<string, string>>
+{
 	const parsed = ClaudeSettingsSchema.safeParse(await readJson(join(claudeDir, "settings.json")));
 	return parsed.success ? (parsed.data.skillOverrides ?? {}) : {};
 }
 
-export async function readInstalledPlugins(
-	claudeDir: string,
-): Promise<{id: string; name: string; installPath: string}[]> {
+export async function readInstalledPlugins(claudeDir: string): Promise<
+	{
+		id: string;
+		name: string;
+		installPath: string;
+	}[]
+>
+{
 	const parsed = InstalledPluginsSchema.safeParse(
 		await readJson(join(claudeDir, "plugins", "installed_plugins.json")),
 	);
 	if (!parsed.success) return [];
 	return Object.entries(parsed.data.plugins)
-		.flatMap(([id, installs]) => {
+		.flatMap(([id, installs]) =>
+		{
 			const install = installs[0];
 			if (install === undefined) return [];
 			const at = id.indexOf("@");
-			return [{id, name: at === -1 ? id : id.slice(0, at), installPath: install.installPath}];
+			return [
+				{
+					id,
+					name: at === -1 ? id : id.slice(0, at),
+					installPath: install.installPath,
+				},
+			];
 		})
 		.toSorted((a, b) => a.id.localeCompare(b.id));
 }
 
-export interface SkillProjectSource {
+export interface SkillProjectSource
+{
 	id: string;
 	projectPath: string;
 }
 
-export interface ListSkillsOptions {
+export interface ListSkillsOptions
+{
 	projects: readonly SkillProjectSource[];
 	/** Defaults to ~/.claude. */
 	claudeDir?: string;
@@ -233,7 +293,8 @@ export interface ListSkillsOptions {
 export async function listSkills({
 	projects,
 	claudeDir = join(homedir(), ".claude"),
-}: ListSkillsOptions): Promise<SkillSummary[]> {
+}: ListSkillsOptions): Promise<SkillSummary[]>
+{
 	const overrides = await readSkillOverrides(claudeDir);
 
 	const toSummary = (
@@ -242,7 +303,8 @@ export async function listSkills({
 		idPrefix: string,
 		sourceLabel: string,
 		overrideKey: string,
-	): SkillSummary => ({
+	): SkillSummary => (
+	{
 		id: `${idPrefix}${skill.name}`,
 		name: skill.name,
 		description: skill.description,
@@ -255,19 +317,24 @@ export async function listSkills({
 
 	const result: SkillSummary[] = [];
 
-	for (const skill of await scanSkillsDir(join(claudeDir, "skills"))) {
+	for (const skill of await scanSkillsDir(join(claudeDir, "skills")))
+	{
 		result.push(toSummary(skill, "personal", "personal:", "Personal", skill.name));
 	}
 
-	for (const project of projects) {
+	for (const project of projects)
+	{
 		const label = basename(project.projectPath);
-		for (const skill of await scanSkillsDir(join(project.projectPath, ".claude", "skills"))) {
+		for (const skill of await scanSkillsDir(join(project.projectPath, ".claude", "skills")))
+		{
 			result.push(toSummary(skill, "project", `project:${project.id}:`, label, skill.name));
 		}
 	}
 
-	for (const plugin of await readInstalledPlugins(claudeDir)) {
-		for (const skill of await scanSkillsDir(join(plugin.installPath, "skills"))) {
+	for (const plugin of await readInstalledPlugins(claudeDir))
+	{
+		for (const skill of await scanSkillsDir(join(plugin.installPath, "skills")))
+		{
 			result.push(
 				toSummary(skill, "plugin", `plugin:${plugin.id}:`, plugin.name, `${plugin.name}:${skill.name}`),
 			);
@@ -277,11 +344,15 @@ export async function listSkills({
 	return result;
 }
 
-async function readSkillFrontmatter(dir: string): Promise<SkillFrontmatter> {
+async function readSkillFrontmatter(dir: string): Promise<SkillFrontmatter>
+{
 	let content = "";
-	try {
+	try
+	{
 		content = await readFile(join(dir, "SKILL.md"), "utf-8");
-	} catch {
+	}
+	catch
+	{
 		// Listed a moment ago; treat a vanished SKILL.md as empty frontmatter.
 	}
 	const raw = parseSkillFrontmatter(content);
@@ -290,12 +361,22 @@ async function readSkillFrontmatter(dir: string): Promise<SkillFrontmatter> {
 }
 
 /** Whether a user can `/invoke` the skill, and its `argument-hint` if any. */
-export async function readSkillInvocation(dir: string): Promise<{userInvocable: boolean; argumentHint?: string}> {
+export async function readSkillInvocation(dir: string): Promise<
+{
+	userInvocable: boolean;
+	argumentHint?: string;
+}>
+{
 	const frontmatter = await readSkillFrontmatter(dir);
 	const argumentHint = frontmatter["argument-hint"];
 	return {
 		userInvocable: frontmatter["user-invocable"] !== "false",
-		...(argumentHint === undefined ? {} : {argumentHint}),
+		...(argumentHint === undefined
+			? {}
+			:
+				{
+					argumentHint,
+				}),
 	};
 }
 
@@ -303,19 +384,24 @@ export async function readSkillInvocation(dir: string): Promise<{userInvocable: 
  * SKILL.md `allowed-tools` is either a YAML list or one string separated by
  * commas and/or spaces; spaces inside `Bash(git add:*)` belong to the rule.
  */
-export function splitAllowedTools(value: string | readonly string[] | undefined): string[] {
+export function splitAllowedTools(value: string | readonly string[] | undefined): string[]
+{
 	if (value === undefined) return [];
 	if (typeof value !== "string") return [...value];
 	const tools: string[] = [];
 	let current = "";
 	let depth = 0;
-	for (const char of value) {
+	for (const char of value)
+	{
 		if (char === "(") depth++;
 		if (char === ")") depth = Math.max(0, depth - 1);
-		if (depth === 0 && (char === "," || /\s/.test(char))) {
+		if (depth === 0 && (char === "," || /\s/.test(char)))
+		{
 			if (current !== "") tools.push(current);
 			current = "";
-		} else {
+		}
+		else
+		{
 			current += char;
 		}
 	}
@@ -327,7 +413,8 @@ export function splitAllowedTools(value: string | readonly string[] | undefined)
  * The detail view of one listed skill: SKILL.md invocation frontmatter plus
  * the skill directory tree (symlinks skipped, paths relative to the dir).
  */
-export async function readSkillDetail(skill: SkillSummary): Promise<SkillDetail> {
+export async function readSkillDetail(skill: SkillSummary): Promise<SkillDetail>
+{
 	const frontmatter = await readSkillFrontmatter(skill.dir);
 	const tree = await scanPluginTree(skill.dir);
 
@@ -339,11 +426,21 @@ export async function readSkillDetail(skill: SkillSummary): Promise<SkillDetail>
 
 	return {
 		skill,
-		...(pluginId === undefined ? {} : {pluginId}),
+		...(pluginId === undefined
+			? {}
+			:
+				{
+					pluginId,
+				}),
 		userInvocable: frontmatter["user-invocable"] !== "false",
 		modelInvocable: frontmatter["disable-model-invocation"] !== "true",
 		allowedTools: splitAllowedTools(frontmatter["allowed-tools"]),
-		...(frontmatter["argument-hint"] === undefined ? {} : {argumentHint: frontmatter["argument-hint"]}),
+		...(frontmatter["argument-hint"] === undefined
+			? {}
+			:
+				{
+					argumentHint: frontmatter["argument-hint"],
+				}),
 		tree: tree?.children ?? [],
 	};
 }

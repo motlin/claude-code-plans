@@ -8,7 +8,8 @@
  * lenient runtime schemas (`runtime-schemas.ts`) pass an enum value written by
  * a newer Claude Code through, and that must not crash the page.
  */
-export function assertNever(value: never): never {
+export function assertNever(value: never): never
+{
 	console.warn(`Unhandled case: ${JSON.stringify(value)}`);
 	return value;
 }

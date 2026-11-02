@@ -2,7 +2,8 @@ import {Bot, CalendarClock, Gauge, KeyRound} from "lucide-react";
 import type {SessionHookContextPayload} from "../lib/hook-events";
 import {nonEmpty} from "../lib/non-empty";
 
-function ContextPill({label, value}: {label: string; value: string}) {
+function ContextPill({label, value}: {label: string; value: string})
+{
 	return (
 		<span className="inline-flex items-center gap-1 rounded-full bg-surface-0 px-2 py-0.5 text-xs text-t6">
 			<span className="text-t6">{label}</span>
@@ -16,7 +17,8 @@ function ContextPill({label, value}: {label: string; value: string}) {
  * background work and scheduled wakeups. Upstream's header shows only the
  * title, so this is a Verbose-only diagnostic.
  */
-export function SessionHookContext({context, verbose}: {context: SessionHookContextPayload; verbose: boolean}) {
+export function SessionHookContext({context, verbose}: {context: SessionHookContextPayload; verbose: boolean})
+{
 	if (!verbose) return null;
 	const backgroundTasks = context.backgroundTasks ?? [];
 	const sessionCrons = context.sessionCrons ?? [];

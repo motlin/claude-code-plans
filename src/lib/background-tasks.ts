@@ -9,7 +9,8 @@ export type BackgroundTaskKind = "bash" | "agent" | "monitor" | "workflow" | "ta
 export type BackgroundTaskStatus = "running" | "completed" | "failed" | "stopped";
 
 /** One row of the Background tasks pane. */
-export interface BackgroundTask {
+export interface BackgroundTask
+{
 	/** The harness task id when known, otherwise the launching tool_use id. */
 	id: string;
 	toolUseId: string | null;
@@ -30,13 +31,15 @@ export interface BackgroundTask {
 	startedAt: string | null;
 }
 
-export interface BackgroundTaskGroups {
+export interface BackgroundTaskGroups
+{
 	running: BackgroundTask[];
 	finished: BackgroundTask[];
 }
 
 /** Live state the transcript window cannot show. */
-export interface BackgroundTaskLiveState {
+export interface BackgroundTaskLiveState
+{
 	/** Without a live session, transcript tasks that never finished are shown stopped. */
 	sessionActive: boolean;
 	/** The latest Stop hook's `background_tasks`. */
@@ -49,7 +52,8 @@ export interface BackgroundTaskLiveState {
 }
 
 /** An indexed subagent, as `/api/sessions/$id/subagents` reports it. */
-export interface TeammateCandidate {
+export interface TeammateCandidate
+{
 	id: string;
 	name?: string | null | undefined;
 	description: string | null;
@@ -64,12 +68,14 @@ export interface TeammateCandidate {
 
 const IN_PROCESS_TEAMMATE = "in_process_teammate";
 
-function spawnedSince(startedAt: string | null, processStartedAt: number | null | undefined): boolean {
+function spawnedSince(startedAt: string | null, processStartedAt: number | null | undefined): boolean
+{
 	if (processStartedAt == null || startedAt === null) return false;
 	return Date.parse(startedAt) >= processStartedAt;
 }
 
-const KIND_LABELS: Record<BackgroundTaskKind, string> = {
+const KIND_LABELS: Record<BackgroundTaskKind, string> =
+{
 	bash: "Bash",
 	agent: "Agent",
 	monitor: "Monitor",
@@ -77,7 +83,8 @@ const KIND_LABELS: Record<BackgroundTaskKind, string> = {
 	task: "Task",
 };
 
-const STATUS_LABELS: Record<BackgroundTaskStatus, string> = {
+const STATUS_LABELS: Record<BackgroundTaskStatus, string> =
+{
 	running: "Running",
 	completed: "Completed",
 	failed: "Failed",
@@ -85,12 +92,14 @@ const STATUS_LABELS: Record<BackgroundTaskStatus, string> = {
 };
 
 /** The card's meta line, e.g. "Bash · Completed". */
-export function backgroundTaskMeta(task: BackgroundTask): string {
+export function backgroundTaskMeta(task: BackgroundTask): string
+{
 	return `${KIND_LABELS[task.kind]} · ${STATUS_LABELS[task.status]}`;
 }
 
 /** Running tasks in the given order; finished ones newest first. */
-export function groupBackgroundTasks(tasks: readonly BackgroundTask[]): BackgroundTaskGroups {
+export function groupBackgroundTasks(tasks: readonly BackgroundTask[]): BackgroundTaskGroups
+{
 	return {
 		running: tasks.filter((task) => task.status === "running"),
 		finished: tasks.filter((task) => task.status !== "running").toReversed(),
@@ -104,18 +113,25 @@ export function groupBackgroundTasks(tasks: readonly BackgroundTask[]): Backgrou
 export function backgroundTasksFacts(
 	groups: BackgroundTaskGroups,
 	subagentCount: number,
-): {total: number; running: number} {
+):
+{
+	total: number;
+	running: number;
+}
+{
 	return {
 		total: groups.running.length + groups.finished.length + subagentCount,
 		running: groups.running.length,
 	};
 }
 
-function asString(value: unknown): string | null {
+function asString(value: unknown): string | null
+{
 	return typeof value === "string" ? value : null;
 }
 
-function textOf(content: unknown): string {
+function textOf(content: unknown): string
+{
 	if (typeof content === "string") return content;
 	if (!Array.isArray(content)) return "";
 	return content
@@ -124,12 +140,14 @@ function textOf(content: unknown): string {
 		.join("\n");
 }
 
-function tag(text: string, name: string): string | null {
+function tag(text: string, name: string): string | null
+{
 	const match = new RegExp(`<${name}>([\\s\\S]*?)</${name}>`).exec(text);
 	return match?.[1] === undefined ? null : match[1].trim();
 }
 
-function allTags(text: string, name: string): string[] {
+function allTags(text: string, name: string): string[]
+{
 	return [...text.matchAll(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`, "g"))].map((match) =>
 		(match[1] ?? "").trim(),
 	);
@@ -140,8 +158,10 @@ function allTags(text: string, name: string): string[] {
  * stopped, blocked and cancelled as failed, and anything else as completed. A missing status
  * (Monitor events) is no finished task.
  */
-export function notificationStatus(status: string | null): Exclude<BackgroundTaskStatus, "running"> | null {
-	switch (status) {
+export function notificationStatus(status: string | null): Exclude<BackgroundTaskStatus, "running"> | null
+{
+	switch (status)
+	{
 		case null:
 			return null;
 		case "failed":
@@ -157,7 +177,8 @@ export function notificationStatus(status: string | null): Exclude<BackgroundTas
 }
 
 /** The task type upstream reads from a notification summary's leading noun. */
-const SUMMARY_TASK_TYPES: Readonly<Record<string, string>> = {
+const SUMMARY_TASK_TYPES: Readonly<Record<string, string>> =
+{
 	Agent: "local_agent",
 	"Background agent": "local_agent",
 	"Background workflow": "local_workflow",
@@ -171,14 +192,17 @@ const SUMMARY_TASK_TYPES: Readonly<Record<string, string>> = {
 const SUMMARY_NOUN =
 	/^(Agent|Background agent|Dynamic workflow|Background workflow|Workflow|Background command|Monitor|Remote task|Task) "((?:(?!" (?:(?:failed|was stopped|is blocked):|from the previous session|was checkpointed) ).)+)" (?:completed|finished|failed|was|stopped|stream|script|appears|ended|is blocked|(?:\(run [^\s)"]+\) )?didn't finish before|from the previous session)/;
 
-function summaryTaskType(summary: string): string | null {
+function summaryTaskType(summary: string): string | null
+{
 	const noun = SUMMARY_NOUN.exec(summary)?.[1];
 	return noun === undefined ? null : (SUMMARY_TASK_TYPES[noun] ?? null);
 }
 
 /** Upstream's noun kind for a notification's task type; an unknown or missing type is a task. */
-export function noticeKind(notification: Pick<TaskNotification, "taskType">): NoticeKind {
-	switch (notification.taskType) {
+export function noticeKind(notification: Pick<TaskNotification, "taskType">): NoticeKind
+{
+	switch (notification.taskType)
+	{
 		case "local_bash":
 			return "shell";
 		case "local_agent":
@@ -196,7 +220,8 @@ export function noticeKind(notification: Pick<TaskNotification, "taskType">): No
 }
 
 /** A finished background task, as its `<task-notification>` reports it. */
-export interface TaskNotification {
+export interface TaskNotification
+{
 	/** The finished task's id, which is also the agent id a background Agent's hand-back names. */
 	taskId: string | null;
 	toolUseId: string | null;
@@ -221,11 +246,13 @@ const STOPPED_AGENT = /^Background agent "(.+)" was stopped by the user\.$/;
  * reports the user stopped ('Background agent "..." was stopped by the user.'),
  * or null for any other text.
  */
-export function stoppedAgentDescription(text: string): string | null {
+export function stoppedAgentDescription(text: string): string | null
+{
 	return STOPPED_AGENT.exec(text.trim())?.[1] ?? null;
 }
 
-function durationOf(text: string | null): number | null {
+function durationOf(text: string | null): number | null
+{
 	if (text === null || !/^\d+$/.test(text)) return null;
 	return Number(text);
 }
@@ -235,7 +262,8 @@ function durationOf(text: string | null): number | null {
  * `<task-notification>` block, or null for any other text and for
  * notifications that carry no terminal status (Monitor events).
  */
-export function parseTaskNotification(text: string): TaskNotification | null {
+export function parseTaskNotification(text: string): TaskNotification | null
+{
 	const trimmed = text.trimStart();
 	if (!trimmed.startsWith("<task-notification>")) return null;
 	const status = notificationStatus(tag(trimmed, "status"));
@@ -257,8 +285,10 @@ export function parseTaskNotification(text: string): TaskNotification | null {
 const MONITOR_EXPIRED = "[Monitor expired";
 
 /** The `<task-notification>` a queued_command attachment or a queue enqueue carries, or null. */
-function queuedNotification(record: Readonly<Record<string, unknown>>): string | null {
-	if (record["type"] === "attachment") {
+function queuedNotification(record: Readonly<Record<string, unknown>>): string | null
+{
+	if (record["type"] === "attachment")
+	{
 		const attachment = asRecord(record["attachment"]);
 		return attachment?.["type"] === "queued_command" ? asString(attachment["prompt"]) : null;
 	}
@@ -266,7 +296,8 @@ function queuedNotification(record: Readonly<Record<string, unknown>>): string |
 	return null;
 }
 
-function hookKind(type: string): BackgroundTaskKind {
+function hookKind(type: string): BackgroundTaskKind
+{
 	if (type.includes("bash") || type.includes("shell")) return "bash";
 	if (type.includes("agent")) return "agent";
 	if (type.includes("monitor")) return "monitor";
@@ -282,25 +313,30 @@ const LAUNCH_ID_PATTERNS = [
 
 const LAUNCH_OUTPUT_FILE = /Output is being written to: (\S+?)\.?(?:\s|$)/;
 
-function launchedTaskId(result: Readonly<Record<string, unknown>> | undefined, text: string): string | null {
-	for (const key of ["backgroundTaskId", "taskId", "agentId"]) {
+function launchedTaskId(result: Readonly<Record<string, unknown>> | undefined, text: string): string | null
+{
+	for (const key of ["backgroundTaskId", "taskId", "agentId"])
+	{
 		const id = asString(result?.[key]);
 		if (id !== null) return id;
 	}
-	for (const pattern of LAUNCH_ID_PATTERNS) {
+	for (const pattern of LAUNCH_ID_PATTERNS)
+	{
 		const id = pattern.exec(text)?.[1];
 		if (id !== undefined) return id;
 	}
 	return null;
 }
 
-interface Tracked {
+interface Tracked
+{
 	task: BackgroundTask;
 	/** Order of the last status change, for newest-finished-first. */
 	settledAt: number;
 }
 
-function unprefixedAgentId(id: string): string {
+function unprefixedAgentId(id: string): string
+{
 	return id.startsWith("agent-") ? id.slice("agent-".length) : id;
 }
 
@@ -313,18 +349,30 @@ function unprefixedAgentId(id: string): string {
 export function extractBackgroundTasks(
 	records: readonly Readonly<Record<string, unknown>>[],
 	live: BackgroundTaskLiveState,
-): BackgroundTaskGroups {
+): BackgroundTaskGroups
+{
 	const tasks: Tracked[] = [];
 	const byToolUseId = new Map<string, Tracked>();
 	const byTaskId = new Map<string, Tracked>();
 	/** Launch calls awaiting the result that says whether (and as what) they backgrounded. */
-	const pendingAgents = new Map<string, {description: string; startedAt: string | null}>();
+	const pendingAgents = new Map<
+		string,
+		{
+			description: string;
+			startedAt: string | null;
+		}
+	>();
 	const readers = new Map<string, string>();
 	const stoppers = new Map<string, string>();
 	let clock = 0;
 
-	const track = (task: BackgroundTask): Tracked => {
-		const tracked = {task, settledAt: 0};
+	const track = (task: BackgroundTask): Tracked =>
+	{
+		const tracked =
+		{
+			task,
+			settledAt: 0,
+		};
 		tasks.push(tracked);
 		if (task.toolUseId !== null) byToolUseId.set(task.toolUseId, tracked);
 		return tracked;
@@ -332,28 +380,32 @@ export function extractBackgroundTasks(
 	const find = (taskId: string | null, toolUseId: string | null): Tracked | undefined =>
 		(toolUseId === null ? undefined : byToolUseId.get(toolUseId)) ??
 		(taskId === null ? undefined : byTaskId.get(taskId));
-	const settle = (tracked: Tracked, status: BackgroundTaskStatus): void => {
+	const settle = (tracked: Tracked, status: BackgroundTaskStatus): void =>
+	{
 		tracked.task.status = status;
 		tracked.settledAt = ++clock;
 	};
 
 	// The CLI writes one notification as a user record, a queued_command attachment or a queue enqueue, often more than one of these.
 	const seenNotifications = new Set<string>();
-	const applyNotification = (content: string): void => {
+	const applyNotification = (content: string): void =>
+	{
 		if (!content.startsWith("<task-notification>") || seenNotifications.has(content)) return;
 		seenNotifications.add(content);
 		{
 			const toolUseId = tag(content, "tool-use-id");
 			const status = notificationStatus(tag(content, "status"));
 			const summary = tag(content, "summary");
-			for (const taskId of allTags(content, "task-id")) {
+			for (const taskId of allTags(content, "task-id"))
+			{
 				const tracked = find(taskId, toolUseId);
 				if (tracked === undefined) continue;
 				if (summary !== null) tracked.task.summary = summary;
 				const outputFile = tag(content, "output-file");
 				if (outputFile !== null && tracked.task.kind !== "agent") tracked.task.outputFile = outputFile;
 				const event = tag(content, "event");
-				if (event !== null) {
+				if (event !== null)
+				{
 					tracked.task.output = tracked.task.output === null ? event : `${tracked.task.output}\n${event}`;
 				}
 				const result = tag(content, "result");
@@ -365,27 +417,32 @@ export function extractBackgroundTasks(
 		}
 	};
 
-	for (const record of records) {
+	for (const record of records)
+	{
 		const timestamp = asString(record["timestamp"]);
 		const message = asRecord(record["message"]);
 		const content = message?.["content"];
 
-		if (record["type"] === "user" && typeof content === "string") {
+		if (record["type"] === "user" && typeof content === "string")
+		{
 			applyNotification(content);
 			continue;
 		}
 		const queued = queuedNotification(record);
-		if (queued !== null) {
+		if (queued !== null)
+		{
 			applyNotification(queued);
 			continue;
 		}
 
 		if (!Array.isArray(content)) continue;
-		for (const raw of content) {
+		for (const raw of content)
+		{
 			const block = asRecord(raw);
 			if (block === undefined) continue;
 
-			if (block["type"] === "tool_use") {
+			if (block["type"] === "tool_use")
+			{
 				const id = asString(block["id"]);
 				const name = asString(block["name"]);
 				const input = asRecord(block["input"]) ?? {};
@@ -393,33 +450,53 @@ export function extractBackgroundTasks(
 				const background = input["run_in_background"] === true;
 				const description = asString(input["description"]);
 				const command = asString(input["command"]);
-				const launch = (kind: BackgroundTaskKind, label: string | null | undefined): void => {
-					track({
-						id,
-						toolUseId: id,
-						kind,
-						description: label ?? "",
-						command,
-						status: "running",
-						output: null,
-						summary: null,
-						outputFile: null,
-						startedAt: timestamp,
-					});
+				const launch = (kind: BackgroundTaskKind, label: string | null | undefined): void =>
+				{
+					track(
+						{
+							id,
+							toolUseId: id,
+							kind,
+							description: label ?? "",
+							command,
+							status: "running",
+							output: null,
+							summary: null,
+							outputFile: null,
+							startedAt: timestamp,
+						},
+					);
 				};
-				if (name === "Bash" && background) {
+				if (name === "Bash" && background)
+				{
 					launch("bash", description ?? command);
-				} else if (name === "Monitor") {
+				}
+				else if (name === "Monitor")
+				{
 					launch("monitor", description ?? command);
-				} else if (name === "Workflow") {
+				}
+				else if (name === "Workflow")
+				{
 					// Its launch result names the harness task id; an error result drops it.
 					launch("workflow", workflowCallName(input) ?? description);
-				} else if (name === "Agent") {
-					pendingAgents.set(id, {description: description ?? "", startedAt: timestamp});
-				} else if (name === "TaskOutput" || name === "BashOutput") {
+				}
+				else if (name === "Agent")
+				{
+					pendingAgents.set(
+						id,
+						{
+							description: description ?? "",
+							startedAt: timestamp,
+						},
+					);
+				}
+				else if (name === "TaskOutput" || name === "BashOutput")
+				{
 					const taskId = asString(input["task_id"]) ?? asString(input["bash_id"]);
 					if (taskId !== null) readers.set(id, taskId);
-				} else if (name === "TaskStop" || name === "KillShell") {
+				}
+				else if (name === "TaskStop" || name === "KillShell")
+				{
 					const taskId = asString(input["task_id"]) ?? asString(input["shell_id"]);
 					if (taskId !== null) stoppers.set(id, taskId);
 				}
@@ -434,36 +511,16 @@ export function extractBackgroundTasks(
 			const isError = block["is_error"] === true;
 
 			const agent = pendingAgents.get(toolUseId);
-			if (agent !== undefined && result?.["status"] === "teammate_spawned") {
+			if (agent !== undefined && result?.["status"] === "teammate_spawned")
+			{
 				// An in-process teammate lives as long as the process that spawned it; upstream counts it as a task.
 				pendingAgents.delete(toolUseId);
 				if (!spawnedSince(timestamp, live.processStartedAt)) continue;
 				const agentId =
 					asString(result["agent_id"]) ?? asString(result["agentId"]) ?? launchedTaskId(result, text);
-				const tracked = track({
-					id: agentId ?? toolUseId,
-					toolUseId,
-					kind: "agent",
-					description: agent.description,
-					command: null,
-					status: "running",
-					output: null,
-					summary: null,
-					outputFile: null,
-					startedAt: agent.startedAt,
-				});
-				if (agentId !== null) byTaskId.set(agentId, tracked);
-				// TaskStop names a teammate by its name as often as by its id.
-				const name = asString(result["name"]);
-				if (name !== null) byTaskId.set(name, tracked);
-				continue;
-			}
-			if (agent !== undefined) {
-				pendingAgents.delete(toolUseId);
-				if (result?.["isAsync"] === true || text.startsWith("Async agent launched")) {
-					const taskId = launchedTaskId(result, text);
-					const tracked = track({
-						id: taskId ?? toolUseId,
+				const tracked = track(
+					{
+						id: agentId ?? toolUseId,
 						toolUseId,
 						kind: "agent",
 						description: agent.description,
@@ -473,21 +530,51 @@ export function extractBackgroundTasks(
 						summary: null,
 						outputFile: null,
 						startedAt: agent.startedAt,
-					});
+					},
+				);
+				if (agentId !== null) byTaskId.set(agentId, tracked);
+				// TaskStop names a teammate by its name as often as by its id.
+				const name = asString(result["name"]);
+				if (name !== null) byTaskId.set(name, tracked);
+				continue;
+			}
+			if (agent !== undefined)
+			{
+				pendingAgents.delete(toolUseId);
+				if (result?.["isAsync"] === true || text.startsWith("Async agent launched"))
+				{
+					const taskId = launchedTaskId(result, text);
+					const tracked = track(
+						{
+							id: taskId ?? toolUseId,
+							toolUseId,
+							kind: "agent",
+							description: agent.description,
+							command: null,
+							status: "running",
+							output: null,
+							summary: null,
+							outputFile: null,
+							startedAt: agent.startedAt,
+						},
+					);
 					if (taskId !== null) byTaskId.set(taskId, tracked);
 				}
 				continue;
 			}
 
 			const launched = byToolUseId.get(toolUseId);
-			if (launched !== undefined) {
-				if (isError) {
+			if (launched !== undefined)
+			{
+				if (isError)
+				{
 					tasks.splice(tasks.indexOf(launched), 1);
 					byToolUseId.delete(toolUseId);
 					continue;
 				}
 				const taskId = launchedTaskId(result, text);
-				if (taskId !== null) {
+				if (taskId !== null)
+				{
 					launched.task.id = taskId;
 					byTaskId.set(taskId, launched);
 				}
@@ -497,7 +584,8 @@ export function extractBackgroundTasks(
 			}
 
 			const readTaskId = readers.get(toolUseId);
-			if (readTaskId !== undefined) {
+			if (readTaskId !== undefined)
+			{
 				const tracked = byTaskId.get(readTaskId);
 				const output = tag(text, "output") ?? tag(text, "stdout");
 				if (tracked !== undefined && output !== null) tracked.task.output = output;
@@ -505,99 +593,116 @@ export function extractBackgroundTasks(
 			}
 
 			const stopTaskId = stoppers.get(toolUseId);
-			if (stopTaskId !== undefined && !isError) {
+			if (stopTaskId !== undefined && !isError)
+			{
 				const tracked = byTaskId.get(stopTaskId);
 				if (tracked?.task.status === "running") settle(tracked, "stopped");
 			}
 		}
 	}
 
-	if (!live.sessionActive) {
-		for (const tracked of tasks) {
+	if (!live.sessionActive)
+	{
+		for (const tracked of tasks)
+		{
 			if (tracked.task.status === "running") settle(tracked, "stopped");
 		}
 	}
 
 	const liveTasks: BackgroundTask[] = [];
-	for (const subagent of live.runningSubagents ?? []) {
+	for (const subagent of live.runningSubagents ?? [])
+	{
 		const agentId = unprefixedAgentId(subagent.agentId);
 		if (byToolUseId.has(subagent.key) || (agentId !== "" && byTaskId.has(agentId))) continue;
-		liveTasks.push({
-			id: agentId === "" ? subagent.key : agentId,
-			toolUseId: agentId === "" ? subagent.key : null,
-			kind: "agent",
-			description: subagent.description,
-			command: null,
-			status: "running",
-			output: null,
-			summary: null,
-			outputFile: null,
-			startedAt: null,
-		});
+		liveTasks.push(
+			{
+				id: agentId === "" ? subagent.key : agentId,
+				toolUseId: agentId === "" ? subagent.key : null,
+				kind: "agent",
+				description: subagent.description,
+				command: null,
+				status: "running",
+				output: null,
+				summary: null,
+				outputFile: null,
+				startedAt: null,
+			},
+		);
 	}
-	for (const teammate of live.teammates ?? []) {
+	for (const teammate of live.teammates ?? [])
+	{
 		if (teammate.taskKind !== IN_PROCESS_TEAMMATE) continue;
 		const agentId = unprefixedAgentId(teammate.id);
 		const known = byTaskId.get(agentId);
-		if (teammate.stopped === true) {
+		if (teammate.stopped === true)
+		{
 			if (known?.task.status === "running") settle(known, "stopped");
 			continue;
 		}
-		if (teammate.idle === true) {
+		if (teammate.idle === true)
+		{
 			if (known?.task.status === "running") settle(known, "completed");
 			continue;
 		}
 		if (!live.sessionActive || known !== undefined || !spawnedSince(teammate.startedAt, live.processStartedAt))
 			continue;
-		liveTasks.push({
-			id: agentId,
-			toolUseId: null,
-			kind: "agent",
-			description: teammate.description ?? teammate.name ?? agentId,
-			command: null,
-			status: "running",
-			output: null,
-			summary: null,
-			outputFile: null,
-			startedAt: teammate.startedAt,
-		});
+		liveTasks.push(
+			{
+				id: agentId,
+				toolUseId: null,
+				kind: "agent",
+				description: teammate.description ?? teammate.name ?? agentId,
+				command: null,
+				status: "running",
+				output: null,
+				summary: null,
+				outputFile: null,
+				startedAt: teammate.startedAt,
+			},
+		);
 	}
 	// A running teammate's in-flight foreground command is a task of its own upstream.
-	for (const teammate of live.teammates ?? []) {
+	for (const teammate of live.teammates ?? [])
+	{
 		if (teammate.taskKind !== IN_PROCESS_TEAMMATE || teammate.pendingCommand == null) continue;
 		const agentId = unprefixedAgentId(teammate.id);
 		const running =
 			byTaskId.get(agentId)?.task.status === "running" || liveTasks.some((task) => task.id === agentId);
 		if (!running) continue;
-		liveTasks.push({
-			id: `${agentId}:command`,
-			toolUseId: null,
-			kind: "bash",
-			description: teammate.pendingCommand,
-			command: null,
-			status: "running",
-			output: null,
-			summary: null,
-			outputFile: null,
-			startedAt: null,
-		});
+		liveTasks.push(
+			{
+				id: `${agentId}:command`,
+				toolUseId: null,
+				kind: "bash",
+				description: teammate.pendingCommand,
+				command: null,
+				status: "running",
+				output: null,
+				summary: null,
+				outputFile: null,
+				startedAt: null,
+			},
+		);
 	}
-	for (const hookTask of live.hookTasks ?? []) {
+	for (const hookTask of live.hookTasks ?? [])
+	{
 		if (!isRunningBackgroundTask(hookTask)) continue;
 		const id = unprefixedAgentId(hookTask.id);
 		if (byTaskId.has(id) || liveTasks.some((task) => task.id === id)) continue;
-		liveTasks.push({
-			id,
-			toolUseId: null,
-			kind: hookKind(hookTask.type),
-			description: hookTask.description,
-			command: hookTask.command ?? null,
-			status: "running",
-			output: null,
-			summary: null,
-			outputFile: null,
-			startedAt: null,
-		});
+		liveTasks.push(
+			{
+				id,
+				toolUseId: null,
+				kind: hookKind(hookTask.type),
+				description: hookTask.description,
+				command: hookTask.command ?? null,
+				status: "running",
+				output: null,
+				summary: null,
+				outputFile: null,
+				startedAt: null,
+			},
+		);
 	}
 
 	const ordered = [

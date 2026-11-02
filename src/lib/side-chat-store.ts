@@ -6,7 +6,8 @@ import {buildSideChatPrompt, sideChatBranchTitle, type SideChatMessage} from "./
 
 export type SideChatEntryStatus = "pending" | "done" | "error";
 
-export interface SideChatEntry {
+export interface SideChatEntry
+{
 	id: number;
 	question: string;
 	answer: string;
@@ -22,7 +23,8 @@ export interface SideChatEntry {
 }
 
 /** A transcript excerpt waiting above the side chat input for the next question. */
-export interface SideChatExcerpt {
+export interface SideChatExcerpt
+{
 	id: number;
 	text: string;
 }
@@ -33,7 +35,8 @@ export interface SideChatExcerpt {
  */
 export type SideChatMode = "floating" | "docked" | "popout";
 
-export interface SideChatSession {
+export interface SideChatSession
+{
 	open: boolean;
 	mode: SideChatMode;
 	entries: readonly SideChatEntry[];
@@ -42,7 +45,13 @@ export interface SideChatSession {
 
 const NO_ANSWER_MESSAGE = "No answer yet. Send a message in the main chat first, then ask again.";
 
-const EMPTY_SESSION: SideChatSession = {open: false, mode: "floating", entries: [], excerpts: []};
+const EMPTY_SESSION: SideChatSession =
+{
+	open: false,
+	mode: "floating",
+	entries: [],
+	excerpts: [],
+};
 
 /**
  * Per-session side chat threads, in memory only like upstream's
@@ -50,36 +59,49 @@ const EMPTY_SESSION: SideChatSession = {open: false, mode: "floating", entries: 
  */
 let sessions = new Map<string, SideChatSession>();
 const listeners = new Set<() => void>();
-const inFlight = new Map<number, {abort: AbortController; processId: string | null}>();
+const inFlight = new Map<
+	number,
+	{
+		abort: AbortController;
+		processId: string | null;
+	}
+>();
 let nextEntryId = 1;
 let nextExcerptId = 1;
 
-function emit(): void {
+function emit(): void
+{
 	for (const listener of listeners) listener();
 }
 
-function update(sessionId: string, change: (session: SideChatSession) => SideChatSession): void {
+function update(sessionId: string, change: (session: SideChatSession) => SideChatSession): void
+{
 	sessions = new Map(sessions).set(sessionId, change(getSideChat(sessionId)));
 	emit();
 }
 
-function updateEntry(sessionId: string, entryId: number, change: (entry: SideChatEntry) => SideChatEntry): void {
-	update(sessionId, (session) => ({
+function updateEntry(sessionId: string, entryId: number, change: (entry: SideChatEntry) => SideChatEntry): void
+{
+	update(sessionId, (session) => (
+	{
 		...session,
 		entries: session.entries.map((entry) => (entry.id === entryId ? change(entry) : entry)),
 	}));
 }
 
-export function getSideChat(sessionId: string): SideChatSession {
+export function getSideChat(sessionId: string): SideChatSession
+{
 	return sessions.get(sessionId) ?? EMPTY_SESSION;
 }
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
 
-export function useSideChat(sessionId: string): SideChatSession {
+export function useSideChat(sessionId: string): SideChatSession
+{
 	return useSyncExternalStore(
 		subscribe,
 		() => getSideChat(sessionId),
@@ -87,146 +109,281 @@ export function useSideChat(sessionId: string): SideChatSession {
 	);
 }
 
-export function openSideChat(sessionId: string): void {
-	update(sessionId, (session) => ({...session, open: true}));
+export function openSideChat(sessionId: string): void
+{
+	update(sessionId, (session) => (
+	{
+		...session,
+		open: true,
+	}));
 }
 
 /**
  * Upstream's `openWithContext`: opens the side chat with a transcript excerpt
  * waiting above its input. Nothing is sent until the next question.
  */
-export function openSideChatWithContext(sessionId: string, text: string): void {
-	const excerpt = {id: nextExcerptId++, text};
-	update(sessionId, (session) => ({...session, open: true, excerpts: [...session.excerpts, excerpt]}));
+export function openSideChatWithContext(sessionId: string, text: string): void
+{
+	const excerpt =
+	{
+		id: nextExcerptId++,
+		text,
+	};
+	update(sessionId, (session) => (
+	{
+		...session,
+		open: true,
+		excerpts: [...session.excerpts, excerpt],
+	}));
 }
 
-export function removeSideChatExcerpt(sessionId: string, excerptId: number): void {
-	update(sessionId, (session) => ({
+export function removeSideChatExcerpt(sessionId: string, excerptId: number): void
+{
+	update(sessionId, (session) => (
+	{
 		...session,
 		excerpts: session.excerpts.filter((excerpt) => excerpt.id !== excerptId),
 	}));
 }
 
 /** The question as the fork sees it: its excerpts as `<!-- attach -->` blocks, then the question. */
-function entryPrompt({question, excerpts = []}: SideChatEntry): string {
+function entryPrompt({question, excerpts = []}: SideChatEntry): string
+{
 	return composePrompt(
 		question,
-		excerpts.map((text) => ({kind: "excerpt", text})),
+		excerpts.map((text) => (
+		{
+			kind: "excerpt",
+			text,
+		})),
 		[],
 	);
 }
 
-export function closeSideChat(sessionId: string): void {
-	update(sessionId, (session) => ({...session, open: false}));
+export function closeSideChat(sessionId: string): void
+{
+	update(sessionId, (session) => (
+	{
+		...session,
+		open: false,
+	}));
 }
 
-export function toggleSideChat(sessionId: string): void {
-	update(sessionId, (session) => ({...session, open: !session.open}));
+export function toggleSideChat(sessionId: string): void
+{
+	update(sessionId, (session) => (
+	{
+		...session,
+		open: !session.open,
+	}));
 }
 
 /** Moves the side chat between its floating, docked and pop-out variants, keeping its thread. */
-export function setSideChatMode(sessionId: string, mode: SideChatMode): void {
-	update(sessionId, (session) => (session.mode === mode ? session : {...session, mode}));
+export function setSideChatMode(sessionId: string, mode: SideChatMode): void
+{
+	update(sessionId, (session) =>
+		session.mode === mode
+			? session
+			:
+				{
+					...session,
+					mode,
+				},
+	);
 }
 
-export function clearSideChat(sessionId: string): void {
+export function clearSideChat(sessionId: string): void
+{
 	for (const entry of getSideChat(sessionId).entries) void stopEntry(sessionId, entry.id);
-	update(sessionId, (session) => ({...session, entries: []}));
+	update(sessionId, (session) => (
+	{
+		...session,
+		entries: [],
+	}));
 }
 
 /** The answered Q/A pairs before `entryId` (or all of them), for the stateless prompt. */
-function priorSideChatMessages(sessionId: string, entryId?: number): SideChatMessage[] {
+function priorSideChatMessages(sessionId: string, entryId?: number): SideChatMessage[]
+{
 	const messages: SideChatMessage[] = [];
-	for (const entry of getSideChat(sessionId).entries) {
+	for (const entry of getSideChat(sessionId).entries)
+	{
 		if (entry.id === entryId) break;
-		if (entry.status === "done") messages.push({q: entryPrompt(entry), a: entry.answer});
+		if (entry.status === "done")
+			messages.push(
+				{
+					q: entryPrompt(entry),
+					a: entry.answer,
+				},
+			);
 	}
 	return messages;
 }
 
 /** Test hook: forget every side chat. */
-export function resetSideChatStore(): void {
+export function resetSideChatStore(): void
+{
 	for (const {abort} of inFlight.values()) abort.abort();
 	inFlight.clear();
 	sessions = new Map();
 	emit();
 }
 
-export async function askSideChat(sessionId: string, question: string): Promise<void> {
+export async function askSideChat(sessionId: string, question: string): Promise<void>
+{
 	const trimmed = question.trim();
 	if (trimmed === "") return;
 	const messages = priorSideChatMessages(sessionId);
 	const entryId = nextEntryId++;
 	const excerpts = getSideChat(sessionId).excerpts.map(({text}) => text);
-	const entry: SideChatEntry = {id: entryId, question: trimmed, answer: "", status: "pending"};
+	const entry: SideChatEntry =
+	{
+		id: entryId,
+		question: trimmed,
+		answer: "",
+		status: "pending",
+	};
 	if (excerpts.length > 0) entry.excerpts = excerpts;
-	update(sessionId, (session) => ({...session, entries: [...session.entries, entry], excerpts: []}));
+	update(sessionId, (session) => (
+	{
+		...session,
+		entries: [...session.entries, entry],
+		excerpts: [],
+	}));
 
 	const abort = new AbortController();
-	const flight = {abort, processId: null as string | null};
+	const flight =
+	{
+		abort,
+		processId: null as string | null,
+	};
 	inFlight.set(entryId, flight);
-	try {
-		const response = await fetch("/api/side-chat", {
-			method: "POST",
-			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify({sessionId, messages, question: entryPrompt(entry)}),
-			signal: abort.signal,
-		});
-		if (!response.ok) {
+	try
+	{
+		const response = await fetch(
+			"/api/side-chat",
+			{
+				method: "POST",
+				headers:
+				{
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(
+					{
+						sessionId,
+						messages,
+						question: entryPrompt(entry),
+					},
+				),
+				signal: abort.signal,
+			},
+		);
+		if (!response.ok)
+		{
 			fail(sessionId, entryId, await readResponseError(response));
 			return;
 		}
 		flight.processId = response.headers.get("X-Process-Id");
 		let answer = "";
 		let error: string | undefined;
-		await readStreamEvents(response, (event) => {
+		await readStreamEvents(response, (event) =>
+		{
 			const delta = textDelta(event);
-			if (delta !== null) {
+			if (delta !== null)
+			{
 				answer += delta;
-				updateEntry(sessionId, entryId, (entry) => withoutActivity({...entry, answer}));
+				updateEntry(sessionId, entryId, (entry) =>
+					withoutActivity(
+						{
+							...entry,
+							answer,
+						},
+					),
+				);
 				return;
 			}
 			const activity = toolActivity(event);
-			if (activity !== null) {
-				updateEntry(sessionId, entryId, (entry) => ({...entry, activity}));
+			if (activity !== null)
+			{
+				updateEntry(sessionId, entryId, (entry) => (
+				{
+					...entry,
+					activity,
+				}));
 				return;
 			}
 			const failure = streamError(event);
 			if (failure !== null) error = failure;
-			else if (answer === "" && event.type === "result" && typeof event.result === "string") {
+			else if (answer === "" && event.type === "result" && typeof event.result === "string")
+			{
 				answer = event.result;
 			}
 		});
 		if (error !== undefined) fail(sessionId, entryId, error);
 		else if (answer.trim() === "") fail(sessionId, entryId, NO_ANSWER_MESSAGE);
-		else updateEntry(sessionId, entryId, (entry) => finish({...entry, answer}, "done"));
-	} catch (err) {
-		if (err instanceof Error && err.name === "AbortError") {
+		else
+			updateEntry(sessionId, entryId, (entry) =>
+				finish(
+					{
+						...entry,
+						answer,
+					},
+					"done",
+				),
+			);
+	}
+	catch (err)
+	{
+		if (err instanceof Error && err.name === "AbortError")
+		{
 			updateEntry(sessionId, entryId, (entry) =>
 				entry.answer === "" ? finish(entry, "error", "Stopped.") : finish(entry, "done"),
 			);
-		} else {
+		}
+		else
+		{
 			fail(sessionId, entryId, err instanceof Error ? err.message : String(err));
 		}
-	} finally {
+	}
+	finally
+	{
 		inFlight.delete(entryId);
 	}
 }
 
 /** Stop a pending answer: abort the request and kill its CLI process. */
-export async function stopEntry(sessionId: string, entryId: number): Promise<void> {
+export async function stopEntry(sessionId: string, entryId: number): Promise<void>
+{
 	const flight = inFlight.get(entryId);
 	if (flight === undefined) return;
-	updateEntry(sessionId, entryId, (entry) => ({...entry, stopping: true}));
+	updateEntry(sessionId, entryId, (entry) => (
+	{
+		...entry,
+		stopping: true,
+	}));
 	flight.abort.abort();
 	if (flight.processId === null) return;
-	try {
-		await fetch("/api/side-chat", {
-			method: "POST",
-			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify({action: "cancel", processId: flight.processId}),
-		});
-	} catch {
+	try
+	{
+		await fetch(
+			"/api/side-chat",
+			{
+				method: "POST",
+				headers:
+				{
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(
+					{
+						action: "cancel",
+						processId: flight.processId,
+					},
+				),
+			},
+		);
+	}
+	catch
+	{
 		// Best effort: the process exits on its own once the answer is done.
 	}
 }
@@ -237,54 +394,100 @@ export async function stopEntry(sessionId: string, entryId: number): Promise<voi
  * `--no-session-persistence`), title the fork `btw: <question>` and resolve
  * with its id. Resolves null when the fork never reported a session id.
  */
-export async function branchSideChatEntry(sessionId: string, entryId: number): Promise<string | null> {
+export async function branchSideChatEntry(sessionId: string, entryId: number): Promise<string | null>
+{
 	const entry = getSideChat(sessionId).entries.find((e) => e.id === entryId);
 	if (entry === undefined) return null;
-	updateEntry(sessionId, entryId, (e) => ({...e, branching: true}));
-	try {
+	updateEntry(sessionId, entryId, (e) => (
+	{
+		...e,
+		branching: true,
+	}));
+	try
+	{
 		const prompt = buildSideChatPrompt(priorSideChatMessages(sessionId, entryId), entryPrompt(entry));
-		const response = await fetch("/api/chat", {
-			method: "POST",
-			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify({sessionId, prompt}),
-		});
+		const response = await fetch(
+			"/api/chat",
+			{
+				method: "POST",
+				headers:
+				{
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(
+					{
+						sessionId,
+						prompt,
+					},
+				),
+			},
+		);
 		if (!response.ok) throw new Error(await readResponseError(response));
 		let forkedId = null as string | null;
 		let error = null as string | null;
-		await readStreamEvents(response, (event) => {
-			if (typeof event.session_id === "string" && event.session_id !== "") {
+		await readStreamEvents(response, (event) =>
+		{
+			if (typeof event.session_id === "string" && event.session_id !== "")
+			{
 				forkedId = event.session_id;
 			}
 			error = streamError(event) ?? error;
 		});
 		if (error !== null) throw new Error(error);
 		if (forkedId === null) return null;
-		await fetch(`/api/sessions/${encodeURIComponent(forkedId)}/title`, {
-			method: "PUT",
-			headers: {"Content-Type": "application/json"},
-			body: JSON.stringify({title: sideChatBranchTitle(entry.question)}),
-		}).catch(() => undefined);
+		await fetch(
+			`/api/sessions/${encodeURIComponent(forkedId)}/title`,
+			{
+				method: "PUT",
+				headers:
+				{
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(
+					{
+						title: sideChatBranchTitle(entry.question),
+					},
+				),
+			},
+		).catch(() => undefined);
 		return forkedId;
-	} finally {
+	}
+	finally
+	{
 		updateEntry(sessionId, entryId, ({branching: _branching, ...rest}) => rest);
 	}
 }
 
-function withoutActivity(entry: SideChatEntry): SideChatEntry {
+function withoutActivity(entry: SideChatEntry): SideChatEntry
+{
 	const {activity: _activity, ...rest} = entry;
 	return rest;
 }
 
-function finish(entry: SideChatEntry, status: SideChatEntryStatus, error?: string): SideChatEntry {
+function finish(entry: SideChatEntry, status: SideChatEntryStatus, error?: string): SideChatEntry
+{
 	const {activity: _activity, stopping: _stopping, error: _error, ...rest} = entry;
-	return error === undefined ? {...rest, status} : {...rest, status, error};
+	return error === undefined
+		?
+			{
+				...rest,
+				status,
+			}
+		:
+			{
+				...rest,
+				status,
+				error,
+			};
 }
 
-function fail(sessionId: string, entryId: number, error: string): void {
+function fail(sessionId: string, entryId: number, error: string): void
+{
 	updateEntry(sessionId, entryId, (entry) => finish(entry, "error", error));
 }
 
-interface StreamEvent {
+interface StreamEvent
+{
 	type?: unknown;
 	subtype?: unknown;
 	session_id?: unknown;
@@ -294,36 +497,49 @@ interface StreamEvent {
 	event?: unknown;
 }
 
-async function readResponseError(response: Response): Promise<string> {
+async function readResponseError(response: Response): Promise<string>
+{
 	const fallback = `Request failed (${response.status})`;
 	const body: unknown = await response.json().catch(() => null);
-	if (typeof body === "object" && body !== null && "error" in body) {
+	if (typeof body === "object" && body !== null && "error" in body)
+	{
 		return typeof body.error === "string" ? body.error : fallback;
 	}
 	return fallback;
 }
 
 /** Feed each parsed NDJSON line of a streaming response to `onEvent`. */
-async function readStreamEvents(response: Response, onEvent: (event: StreamEvent) => void): Promise<void> {
+async function readStreamEvents(response: Response, onEvent: (event: StreamEvent) => void): Promise<void>
+{
 	if (response.body === null) return;
 	const reader = response.body.getReader();
 	const decoder = new TextDecoder();
 	let buffer = "";
-	const flush = (line: string) => {
+	const flush = (line: string) =>
+	{
 		const trimmed = line.trim();
 		if (trimmed === "") return;
 		let parsed: unknown;
-		try {
+		try
+		{
 			parsed = JSON.parse(trimmed);
-		} catch {
+		}
+		catch
+		{
 			return;
 		}
 		if (typeof parsed === "object" && parsed !== null) onEvent(parsed);
 	};
-	while (true) {
+	while (true)
+	{
 		const {done, value} = await reader.read();
 		if (done) break;
-		buffer += decoder.decode(value, {stream: true});
+		buffer += decoder.decode(
+			value,
+			{
+				stream: true,
+			},
+		);
 		const lines = buffer.split("\n");
 		buffer = lines.pop() ?? "";
 		for (const line of lines) flush(line);
@@ -331,37 +547,63 @@ async function readStreamEvents(response: Response, onEvent: (event: StreamEvent
 	flush(buffer + decoder.decode());
 }
 
-const TextDeltaEventSchema = z.object({
-	type: z.literal("stream_event"),
-	event: z.object({
-		type: z.literal("content_block_delta"),
-		delta: z.object({type: z.literal("text_delta"), text: z.string()}),
-	}),
-});
+const TextDeltaEventSchema = z.object(
+	{
+		type: z.literal("stream_event"),
+		event: z.object(
+			{
+				type: z.literal("content_block_delta"),
+				delta: z.object(
+					{
+						type: z.literal("text_delta"),
+						text: z.string(),
+					},
+				),
+			},
+		),
+	},
+);
 
-const ToolUseBlockSchema = z.object({
-	type: z.literal("tool_use"),
-	name: z.string(),
-	input: z.object({file_path: z.string().optional(), pattern: z.string().optional()}),
-});
+const ToolUseBlockSchema = z.object(
+	{
+		type: z.literal("tool_use"),
+		name: z.string(),
+		input: z.object(
+			{
+				file_path: z.string().optional(),
+				pattern: z.string().optional(),
+			},
+		),
+	},
+);
 
-const AssistantEventSchema = z.object({
-	type: z.literal("assistant"),
-	message: z.object({content: z.array(z.unknown())}),
-});
+const AssistantEventSchema = z.object(
+	{
+		type: z.literal("assistant"),
+		message: z.object(
+			{
+				content: z.array(z.unknown()),
+			},
+		),
+	},
+);
 
-function textDelta(event: StreamEvent): string | null {
+function textDelta(event: StreamEvent): string | null
+{
 	const parsed = TextDeltaEventSchema.safeParse(event);
 	return parsed.success ? parsed.data.event.delta.text : null;
 }
 
-function basename(path: string): string {
+function basename(path: string): string
+{
 	return path.split(/[\\/]/).pop() ?? path;
 }
 
 /** Upstream's pending labels for the tools a side question typically runs. */
-function toolActivityLabel({name, input}: z.infer<typeof ToolUseBlockSchema>): string | null {
-	if (name === "Read" && input.file_path !== undefined) {
+function toolActivityLabel({name, input}: z.infer<typeof ToolUseBlockSchema>): string | null
+{
+	if (name === "Read" && input.file_path !== undefined)
+	{
 		return `Reading ${basename(input.file_path)}`;
 	}
 	if (name === "Grep" && input.pattern !== undefined) return `Searching for ${input.pattern}`;
@@ -369,22 +611,27 @@ function toolActivityLabel({name, input}: z.infer<typeof ToolUseBlockSchema>): s
 	return null;
 }
 
-function toolActivity(event: StreamEvent): string | null {
+function toolActivity(event: StreamEvent): string | null
+{
 	const parsed = AssistantEventSchema.safeParse(event);
 	if (!parsed.success) return null;
 	let label: string | null = null;
-	for (const block of parsed.data.message.content) {
+	for (const block of parsed.data.message.content)
+	{
 		const toolUse = ToolUseBlockSchema.safeParse(block);
 		if (toolUse.success) label = toolActivityLabel(toolUse.data) ?? label;
 	}
 	return label;
 }
 
-function streamError(event: StreamEvent): string | null {
-	if (event.type === "result" && event.is_error === true) {
+function streamError(event: StreamEvent): string | null
+{
+	if (event.type === "result" && event.is_error === true)
+	{
 		return typeof event.result === "string" ? event.result : "Unknown error";
 	}
-	if (event.type === "error") {
+	if (event.type === "error")
+	{
 		return typeof event.message === "string" ? event.message : "Unknown error";
 	}
 	return null;

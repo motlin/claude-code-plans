@@ -7,27 +7,37 @@ import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
 const NBSP = String.fromCharCode(160);
 
-const highlighted = vi.hoisted(() => ({tokens: null as unknown}));
+const highlighted = vi.hoisted(() => (
+{
+	tokens: null as unknown,
+}));
 
-vi.mock("../src/hooks/use-shiki", () => ({
+vi.mock("../src/hooks/use-shiki", () => (
+{
 	useHighlightedLines: () => highlighted.tokens,
 }));
 
-afterEach(() => {
+afterEach(() =>
+{
 	highlighted.tokens = null;
 	cleanup();
 });
 
-const CALL: ClientToolCall = {
+const CALL: ClientToolCall =
+{
 	id: "tool-bash-1",
 	name: "Bash",
-	input: {command: "git status"},
+	input:
+	{
+		command: "git status",
+	},
 	param: "git status",
 	result: "$ git status\nnothing to commit",
 	sourceUuid: "uuid-1",
 };
 
-function promptLayout(container: HTMLElement) {
+function promptLayout(container: HTMLElement)
+{
 	const row = container.querySelector(".flex > span.select-none")?.parentElement;
 	return {
 		rowClass: row?.className,
@@ -38,41 +48,67 @@ function promptLayout(container: HTMLElement) {
 	};
 }
 
-describe("BashRenderer command prompt", () => {
-	it("renders the unhighlighted prompt as an unselectable gutter beside the command column", () => {
+describe("BashRenderer command prompt", () =>
+{
+	it("renders the unhighlighted prompt as an unselectable gutter beside the command column", () =>
+	{
 		const {container} = render(<BashRenderer toolCall={CALL} />);
 
-		expect(promptLayout(container)).toStrictEqual({
-			rowClass: "flex",
-			promptClass: "select-none text-secondary",
-			promptText: `$${NBSP}`,
-			commandClass: "min-w-0 flex-1 whitespace-pre-wrap",
-			commandText: "git status",
-		});
+		expect(promptLayout(container)).toStrictEqual(
+			{
+				rowClass: "flex",
+				promptClass: "select-none text-secondary",
+				promptText: `$${NBSP}`,
+				commandClass: "min-w-0 flex-1 whitespace-pre-wrap",
+				commandText: "git status",
+			},
+		);
 	});
 
-	it("renders the highlighted prompt as an unselectable gutter beside the command column", () => {
+	it("renders the highlighted prompt as an unselectable gutter beside the command column", () =>
+	{
 		highlighted.tokens = [
 			[
-				{content: "git ", color: "#aaa", offset: 0},
-				{content: "status", color: "#bbb", offset: 4},
+				{
+					content: "git ",
+					color: "#aaa",
+					offset: 0,
+				},
+				{
+					content: "status",
+					color: "#bbb",
+					offset: 4,
+				},
 			],
 		];
 
 		const {container} = render(<BashRenderer toolCall={CALL} />);
 
-		expect(promptLayout(container)).toStrictEqual({
-			rowClass: "flex",
-			promptClass: "select-none text-secondary",
-			promptText: `$${NBSP}`,
-			commandClass: "min-w-0 flex-1 whitespace-pre-wrap",
-			commandText: "git status",
-		});
+		expect(promptLayout(container)).toStrictEqual(
+			{
+				rowClass: "flex",
+				promptClass: "select-none text-secondary",
+				promptText: `$${NBSP}`,
+				commandClass: "min-w-0 flex-1 whitespace-pre-wrap",
+				commandText: "git status",
+			},
+		);
 	});
 
-	it("copies the command and output without the shell prompt", () => {
+	it("copies the command and output without the shell prompt", () =>
+	{
 		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
-		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+		Object.defineProperty(
+			navigator,
+			"clipboard",
+			{
+				value:
+				{
+					writeText,
+				},
+				configurable: true,
+			},
+		);
 
 		const {container} = render(<BashRenderer toolCall={CALL} />);
 		container.querySelector<HTMLButtonElement>("button[aria-label='Copy']")?.click();

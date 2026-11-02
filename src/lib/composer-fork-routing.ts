@@ -8,7 +8,8 @@ export type ComposerPaneState = "working" | "idle" | "none";
 export type ComposerSubmit = "send" | "fork";
 export type ComposerRoute = "herdr-prompt" | "fork-stream" | "herdr-launch";
 
-interface RouteInput {
+interface RouteInput
+{
 	pane: ComposerPaneState;
 	writesEnabled: boolean;
 	submit: ComposerSubmit;
@@ -19,13 +20,15 @@ interface RouteInput {
  * it works) and launches ⌥⌘⏎ as a new herdr fork; everything else runs the
  * headless `/api/chat` fork stream, which is also what Enter does without a pane.
  */
-export function routeComposerSubmit({pane, writesEnabled, submit}: RouteInput): ComposerRoute {
+export function routeComposerSubmit({pane, writesEnabled, submit}: RouteInput): ComposerRoute
+{
 	if (pane === "none" || !writesEnabled) return "fork-stream";
 	return submit === "send" ? "herdr-prompt" : "herdr-launch";
 }
 
 /** `claude --resume <id> --fork-session` plus the chin's launch flags, as an argv array. */
-export function promptForkArgs(sessionId: string, launchOptions: LaunchOptions): string[] {
+export function promptForkArgs(sessionId: string, launchOptions: LaunchOptions): string[]
+{
 	return [...sessionForkArgs(sessionId), ...buildLaunchFlags(launchOptions)];
 }
 
@@ -33,18 +36,21 @@ export function promptForkArgs(sessionId: string, launchOptions: LaunchOptions):
 export function forkSubmitLabel({
 	pane,
 	writesEnabled,
-}: Omit<RouteInput, "submit">): "Fork with this prompt" | "Send in a forked session" {
+}: Omit<RouteInput, "submit">): "Fork with this prompt" | "Send in a forked session"
+{
 	return pane !== "none" && !writesEnabled ? "Send in a forked session" : "Fork with this prompt";
 }
 
-export interface ComposerSubmitContext extends RouteInput {
+export interface ComposerSubmitContext extends RouteInput
+{
 	sessionId: string;
 	cwd: string;
 	prompt: string;
 	launchOptions: LaunchOptions;
 }
 
-export interface ComposerSubmitTargets {
+export interface ComposerSubmitTargets
+{
 	sendLive: (prompt: string) => void;
 	sendForkStream: (prompt: string, launchOptions: LaunchOptions) => void;
 	launchFork: (launch: PromptForkLaunch) => void;
@@ -53,9 +59,11 @@ export interface ComposerSubmitTargets {
 export function dispatchComposerSubmit(
 	context: ComposerSubmitContext,
 	{sendLive, sendForkStream, launchFork}: ComposerSubmitTargets,
-): ComposerRoute {
+): ComposerRoute
+{
 	const route = routeComposerSubmit(context);
-	switch (route) {
+	switch (route)
+	{
 		case "herdr-prompt":
 			sendLive(context.prompt);
 			break;
@@ -63,24 +71,31 @@ export function dispatchComposerSubmit(
 			sendForkStream(context.prompt, context.launchOptions);
 			break;
 		case "herdr-launch":
-			launchFork({
-				cwd: context.cwd,
-				prompt: context.prompt,
-				args: promptForkArgs(context.sessionId, context.launchOptions),
-			});
+			launchFork(
+				{
+					cwd: context.cwd,
+					prompt: context.prompt,
+					args: promptForkArgs(context.sessionId, context.launchOptions),
+				},
+			);
 			break;
 	}
 	return route;
 }
 
-export interface PromptForkLaunch {
+export interface PromptForkLaunch
+{
 	cwd: string;
 	prompt: string;
 	args: string[];
 }
 
-export interface LaunchPromptForkDependencies {
-	launch: (launch: PromptForkLaunch) => Promise<{sessionId: string | null}>;
+export interface LaunchPromptForkDependencies
+{
+	launch: (launch: PromptForkLaunch) => Promise<
+	{
+		sessionId: string | null;
+	}>;
 	/** Hands the fork to the navigator, which opens it once its SessionStart arrives. */
 	onLaunched: (pending: PendingFork) => void;
 	toast: (options: ToastOptions) => void;
@@ -92,18 +107,31 @@ export async function launchPromptFork(
 	launch: PromptForkLaunch,
 	parentSessionId: string,
 	{launch: launcher, onLaunched, toast, now}: LaunchPromptForkDependencies,
-): Promise<boolean> {
+): Promise<boolean>
+{
 	const since = now();
-	try {
+	try
+	{
 		const {sessionId} = await launcher(launch);
-		onLaunched({cwd: launch.cwd, since, sessionId, parentSessionId});
+		onLaunched(
+			{
+				cwd: launch.cwd,
+				since,
+				sessionId,
+				parentSessionId,
+			},
+		);
 		return true;
-	} catch (error) {
-		toast({
-			kind: "error",
-			message: "Couldn’t fork the session. Try again.",
-			description: error instanceof Error ? error.message : String(error),
-		});
+	}
+	catch (error)
+	{
+		toast(
+			{
+				kind: "error",
+				message: "Couldn’t fork the session. Try again.",
+				description: error instanceof Error ? error.message : String(error),
+			},
+		);
 		return false;
 	}
 }

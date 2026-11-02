@@ -26,7 +26,8 @@ export const FIZZY_LAKE_PANELS = FIZZY_LAKE_PARTS.includes("panels");
 export const FIZZY_LAKE_TYPE = FIZZY_LAKE_PARTS.includes("type");
 
 /** The `data-flat-look` value for `<html>`: present ("") while panels is on. */
-export function flatLookFor(parts: readonly FizzyLakePart[]): "" | undefined {
+export function flatLookFor(parts: readonly FizzyLakePart[]): "" | undefined
+{
 	return parts.includes("panels") ? "" : undefined;
 }
 
@@ -47,11 +48,13 @@ export const FIZZY_LAKE_PANELS_FINE_POINTER_QUERY =
 /* Upstream's `Y3` context; a subtree can provide its own parts (`experimental.fizzyLake.parts`). */
 export const FizzyLakeContext = createContext<readonly FizzyLakePart[]>(FIZZY_LAKE_PARTS);
 
-export function useFizzyLake(part: FizzyLakePart): boolean {
+export function useFizzyLake(part: FizzyLakePart): boolean
+{
 	return useContext(FizzyLakeContext).includes(part);
 }
 
 /** Upstream shared-9 `KH() ? "text-secondary" : "text-muted"`: transcript status ink at rest. */
-export function useRestInk(): "text-secondary" | "text-ink-muted" {
+export function useRestInk(): "text-secondary" | "text-ink-muted"
+{
 	return useFizzyLake("color") ? "text-secondary" : "text-ink-muted";
 }

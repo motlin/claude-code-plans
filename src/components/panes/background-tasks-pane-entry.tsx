@@ -18,25 +18,39 @@ export function useRegisterBackgroundTasksPane(
 	groups: BackgroundTaskGroups,
 	subagentCount: number,
 	workflowRuns?: readonly SessionWorkflowRun[],
-): void {
+): void
+{
 	useEffect(
 		() =>
-			registerPane("background-tasks", {
-				title: "Background tasks",
-				resetKey: sessionId,
-				render: () => (
-					<DeferredBackgroundTasksList
-						key={sessionId}
-						resetKey={sessionId}
-						props={{
-							groups,
-							sessionId,
-							subagents: {sessionId, count: subagentCount},
-							...(workflowRuns === undefined ? null : {workflowRuns}),
-						}}
-					/>
-				),
-			}),
+			registerPane(
+				"background-tasks",
+				{
+					title: "Background tasks",
+					resetKey: sessionId,
+					render: () => (
+						<DeferredBackgroundTasksList
+							key={sessionId}
+							resetKey={sessionId}
+							props={
+							{
+								groups,
+								sessionId,
+								subagents:
+								{
+									sessionId,
+									count: subagentCount,
+								},
+								...(workflowRuns === undefined
+									? null
+									:
+										{
+											workflowRuns,
+										}),
+							}}
+						/>
+					),
+				},
+			),
 		[sessionId, groups, subagentCount, workflowRuns],
 	);
 }

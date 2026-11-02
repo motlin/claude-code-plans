@@ -6,23 +6,27 @@ import {pickWorkingPlaceholder, workingPlaceholder} from "../lib/working-placeho
  * The working placeholder's visible text: the full sentence, measured on one line in a zero-height box, swaps
  * to the compact form whenever it is wider than the overlay's content box.
  */
-export function WorkingPlaceholderText({isMac}: {isMac: boolean}) {
+export function WorkingPlaceholderText({isMac}: {isMac: boolean})
+{
 	const boxRef = useRef<HTMLDivElement>(null);
 	const measureRef = useRef<HTMLSpanElement>(null);
 	const [fits, setFits] = useState(true);
 	const full = workingPlaceholder(isMac);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const box = boxRef.current;
 		const measure = measureRef.current;
 		if (box === null || measure === null) return undefined;
-		const update = () => {
+		const update = () =>
+		{
 			setFits(measure.scrollWidth <= box.clientWidth);
 		};
 		update();
 		if (typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver(update);
 		observer.observe(box);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [full]);
@@ -33,7 +37,14 @@ export function WorkingPlaceholderText({isMac}: {isMac: boolean}) {
 					{full}
 				</span>
 			</div>
-			<span data-testid="composer-placeholder-text">{pickWorkingPlaceholder({fits, isMac})}</span>
+			<span data-testid="composer-placeholder-text">
+				{pickWorkingPlaceholder(
+					{
+						fits,
+						isMac,
+					},
+				)}
+			</span>
 		</>
 	);
 }

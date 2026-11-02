@@ -18,7 +18,8 @@ import type {WorkflowAgentState, WorkflowAttempt} from "./workflow-journal";
  * API handlers use DB-backed rows, which preserve parent links established by
  * the indexer.
  */
-export interface Subagent {
+export interface Subagent
+{
 	id: string;
 	sessionId: string;
 	projectId: string;
@@ -55,7 +56,8 @@ export interface Subagent {
 	workflowAttempt?: WorkflowAttempt | undefined;
 }
 
-export interface ActiveSubagent {
+export interface ActiveSubagent
+{
 	key: string;
 	sessionId: string;
 	agentType: string;
@@ -63,11 +65,13 @@ export interface ActiveSubagent {
 	description: string;
 }
 
-export function toSubagentSessionId(agentId: string): string {
+export function toSubagentSessionId(agentId: string): string
+{
 	return agentId.startsWith("agent-") ? agentId : `agent-${agentId}`;
 }
 
-export function getSubagentLifecycleKey(sessionId: string, agentId: string, agentType: string): string {
+export function getSubagentLifecycleKey(sessionId: string, agentId: string, agentType: string): string
+{
 	const unprefixedAgentId = agentId.startsWith("agent-") ? agentId.slice("agent-".length) : agentId;
 	return `${sessionId}:${unprefixedAgentId || agentType}`;
 }
@@ -79,10 +83,16 @@ export function getSubagentLifecycleKey(sessionId: string, agentId: string, agen
  * subagent endpoints map through here rather than deriving flat records from
  * individual transcripts.
  */
-export function toClientSubagent(row: DbSubagent): Subagent {
+export function toClientSubagent(row: DbSubagent): Subagent
+{
 	const slowCommands = SlowCommandsSchema.safeParse(JSON.parse(row.slowCommandsJson ?? "[]"));
 	return {
-		...(slowCommands.success && slowCommands.data.length > 0 ? {slowCommands: slowCommands.data} : {}),
+		...(slowCommands.success && slowCommands.data.length > 0
+			?
+				{
+					slowCommands: slowCommands.data,
+				}
+			: {}),
 		id: row.id,
 		sessionId: row.sessionId,
 		projectId: row.projectId,
@@ -94,13 +104,48 @@ export function toClientSubagent(row: DbSubagent): Subagent {
 		model: row.model,
 		startedAt: row.startedAt,
 		finishedAt: row.finishedAt,
-		...(row.taskKind == null ? {} : {taskKind: row.taskKind}),
-		...(row.name == null ? {} : {name: row.name}),
-		...(row.pendingCommand == null ? {} : {pendingCommand: row.pendingCommand}),
-		...(row.idle === true ? {idle: true as const} : {}),
-		...(row.workflowRunId == null ? {} : {workflowRunId: row.workflowRunId}),
-		...(row.workflowPhase == null ? {} : {workflowPhase: row.workflowPhase}),
-		...(row.workflowPhaseIndex == null ? {} : {workflowPhaseIndex: row.workflowPhaseIndex}),
+		...(row.taskKind == null
+			? {}
+			:
+				{
+					taskKind: row.taskKind,
+				}),
+		...(row.name == null
+			? {}
+			:
+				{
+					name: row.name,
+				}),
+		...(row.pendingCommand == null
+			? {}
+			:
+				{
+					pendingCommand: row.pendingCommand,
+				}),
+		...(row.idle === true
+			?
+				{
+					idle: true as const,
+				}
+			: {}),
+		...(row.workflowRunId == null
+			? {}
+			:
+				{
+					workflowRunId: row.workflowRunId,
+				}),
+		...(row.workflowPhase == null
+			? {}
+			:
+				{
+					workflowPhase: row.workflowPhase,
+				}),
+		...(row.workflowPhaseIndex == null
+			? {}
+			:
+				{
+					workflowPhaseIndex: row.workflowPhaseIndex,
+				}),
 	};
 }
 
@@ -108,24 +153,32 @@ const SlowCommandsSchema = z.array(SlowCommandSchema);
 
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
-interface ContentBlock {
+interface ContentBlock
+{
 	type: string;
 	[key: string]: unknown;
 }
 
-interface TranscriptRecord {
+interface TranscriptRecord
+{
 	type?: string;
 	timestamp?: string;
 	sessionId?: string;
-	message?: {content?: string | ContentBlock[]};
+	message?:
+	{
+		content?: string | ContentBlock[];
+	};
 }
 
-function getResultText(block: ContentBlock): string {
+function getResultText(block: ContentBlock): string
+{
 	const content = block["content"];
 	if (typeof content === "string") return content;
-	if (Array.isArray(content)) {
+	if (Array.isArray(content))
+	{
 		return content
-			.flatMap((b: unknown) => {
+			.flatMap((b: unknown) =>
+			{
 				const text = isRecord(b) && b["type"] === "text" ? b["text"] : undefined;
 				return typeof text === "string" ? [text] : [];
 			})
@@ -147,7 +200,12 @@ function getResultText(block: ContentBlock): string {
 function extractSubagentSnapshot(
 	records: TranscriptRecord[],
 	projectId: string,
-): {agents: Subagent[]; activeSubagents: ActiveSubagent[]} {
+):
+{
+	agents: Subagent[];
+	activeSubagents: ActiveSubagent[];
+}
+{
 	const pendingByToolUseId = new Map<
 		string,
 		{
@@ -159,52 +217,62 @@ function extractSubagentSnapshot(
 	>();
 	const results: Subagent[] = [];
 
-	for (const record of records) {
+	for (const record of records)
+	{
 		const content = record.message?.content;
 		if (!Array.isArray(content)) continue;
 		const sessionId = record.sessionId ?? "";
 
-		for (const block of content) {
-			if (block.type === "tool_use") {
+		for (const block of content)
+		{
+			if (block.type === "tool_use")
+			{
 				const toolUseId = block["id"];
 				if (block["name"] !== "Agent" || typeof toolUseId !== "string") continue;
 				const input = asRecord(block["input"]) ?? {};
 				const agentType = getAgentTypeOrNull(input);
 				const description = typeof input["description"] === "string" ? input["description"] : null;
-				pendingByToolUseId.set(toolUseId, {
-					agentType,
-					description,
-					startedAt: record.timestamp ?? null,
-					sessionId,
-				});
+				pendingByToolUseId.set(
+					toolUseId,
+					{
+						agentType,
+						description,
+						startedAt: record.timestamp ?? null,
+						sessionId,
+					},
+				);
 				continue;
 			}
 
-			if (block.type === "tool_result") {
+			if (block.type === "tool_result")
+			{
 				const toolUseId = block["tool_use_id"];
 				if (typeof toolUseId !== "string") continue;
 				const pending = pendingByToolUseId.get(toolUseId);
 				if (!pending) continue;
 				const text = getResultText(block);
 				const match = AGENT_ID_RE.exec(text);
-				if (!match?.[1]) {
+				if (!match?.[1])
+				{
 					pendingByToolUseId.delete(toolUseId);
 					continue;
 				}
 				const id = `agent-${match[1]}`;
-				results.push({
-					id,
-					sessionId: pending.sessionId,
-					projectId,
-					parentAgentId: null,
-					agentType: pending.agentType,
-					attributionAgent: null,
-					slug: null,
-					description: pending.description,
-					model: null,
-					startedAt: pending.startedAt,
-					finishedAt: record.timestamp ?? null,
-				});
+				results.push(
+					{
+						id,
+						sessionId: pending.sessionId,
+						projectId,
+						parentAgentId: null,
+						agentType: pending.agentType,
+						attributionAgent: null,
+						slug: null,
+						description: pending.description,
+						model: null,
+						startedAt: pending.startedAt,
+						finishedAt: record.timestamp ?? null,
+					},
+				);
 				pendingByToolUseId.delete(toolUseId);
 			}
 		}
@@ -212,7 +280,8 @@ function extractSubagentSnapshot(
 
 	return {
 		agents: results,
-		activeSubagents: [...pendingByToolUseId].map(([toolUseId, pending]) => ({
+		activeSubagents: [...pendingByToolUseId].map(([toolUseId, pending]) => (
+		{
 			key: toolUseId,
 			sessionId: pending.sessionId,
 			agentType: pending.agentType ?? "",
@@ -226,17 +295,22 @@ function extractSubagentSnapshot(
  * Map each finished `Agent` call's subagent session id (`agent-<id>`) to the
  * prompt the parent gave it, matching the call to its result's `agentId:` line.
  */
-export function extractAgentPrompts(records: TranscriptRecord[]): Map<string, string> {
+export function extractAgentPrompts(records: TranscriptRecord[]): Map<string, string>
+{
 	const promptByToolUseId = new Map<string, string>();
 	const prompts = new Map<string, string>();
-	for (const record of records) {
+	for (const record of records)
+	{
 		const content = record.message?.content;
 		if (!Array.isArray(content)) continue;
-		for (const block of content) {
-			if (block.type === "tool_use") {
+		for (const block of content)
+		{
+			if (block.type === "tool_use")
+			{
 				const toolUseId = block["id"];
 				const prompt = asRecord(block["input"])?.["prompt"];
-				if (block["name"] === "Agent" && typeof toolUseId === "string" && typeof prompt === "string") {
+				if (block["name"] === "Agent" && typeof toolUseId === "string" && typeof prompt === "string")
+				{
 					promptByToolUseId.set(toolUseId, prompt);
 				}
 				continue;
@@ -252,6 +326,7 @@ export function extractAgentPrompts(records: TranscriptRecord[]): Map<string, st
 	return prompts;
 }
 
-export function extractPendingSubagents(records: TranscriptRecord[]): ActiveSubagent[] {
+export function extractPendingSubagents(records: TranscriptRecord[]): ActiveSubagent[]
+{
 	return extractSubagentSnapshot(records, "").activeSubagents;
 }

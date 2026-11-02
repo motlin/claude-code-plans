@@ -8,7 +8,8 @@ import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} f
 import {BULK_REASONS, type GroupBulkActions, useGroupBulkActions} from "./group-bulk-items";
 import {useAfterMenuClose} from "./use-after-menu-close";
 
-interface HeaderRow extends SessionGroupRow {
+interface HeaderRow extends SessionGroupRow
+{
 	archived: boolean;
 }
 
@@ -23,7 +24,8 @@ export function GroupBulkMenuItems({
 	onArchiveAll: () => void;
 	/** Items with no upstream group, shown between the view and remove groups (the Icon and color picker). */
 	beforeArchive?: ReactNode;
-}) {
+})
+{
 	return (
 		<>
 			<MenuSeparator />
@@ -78,7 +80,8 @@ export function ArchiveAllConfirm({
 	onOpenChange: (open: boolean) => void;
 	label: string;
 	onConfirm: () => void;
-}) {
+})
+{
 	return (
 		<ConfirmDialog
 			open={open}
@@ -111,7 +114,8 @@ export function GroupHeaderContextMenu({
 	pinned: boolean;
 	/** The label's toggle button. */
 	children: ReactNode;
-}): ReactNode {
+}): ReactNode
+{
 	const navigate = useNavigate();
 	const actions = useGroupBulkActions(group, sectionKeys, activeItemId, pinned);
 	const [confirmArchive, setConfirmArchive] = useState(false);
@@ -123,12 +127,22 @@ export function GroupHeaderContextMenu({
 			<ContextMenu {...menuProps}>
 				<ContextMenuTrigger className="flex min-w-0 flex-1">{children}</ContextMenuTrigger>
 				<MenuContent {...contentProps}>
-					<MenuItem onSelect={later(() => void navigate({to: "/"}).then(requestHomeComposerFocus))}>
+					<MenuItem
+						onSelect={later(
+							() =>
+								void navigate(
+									{
+										to: "/",
+									},
+								).then(requestHomeComposerFocus),
+						)}
+					>
 						New session
 					</MenuItem>
 					<GroupBulkMenuItems
 						actions={actions}
-						onArchiveAll={later(() => {
+						onArchiveAll={later(() =>
+						{
 							setConfirmArchive(true);
 						})}
 					/>

@@ -12,70 +12,122 @@ import {TRANSCRIPT_WINDOW_MAX_RECORDS} from "../src/lib/structured-transcript";
  * now serves the tail and the client pages backwards with `?before=`.
  */
 
-type ApiHandler = (context: {params: {id: string}; request: Request}) => Response | Promise<Response>;
+type ApiHandler = (context: {
+	params:
+	{
+		id: string;
+	};
+	request: Request;
+}) => Response | Promise<Response>;
 
 const PAYLOAD_CEILING_BYTES = 1024 * 1024;
 
 let tempDir: string;
 let db: AppDb;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	tempDir = mkdtempSync(join(tmpdir(), "api-session-transcript-test-"));
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(tempDir, {recursive: true, force: true});
+	rmSync(
+		tempDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 	vi.doUnmock("../src/lib/db");
 	vi.resetModules();
 });
 
-async function getTranscript(sessionId: string, query = ""): Promise<Response> {
-	vi.doMock("../src/lib/db", () => ({getDb: () => db}));
+async function getTranscript(sessionId: string, query = ""): Promise<Response>
+{
+	vi.doMock("../src/lib/db", () => (
+	{
+		getDb: () => db,
+	}));
 	const {Route} = await import("../src/routes/api/sessions.$id.transcript");
-	const handlers = (Route as unknown as {options: {server: {handlers: Record<string, ApiHandler>}}}).options.server
-		.handlers;
-	return handlers["GET"]!({
-		params: {id: sessionId},
-		request: new Request(`http://localhost/api/sessions/${sessionId}/transcript${query}`),
-	});
+	const handlers = (
+		Route as unknown as
+		{
+			options:
+			{
+				server:
+				{
+					handlers: Record<string, ApiHandler>;
+				};
+			};
+		}
+	).options.server.handlers;
+	return handlers["GET"]!(
+		{
+			params:
+			{
+				id: sessionId,
+			},
+			request: new Request(`http://localhost/api/sessions/${sessionId}/transcript${query}`),
+		},
+	);
 }
 
-function record(index: number): Record<string, unknown> {
+function record(index: number): Record<string, unknown>
+{
 	return {
 		type: "user",
 		uuid: `u-${index}`,
 		// Roughly 4 KB per record: a few hundred of these is the multi-megabyte
 		// JSONL this endpoint used to ship whole.
-		message: {role: "user", content: "x".repeat(4_000)},
+		message:
+		{
+			role: "user",
+			content: "x".repeat(4_000),
+		},
 	};
 }
 
-function seedSession(sessionId: string, records: unknown[]): void {
+function seedSession(sessionId: string, records: unknown[]): void
+{
 	const filePath = join(tempDir, `${sessionId}.jsonl`);
 	writeFileSync(filePath, records.map((entry) => JSON.stringify(entry)).join("\n") + "\n");
 	db.index
 		.insert(schema.sessions)
-		.values({
-			id: sessionId,
-			projectId: "test-project",
-			title: sessionId,
-			createdAt: 0,
-			mtimeMs: 0,
-			filePath,
-		})
+		.values(
+			{
+				id: sessionId,
+				projectId: "test-project",
+				title: sessionId,
+				createdAt: 0,
+				mtimeMs: 0,
+				filePath,
+			},
+		)
 		.run();
 }
 
-describe("GET /api/sessions/$id/transcript", () => {
-	it("caps a multi-megabyte session to a tail well under a megabyte", async () => {
-		const records = Array.from({length: 1_000}, (_, i) => record(i));
+describe("GET /api/sessions/$id/transcript", () =>
+{
+	it("caps a multi-megabyte session to a tail well under a megabyte", async () =>
+	{
+		const records = Array.from(
+			{
+				length: 1_000,
+			},
+			(_, i) => record(i),
+		);
 		seedSession("big", records);
 
 		const response = await getTranscript("big");
 		const body = await response.text();
-		const parsed = JSON.parse(body) as {records: unknown[]; startIndex: number};
+		const parsed = JSON.parse(body) as
+		{
+			records: unknown[];
+			startIndex: number;
+		};
 
 		expect(body.length).toBeLessThan(PAYLOAD_CEILING_BYTES);
 		expect(parsed.records.length).toBeLessThan(records.length);
@@ -83,16 +135,31 @@ describe("GET /api/sessions/$id/transcript", () => {
 		expect(parsed.startIndex).toBe(records.length - parsed.records.length);
 	});
 
-	it("serves the records before the window when the client pages backwards", async () => {
-		const records = Array.from({length: TRANSCRIPT_WINDOW_MAX_RECORDS + 12}, (_, i) => ({
-			type: "user",
-			uuid: `u-${i}`,
-			message: {role: "user", content: `m${i}`},
-		}));
+	it("serves the records before the window when the client pages backwards", async () =>
+	{
+		const records = Array.from(
+			{
+				length: TRANSCRIPT_WINDOW_MAX_RECORDS + 12,
+			},
+			(_, i) => (
+			{
+				type: "user",
+				uuid: `u-${i}`,
+				message:
+				{
+					role: "user",
+					content: `m${i}`,
+				},
+			}),
+		);
 		seedSession("paged", records);
 
-		const tail = (await (await getTranscript("paged")).json()) as {startIndex: number};
-		const earlier = (await (await getTranscript("paged", `?before=${tail.startIndex}`)).json()) as {
+		const tail = (await (await getTranscript("paged")).json()) as
+		{
+			startIndex: number;
+		};
+		const earlier = (await (await getTranscript("paged", `?before=${tail.startIndex}`)).json()) as
+		{
 			records: unknown[];
 			startIndex: number;
 			precedingMessageCount: number;
@@ -104,17 +171,40 @@ describe("GET /api/sessions/$id/transcript", () => {
 		expect(earlier.precedingMessageCount).toBe(0);
 	});
 
-	it("serves the hidden uuids, cuts and chain version of the window", async () => {
+	it("serves the hidden uuids, cuts and chain version of the window", async () =>
+	{
 		const records = [
-			{type: "user", uuid: "p", parentUuid: null, message: {role: "user", content: "start"}},
+			{
+				type: "user",
+				uuid: "p",
+				parentUuid: null,
+				message:
+				{
+					role: "user",
+					content: "start",
+				},
+			},
 			{
 				type: "user",
 				uuid: "a",
 				parentUuid: "p",
 				timestamp: "2026-10-20T10:05:00.000Z",
-				message: {role: "user", content: "do chapter 2"},
+				message:
+				{
+					role: "user",
+					content: "do chapter 2",
+				},
 			},
-			{type: "user", uuid: "r", parentUuid: "p", message: {role: "user", content: "do chapter 3"}},
+			{
+				type: "user",
+				uuid: "r",
+				parentUuid: "p",
+				message:
+				{
+					role: "user",
+					content: "do chapter 3",
+				},
+			},
 		];
 		seedSession("forked", records);
 
@@ -122,54 +212,101 @@ describe("GET /api/sessions/$id/transcript", () => {
 
 		expect(body["hiddenUuids"]).toStrictEqual(["a"]);
 		expect(body["cuts"]).toStrictEqual([
-			{parentUuid: "p", replacementUuid: "r", at: "2026-10-20T10:05:00.000Z", count: 1},
+			{
+				parentUuid: "p",
+				replacementUuid: "r",
+				at: "2026-10-20T10:05:00.000Z",
+				count: 1,
+			},
 		]);
 		expect(typeof body["chainVersion"]).toBe("string");
 	});
 
-	it("serves the chapters of the whole file, including one before the tail window", async () => {
-		const chapter = {
+	it("serves the chapters of the whole file, including one before the tail window", async () =>
+	{
+		const chapter =
+		{
 			type: "assistant",
 			uuid: "a-chapter",
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
 					{
 						type: "tool_use",
 						id: "toolu_chapter",
 						name: "mcp__ccd_session__mark_chapter",
-						input: {title: "Opening"},
+						input:
+						{
+							title: "Opening",
+						},
 					},
 				],
 			},
 		};
 		const records = [
 			chapter,
-			...Array.from({length: TRANSCRIPT_WINDOW_MAX_RECORDS + 5}, (_, i) => ({
-				type: "user",
-				uuid: `u-${i}`,
-				message: {role: "user", content: `m${i}`},
-			})),
+			...Array.from(
+				{
+					length: TRANSCRIPT_WINDOW_MAX_RECORDS + 5,
+				},
+				(_, i) => (
+				{
+					type: "user",
+					uuid: `u-${i}`,
+					message:
+					{
+						role: "user",
+						content: `m${i}`,
+					},
+				}),
+			),
 		];
 		seedSession("chaptered", records);
 
 		const body = (await (await getTranscript("chaptered")).json()) as Record<string, unknown>;
 
-		expect({startIndex: body["startIndex"], chapters: body["chapters"]}).toStrictEqual({
-			startIndex: 6,
-			chapters: [{id: "toolu_chapter", title: "Opening", uuid: "a-chapter", recordIndex: 0}],
-		});
+		expect(
+			{
+				startIndex: body["startIndex"],
+				chapters: body["chapters"],
+			},
+		).toStrictEqual(
+			{
+				startIndex: 6,
+				chapters: [
+					{
+						id: "toolu_chapter",
+						title: "Opening",
+						uuid: "a-chapter",
+						recordIndex: 0,
+					},
+				],
+			},
+		);
 	});
 
-	it("ignores a malformed before parameter and serves the tail", async () => {
-		const records = Array.from({length: 3}, (_, i) => ({
-			type: "user",
-			uuid: `u-${i}`,
-			message: {role: "user", content: `m${i}`},
-		}));
+	it("ignores a malformed before parameter and serves the tail", async () =>
+	{
+		const records = Array.from(
+			{
+				length: 3,
+			},
+			(_, i) => (
+			{
+				type: "user",
+				uuid: `u-${i}`,
+				message:
+				{
+					role: "user",
+					content: `m${i}`,
+				},
+			}),
+		);
 		seedSession("small", records);
 
-		const body = (await (await getTranscript("small", "?before=nonsense")).json()) as {
+		const body = (await (await getTranscript("small", "?before=nonsense")).json()) as
+		{
 			records: unknown[];
 			startIndex: number;
 		};

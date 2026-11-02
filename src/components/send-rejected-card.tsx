@@ -26,13 +26,22 @@ export function SendRejectedCard({
 	onDismiss: () => void;
 	/** Extra data attributes for the card root, e.g. `data-start-failed` on the home dock's failed-start card. */
 	data?: Readonly<Record<`data-${string}`, string>>;
-}) {
+})
+{
 	const [detailsOpen, setDetailsOpen] = useState(true);
-	const copy = sendRejectedCopy({nonResendable: rejection.nonResendable});
+	const copy = sendRejectedCopy(
+		{
+			nonResendable: rejection.nonResendable,
+		},
+	);
 
 	return (
 		<ErrorCardShell
-			data={{...data, "data-testid": "send-rejected-card"}}
+			data={
+			{
+				...data,
+				"data-testid": "send-rejected-card",
+			}}
 			headline={copy.title}
 			hint={copy.body}
 			icon="warning"

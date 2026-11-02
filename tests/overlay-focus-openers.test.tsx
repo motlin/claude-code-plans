@@ -8,20 +8,26 @@ import {PopoverContent, PopoverRoot, PopoverTrigger} from "../src/components/ui/
 import {walkOpenerChain} from "../src/lib/overlay-focus";
 import {CompactScope} from "./fizzy-lake-off";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 });
 
-async function flush() {
-	await act(async () => {
-		await new Promise((resolve) => {
+async function flush()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-describe("Menu and Popover popups register their opener (upstream iR's Sh)", () => {
-	it("walks from a menu item to the menu trigger", async () => {
+describe("Menu and Popover popups register their opener (upstream iR's Sh)", () =>
+{
+	it("walks from a menu item to the menu trigger", async () =>
+	{
 		render(
 			<CompactScope>
 				<Menu>
@@ -32,16 +38,33 @@ describe("Menu and Popover popups register their opener (upstream iR's Sh)", () 
 				</Menu>
 			</CompactScope>,
 		);
-		const trigger = screen.getByRole("button", {name: "More options"});
+		const trigger = screen.getByRole(
+			"button",
+			{
+				name: "More options",
+			},
+		);
 		fireEvent.click(trigger);
 		await flush();
-		expect(walkOpenerChain(screen.getByRole("menuitem", {name: "Delete"}))).toStrictEqual({
-			targets: [trigger],
-			dialog: null,
-		});
+		expect(
+			walkOpenerChain(
+				screen.getByRole(
+					"menuitem",
+					{
+						name: "Delete",
+					},
+				),
+			),
+		).toStrictEqual(
+			{
+				targets: [trigger],
+				dialog: null,
+			},
+		);
 	});
 
-	it("walks from inside a popover to its trigger", async () => {
+	it("walks from inside a popover to its trigger", async () =>
+	{
 		render(
 			<PopoverRoot>
 				<PopoverTrigger>Usage</PopoverTrigger>
@@ -50,12 +73,28 @@ describe("Menu and Popover popups register their opener (upstream iR's Sh)", () 
 				</PopoverContent>
 			</PopoverRoot>,
 		);
-		const trigger = screen.getByRole("button", {name: "Usage"});
+		const trigger = screen.getByRole(
+			"button",
+			{
+				name: "Usage",
+			},
+		);
 		fireEvent.click(trigger);
 		await flush();
-		expect(walkOpenerChain(screen.getByRole("button", {name: "Inside"}))).toStrictEqual({
-			targets: [trigger],
-			dialog: null,
-		});
+		expect(
+			walkOpenerChain(
+				screen.getByRole(
+					"button",
+					{
+						name: "Inside",
+					},
+				),
+			),
+		).toStrictEqual(
+			{
+				targets: [trigger],
+				dialog: null,
+			},
+		);
 	});
 });

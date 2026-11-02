@@ -7,7 +7,8 @@ import type {SessionLine} from "./transcript";
 import type {WorkingMarkerState} from "./working-marker";
 
 /** What decides whether the last API error card can act on the live session. */
-export interface ErrorRecoveryGate {
+export interface ErrorRecoveryGate
+{
 	hasLivePane: boolean;
 	writesEnabled: boolean;
 	paneStatus: WorkingMarkerState["status"];
@@ -20,7 +21,8 @@ export interface ErrorRecoveryGate {
 }
 
 /** Upstream `ph`: `retryable` gates Try again, `idle` gates Compact session. */
-export interface ErrorRecoveryAvailability {
+export interface ErrorRecoveryAvailability
+{
 	retryable: boolean;
 	idle: boolean;
 }
@@ -30,7 +32,8 @@ export interface ErrorRecoveryAvailability {
  * for a herdr pane means live, writable, idle, with no dialog open and nothing
  * mid-send. Upstream's attachment lock has no local analogue, so both agree.
  */
-export function errorRecoveryAvailability(gate: ErrorRecoveryGate): ErrorRecoveryAvailability {
+export function errorRecoveryAvailability(gate: ErrorRecoveryGate): ErrorRecoveryAvailability
+{
 	const open =
 		gate.hasLivePane &&
 		gate.writesEnabled &&
@@ -38,11 +41,15 @@ export function errorRecoveryAvailability(gate: ErrorRecoveryGate): ErrorRecover
 		!gate.pendingCard &&
 		!gate.isPending &&
 		gate.isLastEntry;
-	return {retryable: open, idle: open};
+	return {
+		retryable: open,
+		idle: open,
+	};
 }
 
 /** The session's running model and how to switch it, for Switch model and retry. */
-export interface ModelRetry {
+export interface ModelRetry
+{
 	/** The running model's id, which the menu checks. */
 	current: string | undefined;
 	/** Applies the model to the pane; false when it couldn't. */
@@ -63,33 +70,48 @@ export function errorRecoveryHandlers(
 	enqueue: (prompt: string) => void,
 	model?: ModelRetry,
 	openRewindPicker?: () => void,
-): ApiErrorRecovery | undefined {
+): ApiErrorRecovery | undefined
+{
 	if (!availability.retryable && !availability.idle) return undefined;
-	const type = async (prompt: string) => {
+	const type = async (prompt: string) =>
+	{
 		const result = await send(prompt);
 		if (result === "not-ready") enqueue(prompt);
 	};
 	return {
-		...(availability.retryable && {
-			onRetry: () => {
+		...(availability.retryable &&
+		{
+			onRetry: () =>
+			{
 				void type("Try again");
 			},
 		}),
-		...(availability.idle && {
-			onCompact: () => {
+		...(availability.idle &&
+		{
+			onCompact: () =>
+			{
 				void type("/compact");
 			},
 		}),
 		...(availability.retryable &&
-			model !== undefined && {
-				onRetryWithModel: async (next: string) => {
+			model !== undefined &&
+			{
+				onRetryWithModel: async (next: string) =>
+				{
 					if (!(await model.switchTo(next))) return false;
 					await type("Try again");
 					return true;
 				},
 			}),
-		...(availability.retryable && openRewindPicker !== undefined && {onRewind: openRewindPicker}),
-		...(model?.current !== undefined && {currentModel: model.current}),
+		...(availability.retryable &&
+			openRewindPicker !== undefined &&
+			{
+				onRewind: openRewindPicker,
+			}),
+		...(model?.current !== undefined &&
+		{
+			currentModel: model.current,
+		}),
 	};
 }
 
@@ -97,30 +119,45 @@ export function errorRecoveryHandlers(
 export async function switchModelForRetry(
 	sessionId: string,
 	model: string,
-	deps: {
+	deps:
+	{
 		send: (sessionId: string, change: LiveOptionChange) => Promise<void>;
 		toast: (options: ToastOptions) => void;
 	},
-): Promise<boolean> {
-	try {
-		await deps.send(sessionId, {kind: "model", model});
+): Promise<boolean>
+{
+	try
+	{
+		await deps.send(
+			sessionId,
+			{
+				kind: "model",
+				model,
+			},
+		);
 		return true;
-	} catch (error) {
-		deps.toast({
-			kind: "error",
-			message: FAILURE_MESSAGE.model,
-			description: error instanceof Error ? error.message : String(error),
-		});
+	}
+	catch (error)
+	{
+		deps.toast(
+			{
+				kind: "error",
+				message: FAILURE_MESSAGE.model,
+				description: error instanceof Error ? error.message : String(error),
+			},
+		);
 		return false;
 	}
 }
 
-function isTranscriptEntry(line: SessionLine): boolean {
+function isTranscriptEntry(line: SessionLine): boolean
+{
 	return line.type === "assistant" || (line.type === "user" && line.isMeta !== true);
 }
 
 /** Whether the transcript's last user or assistant entry (past system and meta records) is an API error. */
-export function lastEntryIsError(lines: readonly SessionLine[]): boolean {
+export function lastEntryIsError(lines: readonly SessionLine[]): boolean
+{
 	const last = lines.findLast(isTranscriptEntry);
 	return last?.type === "assistant" && (last.isApiErrorMessage === true || last.stopReason === "refusal");
 }

@@ -1,7 +1,8 @@
 import {useLayoutEffect, useRef} from "react";
 
 import {useShortcutKeys} from "../../hooks/use-shortcut";
-import {
+import
+{
 	isPeekSuppressed,
 	suppressPeekUntilLeave,
 	toggleSidebarCollapsed,
@@ -20,9 +21,11 @@ type ToggleLabel = "Show sidebar" | "Hide sidebar";
  */
 let pendingFocus: ToggleLabel | undefined;
 
-function handOffFocus(to: ToggleLabel): void {
+function handOffFocus(to: ToggleLabel): void
+{
 	pendingFocus = to;
-	setTimeout(() => {
+	setTimeout(() =>
+	{
 		pendingFocus = undefined;
 	}, 0);
 }
@@ -38,21 +41,28 @@ export function SidebarToggleButton({
 	onClick?: () => void;
 	collapsed?: boolean;
 	/** The collapsed trigger's peek popover: sets aria-controls and an aria-expanded that follows it. */
-	controls?: {id: string; expanded: boolean};
-}) {
+	controls?:
+	{
+		id: string;
+		expanded: boolean;
+	};
+})
+{
 	const state = useSidebarState();
 	const collapsed = collapsedOverride ?? state.collapsed;
 	const {keys, ariaKeyShortcuts} = useShortcutKeys("toggle_sidebar");
 	const label: ToggleLabel = collapsed ? "Show sidebar" : "Hide sidebar";
 	const buttonRef = useRef<HTMLButtonElement>(null);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (pendingFocus !== label) return;
 		pendingFocus = undefined;
 		buttonRef.current?.focus();
 	}, [label]);
 
-	function toggle(): void {
+	function toggle(): void
+	{
 		handOffFocus(collapsed ? "Hide sidebar" : "Show sidebar");
 		onClick();
 	}
@@ -62,17 +72,24 @@ export function SidebarToggleButton({
 			content={label}
 			shortcut={keys}
 			side="bottom"
-			{...(collapsed ? {openWhen: () => !isPeekSuppressed()} : {})}
+			{...(collapsed
+				?
+					{
+						openWhen: () => !isPeekSuppressed(),
+					}
+				: {})}
 		>
 			<button
 				ref={buttonRef}
 				type="button"
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					// A mouse click (detail > 0) leaves the pointer over the trigger that replaces Hide.
 					if (!collapsed && event.detail > 0) suppressPeekUntilLeave();
 					toggle();
 				}}
-				onKeyDown={(event) => {
+				onKeyDown={(event) =>
+				{
 					// Handle Enter directly (suppressing the native click) so it toggles exactly once.
 					if (event.key !== "Enter") return;
 					event.preventDefault();
@@ -83,7 +100,12 @@ export function SidebarToggleButton({
 				aria-controls={controls?.id}
 				aria-expanded={controls?.expanded}
 				// Collapsed, the Show sidebar trigger stands in for the navigation F6 stop, as upstream.
-				{...(collapsed ? {"data-focus-region": "navigation"} : {})}
+				{...(collapsed
+					?
+						{
+							"data-focus-region": "navigation",
+						}
+					: {})}
 				className={
 					className ??
 					"flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"

@@ -11,58 +11,106 @@ import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {processTranscript} from "../src/lib/transcript";
 import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false}}),
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+		},
+	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
-vi.mock("../src/hooks/use-shiki", () => ({
+vi.mock("../src/hooks/use-shiki", () => (
+{
 	useHighlightedLines: () => null,
 	getHighlighterSync: () => null,
 	getHighlighterVersion: () => 0,
-	subscribeHighlighter: () => () => {},
+	subscribeHighlighter: () => () =>
+	{
+	},
 }));
-vi.mock("../src/components/tool-renderers/inline-diff", () => ({
+vi.mock("../src/components/tool-renderers/inline-diff", () => (
+{
 	InlineDiff: () => <div data-testid="diff-view" />,
 }));
 
-class NoopResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords(): ResizeObserverEntry[] {
+class NoopResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords(): ResizeObserverEntry[]
+	{
 		return [];
 	}
 }
 
 globalThis.ResizeObserver = NoopResizeObserver;
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.useRealTimers();
 });
 
-function oneToolCall(name: string, input: Record<string, unknown>, result: string): unknown[] {
+function oneToolCall(name: string, input: Record<string, unknown>, result: string): unknown[]
+{
 	return [
 		{
 			type: "assistant",
 			uuid: "a1",
-			message: {role: "assistant", content: [{type: "tool_use", id: "t1", name, input}]},
+			message:
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id: "t1",
+						name,
+						input,
+					},
+				],
+			},
 		},
 		{
 			type: "user",
 			uuid: "r1",
 			parentUuid: "a1",
-			message: {role: "user", content: [{type: "tool_result", tool_use_id: "t1", content: result}]},
+			message:
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: "t1",
+						content: result,
+					},
+				],
+			},
 		},
 	];
 }
 
-function renderTranscript(records: unknown[]): HTMLElement {
+function renderTranscript(records: unknown[]): HTMLElement
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	return render(
 		<SessionChat
@@ -77,102 +125,281 @@ function renderTranscript(records: unknown[]): HTMLElement {
 	).container;
 }
 
-function toolCall(name: string, input: Record<string, unknown>, result?: string): ClientToolCall {
-	return {id: "tool-call-1", name, input, param: "", result, sourceUuid: "source-1"};
+function toolCall(name: string, input: Record<string, unknown>, result?: string): ClientToolCall
+{
+	return {
+		id: "tool-call-1",
+		name,
+		input,
+		param: "",
+		result,
+		sourceUuid: "source-1",
+	};
 }
 
-interface Region {
+interface Region
+{
 	label: string | null;
 	tabIndex: number;
 	text: string | null;
 }
 
-function regions(container: HTMLElement): Region[] {
-	return [...container.querySelectorAll<HTMLElement>('[role="group"]')].map((element) => ({
+function regions(container: HTMLElement): Region[]
+{
+	return [...container.querySelectorAll<HTMLElement>('[role="group"]')].map((element) => (
+	{
 		label: element.getAttribute("aria-label"),
 		tabIndex: element.tabIndex,
 		text: element.textContent,
 	}));
 }
 
-describe("expanded tool bodies expose labelled, focusable scroll regions", () => {
-	it("names an expanded Skill row's input scroller 'Tool call input' and its output 'Tool output'", async () => {
-		const container = renderTranscript(oneToolCall("Skill", {skill: "alice-skill"}, "Launching skill"));
+describe("expanded tool bodies expose labelled, focusable scroll regions", () =>
+{
+	it("names an expanded Skill row's input scroller 'Tool call input' and its output 'Tool output'", async () =>
+	{
+		const container = renderTranscript(
+			oneToolCall(
+				"Skill",
+				{
+					skill: "alice-skill",
+				},
+				"Launching skill",
+			),
+		);
 		fireEvent.click(container.querySelector('[role="button"]')!);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(regions(container)).toStrictEqual([
-				{label: "Tool call input", tabIndex: 0, text: "skill: alice-skill"},
-				{label: "Tool output", tabIndex: 0, text: "Launching skill"},
+				{
+					label: "Tool call input",
+					tabIndex: 0,
+					text: "skill: alice-skill",
+				},
+				{
+					label: "Tool output",
+					tabIndex: 0,
+					text: "Launching skill",
+				},
 			]);
 		});
 	});
 
-	it("names an expanded Bash row's output 'Tool output'", async () => {
-		const container = renderTranscript(oneToolCall("Bash", {command: "ls"}, "alice.ts"));
+	it("names an expanded Bash row's output 'Tool output'", async () =>
+	{
+		const container = renderTranscript(
+			oneToolCall(
+				"Bash",
+				{
+					command: "ls",
+				},
+				"alice.ts",
+			),
+		);
 		fireEvent.click(container.querySelector('[role="button"]')!);
 
-		await waitFor(() => {
-			expect(regions(container)).toStrictEqual([{label: "Tool output", tabIndex: 0, text: "alice.ts"}]);
+		await waitFor(() =>
+		{
+			expect(regions(container)).toStrictEqual([
+				{
+					label: "Tool output",
+					tabIndex: 0,
+					text: "alice.ts",
+				},
+			]);
 		});
 	});
 
-	it("names the Bash, Read, Write and terminal output scrollers 'Tool output'", () => {
+	it("names the Bash, Read, Write and terminal output scrollers 'Tool output'", () =>
+	{
 		const bash = regions(
-			render(<BashRenderer toolCall={toolCall("Bash", {command: "ls"}, "$ ls\nalice.ts")} />).container,
+			render(
+				<BashRenderer
+					toolCall={toolCall(
+						"Bash",
+						{
+							command: "ls",
+						},
+						"$ ls\nalice.ts",
+					)}
+				/>,
+			).container,
 		);
 		cleanup();
 		const read = regions(
-			render(<ReadRenderer toolCall={toolCall("Read", {file_path: "/a.ts"}, "1→const alice = 1;")} />).container,
+			render(
+				<ReadRenderer
+					toolCall={toolCall(
+						"Read",
+						{
+							file_path: "/a.ts",
+						},
+						"1→const alice = 1;",
+					)}
+				/>,
+			).container,
 		);
 		cleanup();
 		const readError = regions(
-			render(<ReadRenderer toolCall={{...toolCall("Read", {file_path: "/a.ts"}, "ENOENT"), isError: true}} />)
-				.container,
+			render(
+				<ReadRenderer
+					toolCall={
+					{
+						...toolCall(
+							"Read",
+							{
+								file_path: "/a.ts",
+							},
+							"ENOENT",
+						),
+						isError: true,
+					}}
+				/>,
+			).container,
 		);
 		cleanup();
 		const write = regions(
-			render(<WriteRenderer toolCall={toolCall("Write", {file_path: "/a.ts", content: "x"})} />).container,
+			render(
+				<WriteRenderer
+					toolCall={toolCall(
+						"Write",
+						{
+							file_path: "/a.ts",
+							content: "x",
+						},
+					)}
+				/>,
+			).container,
 		);
 		cleanup();
 		const writeNoContent = regions(
-			render(<WriteRenderer toolCall={toolCall("Write", {file_path: "/a.ts"}, "File created")} />).container,
+			render(
+				<WriteRenderer
+					toolCall={toolCall(
+						"Write",
+						{
+							file_path: "/a.ts",
+						},
+						"File created",
+					)}
+				/>,
+			).container,
 		);
 		cleanup();
 		const writeError = regions(
 			render(
 				<WriteRenderer
-					toolCall={{...toolCall("Write", {file_path: "/a.ts", content: "x"}, "EACCES"), isError: true}}
+					toolCall={
+					{
+						...toolCall(
+							"Write",
+							{
+								file_path: "/a.ts",
+								content: "x",
+							},
+							"EACCES",
+						),
+						isError: true,
+					}}
 				/>,
 			).container,
 		);
 		cleanup();
 		const terminal = regions(render(<TerminalOutput content="hello" />).container);
 
-		expect({bash, read, readError, write, writeNoContent, writeError, terminal}).toStrictEqual({
-			bash: [{label: "Tool output", tabIndex: 0, text: "alice.ts"}],
-			read: [{label: "Tool output", tabIndex: 0, text: "1const alice = 1;"}],
-			readError: [{label: "Tool output", tabIndex: 0, text: "ENOENT"}],
-			write: [{label: "Tool output", tabIndex: 0, text: ""}],
-			writeNoContent: [{label: "Tool output", tabIndex: 0, text: "File created"}],
-			writeError: [
-				{label: "Tool output", tabIndex: 0, text: ""},
-				{label: "Tool output", tabIndex: 0, text: "EACCES"},
-			],
-			terminal: [{label: "Tool output", tabIndex: 0, text: "hello"}],
-		});
+		expect(
+			{
+				bash,
+				read,
+				readError,
+				write,
+				writeNoContent,
+				writeError,
+				terminal,
+			},
+		).toStrictEqual(
+			{
+				bash: [
+					{
+						label: "Tool output",
+						tabIndex: 0,
+						text: "alice.ts",
+					},
+				],
+				read: [
+					{
+						label: "Tool output",
+						tabIndex: 0,
+						text: "1const alice = 1;",
+					},
+				],
+				readError: [
+					{
+						label: "Tool output",
+						tabIndex: 0,
+						text: "ENOENT",
+					},
+				],
+				write: [
+					{
+						label: "Tool output",
+						tabIndex: 0,
+						text: "",
+					},
+				],
+				writeNoContent: [
+					{
+						label: "Tool output",
+						tabIndex: 0,
+						text: "File created",
+					},
+				],
+				writeError: [
+					{
+						label: "Tool output",
+						tabIndex: 0,
+						text: "",
+					},
+					{
+						label: "Tool output",
+						tabIndex: 0,
+						text: "EACCES",
+					},
+				],
+				terminal: [
+					{
+						label: "Tool output",
+						tabIndex: 0,
+						text: "hello",
+					},
+				],
+			},
+		);
 	});
 
-	it("renders the key label at 12/17 mono, opacity .7", () => {
-		const {container} = render(<KeyValueCard params={[{key: "pattern", value: "alice"}]} />);
+	it("renders the key label at 12/17 mono, opacity .7", () =>
+	{
+		const {container} = render(
+			<KeyValueCard
+				params={[
+					{
+						key: "pattern",
+						value: "alice",
+					},
+				]}
+			/>,
+		);
 		const label = [...container.querySelectorAll("span")].find((span) => span.textContent === "pattern:");
 
 		expect(label?.className).toBe("text-[12px]/[17px] font-mono opacity-70");
 	});
 });
 
-describe("CopyButton", () => {
-	function buttonShape(container: HTMLElement) {
+describe("CopyButton", () =>
+{
+	function buttonShape(container: HTMLElement)
+	{
 		const button = container.querySelector("button");
 		const svg = button?.querySelector("svg");
 		return {
@@ -182,74 +409,123 @@ describe("CopyButton", () => {
 		};
 	}
 
-	it("shows the dark 'Copy' tooltip on hover", () => {
+	it("shows the dark 'Copy' tooltip on hover", () =>
+	{
 		vi.useFakeTimers();
 		render(<CopyButton text="alice" />);
-		const button = screen.getByRole("button", {name: "Copy"});
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Copy",
+			},
+		);
 
 		fireEvent.pointerEnter(button.parentElement as Element);
-		act(() => {
+		act(() =>
+		{
 			vi.advanceTimersByTime(300);
 		});
 
 		expect(screen.getByRole("tooltip").textContent).toBe("Copy");
 	});
 
-	it("clears its Copied reset timer when unmounted mid-reset", () => {
+	it("clears its Copied reset timer when unmounted mid-reset", () =>
+	{
 		vi.useFakeTimers();
-		Object.defineProperty(navigator, "clipboard", {
-			configurable: true,
-			value: {writeText: async () => Promise.resolve()},
-		});
+		Object.defineProperty(
+			navigator,
+			"clipboard",
+			{
+				configurable: true,
+				value:
+				{
+					writeText: async () => Promise.resolve(),
+				},
+			},
+		);
 		const {unmount} = render(<CopyButton text="alice" />);
-		fireEvent.click(screen.getByRole("button", {name: "Copy"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Copy",
+				},
+			),
+		);
 		const pendingWhileCopied = vi.getTimerCount();
 
 		unmount();
 
-		expect({pendingWhileCopied, pendingAfterUnmount: vi.getTimerCount()}).toStrictEqual({
-			pendingWhileCopied: 1,
-			pendingAfterUnmount: 0,
-		});
+		expect(
+			{
+				pendingWhileCopied,
+				pendingAfterUnmount: vi.getTimerCount(),
+			},
+		).toStrictEqual(
+			{
+				pendingWhileCopied: 1,
+				pendingAfterUnmount: 0,
+			},
+		);
 	});
 
-	it("reveals its hover-only wrapper on touch", () => {
+	it("reveals its hover-only wrapper on touch", () =>
+	{
 		const {container} = render(<CopyButton text="alice" />);
 
 		expect(container.firstElementChild?.className.includes(TOUCH_REVEAL)).toBe(true);
 	});
 
-	it("sizes the default button 24x24 with a 16px icon", () => {
+	it("sizes the default button 24x24 with a 16px icon", () =>
+	{
 		const {container} = render(<CopyButton text="alice" />);
 
-		expect(buttonShape(container)).toStrictEqual({
-			className:
-				"inline-flex size-6 items-center justify-center border-0 cursor-default select-none rounded-r4 text-secondary hover:text-primary hover:bg-t2 transition-colors",
-			iconWidth: "16",
-			iconHeight: "16",
-		});
+		expect(buttonShape(container)).toStrictEqual(
+			{
+				className:
+					"inline-flex size-6 items-center justify-center border-0 cursor-default select-none rounded-r4 text-secondary hover:text-primary hover:bg-t2 transition-colors",
+				iconWidth: "16",
+				iconHeight: "16",
+			},
+		);
 	});
 
-	it("sizes the xs button 20x20 with a 12px icon", () => {
+	it("sizes the xs button 20x20 with a 12px icon", () =>
+	{
 		const {container} = render(<CopyButton text="alice" size="xs" />);
 
-		expect(buttonShape(container)).toStrictEqual({
-			className:
-				"inline-flex size-5 items-center justify-center border-0 cursor-default select-none rounded-r4 text-secondary hover:text-primary hover:bg-t2 transition-colors",
-			iconWidth: "12",
-			iconHeight: "12",
-		});
+		expect(buttonShape(container)).toStrictEqual(
+			{
+				className:
+					"inline-flex size-5 items-center justify-center border-0 cursor-default select-none rounded-r4 text-secondary hover:text-primary hover:bg-t2 transition-colors",
+				iconWidth: "12",
+				iconHeight: "12",
+			},
+		);
 	});
 
-	it("uses the xs size in the Bash command card", () => {
-		const {container} = render(<BashRenderer toolCall={toolCall("Bash", {command: "ls"}, "$ ls\nalice.ts")} />);
+	it("uses the xs size in the Bash command card", () =>
+	{
+		const {container} = render(
+			<BashRenderer
+				toolCall={toolCall(
+					"Bash",
+					{
+						command: "ls",
+					},
+					"$ ls\nalice.ts",
+				)}
+			/>,
+		);
 		const card = container.querySelector<HTMLElement>("[data-bash-code-card]")!;
 
-		expect(buttonShape(card)).toStrictEqual({
-			className:
-				"inline-flex size-5 items-center justify-center border-0 cursor-default select-none rounded-r4 text-secondary hover:text-primary hover:bg-t2 transition-colors",
-			iconWidth: "12",
-			iconHeight: "12",
-		});
+		expect(buttonShape(card)).toStrictEqual(
+			{
+				className:
+					"inline-flex size-5 items-center justify-center border-0 cursor-default select-none rounded-r4 text-secondary hover:text-primary hover:bg-t2 transition-colors",
+				iconWidth: "12",
+				iconHeight: "12",
+			},
+		);
 	});
 });

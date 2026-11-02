@@ -6,43 +6,72 @@ import {assertNever} from "./assert-never";
  * statusline reported them, plus the copy upstream derives from them.
  */
 
-export interface UsageWindow {
+export interface UsageWindow
+{
 	usedPct: number;
 	/** Epoch seconds. */
 	resetsAt: number;
 }
 
-export interface UsageSummary {
+export interface UsageSummary
+{
 	fiveHour: UsageWindow | null;
 	sevenDay: UsageWindow | null;
 	/** ISO mtime of the statusline the windows came from. */
 	updatedAt: string | null;
 }
 
-const UsageWindowSchema = z.strictObject({usedPct: z.number(), resetsAt: z.number()});
+const UsageWindowSchema = z.strictObject(
+	{
+		usedPct: z.number(),
+		resetsAt: z.number(),
+	},
+);
 
-export const UsageSummaryResponse: z.ZodType<UsageSummary> = z.strictObject({
-	fiveHour: UsageWindowSchema.nullable(),
-	sevenDay: UsageWindowSchema.nullable(),
-	updatedAt: z.string().nullable(),
-});
+export const UsageSummaryResponse: z.ZodType<UsageSummary> = z.strictObject(
+	{
+		fiveHour: UsageWindowSchema.nullable(),
+		sevenDay: UsageWindowSchema.nullable(),
+		updatedAt: z.string().nullable(),
+	},
+);
 
-export const EMPTY_USAGE: UsageSummary = {fiveHour: null, sevenDay: null, updatedAt: null};
+export const EMPTY_USAGE: UsageSummary =
+{
+	fiveHour: null,
+	sevenDay: null,
+	updatedAt: null,
+};
 
 const SEVEN_DAY_MS = 7 * 86_400_000;
 
 /** Whole-number percent clamped to the meter's 0–100 range. */
-export function meterPercent(usedPct: number): number {
+export function meterPercent(usedPct: number): number
+{
 	return Math.min(100, Math.max(0, Math.round(usedPct)));
 }
 
-function formatParts(resetsAt: number, timeZone: string | undefined, weekday?: "short" | "long"): string {
-	return new Intl.DateTimeFormat("en-US", {
-		...(weekday === undefined ? {} : {weekday}),
-		hour: "numeric",
-		minute: "2-digit",
-		...(timeZone === undefined ? {} : {timeZone}),
-	})
+function formatParts(resetsAt: number, timeZone: string | undefined, weekday?: "short" | "long"): string
+{
+	return new Intl.DateTimeFormat(
+		"en-US",
+		{
+			...(weekday === undefined
+				? {}
+				:
+					{
+						weekday,
+					}),
+			hour: "numeric",
+			minute: "2-digit",
+			...(timeZone === undefined
+				? {}
+				:
+					{
+						timeZone,
+					}),
+		},
+	)
 		.format(resetsAt * 1000)
 		.replace(",", "");
 }
@@ -50,12 +79,14 @@ function formatParts(resetsAt: number, timeZone: string | undefined, weekday?: "
 /** Upstream's `wV` meter variant: ≥90% danger, ≥75% warning, else accent. */
 export type UsageVariant = "accent" | "warning" | "danger";
 
-export function usageVariant(percent: number): UsageVariant {
+export function usageVariant(percent: number): UsageVariant
+{
 	return percent >= 90 ? "danger" : percent >= 75 ? "warning" : "accent";
 }
 
 /** "Resets Fri 9:00 AM". */
-export function formatWeeklyReset(resetsAt: number, timeZone?: string): string {
+export function formatWeeklyReset(resetsAt: number, timeZone?: string): string
+{
 	return `Resets ${formatParts(resetsAt, timeZone, "short")}`;
 }
 
@@ -72,20 +103,31 @@ export function formatLimitCaption(
 	nowMs: number,
 	weekday: "short" | "long",
 	timeZone?: string,
-): string {
+): string
+{
 	const resetMs = resetsAt * 1000;
 	if (!Number.isFinite(resetMs) || resetMs <= nowMs) return "Starts with your first message";
-	if (calendarDay(resetMs, timeZone) === calendarDay(nowMs, timeZone)) {
+	if (calendarDay(resetMs, timeZone) === calendarDay(nowMs, timeZone))
+	{
 		return `Resets at ${formatParts(resetsAt, timeZone)}`;
 	}
-	if (Math.floor((resetMs - nowMs) / 60_000) >= DATE_CAPTION_MINUTES) {
-		const when = new Intl.DateTimeFormat("en-US", {
-			month: "short",
-			day: "numeric",
-			hour: "numeric",
-			minute: "2-digit",
-			...(timeZone === undefined ? {} : {timeZone}),
-		}).format(resetMs);
+	if (Math.floor((resetMs - nowMs) / 60_000) >= DATE_CAPTION_MINUTES)
+	{
+		const when = new Intl.DateTimeFormat(
+			"en-US",
+			{
+				month: "short",
+				day: "numeric",
+				hour: "numeric",
+				minute: "2-digit",
+				...(timeZone === undefined
+					? {}
+					:
+						{
+							timeZone,
+						}),
+			},
+		).format(resetMs);
 		return `Resets ${when}`;
 	}
 	return `Resets ${formatParts(resetsAt, timeZone, weekday)}`;
@@ -96,35 +138,54 @@ export function formatLimitCaption(
  * "less than a minute ago" under 60s, "N minute(s) ago" under an hour, else the update's
  * time of day ("3:05 PM").
  */
-export function formatUsageUpdated(iso: string, nowMs: number, timeZone?: string): string {
+export function formatUsageUpdated(iso: string, nowMs: number, timeZone?: string): string
+{
 	const updatedMs = Date.parse(iso);
 	const seconds = (nowMs - updatedMs) / 1000;
 	if (seconds <= 0) return "Last updated: just now";
 	if (seconds < 60) return "Last updated: less than a minute ago";
 	const minutes = Math.floor(seconds / 60);
 	if (minutes < 60) return `Last updated: ${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
-	const time = new Intl.DateTimeFormat("en-US", {
-		hour: "numeric",
-		minute: "2-digit",
-		...(timeZone === undefined ? {} : {timeZone}),
-	}).format(updatedMs);
+	const time = new Intl.DateTimeFormat(
+		"en-US",
+		{
+			hour: "numeric",
+			minute: "2-digit",
+			...(timeZone === undefined
+				? {}
+				:
+					{
+						timeZone,
+					}),
+		},
+	).format(updatedMs);
 	return `Last updated: ${time}`;
 }
 
-function calendarDay(ms: number, timeZone: string | undefined): number {
-	const parts = new Intl.DateTimeFormat("en-US", {
-		year: "numeric",
-		month: "numeric",
-		day: "numeric",
-		...(timeZone === undefined ? {} : {timeZone}),
-	}).formatToParts(ms);
+function calendarDay(ms: number, timeZone: string | undefined): number
+{
+	const parts = new Intl.DateTimeFormat(
+		"en-US",
+		{
+			year: "numeric",
+			month: "numeric",
+			day: "numeric",
+			...(timeZone === undefined
+				? {}
+				:
+					{
+						timeZone,
+					}),
+		},
+	).formatToParts(ms);
 	const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
 	return Date.UTC(part("year"), part("month") - 1, part("day")) / 86_400_000;
 }
 
 export type PaceState = "zero" | "fresh" | "early" | "on_track" | "heads_up" | "limit_hit";
 
-export interface Pace {
+export interface Pace
+{
 	state: PaceState;
 	/** Whole-number percent used, floored at 0. */
 	percent: number;
@@ -142,23 +203,56 @@ const EARLY_MS = 12 * 3_600_000;
 const ON_PACE_CEILING_PCT = 70;
 
 /** Upstream's weekly pace projection (shared-3 `Xi`). */
-export function paceState(sevenDay: UsageWindow, nowMs: number): Pace {
+export function paceState(sevenDay: UsageWindow, nowMs: number): Pace
+{
 	const resetMs = sevenDay.resetsAt * 1000;
 	const resetsAtMs = Number.isFinite(resetMs) && resetMs > nowMs ? Math.round(resetMs / 60_000) * 60_000 : null;
 	const percent = Number.isFinite(sevenDay.usedPct) ? Math.round(Math.max(0, sevenDay.usedPct)) : 0;
-	if (percent >= 100) return {state: "limit_hit", percent, resetsAtMs};
-	if (percent === 0) return {state: "zero", percent, resetsAtMs};
-	if (percent < FRESH_PERCENT) return {state: "fresh", percent, resetsAtMs};
+	if (percent >= 100)
+		return {
+			state: "limit_hit",
+			percent,
+			resetsAtMs,
+		};
+	if (percent === 0)
+		return {
+			state: "zero",
+			percent,
+			resetsAtMs,
+		};
+	if (percent < FRESH_PERCENT)
+		return {
+			state: "fresh",
+			percent,
+			resetsAtMs,
+		};
 	const elapsed = resetsAtMs === null ? null : nowMs - (resetsAtMs - SEVEN_DAY_MS);
-	if (resetsAtMs === null || elapsed === null || elapsed < EARLY_MS) return {state: "early", percent, resetsAtMs};
+	if (resetsAtMs === null || elapsed === null || elapsed < EARLY_MS)
+		return {
+			state: "early",
+			percent,
+			resetsAtMs,
+		};
 	const runsOutAtMs = nowMs + ((100 - percent) * elapsed) / percent;
 	return runsOutAtMs < resetsAtMs
-		? {state: "heads_up", percent, runsOutAtMs, resetsAtMs}
-		: {state: "on_track", percent, resetsAtMs};
+		?
+			{
+				state: "heads_up",
+				percent,
+				runsOutAtMs,
+				resetsAtMs,
+			}
+		:
+			{
+				state: "on_track",
+				percent,
+				resetsAtMs,
+			};
 }
 
 /** Upstream's on-pace gate: the weekly projection runs out before the reset while still under 70%. */
-export function weeklyAheadOfPace(usage: UsageSummary, nowMs: number): boolean {
+export function weeklyAheadOfPace(usage: UsageSummary, nowMs: number): boolean
+{
 	const {sevenDay} = usage;
 	if (sevenDay === null || sevenDay.usedPct >= ON_PACE_CEILING_PCT) return false;
 	return paceState(sevenDay, nowMs).state === "heads_up";
@@ -168,14 +262,30 @@ export function weeklyAheadOfPace(usage: UsageSummary, nowMs: number): boolean {
  * The window the statusline reports exhausted before its reset, as upstream's composer names a
  * reached limit: the weekly window first, then the session's. Null while neither is spent.
  */
-export function limitReached(usage: UsageSummary, nowMs: number): {headline: string; resetsAt: number} | null {
+export function limitReached(
+	usage: UsageSummary,
+	nowMs: number,
+):
+{
+	headline: string;
+	resetsAt: number;
+} | null
+{
 	const spent = (window: UsageWindow | null) =>
 		window !== null && window.usedPct >= 100 && window.resetsAt * 1000 > nowMs;
-	if (usage.sevenDay !== null && spent(usage.sevenDay)) {
-		return {headline: "Weekly limit reached", resetsAt: usage.sevenDay.resetsAt};
+	if (usage.sevenDay !== null && spent(usage.sevenDay))
+	{
+		return {
+			headline: "Weekly limit reached",
+			resetsAt: usage.sevenDay.resetsAt,
+		};
 	}
-	if (usage.fiveHour !== null && spent(usage.fiveHour)) {
-		return {headline: "Session limit reached", resetsAt: usage.fiveHour.resetsAt};
+	if (usage.fiveHour !== null && spent(usage.fiveHour))
+	{
+		return {
+			headline: "Session limit reached",
+			resetsAt: usage.fiveHour.resetsAt,
+		};
 	}
 	return null;
 }
@@ -184,7 +294,8 @@ export function limitReached(usage: UsageSummary, nowMs: number): {headline: str
 export type UsageBandWindow = "5h" | "7d";
 
 /** Upstream's `Kt` dismissal record: hidden until a higher threshold or a later reset. */
-export interface UsageBandDismissal {
+export interface UsageBandDismissal
+{
 	/** The dismissed band's reset, epoch seconds. */
 	validUntil: number;
 	threshold: number;
@@ -199,11 +310,13 @@ const PACE_THRESHOLD = -1;
  * The server's `approaching_limit` thresholds. The statusline only carries the used percent, so
  * these are assumed: 70% matches upstream's on-pace ceiling (`re`), 90% is the next step.
  */
-function approachingThreshold(usedPct: number): number {
+function approachingThreshold(usedPct: number): number
+{
 	return usedPct >= 90 ? 90 : ON_PACE_CEILING_PCT;
 }
 
-export interface ApproachingLimit {
+export interface ApproachingLimit
+{
 	window: UsageBandWindow;
 	headline: string;
 	resetsAt: number;
@@ -214,13 +327,15 @@ export interface ApproachingLimit {
  * Upstream's "approaching" band: a window at 70% or more but not yet spent, before its reset. The
  * weekly window binds first; the session window speaks only when the weekly one is not approaching.
  */
-export function approachingLimit(usage: UsageSummary, nowMs: number): ApproachingLimit | null {
+export function approachingLimit(usage: UsageSummary, nowMs: number): ApproachingLimit | null
+{
 	const approaching = (window: UsageWindow | null): window is UsageWindow =>
 		window !== null &&
 		window.usedPct >= ON_PACE_CEILING_PCT &&
 		window.usedPct < 100 &&
 		window.resetsAt * 1000 > nowMs;
-	if (approaching(usage.sevenDay)) {
+	if (approaching(usage.sevenDay))
+	{
 		return {
 			window: "7d",
 			headline: "Approaching weekly usage limit",
@@ -228,7 +343,8 @@ export function approachingLimit(usage: UsageSummary, nowMs: number): Approachin
 			threshold: approachingThreshold(usage.sevenDay.usedPct),
 		};
 	}
-	if (approaching(usage.fiveHour)) {
+	if (approaching(usage.fiveHour))
+	{
 		return {
 			window: "5h",
 			headline: "Approaching session usage limit",
@@ -240,11 +356,19 @@ export function approachingLimit(usage: UsageSummary, nowMs: number): Approachin
 }
 
 export type UsageBand =
-	| ({kind: "approaching"} & ApproachingLimit)
-	| ({kind: "pace"; usedPct: number} & ApproachingLimit);
+	| (
+	  {
+			kind: "approaching";
+	  } & ApproachingLimit)
+	| (
+	  {
+			kind: "pace";
+			usedPct: number;
+	  } & ApproachingLimit);
 
 /** Upstream's `uU`: a dismissal holds while the threshold has not risen and the window has not reset. */
-function isDismissed(dismissals: UsageBandDismissals, band: ApproachingLimit): boolean {
+function isDismissed(dismissals: UsageBandDismissals, band: ApproachingLimit): boolean
+{
 	const stored = dismissals[band.window];
 	return stored !== undefined && band.threshold <= stored.threshold && band.resetsAt <= stored.validUntil;
 }
@@ -253,13 +377,22 @@ function isDismissed(dismissals: UsageBandDismissals, band: ApproachingLimit): b
  * The composer's dismissible usage band: approaching a window's limit, else on pace to hit the
  * weekly limit early, unless the user dismissed it for this threshold and reset.
  */
-export function usageBand(usage: UsageSummary, nowMs: number, dismissals: UsageBandDismissals): UsageBand | null {
+export function usageBand(usage: UsageSummary, nowMs: number, dismissals: UsageBandDismissals): UsageBand | null
+{
 	const approaching = approachingLimit(usage, nowMs);
 	let band: UsageBand | null = null;
-	if (approaching !== null) {
-		band = {kind: "approaching", ...approaching};
-	} else if (usage.sevenDay !== null && weeklyAheadOfPace(usage, nowMs)) {
-		band = {
+	if (approaching !== null)
+	{
+		band =
+		{
+			kind: "approaching",
+			...approaching,
+		};
+	}
+	else if (usage.sevenDay !== null && weeklyAheadOfPace(usage, nowMs))
+	{
+		band =
+		{
 			kind: "pace",
 			window: "7d",
 			headline: "On pace to hit your weekly limit early",
@@ -272,18 +405,28 @@ export function usageBand(usage: UsageSummary, nowMs: number, dismissals: UsageB
 }
 
 /** Upstream's pace band reset: "Resets at 5:40 PM" on the reset's own day, else "Resets Tue, Oct 6, 4:00 AM". */
-export function formatPaceBannerReset(resetsAt: number, nowMs: number, timeZone?: string): string {
-	if (calendarDay(resetsAt * 1000, timeZone) === calendarDay(nowMs, timeZone)) {
+export function formatPaceBannerReset(resetsAt: number, nowMs: number, timeZone?: string): string
+{
+	if (calendarDay(resetsAt * 1000, timeZone) === calendarDay(nowMs, timeZone))
+	{
 		return `Resets at ${formatParts(resetsAt, timeZone)}`;
 	}
-	const when = new Intl.DateTimeFormat("en-US", {
-		weekday: "short",
-		month: "short",
-		day: "numeric",
-		hour: "numeric",
-		minute: "2-digit",
-		...(timeZone === undefined ? {} : {timeZone}),
-	}).format(resetsAt * 1000);
+	const when = new Intl.DateTimeFormat(
+		"en-US",
+		{
+			weekday: "short",
+			month: "short",
+			day: "numeric",
+			hour: "numeric",
+			minute: "2-digit",
+			...(timeZone === undefined
+				? {}
+				:
+					{
+						timeZone,
+					}),
+		},
+	).format(resetsAt * 1000);
 	return `Resets ${when}`;
 }
 
@@ -293,57 +436,137 @@ const NIGHT_END_HOUR = 5;
 /** Upstream's `c`: a reset this far away is named by its date. */
 const DATE_KIND_MS = 6 * 24 * HOUR_MS;
 
-function hourOf(ms: number, timeZone: string | undefined): number {
-	const hour = new Intl.DateTimeFormat("en-US", {
-		hour: "numeric",
-		hourCycle: "h23",
-		...(timeZone === undefined ? {} : {timeZone}),
-	})
+function hourOf(ms: number, timeZone: string | undefined): number
+{
+	const hour = new Intl.DateTimeFormat(
+		"en-US",
+		{
+			hour: "numeric",
+			hourCycle: "h23",
+			...(timeZone === undefined
+				? {}
+				:
+					{
+						timeZone,
+					}),
+		},
+	)
 		.formatToParts(ms)
 		.find((part) => part.type === "hour");
 	return Number(hour?.value) % 24;
 }
 
-function format(ms: number, timeZone: string | undefined, options: Intl.DateTimeFormatOptions): string {
-	return new Intl.DateTimeFormat("en-US", {...options, ...(timeZone === undefined ? {} : {timeZone})}).format(ms);
+function format(ms: number, timeZone: string | undefined, options: Intl.DateTimeFormatOptions): string
+{
+	return new Intl.DateTimeFormat(
+		"en-US",
+		{
+			...options,
+			...(timeZone === undefined
+				? {}
+				:
+					{
+						timeZone,
+					}),
+		},
+	).format(ms);
 }
 
 /** Upstream's `h`: a run-out before 5 AM belongs to the previous day, unless that day is already over. */
-function runOutDayMs(runsOutAtMs: number, nowMs: number, timeZone: string | undefined): number {
+function runOutDayMs(runsOutAtMs: number, nowMs: number, timeZone: string | undefined): number
+{
 	if (hourOf(runsOutAtMs, timeZone) >= NIGHT_END_HOUR) return runsOutAtMs;
 	const shifted = runsOutAtMs - NIGHT_END_HOUR * HOUR_MS;
 	return calendarDay(shifted, timeZone) < calendarDay(nowMs, timeZone) ? runsOutAtMs : shifted;
 }
 
-function relativeDay(ms: number, nowMs: number, timeZone: string | undefined): "today" | "tomorrow" | "other" {
+function relativeDay(ms: number, nowMs: number, timeZone: string | undefined): "today" | "tomorrow" | "other"
+{
 	const days = calendarDay(ms, timeZone) - calendarDay(nowMs, timeZone);
 	return days === 0 ? "today" : days === 1 ? "tomorrow" : "other";
 }
 
 /** How upstream's pace copy names the weekly reset (c9d0efac2 `g`). */
 type ResetKind =
-	| {kind: "time"; time: string}
-	| {kind: "date"; date: string}
-	| {kind: "today"}
-	| {kind: "tomorrow"}
-	| {kind: "weekday"; weekday: string};
+	|
+	  {
+			kind: "time";
+			time: string;
+	  }
+	|
+	  {
+			kind: "date";
+			date: string;
+	  }
+	|
+	  {
+			kind: "today";
+	  }
+	|
+	  {
+			kind: "tomorrow";
+	  }
+	|
+	  {
+			kind: "weekday";
+			weekday: string;
+	  };
 
-function resetKind(resetsAtMs: number, nowMs: number, timeZone?: string, runsOutAtMs?: number): ResetKind {
+function resetKind(resetsAtMs: number, nowMs: number, timeZone?: string, runsOutAtMs?: number): ResetKind
+{
 	if (
 		runsOutAtMs !== undefined &&
 		calendarDay(runOutDayMs(runsOutAtMs, nowMs, timeZone), timeZone) === calendarDay(resetsAtMs, timeZone)
-	) {
-		return {kind: "time", time: format(resetsAtMs, timeZone, {hour: "numeric", minute: "2-digit"})};
+	)
+	{
+		return {
+			kind: "time",
+			time: format(
+				resetsAtMs,
+				timeZone,
+				{
+					hour: "numeric",
+					minute: "2-digit",
+				},
+			),
+		};
 	}
-	if (resetsAtMs - nowMs >= DATE_KIND_MS) {
-		return {kind: "date", date: format(resetsAtMs, timeZone, {month: "short", day: "numeric"})};
+	if (resetsAtMs - nowMs >= DATE_KIND_MS)
+	{
+		return {
+			kind: "date",
+			date: format(
+				resetsAtMs,
+				timeZone,
+				{
+					month: "short",
+					day: "numeric",
+				},
+			),
+		};
 	}
 	const day = relativeDay(resetsAtMs, nowMs, timeZone);
-	return day === "other" ? {kind: "weekday", weekday: format(resetsAtMs, timeZone, {weekday: "long"})} : {kind: day};
+	return day === "other"
+		?
+			{
+				kind: "weekday",
+				weekday: format(
+					resetsAtMs,
+					timeZone,
+					{
+						weekday: "long",
+					},
+				),
+			}
+		:
+			{
+				kind: day,
+			};
 }
 
 /** Upstream's run-out phrase (c9d0efac2 `_`): "this evening", "tomorrow night", "Friday morning". */
-function runOutPhrase(runsOutAtMs: number, nowMs: number, timeZone?: string): string {
+function runOutPhrase(runsOutAtMs: number, nowMs: number, timeZone?: string): string
+{
 	const hour = hourOf(runsOutAtMs, timeZone);
 	const part =
 		hour < NIGHT_END_HOUR
@@ -357,28 +580,58 @@ function runOutPhrase(runsOutAtMs: number, nowMs: number, timeZone?: string): st
 						: "night";
 	const dayMs = runOutDayMs(runsOutAtMs, nowMs, timeZone);
 	const day = relativeDay(dayMs, nowMs, timeZone);
-	switch (day) {
+	switch (day)
+	{
 		case "today":
 			return part === "night" ? "tonight" : `this ${part}`;
 		case "tomorrow":
 			return `tomorrow ${part}`;
 		case "other":
-			return `${format(dayMs, timeZone, {weekday: "long"})} ${part}`;
+			return `${format(
+				dayMs,
+				timeZone,
+				{
+					weekday: "long",
+				},
+			)} ${part}`;
 		default:
 			return assertNever(day);
 	}
 }
 
 /** Upstream's limit-hit reset (c9d0efac2 `v`): "Tuesday 4:00 AM EDT", or "Oct 27, 4:00 AM EDT" six or more days out. */
-function limitHitReset(resetsAtMs: number, nowMs: number, timeZone: string | undefined): string {
-	const time: Intl.DateTimeFormatOptions = {hour: "numeric", minute: "2-digit", timeZoneName: "short"};
+function limitHitReset(resetsAtMs: number, nowMs: number, timeZone: string | undefined): string
+{
+	const time: Intl.DateTimeFormatOptions =
+	{
+		hour: "numeric",
+		minute: "2-digit",
+		timeZoneName: "short",
+	};
 	return resetsAtMs - nowMs >= DATE_KIND_MS
-		? format(resetsAtMs, timeZone, {month: "short", day: "numeric", ...time})
-		: format(resetsAtMs, timeZone, {weekday: "long", ...time}).replace(",", "");
+		? format(
+				resetsAtMs,
+				timeZone,
+				{
+					month: "short",
+					day: "numeric",
+					...time,
+				},
+			)
+		: format(
+				resetsAtMs,
+				timeZone,
+				{
+					weekday: "long",
+					...time,
+				},
+			).replace(",", "");
 }
 
-function resetPhrase(reset: ResetKind): string {
-	switch (reset.kind) {
+function resetPhrase(reset: ResetKind): string
+{
+	switch (reset.kind)
+	{
 		case "time":
 			return `the ${reset.time}`;
 		case "date":
@@ -398,14 +651,16 @@ function resetPhrase(reset: ResetKind): string {
  * Upstream's pace headline above the meters (`mi`), driven only by the weekly window. The
  * statusline carries no usage-credit state, so limit_hit uses the credits-off copy.
  */
-export function paceHeadline(usage: UsageSummary, nowMs: number, timeZone?: string): string | null {
+export function paceHeadline(usage: UsageSummary, nowMs: number, timeZone?: string): string | null
+{
 	if (usage.sevenDay === null) return null;
 	const pace = paceState(usage.sevenDay, nowMs);
 	const reset =
 		pace.resetsAtMs === null
 			? null
 			: resetKind(pace.resetsAtMs, nowMs, timeZone, pace.state === "heads_up" ? pace.runsOutAtMs : undefined);
-	switch (pace.state) {
+	switch (pace.state)
+	{
 		case "zero":
 			return "No usage yet. 100% of your weekly limit is available.";
 		case "fresh":
@@ -416,7 +671,8 @@ export function paceHeadline(usage: UsageSummary, nowMs: number, timeZone?: stri
 			return reset === null
 				? "On track. You have room to spare this week."
 				: `On track. You should reach ${resetPhrase(reset)} reset with room to spare.`;
-		case "heads_up": {
+		case "heads_up":
+		{
 			const runOut = runOutPhrase(pace.runsOutAtMs ?? nowMs, nowMs, timeZone);
 			return reset === null
 				? `Heads up. At this pace you’ll run out ${runOut}.`

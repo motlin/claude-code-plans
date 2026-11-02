@@ -6,14 +6,16 @@ import {CopyPlanButton, LinkedPlanHeaderActions} from "./plan-header-actions";
 import {SessionPlanPane} from "./plan-pane";
 
 /** What the Plan pane needs from the session page beyond the plan itself. */
-export interface PlanPaneOptions {
+export interface PlanPaneOptions
+{
 	sessionId: string;
 	/** Upstream's flag: the session is in plan mode or has a plan waiting for approval. */
 	commentsEnabled: boolean;
 }
 
 /** Whether the session has anything for upstream's Plan pane: a linked plan, plan text, a plan-file edit or todos. */
-export function hasSessionPlan(planFilename: string | undefined, model: SessionPlanModel): boolean {
+export function hasSessionPlan(planFilename: string | undefined, model: SessionPlanModel): boolean
+{
 	return planFilename !== undefined || model.content !== null || model.editsPlanFile || model.todos.length > 0;
 }
 
@@ -26,9 +28,11 @@ export function planPaneDefinition(
 	planFilename: string | undefined,
 	model: SessionPlanModel,
 	{sessionId, commentsEnabled}: PlanPaneOptions,
-): PaneDefinition {
+): PaneDefinition
+{
 	const target = `${sessionId}:${planFilename ?? ""}`;
-	const definition: PaneDefinition = {
+	const definition: PaneDefinition =
+	{
 		title: "Plan",
 		resetKey: target,
 		render: () => (
@@ -41,9 +45,12 @@ export function planPaneDefinition(
 			/>
 		),
 	};
-	if (planFilename !== undefined) {
+	if (planFilename !== undefined)
+	{
 		definition.headerActions = <LinkedPlanHeaderActions planFilename={planFilename} model={model} />;
-	} else if (model.content !== null && model.content !== "") {
+	}
+	else if (model.content !== null && model.content !== "")
+	{
 		definition.headerActions = <CopyPlanButton content={model.content} />;
 	}
 	return definition;
@@ -58,9 +65,21 @@ export function useRegisterPlanPane(
 	planFilename: string | undefined,
 	model: SessionPlanModel,
 	{sessionId, commentsEnabled}: PlanPaneOptions,
-): void {
+): void
+{
 	useEffect(
-		() => registerPane("plan", planPaneDefinition(planFilename, model, {sessionId, commentsEnabled})),
+		() =>
+			registerPane(
+				"plan",
+				planPaneDefinition(
+					planFilename,
+					model,
+					{
+						sessionId,
+						commentsEnabled,
+					},
+				),
+			),
 		[planFilename, model, sessionId, commentsEnabled],
 	);
 }

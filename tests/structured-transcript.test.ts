@@ -4,7 +4,8 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
-import {
+import
+{
 	readStructuredTranscript,
 	transcriptChainVersion,
 	TRANSCRIPT_WINDOW_MAX_BYTES,
@@ -23,44 +24,62 @@ import {
 let tempDir: string;
 let db: AppDb;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	tempDir = mkdtempSync(join(tmpdir(), "structured-transcript-test-"));
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(tempDir, {recursive: true, force: true});
+	rmSync(
+		tempDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
 /** Write a JSONL file and index it as a session so the reader can find it. */
-function seedSession(sessionId: string, records: unknown[]): void {
+function seedSession(sessionId: string, records: unknown[]): void
+{
 	const filePath = join(tempDir, `${sessionId}.jsonl`);
 	writeFileSync(filePath, records.map((record) => JSON.stringify(record)).join("\n") + "\n");
 	db.index
 		.insert(schema.sessions)
-		.values({
-			id: sessionId,
-			projectId: "test-project",
-			title: sessionId,
-			createdAt: 0,
-			mtimeMs: 0,
-			filePath,
-		})
+		.values(
+			{
+				id: sessionId,
+				projectId: "test-project",
+				title: sessionId,
+				createdAt: 0,
+				mtimeMs: 0,
+				filePath,
+			},
+		)
 		.run();
 }
 
 /** A countable user message whose text is `padding` characters long. */
-function userMessage(index: number, padding = 0): Record<string, unknown> {
+function userMessage(index: number, padding = 0): Record<string, unknown>
+{
 	return {
 		type: "user",
 		uuid: `u-${index}`,
-		message: {role: "user", content: "x".repeat(padding) || `message ${index}`},
+		message:
+		{
+			role: "user",
+			content: "x".repeat(padding) || `message ${index}`,
+		},
 	};
 }
 
-describe("readStructuredTranscript", () => {
-	it("returns every record of a small session starting at index 0", () => {
+describe("readStructuredTranscript", () =>
+{
+	it("returns every record of a small session starting at index 0", () =>
+	{
 		seedSession("small", [userMessage(0), userMessage(1), userMessage(2)]);
 
 		const transcript = readStructuredTranscript(db.index, "small");
@@ -70,8 +89,14 @@ describe("readStructuredTranscript", () => {
 		expect(transcript.precedingMessageCount).toBe(0);
 	});
 
-	it("caps the record count and serves the tail of a long session", () => {
-		const records = Array.from({length: TRANSCRIPT_WINDOW_MAX_RECORDS + 25}, (_, i) => userMessage(i));
+	it("caps the record count and serves the tail of a long session", () =>
+	{
+		const records = Array.from(
+			{
+				length: TRANSCRIPT_WINDOW_MAX_RECORDS + 25,
+			},
+			(_, i) => userMessage(i),
+		);
 		seedSession("long", records);
 
 		const transcript = readStructuredTranscript(db.index, "long");
@@ -81,9 +106,15 @@ describe("readStructuredTranscript", () => {
 		expect(transcript.precedingMessageCount).toBe(25);
 	});
 
-	it("caps the serialized size when records are large", () => {
+	it("caps the serialized size when records are large", () =>
+	{
 		// 40 KB per record: the byte budget bites long before the record cap.
-		const records = Array.from({length: 100}, (_, i) => userMessage(i, 40_000));
+		const records = Array.from(
+			{
+				length: 100,
+			},
+			(_, i) => userMessage(i, 40_000),
+		);
 		seedSession("heavy", records);
 
 		const transcript = readStructuredTranscript(db.index, "heavy");
@@ -94,7 +125,8 @@ describe("readStructuredTranscript", () => {
 		expect(transcript.startIndex).toBe(100 - transcript.records.length);
 	});
 
-	it("returns at least one record when a single record blows the byte budget", () => {
+	it("returns at least one record when a single record blows the byte budget", () =>
+	{
 		const records = [userMessage(0), userMessage(1, TRANSCRIPT_WINDOW_MAX_BYTES * 2)];
 		seedSession("giant", records);
 
@@ -104,28 +136,63 @@ describe("readStructuredTranscript", () => {
 		expect(transcript.startIndex).toBe(1);
 	});
 
-	it("serves the records before an index when asked for an earlier page", () => {
-		const records = Array.from({length: TRANSCRIPT_WINDOW_MAX_RECORDS + 25}, (_, i) => userMessage(i));
+	it("serves the records before an index when asked for an earlier page", () =>
+	{
+		const records = Array.from(
+			{
+				length: TRANSCRIPT_WINDOW_MAX_RECORDS + 25,
+			},
+			(_, i) => userMessage(i),
+		);
 		seedSession("paged", records);
 
-		const page = readStructuredTranscript(db.index, "paged", {before: 25});
+		const page = readStructuredTranscript(
+			db.index,
+			"paged",
+			{
+				before: 25,
+			},
+		);
 
 		expect(page.records).toStrictEqual(records.slice(0, 25));
 		expect(page.startIndex).toBe(0);
 		expect(page.precedingMessageCount).toBe(0);
 	});
 
-	it("counts only countable records before the window", () => {
+	it("counts only countable records before the window", () =>
+	{
 		const records = [
 			userMessage(0),
-			{type: "summary", uuid: "s-0", summary: "not a message"},
-			{type: "user", uuid: "tr-0", message: {role: "user", content: [{type: "tool_result"}]}},
+			{
+				type: "summary",
+				uuid: "s-0",
+				summary: "not a message",
+			},
+			{
+				type: "user",
+				uuid: "tr-0",
+				message:
+				{
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+						},
+					],
+				},
+			},
 			userMessage(1),
 			userMessage(2),
 		];
 		seedSession("mixed", records);
 
-		const transcript = readStructuredTranscript(db.index, "mixed", {maxRecords: 2});
+		const transcript = readStructuredTranscript(
+			db.index,
+			"mixed",
+			{
+				maxRecords: 2,
+			},
+		);
 
 		expect(transcript.records).toStrictEqual([records[3], records[4]]);
 		expect(transcript.startIndex).toBe(3);
@@ -134,42 +201,95 @@ describe("readStructuredTranscript", () => {
 		expect(transcript.precedingMessageCount).toBe(1);
 	});
 
-	it("counts every countable record type before the window and no other", () => {
+	it("counts every countable record type before the window and no other", () =>
+	{
 		// One row per record shape a real session puts in front of the window. The
 		// preceding records are never parsed for their content -- only counted --
 		// so this fixture is what stops the count from drifting when the scan that
 		// produces it changes.
 		const preceding: Record<string, unknown>[] = [
-			{type: "user", uuid: "p-0", message: {role: "user", content: "string content"}},
+			{
+				type: "user",
+				uuid: "p-0",
+				message:
+				{
+					role: "user",
+					content: "string content",
+				},
+			},
 			{
 				type: "user",
 				uuid: "p-1",
-				message: {role: "user", content: [{type: "text", text: "array content"}]},
+				message:
+				{
+					role: "user",
+					content: [
+						{
+							type: "text",
+							text: "array content",
+						},
+					],
+				},
 			},
 			{
 				type: "assistant",
 				uuid: "p-2",
-				message: {role: "assistant", content: [{type: "text", text: "reply"}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "reply",
+						},
+					],
+				},
 			},
 			{
 				type: "assistant",
 				uuid: "p-3",
-				message: {role: "assistant", content: [{type: "thinking", thinking: "hmm"}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "thinking",
+							thinking: "hmm",
+						},
+					],
+				},
 			},
 			{
 				type: "assistant",
 				uuid: "p-4",
-				message: {role: "assistant", content: [{type: "tool_use", id: "t-1", name: "Bash"}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "t-1",
+							name: "Bash",
+						},
+					],
+				},
 			},
 			{
 				// A tool result alongside text still carries a message.
 				type: "user",
 				uuid: "p-5",
-				message: {
+				message:
+				{
 					role: "user",
 					content: [
-						{type: "tool_result", tool_use_id: "t-1"},
-						{type: "text", text: "and"},
+						{
+							type: "tool_result",
+							tool_use_id: "t-1",
+						},
+						{
+							type: "text",
+							text: "and",
+						},
 					],
 				},
 			},
@@ -177,41 +297,96 @@ describe("readStructuredTranscript", () => {
 			{
 				type: "user",
 				uuid: "p-6",
-				message: {role: "user", content: [{type: "tool_result", tool_use_id: "t-1"}]},
+				message:
+				{
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "t-1",
+						},
+					],
+				},
 			},
 			{
 				type: "assistant",
 				uuid: "p-7",
 				isSidechain: true,
-				message: {role: "assistant", content: [{type: "text", text: "sidechain"}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "sidechain",
+						},
+					],
+				},
 			},
-			{type: "summary", uuid: "p-8", summary: "summary"},
-			{type: "system", uuid: "p-9", subtype: "turn_duration", durationMs: 12},
-			{type: "attachment", uuid: "p-10", attachment: {type: "file", content: "text"}},
-			{type: "queue-operation", uuid: "p-11", operation: "enqueue"},
-			{type: "user", uuid: "p-12", message: {role: "user"}},
+			{
+				type: "summary",
+				uuid: "p-8",
+				summary: "summary",
+			},
+			{
+				type: "system",
+				uuid: "p-9",
+				subtype: "turn_duration",
+				durationMs: 12,
+			},
+			{
+				type: "attachment",
+				uuid: "p-10",
+				attachment:
+				{
+					type: "file",
+					content: "text",
+				},
+			},
+			{
+				type: "queue-operation",
+				uuid: "p-11",
+				operation: "enqueue",
+			},
+			{
+				type: "user",
+				uuid: "p-12",
+				message:
+				{
+					role: "user",
+				},
+			},
 		];
 		const windowRecords = [userMessage(0), userMessage(1)];
 		seedSession("every-type", [...preceding, ...windowRecords]);
 
-		const transcript = readStructuredTranscript(db.index, "every-type", {maxRecords: 2});
+		const transcript = readStructuredTranscript(
+			db.index,
+			"every-type",
+			{
+				maxRecords: 2,
+			},
+		);
 
 		expect(transcript.records).toStrictEqual(windowRecords);
 		expect(transcript.startIndex).toBe(preceding.length);
 		expect(transcript.precedingMessageCount).toBe(6);
 	});
 
-	it("reports an empty window for an unknown session", () => {
-		expect(readStructuredTranscript(db.index, "missing")).toStrictEqual({
-			records: [],
-			byteOffset: 0,
-			startIndex: 0,
-			precedingMessageCount: 0,
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: transcriptChainVersion([]),
-			chapters: [],
-		});
+	it("reports an empty window for an unknown session", () =>
+	{
+		expect(readStructuredTranscript(db.index, "missing")).toStrictEqual(
+			{
+				records: [],
+				byteOffset: 0,
+				startIndex: 0,
+				precedingMessageCount: 0,
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: transcriptChainVersion([]),
+				chapters: [],
+			},
+		);
 	});
 });
 
@@ -220,17 +395,38 @@ function prompt(
 	uuid: string,
 	parentUuid: string | null,
 	timestamp = "2026-10-20T10:00:00.000Z",
-): Record<string, unknown> {
-	return {type: "user", uuid, parentUuid, timestamp, message: {role: "user", content: `prompt ${uuid}`}};
+): Record<string, unknown>
+{
+	return {
+		type: "user",
+		uuid,
+		parentUuid,
+		timestamp,
+		message:
+		{
+			role: "user",
+			content: `prompt ${uuid}`,
+		},
+	};
 }
 
 /** An assistant reply chained onto `parentUuid`. */
-function reply(uuid: string, parentUuid: string): Record<string, unknown> {
+function reply(uuid: string, parentUuid: string): Record<string, unknown>
+{
 	return {
 		type: "assistant",
 		uuid,
 		parentUuid,
-		message: {role: "assistant", content: [{type: "text", text: `reply ${uuid}`}]},
+		message:
+		{
+			role: "assistant",
+			content: [
+				{
+					type: "text",
+					text: `reply ${uuid}`,
+				},
+			],
+		},
 	};
 }
 
@@ -239,7 +435,8 @@ function reply(uuid: string, parentUuid: string): Record<string, unknown> {
  * with `abandoned - 1` replies under it, then the replacement prompt `r` on the
  * same parent followed by `after` more chained replies.
  */
-function forkedSession(before: number, abandoned: number, after: number): Record<string, unknown>[] {
+function forkedSession(before: number, abandoned: number, after: number): Record<string, unknown>[]
+{
 	const records: Record<string, unknown>[] = [prompt("u-0", null)];
 	for (let i = 1; i < before; i++) records.push(reply(`u-${i}`, `u-${i - 1}`));
 	const parentUuid = `u-${before - 1}`;
@@ -247,17 +444,25 @@ function forkedSession(before: number, abandoned: number, after: number): Record
 	for (let i = 1; i < abandoned; i++) records.push(reply(`a-${i}`, `a-${i - 1}`));
 	records.push(prompt("r", parentUuid, "2026-10-20T10:06:00.000Z"));
 	let previous = "r";
-	for (let i = 0; i < after; i++) {
+	for (let i = 0; i < after; i++)
+	{
 		records.push(reply(`t-${i}`, previous));
 		previous = `t-${i}`;
 	}
 	return records;
 }
 
-const ABANDONED_40 = Array.from({length: 40}, (_, i) => `a-${i}`);
+const ABANDONED_40 = Array.from(
+	{
+		length: 40,
+	},
+	(_, i) => `a-${i}`,
+);
 
-describe("readStructuredTranscript active chain", () => {
-	it("budgets only visible records, so an abandoned branch in the tail does not shrink the page", () => {
+describe("readStructuredTranscript active chain", () =>
+{
+	it("budgets only visible records, so an abandoned branch in the tail does not shrink the page", () =>
+	{
 		// 60 + 40 abandoned + 1 replacement + 349 = 450 records; the tail's 400
 		// visible records reach back past the 40 hidden ones to index 10.
 		const records = forkedSession(60, 40, 349);
@@ -268,30 +473,70 @@ describe("readStructuredTranscript active chain", () => {
 		expect(transcript.startIndex).toBe(10);
 		expect(transcript.records).toStrictEqual(records.slice(10));
 		expect(transcript.hiddenUuids).toStrictEqual(ABANDONED_40);
-		const cuts = [{parentUuid: "u-59", replacementUuid: "r", at: "2026-10-20T10:05:00.000Z", count: 40}];
+		const cuts = [
+			{
+				parentUuid: "u-59",
+				replacementUuid: "r",
+				at: "2026-10-20T10:05:00.000Z",
+				count: 40,
+			},
+		];
 		expect(transcript.cuts).toStrictEqual(cuts);
-		expect(transcript.chainVersion).toBe(transcriptChainVersion([{...cuts[0]!, abandonedUuid: "a-0"}]));
+		expect(transcript.chainVersion).toBe(
+			transcriptChainVersion([
+				{
+					...cuts[0]!,
+					abandonedUuid: "a-0",
+				},
+			]),
+		);
 	});
 
-	it("reports a cut whose shared parent sits on an earlier page", () => {
+	it("reports a cut whose shared parent sits on an earlier page", () =>
+	{
 		const records = forkedSession(11, 2, 2);
 		seedSession("forked-early", records);
 
-		const transcript = readStructuredTranscript(db.index, "forked-early", {maxRecords: 3});
+		const transcript = readStructuredTranscript(
+			db.index,
+			"forked-early",
+			{
+				maxRecords: 3,
+			},
+		);
 
 		expect(transcript.records).toStrictEqual(records.slice(-3));
 		expect(transcript.hiddenUuids).toStrictEqual([]);
 		expect(transcript.cuts).toStrictEqual([
-			{parentUuid: "u-10", replacementUuid: "r", at: "2026-10-20T10:05:00.000Z", count: 2},
+			{
+				parentUuid: "u-10",
+				replacementUuid: "r",
+				at: "2026-10-20T10:05:00.000Z",
+				count: 2,
+			},
 		]);
 	});
 
-	it("gives an earlier page only its own hidden uuids and no cut whose replacement it lacks", () => {
+	it("gives an earlier page only its own hidden uuids and no cut whose replacement it lacks", () =>
+	{
 		const records = forkedSession(11, 2, 2);
 		seedSession("forked-paged", records);
 
-		const tail = readStructuredTranscript(db.index, "forked-paged", {maxRecords: 3});
-		const page = readStructuredTranscript(db.index, "forked-paged", {before: tail.startIndex, maxRecords: 3});
+		const tail = readStructuredTranscript(
+			db.index,
+			"forked-paged",
+			{
+				maxRecords: 3,
+			},
+		);
+		const page = readStructuredTranscript(
+			db.index,
+			"forked-paged",
+			{
+				before: tail.startIndex,
+				maxRecords: 3,
+			},
+		);
 
 		expect(page.records).toStrictEqual(records.slice(8, 13));
 		expect(page.startIndex).toBe(8);
@@ -300,7 +545,8 @@ describe("readStructuredTranscript active chain", () => {
 		expect(page.chainVersion).toBe(tail.chainVersion);
 	});
 
-	it("serves a linear session with nothing hidden", () => {
+	it("serves a linear session with nothing hidden", () =>
+	{
 		seedSession("linear", [userMessage(0), userMessage(1)]);
 
 		const transcript = readStructuredTranscript(db.index, "linear");
@@ -310,24 +556,40 @@ describe("readStructuredTranscript active chain", () => {
 		expect(transcript.chainVersion).toBe(transcriptChainVersion([]));
 	});
 
-	it("serves every chapter in the file, including those before the window, and not one on an abandoned branch", () => {
-		const chapter = (index: number, title: string, parentUuid: string) => ({
+	it("serves every chapter in the file, including those before the window, and not one on an abandoned branch", () =>
+	{
+		const chapter = (index: number, title: string, parentUuid: string) => (
+		{
 			type: "assistant",
 			uuid: `a-${index}`,
 			parentUuid,
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
-					{type: "tool_use", id: `toolu_${index}`, name: "mcp__ccd_session__mark_chapter", input: {title}},
+					{
+						type: "tool_use",
+						id: `toolu_${index}`,
+						name: "mcp__ccd_session__mark_chapter",
+						input:
+						{
+							title,
+						},
+					},
 				],
 			},
 		});
-		const prompt = (index: number, parentUuid: string | null, timestamp: string) => ({
+		const prompt = (index: number, parentUuid: string | null, timestamp: string) => (
+		{
 			type: "user",
 			uuid: `u-${index}`,
 			parentUuid,
 			timestamp,
-			message: {role: "user", content: `message ${index}`},
+			message:
+			{
+				role: "user",
+				content: `message ${index}`,
+			},
 		});
 		seedSession("chapters", [
 			prompt(0, null, "2026-10-20T10:00:00.000Z"),
@@ -338,14 +600,37 @@ describe("readStructuredTranscript active chain", () => {
 			chapter(5, "Late chapter", "u-4"),
 		]);
 
-		const tail = readStructuredTranscript(db.index, "chapters", {maxRecords: 1});
+		const tail = readStructuredTranscript(
+			db.index,
+			"chapters",
+			{
+				maxRecords: 1,
+			},
+		);
 
-		expect({startIndex: tail.startIndex, chapters: tail.chapters}).toStrictEqual({
-			startIndex: 5,
-			chapters: [
-				{id: "toolu_1", title: "Early chapter", uuid: "a-1", recordIndex: 1},
-				{id: "toolu_5", title: "Late chapter", uuid: "a-5", recordIndex: 5},
-			],
-		});
+		expect(
+			{
+				startIndex: tail.startIndex,
+				chapters: tail.chapters,
+			},
+		).toStrictEqual(
+			{
+				startIndex: 5,
+				chapters: [
+					{
+						id: "toolu_1",
+						title: "Early chapter",
+						uuid: "a-1",
+						recordIndex: 1,
+					},
+					{
+						id: "toolu_5",
+						title: "Late chapter",
+						uuid: "a-5",
+						recordIndex: 5,
+					},
+				],
+			},
+		);
 	});
 });

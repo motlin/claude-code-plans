@@ -13,38 +13,45 @@ const PICKUP_SETTLING_MS = 400;
 const pickups = new Map<string, number>();
 const listeners = new Set<() => void>();
 
-function emit(): void {
+function emit(): void
+{
 	for (const listener of listeners) listener();
 }
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	listeners.add(listener);
-	return () => {
+	return () =>
+	{
 		listeners.delete(listener);
 	};
 }
 
 /** Claude read the waiting prompt `text` just now. */
-export function recordPickup(text: string): void {
+export function recordPickup(text: string): void
+{
 	pickups.set(text, Date.now());
 	emit();
 }
 
 /** Forgets every pickup; for tests. */
-export function clearPickups(): void {
+export function clearPickups(): void
+{
 	pickups.clear();
 	emit();
 }
 
 /** True during upstream's `settling` phase for the transcript row that replaced the waiting `text`. */
-export function usePickupSettling(text: string): boolean {
+export function usePickupSettling(text: string): boolean
+{
 	const pickedAt = useSyncExternalStore(
 		subscribe,
 		() => pickups.get(text),
 		() => undefined,
 	);
 	const [now, setNow] = useState(() => Date.now());
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (pickedAt === undefined) return undefined;
 		const settleAt = pickedAt + PICKUP_READ_MS;
 		const restAt = settleAt + PICKUP_SETTLING_MS;
@@ -54,11 +61,13 @@ export function usePickupSettling(text: string): boolean {
 		const timers = [settleAt, restAt]
 			.filter((at) => at > current)
 			.map((at) =>
-				setTimeout(() => {
+				setTimeout(() =>
+				{
 					setNow(Date.now());
 				}, at - current),
 			);
-		return () => {
+		return () =>
+		{
 			for (const timer of timers) clearTimeout(timer);
 		};
 	}, [pickedAt]);

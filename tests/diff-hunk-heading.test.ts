@@ -3,7 +3,8 @@
 import {getSingularPatch} from "@pierre/diffs";
 import type {FileDiffMetadata} from "@pierre/diffs";
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	HUNK_HEADING_CSS,
 	adoptHunkHeadingCss,
 	decorateHunkHeadings,
@@ -11,21 +12,25 @@ import {
 } from "../src/components/changes/diff-hunk-heading";
 
 /** One file's patch with a single `@@ -14 +14 @@ <ctx>` hunk; the counts follow the lines. */
-function patchOf(name: string, ctx: string | undefined, lines: readonly string[], start = 14): string {
+function patchOf(name: string, ctx: string | undefined, lines: readonly string[], start = 14): string
+{
 	const old = lines.filter((line) => !line.startsWith("+")).length;
 	const neu = lines.filter((line) => !line.startsWith("-")).length;
 	const header = `@@ -${start},${old} +${start},${neu} @@${ctx === undefined ? "" : ` ${ctx}`}`;
 	return [`--- a/${name}`, `+++ b/${name}`, header, ...lines, ""].join("\n");
 }
 
-function fileDiffOf(name: string, ctx: string | undefined, lines: readonly string[]): FileDiffMetadata {
+function fileDiffOf(name: string, ctx: string | undefined, lines: readonly string[]): FileDiffMetadata
+{
 	return getSingularPatch(patchOf(name, ctx, lines));
 }
 
 const IND = ["   a", "-  b", "+  B", "   c"];
 
-describe("hunkHeading", () => {
-	it("ports upstream c91a5e4a6 h over the table verified live upstream", () => {
+describe("hunkHeading", () =>
+{
+	it("ports upstream c91a5e4a6 h over the table verified live upstream", () =>
+	{
 		const rows: [string, string | undefined, readonly string[], string | undefined][] = [
 			["a.ts", "function foo() {", IND, "function foo() {"],
 			["a.css", ".btn {", IND, undefined],
@@ -58,7 +63,8 @@ describe("hunkHeading", () => {
 			["a.md", "#tag", IND, "#tag"],
 			["a.ts", "xxxxx  trailing  ", IND, "xxxxx  trailing"],
 		];
-		const actual = rows.map(([name, ctx, lines]) => {
+		const actual = rows.map(([name, ctx, lines]) =>
+		{
 			const fileDiff = fileDiffOf(name, ctx, lines);
 			const hunk = fileDiff.hunks[0];
 			if (!hunk) throw new Error(`no hunk for ${name}`);
@@ -71,7 +77,8 @@ describe("hunkHeading", () => {
 const LABEL = "13 unmodified lines";
 
 /** A separator followed by the first row of the hunk below it, as pierre renders it. */
-function separator(label: string, nextNumber: number, nextType: string): string {
+function separator(label: string, nextNumber: number, nextType: string): string
+{
 	return `<div data-separator="line-info"><div data-separator-wrapper><div data-separator-content><span data-unmodified-lines>${label}</span></div></div></div><div data-column-number="${nextNumber}" data-line-type="${nextType}"></div>`;
 }
 
@@ -91,9 +98,18 @@ const TWO_HUNKS = [
 	"",
 ].join("\n");
 
-function unifiedHost(): {host: HTMLElement; root: ShadowRoot} {
+function unifiedHost():
+{
+	host: HTMLElement;
+	root: ShadowRoot;
+}
+{
 	const host = document.createElement("div");
-	const root = host.attachShadow({mode: "open"});
+	const root = host.attachShadow(
+		{
+			mode: "open",
+		},
+	);
 	root.innerHTML = [
 		"<div data-code>",
 		`<div data-gutter>${separator(LABEL, 14, "context")}${separator("7 unmodified lines", 24, "change-deletion")}</div>`,
@@ -101,16 +117,21 @@ function unifiedHost(): {host: HTMLElement; root: ShadowRoot} {
 		"</div>",
 		`<div data-code data-additions><div data-gutter>${separator(LABEL, 14, "context")}</div></div>`,
 	].join("");
-	return {host, root};
+	return {
+		host,
+		root,
+	};
 }
 
-function gutterLabels(root: ShadowRoot): string[] {
+function gutterLabels(root: ShadowRoot): string[]
+{
 	return [...root.querySelectorAll("[data-code]:not([data-additions]) > [data-gutter] [data-unmodified-lines]")].map(
 		(label) => label.innerHTML,
 	);
 }
 
-function untouched(root: ShadowRoot): string[] {
+function untouched(root: ShadowRoot): string[]
+{
 	return [
 		...root.querySelectorAll("[data-content] [data-unmodified-lines], [data-additions] [data-unmodified-lines]"),
 	].map((label) => label.innerHTML);
@@ -121,17 +142,27 @@ const DECORATED = [
 	'<span data-unmodified-count="">7 unmodified lines</span><span data-hunk-heading="" title="function second() {">function second() {</span>',
 ];
 
-describe("decorateHunkHeadings", () => {
-	it("ports upstream c91a5e4a6 g: heads the visible gutter labels only, matching the deletion side by deletionStart", () => {
+describe("decorateHunkHeadings", () =>
+{
+	it("ports upstream c91a5e4a6 g: heads the visible gutter labels only, matching the deletion side by deletionStart", () =>
+	{
 		const {host, root} = unifiedHost();
 		decorateHunkHeadings(host, getSingularPatch(TWO_HUNKS));
-		expect({labels: gutterLabels(root), untouched: untouched(root)}).toStrictEqual({
-			labels: DECORATED,
-			untouched: [LABEL, LABEL],
-		});
+		expect(
+			{
+				labels: gutterLabels(root),
+				untouched: untouched(root),
+			},
+		).toStrictEqual(
+			{
+				labels: DECORATED,
+				untouched: [LABEL, LABEL],
+			},
+		);
 	});
 
-	it("is idempotent across re-renders", () => {
+	it("is idempotent across re-renders", () =>
+	{
 		const {host, root} = unifiedHost();
 		const fileDiff = getSingularPatch(TWO_HUNKS);
 		decorateHunkHeadings(host, fileDiff);
@@ -139,20 +170,23 @@ describe("decorateHunkHeadings", () => {
 		expect(gutterLabels(root)).toStrictEqual(DECORATED);
 	});
 
-	it("unwraps the count and drops the heading without a fileDiff (upstream's kill switch)", () => {
+	it("unwraps the count and drops the heading without a fileDiff (upstream's kill switch)", () =>
+	{
 		const {host, root} = unifiedHost();
 		decorateHunkHeadings(host, getSingularPatch(TWO_HUNKS));
 		decorateHunkHeadings(host, undefined);
 		expect(gutterLabels(root)).toStrictEqual([LABEL, "7 unmodified lines"]);
 	});
 
-	it("leaves no wrapper when the heading is dropped", () => {
+	it("leaves no wrapper when the heading is dropped", () =>
+	{
 		const {host, root} = unifiedHost();
 		decorateHunkHeadings(host, getSingularPatch(TWO_HUNKS.replaceAll("a.ts", "a.css")));
 		expect(gutterLabels(root)).toStrictEqual([LABEL, "7 unmodified lines"]);
 	});
 
-	it("does nothing on a host with no shadow root", () => {
+	it("does nothing on a host with no shadow root", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = `<div data-code><div data-gutter>${separator(LABEL, 14, "context")}</div></div>`;
 		decorateHunkHeadings(host, getSingularPatch(TWO_HUNKS));
@@ -160,8 +194,10 @@ describe("decorateHunkHeadings", () => {
 	});
 });
 
-describe("HUNK_HEADING_CSS", () => {
-	it("is the six hunk-heading rules of upstream c91a5e4a6 sheet C, in order", () => {
+describe("HUNK_HEADING_CSS", () =>
+{
+	it("is the six hunk-heading rules of upstream c91a5e4a6 sheet C, in order", () =>
+	{
 		expect(HUNK_HEADING_CSS).toBe(
 			[
 				"[data-hunk-heading]{margin-inline-start:.5ch;font-family:var(--diffs-font-family,var(--diffs-font-fallback));line-height:0;white-space:pre;unicode-bidi:isolate}",
@@ -174,7 +210,8 @@ describe("HUNK_HEADING_CSS", () => {
 		);
 	});
 
-	it("is adopted once per shadow root and shared across hosts", () => {
+	it("is adopted once per shadow root and shared across hosts", () =>
+	{
 		const a = unifiedHost();
 		const b = unifiedHost();
 		a.root.adoptedStyleSheets = [];
@@ -182,10 +219,18 @@ describe("HUNK_HEADING_CSS", () => {
 		adoptHunkHeadingCss(a.host);
 		adoptHunkHeadingCss(a.host);
 		adoptHunkHeadingCss(b.host);
-		expect({
-			a: a.root.adoptedStyleSheets.length,
-			b: b.root.adoptedStyleSheets.length,
-			shared: a.root.adoptedStyleSheets[0] === b.root.adoptedStyleSheets[0],
-		}).toStrictEqual({a: 1, b: 1, shared: true});
+		expect(
+			{
+				a: a.root.adoptedStyleSheets.length,
+				b: b.root.adoptedStyleSheets.length,
+				shared: a.root.adoptedStyleSheets[0] === b.root.adoptedStyleSheets[0],
+			},
+		).toStrictEqual(
+			{
+				a: 1,
+				b: 1,
+				shared: true,
+			},
+		);
 	});
 });

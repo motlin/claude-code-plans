@@ -13,11 +13,25 @@ export const QUESTION_DISMISSED_BY_MESSAGE =
 
 /** What the session's CLI shows a dialog for, as the composer sees it. */
 export type ComposerPendingGate =
-	| {kind: "question"; toolUseId: string; questions: PendingQuestionItem[]}
+	|
+	  {
+			kind: "question";
+			toolUseId: string;
+			questions: PendingQuestionItem[];
+	  }
 	/** A question the transcript shows but no hook reported, so the pane cannot be answered. */
-	| {kind: "held-question"}
-	| {kind: "permission"}
-	| {kind: "none"};
+	|
+	  {
+			kind: "held-question";
+	  }
+	|
+	  {
+			kind: "permission";
+	  }
+	|
+	  {
+			kind: "none";
+	  };
 
 export function composerPendingGate({
 	hookQuestion,
@@ -31,31 +45,61 @@ export function composerPendingGate({
 	awaitingPermission: boolean;
 	/** This page has sent the pending question's answer: upstream consumes the request at submit. */
 	questionSent?: boolean;
-}): ComposerPendingGate {
-	if (!questionSent && hookQuestion !== null && hookQuestion !== undefined) {
-		return {kind: "question", toolUseId: hookQuestion.toolUseId, questions: hookQuestion.questions};
+}): ComposerPendingGate
+{
+	if (!questionSent && hookQuestion !== null && hookQuestion !== undefined)
+	{
+		return {
+			kind: "question",
+			toolUseId: hookQuestion.toolUseId,
+			questions: hookQuestion.questions,
+		};
 	}
-	if (!questionSent && transcriptQuestion) return {kind: "held-question"};
-	if (awaitingPermission) return {kind: "permission"};
-	return {kind: "none"};
+	if (!questionSent && transcriptQuestion)
+		return {
+			kind: "held-question",
+		};
+	if (awaitingPermission)
+		return {
+			kind: "permission",
+		};
+	return {
+		kind: "none",
+	};
 }
 
 export type ComposerSend =
-	| {kind: "send"}
+	|
+	  {
+			kind: "send";
+	  }
 	/** Upstream's Enter while working ("next" priority): typed into the pane mid-turn for Claude's next step. */
-	| {kind: "steer"}
+	|
+	  {
+			kind: "steer";
+	  }
 	/** Upstream's "later" priority: held in the browser queue until the turn ends. */
-	| {kind: "queue"}
-	| {kind: "dismiss-question-then-queue"; toolUseId: string; answers: QuestionAnswer[]};
+	|
+	  {
+			kind: "queue";
+	  }
+	|
+	  {
+			kind: "dismiss-question-then-queue";
+			toolUseId: string;
+			answers: QuestionAnswer[];
+	  };
 
-export interface ComposerSendPlan {
+export interface ComposerSendPlan
+{
 	disabled: false;
 	placeholder: string;
 	send: ComposerSend;
 }
 
 /** Queued prompts wait while a dialog is up, as upstream blocks parked auto-send under a question. */
-export function gateHoldsQueue(gate: ComposerPendingGate): boolean {
+export function gateHoldsQueue(gate: ComposerPendingGate): boolean
+{
 	return gate.kind !== "none";
 }
 
@@ -69,24 +113,64 @@ export function gateHoldsQueue(gate: ComposerPendingGate): boolean {
  */
 export function composerSendPlan(
 	gate: ComposerPendingGate,
-	{busy, queued}: {busy: boolean; queued: number},
-): ComposerSendPlan {
-	const plan = {disabled: false, placeholder: SESSION_COMPOSER_PLACEHOLDER} as const;
-	switch (gate.kind) {
+	{
+		busy,
+		queued,
+	}:
+	{
+		busy: boolean;
+		queued: number;
+	},
+): ComposerSendPlan
+{
+	const plan =
+	{
+		disabled: false,
+		placeholder: SESSION_COMPOSER_PLACEHOLDER,
+	} as const;
+	switch (gate.kind)
+	{
 		case "question":
 			return {
 				...plan,
-				send: {
+				send:
+				{
 					kind: "dismiss-question-then-queue",
 					toolUseId: gate.toolUseId,
-					answers: gate.questions.map(() => ({selected: [], other: QUESTION_DISMISSED_BY_MESSAGE})),
+					answers: gate.questions.map(() => (
+					{
+						selected: [],
+						other: QUESTION_DISMISSED_BY_MESSAGE,
+					})),
 				},
 			};
 		case "held-question":
 		case "permission":
-			return {...plan, send: {kind: "queue"}};
+			return {
+				...plan,
+				send:
+				{
+					kind: "queue",
+				},
+			};
 		case "none":
-			return {...plan, send: busy ? {kind: "steer"} : queued > 0 ? {kind: "queue"} : {kind: "send"}};
+			return {
+				...plan,
+				send: busy
+					?
+						{
+							kind: "steer",
+						}
+					: queued > 0
+						?
+							{
+								kind: "queue",
+							}
+						:
+							{
+								kind: "send",
+							},
+			};
 		default:
 			return assertNever(gate);
 	}

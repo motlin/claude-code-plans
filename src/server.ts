@@ -5,7 +5,8 @@ import {join} from "node:path";
 import {withHeadBodyCancel} from "./lib/head-request";
 import {withServerTiming} from "./lib/perf/server-timing";
 import {formatStall, startStallMonitor, trackActivity, withActivityTracking} from "./lib/perf/event-loop-stalls";
-import {
+import
+{
 	closeWatcher,
 	createWatcher,
 	rebroadcastProjectSessions,
@@ -47,7 +48,8 @@ const JOBS_DIR = join(homedir(), ".claude", "jobs");
 const STATUSLINE_DIR = join(getCacheDir(), "statusline");
 const SETTINGS_FILE = join(homedir(), ".claude", "settings.json");
 
-async function readClaudeSettings(): Promise<unknown> {
+async function readClaudeSettings(): Promise<unknown>
+{
 	return JSON.parse(await readFile(SETTINGS_FILE, "utf-8")) as unknown;
 }
 
@@ -58,21 +60,26 @@ let stopSessionTitleWorker: (() => void) | null = null;
 // In dev, log every event-loop stall longer than this with the requests and scan steps that ran during it.
 const EVENT_LOOP_STALL_LOG_MS = 500;
 let stopStallMonitor: (() => void) | null = import.meta.env.DEV
-	? startStallMonitor({
-			thresholdMs: EVENT_LOOP_STALL_LOG_MS,
-			onStall: (stall) => {
-				console.warn(formatStall(stall));
+	? startStallMonitor(
+			{
+				thresholdMs: EVENT_LOOP_STALL_LOG_MS,
+				onStall: (stall) =>
+				{
+					console.warn(formatStall(stall));
+				},
 			},
-		})
+		)
 	: null;
 
-void (async () => {
+void (async () =>
+{
 	// Release every long-lived handle startup creates so the process can exit
 	// once the HTTP server closes (server/plugins/shutdown.ts runs this), and
 	// so a restarted dev server's scan never races this instance's. A shutdown
 	// can begin at any point below (a stop right after the first request), so
 	// startup checks `stopped()` after every await and starts nothing more.
-	const stopping = await takeOverServerShutdown(async () => {
+	const stopping = await takeOverServerShutdown(async () =>
+	{
 		stopSweep();
 		stopAutoArchive();
 		stopTurnVerdictWorker?.();
@@ -93,9 +100,12 @@ void (async () => {
 	const stopped = (): boolean => stopping.aborted;
 	if (stopped()) return;
 
-	try {
+	try
+	{
 		await trackActivity("startup open database", async () => initDb());
-	} catch (err) {
+	}
+	catch (err)
+	{
 		console.error("Failed to initialize database:", err);
 		return;
 	}
@@ -103,11 +113,14 @@ void (async () => {
 
 	// Live status from the CLI's ~/.claude/sessions registry, re-broadcast as session:updated rows.
 	// Started before the slow scans: summaries read it directly, so rows show live state at once.
-	startSessionRegistryMonitor({
-		onChange: (sessionIds) => {
-			rebroadcastSessionsById(sessionIds);
+	startSessionRegistryMonitor(
+		{
+			onChange: (sessionIds) =>
+			{
+				rebroadcastSessionsById(sessionIds);
+			},
 		},
-	});
+	);
 
 	// Questions and plans sessions proposed before this server started still dock.
 	persistPendingQuestionsTo(join(getCacheDir(), "pending-questions.json"));
@@ -115,17 +128,25 @@ void (async () => {
 	// Titles pushed to claude.ai/code before a restart still title their bridged sessions.
 	persistBridgePushedTitlesTo(join(getCacheDir(), "bridge-pushed-titles.json"));
 
-	try {
+	try
+	{
 		await trackActivity("startup pending-approvals scan", async () =>
 			initPendingApprovalsCache(getDb().index, getShutdownSignal()),
 		);
-	} catch (err) {
+	}
+	catch (err)
+	{
 		console.error("Failed to initialize pending approvals cache:", err);
 	}
 	if (stopped()) return;
 
 	// The mod creates its directory on its first write; make it now so the watcher can root there.
-	await mkdir(CONTEXT_MIRROR_DIR, {recursive: true}).catch(() => {});
+	await mkdir(
+		CONTEXT_MIRROR_DIR,
+		{
+			recursive: true,
+		},
+	).catch(() => {});
 	if (stopped()) return;
 
 	let watcher: RecursiveWatcher;
@@ -134,7 +155,8 @@ void (async () => {
 	);
 	if (stopped()) return;
 	const ignoredDirNames = resolveIgnoredDirNames();
-	try {
+	try
+	{
 		watcher = await trackActivity("startup watcher", async () =>
 			createWatcher(
 				[
@@ -157,12 +179,15 @@ void (async () => {
 				CONTEXT_MIRROR_DIR,
 			),
 		);
-	} catch (err) {
+	}
+	catch (err)
+	{
 		console.error("Failed to create watcher:", err);
 		return;
 	}
 	// The shutdown hook closed whatever watcher existed then, which may predate this one.
-	if (stopped()) {
+	if (stopped())
+	{
 		await closeWatcher();
 		return;
 	}
@@ -170,9 +195,12 @@ void (async () => {
 	await trackActivity("startup watcher ready", async () => watcher.whenReady());
 	if (stopped()) return;
 
-	try {
+	try
+	{
 		await trackActivity("startup initial scan", async () => runInitialScan(fileContentRoots, ignoredDirNames));
-	} catch (err) {
+	}
+	catch (err)
+	{
 		console.error("Initial scan failed:", err);
 	}
 	// Everything below starts synchronously, so a shutdown hook that runs later stops it.
@@ -180,48 +208,60 @@ void (async () => {
 
 	startSweep();
 	startNotificationsSweep();
-	startLiveSubagentSweep((node) => {
-		broadcastTyped(DOMAIN_EVENTS.SUBAGENT_STOPPED, {
-			sessionId: node.sessionId,
-			agentType: node.agentType,
-			agentId: node.agentId,
-			endedAt: defined(node.endedAt, "a stopped subagent has an end time"),
-		} satisfies SubagentStoppedPayload);
+	startLiveSubagentSweep((node) =>
+	{
+		broadcastTyped(
+			DOMAIN_EVENTS.SUBAGENT_STOPPED,
+			{
+				sessionId: node.sessionId,
+				agentType: node.agentType,
+				agentId: node.agentId,
+				endedAt: defined(node.endedAt, "a stopped subagent has an end time"),
+			} satisfies SubagentStoppedPayload,
+		);
 	});
 	stopHerdrEventBridge = startTerminalHostEvents();
 	// Archive inactive sessions: a no-op until the setting leaves its default of Never.
 	startAutoArchive();
 	// Judge unread sessions' finished turns; one that asks for input moves to Needs input.
-	stopTurnVerdictWorker = startTurnVerdictWorker({
-		summariesDb: getDb().summaries,
-		projectsDir: PROJECTS_DIR,
-		onVerdict: (sessionId) => {
-			rebroadcastSessionsById(new Set([sessionId]));
+	stopTurnVerdictWorker = startTurnVerdictWorker(
+		{
+			summariesDb: getDb().summaries,
+			projectsDir: PROJECTS_DIR,
+			onVerdict: (sessionId) =>
+			{
+				rebroadcastSessionsById(new Set([sessionId]));
+			},
 		},
-	});
+	);
 	// Title bridged sessions named only by their pane name from their conversation, as claude.ai/code does.
-	stopSessionTitleWorker = startSessionTitleWorker({
-		summariesDb: getDb().summaries,
-		projectsDir: PROJECTS_DIR,
-		onTitle: (sessionId) => {
-			rebroadcastSessionsById(new Set([sessionId]));
+	stopSessionTitleWorker = startSessionTitleWorker(
+		{
+			summariesDb: getDb().summaries,
+			projectsDir: PROJECTS_DIR,
+			onTitle: (sessionId) =>
+			{
+				rebroadcastSessionsById(new Set([sessionId]));
+			},
 		},
-	});
+	);
 	initPrStatusService(rebroadcastProjectSessions);
 })();
 
-export default createServerEntry({
-	fetch: withHeadBodyCancel(
-		withServerTiming(
-			withActivityTracking(
-				withShellChinLabels(
-					(request): Response | Promise<Response> => handler.fetch(request),
-					readClaudeSettings,
+export default createServerEntry(
+	{
+		fetch: withHeadBodyCancel(
+			withServerTiming(
+				withActivityTracking(
+					withShellChinLabels(
+						(request): Response | Promise<Response> => handler.fetch(request),
+						readClaudeSettings,
+					),
 				),
 			),
 		),
-	),
-});
+	},
+);
 
 // Last statement of the SSR entry: tells the dev server's request gate (holdNitroRequestsUntilReady in
 // vite.config.ts) that this environment has loaded. A no-op in production.

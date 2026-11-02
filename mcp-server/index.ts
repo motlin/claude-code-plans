@@ -6,7 +6,8 @@ import {resolve} from "node:path";
 import {z} from "zod";
 import {getPendingApprovals, initPendingApprovalsCache} from "../src/lib/db/pending-approvals-cache";
 import {openCorpusDatabase, type CorpusDatabase} from "./database";
-import {
+import
+{
 	getPrompt,
 	getSession,
 	listProjects,
@@ -17,7 +18,8 @@ import {
 	type ToolContext,
 } from "./tools";
 
-const READ_ONLY_ANNOTATIONS = {
+const READ_ONLY_ANNOTATIONS =
+{
 	readOnlyHint: true,
 	destructiveHint: false,
 	idempotentHint: true,
@@ -27,24 +29,42 @@ const READ_ONLY_ANNOTATIONS = {
 // This process inherits the invoking user's filesystem access and needs no token.
 // Future write tools must only stage a status-bearing proposal for human approval.
 
-function toolResult(value: Record<string, unknown>) {
+function toolResult(value: Record<string, unknown>)
+{
 	return {
-		content: [{type: "text" as const, text: JSON.stringify(value)}],
+		content: [
+			{
+				type: "text" as const,
+				text: JSON.stringify(value),
+			},
+		],
 		structuredContent: value,
 	};
 }
 
-export function createCorpusMcpServer(context: ToolContext): McpServer {
-	const server = new McpServer({name: "claude-code-plans", version: "1.0.0"});
+export function createCorpusMcpServer(context: ToolContext): McpServer
+{
+	const server = new McpServer(
+		{
+			name: "claude-code-plans",
+			version: "1.0.0",
+		},
+	);
 
 	server.registerTool(
 		"list_sessions",
 		{
 			description: "List recent indexed Claude sessions without changing viewed or activity state.",
-			inputSchema: {
+			inputSchema:
+			{
 				limit: z.number().int().min(1).max(50).default(20),
 				cursor: z
-					.object({updated: z.iso.datetime(), id: z.string().min(1)})
+					.object(
+						{
+							updated: z.iso.datetime(),
+							id: z.string().min(1),
+						},
+					)
 					.optional()
 					.describe("Cursor returned by a prior call."),
 			},
@@ -53,10 +73,18 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 		async (input) =>
 			Promise.resolve(
 				toolResult(
-					listSessions(context, {
-						limit: input.limit,
-						...(input.cursor === undefined ? {} : {cursor: input.cursor}),
-					}),
+					listSessions(
+						context,
+						{
+							limit: input.limit,
+							...(input.cursor === undefined
+								? {}
+								:
+									{
+										cursor: input.cursor,
+									}),
+						},
+					),
 				),
 			),
 	);
@@ -65,7 +93,8 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 		"read_conversation",
 		{
 			description: "Read an explicit range of structured JSONL transcript records.",
-			inputSchema: {
+			inputSchema:
+			{
 				id: z.string().min(1),
 				offset: z.number().int().min(0),
 				limit: z.number().int().min(1).max(100),
@@ -79,7 +108,8 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 		"search",
 		{
 			description: "Search indexed session metadata and structured message content.",
-			inputSchema: {
+			inputSchema:
+			{
 				query: z.string().trim().min(1),
 				limit: z.number().int().min(1).max(25).default(10),
 			},
@@ -92,7 +122,8 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 		"get_prompt",
 		{
 			description: "List transcript-derived pending prompts without resolving or viewing them.",
-			inputSchema: {
+			inputSchema:
+			{
 				sessionId: z.string().min(1).optional(),
 				limit: z.number().int().min(1).max(50).default(20),
 			},
@@ -101,10 +132,18 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 		async (input) =>
 			Promise.resolve(
 				toolResult(
-					getPrompt(context, {
-						limit: input.limit,
-						...(input.sessionId === undefined ? {} : {sessionId: input.sessionId}),
-					}),
+					getPrompt(
+						context,
+						{
+							limit: input.limit,
+							...(input.sessionId === undefined
+								? {}
+								:
+									{
+										sessionId: input.sessionId,
+									}),
+						},
+					),
 				),
 			),
 	);
@@ -113,7 +152,10 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 		"get_session",
 		{
 			description: "Get indexed metadata for one session.",
-			inputSchema: {id: z.string().min(1)},
+			inputSchema:
+			{
+				id: z.string().min(1),
+			},
 			annotations: READ_ONLY_ANNOTATIONS,
 		},
 		async (input) => Promise.resolve(toolResult(getSession(context, input))),
@@ -123,7 +165,8 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 		"list_subagents",
 		{
 			description: "List indexed subagents for one session.",
-			inputSchema: {
+			inputSchema:
+			{
 				id: z.string().min(1),
 				limit: z.number().int().min(1).max(50).default(20),
 			},
@@ -136,7 +179,10 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 		"list_projects",
 		{
 			description: "List indexed projects and their session counts.",
-			inputSchema: {limit: z.number().int().min(1).max(50).default(20)},
+			inputSchema:
+			{
+				limit: z.number().int().min(1).max(50).default(20),
+			},
 			annotations: READ_ONLY_ANNOTATIONS,
 		},
 		async (input) => Promise.resolve(toolResult(listProjects(context, input))),
@@ -147,15 +193,18 @@ export function createCorpusMcpServer(context: ToolContext): McpServer {
 
 export const MCP_PROCESS_TITLE = "claude-code-browser-mcp";
 
-export function setMcpProcessTitle(): void {
+export function setMcpProcessTitle(): void
+{
 	process.title = MCP_PROCESS_TITLE;
 }
 
-async function main(): Promise<void> {
+async function main(): Promise<void>
+{
 	setMcpProcessTitle();
 	const database = openCorpusDatabase();
 	await initPendingApprovalsCache(database.index);
-	const context: ToolContext = {
+	const context: ToolContext =
+	{
 		db: database.index,
 		now: Date.now,
 		pendingApprovals: getPendingApprovals,
@@ -166,8 +215,10 @@ async function main(): Promise<void> {
 	installShutdownHandlers(server, database);
 }
 
-function installShutdownHandlers(server: McpServer, database: CorpusDatabase): void {
-	const shutdown = async () => {
+function installShutdownHandlers(server: McpServer, database: CorpusDatabase): void
+{
+	const shutdown = async () =>
+	{
 		await server.close();
 		database.close();
 	};
@@ -176,8 +227,10 @@ function installShutdownHandlers(server: McpServer, database: CorpusDatabase): v
 }
 
 const invokedPath = process.argv[1];
-if (invokedPath && fileURLToPath(import.meta.url) === resolve(invokedPath)) {
-	main().catch((error: unknown) => {
+if (invokedPath && fileURLToPath(import.meta.url) === resolve(invokedPath))
+{
+	main().catch((error: unknown) =>
+	{
 		console.error(error);
 		process.exitCode = 1;
 	});

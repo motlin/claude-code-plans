@@ -1,6 +1,7 @@
 import {useQuery} from "@tanstack/react-query";
 import {Ellipsis} from "lucide-react";
-import {
+import
+{
 	createContext,
 	Fragment,
 	type ReactNode,
@@ -17,7 +18,8 @@ import {sessionHasLiveTerminal} from "../lib/terminal-host-capabilities";
 import {sessionOpenInQueryOptions, type SessionListItem} from "../lib/api/sessions";
 import {useArchiveSessions} from "../hooks/use-session-archive";
 import {type SessionRename, useSessionRename} from "../hooks/use-session-rename";
-import {
+import
+{
 	getBulkSessionMenuItems,
 	getSessionMenuItems,
 	type SessionMenuCapability,
@@ -39,7 +41,8 @@ import {NewGroupDialog} from "./new-group-dialog";
 import {bulkSelectionFor, type SidebarSelectionApi, useSidebarSelection} from "./sidebar/selection-context";
 import {useHasUnseenWork} from "./use-has-unseen-work";
 import {useLiveApprovalIds} from "../lib/live-approval-sessions";
-import {
+import
+{
 	ContextMenu,
 	ContextMenuTrigger,
 	Menu,
@@ -76,7 +79,8 @@ export const SESSION_MENU_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new
 	"archive",
 ]);
 
-interface RowRename {
+interface RowRename
+{
 	rename: SessionRename;
 	/** Opens the inline input once the menu has finished closing. */
 	requestRename: () => void;
@@ -86,7 +90,8 @@ interface RowRename {
 
 const RowRenameContext = createContext<RowRename | null>(null);
 
-function useRowRename(): RowRename {
+function useRowRename(): RowRename
+{
 	const row = useContext(RowRenameContext);
 	if (row === null) throw new Error("Session row titles must render inside SessionActionsMenu");
 	return row;
@@ -96,9 +101,11 @@ function useRowRename(): RowRename {
  * The row's title text, which the menu's Rename item swaps for an inline
  * input. `render` styles the idle title, e.g. with an overflow fade.
  */
-export function SessionRowTitle({render}: {render?: (title: string) => ReactNode}): ReactNode {
+export function SessionRowTitle({render}: {render?: (title: string) => ReactNode}): ReactNode
+{
 	const {rename} = useRowRename();
-	if (rename.editing) {
+	if (rename.editing)
+	{
 		return (
 			<InlineRenameInput
 				value={rename.initialValue}
@@ -111,7 +118,8 @@ export function SessionRowTitle({render}: {render?: (title: string) => ReactNode
 	return render === undefined ? rename.title : render(rename.title);
 }
 
-export interface TranscriptViewActions {
+export interface TranscriptViewActions
+{
 	mode: TranscriptMode;
 	defaultMode: TranscriptMode;
 	setMode: (mode: TranscriptMode) => void;
@@ -119,13 +127,15 @@ export interface TranscriptViewActions {
 }
 
 /** The sidebar Pinned section's display order, for a row rendered inside it. */
-interface PinnedRowContext {
+interface PinnedRowContext
+{
 	pinnedIds: readonly string[];
 	/** Called after a Move up / Move down so the row takes focus once the menu closes. */
 	onMoved: () => void;
 }
 
-function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | undefined) {
+function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | undefined)
+{
 	const unseen = useHasUnseenWork(session.id);
 	const {data: herdr} = useQuery(herdrPanesQueryOptions);
 	const {data: openIn} = useQuery(sessionOpenInQueryOptions(session.id));
@@ -137,73 +147,109 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 	const pinIndex = pinnedRow?.pinnedIds.indexOf(session.id) ?? -1;
 	const liveApproval = useLiveApprovalIds().has(session.id);
 
-	const menuSession: SessionMenuSession = {
+	const menuSession: SessionMenuSession =
+	{
 		title: session.title,
 		pinned: pins.isPinned(session.id),
 		readState: sessionMenuReadState(session.bucket, unseen),
 		archived: session.archived,
 		prUrl: session.pr?.url ?? null,
 		hasLiveTerminal: sessionHasLiveTerminal(herdr?.panes, session.id),
-		forkDisabledReason: forkDisabledReason({working: session.bucket === "working", cwd}),
+		forkDisabledReason: forkDisabledReason(
+			{
+				working: session.bucket === "working",
+				cwd,
+			},
+		),
 		cwd,
 		bridgeSessionId,
-		customGroup: {groups: customGroups.groups, current: customGroups.groupOf(session.id)},
+		customGroup:
+		{
+			groups: customGroups.groups,
+			current: customGroups.groupOf(session.id),
+		},
 		liveApproval,
 	};
-	if (pinnedRow !== undefined && pinIndex !== -1) {
-		menuSession.pinPosition = {index: pinIndex, count: pinnedRow.pinnedIds.length};
+	if (pinnedRow !== undefined && pinIndex !== -1)
+	{
+		menuSession.pinPosition =
+		{
+			index: pinIndex,
+			count: pinnedRow.pinnedIds.length,
+		};
 	}
 
-	const run = useSessionMenuRunner({
-		sessionId: session.id,
-		mtime: session.mtime,
-		cwd,
-		bridgeSessionId,
-		prUrl: session.pr?.url ?? null,
-		requestRename,
-		requestNewGroup,
-		setPinned: (pinned) => {
-			if (!pinned) {
-				unpin(session.id);
-				return;
-			}
-			pin(session.id);
-			maybeShowDragPinHint();
+	const run = useSessionMenuRunner(
+		{
+			sessionId: session.id,
+			mtime: session.mtime,
+			cwd,
+			bridgeSessionId,
+			prUrl: session.pr?.url ?? null,
+			requestRename,
+			requestNewGroup,
+			setPinned: (pinned) =>
+			{
+				if (!pinned)
+				{
+					unpin(session.id);
+					return;
+				}
+				pin(session.id);
+				maybeShowDragPinHint();
+			},
+			movePinned: (delta) =>
+			{
+				if (pinnedRow === undefined || pinIndex === -1) return;
+				writePinState(placePin(readPinState(), pinnedRow.pinnedIds, session.id, pinIndex + delta));
+				pinnedRow.onMoved();
+			},
 		},
-		movePinned: (delta) => {
-			if (pinnedRow === undefined || pinIndex === -1) return;
-			writePinState(placePin(readPinState(), pinnedRow.pinnedIds, session.id, pinIndex + delta));
-			pinnedRow.onMoved();
-		},
-	});
+	);
 
 	return {
-		entries: getSessionMenuItems(menuSession, SESSION_MENU_CAPABILITIES, {surface: "row"}),
+		entries: getSessionMenuItems(
+			menuSession,
+			SESSION_MENU_CAPABILITIES,
+			{
+				surface: "row",
+			},
+		),
 		run,
 	};
 }
 
 /** Upstream's test hooks on the Move to group trigger and its New group… item. */
-const MENU_TEST_IDS: Partial<Record<SessionMenuItemId, string>> = {
+const MENU_TEST_IDS: Partial<Record<SessionMenuItemId, string>> =
+{
 	"move-to-group": "move-to-group-trigger",
 	"new-group": "new-custom-group",
 };
 
-function testIdProps(id: SessionMenuItemId) {
+function testIdProps(id: SessionMenuItemId)
+{
 	const testId = MENU_TEST_IDS[id];
-	return testId === undefined ? {} : {"data-testid": testId};
+	return testId === undefined
+		? {}
+		:
+			{
+				"data-testid": testId,
+			};
 }
 
 /** Radio value: a Move to group entry's group, a transcript mode, or the Ungrouped item's id. */
-function radioValue(entry: SessionMenuItem): string {
+function radioValue(entry: SessionMenuItem): string
+{
 	return entry.groupId ?? entry.transcriptMode ?? entry.id;
 }
 
-export function MenuEntries({entries, run}: {entries: SessionMenuEntry[]; run: SessionMenuRun}) {
+export function MenuEntries({entries, run}: {entries: SessionMenuEntry[]; run: SessionMenuRun})
+{
 	const radios = entries.filter(
 		(entry): entry is SessionMenuItem => entry.kind === "item" && entry.checked !== undefined,
 	);
-	if (radios.length > 0) {
+	if (radios.length > 0)
+	{
 		const current = radios.find((entry) => entry.checked);
 		return (
 			<MenuRadioGroup value={current === undefined ? null : radioValue(current)}>
@@ -222,19 +268,24 @@ export function MenuEntries({entries, run}: {entries: SessionMenuEntry[]; run: S
 }
 
 /** The runs of entries between separators, with empty runs dropped. */
-function splitSections(entries: SessionMenuEntry[]): SessionMenuEntry[][] {
+function splitSections(entries: SessionMenuEntry[]): SessionMenuEntry[][]
+{
 	const sections: SessionMenuEntry[][] = [[]];
-	for (const entry of entries) {
+	for (const entry of entries)
+	{
 		if (entry.kind === "separator") sections.push([]);
 		else sections.at(-1)?.push(entry);
 	}
 	return sections.filter((section) => section.length > 0);
 }
 
-function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: SessionMenuRun}) {
-	return entries.map((entry, index) => {
+function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: SessionMenuRun})
+{
+	return entries.map((entry, index) =>
+	{
 		if (entry.kind === "separator") return <MenuSeparator key={`separator-${index}`} />;
-		if (entry.submenu !== undefined) {
+		if (entry.submenu !== undefined)
+		{
 			return (
 				<MenuSub key={entry.id}>
 					<MenuSubTrigger {...testIdProps(entry.id)}>{entry.label}</MenuSubTrigger>
@@ -244,14 +295,21 @@ function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: Sessio
 				</MenuSub>
 			);
 		}
-		if (entry.checked !== undefined) {
+		if (entry.checked !== undefined)
+		{
 			return (
 				<MenuRadioItem
 					key={radioValue(entry)}
 					value={radioValue(entry)}
 					closeOnClick
-					{...(entry.accelerator === undefined ? {} : {accelerator: entry.accelerator})}
-					onClick={() => {
+					{...(entry.accelerator === undefined
+						? {}
+						:
+							{
+								accelerator: entry.accelerator,
+							})}
+					onClick={() =>
+					{
 						run(entry.id, entry.groupId ?? entry.transcriptMode);
 					}}
 				>
@@ -263,10 +321,26 @@ function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: Sessio
 			<MenuItem
 				key={entry.id}
 				{...testIdProps(entry.id)}
-				{...(entry.accelerator === undefined ? {} : {accelerator: entry.accelerator})}
-				{...(entry.disabled ? {disabled: true} : {})}
-				{...(entry.disabledReason === undefined ? {} : {disabledReason: entry.disabledReason})}
-				onSelect={() => {
+				{...(entry.accelerator === undefined
+					? {}
+					:
+						{
+							accelerator: entry.accelerator,
+						})}
+				{...(entry.disabled
+					?
+						{
+							disabled: true,
+						}
+					: {})}
+				{...(entry.disabledReason === undefined
+					? {}
+					:
+						{
+							disabledReason: entry.disabledReason,
+						})}
+				onSelect={() =>
+				{
 					run(entry.id);
 				}}
 			>
@@ -277,7 +351,8 @@ function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: Sessio
 }
 
 /** Mounted only while a menu is open, so closed rows never query or subscribe. */
-function SessionMenuBody({session, pinnedRow}: {session: SessionListItem; pinnedRow: PinnedRowContext | undefined}) {
+function SessionMenuBody({session, pinnedRow}: {session: SessionListItem; pinnedRow: PinnedRowContext | undefined})
+{
 	const {entries, run} = useSessionMenu(session, pinnedRow);
 	return <MenuEntries entries={entries} run={run} />;
 }
@@ -286,7 +361,8 @@ function SessionMenuBody({session, pinnedRow}: {session: SessionListItem; pinned
 type RequestBulkNewGroup = (ids: readonly string[]) => void;
 
 /** True while every one of `ids` is unread. */
-function useAllUnseen(ids: readonly string[]): boolean {
+function useAllUnseen(ids: readonly string[]): boolean
+{
 	const key = ids.join("\n");
 	const getSnapshot = useCallback(() => key.split("\n").every((id) => hasUnseenWork(id)), [key]);
 	return useSyncExternalStore(subscribeUnseenWork, getSnapshot, () => false);
@@ -304,28 +380,35 @@ function BulkMenuBody({
 	ids: readonly string[];
 	selection: SidebarSelectionApi;
 	requestNewGroup: RequestBulkNewGroup;
-}) {
+})
+{
 	const allUnread = useAllUnseen(ids);
 	const customGroups = useSessionGroups();
 	const archiveSessions = useArchiveSessions();
-	const sessions = ids.flatMap((id) => {
+	const sessions = ids.flatMap((id) =>
+	{
 		const session = selection.sessions.get(id);
 		return session === undefined ? [] : [session];
 	});
 	const groupIds = ids.map((id) => customGroups.groupOf(id));
 	const [firstGroup = null] = groupIds;
-	const entries = getBulkSessionMenuItems({
-		count: ids.length,
-		allUnread,
-		anyUnarchived: sessions.some((session) => !session.archived),
-		customGroup: {
-			groups: customGroups.groups,
-			current: groupIds.every((id) => id === firstGroup) ? firstGroup : null,
-			anyGrouped: groupIds.some((id) => id !== null),
+	const entries = getBulkSessionMenuItems(
+		{
+			count: ids.length,
+			allUnread,
+			anyUnarchived: sessions.some((session) => !session.archived),
+			customGroup:
+			{
+				groups: customGroups.groups,
+				current: groupIds.every((id) => id === firstGroup) ? firstGroup : null,
+				anyGrouped: groupIds.some((id) => id !== null),
+			},
 		},
-	});
-	const run: SessionMenuRun = (id, value) => {
-		switch (id) {
+	);
+	const run: SessionMenuRun = (id, value) =>
+	{
+		switch (id)
+		{
 			case "mark-read":
 				for (const sessionId of ids) markSeen(sessionId);
 				break;
@@ -366,10 +449,12 @@ function RowMenuBody({
 	session: SessionListItem;
 	pinnedRow: PinnedRowContext | undefined;
 	requestBulkNewGroup: RequestBulkNewGroup;
-}) {
+})
+{
 	const selection = useSidebarSelection();
 	const [bulkIds] = useState(() => bulkSelectionFor(selection, session.id));
-	if (bulkIds !== null && selection !== null) {
+	if (bulkIds !== null && selection !== null)
+	{
 		return <BulkMenuBody ids={bulkIds} selection={selection} requestNewGroup={requestBulkNewGroup} />;
 	}
 	return <SessionMenuBody session={session} pinnedRow={pinnedRow} />;
@@ -403,21 +488,25 @@ export function SessionActionsMenu({
 	described?: boolean;
 	children: ReactNode;
 	className?: string;
-}) {
+})
+{
 	const rename = useSessionRename(session.id, session.title, session.titleIsStandIn === true);
 	const renameAfterClose = useRenameAfterMenuClose(rename.startEditing);
 	const {requestRename} = renameAfterClose;
 	const [newGroupOpen, setNewGroupOpen] = useState(false);
-	const newGroupAfterClose = useRenameAfterMenuClose(() => {
+	const newGroupAfterClose = useRenameAfterMenuClose(() =>
+	{
 		setNewGroupOpen(true);
 	});
 	// The rows a bulk New group… moves, captured when the menu asked for the dialog.
 	const newGroupIds = useRef<readonly string[] | null>(null);
-	const requestBulkNewGroup: RequestBulkNewGroup = (ids) => {
+	const requestBulkNewGroup: RequestBulkNewGroup = (ids) =>
+	{
 		newGroupIds.current = ids;
 		newGroupAfterClose.requestRename();
 	};
-	const createGroupWithRow = (name: string) => {
+	const createGroupWithRow = (name: string) =>
+	{
 		const groupId = createGroup(name).id;
 		const ids = newGroupIds.current ?? [session.id];
 		newGroupIds.current = null;
@@ -429,7 +518,8 @@ export function SessionActionsMenu({
 	const [contextMenuOpen, setContextMenuOpen] = useState(false);
 	// After Move up / Move down the row itself takes focus, like upstream's movePinned.
 	const focusRowAfterClose = useRef(false);
-	const onOpenChangeComplete = (open: boolean) => {
+	const onOpenChangeComplete = (open: boolean) =>
+	{
 		renameAfterClose.onOpenChangeComplete(open);
 		newGroupAfterClose.onOpenChangeComplete(open);
 
@@ -442,18 +532,22 @@ export function SessionActionsMenu({
 	const pinnedRow: PinnedRowContext | undefined =
 		pinnedIds === undefined
 			? undefined
-			: {
+			:
+				{
 					pinnedIds,
-					onMoved: () => {
+					onMoved: () =>
+					{
 						focusRowAfterClose.current = true;
 					},
 				};
 	const requestNewGroup = newGroupAfterClose.requestRename;
 	const rowRename = useMemo(
-		() => ({
+		() => (
+		{
 			rename,
 			requestRename,
-			requestNewGroup: () => {
+			requestNewGroup: () =>
+			{
 				newGroupIds.current = null;
 				requestNewGroup();
 			},
@@ -483,7 +577,12 @@ export function SessionActionsMenu({
 					<MenuTrigger
 						aria-label={`More options for ${rename.title}`}
 						data-row-action=""
-						{...(kebabTabIndex === undefined ? {} : {tabIndex: kebabTabIndex})}
+						{...(kebabTabIndex === undefined
+							? {}
+							:
+								{
+									tabIndex: kebabTabIndex,
+								})}
 						className={KEBAB_CLASS}
 					>
 						<Ellipsis aria-hidden="true" className="size-4" />

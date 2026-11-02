@@ -8,24 +8,34 @@ import {PluginEnableMenuItem} from "../src/components/customize/plugin-row-actio
 import {SkillEnableSwitch} from "../src/components/customize/skill-enable-switch";
 import {ToastProvider} from "../src/components/toast";
 import {Menu, MenuContent, MenuTrigger} from "../src/components/ui/menu";
-import {
+import
+{
 	customizeSettingsTogglesQueryOptions,
 	type SettingsToggleState,
 	type SkillSummary,
 } from "../src/lib/api/customize";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-const STATE: SettingsToggleState = {
+const STATE: SettingsToggleState =
+{
 	mtimeMs: 1000,
-	skillOverrides: {legacy: "name-only"},
-	enabledPlugins: {"tools@market": true},
+	skillOverrides:
+	{
+		legacy: "name-only",
+	},
+	enabledPlugins:
+	{
+		"tools@market": true,
+	},
 };
 
-const DEPLOY: SkillSummary = {
+const DEPLOY: SkillSummary =
+{
 	id: "personal:deploy",
 	name: "deploy",
 	description: "Ship it",
@@ -36,10 +46,23 @@ const DEPLOY: SkillSummary = {
 	enabled: true,
 };
 
-function renderWithState(ui: ReactNode, state: SettingsToggleState = STATE) {
-	const queryClient = new QueryClient({
-		defaultOptions: {queries: {retry: false}, mutations: {retry: false}},
-	});
+function renderWithState(ui: ReactNode, state: SettingsToggleState = STATE)
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+				mutations:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	queryClient.setQueryData(customizeSettingsTogglesQueryOptions.queryKey, state);
 	render(
 		<QueryClientProvider client={queryClient}>
@@ -49,39 +72,66 @@ function renderWithState(ui: ReactNode, state: SettingsToggleState = STATE) {
 	return queryClient;
 }
 
-function postBodies(fetcher: ReturnType<typeof vi.fn<typeof fetch>>): unknown[] {
+function postBodies(fetcher: ReturnType<typeof vi.fn<typeof fetch>>): unknown[]
+{
 	return fetcher.mock.calls
 		.filter(([, init]) => init?.method === "POST")
-		.map(([url, init]) => ({url, body: JSON.parse(init?.body as string)}));
+		.map(([url, init]) => (
+		{
+			url,
+			body: JSON.parse(init?.body as string),
+		}));
 }
 
-describe("SkillEnableSwitch", () => {
-	it("turns a skill off optimistically, posts the guarded toggle and toasts", async () => {
+describe("SkillEnableSwitch", () =>
+{
+	it("turns a skill off optimistically, posts the guarded toggle and toasts", async () =>
+	{
 		let release: (() => void) | undefined;
 		let onDisk = STATE;
-		const fetcher = vi.fn<typeof fetch>(async (_input, init) => {
+		const fetcher = vi.fn<typeof fetch>(async (_input, init) =>
+		{
 			if (init?.method !== "POST") return Response.json(onDisk);
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve) =>
+			{
 				release = resolve;
 			});
-			onDisk = {...STATE, mtimeMs: 2000, skillOverrides: {legacy: "name-only", deploy: "off"}};
+			onDisk =
+			{
+				...STATE,
+				mtimeMs: 2000,
+				skillOverrides:
+				{
+					legacy: "name-only",
+					deploy: "off",
+				},
+			};
 			return Response.json(onDisk);
 		});
 		vi.stubGlobal("fetch", fetcher);
 		renderWithState(<SkillEnableSwitch skill={DEPLOY} />);
 
-		const toggle = screen.getByRole("switch", {name: "Enable skill"});
+		const toggle = screen.getByRole(
+			"switch",
+			{
+				name: "Enable skill",
+			},
+		);
 		expect(toggle.getAttribute("aria-checked")).toBe("true");
-		act(() => {
+		act(() =>
+		{
 			fireEvent.click(toggle);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(release).toBeDefined();
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(toggle.getAttribute("aria-checked")).toBe("false");
 		});
-		act(() => {
+		act(() =>
+		{
 			release?.();
 		});
 
@@ -89,24 +139,46 @@ describe("SkillEnableSwitch", () => {
 		expect(postBodies(fetcher)).toStrictEqual([
 			{
 				url: "/api/customize/settings-toggles",
-				body: {
+				body:
+				{
 					expectedMtimeMs: 1000,
-					toggle: {kind: "skill", name: "deploy", enabled: false},
+					toggle:
+					{
+						kind: "skill",
+						name: "deploy",
+						enabled: false,
+					},
 				},
 			},
 		]);
 		expect(toggle.getAttribute("aria-checked")).toBe("false");
 	});
 
-	it("rolls back and explains a conflict when settings.json changed on disk", async () => {
+	it("rolls back and explains a conflict when settings.json changed on disk", async () =>
+	{
 		const fetcher = vi.fn<typeof fetch>(async (_input, init) =>
-			Promise.resolve(init?.method === "POST" ? Response.json(STATE, {status: 409}) : Response.json(STATE)),
+			Promise.resolve(
+				init?.method === "POST"
+					? Response.json(
+							STATE,
+							{
+								status: 409,
+							},
+						)
+					: Response.json(STATE),
+			),
 		);
 		vi.stubGlobal("fetch", fetcher);
 		renderWithState(<SkillEnableSwitch skill={DEPLOY} />);
 
-		const toggle = screen.getByRole("switch", {name: "Enable skill"});
-		act(() => {
+		const toggle = screen.getByRole(
+			"switch",
+			{
+				name: "Enable skill",
+			},
+		);
+		act(() =>
+		{
 			fireEvent.click(toggle);
 		});
 
@@ -114,14 +186,16 @@ describe("SkillEnableSwitch", () => {
 		expect(toggle.getAttribute("aria-checked")).toBe("true");
 	});
 
-	it("is read-only for plugin skills, which follow their plugin", () => {
+	it("is read-only for plugin skills, which follow their plugin", () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(STATE))),
 		);
 		renderWithState(
 			<SkillEnableSwitch
-				skill={{
+				skill={
+				{
 					...DEPLOY,
 					id: "plugin:tools@market:format",
 					source: "plugin",
@@ -129,20 +203,43 @@ describe("SkillEnableSwitch", () => {
 				}}
 			/>,
 		);
-		const toggle = screen.getByRole("switch", {name: "Enable skill"});
-		expect({
-			checked: toggle.getAttribute("aria-checked"),
-			disabled: toggle.getAttribute("aria-disabled"),
-		}).toStrictEqual({checked: "true", disabled: "true"});
+		const toggle = screen.getByRole(
+			"switch",
+			{
+				name: "Enable skill",
+			},
+		);
+		expect(
+			{
+				checked: toggle.getAttribute("aria-checked"),
+				disabled: toggle.getAttribute("aria-disabled"),
+			},
+		).toStrictEqual(
+			{
+				checked: "true",
+				disabled: "true",
+			},
+		);
 	});
 });
 
-describe("PluginEnableMenuItem", () => {
-	it("disables an enabled plugin via enabledPlugins", async () => {
+describe("PluginEnableMenuItem", () =>
+{
+	it("disables an enabled plugin via enabledPlugins", async () =>
+	{
 		const fetcher = vi.fn<typeof fetch>(async (_input, init) =>
 			Promise.resolve(
 				init?.method === "POST"
-					? Response.json({...STATE, mtimeMs: 2000, enabledPlugins: {"tools@market": false}})
+					? Response.json(
+							{
+								...STATE,
+								mtimeMs: 2000,
+								enabledPlugins:
+								{
+									"tools@market": false,
+								},
+							},
+						)
 					: Response.json(STATE),
 			),
 		);
@@ -156,19 +253,40 @@ describe("PluginEnableMenuItem", () => {
 			</Menu>,
 		);
 
-		fireEvent.click(screen.getByRole("button", {name: "More actions for tools"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "More actions for tools",
+				},
+			),
+		);
 		const menu = await screen.findByRole("menu");
-		act(() => {
-			fireEvent.click(within(menu).getByRole("menuitem", {name: "Disable"}));
+		act(() =>
+		{
+			fireEvent.click(
+				within(menu).getByRole(
+					"menuitem",
+					{
+						name: "Disable",
+					},
+				),
+			);
 		});
 
 		expect(await screen.findByText("tools disabled")).toBeTruthy();
 		expect(postBodies(fetcher)).toStrictEqual([
 			{
 				url: "/api/customize/settings-toggles",
-				body: {
+				body:
+				{
 					expectedMtimeMs: 1000,
-					toggle: {kind: "plugin", id: "tools@market", enabled: false},
+					toggle:
+					{
+						kind: "plugin",
+						id: "tools@market",
+						enabled: false,
+					},
 				},
 			},
 		]);

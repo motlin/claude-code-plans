@@ -42,7 +42,8 @@ export const HOT_PATH_NODE_FLAGS = [
 ];
 
 /** Pure hot paths with one fixed synthetic input each, keyed by function to the shape name in their id. */
-export const HOT_PATH_FIXED_SHAPES = {
+export const HOT_PATH_FIXED_SHAPES =
+{
 	claudeEventsReducer: "replay-200",
 	paletteRanking: "500x5",
 } as const;
@@ -50,19 +51,23 @@ export type HotPathFixedFn = keyof typeof HOT_PATH_FIXED_SHAPES;
 
 export type HotPathFn = HotPathShapedFn | HotPathFixedFn;
 
-export function hotPathId(fn: HotPathFn, shape: string): string {
+export function hotPathId(fn: HotPathFn, shape: string): string
+{
 	return `hot.${fn}.${shape}.calls`;
 }
 
-export function sessionOpenPrefix(shape: string, endpoint: SessionOpenEndpoint): string {
+export function sessionOpenPrefix(shape: string, endpoint: SessionOpenEndpoint): string
+{
 	return `server.sessionOpen.${shape}.${endpoint}`;
 }
 
-export function sessionReopenPrefix(shape: string): string {
+export function sessionReopenPrefix(shape: string): string
+{
 	return `server.sessionReopen.${shape}.detail`;
 }
 
-export function liveAppendPrefix(shape: string, count: number): string {
+export function liveAppendPrefix(shape: string, count: number): string
+{
 	return `server.liveAppend.${shape}.${count}`;
 }
 
@@ -70,11 +75,13 @@ export function liveAppendPrefix(shape: string, count: number): string {
 export function metricIds<Metric extends string>(
 	prefix: string,
 	values: Record<Metric, number>,
-): Record<string, number> {
+): Record<string, number>
+{
 	return Object.fromEntries(Object.entries<number>(values).map(([metric, value]) => [`${prefix}.${metric}`, value]));
 }
 
-export function shapeMetricIds(shape: string): string[] {
+export function shapeMetricIds(shape: string): string[]
+{
 	return [
 		...SESSION_OPEN_ENDPOINTS.flatMap((endpoint) =>
 			SESSION_OPEN_METRICS.map((metric) => `${sessionOpenPrefix(shape, endpoint)}.${metric}`),

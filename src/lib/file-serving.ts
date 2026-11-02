@@ -9,31 +9,36 @@ import {fileTypeLabel} from "./file-preview";
 const BINARY_SAMPLE_SIZE_BYTES = 512;
 
 /** Why a readable file has no text preview, with what the viewer shows instead. */
-export interface PreviewUnavailable {
+export interface PreviewUnavailable
+{
 	kind: "binary" | "too-large";
 	size: number;
 	type: string;
 }
 
-export class FileServingError extends Error {
+export class FileServingError extends Error
+{
 	constructor(
 		message: string,
 		readonly status: number,
 		readonly preview?: PreviewUnavailable,
-	) {
+	)
+	{
 		super(message);
 		this.name = "FileServingError";
 	}
 }
 
-export interface ServedFile {
+export interface ServedFile
+{
 	content: string;
 	modifiedAtMilliseconds: number;
 	path: string;
 	sizeBytes: number;
 }
 
-function isContainedPath(path: string, root: string): boolean {
+function isContainedPath(path: string, root: string): boolean
+{
 	const relativePath = relative(root, path);
 	return (
 		relativePath === "" ||
@@ -41,7 +46,8 @@ function isContainedPath(path: string, root: string): boolean {
 	);
 }
 
-export interface ReadTextOptions {
+export interface ReadTextOptions
+{
 	/** Skip the binary sniff, for the viewer's "View as text anyway". */
 	forceText?: boolean;
 }
@@ -52,11 +58,13 @@ export async function readAllowedFile(
 	configPath?: string,
 	defaultRoots: readonly string[] = [],
 	options: ReadTextOptions = {},
-): Promise<ServedFile> {
+): Promise<ServedFile>
+{
 	return readResolvedTextFile(await resolveAllowedPath(requestedPath, configPath, defaultRoots), options);
 }
 
-export interface AllowedFileStat {
+export interface AllowedFileStat
+{
 	modifiedAtMilliseconds: number;
 	path: string;
 	sizeBytes: number;
@@ -67,7 +75,8 @@ export async function statAllowedFile(
 	requestedPath: string,
 	configPath?: string,
 	defaultRoots: readonly string[] = [],
-): Promise<AllowedFileStat> {
+): Promise<AllowedFileStat>
+{
 	const resolvedPath = await resolveAllowedPath(requestedPath, configPath, defaultRoots);
 	const fileStat = await statRegularFile(resolvedPath);
 	return {
@@ -85,15 +94,20 @@ export async function resolveAllowedEntry(
 	requestedPath: string,
 	configPath?: string,
 	defaultRoots: readonly string[] = [],
-): Promise<string> {
+): Promise<string>
+{
 	return resolveAllowedPath(requestedPath, configPath, defaultRoots);
 }
 
 /** Resolve every symlink in the longest existing prefix of `path`, keeping the missing rest as written. */
-async function realpathOfExistingPrefix(path: string): Promise<string> {
-	try {
+async function realpathOfExistingPrefix(path: string): Promise<string>
+{
+	try
+	{
 		return await realpath(path);
-	} catch {
+	}
+	catch
+	{
 		const parent = dirname(path);
 		return parent === path ? path : join(await realpathOfExistingPrefix(parent), basename(path));
 	}
@@ -109,16 +123,21 @@ export async function fileRefStatuses(
 	requestedPaths: readonly string[],
 	configPath?: string,
 	defaultRoots: readonly string[] = [],
-): Promise<FileRefStatus[]> {
+): Promise<FileRefStatus[]>
+{
 	const roots = await resolveConfiguredFileRoots(configPath, defaultRoots);
 	return Promise.all(
-		requestedPaths.map(async (requestedPath): Promise<FileRefStatus> => {
+		requestedPaths.map(async (requestedPath): Promise<FileRefStatus> =>
+		{
 			if (!isAbsolute(requestedPath)) return "outside";
 			const resolvedPath = await realpathOfExistingPrefix(resolve(requestedPath));
 			if (!roots.some((root) => isContainedPath(resolvedPath, root))) return "outside";
-			try {
+			try
+			{
 				return (await stat(resolvedPath)).isFile() ? "exists" : "missing";
-			} catch {
+			}
+			catch
+			{
 				return "missing";
 			}
 		}),
@@ -129,23 +148,30 @@ async function resolveAllowedPath(
 	requestedPath: string,
 	configPath: string | undefined,
 	defaultRoots: readonly string[],
-): Promise<string> {
+): Promise<string>
+{
 	return resolveUnderRoots(requestedPath, await resolveConfiguredFileRoots(configPath, defaultRoots));
 }
 
-async function resolveUnderRoots(requestedPath: string, roots: readonly string[]): Promise<string> {
-	if (!isAbsolute(requestedPath)) {
+async function resolveUnderRoots(requestedPath: string, roots: readonly string[]): Promise<string>
+{
+	if (!isAbsolute(requestedPath))
+	{
 		throw new FileServingError("An absolute file path is required", 400);
 	}
 
 	let resolvedPath: string;
-	try {
+	try
+	{
 		resolvedPath = await realpath(requestedPath);
-	} catch {
+	}
+	catch
+	{
 		throw new FileServingError("File not found", 404);
 	}
 
-	if (!roots.some((root) => isContainedPath(resolvedPath, root))) {
+	if (!roots.some((root) => isContainedPath(resolvedPath, root)))
+	{
 		throw new FileServingError("File path is not allowed", 403);
 	}
 	return resolvedPath;
@@ -156,72 +182,98 @@ async function resolveUnderRoots(requestedPath: string, roots: readonly string[]
  * paths and `..` segments are refused outright, and the fully resolved path
  * (after symlinks) must still sit inside the resolved root.
  */
-export async function readFileUnderRoot(root: string, relativePath: string): Promise<ServedFile> {
+export async function readFileUnderRoot(root: string, relativePath: string): Promise<ServedFile>
+{
 	const segments = relativePath.split(/[/\\]/);
 	if (
 		relativePath === "" ||
 		isAbsolute(relativePath) ||
 		relativePath.includes("\0") ||
 		segments.some((segment) => segment === "..")
-	) {
+	)
+	{
 		throw new FileServingError("A relative path inside the root is required", 400);
 	}
 
 	let resolvedRoot: string;
 	let resolvedPath: string;
-	try {
+	try
+	{
 		resolvedRoot = await realpath(root);
 		resolvedPath = await realpath(join(resolvedRoot, relativePath));
-	} catch {
+	}
+	catch
+	{
 		throw new FileServingError("File not found", 404);
 	}
-	if (!isContainedPath(resolvedPath, resolvedRoot)) {
+	if (!isContainedPath(resolvedPath, resolvedRoot))
+	{
 		throw new FileServingError("File path is not allowed", 403);
 	}
 
 	return readResolvedTextFile(resolvedPath);
 }
 
-async function statRegularFile(resolvedPath: string): Promise<Stats> {
+async function statRegularFile(resolvedPath: string): Promise<Stats>
+{
 	let fileStat: Stats;
-	try {
+	try
+	{
 		fileStat = await stat(resolvedPath);
-	} catch {
+	}
+	catch
+	{
 		throw new FileServingError("File not found", 404);
 	}
-	if (!fileStat.isFile()) {
+	if (!fileStat.isFile())
+	{
 		throw new FileServingError("File path is not a regular file", 403);
 	}
 	return fileStat;
 }
 
-function tooLarge(resolvedPath: string, size: number): FileServingError {
-	return new FileServingError("File exceeds the 5 MiB size limit", 413, {
-		kind: "too-large",
-		size,
-		type: fileTypeLabel(resolvedPath),
-	});
+function tooLarge(resolvedPath: string, size: number): FileServingError
+{
+	return new FileServingError(
+		"File exceeds the 5 MiB size limit",
+		413,
+		{
+			kind: "too-large",
+			size,
+			type: fileTypeLabel(resolvedPath),
+		},
+	);
 }
 
-async function readResolvedTextFile(resolvedPath: string, options: ReadTextOptions = {}): Promise<ServedFile> {
+async function readResolvedTextFile(resolvedPath: string, options: ReadTextOptions = {}): Promise<ServedFile>
+{
 	const fileStat = await statRegularFile(resolvedPath);
 	if (fileStat.size > FILE_CONTENT_SIZE_CAP_BYTES) throw tooLarge(resolvedPath, fileStat.size);
 
 	let contents: Buffer;
-	try {
+	try
+	{
 		contents = await readFile(resolvedPath);
-	} catch {
+	}
+	catch
+	{
 		throw new FileServingError("File not found", 404);
 	}
-	if (contents.byteLength > FILE_CONTENT_SIZE_CAP_BYTES) {
+	if (contents.byteLength > FILE_CONTENT_SIZE_CAP_BYTES)
+	{
 		throw tooLarge(resolvedPath, contents.byteLength);
 	}
-	if (!options.forceText && contents.subarray(0, BINARY_SAMPLE_SIZE_BYTES).includes(0)) {
-		throw new FileServingError("Binary files are not supported", 415, {
-			kind: "binary",
-			size: contents.byteLength,
-			type: fileTypeLabel(resolvedPath),
-		});
+	if (!options.forceText && contents.subarray(0, BINARY_SAMPLE_SIZE_BYTES).includes(0))
+	{
+		throw new FileServingError(
+			"Binary files are not supported",
+			415,
+			{
+				kind: "binary",
+				size: contents.byteLength,
+				type: fileTypeLabel(resolvedPath),
+			},
+		);
 	}
 
 	return {

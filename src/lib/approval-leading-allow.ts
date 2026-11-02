@@ -8,37 +8,49 @@ export type ApprovalLeadingAllow = "always" | "once";
 
 const listeners = new Set<() => void>();
 
-function readLeadingAllow(): ApprovalLeadingAllow {
-	try {
+function readLeadingAllow(): ApprovalLeadingAllow
+{
+	try
+	{
 		return localStorage.getItem(APPROVAL_LEADING_ALLOW_KEY) === "once" ? "once" : "always";
-	} catch {
+	}
+	catch
+	{
 		return "always";
 	}
 }
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	listeners.add(listener);
-	const onStorage = (event: StorageEvent) => {
+	const onStorage = (event: StorageEvent) =>
+	{
 		if (event.key === null || event.key === APPROVAL_LEADING_ALLOW_KEY) listener();
 	};
 	window.addEventListener("storage", onStorage);
-	return () => {
+	return () =>
+	{
 		listeners.delete(listener);
 		window.removeEventListener("storage", onStorage);
 	};
 }
 
 /** Remembers the lead, as upstream does when the non-leading option is picked from the menu. */
-export function storeLeadingAllow(lead: ApprovalLeadingAllow): void {
-	try {
+export function storeLeadingAllow(lead: ApprovalLeadingAllow): void
+{
+	try
+	{
 		localStorage.setItem(APPROVAL_LEADING_ALLOW_KEY, lead);
-	} catch {
+	}
+	catch
+	{
 		// Blocked storage keeps the current lead for this page only.
 	}
 	for (const listener of listeners) listener();
 }
 
 /** The stored lead, "always" on the server, without storage, or for any other value. */
-export function useLeadingAllow(): ApprovalLeadingAllow {
+export function useLeadingAllow(): ApprovalLeadingAllow
+{
 	return useSyncExternalStore(subscribe, readLeadingAllow, () => "always");
 }

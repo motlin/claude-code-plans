@@ -10,10 +10,16 @@ import {z} from "zod";
 export const AWAITING_ACK_STORAGE_KEY = "epitaxy-awaiting-ack-v1";
 
 /** Zustand persist's `{state, version}` envelope; lenient at runtime, checked strictly in the tests. */
-export const AwaitingAckStorageSchema = z.object({
-	state: z.object({ackedAt: z.record(z.string(), z.number())}),
-	version: z.number(),
-});
+export const AwaitingAckStorageSchema = z.object(
+	{
+		state: z.object(
+			{
+				ackedAt: z.record(z.string(), z.number()),
+			},
+		),
+		version: z.number(),
+	},
+);
 
 const listeners = new Set<() => void>();
 const acks = new Map<string, number>(load());
@@ -23,66 +29,90 @@ let version = 0;
  * The browser's storage, or null on the server: Node 22+ has a global `localStorage` getter that prints an
  * ExperimentalWarning when touched without `--localstorage-file`, and this module loads during SSR.
  */
-function browserStorage(): Storage | null {
+function browserStorage(): Storage | null
+{
 	return typeof window === "undefined" ? null : window.localStorage;
 }
 
-function load(): [string, number][] {
-	try {
+function load(): [string, number][]
+{
+	try
+	{
 		const raw = browserStorage()?.getItem(AWAITING_ACK_STORAGE_KEY);
 		if (raw === null || raw === undefined) return [];
 		const result = AwaitingAckStorageSchema.safeParse(JSON.parse(raw));
 		return result.success ? Object.entries(result.data.state.ackedAt) : [];
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 }
 
-function save(): void {
-	try {
+function save(): void
+{
+	try
+	{
 		browserStorage()?.setItem(
 			AWAITING_ACK_STORAGE_KEY,
-			JSON.stringify({state: {ackedAt: Object.fromEntries(acks)}, version: 0}),
+			JSON.stringify(
+				{
+					state:
+					{
+						ackedAt: Object.fromEntries(acks),
+					},
+					version: 0,
+				},
+			),
 		);
-	} catch {
+	}
+	catch
+	{
 		// Storage can be denied or full; the ack still holds in memory for this tab.
 	}
 }
 
-function emitChange(): void {
+function emitChange(): void
+{
 	version += 1;
 	save();
 	for (const listener of listeners) listener();
 }
 
 /** Ack a session at `ms`; a no-op when that is already its ack. */
-export function ack(sessionId: string, ms: number): void {
+export function ack(sessionId: string, ms: number): void
+{
 	if (acks.get(sessionId) === ms) return;
 	acks.set(sessionId, ms);
 	emitChange();
 }
 
-export function clear(sessionId: string): void {
+export function clear(sessionId: string): void
+{
 	if (acks.delete(sessionId)) emitChange();
 }
 
-export function ackedAt(sessionId: string): number | undefined {
+export function ackedAt(sessionId: string): number | undefined
+{
 	return acks.get(sessionId);
 }
 
 /** Upstream `hh`: the ack is at or after the session's mtime. */
-export function isAcked(sessionId: string, mtimeIso: string): boolean {
+export function isAcked(sessionId: string, mtimeIso: string): boolean
+{
 	const acked = acks.get(sessionId);
 	return acked !== undefined && acked >= Date.parse(mtimeIso);
 }
 
-export function subscribeAwaitingAck(listener: () => void): () => void {
+export function subscribeAwaitingAck(listener: () => void): () => void
+{
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
 
 /** A counter that changes with every ack or clear, for memo deps. */
-export function useAwaitingAckVersion(): number {
+export function useAwaitingAckVersion(): number
+{
 	return useSyncExternalStore(
 		subscribeAwaitingAck,
 		() => version,
@@ -90,8 +120,10 @@ export function useAwaitingAckVersion(): number {
 	);
 }
 
-export const __awaitingAckTesting = {
-	reset(): void {
+export const __awaitingAckTesting =
+{
+	reset(): void
+	{
 		acks.clear();
 		emitChange();
 	},

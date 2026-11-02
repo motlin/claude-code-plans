@@ -3,7 +3,8 @@
 	"license": "Catppuccin Icons for VSCode\n\nMIT License\n\nCopyright (c) 2023 Catppuccin\nCopyright (c) 2023 thang-nm\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n\nVisual Studio Code\n\nMIT License\n\nCopyright (c) 2015 - present Microsoft Corporation\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
 	"defaultIcon": "_file",
 	"defaultForEveryFile": true,
-	"palette": {
+	"palette":
+	{
 		"blue": ["#1e66f5", "#89b4fa"],
 		"flamingo": ["#dd7878", "#f2cdcd"],
 		"green": ["#40a02b", "#a6e3a1"],
@@ -21,7 +22,8 @@
 		"text": ["#4c4f69", "#cdd6f4"],
 		"yellow": ["#df8e1d", "#f9e2af"]
 	},
-	"fileNames": {
+	"fileNames":
+	{
 		"._sc_": "godot-assets",
 		".adonisrc.json": "adonis",
 		".alexrc": "alex",
@@ -1139,7 +1141,8 @@
 		"zshrc_apple_terminal": "bash"
 	},
 	"filePatterns": {"jenkinsfile*": "groovy"},
-	"fileExtensions": {
+	"fileExtensions":
+	{
 		"7z": "zip",
 		"a51": "assembly",
 		"aac": "audio",
@@ -1989,7 +1992,8 @@
 		"zshrc": "bash",
 		"zst": "zip"
 	},
-	"icons": {
+	"icons":
+	{
 		"3d": "[[\"path\",{\"fill\":\"none\",\"stroke\":\"$text\",\"stroke-linecap\":\"round\",\"stroke-linejoin\":\"round\",\"d\":\"M8 8.26v2.07m0-2.07 1.7-1.04M8 8.26 6.3 7.22M2 4.42V6.3m0-1.87 1.85-1.09M2 4.43 3.85 5.5M2 11.47V9.4m0 2.07 1.85 1.2M2 11.47l1.85-1.03M14 11.47V9.4m0 2.07-1.85 1.2m1.85-1.2-1.85-1.03M14 4.42V6.3m0-1.87-1.85-.93m1.85.93-1.85 1.1M8 15v-2.18M8 15l1.7-1M8 15l-1.7-1M8 1v2.18M8 1l1.7 1M8 1 6.3 2\"}]]",
 		"_file": "[[\"path\",{\"fill\":\"none\",\"stroke\":\"$text\",\"stroke-linecap\":\"round\",\"stroke-linejoin\":\"round\",\"d\":\"M13.5 6.5v6a2 2 0 01-2 2h-7a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h4.01m-.01 0 5 5h-4a1 1 0 01-1-1z\"}]]",
 		"adobe-ae": "[[\"g\",{\"fill\":\"none\",\"stroke\":\"$mauve\",\"stroke-linecap\":\"round\",\"stroke-linejoin\":\"round\"},[[\"path\",{\"d\":\"M 14.5,4.3888889 V 11.611111 A 2.8888889,2.8888889 0 0 1 11.611111,14.5 H 4.3888889 A 2.8888889,2.8888889 0 0 1 1.5,11.611111 V 4.3888889 A 2.8888889,2.8888889 0 0 1 4.3888889,1.5 H 11.611111 A 2.8888889,2.8888889 0 0 1 14.5,4.3888889\"}],[\"path\",{\"d\":\"M 9.498599,8.667276 V 7.8897022 a 1.4994277,1.5551488 0 0 1 1.499428,-1.5551486 v 0 a 1.4994277,1.5551488 0 0 1 1.499428,1.5551486 V 8.667276 Z m 0,0 V 9.444851 A 1.4994277,1.5551488 0 0 0 10.998027,11 h 1.124571 M 3.5008886,11 4.3443166,8.667276 M 7.9991716,11 7.1557431,8.667276 m -2.8114265,0 L 5.75003,4.7794049 7.1557431,8.667276 m -2.8114265,0 h 2.8114265\"}]]]]",

@@ -9,21 +9,29 @@ import {DEFAULTS, DiffStyleSchema} from "../src/components/settings-context";
  * Collect all project root directories under `~/projects`, scanning up to 2 levels deep.
  * Skips node_modules and .git directories.
  */
-function collectProjectDirs(root: string): string[] {
+function collectProjectDirs(root: string): string[]
+{
 	const results: string[] = [];
 	let entries: string[];
-	try {
+	try
+	{
 		entries = readdirSync(root);
-	} catch {
+	}
+	catch
+	{
 		return results;
 	}
-	for (const entry of entries) {
+	for (const entry of entries)
+	{
 		if (entry === "node_modules" || entry === ".git") continue;
 		const fullPath = join(root, entry);
 		let st: ReturnType<typeof statSync>;
-		try {
+		try
+		{
 			st = statSync(fullPath);
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 		if (!st.isDirectory()) continue;
@@ -31,21 +39,29 @@ function collectProjectDirs(root: string): string[] {
 
 		// Scan one more level for grouped project directories (e.g. open-source/project)
 		let subEntries: string[];
-		try {
+		try
+		{
 			subEntries = readdirSync(fullPath);
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
-		for (const subEntry of subEntries) {
+		for (const subEntry of subEntries)
+		{
 			if (subEntry === "node_modules" || subEntry === ".git" || subEntry === ".claude") continue;
 			const subPath = join(fullPath, subEntry);
 			let subSt: ReturnType<typeof statSync>;
-			try {
+			try
+			{
 				subSt = statSync(subPath);
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
-			if (subSt.isDirectory()) {
+			if (subSt.isDirectory())
+			{
 				results.push(subPath);
 			}
 		}
@@ -57,19 +73,26 @@ function collectProjectDirs(root: string): string[] {
  * Find settings files across all project directories.
  * Looks for files matching `pattern` inside `.claude/` subdirectory of each project.
  */
-function findProjectSettingsFiles(projectsBase: string, pattern: RegExp): string[] {
+function findProjectSettingsFiles(projectsBase: string, pattern: RegExp): string[]
+{
 	const results: string[] = [];
 	const projectDirs = collectProjectDirs(projectsBase);
-	for (const projectDir of projectDirs) {
+	for (const projectDir of projectDirs)
+	{
 		const claudeDir = join(projectDir, ".claude");
 		let entries: string[];
-		try {
+		try
+		{
 			entries = readdirSync(claudeDir);
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
-		for (const entry of entries) {
-			if (pattern.test(entry)) {
+		for (const entry of entries)
+		{
+			if (pattern.test(entry))
+			{
 				results.push(join(claudeDir, entry));
 			}
 		}
@@ -80,10 +103,12 @@ function findProjectSettingsFiles(projectsBase: string, pattern: RegExp): string
 /**
  * Find .mcp.json files in project roots and their .claude/ subdirectories.
  */
-function findMcpFiles(projectsBase: string): string[] {
+function findMcpFiles(projectsBase: string): string[]
+{
 	const results: string[] = [];
 	const projectDirs = collectProjectDirs(projectsBase);
-	for (const projectDir of projectDirs) {
+	for (const projectDir of projectDirs)
+	{
 		const rootMcp = join(projectDir, ".mcp.json");
 		if (existsSync(rootMcp)) results.push(rootMcp);
 		const claudeMcp = join(projectDir, ".claude", ".mcp.json");
@@ -92,73 +117,112 @@ function findMcpFiles(projectsBase: string): string[] {
 	return results;
 }
 
-describe("ClaudeSettingsSchema", () => {
-	it("parses an empty settings object", () => {
+describe("ClaudeSettingsSchema", () =>
+{
+	it("parses an empty settings object", () =>
+	{
 		const result = ClaudeSettingsSchema.safeParse({});
 		expect(result.success).toBe(true);
 	});
 
-	it("parses settings with scalar fields", () => {
-		const result = ClaudeSettingsSchema.safeParse({
-			model: "claude-opus-4-6",
-			theme: "dark",
-			tui: "fullscreen",
-			verbose: true,
-			includeCoAuthoredBy: false,
-			alwaysThinkingEnabled: true,
-			autoCompactEnabled: true,
-			voiceEnabled: false,
-			cleanupPeriodDays: 90,
-			fileCheckpointingEnabled: true,
-			autoUpdatesChannel: "latest",
-			skipDangerousModePermissionPrompt: false,
-			teammateMode: "in-process",
-			preferredNotifChannel: "ghostty",
-			skillOverrides: {"example-skill": "off"},
-		});
-		expect(result.success).toBe(true);
-	});
-
-	it("parses askUserQuestionTimeout and rejects an unknown duration", () => {
-		expect({
-			known: ["60s", "5m", "10m", "never"].map(
-				(askUserQuestionTimeout) => ClaudeSettingsSchema.safeParse({askUserQuestionTimeout}).success,
-			),
-			unknown: ClaudeSettingsSchema.safeParse({askUserQuestionTimeout: "1h"}).success,
-		}).toStrictEqual({known: [true, true, true, true], unknown: false});
-	});
-
-	it("parses settings with env key/value pairs", () => {
-		const result = ClaudeSettingsSchema.safeParse({
-			env: {
-				DISABLE_TELEMETRY: "1",
-				MY_VAR: "hello",
+	it("parses settings with scalar fields", () =>
+	{
+		const result = ClaudeSettingsSchema.safeParse(
+			{
+				model: "claude-opus-4-6",
+				theme: "dark",
+				tui: "fullscreen",
+				verbose: true,
+				includeCoAuthoredBy: false,
+				alwaysThinkingEnabled: true,
+				autoCompactEnabled: true,
+				voiceEnabled: false,
+				cleanupPeriodDays: 90,
+				fileCheckpointingEnabled: true,
+				autoUpdatesChannel: "latest",
+				skipDangerousModePermissionPrompt: false,
+				teammateMode: "in-process",
+				preferredNotifChannel: "ghostty",
+				skillOverrides:
+				{
+					"example-skill": "off",
+				},
 			},
-		});
+		);
 		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data.env).toStrictEqual({
-				DISABLE_TELEMETRY: "1",
-				MY_VAR: "hello",
-			});
+	});
+
+	it("parses askUserQuestionTimeout and rejects an unknown duration", () =>
+	{
+		expect(
+			{
+				known: ["60s", "5m", "10m", "never"].map(
+					(askUserQuestionTimeout) =>
+						ClaudeSettingsSchema.safeParse(
+							{
+								askUserQuestionTimeout,
+							},
+						).success,
+				),
+				unknown: ClaudeSettingsSchema.safeParse(
+					{
+						askUserQuestionTimeout: "1h",
+					},
+				).success,
+			},
+		).toStrictEqual(
+			{
+				known: [true, true, true, true],
+				unknown: false,
+			},
+		);
+	});
+
+	it("parses settings with env key/value pairs", () =>
+	{
+		const result = ClaudeSettingsSchema.safeParse(
+			{
+				env:
+				{
+					DISABLE_TELEMETRY: "1",
+					MY_VAR: "hello",
+				},
+			},
+		);
+		expect(result.success).toBe(true);
+		if (result.success)
+		{
+			expect(result.data.env).toStrictEqual(
+				{
+					DISABLE_TELEMETRY: "1",
+					MY_VAR: "hello",
+				},
+			);
 		}
 	});
 
-	it("parses settings with permissions", () => {
-		const result = ClaudeSettingsSchema.safeParse({
-			permissions: {
-				allow: ["Bash", "Read", "Write"],
-				deny: ["Bash(rm -rf:*)"],
-				ask: ["Edit(CLAUDE.md)"],
-				defaultMode: "plan",
+	it("parses settings with permissions", () =>
+	{
+		const result = ClaudeSettingsSchema.safeParse(
+			{
+				permissions:
+				{
+					allow: ["Bash", "Read", "Write"],
+					deny: ["Bash(rm -rf:*)"],
+					ask: ["Edit(CLAUDE.md)"],
+					defaultMode: "plan",
+				},
 			},
-		});
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses settings with hooks", () => {
-		const settings = {
-			hooks: {
+	it("parses settings with hooks", () =>
+	{
+		const settings =
+		{
+			hooks:
+			{
 				PostToolUse: [
 					{
 						matcher: "Bash",
@@ -179,7 +243,13 @@ describe("ClaudeSettingsSchema", () => {
 				],
 				SessionStart: [
 					{
-						hooks: [{type: "command" as const, command: "echo start", timeout: 5000}],
+						hooks: [
+							{
+								type: "command" as const,
+								command: "echo start",
+								timeout: 5000,
+							},
+						],
 					},
 				],
 				PermissionRequest: [
@@ -188,7 +258,10 @@ describe("ClaudeSettingsSchema", () => {
 							{
 								type: "http" as const,
 								url: "https://example.com/api/v1/hook",
-								headers: {Authorization: "Bearer $TEST_TOKEN"},
+								headers:
+								{
+									Authorization: "Bearer $TEST_TOKEN",
+								},
 								allowedEnvVars: ["TEST_TOKEN"],
 								timeout: 600,
 							},
@@ -200,9 +273,12 @@ describe("ClaudeSettingsSchema", () => {
 		expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
 	});
 
-	it("parses settings with statusLine", () => {
-		const settings = {
-			statusLine: {
+	it("parses settings with statusLine", () =>
+	{
+		const settings =
+		{
+			statusLine:
+			{
 				type: "command",
 				command: "~/.claude/statusline.sh",
 				padding: 0,
@@ -213,51 +289,83 @@ describe("ClaudeSettingsSchema", () => {
 		expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
 	});
 
-	it("parses settings with enabledPlugins", () => {
-		const result = ClaudeSettingsSchema.safeParse({
-			enabledPlugins: {
-				"my-plugin@marketplace": true,
-				"other-plugin@marketplace": false,
-			},
-		});
-		expect(result.success).toBe(true);
-	});
-
-	it("parses settings with extraKnownMarketplaces", () => {
-		const result = ClaudeSettingsSchema.safeParse({
-			extraKnownMarketplaces: {
-				"my-marketplace": {
-					source: {source: "github", repo: "user/repo"},
-				},
-				"local-marketplace": {
-					source: {source: "directory", path: "/path/to/plugins"},
+	it("parses settings with enabledPlugins", () =>
+	{
+		const result = ClaudeSettingsSchema.safeParse(
+			{
+				enabledPlugins:
+				{
+					"my-plugin@marketplace": true,
+					"other-plugin@marketplace": false,
 				},
 			},
-		});
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses settings with $schema field", () => {
-		const result = ClaudeSettingsSchema.safeParse({
-			$schema: "https://json.schemastore.org/claude-code-settings.json",
-		});
+	it("parses settings with extraKnownMarketplaces", () =>
+	{
+		const result = ClaudeSettingsSchema.safeParse(
+			{
+				extraKnownMarketplaces:
+				{
+					"my-marketplace":
+					{
+						source:
+						{
+							source: "github",
+							repo: "user/repo",
+						},
+					},
+					"local-marketplace":
+					{
+						source:
+						{
+							source: "directory",
+							path: "/path/to/plugins",
+						},
+					},
+				},
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses settings with attribution, remote control, push notification, and auto mode keys", () => {
-		const settings = {
-			attribution: {sessionUrl: false},
+	it("parses settings with $schema field", () =>
+	{
+		const result = ClaudeSettingsSchema.safeParse(
+			{
+				$schema: "https://json.schemastore.org/claude-code-settings.json",
+			},
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it("parses settings with attribution, remote control, push notification, and auto mode keys", () =>
+	{
+		const settings =
+		{
+			attribution:
+			{
+				sessionUrl: false,
+			},
 			remoteControlAtStartup: true,
 			agentPushNotifEnabled: true,
-			autoMode: {environment: ["### Org-wide", "**Organization**: None configured"]},
+			autoMode:
+			{
+				environment: ["### Org-wide", "**Organization**: None configured"],
+			},
 		};
 
 		expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
 	});
 
-	it("parses auto mode allow and soft_deny rule lists", () => {
-		const settings = {
-			autoMode: {
+	it("parses auto mode allow and soft_deny rule lists", () =>
+	{
+		const settings =
+		{
+			autoMode:
+			{
 				allow: ["$defaults", "Bash(vp test:*)"],
 				soft_deny: ["$defaults", "Bash(sqlite3 * -- DROP*)"],
 				environment: ["### Org-wide"],
@@ -267,206 +375,313 @@ describe("ClaudeSettingsSchema", () => {
 		expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
 	});
 
-	it("parses settings with switchModelsOnFlag", () => {
-		const settings = {switchModelsOnFlag: false};
+	it("parses settings with switchModelsOnFlag", () =>
+	{
+		const settings =
+		{
+			switchModelsOnFlag: false,
+		};
 
 		expect(ClaudeSettingsSchema.parse(settings)).toStrictEqual(settings);
 	});
 
-	it("rejects unknown top-level fields", () => {
-		const result = ClaudeSettingsSchema.safeParse({
-			unknownField: "value",
-		});
+	it("rejects unknown top-level fields", () =>
+	{
+		const result = ClaudeSettingsSchema.safeParse(
+			{
+				unknownField: "value",
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 });
 
-describe("PersistedCapabilitiesSchema", () => {
-	const capabilities = {
-		readOnlyMcpServer: {
+describe("PersistedCapabilitiesSchema", () =>
+{
+	const capabilities =
+	{
+		readOnlyMcpServer:
+		{
 			enabled: false,
-			config: {includePendingApprovals: true},
+			config:
+			{
+				includePendingApprovals: true,
+			},
 		},
-		workingCopyReview: {
+		workingCopyReview:
+		{
 			enabled: true,
-			config: {offerMode: "offer"},
+			config:
+			{
+				offerMode: "offer",
+			},
 		},
-		sessionContextBrief: {
+		sessionContextBrief:
+		{
 			enabled: false,
-			config: {includeDecisions: true},
+			config:
+			{
+				includeDecisions: true,
+			},
 		},
 	};
 
-	it("accepts only persisted enabled intent and pre-seeded config", () => {
+	it("accepts only persisted enabled intent and pre-seeded config", () =>
+	{
 		expect(PersistedCapabilitiesSchema.parse(capabilities)).toStrictEqual(capabilities);
 	});
 
-	it("accepts the default offer behavior while other optional capabilities remain disabled", () => {
-		expect(PersistedCapabilitiesSchema.parse(DEFAULT_CAPABILITIES)).toStrictEqual({
-			readOnlyMcpServer: {
-				enabled: false,
-				config: {includePendingApprovals: true},
+	it("accepts the default offer behavior while other optional capabilities remain disabled", () =>
+	{
+		expect(PersistedCapabilitiesSchema.parse(DEFAULT_CAPABILITIES)).toStrictEqual(
+			{
+				readOnlyMcpServer:
+				{
+					enabled: false,
+					config:
+					{
+						includePendingApprovals: true,
+					},
+				},
+				workingCopyReview:
+				{
+					enabled: true,
+					config:
+					{
+						offerMode: "offer",
+					},
+				},
+				sessionContextBrief:
+				{
+					enabled: false,
+					config:
+					{
+						includeDecisions: true,
+					},
+				},
 			},
-			workingCopyReview: {
-				enabled: true,
-				config: {offerMode: "offer"},
-			},
-			sessionContextBrief: {
-				enabled: false,
-				config: {includeDecisions: true},
-			},
-		});
+		);
 	});
 
-	it.each(["installed", "available"])("rejects the computed %s runtime axis", (runtimeKey) => {
+	it.each(["installed", "available"])("rejects the computed %s runtime axis", (runtimeKey) =>
+	{
 		expect(
-			PersistedCapabilitiesSchema.safeParse({
-				...capabilities,
-				workingCopyReview: {
-					...capabilities.workingCopyReview,
-					[runtimeKey]: true,
+			PersistedCapabilitiesSchema.safeParse(
+				{
+					...capabilities,
+					workingCopyReview:
+					{
+						...capabilities.workingCopyReview,
+						[runtimeKey]: true,
+					},
 				},
-			}).success,
+			).success,
 		).toBe(false);
 	});
 });
 
-describe("Changes diff preference settings", () => {
-	it("defaults the diff view preferences like claude.ai/code", () => {
-		expect({
-			diffShowTree: DEFAULTS.diffShowTree,
-			diffGroupByFolder: DEFAULTS.diffGroupByFolder,
-			diffGroupByKind: DEFAULTS.diffGroupByKind,
-			diffStyle: DEFAULTS.diffStyle,
-			diffWordWrap: DEFAULTS.diffWordWrap,
-			diffWordDiff: DEFAULTS.diffWordDiff,
-			diffHideWhitespace: DEFAULTS.diffHideWhitespace,
-		}).toStrictEqual({
-			diffShowTree: false,
-			diffGroupByFolder: true,
-			diffGroupByKind: false,
-			diffStyle: "unified",
-			diffWordWrap: true,
-			diffWordDiff: true,
-			diffHideWhitespace: false,
-		});
+describe("Changes diff preference settings", () =>
+{
+	it("defaults the diff view preferences like claude.ai/code", () =>
+	{
+		expect(
+			{
+				diffShowTree: DEFAULTS.diffShowTree,
+				diffGroupByFolder: DEFAULTS.diffGroupByFolder,
+				diffGroupByKind: DEFAULTS.diffGroupByKind,
+				diffStyle: DEFAULTS.diffStyle,
+				diffWordWrap: DEFAULTS.diffWordWrap,
+				diffWordDiff: DEFAULTS.diffWordDiff,
+				diffHideWhitespace: DEFAULTS.diffHideWhitespace,
+			},
+		).toStrictEqual(
+			{
+				diffShowTree: false,
+				diffGroupByFolder: true,
+				diffGroupByKind: false,
+				diffStyle: "unified",
+				diffWordWrap: true,
+				diffWordDiff: true,
+				diffHideWhitespace: false,
+			},
+		);
 	});
 
-	it("shows gitignored files in the Files pane by default like claude.ai/code", () => {
+	it("shows gitignored files in the Files pane by default like claude.ai/code", () =>
+	{
 		expect(DEFAULTS.filesHideIgnored).toBe(false);
 	});
 
-	it("accepts only the unified and split diff styles", () => {
+	it("accepts only the unified and split diff styles", () =>
+	{
 		expect(
 			["unified", "split", "side-by-side", ""].map((value) => DiffStyleSchema.safeParse(value).success),
 		).toStrictEqual([true, true, false, false]);
 	});
 });
 
-describe("McpConfigSchema", () => {
-	it("parses minimal mcp config", () => {
-		const result = McpConfigSchema.safeParse({
-			mcpServers: {
-				myServer: {
-					command: "/usr/bin/server",
+describe("McpConfigSchema", () =>
+{
+	it("parses minimal mcp config", () =>
+	{
+		const result = McpConfigSchema.safeParse(
+			{
+				mcpServers:
+				{
+					myServer:
+					{
+						command: "/usr/bin/server",
+					},
 				},
 			},
-		});
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses mcp config with all fields", () => {
-		const result = McpConfigSchema.safeParse({
-			mcpServers: {
-				myServer: {
-					type: "stdio",
-					command: "npx",
-					args: ["@some/package@latest"],
-					env: {API_KEY: "secret"},
-					cwd: "/tmp",
+	it("parses mcp config with all fields", () =>
+	{
+		const result = McpConfigSchema.safeParse(
+			{
+				mcpServers:
+				{
+					myServer:
+					{
+						type: "stdio",
+						command: "npx",
+						args: ["@some/package@latest"],
+						env:
+						{
+							API_KEY: "secret",
+						},
+						cwd: "/tmp",
+					},
 				},
 			},
-		});
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("parses mcp config with empty servers", () => {
-		const result = McpConfigSchema.safeParse({mcpServers: {}});
+	it("parses mcp config with empty servers", () =>
+	{
+		const result = McpConfigSchema.safeParse(
+			{
+				mcpServers: {},
+			},
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("rejects missing mcpServers key", () => {
-		const result = McpConfigSchema.safeParse({servers: {}});
+	it("rejects missing mcpServers key", () =>
+	{
+		const result = McpConfigSchema.safeParse(
+			{
+				servers: {},
+			},
+		);
 		expect(result.success).toBe(false);
 	});
 
-	it("parses a remote (sse/http) server entry with url and headers", () => {
-		const result = McpConfigSchema.safeParse({
-			mcpServers: {
-				remote: {
-					type: "http",
-					url: "https://example.com/mcp",
-					headers: {Authorization: "Bearer token"},
+	it("parses a remote (sse/http) server entry with url and headers", () =>
+	{
+		const result = McpConfigSchema.safeParse(
+			{
+				mcpServers:
+				{
+					remote:
+					{
+						type: "http",
+						url: "https://example.com/mcp",
+						headers:
+						{
+							Authorization: "Bearer token",
+						},
+					},
 				},
 			},
-		});
+		);
 		expect(result.success).toBe(true);
 	});
 
-	it("rejects server entry with unknown fields", () => {
-		const result = McpConfigSchema.safeParse({
-			mcpServers: {
-				broken: {command: "/usr/bin/server", bogusField: true},
+	it("rejects server entry with unknown fields", () =>
+	{
+		const result = McpConfigSchema.safeParse(
+			{
+				mcpServers:
+				{
+					broken:
+					{
+						command: "/usr/bin/server",
+						bogusField: true,
+					},
+				},
 			},
-		});
+		);
 		expect(result.success).toBe(false);
 	});
 });
 
-describe("SessionsIndexSchema against disk", () => {
+describe("SessionsIndexSchema against disk", () =>
+{
 	const projectsDir = join(homedir(), ".claude", "projects");
 
-	it("validates all sessions-index.json files on disk", () => {
+	it("validates all sessions-index.json files on disk", () =>
+	{
 		let projectDirs: string[];
-		try {
+		try
+		{
 			projectDirs = readdirSync(projectsDir);
-		} catch {
+		}
+		catch
+		{
 			return;
 		}
 
 		let validated = 0;
 		const failures: string[] = [];
 
-		for (const projectDir of projectDirs) {
+		for (const projectDir of projectDirs)
+		{
 			const projectPath = join(projectsDir, projectDir);
 			let st: ReturnType<typeof statSync>;
-			try {
+			try
+			{
 				st = statSync(projectPath);
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 			if (!st.isDirectory()) continue;
 
 			const indexPath = join(projectPath, "sessions-index.json");
 			let raw: string;
-			try {
+			try
+			{
 				raw = readFileSync(indexPath, "utf-8");
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 
 			let parsed: unknown;
-			try {
+			try
+			{
 				parsed = JSON.parse(raw);
-			} catch {
+			}
+			catch
+			{
 				failures.push(`${projectDir}/sessions-index.json: invalid JSON`);
 				continue;
 			}
 
 			const result = SessionsIndexSchema.safeParse(parsed);
-			if (result.success) {
+			if (result.success)
+			{
 				validated++;
-			} else {
+			}
+			else
+			{
 				const issues = result.error.issues
 					.map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
 					.join("\n");
@@ -474,7 +689,8 @@ describe("SessionsIndexSchema against disk", () => {
 			}
 		}
 
-		if (failures.length > 0) {
+		if (failures.length > 0)
+		{
 			throw new Error(`${failures.length} sessions-index.json files failed validation:\n${failures.join("\n")}`);
 		}
 
@@ -482,28 +698,38 @@ describe("SessionsIndexSchema against disk", () => {
 	});
 });
 
-describe("ClaudeSettingsSchema against disk", () => {
+describe("ClaudeSettingsSchema against disk", () =>
+{
 	const claudeHome = join(homedir(), ".claude");
 
-	for (const filename of ["settings.json", "settings.local.json"]) {
-		it(`validates ~/.claude/${filename}`, () => {
+	for (const filename of ["settings.json", "settings.local.json"])
+	{
+		it(`validates ~/.claude/${filename}`, () =>
+		{
 			const filePath = join(claudeHome, filename);
 			let raw: string;
-			try {
+			try
+			{
 				raw = readFileSync(filePath, "utf-8");
-			} catch {
+			}
+			catch
+			{
 				return;
 			}
 
 			let parsed: unknown;
-			try {
+			try
+			{
 				parsed = JSON.parse(raw);
-			} catch {
+			}
+			catch
+			{
 				throw new Error(`${filename}: invalid JSON`);
 			}
 
 			const result = ClaudeSettingsSchema.safeParse(parsed);
-			if (!result.success) {
+			if (!result.success)
+			{
 				const issues = result.error.issues
 					.map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
 					.join("\n");
@@ -512,7 +738,8 @@ describe("ClaudeSettingsSchema against disk", () => {
 		});
 	}
 
-	it("validates all project-level settings files on disk", () => {
+	it("validates all project-level settings files on disk", () =>
+	{
 		const projectsBase = join(homedir(), "projects");
 		if (!existsSync(projectsBase)) return;
 
@@ -521,27 +748,37 @@ describe("ClaudeSettingsSchema against disk", () => {
 		let validated = 0;
 		const failures: string[] = [];
 
-		for (const filePath of settingsFiles) {
+		for (const filePath of settingsFiles)
+		{
 			const relative = filePath.replace(projectsBase + "/", "");
 			let raw: string;
-			try {
+			try
+			{
 				raw = readFileSync(filePath, "utf-8");
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 
 			let parsed: unknown;
-			try {
+			try
+			{
 				parsed = JSON.parse(raw);
-			} catch {
+			}
+			catch
+			{
 				failures.push(`${relative}: invalid JSON`);
 				continue;
 			}
 
 			const result = ClaudeSettingsSchema.safeParse(parsed);
-			if (result.success) {
+			if (result.success)
+			{
 				validated++;
-			} else {
+			}
+			else
+			{
 				const issues = result.error.issues
 					.map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
 					.join("\n");
@@ -549,7 +786,8 @@ describe("ClaudeSettingsSchema against disk", () => {
 			}
 		}
 
-		if (failures.length > 0) {
+		if (failures.length > 0)
+		{
 			throw new Error(`${failures.length} project settings files failed validation:\n${failures.join("\n")}`);
 		}
 
@@ -557,33 +795,43 @@ describe("ClaudeSettingsSchema against disk", () => {
 	}, 60_000);
 });
 
-describe("McpConfigSchema against disk", () => {
+describe("McpConfigSchema against disk", () =>
+{
 	const claudeHome = join(homedir(), ".claude");
 
-	it("validates ~/.claude/mcp.json", () => {
+	it("validates ~/.claude/mcp.json", () =>
+	{
 		const filePath = join(claudeHome, "mcp.json");
 		let raw: string;
-		try {
+		try
+		{
 			raw = readFileSync(filePath, "utf-8");
-		} catch {
+		}
+		catch
+		{
 			return;
 		}
 
 		let parsed: unknown;
-		try {
+		try
+		{
 			parsed = JSON.parse(raw);
-		} catch {
+		}
+		catch
+		{
 			throw new Error("mcp.json: invalid JSON");
 		}
 
 		const result = McpConfigSchema.safeParse(parsed);
-		if (!result.success) {
+		if (!result.success)
+		{
 			const issues = result.error.issues.map((issue) => `  ${issue.path.join(".")}: ${issue.message}`).join("\n");
 			throw new Error(`mcp.json failed validation:\n${issues}`);
 		}
 	});
 
-	it("validates all project-level .mcp.json files on disk", () => {
+	it("validates all project-level .mcp.json files on disk", () =>
+	{
 		const projectsBase = join(homedir(), "projects");
 		if (!existsSync(projectsBase)) return;
 
@@ -592,27 +840,37 @@ describe("McpConfigSchema against disk", () => {
 		let validated = 0;
 		const failures: string[] = [];
 
-		for (const filePath of mcpFiles) {
+		for (const filePath of mcpFiles)
+		{
 			const relative = filePath.replace(projectsBase + "/", "");
 			let raw: string;
-			try {
+			try
+			{
 				raw = readFileSync(filePath, "utf-8");
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 
 			let parsed: unknown;
-			try {
+			try
+			{
 				parsed = JSON.parse(raw);
-			} catch {
+			}
+			catch
+			{
 				failures.push(`${relative}: invalid JSON`);
 				continue;
 			}
 
 			const result = McpConfigSchema.safeParse(parsed);
-			if (result.success) {
+			if (result.success)
+			{
 				validated++;
-			} else {
+			}
+			else
+			{
 				const issues = result.error.issues
 					.map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
 					.join("\n");
@@ -620,12 +878,14 @@ describe("McpConfigSchema against disk", () => {
 			}
 		}
 
-		if (failures.length > 0) {
+		if (failures.length > 0)
+		{
 			throw new Error(`${failures.length} .mcp.json files failed validation:\n${failures.join("\n")}`);
 		}
 
 		// Don't assert validated > 0 since not all machines have project .mcp.json files
-		if (validated > 0) {
+		if (validated > 0)
+		{
 			expect(validated).toBeGreaterThan(0);
 		}
 	});

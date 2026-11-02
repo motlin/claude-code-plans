@@ -1,7 +1,8 @@
 import {asRecord} from "./narrow";
 
 /** A file the session produced for the user, for the rail's Outputs card. */
-export interface OutputFile {
+export interface OutputFile
+{
 	/** Absolute path. */
 	path: string;
 	/** When the producing tool call was written, in ms. */
@@ -40,29 +41,35 @@ const DELIVERABLE_EXTENSIONS = new Set([
 
 const MAX_OUTPUT_FILES = 50;
 
-function isDeliverable(path: string): boolean {
+function isDeliverable(path: string): boolean
+{
 	const name = path.slice(path.lastIndexOf("/") + 1);
 	const dot = name.lastIndexOf(".");
 	return dot > 0 && DELIVERABLE_EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
 }
 
-function isOutside(path: string, cwd: string | null): boolean {
+function isOutside(path: string, cwd: string | null): boolean
+{
 	return cwd !== null && path !== cwd && !path.startsWith(`${cwd}/`);
 }
 
-function absolute(path: string, cwd: string | null): string | null {
+function absolute(path: string, cwd: string | null): string | null
+{
 	if (path.startsWith("/")) return path;
 	return cwd === null ? null : `${cwd}/${path.replace(/^\.\//, "")}`;
 }
 
 /** The paths a tool call produces as outputs: deliverable or out-of-tree Writes, and every sent file. */
-function producedPaths(name: unknown, input: Record<string, unknown>, cwd: string | null): string[] {
-	if (name === "Write") {
+function producedPaths(name: unknown, input: Record<string, unknown>, cwd: string | null): string[]
+{
+	if (name === "Write")
+	{
 		const raw = input["file_path"] ?? input["path"];
 		const path = typeof raw === "string" ? absolute(raw, cwd) : null;
 		return path !== null && (isDeliverable(path) || isOutside(path, cwd)) ? [path] : [];
 	}
-	if (name === "SendUserFile" && Array.isArray(input["files"])) {
+	if (name === "SendUserFile" && Array.isArray(input["files"]))
+	{
 		return input["files"]
 			.map((file) => (typeof file === "string" ? absolute(file, cwd) : null))
 			.filter((path) => path !== null);
@@ -78,20 +85,37 @@ function producedPaths(name: unknown, input: Record<string, unknown>, cwd: strin
 export function extractOutputFiles(
 	records: readonly Readonly<Record<string, unknown>>[],
 	cwd: string | null,
-): OutputFile[] {
-	const pending = new Map<string, {paths: string[]; at: number}>();
+): OutputFile[]
+{
+	const pending = new Map<
+		string,
+		{
+			paths: string[];
+			at: number;
+		}
+	>();
 	const newest = new Map<string, number>();
-	for (const record of records) {
+	for (const record of records)
+	{
 		const content = asRecord(record["message"])?.["content"];
 		if (!Array.isArray(content)) continue;
 		const timestamp = record["timestamp"];
 		const at = typeof timestamp === "string" ? Date.parse(timestamp) : Number.NaN;
-		for (const raw of content) {
+		for (const raw of content)
+		{
 			const block = asRecord(raw);
 			const id = block?.["type"] === "tool_use" ? block["id"] : undefined;
-			if (block !== undefined && typeof id === "string") {
+			if (block !== undefined && typeof id === "string")
+			{
 				const paths = producedPaths(block["name"], asRecord(block["input"]) ?? {}, cwd);
-				if (paths.length > 0 && !Number.isNaN(at)) pending.set(id, {paths, at});
+				if (paths.length > 0 && !Number.isNaN(at))
+					pending.set(
+						id,
+						{
+							paths,
+							at,
+						},
+					);
 				continue;
 			}
 			const toolUseId = block?.["type"] === "tool_result" ? block["tool_use_id"] : undefined;
@@ -99,14 +123,19 @@ export function extractOutputFiles(
 			const call = pending.get(toolUseId);
 			pending.delete(toolUseId);
 			if (call === undefined || block?.["is_error"] === true) continue;
-			for (const path of call.paths) {
+			for (const path of call.paths)
+			{
 				newest.delete(path);
 				newest.set(path, call.at);
 			}
 		}
 	}
 	return [...newest]
-		.map(([path, at]) => ({path, at}))
+		.map(([path, at]) => (
+		{
+			path,
+			at,
+		}))
 		.toReversed()
 		.toSorted((left, right) => right.at - left.at)
 		.slice(0, MAX_OUTPUT_FILES);

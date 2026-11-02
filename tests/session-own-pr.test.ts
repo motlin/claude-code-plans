@@ -2,7 +2,8 @@ import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	gitHubRepoUrl,
 	gitRemoteRepoName,
 	ownRepositoryPr,
@@ -11,16 +12,29 @@ import {
 } from "../src/lib/session-own-pr";
 import {toSessionSummaryPayload} from "../src/lib/session-summary";
 
-const FOREIGN = {
+const FOREIGN =
+{
 	number: 5,
 	url: "https://github.com/motlin/playdate-template/pull/5",
 	repository: "motlin/playdate-template",
 };
-const OWN = {number: 838, url: "https://github.com/liftwizard/klass/pull/838", repository: "liftwizard/klass"};
-const FORK = {number: 839, url: "https://github.com/motlin/klass/pull/839", repository: "motlin/klass"};
+const OWN =
+{
+	number: 838,
+	url: "https://github.com/liftwizard/klass/pull/838",
+	repository: "liftwizard/klass",
+};
+const FORK =
+{
+	number: 839,
+	url: "https://github.com/motlin/klass/pull/839",
+	repository: "motlin/klass",
+};
 
-describe("gitRemoteRepoName", () => {
-	it("reads the repo name from ssh, ssh-alias and https remotes", () => {
+describe("gitRemoteRepoName", () =>
+{
+	it("reads the repo name from ssh, ssh-alias and https remotes", () =>
+	{
 		expect([
 			gitRemoteRepoName("git@github.com:liftwizard/klass.git"),
 			gitRemoteRepoName("MotlinGitHub:liftwizard/klass.git"),
@@ -30,8 +44,10 @@ describe("gitRemoteRepoName", () => {
 	});
 });
 
-describe("gitHubRepoUrl", () => {
-	it("maps GitHub ssh, ssh-alias and https remotes to the repo's web URL, and others to null", () => {
+describe("gitHubRepoUrl", () =>
+{
+	it("maps GitHub ssh, ssh-alias and https remotes to the repo's web URL, and others to null", () =>
+	{
 		expect([
 			gitHubRepoUrl("git@github.com:liftwizard/klass.git"),
 			gitHubRepoUrl("MotlinGitHub:liftwizard/klass.git"),
@@ -52,23 +68,42 @@ describe("gitHubRepoUrl", () => {
 	});
 });
 
-describe("ownRepositoryPr", () => {
-	it("keeps a PR in the session's own repo, or a fork of it, and drops one the session only touched in another repo", () => {
-		expect({
-			foreign: ownRepositoryPr(FOREIGN, "klass"),
-			own: ownRepositoryPr(OWN, "klass"),
-			fork: ownRepositoryPr(FORK, "Klass"),
-			unknownRemote: ownRepositoryPr(FOREIGN, null),
-		}).toStrictEqual({foreign: null, own: OWN, fork: FORK, unknownRemote: FOREIGN});
+describe("ownRepositoryPr", () =>
+{
+	it("keeps a PR in the session's own repo, or a fork of it, and drops one the session only touched in another repo", () =>
+	{
+		expect(
+			{
+				foreign: ownRepositoryPr(FOREIGN, "klass"),
+				own: ownRepositoryPr(OWN, "klass"),
+				fork: ownRepositoryPr(FORK, "Klass"),
+				unknownRemote: ownRepositoryPr(FOREIGN, null),
+			},
+		).toStrictEqual(
+			{
+				foreign: null,
+				own: OWN,
+				fork: FORK,
+				unknownRemote: FOREIGN,
+			},
+		);
 	});
 });
 
-describe("readOriginRepoName", () => {
-	it("reads origin's repo name from the checkout's git config, from any directory inside it and through a worktree's gitdir file, without spawning git", () => {
+describe("readOriginRepoName", () =>
+{
+	it("reads origin's repo name from the checkout's git config, from any directory inside it and through a worktree's gitdir file, without spawning git", () =>
+	{
 		const root = mkdtempSync(join(tmpdir(), "own-pr-"));
-		try {
+		try
+		{
 			const main = join(root, "klass");
-			mkdirSync(join(main, ".git", "worktrees", "wt"), {recursive: true});
+			mkdirSync(
+				join(main, ".git", "worktrees", "wt"),
+				{
+					recursive: true,
+				},
+			);
 			writeFileSync(
 				join(main, ".git", "config"),
 				'[core]\n\tbare = false\n[remote "upstream"]\n\turl = https://github.com/other/thing.git\n[remote "origin"]\n\turl = MotlinGitHub:liftwizard/klass.git\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n',
@@ -79,37 +114,63 @@ describe("readOriginRepoName", () => {
 			const plain = join(root, "plain");
 			mkdirSync(plain);
 
-			mkdirSync(join(main, "src", "deep"), {recursive: true});
+			mkdirSync(
+				join(main, "src", "deep"),
+				{
+					recursive: true,
+				},
+			);
 
-			expect({
-				names: [
-					readOriginRepoName(main),
-					readOriginRepoName(worktree),
-					readOriginRepoName(join(main, "src", "deep")),
-					readOriginRepoName(plain),
-				],
-				gitHub: [readOriginGitHubUrl(worktree), readOriginGitHubUrl(plain)],
-			}).toStrictEqual({
-				names: ["klass", "klass", "klass", null],
-				gitHub: ["https://github.com/liftwizard/klass", null],
-			});
-		} finally {
-			rmSync(root, {recursive: true, force: true});
+			expect(
+				{
+					names: [
+						readOriginRepoName(main),
+						readOriginRepoName(worktree),
+						readOriginRepoName(join(main, "src", "deep")),
+						readOriginRepoName(plain),
+					],
+					gitHub: [readOriginGitHubUrl(worktree), readOriginGitHubUrl(plain)],
+				},
+			).toStrictEqual(
+				{
+					names: ["klass", "klass", "klass", null],
+					gitHub: ["https://github.com/liftwizard/klass", null],
+				},
+			);
+		}
+		finally
+		{
+			rmSync(
+				root,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
 		}
 	});
 });
 
-describe("session list PR fields", () => {
-	it("drop a PR the session only touched in another repository, so home and the sidebar agree with session detail", () => {
+describe("session list PR fields", () =>
+{
+	it("drop a PR the session only touched in another repository, so home and the sidebar agree with session detail", () =>
+	{
 		const root = mkdtempSync(join(tmpdir(), "own-pr-summary-"));
-		try {
+		try
+		{
 			const checkout = join(root, "klass");
-			mkdirSync(join(checkout, ".git"), {recursive: true});
+			mkdirSync(
+				join(checkout, ".git"),
+				{
+					recursive: true,
+				},
+			);
 			writeFileSync(
 				join(checkout, ".git", "config"),
 				'[remote "origin"]\n\turl = MotlinGitHub:liftwizard/klass.git\n',
 			);
-			const entry = {
+			const entry =
+			{
 				id: "session-own-pr",
 				title: "Klass #838 sync java-template",
 				mtime: new Date("2026-10-13T22:44:00.000Z"),
@@ -121,11 +182,38 @@ describe("session list PR fields", () => {
 				isSidechain: false,
 			};
 			const summary = (pr: typeof FOREIGN) =>
-				toSessionSummaryPayload({...entry, pr}, {activeSession: null, registrySession: null});
+				toSessionSummaryPayload(
+					{
+						...entry,
+						pr,
+					},
+					{
+						activeSession: null,
+						registrySession: null,
+					},
+				);
 
-			expect({foreign: summary(FOREIGN).pr, own: summary(OWN).pr}).toStrictEqual({foreign: undefined, own: OWN});
-		} finally {
-			rmSync(root, {recursive: true, force: true});
+			expect(
+				{
+					foreign: summary(FOREIGN).pr,
+					own: summary(OWN).pr,
+				},
+			).toStrictEqual(
+				{
+					foreign: undefined,
+					own: OWN,
+				},
+			);
+		}
+		finally
+		{
+			rmSync(
+				root,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
 		}
 	});
 });

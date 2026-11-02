@@ -30,10 +30,12 @@ const lastSeen = hmrPersist("updateDedupeLastSeen", () => new Map<string, number
  * Callers should treat a `true` return as "another path already broadcast
  * this; skip" and a `false` return as "go ahead and broadcast".
  */
-export function recentlyBroadcast(key: string, ttlMs: number): boolean {
+export function recentlyBroadcast(key: string, ttlMs: number): boolean
+{
 	const now = Date.now();
 	const previous = lastSeen.get(key);
-	if (previous !== undefined && now - previous < ttlMs) {
+	if (previous !== undefined && now - previous < ttlMs)
+	{
 		return true;
 	}
 	lastSeen.set(key, now);
@@ -47,14 +49,18 @@ export function recentlyBroadcast(key: string, ttlMs: number): boolean {
  * bound under steady traffic. Pruning is O(n) but n is bounded by the number
  * of distinct keys broadcast within the window — small in practice.
  */
-function pruneExpired(now: number, ttlMs: number): void {
-	for (const [key, ts] of lastSeen) {
+function pruneExpired(now: number, ttlMs: number): void
+{
+	for (const [key, ts] of lastSeen)
+	{
 		if (now - ts >= ttlMs) lastSeen.delete(key);
 	}
 }
 
-export const __testing = {
-	clear: (): void => {
+export const __testing =
+{
+	clear: (): void =>
+	{
 		lastSeen.clear();
 	},
 };
@@ -64,6 +70,7 @@ export const __testing = {
  * it: a registry status change keeps the transcript mtime, so without it a
  * Needs input → Working flip inside the TTL would be swallowed.
  */
-export function sessionUpdatedDedupeKey(summary: {id: string; mtime: string; unseen: boolean; state: string}): string {
+export function sessionUpdatedDedupeKey(summary: {id: string; mtime: string; unseen: boolean; state: string}): string
+{
 	return `session:updated:${summary.id}:${summary.mtime}:${summary.unseen}:${summary.state}`;
 }

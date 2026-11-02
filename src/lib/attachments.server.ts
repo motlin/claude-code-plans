@@ -18,26 +18,45 @@ const IMAGE_EXTENSIONS = new Map<string, string>([
 const MULTIPART_OVERHEAD_BYTES = 64 * 1024;
 
 /** Where uploaded composer attachments are saved. */
-export function attachmentsDir(cacheDir: string = getCacheDir()): string {
+export function attachmentsDir(cacheDir: string = getCacheDir()): string
+{
 	return join(cacheDir, "attachments");
 }
 
-function error(message: string, status: number): Response {
-	return Response.json({error: message}, {status});
+function error(message: string, status: number): Response
+{
+	return Response.json(
+		{
+			error: message,
+		},
+		{
+			status,
+		},
+	);
 }
 
 /** UTF-8 without NUL bytes: text whatever type the browser guessed from the extension. */
-function isText(bytes: Uint8Array): boolean {
+function isText(bytes: Uint8Array): boolean
+{
 	if (bytes.includes(0)) return false;
-	try {
-		new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+	try
+	{
+		new TextDecoder(
+			"utf-8",
+			{
+				fatal: true,
+			},
+		).decode(bytes);
 		return true;
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
 
-function textExtension(name: string): string {
+function textExtension(name: string): string
+{
 	return /\.([A-Za-z0-9]{1,16})$/.exec(name)?.[1]?.toLowerCase() ?? "txt";
 }
 
@@ -46,12 +65,14 @@ function textExtension(name: string): string {
  * Claude can read, or text, at most 5 MB) as `<uuid>.<ext>` under the cache
  * dir and returns its absolute path for the prompt.
  */
-export async function handleAttachmentUpload(request: Request, dir: string = attachmentsDir()): Promise<Response> {
+export async function handleAttachmentUpload(request: Request, dir: string = attachmentsDir()): Promise<Response>
+{
 	const rejection = rejectCrossSite(request);
 	if (rejection) return rejection;
 
 	const declaredLength = Number(request.headers.get("Content-Length") ?? 0);
-	if (declaredLength > MAX_ATTACHMENT_BYTES + MULTIPART_OVERHEAD_BYTES) {
+	if (declaredLength > MAX_ATTACHMENT_BYTES + MULTIPART_OVERHEAD_BYTES)
+	{
 		return error("File is larger than 5 MB", 413);
 	}
 
@@ -64,22 +85,48 @@ export async function handleAttachmentUpload(request: Request, dir: string = att
 	const imageExtension = IMAGE_EXTENSIONS.get(file.type);
 	let extension: string;
 	let mediaType: string;
-	if (imageExtension !== undefined) {
+	if (imageExtension !== undefined)
+	{
 		extension = imageExtension;
 		mediaType = file.type;
-	} else if (isText(bytes)) {
+	}
+	else if (isText(bytes))
+	{
 		extension = textExtension(file.name);
 		mediaType = file.type.startsWith("text/") ? file.type : "text/plain";
-	} else {
+	}
+	else
+	{
 		return error("Only images (PNG, JPEG, GIF, WebP) and text files can be attached", 415);
 	}
 
-	await mkdir(dir, {recursive: true});
+	await mkdir(
+		dir,
+		{
+			recursive: true,
+		},
+	);
 	const path = join(dir, `${randomUUID()}.${extension}`);
-	await writeFile(path, bytes, {flag: "wx"});
-	return Response.json(AttachmentUploadResponse.parse({path, name: file.name, mediaType, size: file.size}), {
-		status: 201,
-	});
+	await writeFile(
+		path,
+		bytes,
+		{
+			flag: "wx",
+		},
+	);
+	return Response.json(
+		AttachmentUploadResponse.parse(
+			{
+				path,
+				name: file.name,
+				mediaType,
+				size: file.size,
+			},
+		),
+		{
+			status: 201,
+		},
+	);
 }
 
 /**
@@ -87,14 +134,18 @@ export async function handleAttachmentUpload(request: Request, dir: string = att
  * restored after a reload can still open its preview. Only files inside the
  * attachments folder (after resolving symlinks) are served.
  */
-export async function handleAttachmentRead(request: Request, dir: string = attachmentsDir()): Promise<Response> {
+export async function handleAttachmentRead(request: Request, dir: string = attachmentsDir()): Promise<Response>
+{
 	const requested = new URL(request.url).searchParams.get("path");
 	if (requested === null || !isAbsolute(requested)) return error("An absolute attachment path is required", 400);
 
 	let resolved: string;
-	try {
+	try
+	{
 		resolved = await realpath(requested);
-	} catch {
+	}
+	catch
+	{
 		return error("Attachment not found", 404);
 	}
 	const root = await realpath(dir).catch(() => null);
@@ -102,5 +153,13 @@ export async function handleAttachmentRead(request: Request, dir: string = attac
 
 	const bytes = await readFile(resolved).catch(() => null);
 	if (bytes === null) return error("Attachment not found", 404);
-	return new Response(bytes, {headers: {"Content-Type": "text/plain; charset=utf-8"}});
+	return new Response(
+		bytes,
+		{
+			headers:
+			{
+				"Content-Type": "text/plain; charset=utf-8",
+			},
+		},
+	);
 }

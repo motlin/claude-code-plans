@@ -3,7 +3,8 @@ const WILL_BE_ADDED_BEFORE = "This session will be added to ";
 const WILL_BE_ADDED_AFTER = " in the sidebar when you start it.";
 const DONT_ADD = "Don’t add";
 
-interface GroupLaunchNoteProps {
+interface GroupLaunchNoteProps
+{
 	name: string;
 	/** `line` takes the environment-bar line; `block` sits after the bar while a blocking line holds it. */
 	placement: "line" | "block";
@@ -14,8 +15,10 @@ interface GroupLaunchNoteProps {
  * Upstream's custom-group note (`e7`): the next home launch joins this sidebar group, with a "Don’t add" TextLink
  * (`inheritColor`) that clears the pending group.
  */
-export function GroupLaunchNote({name, placement, onDismiss}: GroupLaunchNoteProps) {
-	if (placement === "block") {
+export function GroupLaunchNote({name, placement, onDismiss}: GroupLaunchNoteProps)
+{
+	if (placement === "block")
+	{
 		return (
 			<p className="text-center text-balance text-footnote text-secondary">
 				{WILL_BE_ADDED_BEFORE}
@@ -43,7 +46,8 @@ export function GroupLaunchNote({name, placement, onDismiss}: GroupLaunchNotePro
 	);
 }
 
-function DontAddLink({name, onDismiss, className}: {name: string; onDismiss: () => void; className: string}) {
+function DontAddLink({name, onDismiss, className}: {name: string; onDismiss: () => void; className: string})
+{
 	return (
 		<button
 			type="button"

@@ -9,7 +9,11 @@ export const USER_TRAILING_CLASS =
 	"flex w-full flex-col gap-5 compact:gap-4 print:block print:[&>:where(:not(:first-child))]:!mt-5 compact:print:[&>:where(:not(:first-child))]:!mt-4 empty:hidden [&>*]:!my-0";
 
 /** Upstream `uT`: `start` only for `authorLayout` "other" authors, which Code never has. */
-export const USER_TRAILING_SIDE_CLASS = {end: "items-end", start: "items-start"} as const;
+export const USER_TRAILING_SIDE_CLASS =
+{
+	end: "items-end",
+	start: "items-start",
+} as const;
 
 /** Appended to the strip when the user frame above it renders tiles, a bubble, a failed footer or actions. */
 export const USER_TRAILING_AFTER_FRAME_CLASS = "mt-5 compact:mt-4";
@@ -25,7 +29,8 @@ export const CODE_RESERVES_ACTIONS_GAP: ReservesActionsGap = "prompts";
 
 export type TranscriptRowPosition = "only" | "first" | "middle" | "last";
 
-export interface UserActionsGapInput {
+export interface UserActionsGapInput
+{
 	reservesActionsGap: ReservesActionsGap;
 	position: TranscriptRowPosition;
 	/** `annotations.chat.awaitingTurn` (upstream `ao`). */
@@ -43,7 +48,8 @@ export function reservesUserActionsGap({
 	awaiting,
 	insideReply,
 	trailingCount,
-}: UserActionsGapInput): boolean {
+}: UserActionsGapInput): boolean
+{
 	return (
 		reservesActionsGap !== false &&
 		(position === "only" || position === "last") &&
@@ -54,6 +60,7 @@ export function reservesUserActionsGap({
 }
 
 /** shared-80 `Hj`'s first term, `reservesActionsGap===!0`: Code's `"prompts"` never marks an assistant message. */
-export function reservesAssistantActionsGap(reservesActionsGap: ReservesActionsGap): boolean {
+export function reservesAssistantActionsGap(reservesActionsGap: ReservesActionsGap): boolean
+{
 	return reservesActionsGap === true;
 }

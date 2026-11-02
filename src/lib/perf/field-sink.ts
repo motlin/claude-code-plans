@@ -15,81 +15,112 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const FIELD_LOG_PATTERN = /^field-(\d{4}-\d{2}-\d{2})\.jsonl$/;
 
 const ResourceSampleSchema = z
-	.object({
-		name: z.string(),
-		initiatorType: z.string(),
-		startTime: z.number(),
-		duration: z.number(),
-		requestStart: z.number(),
-		responseStart: z.number(),
-		responseEnd: z.number(),
-		transferSize: z.number(),
-		serverTiming: z.array(z.object({name: z.string(), duration: z.number(), description: z.string()}).strict()),
-	})
+	.object(
+		{
+			name: z.string(),
+			initiatorType: z.string(),
+			startTime: z.number(),
+			duration: z.number(),
+			requestStart: z.number(),
+			responseStart: z.number(),
+			responseEnd: z.number(),
+			transferSize: z.number(),
+			serverTiming: z.array(
+				z
+					.object(
+						{
+							name: z.string(),
+							duration: z.number(),
+							description: z.string(),
+						},
+					)
+					.strict(),
+			),
+		},
+	)
 	.strict();
 
 const LongAnimationFrameSampleSchema = z
-	.object({
-		startTime: z.number(),
-		duration: z.number(),
-		blockingDuration: z.number(),
-		scripts: z.array(
-			z
-				.object({
-					invoker: z.string(),
-					sourceURL: z.string(),
-					sourceFunctionName: z.string(),
-					duration: z.number(),
-				})
-				.strict(),
-		),
-	})
+	.object(
+		{
+			startTime: z.number(),
+			duration: z.number(),
+			blockingDuration: z.number(),
+			scripts: z.array(
+				z
+					.object(
+						{
+							invoker: z.string(),
+							sourceURL: z.string(),
+							sourceFunctionName: z.string(),
+							duration: z.number(),
+						},
+					)
+					.strict(),
+			),
+		},
+	)
 	.strict();
 
 const LayoutShiftSampleSchema = z
-	.object({startTime: z.number(), value: z.number(), hadRecentInput: z.boolean()})
+	.object(
+		{
+			startTime: z.number(),
+			value: z.number(),
+			hadRecentInput: z.boolean(),
+		},
+	)
 	.strict();
 
 const EventTimingSampleSchema = z
-	.object({
-		name: z.string(),
-		startTime: z.number(),
-		duration: z.number(),
-		processingStart: z.number(),
-		processingEnd: z.number(),
-		interactionId: z.number(),
-	})
+	.object(
+		{
+			name: z.string(),
+			startTime: z.number(),
+			duration: z.number(),
+			processingStart: z.number(),
+			processingEnd: z.number(),
+			interactionId: z.number(),
+		},
+	)
 	.strict();
 
 export const JourneySampleSchema = z
-	.object({
-		journey: z.string(),
-		trigger: z.string(),
-		start: z.number(),
-		end: z.number(),
-		duration: z.number(),
-		endSource: z.enum(["element-timing", "event-timing", "raf"]),
-		route: z.string(),
-		sizeBucket: z.enum(["S", "M", "L"]).exactOptional(),
-		prefetchHit: z.boolean().exactOptional(),
-		buildSha: z.string(),
-		mode: z.enum(["dev", "prod"]),
-		origin: z.enum(["localhost", "remote"]),
-		formFactor: z.enum(["phone", "desktop"]),
-		hardwareConcurrency: z.number(),
-		resources: z.array(ResourceSampleSchema),
-		longAnimationFrames: z.array(LongAnimationFrameSampleSchema),
-		layoutShifts: z.array(LayoutShiftSampleSchema),
-		cls: z.number(),
-		events: z.array(EventTimingSampleSchema),
-	})
+	.object(
+		{
+			journey: z.string(),
+			trigger: z.string(),
+			start: z.number(),
+			end: z.number(),
+			duration: z.number(),
+			endSource: z.enum(["element-timing", "event-timing", "raf"]),
+			route: z.string(),
+			sizeBucket: z.enum(["S", "M", "L"]).exactOptional(),
+			prefetchHit: z.boolean().exactOptional(),
+			buildSha: z.string(),
+			mode: z.enum(["dev", "prod"]),
+			origin: z.enum(["localhost", "remote"]),
+			formFactor: z.enum(["phone", "desktop"]),
+			hardwareConcurrency: z.number(),
+			resources: z.array(ResourceSampleSchema),
+			longAnimationFrames: z.array(LongAnimationFrameSampleSchema),
+			layoutShifts: z.array(LayoutShiftSampleSchema),
+			cls: z.number(),
+			events: z.array(EventTimingSampleSchema),
+		},
+	)
 	.strict();
 
 const PerfBeaconBatchSchema = z
-	.object({samples: z.array(JourneySampleSchema).min(1).max(MAX_SAMPLES_PER_BATCH)})
+	.object(
+		{
+			samples: z.array(JourneySampleSchema).min(1).max(MAX_SAMPLES_PER_BATCH),
+		},
+	)
 	.strict();
 
-export interface PerfSinkOptions {
+export interface PerfSinkOptions
+{
 	/** The server's cache dir, `$XDG_CACHE_HOME/claude-code-plans`. */
 	cacheDir: string;
 	now?: () => Date;
@@ -97,42 +128,74 @@ export interface PerfSinkOptions {
 	echo?: boolean;
 }
 
-function utcDay(date: Date): string {
+function utcDay(date: Date): string
+{
 	return date.toISOString().slice(0, 10);
 }
 
-function pruneFieldLogs(perfDir: string, now: Date): void {
+function pruneFieldLogs(perfDir: string, now: Date): void
+{
 	const today = Date.parse(utcDay(now));
 	let names: string[];
-	try {
+	try
+	{
 		names = readdirSync(perfDir);
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
-	for (const name of names) {
+	for (const name of names)
+	{
 		const day = FIELD_LOG_PATTERN.exec(name)?.[1];
 		if (day === undefined) continue;
-		if ((today - Date.parse(day)) / DAY_MS > FIELD_LOG_RETENTION_DAYS) {
-			rmSync(join(perfDir, name), {force: true});
+		if ((today - Date.parse(day)) / DAY_MS > FIELD_LOG_RETENTION_DAYS)
+		{
+			rmSync(
+				join(perfDir, name),
+				{
+					force: true,
+				},
+			);
 		}
 	}
 }
 
-function badRequest(error: string): Response {
-	return Response.json({error}, {status: 400});
+function badRequest(error: string): Response
+{
+	return Response.json(
+		{
+			error,
+		},
+		{
+			status: 400,
+		},
+	);
 }
 
-export async function handlePerfBeacon(request: Request, options: PerfSinkOptions): Promise<Response> {
+export async function handlePerfBeacon(request: Request, options: PerfSinkOptions): Promise<Response>
+{
 	const rejection = rejectCrossSite(request);
 	if (rejection) return rejection;
 
 	const text = await request.text();
-	if (text.length > MAX_BODY_BYTES) return Response.json({error: "Payload too large"}, {status: 413});
+	if (text.length > MAX_BODY_BYTES)
+		return Response.json(
+			{
+				error: "Payload too large",
+			},
+			{
+				status: 413,
+			},
+		);
 
 	let json: unknown;
-	try {
+	try
+	{
 		json = JSON.parse(text);
-	} catch {
+	}
+	catch
+	{
 		return badRequest("Invalid JSON");
 	}
 	const parsed = PerfBeaconBatchSchema.safeParse(json);
@@ -140,13 +203,32 @@ export async function handlePerfBeacon(request: Request, options: PerfSinkOption
 
 	const now = options.now?.() ?? new Date();
 	const perfDir = join(options.cacheDir, "perf");
-	mkdirSync(perfDir, {recursive: true});
+	mkdirSync(
+		perfDir,
+		{
+			recursive: true,
+		},
+	);
 	const lines = parsed.data.samples.map((sample) => `${JSON.stringify(sample)}\n`).join("");
 	appendFileSync(join(perfDir, `field-${utcDay(now)}.jsonl`), lines);
 	pruneFieldLogs(perfDir, now);
-	if (options.echo ?? process.env["CCB_PERF_LOG"] === "1") {
-		for (const sample of parsed.data.samples) console.log(JSON.stringify({perf: "field", ...sample}));
+	if (options.echo ?? process.env["CCB_PERF_LOG"] === "1")
+	{
+		for (const sample of parsed.data.samples)
+			console.log(
+				JSON.stringify(
+					{
+						perf: "field",
+						...sample,
+					},
+				),
+			);
 	}
 
-	return new Response(null, {status: 204});
+	return new Response(
+		null,
+		{
+			status: 204,
+		},
+	);
 }

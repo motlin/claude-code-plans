@@ -5,11 +5,14 @@ import {plansQueryOptions} from "../lib/api/plans";
 import {toMdSlug} from "../lib/md-slug";
 import {selectPlanFilenames} from "./plan-filenames";
 
-export function PlanLink({planFilePath}: {planFilePath: string}) {
-	const {data: known} = useQuery({
-		...plansQueryOptions(),
-		select: selectPlanFilenames,
-	});
+export function PlanLink({planFilePath}: {planFilePath: string})
+{
+	const {data: known} = useQuery(
+		{
+			...plansQueryOptions(),
+			select: selectPlanFilenames,
+		},
+	);
 	const filename = planFilePath.split("/").pop();
 	if (!filename) return null;
 
@@ -19,14 +22,22 @@ export function PlanLink({planFilePath}: {planFilePath: string}) {
 	return (
 		<Link
 			to="/plan/$filename"
-			params={{filename: toMdSlug(filename)}}
+			params={
+			{
+				filename: toMdSlug(filename),
+			}}
 			title={exists ? planFilePath : `${planFilePath} — no plan file on disk yet`}
 			className={`inline-flex items-center gap-1 font-mono max-w-xs ${
 				exists
 					? "text-upstream-accent hover:underline"
 					: "text-t6 opacity-60 underline decoration-dotted hover:decoration-solid"
 			}`}
-			{...(exists ? {} : {"data-plan-missing": "true"})}
+			{...(exists
+				? {}
+				:
+					{
+						"data-plan-missing": "true",
+					})}
 		>
 			{!exists && <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
 			<span className="truncate">{filename}</span>

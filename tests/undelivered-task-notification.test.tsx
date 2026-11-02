@@ -2,53 +2,81 @@
 
 import {cleanup, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {
+import
+{
 	type BackgroundTasksOpener,
 	BackgroundTasksOpenerProvider,
 } from "../src/components/background-tasks-opener-context";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	vi.stubGlobal("innerHeight", 10_000);
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-		configurable: true,
-		value: vi.fn<HTMLElement["scrollIntoView"]>(),
-	});
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: vi.fn<HTMLElement["scrollIntoView"]>(),
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
 
-function renderRecords(records: unknown[], opener: BackgroundTasksOpener | null = null): HTMLElement {
+function renderRecords(records: unknown[], opener: BackgroundTasksOpener | null = null): HTMLElement
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	const chat = (
 		<SessionChat
@@ -66,18 +94,30 @@ function renderRecords(records: unknown[], opener: BackgroundTasksOpener | null 
 	).container;
 }
 
-const reply = {
+const reply =
+{
 	type: "assistant",
 	uuid: "assistant-1",
 	timestamp: "2026-10-11T14:47:24.000Z",
-	message: {role: "assistant", content: [{type: "text", text: "Waiting on the teammate."}]},
+	message:
+	{
+		role: "assistant",
+		content: [
+			{
+				type: "text",
+				text: "Waiting on the teammate.",
+			},
+		],
+	},
 };
 
-function notification(toolUseId: string, status: string, summary: string): string {
+function notification(toolUseId: string, status: string, summary: string): string
+{
 	return `<task-notification>\n<task-id>b5auh1l9v</task-id>\n<tool-use-id>${toolUseId}</tool-use-id>\n<output-file>/tmp/tasks/b5auh1l9v.output</output-file>\n<status>${status}</status>\n<summary>${summary}</summary>\n</task-notification>`;
 }
 
-function enqueue(content: string): unknown {
+function enqueue(content: string): unknown
+{
 	return {
 		type: "queue-operation",
 		operation: "enqueue",
@@ -87,19 +127,23 @@ function enqueue(content: string): unknown {
 	};
 }
 
-const dequeue = {
+const dequeue =
+{
 	type: "queue-operation",
 	operation: "dequeue",
 	timestamp: "2026-10-11T14:56:15.770Z",
 	sessionId: "test-session",
 };
 
-function taskEventRows(container: HTMLElement): string[] {
+function taskEventRows(container: HTMLElement): string[]
+{
 	return Array.from(container.querySelectorAll("[data-task-event-row]"), (row) => row.textContent);
 }
 
-describe("undelivered background-task notifications", () => {
-	it("draws one notification the queue never delivered as its own row, labelled by its kind and status", () => {
+describe("undelivered background-task notifications", () =>
+{
+	it("draws one notification the queue never delivered as its own row, labelled by its kind and status", () =>
+	{
 		const container = renderRecords([
 			reply,
 			enqueue(
@@ -114,7 +158,8 @@ describe("undelivered background-task notifications", () => {
 		expect(taskEventRows(container)).toStrictEqual(["Background command stopped·Wait for test-branch to finish"]);
 	});
 
-	it("collapses two or more undelivered notifications in one slot into upstream's single summary row", () => {
+	it("collapses two or more undelivered notifications in one slot into upstream's single summary row", () =>
+	{
 		const container = renderRecords([
 			reply,
 			enqueue(
@@ -136,7 +181,8 @@ describe("undelivered background-task notifications", () => {
 		expect(taskEventRows(container)).toStrictEqual(["1 background command completed, 1 stopped"]);
 	});
 
-	it("keeps one summary row when only a hidden line sits between two undelivered notifications, as upstream walks rendered items", () => {
+	it("keeps one summary row when only a hidden line sits between two undelivered notifications, as upstream walks rendered items", () =>
+	{
 		const container = renderRecords([
 			reply,
 			enqueue(
@@ -147,20 +193,32 @@ describe("undelivered background-task notifications", () => {
 				uuid: "meta-1",
 				isMeta: true,
 				timestamp: "2026-10-11T14:56:16.000Z",
-				message: {role: "user", content: "Caveat: hidden meta context"},
+				message:
+				{
+					role: "user",
+					content: "Caveat: hidden meta context",
+				},
 			},
 			enqueue(
 				notification("toolu_elsewhere2", "completed", 'Background command "Second" completed (exit code 0)'),
 			),
 		]);
 
-		expect({
-			rows: taskEventRows(container),
-			metaShown: container.textContent.includes("hidden meta context"),
-		}).toStrictEqual({rows: ["2 background commands completed"], metaShown: false});
+		expect(
+			{
+				rows: taskEventRows(container),
+				metaShown: container.textContent.includes("hidden meta context"),
+			},
+		).toStrictEqual(
+			{
+				rows: ["2 background commands completed"],
+				metaShown: false,
+			},
+		);
 	});
 
-	it("places an undelivered notification after assistant text flushed later but timestamped before its enqueue", () => {
+	it("places an undelivered notification after assistant text flushed later but timestamped before its enqueue", () =>
+	{
 		const container = renderRecords([
 			{
 				type: "queue-operation",
@@ -180,13 +238,21 @@ describe("undelivered background-task notifications", () => {
 		const order = ["Waiting on the teammate.", "Background command completed"].toSorted(
 			(first, second) => text.indexOf(first) - text.indexOf(second),
 		);
-		expect({rows: taskEventRows(container), order}).toStrictEqual({
-			rows: ["Background command completed·Run git test on every branch commit"],
-			order: ["Waiting on the teammate.", "Background command completed"],
-		});
+		expect(
+			{
+				rows: taskEventRows(container),
+				order,
+			},
+		).toStrictEqual(
+			{
+				rows: ["Background command completed·Run git test on every branch commit"],
+				order: ["Waiting on the teammate.", "Background command completed"],
+			},
+		);
 	});
 
-	it("draws a notification the queue delivered once, as its delivered row", () => {
+	it("draws a notification the queue delivered once, as its delivered row", () =>
+	{
 		const content = notification(
 			"toolu_elsewhere1",
 			"completed",
@@ -196,7 +262,15 @@ describe("undelivered background-task notifications", () => {
 			reply,
 			enqueue(content),
 			dequeue,
-			{type: "user", uuid: "user-2", message: {role: "user", content}},
+			{
+				type: "user",
+				uuid: "user-2",
+				message:
+				{
+					role: "user",
+					content,
+				},
+			},
 		]);
 
 		expect(
@@ -207,7 +281,8 @@ describe("undelivered background-task notifications", () => {
 		).toStrictEqual(["Background command completed·Wait for test-branch runs to finish"]);
 	});
 
-	it("draws no status row for a notification the queue removed, or one whose launch is in this transcript", () => {
+	it("draws no status row for a notification the queue removed, or one whose launch is in this transcript", () =>
+	{
 		const removed = notification(
 			"toolu_elsewhere1",
 			"completed",
@@ -217,28 +292,38 @@ describe("undelivered background-task notifications", () => {
 			{
 				type: "assistant",
 				uuid: "assistant-0",
-				message: {
+				message:
+				{
 					role: "assistant",
 					content: [
 						{
 							type: "tool_use",
 							id: "toolu_launched",
 							name: "Bash",
-							input: {command: "sleep 1", description: "Sleep", run_in_background: true},
+							input:
+							{
+								command: "sleep 1",
+								description: "Sleep",
+								run_in_background: true,
+							},
 						},
 					],
 				},
 			},
 			reply,
 			enqueue(removed),
-			{...(enqueue(removed) as object), operation: "remove"},
+			{
+				...(enqueue(removed) as object),
+				operation: "remove",
+			},
 			enqueue(notification("toolu_launched", "completed", 'Background command "Sleep" completed (exit code 0)')),
 		]);
 
 		expect(taskEventRows(container)).toStrictEqual([]);
 	});
 
-	it("draws a run with a failed part as upstream's wrapping summary: failed part nowrap in danger ink, label min-w-0 break-words", () => {
+	it("draws a run with a failed part as upstream's wrapping summary: failed part nowrap in danger ink, label min-w-0 break-words", () =>
+	{
 		const container = renderRecords([
 			reply,
 			enqueue(
@@ -252,42 +337,78 @@ describe("undelivered background-task notifications", () => {
 
 		const row = container.querySelector("[data-task-event-row]")!;
 		const label = row.querySelector("[data-turn-status-marker] > * > span > span")!;
-		expect({
-			rows: taskEventRows(container),
-			label: label.className,
-			parts: Array.from(label.children, (part) => ({text: part.textContent, className: part.className})),
-		}).toStrictEqual({
-			rows: ["2 background commands completed, 1 failed"],
-			label: "text-body text-secondary group-hover/tool:text-primary min-w-0 break-words",
-			parts: [
-				{text: "2 background commands completed", className: ""},
-				{text: ", ", className: ""},
-				{text: "1 failed", className: "whitespace-nowrap text-danger-ink"},
-			],
-		});
+		expect(
+			{
+				rows: taskEventRows(container),
+				label: label.className,
+				parts: Array.from(label.children, (part) => (
+				{
+					text: part.textContent,
+					className: part.className,
+				})),
+			},
+		).toStrictEqual(
+			{
+				rows: ["2 background commands completed, 1 failed"],
+				label: "text-body text-secondary group-hover/tool:text-primary min-w-0 break-words",
+				parts: [
+					{
+						text: "2 background commands completed",
+						className: "",
+					},
+					{
+						text: ", ",
+						className: "",
+					},
+					{
+						text: "1 failed",
+						className: "whitespace-nowrap text-danger-ink",
+					},
+				],
+			},
+		);
 	});
 
-	it("draws a single failed command with its label in danger ink", () => {
+	it("draws a single failed command with its label in danger ink", () =>
+	{
 		const container = renderRecords([
 			reply,
 			enqueue(notification("toolu_elsewhere1", "failed", 'Background command "Fetch" failed with exit code 1')),
 		]);
 
 		const spans = container.querySelectorAll("[data-turn-status-marker] > * > span > span");
-		expect({
-			rows: taskEventRows(container),
-			spans: Array.from(spans, (span) => ({text: span.textContent, className: span.className})),
-		}).toStrictEqual({
-			rows: ["Background command failed·Fetch"],
-			spans: [
-				{text: "Background command failed", className: "text-body shrink-0 text-danger-ink"},
-				{text: "·", className: "text-body text-secondary group-hover/tool:text-primary shrink-0"},
-				{text: "Fetch", className: "text-body text-secondary group-hover/tool:text-primary min-w-0 truncate"},
-			],
-		});
+		expect(
+			{
+				rows: taskEventRows(container),
+				spans: Array.from(spans, (span) => (
+				{
+					text: span.textContent,
+					className: span.className,
+				})),
+			},
+		).toStrictEqual(
+			{
+				rows: ["Background command failed·Fetch"],
+				spans: [
+					{
+						text: "Background command failed",
+						className: "text-body shrink-0 text-danger-ink",
+					},
+					{
+						text: "·",
+						className: "text-body text-secondary group-hover/tool:text-primary shrink-0",
+					},
+					{
+						text: "Fetch",
+						className: "text-body text-secondary group-hover/tool:text-primary min-w-0 truncate",
+					},
+				],
+			},
+		);
 	});
 
-	it("ends a single completed command with its duration, as upstream's took span", () => {
+	it("ends a single completed command with its duration, as upstream's took span", () =>
+	{
 		const container = renderRecords([
 			reply,
 			enqueue(
@@ -303,13 +424,21 @@ describe("undelivered background-task notifications", () => {
 		]);
 
 		const took = container.querySelector("[data-turn-status-marker] > * > span > span:last-child")!;
-		expect({rows: taskEventRows(container), took: took.className}).toStrictEqual({
-			rows: ["Background command completed·Build· took 12s"],
-			took: "text-body text-secondary group-hover/tool:text-primary shrink-0 whitespace-nowrap tabular-nums",
-		});
+		expect(
+			{
+				rows: taskEventRows(container),
+				took: took.className,
+			},
+		).toStrictEqual(
+			{
+				rows: ["Background command completed·Build· took 12s"],
+				took: "text-body text-secondary group-hover/tool:text-primary shrink-0 whitespace-nowrap tabular-nums",
+			},
+		);
 	});
 
-	it("draws a single completed agent notification whose launch is elsewhere", () => {
+	it("draws a single completed agent notification whose launch is elsewhere", () =>
+	{
 		const container = renderRecords([
 			reply,
 			enqueue(notification("toolu_elsewhere1", "completed", 'Agent "Review the diff" completed')),
@@ -318,7 +447,8 @@ describe("undelivered background-task notifications", () => {
 		expect(taskEventRows(container)).toStrictEqual(["Background agent completed·Review the diff"]);
 	});
 
-	it("draws the row as upstream's keeps-pin button that opens Background tasks on its first task's Finished entry", () => {
+	it("draws the row as upstream's keeps-pin button that opens Background tasks on its first task's Finished entry", () =>
+	{
 		const open = vi.fn<BackgroundTasksOpener["open"]>();
 		const container = renderRecords(
 			[
@@ -332,10 +462,14 @@ describe("undelivered background-task notifications", () => {
 				),
 				enqueue(notification("toolu_elsewhere2", "killed", 'Background command "Watch logs" was stopped')),
 			],
-			{open, running: new Map()},
+			{
+				open,
+				running: new Map(),
+			},
 		);
 
-		const buttons = Array.from(container.querySelectorAll("[data-task-event-row] button"), (button) => ({
+		const buttons = Array.from(container.querySelectorAll("[data-task-event-row] button"), (button) => (
+		{
 			type: button.getAttribute("type"),
 			keepsPin: button.getAttribute("data-transcript-keeps-pin"),
 			className: button.className,
@@ -352,10 +486,18 @@ describe("undelivered background-task notifications", () => {
 		]);
 
 		container.querySelector<HTMLButtonElement>("[data-task-event-row] button")?.click();
-		expect(open.mock.calls).toStrictEqual([[{taskId: "b5auh1l9v", finished: true}]]);
+		expect(open.mock.calls).toStrictEqual([
+			[
+				{
+					taskId: "b5auh1l9v",
+					finished: true,
+				},
+			],
+		]);
 	});
 
-	it("draws the row as upstream's plain div with no button where no pane can host Background tasks", () => {
+	it("draws the row as upstream's plain div with no button where no pane can host Background tasks", () =>
+	{
 		const container = renderRecords([
 			reply,
 			enqueue(
@@ -364,13 +506,21 @@ describe("undelivered background-task notifications", () => {
 		]);
 
 		const row = container.querySelector("[data-task-event-row]");
-		expect({
-			buttons: row?.querySelectorAll("button").length,
-			plain: row?.querySelector("[data-turn-status-marker] > div")?.className,
-		}).toStrictEqual({buttons: 0, plain: "flex flex-col gap-1 py-0 max-w-full items-start"});
+		expect(
+			{
+				buttons: row?.querySelectorAll("button").length,
+				plain: row?.querySelector("[data-turn-status-marker] > div")?.className,
+			},
+		).toStrictEqual(
+			{
+				buttons: 0,
+				plain: "flex flex-col gap-1 py-0 max-w-full items-start",
+			},
+		);
 	});
 
-	it("links the word artifact before an artifact URL, drops the URL, and draws the row inert with no button, as upstream's dj/vj do", () => {
+	it("links the word artifact before an artifact URL, drops the URL, and draws the row inert with no button, as upstream's dj/vj do", () =>
+	{
 		const open = vi.fn<BackgroundTasksOpener["open"]>();
 		const container = renderRecords(
 			[
@@ -383,28 +533,43 @@ describe("undelivered background-task notifications", () => {
 					),
 				),
 			],
-			{open, running: new Map()},
+			{
+				open,
+				running: new Map(),
+			},
 		);
 
 		const row = container.querySelector("[data-task-event-row]");
-		expect({
-			buttons: row?.querySelectorAll("button").length,
-			plain: row?.querySelector("[data-turn-status-marker] > div")?.className,
-			links: Array.from(row?.querySelectorAll("a") ?? [], (link) => ({
-				text: link.textContent,
-				href: link.getAttribute("href"),
-				artifact: link.getAttribute("data-artifact-link"),
-			})),
-			text: row?.textContent,
-		}).toStrictEqual({
-			buttons: 0,
-			plain: "flex flex-col gap-1 py-0 max-w-full items-start",
-			links: [{text: "artifact", href: "https://claude.ai/code/artifact/abc", artifact: ""}],
-			text: "Background agent completed·Publish artifact",
-		});
+		expect(
+			{
+				buttons: row?.querySelectorAll("button").length,
+				plain: row?.querySelector("[data-turn-status-marker] > div")?.className,
+				links: Array.from(row?.querySelectorAll("a") ?? [], (link) => (
+				{
+					text: link.textContent,
+					href: link.getAttribute("href"),
+					artifact: link.getAttribute("data-artifact-link"),
+				})),
+				text: row?.textContent,
+			},
+		).toStrictEqual(
+			{
+				buttons: 0,
+				plain: "flex flex-col gap-1 py-0 max-w-full items-start",
+				links: [
+					{
+						text: "artifact",
+						href: "https://claude.ai/code/artifact/abc",
+						artifact: "",
+					},
+				],
+				text: "Background agent completed·Publish artifact",
+			},
+		);
 	});
 
-	it("marks the task-event row's wrapper data-find-omitted, so find-in-page skips it as upstream's Spe does", () => {
+	it("marks the task-event row's wrapper data-find-omitted, so find-in-page skips it as upstream's Spe does", () =>
+	{
 		const container = renderRecords([
 			reply,
 			enqueue(notification("toolu_elsewhere1", "completed", 'Agent "Review the diff" completed')),

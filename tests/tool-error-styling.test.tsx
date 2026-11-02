@@ -8,18 +8,22 @@ import {ReadRenderer} from "../src/components/tool-renderers/read-renderer";
 import {ErrorBorder, KeyValueCard} from "../src/components/tool-renderers/shared";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
-vi.mock("../src/hooks/use-shiki", () => ({
+vi.mock("../src/hooks/use-shiki", () => (
+{
 	useHighlightedLines: () => null,
 	getHighlighterSync: () => null,
 	getHighlighterVersion: () => 0,
-	subscribeHighlighter: () => () => {},
+	subscribeHighlighter: () => () =>
+	{
+	},
 }));
 
 /** Upstream paints failed tool bodies danger red instead of drawing a danger rail. */
 const DANGER = "text-danger-ink";
 const CAP = "max-h-[400px] overflow-y-auto";
 
-function failedCall(name: string, input: Record<string, unknown>, result: string): ClientToolCall {
+function failedCall(name: string, input: Record<string, unknown>, result: string): ClientToolCall
+{
 	return {
 		id: "tool-call-err",
 		name,
@@ -31,18 +35,22 @@ function failedCall(name: string, input: Record<string, unknown>, result: string
 	};
 }
 
-function railCount(container: HTMLElement): number {
+function railCount(container: HTMLElement): number
+{
 	return container.querySelectorAll('[class*="border-l-2"]').length;
 }
 
-function firstCapped(container: HTMLElement): HTMLElement | null {
+function firstCapped(container: HTMLElement): HTMLElement | null
+{
 	return container.querySelector<HTMLElement>('[class*="max-h-["]');
 }
 
 afterEach(cleanup);
 
-describe("failed tool bodies", () => {
-	it("recolors the body instead of drawing a danger rail", () => {
+describe("failed tool bodies", () =>
+{
+	it("recolors the body instead of drawing a danger rail", () =>
+	{
 		const {container} = render(
 			<ErrorBorder isError>
 				<span data-testid="body">boom</span>
@@ -50,18 +58,23 @@ describe("failed tool bodies", () => {
 		);
 		const wrapper = container.firstElementChild;
 
-		expect({
-			tag: wrapper?.tagName,
-			className: wrapper?.className,
-			keepsChild: wrapper?.querySelector("[data-testid='body']") !== null,
-		}).toStrictEqual({
-			tag: "DIV",
-			className: DANGER,
-			keepsChild: true,
-		});
+		expect(
+			{
+				tag: wrapper?.tagName,
+				className: wrapper?.className,
+				keepsChild: wrapper?.querySelector("[data-testid='body']") !== null,
+			},
+		).toStrictEqual(
+			{
+				tag: "DIV",
+				className: DANGER,
+				keepsChild: true,
+			},
+		);
 	});
 
-	it("leaves a successful body untouched", () => {
+	it("leaves a successful body untouched", () =>
+	{
 		const {container} = render(
 			<ErrorBorder isError={false}>
 				<span data-testid="body">ok</span>
@@ -71,105 +84,187 @@ describe("failed tool bodies", () => {
 		expect(container.innerHTML).toBe('<span data-testid="body">ok</span>');
 	});
 
-	it("puts the KeyValueCard error message above the params in danger red", () => {
+	it("puts the KeyValueCard error message above the params in danger red", () =>
+	{
 		const {container} = render(
-			<KeyValueCard isError params={[{key: "pattern", value: "alice"}]} result="rg: unrecognized flag" />,
+			<KeyValueCard
+				isError
+				params={[
+					{
+						key: "pattern",
+						value: "alice",
+					},
+				]}
+				result="rg: unrecognized flag"
+			/>,
 		);
 		const column = container.querySelector<HTMLElement>('[class*="flex-1"]');
 		const scroller = firstCapped(container);
 
-		expect({
-			columnClass: column?.className,
-			children: [...(scroller?.children ?? [])].map((child) => ({
-				className: child.className,
-				text: child.textContent,
-			})),
-			rails: railCount(container),
-		}).toStrictEqual({
-			columnClass: "flex-1 min-w-0 flex flex-col gap-g4 text-body whitespace-pre-wrap break-words",
-			children: [
-				{className: DANGER, text: "rg: unrecognized flag"},
+		expect(
+			{
+				columnClass: column?.className,
+				children: [...(scroller?.children ?? [])].map((child) => (
 				{
-					className: "text-secondary flex flex-col gap-g2",
-					text: "pattern: alice",
-				},
-			],
-			rails: 0,
-		});
+					className: child.className,
+					text: child.textContent,
+				})),
+				rails: railCount(container),
+			},
+		).toStrictEqual(
+			{
+				columnClass: "flex-1 min-w-0 flex flex-col gap-g4 text-body whitespace-pre-wrap break-words",
+				children: [
+					{
+						className: DANGER,
+						text: "rg: unrecognized flag",
+					},
+					{
+						className: "text-secondary flex flex-col gap-g2",
+						text: "pattern: alice",
+					},
+				],
+				rails: 0,
+			},
+		);
 	});
 
-	it("keeps the successful KeyValueCard column secondary with the result in an Output section below the Input", () => {
-		const {container} = render(<KeyValueCard params={[{key: "pattern", value: "alice"}]} result="alice.ts" />);
+	it("keeps the successful KeyValueCard column secondary with the result in an Output section below the Input", () =>
+	{
+		const {container} = render(
+			<KeyValueCard
+				params={[
+					{
+						key: "pattern",
+						value: "alice",
+					},
+				]}
+				result="alice.ts"
+			/>,
+		);
 		const column = container.querySelector<HTMLElement>('[class*="flex-1"]');
 
-		expect({
-			columnClass: column?.className,
-			regions: [...container.querySelectorAll('[role="group"]')].map((region) => [
-				region.getAttribute("aria-label"),
-				region.textContent,
-			]),
-		}).toStrictEqual({
-			columnClass:
-				"flex-1 min-w-0 flex flex-col justify-center gap-sm text-body text-secondary whitespace-pre-wrap break-words",
-			regions: [
-				["Tool call input", "pattern: alice"],
-				["Tool output", "alice.ts"],
-			],
-		});
+		expect(
+			{
+				columnClass: column?.className,
+				regions: [...container.querySelectorAll('[role="group"]')].map((region) => [
+					region.getAttribute("aria-label"),
+					region.textContent,
+				]),
+			},
+		).toStrictEqual(
+			{
+				columnClass:
+					"flex-1 min-w-0 flex flex-col justify-center gap-sm text-body text-secondary whitespace-pre-wrap break-words",
+				regions: [
+					["Tool call input", "pattern: alice"],
+					["Tool output", "alice.ts"],
+				],
+			},
+		);
 	});
 
-	it("renders the failed Grep message in danger red above its params", () => {
+	it("renders the failed Grep message in danger red above its params", () =>
+	{
 		const {container} = render(
-			<GrepRenderer toolCall={failedCall("Grep", {pattern: "alice"}, "rg exited with code 2")} />,
+			<GrepRenderer
+				toolCall={failedCall(
+					"Grep",
+					{
+						pattern: "alice",
+					},
+					"rg exited with code 2",
+				)}
+			/>,
 		);
 		const scroller = firstCapped(container);
 
-		expect({
-			first: {
-				className: scroller?.firstElementChild?.className,
-				text: scroller?.firstElementChild?.textContent,
+		expect(
+			{
+				first:
+				{
+					className: scroller?.firstElementChild?.className,
+					text: scroller?.firstElementChild?.textContent,
+				},
+				rails: railCount(container),
 			},
-			rails: railCount(container),
-		}).toStrictEqual({
-			first: {className: DANGER, text: "rg exited with code 2"},
-			rails: 0,
-		});
+		).toStrictEqual(
+			{
+				first:
+				{
+					className: DANGER,
+					text: "rg exited with code 2",
+				},
+				rails: 0,
+			},
+		);
 	});
 
-	it("renders the failed Glob message in danger red above its params", () => {
+	it("renders the failed Glob message in danger red above its params", () =>
+	{
 		const {container} = render(
-			<GlobRenderer toolCall={failedCall("Glob", {pattern: "**/*.ts"}, "EACCES: denied")} />,
+			<GlobRenderer
+				toolCall={failedCall(
+					"Glob",
+					{
+						pattern: "**/*.ts",
+					},
+					"EACCES: denied",
+				)}
+			/>,
 		);
 		const scroller = firstCapped(container);
 
-		expect({
-			first: {
-				className: scroller?.firstElementChild?.className,
-				text: scroller?.firstElementChild?.textContent,
+		expect(
+			{
+				first:
+				{
+					className: scroller?.firstElementChild?.className,
+					text: scroller?.firstElementChild?.textContent,
+				},
+				rails: railCount(container),
 			},
-			rails: railCount(container),
-		}).toStrictEqual({
-			first: {className: DANGER, text: "EACCES: denied"},
-			rails: 0,
-		});
+		).toStrictEqual(
+			{
+				first:
+				{
+					className: DANGER,
+					text: "EACCES: denied",
+				},
+				rails: 0,
+			},
+		);
 	});
 
-	it("swaps the Read code card for a plain danger-red body when the read failed", () => {
+	it("swaps the Read code card for a plain danger-red body when the read failed", () =>
+	{
 		const {container} = render(
-			<ReadRenderer toolCall={failedCall("Read", {file_path: "/test/alice.ts"}, "File does not exist.")} />,
+			<ReadRenderer
+				toolCall={failedCall(
+					"Read",
+					{
+						file_path: "/test/alice.ts",
+					},
+					"File does not exist.",
+				)}
+			/>,
 		);
 		const body = firstCapped(container);
 
-		expect({
-			bodyClass: body?.className,
-			text: body?.textContent,
-			gutters: container.querySelectorAll("[data-gutter]").length,
-			rails: railCount(container),
-		}).toStrictEqual({
-			bodyClass: `${CAP} text-code font-mono whitespace-pre-wrap break-all ${DANGER}`,
-			text: "File does not exist.",
-			gutters: 0,
-			rails: 0,
-		});
+		expect(
+			{
+				bodyClass: body?.className,
+				text: body?.textContent,
+				gutters: container.querySelectorAll("[data-gutter]").length,
+				rails: railCount(container),
+			},
+		).toStrictEqual(
+			{
+				bodyClass: `${CAP} text-code font-mono whitespace-pre-wrap break-all ${DANGER}`,
+				text: "File does not exist.",
+				gutters: 0,
+				rails: 0,
+			},
+		);
 	});
 });

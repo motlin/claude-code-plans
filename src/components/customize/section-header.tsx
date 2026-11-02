@@ -1,7 +1,8 @@
 import type {ReactNode} from "react";
 
 /** Upstream cds `Counter` (xs): 18px pill, 11px medium, neutral fill. */
-function Counter({count, inset}: {count: number; inset: boolean}) {
+function Counter({count, inset}: {count: number; inset: boolean})
+{
 	return (
 		<span
 			data-testid="customize-counter"
@@ -12,7 +13,8 @@ function Counter({count, inset}: {count: number; inset: boolean}) {
 	);
 }
 
-interface SectionHeaderProps {
+interface SectionHeaderProps
+{
 	id: string;
 	title: string;
 	count: number;
@@ -25,7 +27,8 @@ interface SectionHeaderProps {
 }
 
 /** Upstream `yours-section-*-header`: 15/20 semibold H3 followed by a Counter. */
-export function SectionHeader({id, title, count, comfortable, counterInset = true, trailing}: SectionHeaderProps) {
+export function SectionHeader({id, title, count, comfortable, counterInset = true, trailing}: SectionHeaderProps)
+{
 	const gap = comfortable === true ? "gap-2" : "gap-xs";
 	return (
 		<div id={id} className={`flex min-h-7 items-center ${gap}`}>

@@ -1,7 +1,8 @@
 import {useSyncExternalStore} from "react";
 import {z} from "zod";
 
-import {
+import
+{
 	applyAppearancePatch,
 	GroupAppearanceSchema,
 	type GroupAppearance,
@@ -24,69 +25,96 @@ const listeners = new Set<() => void>();
 let cachedRaw: string | null | undefined;
 let cachedState: ProjectAppearanceMap = EMPTY;
 
-function readRaw(): string | null {
-	try {
+function readRaw(): string | null
+{
+	try
+	{
 		return localStorage.getItem(PROJECT_APPEARANCE_STORAGE_KEY);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-function parse(raw: string | null): ProjectAppearanceMap {
+function parse(raw: string | null): ProjectAppearanceMap
+{
 	if (raw === null) return EMPTY;
-	try {
+	try
+	{
 		const result = ProjectAppearanceMapSchema.safeParse(JSON.parse(raw));
 		return result.success ? result.data : EMPTY;
-	} catch {
+	}
+	catch
+	{
 		return EMPTY;
 	}
 }
 
 /** Current map; absent, corrupt or unreadable storage yields no appearances. */
-export function readProjectAppearance(): ProjectAppearanceMap {
+export function readProjectAppearance(): ProjectAppearanceMap
+{
 	const raw = readRaw();
-	if (raw !== cachedRaw) {
+	if (raw !== cachedRaw)
+	{
 		cachedRaw = raw;
 		cachedState = parse(raw);
 	}
 	return cachedState;
 }
 
-function notify(): void {
+function notify(): void
+{
 	for (const listener of listeners) listener();
 }
 
 /** Set or clear a project section's icon and color; an emptied entry is removed. */
-export function setProjectAppearance(sectionKey: string, patch: GroupAppearancePatch): void {
+export function setProjectAppearance(sectionKey: string, patch: GroupAppearancePatch): void
+{
 	const {[sectionKey]: current = {}, ...rest} = readProjectAppearance();
 	const next = applyAppearancePatch(current, patch);
-	const map = Object.keys(next).length === 0 ? rest : {...rest, [sectionKey]: next};
-	try {
+	const map =
+		Object.keys(next).length === 0
+			? rest
+			:
+				{
+					...rest,
+					[sectionKey]: next,
+				};
+	try
+	{
 		localStorage.setItem(PROJECT_APPEARANCE_STORAGE_KEY, JSON.stringify(map));
-	} catch {
+	}
+	catch
+	{
 		// Storage can be denied or full; appearance is best-effort per browser.
 	}
 	notify();
 }
 
-function onStorage(event: StorageEvent): void {
+function onStorage(event: StorageEvent): void
+{
 	if (event.key === null || event.key === PROJECT_APPEARANCE_STORAGE_KEY) notify();
 }
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	if (listeners.size === 0) window.addEventListener("storage", onStorage);
 	listeners.add(listener);
-	return () => {
+	return () =>
+	{
 		listeners.delete(listener);
 		if (listeners.size === 0) window.removeEventListener("storage", onStorage);
 	};
 }
 
-function getServerSnapshot(): ProjectAppearanceMap {
+function getServerSnapshot(): ProjectAppearanceMap
+{
 	return EMPTY;
 }
 
 /** Live project appearances for this browser, kept in sync across tabs. */
-export function useProjectAppearance(): ProjectAppearanceMap {
+export function useProjectAppearance(): ProjectAppearanceMap
+{
 	return useSyncExternalStore(subscribe, readProjectAppearance, getServerSnapshot);
 }

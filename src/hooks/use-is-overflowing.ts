@@ -5,15 +5,19 @@ import {useLayoutEffect, useState} from "react";
  * (`scrollWidth > clientWidth + slackPx`). It measures on mount, whenever `text` changes, on every resize, and once
  * more after `document.fonts.ready`, so a web font that loads late still picks the right text.
  */
-export function useIsOverflowing(element: HTMLElement | null, text: string, slackPx = 0): boolean {
+export function useIsOverflowing(element: HTMLElement | null, text: string, slackPx = 0): boolean
+{
 	const [overflowing, setOverflowing] = useState(false);
-	useLayoutEffect(() => {
-		if (element === null) {
+	useLayoutEffect(() =>
+	{
+		if (element === null)
+		{
 			setOverflowing(false);
 			return undefined;
 		}
 		let live = true;
-		const measure = () => {
+		const measure = () =>
+		{
 			if (live) setOverflowing(element.scrollWidth > element.clientWidth + slackPx);
 		};
 		measure();
@@ -21,7 +25,8 @@ export function useIsOverflowing(element: HTMLElement | null, text: string, slac
 		observer?.observe(element);
 		const fonts = element.ownerDocument.fonts as FontFaceSet | undefined;
 		fonts?.ready.then(measure).catch(() => {});
-		return () => {
+		return () =>
+		{
 			live = false;
 			observer?.disconnect();
 		};

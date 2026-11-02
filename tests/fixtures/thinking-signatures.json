@@ -1,11 +1,13 @@
 {
 	"//": "Thinking-block signatures copied from real Claude Code transcripts; the thinking text is replaced. Decoded protobuf field 2→1→8 names the block kind.",
-	"emptyThinking": {
+	"emptyThinking":
+	{
 		"source": "54e53f89 line 335",
 		"kind": "thinking",
 		"signature": "CAQShQkKEAgSGAI4AUIIdGhpbmtpbmcSDBdGovLtS9lUkxLTwxoMEnHdFBB/Hjqt004bIjDK4nh2BhmaIkPXlqgHxvyxfgfI6tG+Xc9vDGHmElYerHCalPJtn3bhp6diGQ8AaHwqoghND/1LpnIW4itbBP71tqmC0aVtA25DFFvZBxprhAE+mmHgmXiNiYehEENWVoh1Lako6x63GMgU0jMCEEhPPgbCS6/FqSUMwrsPpRuFFMYKBEeVCsnXOemr5Rw7oYpYSIKpn+qPcJ/vN2BwlV7qY7Gr19uNcP5zhaYcZwF9w8hCcwMKOn4DAwFQKg8Ea0sc9gBXWLokiog9OEu/8brR8lcO7+XEHkOhsU7I2mdWAhmhnEKaJjCZrQg8R1YkE6AysPOkZo/aYYrFyrE4R/qLcduGkStbscUUcq/4YswIB67zSkdr5uP3+lEciFKRUDMsYBlCLAgYYcQcV/D8o4A0Lc5z7VRpqPb6MR65n4/fYDZhW9PjgXDalypwBE1RPhaoHDAFlsSP/+lWxZjYAXku1VXxNtx8eVsyAxsDh1C+fY2fLf/GMUlOwbAfRyeupKhcKtrc2xcwrXsc74zbbLYJZYf7IWMK/tD7WpuIhINnWe3Gc6TQVRWFSl2iVTzmmrnl9T1lcYZ3XHF4gx3wKwjwVKUHgtGqhZnDl/x1CZ+2TP8xHYi1HIJn3RAeXB/pxm5ysemVitRRXFA5iLQM7akIyHVqytJgD10sWBryEJhAmgB/f/L4gD5nTNhVHa7m6lAec7QC40hijb/JZewz2eNhalIDnq8ILew4nZL8AEuwS/VqcW67MYXXYrZ2idX06Blxyq601roJ/k0t+wopJhzNzMoMw+39/pn79+o7NrTWA8Fl/N2wuFyRXhSkpEEzdpj45fefKNbxoOtF3QtR/WhI/5Fv9JfSaJk9QLGS+/spX6BrAJFS6IdFSaWm7GDcd3BsWhUxK1rFoDrtbgLarVlcaItwabySrecdvBrb69AeuV/3Y/7+8uOyInrwcp/UjOkSNIR4cdstFrwAW/k1cZ51PJk+Pjy5m01XpQVtJ+k0rmgzjEwRs0jPnfnz7Ke/LSnVenC/EMNytwytPIs4UpXxKNrruoCcKVQ75PaK8Yn8FtvG2RNyiLxeZFr0gXkG2CPTDk3yfUWFhpm+ClHnZ9rXlMqbisEgdkUYP7ZalvBNm/PFd3WxQbSxeYR0RaJs2nqQobdSHgQvCVdLMzW9ExfKJZ/yYn/tletOYHVqOdl1aH9G65E7W+TOZJZ4YeMQ34A0iZjXgELWF89X8bcBWVX1u0ieEjywYOwZ8W//A/hjMdTlLBf4dJOkguwz7EDK9Trj/VIGLchVuQ0Pa0L6Rd2JwFgLnEl0Vk+UaXGTbGz+XXyHtVnAXriVGYM9BR0BQp4MBrgXiIL2OBd6AkHtFDR5ngGA/fKfc4p5qEuQlJ4H/Ula694lYTBBeg8C95L7nqzN96KReE046AWwaGQ9x/C1OmKkpTO9+AzWSrb8Ss+VDrmnanU2CbGjlxJYY2G+ceB5EYKfbBgB"
 	},
-	"realThinking": {
+	"realThinking":
+	{
 		"source": "1815dafc line 21",
 		"kind": "thinking",
 		"signature": "CAISywIKhwEIEBgCKkCxxKu2z5i3blNv9RrmK2V95prTTS5a3l17Hjej+gT6n3msOj3jOH8aL9O0ZALc23GvjC+TtZJgaSOfl4Yz5EhIMg1jbGF1ZGUtb3B1cy01OAFCCHRoaW5raW5nWiQ0MTU5YjNlOC1mZDhjLTQ2YjYtYTcyMS1hMWJhYzI5YjRlMDYSDI06v/O5Vp+lVUU55xoMEH1CtfCzNEsyjgi+IjABSdPw6n1U7g10f/si88FtjeeKXpqAilnB/Bd6eUGumwrRh71j9WtAzeDmcJseycMqccRnXhROhF9Yq7WZ9pJvBMZMBvyxPlblq/c+aUyrCEda4U0e+9dqd+PS0V/AG2GCPmestozcLX/7khMxX7Oq769W/Hb5nGY4c/v+F+UMZdgzEIR46s7kpeXRh0xKrIZbt0W1inW2o0td/YsAQsCdxtD3GAE="

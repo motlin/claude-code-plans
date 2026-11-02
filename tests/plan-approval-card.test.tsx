@@ -18,7 +18,8 @@ import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 
 const SESSION = "sess_plan_card";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	clearPlanComments(SESSION);
@@ -27,39 +28,53 @@ afterEach(() => {
 	clearUnsentPlan(SESSION, "toolu_plan_1");
 });
 
-const AUTO_DIALOG: PlanDialog = {forwardMode: "auto", manual: true};
+const AUTO_DIALOG: PlanDialog =
+{
+	forwardMode: "auto",
+	manual: true,
+};
 
-function context(overrides: Partial<PlanApprovalContextValue> = {}) {
+function context(overrides: Partial<PlanApprovalContextValue> = {})
+{
 	const decide = vi.fn<(decision: PlanDecision) => Promise<void>>(async () => Promise.resolve());
-	const value: PlanApprovalContextValue = {
+	const value: PlanApprovalContextValue =
+	{
 		sessionId: SESSION,
 		answerRoute: "live-pane",
 		loadDialog: async () => Promise.resolve(AUTO_DIALOG),
 		decide,
 		...overrides,
 	};
-	return {value, decide};
+	return {
+		value,
+		decide,
+	};
 }
 
-async function renderCard(value: PlanApprovalContextValue) {
+async function renderCard(value: PlanApprovalContextValue)
+{
 	const view = render(<PlanApprovalCard toolUseId="toolu_plan_1" plan={value} />);
 	await act(async () => Promise.resolve());
 	return view;
 }
 
 /** A button by its full text, keycaps included (jsdom renders the non-Mac Ctrl caps). */
-function button(text: string): HTMLElement {
+function button(text: string): HTMLElement
+{
 	const match = screen.getAllByRole("button").find((candidate) => candidate.textContent === text);
 	if (match === undefined) throw new Error(`No button reads ${text}`);
 	return match;
 }
 
-function buttonNames(): string[] {
+function buttonNames(): string[]
+{
 	return screen.getAllByRole("button").map((button) => button.textContent);
 }
 
-describe("PlanApprovalCard", () => {
-	it("offers upstream's Reject, Revise…, Accept and the dialog's forward-mode accept, in order", async () => {
+describe("PlanApprovalCard", () =>
+{
+	it("offers upstream's Reject, Revise…, Accept and the dialog's forward-mode accept, in order", async () =>
+	{
 		const {value} = context();
 		await renderCard(value);
 		expect(buttonNames()).toStrictEqual([
@@ -71,30 +86,70 @@ describe("PlanApprovalCard", () => {
 	});
 
 	it.each([
-		{name: "Accept and use auto modeCtrl⏎Enter", decision: {kind: "accept", mode: "auto"}},
-		{name: "AcceptCtrlShift⏎Enter", decision: {kind: "accept", mode: "default"}},
-		{name: "Reject", decision: {kind: "reject", feedback: ""}},
-	])("sends $decision.kind for '$name'", async ({name, decision}) => {
+		{
+			name: "Accept and use auto modeCtrl⏎Enter",
+			decision:
+			{
+				kind: "accept",
+				mode: "auto",
+			},
+		},
+		{
+			name: "AcceptCtrlShift⏎Enter",
+			decision:
+			{
+				kind: "accept",
+				mode: "default",
+			},
+		},
+		{
+			name: "Reject",
+			decision:
+			{
+				kind: "reject",
+				feedback: "",
+			},
+		},
+	])("sends $decision.kind for '$name'", async ({name, decision}) =>
+	{
 		const {value, decide} = context();
 		await renderCard(value);
-		await act(async () => {
+		await act(async () =>
+		{
 			fireEvent.click(button(name));
 			return Promise.resolve();
 		});
 		expect(decide.mock.calls).toStrictEqual([[decision]]);
 	});
 
-	it("labels the primary 'Accept' alone when the dialog has no forward mode", async () => {
-		const {value} = context({loadDialog: async () => Promise.resolve({forwardMode: null, manual: true})});
+	it("labels the primary 'Accept' alone when the dialog has no forward mode", async () =>
+	{
+		const {value} = context(
+			{
+				loadDialog: async () =>
+					Promise.resolve(
+						{
+							forwardMode: null,
+							manual: true,
+						},
+					),
+			},
+		);
 		await renderCard(value);
 		expect(buttonNames()).toStrictEqual(["Reject", "Revise…Esc", "AcceptCtrl⏎Enter"]);
 	});
 
-	it("styles the feedback box as upstream's field: bare rounded (6px compact / 8px comfortable), 5% fill, field ring, accent focus shadow", async () => {
+	it("styles the feedback box as upstream's field: bare rounded (6px compact / 8px comfortable), 5% fill, field ring, accent focus shadow", async () =>
+	{
 		const {value} = context();
 		await renderCard(value);
 		fireEvent.click(button("Revise…Esc"));
-		const box = screen.getByRole("textbox", {name: "Plan feedback"});
+		const box = screen.getByRole(
+			"textbox",
+			{
+				name: "Plan feedback",
+			},
+		);
 		expect(box.className.split(" ")).toStrictEqual([
 			"w-full",
 			"resize-none",
@@ -112,64 +167,143 @@ describe("PlanApprovalCard", () => {
 		]);
 	});
 
-	it("opens upstream's feedback box on Revise…, and Enter sends its text as a revision", async () => {
+	it("opens upstream's feedback box on Revise…, and Enter sends its text as a revision", async () =>
+	{
 		const {value, decide} = context();
 		await renderCard(value);
 		fireEvent.click(button("Revise…Esc"));
-		const box = screen.getByRole("textbox", {name: "Plan feedback"});
-		fireEvent.change(box, {target: {value: "use bye instead"}});
-		const shape = {
+		const box = screen.getByRole(
+			"textbox",
+			{
+				name: "Plan feedback",
+			},
+		);
+		fireEvent.change(
+			box,
+			{
+				target:
+				{
+					value: "use bye instead",
+				},
+			},
+		);
+		const shape =
+		{
 			placeholder: box.getAttribute("placeholder"),
 			rows: box.getAttribute("rows"),
 			buttons: buttonNames(),
 		};
-		await act(async () => {
-			fireEvent.keyDown(box, {key: "Enter"});
+		await act(async () =>
+		{
+			fireEvent.keyDown(
+				box,
+				{
+					key: "Enter",
+				},
+			);
 			return Promise.resolve();
 		});
-		expect({shape, calls: decide.mock.calls}).toStrictEqual({
-			shape: {placeholder: "What should change? (optional)", rows: "3", buttons: ["Back", "Revise"]},
-			calls: [[{kind: "reject", feedback: "use bye instead"}]],
-		});
+		expect(
+			{
+				shape,
+				calls: decide.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				shape:
+				{
+					placeholder: "What should change? (optional)",
+					rows: "3",
+					buttons: ["Back", "Revise"],
+				},
+				calls: [
+					[
+						{
+							kind: "reject",
+							feedback: "use bye instead",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("closes the feedback box with Back, sending nothing", async () => {
+	it("closes the feedback box with Back, sending nothing", async () =>
+	{
 		const {value, decide} = context();
 		await renderCard(value);
 		fireEvent.click(button("Revise…Esc"));
 		fireEvent.click(button("Back"));
-		expect({textbox: screen.queryByRole("textbox"), calls: decide.mock.calls}).toStrictEqual({
-			textbox: null,
-			calls: [],
-		});
+		expect(
+			{
+				textbox: screen.queryByRole("textbox"),
+				calls: decide.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				textbox: null,
+				calls: [],
+			},
+		);
 	});
 
-	it("is read-only with 'Answer in the terminal' when the session has no writable live pane", async () => {
+	it("is read-only with 'Answer in the terminal' when the session has no writable live pane", async () =>
+	{
 		const loadDialog = vi.fn<() => Promise<PlanDialog>>();
-		const {value} = context({answerRoute: "read-only", loadDialog});
+		const {value} = context(
+			{
+				answerRoute: "read-only",
+				loadDialog,
+			},
+		);
 		const view = await renderCard(value);
-		expect({
-			text: view.container.textContent,
-			buttons: screen.queryAllByRole("button").length,
-			loads: loadDialog.mock.calls.length,
-		}).toStrictEqual({text: "Answer in the terminal", buttons: 0, loads: 0});
+		expect(
+			{
+				text: view.container.textContent,
+				buttons: screen.queryAllByRole("button").length,
+				loads: loadDialog.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				text: "Answer in the terminal",
+				buttons: 0,
+				loads: 0,
+			},
+		);
 	});
 
-	it("falls back to 'Answer in the terminal' when the pane is not showing the plan dialog", async () => {
-		const {value} = context({
-			loadDialog: async () => Promise.reject(new Error("The terminal is not showing the plan approval dialog")),
-		});
+	it("falls back to 'Answer in the terminal' when the pane is not showing the plan dialog", async () =>
+	{
+		const {value} = context(
+			{
+				loadDialog: async () =>
+					Promise.reject(new Error("The terminal is not showing the plan approval dialog")),
+			},
+		);
 		const view = await renderCard(value);
-		expect({text: view.container.textContent, buttons: screen.queryAllByRole("button").length}).toStrictEqual({
-			text: "Answer in the terminal",
-			buttons: 0,
-		});
+		expect(
+			{
+				text: view.container.textContent,
+				buttons: screen.queryAllByRole("button").length,
+			},
+		).toStrictEqual(
+			{
+				text: "Answer in the terminal",
+				buttons: 0,
+			},
+		);
 	});
 
-	it("shows a refused answer's error under the actions", async () => {
-		const {value} = context({decide: async () => Promise.reject(new Error("No plan approval is pending"))});
+	it("shows a refused answer's error under the actions", async () =>
+	{
+		const {value} = context(
+			{
+				decide: async () => Promise.reject(new Error("No plan approval is pending")),
+			},
+		);
 		const view = await renderCard(value);
-		await act(async () => {
+		await act(async () =>
+		{
 			fireEvent.click(button("Reject"));
 			return Promise.resolve();
 		});
@@ -178,96 +312,164 @@ describe("PlanApprovalCard", () => {
 		);
 	});
 
-	it("holds the session as answered at the click, and releases it when the answer is refused", async () => {
+	it("holds the session as answered at the click, and releases it when the answer is refused", async () =>
+	{
 		let reject!: (reason: Error) => void;
-		const {value} = context({
-			decide: async () =>
-				new Promise<void>((_, onReject) => {
-					reject = onReject;
-				}),
-		});
+		const {value} = context(
+			{
+				decide: async () =>
+					new Promise<void>((_, onReject) =>
+					{
+						reject = onReject;
+					}),
+			},
+		);
 		await renderCard(value);
 		fireEvent.click(button("Reject"));
 		const sending = isAnsweredHeld(SESSION);
-		await act(async () => {
+		await act(async () =>
+		{
 			reject(new Error("No plan approval is pending"));
 			return Promise.resolve();
 		});
 		const refused = isAnsweredHeld(SESSION);
 		releaseAnswered(SESSION);
 
-		expect({sending, refused}).toStrictEqual({sending: true, refused: false});
+		expect(
+			{
+				sending,
+				refused,
+			},
+		).toStrictEqual(
+			{
+				sending: true,
+				refused: false,
+			},
+		);
 	});
 
-	it("marks the plan answered and hides the card at the click, with no busy primary", async () => {
-		const {value} = context({decide: async () => new Promise<void>(() => {})});
+	it("marks the plan answered and hides the card at the click, with no busy primary", async () =>
+	{
+		const {value} = context(
+			{
+				decide: async () => new Promise<void>(() => {}),
+			},
+		);
 		const view = await renderCard(value);
-		act(() => {
+		act(() =>
+		{
 			fireEvent.click(button("Accept and use auto modeCtrl⏎Enter"));
 		});
-		expect({
-			answered: isApprovalAnswered(SESSION, "toolu_plan_1"),
-			card: view.container.querySelector("[data-plan-approval]"),
-		}).toStrictEqual({answered: true, card: null});
+		expect(
+			{
+				answered: isApprovalAnswered(SESSION, "toolu_plan_1"),
+				card: view.container.querySelector("[data-plan-approval]"),
+			},
+		).toStrictEqual(
+			{
+				answered: true,
+				card: null,
+			},
+		);
 	});
 
-	it("persists the plan decision as acknowledged once the answer is delivered", async () => {
+	it("persists the plan decision as acknowledged once the answer is delivered", async () =>
+	{
 		const {value} = context();
 		await renderCard(value);
-		await act(async () => {
+		await act(async () =>
+		{
 			fireEvent.click(button("Reject"));
 			return Promise.resolve();
 		});
 		const stored: unknown = JSON.parse(window.localStorage.getItem("acknowledged-tool-decisions") ?? "null");
 
-		expect(stored).toStrictEqual({
-			[SESSION]: {
-				toolu_plan_1: {
-					toolUseId: "toolu_plan_1",
-					toolName: "ExitPlanMode",
-					acknowledgedAt: expect.any(Number) as number,
+		expect(stored).toStrictEqual(
+			{
+				[SESSION]:
+				{
+					toolu_plan_1:
+					{
+						toolUseId: "toolu_plan_1",
+						toolName: "ExitPlanMode",
+						acknowledgedAt: expect.any(Number) as number,
+					},
 				},
 			},
-		});
+		);
 	});
 
-	it("brings a refused revision back after a remount: Revise open, the text restored and the error shown", async () => {
+	it("brings a refused revision back after a remount: Revise open, the text restored and the error shown", async () =>
+	{
 		let reject!: (reason: Error) => void;
-		const {value} = context({
-			decide: async () =>
-				new Promise<void>((_, onReject) => {
-					reject = onReject;
-				}),
-		});
+		const {value} = context(
+			{
+				decide: async () =>
+					new Promise<void>((_, onReject) =>
+					{
+						reject = onReject;
+					}),
+			},
+		);
 		const first = await renderCard(value);
 		fireEvent.click(button("Revise…Esc"));
-		const box = screen.getByRole("textbox", {name: "Plan feedback"});
-		fireEvent.change(box, {target: {value: "use bye instead"}});
-		act(() => {
-			fireEvent.keyDown(box, {key: "Enter"});
+		const box = screen.getByRole(
+			"textbox",
+			{
+				name: "Plan feedback",
+			},
+		);
+		fireEvent.change(
+			box,
+			{
+				target:
+				{
+					value: "use bye instead",
+				},
+			},
+		);
+		act(() =>
+		{
+			fireEvent.keyDown(
+				box,
+				{
+					key: "Enter",
+				},
+			);
 		});
 		const hidden = first.container.querySelector("[data-plan-approval]");
 		// The session page drops a marked plan's card, so it unmounts before the answer is refused.
 		first.unmount();
-		await act(async () => {
+		await act(async () =>
+		{
 			reject(new Error("The terminal is not showing the plan approval dialog"));
 			return Promise.resolve();
 		});
 		const view = await renderCard(value);
-		expect({
-			hidden,
-			answered: isApprovalAnswered(SESSION, "toolu_plan_1"),
-			typed: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Plan feedback"}).value,
-			error: view.container.querySelector("[data-plan-error]")?.textContent,
-		}).toStrictEqual({
-			hidden: null,
-			answered: false,
-			typed: "use bye instead",
-			error: "The terminal is not showing the plan approval dialog",
-		});
+		expect(
+			{
+				hidden,
+				answered: isApprovalAnswered(SESSION, "toolu_plan_1"),
+				typed: screen.getByRole<HTMLTextAreaElement>(
+					"textbox",
+					{
+						name: "Plan feedback",
+					},
+				).value,
+				error: view.container.querySelector("[data-plan-error]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				hidden: null,
+				answered: false,
+				typed: "use bye instead",
+				error: "The terminal is not showing the plan approval dialog",
+			},
+		);
 	});
 
-	it("stacks the actions full width in upstream's ≤420px container, both groups growing", async () => {
+	it("stacks the actions full width in upstream's ≤420px container, both groups growing", async () =>
+	{
 		const {value} = context();
 		const view = await renderCard(value);
 		expect(view.container.querySelector("[data-plan-actions]")?.className).toStrictEqual(
@@ -276,121 +478,230 @@ describe("PlanApprovalCard", () => {
 	});
 });
 
-function hostOpening(openPane: PaneHostApi["openPane"]): PaneHostApi {
+function hostOpening(openPane: PaneHostApi["openPane"]): PaneHostApi
+{
 	return {
 		layout: defaultPaneLayout(),
 		openKinds: [],
 		isOpen: () => false,
 		openPane,
-		closePane: () => {},
-		togglePane: () => {},
+		closePane: () =>
+		{
+		},
+		togglePane: () =>
+		{
+		},
 	};
 }
 
-function withPaneHost(host: PaneHostApi, node: ReactNode) {
+function withPaneHost(host: PaneHostApi, node: ReactNode)
+{
 	return <PaneHostContext.Provider value={host}>{node}</PaneHostContext.Provider>;
 }
 
-describe("PlanApprovalCard with plan comments", () => {
-	function seedComments() {
-		addPlanComment(SESSION, {selectedText: "about 95°C.", startOffset: 40, endOffset: 51, comment: "Hotter"});
-		addPlanComment(SESSION, {selectedText: "Green", startOffset: 5, endOffset: 10, comment: "Add oolong"});
+describe("PlanApprovalCard with plan comments", () =>
+{
+	function seedComments()
+	{
+		addPlanComment(
+			SESSION,
+			{
+				selectedText: "about 95°C.",
+				startOffset: 40,
+				endOffset: 51,
+				comment: "Hotter",
+			},
+		);
+		addPlanComment(
+			SESSION,
+			{
+				selectedText: "Green",
+				startOffset: 5,
+				endOffset: 10,
+				comment: "Add oolong",
+			},
+		);
 	}
 
-	function rowShape(view: ReturnType<typeof render>) {
+	function rowShape(view: ReturnType<typeof render>)
+	{
 		const list = view.container.querySelector("ul");
 		return {
 			listClass: list?.className,
-			rows: [...(list?.querySelectorAll("li") ?? [])].map((li) => ({
+			rows: [...(list?.querySelectorAll("li") ?? [])].map((li) => (
+			{
 				className: li.className,
 				text: li.textContent,
 			})),
 		};
 	}
 
-	it("forces Revise open without moving focus: upstream's comment list, sr count, placeholder, and no Back", async () => {
+	it("forces Revise open without moving focus: upstream's comment list, sr count, placeholder, and no Back", async () =>
+	{
 		seedComments();
 		const {value} = context();
 		const view = await renderCard(value);
-		const box = screen.getByRole("textbox", {name: "Plan feedback"});
-		expect({
-			...rowShape(view),
-			placeholder: box.getAttribute("placeholder"),
-			focused: document.activeElement === box,
-			buttons: buttonNames(),
-			spacer: view.container.querySelector("[data-plan-actions] > span")?.className,
-		}).toStrictEqual({
-			listClass: "-m-2 flex max-h-[176px] scroll-p-2 flex-col gap-1 overflow-y-auto p-2",
-			rows: [
-				{
-					className: "flex items-center gap-0.5 rounded-r6 bg-alpha-1 pe-1.25 hover:bg-alpha-2",
-					text: "about 95°C.Hotter",
-				},
-				{
-					className: "flex items-center gap-0.5 rounded-r6 bg-alpha-1 pe-1.25 hover:bg-alpha-2",
-					text: "GreenAdd oolong",
-				},
-				{className: "sr-only", text: "2 inline comments will be sent"},
-			],
-			placeholder: "Anything else to add?",
-			focused: false,
-			buttons: ["about 95°C.Hotter", "", "GreenAdd oolong", "", "Revise"],
-			spacer: "@max-[420px]:hidden",
-		});
+		const box = screen.getByRole(
+			"textbox",
+			{
+				name: "Plan feedback",
+			},
+		);
+		expect(
+			{
+				...rowShape(view),
+				placeholder: box.getAttribute("placeholder"),
+				focused: document.activeElement === box,
+				buttons: buttonNames(),
+				spacer: view.container.querySelector("[data-plan-actions] > span")?.className,
+			},
+		).toStrictEqual(
+			{
+				listClass: "-m-2 flex max-h-[176px] scroll-p-2 flex-col gap-1 overflow-y-auto p-2",
+				rows: [
+					{
+						className: "flex items-center gap-0.5 rounded-r6 bg-alpha-1 pe-1.25 hover:bg-alpha-2",
+						text: "about 95°C.Hotter",
+					},
+					{
+						className: "flex items-center gap-0.5 rounded-r6 bg-alpha-1 pe-1.25 hover:bg-alpha-2",
+						text: "GreenAdd oolong",
+					},
+					{
+						className: "sr-only",
+						text: "2 inline comments will be sent",
+					},
+				],
+				placeholder: "Anything else to add?",
+				focused: false,
+				buttons: ["about 95°C.Hotter", "", "GreenAdd oolong", "", "Revise"],
+				spacer: "@max-[420px]:hidden",
+			},
+		);
 	});
 
-	it("rounds each row's button at 8px, and Delete keeps focus in the feedback textarea", async () => {
+	it("rounds each row's button at 8px, and Delete keeps focus in the feedback textarea", async () =>
+	{
 		seedComments();
 		const {value} = context();
 		const view = await renderCard(value);
-		const box = screen.getByRole("textbox", {name: "Plan feedback"});
+		const box = screen.getByRole(
+			"textbox",
+			{
+				name: "Plan feedback",
+			},
+		);
 		box.focus();
-		const [del] = screen.getAllByRole("button", {name: "Delete comment"});
+		const [del] = screen.getAllByRole(
+			"button",
+			{
+				name: "Delete comment",
+			},
+		);
 		if (del === undefined) throw new Error("no Delete");
 		const notPrevented = fireEvent.mouseDown(del);
-		expect({
-			rowButton: view.container.querySelector("li > button")?.className,
-			notPrevented,
-			focused: document.activeElement === box,
-		}).toStrictEqual({
-			rowButton:
-				"flex min-w-0 flex-1 flex-col gap-0.5 rounded-r6 p-1.25 text-start hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
-			notPrevented: false,
-			focused: true,
-		});
+		expect(
+			{
+				rowButton: view.container.querySelector("li > button")?.className,
+				notPrevented,
+				focused: document.activeElement === box,
+			},
+		).toStrictEqual(
+			{
+				rowButton:
+					"flex min-w-0 flex-1 flex-col gap-0.5 rounded-r6 p-1.25 text-start hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+				notPrevented: false,
+				focused: true,
+			},
+		);
 	});
 
-	it("words the sr count for one comment", async () => {
-		addPlanComment(SESSION, {selectedText: "Green", startOffset: 5, endOffset: 10, comment: "Add oolong"});
+	it("words the sr count for one comment", async () =>
+	{
+		addPlanComment(
+			SESSION,
+			{
+				selectedText: "Green",
+				startOffset: 5,
+				endOffset: 10,
+				comment: "Add oolong",
+			},
+		);
 		const {value} = context();
 		const view = await renderCard(value);
 		expect(view.container.querySelector("li.sr-only")?.textContent).toStrictEqual("1 inline comment will be sent");
 	});
 
-	it("returns to the idle actions once every comment is deleted", async () => {
+	it("returns to the idle actions once every comment is deleted", async () =>
+	{
 		seedComments();
 		const {value} = context();
 		await renderCard(value);
-		for (const del of screen.getAllByRole("button", {name: "Delete comment"})) fireEvent.click(del);
-		expect({buttons: buttonNames(), store: getPlanComments(SESSION)}).toStrictEqual({
-			buttons: ["Reject", "Revise…Esc", "AcceptCtrlShift⏎Enter", "Accept and use auto modeCtrl⏎Enter"],
-			store: [],
-		});
+		for (const del of screen.getAllByRole(
+			"button",
+			{
+				name: "Delete comment",
+			},
+		))
+			fireEvent.click(del);
+		expect(
+			{
+				buttons: buttonNames(),
+				store: getPlanComments(SESSION),
+			},
+		).toStrictEqual(
+			{
+				buttons: ["Reject", "Revise…Esc", "AcceptCtrlShift⏎Enter", "Accept and use auto modeCtrl⏎Enter"],
+				store: [],
+			},
+		);
 	});
 
-	it("keeps Revise open after deleting the last comment when the user opened it", async () => {
-		addPlanComment(SESSION, {selectedText: "Green", startOffset: 5, endOffset: 10, comment: "Add oolong"});
+	it("keeps Revise open after deleting the last comment when the user opened it", async () =>
+	{
+		addPlanComment(
+			SESSION,
+			{
+				selectedText: "Green",
+				startOffset: 5,
+				endOffset: 10,
+				comment: "Add oolong",
+			},
+		);
 		const {value} = context();
 		await renderCard(value);
-		fireEvent.click(screen.getByRole("button", {name: "Delete comment"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Delete comment",
+				},
+			),
+		);
 		fireEvent.click(button("Revise…Esc"));
-		addPlanComment(SESSION, {selectedText: "Green", startOffset: 5, endOffset: 10, comment: "Again"});
+		addPlanComment(
+			SESSION,
+			{
+				selectedText: "Green",
+				startOffset: 5,
+				endOffset: 10,
+				comment: "Again",
+			},
+		);
 		await act(async () => Promise.resolve());
-		fireEvent.click(screen.getByRole("button", {name: "Delete comment"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Delete comment",
+				},
+			),
+		);
 		expect(buttonNames()).toStrictEqual(["Back", "Revise"]);
 	});
 
-	it("opens the Plan pane from a comment row", async () => {
+	it("opens the Plan pane from a comment row", async () =>
+	{
 		seedComments();
 		const openPane = vi.fn<PaneHostApi["openPane"]>();
 		const {value} = context();
@@ -401,110 +712,257 @@ describe("PlanApprovalCard with plan comments", () => {
 		expect(openPane.mock.calls).toStrictEqual([["plan"]]);
 	});
 
-	it("keeps Revise open on Esc while comments exist", async () => {
+	it("keeps Revise open on Esc while comments exist", async () =>
+	{
 		seedComments();
 		const {value} = context();
 		await renderCard(value);
-		const box = screen.getByRole("textbox", {name: "Plan feedback"});
-		fireEvent.keyDown(box, {key: "Escape"});
-		fireEvent.keyDown(document.body, {key: "Escape"});
-		expect(screen.queryByRole("textbox", {name: "Plan feedback"})).not.toBeNull();
+		const box = screen.getByRole(
+			"textbox",
+			{
+				name: "Plan feedback",
+			},
+		);
+		fireEvent.keyDown(
+			box,
+			{
+				key: "Escape",
+			},
+		);
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Escape",
+			},
+		);
+		expect(
+			screen.queryByRole(
+				"textbox",
+				{
+					name: "Plan feedback",
+				},
+			),
+		).not.toBeNull();
 	});
 
-	it("sends upstream's formatted feedback on Revise and clears the session's comments", async () => {
+	it("sends upstream's formatted feedback on Revise and clears the session's comments", async () =>
+	{
 		seedComments();
 		const {value, decide} = context();
 		await renderCard(value);
-		fireEvent.change(screen.getByRole("textbox", {name: "Plan feedback"}), {target: {value: "Also iced."}});
-		await act(async () => {
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Plan feedback",
+				},
+			),
+			{
+				target:
+				{
+					value: "Also iced.",
+				},
+			},
+		);
+		await act(async () =>
+		{
 			fireEvent.click(button("Revise"));
 			return Promise.resolve();
 		});
-		expect({calls: decide.mock.calls, store: getPlanComments(SESSION)}).toStrictEqual({
-			calls: [
-				[
-					{
-						kind: "reject",
-						feedback:
-							"On selected text:\n> Green\nAdd oolong\n\nOn selected text:\n> about 95°C.\nHotter\n\n\nAlso iced.",
-					},
+		expect(
+			{
+				calls: decide.mock.calls,
+				store: getPlanComments(SESSION),
+			},
+		).toStrictEqual(
+			{
+				calls: [
+					[
+						{
+							kind: "reject",
+							feedback:
+								"On selected text:\n> Green\nAdd oolong\n\nOn selected text:\n> about 95°C.\nHotter\n\n\nAlso iced.",
+						},
+					],
 				],
-			],
-			store: [],
-		});
+				store: [],
+			},
+		);
 	});
 
-	it("restores the comments and keeps the typed text when the send fails", async () => {
+	it("restores the comments and keeps the typed text when the send fails", async () =>
+	{
 		seedComments();
 		const before = getPlanComments(SESSION);
-		const {value} = context({decide: async () => Promise.reject(new Error("No plan approval is pending"))});
+		const {value} = context(
+			{
+				decide: async () => Promise.reject(new Error("No plan approval is pending")),
+			},
+		);
 		const view = await renderCard(value);
-		fireEvent.change(screen.getByRole("textbox", {name: "Plan feedback"}), {target: {value: "Also iced."}});
-		await act(async () => {
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Plan feedback",
+				},
+			),
+			{
+				target:
+				{
+					value: "Also iced.",
+				},
+			},
+		);
+		await act(async () =>
+		{
 			fireEvent.click(button("Revise"));
 			return Promise.resolve();
 		});
-		expect({
-			store: getPlanComments(SESSION),
-			typed: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Plan feedback"}).value,
-			error: view.container.querySelector("[data-plan-error]")?.textContent,
-		}).toStrictEqual({store: before, typed: "Also iced.", error: "No plan approval is pending"});
+		expect(
+			{
+				store: getPlanComments(SESSION),
+				typed: screen.getByRole<HTMLTextAreaElement>(
+					"textbox",
+					{
+						name: "Plan feedback",
+					},
+				).value,
+				error: view.container.querySelector("[data-plan-error]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				store: before,
+				typed: "Also iced.",
+				error: "No plan approval is pending",
+			},
+		);
 	});
 });
 
-describe("PlanApprovalCard keys", () => {
-	beforeEach(() => {
-		vi.useFakeTimers({toFake: ["performance"]});
+describe("PlanApprovalCard keys", () =>
+{
+	beforeEach(() =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["performance"],
+			},
+		);
 	});
-	afterEach(() => {
+	afterEach(() =>
+	{
 		vi.useRealTimers();
 	});
 
-	it("withholds ⌘⏎ within upstream's 400ms of the card arriving, then accepts", async () => {
+	it("withholds ⌘⏎ within upstream's 400ms of the card arriving, then accepts", async () =>
+	{
 		const {value, decide} = context();
 		await renderCard(value);
 		vi.advanceTimersByTime(100);
-		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
 		const callsInGrace = [...decide.mock.calls];
 		vi.advanceTimersByTime(400);
-		await act(async () => {
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		await act(async () =>
+		{
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 			return Promise.resolve();
 		});
-		expect({callsInGrace, calls: decide.mock.calls}).toStrictEqual({
-			callsInGrace: [],
-			calls: [[{kind: "accept", mode: "auto"}]],
-		});
+		expect(
+			{
+				callsInGrace,
+				calls: decide.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				callsInGrace: [],
+				calls: [
+					[
+						{
+							kind: "accept",
+							mode: "auto",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("hides the card in the same act as a ⌘⏎ that lands after the grace", async () => {
-		const {value} = context({decide: async () => new Promise<void>(() => {})});
+	it("hides the card in the same act as a ⌘⏎ that lands after the grace", async () =>
+	{
+		const {value} = context(
+			{
+				decide: async () => new Promise<void>(() => {}),
+			},
+		);
 		const view = await renderCard(value);
 		vi.advanceTimersByTime(500);
-		act(() => {
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		act(() =>
+		{
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 		});
 		expect(view.container.querySelector("[data-plan-approval]")).toBeNull();
 	});
 
-	it("listens on window in the capture phase and stops the chord there", async () => {
+	it("listens on window in the capture phase and stops the chord there", async () =>
+	{
 		const {value, decide} = context();
 		await renderCard(value);
 		vi.advanceTimersByTime(500);
 		const bubbled = vi.fn<(event: Event) => void>();
 		document.addEventListener("keydown", bubbled);
-		await act(async () => {
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		await act(async () =>
+		{
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 			return Promise.resolve();
 		});
 		document.removeEventListener("keydown", bubbled);
-		expect({calls: decide.mock.calls, bubbled: bubbled.mock.calls.length}).toStrictEqual({
-			calls: [[{kind: "accept", mode: "auto"}]],
-			bubbled: 0,
-		});
+		expect(
+			{
+				calls: decide.mock.calls,
+				bubbled: bubbled.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				calls: [
+					[
+						{
+							kind: "accept",
+							mode: "auto",
+						},
+					],
+				],
+				bubbled: 0,
+			},
+		);
 	});
 
-	it("accepts manually with ⇧⌘⏎ from a composer holding a draft, while ⌘⏎ stays the composer's", async () => {
+	it("accepts manually with ⇧⌘⏎ from a composer holding a draft, while ⌘⏎ stays the composer's", async () =>
+	{
 		const {value, decide} = context();
 		await renderCard(value);
 		const composer = document.createElement("div");
@@ -514,142 +972,321 @@ describe("PlanApprovalCard keys", () => {
 		composer.append(draft);
 		document.body.append(composer);
 		vi.advanceTimersByTime(500);
-		fireEvent.keyDown(draft, {key: "Enter", metaKey: true});
+		fireEvent.keyDown(
+			draft,
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
 		const afterPlain = [...decide.mock.calls];
-		await act(async () => {
-			fireEvent.keyDown(draft, {key: "Enter", metaKey: true, shiftKey: true});
+		await act(async () =>
+		{
+			fireEvent.keyDown(
+				draft,
+				{
+					key: "Enter",
+					metaKey: true,
+					shiftKey: true,
+				},
+			);
 			return Promise.resolve();
 		});
 		composer.remove();
-		expect({afterPlain, calls: decide.mock.calls}).toStrictEqual({
-			afterPlain: [],
-			calls: [[{kind: "accept", mode: "default"}]],
-		});
+		expect(
+			{
+				afterPlain,
+				calls: decide.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				afterPlain: [],
+				calls: [
+					[
+						{
+							kind: "accept",
+							mode: "default",
+						},
+					],
+				],
+			},
+		);
 	});
 });
 
-describe("PlanApprovalCard in the inline card placement", () => {
-	beforeEach(() => {
-		vi.useFakeTimers({toFake: ["performance"]});
+describe("PlanApprovalCard in the inline card placement", () =>
+{
+	beforeEach(() =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["performance"],
+			},
+		);
 	});
-	afterEach(() => {
+	afterEach(() =>
+	{
 		vi.useRealTimers();
 	});
 
-	async function renderInline(value: PlanApprovalContextValue) {
+	async function renderInline(value: PlanApprovalContextValue)
+	{
 		const view = render(<PlanApprovalCard toolUseId="toolu_plan_1" plan={value} placement="card" />);
 		await act(async () => Promise.resolve());
 		return view;
 	}
 
-	function rect(top: number): DOMRect {
-		return {top, bottom: top + 100, left: 0, right: 400, width: 400, height: 100, x: 0, y: top, toJSON: () => ({})};
+	function rect(top: number): DOMRect
+	{
+		return {
+			top,
+			bottom: top + 100,
+			left: 0,
+			right: 400,
+			width: 400,
+			height: 100,
+			x: 0,
+			y: top,
+			toJSON: () => ({}),
+		};
 	}
 
-	it("drops the Revise… and Accept keycaps the dock shows, and groups both accepts in upstream's allow span", async () => {
+	it("drops the Revise… and Accept keycaps the dock shows, and groups both accepts in upstream's allow span", async () =>
+	{
 		const {value} = context();
 		const view = await renderInline(value);
 		const allow = view.container.querySelector("[data-approval-allow]");
-		expect({
-			buttons: buttonNames(),
-			allowClass: allow?.className,
-			allowButtons: [...(allow?.querySelectorAll("button") ?? [])].map((b) => b.textContent),
-		}).toStrictEqual({
-			buttons: ["Reject", "Revise…", "Accept", "Accept and use auto modeCtrl⏎Enter"],
-			allowClass: "contents",
-			allowButtons: ["Accept", "Accept and use auto modeCtrl⏎Enter"],
-		});
+		expect(
+			{
+				buttons: buttonNames(),
+				allowClass: allow?.className,
+				allowButtons: [...(allow?.querySelectorAll("button") ?? [])].map((b) => b.textContent),
+			},
+		).toStrictEqual(
+			{
+				buttons: ["Reject", "Revise…", "Accept", "Accept and use auto modeCtrl⏎Enter"],
+				allowClass: "contents",
+				allowButtons: ["Accept", "Accept and use auto modeCtrl⏎Enter"],
+			},
+		);
 	});
 
-	it("ignores ⌘⏎ and Esc while the card is scrolled offscreen", async () => {
+	it("ignores ⌘⏎ and Esc while the card is scrolled offscreen", async () =>
+	{
 		const {value, decide} = context();
 		const view = await renderInline(value);
 		const root = view.container.querySelector<HTMLElement>("[data-plan-approval]");
 		if (root === null) throw new Error("No card");
 		vi.spyOn(root, "getBoundingClientRect").mockReturnValue(rect(window.innerHeight + 50));
 		vi.advanceTimersByTime(500);
-		await act(async () => {
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
-			fireEvent.keyDown(document.body, {key: "Escape"});
+		await act(async () =>
+		{
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Escape",
+				},
+			);
 			return Promise.resolve();
 		});
-		expect({calls: decide.mock.calls, revising: screen.queryByRole("textbox")}).toStrictEqual({
-			calls: [],
-			revising: null,
-		});
+		expect(
+			{
+				calls: decide.mock.calls,
+				revising: screen.queryByRole("textbox"),
+			},
+		).toStrictEqual(
+			{
+				calls: [],
+				revising: null,
+			},
+		);
 	});
 
-	it("re-arms upstream's 400ms grace when the card scrolls back into view", async () => {
+	it("re-arms upstream's 400ms grace when the card scrolls back into view", async () =>
+	{
 		let observed: IntersectionObserverCallback | null = null;
 		vi.stubGlobal(
 			"IntersectionObserver",
-			class {
-				constructor(callback: IntersectionObserverCallback) {
+			class
+			{
+				constructor(callback: IntersectionObserverCallback)
+				{
 					observed = callback;
 				}
-				observe() {}
-				disconnect() {}
-				unobserve() {}
+				observe()
+				{
+				}
+				disconnect()
+				{
+				}
+				unobserve()
+				{
+				}
 			},
 		);
 		const {value, decide} = context();
 		await renderInline(value);
 		vi.advanceTimersByTime(1000);
-		act(() => {
-			observed?.([{isIntersecting: false} as IntersectionObserverEntry], {} as IntersectionObserver);
-			observed?.([{isIntersecting: true} as IntersectionObserverEntry], {} as IntersectionObserver);
+		act(() =>
+		{
+			observed?.(
+				[
+					{
+						isIntersecting: false,
+					} as IntersectionObserverEntry,
+				],
+				{} as IntersectionObserver,
+			);
+			observed?.(
+				[
+					{
+						isIntersecting: true,
+					} as IntersectionObserverEntry,
+				],
+				{} as IntersectionObserver,
+			);
 		});
 		vi.advanceTimersByTime(100);
-		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
 		const callsInGrace = [...decide.mock.calls];
 		vi.advanceTimersByTime(400);
-		await act(async () => {
-			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		await act(async () =>
+		{
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
 			return Promise.resolve();
 		});
-		expect({callsInGrace, calls: decide.mock.calls}).toStrictEqual({
-			callsInGrace: [],
-			calls: [[{kind: "accept", mode: "auto"}]],
-		});
+		expect(
+			{
+				callsInGrace,
+				calls: decide.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				callsInGrace: [],
+				calls: [
+					[
+						{
+							kind: "accept",
+							mode: "auto",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("re-arms the grace when the window regains focus", async () => {
+	it("re-arms the grace when the window regains focus", async () =>
+	{
 		const {value, decide} = context();
 		await renderInline(value);
 		vi.advanceTimersByTime(1000);
-		act(() => {
+		act(() =>
+		{
 			window.dispatchEvent(new Event("focus"));
 		});
 		vi.advanceTimersByTime(100);
-		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Enter",
+				metaKey: true,
+			},
+		);
 		expect(decide.mock.calls).toStrictEqual([]);
 	});
 });
 
-describe("PlanApprovalCard keeps a Revise draft across remounts", () => {
-	it("brings the typed feedback back, unfocused, when the same plan's card mounts again", async () => {
+describe("PlanApprovalCard keeps a Revise draft across remounts", () =>
+{
+	it("brings the typed feedback back, unfocused, when the same plan's card mounts again", async () =>
+	{
 		const {value} = context();
 		const first = await renderCard(value);
 		fireEvent.click(button("Revise…Esc"));
-		fireEvent.change(screen.getByRole("textbox", {name: "Plan feedback"}), {target: {value: "make it iced"}});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Plan feedback",
+				},
+			),
+			{
+				target:
+				{
+					value: "make it iced",
+				},
+			},
+		);
 		first.unmount();
 		await renderCard(value);
-		const box = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Plan feedback"});
-		expect({value: box.value, focused: document.activeElement === box, buttons: buttonNames()}).toStrictEqual({
-			value: "make it iced",
-			focused: false,
-			buttons: ["Back", "Revise"],
-		});
+		const box = screen.getByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Plan feedback",
+			},
+		);
+		expect(
+			{
+				value: box.value,
+				focused: document.activeElement === box,
+				buttons: buttonNames(),
+			},
+		).toStrictEqual(
+			{
+				value: "make it iced",
+				focused: false,
+				buttons: ["Back", "Revise"],
+			},
+		);
 	});
 
-	it("brings nothing back once the plan was answered", async () => {
+	it("brings nothing back once the plan was answered", async () =>
+	{
 		const {value} = context();
 		const first = await renderCard(value);
 		fireEvent.click(button("Revise…Esc"));
-		const box = screen.getByRole("textbox", {name: "Plan feedback"});
-		fireEvent.change(box, {target: {value: "make it iced"}});
-		await act(async () => {
-			fireEvent.keyDown(box, {key: "Enter"});
+		const box = screen.getByRole(
+			"textbox",
+			{
+				name: "Plan feedback",
+			},
+		);
+		fireEvent.change(
+			box,
+			{
+				target:
+				{
+					value: "make it iced",
+				},
+			},
+		);
+		await act(async () =>
+		{
+			fireEvent.keyDown(
+				box,
+				{
+					key: "Enter",
+				},
+			);
 			return Promise.resolve();
 		});
 		first.unmount();
@@ -658,7 +1295,8 @@ describe("PlanApprovalCard keeps a Revise draft across remounts", () => {
 		expect(screen.queryByRole("textbox")).toStrictEqual(null);
 	});
 
-	it("forgets an empty Revise box", async () => {
+	it("forgets an empty Revise box", async () =>
+	{
 		const {value} = context();
 		const first = await renderCard(value);
 		fireEvent.click(button("Revise…Esc"));
@@ -668,28 +1306,37 @@ describe("PlanApprovalCard keeps a Revise draft across remounts", () => {
 	});
 });
 
-describe("PlanApprovalCard auto-opens the Plan pane", () => {
-	function paneHost(openPane: PaneHostApi["openPane"]): PaneHostApi {
+describe("PlanApprovalCard auto-opens the Plan pane", () =>
+{
+	function paneHost(openPane: PaneHostApi["openPane"]): PaneHostApi
+	{
 		return {
 			layout: defaultPaneLayout(),
 			openKinds: [],
 			isOpen: () => false,
 			openPane,
-			closePane: () => {},
-			togglePane: () => {},
+			closePane: () =>
+			{
+			},
+			togglePane: () =>
+			{
+			},
 		};
 	}
 
-	function card(host: PaneHostApi | null, key: string) {
+	function card(host: PaneHostApi | null, key: string)
+	{
 		const {value} = context();
 		const node = <PlanApprovalCard key={key} toolUseId="toolu_plan_1" plan={value} />;
 		return host === null ? node : <PaneHostContext.Provider value={host}>{node}</PaneHostContext.Provider>;
 	}
 
-	function mockPhone(phone: boolean) {
+	function mockPhone(phone: boolean)
+	{
 		vi.stubGlobal(
 			"matchMedia",
-			vi.fn((query: string) => ({
+			vi.fn((query: string) => (
+			{
 				matches: query === PHONE_SHEET_QUERY ? phone : false,
 				media: query,
 				onchange: null,
@@ -702,7 +1349,8 @@ describe("PlanApprovalCard auto-opens the Plan pane", () => {
 		);
 	}
 
-	it("opens it once per mount, and again on a remount, as upstream's card effect does", async () => {
+	it("opens it once per mount, and again on a remount, as upstream's card effect does", async () =>
+	{
 		const openPane = vi.fn<PaneHostApi["openPane"]>();
 		const view = render(card(paneHost(openPane), "a"));
 		await act(async () => Promise.resolve());
@@ -712,14 +1360,23 @@ describe("PlanApprovalCard auto-opens the Plan pane", () => {
 		const afterRerender = [...openPane.mock.calls];
 		view.rerender(card(paneHost(openPane), "b"));
 		await act(async () => Promise.resolve());
-		expect({afterMount, afterRerender, afterRemount: openPane.mock.calls}).toStrictEqual({
-			afterMount: [["plan"]],
-			afterRerender: [["plan"]],
-			afterRemount: [["plan"], ["plan"]],
-		});
+		expect(
+			{
+				afterMount,
+				afterRerender,
+				afterRemount: openPane.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				afterMount: [["plan"]],
+				afterRerender: [["plan"]],
+				afterRemount: [["plan"], ["plan"]],
+			},
+		);
 	});
 
-	it("does nothing without a pane host", async () => {
+	it("does nothing without a pane host", async () =>
+	{
 		render(card(null, "a"));
 		await act(async () => Promise.resolve());
 		expect(buttonNames()).toStrictEqual([
@@ -730,7 +1387,8 @@ describe("PlanApprovalCard auto-opens the Plan pane", () => {
 		]);
 	});
 
-	it("skips it on a phone, where upstream has no side panes", async () => {
+	it("skips it on a phone, where upstream has no side panes", async () =>
+	{
 		mockPhone(true);
 		const openPane = vi.fn<PaneHostApi["openPane"]>();
 		render(card(paneHost(openPane), "a"));
@@ -738,7 +1396,8 @@ describe("PlanApprovalCard auto-opens the Plan pane", () => {
 		expect(openPane.mock.calls).toStrictEqual([]);
 	});
 
-	it("skips it while the tab is hidden", async () => {
+	it("skips it while the tab is hidden", async () =>
+	{
 		vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
 		const openPane = vi.fn<PaneHostApi["openPane"]>();
 		render(card(paneHost(openPane), "a"));
@@ -748,27 +1407,123 @@ describe("PlanApprovalCard auto-opens the Plan pane", () => {
 	});
 });
 
-describe("planKeyAction", () => {
-	const keys = {metaKey: false, ctrlKey: false, shiftKey: false, altKey: false};
+describe("planKeyAction", () =>
+{
+	const keys =
+	{
+		metaKey: false,
+		ctrlKey: false,
+		shiftKey: false,
+		altKey: false,
+	};
 	it.each([
-		{name: "⌘⏎", event: {...keys, key: "Enter", metaKey: true}, action: {kind: "accept", mode: "auto"}},
-		{name: "ctrl+⏎", event: {...keys, key: "Enter", ctrlKey: true}, action: {kind: "accept", mode: "auto"}},
+		{
+			name: "⌘⏎",
+			event:
+			{
+				...keys,
+				key: "Enter",
+				metaKey: true,
+			},
+			action:
+			{
+				kind: "accept",
+				mode: "auto",
+			},
+		},
+		{
+			name: "ctrl+⏎",
+			event:
+			{
+				...keys,
+				key: "Enter",
+				ctrlKey: true,
+			},
+			action:
+			{
+				kind: "accept",
+				mode: "auto",
+			},
+		},
 		{
 			name: "⇧⌘⏎",
-			event: {...keys, key: "Enter", metaKey: true, shiftKey: true},
-			action: {kind: "accept", mode: "default"},
+			event:
+			{
+				...keys,
+				key: "Enter",
+				metaKey: true,
+				shiftKey: true,
+			},
+			action:
+			{
+				kind: "accept",
+				mode: "default",
+			},
 		},
-		{name: "Esc", event: {...keys, key: "Escape"}, action: {kind: "revise"}},
-		{name: "plain Enter", event: {...keys, key: "Enter"}, action: null},
-		{name: "a digit", event: {...keys, key: "1"}, action: null},
-		{name: "a held ⌘⏎ repeat", event: {...keys, key: "Enter", metaKey: true, repeat: true}, action: null},
-		{name: "a held Esc repeat", event: {...keys, key: "Escape", repeat: true}, action: null},
 		{
-			name: "⌘⏎ while an IME composes",
-			event: {...keys, key: "Enter", metaKey: true, isComposing: true},
+			name: "Esc",
+			event:
+			{
+				...keys,
+				key: "Escape",
+			},
+			action:
+			{
+				kind: "revise",
+			},
+		},
+		{
+			name: "plain Enter",
+			event:
+			{
+				...keys,
+				key: "Enter",
+			},
 			action: null,
 		},
-	])("maps $name", ({event, action}) => {
+		{
+			name: "a digit",
+			event:
+			{
+				...keys,
+				key: "1",
+			},
+			action: null,
+		},
+		{
+			name: "a held ⌘⏎ repeat",
+			event:
+			{
+				...keys,
+				key: "Enter",
+				metaKey: true,
+				repeat: true,
+			},
+			action: null,
+		},
+		{
+			name: "a held Esc repeat",
+			event:
+			{
+				...keys,
+				key: "Escape",
+				repeat: true,
+			},
+			action: null,
+		},
+		{
+			name: "⌘⏎ while an IME composes",
+			event:
+			{
+				...keys,
+				key: "Enter",
+				metaKey: true,
+				isComposing: true,
+			},
+			action: null,
+		},
+	])("maps $name", ({event, action}) =>
+	{
 		expect(planKeyAction(event, AUTO_DIALOG)).toStrictEqual(action);
 	});
 });

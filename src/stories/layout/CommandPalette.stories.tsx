@@ -7,7 +7,12 @@ import {createStoryRouter} from "../sidebar/router-and-query";
 
 const now = Date.now();
 
-const sampleRecent: {sessions: SessionListItem[]; nextCursor: null} = {
+const sampleRecent:
+{
+	sessions: SessionListItem[];
+	nextCursor: null;
+} =
+{
 	sessions: [
 		{
 			id: "sess-1",
@@ -64,17 +69,29 @@ const sampleRecent: {sessions: SessionListItem[]; nextCursor: null} = {
 	nextCursor: null,
 };
 
-function createSeededQueryClient(data: typeof sampleRecent | undefined) {
-	const qc = new QueryClient({
-		defaultOptions: {queries: {retry: false, staleTime: Infinity}},
-	});
-	if (data) {
+function createSeededQueryClient(data: typeof sampleRecent | undefined)
+{
+	const qc = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+				},
+			},
+		},
+	);
+	if (data)
+	{
 		qc.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, data);
 	}
 	return qc;
 }
 
-const meta = {
+const meta =
+{
 	title: "Layout/CommandPalette",
 	component: CommandPalette,
 } satisfies Meta<typeof CommandPalette>;
@@ -82,10 +99,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const OpenWithItems: Story = {
-	args: {open: true, onOpenChange: () => {}},
+export const OpenWithItems: Story =
+{
+	args:
+	{
+		open: true,
+		onOpenChange: () =>
+		{
+		},
+	},
 	decorators: [
-		(Story) => {
+		(Story) =>
+		{
 			const router = createStoryRouter();
 			const qc = createSeededQueryClient(sampleRecent);
 			return (
@@ -97,12 +122,25 @@ export const OpenWithItems: Story = {
 	],
 };
 
-export const NoResults: Story = {
-	args: {open: true, onOpenChange: () => {}},
+export const NoResults: Story =
+{
+	args:
+	{
+		open: true,
+		onOpenChange: () =>
+		{
+		},
+	},
 	decorators: [
-		(Story) => {
+		(Story) =>
+		{
 			const router = createStoryRouter();
-			const qc = createSeededQueryClient({sessions: [], nextCursor: null});
+			const qc = createSeededQueryClient(
+				{
+					sessions: [],
+					nextCursor: null,
+				},
+			);
 			return (
 				<QueryClientProvider client={qc}>
 					<RouterProvider router={router} defaultComponent={() => <Story />} />

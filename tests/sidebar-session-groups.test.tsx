@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -33,7 +34,8 @@ import {rowTitle} from "./sidebar-row-title";
 
 const MINUTE = 60 * 1000;
 
-function session(id: string, title: string, bucket: SessionBucket, minutesAgo: number) {
+function session(id: string, title: string, bucket: SessionBucket, minutesAgo: number)
+{
 	const mtime = new Date(Date.now() - minutesAgo * MINUTE).toISOString();
 	return {
 		id,
@@ -60,24 +62,46 @@ const FIXTURE = [
 	session("d2", "Completed older", "done", 30),
 ];
 
-function seedQueryClient(sessions: unknown[], nextCursor: string | null = null): QueryClient {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+function seedQueryClient(sessions: unknown[], nextCursor: string | null = null): QueryClient
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	for (const status of ["active", "all"] as const) {
-		queryClient.setQueryData(recentSessionsInfiniteQueryOptions(undefined, status).queryKey, {
-			pages: [RecentSessionsResponse.parse({sessions, nextCursor})],
-			pageParams: [null],
-		});
+	);
+	for (const status of ["active", "all"] as const)
+	{
+		queryClient.setQueryData(
+			recentSessionsInfiniteQueryOptions(undefined, status).queryKey,
+			{
+				pages: [
+					RecentSessionsResponse.parse(
+						{
+							sessions,
+							nextCursor,
+						},
+					),
+				],
+				pageParams: [null],
+			},
+		);
 	}
 	return queryClient;
 }
 
 async function renderGroups(
 	sessions: unknown[],
-	options: {
+	options:
+	{
 		nextCursor?: string | null;
 		filterSlot?: ReactNode;
 		unseeded?: boolean;
@@ -90,70 +114,113 @@ async function renderGroups(
 		/** The fizzy-lake parts in effect; defaults to the app's (panels on). */
 		fizzyLake?: readonly FizzyLakePart[];
 	} = {},
-) {
+)
+{
 	const queryClient =
 		options.unseeded === true
-			? new QueryClient({defaultOptions: {queries: {retry: false}}})
+			? new QueryClient(
+					{
+						defaultOptions:
+						{
+							queries:
+							{
+								retry: false,
+							},
+						},
+					},
+				)
 			: seedQueryClient(sessions, options.nextCursor ?? null);
-	if (options.projects !== undefined) {
+	if (options.projects !== undefined)
+	{
 		queryClient.setQueryData(projectsQueryOptions().queryKey, ProjectListResponse.parse(options.projects));
 	}
-	const rootRoute = createRootRoute({
-		component: () => (
-			<FizzyLakeContext.Provider value={options.fizzyLake ?? FIZZY_LAKE_PARTS}>
-				<SettingsProvider>
-					<QueryClientProvider client={queryClient}>
-						<ToastProvider>
-							<SessionGroups
-								activeItemId={options.activeItemId ?? null}
-								filterSlot={options.filterSlot}
-								// Most cases exercise Status grouping, so render it unless a case picks other prefs.
-								prefs={options.prefs ?? {...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}}
-							/>
-							<Outlet />
-						</ToastProvider>
-					</QueryClientProvider>
-				</SettingsProvider>
-			</FizzyLakeContext.Provider>
-		),
-	});
-	const homeRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: () => null,
-	});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/session/$id",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: [options.initialPath ?? "/"]}),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<FizzyLakeContext.Provider value={options.fizzyLake ?? FIZZY_LAKE_PARTS}>
+					<SettingsProvider>
+						<QueryClientProvider client={queryClient}>
+							<ToastProvider>
+								<SessionGroups
+									activeItemId={options.activeItemId ?? null}
+									filterSlot={options.filterSlot}
+									// Most cases exercise Status grouping, so render it unless a case picks other prefs.
+									prefs={
+										options.prefs ??
+										{
+											...DEFAULT_SESSION_LIST_PREFS,
+											groupBy: "state",
+										}
+									}
+								/>
+								<Outlet />
+							</ToastProvider>
+						</QueryClientProvider>
+					</SettingsProvider>
+				</FizzyLakeContext.Provider>
+			),
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/session/$id",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [options.initialPath ?? "/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	if (options.loading === true) return {...result, queryClient, router};
-	await waitFor(() => {
+	if (options.loading === true)
+		return {
+			...result,
+			queryClient,
+			router,
+		};
+	await waitFor(() =>
+	{
 		expect(result.container.querySelector("[data-group-toggle], [role=alert]")).toBeTruthy();
 	});
-	return {...result, queryClient, router};
+	return {
+		...result,
+		queryClient,
+		router,
+	};
 }
 
-function groupNames(container: HTMLElement): string[] {
+function groupNames(container: HTMLElement): string[]
+{
 	return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
 		(node) => node.textContent,
 	);
 }
 
-function toggleOf(container: HTMLElement, key: string): HTMLElement {
+function toggleOf(container: HTMLElement, key: string): HTMLElement
+{
 	const toggle = container.querySelector(`[data-group-key="${key}"] [data-group-toggle]`);
 	if (!(toggle instanceof HTMLElement)) throw new Error(`no ${key} toggle`);
 	return toggle;
 }
 
 /** The section's shown rows; a collapsed section keeps its other rows mounted in a hidden wrapper. */
-function rowTitlesIn(container: HTMLElement, groupKey: string): string[] {
+function rowTitlesIn(container: HTMLElement, groupKey: string): string[]
+{
 	const section = container.querySelector(`[data-group-key="${groupKey}"]`);
 	if (!(section instanceof HTMLElement)) return [];
 	return [...section.querySelectorAll("a[data-row-main-button]")]
@@ -161,60 +228,84 @@ function rowTitlesIn(container: HTMLElement, groupKey: string): string[] {
 		.map((link) => rowTitle(link));
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	__awaitingAckTesting.reset();
 });
 
-describe("sidebar SessionGroups", () => {
-	it("renders the state groups in upstream order with their rows", async () => {
+describe("sidebar SessionGroups", () =>
+{
+	it("renders the state groups in upstream order with their rows", async () =>
+	{
 		const {container} = await renderGroups(FIXTURE);
 
 		expect(groupNames(container)).toEqual(["Needs input", "Ready for review", "Working", "Idle"]);
-		expect({
-			blocked: rowTitlesIn(container, "state-blocked"),
-			review: rowTitlesIn(container, "state-review"),
-			working: rowTitlesIn(container, "state-working"),
-			done: rowTitlesIn(container, "state-done"),
-		}).toEqual({
-			blocked: ["Blocked one"],
-			review: ["Review one"],
-			working: ["Working one"],
-			done: ["Completed newest", "Completed older"],
-		});
+		expect(
+			{
+				blocked: rowTitlesIn(container, "state-blocked"),
+				review: rowTitlesIn(container, "state-review"),
+				working: rowTitlesIn(container, "state-working"),
+				done: rowTitlesIn(container, "state-done"),
+			},
+		).toEqual(
+			{
+				blocked: ["Blocked one"],
+				review: ["Review one"],
+				working: ["Working one"],
+				done: ["Completed newest", "Completed older"],
+			},
+		);
 	});
 
 	// Upstream: name centre -> first row top 16px (no label gap), section bottom = last row bottom + 2px stack gap.
-	it("bands each section as upstream's df-session-list: a fixed row-height label flush on its rows, a stack-gap bottom pad", async () => {
+	it("bands each section as upstream's df-session-list: a fixed row-height label flush on its rows, a stack-gap bottom pad", async () =>
+	{
 		const {container} = await renderGroups(FIXTURE);
 		const css = readFileSync("src/styles/globals.css", "utf8");
 
-		expect({
-			token: /--sb-group-pb: ([^;]+);/.exec(css)?.[1],
-			sections: [...container.querySelectorAll("[data-group-key^=state-]")].map(
-				(section) =>
-					section.classList.contains("pb-[var(--sb-group-pb)]") &&
-					![...section.classList].some((name) => name.startsWith("gap-")),
-			),
-			labels: [...container.querySelectorAll("[data-group-key^=state-] > [data-sidebar-group-label]")].map(
-				(label) => ({
-					fixedBand: label.classList.contains("h-[var(--sb-group-band-h)]"),
-					minHeight: [...label.classList].some((name) => name.startsWith("min-h-")),
-				}),
-			),
-		}).toStrictEqual({
-			token: "var(--sb-row-stack-gap)",
-			sections: [true, true, true, true],
-			labels: Array.from({length: 4}, () => ({fixedBand: true, minHeight: false})),
-		});
+		expect(
+			{
+				token: /--sb-group-pb: ([^;]+);/.exec(css)?.[1],
+				sections: [...container.querySelectorAll("[data-group-key^=state-]")].map(
+					(section) =>
+						section.classList.contains("pb-[var(--sb-group-pb)]") &&
+						![...section.classList].some((name) => name.startsWith("gap-")),
+				),
+				labels: [...container.querySelectorAll("[data-group-key^=state-] > [data-sidebar-group-label]")].map(
+					(label) => (
+					{
+						fixedBand: label.classList.contains("h-[var(--sb-group-band-h)]"),
+						minHeight: [...label.classList].some((name) => name.startsWith("min-h-")),
+					}),
+				),
+			},
+		).toStrictEqual(
+			{
+				token: "var(--sb-row-stack-gap)",
+				sections: [true, true, true, true],
+				labels: Array.from(
+					{
+						length: 4,
+					},
+					() => (
+					{
+						fixedBand: true,
+						minHeight: false,
+					}),
+				),
+			},
+		);
 	});
 
-	it("omits empty groups", async () => {
+	it("omits empty groups", async () =>
+	{
 		const {container} = await renderGroups([
 			session("w1", "Working one", "working", 1),
 			session("d1", "Completed one", "done", 5),
@@ -223,41 +314,71 @@ describe("sidebar SessionGroups", () => {
 		expect(groupNames(container)).toEqual(["Working", "Idle"]);
 	});
 
-	it("shows each row's session title with its trailing state mark beside the link and its status text inside it", async () => {
+	it("shows each row's session title with its trailing state mark beside the link and its status text inside it", async () =>
+	{
 		await renderGroups(FIXTURE);
 
-		const rowOf = (name: RegExp) => {
-			const row = screen.getByRole("link", {name}).closest<HTMLElement>("[data-session-actions]");
+		const rowOf = (name: RegExp) =>
+		{
+			const row = screen
+				.getByRole(
+					"link",
+					{
+						name,
+					},
+				)
+				.closest<HTMLElement>("[data-session-actions]");
 			if (row === null) throw new Error(`no row ${String(name)}`);
 			return row;
 		};
 		// The mark sits beside the link, as upstream's row decoration does; its sr text is inside the title.
-		const blocked = screen.getByRole("link", {name: /^Blocked one/});
-		expect({
-			href: blocked.getAttribute("href"),
-			blocked: within(blocked).getByRole("status").textContent,
-			working: within(rowOf(/^Working one/)).getByRole("status").textContent,
-			settled: {
-				mark: within(rowOf(/^Completed older/)).queryByRole("img"),
-				env: rowOf(/^Completed older/)
-					.querySelector("[data-env-glyph]")
-					?.getAttribute("aria-hidden"),
+		const blocked = screen.getByRole(
+			"link",
+			{
+				name: /^Blocked one/,
 			},
-			project: screen.queryByText("project-b1"),
-		}).toStrictEqual({
-			href: "/session/b1",
-			blocked: " Awaiting input",
-			working: " Running",
-			settled: {mark: null, env: "true"},
-			project: null,
-		});
+		);
+		expect(
+			{
+				href: blocked.getAttribute("href"),
+				blocked: within(blocked).getByRole("status").textContent,
+				working: within(rowOf(/^Working one/)).getByRole("status").textContent,
+				settled:
+				{
+					mark: within(rowOf(/^Completed older/)).queryByRole("img"),
+					env: rowOf(/^Completed older/)
+						.querySelector("[data-env-glyph]")
+						?.getAttribute("aria-hidden"),
+				},
+				project: screen.queryByText("project-b1"),
+			},
+		).toStrictEqual(
+			{
+				href: "/session/b1",
+				blocked: " Awaiting input",
+				working: " Running",
+				settled:
+				{
+					mark: null,
+					env: "true",
+				},
+				project: null,
+			},
+		);
 	});
 
-	it("describes a Needs input row with upstream's sr-only quick-reply hint, and no other row", async () => {
+	it("describes a Needs input row with upstream's sr-only quick-reply hint, and no other row", async () =>
+	{
 		await renderGroups(FIXTURE);
 
-		const hintOf = (name: RegExp) => {
-			const link = screen.getByRole("link", {name});
+		const hintOf = (name: RegExp) =>
+		{
+			const link = screen.getByRole(
+				"link",
+				{
+					name,
+				},
+			);
 			const id = link.getAttribute("aria-describedby");
 			if (id === null) return null;
 			const hint = document.getElementById(id);
@@ -267,17 +388,26 @@ describe("sidebar SessionGroups", () => {
 				findOmitted: hint?.hasAttribute("data-find-omitted"),
 			};
 		};
-		expect({blocked: hintOf(/^Blocked one/), working: hintOf(/^Working one/)}).toStrictEqual({
-			blocked: {
-				text: "Quick reply and approval controls available — press Tab until focus enters the card, Escape to return.",
-				className: "sr-only select-none",
-				findOmitted: true,
+		expect(
+			{
+				blocked: hintOf(/^Blocked one/),
+				working: hintOf(/^Working one/),
 			},
-			working: null,
-		});
+		).toStrictEqual(
+			{
+				blocked:
+				{
+					text: "Quick reply and approval controls available — press Tab until focus enters the card, Escape to return.",
+					className: "sr-only select-none",
+					findOmitted: true,
+				},
+				working: null,
+			},
+		);
 	});
 
-	it("shares one quick-reply hint per section, in a contents wrapper, across every Needs input row div and link", async () => {
+	it("shares one quick-reply hint per section, in a contents wrapper, across every Needs input row div and link", async () =>
+	{
 		const {container} = await renderGroups([
 			session("b1", "Blocked one", "blocked", 1),
 			session("b2", "Blocked two", "blocked", 2),
@@ -288,94 +418,179 @@ describe("sidebar SessionGroups", () => {
 		const hints = [...container.querySelectorAll("span")].filter((span) =>
 			span.textContent.startsWith("Quick reply and approval controls available"),
 		);
-		const describedBy = (title: string) => {
-			const link = screen.getByRole("link", {name: new RegExp(`^${title}`)});
+		const describedBy = (title: string) =>
+		{
+			const link = screen.getByRole(
+				"link",
+				{
+					name: new RegExp(`^${title}`),
+				},
+			);
 			return {
 				row: link.closest("[data-row-key]")?.getAttribute("aria-describedby") ?? null,
 				link: link.getAttribute("aria-describedby"),
 			};
 		};
 		const id = hints[0]?.id ?? "missing";
-		expect({
-			hints: hints.map((hint) => ({
-				className: hint.className,
-				findOmitted: hint.hasAttribute("data-find-omitted"),
-				wrapper: hint.parentElement?.className,
-			})),
-			rows: ["Blocked one", "Blocked two", "Blocked three", "Working one"].map(describedBy),
-		}).toStrictEqual({
-			hints: [{className: "sr-only select-none", findOmitted: true, wrapper: "contents"}],
-			rows: [
-				{row: id, link: id},
-				{row: id, link: id},
-				{row: id, link: id},
-				{row: null, link: null},
-			],
-		});
+		expect(
+			{
+				hints: hints.map((hint) => (
+				{
+					className: hint.className,
+					findOmitted: hint.hasAttribute("data-find-omitted"),
+					wrapper: hint.parentElement?.className,
+				})),
+				rows: ["Blocked one", "Blocked two", "Blocked three", "Working one"].map(describedBy),
+			},
+		).toStrictEqual(
+			{
+				hints: [
+					{
+						className: "sr-only select-none",
+						findOmitted: true,
+						wrapper: "contents",
+					},
+				],
+				rows: [
+					{
+						row: id,
+						link: id,
+					},
+					{
+						row: id,
+						link: id,
+					},
+					{
+						row: id,
+						link: id,
+					},
+					{
+						row: null,
+						link: null,
+					},
+				],
+			},
+		);
 	});
 
-	it("styles the row kebab like upstream: radius 6 (r5), text-secondary until hovered or expanded, instant reveal", async () => {
+	it("styles the row kebab like upstream: radius 6 (r5), text-secondary until hovered or expanded, instant reveal", async () =>
+	{
 		await renderGroups(FIXTURE);
 
-		const classes = screen.getByRole("button", {name: "More options for Working one"}).className.split(" ");
-		expect({
-			radius: classes.filter((token) => token.startsWith("rounded")),
-			ink: classes.filter((token) =>
-				/^(hover:|aria-expanded:)?text-(primary|secondary|ink-muted|muted)$/.test(token),
-			),
-			hoverBg: classes.filter((token) => token.startsWith("hover:bg")),
-			transition: classes.filter((token) => token.startsWith("transition")),
-		}).toStrictEqual({
-			radius: ["rounded-r5"],
-			ink: ["text-secondary", "hover:text-primary", "aria-expanded:text-primary"],
-			hoverBg: [],
-			transition: [],
-		});
+		const classes = screen
+			.getByRole(
+				"button",
+				{
+					name: "More options for Working one",
+				},
+			)
+			.className.split(" ");
+		expect(
+			{
+				radius: classes.filter((token) => token.startsWith("rounded")),
+				ink: classes.filter((token) =>
+					/^(hover:|aria-expanded:)?text-(primary|secondary|ink-muted|muted)$/.test(token),
+				),
+				hoverBg: classes.filter((token) => token.startsWith("hover:bg")),
+				transition: classes.filter((token) => token.startsWith("transition")),
+			},
+		).toStrictEqual(
+			{
+				radius: ["rounded-r5"],
+				ink: ["text-secondary", "hover:text-primary", "aria-expanded:text-primary"],
+				hoverBg: [],
+				transition: [],
+			},
+		);
 	});
 
-	it("collapses a group, persists it in the sidebar store, and restores it on remount", async () => {
+	it("collapses a group, persists it in the sidebar store, and restores it on remount", async () =>
+	{
 		const first = await renderGroups(FIXTURE);
-		const toggle = screen.getByRole("button", {name: "Working"});
+		const toggle = screen.getByRole(
+			"button",
+			{
+				name: "Working",
+			},
+		);
 		expect(toggle.getAttribute("aria-expanded")).toBe("true");
 
 		fireEvent.click(toggle);
 
 		expect(toggle.getAttribute("aria-expanded")).toBe("false");
-		expect(screen.queryByRole("link", {name: /Working one/})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"link",
+				{
+					name: /Working one/,
+				},
+			),
+		).toBeNull();
 		expect(readSidebarState().collapsedGroups).toEqual(["state-working"]);
 
 		first.unmount();
 		await renderGroups(FIXTURE);
 
 		// The collapsed toggle carries the hidden Working row's badge, which joins its name.
-		const remounted = screen.getByRole("button", {name: /^Working/});
+		const remounted = screen.getByRole(
+			"button",
+			{
+				name: /^Working/,
+			},
+		);
 		expect(remounted.getAttribute("aria-expanded")).toBe("false");
-		expect(screen.queryByRole("link", {name: /Working one/})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"link",
+				{
+					name: /Working one/,
+				},
+			),
+		).toBeNull();
 
 		fireEvent.click(remounted);
 
 		expect(remounted.getAttribute("aria-expanded")).toBe("true");
-		expect(screen.getByRole("link", {name: /^Working one/})).toBeTruthy();
+		expect(
+			screen.getByRole(
+				"link",
+				{
+					name: /^Working one/,
+				},
+			),
+		).toBeTruthy();
 		expect(readSidebarState().collapsedGroups).toEqual([]);
 	});
 
 	// Upstream `SH`/`sP`: a collapsed header is `data-rowless` and carries `[data-group-badge]` with the most urgent hidden state.
-	it("badges a collapsed header with its hidden rows' most urgent state and marks it rowless", async () => {
+	it("badges a collapsed header with its hidden rows' most urgent state and marks it rowless", async () =>
+	{
 		const rows = [
 			session("d1", "Done read", "done", 5),
-			{...session("d2", "Done unread", "done", 6), unseen: true},
+			{
+				...session("d2", "Done unread", "done", 6),
+				unseen: true,
+			},
 			session("d3", "Done read too", "done", 7),
 			session("w1", "Working one", "working", 1),
 		];
 		__unreadStoreTesting.reset();
-		syncUnseenFromSummaries(rows.map(({id, unseen}) => ({id, unseen})));
+		syncUnseenFromSummaries(
+			rows.map(({id, unseen}) => (
+			{
+				id,
+				unseen,
+			})),
+		);
 		const {container} = await renderGroups(rows);
-		const header = (key: string) => {
+		const header = (key: string) =>
+		{
 			const label = container.querySelector(`[data-group-key="${key}"] > [data-sidebar-group-label]`);
 			if (!(label instanceof HTMLElement)) throw new Error(`no ${key} header`);
 			return label;
 		};
-		const snapshot = (key: string) => {
+		const snapshot = (key: string) =>
+		{
 			const label = header(key);
 			const badge = label.querySelector("[data-group-toggle] > [data-group-badge]");
 			return {
@@ -389,29 +604,65 @@ describe("sidebar SessionGroups", () => {
 			};
 		};
 
-		expect(snapshot("state-done")).toEqual({rowless: null, rowlessGap: true, badgeClass: null, badge: []});
-
-		fireEvent.click(within(header("state-done")).getByRole("button", {name: /^Idle/}));
-		fireEvent.click(within(header("state-working")).getByRole("button", {name: /^Working/}));
-
-		expect({done: snapshot("state-done"), working: snapshot("state-working")}).toEqual({
-			done: {
-				rowless: "",
+		expect(snapshot("state-done")).toEqual(
+			{
+				rowless: null,
 				rowlessGap: true,
-				badgeClass: "-my-1 ms-auto flex size-6 shrink-0 items-center justify-center",
-				badge: ["Unread response"],
+				badgeClass: null,
+				badge: [],
 			},
-			working: {
-				rowless: "",
-				rowlessGap: true,
-				badgeClass: "-my-1 ms-auto flex size-6 shrink-0 items-center justify-center",
-				badge: ["Running"],
+		);
+
+		fireEvent.click(
+			within(header("state-done")).getByRole(
+				"button",
+				{
+					name: /^Idle/,
+				},
+			),
+		);
+		fireEvent.click(
+			within(header("state-working")).getByRole(
+				"button",
+				{
+					name: /^Working/,
+				},
+			),
+		);
+
+		expect(
+			{
+				done: snapshot("state-done"),
+				working: snapshot("state-working"),
 			},
-		});
+		).toEqual(
+			{
+				done:
+				{
+					rowless: "",
+					rowlessGap: true,
+					badgeClass: "-my-1 ms-auto flex size-6 shrink-0 items-center justify-center",
+					badge: ["Unread response"],
+				},
+				working:
+				{
+					rowless: "",
+					rowlessGap: true,
+					badgeClass: "-my-1 ms-auto flex size-6 shrink-0 items-center justify-center",
+					badge: ["Running"],
+				},
+			},
+		);
 	});
 
-	it("marks a section data-hover-within while any of its rows is hovered, one section at a time, even with fizzy-lake parts off", async () => {
-		const {container} = await renderGroups(FIXTURE, {fizzyLake: []});
+	it("marks a section data-hover-within while any of its rows is hovered, one section at a time, even with fizzy-lake parts off", async () =>
+	{
+		const {container} = await renderGroups(
+			FIXTURE,
+			{
+				fizzyLake: [],
+			},
+		);
 		const hovered = () =>
 			[...container.querySelectorAll("[data-group-key][data-hover-within]")].map((section) =>
 				section.getAttribute("data-group-key"),
@@ -426,40 +677,55 @@ describe("sidebar SessionGroups", () => {
 		const afterWorking = hovered();
 		fireEvent.mouseOver(doneRow);
 		const afterDone = hovered();
-		fireEvent.mouseOut(doneRow, {relatedTarget: document.body});
+		fireEvent.mouseOut(
+			doneRow,
+			{
+				relatedTarget: document.body,
+			},
+		);
 
-		expect({
-			afterWorking,
-			afterDone,
-			afterLeave: hovered(),
-			caret: container
-				.querySelector('[data-group-key="state-done"] [data-group-caret]')
-				?.getAttribute("class")
-				?.split(" ")
-				.filter((name) => name.includes("opacity")),
-		}).toStrictEqual({
-			afterWorking: ["state-working"],
-			afterDone: ["state-done"],
-			afterLeave: [],
-			caret: [
-				"group-data-[hover-within]/section:opacity-100",
-				"group-focus-visible/label:opacity-100",
-				"opacity-100",
-			],
-		});
+		expect(
+			{
+				afterWorking,
+				afterDone,
+				afterLeave: hovered(),
+				caret: container
+					.querySelector('[data-group-key="state-done"] [data-group-caret]')
+					?.getAttribute("class")
+					?.split(" ")
+					.filter((name) => name.includes("opacity")),
+			},
+		).toStrictEqual(
+			{
+				afterWorking: ["state-working"],
+				afterDone: ["state-done"],
+				afterLeave: [],
+				caret: [
+					"group-data-[hover-within]/section:opacity-100",
+					"group-focus-visible/label:opacity-100",
+					"opacity-100",
+				],
+			},
+		);
 	});
 
 	// Upstream `SH` (shared-18) and `Cs` (shared-21) graduated: the caret always stays (`data-group-caret="stays"`,
 	// opacity 1) and Group and sort keeps its width in the hub sidebar, fading by opacity in the header CSS.
-	it("keeps the expanded caret visible and Group and sort at full width whatever fizzy-lake parts are on", async () => {
-		const render = async (fizzyLake: readonly FizzyLakePart[]) => {
-			const {container, unmount} = await renderGroups(FIXTURE, {
-				fizzyLake,
-				filterSlot: <button type="button">Group and sort</button>,
-			});
+	it("keeps the expanded caret visible and Group and sort at full width whatever fizzy-lake parts are on", async () =>
+	{
+		const render = async (fizzyLake: readonly FizzyLakePart[]) =>
+		{
+			const {container, unmount} = await renderGroups(
+				FIXTURE,
+				{
+					fizzyLake,
+					filterSlot: <button type="button">Group and sort</button>,
+				},
+			);
 			const header = container.querySelector('[data-group-key="state-done"] [data-sidebar-group-label]');
 			const caret = header?.querySelector("[data-group-caret]");
-			const result = {
+			const result =
+			{
 				caret: caret?.getAttribute("data-group-caret"),
 				caretOpacity: caret
 					?.getAttribute("class")
@@ -478,7 +744,8 @@ describe("sidebar SessionGroups", () => {
 			unmount();
 			return result;
 		};
-		const expected = {
+		const expected =
+		{
 			caret: "stays",
 			caretOpacity: [
 				"group-data-[hover-within]/section:opacity-100",
@@ -490,175 +757,420 @@ describe("sidebar SessionGroups", () => {
 			toggleHoverInk: [],
 		};
 
-		expect({panels: await render(FIZZY_LAKE_PARTS), off: await render([])}).toStrictEqual({
-			panels: expected,
-			off: expected,
-		});
+		expect(
+			{
+				panels: await render(FIZZY_LAKE_PARTS),
+				off: await render([]),
+			},
+		).toStrictEqual(
+			{
+				panels: expected,
+				off: expected,
+			},
+		);
 	});
 
-	it("leaves a collapsed header unbadged when every hidden row is settled and read", async () => {
+	it("leaves a collapsed header unbadged when every hidden row is settled and read", async () =>
+	{
 		const rows = [session("d1", "Done read", "done", 5), session("d2", "Done read too", "done", 6)];
 		__unreadStoreTesting.reset();
-		syncUnseenFromSummaries(rows.map(({id, unseen}) => ({id, unseen})));
+		syncUnseenFromSummaries(
+			rows.map(({id, unseen}) => (
+			{
+				id,
+				unseen,
+			})),
+		);
 		const {container} = await renderGroups(rows);
 
-		fireEvent.click(screen.getByRole("button", {name: "Idle"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Idle",
+				},
+			),
+		);
 
 		const label = container.querySelector('[data-group-key="state-done"] > [data-sidebar-group-label]');
-		expect({
-			rowless: label?.getAttribute("data-rowless"),
-			badges: label?.querySelectorAll("[data-group-badge]").length,
-		}).toEqual({rowless: "", badges: 0});
+		expect(
+			{
+				rowless: label?.getAttribute("data-rowless"),
+				badges: label?.querySelectorAll("[data-group-badge]").length,
+			},
+		).toEqual(
+			{
+				rowless: "",
+				badges: 0,
+			},
+		);
 	});
 
-	it("pages Idle 5 rows per Show more click, announcing each page, and folds back to 5 with Show less", async () => {
-		const done = Array.from({length: 45}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
+	it("pages Idle 5 rows per Show more click, announcing each page, and folds back to 5 with Show less", async () =>
+	{
+		const done = Array.from(
+			{
+				length: 45,
+			},
+			(_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1),
+		);
 		const {container} = await renderGroups(done);
 		const overflowRows = () =>
-			[...container.querySelectorAll('[data-group-key="state-done"] button[data-row]')].map((button) => ({
+			[...container.querySelectorAll('[data-group-key="state-done"] button[data-row]')].map((button) => (
+			{
 				text: button.textContent,
 				label: button.getAttribute("aria-label"),
 			}));
 		const status = () =>
 			container.querySelector('[data-group-key="state-done"] [data-group-rows] > span[role="status"]');
 
-		const showMore = screen.getByRole("button", {name: "Show 5 more in Idle"});
-		expect({
-			shown: rowTitlesIn(container, "state-done").length,
-			overflow: overflowRows(),
-			roving: showMore.hasAttribute("data-roving-item"),
-			labelClass: showMore.querySelector("span")?.className,
-			leadingSlot: showMore.querySelector(".df-leading-slot"),
-			status: {className: status()?.className, text: status()?.textContent},
-		}).toStrictEqual({
-			shown: 5,
-			overflow: [{text: "Show more", label: "Show 5 more in Idle"}],
-			roving: true,
-			labelClass: "ps-[var(--sb-iconless-pad)]",
-			leadingSlot: null,
-			status: {className: "sr-only", text: ""},
-		});
+		const showMore = screen.getByRole(
+			"button",
+			{
+				name: "Show 5 more in Idle",
+			},
+		);
+		expect(
+			{
+				shown: rowTitlesIn(container, "state-done").length,
+				overflow: overflowRows(),
+				roving: showMore.hasAttribute("data-roving-item"),
+				labelClass: showMore.querySelector("span")?.className,
+				leadingSlot: showMore.querySelector(".df-leading-slot"),
+				status:
+				{
+					className: status()?.className,
+					text: status()?.textContent,
+				},
+			},
+		).toStrictEqual(
+			{
+				shown: 5,
+				overflow: [
+					{
+						text: "Show more",
+						label: "Show 5 more in Idle",
+					},
+				],
+				roving: true,
+				labelClass: "ps-[var(--sb-iconless-pad)]",
+				leadingSlot: null,
+				status:
+				{
+					className: "sr-only",
+					text: "",
+				},
+			},
+		);
 
 		fireEvent.click(showMore);
-		expect({shown: rowTitlesIn(container, "state-done").length, status: status()?.textContent}).toStrictEqual({
-			shown: 10,
-			status: "Showing 5 more in Idle",
-		});
+		expect(
+			{
+				shown: rowTitlesIn(container, "state-done").length,
+				status: status()?.textContent,
+			},
+		).toStrictEqual(
+			{
+				shown: 10,
+				status: "Showing 5 more in Idle",
+			},
+		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Idle"}), {detail: 2});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 5 more in Idle",
+				},
+			),
+			{
+				detail: 2,
+			},
+		);
 		expect(rowTitlesIn(container, "state-done")).toHaveLength(10);
 
-		for (let click = 0; click < 7; click++) {
-			fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Idle"}));
+		for (let click = 0; click < 7; click++)
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Show 5 more in Idle",
+					},
+				),
+			);
 		}
-		expect({shown: rowTitlesIn(container, "state-done"), overflow: overflowRows()}).toStrictEqual({
-			shown: Array.from({length: 45}, (_, index) => `Done ${index}`),
-			overflow: [{text: "Show less", label: "Show less in Idle"}],
-		});
+		expect(
+			{
+				shown: rowTitlesIn(container, "state-done"),
+				overflow: overflowRows(),
+			},
+		).toStrictEqual(
+			{
+				shown: Array.from(
+					{
+						length: 45,
+					},
+					(_, index) => `Done ${index}`,
+				),
+				overflow: [
+					{
+						text: "Show less",
+						label: "Show less in Idle",
+					},
+				],
+			},
+		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Show less in Idle"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show less in Idle",
+				},
+			),
+		);
 
-		expect({
-			shown: rowTitlesIn(container, "state-done").length,
-			overflow: overflowRows(),
-			status: status()?.textContent,
-		}).toStrictEqual({
-			shown: 5,
-			overflow: [{text: "Show more", label: "Show 5 more in Idle"}],
-			status: "Showing less in Idle",
-		});
+		expect(
+			{
+				shown: rowTitlesIn(container, "state-done").length,
+				overflow: overflowRows(),
+				status: status()?.textContent,
+			},
+		).toStrictEqual(
+			{
+				shown: 5,
+				overflow: [
+					{
+						text: "Show more",
+						label: "Show 5 more in Idle",
+					},
+				],
+				status: "Showing less in Idle",
+			},
+		);
 	});
 
-	it("puts an awaiting dot at the end of Show more while a hidden row needs input", async () => {
-		const rows = Array.from({length: 7}, (_, index) =>
-			session(`r${index}`, `Row ${index}`, index === 6 ? "blocked" : "done", index + 1),
+	it("puts an awaiting dot at the end of Show more while a hidden row needs input", async () =>
+	{
+		const rows = Array.from(
+			{
+				length: 7,
+			},
+			(_, index) => session(`r${index}`, `Row ${index}`, index === 6 ? "blocked" : "done", index + 1),
 		);
-		const {container} = await renderGroups(rows, {prefs: {...DEFAULT_SESSION_LIST_PREFS, groupBy: "none"}});
+		const {container} = await renderGroups(
+			rows,
+			{
+				prefs:
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					groupBy: "none",
+				},
+			},
+		);
 
-		const showMore = screen.getByRole("button", {name: "Show 2 more in Recents"});
+		const showMore = screen.getByRole(
+			"button",
+			{
+				name: "Show 2 more in Recents",
+			},
+		);
 		const trailing = showMore.querySelector("span.ms-auto");
-		expect({
-			text: showMore.textContent,
-			trailingClass: trailing?.className,
-			dot: trailing?.querySelector('[role="img"]')?.getAttribute("aria-label"),
-		}).toStrictEqual({
-			text: "Show more",
-			trailingClass: "ms-auto flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center",
-			dot: "Awaiting input",
-		});
+		expect(
+			{
+				text: showMore.textContent,
+				trailingClass: trailing?.className,
+				dot: trailing?.querySelector('[role="img"]')?.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				text: "Show more",
+				trailingClass: "ms-auto flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center",
+				dot: "Awaiting input",
+			},
+		);
 		expect(container.querySelectorAll('[data-group-key="recents"] button[data-row] span.ms-auto')).toHaveLength(1);
 	});
 
-	it("holds Show less, described and ignoring clicks, while folding back would hide the open session", async () => {
-		const done = Array.from({length: 12}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
-		const {container} = await renderGroups(done, {activeItemId: "d10"});
-		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Idle"}));
-		fireEvent.click(screen.getByRole("button", {name: "Show 2 more in Idle"}));
+	it("holds Show less, described and ignoring clicks, while folding back would hide the open session", async () =>
+	{
+		const done = Array.from(
+			{
+				length: 12,
+			},
+			(_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1),
+		);
+		const {container} = await renderGroups(
+			done,
+			{
+				activeItemId: "d10",
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 5 more in Idle",
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 2 more in Idle",
+				},
+			),
+		);
 
-		const showLess = screen.getByRole("button", {name: "Show less in Idle"});
+		const showLess = screen.getByRole(
+			"button",
+			{
+				name: "Show less in Idle",
+			},
+		);
 		const describedBy = showLess.getAttribute("aria-describedby");
 		const description = describedBy === null ? null : document.getElementById(describedBy);
-		expect({
-			disabled: showLess.getAttribute("aria-disabled"),
-			held: showLess.getAttribute("data-held"),
-			description: {className: description?.className, text: description?.textContent},
-		}).toStrictEqual({
-			disabled: "true",
-			held: "",
-			description: {className: "sr-only", text: "You have something open near the end of this list."},
-		});
+		expect(
+			{
+				disabled: showLess.getAttribute("aria-disabled"),
+				held: showLess.getAttribute("data-held"),
+				description:
+				{
+					className: description?.className,
+					text: description?.textContent,
+				},
+			},
+		).toStrictEqual(
+			{
+				disabled: "true",
+				held: "",
+				description:
+				{
+					className: "sr-only",
+					text: "You have something open near the end of this list.",
+				},
+			},
+		);
 
 		fireEvent.click(showLess);
 		expect(rowTitlesIn(container, "state-done")).toHaveLength(12);
 	});
 
-	it("leaves Show less live when the open session stays inside the first 5 rows", async () => {
-		const done = Array.from({length: 12}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
-		await renderGroups(done, {activeItemId: "d4"});
-		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Idle"}));
-		fireEvent.click(screen.getByRole("button", {name: "Show 2 more in Idle"}));
+	it("leaves Show less live when the open session stays inside the first 5 rows", async () =>
+	{
+		const done = Array.from(
+			{
+				length: 12,
+			},
+			(_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1),
+		);
+		await renderGroups(
+			done,
+			{
+				activeItemId: "d4",
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 5 more in Idle",
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 2 more in Idle",
+				},
+			),
+		);
 
-		const showLess = screen.getByRole("button", {name: "Show less in Idle"});
-		expect({
-			disabled: showLess.getAttribute("aria-disabled"),
-			held: showLess.getAttribute("data-held"),
-			describedBy: showLess.getAttribute("aria-describedby"),
-		}).toStrictEqual({disabled: null, held: null, describedBy: null});
+		const showLess = screen.getByRole(
+			"button",
+			{
+				name: "Show less in Idle",
+			},
+		);
+		expect(
+			{
+				disabled: showLess.getAttribute("aria-disabled"),
+				held: showLess.getAttribute("data-held"),
+				describedBy: showLess.getAttribute("aria-describedby"),
+			},
+		).toStrictEqual(
+			{
+				disabled: null,
+				held: null,
+				describedBy: null,
+			},
+		);
 	});
 
-	it("offers no Show less on a group that fits under the cap", async () => {
+	it("offers no Show less on a group that fits under the cap", async () =>
+	{
 		await renderGroups(FIXTURE);
-		expect(screen.queryByRole("button", {name: /^Show less/})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: /^Show less/,
+				},
+			),
+		).toBeNull();
 	});
 
-	it("puts the filter slot on every group header, as upstream puts Group and sort on each section", async () => {
+	it("puts the filter slot on every group header, as upstream puts Group and sort on each section", async () =>
+	{
 		const {container} = await renderGroups(
 			[session("w1", "Working one", "working", 1), session("d1", "Completed one", "done", 5)],
-			{filterSlot: <button type="button">Filter</button>},
+			{
+				filterSlot: <button type="button">Filter</button>,
+			},
 		);
 
 		const headers = [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-sidebar-group-label]')];
 		expect(headers.map((header) => within(header as HTMLElement).queryAllByText("Filter").length)).toEqual([1, 1]);
-		expect(within(headers[0] as HTMLElement).getByRole("button", {name: "Working"})).toBeTruthy();
+		expect(
+			within(headers[0] as HTMLElement).getByRole(
+				"button",
+				{
+					name: "Working",
+				},
+			),
+		).toBeTruthy();
 	});
 
-	it("draws each row's status in upstream's trailing slot, with no leading glyph, the env laptop on a settled row, and upstream's attention markup", async () => {
+	it("draws each row's status in upstream's trailing slot, with no leading glyph, the env laptop on a settled row, and upstream's attention markup", async () =>
+	{
 		__unreadStoreTesting.reset();
-		syncUnseenFromSummaries(FIXTURE.map(({id, unseen}) => ({id, unseen})));
+		syncUnseenFromSummaries(
+			FIXTURE.map(({id, unseen}) => (
+			{
+				id,
+				unseen,
+			})),
+		);
 		const {container} = await renderGroups(FIXTURE);
-		const rowOf = (title: string) => {
+		const rowOf = (title: string) =>
+		{
 			const link = [...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].find((node) =>
 				node.textContent.includes(title),
 			);
 			if (link === undefined) throw new Error(`no row ${title}`);
 			return link;
 		};
-		const describeRow = (title: string) => {
+		const describeRow = (title: string) =>
+		{
 			const link = rowOf(title);
 			const decoration = link.closest("[data-session-actions]")?.querySelector("[data-row-decoration]");
 			const mark = decoration?.querySelector("[role=status], [role=img]");
 			const wrappers: string[] = [];
-			for (let node = mark?.parentElement; node && node !== decoration; node = node.parentElement) {
+			for (let node = mark?.parentElement; node && node !== decoration; node = node.parentElement)
+			{
 				wrappers.push(`${node.getAttribute("aria-hidden")} ${node.getAttribute("class")}`);
 			}
 			return {
@@ -680,65 +1192,82 @@ describe("sidebar SessionGroups", () => {
 				flushRight: decoration?.className.split(" ").includes("right-[var(--sb-row-ctl-inset)]") ?? false,
 			};
 		};
-		expect({
-			blocked: describeRow("Blocked one"),
-			working: describeRow("Working one"),
-			review: describeRow("Review one"),
-			done: describeRow("Completed newest"),
-		}).toStrictEqual({
-			blocked: {
-				leading: false,
-				attention: "waiting",
-				wrappers: ["true flex items-center", "true flex items-center"],
-				mark: ["img", "Awaiting input", "flex items-center", "true"],
-				env: null,
-				runningPulse: false,
-				hidesOnHover: true,
-				flushRight: true,
+		expect(
+			{
+				blocked: describeRow("Blocked one"),
+				working: describeRow("Working one"),
+				review: describeRow("Review one"),
+				done: describeRow("Completed newest"),
 			},
-			working: {
-				leading: false,
-				attention: null,
-				wrappers: ["true flex items-center"],
-				mark: ["img", "Running", "flex items-center", "true"],
-				env: null,
-				runningPulse: true,
-				hidesOnHover: true,
-				flushRight: true,
+		).toStrictEqual(
+			{
+				blocked:
+				{
+					leading: false,
+					attention: "waiting",
+					wrappers: ["true flex items-center", "true flex items-center"],
+					mark: ["img", "Awaiting input", "flex items-center", "true"],
+					env: null,
+					runningPulse: false,
+					hidesOnHover: true,
+					flushRight: true,
+				},
+				working:
+				{
+					leading: false,
+					attention: null,
+					wrappers: ["true flex items-center"],
+					mark: ["img", "Running", "flex items-center", "true"],
+					env: null,
+					runningPulse: true,
+					hidesOnHover: true,
+					flushRight: true,
+				},
+				review:
+				{
+					leading: false,
+					attention: "unread",
+					wrappers: ["true flex items-center", "true flex items-center"],
+					mark: ["img", "Unread response", "flex items-center", "true"],
+					env: null,
+					runningPulse: false,
+					hidesOnHover: true,
+					flushRight: true,
+				},
+				done:
+				{
+					leading: false,
+					attention: null,
+					wrappers: [],
+					mark: null,
+					env: "bridge",
+					runningPulse: false,
+					hidesOnHover: true,
+					flushRight: true,
+				},
 			},
-			review: {
-				leading: false,
-				attention: "unread",
-				wrappers: ["true flex items-center", "true flex items-center"],
-				mark: ["img", "Unread response", "flex items-center", "true"],
-				env: null,
-				runningPulse: false,
-				hidesOnHover: true,
-				flushRight: true,
-			},
-			done: {
-				leading: false,
-				attention: null,
-				wrappers: [],
-				mark: null,
-				env: "bridge",
-				runningPulse: false,
-				hidesOnHover: true,
-				flushRight: true,
-			},
-		});
+		);
 	});
 
-	it("draws upstream's bridge env glyph on the icon, LaptopSlash when offline, and none on pinned rows or under project grouping", async () => {
+	it("draws upstream's bridge env glyph on the icon, LaptopSlash when offline, and none on pinned rows or under project grouping", async () =>
+	{
 		const rows = [
 			session("d1", "Live bridged", "done", 5),
-			{...session("d2", "Offline bridged", "done", 6), remoteControl: true, state: "ended"},
-			{...session("d3", "Live remote", "done", 7), remoteControl: true},
+			{
+				...session("d2", "Offline bridged", "done", 6),
+				remoteControl: true,
+				state: "ended",
+			},
+			{
+				...session("d3", "Live remote", "done", 7),
+				remoteControl: true,
+			},
 			session("p1", "Pinned one", "done", 8),
 		];
 		const describeEnv = (container: HTMLElement) =>
 			Object.fromEntries(
-				[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) => {
+				[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) =>
+				{
 					const glyph = link
 						.closest("[data-session-actions]")
 						?.querySelector("[data-row-decoration] [data-env-glyph]");
@@ -746,7 +1275,8 @@ describe("sidebar SessionGroups", () => {
 						rowTitle(link),
 						glyph === null || glyph === undefined
 							? null
-							: {
+							:
+								{
 									tag: glyph.tagName.toLowerCase(),
 									kind: glyph.getAttribute("data-env-glyph"),
 									offline: glyph.hasAttribute("data-env-offline"),
@@ -761,7 +1291,8 @@ describe("sidebar SessionGroups", () => {
 				}),
 			);
 		const wrapper = "flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center";
-		const live = {
+		const live =
+		{
 			tag: "svg",
 			kind: "bridge",
 			offline: false,
@@ -771,69 +1302,148 @@ describe("sidebar SessionGroups", () => {
 			ink: ["text-muted-as-secondary"],
 		};
 
-		localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({pinnedIds: ["p1"], pinnedOrder: ["p1"]}));
+		localStorage.setItem(
+			PIN_STORAGE_KEY,
+			JSON.stringify(
+				{
+					pinnedIds: ["p1"],
+					pinnedOrder: ["p1"],
+				},
+			),
+		);
 		const byProject = describeEnv(
-			(await renderGroups(rows, {prefs: {...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"}})).container,
+			(
+				await renderGroups(
+					rows,
+					{
+						prefs:
+						{
+							...DEFAULT_SESSION_LIST_PREFS,
+							groupBy: "project",
+						},
+					},
+				)
+			).container,
 		);
 		cleanup();
 		const byState = describeEnv((await renderGroups(rows)).container);
 		localStorage.removeItem(PIN_STORAGE_KEY);
 
-		expect({byState, byProject}).toStrictEqual({
-			byState: {
-				"Pinned one": null,
-				"Live bridged": live,
-				"Offline bridged": {...live, offline: true, slash: true},
-				"Live remote": live,
+		expect(
+			{
+				byState,
+				byProject,
 			},
-			byProject: {
-				"Pinned one": null,
-				"Live bridged": null,
-				"Offline bridged": null,
-				"Live remote": null,
+		).toStrictEqual(
+			{
+				byState:
+				{
+					"Pinned one": null,
+					"Live bridged": live,
+					"Offline bridged":
+					{
+						...live,
+						offline: true,
+						slash: true,
+					},
+					"Live remote": live,
+				},
+				byProject:
+				{
+					"Pinned one": null,
+					"Live bridged": null,
+					"Offline bridged": null,
+					"Live remote": null,
+				},
 			},
-		});
+		);
 	});
 
-	it("moves an answered Needs input row to Working at once, keeps it there as the server confirms, and back on a new wait", async () => {
+	it("moves an answered Needs input row to Working at once, keeps it there as the server confirms, and back on a new wait", async () =>
+	{
 		const {container, queryClient} = await renderGroups([session("b1", "Blocked one", "blocked", 3)]);
-		const where = () => ({
+		const where = () => (
+		{
 			blocked: rowTitlesIn(container, "state-blocked"),
 			working: rowTitlesIn(container, "state-working"),
 			kinds: [...container.querySelectorAll(".status-dot")].map((dot) => dot.getAttribute("data-kind")),
 		});
-		const serverSays = (bucket: SessionBucket) => {
+		const serverSays = (bucket: SessionBucket) =>
+		{
 			const next = session("b1", "Blocked one", bucket, 3);
-			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-				pages: [RecentSessionsResponse.parse({sessions: [next], nextCursor: null})],
-				pageParams: [null],
-			});
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions().queryKey,
+				{
+					pages: [
+						RecentSessionsResponse.parse(
+							{
+								sessions: [next],
+								nextCursor: null,
+							},
+						),
+					],
+					pageParams: [null],
+				},
+			);
 			noteAnsweredSummary("b1", next.state === "waiting" ? "waiting" : "working");
 		};
 		const before = where();
-		act(() => {
+		act(() =>
+		{
 			holdAnswered("b1", "toolu_1");
 		});
 		const answered = where();
-		act(() => {
+		act(() =>
+		{
 			serverSays("working");
 		});
 		const confirmed = where();
-		act(() => {
+		act(() =>
+		{
 			serverSays("blocked");
 		});
 		const rewaited = where();
 		releaseAnswered("b1");
 
-		expect({before, answered, confirmed, rewaited}).toStrictEqual({
-			before: {blocked: ["Blocked one"], working: [], kinds: ["awaiting"]},
-			answered: {blocked: [], working: ["Blocked one"], kinds: ["running"]},
-			confirmed: {blocked: [], working: ["Blocked one"], kinds: ["running"]},
-			rewaited: {blocked: ["Blocked one"], working: [], kinds: ["awaiting"]},
-		});
+		expect(
+			{
+				before,
+				answered,
+				confirmed,
+				rewaited,
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					blocked: ["Blocked one"],
+					working: [],
+					kinds: ["awaiting"],
+				},
+				answered:
+				{
+					blocked: [],
+					working: ["Blocked one"],
+					kinds: ["running"],
+				},
+				confirmed:
+				{
+					blocked: [],
+					working: ["Blocked one"],
+					kinds: ["running"],
+				},
+				rewaited:
+				{
+					blocked: ["Blocked one"],
+					working: [],
+					kinds: ["awaiting"],
+				},
+			},
+		);
 	});
 
-	it("moves a Needs input row to Idle at Mark as completed, offers Mark as unread, and brings it back on new activity", async () => {
+	it("moves a Needs input row to Idle at Mark as completed, offers Mark as unread, and brings it back on new activity", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () => new Promise<Response>(() => {})),
@@ -841,7 +1451,8 @@ describe("sidebar SessionGroups", () => {
 		const blocked = session("b1", "Blocked one", "blocked", 3);
 		const done = session("d1", "Completed newest", "done", 5);
 		const {container, queryClient} = await renderGroups([blocked, done]);
-		const where = () => {
+		const where = () =>
+		{
 			const link = [...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].find(
 				(node) => rowTitle(node) === "Blocked one",
 			);
@@ -854,84 +1465,187 @@ describe("sidebar SessionGroups", () => {
 					null,
 			};
 		};
-		const readStateItems = async () => {
-			fireEvent.contextMenu(screen.getByText("Blocked one"), {clientX: 40, clientY: 50});
+		const readStateItems = async () =>
+		{
+			fireEvent.contextMenu(
+				screen.getByText("Blocked one"),
+				{
+					clientX: 40,
+					clientY: 50,
+				},
+			);
 			const menu = await waitFor(() => screen.getByRole("menu"));
 			const items = [...menu.querySelectorAll('[role="menuitem"]')]
 				.filter((node) => node.textContent.startsWith("Mark as"))
 				.map((node) => [node.textContent, node.getAttribute("aria-keyshortcuts")]);
-			return {menu, items};
+			return {
+				menu,
+				items,
+			};
 		};
 		const before = where();
 		const {menu, items: beforeItems} = await readStateItems();
-		await act(async () => {
-			fireEvent.click(within(menu).getByRole("menuitem", {name: /^Mark as completed/}));
+		await act(async () =>
+		{
+			fireEvent.click(
+				within(menu).getByRole(
+					"menuitem",
+					{
+						name: /^Mark as completed/,
+					},
+				),
+			);
 			await Promise.resolve();
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("menu")).toBeNull();
 		});
 		const acked = where();
 		const {menu: ackedMenu, items: ackedItems} = await readStateItems();
-		fireEvent.keyDown(ackedMenu, {key: "Escape"});
-		await waitFor(() => {
+		fireEvent.keyDown(
+			ackedMenu,
+			{
+				key: "Escape",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("menu")).toBeNull();
 		});
-		act(() => {
-			const next = {...blocked, mtime: new Date(Date.parse(blocked.mtime) + 1000).toISOString()};
-			queryClient.setQueryData(recentSessionsInfiniteQueryOptions(undefined, "active").queryKey, {
-				pages: [RecentSessionsResponse.parse({sessions: [next, done], nextCursor: null})],
-				pageParams: [null],
-			});
+		act(() =>
+		{
+			const next =
+			{
+				...blocked,
+				mtime: new Date(Date.parse(blocked.mtime) + 1000).toISOString(),
+			};
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions(undefined, "active").queryKey,
+				{
+					pages: [
+						RecentSessionsResponse.parse(
+							{
+								sessions: [next, done],
+								nextCursor: null,
+							},
+						),
+					],
+					pageParams: [null],
+				},
+			);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(rowTitlesIn(container, "state-blocked")).toStrictEqual(["Blocked one"]);
 		});
 		const renewed = where();
 
-		expect({before, beforeItems, acked, ackedItems, renewed}).toStrictEqual({
-			before: {blocked: ["Blocked one"], idle: ["Completed newest"], attention: "waiting", kind: "awaiting"},
-			beforeItems: [["Mark as completedU", "u"]],
-			acked: {blocked: [], idle: ["Blocked one", "Completed newest"], attention: null, kind: null},
-			ackedItems: [["Mark as unreadU", "u"]],
-			renewed: {blocked: ["Blocked one"], idle: ["Completed newest"], attention: "waiting", kind: "awaiting"},
-		});
+		expect(
+			{
+				before,
+				beforeItems,
+				acked,
+				ackedItems,
+				renewed,
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					blocked: ["Blocked one"],
+					idle: ["Completed newest"],
+					attention: "waiting",
+					kind: "awaiting",
+				},
+				beforeItems: [["Mark as completedU", "u"]],
+				acked:
+				{
+					blocked: [],
+					idle: ["Blocked one", "Completed newest"],
+					attention: null,
+					kind: null,
+				},
+				ackedItems: [["Mark as unreadU", "u"]],
+				renewed:
+				{
+					blocked: ["Blocked one"],
+					idle: ["Completed newest"],
+					attention: "waiting",
+					kind: "awaiting",
+				},
+			},
+		);
 	});
 
-	it("keeps an acked row in Needs input while this tab holds its approval card live, and moves it to Idle when the card goes", async () => {
+	it("keeps an acked row in Needs input while this tab holds its approval card live, and moves it to Idle when the card goes", async () =>
+	{
 		const blocked = session("b1", "Blocked one", "blocked", 3);
 		ack("b1", Date.parse(blocked.mtime));
-		let dispose = () => {};
-		act(() => {
+		let dispose = () =>
+		{
+		};
+		act(() =>
+		{
 			dispose = registerLiveApproval("b1");
 		});
 		const {container} = await renderGroups([blocked, session("d1", "Completed newest", "done", 5)]);
-		const where = () => ({
+		const where = () => (
+		{
 			blocked: rowTitlesIn(container, "state-blocked"),
 			idle: rowTitlesIn(container, "state-done"),
 		});
 		const live = where();
-		act(() => {
+		act(() =>
+		{
 			dispose();
 		});
 		const gone = where();
 
-		expect({live, gone}).toStrictEqual({
-			live: {blocked: ["Blocked one"], idle: ["Completed newest"]},
-			gone: {blocked: [], idle: ["Blocked one", "Completed newest"]},
-		});
+		expect(
+			{
+				live,
+				gone,
+			},
+		).toStrictEqual(
+			{
+				live:
+				{
+					blocked: ["Blocked one"],
+					idle: ["Completed newest"],
+				},
+				gone:
+				{
+					blocked: [],
+					idle: ["Blocked one", "Completed newest"],
+				},
+			},
+		);
 	});
 
-	it("draws an unseen error as upstream's warning TriangleAlert in the trailing slot instead of the awaiting dot", async () => {
+	it("draws an unseen error as upstream's warning TriangleAlert in the trailing slot instead of the awaiting dot", async () =>
+	{
 		const rows = [
-			{...session("e1", "Errored one", "blocked", 1), state: "idle", unseen: true, unseenError: true},
+			{
+				...session("e1", "Errored one", "blocked", 1),
+				state: "idle",
+				unseen: true,
+				unseenError: true,
+			},
 			session("b1", "Blocked one", "blocked", 3),
 		];
 		__unreadStoreTesting.reset();
-		syncUnseenFromSummaries(rows.map(({id, unseen}) => ({id, unseen})));
+		syncUnseenFromSummaries(
+			rows.map(({id, unseen}) => (
+			{
+				id,
+				unseen,
+			})),
+		);
 		const {container} = await renderGroups(rows);
 		const marks = Object.fromEntries(
-			[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) => {
+			[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) =>
+			{
 				const decoration = link.closest("[data-session-actions]")?.querySelector("[data-row-decoration]");
 				const mark = decoration?.querySelector("[role=img]");
 				return [
@@ -945,20 +1659,51 @@ describe("sidebar SessionGroups", () => {
 				];
 			}),
 		);
-		expect(marks).toStrictEqual({
-			"Errored one": {label: "Error", triangle: true, dot: null, srStatus: " Error"},
-			"Blocked one": {label: "Awaiting input", triangle: false, dot: "awaiting", srStatus: " Awaiting input"},
-		});
+		expect(marks).toStrictEqual(
+			{
+				"Errored one":
+				{
+					label: "Error",
+					triangle: true,
+					dot: null,
+					srStatus: " Error",
+				},
+				"Blocked one":
+				{
+					label: "Awaiting input",
+					triangle: false,
+					dot: "awaiting",
+					srStatus: " Awaiting input",
+				},
+			},
+		);
 	});
 
-	it("draws a PR as upstream's title tail inside the link, beside the env glyph or status mark, only while Show PR status is on", async () => {
+	it("draws a PR as upstream's title tail inside the link, beside the env glyph or status mark, only while Show PR status is on", async () =>
+	{
 		const withPr = [
-			{...session("d1", "Completed newest", "done", 5), prStatus: {number: 8, state: "open"}},
-			{...session("u1", "Unread with PR", "done", 6), unseen: true, prStatus: {number: 9, state: "merged"}},
+			{
+				...session("d1", "Completed newest", "done", 5),
+				prStatus:
+				{
+					number: 8,
+					state: "open",
+				},
+			},
+			{
+				...session("u1", "Unread with PR", "done", 6),
+				unseen: true,
+				prStatus:
+				{
+					number: 9,
+					state: "merged",
+				},
+			},
 			session("d2", "Completed older", "done", 30),
 		];
 		const describeRows = (container: HTMLElement) =>
-			[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) => {
+			[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) =>
+			{
 				const decoration = link.closest("[data-session-actions]")?.querySelector("[data-row-decoration]");
 				const tail = link.lastElementChild;
 				return {
@@ -977,72 +1722,106 @@ describe("sidebar SessionGroups", () => {
 		const label = "min-w-0 flex-1 ps-2";
 
 		__unreadStoreTesting.reset();
-		syncUnseenFromSummaries(withPr.map(({id, unseen}) => ({id, unseen})));
+		syncUnseenFromSummaries(
+			withPr.map(({id, unseen}) => (
+			{
+				id,
+				unseen,
+			})),
+		);
 		localStorage.setItem(
 			"ccp-session-list-prefs",
-			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showPrStatus: true}),
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					showPrStatus: true,
+				},
+			),
 		);
 		const shown = describeRows((await renderGroups(withPr)).container);
 		cleanup();
 		localStorage.removeItem("ccp-session-list-prefs");
 		const hidden = describeRows((await renderGroups(withPr)).container).map(({tail}) => tail);
 
-		expect({shown, hidden}).toStrictEqual({
-			shown: [
-				{
-					title: "Completed newest",
-					tail: "opened",
-					tailSlot: slot,
-					tailInSlot: true,
-					label,
-					mark: null,
-					env: true,
-					liveRegions: 0,
-				},
-				{
-					title: "Unread with PR",
-					tail: "merged",
-					tailSlot: slot,
-					tailInSlot: true,
-					label,
-					mark: "Unread response",
-					env: false,
-					liveRegions: 0,
-				},
-				{
-					title: "Completed older",
-					tail: null,
-					tailSlot: slot,
-					tailInSlot: false,
-					label,
-					mark: null,
-					env: true,
-					liveRegions: 0,
-				},
-			],
-			hidden: [null, null, null],
-		});
+		expect(
+			{
+				shown,
+				hidden,
+			},
+		).toStrictEqual(
+			{
+				shown: [
+					{
+						title: "Completed newest",
+						tail: "opened",
+						tailSlot: slot,
+						tailInSlot: true,
+						label,
+						mark: null,
+						env: true,
+						liveRegions: 0,
+					},
+					{
+						title: "Unread with PR",
+						tail: "merged",
+						tailSlot: slot,
+						tailInSlot: true,
+						label,
+						mark: "Unread response",
+						env: false,
+						liveRegions: 0,
+					},
+					{
+						title: "Completed older",
+						tail: null,
+						tailSlot: slot,
+						tailInSlot: false,
+						label,
+						mark: null,
+						env: true,
+						liveRegions: 0,
+					},
+				],
+				hidden: [null, null, null],
+			},
+		);
 	});
 
-	it("keeps the touch kebab only on the current session's row and the status mark on every other row, as upstream's data-touch-menu", async () => {
-		const {container} = await renderGroups(FIXTURE, {activeItemId: "w1"});
+	it("keeps the touch kebab only on the current session's row and the status mark on every other row, as upstream's data-touch-menu", async () =>
+	{
+		const {container} = await renderGroups(
+			FIXTURE,
+			{
+				activeItemId: "w1",
+			},
+		);
 		const rows = [...container.querySelectorAll<HTMLElement>("[data-session-actions]")];
 		const decoration = rows[0]?.querySelector("[data-row-decoration]");
 
-		expect({
-			touchMenu: rows
-				.filter((row) => row.hasAttribute("data-touch-menu"))
-				.map((row) => rowTitle(row.querySelector("a[data-row-main-button]"))),
-			decorationHiddenOnTouch: decoration?.className.split(" ").includes("pointer-coarse:opacity-0"),
-			kebabShownOnTouch: rows[0]
-				?.querySelector("[data-row-action]")
-				?.className.split(" ")
-				.includes("pointer-coarse:opacity-100"),
-		}).toStrictEqual({touchMenu: ["Working one"], decorationHiddenOnTouch: false, kebabShownOnTouch: false});
+		expect(
+			{
+				touchMenu: rows
+					.filter((row) => row.hasAttribute("data-touch-menu"))
+					.map((row) => rowTitle(row.querySelector("a[data-row-main-button]"))),
+				decorationHiddenOnTouch: decoration?.className.split(" ").includes("pointer-coarse:opacity-0"),
+				kebabShownOnTouch: rows[0]
+					?.querySelector("[data-row-action]")
+					?.className.split(" ")
+					.includes("pointer-coarse:opacity-100"),
+			},
+		).toStrictEqual(
+			{
+				touchMenu: ["Working one"],
+				decorationHiddenOnTouch: false,
+				kebabShownOnTouch: false,
+			},
+		);
 	});
 
-	it("announces each row's status and environment in upstream's two sr-only spans inside the title", async () => {
-		const srOnlyOf = (title: string) => {
+	it("announces each row's status and environment in upstream's two sr-only spans inside the title", async () =>
+	{
+		const srOnlyOf = (title: string) =>
+		{
 			const link = screen.getAllByRole("link").find((node) => rowTitle(node) === title);
 			if (link === undefined) throw new Error(`no row ${title}`);
 			return [...link.querySelectorAll("[data-row-label] .relative > .sr-only[data-find-omitted]")].map(
@@ -1051,52 +1830,110 @@ describe("sidebar SessionGroups", () => {
 		};
 		const environments = () =>
 			Object.fromEntries(FIXTURE.map((row) => [row.id, srOnlyOf(row.title)[1]?.[1] ?? null]));
-		const terminalHosts: Record<string, string> = {b1: "herdr", w1: "herdr · later", r1: "tmux · work"};
+		const terminalHosts: Record<string, string> =
+		{
+			b1: "herdr",
+			w1: "herdr · later",
+			r1: "tmux · work",
+		};
 		await renderGroups(
-			FIXTURE.map((row) => ({
+			FIXTURE.map((row) => (
+			{
 				...row,
-				...(row.id in terminalHosts ? {terminalHost: terminalHosts[row.id]} : {}),
+				...(row.id in terminalHosts
+					?
+						{
+							terminalHost: terminalHosts[row.id],
+						}
+					: {}),
 				// Remote Control on or off no longer shows: upstream's bridge text is only Connected/Offline.
-				...(row.id === "b1" ? {remoteControlState: "on" as const} : {}),
-				...(row.id === "r1" ? {remoteControlState: "off" as const} : {}),
+				...(row.id === "b1"
+					?
+						{
+							remoteControlState: "on" as const,
+						}
+					: {}),
+				...(row.id === "r1"
+					?
+						{
+							remoteControlState: "off" as const,
+						}
+					: {}),
 				// Its process ended, so its bridge is Offline.
-				...(row.id === "d1" ? {remoteControl: true, state: "ended"} : {}),
+				...(row.id === "d1"
+					?
+						{
+							remoteControl: true,
+							state: "ended",
+						}
+					: {}),
 				// No machine or repo name falls back to upstream's "Remote Control".
-				...(row.id === "d2" ? {projectName: ""} : {}),
+				...(row.id === "d2"
+					?
+						{
+							projectName: "",
+						}
+					: {}),
 			})),
 		);
 
-		expect({
-			href: screen
-				.getByRole("link", {name: /^Blocked one\s*Awaiting input\s*herdr · Connected$/})
-				.getAttribute("href"),
-			awaiting: srOnlyOf("Blocked one"),
-			idle: srOnlyOf("Completed older"),
-			env: environments(),
-		}).toStrictEqual({
-			href: "/session/b1",
-			awaiting: [
-				["status", " Awaiting input"],
-				[null, " herdr · Connected"],
-			],
-			idle: [
-				["status", ""],
-				[null, " Remote Control · Connected"],
-			],
-			env: {
-				d1: " project-d1 · Offline",
-				w1: " herdr · later · Connected",
-				r1: " tmux · work · Connected",
-				b1: " herdr · Connected",
-				d2: " Remote Control · Connected",
+		expect(
+			{
+				href: screen
+					.getByRole(
+						"link",
+						{
+							name: /^Blocked one\s*Awaiting input\s*herdr · Connected$/,
+						},
+					)
+					.getAttribute("href"),
+				awaiting: srOnlyOf("Blocked one"),
+				idle: srOnlyOf("Completed older"),
+				env: environments(),
 			},
-		});
+		).toStrictEqual(
+			{
+				href: "/session/b1",
+				awaiting: [
+					["status", " Awaiting input"],
+					[null, " herdr · Connected"],
+				],
+				idle: [
+					["status", ""],
+					[null, " Remote Control · Connected"],
+				],
+				env:
+				{
+					d1: " project-d1 · Offline",
+					w1: " herdr · later · Connected",
+					r1: " tmux · work · Connected",
+					b1: " herdr · Connected",
+					d2: " Remote Control · Connected",
+				},
+			},
+		);
 	});
 
-	it("names a row's PR in its sr environment text only while Show PR status is on and the row isn't archived", async () => {
+	it("names a row's PR in its sr environment text only while Show PR status is on and the row isn't archived", async () =>
+	{
 		const rows = [
-			{...session("d1", "Draft PR", "done", 5), prStatus: {number: 8, state: "draft"}},
-			{...session("a1", "Archived PR", "done", 6), archived: true, prStatus: {number: 9, state: "draft"}},
+			{
+				...session("d1", "Draft PR", "done", 5),
+				prStatus:
+				{
+					number: 8,
+					state: "draft",
+				},
+			},
+			{
+				...session("a1", "Archived PR", "done", 6),
+				archived: true,
+				prStatus:
+				{
+					number: 9,
+					state: "draft",
+				},
+			},
 		];
 		const environments = () =>
 			Object.fromEntries(
@@ -1109,73 +1946,164 @@ describe("sidebar SessionGroups", () => {
 							?.textContent ?? null,
 					]),
 			);
-		const render = async (showPrStatus: boolean) => {
+		const render = async (showPrStatus: boolean) =>
+		{
 			localStorage.setItem(
 				"ccp-session-list-prefs",
-				JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showPrStatus}),
+				JSON.stringify(
+					{
+						...DEFAULT_SESSION_LIST_PREFS,
+						showPrStatus,
+					},
+				),
 			);
-			await renderGroups(rows, {prefs: {...DEFAULT_SESSION_LIST_PREFS, groupBy: "state", statusFilter: "all"}});
+			await renderGroups(
+				rows,
+				{
+					prefs:
+					{
+						...DEFAULT_SESSION_LIST_PREFS,
+						groupBy: "state",
+						statusFilter: "all",
+					},
+				},
+			);
 			const result = environments();
 			cleanup();
 			localStorage.removeItem("ccp-session-list-prefs");
 			return result;
 		};
 
-		expect({off: await render(false), on: await render(true)}).toStrictEqual({
-			off: {"Draft PR": " project-d1 · Connected", "Archived PR Archived": " project-a1 · Connected"},
-			on: {"Draft PR": " project-d1 · Connected · Draft", "Archived PR Archived": " project-a1 · Connected"},
-		});
+		expect(
+			{
+				off: await render(false),
+				on: await render(true),
+			},
+		).toStrictEqual(
+			{
+				off:
+				{
+					"Draft PR": " project-d1 · Connected",
+					"Archived PR Archived": " project-a1 · Connected",
+				},
+				on:
+				{
+					"Draft PR": " project-d1 · Connected · Draft",
+					"Archived PR Archived": " project-a1 · Connected",
+				},
+			},
+		);
 	});
 
-	it("shows upstream's Couldn’t load your sessions alert with Try again when the list fails to load", async () => {
+	it("shows upstream's Couldn’t load your sessions alert with Try again when the list fails to load", async () =>
+	{
 		const fetchMock = vi.fn<typeof fetch>(async () => Promise.reject(new Error("offline")));
 		vi.stubGlobal("fetch", fetchMock);
-		await renderGroups([], {unseeded: true});
+		await renderGroups(
+			[],
+			{
+				unseeded: true,
+			},
+		);
 		const message = await screen.findByText("Couldn’t load your sessions");
 		const alert = message.closest<HTMLElement>("[role=alert]");
 		if (alert === null) throw new Error("Expected the load failure to be an alert");
 		const callsBefore = fetchMock.mock.calls.length;
-		fireEvent.click(within(alert).getByRole("button", {name: "Try again"}));
-		await waitFor(() => {
+		fireEvent.click(
+			within(alert).getByRole(
+				"button",
+				{
+					name: "Try again",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(fetchMock.mock.calls.length).toBeGreaterThan(callsBefore);
 		});
 		vi.unstubAllGlobals();
 	});
 
-	it("has no Load more sessions row, even while the feed has another page", async () => {
-		await renderGroups(FIXTURE, {nextCursor: "cursor-2"});
-		expect(screen.queryByRole("button", {name: "Load more sessions"})).toBeNull();
+	it("has no Load more sessions row, even while the feed has another page", async () =>
+	{
+		await renderGroups(
+			FIXTURE,
+			{
+				nextCursor: "cursor-2",
+			},
+		);
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: "Load more sessions",
+				},
+			),
+		).toBeNull();
 	});
 
-	it("fetches the next page when the list end scrolls into view and no group is capped", async () => {
-		class VisibleIntersectionObserver {
-			constructor(private readonly callback: IntersectionObserverCallback) {}
-			observe(target: Element) {
+	it("fetches the next page when the list end scrolls into view and no group is capped", async () =>
+	{
+		class VisibleIntersectionObserver
+		{
+			constructor(private readonly callback: IntersectionObserverCallback)
+			{
+			}
+			observe(target: Element)
+			{
 				this.callback(
-					[{isIntersecting: true, target} as IntersectionObserverEntry],
+					[
+						{
+							isIntersecting: true,
+							target,
+						} as IntersectionObserverEntry,
+					],
 					this as unknown as IntersectionObserver,
 				);
 			}
-			disconnect() {}
-			unobserve() {}
-			takeRecords(): IntersectionObserverEntry[] {
+			disconnect()
+			{
+			}
+			unobserve()
+			{
+			}
+			takeRecords(): IntersectionObserverEntry[]
+			{
 				return [];
 			}
 		}
 		vi.stubGlobal("IntersectionObserver", VisibleIntersectionObserver);
 		const requests: string[] = [];
-		vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+		vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
+		{
 			requests.push(String(input));
 			return Promise.resolve(
 				new Response(
-					JSON.stringify({sessions: [session("d-old", "Completed next page", "done", 60)], nextCursor: null}),
-					{status: 200, headers: {"Content-Type": "application/json"}},
+					JSON.stringify(
+						{
+							sessions: [session("d-old", "Completed next page", "done", 60)],
+							nextCursor: null,
+						},
+					),
+					{
+						status: 200,
+						headers:
+						{
+							"Content-Type": "application/json",
+						},
+					},
 				),
 			);
 		});
-		const {container} = await renderGroups(FIXTURE, {nextCursor: "cursor-2"});
+		const {container} = await renderGroups(
+			FIXTURE,
+			{
+				nextCursor: "cursor-2",
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(rowTitlesIn(container, "state-done")).toStrictEqual([
 				"Completed newest",
 				"Completed older",
@@ -1185,58 +2113,137 @@ describe("sidebar SessionGroups", () => {
 		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
 	});
 
-	it("fetches the next page, showing Loading…, when Show more reveals the last rows of the last capped group", async () => {
-		const done = Array.from({length: 23}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
+	it("fetches the next page, showing Loading…, when Show more reveals the last rows of the last capped group", async () =>
+	{
+		const done = Array.from(
+			{
+				length: 23,
+			},
+			(_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1),
+		);
 		const older = session("d-old", "Done older page", "done", 60);
 		const requests: string[] = [];
-		let respond: () => void = () => {};
-		vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+		let respond: () => void = () =>
+		{
+		};
+		vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
+		{
 			requests.push(String(input));
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve) =>
+			{
 				respond = resolve;
 			});
-			return new Response(JSON.stringify({sessions: [older], nextCursor: null}), {
-				status: 200,
-				headers: {"Content-Type": "application/json"},
-			});
+			return new Response(
+				JSON.stringify(
+					{
+						sessions: [older],
+						nextCursor: null,
+					},
+				),
+				{
+					status: 200,
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+				},
+			);
 		});
-		const {container} = await renderGroups(done, {nextCursor: "cursor-2"});
+		const {container} = await renderGroups(
+			done,
+			{
+				nextCursor: "cursor-2",
+			},
+		);
 
-		for (let click = 0; click < 3; click++) {
-			fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Idle"}));
+		for (let click = 0; click < 3; click++)
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Show 5 more in Idle",
+					},
+				),
+			);
 		}
 		expect(requests).toStrictEqual([]);
-		fireEvent.click(screen.getByRole("button", {name: "Show 3 more in Idle"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 3 more in Idle",
+				},
+			),
+		);
 
-		const loading = await screen.findByRole("button", {name: "Loading…"});
-		expect({
-			text: loading.textContent,
-			disabled: loading.getAttribute("aria-disabled"),
-			showLess: screen.queryByRole("button", {name: "Show less in Idle"}),
-		}).toStrictEqual({text: "Loading…", disabled: "true", showLess: null});
+		const loading = await screen.findByRole(
+			"button",
+			{
+				name: "Loading…",
+			},
+		);
+		expect(
+			{
+				text: loading.textContent,
+				disabled: loading.getAttribute("aria-disabled"),
+				showLess: screen.queryByRole(
+					"button",
+					{
+						name: "Show less in Idle",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				text: "Loading…",
+				disabled: "true",
+				showLess: null,
+			},
+		);
 		fireEvent.click(loading);
 
-		act(() => {
+		act(() =>
+		{
 			respond();
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(rowTitlesIn(container, "state-done")).toHaveLength(24);
 		});
 		expect(rowTitlesIn(container, "state-done").at(-1)).toBe("Done older page");
 		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
-		expect(screen.getByRole("button", {name: "Show less in Idle"})).toBeTruthy();
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show less in Idle",
+				},
+			),
+		).toBeTruthy();
 	});
-	it("keeps the row background on upstream's wrapper while the kebab or context menu is open, hiding the mark only for the kebab", async () => {
-		const {container} = await renderGroups(FIXTURE, {activeItemId: "w1"});
-		const wrapperOf = (title: string) => {
+	it("keeps the row background on upstream's wrapper while the kebab or context menu is open, hiding the mark only for the kebab", async () =>
+	{
+		const {container} = await renderGroups(
+			FIXTURE,
+			{
+				activeItemId: "w1",
+			},
+		);
+		const wrapperOf = (title: string) =>
+		{
 			const link = [...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].find(
 				(node) => rowTitle(node) === title,
 			);
 			const wrapper = link?.closest<HTMLElement>("[data-session-actions]");
 			if (link === undefined || wrapper === null || wrapper === undefined) throw new Error(`no row ${title}`);
-			return {link, wrapper};
+			return {
+				link,
+				wrapper,
+			};
 		};
-		const describeRow = (title: string) => {
+		const describeRow = (title: string) =>
+		{
 			const {link, wrapper} = wrapperOf(title);
 			const decoration = wrapper.querySelector("[data-row-decoration]");
 			return {
@@ -1259,73 +2266,132 @@ describe("sidebar SessionGroups", () => {
 			"data-[context-menu-open=true]:bg-[var(--sb-hover)]",
 			"has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)]",
 		];
-		const rest = {
+		const rest =
+		{
 			wrapperBackgrounds: backgrounds.filter((name) => wrapperClasses.includes(name)),
 			selected: wrapperOf("Working one").link.getAttribute("data-selected"),
 			row: describeRow("Completed newest"),
 		};
 
-		fireEvent.contextMenu(screen.getByText("Completed newest"), {clientX: 40, clientY: 50});
+		fireEvent.contextMenu(
+			screen.getByText("Completed newest"),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
 		await waitFor(() => screen.getByRole("menu"));
 		const contextOpen = describeRow("Completed newest");
-		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
-		await waitFor(() => {
+		fireEvent.keyDown(
+			screen.getByRole("menu"),
+			{
+				key: "Escape",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("menu")).toBeNull();
 		});
 
-		fireEvent.click(screen.getByRole("button", {name: "More options for Completed newest"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "More options for Completed newest",
+				},
+			),
+		);
 		await waitFor(() => screen.getByRole("menu"));
 		const kebabOpen = describeRow("Completed newest");
 
-		const closed = {
+		const closed =
+		{
 			menuOpen: null,
 			contextMenuOpen: null,
 			decorationHidden: true,
 			decorationHiddenByAnyPopup: false,
 			linkHasBackground: false,
 		};
-		expect({rest, contextOpen, kebabOpen}).toStrictEqual({
-			rest: {wrapperBackgrounds: backgrounds, selected: "focused", row: closed},
-			contextOpen: {...closed, contextMenuOpen: "true"},
-			kebabOpen: {...closed, menuOpen: "true"},
-		});
+		expect(
+			{
+				rest,
+				contextOpen,
+				kebabOpen,
+			},
+		).toStrictEqual(
+			{
+				rest:
+				{
+					wrapperBackgrounds: backgrounds,
+					selected: "focused",
+					row: closed,
+				},
+				contextOpen:
+				{
+					...closed,
+					contextMenuOpen: "true",
+				},
+				kebabOpen:
+				{
+					...closed,
+					menuOpen: "true",
+				},
+			},
+		);
 	});
 });
 
-describe("SessionGroups hover cards", () => {
-	async function hoverRow(container: HTMLElement, title: string) {
+describe("SessionGroups hover cards", () =>
+{
+	async function hoverRow(container: HTMLElement, title: string)
+	{
 		const link = [...container.querySelectorAll("a[data-row-main-button]")].find(
 			(node) => rowTitle(node) === title,
 		);
 		const trigger = link?.closest("[data-hover-card-trigger]");
 		if (!(trigger instanceof HTMLElement)) throw new Error(`no row ${title}`);
-		fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		fireEvent.pointerEnter(
+			trigger,
+			{
+				pointerType: "mouse",
+			},
+		);
 		fireEvent.mouseEnter(trigger);
 		fireEvent.mouseMove(trigger);
-		return waitFor(() => {
+		return waitFor(() =>
+		{
 			const card = document.querySelector("[data-session-hover-card]");
 			if (!(card instanceof HTMLElement)) throw new Error("no card");
 			return card;
 		});
 	}
 
-	it("previews a completed row's title and summary", async () => {
+	it("previews a completed row's title and summary", async () =>
+	{
 		const {container} = await renderGroups([
-			{...session("d1", "Completed newest", "done", 5), summary: "Shipped the parser."},
+			{
+				...session("d1", "Completed newest", "done", 5),
+				summary: "Shipped the parser.",
+			},
 		]);
 		const card = await hoverRow(container, "Completed newest");
-		expect({
-			kind: card.getAttribute("data-kind"),
-			title: card.querySelector("[data-card-title]")?.textContent,
-			summary: card.querySelector("[data-card-summary]")?.textContent,
-		}).toStrictEqual({
-			kind: "other",
-			title: "Completed newest",
-			summary: "Shipped the parser.",
-		});
+		expect(
+			{
+				kind: card.getAttribute("data-kind"),
+				title: card.querySelector("[data-card-title]")?.textContent,
+				summary: card.querySelector("[data-card-summary]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				kind: "other",
+				title: "Completed newest",
+				summary: "Shipped the parser.",
+			},
+		);
 	});
 
-	it("opens the blocked card on a Needs input row", async () => {
+	it("opens the blocked card on a Needs input row", async () =>
+	{
 		const {container} = await renderGroups([session("b1", "Blocked one", "blocked", 3)]);
 		const card = await hoverRow(container, "Blocked one");
 		expect(card.getAttribute("data-kind")).toBe("blocked");
@@ -1334,42 +2400,88 @@ describe("SessionGroups hover cards", () => {
 
 // Upstream `sP` (`Me`), `$y` and `gb`: the open session stays visible under a collapsed header, a collapsed
 // group expands when the open session moves into it, and focus in an unmounting section lands on a toggle.
-describe("SessionGroups open row and focus rescue", () => {
-	function setSessions(queryClient: QueryClient, sessions: unknown[]) {
-		act(() => {
-			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-				pages: [RecentSessionsResponse.parse({sessions, nextCursor: null})],
-				pageParams: [null],
-			});
+describe("SessionGroups open row and focus rescue", () =>
+{
+	function setSessions(queryClient: QueryClient, sessions: unknown[])
+	{
+		act(() =>
+		{
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions().queryKey,
+				{
+					pages: [
+						RecentSessionsResponse.parse(
+							{
+								sessions,
+								nextCursor: null,
+							},
+						),
+					],
+					pageParams: [null],
+				},
+			);
 		});
 	}
 
-	it("keeps the open session's row under its collapsed header and badges only the hidden rows", async () => {
+	it("keeps the open session's row under its collapsed header and badges only the hidden rows", async () =>
+	{
 		const rows = [
-			{...session("od1", "Open done", "done", 5), unseen: true},
+			{
+				...session("od1", "Open done", "done", 5),
+				unseen: true,
+			},
 			session("od2", "Other done", "done", 6),
 		];
 		__unreadStoreTesting.reset();
-		syncUnseenFromSummaries(rows.map(({id, unseen}) => ({id, unseen})));
-		const {container} = await renderGroups(rows, {activeItemId: "od1"});
+		syncUnseenFromSummaries(
+			rows.map(({id, unseen}) => (
+			{
+				id,
+				unseen,
+			})),
+		);
+		const {container} = await renderGroups(
+			rows,
+			{
+				activeItemId: "od1",
+			},
+		);
 
 		fireEvent.click(toggleOf(container, "state-done"));
 
 		const label = container.querySelector('[data-group-key="state-done"] > [data-sidebar-group-label]');
-		expect({
-			expanded: toggleOf(container, "state-done").getAttribute("aria-expanded"),
-			rows: rowTitlesIn(container, "state-done"),
-			selected: container
-				.querySelector('[data-group-key="state-done"] [data-group-rows]:not([hidden]) a[data-row-main-button]')
-				?.getAttribute("data-selected"),
-			rowless: label?.getAttribute("data-rowless") ?? null,
-			badges: label?.querySelectorAll("[data-group-badge]").length,
-		}).toStrictEqual({expanded: "false", rows: ["Open done"], selected: "focused", rowless: null, badges: 0});
+		expect(
+			{
+				expanded: toggleOf(container, "state-done").getAttribute("aria-expanded"),
+				rows: rowTitlesIn(container, "state-done"),
+				selected: container
+					.querySelector(
+						'[data-group-key="state-done"] [data-group-rows]:not([hidden]) a[data-row-main-button]',
+					)
+					?.getAttribute("data-selected"),
+				rowless: label?.getAttribute("data-rowless") ?? null,
+				badges: label?.querySelectorAll("[data-group-badge]").length,
+			},
+		).toStrictEqual(
+			{
+				expanded: "false",
+				rows: ["Open done"],
+				selected: "focused",
+				rowless: null,
+				badges: 0,
+			},
+		);
 	});
 
-	it("expands a collapsed group when the open session moves into it and keeps focus on its row", async () => {
+	it("expands a collapsed group when the open session moves into it and keeps focus on its row", async () =>
+	{
 		const rows = [session("mw1", "Moving one", "working", 1), session("md1", "Done one", "done", 5)];
-		const {container, queryClient} = await renderGroups(rows, {activeItemId: "mw1"});
+		const {container, queryClient} = await renderGroups(
+			rows,
+			{
+				activeItemId: "mw1",
+			},
+		);
 		fireEvent.click(toggleOf(container, "state-done"));
 		expect(toggleOf(container, "state-done").getAttribute("aria-expanded")).toBe("false");
 		const link = container.querySelector<HTMLElement>('[data-group-key="state-working"] a[data-row-main-button]');
@@ -1377,22 +2489,28 @@ describe("SessionGroups open row and focus rescue", () => {
 
 		setSessions(queryClient, [session("mw1", "Moving one", "done", 1), session("md1", "Done one", "done", 5)]);
 
-		await waitFor(() => {
-			expect({
-				expanded: toggleOf(container, "state-done").getAttribute("aria-expanded"),
-				rows: rowTitlesIn(container, "state-done"),
-				collapsed: readSidebarState().collapsedGroups,
-				focused: document.activeElement?.closest("[data-row-key]")?.getAttribute("data-row-key") ?? null,
-			}).toStrictEqual({
-				expanded: "true",
-				rows: ["Moving one", "Done one"],
-				collapsed: [],
-				focused: "mw1",
-			});
+		await waitFor(() =>
+		{
+			expect(
+				{
+					expanded: toggleOf(container, "state-done").getAttribute("aria-expanded"),
+					rows: rowTitlesIn(container, "state-done"),
+					collapsed: readSidebarState().collapsedGroups,
+					focused: document.activeElement?.closest("[data-row-key]")?.getAttribute("data-row-key") ?? null,
+				},
+			).toStrictEqual(
+				{
+					expanded: "true",
+					rows: ["Moving one", "Done one"],
+					collapsed: [],
+					focused: "mw1",
+				},
+			);
 		});
 	});
 
-	it("moves focus from an unmounting section to the next group's toggle, else the previous one", async () => {
+	it("moves focus from an unmounting section to the next group's toggle, else the previous one", async () =>
+	{
 		const rows = [
 			session("fb1", "Blocked one", "blocked", 3),
 			session("fw1", "Working one", "working", 1),
@@ -1402,23 +2520,31 @@ describe("SessionGroups open row and focus rescue", () => {
 		container.querySelector<HTMLElement>('[data-group-key="state-working"] a[data-row-main-button]')?.focus();
 
 		setSessions(queryClient, [rows[0], rows[2]]);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(document.activeElement).toBe(toggleOf(container, "state-done"));
 		});
 
 		container.querySelector<HTMLElement>('[data-group-key="state-done"] a[data-row-main-button]')?.focus();
 		setSessions(queryClient, [rows[0]]);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(document.activeElement).toBe(toggleOf(container, "state-blocked"));
 		});
 	});
 });
 
-describe("SessionGroups per-project New session +", () => {
-	const byProject = {...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"} as const;
+describe("SessionGroups per-project New session +", () =>
+{
+	const byProject =
+	{
+		...DEFAULT_SESSION_LIST_PREFS,
+		groupBy: "project",
+	} as const;
 	const ROWS = [session("a1", "Alpha one", "done", 5), session("b1", "Beta one", "done", 6)];
 
-	function project(id: string, name: string, projectPath: string | null) {
+	function project(id: string, name: string, projectPath: string | null)
+	{
 		return {
 			id,
 			name,
@@ -1434,7 +2560,8 @@ describe("SessionGroups per-project New session +", () => {
 
 	const PROJECTS = [project("-projects-a1", "project-a1", "/p/a1"), project("-projects-b1", "project-b1", "/p/b1")];
 
-	function newSessionButtons(container: HTMLElement): Record<string, string[]> {
+	function newSessionButtons(container: HTMLElement): Record<string, string[]>
+	{
 		return Object.fromEntries(
 			[...container.querySelectorAll<HTMLElement>('[data-testid="sidebar-recents"] [data-group-key]')].map(
 				(section) => [
@@ -1447,74 +2574,143 @@ describe("SessionGroups per-project New session +", () => {
 		);
 	}
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		takePendingHomeLaunchFolder();
 	});
 
-	it("gives every project header its own New session in {group} + and drops the generic first-header +", async () => {
-		const {container} = await renderGroups(ROWS, {prefs: byProject, projects: PROJECTS});
+	it("gives every project header its own New session in {group} + and drops the generic first-header +", async () =>
+	{
+		const {container} = await renderGroups(
+			ROWS,
+			{
+				prefs: byProject,
+				projects: PROJECTS,
+			},
+		);
 
-		expect(newSessionButtons(container)).toStrictEqual({
-			"project-project-a1": ["New session in project-a1"],
-			"project-project-b1": ["New session in project-b1"],
-		});
+		expect(newSessionButtons(container)).toStrictEqual(
+			{
+				"project-project-a1": ["New session in project-a1"],
+				"project-project-b1": ["New session in project-b1"],
+			},
+		);
 	});
 
 	// Upstream's hub-rail sidebar passes the status list no onNewSession: the New nav row is the entry point.
-	it("puts no New session + on any header under status grouping", async () => {
-		const {container} = await renderGroups(ROWS, {projects: PROJECTS});
+	it("puts no New session + on any header under status grouping", async () =>
+	{
+		const {container} = await renderGroups(
+			ROWS,
+			{
+				projects: PROJECTS,
+			},
+		);
 
-		expect(newSessionButtons(container)).toStrictEqual({"state-done": []});
+		expect(newSessionButtons(container)).toStrictEqual(
+			{
+				"state-done": [],
+			},
+		);
 	});
 
-	it("shows no + for a project whose folder is gone or unknown", async () => {
-		const {container} = await renderGroups(ROWS, {
-			prefs: byProject,
-			projects: [project("-projects-a1", "project-a1", null)],
-		});
+	it("shows no + for a project whose folder is gone or unknown", async () =>
+	{
+		const {container} = await renderGroups(
+			ROWS,
+			{
+				prefs: byProject,
+				projects: [project("-projects-a1", "project-a1", null)],
+			},
+		);
 
-		expect(newSessionButtons(container)).toStrictEqual({
-			"project-project-a1": [],
-			"project-project-b1": [],
-		});
+		expect(newSessionButtons(container)).toStrictEqual(
+			{
+				"project-project-a1": [],
+				"project-project-b1": [],
+			},
+		);
 	});
 
-	it("goes home with that project as the launch folder, leaving the section expanded", async () => {
-		const {container, router} = await renderGroups(ROWS, {
-			prefs: byProject,
-			projects: PROJECTS,
-			initialPath: "/session/a1",
-		});
+	it("goes home with that project as the launch folder, leaving the section expanded", async () =>
+	{
+		const {container, router} = await renderGroups(
+			ROWS,
+			{
+				prefs: byProject,
+				projects: PROJECTS,
+				initialPath: "/session/a1",
+			},
+		);
 
-		fireEvent.click(screen.getByRole("button", {name: "New session in project-b1"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "New session in project-b1",
+				},
+			),
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/");
 		});
-		expect({
-			launchFolder: takePendingHomeLaunchFolder(),
-			expanded: toggleOf(container, "project-project-b1").getAttribute("aria-expanded"),
-			collapsedGroups: readSidebarState().collapsedGroups,
-		}).toStrictEqual({launchFolder: "-projects-b1", expanded: "true", collapsedGroups: []});
+		expect(
+			{
+				launchFolder: takePendingHomeLaunchFolder(),
+				expanded: toggleOf(container, "project-project-b1").getAttribute("aria-expanded"),
+				collapsedGroups: readSidebarState().collapsedGroups,
+			},
+		).toStrictEqual(
+			{
+				launchFolder: "-projects-b1",
+				expanded: "true",
+				collapsedGroups: [],
+			},
+		);
 	});
 
-	it("keeps the + on a collapsed project section", async () => {
-		const {container} = await renderGroups(ROWS, {prefs: byProject, projects: PROJECTS});
+	it("keeps the + on a collapsed project section", async () =>
+	{
+		const {container} = await renderGroups(
+			ROWS,
+			{
+				prefs: byProject,
+				projects: PROJECTS,
+			},
+		);
 
 		fireEvent.click(toggleOf(container, "project-project-a1"));
 
-		expect({
-			expanded: toggleOf(container, "project-project-a1").getAttribute("aria-expanded"),
-			buttons: newSessionButtons(container)["project-project-a1"],
-		}).toStrictEqual({expanded: "false", buttons: ["New session in project-a1"]});
+		expect(
+			{
+				expanded: toggleOf(container, "project-project-a1").getAttribute("aria-expanded"),
+				buttons: newSessionButtons(container)["project-project-a1"],
+			},
+		).toStrictEqual(
+			{
+				expanded: "false",
+				buttons: ["New session in project-a1"],
+			},
+		);
 	});
 
 	const PLACE_UNKNOWN = "Where these sessions run isn’t known, so there’s nowhere to start a new one.";
 
-	async function openHeaderMenu(container: HTMLElement, key: string): Promise<HTMLElement> {
-		fireEvent.contextMenu(toggleOf(container, key), {clientX: 40, clientY: 50});
-		await act(async () => {
-			await new Promise((resolve) => {
+	async function openHeaderMenu(container: HTMLElement, key: string): Promise<HTMLElement>
+	{
+		fireEvent.contextMenu(
+			toggleOf(container, key),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		});
@@ -1522,7 +2718,12 @@ describe("SessionGroups per-project New session +", () => {
 	}
 
 	/** The header menu's first item with its disabled reason, or null while it is enabled. */
-	function firstMenuItem(menu: HTMLElement): {label: string | null; disabledReason: string | null} {
+	function firstMenuItem(menu: HTMLElement):
+	{
+		label: string | null;
+		disabledReason: string | null;
+	}
+	{
 		const item = menu.querySelector('[role="menuitem"]');
 		if (item === null) throw new Error("no menu item");
 		return {
@@ -1534,38 +2735,62 @@ describe("SessionGroups per-project New session +", () => {
 		};
 	}
 
-	it("leads a project header menu with an enabled New session that goes home with that project", async () => {
-		const {container, router} = await renderGroups(ROWS, {
-			prefs: byProject,
-			projects: PROJECTS,
-			initialPath: "/session/a1",
-		});
+	it("leads a project header menu with an enabled New session that goes home with that project", async () =>
+	{
+		const {container, router} = await renderGroups(
+			ROWS,
+			{
+				prefs: byProject,
+				projects: PROJECTS,
+				initialPath: "/session/a1",
+			},
+		);
 
 		const menu = await openHeaderMenu(container, "project-project-b1");
-		expect(firstMenuItem(menu)).toStrictEqual({label: "New session", disabledReason: null});
+		expect(firstMenuItem(menu)).toStrictEqual(
+			{
+				label: "New session",
+				disabledReason: null,
+			},
+		);
 
-		fireEvent.click(within(menu).getByRole("menuitem", {name: "New session"}));
+		fireEvent.click(
+			within(menu).getByRole(
+				"menuitem",
+				{
+					name: "New session",
+				},
+			),
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/");
 		});
 		expect(takePendingHomeLaunchFolder()).toBe("-projects-b1");
 	});
 
-	it("disables New session with the place-unknown reason for a project whose folder is gone", async () => {
-		const {container} = await renderGroups(ROWS, {
-			prefs: byProject,
-			projects: [project("-projects-a1", "project-a1", null), PROJECTS[1]],
-		});
+	it("disables New session with the place-unknown reason for a project whose folder is gone", async () =>
+	{
+		const {container} = await renderGroups(
+			ROWS,
+			{
+				prefs: byProject,
+				projects: [project("-projects-a1", "project-a1", null), PROJECTS[1]],
+			},
+		);
 
-		expect(firstMenuItem(await openHeaderMenu(container, "project-project-a1"))).toStrictEqual({
-			label: "New session",
-			disabledReason: PLACE_UNKNOWN,
-		});
+		expect(firstMenuItem(await openHeaderMenu(container, "project-project-a1"))).toStrictEqual(
+			{
+				label: "New session",
+				disabledReason: PLACE_UNKNOWN,
+			},
+		);
 	});
 });
 
-describe("SessionGroups described rows (Show ▸ Metadata)", () => {
+describe("SessionGroups described rows (Show ▸ Metadata)", () =>
+{
 	const described = [
 		{
 			...session("d1", "Idle on main", "done", 5),
@@ -1574,14 +2799,26 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 			summary: "Fixed it",
 			lastUserMessage: "Fix it",
 		},
-		{...session("b1", "Blocked asking", "blocked", 3), gitBranch: "main", lastUserMessage: "Run the tests"},
-		{...session("b2", "Permission ask", "blocked", 4), awaitingPermission: true},
-		{...session("p1", "Pinned on main", "done", 8), gitBranch: "main", projectName: "claude-code-plans"},
+		{
+			...session("b1", "Blocked asking", "blocked", 3),
+			gitBranch: "main",
+			lastUserMessage: "Run the tests",
+		},
+		{
+			...session("b2", "Permission ask", "blocked", 4),
+			awaitingPermission: true,
+		},
+		{
+			...session("p1", "Pinned on main", "done", 8),
+			gitBranch: "main",
+			projectName: "claude-code-plans",
+		},
 		session("n1", "No branch", "done", 9),
 	];
 	const describeRows = (container: HTMLElement) =>
 		Object.fromEntries(
-			[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) => {
+			[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) =>
+			{
 				const line = link.querySelector(".df-row-description .df-meta-slots");
 				return [
 					rowTitle(link.querySelector("[data-row-label]")),
@@ -1591,129 +2828,260 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 						titleWrap: link.querySelector(":scope > .df-described-title > [data-row-label]") !== null,
 						// Re-centres the decoration and kebab on the title line (upstream's described `top`)
 						titleCentred: link.closest("[data-session-actions]")?.hasAttribute("data-described") === true,
-						line: line === null ? null : {text: line.textContent, title: line.getAttribute("title")},
+						line:
+							line === null
+								? null
+								:
+									{
+										text: line.textContent,
+										title: line.getAttribute("title"),
+									},
 					},
 				];
 			}),
 		);
-	const oneLine = {described: false, oneLine: true, titleWrap: false, titleCentred: false, line: null};
+	const oneLine =
+	{
+		described: false,
+		oneLine: true,
+		titleWrap: false,
+		titleCentred: false,
+		line: null,
+	};
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		localStorage.removeItem("ccp-session-list-prefs");
 		localStorage.removeItem(PIN_STORAGE_KEY);
 	});
 
-	it("renders upstream's two-line described skeleton rows while the list loads with Metadata on", async () => {
+	it("renders upstream's two-line described skeleton rows while the list loads with Metadata on", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn<typeof fetch>(async () => new Promise<Response>(() => {})),
 		);
 		localStorage.setItem(
 			"ccp-session-list-prefs",
-			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showMetadata: true}),
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					showMetadata: true,
+				},
+			),
 		);
-		const {container} = await renderGroups([], {unseeded: true, loading: true});
-		const rows = [...container.querySelectorAll<HTMLElement>("[data-row]")].map((row) => ({
+		const {container} = await renderGroups(
+			[],
+			{
+				unseeded: true,
+				loading: true,
+			},
+		);
+		const rows = [...container.querySelectorAll<HTMLElement>("[data-row]")].map((row) => (
+		{
 			described: row.hasAttribute("data-described"),
 			className: row.className,
-			bars: [...row.children].map((line) => {
+			bars: [...row.children].map((line) =>
+			{
 				const bar = line.firstElementChild;
 				if (!(bar instanceof HTMLElement)) throw new Error("Expected a skeleton bar");
-				return {line: line.className, width: bar.style.width, height: bar.style.height};
+				return {
+					line: line.className,
+					width: bar.style.width,
+					height: bar.style.height,
+				};
 			}),
 		}));
 		const rowClass = "df-described-row flex flex-col items-stretch justify-center px-[var(--sb-row-px)]";
 		const bars = (title: string, description: string) => [
-			{line: "df-described-title flex min-w-0 items-center", width: title, height: "var(--sb-row-font)"},
-			{line: "df-row-description flex min-w-0 items-center", width: description, height: "var(--sb-group-font)"},
+			{
+				line: "df-described-title flex min-w-0 items-center",
+				width: title,
+				height: "var(--sb-row-font)",
+			},
+			{
+				line: "df-row-description flex min-w-0 items-center",
+				width: description,
+				height: "var(--sb-group-font)",
+			},
 		];
 		expect(rows).toStrictEqual([
-			{described: true, className: rowClass, bars: bars("68%", "54%")},
-			{described: true, className: rowClass, bars: bars("54%", "44%")},
-			{described: true, className: rowClass, bars: bars("44%", "68%")},
+			{
+				described: true,
+				className: rowClass,
+				bars: bars("68%", "54%"),
+			},
+			{
+				described: true,
+				className: rowClass,
+				bars: bars("54%", "44%"),
+			},
+			{
+				described: true,
+				className: rowClass,
+				bars: bars("44%", "68%"),
+			},
 		]);
 	});
 
-	it("gives unpinned rows upstream's described shell and meta line only with Metadata on", async () => {
-		localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({pinnedIds: ["p1"], pinnedOrder: ["p1"]}));
+	it("gives unpinned rows upstream's described shell and meta line only with Metadata on", async () =>
+	{
+		localStorage.setItem(
+			PIN_STORAGE_KEY,
+			JSON.stringify(
+				{
+					pinnedIds: ["p1"],
+					pinnedOrder: ["p1"],
+				},
+			),
+		);
 		const off = describeRows((await renderGroups(described)).container);
 		cleanup();
 		localStorage.setItem(
 			"ccp-session-list-prefs",
-			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showMetadata: true}),
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					showMetadata: true,
+				},
+			),
 		);
 		const byState = describeRows((await renderGroups(described)).container);
 		cleanup();
 		const byProject = describeRows(
 			(
-				await renderGroups(described, {
-					prefs: {...DEFAULT_SESSION_LIST_PREFS, groupBy: "project", showMetadata: true},
-				})
+				await renderGroups(
+					described,
+					{
+						prefs:
+						{
+							...DEFAULT_SESSION_LIST_PREFS,
+							groupBy: "project",
+							showMetadata: true,
+						},
+					},
+				)
 			).container,
 		);
 
-		const line = (text: string, title: string) => ({
+		const line = (text: string, title: string) => (
+		{
 			described: true,
 			oneLine: false,
 			titleWrap: true,
 			titleCentred: true,
-			line: {text, title},
-		});
-		expect({off, byState, byProject}).toStrictEqual({
-			off: {
-				"Pinned on main": oneLine,
-				"Blocked asking": oneLine,
-				"Permission ask": oneLine,
-				"Idle on main": oneLine,
-				"No branch": oneLine,
-			},
-			byState: {
-				"Pinned on main": oneLine,
-				"Blocked asking": line("Run the testsproject-b1", "Run the tests, project-b1"),
-				"Permission ask": line("Needs permissionproject-b2", "Needs permission, project-b2"),
-				"Idle on main": line("Fixed itclaude-code-plans", "Fixed it, claude-code-plans"),
-				"No branch": line("project-n1", "project-n1"),
-			},
-			byProject: {
-				"Pinned on main": oneLine,
-				"Blocked asking": line("WaitingRun the tests", "Waiting, Run the tests"),
-				"Permission ask": line("WaitingNeeds permission", "Waiting, Needs permission"),
-				"Idle on main": line("Fixed it", "Fixed it"),
-				"No branch": line("Idle", "Idle"),
+			line:
+			{
+				text,
+				title,
 			},
 		});
+		expect(
+			{
+				off,
+				byState,
+				byProject,
+			},
+		).toStrictEqual(
+			{
+				off:
+				{
+					"Pinned on main": oneLine,
+					"Blocked asking": oneLine,
+					"Permission ask": oneLine,
+					"Idle on main": oneLine,
+					"No branch": oneLine,
+				},
+				byState:
+				{
+					"Pinned on main": oneLine,
+					"Blocked asking": line("Run the testsproject-b1", "Run the tests, project-b1"),
+					"Permission ask": line("Needs permissionproject-b2", "Needs permission, project-b2"),
+					"Idle on main": line("Fixed itclaude-code-plans", "Fixed it, claude-code-plans"),
+					"No branch": line("project-n1", "project-n1"),
+				},
+				byProject:
+				{
+					"Pinned on main": oneLine,
+					"Blocked asking": line("WaitingRun the tests", "Waiting, Run the tests"),
+					"Permission ask": line("WaitingNeeds permission", "Waiting, Needs permission"),
+					"Idle on main": line("Fixed it", "Fixed it"),
+					"No branch": line("Idle", "Idle"),
+				},
+			},
+		);
 	});
 
-	it("keeps the PR glyph in the title tail and draws no branch glyph on the meta line", async () => {
+	it("keeps the PR glyph in the title tail and draws no branch glyph on the meta line", async () =>
+	{
 		localStorage.setItem(
 			"ccp-session-list-prefs",
-			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showMetadata: true, showPrStatus: true}),
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					showMetadata: true,
+					showPrStatus: true,
+				},
+			),
 		);
 		const {container} = await renderGroups([
-			{...session("d1", "Open PR on main", "done", 5), gitBranch: "main", prStatus: {number: 8, state: "open"}},
+			{
+				...session("d1", "Open PR on main", "done", 5),
+				gitBranch: "main",
+				prStatus:
+				{
+					number: 8,
+					state: "open",
+				},
+			},
 		]);
 
 		const link = container.querySelector("a[data-row-main-button]");
-		expect({
-			glyphs: [...(link?.querySelectorAll("[data-pr-glyph]") ?? [])].map((glyph) => ({
-				state: glyph.getAttribute("data-pr-glyph"),
-				onLine: glyph.closest(".df-row-description") !== null,
-			})),
-			branchGlyphs: link?.querySelectorAll("[data-branch-glyph]").length,
-		}).toStrictEqual({glyphs: [{state: "opened", onLine: false}], branchGlyphs: 0});
+		expect(
+			{
+				glyphs: [...(link?.querySelectorAll("[data-pr-glyph]") ?? [])].map((glyph) => (
+				{
+					state: glyph.getAttribute("data-pr-glyph"),
+					onLine: glyph.closest(".df-row-description") !== null,
+				})),
+				branchGlyphs: link?.querySelectorAll("[data-branch-glyph]").length,
+			},
+		).toStrictEqual(
+			{
+				glyphs: [
+					{
+						state: "opened",
+						onLine: false,
+					},
+				],
+				branchGlyphs: 0,
+			},
+		);
 	});
 
-	it("labels a described row by its title and description ids", async () => {
+	it("labels a described row by its title and description ids", async () =>
+	{
 		localStorage.setItem(
 			"ccp-session-list-prefs",
-			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showMetadata: true}),
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					showMetadata: true,
+				},
+			),
 		);
-		const {container} = await renderGroups([{...session("d1", "Tidy up", "done", 5), summary: "Fixed it"}]);
+		const {container} = await renderGroups([
+			{
+				...session("d1", "Tidy up", "done", 5),
+				summary: "Fixed it",
+			},
+		]);
 
 		const link = container.querySelector("a[data-row-main-button]");
 		const ids = link?.getAttribute("aria-labelledby")?.split(" ") ?? [];
 		expect(
-			ids.map((id) => {
+			ids.map((id) =>
+			{
 				const element = document.getElementById(id);
 				return {
 					suffix: id.slice(ids[0]?.length),
@@ -1722,25 +3090,45 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 				};
 			}),
 		).toStrictEqual([
-			{suffix: "", label: true, description: false},
-			{suffix: "-description", label: false, description: true},
+			{
+				suffix: "",
+				label: true,
+				description: false,
+			},
+			{
+				suffix: "-description",
+				label: false,
+				description: true,
+			},
 		]);
 	});
 });
 
-describe("SessionGroups sections layout", () => {
-	function seedSections(assignments: Record<string, string>): void {
+describe("SessionGroups sections layout", () =>
+{
+	function seedSections(assignments: Record<string, string>): void
+	{
 		localStorage.setItem(
 			"ccp-session-groups",
-			JSON.stringify({
-				groups: [{id: "cg-a", name: "A", icon: "star", color: "red"}],
-				assignments,
-				order: {},
-			}),
+			JSON.stringify(
+				{
+					groups: [
+						{
+							id: "cg-a",
+							name: "A",
+							icon: "star",
+							color: "red",
+						},
+					],
+					assignments,
+					order: {},
+				},
+			),
 		);
 	}
 
-	function menuOutline(menu: HTMLElement): string[] {
+	function menuOutline(menu: HTMLElement): string[]
+	{
 		return [
 			...menu.querySelectorAll(
 				':scope [role="menuitem"], :scope [role="menuitemcheckbox"], :scope [role="menuitemradio"], :scope [role="separator"]',
@@ -1748,7 +3136,8 @@ describe("SessionGroups sections layout", () => {
 		].map((node) => (node.getAttribute("role") === "separator" ? "---" : node.textContent.trim()));
 	}
 
-	async function openSectionMenu(container: HTMLElement): Promise<HTMLElement> {
+	async function openSectionMenu(container: HTMLElement): Promise<HTMLElement>
+	{
 		const trigger = container.querySelector<HTMLElement>(
 			'.df-sortable-section [data-group-key="custom-cg-a"] button[aria-label="Group and sort"]',
 		);
@@ -1757,13 +3146,26 @@ describe("SessionGroups sections layout", () => {
 		return await waitFor(() => screen.getByRole("menu"));
 	}
 
-	async function openSubmenu(name: RegExp): Promise<HTMLElement> {
-		const trigger = screen.getByRole("menuitem", {name});
-		act(() => {
+	async function openSubmenu(name: RegExp): Promise<HTMLElement>
+	{
+		const trigger = screen.getByRole(
+			"menuitem",
+			{
+				name,
+			},
+		);
+		act(() =>
+		{
 			trigger.focus();
 		});
-		fireEvent.keyDown(trigger, {key: "ArrowRight"});
-		const submenu = await waitFor(() => {
+		fireEvent.keyDown(
+			trigger,
+			{
+				key: "ArrowRight",
+			},
+		);
+		const submenu = await waitFor(() =>
+		{
 			const menus = screen.getAllByRole("menu");
 			if (menus.length < 2) throw new Error("no submenu");
 			return menus.at(-1);
@@ -1772,51 +3174,93 @@ describe("SessionGroups sections layout", () => {
 		return submenu;
 	}
 
-	it("lists a manual section above Recents in a df-sortable-section, its sessions left out of Recents", async () => {
-		seedSections({b1: "cg-a"});
+	it("lists a manual section above Recents in a df-sortable-section, its sessions left out of Recents", async () =>
+	{
+		seedSections(
+			{
+				b1: "cg-a",
+			},
+		);
 		const {container} = await renderGroups(FIXTURE);
 
-		expect({
-			order: [...container.querySelectorAll("[data-sidebar-group-label] [data-group-name]")].map(
-				(node) => node.textContent,
-			),
-			sortable: [...container.querySelectorAll(".df-sortable-section [data-group-name]")].map(
-				(node) => node.textContent,
-			),
-			inSection: rowTitlesIn(container, "custom-cg-a"),
-			recents: groupNames(container),
-		}).toStrictEqual({
-			order: ["Pinned", "A", "Ready for review", "Working", "Idle"],
-			sortable: ["A"],
-			inSection: ["Blocked one"],
-			recents: ["Ready for review", "Working", "Idle"],
-		});
+		expect(
+			{
+				order: [...container.querySelectorAll("[data-sidebar-group-label] [data-group-name]")].map(
+					(node) => node.textContent,
+				),
+				sortable: [...container.querySelectorAll(".df-sortable-section [data-group-name]")].map(
+					(node) => node.textContent,
+				),
+				inSection: rowTitlesIn(container, "custom-cg-a"),
+				recents: groupNames(container),
+			},
+		).toStrictEqual(
+			{
+				order: ["Pinned", "A", "Ready for review", "Working", "Idle"],
+				sortable: ["A"],
+				inSection: ["Blocked one"],
+				recents: ["Ready for review", "Working", "Idle"],
+			},
+		);
 	});
 
-	it("wraps each header toggle in an h3, with a 5px gap, no hover ink of its own and the mark after the name", async () => {
-		seedSections({b1: "cg-a"});
+	it("wraps each header toggle in an h3, with a 5px gap, no hover ink of its own and the mark after the name", async () =>
+	{
+		seedSections(
+			{
+				b1: "cg-a",
+			},
+		);
 		const {container} = await renderGroups(FIXTURE);
 		const toggle = toggleOf(container, "custom-cg-a");
 
-		expect({
-			heading: screen.getByRole("heading", {level: 3, name: "A"}).contains(toggle),
-			classes: toggle.className
-				.split(" ")
-				.filter((name) => name === "gap-1.25" || name === "hover:text-secondary"),
-			children: [...toggle.children].map((child) =>
-				["data-group-name", "data-group-mark", "data-group-caret"].find((name) => child.hasAttribute(name)),
-			),
-		}).toStrictEqual({
-			heading: true,
-			classes: ["gap-1.25"],
-			children: ["data-group-name", "data-group-mark", "data-group-caret"],
-		});
+		expect(
+			{
+				heading: screen
+					.getByRole(
+						"heading",
+						{
+							level: 3,
+							name: "A",
+						},
+					)
+					.contains(toggle),
+				classes: toggle.className
+					.split(" ")
+					.filter((name) => name === "gap-1.25" || name === "hover:text-secondary"),
+				children: [...toggle.children].map((child) =>
+					["data-group-name", "data-group-mark", "data-group-caret"].find((name) => child.hasAttribute(name)),
+				),
+			},
+		).toStrictEqual(
+			{
+				heading: true,
+				classes: ["gap-1.25"],
+				children: ["data-group-name", "data-group-mark", "data-group-caret"],
+			},
+		);
 	});
 
-	it("inks the group mark span with upstream's muted-as-secondary class (fizzy-sidebar-color-inks T4)", async () => {
+	it("inks the group mark span with upstream's muted-as-secondary class (fizzy-sidebar-color-inks T4)", async () =>
+	{
 		localStorage.setItem(
 			"ccp-session-groups",
-			JSON.stringify({groups: [{id: "cg-a", name: "A", icon: "star"}], assignments: {b1: "cg-a"}, order: {}}),
+			JSON.stringify(
+				{
+					groups: [
+						{
+							id: "cg-a",
+							name: "A",
+							icon: "star",
+						},
+					],
+					assignments:
+					{
+						b1: "cg-a",
+					},
+					order: {},
+				},
+			),
 		);
 		const {container} = await renderGroups(FIXTURE);
 
@@ -1825,74 +3269,136 @@ describe("SessionGroups sections layout", () => {
 		);
 	});
 
-	it("draws upstream's filled 14px caret, nudged half a pixel down", async () => {
+	it("draws upstream's filled 14px caret, nudged half a pixel down", async () =>
+	{
 		const {container} = await renderGroups(FIXTURE);
 		const caret = container.querySelector('[data-group-key="state-done"] [data-group-caret]');
 
-		expect({
-			tag: caret?.tagName.toLowerCase(),
-			size: caret?.getAttribute("class")?.split(" ").includes("size-3.5"),
-			translate: caret instanceof SVGElement ? caret.style.translate : null,
-			lucide: caret?.getAttribute("class")?.includes("lucide") ?? false,
-		}).toStrictEqual({tag: "svg", size: true, translate: "0 0.5px", lucide: false});
+		expect(
+			{
+				tag: caret?.tagName.toLowerCase(),
+				size: caret?.getAttribute("class")?.split(" ").includes("size-3.5"),
+				translate: caret instanceof SVGElement ? caret.style.translate : null,
+				lucide: caret?.getAttribute("class")?.includes("lucide") ?? false,
+			},
+		).toStrictEqual(
+			{
+				tag: "svg",
+				size: true,
+				translate: "0 0.5px",
+				lucide: false,
+			},
+		);
 	});
 
-	it("keeps a collapsed section's rows mounted in a hidden wrapper", async () => {
+	it("keeps a collapsed section's rows mounted in a hidden wrapper", async () =>
+	{
 		const {container} = await renderGroups(FIXTURE);
 
 		fireEvent.click(toggleOf(container, "state-done"));
 
 		const wrapper = container.querySelector('[data-group-key="state-done"] [data-group-rows]');
-		expect({
-			hidden: wrapper?.hasAttribute("hidden"),
-			hiddenClass: wrapper?.classList.contains("hidden"),
-			rows: [...(wrapper?.querySelectorAll("a[data-row-main-button]") ?? [])].map((link) => rowTitle(link)),
-		}).toStrictEqual({hidden: true, hiddenClass: true, rows: ["Completed newest", "Completed older"]});
+		expect(
+			{
+				hidden: wrapper?.hasAttribute("hidden"),
+				hiddenClass: wrapper?.classList.contains("hidden"),
+				rows: [...(wrapper?.querySelectorAll("a[data-row-main-button]") ?? [])].map((link) => rowTitle(link)),
+			},
+		).toStrictEqual(
+			{
+				hidden: true,
+				hiddenClass: true,
+				rows: ["Completed newest", "Completed older"],
+			},
+		);
 	});
 
-	it("gives a manual section upstream's own Group and sort: Date, Status, None, Sort by, Show ▸ Metadata and the footer", async () => {
-		seedSections({b1: "cg-a"});
+	it("gives a manual section upstream's own Group and sort: Date, Status, None, Sort by, Show ▸ Metadata and the footer", async () =>
+	{
+		seedSections(
+			{
+				b1: "cg-a",
+			},
+		);
 		const {container} = await renderGroups(FIXTURE);
 
 		const menu = await openSectionMenu(container);
 		const top = menuOutline(menu);
-		const reset = within(menu).getByRole("menuitem", {name: "Reset to defaults"});
+		const reset = within(menu).getByRole(
+			"menuitem",
+			{
+				name: "Reset to defaults",
+			},
+		);
 		const resetReason = document.getElementById(reset.getAttribute("aria-describedby") ?? "")?.textContent;
 		const groupBy = menuOutline(await openSubmenu(/^Group by/));
 
-		expect({top, resetDisabled: reset.getAttribute("aria-disabled"), resetReason, groupBy}).toStrictEqual({
-			top: [
-				"Group byNone",
-				"Sort byLast updated",
-				"Show",
-				"---",
-				"New section",
-				"---",
-				"Reset to defaults",
-				"View all",
-			],
-			resetDisabled: "true",
-			resetReason: "Grouping and sorting are already at their defaults.",
-			groupBy: ["Date", "Status", "---", "None"],
-		});
+		expect(
+			{
+				top,
+				resetDisabled: reset.getAttribute("aria-disabled"),
+				resetReason,
+				groupBy,
+			},
+		).toStrictEqual(
+			{
+				top: [
+					"Group byNone",
+					"Sort byLast updated",
+					"Show",
+					"---",
+					"New section",
+					"---",
+					"Reset to defaults",
+					"View all",
+				],
+				resetDisabled: "true",
+				resetReason: "Grouping and sorting are already at their defaults.",
+				groupBy: ["Date", "Status", "---", "None"],
+			},
+		);
 	});
 
-	it("splits a manual section under its own Date headings, leaving Recents' grouping alone", async () => {
-		seedSections({d1: "cg-a", d2: "cg-a", w1: "cg-a"});
+	it("splits a manual section under its own Date headings, leaving Recents' grouping alone", async () =>
+	{
+		seedSections(
+			{
+				d1: "cg-a",
+				d2: "cg-a",
+				w1: "cg-a",
+			},
+		);
 		const rows = [...FIXTURE.filter((row) => row.id !== "d2"), session("d2", "Completed older", "done", 24 * 60)];
 		const {container} = await renderGroups(rows);
 
 		await openSectionMenu(container);
 		await openSubmenu(/^Group by/);
-		fireEvent.click(screen.getByRole("menuitemradio", {name: "Date"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemradio",
+				{
+					name: "Date",
+				},
+			),
+		);
 
-		await waitFor(() => {
-			expect({
-				headings: [
-					...container.querySelectorAll('[data-group-key="custom-cg-a"] [data-group-key] [data-group-name]'),
-				].map((node) => node.textContent),
-				recents: groupNames(container),
-			}).toStrictEqual({headings: ["Today", "Yesterday"], recents: ["Needs input", "Ready for review"]});
+		await waitFor(() =>
+		{
+			expect(
+				{
+					headings: [
+						...container.querySelectorAll(
+							'[data-group-key="custom-cg-a"] [data-group-key] [data-group-name]',
+						),
+					].map((node) => node.textContent),
+					recents: groupNames(container),
+				},
+			).toStrictEqual(
+				{
+					headings: ["Today", "Yesterday"],
+					recents: ["Needs input", "Ready for review"],
+				},
+			);
 		});
 	});
 });

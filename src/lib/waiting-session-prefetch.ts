@@ -9,8 +9,16 @@ export const WAITING_PREFETCH_LIMIT = 4;
  */
 export function waitingSessionsToPrefetch(
 	sessions: ReadonlyArray<Pick<ActiveSessionListItem, "sessionId" | "state" | "blockedSince">>,
-	{openSessionId, warmed}: {openSessionId: string | undefined; warmed: ReadonlySet<string>},
-): string[] {
+	{
+		openSessionId,
+		warmed,
+	}:
+	{
+		openSessionId: string | undefined;
+		warmed: ReadonlySet<string>;
+	},
+): string[]
+{
 	return sessions
 		.filter(
 			(session) =>

@@ -5,15 +5,18 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../src/components/ui/menu";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-function stubCoarseNarrow() {
+function stubCoarseNarrow()
+{
 	vi.stubGlobal(
 		"matchMedia",
-		vi.fn((query: string) => ({
+		vi.fn((query: string) => (
+		{
 			matches: query === "(pointer: coarse)" || query === "(pointer: coarse) and (max-width: 639.98px)",
 			media: query,
 			onchange: null,
@@ -26,8 +29,10 @@ function stubCoarseNarrow() {
 	);
 }
 
-describe("Menu sheet chunk", () => {
-	it("loads the lazy sheet presentation on a cold open and renders the sheet once it arrives", async () => {
+describe("Menu sheet chunk", () =>
+{
+	it("loads the lazy sheet presentation on a cold open and renders the sheet once it arrives", async () =>
+	{
 		stubCoarseNarrow();
 		render(
 			<Menu>
@@ -37,12 +42,29 @@ describe("Menu sheet chunk", () => {
 				</MenuContent>
 			</Menu>,
 		);
-		fireEvent.click(screen.getByRole("button", {name: "More options"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "More options",
+				},
+			),
+		);
 		const menu = await screen.findByRole("menu");
-		expect({
-			presentation: menu.getAttribute("data-presentation"),
-			scrim: document.querySelector("[data-sheet-scrim]") !== null,
-			items: screen.getAllByRole("menuitem").map((item) => item.getAttribute("aria-label") ?? item.textContent),
-		}).toStrictEqual({presentation: "sheet", scrim: true, items: ["Copy link", "Close"]});
+		expect(
+			{
+				presentation: menu.getAttribute("data-presentation"),
+				scrim: document.querySelector("[data-sheet-scrim]") !== null,
+				items: screen
+					.getAllByRole("menuitem")
+					.map((item) => item.getAttribute("aria-label") ?? item.textContent),
+			},
+		).toStrictEqual(
+			{
+				presentation: "sheet",
+				scrim: true,
+				items: ["Copy link", "Close"],
+			},
+		);
 	});
 });

@@ -16,7 +16,8 @@ import {fileViewerPath} from "../src/lib/api/file";
 import {CHANGES_SCOPE_REQUEST_EVENT} from "../src/lib/changes-scope-request";
 import {loadChangesScope} from "../src/lib/pane-layout";
 import {processTranscript} from "../src/lib/transcript";
-import {
+import
+{
 	aggregateTurnEdits,
 	collectTurnChanges,
 	isScratchpadPath,
@@ -26,51 +27,74 @@ import {
 } from "../src/lib/turn-changes";
 import {installLocalStorage} from "./fake-storage";
 
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadFileTypeIcons();
 });
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	vi.stubGlobal("ResizeObserver", FakeObserver);
 	vi.stubGlobal("IntersectionObserver", FakeObserver);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-		configurable: true,
-		value: vi.fn<() => void>(),
-	});
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: vi.fn<() => void>(),
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
 
-describe("aggregateTurnEdits", () => {
-	it("sums each file's stats across calls in first-edit order, skipping failed and non-edit calls", () => {
+describe("aggregateTurnEdits", () =>
+{
+	it("sums each file's stats across calls in first-edit order, skipping failed and non-edit calls", () =>
+	{
 		const summary = aggregateTurnEdits([
 			{
 				name: "Edit",
-				input: {
+				input:
+				{
 					file_path: "/repo/src/b.ts",
 					old_string: "one\ntwo",
 					new_string: "one\n2",
@@ -78,12 +102,23 @@ describe("aggregateTurnEdits", () => {
 			},
 			{
 				name: "Write",
-				input: {file_path: "/repo/src/a.ts", content: "x\ny\nz"},
+				input:
+				{
+					file_path: "/repo/src/a.ts",
+					content: "x\ny\nz",
+				},
 			},
-			{name: "Read", input: {file_path: "/repo/src/c.ts"}},
+			{
+				name: "Read",
+				input:
+				{
+					file_path: "/repo/src/c.ts",
+				},
+			},
 			{
 				name: "Edit",
-				input: {
+				input:
+				{
 					file_path: "/repo/src/b.ts",
 					old_string: "three",
 					new_string: "3\n4",
@@ -91,7 +126,8 @@ describe("aggregateTurnEdits", () => {
 			},
 			{
 				name: "Edit",
-				input: {
+				input:
+				{
 					file_path: "/repo/src/d.ts",
 					old_string: "a",
 					new_string: "b",
@@ -100,72 +136,131 @@ describe("aggregateTurnEdits", () => {
 			},
 			{
 				name: "MultiEdit",
-				input: {
+				input:
+				{
 					file_path: "/repo/src/a.ts",
 					edits: [
-						{old_string: "x", new_string: "X"},
-						{old_string: "y\nz", new_string: ""},
+						{
+							old_string: "x",
+							new_string: "X",
+						},
+						{
+							old_string: "y\nz",
+							new_string: "",
+						},
 					],
 				},
 			},
 			{
 				name: "NotebookEdit",
-				input: {
+				input:
+				{
 					notebook_path: "/repo/nb.ipynb",
 					new_source: "print(1)\nprint(2)",
 				},
 			},
 		]);
 
-		expect(summary).toStrictEqual({
-			files: [
-				{path: "/repo/src/b.ts", added: 3, removed: 2, created: false},
-				{path: "/repo/src/a.ts", added: 4, removed: 3, created: false},
-				{path: "/repo/nb.ipynb", added: 2, removed: 0, created: false},
-			],
-			added: 9,
-			removed: 5,
-		});
+		expect(summary).toStrictEqual(
+			{
+				files: [
+					{
+						path: "/repo/src/b.ts",
+						added: 3,
+						removed: 2,
+						created: false,
+					},
+					{
+						path: "/repo/src/a.ts",
+						added: 4,
+						removed: 3,
+						created: false,
+					},
+					{
+						path: "/repo/nb.ipynb",
+						added: 2,
+						removed: 0,
+						created: false,
+					},
+				],
+				added: 9,
+				removed: 5,
+			},
+		);
 	});
 
-	it("sums a Write and a Write update that both carry result patches (Hello2 shape)", () => {
+	it("sums a Write and a Write update that both carry result patches (Hello2 shape)", () =>
+	{
 		const summary = aggregateTurnEdits([
 			{
 				name: "Write",
-				input: {file_path: "/repo/plan.md", content: "x"},
+				input:
+				{
+					file_path: "/repo/plan.md",
+					content: "x",
+				},
 				hasResult: true,
-				resultMeta: {
+				resultMeta:
+				{
 					writeType: "create",
-					patchStats: {added: 10, removed: 0},
+					patchStats:
+					{
+						added: 10,
+						removed: 0,
+					},
 				},
 			},
 			{
 				name: "Write",
-				input: {file_path: "/repo/plan.md", content: "y"},
+				input:
+				{
+					file_path: "/repo/plan.md",
+					content: "y",
+				},
 				hasResult: true,
-				resultMeta: {
+				resultMeta:
+				{
 					writeType: "update",
-					patchStats: {added: 3, removed: 3},
+					patchStats:
+					{
+						added: 3,
+						removed: 3,
+					},
 				},
 			},
 		]);
-		expect(summary).toStrictEqual({
-			files: [{path: "/repo/plan.md", added: 13, removed: 3, created: true}],
-			added: 13,
-			removed: 3,
-		});
+		expect(summary).toStrictEqual(
+			{
+				files: [
+					{
+						path: "/repo/plan.md",
+						added: 13,
+						removed: 3,
+						created: true,
+					},
+				],
+				added: 13,
+				removed: 3,
+			},
+		);
 	});
 
-	it("adds an Edit's stats after a Write of the same file", () => {
+	it("adds an Edit's stats after a Write of the same file", () =>
+	{
 		const summary = aggregateTurnEdits([
 			{
 				name: "Write",
-				input: {file_path: "/repo/x.md", content: "1\n2\n3\n4\n5"},
+				input:
+				{
+					file_path: "/repo/x.md",
+					content: "1\n2\n3\n4\n5",
+				},
 				hasResult: true,
 			},
 			{
 				name: "Edit",
-				input: {
+				input:
+				{
 					file_path: "/repo/x.md",
 					old_string: "1\n2",
 					new_string: "one",
@@ -173,29 +268,52 @@ describe("aggregateTurnEdits", () => {
 				hasResult: true,
 			},
 		]);
-		expect(summary).toStrictEqual({
-			files: [{path: "/repo/x.md", added: 6, removed: 2, created: false}],
-			added: 6,
-			removed: 2,
-		});
+		expect(summary).toStrictEqual(
+			{
+				files: [
+					{
+						path: "/repo/x.md",
+						added: 6,
+						removed: 2,
+						created: false,
+					},
+				],
+				added: 6,
+				removed: 2,
+			},
+		);
 	});
 
-	it("skips a pending call that has no result yet", () => {
+	it("skips a pending call that has no result yet", () =>
+	{
 		const summary = aggregateTurnEdits([
 			{
 				name: "Edit",
-				input: {file_path: "/repo/x.md", old_string: "a", new_string: "b"},
+				input:
+				{
+					file_path: "/repo/x.md",
+					old_string: "a",
+					new_string: "b",
+				},
 				hasResult: false,
 			},
 		]);
-		expect(summary).toStrictEqual({files: [], added: 0, removed: 0});
+		expect(summary).toStrictEqual(
+			{
+				files: [],
+				added: 0,
+				removed: 0,
+			},
+		);
 	});
 
-	it("skips edits in the Claude Code scratchpad", () => {
+	it("skips edits in the Claude Code scratchpad", () =>
+	{
 		const summary = aggregateTurnEdits([
 			{
 				name: "Write",
-				input: {
+				input:
+				{
 					file_path: "/private/tmp/claude-501/-Users-x/0d1e2f3a-4b5c-6d7e-8f90-a1b2c3d4e5f6/scratchpad/a.txt",
 					content: "hi",
 				},
@@ -203,49 +321,80 @@ describe("aggregateTurnEdits", () => {
 			},
 			{
 				name: "Write",
-				input: {
+				input:
+				{
 					file_path: "/tmp/claude-501/-Users-x/0d1e2f3a-4b5c-6d7e-8f90-a1b2c3d4e5f6/scratchpad",
 					content: "hi",
 				},
 				hasResult: true,
 			},
 		]);
-		expect(summary).toStrictEqual({files: [], added: 0, removed: 0});
+		expect(summary).toStrictEqual(
+			{
+				files: [],
+				added: 0,
+				removed: 0,
+			},
+		);
 	});
 
-	it("skips edits in a project memory dir", () => {
+	it("skips edits in a project memory dir", () =>
+	{
 		const summary = aggregateTurnEdits([
 			{
 				name: "Write",
-				input: {
+				input:
+				{
 					file_path: "/Users/x/.claude/projects/p/memory/m.md",
 					content: "hi",
 				},
 				hasResult: true,
 			},
 		]);
-		expect(summary).toStrictEqual({files: [], added: 0, removed: 0});
+		expect(summary).toStrictEqual(
+			{
+				files: [],
+				added: 0,
+				removed: 0,
+			},
+		);
 	});
 
-	it("counts a scratchpad-looking path with dot segments", () => {
+	it("counts a scratchpad-looking path with dot segments", () =>
+	{
 		const path = "/private/tmp/claude-501/x/../scratchpad/a";
 		const summary = aggregateTurnEdits([
 			{
 				name: "Write",
-				input: {file_path: path, content: "hi"},
+				input:
+				{
+					file_path: path,
+					content: "hi",
+				},
 				hasResult: true,
 			},
 		]);
-		expect(summary).toStrictEqual({
-			files: [{path, added: 1, removed: 0, created: false}],
-			added: 1,
-			removed: 0,
-		});
+		expect(summary).toStrictEqual(
+			{
+				files: [
+					{
+						path,
+						added: 1,
+						removed: 0,
+						created: false,
+					},
+				],
+				added: 1,
+				removed: 0,
+			},
+		);
 	});
 });
 
-describe("isScratchpadPath", () => {
-	it("matches upstream $M on POSIX and Windows scratchpads and rejects dot segments", () => {
+describe("isScratchpadPath", () =>
+{
+	it("matches upstream $M on POSIX and Windows scratchpads and rejects dot segments", () =>
+	{
 		const uuid = "0d1e2f3a-4b5c-6d7e-8f90-a1b2c3d4e5f6";
 		expect(
 			[
@@ -264,19 +413,25 @@ const EDIT_RECORDS = [
 	{
 		type: "user",
 		uuid: "u-1",
-		message: {role: "user", content: "Fabricated request"},
+		message:
+		{
+			role: "user",
+			content: "Fabricated request",
+		},
 	},
 	{
 		type: "assistant",
 		uuid: "a-1",
-		message: {
+		message:
+		{
 			role: "assistant",
 			content: [
 				{
 					type: "tool_use",
 					id: "tool-1",
 					name: "Edit",
-					input: {
+					input:
+					{
 						file_path: "/repo/src/cache.ts",
 						old_string: "old",
 						new_string: "new\nline",
@@ -289,22 +444,34 @@ const EDIT_RECORDS = [
 		type: "user",
 		uuid: "r-1",
 		sourceToolAssistantUUID: "a-1",
-		message: {
+		message:
+		{
 			role: "user",
-			content: [{type: "tool_result", tool_use_id: "tool-1", content: "ok"}],
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: "tool-1",
+					content: "ok",
+				},
+			],
 		},
 	},
 	{
 		type: "assistant",
 		uuid: "a-2",
-		message: {
+		message:
+		{
 			role: "assistant",
 			content: [
 				{
 					type: "tool_use",
 					id: "tool-2",
 					name: "Write",
-					input: {file_path: "/repo/src/index.ts", content: "export {};"},
+					input:
+					{
+						file_path: "/repo/src/index.ts",
+						content: "export {};",
+					},
 				},
 			],
 		},
@@ -313,37 +480,64 @@ const EDIT_RECORDS = [
 		type: "user",
 		uuid: "r-2",
 		sourceToolAssistantUUID: "a-2",
-		message: {
+		message:
+		{
 			role: "user",
-			content: [{type: "tool_result", tool_use_id: "tool-2", content: "ok"}],
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: "tool-2",
+					content: "ok",
+				},
+			],
 		},
 	},
 	{
 		type: "assistant",
 		uuid: "a-3",
-		message: {
+		message:
+		{
 			role: "assistant",
-			content: [{type: "text", text: "Fabricated final answer"}],
+			content: [
+				{
+					type: "text",
+					text: "Fabricated final answer",
+				},
+			],
 		},
 	},
 	{
 		type: "user",
 		uuid: "u-2",
-		message: {role: "user", content: "Fabricated follow-up"},
+		message:
+		{
+			role: "user",
+			content: "Fabricated follow-up",
+		},
 	},
 	{
 		type: "assistant",
 		uuid: "a-4",
-		message: {
+		message:
+		{
 			role: "assistant",
-			content: [{type: "text", text: "Fabricated reply"}],
+			content: [
+				{
+					type: "text",
+					text: "Fabricated reply",
+				},
+			],
 		},
 	},
 ];
 
 type TurnStep =
-	| {text: string}
-	| {
+	|
+	  {
+			text: string;
+	  }
+	|
+	  {
 			tool: string;
 			id: string;
 			input: Record<string, unknown>;
@@ -352,32 +546,48 @@ type TurnStep =
 	  };
 
 /** One prompt-to-prompt turn: each step is its own assistant line, each tool answered with its result. */
-function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
+function turnRecords(steps: TurnStep[], prefix = "t"): unknown[]
+{
 	const records: unknown[] = [
 		{
 			type: "user",
 			uuid: `${prefix}-u`,
-			message: {role: "user", content: "Fabricated request"},
+			message:
+			{
+				role: "user",
+				content: "Fabricated request",
+			},
 		},
 	];
-	for (const [index, step] of steps.entries()) {
+	for (const [index, step] of steps.entries())
+	{
 		const uuid = `${prefix}-a${index}`;
-		if ("text" in step) {
-			records.push({
-				type: "assistant",
-				uuid,
-				message: {
-					role: "assistant",
-					content: [{type: "text", text: step.text}],
+		if ("text" in step)
+		{
+			records.push(
+				{
+					type: "assistant",
+					uuid,
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "text",
+								text: step.text,
+							},
+						],
+					},
 				},
-			});
+			);
 			continue;
 		}
 		records.push(
 			{
 				type: "assistant",
 				uuid,
-				message: {
+				message:
+				{
 					role: "assistant",
 					content: [
 						{
@@ -393,7 +603,8 @@ function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
 				type: "user",
 				uuid: `${prefix}-r${index}`,
 				sourceToolAssistantUUID: uuid,
-				message: {
+				message:
+				{
 					role: "user",
 					content: [
 						{
@@ -403,33 +614,56 @@ function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
 						},
 					],
 				},
-				...(step.toolUseResult === undefined ? {} : {toolUseResult: step.toolUseResult}),
+				...(step.toolUseResult === undefined
+					? {}
+					:
+						{
+							toolUseResult: step.toolUseResult,
+						}),
 			},
 		);
 	}
 	return records;
 }
 
-function isArtifactResult(record: unknown): boolean {
+function isArtifactResult(record: unknown): boolean
+{
 	return JSON.stringify(record).includes('"tool_use_id":"art"');
 }
 
 /** Marks a turnRecords tool-result line as an error. */
-function withErrorResult(record: unknown): unknown {
-	const line = record as {message: {content: Record<string, unknown>[]}};
+function withErrorResult(record: unknown): unknown
+{
+	const line = record as
+	{
+		message:
+		{
+			content: Record<string, unknown>[];
+		};
+	};
 	return {
 		...line,
-		message: {...line.message, content: line.message.content.map((block) => ({...block, is_error: true}))},
+		message:
+		{
+			...line.message,
+			content: line.message.content.map((block) => (
+			{
+				...block,
+				is_error: true,
+			})),
+		},
 	};
 }
 
 /** A background command's completion notification, which upstream folds into the run before it. */
-const TASK_NOTICE = {
+const TASK_NOTICE =
+{
 	type: "user",
 	uuid: "n-task",
 	promptSource: "system",
 	turnOrigin: "task_notification",
-	message: {
+	message:
+	{
 		role: "user",
 		content: [
 			"<task-notification>",
@@ -444,19 +678,27 @@ const TASK_NOTICE = {
 };
 
 /** The same notification queued while the turn ran, which the CLI writes as a queued_command attachment. */
-const QUEUED_TASK_NOTICE = {
+const QUEUED_TASK_NOTICE =
+{
 	type: "attachment",
 	uuid: "n-queued",
-	attachment: {type: "queued_command", prompt: TASK_NOTICE.message.content, commandMode: "task-notification"},
+	attachment:
+	{
+		type: "queued_command",
+		prompt: TASK_NOTICE.message.content,
+		commandMode: "task-notification",
+	},
 };
 
 /** A background Agent's completion notification, which upstream draws as its own completion row, not folded. */
-const AGENT_COMPLETION_NOTICE = {
+const AGENT_COMPLETION_NOTICE =
+{
 	type: "user",
 	uuid: "n-agent",
 	promptSource: "system",
 	turnOrigin: "task_notification",
-	message: {
+	message:
+	{
 		role: "user",
 		content: [
 			"<task-notification>",
@@ -474,11 +716,13 @@ const HELLO2_LAST_TURN: TurnStep[] = [
 	{
 		tool: "Write",
 		id: "plan-write",
-		input: {
+		input:
+		{
 			file_path: "/Users/x/.claude/plans/this-is-a-test-glistening-pike.md",
 			content: "# Plan\n\nOne\nTwo\nThree\nFour",
 		},
-		toolUseResult: {
+		toolUseResult:
+		{
 			type: "update",
 			filePath: "/Users/x/.claude/plans/this-is-a-test-glistening-pike.md",
 			content: "# Plan\n\nOne\nTwo\nThree\nFour",
@@ -497,13 +741,18 @@ const HELLO2_LAST_TURN: TurnStep[] = [
 	{
 		tool: "ExitPlanMode",
 		id: "plan-exit",
-		input: {plan: "# Plan"},
+		input:
+		{
+			plan: "# Plan",
+		},
 		result: "Fabricated plan stopped",
 	},
 ];
 
-describe("collectTurnChanges", () => {
-	it("anchors each editing turn on its last assistant text and skips turns without edits", () => {
+describe("collectTurnChanges", () =>
+{
+	it("anchors each editing turn on its last assistant text and skips turns without edits", () =>
+	{
 		const {lines, toolResultMap} = processTranscript(EDIT_RECORDS, 0);
 		const changes = collectTurnChanges(lines, toolResultMap);
 
@@ -514,8 +763,18 @@ describe("collectTurnChanges", () => {
 					turnUuid: "u-1",
 					anchorLineIndex: 5,
 					files: [
-						{path: "/repo/src/cache.ts", added: 2, removed: 1, created: false},
-						{path: "/repo/src/index.ts", added: 1, removed: 0, created: false},
+						{
+							path: "/repo/src/cache.ts",
+							added: 2,
+							removed: 1,
+							created: false,
+						},
+						{
+							path: "/repo/src/index.ts",
+							added: 1,
+							removed: 0,
+							created: false,
+						},
 					],
 					added: 3,
 					removed: 1,
@@ -525,253 +784,481 @@ describe("collectTurnChanges", () => {
 		]);
 	});
 
-	const editA = (id: string): TurnStep => ({
+	const editA = (id: string): TurnStep => (
+	{
 		tool: "Edit",
 		id,
-		input: {file_path: "/repo/a.ts", old_string: "old", new_string: "new"},
+		input:
+		{
+			file_path: "/repo/a.ts",
+			old_string: "old",
+			new_string: "new",
+		},
 	});
-	const anchors = (steps: TurnStep[], options?: Parameters<typeof collectTurnChanges>[2]) => {
+	const anchors = (steps: TurnStep[], options?: Parameters<typeof collectTurnChanges>[2]) =>
+	{
 		const {lines, toolResultMap} = processTranscript(turnRecords(steps), 0);
-		return [...collectTurnChanges(lines, toolResultMap, options).values()].map((change) => ({
+		return [...collectTurnChanges(lines, toolResultMap, options).values()].map((change) => (
+		{
 			files: change.files.map((file) => file.path),
 			sole: change.soleVisibleEditToolRow,
 		}));
 	};
 
-	describe("header kind (upstream rX: the file's first call is a Write create)", () => {
-		const write = (id: string, path: string, type: "create" | "update"): TurnStep => ({
+	describe("header kind (upstream rX: the file's first call is a Write create)", () =>
+	{
+		const write = (id: string, path: string, type: "create" | "update"): TurnStep => (
+		{
 			tool: "Write",
 			id,
-			input: {file_path: path, content: "x"},
-			toolUseResult: {type, filePath: path, content: "x", structuredPatch: []},
+			input:
+			{
+				file_path: path,
+				content: "x",
+			},
+			toolUseResult:
+			{
+				type,
+				filePath: path,
+				content: "x",
+				structuredPatch: [],
+			},
 		});
-		const edit = (id: string, path: string): TurnStep => ({
+		const edit = (id: string, path: string): TurnStep => (
+		{
 			tool: "Edit",
 			id,
-			input: {file_path: path, old_string: "old", new_string: "new"},
+			input:
+			{
+				file_path: path,
+				old_string: "old",
+				new_string: "new",
+			},
 		});
-		const kinds = (steps: TurnStep[]) => {
+		const kinds = (steps: TurnStep[]) =>
+		{
 			const {lines, toolResultMap} = processTranscript(turnRecords(steps), 0);
-			return [...collectTurnChanges(lines, toolResultMap).values()].map((change) => ({
+			return [...collectTurnChanges(lines, toolResultMap).values()].map((change) => (
+			{
 				created: change.files.map((file) => [file.path, file.created]),
 				kind: turnChangesKind(change.files),
 			}));
 		};
 
-		it("reads two Write creates as created, a create and an Edit as changed, and two Edits as edited", () => {
-			expect({
-				created: kinds([write("w1", "/repo/a.ts", "create"), write("w2", "/repo/b.ts", "create")]),
-				changed: kinds([write("w1", "/repo/a.ts", "create"), edit("e1", "/repo/b.ts")]),
-				edited: kinds([edit("e1", "/repo/a.ts"), edit("e2", "/repo/b.ts")]),
-				firstCallOnly: kinds([
-					edit("e1", "/repo/a.ts"),
-					write("w1", "/repo/a.ts", "create"),
-					write("w2", "/repo/b.ts", "update"),
-				]),
-			}).toStrictEqual({
-				created: [
-					{
-						created: [
-							["/repo/a.ts", true],
-							["/repo/b.ts", true],
-						],
-						kind: "created",
-					},
-				],
-				changed: [
-					{
-						created: [
-							["/repo/a.ts", true],
-							["/repo/b.ts", false],
-						],
-						kind: "changed",
-					},
-				],
-				edited: [
-					{
-						created: [
-							["/repo/a.ts", false],
-							["/repo/b.ts", false],
-						],
-						kind: "edited",
-					},
-				],
-				firstCallOnly: [
-					{
-						created: [
-							["/repo/a.ts", false],
-							["/repo/b.ts", false],
-						],
-						kind: "edited",
-					},
-				],
-			});
+		it("reads two Write creates as created, a create and an Edit as changed, and two Edits as edited", () =>
+		{
+			expect(
+				{
+					created: kinds([write("w1", "/repo/a.ts", "create"), write("w2", "/repo/b.ts", "create")]),
+					changed: kinds([write("w1", "/repo/a.ts", "create"), edit("e1", "/repo/b.ts")]),
+					edited: kinds([edit("e1", "/repo/a.ts"), edit("e2", "/repo/b.ts")]),
+					firstCallOnly: kinds([
+						edit("e1", "/repo/a.ts"),
+						write("w1", "/repo/a.ts", "create"),
+						write("w2", "/repo/b.ts", "update"),
+					]),
+				},
+			).toStrictEqual(
+				{
+					created: [
+						{
+							created: [
+								["/repo/a.ts", true],
+								["/repo/b.ts", true],
+							],
+							kind: "created",
+						},
+					],
+					changed: [
+						{
+							created: [
+								["/repo/a.ts", true],
+								["/repo/b.ts", false],
+							],
+							kind: "changed",
+						},
+					],
+					edited: [
+						{
+							created: [
+								["/repo/a.ts", false],
+								["/repo/b.ts", false],
+							],
+							kind: "edited",
+						},
+					],
+					firstCallOnly: [
+						{
+							created: [
+								["/repo/a.ts", false],
+								["/repo/b.ts", false],
+							],
+							kind: "edited",
+						},
+					],
+				},
+			);
 		});
 	});
 
-	it("leaves out a turn whose only edit is one completed Write", () => {
+	it("leaves out a turn whose only edit is one completed Write", () =>
+	{
 		expect(
 			anchors([
 				{
 					tool: "Write",
 					id: "w",
-					input: {file_path: "/repo/a.ts", content: "x"},
+					input:
+					{
+						file_path: "/repo/a.ts",
+						content: "x",
+					},
 				},
 			]),
 		).toStrictEqual([]);
 	});
 
-	it("leaves out Hello2's last turn: a plan Write and a standalone ExitPlanMode", () => {
+	it("leaves out Hello2's last turn: a plan Write and a standalone ExitPlanMode", () =>
+	{
 		expect(anchors(HELLO2_LAST_TURN)).toStrictEqual([]);
 	});
 
-	it("leaves out two same-file Edits in one run, which upstream draws as one bare row", () => {
+	it("leaves out two same-file Edits in one run, which upstream draws as one bare row", () =>
+	{
 		expect(anchors([editA("e1"), editA("e2")])).toStrictEqual([]);
 	});
 
-	it("keeps the card for one file edited in two runs split by prose", () => {
-		expect(anchors([editA("e1"), {text: "Fabricated progress note"}, editA("e2")])).toStrictEqual([
-			{files: ["/repo/a.ts"], sole: false},
+	it("keeps the card for one file edited in two runs split by prose", () =>
+	{
+		expect(
+			anchors([
+				editA("e1"),
+				{
+					text: "Fabricated progress note",
+				},
+				editA("e2"),
+			]),
+		).toStrictEqual([
+			{
+				files: ["/repo/a.ts"],
+				sole: false,
+			},
 		]);
 	});
 
-	it("keeps the card when the edit's run is not bare", () => {
+	it("keeps the card when the edit's run is not bare", () =>
+	{
 		expect([
-			anchors([{tool: "Read", id: "r", input: {file_path: "/repo/a.ts"}}, editA("e1")]),
-			anchors([editA("e1"), {tool: "Bash", id: "b", input: {command: "ls"}}]),
-		]).toStrictEqual([[{files: ["/repo/a.ts"], sole: false}], [{files: ["/repo/a.ts"], sole: false}]]);
+			anchors([
+				{
+					tool: "Read",
+					id: "r",
+					input:
+					{
+						file_path: "/repo/a.ts",
+					},
+				},
+				editA("e1"),
+			]),
+			anchors([
+				editA("e1"),
+				{
+					tool: "Bash",
+					id: "b",
+					input:
+					{
+						command: "ls",
+					},
+				},
+			]),
+		]).toStrictEqual([
+			[
+				{
+					files: ["/repo/a.ts"],
+					sole: false,
+				},
+			],
+			[
+				{
+					files: ["/repo/a.ts"],
+					sole: false,
+				},
+			],
+		]);
 	});
 
-	it("keeps the card for two files", () => {
+	it("keeps the card for two files", () =>
+	{
 		expect(
 			anchors([
 				editA("e1"),
 				{
 					tool: "Write",
 					id: "w",
-					input: {file_path: "/repo/b.ts", content: "x"},
+					input:
+					{
+						file_path: "/repo/b.ts",
+						content: "x",
+					},
 				},
 			]),
-		).toStrictEqual([{files: ["/repo/a.ts", "/repo/b.ts"], sole: false}]);
+		).toStrictEqual([
+			{
+				files: ["/repo/a.ts", "/repo/b.ts"],
+				sole: false,
+			},
+		]);
 	});
 
-	it("keeps a sole bare edit's card with tools hidden, where no row carries the edit", () => {
+	it("keeps a sole bare edit's card with tools hidden, where no row carries the edit", () =>
+	{
 		expect(
 			anchors(
 				[
 					{
 						tool: "Write",
 						id: "w",
-						input: {file_path: "/repo/a.ts", content: "x"},
+						input:
+						{
+							file_path: "/repo/a.ts",
+							content: "x",
+						},
 					},
 				],
-				{showTools: false},
+				{
+					showTools: false,
+				},
 			),
-		).toStrictEqual([{files: ["/repo/a.ts"], sole: true}]);
+		).toStrictEqual([
+			{
+				files: ["/repo/a.ts"],
+				sole: true,
+			},
+		]);
 	});
 
-	describe("a turn that published an artifact (upstream oX artifactPage)", () => {
-		const writeA: TurnStep = {
+	describe("a turn that published an artifact (upstream oX artifactPage)", () =>
+	{
+		const writeA: TurnStep =
+		{
 			tool: "Write",
 			id: "w",
-			input: {file_path: "/repo/a.md", content: "x"},
+			input:
+			{
+				file_path: "/repo/a.md",
+				content: "x",
+			},
 		};
-		const artifact = (input: Record<string, unknown>, result?: string): TurnStep => ({
+		const artifact = (input: Record<string, unknown>, result?: string): TurnStep => (
+		{
 			tool: "Artifact",
 			id: "art",
 			input,
 			result: result ?? "Published https://claude.ai/code/artifact/0b5c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d",
 		});
 
-		it("keeps a sole bare edit's card", () => {
-			expect(anchors([writeA, artifact({file_path: "/repo/a.html"})])).toStrictEqual([
-				{files: ["/repo/a.md"], sole: true},
-			]);
-		});
-
-		it("drops the card when the artifact was only opened", () => {
+		it("keeps a sole bare edit's card", () =>
+		{
 			expect(
 				anchors([
 					writeA,
-					artifact({
-						action: "open",
-						url: "https://claude.ai/code/artifact/0b5c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d",
-					}),
+					artifact(
+						{
+							file_path: "/repo/a.html",
+						},
+					),
+				]),
+			).toStrictEqual([
+				{
+					files: ["/repo/a.md"],
+					sole: true,
+				},
+			]);
+		});
+
+		it("drops the card when the artifact was only opened", () =>
+		{
+			expect(
+				anchors([
+					writeA,
+					artifact(
+						{
+							action: "open",
+							url: "https://claude.ai/code/artifact/0b5c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d",
+						},
+					),
 				]),
 			).toStrictEqual([]);
 		});
 
-		it("drops the card when the publish failed", () => {
+		it("drops the card when the publish failed", () =>
+		{
 			const {lines, toolResultMap} = processTranscript(
-				turnRecords([writeA, artifact({file_path: "/repo/a.html"})]).map((record) =>
-					isArtifactResult(record) ? withErrorResult(record) : record,
-				),
+				turnRecords([
+					writeA,
+					artifact(
+						{
+							file_path: "/repo/a.html",
+						},
+					),
+				]).map((record) => (isArtifactResult(record) ? withErrorResult(record) : record)),
 				0,
 			);
 			expect([...collectTurnChanges(lines, toolResultMap).values()]).toStrictEqual([]);
 		});
 
-		it("drops the card when the output names no artifact", () => {
-			expect(anchors([writeA, artifact({file_path: "/repo/a.html"}, "Fabricated output")])).toStrictEqual([]);
+		it("drops the card when the output names no artifact", () =>
+		{
+			expect(
+				anchors([
+					writeA,
+					artifact(
+						{
+							file_path: "/repo/a.html",
+						},
+						"Fabricated output",
+					),
+				]),
+			).toStrictEqual([]);
 		});
 	});
 
-	describe("a sole edit run with a folded notice (upstream gN taskEvents/events)", () => {
-		it("keeps the card when a task notification folds into the edit's run", () => {
+	describe("a sole edit run with a folded notice (upstream gN taskEvents/events)", () =>
+	{
+		it("keeps the card when a task notification folds into the edit's run", () =>
+		{
 			const {lines, toolResultMap} = processTranscript(
-				[...turnRecords([editA("e1")]), TASK_NOTICE, ...turnRecords([{text: "ok"}], "n").slice(1)],
+				[
+					...turnRecords([editA("e1")]),
+					TASK_NOTICE,
+					...turnRecords(
+						[
+							{
+								text: "ok",
+							},
+						],
+						"n",
+					).slice(1),
+				],
 				0,
 			);
 			expect(
-				[...collectTurnChanges(lines, toolResultMap).values()].map((change) => ({
+				[...collectTurnChanges(lines, toolResultMap).values()].map((change) => (
+				{
 					turn: change.turnUuid,
 					files: change.files.map((file) => file.path),
 					sole: change.soleVisibleEditToolRow,
 				})),
-			).toStrictEqual([{turn: "t-u", files: ["/repo/a.ts"], sole: false}]);
+			).toStrictEqual([
+				{
+					turn: "t-u",
+					files: ["/repo/a.ts"],
+					sole: false,
+				},
+			]);
 		});
 
-		it("keeps the card when the notification arrives as a queued_command attachment", () => {
+		it("keeps the card when the notification arrives as a queued_command attachment", () =>
+		{
 			const {lines, toolResultMap} = processTranscript(
-				[...turnRecords([editA("e1")]), QUEUED_TASK_NOTICE, ...turnRecords([{text: "ok"}], "n").slice(1)],
+				[
+					...turnRecords([editA("e1")]),
+					QUEUED_TASK_NOTICE,
+					...turnRecords(
+						[
+							{
+								text: "ok",
+							},
+						],
+						"n",
+					).slice(1),
+				],
 				0,
 			);
 			expect(
-				[...collectTurnChanges(lines, toolResultMap).values()].map((change) => ({
+				[...collectTurnChanges(lines, toolResultMap).values()].map((change) => (
+				{
 					turn: change.turnUuid,
 					files: change.files.map((file) => file.path),
 					sole: change.soleVisibleEditToolRow,
 				})),
-			).toStrictEqual([{turn: "t-u", files: ["/repo/a.ts"], sole: false}]);
+			).toStrictEqual([
+				{
+					turn: "t-u",
+					files: ["/repo/a.ts"],
+					sole: false,
+				},
+			]);
 		});
 
-		it("drops the card in Verbose, which draws the notification as its own row and the edit bare", () => {
+		it("drops the card in Verbose, which draws the notification as its own row and the edit bare", () =>
+		{
 			const {lines, toolResultMap} = processTranscript(
 				[
 					...turnRecords([editA("e1")]),
 					TASK_NOTICE,
 					QUEUED_TASK_NOTICE,
-					...turnRecords([{text: "ok"}], "n").slice(1),
+					...turnRecords(
+						[
+							{
+								text: "ok",
+							},
+						],
+						"n",
+					).slice(1),
 				],
 				0,
 			);
-			expect([...collectTurnChanges(lines, toolResultMap, {verbose: true}).values()]).toStrictEqual([]);
+			expect([
+				...collectTurnChanges(
+					lines,
+					toolResultMap,
+					{
+						verbose: true,
+					},
+				).values(),
+			]).toStrictEqual([]);
 		});
 
-		it("drops the card when an agent-completion notification follows the sole edit, which draws its own row", () => {
+		it("drops the card when an agent-completion notification follows the sole edit, which draws its own row", () =>
+		{
 			const {lines, toolResultMap} = processTranscript(
-				[...turnRecords([editA("e1")]), AGENT_COMPLETION_NOTICE, ...turnRecords([{text: "ok"}], "n").slice(1)],
+				[
+					...turnRecords([editA("e1")]),
+					AGENT_COMPLETION_NOTICE,
+					...turnRecords(
+						[
+							{
+								text: "ok",
+							},
+						],
+						"n",
+					).slice(1),
+				],
 				0,
 			);
 			expect([...collectTurnChanges(lines, toolResultMap).values()]).toStrictEqual([]);
 		});
 
-		it("still drops the card when prose comes between the edit and the notification", () => {
+		it("still drops the card when prose comes between the edit and the notification", () =>
+		{
 			const {lines, toolResultMap} = processTranscript(
 				[
-					...turnRecords([editA("e1"), {text: "Fabricated progress note"}]),
+					...turnRecords([
+						editA("e1"),
+						{
+							text: "Fabricated progress note",
+						},
+					]),
 					TASK_NOTICE,
-					...turnRecords([{text: "ok"}], "n").slice(1),
+					...turnRecords(
+						[
+							{
+								text: "ok",
+							},
+						],
+						"n",
+					).slice(1),
 				],
 				0,
 			);
@@ -779,29 +1266,73 @@ describe("collectTurnChanges", () => {
 		});
 	});
 
-	it("leaves out a turn that is still in progress, but not earlier finished turns", () => {
-		const steps: TurnStep[] = [editA("e1"), {tool: "Bash", id: "b", input: {command: "ls"}}];
+	it("leaves out a turn that is still in progress, but not earlier finished turns", () =>
+	{
+		const steps: TurnStep[] = [
+			editA("e1"),
+			{
+				tool: "Bash",
+				id: "b",
+				input:
+				{
+					command: "ls",
+				},
+			},
+		];
 		const {lines, toolResultMap} = processTranscript([...turnRecords(steps, "t1"), ...turnRecords(steps, "t2")], 0);
 		const turns = (turnInProgress: boolean) =>
 			[
-				...collectTurnChanges(lines, toolResultMap, {
-					turnInProgress,
-				}).values(),
+				...collectTurnChanges(
+					lines,
+					toolResultMap,
+					{
+						turnInProgress,
+					},
+				).values(),
 			].map((change) => change.turnUuid);
-		expect({finished: turns(false), inProgress: turns(true)}).toStrictEqual({
-			finished: ["t1-u", "t2-u"],
-			inProgress: ["t1-u"],
-		});
+		expect(
+			{
+				finished: turns(false),
+				inProgress: turns(true),
+			},
+		).toStrictEqual(
+			{
+				finished: ["t1-u", "t2-u"],
+				inProgress: ["t1-u"],
+			},
+		);
 	});
 });
 
-describe("SessionChat end-of-turn card", () => {
-	it("draws no card for a turn whose only tools are two Edits of one file, drawn as one row with the summed stats", () => {
+describe("SessionChat end-of-turn card", () =>
+{
+	it("draws no card for a turn whose only tools are two Edits of one file, drawn as one row with the summed stats", () =>
+	{
 		const {lines, toolResultMap} = processTranscript(
 			turnRecords([
-				{tool: "Edit", id: "e1", input: {file_path: "/repo/a.ts", old_string: "a", new_string: "b\nc"}},
-				{tool: "Edit", id: "e2", input: {file_path: "/repo/a.ts", old_string: "d", new_string: "e\nf\ng"}},
-				{text: "done"},
+				{
+					tool: "Edit",
+					id: "e1",
+					input:
+					{
+						file_path: "/repo/a.ts",
+						old_string: "a",
+						new_string: "b\nc",
+					},
+				},
+				{
+					tool: "Edit",
+					id: "e2",
+					input:
+					{
+						file_path: "/repo/a.ts",
+						old_string: "d",
+						new_string: "e\nf\ng",
+					},
+				},
+				{
+					text: "done",
+				},
 			]),
 			0,
 		);
@@ -815,15 +1346,23 @@ describe("SessionChat end-of-turn card", () => {
 				/>
 			</SettingsProvider>,
 		);
-		expect({
-			cards: container.querySelectorAll("[data-turn-changes-card]").length,
-			rows: [...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button')].map(
-				(row) => row.textContent,
-			),
-		}).toStrictEqual({cards: 0, rows: ["Editeda.ts+5−25 added, 2 removed"]});
+		expect(
+			{
+				cards: container.querySelectorAll("[data-turn-changes-card]").length,
+				rows: [
+					...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button'),
+				].map((row) => row.textContent),
+			},
+		).toStrictEqual(
+			{
+				cards: 0,
+				rows: ["Editeda.ts+5−25 added, 2 removed"],
+			},
+		);
 	});
 
-	it("draws no card for Hello2's last turn, whose plan Write is a sole bare edit row", () => {
+	it("draws no card for Hello2's last turn, whose plan Write is a sole bare edit row", () =>
+	{
 		const {lines, toolResultMap} = processTranscript(turnRecords(HELLO2_LAST_TURN), 0);
 		const {container} = render(
 			<SettingsProvider>
@@ -838,18 +1377,31 @@ describe("SessionChat end-of-turn card", () => {
 		expect(container.querySelectorAll("[data-turn-changes-card]").length).toBe(0);
 	});
 
-	it("draws one card when a task notification folds into a sole edit's run, which then is a summary row", () => {
+	it("draws one card when a task notification folds into a sole edit's run, which then is a summary row", () =>
+	{
 		const {lines, toolResultMap} = processTranscript(
 			[
 				...turnRecords([
 					{
 						tool: "Edit",
 						id: "e1",
-						input: {file_path: "/repo/a.ts", old_string: "old", new_string: "new"},
+						input:
+						{
+							file_path: "/repo/a.ts",
+							old_string: "old",
+							new_string: "new",
+						},
 					},
 				]),
 				TASK_NOTICE,
-				...turnRecords([{text: "ok"}], "n").slice(1),
+				...turnRecords(
+					[
+						{
+							text: "ok",
+						},
+					],
+					"n",
+				).slice(1),
 			],
 			0,
 		);
@@ -863,26 +1415,46 @@ describe("SessionChat end-of-turn card", () => {
 				/>
 			</SettingsProvider>,
 		);
-		expect({
-			cards: container.querySelectorAll("[data-turn-changes-card]").length,
-			rows: [...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button')].map(
-				(row) => row.textContent,
-			),
-		}).toStrictEqual({cards: 1, rows: ["Edited a.ts, finished a background command+1−11 added, 1 removed"]});
+		expect(
+			{
+				cards: container.querySelectorAll("[data-turn-changes-card]").length,
+				rows: [
+					...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button'),
+				].map((row) => row.textContent),
+			},
+		).toStrictEqual(
+			{
+				cards: 1,
+				rows: ["Edited a.ts, finished a background command+1−11 added, 1 removed"],
+			},
+		);
 	});
 
-	it("draws no card when an agent-completion notification follows the sole edit, which stays a bare row", () => {
+	it("draws no card when an agent-completion notification follows the sole edit, which stays a bare row", () =>
+	{
 		const {lines, toolResultMap} = processTranscript(
 			[
 				...turnRecords([
 					{
 						tool: "Edit",
 						id: "e1",
-						input: {file_path: "/repo/a.ts", old_string: "old", new_string: "new"},
+						input:
+						{
+							file_path: "/repo/a.ts",
+							old_string: "old",
+							new_string: "new",
+						},
 					},
 				]),
 				AGENT_COMPLETION_NOTICE,
-				...turnRecords([{text: "ok"}], "n").slice(1),
+				...turnRecords(
+					[
+						{
+							text: "ok",
+						},
+					],
+					"n",
+				).slice(1),
 			],
 			0,
 		);
@@ -896,26 +1468,46 @@ describe("SessionChat end-of-turn card", () => {
 				/>
 			</SettingsProvider>,
 		);
-		expect({
-			cards: container.querySelectorAll("[data-turn-changes-card]").length,
-			rows: [...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button')].map(
-				(row) => row.textContent,
-			),
-		}).toStrictEqual({cards: 0, rows: ["Editeda.ts+1−11 added, 1 removed"]});
+		expect(
+			{
+				cards: container.querySelectorAll("[data-turn-changes-card]").length,
+				rows: [
+					...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button'),
+				].map((row) => row.textContent),
+			},
+		).toStrictEqual(
+			{
+				cards: 0,
+				rows: ["Editeda.ts+1−11 added, 1 removed"],
+			},
+		);
 	});
 
-	it("draws no card in Verbose, where the notification is its own row and the sole edit stays bare", () => {
+	it("draws no card in Verbose, where the notification is its own row and the sole edit stays bare", () =>
+	{
 		const {lines, toolResultMap} = processTranscript(
 			[
 				...turnRecords([
 					{
 						tool: "Edit",
 						id: "e1",
-						input: {file_path: "/repo/a.ts", old_string: "old", new_string: "new"},
+						input:
+						{
+							file_path: "/repo/a.ts",
+							old_string: "old",
+							new_string: "new",
+						},
 					},
 				]),
 				TASK_NOTICE,
-				...turnRecords([{text: "ok"}], "n").slice(1),
+				...turnRecords(
+					[
+						{
+							text: "ok",
+						},
+					],
+					"n",
+				).slice(1),
 			],
 			0,
 		);
@@ -933,7 +1525,8 @@ describe("SessionChat end-of-turn card", () => {
 		expect(container.querySelectorAll("[data-turn-changes-card]").length).toBe(0);
 	});
 
-	it("still shows Hello2's +4 −4 on the turn's row after the card is dropped", () => {
+	it("still shows Hello2's +4 −4 on the turn's row after the card is dropped", () =>
+	{
 		const {lines, toolResultMap} = processTranscript(turnRecords(HELLO2_LAST_TURN), 0);
 		const {container} = render(
 			<SettingsProvider>
@@ -950,14 +1543,16 @@ describe("SessionChat end-of-turn card", () => {
 		]);
 	});
 
-	it("offers Undo only on the last turn's card, and on none when the session is archived", () => {
+	it("offers Undo only on the last turn's card, and on none when the session is archived", () =>
+	{
 		const turn = (prefix: string): unknown[] =>
 			turnRecords(
 				[
 					{
 						tool: "Edit",
 						id: `${prefix}-e1`,
-						input: {
+						input:
+						{
 							file_path: "/repo/a.ts",
 							old_string: "a",
 							new_string: "b",
@@ -966,7 +1561,8 @@ describe("SessionChat end-of-turn card", () => {
 					{
 						tool: "Edit",
 						id: `${prefix}-e2`,
-						input: {
+						input:
+						{
 							file_path: "/repo/b.ts",
 							old_string: "a",
 							new_string: "b",
@@ -976,7 +1572,8 @@ describe("SessionChat end-of-turn card", () => {
 				prefix,
 			);
 		const {lines, toolResultMap} = processTranscript([...turn("t1"), ...turn("t2")], 0);
-		const undoByCard = (archived: boolean) => {
+		const undoByCard = (archived: boolean) =>
+		{
 			const {container, unmount} = render(
 				<SettingsProvider>
 					<SessionChat
@@ -989,21 +1586,32 @@ describe("SessionChat end-of-turn card", () => {
 				</SettingsProvider>,
 			);
 			const result = [...container.querySelectorAll<HTMLElement>("[data-turn-changes-card]")].map(
-				(card) => within(card).queryByRole("button", {name: "Undo"}) !== null,
+				(card) =>
+					within(card).queryByRole(
+						"button",
+						{
+							name: "Undo",
+						},
+					) !== null,
 			);
 			unmount();
 			return result;
 		};
-		expect({
-			live: undoByCard(false),
-			archived: undoByCard(true),
-		}).toStrictEqual({
-			live: [false, true],
-			archived: [false, false],
-		});
+		expect(
+			{
+				live: undoByCard(false),
+				archived: undoByCard(true),
+			},
+		).toStrictEqual(
+			{
+				live: [false, true],
+				archived: [false, false],
+			},
+		);
 	});
 
-	it("renders the card inside the turn's final text entry", () => {
+	it("renders the card inside the turn's final text entry", () =>
+	{
 		const {lines, toolResultMap} = processTranscript(EDIT_RECORDS, 0);
 		const {container} = render(
 			<SettingsProvider>
@@ -1016,7 +1624,8 @@ describe("SessionChat end-of-turn card", () => {
 			</SettingsProvider>,
 		);
 
-		const cards = [...container.querySelectorAll("[data-turn-changes-card]")].map((card) => ({
+		const cards = [...container.querySelectorAll("[data-turn-changes-card]")].map((card) => (
+		{
 			entry: card.closest("[data-record-index]")?.getAttribute("data-record-index"),
 			text: card.textContent,
 		}));
@@ -1029,13 +1638,20 @@ describe("SessionChat end-of-turn card", () => {
 	});
 });
 
-function changesWith(fileCount: number): TurnChanges {
-	const files = Array.from({length: fileCount}, (_, index) => ({
-		path: `/repo/src/file-${index + 1}.ts`,
-		added: index + 1,
-		removed: 1,
-		created: false,
-	}));
+function changesWith(fileCount: number): TurnChanges
+{
+	const files = Array.from(
+		{
+			length: fileCount,
+		},
+		(_, index) => (
+		{
+			path: `/repo/src/file-${index + 1}.ts`,
+			added: index + 1,
+			removed: 1,
+			created: false,
+		}),
+	);
 	return {
 		turnUuid: "u-1",
 		anchorLineIndex: 5,
@@ -1046,49 +1662,89 @@ function changesWith(fileCount: number): TurnChanges {
 	};
 }
 
-function fileRowNames(): string[] {
+function fileRowNames(): string[]
+{
 	return screen.getAllByRole("link").map((link) => link.textContent);
 }
 
-function fileRowTexts(): string[] {
+function fileRowTexts(): string[]
+{
 	return screen.getAllByRole("link").map((link) => link.closest("li")?.textContent ?? "");
 }
 
-describe("TurnChangesCard", () => {
-	it("shows three rows, then a See all toggle that opens the Changes pane and expands, and Show less collapses", () => {
+describe("TurnChangesCard", () =>
+{
+	it("shows three rows, then a See all toggle that opens the Changes pane and expands, and Show less collapses", () =>
+	{
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-			DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+			DOMRect.fromRect(
+				{
+					x: 0,
+					y: 0,
+					width: 1200,
+					height: 800,
+				},
+			),
 		);
-		const unregister = registerPane("changes", {
-			title: "Changes",
-			render: () => <div data-testid="changes-pane">Changes pane</div>,
-		});
+		const unregister = registerPane(
+			"changes",
+			{
+				title: "Changes",
+				render: () => <div data-testid="changes-pane">Changes pane</div>,
+			},
+		);
 		const requests: unknown[] = [];
 		const listener = (event: Event) => requests.push((event as CustomEvent).detail);
 		window.addEventListener(CHANGES_SCOPE_REQUEST_EVENT, listener);
-		const changes = {...changesWith(5), turnUuid: "u-toggle"};
+		const changes =
+		{
+			...changesWith(5),
+			turnUuid: "u-toggle",
+		};
 		const tree = (
 			<SettingsProvider>
-				<TileHost sessionId="toggle-session" onExpandWithoutPane={() => {}}>
+				<TileHost
+					sessionId="toggle-session"
+					onExpandWithoutPane={() =>
+					{
+					}}
+				>
 					<TurnChangesCard sessionId="toggle-session" changes={changes} undoable />
 				</TileHost>
 			</SettingsProvider>
 		);
-		try {
+		try
+		{
 			const {unmount} = render(tree);
 			const items = () =>
-				within(screen.getByRole("list", {name: "Edited 5 files"}))
+				within(
+					screen.getByRole(
+						"list",
+						{
+							name: "Edited 5 files",
+						},
+					),
+				)
 					.getAllByRole("listitem")
 					.map((item) => item.textContent);
-			const toggle = () => screen.getByRole("button", {name: /^(See all|Show less)/});
-			const before = {
+			const toggle = () =>
+				screen.getByRole(
+					"button",
+					{
+						name: /^(See all|Show less)/,
+					},
+				);
+			const before =
+			{
 				items: items(),
 				expanded: toggle().getAttribute("aria-expanded"),
 			};
-			act(() => {
+			act(() =>
+			{
 				fireEvent.click(toggle());
 			});
-			const afterOpen = {
+			const afterOpen =
+			{
 				items: items(),
 				expanded: toggle().getAttribute("aria-expanded"),
 				opened: screen.queryByTestId("changes-pane")?.textContent,
@@ -1097,31 +1753,55 @@ describe("TurnChangesCard", () => {
 			unmount();
 			render(tree);
 			const remounted = items();
-			act(() => {
+			act(() =>
+			{
 				fireEvent.click(toggle());
 			});
 
-			expect({
-				before,
-				afterOpen,
-				remounted,
-				afterCollapse: {
-					items: items(),
-					expanded: toggle().getAttribute("aria-expanded"),
-					requests,
+			expect(
+				{
+					before,
+					afterOpen,
+					remounted,
+					afterCollapse:
+					{
+						items: items(),
+						expanded: toggle().getAttribute("aria-expanded"),
+						requests,
+					},
 				},
-			}).toStrictEqual({
-				before: {
-					items: [
-						"file-1.ts1 addition, 1 deletion+1\u22121",
-						"file-2.ts2 additions, 1 deletion+2\u22121",
-						"file-3.ts3 additions, 1 deletion+3\u22121",
-						"See all15 additions, 5 deletions+15\u22125",
-					],
-					expanded: "false",
-				},
-				afterOpen: {
-					items: [
+			).toStrictEqual(
+				{
+					before:
+					{
+						items: [
+							"file-1.ts1 addition, 1 deletion+1\u22121",
+							"file-2.ts2 additions, 1 deletion+2\u22121",
+							"file-3.ts3 additions, 1 deletion+3\u22121",
+							"See all15 additions, 5 deletions+15\u22125",
+						],
+						expanded: "false",
+					},
+					afterOpen:
+					{
+						items: [
+							"file-1.ts1 addition, 1 deletion+1\u22121",
+							"file-2.ts2 additions, 1 deletion+2\u22121",
+							"file-3.ts3 additions, 1 deletion+3\u22121",
+							"file-4.ts4 additions, 1 deletion+4\u22121",
+							"file-5.ts5 additions, 1 deletion+5\u22121",
+							"Show less15 additions, 5 deletions+15\u22125",
+						],
+						expanded: "true",
+						opened: "Changes pane",
+						requests: [
+							{
+								sessionId: "toggle-session",
+								scope: "turn:u-toggle",
+							},
+						],
+					},
+					remounted: [
 						"file-1.ts1 addition, 1 deletion+1\u22121",
 						"file-2.ts2 additions, 1 deletion+2\u22121",
 						"file-3.ts3 additions, 1 deletion+3\u22121",
@@ -1129,73 +1809,91 @@ describe("TurnChangesCard", () => {
 						"file-5.ts5 additions, 1 deletion+5\u22121",
 						"Show less15 additions, 5 deletions+15\u22125",
 					],
-					expanded: "true",
-					opened: "Changes pane",
-					requests: [{sessionId: "toggle-session", scope: "turn:u-toggle"}],
+					afterCollapse:
+					{
+						items: [
+							"file-1.ts1 addition, 1 deletion+1\u22121",
+							"file-2.ts2 additions, 1 deletion+2\u22121",
+							"file-3.ts3 additions, 1 deletion+3\u22121",
+							"See all15 additions, 5 deletions+15\u22125",
+						],
+						expanded: "false",
+						requests: [
+							{
+								sessionId: "toggle-session",
+								scope: "turn:u-toggle",
+							},
+						],
+					},
 				},
-				remounted: [
-					"file-1.ts1 addition, 1 deletion+1\u22121",
-					"file-2.ts2 additions, 1 deletion+2\u22121",
-					"file-3.ts3 additions, 1 deletion+3\u22121",
-					"file-4.ts4 additions, 1 deletion+4\u22121",
-					"file-5.ts5 additions, 1 deletion+5\u22121",
-					"Show less15 additions, 5 deletions+15\u22125",
-				],
-				afterCollapse: {
-					items: [
-						"file-1.ts1 addition, 1 deletion+1\u22121",
-						"file-2.ts2 additions, 1 deletion+2\u22121",
-						"file-3.ts3 additions, 1 deletion+3\u22121",
-						"See all15 additions, 5 deletions+15\u22125",
-					],
-					expanded: "false",
-					requests: [{sessionId: "toggle-session", scope: "turn:u-toggle"}],
-				},
-			});
-		} finally {
+			);
+		}
+		finally
+		{
 			window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, listener);
 			unregister();
 		}
 	});
 
-	it("keeps the closing See all a plain row, with no toggle, at three files", () => {
+	it("keeps the closing See all a plain row, with no toggle, at three files", () =>
+	{
 		render(<TurnChangesCard sessionId="test-session" changes={changesWith(3)} undoable />);
 
-		expect({
-			rows: fileRowTexts(),
-			toggles: screen.queryAllByRole("button", {expanded: false}).length,
-		}).toStrictEqual({
-			rows: [
-				"file-1.ts1 addition, 1 deletion+1\u22121",
-				"file-2.ts2 additions, 1 deletion+2\u22121",
-				"file-3.ts3 additions, 1 deletion+3\u22121",
-			],
-			toggles: 0,
-		});
+		expect(
+			{
+				rows: fileRowTexts(),
+				toggles: screen.queryAllByRole(
+					"button",
+					{
+						expanded: false,
+					},
+				).length,
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					"file-1.ts1 addition, 1 deletion+1\u22121",
+					"file-2.ts2 additions, 1 deletion+2\u22121",
+					"file-3.ts3 additions, 1 deletion+3\u22121",
+				],
+				toggles: 0,
+			},
+		);
 	});
 
-	it("draws a single file as upstream's outlined card with no header: the row, then Undo and the stats", () => {
+	it("draws a single file as upstream's outlined card with no header: the row, then Undo and the stats", () =>
+	{
 		render(<TurnChangesCard sessionId="test-session" changes={changesWith(1)} undoable />);
-		expect({
-			header: screen.queryByText(/^Edited/),
-			list: screen.getByRole("list").getAttribute("aria-label"),
-			rows: screen.getAllByRole("listitem").map((item) => item.textContent),
-			links: fileRowNames(),
-			more: screen.queryByRole("button", {name: /Show \d+ more/}),
-			icons: Array.from(screen.getByRole("listitem").querySelectorAll("svg"), (icon) =>
-				icon.getAttribute("class"),
-			),
-		}).toStrictEqual({
-			header: null,
-			list: "Edited a file",
-			rows: ["file-1.tsUndo1 addition, 1 deletion+1\u22121"],
-			links: ["file-1.ts"],
-			more: null,
-			icons: ["lucide lucide-code-xml shrink-0"],
-		});
+		expect(
+			{
+				header: screen.queryByText(/^Edited/),
+				list: screen.getByRole("list").getAttribute("aria-label"),
+				rows: screen.getAllByRole("listitem").map((item) => item.textContent),
+				links: fileRowNames(),
+				more: screen.queryByRole(
+					"button",
+					{
+						name: /Show \d+ more/,
+					},
+				),
+				icons: Array.from(screen.getByRole("listitem").querySelectorAll("svg"), (icon) =>
+					icon.getAttribute("class"),
+				),
+			},
+		).toStrictEqual(
+			{
+				header: null,
+				list: "Edited a file",
+				rows: ["file-1.tsUndo1 addition, 1 deletion+1\u22121"],
+				links: ["file-1.ts"],
+				more: null,
+				icons: ["lucide lucide-code-xml shrink-0"],
+			},
+		);
 	});
 
-	it("builds both card forms from upstream's shell, row and trailing classes", () => {
+	it("builds both card forms from upstream's shell, row and trailing classes", () =>
+	{
 		const CARD = [
 			"mt-1",
 			"flex",
@@ -1226,7 +1924,8 @@ describe("TurnChangesCard", () => {
 			"focus-visible:outline-hidden",
 		];
 		const TRAILING = ["pointer-events-none", "relative", "flex", "shrink-0", "items-center", "gap-1"];
-		const shape = (files: number) => {
+		const shape = (files: number) =>
+		{
 			const {container, unmount} = render(
 				<TurnChangesCard sessionId="test-session" changes={changesWith(files)} undoable />,
 			);
@@ -1234,7 +1933,8 @@ describe("TurnChangesCard", () => {
 			const [item] = within(card).getAllByRole("listitem");
 			const control = within(item!).getByRole("link");
 			const trailing = item!.lastElementChild!;
-			const result = {
+			const result =
+			{
 				card: card.className.split(" "),
 				item: item!.className.split(" "),
 				control: control.className.split(" "),
@@ -1246,70 +1946,108 @@ describe("TurnChangesCard", () => {
 			return result;
 		};
 
-		expect({single: shape(1), multi: shape(2)}).toStrictEqual({
-			single: {
-				card: CARD,
-				item: ITEM,
-				control: CONTROL,
-				trailing: TRAILING,
-				trailingParts: [
-					["pointer-events-auto flex items-center gap-1", "Undo"],
-					["flex items-center gap-2.5", "1 addition, 1 deletion+1\u22121"],
-				],
-				chevrons: 0,
+		expect(
+			{
+				single: shape(1),
+				multi: shape(2),
 			},
-			multi: {
-				card: CARD,
-				item: ITEM,
-				control: CONTROL,
-				trailing: TRAILING,
-				trailingParts: [["flex items-center gap-2.5", "1 addition, 1 deletion+1\u22121"]],
-				chevrons: 0,
+		).toStrictEqual(
+			{
+				single:
+				{
+					card: CARD,
+					item: ITEM,
+					control: CONTROL,
+					trailing: TRAILING,
+					trailingParts: [
+						["pointer-events-auto flex items-center gap-1", "Undo"],
+						["flex items-center gap-2.5", "1 addition, 1 deletion+1\u22121"],
+					],
+					chevrons: 0,
+				},
+				multi:
+				{
+					card: CARD,
+					item: ITEM,
+					control: CONTROL,
+					trailing: TRAILING,
+					trailingParts: [["flex items-center gap-2.5", "1 addition, 1 deletion+1\u22121"]],
+					chevrons: 0,
+				},
 			},
-		});
+		);
 	});
 
-	it('tooltips the single-file row "View this turn\'s changes" inside a pane host, as upstream', () => {
+	it('tooltips the single-file row "View this turn\'s changes" inside a pane host, as upstream', () =>
+	{
 		vi.useFakeTimers();
-		try {
+		try
+		{
 			render(
 				<SettingsProvider>
-					<TileHost sessionId="turn-card-tooltip" onExpandWithoutPane={() => {}}>
+					<TileHost
+						sessionId="turn-card-tooltip"
+						onExpandWithoutPane={() =>
+						{
+						}}
+					>
 						<TurnChangesCard sessionId="turn-card-tooltip" changes={changesWith(1)} undoable />
 					</TileHost>
 				</SettingsProvider>,
 			);
-			const row = screen.getByRole("button", {name: /^file-1\.ts/});
+			const row = screen.getByRole(
+				"button",
+				{
+					name: /^file-1\.ts/,
+				},
+			);
 			fireEvent.pointerEnter(row.parentElement!);
-			act(() => {
+			act(() =>
+			{
 				vi.advanceTimersByTime(400);
 			});
-			expect({
-				tooltip: screen.queryByRole("tooltip")?.textContent,
-				title: row.getAttribute("title"),
-			}).toStrictEqual({
-				tooltip: "View this turn's changes",
-				title: null,
-			});
-		} finally {
+			expect(
+				{
+					tooltip: screen.queryByRole("tooltip")?.textContent,
+					title: row.getAttribute("title"),
+				},
+			).toStrictEqual(
+				{
+					tooltip: "View this turn's changes",
+					title: null,
+				},
+			);
+		}
+		finally
+		{
 			vi.useRealTimers();
 		}
 	});
 
-	it("uses upstream's U+2212 minus in the row stats and the closing See all totals", () => {
+	it("uses upstream's U+2212 minus in the row stats and the closing See all totals", () =>
+	{
 		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		expect(container.querySelector("[data-turn-changes-card]")?.textContent).toBe(
 			"Edited 2 filesUndofile-1.ts1 addition, 1 deletion+1\u22121file-2.ts2 additions, 1 deletion+2\u22121See all3 additions, 2 deletions+3\u22122",
 		);
 	});
 
-	it("groups the stat digits and the sr counts (upstream formatNumber)", () => {
+	it("groups the stat digits and the sr counts (upstream formatNumber)", () =>
+	{
 		const {container} = render(
 			<TurnChangesCard
 				sessionId="test-session"
 				changes={changesOf([
-					{path: "/repo/a.ts", added: 1234, removed: 5},
-					{path: "/repo/b.ts", added: 1, removed: 0},
+					{
+						path: "/repo/a.ts",
+						added: 1234,
+						removed: 5,
+					},
+					{
+						path: "/repo/b.ts",
+						added: 1,
+						removed: 0,
+					},
 				])}
 				undoable={false}
 			/>,
@@ -1319,63 +2057,98 @@ describe("TurnChangesCard", () => {
 		);
 	});
 
-	it("draws upstream's summary card: 13/19 text on the card, 16px icons and body-size git stats", () => {
+	it("draws upstream's summary card: 13/19 text on the card, 16px icons and body-size git stats", () =>
+	{
 		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
 		const [item] = screen.getAllByRole("listitem");
 
-		expect({
-			card: card.classList.contains("text-[13px]/[19px]"),
-			title: screen.getByText("Edited 2 files").className,
-			icon: item?.querySelector("svg")?.getAttribute("class"),
-			iconSize: [item?.querySelector("svg")?.style.width, item?.querySelector("svg")?.style.height],
-			name: within(item!).getByText("file-1.ts").className,
-			stats: within(item!).getByText("+1").parentElement?.parentElement?.className,
-			statColors: Array.from(within(item!).getByText("+1").parentElement!.children, (glyph) => glyph.className),
-			seeAll: within(card).getByText("See all").className,
-			seeAllStats: within(card).getByText("+3").parentElement?.parentElement?.className,
-		}).toStrictEqual({
-			card: true,
-			title: "min-w-0 truncate text-primary",
-			icon: "lucide lucide-code-xml shrink-0",
-			iconSize: ["16px", "16px"],
-			name: "min-w-0 truncate text-primary",
-			stats: "tabular-nums flex shrink-0 items-center gap-0.5 text-body",
-			statColors: ["text-git-added", "text-git-removed"],
-			seeAll: "min-w-0 truncate text-primary",
-			seeAllStats: "tabular-nums flex shrink-0 items-center gap-0.5",
-		});
+		expect(
+			{
+				card: card.classList.contains("text-[13px]/[19px]"),
+				title: screen.getByText("Edited 2 files").className,
+				icon: item?.querySelector("svg")?.getAttribute("class"),
+				iconSize: [item?.querySelector("svg")?.style.width, item?.querySelector("svg")?.style.height],
+				name: within(item!).getByText("file-1.ts").className,
+				stats: within(item!).getByText("+1").parentElement?.parentElement?.className,
+				statColors: Array.from(
+					within(item!).getByText("+1").parentElement!.children,
+					(glyph) => glyph.className,
+				),
+				seeAll: within(card).getByText("See all").className,
+				seeAllStats: within(card).getByText("+3").parentElement?.parentElement?.className,
+			},
+		).toStrictEqual(
+			{
+				card: true,
+				title: "min-w-0 truncate text-primary",
+				icon: "lucide lucide-code-xml shrink-0",
+				iconSize: ["16px", "16px"],
+				name: "min-w-0 truncate text-primary",
+				stats: "tabular-nums flex shrink-0 items-center gap-0.5 text-body",
+				statColors: ["text-git-added", "text-git-removed"],
+				seeAll: "min-w-0 truncate text-primary",
+				seeAllStats: "tabular-nums flex shrink-0 items-center gap-0.5",
+			},
+		);
 	});
 
-	it("draws each multi-file row's own 16px monochrome glyph, never a coloured icon or the generic FileText", () => {
+	it("draws each multi-file row's own 16px monochrome glyph, never a coloured icon or the generic FileText", () =>
+	{
 		localStorage.setItem("ccp-code-theme-light", "github-light");
 		const changes = changesWith(2);
 		changes.files = [
-			{path: "/repo/package.json", added: 1, removed: 1, created: false},
-			{path: "/repo/README.md", added: 2, removed: 1, created: false},
+			{
+				path: "/repo/package.json",
+				added: 1,
+				removed: 1,
+				created: false,
+			},
+			{
+				path: "/repo/README.md",
+				added: 2,
+				removed: 1,
+				created: false,
+			},
 		];
 		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changes} undoable />);
-		expect({
-			rows: screen.getAllByRole("link").map((link) => {
-				const icon = link.querySelector<SVGSVGElement>("svg");
-				return {width: icon?.style.width, className: icon?.getAttribute("class")};
-			}),
-			coloured: container.querySelectorAll("[data-file-type-icon]").length,
-			fileText: container.querySelectorAll(".lucide-file-text").length,
-		}).toStrictEqual({
-			rows: [
-				{width: "16px", className: "lucide lucide-code-xml shrink-0"},
-				{width: "16px", className: "lucide lucide-sticky-note shrink-0"},
-			],
-			coloured: 0,
-			fileText: 0,
-		});
+		expect(
+			{
+				rows: screen.getAllByRole("link").map((link) =>
+				{
+					const icon = link.querySelector<SVGSVGElement>("svg");
+					return {
+						width: icon?.style.width,
+						className: icon?.getAttribute("class"),
+					};
+				}),
+				coloured: container.querySelectorAll("[data-file-type-icon]").length,
+				fileText: container.querySelectorAll(".lucide-file-text").length,
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						width: "16px",
+						className: "lucide lucide-code-xml shrink-0",
+					},
+					{
+						width: "16px",
+						className: "lucide lucide-sticky-note shrink-0",
+					},
+				],
+				coloured: 0,
+				fileText: 0,
+			},
+		);
 	});
 
-	it("links each file row to the file viewer", () => {
+	it("links each file row to the file viewer", () =>
+	{
 		render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		expect(
-			screen.getAllByRole("link").map((link) => ({
+			screen.getAllByRole("link").map((link) => (
+			{
 				href: link.getAttribute("href"),
 				title: link.getAttribute("title"),
 			})),
@@ -1391,153 +2164,261 @@ describe("TurnChangesCard", () => {
 		]);
 	});
 
-	it("opens the Changes pane scoped to the turn from the See all row", () => {
+	it("opens the Changes pane scoped to the turn from the See all row", () =>
+	{
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-			DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+			DOMRect.fromRect(
+				{
+					x: 0,
+					y: 0,
+					width: 1200,
+					height: 800,
+				},
+			),
 		);
-		const unregister = registerPane("changes", {
-			title: "Changes",
-			render: () => <div data-testid="changes-pane">Changes pane</div>,
-		});
+		const unregister = registerPane(
+			"changes",
+			{
+				title: "Changes",
+				render: () => <div data-testid="changes-pane">Changes pane</div>,
+			},
+		);
 		const requests: unknown[] = [];
 		const listener = (event: Event) => requests.push((event as CustomEvent).detail);
 		window.addEventListener(CHANGES_SCOPE_REQUEST_EVENT, listener);
-		try {
+		try
+		{
 			render(
 				<SettingsProvider>
-					<TileHost sessionId="turn-card-session" onExpandWithoutPane={() => {}}>
+					<TileHost
+						sessionId="turn-card-session"
+						onExpandWithoutPane={() =>
+						{
+						}}
+					>
 						<TurnChangesCard sessionId="turn-card-session" changes={changesWith(2)} undoable />
 					</TileHost>
 				</SettingsProvider>,
 			);
 			const before = screen.queryByTestId("changes-pane");
-			const card = screen.getByRole("list", {
-				name: "Edited 2 files",
-			}).parentElement!;
-			act(() => {
-				fireEvent.click(within(card).getByRole("button", {name: /^See all/}));
+			const card = screen.getByRole(
+				"list",
+				{
+					name: "Edited 2 files",
+				},
+			).parentElement!;
+			act(() =>
+			{
+				fireEvent.click(
+					within(card).getByRole(
+						"button",
+						{
+							name: /^See all/,
+						},
+					),
+				);
 			});
 
-			expect({
-				before,
-				opened: screen.queryByTestId("changes-pane")?.textContent,
-				scope: loadChangesScope("turn-card-session"),
-				requests,
-			}).toStrictEqual({
-				before: null,
-				opened: "Changes pane",
-				scope: "turn:u-1",
-				requests: [{sessionId: "turn-card-session", scope: "turn:u-1"}],
-			});
-		} finally {
+			expect(
+				{
+					before,
+					opened: screen.queryByTestId("changes-pane")?.textContent,
+					scope: loadChangesScope("turn-card-session"),
+					requests,
+				},
+			).toStrictEqual(
+				{
+					before: null,
+					opened: "Changes pane",
+					scope: "turn:u-1",
+					requests: [
+						{
+							sessionId: "turn-card-session",
+							scope: "turn:u-1",
+						},
+					],
+				},
+			);
+		}
+		finally
+		{
 			window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, listener);
 			unregister();
 		}
 	});
 
-	it("opens the Changes pane scoped to the turn from a single-file row", () => {
+	it("opens the Changes pane scoped to the turn from a single-file row", () =>
+	{
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-			DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+			DOMRect.fromRect(
+				{
+					x: 0,
+					y: 0,
+					width: 1200,
+					height: 800,
+				},
+			),
 		);
-		const unregister = registerPane("changes", {
-			title: "Changes",
-			render: () => <div data-testid="changes-pane">Changes pane</div>,
-		});
-		try {
+		const unregister = registerPane(
+			"changes",
+			{
+				title: "Changes",
+				render: () => <div data-testid="changes-pane">Changes pane</div>,
+			},
+		);
+		try
+		{
 			render(
 				<SettingsProvider>
-					<TileHost sessionId="turn-card-single" onExpandWithoutPane={() => {}}>
+					<TileHost
+						sessionId="turn-card-single"
+						onExpandWithoutPane={() =>
+						{
+						}}
+					>
 						<TurnChangesCard sessionId="turn-card-single" changes={changesWith(1)} undoable />
 					</TileHost>
 				</SettingsProvider>,
 			);
-			act(() => {
-				fireEvent.click(screen.getByRole("button", {name: /^file-1\.ts/}));
+			act(() =>
+			{
+				fireEvent.click(
+					screen.getByRole(
+						"button",
+						{
+							name: /^file-1\.ts/,
+						},
+					),
+				);
 			});
-			expect({
-				opened: screen.queryByTestId("changes-pane")?.textContent,
-				scope: loadChangesScope("turn-card-single"),
-			}).toStrictEqual({opened: "Changes pane", scope: "turn:u-1"});
-		} finally {
+			expect(
+				{
+					opened: screen.queryByTestId("changes-pane")?.textContent,
+					scope: loadChangesScope("turn-card-single"),
+				},
+			).toStrictEqual(
+				{
+					opened: "Changes pane",
+					scope: "turn:u-1",
+				},
+			);
+		}
+		finally
+		{
 			unregister();
 		}
 	});
 
-	it("draws upstream's static multi-file header, a 1px divider, and See all as the list's last row", () => {
+	it("draws upstream's static multi-file header, a 1px divider, and See all as the list's last row", () =>
+	{
 		render(
 			<SettingsProvider>
-				<TileHost sessionId="turn-card-header" onExpandWithoutPane={() => {}}>
+				<TileHost
+					sessionId="turn-card-header"
+					onExpandWithoutPane={() =>
+					{
+					}}
+				>
 					<TurnChangesCard sessionId="turn-card-header" changes={changesWith(2)} undoable />
 				</TileHost>
 			</SettingsProvider>,
 		);
-		const list = screen.getByRole("list", {name: "Edited 2 files"});
+		const list = screen.getByRole(
+			"list",
+			{
+				name: "Edited 2 files",
+			},
+		);
 		const card = list.parentElement!;
 		const [header, divider] = Array.from(card.children) as HTMLElement[];
 		const items = within(list).getAllByRole("listitem");
 		const seeAllItem = items.at(-1)!;
 
-		expect({
-			header: header!.className,
-			headerTag: header!.tagName,
-			headerButtons: within(header!)
-				.getAllByRole("button")
-				.map((button) => button.textContent),
-			title: within(header!).getByText("Edited 2 files").className,
-			divider: [divider!.className, divider!.getAttribute("aria-hidden"), divider!.childNodes.length],
-			items: items.map((item) => item.textContent),
-			seeAllLabel: within(seeAllItem).getByText("See all").className,
-			seeAllButton: within(seeAllItem).getByRole("button").textContent,
-			buttonsOutsideList: within(card)
-				.getAllByRole("button")
-				.filter((button) => !list.contains(button))
-				.map((button) => button.textContent),
-		}).toStrictEqual({
-			header: "flex h-6 min-w-0 items-center justify-between gap-2 px-1",
-			headerTag: "DIV",
-			headerButtons: ["Undo"],
-			title: "min-w-0 truncate text-primary",
-			divider: ["-mx-[7px] h-px shrink-0 bg-alpha-2", "true", 0],
-			items: [
-				"file-1.ts1 addition, 1 deletion+1\u22121",
-				"file-2.ts2 additions, 1 deletion+2\u22121",
-				"See all3 additions, 2 deletions+3\u22122",
-			],
-			seeAllLabel: "min-w-0 truncate text-primary",
-			seeAllButton: "See all3 additions, 2 deletions+3\u22122",
-			buttonsOutsideList: ["Undo"],
-		});
+		expect(
+			{
+				header: header!.className,
+				headerTag: header!.tagName,
+				headerButtons: within(header!)
+					.getAllByRole("button")
+					.map((button) => button.textContent),
+				title: within(header!).getByText("Edited 2 files").className,
+				divider: [divider!.className, divider!.getAttribute("aria-hidden"), divider!.childNodes.length],
+				items: items.map((item) => item.textContent),
+				seeAllLabel: within(seeAllItem).getByText("See all").className,
+				seeAllButton: within(seeAllItem).getByRole("button").textContent,
+				buttonsOutsideList: within(card)
+					.getAllByRole("button")
+					.filter((button) => !list.contains(button))
+					.map((button) => button.textContent),
+			},
+		).toStrictEqual(
+			{
+				header: "flex h-6 min-w-0 items-center justify-between gap-2 px-1",
+				headerTag: "DIV",
+				headerButtons: ["Undo"],
+				title: "min-w-0 truncate text-primary",
+				divider: ["-mx-[7px] h-px shrink-0 bg-alpha-2", "true", 0],
+				items: [
+					"file-1.ts1 addition, 1 deletion+1\u22121",
+					"file-2.ts2 additions, 1 deletion+2\u22121",
+					"See all3 additions, 2 deletions+3\u22122",
+				],
+				seeAllLabel: "min-w-0 truncate text-primary",
+				seeAllButton: "See all3 additions, 2 deletions+3\u22122",
+				buttonsOutsideList: ["Undo"],
+			},
+		);
 	});
 
-	it("renders a static header outside a pane host", () => {
+	it("renders a static header outside a pane host", () =>
+	{
 		render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
-		expect(screen.queryByRole("button", {name: /^Edited/})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: /^Edited/,
+				},
+			),
+		).toBeNull();
 	});
 });
 
-function jsonResponse(body: unknown, status = 200): Response {
-	return new Response(JSON.stringify(body), {
-		status,
-		headers: {"Content-Type": "application/json"},
-	});
+function jsonResponse(body: unknown, status = 200): Response
+{
+	return new Response(
+		JSON.stringify(body),
+		{
+			status,
+			headers:
+			{
+				"Content-Type": "application/json",
+			},
+		},
+	);
 }
 
-interface FetchCall {
+interface FetchCall
+{
 	url: string;
 	method: string;
 	body: unknown;
 }
 
-function stubFetch(responses: Response[]): FetchCall[] {
+function stubFetch(responses: Response[]): FetchCall[]
+{
 	const calls: FetchCall[] = [];
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async (url: string, init?: RequestInit) => {
-			calls.push({
-				url,
-				method: init?.method ?? "GET",
-				body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
-			});
+		vi.fn(async (url: string, init?: RequestInit) =>
+		{
+			calls.push(
+				{
+					url,
+					method: init?.method ?? "GET",
+					body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+				},
+			);
 			const next = responses.shift();
 			if (next === undefined) return Promise.reject(new Error(`Unexpected fetch ${url}`));
 			return Promise.resolve(next);
@@ -1546,14 +2427,24 @@ function stubFetch(responses: Response[]): FetchCall[] {
 	return calls;
 }
 
-const READY_PREVIEW = {
+const READY_PREVIEW =
+{
 	files: [
-		{path: "/repo/src/file-1.ts", status: "modified", state: "ready"},
-		{path: "/repo/src/file-2.ts", status: "added", state: "ready"},
+		{
+			path: "/repo/src/file-1.ts",
+			status: "modified",
+			state: "ready",
+		},
+		{
+			path: "/repo/src/file-2.ts",
+			status: "added",
+			state: "ready",
+		},
 	],
 };
 
-describe("TurnChangesCard Undo", () => {
+describe("TurnChangesCard Undo", () =>
+{
 	const UNDO_LOOK = [
 		"h-6",
 		"px-2",
@@ -1569,18 +2460,26 @@ describe("TurnChangesCard Undo", () => {
 	];
 	const undoLook = (undo: HTMLElement) => UNDO_LOOK.filter((name) => undo.classList.contains(name));
 
-	function undoTooltipOnFocus(files: number, send: ((text: string) => void) | null) {
+	function undoTooltipOnFocus(files: number, send: ((text: string) => void) | null)
+	{
 		vi.useFakeTimers();
-		try {
+		try
+		{
 			render(
 				<TurnUndoSendContext.Provider value={send}>
 					<TurnChangesCard sessionId="s-look" changes={changesWith(files)} undoable />
 				</TurnUndoSendContext.Provider>,
 			);
-			const undo = screen.getByRole("button", {name: "Undo"});
+			const undo = screen.getByRole(
+				"button",
+				{
+					name: "Undo",
+				},
+			);
 			const mouseDown = fireEvent.mouseDown(undo);
 			fireEvent.focus(undo);
-			act(() => {
+			act(() =>
+			{
 				vi.advanceTimersByTime(400);
 			});
 			return {
@@ -1589,51 +2488,61 @@ describe("TurnChangesCard Undo", () => {
 				mouseDownPrevented: !mouseDown,
 				tooltip: screen.queryByRole("tooltip")?.textContent,
 			};
-		} finally {
+		}
+		finally
+		{
 			vi.useRealTimers();
 		}
 	}
 
-	it("draws a one-file card's Undo always visible in upstream's ghost look, tooltipped and not taking focus", () => {
-		expect(undoTooltipOnFocus(1, () => {})).toStrictEqual({
-			look: [
-				"h-6",
-				"px-2",
-				"text-muted-as-secondary",
-				"hover:text-secondary",
-				"hover:bg-fill-ghost-hover",
-				"rounded-r5",
-				"focus-visible:shadow-focus",
-			],
-			disabledLook: CDS_BUTTON_DISABLED.split(" "),
-			mouseDownPrevented: true,
-			tooltip: "Ask Claude to undo this turn\u2019s file changes",
-		});
+	it("draws a one-file card's Undo always visible in upstream's ghost look, tooltipped and not taking focus", () =>
+	{
+		expect(undoTooltipOnFocus(1, () => {})).toStrictEqual(
+			{
+				look: [
+					"h-6",
+					"px-2",
+					"text-muted-as-secondary",
+					"hover:text-secondary",
+					"hover:bg-fill-ghost-hover",
+					"rounded-r5",
+					"focus-visible:shadow-focus",
+				],
+				disabledLook: CDS_BUTTON_DISABLED.split(" "),
+				mouseDownPrevented: true,
+				tooltip: "Ask Claude to undo this turn\u2019s file changes",
+			},
+		);
 	});
 
-	it("pushes a multi-file card's Undo flush to the card edge", () => {
-		expect(undoTooltipOnFocus(2, () => {})).toStrictEqual({
-			look: [
-				"h-6",
-				"px-2",
-				"text-muted-as-secondary",
-				"hover:text-secondary",
-				"hover:bg-fill-ghost-hover",
-				"rounded-r5",
-				"focus-visible:shadow-focus",
-				"-me-2",
-			],
-			disabledLook: CDS_BUTTON_DISABLED.split(" "),
-			mouseDownPrevented: true,
-			tooltip: "Ask Claude to undo this turn\u2019s file changes",
-		});
+	it("pushes a multi-file card's Undo flush to the card edge", () =>
+	{
+		expect(undoTooltipOnFocus(2, () => {})).toStrictEqual(
+			{
+				look: [
+					"h-6",
+					"px-2",
+					"text-muted-as-secondary",
+					"hover:text-secondary",
+					"hover:bg-fill-ghost-hover",
+					"rounded-r5",
+					"focus-visible:shadow-focus",
+					"-me-2",
+				],
+				disabledLook: CDS_BUTTON_DISABLED.split(" "),
+				mouseDownPrevented: true,
+				tooltip: "Ask Claude to undo this turn\u2019s file changes",
+			},
+		);
 	});
 
-	it("tooltips the no-live-pane fallback Undo with its own text", () => {
+	it("tooltips the no-live-pane fallback Undo with its own text", () =>
+	{
 		expect(undoTooltipOnFocus(2, null).tooltip).toStrictEqual("Undo this turn's file changes");
 	});
 
-	it("Undo sends the undo prompt when the session has a live pane", () => {
+	it("Undo sends the undo prompt when the session has a live pane", () =>
+	{
 		const calls = stubFetch([]);
 		const send = vi.fn<(text: string) => void>();
 		render(
@@ -1642,30 +2551,49 @@ describe("TurnChangesCard Undo", () => {
 			</TurnUndoSendContext.Provider>,
 		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Undo",
+				},
+			),
+		);
 
-		expect({
-			sent: send.mock.calls,
-			calls,
-			dialog: screen.queryByRole("alertdialog"),
-			undoDisabled: screen.getByRole("button", {name: "Undo"}).hasAttribute("disabled"),
-		}).toStrictEqual({
-			sent: [
-				[
+		expect(
+			{
+				sent: send.mock.calls,
+				calls,
+				dialog: screen.queryByRole("alertdialog"),
+				undoDisabled: screen
+					.getByRole(
+						"button",
+						{
+							name: "Undo",
+						},
+					)
+					.hasAttribute("disabled"),
+			},
+		).toStrictEqual(
+			{
+				sent: [
 					[
-						"Undo the changes you made to these 2 files in your last turn and restore them to their previous state:",
-						"- `/repo/src/file-1.ts`",
-						"- `/repo/src/file-2.ts`",
-					].join("\n"),
+						[
+							"Undo the changes you made to these 2 files in your last turn and restore them to their previous state:",
+							"- `/repo/src/file-1.ts`",
+							"- `/repo/src/file-2.ts`",
+						].join("\n"),
+					],
 				],
-			],
-			calls: [],
-			dialog: null,
-			undoDisabled: false,
-		});
+				calls: [],
+				dialog: null,
+				undoDisabled: false,
+			},
+		);
 	});
 
-	it("Undo on a one-file card sends the one-file prompt", () => {
+	it("Undo on a one-file card sends the one-file prompt", () =>
+	{
 		const send = vi.fn<(text: string) => void>();
 		render(
 			<TurnUndoSendContext.Provider value={send}>
@@ -1673,7 +2601,14 @@ describe("TurnChangesCard Undo", () => {
 			</TurnUndoSendContext.Provider>,
 		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Undo",
+				},
+			),
+		);
 
 		expect(send.mock.calls).toStrictEqual([
 			[
@@ -1682,12 +2617,15 @@ describe("TurnChangesCard Undo", () => {
 		]);
 	});
 
-	it("lists the files in a confirm dialog and reverts them on confirm", async () => {
+	it("lists the files in a confirm dialog and reverts them on confirm", async () =>
+	{
 		const calls = stubFetch([
 			jsonResponse(READY_PREVIEW),
-			jsonResponse({
-				reverted: ["/repo/src/file-1.ts", "/repo/src/file-2.ts"],
-			}),
+			jsonResponse(
+				{
+					reverted: ["/repo/src/file-1.ts", "/repo/src/file-2.ts"],
+				},
+			),
 		]);
 		const toast = vi.fn<(options: ToastOptions) => void>();
 		const {container} = render(
@@ -1696,66 +2634,118 @@ describe("TurnChangesCard Undo", () => {
 			</ToastContext.Provider>,
 		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Undo",
+				},
+			),
+		);
 		const dialog = await screen.findByRole("alertdialog");
 		const listed = within(dialog)
 			.getAllByRole("listitem")
 			.map((item) => item.textContent);
-		fireEvent.click(within(dialog).getByRole("button", {name: "Undo changes"}));
-		await vi.waitFor(() => {
+		fireEvent.click(
+			within(dialog).getByRole(
+				"button",
+				{
+					name: "Undo changes",
+				},
+			),
+		);
+		await vi.waitFor(() =>
+		{
 			expect(toast).toHaveBeenCalled();
 		});
 		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
 
-		expect({
-			title: within(dialog).getByRole("heading").textContent,
-			listed,
-			toasts: toast.mock.calls,
-			inline: within(card).queryAllByRole("status").concat(within(card).queryAllByRole("alert")),
-			calls,
-		}).toStrictEqual({
-			title: "Undo changes from this turn?",
-			listed: ["file-1.ts", "file-2.ts"],
-			toasts: [[{kind: "success", message: "Reverted 2 files"}]],
-			inline: [],
-			calls: [
-				{
-					url: "/api/sessions/s-1/turn-undo?turn=u-1",
-					method: "GET",
-					body: null,
-				},
-				{
-					url: "/api/sessions/s-1/turn-undo",
-					method: "POST",
-					body: {turn: "u-1", confirm: true},
-				},
-			],
-		});
+		expect(
+			{
+				title: within(dialog).getByRole("heading").textContent,
+				listed,
+				toasts: toast.mock.calls,
+				inline: within(card).queryAllByRole("status").concat(within(card).queryAllByRole("alert")),
+				calls,
+			},
+		).toStrictEqual(
+			{
+				title: "Undo changes from this turn?",
+				listed: ["file-1.ts", "file-2.ts"],
+				toasts: [
+					[
+						{
+							kind: "success",
+							message: "Reverted 2 files",
+						},
+					],
+				],
+				inline: [],
+				calls: [
+					{
+						url: "/api/sessions/s-1/turn-undo?turn=u-1",
+						method: "GET",
+						body: null,
+					},
+					{
+						url: "/api/sessions/s-1/turn-undo",
+						method: "POST",
+						body:
+						{
+							turn: "u-1",
+							confirm: true,
+						},
+					},
+				],
+			},
+		);
 	});
 
-	it("writes nothing when the dialog is cancelled", async () => {
+	it("writes nothing when the dialog is cancelled", async () =>
+	{
 		const calls = stubFetch([jsonResponse(READY_PREVIEW)]);
 		render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} undoable />);
 
-		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Undo",
+				},
+			),
+		);
 		const dialog = await screen.findByRole("alertdialog");
-		fireEvent.click(within(dialog).getByRole("button", {name: "Cancel"}));
+		fireEvent.click(
+			within(dialog).getByRole(
+				"button",
+				{
+					name: "Cancel",
+				},
+			),
+		);
 
 		expect(calls.map((call) => call.method)).toStrictEqual(["GET"]);
 	});
 
-	it("refuses without a dialog when files changed since the turn", async () => {
+	it("refuses without a dialog when files changed since the turn", async () =>
+	{
 		const calls = stubFetch([
-			jsonResponse({
-				files: [
-					{
-						path: "/repo/src/file-1.ts",
-						status: "modified",
-						state: "conflict",
-					},
-					{path: "/repo/src/file-2.ts", status: "added", state: "ready"},
-				],
-			}),
+			jsonResponse(
+				{
+					files: [
+						{
+							path: "/repo/src/file-1.ts",
+							status: "modified",
+							state: "conflict",
+						},
+						{
+							path: "/repo/src/file-2.ts",
+							status: "added",
+							state: "ready",
+						},
+					],
+				},
+			),
 		]);
 		const toast = vi.fn<(options: ToastOptions) => void>();
 		const {container} = render(
@@ -1764,50 +2754,85 @@ describe("TurnChangesCard Undo", () => {
 			</ToastContext.Provider>,
 		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
-		await vi.waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Undo",
+				},
+			),
+		);
+		await vi.waitFor(() =>
+		{
 			expect(toast).toHaveBeenCalled();
 		});
 		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
 
-		expect({
-			toasts: toast.mock.calls,
-			inline: within(card).queryAllByRole("status").concat(within(card).queryAllByRole("alert")),
-			dialog: screen.queryByRole("alertdialog"),
-			methods: calls.map((call) => call.method),
-		}).toStrictEqual({
-			toasts: [[{kind: "error", message: "Can't undo: file-1.ts changed since this turn."}]],
-			inline: [],
-			dialog: null,
-			methods: ["GET"],
-		});
+		expect(
+			{
+				toasts: toast.mock.calls,
+				inline: within(card).queryAllByRole("status").concat(within(card).queryAllByRole("alert")),
+				dialog: screen.queryByRole("alertdialog"),
+				methods: calls.map((call) => call.method),
+			},
+		).toStrictEqual(
+			{
+				toasts: [
+					[
+						{
+							kind: "error",
+							message: "Can't undo: file-1.ts changed since this turn.",
+						},
+					],
+				],
+				inline: [],
+				dialog: null,
+				methods: ["GET"],
+			},
+		);
 	});
 });
 
-function changesOf(files: Omit<TurnFileChange, "created">[], created = false): TurnChanges {
+function changesOf(files: Omit<TurnFileChange, "created">[], created = false): TurnChanges
+{
 	return {
 		turnUuid: "u-hints",
 		anchorLineIndex: 5,
-		files: files.map((file) => ({...file, created})),
+		files: files.map((file) => (
+		{
+			...file,
+			created,
+		})),
 		added: files.reduce((sum, file) => sum + file.added, 0),
 		removed: files.reduce((sum, file) => sum + file.removed, 0),
 		soleVisibleEditToolRow: false,
 	};
 }
 
-describe("TurnChangesCard stats a11y and folder hints", () => {
-	it("reads each stat as upstream's sr-only words and hides the +n −n glyphs", () => {
+describe("TurnChangesCard stats a11y and folder hints", () =>
+{
+	it("reads each stat as upstream's sr-only words and hides the +n −n glyphs", () =>
+	{
 		render(
 			<TurnChangesCard
 				sessionId="test-session"
 				changes={changesOf([
-					{path: "/repo/a.ts", added: 1, removed: 0},
-					{path: "/repo/b.ts", added: 2, removed: 1},
+					{
+						path: "/repo/a.ts",
+						added: 1,
+						removed: 0,
+					},
+					{
+						path: "/repo/b.ts",
+						added: 2,
+						removed: 1,
+					},
 				])}
 				undoable={false}
 			/>,
 		);
-		const stats = (item: HTMLElement) => {
+		const stats = (item: HTMLElement) =>
+		{
 			const stat = item.querySelector(".tabular-nums")!;
 			return Array.from(stat.children, (child) => [
 				child.className,
@@ -1831,22 +2856,51 @@ describe("TurnChangesCard stats a11y and folder hints", () => {
 		]);
 	});
 
-	it("appends the shortest distinguishing folder to rows whose basenames collide", () => {
+	it("appends the shortest distinguishing folder to rows whose basenames collide", () =>
+	{
 		render(
 			<TurnChangesCard
 				sessionId="test-session"
 				changes={changesOf([
-					{path: "/repo/src/a/index.ts", added: 1, removed: 0},
-					{path: "/repo/src/b/index.ts", added: 1, removed: 0},
-					{path: "/repo/x/lib/util.ts", added: 1, removed: 0},
-					{path: "/repo/y/lib/util.ts", added: 1, removed: 0},
-					{path: "/repo/src/other.ts", added: 1, removed: 0},
+					{
+						path: "/repo/src/a/index.ts",
+						added: 1,
+						removed: 0,
+					},
+					{
+						path: "/repo/src/b/index.ts",
+						added: 1,
+						removed: 0,
+					},
+					{
+						path: "/repo/x/lib/util.ts",
+						added: 1,
+						removed: 0,
+					},
+					{
+						path: "/repo/y/lib/util.ts",
+						added: 1,
+						removed: 0,
+					},
+					{
+						path: "/repo/src/other.ts",
+						added: 1,
+						removed: 0,
+					},
 				])}
 				undoable={false}
 			/>,
 		);
-		fireEvent.click(screen.getByRole("button", {name: /^See all/}));
-		const hints = screen.getAllByRole("link").map((link) => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^See all/,
+				},
+			),
+		);
+		const hints = screen.getAllByRole("link").map((link) =>
+		{
 			const name = link.querySelector(".truncate")!;
 			const hint = name.querySelector("span");
 			return {
@@ -1899,49 +2953,104 @@ describe("TurnChangesCard stats a11y and folder hints", () => {
 					],
 				],
 			},
-			{name: "other.ts", hint: null},
+			{
+				name: "other.ts",
+				hint: null,
+			},
 		]);
 	});
 });
 
-describe("TurnChangesCard header kind (upstream rX)", () => {
-	it("heads the card Created or Changed when the turn created files, and names a lone file 'a file'", () => {
-		const header = (files: TurnFileChange[]) => {
+describe("TurnChangesCard header kind (upstream rX)", () =>
+{
+	it("heads the card Created or Changed when the turn created files, and names a lone file 'a file'", () =>
+	{
+		const header = (files: TurnFileChange[]) =>
+		{
 			const {container, unmount} = render(
-				<TurnChangesCard sessionId="test-session" changes={{...changesOf([]), files}} undoable={false} />,
+				<TurnChangesCard
+					sessionId="test-session"
+					changes={
+					{
+						...changesOf([]),
+						files,
+					}}
+					undoable={false}
+				/>,
 			);
-			const result = {
+			const result =
+			{
 				header: container.querySelector("[data-turn-changes-card] > div > span")?.textContent ?? null,
 				list: screen.getByRole("list").getAttribute("aria-label"),
 			};
 			unmount();
 			return result;
 		};
-		const file = (path: string, created: boolean): TurnFileChange => ({path, added: 1, removed: 0, created});
-		expect({
-			created: header([file("/repo/a.ts", true), file("/repo/b.ts", true)]),
-			changed: header([file("/repo/a.ts", true), file("/repo/b.ts", false)]),
-			edited: header([file("/repo/a.ts", false), file("/repo/b.ts", false)]),
-			createdOne: header([file("/repo/a.ts", true)]),
-			editedOne: header([file("/repo/a.ts", false)]),
-		}).toStrictEqual({
-			created: {header: "Created 2 files", list: "Created 2 files"},
-			changed: {header: "Changed 2 files", list: "Changed 2 files"},
-			edited: {header: "Edited 2 files", list: "Edited 2 files"},
-			createdOne: {header: null, list: "Created a file"},
-			editedOne: {header: null, list: "Edited a file"},
+		const file = (path: string, created: boolean): TurnFileChange => (
+		{
+			path,
+			added: 1,
+			removed: 0,
+			created,
 		});
+		expect(
+			{
+				created: header([file("/repo/a.ts", true), file("/repo/b.ts", true)]),
+				changed: header([file("/repo/a.ts", true), file("/repo/b.ts", false)]),
+				edited: header([file("/repo/a.ts", false), file("/repo/b.ts", false)]),
+				createdOne: header([file("/repo/a.ts", true)]),
+				editedOne: header([file("/repo/a.ts", false)]),
+			},
+		).toStrictEqual(
+			{
+				created:
+				{
+					header: "Created 2 files",
+					list: "Created 2 files",
+				},
+				changed:
+				{
+					header: "Changed 2 files",
+					list: "Changed 2 files",
+				},
+				edited:
+				{
+					header: "Edited 2 files",
+					list: "Edited 2 files",
+				},
+				createdOne:
+				{
+					header: null,
+					list: "Created a file",
+				},
+				editedOne:
+				{
+					header: null,
+					list: "Edited a file",
+				},
+			},
+		);
 	});
 });
 
-describe("TurnChangesCard body-size text and ltr stats (upstream nX with the 'type' token)", () => {
-	it("drops the 12/15 footnote size from Undo, the stats and the folder hint", () => {
+describe("TurnChangesCard body-size text and ltr stats (upstream nX with the 'type' token)", () =>
+{
+	it("drops the 12/15 footnote size from Undo, the stats and the folder hint", () =>
+	{
 		render(
 			<TurnChangesCard
 				sessionId="test-session"
 				changes={changesOf([
-					{path: "/repo/a/index.ts", added: 1, removed: 0},
-					{path: "/repo/b/index.ts", added: 1, removed: 0},
+					{
+						path: "/repo/a/index.ts",
+						added: 1,
+						removed: 0,
+					},
+					{
+						path: "/repo/b/index.ts",
+						added: 1,
+						removed: 0,
+					},
 				])}
 				undoable
 			/>,
@@ -1949,20 +3058,44 @@ describe("TurnChangesCard body-size text and ltr stats (upstream nX with the 'ty
 		const [row] = screen.getAllByRole("listitem");
 		const classes = (element: Element | null | undefined) =>
 			(element?.getAttribute("class") ?? "").split(" ").filter((name) => /^text-\[\d+px\]/.test(name));
-		expect({
-			undo: classes(screen.getByRole("button", {name: "Undo"})),
-			stats: classes(row!.querySelector(".tabular-nums")),
-			hint: classes(row!.querySelector(".text-muted-as-secondary")),
-		}).toStrictEqual({undo: [], stats: [], hint: []});
+		expect(
+			{
+				undo: classes(
+					screen.getByRole(
+						"button",
+						{
+							name: "Undo",
+						},
+					),
+				),
+				stats: classes(row!.querySelector(".tabular-nums")),
+				hint: classes(row!.querySelector(".text-muted-as-secondary")),
+			},
+		).toStrictEqual(
+			{
+				undo: [],
+				stats: [],
+				hint: [],
+			},
+		);
 	});
 
-	it("pins every stat's +n −n order left-to-right", () => {
+	it("pins every stat's +n −n order left-to-right", () =>
+	{
 		render(
 			<TurnChangesCard
 				sessionId="test-session"
 				changes={changesOf([
-					{path: "/repo/a.ts", added: 1, removed: 0},
-					{path: "/repo/b.ts", added: 2, removed: 1},
+					{
+						path: "/repo/a.ts",
+						added: 1,
+						removed: 0,
+					},
+					{
+						path: "/repo/b.ts",
+						added: 2,
+						removed: 1,
+					},
 				])}
 				undoable={false}
 			/>,
@@ -1972,17 +3105,28 @@ describe("TurnChangesCard body-size text and ltr stats (upstream nX with the 'ty
 		).toStrictEqual(["ltr", "ltr", "ltr"]);
 	});
 
-	it("draws the sole file's FileTypeIcon, the same glyph a multi-file row draws for it, never lucide Code", () => {
-		const iconOf = (count: number) => {
+	it("draws the sole file's FileTypeIcon, the same glyph a multi-file row draws for it, never lucide Code", () =>
+	{
+		const iconOf = (count: number) =>
+		{
 			const files = [
-				{path: "/repo/notes.md", added: 1, removed: 0},
-				{path: "/repo/other.ts", added: 1, removed: 0},
+				{
+					path: "/repo/notes.md",
+					added: 1,
+					removed: 0,
+				},
+				{
+					path: "/repo/other.ts",
+					added: 1,
+					removed: 0,
+				},
 			].slice(0, count);
 			const {container, unmount} = render(
 				<TurnChangesCard sessionId="test-session" changes={changesOf(files)} undoable={false} />,
 			);
 			const icon = screen.getAllByRole("listitem")[0]!.querySelector("svg");
-			const result = {
+			const result =
+			{
 				className: icon?.getAttribute("class"),
 				size: [icon?.style.width, icon?.style.height],
 				code: container.querySelectorAll(".lucide-code").length,
@@ -1991,7 +3135,17 @@ describe("TurnChangesCard body-size text and ltr stats (upstream nX with the 'ty
 			return result;
 		};
 		const single = iconOf(1);
-		expect({single, multi: iconOf(2)}).toStrictEqual({single, multi: single});
+		expect(
+			{
+				single,
+				multi: iconOf(2),
+			},
+		).toStrictEqual(
+			{
+				single,
+				multi: single,
+			},
+		);
 		expect(single.code).toBe(0);
 	});
 });

@@ -4,7 +4,8 @@ import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {resetBridgePushedTitles, setBridgePushedTitle} from "../src/lib/bridge-pushed-title-store";
-import {
+import
+{
 	BRIDGED_TITLE_REINDEX_KEY,
 	SKILL_LAUNCH_TITLE_REINDEX_KEY,
 	fullScan,
@@ -17,7 +18,8 @@ import {
 	linkSubagentParents,
 	scanTasksDir,
 } from "../src/lib/db/indexer";
-import {
+import
+{
 	listProjectsFromDb,
 	listSessionGroupsFromDb,
 	listRecentSessionsFromDb,
@@ -50,15 +52,23 @@ import {encodeProjectPath} from "../src/lib/memory";
 const testDir = join(realpathSync(tmpdir()), "claude-db-test-" + process.pid);
 let db: AppDb;
 
-function jsonl(...lines: Record<string, unknown>[]): string {
+function jsonl(...lines: Record<string, unknown>[]): string
+{
 	return lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
 }
 
-function makeSessionsIndex(entries: Record<string, unknown>[]): string {
-	return JSON.stringify({version: 1, entries});
+function makeSessionsIndex(entries: Record<string, unknown>[]): string
+{
+	return JSON.stringify(
+		{
+			version: 1,
+			entries,
+		},
+	);
 }
 
-const baseFields = {
+const baseFields =
+{
 	uuid: "uuid-test",
 	timestamp: "1999-12-31T00:00:00.000Z",
 	sessionId: "sess-1",
@@ -71,63 +81,120 @@ const baseFields = {
 	entrypoint: "cli",
 };
 
-beforeEach(() => {
-	mkdirSync(testDir, {recursive: true});
+beforeEach(() =>
+{
+	mkdirSync(
+		testDir,
+		{
+			recursive: true,
+		},
+	);
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(testDir, {recursive: true, force: true});
+	rmSync(
+		testDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 	resetBridgePushedTitles();
 });
 
-describe("connection", () => {
-	it("creates in-memory databases with schema", () => {
+describe("connection", () =>
+{
+	it("creates in-memory databases with schema", () =>
+	{
 		const row = db.index.select().from(schema.metadata).where(eq(schema.metadata.key, "schema_version")).get();
 		if (!row) throw new Error("Expected schema_version row");
 		expect(row.value).toBe(schema.SCHEMA_VERSION);
 	});
 });
 
-describe("indexer", () => {
-	it("attributes resolved and unresolved symlink paths to the same project", async () => {
+describe("indexer", () =>
+{
+	it("attributes resolved and unresolved symlink paths to the same project", async () =>
+	{
 		const claudeTarget = join(testDir, "elsewhere");
 		const unresolvedClaudeDir = join(testDir, ".claude");
 		const unresolvedProjectsDir = join(unresolvedClaudeDir, "projects");
 		const projectId = "-tmp-example-project";
 		const unresolvedSessionPath = join(unresolvedProjectsDir, projectId, "session-100.jsonl");
-		mkdirSync(join(claudeTarget, "projects", projectId), {recursive: true});
+		mkdirSync(
+			join(claudeTarget, "projects", projectId),
+			{
+				recursive: true,
+			},
+		);
 		symlinkSync(claudeTarget, unresolvedClaudeDir, "dir");
 		writeFileSync(
 			unresolvedSessionPath,
-			jsonl({
-				type: "user",
-				...baseFields,
-				uuid: "uuid-100",
-				sessionId: "session-100",
-				cwd: "/tmp/example-project",
-				message: {role: "user", content: "Test symlink indexing"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					...baseFields,
+					uuid: "uuid-100",
+					sessionId: "session-100",
+					cwd: "/tmp/example-project",
+					message:
+					{
+						role: "user",
+						content: "Test symlink indexing",
+					},
+				},
+			),
 		);
 
-		const indexedSessions: {id: string; projectId: string}[][] = [];
-		for (const sessionPath of [realpathSync(unresolvedSessionPath), unresolvedSessionPath]) {
+		const indexedSessions:
+		{
+			id: string;
+			projectId: string;
+		}[][] = [];
+		for (const sessionPath of [realpathSync(unresolvedSessionPath), unresolvedSessionPath])
+		{
 			await indexFile(db.index, sessionPath, unresolvedProjectsDir);
 			indexedSessions.push(
 				db.index
-					.select({id: schema.sessions.id, projectId: schema.sessions.projectId})
+					.select(
+						{
+							id: schema.sessions.id,
+							projectId: schema.sessions.projectId,
+						},
+					)
 					.from(schema.sessions)
 					.all(),
 			);
 		}
 
-		expect(indexedSessions).toStrictEqual([[{id: "session-100", projectId}], [{id: "session-100", projectId}]]);
+		expect(indexedSessions).toStrictEqual([
+			[
+				{
+					id: "session-100",
+					projectId,
+				},
+			],
+			[
+				{
+					id: "session-100",
+					projectId,
+				},
+			],
+		]);
 	});
 
-	it("indexes sessions-index.json", async () => {
+	it("indexes sessions-index.json", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
 			makeSessionsIndex([
@@ -166,9 +233,15 @@ describe("indexer", () => {
 		expect(abc.messageCount).toBe(0);
 	});
 
-	it("takes the project path from the entry whose cwd encodes to the project id, not a subdirectory session listed first", async () => {
+	it("takes the project path from the entry whose cwd encodes to the project id, not a subdirectory session listed first", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
 			makeSessionsIndex([
@@ -192,17 +265,33 @@ describe("indexer", () => {
 		await indexSessionsIndex(db.index, projectDir, "-Users-craig-projects");
 
 		const projects = db.index
-			.select({id: schema.projects.id, name: schema.projects.name, projectPath: schema.projects.projectPath})
+			.select(
+				{
+					id: schema.projects.id,
+					name: schema.projects.name,
+					projectPath: schema.projects.projectPath,
+				},
+			)
 			.from(schema.projects)
 			.all();
 		expect(projects).toStrictEqual([
-			{id: "-Users-craig-projects", name: "projects", projectPath: "/Users/craig/projects"},
+			{
+				id: "-Users-craig-projects",
+				name: "projects",
+				projectPath: "/Users/craig/projects",
+			},
 		]);
 	});
 
-	it("skips unchanged files based on mtime", async () => {
+	it("skips unchanged files based on mtime", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
 			makeSessionsIndex([
@@ -226,9 +315,15 @@ describe("indexer", () => {
 		expect(secondRun[0]?.indexedAt).toBe(firstIndexedAt);
 	});
 
-	it("extracts plan links from file-history-snapshot", async () => {
+	it("extracts plan links from file-history-snapshot", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		// Create session in DB first (so plan links have a session to reference)
 		writeFileSync(
@@ -250,16 +345,22 @@ describe("indexer", () => {
 				{
 					type: "user",
 					...baseFields,
-					message: {role: "user", content: "Work on feature"},
+					message:
+					{
+						role: "user",
+						content: "Work on feature",
+					},
 				},
 				{
 					type: "file-history-snapshot",
 					messageId: "msg-1",
 					isSnapshotUpdate: false,
-					snapshot: {
+					snapshot:
+					{
 						messageId: "msg-1",
 						timestamp: "1999-12-31T00:00:00.000Z",
-						trackedFileBackups: {
+						trackedFileBackups:
+						{
 							"/Users/craig/.claude/plans/my-plan.md": "backup-content",
 						},
 					},
@@ -271,20 +372,32 @@ describe("indexer", () => {
 
 		const links = db.index.select().from(schema.planSessions).all();
 		expect(
-			links.map((l) => ({
+			links.map((l) => (
+			{
 				planFilename: l.planFilename,
 				sessionId: l.sessionId,
 			})),
-		).toStrictEqual([{planFilename: "my-plan.md", sessionId: "sess-1"}]);
+		).toStrictEqual([
+			{
+				planFilename: "my-plan.md",
+				sessionId: "sess-1",
+			},
+		]);
 	});
 
-	it("extracts plan links from plan_mode attachments (before file is edited)", async () => {
+	it("extracts plan links from plan_mode attachments (before file is edited)", async () =>
+	{
 		// A session that enters plan mode emits an `attachment` record with
 		// `attachment.type === "plan_mode"` and a `planFilePath`. This fires
 		// *before* the plan file is ever edited, so it links the session even
 		// when no file-history-snapshot trackedFileBackups entry exists.
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
@@ -306,13 +419,18 @@ describe("indexer", () => {
 					type: "user",
 					...baseFields,
 					sessionId: "sess-plan-mode",
-					message: {role: "user", content: "Draft a plan"},
+					message:
+					{
+						role: "user",
+						content: "Draft a plan",
+					},
 				},
 				{
 					type: "attachment",
 					...baseFields,
 					sessionId: "sess-plan-mode",
-					attachment: {
+					attachment:
+					{
 						type: "plan_mode",
 						reminderType: "full",
 						isSubAgent: false,
@@ -327,7 +445,8 @@ describe("indexer", () => {
 
 		const links = db.index.select().from(schema.planSessions).all();
 		expect(
-			links.map((l) => ({
+			links.map((l) => (
+			{
 				planFilename: l.planFilename,
 				sessionId: l.sessionId,
 				projectId: l.projectId,
@@ -341,9 +460,15 @@ describe("indexer", () => {
 		]);
 	});
 
-	it("deduplicates plan links when both plan_mode and file-history-snapshot point to the same plan", async () => {
+	it("deduplicates plan links when both plan_mode and file-history-snapshot point to the same plan", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
@@ -365,13 +490,18 @@ describe("indexer", () => {
 					type: "user",
 					...baseFields,
 					sessionId: "sess-dup",
-					message: {role: "user", content: "Draft"},
+					message:
+					{
+						role: "user",
+						content: "Draft",
+					},
 				},
 				{
 					type: "attachment",
 					...baseFields,
 					sessionId: "sess-dup",
-					attachment: {
+					attachment:
+					{
 						type: "plan_mode",
 						planFilePath: "/Users/craig/.claude/plans/dual-plan.md",
 					},
@@ -380,10 +510,12 @@ describe("indexer", () => {
 					type: "file-history-snapshot",
 					messageId: "msg-2",
 					isSnapshotUpdate: false,
-					snapshot: {
+					snapshot:
+					{
 						messageId: "msg-2",
 						timestamp: "1999-12-31T00:00:00.000Z",
-						trackedFileBackups: {
+						trackedFileBackups:
+						{
 							"/Users/craig/.claude/plans/dual-plan.md": "backup",
 						},
 					},
@@ -397,17 +529,35 @@ describe("indexer", () => {
 		expect(links.map((l) => l.planFilename)).toStrictEqual(["dual-plan.md"]);
 	});
 
-	it("pruneStalePlanLinks removes plan_sessions rows whose plan file no longer exists", async () => {
+	it("pruneStalePlanLinks removes plan_sessions rows whose plan file no longer exists", async () =>
+	{
 		const plansDir = join(testDir, "plans");
-		mkdirSync(plansDir, {recursive: true});
+		mkdirSync(
+			plansDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(join(plansDir, "still-here.md"), "# Still Here");
 
 		db.index
 			.insert(schema.planSessions)
 			.values([
-				{planFilename: "still-here.md", sessionId: "s1", projectId: "p1"},
-				{planFilename: "gone.md", sessionId: "s1", projectId: "p1"},
-				{planFilename: "also-gone.md", sessionId: "s2", projectId: "p1"},
+				{
+					planFilename: "still-here.md",
+					sessionId: "s1",
+					projectId: "p1",
+				},
+				{
+					planFilename: "gone.md",
+					sessionId: "s1",
+					projectId: "p1",
+				},
+				{
+					planFilename: "also-gone.md",
+					sessionId: "s2",
+					projectId: "p1",
+				},
 			])
 			.run();
 
@@ -418,14 +568,17 @@ describe("indexer", () => {
 		expect(remaining.map((r) => r.planFilename)).toStrictEqual(["still-here.md"]);
 	});
 
-	it("pruneStalePlanLinks keeps all rows when plans directory is missing", async () => {
+	it("pruneStalePlanLinks keeps all rows when plans directory is missing", async () =>
+	{
 		db.index
 			.insert(schema.planSessions)
-			.values({
-				planFilename: "some-plan.md",
-				sessionId: "s1",
-				projectId: "p1",
-			})
+			.values(
+				{
+					planFilename: "some-plan.md",
+					sessionId: "s1",
+					projectId: "p1",
+				},
+			)
 			.run();
 
 		const removed = await pruneStalePlanLinks(db.index, join(testDir, "nonexistent-plans-dir"));
@@ -435,9 +588,15 @@ describe("indexer", () => {
 		expect(remaining.length).toBe(1);
 	});
 
-	it("indexJsonlFile returns linkedPlans matching the filenames upserted into plan_sessions", async () => {
+	it("indexJsonlFile returns linkedPlans matching the filenames upserted into plan_sessions", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
@@ -459,13 +618,18 @@ describe("indexer", () => {
 					type: "user",
 					...baseFields,
 					sessionId: "sess-linked",
-					message: {role: "user", content: "Draft"},
+					message:
+					{
+						role: "user",
+						content: "Draft",
+					},
 				},
 				{
 					type: "attachment",
 					...baseFields,
 					sessionId: "sess-linked",
-					attachment: {
+					attachment:
+					{
 						type: "plan_mode",
 						planFilePath: "/Users/craig/.claude/plans/alpha.md",
 					},
@@ -474,10 +638,12 @@ describe("indexer", () => {
 					type: "file-history-snapshot",
 					messageId: "msg-3",
 					isSnapshotUpdate: false,
-					snapshot: {
+					snapshot:
+					{
 						messageId: "msg-3",
 						timestamp: "1999-12-31T00:00:00.000Z",
-						trackedFileBackups: {
+						trackedFileBackups:
+						{
 							"/Users/craig/.claude/plans/beta.md": "backup",
 						},
 					},
@@ -494,7 +660,11 @@ describe("indexer", () => {
 		// Sort both sides — the indexer is free to traverse the Set in any order.
 		const returned = result.linkedPlans.toSorted();
 		const inDb = db.index
-			.select({planFilename: schema.planSessions.planFilename})
+			.select(
+				{
+					planFilename: schema.planSessions.planFilename,
+				},
+			)
 			.from(schema.planSessions)
 			.all()
 			.map((r) => r.planFilename)
@@ -503,15 +673,26 @@ describe("indexer", () => {
 		expect(returned).toStrictEqual(inDb);
 	});
 
-	it("indexJsonlFile returns only the plans newly linked by this pass, not ones already linked", async () => {
+	it("indexJsonlFile returns only the plans newly linked by this pass, not ones already linked", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		const jsonlPath = join(projectDir, "sess-relinked.jsonl");
-		const planLine = (planFilename: string) => ({
+		const planLine = (planFilename: string) => (
+		{
 			type: "attachment",
 			...baseFields,
 			sessionId: "sess-relinked",
-			attachment: {type: "plan_mode", planFilePath: `/Users/craig/.claude/plans/${planFilename}`},
+			attachment:
+			{
+				type: "plan_mode",
+				planFilePath: `/Users/craig/.claude/plans/${planFilename}`,
+			},
 		});
 
 		writeFileSync(jsonlPath, jsonl(planLine("alpha.md")));
@@ -526,16 +707,39 @@ describe("indexer", () => {
 		utimesSync(jsonlPath, 3000, 3000);
 		const third = await indexJsonlFile(db.index, jsonlPath, "-Users-craig-projects-app");
 
-		expect({first, second, third}).toStrictEqual({
-			first: {linkedPlans: ["alpha.md"]},
-			second: {linkedPlans: ["beta.md"]},
-			third: {linkedPlans: []},
-		});
+		expect(
+			{
+				first,
+				second,
+				third,
+			},
+		).toStrictEqual(
+			{
+				first:
+				{
+					linkedPlans: ["alpha.md"],
+				},
+				second:
+				{
+					linkedPlans: ["beta.md"],
+				},
+				third:
+				{
+					linkedPlans: [],
+				},
+			},
+		);
 	});
 
-	it("indexJsonlFile returns empty linkedPlans when the JSONL has no plan references", async () => {
+	it("indexJsonlFile returns empty linkedPlans when the JSONL has no plan references", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
@@ -552,12 +756,18 @@ describe("indexer", () => {
 
 		writeFileSync(
 			join(projectDir, "sess-no-plans.jsonl"),
-			jsonl({
-				type: "user",
-				...baseFields,
-				sessionId: "sess-no-plans",
-				message: {role: "user", content: "Hi"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					...baseFields,
+					sessionId: "sess-no-plans",
+					message:
+					{
+						role: "user",
+						content: "Hi",
+					},
+				},
+			),
 		);
 
 		const result = await indexJsonlFile(
@@ -566,12 +776,22 @@ describe("indexer", () => {
 			"-Users-craig-projects-app",
 		);
 
-		expect(result).toStrictEqual({linkedPlans: []});
+		expect(result).toStrictEqual(
+			{
+				linkedPlans: [],
+			},
+		);
 	});
 
-	it("ignores plan_mode attachments with no planFilePath", async () => {
+	it("ignores plan_mode attachments with no planFilePath", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
@@ -589,10 +809,21 @@ describe("indexer", () => {
 		writeFileSync(
 			join(projectDir, "sess-no-path.jsonl"),
 			jsonl(
-				{type: "user", message: {role: "user", content: "Draft"}},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Draft",
+					},
+				},
 				{
 					type: "attachment",
-					attachment: {type: "plan_mode", reminderType: "full"},
+					attachment:
+					{
+						type: "plan_mode",
+						reminderType: "full",
+					},
 				},
 			),
 		);
@@ -603,9 +834,15 @@ describe("indexer", () => {
 		expect(links).toStrictEqual([]);
 	});
 
-	it("extracts custom-title from JSONL", async () => {
+	it("extracts custom-title from JSONL", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
@@ -623,7 +860,14 @@ describe("indexer", () => {
 		writeFileSync(
 			join(projectDir, "titled-sess.jsonl"),
 			jsonl(
-				{type: "user", message: {role: "user", content: "Do something"}},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Do something",
+					},
+				},
 				{
 					type: "custom-title",
 					customTitle: "My Custom Title",
@@ -640,7 +884,8 @@ describe("indexer", () => {
 		expect(session.title).toBe("My Custom Title");
 	});
 
-	it("preserves a custom title when sessions-index.json is rewritten", async () => {
+	it("preserves a custom title when sessions-index.json is rewritten", async () =>
+	{
 		const project = "-Users-alice-projects-example";
 		const projectDir = join(testDir, project);
 		const sessionId = "session-test-100";
@@ -648,7 +893,12 @@ describe("indexer", () => {
 		const indexPath = join(projectDir, "sessions-index.json");
 		const initialIndexModifiedAt = new Date("2000-01-01T00:00:00.000Z");
 		const rewrittenIndexModifiedAt = new Date("2000-01-02T00:00:00.000Z");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			indexPath,
 			makeSessionsIndex([
@@ -664,8 +914,19 @@ describe("indexer", () => {
 		writeFileSync(
 			sessionPath,
 			jsonl(
-				{type: "user", message: {role: "user", content: "Original generated title"}},
-				{type: "custom-title", customTitle: "Alice's custom title", sessionId},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Original generated title",
+					},
+				},
+				{
+					type: "custom-title",
+					customTitle: "Alice's custom title",
+					sessionId,
+				},
 			),
 		);
 
@@ -689,24 +950,45 @@ describe("indexer", () => {
 
 		expect(
 			db.index
-				.select({customTitle: schema.sessions.customTitle, title: schema.sessions.title})
+				.select(
+					{
+						customTitle: schema.sessions.customTitle,
+						title: schema.sessions.title,
+					},
+				)
 				.from(schema.sessions)
 				.where(eq(schema.sessions.id, sessionId))
 				.get(),
-		).toStrictEqual({customTitle: "Alice's custom title", title: "Alice's custom title"});
+		).toStrictEqual(
+			{
+				customTitle: "Alice's custom title",
+				title: "Alice's custom title",
+			},
+		);
 	});
 
-	describe("session title sources", () => {
+	describe("session title sources", () =>
+	{
 		const project = "-Users-alice-projects-example";
 		const sessionId = "session-test-200";
 
 		async function indexTitle(
 			lines: Record<string, unknown>[],
-			options: {summary?: string; sidecar?: string} = {},
-		) {
+			options:
+			{
+				summary?: string;
+				sidecar?: string;
+			} = {},
+		)
+		{
 			const projectDir = join(testDir, project);
 			const sessionPath = join(projectDir, `${sessionId}.jsonl`);
-			mkdirSync(projectDir, {recursive: true});
+			mkdirSync(
+				projectDir,
+				{
+					recursive: true,
+				},
+			);
 			writeFileSync(
 				join(projectDir, "sessions-index.json"),
 				makeSessionsIndex([
@@ -715,19 +997,44 @@ describe("indexer", () => {
 						fullPath: sessionPath,
 						fileMtime: Date.now(),
 						firstPrompt: "Fix the login bug",
-						...(options.summary === undefined ? {} : {summary: options.summary}),
+						...(options.summary === undefined
+							? {}
+							:
+								{
+									summary: options.summary,
+								}),
 					},
 				]),
 			);
 			writeFileSync(
 				sessionPath,
-				jsonl({type: "user", message: {role: "user", content: "Fix the login bug"}}, ...lines),
+				jsonl(
+					{
+						type: "user",
+						message:
+						{
+							role: "user",
+							content: "Fix the login bug",
+						},
+					},
+					...lines,
+				),
 			);
-			if (options.sidecar !== undefined) {
-				mkdirSync(join(projectDir, sessionId), {recursive: true});
+			if (options.sidecar !== undefined)
+			{
+				mkdirSync(
+					join(projectDir, sessionId),
+					{
+						recursive: true,
+					},
+				);
 				writeFileSync(
 					join(projectDir, sessionId, "custom-title.json"),
-					JSON.stringify({customTitle: options.sidecar}),
+					JSON.stringify(
+						{
+							customTitle: options.sidecar,
+						},
+					),
 				);
 			}
 			await indexSessionsIndex(db.index, projectDir, project);
@@ -735,118 +1042,254 @@ describe("indexer", () => {
 			// A later sessions-index.json rewrite must not clobber the resolved title.
 			await indexSessionsIndex(db.index, projectDir, project);
 			return db.index
-				.select({
-					customTitle: schema.sessions.customTitle,
-					aiTitle: schema.sessions.aiTitle,
-					title: schema.sessions.title,
-				})
+				.select(
+					{
+						customTitle: schema.sessions.customTitle,
+						aiTitle: schema.sessions.aiTitle,
+						title: schema.sessions.title,
+					},
+				)
 				.from(schema.sessions)
 				.where(eq(schema.sessions.id, sessionId))
 				.get();
 		}
 
-		it("titles by ai-title over the index summary", async () => {
+		it("titles by ai-title over the index summary", async () =>
+		{
 			expect(
-				await indexTitle([{type: "ai-title", aiTitle: "Fix login", sessionId}], {
-					summary: "Index summary",
-				}),
-			).toStrictEqual({customTitle: null, aiTitle: "Fix login", title: "Fix login"});
+				await indexTitle(
+					[
+						{
+							type: "ai-title",
+							aiTitle: "Fix login",
+							sessionId,
+						},
+					],
+					{
+						summary: "Index summary",
+					},
+				),
+			).toStrictEqual(
+				{
+					customTitle: null,
+					aiTitle: "Fix login",
+					title: "Fix login",
+				},
+			);
 		});
 
-		it("keeps a custom title over a later ai-title", async () => {
+		it("keeps a custom title over a later ai-title", async () =>
+		{
 			expect(
 				await indexTitle([
-					{type: "custom-title", customTitle: "Alice's title", sessionId},
-					{type: "ai-title", aiTitle: "Fix login", sessionId},
+					{
+						type: "custom-title",
+						customTitle: "Alice's title",
+						sessionId,
+					},
+					{
+						type: "ai-title",
+						aiTitle: "Fix login",
+						sessionId,
+					},
 				]),
-			).toStrictEqual({
-				customTitle: "Alice's title",
-				aiTitle: "Fix login",
-				title: "Alice's title",
-			});
+			).toStrictEqual(
+				{
+					customTitle: "Alice's title",
+					aiTitle: "Fix login",
+					title: "Alice's title",
+				},
+			);
 		});
 
-		it("titles a session bridged to claude.ai/code by its ai-title over a custom title", async () => {
+		it("titles a session bridged to claude.ai/code by its ai-title over a custom title", async () =>
+		{
 			expect(
 				await indexTitle([
-					{type: "bridge-session", sessionId, bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48"},
-					{type: "custom-title", customTitle: "claude.ai", sessionId},
-					{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId},
+					{
+						type: "bridge-session",
+						sessionId,
+						bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48",
+					},
+					{
+						type: "custom-title",
+						customTitle: "claude.ai",
+						sessionId,
+					},
+					{
+						type: "ai-title",
+						aiTitle: "Parallel do-task workstreams",
+						sessionId,
+					},
 				]),
-			).toStrictEqual({
-				customTitle: "claude.ai",
-				aiTitle: "Parallel do-task workstreams",
-				title: "Parallel do-task workstreams",
-			});
+			).toStrictEqual(
+				{
+					customTitle: "claude.ai",
+					aiTitle: "Parallel do-task workstreams",
+					title: "Parallel do-task workstreams",
+				},
+			);
 		});
 
-		it("titles a bridged session by the custom title this app pushed to claude.ai/code", async () => {
+		it("titles a bridged session by the custom title this app pushed to claude.ai/code", async () =>
+		{
 			setBridgePushedTitle(sessionId, "Pushed name");
 			expect(
 				await indexTitle([
-					{type: "bridge-session", sessionId, bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48"},
-					{type: "custom-title", customTitle: "Pushed name", sessionId},
-					{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId},
+					{
+						type: "bridge-session",
+						sessionId,
+						bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48",
+					},
+					{
+						type: "custom-title",
+						customTitle: "Pushed name",
+						sessionId,
+					},
+					{
+						type: "ai-title",
+						aiTitle: "Parallel do-task workstreams",
+						sessionId,
+					},
 				]),
-			).toStrictEqual({
-				customTitle: "Pushed name",
-				aiTitle: "Parallel do-task workstreams",
-				title: "Pushed name",
-			});
+			).toStrictEqual(
+				{
+					customTitle: "Pushed name",
+					aiTitle: "Parallel do-task workstreams",
+					title: "Pushed name",
+				},
+			);
 		});
 
-		it("takes the last ai-title", async () => {
+		it("takes the last ai-title", async () =>
+		{
 			expect(
 				await indexTitle([
-					{type: "ai-title", aiTitle: "First guess", sessionId},
-					{type: "ai-title", aiTitle: "Second guess", sessionId},
+					{
+						type: "ai-title",
+						aiTitle: "First guess",
+						sessionId,
+					},
+					{
+						type: "ai-title",
+						aiTitle: "Second guess",
+						sessionId,
+					},
 				]),
-			).toStrictEqual({customTitle: null, aiTitle: "Second guess", title: "Second guess"});
+			).toStrictEqual(
+				{
+					customTitle: null,
+					aiTitle: "Second guess",
+					title: "Second guess",
+				},
+			);
 		});
 
-		it("reads the custom-title.json sidecar", async () => {
-			expect(await indexTitle([], {sidecar: "From sidecar"})).toStrictEqual({
-				customTitle: "From sidecar",
-				aiTitle: null,
-				title: "From sidecar",
-			});
+		it("reads the custom-title.json sidecar", async () =>
+		{
+			expect(
+				await indexTitle(
+					[],
+					{
+						sidecar: "From sidecar",
+					},
+				),
+			).toStrictEqual(
+				{
+					customTitle: "From sidecar",
+					aiTitle: null,
+					title: "From sidecar",
+				},
+			);
 		});
 
-		it("falls back to the ai-title when the custom title is cleared", async () => {
+		it("falls back to the ai-title when the custom title is cleared", async () =>
+		{
 			expect(
 				await indexTitle([
-					{type: "custom-title", customTitle: "Old name", sessionId},
-					{type: "ai-title", aiTitle: "Fix login", sessionId},
-					{type: "custom-title", customTitle: "", sessionId},
+					{
+						type: "custom-title",
+						customTitle: "Old name",
+						sessionId,
+					},
+					{
+						type: "ai-title",
+						aiTitle: "Fix login",
+						sessionId,
+					},
+					{
+						type: "custom-title",
+						customTitle: "",
+						sessionId,
+					},
 				]),
-			).toStrictEqual({customTitle: null, aiTitle: "Fix login", title: "Fix login"});
+			).toStrictEqual(
+				{
+					customTitle: null,
+					aiTitle: "Fix login",
+					title: "Fix login",
+				},
+			);
 		});
 
-		it("titles a session indexed without sessions-index.json by its ai-title", async () => {
+		it("titles a session indexed without sessions-index.json by its ai-title", async () =>
+		{
 			const projectDir = join(testDir, project);
 			const sessionPath = join(projectDir, `${sessionId}.jsonl`);
-			mkdirSync(projectDir, {recursive: true});
+			mkdirSync(
+				projectDir,
+				{
+					recursive: true,
+				},
+			);
 			writeFileSync(
 				sessionPath,
 				jsonl(
-					{type: "user", message: {role: "user", content: "Fix the login bug"}},
-					{type: "ai-title", aiTitle: "Fix login", sessionId},
+					{
+						type: "user",
+						message:
+						{
+							role: "user",
+							content: "Fix the login bug",
+						},
+					},
+					{
+						type: "ai-title",
+						aiTitle: "Fix login",
+						sessionId,
+					},
 				),
 			);
 			await indexJsonlFile(db.index, sessionPath, project);
 			expect(
 				db.index
-					.select({aiTitle: schema.sessions.aiTitle, title: schema.sessions.title})
+					.select(
+						{
+							aiTitle: schema.sessions.aiTitle,
+							title: schema.sessions.title,
+						},
+					)
 					.from(schema.sessions)
 					.where(eq(schema.sessions.id, sessionId))
 					.get(),
-			).toStrictEqual({aiTitle: "Fix login", title: "Fix login"});
+			).toStrictEqual(
+				{
+					aiTitle: "Fix login",
+					title: "Fix login",
+				},
+			);
 		});
 	});
 
-	it("updates session mtime when JSONL is re-indexed", async () => {
+	it("updates session mtime when JSONL is re-indexed", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const oldMtime = Date.now() - 86_400_000; // 1 day ago
 
@@ -873,10 +1316,16 @@ describe("indexer", () => {
 		const jsonlPath = join(projectDir, "mtime-sess.jsonl");
 		writeFileSync(
 			jsonlPath,
-			jsonl({
-				type: "user",
-				message: {role: "user", content: "New message"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "New message",
+					},
+				},
+			),
 		);
 
 		await indexJsonlFile(db.index, jsonlPath, "-Users-craig-projects-app");
@@ -886,19 +1335,42 @@ describe("indexer", () => {
 		expect(after.mtimeMs).toBeGreaterThan(oldMtime);
 	});
 
-	it("dates session activity by the last record, not a later touch of the file", async () => {
+	it("dates session activity by the last record, not a later touch of the file", async () =>
+	{
 		const project = "-Users-alice-projects-example";
 		const projectDir = join(testDir, project);
 		const transcriptPath = join(projectDir, "session-test-101.jsonl");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			transcriptPath,
 			jsonl(
-				{type: "user", timestamp: "2026-10-11T15:00:00.000Z", message: {role: "user", content: "Sweep it"}},
+				{
+					type: "user",
+					timestamp: "2026-10-11T15:00:00.000Z",
+					message:
+					{
+						role: "user",
+						content: "Sweep it",
+					},
+				},
 				{
 					type: "assistant",
 					timestamp: "2026-10-11T15:01:25.000Z",
-					message: {role: "assistant", content: [{type: "text", text: "Which volume?"}]},
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "text",
+								text: "Which volume?",
+							},
+						],
+					},
 				},
 			),
 		);
@@ -909,19 +1381,33 @@ describe("indexer", () => {
 		await indexJsonlFile(db.index, transcriptPath, project);
 
 		const row = db.index
-			.select({mtimeMs: schema.sessions.mtimeMs})
+			.select(
+				{
+					mtimeMs: schema.sessions.mtimeMs,
+				},
+			)
 			.from(schema.sessions)
 			.where(eq(schema.sessions.id, "session-test-101"))
 			.get();
-		expect(row).toStrictEqual({mtimeMs: Date.parse("2026-10-11T15:01:25.000Z")});
+		expect(row).toStrictEqual(
+			{
+				mtimeMs: Date.parse("2026-10-11T15:01:25.000Z"),
+			},
+		);
 	});
 
-	it("persists transcript message counts when the sessions index omits them", async () => {
+	it("persists transcript message counts when the sessions index omits them", async () =>
+	{
 		const project = "-Users-alice-projects-example";
 		const projectDir = join(testDir, project);
 		const transcriptPath = join(projectDir, "session-test-100.jsonl");
 		const indexPath = join(projectDir, "sessions-index.json");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			indexPath,
 			makeSessionsIndex([
@@ -938,16 +1424,41 @@ describe("indexer", () => {
 			jsonl(
 				{
 					type: "user",
-					message: {role: "user", content: "Count this prompt"},
+					message:
+					{
+						role: "user",
+						content: "Count this prompt",
+					},
 				},
 				{
 					type: "assistant",
-					message: {role: "assistant", content: [{type: "text", text: "First response"}]},
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "text",
+								text: "First response",
+							},
+						],
+					},
 				},
-				{type: "progress", subtype: "api_req_started"},
+				{
+					type: "progress",
+					subtype: "api_req_started",
+				},
 				{
 					type: "assistant",
-					message: {role: "assistant", content: [{type: "text", text: "Second response"}]},
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "text",
+								text: "Second response",
+							},
+						],
+					},
 				},
 			),
 		);
@@ -969,14 +1480,25 @@ describe("indexer", () => {
 
 		expect(
 			db.index
-				.select({id: schema.sessions.id, messageCount: schema.sessions.messageCount})
+				.select(
+					{
+						id: schema.sessions.id,
+						messageCount: schema.sessions.messageCount,
+					},
+				)
 				.from(schema.sessions)
 				.where(eq(schema.sessions.id, "session-test-100"))
 				.get(),
-		).toStrictEqual({id: "session-test-100", messageCount: 3});
+		).toStrictEqual(
+			{
+				id: "session-test-100",
+				messageCount: 3,
+			},
+		);
 	});
 
-	it("updates the session location when its JSONL moves to another project", async () => {
+	it("updates the session location when its JSONL moves to another project", async () =>
+	{
 		const sessionId = "00000000-0000-4000-8000-000000000001";
 		const oldProject = "-tmp-a";
 		const newProject = "-tmp-b";
@@ -984,14 +1506,30 @@ describe("indexer", () => {
 		const newProjectDir = join(testDir, newProject);
 		const oldFilePath = join(oldProjectDir, `${sessionId}.jsonl`);
 		const newFilePath = join(newProjectDir, `${sessionId}.jsonl`);
-		mkdirSync(oldProjectDir, {recursive: true});
-		mkdirSync(newProjectDir, {recursive: true});
+		mkdirSync(
+			oldProjectDir,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			newProjectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			oldFilePath,
-			jsonl({
-				type: "user",
-				message: {role: "user", content: "Move this test session"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Move this test session",
+					},
+				},
+			),
 		);
 
 		await indexJsonlFile(db.index, oldFilePath, oldProject);
@@ -999,31 +1537,66 @@ describe("indexer", () => {
 		await indexJsonlFile(db.index, newFilePath, newProject);
 
 		const session = db.index
-			.select({filePath: schema.sessions.filePath, projectId: schema.sessions.projectId})
+			.select(
+				{
+					filePath: schema.sessions.filePath,
+					projectId: schema.sessions.projectId,
+				},
+			)
 			.from(schema.sessions)
 			.where(eq(schema.sessions.id, sessionId))
 			.get();
 		const project = db.index
-			.select({id: schema.projects.id})
+			.select(
+				{
+					id: schema.projects.id,
+				},
+			)
 			.from(schema.projects)
 			.where(eq(schema.projects.id, newProject))
 			.get();
-		expect({project, session}).toStrictEqual({
-			project: {id: newProject},
-			session: {filePath: newFilePath, projectId: newProject},
-		});
+		expect(
+			{
+				project,
+				session,
+			},
+		).toStrictEqual(
+			{
+				project:
+				{
+					id: newProject,
+				},
+				session:
+				{
+					filePath: newFilePath,
+					projectId: newProject,
+				},
+			},
+		);
 	});
 
-	it("creates session from JSONL when not in index", async () => {
+	it("creates session from JSONL when not in index", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "orphan-sess.jsonl"),
-			jsonl({
-				type: "user",
-				message: {role: "user", content: "Hello world"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Hello world",
+					},
+				},
+			),
 		);
 
 		await indexJsonlFile(db.index, join(projectDir, "orphan-sess.jsonl"), "-Users-craig-projects-app");
@@ -1034,23 +1607,37 @@ describe("indexer", () => {
 		expect(session.firstPrompt).toBe("Hello world");
 	});
 
-	it("replaces an indexed caveat prompt with the first substantive JSONL prompt", async () => {
+	it("replaces an indexed caveat prompt with the first substantive JSONL prompt", async () =>
+	{
 		const project = "-Users-alice-projects-example";
 		const projectDir = join(testDir, project);
 		const sessionPath = join(projectDir, "caveat-session.jsonl");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			sessionPath,
 			jsonl(
 				{
 					type: "user",
-					message: {
+					message:
+					{
 						role: "user",
 						content:
 							"<local-command-caveat>Caveat: Fabricated local command context.</local-command-caveat>",
 					},
 				},
-				{type: "user", message: {role: "user", content: "Fix Alice's example session"}},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Fix Alice's example session",
+					},
+				},
 			),
 		);
 		writeFileSync(
@@ -1069,19 +1656,32 @@ describe("indexer", () => {
 		await indexSessionsIndex(db.index, projectDir, project);
 
 		const session = db.index
-			.select({title: schema.sessions.title, firstPrompt: schema.sessions.firstPrompt})
+			.select(
+				{
+					title: schema.sessions.title,
+					firstPrompt: schema.sessions.firstPrompt,
+				},
+			)
 			.from(schema.sessions)
 			.where(eq(schema.sessions.id, "caveat-session"))
 			.get();
-		expect(session).toStrictEqual({
-			title: "Fix Alice's example session",
-			firstPrompt: "Fix Alice's example session",
-		});
+		expect(session).toStrictEqual(
+			{
+				title: "Fix Alice's example session",
+				firstPrompt: "Fix Alice's example session",
+			},
+		);
 	});
 
-	it("fullScan indexes a complete project directory", async () => {
+	it("fullScan indexes a complete project directory", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
@@ -1098,18 +1698,30 @@ describe("indexer", () => {
 
 		writeFileSync(
 			join(projectDir, "sess-a.jsonl"),
-			jsonl({
-				type: "user",
-				message: {role: "user", content: "First session"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "First session",
+					},
+				},
+			),
 		);
 
 		writeFileSync(
 			join(projectDir, "sess-b.jsonl"),
-			jsonl({
-				type: "user",
-				message: {role: "user", content: "Second session"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Second session",
+					},
+				},
+			),
 		);
 
 		await fullScan(db.index, db.summaries, testDir);
@@ -1121,16 +1733,36 @@ describe("indexer", () => {
 		expect(sessions.length).toBe(2);
 	});
 
-	it("resolves a dotted project directory from the session's anchored cwd", async () => {
+	it("resolves a dotted project directory from the session's anchored cwd", async () =>
+	{
 		const sourceProjectPath = join(testDir, "source", "factorio.school");
 		const project = encodeProjectPath(sourceProjectPath);
 		const projectDir = join(testDir, project);
 		const sessionPath = join(projectDir, "session-dotted.jsonl");
-		mkdirSync(sourceProjectPath, {recursive: true});
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			sourceProjectPath,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			sessionPath,
-			jsonl({type: "user", cwd: sourceProjectPath, message: {content: "Fix the search breakage"}}),
+			jsonl(
+				{
+					type: "user",
+					cwd: sourceProjectPath,
+					message:
+					{
+						content: "Fix the search breakage",
+					},
+				},
+			),
 		);
 
 		await indexJsonlFile(db.index, sessionPath, project);
@@ -1138,13 +1770,24 @@ describe("indexer", () => {
 		expect(getSessionProjectPath(db.index, "session-dotted")).toBe(sourceProjectPath);
 	});
 
-	it("preserves a resolved project name after its directory is deleted", async () => {
+	it("preserves a resolved project name after its directory is deleted", async () =>
+	{
 		const sourceProjectPath = join(testDir, "source", "my-project");
 		const project = encodeProjectPath(sourceProjectPath);
 		const projectDir = join(testDir, project);
 		const sessionPath = join(projectDir, "session-alice.jsonl");
-		mkdirSync(sourceProjectPath, {recursive: true});
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			sourceProjectPath,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
 			makeSessionsIndex([
@@ -1157,31 +1800,78 @@ describe("indexer", () => {
 				},
 			]),
 		);
-		writeFileSync(sessionPath, jsonl({type: "user", message: {content: "Remember the project name"}}));
+		writeFileSync(
+			sessionPath,
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						content: "Remember the project name",
+					},
+				},
+			),
+		);
 
 		await indexSessionsIndex(db.index, projectDir, project);
-		rmSync(sourceProjectPath, {recursive: true});
+		rmSync(
+			sourceProjectPath,
+			{
+				recursive: true,
+			},
+		);
 		await indexJsonlFile(db.index, sessionPath, project);
 
 		const indexedProject = db.index
-			.select({name: schema.projects.name, projectPath: schema.projects.projectPath})
+			.select(
+				{
+					name: schema.projects.name,
+					projectPath: schema.projects.projectPath,
+				},
+			)
 			.from(schema.projects)
 			.where(eq(schema.projects.id, project))
 			.get();
-		expect(indexedProject).toStrictEqual({name: "my-project", projectPath: null});
+		expect(indexedProject).toStrictEqual(
+			{
+				name: "my-project",
+				projectPath: null,
+			},
+		);
 	});
 
-	it("repairs a legacy path-like project name when indexed files are unchanged", async () => {
+	it("repairs a legacy path-like project name when indexed files are unchanged", async () =>
+	{
 		const project = "-Users-craig-projects-klass-fix-739-rewrite-per-rule";
 		const projectDir = join(testDir, project);
 		const sessionPath = join(projectDir, "session-alice.jsonl");
-		mkdirSync(projectDir, {recursive: true});
-		writeFileSync(sessionPath, jsonl({type: "user", message: {content: "Repair the display name"}}));
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			sessionPath,
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						content: "Repair the display name",
+					},
+				},
+			),
+		);
 
 		await fullScan(db.index, db.summaries, testDir);
 		db.index
 			.update(schema.projects)
-			.set({name: "/Users/craig/projects/klass/fix/739/rewrite/per/rule"})
+			.set(
+				{
+					name: "/Users/craig/projects/klass/fix/739/rewrite/per/rule",
+				},
+			)
 			.where(eq(schema.projects.id, project))
 			.run();
 
@@ -1192,44 +1882,94 @@ describe("indexer", () => {
 		expect(projectNames.every((name) => !name.startsWith("/Users/"))).toBe(true);
 	});
 
-	it("re-indexes once a bridged session whose stored title predates the bridged-title rule", async () => {
+	it("re-indexes once a bridged session whose stored title predates the bridged-title rule", async () =>
+	{
 		const project = "-Users-alice-projects-bridged";
 		const projectDir = join(testDir, project);
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "session-bridged.jsonl"),
 			jsonl(
-				{type: "user", message: {role: "user", content: "Fix the login bug"}},
-				{type: "bridge-session", sessionId: "session-bridged", bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48"},
-				{type: "custom-title", customTitle: "claude.ai", sessionId: "session-bridged"},
-				{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId: "session-bridged"},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Fix the login bug",
+					},
+				},
+				{
+					type: "bridge-session",
+					sessionId: "session-bridged",
+					bridgeSessionId: "cse_015KtMUgd6XyrAVv87Zaks48",
+				},
+				{
+					type: "custom-title",
+					customTitle: "claude.ai",
+					sessionId: "session-bridged",
+				},
+				{
+					type: "ai-title",
+					aiTitle: "Parallel do-task workstreams",
+					sessionId: "session-bridged",
+				},
 			),
 		);
 		writeFileSync(
 			join(projectDir, "session-local.jsonl"),
 			jsonl(
-				{type: "user", message: {role: "user", content: "Fix the logout bug"}},
-				{type: "custom-title", customTitle: "Alice's title", sessionId: "session-local"},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Fix the logout bug",
+					},
+				},
+				{
+					type: "custom-title",
+					customTitle: "Alice's title",
+					sessionId: "session-local",
+				},
 			),
 		);
 		await fullScan(db.index, db.summaries, testDir);
 
 		// An index written before the rule: the bridged title is its custom title, and no re-index marker.
-		const staleTitles = () => {
+		const staleTitles = () =>
+		{
 			db.index
 				.update(schema.sessions)
-				.set({title: "claude.ai"})
+				.set(
+					{
+						title: "claude.ai",
+					},
+				)
 				.where(eq(schema.sessions.id, "session-bridged"))
 				.run();
 			db.index
 				.update(schema.sessions)
-				.set({title: "Stale local"})
+				.set(
+					{
+						title: "Stale local",
+					},
+				)
 				.where(eq(schema.sessions.id, "session-local"))
 				.run();
 		};
 		const titles = () =>
 			db.index
-				.select({id: schema.sessions.id, title: schema.sessions.title})
+				.select(
+					{
+						id: schema.sessions.id,
+						title: schema.sessions.title,
+					},
+				)
 				.from(schema.sessions)
 				.orderBy(schema.sessions.id)
 				.all();
@@ -1238,23 +1978,41 @@ describe("indexer", () => {
 
 		await fullScan(db.index, db.summaries, testDir);
 		expect(titles()).toStrictEqual([
-			{id: "session-bridged", title: "Parallel do-task workstreams"},
-			{id: "session-local", title: "Stale local"},
+			{
+				id: "session-bridged",
+				title: "Parallel do-task workstreams",
+			},
+			{
+				id: "session-local",
+				title: "Stale local",
+			},
 		]);
 
 		// Stamped: later scans skip the unchanged transcripts again.
 		staleTitles();
 		await fullScan(db.index, db.summaries, testDir);
 		expect(titles()).toStrictEqual([
-			{id: "session-bridged", title: "claude.ai"},
-			{id: "session-local", title: "Stale local"},
+			{
+				id: "session-bridged",
+				title: "claude.ai",
+			},
+			{
+				id: "session-local",
+				title: "Stale local",
+			},
 		]);
 	});
 
-	it("re-indexes once a skill-launched session whose stored title is the skill's base-directory line", async () => {
+	it("re-indexes once a skill-launched session whose stored title is the skill's base-directory line", async () =>
+	{
 		const project = "-Users-alice-projects-skills";
 		const projectDir = join(testDir, project);
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		const body =
 			"Base directory for this skill: /Users/alice/.claude/plugins/cache/example-market/git/1.2.3/skills/conflicts\n\n# Conflicts";
 		writeFileSync(
@@ -1262,36 +2020,73 @@ describe("indexer", () => {
 			jsonl(
 				{
 					type: "user",
-					message: {
+					message:
+					{
 						role: "user",
 						content:
 							"<command-message>git:conflicts</command-message>\n<command-name>/git:conflicts</command-name>",
 					},
 				},
-				{type: "user", isMeta: true, message: {role: "user", content: [{type: "text", text: body}]}},
+				{
+					type: "user",
+					isMeta: true,
+					message:
+					{
+						role: "user",
+						content: [
+							{
+								type: "text",
+								text: body,
+							},
+						],
+					},
+				},
 			),
 		);
 		writeFileSync(
 			join(projectDir, "session-plain.jsonl"),
-			jsonl({type: "user", message: {role: "user", content: "Fix the logout bug"}}),
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Fix the logout bug",
+					},
+				},
+			),
 		);
 		await fullScan(db.index, db.summaries, testDir);
 
-		const staleTitles = () => {
+		const staleTitles = () =>
+		{
 			db.index
 				.update(schema.sessions)
-				.set({title: "Base directory for this skill: /Users/alice/.claude/plugins/cache/example-..."})
+				.set(
+					{
+						title: "Base directory for this skill: /Users/alice/.claude/plugins/cache/example-...",
+					},
+				)
 				.where(eq(schema.sessions.id, "session-skill"))
 				.run();
 			db.index
 				.update(schema.sessions)
-				.set({title: "Stale plain"})
+				.set(
+					{
+						title: "Stale plain",
+					},
+				)
 				.where(eq(schema.sessions.id, "session-plain"))
 				.run();
 		};
 		const titles = () =>
 			db.index
-				.select({id: schema.sessions.id, title: schema.sessions.title})
+				.select(
+					{
+						id: schema.sessions.id,
+						title: schema.sessions.title,
+					},
+				)
 				.from(schema.sessions)
 				.orderBy(schema.sessions.id)
 				.all();
@@ -1300,14 +2095,23 @@ describe("indexer", () => {
 
 		await fullScan(db.index, db.summaries, testDir);
 		expect(titles()).toStrictEqual([
-			{id: "session-plain", title: "Stale plain"},
-			{id: "session-skill", title: "/git:conflicts"},
+			{
+				id: "session-plain",
+				title: "Stale plain",
+			},
+			{
+				id: "session-skill",
+				title: "/git:conflicts",
+			},
 		]);
 
 		staleTitles();
 		await fullScan(db.index, db.summaries, testDir);
 		expect(titles()).toStrictEqual([
-			{id: "session-plain", title: "Stale plain"},
+			{
+				id: "session-plain",
+				title: "Stale plain",
+			},
 			{
 				id: "session-skill",
 				title: "Base directory for this skill: /Users/alice/.claude/plugins/cache/example-...",
@@ -1315,52 +2119,103 @@ describe("indexer", () => {
 		]);
 	});
 
-	it("names a session with no title source by its folder, else Untitled, never by its id (upstream fK)", async () => {
+	it("names a session with no title source by its folder, else Untitled, never by its id (upstream fK)", async () =>
+	{
 		const project = "-Users-alice-projects-untitled";
 		const projectDir = join(testDir, project);
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "session-empty.jsonl"),
-			jsonl({type: "permission-mode", permissionMode: "auto", sessionId: "session-empty"}),
+			jsonl(
+				{
+					type: "permission-mode",
+					permissionMode: "auto",
+					sessionId: "session-empty",
+				},
+			),
 		);
 		writeFileSync(
 			join(projectDir, "session-folder.jsonl"),
-			jsonl({
-				type: "permission-mode",
-				permissionMode: "auto",
-				sessionId: "session-folder",
-				cwd: "/fake/projects/example-repo",
-			}),
+			jsonl(
+				{
+					type: "permission-mode",
+					permissionMode: "auto",
+					sessionId: "session-folder",
+					cwd: "/fake/projects/example-repo",
+				},
+			),
 		);
 		writeFileSync(
 			join(projectDir, "session-named.jsonl"),
-			jsonl({type: "user", message: {role: "user", content: "Fix the logout bug"}}),
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Fix the logout bug",
+					},
+				},
+			),
 		);
 		await fullScan(db.index, db.summaries, testDir);
 
 		const listed = listSessionsForProjectFromDb(db.index, project)
-			.map((session) => ({id: session.id, title: session.title, titleIsStandIn: session.titleIsStandIn}))
+			.map((session) => (
+			{
+				id: session.id,
+				title: session.title,
+				titleIsStandIn: session.titleIsStandIn,
+			}))
 			.toSorted((a, b) => a.id.localeCompare(b.id));
-		expect({
-			project: listed,
-			byId: getSessionTitlesByIds(db.index, ["session-empty", "session-folder", "session-named"]),
-		}).toStrictEqual({
-			project: [
-				{id: "session-empty", title: "Untitled", titleIsStandIn: true},
-				{id: "session-folder", title: "example-repo", titleIsStandIn: true},
-				{id: "session-named", title: "Fix the logout bug", titleIsStandIn: undefined},
-			],
-			byId: {
-				"session-empty": "Untitled",
-				"session-folder": "example-repo",
-				"session-named": "Fix the logout bug",
+		expect(
+			{
+				project: listed,
+				byId: getSessionTitlesByIds(db.index, ["session-empty", "session-folder", "session-named"]),
 			},
-		});
+		).toStrictEqual(
+			{
+				project: [
+					{
+						id: "session-empty",
+						title: "Untitled",
+						titleIsStandIn: true,
+					},
+					{
+						id: "session-folder",
+						title: "example-repo",
+						titleIsStandIn: true,
+					},
+					{
+						id: "session-named",
+						title: "Fix the logout bug",
+						titleIsStandIn: undefined,
+					},
+				],
+				byId:
+				{
+					"session-empty": "Untitled",
+					"session-folder": "example-repo",
+					"session-named": "Fix the logout bug",
+				},
+			},
+		);
 	});
 
-	it("derives parent/worktree display names for worktree and nested checkout projects", async () => {
+	it("derives parent/worktree display names for worktree and nested checkout projects", async () =>
+	{
 		const repoPath = join(testDir, "repos", "eclipse-collections");
-		mkdirSync(repoPath, {recursive: true});
+		mkdirSync(
+			repoPath,
+			{
+				recursive: true,
+			},
+		);
 		const parentProject = encodeProjectPath(repoPath);
 		const nestedProject = `${parentProject}-merge-4`;
 		const worktreeProject = `${parentProject}--claude-worktrees-String-format`;
@@ -1369,10 +2224,27 @@ describe("indexer", () => {
 			[parentProject, "parent"],
 			[nestedProject, "nested"],
 			[worktreeProject, "worktree"],
-		] as const) {
+		] as const)
+		{
 			const projectDir = join(testDir, project);
-			mkdirSync(projectDir, {recursive: true});
-			writeFileSync(join(projectDir, `sess-${prompt}.jsonl`), jsonl({type: "user", message: {content: prompt}}));
+			mkdirSync(
+				projectDir,
+				{
+					recursive: true,
+				},
+			);
+			writeFileSync(
+				join(projectDir, `sess-${prompt}.jsonl`),
+				jsonl(
+					{
+						type: "user",
+						message:
+						{
+							content: prompt,
+						},
+					},
+				),
+			);
 		}
 		// Only the parent has a resolved path; the children anchor to its id.
 		writeFileSync(
@@ -1392,7 +2264,12 @@ describe("indexer", () => {
 
 		const names = new Map(
 			db.index
-				.select({id: schema.projects.id, name: schema.projects.name})
+				.select(
+					{
+						id: schema.projects.id,
+						name: schema.projects.name,
+					},
+				)
 				.from(schema.projects)
 				.all()
 				.map((row) => [row.id, row.name]),
@@ -1404,35 +2281,89 @@ describe("indexer", () => {
 		]);
 	});
 
-	it("prunes a session whose primary transcript was deleted", async () => {
+	it("prunes a session whose primary transcript was deleted", async () =>
+	{
 		const project = "-tmp-alice-project";
 		const projectDir = join(testDir, project);
 		const retainedPath = join(projectDir, "session-alice.jsonl");
 		const deletedPath = join(projectDir, "session-bob.jsonl");
-		mkdirSync(projectDir, {recursive: true});
-		writeFileSync(retainedPath, jsonl({type: "user", message: {content: "Retain Alice"}}));
-		writeFileSync(deletedPath, jsonl({type: "user", message: {content: "Delete Bob"}}));
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			retainedPath,
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						content: "Retain Alice",
+					},
+				},
+			),
+		);
+		writeFileSync(
+			deletedPath,
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						content: "Delete Bob",
+					},
+				},
+			),
+		);
 
 		await fullScan(db.index, db.summaries, testDir);
 		rmSync(deletedPath);
 		await fullScan(db.index, db.summaries, testDir);
 
 		const sessions = db.index
-			.select({id: schema.sessions.id, filePath: schema.sessions.filePath})
+			.select(
+				{
+					id: schema.sessions.id,
+					filePath: schema.sessions.filePath,
+				},
+			)
 			.from(schema.sessions)
 			.all();
 		const indexedTranscripts = db.index
-			.select({path: schema.indexedFiles.path})
+			.select(
+				{
+					path: schema.indexedFiles.path,
+				},
+			)
 			.from(schema.indexedFiles)
 			.all()
 			.filter((row) => row.path.endsWith(".jsonl"));
-		expect({indexedTranscripts, sessions}).toStrictEqual({
-			indexedTranscripts: [{path: retainedPath}],
-			sessions: [{id: "session-alice", filePath: retainedPath}],
-		});
+		expect(
+			{
+				indexedTranscripts,
+				sessions,
+			},
+		).toStrictEqual(
+			{
+				indexedTranscripts: [
+					{
+						path: retainedPath,
+					},
+				],
+				sessions: [
+					{
+						id: "session-alice",
+						filePath: retainedPath,
+					},
+				],
+			},
+		);
 	});
 
-	it("preserves metadata when a session transcript moves between projects", async () => {
+	it("preserves metadata when a session transcript moves between projects", async () =>
+	{
 		const sessionId = "session-alice";
 		const oldProject = "-tmp-alice-old";
 		const newProject = "-tmp-alice-new";
@@ -1440,164 +2371,328 @@ describe("indexer", () => {
 		const newProjectDir = join(testDir, newProject);
 		const oldPath = join(oldProjectDir, `${sessionId}.jsonl`);
 		const newPath = join(newProjectDir, `${sessionId}.jsonl`);
-		mkdirSync(oldProjectDir, {recursive: true});
-		mkdirSync(newProjectDir, {recursive: true});
-		writeFileSync(oldPath, jsonl({type: "user", cwd: "/tmp/alice/old", message: {content: "Move Alice"}}));
+		mkdirSync(
+			oldProjectDir,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			newProjectDir,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			oldPath,
+			jsonl(
+				{
+					type: "user",
+					cwd: "/tmp/alice/old",
+					message:
+					{
+						content: "Move Alice",
+					},
+				},
+			),
+		);
 		await fullScan(db.index, db.summaries, testDir);
 		db.summaries
 			.insert(schema.summaries)
-			.values({
-				sessionId,
-				lastMessageId: "message-alice",
-				summary: "Alice moved projects.",
-				generatedAt: 946_684_800_000,
-			})
-			.run();
-
-		renameSync(oldPath, newPath);
-		await fullScan(db.index, db.summaries, testDir);
-
-		const session = db.index
-			.select({
-				id: schema.sessions.id,
-				projectId: schema.sessions.projectId,
-				filePath: schema.sessions.filePath,
-			})
-			.from(schema.sessions)
-			.get();
-		const summaries = db.summaries.select().from(schema.summaries).all();
-		const transcriptPaths = db.index
-			.select({path: schema.indexedFiles.path})
-			.from(schema.indexedFiles)
-			.all()
-			.filter((row) => row.path.endsWith(".jsonl"));
-		expect({session, summaries, transcriptPaths}).toStrictEqual({
-			session: {id: sessionId, projectId: newProject, filePath: newPath},
-			summaries: [
+			.values(
 				{
 					sessionId,
 					lastMessageId: "message-alice",
 					summary: "Alice moved projects.",
 					generatedAt: 946_684_800_000,
 				},
-			],
-			transcriptPaths: [{path: newPath}],
-		});
+			)
+			.run();
+
+		renameSync(oldPath, newPath);
+		await fullScan(db.index, db.summaries, testDir);
+
+		const session = db.index
+			.select(
+				{
+					id: schema.sessions.id,
+					projectId: schema.sessions.projectId,
+					filePath: schema.sessions.filePath,
+				},
+			)
+			.from(schema.sessions)
+			.get();
+		const summaries = db.summaries.select().from(schema.summaries).all();
+		const transcriptPaths = db.index
+			.select(
+				{
+					path: schema.indexedFiles.path,
+				},
+			)
+			.from(schema.indexedFiles)
+			.all()
+			.filter((row) => row.path.endsWith(".jsonl"));
+		expect(
+			{
+				session,
+				summaries,
+				transcriptPaths,
+			},
+		).toStrictEqual(
+			{
+				session:
+				{
+					id: sessionId,
+					projectId: newProject,
+					filePath: newPath,
+				},
+				summaries: [
+					{
+						sessionId,
+						lastMessageId: "message-alice",
+						summary: "Alice moved projects.",
+						generatedAt: 946_684_800_000,
+					},
+				],
+				transcriptPaths: [
+					{
+						path: newPath,
+					},
+				],
+			},
+		);
 	});
 
-	it("prunes every dependent row for a deleted session", async () => {
+	it("prunes every dependent row for a deleted session", async () =>
+	{
 		const sessionId = "session-alice";
 		const project = "-tmp-alice-project";
 		const projectDir = join(testDir, project);
 		const sessionPath = join(projectDir, `${sessionId}.jsonl`);
 		const subagentsDir = join(projectDir, sessionId, "subagents");
 		const subagentPath = join(subagentsDir, "agent-alice.jsonl");
-		mkdirSync(subagentsDir, {recursive: true});
+		mkdirSync(
+			subagentsDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			sessionPath,
 			jsonl(
-				{type: "user", message: {content: "Ask Alice"}},
-				{type: "assistant", message: {content: "Alice answers"}},
+				{
+					type: "user",
+					message:
+					{
+						content: "Ask Alice",
+					},
+				},
+				{
+					type: "assistant",
+					message:
+					{
+						content: "Alice answers",
+					},
+				},
 			),
 		);
 		writeFileSync(
 			subagentPath,
-			jsonl({
-				type: "assistant",
-				timestamp: "2000-01-01T00:00:00.000Z",
-				message: {content: "Work"},
-			}),
+			jsonl(
+				{
+					type: "assistant",
+					timestamp: "2000-01-01T00:00:00.000Z",
+					message:
+					{
+						content: "Work",
+					},
+				},
+			),
 		);
 		await fullScan(db.index, db.summaries, testDir);
 		db.index
 			.insert(schema.planSessions)
-			.values({planFilename: "alice-plan.md", sessionId, projectId: project})
+			.values(
+				{
+					planFilename: "alice-plan.md",
+					sessionId,
+					projectId: project,
+				},
+			)
 			.run();
 		db.summaries
 			.insert(schema.summaries)
-			.values({
-				sessionId,
-				lastMessageId: "message-alice",
-				summary: "Alice finished.",
-				generatedAt: 946_684_800_000,
-			})
+			.values(
+				{
+					sessionId,
+					lastMessageId: "message-alice",
+					summary: "Alice finished.",
+					generatedAt: 946_684_800_000,
+				},
+			)
 			.run();
 
 		rmSync(sessionPath);
-		rmSync(join(projectDir, sessionId), {recursive: true});
+		rmSync(
+			join(projectDir, sessionId),
+			{
+				recursive: true,
+			},
+		);
 		await fullScan(db.index, db.summaries, testDir);
 
-		const indexedPaths = db.index.select({path: schema.indexedFiles.path}).from(schema.indexedFiles).all();
+		const indexedPaths = db.index
+			.select(
+				{
+					path: schema.indexedFiles.path,
+				},
+			)
+			.from(schema.indexedFiles)
+			.all();
 		const messageContentRows = db.index.all(
 			sql`SELECT session_id FROM message_content_fts WHERE session_id = ${sessionId}`,
 		);
 		const sessionSearchRows = db.index.all(
 			sql`SELECT session_id FROM sessions_fts WHERE session_id = ${sessionId}`,
 		);
-		expect({
-			indexedPaths,
-			messageContentRows,
-			planSessions: db.index.select().from(schema.planSessions).all(),
-			sessions: db.index.select().from(schema.sessions).all(),
-			sessionSearchRows,
-			subagents: db.index.select().from(schema.subagents).all(),
-			summaries: db.summaries.select().from(schema.summaries).all(),
-		}).toStrictEqual({
-			indexedPaths: [],
-			messageContentRows: [],
-			planSessions: [],
-			sessions: [],
-			sessionSearchRows: [],
-			subagents: [],
-			summaries: [],
-		});
+		expect(
+			{
+				indexedPaths,
+				messageContentRows,
+				planSessions: db.index.select().from(schema.planSessions).all(),
+				sessions: db.index.select().from(schema.sessions).all(),
+				sessionSearchRows,
+				subagents: db.index.select().from(schema.subagents).all(),
+				summaries: db.summaries.select().from(schema.summaries).all(),
+			},
+		).toStrictEqual(
+			{
+				indexedPaths: [],
+				messageContentRows: [],
+				planSessions: [],
+				sessions: [],
+				sessionSearchRows: [],
+				subagents: [],
+				summaries: [],
+			},
+		);
 	});
 
-	it("fullScan indexes workflow agent transcripts once per mtime", async () => {
+	it("fullScan indexes workflow agent transcripts once per mtime", async () =>
+	{
 		const project = "-tmp-alice-project";
 		const projectDir = join(testDir, project);
 		const runDir = join(projectDir, "sess-1", "subagents", "workflows", "wf_x-1");
 		const agentPath = join(runDir, "agent-aw1.jsonl");
-		mkdirSync(runDir, {recursive: true});
-		writeFileSync(join(projectDir, "sess-1.jsonl"), jsonl({type: "user", message: {content: "Run the workflow"}}));
+		mkdirSync(
+			runDir,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			join(projectDir, "sess-1.jsonl"),
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						content: "Run the workflow",
+					},
+				},
+			),
+		);
 		writeFileSync(
 			agentPath,
-			jsonl({
-				type: "assistant",
-				agentId: "aw1",
-				isSidechain: true,
-				timestamp: "2000-01-01T00:00:00.000Z",
-				message: {content: "Inventory the sidebar"},
-			}),
+			jsonl(
+				{
+					type: "assistant",
+					agentId: "aw1",
+					isSidechain: true,
+					timestamp: "2000-01-01T00:00:00.000Z",
+					message:
+					{
+						content: "Inventory the sidebar",
+					},
+				},
+			),
 		);
 		writeFileSync(
 			join(runDir, "agent-aw1.meta.json"),
-			JSON.stringify({agentType: "workflow-subagent", description: "ours:shell-sidebar", spawnDepth: 1}),
+			JSON.stringify(
+				{
+					agentType: "workflow-subagent",
+					description: "ours:shell-sidebar",
+					spawnDepth: 1,
+				},
+			),
 		);
-		writeFileSync(join(runDir, "journal.jsonl"), jsonl({type: "launched"}));
+		writeFileSync(
+			join(runDir, "journal.jsonl"),
+			jsonl(
+				{
+					type: "launched",
+				},
+			),
+		);
 
 		await fullScan(db.index, db.summaries, testDir);
-		db.index.update(schema.indexedFiles).set({indexedAt: 0}).where(eq(schema.indexedFiles.path, agentPath)).run();
+		db.index
+			.update(schema.indexedFiles)
+			.set(
+				{
+					indexedAt: 0,
+				},
+			)
+			.where(eq(schema.indexedFiles.path, agentPath))
+			.run();
 		await fullScan(db.index, db.summaries, testDir);
 
 		const subagents = db.index
-			.select({id: schema.subagents.id, sessionId: schema.subagents.sessionId})
+			.select(
+				{
+					id: schema.subagents.id,
+					sessionId: schema.subagents.sessionId,
+				},
+			)
 			.from(schema.subagents)
 			.all();
 		const agentFile = db.index
-			.select({indexedAt: schema.indexedFiles.indexedAt})
+			.select(
+				{
+					indexedAt: schema.indexedFiles.indexedAt,
+				},
+			)
 			.from(schema.indexedFiles)
 			.where(eq(schema.indexedFiles.path, agentPath))
 			.all();
-		expect({subagents, agentFile}).toStrictEqual({
-			subagents: [{id: "agent-aw1", sessionId: "sess-1"}],
-			agentFile: [{indexedAt: 0}],
-		});
+		expect(
+			{
+				subagents,
+				agentFile,
+			},
+		).toStrictEqual(
+			{
+				subagents: [
+					{
+						id: "agent-aw1",
+						sessionId: "sess-1",
+					},
+				],
+				agentFile: [
+					{
+						indexedAt: 0,
+					},
+				],
+			},
+		);
 	});
 
-	describe("workflow agent run, phase and label", () => {
+	describe("workflow agent run, phase and label", () =>
+	{
 		const project = "-tmp-alice-project";
-		const workflowColumns = {
+		const workflowColumns =
+		{
 			id: schema.subagents.id,
 			workflowRunId: schema.subagents.workflowRunId,
 			workflowPhase: schema.subagents.workflowPhase,
@@ -1605,29 +2700,49 @@ describe("indexer", () => {
 			description: schema.subagents.description,
 		};
 
-		function writeWorkflowAgent(agentId: string, meta: Record<string, unknown>, journal: string): void {
+		function writeWorkflowAgent(agentId: string, meta: Record<string, unknown>, journal: string): void
+		{
 			const projectDir = join(testDir, project);
 			const runDir = join(projectDir, "sess-1", "subagents", "workflows", "wf_x-1");
-			mkdirSync(runDir, {recursive: true});
+			mkdirSync(
+				runDir,
+				{
+					recursive: true,
+				},
+			);
 			writeFileSync(
 				join(projectDir, "sess-1.jsonl"),
-				jsonl({type: "user", message: {content: "Run the workflow"}}),
+				jsonl(
+					{
+						type: "user",
+						message:
+						{
+							content: "Run the workflow",
+						},
+					},
+				),
 			);
 			writeFileSync(
 				join(runDir, `agent-${agentId}.jsonl`),
-				jsonl({
-					type: "assistant",
-					agentId,
-					isSidechain: true,
-					timestamp: "2000-01-01T00:00:00.000Z",
-					message: {content: "Working"},
-				}),
+				jsonl(
+					{
+						type: "assistant",
+						agentId,
+						isSidechain: true,
+						timestamp: "2000-01-01T00:00:00.000Z",
+						message:
+						{
+							content: "Working",
+						},
+					},
+				),
 			);
 			writeFileSync(join(runDir, `agent-${agentId}.meta.json`), JSON.stringify(meta));
 			writeFileSync(join(runDir, "journal.jsonl"), journal);
 		}
 
-		it("reads the run id from the path and the phase and label from new-format meta", async () => {
+		it("reads the run id from the path and the phase and label from new-format meta", async () =>
+		{
 			writeWorkflowAgent(
 				"aw1",
 				{
@@ -1636,7 +2751,11 @@ describe("indexer", () => {
 					workflowPhase: "Inventory",
 					spawnDepth: 1,
 				},
-				jsonl({type: "launched"}),
+				jsonl(
+					{
+						type: "launched",
+					},
+				),
 			);
 
 			await fullScan(db.index, db.summaries, testDir);
@@ -1652,29 +2771,56 @@ describe("indexer", () => {
 			]);
 		});
 
-		it("falls back to the run JSON progress for old-format meta", async () => {
-			writeWorkflowAgent("aw2", {agentType: "workflow-subagent", spawnDepth: 1}, jsonl({type: "launched"}));
+		it("falls back to the run JSON progress for old-format meta", async () =>
+		{
+			writeWorkflowAgent(
+				"aw2",
+				{
+					agentType: "workflow-subagent",
+					spawnDepth: 1,
+				},
+				jsonl(
+					{
+						type: "launched",
+					},
+				),
+			);
 			const workflowsDir = join(testDir, project, "sess-1", "workflows");
-			mkdirSync(workflowsDir, {recursive: true});
+			mkdirSync(
+				workflowsDir,
+				{
+					recursive: true,
+				},
+			);
 			writeFileSync(
 				join(workflowsDir, "wf_x-1.json"),
-				JSON.stringify({
-					runId: "wf_x-1",
-					status: "completed",
-					workflowProgress: [
-						{type: "workflow_phase", index: 1, title: "Inventory"},
-						{type: "workflow_phase", index: 2, title: "Diff"},
-						{
-							type: "workflow_agent",
-							index: 1,
-							label: "diff:a",
-							agentId: "aw2",
-							state: "done",
-							phaseIndex: 2,
-							phaseTitle: "Diff",
-						},
-					],
-				}),
+				JSON.stringify(
+					{
+						runId: "wf_x-1",
+						status: "completed",
+						workflowProgress: [
+							{
+								type: "workflow_phase",
+								index: 1,
+								title: "Inventory",
+							},
+							{
+								type: "workflow_phase",
+								index: 2,
+								title: "Diff",
+							},
+							{
+								type: "workflow_agent",
+								index: 1,
+								label: "diff:a",
+								agentId: "aw2",
+								state: "done",
+								phaseIndex: 2,
+								phaseTitle: "Diff",
+							},
+						],
+					},
+				),
 			);
 
 			await fullScan(db.index, db.summaries, testDir);
@@ -1690,15 +2836,41 @@ describe("indexer", () => {
 			]);
 		});
 
-		it("falls back to the journal started event without meta phase or run JSON", async () => {
+		it("falls back to the journal started event without meta phase or run JSON", async () =>
+		{
 			writeWorkflowAgent(
 				"aw3",
-				{agentType: "workflow-subagent", spawnDepth: 1},
+				{
+					agentType: "workflow-subagent",
+					spawnDepth: 1,
+				},
 				jsonl(
-					{type: "launched"},
-					{type: "started", key: "v2:a", agentId: "aw0", label: "survey", phase: "Survey"},
-					{type: "started", key: "v2:b", agentId: "aw3", label: "seed", phase: "Seed"},
-					{type: "result", key: "v2:b", agentId: "aw3", result: {ok: true}},
+					{
+						type: "launched",
+					},
+					{
+						type: "started",
+						key: "v2:a",
+						agentId: "aw0",
+						label: "survey",
+						phase: "Survey",
+					},
+					{
+						type: "started",
+						key: "v2:b",
+						agentId: "aw3",
+						label: "seed",
+						phase: "Seed",
+					},
+					{
+						type: "result",
+						key: "v2:b",
+						agentId: "aw3",
+						result:
+						{
+							ok: true,
+						},
+					},
 				),
 			);
 
@@ -1715,17 +2887,49 @@ describe("indexer", () => {
 			]);
 		});
 
-		it("leaves workflow fields null for a non-workflow agent", async () => {
+		it("leaves workflow fields null for a non-workflow agent", async () =>
+		{
 			const subagentsDir = join(testDir, project, "sess-1", "subagents");
-			mkdirSync(subagentsDir, {recursive: true});
-			writeFileSync(join(testDir, project, "sess-1.jsonl"), jsonl({type: "user", message: {content: "Hi"}}));
+			mkdirSync(
+				subagentsDir,
+				{
+					recursive: true,
+				},
+			);
+			writeFileSync(
+				join(testDir, project, "sess-1.jsonl"),
+				jsonl(
+					{
+						type: "user",
+						message:
+						{
+							content: "Hi",
+						},
+					},
+				),
+			);
 			writeFileSync(
 				join(subagentsDir, "agent-a1.jsonl"),
-				jsonl({type: "assistant", agentId: "a1", isSidechain: true, message: {content: "Explore"}}),
+				jsonl(
+					{
+						type: "assistant",
+						agentId: "a1",
+						isSidechain: true,
+						message:
+						{
+							content: "Explore",
+						},
+					},
+				),
 			);
 			writeFileSync(
 				join(subagentsDir, "agent-a1.meta.json"),
-				JSON.stringify({agentType: "Explore", description: "Find files"}),
+				JSON.stringify(
+					{
+						agentType: "Explore",
+						description: "Find files",
+					},
+				),
 			);
 
 			await fullScan(db.index, db.summaries, testDir);
@@ -1742,15 +2946,32 @@ describe("indexer", () => {
 		});
 	});
 
-	it("fullScan re-links only workflow agent transcripts whose mtime changed", async () => {
+	it("fullScan re-links only workflow agent transcripts whose mtime changed", async () =>
+	{
 		const project = "-tmp-alice-project";
 		const projectDir = join(testDir, project);
 		const subagentsDir = join(projectDir, "sess-1", "subagents");
 		const runDir = join(subagentsDir, "workflows", "wf_x-1");
 		const rootPath = join(projectDir, "sess-1.jsonl");
 		const workflowAgentPath = join(runDir, "agent-aw1.jsonl");
-		mkdirSync(runDir, {recursive: true});
-		writeFileSync(rootPath, jsonl({type: "user", message: {content: "Run the workflow"}}));
+		mkdirSync(
+			runDir,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			rootPath,
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						content: "Run the workflow",
+					},
+				},
+			),
+		);
 		writeFileSync(
 			workflowAgentPath,
 			jsonl(
@@ -1758,27 +2979,62 @@ describe("indexer", () => {
 					type: "assistant",
 					agentId: "aw1",
 					isSidechain: true,
-					message: {
-						content: [{type: "tool_use", id: "tu1", name: "Agent", input: {description: "Child task"}}],
+					message:
+					{
+						content: [
+							{
+								type: "tool_use",
+								id: "tu1",
+								name: "Agent",
+								input:
+								{
+									description: "Child task",
+								},
+							},
+						],
 					},
 				},
 				{
 					type: "user",
 					agentId: "aw1",
 					isSidechain: true,
-					message: {content: [{type: "tool_result", tool_use_id: "tu1", content: "agentId: c1"}]},
+					message:
+					{
+						content: [
+							{
+								type: "tool_result",
+								tool_use_id: "tu1",
+								content: "agentId: c1",
+							},
+						],
+					},
 				},
 			),
 		);
 		writeFileSync(
 			join(subagentsDir, "agent-c1.jsonl"),
-			jsonl({type: "user", agentId: "c1", isSidechain: true, message: {content: "Do the child task"}}),
+			jsonl(
+				{
+					type: "user",
+					agentId: "c1",
+					isSidechain: true,
+					message:
+					{
+						content: "Do the child task",
+					},
+				},
+			),
 		);
 		utimesSync(rootPath, 1000, 1000);
 		utimesSync(workflowAgentPath, 1000, 1000);
 		const readChild = () =>
 			db.index
-				.select({parentAgentId: schema.subagents.parentAgentId, description: schema.subagents.description})
+				.select(
+					{
+						parentAgentId: schema.subagents.parentAgentId,
+						description: schema.subagents.description,
+					},
+				)
 				.from(schema.subagents)
 				.where(eq(schema.subagents.id, "agent-c1"))
 				.get();
@@ -1795,47 +3051,129 @@ describe("indexer", () => {
 		await fullScan(db.index, db.summaries, testDir);
 		const afterWorkflowAgentChange = readChild();
 
-		expect({firstScan, afterRootChange, afterWorkflowAgentChange}).toStrictEqual({
-			firstScan: {parentAgentId: "agent-aw1", description: "Child task"},
-			afterRootChange: {parentAgentId: null, description: null},
-			afterWorkflowAgentChange: {parentAgentId: "agent-aw1", description: "Child task"},
-		});
+		expect(
+			{
+				firstScan,
+				afterRootChange,
+				afterWorkflowAgentChange,
+			},
+		).toStrictEqual(
+			{
+				firstScan:
+				{
+					parentAgentId: "agent-aw1",
+					description: "Child task",
+				},
+				afterRootChange:
+				{
+					parentAgentId: null,
+					description: null,
+				},
+				afterWorkflowAgentChange:
+				{
+					parentAgentId: "agent-aw1",
+					description: "Child task",
+				},
+			},
+		);
 	});
 
-	it("does not prune when a project directory cannot be enumerated", async () => {
+	it("does not prune when a project directory cannot be enumerated", async () =>
+	{
 		const project = "-tmp-alice-project";
 		const projectDir = join(testDir, project);
 		const sessionPath = join(projectDir, "session-alice.jsonl");
-		mkdirSync(projectDir, {recursive: true});
-		writeFileSync(sessionPath, jsonl({type: "user", message: {content: "Retain Alice"}}));
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			sessionPath,
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						content: "Retain Alice",
+					},
+				},
+			),
+		);
 		await fullScan(db.index, db.summaries, testDir);
 		rmSync(sessionPath);
 
-		await fullScan(db.index, db.summaries, testDir, undefined, undefined, async (directoryPath) => {
+		await fullScan(db.index, db.summaries, testDir, undefined, undefined, async (directoryPath) =>
+		{
 			if (directoryPath === projectDir) throw new Error("Unreadable Alice project fixture");
 			return readdir(directoryPath);
 		});
 
 		const sessions = db.index
-			.select({id: schema.sessions.id, filePath: schema.sessions.filePath})
+			.select(
+				{
+					id: schema.sessions.id,
+					filePath: schema.sessions.filePath,
+				},
+			)
 			.from(schema.sessions)
 			.all();
-		const indexedFiles = db.index.select({path: schema.indexedFiles.path}).from(schema.indexedFiles).all();
-		expect({indexedFiles, sessions}).toStrictEqual({
-			indexedFiles: [{path: sessionPath}],
-			sessions: [{id: "session-alice", filePath: sessionPath}],
-		});
+		const indexedFiles = db.index
+			.select(
+				{
+					path: schema.indexedFiles.path,
+				},
+			)
+			.from(schema.indexedFiles)
+			.all();
+		expect(
+			{
+				indexedFiles,
+				sessions,
+			},
+		).toStrictEqual(
+			{
+				indexedFiles: [
+					{
+						path: sessionPath,
+					},
+				],
+				sessions: [
+					{
+						id: "session-alice",
+						filePath: sessionPath,
+					},
+				],
+			},
+		);
 	});
 
-	it("extracts cwd from JSONL attachment lines", async () => {
+	it("extracts cwd from JSONL attachment lines", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "cwd-sess.jsonl"),
 			jsonl(
-				{type: "attachment", cwd: "/Users/craig/projects/app"},
-				{type: "user", message: {role: "user", content: "Hello from cwd"}},
+				{
+					type: "attachment",
+					cwd: "/Users/craig/projects/app",
+				},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Hello from cwd",
+					},
+				},
 			),
 		);
 
@@ -1846,60 +3184,144 @@ describe("indexer", () => {
 		expect(session.cwd).toBe("/Users/craig/projects/app");
 	});
 
-	it("keeps the last cwd anchored to the transcript project after shell directory drift", async () => {
+	it("keeps the last cwd anchored to the transcript project after shell directory drift", async () =>
+	{
 		const project = "-tmp-a";
 		const projectDir = join(testDir, project);
 		const jsonlPath = join(projectDir, "shell-cd.jsonl");
-		mkdirSync(projectDir, {recursive: true});
-		writeFileSync(jsonlPath, jsonl({type: "attachment", cwd: "/tmp/a"}, {type: "attachment", cwd: "/tmp/a/src"}));
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			jsonlPath,
+			jsonl(
+				{
+					type: "attachment",
+					cwd: "/tmp/a",
+				},
+				{
+					type: "attachment",
+					cwd: "/tmp/a/src",
+				},
+			),
+		);
 
 		await indexJsonlFile(db.index, jsonlPath, project);
 
 		const session = db.index
-			.select({cwd: schema.sessions.cwd})
+			.select(
+				{
+					cwd: schema.sessions.cwd,
+				},
+			)
 			.from(schema.sessions)
 			.where(eq(schema.sessions.id, "shell-cd"))
 			.get();
-		expect(session).toStrictEqual({cwd: "/tmp/a"});
+		expect(session).toStrictEqual(
+			{
+				cwd: "/tmp/a",
+			},
+		);
 	});
 
-	it("uses the last cwd anchored to a project after the transcript moves", async () => {
+	it("uses the last cwd anchored to a project after the transcript moves", async () =>
+	{
 		const project = "-tmp-b";
 		const projectDir = join(testDir, project);
 		const jsonlPath = join(projectDir, "slash-cd.jsonl");
-		mkdirSync(projectDir, {recursive: true});
-		writeFileSync(jsonlPath, jsonl({type: "attachment", cwd: "/tmp/a"}, {type: "attachment", cwd: "/tmp/b"}));
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			jsonlPath,
+			jsonl(
+				{
+					type: "attachment",
+					cwd: "/tmp/a",
+				},
+				{
+					type: "attachment",
+					cwd: "/tmp/b",
+				},
+			),
+		);
 
 		await indexJsonlFile(db.index, jsonlPath, project);
 
 		const session = db.index
-			.select({cwd: schema.sessions.cwd})
+			.select(
+				{
+					cwd: schema.sessions.cwd,
+				},
+			)
 			.from(schema.sessions)
 			.where(eq(schema.sessions.id, "slash-cd"))
 			.get();
-		expect(session).toStrictEqual({cwd: "/tmp/b"});
+		expect(session).toStrictEqual(
+			{
+				cwd: "/tmp/b",
+			},
+		);
 	});
 
-	it("falls back to the last cwd when none match the transcript project", async () => {
+	it("falls back to the last cwd when none match the transcript project", async () =>
+	{
 		const project = "-tmp-c";
 		const projectDir = join(testDir, project);
 		const jsonlPath = join(projectDir, "unanchored-cwd.jsonl");
-		mkdirSync(projectDir, {recursive: true});
-		writeFileSync(jsonlPath, jsonl({type: "attachment", cwd: "/tmp/a"}, {type: "attachment", cwd: "/tmp/b"}));
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			jsonlPath,
+			jsonl(
+				{
+					type: "attachment",
+					cwd: "/tmp/a",
+				},
+				{
+					type: "attachment",
+					cwd: "/tmp/b",
+				},
+			),
+		);
 
 		await indexJsonlFile(db.index, jsonlPath, project);
 
 		const session = db.index
-			.select({cwd: schema.sessions.cwd})
+			.select(
+				{
+					cwd: schema.sessions.cwd,
+				},
+			)
 			.from(schema.sessions)
 			.where(eq(schema.sessions.id, "unanchored-cwd"))
 			.get();
-		expect(session).toStrictEqual({cwd: "/tmp/b"});
+		expect(session).toStrictEqual(
+			{
+				cwd: "/tmp/b",
+			},
+		);
 	});
 
-	it("indexes cwd from sessions-index.json projectPath", async () => {
+	it("indexes cwd from sessions-index.json projectPath", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
 			makeSessionsIndex([
@@ -1920,9 +3342,15 @@ describe("indexer", () => {
 		expect(session.cwd).toBe("/Users/craig/projects/app");
 	});
 
-	it("updates cwd when re-indexing JSONL for existing session", async () => {
+	it("updates cwd when re-indexing JSONL for existing session", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		// Create session via index first (no cwd)
 		writeFileSync(
@@ -1946,8 +3374,18 @@ describe("indexer", () => {
 		writeFileSync(
 			join(projectDir, "update-cwd.jsonl"),
 			jsonl(
-				{type: "attachment", cwd: "/Users/craig/projects/app-worktree"},
-				{type: "user", message: {role: "user", content: "Updated"}},
+				{
+					type: "attachment",
+					cwd: "/Users/craig/projects/app-worktree",
+				},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Updated",
+					},
+				},
 			),
 		);
 
@@ -1958,17 +3396,31 @@ describe("indexer", () => {
 		expect(after.cwd).toBe("/Users/craig/projects/app-worktree");
 	});
 
-	it("extracts gitBranch from JSONL lines", async () => {
+	it("extracts gitBranch from JSONL lines", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "branch-sess.jsonl"),
 			jsonl(
-				{type: "attachment", gitBranch: "feature-xyz", cwd: "/projects/app"},
+				{
+					type: "attachment",
+					gitBranch: "feature-xyz",
+					cwd: "/projects/app",
+				},
 				{
 					type: "user",
-					message: {role: "user", content: "Hello from branch"},
+					message:
+					{
+						role: "user",
+						content: "Hello from branch",
+					},
 				},
 			),
 		);
@@ -1980,9 +3432,15 @@ describe("indexer", () => {
 		expect(session.gitBranch).toBe("feature-xyz");
 	});
 
-	it("updates gitBranch when re-indexing JSONL for existing session", async () => {
+	it("updates gitBranch when re-indexing JSONL for existing session", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		// Create session via index first (no gitBranch)
 		writeFileSync(
@@ -2005,7 +3463,20 @@ describe("indexer", () => {
 		// Now write JSONL with gitBranch
 		writeFileSync(
 			join(projectDir, "update-branch.jsonl"),
-			jsonl({type: "attachment", gitBranch: "main"}, {type: "user", message: {role: "user", content: "Updated"}}),
+			jsonl(
+				{
+					type: "attachment",
+					gitBranch: "main",
+				},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Updated",
+					},
+				},
+			),
 		);
 
 		await indexJsonlFile(db.index, join(projectDir, "update-branch.jsonl"), "-Users-craig-projects-app");
@@ -2015,17 +3486,31 @@ describe("indexer", () => {
 		expect(after.gitBranch).toBe("main");
 	});
 
-	it("normalizes detached-HEAD gitBranch to null when indexing JSONL", async () => {
+	it("normalizes detached-HEAD gitBranch to null when indexing JSONL", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "detached-sess.jsonl"),
 			jsonl(
-				{type: "attachment", gitBranch: "HEAD", cwd: "/projects/app"},
+				{
+					type: "attachment",
+					gitBranch: "HEAD",
+					cwd: "/projects/app",
+				},
 				{
 					type: "user",
-					message: {role: "user", content: "Hello from detached HEAD"},
+					message:
+					{
+						role: "user",
+						content: "Hello from detached HEAD",
+					},
 				},
 			),
 		);
@@ -2037,18 +3522,36 @@ describe("indexer", () => {
 		expect(session.gitBranch).toBe(null);
 	});
 
-	it("prefers a later real branch over an earlier detached-HEAD line in JSONL", async () => {
+	it("prefers a later real branch over an earlier detached-HEAD line in JSONL", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "reattached-sess.jsonl"),
 			jsonl(
-				{type: "attachment", gitBranch: "HEAD", cwd: "/projects/app"},
-				{type: "attachment", gitBranch: "feature-abc", cwd: "/projects/app"},
+				{
+					type: "attachment",
+					gitBranch: "HEAD",
+					cwd: "/projects/app",
+				},
+				{
+					type: "attachment",
+					gitBranch: "feature-abc",
+					cwd: "/projects/app",
+				},
 				{
 					type: "user",
-					message: {role: "user", content: "Back on a branch"},
+					message:
+					{
+						role: "user",
+						content: "Back on a branch",
+					},
 				},
 			),
 		);
@@ -2060,9 +3563,15 @@ describe("indexer", () => {
 		expect(session.gitBranch).toBe("feature-abc");
 	});
 
-	it("normalizes detached-HEAD gitBranch to null when indexing sessions-index", async () => {
+	it("normalizes detached-HEAD gitBranch to null when indexing sessions-index", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
@@ -2088,8 +3597,10 @@ describe("indexer", () => {
 	});
 });
 
-describe("queries", () => {
-	beforeEach(() => {
+describe("queries", () =>
+{
+	beforeEach(() =>
+	{
 		// Seed test data directly
 		db.index
 			.insert(schema.projects)
@@ -2162,19 +3673,29 @@ describe("queries", () => {
 		db.index
 			.insert(schema.planSessions)
 			.values([
-				{planFilename: "plan-a.md", sessionId: "sess-1", projectId: "proj-a"},
-				{planFilename: "plan-a.md", sessionId: "sess-2", projectId: "proj-a"},
+				{
+					planFilename: "plan-a.md",
+					sessionId: "sess-1",
+					projectId: "proj-a",
+				},
+				{
+					planFilename: "plan-a.md",
+					sessionId: "sess-2",
+					projectId: "proj-a",
+				},
 			])
 			.run();
 	});
 
-	it("listProjectsFromDb returns projects sorted by last activity", () => {
+	it("listProjectsFromDb returns projects sorted by last activity", () =>
+	{
 		const projects = listProjectsFromDb(db.index);
 		expect(projects.map((p) => p.id)).toStrictEqual(["proj-a", "proj-b"]);
 		expect(projects[0]!.sessionCount).toBe(2); // excludes sidechain
 	});
 
-	it("listSessionGroupsFromDb returns grouped sessions excluding sidechains, with counts", () => {
+	it("listSessionGroupsFromDb returns grouped sessions excluding sidechains, with counts", () =>
+	{
 		const groups = listSessionGroupsFromDb(db.index);
 		expect(groups.map((g) => g.project)).toStrictEqual(["proj-a", "proj-b"]);
 		expect(groups[0]!.sessions.map((s) => s.id)).toStrictEqual(["sess-1", "sess-2"]); // no sidechain, highest mtime first
@@ -2182,64 +3703,120 @@ describe("queries", () => {
 		expect(groups[1]!.sessionCount).toBe(1);
 	});
 
-	it("listSessionGroupsFromDb caps sessions per project but keeps full count", () => {
-		const groups = listSessionGroupsFromDb(db.index, {perProject: 1});
+	it("listSessionGroupsFromDb caps sessions per project but keeps full count", () =>
+	{
+		const groups = listSessionGroupsFromDb(
+			db.index,
+			{
+				perProject: 1,
+			},
+		);
 		const alpha = groups.find((g) => g.project === "proj-a")!;
 		expect(alpha.sessions.map((s) => s.id)).toStrictEqual(["sess-1"]); // only newest
 		expect(alpha.sessionCount).toBe(2); // count still reflects all non-sidechain sessions
 	});
 
-	it("listRecentSessionsFromDb returns a flat mtime-desc page across projects", () => {
-		const page = listRecentSessionsFromDb(db.index, {limit: 10});
+	it("listRecentSessionsFromDb returns a flat mtime-desc page across projects", () =>
+	{
+		const page = listRecentSessionsFromDb(
+			db.index,
+			{
+				limit: 10,
+			},
+		);
 		expect(page.sessions.map((s) => s.id)).toStrictEqual(["sess-1", "sess-2", "sess-3"]); // sidechain excluded
 		expect(page.nextCursor).toBe(null);
 	});
 
-	it("listRecentSessionsFromDb paginates via the cursor without gaps or overlaps", () => {
-		const first = listRecentSessionsFromDb(db.index, {limit: 2});
+	it("listRecentSessionsFromDb paginates via the cursor without gaps or overlaps", () =>
+	{
+		const first = listRecentSessionsFromDb(
+			db.index,
+			{
+				limit: 2,
+			},
+		);
 		expect(first.sessions.map((s) => s.id)).toStrictEqual(["sess-1", "sess-2"]);
-		expect(first.nextCursor).toStrictEqual({mtimeMs: 2000, id: "sess-2"});
+		expect(first.nextCursor).toStrictEqual(
+			{
+				mtimeMs: 2000,
+				id: "sess-2",
+			},
+		);
 
-		const second = listRecentSessionsFromDb(db.index, {limit: 2, before: first.nextCursor!});
+		const second = listRecentSessionsFromDb(
+			db.index,
+			{
+				limit: 2,
+				before: first.nextCursor!,
+			},
+		);
 		expect(second.sessions.map((s) => s.id)).toStrictEqual(["sess-3"]);
 		expect(second.nextCursor).toBe(null);
 	});
 
-	it("listRecentSessionsFromDb appends live sessions older than the first page so they reach the sidebar", () => {
-		const first = listRecentSessionsFromDb(db.index, {limit: 1, liveSessionIds: ["sess-3", "sess-1", "missing"]});
-		expect({ids: first.sessions.map((s) => s.id), nextCursor: first.nextCursor}).toStrictEqual({
-			ids: ["sess-1", "sess-3"],
-			nextCursor: {mtimeMs: 3000, id: "sess-1"},
-		});
+	it("listRecentSessionsFromDb appends live sessions older than the first page so they reach the sidebar", () =>
+	{
+		const first = listRecentSessionsFromDb(
+			db.index,
+			{
+				limit: 1,
+				liveSessionIds: ["sess-3", "sess-1", "missing"],
+			},
+		);
+		expect(
+			{
+				ids: first.sessions.map((s) => s.id),
+				nextCursor: first.nextCursor,
+			},
+		).toStrictEqual(
+			{
+				ids: ["sess-1", "sess-3"],
+				nextCursor:
+				{
+					mtimeMs: 3000,
+					id: "sess-1",
+				},
+			},
+		);
 
-		const second = listRecentSessionsFromDb(db.index, {
-			limit: 1,
-			before: first.nextCursor!,
-			liveSessionIds: ["sess-3"],
-		});
+		const second = listRecentSessionsFromDb(
+			db.index,
+			{
+				limit: 1,
+				before: first.nextCursor!,
+				liveSessionIds: ["sess-3"],
+			},
+		);
 		expect(second.sessions.map((s) => s.id)).toStrictEqual(["sess-2"]);
 	});
 
-	it("getSessionTitlesByIds returns a map of id to title for known sessions", () => {
-		expect(getSessionTitlesByIds(db.index, ["sess-1", "sess-3", "missing"])).toStrictEqual({
-			"sess-1": "Fix login",
-			"sess-3": "Deploy",
-		});
+	it("getSessionTitlesByIds returns a map of id to title for known sessions", () =>
+	{
+		expect(getSessionTitlesByIds(db.index, ["sess-1", "sess-3", "missing"])).toStrictEqual(
+			{
+				"sess-1": "Fix login",
+				"sess-3": "Deploy",
+			},
+		);
 	});
 
-	it("getIndexedSessionIds returns only ids for indexed sessions", () => {
+	it("getIndexedSessionIds returns only ids for indexed sessions", () =>
+	{
 		expect(getIndexedSessionIds(db.index, ["sess-1", "sess-3"])).toStrictEqual(new Set(["sess-1", "sess-3"]));
 		expect(getIndexedSessionIds(db.index, ["missing-a", "missing-b"])).toStrictEqual(new Set());
 		expect(getIndexedSessionIds(db.index, ["sess-2", "missing"])).toStrictEqual(new Set(["sess-2"]));
 		expect(getIndexedSessionIds(db.index, [])).toStrictEqual(new Set());
 	});
 
-	it("listSessionsForProjectFromDb returns sessions for a project", () => {
+	it("listSessionsForProjectFromDb returns sessions for a project", () =>
+	{
 		const sessions = listSessionsForProjectFromDb(db.index, "proj-a");
 		expect(sessions.map((s) => s.id)).toStrictEqual(["sess-1", "sess-2"]);
 	});
 
-	it("getPlanLinksFromDb returns links for a plan with session titles, project paths and session mtimes", () => {
+	it("getPlanLinksFromDb returns links for a plan with session titles, project paths and session mtimes", () =>
+	{
 		expect(getPlanLinksFromDb(db.index, "plan-a.md")).toStrictEqual([
 			{
 				planFilename: "plan-a.md",
@@ -2262,12 +3839,14 @@ describe("queries", () => {
 		]);
 	});
 
-	it("getPlanLinksFromDb returns all links when no filename given", () => {
+	it("getPlanLinksFromDb returns all links when no filename given", () =>
+	{
 		const links = getPlanLinksFromDb(db.index);
 		expect(links.length).toBe(2);
 	});
 
-	it("getProjectDetailFromDb returns project with sessions and plan links", () => {
+	it("getProjectDetailFromDb returns project with sessions and plan links", () =>
+	{
 		const detail = getProjectDetailFromDb(db.index, "proj-a");
 		if (!detail) throw new Error("Expected project detail for proj-a");
 		expect(detail.name).toBe("Alpha");
@@ -2275,30 +3854,42 @@ describe("queries", () => {
 		expect(detail.planLinks.length).toBe(2);
 	});
 
-	it("getProjectDetailFromDb returns null for non-existent project", () => {
+	it("getProjectDetailFromDb returns null for non-existent project", () =>
+	{
 		expect(getProjectDetailFromDb(db.index, "nonexistent")).toBe(null);
 	});
 
-	it("getPlanProjectMappings returns distinct plan-to-project mappings", () => {
+	it("getPlanProjectMappings returns distinct plan-to-project mappings", () =>
+	{
 		const mappings = getPlanProjectMappings(db.index);
 		// plan-a.md -> proj-a (deduplicated)
 		expect(
-			mappings.map((m) => ({
+			mappings.map((m) => (
+			{
 				planFilename: m.planFilename,
 				projectId: m.projectId,
 				projectName: m.projectName,
 			})),
-		).toStrictEqual([{planFilename: "plan-a.md", projectId: "proj-a", projectName: "Alpha"}]);
+		).toStrictEqual([
+			{
+				planFilename: "plan-a.md",
+				projectId: "proj-a",
+				projectName: "Alpha",
+			},
+		]);
 	});
 
-	it("getPlanProjectMappings returns mappings across multiple projects", () => {
+	it("getPlanProjectMappings returns mappings across multiple projects", () =>
+	{
 		db.index
 			.insert(schema.planSessions)
-			.values({
-				planFilename: "plan-b.md",
-				sessionId: "sess-3",
-				projectId: "proj-b",
-			})
+			.values(
+				{
+					planFilename: "plan-b.md",
+					sessionId: "sess-3",
+					projectId: "proj-b",
+				},
+			)
 			.run();
 
 		const mappings = getPlanProjectMappings(db.index);
@@ -2307,26 +3898,34 @@ describe("queries", () => {
 		expect(filenames).toStrictEqual(["plan-a.md", "plan-b.md"]);
 	});
 
-	it("searchSessionsFromDb finds sessions by title", () => {
+	it("searchSessionsFromDb finds sessions by title", () =>
+	{
 		const results = searchSessionsFromDb(db.index, "login");
 		if (results.length === 0) throw new Error("Expected at least one result");
 		expect(results[0]!.sessionId).toBe("sess-1");
 	});
 
-	it("searchSessionsFromDb finds sessions by first prompt", () => {
+	it("searchSessionsFromDb finds sessions by first prompt", () =>
+	{
 		const results = searchSessionsFromDb(db.index, "unit tests");
 		if (results.length === 0) throw new Error("Expected at least one result");
 		expect(results[0]!.sessionId).toBe("sess-2");
 	});
 
-	it.each(['foo"bar', "a AND"])("searchSessionsFromDb returns no results for malformed query %s", (query) => {
+	it.each(['foo"bar', "a AND"])("searchSessionsFromDb returns no results for malformed query %s", (query) =>
+	{
 		expect(searchSessionsFromDb(db.index, query)).toStrictEqual([]);
 	});
 
-	it("escapes HTML in session search snippets while preserving highlights", () => {
+	it("escapes HTML in session search snippets while preserving highlights", () =>
+	{
 		db.index
 			.update(schema.sessions)
-			.set({title: "login <script>alert(1)</script>"})
+			.set(
+				{
+					title: "login <script>alert(1)</script>",
+				},
+			)
 			.where(eq(schema.sessions.id, "sess-1"))
 			.run();
 
@@ -2336,20 +3935,23 @@ describe("queries", () => {
 		expect(result.snippet).toBe("Fix the <mark>login</mark> bug");
 	});
 
-	it("highlights the title and suppresses a snippet that only echoes the title prefix", () => {
+	it("highlights the title and suppresses a snippet that only echoes the title prefix", () =>
+	{
 		db.index
 			.insert(schema.sessions)
-			.values({
-				id: "sess-echo",
-				projectId: "proj-a",
-				title: "release notes say SessionStart hooks can now...",
-				firstPrompt: "release notes say SessionStart hooks can now return context",
-				messageCount: 4,
-				isSidechain: 0,
-				createdAt: 1200,
-				mtimeMs: 2600,
-				filePath: "/path/sess-echo.jsonl",
-			})
+			.values(
+				{
+					id: "sess-echo",
+					projectId: "proj-a",
+					title: "release notes say SessionStart hooks can now...",
+					firstPrompt: "release notes say SessionStart hooks can now return context",
+					messageCount: 4,
+					isSidechain: 0,
+					createdAt: 1200,
+					mtimeMs: 2600,
+					filePath: "/path/sess-echo.jsonl",
+				},
+			)
 			.run();
 
 		const result = searchSessionsFromDb(db.index, "hooks").find((r) => r.sessionId === "sess-echo");
@@ -2358,20 +3960,23 @@ describe("queries", () => {
 		expect(result.snippet).toBe("");
 	});
 
-	it("keeps a highlighted excerpt that extends beyond the title echo", () => {
+	it("keeps a highlighted excerpt that extends beyond the title echo", () =>
+	{
 		db.index
 			.insert(schema.sessions)
-			.values({
-				id: "sess-tail",
-				projectId: "proj-a",
-				title: "release notes say SessionStart hooks can now...",
-				firstPrompt: "release notes say SessionStart hooks can now return widget context",
-				messageCount: 4,
-				isSidechain: 0,
-				createdAt: 1300,
-				mtimeMs: 2700,
-				filePath: "/path/sess-tail.jsonl",
-			})
+			.values(
+				{
+					id: "sess-tail",
+					projectId: "proj-a",
+					title: "release notes say SessionStart hooks can now...",
+					firstPrompt: "release notes say SessionStart hooks can now return widget context",
+					messageCount: 4,
+					isSidechain: 0,
+					createdAt: 1300,
+					mtimeMs: 2700,
+					filePath: "/path/sess-tail.jsonl",
+				},
+			)
 			.run();
 
 		const result = searchSessionsFromDb(db.index, "widget").find((r) => r.sessionId === "sess-tail");
@@ -2380,31 +3985,37 @@ describe("queries", () => {
 		expect(result.snippet).toBe("...return <mark>widget</mark> context");
 	});
 
-	it("shows a highlighted summary snippet when only the summary matches", () => {
+	it("shows a highlighted summary snippet when only the summary matches", () =>
+	{
 		const result = searchSessionsFromDb(db.index, "auth").find((r) => r.sessionId === "sess-1");
 		if (!result) throw new Error("Expected a session search result for sess-1");
 		expect(result.titleHtml).toBe("Fix login");
 		expect(result.snippet).toBe("Fixed <mark>auth</mark>");
 	});
 
-	it("getSessionProjectPath returns project path for a session", () => {
+	it("getSessionProjectPath returns project path for a session", () =>
+	{
 		const path = getSessionProjectPath(db.index, "sess-1");
 		expect(path).toBe("/projects/alpha");
 	});
 
-	it("getSessionProjectPath returns null for non-existent session", () => {
+	it("getSessionProjectPath returns null for non-existent session", () =>
+	{
 		const path = getSessionProjectPath(db.index, "nonexistent");
 		expect(path).toBe(null);
 	});
 
-	it("getSessionProjectPath returns project path for session in different project", () => {
+	it("getSessionProjectPath returns project path for session in different project", () =>
+	{
 		const path = getSessionProjectPath(db.index, "sess-3");
 		expect(path).toBe("/projects/beta");
 	});
 });
 
-describe("branch and cwd queries", () => {
-	beforeEach(() => {
+describe("branch and cwd queries", () =>
+{
+	beforeEach(() =>
+	{
 		db.index
 			.insert(schema.projects)
 			.values([
@@ -2481,43 +4092,83 @@ describe("branch and cwd queries", () => {
 			.run();
 	});
 
-	it("listBranchesForProject returns branches sorted by last activity", () => {
+	it("listBranchesForProject returns branches sorted by last activity", () =>
+	{
 		const branches = listBranchesForProject(db.index, "proj-a");
-		expect(branches.map((b) => ({branch: b.branch, sessionCount: b.sessionCount}))).toStrictEqual([
-			{branch: "feature-x", sessionCount: 2},
-			{branch: "main", sessionCount: 1},
+		expect(
+			branches.map((b) => (
+			{
+				branch: b.branch,
+				sessionCount: b.sessionCount,
+			})),
+		).toStrictEqual([
+			{
+				branch: "feature-x",
+				sessionCount: 2,
+			},
+			{
+				branch: "main",
+				sessionCount: 1,
+			},
 		]);
 	});
 
-	it("listBranchesForProject excludes sidechains", () => {
+	it("listBranchesForProject excludes sidechains", () =>
+	{
 		const branches = listBranchesForProject(db.index, "proj-a");
 		const featureX = branches.find((b) => b.branch === "feature-x");
 		if (!featureX) throw new Error("Expected feature-x branch");
 		expect(featureX.sessionCount).toBe(2);
 	});
 
-	it("listSessionsForBranch returns sessions for a specific branch", () => {
+	it("listSessionsForBranch returns sessions for a specific branch", () =>
+	{
 		const sessions = listSessionsForBranch(db.index, "proj-a", "feature-x");
 		expect(sessions.map((s) => s.id)).toStrictEqual(["b-sess-1", "b-sess-2"]);
 	});
 
-	it("listSessionsForBranch returns empty for non-existent branch", () => {
+	it("listSessionsForBranch returns empty for non-existent branch", () =>
+	{
 		const sessions = listSessionsForBranch(db.index, "proj-a", "nonexistent");
 		expect(sessions).toStrictEqual([]);
 	});
 
-	it("listCwdsForProject returns unique cwds sorted by last activity", () => {
+	it("listCwdsForProject returns unique cwds sorted by last activity", () =>
+	{
 		const cwds = listCwdsForProject(db.index, "proj-a");
-		expect(cwds.map((c) => ({cwd: c.cwd, sessionCount: c.sessionCount}))).toStrictEqual([
-			{cwd: "/projects/alpha", sessionCount: 2},
-			{cwd: "/projects/alpha-worktree", sessionCount: 1},
+		expect(
+			cwds.map((c) => (
+			{
+				cwd: c.cwd,
+				sessionCount: c.sessionCount,
+			})),
+		).toStrictEqual([
+			{
+				cwd: "/projects/alpha",
+				sessionCount: 2,
+			},
+			{
+				cwd: "/projects/alpha-worktree",
+				sessionCount: 1,
+			},
 		]);
 	});
 });
 
-describe("subagents", () => {
-	it("getSubagentsForSession returns subagents", () => {
-		db.index.insert(schema.projects).values({id: "proj-x", name: "X", updatedAt: 1000}).run();
+describe("subagents", () =>
+{
+	it("getSubagentsForSession returns subagents", () =>
+	{
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-x",
+					name: "X",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		db.index
 			.insert(schema.subagents)
 			.values([
@@ -2547,8 +4198,18 @@ describe("subagents", () => {
 		expect(agents[0]!.agentType).toBe("Explore");
 	});
 
-	it("getSubagentsForProject returns subagents across all sessions in the project", () => {
-		db.index.insert(schema.projects).values({id: "proj-y", name: "Y", updatedAt: 1000}).run();
+	it("getSubagentsForProject returns subagents across all sessions in the project", () =>
+	{
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-y",
+					name: "Y",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		db.index
 			.insert(schema.subagents)
 			.values([
@@ -2587,28 +4248,42 @@ describe("subagents", () => {
 		expect(agents.map((a) => a.id).toSorted()).toStrictEqual(["agent-1", "agent-2"]);
 	});
 
-	it("getSubagentsForProject returns empty array when project has no subagents", () => {
+	it("getSubagentsForProject returns empty array when project has no subagents", () =>
+	{
 		expect(getSubagentsForProject(db.index, "nonexistent-project")).toStrictEqual([]);
 	});
 
-	it("returns empty array for session with no subagents", () => {
+	it("returns empty array for session with no subagents", () =>
+	{
 		expect(getSubagentsForSession(db.index, "nonexistent")).toStrictEqual([]);
 	});
 
-	it("getSubagentById returns the subagent matching the given ID", () => {
-		db.index.insert(schema.projects).values({id: "proj-lookup", name: "Lookup", updatedAt: 1000}).run();
+	it("getSubagentById returns the subagent matching the given ID", () =>
+	{
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-lookup",
+					name: "Lookup",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		db.index
 			.insert(schema.subagents)
-			.values({
-				id: "agent-lookup-1",
-				sessionId: "sess-lookup",
-				projectId: "proj-lookup",
-				agentType: "Explore",
-				slug: "explore-slug",
-				description: "Explore files",
-				filePath: "/path/agent-lookup-1.jsonl",
-				mtimeMs: 1000,
-			})
+			.values(
+				{
+					id: "agent-lookup-1",
+					sessionId: "sess-lookup",
+					projectId: "proj-lookup",
+					agentType: "Explore",
+					slug: "explore-slug",
+					description: "Explore files",
+					filePath: "/path/agent-lookup-1.jsonl",
+					mtimeMs: 1000,
+				},
+			)
 			.run();
 
 		const found = getSubagentById(db.index, "agent-lookup-1");
@@ -2618,14 +4293,21 @@ describe("subagents", () => {
 		expect(found!.description).toBe("Explore files");
 	});
 
-	it("getSubagentById returns undefined for a nonexistent agent", () => {
+	it("getSubagentById returns undefined for a nonexistent agent", () =>
+	{
 		expect(getSubagentById(db.index, "agent-nonexistent")).toBeUndefined();
 	});
 
-	it("indexSubagentFile extracts startedAt and finishedAt from JSONL timestamps", async () => {
+	it("indexSubagentFile extracts startedAt and finishedAt from JSONL timestamps", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		const sessionDir = join(projectDir, "sess-1", "subagents");
-		mkdirSync(sessionDir, {recursive: true});
+		mkdirSync(
+			sessionDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const agentPath = join(sessionDir, "agent-abc123.jsonl");
 		writeFileSync(
@@ -2635,22 +4317,43 @@ describe("subagents", () => {
 					type: "user",
 					slug: "explore-stuff",
 					timestamp: "1999-12-31T00:28:53.989Z",
-					message: {role: "user", content: "Do something"},
+					message:
+					{
+						role: "user",
+						content: "Do something",
+					},
 				},
 				{
 					type: "assistant",
 					timestamp: "1999-12-31T00:29:05.000Z",
-					message: {role: "assistant", content: "Working on it"},
+					message:
+					{
+						role: "assistant",
+						content: "Working on it",
+					},
 				},
 				{
 					type: "assistant",
 					timestamp: "1999-12-31T00:29:12.217Z",
-					message: {role: "assistant", content: "Done"},
+					message:
+					{
+						role: "assistant",
+						content: "Done",
+					},
 				},
 			),
 		);
 
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-abc123")).get();
@@ -2659,45 +4362,124 @@ describe("subagents", () => {
 		expect(agent.finishedAt).toBe("1999-12-31T00:29:12.217Z");
 	});
 
-	it("indexSubagentFile records each slow foreground command, timed from the end of its message, as upstream tracks it as a task", async () => {
+	it("indexSubagentFile records each slow foreground command, timed from the end of its message, as upstream tracks it as a task", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		const sessionDir = join(projectDir, "sess-1", "subagents");
-		mkdirSync(sessionDir, {recursive: true});
-		const bash = (id: string, at: string, input: Record<string, unknown>, messageId = `msg_${id}`) => ({
+		mkdirSync(
+			sessionDir,
+			{
+				recursive: true,
+			},
+		);
+		const bash = (id: string, at: string, input: Record<string, unknown>, messageId = `msg_${id}`) => (
+		{
 			type: "assistant",
 			timestamp: at,
-			message: {id: messageId, role: "assistant", content: [{type: "tool_use", id, name: "Bash", input}]},
+			message:
+			{
+				id: messageId,
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id,
+						name: "Bash",
+						input,
+					},
+				],
+			},
 		});
-		const edit = (id: string, at: string, messageId: string) => ({
+		const edit = (id: string, at: string, messageId: string) => (
+		{
 			type: "assistant",
 			timestamp: at,
-			message: {id: messageId, role: "assistant", content: [{type: "tool_use", id, name: "Edit", input: {}}]},
+			message:
+			{
+				id: messageId,
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id,
+						name: "Edit",
+						input: {},
+					},
+				],
+			},
 		});
-		const result = (id: string, at: string) => ({
+		const result = (id: string, at: string) => (
+		{
 			type: "user",
 			timestamp: at,
-			message: {role: "user", content: [{type: "tool_result", tool_use_id: id, content: "ok"}]},
+			message:
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: id,
+						content: "ok",
+					},
+				],
+			},
 		});
 
 		const agentPath = join(sessionDir, "agent-slow1.jsonl");
 		writeFileSync(
 			agentPath,
 			jsonl(
-				bash("toolu_quick", "1999-12-31T00:00:00.000Z", {command: "git status"}),
+				bash(
+					"toolu_quick",
+					"1999-12-31T00:00:00.000Z",
+					{
+						command: "git status",
+					},
+				),
 				result("toolu_quick", "1999-12-31T00:00:03.492Z"),
-				bash("toolu_gate", "1999-12-31T00:00:10.000Z", {command: "j tb", description: "Run the gate"}),
+				bash(
+					"toolu_gate",
+					"1999-12-31T00:00:10.000Z",
+					{
+						command: "j tb",
+						description: "Run the gate",
+					},
+				),
 				result("toolu_gate", "1999-12-31T00:00:13.979Z"),
-				bash("toolu_bg", "1999-12-31T00:00:20.000Z", {command: "just dev", run_in_background: true}),
+				bash(
+					"toolu_bg",
+					"1999-12-31T00:00:20.000Z",
+					{
+						command: "just dev",
+						run_in_background: true,
+					},
+				),
 				result("toolu_bg", "1999-12-31T00:00:30.000Z"),
 				// The commit waits for the rest of its message to stream, so it ran about 2s.
-				bash("toolu_commit", "1999-12-31T00:00:40.000Z", {command: "git commit"}, "msg_batch"),
+				bash(
+					"toolu_commit",
+					"1999-12-31T00:00:40.000Z",
+					{
+						command: "git commit",
+					},
+					"msg_batch",
+				),
 				edit("toolu_edit", "1999-12-31T00:00:45.500Z", "msg_batch"),
 				result("toolu_commit", "1999-12-31T00:00:47.500Z"),
 				result("toolu_edit", "1999-12-31T00:00:47.600Z"),
 			),
 		);
 
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-slow1")).get();
@@ -2706,27 +4488,57 @@ describe("subagents", () => {
 		);
 	});
 
-	it("indexSubagentFile marks an errored slow command failed and counts background-command notifications", async () => {
+	it("indexSubagentFile marks an errored slow command failed and counts background-command notifications", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		const sessionDir = join(projectDir, "sess-1", "subagents");
-		mkdirSync(sessionDir, {recursive: true});
-		const bash = (id: string, at: string, input: Record<string, unknown>) => ({
+		mkdirSync(
+			sessionDir,
+			{
+				recursive: true,
+			},
+		);
+		const bash = (id: string, at: string, input: Record<string, unknown>) => (
+		{
 			type: "assistant",
 			timestamp: at,
-			message: {id: `msg_${id}`, role: "assistant", content: [{type: "tool_use", id, name: "Bash", input}]},
-		});
-		const result = (id: string, at: string, isError = false) => ({
-			type: "user",
-			timestamp: at,
-			message: {
-				role: "user",
-				content: [{type: "tool_result", tool_use_id: id, content: "ok", is_error: isError}],
+			message:
+			{
+				id: `msg_${id}`,
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id,
+						name: "Bash",
+						input,
+					},
+				],
 			},
 		});
-		const notification = (id: string, at: string, status: string, command: string) => ({
+		const result = (id: string, at: string, isError = false) => (
+		{
+			type: "user",
+			timestamp: at,
+			message:
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: id,
+						content: "ok",
+						is_error: isError,
+					},
+				],
+			},
+		});
+		const notification = (id: string, at: string, status: string, command: string) => (
+		{
 			type: "attachment",
 			timestamp: at,
-			attachment: {
+			attachment:
+			{
 				type: "queued_command",
 				commandMode: "task-notification",
 				prompt: `<task-notification>\n<task-id>b-${id}</task-id>\n<tool-use-id>${id}</tool-use-id>\n<status>${status}</status>\n<summary>Background command "${command}" ${status} (exit code 0)</summary>\n</task-notification>`,
@@ -2738,54 +4550,122 @@ describe("subagents", () => {
 			agentPath,
 			jsonl(
 				// The 2-minute timeout moves the suite to the background; its notification follows.
-				bash("toolu_suite", "1999-12-31T00:00:00.000Z", {command: "vp test", description: "Run the suite"}),
+				bash(
+					"toolu_suite",
+					"1999-12-31T00:00:00.000Z",
+					{
+						command: "vp test",
+						description: "Run the suite",
+					},
+				),
 				result("toolu_suite", "1999-12-31T00:02:00.000Z"),
 				notification("toolu_suite", "1999-12-31T00:02:30.000Z", "completed", "vp test"),
-				bash("toolu_fetch", "1999-12-31T00:03:00.000Z", {command: "git fetch"}),
+				bash(
+					"toolu_fetch",
+					"1999-12-31T00:03:00.000Z",
+					{
+						command: "git fetch",
+					},
+				),
 				result("toolu_fetch", "1999-12-31T00:03:05.000Z", true),
-				bash("toolu_dev", "1999-12-31T00:04:00.000Z", {command: "just dev", run_in_background: true}),
+				bash(
+					"toolu_dev",
+					"1999-12-31T00:04:00.000Z",
+					{
+						command: "just dev",
+						run_in_background: true,
+					},
+				),
 				result("toolu_dev", "1999-12-31T00:04:00.100Z"),
 				notification("toolu_dev", "1999-12-31T00:05:00.000Z", "failed", "just dev"),
 			),
 		);
 
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-slow2")).get();
 		expect(JSON.parse(agent?.slowCommandsJson ?? "null")).toStrictEqual([
-			{finishedAt: "1999-12-31T00:02:00.000Z", description: "Run the suite", status: "completed"},
-			{finishedAt: "1999-12-31T00:02:30.000Z", description: "Run the suite", status: "completed"},
-			{finishedAt: "1999-12-31T00:03:05.000Z", description: "git fetch", status: "failed"},
-			{finishedAt: "1999-12-31T00:05:00.000Z", description: "just dev", status: "failed"},
+			{
+				finishedAt: "1999-12-31T00:02:00.000Z",
+				description: "Run the suite",
+				status: "completed",
+			},
+			{
+				finishedAt: "1999-12-31T00:02:30.000Z",
+				description: "Run the suite",
+				status: "completed",
+			},
+			{
+				finishedAt: "1999-12-31T00:03:05.000Z",
+				description: "git fetch",
+				status: "failed",
+			},
+			{
+				finishedAt: "1999-12-31T00:05:00.000Z",
+				description: "just dev",
+				status: "failed",
+			},
 		]);
 	});
 
-	it("indexSubagentFile preserves transcript attribution beside sibling metadata", async () => {
+	it("indexSubagentFile preserves transcript attribution beside sibling metadata", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		const sessionDir = join(projectDir, "sess-1", "subagents");
-		mkdirSync(sessionDir, {recursive: true});
+		mkdirSync(
+			sessionDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const agentPath = join(sessionDir, "agent-meta1.jsonl");
 		writeFileSync(
 			agentPath,
-			jsonl({
-				type: "user",
-				attributionAgent: "markdown-tasks:do-task",
-				slug: "lemur-1",
-				timestamp: "1999-12-31T00:28:53.000Z",
-				message: {role: "user", content: "go"},
-			}),
+			jsonl(
+				{
+					type: "user",
+					attributionAgent: "markdown-tasks:do-task",
+					slug: "lemur-1",
+					timestamp: "1999-12-31T00:28:53.000Z",
+					message:
+					{
+						role: "user",
+						content: "go",
+					},
+				},
+			),
 		);
 		writeFileSync(
 			agentPath.replace(/\.jsonl$/, ".meta.json"),
-			JSON.stringify({
-				agentType: "Explore",
-				description: "Map current render pipeline",
-			}),
+			JSON.stringify(
+				{
+					agentType: "Explore",
+					description: "Map current render pipeline",
+				},
+			),
 		);
 
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-meta1")).get();
@@ -2795,37 +4675,71 @@ describe("subagents", () => {
 		expect(agent.description).toBe("Map current render pipeline");
 	});
 
-	it("uses transcript attribution as the agent type when metadata is absent", async () => {
+	it("uses transcript attribution as the agent type when metadata is absent", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		const sessionDir = join(projectDir, "sess-1", "subagents");
-		mkdirSync(sessionDir, {recursive: true});
+		mkdirSync(
+			sessionDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const agentPath = join(sessionDir, "agent-attributed.jsonl");
 		writeFileSync(
 			agentPath,
-			jsonl({
-				type: "assistant",
-				attributionAgent: "workflow-subagent",
-				timestamp: "1999-12-31T00:28:53.000Z",
-				message: {role: "assistant", content: "go"},
-			}),
+			jsonl(
+				{
+					type: "assistant",
+					attributionAgent: "workflow-subagent",
+					timestamp: "1999-12-31T00:28:53.000Z",
+					message:
+					{
+						role: "assistant",
+						content: "go",
+					},
+				},
+			),
 		);
 
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-attributed")).get();
 		if (!agent) throw new Error("Expected subagent agent-attributed");
-		expect({agentType: agent.agentType, attributionAgent: agent.attributionAgent}).toStrictEqual({
-			agentType: "workflow-subagent",
-			attributionAgent: "workflow-subagent",
-		});
+		expect(
+			{
+				agentType: agent.agentType,
+				attributionAgent: agent.attributionAgent,
+			},
+		).toStrictEqual(
+			{
+				agentType: "workflow-subagent",
+				attributionAgent: "workflow-subagent",
+			},
+		);
 	});
 
-	it("records the model a subagent ran on, preferring the resolved id over the request", async () => {
+	it("records the model a subagent ran on, preferring the resolved id over the request", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		const sessionDir = join(projectDir, "sess-1", "subagents");
-		mkdirSync(sessionDir, {recursive: true});
+		mkdirSync(
+			sessionDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const agentPath = join(sessionDir, "agent-modeled.jsonl");
 		writeFileSync(
@@ -2834,21 +4748,45 @@ describe("subagents", () => {
 				{
 					type: "user",
 					timestamp: "1999-12-31T00:28:53.000Z",
-					message: {role: "user", content: "go"},
+					message:
+					{
+						role: "user",
+						content: "go",
+					},
 				},
 				{
 					type: "assistant",
 					timestamp: "1999-12-31T00:28:55.000Z",
-					message: {role: "assistant", model: "claude-haiku-4-5-20251001", content: "done"},
+					message:
+					{
+						role: "assistant",
+						model: "claude-haiku-4-5-20251001",
+						content: "done",
+					},
 				},
 			),
 		);
 		writeFileSync(
 			agentPath.replace(/\.jsonl$/, ".meta.json"),
-			JSON.stringify({agentType: "Explore", description: "Map it", model: "haiku"}),
+			JSON.stringify(
+				{
+					agentType: "Explore",
+					description: "Map it",
+					model: "haiku",
+				},
+			),
 		);
 
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-modeled")).get();
@@ -2856,26 +4794,54 @@ describe("subagents", () => {
 		expect(agent.model).toStrictEqual("claude-haiku-4-5-20251001");
 	});
 
-	it("falls back to the requested model when every transcript record is synthetic", async () => {
+	it("falls back to the requested model when every transcript record is synthetic", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		const sessionDir = join(projectDir, "sess-1", "subagents");
-		mkdirSync(sessionDir, {recursive: true});
+		mkdirSync(
+			sessionDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const agentPath = join(sessionDir, "agent-synthetic.jsonl");
 		writeFileSync(
 			agentPath,
-			jsonl({
-				type: "assistant",
-				timestamp: "1999-12-31T00:28:53.000Z",
-				message: {role: "assistant", model: "<synthetic>", content: "done"},
-			}),
+			jsonl(
+				{
+					type: "assistant",
+					timestamp: "1999-12-31T00:28:53.000Z",
+					message:
+					{
+						role: "assistant",
+						model: "<synthetic>",
+						content: "done",
+					},
+				},
+			),
 		);
 		writeFileSync(
 			agentPath.replace(/\.jsonl$/, ".meta.json"),
-			JSON.stringify({agentType: "Explore", description: "Map it", model: "opus[1m]"}),
+			JSON.stringify(
+				{
+					agentType: "Explore",
+					description: "Map it",
+					model: "opus[1m]",
+				},
+			),
 		);
 
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-synthetic")).get();
@@ -2883,22 +4849,43 @@ describe("subagents", () => {
 		expect(agent.model).toStrictEqual("opus[1m]");
 	});
 
-	it("leaves the model unset when neither the transcript nor the metadata names one", async () => {
+	it("leaves the model unset when neither the transcript nor the metadata names one", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		const sessionDir = join(projectDir, "sess-1", "subagents");
-		mkdirSync(sessionDir, {recursive: true});
+		mkdirSync(
+			sessionDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const agentPath = join(sessionDir, "agent-modelless.jsonl");
 		writeFileSync(
 			agentPath,
-			jsonl({
-				type: "assistant",
-				timestamp: "1999-12-31T00:28:53.000Z",
-				message: {role: "assistant", content: "done"},
-			}),
+			jsonl(
+				{
+					type: "assistant",
+					timestamp: "1999-12-31T00:28:53.000Z",
+					message:
+					{
+						role: "assistant",
+						content: "done",
+					},
+				},
+			),
 		);
 
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		await indexSubagentFile(db.index, agentPath, "sess-1", "proj-app");
 
 		const agent = db.index.select().from(schema.subagents).where(eq(schema.subagents.id, "agent-modelless")).get();
@@ -2906,20 +4893,37 @@ describe("subagents", () => {
 		expect(agent.model).toStrictEqual(null);
 	});
 
-	it("updates the stored location when a subagent transcript moves projects", async () => {
+	it("updates the stored location when a subagent transcript moves projects", async () =>
+	{
 		const originalDirectory = join(testDir, "project-alice", "session-test-100", "subagents");
 		const movedDirectory = join(testDir, "project-bob", "session-test-100", "subagents");
-		mkdirSync(originalDirectory, {recursive: true});
-		mkdirSync(movedDirectory, {recursive: true});
+		mkdirSync(
+			originalDirectory,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			movedDirectory,
+			{
+				recursive: true,
+			},
+		);
 		const originalPath = join(originalDirectory, "agent-test-100.jsonl");
 		const movedPath = join(movedDirectory, "agent-test-100.jsonl");
 		writeFileSync(
 			originalPath,
-			jsonl({
-				type: "assistant",
-				timestamp: "2000-01-01T00:00:00.000Z",
-				message: {role: "assistant", content: "Alice fixture output"},
-			}),
+			jsonl(
+				{
+					type: "assistant",
+					timestamp: "2000-01-01T00:00:00.000Z",
+					message:
+					{
+						role: "assistant",
+						content: "Alice fixture output",
+					},
+				},
+			),
 		);
 
 		await indexSubagentFile(db.index, originalPath, "session-test-100", "project-alice");
@@ -2928,35 +4932,63 @@ describe("subagents", () => {
 
 		expect(
 			db.index
-				.select({filePath: schema.subagents.filePath, projectId: schema.subagents.projectId})
+				.select(
+					{
+						filePath: schema.subagents.filePath,
+						projectId: schema.subagents.projectId,
+					},
+				)
 				.from(schema.subagents)
 				.where(eq(schema.subagents.id, "agent-test-100"))
 				.get(),
-		).toStrictEqual({filePath: movedPath, projectId: "project-bob"});
+		).toStrictEqual(
+			{
+				filePath: movedPath,
+				projectId: "project-bob",
+			},
+		);
 	});
 
-	it("linkSubagentParents sets parentAgentId from Agent tool calls in parent JSONL", async () => {
+	it("linkSubagentParents sets parentAgentId from Agent tool calls in parent JSONL", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		// Create parent session JSONL with Agent tool calls
 		const parentJsonl = join(projectDir, "sess-1.jsonl");
 		writeFileSync(
 			parentJsonl,
 			jsonl(
-				{type: "user", message: {role: "user", content: "Do work"}},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Do work",
+					},
+				},
 				{
 					type: "assistant",
 					timestamp: "1999-12-31T00:10:00.000Z",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
-							{type: "text", text: "Let me spawn some agents"},
+							{
+								type: "text",
+								text: "Let me spawn some agents",
+							},
 							{
 								type: "tool_use",
 								id: "tool-1",
 								name: "Agent",
-								input: {
+								input:
+								{
 									prompt: "explore",
 									subagent_type: "Explore",
 									description: "Search codebase",
@@ -2966,7 +4998,8 @@ describe("subagents", () => {
 								type: "tool_use",
 								id: "tool-2",
 								name: "Agent",
-								input: {
+								input:
+								{
 									prompt: "review code",
 									subagent_type: "general-purpose",
 									description: "Code review",
@@ -2977,7 +5010,8 @@ describe("subagents", () => {
 				},
 				{
 					type: "user",
-					message: {
+					message:
+					{
 						role: "user",
 						content: [
 							{
@@ -2997,7 +5031,16 @@ describe("subagents", () => {
 		);
 
 		// Insert subagent rows (as if indexSubagentFile already ran)
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		db.index
 			.insert(schema.subagents)
 			.values([
@@ -3042,9 +5085,15 @@ describe("subagents", () => {
 		expect(other.parentAgentId).toBe(null); // not mentioned in JSONL, stays null
 	});
 
-	it("linkSubagentParents sets parentAgentId for nested subagents", async () => {
+	it("linkSubagentParents sets parentAgentId for nested subagents", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		// Create a subagent JSONL that spawns another subagent
 		const parentAgentJsonl = join(projectDir, "agent-parent111.jsonl");
@@ -3053,25 +5102,35 @@ describe("subagents", () => {
 			jsonl(
 				{
 					type: "user",
-					message: {role: "user", content: "Research something"},
+					message:
+					{
+						role: "user",
+						content: "Research something",
+					},
 				},
 				{
 					type: "assistant",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "tool-nested",
 								name: "Agent",
-								input: {prompt: "deep scan", subagent_type: "Explore"},
+								input:
+								{
+									prompt: "deep scan",
+									subagent_type: "Explore",
+								},
 							},
 						],
 					},
 				},
 				{
 					type: "user",
-					message: {
+					message:
+					{
 						role: "user",
 						content: [
 							{
@@ -3085,7 +5144,16 @@ describe("subagents", () => {
 			),
 		);
 
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		db.index
 			.insert(schema.subagents)
 			.values([
@@ -3113,33 +5181,52 @@ describe("subagents", () => {
 		expect(child.parentAgentId).toBe("agent-parent111");
 	});
 
-	it("linkSubagentParents does not overwrite existing parentAgentId with null", async () => {
+	it("linkSubagentParents does not overwrite existing parentAgentId with null", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		// Root session JSONL that also mentions agent-child222 (e.g. via acompact replay)
 		const rootJsonl = join(projectDir, "sess-1.jsonl");
 		writeFileSync(
 			rootJsonl,
 			jsonl(
-				{type: "user", message: {role: "user", content: "Do work"}},
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content: "Do work",
+					},
+				},
 				{
 					type: "assistant",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "tool-root",
 								name: "Agent",
-								input: {prompt: "scan", description: "Root agent call"},
+								input:
+								{
+									prompt: "scan",
+									description: "Root agent call",
+								},
 							},
 						],
 					},
 				},
 				{
 					type: "user",
-					message: {
+					message:
+					{
 						role: "user",
 						content: [
 							{
@@ -3153,7 +5240,16 @@ describe("subagents", () => {
 			),
 		);
 
-		db.index.insert(schema.projects).values({id: "proj-app", name: "App", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: "proj-app",
+					name: "App",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		db.index
 			.insert(schema.subagents)
 			.values([
@@ -3179,16 +5275,20 @@ describe("subagents", () => {
 	});
 });
 
-describe("getSessionsByIds", () => {
-	beforeEach(() => {
+describe("getSessionsByIds", () =>
+{
+	beforeEach(() =>
+	{
 		db.index
 			.insert(schema.projects)
-			.values({
-				id: "proj-a",
-				name: "Alpha",
-				projectPath: "/projects/alpha",
-				updatedAt: 2000,
-			})
+			.values(
+				{
+					id: "proj-a",
+					name: "Alpha",
+					projectPath: "/projects/alpha",
+					updatedAt: 2000,
+				},
+			)
 			.run();
 		db.index
 			.insert(schema.sessions)
@@ -3217,23 +5317,47 @@ describe("getSessionsByIds", () => {
 			.run();
 	});
 
-	it("returns full entries for the requested ids, newest first, skipping unknown ids", () => {
+	it("returns full entries for the requested ids, newest first, skipping unknown ids", () =>
+	{
 		const sessions = getSessionsByIds(db.index, ["sess-2", "sess-missing", "sess-1"]);
-		expect(sessions.map((s) => ({id: s.id, title: s.title, projectName: s.projectName}))).toStrictEqual([
-			{id: "sess-1", title: "Fix login", projectName: "Alpha"},
-			{id: "sess-2", title: "Add tests", projectName: "Alpha"},
+		expect(
+			sessions.map((s) => (
+			{
+				id: s.id,
+				title: s.title,
+				projectName: s.projectName,
+			})),
+		).toStrictEqual([
+			{
+				id: "sess-1",
+				title: "Fix login",
+				projectName: "Alpha",
+			},
+			{
+				id: "sess-2",
+				title: "Add tests",
+				projectName: "Alpha",
+			},
 		]);
 	});
 
-	it("returns an empty array for no ids", () => {
+	it("returns an empty array for no ids", () =>
+	{
 		expect(getSessionsByIds(db.index, [])).toStrictEqual([]);
 	});
 });
 
-describe("message content FTS", () => {
-	beforeEach(async () => {
+describe("message content FTS", () =>
+{
+	beforeEach(async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(projectDir, "sessions-index.json"),
@@ -3254,14 +5378,16 @@ describe("message content FTS", () => {
 			jsonl(
 				{
 					type: "user",
-					message: {
+					message:
+					{
 						role: "user",
 						content: "Fix the authentication bug in the login form",
 					},
 				},
 				{
 					type: "assistant",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
@@ -3276,59 +5402,77 @@ describe("message content FTS", () => {
 		await indexJsonlFile(db.index, join(projectDir, "fts-sess-1.jsonl"), "-Users-craig-projects-app");
 	});
 
-	it("indexes and searches message content", () => {
+	it("indexes and searches message content", () =>
+	{
 		const results = searchMessageContentDb(db.index, "authentication");
 		expect(results.map((r) => r.sessionId)).toStrictEqual(["fts-sess-1"]);
 	});
 
-	it("finds assistant message content", () => {
+	it("finds assistant message content", () =>
+	{
 		const results = searchMessageContentDb(db.index, "middleware");
 		expect(results.map((r) => r.sessionId)).toStrictEqual(["fts-sess-1"]);
 	});
 
-	it("matches a session whose terms appear in different messages", () => {
+	it("matches a session whose terms appear in different messages", () =>
+	{
 		const results = searchMessageContentDb(db.index, "authentication middleware");
 		expect(results.map((r) => r.sessionId)).toStrictEqual(["fts-sess-1"]);
 	});
 
-	it("keeps one row per message with text", () => {
+	it("keeps one row per message with text", () =>
+	{
 		expect(
 			db.index.all(
 				sql`SELECT message_index, content FROM message_content WHERE session_id = 'fts-sess-1' ORDER BY message_index`,
 			),
 		).toStrictEqual([
-			{message_index: 0, content: "Fix the authentication bug in the login form"},
-			{message_index: 1, content: "I found the issue in the session middleware"},
+			{
+				message_index: 0,
+				content: "Fix the authentication bug in the login form",
+			},
+			{
+				message_index: 1,
+				content: "I found the issue in the session middleware",
+			},
 		]);
 	});
 
-	it("indexes a pasted prompt's text without its pasted_content wrapper", async () => {
+	it("indexes a pasted prompt's text without its pasted_content wrapper", async () =>
+	{
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		writeFileSync(
 			join(projectDir, "fts-paste.jsonl"),
-			jsonl({
-				type: "user",
-				message: {
-					role: "user",
-					content:
-						'\n\n<pasted_content id="5216">\nYes go ahead and commit the .gitignore change.\n</pasted_content id="5216">\n',
+			jsonl(
+				{
+					type: "user",
+					message:
+					{
+						role: "user",
+						content:
+							'\n\n<pasted_content id="5216">\nYes go ahead and commit the .gitignore change.\n</pasted_content id="5216">\n',
+					},
 				},
-			}),
+			),
 		);
 		await indexJsonlFile(db.index, join(projectDir, "fts-paste.jsonl"), "-Users-craig-projects-app");
 
 		expect(db.index.all(sql`SELECT content FROM message_content WHERE session_id = 'fts-paste'`)).toStrictEqual([
-			{content: "Yes go ahead and commit the .gitignore change."},
+			{
+				content: "Yes go ahead and commit the .gitignore change.",
+			},
 		]);
 	});
 
-	it("returns snippet with highlight marks", () => {
+	it("returns snippet with highlight marks", () =>
+	{
 		const results = searchMessageContentDb(db.index, "login");
 		expect(results.map((r) => r.sessionId)).toStrictEqual(["fts-sess-1"]);
 		expect(results[0]!.snippet).toContain("<mark>");
 	});
 
-	it("escapes HTML in message search snippets while preserving highlights", () => {
+	it("escapes HTML in message search snippets while preserving highlights", () =>
+	{
 		db.index.run(
 			sql`INSERT INTO message_content(session_id, message_index, content)
           VALUES (${"fts-xss"}, 0, ${"login <script>alert(1)</script>"})`,
@@ -3341,35 +5485,56 @@ describe("message content FTS", () => {
 		expect(result.snippet).toBe("<mark>login</mark> &lt;script&gt;alert(1)&lt;/script&gt;");
 	});
 
-	it("returns empty for non-matching query", () => {
+	it("returns empty for non-matching query", () =>
+	{
 		const results = searchMessageContentDb(db.index, "nonexistent");
 		expect(results.length).toBe(0);
 	});
 
-	it.each(['foo"bar', "a AND"])("returns no message content for malformed query %s", (query) => {
+	it.each(['foo"bar', "a AND"])("returns no message content for malformed query %s", (query) =>
+	{
 		expect(searchMessageContentDb(db.index, query)).toStrictEqual([]);
 	});
 });
 
-describe("task indexer", () => {
-	function makeTaskFile(task: Record<string, unknown>): string {
-		return JSON.stringify({
-			id: "1",
-			subject: "Test task",
-			description: "Test description",
-			status: "pending",
-			blocks: [],
-			blockedBy: [],
-			...task,
-		});
+describe("task indexer", () =>
+{
+	function makeTaskFile(task: Record<string, unknown>): string
+	{
+		return JSON.stringify(
+			{
+				id: "1",
+				subject: "Test task",
+				description: "Test description",
+				status: "pending",
+				blocks: [],
+				blockedBy: [],
+				...task,
+			},
+		);
 	}
 
-	it("indexes a task file", async () => {
+	it("indexes a task file", async () =>
+	{
 		const tasksDir = join(testDir, "tasks", "my-project");
-		mkdirSync(tasksDir, {recursive: true});
+		mkdirSync(
+			tasksDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const filePath = join(tasksDir, "1.json");
-		writeFileSync(filePath, makeTaskFile({id: "1", subject: "Fix bug", status: "completed"}));
+		writeFileSync(
+			filePath,
+			makeTaskFile(
+				{
+					id: "1",
+					subject: "Fix bug",
+					status: "completed",
+				},
+			),
+		);
 
 		await indexTaskFile(db.index, filePath, "my-project");
 
@@ -3381,12 +5546,27 @@ describe("task indexer", () => {
 		expect(tasks[0]!.status).toBe("completed");
 	});
 
-	it("stores blocks and blockedBy as JSON", async () => {
+	it("stores blocks and blockedBy as JSON", async () =>
+	{
 		const tasksDir = join(testDir, "tasks", "my-project");
-		mkdirSync(tasksDir, {recursive: true});
+		mkdirSync(
+			tasksDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const filePath = join(tasksDir, "2.json");
-		writeFileSync(filePath, makeTaskFile({id: "2", blocks: ["3"], blockedBy: ["1"]}));
+		writeFileSync(
+			filePath,
+			makeTaskFile(
+				{
+					id: "2",
+					blocks: ["3"],
+					blockedBy: ["1"],
+				},
+			),
+		);
 
 		await indexTaskFile(db.index, filePath, "my-project");
 
@@ -3396,16 +5576,35 @@ describe("task indexer", () => {
 		expect(JSON.parse(tasks[0]!.blockedByJson)).toStrictEqual(["1"]);
 	});
 
-	it("stores metadata as JSON", async () => {
+	it("stores metadata as JSON", async () =>
+	{
 		const tasksDir = join(testDir, "tasks", "my-project");
-		mkdirSync(tasksDir, {recursive: true});
+		mkdirSync(
+			tasksDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const filePath = join(tasksDir, "2.json");
-		const metadata = {
+		const metadata =
+		{
 			commit_sha: "fac216c",
-			verification: {status: "passed", tests: 12},
+			verification:
+			{
+				status: "passed",
+				tests: 12,
+			},
 		};
-		writeFileSync(filePath, makeTaskFile({id: "2", metadata}));
+		writeFileSync(
+			filePath,
+			makeTaskFile(
+				{
+					id: "2",
+					metadata,
+				},
+			),
+		);
 
 		await indexTaskFile(db.index, filePath, "my-project");
 
@@ -3414,22 +5613,38 @@ describe("task indexer", () => {
 		expect(JSON.parse(tasks[0]!.metadataJson)).toStrictEqual(metadata);
 	});
 
-	it("indexes the task owner", async () => {
+	it("indexes the task owner", async () =>
+	{
 		const tasksDir = join(testDir, "tasks", "example-project");
-		mkdirSync(tasksDir, {recursive: true});
+		mkdirSync(
+			tasksDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const filePath = join(tasksDir, "owner-task.json");
-		writeFileSync(filePath, makeTaskFile({id: "owner-task", owner: "alice"}));
+		writeFileSync(
+			filePath,
+			makeTaskFile(
+				{
+					id: "owner-task",
+					owner: "alice",
+				},
+			),
+		);
 
 		await indexTaskFile(db.index, filePath, "example-project");
 
 		expect(
 			db.index
-				.select({
-					taskId: schema.tasks.taskId,
-					projectDir: schema.tasks.projectDir,
-					owner: schema.tasks.owner,
-				})
+				.select(
+					{
+						taskId: schema.tasks.taskId,
+						projectDir: schema.tasks.projectDir,
+						owner: schema.tasks.owner,
+					},
+				)
 				.from(schema.tasks)
 				.all(),
 		).toStrictEqual([
@@ -3441,9 +5656,15 @@ describe("task indexer", () => {
 		]);
 	});
 
-	it("skips re-indexing when mtime unchanged", async () => {
+	it("skips re-indexing when mtime unchanged", async () =>
+	{
 		const tasksDir = join(testDir, "tasks", "my-project");
-		mkdirSync(tasksDir, {recursive: true});
+		mkdirSync(
+			tasksDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const filePath = join(tasksDir, "1.json");
 		writeFileSync(filePath, makeTaskFile({}));
@@ -3467,19 +5688,34 @@ describe("task indexer", () => {
 		expect(secondIndexed.indexedAt).toBe(firstIndexed.indexedAt);
 	});
 
-	it("re-indexes when indexed_files entry exists but tasks row is missing", async () => {
+	it("re-indexes when indexed_files entry exists but tasks row is missing", async () =>
+	{
 		const tasksDir = join(testDir, "tasks", "my-project");
-		mkdirSync(tasksDir, {recursive: true});
+		mkdirSync(
+			tasksDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const filePath = join(tasksDir, "1.json");
-		writeFileSync(filePath, makeTaskFile({id: "1", subject: "Fix bug"}));
+		writeFileSync(
+			filePath,
+			makeTaskFile(
+				{
+					id: "1",
+					subject: "Fix bug",
+				},
+			),
+		);
 
 		await indexTaskFile(db.index, filePath, "my-project");
 		expect(db.index.select().from(schema.tasks).all().length).toBe(1);
 
 		db.index.delete(schema.tasks).where(eq(schema.tasks.filePath, filePath)).run();
 		expect(db.index.select().from(schema.tasks).all()).toStrictEqual([]);
-		if (!db.index.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get()) {
+		if (!db.index.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).get())
+		{
 			throw new Error("Expected indexed_files entry to remain");
 		}
 
@@ -3488,14 +5724,41 @@ describe("task indexer", () => {
 		expect(tasksAfter.map((t) => t.subject)).toStrictEqual(["Fix bug"]);
 	});
 
-	it("removes the task row when its file is deleted", async () => {
+	it("removes the task row when its file is deleted", async () =>
+	{
 		const tasksDir = join(testDir, "tasks", "my-project");
-		mkdirSync(tasksDir, {recursive: true});
+		mkdirSync(
+			tasksDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const filePath = join(tasksDir, "1.json");
-		writeFileSync(filePath, makeTaskFile({id: "1", subject: "Fix bug"}));
+		writeFileSync(
+			filePath,
+			makeTaskFile(
+				{
+					id: "1",
+					subject: "Fix bug",
+				},
+			),
+		);
 		await indexTaskFile(db.index, filePath, "my-project");
-		expect(db.index.select({taskId: schema.tasks.taskId}).from(schema.tasks).all()).toStrictEqual([{taskId: "1"}]);
+		expect(
+			db.index
+				.select(
+					{
+						taskId: schema.tasks.taskId,
+					},
+				)
+				.from(schema.tasks)
+				.all(),
+		).toStrictEqual([
+			{
+				taskId: "1",
+			},
+		]);
 
 		rmSync(filePath);
 		await indexTaskFile(db.index, filePath, "my-project");
@@ -3506,55 +5769,92 @@ describe("task indexer", () => {
 		).toStrictEqual([]);
 	});
 
-	it("re-indexes when file changes", async () => {
+	it("re-indexes when file changes", async () =>
+	{
 		const tasksDir = join(testDir, "tasks", "my-project");
-		mkdirSync(tasksDir, {recursive: true});
+		mkdirSync(
+			tasksDir,
+			{
+				recursive: true,
+			},
+		);
 
 		const filePath = join(tasksDir, "1.json");
-		writeFileSync(filePath, makeTaskFile({status: "pending"}));
+		writeFileSync(
+			filePath,
+			makeTaskFile(
+				{
+					status: "pending",
+				},
+			),
+		);
 
 		await indexTaskFile(db.index, filePath, "my-project");
 		expect(db.index.select().from(schema.tasks).all()[0]?.status).toBe("pending");
 
-		await new Promise((r) => {
+		await new Promise((r) =>
+		{
 			setTimeout(r, 50);
 		});
 
-		writeFileSync(filePath, makeTaskFile({status: "completed"}));
+		writeFileSync(
+			filePath,
+			makeTaskFile(
+				{
+					status: "completed",
+				},
+			),
+		);
 		await indexTaskFile(db.index, filePath, "my-project");
 		expect(db.index.select().from(schema.tasks).all()[0]?.status).toBe("completed");
 	});
 });
 
-describe("scanTasksDir", () => {
-	it("indexes task files across project directories", async () => {
+describe("scanTasksDir", () =>
+{
+	it("indexes task files across project directories", async () =>
+	{
 		const tasksDir = join(testDir, "tasks");
 		const proj1 = join(tasksDir, "project-a");
 		const proj2 = join(tasksDir, "project-b");
-		mkdirSync(proj1, {recursive: true});
-		mkdirSync(proj2, {recursive: true});
+		mkdirSync(
+			proj1,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			proj2,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(proj1, "1.json"),
-			JSON.stringify({
-				id: "1",
-				subject: "Task A",
-				description: "desc",
-				status: "pending",
-				blocks: [],
-				blockedBy: [],
-			}),
+			JSON.stringify(
+				{
+					id: "1",
+					subject: "Task A",
+					description: "desc",
+					status: "pending",
+					blocks: [],
+					blockedBy: [],
+				},
+			),
 		);
 		writeFileSync(
 			join(proj2, "2.json"),
-			JSON.stringify({
-				id: "2",
-				subject: "Task B",
-				description: "desc",
-				status: "completed",
-				blocks: [],
-				blockedBy: [],
-			}),
+			JSON.stringify(
+				{
+					id: "2",
+					subject: "Task B",
+					description: "desc",
+					status: "completed",
+					blocks: [],
+					blockedBy: [],
+				},
+			),
 		);
 
 		await scanTasksDir(db.index, tasksDir);
@@ -3564,22 +5864,30 @@ describe("scanTasksDir", () => {
 		expect(tasks.map((t) => t.projectDir).toSorted()).toStrictEqual(["project-a", "project-b"]);
 	});
 
-	it("cleans up deleted files", async () => {
+	it("cleans up deleted files", async () =>
+	{
 		const tasksDir = join(testDir, "tasks");
 		const proj = join(tasksDir, "my-proj");
-		mkdirSync(proj, {recursive: true});
+		mkdirSync(
+			proj,
+			{
+				recursive: true,
+			},
+		);
 
 		const filePath = join(proj, "1.json");
 		writeFileSync(
 			filePath,
-			JSON.stringify({
-				id: "1",
-				subject: "Task",
-				description: "desc",
-				status: "pending",
-				blocks: [],
-				blockedBy: [],
-			}),
+			JSON.stringify(
+				{
+					id: "1",
+					subject: "Task",
+					description: "desc",
+					status: "pending",
+					blocks: [],
+					blockedBy: [],
+				},
+			),
 		);
 
 		await scanTasksDir(db.index, tasksDir);
@@ -3591,78 +5899,108 @@ describe("scanTasksDir", () => {
 	});
 });
 
-describe("task queries", () => {
+describe("task queries", () =>
+{
 	const projectId = "-Users-craig-projects-app";
 	const sessionId = "12345678-1234-1234-1234-123456789abc";
 
-	beforeEach(async () => {
-		db.index.insert(schema.projects).values({id: projectId, name: "example-app", updatedAt: 1000}).run();
+	beforeEach(async () =>
+	{
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: projectId,
+					name: "example-app",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		db.index
 			.insert(schema.sessions)
-			.values({
-				id: sessionId,
-				projectId,
-				title: "Example task owner session",
-				messageCount: 1,
-				isSidechain: 0,
-				createdAt: 1000,
-				mtimeMs: 1000,
-				filePath: `/projects/${projectId}/${sessionId}.jsonl`,
-			})
+			.values(
+				{
+					id: sessionId,
+					projectId,
+					title: "Example task owner session",
+					messageCount: 1,
+					isSidechain: 0,
+					createdAt: 1000,
+					mtimeMs: 1000,
+					filePath: `/projects/${projectId}/${sessionId}.jsonl`,
+				},
+			)
 			.run();
 
 		const tasksDir = join(testDir, "tasks", sessionId);
-		mkdirSync(tasksDir, {recursive: true});
+		mkdirSync(
+			tasksDir,
+			{
+				recursive: true,
+			},
+		);
 
 		writeFileSync(
 			join(tasksDir, "1.json"),
-			JSON.stringify({
-				id: "1",
-				subject: "Fix bug",
-				description: "Fix it",
-				status: "completed",
-				blocks: ["2"],
-				blockedBy: [],
-				owner: "alice",
-				metadata: {
-					commit_sha: "fac216c",
-					verification: {status: "passed"},
+			JSON.stringify(
+				{
+					id: "1",
+					subject: "Fix bug",
+					description: "Fix it",
+					status: "completed",
+					blocks: ["2"],
+					blockedBy: [],
+					owner: "alice",
+					metadata:
+					{
+						commit_sha: "fac216c",
+						verification:
+						{
+							status: "passed",
+						},
+					},
 				},
-			}),
+			),
 		);
 		writeFileSync(
 			join(tasksDir, "2.json"),
-			JSON.stringify({
-				id: "2",
-				subject: "Write tests",
-				description: "Test it",
-				status: "pending",
-				blocks: [],
-				blockedBy: ["1"],
-			}),
+			JSON.stringify(
+				{
+					id: "2",
+					subject: "Write tests",
+					description: "Test it",
+					status: "pending",
+					blocks: [],
+					blockedBy: ["1"],
+				},
+			),
 		);
 		writeFileSync(
 			join(tasksDir, "3.json"),
-			JSON.stringify({
-				id: "3",
-				subject: "Deploy",
-				description: "Ship it",
-				status: "in_progress",
-				blocks: [],
-				blockedBy: [],
-				activeForm: "Deploying",
-			}),
+			JSON.stringify(
+				{
+					id: "3",
+					subject: "Deploy",
+					description: "Ship it",
+					status: "in_progress",
+					blocks: [],
+					blockedBy: [],
+					activeForm: "Deploying",
+				},
+			),
 		);
 		await scanTasksDir(db.index, join(testDir, "tasks"));
 	});
 
-	it("getTasksForProject returns all tasks for a project", () => {
+	it("getTasksForProject returns all tasks for a project", () =>
+	{
 		const tasks = getTasksForProject(db.index, projectId);
 		expect(tasks.map((t) => t.subject).toSorted()).toStrictEqual(["Deploy", "Fix bug", "Write tests"]);
 		expect(tasks.map((task) => task.projectDir)).toStrictEqual([sessionId, sessionId, sessionId]);
 	});
 
-	it("getTasksForProject parses blocks/blockedBy", () => {
+	it("getTasksForProject parses blocks/blockedBy", () =>
+	{
 		const tasks = getTasksForProject(db.index, projectId);
 		const task1 = tasks.find((t) => t.taskId === "1");
 		if (!task1) throw new Error("Expected task with id 1");
@@ -3674,34 +6012,56 @@ describe("task queries", () => {
 		expect(task2.blockedBy).toStrictEqual(["1"]);
 	});
 
-	it("getTasksForProject parses metadata", () => {
+	it("getTasksForProject parses metadata", () =>
+	{
 		const tasks = getTasksForProject(db.index, projectId);
 		const task = tasks.find((candidate) => candidate.taskId === "1");
 		if (!task) throw new Error("Expected task with id 1");
-		expect(task.metadata).toStrictEqual({
-			commit_sha: "fac216c",
-			verification: {status: "passed"},
-		});
+		expect(task.metadata).toStrictEqual(
+			{
+				commit_sha: "fac216c",
+				verification:
+				{
+					status: "passed",
+				},
+			},
+		);
 	});
 
-	it("getTasksForProject returns the indexed owner", () => {
+	it("getTasksForProject returns the indexed owner", () =>
+	{
 		const tasks = getTasksForProject(db.index, projectId);
 		expect(
 			tasks
-				.map(({taskId, owner}) => ({taskId, owner}))
+				.map(({taskId, owner}) => (
+				{
+					taskId,
+					owner,
+				}))
 				.toSorted((left, right) => left.taskId.localeCompare(right.taskId)),
 		).toStrictEqual([
-			{taskId: "1", owner: "alice"},
-			{taskId: "2", owner: null},
-			{taskId: "3", owner: null},
+			{
+				taskId: "1",
+				owner: "alice",
+			},
+			{
+				taskId: "2",
+				owner: null,
+			},
+			{
+				taskId: "3",
+				owner: null,
+			},
 		]);
 	});
 
-	it("getTasksForProject returns empty for unknown project", () => {
+	it("getTasksForProject returns empty for unknown project", () =>
+	{
 		expect(getTasksForProject(db.index, "nonexistent")).toStrictEqual([]);
 	});
 
-	it("getTaskCountsForProject aggregates correctly", () => {
+	it("getTaskCountsForProject aggregates correctly", () =>
+	{
 		const counts = getTaskCountsForProject(db.index, projectId);
 		expect(counts.total).toBe(3);
 		expect(counts.completed).toBe(1);
@@ -3709,17 +6069,21 @@ describe("task queries", () => {
 		expect(counts.inProgress).toBe(1);
 	});
 
-	it("getTaskCountsForProject returns zeros for unknown project", () => {
+	it("getTaskCountsForProject returns zeros for unknown project", () =>
+	{
 		const counts = getTaskCountsForProject(db.index, "nonexistent");
-		expect(counts).toStrictEqual({
-			total: 0,
-			pending: 0,
-			inProgress: 0,
-			completed: 0,
-		});
+		expect(counts).toStrictEqual(
+			{
+				total: 0,
+				pending: 0,
+				inProgress: 0,
+				completed: 0,
+			},
+		);
 	});
 
-	function insertUnmatchedDirTasks() {
+	function insertUnmatchedDirTasks()
+	{
 		db.index
 			.insert(schema.tasks)
 			.values([
@@ -3751,18 +6115,22 @@ describe("task queries", () => {
 			.run();
 	}
 
-	it("getTaskCountsForProject counts tasks stored under project-name and session-prefix directories", () => {
+	it("getTaskCountsForProject counts tasks stored under project-name and session-prefix directories", () =>
+	{
 		insertUnmatchedDirTasks();
 
-		expect(getTaskCountsForProject(db.index, projectId)).toStrictEqual({
-			total: 5,
-			pending: 2,
-			inProgress: 2,
-			completed: 1,
-		});
+		expect(getTaskCountsForProject(db.index, projectId)).toStrictEqual(
+			{
+				total: 5,
+				pending: 2,
+				inProgress: 2,
+				completed: 1,
+			},
+		);
 	});
 
-	it("getTasksForProject includes tasks stored under project-name and session-prefix directories", () => {
+	it("getTasksForProject includes tasks stored under project-name and session-prefix directories", () =>
+	{
 		insertUnmatchedDirTasks();
 
 		const subjects = getTasksForProject(db.index, projectId)
@@ -3771,18 +6139,28 @@ describe("task queries", () => {
 		expect(subjects).toStrictEqual(["Deploy", "Fix bug", "Prefixed-dir task", "Project-dir task", "Write tests"]);
 	});
 
-	it("getOpenTasksForProject includes tasks stored under project-name and session-prefix directories", () => {
+	it("getOpenTasksForProject includes tasks stored under project-name and session-prefix directories", () =>
+	{
 		insertUnmatchedDirTasks();
 
 		const subjects = getOpenTasksForProject(db.index, projectId, 10).map((task) => task.subject);
 		expect(subjects).toStrictEqual(["Deploy", "Prefixed-dir task", "Write tests", "Project-dir task"]);
 	});
 
-	it("project taskCount totals agree with the incomplete-task grouping", () => {
+	it("project taskCount totals agree with the incomplete-task grouping", () =>
+	{
 		insertUnmatchedDirTasks();
 
-		const projects = db.index.select({id: schema.projects.id}).from(schema.projects).all();
-		const summedTaskCount = projects.reduce((total, project) => {
+		const projects = db.index
+			.select(
+				{
+					id: schema.projects.id,
+				},
+			)
+			.from(schema.projects)
+			.all();
+		const summedTaskCount = projects.reduce((total, project) =>
+		{
 			const counts = getTaskCountsForProject(db.index, project.id);
 			return total + counts.pending + counts.inProgress;
 		}, 0);
@@ -3794,10 +6172,12 @@ describe("task queries", () => {
 		expect(summedTaskCount).toBe(groupedTaskCount);
 	});
 
-	it("getIncompleteTasksGroupedByProject resolves a UUID-named task directory to its owning session", () => {
+	it("getIncompleteTasksGroupedByProject resolves a UUID-named task directory to its owning session", () =>
+	{
 		const groups = getIncompleteTasksGroupedByProject(db.index);
 		expect(
-			groups.map(({tasks, ...group}) => ({
+			groups.map(({tasks, ...group}) => (
+			{
 				...group,
 				taskIds: tasks.map((task) => task.taskId).toSorted(),
 			})),
@@ -3815,110 +6195,127 @@ describe("task queries", () => {
 		]);
 	});
 
-	it("getIncompleteTasksGroupedByProject preserves tasks whose session is missing", () => {
+	it("getIncompleteTasksGroupedByProject preserves tasks whose session is missing", () =>
+	{
 		const missingSessionId = "00000000-0000-0000-0000-000000000000";
 		db.index
 			.insert(schema.tasks)
-			.values({
-				taskId: "100",
-				projectDir: missingSessionId,
-				subject: "Orphaned task",
-				description: "Keep this visible",
-				status: "pending",
-				blocksJson: "[]",
-				blockedByJson: "[]",
-				metadataJson: "{}",
-				filePath: `/tasks/${missingSessionId}/100.json`,
-				mtimeMs: 1000,
-			})
-			.run();
-
-		const orphanedGroup = getIncompleteTasksGroupedByProject(db.index).find(
-			(group) => group.projectDir === missingSessionId,
-		);
-		expect(orphanedGroup).toStrictEqual({
-			projectId: ORPHANED_TASKS_PROJECT_ID,
-			projectName: "Orphaned tasks",
-			projectDir: missingSessionId,
-			sessionId: null,
-			sessionTitle: "Unindexed session 00000000",
-			tasks: [
+			.values(
 				{
 					taskId: "100",
 					projectDir: missingSessionId,
 					subject: "Orphaned task",
 					description: "Keep this visible",
 					status: "pending",
-					activeForm: null,
-					owner: null,
-					blocks: [],
-					blockedBy: [],
-					metadata: {},
+					blocksJson: "[]",
+					blockedByJson: "[]",
+					metadataJson: "{}",
+					filePath: `/tasks/${missingSessionId}/100.json`,
+					mtimeMs: 1000,
 				},
-			],
-			totalPending: 1,
-			totalInProgress: 0,
-		});
+			)
+			.run();
+
+		const orphanedGroup = getIncompleteTasksGroupedByProject(db.index).find(
+			(group) => group.projectDir === missingSessionId,
+		);
+		expect(orphanedGroup).toStrictEqual(
+			{
+				projectId: ORPHANED_TASKS_PROJECT_ID,
+				projectName: "Orphaned tasks",
+				projectDir: missingSessionId,
+				sessionId: null,
+				sessionTitle: "Unindexed session 00000000",
+				tasks: [
+					{
+						taskId: "100",
+						projectDir: missingSessionId,
+						subject: "Orphaned task",
+						description: "Keep this visible",
+						status: "pending",
+						activeForm: null,
+						owner: null,
+						blocks: [],
+						blockedBy: [],
+						metadata: {},
+					},
+				],
+				totalPending: 1,
+				totalInProgress: 0,
+			},
+		);
 	});
 
-	it("getIncompleteTasksGroupedByProject never repeats one string as both project and session label", () => {
+	it("getIncompleteTasksGroupedByProject never repeats one string as both project and session label", () =>
+	{
 		const missingSessionId = "deadbeef-0000-0000-0000-000000000000";
 		db.index
 			.insert(schema.tasks)
-			.values({
-				taskId: "101",
-				projectDir: missingSessionId,
-				subject: "Orphaned task",
-				description: "desc",
-				status: "pending",
-				blocksJson: "[]",
-				blockedByJson: "[]",
-				metadataJson: "{}",
-				filePath: `/tasks/${missingSessionId}/101.json`,
-				mtimeMs: 1000,
-			})
+			.values(
+				{
+					taskId: "101",
+					projectDir: missingSessionId,
+					subject: "Orphaned task",
+					description: "desc",
+					status: "pending",
+					blocksJson: "[]",
+					blockedByJson: "[]",
+					metadataJson: "{}",
+					filePath: `/tasks/${missingSessionId}/101.json`,
+					mtimeMs: 1000,
+				},
+			)
 			.run();
 
-		for (const group of getIncompleteTasksGroupedByProject(db.index)) {
+		for (const group of getIncompleteTasksGroupedByProject(db.index))
+		{
 			expect(group.projectName).not.toBe(group.sessionTitle);
 		}
 	});
 
-	it("getIncompleteTasksGroupedByProject labels an unresolvable session-prefixed directory as orphaned", () => {
+	it("getIncompleteTasksGroupedByProject labels an unresolvable session-prefixed directory as orphaned", () =>
+	{
 		db.index
 			.insert(schema.tasks)
-			.values({
-				taskId: "102",
-				projectDir: "session-fedcba98",
-				subject: "Orphaned prefixed task",
-				description: "desc",
-				status: "pending",
-				blocksJson: "[]",
-				blockedByJson: "[]",
-				metadataJson: "{}",
-				filePath: "/tasks/session-fedcba98/102.json",
-				mtimeMs: 1000,
-			})
+			.values(
+				{
+					taskId: "102",
+					projectDir: "session-fedcba98",
+					subject: "Orphaned prefixed task",
+					description: "desc",
+					status: "pending",
+					blocksJson: "[]",
+					blockedByJson: "[]",
+					metadataJson: "{}",
+					filePath: "/tasks/session-fedcba98/102.json",
+					mtimeMs: 1000,
+				},
+			)
 			.run();
 
 		const group = getIncompleteTasksGroupedByProject(db.index).find(
 			(candidate) => candidate.projectDir === "session-fedcba98",
 		);
 		if (!group) throw new Error("Expected group for session-fedcba98");
-		expect({
-			projectId: group.projectId,
-			projectName: group.projectName,
-			sessionId: group.sessionId,
-			sessionTitle: group.sessionTitle,
-		}).toStrictEqual({
-			projectId: ORPHANED_TASKS_PROJECT_ID,
-			projectName: "Orphaned tasks",
-			sessionId: null,
-			sessionTitle: "Unindexed session fedcba98",
-		});
+		expect(
+			{
+				projectId: group.projectId,
+				projectName: group.projectName,
+				sessionId: group.sessionId,
+				sessionTitle: group.sessionTitle,
+			},
+		).toStrictEqual(
+			{
+				projectId: ORPHANED_TASKS_PROJECT_ID,
+				projectName: "Orphaned tasks",
+				sessionId: null,
+				sessionTitle: "Unindexed session fedcba98",
+			},
+		);
 	});
 
-	it("getIncompleteTasksGroupedByProject sorts orphaned groups after resolved ones", () => {
+	it("getIncompleteTasksGroupedByProject sorts orphaned groups after resolved ones", () =>
+	{
 		db.index
 			.insert(schema.tasks)
 			.values([
@@ -3950,9 +6347,21 @@ describe("task queries", () => {
 			.run();
 
 		const groups = getIncompleteTasksGroupedByProject(db.index);
-		expect(groups.map((group) => ({projectDir: group.projectDir, projectId: group.projectId}))).toStrictEqual([
-			{projectDir: sessionId, projectId},
-			{projectDir: "example-app", projectId},
+		expect(
+			groups.map((group) => (
+			{
+				projectDir: group.projectDir,
+				projectId: group.projectId,
+			})),
+		).toStrictEqual([
+			{
+				projectDir: sessionId,
+				projectId,
+			},
+			{
+				projectDir: "example-app",
+				projectId,
+			},
 			{
 				projectDir: "11111111-1111-1111-1111-111111111111",
 				projectId: ORPHANED_TASKS_PROJECT_ID,
@@ -3960,21 +6369,24 @@ describe("task queries", () => {
 		]);
 	});
 
-	it("getIncompleteTasksGroupedByProject resolves a session-prefixed task directory by id prefix", () => {
+	it("getIncompleteTasksGroupedByProject resolves a session-prefixed task directory by id prefix", () =>
+	{
 		db.index
 			.insert(schema.tasks)
-			.values({
-				taskId: "200",
-				projectDir: "session-12345678",
-				subject: "Prefixed task",
-				description: "desc",
-				status: "pending",
-				blocksJson: "[]",
-				blockedByJson: "[]",
-				metadataJson: "{}",
-				filePath: "/tasks/session-12345678/200.json",
-				mtimeMs: 1000,
-			})
+			.values(
+				{
+					taskId: "200",
+					projectDir: "session-12345678",
+					subject: "Prefixed task",
+					description: "desc",
+					status: "pending",
+					blocksJson: "[]",
+					blockedByJson: "[]",
+					metadataJson: "{}",
+					filePath: "/tasks/session-12345678/200.json",
+					mtimeMs: 1000,
+				},
+			)
 			.run();
 
 		const group = getIncompleteTasksGroupedByProject(db.index).find(
@@ -3987,21 +6399,24 @@ describe("task queries", () => {
 		expect(group.sessionTitle).toBe("Example task owner session");
 	});
 
-	it("getIncompleteTasksGroupedByProject resolves a project-name task directory via the projects table", () => {
+	it("getIncompleteTasksGroupedByProject resolves a project-name task directory via the projects table", () =>
+	{
 		db.index
 			.insert(schema.tasks)
-			.values({
-				taskId: "300",
-				projectDir: "example-app",
-				subject: "Project-level task",
-				description: "desc",
-				status: "pending",
-				blocksJson: "[]",
-				blockedByJson: "[]",
-				metadataJson: "{}",
-				filePath: "/tasks/example-app/300.json",
-				mtimeMs: 1000,
-			})
+			.values(
+				{
+					taskId: "300",
+					projectDir: "example-app",
+					subject: "Project-level task",
+					description: "desc",
+					status: "pending",
+					blocksJson: "[]",
+					blockedByJson: "[]",
+					metadataJson: "{}",
+					filePath: "/tasks/example-app/300.json",
+					mtimeMs: 1000,
+				},
+			)
 			.run();
 
 		const group = getIncompleteTasksGroupedByProject(db.index).find(
@@ -4014,21 +6429,24 @@ describe("task queries", () => {
 		expect(group.sessionTitle).toBe("Project tasks");
 	});
 
-	it("getIncompleteTasksGroupedByProject labels an unmatched plain-name task directory with the directory name", () => {
+	it("getIncompleteTasksGroupedByProject labels an unmatched plain-name task directory with the directory name", () =>
+	{
 		db.index
 			.insert(schema.tasks)
-			.values({
-				taskId: "400",
-				projectDir: "factorio-school",
-				subject: "Loose task",
-				description: "desc",
-				status: "pending",
-				blocksJson: "[]",
-				blockedByJson: "[]",
-				metadataJson: "{}",
-				filePath: "/tasks/factorio-school/400.json",
-				mtimeMs: 1000,
-			})
+			.values(
+				{
+					taskId: "400",
+					projectDir: "factorio-school",
+					subject: "Loose task",
+					description: "desc",
+					status: "pending",
+					blocksJson: "[]",
+					blockedByJson: "[]",
+					metadataJson: "{}",
+					filePath: "/tasks/factorio-school/400.json",
+					mtimeMs: 1000,
+				},
+			)
 			.run();
 
 		const group = getIncompleteTasksGroupedByProject(db.index).find(
@@ -4041,23 +6459,35 @@ describe("task queries", () => {
 		expect(group.sessionTitle).toBe("Project tasks");
 	});
 
-	it("getIncompleteTasksGroupedByProject resolves a dashed task directory whose project name contains a dot", () => {
+	it("getIncompleteTasksGroupedByProject resolves a dashed task directory whose project name contains a dot", () =>
+	{
 		const dottedProjectId = "-Users-craig-projects-factorio-school";
-		db.index.insert(schema.projects).values({id: dottedProjectId, name: "factorio.school", updatedAt: 1000}).run();
+		db.index
+			.insert(schema.projects)
+			.values(
+				{
+					id: dottedProjectId,
+					name: "factorio.school",
+					updatedAt: 1000,
+				},
+			)
+			.run();
 		db.index
 			.insert(schema.tasks)
-			.values({
-				taskId: "450",
-				projectDir: "factorio-school",
-				subject: "Dotted-name task",
-				description: "desc",
-				status: "pending",
-				blocksJson: "[]",
-				blockedByJson: "[]",
-				metadataJson: "{}",
-				filePath: "/tasks/factorio-school/450.json",
-				mtimeMs: 1000,
-			})
+			.values(
+				{
+					taskId: "450",
+					projectDir: "factorio-school",
+					subject: "Dotted-name task",
+					description: "desc",
+					status: "pending",
+					blocksJson: "[]",
+					blockedByJson: "[]",
+					metadataJson: "{}",
+					filePath: "/tasks/factorio-school/450.json",
+					mtimeMs: 1000,
+				},
+			)
 			.run();
 
 		const group = getIncompleteTasksGroupedByProject(db.index).find(
@@ -4073,28 +6503,39 @@ describe("task queries", () => {
 		expect(projectTasks.map((task) => task.taskId)).toStrictEqual(["450"]);
 	});
 
-	it("getIncompleteTasksGroupedByProject leaves an ambiguous project-name directory unresolved", () => {
+	it("getIncompleteTasksGroupedByProject leaves an ambiguous project-name directory unresolved", () =>
+	{
 		db.index
 			.insert(schema.projects)
 			.values([
-				{id: "-Users-craig-projects-a-dupe", name: "dupe", updatedAt: 1000},
-				{id: "-Users-craig-projects-b-dupe", name: "dupe", updatedAt: 1000},
+				{
+					id: "-Users-craig-projects-a-dupe",
+					name: "dupe",
+					updatedAt: 1000,
+				},
+				{
+					id: "-Users-craig-projects-b-dupe",
+					name: "dupe",
+					updatedAt: 1000,
+				},
 			])
 			.run();
 		db.index
 			.insert(schema.tasks)
-			.values({
-				taskId: "500",
-				projectDir: "dupe",
-				subject: "Ambiguous task",
-				description: "desc",
-				status: "pending",
-				blocksJson: "[]",
-				blockedByJson: "[]",
-				metadataJson: "{}",
-				filePath: "/tasks/dupe/500.json",
-				mtimeMs: 1000,
-			})
+			.values(
+				{
+					taskId: "500",
+					projectDir: "dupe",
+					subject: "Ambiguous task",
+					description: "desc",
+					status: "pending",
+					blocksJson: "[]",
+					blockedByJson: "[]",
+					metadataJson: "{}",
+					filePath: "/tasks/dupe/500.json",
+					mtimeMs: 1000,
+				},
+			)
 			.run();
 
 		const group = getIncompleteTasksGroupedByProject(db.index).find((candidate) => candidate.projectDir === "dupe");
@@ -4105,32 +6546,38 @@ describe("task queries", () => {
 		expect(group.sessionTitle).toBe("Project tasks");
 	});
 
-	it("getIncompleteTasksGroupedByProject returns empty when all completed", async () => {
+	it("getIncompleteTasksGroupedByProject returns empty when all completed", async () =>
+	{
 		const tasksDir = join(testDir, "tasks", sessionId);
-		await new Promise((r) => {
+		await new Promise((r) =>
+		{
 			setTimeout(r, 50);
 		});
 		writeFileSync(
 			join(tasksDir, "2.json"),
-			JSON.stringify({
-				id: "2",
-				subject: "Write tests",
-				description: "Test it",
-				status: "completed",
-				blocks: [],
-				blockedBy: ["1"],
-			}),
+			JSON.stringify(
+				{
+					id: "2",
+					subject: "Write tests",
+					description: "Test it",
+					status: "completed",
+					blocks: [],
+					blockedBy: ["1"],
+				},
+			),
 		);
 		writeFileSync(
 			join(tasksDir, "3.json"),
-			JSON.stringify({
-				id: "3",
-				subject: "Deploy",
-				description: "Ship it",
-				status: "completed",
-				blocks: [],
-				blockedBy: [],
-			}),
+			JSON.stringify(
+				{
+					id: "3",
+					subject: "Deploy",
+					description: "Ship it",
+					status: "completed",
+					blocks: [],
+					blockedBy: [],
+				},
+			),
 		);
 		await scanTasksDir(db.index, join(testDir, "tasks"));
 

@@ -8,20 +8,34 @@ const ViewportQuerySchema = z.coerce.number().int().positive().max(500);
  * such as a plain shell. Exactly one of the two.
  */
 export const TerminalStreamQuerySchema = z
-	.object({
-		sessionId: z.string().min(1).optional(),
-		paneId: z.string().min(1).optional(),
-		columns: ViewportQuerySchema,
-		rows: ViewportQuerySchema,
-	})
-	.refine((query) => (query.sessionId === undefined) !== (query.paneId === undefined), {
-		message: "name exactly one of sessionId and paneId",
-	})
-	.transform(({sessionId, paneId, columns, rows}) => ({
+	.object(
+		{
+			sessionId: z.string().min(1).optional(),
+			paneId: z.string().min(1).optional(),
+			columns: ViewportQuerySchema,
+			rows: ViewportQuerySchema,
+		},
+	)
+	.refine(
+		(query) => (query.sessionId === undefined) !== (query.paneId === undefined),
+		{
+			message: "name exactly one of sessionId and paneId",
+		},
+	)
+	.transform(({sessionId, paneId, columns, rows}) => (
+	{
 		target:
 			paneId === undefined
-				? {kind: "session" as const, sessionId: sessionId ?? ""}
-				: {kind: "pane" as const, paneId},
+				?
+					{
+						kind: "session" as const,
+						sessionId: sessionId ?? "",
+					}
+				:
+					{
+						kind: "pane" as const,
+						paneId,
+					},
 		columns,
 		rows,
 	}));

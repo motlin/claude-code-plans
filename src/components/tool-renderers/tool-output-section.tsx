@@ -21,7 +21,8 @@ export function LabelledSection({
 	label?: string | undefined;
 	rule?: boolean | undefined;
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<>
 			{rule && <div className="border-t" />}
@@ -41,7 +42,8 @@ export function LabelledSection({
 const SAVED_FILE_LINK_CLASS = `${FILE_LINK_CLASS} break-words`;
 
 /** Upstream shared-29 `K7`: a path's last name, by either separator; the path itself when it has none. */
-function lastName(path: string): string {
+function lastName(path: string): string
+{
 	return path.split(/[/\\]/).findLast((name) => name !== "") ?? path;
 }
 
@@ -50,7 +52,8 @@ function lastName(path: string): string {
  * revealed (`u9(ME(K7(path)))`), linked through
  * the transcript's file refs to open in the Files pane; plain text when it can't link.
  */
-function SavedFileLink({path}: {path: string}) {
+function SavedFileLink({path}: {path: string})
+{
 	const name = revealSpoofing(maskSecrets(lastName(path)));
 	return (
 		<FileRefTarget
@@ -69,11 +72,15 @@ function SavedFileLink({path}: {path: string}) {
 }
 
 /** Upstream `iS`: why only part of the result shows, with copy verbatim from upstream. */
-function OutputNote({note}: {note: ToolOutputNote}) {
+function OutputNote({note}: {note: ToolOutputNote})
+{
 	let copy: ReactNode;
-	if (note.kind === "wholeResultShown") {
+	if (note.kind === "wholeResultShown")
+	{
 		copy = "Claude received only the start of this result. More of it is in a saved file.";
-	} else {
+	}
+	else
+	{
 		const file = <SavedFileLink path={note.path} />;
 		copy =
 			note.kind === "cappedPreview" ? (
@@ -96,10 +103,12 @@ function OutputNote({note}: {note: ToolOutputNote}) {
  * then the closed "Details for Claude" fold holding everything Claude was told; the label, note, status line
  * and fold are skipped by in-app Find. A label (only when an Input section sits above) adds the rule.
  */
-export function ToolOutputSection({output, label}: {output: ResolvedToolOutput; label?: string | undefined}) {
+export function ToolOutputSection({output, label}: {output: ResolvedToolOutput; label?: string | undefined})
+{
 	const {status, note, body, toldClaude} = output;
 	if (status === undefined && note === undefined && body === undefined && toldClaude === undefined) return null;
-	if (status === "waiting") {
+	if (status === "waiting")
+	{
 		return (
 			<LabelledSection label={label} rule={label !== undefined}>
 				<div data-find-omitted="" className="text-muted-as-secondary">

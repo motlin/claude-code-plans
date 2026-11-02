@@ -5,7 +5,8 @@ import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 
 import {sendHerdrPermissionDecision, sendHerdrPrompt} from "../lib/api/herdr";
 import {planQueryOptions} from "../lib/api/plans";
-import {
+import
+{
 	AWAITING_TEXT_CAP,
 	isQuickReplyQuestion,
 	openToAnswerLabel,
@@ -45,7 +46,8 @@ function AskedLine({
 	bodyId: string;
 	eyebrow?: string;
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<div data-card-question className="line-clamp-3 min-w-0 text-primary [overflow-wrap:anywhere]">
 			<span className="text-ink-muted">{eyebrow}</span>
@@ -60,7 +62,8 @@ function AskedLine({
 }
 
 /** Upstream's "Awaiting input / Open the session to respond" body. */
-function AwaitingFallback() {
+function AwaitingFallback()
+{
 	return (
 		<div data-card-fallback className="flex flex-col gap-0.5 px-4 py-2.5">
 			<span className="font-medium text-secondary">Awaiting input</span>
@@ -88,22 +91,27 @@ function ReplyBox({
 	pending: boolean;
 	sendLabel?: string;
 	onSend: (text: string, restore: () => void) => void;
-}) {
+})
+{
 	const [text, setText] = useState(() => readQuickReplyDraft(draftKey, Date.now()));
-	const update = (next: string) => {
+	const update = (next: string) =>
+	{
 		setText(next);
 		writeQuickReplyDraft(draftKey, next, Date.now());
 	};
-	const send = () => {
+	const send = () =>
+	{
 		const trimmed = text.trim();
 		if (trimmed === "" || pending) return;
 		const unsent = text;
 		update("");
-		onSend(trimmed, () => {
+		onSend(trimmed, () =>
+		{
 			update(unsent);
 		});
 	};
-	const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+	const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) =>
+	{
 		if (event.key !== "Escape") event.stopPropagation();
 		if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
 		event.preventDefault();
@@ -117,11 +125,16 @@ function ReplyBox({
 				placeholder="Reply to Claude…"
 				aria-label="Reply to Claude"
 				aria-describedby={describedBy}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					update(event.target.value);
 				}}
 				onKeyDown={onKeyDown}
-				style={{maxHeight: "4lh", paddingInlineEnd: "calc(28px + 8px)"}}
+				style={
+				{
+					maxHeight: "4lh",
+					paddingInlineEnd: "calc(28px + 8px)",
+				}}
 				className="block w-full resize-none bg-transparent text-[13px]/[19px] text-primary outline-none [field-sizing:content] placeholder:text-ink-muted"
 			/>
 			<div className="pointer-events-none absolute inset-0 flex items-end justify-end p-0.5">
@@ -149,41 +162,77 @@ function QuestionQuickReply({
 	bodyId,
 }: {
 	sessionId: string;
-	gate: Extract<AwaitingGate, {kind: "question"}>;
+	gate: Extract<
+		AwaitingGate,
+		{
+			kind: "question";
+		}
+	>;
 	route: QuestionAnswerRoute;
 	summaryText: string;
 	bodyId: string;
-}) {
+})
+{
 	const toast = useToast();
 	const question = gate.questions[0];
-	const answer = useMutation({
-		mutationFn: async (reply: string) => {
-			const {submitQuestionAnswer} = await import("../lib/question-answer-submit");
-			return submitQuestionAnswer(route, {
-				sessionId,
-				toolUseId: gate.toolUseId,
-				questions: gate.questions,
-				responses: [{question: question?.question ?? "", response: reply}],
-			});
+	const answer = useMutation(
+		{
+			mutationFn: async (reply: string) =>
+			{
+				const {submitQuestionAnswer} = await import("../lib/question-answer-submit");
+				return submitQuestionAnswer(
+					route,
+					{
+						sessionId,
+						toolUseId: gate.toolUseId,
+						questions: gate.questions,
+						responses: [
+							{
+								question: question?.question ?? "",
+								response: reply,
+							},
+						],
+					},
+				);
+			},
 		},
-	});
-	const submit = (reply: string, restore?: () => void) => {
+	);
+	const submit = (reply: string, restore?: () => void) =>
+	{
 		if (answer.isPending) return;
 		// A live answer draws the session working at once; a fork answers in a new session.
 		const holds = route === "live-pane";
 		if (holds) holdAnswered(sessionId, gate.toolUseId);
-		answer.mutate(reply, {
-			onError: () => {
-				if (holds) releaseAnswered(sessionId);
-				restore?.();
-				toast({kind: "error", message: SEND_FAILED});
+		answer.mutate(
+			reply,
+			{
+				onError: () =>
+				{
+					if (holds) releaseAnswered(sessionId);
+					restore?.();
+					toast(
+						{
+							kind: "error",
+							message: SEND_FAILED,
+						},
+					);
+				},
 			},
-		});
+		);
 	};
 	const options = (question?.options ?? []).flatMap((option, index) =>
-		option.label === "" ? [] : [{index, value: option.label, label: stripInlineMarkdown(option.label)}],
+		option.label === ""
+			? []
+			: [
+					{
+						index,
+						value: option.label,
+						label: stripInlineMarkdown(option.label),
+					},
+				],
 	);
-	if (answer.isSuccess) {
+	if (answer.isSuccess)
+	{
 		return (
 			<p role="status" data-card-sent className={FOOTER_CLASS}>
 				Reply sent
@@ -205,7 +254,8 @@ function QuestionQuickReply({
 							type="button"
 							data-card-option
 							disabled={answer.isPending}
-							onClick={() => {
+							onClick={() =>
+							{
 								submit(option.value);
 							}}
 							className={CHIP_CLASS}
@@ -220,7 +270,8 @@ function QuestionQuickReply({
 				describedBy={bodyId}
 				pending={answer.isPending}
 				sendLabel={route === "fork" ? FORK_ANSWER_LABEL : "Send reply"}
-				onSend={(text, restore) => {
+				onSend={(text, restore) =>
+				{
 					submit(text, restore);
 				}}
 			/>
@@ -234,9 +285,15 @@ function QuestionBody({
 	route,
 }: {
 	sessionId: string;
-	gate: Extract<AwaitingGate, {kind: "question"}>;
+	gate: Extract<
+		AwaitingGate,
+		{
+			kind: "question";
+		}
+	>;
 	route: QuestionAnswerRoute;
-}) {
+})
+{
 	const bodyId = useId();
 	const summaryText = questionsText(gate.questions);
 	if (summaryText === "") return <AwaitingFallback />;
@@ -263,9 +320,15 @@ function QuestionBody({
 }
 
 /** Upstream's Plan ready card: the plan's headline and opening text, approved in the session. */
-function PlanBody({planFilename}: {planFilename: string | null}) {
+function PlanBody({planFilename}: {planFilename: string | null})
+{
 	const bodyId = useId();
-	const plan = useQuery({...planQueryOptions(toMdSlug(planFilename ?? "")), enabled: planFilename !== null}).data;
+	const plan = useQuery(
+		{
+			...planQueryOptions(toMdSlug(planFilename ?? "")),
+			enabled: planFilename !== null,
+		},
+	).data;
 	const headline = plan?.title ?? planFilename ?? "";
 	const detail = plan === undefined || plan === null ? "" : planDetail(plan.markdown);
 	return (
@@ -289,7 +352,8 @@ const PERMISSION_BUTTON_CLASS =
 	"h-7 rounded-control-sm px-2 text-[13px]/[19px] transition-colors disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** A tool permission prompt, allowed or denied in the live pane like the docked permission card. */
-function PermissionBody({sessionId, message, writable}: {sessionId: string; message: string; writable: boolean}) {
+function PermissionBody({sessionId, message, writable}: {sessionId: string; message: string; writable: boolean})
+{
 	const bodyId = useId();
 	const toast = useToast();
 	const sendDecision = useCallback(
@@ -297,14 +361,28 @@ function PermissionBody({sessionId, message, writable}: {sessionId: string; mess
 		[sessionId],
 	);
 	// A prompt the server says isn't pending is stale: the card drops and the lists that drew it refetch.
-	const {dropped, answer} = usePermissionAnswer({permissionId: message, send: sendDecision});
-	const decide = useMutation({
-		mutationFn: answer,
-		onError: () => {
-			toast({kind: "error", message: SEND_FAILED});
+	const {dropped, answer} = usePermissionAnswer(
+		{
+			permissionId: message,
+			send: sendDecision,
 		},
-	});
-	const send = (decision: PermissionDecision) => {
+	);
+	const decide = useMutation(
+		{
+			mutationFn: answer,
+			onError: () =>
+			{
+				toast(
+					{
+						kind: "error",
+						message: SEND_FAILED,
+					},
+				);
+			},
+		},
+	);
+	const send = (decision: PermissionDecision) =>
+	{
 		if (!decide.isPending) decide.mutate(decision);
 	};
 	if (dropped) return <AwaitingFallback />;
@@ -321,7 +399,8 @@ function PermissionBody({sessionId, message, writable}: {sessionId: string; mess
 						<button
 							type="button"
 							disabled={decide.isPending}
-							onClick={() => {
+							onClick={() =>
+							{
 								send("deny");
 							}}
 							className={`${PERMISSION_BUTTON_CLASS} bg-alpha-2 text-primary hover:bg-alpha-3`}
@@ -331,7 +410,8 @@ function PermissionBody({sessionId, message, writable}: {sessionId: string; mess
 						<button
 							type="button"
 							disabled={decide.isPending}
-							onClick={() => {
+							onClick={() =>
+							{
 								send("allow");
 							}}
 							className={`${PERMISSION_BUTTON_CLASS} bg-fill-primary text-on-primary hover:bg-fill-primary-hover`}
@@ -350,10 +430,15 @@ function PermissionBody({sessionId, message, writable}: {sessionId: string; mess
 }
 
 /** A session waiting without a structured gate: its summary, and a reply sent as a normal prompt. */
-function NoGateBody({sessionId, summary, writable}: {sessionId: string; summary: string | null; writable: boolean}) {
+function NoGateBody({sessionId, summary, writable}: {sessionId: string; summary: string | null; writable: boolean})
+{
 	const bodyId = useId();
 	const toast = useToast();
-	const prompt = useMutation({mutationFn: async (text: string) => sendHerdrPrompt(sessionId, text)});
+	const prompt = useMutation(
+		{
+			mutationFn: async (text: string) => sendHerdrPrompt(sessionId, text),
+		},
+	);
 	if (!writable) return <AwaitingFallback />;
 	const summaryText = summary ?? "";
 	return (
@@ -374,13 +459,23 @@ function NoGateBody({sessionId, summary, writable}: {sessionId: string; summary:
 					draftKey={quickReplyDraftKey(sessionId, summaryText)}
 					describedBy={bodyId}
 					pending={prompt.isPending}
-					onSend={(text, restore) => {
-						prompt.mutate(text, {
-							onError: () => {
-								restore();
-								toast({kind: "error", message: SEND_FAILED});
+					onSend={(text, restore) =>
+					{
+						prompt.mutate(
+							text,
+							{
+								onError: () =>
+								{
+									restore();
+									toast(
+										{
+											kind: "error",
+											message: SEND_FAILED,
+										},
+									);
+								},
 							},
-						});
+						);
 					}}
 				/>
 			)}
@@ -399,10 +494,12 @@ function GateBody({
 	summary: string | null;
 	gate: AwaitingGate;
 	route: QuestionAnswerRoute;
-}) {
+})
+{
 	// Only a live pane takes a permission decision or a prompt; a fork answers questions alone.
 	const writable = route === "live-pane";
-	switch (gate.kind) {
+	switch (gate.kind)
+	{
 		case "question":
 			return <QuestionBody sessionId={sessionId} gate={gate} route={route} />;
 		case "plan":
@@ -430,7 +527,8 @@ function AwaitingBody({
 	summary: string | null;
 	gate: AwaitingGate;
 	route: QuestionAnswerRoute;
-}) {
+})
+{
 	return (
 		<>
 			<AwaitingTitle title={title} titleId={titleId} />
@@ -440,7 +538,11 @@ function AwaitingBody({
 }
 
 /** The shell's popup, which takes the pointer only while the card can answer in place. */
-export type AwaitingPopupShell = ComponentType<{interactive: boolean; children: ReactNode}>;
+export type AwaitingPopupShell = ComponentType<
+{
+	interactive: boolean;
+	children: ReactNode;
+}>;
 
 /**
  * The open Needs input card, which reads what the session waits on. It takes
@@ -459,7 +561,8 @@ export function AwaitingPopup({
 	titleId: string;
 	summary: string | null;
 	shell: AwaitingPopupShell;
-}) {
+})
+{
 	const awaiting = useAwaitingGate(sessionId);
 	return (
 		<Shell interactive={awaiting.interactive}>

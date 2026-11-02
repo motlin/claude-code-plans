@@ -14,141 +14,287 @@ const ALICE = "session-alice";
 const BOB = "session-bob";
 let client: QueryClient;
 
-function Wrapper({children}: {children: ReactNode}) {
+function Wrapper({children}: {children: ReactNode})
+{
 	return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
-beforeEach(() => {
-	client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+beforeEach(() =>
+{
+	client = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	client.clear();
 	vi.unstubAllGlobals();
 	vi.useRealTimers();
 });
 
-function deferredResponse() {
+function deferredResponse()
+{
 	let resolve!: (response: Response) => void;
-	const promise = new Promise<Response>((accept) => {
+	const promise = new Promise<Response>((accept) =>
+	{
 		resolve = accept;
 	});
-	return {promise, resolve};
+	return {
+		promise,
+		resolve,
+	};
 }
 
-describe("shared session identity", () => {
-	it("returns ordinary UUIDs immediately without a request or an identity cache entry", () => {
+describe("shared session identity", () =>
+{
+	it("returns ordinary UUIDs immediately without a request or an identity cache entry", () =>
+	{
 		const fetch = vi.fn<typeof globalThis.fetch>();
 		vi.stubGlobal("fetch", fetch);
-		const {result, rerender} = renderHook<ReturnType<typeof useSessionIdentity>, {id: string | null}>(
+		const {result, rerender} = renderHook<
+			ReturnType<typeof useSessionIdentity>,
+			{
+				id: string | null;
+			}
+		>(
 			({id}) => useSessionIdentity(id),
 			{
-				initialProps: {id: ALICE},
+				initialProps:
+				{
+					id: ALICE,
+				},
 				wrapper: Wrapper,
 			},
 		);
 		const local = result.current;
-		rerender({id: null});
-		expect({
-			local,
-			absent: result.current,
-			requests: fetch.mock.calls,
-			queries: client.getQueryCache().getAll(),
-		}).toStrictEqual({local: ALICE, absent: null, requests: [], queries: []});
+		rerender(
+			{
+				id: null,
+			},
+		);
+		expect(
+			{
+				local,
+				absent: result.current,
+				requests: fetch.mock.calls,
+				queries: client.getQueryCache().getAll(),
+			},
+		).toStrictEqual(
+			{
+				local: ALICE,
+				absent: null,
+				requests: [],
+				queries: [],
+			},
+		);
 	});
 
-	it("shares a pending alias lookup and never returns the alias as a local ID", async () => {
+	it("shares a pending alias lookup and never returns the alias as a local ID", async () =>
+	{
 		const response = deferredResponse();
 		const fetch = vi.fn<typeof globalThis.fetch>().mockReturnValue(response.promise);
 		vi.stubGlobal("fetch", fetch);
-		const first = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
-		const second = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
+		const first = renderHook(
+			() => useSessionIdentity(ALIAS),
+			{
+				wrapper: Wrapper,
+			},
+		);
+		const second = renderHook(
+			() => useSessionIdentity(ALIAS),
+			{
+				wrapper: Wrapper,
+			},
+		);
 		expect([first.result.current, second.result.current]).toStrictEqual([null, null]);
-		act(() => {
-			response.resolve(Response.json({sessionId: ALICE}));
+		act(() =>
+		{
+			response.resolve(
+				Response.json(
+					{
+						sessionId: ALICE,
+					},
+				),
+			);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect([first.result.current, second.result.current]).toStrictEqual([ALICE, ALICE]);
 		});
 		expect(fetch.mock.calls.map(([url]) => url)).toStrictEqual([`/api/sessions/${ALIAS}/identity`]);
 	});
 
-	it.each([404, 409])("rejects cached identity after a fresh %s response without retrying", async (status) => {
-		client.setQueryData(sessionQueryKeys.identity(ALIAS), {sessionId: ALICE});
-		const fetch = vi
-			.fn<typeof globalThis.fetch>()
-			.mockResolvedValue(Response.json({error: "Example lookup failure"}, {status}));
+	it.each([404, 409])("rejects cached identity after a fresh %s response without retrying", async (status) =>
+	{
+		client.setQueryData(
+			sessionQueryKeys.identity(ALIAS),
+			{
+				sessionId: ALICE,
+			},
+		);
+		const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+			Response.json(
+				{
+					error: "Example lookup failure",
+				},
+				{
+					status,
+				},
+			),
+		);
 		vi.stubGlobal("fetch", fetch);
-		const {result} = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
+		const {result} = renderHook(
+			() => useSessionIdentity(ALIAS),
+			{
+				wrapper: Wrapper,
+			},
+		);
 		expect(result.current).toBe(ALICE);
 		await act(async () => invalidateSessionIdentities(client));
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(result.current).toBe(null);
 		});
 		expect(fetch.mock.calls.map(([url]) => url)).toStrictEqual([`/api/sessions/${ALIAS}/identity`]);
 	});
 
-	it("cancels an in-flight pre-index lookup so a late result cannot overwrite its replacement", async () => {
+	it("cancels an in-flight pre-index lookup so a late result cannot overwrite its replacement", async () =>
+	{
 		const old = deferredResponse();
 		const fetch = vi
 			.fn<typeof globalThis.fetch>()
 			.mockReturnValueOnce(old.promise)
-			.mockResolvedValue(Response.json({sessionId: BOB}));
+			.mockResolvedValue(
+				Response.json(
+					{
+						sessionId: BOB,
+					},
+				),
+			);
 		vi.stubGlobal("fetch", fetch);
-		const {result} = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
+		const {result} = renderHook(
+			() => useSessionIdentity(ALIAS),
+			{
+				wrapper: Wrapper,
+			},
+		);
 		const signal = fetch.mock.calls[0]![1]!.signal!;
 		await act(async () => invalidateSessionIdentities(client));
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(result.current).toBe(BOB);
 		});
-		act(() => {
-			old.resolve(Response.json({sessionId: ALICE}));
+		act(() =>
+		{
+			old.resolve(
+				Response.json(
+					{
+						sessionId: ALICE,
+					},
+				),
+			);
 		});
-		expect({
-			aborted: signal.aborted,
-			local: result.current,
-			cached: client.getQueryData(sessionQueryKeys.identity(ALIAS)),
-		}).toStrictEqual({aborted: true, local: BOB, cached: {sessionId: BOB}});
+		expect(
+			{
+				aborted: signal.aborted,
+				local: result.current,
+				cached: client.getQueryData(sessionQueryKeys.identity(ALIAS)),
+			},
+		).toStrictEqual(
+			{
+				aborted: true,
+				local: BOB,
+				cached:
+				{
+					sessionId: BOB,
+				},
+			},
+		);
 	});
 
-	it("retries indexing-pending responses twice and then stops", async () => {
+	it("retries indexing-pending responses twice and then stops", async () =>
+	{
 		vi.useFakeTimers();
-		const fetch = vi
-			.fn<typeof globalThis.fetch>()
-			.mockImplementation(async () => Promise.resolve(Response.json({}, {status: 503})));
+		const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async () =>
+			Promise.resolve(
+				Response.json(
+					{},
+					{
+						status: 503,
+					},
+				),
+			),
+		);
 		vi.stubGlobal("fetch", fetch);
-		const {result} = renderHook(() => useSessionIdentity(ALIAS), {wrapper: Wrapper});
+		const {result} = renderHook(
+			() => useSessionIdentity(ALIAS),
+			{
+				wrapper: Wrapper,
+			},
+		);
 		await act(async () => vi.advanceTimersByTimeAsync(6001));
 		const requestsAfterRetries = fetch.mock.calls.length;
 		await act(async () => vi.advanceTimersByTimeAsync(30_000));
-		expect({
-			local: result.current,
-			requestsAfterRetries,
-			requestsAfterWaiting: fetch.mock.calls.length,
-		}).toStrictEqual({local: null, requestsAfterRetries: 3, requestsAfterWaiting: 3});
+		expect(
+			{
+				local: result.current,
+				requestsAfterRetries,
+				requestsAfterWaiting: fetch.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				local: null,
+				requestsAfterRetries: 3,
+				requestsAfterWaiting: 3,
+			},
+		);
 	});
 });
 
-function IdentityProbe() {
+function IdentityProbe()
+{
 	return <output>{useSessionIdentity(ALIAS) ?? "Unresolved"}</output>;
 }
 
-describe("indexing completion catch-up", () => {
-	it("refreshes aliases when the existing status poll changes from indexing to ready", async () => {
+describe("indexing completion catch-up", () =>
+{
+	it("refreshes aliases when the existing status poll changes from indexing to ready", async () =>
+	{
 		vi.useFakeTimers();
 		let indexing = true;
-		const fetch = vi
-			.fn<(url: string) => Promise<Response>>()
-			.mockImplementation(async (url: string) =>
-				Promise.resolve(
-					url === "/api/indexing-status"
-						? Response.json({isIndexing: indexing, isInitialBuild: false})
-						: indexing
-							? Response.json({}, {status: 503})
-							: Response.json({sessionId: ALICE}),
-				),
-			);
+		const fetch = vi.fn<(url: string) => Promise<Response>>().mockImplementation(async (url: string) =>
+			Promise.resolve(
+				url === "/api/indexing-status"
+					? Response.json(
+							{
+								isIndexing: indexing,
+								isInitialBuild: false,
+							},
+						)
+					: indexing
+						? Response.json(
+								{},
+								{
+									status: 503,
+								},
+							)
+						: Response.json(
+								{
+									sessionId: ALICE,
+								},
+							),
+			),
+		);
 		vi.stubGlobal("fetch", fetch);
 		render(
 			<Wrapper>
@@ -162,17 +308,26 @@ describe("indexing completion catch-up", () => {
 		expect(screen.getByRole("status").textContent).toBe(ALICE);
 	});
 
-	it("retries an unseen indexing transition once, even when every status sample is already ready", async () => {
+	it("retries an unseen indexing transition once, even when every status sample is already ready", async () =>
+	{
 		vi.useFakeTimers();
-		const fetch = vi
-			.fn<(url: string) => Promise<Response>>()
-			.mockImplementation(async (url: string) =>
-				Promise.resolve(
-					url === "/api/indexing-status"
-						? Response.json({isIndexing: false, isInitialBuild: false})
-						: Response.json({}, {status: 503}),
-				),
-			);
+		const fetch = vi.fn<(url: string) => Promise<Response>>().mockImplementation(async (url: string) =>
+			Promise.resolve(
+				url === "/api/indexing-status"
+					? Response.json(
+							{
+								isIndexing: false,
+								isInitialBuild: false,
+							},
+						)
+					: Response.json(
+							{},
+							{
+								status: 503,
+							},
+						),
+			),
+		);
 		vi.stubGlobal("fetch", fetch);
 		render(
 			<Wrapper>
@@ -184,15 +339,24 @@ describe("indexing completion catch-up", () => {
 		const count = () => fetch.mock.calls.filter(([url]) => url !== "/api/indexing-status").length;
 		const afterCatchUp = count();
 		await act(async () => vi.advanceTimersByTimeAsync(30_000));
-		expect({afterCatchUp, afterWaiting: count(), identity: screen.getByRole("status").textContent}).toStrictEqual({
-			afterCatchUp: 6,
-			afterWaiting: 6,
-			identity: "Unresolved",
-		});
+		expect(
+			{
+				afterCatchUp,
+				afterWaiting: count(),
+				identity: screen.getByRole("status").textContent,
+			},
+		).toStrictEqual(
+			{
+				afterCatchUp: 6,
+				afterWaiting: 6,
+				identity: "Unresolved",
+			},
+		);
 	});
 });
 
-const DETAIL = {
+const DETAIL =
+{
 	title: "Alice session",
 	projectName: "Example",
 	projectId: "example",
@@ -207,7 +371,8 @@ const DETAIL = {
 	gitClean: null,
 	messageCount: 0,
 	pendingTaskCount: 0,
-	viewedState: {
+	viewedState:
+	{
 		currentMessageIndex: -1,
 		lastViewedMessageIndex: -1,
 		newMessageCount: 0,
@@ -217,24 +382,47 @@ const DETAIL = {
 		viewedInHerdr: false,
 	},
 };
-function DetailProbe({id}: {id: string}) {
+function DetailProbe({id}: {id: string})
+{
 	const result = useQuery(sessionDetailQueryOptions(id));
 	return <output data-testid={id}>{result.data?.canonicalRouteId ?? result.data?.title ?? "Loading"}</output>;
 }
 
-describe("active detail alias backfill catch-up", () => {
-	it("refreshes only active marked detail once on ready and preserves unmarked/inactive caches", async () => {
+describe("active detail alias backfill catch-up", () =>
+{
+	it("refreshes only active marked detail once on ready and preserves unmarked/inactive caches", async () =>
+	{
 		vi.useFakeTimers();
 		let indexing = true;
-		client.setQueryData(sessionQueryKeys.detail(ALICE), {...DETAIL, canonicalRoutePending: true});
+		client.setQueryData(
+			sessionQueryKeys.detail(ALICE),
+			{
+				...DETAIL,
+				canonicalRoutePending: true,
+			},
+		);
 		client.setQueryData(sessionQueryKeys.detail(BOB), DETAIL);
-		client.setQueryData(sessionQueryKeys.detail("session-charlie"), {...DETAIL, canonicalRoutePending: true});
+		client.setQueryData(
+			sessionQueryKeys.detail("session-charlie"),
+			{
+				...DETAIL,
+				canonicalRoutePending: true,
+			},
+		);
 		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) =>
 			Promise.resolve(
 				Response.json(
 					url === "/api/indexing-status"
-						? {isIndexing: indexing, isInitialBuild: false}
-						: {...DETAIL, canonicalRouteId: ALIAS},
+						?
+							{
+								isIndexing: indexing,
+								isInitialBuild: false,
+							}
+						:
+							{
+								...DETAIL,
+								canonicalRouteId: ALIAS,
+							},
 				),
 			),
 		);
@@ -249,31 +437,66 @@ describe("active detail alias backfill catch-up", () => {
 		await act(async () => vi.advanceTimersByTimeAsync(1));
 		indexing = false;
 		await act(async () => vi.advanceTimersByTimeAsync(30_001));
-		expect({
-			requests: fetcher.mock.calls.filter(([url]) => url !== "/api/indexing-status"),
-			alice: client.getQueryData(sessionQueryKeys.detail(ALICE)),
-			bob: client.getQueryData(sessionQueryKeys.detail(BOB)),
-			charlie: client.getQueryData(sessionQueryKeys.detail("session-charlie")),
-		}).toStrictEqual({
-			requests: [[`/api/sessions/${ALICE}`, {credentials: "same-origin"}]],
-			alice: {...DETAIL, canonicalRouteId: ALIAS},
-			bob: DETAIL,
-			charlie: {...DETAIL, canonicalRoutePending: true},
-		});
+		expect(
+			{
+				requests: fetcher.mock.calls.filter(([url]) => url !== "/api/indexing-status"),
+				alice: client.getQueryData(sessionQueryKeys.detail(ALICE)),
+				bob: client.getQueryData(sessionQueryKeys.detail(BOB)),
+				charlie: client.getQueryData(sessionQueryKeys.detail("session-charlie")),
+			},
+		).toStrictEqual(
+			{
+				requests: [
+					[
+						`/api/sessions/${ALICE}`,
+						{
+							credentials: "same-origin",
+						},
+					],
+				],
+				alice:
+				{
+					...DETAIL,
+					canonicalRouteId: ALIAS,
+				},
+				bob: DETAIL,
+				charlie:
+				{
+					...DETAIL,
+					canonicalRoutePending: true,
+				},
+			},
+		);
 	});
 
-	it("catches a marked result arriving after the first ready sample and cannot loop on a still-marked refresh", async () => {
+	it("catches a marked result arriving after the first ready sample and cannot loop on a still-marked refresh", async () =>
+	{
 		let indexing = false;
 		vi.useFakeTimers();
 		const old = deferredResponse();
 		let detailRequests = 0;
-		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) => {
+		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) =>
+		{
 			if (url === "/api/indexing-status")
-				return Promise.resolve(Response.json({isIndexing: indexing, isInitialBuild: false}));
+				return Promise.resolve(
+					Response.json(
+						{
+							isIndexing: indexing,
+							isInitialBuild: false,
+						},
+					),
+				);
 			detailRequests++;
 			return detailRequests === 1
 				? old.promise
-				: Promise.resolve(Response.json({...DETAIL, canonicalRoutePending: true}));
+				: Promise.resolve(
+						Response.json(
+							{
+								...DETAIL,
+								canonicalRoutePending: true,
+							},
+						),
+					);
 		});
 		vi.stubGlobal("fetch", fetcher);
 		render(
@@ -283,43 +506,103 @@ describe("active detail alias backfill catch-up", () => {
 			</Wrapper>,
 		);
 		await act(async () => vi.advanceTimersByTimeAsync(1));
-		act(() => {
-			old.resolve(Response.json({...DETAIL, canonicalRoutePending: true}));
+		act(() =>
+		{
+			old.resolve(
+				Response.json(
+					{
+						...DETAIL,
+						canonicalRoutePending: true,
+					},
+				),
+			);
 		});
 		await act(async () => vi.advanceTimersByTimeAsync(30_001));
 		const afterCatchUp = detailRequests;
 		await act(async () => vi.advanceTimersByTimeAsync(30_000));
-		expect({
-			afterCatchUp,
-			afterWaiting: detailRequests,
-			cached: client.getQueryData(sessionQueryKeys.detail(ALICE)),
-		}).toStrictEqual({afterCatchUp: 2, afterWaiting: 2, cached: {...DETAIL, canonicalRoutePending: true}});
+		expect(
+			{
+				afterCatchUp,
+				afterWaiting: detailRequests,
+				cached: client.getQueryData(sessionQueryKeys.detail(ALICE)),
+			},
+		).toStrictEqual(
+			{
+				afterCatchUp: 2,
+				afterWaiting: 2,
+				cached:
+				{
+					...DETAIL,
+					canonicalRoutePending: true,
+				},
+			},
+		);
 		indexing = true;
 		await act(async () => vi.advanceTimersByTimeAsync(3001));
 		indexing = false;
 		await act(async () => vi.advanceTimersByTimeAsync(30_001));
-		expect({
-			afterSecondEpisode: detailRequests,
-			cached: client.getQueryData(sessionQueryKeys.detail(ALICE)),
-		}).toStrictEqual({afterSecondEpisode: 3, cached: {...DETAIL, canonicalRoutePending: true}});
+		expect(
+			{
+				afterSecondEpisode: detailRequests,
+				cached: client.getQueryData(sessionQueryKeys.detail(ALICE)),
+			},
+		).toStrictEqual(
+			{
+				afterSecondEpisode: 3,
+				cached:
+				{
+					...DETAIL,
+					canonicalRoutePending: true,
+				},
+			},
+		);
 	});
 
-	it("cancels an old marked detail refresh before replacing it with ready metadata", async () => {
+	it("cancels an old marked detail refresh before replacing it with ready metadata", async () =>
+	{
 		vi.useFakeTimers();
 		const old = deferredResponse();
 		let detailRequests = 0;
-		client.setQueryData(sessionQueryKeys.detail(ALICE), {...DETAIL, canonicalRoutePending: true});
-		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) => {
+		client.setQueryData(
+			sessionQueryKeys.detail(ALICE),
+			{
+				...DETAIL,
+				canonicalRoutePending: true,
+			},
+		);
+		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) =>
+		{
 			if (url === "/api/indexing-status")
-				return Promise.resolve(Response.json({isIndexing: false, isInitialBuild: false}));
+				return Promise.resolve(
+					Response.json(
+						{
+							isIndexing: false,
+							isInitialBuild: false,
+						},
+					),
+				);
 			detailRequests++;
 			return detailRequests === 1
 				? old.promise
-				: Promise.resolve(Response.json({...DETAIL, canonicalRouteId: ALIAS}));
+				: Promise.resolve(
+						Response.json(
+							{
+								...DETAIL,
+								canonicalRouteId: ALIAS,
+							},
+						),
+					);
 		});
 		vi.stubGlobal("fetch", fetcher);
 		// Begin an explicit refresh of cached pending data before mounting the ready poll.
-		const refreshing = client.query({...sessionDetailQueryOptions(ALICE), staleTime: 0}).catch(() => undefined);
+		const refreshing = client
+			.query(
+				{
+					...sessionDetailQueryOptions(ALICE),
+					staleTime: 0,
+				},
+			)
+			.catch(() => undefined);
 		render(
 			<Wrapper>
 				<IndexingBanner />
@@ -327,14 +610,33 @@ describe("active detail alias backfill catch-up", () => {
 			</Wrapper>,
 		);
 		await act(async () => vi.advanceTimersByTimeAsync(1));
-		act(() => {
-			old.resolve(Response.json({...DETAIL, canonicalRoutePending: true}));
+		act(() =>
+		{
+			old.resolve(
+				Response.json(
+					{
+						...DETAIL,
+						canonicalRoutePending: true,
+					},
+				),
+			);
 		});
 		await refreshing;
 		await act(async () => vi.advanceTimersByTimeAsync(30_001));
-		expect({detailRequests, cached: client.getQueryData(sessionQueryKeys.detail(ALICE))}).toStrictEqual({
-			detailRequests: 2,
-			cached: {...DETAIL, canonicalRouteId: ALIAS},
-		});
+		expect(
+			{
+				detailRequests,
+				cached: client.getQueryData(sessionQueryKeys.detail(ALICE)),
+			},
+		).toStrictEqual(
+			{
+				detailRequests: 2,
+				cached:
+				{
+					...DETAIL,
+					canonicalRouteId: ALIAS,
+				},
+			},
+		);
 	});
 });

@@ -2,14 +2,31 @@ import {inputString} from "../../lib/tool-utils";
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
 
-export function GlobRenderer({toolCall}: ToolRendererProps) {
+export function GlobRenderer({toolCall}: ToolRendererProps)
+{
 	const pattern = inputString(toolCall.input, "pattern") ?? "";
 	const path = inputString(toolCall.input, "path");
 	const {result, isError} = toolCall;
 
-	const params: Array<{key: string; value: string}> = [];
-	if (pattern) params.push({key: "pattern", value: pattern});
-	if (path) params.push({key: "path", value: path});
+	const params: Array<
+	{
+		key: string;
+		value: string;
+	}> = [];
+	if (pattern)
+		params.push(
+			{
+				key: "pattern",
+				value: pattern,
+			},
+		);
+	if (path)
+		params.push(
+			{
+				key: "path",
+				value: path,
+			},
+		);
 
 	return <KeyValueCard call={toolCall} isError={isError} params={params} result={result ?? undefined} />;
 }

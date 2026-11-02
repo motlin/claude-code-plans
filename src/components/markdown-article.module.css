@@ -2,7 +2,8 @@
    margin-top); the flex gap is the only such spacing, so nothing here relies on
    collapsing margins. Prose sizes are rem, so a browser text zoom (a larger root
    font size) scales them as it scales upstream's. */
-.markdown {
+.markdown
+{
 	display: flex;
 	flex-direction: column;
 	gap: 7px;
@@ -18,7 +19,8 @@
 
 /* Transcript prose follows Settings ▸ Transcript text size: upstream sets it in the chat body size
    and leading the setting writes on <html>. Plan pages and other markdown keep the fixed size. */
-:global(.transcript-text) .markdown {
+:global(.transcript-text) .markdown
+{
 	--md-prose-size: var(--transcript-text-size, 0.875rem);
 	--md-prose-leading: calc(var(--transcript-leading, 1.42857) * var(--transcript-text-size, 0.875rem));
 }
@@ -42,7 +44,8 @@
 				)
 			)
 		)
-	) {
+	)
+{
 	--md-prose-size: var(--transcript-comfortable-text-size, 1rem);
 	--md-prose-leading: var(--transcript-comfortable-leading, 1.5rem);
 }
@@ -52,77 +55,90 @@
 .markdown h3,
 .markdown h4,
 .markdown h5,
-.markdown h6 {
+.markdown h6
+{
 	font-size: var(--md-prose-size);
 	font-weight: 600;
 	line-height: var(--md-prose-leading);
 }
 
-.markdown h1 {
+.markdown h1
+{
 	font-size: 18px;
 	line-height: 24px;
 }
 
 /* Upstream's chat prose steps h1 and h2 up from body by 0.125rem size and 0.1875rem leading (h3–h6
    stay at body), so transcript headings track the text size setting and density. */
-:global(.transcript-text) .markdown :is(h1, h2) {
+:global(.transcript-text) .markdown :is(h1, h2)
+{
 	font-size: calc(var(--md-prose-size) + 0.125rem);
 	line-height: calc(var(--md-prose-leading) + 0.1875rem);
 }
 
-.markdown p {
+.markdown p
+{
 	margin: 4px 0;
 	white-space: pre-wrap;
 }
 
-.markdown[data-document] p {
+.markdown[data-document] p
+{
 	white-space: normal;
 }
 
-.markdown ul {
+.markdown ul
+{
 	list-style-type: disc;
 	list-style-position: outside;
 	padding-left: 28px;
 }
 
-.markdown ol {
+.markdown ol
+{
 	list-style-type: decimal;
 	list-style-position: outside;
 	padding-left: 28px;
 }
 
 /* Upstream draws ordered markers in secondary ink (measured in dark). */
-:global(.dark) .markdown ol > li::marker {
+:global(.dark) .markdown ol > li::marker
+{
 	color: var(--color-secondary);
 }
 
 .markdown ul > li,
-.markdown ol > li {
+.markdown ol > li
+{
 	margin-top: 2px;
 	margin-bottom: 2px;
 	padding-left: 7px;
 }
 
 /* Task list checkboxes */
-.markdown :global(.contains-task-list) {
+.markdown :global(.contains-task-list)
+{
 	list-style-type: none;
 	margin-left: 0;
 	padding-left: 0;
 }
 
-.markdown :global(.task-list-item) {
+.markdown :global(.task-list-item)
+{
 	display: flex;
 	align-items: baseline;
 	gap: 0.5rem;
 }
 
-.markdown :global(.task-list-item-checkbox) {
+.markdown :global(.task-list-item-checkbox)
+{
 	margin: 0;
 	accent-color: var(--accent-100);
 }
 
 /* Upstream's quote: upright secondary ink, inset 7px, 14px inside its rule. */
-.markdown blockquote {
+.markdown blockquote
+{
 	border-left: 4px solid var(--color-border);
 	padding-left: 14px;
 	font-style: normal;
@@ -130,15 +146,18 @@
 	margin: 8px 0 8px 7px;
 }
 
-.markdown blockquote p {
+.markdown blockquote p
+{
 	margin: 0;
 }
 
-.markdown blockquote p + p {
+.markdown blockquote p + p
+{
 	margin-top: 10.5px;
 }
 
-.markdown pre {
+.markdown pre
+{
 	font-family: var(--font-mono);
 	font-size: 13px;
 	font-weight: 400;
@@ -155,7 +174,8 @@
 	max-width: 100%;
 }
 
-:global(.dark) .markdown pre {
+:global(.dark) .markdown pre
+{
 	background: hsl(30 3.3% 11.8% / 0.5);
 	border-color: rgba(255, 255, 255, 0.1);
 }
@@ -163,7 +183,8 @@
 /* Upstream wraps every fence in a relative box (`epitaxy-codeblock relative
    max-w-full w-fit`, min-width min(100%,318px)) so the copy control can sit
    over the card's top-right corner. */
-.markdown :global(.markdown-codeblock) {
+.markdown :global(.markdown-codeblock)
+{
 	position: relative;
 	width: fit-content;
 	min-width: min(100%, 318px);
@@ -174,7 +195,8 @@
    the `epitaxy-codeblock` hook's --code-size / --code-leading), and 45.2px of right padding
    so a long line never runs under the copy button. The wrapper carries the
    column gap, so the `pre` drops its own margin and fills the wrapper. */
-.markdown :global(.markdown-codeblock) > pre {
+.markdown :global(.markdown-codeblock) > pre
+{
 	margin: 0;
 	width: auto;
 	font-size: var(--code-size, 12px);
@@ -184,17 +206,20 @@
 	padding: 8px 45.2px 8px 17.2px;
 }
 
-:global(.dark) .markdown :global(.markdown-codeblock) > pre {
+:global(.dark) .markdown :global(.markdown-codeblock) > pre
+{
 	background: var(--color-surface-1);
 }
 
-.markdown :global(.markdown-codeblock) > pre code {
+.markdown :global(.markdown-codeblock) > pre code
+{
 	line-height: var(--code-leading, 17px);
 }
 
 /* A full-height rail inset 7px from the right edge, so the strip inside can
    stick to the top of the scrollport for as long as the card is on screen. */
-.markdown :global(.markdown-code-copy-rail) {
+.markdown :global(.markdown-code-copy-rail)
+{
 	position: absolute;
 	top: 0;
 	right: 7px;
@@ -203,7 +228,8 @@
 }
 
 /* Always visible, like upstream: `sticky top-[calc(max(fade)+5px)]`. */
-.markdown :global(.markdown-code-copy) {
+.markdown :global(.markdown-code-copy)
+{
 	position: sticky;
 	top: calc(max(var(--epitaxy-top-fade-height, 0px), var(--fade-top, 0px)) + 5px);
 	margin-top: 5px;
@@ -212,7 +238,8 @@
 	pointer-events: auto;
 }
 
-.markdown :global(.markdown-code-copy) button {
+.markdown :global(.markdown-code-copy) button
+{
 	position: relative;
 	display: inline-flex;
 	align-items: center;
@@ -227,30 +254,35 @@
 	cursor: pointer;
 }
 
-.markdown :global(.markdown-code-copy) button svg {
+.markdown :global(.markdown-code-copy) button svg
+{
 	width: 16px;
 	height: 16px;
 }
 
-.markdown :global(.markdown-code-copy) button:hover {
+.markdown :global(.markdown-code-copy) button:hover
+{
 	color: var(--color-primary);
 	background: hsl(0 0% 4.3137% / 0.06);
 }
 
-:global(.dark) .markdown :global(.markdown-code-copy) button:hover {
+:global(.dark) .markdown :global(.markdown-code-copy) button:hover
+{
 	background: hsl(0 0% 100% / 0.08);
 }
 
 /* The revealed secret toggle: upstream sets --cds-bg-accent: fill.control and
    --cds-text-accent: text.primary on its pressed cds ghost Button. */
-.markdown :global(.markdown-code-copy) button[aria-pressed="true"] {
+.markdown :global(.markdown-code-copy) button[aria-pressed="true"]
+{
 	background: var(--color-fill-control);
 	color: var(--color-primary);
 }
 
 /* The markdown is raw HTML, so the button cannot use ui/tooltip.tsx; this CSS
    tooltip mirrors it: always dark, side top, offset 4, 300ms open delay. */
-.markdown :global(.markdown-code-copy) button[data-tooltip]::after {
+.markdown :global(.markdown-code-copy) button[data-tooltip]::after
+{
 	content: attr(data-tooltip);
 	position: absolute;
 	bottom: calc(100% + 4px);
@@ -274,7 +306,8 @@
 }
 
 .markdown :global(.markdown-code-copy) button[data-tooltip]:hover::after,
-.markdown :global(.markdown-code-copy) button[data-tooltip]:focus-visible::after {
+.markdown :global(.markdown-code-copy) button[data-tooltip]:focus-visible::after
+{
 	visibility: visible;
 	transition-delay: 300ms;
 }
@@ -283,7 +316,8 @@
    alpha wash. Radius and padding are in em, so the same rule lands on upstream's
    12.6px prose chip (5.04px, 0.79px 3.15px) and its 12px user-bubble chip
    (4.8px, 0.75px 3px). Both colors are themed, so dark mode needs no override. */
-.markdown code {
+.markdown code
+{
 	font-family: var(--font-mono);
 	font-size: 0.9em;
 	font-weight: 400;
@@ -296,7 +330,8 @@
 }
 
 /* Fences keep the 20px code line-height; only the inline chip is tightened. */
-.markdown pre code {
+.markdown pre code
+{
 	background: none;
 	border: none;
 	color: inherit;
@@ -307,7 +342,8 @@
 }
 
 /* Upstream's prose link; the global `.text-link` in globals.css matches it. */
-.markdown a {
+.markdown a
+{
 	color: var(--upstream-accent);
 	text-decoration-line: underline;
 	text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
@@ -317,7 +353,8 @@
 
 /* A GitHub pull request link reads as upstream's compact `owner/repo#n` chip on
    an accent-muted fill; `clone` keeps the fill rounded where the chip wraps. */
-.markdown a:global(.pr-chip) {
+.markdown a:global(.pr-chip)
+{
 	background-color: rgb(37 125 224 / 0.1);
 	border-radius: 4px;
 	padding: 0 6px;
@@ -326,19 +363,23 @@
 	text-decoration-line: none;
 }
 
-.markdown a:global(.pr-chip):hover {
+.markdown a:global(.pr-chip):hover
+{
 	background-color: rgb(205 226 251);
 }
 
-:global(.dark) .markdown a:global(.pr-chip) {
+:global(.dark) .markdown a:global(.pr-chip)
+{
 	background-color: rgb(37 125 224 / 0.2);
 }
 
-:global(.dark) .markdown a:global(.pr-chip):hover {
+:global(.dark) .markdown a:global(.pr-chip):hover
+{
 	background-color: rgb(37 125 224 / 0.32);
 }
 
-.markdown a:global(.pr-chip) svg {
+.markdown a:global(.pr-chip) svg
+{
 	display: inline-block;
 	vertical-align: -1px;
 	margin-right: 4px;
@@ -347,7 +388,8 @@
 /* A claude.ai artifact link in prose is upstream's inline chip: the artifact
    glyph 3px before the title on the PR chip's accent-muted fill, 17.5px tall so
    it never grows the line box. */
-.markdown a:global(.artifact-link-chip) {
+.markdown a:global(.artifact-link-chip)
+{
 	display: inline-flex;
 	max-width: 100%;
 	align-items: center;
@@ -360,23 +402,28 @@
 	text-decoration-line: none;
 }
 
-.markdown a:global(.artifact-link-chip):hover {
+.markdown a:global(.artifact-link-chip):hover
+{
 	background-color: rgb(205 226 251);
 }
 
-:global(.dark) .markdown a:global(.artifact-link-chip) {
+:global(.dark) .markdown a:global(.artifact-link-chip)
+{
 	background-color: rgb(37 125 224 / 0.2);
 }
 
-:global(.dark) .markdown a:global(.artifact-link-chip):hover {
+:global(.dark) .markdown a:global(.artifact-link-chip):hover
+{
 	background-color: rgb(37 125 224 / 0.32);
 }
 
-.markdown :global(.artifact-link-chip-icon) {
+.markdown :global(.artifact-link-chip-icon)
+{
 	flex-shrink: 0;
 }
 
-.markdown :global(.artifact-link-chip-title) {
+.markdown :global(.artifact-link-chip-title)
+{
 	align-self: baseline;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -385,7 +432,8 @@
 
 /* An Artifact tool result's link reads as a compact card: the artifact's title
    over an "Artifact · host" caption. */
-.markdown a:global(.artifact-link-card) {
+.markdown a:global(.artifact-link-card)
+{
 	display: inline-flex;
 	flex-direction: column;
 	max-width: min(318px, 100%);
@@ -397,26 +445,31 @@
 	vertical-align: middle;
 }
 
-:global(.dark) .markdown a:global(.artifact-link-card) {
+:global(.dark) .markdown a:global(.artifact-link-card)
+{
 	box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.14);
 }
 
-.markdown a:global(.artifact-link-card):hover {
+.markdown a:global(.artifact-link-card):hover
+{
 	background: hsl(0 0% 4.3137% / 0.06);
 }
 
-:global(.dark) .markdown a:global(.artifact-link-card):hover {
+:global(.dark) .markdown a:global(.artifact-link-card):hover
+{
 	background: hsl(0 0% 100% / 0.08);
 }
 
 .markdown :global(.artifact-link-card-title),
-.markdown :global(.artifact-link-card-meta) {
+.markdown :global(.artifact-link-card-meta)
+{
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.markdown :global(.artifact-link-card-meta) {
+.markdown :global(.artifact-link-card-meta)
+{
 	font-size: 12px;
 	line-height: 16px;
 	color: var(--color-t6);
@@ -424,7 +477,8 @@
 
 /* Upstream's zoned clock time: the prose ink with a dotted secondary underline,
    and a tooltip reading "Your local time" over the reader's own clock time. */
-.markdown :global(.time-with-zone) {
+.markdown :global(.time-with-zone)
+{
 	position: relative;
 	text-decoration-line: underline;
 	text-decoration-style: dotted;
@@ -433,7 +487,8 @@
 	text-underline-offset: 3px;
 }
 
-.markdown :global(.time-with-zone)::after {
+.markdown :global(.time-with-zone)::after
+{
 	content: "Your local time\A" attr(data-local-time);
 	position: absolute;
 	bottom: calc(100% + 4px);
@@ -452,40 +507,46 @@
 	visibility: hidden;
 }
 
-.markdown :global(.time-with-zone):hover::after {
+.markdown :global(.time-with-zone):hover::after
+{
 	visibility: visible;
 	transition-delay: 300ms;
 }
 
 /* Bold prose sits at upstream's 600, not the browser's 700. */
-.markdown strong {
+.markdown strong
+{
 	font-weight: 600;
 }
 
 /* Upstream sits every table in an `overflow-x-auto` div so a wide table scrolls
    on its own instead of stretching the transcript column; the same div carries
    the table's only frame, a 6px rounded 1px border the scroll clips to. */
-.markdown :global(.markdown-table-wrapper) {
+.markdown :global(.markdown-table-wrapper)
+{
 	overflow-x: auto;
 	border: 1px solid var(--color-border);
 	border-radius: 6px;
 }
 
-.markdown table {
+.markdown table
+{
 	border-collapse: collapse;
 	width: 100%;
 	font-size: var(--md-prose-size);
 	line-height: var(--md-prose-leading);
 }
 
-.markdown :is(th, td) {
+.markdown :is(th, td)
+{
 	padding: 6.125px 10.5px;
 	min-width: 6rem;
 	text-align: left;
 }
 
 /* Upstream fizzy-lake color: prose th/td borders read --cds-fizzy-lake-color-message-line. */
-.markdown th {
+.markdown th
+{
 	font-size: var(--md-prose-size);
 	line-height: var(--md-prose-leading);
 	font-weight: 500;
@@ -493,13 +554,15 @@
 	border-bottom: 1px solid var(--message-line, var(--color-border));
 }
 
-.markdown td {
+.markdown td
+{
 	font-size: var(--md-prose-size);
 	vertical-align: top;
 }
 
 /* client-markdown marks a column whose body cells are all numbers. */
-.markdown :is(th, td)[data-numeric] {
+.markdown :is(th, td)[data-numeric]
+{
 	text-align: right;
 }
 
@@ -512,16 +575,19 @@
 :global([data-cds-reply-type])
 	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
 	:is(li, blockquote, details)
-	:global(.markdown-table-wrapper) {
+	:global(.markdown-table-wrapper)
+{
 	border-width: 0;
 	border-radius: 0;
 }
 
 /* Upstream keeps the table frame under forced colors. */
-@media (forced-colors: none) {
+@media (forced-colors: none)
+{
 	:global([data-cds-reply-type])
 		.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
-		table {
+		table
+	{
 		border-width: 0;
 		border-radius: 0;
 	}
@@ -530,7 +596,8 @@
 /* Frameless cells: no wash, flush to the column start, 1.5em between columns, message-line rules. */
 :global([data-cds-reply-type])
 	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
-	:is(th, td) {
+	:is(th, td)
+{
 	background: transparent;
 	border-radius: 0;
 	padding-block: calc(0.4375em + 1px);
@@ -541,23 +608,27 @@
 :global([data-cds-reply-type])
 	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
 	:is(th, td)
-	+ :is(th, td) {
+	+ :is(th, td)
+{
 	padding-inline-start: 1.5em;
 }
 
 /* Upstream's header weight (`--cds-font-weight-header`, 520 under type). */
 :global([data-cds-reply-type])
 	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
-	th {
+	th
+{
 	font-weight: var(--font-weight-header, 520);
 }
 
 /* Upstream's reply code chip: the ghost-hover wash in primary ink, 4px radius, 1px 4px padding. Size and
    leading stay the base chip's. */
-@media screen and (forced-colors: none) {
+@media screen and (forced-colors: none)
+{
 	:global([data-cds-reply-type])
 		.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
-		code:not(pre code) {
+		code:not(pre code)
+	{
 		background: var(--upstream-fill-ghost-hover);
 		color: var(--upstream-text-primary);
 		border: 0;
@@ -571,7 +642,8 @@
    wght axes belong to fizzy-type-dark-wght-axes. */
 :global([data-cds-reply-type])
 	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
-	:is(strong, b) {
+	:is(strong, b)
+{
 	font-weight: 501;
 }
 
@@ -581,24 +653,28 @@
 :global([data-cds-reply-type])
 	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
 	:is(h1, h2, h3, h4, h5, h6, th)
-	:is(strong, b) {
+	:is(strong, b)
+{
 	font-weight: var(--font-weight-header, 520);
 }
 
 /* Inline code inherits the surrounding reply weight (upstream `var(--_reply-weight, inherit)`). */
 :global([data-cds-reply-type])
 	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
-	:is(code, kbd):not([class]) {
+	:is(code, kbd):not([class])
+{
 	font-weight: inherit;
 }
 
-.markdown hr {
+.markdown hr
+{
 	border: none;
 	border-top: 1px solid var(--color-border);
 	margin: 16px 0;
 }
 
-.markdown img {
+.markdown img
+{
 	max-width: 100%;
 	border-radius: 0.5rem;
 }
@@ -608,14 +684,16 @@
    flex children and keep the margins declared above, which is why this reset is
    scoped to direct children and declared after them. `hr` keeps its own wider
    spacing. */
-.markdown > :not(hr) {
+.markdown > :not(hr)
+{
 	margin-block: 0;
 }
 
 /* User message bubble — the bubble is a neutral wash over the page background,
    so markdown inside it keeps the standard chrome. Only wrapping is constrained,
    because the bubble is a flex child that must not be widened by long tokens. */
-:global(.user-message-bubble) .markdown {
+:global(.user-message-bubble) .markdown
+{
 	overflow-wrap: anywhere;
 	min-width: 0;
 }
@@ -623,19 +701,22 @@
 /* Shiki dual theme support:
    Light theme uses inline color/background-color directly.
    Dark theme uses --shiki-dark and --shiki-dark-bg CSS variables. */
-:global(.dark) .markdown :global(.shiki) {
+:global(.dark) .markdown :global(.shiki)
+{
 	color: var(--shiki-dark) !important;
 	background-color: hsl(30 3.3% 11.8% / 0.5) !important;
 	border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-:global(.dark) .markdown :global(.shiki) span {
+:global(.dark) .markdown :global(.shiki) span
+{
 	color: var(--shiki-dark) !important;
 	background-color: transparent !important;
 }
 
 /* Only the existing assistant transcript wrapper opts into these rules. */
-:global([data-transcript-prose]) .markdown strong code:not(pre code) {
+:global([data-transcript-prose]) .markdown strong code:not(pre code)
+{
 	font-weight: inherit;
 }
 
@@ -643,11 +724,13 @@
    the column's width past 384px short of its edge, at most 56px, and starts 4px in. */
 :global([data-transcript-prose])
 	.markdown
-	> :is(p, h1, h2, h3, h4, h5, h6, ul:not(:global(.contains-task-list)), ol, dl) {
+	> :is(p, h1, h2, h3, h4, h5, h6, ul:not(:global(.contains-task-list)), ol, dl)
+{
 	padding-inline-end: var(--cds-assistant-message-text-stop, 0px);
 }
 
-:global([data-transcript-prose]) .markdown > :is(p, h1, h2, h3, h4, h5, h6) {
+:global([data-transcript-prose]) .markdown > :is(p, h1, h2, h3, h4, h5, h6)
+{
 	padding-inline-start: var(--cds-assistant-message-text-inset, 0px);
 }
 
@@ -655,19 +738,22 @@
    .75em between blocks (11.25px at the 15px body) and twice that after a list or table. The two flow
    lengths are registered, so the em resolves once on the article and every child inherits that px
    value: a 17px h2 still multiplies the article's 11.25px. */
-@property --_prose-flow-base {
+@property --_prose-flow-base
+{
 	syntax: "<length>";
 	inherits: true;
 	initial-value: 0;
 }
 
-@property --_prose-flow {
+@property --_prose-flow
+{
 	syntax: "<length>";
 	inherits: true;
 	initial-value: 0;
 }
 
-:global([data-transcript-prose]) .markdown {
+:global([data-transcript-prose]) .markdown
+{
 	display: block;
 	--_prose-flow-base: 0.75em;
 	--_prose-flow: var(--_prose-flow-base);
@@ -685,7 +771,8 @@
 
 /* Inside a box (quote, details, table cell) upstream breaks at 1.5 after a list or table and gives h1–h3
    the h4 space. */
-:global([data-transcript-prose]) .markdown :is(blockquote, details, th, td) > * {
+:global([data-transcript-prose]) .markdown :is(blockquote, details, th, td) > *
+{
 	--_prose-x-break: 1.5;
 	--_prose-x-after-table: 1.5;
 	--_prose-h1-space: var(--_prose-h4-space);
@@ -709,7 +796,8 @@
 		:global(.markdown-codeblock),
 		:global(.markdown-table-wrapper),
 		:global([data-mermaid-fence])
-	):not(:where(:global(.markdown-codeblock), :global([data-mermaid-fence])) *) {
+	):not(:where(:global(.markdown-codeblock), :global([data-mermaid-fence])) *)
+{
 	margin-block-start: var(--_prose-flow);
 	margin-block-end: 0;
 }
@@ -729,7 +817,8 @@
 		:global(.markdown-codeblock),
 		:global(.markdown-table-wrapper),
 		:global([data-mermaid-fence])
-	) {
+	)
+{
 	margin-block-start: calc(var(--_prose-flow) * var(--_prose-x-break));
 }
 
@@ -748,37 +837,45 @@
 		:global(.markdown-codeblock),
 		:global(.markdown-table-wrapper),
 		:global([data-mermaid-fence])
-	) {
+	)
+{
 	margin-block-start: calc(var(--_prose-flow) * var(--_prose-x-after-table));
 }
 
 /* Headings: upstream's per-level space above (×3, 2.5, 2, then 1.667 for h4–h6) and .667 of the flow
    below. After a list, hr or table a heading takes the larger of the two spaces. */
-:global([data-transcript-prose]) .markdown h1 {
+:global([data-transcript-prose]) .markdown h1
+{
 	--_prose-h-space: var(--_prose-h1-space);
 }
 
-:global([data-transcript-prose]) .markdown h2 {
+:global([data-transcript-prose]) .markdown h2
+{
 	--_prose-h-space: var(--_prose-h2-space);
 }
 
-:global([data-transcript-prose]) .markdown h3 {
+:global([data-transcript-prose]) .markdown h3
+{
 	--_prose-h-space: var(--_prose-h3-space);
 }
 
-:global([data-transcript-prose]) .markdown h4 {
+:global([data-transcript-prose]) .markdown h4
+{
 	--_prose-h-space: var(--_prose-h4-space);
 }
 
-:global([data-transcript-prose]) .markdown h5 {
+:global([data-transcript-prose]) .markdown h5
+{
 	--_prose-h-space: var(--_prose-h5-space);
 }
 
-:global([data-transcript-prose]) .markdown h6 {
+:global([data-transcript-prose]) .markdown h6
+{
 	--_prose-h-space: var(--_prose-h6-space);
 }
 
-:global([data-transcript-prose]) .markdown :is(h1, h2, h3, h4, h5, h6) {
+:global([data-transcript-prose]) .markdown :is(h1, h2, h3, h4, h5, h6)
+{
 	margin-block-start: calc(var(--_prose-flow) * var(--_prose-h-space));
 	margin-block-end: 0;
 }
@@ -805,21 +902,25 @@
 		h4,
 		h5,
 		h6
-	) {
+	)
+{
 	margin-block-start: calc(var(--_prose-flow) * var(--_prose-x-after-heading));
 }
 
-:global([data-transcript-prose]) .markdown :is(ul, ol, dl, hr) + :is(h1, h2, h3, h4, h5, h6) {
+:global([data-transcript-prose]) .markdown :is(ul, ol, dl, hr) + :is(h1, h2, h3, h4, h5, h6)
+{
 	margin-block-start: calc(var(--_prose-flow) * max(var(--_prose-x-break), var(--_prose-h-space)));
 }
 
-:global([data-transcript-prose]) .markdown :global(.markdown-table-wrapper) + :is(h1, h2, h3, h4, h5, h6) {
+:global([data-transcript-prose]) .markdown :global(.markdown-table-wrapper) + :is(h1, h2, h3, h4, h5, h6)
+{
 	margin-block-start: calc(var(--_prose-flow) * max(var(--_prose-x-after-table), var(--_prose-h-space)));
 }
 
 /* List items and their later blocks sit a third of the flow apart (3.75px at the 15px body). Declared
    after the after-list rule, as upstream does, so a block after a nested list keeps the li-child space. */
-:global([data-transcript-prose]) .markdown li {
+:global([data-transcript-prose]) .markdown li
+{
 	margin-block-start: calc(var(--_prose-flow) * var(--_prose-x-li-child));
 	margin-block-end: 0;
 	padding-inline-start: 0.5em;
@@ -840,12 +941,14 @@
 		:global(.markdown-codeblock),
 		:global(.markdown-table-wrapper),
 		:global([data-mermaid-fence])
-	) {
+	)
+{
 	margin-block-start: calc(var(--_prose-flow) * var(--_prose-x-li-child));
 }
 
 /* Upstream's hr: a half-pixel rule, twice the flow above it and after it, inset .375em. */
-:global([data-transcript-prose]) .markdown hr {
+:global([data-transcript-prose]) .markdown hr
+{
 	border: 0;
 	border-block-start: 0.5px solid var(--color-border);
 	margin-block: calc(var(--_prose-flow) * var(--_prose-x-break)) 0;
@@ -867,7 +970,8 @@
 		:global(.markdown-codeblock),
 		:global(.markdown-table-wrapper),
 		:global([data-mermaid-fence])
-	) {
+	)
+{
 	margin-block-start: calc(var(--_prose-flow) * var(--_prose-x-break));
 }
 
@@ -890,71 +994,86 @@
 		:global(.markdown-codeblock),
 		:global(.markdown-table-wrapper),
 		:global([data-mermaid-fence])
-	) {
+	)
+{
 	margin-block-start: 0;
 }
 
-:global([data-transcript-prose]) .markdown table {
+:global([data-transcript-prose]) .markdown table
+{
 	border-collapse: separate;
 	border-spacing: 0;
 }
 
-:global([data-transcript-prose]) .markdown table > tbody > tr + tr > td {
+:global([data-transcript-prose]) .markdown table > tbody > tr + tr > td
+{
 	border-top: 1px solid var(--color-border);
 }
 
-:global(:root:not(.dark)) :global([data-transcript-prose]) .markdown table > tbody > tr + tr > td {
+:global(:root:not(.dark)) :global([data-transcript-prose]) .markdown table > tbody > tr + tr > td
+{
 	border-top-color: rgb(11 11 11 / 0.1);
 }
 
-:global(:root:not(.dark)) :global([data-transcript-prose]) .markdown th {
+:global(:root:not(.dark)) :global([data-transcript-prose]) .markdown th
+{
 	border-bottom-color: rgb(11 11 11 / 0.1);
 }
 
-:global(:root:not(.dark)) :global([data-transcript-prose]) .markdown code:not(pre code) {
+:global(:root:not(.dark)) :global([data-transcript-prose]) .markdown code:not(pre code)
+{
 	border: 1px solid rgb(11 11 11 / 0.1);
 }
 
-:global(.dark) :global([data-transcript-prose]) .markdown code:not(pre code) {
+:global(.dark) :global([data-transcript-prose]) .markdown code:not(pre code)
+{
 	border: 0.5px solid rgb(255 255 255 / 0.1);
 }
 
 /* Upstream's prose wght axes (`.prose` + `@scope(.prose)` in the c6a992d55 sheet): body, semibold headings,
    bold strong and medium table headers. They only bite in dark, where the axis tokens are set. Prose drops the
    fizzy-lake type header axis, so headings use the semibold axis in both type modes. */
-.markdown {
+.markdown
+{
 	--cds-font-axis-wght: var(--cds-font-axis-wght-body, var(--cds-font-axis-wght-regular,));
 	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 }
 
-.markdown :is(h1, h2, h3, h4, h5, h6) {
+.markdown :is(h1, h2, h3, h4, h5, h6)
+{
 	--cds-font-axis-wght: var(--_prose-heading-axis-wght, var(--cds-font-axis-wght-semibold,));
 	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 }
 
-.markdown :is(strong, b, dt, summary) {
+.markdown :is(strong, b, dt, summary)
+{
 	--cds-font-axis-wght: var(--cds-font-axis-wght-bold,);
 	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 }
 
-.markdown :is(h1, h2, h3, h4, h5, h6) :is(strong, b) {
+.markdown :is(h1, h2, h3, h4, h5, h6) :is(strong, b)
+{
 	--cds-font-axis-wght: inherit;
 	font-variation-settings: inherit;
 }
 
-.markdown th {
+.markdown th
+{
 	--cds-font-axis-wght: var(--cds-font-axis-wght-medium,);
 	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 }
 
-@media (forced-colors: active) {
-	.markdown th {
+@media (forced-colors: active)
+{
+	.markdown th
+	{
 		--cds-font-axis-wght: var(--cds-font-axis-wght-bold,);
 		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
 	}
 }
 
-.markdown :is(pre, code) {
+.markdown :is(pre, code)
+{
 	font-variation-settings: normal;
 }
 
@@ -974,7 +1093,8 @@
 	:global([data-transcript-prose])
 	.markdown
 	:is(h1, h2, h3, h4, h5, h6, th)
-	strong {
+	strong
+{
 	font-weight: 580;
 }
 
@@ -982,7 +1102,8 @@
    prose takes its container's size, leading and ink, so a thinking step's body reads in the step's text-body
    secondary type. `1em` and `1lh` resolve against the container; the doubled class outranks the transcript and
    comfortable size rules above. */
-:global([data-prose-size="inherit"]) > .markdown.markdown {
+:global([data-prose-size="inherit"]) > .markdown.markdown
+{
 	--md-prose-size: 1em;
 	--md-prose-leading: 1lh;
 	color: inherit;

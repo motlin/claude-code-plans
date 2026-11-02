@@ -9,7 +9,8 @@ import {asRecord} from "./narrow";
 
 export type ArtifactUrlKind = "uuid" | "slug";
 
-export interface ParsedArtifact {
+export interface ParsedArtifact
+{
 	url: string;
 	kind: ArtifactUrlKind;
 	id: string;
@@ -19,7 +20,8 @@ export interface ParsedArtifact {
 	opened?: true;
 }
 
-export interface ArtifactUrl {
+export interface ArtifactUrl
+{
 	url: string;
 	kind: ArtifactUrlKind;
 	id: string;
@@ -30,10 +32,23 @@ const ARTIFACT_PATH_PATTERN = /^\/(?:code\/)?artifact\/([A-Za-z0-9-]+)\/?$/;
 const ARTIFACT_HOSTS = new Set(["claude.ai", "www.claude.ai"]);
 const TRAILING_PUNCTUATION = /[.,;:!?)\]}'"]+$/;
 
-const PREFIXES: ReadonlyArray<{prefix: string; opened: boolean}> = [
-	{prefix: "Created a new Artifact at ", opened: false},
-	{prefix: "Updated the Artifact at ", opened: false},
-	{prefix: "Opened the Artifact at ", opened: true},
+const PREFIXES: ReadonlyArray<
+{
+	prefix: string;
+	opened: boolean;
+}> = [
+	{
+		prefix: "Created a new Artifact at ",
+		opened: false,
+	},
+	{
+		prefix: "Updated the Artifact at ",
+		opened: false,
+	},
+	{
+		prefix: "Opened the Artifact at ",
+		opened: true,
+	},
 ];
 
 const PREFIX_PATH_PATTERN = /^\S+(?: \([^)]*\))? with (.+?) \(and any `files` listed\)/;
@@ -41,14 +56,19 @@ const PUBLISHED_PATH_PATTERN = /^Published (.+) at $/;
 const VERSION_ID_PATTERN = /\((?:Version \d+, version id|version) ([^)\s,]+)\)/;
 
 /** Validates and normalizes an https claude.ai artifact URL; anything else is undefined. */
-export function normalizeArtifactUrl(raw: string): ArtifactUrl | undefined {
+export function normalizeArtifactUrl(raw: string): ArtifactUrl | undefined
+{
 	let parsed: URL;
-	try {
+	try
+	{
 		parsed = new URL(raw);
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
-	if (parsed.protocol !== "https:" || !ARTIFACT_HOSTS.has(parsed.hostname) || parsed.port !== "") {
+	if (parsed.protocol !== "https:" || !ARTIFACT_HOSTS.has(parsed.hostname) || parsed.port !== "")
+	{
 		return undefined;
 	}
 	const match = ARTIFACT_PATH_PATTERN.exec(parsed.pathname);
@@ -57,14 +77,22 @@ export function normalizeArtifactUrl(raw: string): ArtifactUrl | undefined {
 	const isCodePath = parsed.pathname.startsWith("/code/");
 	const kind: ArtifactUrlKind = UUID_PATTERN.test(id) ? "uuid" : "slug";
 	const url = `https://claude.ai/${isCodePath ? "code/" : ""}artifact/${id}`;
-	return {url, kind, id};
+	return {
+		url,
+		kind,
+		id,
+	};
 }
 
-function parseJsonOutput(text: string): ParsedArtifact | undefined {
+function parseJsonOutput(text: string): ParsedArtifact | undefined
+{
 	let value: unknown;
-	try {
+	try
+	{
 		value = JSON.parse(text);
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 	const record = asRecord(value);
@@ -72,13 +100,17 @@ function parseJsonOutput(text: string): ParsedArtifact | undefined {
 	if (typeof record["url"] !== "string") return undefined;
 	const artifact = normalizeArtifactUrl(record["url"]);
 	if (artifact === undefined) return undefined;
-	const result: ParsedArtifact = {...artifact};
+	const result: ParsedArtifact =
+	{
+		...artifact,
+	};
 	if (typeof record["path"] === "string") result.path = record["path"];
 	if (record["opened"] === true) result.opened = true;
 	return result;
 }
 
-function parsePrefixedOutput(text: string): ParsedArtifact | null | undefined {
+function parsePrefixedOutput(text: string): ParsedArtifact | null | undefined
+{
 	const entry = PREFIXES.find(({prefix}) => text.startsWith(prefix));
 	if (entry === undefined) return null;
 	const rest = text.slice(entry.prefix.length);
@@ -86,19 +118,27 @@ function parsePrefixedOutput(text: string): ParsedArtifact | null | undefined {
 	if (token === undefined) return undefined;
 	const artifact = normalizeArtifactUrl(token.replace(TRAILING_PUNCTUATION, ""));
 	if (artifact === undefined) return undefined;
-	const result: ParsedArtifact = {...artifact};
+	const result: ParsedArtifact =
+	{
+		...artifact,
+	};
 	const path = PREFIX_PATH_PATTERN.exec(rest)?.[1];
 	if (path !== undefined) result.path = path;
 	if (entry.opened) result.opened = true;
 	return result;
 }
 
-function parsePublishedOutput(text: string): ParsedArtifact | undefined {
+function parsePublishedOutput(text: string): ParsedArtifact | undefined
+{
 	const candidates = [...text.matchAll(/https:\/\/\S+/g)].toReversed();
-	for (const candidate of candidates) {
+	for (const candidate of candidates)
+	{
 		const artifact = normalizeArtifactUrl(candidate[0].replace(TRAILING_PUNCTUATION, ""));
 		if (artifact === undefined) continue;
-		const result: ParsedArtifact = {...artifact};
+		const result: ParsedArtifact =
+		{
+			...artifact,
+		};
 		const path = PUBLISHED_PATH_PATTERN.exec(text.slice(0, candidate.index))?.[1];
 		if (path !== undefined) result.path = path;
 		return result;
@@ -106,7 +146,8 @@ function parsePublishedOutput(text: string): ParsedArtifact | undefined {
 	return undefined;
 }
 
-function readString(value: unknown, key: string): string | undefined {
+function readString(value: unknown, key: string): string | undefined
+{
 	const field = asRecord(value)?.[key];
 	return typeof field === "string" && field !== "" ? field : undefined;
 }
@@ -117,7 +158,8 @@ function readString(value: unknown, key: string): string | undefined {
  * `toolUseResult` (the JSONL's structured result) supplies the title and
  * version id when present.
  */
-export function parseArtifactOutput(resultText: string, toolUseResult?: unknown): ParsedArtifact | undefined {
+export function parseArtifactOutput(resultText: string, toolUseResult?: unknown): ParsedArtifact | undefined
+{
 	const text = resultText.trim();
 	if (text === "") return undefined;
 	const prefixed = parsePrefixedOutput(text);
@@ -135,7 +177,8 @@ export function parseArtifactOutput(resultText: string, toolUseResult?: unknown)
  * Whether an `Artifact` call gets an artifact card: a successful publish
  * (no action, or "publish") or open.
  */
-export function isArtifactCardCall(input: unknown, isError: boolean): boolean {
+export function isArtifactCardCall(input: unknown, isError: boolean): boolean
+{
 	const record = asRecord(input);
 	if (isError || record === undefined) return false;
 	const action = record["action"];

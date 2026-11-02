@@ -9,7 +9,8 @@ import {useHookSchemaDrifts} from "../hooks/use-claude-events";
  * to pick up the new schema; the underlying file change is still indexed via
  * the watcher / hook fallback path so functionality is not blocked.
  */
-export function HookSchemaDriftBanner() {
+export function HookSchemaDriftBanner()
+{
 	const {drifts, dismiss} = useHookSchemaDrifts();
 	if (drifts.length === 0) return null;
 
@@ -36,7 +37,8 @@ export function HookSchemaDriftBanner() {
 					</div>
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							dismiss(drift.hookEventName);
 						}}
 						className="shrink-0 text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200"

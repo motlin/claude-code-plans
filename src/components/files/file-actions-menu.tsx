@@ -13,16 +13,19 @@ import {useCopyToClipboard} from "./use-copy-to-clipboard";
  */
 
 /** `vscode://file/<abs>`, plus `:<line>` to open the file at that line. */
-function vscodeFileUrl(path: string, line?: number): string {
+function vscodeFileUrl(path: string, line?: number): string
+{
 	const url = vscodeFolderUrl(path);
 	return line === undefined ? url : `${url}:${line}`;
 }
 
-function baseName(path: string): string {
+function baseName(path: string): string
+{
 	return path.slice(path.lastIndexOf("/") + 1) || path;
 }
 
-interface CopySubmenuProps {
+interface CopySubmenuProps
+{
 	/** Absolute path of the file or folder. */
 	path: string;
 	cwd: string | undefined;
@@ -33,7 +36,8 @@ interface CopySubmenuProps {
 }
 
 /** Upstream `Xu`: Copy ▸ {Absolute path, Relative path (hidden outside the cwd), Filename}. */
-export function CopySubmenu({path, cwd, absolutePath = true, relativePath}: CopySubmenuProps) {
+export function CopySubmenu({path, cwd, absolutePath = true, relativePath}: CopySubmenuProps)
+{
 	const copy = useCopyToClipboard();
 	const relPath = relativePath ?? relativeToCwd(path, cwd);
 	return (
@@ -43,7 +47,8 @@ export function CopySubmenu({path, cwd, absolutePath = true, relativePath}: Copy
 			<MenuSubContent sideOffset={-4}>
 				{absolutePath && (
 					<MenuItem
-						onSelect={() => {
+						onSelect={() =>
+						{
 							copy(path);
 						}}
 					>
@@ -52,7 +57,8 @@ export function CopySubmenu({path, cwd, absolutePath = true, relativePath}: Copy
 				)}
 				{relPath !== null && (
 					<MenuItem
-						onSelect={() => {
+						onSelect={() =>
+						{
 							copy(relPath);
 						}}
 					>
@@ -60,7 +66,8 @@ export function CopySubmenu({path, cwd, absolutePath = true, relativePath}: Copy
 					</MenuItem>
 				)}
 				<MenuItem
-					onSelect={() => {
+					onSelect={() =>
+					{
 						copy(baseName(path));
 					}}
 				>
@@ -73,7 +80,8 @@ export function CopySubmenu({path, cwd, absolutePath = true, relativePath}: Copy
 
 type FileActionsSurface = "transcript" | "composer" | "attachment" | "file_browser";
 
-interface FileActionsMenuItemsProps {
+interface FileActionsMenuItemsProps
+{
 	/** Absolute path of the file or folder. */
 	path: string;
 	cwd: string | undefined;
@@ -95,16 +103,21 @@ interface FileActionsMenuItemsProps {
 }
 
 /** Upstream `hn`'s `revealItem`: a sibling row after Open in ▸, never an Open in ▸ target. */
-export function ShowInFinderItem({path}: {path: string}) {
+export function ShowInFinderItem({path}: {path: string})
+{
 	const toast = useToast();
 	return (
 		<MenuItem
-			onSelect={() => {
-				revealFileInFinder(path).catch(() => {
-					toast({
-						kind: "error",
-						message: "Couldn’t show this in Finder. It may have been deleted or moved.",
-					});
+			onSelect={() =>
+			{
+				revealFileInFinder(path).catch(() =>
+				{
+					toast(
+						{
+							kind: "error",
+							message: "Couldn’t show this in Finder. It may have been deleted or moved.",
+						},
+					);
 				});
 			}}
 		>
@@ -113,7 +126,8 @@ export function ShowInFinderItem({path}: {path: string}) {
 	);
 }
 
-interface OpenInSubmenuProps {
+interface OpenInSubmenuProps
+{
 	path: string;
 	line?: number | undefined;
 	isDirectory?: boolean;
@@ -130,7 +144,8 @@ export function OpenInSubmenu({
 	isDirectory = false,
 	onOpenInFilesPane,
 	onOpenInDefaultApp,
-}: OpenInSubmenuProps) {
+}: OpenInSubmenuProps)
+{
 	const showEditor = isDirectory || isEditableText(path);
 	const showExtra = onOpenInFilesPane !== undefined || onOpenInDefaultApp !== undefined;
 	if (!showEditor && !showExtra) return null;
@@ -161,7 +176,8 @@ export function FileActionsMenuItems({
 	onAttachContext,
 	onOpenInFilesPane,
 	onOpenInDefaultApp,
-}: FileActionsMenuItemsProps) {
+}: FileActionsMenuItemsProps)
+{
 	const relPath = relativeToCwd(path, cwd);
 	const showFilesPane =
 		onOpenInFilesPane !== undefined && surface === "transcript" && FILES_PANE_EXTENSION.test(path);
@@ -172,8 +188,14 @@ export function FileActionsMenuItems({
 			{separatorBefore && <MenuSeparator />}
 			{attach && onAttachContext !== undefined && (
 				<MenuItem
-					onSelect={() => {
-						onAttachContext({kind: "file", path: `${mentionPath(path, cwd)}${isDirectory ? "/" : ""}`});
+					onSelect={() =>
+					{
+						onAttachContext(
+							{
+								kind: "file",
+								path: `${mentionPath(path, cwd)}${isDirectory ? "/" : ""}`,
+							},
+						);
 					}}
 				>
 					Attach as context

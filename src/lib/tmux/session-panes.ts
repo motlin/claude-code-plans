@@ -4,7 +4,8 @@ import {getRegistrySessionStates, type RegistrySessionState} from "../session-re
 import {tmuxPaneTable, type TmuxPaneTable} from "./pane-table";
 
 /** One pane from `tmux list-panes -a`, with the server socket it came from. */
-export interface TmuxListedPane {
+export interface TmuxListedPane
+{
 	paneId: string;
 	panePid: number;
 	socketPath: string;
@@ -20,7 +21,8 @@ export interface TmuxListedPane {
 export type TmuxPaneVia = "env" | "process" | "both";
 
 /** A live Claude session and the tmux pane it runs in. */
-export interface TmuxSessionPane {
+export interface TmuxSessionPane
+{
 	sessionId: string;
 	/** The session's cwd from the hook or the CLI registry, else the pane's current path. */
 	cwd: string;
@@ -49,9 +51,11 @@ const TMUX_LIST_PANES_FORMAT = [
  * `main-grouped-10`, …) repeat a pane under each session name; the first line
  * for a pane id wins. Malformed lines are skipped.
  */
-export function parseTmuxListPanes(stdout: string): TmuxListedPane[] {
+export function parseTmuxListPanes(stdout: string): TmuxListedPane[]
+{
 	const byPaneId = new Map<string, TmuxListedPane>();
-	for (const line of stdout.split("\n")) {
+	for (const line of stdout.split("\n"))
+	{
 		if (line.trim() === "") continue;
 		const [
 			paneId,
@@ -68,25 +72,30 @@ export function parseTmuxListPanes(stdout: string): TmuxListedPane[] {
 		const panePid = Number.parseInt(panePidRaw ?? "", 10);
 		const windowIndex = Number.parseInt(windowIndexRaw ?? "", 10);
 		if (Number.isNaN(panePid) || Number.isNaN(windowIndex)) continue;
-		byPaneId.set(paneId, {
+		byPaneId.set(
 			paneId,
-			panePid,
-			socketPath: socketPath ?? "",
-			sessionName: sessionName ?? "",
-			windowIndex,
-			windowName: windowName ?? "",
-			windowActive: windowActive === "1",
-			paneActive: paneActive === "1",
-			currentPath: path ?? "",
-		});
+			{
+				paneId,
+				panePid,
+				socketPath: socketPath ?? "",
+				sessionName: sessionName ?? "",
+				windowIndex,
+				windowName: windowName ?? "",
+				windowActive: windowActive === "1",
+				paneActive: paneActive === "1",
+				currentPath: path ?? "",
+			},
+		);
 	}
 	return [...byPaneId.values()];
 }
 
 /** Parse `ps -A -o pid=,ppid=` output into pid → parent pid. */
-export function parseProcessParents(stdout: string): Map<number, number> {
+export function parseProcessParents(stdout: string): Map<number, number>
+{
 	const parents = new Map<number, number>();
-	for (const line of stdout.split("\n")) {
+	for (const line of stdout.split("\n"))
+	{
 		const [, pid, ppid] = /^\s*(\d+)\s+(\d+)\s*$/.exec(line) ?? [];
 		if (pid !== undefined && ppid !== undefined) parents.set(Number(pid), Number(ppid));
 	}
@@ -97,14 +106,17 @@ export function parseProcessParents(stdout: string): Map<number, number> {
  * Walk `pid` and its ancestors until one is a pane's `#{pane_pid}` (the shell
  * or command tmux started in the pane). Stops at the root or on a cycle.
  */
-export function findAncestorPane<T extends {panePid: number}>(
-	pid: number,
-	parents: ReadonlyMap<number, number>,
-	panesByPid: ReadonlyMap<number, T>,
-): T | null {
+export function findAncestorPane<
+	T extends
+	{
+		panePid: number;
+	},
+>(pid: number, parents: ReadonlyMap<number, number>, panesByPid: ReadonlyMap<number, T>): T | null
+{
 	const seen = new Set<number>();
 	let current: number | undefined = pid;
-	while (current !== undefined && current > 1 && !seen.has(current)) {
+	while (current !== undefined && current > 1 && !seen.has(current))
+	{
 		const pane = panesByPid.get(current);
 		if (pane !== undefined) return pane;
 		seen.add(current);
@@ -113,7 +125,8 @@ export function findAncestorPane<T extends {panePid: number}>(
 	return null;
 }
 
-export interface TmuxSessionPaneInputs {
+export interface TmuxSessionPaneInputs
+{
 	/** Hook-reported sessions; those with `tmuxPane` link by environment. */
 	entries: readonly ActiveSessionEntry[];
 	/** Live CLI processes from `~/.claude/sessions/*.json`; linked by process tree. */
@@ -129,11 +142,13 @@ export interface TmuxSessionPaneInputs {
  * process tree wins, since it reflects where the process runs now. Each pane
  * keeps its first session, as resumes can leave stale hook entries behind.
  */
-export function mapSessionsToTmuxPanes({entries, registry, panes, parents}: TmuxSessionPaneInputs): TmuxSessionPane[] {
+export function mapSessionsToTmuxPanes({entries, registry, panes, parents}: TmuxSessionPaneInputs): TmuxSessionPane[]
+{
 	const panesByPid = new Map(panes.map((pane) => [pane.panePid, pane]));
 	const cwdBySession = new Map<string, string>();
 	const envPane = new Map<string, TmuxListedPane>();
-	for (const entry of entries) {
+	for (const entry of entries)
+	{
 		if (entry.cwd) cwdBySession.set(entry.sessionId, entry.cwd);
 		if (!entry.tmuxPane) continue;
 		const pane = panes.find(
@@ -144,7 +159,8 @@ export function mapSessionsToTmuxPanes({entries, registry, panes, parents}: Tmux
 		if (pane !== undefined && !envPane.has(entry.sessionId)) envPane.set(entry.sessionId, pane);
 	}
 	const processPane = new Map<string, TmuxListedPane>();
-	for (const process of registry) {
+	for (const process of registry)
+	{
 		if (!cwdBySession.has(process.sessionId)) cwdBySession.set(process.sessionId, process.cwd);
 		const pane = findAncestorPane(process.pid, parents, panesByPid);
 		if (pane !== null && !processPane.has(process.sessionId)) processPane.set(process.sessionId, pane);
@@ -152,18 +168,21 @@ export function mapSessionsToTmuxPanes({entries, registry, panes, parents}: Tmux
 
 	const result: TmuxSessionPane[] = [];
 	const claimed = new Set<TmuxListedPane>();
-	for (const sessionId of new Set([...envPane.keys(), ...processPane.keys()])) {
+	for (const sessionId of new Set([...envPane.keys(), ...processPane.keys()]))
+	{
 		const byEnv = envPane.get(sessionId);
 		const byProcess = processPane.get(sessionId);
 		const pane = byProcess ?? byEnv;
 		if (pane === undefined || claimed.has(pane)) continue;
 		claimed.add(pane);
-		result.push({
-			sessionId,
-			cwd: cwdBySession.get(sessionId) ?? pane.currentPath,
-			pane,
-			via: byEnv === pane && byProcess === pane ? "both" : byProcess === pane ? "process" : "env",
-		});
+		result.push(
+			{
+				sessionId,
+				cwd: cwdBySession.get(sessionId) ?? pane.currentPath,
+				pane,
+				via: byEnv === pane && byProcess === pane ? "both" : byProcess === pane ? "process" : "env",
+			},
+		);
 	}
 	return result;
 }
@@ -171,7 +190,8 @@ export function mapSessionsToTmuxPanes({entries, registry, panes, parents}: Tmux
 /** Runs `tmux [-S socket] list-panes -a -F TMUX_LIST_PANES_FORMAT`; null is the default server. */
 export type TmuxListPanesRunner = (socket: string | null) => Promise<string>;
 
-export interface TmuxSessionPaneSources {
+export interface TmuxSessionPaneSources
+{
 	entries: () => readonly ActiveSessionEntry[];
 	registry: () => readonly Pick<RegistrySessionState, "sessionId" | "pid" | "cwd">[];
 	listPanes: TmuxListPanesRunner;
@@ -183,19 +203,31 @@ export interface TmuxSessionPaneSources {
 
 const TMUX_TIMEOUT_MS = 2000;
 
-async function runFile(file: string, args: string[]): Promise<string> {
-	return new Promise((resolve, reject) => {
-		execFile(file, args, {timeout: TMUX_TIMEOUT_MS}, (error: Error | null, stdout: string) => {
-			if (error) {
-				reject(error);
-				return;
-			}
-			resolve(stdout);
-		});
+async function runFile(file: string, args: string[]): Promise<string>
+{
+	return new Promise((resolve, reject) =>
+	{
+		execFile(
+			file,
+			args,
+			{
+				timeout: TMUX_TIMEOUT_MS,
+			},
+			(error: Error | null, stdout: string) =>
+			{
+				if (error)
+				{
+					reject(error);
+					return;
+				}
+				resolve(stdout);
+			},
+		);
 	});
 }
 
-export const defaultTmuxSessionPaneSources: TmuxSessionPaneSources = {
+export const defaultTmuxSessionPaneSources: TmuxSessionPaneSources =
+{
 	entries: getActiveSessionEntries,
 	registry: getRegistrySessionStates,
 	listPanes: async (socket) =>
@@ -207,7 +239,8 @@ export const defaultTmuxSessionPaneSources: TmuxSessionPaneSources = {
 /** What a poll reports when the tmux binary is not installed, as opposed to no server running. */
 export const TMUX_NOT_INSTALLED = Symbol("tmux not installed");
 
-function isMissingBinary(error: unknown): boolean {
+function isMissingBinary(error: unknown): boolean
+{
 	return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
@@ -219,11 +252,16 @@ function isMissingBinary(error: unknown): boolean {
 async function listAllPanes(
 	entries: readonly ActiveSessionEntry[],
 	listPanes: TmuxListPanesRunner,
-): Promise<TmuxListedPane[] | typeof TMUX_NOT_INSTALLED> {
-	const read = async (socket: string | null) => {
-		try {
+): Promise<TmuxListedPane[] | typeof TMUX_NOT_INSTALLED>
+{
+	const read = async (socket: string | null) =>
+	{
+		try
+		{
 			return parseTmuxListPanes(await listPanes(socket));
-		} catch (error) {
+		}
+		catch (error)
+		{
 			return isMissingBinary(error) ? TMUX_NOT_INSTALLED : [];
 		}
 	};
@@ -237,11 +275,21 @@ async function listAllPanes(
 				: [],
 		),
 	);
-	for (const socket of hookSockets) {
+	for (const socket of hookSockets)
+	{
 		const socketPanes = await read(socket);
 		if (socketPanes === TMUX_NOT_INSTALLED) continue;
-		for (const pane of socketPanes) {
-			panes.push(pane.socketPath === "" ? {...pane, socketPath: socket} : pane);
+		for (const pane of socketPanes)
+		{
+			panes.push(
+				pane.socketPath === ""
+					?
+						{
+							...pane,
+							socketPath: socket,
+						}
+					: pane,
+			);
 		}
 	}
 	return panes;
@@ -250,7 +298,8 @@ async function listAllPanes(
 /** Live Claude sessions in tmux panes, by hook env and by process tree, freshly from tmux. */
 export async function getTmuxSessionPanes(
 	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
-): Promise<TmuxSessionPane[]> {
+): Promise<TmuxSessionPane[]>
+{
 	const panes = await pollTmuxSessionPanes(sources);
 	return panes === TMUX_NOT_INSTALLED ? [] : panes;
 }
@@ -262,26 +311,39 @@ export async function getTmuxSessionPanes(
  */
 export async function lookupTmuxSessionPanes(
 	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
-): Promise<readonly TmuxSessionPane[]> {
+): Promise<readonly TmuxSessionPane[]>
+{
 	return sources.paneTable?.current() ?? getTmuxSessionPanes(sources);
 }
 
 /** `getTmuxSessionPanes`, but telling a missing tmux binary apart from no panes. */
 export async function pollTmuxSessionPanes(
 	sources: TmuxSessionPaneSources = defaultTmuxSessionPaneSources,
-): Promise<TmuxSessionPane[] | typeof TMUX_NOT_INSTALLED> {
+): Promise<TmuxSessionPane[] | typeof TMUX_NOT_INSTALLED>
+{
 	const entries = sources.entries();
 	const panes = await listAllPanes(entries, sources.listPanes);
 	if (panes === TMUX_NOT_INSTALLED) return panes;
 	if (panes.length === 0) return [];
 	const registry = sources.registry();
 	let parents = new Map<number, number>();
-	if (registry.length > 0) {
-		try {
+	if (registry.length > 0)
+	{
+		try
+		{
 			parents = parseProcessParents(await sources.processTable());
-		} catch {
+		}
+		catch
+		{
 			// Without ps, only a registry pid that is itself a pane pid can match.
 		}
 	}
-	return mapSessionsToTmuxPanes({entries, registry, panes, parents});
+	return mapSessionsToTmuxPanes(
+		{
+			entries,
+			registry,
+			panes,
+			parents,
+		},
+	);
 }

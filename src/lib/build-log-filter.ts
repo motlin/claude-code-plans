@@ -1,4 +1,5 @@
-interface BundlerLog {
+interface BundlerLog
+{
 	code?: string;
 	id?: string;
 	message: string;
@@ -12,13 +13,15 @@ export function quietDependencyDirectives<Level extends string, Log extends Bund
 	level: Level,
 	log: Log,
 	handler: (level: Level, log: Log) => void,
-): void {
+): void
+{
 	if (
 		level === "warn" &&
 		log.code === "MODULE_LEVEL_DIRECTIVE" &&
 		log.message.includes('"use client"') &&
 		/[\\/]node_modules[\\/]/.test(log.id ?? "")
-	) {
+	)
+	{
 		return;
 	}
 	handler(level, log);

@@ -5,7 +5,8 @@ import {ApprovalActionButton} from "../approval-card";
 import {RenderErrorBoundary} from "../render-error-boundary";
 import {PanePlaceholder} from "./pane-placeholder";
 
-function reportPaneCrash(error: unknown) {
+function reportPaneCrash(error: unknown)
+{
 	console.error("[side-pane]", error);
 }
 
@@ -13,23 +14,35 @@ function reportPaneCrash(error: unknown) {
  * Upstream `eB`: when the crash fallback goes away (Try again) while keyboard focus was on it and focus
  * then falls to the body, focus the fresh fallback's button, or else the pane body container.
  */
-function handOffFocus(element: HTMLDivElement | null) {
+function handOffFocus(element: HTMLDivElement | null)
+{
 	if (element === null) return undefined;
-	return () => {
+	return () =>
+	{
 		const parent = element.parentElement;
 		const document = element.ownerDocument;
 		const active = document.activeElement;
 		if (parent === null || active === null || !element.contains(active) || !active.matches(":focus-visible"))
 			return;
-		queueMicrotask(() => {
+		queueMicrotask(() =>
+		{
 			if (document.activeElement !== document.body || !parent.isConnected) return;
 			const button = parent.querySelector<HTMLElement>(":scope > [data-side-pane-crash] button");
-			if (button !== null) {
-				button.focus({preventScroll: true});
+			if (button !== null)
+			{
+				button.focus(
+					{
+						preventScroll: true,
+					},
+				);
 				return;
 			}
 			if (!parent.hasAttribute("tabindex")) parent.tabIndex = -1;
-			parent.focus({preventScroll: true});
+			parent.focus(
+				{
+					preventScroll: true,
+				},
+			);
 		});
 	};
 }
@@ -48,12 +61,14 @@ export function PaneCrashBoundary({
 	resetKey: string;
 	header?: ReactNode;
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<RenderErrorBoundary
 			resetOn={resetKey}
 			report={reportPaneCrash}
-			fallback={(error, reset) => {
+			fallback={(error, reset) =>
+			{
 				if (isStaleChunkError(error)) throw error;
 				const crash = (
 					<div ref={handOffFocus} className="contents" data-side-pane-crash="">

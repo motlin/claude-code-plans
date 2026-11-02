@@ -10,7 +10,8 @@ import {TypedJsonValueSchema, type JsonValue} from "./hook-events";
 import {isRecord} from "./narrow";
 import {z} from "zod";
 import {normalizeGitBranch} from "./git-branch";
-import {
+import
+{
 	AiTitleRecordSchema,
 	BridgeSessionRecordSchema,
 	CustomTitleRecordSchema,
@@ -25,13 +26,15 @@ import {narrationProse} from "./thinking-narration";
 import {isCaveatLine, isCommandLine, isStdoutLine} from "./transcript";
 
 /** The session's pull request, from its latest `pr-link` transcript record. */
-export interface SessionPrLink {
+export interface SessionPrLink
+{
 	number: number;
 	url: string;
 	repository: string;
 }
 
-export interface SessionEntry {
+export interface SessionEntry
+{
 	id: string;
 	title: string;
 	/** `title` only stands in for a missing one (the folder, else "Untitled"); renaming starts empty. */
@@ -65,7 +68,8 @@ export interface SessionEntry {
 	remoteControl?: true | undefined;
 }
 
-export interface SessionProjectGroup {
+export interface SessionProjectGroup
+{
 	project: string;
 	projectName: string;
 	sessions: SessionEntry[];
@@ -76,7 +80,8 @@ export interface SessionProjectGroup {
  * Not exported -- consumers that need a tool call shape should use
  * ToolCallLike from session-utils.ts instead.
  */
-interface ToolCallInfo {
+interface ToolCallInfo
+{
 	id: string;
 	name: string;
 	input: Record<string, unknown>;
@@ -89,29 +94,71 @@ interface ToolCallInfo {
 }
 
 type MessageContent =
-	| {type: "text"; text: string; sourceUuid: string}
-	| {type: "thinking"; thinking: string; sourceUuid: string}
-	| {type: "image"; mediaType: string; data: string; sourceUuid: string}
-	| {type: "document"; mediaType: string; data: string; sourceUuid: string}
-	| {
+	|
+	  {
+			type: "text";
+			text: string;
+			sourceUuid: string;
+	  }
+	|
+	  {
+			type: "thinking";
+			thinking: string;
+			sourceUuid: string;
+	  }
+	|
+	  {
+			type: "image";
+			mediaType: string;
+			data: string;
+			sourceUuid: string;
+	  }
+	|
+	  {
+			type: "document";
+			mediaType: string;
+			data: string;
+			sourceUuid: string;
+	  }
+	|
+	  {
 			type: "tool_use";
 			id: string;
 			name: string;
 			input: Record<string, unknown>;
 			sourceUuid: string;
 	  }
-	| {
+	|
+	  {
 			type: "tool_result";
 			toolUseId: string;
 			content: string;
 			isError: boolean;
 			sourceUuid: string;
 	  }
-	| {type: "command"; name: string; args?: string; sourceUuid: string}
-	| {type: "bash-input"; command: string; sourceUuid: string}
-	| {type: "bash-output"; stdout: string; stderr: string; sourceUuid: string};
+	|
+	  {
+			type: "command";
+			name: string;
+			args?: string;
+			sourceUuid: string;
+	  }
+	|
+	  {
+			type: "bash-input";
+			command: string;
+			sourceUuid: string;
+	  }
+	|
+	  {
+			type: "bash-output";
+			stdout: string;
+			stderr: string;
+			sourceUuid: string;
+	  };
 
-interface SessionMessage {
+interface SessionMessage
+{
 	role: "user" | "assistant";
 	textBlocks: string[];
 	content: MessageContent[];
@@ -120,7 +167,8 @@ interface SessionMessage {
 	isCommand?: boolean;
 }
 
-interface SessionDetail {
+interface SessionDetail
+{
 	id: string;
 	title: string;
 	projectName: string;
@@ -140,7 +188,8 @@ export type {SessionLine, MessageSessionLine, SessionContentBlock} from "./trans
 /**
  * Information about a tool_result paired with its tool_use.
  */
-export interface ToolResultInfo {
+export interface ToolResultInfo
+{
 	result: string;
 	isError: boolean;
 	/** The user rejected or interrupted the call, so upstream labels it "Stopped" rather than "Failed". */
@@ -183,7 +232,8 @@ import type {ToolOutputShape} from "./tool-output-shape";
 import type {ParsedArtifact} from "./artifact-output";
 import type {ArtifactListEntry} from "./artifact-schemas";
 import type {PermissionDecision} from "./permission-decision";
-import {
+import
+{
 	cleanPromptText,
 	stripCommandTags,
 	parseBashInput,
@@ -207,32 +257,45 @@ export {parseCommandBlock, extractSessionTitle, summarizeToolCalls, summarizeToo
  * the strict JsonlRecordSchema: a record that drifts from the strict schema
  * should still render here.
  */
-const RawMessageSchema = z.looseObject({
-	role: z.string().optional(),
-	content: z
-		.union([
-			z.string(),
-			z.array(
-				z.looseObject({
-					type: z.string(),
-					text: z.string().optional(),
-					thinking: z.string().optional(),
-					name: z.string().optional(),
-					id: z.string().optional(),
-					input: z.looseObject({}).optional(),
-					tool_use_id: z.string().optional(),
-					content: z.unknown().optional(),
-					is_error: z.boolean().optional(),
-					source: z.looseObject({type: z.string(), media_type: z.string(), data: z.string()}).optional(),
-				}),
-			),
-		])
-		.optional(),
-});
+const RawMessageSchema = z.looseObject(
+	{
+		role: z.string().optional(),
+		content: z
+			.union([
+				z.string(),
+				z.array(
+					z.looseObject(
+						{
+							type: z.string(),
+							text: z.string().optional(),
+							thinking: z.string().optional(),
+							name: z.string().optional(),
+							id: z.string().optional(),
+							input: z.looseObject({}).optional(),
+							tool_use_id: z.string().optional(),
+							content: z.unknown().optional(),
+							is_error: z.boolean().optional(),
+							source: z
+								.looseObject(
+									{
+										type: z.string(),
+										media_type: z.string(),
+										data: z.string(),
+									},
+								)
+								.optional(),
+						},
+					),
+				),
+			])
+			.optional(),
+	},
+);
 
 const SHELL_COMPLETION_RE = /^(?:Already up to date|Done in \d+(?:\.\d+)?(?:ms|s)(?: using \S+)?)/;
 
-function isPastedShellOutput(text: string): boolean {
+function isPastedShellOutput(text: string): boolean
+{
 	const lines = text
 		.trim()
 		.split(/\r?\n/)
@@ -247,9 +310,18 @@ function isPastedShellOutput(text: string): boolean {
 	);
 }
 
-function isSessionTitlePrompt(text: string): boolean {
+function isSessionTitlePrompt(text: string): boolean
+{
 	if (!text.trim() || isPastedShellOutput(text) || isRequestInterrupted(text)) return false;
-	const line = {type: "user" as const, message: {content: text}, lineIndex: 0};
+	const line =
+	{
+		type: "user" as const,
+		message:
+		{
+			content: text,
+		},
+		lineIndex: 0,
+	};
 	return !isCaveatLine(line) && !isCommandLine(line) && !isStdoutLine(line);
 }
 
@@ -258,13 +330,16 @@ function isSessionTitlePrompt(text: string): boolean {
  * record the user did not type — a slash-command body or stop-hook feedback —
  * and only those may have their template boilerplate stripped for the title.
  */
-export interface FirstUserPrompt {
+export interface FirstUserPrompt
+{
 	text: string;
 	isMeta: boolean;
 }
 
-function extractFirstUserText(line: string): FirstUserPrompt | null {
-	try {
+function extractFirstUserText(line: string): FirstUserPrompt | null
+{
+	try
+	{
 		const obj: unknown = JSON.parse(line);
 		if (!isRecord(obj) || obj["type"] !== "user") return null;
 
@@ -274,18 +349,33 @@ function extractFirstUserText(line: string): FirstUserPrompt | null {
 
 		const isMeta = obj["isMeta"] === true;
 
-		if (typeof content === "string") {
-			return isSessionTitlePrompt(content) ? {text: content, isMeta} : null;
+		if (typeof content === "string")
+		{
+			return isSessionTitlePrompt(content)
+				?
+					{
+						text: content,
+						isMeta,
+					}
+				: null;
 		}
 
-		if (Array.isArray(content)) {
-			for (const block of content) {
-				if (block.type === "text" && typeof block.text === "string" && isSessionTitlePrompt(block.text)) {
-					return {text: block.text, isMeta};
+		if (Array.isArray(content))
+		{
+			for (const block of content)
+			{
+				if (block.type === "text" && typeof block.text === "string" && isSessionTitlePrompt(block.text))
+				{
+					return {
+						text: block.text,
+						isMeta,
+					};
 				}
 			}
 		}
-	} catch {
+	}
+	catch
+	{
 		// skip malformed lines
 	}
 	return null;
@@ -306,44 +396,69 @@ const MAX_TITLE_CANDIDATES = 20;
  * next message that asks for something. When none does, the acknowledgement
  * still beats titling the session with its id.
  */
-export async function readFirstUserMessage(filePath: string): Promise<FirstUserPrompt | null> {
-	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
+export async function readFirstUserMessage(filePath: string): Promise<FirstUserPrompt | null>
+{
+	const rl = createLineReader(
+		createReadStream(
+			filePath,
+			{
+				encoding: "utf-8",
+			},
+		),
+	);
 
 	const collector = new FirstUserMessageCollector();
-	try {
-		for await (const line of rl) {
+	try
+	{
+		for await (const line of rl)
+		{
 			if (!line.trim()) continue;
 			if (collector.add(line)) break;
 		}
-	} finally {
+	}
+	finally
+	{
 		await rl.close();
 	}
 	return collector.result();
 }
 
 /** readFirstUserMessage one line at a time, for callers that already stream the transcript. */
-export class FirstUserMessageCollector {
+export class FirstUserMessageCollector
+{
 	private found: FirstUserPrompt | null = null;
 	private fallback: FirstUserPrompt | null = null;
 	private examined = 0;
 	private settled = false;
 
 	/** Returns true once later lines can no longer change the result. */
-	add(line: string): boolean {
+	add(line: string): boolean
+	{
 		if (this.settled) return true;
 		const prompt = extractFirstUserText(line);
 		if (prompt === null) return false;
-		if (isInformativePrompt(prompt.text, {isMeta: prompt.isMeta})) {
+		if (
+			isInformativePrompt(
+				prompt.text,
+				{
+					isMeta: prompt.isMeta,
+				},
+			)
+		)
+		{
 			this.found = prompt;
 			this.settled = true;
-		} else {
+		}
+		else
+		{
 			this.fallback ??= prompt;
 			if (++this.examined >= MAX_TITLE_CANDIDATES) this.settled = true;
 		}
 		return this.settled;
 	}
 
-	result(): FirstUserPrompt | null {
+	result(): FirstUserPrompt | null
+	{
 		return this.found ?? this.fallback;
 	}
 }
@@ -355,9 +470,11 @@ export class FirstUserMessageCollector {
  * once the harness tags the bubble hides (`<task-notification>`,
  * `<system-reminder>`, ...) are stripped.
  */
-export function typedRecordPromptText(obj: unknown): string | null {
+export function typedRecordPromptText(obj: unknown): string | null
+{
 	if (!isRecord(obj) || obj["type"] !== "user") return null;
-	if (obj["isMeta"] === true || obj["isCompactSummary"] === true || obj["isVisibleInTranscriptOnly"] === true) {
+	if (obj["isMeta"] === true || obj["isCompactSummary"] === true || obj["isVisibleInTranscriptOnly"] === true)
+	{
 		return null;
 	}
 	const message = RawMessageSchema.safeParse(obj["message"]);
@@ -367,7 +484,8 @@ export function typedRecordPromptText(obj: unknown): string | null {
 		typeof content === "string"
 			? [content]
 			: content.flatMap((block) => (block.type === "text" && typeof block.text === "string" ? [block.text] : []));
-	for (const text of texts) {
+	for (const text of texts)
+	{
 		if (!isSessionTitlePrompt(text) || parseBashInput(text) !== null || parseBashOutput(text) !== null) continue;
 		const cleaned = cleanPromptText(text);
 		if (cleaned !== "") return cleaned;
@@ -376,7 +494,8 @@ export function typedRecordPromptText(obj: unknown): string | null {
 }
 
 /** The command of a typed `! command` record (`<bash-input>`), as upstream's bash history extractor reads it. */
-function typedRecordBashCommand(obj: unknown): string | null {
+function typedRecordBashCommand(obj: unknown): string | null
+{
 	if (!isRecord(obj) || obj["type"] !== "user" || obj["isMeta"] === true) return null;
 	const message = RawMessageSchema.safeParse(obj["message"]);
 	const content = message.success ? message.data.content : undefined;
@@ -385,7 +504,8 @@ function typedRecordBashCommand(obj: unknown): string | null {
 		typeof content === "string"
 			? [content]
 			: content.flatMap((block) => (block.type === "text" && typeof block.text === "string" ? [block.text] : []));
-	for (const text of texts) {
+	for (const text of texts)
+	{
 		const command = parseBashInput(text)?.command;
 		if (command !== undefined && command.trim() !== "") return command;
 	}
@@ -396,17 +516,34 @@ function typedRecordBashCommand(obj: unknown): string | null {
  * Every prompt the user typed into a session, oldest first, as its bubble shows it, and every `! command` they
  * ran, oldest first; harness-injected records are skipped.
  */
-export async function readSessionPrompts(filePath: string): Promise<{prompts: string[]; bashCommands: string[]}> {
-	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
+export async function readSessionPrompts(filePath: string): Promise<
+{
+	prompts: string[];
+	bashCommands: string[];
+}>
+{
+	const rl = createLineReader(
+		createReadStream(
+			filePath,
+			{
+				encoding: "utf-8",
+			},
+		),
+	);
 	const prompts: string[] = [];
 	const bashCommands: string[] = [];
-	try {
-		for await (const line of rl) {
+	try
+	{
+		for await (const line of rl)
+		{
 			if (!line.trim()) continue;
 			let obj: unknown;
-			try {
+			try
+			{
 				obj = JSON.parse(line);
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 			const prompt = typedRecordPromptText(obj);
@@ -414,26 +551,46 @@ export async function readSessionPrompts(filePath: string): Promise<{prompts: st
 			const command = typedRecordBashCommand(obj);
 			if (command !== null) bashCommands.push(command);
 		}
-	} finally {
+	}
+	finally
+	{
 		await rl.close();
 	}
-	return {prompts, bashCommands};
+	return {
+		prompts,
+		bashCommands,
+	};
 }
 
-async function readSessionMessageCount(filePath: string): Promise<number> {
-	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
+async function readSessionMessageCount(filePath: string): Promise<number>
+{
+	const rl = createLineReader(
+		createReadStream(
+			filePath,
+			{
+				encoding: "utf-8",
+			},
+		),
+	);
 	const messages = new ActiveChainMessageCounter();
 
-	try {
-		for await (const line of rl) {
+	try
+	{
+		for await (const line of rl)
+		{
 			if (!line.trim()) continue;
-			try {
+			try
+			{
 				messages.add(JSON.parse(line));
-			} catch {
+			}
+			catch
+			{
 				// skip malformed lines
 			}
 		}
-	} finally {
+	}
+	finally
+	{
 		await rl.close();
 	}
 
@@ -445,10 +602,14 @@ async function readSessionMessageCount(filePath: string): Promise<number> {
  * sessions-index.json is deliberately ignored: it counts with Claude Code's
  * own definition, which disagrees with ours (see message-count.ts).
  */
-async function resolveMessageCount(filePath: string): Promise<number> {
-	try {
+async function resolveMessageCount(filePath: string): Promise<number>
+{
+	try
+	{
 		return await readSessionMessageCount(filePath);
-	} catch {
+	}
+	catch
+	{
 		return 0;
 	}
 }
@@ -456,16 +617,27 @@ async function resolveMessageCount(filePath: string): Promise<number> {
 export async function resolveFirstPrompt(
 	indexedPrompt: string | undefined,
 	filePath: string,
-): Promise<FirstUserPrompt | null> {
+): Promise<FirstUserPrompt | null>
+{
 	// sessions-index.json records the typed `/command` line, never the body the
 	// CLI expands it into, so an indexed prompt is never a meta record. It also
 	// records a bare "yes" as faithfully as a request, so an uninformative one
 	// sends us to the transcript for a message that names the work.
-	const indexed = indexedPrompt && isSessionTitlePrompt(indexedPrompt) ? {text: indexedPrompt, isMeta: false} : null;
+	const indexed =
+		indexedPrompt && isSessionTitlePrompt(indexedPrompt)
+			?
+				{
+					text: indexedPrompt,
+					isMeta: false,
+				}
+			: null;
 	if (indexed !== null && isInformativePrompt(indexed.text)) return indexed;
-	try {
+	try
+	{
 		return (await readFirstUserMessage(filePath)) ?? indexed;
-	} catch {
+	}
+	catch
+	{
 		return indexed;
 	}
 }
@@ -491,14 +663,20 @@ export function resolveSessionTitle(entry: {
 	summary?: string | undefined;
 	firstPrompt?: FirstUserPrompt | undefined;
 	sessionId: string;
-}): string {
+}): string
+{
 	const named = namedSessionTitle(entry);
 	if (named) return named;
 	if (entry.summary) return entry.summary;
-	if (entry.firstPrompt) {
-		return extractSessionTitle(entry.firstPrompt.text, entry.sessionId, {
-			isMeta: entry.firstPrompt.isMeta,
-		});
+	if (entry.firstPrompt)
+	{
+		return extractSessionTitle(
+			entry.firstPrompt.text,
+			entry.sessionId,
+			{
+				isMeta: entry.firstPrompt.isMeta,
+			},
+		);
 	}
 	return entry.sessionId;
 }
@@ -511,8 +689,10 @@ function namedSessionTitle(sources: {
 	generatedTitle?: string | undefined;
 	agentName?: string | undefined;
 	cwdBasename?: string | undefined;
-}): string | undefined {
-	if (sources.bridged && sources.generatedTitle?.trim() && isPaneNameTitle(sources.customTitle, sources)) {
+}): string | undefined
+{
+	if (sources.bridged && sources.generatedTitle?.trim() && isPaneNameTitle(sources.customTitle, sources))
+	{
 		return sources.generatedTitle;
 	}
 	const [first, second] = sources.bridged
@@ -521,7 +701,8 @@ function namedSessionTitle(sources: {
 	return first ?? second;
 }
 
-export interface SessionTitleSources {
+export interface SessionTitleSources
+{
 	customTitle: string | undefined;
 	aiTitle: string | undefined;
 	/**
@@ -532,7 +713,8 @@ export interface SessionTitleSources {
 }
 
 /** Whether a raw transcript line can hold a record TitleRecordCollector reads. */
-export function isTitleSourceLine(line: string): boolean {
+export function isTitleSourceLine(line: string): boolean
+{
 	return line.includes('"custom-title"') || line.includes('"ai-title"') || line.includes('"bridge-session"');
 }
 
@@ -540,139 +722,217 @@ export function isTitleSourceLine(line: string): boolean {
  * Accumulates custom-title, ai-title and bridge-session records while a caller
  * streams a transcript. Titles are last-wins; an empty custom-title clears the name.
  */
-export class TitleRecordCollector {
+export class TitleRecordCollector
+{
 	private customTitle: string | undefined;
 	private sawCustomTitle = false;
 	private aiTitle: string | undefined;
 	private bridged = false;
 
-	add(record: unknown): void {
+	add(record: unknown): void
+	{
 		const bridge = BridgeSessionRecordSchema.safeParse(record);
-		if (bridge.success) {
+		if (bridge.success)
+		{
 			if (bridge.data.bridgeSessionId) this.bridged = true;
 			return;
 		}
 		const custom = CustomTitleRecordSchema.safeParse(record);
-		if (custom.success) {
+		if (custom.success)
+		{
 			this.sawCustomTitle = true;
 			this.customTitle = custom.data.customTitle || undefined;
 			return;
 		}
 		const ai = AiTitleRecordSchema.safeParse(record);
-		if (ai.success) {
+		if (ai.success)
+		{
 			this.aiTitle = ai.data.aiTitle || undefined;
 		}
 	}
 
 	/** The sidecar is consulted only when the transcript never named the session. */
-	async finish(transcriptPath: string): Promise<SessionTitleSources> {
+	async finish(transcriptPath: string): Promise<SessionTitleSources>
+	{
 		const customTitle = this.sawCustomTitle ? this.customTitle : await readCustomTitleSidecar(transcriptPath);
 		const pushed =
 			customTitle !== undefined && bridgePushedTitle(basename(transcriptPath, ".jsonl")) === customTitle;
-		return {customTitle, aiTitle: this.aiTitle, bridged: this.bridged && !pushed};
+		return {
+			customTitle,
+			aiTitle: this.aiTitle,
+			bridged: this.bridged && !pushed,
+		};
 	}
 }
 
-async function readCustomTitleSidecar(transcriptPath: string): Promise<string | undefined> {
+async function readCustomTitleSidecar(transcriptPath: string): Promise<string | undefined>
+{
 	const sidecarPath = join(dirname(transcriptPath), basename(transcriptPath, ".jsonl"), "custom-title.json");
 	let raw: string;
-	try {
+	try
+	{
 		raw = await readFile(sidecarPath, "utf-8");
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
-	try {
+	try
+	{
 		const parsed = CustomTitleSidecarSchema.safeParse(JSON.parse(raw));
 		return parsed.success ? parsed.data.customTitle || undefined : undefined;
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 }
 
-export async function readSessionTitleSources(filePath: string): Promise<SessionTitleSources> {
+export async function readSessionTitleSources(filePath: string): Promise<SessionTitleSources>
+{
 	const collector = new TitleRecordCollector();
-	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
-	try {
-		for await (const line of rl) {
+	const rl = createLineReader(
+		createReadStream(
+			filePath,
+			{
+				encoding: "utf-8",
+			},
+		),
+	);
+	try
+	{
+		for await (const line of rl)
+		{
 			if (!isTitleSourceLine(line)) continue;
-			try {
+			try
+			{
 				collector.add(JSON.parse(line));
-			} catch {
+			}
+			catch
+			{
 				// skip malformed lines
 			}
 		}
-	} catch {
+	}
+	catch
+	{
 		// unreadable transcript: fall through to the sidecar
-	} finally {
+	}
+	finally
+	{
 		await rl.close();
 	}
 	return collector.finish(filePath);
 }
 
 /** A transcript's Remote Control bridge, from its `bridge-session` and `history-suppression` records. */
-export interface BridgeSession {
+export interface BridgeSession
+{
 	/** The claude.ai/code session the transcript was bridged to, from its latest `bridge-session` record. */
 	bridgeSessionId: string | null;
 	/**
 	 * Non-null when the latest `bridge-session` record says the CLI did not backfill this session's history to
 	 * claude.ai (`noHistoryBackfill`), with the latest `history-suppression` record's cause when there is one.
 	 */
-	remoteHistory: {cause: string | null} | null;
+	remoteHistory:
+	{
+		cause: string | null;
+	} | null;
 }
 
 /** Reads a transcript's Remote Control bridge; a missing or unreadable file has none. */
-export async function readBridgeSession(filePath: string): Promise<BridgeSession> {
+export async function readBridgeSession(filePath: string): Promise<BridgeSession>
+{
 	let bridgeSessionId: string | null = null;
 	let noHistoryBackfill = false;
 	let cause: string | null = null;
-	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
-	try {
-		for await (const line of rl) {
+	const rl = createLineReader(
+		createReadStream(
+			filePath,
+			{
+				encoding: "utf-8",
+			},
+		),
+	);
+	try
+	{
+		for await (const line of rl)
+		{
 			const bridge = line.includes('"bridge-session"');
 			if (!bridge && !line.includes('"history-suppression"')) continue;
-			try {
+			try
+			{
 				const record: unknown = JSON.parse(line);
-				if (bridge) {
+				if (bridge)
+				{
 					const parsed = BridgeSessionRecordSchema.safeParse(record);
-					if (parsed.success && parsed.data.bridgeSessionId !== undefined) {
+					if (parsed.success && parsed.data.bridgeSessionId !== undefined)
+					{
 						bridgeSessionId = parsed.data.bridgeSessionId;
 						noHistoryBackfill = parsed.data.noHistoryBackfill === true;
 					}
-				} else {
+				}
+				else
+				{
 					const parsed = HistorySuppressionRecordSchema.safeParse(record);
 					if (parsed.success) cause = parsed.data.cause;
 				}
-			} catch {
+			}
+			catch
+			{
 				// skip malformed lines
 			}
 		}
-	} catch {
-		return {bridgeSessionId: null, remoteHistory: null};
-	} finally {
+	}
+	catch
+	{
+		return {
+			bridgeSessionId: null,
+			remoteHistory: null,
+		};
+	}
+	finally
+	{
 		await rl.close();
 	}
-	return {bridgeSessionId, remoteHistory: noHistoryBackfill ? {cause} : null};
+	return {
+		bridgeSessionId,
+		remoteHistory: noHistoryBackfill
+			?
+				{
+					cause,
+				}
+			: null,
+	};
 }
 
-async function listSessionsForProject(projectsDir: string, project: string): Promise<SessionEntry[] | null> {
+async function listSessionsForProject(projectsDir: string, project: string): Promise<SessionEntry[] | null>
+{
 	const projectDir = join(projectsDir, project);
 	const indexPath = join(projectDir, "sessions-index.json");
 	let raw: string;
-	try {
+	try
+	{
 		raw = await readFile(indexPath, "utf-8");
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 
 	let parsed: unknown;
-	try {
+	try
+	{
 		parsed = JSON.parse(raw);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 
 	const result = SessionsIndexSchema.safeParse(parsed);
-	if (!result.success) {
+	if (!result.success)
+	{
 		return null;
 	}
 
@@ -681,70 +941,86 @@ async function listSessionsForProject(projectsDir: string, project: string): Pro
 	const sessions: SessionEntry[] = [];
 	const indexedIds = new Set<string>();
 
-	for (const entry of result.data.entries) {
+	for (const entry of result.data.entries)
+	{
 		indexedIds.add(entry.sessionId);
 		if (entry.isSidechain) continue;
 
 		const firstPrompt = await resolveFirstPrompt(entry.firstPrompt, entry.fullPath);
 
-		const title = resolveSessionTitle({
-			...(await readSessionTitleSources(entry.fullPath)),
-			summary: entry.summary,
-			firstPrompt: firstPrompt ?? undefined,
-			sessionId: entry.sessionId,
-		});
+		const title = resolveSessionTitle(
+			{
+				...(await readSessionTitleSources(entry.fullPath)),
+				summary: entry.summary,
+				firstPrompt: firstPrompt ?? undefined,
+				sessionId: entry.sessionId,
+			},
+		);
 
-		sessions.push({
-			id: entry.sessionId,
-			title,
-			firstPrompt: firstPrompt?.text,
-			summary: entry.summary,
-			mtime: new Date(entry.fileMtime),
-			created: entry.created ? new Date(entry.created) : new Date(entry.fileMtime),
-			project,
-			projectName,
-			projectPath: entry.projectPath,
-			messageCount: await resolveMessageCount(entry.fullPath),
-			gitBranch: normalizeGitBranch(entry.gitBranch) ?? undefined,
-			isSidechain: entry.isSidechain ?? false,
-		});
+		sessions.push(
+			{
+				id: entry.sessionId,
+				title,
+				firstPrompt: firstPrompt?.text,
+				summary: entry.summary,
+				mtime: new Date(entry.fileMtime),
+				created: entry.created ? new Date(entry.created) : new Date(entry.fileMtime),
+				project,
+				projectName,
+				projectPath: entry.projectPath,
+				messageCount: await resolveMessageCount(entry.fullPath),
+				gitBranch: normalizeGitBranch(entry.gitBranch) ?? undefined,
+				isSidechain: entry.isSidechain ?? false,
+			},
+		);
 	}
 
 	// Pick up JSONL files not in the index (created after index was last rebuilt)
 	let files: string[];
-	try {
+	try
+	{
 		files = await readdir(projectDir);
-	} catch {
+	}
+	catch
+	{
 		return sessions;
 	}
 
-	for (const file of files) {
+	for (const file of files)
+	{
 		if (!file.endsWith(".jsonl")) continue;
 		const id = file.replace(/\.jsonl$/, "");
 		if (indexedIds.has(id)) continue;
 
 		const filePath = join(projectDir, file);
-		try {
+		try
+		{
 			const fileStat = await stat(filePath);
 			const prompt = await readFirstUserMessage(filePath);
-			const title = resolveSessionTitle({
-				...(await readSessionTitleSources(filePath)),
-				firstPrompt: prompt ?? undefined,
-				sessionId: id,
-			});
-			sessions.push({
-				id,
-				title,
-				firstPrompt: prompt?.text,
-				mtime: fileStat.mtime,
-				created: fileStat.birthtime,
-				project,
-				projectName,
-				projectPath: firstProjectPath,
-				messageCount: await readSessionMessageCount(filePath),
-				isSidechain: false,
-			});
-		} catch {
+			const title = resolveSessionTitle(
+				{
+					...(await readSessionTitleSources(filePath)),
+					firstPrompt: prompt ?? undefined,
+					sessionId: id,
+				},
+			);
+			sessions.push(
+				{
+					id,
+					title,
+					firstPrompt: prompt?.text,
+					mtime: fileStat.mtime,
+					created: fileStat.birthtime,
+					project,
+					projectName,
+					projectPath: firstProjectPath,
+					messageCount: await readSessionMessageCount(filePath),
+					isSidechain: false,
+				},
+			);
+		}
+		catch
+		{
 			// skip
 		}
 	}
@@ -752,12 +1028,16 @@ async function listSessionsForProject(projectsDir: string, project: string): Pro
 	return sessions;
 }
 
-async function listSessionsFromJsonl(projectsDir: string, project: string): Promise<SessionEntry[]> {
+async function listSessionsFromJsonl(projectsDir: string, project: string): Promise<SessionEntry[]>
+{
 	const projectPath = join(projectsDir, project);
 	let files: string[];
-	try {
+	try
+	{
 		files = await readdir(projectPath);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 
@@ -767,29 +1047,37 @@ async function listSessionsFromJsonl(projectsDir: string, project: string): Prom
 	const projectName = await resolveProjectName(project);
 	const sessions: SessionEntry[] = [];
 
-	for (const file of jsonlFiles) {
+	for (const file of jsonlFiles)
+	{
 		const filePath = join(projectPath, file);
-		try {
+		try
+		{
 			const fileStat = await stat(filePath);
 			const id = file.replace(/\.jsonl$/, "");
 			const prompt = await readFirstUserMessage(filePath);
-			const title = resolveSessionTitle({
-				...(await readSessionTitleSources(filePath)),
-				firstPrompt: prompt ?? undefined,
-				sessionId: id,
-			});
-			sessions.push({
-				id,
-				title,
-				firstPrompt: prompt?.text,
-				mtime: fileStat.mtime,
-				created: fileStat.birthtime,
-				project,
-				projectName,
-				messageCount: await readSessionMessageCount(filePath),
-				isSidechain: false,
-			});
-		} catch {
+			const title = resolveSessionTitle(
+				{
+					...(await readSessionTitleSources(filePath)),
+					firstPrompt: prompt ?? undefined,
+					sessionId: id,
+				},
+			);
+			sessions.push(
+				{
+					id,
+					title,
+					firstPrompt: prompt?.text,
+					mtime: fileStat.mtime,
+					created: fileStat.birthtime,
+					project,
+					projectName,
+					messageCount: await readSessionMessageCount(filePath),
+					isSidechain: false,
+				},
+			);
+		}
+		catch
+		{
 			// skip unreadable files
 		}
 	}
@@ -797,22 +1085,30 @@ async function listSessionsFromJsonl(projectsDir: string, project: string): Prom
 	return sessions;
 }
 
-export async function listSessions(projectsDir: string): Promise<SessionProjectGroup[]> {
+export async function listSessions(projectsDir: string): Promise<SessionProjectGroup[]>
+{
 	let projectDirs: string[];
-	try {
+	try
+	{
 		projectDirs = await readdir(projectsDir);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 
 	const groups: SessionProjectGroup[] = [];
 
-	for (const project of projectDirs) {
+	for (const project of projectDirs)
+	{
 		const projectPath = join(projectsDir, project);
-		try {
+		try
+		{
 			const dirStat = await stat(projectPath);
 			if (!dirStat.isDirectory()) continue;
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 
@@ -822,39 +1118,58 @@ export async function listSessions(projectsDir: string): Promise<SessionProjectG
 		if (sessions.length === 0) continue;
 		sessions.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 		const projectName = sessions[0]?.projectName ?? (await resolveProjectName(project));
-		groups.push({project, projectName, sessions});
+		groups.push(
+			{
+				project,
+				projectName,
+				sessions,
+			},
+		);
 	}
 
 	return groups
-		.map((group) => ({group, maxMtime: Math.max(...group.sessions.map((s) => s.mtime.getTime()))}))
+		.map((group) => (
+		{
+			group,
+			maxMtime: Math.max(...group.sessions.map((s) => s.mtime.getTime())),
+		}))
 		.toSorted((a, b) => b.maxMtime - a.maxMtime)
 		.map(({group}) => group);
 }
 
 const SESSION_ID_RE = /^[a-z0-9-]+$/;
 
-async function fileExists(path: string): Promise<boolean> {
-	try {
+async function fileExists(path: string): Promise<boolean>
+{
+	try
+	{
 		await stat(path);
 		return true;
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
 
 /** Agent-tool transcripts sit directly in `subagents/`; workflow agents sit in `subagents/workflows/<runId>/`. */
-async function findSubagentFile(subagentsDir: string, filename: string): Promise<string | null> {
+async function findSubagentFile(subagentsDir: string, filename: string): Promise<string | null>
+{
 	const direct = join(subagentsDir, filename);
 	if (await fileExists(direct)) return direct;
 
 	const workflowsDir = join(subagentsDir, "workflows");
 	let runDirs: string[];
-	try {
+	try
+	{
 		runDirs = await readdir(workflowsDir);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
-	for (const runDir of runDirs) {
+	for (const runDir of runDirs)
+	{
 		const candidate = join(workflowsDir, runDir, filename);
 		if (await fileExists(candidate)) return candidate;
 	}
@@ -864,42 +1179,67 @@ async function findSubagentFile(subagentsDir: string, filename: string): Promise
 export async function resolveSessionFilePath(
 	projectsDir: string,
 	sessionId: string,
-): Promise<{filePath: string; project: string} | null> {
+): Promise<
+{
+	filePath: string;
+	project: string;
+} | null>
+{
 	if (!SESSION_ID_RE.test(sessionId)) return null;
 	if (sessionId.includes("..")) return null;
 
 	let projectDirs: string[];
-	try {
+	try
+	{
 		projectDirs = await readdir(projectsDir);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 
 	const filename = `${sessionId}.jsonl`;
 
-	for (const dir of projectDirs) {
+	for (const dir of projectDirs)
+	{
 		const candidate = join(projectsDir, dir, filename);
-		try {
+		try
+		{
 			await stat(candidate);
-			return {filePath: candidate, project: dir};
-		} catch {
+			return {
+				filePath: candidate,
+				project: dir,
+			};
+		}
+		catch
+		{
 			// not in this dir
 		}
 	}
 
-	if (sessionId.startsWith("agent-")) {
-		for (const dir of projectDirs) {
+	if (sessionId.startsWith("agent-"))
+	{
+		for (const dir of projectDirs)
+		{
 			const subagentsDir = join(projectsDir, dir);
 			let sessionDirs: string[];
-			try {
+			try
+			{
 				sessionDirs = await readdir(subagentsDir);
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 
-			for (const sessionDir of sessionDirs) {
+			for (const sessionDir of sessionDirs)
+			{
 				const found = await findSubagentFile(join(projectsDir, dir, sessionDir, "subagents"), filename);
-				if (found !== null) return {filePath: found, project: dir};
+				if (found !== null)
+					return {
+						filePath: found,
+						project: dir,
+					};
 			}
 		}
 	}
@@ -907,28 +1247,42 @@ export async function resolveSessionFilePath(
 	return null;
 }
 
-export interface RawJsonlLine {
+export interface RawJsonlLine
+{
 	raw: string;
 	lineIndex: number;
 	uuid?: string;
 	parseError?: boolean;
 }
 
-export interface RawWindow {
+export interface RawWindow
+{
 	focal: RawJsonlLine;
 	before: RawJsonlLine[];
 	after: RawJsonlLine[];
 }
 
-function parseRawLine(raw: string, lineIndex: number): RawJsonlLine {
-	try {
+function parseRawLine(raw: string, lineIndex: number): RawJsonlLine
+{
+	try
+	{
 		const parsed: unknown = JSON.parse(raw);
 		const uuid = isRecord(parsed) && typeof parsed["uuid"] === "string" ? parsed["uuid"] : undefined;
-		const result: RawJsonlLine = {raw, lineIndex};
+		const result: RawJsonlLine =
+		{
+			raw,
+			lineIndex,
+		};
 		if (uuid !== undefined) result.uuid = uuid;
 		return result;
-	} catch {
-		return {raw, lineIndex, parseError: true};
+	}
+	catch
+	{
+		return {
+			raw,
+			lineIndex,
+			parseError: true,
+		};
 	}
 }
 
@@ -937,45 +1291,68 @@ export async function readSessionRawWindow(
 	sessionId: string,
 	focalUuid: string,
 	contextN = 5,
-): Promise<RawWindow | null> {
+): Promise<RawWindow | null>
+{
 	const resolved = await resolveSessionFilePath(projectsDir, sessionId);
 	if (!resolved) return null;
 
-	const rl = createLineReader(trackedCreateReadStream(resolved.filePath, {encoding: "utf-8"}));
+	const rl = createLineReader(
+		trackedCreateReadStream(
+			resolved.filePath,
+			{
+				encoding: "utf-8",
+			},
+		),
+	);
 
 	const ringBuffer: RawJsonlLine[] = [];
 	let focal: RawJsonlLine | null = null;
 	const after: RawJsonlLine[] = [];
 	let lineIndex = -1;
 
-	try {
-		for await (const line of rl) {
+	try
+	{
+		for await (const line of rl)
+		{
 			lineIndex++;
 			if (!line.trim()) continue;
 			const entry = parseRawLine(line, lineIndex);
 
-			if (focal === null) {
-				if (entry.uuid === focalUuid) {
+			if (focal === null)
+			{
+				if (entry.uuid === focalUuid)
+				{
 					focal = entry;
-				} else {
+				}
+				else
+				{
 					ringBuffer.push(entry);
 					if (ringBuffer.length > contextN) ringBuffer.shift();
 				}
-			} else {
+			}
+			else
+			{
 				after.push(entry);
 				if (after.length >= contextN) break;
 			}
 		}
-	} finally {
+	}
+	finally
+	{
 		await rl.close();
 	}
 
 	if (!focal) return null;
 
-	return {focal, before: ringBuffer, after};
+	return {
+		focal,
+		before: ringBuffer,
+		after,
+	};
 }
 
-export async function readSession(projectsDir: string, sessionId: string): Promise<SessionDetail | null> {
+export async function readSession(projectsDir: string, sessionId: string): Promise<SessionDetail | null>
+{
 	const resolved = await resolveSessionFilePath(projectsDir, sessionId);
 	if (!resolved) return null;
 	const {filePath, project} = resolved;
@@ -995,18 +1372,30 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 	const toolStartTimes = new Map<string, number>();
 	const uuidToLine = new Map<string, number>();
 
-	const rl = createLineReader(trackedCreateReadStream(filePath, {encoding: "utf-8"}));
+	const rl = createLineReader(
+		trackedCreateReadStream(
+			filePath,
+			{
+				encoding: "utf-8",
+			},
+		),
+	);
 
 	let lineIndex = -1;
-	try {
-		for await (const line of rl) {
+	try
+	{
+		for await (const line of rl)
+		{
 			lineIndex++;
 			if (!line.trim()) continue;
 
 			let obj: unknown;
-			try {
+			try
+			{
 				obj = JSON.parse(line);
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 			if (!isRecord(obj)) continue;
@@ -1015,32 +1404,42 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			const sourceUuid = typeof obj["uuid"] === "string" ? obj["uuid"] : "";
 			if (sourceUuid) uuidToLine.set(sourceUuid, lineIndex);
 
-			if (entrypoint === undefined && typeof obj["entrypoint"] === "string") {
+			if (entrypoint === undefined && typeof obj["entrypoint"] === "string")
+			{
 				entrypoint = obj["entrypoint"];
 			}
-			if (sessionKind === undefined && typeof obj["sessionKind"] === "string") {
+			if (sessionKind === undefined && typeof obj["sessionKind"] === "string")
+			{
 				sessionKind = obj["sessionKind"];
 			}
-			if (typeof obj["teamName"] === "string") {
+			if (typeof obj["teamName"] === "string")
+			{
 				teamNameSet.add(obj["teamName"]);
 			}
-			if (forkedFromSessionId === undefined) {
+			if (forkedFromSessionId === undefined)
+			{
 				const forked = obj["forkedFrom"];
-				if (typeof forked === "string") {
+				if (typeof forked === "string")
+				{
 					forkedFromSessionId = forked;
-				} else if (isRecord(forked)) {
+				}
+				else if (isRecord(forked))
+				{
 					const forkedId = forked["sessionId"];
-					if (typeof forkedId === "string") {
+					if (typeof forkedId === "string")
+					{
 						forkedFromSessionId = forkedId;
 					}
 				}
 			}
 
-			if (obj["type"] === "custom-title" || obj["type"] === "ai-title" || obj["type"] === "bridge-session") {
+			if (obj["type"] === "custom-title" || obj["type"] === "ai-title" || obj["type"] === "bridge-session")
+			{
 				titleRecords.add(obj);
 				continue;
 			}
-			if (obj["type"] === "cost-state") {
+			if (obj["type"] === "cost-state")
+			{
 				costState = costStateFromRecord(obj) ?? costState;
 				continue;
 			}
@@ -1059,18 +1458,23 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			const content = message.content;
 			let isCommand = false as boolean;
 
-			if (type === "user") {
-				const processUserText = (text: string) => {
+			if (type === "user")
+			{
+				const processUserText = (text: string) =>
+				{
 					const cmd = parseCommandBlock(text);
-					if (cmd) {
+					if (cmd)
+					{
 						isCommand = true;
 						const label = cmd.args ? `${cmd.name} ${cmd.args}` : cmd.name;
 						textBlocks.push(label);
-						const cmdContent = {
+						const cmdContent =
+						{
 							type: "command",
 							name: cmd.name,
 							sourceUuid,
-						} as MessageContent & {
+						} as MessageContent &
+						{
 							type: "command";
 						};
 						if (cmd.args) cmdContent.args = cmd.args;
@@ -1078,64 +1482,95 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						return;
 					}
 					const bashIn = parseBashInput(text);
-					if (bashIn) {
-						contentBlocks.push({
-							type: "bash-input",
-							command: bashIn.command,
-							sourceUuid,
-						});
+					if (bashIn)
+					{
+						contentBlocks.push(
+							{
+								type: "bash-input",
+								command: bashIn.command,
+								sourceUuid,
+							},
+						);
 						return;
 					}
 					const bashOut = parseBashOutput(text);
-					if (bashOut) {
-						contentBlocks.push({
-							type: "bash-output",
-							stdout: bashOut.stdout,
-							stderr: bashOut.stderr,
-							sourceUuid,
-						});
+					if (bashOut)
+					{
+						contentBlocks.push(
+							{
+								type: "bash-output",
+								stdout: bashOut.stdout,
+								stderr: bashOut.stderr,
+								sourceUuid,
+							},
+						);
 						return;
 					}
 					if (text.includes("<local-command-caveat>")) return;
 					const cleaned = stripCommandTags(text);
-					if (cleaned) {
+					if (cleaned)
+					{
 						textBlocks.push(cleaned);
-						contentBlocks.push({type: "text", text: cleaned, sourceUuid});
+						contentBlocks.push(
+							{
+								type: "text",
+								text: cleaned,
+								sourceUuid,
+							},
+						);
 					}
 				};
 
-				if (typeof content === "string") {
+				if (typeof content === "string")
+				{
 					processUserText(content);
-				} else if (Array.isArray(content)) {
-					for (const block of content) {
-						if (block.type === "text" && typeof block.text === "string") {
+				}
+				else if (Array.isArray(content))
+				{
+					for (const block of content)
+					{
+						if (block.type === "text" && typeof block.text === "string")
+						{
 							processUserText(block.text);
-						} else if (block.type === "image" && block.source) {
-							contentBlocks.push({
-								type: "image",
-								mediaType: block.source.media_type,
-								data: block.source.data,
-								sourceUuid,
-							});
-						} else if (block.type === "document" && block.source) {
-							contentBlocks.push({
-								type: "document",
-								mediaType: block.source.media_type,
-								data: block.source.data,
-								sourceUuid,
-							});
-						} else if (block.type === "tool_result" && block.tool_use_id) {
+						}
+						else if (block.type === "image" && block.source)
+						{
+							contentBlocks.push(
+								{
+									type: "image",
+									mediaType: block.source.media_type,
+									data: block.source.data,
+									sourceUuid,
+								},
+							);
+						}
+						else if (block.type === "document" && block.source)
+						{
+							contentBlocks.push(
+								{
+									type: "document",
+									mediaType: block.source.media_type,
+									data: block.source.data,
+									sourceUuid,
+								},
+							);
+						}
+						else if (block.type === "tool_result" && block.tool_use_id)
+						{
 							const rawResult = extractToolResultContent(block.content);
 							const info = toolCallMap.get(block.tool_use_id);
-							if (info && rawResult !== undefined) {
+							if (info && rawResult !== undefined)
+							{
 								const resultText = stripResultTags(rawResult);
 								info.result = truncateResult(resultText, 150);
 								if (block.is_error) info.isError = true;
 								if (sourceUuid) info.resultUuid = sourceUuid;
 								const startTime = toolStartTimes.get(block.tool_use_id);
-								if (startTime && timestamp) {
+								if (startTime && timestamp)
+								{
 									const resultTime = new Date(timestamp).getTime();
-									if (!isNaN(resultTime) && resultTime > startTime) {
+									if (!isNaN(resultTime) && resultTime > startTime)
+									{
 										info.duration = resultTime - startTime;
 									}
 								}
@@ -1143,28 +1578,50 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 						}
 					}
 				}
-			} else {
-				if (Array.isArray(content)) {
-					for (const block of content) {
+			}
+			else
+			{
+				if (Array.isArray(content))
+				{
+					for (const block of content)
+					{
 						const narration = narrationProse(block);
-						if (block.type === "text" && typeof block.text === "string") {
+						if (block.type === "text" && typeof block.text === "string")
+						{
 							textBlocks.push(block.text);
-							contentBlocks.push({
-								type: "text",
-								text: block.text,
-								sourceUuid,
-							});
-						} else if (narration !== null) {
+							contentBlocks.push(
+								{
+									type: "text",
+									text: block.text,
+									sourceUuid,
+								},
+							);
+						}
+						else if (narration !== null)
+						{
 							textBlocks.push(narration);
-							contentBlocks.push({type: "text", text: narration, sourceUuid});
-						} else if (block.type === "thinking" && typeof block.thinking === "string") {
-							contentBlocks.push({
-								type: "thinking",
-								thinking: block.thinking,
-								sourceUuid,
-							});
-						} else if (block.type === "tool_use") {
-							const tc: ToolCallInfo = {
+							contentBlocks.push(
+								{
+									type: "text",
+									text: narration,
+									sourceUuid,
+								},
+							);
+						}
+						else if (block.type === "thinking" && typeof block.thinking === "string")
+						{
+							contentBlocks.push(
+								{
+									type: "thinking",
+									thinking: block.thinking,
+									sourceUuid,
+								},
+							);
+						}
+						else if (block.type === "tool_use")
+						{
+							const tc: ToolCallInfo =
+							{
 								id: block.id ?? "",
 								name: block.name ?? "",
 								input: block.input ?? {},
@@ -1172,20 +1629,24 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 							};
 							if (timestamp) tc.startedAt = timestamp;
 							toolCalls.push(tc);
-							if (tc.id) {
+							if (tc.id)
+							{
 								toolCallMap.set(tc.id, tc);
-								if (timestamp) {
+								if (timestamp)
+								{
 									const t = new Date(timestamp).getTime();
 									if (!isNaN(t)) toolStartTimes.set(tc.id, t);
 								}
 							}
-							contentBlocks.push({
-								type: "tool_use",
-								id: tc.id,
-								name: tc.name,
-								input: tc.input,
-								sourceUuid,
-							});
+							contentBlocks.push(
+								{
+									type: "tool_use",
+									id: tc.id,
+									name: tc.name,
+									input: tc.input,
+									sourceUuid,
+								},
+							);
 						}
 					}
 				}
@@ -1196,26 +1657,46 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 			// A session resumed with a bare "yes" keeps looking for the message that
 			// names the work, and settles for the acknowledgement only if none does.
 			const firstText = textBlocks[0];
-			if (type === "user" && firstText !== undefined && !titleNamesWork) {
+			if (type === "user" && firstText !== undefined && !titleNamesWork)
+			{
 				const isMeta = obj["isMeta"] === true;
-				titleNamesWork = isInformativePrompt(firstText, {isMeta});
-				if (titleNamesWork || title === sessionId) {
-					title = extractSessionTitle(firstText, sessionId, {isMeta});
+				titleNamesWork = isInformativePrompt(
+					firstText,
+					{
+						isMeta,
+					},
+				);
+				if (titleNamesWork || title === sessionId)
+				{
+					title = extractSessionTitle(
+						firstText,
+						sessionId,
+						{
+							isMeta,
+						},
+					);
 				}
 			}
 
 			const last = messages[messages.length - 1];
-			if (last?.role === type) {
-				if (last.isCommand) {
+			if (last?.role === type)
+			{
+				if (last.isCommand)
+				{
 					last.toolCalls.push(...toolCalls);
 					last.content.push(...contentBlocks);
-				} else {
+				}
+				else
+				{
 					last.textBlocks.push(...textBlocks);
 					last.toolCalls.push(...toolCalls);
 					last.content.push(...contentBlocks);
 				}
-			} else {
-				const msg: SessionMessage = {
+			}
+			else
+			{
+				const msg: SessionMessage =
+				{
 					role: type,
 					textBlocks,
 					content: contentBlocks,
@@ -1226,15 +1707,23 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 				messages.push(msg);
 			}
 		}
-	} finally {
+	}
+	finally
+	{
 		await rl.close();
 	}
 
 	const titleSources = await titleRecords.finish(filePath);
 	title =
-		namedSessionTitle({...titleSources, ...generatedTitleSources(sessionId, titleSources.customTitle)}) ?? title;
+		namedSessionTitle(
+			{
+				...titleSources,
+				...generatedTitleSources(sessionId, titleSources.customTitle),
+			},
+		) ?? title;
 
-	const detail: SessionDetail = {
+	const detail: SessionDetail =
+	{
 		id: sessionId,
 		title,
 		projectName,
@@ -1255,7 +1744,8 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
  * The JSONL file's mtime in integer epoch ms, stamped on `session:lines-appended` as `writtenAt` so the client can time
  * a live append from the write (field journey F6). Integer keeps the SSE frame size deterministic.
  */
-export async function jsonlWrittenAt(filePath: string): Promise<number> {
+export async function jsonlWrittenAt(filePath: string): Promise<number>
+{
 	return Math.trunc((await stat(filePath)).mtimeMs);
 }
 
@@ -1273,21 +1763,32 @@ const JsonObjectSchema = z.record(z.string(), TypedJsonValueSchema);
 export async function readNewJsonlLines(
 	filePath: string,
 	fromByteOffset: number,
-): Promise<{lines: Record<string, JsonValue>[]; nextByteOffset: number}> {
+): Promise<
+{
+	lines: Record<string, JsonValue>[];
+	nextByteOffset: number;
+}>
+{
 	const lines: Record<string, JsonValue>[] = [];
 	let bytesConsumed = 0;
 	// Byte length (with newline) of the last line that failed to parse, until a later line proves it was terminated.
 	let unparsedByteLength: number | undefined;
 
-	const stream = trackedCreateReadStream(filePath, {
-		encoding: "utf-8",
-		start: fromByteOffset,
-	});
+	const stream = trackedCreateReadStream(
+		filePath,
+		{
+			encoding: "utf-8",
+			start: fromByteOffset,
+		},
+	);
 	const rl = createLineReader(stream);
 
-	try {
-		for await (const line of rl) {
-			if (unparsedByteLength !== undefined) {
+	try
+	{
+		for await (const line of rl)
+		{
+			if (unparsedByteLength !== undefined)
+			{
 				// A line followed it, so the unparseable line was newline-terminated: skip it.
 				bytesConsumed += unparsedByteLength;
 				unparsedByteLength = undefined;
@@ -1295,26 +1796,36 @@ export async function readNewJsonlLines(
 			// Each line in the stream has its newline stripped by readline.
 			// Account for the line content + 1 byte for the newline character.
 			const lineByteLength = Buffer.byteLength(line, "utf-8") + 1;
-			if (!line.trim()) {
+			if (!line.trim())
+			{
 				bytesConsumed += lineByteLength;
 				continue;
 			}
-			try {
+			try
+			{
 				const parsed = JsonObjectSchema.safeParse(JSON.parse(line));
 				if (parsed.success) lines.push(parsed.data);
 				bytesConsumed += lineByteLength;
-			} catch {
+			}
+			catch
+			{
 				unparsedByteLength = lineByteLength;
 			}
 		}
 		// A final unparseable line is skipped only if its newline was read; an unterminated tail is a partial write
 		// still in progress, so leave the offset before it and re-read it on the next change.
-		if (unparsedByteLength !== undefined && bytesConsumed + unparsedByteLength <= stream.bytesRead) {
+		if (unparsedByteLength !== undefined && bytesConsumed + unparsedByteLength <= stream.bytesRead)
+		{
 			bytesConsumed += unparsedByteLength;
 		}
-	} finally {
+	}
+	finally
+	{
 		await rl.close();
 	}
 
-	return {lines, nextByteOffset: fromByteOffset + bytesConsumed};
+	return {
+		lines,
+		nextByteOffset: fromByteOffset + bytesConsumed,
+	};
 }

@@ -4,7 +4,8 @@ import {TEMPLATE_ICONS} from "./artifact-template-icons";
 import {ARTIFACT_TEMPLATES, type ArtifactTemplate} from "../lib/artifact-templates";
 
 /** Upstream's cds Badge: New is accent on tint-blue, Beta is secondary on neutral. */
-const BADGE_CLASS: Record<ArtifactTemplate["badge"], string> = {
+const BADGE_CLASS: Record<ArtifactTemplate["badge"], string> =
+{
 	New: "bg-upstream-tint-blue text-upstream-accent",
 	Beta: "bg-alpha-1 text-secondary",
 };
@@ -14,7 +15,8 @@ const BADGE_CLASS: Record<ArtifactTemplate["badge"], string> = {
  * prefills the composer with a starter prompt; sending it starts a herdr session that makes the
  * artifact. Each tile is a solid hue with a grain texture and grows to 103% on hover.
  */
-export function MakeSomethingNew() {
+export function MakeSomethingNew()
+{
 	const headingId = useId();
 	return (
 		<section aria-labelledby={headingId} data-make-something-new className="mb-10 flex flex-col gap-3">
@@ -35,15 +37,29 @@ export function MakeSomethingNew() {
 	);
 }
 
-function TemplateTile({template}: Readonly<{template: ArtifactTemplate}>) {
+function TemplateTile({
+	template,
+}: Readonly<
+{
+	template: ArtifactTemplate;
+}>)
+{
 	const descriptionId = useId();
 	const Icon = TEMPLATE_ICONS[template.slug];
 	return (
 		<Link
 			to="/"
-			search={{create: template.slug}}
+			search={
+			{
+				create: template.slug,
+			}}
 			aria-label={`${template.label}, ${template.badge}`}
-			{...(template.description === undefined ? {} : {"aria-describedby": descriptionId})}
+			{...(template.description === undefined
+				? {}
+				:
+					{
+						"aria-describedby": descriptionId,
+					})}
 			className="group flex w-34 flex-col gap-1.5 rounded-composer outline-none transition-transform duration-150 hide-focus-ring focus-visible:shadow-focus motion-safe:active:scale-[0.98]"
 		>
 			<span
@@ -70,7 +86,8 @@ function TemplateTile({template}: Readonly<{template: ArtifactTemplate}>) {
 }
 
 /** Upstream's 12% grain over the tile hue: fractal noise displaced by 1.6. */
-function TileGrain() {
+function TileGrain()
+{
 	const filterId = useId();
 	return (
 		<span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] opacity-[0.12]">
@@ -86,7 +103,15 @@ function TileGrain() {
 }
 
 /** A template's xs cds Badge ("New" or "Beta"), shared by the strip tiles and the sidebar template menu. */
-export function TemplateBadge({badge, className}: Readonly<{badge: ArtifactTemplate["badge"]; className?: string}>) {
+export function TemplateBadge({
+	badge,
+	className,
+}: Readonly<
+{
+	badge: ArtifactTemplate["badge"];
+	className?: string;
+}>)
+{
 	return (
 		<span
 			className={`inline-flex h-[18px] shrink-0 items-center whitespace-nowrap rounded-r4 px-1.5 text-caption font-medium ${BADGE_CLASS[badge]}${className === undefined ? "" : ` ${className}`}`}

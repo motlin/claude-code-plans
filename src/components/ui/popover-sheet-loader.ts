@@ -8,8 +8,10 @@ let popoverSheetLoad: Promise<PopoverSheetModule> | null = null;
  * `cds_mobile_sheets`. A root whose gate would open a sheet starts the load as it mounts, so by the first
  * tap the module is in hand and the sheet renders synchronously.
  */
-export async function preloadPopoverSheet(): Promise<PopoverSheetModule> {
-	popoverSheetLoad ??= import("./popover-sheet").then((module) => {
+export async function preloadPopoverSheet(): Promise<PopoverSheetModule>
+{
+	popoverSheetLoad ??= import("./popover-sheet").then((module) =>
+	{
 		popoverSheetModule = module;
 		return module;
 	});
@@ -17,6 +19,7 @@ export async function preloadPopoverSheet(): Promise<PopoverSheetModule> {
 }
 
 /** The sheet module once its chunk has loaded, so a sheet renders without suspending. */
-export function loadedPopoverSheet(): PopoverSheetModule | null {
+export function loadedPopoverSheet(): PopoverSheetModule | null
+{
 	return popoverSheetModule;
 }

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {noop, QueryClient, QueryClientProvider, timeoutManager} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRouteWithContext,
 	createRoute,
@@ -17,7 +18,8 @@ import {actAndSettle} from "./act-and-settle";
 import {StrictMode, useEffect, type ReactNode} from "react";
 import {afterEach, expect, it, vi} from "vite-plus/test";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../src/hooks/use-main-scroll-restoration";
-import {
+import
+{
 	invalidateSessionIdentities,
 	SESSION_IDENTITY_RETRY_DELAY_MS,
 	sessionIdentityQueryOptions,
@@ -31,22 +33,27 @@ import {SessionRouteIdentity} from "../src/components/session-route-identity";
 import {renderedPageTitle} from "./rendered-page-title";
 
 // The 503 case still makes all three lookups, without sleeping through the real retry delay between them.
-timeoutManager.setTimeoutProvider({
-	setTimeout: (callback, delay) =>
-		globalThis.setTimeout(callback, delay === SESSION_IDENTITY_RETRY_DELAY_MS ? 0 : delay),
-	clearTimeout: (id) => {
-		globalThis.clearTimeout(id);
+timeoutManager.setTimeoutProvider(
+	{
+		setTimeout: (callback, delay) =>
+			globalThis.setTimeout(callback, delay === SESSION_IDENTITY_RETRY_DELAY_MS ? 0 : delay),
+		clearTimeout: (id) =>
+		{
+			globalThis.clearTimeout(id);
+		},
+		setInterval: (callback, delay) => globalThis.setInterval(callback, delay),
+		clearInterval: (id) =>
+		{
+			globalThis.clearInterval(id);
+		},
 	},
-	setInterval: (callback, delay) => globalThis.setInterval(callback, delay),
-	clearInterval: (id) => {
-		globalThis.clearInterval(id);
-	},
-});
+);
 
 const ALIAS = "session_alice_100";
 const ALICE = "local-alice-100";
 const BOB = "local-bob-200";
-const observed = vi.hoisted(() => ({
+const observed = vi.hoisted(() => (
+{
 	owners: [] as string[],
 	mounts: 0,
 	scrollKeys: [] as string[],
@@ -56,7 +63,8 @@ const observed = vi.hoisted(() => ({
 
 // The real route, query cache and history run here. Only the expensive transcript leaf is a probe;
 // existing SessionPage and transcript scroll suites cover that leaf with its real implementation.
-vi.mock("../src/components/session-page", () => ({
+vi.mock("../src/components/session-page", () => (
+{
 	SessionPage: function SessionProbe({
 		sessionId,
 		routeId,
@@ -69,17 +77,24 @@ vi.mock("../src/components/session-page", () => ({
 		scrollKey?: string;
 		scrollRestoration?: MainScrollRestorationSnapshot;
 		onRequestedPaneHandled: () => void;
-	}) {
-		const locationKey = useLocation({select: (location) => sessionScrollKey(location, sessionId)});
+	})
+	{
+		const locationKey = useLocation(
+			{
+				select: (location) => sessionScrollKey(location, sessionId),
+			},
+		);
 		const key = scrollKey ?? locationKey;
 		const lateRestored = useMainScrollRestoration(key);
 		const restored = scrollRestoration === undefined ? lateRestored : scrollRestoration.entry;
 		observed.owners.push(sessionId);
 		observed.pairs.push(`${sessionId}:${routeId}`);
-		useEffect(() => {
+		useEffect(() =>
+		{
 			observed.mounts++;
 		}, []);
-		useEffect(() => {
+		useEffect(() =>
+		{
 			observed.scrollKeys.push(key);
 		}, [key]);
 		return (
@@ -101,7 +116,11 @@ vi.mock("../src/components/session-page", () => ({
 								type: "user",
 								uuid: "example-alice-prompt",
 								lineIndex: 0,
-								message: {role: "user", content: "Example Alice prompt"},
+								message:
+								{
+									role: "user",
+									content: "Example Alice prompt",
+								},
 							},
 						]}
 						toolResultMap={new Map()}
@@ -116,19 +135,39 @@ vi.mock("../src/components/session-page", () => ({
 	},
 }));
 
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useSubscribeSessionStates: () => () => () => {},
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useSubscribeSessionStates: () => () => () =>
+	{
+	},
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 // The shrinkwrap engine shares one ResizeObserver over every bubble's ancestors; keep it out of these scroll fakes.
-vi.mock("../src/hooks/use-shrinkwrap", () => ({useShrinkwrap: () => () => undefined}));
-vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
-vi.mock("../src/components/settings-context", async (importOriginal) => {
+vi.mock("../src/hooks/use-shrinkwrap", () => (
+{
+	useShrinkwrap: () => () => undefined,
+}));
+vi.mock("../src/lib/hmr-persist", () => (
+{
+	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
+}));
+vi.mock("../src/components/settings-context", async (importOriginal) =>
+{
 	const actual = await importOriginal<typeof import("../src/components/settings-context")>();
-	return {...actual, useSettings: () => ({settings: actual.DEFAULTS})};
+	return {
+		...actual,
+		useSettings: () => (
+		{
+			settings: actual.DEFAULTS,
+		}),
+	};
 });
 
-const ALICE_DETAIL: SessionDetailData = {
+const ALICE_DETAIL: SessionDetailData =
+{
 	title: "Alice session",
 	projectName: "Example",
 	projectId: "example",
@@ -143,7 +182,8 @@ const ALICE_DETAIL: SessionDetailData = {
 	gitClean: null,
 	messageCount: 1,
 	pendingTaskCount: 0,
-	viewedState: {
+	viewedState:
+	{
 		currentMessageIndex: 0,
 		lastViewedMessageIndex: -1,
 		reviewTargetMessageIndex: -1,
@@ -155,7 +195,8 @@ const ALICE_DETAIL: SessionDetailData = {
 };
 
 const clients: QueryClient[] = [];
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	for (const client of clients.splice(0)) client.clear();
 	observed.owners = [];
@@ -167,12 +208,17 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-function deferredResponse() {
+function deferredResponse()
+{
 	let finish!: (response: Response) => void;
-	const promise = new Promise<Response>((resolve) => {
+	const promise = new Promise<Response>((resolve) =>
+	{
 		finish = resolve;
 	});
-	return {promise, finish};
+	return {
+		promise,
+		finish,
+	};
 }
 
 async function setup({
@@ -183,7 +229,8 @@ async function setup({
 	initialState,
 	homeLoader,
 	strict = false,
-}: {
+}:
+{
 	initial?: string;
 	cachedOwner?: string;
 	invalidated?: boolean;
@@ -191,7 +238,8 @@ async function setup({
 	initialState?: HistoryState;
 	homeLoader?: () => Promise<void>;
 	strict?: boolean;
-} = {}) {
+} = {})
+{
 	vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 	const response = deferredResponse();
 	const detailResponse = deferredResponse();
@@ -206,41 +254,91 @@ async function setup({
 					: new Promise<Response>(() => {}),
 	);
 	vi.stubGlobal("fetch", fetcher);
-	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	const client = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	clients.push(client);
-	if (cachedOwner) client.setQueryData(sessionIdentityQueryOptions(ALIAS).queryKey, {sessionId: cachedOwner});
-	if (invalidated) await client.invalidateQueries({queryKey: sessionIdentityQueryOptions(ALIAS).queryKey});
+	if (cachedOwner)
+		client.setQueryData(
+			sessionIdentityQueryOptions(ALIAS).queryKey,
+			{
+				sessionId: cachedOwner,
+			},
+		);
+	if (invalidated)
+		await client.invalidateQueries(
+			{
+				queryKey: sessionIdentityQueryOptions(ALIAS).queryKey,
+			},
+		);
 	configure?.(client);
-	const root = createRootRouteWithContext<{queryClient: QueryClient}>()({
-		component: () => (
-			<>
-				<HeadContent />
-				<AttentionBadgeBridge />
-				<main data-testid="main" data-scroll-restoration-id="main">
-					<Outlet />
-				</main>
-			</>
-		),
-	});
-	SessionRoute.update({id: "/session/$id", path: "/session/$id", getParentRoute: () => root} as never);
-	const history = createMemoryHistory({initialEntries: ["/session/local-charlie-300", initial], initialIndex: 1});
+	const root = createRootRouteWithContext<
+	{
+		queryClient: QueryClient;
+	}>()(
+		{
+			component: () => (
+				<>
+					<HeadContent />
+					<AttentionBadgeBridge />
+					<main data-testid="main" data-scroll-restoration-id="main">
+						<Outlet />
+					</main>
+				</>
+			),
+		},
+	);
+	SessionRoute.update(
+		{
+			id: "/session/$id",
+			path: "/session/$id",
+			getParentRoute: () => root,
+		} as never,
+	);
+	const history = createMemoryHistory(
+		{
+			initialEntries: ["/session/local-charlie-300", initial],
+			initialIndex: 1,
+		},
+	);
 	if (initialState) history.replace(initial, initialState);
-	const router = createRouter({
-		routeTree: root.addChildren([
-			SessionRoute,
-			createRoute({
-				getParentRoute: () => root,
-				path: "/",
-				...(homeLoader ? {loader: homeLoader} : {}),
-				component: () => <p>New session</p>,
-			}),
-		]),
-		context: {queryClient: client},
-		history,
-		scrollRestoration: true,
-	});
+	const router = createRouter(
+		{
+			routeTree: root.addChildren([
+				SessionRoute,
+				createRoute(
+					{
+						getParentRoute: () => root,
+						path: "/",
+						...(homeLoader
+							?
+								{
+									loader: homeLoader,
+								}
+							: {}),
+						component: () => <p>New session</p>,
+					},
+				),
+			]),
+			context:
+			{
+				queryClient: client,
+			},
+			history,
+			scrollRestoration: true,
+		},
+	);
 	await router.load();
-	await actAndSettle(() => {
+	await actAndSettle(() =>
+	{
 		render(
 			<QueryClientProvider client={client}>
 				{strict ? (
@@ -259,119 +357,252 @@ async function setup({
 		fetcher,
 		finish: response.finish,
 		finishDetail: detailResponse.finish,
-		setLookup: (next: () => Promise<Response>) => {
+		setLookup: (next: () => Promise<Response>) =>
+		{
 			lookup = next;
 		},
 	};
 }
 
-it("keeps a cold alias pending without sending it to UUID APIs, then opens its resolved owner", async () => {
+it("keeps a cold alias pending without sending it to UUID APIs, then opens its resolved owner", async () =>
+{
 	const {fetcher, finish} = await setup();
-	const pending = {
+	const pending =
+	{
 		skeleton: screen.queryByTestId("session-skeleton") !== null,
 		calls: fetcher.mock.calls.map(([url]) => url),
 	};
-	await actAndSettle(() => {
-		finish(Response.json({sessionId: ALICE}));
+	await actAndSettle(() =>
+	{
+		finish(
+			Response.json(
+				{
+					sessionId: ALICE,
+				},
+			),
+		);
 	});
 	const page = await screen.findByTestId("session");
-	expect({
-		pending,
-		owner: page.dataset["session"],
-		owners: new Set(observed.owners),
-		urls: fetcher.mock.calls.map(([url]) => url),
-	}).toStrictEqual({
-		pending: {skeleton: true, calls: [`/api/sessions/${ALIAS}/identity`]},
-		owner: ALICE,
-		owners: new Set([ALICE]),
-		urls: [`/api/sessions/${ALIAS}/identity`, `/api/sessions/${ALICE}`],
-	});
+	expect(
+		{
+			pending,
+			owner: page.dataset["session"],
+			owners: new Set(observed.owners),
+			urls: fetcher.mock.calls.map(([url]) => url),
+		},
+	).toStrictEqual(
+		{
+			pending:
+			{
+				skeleton: true,
+				calls: [`/api/sessions/${ALIAS}/identity`],
+			},
+			owner: ALICE,
+			owners: new Set([ALICE]),
+			urls: [`/api/sessions/${ALIAS}/identity`, `/api/sessions/${ALICE}`],
+		},
+	);
 });
 
-it("resolves a short session ID prefix to its full ID before any session query or subscription is keyed by it", async () => {
-	const {fetcher, finish} = await setup({initial: "/session/6473581f"});
-	const pending = {
+it("resolves a short session ID prefix to its full ID before any session query or subscription is keyed by it", async () =>
+{
+	const {fetcher, finish} = await setup(
+		{
+			initial: "/session/6473581f",
+		},
+	);
+	const pending =
+	{
 		skeleton: screen.queryByTestId("session-skeleton") !== null,
 		calls: fetcher.mock.calls.map(([url]) => url),
 	};
-	await actAndSettle(() => {
-		finish(Response.json({sessionId: ALICE}));
+	await actAndSettle(() =>
+	{
+		finish(
+			Response.json(
+				{
+					sessionId: ALICE,
+				},
+			),
+		);
 	});
 	const page = await screen.findByTestId("session");
-	expect({
-		pending,
-		owner: page.dataset["session"],
-		owners: new Set(observed.owners),
-		urls: fetcher.mock.calls.map(([url]) => url),
-	}).toStrictEqual({
-		pending: {skeleton: true, calls: ["/api/sessions/6473581f/identity"]},
-		owner: ALICE,
-		owners: new Set([ALICE]),
-		urls: ["/api/sessions/6473581f/identity", `/api/sessions/${ALICE}`],
-	});
+	expect(
+		{
+			pending,
+			owner: page.dataset["session"],
+			owners: new Set(observed.owners),
+			urls: fetcher.mock.calls.map(([url]) => url),
+		},
+	).toStrictEqual(
+		{
+			pending:
+			{
+				skeleton: true,
+				calls: ["/api/sessions/6473581f/identity"],
+			},
+			owner: ALICE,
+			owners: new Set([ALICE]),
+			urls: ["/api/sessions/6473581f/identity", `/api/sessions/${ALICE}`],
+		},
+	);
 });
 
-it("leaves UUID navigation immediate with exactly four synchronous prefetches and no identity lookup", async () => {
-	const {fetcher} = await setup({initial: `/session/${ALICE}`});
-	expect({
-		owner: screen.getByTestId("session").dataset["session"],
-		urls: fetcher.mock.calls.map(([url]) => url),
-	}).toStrictEqual({
-		owner: ALICE,
-		urls: [
-			`/api/sessions/${ALICE}`,
-			`/api/sessions/${ALICE}/transcript`,
-			`/api/sessions/${ALICE}/subagents`,
-			"/api/herdr-panes",
-		],
-	});
+it("leaves UUID navigation immediate with exactly four synchronous prefetches and no identity lookup", async () =>
+{
+	const {fetcher} = await setup(
+		{
+			initial: `/session/${ALICE}`,
+		},
+	);
+	expect(
+		{
+			owner: screen.getByTestId("session").dataset["session"],
+			urls: fetcher.mock.calls.map(([url]) => url),
+		},
+	).toStrictEqual(
+		{
+			owner: ALICE,
+			urls: [
+				`/api/sessions/${ALICE}`,
+				`/api/sessions/${ALICE}/transcript`,
+				`/api/sessions/${ALICE}/subagents`,
+				"/api/herdr-panes",
+			],
+		},
+	);
 });
 
-it("waits for a fresh lookup rather than pinning invalidated success from a previous visit", async () => {
-	const {finish} = await setup({cachedOwner: ALICE, invalidated: true});
-	const pending = {owners: [...observed.owners], skeleton: screen.queryByTestId("session-skeleton") !== null};
-	await actAndSettle(() => {
-		finish(Response.json({sessionId: BOB}));
+it("waits for a fresh lookup rather than pinning invalidated success from a previous visit", async () =>
+{
+	const {finish} = await setup(
+		{
+			cachedOwner: ALICE,
+			invalidated: true,
+		},
+	);
+	const pending =
+	{
+		owners: [...observed.owners],
+		skeleton: screen.queryByTestId("session-skeleton") !== null,
+	};
+	await actAndSettle(() =>
+	{
+		finish(
+			Response.json(
+				{
+					sessionId: BOB,
+				},
+			),
+		);
 	});
 	const page = await screen.findByTestId("session");
-	expect({pending, owner: page.dataset["session"], owners: new Set(observed.owners)}).toStrictEqual({
-		pending: {owners: [], skeleton: true},
-		owner: BOB,
-		owners: new Set([BOB]),
-	});
+	expect(
+		{
+			pending,
+			owner: page.dataset["session"],
+			owners: new Set(observed.owners),
+		},
+	).toStrictEqual(
+		{
+			pending:
+			{
+				owners: [],
+				skeleton: true,
+			},
+			owner: BOB,
+			owners: new Set([BOB]),
+		},
+	);
 });
 
-it("shows upstream's missing-session view when the alias lookup 404s", async () => {
+it("shows upstream's missing-session view when the alias lookup 404s", async () =>
+{
 	const {finish, setLookup} = await setup();
-	setLookup(async () => Promise.resolve(new Response(null, {status: 404})));
-	await actAndSettle(() => {
-		finish(new Response(null, {status: 404}));
+	setLookup(async () =>
+		Promise.resolve(
+			new Response(
+				null,
+				{
+					status: 404,
+				},
+			),
+		),
+	);
+	await actAndSettle(() =>
+	{
+		finish(
+			new Response(
+				null,
+				{
+					status: 404,
+				},
+			),
+		);
 	});
-	const heading = await screen.findByRole("heading", {level: 2});
-	expect({
-		heading: heading.textContent,
-		body: heading.nextElementSibling?.textContent,
-		buttons: screen.getAllByRole("button").map((button) => button.textContent),
-		title: renderedPageTitle(),
-	}).toStrictEqual({
-		heading: "This session couldn’t be found",
-		body: "It may have been deleted, or you may not have access.",
-		buttons: ["Start a new session"],
-		title: "Session Not Found",
-	});
+	const heading = await screen.findByRole(
+		"heading",
+		{
+			level: 2,
+		},
+	);
+	expect(
+		{
+			heading: heading.textContent,
+			body: heading.nextElementSibling?.textContent,
+			buttons: screen.getAllByRole("button").map((button) => button.textContent),
+			title: renderedPageTitle(),
+		},
+	).toStrictEqual(
+		{
+			heading: "This session couldn’t be found",
+			body: "It may have been deleted, or you may not have access.",
+			buttons: ["Start a new session"],
+			title: "Session Not Found",
+		},
+	);
 });
 
-it.each([409, 503])("shows an honest %s lookup error and supports manual retry", async (status) => {
+it.each([409, 503])("shows an honest %s lookup error and supports manual retry", async (status) =>
+{
 	const {finish, setLookup, fetcher, client} = await setup();
-	setLookup(async () => Promise.resolve(new Response(null, {status})));
-	await actAndSettle(() => {
-		finish(new Response(null, {status}));
+	setLookup(async () =>
+		Promise.resolve(
+			new Response(
+				null,
+				{
+					status,
+				},
+			),
+		),
+	);
+	await actAndSettle(() =>
+	{
+		finish(
+			new Response(
+				null,
+				{
+					status,
+				},
+			),
+		);
 	});
 	const alert = await screen.findByRole("alert");
 	const message = alert.textContent;
-	const heading = screen.getByRole("heading", {level: 2});
-	const retry = screen.getByRole("button", {name: "Retry"});
-	const layout = {
+	const heading = screen.getByRole(
+		"heading",
+		{
+			level: 2,
+		},
+	);
+	const retry = screen.getByRole(
+		"button",
+		{
+			name: "Retry",
+		},
+	);
+	const layout =
+	{
 		heading: heading.textContent,
 		alertFollowsHeading: heading.nextElementSibling === alert,
 		alertClasses: alert.className,
@@ -380,112 +611,200 @@ it.each([409, 503])("shows an honest %s lookup error and supports manual retry",
 	};
 	const failedRequests = fetcher.mock.calls.length;
 	const title = renderedPageTitle();
-	act(() => {
+	act(() =>
+	{
 		document.dispatchEvent(new Event("visibilitychange"));
 	});
 	const attentionTitle = renderedPageTitle();
 	client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, ALICE_DETAIL);
-	setLookup(async () => Promise.resolve(Response.json({sessionId: ALICE})));
-	fireEvent.click(screen.getByRole("button", {name: "Retry"}));
+	setLookup(async () =>
+		Promise.resolve(
+			Response.json(
+				{
+					sessionId: ALICE,
+				},
+			),
+		),
+	);
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "Retry",
+			},
+		),
+	);
 	const page = await screen.findByTestId("session");
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(renderedPageTitle()).toBe("Alice session");
 	});
-	expect({
-		status,
-		layout,
-		message,
-		title,
-		attentionTitle,
-		failedRequests,
-		owner: page.dataset["session"],
-		owners: new Set(observed.owners),
-	}).toStrictEqual({
-		status,
-		layout: {
-			heading: status === 409 ? "Ambiguous session link" : "Indexing sessions…",
-			alertFollowsHeading: true,
-			alertClasses: "text-pretty text-secondary",
-			retryClasses:
-				"h-5 rounded-r4 px-1.5 text-[12px]/[17px] font-control bg-fill-primary text-on-primary hover:bg-fill-primary-hover outline-none focus-visible:shadow-focus transition-shadow",
-			retryInActions: true,
+	expect(
+		{
+			status,
+			layout,
+			message,
+			title,
+			attentionTitle,
+			failedRequests,
+			owner: page.dataset["session"],
+			owners: new Set(observed.owners),
 		},
-		attentionTitle: status === 409 ? "Ambiguous session link" : "Indexing sessions…",
-		title: status === 409 ? "Ambiguous session link" : "Indexing sessions…",
-		message:
-			status === 409
-				? "This session link has more than one local session."
-				: "Sessions are still being indexed. Try again shortly.",
-		failedRequests: status === 503 ? 3 : 1,
-		owner: ALICE,
-		owners: new Set([ALICE]),
-	});
+	).toStrictEqual(
+		{
+			status,
+			layout:
+			{
+				heading: status === 409 ? "Ambiguous session link" : "Indexing sessions…",
+				alertFollowsHeading: true,
+				alertClasses: "text-pretty text-secondary",
+				retryClasses:
+					"h-5 rounded-r4 px-1.5 text-[12px]/[17px] font-control bg-fill-primary text-on-primary hover:bg-fill-primary-hover outline-none focus-visible:shadow-focus transition-shadow",
+				retryInActions: true,
+			},
+			attentionTitle: status === 409 ? "Ambiguous session link" : "Indexing sessions…",
+			title: status === 409 ? "Ambiguous session link" : "Indexing sessions…",
+			message:
+				status === 409
+					? "This session link has more than one local session."
+					: "Sessions are still being indexed. Try again shortly.",
+			failedRequests: status === 503 ? 3 : 1,
+			owner: ALICE,
+			owners: new Set([ALICE]),
+		},
+	);
 });
 
 it.each(["ambiguous", "new-owner"])(
 	"keeps the same mounted owner and scroll identity when a live alias becomes %s",
-	async (change) => {
-		const {client, router, setLookup} = await setup({
-			initial: `/session/${ALIAS}?pane=changes#message-alice`,
-			cachedOwner: ALICE,
-		});
+	async (change) =>
+	{
+		const {client, router, setLookup} = await setup(
+			{
+				initial: `/session/${ALIAS}?pane=changes#message-alice`,
+				cachedOwner: ALICE,
+			},
+		);
 		const page = await screen.findByTestId("session");
-		await actAndSettle(() => {
+		await actAndSettle(() =>
+		{
 			client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, ALICE_DETAIL);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(renderedPageTitle()).toBe("Alice session");
 		});
 		const main = screen.getByTestId("main");
 		const originalKey = router.state.location.state.__TSR_key;
-		fireEvent.change(screen.getByRole("textbox", {name: "Draft"}), {target: {value: "Keep Alice's draft"}});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Draft",
+				},
+			),
+			{
+				target:
+				{
+					value: "Keep Alice's draft",
+				},
+			},
+		);
 		main.scrollTop = 300;
 		main.dispatchEvent(new Event("scroll"));
 		setLookup(async () =>
 			Promise.resolve(
-				change === "ambiguous" ? new Response(null, {status: 409}) : Response.json({sessionId: BOB}),
+				change === "ambiguous"
+					? new Response(
+							null,
+							{
+								status: 409,
+							},
+						)
+					: Response.json(
+							{
+								sessionId: BOB,
+							},
+						),
 			),
 		);
 		await act(async () => invalidateSessionIdentities(client));
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe(`/session/${ALICE}`);
 		});
-		expect({
-			title: renderedPageTitle(),
-			samePage: screen.getByTestId("session") === page,
-			owners: new Set(observed.owners),
-			mounts: observed.mounts,
-			keyChanged: originalKey !== router.state.location.state.__TSR_key,
-			scrollKeys: observed.scrollKeys.map((key) => key === originalKey),
-			route: page.dataset["route"],
-			scrollTop: main.scrollTop,
-			draft: screen.getByRole<HTMLInputElement>("textbox", {name: "Draft"}).value,
-			search: {...router.state.location.search},
-			hash: router.state.location.hash,
-			length: router.history.length,
-		}).toStrictEqual({
-			title: "Alice session",
-			samePage: true,
-			owners: new Set([ALICE]),
-			mounts: 1,
-			keyChanged: true,
-			scrollKeys: [true],
-			route: ALIAS,
-			scrollTop: 300,
-			draft: "Keep Alice's draft",
-			search: {pane: "changes"},
-			hash: "message-alice",
-			length: 2,
-		});
-		act(() => {
+		expect(
+			{
+				title: renderedPageTitle(),
+				samePage: screen.getByTestId("session") === page,
+				owners: new Set(observed.owners),
+				mounts: observed.mounts,
+				keyChanged: originalKey !== router.state.location.state.__TSR_key,
+				scrollKeys: observed.scrollKeys.map((key) => key === originalKey),
+				route: page.dataset["route"],
+				scrollTop: main.scrollTop,
+				draft: screen.getByRole<HTMLInputElement>(
+					"textbox",
+					{
+						name: "Draft",
+					},
+				).value,
+				search:
+				{
+					...router.state.location.search,
+				},
+				hash: router.state.location.hash,
+				length: router.history.length,
+			},
+		).toStrictEqual(
+			{
+				title: "Alice session",
+				samePage: true,
+				owners: new Set([ALICE]),
+				mounts: 1,
+				keyChanged: true,
+				scrollKeys: [true],
+				route: ALIAS,
+				scrollTop: 300,
+				draft: "Keep Alice's draft",
+				search:
+				{
+					pane: "changes",
+				},
+				hash: "message-alice",
+				length: 2,
+			},
+		);
+		act(() =>
+		{
 			router.history.back();
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/session/local-charlie-300");
 		});
-		setLookup(async () => Promise.resolve(Response.json({sessionId: BOB})));
-		await act(async () => router.navigate({to: "/session/$id", params: {id: ALIAS}}));
-		await waitFor(() => {
+		setLookup(async () =>
+			Promise.resolve(
+				Response.json(
+					{
+						sessionId: BOB,
+					},
+				),
+			),
+		);
+		await act(async () =>
+			router.navigate(
+				{
+					to: "/session/$id",
+					params:
+					{
+						id: ALIAS,
+					},
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(screen.getByTestId("session").dataset["session"]).toBe(BOB);
 		});
 	},
@@ -493,489 +812,914 @@ it.each(["ambiguous", "new-owner"])(
 
 it.each([BOB, "session_bob_200"])(
 	"does not carry another session's scroll identity into a new %s visit",
-	async (target) => {
-		const {router, finish} = await setup({initial: `/session/${ALICE}`});
+	async (target) =>
+	{
+		const {router, finish} = await setup(
+			{
+				initial: `/session/${ALICE}`,
+			},
+		);
 		const oldKey = router.state.location.state.__TSR_key!;
 		await act(async () =>
-			router.navigate({
-				to: "/session/$id",
-				params: {id: target},
-				state: {sessionIdentity: {sessionId: ALICE, routeId: ALIAS, scrollKey: oldKey}},
-			}),
+			router.navigate(
+				{
+					to: "/session/$id",
+					params:
+					{
+						id: target,
+					},
+					state:
+					{
+						sessionIdentity:
+						{
+							sessionId: ALICE,
+							routeId: ALIAS,
+							scrollKey: oldKey,
+						},
+					},
+				},
+			),
 		);
 		if (target.startsWith("session_"))
-			await actAndSettle(() => {
-				finish(Response.json({sessionId: BOB}));
+			await actAndSettle(() =>
+			{
+				finish(
+					Response.json(
+						{
+							sessionId: BOB,
+						},
+					),
+				);
 			});
 		await screen.findByTestId("session");
-		expect({
-			owner: screen.getByTestId("session").dataset["session"],
-			keys: observed.scrollKeys.map((key) => key === router.state.location.state.__TSR_key),
-			route: screen.getByTestId("session").dataset["route"],
-		}).toStrictEqual({owner: BOB, keys: [false, true], route: target});
+		expect(
+			{
+				owner: screen.getByTestId("session").dataset["session"],
+				keys: observed.scrollKeys.map((key) => key === router.state.location.state.__TSR_key),
+				route: screen.getByTestId("session").dataset["route"],
+			},
+		).toStrictEqual(
+			{
+				owner: BOB,
+				keys: [false, true],
+				route: target,
+			},
+		);
 	},
 );
 
-it("does not open a late alias result after navigation leaves that visit", async () => {
+it("does not open a late alias result after navigation leaves that visit", async () =>
+{
 	const {router, finish, fetcher} = await setup();
-	await act(async () => router.navigate({to: "/session/$id", params: {id: BOB}}));
-	await actAndSettle(() => {
-		finish(Response.json({sessionId: ALICE}));
+	await act(async () =>
+		router.navigate(
+			{
+				to: "/session/$id",
+				params:
+				{
+					id: BOB,
+				},
+			},
+		),
+	);
+	await actAndSettle(() =>
+	{
+		finish(
+			Response.json(
+				{
+					sessionId: ALICE,
+				},
+			),
+		);
 	});
-	expect({
-		aborted: fetcher.mock.calls[0]?.[1]?.signal?.aborted,
-		pathname: router.state.location.pathname,
-		owners: new Set(observed.owners),
-		urls: fetcher.mock.calls.map(([url]) => url),
-	}).toStrictEqual({
-		aborted: true,
-		pathname: `/session/${BOB}`,
-		owners: new Set([BOB]),
-		urls: [
-			`/api/sessions/${ALIAS}/identity`,
-			`/api/sessions/${BOB}`,
-			`/api/sessions/${BOB}/transcript`,
-			`/api/sessions/${BOB}/subagents`,
-			"/api/herdr-panes",
-		],
-	});
+	expect(
+		{
+			aborted: fetcher.mock.calls[0]?.[1]?.signal?.aborted,
+			pathname: router.state.location.pathname,
+			owners: new Set(observed.owners),
+			urls: fetcher.mock.calls.map(([url]) => url),
+		},
+	).toStrictEqual(
+		{
+			aborted: true,
+			pathname: `/session/${BOB}`,
+			owners: new Set([BOB]),
+			urls: [
+				`/api/sessions/${ALIAS}/identity`,
+				`/api/sessions/${BOB}`,
+				`/api/sessions/${BOB}/transcript`,
+				`/api/sessions/${BOB}/subagents`,
+				"/api/herdr-panes",
+			],
+		},
+	);
 });
 
-it("retains the pinned visit when consuming a pane deep link during an identity refresh", async () => {
-	const {client, router, finish} = await setup({
-		initial: `/session/${ALIAS}?pane=changes#message-alice`,
-		cachedOwner: ALICE,
-	});
+it("retains the pinned visit when consuming a pane deep link during an identity refresh", async () =>
+{
+	const {client, router, finish} = await setup(
+		{
+			initial: `/session/${ALIAS}?pane=changes#message-alice`,
+			cachedOwner: ALICE,
+		},
+	);
 	const page = screen.getByTestId("session");
 	const originalKey = router.state.location.state.__TSR_key;
-	await actAndSettle(() => {
+	await actAndSettle(() =>
+	{
 		void invalidateSessionIdentities(client);
 	});
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(client.getQueryState(sessionIdentityQueryOptions(ALIAS).queryKey)?.fetchStatus).toBe("fetching");
 	});
-	fireEvent.click(screen.getByRole("button", {name: "Pane opened"}));
-	await waitFor(() => {
-		expect({...router.state.location.search}).toStrictEqual({});
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "Pane opened",
+			},
+		),
+	);
+	await waitFor(() =>
+	{
+		expect(
+			{
+				...router.state.location.search,
+			},
+		).toStrictEqual({});
 	});
-	await actAndSettle(() => {
-		finish(new Response(null, {status: 409}));
+	await actAndSettle(() =>
+	{
+		finish(
+			new Response(
+				null,
+				{
+					status: 409,
+				},
+			),
+		);
 	});
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(router.state.location.pathname).toBe(`/session/${ALICE}`);
 	});
-	expect({
-		samePage: screen.getByTestId("session") === page,
-		mounts: observed.mounts,
-		owners: new Set(observed.owners),
-		scrollKeys: observed.scrollKeys.map((key) => key === originalKey),
-		route: page.dataset["route"],
-		hash: router.state.location.hash,
-		length: router.history.length,
-	}).toStrictEqual({
-		samePage: true,
-		mounts: 1,
-		owners: new Set([ALICE]),
-		scrollKeys: [true],
-		route: ALIAS,
-		hash: "message-alice",
-		length: 2,
-	});
+	expect(
+		{
+			samePage: screen.getByTestId("session") === page,
+			mounts: observed.mounts,
+			owners: new Set(observed.owners),
+			scrollKeys: observed.scrollKeys.map((key) => key === originalKey),
+			route: page.dataset["route"],
+			hash: router.state.location.hash,
+			length: router.history.length,
+		},
+	).toStrictEqual(
+		{
+			samePage: true,
+			mounts: 1,
+			owners: new Set([ALICE]),
+			scrollKeys: [true],
+			route: ALIAS,
+			hash: "message-alice",
+			length: 2,
+		},
+	);
 });
 
-it("replaces a UUID with its fresh alias without another request or losing the mounted visit", async () => {
-	const {router, client, finishDetail, fetcher} = await setup({
-		initial: `/session/${ALICE}?pane=changes#message-alice`,
-	});
+it("replaces a UUID with its fresh alias without another request or losing the mounted visit", async () =>
+{
+	const {router, client, finishDetail, fetcher} = await setup(
+		{
+			initial: `/session/${ALICE}?pane=changes#message-alice`,
+		},
+	);
 	const page = screen.getByTestId("session");
 	const main = screen.getByTestId("main");
 	const key = router.state.location.state.__TSR_key;
-	fireEvent.change(screen.getByRole("textbox", {name: "Draft"}), {target: {value: "Keep Alice's draft"}});
+	fireEvent.change(
+		screen.getByRole(
+			"textbox",
+			{
+				name: "Draft",
+			},
+		),
+		{
+			target:
+			{
+				value: "Keep Alice's draft",
+			},
+		},
+	);
 	main.scrollTop = 300;
 	main.dispatchEvent(new Event("scroll"));
-	await actAndSettle(() => {
-		finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
+	await actAndSettle(() =>
+	{
+		finishDetail(
+			Response.json(
+				{
+					...ALICE_DETAIL,
+					canonicalRouteId: ALIAS,
+				},
+			),
+		);
 	});
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(router.state.location.pathname).toBe(`/session/${ALIAS}`);
 	});
-	const canonicalSearch = {...router.state.location.search};
-	fireEvent.click(screen.getByRole("button", {name: "Pane opened"}));
-	await waitFor(() => {
-		expect({...router.state.location.search}).toStrictEqual({});
+	const canonicalSearch =
+	{
+		...router.state.location.search,
+	};
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "Pane opened",
+			},
+		),
+	);
+	await waitFor(() =>
+	{
+		expect(
+			{
+				...router.state.location.search,
+			},
+		).toStrictEqual({});
 	});
-	expect({
-		samePage: screen.getByTestId("session") === page,
-		owners: new Set(observed.owners),
-		mounts: observed.mounts,
-		nativeKeyChanged: key !== router.state.location.state.__TSR_key,
-		scrollKeys: observed.scrollKeys.map((value) => value === key),
-		initialRoute: page.dataset["route"],
-		scroll: main.scrollTop,
-		draft: screen.getByRole<HTMLInputElement>("textbox", {name: "Draft"}).value,
-		canonicalSearch,
-		hash: router.state.location.hash,
-		historyLength: router.history.length,
-		identity: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
-		urls: fetcher.mock.calls.map(([url]) => url),
-	}).toStrictEqual({
-		samePage: true,
-		owners: new Set([ALICE]),
-		mounts: 1,
-		nativeKeyChanged: true,
-		scrollKeys: [true],
-		initialRoute: ALICE,
-		scroll: 300,
-		draft: "Keep Alice's draft",
-		canonicalSearch: {pane: "changes"},
-		hash: "message-alice",
-		historyLength: 2,
-		identity: {sessionId: ALICE},
-		urls: [
-			`/api/sessions/${ALICE}`,
-			`/api/sessions/${ALICE}/transcript`,
-			`/api/sessions/${ALICE}/subagents`,
-			"/api/herdr-panes",
-		],
-	});
-	act(() => {
+	expect(
+		{
+			samePage: screen.getByTestId("session") === page,
+			owners: new Set(observed.owners),
+			mounts: observed.mounts,
+			nativeKeyChanged: key !== router.state.location.state.__TSR_key,
+			scrollKeys: observed.scrollKeys.map((value) => value === key),
+			initialRoute: page.dataset["route"],
+			scroll: main.scrollTop,
+			draft: screen.getByRole<HTMLInputElement>(
+				"textbox",
+				{
+					name: "Draft",
+				},
+			).value,
+			canonicalSearch,
+			hash: router.state.location.hash,
+			historyLength: router.history.length,
+			identity: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
+			urls: fetcher.mock.calls.map(([url]) => url),
+		},
+	).toStrictEqual(
+		{
+			samePage: true,
+			owners: new Set([ALICE]),
+			mounts: 1,
+			nativeKeyChanged: true,
+			scrollKeys: [true],
+			initialRoute: ALICE,
+			scroll: 300,
+			draft: "Keep Alice's draft",
+			canonicalSearch:
+			{
+				pane: "changes",
+			},
+			hash: "message-alice",
+			historyLength: 2,
+			identity:
+			{
+				sessionId: ALICE,
+			},
+			urls: [
+				`/api/sessions/${ALICE}`,
+				`/api/sessions/${ALICE}/transcript`,
+				`/api/sessions/${ALICE}/subagents`,
+				"/api/herdr-panes",
+			],
+		},
+	);
+	act(() =>
+	{
 		router.history.back();
 	});
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(router.state.location.pathname).toBe("/session/local-charlie-300");
 	});
 });
 
 it.each(["ambiguous", "new-owner"])(
 	"keeps the original UUID visit after a canonical alias becomes %s without reseeding",
-	async (change) => {
-		const {router, client, finishDetail, fetcher, setLookup} = await setup({initial: `/session/${ALICE}`});
+	async (change) =>
+	{
+		const {router, client, finishDetail, fetcher, setLookup} = await setup(
+			{
+				initial: `/session/${ALICE}`,
+			},
+		);
 		const page = screen.getByTestId("session");
 		const key = router.state.location.state.__TSR_key;
-		await actAndSettle(() => {
-			finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
+		await actAndSettle(() =>
+		{
+			finishDetail(
+				Response.json(
+					{
+						...ALICE_DETAIL,
+						canonicalRouteId: ALIAS,
+					},
+				),
+			);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe(`/session/${ALIAS}`);
 		});
 		setLookup(async () =>
 			Promise.resolve(
-				change === "ambiguous" ? new Response(null, {status: 409}) : Response.json({sessionId: BOB}),
+				change === "ambiguous"
+					? new Response(
+							null,
+							{
+								status: 409,
+							},
+						)
+					: Response.json(
+							{
+								sessionId: BOB,
+							},
+						),
 			),
 		);
 		await act(async () => invalidateSessionIdentities(client));
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe(`/session/${ALICE}`);
 		});
-		await actAndSettle(() => {
-			client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, () => ({
+		await actAndSettle(() =>
+		{
+			client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, () => (
+			{
 				...ALICE_DETAIL,
 				canonicalRouteId: ALIAS,
 			}));
 		});
-		expect({
-			samePage: screen.getByTestId("session") === page,
-			owners: new Set(observed.owners),
-			mounts: observed.mounts,
-			initialRoute: page.dataset["route"],
-			scrollKeys: observed.scrollKeys.map((value) => value === key),
-			pathname: router.state.location.pathname,
-			identityStatus: client.getQueryState(sessionIdentityQueryOptions(ALIAS).queryKey)?.status,
-			identity: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
-			identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")).length,
-		}).toStrictEqual({
-			samePage: true,
-			owners: new Set([ALICE]),
-			mounts: 1,
-			initialRoute: ALICE,
-			scrollKeys: [true],
-			pathname: `/session/${ALICE}`,
-			identityStatus: change === "ambiguous" ? "error" : "success",
-			identity: {sessionId: change === "ambiguous" ? ALICE : BOB},
-			identityRequests: 1,
-		});
+		expect(
+			{
+				samePage: screen.getByTestId("session") === page,
+				owners: new Set(observed.owners),
+				mounts: observed.mounts,
+				initialRoute: page.dataset["route"],
+				scrollKeys: observed.scrollKeys.map((value) => value === key),
+				pathname: router.state.location.pathname,
+				identityStatus: client.getQueryState(sessionIdentityQueryOptions(ALIAS).queryKey)?.status,
+				identity: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
+				identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")).length,
+			},
+		).toStrictEqual(
+			{
+				samePage: true,
+				owners: new Set([ALICE]),
+				mounts: 1,
+				initialRoute: ALICE,
+				scrollKeys: [true],
+				pathname: `/session/${ALICE}`,
+				identityStatus: change === "ambiguous" ? "error" : "success",
+				identity:
+				{
+					sessionId: change === "ambiguous" ? ALICE : BOB,
+				},
+				identityRequests: 1,
+			},
+		);
 	},
 );
 
-it("preserves an explicitly opened historical alias even when detail advertises a newer alias", async () => {
-	const {router, client, finishDetail, fetcher} = await setup({cachedOwner: ALICE});
-	await actAndSettle(() => {
-		finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: "session_alice_200"}));
+it("preserves an explicitly opened historical alias even when detail advertises a newer alias", async () =>
+{
+	const {router, client, finishDetail, fetcher} = await setup(
+		{
+			cachedOwner: ALICE,
+		},
+	);
+	await actAndSettle(() =>
+	{
+		finishDetail(
+			Response.json(
+				{
+					...ALICE_DETAIL,
+					canonicalRouteId: "session_alice_200",
+				},
+			),
+		);
 	});
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(renderedPageTitle()).toBe("Alice session");
 	});
-	expect({
-		pathname: router.state.location.pathname,
-		initialRoute: screen.getByTestId("session").dataset["route"],
-		latestIdentity: client.getQueryState(sessionIdentityQueryOptions("session_alice_200").queryKey),
-		identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")),
-	}).toStrictEqual({
-		pathname: `/session/${ALIAS}`,
-		initialRoute: ALIAS,
-		latestIdentity: undefined,
-		identityRequests: [],
-	});
+	expect(
+		{
+			pathname: router.state.location.pathname,
+			initialRoute: screen.getByTestId("session").dataset["route"],
+			latestIdentity: client.getQueryState(sessionIdentityQueryOptions("session_alice_200").queryKey),
+			identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")),
+		},
+	).toStrictEqual(
+		{
+			pathname: `/session/${ALIAS}`,
+			initialRoute: ALIAS,
+			latestIdentity: undefined,
+			identityRequests: [],
+		},
+	);
 });
 
-it("waits for a pending backfill marker to clear before seeding a canonical alias", async () => {
-	const {router, client, finishDetail, fetcher} = await setup({initial: `/session/${ALICE}`});
-	await actAndSettle(() => {
-		finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS, canonicalRoutePending: true}));
+it("waits for a pending backfill marker to clear before seeding a canonical alias", async () =>
+{
+	const {router, client, finishDetail, fetcher} = await setup(
+		{
+			initial: `/session/${ALICE}`,
+		},
+	);
+	await actAndSettle(() =>
+	{
+		finishDetail(
+			Response.json(
+				{
+					...ALICE_DETAIL,
+					canonicalRouteId: ALIAS,
+					canonicalRoutePending: true,
+				},
+			),
+		);
 	});
-	const pending = {
+	const pending =
+	{
 		pathname: router.state.location.pathname,
 		identity: client.getQueryState(sessionIdentityQueryOptions(ALIAS).queryKey),
 	};
-	act(() => {
-		client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, () => ({
+	act(() =>
+	{
+		client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, () => (
+		{
 			...ALICE_DETAIL,
 			canonicalRouteId: ALIAS,
 		}));
 	});
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(router.state.location.pathname).toBe(`/session/${ALIAS}`);
 	});
-	expect({pending, urls: fetcher.mock.calls.map(([url]) => url)}).toStrictEqual({
-		pending: {pathname: `/session/${ALICE}`, identity: undefined},
-		urls: [
-			`/api/sessions/${ALICE}`,
-			`/api/sessions/${ALICE}/transcript`,
-			`/api/sessions/${ALICE}/subagents`,
-			"/api/herdr-panes",
-		],
-	});
+	expect(
+		{
+			pending,
+			urls: fetcher.mock.calls.map(([url]) => url),
+		},
+	).toStrictEqual(
+		{
+			pending:
+			{
+				pathname: `/session/${ALICE}`,
+				identity: undefined,
+			},
+			urls: [
+				`/api/sessions/${ALICE}`,
+				`/api/sessions/${ALICE}/transcript`,
+				`/api/sessions/${ALICE}/subagents`,
+				"/api/herdr-panes",
+			],
+		},
+	);
 });
 
 it.each(["fetching", "invalidated"])(
 	"does not create alias cache from %s detail before a fresh result",
-	async (state) => {
-		const {client, router, finishDetail, fetcher} = await setup({initial: `/session/${ALICE}`});
-		await act(async () => {
-			client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, () => ({
+	async (state) =>
+	{
+		const {client, router, finishDetail, fetcher} = await setup(
+			{
+				initial: `/session/${ALICE}`,
+			},
+		);
+		await act(async () =>
+		{
+			client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, () => (
+			{
 				...ALICE_DETAIL,
 				canonicalRouteId: ALIAS,
 			}));
 			if (state === "invalidated")
-				await client.invalidateQueries({
-					queryKey: sessionDetailQueryOptions(ALICE).queryKey,
-					refetchType: "none",
-				});
+				await client.invalidateQueries(
+					{
+						queryKey: sessionDetailQueryOptions(ALICE).queryKey,
+						refetchType: "none",
+					},
+				);
 		});
-		const before = {
+		const before =
+		{
 			pathname: router.state.location.pathname,
 			identity: client.getQueryState(sessionIdentityQueryOptions(ALIAS).queryKey),
 		};
-		await actAndSettle(() => {
-			finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
+		await actAndSettle(() =>
+		{
+			finishDetail(
+				Response.json(
+					{
+						...ALICE_DETAIL,
+						canonicalRouteId: ALIAS,
+					},
+				),
+			);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe(`/session/${ALIAS}`);
 		});
-		expect({
-			before,
-			identity: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
-			identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")),
-		}).toStrictEqual({
-			before: {pathname: `/session/${ALICE}`, identity: undefined},
-			identity: {sessionId: ALICE},
-			identityRequests: [],
-		});
+		expect(
+			{
+				before,
+				identity: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
+				identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")),
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					pathname: `/session/${ALICE}`,
+					identity: undefined,
+				},
+				identity:
+				{
+					sessionId: ALICE,
+				},
+				identityRequests: [],
+			},
+		);
 	},
 );
 
 it.each(["matching", "different", "invalidated", "error", "fetching"])(
 	"respects existing %s identity cache when UUID detail proves an alias",
-	async (state) => {
-		const {client, router, finishDetail, fetcher, finish} = await setup({
-			initial: `/session/${ALICE}`,
-			configure: (client) => {
-				const options = sessionIdentityQueryOptions(ALIAS);
-				if (state === "matching" || state === "different" || state === "invalidated") {
-					client.setQueryData(options.queryKey, {sessionId: state === "different" ? BOB : ALICE});
-					if (state === "invalidated") void client.invalidateQueries({queryKey: options.queryKey});
-				} else if (state === "error") {
-					client
-						.getQueryCache()
-						.build(client, {queryKey: options.queryKey})
-						.setState({status: "error", error: new Error("Example identity lookup failed")});
-				} else void client.query(options).catch(noop);
+	async (state) =>
+	{
+		const {client, router, finishDetail, fetcher, finish} = await setup(
+			{
+				initial: `/session/${ALICE}`,
+				configure: (client) =>
+				{
+					const options = sessionIdentityQueryOptions(ALIAS);
+					if (state === "matching" || state === "different" || state === "invalidated")
+					{
+						client.setQueryData(
+							options.queryKey,
+							{
+								sessionId: state === "different" ? BOB : ALICE,
+							},
+						);
+						if (state === "invalidated")
+							void client.invalidateQueries(
+								{
+									queryKey: options.queryKey,
+								},
+							);
+					}
+					else if (state === "error")
+					{
+						client
+							.getQueryCache()
+							.build(
+								client,
+								{
+									queryKey: options.queryKey,
+								},
+							)
+							.setState(
+								{
+									status: "error",
+									error: new Error("Example identity lookup failed"),
+								},
+							);
+					}
+					else void client.query(options).catch(noop);
+				},
 			},
+		);
+		await actAndSettle(() =>
+		{
+			finishDetail(
+				Response.json(
+					{
+						...ALICE_DETAIL,
+						canonicalRouteId: ALIAS,
+					},
+				),
+			);
 		});
-		await actAndSettle(() => {
-			finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
-		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(renderedPageTitle()).toBe("Alice session");
 		});
 		if (state === "matching")
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(router.state.location.pathname).toBe(`/session/${ALIAS}`);
 			});
-		if (state === "invalidated" || state === "error" || state === "fetching") {
-			await waitFor(() => {
+		if (state === "invalidated" || state === "error" || state === "fetching")
+		{
+			await waitFor(() =>
+			{
 				expect(client.getQueryState(sessionIdentityQueryOptions(ALIAS).queryKey)?.fetchStatus).toBe("fetching");
 			});
 		}
-		const before = {
+		const before =
+		{
 			pathname: router.state.location.pathname,
 			cached: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
 		};
-		await actAndSettle(() => {
-			finish(Response.json({sessionId: BOB}));
+		await actAndSettle(() =>
+		{
+			finish(
+				Response.json(
+					{
+						sessionId: BOB,
+					},
+				),
+			);
 		});
-		if (state === "invalidated" || state === "error" || state === "fetching") {
-			await waitFor(() => {
-				expect(client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey)).toStrictEqual({
-					sessionId: BOB,
-				});
+		if (state === "invalidated" || state === "error" || state === "fetching")
+		{
+			await waitFor(() =>
+			{
+				expect(client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey)).toStrictEqual(
+					{
+						sessionId: BOB,
+					},
+				);
 			});
 		}
 
-		expect({
-			before,
-			pathname: router.state.location.pathname,
-			cached: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
-			owners: new Set(observed.owners),
-			identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")).length,
-		}).toStrictEqual({
-			before: {
+		expect(
+			{
+				before,
+				pathname: router.state.location.pathname,
+				cached: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
+				owners: new Set(observed.owners),
+				identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")).length,
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					pathname: `/session/${state === "matching" ? ALIAS : ALICE}`,
+					cached:
+						state === "matching" || state === "invalidated"
+							?
+								{
+									sessionId: ALICE,
+								}
+							: state === "different"
+								?
+									{
+										sessionId: BOB,
+									}
+								: undefined,
+				},
 				pathname: `/session/${state === "matching" ? ALIAS : ALICE}`,
 				cached:
-					state === "matching" || state === "invalidated"
-						? {sessionId: ALICE}
-						: state === "different"
-							? {sessionId: BOB}
-							: undefined,
+				{
+					sessionId: state === "matching" ? ALICE : BOB,
+				},
+				owners: new Set([ALICE]),
+				identityRequests: state === "matching" || state === "different" ? 0 : 1,
 			},
-			pathname: `/session/${state === "matching" ? ALIAS : ALICE}`,
-			cached: {sessionId: state === "matching" ? ALICE : BOB},
-			owners: new Set([ALICE]),
-			identityRequests: state === "matching" || state === "different" ? 0 : 1,
-		});
+		);
 	},
 );
 
-it("requires a new lookup after losing a canonical alias and removing its cache", async () => {
-	const {client, router, finishDetail, setLookup, fetcher} = await setup({initial: `/session/${ALICE}`});
-	await actAndSettle(() => {
-		finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
+it("requires a new lookup after losing a canonical alias and removing its cache", async () =>
+{
+	const {client, router, finishDetail, setLookup, fetcher} = await setup(
+		{
+			initial: `/session/${ALICE}`,
+		},
+	);
+	await actAndSettle(() =>
+	{
+		finishDetail(
+			Response.json(
+				{
+					...ALICE_DETAIL,
+					canonicalRouteId: ALIAS,
+				},
+			),
+		);
 	});
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(router.state.location.pathname).toBe(`/session/${ALIAS}`);
 	});
-	setLookup(async () => Promise.resolve(new Response(null, {status: 409})));
+	setLookup(async () =>
+		Promise.resolve(
+			new Response(
+				null,
+				{
+					status: 409,
+				},
+			),
+		),
+	);
 	await act(async () => invalidateSessionIdentities(client));
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(router.state.location.pathname).toBe(`/session/${ALICE}`);
 	});
 	const replacement = deferredResponse();
 	setLookup(async () => replacement.promise);
-	act(() => {
-		client.removeQueries({queryKey: sessionIdentityQueryOptions(ALIAS).queryKey});
-		client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, () => ({
+	act(() =>
+	{
+		client.removeQueries(
+			{
+				queryKey: sessionIdentityQueryOptions(ALIAS).queryKey,
+			},
+		);
+		client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, () => (
+		{
 			...ALICE_DETAIL,
 			canonicalRouteId: ALIAS,
 			title: "Alice refreshed",
 		}));
 	});
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(client.getQueryState(sessionIdentityQueryOptions(ALIAS).queryKey)?.fetchStatus).toBe("fetching");
 	});
-	const pending = {
+	const pending =
+	{
 		pathname: router.state.location.pathname,
 		cached: client.getQueryData(sessionIdentityQueryOptions(ALIAS).queryKey),
 	};
-	await actAndSettle(() => {
-		replacement.finish(Response.json({sessionId: ALICE}));
+	await actAndSettle(() =>
+	{
+		replacement.finish(
+			Response.json(
+				{
+					sessionId: ALICE,
+				},
+			),
+		);
 	});
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(router.state.location.pathname).toBe(`/session/${ALIAS}`);
 	});
-	expect({
-		pending,
-		owners: new Set(observed.owners),
-		mounts: observed.mounts,
-		historyLength: router.history.length,
-		identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")).length,
-	}).toStrictEqual({
-		pending: {pathname: `/session/${ALICE}`, cached: undefined},
-		owners: new Set([ALICE]),
-		mounts: 1,
-		historyLength: 2,
-		identityRequests: 2,
-	});
-});
-
-it("uses the actual alias launch marker on a fresh mount with carried UUID replacement history", async () => {
-	const {router, fetcher} = await setup({
-		cachedOwner: ALICE,
-		initialState: {
-			sessionIdentity: {sessionId: ALICE, routeId: ALICE, aliasRouteId: ALIAS, scrollKey: "example-uuid-entry"},
+	expect(
+		{
+			pending,
+			owners: new Set(observed.owners),
+			mounts: observed.mounts,
+			historyLength: router.history.length,
+			identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")).length,
 		},
-	});
-	expect({
-		pathname: router.state.location.pathname,
-		initialRoute: screen.getByTestId("session").dataset["route"],
-		scrollKeys: observed.scrollKeys,
-		owners: new Set(observed.owners),
-		identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")),
-	}).toStrictEqual({
-		pathname: `/session/${ALIAS}`,
-		initialRoute: ALIAS,
-		scrollKeys: ["example-uuid-entry"],
-		owners: new Set([ALICE]),
-		identityRequests: [],
-	});
+	).toStrictEqual(
+		{
+			pending:
+			{
+				pathname: `/session/${ALICE}`,
+				cached: undefined,
+			},
+			owners: new Set([ALICE]),
+			mounts: 1,
+			historyLength: 2,
+			identityRequests: 2,
+		},
+	);
 });
 
-it("never stamps the destination launch marker onto the previous alias owner's page during navigation", async () => {
-	const {router} = await setup({cachedOwner: ALICE});
-	await act(async () => router.navigate({to: "/session/$id", params: {id: BOB}}));
-	await waitFor(() => {
+it("uses the actual alias launch marker on a fresh mount with carried UUID replacement history", async () =>
+{
+	const {router, fetcher} = await setup(
+		{
+			cachedOwner: ALICE,
+			initialState:
+			{
+				sessionIdentity:
+				{
+					sessionId: ALICE,
+					routeId: ALICE,
+					aliasRouteId: ALIAS,
+					scrollKey: "example-uuid-entry",
+				},
+			},
+		},
+	);
+	expect(
+		{
+			pathname: router.state.location.pathname,
+			initialRoute: screen.getByTestId("session").dataset["route"],
+			scrollKeys: observed.scrollKeys,
+			owners: new Set(observed.owners),
+			identityRequests: fetcher.mock.calls.filter(([url]) => url.endsWith("/identity")),
+		},
+	).toStrictEqual(
+		{
+			pathname: `/session/${ALIAS}`,
+			initialRoute: ALIAS,
+			scrollKeys: ["example-uuid-entry"],
+			owners: new Set([ALICE]),
+			identityRequests: [],
+		},
+	);
+});
+
+it("never stamps the destination launch marker onto the previous alias owner's page during navigation", async () =>
+{
+	const {router} = await setup(
+		{
+			cachedOwner: ALICE,
+		},
+	);
+	await act(async () =>
+		router.navigate(
+			{
+				to: "/session/$id",
+				params:
+				{
+					id: BOB,
+				},
+			},
+		),
+	);
+	await waitFor(() =>
+	{
 		expect(screen.getByTestId("session").dataset["session"]).toBe(BOB);
 	});
-	expect({pairs: new Set(observed.pairs), pathname: router.state.location.pathname}).toStrictEqual({
-		pairs: new Set([`${ALICE}:${ALIAS}`, `${BOB}:${BOB}`]),
-		pathname: `/session/${BOB}`,
-	});
+	expect(
+		{
+			pairs: new Set(observed.pairs),
+			pathname: router.state.location.pathname,
+		},
+	).toStrictEqual(
+		{
+			pairs: new Set([`${ALICE}:${ALIAS}`, `${BOB}:${BOB}`]),
+			pathname: `/session/${BOB}`,
+		},
+	);
 });
 
-it.each([ALICE, ALIAS])("keeps the outgoing %s chat at its reading position while New is loading", async (routeId) => {
+it.each([ALICE, ALIAS])("keeps the outgoing %s chat at its reading position while New is loading", async (routeId) =>
+{
 	observed.renderChat = true;
 	const frames = new Map<number, FrameRequestCallback>();
 	let frameId = 0;
-	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+	{
 		frames.set(++frameId, callback);
 		return frameId;
 	});
 	vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
 	vi.stubGlobal(
 		"ResizeObserver",
-		class {
-			observe() {}
-			disconnect() {}
+		class
+		{
+			observe()
+			{
+			}
+			disconnect()
+			{
+			}
 		},
 	);
 	const originalScrollHeight = Object.getOwnPropertyDescriptor(document.documentElement, "scrollHeight");
-	Object.defineProperty(document.documentElement, "scrollHeight", {configurable: true, value: 2000});
-	const flushFrames = () => {
-		for (let turn = 0; frames.size > 0 && turn < 10; turn++) {
+	Object.defineProperty(
+		document.documentElement,
+		"scrollHeight",
+		{
+			configurable: true,
+			value: 2000,
+		},
+	);
+	const flushFrames = () =>
+	{
+		for (let turn = 0; frames.size > 0 && turn < 10; turn++)
+		{
 			const callbacks = [...frames.values()];
 			frames.clear();
 			for (const callback of callbacks) callback(0);
 		}
 	};
 	let finishHome!: () => void;
-	const home = new Promise<void>((resolve) => {
+	const home = new Promise<void>((resolve) =>
+	{
 		finishHome = resolve;
 	});
-	try {
-		const {router} = await setup({
-			initial: `/session/${routeId}`,
-			cachedOwner: ALICE,
-			homeLoader: async () => home,
-		});
+	try
+	{
+		const {router} = await setup(
+			{
+				initial: `/session/${routeId}`,
+				cachedOwner: ALICE,
+				homeLoader: async () => home,
+			},
+		);
 		const originalKey = router.state.location.state.__TSR_key;
 		const scrollTo = vi.mocked(window.scrollTo);
 		scrollTo.mockClear();
@@ -983,34 +1727,65 @@ it.each([ALICE, ALIAS])("keeps the outgoing %s chat at its reading position whil
 		const initialScrolls = [...scrollTo.mock.calls];
 		scrollTo.mockClear();
 		const main = screen.getByTestId("main");
-		act(() => {
+		act(() =>
+		{
 			main.scrollTop = 300;
 			fireEvent.scroll(main);
 		});
 		let navigation!: Promise<void>;
-		await actAndSettle(() => {
-			navigation = router.navigate({to: "/"});
+		await actAndSettle(() =>
+		{
+			navigation = router.navigate(
+				{
+					to: "/",
+				},
+			);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/");
 		});
 		act(flushFrames);
-		const duringNavigation = {
+		const duringNavigation =
+		{
 			owner: screen.getByTestId("session").dataset["session"],
 			scrollKeys: observed.scrollKeys.map((key) => key === originalKey),
 			scrollTop: main.scrollTop,
 			endScrolls: [...scrollTo.mock.calls],
 		};
-		await act(async () => {
+		await act(async () =>
+		{
 			finishHome();
 			await navigation;
 		});
-		expect({initialScrolls, duringNavigation, home: screen.getByText("New session").textContent}).toStrictEqual({
-			initialScrolls: [[{top: 2000}]],
-			duringNavigation: {owner: ALICE, scrollKeys: [true], scrollTop: 300, endScrolls: []},
-			home: "New session",
-		});
-	} finally {
+		expect(
+			{
+				initialScrolls,
+				duringNavigation,
+				home: screen.getByText("New session").textContent,
+			},
+		).toStrictEqual(
+			{
+				initialScrolls: [
+					[
+						{
+							top: 2000,
+						},
+					],
+				],
+				duringNavigation:
+				{
+					owner: ALICE,
+					scrollKeys: [true],
+					scrollTop: 300,
+					endScrolls: [],
+				},
+				home: "New session",
+			},
+		);
+	}
+	finally
+	{
 		if (originalScrollHeight) Object.defineProperty(document.documentElement, "scrollHeight", originalScrollHeight);
 		else Reflect.deleteProperty(document.documentElement, "scrollHeight");
 	}
@@ -1018,70 +1793,154 @@ it.each([ALICE, ALIAS])("keeps the outgoing %s chat at its reading position whil
 
 it.each([false, true])(
 	"captures fresh alias absence before delayed identity resolves (StrictMode=%s)",
-	async (strict) => {
-		const {router, finish} = await setup({initial: "/", strict});
+	async (strict) =>
+	{
+		const {router, finish} = await setup(
+			{
+				initial: "/",
+				strict,
+			},
+		);
 		const main = screen.getByTestId("main");
 		main.scrollTop = 1430;
 		fireEvent.scroll(main);
-		await act(async () => router.navigate({to: "/session/$id", params: {id: ALIAS}}));
+		await act(async () =>
+			router.navigate(
+				{
+					to: "/session/$id",
+					params:
+					{
+						id: ALIAS,
+					},
+				},
+			),
+		);
 		await screen.findByTestId("session-skeleton");
 		await act(async () => {});
-		await actAndSettle(() => {
-			finish(Response.json({sessionId: ALICE}));
+		await actAndSettle(() =>
+		{
+			finish(
+				Response.json(
+					{
+						sessionId: ALICE,
+					},
+				),
+			);
 		});
 		const page = await screen.findByTestId("session");
-		expect({
-			captured: page.dataset["captured"],
-			restored: page.dataset["restored"],
-			late: page.dataset["lateRestored"],
-			owner: page.dataset["session"],
-		}).toStrictEqual({captured: "true", restored: "none", late: "1430", owner: ALICE});
+		expect(
+			{
+				captured: page.dataset["captured"],
+				restored: page.dataset["restored"],
+				late: page.dataset["lateRestored"],
+				owner: page.dataset["session"],
+			},
+		).toStrictEqual(
+			{
+				captured: "true",
+				restored: "none",
+				late: "1430",
+				owner: ALICE,
+			},
+		);
 	},
 );
 
-it("captures the alias visit's own saved position before Back resolves its identity", async () => {
-	const {router, client, setLookup} = await setup({cachedOwner: ALICE});
+it("captures the alias visit's own saved position before Back resolves its identity", async () =>
+{
+	const {router, client, setLookup} = await setup(
+		{
+			cachedOwner: ALICE,
+		},
+	);
 	const main = screen.getByTestId("main");
 	main.scrollTop = 640;
 	fireEvent.scroll(main);
-	await act(async () => router.navigate({to: "/"}));
+	await act(async () =>
+		router.navigate(
+			{
+				to: "/",
+			},
+		),
+	);
 	await screen.findByText("New session");
 	const response = deferredResponse();
 	setLookup(async () => response.promise);
-	client.removeQueries({queryKey: sessionIdentityQueryOptions(ALIAS).queryKey, exact: true});
-	await actAndSettle(() => {
+	client.removeQueries(
+		{
+			queryKey: sessionIdentityQueryOptions(ALIAS).queryKey,
+			exact: true,
+		},
+	);
+	await actAndSettle(() =>
+	{
 		router.history.back();
 	});
 	await screen.findByTestId("session-skeleton");
-	await actAndSettle(() => {
-		response.finish(Response.json({sessionId: ALICE}));
+	await actAndSettle(() =>
+	{
+		response.finish(
+			Response.json(
+				{
+					sessionId: ALICE,
+				},
+			),
+		);
 	});
 	const page = await screen.findByTestId("session");
-	expect({
-		captured: page.dataset["captured"],
-		restored: page.dataset["restored"],
-		owner: page.dataset["session"],
-		top: main.scrollTop,
-	}).toStrictEqual({captured: "true", restored: "640", owner: ALICE, top: 640});
+	expect(
+		{
+			captured: page.dataset["captured"],
+			restored: page.dataset["restored"],
+			owner: page.dataset["session"],
+			top: main.scrollTop,
+		},
+	).toStrictEqual(
+		{
+			captured: "true",
+			restored: "640",
+			owner: ALICE,
+			top: 640,
+		},
+	);
 });
 
-it("keeps the default identity callback at three arguments for sibling routes", async () => {
+it("keeps the default identity callback at three arguments for sibling routes", async () =>
+{
 	const client = new QueryClient();
 	clients.push(client);
 	const child = vi.fn<(...args: [string, string, string, MainScrollRestorationSnapshot?]) => ReactNode>(
 		(...args: [string, string, string, MainScrollRestorationSnapshot?]) => <output>{args[0]}</output>,
 	);
-	const root = createRootRouteWithContext<{queryClient: QueryClient}>()({component: Outlet});
-	const sibling = createRoute({
-		getParentRoute: () => root,
-		path: "/session/$id/subagents",
-		component: () => <SessionRouteIdentity routeId={ALICE}>{child}</SessionRouteIdentity>,
-	});
-	const router = createRouter({
-		routeTree: root.addChildren([sibling]),
-		context: {queryClient: client},
-		history: createMemoryHistory({initialEntries: [`/session/${ALICE}/subagents`]}),
-	});
+	const root = createRootRouteWithContext<
+	{
+		queryClient: QueryClient;
+	}>()(
+		{
+			component: Outlet,
+		},
+	);
+	const sibling = createRoute(
+		{
+			getParentRoute: () => root,
+			path: "/session/$id/subagents",
+			component: () => <SessionRouteIdentity routeId={ALICE}>{child}</SessionRouteIdentity>,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: root.addChildren([sibling]),
+			context:
+			{
+				queryClient: client,
+			},
+			history: createMemoryHistory(
+				{
+					initialEntries: [`/session/${ALICE}/subagents`],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(
 		<QueryClientProvider client={client}>

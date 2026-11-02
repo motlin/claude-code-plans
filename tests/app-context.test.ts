@@ -8,7 +8,8 @@ import type {ActiveSessionEntry} from "../src/lib/active-session-store";
 
 const testDir = join(tmpdir(), "claude-app-context-test-" + process.pid);
 
-function makeTestConfig(): AppContextConfig {
+function makeTestConfig(): AppContextConfig
+{
 	return {
 		projectsDir: join(testDir, "projects"),
 		plansDir: join(testDir, "plans"),
@@ -20,19 +21,40 @@ function makeTestConfig(): AppContextConfig {
 	};
 }
 
-beforeEach(() => {
-	mkdirSync(testDir, {recursive: true});
-	for (const sub of ["projects", "plans", "commands", "plugins", "tasks", "statusline", "cache"]) {
-		mkdirSync(join(testDir, sub), {recursive: true});
+beforeEach(() =>
+{
+	mkdirSync(
+		testDir,
+		{
+			recursive: true,
+		},
+	);
+	for (const sub of ["projects", "plans", "commands", "plugins", "tasks", "statusline", "cache"])
+	{
+		mkdirSync(
+			join(testDir, sub),
+			{
+				recursive: true,
+			},
+		);
 	}
 });
 
-afterEach(() => {
-	rmSync(testDir, {recursive: true, force: true});
+afterEach(() =>
+{
+	rmSync(
+		testDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("AppContext", () => {
-	it("creates and disposes without leaking handles", async () => {
+describe("AppContext", () =>
+{
+	it("creates and disposes without leaking handles", async () =>
+	{
 		const ctx = await createAppContext(makeTestConfig());
 
 		expect(typeof ctx.db).toBe("object");
@@ -44,15 +66,20 @@ describe("AppContext", () => {
 		await disposeAppContext(ctx);
 	});
 
-	it("dispose closes SSE clients", async () => {
+	it("dispose closes SSE clients", async () =>
+	{
 		const ctx = await createAppContext(makeTestConfig());
 
 		const closed: boolean[] = [];
-		const fakeClient = {
-			close: () => {
+		const fakeClient =
+		{
+			close: () =>
+			{
 				closed.push(true);
 			},
-			enqueue: () => {},
+			enqueue: () =>
+			{
+			},
 		} as unknown as ReadableStreamDefaultController;
 
 		ctx.sseClients.add(fakeClient);
@@ -65,43 +92,51 @@ describe("AppContext", () => {
 	});
 });
 
-describe("sweepSessions", () => {
-	it("removes stale sessions and keeps fresh ones", () => {
+describe("sweepSessions", () =>
+{
+	it("removes stale sessions and keeps fresh ones", () =>
+	{
 		const store = new Map<string, ActiveSessionEntry>();
 
-		store.set("stale", {
-			sessionId: "stale",
-			state: "idle",
-			cwd: "/tmp",
-			model: "test",
-			startedAt: Date.now() - 20 * 60 * 1000,
-			lastActivity: Date.now() - 20 * 60 * 1000,
-			claudeEnv: {},
-			tmuxPane: "",
-			tmuxServerSocket: "",
-			herdrPane: "",
-			herdrWorkspace: "",
-			herdrSocketPath: "",
-			lastSubagentActivityAt: null,
-			backgroundTasks: [],
-		});
+		store.set(
+			"stale",
+			{
+				sessionId: "stale",
+				state: "idle",
+				cwd: "/tmp",
+				model: "test",
+				startedAt: Date.now() - 20 * 60 * 1000,
+				lastActivity: Date.now() - 20 * 60 * 1000,
+				claudeEnv: {},
+				tmuxPane: "",
+				tmuxServerSocket: "",
+				herdrPane: "",
+				herdrWorkspace: "",
+				herdrSocketPath: "",
+				lastSubagentActivityAt: null,
+				backgroundTasks: [],
+			},
+		);
 
-		store.set("fresh", {
-			sessionId: "fresh",
-			state: "working",
-			cwd: "/tmp",
-			model: "test",
-			startedAt: Date.now(),
-			lastActivity: Date.now(),
-			claudeEnv: {},
-			tmuxPane: "",
-			tmuxServerSocket: "",
-			herdrPane: "",
-			herdrWorkspace: "",
-			herdrSocketPath: "",
-			lastSubagentActivityAt: null,
-			backgroundTasks: [],
-		});
+		store.set(
+			"fresh",
+			{
+				sessionId: "fresh",
+				state: "working",
+				cwd: "/tmp",
+				model: "test",
+				startedAt: Date.now(),
+				lastActivity: Date.now(),
+				claudeEnv: {},
+				tmuxPane: "",
+				tmuxServerSocket: "",
+				herdrPane: "",
+				herdrWorkspace: "",
+				herdrSocketPath: "",
+				lastSubagentActivityAt: null,
+				backgroundTasks: [],
+			},
+		);
 
 		sweepSessions(store);
 

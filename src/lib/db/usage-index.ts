@@ -8,21 +8,35 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
 /** Replaces one primary transcript's per-day usage, so a reindex is idempotent. */
 export function replaceUsageDaily(
 	db: IndexDb,
-	source: {filePath: string; sessionId: string},
+	source:
+	{
+		filePath: string;
+		sessionId: string;
+	},
 	rows: readonly UsageDailyRow[],
-): void {
-	db.transaction((transaction) => {
+): void
+{
+	db.transaction((transaction) =>
+	{
 		transaction.delete(schema.usageDaily).where(eq(schema.usageDaily.filePath, source.filePath)).run();
-		for (const row of rows) {
+		for (const row of rows)
+		{
 			transaction
 				.insert(schema.usageDaily)
-				.values({...row, filePath: source.filePath, sessionId: source.sessionId})
+				.values(
+					{
+						...row,
+						filePath: source.filePath,
+						sessionId: source.sessionId,
+					},
+				)
 				.run();
 		}
 	});
 }
 
-export function deleteUsageDailyForSessions(db: IndexDb, sessionIds: readonly string[]): void {
+export function deleteUsageDailyForSessions(db: IndexDb, sessionIds: readonly string[]): void
+{
 	if (sessionIds.length === 0) return;
 	db.delete(schema.usageDaily)
 		.where(inArray(schema.usageDaily.sessionId, [...sessionIds]))
@@ -34,16 +48,25 @@ export function deleteUsageDailyForSessions(db: IndexDb, sessionIds: readonly st
  * the sessions table, messages and input + output tokens per model from
  * `usage_daily`.
  */
-export function getHomeStatsDays(db: IndexDb): HomeStatsDay[] {
+export function getHomeStatsDays(db: IndexDb): HomeStatsDay[]
+{
 	const byDate = new Map<string, HomeStatsDay>();
-	const dayFor = (date: string): HomeStatsDay => {
+	const dayFor = (date: string): HomeStatsDay =>
+	{
 		let row = byDate.get(date);
-		if (row === undefined) {
-			row = {
+		if (row === undefined)
+		{
+			row =
+			{
 				date,
 				sessions: 0,
 				messages: 0,
-				hourCounts: Array.from({length: 24}, () => 0),
+				hourCounts: Array.from(
+					{
+						length: 24,
+					},
+					() => 0,
+				),
 				tokensByModel: null,
 			};
 			byDate.set(date, row);
@@ -52,11 +75,16 @@ export function getHomeStatsDays(db: IndexDb): HomeStatsDay[] {
 	};
 
 	const sessionStarts = db
-		.select({createdAt: schema.sessions.createdAt})
+		.select(
+			{
+				createdAt: schema.sessions.createdAt,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.isSidechain, 0))
 		.all();
-	for (const {createdAt} of sessionStarts) {
+	for (const {createdAt} of sessionStarts)
+	{
 		const at = new Date(createdAt);
 		if (Number.isNaN(at.getTime())) continue;
 		const row = dayFor(localDateKey(at));
@@ -66,19 +94,27 @@ export function getHomeStatsDays(db: IndexDb): HomeStatsDay[] {
 	}
 
 	const usage = db
-		.select({
-			day: schema.usageDaily.day,
-			model: schema.usageDaily.model,
-			messages: sql<number>`sum(${schema.usageDaily.messages})`,
-			tokens: sql<number>`sum(${schema.usageDaily.inputTokens} + ${schema.usageDaily.outputTokens})`,
-		})
+		.select(
+			{
+				day: schema.usageDaily.day,
+				model: schema.usageDaily.model,
+				messages: sql<number>`sum(${schema.usageDaily.messages})`,
+				tokens: sql<number>`sum(${schema.usageDaily.inputTokens} + ${schema.usageDaily.outputTokens})`,
+			},
+		)
 		.from(schema.usageDaily)
 		.groupBy(schema.usageDaily.day, schema.usageDaily.model)
 		.all();
-	for (const {day, model, messages, tokens} of usage) {
+	for (const {day, model, messages, tokens} of usage)
+	{
 		const row = dayFor(day);
 		row.messages += messages;
-		if (model !== null) row.tokensByModel = {...row.tokensByModel, [model]: tokens};
+		if (model !== null)
+			row.tokensByModel =
+			{
+				...row.tokensByModel,
+				[model]: tokens,
+			};
 	}
 
 	return [...byDate.values()].toSorted((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));

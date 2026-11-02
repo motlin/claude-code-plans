@@ -2,7 +2,8 @@ import {useQuery} from "@tanstack/react-query";
 import {useId, useState, type ReactNode} from "react";
 
 import {sessionApiRequestMessagesQueryOptions, sessionApiRequestsQueryOptions} from "../lib/api/sessions";
-import {
+import
+{
 	resolveApiRequest,
 	type ApiRequestSummary,
 	type ApiRequestShapeSummary,
@@ -11,7 +12,8 @@ import {
 import type {ApiRequestMessage, ApiRequestMessageBlock} from "../lib/api-request-messages";
 import {assertNever} from "../lib/assert-never";
 import {formatModelName} from "../lib/model-name";
-import {
+import
+{
 	classifierArtifactAttestationLabels,
 	classifierArtifactPublishEnvLabels,
 	classifierArtifactShareModeLabels,
@@ -22,7 +24,8 @@ import {type AttachedImage, UserAttachments} from "./user-attachments";
 
 const NUMBER = new Intl.NumberFormat("en-US");
 
-function Fact({label, children}: {label: string; children: ReactNode}) {
+function Fact({label, children}: {label: string; children: ReactNode})
+{
 	return (
 		<div className="flex gap-2 min-w-0">
 			<span className="shrink-0 text-t6">{label}</span>
@@ -32,18 +35,22 @@ function Fact({label, children}: {label: string; children: ReactNode}) {
 }
 
 /** A label from a schema-choice map, falling back to the raw value the lenient runtime schemas let through. */
-function choiceLabel(labels: Record<string, string>, value: string): string {
+function choiceLabel(labels: Record<string, string>, value: string): string
+{
 	return labels[value] ?? value;
 }
 
 /** One line describing what the classifier knew about an artifact: its share probe, publish and local files. */
-function describeClassifierArtifact(artifact: ClassifierArtifactSummary): string {
+function describeClassifierArtifact(artifact: ClassifierArtifactSummary): string
+{
 	const parts: string[] = [];
-	if (artifact.attested !== undefined) {
+	if (artifact.attested !== undefined)
+	{
 		parts.push(`${choiceLabel(classifierArtifactAttestationLabels, artifact.attested)}, not probed`);
 	}
 	const {share} = artifact;
-	if (share !== undefined) {
+	if (share !== undefined)
+	{
 		parts.push(`${choiceLabel(classifierArtifactShareModeLabels, share.mode)} share`);
 		if (share.role !== undefined) parts.push(`role ${choiceLabel(classifierArtifactShareRoleLabels, share.role)}`);
 		parts.push(share.isSharedLive ? "shared live" : "not shared live");
@@ -55,7 +62,8 @@ function describeClassifierArtifact(artifact: ClassifierArtifactSummary): string
 		if (share.capabilities.length > 0) parts.push(`capabilities: ${share.capabilities.join(", ")}`);
 		if (share.grantObserved) parts.push("grant observed");
 	}
-	if (artifact.publishedEnv !== undefined) {
+	if (artifact.publishedEnv !== undefined)
+	{
 		parts.push(`published to ${choiceLabel(classifierArtifactPublishEnvLabels, artifact.publishedEnv)}`);
 	}
 	if (artifact.lastPublish) parts.push("last publish");
@@ -63,7 +71,8 @@ function describeClassifierArtifact(artifact: ClassifierArtifactSummary): string
 	return parts.join(" · ");
 }
 
-function ArtifactFacts({artifacts}: {artifacts: readonly ClassifierArtifactSummary[]}) {
+function ArtifactFacts({artifacts}: {artifacts: readonly ClassifierArtifactSummary[]})
+{
 	return (
 		<div className="flex flex-col gap-1 min-w-0">
 			<span className="text-t6">{`Artifacts (${artifacts.length})`}</span>
@@ -77,7 +86,8 @@ function ArtifactFacts({artifacts}: {artifacts: readonly ClassifierArtifactSumma
 	);
 }
 
-function RequestFacts({request}: {request: ApiRequestSummary}) {
+function RequestFacts({request}: {request: ApiRequestSummary})
+{
 	const model = formatModelName(request.model) ?? request.model;
 	return (
 		<>
@@ -93,7 +103,8 @@ function RequestFacts({request}: {request: ApiRequestSummary}) {
 	);
 }
 
-function ShapeFacts({request, shape}: {request: ApiRequestSummary; shape: ApiRequestShapeSummary}) {
+function ShapeFacts({request, shape}: {request: ApiRequestSummary; shape: ApiRequestShapeSummary})
+{
 	const changes = request.toolChanges;
 	const blocks = `${shape.system.length} block${shape.system.length === 1 ? "" : "s"}`;
 	return (
@@ -124,16 +135,27 @@ function ShapeFacts({request, shape}: {request: ApiRequestSummary; shape: ApiReq
 
 const PRE = "whitespace-pre-wrap break-words font-mono text-[11px] text-secondary";
 
-function attachedImages(key: string, images: readonly {mediaType: string; data: string}[]): AttachedImage[] {
-	return images.map((image, index) => ({
+function attachedImages(
+	key: string,
+	images: readonly
+	{
+		mediaType: string;
+		data: string;
+	}[],
+): AttachedImage[]
+{
+	return images.map((image, index) => (
+	{
 		key: `${key}-${index}`,
 		src: `data:${image.mediaType};base64,${image.data}`,
 		label: "Attached image",
 	}));
 }
 
-function MessageBlock({block, blockKey}: {block: ApiRequestMessageBlock; blockKey: string}) {
-	switch (block.type) {
+function MessageBlock({block, blockKey}: {block: ApiRequestMessageBlock; blockKey: string})
+{
+	switch (block.type)
+	{
 		case "text":
 			return <pre className={PRE}>{block.text}</pre>;
 		case "thinking":
@@ -169,7 +191,8 @@ function MessageBlock({block, blockKey}: {block: ApiRequestMessageBlock; blockKe
 	}
 }
 
-function RequestMessage({message}: {message: ApiRequestMessage}) {
+function RequestMessage({message}: {message: ApiRequestMessage})
+{
 	return (
 		<div className="flex flex-col gap-1 min-w-0">
 			<span className="text-t6 font-medium">{message.role}</span>
@@ -183,7 +206,8 @@ function RequestMessage({message}: {message: ApiRequestMessage}) {
 }
 
 /** The request's tail: the messages it appended after the prefix it kept, loaded when this section mounts. */
-function RequestMessages({sessionId, requestId}: {sessionId: string; requestId: string}) {
+function RequestMessages({sessionId, requestId}: {sessionId: string; requestId: string})
+{
 	const query = useQuery(sessionApiRequestMessagesQueryOptions(sessionId, requestId));
 	if (query.data === undefined) return query.isError ? "Couldn't load the request's messages" : "Loading…";
 	const {messages, missing} = query.data;
@@ -200,7 +224,8 @@ function RequestMessages({sessionId, requestId}: {sessionId: string; requestId: 
 	);
 }
 
-function RequestBody({sessionId, requestRef}: {sessionId: string; requestRef: string}) {
+function RequestBody({sessionId, requestRef}: {sessionId: string; requestRef: string})
+{
 	const query = useQuery(sessionApiRequestsQueryOptions(sessionId, true));
 	if (query.data === undefined) return query.isError ? "Couldn't load the API request log" : "Loading…";
 	const resolved = resolveApiRequest(query.data, requestRef);
@@ -227,7 +252,8 @@ function RequestBody({sessionId, requestRef}: {sessionId: string; requestRef: st
  * diagnostic upstream never shows, so only Verbose draws it. The session's
  * request log is fetched on first open.
  */
-export function ApiRequestDisclosure({sessionId, requestRef}: {sessionId: string; requestRef: string}) {
+export function ApiRequestDisclosure({sessionId, requestRef}: {sessionId: string; requestRef: string})
+{
 	const [open, setOpen] = useState(false);
 	const bodyId = useId();
 	return (
@@ -236,7 +262,8 @@ export function ApiRequestDisclosure({sessionId, requestRef}: {sessionId: string
 				type="button"
 				aria-expanded={open}
 				aria-controls={bodyId}
-				onClick={() => {
+				onClick={() =>
+				{
 					setOpen(!open);
 				}}
 				className="flex self-start items-center gap-1 text-t6 hover:text-primary cursor-pointer"

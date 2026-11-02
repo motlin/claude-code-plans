@@ -8,60 +8,123 @@ import {SessionChat} from "../src/components/session-chat";
 import {messageText} from "../src/lib/transcript-action-targets";
 import {processTranscript, type MessageSessionLine} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
+	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
-vi.mock("../src/hooks/use-claude-events", () => ({useClaudeEvents: () => ({failedTools: new Map()})}));
+vi.mock("../src/lib/hmr-persist", () => (
+{
+	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
+}));
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
+}));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal("innerHeight", 4000);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 });
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
 
-const SIGNATURES = JSON.parse(readFileSync(join(__dirname, "fixtures", "thinking-signatures.json"), "utf8")) as {
-	emptyThinking: {signature: string};
-	realThinking: {signature: string};
-	narrations: {signature: string}[];
+const SIGNATURES = JSON.parse(readFileSync(join(__dirname, "fixtures", "thinking-signatures.json"), "utf8")) as
+{
+	emptyThinking:
+	{
+		signature: string;
+	};
+	realThinking:
+	{
+		signature: string;
+	};
+	narrations:
+	{
+		signature: string;
+	}[];
 };
 const NARRATION = SIGNATURES.narrations[1]!.signature;
 const REAL_THINKING = SIGNATURES.realThinking.signature;
 const EMPTY_THINKING = SIGNATURES.emptyThinking.signature;
 
-const prompt = {type: "user", uuid: "u-prompt", message: {role: "user", content: "Fabricated question"}};
-function thinking(uuid: string, text: string, signature: string) {
+const prompt =
+{
+	type: "user",
+	uuid: "u-prompt",
+	message:
+	{
+		role: "user",
+		content: "Fabricated question",
+	},
+};
+function thinking(uuid: string, text: string, signature: string)
+{
 	return {
 		type: "assistant",
 		uuid,
-		message: {role: "assistant", content: [{type: "thinking", thinking: text, signature}]},
+		message:
+		{
+			role: "assistant",
+			content: [
+				{
+					type: "thinking",
+					thinking: text,
+					signature,
+				},
+			],
+		},
 	};
 }
-function command(uuid: string) {
+function command(uuid: string)
+{
 	return [
 		{
 			type: "assistant",
 			uuid,
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
 					{
 						type: "tool_use",
 						id: `toolu-${uuid}`,
 						name: "Bash",
-						input: {command: "echo fabricated", description: `Fabricated ${uuid}`},
+						input:
+						{
+							command: "echo fabricated",
+							description: `Fabricated ${uuid}`,
+						},
 					},
 				],
 			},
@@ -69,12 +132,23 @@ function command(uuid: string) {
 		{
 			type: "user",
 			uuid: `result-${uuid}`,
-			message: {role: "user", content: [{type: "tool_result", tool_use_id: `toolu-${uuid}`, content: "ok"}]},
+			message:
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: `toolu-${uuid}`,
+						content: "ok",
+					},
+				],
+			},
 		},
 	];
 }
 
-function rows(records: unknown[], showThinking = false) {
+function rows(records: unknown[], showThinking = false)
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	const {container} = render(
 		<SessionChat
@@ -86,7 +160,8 @@ function rows(records: unknown[], showThinking = false) {
 			shouldScrollToEnd={false}
 		/>,
 	);
-	return Array.from(container.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")).map((row) => ({
+	return Array.from(container.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")).map((row) => (
+	{
 		perfRow: row.dataset["perfRow"],
 		tools: Array.from(
 			row.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button'),
@@ -97,8 +172,10 @@ function rows(records: unknown[], showThinking = false) {
 	}));
 }
 
-describe("narration thinking blocks", () => {
-	it("draws non-empty narration as assistant prose that splits the tool run around it, with thinking hidden", () => {
+describe("narration thinking blocks", () =>
+{
+	it("draws non-empty narration as assistant prose that splits the tool run around it, with thinking hidden", () =>
+	{
 		const records = [
 			prompt,
 			...command("first"),
@@ -108,19 +185,46 @@ describe("narration thinking blocks", () => {
 			...command("third"),
 			...command("fourth"),
 		];
-		const tool = (labels: string[]) => ({perfRow: "assistant_tool", tools: labels, prose: [], thinkingBlocks: 0});
+		const tool = (labels: string[]) => (
+		{
+			perfRow: "assistant_tool",
+			tools: labels,
+			prose: [],
+			thinkingBlocks: 0,
+		});
 		const expected = [
-			{perfRow: "human", tools: [], prose: [], thinkingBlocks: 0},
+			{
+				perfRow: "human",
+				tools: [],
+				prose: [],
+				thinkingBlocks: 0,
+			},
 			tool(["Fabricated first"]),
-			{perfRow: "assistant_text", tools: [], prose: ["Found the fabricated bug."], thinkingBlocks: 0},
+			{
+				perfRow: "assistant_text",
+				tools: [],
+				prose: ["Found the fabricated bug."],
+				thinkingBlocks: 0,
+			},
 			tool(["Ran 3 commands"]),
 		];
 		const hidden = rows(records);
 		cleanup();
-		expect({hidden, shown: rows(records, true)}).toStrictEqual({hidden: expected, shown: expected});
+		expect(
+			{
+				hidden,
+				shown: rows(records, true),
+			},
+		).toStrictEqual(
+			{
+				hidden: expected,
+				shown: expected,
+			},
+		);
 	});
 
-	it("keeps one tool run across empty narration and across hidden real thinking", () => {
+	it("keeps one tool run across empty narration and across hidden real thinking", () =>
+	{
 		const emptyNarration = rows([
 			prompt,
 			...command("first"),
@@ -135,39 +239,100 @@ describe("narration thinking blocks", () => {
 			...command("second"),
 		]);
 		const expected = [
-			{perfRow: "human", tools: [], prose: [], thinkingBlocks: 0},
-			{perfRow: "assistant_tool", tools: ["Ran 2 commands"], prose: [], thinkingBlocks: 0},
+			{
+				perfRow: "human",
+				tools: [],
+				prose: [],
+				thinkingBlocks: 0,
+			},
+			{
+				perfRow: "assistant_tool",
+				tools: ["Ran 2 commands"],
+				prose: [],
+				thinkingBlocks: 0,
+			},
 		];
-		expect({emptyNarration, realThinking}).toStrictEqual({emptyNarration: expected, realThinking: expected});
+		expect(
+			{
+				emptyNarration,
+				realThinking,
+			},
+		).toStrictEqual(
+			{
+				emptyNarration: expected,
+				realThinking: expected,
+			},
+		);
 	});
 
-	it("keeps a narration block inside a tool line out of the tool run", () => {
-		const mixed = {
+	it("keeps a narration block inside a tool line out of the tool run", () =>
+	{
+		const mixed =
+		{
 			type: "assistant",
 			uuid: "a-mixed",
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
-					{type: "thinking", thinking: "Fabricated narration in a tool line.", signature: NARRATION},
-					{type: "tool_use", id: "toolu-mixed", name: "Bash", input: {command: "true", description: "Mixed"}},
+					{
+						type: "thinking",
+						thinking: "Fabricated narration in a tool line.",
+						signature: NARRATION,
+					},
+					{
+						type: "tool_use",
+						id: "toolu-mixed",
+						name: "Bash",
+						input:
+						{
+							command: "true",
+							description: "Mixed",
+						},
+					},
 				],
 			},
 		};
-		const result = {
+		const result =
+		{
 			type: "user",
 			uuid: "r-mixed",
-			message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu-mixed", content: "ok"}]},
+			message:
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: "toolu-mixed",
+						content: "ok",
+					},
+				],
+			},
 		};
 		expect(
-			rows([prompt, ...command("first"), mixed, result]).map(({perfRow, prose}) => ({perfRow, prose})),
+			rows([prompt, ...command("first"), mixed, result]).map(({perfRow, prose}) => (
+			{
+				perfRow,
+				prose,
+			})),
 		).toStrictEqual([
-			{perfRow: "human", prose: []},
-			{perfRow: "assistant_tool", prose: []},
-			{perfRow: "assistant_text", prose: ["Fabricated narration in a tool line."]},
+			{
+				perfRow: "human",
+				prose: [],
+			},
+			{
+				perfRow: "assistant_tool",
+				prose: [],
+			},
+			{
+				perfRow: "assistant_text",
+				prose: ["Fabricated narration in a tool line."],
+			},
 		]);
 	});
 
-	it("counts narration as the message's text for copy and the span footer", () => {
+	it("counts narration as the message's text for copy and the span footer", () =>
+	{
 		const {lines} = processTranscript([
 			thinking("a-narration", "Found the fabricated bug.", NARRATION),
 			thinking("a-real", "Fabricated pondering.", REAL_THINKING),

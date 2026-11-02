@@ -15,15 +15,19 @@ import {USER_PARAGRAPH_CLASS} from "./user-plain-text";
 const READ_ANNOUNCEMENT_MS = 1400;
 
 /** True for {@link READ_ANNOUNCEMENT_MS} after each pickup (`pickup` changes to a truthy value). */
-function useReadAnnouncement(pickup: boolean | number): boolean {
+function useReadAnnouncement(pickup: boolean | number): boolean
+{
 	const [reading, setReading] = useState(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (pickup === false || pickup === 0) return undefined;
 		setReading(true);
-		const timer = setTimeout(() => {
+		const timer = setTimeout(() =>
+		{
 			setReading(false);
 		}, READ_ANNOUNCEMENT_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 		};
 	}, [pickup]);
@@ -43,12 +47,15 @@ let sendNowFocusLostAt = Number.NEGATIVE_INFINITY;
  * Upstream's focus handoff: when a keyboard-focused Send now unmounts, the next one mounted within
  * {@link SEND_NOW_FOCUS_HANDOFF_MS} takes focus, if it is the only one and focus fell to the body.
  */
-function useSendNowFocusHandoff(): (button: HTMLButtonElement | null) => void {
+function useSendNowFocusHandoff(): (button: HTMLButtonElement | null) => void
+{
 	const buttonRef = useRef<HTMLButtonElement | null>(null);
-	return useCallback((button: HTMLButtonElement | null) => {
+	return useCallback((button: HTMLButtonElement | null) =>
+	{
 		const previous = buttonRef.current;
 		buttonRef.current = button;
-		if (button === null) {
+		if (button === null)
+		{
 			if (previous?.matches(":focus-visible") === true) sendNowFocusLostAt = performance.now();
 			return;
 		}
@@ -57,7 +64,12 @@ function useSendNowFocusHandoff(): (button: HTMLButtonElement | null) => void {
 		const document = button.ownerDocument;
 		const only = document.querySelectorAll(`[data-testid="${SEND_NOW_TEST_ID}"]`).length === 1;
 		const active = document.activeElement;
-		if (only && (active === null || active === document.body)) button.focus({preventScroll: true});
+		if (only && (active === null || active === document.body))
+			button.focus(
+				{
+					preventScroll: true,
+				},
+			);
 	}, []);
 }
 
@@ -73,24 +85,28 @@ function SendNowButton({
 	onSendNow: (() => Promise<void> | void) | undefined;
 	onFocusComposer: (() => void) | undefined;
 	busy: boolean;
-}) {
+})
+{
 	const descriptionId = useId();
 	const [interrupting, setInterrupting] = useState(false);
 	const sending = interrupting || busy;
 	const pointerTypeRef = useRef("");
 	const buttonRef = useSendNowFocusHandoff();
-	const onClick = (event: MouseEvent<HTMLButtonElement>) => {
+	const onClick = (event: MouseEvent<HTMLButtonElement>) =>
+	{
 		const button = event.currentTarget;
 		const pointerType = pointerTypeRef.current;
 		pointerTypeRef.current = "";
 		if (sending) return;
-		if (pointerType === "mouse" && button.ownerDocument.activeElement === button) {
+		if (pointerType === "mouse" && button.ownerDocument.activeElement === button)
+		{
 			onFocusComposer?.();
 			button.blur();
 		}
 		if (onSendNow === undefined) return;
 		setInterrupting(true);
-		void Promise.resolve(onSendNow()).finally(() => {
+		void Promise.resolve(onSendNow()).finally(() =>
+		{
 			setInterrupting(false);
 		});
 	};
@@ -104,7 +120,8 @@ function SendNowButton({
 				aria-busy={sending ? true : undefined}
 				aria-disabled={sending ? true : undefined}
 				className={SEND_NOW_CLASS}
-				onPointerDown={(event) => {
+				onPointerDown={(event) =>
+				{
 					pointerTypeRef.current = event.pointerType;
 				}}
 				onClick={onClick}
@@ -158,7 +175,8 @@ export function WaitingUserTurn({
 	/** Upstream's "Cancel and edit message": only while the browser holds the text, never once the CLI does. */
 	onCancel?: (() => Promise<void> | void) | undefined;
 	"data-perf-pending-prompt"?: string;
-}) {
+})
+{
 	const reading = useReadAnnouncement(delivered);
 	const panels = useFizzyLake("panels");
 	// Upstream `qv`: under panels a stacked row the host acknowledged reads "Delivered".
@@ -188,10 +206,20 @@ export function WaitingUserTurn({
  * live region, mounted for as long as the session runs, carries upstream's brief "read" after a
  * waiting prompt leaves the CLI's queue.
  */
-export function WaitingPickupStatus({waiting}: {waiting: readonly {id: string; text: string}[]}) {
+export function WaitingPickupStatus({
+	waiting,
+}: {
+	waiting: readonly
+	{
+		id: string;
+		text: string;
+	}[];
+})
+{
 	const previousRef = useRef(waiting);
 	const [pickups, setPickups] = useState(0);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const previous = previousRef.current;
 		previousRef.current = waiting;
 		const left = previous.filter((entry) => !waiting.some((next) => next.id === entry.id));
@@ -221,7 +249,8 @@ export function OptimisticWaitingTurn({
 	prompt: string;
 	onSendNow: (() => Promise<void> | void) | undefined;
 	onFocusComposer?: (() => void) | undefined;
-}) {
+})
+{
 	return (
 		<div className={`${CHAT_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
 			<WaitingUserTurn
@@ -255,7 +284,8 @@ export function HeldSteerTurns({
 	/** Takes this steer out of the queue and back into the composer. */
 	onCancel: (item: QueuedPrompt) => void;
 	onFocusComposer?: (() => void) | undefined;
-}) {
+})
+{
 	if (items.length === 0) return null;
 	return (
 		<div className={`${CHAT_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
@@ -265,10 +295,12 @@ export function HeldSteerTurns({
 					entryId={item.id}
 					text={item.text}
 					head={head && index === 0}
-					onSendNow={async () => {
+					onSendNow={async () =>
+					{
 						await onSendNow(item.id);
 					}}
-					onCancel={() => {
+					onCancel={() =>
+					{
 						onCancel(item);
 					}}
 					onFocusComposer={onFocusComposer}

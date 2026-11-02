@@ -8,7 +8,8 @@ import type {Capabilities} from "../lib/capabilities";
 import {asRecord} from "../lib/narrow";
 import {reviewOfferAction, workingCopyReviewDegradedMessage} from "./working-copy-review-offer";
 
-interface ReviewBannerState {
+interface ReviewBannerState
+{
 	sessionId: string;
 	reviewId: string | null;
 	processId: string | null;
@@ -17,13 +18,15 @@ interface ReviewBannerState {
 }
 
 /** Off by default (claude.ai/code has no such banner); when off, nothing subscribes to review offers or starts a review. */
-export function WorkingCopyReviewBanner({capability}: {capability: Capabilities["workingCopyReview"]}) {
+export function WorkingCopyReviewBanner({capability}: {capability: Capabilities["workingCopyReview"]})
+{
 	const {settings} = useSettings();
 	if (!settings.offerWorkingCopyReview) return null;
 	return <OfferedWorkingCopyReviewBanner capability={capability} />;
 }
 
-function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities["workingCopyReview"]}) {
+function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities["workingCopyReview"]})
+{
 	const {settings} = useSettings();
 	const subscribeReviewOffers = useSubscribeReviewOffers();
 	const [banner, setBanner] = useState<ReviewBannerState | null>(null);
@@ -31,25 +34,38 @@ function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities[
 	const cancelledSessions = useRef(new Set<string>());
 	const degradedMessage = workingCopyReviewDegradedMessage(capability);
 
-	const startReview = useCallback(async (sessionId: string) => {
+	const startReview = useCallback(async (sessionId: string) =>
+	{
 		if (runningSessions.current.has(sessionId)) return;
 		runningSessions.current.add(sessionId);
-		setBanner({sessionId, reviewId: null, processId: null, status: "running", error: null});
-		try {
+		setBanner(
+			{
+				sessionId,
+				reviewId: null,
+				processId: null,
+				status: "running",
+				error: null,
+			},
+		);
+		try
+		{
 			const reviewId = await createWorkingCopyReview(sessionId);
 			if (cancelledSessions.current.has(sessionId)) return;
 			const run = await runWorkingCopyReview(reviewId);
-			if (cancelledSessions.current.has(sessionId)) {
+			if (cancelledSessions.current.has(sessionId))
+			{
 				await cancelWorkingCopyReview(reviewId, run.processId);
 				return;
 			}
-			setBanner({
-				sessionId,
-				reviewId,
-				processId: run.processId,
-				status: "running",
-				error: null,
-			});
+			setBanner(
+				{
+					sessionId,
+					reviewId,
+					processId: run.processId,
+					status: "running",
+					error: null,
+				},
+			);
 			const output = await run.completion;
 			if (cancelledSessions.current.has(sessionId)) return;
 			const runnerError = output
@@ -58,21 +74,36 @@ function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities[
 				.filter((line) => line !== "")
 				.map((line) => asRecord(JSON.parse(line)))
 				.find((event) => event?.["type"] === "error");
-			if (runnerError) {
+			if (runnerError)
+			{
 				const message = runnerError["message"];
 				throw new Error(typeof message === "string" ? message : "Review runner failed");
 			}
-			setBanner({sessionId, reviewId, processId: null, status: "complete", error: null});
-		} catch (error) {
+			setBanner(
+				{
+					sessionId,
+					reviewId,
+					processId: null,
+					status: "complete",
+					error: null,
+				},
+			);
+		}
+		catch (error)
+		{
 			if (cancelledSessions.current.has(sessionId)) return;
-			setBanner({
-				sessionId,
-				reviewId: null,
-				processId: null,
-				status: "error",
-				error: error instanceof Error ? error.message : "Review failed",
-			});
-		} finally {
+			setBanner(
+				{
+					sessionId,
+					reviewId: null,
+					processId: null,
+					status: "error",
+					error: error instanceof Error ? error.message : "Review failed",
+				},
+			);
+		}
+		finally
+		{
 			runningSessions.current.delete(sessionId);
 			cancelledSessions.current.delete(sessionId);
 		}
@@ -80,15 +111,25 @@ function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities[
 
 	useEffect(
 		() =>
-			subscribeReviewOffers((sessionId) => {
+			subscribeReviewOffers((sessionId) =>
+			{
 				if (!capability.available) return;
 				const action = reviewOfferAction(settings.capabilities.workingCopyReview.config.offerMode);
 				if (action === "ignore") return;
-				if (action === "start") {
+				if (action === "start")
+				{
 					void startReview(sessionId);
 					return;
 				}
-				setBanner({sessionId, reviewId: null, processId: null, status: "offered", error: null});
+				setBanner(
+					{
+						sessionId,
+						reviewId: null,
+						processId: null,
+						status: "offered",
+						error: null,
+					},
+				);
 			}),
 		[
 			capability.available,
@@ -98,7 +139,8 @@ function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities[
 		],
 	);
 
-	if (degradedMessage !== null) {
+	if (degradedMessage !== null)
+	{
 		return (
 			<div
 				role="alert"
@@ -111,9 +153,11 @@ function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities[
 
 	if (banner === null) return null;
 
-	async function cancel(activeBanner: ReviewBannerState): Promise<void> {
+	async function cancel(activeBanner: ReviewBannerState): Promise<void>
+	{
 		cancelledSessions.current.add(activeBanner.sessionId);
-		if (activeBanner.reviewId && activeBanner.processId) {
+		if (activeBanner.reviewId && activeBanner.processId)
+		{
 			await cancelWorkingCopyReview(activeBanner.reviewId, activeBanner.processId);
 		}
 		setBanner(null);
@@ -147,7 +191,8 @@ function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities[
 			{banner.status === "complete" && banner.reviewId && (
 				<a
 					href={reviewChangesHref(banner.sessionId)}
-					onClick={() => {
+					onClick={() =>
+					{
 						if (banner.reviewId) openReviewInChanges(banner.sessionId, banner.reviewId);
 					}}
 					className="rounded-md bg-accent-100 px-3 py-1.5 text-xs font-medium text-white no-underline hover:bg-accent-100/80"
@@ -166,10 +211,14 @@ function OfferedWorkingCopyReviewBanner({capability}: {capability: Capabilities[
 			)}
 			<button
 				type="button"
-				onClick={() => {
-					if (banner.status === "running") {
+				onClick={() =>
+				{
+					if (banner.status === "running")
+					{
 						void cancel(banner);
-					} else {
+					}
+					else
+					{
 						setBanner(null);
 					}
 				}}

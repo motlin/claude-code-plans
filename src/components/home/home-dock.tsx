@@ -8,12 +8,24 @@ import {HomeComposer} from "./home-composer";
  * It lives outside the route file so the composer joins the home route's split component chunk instead of the route
  * tree every page loads.
  */
-export function HomeDock() {
+export function HomeDock()
+{
 	// Not strict: tests mount the home route under their own route ids.
-	const {create} = useSearch({strict: false});
+	const {create} = useSearch(
+		{
+			strict: false,
+		},
+	);
 	const navigate = useNavigate();
-	const dropCreate = useCallback(() => {
-		void navigate({to: "/", search: {}, replace: true});
+	const dropCreate = useCallback(() =>
+	{
+		void navigate(
+			{
+				to: "/",
+				search: {},
+				replace: true,
+			},
+		);
 	}, [navigate]);
 	return (
 		<HomeComposer

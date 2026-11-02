@@ -5,23 +5,26 @@ import {effortLevelShortLabels} from "./schema-choices";
 import {setShellChinLabels, type ShellChinLabels} from "./shell-chin-store";
 
 /** The mode, model and effort text the live home chin shows for these settings defaults. */
-export function resolveShellChinLabels(defaults: ComposerDefaults | null): ShellChinLabels {
-	const state = resolveComposerState({
-		hookPermissionMode: null,
-		jsonlPermissionMode: null,
-		settingsDefaultMode: defaults?.defaultMode ?? null,
-		statuslineModel: null,
-		statuslineModelId: null,
-		lastAssistantModel: null,
-		lastAssistantUsage: null,
-		lastAssistantEffort: null,
-		fastMode: defaults?.fastMode ?? false,
-		fastModeBlocked: defaults?.fastModeBlocked ?? null,
-		settingsModel: defaults?.model ?? null,
-		settingsEffortLevel: defaults?.effortLevel ?? null,
-		statusline: null,
-		statuslineUpdatedAt: null,
-	});
+export function resolveShellChinLabels(defaults: ComposerDefaults | null): ShellChinLabels
+{
+	const state = resolveComposerState(
+		{
+			hookPermissionMode: null,
+			jsonlPermissionMode: null,
+			settingsDefaultMode: defaults?.defaultMode ?? null,
+			statuslineModel: null,
+			statuslineModelId: null,
+			lastAssistantModel: null,
+			lastAssistantUsage: null,
+			lastAssistantEffort: null,
+			fastMode: defaults?.fastMode ?? false,
+			fastModeBlocked: defaults?.fastModeBlocked ?? null,
+			settingsModel: defaults?.model ?? null,
+			settingsEffortLevel: defaults?.effortLevel ?? null,
+			statusline: null,
+			statuslineUpdatedAt: null,
+		},
+	);
 	const level = EffortLevelSchema.safeParse(state.effort.id);
 	return {
 		mode: state.mode?.label ?? "Manual",
@@ -31,7 +34,8 @@ export function resolveShellChinLabels(defaults: ComposerDefaults | null): Shell
 }
 
 /** A document request: anything but the JSON API, which never renders the shell. */
-function rendersShell(request: Request): boolean {
+function rendersShell(request: Request): boolean
+{
 	return request.method === "GET" && !new URL(request.url).pathname.startsWith("/api/");
 }
 
@@ -42,8 +46,10 @@ function rendersShell(request: Request): boolean {
 export function withShellChinLabels(
 	fetch: (request: Request) => Response | Promise<Response>,
 	readSettings: () => Promise<unknown>,
-): (request: Request) => Promise<Response> {
-	return async (request) => {
+): (request: Request) => Promise<Response>
+{
+	return async (request) =>
+	{
 		if (rendersShell(request)) setShellChinLabels(resolveShellChinLabels(await getComposerDefaults(readSettings)));
 		return fetch(request);
 	};

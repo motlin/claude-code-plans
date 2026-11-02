@@ -8,7 +8,8 @@ import {hmrPersist} from "./hmr-persist";
  */
 const store = hmrPersist("pendingElicitations", () => new Map<string, PendingElicitation[]>());
 
-export function addPendingElicitation(sessionId: string, entry: PendingElicitation): void {
+export function addPendingElicitation(sessionId: string, entry: PendingElicitation): void
+{
 	store.set(sessionId, [...(store.get(sessionId) ?? []), entry]);
 }
 
@@ -18,8 +19,13 @@ export function addPendingElicitation(sessionId: string, entry: PendingElicitati
  */
 export function resolvePendingElicitation(
 	sessionId: string,
-	result: {elicitationId?: string; serverName: string},
-): boolean {
+	result:
+	{
+		elicitationId?: string;
+		serverName: string;
+	},
+): boolean
+{
 	const entries = store.get(sessionId) ?? [];
 	const index = entries.findIndex((entry) =>
 		result.elicitationId === undefined
@@ -34,19 +40,23 @@ export function resolvePendingElicitation(
 }
 
 /** Forget every elicitation of the session; true when there was one. */
-export function clearPendingElicitations(sessionId: string): boolean {
+export function clearPendingElicitations(sessionId: string): boolean
+{
 	return store.delete(sessionId);
 }
 
-export function getPendingElicitations(sessionId: string): PendingElicitation[] {
+export function getPendingElicitations(sessionId: string): PendingElicitation[]
+{
 	return store.get(sessionId) ?? [];
 }
 
-export function getAllPendingElicitations(): Record<string, PendingElicitation[]> {
+export function getAllPendingElicitations(): Record<string, PendingElicitation[]>
+{
 	return Object.fromEntries(store);
 }
 
 /** Forget every pending elicitation, as a fresh process starts. */
-export function clearAllPendingElicitations(): void {
+export function clearAllPendingElicitations(): void
+{
 	store.clear();
 }

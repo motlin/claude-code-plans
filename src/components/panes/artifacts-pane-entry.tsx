@@ -9,18 +9,23 @@ import {registerPane} from "./pane-registry";
 const NO_ARTIFACTS: readonly SessionArtifact[] = [];
 
 /** The session's artifacts, refetched whenever the session itself refreshes. */
-export function useSessionArtifacts(sessionId: string): readonly SessionArtifact[] {
+export function useSessionArtifacts(sessionId: string): readonly SessionArtifact[]
+{
 	return useQuery(sessionArtifactsQueryOptions(sessionId)).data ?? NO_ARTIFACTS;
 }
 
 /** Registers the `artifacts` pane kind for this session while mounted. */
-export function useRegisterArtifactsPane(artifacts: readonly SessionArtifact[]): void {
+export function useRegisterArtifactsPane(artifacts: readonly SessionArtifact[]): void
+{
 	useEffect(
 		() =>
-			registerPane("artifacts", {
-				title: "Artifacts",
-				render: () => <SessionArtifactsList artifacts={artifacts} />,
-			}),
+			registerPane(
+				"artifacts",
+				{
+					title: "Artifacts",
+					render: () => <SessionArtifactsList artifacts={artifacts} />,
+				},
+			),
 		[artifacts],
 	);
 }

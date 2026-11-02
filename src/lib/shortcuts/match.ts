@@ -6,7 +6,8 @@ type ShortcutKeyEvent = Pick<
 	"key" | "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey" | "getModifierState"
 >;
 
-const MODIFIER_FLAGS = {
+const MODIFIER_FLAGS =
+{
 	cmd: "metaKey",
 	ctrl: "ctrlKey",
 	alt: "altKey",
@@ -15,23 +16,28 @@ const MODIFIER_FLAGS = {
 
 const MODIFIERS: ShortcutModifier[] = objectKeys(MODIFIER_FLAGS);
 
-export function isMacPlatform(): boolean {
+export function isMacPlatform(): boolean
+{
 	return typeof navigator !== "undefined" && /mac|iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
-export function isWindowsPlatform(): boolean {
+export function isWindowsPlatform(): boolean
+{
 	return typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
 }
 
 /** Code-first key match with strict modifier equality and an AltGraph guard. */
-export function matchBinding(event: ShortcutKeyEvent, binding: Binding): boolean {
+export function matchBinding(event: ShortcutKeyEvent, binding: Binding): boolean
+{
 	const keyMatches =
 		binding.code === undefined ? event.key.toLowerCase() === binding.key : event.code === binding.code;
 	if (!keyMatches) return false;
-	for (const modifier of MODIFIERS) {
+	for (const modifier of MODIFIERS)
+	{
 		if (event[MODIFIER_FLAGS[modifier]] !== binding.modifiers.includes(modifier)) return false;
 	}
-	if (binding.modifiers.includes("ctrl") && binding.modifiers.includes("alt") && event.getModifierState("AltGraph")) {
+	if (binding.modifiers.includes("ctrl") && binding.modifiers.includes("alt") && event.getModifierState("AltGraph"))
+	{
 		return false;
 	}
 	return true;
@@ -49,7 +55,8 @@ const NON_TEXT_INPUT_TYPES = new Set([
 	"range",
 ]);
 
-export function isEditableTarget(target: EventTarget | null): boolean {
+export function isEditableTarget(target: EventTarget | null): boolean
+{
 	if (!(target instanceof Element)) return false;
 	if (target instanceof HTMLInputElement) return !NON_TEXT_INPUT_TYPES.has(target.type);
 	if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true;
@@ -63,7 +70,8 @@ export function isEditableTarget(target: EventTarget | null): boolean {
 const KEYSTROKE_SINK_SELECTOR = 'canvas, [role="application"], [ant-keystroke-sink], [data-terminal]';
 
 /** Upstream's `UI`: the target is inside an element that takes raw keystrokes. */
-export function isInKeystrokeSink(target: EventTarget | null): boolean {
+export function isInKeystrokeSink(target: EventTarget | null): boolean
+{
 	return target instanceof Element && target.closest(KEYSTROKE_SINK_SELECTOR) !== null;
 }
 
@@ -71,7 +79,8 @@ export function isInKeystrokeSink(target: EventTarget | null): boolean {
 const OWNS_TYPING_SELECTOR = "[data-owns-typing-and-pastes]";
 
 /** Upstream's `Vo`. */
-export function ownsTyping(element: Element | null): boolean {
+export function ownsTyping(element: Element | null): boolean
+{
 	return element?.closest(OWNS_TYPING_SELECTOR) != null;
 }
 
@@ -86,17 +95,20 @@ const MODAL_LAYER_SELECTOR = [
 ].join(",");
 
 /** Focus is inside a menu, listbox, dialog or popper, where app shortcuts yield. */
-export function isInModalLayer(element: Element | null): boolean {
+export function isInModalLayer(element: Element | null): boolean
+{
 	const layer = element?.closest(MODAL_LAYER_SELECTOR) ?? null;
 	return layer !== null && layer.getAttribute("aria-modal") !== "false";
 }
 
-export function bindingsFor(id: ShortcutId, isMac: boolean, isWindows = false): Binding[] {
+export function bindingsFor(id: ShortcutId, isMac: boolean, isWindows = false): Binding[]
+{
 	return platformBindings(getShortcut(id), isMac, isWindows);
 }
 
 /** The definition's bindings that apply on the current platform, in registry order. */
-export function platformBindings(definition: ShortcutDefinition, isMac: boolean, isWindows = false): Binding[] {
+export function platformBindings(definition: ShortcutDefinition, isMac: boolean, isWindows = false): Binding[]
+{
 	const platforms = isMac ? ["mac"] : ["non-mac", isWindows ? "windows" : "linux"];
 	return definition.bindings.filter((b) => b.platform === undefined || platforms.includes(b.platform));
 }

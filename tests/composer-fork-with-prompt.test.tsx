@@ -5,7 +5,8 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import type {LaunchOptions} from "../src/lib/launch-options";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	localStorage.clear();
 	vi.useRealTimers();
@@ -17,14 +18,16 @@ function renderComposer({
 }: {
 	onFork?: (prompt: string, launchOptions: LaunchOptions) => void;
 	forkLabel?: string;
-}) {
+})
+{
 	const onSend = vi.fn<(prompt: string) => void>();
 	const onQueueForLater = vi.fn<(prompt: string) => void>();
 	render(
 		<Composer
 			variant="session"
 			draftKey="session-alice"
-			onSend={(prompt) => {
+			onSend={(prompt) =>
+			{
 				onSend(prompt);
 			}}
 			onQueueForLater={onQueueForLater}
@@ -32,89 +35,242 @@ function renderComposer({
 			forkLabel={forkLabel}
 		/>,
 	);
-	const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
-	return {textarea, onSend, onQueueForLater};
+	const textarea = screen.getByRole<HTMLTextAreaElement>(
+		"textbox",
+		{
+			name: "Prompt",
+		},
+	);
+	return {
+		textarea,
+		onSend,
+		onQueueForLater,
+	};
 }
 
-describe("Fork with this prompt", () => {
-	it("forks on ⌥⌘⏎ and Ctrl+Alt+⏎ without touching Send or Queue for later", () => {
+describe("Fork with this prompt", () =>
+{
+	it("forks on ⌥⌘⏎ and Ctrl+Alt+⏎ without touching Send or Queue for later", () =>
+	{
 		const onFork = vi.fn<(prompt: string, launchOptions: LaunchOptions) => void>();
-		const {textarea, onSend, onQueueForLater} = renderComposer({onFork});
+		const {textarea, onSend, onQueueForLater} = renderComposer(
+			{
+				onFork,
+			},
+		);
 
-		fireEvent.change(textarea, {target: {value: "Try Alice's idea"}});
-		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter", metaKey: true, altKey: true});
-		fireEvent.change(textarea, {target: {value: "Try Bob's idea"}});
-		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter", ctrlKey: true, altKey: true});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "Try Alice's idea",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+				code: "Enter",
+				metaKey: true,
+				altKey: true,
+			},
+		);
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "Try Bob's idea",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+				code: "Enter",
+				ctrlKey: true,
+				altKey: true,
+			},
+		);
 
-		expect({
-			fork: onFork.mock.calls,
-			send: onSend.mock.calls,
-			later: onQueueForLater.mock.calls,
-			cleared: textarea.value,
-		}).toStrictEqual({
-			fork: [
-				["Try Alice's idea", {}],
-				["Try Bob's idea", {}],
-			],
-			send: [],
-			later: [],
-			cleared: "",
-		});
+		expect(
+			{
+				fork: onFork.mock.calls,
+				send: onSend.mock.calls,
+				later: onQueueForLater.mock.calls,
+				cleared: textarea.value,
+			},
+		).toStrictEqual(
+			{
+				fork: [
+					["Try Alice's idea", {}],
+					["Try Bob's idea", {}],
+				],
+				send: [],
+				later: [],
+				cleared: "",
+			},
+		);
 	});
 
-	it("keeps ⌘⏎ as Queue for later when forking is available", () => {
+	it("keeps ⌘⏎ as Queue for later when forking is available", () =>
+	{
 		const onFork = vi.fn<(prompt: string, launchOptions: LaunchOptions) => void>();
-		const {textarea, onQueueForLater} = renderComposer({onFork});
+		const {textarea, onQueueForLater} = renderComposer(
+			{
+				onFork,
+			},
+		);
 
-		fireEvent.change(textarea, {target: {value: "Alice's urgent prompt"}});
-		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter", metaKey: true});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "Alice's urgent prompt",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+				code: "Enter",
+				metaKey: true,
+			},
+		);
 
-		expect({fork: onFork.mock.calls, later: onQueueForLater.mock.calls}).toStrictEqual({
-			fork: [],
-			later: [["Alice's urgent prompt"]],
-		});
+		expect(
+			{
+				fork: onFork.mock.calls,
+				later: onQueueForLater.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				fork: [],
+				later: [["Alice's urgent prompt"]],
+			},
+		);
 	});
 
-	it("does nothing on ⌥⌘⏎ with an empty prompt", () => {
+	it("does nothing on ⌥⌘⏎ with an empty prompt", () =>
+	{
 		const onFork = vi.fn<(prompt: string, launchOptions: LaunchOptions) => void>();
-		const {textarea} = renderComposer({onFork});
+		const {textarea} = renderComposer(
+			{
+				onFork,
+			},
+		);
 
-		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter", metaKey: true, altKey: true});
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+				code: "Enter",
+				metaKey: true,
+				altKey: true,
+			},
+		);
 
 		expect(onFork.mock.calls).toStrictEqual([]);
 	});
 
-	it("stacks the fork shortcut on its own row under Send in the tooltip", () => {
+	it("stacks the fork shortcut on its own row under Send in the tooltip", () =>
+	{
 		vi.useFakeTimers();
-		const {textarea} = renderComposer({onFork: () => {}, forkLabel: "Fork with this prompt"});
-		fireEvent.change(textarea, {target: {value: "Continue Alice's test"}});
+		const {textarea} = renderComposer(
+			{
+				onFork: () =>
+				{
+				},
+				forkLabel: "Fork with this prompt",
+			},
+		);
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "Continue Alice's test",
+				},
+			},
+		);
 
-		fireEvent.pointerEnter(screen.getByRole("button", {name: "Send"}));
-		act(() => {
+		fireEvent.pointerEnter(
+			screen.getByRole(
+				"button",
+				{
+					name: "Send",
+				},
+			),
+		);
+		act(() =>
+		{
 			vi.advanceTimersByTime(300);
 		});
 
 		const tooltip = screen.getByRole("tooltip");
-		expect({
-			rows: [...tooltip.children].map((row) => row.textContent),
-			separators: [...tooltip.querySelectorAll("span")].filter((span) => span.textContent === "·").length,
-		}).toStrictEqual({rows: ["SendEnter", "Fork with this promptCtrl+Alt+Enter"], separators: 0});
+		expect(
+			{
+				rows: [...tooltip.children].map((row) => row.textContent),
+				separators: [...tooltip.querySelectorAll("span")].filter((span) => span.textContent === "·").length,
+			},
+		).toStrictEqual(
+			{
+				rows: ["SendEnter", "Fork with this promptCtrl+Alt+Enter"],
+				separators: 0,
+			},
+		);
 	});
 
-	it("labels the headless fork as Send in a forked session", () => {
+	it("labels the headless fork as Send in a forked session", () =>
+	{
 		vi.useFakeTimers();
-		const {textarea} = renderComposer({onFork: () => {}, forkLabel: "Send in a forked session"});
-		fireEvent.change(textarea, {target: {value: "Continue Alice's test"}});
+		const {textarea} = renderComposer(
+			{
+				onFork: () =>
+				{
+				},
+				forkLabel: "Send in a forked session",
+			},
+		);
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "Continue Alice's test",
+				},
+			},
+		);
 
-		fireEvent.pointerEnter(screen.getByRole("button", {name: "Send"}));
-		act(() => {
+		fireEvent.pointerEnter(
+			screen.getByRole(
+				"button",
+				{
+					name: "Send",
+				},
+			),
+		);
+		act(() =>
+		{
 			vi.advanceTimersByTime(300);
 		});
 
 		const tooltip = screen.getByRole("tooltip");
-		expect({
-			rows: [...tooltip.children].map((row) => row.textContent),
-			separators: [...tooltip.querySelectorAll("span")].filter((span) => span.textContent === "·").length,
-		}).toStrictEqual({rows: ["SendEnter", "Send in a forked sessionCtrl+Alt+Enter"], separators: 0});
+		expect(
+			{
+				rows: [...tooltip.children].map((row) => row.textContent),
+				separators: [...tooltip.querySelectorAll("span")].filter((span) => span.textContent === "·").length,
+			},
+		).toStrictEqual(
+			{
+				rows: ["SendEnter", "Send in a forked sessionCtrl+Alt+Enter"],
+				separators: 0,
+			},
+		);
 	});
 });

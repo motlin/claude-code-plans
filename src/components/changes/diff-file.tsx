@@ -3,7 +3,8 @@ import type {FileDiffLoadedFiles, FileDiffMetadata, GetHoveredLineResult} from "
 import {FileDiff, GutterUtilitySlotStyles} from "@pierre/diffs/react";
 import type {FileDiffOptions} from "@pierre/diffs/react";
 import {ArrowUpRight, ChevronDown, ChevronRight, Plus} from "lucide-react";
-import {
+import
+{
 	type CSSProperties,
 	type ReactNode,
 	createContext,
@@ -18,7 +19,8 @@ import {useCodeThemeBackground} from "../../hooks/use-code-theme-background";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {LazyFileTypeIcon} from "../lazy-file-type-icon";
 import {useFizzyLake} from "../../lib/fizzy-lake";
-import {
+import
+{
 	DIFFS_HOST_CLASS,
 	DIFFS_STYLE_OVERRIDES,
 	DIFFS_WRAP_STYLE,
@@ -44,13 +46,15 @@ import {useResolvedTheme} from "../theme-context";
 export type {DiffStyle};
 
 /** Content rendered inline beneath one diff line, such as a review finding. */
-export interface DiffFileAnnotation {
+export interface DiffFileAnnotation
+{
 	side: "additions" | "deletions";
 	lineNumber: number;
 	content: ReactNode;
 }
 
-export interface DiffFileProps {
+export interface DiffFileProps
+{
 	/** A single-file unified diff (`git diff` output for one path). */
 	patch: string;
 	diffStyle?: DiffStyle;
@@ -85,7 +89,8 @@ export interface DiffFileProps {
 }
 
 /** One diff line: its number on the old (`deletions`) or new (`additions`) side. */
-export interface DiffLineRange {
+export interface DiffLineRange
+{
 	side: "additions" | "deletions";
 	line: number;
 }
@@ -94,7 +99,8 @@ export interface DiffLineRange {
  * Upstream's 16px accent "+" (`Zc`) in the hovered line's gutter: the library's absolute slot style, centred
  * on the line. The injected `Ca` moves the slot to the number column's left edge (`left:5px`).
  */
-const GUTTER_BUTTON_STYLE: CSSProperties = {
+const GUTTER_BUTTON_STYLE: CSSProperties =
+{
 	...GutterUtilitySlotStyles,
 	top: "calc((var(--diffs-line-height, 1lh) - 1rem) / 2)",
 	bottom: "auto",
@@ -106,15 +112,23 @@ export function AddCommentGutterButton({
 }: {
 	getHoveredLine: () => GetHoveredLineResult<"diff"> | undefined;
 	onAddComment: (target: DiffLineRange) => void;
-}) {
+})
+{
 	return (
 		<button
 			type="button"
 			aria-label="Add comment on this line"
-			onClick={() => {
+			onClick={() =>
+			{
 				const hovered = getHoveredLine();
-				if (hovered !== undefined) {
-					onAddComment({side: hovered.side, line: hovered.lineNumber});
+				if (hovered !== undefined)
+				{
+					onAddComment(
+						{
+							side: hovered.side,
+							line: hovered.lineNumber,
+						},
+					);
 				}
 			}}
 			className="flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover"
@@ -125,23 +139,45 @@ export function AddCommentGutterButton({
 	);
 }
 
-function countChanges(fileDiff: FileDiffMetadata): {added: number; removed: number} {
+function countChanges(fileDiff: FileDiffMetadata):
+{
+	added: number;
+	removed: number;
+}
+{
 	let added = 0;
 	let removed = 0;
-	for (const hunk of fileDiff.hunks) {
+	for (const hunk of fileDiff.hunks)
+	{
 		added += hunk.additionLines;
 		removed += hunk.deletionLines;
 	}
-	return {added, removed};
+	return {
+		added,
+		removed,
+	};
 }
 
-function splitPath(path: string): {name: string; dir: string} {
+function splitPath(path: string):
+{
+	name: string;
+	dir: string;
+}
+{
 	const slash = path.lastIndexOf("/");
-	if (slash === -1) return {name: path, dir: ""};
-	return {name: path.slice(slash + 1), dir: path.slice(0, slash)};
+	if (slash === -1)
+		return {
+			name: path,
+			dir: "",
+		};
+	return {
+		name: path.slice(slash + 1),
+		dir: path.slice(0, slash),
+	};
 }
 
-export interface DiffFileHeaderProps {
+export interface DiffFileHeaderProps
+{
 	path: string;
 	prevPath?: string | undefined;
 	additions: number;
@@ -166,7 +202,8 @@ const OPEN_FILE_BUTTON_CLASS =
 const HOVER_REVEAL_CLASS =
 	"opacity-0 transition-opacity group-hover/diff-file:opacity-100 group-focus-within/diff-file:opacity-100 pointer-coarse:opacity-100";
 
-interface MoreMenuHost {
+interface MoreMenuHost
+{
 	handle: MenuHandle<ReactNode>;
 	armed: boolean;
 	arm: () => void;
@@ -182,15 +219,18 @@ const MoreMenuHostContext = createContext<MoreMenuHost | null>(null);
  * trigger. It sits outside the headers' and the diff body's context menus: Base UI treats a Menu rendered inside a
  * ContextMenu as that menu's child, and Escape then stops closing it after a submenu has opened.
  */
-export function DiffFileMenuHost({children}: {children: ReactNode}) {
+export function DiffFileMenuHost({children}: {children: ReactNode})
+{
 	const [handle] = useState(() => createMenuHandle<ReactNode>());
 	const [armed, setArmed] = useState(false);
 	const [openTriggerId, setOpenTriggerId] = useState<string | null>(null);
 	const host = useMemo<MoreMenuHost>(
-		() => ({
+		() => (
+		{
 			handle,
 			armed,
-			arm: () => {
+			arm: () =>
+			{
 				setArmed(true);
 			},
 			openTriggerId,
@@ -203,7 +243,8 @@ export function DiffFileMenuHost({children}: {children: ReactNode}) {
 			{armed && (
 				<Menu
 					handle={handle}
-					onOpenChange={(open, details) => {
+					onOpenChange={(open, details) =>
+					{
 						setOpenTriggerId(open ? (details.trigger?.id ?? null) : null);
 					}}
 				>
@@ -218,7 +259,8 @@ export function DiffFileMenuHost({children}: {children: ReactNode}) {
  * Upstream `rc`: a ghost xs DotsHorizontal button with the tooltip "More actions" below it (closed while its menu is
  * open), opening the host's dropdown aligned to its end.
  */
-function MoreActionsButton({menu}: {menu: ReactNode}) {
+function MoreActionsButton({menu}: {menu: ReactNode})
+{
 	const host = use(MoreMenuHostContext);
 	const id = useId();
 	if (host === null) return null;
@@ -237,7 +279,8 @@ function MoreActionsButton({menu}: {menu: ReactNode}) {
 					data-cds-ghost=""
 					data-cds-icon-only=""
 					data-size="xs"
-					onPointerEnter={(event) => {
+					onPointerEnter={(event) =>
+					{
 						if (event.pointerType !== "touch") arm?.();
 					}}
 					onFocus={arm}
@@ -266,7 +309,8 @@ const PAINT_LAYER_CLASS = "absolute -z-[1] rounded-[inherit] inset-0";
 const VIEWED_PAINT_CLASS = `absolute inset-0 rounded-[inherit] bg-transparent group-hover/btn:bg-fill-ghost-hover ${CDS_GHOST_PAINT_DISABLED}`;
 
 /** Upstream `Mo`: the header's Viewed check, with the Pulse indicator and a hidden description when stale. */
-function ViewedButton({mark}: {mark: DiffFileMark}) {
+function ViewedButton({mark}: {mark: DiffFileMark})
+{
 	const staleId = useId();
 	const marked = mark.status === "marked";
 	const stale = mark.status === "stale";
@@ -289,7 +333,8 @@ function ViewedButton({mark}: {mark: DiffFileMark}) {
 						data-cds-ghost=""
 						data-cds-icon-only=""
 						data-size="xs"
-						onClick={() => {
+						onClick={() =>
+						{
 							mark.setMarked(!marked);
 						}}
 						className={VIEWED_BUTTON_CLASS}
@@ -313,7 +358,8 @@ function ViewedButton({mark}: {mark: DiffFileMark}) {
 	);
 }
 
-function OpenFileButton({onOpenFile}: {onOpenFile: () => void}) {
+function OpenFileButton({onOpenFile}: {onOpenFile: () => void})
+{
 	return (
 		<button type="button" aria-label="Open file" onClick={onOpenFile} className={OPEN_FILE_BUTTON_CLASS}>
 			<ArrowUpRight aria-hidden="true" className="size-3" />
@@ -322,9 +368,11 @@ function OpenFileButton({onOpenFile}: {onOpenFile: () => void}) {
 }
 
 /** Upstream's 32px Changes file header: chevron, name, dir, "Renamed from", +a −r, hover "Open file". */
-export function DiffFileHeader(props: DiffFileHeaderProps) {
+export function DiffFileHeader(props: DiffFileHeaderProps)
+{
 	const host = use(MoreMenuHostContext);
-	if (host === null && props.showMenuButton === true && props.menu !== undefined) {
+	if (host === null && props.showMenuButton === true && props.menu !== undefined)
+	{
 		return (
 			<DiffFileMenuHost>
 				<DiffFileHeaderRow {...props} />
@@ -345,7 +393,8 @@ function DiffFileHeaderRow({
 	menu,
 	showMenuButton = false,
 	mark,
-}: DiffFileHeaderProps) {
+}: DiffFileHeaderProps)
+{
 	const {name, dir} = splitPath(path);
 	const menuButton = showMenuButton && menu !== undefined;
 	const cluster = menuButton || mark !== undefined;
@@ -434,7 +483,8 @@ function DiffFileHeaderRow({
 		</>
 	);
 	const rootClass = "group/diff-file @container/diff-file relative";
-	if (menu === undefined) {
+	if (menu === undefined)
+	{
 		return (
 			<div data-diff-file-header={path} className={rootClass}>
 				{content}
@@ -447,7 +497,8 @@ function DiffFileHeaderRow({
 		<ContextMenu>
 			<ContextMenuTrigger
 				render={<div data-diff-file-header={path} className={rootClass} />}
-				onContextMenu={(event) => {
+				onContextMenu={(event) =>
+				{
 					event.stopPropagation();
 				}}
 			>
@@ -486,27 +537,52 @@ export function DiffFile({
 	onLoaderGaveUp,
 	expandUnchanged = false,
 	onRendered,
-}: DiffFileProps) {
+}: DiffFileProps)
+{
 	const fileDiff = useMemo(() => getSingularPatch(patch), [patch]);
-	const loader = useRef({loadFileSides, onLoaderGaveUp, onRendered, fileDiff});
-	loader.current = {loadFileSides, onLoaderGaveUp, onRendered, fileDiff};
+	const loader = useRef(
+		{
+			loadFileSides,
+			onLoaderGaveUp,
+			onRendered,
+			fileDiff,
+		},
+	);
+	loader.current =
+	{
+		loadFileSides,
+		onLoaderGaveUp,
+		onRendered,
+		fileDiff,
+	};
 	const canLoad = loadFileSides !== undefined;
 	// Upstream `Cn`/`Tn`: one load per fileDiff, so a remount (new metrics) doesn't read the file again.
-	const loadDiffFiles = useMemo(() => {
+	const loadDiffFiles = useMemo(() =>
+	{
 		if (!canLoad) return undefined;
-		return async (target: FileDiffMetadata) => {
+		return async (target: FileDiffMetadata) =>
+		{
 			const cached = loadedFiles.get(target);
 			if (cached !== undefined) return cached;
 			const loading = loadWithRetry(
-				async (fresh) => {
+				async (fresh) =>
+				{
 					const current = loader.current;
 					if (current.fileDiff !== target || current.loadFileSides === undefined) return "park";
 					const sides = await current.loadFileSides(fresh);
 					if (loader.current.fileDiff !== target) return "park";
-					const files = toLoadedFiles(target, {path: target.name, oldPath: target.prevName}, sides);
+					const files = toLoadedFiles(
+						target,
+						{
+							path: target.name,
+							oldPath: target.prevName,
+						},
+						sides,
+					);
 					return files === "unavailable" ? "retry" : files === "drifted" ? "park" : files;
 				},
-				() => {
+				() =>
+				{
 					if (loader.current.fileDiff === target) loader.current.onLoaderGaveUp?.();
 				},
 			);
@@ -516,7 +592,8 @@ export function DiffFile({
 	}, [canLoad]);
 	const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(defaultCollapsed);
 	const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
-	const toggle = () => {
+	const toggle = () =>
+	{
 		setUncontrolledCollapsed(!collapsed);
 		onCollapsedChange?.(!collapsed);
 	};
@@ -529,7 +606,8 @@ export function DiffFile({
 
 	const lineAnnotations = useMemo(
 		() =>
-			annotations?.map(({side, lineNumber, content}) => ({
+			annotations?.map(({side, lineNumber, content}) => (
+			{
 				side,
 				lineNumber,
 				metadata: content,
@@ -537,7 +615,8 @@ export function DiffFile({
 		[annotations],
 	);
 
-	const options = useMemo<FileDiffOptions<ReactNode, undefined>>(() => {
+	const options = useMemo<FileDiffOptions<ReactNode, undefined>>(() =>
+	{
 		const drawRails = railsPostRender(onRequestChanges !== undefined);
 		return {
 			theme: codeThemes,
@@ -554,10 +633,16 @@ export function DiffFile({
 			collapsedContextThreshold: 3,
 			// The cds FileDiff gate (`Va`): expandUnchanged only for a diff that is whole or can be loaded.
 			expandUnchanged: expandUnchanged && (!fileDiff.isPartial || loadDiffFiles !== undefined),
-			...(loadDiffFiles === undefined ? {} : {loadDiffFiles}),
+			...(loadDiffFiles === undefined
+				? {}
+				:
+					{
+						loadDiffFiles,
+					}),
 			// Upstream c44d00c7f `xn`: `se.draw(e)` (Q(wordDiff, !readOnly).draw), the partial diff's "Show more
 			// lines" relabel (c91a5e4a6 o), then `Bn(e, fileDiff)` (c91a5e4a6 g).
-			onPostRender: (node, instance, phase) => {
+			onPostRender: (node, instance, phase) =>
+			{
 				drawRails(node, instance, phase);
 				if (phase === "unmount") return;
 				if (fileDiff.isPartial) relabelTrailingSeparator(node, SHOW_MORE_LINES);
@@ -565,11 +650,13 @@ export function DiffFile({
 				decorateHunkHeadings(node, fileDiff);
 				loader.current.onRendered?.();
 			},
-			unsafeCSS: diffsInjectedCss({
-				disableFileHeader: false,
-				gutterUtility: onRequestChanges !== undefined,
-				panels,
-			}),
+			unsafeCSS: diffsInjectedCss(
+				{
+					disableFileHeader: false,
+					gutterUtility: onRequestChanges !== undefined,
+					panels,
+				},
+			),
 		};
 	}, [
 		fileDiff,
@@ -586,12 +673,18 @@ export function DiffFile({
 	]);
 	// Upstream sets the Changes font from JS: the pane sits outside the CSS hook classes for Code font size.
 	const style = useMemo<CSSProperties>(
-		() => ({
+		() => (
+		{
 			...DIFFS_STYLE_OVERRIDES,
 			"--cds-filediff-bg": codeThemeBg,
 			...(wordWrap ? DIFFS_WRAP_STYLE : {}),
 			...diffLineHeightStyle(metrics),
-			...(codeFontSize === null ? {} : {"--diffs-font-size": `${codeFontSize / 16}rem`}),
+			...(codeFontSize === null
+				? {}
+				:
+					{
+						"--diffs-font-size": `${codeFontSize / 16}rem`,
+					}),
 		}),
 		[codeThemeBg, wordWrap, metrics, codeFontSize],
 	);
@@ -606,7 +699,8 @@ export function DiffFile({
 			dir="ltr"
 			className={DIFFS_HOST_CLASS}
 			style={style}
-			onClick={(event) => {
+			onClick={(event) =>
+			{
 				expandSeparatorFromClick(event.nativeEvent);
 			}}
 		>
@@ -618,10 +712,15 @@ export function DiffFile({
 				disableWorkerPool
 				{...(lineAnnotations === undefined
 					? {}
-					: {lineAnnotations, renderAnnotation: (annotation): ReactNode => annotation.metadata})}
+					:
+						{
+							lineAnnotations,
+							renderAnnotation: (annotation): ReactNode => annotation.metadata,
+						})}
 				{...(onRequestChanges === undefined
 					? {}
-					: {
+					:
+						{
 							renderGutterUtility: (getHoveredLine) => (
 								<AddCommentGutterButton
 									getHoveredLine={getHoveredLine}
@@ -629,7 +728,8 @@ export function DiffFile({
 								/>
 							),
 						})}
-				renderCustomHeader={(file) => {
+				renderCustomHeader={(file) =>
+				{
 					const {added, removed} = countChanges(file);
 					return (
 						<DiffFileHeader

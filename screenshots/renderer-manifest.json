@@ -1,19 +1,23 @@
 {
 	"playwrightVersion": "1.62.1",
 	"chromiumVersion": "151.0.7922.34",
-	"viewport": {
+	"viewport":
+	{
 		"width": 1280,
 		"height": 718,
 		"deviceScaleFactor": 2
 	},
 	"colorScheme": "dark",
 	"timezone": "UTC",
-	"platform": {
+	"platform":
+	{
 		"operatingSystem": "darwin",
 		"architecture": "arm64"
 	},
-	"fontResolution": {
-		"sans": {
+	"fontResolution":
+	{
+		"sans":
+		{
 			"requested": [
 				"Inter",
 				"system-ui",
@@ -26,7 +30,8 @@
 			],
 			"resolved": "system-ui"
 		},
-		"mono": {
+		"mono":
+		{
 			"requested": [
 				"JetBrains Mono",
 				"ui-monospace",
@@ -39,7 +44,8 @@
 			"resolved": "ui-monospace"
 		}
 	},
-	"fontAvailability": {
+	"fontAvailability":
+	{
 		"-apple-system": true,
 		"Arial": true,
 		"Cascadia Code": false,

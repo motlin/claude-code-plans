@@ -18,7 +18,8 @@ export type ResponseFont = z.infer<typeof ResponseFontSchema>;
 /** The `html[data-reply-face]` value: upstream `dH` under fizzy `type` (sans is the interface face). */
 export type ReplyFace = "interface" | "serif";
 
-export function replyFaceFor(font: ResponseFont): ReplyFace {
+export function replyFaceFor(font: ResponseFont): ReplyFace
+{
 	return font === "sans" ? "interface" : "serif";
 }
 
@@ -27,7 +28,17 @@ export function replyFaceFor(font: ResponseFont): ReplyFace {
  * `if(!vF("type"))return; let t=$e(e)?"interface":dH(e); if(html.getAttribute("data-reply-face")!==t) html.setAttribute("data-reply-face",t)`.
  * Gated on fizzy `type`, written only when the value changes, and never removed.
  */
-export function applyReplyFace(root: HTMLElement, font: ResponseFont, {type}: {type: boolean}): void {
+export function applyReplyFace(
+	root: HTMLElement,
+	font: ResponseFont,
+	{
+		type,
+	}:
+	{
+		type: boolean;
+	},
+): void
+{
 	if (!type) return;
 	const face = replyFaceFor(font);
 	if (root.getAttribute("data-reply-face") !== face) root.setAttribute("data-reply-face", face);
@@ -44,7 +55,8 @@ export const SYSTEM_FONT_STACK =
  * Each interface font's family, mirroring globals.css (`--font-sans` and the OpenDyslexic rule), so the
  * fizzy `type` Interface font options can each be set in their own face like upstream's.
  */
-export const INTERFACE_FONT_FAMILIES: Record<InterfaceFont, string> = {
+export const INTERFACE_FONT_FAMILIES: Record<InterfaceFont, string> =
+{
 	sans: '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
 	system: SYSTEM_FONT_STACK,
 	dyslexic: '"OpenDyslexic", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
@@ -69,8 +81,10 @@ export const TRANSCRIPT_TEXT_SIZES: Record<
 		promptFontSize: string;
 		promptLineHeight: string;
 	}
-> = {
-	sm: {
+> =
+{
+	sm:
+	{
 		fontSize: "0.8125rem",
 		lineHeight: "1.42857",
 		comfortableFontSize: "0.9375rem",
@@ -78,7 +92,8 @@ export const TRANSCRIPT_TEXT_SIZES: Record<
 		promptFontSize: "13px",
 		promptLineHeight: "18px",
 	},
-	md: {
+	md:
+	{
 		fontSize: "0.875rem",
 		lineHeight: "1.42857",
 		comfortableFontSize: "1rem",
@@ -86,7 +101,8 @@ export const TRANSCRIPT_TEXT_SIZES: Record<
 		promptFontSize: "14px",
 		promptLineHeight: "20px",
 	},
-	lg: {
+	lg:
+	{
 		fontSize: "0.9375rem",
 		lineHeight: "1.46667",
 		comfortableFontSize: "1.125rem",
@@ -101,13 +117,33 @@ export const TRANSCRIPT_TEXT_SIZES: Record<
  * (`.cds-root:is([data-cds-fizzy-lake~=type])[data-density=comfortable]`): `--cds-font-size-prose--textsm` /
  * `prose` / `--textlg` = .875/.9375/1rem at 1.25/1.3125/1.375rem. The composer editor follows it.
  */
-export const TYPE_COMFORTABLE_TEXT_SIZES: Record<TranscriptTextSize, {fontSize: string; lineHeight: string}> = {
-	sm: {fontSize: "0.875rem", lineHeight: "1.25rem"},
-	md: {fontSize: "0.9375rem", lineHeight: "1.3125rem"},
-	lg: {fontSize: "1rem", lineHeight: "1.375rem"},
+export const TYPE_COMFORTABLE_TEXT_SIZES: Record<
+	TranscriptTextSize,
+	{
+		fontSize: string;
+		lineHeight: string;
+	}
+> =
+{
+	sm:
+	{
+		fontSize: "0.875rem",
+		lineHeight: "1.25rem",
+	},
+	md:
+	{
+		fontSize: "0.9375rem",
+		lineHeight: "1.3125rem",
+	},
+	lg:
+	{
+		fontSize: "1rem",
+		lineHeight: "1.375rem",
+	},
 };
 
-interface AppearancePrefs {
+interface AppearancePrefs
+{
 	interfaceFont: InterfaceFont;
 	transcriptTextSize: TranscriptTextSize;
 	transcriptWidth: TranscriptWidth;
@@ -120,7 +156,8 @@ interface AppearancePrefs {
 export function appearanceCssVars(
 	{interfaceFont, transcriptTextSize, transcriptWidth}: AppearancePrefs,
 	fizzyLakeParts: readonly FizzyLakePart[] = FIZZY_LAKE_PARTS,
-): Record<string, string | null> {
+): Record<string, string | null>
+{
 	const size = TRANSCRIPT_TEXT_SIZES[transcriptTextSize];
 	const type = fizzyLakeParts.includes("type") ? TYPE_COMFORTABLE_TEXT_SIZES[transcriptTextSize] : undefined;
 	return {

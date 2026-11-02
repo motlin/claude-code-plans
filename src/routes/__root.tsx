@@ -1,5 +1,6 @@
 import {APP_TITLE} from "../lib/route-title";
-import {
+import
+{
 	Outlet,
 	Link,
 	createRootRouteWithContext,
@@ -49,7 +50,8 @@ import {plansQueryOptions} from "../lib/api/plans";
 import {projectsQueryOptions} from "../lib/api/projects";
 import {ApiResponseError} from "../lib/api/client";
 import {pluginsQueryOptions, userCommandsQueryOptions} from "../lib/api/plugins";
-import {
+import
+{
 	activeSessionsQueryOptions,
 	recentSessionsInfiniteQueryOptions,
 	groupedSessionsQueryOptions,
@@ -61,61 +63,80 @@ import {installPaletteFocusOrigin} from "../lib/palette-focus-origin";
 import {installVisualViewportHeight} from "../lib/visual-viewport-height";
 import {installViewportHeightAttributes} from "../lib/viewport-height-attributes";
 
-export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
-	ssr: false,
-	// Fire-and-forget cache warming for the sidebar. Never await these: with
-	// `ssr: false` nothing paints until every matched loader resolves, so a
-	// blocking root loader holds the whole app on a blank white screen until
-	// all nine payloads arrive. Every route's own loader ensures the data it
-	// actually renders; the sidebar session groups use non-suspending `useQuery`.
-	loader: ({context: {queryClient}}) => {
-		void queryClient.query(projectsQueryOptions()).catch(noop);
-		void queryClient.query(plansQueryOptions()).catch(noop);
-		void queryClient.infiniteQuery(recentSessionsInfiniteQueryOptions()).catch(noop);
-		void queryClient.query(groupedSessionsQueryOptions()).catch(noop);
-		void queryClient.query(pluginsQueryOptions).catch(noop);
-		void queryClient.query(userCommandsQueryOptions).catch(noop);
-		void queryClient.query(activeSessionsQueryOptions(60_000)).catch(noop);
-		void queryClient.query(approvalsQueryOptions()).catch(noop);
-		void queryClient.query(notificationsQueryOptions()).catch(noop);
+export const Route = createRootRouteWithContext<
+{
+	queryClient: QueryClient;
+}>()(
+	{
+		ssr: false,
+		// Fire-and-forget cache warming for the sidebar. Never await these: with
+		// `ssr: false` nothing paints until every matched loader resolves, so a
+		// blocking root loader holds the whole app on a blank white screen until
+		// all nine payloads arrive. Every route's own loader ensures the data it
+		// actually renders; the sidebar session groups use non-suspending `useQuery`.
+		loader: ({context: {queryClient}}) =>
+		{
+			void queryClient.query(projectsQueryOptions()).catch(noop);
+			void queryClient.query(plansQueryOptions()).catch(noop);
+			void queryClient.infiniteQuery(recentSessionsInfiniteQueryOptions()).catch(noop);
+			void queryClient.query(groupedSessionsQueryOptions()).catch(noop);
+			void queryClient.query(pluginsQueryOptions).catch(noop);
+			void queryClient.query(userCommandsQueryOptions).catch(noop);
+			void queryClient.query(activeSessionsQueryOptions(60_000)).catch(noop);
+			void queryClient.query(approvalsQueryOptions()).catch(noop);
+			void queryClient.query(notificationsQueryOptions()).catch(noop);
+		},
+		head: () => (
+		{
+			meta: [
+				{
+					charSet: "utf-8",
+				},
+				{
+					title: APP_TITLE,
+				},
+				{
+					name: "viewport",
+					content:
+						"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
+				},
+			],
+			links: [
+				{
+					rel: "stylesheet",
+					href: appCss,
+				},
+				{
+					rel: "icon",
+					type: "image/svg+xml",
+					href: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='14.10' y='1.00' width='3.8' height='15.00' rx='1.9' fill='%238B5CF6' transform='rotate(0.0 16 16)'/%3E%3Crect x='14.10' y='3.40' width='3.8' height='12.60' rx='1.9' fill='%238B5CF6' transform='rotate(36.0 16 16)'/%3E%3Crect x='14.10' y='1.60' width='3.8' height='14.40' rx='1.9' fill='%238B5CF6' transform='rotate(72.0 16 16)'/%3E%3Crect x='14.10' y='4.00' width='3.8' height='12.00' rx='1.9' fill='%238B5CF6' transform='rotate(108.0 16 16)'/%3E%3Crect x='14.10' y='2.20' width='3.8' height='13.80' rx='1.9' fill='%238B5CF6' transform='rotate(144.0 16 16)'/%3E%3Crect x='14.10' y='1.00' width='3.8' height='15.00' rx='1.9' fill='%238B5CF6' transform='rotate(180.0 16 16)'/%3E%3Crect x='14.10' y='3.10' width='3.8' height='12.90' rx='1.9' fill='%238B5CF6' transform='rotate(216.0 16 16)'/%3E%3Crect x='14.10' y='1.90' width='3.8' height='14.10' rx='1.9' fill='%238B5CF6' transform='rotate(252.0 16 16)'/%3E%3Crect x='14.10' y='3.70' width='3.8' height='12.30' rx='1.9' fill='%238B5CF6' transform='rotate(288.0 16 16)'/%3E%3Crect x='14.10' y='2.50' width='3.8' height='13.50' rx='1.9' fill='%238B5CF6' transform='rotate(324.0 16 16)'/%3E%3C/svg%3E",
+				},
+				{
+					rel: "preconnect",
+					href: "https://fonts.googleapis.com",
+				},
+				{
+					rel: "preconnect",
+					href: "https://fonts.gstatic.com",
+					crossOrigin: "anonymous",
+				},
+				{
+					rel: "stylesheet",
+					href: "https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;600&display=swap",
+				},
+			],
+		}),
+		// `ssr: false` suppresses RootComponent on the server, so the document wrapper must stay here.
+		// Nesting RootDocument inside RootComponent leaves the initial response without an HTML shell.
+		shellComponent: RootDocument,
+		component: RootComponent,
+		notFoundComponent: NotFound,
+		errorComponent: RootErrorComponent,
 	},
-	head: () => ({
-		meta: [
-			{charSet: "utf-8"},
-			{title: APP_TITLE},
-			{
-				name: "viewport",
-				content: "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
-			},
-		],
-		links: [
-			{rel: "stylesheet", href: appCss},
-			{
-				rel: "icon",
-				type: "image/svg+xml",
-				href: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='14.10' y='1.00' width='3.8' height='15.00' rx='1.9' fill='%238B5CF6' transform='rotate(0.0 16 16)'/%3E%3Crect x='14.10' y='3.40' width='3.8' height='12.60' rx='1.9' fill='%238B5CF6' transform='rotate(36.0 16 16)'/%3E%3Crect x='14.10' y='1.60' width='3.8' height='14.40' rx='1.9' fill='%238B5CF6' transform='rotate(72.0 16 16)'/%3E%3Crect x='14.10' y='4.00' width='3.8' height='12.00' rx='1.9' fill='%238B5CF6' transform='rotate(108.0 16 16)'/%3E%3Crect x='14.10' y='2.20' width='3.8' height='13.80' rx='1.9' fill='%238B5CF6' transform='rotate(144.0 16 16)'/%3E%3Crect x='14.10' y='1.00' width='3.8' height='15.00' rx='1.9' fill='%238B5CF6' transform='rotate(180.0 16 16)'/%3E%3Crect x='14.10' y='3.10' width='3.8' height='12.90' rx='1.9' fill='%238B5CF6' transform='rotate(216.0 16 16)'/%3E%3Crect x='14.10' y='1.90' width='3.8' height='14.10' rx='1.9' fill='%238B5CF6' transform='rotate(252.0 16 16)'/%3E%3Crect x='14.10' y='3.70' width='3.8' height='12.30' rx='1.9' fill='%238B5CF6' transform='rotate(288.0 16 16)'/%3E%3Crect x='14.10' y='2.50' width='3.8' height='13.50' rx='1.9' fill='%238B5CF6' transform='rotate(324.0 16 16)'/%3E%3C/svg%3E",
-			},
-			{rel: "preconnect", href: "https://fonts.googleapis.com"},
-			{
-				rel: "preconnect",
-				href: "https://fonts.gstatic.com",
-				crossOrigin: "anonymous",
-			},
-			{
-				rel: "stylesheet",
-				href: "https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;600&display=swap",
-			},
-		],
-	}),
-	// `ssr: false` suppresses RootComponent on the server, so the document wrapper must stay here.
-	// Nesting RootDocument inside RootComponent leaves the initial response without an HTML shell.
-	shellComponent: RootDocument,
-	component: RootComponent,
-	notFoundComponent: NotFound,
-	errorComponent: RootErrorComponent,
-});
+);
 
-function RootComponent() {
+function RootComponent()
+{
 	return (
 		<RootApplication>
 			<Outlet />
@@ -123,7 +144,13 @@ function RootComponent() {
 	);
 }
 
-function RootApplication({children}: Readonly<{children: ReactNode}>) {
+function RootApplication({
+	children,
+}: Readonly<
+{
+	children: ReactNode;
+}>)
+{
 	const {queryClient} = Route.useRouteContext();
 	useMarkAppMounted();
 	return (
@@ -144,38 +171,53 @@ function RootApplication({children}: Readonly<{children: ReactNode}>) {
 	);
 }
 
-const PAGE_GUTTER_CLASS = {
+const PAGE_GUTTER_CLASS =
+{
 	default: "px-4 sm:px-8",
 	tight: "px-2",
 	none: "",
 } as const satisfies Record<NonNullable<StaticDataRouteOption["pageGutter"]> | "default", string>;
 
-function RootLayout({children}: Readonly<{children: ReactNode}>) {
+function RootLayout({
+	children,
+}: Readonly<
+{
+	children: ReactNode;
+}>)
+{
 	const {collapsed: sidebarCollapsed} = useSidebarState();
 	useSidebarToggleShortcut();
 	useFocusRegionShortcuts();
 	useRecentsRecorder();
 	const commandPalette = useCommandPalette();
 	const capabilities = useCapabilities();
-	const fullBleed = useMatches({
-		select: (matches) => matches.some((match) => match.staticData.fullBleed === true),
-	});
-	const pageGutter = useMatches({
-		select: (matches) =>
-			matches.findLast((match) => match.staticData.pageGutter !== undefined)?.staticData.pageGutter,
-	});
-	const tileShell = useMatches({
-		select: (matches) =>
-			matches.findLast((match) => match.staticData.tileShell !== undefined)?.staticData.tileShell,
-	});
+	const fullBleed = useMatches(
+		{
+			select: (matches) => matches.some((match) => match.staticData.fullBleed === true),
+		},
+	);
+	const pageGutter = useMatches(
+		{
+			select: (matches) =>
+				matches.findLast((match) => match.staticData.pageGutter !== undefined)?.staticData.pageGutter,
+		},
+	);
+	const tileShell = useMatches(
+		{
+			select: (matches) =>
+				matches.findLast((match) => match.staticData.tileShell !== undefined)?.staticData.tileShell,
+		},
+	);
 	// Field journeys J1/J2 (launch, deep link) run once, timed from navigation start on the route the tab opened.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		startLaunchJourneys(window.location.pathname);
 	}, []);
 	// Fit the app frame above the soft keyboard on touch devices.
 	useEffect(() => installVisualViewportHeight(), []);
 	// Mark short viewports on <body> (data-vh-max-400/420/520) for the vh-max-N: variants.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		installViewportHeightAttributes(document);
 	}, []);
 	// Remember the last focus outside the command palette, which "Jump to question" cycles from.
@@ -231,16 +273,19 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
  * The empty row above every non-tile page. Below sm it is 48px tall, like upstream's sticky crumb
  * band, so page titles start past the fixed Show-sidebar trigger (8..40) instead of under it.
  */
-export function RootTopRow() {
+export function RootTopRow()
+{
 	return <div className="min-h-9 px-4 pt-3 max-sm:h-12 sm:px-8" />;
 }
 
-function NotFound() {
+function NotFound()
+{
 	useMarkAppMounted();
 	return <NotFoundContent />;
 }
 
-function RootErrorComponent({error, reset}: ErrorComponentProps) {
+function RootErrorComponent({error, reset}: ErrorComponentProps)
+{
 	return (
 		<RootApplication>
 			<DefaultErrorComponent error={error} reset={reset} />
@@ -248,19 +293,22 @@ function RootErrorComponent({error, reset}: ErrorComponentProps) {
 	);
 }
 
-export function DefaultErrorComponent({error}: ErrorComponentProps) {
+export function DefaultErrorComponent({error}: ErrorComponentProps)
+{
 	const router = useRouter();
 	const staleChunk = isStaleChunkError(error);
 	// A React.lazy chunk from the previous deploy; Vite's preload errors are handled before they reach here.
 	const [reloading, setReloading] = useState(staleChunk);
 	const reloadAttempted = useRef(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!staleChunk || reloadAttempted.current) return;
 		reloadAttempted.current = true;
 		setReloading(reloadForStaleChunk());
 	}, [staleChunk]);
 
-	if (reloading) {
+	if (reloading)
+	{
 		return (
 			<p role="status" className="p-8 text-sm text-t6">
 				App updated, reloading…
@@ -268,7 +316,8 @@ export function DefaultErrorComponent({error}: ErrorComponentProps) {
 		);
 	}
 
-	if (error instanceof ApiResponseError && error.status === 404) {
+	if (error instanceof ApiResponseError && error.status === 404)
+	{
 		return <NotFoundContent detail={error.message} />;
 	}
 
@@ -297,9 +346,19 @@ export function DefaultErrorComponent({error}: ErrorComponentProps) {
 	);
 }
 
-function RootDocument({children}: Readonly<{children: ReactNode}>) {
+function RootDocument({
+	children,
+}: Readonly<
+{
+	children: ReactNode;
+}>)
+{
 	// The fallback paints the requested route's own loading layout.
-	const pathname = useRouterState({select: (state) => state.location.pathname});
+	const pathname = useRouterState(
+		{
+			select: (state) => state.location.pathname,
+		},
+	);
 	return (
 		// THEME_INIT_SCRIPT adds the resolved theme class and color-scheme to <html>
 		// before React loads, which is by definition an attribute the server markup
@@ -316,7 +375,12 @@ function RootDocument({children}: Readonly<{children: ReactNode}>) {
 				<HeadContent />
 				{/* Static constant, no interpolation: this is the only way to run the
             theme resolver synchronously before the first paint. */}
-				<script dangerouslySetInnerHTML={{__html: THEME_INIT_SCRIPT}} />
+				<script
+					dangerouslySetInnerHTML={
+					{
+						__html: THEME_INIT_SCRIPT,
+					}}
+				/>
 			</head>
 			<body>
 				<AppShellFallback pathname={pathname} chin={getShellChinLabels()} />

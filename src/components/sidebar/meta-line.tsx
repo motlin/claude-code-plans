@@ -1,10 +1,16 @@
 import type {MetaStatus, SessionMetaLine} from "../../lib/session-meta-line";
 
 const ITEM_CLASS = "shrink-0 whitespace-nowrap";
-const LIST_FORMAT = new Intl.ListFormat("en", {type: "unit"});
+const LIST_FORMAT = new Intl.ListFormat(
+	"en",
+	{
+		type: "unit",
+	},
+);
 
 /** Upstream's status words (`LH`/`kx`): an unread row reads "Done", a blocked one "Waiting". */
-const STATUS_WORDS = {
+const STATUS_WORDS =
+{
 	idle: "Idle",
 	unread: "Done",
 	working: "Working",
@@ -13,7 +19,8 @@ const STATUS_WORDS = {
 } satisfies Record<MetaStatus, string>;
 
 /** A described row's second line (upstream `gM`): the status word and message, then the place. */
-export function MetaLine({line}: {line: SessionMetaLine}) {
+export function MetaLine({line}: {line: SessionMetaLine})
+{
 	const {word, text, place} = line;
 	const wordLabel = word === undefined ? undefined : STATUS_WORDS[word];
 	const title = LIST_FORMAT.format([wordLabel, text, place?.text].filter((item) => item !== undefined));

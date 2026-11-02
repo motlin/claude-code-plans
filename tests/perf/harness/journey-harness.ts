@@ -1,5 +1,6 @@
 import {afterEach, beforeEach} from "vite-plus/test";
-import {
+import
+{
 	createJourneyTracker,
 	type JourneyEnvironment,
 	type ObservedEntry,
@@ -7,59 +8,112 @@ import {
 	type JourneyTracker,
 } from "../../../src/lib/perf/journey";
 
-class FakePerformance {
+class FakePerformance
+{
 	clock = 0;
 	/** Epoch ms of navigation start, so epoch-stamped triggers land on the fake clock. */
 	timeOrigin = 1_000_000;
-	readonly marks: {name: string; startTime: number | undefined}[] = [];
-	readonly measures: {name: string; start: number; end: number}[] = [];
+	readonly marks:
+	{
+		name: string;
+		startTime: number | undefined;
+	}[] = [];
+	readonly measures:
+	{
+		name: string;
+		start: number;
+		end: number;
+	}[] = [];
 
-	now(): number {
+	now(): number
+	{
 		return this.clock;
 	}
 
-	mark(name: string, options?: {startTime?: number}): void {
-		this.marks.push({name, startTime: options?.startTime});
+	mark(
+		name: string,
+		options?:
+		{
+			startTime?: number;
+		},
+	): void
+	{
+		this.marks.push(
+			{
+				name,
+				startTime: options?.startTime,
+			},
+		);
 	}
 
-	measure(name: string, options: {start: number; end: number}): void {
-		this.measures.push({name, start: options.start, end: options.end});
+	measure(
+		name: string,
+		options:
+		{
+			start: number;
+			end: number;
+		},
+	): void
+	{
+		this.measures.push(
+			{
+				name,
+				start: options.start,
+				end: options.end,
+			},
+		);
 	}
 }
 
-class FakeObserverHub {
+class FakeObserverHub
+{
 	private readonly callbacks = new Map<string, ((entries: readonly ObservedEntry[]) => void)[]>();
 
 	readonly Observer = fakeObserverClass(this.callbacks);
 
-	emit(type: string, entries: readonly object[]): void {
+	emit(type: string, entries: readonly object[]): void
+	{
 		const observed = entries.filter(isObservedEntry);
 		for (const callback of this.callbacks.get(type) ?? []) callback(observed);
 	}
 }
 
-function isObservedEntry(entry: object): entry is ObservedEntry {
+function isObservedEntry(entry: object): entry is ObservedEntry
+{
 	return "startTime" in entry && typeof entry.startTime === "number";
 }
 
-function fakeObserverClass(callbacks: Map<string, ((entries: readonly ObservedEntry[]) => void)[]>) {
-	return class {
-		constructor(readonly callback: (list: {getEntries(): readonly ObservedEntry[]}) => void) {}
+function fakeObserverClass(callbacks: Map<string, ((entries: readonly ObservedEntry[]) => void)[]>)
+{
+	return class
+	{
+		constructor(readonly callback: (list: {getEntries(): readonly ObservedEntry[]}) => void)
+		{
+		}
 
-		observe(options: PerformanceObserverInit): void {
+		observe(options: PerformanceObserverInit): void
+		{
 			const type = options.type ?? "";
 			const list = callbacks.get(type) ?? [];
-			list.push((entries) => {
-				this.callback({getEntries: () => entries});
+			list.push((entries) =>
+			{
+				this.callback(
+					{
+						getEntries: () => entries,
+					},
+				);
 			});
 			callbacks.set(type, list);
 		}
 
-		disconnect(): void {}
+		disconnect(): void
+		{
+		}
 	};
 }
 
-export interface JourneyHarness {
+export interface JourneyHarness
+{
 	tracker: JourneyTracker;
 	performance: FakePerformance;
 	observers: FakeObserverHub;
@@ -74,31 +128,44 @@ let visibility: DocumentVisibilityState = "visible";
 const trackers: JourneyTracker[] = [];
 
 /** Resets the document's visibility and body before each test and disposes every harness tracker after it. */
-export function registerJourneyHarnessLifecycle(): void {
-	beforeEach(() => {
+export function registerJourneyHarnessLifecycle(): void
+{
+	beforeEach(() =>
+	{
 		visibility = "visible";
-		Object.defineProperty(document, "visibilityState", {configurable: true, get: () => visibility});
+		Object.defineProperty(
+			document,
+			"visibilityState",
+			{
+				configurable: true,
+				get: () => visibility,
+			},
+		);
 		document.body.innerHTML = "";
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		for (const tracker of trackers.splice(0)) tracker.dispose();
 	});
 }
 
-export function setDocumentVisibility(state: DocumentVisibilityState): void {
+export function setDocumentVisibility(state: DocumentVisibilityState): void
+{
 	visibility = state;
 	document.dispatchEvent(new Event("visibilitychange"));
 }
 
 /** A tracker over a fake clock, fake observers and manually stepped rAF/timers, recording every sent batch. */
-export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}): JourneyHarness {
+export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}): JourneyHarness
+{
 	const performance = new FakePerformance();
 	const observers = new FakeObserverHub();
 	const sent: JourneySample[][] = [];
 	const frames: (() => void)[] = [];
 	const timers: (() => void)[] = [];
-	const environment: JourneyEnvironment = {
+	const environment: JourneyEnvironment =
+	{
 		document,
 		performance,
 		PerformanceObserver: observers.Observer,
@@ -109,21 +176,27 @@ export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}):
 		hardwareConcurrency: 8,
 		buildSha: "abc1234",
 		mode: "dev",
-		requestAnimationFrame: (callback) => {
-			frames.push(() => {
+		requestAnimationFrame: (callback) =>
+		{
+			frames.push(() =>
+			{
 				callback(performance.clock);
 			});
 			return frames.length;
 		},
 		// Only zero-delay timers are part of a frame; the 30 s anchor timeout never fires on its own.
-		setTimeout: (callback, ms) => {
+		setTimeout: (callback, ms) =>
+		{
 			if (ms !== undefined && ms > 0) return 0;
 			timers.push(callback);
 			return timers.length;
 		},
 		setInterval: () => 0,
-		clearInterval: () => {},
-		send: (batch) => {
+		clearInterval: () =>
+		{
+		},
+		send: (batch) =>
+		{
 			sent.push(batch);
 		},
 		...overrides,
@@ -137,7 +210,8 @@ export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}):
 		sent,
 		frames,
 		timers,
-		runFrame() {
+		runFrame()
+		{
 			for (const frame of frames.splice(0)) frame();
 			for (const timer of timers.splice(0)) timer();
 		},
@@ -145,18 +219,47 @@ export function makeJourneyHarness(overrides: Partial<JourneyEnvironment> = {}):
 	};
 }
 
-export function pointerDownAt(timeStamp: number, init: MouseEventInit = {}): Event {
-	const event = new MouseEvent("pointerdown", {button: 0, bubbles: true, ...init});
-	Object.defineProperty(event, "timeStamp", {value: timeStamp});
+export function pointerDownAt(timeStamp: number, init: MouseEventInit = {}): Event
+{
+	const event = new MouseEvent(
+		"pointerdown",
+		{
+			button: 0,
+			bubbles: true,
+			...init,
+		},
+	);
+	Object.defineProperty(
+		event,
+		"timeStamp",
+		{
+			value: timeStamp,
+		},
+	);
 	return event;
 }
 
-export function keyDownAt(timeStamp: number, init: KeyboardEventInit = {}): KeyboardEvent {
-	const event = new KeyboardEvent("keydown", {bubbles: true, cancelable: true, ...init});
-	Object.defineProperty(event, "timeStamp", {value: timeStamp});
+export function keyDownAt(timeStamp: number, init: KeyboardEventInit = {}): KeyboardEvent
+{
+	const event = new KeyboardEvent(
+		"keydown",
+		{
+			bubbles: true,
+			cancelable: true,
+			...init,
+		},
+	);
+	Object.defineProperty(
+		event,
+		"timeStamp",
+		{
+			value: timeStamp,
+		},
+	);
 	return event;
 }
 
-export async function flushMicrotasks(): Promise<void> {
+export async function flushMicrotasks(): Promise<void>
+{
 	for (let i = 0; i < 5; i++) await Promise.resolve();
 }

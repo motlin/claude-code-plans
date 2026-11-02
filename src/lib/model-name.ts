@@ -16,7 +16,8 @@ export const SYNTHETIC_MODEL = "<synthetic>";
  * window rather than naming a different model. Returns null when the input
  * names no model at all.
  */
-export function formatModelName(raw: string | null | undefined): string | null {
+export function formatModelName(raw: string | null | undefined): string | null
+{
 	if (!raw) return null;
 	const trimmed = raw.trim();
 	if (!trimmed || trimmed === SYNTHETIC_MODEL) return null;

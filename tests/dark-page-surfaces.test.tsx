@@ -8,29 +8,48 @@ import {SESSION_STICKY_HEADER_CLASS} from "../src/components/titlebar-classes";
 import {BashRenderer} from "../src/components/tool-renderers/bash-renderer";
 import {UsagePaceBand} from "../src/components/usage-pace-banner";
 
-vi.mock("../src/hooks/use-shiki", () => ({useHighlightedLines: () => null}));
+vi.mock("../src/hooks/use-shiki", () => (
+{
+	useHighlightedLines: () => null,
+}));
 
 afterEach(cleanup);
 
 const source = (path: string) => readFileSync(path, "utf8");
 
-describe("upstream's measured dark surfaces and inks (wave 90)", () => {
-	it("paints the titlebar, dock and history fade in one surface for both themes, with no dark-only surface-2 override", () => {
-		expect({
-			titlebar: SESSION_STICKY_HEADER_CLASS.includes("dark:"),
-			frame: source("src/components/app-frame.tsx").includes("dark:bg-surface-2"),
-			dock: source("src/components/session-page.tsx").includes("dark:before:to-surface-2"),
-			fade: source("src/components/transcript-history-loader.tsx").includes("dark:from-surface-2"),
-		}).toStrictEqual({titlebar: false, frame: false, dock: false, fade: false});
+describe("upstream's measured dark surfaces and inks (wave 90)", () =>
+{
+	it("paints the titlebar, dock and history fade in one surface for both themes, with no dark-only surface-2 override", () =>
+	{
+		expect(
+			{
+				titlebar: SESSION_STICKY_HEADER_CLASS.includes("dark:"),
+				frame: source("src/components/app-frame.tsx").includes("dark:bg-surface-2"),
+				dock: source("src/components/session-page.tsx").includes("dark:before:to-surface-2"),
+				fade: source("src/components/transcript-history-loader.tsx").includes("dark:from-surface-2"),
+			},
+		).toStrictEqual(
+			{
+				titlebar: false,
+				frame: false,
+				dock: false,
+				fade: false,
+			},
+		);
 	});
 
-	it("rings the Bash command card on surface-2 in dark", () => {
+	it("rings the Bash command card on surface-2 in dark", () =>
+	{
 		const {container} = render(
 			<BashRenderer
-				toolCall={{
+				toolCall={
+				{
 					id: "t",
 					name: "Bash",
-					input: {command: "ls"},
+					input:
+					{
+						command: "ls",
+					},
 					param: "ls",
 					result: "$ ls\na",
 					sourceUuid: "u",
@@ -46,22 +65,39 @@ describe("upstream's measured dark surfaces and inks (wave 90)", () => {
 		).toStrictEqual(["dark:bg-surface-2", "dark:ring-1", "dark:ring-white/10"]);
 	});
 
-	it("draws the pace band's used and reset detail in muted ink in dark", () => {
-		render(<UsagePaceBand usedPct={59} resetText="Resets Fri" onDismiss={() => {}} />);
+	it("draws the pace band's used and reset detail in muted ink in dark", () =>
+	{
+		render(
+			<UsagePaceBand
+				usedPct={59}
+				resetText="Resets Fri"
+				onDismiss={() =>
+				{
+				}}
+			/>,
+		);
 
 		expect(screen.getByText(/59% used/).className).toBe("min-w-0 text-ink-muted");
 	});
 
 	// The cds tab recipe draws unselected Customize tabs in muted ink in both modes (fizzy color re-inks them).
-	it("draws unselected Customize tabs in muted ink and ordered-list markers in secondary ink in dark", () => {
-		expect({
-			tabs:
-				source("src/components/customize/customize-header.tsx").includes("className={CDS_TAB_CLASS}") &&
-				source("src/components/ui/cds-tabs.ts").includes(" text-ink-muted ") &&
-				!source("src/components/ui/cds-tabs.ts").includes("text-t6"),
-			marker: /:global\(\.dark\) \.markdown ol > li::marker \{\s*color: var\(--color-secondary\);/.test(
-				source("src/components/markdown-article.module.css"),
-			),
-		}).toStrictEqual({tabs: true, marker: true});
+	it("draws unselected Customize tabs in muted ink and ordered-list markers in secondary ink in dark", () =>
+	{
+		expect(
+			{
+				tabs:
+					source("src/components/customize/customize-header.tsx").includes("className={CDS_TAB_CLASS}") &&
+					source("src/components/ui/cds-tabs.ts").includes(" text-ink-muted ") &&
+					!source("src/components/ui/cds-tabs.ts").includes("text-t6"),
+				marker: /:global\(\.dark\) \.markdown ol > li::marker\s*\{\s*color: var\(--color-secondary\);/.test(
+					source("src/components/markdown-article.module.css"),
+				),
+			},
+		).toStrictEqual(
+			{
+				tabs: true,
+				marker: true,
+			},
+		);
 	});
 });

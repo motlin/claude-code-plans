@@ -3,7 +3,8 @@ import {describe, expect, it, vi} from "vite-plus/test";
 import type {ToastOptions} from "../src/components/toast-context";
 import {launchHerdrSession} from "../src/lib/api/herdr";
 import {validateClaudeLaunchArgs} from "../src/lib/claude-launch-command";
-import {
+import
+{
 	FORK_NAVIGATION_WINDOW_MS,
 	findForkedSession,
 	forkDisabledReason,
@@ -20,14 +21,20 @@ const CWD = "/Users/alice/my project";
 const NOW = 1_780_000_000_000;
 const MESSAGE_UUID = "a1b2c3d4-0000-4111-8222-933344445555";
 
-function dependencies(overrides: Partial<ForkDependencies> = {}) {
+function dependencies(overrides: Partial<ForkDependencies> = {})
+{
 	const launch = vi.fn<ForkDependencies["launch"]>();
 	const copy = vi.fn<ForkDependencies["copy"]>();
 	const toast = vi.fn<(options: ToastOptions) => void>();
 	const onLaunched = vi.fn<(pending: PendingFork) => void>();
-	launch.mockResolvedValue({sessionId: null});
+	launch.mockResolvedValue(
+		{
+			sessionId: null,
+		},
+	);
 	copy.mockResolvedValue(true);
-	const deps: ForkDependencies = {
+	const deps: ForkDependencies =
+	{
 		herdrWritable: true,
 		launch,
 		copy,
@@ -36,47 +43,83 @@ function dependencies(overrides: Partial<ForkDependencies> = {}) {
 		now: () => NOW,
 		...overrides,
 	};
-	return {deps, launch, copy, toast, onLaunched};
+	return {
+		deps,
+		launch,
+		copy,
+		toast,
+		onLaunched,
+	};
 }
 
-describe("sessionForkArgs", () => {
-	it("resumes the session as a fork, in a form the launch API accepts", () => {
+describe("sessionForkArgs", () =>
+{
+	it("resumes the session as a fork, in a form the launch API accepts", () =>
+	{
 		const args = sessionForkArgs(SESSION_ID);
 
 		expect(args).toEqual(["--resume", SESSION_ID, "--fork-session"]);
 		expect(validateClaudeLaunchArgs(args)).toBeNull();
 	});
 
-	it("resumes the fork at a message when given one", () => {
+	it("resumes the fork at a message when given one", () =>
+	{
 		const args = sessionForkArgs(SESSION_ID, MESSAGE_UUID);
 
-		expect({args, valid: validateClaudeLaunchArgs(args)}).toStrictEqual({
-			args: ["--resume", SESSION_ID, "--fork-session", "--resume-session-at", MESSAGE_UUID],
-			valid: null,
-		});
+		expect(
+			{
+				args,
+				valid: validateClaudeLaunchArgs(args),
+			},
+		).toStrictEqual(
+			{
+				args: ["--resume", SESSION_ID, "--fork-session", "--resume-session-at", MESSAGE_UUID],
+				valid: null,
+			},
+		);
 	});
 });
 
-describe("sessionForkCommand", () => {
-	it("cds into the quoted session directory before forking", () => {
+describe("sessionForkCommand", () =>
+{
+	it("cds into the quoted session directory before forking", () =>
+	{
 		expect(sessionForkCommand(SESSION_ID, CWD)).toBe(
 			`cd '/Users/alice/my project' && claude --resume ${SESSION_ID} --fork-session`,
 		);
 	});
 
-	it("carries the message a fork resumes at", () => {
+	it("carries the message a fork resumes at", () =>
+	{
 		expect(sessionForkCommand(SESSION_ID, CWD, MESSAGE_UUID)).toBe(
 			`cd '/Users/alice/my project' && claude --resume ${SESSION_ID} --fork-session --resume-session-at ${MESSAGE_UUID}`,
 		);
 	});
 });
 
-describe("launchHerdrSession", () => {
-	it("posts the fork argv without a prompt", async () => {
+describe("launchHerdrSession", () =>
+{
+	it("posts the fork argv without a prompt", async () =>
+	{
 		const fetcher = vi.fn<typeof fetch>();
-		fetcher.mockResolvedValue(Response.json({ok: true, tabId: "w1:t2", paneId: "w1:p3", sessionId: null}));
+		fetcher.mockResolvedValue(
+			Response.json(
+				{
+					ok: true,
+					tabId: "w1:t2",
+					paneId: "w1:p3",
+					sessionId: null,
+				},
+			),
+		);
 
-		await launchHerdrSession({cwd: CWD, args: sessionForkArgs(SESSION_ID)}, fetcher);
+		await launchHerdrSession(
+			{
+				cwd: CWD,
+				args: sessionForkArgs(SESSION_ID),
+			},
+			fetcher,
+		);
 
 		expect(fetcher.mock.calls).toEqual([
 			[
@@ -84,34 +127,79 @@ describe("launchHerdrSession", () => {
 				{
 					method: "POST",
 					credentials: "same-origin",
-					headers: {"Content-Type": "application/json"},
-					body: JSON.stringify({cwd: CWD, args: ["--resume", SESSION_ID, "--fork-session"]}),
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(
+						{
+							cwd: CWD,
+							args: ["--resume", SESSION_ID, "--fork-session"],
+						},
+					),
 				},
 			],
 		]);
 	});
 });
 
-describe("forkSession", () => {
-	it("launches the fork in herdr and hands back the pending launch", async () => {
+describe("forkSession", () =>
+{
+	it("launches the fork in herdr and hands back the pending launch", async () =>
+	{
 		const {deps, launch, copy, toast, onLaunched} = dependencies();
-		launch.mockResolvedValue({sessionId: FORK_ID});
+		launch.mockResolvedValue(
+			{
+				sessionId: FORK_ID,
+			},
+		);
 
-		const outcome = await forkSession({sessionId: SESSION_ID, cwd: CWD}, deps);
+		const outcome = await forkSession(
+			{
+				sessionId: SESSION_ID,
+				cwd: CWD,
+			},
+			deps,
+		);
 
 		expect(outcome).toBe("launched");
-		expect(launch.mock.calls).toEqual([[{cwd: CWD, args: ["--resume", SESSION_ID, "--fork-session"]}]]);
+		expect(launch.mock.calls).toEqual([
+			[
+				{
+					cwd: CWD,
+					args: ["--resume", SESSION_ID, "--fork-session"],
+				},
+			],
+		]);
 		expect(onLaunched.mock.calls).toEqual([
-			[{cwd: CWD, since: NOW, sessionId: FORK_ID, parentSessionId: SESSION_ID}],
+			[
+				{
+					cwd: CWD,
+					since: NOW,
+					sessionId: FORK_ID,
+					parentSessionId: SESSION_ID,
+				},
+			],
 		]);
 		expect(copy).not.toHaveBeenCalled();
 		expect(toast).not.toHaveBeenCalled();
 	});
 
-	it("copies the exact fork command when herdr writes are disabled", async () => {
-		const {deps, launch, copy, toast, onLaunched} = dependencies({herdrWritable: false});
+	it("copies the exact fork command when herdr writes are disabled", async () =>
+	{
+		const {deps, launch, copy, toast, onLaunched} = dependencies(
+			{
+				herdrWritable: false,
+			},
+		);
 
-		const outcome = await forkSession({sessionId: SESSION_ID, cwd: CWD}, deps);
+		const outcome = await forkSession(
+			{
+				sessionId: SESSION_ID,
+				cwd: CWD,
+			},
+			deps,
+		);
 
 		expect(outcome).toBe("copied");
 		expect(launch).not.toHaveBeenCalled();
@@ -129,11 +217,18 @@ describe("forkSession", () => {
 		]);
 	});
 
-	it("falls back to copying the command when the herdr launch fails", async () => {
+	it("falls back to copying the command when the herdr launch fails", async () =>
+	{
 		const {deps, launch, copy, toast, onLaunched} = dependencies();
 		launch.mockRejectedValue(new Error("herdr is not running"));
 
-		const outcome = await forkSession({sessionId: SESSION_ID, cwd: CWD}, deps);
+		const outcome = await forkSession(
+			{
+				sessionId: SESSION_ID,
+				cwd: CWD,
+			},
+			deps,
+		);
 
 		expect(outcome).toBe("copied");
 		expect(onLaunched).not.toHaveBeenCalled();
@@ -150,99 +245,220 @@ describe("forkSession", () => {
 		]);
 	});
 
-	it("forks from a message in herdr, falling back to that message's copied command", async () => {
+	it("forks from a message in herdr, falling back to that message's copied command", async () =>
+	{
 		const launched = dependencies();
 		const copied = dependencies();
 		copied.launch.mockRejectedValue(new Error("herdr is not running"));
 
-		await forkSession({sessionId: SESSION_ID, cwd: CWD, atMessage: MESSAGE_UUID}, launched.deps);
-		await forkSession({sessionId: SESSION_ID, cwd: CWD, atMessage: MESSAGE_UUID}, copied.deps);
+		await forkSession(
+			{
+				sessionId: SESSION_ID,
+				cwd: CWD,
+				atMessage: MESSAGE_UUID,
+			},
+			launched.deps,
+		);
+		await forkSession(
+			{
+				sessionId: SESSION_ID,
+				cwd: CWD,
+				atMessage: MESSAGE_UUID,
+			},
+			copied.deps,
+		);
 
-		expect({launch: launched.launch.mock.calls, copy: copied.copy.mock.calls}).toStrictEqual({
-			launch: [
-				[{cwd: CWD, args: ["--resume", SESSION_ID, "--fork-session", "--resume-session-at", MESSAGE_UUID]}],
-			],
-			copy: [
-				[
-					`cd '/Users/alice/my project' && claude --resume ${SESSION_ID} --fork-session --resume-session-at ${MESSAGE_UUID}`,
+		expect(
+			{
+				launch: launched.launch.mock.calls,
+				copy: copied.copy.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				launch: [
+					[
+						{
+							cwd: CWD,
+							args: ["--resume", SESSION_ID, "--fork-session", "--resume-session-at", MESSAGE_UUID],
+						},
+					],
 				],
-			],
-		});
+				copy: [
+					[
+						`cd '/Users/alice/my project' && claude --resume ${SESSION_ID} --fork-session --resume-session-at ${MESSAGE_UUID}`,
+					],
+				],
+			},
+		);
 	});
 
-	it("reports an error when the fallback copy fails too", async () => {
-		const {deps, copy, toast} = dependencies({herdrWritable: false});
+	it("reports an error when the fallback copy fails too", async () =>
+	{
+		const {deps, copy, toast} = dependencies(
+			{
+				herdrWritable: false,
+			},
+		);
 		copy.mockResolvedValue(false);
 
-		const outcome = await forkSession({sessionId: SESSION_ID, cwd: CWD}, deps);
+		const outcome = await forkSession(
+			{
+				sessionId: SESSION_ID,
+				cwd: CWD,
+			},
+			deps,
+		);
 
 		expect(outcome).toBe("failed");
-		expect(toast.mock.calls).toEqual([[{kind: "error", message: "Couldn’t fork the session. Try again."}]]);
+		expect(toast.mock.calls).toEqual([
+			[
+				{
+					kind: "error",
+					message: "Couldn’t fork the session. Try again.",
+				},
+			],
+		]);
 	});
 });
 
-describe("forkDisabledReason", () => {
-	it("disables forking while the session file is still being written", () => {
-		expect(forkDisabledReason({working: true, cwd: CWD})).toBe("Session file is still being written");
+describe("forkDisabledReason", () =>
+{
+	it("disables forking while the session file is still being written", () =>
+	{
+		expect(
+			forkDisabledReason(
+				{
+					working: true,
+					cwd: CWD,
+				},
+			),
+		).toBe("Session file is still being written");
 	});
 
-	it("disables forking when the session directory is unknown", () => {
-		expect(forkDisabledReason({working: false, cwd: null})).toBe("Session directory is unknown");
+	it("disables forking when the session directory is unknown", () =>
+	{
+		expect(
+			forkDisabledReason(
+				{
+					working: false,
+					cwd: null,
+				},
+			),
+		).toBe("Session directory is unknown");
 	});
 
-	it("allows forking an idle session with a directory", () => {
-		expect(forkDisabledReason({working: false, cwd: CWD})).toBeNull();
+	it("allows forking an idle session with a directory", () =>
+	{
+		expect(
+			forkDisabledReason(
+				{
+					working: false,
+					cwd: CWD,
+				},
+			),
+		).toBeNull();
 	});
 });
 
-describe("findForkedSession", () => {
-	const pending: PendingFork = {
+describe("findForkedSession", () =>
+{
+	const pending: PendingFork =
+	{
 		cwd: CWD,
 		since: NOW,
 		sessionId: null,
 		parentSessionId: SESSION_ID,
 	};
 
-	it("ignores the parent session resuming in the same directory", () => {
-		expect(findForkedSession([{sessionId: SESSION_ID, cwd: CWD, startedAt: NOW + 10}], pending)).toBeNull();
-	});
-
-	it("finds the fork's SessionStart in the session directory", () => {
+	it("ignores the parent session resuming in the same directory", () =>
+	{
 		expect(
 			findForkedSession(
 				[
-					{sessionId: SESSION_ID, cwd: CWD, startedAt: NOW + 10},
-					{sessionId: FORK_ID, cwd: `${CWD}/`, startedAt: NOW + 20},
+					{
+						sessionId: SESSION_ID,
+						cwd: CWD,
+						startedAt: NOW + 10,
+					},
+				],
+				pending,
+			),
+		).toBeNull();
+	});
+
+	it("finds the fork's SessionStart in the session directory", () =>
+	{
+		expect(
+			findForkedSession(
+				[
+					{
+						sessionId: SESSION_ID,
+						cwd: CWD,
+						startedAt: NOW + 10,
+					},
+					{
+						sessionId: FORK_ID,
+						cwd: `${CWD}/`,
+						startedAt: NOW + 20,
+					},
 				],
 				pending,
 			),
 		).toBe(FORK_ID);
 	});
 
-	it("ignores sessions that started before the fork or long after it", () => {
+	it("ignores sessions that started before the fork or long after it", () =>
+	{
 		expect(
 			findForkedSession(
 				[
-					{sessionId: "before", cwd: CWD, startedAt: NOW - 1},
-					{sessionId: "later", cwd: CWD, startedAt: NOW + FORK_NAVIGATION_WINDOW_MS + 1},
+					{
+						sessionId: "before",
+						cwd: CWD,
+						startedAt: NOW - 1,
+					},
+					{
+						sessionId: "later",
+						cwd: CWD,
+						startedAt: NOW + FORK_NAVIGATION_WINDOW_MS + 1,
+					},
 				],
 				pending,
 			),
 		).toBeNull();
 	});
 
-	it("does not treat herdr's parent id as the fork", () => {
+	it("does not treat herdr's parent id as the fork", () =>
+	{
 		expect(
-			findForkedSession([{sessionId: FORK_ID, cwd: "/elsewhere", startedAt: NOW + 5}], {
-				...pending,
-				sessionId: SESSION_ID,
-			}),
+			findForkedSession(
+				[
+					{
+						sessionId: FORK_ID,
+						cwd: "/elsewhere",
+						startedAt: NOW + 5,
+					},
+				],
+				{
+					...pending,
+					sessionId: SESSION_ID,
+				},
+			),
 		).toBeNull();
 		expect(
-			findForkedSession([{sessionId: FORK_ID, cwd: "/elsewhere", startedAt: NOW + 5}], {
-				...pending,
-				sessionId: FORK_ID,
-			}),
+			findForkedSession(
+				[
+					{
+						sessionId: FORK_ID,
+						cwd: "/elsewhere",
+						startedAt: NOW + 5,
+					},
+				],
+				{
+					...pending,
+					sessionId: FORK_ID,
+				},
+			),
 		).toBe(FORK_ID);
 	});
 });

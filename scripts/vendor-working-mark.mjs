@@ -11,18 +11,26 @@ const OUT_DIR = join(import.meta.dirname, "..", "public", "working-mark");
 const source = await (await fetch(BUNDLE_URL)).text();
 
 const urlByVar = new Map();
-for (const match of source.matchAll(/([\w$]+)=new URL\("([^"]+)"/g)) {
+for (const match of source.matchAll(/([\w$]+)=new URL\("([^"]+)"/g))
+{
 	urlByVar.set(match[1], match[2]);
 }
 const table = /k=\{([^}]+)\};export/.exec(source)?.[1];
 if (table === undefined) throw new Error("SHEET_URLS table not found");
 const varBySheet = new Map();
-for (const match of table.matchAll(/"?([\w.]+)"?:([\w$]+)/g)) {
+for (const match of table.matchAll(/"?([\w.]+)"?:([\w$]+)/g))
+{
 	varBySheet.set(match[1], match[2]);
 }
 
-await mkdir(OUT_DIR, {recursive: true});
-for (const activity of ACTIVITIES) {
+await mkdir(
+	OUT_DIR,
+	{
+		recursive: true,
+	},
+);
+for (const activity of ACTIVITIES)
+{
 	const url = urlByVar.get(varBySheet.get(`${activity}.loop`) ?? "");
 	if (url === undefined) throw new Error(`no sheet for ${activity}.loop`);
 	const bytes = url.startsWith("data:")

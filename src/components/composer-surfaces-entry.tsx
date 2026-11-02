@@ -10,7 +10,8 @@ const composerSurfaces = deferredModule(async () =>
 			QueuedMessageBar,
 			QueuedPromoteStatus,
 			SlashCommandMenu,
-		}) => ({
+		}) => (
+		{
 			AttachedContextChips,
 			ComposerDropScrim,
 			FileMentionMenu,
@@ -23,7 +24,8 @@ const composerSurfaces = deferredModule(async () =>
 
 export const preloadComposerSurfaces = composerSurfaces.preload;
 
-const deferredSurfaces = {
+const deferredSurfaces =
+{
 	AttachedContextChips: deferredComponent(composerSurfaces, "AttachedContextChips"),
 	ComposerDropScrim: deferredComponent(composerSurfaces, "ComposerDropScrim"),
 	FileMentionMenu: deferredComponent(composerSurfaces, "FileMentionMenu"),
@@ -38,6 +40,7 @@ const deferredSurfaces = {
  */
 export function useComposerSurfaces():
 	| NonNullable<ReturnType<typeof composerSurfaces.loaded>>
-	| typeof deferredSurfaces {
+	| typeof deferredSurfaces
+{
 	return useLoadedModule(composerSurfaces) ?? deferredSurfaces;
 }

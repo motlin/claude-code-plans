@@ -9,11 +9,15 @@ import {basename, dirname, join, resolve} from "node:path";
  * A path that does not exist (yet, or any more) keeps its missing tail under the
  * real path of its nearest existing ancestor.
  */
-export function canonicalPath(path: string): string {
+export function canonicalPath(path: string): string
+{
 	const absolute = resolve(path);
-	try {
+	try
+	{
 		return realpathSync(absolute);
-	} catch {
+	}
+	catch
+	{
 		const parent = dirname(absolute);
 		if (parent === absolute) return absolute;
 		return join(canonicalPath(parent), basename(absolute));

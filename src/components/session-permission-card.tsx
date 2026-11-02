@@ -3,7 +3,8 @@ import type {ComponentProps} from "react";
 import {PermissionCard} from "./permission-card";
 import {type AllowAndSwitchToAutoInput, useAllowAndSwitchToAuto} from "./use-allow-and-switch-to-auto";
 
-export interface SessionAutoSwitch extends AllowAndSwitchToAutoInput {
+export interface SessionAutoSwitch extends AllowAndSwitchToAutoInput
+{
 	offered: boolean;
 	/** The page's answer wrapper, so a stale prompt drops the card as the other answers do. */
 	answerWith: (run: () => Promise<void>) => Promise<void>;
@@ -16,14 +17,22 @@ export interface SessionAutoSwitch extends AllowAndSwitchToAutoInput {
 export function SessionPermissionCard({
 	autoSwitch,
 	...card
-}: Omit<ComponentProps<typeof PermissionCard>, "autoSwitch"> & {autoSwitch: SessionAutoSwitch}) {
+}: Omit<ComponentProps<typeof PermissionCard>, "autoSwitch"> &
+{
+	autoSwitch: SessionAutoSwitch;
+})
+{
 	const {offered, answerWith, ...input} = autoSwitch;
 	const {onAllowAndSwitch, gate} = useAllowAndSwitchToAuto(input);
 	return (
 		<>
 			<PermissionCard
 				{...card}
-				autoSwitch={{offered, onAllowAndSwitch: async () => answerWith(onAllowAndSwitch)}}
+				autoSwitch={
+				{
+					offered,
+					onAllowAndSwitch: async () => answerWith(onAllowAndSwitch),
+				}}
 			/>
 			{gate}
 		</>

@@ -6,12 +6,16 @@ import {MessagesSquare} from "lucide-react";
  * Claude session under two different param names; this link crosses from the
  * terminal back to the transcript.
  */
-export function SessionTranscriptLink({sessionId}: {sessionId: string}) {
+export function SessionTranscriptLink({sessionId}: {sessionId: string})
+{
 	const label = `Open session transcript for ${sessionId}`;
 	return (
 		<Link
 			to="/session/$id"
-			params={{id: sessionId}}
+			params={
+			{
+				id: sessionId,
+			}}
 			className="ml-auto flex size-8 items-center justify-center rounded-md text-t6 transition-colors hover:bg-surface-0 hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 			aria-label={label}
 			title={label}

@@ -7,22 +7,29 @@ const FRAME_CLASS =
 	"grid h-full min-h-0 grid-cols-1 grid-rows-1 rounded-[inherit] has-[>:focus-visible]:after:pointer-events-none has-[>:focus-visible]:after:relative has-[>:focus-visible]:after:col-start-1 has-[>:focus-visible]:after:row-start-1 has-[>:focus-visible]:after:m-px has-[>:focus-visible]:after:rounded-[inherit] has-[>:focus-visible]:after:shadow-focus has-[>:focus-visible]:after:outline-hidden has-[>:focus-visible]:after:-outline-offset-2";
 const SCROLLER_CLASS =
 	"col-start-1 row-start-1 flex flex-col overflow-x-hidden overflow-y-auto scroll-py-2 px-lg text-center outline-none focus-visible:isolate before:min-h-2 before:flex-[1_1_var(--placeholder-pad)] after:min-h-2 after:flex-[1_1_var(--placeholder-pad)]";
-const SCROLLER_STYLE = {"--placeholder-pad": "var(--cds-pad-lg)"} as CSSProperties;
+const SCROLLER_STYLE =
+{
+	"--placeholder-pad": "var(--cds-pad-lg)",
+} as CSSProperties;
 
 /** Whether the element's content is taller than its box, kept live with a ResizeObserver. */
-function useOverflows(ref: RefObject<HTMLElement | null>): boolean {
+function useOverflows(ref: RefObject<HTMLElement | null>): boolean
+{
 	const [overflows, setOverflows] = useState(false);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const element = ref.current;
 		if (element === null) return undefined;
-		const measure = () => {
+		const measure = () =>
+		{
 			setOverflows(element.scrollHeight > element.clientHeight);
 		};
 		measure();
 		if (typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [ref]);
@@ -46,7 +53,8 @@ export function PanePlaceholder({
 	body?: ReactNode;
 	actions?: ReactNode;
 	role?: "alert" | "status";
-}) {
+})
+{
 	const ref = useRef<HTMLDivElement>(null);
 	const titleId = useId();
 	const [focused, setFocused] = useState(false);
@@ -59,10 +67,12 @@ export function PanePlaceholder({
 				tabIndex={scrollable ? 0 : undefined}
 				role={scrollable ? "group" : undefined}
 				aria-labelledby={scrollable ? titleId : undefined}
-				onFocus={(event) => {
+				onFocus={(event) =>
+				{
 					if (event.target === event.currentTarget) setFocused(true);
 				}}
-				onBlur={(event) => {
+				onBlur={(event) =>
+				{
 					const target = event.currentTarget;
 					if (event.target === target && target.ownerDocument.activeElement !== target) setFocused(false);
 				}}

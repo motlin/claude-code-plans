@@ -9,35 +9,41 @@ import {asRecord} from "./narrow";
  * One of Claude's chapters, from a chapter tool call anywhere in the session's JSONL: the
  * session outline lists them all, not just those in the loaded transcript window.
  */
-export const ClaudeChapterEntrySchema = z.strictObject({
-	/** The chapter call's tool_use id, which the heading's `epitaxy-ch-` anchor uses. */
-	id: z.string(),
-	title: z.string(),
-	summary: z.string().optional(),
-	/** The uuid of the assistant record holding the call. */
-	uuid: z.string(),
-	/** The record's session-absolute JSONL index. */
-	recordIndex: z.number(),
-});
+export const ClaudeChapterEntrySchema = z.strictObject(
+	{
+		/** The chapter call's tool_use id, which the heading's `epitaxy-ch-` anchor uses. */
+		id: z.string(),
+		title: z.string(),
+		summary: z.string().optional(),
+		/** The uuid of the assistant record holding the call. */
+		uuid: z.string(),
+		/** The record's session-absolute JSONL index. */
+		recordIndex: z.number(),
+	},
+);
 
 export type ClaudeChapterEntry = z.infer<typeof ClaudeChapterEntrySchema>;
 
 /** A tool_result's text: a string, or its text blocks joined by newlines (session-utils' `extractToolResultContent`, kept light for the client bundle). */
-function resultText(content: unknown): string {
+function resultText(content: unknown): string
+{
 	if (typeof content === "string") return content;
 	if (!Array.isArray(content)) return "";
 	return content
-		.flatMap((block: unknown) => {
+		.flatMap((block: unknown) =>
+		{
 			const record = asRecord(block);
 			return record?.["type"] === "text" && typeof record["text"] === "string" ? [record["text"]] : [];
 		})
 		.join("\n");
 }
 
-function contentBlocks(record: Record<string, unknown>): Record<string, unknown>[] {
+function contentBlocks(record: Record<string, unknown>): Record<string, unknown>[]
+{
 	const content = asRecord(record["message"])?.["content"];
 	if (!Array.isArray(content)) return [];
-	return content.flatMap((block: unknown) => {
+	return content.flatMap((block: unknown) =>
+	{
 		const record = asRecord(block);
 		return record === undefined ? [] : [record];
 	});
@@ -52,7 +58,8 @@ export function collectClaudeChapters(
 	chapters: ClaudeChapterEntry[],
 	record: Record<string, unknown> | undefined,
 	recordIndex: number,
-): void {
+): void
+{
 	const type = record?.["type"];
 	if (record === undefined || (type !== "assistant" && type !== "user")) return;
 	const uuid = typeof record["uuid"] === "string" ? record["uuid"] : "";
@@ -60,18 +67,44 @@ export function collectClaudeChapters(
 	// Upstream reads the record's denial kind and toolUseResult only for its lone result.
 	const lone = blocks.filter((block) => block["type"] === "tool_result").length === 1;
 	const toolDenialKind = typeof record["toolDenialKind"] === "string" ? record["toolDenialKind"] : undefined;
-	for (const block of blocks) {
-		if (type === "assistant" && block["type"] === "tool_use") {
+	for (const block of blocks)
+	{
+		if (type === "assistant" && block["type"] === "tool_use")
+		{
 			const {id, name} = block;
 			if (typeof id !== "string" || typeof name !== "string" || !isChapterTool(name)) continue;
-			const disposition = chapterDisposition({id, name, input: asRecord(block["input"]) ?? {}}, undefined);
-			if (disposition.kind === "heading") chapters.push({...disposition.chapter, uuid, recordIndex});
-		} else if (type === "user" && block["type"] === "tool_result" && block["is_error"] === true) {
+			const disposition = chapterDisposition(
+				{
+					id,
+					name,
+					input: asRecord(block["input"]) ?? {},
+				},
+				undefined,
+			);
+			if (disposition.kind === "heading")
+				chapters.push(
+					{
+						...disposition.chapter,
+						uuid,
+						recordIndex,
+					},
+				);
+		}
+		else if (type === "user" && block["type"] === "tool_result" && block["is_error"] === true)
+		{
 			const index = chapters.findIndex((chapter) => chapter.id === block["tool_use_id"]);
-			const interrupted = isInterruptedToolResult({
-				text: resultText(block["content"]),
-				...(lone ? {toolUseResult: record["toolUseResult"], toolDenialKind} : {}),
-			});
+			const interrupted = isInterruptedToolResult(
+				{
+					text: resultText(block["content"]),
+					...(lone
+						?
+							{
+								toolUseResult: record["toolUseResult"],
+								toolDenialKind,
+							}
+						: {}),
+				},
+			);
 			if (index !== -1 && !interrupted) chapters.splice(index, 1);
 		}
 	}
@@ -82,14 +115,16 @@ export function appendClaudeChapters(
 	existing: readonly ClaudeChapterEntry[],
 	records: readonly (Record<string, unknown> | undefined)[],
 	startIndex: number,
-): ClaudeChapterEntry[] {
+): ClaudeChapterEntry[]
+{
 	const chapters = [...existing];
 	for (const [offset, record] of records.entries()) collectClaudeChapters(chapters, record, startIndex + offset);
 	return chapters;
 }
 
 /** Every chapter in a whole session's records, in file order. */
-export function extractClaudeChapters(records: readonly (Record<string, unknown> | undefined)[]): ClaudeChapterEntry[] {
+export function extractClaudeChapters(records: readonly (Record<string, unknown> | undefined)[]): ClaudeChapterEntry[]
+{
 	return appendClaudeChapters([], records, 0);
 }
 
@@ -97,12 +132,14 @@ export function extractClaudeChapters(records: readonly (Record<string, unknown>
 const SESSION_START_CHAPTER_ID = "session-start";
 
 /** The DOM id of a chapter's inline heading (upstream's `KO`). */
-export function chapterAnchorId(id: string): string {
+export function chapterAnchorId(id: string): string
+{
 	return `epitaxy-ch-${id}`;
 }
 
 /** One row of the session outline: the session's start, one of Claude's chapters, or a message the user pinned. */
-export interface SessionChapter {
+export interface SessionChapter
+{
 	id: string;
 	title: string;
 	summary?: string;
@@ -127,9 +164,11 @@ export function buildSessionChapters({
 	store: SessionChapters;
 	firstEntryUuid: string | undefined;
 	sessionStartTitle: string;
-}): SessionChapter[] {
+}): SessionChapter[]
+{
 	const hidden = new Set(store.hidden);
-	const user = store.userChapters.map((chapter): SessionChapter => ({
+	const user = store.userChapters.map((chapter): SessionChapter => (
+	{
 		id: chapter.id,
 		title: chapter.title,
 		source: "user",
@@ -138,10 +177,16 @@ export function buildSessionChapters({
 	}));
 	const claude = claudeChapters
 		.filter((chapter) => !hidden.has(chapter.id))
-		.map((chapter): SessionChapter => ({
+		.map((chapter): SessionChapter => (
+		{
 			id: chapter.id,
 			title: store.renames[chapter.id] ?? chapter.title,
-			...(chapter.summary === undefined ? {} : {summary: chapter.summary}),
+			...(chapter.summary === undefined
+				? {}
+				:
+					{
+						summary: chapter.summary,
+					}),
 			source: "claude",
 			uuid: chapter.uuid,
 			recordIndex: chapter.recordIndex,
@@ -162,7 +207,8 @@ export function buildSessionChapters({
 }
 
 /** Upstream's outline gate (`uk`): at least one chapter that is not the session's own start. */
-export function hasOutline(chapters: readonly SessionChapter[]): boolean {
+export function hasOutline(chapters: readonly SessionChapter[]): boolean
+{
 	return chapters.some((chapter) => chapter.source !== "session");
 }
 
@@ -184,7 +230,8 @@ export function pickActiveChapter(
 		viewportTopPx,
 		firstVisibleRecordIndex,
 		getAnchorTop,
-	}: {
+	}:
+	{
 		canScroll: boolean;
 		distanceToBottomPx: number;
 		/** The reading line, in the same viewport coordinates as `getAnchorTop`. */
@@ -194,16 +241,20 @@ export function pickActiveChapter(
 		/** The top of the chapter's mounted heading, or null when it is not in the DOM. */
 		getAnchorTop: (chapter: SessionChapter) => number | null;
 	},
-): string | null {
+): string | null
+{
 	if (canScroll && distanceToBottomPx <= ACTIVE_CHAPTER_BOTTOM_SLACK_PIXELS) return chapters.at(-1)?.id ?? null;
 	let active: string | null = null;
-	for (const chapter of chapters) {
-		if (chapter.source === "session") {
+	for (const chapter of chapters)
+	{
+		if (chapter.source === "session")
+		{
 			active = chapter.id;
 			continue;
 		}
 		const top = getAnchorTop(chapter);
-		if (top === null) {
+		if (top === null)
+		{
 			const before =
 				chapter.source === "user"
 					? chapter.recordIndex <= firstVisibleRecordIndex

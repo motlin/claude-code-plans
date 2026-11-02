@@ -19,7 +19,8 @@ const SHEET_POSITIONER_CLASS =
 	"z-[130] after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[100dvh] after:bg-[var(--menu-bg)]";
 
 /** Upstream's zA: pinned full-width to the bottom edge, ignoring the trigger. */
-const SHEET_POSITIONER_STYLE = {
+const SHEET_POSITIONER_STYLE =
+{
 	position: "fixed",
 	inset: "auto 0 0",
 	width: "auto",
@@ -30,7 +31,11 @@ const SHEET_POSITIONER_STYLE = {
 } as const;
 
 /** Upstream's X1: no flipping or shifting. */
-const SHEET_COLLISION_AVOIDANCE = {side: "none", align: "none"} as const;
+const SHEET_COLLISION_AVOIDANCE =
+{
+	side: "none",
+	align: "none",
+} as const;
 
 /**
  * Upstream's Hc + kX: the sheet surface, sliding up on enter and down on exit. Its `data-size="lg"`
@@ -40,7 +45,8 @@ const SHEET_COLLISION_AVOIDANCE = {side: "none", align: "none"} as const;
 const SHEET_POPUP_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none rounded-t-[14px] rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION} [--upstream-text-body:15px] [--upstream-leading-body:22px] [&_[data-cds-sheet-scroll]]:overscroll-contain [&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px] forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] forced-colors:border-x-0 forced-colors:border-b-0 data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;
 
 /** Upstream's Gf (.9) resting cap and the .95 ceiling, both below the top safe area. */
-const SHEET_POPUP_STYLE = {
+const SHEET_POPUP_STYLE =
+{
 	maxHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .95)",
 	"--available-height": "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
 } as const;
@@ -61,7 +67,8 @@ const PRESS_TO_FOCUS_MS = 1000;
 type SheetFloor = "content" | "half";
 
 /** Upstream's `keyboard`: how far the on-screen keyboard covers the layout viewport, and what stays visible. */
-interface SheetKeyboard {
+interface SheetKeyboard
+{
 	inset: number;
 	visible: number;
 }
@@ -76,39 +83,55 @@ function sheetPopupStyle(
 	floor: SheetFloor,
 	pinned: number | undefined,
 	keyboard: SheetKeyboard | null,
-) {
+)
+{
 	const half = floor === "half";
 	const height = detent === "tall" ? SHEET_TALL_HEIGHT : pinned === undefined ? undefined : `${pinned}px`;
 	const restCap = half ? SHEET_HALF_HEIGHT : SHEET_REST_CAP;
 	return {
 		...SHEET_POPUP_STYLE,
 		...(keyboard === null
-			? {
-					...(half ? {minHeight: SHEET_HALF_HEIGHT} : {}),
+			?
+				{
+					...(half
+						?
+							{
+								minHeight: SHEET_HALF_HEIGHT,
+							}
+						: {}),
 					maxHeight: height === undefined ? restCap : SHEET_CEILING,
 				}
-			: {
+			:
+				{
 					paddingBottom: "0.5rem",
 					maxHeight: `calc(${keyboard.visible}px - ${SAFE_TOP} - 8px)`,
 				}),
-		...(height === undefined ? {} : {height}),
+		...(height === undefined
+			? {}
+			:
+				{
+					height,
+				}),
 	};
 }
 
 /** Upstream's a4: the positioner rides on top of the on-screen keyboard. */
-function sheetPositionerStyle(keyboard: SheetKeyboard | null) {
+function sheetPositionerStyle(keyboard: SheetKeyboard | null)
+{
 	return {
 		...SHEET_POSITIONER_STYLE,
 		bottom: keyboard === null ? 0 : keyboard.inset,
 	};
 }
 
-function isTextEntry(target: EventTarget | null): boolean {
+function isTextEntry(target: EventTarget | null): boolean
+{
 	return target instanceof Element && target.matches(SHEET_TEXT_ENTRY);
 }
 
 /** Upstream's ht: a text field, or a TextInput frame or label wrapping one. */
-function isTextEntryPress(target: EventTarget | null): boolean {
+function isTextEntryPress(target: EventTarget | null): boolean
+{
 	if (!(target instanceof Element)) return false;
 	if (isTextEntry(target)) return true;
 	const frame = target.closest('[data-cds="TextInput"], label');
@@ -121,29 +144,37 @@ function isTextEntryPress(target: EventTarget | null): boolean {
  * Upstream's text-entry hook: a field press followed by its focus within a second (or a click on a pressed
  * field) opens the tall detent, and the sheet holds text-entry focus while a field is focused.
  */
-function useTextEntryFocus(popup: HTMLDivElement | null, setDetent: (detent: SheetDetent) => void) {
+function useTextEntryFocus(popup: HTMLDivElement | null, setDetent: (detent: SheetDetent) => void)
+{
 	const [focused, setFocused] = useState(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (popup === null) return undefined;
 		let pressedAt = 0;
-		const press = (event: Event) => {
+		const press = (event: Event) =>
+		{
 			if (isTextEntryPress(event.target)) pressedAt = event.timeStamp || Date.now();
 		};
-		const focusIn = (event: Event) => {
+		const focusIn = (event: Event) =>
+		{
 			if (!isTextEntry(event.target)) return;
 			setFocused(true);
-			if (pressedAt > 0 && (event.timeStamp || Date.now()) - pressedAt < PRESS_TO_FOCUS_MS) {
+			if (pressedAt > 0 && (event.timeStamp || Date.now()) - pressedAt < PRESS_TO_FOCUS_MS)
+			{
 				pressedAt = 0;
 				setDetent("tall");
 			}
 		};
-		const click = (event: Event) => {
-			if (pressedAt > 0 && isTextEntryPress(event.target)) {
+		const click = (event: Event) =>
+		{
+			if (pressedAt > 0 && isTextEntryPress(event.target))
+			{
 				pressedAt = 0;
 				setDetent("tall");
 			}
 		};
-		const focusOut = (event: Event) => {
+		const focusOut = (event: Event) =>
+		{
 			if (isTextEntry(event.target)) setFocused(false);
 		};
 		popup.addEventListener("pointerdown", press);
@@ -152,7 +183,8 @@ function useTextEntryFocus(popup: HTMLDivElement | null, setDetent: (detent: She
 		popup.addEventListener("click", click);
 		const active = popup.ownerDocument.activeElement;
 		if (popup.contains(active) && isTextEntry(active)) setFocused(true);
-		return () => {
+		return () =>
+		{
 			popup.removeEventListener("pointerdown", press);
 			popup.removeEventListener("focusin", focusIn);
 			popup.removeEventListener("focusout", focusOut);
@@ -167,27 +199,39 @@ function useTextEntryFocus(popup: HTMLDivElement | null, setDetent: (detent: She
  * Upstream's PO: while a text field holds focus, follow the visual viewport and report the on-screen
  * keyboard once it covers part of the layout viewport.
  */
-function useKeyboardInset(popup: HTMLDivElement | null, active: boolean): SheetKeyboard | null {
+function useKeyboardInset(popup: HTMLDivElement | null, active: boolean): SheetKeyboard | null
+{
 	const [keyboard, setKeyboard] = useState<SheetKeyboard | null>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const view = popup?.ownerDocument.defaultView;
 		const viewport = view?.visualViewport;
-		if (!active || view === null || view === undefined || viewport === null || viewport === undefined) {
+		if (!active || view === null || view === undefined || viewport === null || viewport === undefined)
+		{
 			setKeyboard(null);
 			return undefined;
 		}
-		const update = () => {
+		const update = () =>
+		{
 			const visible = viewport.height;
 			const inset = Math.max(0, Math.round(view.innerHeight - visible - viewport.offsetTop));
-			setKeyboard((previous) => {
+			setKeyboard((previous) =>
+			{
 				if (inset <= 1) return null;
-				return previous?.inset === inset && previous.visible === visible ? previous : {inset, visible};
+				return previous?.inset === inset && previous.visible === visible
+					? previous
+					:
+						{
+							inset,
+							visible,
+						};
 			});
 		};
 		update();
 		viewport.addEventListener("resize", update);
 		viewport.addEventListener("scroll", update);
-		return () => {
+		return () =>
+		{
 			viewport.removeEventListener("resize", update);
 			viewport.removeEventListener("scroll", update);
 			setKeyboard(null);
@@ -211,12 +255,18 @@ const SHEET_BODY_TOKEN =
 	/^(?:(?:p|px|py|pt|pb|ps|pe|pl|pr)-|overflow-|gap-|items-|justify-|(?:flex|inline-flex|grid|flex-col|flex-row)$)/;
 
 /** A token's utility, past any variant prefixes such as `sm:` or `data-[x]:`. */
-function utility(token: string): string {
+function utility(token: string): string
+{
 	return token.slice(token.lastIndexOf(":") + 1);
 }
 
 /** Upstream's pt and c_: the consumer's className splits between the wrapper and the body, minus the sizing tailwind-merge drops. */
-function sheetClasses(className: string | undefined): {wrapper: string; body: string} {
+function sheetClasses(className: string | undefined):
+{
+	wrapper: string;
+	body: string;
+}
+{
 	const tokens = (className ?? "").split(/\s+/).filter((token) => token !== "" && !SHEET_STRIPPED_TOKEN.test(token));
 	const body = tokens.filter((token) => SHEET_BODY_TOKEN.test(utility(token)));
 	const wrapper = tokens.filter((token) => !SHEET_BODY_TOKEN.test(utility(token)));
@@ -236,12 +286,15 @@ const SHEET_DISMISS_CLASS =
  * Upstream's _t: a press marks the sheet pressed, and holds a focus-visible or highlighted DismissButton
  * visible, until the next click, pointercancel or keydown.
  */
-function useDismissHold(popup: HTMLDivElement | null) {
-	useEffect(() => {
+function useDismissHold(popup: HTMLDivElement | null)
+{
+	useEffect(() =>
+	{
 		if (popup === null) return undefined;
 		const doc = popup.ownerDocument;
 		let held: Element | null = null;
-		const release = () => {
+		const release = () =>
+		{
 			popup.removeAttribute("data-cds-sheet-pressed");
 			held?.removeAttribute("data-cds-sheet-control-held");
 			held = null;
@@ -249,7 +302,8 @@ function useDismissHold(popup: HTMLDivElement | null) {
 			doc.removeEventListener("pointercancel", release, true);
 			doc.removeEventListener("keydown", release, true);
 		};
-		const press = () => {
+		const press = () =>
+		{
 			doc.addEventListener("click", release, true);
 			doc.addEventListener("pointercancel", release, true);
 			doc.addEventListener("keydown", release, true);
@@ -260,7 +314,8 @@ function useDismissHold(popup: HTMLDivElement | null) {
 			control.setAttribute("data-cds-sheet-control-held", "");
 		};
 		popup.addEventListener("pointerdown", press, true);
-		return () => {
+		return () =>
+		{
 			popup.removeEventListener("pointerdown", press, true);
 			release();
 		};
@@ -268,7 +323,8 @@ function useDismissHold(popup: HTMLDivElement | null) {
 }
 
 /** The body's laid-out content height: its first child's top to its last child's bottom, plus its padding. */
-function bodyContentHeight(body: HTMLElement): number {
+function bodyContentHeight(body: HTMLElement): number
+{
 	const style = body.ownerDocument.defaultView?.getComputedStyle(body);
 	const padding =
 		(Number.parseFloat(style?.paddingTop ?? "") || 0) + (Number.parseFloat(style?.paddingBottom ?? "") || 0);
@@ -283,15 +339,18 @@ function bodyContentHeight(body: HTMLElement): number {
  * the body's content), and re-pins when the popup, the body, its content or the DismissButton resizes.
  * A focus-visible DismissButton takes its 44px from the pinned body, so the sheet grows by that much.
  */
-function useSheetHeightPin(popup: HTMLDivElement | null, paused: boolean): number | undefined {
+function useSheetHeightPin(popup: HTMLDivElement | null, paused: boolean): number | undefined
+{
 	const [pinned, setPinned] = useState<number | undefined>(undefined);
 	const pausedRef = useRef(paused);
 	pausedRef.current = paused;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (popup === null || typeof ResizeObserver === "undefined") return undefined;
 		const body = popup.querySelector<HTMLElement>("[data-cds-popover-body]");
 		if (body === null) return undefined;
-		const pin = () => {
+		const pin = () =>
+		{
 			/* The tall detent and the keyboard size the sheet themselves (upstream's RH `height`). */
 			if (pausedRef.current) return;
 			const height = popup.getBoundingClientRect().height;
@@ -299,19 +358,27 @@ function useSheetHeightPin(popup: HTMLDivElement | null, paused: boolean): numbe
 			setPinned(Math.round(height - body.clientHeight + bodyContentHeight(body)));
 		};
 		const resizes = new ResizeObserver(pin);
-		const observeContent = () => {
+		const observeContent = () =>
+		{
 			resizes.disconnect();
 			for (const target of [popup, body, ...Array.from(body.children)]) resizes.observe(target);
 			const control = popup.querySelector("[data-cds-sheet-control]");
 			if (control !== null) resizes.observe(control);
 		};
 		observeContent();
-		const mutations = new MutationObserver(() => {
+		const mutations = new MutationObserver(() =>
+		{
 			observeContent();
 			pin();
 		});
-		mutations.observe(body, {childList: true});
-		return () => {
+		mutations.observe(
+			body,
+			{
+				childList: true,
+			},
+		);
+		return () =>
+		{
 			resizes.disconnect();
 			mutations.disconnect();
 			setPinned(undefined);
@@ -333,12 +400,14 @@ export function PopoverSheetContent({
 	closeLabel: string;
 	treeId: string;
 	dismiss: () => void;
-}) {
+})
+{
 	const [popup, setPopupState] = useState<HTMLDivElement | null>(null);
 	const [detent, setDetent] = useState<SheetDetent>("default");
 	const [floor, setFloor] = useState<SheetFloor>("content");
 	/* A closed sheet reopens at its default detent; a text field on mount floors it at half height. */
-	const setPopup = useCallback((next: HTMLDivElement | null) => {
+	const setPopup = useCallback((next: HTMLDivElement | null) =>
+	{
 		registerPopupOpener(next);
 		setPopupState(next);
 		if (next === null) setDetent("default");
@@ -350,7 +419,14 @@ export function PopoverSheetContent({
 	const textEntryFocused = useTextEntryFocus(popup, setDetent);
 	const keyboard = useKeyboardInset(popup, textEntryFocused);
 	const dragFrame = useMemo(
-		() => ({treeId, dismiss, detent, setDetent, keyboard: keyboard !== null}),
+		() => (
+		{
+			treeId,
+			dismiss,
+			detent,
+			setDetent,
+			keyboard: keyboard !== null,
+		}),
 		[treeId, dismiss, detent, keyboard],
 	);
 	useDismissHold(popup);
@@ -408,7 +484,8 @@ export function PopoverSheetContent({
 }
 
 /** Upstream's dt: the drag handle pill; it drags the sheet down to dismiss or up to the tall detent. */
-function PopoverSheetHandle() {
+function PopoverSheetHandle()
+{
 	const drag = useSheetDrag();
 	return (
 		<div

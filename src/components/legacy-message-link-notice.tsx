@@ -6,7 +6,8 @@
  */
 const LEGACY_MESSAGE_LINK = /^#?msg-[A-Za-z0-9_-]+$/;
 
-function isLegacyMessageLink(hash: string): boolean {
+function isLegacyMessageLink(hash: string): boolean
+{
 	return LEGACY_MESSAGE_LINK.test(hash);
 }
 
@@ -17,7 +18,8 @@ function isLegacyMessageLink(hash: string): boolean {
  * the session's first message. Saying so is the difference between a link that
  * failed and a link that quietly showed the reader the wrong message.
  */
-export function LegacyMessageLinkNotice({hash}: {hash: string}) {
+export function LegacyMessageLinkNotice({hash}: {hash: string})
+{
 	if (!isLegacyMessageLink(hash)) return null;
 
 	return (

@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from "react";
-import {
+import
+{
 	decodeTerminalBytes,
 	encodeTerminalText,
 	parseShellServerFrame,
@@ -9,7 +10,8 @@ import {useTerminalTheme} from "../hooks/use-terminal-theme";
 import type {GhosttyAppearance} from "../lib/server-fns";
 import {installTerminalContrast} from "../lib/terminal-contrast";
 import {applyTerminalTheme} from "../lib/terminal-theme";
-import {
+import
+{
 	formatLinkMessage,
 	INITIAL_TERMINAL_LIFECYCLE,
 	reduceTerminalLifecycle,
@@ -29,7 +31,8 @@ import {installTerminalInput, useTerminalSelectionActions} from "./terminal-inpu
 /** Socket closes that mean "stop", not "reconnect". */
 const FINAL_CLOSE_CODES = new Set([1000, 1008, 4001, 4404]);
 
-function shellSocketUrl(ptyKey: string): string {
+function shellSocketUrl(ptyKey: string): string
+{
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 	return `${protocol}//${window.location.host}/api/shell/${encodeURIComponent(ptyKey)}`;
 }
@@ -64,7 +67,8 @@ export function ShellTerminal({
 	/** Start a new shell for this tab; rejects with the reason it could not. */
 	onRestart: () => Promise<void>;
 	onStatusChange?: (status: ConnectionStatus) => void;
-}) {
+})
+{
 	const container = useRef<HTMLDivElement>(null);
 	const sendRef = useRef<((frame: ShellClientFrame) => boolean) | null>(null);
 	const reconnectRef = useRef<(() => void) | null>(null);
@@ -78,7 +82,8 @@ export function ShellTerminal({
 	const {actions: selectionActions, announcement} = useTerminalSelectionActions(sessionId);
 	const {ready: themeReady, theme: codeTheme, fontSize: codeFontSize} = useTerminalTheme();
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const element = container.current;
 		if (!element || !themeReady) return undefined;
 
@@ -86,12 +91,18 @@ export function ShellTerminal({
 		let teardown: (() => void) | null = null;
 		let terminalWrite: ((text: string) => void) | null = null;
 		let state = restartingRef.current
-			? reduceTerminalLifecycle(INITIAL_TERMINAL_LIFECYCLE, {type: "restart"}).state
+			? reduceTerminalLifecycle(
+					INITIAL_TERMINAL_LIFECYCLE,
+					{
+						type: "restart",
+					},
+				).state
 			: INITIAL_TERMINAL_LIFECYCLE;
 		restartingRef.current = false;
 		setLifecycle(state);
 
-		const dispatch = (event: TerminalLifecycleEvent): void => {
+		const dispatch = (event: TerminalLifecycleEvent): void =>
+		{
 			if (disposed) return;
 			const step = reduceTerminalLifecycle(state, event);
 			state = step.state;
@@ -100,20 +111,24 @@ export function ShellTerminal({
 		};
 		dispatchRef.current = dispatch;
 
-		const start = (ghostty: typeof import("ghostty-web"), ghosttyAppearance: GhosttyAppearance): (() => void) => {
-			const terminal = new ghostty.Terminal({
-				convertEol: false,
-				cursorBlink: true,
-				fontFamily: ghosttyAppearance.fontFamily,
-				fontSize: ghosttyAppearance.fontSize,
-				scrollback: 10_000,
-				theme: ghosttyAppearance.theme,
-			});
+		const start = (ghostty: typeof import("ghostty-web"), ghosttyAppearance: GhosttyAppearance): (() => void) =>
+		{
+			const terminal = new ghostty.Terminal(
+				{
+					convertEol: false,
+					cursorBlink: true,
+					fontFamily: ghosttyAppearance.fontFamily,
+					fontSize: ghosttyAppearance.fontSize,
+					scrollback: 10_000,
+					theme: ghosttyAppearance.theme,
+				},
+			);
 			const fitAddon = new ghostty.FitAddon();
 			terminal.loadAddon(fitAddon);
 			terminal.open(element);
 			const removeContrast = installTerminalContrast(terminal);
-			terminalWrite = (text) => {
+			terminalWrite = (text) =>
+			{
 				terminal.write(text);
 			};
 			installTerminalInput(terminal, selectionActions);
@@ -123,19 +138,35 @@ export function ShellTerminal({
 			let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 			let stopped = false;
 
-			const send = (frame: ShellClientFrame): boolean => {
+			const send = (frame: ShellClientFrame): boolean =>
+			{
 				if (socket?.readyState !== WebSocket.OPEN) return false;
 				socket.send(JSON.stringify(frame));
 				return true;
 			};
 			sendRef.current = send;
-			const dataSubscription = terminal.onData((data) => send({type: "data", data: encodeTerminalText(data)}));
-			const sendSize = (): void => {
+			const dataSubscription = terminal.onData((data) =>
+				send(
+					{
+						type: "data",
+						data: encodeTerminalText(data),
+					},
+				),
+			);
+			const sendSize = (): void =>
+			{
 				fitAddon.fit();
-				send({type: "resize", cols: terminal.cols, rows: terminal.rows});
+				send(
+					{
+						type: "resize",
+						cols: terminal.cols,
+						rows: terminal.rows,
+					},
+				);
 			};
 
-			const connect = (): void => {
+			const connect = (): void =>
+			{
 				if (stopped) return;
 				retry = null;
 				const nextSocket = new WebSocket(shellSocketUrl(ptyKey));
@@ -143,65 +174,107 @@ export function ShellTerminal({
 				socket = nextSocket;
 
 				nextSocket.addEventListener("open", sendSize);
-				nextSocket.addEventListener("message", (event) => {
+				nextSocket.addEventListener("message", (event) =>
+				{
 					let frame;
-					try {
+					try
+					{
 						frame = parseShellServerFrame(String(event.data));
-					} catch {
+					}
+					catch
+					{
 						stopped = true;
-						dispatch({type: "error", message: "invalid shell frame"});
+						dispatch(
+							{
+								type: "error",
+								message: "invalid shell frame",
+							},
+						);
 						nextSocket.close(4000, "invalid shell frame");
 						return;
 					}
-					switch (frame.type) {
+					switch (frame.type)
+					{
 						case "opened":
 							terminal.reset();
 							terminal.write(oscFilter(decodeTerminalBytes(frame.buffered)));
-							dispatch({type: "opened"});
+							dispatch(
+								{
+									type: "opened",
+								},
+							);
 							return;
 						case "data":
 							terminal.write(oscFilter(decodeTerminalBytes(frame.data)));
 							return;
 						case "exit":
 							stopped = true;
-							dispatch({type: "exited"});
+							dispatch(
+								{
+									type: "exited",
+								},
+							);
 							return;
 						case "error":
 							stopped = true;
 							// A missing PTY is a shell that is gone, not a broken connection.
 							dispatch(
 								frame.message === "Shell not found"
-									? {type: "exited"}
-									: {type: "error", message: frame.message},
+									?
+										{
+											type: "exited",
+										}
+									:
+										{
+											type: "error",
+											message: frame.message,
+										},
 							);
 					}
 				});
-				nextSocket.addEventListener("close", (event) => {
+				nextSocket.addEventListener("close", (event) =>
+				{
 					if (socket !== nextSocket) return;
 					socket = null;
-					if (event.code === 4404) {
+					if (event.code === 4404)
+					{
 						stopped = true;
-						dispatch({type: "exited"});
+						dispatch(
+							{
+								type: "exited",
+							},
+						);
 					}
-					if (stopped || FINAL_CLOSE_CODES.has(event.code)) {
+					if (stopped || FINAL_CLOSE_CODES.has(event.code))
+					{
 						stopped = true;
 						return;
 					}
-					dispatch({type: "lost"});
+					dispatch(
+						{
+							type: "lost",
+						},
+					);
 					retry = setTimeout(connect, 750);
 				});
 			};
 
-			reconnectRef.current = () => {
+			reconnectRef.current = () =>
+			{
 				if (retry) clearTimeout(retry);
 				socket?.close(1000, "shell reconnecting");
 				socket = null;
 				stopped = false;
-				dispatch({type: "reconnect"});
+				dispatch(
+					{
+						type: "reconnect",
+					},
+				);
 				connect();
 			};
 
-			const resizeObserver = new ResizeObserver(() => {
+			const resizeObserver = new ResizeObserver(() =>
+			{
 				if (resizeTimer) clearTimeout(resizeTimer);
 				resizeTimer = setTimeout(sendSize, 150);
 			});
@@ -209,7 +282,8 @@ export function ShellTerminal({
 			fitAddon.fit();
 			connect();
 
-			return () => {
+			return () =>
+			{
 				stopped = true;
 				sendRef.current = null;
 				reconnectRef.current = null;
@@ -225,46 +299,68 @@ export function ShellTerminal({
 		};
 
 		void loadGhostty()
-			.then(({ghostty, appearance: loadedAppearance}) => {
+			.then(({ghostty, appearance: loadedAppearance}) =>
+			{
 				if (disposed) return;
 				const ghosttyAppearance = applyTerminalTheme(loadedAppearance, codeTheme, codeFontSize);
 				setAppearance(ghosttyAppearance);
-				dispatch({type: "loaded"});
+				dispatch(
+					{
+						type: "loaded",
+					},
+				);
 				teardown = start(ghostty, ghosttyAppearance);
 			})
-			.catch(() => {
-				dispatch({type: "load-failed"});
+			.catch(() =>
+			{
+				dispatch(
+					{
+						type: "load-failed",
+					},
+				);
 			});
 
-		return () => {
+		return () =>
+		{
 			disposed = true;
 			teardown?.();
 		};
 	}, [ptyKey, selectionActions, themeReady, codeTheme, codeFontSize]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!closeRequested) return;
-		sendRef.current?.({type: "close"});
+		sendRef.current?.(
+			{
+				type: "close",
+			},
+		);
 		onClosedRef.current();
 	}, [closeRequested]);
 
 	const status = terminalStatus(lifecycle);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		onStatusChange?.(status);
 	}, [onStatusChange, status]);
 
-	const restart = (): void => {
+	const restart = (): void =>
+	{
 		setRestarting(true);
 		restartingRef.current = true;
 		onRestart()
-			.catch((cause: unknown) => {
+			.catch((cause: unknown) =>
+			{
 				restartingRef.current = false;
-				dispatchRef.current({
-					type: "start-failed",
-					message: cause instanceof Error ? cause.message : String(cause),
-				});
+				dispatchRef.current(
+					{
+						type: "start-failed",
+						message: cause instanceof Error ? cause.message : String(cause),
+					},
+				);
 			})
-			.finally(() => {
+			.finally(() =>
+			{
 				setRestarting(false);
 			});
 	};
@@ -277,7 +373,14 @@ export function ShellTerminal({
 				ref={container}
 				data-terminal=""
 				className="min-h-0 flex-1 overflow-hidden rounded-b-[inherit] p-2"
-				style={appearance ? {backgroundColor: appearance.theme.background} : undefined}
+				style={
+					appearance
+						?
+							{
+								backgroundColor: appearance.theme.background,
+							}
+						: undefined
+				}
 			/>
 			{overlay?.kind === "placeholder" && <TerminalPlaceholder appearance={appearance} />}
 			<TerminalSelectionStatus announcement={announcement} />

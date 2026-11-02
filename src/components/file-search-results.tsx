@@ -11,20 +11,24 @@ const MINIMUM_QUERY_LENGTH = 2;
 const INITIAL_MATCH_COUNT = 5;
 const SERVER_MATCH_CAP = 50;
 
-function pathBasename(path: string): string {
+function pathBasename(path: string): string
+{
 	return path.slice(path.lastIndexOf("/") + 1);
 }
 
-function pathDirectory(path: string): string {
+function pathDirectory(path: string): string
+{
 	const separatorIndex = path.lastIndexOf("/");
 	return separatorIndex <= 0 ? "/" : path.slice(0, separatorIndex);
 }
 
-function pathTerms(query: string): string[] {
+function pathTerms(query: string): string[]
+{
 	return query.normalize("NFKC").match(/[\p{L}\p{N}_]+/gu) ?? [];
 }
 
-function highlightedText(value: string, query: string): ReactNode {
+function highlightedText(value: string, query: string): ReactNode
+{
 	const terms = pathTerms(query).toSorted((left, right) => right.length - left.length);
 	if (terms.length === 0) return value;
 	const escapedTerms = terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
@@ -40,30 +44,52 @@ function highlightedText(value: string, query: string): ReactNode {
 		);
 }
 
-function isScopeInsideRoot(scope: string, root: string): boolean {
+function isScopeInsideRoot(scope: string, root: string): boolean
+{
 	return scope === root || scope.startsWith(`${root}/`);
 }
 
-function scopeSegments(root: string, scope: string): Array<{label: string; path: string}> {
+function scopeSegments(
+	root: string,
+	scope: string,
+): Array<
+{
+	label: string;
+	path: string;
+}>
+{
 	if (!isScopeInsideRoot(scope, root)) return [];
-	const segments = [{label: pathBasename(root) || root, path: root}];
+	const segments = [
+		{
+			label: pathBasename(root) || root,
+			path: root,
+		},
+	];
 	if (scope === root) return segments;
 	let path = root;
-	for (const label of scope.slice(root.length + 1).split("/")) {
+	for (const label of scope.slice(root.length + 1).split("/"))
+	{
 		path = `${path}/${label}`;
-		segments.push({label, path});
+		segments.push(
+			{
+				label,
+				path,
+			},
+		);
 	}
 	return segments;
 }
 
-interface FileSearchResultsProps {
+interface FileSearchResultsProps
+{
 	initialQuery: string;
 	onClose: () => void;
 	onOpen: (absolutePath: string, lineNumber: number) => void;
 	onQueryChange: (query: string) => void;
 }
 
-export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}: FileSearchResultsProps) {
+export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}: FileSearchResultsProps)
+{
 	const [query, setQuery] = useState(initialQuery);
 	const [activeRoot, setActiveRoot] = useState<string | null>(null);
 	const [scope, setScope] = useState<string | null>(null);
@@ -75,89 +101,118 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 	const rootsQuery = useQuery(fileSearchRootsQueryOptions);
 
 	const [syncedInitialQuery, setSyncedInitialQuery] = useState(initialQuery);
-	if (initialQuery !== syncedInitialQuery) {
+	if (initialQuery !== syncedInitialQuery)
+	{
 		setSyncedInitialQuery(initialQuery);
 		setQuery(initialQuery);
 	}
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const firstRoot = rootsQuery.data?.roots[0];
-		if (activeRoot === null && firstRoot) {
+		if (activeRoot === null && firstRoot)
+		{
 			setActiveRoot(firstRoot);
 			setScope(firstRoot);
 		}
 	}, [activeRoot, rootsQuery.data]);
 
 	const searchEnabled = debouncedQuery.length >= MINIMUM_QUERY_LENGTH && activeRoot !== null && scope !== null;
-	const searchQuery = useQuery({
-		...fileSearchQueryOptions(debouncedQuery, scope ?? ""),
-		enabled: searchEnabled,
-	});
+	const searchQuery = useQuery(
+		{
+			...fileSearchQueryOptions(debouncedQuery, scope ?? ""),
+			enabled: searchEnabled,
+		},
+	);
 	const result = searchQuery.data;
 	const resultPaths = useMemo(() => result?.files.map((file) => file.path) ?? [], [result]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (selectedPath !== null && !resultPaths.includes(selectedPath)) setSelectedPath(null);
 	}, [resultPaths, selectedPath]);
 
 	const registerResult = useCallback(
-		(path: string) => (element: HTMLButtonElement | null) => {
+		(path: string) => (element: HTMLButtonElement | null) =>
+		{
 			if (element) resultRefs.current.set(path, element);
 			else resultRefs.current.delete(path);
 		},
 		[],
 	);
 
-	const focusResult = (index: number): void => {
+	const focusResult = (index: number): void =>
+	{
 		const path = resultPaths[index];
 		if (!path) return;
 		const element = resultRefs.current.get(path);
 		if (!element) return;
 		setSelectedPath(path);
 		element.focus();
-		element.scrollIntoView({block: "nearest"});
+		element.scrollIntoView(
+			{
+				block: "nearest",
+			},
+		);
 	};
 
-	const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
-		if (event.key === "ArrowDown" && resultPaths.length > 0) {
+	const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>): void =>
+	{
+		if (event.key === "ArrowDown" && resultPaths.length > 0)
+		{
 			event.preventDefault();
 			focusResult(0);
-		} else if (event.key === "Escape") {
+		}
+		else if (event.key === "Escape")
+		{
 			onClose();
 		}
 	};
 
-	const handleResultKeyDown = (event: KeyboardEvent<HTMLButtonElement>, path: string): void => {
+	const handleResultKeyDown = (event: KeyboardEvent<HTMLButtonElement>, path: string): void =>
+	{
 		const index = resultPaths.indexOf(path);
-		if (event.key === "ArrowDown") {
+		if (event.key === "ArrowDown")
+		{
 			event.preventDefault();
 			focusResult(Math.min(index + 1, resultPaths.length - 1));
-		} else if (event.key === "ArrowUp") {
+		}
+		else if (event.key === "ArrowUp")
+		{
 			event.preventDefault();
-			if (index === 0) {
+			if (index === 0)
+			{
 				setSelectedPath(null);
 				inputRef.current?.focus();
-			} else {
+			}
+			else
+			{
 				focusResult(index - 1);
 			}
-		} else if (event.key === "Escape") {
+		}
+		else if (event.key === "Escape")
+		{
 			event.preventDefault();
 			setSelectedPath(null);
 			inputRef.current?.focus();
-		} else if (event.key === "Enter") {
+		}
+		else if (event.key === "Enter")
+		{
 			event.preventDefault();
 			event.currentTarget.click();
 		}
 	};
 
-	const selectRoot = (nextRoot: string): void => {
+	const selectRoot = (nextRoot: string): void =>
+	{
 		if (!rootsQuery.data?.roots.includes(nextRoot)) return;
 		setActiveRoot(nextRoot);
 		setScope(nextRoot);
 		setSelectedPath(null);
 	};
 
-	const selectScope = (nextScope: string): void => {
+	const selectScope = (nextScope: string): void =>
+	{
 		if (activeRoot === null || !isScopeInsideRoot(nextScope, activeRoot)) return;
 		setScope(nextScope);
 		setSelectedPath(null);
@@ -174,7 +229,8 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 						autoFocus
 						type="search"
 						value={query}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							setQuery(event.target.value);
 							onQueryChange(event.target.value);
 						}}
@@ -202,7 +258,8 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 					aria-label="Search root"
 					disabled={rootsQuery.isPending || rootsQuery.isError}
 					value={activeRoot ?? ""}
-					onChange={(event) => {
+					onChange={(event) =>
+					{
 						selectRoot(event.target.value);
 					}}
 					className="max-w-full rounded-md border border-border bg-surface-1 px-2 py-1 text-primary"
@@ -222,7 +279,8 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 								{index > 0 ? <ChevronRight className="h-3 w-3 shrink-0" /> : null}
 								<button
 									type="button"
-									onClick={() => {
+									onClick={() =>
+									{
 										selectScope(segment.path);
 									}}
 									className="max-w-40 truncate rounded px-1 py-0.5 hover:bg-surface-0 hover:text-primary"
@@ -263,8 +321,10 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 					expandedPaths={expandedPaths}
 					selectedPath={selectedPath}
 					registerResult={registerResult}
-					onExpand={(path) => {
-						setExpandedPaths((current) => {
+					onExpand={(path) =>
+					{
+						setExpandedPaths((current) =>
+						{
 							const next = new Set(current);
 							if (next.has(path)) next.delete(path);
 							else next.add(path);
@@ -273,7 +333,8 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 					}}
 					onFocus={setSelectedPath}
 					onKeyDown={handleResultKeyDown}
-					onOpen={(path, lineNumber) => {
+					onOpen={(path, lineNumber) =>
+					{
 						const target = fileSearchViewerTarget(path, lineNumber);
 						onOpen(target.absolutePath, target.lineNumber);
 					}}
@@ -284,7 +345,8 @@ export function FileSearchResults({initialQuery, onClose, onOpen, onQueryChange}
 	);
 }
 
-interface ResultCardsProps {
+interface ResultCardsProps
+{
 	result: FileSearchResult;
 	query: string;
 	scope: string | null;
@@ -310,7 +372,8 @@ function ResultCards({
 	onKeyDown,
 	onOpen,
 	onScopeChange,
-}: ResultCardsProps) {
+}: ResultCardsProps)
+{
 	return (
 		<>
 			<p className="mt-4 text-xs text-t6">
@@ -318,7 +381,8 @@ function ResultCards({
 				{result.isTruncated ? " (showing capped results)" : ""}
 			</p>
 			<ul className="mt-2 space-y-2">
-				{result.files.map((file) => {
+				{result.files.map((file) =>
+				{
 					const directory = pathDirectory(file.path);
 					const expanded = expandedPaths.has(file.path);
 					const shownMatches = expanded ? file.matches : file.matches.slice(0, INITIAL_MATCH_COUNT);
@@ -331,13 +395,16 @@ function ResultCards({
 								type="button"
 								aria-label={`Open ${file.path} at line ${firstLineNumber}`}
 								data-selected={selectedPath === file.path ? "true" : undefined}
-								onFocus={() => {
+								onFocus={() =>
+								{
 									onFocus(file.path);
 								}}
-								onKeyDown={(event) => {
+								onKeyDown={(event) =>
+								{
 									onKeyDown(event, file.path);
 								}}
-								onClick={(event) => {
+								onClick={(event) =>
+								{
 									const lineElement =
 										event.target instanceof Element
 											? event.target.closest<HTMLElement>("[data-line-number]")
@@ -375,7 +442,10 @@ function ResultCards({
 												<span className="text-right font-mono text-t6">{match.lineNumber}</span>
 												<span
 													className="truncate text-secondary [&_mark]:rounded-sm [&_mark]:bg-warning-100/30 [&_mark]:px-0.5 [&_mark]:text-primary"
-													dangerouslySetInnerHTML={{__html: match.snippet}}
+													dangerouslySetInnerHTML={
+													{
+														__html: match.snippet,
+													}}
 												/>
 											</span>
 										))
@@ -387,7 +457,8 @@ function ResultCards({
 									type="button"
 									aria-label={`Search within ${directory}`}
 									title="Search within this directory"
-									onClick={() => {
+									onClick={() =>
+									{
 										onScopeChange(directory);
 									}}
 									className="absolute right-2 top-2 rounded p-1 text-t6 hover:bg-fill-ghost-hover hover:text-primary"
@@ -399,7 +470,8 @@ function ResultCards({
 								<button
 									type="button"
 									aria-expanded={expanded}
-									onClick={() => {
+									onClick={() =>
+									{
 										onExpand(file.path);
 									}}
 									className="mx-3 mb-2 flex items-center gap-1 rounded px-1 py-0.5 text-xs text-accent-100 hover:bg-surface-0"

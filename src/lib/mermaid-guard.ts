@@ -27,7 +27,8 @@ const PARTICIPANT_STATEMENT = /^(?:(?:create\s+)?(?:participant|actor)|activate|
 const TEXT_STATEMENT = /^(?:note\s+(?:left\s+of|right\s+of|over)|links?|properties|details)\s+\S/i;
 const ACC_STATEMENT = /^acc(?:Title|Descr)\s*[:{]/i;
 const BLOCK_OPENER = /^(par_over|loop|alt|opt|par|critical|break|rect|box)\b/i;
-const BRANCH_OF: Readonly<Record<string, readonly string[]>> = {
+const BRANCH_OF: Readonly<Record<string, readonly string[]>> =
+{
 	else: ["alt"],
 	and: ["par", "par_over"],
 	option: ["critical"],
@@ -40,7 +41,8 @@ const encodedEntity = (name: string) => `${/^\d+$/.test(name) ? "ﬂ°°" : "ﬂ
 type PartKind = "stops" | "takes-text" | "whole" | "end" | "branch" | "text";
 
 /** Upstream `ee`: what the part after a semicolon is, so the semicolon can be told apart from message text. */
-function partKind(part: string, participants: ReadonlySet<string>): PartKind {
+function partKind(part: string, participants: ReadonlySet<string>): PartKind
+{
 	const trimmed = part.trim();
 	if (trimmed.startsWith("%") || ACC_STATEMENT.test(trimmed)) return "stops";
 	if (isMessage(trimmed) || (TEXT_STATEMENT.test(trimmed) && trimmed.includes(":"))) return "takes-text";
@@ -55,7 +57,8 @@ function partKind(part: string, participants: ReadonlySet<string>): PartKind {
 	return /^(?:else|and|option)\b/i.test(trimmed) ? "branch" : "text";
 }
 
-export interface SequenceRepair {
+export interface SequenceRepair
+{
 	text: string;
 	repair: "deactivate" | "semicolon";
 }
@@ -64,22 +67,32 @@ export interface SequenceRepair {
  * Upstream `m` (`repairSequenceText`): a sequence diagram that failed to parse, rewritten so it may parse: an
  * inactive participant's deactivation blanked, or a semicolon inside message text written as its entity.
  */
-export function repairSequenceText(text: string, error: unknown): SequenceRepair | undefined {
+export function repairSequenceText(text: string, error: unknown): SequenceRepair | undefined
+{
 	const deactivate = error instanceof Error && error.message.startsWith(INACTIVE_PARTICIPANT);
 	const participants = new Set<string>();
 	const repaired = mapStatementLines(text, deactivate ? deactivationFix(participants) : semicolonFix(participants));
-	return repaired === text ? undefined : {text: repaired, repair: deactivate ? "deactivate" : "semicolon"};
+	return repaired === text
+		? undefined
+		:
+			{
+				text: repaired,
+				repair: deactivate ? "deactivate" : "semicolon",
+			};
 }
 
 /** Upstream `h`: where a front-matter block ends, or 0. */
-function frontMatterEnd(text: string): number {
+function frontMatterEnd(text: string): number
+{
 	const open = /^([^\S\n]*)-{3}[^\S\n]*\n/.exec(text);
 	if (!open) return 0;
 	const close = `\n${open[1] ?? ""}---`;
-	for (let at = text.indexOf(close, open[0].length); at >= 0; at = text.indexOf(close, at + 1)) {
+	for (let at = text.indexOf(close, open[0].length); at >= 0; at = text.indexOf(close, at + 1))
+	{
 		let index = at + close.length;
 		let lineEnd = -1;
-		while (isSpace(text[index])) {
+		while (isSpace(text[index]))
+		{
 			lineEnd = text[index] === "\n" ? index : lineEnd;
 			index++;
 		}
@@ -89,14 +102,17 @@ function frontMatterEnd(text: string): number {
 }
 
 /** Upstream `g`: `fix` over each statement line, skipping front matter, directives, comments and accessibility text. */
-function mapStatementLines(text: string, fix: (line: string) => string): string {
+function mapStatementLines(text: string, fix: (line: string) => string): string
+{
 	const start = frontMatterEnd(text);
 	let until: string | undefined;
 	const lines = text
 		.slice(start)
 		.split("\n")
-		.map((line) => {
-			if (until !== undefined) {
+		.map((line) =>
+		{
+			if (until !== undefined)
+			{
 				until = line.includes(until) ? undefined : until;
 				return line;
 			}
@@ -110,47 +126,68 @@ function mapStatementLines(text: string, fix: (line: string) => string): string 
 }
 
 /** Upstream `_`: a line's semicolons, up to an entity-looking `#…` that is not one. */
-function semicolons(line: string): {breaks: number[]; end: number} {
+function semicolons(line: string):
+{
+	breaks: number[];
+	end: number;
+}
+{
 	const breaks: number[] = [];
-	for (let index = 0; index < line.length; index++) {
+	for (let index = 0; index < line.length; index++)
+	{
 		if (line[index] === ";") breaks.push(index);
-		else if (line[index] === "#") {
+		else if (line[index] === "#")
+		{
 			let after = index + 1;
 			while (after < line.length && /\w/.test(line[after] ?? "")) after++;
-			if (after === index + 1 || line[after] !== ";") return {breaks, end: index};
+			if (after === index + 1 || line[after] !== ";")
+				return {
+					breaks,
+					end: index,
+				};
 			index = after;
 		}
 	}
-	return {breaks, end: line.length};
+	return {
+		breaks,
+		end: line.length,
+	};
 }
 
 /** Upstream `v`. */
-function participantName(statement: string): string | undefined {
+function participantName(statement: string): string | undefined
+{
 	const named = PARTICIPANT_STATEMENT.exec(statement)?.[1];
 	const alias = named?.search(/\sas\s/) ?? -1;
 	return alias >= 0 ? named?.slice(0, alias).trim() : named?.trim();
 }
 
 /** Upstream `y`: an `A->>B: text` message. */
-function isMessage(statement: string): boolean {
+function isMessage(statement: string): boolean
+{
 	const colon = statement.indexOf(":");
 	const arrow = colon > 0 ? ARROW.exec(statement.slice(0, colon)) : null;
 	return arrow !== null && arrow.index > 0 && !KEYWORD.test(statement);
 }
 
 /** Upstream `b`: semicolons that sit inside message text become `#59;` (or finish an `&name` entity). */
-function semicolonFix(participants: Set<string>): (line: string) => string {
+function semicolonFix(participants: Set<string>): (line: string) => string
+{
 	const blocks: string[] = [];
-	const track = (part: string) => {
+	const track = (part: string) =>
+	{
 		const trimmed = part.trim();
 		const opener = BLOCK_OPENER.exec(trimmed)?.[1];
-		if (opener === undefined) {
+		if (opener === undefined)
+		{
 			if (/^end$/i.test(trimmed)) blocks.pop();
-		} else blocks.push(opener.toLowerCase());
+		}
+		else blocks.push(opener.toLowerCase());
 		const name = /^(?:create\s+)?(?:participant|actor)\s/i.test(trimmed) ? participantName(trimmed) : undefined;
 		if (name) participants.add(name);
 	};
-	return (line) => {
+	return (line) =>
+	{
 		const {breaks, end} = semicolons(line);
 		let last = end - 1;
 		while (last >= 0 && (line[last] === ";" || isSpace(line[last]))) last--;
@@ -161,7 +198,8 @@ function semicolonFix(participants: Set<string>): (line: string) => string {
 		const branchFits = (index: number) =>
 			(BRANCH_OF[branchWord(partAfter(index))] ?? []).includes(blocks.at(-1) ?? "");
 		const endsStatement: boolean[] = [];
-		for (let index = inner.length - 1; index >= 0; index--) {
+		for (let index = inner.length - 1; index >= 0; index--)
+		{
 			const next = kinds[index + 1];
 			endsStatement[index] =
 				next === undefined ||
@@ -175,7 +213,8 @@ function semicolonFix(participants: Set<string>): (line: string) => string {
 		let copied = 0;
 		let statementStart = 0;
 		let stoppedAt = inner.length;
-		const encode = (at: number, always: boolean) => {
+		const encode = (at: number, always: boolean) =>
+		{
 			let wordStart = at;
 			while (wordStart > copied && /[A-Za-z0-9]/.test(line[wordStart - 1] ?? "")) wordStart--;
 			const entity =
@@ -183,16 +222,19 @@ function semicolonFix(participants: Set<string>): (line: string) => string {
 				wordStart > copied &&
 				line[wordStart - 1] === "&" &&
 				/[A-Za-z]/.test(line[wordStart] ?? "");
-			if (entity || always) {
+			if (entity || always)
+			{
 				out += entity
 					? line.slice(copied, wordStart - 1) + encodedEntity(line.slice(wordStart, at))
 					: line.slice(copied, at) + encodedEntity("59");
 				copied = at + 1;
 			}
 		};
-		for (const [index, at] of inner.entries()) {
+		for (const [index, at] of inner.entries())
+		{
 			const kind = kinds[index];
-			if (kind === "stops") {
+			if (kind === "stops")
+			{
 				stoppedAt = index;
 				break;
 			}
@@ -203,7 +245,8 @@ function semicolonFix(participants: Set<string>): (line: string) => string {
 				(kind === "whole" && endsStatement[index] === true) ||
 				(kind === "end" && blocks.length > 0 && endsStatement[index] === true) ||
 				(kind === "branch" && branchFits(index))
-			) {
+			)
+			{
 				statementStart = at + 1;
 				track(partAfter(index));
 				continue;
@@ -217,21 +260,26 @@ function semicolonFix(participants: Set<string>): (line: string) => string {
 }
 
 /** Upstream `x`: blanks a `deactivate X` (or a `-` arrow suffix) for a participant that is not active. */
-function deactivationFix(participants: Set<string>): (line: string) => string {
+function deactivationFix(participants: Set<string>): (line: string) => string
+{
 	const active = new Map<string, number>();
-	const bump = (name: string, by: number) => {
+	const bump = (name: string, by: number) =>
+	{
 		active.set(name, (active.get(name) ?? 0) + by);
 	};
-	return (line) => {
+	return (line) =>
+	{
 		const {breaks, end} = semicolons(line);
 		let out = "";
 		let copied = 0;
-		const blank = (from: number, to: number) => {
+		const blank = (from: number, to: number) =>
+		{
 			out += line.slice(copied, from) + " ".repeat(to - from);
 			copied = to;
 		};
 		let start = 0;
-		for (const stop of [...breaks, end]) {
+		for (const stop of [...breaks, end])
+		{
 			const part = line.slice(start, stop);
 			const activation = /^(activate|deactivate)\s+(\S.*)$/is.exec(part.trim());
 			const target = activation?.[2] ?? "";
@@ -240,9 +288,11 @@ function deactivationFix(participants: Set<string>): (line: string) => string {
 			else if (activation?.[1]?.toLowerCase() === "activate") bump(target, 1);
 			else if (activation && (active.get(target) ?? 0) > 0) bump(target, -1);
 			else if (activation && (start === 0 || participants.has(target))) blank(start, stop);
-			else if (isMessage(part.trim())) {
+			else if (isMessage(part.trim()))
+			{
 				const arrow = ARROW.exec(part);
-				if (arrow) {
+				if (arrow)
+				{
 					let after = arrow.index + arrow[0].length;
 					while (isSpace(part[after])) after++;
 					const suffixed = part[after] === "+" || part[after] === "-";
@@ -251,7 +301,8 @@ function deactivationFix(participants: Set<string>): (line: string) => string {
 					participants.add(from);
 					participants.add(to);
 					if (part[after] === "+") bump(to, 1);
-					else if (part[after] === "-") {
+					else if (part[after] === "-")
+					{
 						if ((active.get(from) ?? 0) > 0) bump(from, -1);
 						else blank(start + after, start + after + 1);
 					}
@@ -265,7 +316,8 @@ function deactivationFix(participants: Set<string>): (line: string) => string {
 
 // ---- refusals (upstream S, te, w, ne) ----
 
-const REFUSED_BY = {
+const REFUSED_BY =
+{
 	MermaidRefusedLength: "length",
 	MermaidRefusedType: "type",
 	MermaidRefusedUnprepared: "unprepared",
@@ -292,7 +344,8 @@ export type MermaidRefusedBy = (typeof REFUSED_BY)[keyof typeof REFUSED_BY];
 /** What a measuring refusal was over: the calls, the size of the text to lay out, or the time. */
 type MeasureOver = "calls" | "size" | "time";
 
-export interface MeasuredDraw {
+export interface MeasuredDraw
+{
 	calls: number;
 	spanMs: number;
 	taskMs: number;
@@ -301,7 +354,8 @@ export interface MeasuredDraw {
 }
 
 /** Upstream's refusal: an Error carrying why the guard refused. */
-export interface MermaidRefusal extends Error {
+export interface MermaidRefusal extends Error
+{
 	refusedBy?: MermaidRefusedBy;
 	diagramType?: string;
 	byClock?: boolean;
@@ -312,7 +366,8 @@ export interface MermaidRefusal extends Error {
 	measured?: MeasuredDraw;
 }
 
-interface RefusalDetail {
+interface RefusalDetail
+{
 	unreadable?: boolean;
 	hidden?: boolean;
 	max?: number;
@@ -329,7 +384,8 @@ function refusalMessage(
 	diagramType: string | undefined,
 	detail: RefusalDetail,
 	byClock: boolean,
-): string {
+): string
+{
 	const {unreadable, max, over, ms} = detail;
 	if (refusedBy === undefined)
 		return "not shown: no check against the limits ran for this diagram; the installed mermaid may lack its patch (see patches/mermaid@11.17.2.patch)";
@@ -349,7 +405,8 @@ function refusalMessage(
 		return `not drawn: the check that limits how long mermaid's drawing may hold the page was not in force on the frame it draws in (${detail.why}): see meterMermaidFrame and mermaidMeterLost in mermaid-guard.ts`;
 	if (unreadable)
 		return `not drawn: the "${refusedBy}" check could not read mermaid's data for this diagram; the installed mermaid may have changed`;
-	if (byClock) {
+	if (byClock)
+	{
 		const limit =
 			ms === undefined
 				? "one drawing may take"
@@ -370,17 +427,24 @@ function refusalMessage(
 export function mermaidRefusal(
 	name: MermaidRefusalName,
 	diagramType?: string,
-	byClock?: {overReportCount: boolean},
+	byClock?:
+	{
+		overReportCount: boolean;
+	},
 	detail: RefusalDetail = {},
-): MermaidRefusal {
+): MermaidRefusal
+{
 	const refusedBy = name === "MermaidGuardNotRun" ? undefined : REFUSED_BY[name];
 	const error: MermaidRefusal = Object.assign(
 		new Error(refusalMessage(refusedBy, diagramType, detail, byClock !== undefined)),
-		{name},
+		{
+			name,
+		},
 	);
 	if (refusedBy) error.refusedBy = refusedBy;
 	if (diagramType !== undefined) error.diagramType = diagramType;
-	if (byClock) {
+	if (byClock)
+	{
 		error.byClock = true;
 		error.overReportCount = byClock.overReportCount;
 	}
@@ -391,7 +455,8 @@ export function mermaidRefusal(
 }
 
 /** Upstream `ne` (`isMermaidRefusal`). */
-export function isMermaidRefusal(error: unknown): error is MermaidRefusal {
+export function isMermaidRefusal(error: unknown): error is MermaidRefusal
+{
 	return error instanceof Error && refusals.has(error);
 }
 
@@ -401,7 +466,8 @@ export function isMermaidRefusal(error: unknown): error is MermaidRefusal {
 const MERMAID_MAX_TEXT = 20_000;
 
 /** Upstream `E`. */
-const MERMAID_LIMIT_NUMBERS = {
+const MERMAID_LIMIT_NUMBERS =
+{
 	packetMaxRows: 1e3,
 	blockMaxEntries: 250,
 	blockMaxArrows: 400,
@@ -485,7 +551,8 @@ type CheckName =
 	| "gitgraph";
 
 /** Upstream `D`: every diagram type mermaid 11.17.2 parses, with the check its parsed data goes through. */
-const MERMAID_TYPES: Readonly<Record<string, CheckName | undefined>> = {
+const MERMAID_TYPES: Readonly<Record<string, CheckName | undefined>> =
+{
 	"flowchart-v2": "graph",
 	"flowchart-elk": "graph",
 	swimlane: "graph",
@@ -527,7 +594,8 @@ const MERMAID_TYPES: Readonly<Record<string, CheckName | undefined>> = {
 /** Upstream `O`. */
 const MERMAID_TYPES_NOT_DRAWN: ReadonlySet<string> = new Set(["eventmodeling"]);
 /** Upstream `re`. */
-const REFUSAL_OF: Readonly<Record<CheckName, keyof typeof REFUSED_BY>> = {
+const REFUSAL_OF: Readonly<Record<CheckName, keyof typeof REFUSED_BY>> =
+{
 	graph: "MermaidRefusedGraph",
 	mindmap: "MermaidRefusedMindmap",
 	gantt: "MermaidRefusedGantt",
@@ -545,7 +613,8 @@ const REFUSAL_OF: Readonly<Record<CheckName, keyof typeof REFUSED_BY>> = {
 type Now = () => number;
 
 /** What one draw's checks have seen: filled in as mermaid parses, measures and draws. */
-export interface MermaidDrawSeen {
+export interface MermaidDrawSeen
+{
 	ran: boolean;
 	diagramType: string;
 	enteredAt?: number;
@@ -556,7 +625,8 @@ export interface MermaidDrawSeen {
 	measured?: MeasuredDraw;
 }
 
-interface CheckContext {
+interface CheckContext
+{
 	seen: MermaidDrawSeen;
 	now: Now;
 	numbers: LimitNumbers;
@@ -565,14 +635,16 @@ interface CheckContext {
 }
 
 /** Upstream `A`: call a db method, or the db is unreadable. */
-function callDb(db: unknown, name: string, context: CheckContext, ...args: unknown[]): unknown {
+function callDb(db: unknown, name: string, context: CheckContext, ...args: unknown[]): unknown
+{
 	const method = isObject(db) ? db[name] : undefined;
 	if (!isFunction(method)) throw context.unreadable();
 	return Reflect.apply(method, db, args);
 }
 
 /** Upstream `j`. */
-function asArray(value: unknown, context: CheckContext): unknown[] {
+function asArray(value: unknown, context: CheckContext): unknown[]
+{
 	if (!Array.isArray(value)) throw context.unreadable();
 	return value as unknown[];
 }
@@ -580,14 +652,36 @@ function asArray(value: unknown, context: CheckContext): unknown[] {
 type NumberKey = {[K in keyof LimitNumbers]: LimitNumbers[K] extends number ? K : never}[keyof LimitNumbers];
 
 /** Upstream `ie`. */
-const GRAPH_NODE_LIMITS: Readonly<Record<string, {report: NumberKey; refuse: NumberKey}>> = {
-	classDiagram: {report: "graphClassReportNodes", refuse: "graphClassRefuseNodes"},
-	er: {report: "graphErReportNodes", refuse: "graphErRefuseNodes"},
-	requirement: {report: "graphRequirementReportNodes", refuse: "graphRefuseNodes"},
+const GRAPH_NODE_LIMITS: Readonly<
+	Record<
+		string,
+		{
+			report: NumberKey;
+			refuse: NumberKey;
+		}
+	>
+> =
+{
+	classDiagram:
+	{
+		report: "graphClassReportNodes",
+		refuse: "graphClassRefuseNodes",
+	},
+	er:
+	{
+		report: "graphErReportNodes",
+		refuse: "graphErRefuseNodes",
+	},
+	requirement:
+	{
+		report: "graphRequirementReportNodes",
+		refuse: "graphRefuseNodes",
+	},
 };
 
 /** Upstream `ae`. */
-function checkGraph(db: unknown, context: CheckContext): void {
+function checkGraph(db: unknown, context: CheckContext): void
+{
 	const data = callDb(db, "getData", context);
 	const nodes = asArray(isObject(data) ? data["nodes"] : undefined, context);
 	const edges = asArray(isObject(data) ? data["edges"] : undefined, context).length;
@@ -611,11 +705,13 @@ function checkGraph(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `oe`. */
-function checkMindmap(db: unknown, context: CheckContext): void {
+function checkMindmap(db: unknown, context: CheckContext): void
+{
 	const root = callDb(db, "getMindmap", context);
 	const stack: unknown[] = root === null ? [] : [root];
 	let count = 0;
-	while (stack.length > 0) {
+	while (stack.length > 0)
+	{
 		const node = stack.pop();
 		count += 1;
 		if (!isObject(node)) throw context.unreadable();
@@ -627,19 +723,22 @@ function checkMindmap(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `se`. */
-function checkPacket(db: unknown, context: CheckContext): void {
+function checkPacket(db: unknown, context: CheckContext): void
+{
 	if (asArray(callDb(db, "getPacket", context), context).length > context.numbers.packetMaxRows)
 		throw context.refusal();
 }
 
 /** Upstream `ce`. */
-function checkBlock(db: unknown, context: CheckContext): void {
+function checkBlock(db: unknown, context: CheckContext): void
+{
 	const numbers = context.numbers;
 	const entries = asArray(callDb(db, "getBlocksFlat", context), context).length;
 	const arrows = asArray(callDb(db, "getEdges", context), context).length;
 	if (entries > numbers.blockMaxEntries || arrows > numbers.blockMaxArrows) throw context.refusal();
 	const stack: [unknown, number][] = [[callDb(db, "getBlock", context, "root"), -1]];
-	for (let visited = 1; ; visited += 1) {
+	for (let visited = 1; ; visited += 1)
+	{
 		const next = stack.pop();
 		if (next === undefined) return;
 		const [block, depth] = next;
@@ -651,9 +750,11 @@ function checkBlock(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `le`. */
-function checkTreemap(db: unknown, context: CheckContext): void {
+function checkTreemap(db: unknown, context: CheckContext): void
+{
 	let longNameChars = 0;
-	for (const node of asArray(callDb(db, "getNodes", context), context)) {
+	for (const node of asArray(callDb(db, "getNodes", context), context))
+	{
 		const name = isObject(node) && Array.isArray(node["children"]) ? node["name"] : "";
 		if (typeof name === "string" && name.length > context.numbers.treemapLongName) longNameChars += name.length;
 	}
@@ -661,7 +762,8 @@ function checkTreemap(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `ue`: a gantt's date format, and a clock on the work its excluded days cost. */
-function checkGantt(db: unknown, context: CheckContext): void {
+function checkGantt(db: unknown, context: CheckContext): void
+{
 	const numbers = context.numbers;
 	const dateFormat = callDb(db, "getDateFormat", context);
 	if (typeof dateFormat !== "string") throw context.unreadable();
@@ -671,34 +773,48 @@ function checkGantt(db: unknown, context: CheckContext): void {
 	if (asArray(callDb(db, "getExcludes", context), context).length === 0) return;
 	let calls = 0;
 	let startedAt: number | undefined;
-	Object.defineProperty(includes, "includes", {
-		configurable: true,
-		enumerable: false,
-		value: (searchElement: unknown, fromIndex?: number) => {
-			calls += 1;
-			startedAt ??= context.now();
-			if (calls > numbers.ganttRefuseCalls) throw context.refusal();
-			let report = calls > numbers.ganttReportCalls;
-			if (calls % numbers.ganttClockEvery === 0) {
-				const elapsed = context.now() - startedAt;
-				if (elapsed > numbers.ganttRefuseMs) throw context.refusal({overReportCount: report});
-				report ||= elapsed > numbers.ganttReportMs;
-			}
-			if (report) context.seen.overLimit = "gantt";
-			return Array.prototype.includes.call(includes, searchElement, fromIndex);
+	Object.defineProperty(
+		includes,
+		"includes",
+		{
+			configurable: true,
+			enumerable: false,
+			value: (searchElement: unknown, fromIndex?: number) =>
+			{
+				calls += 1;
+				startedAt ??= context.now();
+				if (calls > numbers.ganttRefuseCalls) throw context.refusal();
+				let report = calls > numbers.ganttReportCalls;
+				if (calls % numbers.ganttClockEvery === 0)
+				{
+					const elapsed = context.now() - startedAt;
+					if (elapsed > numbers.ganttRefuseMs)
+						throw context.refusal(
+							{
+								overReportCount: report,
+							},
+						);
+					report ||= elapsed > numbers.ganttReportMs;
+				}
+				if (report) context.seen.overLimit = "gantt";
+				return Array.prototype.includes.call(includes, searchElement, fromIndex);
+			},
 		},
-	});
-	context.seen.cleanup = () => {
+	);
+	context.seen.cleanup = () =>
+	{
 		Reflect.deleteProperty(includes, "includes");
 	};
 }
 
 /** Upstream `de`. */
-function checkC4(db: unknown, context: CheckContext): void {
+function checkC4(db: unknown, context: CheckContext): void
+{
 	const boundaries = asArray(callDb(db, "getBoundaries", context), context);
 	const children = new Map<string, string[]>();
 	const aliases = new Set<string>();
-	for (const boundary of boundaries) {
+	for (const boundary of boundaries)
+	{
 		const alias = isObject(boundary) ? boundary["alias"] : undefined;
 		const parent = isObject(boundary) ? boundary["parentBoundary"] : undefined;
 		if (typeof alias !== "string" || typeof parent !== "string") throw context.unreadable();
@@ -709,7 +825,8 @@ function checkC4(db: unknown, context: CheckContext): void {
 		else children.set(parent, [alias]);
 	}
 	const stack = [...(children.get("") ?? [])];
-	for (let visited = 0; stack.length > 0; visited += 1) {
+	for (let visited = 0; stack.length > 0; visited += 1)
+	{
 		if (visited + stack.length > boundaries.length) throw context.refusal();
 		const alias = stack.pop();
 		if (alias !== undefined) stack.push(...(children.get(alias) ?? []));
@@ -717,13 +834,15 @@ function checkC4(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `M`. */
-function timelineCost(text: unknown, context: CheckContext): number {
+function timelineCost(text: unknown, context: CheckContext): number
+{
 	if (typeof text !== "string") throw context.refusal();
 	return context.numbers.timelineWrap + text.split(/(\s+|<br>)/).length * text.length;
 }
 
 /** Upstream `fe`. */
-function checkTimeline(db: unknown, context: CheckContext): void {
+function checkTimeline(db: unknown, context: CheckContext): void
+{
 	const sections = asArray(callDb(db, "getSections", context), context);
 	const tasks = asArray(callDb(db, "getTasks", context), context);
 	const taskCount = tasks.length;
@@ -732,11 +851,13 @@ function checkTimeline(db: unknown, context: CheckContext): void {
 	tasks.length = 2 * taskCount - tasks.length;
 	const sectionCounts = new Map<unknown, number>();
 	let cost = 0;
-	for (const section of sections) {
+	for (const section of sections)
+	{
 		cost += 2 * timelineCost(section, context);
 		sectionCounts.set(section, (sectionCounts.get(section) ?? 0) + 1);
 	}
-	for (const task of ownTasks) {
+	for (const task of ownTasks)
+	{
 		const {section, task: name, events} = isObject(task) ? task : ({} as Obj);
 		const eventCost = asArray(events, context).reduce<number>(
 			(sum, event) => sum + timelineCost(event, context),
@@ -750,9 +871,11 @@ function checkTimeline(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `pe`. */
-function checkKanban(db: unknown, context: CheckContext): void {
+function checkKanban(db: unknown, context: CheckContext): void
+{
 	const sectionIds = new Map<string, number>();
-	for (const section of asArray(callDb(db, "getSections", context), context)) {
+	for (const section of asArray(callDb(db, "getSections", context), context))
+	{
 		const id = isObject(section) ? section["id"] : undefined;
 		if (typeof id !== "string") throw context.refusal();
 		const count = (sectionIds.get(id) ?? 0) + 1;
@@ -773,7 +896,8 @@ function checkKanban(db: unknown, context: CheckContext): void {
 	const nodes = asArray(isObject(data) ? data["nodes"] : undefined, context);
 	if (nodes.some((node) => isObject(node) && node["look"] === "handDrawn")) throw context.refusal();
 	const items = new Map<unknown, number>();
-	for (const node of nodes) {
+	for (const node of nodes)
+	{
 		if (!isObject(node)) throw context.refusal();
 		if (!node["isGroup"]) items.set(node["parentId"], (items.get(node["parentId"]) ?? 0) + 1);
 	}
@@ -784,7 +908,8 @@ function checkKanban(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `me`. */
-function checkXychart(db: unknown, context: CheckContext): void {
+function checkXychart(db: unknown, context: CheckContext): void
+{
 	const data = callDb(db, "getXYChartData", context);
 	const config = callDb(db, "getChartConfig", context);
 	if (!isObject(data) || !isObject(config)) throw context.refusal();
@@ -792,8 +917,10 @@ function checkXychart(db: unknown, context: CheckContext): void {
 	const xAxisConfig = config["xAxis"];
 	if (!isObject(xAxis) || !isObject(xAxisConfig)) throw context.refusal();
 	const numbers = context.numbers;
-	if (config["showDataLabel"]) {
-		const fits = ([key, value]: [string, unknown]) => {
+	if (config["showDataLabel"])
+	{
+		const fits = ([key, value]: [string, unknown]) =>
+		{
 			const number = Number(value);
 			return key === "labelRotation" || Number.isNaN(number) || (number >= 0 && number <= numbers.xychartMaxSide);
 		};
@@ -810,7 +937,8 @@ function checkXychart(db: unknown, context: CheckContext): void {
 	}
 	const categories = Array.isArray(xAxis["categories"]) ? (xAxis["categories"] as unknown[]) : [];
 	let labelChars = 0;
-	for (const category of categories) {
+	for (const category of categories)
+	{
 		if (typeof category !== "string") throw context.refusal();
 		labelChars += category.length;
 	}
@@ -827,7 +955,8 @@ function checkXychart(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `he`. */
-function checkVennConfig(db: unknown, context: CheckContext): void {
+function checkVennConfig(db: unknown, context: CheckContext): void
+{
 	const numbers = context.numbers;
 	const config = callDb(db, "getConfig", context);
 	if (!isObject(config)) throw context.refusal();
@@ -846,13 +975,15 @@ function checkVennConfig(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `ge`. */
-function checkVenn(db: unknown, context: CheckContext): void {
+function checkVenn(db: unknown, context: CheckContext): void
+{
 	const numbers = context.numbers;
 	checkVennConfig(db, context);
 	let single = 0;
 	let names = 0;
 	let sized = false;
-	for (const subset of asArray(callDb(db, "getSubsetData", context), context)) {
+	for (const subset of asArray(callDb(db, "getSubsetData", context), context))
+	{
 		const sets = asArray(isObject(subset) ? subset["sets"] : undefined, context);
 		const size = isObject(subset) ? subset["size"] : undefined;
 		if (
@@ -875,16 +1006,19 @@ function checkVenn(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `_e`. */
-function checkGitgraph(db: unknown, context: CheckContext): void {
+function checkGitgraph(db: unknown, context: CheckContext): void
+{
 	const commits = callDb(db, "getCommits", context);
 	if (!(commits instanceof Map)) throw context.unreadable();
 	let count = 0;
-	for (const branch of asArray(callDb(db, "getBranchesAsObjArray", context), context)) {
+	for (const branch of asArray(callDb(db, "getBranchesAsObjArray", context), context))
+	{
 		const name = isObject(branch) ? branch["name"] : undefined;
 		if (typeof name !== "string") throw context.refusal();
 		count += name.split(/\\n|\n|<br\s*\/?>/gi).length;
 	}
-	commits.forEach((commit: unknown) => {
+	commits.forEach((commit: unknown) =>
+	{
 		const {parents, tags} = isObject(commit) ? commit : ({} as Obj);
 		count += Math.max(asArray(parents, context).length, 1) + asArray(tags, context).length;
 	});
@@ -893,7 +1027,8 @@ function checkGitgraph(db: unknown, context: CheckContext): void {
 }
 
 /** Upstream `ve`. */
-const CHECKS: Readonly<Record<CheckName, (db: unknown, context: CheckContext) => void>> = {
+const CHECKS: Readonly<Record<CheckName, (db: unknown, context: CheckContext) => void>> =
+{
 	graph: checkGraph,
 	mindmap: checkMindmap,
 	gantt: checkGantt,
@@ -909,25 +1044,39 @@ const CHECKS: Readonly<Record<CheckName, (db: unknown, context: CheckContext) =>
 };
 
 /** Upstream `N` (`mermaidMaxText`). */
-export function mermaidMaxText(maxTextSize: unknown): number {
+export function mermaidMaxText(maxTextSize: unknown): number
+{
 	return typeof maxTextSize === "number" && maxTextSize < MERMAID_MAX_TEXT ? maxTextSize : MERMAID_MAX_TEXT;
 }
 
 /** Upstream `ye` (`checkMermaidLength`). */
-export function checkMermaidLength(text: string, maxTextSize: unknown): void {
+export function checkMermaidLength(text: string, maxTextSize: unknown): void
+{
 	const max = mermaidMaxText(maxTextSize);
-	if (text.length > max) throw mermaidRefusal("MermaidRefusedLength", undefined, undefined, {max});
+	if (text.length > max)
+		throw mermaidRefusal(
+			"MermaidRefusedLength",
+			undefined,
+			undefined,
+			{
+				max,
+			},
+		);
 }
 
 /** Upstream `be`. */
 const DETECT_CHARS = 2e3;
 
 /** Upstream `xe` (`detectedMermaidType`): the type mermaid detects in a text it failed to parse. */
-export function detectedMermaidType(detect: (text: string) => unknown, text: string): string {
-	try {
+export function detectedMermaidType(detect: (text: string) => unknown, text: string): string
+{
+	try
+	{
 		const type = detect(text.slice(0, DETECT_CHARS));
 		return typeof type === "string" ? (Object.hasOwn(MERMAID_TYPES, type) ? type : "other") : "none";
-	} catch {
+	}
+	catch
+	{
 		return "none";
 	}
 }
@@ -938,30 +1087,52 @@ export function checkParsedDiagram(
 	seen: MermaidDrawSeen,
 	now: Now,
 	numbers: LimitNumbers = MERMAID_LIMIT_NUMBERS,
-): void {
+): void
+{
 	seen.ran = true;
 	seen.enteredAt = now();
 	const type = isObject(diagram) && typeof diagram["type"] === "string" ? diagram["type"] : "";
-	if (!Object.hasOwn(MERMAID_TYPES, type)) {
+	if (!Object.hasOwn(MERMAID_TYPES, type))
+	{
 		seen.diagramType = "other";
 		throw mermaidRefusal("MermaidRefusedType", "other");
 	}
 	seen.diagramType = type;
 	if (MERMAID_TYPES_NOT_DRAWN.has(type)) throw mermaidRefusal("MermaidRefusedType", type);
 	const text = isObject(diagram) ? diagram["text"] : undefined;
-	if (typeof text !== "string") throw mermaidRefusal("MermaidRefusedUnprepared", type, undefined, {unreadable: true});
+	if (typeof text !== "string")
+		throw mermaidRefusal(
+			"MermaidRefusedUnprepared",
+			type,
+			undefined,
+			{
+				unreadable: true,
+			},
+		);
 	if (text.includes("@{") || (type === "sequence" && text.includes("$")))
 		throw mermaidRefusal("MermaidRefusedUnprepared", type);
 	const check = MERMAID_TYPES[type];
 	if (check !== undefined)
-		CHECKS[check](isObject(diagram) ? diagram["db"] : undefined, {
-			seen,
-			now,
-			numbers,
-			refusal: (byClock) => mermaidRefusal(REFUSAL_OF[check], type, byClock),
-			unreadable: () => mermaidRefusal(REFUSAL_OF[check], type, undefined, {unreadable: true}),
-		});
-	if (currentDraw) {
+		CHECKS[check](
+			isObject(diagram) ? diagram["db"] : undefined,
+			{
+				seen,
+				now,
+				numbers,
+				refusal: (byClock) => mermaidRefusal(REFUSAL_OF[check], type, byClock),
+				unreadable: () =>
+					mermaidRefusal(
+						REFUSAL_OF[check],
+						type,
+						undefined,
+						{
+							unreadable: true,
+						},
+					),
+			},
+		);
+	if (currentDraw)
+	{
 		currentDraw.charge = textCharge(seen, type, now, numbers);
 		guardGlobal()?.drawing?.add(currentDraw.charge);
 	}
@@ -977,7 +1148,8 @@ const significantLines = (text: string) =>
 		.join("\n");
 
 /** Upstream `Ce` (`checkGitgraphText`): a gitGraph is drawn only from exactly the text written. */
-export function checkGitgraphText(source: string, prepared: string, seen: MermaidDrawSeen): void {
+export function checkGitgraphText(source: string, prepared: string, seen: MermaidDrawSeen): void
+{
 	if (
 		seen.diagramType === "gitGraph" &&
 		(source.includes("%%}%%") || significantLines(source) !== significantLines(prepared))
@@ -990,12 +1162,18 @@ export function checkGitgraphText(source: string, prepared: string, seen: Mermai
 type Charge = (kind: string, text: unknown) => void;
 
 /** Upstream `F`: the draw whose check is running, so its charge can be installed. */
-let currentDraw: {charge?: Charge} | undefined;
+let currentDraw:
+	|
+	  {
+			charge?: Charge;
+	  }
+	| undefined;
 
 const LINE_BREAK = /<br\s*\/?>/gi;
 
 /** Upstream `Te`: the work one measured label costs, or undefined when it is not text. */
-function textUnits(text: unknown, numbers: LimitNumbers): number | undefined {
+function textUnits(text: unknown, numbers: LimitNumbers): number | undefined
+{
 	if (!text) return 0;
 	if (typeof text !== "string") return undefined;
 	const lines = (text.match(LINE_BREAK)?.length ?? 0) + 1;
@@ -1006,16 +1184,30 @@ function textUnits(text: unknown, numbers: LimitNumbers): number | undefined {
 }
 
 /** Upstream `Ee`: charges each label mermaid measures for this draw, refusing past `textRefuseUnits`. */
-function textCharge(seen: MermaidDrawSeen, type: string, now: Now, numbers: LimitNumbers): Charge {
+function textCharge(seen: MermaidDrawSeen, type: string, now: Now, numbers: LimitNumbers): Charge
+{
 	let units = 0;
-	const refuse = (unreadable = false): never => {
-		throw storeRefusal(seen, mermaidRefusal("MermaidRefusedText", type, undefined, {unreadable}));
+	const refuse = (unreadable = false): never =>
+	{
+		throw storeRefusal(
+			seen,
+			mermaidRefusal(
+				"MermaidRefusedText",
+				type,
+				undefined,
+				{
+					unreadable,
+				},
+			),
+		);
 	};
-	return (kind, text) => {
+	return (kind, text) =>
+	{
 		if (seen.refusal) throw seen.refusal;
 		const cost = kind === "text" ? textUnits(text, numbers) : undefined;
 		if (cost === undefined) refuse(true);
-		else {
+		else
+		{
 			units += cost;
 			if (units > numbers.textRefuseUnits) refuse();
 			if (units > numbers.textReportUnits) seen.overLimit ??= "text";
@@ -1027,12 +1219,14 @@ function textCharge(seen: MermaidDrawSeen, type: string, now: Now, numbers: Limi
 
 // ---- the measuring meter (upstream I, L, De, Oe, z, B, V, H, Ae, U) ----
 
-interface TurnClock {
+interface TurnClock
+{
 	last: () => number;
 	stop: () => void;
 }
 
-interface Meter {
+interface Meter
+{
 	startedAt: number;
 	turns: TurnClock;
 	measured: MeasuredDraw;
@@ -1050,31 +1244,37 @@ interface Meter {
 const meters = new WeakMap<MermaidDrawSeen, Meter>();
 
 /** Upstream `L`: keep a draw's first refusal, and take its frame out of the page. */
-function storeRefusal(seen: MermaidDrawSeen, refusal: MermaidRefusal): MermaidRefusal {
+function storeRefusal(seen: MermaidDrawSeen, refusal: MermaidRefusal): MermaidRefusal
+{
 	seen.refusal ??= refusal;
 	meters.get(seen)?.takeOut?.();
 	return seen.refusal;
 }
 
 /** Upstream `De`: the last time the page got a turn (a frame, a 16ms timer, or a message while hidden). */
-function turnClock(now: Now): TurnClock {
+function turnClock(now: Now): TurnClock
+{
 	let last = now();
 	let running = true;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let frame: number | undefined;
 	const channel = new MessageChannel();
 	let posted = false;
-	channel.port1.onmessage = () => {
+	channel.port1.onmessage = () =>
+	{
 		posted = false;
 	};
-	const onVisibility = () => {
+	const onVisibility = () =>
+	{
 		last = now();
 	};
-	const onFrame = () => {
+	const onFrame = () =>
+	{
 		last = now();
 		frame = running ? requestAnimationFrame(onFrame) : undefined;
 	};
-	const onTimer = () => {
+	const onTimer = () =>
+	{
 		last = now();
 		timer = running ? setTimeout(onTimer, 16) : undefined;
 	};
@@ -1082,15 +1282,18 @@ function turnClock(now: Now): TurnClock {
 	timer = setTimeout(onTimer, 16);
 	document.addEventListener("visibilitychange", onVisibility);
 	return {
-		last: () => {
-			if (running && document.hidden && !posted) {
+		last: () =>
+		{
+			if (running && document.hidden && !posted)
+			{
 				posted = true;
 				last = now();
 				channel.port2.postMessage(0);
 			}
 			return last;
 		},
-		stop: () => {
+		stop: () =>
+		{
 			running = false;
 			clearTimeout(timer);
 			if (frame !== undefined) cancelAnimationFrame(frame);
@@ -1101,15 +1304,31 @@ function turnClock(now: Now): TurnClock {
 }
 
 /** Upstream `Oe` (`startMermaidMeasuring`): starts the clock on a draw; returns its stop. */
-export function startMermaidMeasuring(seen: MermaidDrawSeen, now: Now, turns: TurnClock = turnClock(now)): () => void {
-	const measured: MeasuredDraw = {calls: 0, spanMs: 0, taskMs: 0, hidden: document.hidden};
+export function startMermaidMeasuring(seen: MermaidDrawSeen, now: Now, turns: TurnClock = turnClock(now)): () => void
+{
+	const measured: MeasuredDraw =
+	{
+		calls: 0,
+		spanMs: 0,
+		taskMs: 0,
+		hidden: document.hidden,
+	};
 	seen.measured = measured;
-	meters.set(seen, {startedAt: now(), turns, measured});
-	const onVisibility = () => {
+	meters.set(
+		seen,
+		{
+			startedAt: now(),
+			turns,
+			measured,
+		},
+	);
+	const onVisibility = () =>
+	{
 		measured.hidden ||= document.hidden;
 	};
 	document.addEventListener("visibilitychange", onVisibility);
-	return () => {
+	return () =>
+	{
 		turns.stop();
 		document.removeEventListener("visibilitychange", onVisibility);
 		meters.get(seen)?.forget?.();
@@ -1123,7 +1342,8 @@ const typeSeen = (seen: MermaidDrawSeen) => (seen.ran ? seen.diagramType : undef
 let lastSettledAt = -Infinity;
 
 /** Upstream `ke` (`noteMermaidRenderSettled`). */
-export function noteMermaidRenderSettled(now: Now): void {
+export function noteMermaidRenderSettled(now: Now): void
+{
 	lastSettledAt = now();
 }
 
@@ -1132,24 +1352,32 @@ const busyFor = (meter: Meter, at: number) =>
 	at - Math.max(meter.turns.last(), meter.startedAt, Math.min(lastSettledAt, meter.frameAt ?? lastSettledAt));
 
 /** Upstream `V`. */
-function clockRefusal(seen: MermaidDrawSeen, measured: MeasuredDraw, numbers: LimitNumbers): MermaidRefusal {
+function clockRefusal(seen: MermaidDrawSeen, measured: MeasuredDraw, numbers: LimitNumbers): MermaidRefusal
+{
 	measured.hidden ||= document.hidden;
 	const refusal = mermaidRefusal(
 		"MermaidRefusedMeasure",
 		typeSeen(seen),
-		{overReportCount: measured.calls > numbers.measureReportCalls},
-		{hidden: measured.hidden, ms: numbers.measureRefuseMs},
+		{
+			overReportCount: measured.calls > numbers.measureReportCalls,
+		},
+		{
+			hidden: measured.hidden,
+			ms: numbers.measureRefuseMs,
+		},
 	);
 	refusal.measured = measured;
 	return storeRefusal(seen, refusal);
 }
 
 /** Upstream `H`. */
-function checkClock(seen: MermaidDrawSeen, meter: Meter, at: number, numbers: LimitNumbers): void {
+function checkClock(seen: MermaidDrawSeen, meter: Meter, at: number, numbers: LimitNumbers): void
+{
 	const {measured} = meter;
 	const busy = busyFor(meter, at);
 	if (busy > measured.taskMs) measured.taskMs = busy;
-	if (busy > numbers.measureRefuseMs) {
+	if (busy > numbers.measureRefuseMs)
+	{
 		meter.due = "time";
 		throw clockRefusal(seen, measured, numbers);
 	}
@@ -1160,7 +1388,8 @@ function checkClock(seen: MermaidDrawSeen, meter: Meter, at: number, numbers: Li
 export function mermaidRefusalDue(
 	seen: MermaidDrawSeen,
 	numbers: LimitNumbers = MERMAID_LIMIT_NUMBERS,
-): MermaidRefusal | undefined {
+): MermaidRefusal | undefined
+{
 	const meter = meters.get(seen);
 	if (seen.refusal || !meter?.due) return seen.refusal;
 	return meter.due === "time"
@@ -1169,8 +1398,16 @@ export function mermaidRefusalDue(
 }
 
 /** Upstream `U`. */
-function overRefusal(seen: MermaidDrawSeen, measured: MeasuredDraw, over: MeasureOver): MermaidRefusal {
-	const refusal = mermaidRefusal("MermaidRefusedMeasure", typeSeen(seen), undefined, {over});
+function overRefusal(seen: MermaidDrawSeen, measured: MeasuredDraw, over: MeasureOver): MermaidRefusal
+{
+	const refusal = mermaidRefusal(
+		"MermaidRefusedMeasure",
+		typeSeen(seen),
+		undefined,
+		{
+			over,
+		},
+	);
 	refusal.over = over;
 	refusal.measured = measured;
 	return storeRefusal(seen, refusal);
@@ -1212,24 +1449,35 @@ const TEXT_WRITERS: [keyof typeof PROBES, string[], WrapKind][] = [
 const INSERTERS = ["appendChild", "insertBefore", "replaceChild", "moveBefore"];
 /** Upstream `Fe`. */
 const TEXT_CHILDREN: ReadonlySet<string> = new Set(["tspan", "a", "textPath", "tref", "altGlyph"]);
-const PROBES = {element: true, "text node": true};
+const PROBES =
+{
+	element: true,
+	"text node": true,
+};
 
 /** Upstream `G`: the layout work of a `<text>` whose `changed` nodes (or all of it) were written. */
-function textWork(text: Node, changed: ReadonlySet<Node> | "whole", numbers: LimitNumbers): number {
+function textWork(text: Node, changed: ReadonlySet<Node> | "whole", numbers: LimitNumbers): number
+{
 	let chars = 0;
 	let elements = 0;
 	let work = 0;
 	let writes = 0;
-	const walk = (node: Node, inChanged: boolean) => {
-		for (let child = node.firstChild; child; child = child.nextSibling) {
+	const walk = (node: Node, inChanged: boolean) =>
+	{
+		for (let child = node.firstChild; child; child = child.nextSibling)
+		{
 			const written = inChanged || (changed !== "whole" && changed.has(child));
-			if (child.nodeType === 3) {
-				if (written) {
+			if (child.nodeType === 3)
+			{
+				if (written)
+				{
 					work += chars + numbers.measureTspanChars * elements;
 					writes += 1;
 				}
 				chars += child.textContent?.length ?? 0;
-			} else if (isElement(child)) {
+			}
+			else if (isElement(child))
+			{
 				work += written ? elements : 0;
 				elements += 1;
 				walk(child, written);
@@ -1259,64 +1507,77 @@ const textAncestor = (node: unknown): Element | null =>
 		: null;
 
 /** Upstream `Le`: the object on `start`'s prototype chain that owns `key`. */
-function ownerOf(start: object, key: string): object | undefined {
+function ownerOf(start: object, key: string): object | undefined
+{
 	for (let at: object | null = start; at !== null; at = Reflect.getPrototypeOf(at))
 		if (Object.hasOwn(at, key)) return at;
 	return undefined;
 }
 
-interface TextCounter {
+interface TextCounter
+{
 	size: () => number;
 	forget: () => void;
 	sees: () => boolean;
 }
 
 /** Upstream `Re`: wraps the frame's text writers and counts the layout work of what they put into `<text>`. */
-function textCounter(doc: Document, numbers: LimitNumbers, wrap: Wrap): TextCounter {
+function textCounter(doc: Document, numbers: LimitNumbers, wrap: Wrap): TextCounter
+{
 	const changed = new Set<Node>();
 	const rewritten = new Set<Element>();
 	const inserted = new Set<Element>();
 	let wrappedAppend: unknown;
-	const noteForeign = (node: unknown, text: Element | null) => {
+	const noteForeign = (node: unknown, text: Element | null) =>
+	{
 		if (!isElement(node) || Reflect.get(node, "appendChild") === wrappedAppend) return;
 		for (const found of [text, node.localName === "text" ? node : null, ...node.getElementsByTagName("text")])
 			if (found) inserted.add(found);
 	};
-	const noteInsert = (parent: unknown, node: unknown) => {
+	const noteInsert = (parent: unknown, node: unknown) =>
+	{
 		const text = textAncestor(parent);
 		if (text?.isConnected && isNode(node)) changed.add(node);
 		noteForeign(node, text);
 	};
 	const nodesOf = (node: unknown) => (isNode(node) && node.nodeType === 11 ? Array.from(node.childNodes) : [node]);
 	const inserter: Wrapper = (original) =>
-		function (this: unknown, ...args: unknown[]) {
+		function (this: unknown, ...args: unknown[])
+		{
 			const nodes = nodesOf(args[0]);
 			const result = Reflect.apply(original, this, args);
 			for (const node of nodes) noteInsert(this, node);
 			return result;
 		};
 	const textSetter: Wrapper = (original) =>
-		function (this: unknown, ...args: unknown[]) {
+		function (this: unknown, ...args: unknown[])
+		{
 			const result = Reflect.apply(original, this, args);
 			if (isNode(this) && this.firstChild && textAncestor(this)?.isConnected) changed.add(this.firstChild);
 			return result;
 		};
 	const writer: Wrapper = (original) =>
-		function (this: unknown, ...args: unknown[]) {
+		function (this: unknown, ...args: unknown[])
+		{
 			const before = textOf(this);
-			try {
+			try
+			{
 				return Reflect.apply(original, this, args);
-			} finally {
+			}
+			finally
+			{
 				const after = textOf(this);
 				for (const text of [before, after]) if (text?.isConnected) rewritten.add(text);
 				for (const arg of args) noteForeign(arg, after);
 			}
 		};
-	const probes: Record<keyof typeof PROBES, Node> = {
+	const probes: Record<keyof typeof PROBES, Node> =
+	{
 		element: doc.createElementNS(SVG_NS, "text"),
 		"text node": doc.createTextNode(""),
 	};
-	const wrapOn = (probe: keyof typeof PROBES, key: string, kind: WrapKind, wrapper: Wrapper, required = false) => {
+	const wrapOn = (probe: keyof typeof PROBES, key: string, kind: WrapKind, wrapper: Wrapper, required = false) =>
+	{
 		const owner = ownerOf(probes[probe], key);
 		return owner === undefined ? !required : wrap(owner, key, kind, wrapper);
 	};
@@ -1327,7 +1588,8 @@ function textCounter(doc: Document, numbers: LimitNumbers, wrap: Wrap): TextCoun
 					"element",
 					key,
 					"method",
-					(original) => {
+					(original) =>
+					{
 						const wrapped = inserter(original);
 						wrappedAppend = key === "appendChild" ? wrapped : wrappedAppend;
 						return wrapped;
@@ -1340,18 +1602,21 @@ function textCounter(doc: Document, numbers: LimitNumbers, wrap: Wrap): TextCoun
 		)
 	)
 		throw new TypeError("a call that puts something into the frame's text could not be wrapped");
-	const size = () => {
+	const size = () =>
+	{
 		if (changed.size === 0 && rewritten.size === 0 && inserted.size === 0) return 0;
 		let work = 0;
 		const counted = new Set<Element>();
-		for (const node of changed) {
+		for (const node of changed)
+		{
 			const parent = node.parentNode;
 			const text = node.isConnected
 				? isElement(parent) && parent.localName === "text"
 					? parent
 					: textOf(parent)
 				: null;
-			if (text && !counted.has(text)) {
+			if (text && !counted.has(text))
+			{
 				counted.add(text);
 				if (!rewritten.has(text) && !inserted.has(text)) work += textWork(text, changed, numbers);
 			}
@@ -1363,14 +1628,16 @@ function textCounter(doc: Document, numbers: LimitNumbers, wrap: Wrap): TextCoun
 		rewritten.clear();
 		return work;
 	};
-	const forget = () => {
+	const forget = () =>
+	{
 		changed.clear();
 		rewritten.clear();
 	};
 	return {
 		size,
 		forget,
-		sees: () => {
+		sees: () =>
+		{
 			const text = doc.createElementNS(SVG_NS, "text");
 			const first = doc.createElementNS(SVG_NS, "tspan");
 			const second = doc.createElementNS(SVG_NS, "tspan");
@@ -1396,9 +1663,11 @@ function meteredCall(
 	now: Now,
 	numbers: LimitNumbers,
 	size: () => number,
-): (...args: unknown[]) => unknown {
+): (...args: unknown[]) => unknown
+{
 	const {measured} = meter;
-	return function (this: unknown, ...args: unknown[]) {
+	return function (this: unknown, ...args: unknown[])
+	{
 		const due = meter.due ? mermaidRefusalDue(seen, numbers) : seen.refusal;
 		if (due) throw due;
 		const startedAt = now();
@@ -1406,23 +1675,30 @@ function meteredCall(
 		measured.firstCallMs ??= startedAt - meter.startedAt;
 		if (meter.lastCallEndAt !== undefined)
 			measured.spanMs += Math.min(startedAt - meter.lastCallEndAt, numbers.measureGapMs);
-		if (measured.calls > numbers.measureRefuseCalls) {
+		if (measured.calls > numbers.measureRefuseCalls)
+		{
 			meter.due = "calls";
 			throw overRefusal(seen, measured, "calls");
 		}
-		if (size() > numbers.measureRefuseSize) {
+		if (size() > numbers.measureRefuseSize)
+		{
 			meter.due = "size";
 			throw overRefusal(seen, measured, "size");
 		}
 		if (measured.calls > numbers.measureReportCalls) seen.overLimit ??= "measure";
 		checkClock(seen, meter, startedAt, numbers);
 		let result: unknown;
-		try {
+		try
+		{
 			result = Reflect.apply(original, this, args);
-		} catch (error) {
+		}
+		catch (error)
+		{
 			if (busyFor(meter, now()) > numbers.measureRefuseMs) meter.due ??= "time";
 			throw error;
-		} finally {
+		}
+		finally
+		{
 			meter.lastCallEndAt = now();
 			measured.spanMs += meter.lastCallEndAt - startedAt;
 		}
@@ -1442,17 +1718,27 @@ const MEASURERS: [string, string[], "if there"?][] = [
 ];
 
 /** Upstream `Ve`: the prototype of `element` that owns the method `key`. */
-function methodOwner(element: object, key: string): Obj | undefined {
+function methodOwner(element: object, key: string): Obj | undefined
+{
 	for (let at: unknown = Object.getPrototypeOf(element); isObject(at); at = Object.getPrototypeOf(at))
 		if (Object.hasOwn(at, key)) return typeof at[key] === "function" ? at : undefined;
 	return undefined;
 }
 
 /** Upstream `Y`. */
-function meterLost(seen: MermaidDrawSeen, why: string): MermaidRefusal {
+function meterLost(seen: MermaidDrawSeen, why: string): MermaidRefusal
+{
 	return storeRefusal(
 		seen,
-		mermaidRefusal("MermaidRefusedMeasure", typeSeen(seen), undefined, {unreadable: true, why}),
+		mermaidRefusal(
+			"MermaidRefusedMeasure",
+			typeSeen(seen),
+			undefined,
+			{
+				unreadable: true,
+				why,
+			},
+		),
 	);
 }
 
@@ -1466,7 +1752,8 @@ export function meterMermaidFrame(
 	now: Now,
 	numbers: LimitNumbers = MERMAID_LIMIT_NUMBERS,
 	takeOut?: () => void,
-): void {
+): void
+{
 	const meter = meters.get(seen);
 	const doc = isObject(frameWindow) ? frameWindow["document"] : undefined;
 	if (!meter) throw meterLost(seen, "no measuring was started for the drawing");
@@ -1475,7 +1762,8 @@ export function meterMermaidFrame(
 	if (!isObject(frameWindow) || !isDocument(doc)) throw meterLost(seen, "the frame has no window or no document");
 	const wrappers = new WeakSet<object>();
 	const wrapped: [object, string, WrapKind][] = [];
-	const wrap: Wrap = (target, key, kind, wrapper) => {
+	const wrap: Wrap = (target, key, kind, wrapper) =>
+	{
 		const descriptor = isObject(target) ? Reflect.getOwnPropertyDescriptor(target, key) : undefined;
 		const original: unknown = kind === "setter" ? descriptor?.set : descriptor?.value;
 		if (!isObject(target) || !descriptor || !isFunction(original)) return false;
@@ -1483,47 +1771,69 @@ export function meterMermaidFrame(
 		const done = Reflect.defineProperty(
 			target,
 			key,
-			kind === "setter" ? {...descriptor, set: replacement} : {...descriptor, value: replacement},
+			kind === "setter"
+				?
+					{
+						...descriptor,
+						set: replacement,
+					}
+				:
+					{
+						...descriptor,
+						value: replacement,
+					},
 		);
-		if (done) {
+		if (done)
+		{
 			wrappers.add(replacement);
 			wrapped.push([target, key, kind]);
 		}
 		return done;
 	};
 	let counter: TextCounter;
-	try {
+	try
+	{
 		counter = textCounter(doc, numbers, wrap);
-	} catch {
+	}
+	catch
+	{
 		throw meterLost(seen, "what is put into the frame's text could not be counted");
 	}
 	const size = counter.size;
 	meter.forget = counter.forget;
-	for (const [key, tags, optional] of MEASURERS) {
+	for (const [key, tags, optional] of MEASURERS)
+	{
 		const probes = tags.map((tag) => doc.createElementNS(SVG_NS, tag));
 		if (optional === "if there" && probes.every((probe) => !isObject(probe) || !methodOwner(probe, key))) continue;
-		for (const probe of probes) {
+		for (const probe of probes)
+		{
 			const owner = isObject(probe) ? methodOwner(probe, key) : undefined;
 			const original = owner?.[key];
 			if (!owner || !isFunction(original)) throw meterLost(seen, `the frame's elements have no ${key}`);
-			if (!wrappers.has(original)) {
+			if (!wrappers.has(original))
+			{
 				const replacement = meteredCall(original, seen, meter, now, numbers, size);
 				wrappers.add(replacement);
 				const enumerable = Reflect.getOwnPropertyDescriptor(owner, key)?.enumerable ?? false;
 				if (
-					!Reflect.defineProperty(owner, key, {
-						value: replacement,
-						writable: true,
-						configurable: true,
-						enumerable,
-					})
+					!Reflect.defineProperty(
+						owner,
+						key,
+						{
+							value: replacement,
+							writable: true,
+							configurable: true,
+							enumerable,
+						},
+					)
 				)
 					throw meterLost(seen, `${key} could not be wrapped`);
 				wrapped.push([owner, key, "method"]);
 			}
 		}
 		if (
-			probes.some((probe) => {
+			probes.some((probe) =>
+			{
 				const method = isObject(probe) ? Reflect.get(probe, key) : undefined;
 				return typeof method !== "function" || !wrappers.has(method);
 			})
@@ -1550,19 +1860,22 @@ const MEASURING_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 /** Upstream `We`: a fresh `<text>` of the page still answers to the wrapped measurers. */
-function stillWrapped(page: Document, meter: Meter): boolean {
+function stillWrapped(page: Document, meter: Meter): boolean
+{
 	const prototype: unknown = Object.getPrototypeOf(page);
 	const create: unknown = isObject(prototype) ? Reflect.get(prototype, "createElementNS") : undefined;
 	if (typeof create !== "function") return false;
 	const text: unknown = Reflect.apply(create, page, [SVG_NS, "text"]);
-	return MEASURERS.every(([key, tags]) => {
+	return MEASURERS.every(([key, tags]) =>
+	{
 		const method = isObject(text) ? text[key] : undefined;
 		return !tags.includes("text") || (typeof method === "function" && meter.wrappers?.has(method) === true);
 	});
 }
 
 /** Upstream `Ge` (`mermaidMeterLost`): the refusal when the meter is no longer in force on the drawing frame. */
-export function mermaidMeterLost(seen: MermaidDrawSeen, frame: unknown, final: boolean): MermaidRefusal | undefined {
+export function mermaidMeterLost(seen: MermaidDrawSeen, frame: unknown, final: boolean): MermaidRefusal | undefined
+{
 	const meter = meters.get(seen);
 	if (!meter?.page) return meterLost(seen, "no frame was metered for the drawing");
 	const doc = isObject(frame) ? frame["contentDocument"] : undefined;
@@ -1574,7 +1887,8 @@ export function mermaidMeterLost(seen: MermaidDrawSeen, frame: unknown, final: b
 				: "mermaid was not drawing in the metered document when the diagram was parsed",
 		);
 	const intact =
-		meter.wrapped?.every(([target, key, kind]) => {
+		meter.wrapped?.every(([target, key, kind]) =>
+		{
 			const method: unknown =
 				kind === "setter" ? Reflect.getOwnPropertyDescriptor(target, key)?.set : Reflect.get(target, key);
 			return typeof method === "function" && meter.wrappers?.has(method);
@@ -1588,7 +1902,8 @@ export function mermaidMeterLost(seen: MermaidDrawSeen, frame: unknown, final: b
 
 // ---- the hook the patched mermaid calls (upstream Ke, X, Z, Q, qe, Je, Ye, Xe) ----
 
-interface GuardGlobal {
+interface GuardGlobal
+{
 	pending: Map<string, (diagram: unknown) => void>;
 	count: number;
 	parsed: (diagram: unknown, id: string) => void;
@@ -1604,22 +1919,34 @@ const isGuardGlobal = (value: unknown): value is GuardGlobal =>
 	typeof value["parsed"] === "function";
 
 /** Upstream `X`: `globalThis.__antMermaidGuard`, installed on first use. */
-function guardGlobal(): GuardGlobal | undefined {
-	if (!Object.hasOwn(globalThis, "__antMermaidGuard")) {
+function guardGlobal(): GuardGlobal | undefined
+{
+	if (!Object.hasOwn(globalThis, "__antMermaidGuard"))
+	{
 		const pending = new Map<string, (diagram: unknown) => void>();
-		Object.defineProperty(globalThis, "__antMermaidGuard", {
-			configurable: true,
-			enumerable: false,
-			writable: true,
-			value: {pending, count: 0, parsed: (diagram: unknown, id: string) => pending.get(id)?.(diagram)},
-		});
+		Object.defineProperty(
+			globalThis,
+			"__antMermaidGuard",
+			{
+				configurable: true,
+				enumerable: false,
+				writable: true,
+				value:
+				{
+					pending,
+					count: 0,
+					parsed: (diagram: unknown, id: string) => pending.get(id)?.(diagram),
+				},
+			},
+		);
 	}
 	const guard: unknown = Reflect.get(globalThis, "__antMermaidGuard");
 	if (!isGuardGlobal(guard)) return undefined;
 	const drawing = guard.drawing instanceof Set ? guard.drawing : new Set<Charge>();
 	guard.drawing = drawing;
 	if (typeof guard.fit !== "function")
-		guard.fit = (kind, text) => {
+		guard.fit = (kind, text) =>
+		{
 			for (const charge of drawing) charge(kind, text);
 		};
 	return guard;
@@ -1631,7 +1958,8 @@ let hookMissing = false;
 const drawnTypes = new Set<string>();
 
 /** Upstream `qe` (`noteMermaidHookMissing`). */
-export function noteMermaidHookMissing(): void {
+export function noteMermaidHookMissing(): void
+{
 	hookMissing = true;
 }
 
@@ -1639,7 +1967,8 @@ export function noteMermaidHookMissing(): void {
 const randomHex = () =>
 	Array.from(crypto.getRandomValues(new Uint32Array(2)), (part) => part.toString(16).padStart(8, "0")).join("");
 
-export interface MermaidCheckHandle {
+export interface MermaidCheckHandle
+{
 	/** The render id to draw under, so the hook can find this check. */
 	id: string;
 	done: () => void;
@@ -1652,25 +1981,34 @@ export interface MermaidCheckHandle {
 export function registerMermaidCheck(
 	scopeId: string,
 	check: (diagram: unknown) => void,
-): MermaidCheckHandle | undefined {
+): MermaidCheckHandle | undefined
+{
 	const guard = hookMissing ? undefined : guardGlobal();
 	if (!guard) return undefined;
 	guard.count += 1;
 	const id = `${scopeId}-r${guard.count}-${randomHex()}`;
 	if (guard.pending.has(id)) return undefined;
-	const draw: {charge?: Charge} = {};
-	const run = (diagram: unknown) => {
+	const draw:
+	{
+		charge?: Charge;
+	} = {};
+	const run = (diagram: unknown) =>
+	{
 		currentDraw = draw;
-		try {
+		try
+		{
 			check(diagram);
-		} finally {
+		}
+		finally
+		{
 			currentDraw = undefined;
 		}
 	};
 	guard.pending.set(id, run);
 	return {
 		id,
-		done: () => {
+		done: () =>
+		{
 			if (guard.pending.get(id) === run) guard.pending.delete(id);
 			if (draw.charge) guard.drawing?.delete(draw.charge);
 		},
@@ -1678,19 +2016,32 @@ export function registerMermaidCheck(
 }
 
 /** Upstream `Xe` (`closeMermaidDraw`). */
-export function closeMermaidDraw(seen: MermaidDrawSeen, now: Now): {drawMs: number; typeDrawnBefore: boolean} {
+export function closeMermaidDraw(
+	seen: MermaidDrawSeen,
+	now: Now,
+):
+{
+	drawMs: number;
+	typeDrawnBefore: boolean;
+}
+{
 	const typeDrawnBefore = drawnTypes.has(seen.diagramType);
 	drawnTypes.add(seen.diagramType);
-	return {drawMs: now() - (seen.enteredAt ?? now()), typeDrawnBefore};
+	return {
+		drawMs: now() - (seen.enteredAt ?? now()),
+		typeDrawnBefore,
+	};
 }
 
 /** Upstream `Ze` (`_test`). */
-export const _test = {
+export const _test =
+{
 	MERMAID_MAX_TEXT,
 	MERMAID_LIMIT_NUMBERS,
 	MERMAID_TYPES,
 	MERMAID_TYPES_NOT_DRAWN,
-	reset: (): void => {
+	reset: (): void =>
+	{
 		lastSettledAt = -Infinity;
 		hookMissing = false;
 		drawnTypes.clear();

@@ -8,12 +8,14 @@ const TEXT_PREVIEW_EXTENSIONS: ReadonlySet<string> = new Set(
 );
 
 /** Upstream's `a8`: the lower-cased text after the last dot, or "" without one. */
-function fileExtension(name: string): string {
+function fileExtension(name: string): string
+{
 	const dot = name.lastIndexOf(".");
 	return dot === -1 ? "" : name.slice(dot + 1).toLowerCase();
 }
 
 /** Whether an upload with this name opens upstream's text preview. */
-export function isTextPreviewable(name: string): boolean {
+export function isTextPreviewable(name: string): boolean
+{
 	return TEXT_PREVIEW_EXTENSIONS.has(fileExtension(name));
 }

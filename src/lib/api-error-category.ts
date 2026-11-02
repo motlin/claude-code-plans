@@ -31,7 +31,8 @@ export type ApiErrorCategory =
 	| "permission"
 	| "unknown";
 
-export interface ApiErrorInput {
+export interface ApiErrorInput
+{
 	/** The message text, e.g. "API Error: 529 Overloaded…". */
 	text: string;
 	/** The JSONL record's `error` code, e.g. `authentication_failed`. */
@@ -53,20 +54,24 @@ const BAD_REQUEST_PREFIX =
 	/^\s*(?:Claude Code returned an error result:\s*)?API (?:400\b|Error(?: \((?!\d{3}\))[^()\n]{1,80}\))?:? ?400\b|Error \(400\))/i;
 
 /** Upstream's `A3`: a 400's message, unwrapped from a JSON error body when there is one. */
-function badRequestMessage(text: string): string | undefined {
+function badRequestMessage(text: string): string | undefined
+{
 	const prefix = BAD_REQUEST_PREFIX.exec(text);
 	if (prefix === null) return undefined;
 	const rest = text.slice(prefix[0].length).replace(/^:?\s*/, "");
 	if (!rest.startsWith("{") && !rest.startsWith("[")) return rest;
 	const newline = rest.indexOf("\n");
-	try {
+	try
+	{
 		const parsed: unknown = JSON.parse(newline === -1 ? rest : rest.slice(0, newline));
 		const first: unknown = Array.isArray(parsed) ? parsed[0] : parsed;
 		const error: unknown = typeof first === "object" && first !== null ? Reflect.get(first, "error") : undefined;
 		const message: unknown =
 			typeof error === "object" && error !== null ? Reflect.get(error, "message") : undefined;
 		return typeof message === "string" ? message.trimStart() : undefined;
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 }
@@ -79,10 +84,23 @@ const MODEL_VERSION_GATE =
 	/^Claude Code (\d{1,6}\.\d{1,6}\.\d{1,6}) does not support this model; version (\d{1,6}\.\d{1,6}\.\d{1,6}) or newer is required\b/;
 
 /** Upstream's `HU`: the running and required versions of a model version gate error. */
-function modelVersionGate(text: string): {version: string; minVersion: string} | undefined {
+function modelVersionGate(text: string):
+	|
+	  {
+			version: string;
+			minVersion: string;
+	  }
+	| undefined
+{
 	const match = MODEL_VERSION_GATE.exec(badRequestMessage(text) ?? "");
 	const [, version, minVersion] = match ?? [];
-	return version === undefined || minVersion === undefined ? undefined : {version, minVersion};
+	return version === undefined || minVersion === undefined
+		? undefined
+		:
+			{
+				version,
+				minVersion,
+			};
 }
 
 type TextRule = RegExp | ((text: string) => boolean);
@@ -126,7 +144,8 @@ const TEXT_CATEGORIES: ReadonlyArray<readonly [TextRule, ApiErrorCategory]> = [
 ];
 
 /** Upstream's `D$`: the JSONL `error` code's category. */
-const CODE_CATEGORIES: Readonly<Record<string, ApiErrorCategory>> = {
+const CODE_CATEGORIES: Readonly<Record<string, ApiErrorCategory>> =
+{
 	rate_limit: "server_rate_limit",
 	authentication_failed: "auth",
 	billing_error: "billing",
@@ -152,12 +171,14 @@ const DECISIVE_CODES = new Set([
 /** Upstream's `RF`: an HTTP status named in the message text. */
 const TEXT_STATUS = /(?:API error:?|HTTP(?:\/\d(?:\.\d)?)?|status(?:\s*code)?:?)\s*(4\d{2}|5\d{2})\b/i;
 
-function codeCategory(code: string | undefined): ApiErrorCategory | undefined {
+function codeCategory(code: string | undefined): ApiErrorCategory | undefined
+{
 	return code !== undefined && Object.hasOwn(CODE_CATEGORIES, code) ? CODE_CATEGORIES[code] : undefined;
 }
 
 /** Upstream's `Ao`: an HTTP status's category. */
-function statusCategory(status: number): ApiErrorCategory {
+function statusCategory(status: number): ApiErrorCategory
+{
 	if (status === 429) return "server_rate_limit";
 	if (status === 529) return "overloaded";
 	if (status >= 500) return "server_error";
@@ -170,10 +191,12 @@ function statusCategory(status: number): ApiErrorCategory {
 }
 
 /** Upstream's `MQ`, in its order: refusal, usage-limit text, decisive codes, the text table, the code map, then the status. */
-export function classifyApiError({text, code, status, stopReason}: ApiErrorInput): ApiErrorCategory {
+export function classifyApiError({text, code, status, stopReason}: ApiErrorInput): ApiErrorCategory
+{
 	if (stopReason === "refusal") return "usage_policy";
 	if (isUsageLimitText(text)) return "rate_limit";
-	if (code !== undefined && DECISIVE_CODES.has(code)) {
+	if (code !== undefined && DECISIVE_CODES.has(code))
+	{
 		const decisive = codeCategory(code);
 		if (decisive !== undefined) return decisive;
 	}
@@ -185,7 +208,8 @@ export function classifyApiError({text, code, status, stopReason}: ApiErrorInput
 	return resolvedStatus === undefined ? "unknown" : statusCategory(resolvedStatus);
 }
 
-function numberOrUndefined(value: string | undefined): number | undefined {
+function numberOrUndefined(value: string | undefined): number | undefined
+{
 	return value === undefined ? undefined : Number(value);
 }
 
@@ -195,7 +219,8 @@ const ID_TRAILER = /(?:\n\n(?:Request|Message) ID: [^\n]*)+$/;
 /** Upstream's `Mr` suffix: the "Details: `[category]`" paragraph ending a refusal's text. */
 const DETAILS_SUFFIX = /\n\nDetails: `\[([^`[\]\n]+)\]`$/;
 
-export interface RefusalPassthrough {
+export interface RefusalPassthrough
+{
 	body: string;
 	category?: string;
 }
@@ -206,7 +231,8 @@ export interface RefusalPassthrough {
  * Upstream first strips the error text in a chunk the dumps leave out; this
  * strips the Request ID and Message ID trailer, which the details lines show.
  */
-export function refusalPassthrough(text: string): RefusalPassthrough | undefined {
+export function refusalPassthrough(text: string): RefusalPassthrough | undefined
+{
 	const trimmed = text
 		.replace(ID_TRAILER, "")
 		.replace(/^API Error:?\s*/i, "")
@@ -214,13 +240,20 @@ export function refusalPassthrough(text: string): RefusalPassthrough | undefined
 	const details = DETAILS_SUFFIX.exec(trimmed);
 	const body = details ? trimmed.slice(0, details.index).trim() : trimmed;
 	if (body === "") return undefined;
-	return {body, ...(details?.[1] !== undefined && {category: details[1]})};
+	return {
+		body,
+		...(details?.[1] !== undefined &&
+		{
+			category: details[1],
+		}),
+	};
 }
 
 /** Upstream's `er`: whether View details keeps, drops, or describes the raw body. */
 export type DetailsVerdict = "keep" | "drop" | "describe";
 
-interface CategoryCopy {
+interface CategoryCopy
+{
 	headline: string;
 	/** Upstream's `fr`: a past-tense label for an earlier, collapsed error. */
 	markerLabel?: string;
@@ -233,15 +266,18 @@ interface CategoryCopy {
 }
 
 /** Upstream's `gr` table: headlines from shared-14 `q`, hints from c797f68e4 `Q`. */
-const COPY: Readonly<Record<ApiErrorCategory, CategoryCopy>> = {
-	rate_limit: {
+const COPY: Readonly<Record<ApiErrorCategory, CategoryCopy>> =
+{
+	rate_limit:
+	{
 		headline: "Usage limit reached",
 		hint: "You’ve reached your usage limit. Try again after your limit resets.",
 		hintWithoutRetry: "You’ve reached your usage limit. Send a message after your limit resets.",
 		hintWithoutComposer: "Wait for your usage limit to reset.",
 		detailsVerdict: "drop",
 	},
-	server_rate_limit: {
+	server_rate_limit:
+	{
 		headline: "Server is temporarily limiting requests",
 		markerLabel: "Server was temporarily limiting requests",
 		hint: "Too many requests right now. Try again in a moment.",
@@ -249,13 +285,15 @@ const COPY: Readonly<Record<ApiErrorCategory, CategoryCopy>> = {
 		hintWithoutComposer: "Too many requests right now. This usually clears in a moment.",
 		detailsVerdict: "drop",
 	},
-	image_dimension: {
+	image_dimension:
+	{
 		headline: "Image is too large",
 		hint: "An image in this session is too large to send. Rewind to remove it, or start a new session.",
 		hintNoRewind: "An image in this session is too large to send. Start a new session to continue.",
 		detailsVerdict: "drop",
 	},
-	overloaded: {
+	overloaded:
+	{
 		headline: "Service is busy",
 		markerLabel: "Service was busy",
 		hint: "Try again in a moment, or switch to a different model.",
@@ -263,34 +301,44 @@ const COPY: Readonly<Record<ApiErrorCategory, CategoryCopy>> = {
 		hintWithoutComposer: "This is usually temporary.",
 		detailsVerdict: "drop",
 	},
-	server_error: {
+	server_error:
+	{
 		headline: "Server error",
 		hint: "The server returned an error while handling this message. It’s usually temporary.",
 		detailsVerdict: "drop",
 	},
-	stream_idle_timeout: {
+	stream_idle_timeout:
+	{
 		headline: "Connection went idle",
 		hint: "The response stopped before finishing. Try again in a moment.",
 		hintWithoutRetry: "The response stopped before finishing. Wait a moment, then send a message to try again.",
 		hintWithoutComposer: "The response stopped before finishing. This is usually temporary.",
 		detailsVerdict: "drop",
 	},
-	network: {
+	network:
+	{
 		headline: "Connection problem",
 		hint: "Check your internet connection, VPN, or proxy and try again.",
 		hintWithoutRetry: "Check your internet connection, VPN, or proxy, then send a message to try again.",
 		hintWithoutComposer: "Check your internet connection, VPN, or proxy.",
 		detailsVerdict: "keep",
 	},
-	auth: {headline: "Authentication failed", hint: "Sign in again to continue.", detailsVerdict: "drop"},
-	context_length: {
+	auth:
+	{
+		headline: "Authentication failed",
+		hint: "Sign in again to continue.",
+		detailsVerdict: "drop",
+	},
+	context_length:
+	{
 		headline: "Your context window is full",
 		markerLabel: "Context window was full",
 		hint: "This chat is too long to continue. Compact it to summarize earlier messages and keep going, rewind to an earlier point, or start a new chat.",
 		hintNoRewind: "This chat is too long to continue. Start a new chat.",
 		detailsVerdict: "drop",
 	},
-	usage_policy: {
+	usage_policy:
+	{
 		headline: "Message flagged",
 		hint: "Claude’s safeguards flagged this message. This sometimes happens in safe, normal sessions. Rephrase your message or rewind to continue.",
 		hintNoRewind:
@@ -298,56 +346,80 @@ const COPY: Readonly<Record<ApiErrorCategory, CategoryCopy>> = {
 		learnMoreUrl: "https://www.anthropic.com/legal/aup",
 		detailsVerdict: "describe",
 	},
-	org_disabled: {
+	org_disabled:
+	{
 		headline: "Organization access is disabled",
 		hint: "Your organization’s access has been disabled. Contact your admin.",
 		detailsVerdict: "keep",
 	},
-	invalid_request: {headline: "Invalid request", hint: "The request couldn’t be completed.", detailsVerdict: "keep"},
-	image_invalid: {
+	invalid_request:
+	{
+		headline: "Invalid request",
+		hint: "The request couldn’t be completed.",
+		detailsVerdict: "keep",
+	},
+	image_invalid:
+	{
 		headline: "Image couldn’t be processed",
 		hint: "An image couldn’t be read. Rewind to remove it and try a different format.",
 		hintNoRewind: "An image couldn’t be read. Start a new session to continue.",
 		detailsVerdict: "drop",
 	},
-	request_too_large: {
+	request_too_large:
+	{
 		headline: "Request is too large",
 		hint: "An attachment is too large. Rewind to remove it, then send your message again.",
 		hintNoRewind: "An attachment is too large. Start a new session to continue.",
 		detailsVerdict: "drop",
 	},
-	effort_cap_exceeded: {
+	effort_cap_exceeded:
+	{
 		headline: "Your organization limits effort for this model",
 		hint: "Contact your admin to change this limit.",
 		detailsVerdict: "drop",
 	},
-	model_version_unsupported: {
+	model_version_unsupported:
+	{
 		headline: "This model needs a newer version of Claude Code",
 		hint: "This session is on Claude Code {version}. This model needs {minVersion} or newer. You can pick a different model, or update Claude Code or the Claude desktop app, then start a new session.",
 		detailsVerdict: "keep",
 	},
-	model_not_found: {
+	model_not_found:
+	{
 		headline: "Model isn’t available",
 		hint: "Switch to a different model to continue.",
 		detailsVerdict: "keep",
 	},
-	output_token_limit: {
+	output_token_limit:
+	{
 		headline: "Response exceeded the output limit",
 		hint: "Ask Claude to continue, or break the task into smaller steps.",
 		detailsVerdict: "drop",
 	},
-	extra_usage_required: {
+	extra_usage_required:
+	{
 		headline: "Extra usage is required",
 		hint: "Enable extra usage in Settings, or switch to a model with standard context.",
 		detailsVerdict: "drop",
 	},
-	billing: {headline: "Billing issue", hint: "Add credits or update billing to continue.", detailsVerdict: "drop"},
-	permission: {
+	billing:
+	{
+		headline: "Billing issue",
+		hint: "Add credits or update billing to continue.",
+		detailsVerdict: "drop",
+	},
+	permission:
+	{
 		headline: "Access denied",
 		hint: "You don’t have access to this resource — check your permissions.",
 		detailsVerdict: "keep",
 	},
-	unknown: {headline: "An API error occurred", hint: "Try sending your message again.", detailsVerdict: "keep"},
+	unknown:
+	{
+		headline: "An API error occurred",
+		hint: "Try sending your message again.",
+		detailsVerdict: "keep",
+	},
 };
 
 /** Upstream's `jr`: categories a rewind can clear. */
@@ -359,7 +431,8 @@ const REWIND_HELPS: ReadonlySet<ApiErrorCategory> = new Set([
 	"request_too_large",
 ]);
 
-export interface ErrorCopyContext {
+export interface ErrorCopyContext
+{
 	/** The session can open the rewind picker. */
 	canRewind: boolean;
 	/** The card offers Try again. */
@@ -370,7 +443,8 @@ export interface ErrorCopyContext {
 	text?: string;
 }
 
-export interface ErrorCopy {
+export interface ErrorCopy
+{
 	headline: string;
 	markerLabel: string;
 	hint: string;
@@ -388,7 +462,8 @@ export interface ErrorCopy {
 export function errorCopy(
 	category: ApiErrorCategory,
 	{canRewind, canRetry, hasComposer, text}: ErrorCopyContext,
-): ErrorCopy {
+): ErrorCopy
+{
 	const copy = COPY[category];
 	const hint = !canRewind && copy.hintNoRewind !== undefined ? copy.hintNoRewind : copy.hint;
 	const chosen = canRetry ? hint : hasComposer ? (copy.hintWithoutRetry ?? hint) : (copy.hintWithoutComposer ?? hint);
@@ -401,7 +476,10 @@ export function errorCopy(
 		headline: copy.headline,
 		markerLabel: copy.markerLabel ?? copy.headline,
 		hint: shown,
-		...(copy.learnMoreUrl !== undefined && {learnMoreUrl: copy.learnMoreUrl}),
+		...(copy.learnMoreUrl !== undefined &&
+		{
+			learnMoreUrl: copy.learnMoreUrl,
+		}),
 		rewindHelps: REWIND_HELPS.has(category),
 		detailsVerdict: copy.detailsVerdict,
 	};

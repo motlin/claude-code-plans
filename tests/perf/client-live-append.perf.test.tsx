@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRouteWithContext,
 	createRoute,
@@ -42,18 +43,21 @@ import {preloadSideChatPanel} from "../../src/components/side-chat-panel-module"
  * triggers counts as a hidden reload, since none of them is a user interaction.
  */
 
-vi.mock(import("../../src/lib/hmr-persist"), async (importOriginal) => {
+vi.mock(import("../../src/lib/hmr-persist"), async (importOriginal) =>
+{
 	const cache = new Map<string, unknown>();
 	return {
 		...(await importOriginal()),
-		hmrPersist: <T,>(key: string, initialize: () => T): T => {
+		hmrPersist: <T,>(key: string, initialize: () => T): T =>
+		{
 			if (!cache.has(key)) cache.set(key, initialize());
 			return cache.get(key) as T;
 		},
 	};
 });
 
-vi.mock(import("../../src/components/session-page"), async (importOriginal) => {
+vi.mock(import("../../src/components/session-page"), async (importOriginal) =>
+{
 	const actual = await importOriginal();
 	const {PerfSubtree} = await import("./harness/perf-subtree");
 	return {
@@ -66,7 +70,8 @@ vi.mock(import("../../src/components/session-page"), async (importOriginal) => {
 	};
 });
 
-vi.mock(import("../../src/components/session-chat"), async (importOriginal) => {
+vi.mock(import("../../src/components/session-chat"), async (importOriginal) =>
+{
 	const actual = await importOriginal();
 	const {memo} = await import("react");
 	const {PerfSubtree} = await import("./harness/perf-subtree");
@@ -97,23 +102,77 @@ const ROW_HEIGHT = ESTIMATED_TURN_HEIGHT_PIXELS;
 type ApiHandler = (context: {params: Record<string, string>; request: Request}) => Response | Promise<Response>;
 
 /** Request paths the frame and session page fetch, each answered by its real GET handler. */
-function sessionEndpoints(id: string): Array<{path: string; module: string; params: Record<string, string>}> {
+function sessionEndpoints(id: string): Array<
+{
+	path: string;
+	module: string;
+	params: Record<string, string>;
+}>
+{
 	return [
-		{path: `/api/sessions/${id}`, module: "../../src/routes/api/sessions.$id", params: {id}},
-		{path: `/api/sessions/${id}/transcript`, module: "../../src/routes/api/sessions.$id.transcript", params: {id}},
-		{path: `/api/sessions/${id}/subagents`, module: "../../src/routes/api/sessions.$id.subagents", params: {id}},
-		{path: `/api/sessions/${id}/workflows`, module: "../../src/routes/api/sessions.$id.workflows", params: {id}},
+		{
+			path: `/api/sessions/${id}`,
+			module: "../../src/routes/api/sessions.$id",
+			params:
+			{
+				id,
+			},
+		},
+		{
+			path: `/api/sessions/${id}/transcript`,
+			module: "../../src/routes/api/sessions.$id.transcript",
+			params:
+			{
+				id,
+			},
+		},
+		{
+			path: `/api/sessions/${id}/subagents`,
+			module: "../../src/routes/api/sessions.$id.subagents",
+			params:
+			{
+				id,
+			},
+		},
+		{
+			path: `/api/sessions/${id}/workflows`,
+			module: "../../src/routes/api/sessions.$id.workflows",
+			params:
+			{
+				id,
+			},
+		},
 		{
 			path: `/api/sessions/${id}/context-breakdown`,
 			module: "../../src/routes/api/sessions.$id.context-breakdown",
-			params: {id},
+			params:
+			{
+				id,
+			},
 		},
-		{path: `/api/sessions/${id}/artifacts`, module: "../../src/routes/api/sessions.$id.artifacts", params: {id}},
-		{path: `/api/sessions/${id}/statusline`, module: "../../src/routes/api/sessions.$id.statusline", params: {id}},
+		{
+			path: `/api/sessions/${id}/artifacts`,
+			module: "../../src/routes/api/sessions.$id.artifacts",
+			params:
+			{
+				id,
+			},
+		},
+		{
+			path: `/api/sessions/${id}/statusline`,
+			module: "../../src/routes/api/sessions.$id.statusline",
+			params:
+			{
+				id,
+			},
+		},
 		{
 			path: `/api/sessions/${id}/composer-state`,
 			module: "../../src/routes/api/sessions.$id.composer-state",
-			params: {id},
+			params:
+			{
+				id,
+			},
 		},
 		// The session composer: slash commands for the transcript's cwd, this session's prompt history, and usage.
 		{
@@ -121,33 +180,89 @@ function sessionEndpoints(id: string): Array<{path: string; module: string; para
 			module: "../../src/routes/api/commands",
 			params: {},
 		},
-		{path: `/api/prompt-history?sessionId=${id}`, module: "../../src/routes/api/prompt-history", params: {}},
-		{path: "/api/usage", module: "../../src/routes/api/usage", params: {}},
+		{
+			path: `/api/prompt-history?sessionId=${id}`,
+			module: "../../src/routes/api/prompt-history",
+			params: {},
+		},
+		{
+			path: "/api/usage",
+			module: "../../src/routes/api/usage",
+			params: {},
+		},
 	];
 }
 
-const FRAME_ENDPOINTS: Array<{path: string; module: string}> = [
-	{path: "/api/projects", module: "../../src/routes/api/projects"},
-	{path: "/api/plans", module: "../../src/routes/api/plans"},
-	{path: "/api/sessions/recent?limit=50&live=1", module: "../../src/routes/api/sessions.recent"},
-	{path: "/api/sessions/grouped?perProject=5", module: "../../src/routes/api/sessions.grouped"},
-	{path: "/api/plugins", module: "../../src/routes/api/plugins"},
-	{path: "/api/plugins/user-commands", module: "../../src/routes/api/plugins.user-commands"},
-	{path: "/api/sessions/active?activeTimeoutMs=60000", module: "../../src/routes/api/sessions.active"},
-	{path: "/api/sessions/active?activeTimeoutMs=300000", module: "../../src/routes/api/sessions.active"},
-	{path: "/api/approvals", module: "../../src/routes/api/approvals"},
-	{path: "/api/notifications", module: "../../src/routes/api/notifications"},
-	{path: "/api/local-account", module: "../../src/routes/api/local-account"},
-	{path: "/api/application-settings", module: "../../src/routes/api/application-settings"},
+const FRAME_ENDPOINTS: Array<
+{
+	path: string;
+	module: string;
+}> = [
+	{
+		path: "/api/projects",
+		module: "../../src/routes/api/projects",
+	},
+	{
+		path: "/api/plans",
+		module: "../../src/routes/api/plans",
+	},
+	{
+		path: "/api/sessions/recent?limit=50&live=1",
+		module: "../../src/routes/api/sessions.recent",
+	},
+	{
+		path: "/api/sessions/grouped?perProject=5",
+		module: "../../src/routes/api/sessions.grouped",
+	},
+	{
+		path: "/api/plugins",
+		module: "../../src/routes/api/plugins",
+	},
+	{
+		path: "/api/plugins/user-commands",
+		module: "../../src/routes/api/plugins.user-commands",
+	},
+	{
+		path: "/api/sessions/active?activeTimeoutMs=60000",
+		module: "../../src/routes/api/sessions.active",
+	},
+	{
+		path: "/api/sessions/active?activeTimeoutMs=300000",
+		module: "../../src/routes/api/sessions.active",
+	},
+	{
+		path: "/api/approvals",
+		module: "../../src/routes/api/approvals",
+	},
+	{
+		path: "/api/notifications",
+		module: "../../src/routes/api/notifications",
+	},
+	{
+		path: "/api/local-account",
+		module: "../../src/routes/api/local-account",
+	},
+	{
+		path: "/api/application-settings",
+		module: "../../src/routes/api/application-settings",
+	},
 ];
 
 /**
  * herdr is a live process the lab never talks to; it answers as an installation with no panes. The
  * transcript's file links check their paths, none of which exist under the fixture HOME.
  */
-const STATIC_FIXTURES: Record<string, unknown> = {
-	"/api/herdr-panes": {panes: [], writesEnabled: false},
-	"/api/file-refs": {statuses: {}},
+const STATIC_FIXTURES: Record<string, unknown> =
+{
+	"/api/herdr-panes":
+	{
+		panes: [],
+		writesEnabled: false,
+	},
+	"/api/file-refs":
+	{
+		statuses: {},
+	},
 };
 
 let root: string;
@@ -161,12 +276,26 @@ let offScreenSessionIds: string[];
 /** The last chained record of each transcript, which an appended line continues. */
 const lastRecords = new Map<string, Record<string, unknown>>();
 
-async function handlerFor(module: string): Promise<ApiHandler> {
-	const {Route} = (await import(module)) as {Route: {options: {server: {handlers: Record<string, ApiHandler>}}}};
+async function handlerFor(module: string): Promise<ApiHandler>
+{
+	const {Route} = (await import(module)) as
+	{
+		Route:
+		{
+			options:
+			{
+				server:
+				{
+					handlers: Record<string, ApiHandler>;
+				};
+			};
+		};
+	};
 	return Route.options.server.handlers["GET"]!;
 }
 
-function lastChainedRecord(file: string): Record<string, unknown> {
+function lastChainedRecord(file: string): Record<string, unknown>
+{
 	const records = readFileSync(file, "utf8")
 		.split("\n")
 		.filter((line) => line.length > 0)
@@ -177,24 +306,34 @@ function lastChainedRecord(file: string): Record<string, unknown> {
 	return last;
 }
 
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	// Census the steady state: the page warms these deferred chunks on mount or idle, long before a live event.
 	await Promise.all([preloadComposerSurfaces(), loadSessionPromptCards(), preloadSideChatPanel()]);
 	vi.setSystemTime(FIXED_NOW);
 	root = mkdtempSync(join(tmpdir(), "perf-client-live-append-"));
 	const home = join(root, "home");
 	const projectDir = join(home, ".claude", "projects", PROJECT);
-	mkdirSync(projectDir, {recursive: true});
+	mkdirSync(
+		projectDir,
+		{
+			recursive: true,
+		},
+	);
 	vi.stubEnv("HOME", home);
 	vi.stubEnv("XDG_CONFIG_HOME", join(root, "config"));
 	vi.stubEnv("XDG_CACHE_HOME", join(root, "cache"));
 
 	const {openTestDb} = await import("../../src/lib/db/connection");
 	db = openTestDb();
-	vi.doMock("../../src/lib/db", () => ({getDb: () => db}));
+	vi.doMock("../../src/lib/db", () => (
+	{
+		getDb: () => db,
+	}));
 
 	const files: string[] = [];
-	for (const shape of [OPEN_SHAPE, OTHER_SHAPE] as const) {
+	for (const shape of [OPEN_SHAPE, OTHER_SHAPE] as const)
+	{
 		const cached = await generateTranscript(PERF_SHAPES[shape]);
 		const file = join(projectDir, basename(cached));
 		copyFileSync(cached, file);
@@ -207,7 +346,8 @@ beforeAll(async () => {
 	fixtures = await serveFixtures();
 
 	const multiFiles: string[] = [];
-	for (const seed of MULTI_SEEDS) {
+	for (const seed of MULTI_SEEDS)
+	{
 		const cached = await generateTranscript(PERF_SHAPES[OTHER_SHAPE], seed);
 		const file = join(projectDir, basename(cached));
 		copyFileSync(cached, file);
@@ -222,109 +362,190 @@ beforeAll(async () => {
 }, 600_000);
 
 /** What the frame and the open session fetch, as the real GET handlers answer it from the current DB. */
-async function serveFixtures(): Promise<Record<string, unknown>> {
+async function serveFixtures(): Promise<Record<string, unknown>>
+{
 	const endpoints = [
-		...FRAME_ENDPOINTS.map((endpoint) => ({...endpoint, params: {}})),
+		...FRAME_ENDPOINTS.map((endpoint) => (
+		{
+			...endpoint,
+			params: {},
+		})),
 		...sessionEndpoints(openSessionId),
 	];
-	const served: Record<string, unknown> = {...STATIC_FIXTURES};
-	for (const {path, module, params} of endpoints) {
+	const served: Record<string, unknown> =
+	{
+		...STATIC_FIXTURES,
+	};
+	for (const {path, module, params} of endpoints)
+	{
 		const handler = await handlerFor(module);
-		const response = await handler({params, request: new Request(`http://localhost${path}`)});
+		const response = await handler(
+			{
+				params,
+				request: new Request(`http://localhost${path}`),
+			},
+		);
 		// Responses carry the temp HOME; drop it so the served bytes are the same on every machine.
 		served[path] = JSON.parse((await response.text()).replaceAll(root, "/fixture"));
 	}
 	return served;
 }
 
-afterAll(() => {
+afterAll(() =>
+{
 	db.close();
-	rmSync(root, {recursive: true, force: true});
+	rmSync(
+		root,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 	vi.doUnmock("../../src/lib/db");
 	vi.unstubAllEnvs();
 	vi.useRealTimers();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-function installBrowserStubs(): void {
+function installBrowserStubs(): void
+{
 	installFakeEventSource();
-	installFixedResizeObserver({width: 800, height: ROW_HEIGHT});
-	vi.stubGlobal("matchMedia", (media: string) => ({
+	installFixedResizeObserver(
+		{
+			width: 800,
+			height: ROW_HEIGHT,
+		},
+	);
+	vi.stubGlobal("matchMedia", (media: string) => (
+	{
 		matches: false,
 		media,
 		onchange: null,
-		addEventListener: () => {},
-		removeEventListener: () => {},
-		addListener: () => {},
-		removeListener: () => {},
+		addEventListener: () =>
+		{
+		},
+		removeEventListener: () =>
+		{
+		},
+		addListener: () =>
+		{
+		},
+		removeListener: () =>
+		{
+		},
 		dispatchEvent: () => false,
 	}));
 	vi.stubGlobal("scrollTo", () => {});
 	vi.stubGlobal("IntersectionObserver", InertIntersectionObserver);
 	// jsdom has no layout, so scrolling an element into view is a no-op it does not implement.
-	Element.prototype.scrollIntoView = () => {};
+	Element.prototype.scrollIntoView = () =>
+	{
+	};
 }
 
 /** Nothing scrolls in jsdom, so no observed element ever intersects; the observer never calls back. */
-class InertIntersectionObserver {
+class InertIntersectionObserver
+{
 	readonly root = null;
 	readonly rootMargin = "0px";
 	readonly thresholds: ReadonlyArray<number> = [0];
 
-	observe(): void {}
+	observe(): void
+	{
+	}
 
-	unobserve(): void {}
+	unobserve(): void
+	{
+	}
 
-	disconnect(): void {}
+	disconnect(): void
+	{
+	}
 
-	takeRecords(): Array<IntersectionObserverEntry> {
+	takeRecords(): Array<IntersectionObserverEntry>
+	{
 		return [];
 	}
 }
 
-const rootLoader = RootRoute.options.loader as (args: {context: {queryClient: QueryClient}}) => void;
+const rootLoader = RootRoute.options.loader as (args: {
+	context:
+	{
+		queryClient: QueryClient;
+	};
+}) => void;
 
 /** The root layout's frame (providers, sidebar, main) with the real root loader and the real session route. */
-function createAppRouter(queryClient: QueryClient, initialPath: string) {
-	const rootRoute = createRootRouteWithContext<{queryClient: QueryClient}>()({
-		loader: ({context}) => {
-			rootLoader({context});
+function createAppRouter(queryClient: QueryClient, initialPath: string)
+{
+	const rootRoute = createRootRouteWithContext<
+	{
+		queryClient: QueryClient;
+	}>()(
+		{
+			loader: ({context}) =>
+			{
+				rootLoader(
+					{
+						context,
+					},
+				);
+			},
+			component: () => (
+				<ThemeProvider>
+					<SettingsProvider>
+						<ClaudeEventsProvider>
+							<ToastProvider>
+								<AppFrame collapsed={false}>
+									<Outlet />
+								</AppFrame>
+							</ToastProvider>
+						</ClaudeEventsProvider>
+					</SettingsProvider>
+				</ThemeProvider>
+			),
 		},
-		component: () => (
-			<ThemeProvider>
-				<SettingsProvider>
-					<ClaudeEventsProvider>
-						<ToastProvider>
-							<AppFrame collapsed={false}>
-								<Outlet />
-							</AppFrame>
-						</ToastProvider>
-					</ClaudeEventsProvider>
-				</SettingsProvider>
-			</ThemeProvider>
-		),
-	});
-	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/", component: () => null});
-	const sessionRoute = SessionRoute.update({
-		id: "/session/$id",
-		path: "/session/$id",
-		getParentRoute: () => rootRoute,
-	} as never);
-	return createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute as never]),
-		history: createMemoryHistory({initialEntries: [initialPath]}),
-		context: {queryClient},
-	});
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const sessionRoute = SessionRoute.update(
+		{
+			id: "/session/$id",
+			path: "/session/$id",
+			getParentRoute: () => rootRoute,
+		} as never,
+	);
+	return createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, sessionRoute as never]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [initialPath],
+				},
+			),
+			context:
+			{
+				queryClient,
+			},
+		},
+	);
 }
 
 const APPENDED_UUID = "00000000-0000-4000-8000-00000000a99e";
 
 /** One line continuing the session's chain, the way the watcher broadcasts a fresh assistant reply. */
-function appendedLine(sessionId: string): Record<string, unknown> {
+function appendedLine(sessionId: string): Record<string, unknown>
+{
 	const last = lastRecords.get(sessionId)!;
 	return {
 		parentUuid: last["uuid"],
@@ -335,15 +556,25 @@ function appendedLine(sessionId: string): Record<string, unknown> {
 		version: last["version"],
 		gitBranch: last["gitBranch"],
 		type: "assistant",
-		message: {
+		message:
+		{
 			id: "msg_perf_live_append",
 			type: "message",
 			role: "assistant",
 			model: "claude-opus-4-1",
-			content: [{type: "text", text: "Appended while the session is open."}],
+			content: [
+				{
+					type: "text",
+					text: "Appended while the session is open.",
+				},
+			],
 			stop_reason: null,
 			stop_sequence: null,
-			usage: {input_tokens: 1, output_tokens: 1},
+			usage:
+			{
+				input_tokens: 1,
+				output_tokens: 1,
+			},
 		},
 		uuid: APPENDED_UUID,
 		timestamp: new Date(Date.parse(String(last["timestamp"])) + 1_000).toISOString(),
@@ -351,8 +582,15 @@ function appendedLine(sessionId: string): Record<string, unknown> {
 }
 
 /** The open session's summary as the recent list serves it, which is what the server broadcasts on an update. */
-function openSessionSummary(): unknown {
-	const recent = fixtures["/api/sessions/recent?limit=50&live=1"] as {sessions: Array<{id: string}>};
+function openSessionSummary(): unknown
+{
+	const recent = fixtures["/api/sessions/recent?limit=50&live=1"] as
+	{
+		sessions: Array<
+		{
+			id: string;
+		}>;
+	};
 	const summary = recent.sessions.find((session) => session.id === openSessionId);
 	if (summary === undefined) throw new Error(`no recent-list summary for ${openSessionId}`);
 	return summary;
@@ -361,21 +599,44 @@ function openSessionSummary(): unknown {
 async function measureEvent(
 	deliver: (eventSource: FakeEventSource) => void,
 	served: Record<string, unknown> = fixtures,
-): Promise<{measurement: InteractionMeasurement; queryClient: QueryClient}> {
+): Promise<
+{
+	measurement: InteractionMeasurement;
+	queryClient: QueryClient;
+}>
+{
 	installBrowserStubs();
-	const queryClient = new QueryClient({defaultOptions: {queries: {refetchOnWindowFocus: false}}});
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					refetchOnWindowFocus: false,
+				},
+			},
+		},
+	);
 	const router = createAppRouter(queryClient, `/session/${openSessionId}`);
 	const measurement = await measureInteraction(
 		() => <RouterProvider router={router} />,
-		() => {
+		() =>
+		{
 			deliver(FakeEventSource.last());
 		},
-		{fixtures: served, queryClient},
+		{
+			fixtures: served,
+			queryClient,
+		},
 	);
-	return {measurement, queryClient};
+	return {
+		measurement,
+		queryClient,
+	};
 }
 
-function openTranscriptHasAppendedLine(queryClient: QueryClient): boolean {
+function openTranscriptHasAppendedLine(queryClient: QueryClient): boolean
+{
 	const transcript = queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript(openSessionId));
 	return transcript?.records.some((record) => record["uuid"] === APPENDED_UUID) ?? false;
 }
@@ -384,107 +645,159 @@ type LiveEventMetric = "commits" | "mutations" | "fetches" | "hiddenReloads";
 type LiveAppendMultiMetric = "commits" | "fetches" | "hiddenReloads";
 
 /** Checks every count before failing, so one run records all of them in results.json for `just perf-ceilings`. */
-function ratchetAll(values: Record<string, number>): void {
+function ratchetAll(values: Record<string, number>): void
+{
 	const failures: string[] = [];
-	for (const [id, value] of Object.entries(values)) {
-		try {
+	for (const [id, value] of Object.entries(values))
+	{
+		try
+		{
 			ratchet(id, value);
-		} catch (error) {
+		}
+		catch (error)
+		{
 			failures.push((error as Error).message);
 		}
 	}
 	if (failures.length > 0) throw new Error(failures.join("\n"));
 }
 
-const CASES: Array<{name: string; appendsToOpen: boolean; deliver: (eventSource: FakeEventSource) => void}> = [
+const CASES: Array<
+{
+	name: string;
+	appendsToOpen: boolean;
+	deliver: (eventSource: FakeEventSource) => void;
+}> = [
 	{
 		name: "appendOpen",
 		appendsToOpen: true,
-		deliver: (eventSource) => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
-				sessionId: openSessionId,
-				lines: [appendedLine(openSessionId)],
-			});
+		deliver: (eventSource) =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+				{
+					sessionId: openSessionId,
+					lines: [appendedLine(openSessionId)],
+				},
+			);
 		},
 	},
 	{
 		name: "appendOther",
 		appendsToOpen: false,
-		deliver: (eventSource) => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
-				sessionId: otherSessionId,
-				lines: [appendedLine(otherSessionId)],
-			});
+		deliver: (eventSource) =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+				{
+					sessionId: otherSessionId,
+					lines: [appendedLine(otherSessionId)],
+				},
+			);
 		},
 	},
 	{
 		name: "sessionUpdated",
 		appendsToOpen: false,
-		deliver: (eventSource) => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_UPDATED, {session: openSessionSummary()});
+		deliver: (eventSource) =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_UPDATED,
+				{
+					session: openSessionSummary(),
+				},
+			);
 		},
 	},
 	{
 		name: "toolPending",
 		appendsToOpen: false,
-		deliver: (eventSource) => {
-			eventSource.emit(DOMAIN_EVENTS.SESSION_TOOL_PENDING, {
-				sessionId: openSessionId,
-				toolName: "Bash",
-				toolUseId: "toolu_perf_live_pending",
-			});
+		deliver: (eventSource) =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_TOOL_PENDING,
+				{
+					sessionId: openSessionId,
+					toolName: "Bash",
+					toolUseId: "toolu_perf_live_pending",
+				},
+			);
 		},
 	},
 	{
 		// A reconnect is an error followed by `open`; it refetches only what missed events could have changed.
 		name: "reconnect",
 		appendsToOpen: false,
-		deliver: (eventSource) => {
+		deliver: (eventSource) =>
+		{
 			eventSource.error();
 			eventSource.open();
 		},
 	},
 ];
 
-describe("client lab: live SSE events with a session open", () => {
-	for (const {name, appendsToOpen, deliver} of CASES) {
-		it(name, async () => {
+describe("client lab: live SSE events with a session open", () =>
+{
+	for (const {name, appendsToOpen, deliver} of CASES)
+	{
+		it(name, async () =>
+		{
 			const {measurement, queryClient} = await measureEvent(deliver);
 
 			expect(openTranscriptHasAppendedLine(queryClient)).toBe(appendsToOpen);
 			ratchetAll(
-				metricIds<LiveEventMetric>(`client.liveEvent.${name}`, {
-					commits: measurement.commits,
-					mutations: measurement.mutations,
-					fetches: measurement.fetches.count,
-					hiddenReloads: measurement.hiddenReloads,
-				}),
+				metricIds<LiveEventMetric>(
+					`client.liveEvent.${name}`,
+					{
+						commits: measurement.commits,
+						mutations: measurement.mutations,
+						fetches: measurement.fetches.count,
+						hiddenReloads: measurement.hiddenReloads,
+					},
+				),
 			);
 		});
 	}
 });
 
-describe("client lab: four agents appending off screen with a session open", () => {
-	it("appendOffScreen", async () => {
-		const {measurement, queryClient} = await measureEvent((eventSource) => {
-			for (const sessionId of offScreenSessionIds) {
-				eventSource.emit(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {sessionId, lines: [appendedLine(sessionId)]});
+describe("client lab: four agents appending off screen with a session open", () =>
+{
+	it("appendOffScreen", async () =>
+	{
+		const {measurement, queryClient} = await measureEvent((eventSource) =>
+		{
+			for (const sessionId of offScreenSessionIds)
+			{
+				eventSource.emit(
+					DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+					{
+						sessionId,
+						lines: [appendedLine(sessionId)],
+					},
+				);
 			}
 		}, multiFixtures);
 
-		expect({
-			offScreen: offScreenSessionIds.length,
-			appendedToOpen: openTranscriptHasAppendedLine(queryClient),
-		}).toStrictEqual({
-			offScreen: 4,
-			appendedToOpen: false,
-		});
+		expect(
+			{
+				offScreen: offScreenSessionIds.length,
+				appendedToOpen: openTranscriptHasAppendedLine(queryClient),
+			},
+		).toStrictEqual(
+			{
+				offScreen: 4,
+				appendedToOpen: false,
+			},
+		);
 		ratchetAll(
-			metricIds<LiveAppendMultiMetric>("client.liveAppendMulti.appendOffScreen", {
-				commits: measurement.commits,
-				fetches: measurement.fetches.count,
-				hiddenReloads: measurement.hiddenReloads,
-			}),
+			metricIds<LiveAppendMultiMetric>(
+				"client.liveAppendMulti.appendOffScreen",
+				{
+					commits: measurement.commits,
+					fetches: measurement.fetches.count,
+					hiddenReloads: measurement.hiddenReloads,
+				},
+			),
 		);
 	});
 });

@@ -9,14 +9,28 @@ const testDir = join(realpathSync(tmpdir()), "claude-indexing-initial-build-test
 const project = "-Users-alice-projects-app";
 let db: AppDb;
 
-function transcript(content: string): string {
-	return JSON.stringify({type: "user", message: {role: "user", content}}) + "\n";
+function transcript(content: string): string
+{
+	return (
+		JSON.stringify(
+			{
+				type: "user",
+				message:
+				{
+					role: "user",
+					content,
+				},
+			},
+		) + "\n"
+	);
 }
 
 /** Runs fullScan and records getIndexingStatus() while the scan lists the projects root. */
-async function statusDuringScan(): Promise<ReturnType<typeof getIndexingStatus>> {
+async function statusDuringScan(): Promise<ReturnType<typeof getIndexingStatus>>
+{
 	let observed: ReturnType<typeof getIndexingStatus> | undefined;
-	await fullScan(db.index, db.summaries, testDir, undefined, undefined, async (path) => {
+	await fullScan(db.index, db.summaries, testDir, undefined, undefined, async (path) =>
+	{
 		if (path === testDir) observed = getIndexingStatus();
 		return readdir(path);
 	});
@@ -24,29 +38,66 @@ async function statusDuringScan(): Promise<ReturnType<typeof getIndexingStatus>>
 	return observed;
 }
 
-beforeEach(() => {
-	mkdirSync(join(testDir, project), {recursive: true});
+beforeEach(() =>
+{
+	mkdirSync(
+		join(testDir, project),
+		{
+			recursive: true,
+		},
+	);
 	writeFileSync(join(testDir, project, "sess-1.jsonl"), transcript("Hello"));
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(testDir, {recursive: true, force: true});
+	rmSync(
+		testDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("getIndexingStatus", () => {
-	it("reports idle outside a scan", () => {
-		expect(getIndexingStatus()).toStrictEqual({isIndexing: false, isInitialBuild: false});
+describe("getIndexingStatus", () =>
+{
+	it("reports idle outside a scan", () =>
+	{
+		expect(getIndexingStatus()).toStrictEqual(
+			{
+				isIndexing: false,
+				isInitialBuild: false,
+			},
+		);
 	});
 
-	it("reports an initial build while scanning into an empty index", async () => {
-		expect(await statusDuringScan()).toStrictEqual({isIndexing: true, isInitialBuild: true});
-		expect(getIndexingStatus()).toStrictEqual({isIndexing: false, isInitialBuild: false});
+	it("reports an initial build while scanning into an empty index", async () =>
+	{
+		expect(await statusDuringScan()).toStrictEqual(
+			{
+				isIndexing: true,
+				isInitialBuild: true,
+			},
+		);
+		expect(getIndexingStatus()).toStrictEqual(
+			{
+				isIndexing: false,
+				isInitialBuild: false,
+			},
+		);
 	});
 
-	it("reports a routine scan, not an initial build, when the index already has files", async () => {
+	it("reports a routine scan, not an initial build, when the index already has files", async () =>
+	{
 		await fullScan(db.index, db.summaries, testDir);
-		expect(await statusDuringScan()).toStrictEqual({isIndexing: true, isInitialBuild: false});
+		expect(await statusDuringScan()).toStrictEqual(
+			{
+				isIndexing: true,
+				isInitialBuild: false,
+			},
+		);
 	});
 });

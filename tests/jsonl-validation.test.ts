@@ -1,6 +1,7 @@
 import {homedir} from "node:os";
 import {join} from "node:path";
-import {
+import
+{
 	collectJsonlFiles,
 	scanByteCount,
 	scanTimeoutMilliseconds,
@@ -36,24 +37,30 @@ const collected = await collectJsonlFiles(projectsDirectory);
 const selection = selectFilesForScan(collected.files, FULL_SCAN, Date.now(), DEFAULT_FILE_LIMIT);
 const scanBytes = scanByteCount(selection.files, TAIL_BYTES);
 
-describe("JsonlRecordSchema against disk", () => {
+describe("JsonlRecordSchema against disk", () =>
+{
 	it(
 		"validates the selected JSONL corpus with bounded memory",
-		async () => {
+		async () =>
+		{
 			const failures: string[] = [];
 			let toolInputMismatches = 0;
 			let parsedLines = 0;
 			let skippedUnparseableLines = 0;
 			let skippedUnavailableFiles = 0;
 
-			for (const file of selection.files) {
-				try {
+			for (const file of selection.files)
+			{
+				try
+				{
 					const validation = await validateJsonlFile(file, TAIL_BYTES);
 					failures.push(...validation.failures);
 					toolInputMismatches += validation.toolInputMismatches;
 					parsedLines += validation.parsedLines;
 					skippedUnparseableLines += validation.skippedUnparseableLines;
-				} catch {
+				}
+				catch
+				{
 					skippedUnavailableFiles++;
 				}
 			}
@@ -70,11 +77,14 @@ describe("JsonlRecordSchema against disk", () => {
 			// The counts only matter when a full scan was asked for or something failed; a passing verify stays quiet.
 			if (FULL_SCAN || failures.length > 0) process.stderr.write(`${summary}\n`);
 
-			if (failures.length > 0) {
+			if (failures.length > 0)
+			{
 				const uniquePatterns = new Map<string, string>();
-				for (const failure of failures) {
+				for (const failure of failures)
+				{
 					const issueLines = failure.split("\n").slice(1).join("\n");
-					if (!uniquePatterns.has(issueLines)) {
+					if (!uniquePatterns.has(issueLines))
+					{
 						uniquePatterns.set(issueLines, failure);
 					}
 				}

@@ -7,13 +7,15 @@ import type {WholeFileState} from "./diff-file-menu";
  */
 
 /** Both sides of a diff file as the server read them; a side is null when it couldn't be read. */
-export interface FileSides {
+export interface FileSides
+{
 	oldText: string | null;
 	newText: string | null;
 }
 
 /** Upstream `pa`: `""` has no lines, and a trailing newline ends the last line rather than starting another. */
-export function countFileLines(text: string): number {
+export function countFileLines(text: string): number
+{
 	if (text === "") return 0;
 	let newlines = 0;
 	for (let index = text.indexOf("\n"); index !== -1; index = text.indexOf("\n", index + 1)) newlines++;
@@ -21,7 +23,8 @@ export function countFileLines(text: string): number {
 }
 
 /** Pierre's `getHunkSideEndBoundary` (upstream `Li`): the last file line a hunk side consumes. */
-function hunkSideEnd(start: number, count: number): number {
+function hunkSideEnd(start: number, count: number): number
+{
 	return start - (count === 0 ? 0 : 1) + count;
 }
 
@@ -31,21 +34,42 @@ function hunkSideEnd(start: number, count: number): number {
  */
 export function toLoadedFiles(
 	fileDiff: FileDiffMetadata,
-	file: {path: string; oldPath?: string | undefined},
+	file:
+	{
+		path: string;
+		oldPath?: string | undefined;
+	},
 	sides: FileSides,
-): FileDiffLoadedFiles | "unavailable" | "drifted" {
+): FileDiffLoadedFiles | "unavailable" | "drifted"
+{
 	const {newText, oldText} = sides;
 	if (newText === null) return "unavailable";
-	const newFile = {name: file.path, contents: newText};
-	if (fileDiff.type === "rename-pure") return {oldFile: null, newFile};
+	const newFile =
+	{
+		name: file.path,
+		contents: newText,
+	};
+	if (fileDiff.type === "rename-pure")
+		return {
+			oldFile: null,
+			newFile,
+		};
 	if (oldText === null) return "unavailable";
 	const last = fileDiff.hunks.at(-1);
-	if (last !== undefined) {
+	if (last !== undefined)
+	{
 		const newTail = countFileLines(newText) - hunkSideEnd(last.additionStart, last.additionCount);
 		const oldTail = countFileLines(oldText) - hunkSideEnd(last.deletionStart, last.deletionCount);
 		if (newTail < 0 || oldTail < 0 || newTail !== oldTail) return "drifted";
 	}
-	return {oldFile: {name: file.oldPath ?? file.path, contents: oldText}, newFile};
+	return {
+		oldFile:
+		{
+			name: file.oldPath ?? file.path,
+			contents: oldText,
+		},
+		newFile,
+	};
 }
 
 /** Upstream `yd`: how long `bd` waits before each retry of an unreadable file. */
@@ -62,35 +86,43 @@ export type LoadAttemptResult = FileDiffLoadedFiles | "unavailable" | "drifted" 
 export async function loadWithRetry(
 	attempt: (fresh: boolean) => Promise<LoadAttemptResult>,
 	onGiveUp: () => void,
-): Promise<FileDiffLoadedFiles> {
+): Promise<FileDiffLoadedFiles>
+{
 	let retries = 0;
-	for (;;) {
+	for (;;)
+	{
 		const result = await attempt(retries > 0).catch((): LoadAttemptResult => "retry");
 		if (result === "again") continue;
 		if (typeof result !== "string") return result;
 		const parked = result === "drifted" || result === "park";
 		const delay = parked ? undefined : RETRY_DELAYS[retries++];
-		if (delay === undefined) {
+		if (delay === undefined)
+		{
 			onGiveUp();
-			return new Promise<never>(() => {
+			return new Promise<never>(() =>
+			{
 				// Never settles: pierre keeps the diff partial and logs nothing.
 			});
 		}
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, delay);
 		});
 	}
 }
 
 /** A comment's place in the diff: its side and the line its card sits under. */
-export interface CommentLine {
+export interface CommentLine
+{
 	side: "additions" | "deletions";
 	line: number;
 }
 
 /** Upstream `Nd`: whether a hunk of the diff shows this line on this side. */
-export function lineInHunks(fileDiff: FileDiffMetadata, side: CommentLine["side"], line: number): boolean {
-	return fileDiff.hunks.some((hunk) => {
+export function lineInHunks(fileDiff: FileDiffMetadata, side: CommentLine["side"], line: number): boolean
+{
+	return fileDiff.hunks.some((hunk) =>
+	{
 		const start = side === "additions" ? hunk.additionStart : hunk.deletionStart;
 		const count = side === "additions" ? hunk.additionCount : hunk.deletionCount;
 		return line >= start && line < start + count;
@@ -102,7 +134,8 @@ export function lineInHunks(fileDiff: FileDiffMetadata, side: CommentLine["side"
  * render on its own line. Local comments outside the hunks are the ones `commentAnnotations` displaces, so this one
  * test covers upstream's displaced branch (`Fd`) too; local comments carry no persisted outdated flag to exclude.
  */
-export function commentsNeedWholeFile(fileDiff: FileDiffMetadata, comments: readonly CommentLine[]): boolean {
+export function commentsNeedWholeFile(fileDiff: FileDiffMetadata, comments: readonly CommentLine[]): boolean
+{
 	return comments.some((comment) => !lineInHunks(fileDiff, comment.side, comment.line));
 }
 
@@ -121,7 +154,8 @@ export function wholeFileState({
 	loaderGaveUp: boolean;
 	shown: boolean;
 	locked: boolean;
-}): WholeFileState | undefined {
+}): WholeFileState | undefined
+{
 	if (!offered || !hasHunks || status === "added" || status === "deleted") return undefined;
 	if (loaderGaveUp) return "unread";
 	if (shown) return locked ? "locked" : "shown";

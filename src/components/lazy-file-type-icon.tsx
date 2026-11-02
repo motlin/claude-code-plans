@@ -12,15 +12,21 @@ export function LazyFileTypeIcon({
 	fileName: string;
 	size: FileTypeIconSize;
 	className?: string;
-}): ReactNode {
+}): ReactNode
+{
 	const icons = useFileTypeIcons();
-	if (icons === undefined) {
+	if (icons === undefined)
+	{
 		const px = `${FILE_TYPE_ICON_SIZE_PX[size]}px`;
 		return (
 			<span
 				aria-hidden="true"
 				className={className ? `shrink-0 ${className}` : "shrink-0"}
-				style={{width: px, height: px}}
+				style={
+				{
+					width: px,
+					height: px,
+				}}
 			/>
 		);
 	}

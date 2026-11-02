@@ -3,7 +3,8 @@
  * "(code block)", markers are dropped, links and images keep their text, table
  * pipes become spaces, and bare URLs and paths are left as written.
  */
-export function speechText(markdown: string): string {
+export function speechText(markdown: string): string
+{
 	return markdown
 		.replace(/```[\s\S]*?```/g, " (code block) ")
 		.replace(/`([^`]*)`/g, "$1")

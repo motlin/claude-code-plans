@@ -5,14 +5,24 @@ import {z} from "zod";
 import {ContentsViewer} from "../components/customize/contents-viewer";
 import {customizePluginDetailQueryOptions, customizePluginFileQueryOptions} from "../lib/api/customize";
 
-export const Route = createFileRoute("/customize_/plugins/id/$pluginId/contents")({
-	component: PluginContentsTab,
-	validateSearch: z.object({file: z.string().optional()}),
-	head: () => ({meta: [pageTitle("Plugin contents · Customize")]}),
-});
+export const Route = createFileRoute("/customize_/plugins/id/$pluginId/contents")(
+	{
+		component: PluginContentsTab,
+		validateSearch: z.object(
+			{
+				file: z.string().optional(),
+			},
+		),
+		head: () => (
+		{
+			meta: [pageTitle("Plugin contents · Customize")],
+		}),
+	},
+);
 
 /** Contents tab: README.md selected by default, or the `?file=` path. */
-function PluginContentsTab() {
+function PluginContentsTab()
+{
 	const {pluginId} = Route.useParams();
 	const {file} = Route.useSearch();
 	const {data} = useQuery(customizePluginDetailQueryOptions(pluginId));

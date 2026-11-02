@@ -1,7 +1,8 @@
 import type {attachShrinkwrap, restoreShrinkwrap} from "./shrinkwrap";
 
 /** The slice of the shrinkwrap engine its hooks call. */
-export interface ShrinkwrapEngine {
+export interface ShrinkwrapEngine
+{
 	attachShrinkwrap: typeof attachShrinkwrap;
 	restoreShrinkwrap: typeof restoreShrinkwrap;
 }
@@ -12,25 +13,30 @@ let engine: ShrinkwrapEngine | undefined;
 let download: Promise<ShrinkwrapEngine> | undefined;
 
 /** Registers an engine that a static import already loaded, so fits run synchronously from the first render. */
-export function provideShrinkwrapEngine(loaded: ShrinkwrapEngine): void {
+export function provideShrinkwrapEngine(loaded: ShrinkwrapEngine): void
+{
 	engine ??= loaded;
 }
 
 /** The engine once loaded, so a fit runs in the same pass as the mount, as with a static import. */
-export function loadedShrinkwrapEngine(): ShrinkwrapEngine | undefined {
+export function loadedShrinkwrapEngine(): ShrinkwrapEngine | undefined
+{
 	return engine;
 }
 
 /** The engine's one module download, shared by the shrinkwrap hooks and the idle and intent warm-ups. */
 // oxlint-disable-next-line typescript/promise-function-async -- returns the one cached download
-export function loadShrinkwrapEngine(): Promise<ShrinkwrapEngine> {
+export function loadShrinkwrapEngine(): Promise<ShrinkwrapEngine>
+{
 	if (engine !== undefined) return Promise.resolve(engine);
 	download ??= import("./shrinkwrap")
-		.then((module) => {
+		.then((module) =>
+		{
 			engine ??= module;
 			return engine;
 		})
-		.catch((error: unknown) => {
+		.catch((error: unknown) =>
+		{
 			// A failed download is retried by the next fit.
 			download = undefined;
 			throw error;

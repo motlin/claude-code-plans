@@ -14,11 +14,13 @@ const DOM_ENVIRONMENT = /@vitest-environment\s+jsdom/;
 
 const TEST_FILE = /\.test\.tsx?$/;
 
-export function needsIsolation(source: string): boolean {
+export function needsIsolation(source: string): boolean
+{
 	return ISOLATION_MARKERS.some((marker) => marker.test(source));
 }
 
-export function runsInDom(source: string): boolean {
+export function runsInDom(source: string): boolean
+{
 	return DOM_ENVIRONMENT.test(source);
 }
 
@@ -30,19 +32,36 @@ export function runsInDom(source: string): boolean {
 export function partitionTestFiles(
 	root: string,
 	directory: string,
-): {shared: string[]; sharedDom: string[]; isolated: string[]} {
+):
+{
+	shared: string[];
+	sharedDom: string[];
+	isolated: string[];
+}
+{
 	const shared: string[] = [];
 	const sharedDom: string[] = [];
 	const isolated: string[] = [];
-	const files = readdirSync(path.join(root, directory), {recursive: true, encoding: "utf8"})
+	const files = readdirSync(
+		path.join(root, directory),
+		{
+			recursive: true,
+			encoding: "utf8",
+		},
+	)
 		.filter((file) => TEST_FILE.test(file))
 		.map((file) => path.posix.join(directory, file.split(path.sep).join("/")))
 		.toSorted();
-	for (const file of files) {
+	for (const file of files)
+	{
 		const source = readFileSync(path.join(root, file), "utf8");
 		if (needsIsolation(source)) isolated.push(file);
 		else if (runsInDom(source)) sharedDom.push(file);
 		else shared.push(file);
 	}
-	return {shared, sharedDom, isolated};
+	return {
+		shared,
+		sharedDom,
+		isolated,
+	};
 }

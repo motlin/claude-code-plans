@@ -2,8 +2,10 @@ import {describe, expect, it} from "vite-plus/test";
 import {formatResourceCount, resourceCoverageNote, scanSessionContent} from "../src/lib/session-resources";
 import {sessionResourceLines} from "./fixtures/session-resources";
 
-describe("resource coverage", () => {
-	it("marks a count as a floor only while earlier records are unscanned", () => {
+describe("resource coverage", () =>
+{
+	it("marks a count as a floor only while earlier records are unscanned", () =>
+	{
 		expect([formatResourceCount(24, 0), formatResourceCount(24, 1), formatResourceCount(0, 3200)]).toStrictEqual([
 			"24",
 			"24+",
@@ -11,7 +13,8 @@ describe("resource coverage", () => {
 		]);
 	});
 
-	it("explains the unscanned remainder and stays silent once the whole session is loaded", () => {
+	it("explains the unscanned remainder and stays silent once the whole session is loaded", () =>
+	{
 		expect([resourceCoverageNote(0), resourceCoverageNote(1), resourceCoverageNote(3200)]).toStrictEqual([
 			undefined,
 			"Counted from the loaded messages only — 1 earlier record has not been scanned. Load earlier messages to include it.",
@@ -20,8 +23,10 @@ describe("resource coverage", () => {
 	});
 });
 
-describe("scanSessionContent", () => {
-	it("flattens scannable blocks and attributes tool results to their owning calls", () => {
+describe("scanSessionContent", () =>
+{
+	it("flattens scannable blocks and attributes tool results to their owning calls", () =>
+	{
 		expect(scanSessionContent(sessionResourceLines)).toStrictEqual([
 			{
 				text: "Inspect the example resources.",
@@ -79,15 +84,27 @@ describe("scanSessionContent", () => {
 		]);
 	});
 
-	it("leaves the anchor uuid off a record that carries none, so the record index still locates it", () => {
+	it("leaves the anchor uuid off a record that carries none, so the record index still locates it", () =>
+	{
 		expect(
 			scanSessionContent([
 				{
 					type: "user",
 					lineIndex: 12,
-					message: {role: "user", content: "Fabricated uuidless question"},
+					message:
+					{
+						role: "user",
+						content: "Fabricated uuidless question",
+					},
 				},
 			]),
-		).toStrictEqual([{text: "Fabricated uuidless question", source: "visible", anchorIndex: 12, role: "user"}]);
+		).toStrictEqual([
+			{
+				text: "Fabricated uuidless question",
+				source: "visible",
+				anchorIndex: 12,
+				role: "user",
+			},
+		]);
 	});
 });

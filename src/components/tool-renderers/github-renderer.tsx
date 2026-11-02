@@ -1,4 +1,5 @@
-import {
+import
+{
 	GitPullRequest,
 	CircleDot,
 	GitCommit,
@@ -24,10 +25,14 @@ import {inputString} from "../../lib/tool-utils";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function tryParseJson(text: string): unknown {
-	try {
+function tryParseJson(text: string): unknown
+{
+	try
+	{
 		return JSON.parse(text);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -37,18 +42,28 @@ function tryParseJson(text: string): unknown {
 const optionalString = z.string().optional().catch(undefined);
 const optionalNumber = z.number().optional().catch(undefined);
 const optionalBoolean = z.boolean().optional().catch(undefined);
-const optionalUser = z.object({login: optionalString}).optional().catch(undefined);
+const optionalUser = z
+	.object(
+		{
+			login: optionalString,
+		},
+	)
+	.optional()
+	.catch(undefined);
 
 /** The object elements of a JSON array that `schema` accepts; anything else is an empty list. */
-function parseList<T>(data: unknown, schema: z.ZodType<T>): T[] {
+function parseList<T>(data: unknown, schema: z.ZodType<T>): T[]
+{
 	if (!Array.isArray(data)) return [];
-	return data.flatMap((item: unknown) => {
+	return data.flatMap((item: unknown) =>
+	{
 		const parsed = schema.safeParse(item);
 		return parsed.success ? [parsed.data] : [];
 	});
 }
 
-function truncate(text: string, max: number): string {
+function truncate(text: string, max: number): string
+{
 	if (text.length <= max) return text;
 	return text.slice(0, max - 3) + "...";
 }
@@ -57,9 +72,11 @@ function truncate(text: string, max: number): string {
 // Style helpers
 // ---------------------------------------------------------------------------
 
-function stateBadge(state: string) {
+function stateBadge(state: string)
+{
 	const s = state.toLowerCase();
-	if (s === "open") {
+	if (s === "open")
+	{
 		return (
 			<span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-r6 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
 				<CircleDot className="h-3 w-3" />
@@ -67,7 +84,8 @@ function stateBadge(state: string) {
 			</span>
 		);
 	}
-	if (s === "closed") {
+	if (s === "closed")
+	{
 		return (
 			<span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-r6 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
 				<XCircle className="h-3 w-3" />
@@ -75,7 +93,8 @@ function stateBadge(state: string) {
 			</span>
 		);
 	}
-	if (s === "merged") {
+	if (s === "merged")
+	{
 		return (
 			<span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-r6 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
 				<GitMerge className="h-3 w-3" />
@@ -94,21 +113,25 @@ function stateBadge(state: string) {
 // Sub-renderers
 // ---------------------------------------------------------------------------
 
-const ListItemSchema = z.object({
-	number: optionalNumber,
-	title: optionalString,
-	state: optionalString,
-	user: optionalUser,
-	html_url: optionalString,
-	merged: optionalBoolean,
-});
+const ListItemSchema = z.object(
+	{
+		number: optionalNumber,
+		title: optionalString,
+		state: optionalString,
+		user: optionalUser,
+		html_url: optionalString,
+		merged: optionalBoolean,
+	},
+);
 type ListItem = z.infer<typeof ListItemSchema>;
 
-function ItemList({items, icon}: {items: ListItem[]; icon: "pr" | "issue"}) {
+function ItemList({items, icon}: {items: ListItem[]; icon: "pr" | "issue"})
+{
 	const Icon = icon === "pr" ? GitPullRequest : CircleAlert;
 	return (
 		<div className="space-y-0.5">
-			{items.map((item, i) => {
+			{items.map((item, i) =>
+			{
 				const effectiveState = item.merged ? "merged" : (item.state ?? "");
 				return (
 					<div
@@ -146,7 +169,8 @@ function ItemList({items, icon}: {items: ListItem[]; icon: "pr" | "issue"}) {
 	);
 }
 
-function ListPullRequestsRenderer({data}: {data: unknown}) {
+function ListPullRequestsRenderer({data}: {data: unknown})
+{
 	const items = parseList(data, ListItemSchema);
 	return (
 		<div className="px-2 py-2">
@@ -159,7 +183,8 @@ function ListPullRequestsRenderer({data}: {data: unknown}) {
 	);
 }
 
-function ListIssuesRenderer({data}: {data: unknown}) {
+function ListIssuesRenderer({data}: {data: unknown})
+{
 	const items = parseList(data, ListItemSchema);
 	return (
 		<div className="px-2 py-2">
@@ -172,21 +197,26 @@ function ListIssuesRenderer({data}: {data: unknown}) {
 	);
 }
 
-interface DetailData {
+interface DetailData
+{
 	number?: number;
 	title?: string;
 	state?: string;
 	merged?: boolean;
 	body?: string;
 	html_url?: string;
-	user?: {login?: string};
+	user?:
+	{
+		login?: string;
+	};
 	comments?: number;
 	additions?: number;
 	deletions?: number;
 	changed_files?: number;
 }
 
-function SingleItemRenderer({data, icon}: {data: DetailData; icon: "pr" | "issue"}) {
+function SingleItemRenderer({data, icon}: {data: DetailData; icon: "pr" | "issue"})
+{
 	const Icon = icon === "pr" ? GitPullRequest : CircleAlert;
 	const effectiveState = data.merged ? "merged" : (data.state ?? "");
 	const body = data.body ?? "";
@@ -242,21 +272,34 @@ function SingleItemRenderer({data, icon}: {data: DetailData; icon: "pr" | "issue
 	);
 }
 
-const CommitDataSchema = z.object({
-	sha: optionalString,
-	commit: z
-		.object({
-			message: optionalString,
-			author: z.object({name: optionalString, date: optionalString}).optional().catch(undefined),
-		})
-		.optional()
-		.catch(undefined),
-	html_url: optionalString,
-	author: optionalUser,
-});
+const CommitDataSchema = z.object(
+	{
+		sha: optionalString,
+		commit: z
+			.object(
+				{
+					message: optionalString,
+					author: z
+						.object(
+							{
+								name: optionalString,
+								date: optionalString,
+							},
+						)
+						.optional()
+						.catch(undefined),
+				},
+			)
+			.optional()
+			.catch(undefined),
+		html_url: optionalString,
+		author: optionalUser,
+	},
+);
 type CommitData = z.infer<typeof CommitDataSchema>;
 
-function CommitListRenderer({data}: {data: unknown}) {
+function CommitListRenderer({data}: {data: unknown})
+{
 	const commits = parseList(data, CommitDataSchema);
 	return (
 		<div className="px-2 py-2">
@@ -265,7 +308,8 @@ function CommitListRenderer({data}: {data: unknown}) {
 				<span className="text-body text-primary">{commits.length} commit(s)</span>
 			</div>
 			<div className="space-y-0.5">
-				{commits.map((c, i) => {
+				{commits.map((c, i) =>
+				{
 					const sha = c.sha?.slice(0, 7) ?? "";
 					const message = c.commit?.message?.split("\n")[0] ?? "";
 					const author = c.author?.login ?? c.commit?.author?.name ?? "";
@@ -299,7 +343,8 @@ function CommitListRenderer({data}: {data: unknown}) {
 	);
 }
 
-function SingleCommitRenderer({data}: {data: CommitData}) {
+function SingleCommitRenderer({data}: {data: CommitData})
+{
 	const sha = data.sha?.slice(0, 7) ?? "";
 	const message = data.commit?.message ?? "";
 	const author = data.author?.login ?? data.commit?.author?.name ?? "";
@@ -334,7 +379,8 @@ function SingleCommitRenderer({data}: {data: CommitData}) {
 	);
 }
 
-interface FileContentsData {
+interface FileContentsData
+{
 	name?: string;
 	path?: string;
 	content?: string;
@@ -343,12 +389,17 @@ interface FileContentsData {
 	type?: string;
 }
 
-function FileContentsRenderer({data}: {data: FileContentsData}) {
+function FileContentsRenderer({data}: {data: FileContentsData})
+{
 	let content = data.content ?? "";
-	if (data.encoding === "base64" && content) {
-		try {
+	if (data.encoding === "base64" && content)
+	{
+		try
+		{
 			content = atob(content.replace(/\n/g, ""));
-		} catch {
+		}
+		catch
+		{
 			// keep raw
 		}
 	}
@@ -379,19 +430,29 @@ function FileContentsRenderer({data}: {data: FileContentsData}) {
 	);
 }
 
-const SearchResultItemSchema = z.object({
-	name: optionalString,
-	path: optionalString,
-	html_url: optionalString,
-	repository: z.object({full_name: optionalString}).optional().catch(undefined),
-	title: optionalString,
-	number: optionalNumber,
-	state: optionalString,
-	user: optionalUser,
-	body: optionalString,
-});
+const SearchResultItemSchema = z.object(
+	{
+		name: optionalString,
+		path: optionalString,
+		html_url: optionalString,
+		repository: z
+			.object(
+				{
+					full_name: optionalString,
+				},
+			)
+			.optional()
+			.catch(undefined),
+		title: optionalString,
+		number: optionalNumber,
+		state: optionalString,
+		user: optionalUser,
+		body: optionalString,
+	},
+);
 
-function SearchResultsRenderer({data}: {data: unknown}) {
+function SearchResultsRenderer({data}: {data: unknown})
+{
 	const parsed = asRecord(data);
 	const items = parseList(parsed?.["items"] ?? data, SearchResultItemSchema);
 	const total = optionalNumber.parse(parsed?.["total_count"]);
@@ -452,13 +513,23 @@ function SearchResultsRenderer({data}: {data: unknown}) {
 	);
 }
 
-const BranchDataSchema = z.object({
-	name: optionalString,
-	commit: z.object({sha: optionalString}).optional().catch(undefined),
-	protected: optionalBoolean,
-});
+const BranchDataSchema = z.object(
+	{
+		name: optionalString,
+		commit: z
+			.object(
+				{
+					sha: optionalString,
+				},
+			)
+			.optional()
+			.catch(undefined),
+		protected: optionalBoolean,
+	},
+);
 
-function BranchListRenderer({data}: {data: unknown}) {
+function BranchListRenderer({data}: {data: unknown})
+{
 	const branches = parseList(data, BranchDataSchema);
 	return (
 		<div className="px-2 py-2">
@@ -489,9 +560,16 @@ function BranchListRenderer({data}: {data: unknown}) {
 	);
 }
 
-const SuccessActionSchema = z.object({title: optionalString, number: optionalNumber, html_url: optionalString});
+const SuccessActionSchema = z.object(
+	{
+		title: optionalString,
+		number: optionalNumber,
+		html_url: optionalString,
+	},
+);
 
-function SuccessActionRenderer({data, action}: {data: object; action: string}) {
+function SuccessActionRenderer({data, action}: {data: object; action: string})
+{
 	const parsed = SuccessActionSchema.safeParse(data);
 	const {title, number, html_url: htmlUrl} = parsed.success ? parsed.data : {};
 
@@ -522,12 +600,16 @@ function SuccessActionRenderer({data, action}: {data: object; action: string}) {
 	);
 }
 
-function DefaultGithubRenderer({resultText}: {resultText: string}) {
+function DefaultGithubRenderer({resultText}: {resultText: string})
+{
 	let formatted = resultText;
-	try {
+	try
+	{
 		const parsed: unknown = JSON.parse(resultText);
 		formatted = JSON.stringify(parsed, null, 2);
-	} catch {
+	}
+	catch
+	{
 		// plain text
 	}
 	const displayText = formatted.length > 3000 ? formatted.slice(0, 3000) + "\n... (truncated)" : formatted;
@@ -543,7 +625,8 @@ function DefaultGithubRenderer({resultText}: {resultText: string}) {
 // Input summary
 // ---------------------------------------------------------------------------
 
-function InputSummary({tool, input}: {tool: string; input: Record<string, unknown>}) {
+function InputSummary({tool, input}: {tool: string; input: Record<string, unknown>})
+{
 	const owner = inputString(input, "owner");
 	const repo = inputString(input, "repo");
 	const repoStr = owner && repo ? `${owner}/${repo}` : (repo ?? "");
@@ -575,7 +658,8 @@ function InputSummary({tool, input}: {tool: string; input: Record<string, unknow
 // Entry point
 // ---------------------------------------------------------------------------
 
-export function GithubRenderer({toolCall}: ToolRendererProps) {
+export function GithubRenderer({toolCall}: ToolRendererProps)
+{
 	// Extract tool name: "mcp__plugin_github_github__list_pull_requests" -> "list_pull_requests"
 	const tool = toolCall.name.split("__").slice(2).join("__");
 	const resultText = toolCall.result ?? "";
@@ -589,38 +673,46 @@ export function GithubRenderer({toolCall}: ToolRendererProps) {
 		</span>
 	);
 
-	const renderResult = () => {
-		if (toolCall.isError) {
+	const renderResult = () =>
+	{
+		if (toolCall.isError)
+		{
 			return <DefaultGithubRenderer resultText={resultText} />;
 		}
 
-		if (!resultText) {
+		if (!resultText)
+		{
 			return <span className="text-body text-secondary">No result</span>;
 		}
 
-		switch (tool) {
+		switch (tool)
+		{
 			case "list_pull_requests":
 			case "search_pull_requests":
-				if (data && typeof data === "object" && "items" in data) {
+				if (data && typeof data === "object" && "items" in data)
+				{
 					return <SearchResultsRenderer data={data} />;
 				}
 				return <ListPullRequestsRenderer data={data ?? resultText} />;
 
 			case "pull_request_read":
-				if (data && typeof data === "object" && !Array.isArray(data)) {
+				if (data && typeof data === "object" && !Array.isArray(data))
+				{
 					return <SingleItemRenderer data={data} icon="pr" />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 
 			case "list_issues":
 			case "search_issues":
-				if (data && typeof data === "object" && "items" in data) {
+				if (data && typeof data === "object" && "items" in data)
+				{
 					return <SearchResultsRenderer data={data} />;
 				}
 				return <ListIssuesRenderer data={data ?? resultText} />;
 
 			case "issue_read":
-				if (data && typeof data === "object" && !Array.isArray(data)) {
+				if (data && typeof data === "object" && !Array.isArray(data))
+				{
 					return <SingleItemRenderer data={data} icon="issue" />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
@@ -629,13 +721,15 @@ export function GithubRenderer({toolCall}: ToolRendererProps) {
 				return <CommitListRenderer data={data ?? resultText} />;
 
 			case "get_commit":
-				if (data && typeof data === "object" && !Array.isArray(data)) {
+				if (data && typeof data === "object" && !Array.isArray(data))
+				{
 					return <SingleCommitRenderer data={data} />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 
 			case "get_file_contents":
-				if (data && typeof data === "object" && !Array.isArray(data)) {
+				if (data && typeof data === "object" && !Array.isArray(data))
+				{
 					return <FileContentsRenderer data={data} />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
@@ -648,38 +742,44 @@ export function GithubRenderer({toolCall}: ToolRendererProps) {
 				return <BranchListRenderer data={data ?? resultText} />;
 
 			case "create_pull_request":
-				if (data && typeof data === "object") {
+				if (data && typeof data === "object")
+				{
 					return <SuccessActionRenderer data={data} action="Pull request created" />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 
 			case "create_branch":
-				if (data && typeof data === "object") {
+				if (data && typeof data === "object")
+				{
 					return <SuccessActionRenderer data={data} action="Branch created" />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 
 			case "issue_write":
-				if (data && typeof data === "object") {
+				if (data && typeof data === "object")
+				{
 					return <SuccessActionRenderer data={data} action="Issue created" />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 
 			case "add_issue_comment":
 			case "add_reply_to_pull_request_comment":
-				if (data && typeof data === "object") {
+				if (data && typeof data === "object")
+				{
 					return <SuccessActionRenderer data={data} action="Comment added" />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 
 			case "merge_pull_request":
-				if (data && typeof data === "object") {
+				if (data && typeof data === "object")
+				{
 					return <SuccessActionRenderer data={data} action="Pull request merged" />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;
 
 			case "update_pull_request":
-				if (data && typeof data === "object") {
+				if (data && typeof data === "object")
+				{
 					return <SuccessActionRenderer data={data} action="Pull request updated" />;
 				}
 				return <DefaultGithubRenderer resultText={resultText} />;

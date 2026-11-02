@@ -1,4 +1,5 @@
-import {
+import
+{
 	type CSSProperties,
 	type KeyboardEvent,
 	lazy,
@@ -10,7 +11,8 @@ import {
 	useRef,
 	useState,
 } from "react";
-import {
+import
+{
 	ClipboardPaste,
 	FileText,
 	Image as ImageIcon,
@@ -21,7 +23,8 @@ import {
 	X,
 } from "lucide-react";
 
-import {
+import
+{
 	cacheChipFile,
 	type ContextChip,
 	contextChipLabel,
@@ -38,7 +41,8 @@ import {ContextMenu, ContextMenuTrigger, MenuContent} from "./ui/menu";
 import {Skeleton} from "./ui/skeleton";
 import {ExcerptQuote} from "./excerpt-quote";
 import {isMotionReduced} from "../lib/reduced-motion";
-import {
+import
+{
 	BADGE_CLASS,
 	CARD_BODY_CLASS,
 	CARD_CLASS,
@@ -49,13 +53,20 @@ import {
 
 // The preview loads only when a tile opens, keeping its dialog out of the composer chunk.
 const ImagePreviewModal = lazy(async () =>
-	import("./image-preview-modal").then((module) => ({default: module.ImagePreviewModal})),
+	import("./image-preview-modal").then((module) => (
+	{
+		default: module.ImagePreviewModal,
+	})),
 );
 const TextPreviewDialog = lazy(async () =>
-	import("./text-preview-dialog").then((module) => ({default: module.TextPreviewDialog})),
+	import("./text-preview-dialog").then((module) => (
+	{
+		default: module.TextPreviewDialog,
+	})),
 );
 
-function chipLabel({path, line, endLine}: QueuedDiffComment): string {
+function chipLabel({path, line, endLine}: QueuedDiffComment): string
+{
 	const name = path.slice(path.lastIndexOf("/") + 1) || path;
 	return `${name}:${endLine === undefined || endLine === line ? line : `${line}-${endLine}`}`;
 }
@@ -66,7 +77,8 @@ const CHIP_CLASS =
 const CHIP_REMOVE_CLASS =
 	"flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover hover:text-primary";
 
-const CONTEXT_CHIP_ICON = {
+const CONTEXT_CHIP_ICON =
+{
 	file: FileText,
 	selection: TextQuote,
 	terminal: SquareTerminal,
@@ -80,7 +92,8 @@ const CONTEXT_CHIP_ICON = {
  * Upstream's `Rn`: the element that takes focus in a tile or pill, its
  * CardLink, else the pill's remove button, else the tile root itself.
  */
-function focusTarget(item: Element): HTMLElement | null {
+function focusTarget(item: Element): HTMLElement | null
+{
 	const target = item.querySelector<HTMLElement>('[data-cds="CardLink"], button[aria-label^="Remove "]');
 	if (target !== null) return target;
 	return item instanceof HTMLElement && item.hasAttribute("tabindex") ? item : null;
@@ -91,7 +104,8 @@ function focusTarget(item: Element): HTMLElement | null {
  * less the scroll padding `scroll-fade-x` reserves under each edge fade.
  * Client-rect deltas map onto scrollLeft the same way in RTL rows.
  */
-function scrollTileIntoRow(row: HTMLElement, tile: Element): void {
+function scrollTileIntoRow(row: HTMLElement, tile: Element): void
+{
 	if (typeof row.scrollTo !== "function") return;
 	const style = getComputedStyle(row);
 	const padLeft = Number.parseFloat(style.scrollPaddingLeft) || 0;
@@ -103,21 +117,35 @@ function scrollTileIntoRow(row: HTMLElement, tile: Element): void {
 	let delta = 0;
 	if (rect.left < start) delta = rect.left - start;
 	else if (rect.right > end) delta = Math.min(rect.right - end, rect.left - start);
-	if (delta !== 0) row.scrollTo({left: row.scrollLeft + delta, behavior: "instant"});
+	if (delta !== 0)
+		row.scrollTo(
+			{
+				left: row.scrollLeft + delta,
+				behavior: "instant",
+			},
+		);
 }
 
 /** Upstream's `A0`: once the removed tile leaves the row, scrolls the tile that took focus into view. */
-function scrollIntoRowAfterRemoval(row: HTMLElement, tile: Element, removed: Element): void {
+function scrollIntoRowAfterRemoval(row: HTMLElement, tile: Element, removed: Element): void
+{
 	let done = false;
 	const observer =
 		typeof MutationObserver === "function"
-			? new MutationObserver(() => {
+			? new MutationObserver(() =>
+				{
 					if (!removed.isConnected) finish();
 				})
 			: null;
 	const timer = setTimeout(finish, 300);
-	observer?.observe(row, {childList: true});
-	function finish() {
+	observer?.observe(
+		row,
+		{
+			childList: true,
+		},
+	);
+	function finish()
+	{
 		if (done) return;
 		done = true;
 		observer?.disconnect();
@@ -131,24 +159,30 @@ function scrollIntoRowAfterRemoval(row: HTMLElement, tile: Element, removed: Ele
  * key's repeats and focuses the editor on its keyup, so a held Backspace
  * doesn't go on to delete prompt text; a window blur cancels the hand-off.
  */
-function focusComposerOnKeyUp(sessionId: string, key: string, removed: Element): void {
+function focusComposerOnKeyUp(sessionId: string, key: string, removed: Element): void
+{
 	const view = removed.ownerDocument.defaultView;
 	if (view === null) return;
-	const onKeyDown = (event: globalThis.KeyboardEvent) => {
-		if (event.key === key && event.repeat) {
+	const onKeyDown = (event: globalThis.KeyboardEvent) =>
+	{
+		if (event.key === key && event.repeat)
+		{
 			event.preventDefault();
 			event.stopPropagation();
 		}
 	};
-	const onKeyUp = (event: globalThis.KeyboardEvent) => {
+	const onKeyUp = (event: globalThis.KeyboardEvent) =>
+	{
 		if (event.key !== key) return;
 		stop();
 		const active = removed.ownerDocument.activeElement;
-		if (active === null || active === removed.ownerDocument.body || removed.contains(active)) {
+		if (active === null || active === removed.ownerDocument.body || removed.contains(active))
+		{
 			focusComposer(sessionId);
 		}
 	};
-	const stop = () => {
+	const stop = () =>
+	{
 		view.removeEventListener("keydown", onKeyDown, true);
 		view.removeEventListener("keyup", onKeyUp, true);
 		view.removeEventListener("blur", stop);
@@ -164,28 +198,37 @@ function focusComposerOnKeyUp(sessionId: string, key: string, removed: Element):
  * the row once the removed item is gone. With no item left, focus goes to the
  * composer: at once for a click, on the key's keyup for a keyboard removal.
  */
-function handOffFocus(item: Element | null, sessionId: string, key: string | null): void {
+function handOffFocus(item: Element | null, sessionId: string, key: string | null): void
+{
 	const active = item?.ownerDocument.activeElement;
 	if (item === null || !(active instanceof HTMLElement) || !item.contains(active)) return;
 	const target = siblingFocusTarget(item);
-	if (target === null) {
+	if (target === null)
+	{
 		if (key === null) focusComposer(sessionId);
 		else focusComposerOnKeyUp(sessionId, key, item);
 		return;
 	}
-	target.focus({preventScroll: true});
+	target.focus(
+		{
+			preventScroll: true,
+		},
+	);
 	const row = item.parentElement;
 	const tile = target.closest("li");
 	if (row !== null && tile !== null) scrollIntoRowAfterRemoval(row, tile, item);
 }
 
 /** Upstream's `sk`: the next item's focus target, else the previous one's. */
-function siblingFocusTarget(item: Element): HTMLElement | null {
-	for (let next = item.nextElementSibling; next !== null; next = next.nextElementSibling) {
+function siblingFocusTarget(item: Element): HTMLElement | null
+{
+	for (let next = item.nextElementSibling; next !== null; next = next.nextElementSibling)
+	{
 		const target = focusTarget(next);
 		if (target !== null) return target;
 	}
-	for (let previous = item.previousElementSibling; previous !== null; previous = previous.previousElementSibling) {
+	for (let previous = item.previousElementSibling; previous !== null; previous = previous.previousElementSibling)
+	{
 		const target = focusTarget(previous);
 		if (target !== null) return target;
 	}
@@ -193,7 +236,8 @@ function siblingFocusTarget(item: Element): HTMLElement | null {
 }
 
 /** Upstream's `Vn`: a pointer press on a remove button doesn't take focus, so the editor keeps it. */
-function keepFocusOnPointerRemove(event: MouseEvent<HTMLButtonElement>): void {
+function keepFocusOnPointerRemove(event: MouseEvent<HTMLButtonElement>): void
+{
 	event.preventDefault();
 }
 
@@ -202,14 +246,17 @@ function keepFocusOnPointerRemove(event: MouseEvent<HTMLButtonElement>): void {
  * removes; Enter removes on keydown and, for the last item, focuses the
  * editor on Enter's keyup, as upstream's `D5` does with the key.
  */
-function removeButtonProps(sessionId: string, remove: () => void) {
+function removeButtonProps(sessionId: string, remove: () => void)
+{
 	return {
 		onMouseDown: keepFocusOnPointerRemove,
-		onClick: (event: MouseEvent<HTMLButtonElement>) => {
+		onClick: (event: MouseEvent<HTMLButtonElement>) =>
+		{
 			handOffFocus(event.currentTarget.closest("li"), sessionId, null);
 			remove();
 		},
-		onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => {
+		onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) =>
+		{
 			if (event.key !== "Enter" || event.repeat || event.nativeEvent.isComposing) return;
 			event.preventDefault();
 			handOffFocus(event.currentTarget.closest("li"), sessionId, event.key);
@@ -222,7 +269,8 @@ function removeButtonProps(sessionId: string, remove: () => void) {
  * Upstream's `Fi`: Delete or Backspace on a focused CardLink removes its tile,
  * handing focus off first; modifiers, key repeat and IME composition don't.
  */
-function removeOnDeleteKey(event: KeyboardEvent<HTMLElement>, sessionId: string, remove: () => void): void {
+function removeOnDeleteKey(event: KeyboardEvent<HTMLElement>, sessionId: string, remove: () => void): void
+{
 	if (event.key !== "Delete" && event.key !== "Backspace") return;
 	if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
 	if (event.repeat || event.nativeEvent.isComposing) return;
@@ -232,13 +280,17 @@ function removeOnDeleteKey(event: KeyboardEvent<HTMLElement>, sessionId: string,
 }
 
 /** Upstream's `ry`: a tile taking keyboard focus scrolls into the row's view. */
-function scrollFocusedTileIntoRow(row: HTMLElement, event: globalThis.FocusEvent): void {
+function scrollFocusedTileIntoRow(row: HTMLElement, event: globalThis.FocusEvent): void
+{
 	const target = event.target;
 	if (!(target instanceof HTMLElement)) return;
 	let visible = false;
-	try {
+	try
+	{
 		visible = target.matches(":focus-visible");
-	} catch {
+	}
+	catch
+	{
 		// A browser that can't parse :focus-visible scrolls nothing.
 	}
 	if (!visible) return;
@@ -246,7 +298,8 @@ function scrollFocusedTileIntoRow(row: HTMLElement, event: globalThis.FocusEvent
 	if (tile?.parentElement === row) scrollTileIntoRow(row, tile);
 }
 
-interface TransitionDocument {
+interface TransitionDocument
+{
 	startViewTransition?: (options: {types: string[]; update: () => void}) => unknown;
 }
 
@@ -255,27 +308,41 @@ interface TransitionDocument {
  * transition, so the old tile shrinks out while its siblings slide; at once
  * in a hidden tab, under reduced motion, or without view-transition types.
  */
-function withAttachmentsTransition(update: () => void): void {
+function withAttachmentsTransition(update: () => void): void
+{
 	const start = (document as TransitionDocument).startViewTransition;
 	const supported =
 		typeof CSS !== "undefined" &&
 		typeof CSS.supports === "function" &&
 		CSS.supports("selector(:active-view-transition-type(cds-attachments))");
-	if (start === undefined || !supported || document.visibilityState === "hidden" || isMotionReduced()) {
+	if (start === undefined || !supported || document.visibilityState === "hidden" || isMotionReduced())
+	{
 		update();
 		return;
 	}
-	start.call(document, {types: ["cds-attachments"], update});
+	start.call(
+		document,
+		{
+			types: ["cds-attachments"],
+			update,
+		},
+	);
 }
 
 /** Upstream's `--cds-attachment-vt-name`: the tile's view-transition name, its id made ident-safe. */
-function viewTransitionStyle(id: string): CSSProperties {
-	return {"--cds-attachment-vt-name": `cds-attachment-${id.replaceAll(/[^a-zA-Z0-9_-]/g, "-")}`};
+function viewTransitionStyle(id: string): CSSProperties
+{
+	return {
+		"--cds-attachment-vt-name": `cds-attachment-${id.replaceAll(/[^a-zA-Z0-9_-]/g, "-")}`,
+	};
 }
 
-function removeChip(sessionId: string, chip: ContextChip): void {
-	withAttachmentsTransition(() => {
-		if (chip.previewUrl !== undefined && typeof URL.revokeObjectURL === "function") {
+function removeChip(sessionId: string, chip: ContextChip): void
+{
+	withAttachmentsTransition(() =>
+	{
+		if (chip.previewUrl !== undefined && typeof URL.revokeObjectURL === "function")
+		{
 			URL.revokeObjectURL(chip.previewUrl);
 		}
 		removeContextChip(sessionId, chip.id);
@@ -286,11 +353,19 @@ function removeChip(sessionId: string, chip: ContextChip): void {
  * Upstream's pending tile state: `data-state="pending"`, `aria-busy`, a
  * Skeleton over the body, and an sr-only status beside it.
  */
-function pendingProps(chip: ContextChip) {
-	return chip.status === "pending" ? {"data-state": "pending", "aria-busy": true} : {};
+function pendingProps(chip: ContextChip)
+{
+	return chip.status === "pending"
+		?
+			{
+				"data-state": "pending",
+				"aria-busy": true,
+			}
+		: {};
 }
 
-function PendingSkeleton() {
+function PendingSkeleton()
+{
 	return (
 		<span aria-hidden="true" className="contents">
 			<Skeleton className="pointer-events-none absolute inset-0 size-full rounded-card-xs" />
@@ -317,12 +392,14 @@ function Tile({
 	/** What the remove button names, when it isn't the chip's label: an excerpt's own text. */
 	name?: string;
 	children: ReactNode;
-}) {
+})
+{
 	const label = contextChipLabel(chip);
 	const pending = chip.status === "pending";
 	const ref = useRef<HTMLLIElement>(null);
 	// Upstream's `nr`: a tile added after the row mounted scrolls into its view.
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const tile = ref.current;
 		const row = tile?.parentElement;
 		if (!restored && tile && row) scrollTileIntoRow(row, tile);
@@ -335,7 +412,12 @@ function Tile({
 			data-chip-label={label}
 			data-cds={kind}
 			data-cds-attachment=""
-			{...(restored ? {"data-cds-attachment-restored": ""} : {})}
+			{...(restored
+				?
+					{
+						"data-cds-attachment-restored": "",
+					}
+				: {})}
 			tabIndex={-1}
 			style={viewTransitionStyle(chip.id)}
 			{...pendingProps(chip)}
@@ -352,7 +434,8 @@ function Tile({
 				type="button"
 				data-cds-attachment-remove=""
 				aria-label={`Remove ${name}`}
-				{...removeButtonProps(sessionId, () => {
+				{...removeButtonProps(sessionId, () =>
+				{
 					removeChip(sessionId, chip);
 				})}
 				className={TILE_REMOVE_CLASS}
@@ -384,7 +467,8 @@ function ImageChip({
 	restored: boolean;
 	/** Opens the preview, morphing out of the tile's image. */
 	onOpen: (chip: ContextChip, origin: HTMLImageElement | null) => void;
-}) {
+})
+{
 	const label = contextChipLabel(chip);
 	const pending = chip.status === "pending";
 	const imgRef = useRef<HTMLImageElement>(null);
@@ -400,10 +484,12 @@ function ImageChip({
 			decoding="async"
 			width={120}
 			height={120}
-			onLoad={() => {
+			onLoad={() =>
+			{
 				setLoaded(true);
 			}}
-			onError={() => {
+			onError={() =>
+			{
 				setBroken(true);
 			}}
 			className={`absolute inset-0 block size-full rounded-card-xs object-contain transition-opacity duration-200 motion-reduce:transition-none ${opacity}`}
@@ -424,17 +510,21 @@ function ImageChip({
 					data-cds="CardLink"
 					role="button"
 					tabIndex={0}
-					onClick={(event) => {
+					onClick={(event) =>
+					{
 						event.preventDefault();
 						onOpen(chip, imgRef.current);
 					}}
-					onKeyDown={(event) => {
-						if (event.key === "Enter" || event.key === " ") {
+					onKeyDown={(event) =>
+					{
+						if (event.key === "Enter" || event.key === " ")
+						{
 							event.preventDefault();
 							onOpen(chip, imgRef.current);
 						}
 
-						removeOnDeleteKey(event, sessionId, () => {
+						removeOnDeleteKey(event, sessionId, () =>
+						{
 							removeChip(sessionId, chip);
 						});
 					}}
@@ -457,7 +547,8 @@ function ImageChip({
 }
 
 /** The upper-cased extension upstream's file tile shows in its Badge. */
-function extensionBadge(name: string): string | undefined {
+function extensionBadge(name: string): string | undefined
+{
 	const dot = name.lastIndexOf(".");
 	return dot > 0 && dot < name.length - 1 ? name.slice(dot + 1).toUpperCase() : undefined;
 }
@@ -466,7 +557,8 @@ function extensionBadge(name: string): string | undefined {
  * Whether a file tile opens upstream's text preview: a settled upload with a
  * text extension, whose bytes are in memory or, restored after a reload, saved.
  */
-function opensTextPreview(chip: ContextChip): boolean {
+function opensTextPreview(chip: ContextChip): boolean
+{
 	return (
 		(chip.file !== undefined || chip.path !== undefined) &&
 		chip.status !== "pending" &&
@@ -475,7 +567,8 @@ function opensTextPreview(chip: ContextChip): boolean {
 }
 
 /** A restored file tile's bytes, fetched from its saved copy and kept on the tile. */
-async function fetchChipFile(sessionId: string, chip: ContextChip): Promise<File> {
+async function fetchChipFile(sessionId: string, chip: ContextChip): Promise<File>
+{
 	const response = await fetch(`/api/attachments?path=${encodeURIComponent(chip.path ?? "")}`);
 	if (!response.ok) throw new Error(`Attachment read failed: ${response.status}`);
 	const file = new File([await response.blob()], contextChipLabel(chip));
@@ -497,7 +590,8 @@ function FileChip({
 	chip: ContextChip;
 	restored: boolean;
 	onOpen: (chip: ContextChip, link: HTMLElement) => void;
-}) {
+})
+{
 	const label = contextChipLabel(chip);
 	const badge = extensionBadge(label);
 	return (
@@ -513,17 +607,21 @@ function FileChip({
 					data-cds="CardLink"
 					role="button"
 					tabIndex={0}
-					onClick={(event) => {
+					onClick={(event) =>
+					{
 						event.preventDefault();
 						onOpen(chip, event.currentTarget);
 					}}
-					onKeyDown={(event) => {
-						if (event.key === "Enter" || event.key === " ") {
+					onKeyDown={(event) =>
+					{
+						if (event.key === "Enter" || event.key === " ")
+						{
 							event.preventDefault();
 							onOpen(chip, event.currentTarget);
 						}
 
-						removeOnDeleteKey(event, sessionId, () => {
+						removeOnDeleteKey(event, sessionId, () =>
+						{
 							removeChip(sessionId, chip);
 						});
 					}}
@@ -568,7 +666,8 @@ function ExcerptChip({
 	chip: ContextChip;
 	restored: boolean;
 	onOpen: (chip: ContextChip, link: HTMLElement) => void;
-}) {
+})
+{
 	const text = chip.text ?? "";
 	return (
 		<Tile
@@ -583,17 +682,21 @@ function ExcerptChip({
 				data-cds="CardLink"
 				role="button"
 				tabIndex={0}
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					event.preventDefault();
 					onOpen(chip, event.currentTarget);
 				}}
-				onKeyDown={(event) => {
-					if (event.key === "Enter" || event.key === " ") {
+				onKeyDown={(event) =>
+				{
+					if (event.key === "Enter" || event.key === " ")
+					{
 						event.preventDefault();
 						onOpen(chip, event.currentTarget);
 					}
 
-					removeOnDeleteKey(event, sessionId, () => {
+					removeOnDeleteKey(event, sessionId, () =>
+					{
 						removeChip(sessionId, chip);
 					});
 				}}
@@ -606,7 +709,8 @@ function ExcerptChip({
 	);
 }
 
-interface TextPreview {
+interface TextPreview
+{
 	title: string;
 	text: string;
 	variant: "excerpt" | "file";
@@ -617,13 +721,28 @@ interface TextPreview {
  * snippet, so an "Excerpt"; a selection or terminal output is a labeled one,
  * a file preview titled by its label.
  */
-function textPreviewOf(chip: ContextChip): TextPreview | null {
+function textPreviewOf(chip: ContextChip): TextPreview | null
+{
 	if (chip.text === undefined) return null;
 	if (chip.kind === "message" || chip.kind === "excerpt")
-		return {title: "Excerpt", text: chip.text, variant: "excerpt"};
-	if (chip.kind === "pasted-text") return {title: "Pasted text", text: chip.text, variant: "file"};
-	if (chip.kind === "selection" || chip.kind === "terminal") {
-		return {title: contextChipLabel(chip), text: chip.text, variant: "file"};
+		return {
+			title: "Excerpt",
+			text: chip.text,
+			variant: "excerpt",
+		};
+	if (chip.kind === "pasted-text")
+		return {
+			title: "Pasted text",
+			text: chip.text,
+			variant: "file",
+		};
+	if (chip.kind === "selection" || chip.kind === "terminal")
+	{
+		return {
+			title: contextChipLabel(chip),
+			text: chip.text,
+			variant: "file",
+		};
 	}
 	return null;
 }
@@ -639,18 +758,22 @@ function PillLink({
 	onOpen: (link: HTMLElement) => void;
 	onRemove: () => void;
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<span
 			data-cds="CardLink"
 			role="button"
 			tabIndex={0}
-			onClick={(event) => {
+			onClick={(event) =>
+			{
 				event.preventDefault();
 				onOpen(event.currentTarget);
 			}}
-			onKeyDown={(event) => {
-				if (event.key === "Enter" || event.key === " ") {
+			onKeyDown={(event) =>
+			{
+				if (event.key === "Enter" || event.key === " ")
+				{
 					event.preventDefault();
 					onOpen(event.currentTarget);
 				}
@@ -685,57 +808,96 @@ export function AttachedContextChips({
 	 * the scroll into view; by default, those present when this strip mounts.
 	 */
 	restoredIds?: ReadonlySet<string> | undefined;
-}) {
+})
+{
 	const [mountedIds] = useState<ReadonlySet<string>>(() => new Set(context.map((chip) => chip.id)));
 	const restored = restoredIds ?? mountedIds;
 	const rowRef = useRef<HTMLUListElement>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const row = rowRef.current;
 		if (row === null) return undefined;
-		const onFocusIn = (event: globalThis.FocusEvent) => {
+		const onFocusIn = (event: globalThis.FocusEvent) =>
+		{
 			scrollFocusedTileIntoRow(row, event);
 		};
 		row.addEventListener("focusin", onFocusIn);
-		return () => {
+		return () =>
+		{
 			row.removeEventListener("focusin", onFocusIn);
 		};
 	}, []);
-	const [preview, setPreview] = useState<{chipId: string; origin: HTMLImageElement | null} | null>(null);
+	const [preview, setPreview] = useState<
+	{
+		chipId: string;
+		origin: HTMLImageElement | null;
+	} | null>(null);
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const previewChip = preview === null ? undefined : context.find((chip) => chip.id === preview.chipId);
-	const openPreview = (chip: ContextChip, origin: HTMLImageElement | null) => {
+	const openPreview = (chip: ContextChip, origin: HTMLImageElement | null) =>
+	{
 		opens.current += 1;
-		setPreview({chipId: chip.id, origin});
+		setPreview(
+			{
+				chipId: chip.id,
+				origin,
+			},
+		);
 		setPreviewOpen(true);
 	};
-	const [textPreview, setTextPreview] = useState<{
+	const [textPreview, setTextPreview] = useState<
+	{
 		chipId: string;
 		opener: HTMLElement;
 		/** An uploaded file's read text, titled by its name and sized by the whole file. */
-		read?: TextPreview & {size: number};
+		read?: TextPreview &
+		{
+			size: number;
+		};
 	} | null>(null);
 	const textPreviewChip = textPreview === null ? undefined : context.find((chip) => chip.id === textPreview.chipId);
 	const textPreviewContent =
 		textPreviewChip === undefined ? null : (textPreview?.read ?? textPreviewOf(textPreviewChip));
 	// Upstream's `dt`: each open bumps it, so a file read that resolves after a later open is dropped.
 	const opens = useRef(0);
-	const openTextPreview = (chip: ContextChip, opener: HTMLElement) => {
+	const openTextPreview = (chip: ContextChip, opener: HTMLElement) =>
+	{
 		opens.current += 1;
-		setTextPreview({chipId: chip.id, opener});
-	};
-	const openFilePreview = (chip: ContextChip, opener: HTMLElement) => {
-		const open = (opens.current += 1);
-		const read = async (file: File) => ({file, text: await file.slice(0, TEXT_PREVIEW_LIMIT).text()});
-		(chip.file === undefined ? fetchChipFile(sessionId, chip).then(read) : read(chip.file)).then(
-			({file, text}) => {
-				if (open !== opens.current) return;
-				setTextPreview({
-					chipId: chip.id,
-					opener,
-					read: {title: contextChipLabel(chip), text, variant: "file", size: file.size},
-				});
+		setTextPreview(
+			{
+				chipId: chip.id,
+				opener,
 			},
-			() => {
+		);
+	};
+	const openFilePreview = (chip: ContextChip, opener: HTMLElement) =>
+	{
+		const open = (opens.current += 1);
+		const read = async (file: File) => (
+		{
+			file,
+			text: await file.slice(0, TEXT_PREVIEW_LIMIT).text(),
+		});
+		(chip.file === undefined ? fetchChipFile(sessionId, chip).then(read) : read(chip.file)).then(
+			({file, text}) =>
+			{
+				if (open !== opens.current) return;
+				setTextPreview(
+					{
+						chipId: chip.id,
+						opener,
+						read:
+						{
+							title: contextChipLabel(chip),
+							text,
+							variant: "file",
+							size: file.size,
+						},
+					},
+				);
+			},
+			() =>
+			{
 				// An unreadable file opens nothing, as upstream's `Yi` swallows the error.
 			},
 		);
@@ -753,8 +915,10 @@ export function AttachedContextChips({
 					ref={rowRef}
 					className="flex items-end gap-[6px] *:shrink-0 overflow-x-auto overscroll-x-contain scroll-fade-x p-2 pt-2.5 pe-2.5 -m-2 -mt-2.5 -me-2.5"
 				>
-					{context.map((chip) => {
-						if (chip.kind === "image" && chip.previewUrl !== undefined) {
+					{context.map((chip) =>
+					{
+						if (chip.kind === "image" && chip.previewUrl !== undefined)
+						{
 							return (
 								<ImageChip
 									key={chip.id}
@@ -765,7 +929,8 @@ export function AttachedContextChips({
 								/>
 							);
 						}
-						if (chip.kind === "file" && chip.name !== undefined) {
+						if (chip.kind === "file" && chip.name !== undefined)
+						{
 							return (
 								<FileChip
 									key={chip.id}
@@ -776,7 +941,8 @@ export function AttachedContextChips({
 								/>
 							);
 						}
-						if (chip.kind === "excerpt") {
+						if (chip.kind === "excerpt")
+						{
 							return (
 								<ExcerptChip
 									key={chip.id}
@@ -802,10 +968,12 @@ export function AttachedContextChips({
 								) : (
 									<PillLink
 										sessionId={sessionId}
-										onOpen={(opener) => {
+										onOpen={(opener) =>
+										{
 											openTextPreview(chip, opener);
 										}}
-										onRemove={() => {
+										onRemove={() =>
+										{
 											removeChip(sessionId, chip);
 										}}
 									>
@@ -815,7 +983,8 @@ export function AttachedContextChips({
 								<button
 									type="button"
 									aria-label={`Remove ${label}`}
-									{...removeButtonProps(sessionId, () => {
+									{...removeButtonProps(sessionId, () =>
+									{
 										removeChip(sessionId, chip);
 									})}
 									className={CHIP_REMOVE_CLASS}
@@ -824,7 +993,8 @@ export function AttachedContextChips({
 								</button>
 							</>
 						);
-						const chipProps = {
+						const chipProps =
+						{
 							"data-chip-label": label,
 							title: formatContextAttachment(chip),
 							className: `self-end ${CHIP_CLASS}`,
@@ -834,7 +1004,8 @@ export function AttachedContextChips({
 							chip.kind === "file" && chip.path !== undefined
 								? absoluteMentionPath(chip.path, cwd)
 								: null;
-						if (cwd === undefined || filePath === null) {
+						if (cwd === undefined || filePath === null)
+						{
 							return (
 								<li key={chip.id} {...chipProps}>
 									{body}
@@ -858,7 +1029,8 @@ export function AttachedContextChips({
 							</ContextMenu>
 						);
 					})}
-					{comments.map((comment) => {
+					{comments.map((comment) =>
+					{
 						const label = chipLabel(comment);
 						return (
 							<li
@@ -873,7 +1045,8 @@ export function AttachedContextChips({
 								<button
 									type="button"
 									aria-label={`Remove comment on ${label}`}
-									{...removeButtonProps(sessionId, () => {
+									{...removeButtonProps(sessionId, () =>
+									{
 										removeQueuedDiffComment(sessionId, comment.id);
 									})}
 									className={CHIP_REMOVE_CLASS}
@@ -893,7 +1066,8 @@ export function AttachedContextChips({
 						alt={contextChipLabel(previewChip)}
 						open={previewOpen}
 						origin={preview.origin}
-						onClose={() => {
+						onClose={() =>
+						{
 							setPreviewOpen(false);
 						}}
 					/>
@@ -905,7 +1079,8 @@ export function AttachedContextChips({
 						key={textPreview.chipId}
 						open
 						{...textPreviewContent}
-						onClose={() => {
+						onClose={() =>
+						{
 							setTextPreview(null);
 						}}
 						finalFocus={() => (textPreview.opener.isConnected ? textPreview.opener : true)}

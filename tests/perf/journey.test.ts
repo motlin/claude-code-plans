@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {
+import
+{
 	browserEnvironment,
 	createJourneyTracker,
 	deriveFormFactor,
@@ -10,7 +11,8 @@ import {
 	PERF_ANCHORS,
 	startJourney,
 } from "../../src/lib/perf/journey";
-import {
+import
+{
 	flushMicrotasks,
 	keyDownAt,
 	makeJourneyHarness as makeHarness,
@@ -21,8 +23,10 @@ import {
 
 registerJourneyHarnessLifecycle();
 
-describe("deriveOrigin", () => {
-	it("classifies loopback hostnames as localhost and everything else as remote", () => {
+describe("deriveOrigin", () =>
+{
+	it("classifies loopback hostnames as localhost and everything else as remote", () =>
+	{
 		expect(
 			[
 				"localhost",
@@ -47,21 +51,50 @@ describe("deriveOrigin", () => {
 	});
 });
 
-describe("deriveFormFactor", () => {
-	it("is phone for a coarse pointer or a viewport under 768px, otherwise desktop", () => {
+describe("deriveFormFactor", () =>
+{
+	it("is phone for a coarse pointer or a viewport under 768px, otherwise desktop", () =>
+	{
 		expect([
-			deriveFormFactor({coarsePointer: true, viewportWidth: 1440}),
-			deriveFormFactor({coarsePointer: false, viewportWidth: 767}),
-			deriveFormFactor({coarsePointer: false, viewportWidth: 768}),
-			deriveFormFactor({coarsePointer: false, viewportWidth: 1440}),
+			deriveFormFactor(
+				{
+					coarsePointer: true,
+					viewportWidth: 1440,
+				},
+			),
+			deriveFormFactor(
+				{
+					coarsePointer: false,
+					viewportWidth: 767,
+				},
+			),
+			deriveFormFactor(
+				{
+					coarsePointer: false,
+					viewportWidth: 768,
+				},
+			),
+			deriveFormFactor(
+				{
+					coarsePointer: false,
+					viewportWidth: 1440,
+				},
+			),
 		]).toStrictEqual(["phone", "phone", "desktop", "desktop"]);
 	});
 });
 
-describe("journey tracker", () => {
-	it("waits for the anchor to exist with data, then ends on the rAF+setTimeout paint", async () => {
+describe("journey tracker", () =>
+{
+	it("waits for the anchor to exist with data, then ends on the rAF+setTimeout paint", async () =>
+	{
 		const harness = makeHarness();
-		harness.tracker.startJourney("J3", {trigger: pointerDownAt(100)});
+		harness.tracker.startJourney(
+			"J3",
+			{
+				trigger: pointerDownAt(100),
+			},
+		);
 		const done = harness.tracker.endJourneyWhenRendered("J3", '[data-perf-region="main"]');
 
 		const main = document.createElement("div");
@@ -78,31 +111,48 @@ describe("journey tracker", () => {
 		harness.runFrame();
 		const sample = await done;
 
-		expect({
-			journey: sample?.journey,
-			start: sample?.start,
-			end: sample?.end,
-			duration: sample?.duration,
-			endSource: sample?.endSource,
-			trigger: sample?.trigger,
-			marks: harness.performance.marks,
-			measures: harness.performance.measures,
-		}).toStrictEqual({
-			journey: "J3",
-			start: 100,
-			end: 250,
-			duration: 150,
-			endSource: "raf",
-			trigger: "pointerdown",
-			marks: [
-				{name: "ccb:J3:start", startTime: 100},
-				{name: "ccb:J3:end", startTime: 250},
-			],
-			measures: [{name: "ccb:J3", start: 100, end: 250}],
-		});
+		expect(
+			{
+				journey: sample?.journey,
+				start: sample?.start,
+				end: sample?.end,
+				duration: sample?.duration,
+				endSource: sample?.endSource,
+				trigger: sample?.trigger,
+				marks: harness.performance.marks,
+				measures: harness.performance.measures,
+			},
+		).toStrictEqual(
+			{
+				journey: "J3",
+				start: 100,
+				end: 250,
+				duration: 150,
+				endSource: "raf",
+				trigger: "pointerdown",
+				marks: [
+					{
+						name: "ccb:J3:start",
+						startTime: 100,
+					},
+					{
+						name: "ccb:J3:end",
+						startTime: 250,
+					},
+				],
+				measures: [
+					{
+						name: "ccb:J3",
+						start: 100,
+						end: 250,
+					},
+				],
+			},
+		);
 	});
 
-	it("prefers the Element Timing renderTime for the anchor", async () => {
+	it("prefers the Element Timing renderTime for the anchor", async () =>
+	{
 		const harness = makeHarness();
 		const row = document.createElement("div");
 		row.setAttribute("data-testid", "transcript-row");
@@ -110,29 +160,56 @@ describe("journey tracker", () => {
 		row.setAttribute("elementtiming", "turn");
 		row.textContent = "hello";
 
-		harness.tracker.startJourney("J3", {trigger: pointerDownAt(10)});
+		harness.tracker.startJourney(
+			"J3",
+			{
+				trigger: pointerDownAt(10),
+			},
+		);
 		const done = harness.tracker.endJourneyWhenRendered("J3", PERF_ANCHORS.transcriptRow);
 		document.body.append(row);
 		await flushMicrotasks();
-		harness.observers.emit("element", [{element: row, renderTime: 80, loadTime: 0, startTime: 80}]);
+		harness.observers.emit("element", [
+			{
+				element: row,
+				renderTime: 80,
+				loadTime: 0,
+				startTime: 80,
+			},
+		]);
 		harness.performance.clock = 95;
 		harness.runFrame();
 
-		expect(await done).toMatchObject({end: 80, duration: 70, endSource: "element-timing"});
+		expect(await done).toMatchObject(
+			{
+				end: 80,
+				duration: 70,
+				endSource: "element-timing",
+			},
+		);
 	});
 
-	it("attaches build, origin, form factor, route and entries inside the window", async () => {
-		const harness = makeHarness({
-			hostname: "plans.m4.notlin.com",
-			matchesCoarsePointer: () => true,
-			mode: "prod",
-		});
+	it("attaches build, origin, form factor, route and entries inside the window", async () =>
+	{
+		const harness = makeHarness(
+			{
+				hostname: "plans.m4.notlin.com",
+				matchesCoarsePointer: () => true,
+				mode: "prod",
+			},
+		);
 		const main = document.createElement("div");
 		main.setAttribute("data-perf-region", "main");
 		main.textContent = "ready";
 		document.body.append(main);
 
-		harness.tracker.startJourney("J2", {trigger: "navigation", sizeBytes: 2_000_000});
+		harness.tracker.startJourney(
+			"J2",
+			{
+				trigger: "navigation",
+				sizeBytes: 2_000_000,
+			},
+		);
 		harness.observers.emit("resource", [
 			{
 				name: "http://plans/api/sessions/abc/transcript",
@@ -143,7 +220,13 @@ describe("journey tracker", () => {
 				responseStart: 20,
 				responseEnd: 35,
 				transferSize: 1234,
-				serverTiming: [{name: "total", duration: 12, description: ""}],
+				serverTiming: [
+					{
+						name: "total",
+						duration: 12,
+						description: "",
+					},
+				],
 			},
 		]);
 		harness.observers.emit("long-animation-frame", [
@@ -151,13 +234,32 @@ describe("journey tracker", () => {
 				startTime: 40,
 				duration: 70,
 				blockingDuration: 20,
-				scripts: [{invoker: "click", sourceURL: "app.js", sourceFunctionName: "f", duration: 50}],
+				scripts: [
+					{
+						invoker: "click",
+						sourceURL: "app.js",
+						sourceFunctionName: "f",
+						duration: 50,
+					},
+				],
 			},
 		]);
 		harness.observers.emit("layout-shift", [
-			{startTime: 45, value: 0.1, hadRecentInput: false},
-			{startTime: 46, value: 0.5, hadRecentInput: true},
-			{startTime: 500, value: 0.3, hadRecentInput: false},
+			{
+				startTime: 45,
+				value: 0.1,
+				hadRecentInput: false,
+			},
+			{
+				startTime: 46,
+				value: 0.5,
+				hadRecentInput: true,
+			},
+			{
+				startTime: 500,
+				value: 0.3,
+				hadRecentInput: false,
+			},
 		]);
 		harness.observers.emit("event", [
 			{
@@ -175,70 +277,105 @@ describe("journey tracker", () => {
 		harness.performance.clock = 120;
 		harness.runFrame();
 
-		expect(await done).toStrictEqual({
-			journey: "J2",
-			trigger: "navigation",
-			start: 0,
-			end: 120,
-			duration: 120,
-			endSource: "raf",
-			route: "/session/abc",
-			sizeBucket: "M",
-			buildSha: "abc1234",
-			mode: "prod",
-			origin: "remote",
-			formFactor: "phone",
-			hardwareConcurrency: 8,
-			resources: [
-				{
-					name: "http://plans/api/sessions/abc/transcript",
-					initiatorType: "fetch",
-					startTime: 5,
-					duration: 30,
-					requestStart: 6,
-					responseStart: 20,
-					responseEnd: 35,
-					transferSize: 1234,
-					serverTiming: [{name: "total", duration: 12, description: ""}],
-				},
-			],
-			longAnimationFrames: [
-				{
-					startTime: 40,
-					duration: 70,
-					blockingDuration: 20,
-					scripts: [{invoker: "click", sourceURL: "app.js", sourceFunctionName: "f", duration: 50}],
-				},
-			],
-			layoutShifts: [
-				{startTime: 45, value: 0.1, hadRecentInput: false},
-				{startTime: 46, value: 0.5, hadRecentInput: true},
-			],
-			cls: 0.1,
-			events: [
-				{
-					name: "pointerdown",
-					startTime: 2,
-					duration: 24,
-					processingStart: 3,
-					processingEnd: 9,
-					interactionId: 7,
-				},
-			],
-		});
+		expect(await done).toStrictEqual(
+			{
+				journey: "J2",
+				trigger: "navigation",
+				start: 0,
+				end: 120,
+				duration: 120,
+				endSource: "raf",
+				route: "/session/abc",
+				sizeBucket: "M",
+				buildSha: "abc1234",
+				mode: "prod",
+				origin: "remote",
+				formFactor: "phone",
+				hardwareConcurrency: 8,
+				resources: [
+					{
+						name: "http://plans/api/sessions/abc/transcript",
+						initiatorType: "fetch",
+						startTime: 5,
+						duration: 30,
+						requestStart: 6,
+						responseStart: 20,
+						responseEnd: 35,
+						transferSize: 1234,
+						serverTiming: [
+							{
+								name: "total",
+								duration: 12,
+								description: "",
+							},
+						],
+					},
+				],
+				longAnimationFrames: [
+					{
+						startTime: 40,
+						duration: 70,
+						blockingDuration: 20,
+						scripts: [
+							{
+								invoker: "click",
+								sourceURL: "app.js",
+								sourceFunctionName: "f",
+								duration: 50,
+							},
+						],
+					},
+				],
+				layoutShifts: [
+					{
+						startTime: 45,
+						value: 0.1,
+						hadRecentInput: false,
+					},
+					{
+						startTime: 46,
+						value: 0.5,
+						hadRecentInput: true,
+					},
+				],
+				cls: 0.1,
+				events: [
+					{
+						name: "pointerdown",
+						startTime: 2,
+						duration: 24,
+						processingStart: 3,
+						processingEnd: 9,
+						interactionId: 7,
+					},
+				],
+			},
+		);
 	});
 
-	it("derives localhost origin and a desktop form factor, or phone for a narrow viewport", async () => {
+	it("derives localhost origin and a desktop form factor, or phone for a narrow viewport", async () =>
+	{
 		const desktop = makeHarness();
-		const narrow = makeHarness({hostname: "127.0.0.1", viewportWidth: () => 600});
+		const narrow = makeHarness(
+			{
+				hostname: "127.0.0.1",
+				viewportWidth: () => 600,
+			},
+		);
 		const main = document.createElement("div");
 		main.setAttribute("data-perf-region", "main");
 		main.textContent = "ready";
 		document.body.append(main);
 
 		const results = [];
-		for (const harness of [desktop, narrow]) {
-			harness.tracker.startJourney("J1", {trigger: "navigation"});
+		for (const harness of [desktop, narrow])
+		{
+			harness.tracker.startJourney(
+				"J1",
+				{
+					trigger: "navigation",
+				},
+			);
 			const done = harness.tracker.endJourneyWhenRendered("J1", '[data-perf-region="main"]');
 			await flushMicrotasks();
 			harness.runFrame();
@@ -252,9 +389,15 @@ describe("journey tracker", () => {
 		]);
 	});
 
-	it("waits for every anchor of a multi-anchor journey before ending it", async () => {
+	it("waits for every anchor of a multi-anchor journey before ending it", async () =>
+	{
 		const harness = makeHarness();
-		harness.tracker.startJourney("F1", {trigger: "navigation"});
+		harness.tracker.startJourney(
+			"F1",
+			{
+				trigger: "navigation",
+			},
+		);
 		const done = harness.tracker.endJourneyWhenRendered("F1", [
 			'[data-perf-region="sidebar_recents"]',
 			'[data-perf-region="main"]',
@@ -276,10 +419,18 @@ describe("journey tracker", () => {
 		harness.performance.clock = 300;
 		harness.runFrame();
 
-		expect(await done).toMatchObject({journey: "F1", start: 0, end: 300, endSource: "raf"});
+		expect(await done).toMatchObject(
+			{
+				journey: "F1",
+				start: 0,
+				end: 300,
+				endSource: "raf",
+			},
+		);
 	});
 
-	it("attaches prefetchHit to the sample only when the journey was started with it", async () => {
+	it("attaches prefetchHit to the sample only when the journey was started with it", async () =>
+	{
 		const harness = makeHarness();
 		const main = document.createElement("div");
 		main.setAttribute("data-perf-region", "main");
@@ -287,11 +438,20 @@ describe("journey tracker", () => {
 		document.body.append(main);
 
 		const results = [];
-		for (const prefetchHit of [true, false, undefined]) {
-			harness.tracker.startJourney("F5", {
-				trigger: pointerDownAt(5),
-				...(prefetchHit === undefined ? {} : {prefetchHit}),
-			});
+		for (const prefetchHit of [true, false, undefined])
+		{
+			harness.tracker.startJourney(
+				"F5",
+				{
+					trigger: pointerDownAt(5),
+					...(prefetchHit === undefined
+						? {}
+						:
+							{
+								prefetchHit,
+							}),
+				},
+			);
 			const done = harness.tracker.endJourneyWhenRendered("F5", '[data-perf-region="main"]');
 			await flushMicrotasks();
 			harness.runFrame();
@@ -302,9 +462,15 @@ describe("journey tracker", () => {
 		expect(results).toStrictEqual([true, false, "absent"]);
 	});
 
-	it("drops a sample whose tab was hidden at any point during the journey", async () => {
+	it("drops a sample whose tab was hidden at any point during the journey", async () =>
+	{
 		const harness = makeHarness();
-		harness.tracker.startJourney("J3", {trigger: pointerDownAt(100)});
+		harness.tracker.startJourney(
+			"J3",
+			{
+				trigger: pointerDownAt(100),
+			},
+		);
 		const done = harness.tracker.endJourneyWhenRendered("J3", '[data-perf-region="main"]');
 		harness.setVisibility("hidden");
 		harness.setVisibility("visible");
@@ -321,15 +487,22 @@ describe("journey tracker", () => {
 		expect(harness.sent).toStrictEqual([]);
 	});
 
-	it("queues samples and flushes the batch when the tab becomes hidden", async () => {
+	it("queues samples and flushes the batch when the tab becomes hidden", async () =>
+	{
 		const harness = makeHarness();
 		const main = document.createElement("div");
 		main.setAttribute("data-perf-region", "main");
 		main.textContent = "ready";
 		document.body.append(main);
 
-		for (const id of ["J1", "J3"]) {
-			harness.tracker.startJourney(id, {trigger: "navigation"});
+		for (const id of ["J1", "J3"])
+		{
+			harness.tracker.startJourney(
+				id,
+				{
+					trigger: "navigation",
+				},
+			);
 			const done = harness.tracker.endJourneyWhenRendered(id, '[data-perf-region="main"]');
 			await flushMicrotasks();
 			harness.runFrame();
@@ -346,95 +519,185 @@ describe("journey tracker", () => {
 	});
 });
 
-describe("default browser tracker", () => {
-	afterEach(() => {
+describe("default browser tracker", () =>
+{
+	afterEach(() =>
+	{
 		vi.unstubAllGlobals();
 	});
 
-	it("times a journey against the real window and beacons the batch to /api/perf on hide", async () => {
+	it("times a journey against the real window and beacons the batch to /api/perf on hide", async () =>
+	{
 		const sendBeacon = vi.fn<(path: string, body: string) => boolean>((_path: string, _body: string) => true);
-		vi.stubGlobal("navigator", {sendBeacon, hardwareConcurrency: 4});
+		vi.stubGlobal(
+			"navigator",
+			{
+				sendBeacon,
+				hardwareConcurrency: 4,
+			},
+		);
 		const row = document.createElement("div");
 		row.setAttribute("data-testid", "transcript-row");
 		row.setAttribute("data-perf-row", "assistant_text");
 		row.textContent = "hello";
 		document.body.append(row);
 
-		startJourney("J2", {trigger: "navigation"});
+		startJourney(
+			"J2",
+			{
+				trigger: "navigation",
+			},
+		);
 		const sample = await endJourneyWhenRendered("J2", PERF_ANCHORS.transcriptRow);
 		setDocumentVisibility("hidden");
 
-		expect({
-			journey: sample?.journey,
-			trigger: sample?.trigger,
-			route: sample?.route,
-			origin: sample?.origin,
-			formFactor: sample?.formFactor,
-			buildSha: sample?.buildSha,
-			mode: sample?.mode,
-			beacons: sendBeacon.mock.calls.map(([path, body]) => [path, JSON.parse(body).samples.length]),
-		}).toStrictEqual({
-			journey: "J2",
-			trigger: "navigation",
-			route: "/",
-			origin: "localhost",
-			formFactor: "desktop",
-			buildSha: "unknown",
-			mode: "dev",
-			beacons: [["/api/perf", 1]],
-		});
+		expect(
+			{
+				journey: sample?.journey,
+				trigger: sample?.trigger,
+				route: sample?.route,
+				origin: sample?.origin,
+				formFactor: sample?.formFactor,
+				buildSha: sample?.buildSha,
+				mode: sample?.mode,
+				beacons: sendBeacon.mock.calls.map(([path, body]) => [path, JSON.parse(body).samples.length]),
+			},
+		).toStrictEqual(
+			{
+				journey: "J2",
+				trigger: "navigation",
+				route: "/",
+				origin: "localhost",
+				formFactor: "desktop",
+				buildSha: "unknown",
+				mode: "dev",
+				beacons: [["/api/perf", 1]],
+			},
+		);
 	});
 });
 
-describe("journey triggers and next-paint ends", () => {
-	it("starts an epoch-stamped trigger on the navigation clock", async () => {
+describe("journey triggers and next-paint ends", () =>
+{
+	it("starts an epoch-stamped trigger on the navigation clock", async () =>
+	{
 		const harness = makeHarness();
-		document.body.append(Object.assign(document.createElement("main"), {textContent: "row"}));
-		harness.tracker.startJourney("F6", {trigger: {type: "jsonl-write", epochMs: 1_000_400}});
+		document.body.append(
+			Object.assign(
+				document.createElement("main"),
+				{
+					textContent: "row",
+				},
+			),
+		);
+		harness.tracker.startJourney(
+			"F6",
+			{
+				trigger:
+				{
+					type: "jsonl-write",
+					epochMs: 1_000_400,
+				},
+			},
+		);
 		const done = harness.tracker.endJourneyWhenRendered("F6", "main");
 		await flushMicrotasks();
 		harness.performance.clock = 900;
 		harness.runFrame();
 
-		expect(await done).toMatchObject({journey: "F6", trigger: "jsonl-write", start: 400, end: 900, duration: 500});
+		expect(await done).toMatchObject(
+			{
+				journey: "F6",
+				trigger: "jsonl-write",
+				start: 400,
+				end: 900,
+				duration: 500,
+			},
+		);
 	});
 
-	it("ends at the Event Timing entry for the triggering keydown when the browser reported one", async () => {
+	it("ends at the Event Timing entry for the triggering keydown when the browser reported one", async () =>
+	{
 		const harness = makeHarness();
-		harness.tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		harness.tracker.startJourney(
+			"F8",
+			{
+				trigger: keyDownAt(300),
+			},
+		);
 		const done = harness.tracker.endJourneyAtNextPaint("F8");
 		harness.observers.emit("event", [
-			{name: "keydown", startTime: 120, duration: 40, processingStart: 121, processingEnd: 125, interactionId: 1},
-			{name: "keydown", startTime: 300, duration: 48, processingStart: 302, processingEnd: 330, interactionId: 2},
+			{
+				name: "keydown",
+				startTime: 120,
+				duration: 40,
+				processingStart: 121,
+				processingEnd: 125,
+				interactionId: 1,
+			},
+			{
+				name: "keydown",
+				startTime: 300,
+				duration: 48,
+				processingStart: 302,
+				processingEnd: 330,
+				interactionId: 2,
+			},
 		]);
 		harness.performance.clock = 352;
 		harness.runFrame();
 
-		expect(await done).toMatchObject({
-			journey: "F8",
-			trigger: "keydown",
-			start: 300,
-			end: 348,
-			duration: 48,
-			endSource: "event-timing",
-		});
+		expect(await done).toMatchObject(
+			{
+				journey: "F8",
+				trigger: "keydown",
+				start: 300,
+				end: 348,
+				duration: 48,
+				endSource: "event-timing",
+			},
+		);
 	});
 
-	it("falls back to the rAF paint when the keydown was too fast for an Event Timing entry", async () => {
+	it("falls back to the rAF paint when the keydown was too fast for an Event Timing entry", async () =>
+	{
 		const harness = makeHarness();
-		harness.tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		harness.tracker.startJourney(
+			"F8",
+			{
+				trigger: keyDownAt(300),
+			},
+		);
 		const done = harness.tracker.endJourneyAtNextPaint("F8");
 		harness.performance.clock = 309;
 		harness.runFrame();
 
-		expect(await done).toMatchObject({start: 300, end: 309, duration: 9, endSource: "raf"});
+		expect(await done).toMatchObject(
+			{
+				start: 300,
+				end: 309,
+				duration: 9,
+				endSource: "raf",
+			},
+		);
 	});
 
-	it("drops a next-paint journey superseded by the next keystroke", async () => {
+	it("drops a next-paint journey superseded by the next keystroke", async () =>
+	{
 		const harness = makeHarness();
-		harness.tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		harness.tracker.startJourney(
+			"F8",
+			{
+				trigger: keyDownAt(300),
+			},
+		);
 		const first = harness.tracker.endJourneyAtNextPaint("F8");
-		harness.tracker.startJourney("F8", {trigger: keyDownAt(305)});
+		harness.tracker.startJourney(
+			"F8",
+			{
+				trigger: keyDownAt(305),
+			},
+		);
 		const second = harness.tracker.endJourneyAtNextPaint("F8");
 		harness.performance.clock = 316;
 		harness.runFrame();
@@ -443,46 +706,71 @@ describe("journey triggers and next-paint ends", () => {
 	});
 });
 
-describe("browser environment after the window is torn down", () => {
-	afterEach(() => {
+describe("browser environment after the window is torn down", () =>
+{
+	afterEach(() =>
+	{
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
 
-	function captureBrowserScheduling(): {frames: FrameRequestCallback[]; timers: (() => void)[]} {
+	function captureBrowserScheduling():
+	{
+		frames: FrameRequestCallback[];
+		timers: (() => void)[];
+	}
+	{
 		const frames: FrameRequestCallback[] = [];
 		const timers: (() => void)[] = [];
 		vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => frames.push(callback));
-		vi.spyOn(window, "setTimeout").mockImplementation(((callback: () => void, ms?: number) => {
+		vi.spyOn(window, "setTimeout").mockImplementation(((callback: () => void, ms?: number) =>
+		{
 			if (ms === 0) timers.push(callback);
 			return timers.length;
 		}) as typeof window.setTimeout);
-		return {frames, timers};
+		return {
+			frames,
+			timers,
+		};
 	}
 
-	it("fires a paint frame scheduled before teardown without throwing", () => {
+	it("fires a paint frame scheduled before teardown without throwing", () =>
+	{
 		const {frames} = captureBrowserScheduling();
 		const tracker = createJourneyTracker(browserEnvironment());
-		tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		tracker.startJourney(
+			"F8",
+			{
+				trigger: keyDownAt(300),
+			},
+		);
 		void tracker.endJourneyAtNextPaint("F8");
 		vi.stubGlobal("window", undefined);
 
-		expect(() => {
+		expect(() =>
+		{
 			for (const frame of frames.splice(0)) frame(0);
 		}).not.toThrow();
 		vi.unstubAllGlobals();
 		tracker.dispose();
 	});
 
-	it("drops a journey whose post-paint timer fires after teardown, without throwing", async () => {
+	it("drops a journey whose post-paint timer fires after teardown, without throwing", async () =>
+	{
 		const {frames, timers} = captureBrowserScheduling();
 		const tracker = createJourneyTracker(browserEnvironment());
-		tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		tracker.startJourney(
+			"F8",
+			{
+				trigger: keyDownAt(300),
+			},
+		);
 		const done = tracker.endJourneyAtNextPaint("F8");
 		for (const frame of frames.splice(0)) frame(0);
 		vi.stubGlobal("window", undefined);
 
-		expect(() => {
+		expect(() =>
+		{
 			for (const timer of timers.splice(0)) timer();
 		}).not.toThrow();
 		vi.unstubAllGlobals();
@@ -490,10 +778,16 @@ describe("browser environment after the window is torn down", () => {
 		expect(await Promise.race([done, flushMicrotasks().then(() => "pending")])).toBe("pending");
 	});
 
-	it("never resolves a paint that dispose cancelled", async () => {
+	it("never resolves a paint that dispose cancelled", async () =>
+	{
 		const {frames, timers} = captureBrowserScheduling();
 		const tracker = createJourneyTracker(browserEnvironment());
-		tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		tracker.startJourney(
+			"F8",
+			{
+				trigger: keyDownAt(300),
+			},
+		);
 		const done = tracker.endJourneyAtNextPaint("F8");
 		tracker.dispose();
 		for (const frame of frames.splice(0)) frame(0);

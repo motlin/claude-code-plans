@@ -17,7 +17,8 @@ export function terminalShortcutAction({
 	open: boolean;
 	focusedTile: TileId;
 	focusInTerminal: boolean;
-}): TerminalShortcutAction {
+}): TerminalShortcutAction
+{
 	if (!available) return "noop";
 	if (!open) return "open";
 	if (focusInTerminal) return "close";

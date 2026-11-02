@@ -6,12 +6,14 @@ import {createContext, useContext} from "react";
  */
 export type ToastKind = "success" | "warning" | "error" | "danger";
 
-export interface ToastAction {
+export interface ToastAction
+{
 	label: string;
 	onAction: () => void;
 }
 
-export interface ToastOptions {
+export interface ToastOptions
+{
 	message: string;
 	kind: ToastKind;
 	description?: string;
@@ -26,9 +28,11 @@ export interface ToastOptions {
 
 export const ToastContext = createContext<((options: ToastOptions) => void) | null>(null);
 
-export function useToast(): (options: ToastOptions) => void {
+export function useToast(): (options: ToastOptions) => void
+{
 	const toast = useContext(ToastContext);
-	if (!toast) {
+	if (!toast)
+	{
 		throw new Error("useToast must be used within a ToastProvider");
 	}
 	return toast;

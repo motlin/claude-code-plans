@@ -15,7 +15,8 @@ const HIGHLIGHT_BASE_CLASS = "pointer-events-none absolute -inset-y-0.5 -start-0
  * translucent 6% `bg-accent-layer`, the open card's 12% `bg-accent`, and both stacked (as a
  * gradient) while the open chip is still hovered.
  */
-const HIGHLIGHT_CLASS = {
+const HIGHLIGHT_CLASS =
+{
 	fizzy: `${HIGHLIGHT_BASE_CLASS} [@media(hover:hover)]:group-hover:bg-upstream-accent-layer group-data-[popup-open]:bg-upstream-accent-pressed [@media(hover:hover)]:group-data-[popup-open]:group-hover:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]`,
 	base: `${HIGHLIGHT_BASE_CLASS} opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-data-[popup-open]:opacity-100 bg-upstream-accent-pressed`,
 };
@@ -30,8 +31,10 @@ const CARD_DESCRIPTION_CLASS =
  * Upstream's shared hover-card content (`ln`): a muted `/name` line, then the description when
  * there is one. An unknown command (`description` undefined) gets a "No preview available" footnote.
  */
-export function SlashCommandCardBody({name, description}: {name: string; description: string | undefined}) {
-	if (description === undefined) {
+export function SlashCommandCardBody({name, description}: {name: string; description: string | undefined})
+{
+	if (description === undefined)
+	{
 		return <span className="text-[12px]/[16px] text-ink-muted">No preview available</span>;
 	}
 	return (
@@ -50,7 +53,8 @@ export function SlashCommandCardBody({name, description}: {name: string; descrip
  * Upstream's accent `/name` button: a 50% "/" glyph in a fixed slot, then the name. Hovering or
  * focusing it opens a hover card above; it has no click action.
  */
-function SlashCommandChip({name}: {name: string}) {
+function SlashCommandChip({name}: {name: string})
+{
 	const commands = useContext(SlashCommandsContext);
 	const description = commands.find((command) => command.name === name)?.description;
 	const look = useFizzyLake("color") ? "fizzy" : "base";
@@ -90,6 +94,7 @@ function SlashCommandChip({name}: {name: string}) {
  * A user prompt that opens with a slash command: the chip, then the rest of the prompt flowing
  * on the same line, as upstream shows it.
  */
-export function SlashCommandText({name, rest}: {name: string; rest: string}) {
+export function SlashCommandText({name, rest}: {name: string; rest: string})
+{
 	return <UserPlainText text={rest} prefix={<SlashCommandChip name={name} />} />;
 }

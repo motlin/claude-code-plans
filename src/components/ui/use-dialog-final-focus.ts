@@ -1,6 +1,7 @@
 import {type RefObject, useEffect, useLayoutEffect, useMemo, useRef} from "react";
 
-import {
+import
+{
 	EDITABLE_SELECTOR,
 	handoffTargets,
 	isModalDialog,
@@ -18,41 +19,81 @@ export type FinalFocus = (closeType: CloseType) => HTMLElement | boolean | null;
 
 export type DialogPopupRef = ((element: HTMLElement | null) => void) & RefObject<HTMLElement | null>;
 
-interface Options {
+interface Options
+{
 	open: boolean;
 	modal?: boolean;
 	triggerRef?: RefObject<Element | null> | undefined;
 }
 
-interface Chain {
+interface Chain
+{
 	targets: Element[];
 	dialog: Element | null;
 }
 
-function htmlElement(value: unknown): HTMLElement | null {
+function htmlElement(value: unknown): HTMLElement | null
+{
 	return value instanceof HTMLElement ? value : null;
 }
 
-function isConnected(element: Element): boolean {
+function isConnected(element: Element): boolean
+{
 	return element.isConnected;
 }
 
-function popupDocument(popup: Element | null): Document {
+function popupDocument(popup: Element | null): Document
+{
 	return popup?.ownerDocument ?? document;
 }
 
 /** Upstream `eI`: blur a background element, dropping the `relatedTarget` the blur would carry. */
-function blurWithoutRelatedTarget(element: Element) {
-	const scrub = (event: Event) => {
-		if (event instanceof FocusEvent && event.relatedTarget !== null) {
-			Object.defineProperty(event, "relatedTarget", {value: null});
+function blurWithoutRelatedTarget(element: Element)
+{
+	const scrub = (event: Event) =>
+	{
+		if (event instanceof FocusEvent && event.relatedTarget !== null)
+		{
+			Object.defineProperty(
+				event,
+				"relatedTarget",
+				{
+					value: null,
+				},
+			);
 		}
 	};
-	element.addEventListener("blur", scrub, {capture: true, once: true});
-	element.addEventListener("focusout", scrub, {capture: true, once: true});
+	element.addEventListener(
+		"blur",
+		scrub,
+		{
+			capture: true,
+			once: true,
+		},
+	);
+	element.addEventListener(
+		"focusout",
+		scrub,
+		{
+			capture: true,
+			once: true,
+		},
+	);
 	htmlElement(element)?.blur();
-	element.removeEventListener("blur", scrub, {capture: true});
-	element.removeEventListener("focusout", scrub, {capture: true});
+	element.removeEventListener(
+		"blur",
+		scrub,
+		{
+			capture: true,
+		},
+	);
+	element.removeEventListener(
+		"focusout",
+		scrub,
+		{
+			capture: true,
+		},
+	);
 }
 
 /**
@@ -61,33 +102,46 @@ function blurWithoutRelatedTarget(element: Element) {
  * target to another open overlay that holds focus at close, and refocuses a parent dialog when nothing
  * else is left.
  */
-export function useDialogFinalFocus({open, modal = true, triggerRef}: Options): {
+export function useDialogFinalFocus({open, modal = true, triggerRef}: Options):
+{
 	finalFocus: FinalFocus;
 	popupRef: DialogPopupRef;
-} {
+}
+{
 	const elementRef = useRef<HTMLElement | null>(null);
 	const openerRef = useRef<Element | null>(null);
-	const chainRef = useRef<Chain>({targets: [], dialog: null});
+	const chainRef = useRef<Chain>(
+		{
+			targets: [],
+			dialog: null,
+		},
+	);
 	const triggerFallbackRef = useRef<Element | null>(null);
 	const openedRef = useRef(false);
 	const pendingRef = useRef(false);
 	const unmountedRef = useRef(false);
 
-	const popupRef = useMemo(() => {
+	const popupRef = useMemo(() =>
+	{
 		const ref: DialogPopupRef = Object.assign(
-			(element: HTMLElement | null) => {
+			(element: HTMLElement | null) =>
+			{
 				elementRef.current = element;
 				ref.current = element;
 				registerDialogPopup(element, modal);
 			},
-			{current: elementRef.current},
+			{
+				current: elementRef.current,
+			},
 		);
 		return ref;
 	}, [modal]);
 
 	// Upstream `Vg`: record the opener and its chain once per open.
-	useLayoutEffect(() => {
-		if (!open) {
+	useLayoutEffect(() =>
+	{
+		if (!open)
+		{
 			openedRef.current = false;
 			return;
 		}
@@ -103,13 +157,15 @@ export function useDialogFinalFocus({open, modal = true, triggerRef}: Options): 
 	}, [open]);
 
 	// Upstream effect `p`: the trigger fallback, and a modal's blur of a background element still focused.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!pendingRef.current) return;
 		pendingRef.current = false;
 		if (!modal && triggerRef === undefined) return;
 		const popup = elementRef.current;
 		const doc = popupDocument(popup);
-		if (openerRef.current === null) {
+		if (openerRef.current === null)
+		{
 			const trigger = triggerRef?.current ?? null;
 			triggerFallbackRef.current =
 				trigger?.isConnected === true && popup?.contains(trigger) !== true ? trigger : null;
@@ -120,16 +176,20 @@ export function useDialogFinalFocus({open, modal = true, triggerRef}: Options): 
 		if (outside !== null && popup?.contains(outside) !== true) blurWithoutRelatedTarget(outside);
 	}, [open, modal, triggerRef]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		unmountedRef.current = false;
-		return () => {
+		return () =>
+		{
 			unmountedRef.current = true;
 		};
 	}, []);
 
-	return useMemo(() => {
+	return useMemo(() =>
+	{
 		/** Upstream `y`: a parent modal dialog to refocus once this popup is gone. */
-		const parentDialog = (): HTMLElement | null => {
+		const parentDialog = (): HTMLElement | null =>
+		{
 			const popup = elementRef.current;
 			if (!unmountedRef.current && popup?.isConnected === true && popup.hasAttribute("data-open")) return null;
 			const candidates = [
@@ -151,7 +211,8 @@ export function useDialogFinalFocus({open, modal = true, triggerRef}: Options): 
 		};
 
 		/** Upstream `b`: this popup's return target, to hand to the overlay holding focus. */
-		const returnTarget = (): Element | null => {
+		const returnTarget = (): Element | null =>
+		{
 			const opener = openerRef.current;
 			const fallback = triggerFallbackRef.current;
 			const target =
@@ -167,7 +228,8 @@ export function useDialogFinalFocus({open, modal = true, triggerRef}: Options): 
 		};
 
 		/** Upstream `x`: a target handed to this popup, while focus is idle. */
-		const handedTarget = (): Element | null => {
+		const handedTarget = (): Element | null =>
+		{
 			const popup = elementRef.current;
 			const target = popup === null ? undefined : handoffTargets.get(popup);
 			if (target?.isConnected !== true || isModalDialog(target)) return null;
@@ -178,16 +240,20 @@ export function useDialogFinalFocus({open, modal = true, triggerRef}: Options): 
 		};
 
 		/** Upstream `S`. */
-		const resolve = (): HTMLElement | false | null => {
+		const resolve = (): HTMLElement | false | null =>
+		{
 			const popup = elementRef.current;
 			const doc = popupDocument(popup);
-			if (!modal) {
+			if (!modal)
+			{
 				const active = doc.activeElement;
 				if (active !== null && active !== doc.body && popup?.contains(active) !== true) return false;
 			}
 			const opener = openerRef.current;
-			if (opener !== null) {
-				if (!opener.isConnected) {
+			if (opener !== null)
+			{
+				if (!opener.isConnected)
+				{
 					const target = chainRef.current.targets.find(isConnected);
 					if (target !== undefined) return safeFocusTarget(target, popup);
 					const handed = handedTarget();
@@ -196,7 +262,8 @@ export function useDialogFinalFocus({open, modal = true, triggerRef}: Options): 
 				return safeFocusTarget(opener, popup);
 			}
 			const fallback = triggerFallbackRef.current;
-			if (fallback !== null) {
+			if (fallback !== null)
+			{
 				const active = doc.activeElement;
 				return (active !== null && active.matches(EDITABLE_SELECTOR) && popup?.contains(active) !== true) ||
 					!fallback.isConnected
@@ -208,11 +275,13 @@ export function useDialogFinalFocus({open, modal = true, triggerRef}: Options): 
 		};
 
 		/** Upstream `C`: refocus the parent dialog after close, or park it on a later overlay. */
-		const refocusParent = (doc: Document) => {
+		const refocusParent = (doc: Document) =>
+		{
 			const parent = parentDialog();
 			const popup = elementRef.current;
 			if (parent === null) return;
-			(doc.defaultView ?? window).setTimeout(() => {
+			(doc.defaultView ?? window).setTimeout(() =>
+			{
 				const active = doc.activeElement;
 				const idle =
 					active === null ||
@@ -220,13 +289,21 @@ export function useDialogFinalFocus({open, modal = true, triggerRef}: Options): 
 					(popup?.contains(active) === true && !popup.hasAttribute("data-open"));
 				if (!parent.isConnected || !parent.hasAttribute("data-open")) return;
 				const later = nextOpenOverlayAfter(doc, parent);
-				if (later === null) {
-					if (idle) parent.focus({preventScroll: true});
-				} else if (!parentRefocus.has(later)) parentRefocus.set(later, parent);
+				if (later === null)
+				{
+					if (idle)
+						parent.focus(
+							{
+								preventScroll: true,
+							},
+						);
+				}
+				else if (!parentRefocus.has(later)) parentRefocus.set(later, parent);
 			}, 0);
 		};
 
-		const finalFocus: FinalFocus = (closeType) => {
+		const finalFocus: FinalFocus = (closeType) =>
+		{
 			const popup = elementRef.current;
 			const doc = popupDocument(popup);
 			const holder = modal ? overlayHoldingFocus(doc, popup) : null;
@@ -234,16 +311,25 @@ export function useDialogFinalFocus({open, modal = true, triggerRef}: Options): 
 			if (holder === null) return resolve();
 			const target = returnTarget();
 			if (target !== null && !holder.contains(target)) handoffTargets.set(holder, target);
-			queueMicrotask(() => {
+			queueMicrotask(() =>
+			{
 				if (holder.isConnected || doc.activeElement !== doc.body) return;
-				htmlElement(resolve() ?? triggerFallbackRef.current)?.focus({
-					preventScroll: true,
-					...(closeType === "keyboard" && {focusVisible: true}),
-				});
+				htmlElement(resolve() ?? triggerFallbackRef.current)?.focus(
+					{
+						preventScroll: true,
+						...(closeType === "keyboard" &&
+						{
+							focusVisible: true,
+						}),
+					},
+				);
 			});
 			return false;
 		};
 
-		return {finalFocus, popupRef};
+		return {
+			finalFocus,
+			popupRef,
+		};
 	}, [modal, popupRef]);
 }

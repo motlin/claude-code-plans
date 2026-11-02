@@ -28,41 +28,92 @@ import {useOpenInDefaultApp} from "./use-open-in-default-app";
  */
 
 type TranscriptMenuTarget =
-	| {kind: "prose"}
-	| {kind: "file"; path: string; line: number | undefined}
-	| {kind: "filePath"; text: string}
-	| {kind: "tool"}
-	| {kind: "code"; text: string}
-	| {kind: "link"; href: string};
+	|
+	  {
+			kind: "prose";
+	  }
+	|
+	  {
+			kind: "file";
+			path: string;
+			line: number | undefined;
+	  }
+	|
+	  {
+			kind: "filePath";
+			text: string;
+	  }
+	|
+	  {
+			kind: "tool";
+	  }
+	|
+	  {
+			kind: "code";
+			text: string;
+	  }
+	|
+	  {
+			kind: "link";
+			href: string;
+	  };
 
 /** What was right-clicked: a tool row, a link, inline code (not a fenced block), or else `fallback`. */
-function resolveMenuTarget(element: Element | null, fallback: "prose" | "tool"): TranscriptMenuTarget {
-	if (element === null) return {kind: fallback};
+function resolveMenuTarget(element: Element | null, fallback: "prose" | "tool"): TranscriptMenuTarget
+{
+	if (element === null)
+		return {
+			kind: fallback,
+		};
 	const fileRef = element.closest("[data-file-ref]");
-	if (fileRef !== null) {
+	if (fileRef !== null)
+	{
 		const path = fileRef.getAttribute("data-file-path");
-		if (path?.startsWith("/") !== true) return {kind: "filePath", text: fileRef.textContent};
+		if (path?.startsWith("/") !== true)
+			return {
+				kind: "filePath",
+				text: fileRef.textContent,
+			};
 		const line = fileRef.getAttribute("data-file-line");
-		return {kind: "file", path, line: line === null ? undefined : Number(line)};
+		return {
+			kind: "file",
+			path,
+			line: line === null ? undefined : Number(line),
+		};
 	}
-	if (element.closest("[data-tool-row]") !== null) return {kind: "tool"};
+	if (element.closest("[data-tool-row]") !== null)
+		return {
+			kind: "tool",
+		};
 	const link = element.closest<HTMLAnchorElement>("a[href]");
-	if (link !== null) return {kind: "link", href: link.href};
+	if (link !== null)
+		return {
+			kind: "link",
+			href: link.href,
+		};
 	const code = element.closest("code:not(pre code)");
-	if (code !== null) return {kind: "code", text: code.textContent};
-	return {kind: fallback};
+	if (code !== null)
+		return {
+			kind: "code",
+			text: code.textContent,
+		};
+	return {
+		kind: fallback,
+	};
 }
 
 /**
  * Upstream `ux`'s `selectionText`: the document selection when it reaches into
  * `turn`, or null when there is none or it is blank.
  */
-function snapshotSelection(turn: Element): string | null {
+function snapshotSelection(turn: Element): string | null
+{
 	const selection = turn.ownerDocument.getSelection();
 	if (selection === null || selection.isCollapsed) return null;
 	const text = selection.toString();
 	if (text.trim() === "") return null;
-	for (let index = 0; index < selection.rangeCount; index++) {
+	for (let index = 0; index < selection.rangeCount; index++)
+	{
 		if (selection.getRangeAt(index).intersectsNode(turn)) return text;
 	}
 	return null;
@@ -72,25 +123,45 @@ function snapshotSelection(turn: Element): string | null {
 const GONE_CHECK_WAIT_MS = 150;
 
 /** Whether `path` no longer exists, rechecked now; a failed check counts as present. */
-async function checkGone(queryClient: QueryClient, path: string): Promise<boolean> {
-	try {
-		return (await queryClient.query({...fileRefStatusQueryOptions(path), staleTime: 0})) === "missing";
-	} catch {
+async function checkGone(queryClient: QueryClient, path: string): Promise<boolean>
+{
+	try
+	{
+		return (
+			(await queryClient.query(
+				{
+					...fileRefStatusQueryOptions(path),
+					staleTime: 0,
+				},
+			)) === "missing"
+		);
+	}
+	catch
+	{
 		return false;
 	}
 }
 
-const MENU_WIDTH = {assistant: "w-[225px]", user: "w-[249px]"} as const;
+const MENU_WIDTH =
+{
+	assistant: "w-[225px]",
+	user: "w-[249px]",
+} as const;
 
 /**
  * Upstream's menu sizes to its rows; with "Attach selection as context ⇧⌘L"
  * the assistant menu measured 242.4px, while the user menu's Rewind row
  * already holds it wider.
  */
-const SELECTION_MENU_WIDTH = {assistant: "w-[242.4px]", user: MENU_WIDTH.user} as const;
+const SELECTION_MENU_WIDTH =
+{
+	assistant: "w-[242.4px]",
+	user: MENU_WIDTH.user,
+} as const;
 
 /** The trimmed selection to attach as an Excerpt, or "" when it is too short. */
-function excerptOf(selectionText: string | null): string {
+function excerptOf(selectionText: string | null): string
+{
 	const excerpt = selectionText?.trim() ?? "";
 	return excerpt.length >= MIN_EXCERPT_LENGTH ? excerpt : "";
 }
@@ -100,7 +171,8 @@ const REWIND_DESCRIPTION = "Removes this message and what follows";
 
 type Speaker = keyof typeof MENU_WIDTH;
 
-export interface TranscriptMessageMenuProps {
+export interface TranscriptMessageMenuProps
+{
 	speaker: Speaker;
 	sessionId: string;
 	uuid: string | undefined;
@@ -118,8 +190,13 @@ export function TranscriptMessageMenu({
 	markdown,
 	render,
 	children,
-}: TranscriptMessageMenuProps) {
-	const [target, setTarget] = useState<TranscriptMenuTarget>({kind: "prose"});
+}: TranscriptMessageMenuProps)
+{
+	const [target, setTarget] = useState<TranscriptMenuTarget>(
+		{
+			kind: "prose",
+		},
+	);
 	const [selectionText, setSelectionText] = useState<string | null>(null);
 	const [keyboardArticle, setKeyboardArticle] = useState<HTMLElement | null>(null);
 	const closingMenu = useRef<Element | null>(null);
@@ -132,19 +209,25 @@ export function TranscriptMessageMenu({
 	return (
 		<ContextMenu
 			open={open}
-			onOpenChange={(nextOpen, details) => {
+			onOpenChange={(nextOpen, details) =>
+			{
 				const check = goneCheck.current;
-				if (nextOpen && check !== null) {
+				if (nextOpen && check !== null)
+				{
 					// Upstream waits up to 150ms for the check, then opens and updates when it answers.
 					void Promise.race([
 						check,
-						new Promise((resolve) => {
+						new Promise((resolve) =>
+						{
 							setTimeout(resolve, GONE_CHECK_WAIT_MS);
 						}),
-					]).then(() => {
+					]).then(() =>
+					{
 						if (goneCheck.current === check) setOpen(true);
 					});
-				} else {
+				}
+				else
+				{
 					setOpen(nextOpen);
 				}
 				closingMenu.current =
@@ -162,24 +245,28 @@ export function TranscriptMessageMenu({
 				onPointerDown={pressRecorder.onPointerDown}
 				onPointerUp={pressRecorder.onPointerUp}
 				onContextMenuCapture={pressRecorder.onContextMenuCapture}
-				onTouchStart={(event) => {
+				onTouchStart={(event) =>
+				{
 					const touch = event.touches[0];
 					if (
 						event.touches.length === 1 &&
 						touch !== undefined &&
 						touchOnTextOrSelection(event.currentTarget, touch.clientX, touch.clientY)
-					) {
+					)
+					{
 						// Upstream opens its long-press menu only off text and the selection.
 						event.preventBaseUIHandler();
 					}
 				}}
-				onContextMenu={(event) => {
+				onContextMenu={(event) =>
+				{
 					const nextTarget = resolveMenuTarget(
 						event.target instanceof Element ? event.target : null,
 						fallback,
 					);
 					// Only a tool row lacks upstream's Attach selection row (`fe`).
-					if (wantsNativeContextMenu(event, nextTarget.kind !== "tool")) {
+					if (wantsNativeContextMenu(event, nextTarget.kind !== "tool"))
+					{
 						event.preventBaseUIHandler();
 						// Keep Base UI's document listener (and any outer menu) from preventing the native menu.
 						event.stopPropagation();
@@ -189,10 +276,12 @@ export function TranscriptMessageMenu({
 					setSelectionText(snapshotSelection(event.currentTarget));
 					setGone(false);
 					goneCheck.current = null;
-					if (nextTarget.kind === "file" && queryClient !== undefined) {
+					if (nextTarget.kind === "file" && queryClient !== undefined)
+					{
 						const check = checkGone(queryClient, nextTarget.path);
 						goneCheck.current = check;
-						void check.then((isGone) => {
+						void check.then((isGone) =>
+						{
 							if (goneCheck.current === check) setGone(isGone);
 						});
 					}
@@ -212,20 +301,29 @@ export function TranscriptMessageMenu({
 				// A file menu keeps the default 128px minimum width, as upstream's `Un`.
 				{...(target.kind === "file"
 					? {}
-					: {className: (excerptOf(selectionText) === "" ? MENU_WIDTH : SELECTION_MENU_WIDTH)[speaker]})}
+					:
+						{
+							className: (excerptOf(selectionText) === "" ? MENU_WIDTH : SELECTION_MENU_WIDTH)[speaker],
+						})}
 				finalFocus={
 					keyboardArticle === null
 						? undefined
-						: () => {
+						: () =>
+							{
 								const document = keyboardArticle.ownerDocument;
 								const active = document.activeElement;
 								if (
 									closingMenu.current !== null &&
 									keyboardArticle.isConnected &&
 									(active === document.body || closingMenu.current.contains(active))
-								) {
+								)
+								{
 									// Base UI otherwise descends from this tabIndex=-1 article to its first link.
-									keyboardArticle.focus({preventScroll: true});
+									keyboardArticle.focus(
+										{
+											preventScroll: true,
+										},
+									);
 								}
 								return false;
 							}
@@ -236,7 +334,15 @@ export function TranscriptMessageMenu({
 					target={target}
 					selectionText={selectionText}
 					markdown={markdown}
-					message={uuid === undefined ? undefined : {sessionId, uuid}}
+					message={
+						uuid === undefined
+							? undefined
+							:
+								{
+									sessionId,
+									uuid,
+								}
+					}
 					sessionId={sessionId}
 					gone={gone}
 				/>
@@ -245,17 +351,23 @@ export function TranscriptMessageMenu({
 	);
 }
 
-function copy(text: string): void {
+function copy(text: string): void
+{
 	void writeClipboardText(text);
 }
 
 function actionProps(
 	action: ((message: TranscriptMessageRef) => void) | undefined,
 	message: TranscriptMessageRef | undefined,
-) {
-	if (action === undefined || message === undefined) return {disabled: true};
+)
+{
+	if (action === undefined || message === undefined)
+		return {
+			disabled: true,
+		};
 	return {
-		onSelect: () => {
+		onSelect: () =>
+		{
 			action(message);
 		},
 	};
@@ -279,20 +391,28 @@ function TranscriptMenuItems({
 	sessionId: string;
 	/** The right-clicked file ref no longer exists. */
 	gone: boolean;
-}) {
+})
+{
 	const actions = useContext(TranscriptActionsContext);
 	const cwd = useFileRefsCwd();
 	const openInDefaultApp = useOpenInDefaultApp();
-	if (target.kind === "file") {
+	if (target.kind === "file")
+	{
 		return (
 			<FileActionsMenuItems
 				path={target.path}
 				cwd={cwd}
-				{...(target.line === undefined ? {} : {line: target.line})}
+				{...(target.line === undefined
+					? {}
+					:
+						{
+							line: target.line,
+						})}
 				surface="transcript"
 				gone={gone}
 				onAttachContext={(attachment) => attachContext(sessionId, attachment)}
-				onOpenInDefaultApp={() => {
+				onOpenInDefaultApp={() =>
+				{
 					openInDefaultApp(target.path);
 				}}
 			/>
@@ -309,13 +429,18 @@ function TranscriptMenuItems({
 			description={FORK_DESCRIPTION}
 			{...(actions.forkDisabledReason === undefined
 				? actionProps(actions.forkFrom, message)
-				: {disabled: true, disabledReason: actions.forkDisabledReason})}
+				:
+					{
+						disabled: true,
+						disabledReason: actions.forkDisabledReason,
+					})}
 		>
 			Fork from here
 		</MenuItem>
 	);
 
-	if (target.kind === "tool") {
+	if (target.kind === "tool")
+	{
 		return (
 			<>
 				{pin}
@@ -332,7 +457,8 @@ function TranscriptMenuItems({
 				<>
 					<MenuItem
 						shortcut="cmd+c"
-						onSelect={() => {
+						onSelect={() =>
+						{
 							copy(selectionText);
 						}}
 					>
@@ -344,7 +470,8 @@ function TranscriptMenuItems({
 			{target.kind === "filePath" && (
 				<>
 					<MenuItem
-						onSelect={() => {
+						onSelect={() =>
+						{
 							copy(target.text);
 						}}
 					>
@@ -356,7 +483,8 @@ function TranscriptMenuItems({
 			{target.kind === "code" && (
 				<>
 					<MenuItem
-						onSelect={() => {
+						onSelect={() =>
+						{
 							copy(target.text);
 						}}
 					>
@@ -371,7 +499,8 @@ function TranscriptMenuItems({
 						Open in default browser
 					</MenuItem>
 					<MenuItem
-						onSelect={() => {
+						onSelect={() =>
+						{
 							copy(target.href);
 						}}
 					>
@@ -381,14 +510,16 @@ function TranscriptMenuItems({
 				</>
 			)}
 			<MenuItem
-				onSelect={() => {
+				onSelect={() =>
+				{
 					copy(speaker === "user" ? markdown : markdownToPlainText(markdown));
 				}}
 			>
 				Copy message
 			</MenuItem>
 			<MenuItem
-				onSelect={() => {
+				onSelect={() =>
+				{
 					copy(markdown);
 				}}
 			>
@@ -396,15 +527,32 @@ function TranscriptMenuItems({
 			</MenuItem>
 			<MenuSeparator />
 			{excerpt === "" ? (
-				<MenuItem onSelect={() => attachContext(sessionId, {kind: "message", text: markdown})}>
+				<MenuItem
+					onSelect={() =>
+						attachContext(
+							sessionId,
+							{
+								kind: "message",
+								text: markdown,
+							},
+						)
+					}
+				>
 					Attach message as context
 				</MenuItem>
 			) : (
 				<MenuItem
 					shortcut="shift+cmd+l"
-					onSelect={() => {
+					onSelect={() =>
+					{
 						window.getSelection()?.removeAllRanges();
-						attachContext(sessionId, {kind: "excerpt", text: excerpt});
+						attachContext(
+							sessionId,
+							{
+								kind: "excerpt",
+								text: excerpt,
+							},
+						);
 					}}
 				>
 					Attach selection as context
@@ -424,7 +572,11 @@ function TranscriptMenuItems({
 							description={REWIND_DESCRIPTION}
 							{...(actions.rewindDisabledReason === undefined
 								? actionProps(actions.rewindTo, message)
-								: {disabled: true, disabledReason: actions.rewindDisabledReason})}
+								:
+									{
+										disabled: true,
+										disabledReason: actions.rewindDisabledReason,
+									})}
 						>
 							Rewind to here
 						</MenuItem>

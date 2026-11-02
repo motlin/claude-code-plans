@@ -1,11 +1,13 @@
 import {useQueryClient} from "@tanstack/react-query";
 import {useEffect, useLayoutEffect, useRef, useState} from "react";
-import {
+import
+{
 	type PermissionModeConsent,
 	permissionModeConsentQueryOptions,
 	postPermissionModeConsent,
 } from "../lib/api/permission-mode-consent";
-import {
+import
+{
 	type ConsentMode,
 	consentCopy,
 	isAcked,
@@ -21,7 +23,8 @@ import {ExternalTextLink} from "./external-text-link";
 const PATH_CLASS =
 	"scroll-fade-y focus-visible:outline-hidden mt-3 max-h-24 overflow-y-auto font-mono-ui text-code text-primary break-all focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fill-accent focus-visible:-outline-offset-2 focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom";
 
-export interface PendingConsent {
+export interface PendingConsent
+{
 	mode: ConsentMode;
 	asksEveryTime: boolean;
 }
@@ -30,21 +33,25 @@ export interface PendingConsent {
  * Upstream's workspace folder block: the path on one visible line, RTL runs isolated, and a focusable "Workspace
  * folder" group only while it overflows its four lines.
  */
-function WorkspacePath({workspace}: {workspace: string}) {
+function WorkspacePath({workspace}: {workspace: string})
+{
 	const ref = useRef<HTMLDivElement>(null);
 	const [overflows, setOverflows] = useState(false);
 	const runs = bidiRuns(visibleSingleLine(workspace));
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const element = ref.current;
 		if (element === null) return undefined;
-		const measure = () => {
+		const measure = () =>
+		{
 			setOverflows(element.scrollHeight > element.clientHeight);
 		};
 		measure();
 		if (typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [workspace]);
@@ -56,13 +63,20 @@ function WorkspacePath({workspace}: {workspace: string}) {
 			title={bidiIsolatedText(runs)}
 			className={PATH_CLASS}
 			{...(overflows
-				? {
+				?
+					{
 						tabIndex: 0,
 						role: "group",
 						"aria-label": "Workspace folder",
-						onFocus: (event: React.FocusEvent<HTMLDivElement>) => {
-							if (event.currentTarget.matches(":focus-visible")) {
-								event.currentTarget.scrollIntoView({block: "nearest"});
+						onFocus: (event: React.FocusEvent<HTMLDivElement>) =>
+						{
+							if (event.currentTarget.matches(":focus-visible"))
+							{
+								event.currentTarget.scrollIntoView(
+									{
+										block: "nearest",
+									},
+								);
 							}
 						},
 					}
@@ -97,20 +111,29 @@ export function PermissionModeConsentDialog({
 	onConfirm: () => void;
 	/** Cancel, Escape or a backdrop click. */
 	onCancel: () => void;
-}) {
+})
+{
 	// Keeps the copy while the dialog fades out.
 	const [shown, setShown] = useState(pending);
 	if (pending !== null && pending !== shown) setShown(pending);
 	const confirmedRef = useRef(false);
 	const current = pending ?? shown;
 	if (current === null) return null;
-	const copy = consentCopy({mode: current.mode, workspace, asksEveryTime: current.asksEveryTime});
+	const copy = consentCopy(
+		{
+			mode: current.mode,
+			workspace,
+			asksEveryTime: current.asksEveryTime,
+		},
+	);
 	return (
 		<ConfirmDialog
 			open={pending !== null}
-			onOpenChange={(open) => {
+			onOpenChange={(open) =>
+			{
 				if (open) return;
-				if (confirmedRef.current) {
+				if (confirmedRef.current)
+				{
 					confirmedRef.current = false;
 					return;
 				}
@@ -120,7 +143,8 @@ export function PermissionModeConsentDialog({
 			body={copy.description}
 			confirmLabel={copy.confirmLabel}
 			variant="primary"
-			onConfirm={() => {
+			onConfirm={() =>
+			{
 				confirmedRef.current = true;
 				onConfirm();
 			}}
@@ -137,7 +161,8 @@ export function PermissionModeConsentDialog({
 	);
 }
 
-export interface GuardRequest {
+export interface GuardRequest
+{
 	mode: ConsentMode;
 	proceed: () => void;
 	/** Cancel, Escape or the backdrop. */
@@ -145,7 +170,12 @@ export interface GuardRequest {
 }
 
 /** Until the store answers, nothing counts as consented: the dialog asks. */
-const UNKNOWN: PermissionModeConsent = {autoModeIsDefault: false, autoConsented: false, acks: []};
+const UNKNOWN: PermissionModeConsent =
+{
+	autoModeIsDefault: false,
+	autoConsented: false,
+	acks: [],
+};
 
 /**
  * Reads the store fresh for each guarded pick, then proceeds at once when nothing is owed, or holds the pick behind
@@ -160,44 +190,92 @@ export function PermissionModeConsentGate({
 	request: GuardRequest | null;
 	workspace: string;
 	onSettled: () => void;
-}) {
+})
+{
 	const queryClient = useQueryClient();
 	const [asking, setAsking] = useState<GuardRequest | null>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (request === null) return undefined;
 		let cancelled = false;
 		void queryClient
-			.query({...permissionModeConsentQueryOptions, staleTime: 0})
+			.query(
+				{
+					...permissionModeConsentQueryOptions,
+					staleTime: 0,
+				},
+			)
 			.catch(() => UNKNOWN)
-			.then((state) => {
+			.then((state) =>
+			{
 				if (cancelled) return;
 				const owed =
-					needsConsent(request.mode, {autoIsDefault: state.autoModeIsDefault}) &&
-					!isAcked(request.mode, {...state, workspace});
-				if (owed) {
+					needsConsent(
+						request.mode,
+						{
+							autoIsDefault: state.autoModeIsDefault,
+						},
+					) &&
+					!isAcked(
+						request.mode,
+						{
+							...state,
+							workspace,
+						},
+					);
+				if (owed)
+				{
 					setAsking(request);
-				} else {
+				}
+				else
+				{
 					onSettled();
 					request.proceed();
 				}
 			});
-		return () => {
+		return () =>
+		{
 			cancelled = true;
 		};
 		// A new request object is a new pick; the workspace and callback are read at that pick.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [request]);
 
-	const confirm = () => {
+	const confirm = () =>
+	{
 		if (asking === null) return;
 		const key = permissionModeConsentQueryOptions.queryKey;
 		const state = queryClient.getQueryData(key) ?? UNKNOWN;
-		queryClient.setQueryData(key, {...state, ...recordAck({mode: asking.mode, workspace, ...state})});
-		void postPermissionModeConsent({mode: asking.mode, workspace})
-			.then((stored) => {
+		queryClient.setQueryData(
+			key,
+			{
+				...state,
+				...recordAck(
+					{
+						mode: asking.mode,
+						workspace,
+						...state,
+					},
+				),
+			},
+		);
+		void postPermissionModeConsent(
+			{
+				mode: asking.mode,
+				workspace,
+			},
+		)
+			.then((stored) =>
+			{
 				queryClient.setQueryData(key, stored);
 			})
-			.catch(async () => queryClient.invalidateQueries({queryKey: key}));
+			.catch(async () =>
+				queryClient.invalidateQueries(
+					{
+						queryKey: key,
+					},
+				),
+			);
 		setAsking(null);
 		onSettled();
 		asking.proceed();
@@ -205,10 +283,19 @@ export function PermissionModeConsentGate({
 
 	return (
 		<PermissionModeConsentDialog
-			pending={asking === null ? null : {mode: asking.mode, asksEveryTime: false}}
+			pending={
+				asking === null
+					? null
+					:
+						{
+							mode: asking.mode,
+							asksEveryTime: false,
+						}
+			}
 			workspace={workspace}
 			onConfirm={confirm}
-			onCancel={() => {
+			onCancel={() =>
+			{
 				setAsking(null);
 				onSettled();
 				asking?.decline?.();

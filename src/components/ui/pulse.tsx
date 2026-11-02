@@ -1,6 +1,9 @@
 import type {CSSProperties, HTMLAttributes, ReactElement, ReactNode} from "react";
 
-type DataAttributes = {[key: `data-${string}`]: string | undefined};
+type DataAttributes =
+{
+	[key: `data-${string}`]: string | undefined;
+};
 
 const PULSE_STACKS_CLASS =
 	"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)] stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)] stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]";
@@ -18,13 +21,15 @@ export function Pulse({
 	hollow = false,
 	className,
 	...rest
-}: {
+}:
+{
 	color?: string;
 	animate?: boolean;
 	hollow?: boolean;
 	className?: string;
 } & DataAttributes &
-	Pick<HTMLAttributes<HTMLSpanElement>, "aria-hidden">) {
+	Pick<HTMLAttributes<HTMLSpanElement>, "aria-hidden">)
+{
 	const classes = [
 		"block size-[calc(0.375rem*var(--cds-rem-scale,1))] rounded-full",
 		PULSE_STACKS_CLASS,
@@ -35,8 +40,15 @@ export function Pulse({
 		className,
 	];
 	const style: CSSProperties = hollow
-		? {boxShadow: `inset 0 0 0 1px ${color}, 0 0 0 0.5px var(--cds-page-bg)`}
-		: {background: color, boxShadow: "0 0 0 0.5px var(--cds-page-bg)"};
+		?
+			{
+				boxShadow: `inset 0 0 0 1px ${color}, 0 0 0 0.5px var(--cds-page-bg)`,
+			}
+		:
+			{
+				background: color,
+				boxShadow: "0 0 0 0.5px var(--cds-page-bg)",
+			};
 	return <span {...rest} data-cds="Pulse" className={classes.filter(Boolean).join(" ")} style={style} />;
 }
 
@@ -60,7 +72,8 @@ export function IndicatorSlot({
 	icon: ReactNode;
 	indicator: ReactNode;
 	className?: string;
-}): ReactElement {
+}): ReactElement
+{
 	if (indicator === undefined || indicator === null || indicator === false) return <>{icon}</>;
 	return (
 		<span className={className === undefined ? "grid" : `grid ${className}`}>

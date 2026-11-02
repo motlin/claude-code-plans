@@ -5,7 +5,8 @@
  */
 
 /** A diff comment a sent prompt carried, as upstream's `Pe` annotation. */
-export interface DiffAnnotation {
+export interface DiffAnnotation
+{
 	filePath: string;
 	startLine: number;
 	endLine: number | undefined;
@@ -28,21 +29,48 @@ const HEADER_RE =
 /** Upstream `ne`: a header anywhere, which keeps a following suggestion fence from attaching to the previous one. */
 const ANY_HEADER_RE = /^In `[^`\n]+` at lines? \d+/m;
 
-type Item = {kind: "text"; text: string} | ({kind: "annotation"} & DiffAnnotation);
+type Item =
+	|
+	  {
+			kind: "text";
+			text: string;
+	  }
+	| (
+	  {
+			kind: "annotation";
+	  } & DiffAnnotation);
 
-export function parseDiffAnnotations(prompt: string): {annotations: DiffAnnotation[]; rest: string} {
-	if (!prompt.includes("```") || !prompt.includes("In `")) return {annotations: [], rest: prompt};
+export function parseDiffAnnotations(prompt: string):
+{
+	annotations: DiffAnnotation[];
+	rest: string;
+}
+{
+	if (!prompt.includes("```") || !prompt.includes("In `"))
+		return {
+			annotations: [],
+			rest: prompt,
+		};
 	const items: Item[] = [];
-	const emitText = (text: string) => {
+	const emitText = (text: string) =>
+	{
 		const trimmed = text.trim();
-		if (trimmed !== "") items.push({kind: "text", text: trimmed});
+		if (trimmed !== "")
+			items.push(
+				{
+					kind: "text",
+					text: trimmed,
+				},
+			);
 	};
-	const lastAnnotation = () => {
+	const lastAnnotation = () =>
+	{
 		const last = items.at(-1);
 		return last?.kind === "annotation" ? last : null;
 	};
 	/** Upstream `f`: text up to the first `\n\n\n` joins the annotation's body; returns what follows. */
-	const appendBody = (annotation: DiffAnnotation, text: string, split = true): string => {
+	const appendBody = (annotation: DiffAnnotation, text: string, split = true): string =>
+	{
 		const end = split ? text.indexOf("\n\n\n") : -1;
 		const part = (end === -1 ? text : text.slice(0, end)).trim();
 		if (part !== "") annotation.body = annotation.body === "" ? part : `${annotation.body}\n\n${part}`;
@@ -50,7 +78,8 @@ export function parseDiffAnnotations(prompt: string): {annotations: DiffAnnotati
 	};
 
 	let cursor = 0;
-	for (const fence of prompt.matchAll(FENCE_RE)) {
+	for (const fence of prompt.matchAll(FENCE_RE))
+	{
 		const before = prompt.slice(cursor, fence.index);
 		const trimmed = before.trim();
 		const header = HEADER_RE.exec(trimmed);
@@ -58,9 +87,12 @@ export function parseDiffAnnotations(prompt: string): {annotations: DiffAnnotati
 		const info = fence[2] ?? "";
 		const lang = info === "" ? "text" : info;
 		const previous = lastAnnotation();
-		if (previous === null) {
+		if (previous === null)
+		{
 			emitText(header === null ? before : lead);
-		} else {
+		}
+		else
+		{
 			emitText(
 				header !== null || (lang === "suggestion" && !before.includes("\n\n\n"))
 					? appendBody(previous, header === null ? before : lead, false)
@@ -69,25 +101,36 @@ export function parseDiffAnnotations(prompt: string): {annotations: DiffAnnotati
 		}
 
 		let attached = false;
-		if (lang === "suggestion" && !ANY_HEADER_RE.test(trimmed) && !before.includes("\n\n\n") && previous !== null) {
-			if (previous.suggestion === undefined) {
+		if (lang === "suggestion" && !ANY_HEADER_RE.test(trimmed) && !before.includes("\n\n\n") && previous !== null)
+		{
+			if (previous.suggestion === undefined)
+			{
 				previous.suggestion = fence[3] ?? "";
 				attached = true;
 			}
 		}
-		if (!attached) {
-			if (header === null) items.push({kind: "text", text: fence[0]});
+		if (!attached)
+		{
+			if (header === null)
+				items.push(
+					{
+						kind: "text",
+						text: fence[0],
+					},
+				);
 			else
-				items.push({
-					kind: "annotation",
-					filePath: header[1] ?? "",
-					startLine: Number(header[2]),
-					endLine: header[3] === undefined ? undefined : Number(header[3]),
-					oldSide: header[4] !== undefined,
-					code: fence[3] ?? "",
-					lang,
-					body: "",
-				});
+				items.push(
+					{
+						kind: "annotation",
+						filePath: header[1] ?? "",
+						startLine: Number(header[2]),
+						endLine: header[3] === undefined ? undefined : Number(header[3]),
+						oldSide: header[4] !== undefined,
+						code: fence[3] ?? "",
+						lang,
+						body: "",
+					},
+				);
 		}
 		cursor = fence.index + fence[0].length;
 	}
@@ -95,12 +138,17 @@ export function parseDiffAnnotations(prompt: string): {annotations: DiffAnnotati
 	const previous = lastAnnotation();
 	emitText(previous === null ? tail : appendBody(previous, tail));
 
-	const annotations = items.flatMap((item) => {
+	const annotations = items.flatMap((item) =>
+	{
 		if (item.kind === "text") return [];
 		const {kind: _kind, ...annotation} = item;
 		return [annotation];
 	});
-	if (annotations.length === 0) return {annotations: [], rest: prompt};
+	if (annotations.length === 0)
+		return {
+			annotations: [],
+			rest: prompt,
+		};
 	return {
 		annotations,
 		rest: items.flatMap((item) => (item.kind === "text" ? [item.text] : [])).join("\n\n"),

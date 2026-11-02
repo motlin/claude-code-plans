@@ -14,9 +14,13 @@ import {computeAbandoned} from "../src/lib/transcript-chain";
  * an append, only the appended lines).
  */
 
-vi.mock("../src/lib/transcript-chain", async (importOriginal) => {
+vi.mock("../src/lib/transcript-chain", async (importOriginal) =>
+{
 	const actual = await importOriginal<typeof import("../src/lib/transcript-chain")>();
-	return {...actual, computeAbandoned: vi.fn<typeof actual.computeAbandoned>(actual.computeAbandoned)};
+	return {
+		...actual,
+		computeAbandoned: vi.fn<typeof actual.computeAbandoned>(actual.computeAbandoned),
+	};
 });
 
 const SESSION_ID = "cache-session";
@@ -25,60 +29,137 @@ let tempDir: string;
 let filePath: string;
 let db: AppDb;
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	tempDir = mkdtempSync(join(tmpdir(), "structured-transcript-cache-test-"));
 	filePath = join(tempDir, `${SESSION_ID}.jsonl`);
 	db = openTestDb();
 	db.index
 		.insert(schema.sessions)
-		.values({id: SESSION_ID, projectId: "test-project", title: SESSION_ID, createdAt: 0, mtimeMs: 0, filePath})
+		.values(
+			{
+				id: SESSION_ID,
+				projectId: "test-project",
+				title: SESSION_ID,
+				createdAt: 0,
+				mtimeMs: 0,
+				filePath,
+			},
+		)
 		.run();
 	vi.mocked(computeAbandoned).mockClear();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(tempDir, {recursive: true, force: true});
+	rmSync(
+		tempDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-function user(uuid: string, parentUuid: string | null, content: string): Record<string, unknown> {
-	return {type: "user", uuid, parentUuid, timestamp: "2026-10-20T10:00:00.000Z", message: {role: "user", content}};
+function user(uuid: string, parentUuid: string | null, content: string): Record<string, unknown>
+{
+	return {
+		type: "user",
+		uuid,
+		parentUuid,
+		timestamp: "2026-10-20T10:00:00.000Z",
+		message:
+		{
+			role: "user",
+			content,
+		},
+	};
 }
 
-function assistant(uuid: string, parentUuid: string): Record<string, unknown> {
-	return {type: "assistant", uuid, parentUuid, message: {role: "assistant", content: [{type: "text", text: uuid}]}};
+function assistant(uuid: string, parentUuid: string): Record<string, unknown>
+{
+	return {
+		type: "assistant",
+		uuid,
+		parentUuid,
+		message:
+		{
+			role: "assistant",
+			content: [
+				{
+					type: "text",
+					text: uuid,
+				},
+			],
+		},
+	};
 }
 
-function toJsonl(records: unknown[]): string {
+function toJsonl(records: unknown[]): string
+{
 	return records.map((record) => JSON.stringify(record)).join("\n") + "\n";
 }
 
-function linear(count: number): Record<string, unknown>[] {
-	return Array.from({length: count}, (_, i) =>
-		i % 2 === 0 ? user(`u-${i}`, i === 0 ? null : `u-${i - 1}`, `prompt ${i}`) : assistant(`u-${i}`, `u-${i - 1}`),
+function linear(count: number): Record<string, unknown>[]
+{
+	return Array.from(
+		{
+			length: count,
+		},
+		(_, i) =>
+			i % 2 === 0
+				? user(`u-${i}`, i === 0 ? null : `u-${i - 1}`, `prompt ${i}`)
+				: assistant(`u-${i}`, `u-${i - 1}`),
 	);
 }
 
-function jsonlCounters<T>(fn: () => T): {result: T; bytesRead: number; fullScans: number} {
-	return withPerfScope("structured-transcript-cache-test", () => {
+function jsonlCounters<T>(fn: () => T):
+{
+	result: T;
+	bytesRead: number;
+	fullScans: number;
+}
+{
+	return withPerfScope("structured-transcript-cache-test", () =>
+	{
 		const result = fn();
 		const counters = currentPerfCounters();
-		return {result, ...counters!.jsonl};
+		return {
+			result,
+			...counters!.jsonl,
+		};
 	});
 }
 
 /** Bump the mtime so an in-place rewrite is distinguishable from the cached version. */
-function touchLater(): void {
+function touchLater(): void
+{
 	const later = new Date(statSync(filePath).mtimeMs + 10_000);
 	utimesSync(filePath, later, later);
 }
 
-describe("readStructuredTranscript chain cache", () => {
-	it("computes the chain once for two window requests on an unchanged file", () => {
+describe("readStructuredTranscript chain cache", () =>
+{
+	it("computes the chain once for two window requests on an unchanged file", () =>
+	{
 		writeFileSync(filePath, toJsonl(linear(10)));
 
-		const tail = readStructuredTranscript(db.index, SESSION_ID, {maxRecords: 3});
-		const page = readStructuredTranscript(db.index, SESSION_ID, {before: tail.startIndex, maxRecords: 3});
+		const tail = readStructuredTranscript(
+			db.index,
+			SESSION_ID,
+			{
+				maxRecords: 3,
+			},
+		);
+		const page = readStructuredTranscript(
+			db.index,
+			SESSION_ID,
+			{
+				before: tail.startIndex,
+				maxRecords: 3,
+			},
+		);
 
 		expect(vi.mocked(computeAbandoned)).toHaveBeenCalledTimes(1);
 		expect(tail.records).toStrictEqual(linear(10).slice(7));
@@ -87,23 +168,39 @@ describe("readStructuredTranscript chain cache", () => {
 		expect(page.precedingMessageCount).toBe(4);
 	});
 
-	it("reads only the served window's bytes once the file is cached", () => {
+	it("reads only the served window's bytes once the file is cached", () =>
+	{
 		const records = linear(10);
 		writeFileSync(filePath, toJsonl(records));
 		readStructuredTranscript(db.index, SESSION_ID);
 
 		const {result, bytesRead, fullScans} = jsonlCounters(() =>
-			readStructuredTranscript(db.index, SESSION_ID, {before: 9, maxRecords: 2}),
+			readStructuredTranscript(
+				db.index,
+				SESSION_ID,
+				{
+					before: 9,
+					maxRecords: 2,
+				},
+			),
 		);
 
 		expect(result.records).toStrictEqual(records.slice(7, 9));
-		expect({bytesRead, fullScans}).toStrictEqual({
-			bytesRead: Buffer.byteLength(toJsonl(records.slice(7, 9))) - 1,
-			fullScans: 0,
-		});
+		expect(
+			{
+				bytesRead,
+				fullScans,
+			},
+		).toStrictEqual(
+			{
+				bytesRead: Buffer.byteLength(toJsonl(records.slice(7, 9))) - 1,
+				fullScans: 0,
+			},
+		);
 	});
 
-	it("extends the cached chain from the old end on append, reading only the appended bytes and the window", () => {
+	it("extends the cached chain from the old end on append, reading only the appended bytes and the window", () =>
+	{
 		const records = linear(6);
 		writeFileSync(filePath, toJsonl(records));
 		readStructuredTranscript(db.index, SESSION_ID);
@@ -111,7 +208,13 @@ describe("readStructuredTranscript chain cache", () => {
 		const appended = [user("u-6", "u-5", "prompt 6")];
 		appendFileSync(filePath, toJsonl(appended));
 		const {result, bytesRead, fullScans} = jsonlCounters(() =>
-			readStructuredTranscript(db.index, SESSION_ID, {maxRecords: 1}),
+			readStructuredTranscript(
+				db.index,
+				SESSION_ID,
+				{
+					maxRecords: 1,
+				},
+			),
 		);
 
 		const appendedBytes = Buffer.byteLength(toJsonl(appended));
@@ -123,13 +226,21 @@ describe("readStructuredTranscript chain cache", () => {
 		// The appended bytes plus the up to 64 bytes before them, which prove the
 		// cached prefix is still there, then the one-line window without its line
 		// break.
-		expect({bytesRead, fullScans}).toStrictEqual({
-			bytesRead: signatureBytes + appendedBytes + appendedBytes - 1,
-			fullScans: 0,
-		});
+		expect(
+			{
+				bytesRead,
+				fullScans,
+			},
+		).toStrictEqual(
+			{
+				bytesRead: signatureBytes + appendedBytes + appendedBytes - 1,
+				fullScans: 0,
+			},
+		);
 	});
 
-	it("re-derives the hidden set when an append forks the chain", () => {
+	it("re-derives the hidden set when an append forks the chain", () =>
+	{
 		writeFileSync(
 			filePath,
 			toJsonl([user("u-0", null, "first"), assistant("u-1", "u-0"), user("a-0", "u-1", "abandoned")]),
@@ -142,12 +253,18 @@ describe("readStructuredTranscript chain cache", () => {
 
 		expect(after.hiddenUuids).toStrictEqual(["a-0"]);
 		expect(after.cuts).toStrictEqual([
-			{parentUuid: "u-1", replacementUuid: "r", at: "2026-10-20T10:00:00.000Z", count: 1},
+			{
+				parentUuid: "u-1",
+				replacementUuid: "r",
+				at: "2026-10-20T10:00:00.000Z",
+				count: 1,
+			},
 		]);
 		expect(after.chainVersion).not.toBe(before.chainVersion);
 	});
 
-	it("completes a trailing line that had no newline when the rest of it is appended", () => {
+	it("completes a trailing line that had no newline when the rest of it is appended", () =>
+	{
 		const first = JSON.stringify(user("u-0", null, "first"));
 		const second = JSON.stringify(user("u-1", "u-0", "second"));
 		writeFileSync(filePath, `${first}\n${second.slice(0, 10)}`);
@@ -159,11 +276,16 @@ describe("readStructuredTranscript chain cache", () => {
 		expect(transcript.records).toStrictEqual([user("u-0", null, "first"), user("u-1", "u-0", "second")]);
 	});
 
-	it("rebuilds when the file is rewritten in place", () => {
+	it("rebuilds when the file is rewritten in place", () =>
+	{
 		writeFileSync(filePath, toJsonl(linear(4)));
 		readStructuredTranscript(db.index, SESSION_ID);
 
-		const rewritten = linear(4).map((record) => ({...record, uuid: String(record["uuid"]).replace("u", "w")}));
+		const rewritten = linear(4).map((record) => (
+		{
+			...record,
+			uuid: String(record["uuid"]).replace("u", "w"),
+		}));
 		writeFileSync(filePath, toJsonl(rewritten));
 		touchLater();
 		const transcript = readStructuredTranscript(db.index, SESSION_ID);
@@ -172,7 +294,8 @@ describe("readStructuredTranscript chain cache", () => {
 		expect(vi.mocked(computeAbandoned)).toHaveBeenCalledTimes(2);
 	});
 
-	it("rebuilds when the file shrinks", () => {
+	it("rebuilds when the file shrinks", () =>
+	{
 		writeFileSync(filePath, toJsonl(linear(6)));
 		readStructuredTranscript(db.index, SESSION_ID);
 
@@ -182,7 +305,8 @@ describe("readStructuredTranscript chain cache", () => {
 		expect(readStructuredTranscript(db.index, SESSION_ID).records).toStrictEqual(linear(2));
 	});
 
-	it("rebuilds when a line was removed in place and the first appended line is exactly as long as the removed one", () => {
+	it("rebuilds when a line was removed in place and the first appended line is exactly as long as the removed one", () =>
+	{
 		const records = linear(6);
 		writeFileSync(filePath, toJsonl(records));
 		readStructuredTranscript(db.index, SESSION_ID);
@@ -191,16 +315,30 @@ describe("readStructuredTranscript chain cache", () => {
 		const rewritten = [...records.slice(0, 3), ...records.slice(4), sameLength, user("u-7", "u-6", "prompt 7")];
 		expect(Buffer.byteLength(JSON.stringify(sameLength))).toBe(Buffer.byteLength(JSON.stringify(records[3])));
 		writeFileSync(filePath, toJsonl(rewritten));
-		const transcript = readStructuredTranscript(db.index, SESSION_ID, {maxRecords: 3});
+		const transcript = readStructuredTranscript(
+			db.index,
+			SESSION_ID,
+			{
+				maxRecords: 3,
+			},
+		);
 
-		expect({records: transcript.records, startIndex: transcript.startIndex}).toStrictEqual({
-			records: rewritten.slice(4),
-			startIndex: 4,
-		});
+		expect(
+			{
+				records: transcript.records,
+				startIndex: transcript.startIndex,
+			},
+		).toStrictEqual(
+			{
+				records: rewritten.slice(4),
+				startIndex: 4,
+			},
+		);
 		expect(vi.mocked(computeAbandoned)).toHaveBeenCalledTimes(2);
 	});
 
-	it("rebuilds when a different, larger file is renamed over the transcript", () => {
+	it("rebuilds when a different, larger file is renamed over the transcript", () =>
+	{
 		writeFileSync(filePath, toJsonl(linear(4)));
 		readStructuredTranscript(db.index, SESSION_ID);
 

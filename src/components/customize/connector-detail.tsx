@@ -4,7 +4,8 @@ import {useState} from "react";
 import type {McpServerDetail, McpToolPermission} from "../../lib/api/customize";
 import {settingsQueryOptions, useSaveSettingsFile} from "../../lib/api/settings";
 import {writeClipboardText} from "../../lib/clipboard";
-import {
+import
+{
 	blanketChoice,
 	mergePermissionRules,
 	setToolPermission,
@@ -20,30 +21,58 @@ import {ScopeBadge} from "./connectors-table";
 import {SCOPE_LABEL, connectorDomain, transportLabel} from "./connector-labels";
 import {CustomizeBackLink} from "./customize-nav";
 
-const CHOICES: readonly {value: ToolPermissionChoice; label: string; icon: LucideIcon}[] = [
-	{value: "allow", label: "Always allow", icon: CircleCheck},
-	{value: "ask", label: "Needs approval", icon: Hand},
-	{value: "blocked", label: "Blocked", icon: Ban},
+const CHOICES: readonly
+{
+	value: ToolPermissionChoice;
+	label: string;
+	icon: LucideIcon;
+}[] = [
+	{
+		value: "allow",
+		label: "Always allow",
+		icon: CircleCheck,
+	},
+	{
+		value: "ask",
+		label: "Needs approval",
+		icon: Hand,
+	},
+	{
+		value: "blocked",
+		label: "Blocked",
+		icon: Ban,
+	},
 ];
 
-function choiceOf(tool: McpToolPermission): ToolPermissionChoice {
+function choiceOf(tool: McpToolPermission): ToolPermissionChoice
+{
 	return toolPermissionChoice(tool.behavior);
 }
 
-function CopyServerButton({detail}: {detail: McpServerDetail}) {
+function CopyServerButton({detail}: {detail: McpServerDetail})
+{
 	const {server} = detail;
 	const toast = useToast();
 	const [copied, setCopied] = useState(false);
 	const isUrl = server.transport !== "stdio";
 	const Icon = copied ? Check : Copy;
 
-	const copy = async () => {
+	const copy = async () =>
+	{
 		const ok = await writeClipboardText(server.urlOrCommand);
 		setCopied(ok);
 		toast(
 			ok
-				? {kind: "success", message: isUrl ? "Server URL copied" : "Command copied"}
-				: {kind: "error", message: "Copy failed"},
+				?
+					{
+						kind: "success",
+						message: isUrl ? "Server URL copied" : "Command copied",
+					}
+				:
+					{
+						kind: "error",
+						message: "Copy failed",
+					},
 		);
 	};
 
@@ -61,7 +90,8 @@ function CopyServerButton({detail}: {detail: McpServerDetail}) {
 }
 
 /** Upstream connector detail header: back link, tile, H2, then the copyable URL or command. */
-export function ConnectorDetailHeader({detail}: {detail: McpServerDetail}) {
+export function ConnectorDetailHeader({detail}: {detail: McpServerDetail})
+{
 	const {server} = detail;
 	const secretKeys = [...server.envKeys, ...server.headerKeys];
 	return (
@@ -94,7 +124,8 @@ export function ConnectorDetailHeader({detail}: {detail: McpServerDetail}) {
 const RADIO_CLASS =
 	"relative inline-flex h-full items-center justify-center rounded-r4 px-2.5 text-t6 outline-none enabled:hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-default aria-checked:bg-surface-0 aria-checked:text-primary aria-checked:shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_0_rgb(0_0_0/0.05)]";
 
-interface PermissionControlProps {
+interface PermissionControlProps
+{
 	tool: string;
 	value: ToolPermissionChoice;
 	disabled: boolean;
@@ -102,7 +133,8 @@ interface PermissionControlProps {
 }
 
 /** Upstream three-icon SegmentedControl: Always allow / Needs approval / Blocked. */
-function PermissionControl({tool, value, disabled, onChange}: PermissionControlProps) {
+function PermissionControl({tool, value, disabled, onChange}: PermissionControlProps)
+{
 	return (
 		<div
 			role="radiogroup"
@@ -118,7 +150,8 @@ function PermissionControl({tool, value, disabled, onChange}: PermissionControlP
 					title={label}
 					aria-checked={value === choice}
 					disabled={disabled}
-					onClick={() => {
+					onClick={() =>
+					{
 						if (value !== choice) onChange(choice);
 					}}
 					className={RADIO_CLASS}
@@ -130,14 +163,16 @@ function PermissionControl({tool, value, disabled, onChange}: PermissionControlP
 	);
 }
 
-interface ToolGroupProps {
+interface ToolGroupProps
+{
 	title: string;
 	tools: readonly McpToolPermission[];
 	editable: boolean;
 	onChange: (tools: readonly string[], choice: ToolPermissionChoice) => void;
 }
 
-function ToolGroup({title, tools, editable, onChange}: ToolGroupProps) {
+function ToolGroup({title, tools, editable, onChange}: ToolGroupProps)
+{
 	const [expanded, setExpanded] = useState(true);
 	const blanket = blanketChoice(tools.map(choiceOf));
 	const blanketOption = CHOICES.find((choice) => choice.value === blanket);
@@ -149,7 +184,8 @@ function ToolGroup({title, tools, editable, onChange}: ToolGroupProps) {
 				<button
 					type="button"
 					aria-expanded={expanded}
-					onClick={() => {
+					onClick={() =>
+					{
 						setExpanded(!expanded);
 					}}
 					className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
@@ -174,9 +210,11 @@ function ToolGroup({title, tools, editable, onChange}: ToolGroupProps) {
 					<MenuContent align="end">
 						<MenuRadioGroup
 							value={blanket}
-							onValueChange={(next: string) => {
+							onValueChange={(next: string) =>
+							{
 								const choice = CHOICES.find((option) => option.value === next);
-								if (choice !== undefined) {
+								if (choice !== undefined)
+								{
 									onChange(
 										tools.map((tool) => tool.name),
 										choice.value,
@@ -217,7 +255,8 @@ function ToolGroup({title, tools, editable, onChange}: ToolGroupProps) {
 								tool={tool.name}
 								value={choiceOf(tool)}
 								disabled={!editable}
-								onChange={(choice) => {
+								onChange={(choice) =>
+								{
 									onChange([tool.name], choice);
 								}}
 							/>
@@ -229,7 +268,8 @@ function ToolGroup({title, tools, editable, onChange}: ToolGroupProps) {
 	);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown>
+{
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -247,7 +287,8 @@ export function ToolPermissions({
 }: {
 	detail: McpServerDetail;
 	detailQueryKey: readonly unknown[];
-}) {
+})
+{
 	const queryClient = useQueryClient();
 	const toast = useToast();
 	const saveSettings = useSaveSettingsFile();
@@ -260,31 +301,63 @@ export function ToolPermissions({
 	const writeTools = detail.tools.filter((tool) => !tool.readOnly);
 	const toolNames = detail.tools.map((tool) => tool.name);
 
-	const change = async (tools: readonly string[], choice: ToolPermissionChoice) => {
-		try {
+	const change = async (tools: readonly string[], choice: ToolPermissionChoice) =>
+	{
+		try
+		{
 			// Re-read settings.json so a write never clobbers edits made elsewhere.
-			const files = await queryClient.query({...settingsQueryOptions, staleTime: 0});
+			const files = await queryClient.query(
+				{
+					...settingsQueryOptions,
+					staleTime: 0,
+				},
+			);
 			const file = files.find((candidate) => candidate.filename === "settings.json");
 			const parsed: unknown = JSON.parse(file?.content ?? "{}");
 			if (!isRecord(parsed)) throw new Error("settings.json is not a JSON object");
 			const permissions = isRecord(parsed["permissions"]) ? parsed["permissions"] : {};
-			const list = (key: string): string[] => {
+			const list = (key: string): string[] =>
+			{
 				const value = permissions[key];
 				return Array.isArray(value) ? value.filter((rule): rule is string => typeof rule === "string") : [];
 			};
-			let rules = {allow: list("allow"), ask: list("ask"), deny: list("deny")};
-			for (const tool of tools) {
+			let rules =
+			{
+				allow: list("allow"),
+				ask: list("ask"),
+				deny: list("deny"),
+			};
+			for (const tool of tools)
+			{
 				rules = setToolPermission(rules, detail.serverKey, toolNames, tool, choice);
 			}
 			const next = mergePermissionRules(parsed, rules);
-			await saveSettings.mutateAsync({
-				filename: "settings.json",
-				content: JSON.stringify(next, null, 2),
-			});
-			await queryClient.invalidateQueries({queryKey: detailQueryKey});
-			toast({kind: "success", message: "Tool permissions saved"});
-		} catch (error) {
-			toast({kind: "error", message: `Could not save: ${errorMessage(error)}`});
+			await saveSettings.mutateAsync(
+				{
+					filename: "settings.json",
+					content: JSON.stringify(next, null, 2),
+				},
+			);
+			await queryClient.invalidateQueries(
+				{
+					queryKey: detailQueryKey,
+				},
+			);
+			toast(
+				{
+					kind: "success",
+					message: "Tool permissions saved",
+				},
+			);
+		}
+		catch (error)
+		{
+			toast(
+				{
+					kind: "error",
+					message: `Could not save: ${errorMessage(error)}`,
+				},
+			);
 		}
 	};
 

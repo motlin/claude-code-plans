@@ -6,51 +6,81 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
-const crash = vi.hoisted(() => ({tool: "", summary: false, prompt: ""}));
+const crash = vi.hoisted(() => (
+{
+	tool: "",
+	summary: false,
+	prompt: "",
+}));
 
-vi.mock("../src/components/tool-renderers", async (importOriginal) => {
+vi.mock("../src/components/tool-renderers", async (importOriginal) =>
+{
 	const actual = await importOriginal<typeof import("../src/components/tool-renderers")>();
 	return {
 		...actual,
-		getCallRenderer: (call: Parameters<typeof actual.getCallRenderer>[0]) => {
+		getCallRenderer: (call: Parameters<typeof actual.getCallRenderer>[0]) =>
+		{
 			if (call.name === crash.tool) throw new Error(`${call.name} renderer boom`);
 			return actual.getCallRenderer(call);
 		},
 	};
 });
-vi.mock("../src/lib/session-utils", async (importOriginal) => {
+vi.mock("../src/lib/session-utils", async (importOriginal) =>
+{
 	const actual = await importOriginal<typeof import("../src/lib/session-utils")>();
 	return {
 		...actual,
-		summarizeToolCallStats: (...args: Parameters<typeof actual.summarizeToolCallStats>) => {
+		summarizeToolCallStats: (...args: Parameters<typeof actual.summarizeToolCallStats>) =>
+		{
 			if (crash.summary) throw new Error("summary boom");
 			return actual.summarizeToolCallStats(...args);
 		},
-		cleanPromptText: (text: string) => {
+		cleanPromptText: (text: string) =>
+		{
 			if (crash.prompt !== "" && text.includes(crash.prompt)) throw new Error("prompt boom");
 			return actual.cleanPromptText(text);
 		},
 	};
 });
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	crash.tool = "";
 	crash.summary = false;
 	crash.prompt = "";
@@ -60,34 +90,76 @@ beforeEach(() => {
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	vi.spyOn(console, "error").mockImplementation(() => {});
 });
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
 
-const prompt = (text = "Fabricated request", uuid = "u-prompt") => ({
+const prompt = (text = "Fabricated request", uuid = "u-prompt") => (
+{
 	type: "user",
 	uuid,
-	message: {role: "user", content: text},
+	message:
+	{
+		role: "user",
+		content: text,
+	},
 });
-const text = (uuid: string, body: string) => ({
+const text = (uuid: string, body: string) => (
+{
 	type: "assistant",
 	uuid,
-	message: {id: `msg-${uuid}`, role: "assistant", content: [{type: "text", text: body}]},
+	message:
+	{
+		id: `msg-${uuid}`,
+		role: "assistant",
+		content: [
+			{
+				type: "text",
+				text: body,
+			},
+		],
+	},
 });
-const toolUse = (id: string, name: string, input: object) => ({
+const toolUse = (id: string, name: string, input: object) => (
+{
 	type: "assistant",
 	uuid: `a-${id}`,
-	message: {id: `msg-${id}`, role: "assistant", content: [{type: "tool_use", id, name, input}]},
+	message:
+	{
+		id: `msg-${id}`,
+		role: "assistant",
+		content: [
+			{
+				type: "tool_use",
+				id,
+				name,
+				input,
+			},
+		],
+	},
 });
-const toolResult = (id: string, content: string) => ({
+const toolResult = (id: string, content: string) => (
+{
 	type: "user",
 	uuid: `r-${id}`,
-	message: {role: "user", content: [{type: "tool_result", tool_use_id: id, content}]},
+	message:
+	{
+		role: "user",
+		content: [
+			{
+				type: "tool_result",
+				tool_use_id: id,
+				content,
+			},
+		],
+	},
 });
 
-function chat(records: unknown[]) {
+function chat(records: unknown[])
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	return (
 		<SessionChat
@@ -105,7 +177,8 @@ function chat(records: unknown[]) {
 let root: HTMLElement = document.body;
 
 /** Renders into a fresh container; the shared DOM pool can hold other files' leftovers in the body. */
-function show(records: unknown[]) {
+function show(records: unknown[])
+{
 	const view = render(chat(records));
 	root = view.container;
 	return view;
@@ -113,16 +186,30 @@ function show(records: unknown[]) {
 
 const crashedCards = () => root.querySelectorAll("[data-testid=tool-card-crashed]");
 
-describe("tool card crash boundaries in the transcript", () => {
+describe("tool card crash boundaries in the transcript", () =>
+{
 	const bashThenRead = [
 		prompt(),
-		toolUse("bash-1", "Bash", {command: "echo fabricated-bash"}),
+		toolUse(
+			"bash-1",
+			"Bash",
+			{
+				command: "echo fabricated-bash",
+			},
+		),
 		text("between", "Between the calls."),
-		toolUse("read-1", "Read", {file_path: "/tmp/fabricated-read.txt"}),
+		toolUse(
+			"read-1",
+			"Read",
+			{
+				file_path: "/tmp/fabricated-read.txt",
+			},
+		),
 		toolResult("read-1", "fabricated contents"),
 	];
 
-	it("replaces a crashed card, header included, inside its own row and recovers when its result lands", () => {
+	it("replaces a crashed card, header included, inside its own row and recovers when its result lands", () =>
+	{
 		crash.tool = "Bash";
 		const view = show(bashThenRead);
 		const fallback = crashedCards();
@@ -138,7 +225,8 @@ describe("tool card crash boundaries in the transcript", () => {
 		expect(root.textContent).toContain("echo fabricated-bash");
 	});
 
-	it("stays on the fallback when the card re-renders in the same stage", () => {
+	it("stays on the fallback when the card re-renders in the same stage", () =>
+	{
 		crash.tool = "Bash";
 		const view = show(bashThenRead);
 		crash.tool = "";
@@ -147,23 +235,34 @@ describe("tool card crash boundaries in the transcript", () => {
 		expect(root.textContent).not.toContain("echo fabricated-bash");
 	});
 
-	it("replaces a crashed prominent call's whole card", () => {
+	it("replaces a crashed prominent call's whole card", () =>
+	{
 		crash.tool = "AskUserQuestion";
 		show([
 			prompt(),
-			toolUse("question-1", "AskUserQuestion", {
-				questions: [
-					{
-						question: "Continue the fabricated example?",
-						header: "Example",
-						multiSelect: false,
-						options: [
-							{label: "Continue", description: "Run it"},
-							{label: "Stop", description: "Stop it"},
-						],
-					},
-				],
-			}),
+			toolUse(
+				"question-1",
+				"AskUserQuestion",
+				{
+					questions: [
+						{
+							question: "Continue the fabricated example?",
+							header: "Example",
+							multiSelect: false,
+							options: [
+								{
+									label: "Continue",
+									description: "Run it",
+								},
+								{
+									label: "Stop",
+									description: "Stop it",
+								},
+							],
+						},
+					],
+				},
+			),
 			toolResult("question-1", "User answered: Continue"),
 		]);
 		const fallback = crashedCards();
@@ -174,15 +273,34 @@ describe("tool card crash boundaries in the transcript", () => {
 
 	const group = (withSecondResult: boolean) => [
 		prompt(),
-		toolUse("bash-a", "Bash", {command: "echo fabricated-a"}),
+		toolUse(
+			"bash-a",
+			"Bash",
+			{
+				command: "echo fabricated-a",
+			},
+		),
 		toolResult("bash-a", "a"),
-		toolUse("bash-b", "Bash", {command: "echo fabricated-b"}),
+		toolUse(
+			"bash-b",
+			"Bash",
+			{
+				command: "echo fabricated-b",
+			},
+		),
 		...(withSecondResult ? [toolResult("bash-b", "b")] : []),
-		toolUse("read-c", "Read", {file_path: "/tmp/fabricated-c.txt"}),
+		toolUse(
+			"read-c",
+			"Read",
+			{
+				file_path: "/tmp/fabricated-c.txt",
+			},
+		),
 		toolResult("read-c", "c"),
 	];
 
-	it("gives a multi-call group one fallback and redraws it when the group's last result lands", () => {
+	it("gives a multi-call group one fallback and redraws it when the group's last result lands", () =>
+	{
 		crash.summary = true;
 		const view = show(group(false));
 		expect(crashedCards().length).toEqual(1);
@@ -194,7 +312,8 @@ describe("tool card crash boundaries in the transcript", () => {
 		expect(root.querySelector("button[aria-expanded]")?.tagName).toEqual("BUTTON");
 	});
 
-	it("keeps a grouped row's crash inside that row while the group header stays", () => {
+	it("keeps a grouped row's crash inside that row while the group header stays", () =>
+	{
 		const view = show(group(true));
 		const toggle = root.querySelector<HTMLElement>("button[aria-expanded]");
 		if (toggle === null) throw new Error("no group toggle");
@@ -207,8 +326,10 @@ describe("tool card crash boundaries in the transcript", () => {
 	});
 });
 
-describe("transcript row crash boundary", () => {
-	it("replaces only the crashed row with the row banner", () => {
+describe("transcript row crash boundary", () =>
+{
+	it("replaces only the crashed row with the row banner", () =>
+	{
 		const records = [
 			prompt("Explode this prompt", "u-boom"),
 			text("reply-1", "A fabricated reply."),
@@ -221,19 +342,23 @@ describe("transcript row crash boundary", () => {
 		const rows = root.querySelectorAll("[data-testid=transcript-row]");
 		const crashed = root.querySelector("[data-transcript-row-crashed]");
 		const article = crashed?.closest("[data-testid=transcript-row]");
-		expect({
-			kind: crashed?.getAttribute("data-transcript-row-crashed"),
-			role: article?.getAttribute("role"),
-			posinset: article?.getAttribute("aria-posinset"),
-			rows: rows.length,
-			copy: crashed?.textContent,
-		}).toEqual({
-			kind: "row",
-			role: "article",
-			posinset: "1",
-			rows: intactRows,
-			copy: "Couldn’t load this.Try again",
-		});
+		expect(
+			{
+				kind: crashed?.getAttribute("data-transcript-row-crashed"),
+				role: article?.getAttribute("role"),
+				posinset: article?.getAttribute("aria-posinset"),
+				rows: rows.length,
+				copy: crashed?.textContent,
+			},
+		).toEqual(
+			{
+				kind: "row",
+				role: "article",
+				posinset: "1",
+				rows: intactRows,
+				copy: "Couldn’t load this.Try again",
+			},
+		);
 		expect(root.textContent).toContain("A fabricated reply.");
 		expect(root.textContent).toContain("A second fabricated prompt");
 	});

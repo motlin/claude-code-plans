@@ -3,7 +3,8 @@ import {Link} from "@tanstack/react-router";
 import {CircleCheck} from "lucide-react";
 import type {ToolRendererProps} from "./types";
 import {toMdSlug} from "../../lib/md-slug";
-import {
+import
+{
 	describeExitPlanModeResult,
 	EXIT_PLAN_MODE_STATE_LABEL,
 	exitPlanModeState,
@@ -19,7 +20,8 @@ const PLAN_FILE_RE = /\.claude\/plans\/([^/\s]+\.md)/;
 /** Upstream's quiet footnote-sized secondary action, like the plan card's "Open plan". */
 const PLAN_FILE_ACTION_CLASS = "shrink-0 text-footnote text-secondary hover:text-primary hover:underline";
 
-const TONE_CLASS: Record<ExitPlanModeStatusTone, string> = {
+const TONE_CLASS: Record<ExitPlanModeStatusTone, string> =
+{
 	approved: "text-success-000",
 	rejected: "text-danger-000",
 	error: "text-danger-000",
@@ -27,7 +29,8 @@ const TONE_CLASS: Record<ExitPlanModeStatusTone, string> = {
 };
 
 /** The plan text verbatim, each inline `` `code` `` run held left-to-right. */
-function PlanBlock({plan, className}: {plan: string; className: string}) {
+function PlanBlock({plan, className}: {plan: string; className: string})
+{
 	return (
 		<div data-plan-block="" className={className}>
 			{planBlockSegments(plan).map((segment, index) =>
@@ -51,7 +54,8 @@ function PlanBlock({plan, className}: {plan: string; className: string}) {
  * A local "Open plan file" link to the saved plan trails the title or the state row. The allowed
  * prompts and a rejection or error status show only in Verbose.
  */
-export function ExitPlanModeRenderer({toolCall, verbose}: ToolRendererProps) {
+export function ExitPlanModeRenderer({toolCall, verbose}: ToolRendererProps)
+{
 	const {result} = toolCall;
 	const planFilePath = inputString(toolCall.input, "planFilePath") ?? "";
 	const planFile = (planFilePath.match(PLAN_FILE_RE) ?? result?.match(PLAN_FILE_RE))?.[1];
@@ -61,7 +65,14 @@ export function ExitPlanModeRenderer({toolCall, verbose}: ToolRendererProps) {
 	const state = exitPlanModeState(result, toolCall.isError);
 	const done = state === "approved";
 	const planFileAction = planFile !== undefined && (
-		<Link to="/plan/$filename" params={{filename: toMdSlug(planFile)}} className={PLAN_FILE_ACTION_CLASS}>
+		<Link
+			to="/plan/$filename"
+			params={
+			{
+				filename: toMdSlug(planFile),
+			}}
+			className={PLAN_FILE_ACTION_CLASS}
+		>
 			{PLAN_FILE_ACTION_LABEL}
 		</Link>
 	);

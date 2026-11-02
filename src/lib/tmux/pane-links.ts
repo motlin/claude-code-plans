@@ -7,7 +7,8 @@ import type {TmuxSessionPane} from "./session-panes";
  * window the tab. The terminal id carries the server socket because `%N` pane
  * ids repeat across tmux servers.
  */
-export function toTmuxPaneLink({sessionId, cwd, pane, via}: TmuxSessionPane): HerdrPaneLink {
+export function toTmuxPaneLink({sessionId, cwd, pane, via}: TmuxSessionPane): HerdrPaneLink
+{
 	return {
 		host: "tmux",
 		paneId: pane.paneId,

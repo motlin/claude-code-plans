@@ -9,7 +9,8 @@ import type {TerminalHostSetting} from "../terminal-host-setting";
 /** A terminal multiplexer ccp can drive. */
 export type TerminalHostId = "herdr" | "tmux";
 
-export interface TerminalHostProbes {
+export interface TerminalHostProbes
+{
 	/** Whether any herdr server's API socket (default or a named session) answers a ping. */
 	herdrAvailable: () => Promise<boolean>;
 	/** Whether this process runs inside tmux or a tmux server is up. */
@@ -25,7 +26,8 @@ export interface TerminalHostProbes {
 export async function selectTerminalHost(
 	setting: TerminalHostSetting,
 	probes: TerminalHostProbes,
-): Promise<TerminalHostId> {
+): Promise<TerminalHostId>
+{
 	if (setting !== "auto") return setting;
 	if (await probes.herdrAvailable()) return "herdr";
 	if (await probes.tmuxAvailable()) return "tmux";
@@ -36,7 +38,8 @@ export async function selectTerminalHost(
 export async function detectTmux(
 	env: NodeJS.ProcessEnv = process.env,
 	serverRunning: () => Promise<boolean> = tmuxServerRunning,
-): Promise<boolean> {
+): Promise<boolean>
+{
 	if (nonEmpty(env["TMUX"]) !== undefined) return true;
 	return serverRunning();
 }
@@ -44,26 +47,42 @@ export async function detectTmux(
 const TMUX_PROBE_TIMEOUT_MS = 1500;
 const TMUX_CACHE_TTL_MS = 30_000;
 
-const tmuxCache = hmrPersist<{expiresAt: number; running: boolean}>("tmuxServerRunning", () => ({
+const tmuxCache = hmrPersist<
+{
+	expiresAt: number;
+	running: boolean;
+}>("tmuxServerRunning", () => (
+{
 	expiresAt: 0,
 	running: false,
 }));
 
 /** `tmux list-sessions` exits non-zero with "no server running"; cached like the herdr probe. */
-async function tmuxServerRunning(): Promise<boolean> {
+async function tmuxServerRunning(): Promise<boolean>
+{
 	const now = Date.now();
 	if (now < tmuxCache.expiresAt) return tmuxCache.running;
-	const running = await new Promise<boolean>((resolve) => {
-		execFile("tmux", ["list-sessions"], {timeout: TMUX_PROBE_TIMEOUT_MS}, (error) => {
-			resolve(error === null);
-		});
+	const running = await new Promise<boolean>((resolve) =>
+	{
+		execFile(
+			"tmux",
+			["list-sessions"],
+			{
+				timeout: TMUX_PROBE_TIMEOUT_MS,
+			},
+			(error) =>
+			{
+				resolve(error === null);
+			},
+		);
 	});
 	tmuxCache.running = running;
 	tmuxCache.expiresAt = Date.now() + TMUX_CACHE_TTL_MS;
 	return running;
 }
 
-export const defaultTerminalHostProbes: TerminalHostProbes = {
+export const defaultTerminalHostProbes: TerminalHostProbes =
+{
 	herdrAvailable: async () =>
 		probeAnyHerdr(
 			discoverLiveHerdrServers(getActiveSessionEntries().map((entry) => entry.herdrSocketPath)).map(

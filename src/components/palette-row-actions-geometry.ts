@@ -1,6 +1,7 @@
 import type {KeyboardEvent} from "react";
 
-export interface Box {
+export interface Box
+{
 	x: number;
 	y: number;
 	width: number;
@@ -28,7 +29,8 @@ export function rowActionsAnchorRect({
 	row: Pick<Box, "y" | "height">;
 	dialog: Box;
 	reducedMotion: boolean;
-}): Box {
+}): Box
+{
 	const y = Math.min(Math.max(row.y, list.y), Math.max(list.y, list.y + list.height - row.height));
 	const scale = reducedMotion ? 1 : RECEDE_SCALE;
 	const centreX = dialog.x + dialog.width / 2;
@@ -41,9 +43,11 @@ export function rowActionsAnchorRect({
 	};
 }
 
-export function virtualAnchor(box: Box) {
+export function virtualAnchor(box: Box)
+{
 	return {
-		getBoundingClientRect: () => ({
+		getBoundingClientRect: () => (
+		{
 			...box,
 			top: box.y,
 			left: box.x,
@@ -55,7 +59,8 @@ export function virtualAnchor(box: Box) {
 }
 
 /** Upstream's `Cs`: Enter with Alt or AltGraph, no Shift or Meta, not mid-IME composition. */
-export function isAltEnter(event: KeyboardEvent<HTMLElement>): boolean {
+export function isAltEnter(event: KeyboardEvent<HTMLElement>): boolean
+{
 	return (
 		event.key === "Enter" &&
 		(event.altKey || event.getModifierState("AltGraph")) &&

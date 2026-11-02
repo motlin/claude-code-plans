@@ -1,20 +1,25 @@
 import {describe, expect, it} from "vite-plus/test";
 import {CooperativeQueue} from "../src/lib/cooperative-queue";
 
-async function settled(promise: Promise<void>): Promise<string> {
+async function settled(promise: Promise<void>): Promise<string>
+{
 	return promise.then(
 		() => "resolved",
 		(error: unknown) => `rejected: ${(error as Error).message}`,
 	);
 }
 
-describe("CooperativeQueue", () => {
-	it("runs jobs one at a time in enqueue order", async () => {
+describe("CooperativeQueue", () =>
+{
+	it("runs jobs one at a time in enqueue order", async () =>
+	{
 		const queue = new CooperativeQueue();
 		const events: string[] = [];
-		const job = (name: string) => async () => {
+		const job = (name: string) => async () =>
+		{
 			events.push(`start ${name}`);
-			await new Promise((resolve) => {
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 5);
 			});
 			events.push(`end ${name}`);
@@ -25,34 +30,51 @@ describe("CooperativeQueue", () => {
 		expect(events).toStrictEqual(["start alice", "end alice", "start bob", "end bob"]);
 	});
 
-	it("shares a waiting job with a later enqueue of the same key, but reruns a key that already started", async () => {
+	it("shares a waiting job with a later enqueue of the same key, but reruns a key that already started", async () =>
+	{
 		const queue = new CooperativeQueue();
 		const runs: string[] = [];
 		let releaseFirst!: () => void;
-		const first = queue.enqueue("alice", async () => {
+		const first = queue.enqueue("alice", async () =>
+		{
 			runs.push("alice 1");
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve) =>
+			{
 				releaseFirst = resolve;
 			});
 		});
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setImmediate(resolve);
 		});
-		const second = queue.enqueue("alice", async () => {
+		const second = queue.enqueue("alice", async () =>
+		{
 			runs.push("alice 2");
 			return Promise.resolve();
 		});
-		const duplicate = queue.enqueue("alice", async () => {
+		const duplicate = queue.enqueue("alice", async () =>
+		{
 			runs.push("alice 3");
 			return Promise.resolve();
 		});
 		releaseFirst();
 		await Promise.all([first, second, duplicate]);
 
-		expect({runs, shared: second === duplicate}).toStrictEqual({runs: ["alice 1", "alice 2"], shared: true});
+		expect(
+			{
+				runs,
+				shared: second === duplicate,
+			},
+		).toStrictEqual(
+			{
+				runs: ["alice 1", "alice 2"],
+				shared: true,
+			},
+		);
 	});
 
-	it("rejects only the failing job and keeps draining", async () => {
+	it("rejects only the failing job and keeps draining", async () =>
+	{
 		const queue = new CooperativeQueue();
 		const results = await Promise.all([
 			settled(queue.enqueue("alice", async () => Promise.reject(new Error("alice failed")))),
@@ -62,13 +84,16 @@ describe("CooperativeQueue", () => {
 		expect(results).toStrictEqual(["rejected: alice failed", "resolved"]);
 	});
 
-	it("lets timers run between jobs once a slice is used up", async () => {
+	it("lets timers run between jobs once a slice is used up", async () =>
+	{
 		const queue = new CooperativeQueue(0);
 		const events: string[] = [];
 		setTimeout(() => events.push("timer"), 0);
-		const busyJob = (name: string) => async () => {
+		const busyJob = (name: string) => async () =>
+		{
 			const start = performance.now();
-			while (performance.now() - start < 5) {
+			while (performance.now() - start < 5)
+			{
 				// Synchronous work, like an SQLite write.
 			}
 			events.push(name);

@@ -12,14 +12,34 @@ import type {SessionPlanModel} from "../src/lib/session-plan-model";
 
 afterEach(cleanup);
 
-const MODEL: SessionPlanModel = {content: "Do it.", todos: [], editsPlanFile: false};
-const PANE_OPTIONS = {sessionId: "session-fabricated", commentsEnabled: false};
+const MODEL: SessionPlanModel =
+{
+	content: "Do it.",
+	todos: [],
+	editsPlanFile: false,
+};
+const PANE_OPTIONS =
+{
+	sessionId: "session-fabricated",
+	commentsEnabled: false,
+};
 
-async function renderInRouter(node: React.ReactNode, queryClient = new QueryClient()) {
-	const router = createRouter({
-		routeTree: createRootRoute({component: () => <>{node}</>}),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+async function renderInRouter(node: React.ReactNode, queryClient = new QueryClient())
+{
+	const router = createRouter(
+		{
+			routeTree: createRootRoute(
+				{
+					component: () => <>{node}</>,
+				},
+			),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	return render(
 		<QueryClientProvider client={queryClient}>
@@ -28,104 +48,193 @@ async function renderInRouter(node: React.ReactNode, queryClient = new QueryClie
 	);
 }
 
-function stubClipboard() {
+function stubClipboard()
+{
 	const writeText = vi.fn<Clipboard["writeText"]>(async (_text: string) => Promise.resolve());
-	Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+	Object.defineProperty(
+		navigator,
+		"clipboard",
+		{
+			value:
+			{
+				writeText,
+			},
+			configurable: true,
+		},
+	);
 	return writeText;
 }
 
-const LINKED_PLAN: PlanDetail = {
+const LINKED_PLAN: PlanDetail =
+{
 	markdown: "# From the file\n",
 	mtime: "2026-10-17T00:00:00.000Z",
 	title: "From the file",
 };
 
-function linkedPlanClient(): QueryClient {
+function linkedPlanClient(): QueryClient
+{
 	const queryClient = new QueryClient();
 	queryClient.setQueryData(planQueryOptions("switch-git-pager").queryKey, LINKED_PLAN);
 	return queryClient;
 }
 
-function headerActionLabels(container: HTMLElement) {
+function headerActionLabels(container: HTMLElement)
+{
 	return [...container.querySelectorAll("a, button")].map((node) => node.getAttribute("aria-label"));
 }
 
-describe("planPaneDefinition", () => {
-	it("keys body crash resets on the session and the linked plan file", () => {
-		expect({
-			linked: planPaneDefinition("alpha.md", MODEL, PANE_OPTIONS).resetKey,
-			unlinked: planPaneDefinition(undefined, MODEL, PANE_OPTIONS).resetKey,
-		}).toStrictEqual({linked: `${PANE_OPTIONS.sessionId}:alpha.md`, unlinked: `${PANE_OPTIONS.sessionId}:`});
+describe("planPaneDefinition", () =>
+{
+	it("keys body crash resets on the session and the linked plan file", () =>
+	{
+		expect(
+			{
+				linked: planPaneDefinition("alpha.md", MODEL, PANE_OPTIONS).resetKey,
+				unlinked: planPaneDefinition(undefined, MODEL, PANE_OPTIONS).resetKey,
+			},
+		).toStrictEqual(
+			{
+				linked: `${PANE_OPTIONS.sessionId}:alpha.md`,
+				unlinked: `${PANE_OPTIONS.sessionId}:`,
+			},
+		);
 	});
 
-	it("has no header action without plan text or a plan file", () => {
+	it("has no header action without plan text or a plan file", () =>
+	{
 		expect(
-			planPaneDefinition(undefined, {content: null, todos: [], editsPlanFile: false}, PANE_OPTIONS).headerActions,
+			planPaneDefinition(
+				undefined,
+				{
+					content: null,
+					todos: [],
+					editsPlanFile: false,
+				},
+				PANE_OPTIONS,
+			).headerActions,
 		).toStrictEqual(undefined);
 	});
 
-	it("adds upstream's ghost 'Copy plan' icon button for a plan without a file", async () => {
+	it("adds upstream's ghost 'Copy plan' icon button for a plan without a file", async () =>
+	{
 		const view = await renderInRouter(planPaneDefinition(undefined, MODEL, PANE_OPTIONS).headerActions);
-		const button = screen.getByRole("button", {name: "Copy plan"});
-
-		expect({
-			actions: headerActionLabels(view.container),
-			className: button.className,
-			icon: button.querySelector("svg")?.getAttribute("class"),
-		}).toStrictEqual({
-			actions: ["Copy plan"],
-			className: PANE_HEADER_ICON_BUTTON_CLASS,
-			icon: "lucide lucide-copy h-4 w-4",
-		});
-	});
-
-	it("copies the plan markdown exactly and flips to 'Copied' with a check", async () => {
-		const writeText = stubClipboard();
-		await renderInRouter(
-			planPaneDefinition(undefined, {...MODEL, content: "# Plan\n\n- step one\n"}, PANE_OPTIONS).headerActions,
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Copy plan",
+			},
 		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Copy plan"}));
-		const button = await screen.findByRole("button", {name: "Copied"});
-
-		expect({
-			calls: writeText.mock.calls,
-			icon: button.querySelector("svg")?.getAttribute("class"),
-		}).toStrictEqual({
-			calls: [["# Plan\n\n- step one\n"]],
-			icon: "lucide lucide-check h-4 w-4",
-		});
+		expect(
+			{
+				actions: headerActionLabels(view.container),
+				className: button.className,
+				icon: button.querySelector("svg")?.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				actions: ["Copy plan"],
+				className: PANE_HEADER_ICON_BUTTON_CLASS,
+				icon: "lucide lucide-copy h-4 w-4",
+			},
+		);
 	});
 
-	it("puts the local 'Open plan file' link in upstream's 'Open in' slot, before Copy plan", async () => {
+	it("copies the plan markdown exactly and flips to 'Copied' with a check", async () =>
+	{
+		const writeText = stubClipboard();
+		await renderInRouter(
+			planPaneDefinition(
+				undefined,
+				{
+					...MODEL,
+					content: "# Plan\n\n- step one\n",
+				},
+				PANE_OPTIONS,
+			).headerActions,
+		);
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Copy plan",
+				},
+			),
+		);
+		const button = await screen.findByRole(
+			"button",
+			{
+				name: "Copied",
+			},
+		);
+
+		expect(
+			{
+				calls: writeText.mock.calls,
+				icon: button.querySelector("svg")?.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				calls: [["# Plan\n\n- step one\n"]],
+				icon: "lucide lucide-check h-4 w-4",
+			},
+		);
+	});
+
+	it("puts the local 'Open plan file' link in upstream's 'Open in' slot, before Copy plan", async () =>
+	{
 		const view = await renderInRouter(
 			planPaneDefinition("switch-git-pager.md", MODEL, PANE_OPTIONS).headerActions,
 			linkedPlanClient(),
 		);
-		const link = screen.getByRole("link", {name: "Open plan file"});
+		const link = screen.getByRole(
+			"link",
+			{
+				name: "Open plan file",
+			},
+		);
 
-		expect({
-			actions: headerActionLabels(view.container),
-			href: link.getAttribute("href"),
-			className: link.className,
-			icon: link.querySelector("svg")?.getAttribute("class"),
-		}).toStrictEqual({
-			actions: ["Open plan file", "Copy plan"],
-			href: "/plan/switch-git-pager",
-			className: PANE_HEADER_ICON_BUTTON_CLASS,
-			icon: "lucide lucide-file-text h-4 w-4",
-		});
+		expect(
+			{
+				actions: headerActionLabels(view.container),
+				href: link.getAttribute("href"),
+				className: link.className,
+				icon: link.querySelector("svg")?.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				actions: ["Open plan file", "Copy plan"],
+				href: "/plan/switch-git-pager",
+				className: PANE_HEADER_ICON_BUTTON_CLASS,
+				icon: "lucide lucide-file-text h-4 w-4",
+			},
+		);
 	});
 
-	it("copies the linked plan file's markdown, which the pane shows, over the transcript text", async () => {
+	it("copies the linked plan file's markdown, which the pane shows, over the transcript text", async () =>
+	{
 		const writeText = stubClipboard();
 		await renderInRouter(
 			planPaneDefinition("switch-git-pager.md", MODEL, PANE_OPTIONS).headerActions,
 			linkedPlanClient(),
 		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Copy plan"}));
-		await screen.findByRole("button", {name: "Copied"});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Copy plan",
+				},
+			),
+		);
+		await screen.findByRole(
+			"button",
+			{
+				name: "Copied",
+			},
+		);
 
 		expect(writeText.mock.calls).toStrictEqual([["# From the file\n"]]);
 	});
@@ -133,9 +242,24 @@ describe("planPaneDefinition", () => {
 	it.each([
 		[true, "Select any text to leave a comment for Claude"],
 		[false, "You can comment on the plan in plan mode, or when Claude asks you to approve it."],
-	])("renders the pane body with the comments-enabled flag %s", async (commentsEnabled, text) => {
-		const definition = planPaneDefinition(undefined, MODEL, {sessionId: "session-fabricated", commentsEnabled});
-		const view = await renderInRouter(definition.render({moveHandle: null, controls: null}));
+	])("renders the pane body with the comments-enabled flag %s", async (commentsEnabled, text) =>
+	{
+		const definition = planPaneDefinition(
+			undefined,
+			MODEL,
+			{
+				sessionId: "session-fabricated",
+				commentsEnabled,
+			},
+		);
+		const view = await renderInRouter(
+			definition.render(
+				{
+					moveHandle: null,
+					controls: null,
+				},
+			),
+		);
 
 		expect(view.container.querySelector("[data-plan-hint]")?.textContent).toStrictEqual(text);
 	});

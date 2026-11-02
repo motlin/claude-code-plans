@@ -12,10 +12,21 @@ afterEach(cleanup);
 const KEY_KIND = ["RSA", "PRIVATE", "KEY"].join(" ");
 const PEM_BEGIN = `-----BEGIN ${KEY_KIND}-----`;
 
-const NOTICE: HookNotice = {message: "Compacted while idle", level: "notice", uuid: "n-1"};
-const WARNING: HookNotice = {message: "Remote Control disconnected", level: "warning", uuid: "w-1"};
+const NOTICE: HookNotice =
+{
+	message: "Compacted while idle",
+	level: "notice",
+	uuid: "n-1",
+};
+const WARNING: HookNotice =
+{
+	message: "Remote Control disconnected",
+	level: "warning",
+	uuid: "w-1",
+};
 
-function snapshot(container: HTMLElement) {
+function snapshot(container: HTMLElement)
+{
 	const root = container.querySelector("[data-hook-notice]");
 	const button = root?.querySelector("button");
 	const body = root?.querySelector(".epitaxy-expanding-body");
@@ -26,10 +37,12 @@ function snapshot(container: HTMLElement) {
 		body:
 			body === null || body === undefined
 				? null
-				: {
+				:
+					{
 						hidden: body.hasAttribute("hidden"),
 						className: body.className,
-						lines: Array.from(body.querySelectorAll(".select-text"), (line) => ({
+						lines: Array.from(body.querySelectorAll(".select-text"), (line) => (
+						{
 							icon: line.querySelector('[aria-label="Warning"]') !== null,
 							text: line.textContent,
 						})),
@@ -37,18 +50,23 @@ function snapshot(container: HTMLElement) {
 	};
 }
 
-describe("HookNoticeRow", () => {
-	it("starts a lone notice collapsed with no body and no icon", () => {
+describe("HookNoticeRow", () =>
+{
+	it("starts a lone notice collapsed with no body and no icon", () =>
+	{
 		const {container} = render(<HookNoticeRow notices={[NOTICE]} verbose={false} />);
-		expect(snapshot(container)).toStrictEqual({
-			label: "Claude Code notice",
-			expanded: "false",
-			headerIcons: 0,
-			body: null,
-		});
+		expect(snapshot(container)).toStrictEqual(
+			{
+				label: "Claude Code notice",
+				expanded: "false",
+				headerIcons: 0,
+				body: null,
+			},
+		);
 	});
 
-	it("mounts the body on the first click and keeps it hidden after collapsing", () => {
+	it("mounts the body on the first click and keeps it hidden after collapsing", () =>
+	{
 		const {container} = render(<HookNoticeRow notices={[NOTICE]} verbose={false} />);
 		const button = container.querySelector("button");
 		if (button === null) throw new Error("no button");
@@ -60,57 +78,89 @@ describe("HookNoticeRow", () => {
 				label: "Claude Code notice",
 				expanded: "true",
 				headerIcons: 0,
-				body: {
+				body:
+				{
 					hidden: false,
 					className: "epitaxy-expanding-body flow-root",
-					lines: [{icon: false, text: "Compacted while idle"}],
+					lines: [
+						{
+							icon: false,
+							text: "Compacted while idle",
+						},
+					],
 				},
 			},
 			{
 				label: "Claude Code notice",
 				expanded: "false",
 				headerIcons: 0,
-				body: {
+				body:
+				{
 					hidden: true,
 					className: "epitaxy-expanding-body",
-					lines: [{icon: false, text: "Compacted while idle"}],
+					lines: [
+						{
+							icon: false,
+							text: "Compacted while idle",
+						},
+					],
 				},
 			},
 		]);
 	});
 
-	it("opens a lone warning by default with the header icon and no line icon", () => {
+	it("opens a lone warning by default with the header icon and no line icon", () =>
+	{
 		const {container} = render(<HookNoticeRow notices={[WARNING]} verbose={false} />);
-		expect(snapshot(container)).toStrictEqual({
-			label: "Claude Code notice",
-			expanded: "true",
-			headerIcons: 1,
-			body: {
-				hidden: false,
-				className: "epitaxy-expanding-body flow-root",
-				lines: [{icon: false, text: "Remote Control disconnected"}],
+		expect(snapshot(container)).toStrictEqual(
+			{
+				label: "Claude Code notice",
+				expanded: "true",
+				headerIcons: 1,
+				body:
+				{
+					hidden: false,
+					className: "epitaxy-expanding-body flow-root",
+					lines: [
+						{
+							icon: false,
+							text: "Remote Control disconnected",
+						},
+					],
+				},
 			},
-		});
+		);
 	});
 
-	it("counts merged notices and marks each warning line", () => {
+	it("counts merged notices and marks each warning line", () =>
+	{
 		const {container} = render(<HookNoticeRow notices={[NOTICE, WARNING]} verbose={false} />);
-		expect(snapshot(container)).toStrictEqual({
-			label: "2 Claude Code notices",
-			expanded: "true",
-			headerIcons: 1,
-			body: {
-				hidden: false,
-				className: "epitaxy-expanding-body flow-root",
-				lines: [
-					{icon: false, text: "Compacted while idle"},
-					{icon: true, text: "Remote Control disconnected"},
-				],
+		expect(snapshot(container)).toStrictEqual(
+			{
+				label: "2 Claude Code notices",
+				expanded: "true",
+				headerIcons: 1,
+				body:
+				{
+					hidden: false,
+					className: "epitaxy-expanding-body flow-root",
+					lines: [
+						{
+							icon: false,
+							text: "Compacted while idle",
+						},
+						{
+							icon: true,
+							text: "Remote Control disconnected",
+						},
+					],
+				},
 			},
-		});
+		);
 	});
 
-	it("drops the toggle and re-defaults to open when a warning merges in", () => {
+	it("drops the toggle and re-defaults to open when a warning merges in", () =>
+	{
 		const {container, rerender} = render(<HookNoticeRow notices={[NOTICE]} verbose={false} />);
 		const button = container.querySelector("button");
 		if (button === null) throw new Error("no button");
@@ -120,7 +170,8 @@ describe("HookNoticeRow", () => {
 		expect(snapshot(container).expanded).toBe("true");
 	});
 
-	it("forces verbose open and ignores clicks", () => {
+	it("forces verbose open and ignores clicks", () =>
+	{
 		const {container} = render(<HookNoticeRow notices={[NOTICE]} verbose />);
 		const button = container.querySelector("button");
 		if (button === null) throw new Error("no button");
@@ -128,7 +179,8 @@ describe("HookNoticeRow", () => {
 		expect(snapshot(container).expanded).toBe("true");
 	});
 
-	it("copies upstream's class strings", () => {
+	it("copies upstream's class strings", () =>
+	{
 		const {container} = render(<HookNoticeRow notices={[NOTICE, WARNING]} verbose={false} />);
 		const root = container.querySelector("[data-hook-notice]");
 		const button = root?.querySelector("button");
@@ -137,31 +189,45 @@ describe("HookNoticeRow", () => {
 		const inner = root?.querySelector(".epitaxy-expanding-body > div");
 		const line = inner?.querySelector(".select-text");
 		const iconSlot = inner?.querySelectorAll(".select-text")[1]?.firstElementChild;
-		expect({
-			root: root?.className,
-			button: button?.className,
-			buttonType: button?.getAttribute("type"),
-			label: labelSpan?.className,
-			caret: caretSpan?.className,
-			inner: inner?.className,
-			line: line?.className,
-			iconSlot: iconSlot?.className,
-			message: line?.lastElementChild?.className,
-		}).toStrictEqual({
-			root: "flex w-full flex-col ps-[var(--cds-assistant-message-text-inset,0px)]",
-			button: "relative group/tool flex self-start max-w-full items-center py-0 gap-1 text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm",
-			buttonType: "button",
-			label: "min-w-0 truncate text-body text-secondary group-hover/tool:text-primary",
-			caret: "shrink-0 text-secondary group-hover/tool:text-primary",
-			inner: "flex flex-col gap-1 ps-p6 comfortable:ps-p8 pt-p3 comfortable:pt-p5",
-			line: "flex items-start gap-1 select-text",
-			iconSlot: "text-body flex h-[1lh] shrink-0 items-center",
-			message: "min-w-0 text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere]",
-		});
+		expect(
+			{
+				root: root?.className,
+				button: button?.className,
+				buttonType: button?.getAttribute("type"),
+				label: labelSpan?.className,
+				caret: caretSpan?.className,
+				inner: inner?.className,
+				line: line?.className,
+				iconSlot: iconSlot?.className,
+				message: line?.lastElementChild?.className,
+			},
+		).toStrictEqual(
+			{
+				root: "flex w-full flex-col ps-[var(--cds-assistant-message-text-inset,0px)]",
+				button: "relative group/tool flex self-start max-w-full items-center py-0 gap-1 text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm",
+				buttonType: "button",
+				label: "min-w-0 truncate text-body text-secondary group-hover/tool:text-primary",
+				caret: "shrink-0 text-secondary group-hover/tool:text-primary",
+				inner: "flex flex-col gap-1 ps-p6 comfortable:ps-p8 pt-p3 comfortable:pt-p5",
+				line: "flex items-start gap-1 select-text",
+				iconSlot: "text-body flex h-[1lh] shrink-0 items-center",
+				message: "min-w-0 text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere]",
+			},
+		);
 	});
 
-	it("draws a lone recap collapsed and words it as Recap: in the body", () => {
-		const recap: HookNotice = {message: {notice: "away_summary", recap: "Fixed it."}, level: "notice", uuid: "r-1"};
+	it("draws a lone recap collapsed and words it as Recap: in the body", () =>
+	{
+		const recap: HookNotice =
+		{
+			message:
+			{
+				notice: "away_summary",
+				recap: "Fixed it.",
+			},
+			level: "notice",
+			uuid: "r-1",
+		};
 		const {container} = render(<HookNoticeRow notices={[recap]} verbose={false} />);
 		const closed = snapshot(container);
 		const button = container.querySelector("button");
@@ -170,38 +236,73 @@ describe("HookNoticeRow", () => {
 		expect([closed.expanded, closed.label, snapshot(container).body?.lines]).toStrictEqual([
 			"false",
 			"Claude Code notice",
-			[{icon: false, text: "Recap: Fixed it."}],
+			[
+				{
+					icon: false,
+					text: "Recap: Fixed it.",
+				},
+			],
 		]);
 	});
 
-	it("opens a lone model_consent_fallback warning with the header icon", () => {
-		const fallback: HookNotice = {
+	it("opens a lone model_consent_fallback warning with the header icon", () =>
+	{
+		const fallback: HookNotice =
+		{
 			message: "Switched to Opus 4.7 — for this session · Fable 5 requires usage credits · /model to change",
 			level: "warning",
 		};
 		const {container} = render(<HookNoticeRow notices={[fallback]} verbose={false} />);
-		expect(snapshot(container)).toStrictEqual({
-			label: "Claude Code notice",
-			expanded: "true",
-			headerIcons: 1,
-			body: {
-				hidden: false,
-				className: "epitaxy-expanding-body flow-root",
-				lines: [
-					{
-						icon: false,
-						text: "Switched to Opus 4.7 — for this session · Fable 5 requires usage credits · /model to change",
-					},
-				],
+		expect(snapshot(container)).toStrictEqual(
+			{
+				label: "Claude Code notice",
+				expanded: "true",
+				headerIcons: 1,
+				body:
+				{
+					hidden: false,
+					className: "epitaxy-expanding-body flow-root",
+					lines: [
+						{
+							icon: false,
+							text: "Switched to Opus 4.7 — for this session · Fable 5 requires usage credits · /model to change",
+						},
+					],
+				},
 			},
-		});
+		);
 	});
 
-	it("words merged structured notices line by line", () => {
+	it("words merged structured notices line by line", () =>
+	{
 		const merged: HookNotice[] = [
-			{message: {notice: "away_summary", recap: "x"}, level: "notice", uuid: "a"},
-			{message: {notice: "agents_killed"}, level: "notice", uuid: "b"},
-			{message: {notice: "memory_saved", count: 2, teamCount: 1}, level: "notice", uuid: "c"},
+			{
+				message:
+				{
+					notice: "away_summary",
+					recap: "x",
+				},
+				level: "notice",
+				uuid: "a",
+			},
+			{
+				message:
+				{
+					notice: "agents_killed",
+				},
+				level: "notice",
+				uuid: "b",
+			},
+			{
+				message:
+				{
+					notice: "memory_saved",
+					count: 2,
+					teamCount: 1,
+				},
+				level: "notice",
+				uuid: "c",
+			},
 		];
 		const {container} = render(<HookNoticeRow notices={merged} verbose />);
 		expect(snapshot(container).body?.lines.map((line) => line.text)).toStrictEqual([
@@ -211,38 +312,74 @@ describe("HookNoticeRow", () => {
 		]);
 	});
 
-	it("keeps line breaks in a multi-line message", () => {
+	it("keeps line breaks in a multi-line message", () =>
+	{
 		const {container} = render(
-			<HookNoticeRow notices={[{message: "Version 2.1.227:\n· Fixed a", level: "warning"}]} verbose={false} />,
+			<HookNoticeRow
+				notices={[
+					{
+						message: "Version 2.1.227:\n· Fixed a",
+						level: "warning",
+					},
+				]}
+				verbose={false}
+			/>,
 		);
 		expect(container.querySelector(".select-text")?.textContent).toBe("Version 2.1.227:\n· Fixed a");
 	});
 
-	it("opens a prompt_stopped warning with upstream's stop copy", () => {
+	it("opens a prompt_stopped warning with upstream's stop copy", () =>
+	{
 		const stopped = (message: HookNotice["message"]) =>
 			snapshot(
-				render(<HookNoticeRow notices={[{message, level: "warning", uuid: "s-1"}]} verbose={false} />)
-					.container,
+				render(
+					<HookNoticeRow
+						notices={[
+							{
+								message,
+								level: "warning",
+								uuid: "s-1",
+							},
+						]}
+						verbose={false}
+					/>,
+				).container,
 			);
 		expect([
-			stopped({notice: "prompt_stopped", reason: "quota"}),
-			stopped({notice: "prompt_stopped"}),
+			stopped(
+				{
+					notice: "prompt_stopped",
+					reason: "quota",
+				},
+			),
+			stopped(
+				{
+					notice: "prompt_stopped",
+				},
+			),
 		]).toStrictEqual([
 			{
 				label: "Claude Code notice",
 				expanded: "true",
 				headerIcons: 1,
-				body: {
+				body:
+				{
 					hidden: false,
 					className: "epitaxy-expanding-body flow-root",
-					lines: [{icon: false, text: "A hook stopped a message, so Claude didn’t reply to it: quota"}],
+					lines: [
+						{
+							icon: false,
+							text: "A hook stopped a message, so Claude didn’t reply to it: quota",
+						},
+					],
 				},
 			},
 			{
 				label: "Claude Code notice",
 				expanded: "true",
 				headerIcons: 1,
-				body: {
+				body:
+				{
 					hidden: false,
 					className: "epitaxy-expanding-body flow-root",
 					lines: [
@@ -256,35 +393,56 @@ describe("HookNoticeRow", () => {
 		]);
 	});
 
-	it("marks only the stop line when a stop merges with a notice", () => {
+	it("marks only the stop line when a stop merges with a notice", () =>
+	{
 		const {container} = render(
 			<HookNoticeRow
 				notices={[
 					NOTICE,
-					{message: {notice: "prompt_stopped", reason: "quota"}, level: "warning", uuid: "s-1"},
+					{
+						message:
+						{
+							notice: "prompt_stopped",
+							reason: "quota",
+						},
+						level: "warning",
+						uuid: "s-1",
+					},
 				]}
 				verbose={false}
 			/>,
 		);
-		expect(snapshot(container)).toStrictEqual({
-			label: "2 Claude Code notices",
-			expanded: "true",
-			headerIcons: 1,
-			body: {
-				hidden: false,
-				className: "epitaxy-expanding-body flow-root",
-				lines: [
-					{icon: false, text: "Compacted while idle"},
-					{icon: true, text: "A hook stopped a message, so Claude didn’t reply to it: quota"},
-				],
+		expect(snapshot(container)).toStrictEqual(
+			{
+				label: "2 Claude Code notices",
+				expanded: "true",
+				headerIcons: 1,
+				body:
+				{
+					hidden: false,
+					className: "epitaxy-expanding-body flow-root",
+					lines: [
+						{
+							icon: false,
+							text: "Compacted while idle",
+						},
+						{
+							icon: true,
+							text: "A hook stopped a message, so Claude didn’t reply to it: quota",
+						},
+					],
+				},
 			},
-		});
+		);
 	});
 });
 
-describe("Claude Code notice secrets", () => {
-	it("masks a token and cuts before an unterminated private key with upstream's note", () => {
-		const notice: HookNotice = {
+describe("Claude Code notice secrets", () =>
+{
+	it("masks a token and cuts before an unterminated private key with upstream's note", () =>
+	{
+		const notice: HookNotice =
+		{
 			message: `token AKIAEXAMPLEFAKE12345 then ${PEM_BEGIN}\nMIIB`,
 			level: "warning",
 			uuid: "s-1",
@@ -292,9 +450,16 @@ describe("Claude Code notice secrets", () => {
 		const {container} = render(<HookNoticeRow notices={[notice]} verbose />);
 		const line = container.querySelector(".epitaxy-expanding-body .select-text")!;
 		const note = line.querySelector("span.text-caption");
-		expect({text: line.textContent, note: note?.outerHTML}).toStrictEqual({
-			text: `token AKIAEXAM${"•".repeat(12)} then (The rest of this notice is hidden because part of it looked like a private key.)`,
-			note: '<span class="text-caption text-muted-as-secondary">(The rest of this notice is hidden because part of it looked like a private key.)</span>',
-		});
+		expect(
+			{
+				text: line.textContent,
+				note: note?.outerHTML,
+			},
+		).toStrictEqual(
+			{
+				text: `token AKIAEXAM${"•".repeat(12)} then (The rest of this notice is hidden because part of it looked like a private key.)`,
+				note: '<span class="text-caption text-muted-as-secondary">(The rest of this notice is hidden because part of it looked like a private key.)</span>',
+			},
+		);
 	});
 });

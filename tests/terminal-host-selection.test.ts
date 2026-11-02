@@ -3,21 +3,26 @@ import {TerminalHostSettingSchema} from "../src/lib/terminal-host-setting";
 import {createTmuxTerminalHost, resolveTerminalHost, startTerminalHostEvents} from "../src/lib/terminal-host";
 import {detectTmux, selectTerminalHost, type TerminalHostProbes} from "../src/lib/terminal-host/selection";
 
-function probes(herdr: boolean, tmux: boolean, calls: string[] = []): TerminalHostProbes {
+function probes(herdr: boolean, tmux: boolean, calls: string[] = []): TerminalHostProbes
+{
 	return {
-		herdrAvailable: async () => {
+		herdrAvailable: async () =>
+		{
 			calls.push("herdr");
 			return Promise.resolve(herdr);
 		},
-		tmuxAvailable: async () => {
+		tmuxAvailable: async () =>
+		{
 			calls.push("tmux");
 			return Promise.resolve(tmux);
 		},
 	};
 }
 
-describe("TerminalHostSettingSchema", () => {
-	it("accepts exactly auto, herdr and tmux", () => {
+describe("TerminalHostSettingSchema", () =>
+{
+	it("accepts exactly auto, herdr and tmux", () =>
+	{
 		expect([
 			TerminalHostSettingSchema.options,
 			TerminalHostSettingSchema.safeParse("screen").success,
@@ -25,120 +30,217 @@ describe("TerminalHostSettingSchema", () => {
 	});
 });
 
-describe("selectTerminalHost", () => {
-	it("picks herdr in auto mode when its socket answers, without probing tmux", async () => {
+describe("selectTerminalHost", () =>
+{
+	it("picks herdr in auto mode when its socket answers, without probing tmux", async () =>
+	{
 		const calls: string[] = [];
 
-		expect({host: await selectTerminalHost("auto", probes(true, true, calls)), calls}).toStrictEqual({
-			host: "herdr",
-			calls: ["herdr"],
-		});
+		expect(
+			{
+				host: await selectTerminalHost("auto", probes(true, true, calls)),
+				calls,
+			},
+		).toStrictEqual(
+			{
+				host: "herdr",
+				calls: ["herdr"],
+			},
+		);
 	});
 
-	it("falls back to tmux in auto mode when herdr is down and tmux is present", async () => {
+	it("falls back to tmux in auto mode when herdr is down and tmux is present", async () =>
+	{
 		const calls: string[] = [];
 
-		expect({host: await selectTerminalHost("auto", probes(false, true, calls)), calls}).toStrictEqual({
-			host: "tmux",
-			calls: ["herdr", "tmux"],
-		});
+		expect(
+			{
+				host: await selectTerminalHost("auto", probes(false, true, calls)),
+				calls,
+			},
+		).toStrictEqual(
+			{
+				host: "tmux",
+				calls: ["herdr", "tmux"],
+			},
+		);
 	});
 
-	it("keeps herdr in auto mode when neither host is running, so herdr's own unavailable handling still answers", async () => {
+	it("keeps herdr in auto mode when neither host is running, so herdr's own unavailable handling still answers", async () =>
+	{
 		expect(await selectTerminalHost("auto", probes(false, false))).toBe("herdr");
 	});
 
-	it("honours an explicit choice without probing anything", async () => {
+	it("honours an explicit choice without probing anything", async () =>
+	{
 		const calls: string[] = [];
 
-		expect({
-			herdr: await selectTerminalHost("herdr", probes(false, true, calls)),
-			tmux: await selectTerminalHost("tmux", probes(true, false, calls)),
-			calls,
-		}).toStrictEqual({herdr: "herdr", tmux: "tmux", calls: []});
+		expect(
+			{
+				herdr: await selectTerminalHost("herdr", probes(false, true, calls)),
+				tmux: await selectTerminalHost("tmux", probes(true, false, calls)),
+				calls,
+			},
+		).toStrictEqual(
+			{
+				herdr: "herdr",
+				tmux: "tmux",
+				calls: [],
+			},
+		);
 	});
 });
 
-describe("detectTmux", () => {
-	it("reports tmux when $TMUX is set, without asking for a server", async () => {
+describe("detectTmux", () =>
+{
+	it("reports tmux when $TMUX is set, without asking for a server", async () =>
+	{
 		const calls: string[] = [];
 
-		expect({
-			present: await detectTmux({TMUX: "/tmp/tmux-501/default,123,0"}, async () => {
-				calls.push("server");
-				return Promise.resolve(false);
-			}),
-			calls,
-		}).toStrictEqual({present: true, calls: []});
+		expect(
+			{
+				present: await detectTmux(
+					{
+						TMUX: "/tmp/tmux-501/default,123,0",
+					},
+					async () =>
+					{
+						calls.push("server");
+						return Promise.resolve(false);
+					},
+				),
+				calls,
+			},
+		).toStrictEqual(
+			{
+				present: true,
+				calls: [],
+			},
+		);
 	});
 
-	it("asks for a running tmux server when $TMUX is unset or empty", async () => {
+	it("asks for a running tmux server when $TMUX is unset or empty", async () =>
+	{
 		expect([
 			await detectTmux({}, async () => Promise.resolve(true)),
-			await detectTmux({TMUX: ""}, async () => Promise.resolve(false)),
+			await detectTmux(
+				{
+					TMUX: "",
+				},
+				async () => Promise.resolve(false),
+			),
 		]).toStrictEqual([true, false]);
 	});
 });
 
-describe("resolveTerminalHost", () => {
-	it("drives herdr through the herdr host and tmux through the tmux host", async () => {
-		expect({
-			herdr: (await resolveTerminalHost("herdr", probes(false, false))).id,
-			autoWithHerdr: (await resolveTerminalHost("auto", probes(true, true))).id,
-			autoWithTmuxOnly: (await resolveTerminalHost("auto", probes(false, true))).id,
-			tmux: (await resolveTerminalHost("tmux", probes(true, true))).id,
-		}).toStrictEqual({herdr: "herdr", autoWithHerdr: "herdr", autoWithTmuxOnly: "tmux", tmux: "tmux"});
+describe("resolveTerminalHost", () =>
+{
+	it("drives herdr through the herdr host and tmux through the tmux host", async () =>
+	{
+		expect(
+			{
+				herdr: (await resolveTerminalHost("herdr", probes(false, false))).id,
+				autoWithHerdr: (await resolveTerminalHost("auto", probes(true, true))).id,
+				autoWithTmuxOnly: (await resolveTerminalHost("auto", probes(false, true))).id,
+				tmux: (await resolveTerminalHost("tmux", probes(true, true))).id,
+			},
+		).toStrictEqual(
+			{
+				herdr: "herdr",
+				autoWithHerdr: "herdr",
+				autoWithTmuxOnly: "tmux",
+				tmux: "tmux",
+			},
+		);
 	});
 
-	it("gives the tmux host no workspaces or herdr terminals yet, and refuses herdr terminal actions", async () => {
-		const host = createTmuxTerminalHost({
-			entries: () => [],
-			registry: () => [],
-			listPanes: async () => Promise.resolve(""),
-			processTable: async () => Promise.resolve(""),
-		});
+	it("gives the tmux host no workspaces or herdr terminals yet, and refuses herdr terminal actions", async () =>
+	{
+		const host = createTmuxTerminalHost(
+			{
+				entries: () => [],
+				registry: () => [],
+				listPanes: async () => Promise.resolve(""),
+				processTable: async () => Promise.resolve(""),
+			},
+		);
 		const action = await host.manageTerminal(
-			new Request("http://127.0.0.1:7526/api/herdr/terminals", {
-				method: "POST",
-				body: JSON.stringify({action: "close-pane", paneId: "w1:p1"}),
-			}),
+			new Request(
+				"http://127.0.0.1:7526/api/herdr/terminals",
+				{
+					method: "POST",
+					body: JSON.stringify(
+						{
+							action: "close-pane",
+							paneId: "w1:p1",
+						},
+					),
+				},
+			),
 		);
 
-		expect({
-			panes: await host.listPanes(),
-			workspaces: await host.listWorkspaces(),
-			terminals: await host.listTerminals(),
-			action: {status: action.status, body: await action.json()},
-			placementProvider: host.placementProvider()?.id,
-			paneStream: await host
-				.observePane("w1:p1", 80, 24, {send: () => undefined, close: () => undefined})
-				.catch((error: unknown) => (error instanceof Error ? error.message : String(error))),
-		}).toStrictEqual({
-			panes: [],
-			workspaces: [],
-			terminals: [],
-			action: {
-				status: 503,
-				body: {error: "No terminal host is available for live input", code: "no-terminal-host"},
+		expect(
+			{
+				panes: await host.listPanes(),
+				workspaces: await host.listWorkspaces(),
+				terminals: await host.listTerminals(),
+				action:
+				{
+					status: action.status,
+					body: await action.json(),
+				},
+				placementProvider: host.placementProvider()?.id,
+				paneStream: await host
+					.observePane(
+						"w1:p1",
+						80,
+						24,
+						{
+							send: () => undefined,
+							close: () => undefined,
+						},
+					)
+					.catch((error: unknown) => (error instanceof Error ? error.message : String(error))),
 			},
-			placementProvider: "tmux",
-			paneStream: "No terminal host can stream this pane",
-		});
+		).toStrictEqual(
+			{
+				panes: [],
+				workspaces: [],
+				terminals: [],
+				action:
+				{
+					status: 503,
+					body:
+					{
+						error: "No terminal host is available for live input",
+						code: "no-terminal-host",
+					},
+				},
+				placementProvider: "tmux",
+				paneStream: "No terminal host can stream this pane",
+			},
+		);
 	});
 });
 
-describe("startTerminalHostEvents", () => {
-	function starters(started: string[]) {
+describe("startTerminalHostEvents", () =>
+{
+	function starters(started: string[])
+	{
 		return {
-			herdr: () => {
+			herdr: () =>
+			{
 				started.push("herdr");
-				return () => {
+				return () =>
+				{
 					started.push("stop herdr");
 				};
 			},
-			tmux: () => {
+			tmux: () =>
+			{
 				started.push("tmux");
-				return () => {
+				return () =>
+				{
 					started.push("stop tmux");
 				};
 			},
@@ -149,7 +251,8 @@ describe("startTerminalHostEvents", () => {
 		["auto", ["herdr", "tmux", "stop herdr", "stop tmux"]],
 		["herdr", ["herdr", "stop herdr"]],
 		["tmux", ["tmux", "stop tmux"]],
-	] as const)("for %s starts and stops the event sources of each host it can pick", (setting, expected) => {
+	] as const)("for %s starts and stops the event sources of each host it can pick", (setting, expected) =>
+	{
 		const started: string[] = [];
 		const stop = startTerminalHostEvents(setting, starters(started));
 		stop();

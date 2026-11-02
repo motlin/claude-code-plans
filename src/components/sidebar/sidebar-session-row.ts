@@ -1,12 +1,14 @@
 import type {SessionListItem} from "../../lib/api/sessions";
 import type {SessionGroupRow} from "../../lib/session-groups";
 
-export interface SidebarSessionRow extends SessionGroupRow {
+export interface SidebarSessionRow extends SessionGroupRow
+{
 	id: string;
 	session: SessionListItem;
 }
 
-export function toGroupRow(session: SessionListItem): SidebarSessionRow {
+export function toGroupRow(session: SessionListItem): SidebarSessionRow
+{
 	return {
 		session,
 		id: session.id,

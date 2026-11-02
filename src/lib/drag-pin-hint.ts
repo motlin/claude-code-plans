@@ -10,28 +10,33 @@ import {readSidebarState} from "./sidebar-store";
 let requested = false;
 const listeners = new Set<() => void>();
 
-function set(next: boolean): void {
+function set(next: boolean): void
+{
 	if (requested === next) return;
 	requested = next;
 	for (const listener of listeners) listener();
 }
 
 /** After a menu pin: request the hint, unless the sidebar is collapsed. */
-export function maybeShowDragPinHint(): void {
+export function maybeShowDragPinHint(): void
+{
 	if (readSidebarState().collapsed) return;
 	set(true);
 }
 
-export function closeDragPinHint(): void {
+export function closeDragPinHint(): void
+{
 	set(false);
 }
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
 
-export function useDragPinHintRequested(): boolean {
+export function useDragPinHintRequested(): boolean
+{
 	return useSyncExternalStore(
 		subscribe,
 		() => requested,

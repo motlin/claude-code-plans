@@ -10,9 +10,11 @@ import {getMcpRenderer} from "./mcp-registry";
 
 const MCP_CLI_RE = /^mcp-cli\s+call\s+(\S+)\s+(\S+)/;
 
-function stripCommandPrefix(content: string, command: string): string {
+function stripCommandPrefix(content: string, command: string): string
+{
 	const prefix = `$ ${command}\n`;
-	if (content.startsWith(prefix)) {
+	if (content.startsWith(prefix))
+	{
 		return content.slice(prefix.length);
 	}
 	return content;
@@ -26,17 +28,27 @@ function McpCliBashRenderer({
 	toolCall: ToolRendererProps["toolCall"];
 	server: string;
 	tool: string;
-}) {
+})
+{
 	const syntheticName = `mcp__${server}__${tool}`;
 	const Renderer = getMcpRenderer(server);
 
-	return <Renderer toolCall={{...toolCall, name: syntheticName}} />;
+	return (
+		<Renderer
+			toolCall={
+			{
+				...toolCall,
+				name: syntheticName,
+			}}
+		/>
+	);
 }
 
 // The prompt is a select-none gutter beside the command column, so copying the
 // rendered text yields the bare command and wrapped lines stay left-aligned
 // under the command rather than under the `$`.
-function CommandRow({children}: {children: ReactNode}) {
+function CommandRow({children}: {children: ReactNode})
+{
 	return (
 		<div className="flex">
 			<span className="select-none text-secondary">$&nbsp;</span>
@@ -45,10 +57,12 @@ function CommandRow({children}: {children: ReactNode}) {
 	);
 }
 
-export function HighlightedCommand({command, language = "shellscript"}: {command: string; language?: string}) {
+export function HighlightedCommand({command, language = "shellscript"}: {command: string; language?: string})
+{
 	const tokens = useHighlightedLines(command, language);
 
-	if (!tokens) {
+	if (!tokens)
+	{
 		return <CommandRow>{command}</CommandRow>;
 	}
 
@@ -58,7 +72,13 @@ export function HighlightedCommand({command, language = "shellscript"}: {command
 				<span key={lineIndex}>
 					{lineIndex > 0 && "\n"}
 					{lineTokens.map((token: ThemedToken, tokenIndex: number) => (
-						<span key={tokenIndex} style={{color: token.color}}>
+						<span
+							key={tokenIndex}
+							style={
+							{
+								color: token.color,
+							}}
+						>
 							{token.content}
 						</span>
 					))}
@@ -68,7 +88,8 @@ export function HighlightedCommand({command, language = "shellscript"}: {command
 	);
 }
 
-export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
+export function BashRenderer({toolCall, nested = false}: ToolRendererProps)
+{
 	const command = inputString(toolCall.input, "command") ?? "";
 	const {isError} = toolCall;
 	// A blocked call never ran, so upstream shows why in place of its raw denial text.
@@ -80,7 +101,8 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 	const secrets = useSecretReveal(resultContent ? [command, resultContent] : [command]);
 
 	const [, mcpServer, mcpTool] = MCP_CLI_RE.exec(command) ?? [];
-	if (mcpServer !== undefined && mcpTool !== undefined && result) {
+	if (mcpServer !== undefined && mcpTool !== undefined && result)
+	{
 		return <McpCliBashRenderer toolCall={toolCall} server={mcpServer} tool={mcpTool} />;
 	}
 
@@ -124,7 +146,8 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 
 	// Nested in a grouped card: no card chrome, so the "Bash" header disappears
 	// and the copy button sits beside the body instead of above it.
-	if (nested) {
+	if (nested)
+	{
 		return (
 			<>
 				<div className="flex-1 min-w-0 flex flex-col gap-g6 font-mono">{body}</div>

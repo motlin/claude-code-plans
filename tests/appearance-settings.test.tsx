@@ -6,7 +6,8 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {
+import
+{
 	INTERFACE_FONT_FAMILIES,
 	InterfaceFontSchema,
 	SYSTEM_FONT_STACK,
@@ -34,7 +35,8 @@ const HTML_VARS = [
 	"--prompt-comfortable-line-height",
 ] as const;
 
-function htmlVars(): Record<(typeof HTML_VARS)[number], string> {
+function htmlVars(): Record<(typeof HTML_VARS)[number], string>
+{
 	const style = document.documentElement.style;
 	return Object.fromEntries(HTML_VARS.map((name) => [name, style.getPropertyValue(name)])) as Record<
 		(typeof HTML_VARS)[number],
@@ -42,7 +44,8 @@ function htmlVars(): Record<(typeof HTML_VARS)[number], string> {
 	>;
 }
 
-async function renderTab(tab: React.ReactNode) {
+async function renderTab(tab: React.ReactNode)
+{
 	render(
 		<QueryClientProvider client={new QueryClient()}>
 			<ThemeProvider>
@@ -53,28 +56,67 @@ async function renderTab(tab: React.ReactNode) {
 	await act(async () => {});
 }
 
-function pick(group: string, option: string) {
-	fireEvent.click(within(screen.getByRole("radiogroup", {name: group})).getByRole("radio", {name: option}));
+function pick(group: string, option: string)
+{
+	fireEvent.click(
+		within(
+			screen.getByRole(
+				"radiogroup",
+				{
+					name: group,
+				},
+			),
+		).getByRole(
+			"radio",
+			{
+				name: option,
+			},
+		),
+	);
 }
 
 /** The fizzy-lake rollout without its `type` part. */
 const PRE_TYPE_PARTS: readonly FizzyLakePart[] = ["color", "panels"];
 
 /** Picks an option from a settings ThemedCombobox (the fizzy `type` Interface font control). */
-function choose(name: string, option: string) {
-	fireEvent.click(screen.getByRole("combobox", {name}));
-	fireEvent.click(screen.getByRole("option", {name: option}));
+function choose(name: string, option: string)
+{
+	fireEvent.click(
+		screen.getByRole(
+			"combobox",
+			{
+				name,
+			},
+		),
+	);
+	fireEvent.click(
+		screen.getByRole(
+			"option",
+			{
+				name: option,
+			},
+		),
+	);
 }
 
-function checked(group: string): string | null {
+function checked(group: string): string | null
+{
 	return (
-		within(screen.getByRole("radiogroup", {name: group}))
+		within(
+			screen.getByRole(
+				"radiogroup",
+				{
+					name: group,
+				},
+			),
+		)
 			.getAllByRole("radio")
 			.find((radio) => radio.getAttribute("aria-checked") === "true")?.textContent ?? null
 	);
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	// The Sessions rows load /api/claude-code-settings; keep them loading and off the network.
 	vi.stubGlobal(
@@ -83,77 +125,110 @@ beforeEach(() => {
 	);
 	vi.stubGlobal(
 		"matchMedia",
-		vi.fn(() => ({matches: false, addEventListener: () => {}, removeEventListener: () => {}})),
+		vi.fn(() => (
+		{
+			matches: false,
+			addEventListener: () =>
+			{
+			},
+			removeEventListener: () =>
+			{
+			},
+		})),
 	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	for (const name of HTML_VARS) document.documentElement.style.removeProperty(name);
 	delete document.documentElement.dataset["interfaceFont"];
 });
 
-describe("appearance setting schemas", () => {
-	it("accepts only the upstream interface fonts and transcript text sizes", () => {
-		expect({
-			fonts: ["sans", "system", "dyslexic", "opendyslexic", ""].map(
-				(value) => InterfaceFontSchema.safeParse(value).success,
-			),
-			sizes: ["sm", "md", "lg", "xl", "medium"].map((value) => TranscriptTextSizeSchema.safeParse(value).success),
-			textSizes: TRANSCRIPT_TEXT_SIZES,
-			defaults: {
-				interfaceFont: DEFAULTS.interfaceFont,
-				transcriptTextSize: DEFAULTS.transcriptTextSize,
-				transcriptWidth: DEFAULTS.transcriptWidth,
-				verbosity: DEFAULTS.verbosity,
-			},
-		}).toStrictEqual({
-			fonts: [true, true, true, false, false],
-			sizes: [true, true, true, false, false],
-			textSizes: {
-				sm: {
-					fontSize: "0.8125rem",
-					lineHeight: "1.42857",
-					comfortableFontSize: "0.9375rem",
-					comfortableLineHeight: "1.375rem",
-					promptFontSize: "13px",
-					promptLineHeight: "18px",
-				},
-				md: {
-					fontSize: "0.875rem",
-					lineHeight: "1.42857",
-					comfortableFontSize: "1rem",
-					comfortableLineHeight: "1.5rem",
-					promptFontSize: "14px",
-					promptLineHeight: "20px",
-				},
-				lg: {
-					fontSize: "0.9375rem",
-					lineHeight: "1.46667",
-					comfortableFontSize: "1.125rem",
-					comfortableLineHeight: "1.6875rem",
-					promptFontSize: "15px",
-					promptLineHeight: "21px",
+describe("appearance setting schemas", () =>
+{
+	it("accepts only the upstream interface fonts and transcript text sizes", () =>
+	{
+		expect(
+			{
+				fonts: ["sans", "system", "dyslexic", "opendyslexic", ""].map(
+					(value) => InterfaceFontSchema.safeParse(value).success,
+				),
+				sizes: ["sm", "md", "lg", "xl", "medium"].map(
+					(value) => TranscriptTextSizeSchema.safeParse(value).success,
+				),
+				textSizes: TRANSCRIPT_TEXT_SIZES,
+				defaults:
+				{
+					interfaceFont: DEFAULTS.interfaceFont,
+					transcriptTextSize: DEFAULTS.transcriptTextSize,
+					transcriptWidth: DEFAULTS.transcriptWidth,
+					verbosity: DEFAULTS.verbosity,
 				},
 			},
-			defaults: {
-				interfaceFont: "sans",
-				transcriptTextSize: "md",
-				transcriptWidth: "narrow",
-				verbosity: "normal",
+		).toStrictEqual(
+			{
+				fonts: [true, true, true, false, false],
+				sizes: [true, true, true, false, false],
+				textSizes:
+				{
+					sm:
+					{
+						fontSize: "0.8125rem",
+						lineHeight: "1.42857",
+						comfortableFontSize: "0.9375rem",
+						comfortableLineHeight: "1.375rem",
+						promptFontSize: "13px",
+						promptLineHeight: "18px",
+					},
+					md:
+					{
+						fontSize: "0.875rem",
+						lineHeight: "1.42857",
+						comfortableFontSize: "1rem",
+						comfortableLineHeight: "1.5rem",
+						promptFontSize: "14px",
+						promptLineHeight: "20px",
+					},
+					lg:
+					{
+						fontSize: "0.9375rem",
+						lineHeight: "1.46667",
+						comfortableFontSize: "1.125rem",
+						comfortableLineHeight: "1.6875rem",
+						promptFontSize: "15px",
+						promptLineHeight: "21px",
+					},
+				},
+				defaults:
+				{
+					interfaceFont: "sans",
+					transcriptTextSize: "md",
+					transcriptWidth: "narrow",
+					verbosity: "normal",
+				},
 			},
-		});
+		);
 	});
 });
 
-describe("Appearance settings", () => {
+describe("Appearance settings", () =>
+{
 	// Upstream fizzy `type`: --fizzy-lake-column:768, [data-transcript-width=m] 960px, =l 1280px.
-	it("measures the transcript column at upstream's 768 / 960 / 1280px", () => {
-		expect(TRANSCRIPT_WIDTH_PX).toStrictEqual({narrow: 768, medium: 960, wide: 1280});
+	it("measures the transcript column at upstream's 768 / 960 / 1280px", () =>
+	{
+		expect(TRANSCRIPT_WIDTH_PX).toStrictEqual(
+			{
+				narrow: 768,
+				medium: 960,
+				wide: 1280,
+			},
+		);
 	});
 
-	it("applies interface font, transcript text size and width as CSS variables on <html>", async () => {
+	it("applies interface font, transcript text size and width as CSS variables on <html>", async () =>
+	{
 		await renderTab(<GeneralSettings />);
 		const initial = htmlVars();
 
@@ -161,7 +236,8 @@ describe("Appearance settings", () => {
 		choose("Transcript text size", "Large");
 		choose("Transcript width", "Wide");
 		const changed = htmlVars();
-		const stored = {
+		const stored =
+		{
 			font: localStorage.getItem("ccp-interface-font"),
 			size: localStorage.getItem("ccp-transcript-text-size"),
 			width: localStorage.getItem("ccp-transcript-width"),
@@ -170,115 +246,210 @@ describe("Appearance settings", () => {
 		choose("Interface font", "Default · Sans");
 		choose("Transcript text size", "Small");
 
-		expect({initial, changed, stored, reverted: htmlVars()}).toStrictEqual({
-			initial: {
-				"--font-sans": "",
-				"--max-content-width": "768px",
-				"--transcript-text-size": "0.875rem",
-				"--transcript-leading": "1.42857",
-				"--transcript-comfortable-text-size": "0.9375rem",
-				"--transcript-comfortable-leading": "1.3125rem",
-				"--prompt-text-size": "14px",
-				"--prompt-line-height": "20px",
-				"--prompt-comfortable-text-size": "0.9375rem",
-				"--prompt-comfortable-line-height": "1.3125rem",
+		expect(
+			{
+				initial,
+				changed,
+				stored,
+				reverted: htmlVars(),
 			},
-			changed: {
-				"--font-sans": SYSTEM_FONT_STACK,
-				"--max-content-width": "1280px",
-				"--transcript-text-size": "0.9375rem",
-				"--transcript-leading": "1.46667",
-				"--transcript-comfortable-text-size": "1rem",
-				"--transcript-comfortable-leading": "1.375rem",
-				"--prompt-text-size": "15px",
-				"--prompt-line-height": "21px",
-				"--prompt-comfortable-text-size": "1rem",
-				"--prompt-comfortable-line-height": "1.375rem",
+		).toStrictEqual(
+			{
+				initial:
+				{
+					"--font-sans": "",
+					"--max-content-width": "768px",
+					"--transcript-text-size": "0.875rem",
+					"--transcript-leading": "1.42857",
+					"--transcript-comfortable-text-size": "0.9375rem",
+					"--transcript-comfortable-leading": "1.3125rem",
+					"--prompt-text-size": "14px",
+					"--prompt-line-height": "20px",
+					"--prompt-comfortable-text-size": "0.9375rem",
+					"--prompt-comfortable-line-height": "1.3125rem",
+				},
+				changed:
+				{
+					"--font-sans": SYSTEM_FONT_STACK,
+					"--max-content-width": "1280px",
+					"--transcript-text-size": "0.9375rem",
+					"--transcript-leading": "1.46667",
+					"--transcript-comfortable-text-size": "1rem",
+					"--transcript-comfortable-leading": "1.375rem",
+					"--prompt-text-size": "15px",
+					"--prompt-line-height": "21px",
+					"--prompt-comfortable-text-size": "1rem",
+					"--prompt-comfortable-line-height": "1.375rem",
+				},
+				stored:
+				{
+					font: "system",
+					size: "lg",
+					width: "wide",
+				},
+				reverted:
+				{
+					"--font-sans": "",
+					"--max-content-width": "1280px",
+					"--transcript-text-size": "0.8125rem",
+					"--transcript-leading": "1.42857",
+					"--transcript-comfortable-text-size": "0.875rem",
+					"--transcript-comfortable-leading": "1.25rem",
+					"--prompt-text-size": "13px",
+					"--prompt-line-height": "18px",
+					"--prompt-comfortable-text-size": "0.875rem",
+					"--prompt-comfortable-line-height": "1.25rem",
+				},
 			},
-			stored: {font: "system", size: "lg", width: "wide"},
-			reverted: {
-				"--font-sans": "",
-				"--max-content-width": "1280px",
-				"--transcript-text-size": "0.8125rem",
-				"--transcript-leading": "1.42857",
-				"--transcript-comfortable-text-size": "0.875rem",
-				"--transcript-comfortable-leading": "1.25rem",
-				"--prompt-text-size": "13px",
-				"--prompt-line-height": "18px",
-				"--prompt-comfortable-text-size": "0.875rem",
-				"--prompt-comfortable-line-height": "1.25rem",
-			},
-		});
+		);
 	});
 
 	// Upstream's fizzy `type` General row: a ghost Combobox reading "Default · {font}" whose options are each
 	// set in their own family (upstream dn: [default, anthropic, system, dyslexic]); local's default is Sans.
-	it("offers the interface fonts in a ghost combobox, each option in its own family", async () => {
+	it("offers the interface fonts in a ghost combobox, each option in its own family", async () =>
+	{
 		await renderTab(<GeneralSettings />);
-		const trigger = screen.getByRole("combobox", {name: "Interface font"});
+		const trigger = screen.getByRole(
+			"combobox",
+			{
+				name: "Interface font",
+			},
+		);
 		const root = trigger.closest("[data-cds=Combobox]");
 		const initial = trigger.textContent;
 		fireEvent.click(trigger);
-		const options = screen.getAllByRole("option").map((option) => ({
+		const options = screen.getAllByRole("option").map((option) => (
+		{
 			label: option.textContent,
 			fontFamily: option.querySelector<HTMLElement>("span")?.style.fontFamily,
 			selected: option.getAttribute("aria-selected"),
 		}));
 		const filter = screen.queryByRole("searchbox");
-		fireEvent.click(screen.getByRole("option", {name: "OpenDyslexic"}));
-
-		expect({
-			initial,
-			ghost: ["group/cbx", "bg-transparent", "hover:bg-fill-ghost-hover"].filter((name) =>
-				root?.classList.contains(name),
+		fireEvent.click(
+			screen.getByRole(
+				"option",
+				{
+					name: "OpenDyslexic",
+				},
 			),
-			filter,
-			options,
-			after: screen.getByRole("combobox", {name: "Interface font"}).textContent,
-			stored: localStorage.getItem("ccp-interface-font"),
-		}).toStrictEqual({
-			initial: "Default · Sans",
-			ghost: ["group/cbx", "bg-transparent", "hover:bg-fill-ghost-hover"],
-			filter: null,
-			options: [
-				{label: "Default · Sans", fontFamily: INTERFACE_FONT_FAMILIES.sans, selected: "true"},
-				{label: "Sans", fontFamily: INTERFACE_FONT_FAMILIES.sans, selected: "false"},
-				{label: "System", fontFamily: INTERFACE_FONT_FAMILIES.system, selected: "false"},
-				{label: "OpenDyslexic", fontFamily: INTERFACE_FONT_FAMILIES.dyslexic, selected: "false"},
-			],
-			after: "OpenDyslexic",
-			stored: "dyslexic",
-		});
+		);
+
+		expect(
+			{
+				initial,
+				ghost: ["group/cbx", "bg-transparent", "hover:bg-fill-ghost-hover"].filter((name) =>
+					root?.classList.contains(name),
+				),
+				filter,
+				options,
+				after: screen.getByRole(
+					"combobox",
+					{
+						name: "Interface font",
+					},
+				).textContent,
+				stored: localStorage.getItem("ccp-interface-font"),
+			},
+		).toStrictEqual(
+			{
+				initial: "Default · Sans",
+				ghost: ["group/cbx", "bg-transparent", "hover:bg-fill-ghost-hover"],
+				filter: null,
+				options: [
+					{
+						label: "Default · Sans",
+						fontFamily: INTERFACE_FONT_FAMILIES.sans,
+						selected: "true",
+					},
+					{
+						label: "Sans",
+						fontFamily: INTERFACE_FONT_FAMILIES.sans,
+						selected: "false",
+					},
+					{
+						label: "System",
+						fontFamily: INTERFACE_FONT_FAMILIES.system,
+						selected: "false",
+					},
+					{
+						label: "OpenDyslexic",
+						fontFamily: INTERFACE_FONT_FAMILIES.dyslexic,
+						selected: "false",
+					},
+				],
+				after: "OpenDyslexic",
+				stored: "dyslexic",
+			},
+		);
 	});
 
-	it("keeps the pre-rollout segmented Interface font control when fizzy-lake type is off", async () => {
+	it("keeps the pre-rollout segmented Interface font control when fizzy-lake type is off", async () =>
+	{
 		await renderTab(
 			<FizzyLakeContext.Provider value={PRE_TYPE_PARTS}>
 				<GeneralSettings />
 			</FizzyLakeContext.Provider>,
 		);
 
-		expect({
-			combobox: screen.queryByRole("combobox", {name: "Interface font"}),
-			radios: within(screen.getByRole("radiogroup", {name: "Interface font"}))
-				.getAllByRole("radio")
-				.map((radio) => radio.textContent),
-		}).toStrictEqual({combobox: null, radios: ["Sans", "System", "OpenDyslexic"]});
+		expect(
+			{
+				combobox: screen.queryByRole(
+					"combobox",
+					{
+						name: "Interface font",
+					},
+				),
+				radios: within(
+					screen.getByRole(
+						"radiogroup",
+						{
+							name: "Interface font",
+						},
+					),
+				)
+					.getAllByRole("radio")
+					.map((radio) => radio.textContent),
+			},
+		).toStrictEqual(
+			{
+				combobox: null,
+				radios: ["Sans", "System", "OpenDyslexic"],
+			},
+		);
 	});
 
 	// Upstream fizzy `type` (c0db37792 on() picks en/tn/an): ghost Comboboxes reading the plain option label,
 	// text size with no description, width and motion with `descriptionHidden` (div[data-settings-desc].sr-only).
-	it("renders Transcript text size, width and Motion as ghost comboboxes with hidden descriptions", async () => {
+	it("renders Transcript text size, width and Motion as ghost comboboxes with hidden descriptions", async () =>
+	{
 		await renderTab(<GeneralSettings />);
-		const rows = ["Transcript text size", "Transcript width", "Motion"].map((name) => {
-			const row = screen.getByRole("group", {name});
+		const rows = ["Transcript text size", "Transcript width", "Motion"].map((name) =>
+		{
+			const row = screen.getByRole(
+				"group",
+				{
+					name,
+				},
+			);
 			const desc = row.querySelector("[data-settings-desc]");
 			return {
 				name,
 				radiogroup: row.querySelector("[role=radiogroup]") !== null,
 				ghost: row.querySelector("[data-cds=Combobox]")?.classList.contains("group/cbx") ?? false,
-				trigger: within(row).getByRole("combobox", {name}).textContent,
-				desc: desc === null ? null : {className: desc.className, text: desc.textContent},
+				trigger: within(row).getByRole(
+					"combobox",
+					{
+						name,
+					},
+				).textContent,
+				desc:
+					desc === null
+						? null
+						:
+							{
+								className: desc.className,
+								text: desc.textContent,
+							},
 				describedBy: row.getAttribute("aria-describedby") === desc?.id,
 			};
 		});
@@ -287,52 +458,74 @@ describe("Appearance settings", () => {
 		choose("Transcript width", "Wide");
 		choose("Motion", "Reduced");
 
-		expect({
-			rows,
-			stored: {
-				size: localStorage.getItem("ccp-transcript-text-size"),
-				width: localStorage.getItem("ccp-transcript-width"),
-				motion: localStorage.getItem("ccp-motion"),
+		expect(
+			{
+				rows,
+				stored:
+				{
+					size: localStorage.getItem("ccp-transcript-text-size"),
+					width: localStorage.getItem("ccp-transcript-width"),
+					motion: localStorage.getItem("ccp-motion"),
+				},
+				after: ["Transcript text size", "Transcript width", "Motion"].map(
+					(name) =>
+						screen.getByRole(
+							"combobox",
+							{
+								name,
+							},
+						).textContent,
+				),
 			},
-			after: ["Transcript text size", "Transcript width", "Motion"].map(
-				(name) => screen.getByRole("combobox", {name}).textContent,
-			),
-		}).toStrictEqual({
-			rows: [
-				{
-					name: "Transcript text size",
-					radiogroup: false,
-					ghost: true,
-					trigger: "Medium",
-					desc: null,
-					describedBy: false,
-				},
-				{
-					name: "Transcript width",
-					radiogroup: false,
-					ghost: true,
-					trigger: "Narrow",
-					desc: {className: "sr-only", text: "Maximum width of the transcript and composer columns."},
-					describedBy: true,
-				},
-				{
-					name: "Motion",
-					radiogroup: false,
-					ghost: true,
-					trigger: "System",
-					desc: {
-						className: "sr-only",
-						text: "Reduce animation in streaming responses and other interface elements.",
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						name: "Transcript text size",
+						radiogroup: false,
+						ghost: true,
+						trigger: "Medium",
+						desc: null,
+						describedBy: false,
 					},
-					describedBy: true,
+					{
+						name: "Transcript width",
+						radiogroup: false,
+						ghost: true,
+						trigger: "Narrow",
+						desc:
+						{
+							className: "sr-only",
+							text: "Maximum width of the transcript and composer columns.",
+						},
+						describedBy: true,
+					},
+					{
+						name: "Motion",
+						radiogroup: false,
+						ghost: true,
+						trigger: "System",
+						desc:
+						{
+							className: "sr-only",
+							text: "Reduce animation in streaming responses and other interface elements.",
+						},
+						describedBy: true,
+					},
+				],
+				stored:
+				{
+					size: "lg",
+					width: "wide",
+					motion: "reduced",
 				},
-			],
-			stored: {size: "lg", width: "wide", motion: "reduced"},
-			after: ["Large", "Wide", "Reduced"],
-		});
+				after: ["Large", "Wide", "Reduced"],
+			},
+		);
 	});
 
-	it("keeps the segmented Transcript text size, width and Motion rows with visible descriptions when type is off", async () => {
+	it("keeps the segmented Transcript text size, width and Motion rows with visible descriptions when type is off", async () =>
+	{
 		await renderTab(
 			<FizzyLakeContext.Provider value={PRE_TYPE_PARTS}>
 				<GeneralSettings />
@@ -340,22 +533,43 @@ describe("Appearance settings", () => {
 		);
 
 		expect(
-			["Transcript text size", "Transcript width", "Motion"].map((name) => {
-				const row = screen.getByRole("group", {name});
+			["Transcript text size", "Transcript width", "Motion"].map((name) =>
+			{
+				const row = screen.getByRole(
+					"group",
+					{
+						name,
+					},
+				);
 				const desc = row.querySelector("[data-settings-desc]");
 				return {
 					combobox: row.querySelector("[role=combobox]") !== null,
-					radios: within(within(row).getByRole("radiogroup", {name}))
+					radios: within(
+						within(row).getByRole(
+							"radiogroup",
+							{
+								name,
+							},
+						),
+					)
 						.getAllByRole("radio")
 						.map((radio) => radio.textContent),
-					desc: desc === null ? null : {className: desc.className, text: desc.textContent},
+					desc:
+						desc === null
+							? null
+							:
+								{
+									className: desc.className,
+									text: desc.textContent,
+								},
 				};
 			}),
 		).toStrictEqual([
 			{
 				combobox: false,
 				radios: ["Small", "Medium", "Large"],
-				desc: {
+				desc:
+				{
 					className: "text-body text-[var(--settings-muted)]",
 					text: "Size of the conversation transcript text.",
 				},
@@ -363,7 +577,8 @@ describe("Appearance settings", () => {
 			{
 				combobox: false,
 				radios: ["Narrow", "Medium", "Wide"],
-				desc: {
+				desc:
+				{
 					className: "text-body text-[var(--settings-muted)]",
 					text: "Maximum width of the transcript and composer columns.",
 				},
@@ -371,7 +586,8 @@ describe("Appearance settings", () => {
 			{
 				combobox: false,
 				radios: ["System", "Reduced"],
-				desc: {
+				desc:
+				{
 					className: "text-body text-[var(--settings-muted)]",
 					text: "Reduce animation in streaming responses and other interface elements.",
 				},
@@ -379,7 +595,8 @@ describe("Appearance settings", () => {
 		]);
 	});
 
-	it("moves Interface font out of Claude Code, whose Appearance keeps only Default transcript view", async () => {
+	it("moves Interface font out of Claude Code, whose Appearance keeps only Default transcript view", async () =>
+	{
 		await renderTab(<ClaudeCodeSettings />);
 		const appearance = document.getElementById("appearance");
 
@@ -390,99 +607,175 @@ describe("Appearance settings", () => {
 		).toStrictEqual(["default-transcript-view"]);
 	});
 
-	it("offers OpenDyslexic, which marks <html>, swaps the Code font placeholder and hides a plain description under type", async () => {
+	it("offers OpenDyslexic, which marks <html>, swaps the Code font placeholder and hides a plain description under type", async () =>
+	{
 		await renderTab(
 			<>
 				<GeneralSettings />
 				<ClaudeCodeSettings />
 			</>,
 		);
-		const placeholderBefore = screen.getByRole("textbox", {name: "Code font family"}).getAttribute("placeholder");
+		const placeholderBefore = screen
+			.getByRole(
+				"textbox",
+				{
+					name: "Code font family",
+				},
+			)
+			.getAttribute("placeholder");
 
 		choose("Interface font", "OpenDyslexic");
-		const dyslexic = {
+		const dyslexic =
+		{
 			dataset: document.documentElement.dataset["interfaceFont"] ?? null,
 			fontSans: document.documentElement.style.getPropertyValue("--font-sans"),
 			stored: localStorage.getItem("ccp-interface-font"),
-			placeholder: screen.getByRole("textbox", {name: "Code font family"}).getAttribute("placeholder"),
+			placeholder: screen
+				.getByRole(
+					"textbox",
+					{
+						name: "Code font family",
+					},
+				)
+				.getAttribute("placeholder"),
 		};
 		choose("Interface font", "Default · Sans");
 
-		const row = screen.getByRole("group", {name: "Interface font"});
-		const desc = row.querySelector("[data-settings-desc]");
-		expect({
-			placeholderBefore,
-			dyslexic,
-			reverted: document.documentElement.dataset["interfaceFont"] ?? null,
-			link: screen.queryByRole("link", {name: /Font licenses/}),
-			desc: desc === null ? null : {className: desc.className, text: desc.textContent},
-			describedBy: row.getAttribute("aria-describedby") === desc?.id,
-		}).toStrictEqual({
-			placeholderBefore: "e.g. JetBrains Mono",
-			dyslexic: {
-				dataset: "dyslexic",
-				fontSans: "",
-				stored: "dyslexic",
-				placeholder: "e.g. OpenDyslexic Mono",
+		const row = screen.getByRole(
+			"group",
+			{
+				name: "Interface font",
 			},
-			reverted: null,
-			link: null,
-			desc: {className: "sr-only", text: "Font for the whole interface — menus, sidebars, and panels."},
-			describedBy: true,
-		});
+		);
+		const desc = row.querySelector("[data-settings-desc]");
+		expect(
+			{
+				placeholderBefore,
+				dyslexic,
+				reverted: document.documentElement.dataset["interfaceFont"] ?? null,
+				link: screen.queryByRole(
+					"link",
+					{
+						name: /Font licenses/,
+					},
+				),
+				desc:
+					desc === null
+						? null
+						:
+							{
+								className: desc.className,
+								text: desc.textContent,
+							},
+				describedBy: row.getAttribute("aria-describedby") === desc?.id,
+			},
+		).toStrictEqual(
+			{
+				placeholderBefore: "e.g. JetBrains Mono",
+				dyslexic:
+				{
+					dataset: "dyslexic",
+					fontSans: "",
+					stored: "dyslexic",
+					placeholder: "e.g. OpenDyslexic Mono",
+				},
+				reverted: null,
+				link: null,
+				desc:
+				{
+					className: "sr-only",
+					text: "Font for the whole interface — menus, sidebars, and panels.",
+				},
+				describedBy: true,
+			},
+		);
 	});
 
-	it("keeps the visible description and Font licenses link when fizzy-lake type is off", async () => {
+	it("keeps the visible description and Font licenses link when fizzy-lake type is off", async () =>
+	{
 		await renderTab(
 			<FizzyLakeContext.Provider value={PRE_TYPE_PARTS}>
 				<GeneralSettings />
 			</FizzyLakeContext.Provider>,
 		);
 
-		const link = screen.getByRole("link", {name: "Font licenses", description: "(opens in new tab)"});
-		const desc = screen.getByRole("group", {name: "Interface font"}).querySelector("[data-settings-desc]");
+		const link = screen.getByRole(
+			"link",
+			{
+				name: "Font licenses",
+				description: "(opens in new tab)",
+			},
+		);
+		const desc = screen
+			.getByRole(
+				"group",
+				{
+					name: "Interface font",
+				},
+			)
+			.querySelector("[data-settings-desc]");
 		const span = link.querySelector(".sr-only[hidden]");
-		expect({
-			link: {
-				href: link.getAttribute("href"),
-				target: link.getAttribute("target"),
-				rel: link.getAttribute("rel"),
-				text: link.textContent,
-				srOnly: span?.textContent ?? null,
-				describedBy: span !== null && link.getAttribute("aria-describedby") === span.id,
+		expect(
+			{
+				link:
+				{
+					href: link.getAttribute("href"),
+					target: link.getAttribute("target"),
+					rel: link.getAttribute("rel"),
+					text: link.textContent,
+					srOnly: span?.textContent ?? null,
+					describedBy: span !== null && link.getAttribute("aria-describedby") === span.id,
+				},
+				desc:
+					desc === null
+						? null
+						:
+							{
+								className: desc.className,
+								text: desc.textContent,
+							},
 			},
-			desc: desc === null ? null : {className: desc.className, text: desc.textContent},
-		}).toStrictEqual({
-			link: {
-				href: "/third-party-notices.txt",
-				target: "_blank",
-				rel: "noopener",
-				text: "Font licenses(opens in new tab)",
-				srOnly: "(opens in new tab)",
-				describedBy: true,
+		).toStrictEqual(
+			{
+				link:
+				{
+					href: "/third-party-notices.txt",
+					target: "_blank",
+					rel: "noopener",
+					text: "Font licenses(opens in new tab)",
+					srOnly: "(opens in new tab)",
+					describedBy: true,
+				},
+				desc:
+				{
+					className: "text-body text-[var(--settings-muted)]",
+					text: "Font for the whole interface — menus, sidebars, and panels. Font licenses(opens in new tab)",
+				},
 			},
-			desc: {
-				className: "text-body text-[var(--settings-muted)]",
-				text: "Font for the whole interface — menus, sidebars, and panels. Font licenses(opens in new tab)",
-			},
-		});
+		);
 	});
 
-	it("maps html[data-interface-font=dyslexic] to the self-hosted OpenDyslexic face", () => {
+	it("maps html[data-interface-font=dyslexic] to the self-hosted OpenDyslexic face", () =>
+	{
 		const css = readFileSync("src/styles/globals.css", "utf8");
 		const rule = /html\[data-interface-font="dyslexic"\]\s*\{([^}]*)\}/.exec(css)?.[1]?.trim() ?? null;
-		expect({
-			imports: css.includes('@import "@fontsource/opendyslexic/400.css";'),
-			rule,
-			notices: readFileSync("public/third-party-notices.txt", "utf8").includes("OpenDyslexic"),
-		}).toStrictEqual({
-			imports: true,
-			rule: '--font-sans: "OpenDyslexic", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;',
-			notices: true,
-		});
+		expect(
+			{
+				imports: css.includes('@import "@fontsource/opendyslexic/400.css";'),
+				rule,
+				notices: readFileSync("public/third-party-notices.txt", "utf8").includes("OpenDyslexic"),
+			},
+		).toStrictEqual(
+			{
+				imports: true,
+				rule: '--font-sans: "OpenDyslexic", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;',
+				notices: true,
+			},
+		);
 	});
 
-	it("reads stored appearance values and ignores unknown ones", async () => {
+	it("reads stored appearance values and ignores unknown ones", async () =>
+	{
 		localStorage.setItem("ccp-interface-font", "system");
 		localStorage.setItem("ccp-transcript-text-size", "huge");
 		await renderTab(
@@ -492,59 +785,108 @@ describe("Appearance settings", () => {
 			</>,
 		);
 
-		expect({
-			font: screen.getByRole("combobox", {name: "Interface font"}).textContent,
-			size: screen.getByRole("combobox", {name: "Transcript text size"}).textContent,
-			width: screen.getByRole("combobox", {name: "Transcript width"}).textContent,
-			view: checked("Default transcript view"),
-			fontSans: document.documentElement.style.getPropertyValue("--font-sans"),
-		}).toStrictEqual({
-			font: "System",
-			size: "Medium",
-			width: "Narrow",
-			view: "Normal",
-			fontSans: SYSTEM_FONT_STACK,
-		});
+		expect(
+			{
+				font: screen.getByRole(
+					"combobox",
+					{
+						name: "Interface font",
+					},
+				).textContent,
+				size: screen.getByRole(
+					"combobox",
+					{
+						name: "Transcript text size",
+					},
+				).textContent,
+				width: screen.getByRole(
+					"combobox",
+					{
+						name: "Transcript width",
+					},
+				).textContent,
+				view: checked("Default transcript view"),
+				fontSans: document.documentElement.style.getPropertyValue("--font-sans"),
+			},
+		).toStrictEqual(
+			{
+				font: "System",
+				size: "Medium",
+				width: "Narrow",
+				view: "Normal",
+				fontSans: SYSTEM_FONT_STACK,
+			},
+		);
 	});
 
-	it("writes the default transcript view to verbosity with the upstream description", async () => {
+	it("writes the default transcript view to verbosity with the upstream description", async () =>
+	{
 		await renderTab(<ClaudeCodeSettings />);
 
 		pick("Default transcript view", "Verbose");
 
-		const row = screen.getByRole("group", {name: "Default transcript view"});
-		expect({
-			stored: localStorage.getItem("ccp-verbosity"),
-			thinking: localStorage.getItem("ccp-show-thinking"),
-			checked: checked("Default transcript view"),
-			description: row.getAttribute("aria-describedby") === null ? null : row.textContent,
-		}).toStrictEqual({
-			stored: "verbose",
-			thinking: "true",
-			checked: "Verbose",
-			description:
-				"Default transcript viewThe view sessions open in. Picking a view from a session’s Transcript view menu changes only that session.NormalThinkingVerbose",
-		});
+		const row = screen.getByRole(
+			"group",
+			{
+				name: "Default transcript view",
+			},
+		);
+		expect(
+			{
+				stored: localStorage.getItem("ccp-verbosity"),
+				thinking: localStorage.getItem("ccp-show-thinking"),
+				checked: checked("Default transcript view"),
+				description: row.getAttribute("aria-describedby") === null ? null : row.textContent,
+			},
+		).toStrictEqual(
+			{
+				stored: "verbose",
+				thinking: "true",
+				checked: "Verbose",
+				description:
+					"Default transcript viewThe view sessions open in. Picking a view from a session’s Transcript view menu changes only that session.NormalThinkingVerbose",
+			},
+		);
 	});
 });
 
-describe("Transcript settings ▸ Custom state", () => {
-	it("notes when the toggles no longer match a default transcript view preset", async () => {
+describe("Transcript settings ▸ Custom state", () =>
+{
+	it("notes when the toggles no longer match a default transcript view preset", async () =>
+	{
 		await renderTab(<TranscriptSettings />);
 		const before = screen.queryByText(/Custom/);
 
-		fireEvent.click(screen.getByRole("switch", {name: "Debug"}));
+		fireEvent.click(
+			screen.getByRole(
+				"switch",
+				{
+					name: "Debug",
+				},
+			),
+		);
 		const unaffected = screen.queryByText(/Custom/);
-		fireEvent.click(screen.getByRole("switch", {name: "Passed hooks"}));
+		fireEvent.click(
+			screen.getByRole(
+				"switch",
+				{
+					name: "Passed hooks",
+				},
+			),
+		);
 
-		expect({
-			before,
-			unaffected,
-			after: screen.getByRole("status").textContent,
-		}).toStrictEqual({
-			before: null,
-			unaffected: null,
-			after: "Custom: these toggles differ from the Normal default transcript view (Claude Code ▸ Appearance).",
-		});
+		expect(
+			{
+				before,
+				unaffected,
+				after: screen.getByRole("status").textContent,
+			},
+		).toStrictEqual(
+			{
+				before: null,
+				unaffected: null,
+				after: "Custom: these toggles differ from the Normal default transcript view (Claude Code ▸ Appearance).",
+			},
+		);
 	});
 });

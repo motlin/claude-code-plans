@@ -15,7 +15,8 @@ import type {SessionPrLink} from "./sessions";
 
 export {DOMAIN_EVENTS, HERDR_EVENTS, SSE_EVENTS} from "./event-names";
 export {PendingPlanSchema, PendingQuestionSchema, QuestionAnswerSchema} from "./pending-calls";
-export type {
+export type
+{
 	PendingPlan,
 	PendingQuestion,
 	PendingQuestionItem,
@@ -23,7 +24,8 @@ export type {
 	SessionPendingQuestionChangedPayload,
 } from "./pending-calls";
 
-export interface ReviewOfferedPayload {
+export interface ReviewOfferedPayload
+{
 	sessionId: string;
 }
 
@@ -34,7 +36,8 @@ export interface ReviewOfferedPayload {
  * of how many times this exact (event_name, issue_signature) drift has been seen
  * on the server since startup.
  */
-export interface HookSchemaDriftPayload {
+export interface HookSchemaDriftPayload
+{
 	hookEventName: string;
 	missingFields: string[];
 	unknownFields: string[];
@@ -50,7 +53,8 @@ export interface HookSchemaDriftPayload {
  * emitted by the `/api/sessions` endpoint. Dates are ISO strings so payloads
  * survive JSON serialization to clients.
  */
-export interface SessionSummaryPayload {
+export interface SessionSummaryPayload
+{
 	id: string;
 	title: string;
 	/** `title` only stands in for a missing one (the folder, else "Untitled"); renaming starts empty. */
@@ -103,7 +107,8 @@ export interface SessionSummaryPayload {
  * to answer an `ExitPlanMode` or `AskUserQuestion` tool call. `blockedSince` is
  * an ISO string so the payload survives JSON serialization to clients.
  */
-export interface PendingApprovalPayload {
+export interface PendingApprovalPayload
+{
 	sessionId: string;
 	projectId: string;
 	projectName: string;
@@ -116,14 +121,16 @@ export interface PendingApprovalPayload {
 }
 
 /** Summary payload for a single plan, matching `/api/plans` output. */
-export interface PlanSummaryPayload {
+export interface PlanSummaryPayload
+{
 	filename: string;
 	title: string;
 	mtime: string;
 }
 
 /** Summary payload for a single memory file. */
-export interface MemorySummaryPayload {
+export interface MemorySummaryPayload
+{
 	filename: string;
 	title: string;
 	mtime: string;
@@ -132,7 +139,8 @@ export interface MemorySummaryPayload {
 }
 
 /** Summary payload for a single task, matching the TaskRow shape. */
-export interface TaskSummaryPayload {
+export interface TaskSummaryPayload
+{
 	taskId: string;
 	projectDir: string;
 	subject: string;
@@ -145,7 +153,8 @@ export interface TaskSummaryPayload {
 }
 
 /** Active session info for session:started — matches ActiveSession shape. */
-export interface ActiveSessionPayload {
+export interface ActiveSessionPayload
+{
 	sessionId: string;
 	cwd: string;
 	model: string;
@@ -153,7 +162,16 @@ export interface ActiveSessionPayload {
 	lastActivity: number;
 }
 
-export type JsonValue = string | number | boolean | null | JsonValue[] | {[key: string]: JsonValue};
+export type JsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonValue[]
+	|
+	  {
+			[key: string]: JsonValue;
+	  };
 
 /** `JsonValueSchema` typed to the `JsonValue` it validates. */
 export const TypedJsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
@@ -167,40 +185,48 @@ export const TypedJsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 	]),
 );
 
-export interface SessionLinesAppendedPayload {
+export interface SessionLinesAppendedPayload
+{
 	sessionId: string;
 	lines: Record<string, JsonValue>[];
 	/** The JSONL file's mtime after the read, in integer epoch ms: where field journey F6 starts. */
 	writtenAt: number;
 }
 
-export const SessionLinesAppendedPayloadSchema: z.ZodType<SessionLinesAppendedPayload> = z.strictObject({
-	sessionId: z.string(),
-	lines: z.array(z.record(z.string(), TypedJsonValueSchema)),
-	writtenAt: z.int().nonnegative(),
-});
+export const SessionLinesAppendedPayloadSchema: z.ZodType<SessionLinesAppendedPayload> = z.strictObject(
+	{
+		sessionId: z.string(),
+		lines: z.array(z.record(z.string(), TypedJsonValueSchema)),
+		writtenAt: z.int().nonnegative(),
+	},
+);
 
 /** Payload broadcast when a session's JSONL was rewritten below the append offset, so held rows may be gone. */
-export interface SessionTranscriptRewrittenPayload {
+export interface SessionTranscriptRewrittenPayload
+{
 	sessionId: string;
 }
 
-export const SessionTranscriptRewrittenPayloadSchema: z.ZodType<SessionTranscriptRewrittenPayload> = z.strictObject({
-	sessionId: z.string(),
-});
+export const SessionTranscriptRewrittenPayloadSchema: z.ZodType<SessionTranscriptRewrittenPayload> = z.strictObject(
+	{
+		sessionId: z.string(),
+	},
+);
 
 /**
  * Payload broadcast when a `UserPromptSubmit` hook fires. Lets the session view
  * render the user's message before the JSONL file has been flushed to disk.
  * `ts` is an ISO string so the payload survives JSON serialization.
  */
-export interface SessionPromptSubmittedPayload {
+export interface SessionPromptSubmittedPayload
+{
 	sessionId: string;
 	prompt: string;
 	ts: string;
 }
 
-export interface HookBackgroundTaskPayload {
+export interface HookBackgroundTaskPayload
+{
 	id: string;
 	type: string;
 	status: string;
@@ -212,7 +238,8 @@ export interface HookBackgroundTaskPayload {
 	name?: string;
 }
 
-export interface HookSessionCronPayload {
+export interface HookSessionCronPayload
+{
 	id: string;
 	schedule: string;
 	recurring: boolean;
@@ -220,7 +247,8 @@ export interface HookSessionCronPayload {
 }
 
 /** Live hook-only context that has not necessarily reached the JSONL yet. */
-export interface SessionHookContextPayload {
+export interface SessionHookContextPayload
+{
 	sessionId: string;
 	sessionTitle?: string;
 	promptId?: string;
@@ -237,14 +265,16 @@ export interface SessionHookContextPayload {
  * an "in-flight" indicator for the tool call before the corresponding
  * `PostToolUse` event lands with the response body.
  */
-export interface SessionToolPendingPayload {
+export interface SessionToolPendingPayload
+{
 	sessionId: string;
 	toolName: string;
 	toolUseId: string;
 }
 
 /** Payload broadcast when a session's pending ExitPlanMode appears or resolves. */
-export interface SessionPendingPlanChangedPayload {
+export interface SessionPendingPlanChangedPayload
+{
 	sessionId: string;
 	pendingPlan: PendingPlan | null;
 }
@@ -256,7 +286,8 @@ export interface SessionPendingPlanChangedPayload {
  * (~2s later). `error` is the human-readable failure description Claude Code
  * attaches to the hook payload.
  */
-export interface SessionToolFailedPayload {
+export interface SessionToolFailedPayload
+{
 	sessionId: string;
 	toolName: string;
 	toolUseId: string;
@@ -268,7 +299,8 @@ export interface SessionToolFailedPayload {
  * active-session indicator so the user sees Claude Code-issued notifications
  * (waiting for input, idle timeout, etc.) without polling.
  */
-export interface NotificationPayload {
+export interface NotificationPayload
+{
 	sessionId: string;
 	message: string;
 	title: string | undefined;
@@ -283,7 +315,8 @@ export interface NotificationPayload {
  * `message`/`title` otherwise. `createdAt` is epoch ms; `createdAtIso` is the
  * ISO form used for relative-time rendering after JSON serialization.
  */
-export interface NotificationEntryPayload {
+export interface NotificationEntryPayload
+{
 	id: string;
 	sessionId: string;
 	projectId: string;
@@ -304,7 +337,8 @@ export interface NotificationEntryPayload {
  * `id` targets a single entry (per-row dismiss); `all` signals a clear-all so
  * the client empties every notifications slice.
  */
-export interface NotificationClearedPayload {
+export interface NotificationClearedPayload
+{
 	id?: string;
 	all?: boolean;
 }
@@ -314,7 +348,8 @@ export interface NotificationClearedPayload {
  * "compaction in progress" state for the session until the compacted
  * transcript shows up via the watcher / next `Stop`.
  */
-export interface SessionCompactingPayload {
+export interface SessionCompactingPayload
+{
 	sessionId: string;
 	trigger: "manual" | "auto" | undefined;
 }
@@ -326,7 +361,8 @@ export interface SessionCompactingPayload {
  * `PreCompact.trigger` vocabulary; `tokensRemoved` is the count Claude Code
  * reports for how much context the compaction freed.
  */
-export interface SessionCompactedPayload {
+export interface SessionCompactedPayload
+{
 	sessionId: string;
 	reason: "manual" | "auto" | undefined;
 	tokensRemoved: number | undefined;
@@ -337,7 +373,8 @@ export interface SessionCompactedPayload {
  * parent session; `agentId` is the subagent session when Claude Code provides
  * it.
  */
-export interface LiveSubagentPayload {
+export interface LiveSubagentPayload
+{
 	sessionId: string;
 	parentAgentId: string | null;
 	agentType: string;
@@ -349,7 +386,8 @@ export interface LiveSubagentPayload {
 
 export type SubagentStartedPayload = LiveSubagentPayload;
 
-export interface SubagentStoppedPayload {
+export interface SubagentStoppedPayload
+{
 	sessionId: string;
 	agentType: string;
 	agentId: string;
@@ -363,7 +401,8 @@ export interface SubagentStoppedPayload {
  * updated via `markSessionActive` so the active-session sidebar re-homes the
  * session to the new project.
  */
-export interface SessionCwdChangedPayload {
+export interface SessionCwdChangedPayload
+{
 	sessionId: string;
 	oldCwd: string;
 	newCwd: string;
@@ -378,7 +417,8 @@ export interface SessionCwdChangedPayload {
  * (`session_start` | `nested_traversal` | `path_glob_match` | `include` |
  * `compact`); `memoryType` distinguishes user/project/local layers.
  */
-export interface InstructionsLoadedPayload {
+export interface InstructionsLoadedPayload
+{
 	sessionId: string;
 	filePath: string;
 	memoryType: string | undefined;
@@ -395,7 +435,8 @@ export interface InstructionsLoadedPayload {
  * additionally re-emit `CONTENT_UPDATED` so the plugins view refreshes.
  * `changedFields` is the list of dotted paths Claude Code reports as modified.
  */
-export interface ConfigChangedPayload {
+export interface ConfigChangedPayload
+{
 	sessionId: string;
 	configSource: string;
 	changedFields: string[];
@@ -412,7 +453,8 @@ export interface ConfigChangedPayload {
  * fall through to the schema-drift recovery path). `messageId` mirrors the
  * underlying assistant message uuid when Claude Code includes it.
  */
-export interface MessageDisplayedPayload {
+export interface MessageDisplayedPayload
+{
 	sessionId: string;
 	message: string | undefined;
 	messageId: string | undefined;
@@ -432,25 +474,40 @@ export function diffEntityMaps<T>(
 	previous: ReadonlyMap<string, T>,
 	next: ReadonlyMap<string, T>,
 	equals: (a: T, b: T) => boolean = Object.is,
-): {added: T[]; removed: string[]; updated: T[]} {
+):
+{
+	added: T[];
+	removed: string[];
+	updated: T[];
+}
+{
 	const added: T[] = [];
 	const removed: string[] = [];
 	const updated: T[] = [];
 
-	for (const [key, value] of next) {
+	for (const [key, value] of next)
+	{
 		const prior = previous.get(key);
-		if (prior === undefined) {
+		if (prior === undefined)
+		{
 			added.push(value);
-		} else if (!equals(prior, value)) {
+		}
+		else if (!equals(prior, value))
+		{
 			updated.push(value);
 		}
 	}
 
-	for (const key of previous.keys()) {
+	for (const key of previous.keys())
+	{
 		if (!next.has(key)) removed.push(key);
 	}
 
-	return {added, removed, updated};
+	return {
+		added,
+		removed,
+		updated,
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -463,7 +520,8 @@ export function diffEntityMaps<T>(
  * `claude_env` is the merged snapshot of CLAUDE-prefixed environment variables
  * the jq filter in `hook-config.ts` attaches to every payload before POSTing.
  */
-const BaseHookFields = {
+const BaseHookFields =
+{
 	session_id: z.string(),
 	transcript_path: z.string(),
 	cwd: z.string(),
@@ -479,7 +537,13 @@ const BaseHookFields = {
 	agent_id: z.string().optional(),
 	agent_type: z.string().optional(),
 	/** Reasoning effort for the current turn, after any per-model downgrade. */
-	effort: z.strictObject({level: z.string()}).optional(),
+	effort: z
+		.strictObject(
+			{
+				level: z.string(),
+			},
+		)
+		.optional(),
 	claude_env: z.record(z.string(), z.string()).optional(),
 	/** The session's scratchpad directory, sent on every event since Claude Code 2.1.3xx. */
 	scratchpad_dir: z.string().optional(),
@@ -490,28 +554,33 @@ const BaseHookFields = {
  * `SubagentStop` so hooks can tell "session is done" from "session is paused
  * waiting on background work". Shapes mirror Claude Code's own hook schemas.
  */
-const BackgroundTaskSchema = z.strictObject({
-	id: z.string(),
-	type: z.string(),
-	status: z.string(),
-	description: z.string(),
-	command: z.string().optional(),
-	agent_type: z.string().optional(),
-	server: z.string().optional(),
-	tool: z.string().optional(),
-	name: z.string().optional(),
-});
+const BackgroundTaskSchema = z.strictObject(
+	{
+		id: z.string(),
+		type: z.string(),
+		status: z.string(),
+		description: z.string(),
+		command: z.string().optional(),
+		agent_type: z.string().optional(),
+		server: z.string().optional(),
+		tool: z.string().optional(),
+		name: z.string().optional(),
+	},
+);
 
 /** Session-scoped crons (CronCreate, ScheduleWakeup, /loop) that wake it later. */
-const SessionCronSchema = z.strictObject({
-	id: z.string(),
-	schedule: z.string(),
-	recurring: z.boolean(),
-	prompt: z.string(),
-});
+const SessionCronSchema = z.strictObject(
+	{
+		id: z.string(),
+		schedule: z.string(),
+		recurring: z.boolean(),
+		prompt: z.string(),
+	},
+);
 
 /** Fields both stop events carry alongside `stop_hook_active`. */
-const StopSharedFields = {
+const StopSharedFields =
+{
 	last_assistant_message: z.string().optional(),
 	background_tasks: z.array(BackgroundTaskSchema).optional(),
 	session_crons: z.array(SessionCronSchema).optional(),
@@ -526,333 +595,396 @@ const StopSharedFields = {
 // ---------------------------------------------------------------------------
 
 const BashToolResponseObjectSchema = z
-	.object({
-		stdout: z.string().optional(),
-		stderr: z.string().optional(),
-		interrupted: z.boolean().optional(),
-		isImage: z.boolean().optional(),
-		sandbox: z.boolean().optional(),
-		returnCodeInterpretation: z.string().optional(),
-		/** Set when the command is expected to succeed silently. */
-		noOutputExpected: z.boolean().optional(),
-		dangerouslyDisableSandbox: z.boolean().optional(),
-		gitOperation: JsonValueSchema.optional(),
-		backgroundTaskId: z.string().optional(),
-		backgroundCwdHint: z.string().optional(),
-		staleReadFileStateHint: z.string().optional(),
-		persistedOutputPath: z.string().optional(),
-	})
+	.object(
+		{
+			stdout: z.string().optional(),
+			stderr: z.string().optional(),
+			interrupted: z.boolean().optional(),
+			isImage: z.boolean().optional(),
+			sandbox: z.boolean().optional(),
+			returnCodeInterpretation: z.string().optional(),
+			/** Set when the command is expected to succeed silently. */
+			noOutputExpected: z.boolean().optional(),
+			dangerouslyDisableSandbox: z.boolean().optional(),
+			gitOperation: JsonValueSchema.optional(),
+			backgroundTaskId: z.string().optional(),
+			backgroundCwdHint: z.string().optional(),
+			staleReadFileStateHint: z.string().optional(),
+			persistedOutputPath: z.string().optional(),
+		},
+	)
 	.strict();
 
 const BashToolResponseSchema = z.union([BashToolResponseObjectSchema, z.string()]);
 
 const ReadToolResponseObjectSchema = z
-	.object({
-		type: z.string().optional(),
-		file: z
-			.object({
-				filePath: z.string().optional(),
-				content: z.string().optional(),
-				numLines: z.number().optional(),
-				startLine: z.number().optional(),
-				totalLines: z.number().optional(),
-			})
-			.strict()
-			.optional(),
-		source: z.string().optional(),
-	})
+	.object(
+		{
+			type: z.string().optional(),
+			file: z
+				.object(
+					{
+						filePath: z.string().optional(),
+						content: z.string().optional(),
+						numLines: z.number().optional(),
+						startLine: z.number().optional(),
+						totalLines: z.number().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+			source: z.string().optional(),
+		},
+	)
 	.strict();
 
 const ReadToolResponseSchema = z.union([ReadToolResponseObjectSchema, z.string()]);
 
 const EditToolResponseObjectSchema = z
-	.object({
-		filePath: z.string().optional(),
-		oldString: z.string().optional(),
-		newString: z.string().optional(),
-		originalFile: z.string().optional(),
-		structuredPatch: z.array(JsonValueSchema).optional(),
-		userModified: z.boolean().optional(),
-		replaceAll: z.boolean().optional(),
-		memdirStamped: z.boolean().optional(),
-		staleRecovered: z.boolean().optional(),
-	})
+	.object(
+		{
+			filePath: z.string().optional(),
+			oldString: z.string().optional(),
+			newString: z.string().optional(),
+			originalFile: z.string().optional(),
+			structuredPatch: z.array(JsonValueSchema).optional(),
+			userModified: z.boolean().optional(),
+			replaceAll: z.boolean().optional(),
+			memdirStamped: z.boolean().optional(),
+			staleRecovered: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const EditToolResponseSchema = z.union([EditToolResponseObjectSchema, z.string()]);
 
 const MultiEditToolResponseSchema = z
-	.object({
-		filePath: z.string().optional(),
-		edits: z.array(JsonValueSchema).optional(),
-		originalFileContents: z.string().optional(),
-		structuredPatch: z.array(JsonValueSchema).optional(),
-		userModified: z.boolean().optional(),
-	})
+	.object(
+		{
+			filePath: z.string().optional(),
+			edits: z.array(JsonValueSchema).optional(),
+			originalFileContents: z.string().optional(),
+			structuredPatch: z.array(JsonValueSchema).optional(),
+			userModified: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const WriteToolResponseObjectSchema = z
-	.object({
-		type: z.string().optional(),
-		filePath: z.string().optional(),
-		content: z.string().optional(),
-		structuredPatch: z.array(JsonValueSchema).optional(),
-		originalFile: z.union([z.string(), z.null()]).optional(),
-		userModified: z.boolean().optional(),
-		memdirStamped: z.boolean().optional(),
-	})
+	.object(
+		{
+			type: z.string().optional(),
+			filePath: z.string().optional(),
+			content: z.string().optional(),
+			structuredPatch: z.array(JsonValueSchema).optional(),
+			originalFile: z.union([z.string(), z.null()]).optional(),
+			userModified: z.boolean().optional(),
+			memdirStamped: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const WriteToolResponseSchema = z.union([WriteToolResponseObjectSchema, z.string()]);
 
 const GlobToolResponseSchema = z
-	.object({
-		filenames: z.array(z.string()).optional(),
-		durationMs: z.number().optional(),
-		numFiles: z.number().optional(),
-		truncated: z.boolean().optional(),
-	})
+	.object(
+		{
+			filenames: z.array(z.string()).optional(),
+			durationMs: z.number().optional(),
+			numFiles: z.number().optional(),
+			truncated: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const GrepToolResponseSchema = z
-	.object({
-		mode: z.string().optional(),
-		filenames: z.array(z.string()).optional(),
-		content: z.string().optional(),
-		numFiles: z.number().optional(),
-		numLines: z.number().optional(),
-	})
+	.object(
+		{
+			mode: z.string().optional(),
+			filenames: z.array(z.string()).optional(),
+			content: z.string().optional(),
+			numFiles: z.number().optional(),
+			numLines: z.number().optional(),
+		},
+	)
 	.strict();
 
 const WebFetchToolResponseSchema = z
-	.object({
-		url: z.string().optional(),
-		bytes: z.number().optional(),
-		code: z.number().optional(),
-		codeText: z.string().optional(),
-		result: z.string().optional(),
-		durationMs: z.number().optional(),
-	})
+	.object(
+		{
+			url: z.string().optional(),
+			bytes: z.number().optional(),
+			code: z.number().optional(),
+			codeText: z.string().optional(),
+			result: z.string().optional(),
+			durationMs: z.number().optional(),
+		},
+	)
 	.strict();
 
 const TodoWriteToolResponseSchema = z
-	.object({
-		oldTodos: z.array(JsonValueSchema).optional(),
-		newTodos: z.array(JsonValueSchema).optional(),
-	})
+	.object(
+		{
+			oldTodos: z.array(JsonValueSchema).optional(),
+			newTodos: z.array(JsonValueSchema).optional(),
+		},
+	)
 	.strict();
 
 const ExitPlanModeToolResponseObjectSchema = z
-	.object({
-		plan: z.string().optional(),
-		approved: z.boolean().optional(),
-		isAgent: z.boolean().optional(),
-		filePath: z.string().optional(),
-		hasTaskTool: z.boolean().optional(),
-		planWasEdited: z.boolean().optional(),
-	})
+	.object(
+		{
+			plan: z.string().optional(),
+			approved: z.boolean().optional(),
+			isAgent: z.boolean().optional(),
+			filePath: z.string().optional(),
+			hasTaskTool: z.boolean().optional(),
+			planWasEdited: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const ExitPlanModeToolResponseSchema = z.union([ExitPlanModeToolResponseObjectSchema, z.string()]);
 
 const AgentTeamToolResponseSchema = z
-	.object({
-		status: z.string().optional(),
-		prompt: z.string().optional(),
-		teammate_id: z.string().optional(),
-		agent_id: z.string().optional(),
-		model: z.string().optional(),
-		name: z.string().optional(),
-		color: z.string().optional(),
-		tmux_session_name: z.string().optional(),
-		tmux_window_name: z.string().optional(),
-		tmux_pane_id: z.string().optional(),
-		team_name: z.string().optional(),
-		is_splitpane: z.boolean().optional(),
-	})
+	.object(
+		{
+			status: z.string().optional(),
+			prompt: z.string().optional(),
+			teammate_id: z.string().optional(),
+			agent_id: z.string().optional(),
+			model: z.string().optional(),
+			name: z.string().optional(),
+			color: z.string().optional(),
+			tmux_session_name: z.string().optional(),
+			tmux_window_name: z.string().optional(),
+			tmux_pane_id: z.string().optional(),
+			team_name: z.string().optional(),
+			is_splitpane: z.boolean().optional(),
+		},
+	)
 	.strict();
 
 const AgentBackgroundToolResponseSchema = z
-	.object({
-		status: z.string().optional(),
-		prompt: z.string().optional(),
-		agentId: z.string().optional(),
-		agentType: z.string().optional(),
-		description: z.string().optional(),
-		isAsync: z.boolean().optional(),
-		resolvedModel: z.string().optional(),
-		outputFile: z.string().optional(),
-		canReadOutputFile: z.boolean().optional(),
-		content: z.array(JsonValueSchema).optional(),
-		toolStats: JsonValueSchema.optional(),
-		usage: JsonValueSchema.optional(),
-		totalDurationMs: z.number().optional(),
-		totalTokens: z.number().optional(),
-		totalToolUseCount: z.number().optional(),
-	})
+	.object(
+		{
+			status: z.string().optional(),
+			prompt: z.string().optional(),
+			agentId: z.string().optional(),
+			agentType: z.string().optional(),
+			description: z.string().optional(),
+			isAsync: z.boolean().optional(),
+			resolvedModel: z.string().optional(),
+			outputFile: z.string().optional(),
+			canReadOutputFile: z.boolean().optional(),
+			content: z.array(JsonValueSchema).optional(),
+			toolStats: JsonValueSchema.optional(),
+			usage: JsonValueSchema.optional(),
+			totalDurationMs: z.number().optional(),
+			totalTokens: z.number().optional(),
+			totalToolUseCount: z.number().optional(),
+		},
+	)
 	.strict();
 
 const AgentToolResponseSchema = z.union([AgentTeamToolResponseSchema, AgentBackgroundToolResponseSchema]);
 
 const AskUserQuestionToolResponseObjectSchema = z
-	.object({
-		questions: toolInputSchemas.AskUserQuestion.shape.questions,
-		answers: z.union([z.array(JsonValueSchema), z.record(z.string(), z.string())]).optional(),
-		annotations: toolInputSchemas.AskUserQuestion.shape.annotations,
-		answer: z.string().optional(),
-	})
+	.object(
+		{
+			questions: toolInputSchemas.AskUserQuestion.shape.questions,
+			answers: z.union([z.array(JsonValueSchema), z.record(z.string(), z.string())]).optional(),
+			annotations: toolInputSchemas.AskUserQuestion.shape.annotations,
+			answer: z.string().optional(),
+		},
+	)
 	.strict();
 
 const AskUserQuestionToolResponseSchema = z.union([AskUserQuestionToolResponseObjectSchema, z.string()]);
 
 const ToolSearchToolResponseSchema = z
-	.object({
-		matches: z.array(z.string()).optional(),
-		query: z.string().optional(),
-		total_deferred_tools: z.number().optional(),
-	})
+	.object(
+		{
+			matches: z.array(z.string()).optional(),
+			query: z.string().optional(),
+			total_deferred_tools: z.number().optional(),
+		},
+	)
 	.strict();
 
 const SendMessageToolResponseObjectSchema = z
-	.object({
-		success: z.boolean().optional(),
-		message: z.string().optional(),
-		routing: JsonValueSchema.optional(),
-		msg_id: z.string().optional(),
-		pin: JsonValueSchema.optional(),
-		resumedAgentId: z.string().optional(),
-	})
+	.object(
+		{
+			success: z.boolean().optional(),
+			message: z.string().optional(),
+			routing: JsonValueSchema.optional(),
+			msg_id: z.string().optional(),
+			pin: JsonValueSchema.optional(),
+			resumedAgentId: z.string().optional(),
+		},
+	)
 	.strict();
 
 const SendMessageToolResponseSchema = z.union([SendMessageToolResponseObjectSchema, z.string()]);
 
 const SkillToolResponseSchema = z
-	.object({
-		success: z.boolean().optional(),
-		commandName: z.string().optional(),
-		allowedTools: z.array(z.string()).optional(),
-		model: z.string().optional(),
-	})
+	.object(
+		{
+			success: z.boolean().optional(),
+			commandName: z.string().optional(),
+			allowedTools: z.array(z.string()).optional(),
+			model: z.string().optional(),
+		},
+	)
 	.strict();
 
 const TaskUpdateToolResponseSchema = z
-	.object({
-		success: z.boolean().optional(),
-		taskId: z.string().optional(),
-		updatedFields: z.array(z.string()).optional(),
-		statusChange: z
-			.object({
-				from: z.string().optional(),
-				to: z.string().optional(),
-			})
-			.strict()
-			.optional(),
-	})
+	.object(
+		{
+			success: z.boolean().optional(),
+			taskId: z.string().optional(),
+			updatedFields: z.array(z.string()).optional(),
+			statusChange: z
+				.object(
+					{
+						from: z.string().optional(),
+						to: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 const TaskCreateToolResponseSchema = z
-	.object({
-		task: z
-			.object({
-				id: z.string().optional(),
-				subject: z.string().optional(),
-			})
-			.strict()
-			.optional(),
-	})
+	.object(
+		{
+			task: z
+				.object(
+					{
+						id: z.string().optional(),
+						subject: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 const TaskGetToolResponseObjectSchema = z
-	.object({
-		task: z
-			.object({
-				id: z.string().optional(),
-				subject: z.string().optional(),
-				description: z.string().optional(),
-				status: z.string().optional(),
-				blocks: z.array(z.string()).optional(),
-				blockedBy: z.array(z.string()).optional(),
-			})
-			.strict()
-			.optional(),
-	})
+	.object(
+		{
+			task: z
+				.object(
+					{
+						id: z.string().optional(),
+						subject: z.string().optional(),
+						description: z.string().optional(),
+						status: z.string().optional(),
+						blocks: z.array(z.string()).optional(),
+						blockedBy: z.array(z.string()).optional(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 const TaskGetToolResponseSchema = z.union([TaskGetToolResponseObjectSchema, z.string()]);
 
 const TaskListToolResponseSchema = z
-	.object({
-		tasks: z
-			.array(
-				z
-					.object({
-						id: z.string().optional(),
-						subject: z.string().optional(),
-						status: z.string().optional(),
-						owner: z.string().optional(),
-						blockedBy: z.array(z.string()).optional(),
-					})
-					.strict(),
-			)
-			.optional(),
-	})
+	.object(
+		{
+			tasks: z
+				.array(
+					z
+						.object(
+							{
+								id: z.string().optional(),
+								subject: z.string().optional(),
+								status: z.string().optional(),
+								owner: z.string().optional(),
+								blockedBy: z.array(z.string()).optional(),
+							},
+						)
+						.strict(),
+				)
+				.optional(),
+		},
+	)
 	.strict();
 
 const TaskStopToolResponseSchema = z
-	.object({
-		message: z.string().optional(),
-		task_id: z.string().optional(),
-		task_type: z.string().optional(),
-		command: z.string().optional(),
-	})
+	.object(
+		{
+			message: z.string().optional(),
+			task_id: z.string().optional(),
+			task_type: z.string().optional(),
+			command: z.string().optional(),
+		},
+	)
 	.strict();
 
 const TaskOutputToolResponseSchema = z
-	.object({
-		retrieval_status: z.string().optional(),
-		task: z
-			.object({
-				description: z.string().optional(),
-				exitCode: z.union([z.number(), z.null()]).optional(),
-				isRawTranscript: z.boolean().optional(),
-				output: z.string().optional(),
-				prompt: z.string().optional(),
-				result: z.string().optional(),
-				status: z.string().optional(),
-				task_id: z.string().optional(),
-				task_type: z.string().optional(),
-			})
-			.strict()
-			.optional(),
-	})
+	.object(
+		{
+			retrieval_status: z.string().optional(),
+			task: z
+				.object(
+					{
+						description: z.string().optional(),
+						exitCode: z.union([z.number(), z.null()]).optional(),
+						isRawTranscript: z.boolean().optional(),
+						output: z.string().optional(),
+						prompt: z.string().optional(),
+						result: z.string().optional(),
+						status: z.string().optional(),
+						task_id: z.string().optional(),
+						task_type: z.string().optional(),
+					},
+				)
+				.strict()
+				.optional(),
+		},
+	)
 	.strict();
 
 const WebSearchToolResponseSchema = z
-	.object({
-		query: z.string().optional(),
-		results: z.array(JsonValueSchema).optional(),
-		durationSeconds: z.number().optional(),
-		searchCount: z.number().optional(),
-	})
+	.object(
+		{
+			query: z.string().optional(),
+			results: z.array(JsonValueSchema).optional(),
+			durationSeconds: z.number().optional(),
+			searchCount: z.number().optional(),
+		},
+	)
 	.strict();
 
 const EnterWorktreeToolResponseObjectSchema = z
-	.object({
-		worktreePath: z.string().optional(),
-		worktreeBranch: z.string().optional(),
-		message: z.string().optional(),
-	})
+	.object(
+		{
+			worktreePath: z.string().optional(),
+			worktreeBranch: z.string().optional(),
+			message: z.string().optional(),
+		},
+	)
 	.strict();
 
 const EnterWorktreeToolResponseSchema = z.union([EnterWorktreeToolResponseObjectSchema, z.string()]);
 
 const EnterPlanModeToolResponseSchema = z
-	.object({
-		message: z.string().optional(),
-	})
+	.object(
+		{
+			message: z.string().optional(),
+		},
+	)
 	.strict();
 
-type ToolVariant = {
+type ToolVariant =
+{
 	input: z.ZodType;
 	response: z.ZodType;
 };
@@ -863,74 +995,242 @@ type ToolVariant = {
  * declared here. Responses without an authored shape stay JSON-bounded until
  * observed data supports a stricter schema.
  */
-const TOOL_VARIANTS = {
-	Bash: {input: toolInputSchemas.Bash, response: BashToolResponseSchema},
-	Read: {input: toolInputSchemas.Read, response: ReadToolResponseSchema},
-	Edit: {input: toolInputSchemas.Edit, response: EditToolResponseSchema},
-	MultiEdit: {input: toolInputSchemas.MultiEdit, response: MultiEditToolResponseSchema},
-	Write: {input: toolInputSchemas.Write, response: WriteToolResponseSchema},
-	Glob: {input: toolInputSchemas.Glob, response: GlobToolResponseSchema},
-	Grep: {input: toolInputSchemas.Grep, response: GrepToolResponseSchema},
-	Agent: {input: toolInputSchemas.Agent, response: AgentToolResponseSchema},
-	WebFetch: {input: toolInputSchemas.WebFetch, response: WebFetchToolResponseSchema},
-	Skill: {input: toolInputSchemas.Skill, response: SkillToolResponseSchema},
-	TaskCreate: {input: toolInputSchemas.TaskCreate, response: TaskCreateToolResponseSchema},
-	TaskUpdate: {input: toolInputSchemas.TaskUpdate, response: TaskUpdateToolResponseSchema},
-	TaskGet: {input: toolInputSchemas.TaskGet, response: TaskGetToolResponseSchema},
-	TaskList: {input: toolInputSchemas.TaskList, response: TaskListToolResponseSchema},
-	AskUserQuestion: {
+const TOOL_VARIANTS =
+{
+	Bash:
+	{
+		input: toolInputSchemas.Bash,
+		response: BashToolResponseSchema,
+	},
+	Read:
+	{
+		input: toolInputSchemas.Read,
+		response: ReadToolResponseSchema,
+	},
+	Edit:
+	{
+		input: toolInputSchemas.Edit,
+		response: EditToolResponseSchema,
+	},
+	MultiEdit:
+	{
+		input: toolInputSchemas.MultiEdit,
+		response: MultiEditToolResponseSchema,
+	},
+	Write:
+	{
+		input: toolInputSchemas.Write,
+		response: WriteToolResponseSchema,
+	},
+	Glob:
+	{
+		input: toolInputSchemas.Glob,
+		response: GlobToolResponseSchema,
+	},
+	Grep:
+	{
+		input: toolInputSchemas.Grep,
+		response: GrepToolResponseSchema,
+	},
+	Agent:
+	{
+		input: toolInputSchemas.Agent,
+		response: AgentToolResponseSchema,
+	},
+	WebFetch:
+	{
+		input: toolInputSchemas.WebFetch,
+		response: WebFetchToolResponseSchema,
+	},
+	Skill:
+	{
+		input: toolInputSchemas.Skill,
+		response: SkillToolResponseSchema,
+	},
+	TaskCreate:
+	{
+		input: toolInputSchemas.TaskCreate,
+		response: TaskCreateToolResponseSchema,
+	},
+	TaskUpdate:
+	{
+		input: toolInputSchemas.TaskUpdate,
+		response: TaskUpdateToolResponseSchema,
+	},
+	TaskGet:
+	{
+		input: toolInputSchemas.TaskGet,
+		response: TaskGetToolResponseSchema,
+	},
+	TaskList:
+	{
+		input: toolInputSchemas.TaskList,
+		response: TaskListToolResponseSchema,
+	},
+	AskUserQuestion:
+	{
 		input: toolInputSchemas.AskUserQuestion,
 		response: AskUserQuestionToolResponseSchema,
 	},
-	ExitPlanMode: {
+	ExitPlanMode:
+	{
 		input: toolInputSchemas.ExitPlanMode,
 		response: ExitPlanModeToolResponseSchema,
 	},
-	EnterPlanMode: {
+	EnterPlanMode:
+	{
 		input: toolInputSchemas.EnterPlanMode,
 		response: EnterPlanModeToolResponseSchema,
 	},
-	ToolSearch: {input: toolInputSchemas.ToolSearch, response: ToolSearchToolResponseSchema},
-	TodoWrite: {input: toolInputSchemas.TodoWrite, response: TodoWriteToolResponseSchema},
-	WebSearch: {input: toolInputSchemas.WebSearch, response: WebSearchToolResponseSchema},
-	SendMessage: {input: toolInputSchemas.SendMessage, response: SendMessageToolResponseSchema},
-	SubagentHandback: {
-		input: toolInputSchemas.SubagentHandback,
-		response: z.object({success: z.boolean(), message: z.string()}).strict(),
+	ToolSearch:
+	{
+		input: toolInputSchemas.ToolSearch,
+		response: ToolSearchToolResponseSchema,
 	},
-	TaskStop: {input: toolInputSchemas.TaskStop, response: TaskStopToolResponseSchema},
-	TaskOutput: {input: toolInputSchemas.TaskOutput, response: TaskOutputToolResponseSchema},
-	Monitor: {input: toolInputSchemas.Monitor, response: JsonValueSchema}, // no hook samples observed yet
-	CronCreate: {input: toolInputSchemas.CronCreate, response: JsonValueSchema}, // no samples observed yet
-	CronDelete: {input: toolInputSchemas.CronDelete, response: JsonValueSchema}, // no samples observed yet
-	CronList: {input: toolInputSchemas.CronList, response: JsonValueSchema}, // no samples observed yet
-	TeamCreate: {input: toolInputSchemas.TeamCreate, response: JsonValueSchema}, // no samples observed yet
-	TeamDelete: {input: toolInputSchemas.TeamDelete, response: JsonValueSchema}, // no samples observed yet
-	ScheduleWakeup: {input: toolInputSchemas.ScheduleWakeup, response: JsonValueSchema}, // no samples observed yet
-	EnterWorktree: {
+	TodoWrite:
+	{
+		input: toolInputSchemas.TodoWrite,
+		response: TodoWriteToolResponseSchema,
+	},
+	WebSearch:
+	{
+		input: toolInputSchemas.WebSearch,
+		response: WebSearchToolResponseSchema,
+	},
+	SendMessage:
+	{
+		input: toolInputSchemas.SendMessage,
+		response: SendMessageToolResponseSchema,
+	},
+	SubagentHandback:
+	{
+		input: toolInputSchemas.SubagentHandback,
+		response: z
+			.object(
+				{
+					success: z.boolean(),
+					message: z.string(),
+				},
+			)
+			.strict(),
+	},
+	TaskStop:
+	{
+		input: toolInputSchemas.TaskStop,
+		response: TaskStopToolResponseSchema,
+	},
+	TaskOutput:
+	{
+		input: toolInputSchemas.TaskOutput,
+		response: TaskOutputToolResponseSchema,
+	},
+	Monitor:
+	{
+		input: toolInputSchemas.Monitor,
+		response: JsonValueSchema,
+	}, // no hook samples observed yet
+	CronCreate:
+	{
+		input: toolInputSchemas.CronCreate,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	CronDelete:
+	{
+		input: toolInputSchemas.CronDelete,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	CronList:
+	{
+		input: toolInputSchemas.CronList,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	TeamCreate:
+	{
+		input: toolInputSchemas.TeamCreate,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	TeamDelete:
+	{
+		input: toolInputSchemas.TeamDelete,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	ScheduleWakeup:
+	{
+		input: toolInputSchemas.ScheduleWakeup,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	EnterWorktree:
+	{
 		input: toolInputSchemas.EnterWorktree,
 		response: EnterWorktreeToolResponseSchema,
 	},
-	ExitWorktree: {input: toolInputSchemas.ExitWorktree, response: JsonValueSchema}, // no samples observed yet
-	LSP: {input: toolInputSchemas.LSP, response: JsonValueSchema}, // no samples observed yet
-	NotebookEdit: {input: toolInputSchemas.NotebookEdit, response: JsonValueSchema}, // no samples observed yet
-	NotebookRead: {input: toolInputSchemas.NotebookRead, response: JsonValueSchema}, // no samples observed yet
-	ReportFindings: {input: toolInputSchemas.ReportFindings, response: JsonValueSchema},
-	LS: {input: toolInputSchemas.LS, response: JsonValueSchema}, // no samples observed yet
-	Artifact: {input: toolInputSchemas.Artifact, response: JsonValueSchema}, // no hook samples observed yet
-	RemoteTrigger: {input: toolInputSchemas.RemoteTrigger, response: JsonValueSchema}, // no hook samples observed yet
-	SendUserFile: {input: toolInputSchemas.SendUserFile, response: JsonValueSchema}, // no hook samples observed yet
-	PushNotification: {input: toolInputSchemas.PushNotification, response: JsonValueSchema}, // no hook samples observed yet
-	Workflow: {input: toolInputSchemas.Workflow, response: JsonValueSchema}, // no hook samples observed yet
+	ExitWorktree:
+	{
+		input: toolInputSchemas.ExitWorktree,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	LSP:
+	{
+		input: toolInputSchemas.LSP,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	NotebookEdit:
+	{
+		input: toolInputSchemas.NotebookEdit,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	NotebookRead:
+	{
+		input: toolInputSchemas.NotebookRead,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	ReportFindings:
+	{
+		input: toolInputSchemas.ReportFindings,
+		response: JsonValueSchema,
+	},
+	LS:
+	{
+		input: toolInputSchemas.LS,
+		response: JsonValueSchema,
+	}, // no samples observed yet
+	Artifact:
+	{
+		input: toolInputSchemas.Artifact,
+		response: JsonValueSchema,
+	}, // no hook samples observed yet
+	RemoteTrigger:
+	{
+		input: toolInputSchemas.RemoteTrigger,
+		response: JsonValueSchema,
+	}, // no hook samples observed yet
+	SendUserFile:
+	{
+		input: toolInputSchemas.SendUserFile,
+		response: JsonValueSchema,
+	}, // no hook samples observed yet
+	PushNotification:
+	{
+		input: toolInputSchemas.PushNotification,
+		response: JsonValueSchema,
+	}, // no hook samples observed yet
+	Workflow:
+	{
+		input: toolInputSchemas.Workflow,
+		response: JsonValueSchema,
+	}, // no hook samples observed yet
 } satisfies Record<keyof typeof toolInputSchemas, ToolVariant>;
 
-const toolUseVariants = objectKeys(TOOL_VARIANTS).map((toolName) => {
+const toolUseVariants = objectKeys(TOOL_VARIANTS).map((toolName) =>
+{
 	const {input, response} = TOOL_VARIANTS[toolName] as ToolVariant;
-	return z.strictObject({
-		tool_name: z.literal(toolName),
-		tool_input: input,
-		tool_response: response.optional(),
-	});
+	return z.strictObject(
+		{
+			tool_name: z.literal(toolName),
+			tool_input: input,
+			tool_response: response.optional(),
+		},
+	);
 });
 
 /** Discriminated union over every built-in tool declared in `toolInputSchemas`. */
@@ -939,34 +1239,42 @@ export const ToolUseUnion = z.discriminatedUnion("tool_name", [
 	...toolUseVariants.slice(1),
 ]);
 
-const SessionStartHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("SessionStart"),
-	source: z.enum(["startup", "resume", "clear", "compact", "fork"]),
-	model: z.string().optional(),
-	session_title: z.string().optional(),
-});
+const SessionStartHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("SessionStart"),
+		source: z.enum(["startup", "resume", "clear", "compact", "fork"]),
+		model: z.string().optional(),
+		session_title: z.string().optional(),
+	},
+);
 
-const SessionEndHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("SessionEnd"),
-	reason: z.string().optional(),
-});
+const SessionEndHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("SessionEnd"),
+		reason: z.string().optional(),
+	},
+);
 
-const StopHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("Stop"),
-	stop_hook_active: z.boolean().optional(),
-	...StopSharedFields,
-});
+const StopHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("Stop"),
+		stop_hook_active: z.boolean().optional(),
+		...StopSharedFields,
+	},
+);
 
-const SubagentStopHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("SubagentStop"),
-	stop_hook_active: z.boolean().optional(),
-	agent_transcript_path: z.string().optional(),
-	...StopSharedFields,
-});
+const SubagentStopHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("SubagentStop"),
+		stop_hook_active: z.boolean().optional(),
+		agent_transcript_path: z.string().optional(),
+		...StopSharedFields,
+	},
+);
 
 /**
  * Symmetric with `SubagentStop` — fires when a subagent is spawned. The viewer
@@ -979,59 +1287,71 @@ const SubagentStopHookEvent = z.strictObject({
  * acted on (the viewer is a passive observer).
  */
 const SubagentStartHookSpecificOutput = z
-	.object({
-		hookEventName: z.literal("SubagentStart").optional(),
-		additionalContext: z.string().optional(),
-	})
+	.object(
+		{
+			hookEventName: z.literal("SubagentStart").optional(),
+			additionalContext: z.string().optional(),
+		},
+	)
 	.strict();
 
 const SubagentStartAgentConfig = z
-	.object({
-		model: z.string().optional(),
-		system_prompt: z.string().optional(),
-		tools: z.array(z.string()).optional(),
-		description: z.string().optional(),
-	})
+	.object(
+		{
+			model: z.string().optional(),
+			system_prompt: z.string().optional(),
+			tools: z.array(z.string()).optional(),
+			description: z.string().optional(),
+		},
+	)
 	.strict();
 
-const SubagentStartHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("SubagentStart"),
-	agent_type: z.string().optional(),
-	agent_id: z.string().optional(),
-	agent_config: SubagentStartAgentConfig.optional(),
-	hook_specific_output: SubagentStartHookSpecificOutput.optional(),
-});
+const SubagentStartHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("SubagentStart"),
+		agent_type: z.string().optional(),
+		agent_id: z.string().optional(),
+		agent_config: SubagentStartAgentConfig.optional(),
+		hook_specific_output: SubagentStartHookSpecificOutput.optional(),
+	},
+);
 
-const UserPromptSubmitHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("UserPromptSubmit"),
-	prompt: z.string(),
-	/** What drove the turn; absent for ordinary typed prompts. */
-	source: z.enum(["user", "sdk", "system", "loop_wakeup", "schedule_wakeup"]).optional(),
-	session_title: z.string().optional(),
-});
+const UserPromptSubmitHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("UserPromptSubmit"),
+		prompt: z.string(),
+		/** What drove the turn; absent for ordinary typed prompts. */
+		source: z.enum(["user", "sdk", "system", "loop_wakeup", "schedule_wakeup"]).optional(),
+		session_title: z.string().optional(),
+	},
+);
 
-const NotificationHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("Notification"),
-	message: z.string(),
-	title: z.string().optional(),
-	// Freeform discriminator for background-agent notifications
-	// (`agent_needs_input` / `agent_completed`). Must stay `z.string()`, never a
-	// strict `z.enum` — the envelope is `safeParse`d, so an enum would reject any
-	// unknown/future value and route the event to the schema-drift path, silently
-	// dropping the notification exactly when a new kind ships. Known kinds are
-	// classified in the presentation layer instead.
-	notification_type: z.string().optional(),
-});
+const NotificationHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("Notification"),
+		message: z.string(),
+		title: z.string().optional(),
+		// Freeform discriminator for background-agent notifications
+		// (`agent_needs_input` / `agent_completed`). Must stay `z.string()`, never a
+		// strict `z.enum` — the envelope is `safeParse`d, so an enum would reject any
+		// unknown/future value and route the event to the schema-drift path, silently
+		// dropping the notification exactly when a new kind ships. Known kinds are
+		// classified in the presentation layer instead.
+		notification_type: z.string().optional(),
+	},
+);
 
-const PreCompactHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("PreCompact"),
-	trigger: z.enum(["manual", "auto"]).optional(),
-	custom_instructions: z.string().optional(),
-});
+const PreCompactHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("PreCompact"),
+		trigger: z.enum(["manual", "auto"]).optional(),
+		custom_instructions: z.string().optional(),
+	},
+);
 
 /**
  * Symmetric with `PreCompact` — fires after Claude Code finishes compacting
@@ -1041,12 +1361,14 @@ const PreCompactHookEvent = z.strictObject({
  * `tokens_removed` is the count Claude Code reports for how much context the
  * compaction freed.
  */
-const PostCompactHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("PostCompact"),
-	reason: z.enum(["manual", "auto"]).optional(),
-	tokens_removed: z.number().optional(),
-});
+const PostCompactHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("PostCompact"),
+		reason: z.enum(["manual", "auto"]).optional(),
+		tokens_removed: z.number().optional(),
+	},
+);
 
 /**
  * Build a strict `PreToolUse` / `PostToolUse` variant union. The outer
@@ -1056,30 +1378,35 @@ const PostCompactHookEvent = z.strictObject({
  * strict alternative. Each option is a strict object that pins both
  * `hook_event_name` and `tool_name` to a literal.
  */
-function buildToolUseEvent(eventName: "PreToolUse" | "PostToolUse") {
+function buildToolUseEvent(eventName: "PreToolUse" | "PostToolUse")
+{
 	const variants = ToolUseUnion.options.map((toolVariant) =>
-		z.strictObject({
-			...BaseHookFields,
-			hook_event_name: z.literal(eventName),
-			tool_name: toolVariant.shape.tool_name,
-			tool_use_id: z.string().optional(),
-			tool_input: toolVariant.shape.tool_input,
-			tool_response: toolVariant.shape.tool_response,
-			/** Tool execution time; excludes permission-prompt and hook time. */
-			duration_ms: z.number().optional(),
-		}),
+		z.strictObject(
+			{
+				...BaseHookFields,
+				hook_event_name: z.literal(eventName),
+				tool_name: toolVariant.shape.tool_name,
+				tool_use_id: z.string().optional(),
+				tool_input: toolVariant.shape.tool_input,
+				tool_response: toolVariant.shape.tool_response,
+				/** Tool execution time; excludes permission-prompt and hook time. */
+				duration_ms: z.number().optional(),
+			},
+		),
 	);
 	// MCP inputs and outputs belong to their server-defined protocol. This is
 	// the one deliberately unbounded tool namespace; see `isMcpTool`.
-	const mcpVariant = z.strictObject({
-		...BaseHookFields,
-		hook_event_name: z.literal(eventName),
-		tool_name: z.string().startsWith("mcp__"),
-		tool_use_id: z.string().optional(),
-		tool_input: JsonValueSchema,
-		tool_response: JsonValueSchema.optional(),
-		duration_ms: z.number().optional(),
-	});
+	const mcpVariant = z.strictObject(
+		{
+			...BaseHookFields,
+			hook_event_name: z.literal(eventName),
+			tool_name: z.string().startsWith("mcp__"),
+			tool_use_id: z.string().optional(),
+			tool_input: JsonValueSchema,
+			tool_response: JsonValueSchema.optional(),
+			duration_ms: z.number().optional(),
+		},
+	);
 	return z.union([...variants, mcpVariant]);
 }
 
@@ -1096,41 +1423,48 @@ const PostToolUseHookEvent = buildToolUseEvent("PostToolUse");
  * the schema-drift counter doesn't fire on otherwise-valid payloads.
  */
 const PostToolUseFailureHookSpecificOutput = z
-	.object({
-		hookEventName: z.literal("PostToolUseFailure").optional(),
-		additionalContext: z.string().optional(),
-		systemMessage: z.string().optional(),
-	})
+	.object(
+		{
+			hookEventName: z.literal("PostToolUseFailure").optional(),
+			additionalContext: z.string().optional(),
+			systemMessage: z.string().optional(),
+		},
+	)
 	.strict();
 
-function buildPostToolUseFailureEvent() {
+function buildPostToolUseFailureEvent()
+{
 	const variants = ToolUseUnion.options.map((toolVariant) =>
-		z.strictObject({
+		z.strictObject(
+			{
+				...BaseHookFields,
+				hook_event_name: z.literal("PostToolUseFailure"),
+				tool_name: toolVariant.shape.tool_name,
+				tool_use_id: z.string().optional(),
+				tool_input: toolVariant.shape.tool_input,
+				is_interrupt: z.boolean().optional(),
+				duration_ms: z.number().optional(),
+				error: z.string().optional(),
+				hook_specific_output: PostToolUseFailureHookSpecificOutput.optional(),
+			},
+		),
+	);
+	// MCP inputs and outputs belong to their server-defined protocol. This is
+	// the one deliberately unbounded tool namespace; see `isMcpTool`.
+	const mcpVariant = z.strictObject(
+		{
 			...BaseHookFields,
 			hook_event_name: z.literal("PostToolUseFailure"),
-			tool_name: toolVariant.shape.tool_name,
+			tool_name: z.string().startsWith("mcp__"),
 			tool_use_id: z.string().optional(),
-			tool_input: toolVariant.shape.tool_input,
+			tool_input: JsonValueSchema,
+			tool_response: JsonValueSchema.optional(),
 			is_interrupt: z.boolean().optional(),
 			duration_ms: z.number().optional(),
 			error: z.string().optional(),
 			hook_specific_output: PostToolUseFailureHookSpecificOutput.optional(),
-		}),
+		},
 	);
-	// MCP inputs and outputs belong to their server-defined protocol. This is
-	// the one deliberately unbounded tool namespace; see `isMcpTool`.
-	const mcpVariant = z.strictObject({
-		...BaseHookFields,
-		hook_event_name: z.literal("PostToolUseFailure"),
-		tool_name: z.string().startsWith("mcp__"),
-		tool_use_id: z.string().optional(),
-		tool_input: JsonValueSchema,
-		tool_response: JsonValueSchema.optional(),
-		is_interrupt: z.boolean().optional(),
-		duration_ms: z.number().optional(),
-		error: z.string().optional(),
-		hook_specific_output: PostToolUseFailureHookSpecificOutput.optional(),
-	});
 	return z.union([...variants, mcpVariant]);
 }
 
@@ -1151,10 +1485,12 @@ const PermissionUpdateDestinationSchema = z.enum([
 
 const PermissionRuleBehaviorSchema = z.enum(["allow", "deny", "ask"]);
 
-const PermissionRuleValueSchema = z.strictObject({
-	toolName: z.string(),
-	ruleContent: z.string().optional(),
-});
+const PermissionRuleValueSchema = z.strictObject(
+	{
+		toolName: z.string(),
+		ruleContent: z.string().optional(),
+	},
+);
 
 /**
  * One of the CLI's `permission_suggestions`: the update its permission dialog
@@ -1162,50 +1498,64 @@ const PermissionRuleValueSchema = z.strictObject({
  * Mirrors Claude Code's `PermissionUpdate` union (hooks reference, 2.1.301).
  */
 const PermissionUpdateSchema = z.discriminatedUnion("type", [
-	z.strictObject({
-		type: z.literal("addRules"),
-		rules: z.array(PermissionRuleValueSchema),
-		behavior: PermissionRuleBehaviorSchema,
-		destination: PermissionUpdateDestinationSchema,
-	}),
-	z.strictObject({
-		type: z.literal("replaceRules"),
-		rules: z.array(PermissionRuleValueSchema),
-		behavior: PermissionRuleBehaviorSchema,
-		destination: PermissionUpdateDestinationSchema,
-	}),
-	z.strictObject({
-		type: z.literal("removeRules"),
-		rules: z.array(PermissionRuleValueSchema),
-		behavior: PermissionRuleBehaviorSchema,
-		destination: PermissionUpdateDestinationSchema,
-	}),
-	z.strictObject({
-		type: z.literal("setMode"),
-		// Freeform for the same reason as `permission_mode`: a new mode must not
-		// reject the whole PermissionRequest envelope.
-		mode: z.string(),
-		destination: PermissionUpdateDestinationSchema,
-	}),
-	z.strictObject({
-		type: z.literal("addDirectories"),
-		directories: z.array(z.string()),
-		destination: PermissionUpdateDestinationSchema,
-	}),
-	z.strictObject({
-		type: z.literal("removeDirectories"),
-		directories: z.array(z.string()),
-		destination: PermissionUpdateDestinationSchema,
-	}),
+	z.strictObject(
+		{
+			type: z.literal("addRules"),
+			rules: z.array(PermissionRuleValueSchema),
+			behavior: PermissionRuleBehaviorSchema,
+			destination: PermissionUpdateDestinationSchema,
+		},
+	),
+	z.strictObject(
+		{
+			type: z.literal("replaceRules"),
+			rules: z.array(PermissionRuleValueSchema),
+			behavior: PermissionRuleBehaviorSchema,
+			destination: PermissionUpdateDestinationSchema,
+		},
+	),
+	z.strictObject(
+		{
+			type: z.literal("removeRules"),
+			rules: z.array(PermissionRuleValueSchema),
+			behavior: PermissionRuleBehaviorSchema,
+			destination: PermissionUpdateDestinationSchema,
+		},
+	),
+	z.strictObject(
+		{
+			type: z.literal("setMode"),
+			// Freeform for the same reason as `permission_mode`: a new mode must not
+			// reject the whole PermissionRequest envelope.
+			mode: z.string(),
+			destination: PermissionUpdateDestinationSchema,
+		},
+	),
+	z.strictObject(
+		{
+			type: z.literal("addDirectories"),
+			directories: z.array(z.string()),
+			destination: PermissionUpdateDestinationSchema,
+		},
+	),
+	z.strictObject(
+		{
+			type: z.literal("removeDirectories"),
+			directories: z.array(z.string()),
+			destination: PermissionUpdateDestinationSchema,
+		},
+	),
 ]);
 
 export type PermissionUpdate = z.infer<typeof PermissionUpdateSchema>;
 
 /** The MCP server that owns a tool, sent beside MCP tool calls. `source` is an open set. */
-const HookMcpServerSchema = z.strictObject({
-	name: z.string(),
-	source: z.string(),
-});
+const HookMcpServerSchema = z.strictObject(
+	{
+		name: z.string(),
+		source: z.string(),
+	},
+);
 
 /**
  * Build the `PermissionRequest` per-tool union. Fires when the CLI is about to
@@ -1213,37 +1563,44 @@ const HookMcpServerSchema = z.strictObject({
  * behind the dialog's persistent "don't ask again" option, absent or empty
  * when the dialog offers none.
  */
-function buildPermissionRequestEvent() {
+function buildPermissionRequestEvent()
+{
 	const variants = ToolUseUnion.options.map((toolVariant) =>
-		z.strictObject({
-			...BaseHookFields,
-			hook_event_name: z.literal("PermissionRequest"),
-			tool_name: toolVariant.shape.tool_name,
-			tool_input: toolVariant.shape.tool_input,
-			permission_suggestions: z.array(PermissionUpdateSchema).optional(),
-		}),
+		z.strictObject(
+			{
+				...BaseHookFields,
+				hook_event_name: z.literal("PermissionRequest"),
+				tool_name: toolVariant.shape.tool_name,
+				tool_input: toolVariant.shape.tool_input,
+				permission_suggestions: z.array(PermissionUpdateSchema).optional(),
+			},
+		),
 	);
 	// MCP inputs belong to their server-defined protocol; see `isMcpTool`.
-	const mcpVariant = z.strictObject({
-		...BaseHookFields,
-		hook_event_name: z.literal("PermissionRequest"),
-		tool_name: z.string().startsWith("mcp__"),
-		tool_input: JsonValueSchema,
-		permission_suggestions: z.array(PermissionUpdateSchema).optional(),
-		mcp_server: HookMcpServerSchema.optional(),
-	});
+	const mcpVariant = z.strictObject(
+		{
+			...BaseHookFields,
+			hook_event_name: z.literal("PermissionRequest"),
+			tool_name: z.string().startsWith("mcp__"),
+			tool_input: JsonValueSchema,
+			permission_suggestions: z.array(PermissionUpdateSchema).optional(),
+			mcp_server: HookMcpServerSchema.optional(),
+		},
+	);
 	return z.union([...variants, mcpVariant]);
 }
 
 const PermissionRequestHookEvent = buildPermissionRequestEvent();
 
-const TaskCompletedHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("TaskCompleted"),
-	task_id: z.string().optional(),
-	task_subject: z.string().optional(),
-	task_description: z.string().optional(),
-});
+const TaskCompletedHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("TaskCompleted"),
+		task_id: z.string().optional(),
+		task_subject: z.string().optional(),
+		task_description: z.string().optional(),
+	},
+);
 
 /**
  * Symmetric with `TaskCompleted` — fires when a `TaskCreate` tool runs. The
@@ -1254,19 +1611,23 @@ const TaskCompletedHookEvent = z.strictObject({
  * (`task_id`, `task_subject`, `task_description`) for consistency, even though
  * Claude Code's underlying tool input uses `task_name`.
  */
-const TaskCreatedHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("TaskCreated"),
-	task_id: z.string().optional(),
-	task_subject: z.string().optional(),
-	task_description: z.string().optional(),
-});
+const TaskCreatedHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("TaskCreated"),
+		task_id: z.string().optional(),
+		task_subject: z.string().optional(),
+		task_description: z.string().optional(),
+	},
+);
 
-const WorktreeCreateHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("WorktreeCreate"),
-	name: z.string().optional(),
-});
+const WorktreeCreateHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("WorktreeCreate"),
+		name: z.string().optional(),
+	},
+);
 
 /**
  * Fires when the working directory changes mid-session (e.g. the user runs
@@ -1275,12 +1636,14 @@ const WorktreeCreateHookEvent = z.strictObject({
  * JSONL flush. Strict schema from day one — unknown fields trigger the
  * schema-drift recovery path.
  */
-const CwdChangedHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("CwdChanged"),
-	old_cwd: z.string(),
-	new_cwd: z.string(),
-});
+const CwdChangedHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("CwdChanged"),
+		old_cwd: z.string(),
+		new_cwd: z.string(),
+	},
+);
 
 /**
  * Symmetric with `WorktreeCreate` — fires when a worktree is removed. The
@@ -1289,11 +1652,13 @@ const CwdChangedHookEvent = z.strictObject({
  * removed worktree (mirrors the `worktree_path` field in the underlying tool
  * input). Strict schema from day one — unknown fields trigger schema drift.
  */
-const WorktreeRemoveHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("WorktreeRemove"),
-	worktree_path: z.string().optional(),
-});
+const WorktreeRemoveHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("WorktreeRemove"),
+		worktree_path: z.string().optional(),
+	},
+);
 
 /**
  * Fires when Claude Code loads a CLAUDE.md or `.claude/rules/*.md` file into
@@ -1304,16 +1669,18 @@ const WorktreeRemoveHookEvent = z.strictObject({
  * `compact`); `memory_type` distinguishes user / project / local layers.
  * Strict schema from day one — unknown fields trigger schema drift.
  */
-const InstructionsLoadedHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("InstructionsLoaded"),
-	file_path: z.string(),
-	memory_type: z.string().optional(),
-	load_reason: z.enum(["session_start", "nested_traversal", "path_glob_match", "include", "compact"]).optional(),
-	globs: z.array(z.string()).optional(),
-	trigger_file_path: z.string().optional(),
-	parent_file_path: z.string().optional(),
-});
+const InstructionsLoadedHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("InstructionsLoaded"),
+		file_path: z.string(),
+		memory_type: z.string().optional(),
+		load_reason: z.enum(["session_start", "nested_traversal", "path_glob_match", "include", "compact"]).optional(),
+		globs: z.array(z.string()).optional(),
+		trigger_file_path: z.string().optional(),
+		parent_file_path: z.string().optional(),
+	},
+);
 
 /**
  * Fires when a configuration file changes during the session. The viewer's
@@ -1325,12 +1692,14 @@ const InstructionsLoadedHookEvent = z.strictObject({
  * Code reports as modified. Strict schema from day one — unknown fields
  * trigger schema drift.
  */
-const ConfigChangeHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("ConfigChange"),
-	config_source: z.enum(["user_settings", "project_settings", "local_settings", "policy_settings", "skills"]),
-	changed_fields: z.array(z.string()).optional(),
-});
+const ConfigChangeHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("ConfigChange"),
+		config_source: z.enum(["user_settings", "project_settings", "local_settings", "policy_settings", "skills"]),
+		changed_fields: z.array(z.string()).optional(),
+	},
+);
 
 /**
  * Fires while assistant message text streams to the terminal — other hooks
@@ -1347,17 +1716,19 @@ const ConfigChangeHookEvent = z.strictObject({
  * schema-drift recovery path in `src/routes/api/hook.ts` to surface anything
  * else so we can extend this with confidence.
  */
-const MessageDisplayHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("MessageDisplay"),
-	message: z.string().optional(),
-	message_id: z.string().optional(),
-	/** Streaming shape: one event per batch of newly completed lines. */
-	turn_id: z.string().optional(),
-	index: z.number().int().optional(),
-	final: z.boolean().optional(),
-	delta: z.string().optional(),
-});
+const MessageDisplayHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("MessageDisplay"),
+		message: z.string().optional(),
+		message_id: z.string().optional(),
+		/** Streaming shape: one event per batch of newly completed lines. */
+		turn_id: z.string().optional(),
+		index: z.number().int().optional(),
+		final: z.boolean().optional(),
+		delta: z.string().optional(),
+	},
+);
 
 /**
  * Fires instead of `Stop` when the turn ends on an API error. The viewer ends
@@ -1368,40 +1739,47 @@ const MessageDisplayHookEvent = z.strictObject({
  * drop the event. `last_assistant_message` is the API error text the
  * conversation shows, not Claude's output.
  */
-const StopFailureHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("StopFailure"),
-	error: z.string(),
-	error_details: z.string().optional(),
-	last_assistant_message: z.string().optional(),
-});
+const StopFailureHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("StopFailure"),
+		error: z.string(),
+		error_details: z.string().optional(),
+		last_assistant_message: z.string().optional(),
+	},
+);
 
 /**
  * Build the `PermissionDenied` per-tool union. Fires when the auto-mode
  * classifier denies a tool call; `reason` names the matched rule (such as
  * `[Data Exfiltration]`) or explains a no-verdict denial.
  */
-function buildPermissionDeniedEvent() {
+function buildPermissionDeniedEvent()
+{
 	const variants = ToolUseUnion.options.map((toolVariant) =>
-		z.strictObject({
-			...BaseHookFields,
-			hook_event_name: z.literal("PermissionDenied"),
-			tool_name: toolVariant.shape.tool_name,
-			tool_input: toolVariant.shape.tool_input,
-			tool_use_id: z.string().optional(),
-			reason: z.string(),
-		}),
+		z.strictObject(
+			{
+				...BaseHookFields,
+				hook_event_name: z.literal("PermissionDenied"),
+				tool_name: toolVariant.shape.tool_name,
+				tool_input: toolVariant.shape.tool_input,
+				tool_use_id: z.string().optional(),
+				reason: z.string(),
+			},
+		),
 	);
 	// MCP inputs belong to their server-defined protocol; see `isMcpTool`.
-	const mcpVariant = z.strictObject({
-		...BaseHookFields,
-		hook_event_name: z.literal("PermissionDenied"),
-		tool_name: z.string().startsWith("mcp__"),
-		tool_input: JsonValueSchema,
-		tool_use_id: z.string().optional(),
-		reason: z.string(),
-		mcp_server: HookMcpServerSchema.optional(),
-	});
+	const mcpVariant = z.strictObject(
+		{
+			...BaseHookFields,
+			hook_event_name: z.literal("PermissionDenied"),
+			tool_name: z.string().startsWith("mcp__"),
+			tool_input: JsonValueSchema,
+			tool_use_id: z.string().optional(),
+			reason: z.string(),
+			mcp_server: HookMcpServerSchema.optional(),
+		},
+	);
 	return z.union([...variants, mcpVariant]);
 }
 
@@ -1415,20 +1793,22 @@ const PermissionDeniedHookEvent = buildPermissionDeniedEvent();
  * `PreModelSwitch` carries the same fields but can still be cancelled, so the
  * viewer does not consume it.
  */
-const PostModelSwitchHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("PostModelSwitch"),
-	from_model: z.string(),
-	to_model: z.string(),
-	/** The alias or ID the request named; null for the default model or an automatic switch. */
-	requested_model: z.string().nullable(),
-	source: z.enum(["command", "picker", "sdk", "auto", "resume"]),
-	context_tokens: z.number(),
-	prompt_cache_warm: z.boolean(),
-	cache_ttl: z.enum(["5m", "1h"]),
-	estimated_cache_write_usd: z.number(),
-	pricing: z.enum(["configured", "catalog", "default"]),
-});
+const PostModelSwitchHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("PostModelSwitch"),
+		from_model: z.string(),
+		to_model: z.string(),
+		/** The alias or ID the request named; null for the default model or an automatic switch. */
+		requested_model: z.string().nullable(),
+		source: z.enum(["command", "picker", "sdk", "auto", "resume"]),
+		context_tokens: z.number(),
+		prompt_cache_warm: z.boolean(),
+		cache_ttl: z.enum(["5m", "1h"]),
+		estimated_cache_write_usd: z.number(),
+		pricing: z.enum(["configured", "catalog", "default"]),
+	},
+);
 
 /**
  * Fires when an MCP server asks the user for input mid-tool-call: a form
@@ -1439,27 +1819,31 @@ const PostModelSwitchHookEvent = z.strictObject({
  */
 const ElicitationModeSchema = z.enum(["form", "url"]);
 
-const ElicitationHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("Elicitation"),
-	mcp_server_name: z.string(),
-	message: z.string(),
-	mode: ElicitationModeSchema.optional(),
-	url: z.string().optional(),
-	elicitation_id: z.string().optional(),
-	requested_schema: JsonValueSchema.optional(),
-});
+const ElicitationHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("Elicitation"),
+		mcp_server_name: z.string(),
+		message: z.string(),
+		mode: ElicitationModeSchema.optional(),
+		url: z.string().optional(),
+		elicitation_id: z.string().optional(),
+		requested_schema: JsonValueSchema.optional(),
+	},
+);
 
 /** Fires once the user answers an MCP elicitation; the session is working again. */
-const ElicitationResultHookEvent = z.strictObject({
-	...BaseHookFields,
-	hook_event_name: z.literal("ElicitationResult"),
-	mcp_server_name: z.string(),
-	action: z.enum(["accept", "decline", "cancel"]),
-	mode: ElicitationModeSchema.optional(),
-	elicitation_id: z.string().optional(),
-	content: JsonValueSchema.optional(),
-});
+const ElicitationResultHookEvent = z.strictObject(
+	{
+		...BaseHookFields,
+		hook_event_name: z.literal("ElicitationResult"),
+		mcp_server_name: z.string(),
+		action: z.enum(["accept", "decline", "cancel"]),
+		mode: ElicitationModeSchema.optional(),
+		elicitation_id: z.string().optional(),
+		content: JsonValueSchema.optional(),
+	},
+);
 
 /**
  * Union over every hook event Claude Code can send. Each variant is a strict
@@ -1511,7 +1895,11 @@ export type HookEventName = HookEvent["hook_event_name"];
  * activity, not the root session's main turn. SubagentStart/SubagentStop also
  * carry `agent_id` but are lifecycle edges the root session owns.
  */
-export function isSubagentScopedEvent(event: HookEvent): event is HookEvent & {agent_id: string} {
+export function isSubagentScopedEvent(event: HookEvent): event is HookEvent &
+{
+	agent_id: string;
+}
+{
 	return (
 		event.agent_id !== undefined &&
 		event.hook_event_name !== "SubagentStart" &&

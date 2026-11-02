@@ -17,7 +17,8 @@ export type HerdrPaneState = Pick<HerdrSnapshot, "workspaces" | "panes">;
  * state from memory instead of opening a socket per request. While the bridge
  * is disconnected the table is not current and readers fall back to herdr.
  */
-export interface HerdrPaneTable {
+export interface HerdrPaneTable
+{
 	seed(state: HerdrPaneState): void;
 	invalidate(): void;
 	/** The current state, never mutated afterwards, or `null` when the table is not tracking herdr right now. */
@@ -27,53 +28,71 @@ export interface HerdrPaneTable {
 
 const STATUS_PATCH_FIELDS = ["agent", "display_agent", "title", "state_labels"] as const;
 
-function parsePane(value: unknown): HerdrWirePane | null {
+function parsePane(value: unknown): HerdrWirePane | null
+{
 	const parsed = HerdrPaneInfoSchema.safeParse(value);
 	return parsed.success ? parsed.data : null;
 }
 
-function stringField(data: Record<string, unknown>, key: string): string | null {
+function stringField(data: Record<string, unknown>, key: string): string | null
+{
 	const value = data[key];
 	return typeof value === "string" ? value : null;
 }
 
-function cloneState(state: HerdrPaneState): HerdrPaneState {
-	return structuredClone({workspaces: state.workspaces, panes: state.panes});
+function cloneState(state: HerdrPaneState): HerdrPaneState
+{
+	return structuredClone(
+		{
+			workspaces: state.workspaces,
+			panes: state.panes,
+		},
+	);
 }
 
-export function createHerdrPaneTable(): HerdrPaneTable {
+export function createHerdrPaneTable(): HerdrPaneTable
+{
 	let state: HerdrPaneState | null = null;
 
 	// herdr's workspace status is its most attention-worthy pane status, so
 	// a pane push implies a workspace change herdr announces no event for.
-	const rederiveWorkspaceStatus = (current: HerdrPaneState, workspaceId: string): void => {
+	const rederiveWorkspaceStatus = (current: HerdrPaneState, workspaceId: string): void =>
+	{
 		const workspace = current.workspaces.find((candidate) => candidate.workspace_id === workspaceId);
 		if (!workspace) return;
 		const statuses = current.panes
 			.filter((pane) => pane.workspace_id === workspaceId)
-			.map((pane) => ({agentStatus: pane.agent_status}))
+			.map((pane) => (
+			{
+				agentStatus: pane.agent_status,
+			}))
 			.toSorted(compareHerdrAttention);
 		const [top] = statuses;
 		if (top) workspace.agent_status = top.agentStatus;
 	};
 
-	const removePane = (current: HerdrPaneState, paneId: string): string | null => {
+	const removePane = (current: HerdrPaneState, paneId: string): string | null =>
+	{
 		const index = current.panes.findIndex((pane) => pane.pane_id === paneId);
 		if (index === -1) return null;
 		const [removed] = current.panes.splice(index, 1);
 		return removed?.workspace_id ?? null;
 	};
 
-	const applyToState = (current: HerdrPaneState, event: string, data: Record<string, unknown>): string[] => {
-		switch (event) {
-			case "pane_created": {
+	const applyToState = (current: HerdrPaneState, event: string, data: Record<string, unknown>): string[] =>
+	{
+		switch (event)
+		{
+			case "pane_created":
+			{
 				const pane = parsePane(data["pane"]);
 				if (!pane) return [];
 				removePane(current, pane.pane_id);
 				current.panes.push(pane);
 				return [pane.workspace_id];
 			}
-			case "pane_updated": {
+			case "pane_updated":
+			{
 				const pane = parsePane(data["pane"]);
 				if (!pane) return [];
 				// Updates never insert: herdr replays updates for zombie panes the snapshot omits.
@@ -83,7 +102,8 @@ export function createHerdrPaneTable(): HerdrPaneTable {
 				current.panes[index] = pane;
 				return [known.workspace_id, pane.workspace_id];
 			}
-			case "pane_moved": {
+			case "pane_moved":
+			{
 				const pane = parsePane(data["pane"]);
 				if (!pane) return [];
 				const previousPaneId = stringField(data, "previous_pane_id");
@@ -92,24 +112,36 @@ export function createHerdrPaneTable(): HerdrPaneTable {
 				current.panes.push(pane);
 				return previousWorkspaceId === null ? [pane.workspace_id] : [previousWorkspaceId, pane.workspace_id];
 			}
-			case "pane_closed": {
+			case "pane_closed":
+			{
 				const paneId = stringField(data, "pane_id");
 				const workspaceId = paneId === null ? null : removePane(current, paneId);
 				return workspaceId === null ? [] : [workspaceId];
 			}
 			case "pane_agent_status_changed":
-			case "pane_agent_detected": {
+			case "pane_agent_detected":
+			{
 				const paneId = stringField(data, "pane_id");
 				const pane = current.panes.find((candidate) => candidate.pane_id === paneId);
 				if (!pane) return [];
-				if (event === "pane_agent_status_changed") {
+				if (event === "pane_agent_status_changed")
+				{
 					const status = stringField(data, "agent_status");
 					if (status === null) return [];
 					pane.agent_status = status;
-					for (const field of STATUS_PATCH_FIELDS) {
-						if (field in data) Object.assign(pane, {[field]: data[field]});
+					for (const field of STATUS_PATCH_FIELDS)
+					{
+						if (field in data)
+							Object.assign(
+								pane,
+								{
+									[field]: data[field],
+								},
+							);
 					}
-				} else if ("agent" in data) {
+				}
+				else if ("agent" in data)
+				{
 					pane.agent = stringField(data, "agent");
 				}
 				return [pane.workspace_id];
@@ -120,16 +152,20 @@ export function createHerdrPaneTable(): HerdrPaneTable {
 	};
 
 	return {
-		seed(next) {
+		seed(next)
+		{
 			state = cloneState(next);
 		},
-		invalidate() {
+		invalidate()
+		{
 			state = null;
 		},
-		current() {
+		current()
+		{
 			return state;
 		},
-		apply(event, data) {
+		apply(event, data)
+		{
 			if (state === null) return;
 			// Copy on write so a state handed out by current() never changes under its reader.
 			const next = cloneState(state);
@@ -150,32 +186,43 @@ export type HerdrPaneReader = Pick<HerdrPaneTable, "current">;
  * state is current only while every registered table is, so a reader never
  * mistakes one server's reconnect window for that server having no panes.
  */
-export interface HerdrPaneTableSet extends HerdrPaneReader {
+export interface HerdrPaneTableSet extends HerdrPaneReader
+{
 	forServer(socketPath: string): HerdrPaneTable;
 	remove(socketPath: string): void;
 }
 
-export function createHerdrPaneTableSet(): HerdrPaneTableSet {
+export function createHerdrPaneTableSet(): HerdrPaneTableSet
+{
 	const tables = new Map<string, HerdrPaneTable>();
-	let memo: {parts: HerdrPaneState[]; merged: HerdrPaneState} | null = null;
+	let memo:
+	{
+		parts: HerdrPaneState[];
+		merged: HerdrPaneState;
+	} | null = null;
 
 	return {
-		forServer(socketPath) {
+		forServer(socketPath)
+		{
 			let table = tables.get(socketPath);
-			if (!table) {
+			if (!table)
+			{
 				table = createHerdrPaneTable();
 				tables.set(socketPath, table);
 			}
 			return table;
 		},
-		remove(socketPath) {
+		remove(socketPath)
+		{
 			tables.get(socketPath)?.invalidate();
 			tables.delete(socketPath);
 		},
-		current() {
+		current()
+		{
 			if (tables.size === 0) return null;
 			const parts: HerdrPaneState[] = [];
-			for (const table of tables.values()) {
+			for (const table of tables.values())
+			{
 				const state = table.current();
 				if (state === null) return null;
 				parts.push(state);
@@ -183,14 +230,20 @@ export function createHerdrPaneTableSet(): HerdrPaneTableSet {
 			const [only] = parts;
 			if (parts.length === 1 && only) return only;
 			// Tables copy on write, so unchanged part identities mean an unchanged merge.
-			if (memo?.parts.length === parts.length && memo.parts.every((part, index) => part === parts[index])) {
+			if (memo?.parts.length === parts.length && memo.parts.every((part, index) => part === parts[index]))
+			{
 				return memo.merged;
 			}
-			const merged: HerdrPaneState = {
+			const merged: HerdrPaneState =
+			{
 				workspaces: parts.flatMap((part) => part.workspaces),
 				panes: parts.flatMap((part) => part.panes),
 			};
-			memo = {parts, merged};
+			memo =
+			{
+				parts,
+				merged,
+			};
 			return merged;
 		},
 	};

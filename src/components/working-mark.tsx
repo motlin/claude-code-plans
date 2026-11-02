@@ -18,7 +18,13 @@ export function WorkingMark({
 	activity,
 	animated = true,
 	className,
-}: Readonly<{activity: WorkingMarkActivity; animated?: boolean; className?: string}>) {
+}: Readonly<
+{
+	activity: WorkingMarkActivity;
+	animated?: boolean;
+	className?: string;
+}>)
+{
 	const frames = WORKING_MARK_FRAMES[activity];
 	const decoded = useSheetDecoded(activity);
 	return (
@@ -28,12 +34,21 @@ export function WorkingMark({
 			data-activity={activity}
 			data-animated={String(animated)}
 			className={`relative block shrink-0 select-none${className === undefined ? "" : ` ${className}`}`}
-			style={{width: MARK_SIZE, height: MARK_SIZE, color: "var(--color-clay)"}}
+			style={
+			{
+				width: MARK_SIZE,
+				height: MARK_SIZE,
+				color: "var(--color-clay)",
+			}}
 		>
 			{!decoded && (
 				<span
 					className="absolute inset-0 m-auto block rounded-full bg-current"
-					style={{width: LOADING_DOT_SIZE, height: LOADING_DOT_SIZE}}
+					style={
+					{
+						width: LOADING_DOT_SIZE,
+						height: LOADING_DOT_SIZE,
+					}}
 				/>
 			)}
 			{decoded && (
@@ -41,7 +56,8 @@ export function WorkingMark({
 					<span
 						data-working-mark-strip=""
 						className="block"
-						style={{
+						style={
+						{
 							width: MARK_SIZE,
 							height: frames * MARK_SIZE,
 							backgroundImage: `url(${sheetUrl(activity)})`,
@@ -49,7 +65,8 @@ export function WorkingMark({
 							backgroundRepeat: "no-repeat",
 							["--working-mark-end" as string]: `${-(frames - 1) * MARK_SIZE}px`,
 							...(animated
-								? {
+								?
+									{
 										animation: `working-mark-strip ${Math.round(frames * WORKING_MARK_FRAME_MS)}ms steps(${frames}, jump-none) infinite`,
 									}
 								: {}),

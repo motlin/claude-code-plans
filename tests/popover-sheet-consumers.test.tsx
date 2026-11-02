@@ -13,10 +13,12 @@ import {SettingsSearch} from "../src/components/settings/settings-search";
 import {preloadPopoverSheet} from "../src/components/ui/popover-sheet-loader";
 
 /** A coarse pointer at `width`: upstream's sheet gate `(pointer: coarse) and (max-width: 639.98px)`. */
-function stubCoarseAtWidth(width: number) {
+function stubCoarseAtWidth(width: number)
+{
 	vi.stubGlobal(
 		"matchMedia",
-		vi.fn((query: string) => ({
+		vi.fn((query: string) => (
+		{
 			matches:
 				query === "(pointer: coarse)" ||
 				(query === "(pointer: coarse) and (max-width: 639.98px)" && width < 640),
@@ -31,12 +33,24 @@ function stubCoarseAtWidth(width: number) {
 	);
 }
 
-function withQueryClient(children: ReactNode) {
-	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+function withQueryClient(children: ReactNode)
+{
+	const client = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
-function presentation() {
+function presentation()
+{
 	return {
 		dialog: screen.getByRole("dialog").getAttribute("data-presentation"),
 		scrim: document.querySelector("[data-sheet-scrim]") !== null,
@@ -44,38 +58,59 @@ function presentation() {
 }
 
 /* The sheet presentation is a lazy chunk; load it once so sheets render synchronously on open. */
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadPopoverSheet();
 });
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("fetch", async () => new Promise(() => {}));
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-function openUsage() {
+function openUsage()
+{
 	render(withQueryClient(<UsageRing usage={null} />));
 	fireEvent.click(document.querySelector("button")!);
 }
 
-function openCost() {
+function openCost()
+{
 	render(
 		<SessionCostPill
-			cost={{totalCostUSD: 1.5, linesAdded: 3, linesRemoved: 1, hasUnknownModelCost: false, models: []}}
+			cost={
+			{
+				totalCostUSD: 1.5,
+				linesAdded: 3,
+				linesRemoved: 1,
+				hasUnknownModelCost: false,
+				models: [],
+			}}
 			className="pill"
 		>
 			$1.50
 		</SessionCostPill>,
 	);
-	fireEvent.click(screen.getByRole("button", {name: "Session cost: $1.50"}));
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "Session cost: $1.50",
+			},
+		),
+	);
 }
 
-function openNextStep() {
-	const candidate = (n: number) => ({
+function openNextStep()
+{
+	const candidate = (n: number) => (
+	{
 		id: "waiting-session" as const,
 		subject: `s${n}`,
 		stamp: n,
@@ -92,103 +127,219 @@ function openNextStep() {
 					rest: [candidate(1), candidate(2)],
 				},
 			]}
-			onOpen={() => {}}
-			onDismiss={() => {}}
+			onOpen={() =>
+			{
+			}}
+			onDismiss={() =>
+			{
+			}}
 		/>,
 	);
-	fireEvent.click(screen.getByRole("button", {name: "Claude is waiting in 2 sessions"}));
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "Claude is waiting in 2 sessions",
+			},
+		),
+	);
 }
 
-describe("sheet-eligible popovers under a coarse pointer", () => {
+describe("sheet-eligible popovers under a coarse pointer", () =>
+{
 	it.each([
 		["Usage", openUsage],
 		["session cost", openCost],
 		["Next step", openNextStep],
-	])("the %s popover is a bottom sheet at 420px", (_name, open) => {
+	])("the %s popover is a bottom sheet at 420px", (_name, open) =>
+	{
 		stubCoarseAtWidth(420);
 		open();
-		expect(presentation()).toStrictEqual({dialog: "sheet", scrim: true});
+		expect(presentation()).toStrictEqual(
+			{
+				dialog: "sheet",
+				scrim: true,
+			},
+		);
 	});
 
 	it.each([
 		["Usage", openUsage],
 		["session cost", openCost],
 		["Next step", openNextStep],
-	])("the %s popover stays anchored at 900px", (_name, open) => {
+	])("the %s popover stays anchored at 900px", (_name, open) =>
+	{
 		stubCoarseAtWidth(900);
 		open();
-		expect(presentation()).toStrictEqual({dialog: null, scrim: false});
+		expect(presentation()).toStrictEqual(
+			{
+				dialog: null,
+				scrim: false,
+			},
+		);
 	});
 
-	it("moves the Usage popover's sizing onto the sheet body wrapper, keeping its padding-less body", () => {
+	it("moves the Usage popover's sizing onto the sheet body wrapper, keeping its padding-less body", () =>
+	{
 		stubCoarseAtWidth(420);
 		openUsage();
 		const popup = screen.getByRole("dialog");
 		const wrapper = popup.querySelector("[data-cds-popover-body]")?.parentElement;
-		expect({
-			popupHasWidth: popup.className.includes("w-[360px]"),
-			wrapperHasWidth: wrapper?.className.includes("w-[360px]"),
-			wrapperFullWidth: wrapper?.className.split(" ").includes("w-full"),
-			close: screen.getByRole("button", {name: "Close"}).hasAttribute("data-cds-sheet-control"),
-		}).toStrictEqual({popupHasWidth: false, wrapperHasWidth: false, wrapperFullWidth: true, close: true});
+		expect(
+			{
+				popupHasWidth: popup.className.includes("w-[360px]"),
+				wrapperHasWidth: wrapper?.className.includes("w-[360px]"),
+				wrapperFullWidth: wrapper?.className.split(" ").includes("w-full"),
+				close: screen
+					.getByRole(
+						"button",
+						{
+							name: "Close",
+						},
+					)
+					.hasAttribute("data-cds-sheet-control"),
+			},
+		).toStrictEqual(
+			{
+				popupHasWidth: false,
+				wrapperHasWidth: false,
+				wrapperFullWidth: true,
+				close: true,
+			},
+		);
 	});
 });
 
-describe("popover sheet body layout", () => {
-	function sheetParts() {
+describe("popover sheet body layout", () =>
+{
+	function sheetParts()
+	{
 		const body = screen.getByRole("dialog").querySelector("[data-cds-popover-body]");
-		return {body: (body?.className ?? "").split(" "), wrapper: (body?.parentElement?.className ?? "").split(" ")};
+		return {
+			body: (body?.className ?? "").split(" "),
+			wrapper: (body?.parentElement?.className ?? "").split(" "),
+		};
 	}
 
-	it("moves the session cost popover's layout and padding onto the sheet body, as upstream's c_ body", () => {
+	it("moves the session cost popover's layout and padding onto the sheet body, as upstream's c_ body", () =>
+	{
 		stubCoarseAtWidth(420);
 		openCost();
 		const {body, wrapper} = sheetParts();
 		const tokens = ["flex-col", "gap-2", "p-3"];
-		expect({
-			body: tokens.filter((token) => body.includes(token)),
-			wrapper: tokens.filter((token) => wrapper.includes(token)),
-			wrapperColumn: ["flex", "flex-col"].every((token) => wrapper.includes(token)),
-		}).toStrictEqual({body: tokens, wrapper: ["flex-col"], wrapperColumn: true});
+		expect(
+			{
+				body: tokens.filter((token) => body.includes(token)),
+				wrapper: tokens.filter((token) => wrapper.includes(token)),
+				wrapperColumn: ["flex", "flex-col"].every((token) => wrapper.includes(token)),
+			},
+		).toStrictEqual(
+			{
+				body: tokens,
+				wrapper: ["flex-col"],
+				wrapperColumn: true,
+			},
+		);
 	});
 
-	it("scrolls the Usage popover's sheet body, not its wrapper", () => {
+	it("scrolls the Usage popover's sheet body, not its wrapper", () =>
+	{
 		stubCoarseAtWidth(420);
 		openUsage();
 		const {body, wrapper} = sheetParts();
-		expect({body: body.includes("overflow-y-auto"), wrapper: wrapper.includes("overflow-y-auto")}).toStrictEqual({
-			body: true,
-			wrapper: false,
-		});
+		expect(
+			{
+				body: body.includes("overflow-y-auto"),
+				wrapper: wrapper.includes("overflow-y-auto"),
+			},
+		).toStrictEqual(
+			{
+				body: true,
+				wrapper: false,
+			},
+		);
 	});
 });
 
-describe("anchored-upstream popovers under a coarse pointer at 420px", () => {
-	it("keeps the project picker anchored, like upstream's Add repository combobox", () => {
+describe("anchored-upstream popovers under a coarse pointer at 420px", () =>
+{
+	it("keeps the project picker anchored, like upstream's Add repository combobox", () =>
+	{
 		stubCoarseAtWidth(420);
 		render(
 			<ProjectPicker
-				projects={[{id: "p", name: "p", projectPath: "/p"}]}
+				projects={[
+					{
+						id: "p",
+						name: "p",
+						projectPath: "/p",
+					},
+				]}
 				selected={undefined}
-				onSelect={() => {}}
+				onSelect={() =>
+				{
+				}}
 			/>,
 		);
-		fireEvent.click(screen.getByRole("combobox", {name: "Select project"}));
-		expect({
-			dialog: screen.getByRole("dialog").hasAttribute("data-presentation"),
-			presentation: document.querySelector("[data-presentation]"),
-			scrim: document.querySelector("[data-sheet-scrim]"),
-		}).toStrictEqual({dialog: false, presentation: null, scrim: null});
+		fireEvent.click(
+			screen.getByRole(
+				"combobox",
+				{
+					name: "Select project",
+				},
+			),
+		);
+		expect(
+			{
+				dialog: screen.getByRole("dialog").hasAttribute("data-presentation"),
+				presentation: document.querySelector("[data-presentation]"),
+				scrim: document.querySelector("[data-sheet-scrim]"),
+			},
+		).toStrictEqual(
+			{
+				dialog: false,
+				presentation: null,
+				scrim: null,
+			},
+		);
 	});
 
-	it("keeps the settings search results anchored to their input", () => {
+	it("keeps the settings search results anchored to their input", () =>
+	{
 		stubCoarseAtWidth(420);
-		render(<SettingsSearch onSelect={() => {}} />);
-		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "theme"}});
-		expect({
-			popup: document.querySelector("[role=listbox], [role=dialog]") !== null,
-			presentation: document.querySelector("[data-presentation]"),
-			scrim: document.querySelector("[data-sheet-scrim]"),
-		}).toStrictEqual({popup: true, presentation: null, scrim: null});
+		render(
+			<SettingsSearch
+				onSelect={() =>
+				{
+				}}
+			/>,
+		);
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Search settings",
+				},
+			),
+			{
+				target:
+				{
+					value: "theme",
+				},
+			},
+		);
+		expect(
+			{
+				popup: document.querySelector("[role=listbox], [role=dialog]") !== null,
+				presentation: document.querySelector("[data-presentation]"),
+				scrim: document.querySelector("[data-sheet-scrim]"),
+			},
+		).toStrictEqual(
+			{
+				popup: true,
+				presentation: null,
+				scrim: null,
+			},
+		);
 	});
 });

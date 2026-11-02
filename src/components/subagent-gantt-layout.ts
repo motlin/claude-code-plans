@@ -4,18 +4,31 @@ import {orderByWorkflowRun} from "../lib/workflow-lane-groups";
 
 export function layoutSwimlanes(
 	agents: Subagent[],
-	options?: {workflowRuns?: readonly WorkflowRunInfo[] | undefined},
-): SwimlaneLayout {
+	options?:
+	{
+		workflowRuns?: readonly WorkflowRunInfo[] | undefined;
+	},
+): SwimlaneLayout
+{
 	const spans = timedSpans(agents);
 	const timed = spans.map((span) => span.agent);
 
-	if (timed.length === 0) {
-		return {lanes: [], groups: [], startMs: 0, endMs: 0, totalMs: 0, ticks: []};
+	if (timed.length === 0)
+	{
+		return {
+			lanes: [],
+			groups: [],
+			startMs: 0,
+			endMs: 0,
+			totalMs: 0,
+			ticks: [],
+		};
 	}
 
 	const depthOf = computeDepths(timed);
 	const childrenByParent = new Map<string, TimedSpan[]>();
-	for (const span of spans) {
+	for (const span of spans)
+	{
 		const key = span.agent.parentAgentId;
 		if (!key) continue;
 		const list = childrenByParent.get(key) ?? [];
@@ -23,9 +36,14 @@ export function layoutSwimlanes(
 		childrenByParent.set(key, list);
 	}
 
-	const unordered: Swimlane[] = spans.map(({agent, startMs, endMs}) => {
+	const unordered: Swimlane[] = spans.map(({agent, startMs, endMs}) =>
+	{
 		const childRanges: TimeRange[] = (childrenByParent.get(agent.id) ?? [])
-			.map((c) => ({startMs: c.startMs, endMs: c.endMs}))
+			.map((c) => (
+			{
+				startMs: c.startMs,
+				endMs: c.endMs,
+			}))
 			.filter((r) => r.endMs > r.startMs);
 		return {
 			agent,
@@ -38,7 +56,8 @@ export function layoutSwimlanes(
 
 	const {ordered: lanes, groups} = orderByWorkflowRun(
 		unordered,
-		(a, b) => {
+		(a, b) =>
+		{
 			if (a.startMs !== b.startMs) return a.startMs - b.startMs;
 			if (a.depth !== b.depth) return a.depth - b.depth;
 			return a.agent.id.localeCompare(b.agent.id);
@@ -52,7 +71,8 @@ export function layoutSwimlanes(
 
 	return {
 		lanes,
-		groups: groups.map(({runId, name, phaseTitle, first, count}) => ({
+		groups: groups.map(({runId, name, phaseTitle, first, count}) => (
+		{
 			runId,
 			name,
 			phaseTitle,
@@ -66,12 +86,14 @@ export function layoutSwimlanes(
 	};
 }
 
-interface TimeRange {
+interface TimeRange
+{
 	startMs: number;
 	endMs: number;
 }
 
-interface Swimlane {
+interface Swimlane
+{
 	agent: Subagent;
 	depth: number;
 	startMs: number;
@@ -80,7 +102,8 @@ interface Swimlane {
 }
 
 /** The lanes `[firstLane, firstLane + laneCount)` of one phase of a workflow run. */
-interface SwimlaneGroup {
+interface SwimlaneGroup
+{
 	runId: string;
 	name: string;
 	phaseTitle: string;
@@ -88,7 +111,8 @@ interface SwimlaneGroup {
 	laneCount: number;
 }
 
-export interface SwimlaneLayout {
+export interface SwimlaneLayout
+{
 	lanes: Swimlane[];
 	groups: SwimlaneGroup[];
 	startMs: number;
@@ -97,38 +121,53 @@ export interface SwimlaneLayout {
 	ticks: SwimlaneTick[];
 }
 
-interface TimedSpan {
+interface TimedSpan
+{
 	agent: Subagent;
 	startMs: number;
 	endMs: number;
 }
 
 /** Agents with a parseable start and finish, paired with those timestamps in ms. */
-function timedSpans(agents: Subagent[]): TimedSpan[] {
-	return agents.flatMap((agent) => {
+function timedSpans(agents: Subagent[]): TimedSpan[]
+{
+	return agents.flatMap((agent) =>
+	{
 		const startMs = toMsOrNull(agent.startedAt);
 		const endMs = toMsOrNull(agent.finishedAt);
-		return startMs === null || endMs === null ? [] : [{agent, startMs, endMs}];
+		return startMs === null || endMs === null
+			? []
+			: [
+					{
+						agent,
+						startMs,
+						endMs,
+					},
+				];
 	});
 }
 
-function toMsOrNull(iso: string | null): number | null {
+function toMsOrNull(iso: string | null): number | null
+{
 	if (!iso) return null;
 	const ms = new Date(iso).getTime();
 	return Number.isFinite(ms) ? ms : null;
 }
 
-function computeDepths(timed: Subagent[]): Map<string, number> {
+function computeDepths(timed: Subagent[]): Map<string, number>
+{
 	const byId = new Map(timed.map((a) => [a.id, a]));
 	const depthOf = new Map<string, number>();
 
-	function depth(id: string, seen: Set<string>): number {
+	function depth(id: string, seen: Set<string>): number
+	{
 		const cached = depthOf.get(id);
 		if (cached !== undefined) return cached;
 		if (seen.has(id)) return 0;
 		seen.add(id);
 		const agent = byId.get(id);
-		if (!agent?.parentAgentId || !byId.has(agent.parentAgentId)) {
+		if (!agent?.parentAgentId || !byId.has(agent.parentAgentId))
+		{
 			depthOf.set(id, 0);
 			return 0;
 		}
@@ -141,62 +180,123 @@ function computeDepths(timed: Subagent[]): Map<string, number> {
 	return depthOf;
 }
 
-function mergeRanges(ranges: TimeRange[]): TimeRange[] {
+function mergeRanges(ranges: TimeRange[]): TimeRange[]
+{
 	if (ranges.length === 0) return [];
 	const sorted = ranges.toSorted((a, b) => a.startMs - b.startMs);
 	const merged: TimeRange[] = [];
-	for (const next of sorted) {
+	for (const next of sorted)
+	{
 		const last = merged.at(-1);
-		if (last !== undefined && next.startMs <= last.endMs) {
+		if (last !== undefined && next.startMs <= last.endMs)
+		{
 			if (next.endMs > last.endMs) last.endMs = next.endMs;
-		} else {
-			merged.push({...next});
+		}
+		else
+		{
+			merged.push(
+				{
+					...next,
+				},
+			);
 		}
 	}
 	return merged;
 }
 
-function buildTicks(totalMs: number): SwimlaneTick[] {
-	if (totalMs <= 0) return [{offsetMs: 0, label: "0s"}];
+function buildTicks(totalMs: number): SwimlaneTick[]
+{
+	if (totalMs <= 0)
+		return [
+			{
+				offsetMs: 0,
+				label: "0s",
+			},
+		];
 	const {intervalMs, format} = pickTickInterval(totalMs);
 	const ticks: SwimlaneTick[] = [];
-	for (let t = 0; t <= totalMs; t += intervalMs) {
-		ticks.push({offsetMs: t, label: format(t)});
+	for (let t = 0; t <= totalMs; t += intervalMs)
+	{
+		ticks.push(
+			{
+				offsetMs: t,
+				label: format(t),
+			},
+		);
 	}
-	if ((ticks.at(-1)?.offsetMs ?? 0) < totalMs) {
-		ticks.push({offsetMs: totalMs, label: format(totalMs)});
+	if ((ticks.at(-1)?.offsetMs ?? 0) < totalMs)
+	{
+		ticks.push(
+			{
+				offsetMs: totalMs,
+				label: format(totalMs),
+			},
+		);
 	}
 	return ticks;
 }
 
-interface SwimlaneTick {
+interface SwimlaneTick
+{
 	offsetMs: number;
 	label: string;
 }
 
-function pickTickInterval(totalMs: number): {
+function pickTickInterval(totalMs: number):
+{
 	intervalMs: number;
 	format: (ms: number) => string;
-} {
+}
+{
 	const sec = 1000;
 	const min = 60 * sec;
 	const hour = 60 * min;
-	const largest = {intervalMs: hour, format: (ms: number) => `${Math.round(ms / hour)}h`};
-	const candidates: Array<{
+	const largest =
+	{
+		intervalMs: hour,
+		format: (ms: number) => `${Math.round(ms / hour)}h`,
+	};
+	const candidates: Array<
+	{
 		intervalMs: number;
 		format: (ms: number) => string;
 	}> = [
-		{intervalMs: sec, format: (ms) => `${Math.round(ms / sec)}s`},
-		{intervalMs: 5 * sec, format: (ms) => `${Math.round(ms / sec)}s`},
-		{intervalMs: 15 * sec, format: (ms) => `${Math.round(ms / sec)}s`},
-		{intervalMs: 30 * sec, format: (ms) => `${Math.round(ms / sec)}s`},
-		{intervalMs: min, format: (ms) => `${Math.round(ms / min)}m`},
-		{intervalMs: 5 * min, format: (ms) => `${Math.round(ms / min)}m`},
-		{intervalMs: 15 * min, format: (ms) => `${Math.round(ms / min)}m`},
-		{intervalMs: 30 * min, format: (ms) => `${Math.round(ms / min)}m`},
+		{
+			intervalMs: sec,
+			format: (ms) => `${Math.round(ms / sec)}s`,
+		},
+		{
+			intervalMs: 5 * sec,
+			format: (ms) => `${Math.round(ms / sec)}s`,
+		},
+		{
+			intervalMs: 15 * sec,
+			format: (ms) => `${Math.round(ms / sec)}s`,
+		},
+		{
+			intervalMs: 30 * sec,
+			format: (ms) => `${Math.round(ms / sec)}s`,
+		},
+		{
+			intervalMs: min,
+			format: (ms) => `${Math.round(ms / min)}m`,
+		},
+		{
+			intervalMs: 5 * min,
+			format: (ms) => `${Math.round(ms / min)}m`,
+		},
+		{
+			intervalMs: 15 * min,
+			format: (ms) => `${Math.round(ms / min)}m`,
+		},
+		{
+			intervalMs: 30 * min,
+			format: (ms) => `${Math.round(ms / min)}m`,
+		},
 		largest,
 	];
-	for (const c of candidates) {
+	for (const c of candidates)
+	{
 		if (totalMs / c.intervalMs <= 10) return c;
 	}
 	return largest;

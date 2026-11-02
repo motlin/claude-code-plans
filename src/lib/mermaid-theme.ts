@@ -7,47 +7,184 @@
 export type MermaidThemeMode = "light" | "dark";
 
 /** A shared-1 token: its light value, and its dark one when that differs. */
-interface Token {
+interface Token
+{
 	value: string;
 	dark?: string;
 }
 
-const tokens = {
-	chartCategorical1: {value: "#2a78d6", dark: "#3987e5"},
-	chartCategorical2: {value: "#eb6834", dark: "#d95926"},
-	chartCategorical3: {value: "#1baf7a", dark: "#199e70"},
-	chartCategorical4: {value: "#eda100", dark: "#c98500"},
-	chartCategorical5: {value: "#e87ba4", dark: "#d55181"},
-	chartCategorical6: {value: "#008300"},
-	chartCategorical7: {value: "#6250d6", dark: "#9085e9"},
-	chartCategorical8: {value: "#e34948", dark: "#e66767"},
-	chartMuted: {value: "#c3c2b7", dark: "#5f5e5a"},
-	chartReference: {value: "#898781", dark: "#97958d"},
-	chartGrid: {value: "rgba(11, 11, 11, 0.1)", dark: "rgba(255, 255, 255, 0.1)"},
-	bgTintBlueOpaque: {value: "#cde2fb", dark: "#032042"},
-	bgTintOrangeOpaque: {value: "#f7d8cb", dark: "#371407"},
-	bgTintAquaOpaque: {value: "#bfebdb", dark: "#022720"},
-	bgTintYellowOpaque: {value: "#f9dca4", dark: "#311a00"},
-	bgTintMagentaOpaque: {value: "#f9d4e2", dark: "#390f1f"},
-	bgTintGreenOpaque: {value: "#caeac7", dark: "#11260f"},
-	bgTintVioletOpaque: {value: "#dfdbfd", dark: "#1d1649"},
-	bgTintRedOpaque: {value: "#fad6d6", dark: "#3c0e0e"},
-	textTintBlue: {value: "#184f95", dark: "#6da7ec"},
-	textTintOrange: {value: "#863311", dark: "#ec835a"},
-	textTintAqua: {value: "#065f49", dark: "#3bbd8c"},
-	textTintYellow: {value: "#734500", dark: "#db9300"},
-	textTintMagenta: {value: "#862a4c", dark: "#e87ba4"},
-	textTintGreen: {value: "#006300", dark: "#55bf50"},
-	textTintViolet: {value: "#4a3aa7", dark: "#a096eb"},
-	textTintRed: {value: "#8e2626", dark: "#ec7e7e"},
-	textSecondary: {value: "#52514e", dark: "#c3c2b7"},
-	surface2: {value: "#ffffff", dark: "#1a1a19"},
-	surface3: {value: "#ffffff", dark: "#20201f"},
-	bgNeutral: {value: "rgba(11, 11, 11, 0.05)", dark: "rgba(255, 255, 255, 0.05)"},
-	gray0: {value: "#ffffff"},
-	gray550: {value: "#5f5e5a"},
-	blue500: {value: "#256abf"},
-	red450: {value: "#d03b3b"},
+const tokens =
+{
+	chartCategorical1:
+	{
+		value: "#2a78d6",
+		dark: "#3987e5",
+	},
+	chartCategorical2:
+	{
+		value: "#eb6834",
+		dark: "#d95926",
+	},
+	chartCategorical3:
+	{
+		value: "#1baf7a",
+		dark: "#199e70",
+	},
+	chartCategorical4:
+	{
+		value: "#eda100",
+		dark: "#c98500",
+	},
+	chartCategorical5:
+	{
+		value: "#e87ba4",
+		dark: "#d55181",
+	},
+	chartCategorical6:
+	{
+		value: "#008300",
+	},
+	chartCategorical7:
+	{
+		value: "#6250d6",
+		dark: "#9085e9",
+	},
+	chartCategorical8:
+	{
+		value: "#e34948",
+		dark: "#e66767",
+	},
+	chartMuted:
+	{
+		value: "#c3c2b7",
+		dark: "#5f5e5a",
+	},
+	chartReference:
+	{
+		value: "#898781",
+		dark: "#97958d",
+	},
+	chartGrid:
+	{
+		value: "rgba(11, 11, 11, 0.1)",
+		dark: "rgba(255, 255, 255, 0.1)",
+	},
+	bgTintBlueOpaque:
+	{
+		value: "#cde2fb",
+		dark: "#032042",
+	},
+	bgTintOrangeOpaque:
+	{
+		value: "#f7d8cb",
+		dark: "#371407",
+	},
+	bgTintAquaOpaque:
+	{
+		value: "#bfebdb",
+		dark: "#022720",
+	},
+	bgTintYellowOpaque:
+	{
+		value: "#f9dca4",
+		dark: "#311a00",
+	},
+	bgTintMagentaOpaque:
+	{
+		value: "#f9d4e2",
+		dark: "#390f1f",
+	},
+	bgTintGreenOpaque:
+	{
+		value: "#caeac7",
+		dark: "#11260f",
+	},
+	bgTintVioletOpaque:
+	{
+		value: "#dfdbfd",
+		dark: "#1d1649",
+	},
+	bgTintRedOpaque:
+	{
+		value: "#fad6d6",
+		dark: "#3c0e0e",
+	},
+	textTintBlue:
+	{
+		value: "#184f95",
+		dark: "#6da7ec",
+	},
+	textTintOrange:
+	{
+		value: "#863311",
+		dark: "#ec835a",
+	},
+	textTintAqua:
+	{
+		value: "#065f49",
+		dark: "#3bbd8c",
+	},
+	textTintYellow:
+	{
+		value: "#734500",
+		dark: "#db9300",
+	},
+	textTintMagenta:
+	{
+		value: "#862a4c",
+		dark: "#e87ba4",
+	},
+	textTintGreen:
+	{
+		value: "#006300",
+		dark: "#55bf50",
+	},
+	textTintViolet:
+	{
+		value: "#4a3aa7",
+		dark: "#a096eb",
+	},
+	textTintRed:
+	{
+		value: "#8e2626",
+		dark: "#ec7e7e",
+	},
+	textSecondary:
+	{
+		value: "#52514e",
+		dark: "#c3c2b7",
+	},
+	surface2:
+	{
+		value: "#ffffff",
+		dark: "#1a1a19",
+	},
+	surface3:
+	{
+		value: "#ffffff",
+		dark: "#20201f",
+	},
+	bgNeutral:
+	{
+		value: "rgba(11, 11, 11, 0.05)",
+		dark: "rgba(255, 255, 255, 0.05)",
+	},
+	gray0:
+	{
+		value: "#ffffff",
+	},
+	gray550:
+	{
+		value: "#5f5e5a",
+	},
+	blue500:
+	{
+		value: "#256abf",
+	},
+	red450:
+	{
+		value: "#d03b3b",
+	},
 } satisfies Record<string, Token>;
 
 /** Upstream `k`: the dark value, or the light one when the token has no dark value. */
@@ -73,7 +210,8 @@ const gitColors = (mode: MermaidThemeMode): Record<string, string> =>
 	Object.fromEntries(gitSeries.map(([stroke], index) => [`git${index + 1}`, inMode(stroke, mode)]));
 
 /** Upstream `P`: the gitgraph commit, label and branch-label colors. */
-function gitgraphCss(mode: MermaidThemeMode, mergeFill: string): string {
+function gitgraphCss(mode: MermaidThemeMode, mergeFill: string): string
+{
 	const reference = inMode(tokens.chartReference, mode);
 	const branches = gitSeries
 		.map(
@@ -92,7 +230,12 @@ function gitgraphCss(mode: MermaidThemeMode, mergeFill: string): string {
 const mutedTail = [tokens.surface3, tokens.textSecondary] as const;
 const scale: readonly Series[] = [
 	...series,
-	...Array.from({length: 4}, (): Series => [tokens.chartMuted, ...mutedTail]),
+	...Array.from(
+		{
+			length: 4,
+		},
+		(): Series => [tokens.chartMuted, ...mutedTail],
+	),
 ];
 
 const colorScale: Record<string, string> = Object.fromEntries(
@@ -128,14 +271,20 @@ const chartTextKeys = [
 ];
 
 /** Upstream `W`: pie, quadrant, radar and xyChart colors. */
-const chartVariables = {
+const chartVariables =
+{
 	...Object.fromEntries(scaleColors.map((color, index) => [`pie${index + 1}`, color])),
 	pieStrokeColor: darkOf(tokens.surface2),
 	pieOuterStrokeColor: darkOf(tokens.surface2),
 	pieSectionTextColor: darkOf(tokens.gray0),
 	quadrantPointFill: darkOf(tokens.chartCategorical1),
-	radar: {axisColor: DARK_LINE, graticuleColor: darkOf(tokens.chartGrid)},
-	xyChart: {
+	radar:
+	{
+		axisColor: DARK_LINE,
+		graticuleColor: darkOf(tokens.chartGrid),
+	},
+	xyChart:
+	{
 		...Object.fromEntries(chartTextKeys.map((key) => [key, DARK_TEXT])),
 		dataLabelColor: darkOf(tokens.gray0),
 		backgroundColor: "transparent",
@@ -144,7 +293,8 @@ const chartVariables = {
 };
 
 /** Upstream `G`: the remaining dark-mode diagram colors. */
-const darkDiagramVariables = {
+const darkDiagramVariables =
+{
 	activationBkgColor: darkOf(tokens.surface3),
 	activationBorderColor: DARK_LINE,
 	compositeBackground: darkOf(tokens.surface3),
@@ -167,7 +317,8 @@ const darkDiagramVariables = {
 	taskTextClickableColor: darkOf(tokens.gray0),
 	pieTitleTextColor: DARK_TEXT,
 	pieLegendTextColor: DARK_TEXT,
-	packet: {
+	packet:
+	{
 		startByteColor: DARK_TEXT,
 		endByteColor: DARK_TEXT,
 		labelColor: DARK_TEXT,
@@ -175,8 +326,13 @@ const darkDiagramVariables = {
 		blockStrokeColor: DARK_LINE,
 		blockFillColor: darkOf(tokens.surface3),
 	},
-	treeView: {labelColor: DARK_TEXT, lineColor: DARK_LINE},
-	cynefin: {
+	treeView:
+	{
+		labelColor: DARK_TEXT,
+		lineColor: DARK_LINE,
+	},
+	cynefin:
+	{
 		complexBg: darkOf(tokens.bgTintGreenOpaque),
 		complicatedBg: darkOf(tokens.bgTintBlueOpaque),
 		chaoticBg: darkOf(tokens.bgTintRedOpaque),
@@ -193,7 +349,8 @@ const darkDiagramVariables = {
 /** Upstream `K`: halo and stroke fixes for mermaid's hard-coded #444444 ink. */
 const darkInkCss = ` text[fill="#444444"] { fill: ${DARK_TEXT}; stroke: ${darkOf(tokens.surface2)}; stroke-width: 3px; paint-order: stroke; } line[stroke="#444444"], path[stroke="#444444"][marker-end], path[stroke="#444444"][marker-start], rect[stroke="#444444"] { stroke: ${DARK_LINE}; }`;
 
-const darkVariables = {
+const darkVariables =
+{
 	primaryTextColor: DARK_TEXT,
 	lineColor: DARK_LINE,
 	primaryColor: "transparent",
@@ -226,7 +383,8 @@ const darkCss =
 	darkInkCss;
 
 const LIGHT_LINE = "#91918D";
-const lightVariables = {
+const lightVariables =
+{
 	primaryTextColor: "#191919",
 	lineColor: LIGHT_LINE,
 	primaryColor: "#F0F0EB",
@@ -247,7 +405,8 @@ const lightVariables = {
 };
 
 /** Upstream `se`: wardley map colors (dark mode only). */
-const wardley = {
+const wardley =
+{
 	axisColor: LIGHT_LINE,
 	axisTextColor: lightVariables.primaryTextColor,
 	componentStroke: LIGHT_LINE,
@@ -261,19 +420,27 @@ const mindmapLabelCss = " .mindmap-node .label { transform: translate(-50%, -50%
 const dividerCss = (stroke: string): string =>
 	` .block .node .cluster, .statediagram-state rect.divider { stroke: ${stroke}; }`;
 
-export interface MermaidTheme {
+export interface MermaidTheme
+{
 	themeVariables: Record<string, unknown>;
 	themeCSS: string;
 }
 
 /** Upstream `themeFor(mode)`. */
-export function themeFor(mode: MermaidThemeMode): MermaidTheme {
+export function themeFor(mode: MermaidThemeMode): MermaidTheme
+{
 	return mode === "dark"
-		? {
-				themeVariables: {...darkVariables, wardley},
+		?
+			{
+				themeVariables:
+				{
+					...darkVariables,
+					wardley,
+				},
 				themeCSS: darkCss + dividerCss(darkVariables.clusterBorder) + mindmapLabelCss,
 			}
-		: {
+		:
+			{
 				themeVariables: lightVariables,
 				themeCSS:
 					gitgraphCss("light", lightVariables.primaryColor) +

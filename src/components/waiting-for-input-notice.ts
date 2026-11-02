@@ -16,6 +16,7 @@ export function showsWaitingForInputNotice({
 	state: SessionSummaryState | null;
 	hasDockedCard: boolean;
 	workingLineWaits: boolean;
-}): boolean {
+}): boolean
+{
 	return state === "waiting" && !hasDockedCard && !workingLineWaits;
 }

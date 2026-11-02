@@ -10,7 +10,8 @@ import {navItems} from "../src/components/sidebar/navigation";
 import {ToastProvider} from "../src/components/toast";
 import {Route as HomeRoute} from "../src/routes/index";
 
-const DEFAULT_APPLICATION_SETTINGS = {
+const DEFAULT_APPLICATION_SETTINGS =
+{
 	terminalWritesEnabled: false,
 	terminalHost: "auto",
 	shellPaneEnabled: true,
@@ -18,100 +19,200 @@ const DEFAULT_APPLICATION_SETTINGS = {
 	ignoredDirs: ["node_modules"],
 };
 
-async function renderNavigation() {
+async function renderNavigation()
+{
 	const Home = HomeRoute.options.component;
 	if (!Home) throw new Error("Expected the home route component");
 
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	queryClient.setQueryData(["application-settings"], DEFAULT_APPLICATION_SETTINGS);
-	queryClient.setQueryData(["approvals"], {approvals: []});
-	queryClient.setQueryData(["notifications"], {notifications: []});
+	queryClient.setQueryData(
+		["approvals"],
+		{
+			approvals: [],
+		},
+	);
+	queryClient.setQueryData(
+		["notifications"],
+		{
+			notifications: [],
+		},
+	);
 	queryClient.setQueryData(["sessions", "active", 60_000], []);
-	queryClient.setQueryData(["local-account"], {
-		name: "Ada Lovelace",
-		firstName: "Ada",
-		initial: "A",
-	});
+	queryClient.setQueryData(
+		["local-account"],
+		{
+			name: "Ada Lovelace",
+			firstName: "Ada",
+			initial: "A",
+		},
+	);
 	vi.stubGlobal(
 		"fetch",
 		vi.fn(async () => new Promise<Response>(() => {})),
 	);
 
-	const rootRoute = createRootRoute({
-		component: () =>
-			createElement(
-				QueryClientProvider,
-				{client: queryClient},
+	const rootRoute = createRootRoute(
+		{
+			component: () =>
 				createElement(
-					ToastProvider,
-					null,
-					createElement(Sidebar, {collapsed: false, onToggle: () => undefined}),
-					createElement(Home),
+					QueryClientProvider,
+					{
+						client: queryClient,
+					},
+					createElement(
+						ToastProvider,
+						null,
+						createElement(
+							Sidebar,
+							{
+								collapsed: false,
+								onToggle: () => undefined,
+							},
+						),
+						createElement(Home),
+					),
 				),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
 			),
-	});
-	const router = createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+		},
+	);
 	await router.load();
-	const view = render(createElement(RouterProvider, {router}));
+	const view = render(
+		createElement(
+			RouterProvider,
+			{
+				router,
+			},
+		),
+	);
 
-	return {queryClient, view};
+	return {
+		queryClient,
+		view,
+	};
 }
 
-describe("home page", () => {
-	it("leaves top-level navigation to the sidebar: home renders no nav cards", async () => {
+describe("home page", () =>
+{
+	it("leaves top-level navigation to the sidebar: home renders no nav cards", async () =>
+	{
 		const {queryClient, view} = await renderNavigation();
-		try {
+		try
+		{
 			const homeBody = document.querySelector("[data-home-body]");
 			if (!(homeBody instanceof HTMLElement)) throw new Error("Expected the home body");
-			const sidebarLinks = within(screen.getByRole("navigation", {name: "Sidebar"}))
+			const sidebarLinks = within(
+				screen.getByRole(
+					"navigation",
+					{
+						name: "Sidebar",
+					},
+				),
+			)
 				.getAllByRole("link")
 				.map((link) => link.getAttribute("href"));
-			expect({
-				sidebarHasTerminals: sidebarLinks.includes("/terminals"),
-				homeSectionsRegion: screen.queryByRole("region", {name: "Home sections"}),
-				homeLinks: within(homeBody)
-					.queryAllByRole("link")
-					.map((link) => link.getAttribute("href")),
-			}).toStrictEqual({sidebarHasTerminals: true, homeSectionsRegion: null, homeLinks: []});
-		} finally {
+			expect(
+				{
+					sidebarHasTerminals: sidebarLinks.includes("/terminals"),
+					homeSectionsRegion: screen.queryByRole(
+						"region",
+						{
+							name: "Home sections",
+						},
+					),
+					homeLinks: within(homeBody)
+						.queryAllByRole("link")
+						.map((link) => link.getAttribute("href")),
+				},
+			).toStrictEqual(
+				{
+					sidebarHasTerminals: true,
+					homeSectionsRegion: null,
+					homeLinks: [],
+				},
+			);
+		}
+		finally
+		{
 			view.unmount();
 			queryClient.clear();
 			vi.unstubAllGlobals();
 		}
 	});
 
-	it('renders upstream\'s "New session" titlebar in place of a greeting, full-bleed route', async () => {
+	it('renders upstream\'s "New session" titlebar in place of a greeting, full-bleed route', async () =>
+	{
 		const {queryClient, view} = await renderNavigation();
-		try {
-			const heading = screen.getByRole("heading", {level: 1});
-			expect({
-				fullBleed: HomeRoute.options.staticData?.fullBleed,
-				heading: heading.textContent,
-				headingClass: heading.className,
-				titlebarClass: heading.closest("header")?.className,
-				welcome: screen.queryByText(/Welcome back/),
-				spark: document.querySelector("main svg[data-cds='Spark']"),
-			}).toStrictEqual({
-				fullBleed: true,
-				heading: "New session",
-				headingClass: "truncate ps-2.5 text-body font-medium font-control text-muted-as-secondary",
-				titlebarClass: "flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12",
-				welcome: null,
-				spark: null,
-			});
-		} finally {
+		try
+		{
+			const heading = screen.getByRole(
+				"heading",
+				{
+					level: 1,
+				},
+			);
+			expect(
+				{
+					fullBleed: HomeRoute.options.staticData?.fullBleed,
+					heading: heading.textContent,
+					headingClass: heading.className,
+					titlebarClass: heading.closest("header")?.className,
+					welcome: screen.queryByText(/Welcome back/),
+					spark: document.querySelector("main svg[data-cds='Spark']"),
+				},
+			).toStrictEqual(
+				{
+					fullBleed: true,
+					heading: "New session",
+					headingClass: "truncate ps-2.5 text-body font-medium font-control text-muted-as-secondary",
+					titlebarClass: "flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12",
+					welcome: null,
+					spark: null,
+				},
+			);
+		}
+		finally
+		{
 			view.unmount();
 			queryClient.clear();
 			vi.unstubAllGlobals();
 		}
 	});
 
-	it("uses the Terminals name for the terminal fleet nav item", () => {
-		expect(navItems.filter((item) => item.to === "/terminals").map(({label, to}) => ({label, to}))).toStrictEqual([
-			{label: "Terminals", to: "/terminals"},
+	it("uses the Terminals name for the terminal fleet nav item", () =>
+	{
+		expect(
+			navItems
+				.filter((item) => item.to === "/terminals")
+				.map(({label, to}) => (
+				{
+					label,
+					to,
+				})),
+		).toStrictEqual([
+			{
+				label: "Terminals",
+				to: "/terminals",
+			},
 		]);
 	});
 });

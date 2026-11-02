@@ -3,7 +3,8 @@ import type {ArtifactMarkKind} from "./artifact-mark";
 /** Upstream's `?create=` slugs for the Artifacts "Make something new" templates (Docs is `pages`). */
 export type ArtifactTemplateSlug = "pages" | "slides" | "design" | "dashboard";
 
-export interface ArtifactTemplate {
+export interface ArtifactTemplate
+{
 	slug: ArtifactTemplateSlug;
 	label: string;
 	/** Upstream's strip tile hue pair: `bg-<hue>-100 text-<hue>-600`, dark `-700` / `-200`, from the cds palette. */
@@ -49,7 +50,8 @@ export const ARTIFACT_TEMPLATES: readonly ArtifactTemplate[] = [
 	},
 ];
 
-export function isArtifactTemplateSlug(value: unknown): value is ArtifactTemplateSlug {
+export function isArtifactTemplateSlug(value: unknown): value is ArtifactTemplateSlug
+{
 	return ARTIFACT_TEMPLATES.some((template) => template.slug === value);
 }
 
@@ -57,7 +59,8 @@ export function isArtifactTemplateSlug(value: unknown): value is ArtifactTemplat
  * The home composer's starter prompt for a template. Upstream binds a cloud session to the artifact
  * type; locally the prompt asks the new herdr session's Claude to make (and publish) one.
  */
-export function artifactTemplatePrompt(slug: ArtifactTemplateSlug): string {
+export function artifactTemplatePrompt(slug: ArtifactTemplateSlug): string
+{
 	const template = ARTIFACT_TEMPLATES.find((candidate) => candidate.slug === slug);
 	return `Make a ${template?.label ?? slug} artifact: `;
 }

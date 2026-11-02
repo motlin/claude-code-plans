@@ -5,22 +5,27 @@ import {useCallback, useEffect, useRef, useState} from "react";
  * unmounting clears the pending reset so the timer never outlives the component. A raise after unmount (a clipboard
  * write that resolves late) does nothing.
  */
-export function useTimedFlag(ms: number): [boolean, () => void] {
+export function useTimedFlag(ms: number): [boolean, () => void]
+{
 	const [on, setOn] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	const mounted = useRef(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		mounted.current = true;
-		return () => {
+		return () =>
+		{
 			mounted.current = false;
 			clearTimeout(timer.current);
 		};
 	}, []);
-	const raise = useCallback(() => {
+	const raise = useCallback(() =>
+	{
 		if (!mounted.current) return;
 		setOn(true);
 		clearTimeout(timer.current);
-		timer.current = setTimeout(() => {
+		timer.current = setTimeout(() =>
+		{
 			setOn(false);
 		}, ms);
 	}, [ms]);

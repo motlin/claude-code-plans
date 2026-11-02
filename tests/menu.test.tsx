@@ -4,7 +4,8 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {useState} from "react";
 import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 
-import {
+import
+{
 	ContextMenu,
 	ContextMenuTrigger,
 	Menu,
@@ -28,31 +29,39 @@ import {CompactScope, PanelsOff} from "./fizzy-lake-off";
 import {type Density} from "../src/components/ui/density-context";
 
 /* The sheet presentation is a lazy chunk; load it up front so sheet tests render synchronously, as on a phone. */
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadMenuSheet();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 });
 
-async function flush() {
-	await act(async () => {
-		await new Promise((resolve) => {
+async function flush()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-function weightClasses(el: Element): string[] {
+function weightClasses(el: Element): string[]
+{
 	return [...el.classList].filter((name) => /^font-(normal|medium|semibold|control|control-regular)$/.test(name));
 }
 
-function itemWeights(): string[][] {
+function itemWeights(): string[][]
+{
 	return [...screen.getAllByRole("menuitem"), ...screen.getAllByRole("menuitemcheckbox")].map(weightClasses);
 }
 
-function RowMenuBody({onCopy, onDelete}: {onCopy: () => void; onDelete: () => void}) {
+function RowMenuBody({onCopy, onDelete}: {onCopy: () => void; onDelete: () => void})
+{
 	const [status, setStatus] = useState("active");
 	const [showPr, setShowPr] = useState(true);
 	return (
@@ -81,7 +90,14 @@ function RowMenuBody({onCopy, onDelete}: {onCopy: () => void; onDelete: () => vo
 	);
 }
 
-function renderDropdown(handlers = {onCopy: vi.fn<() => void>(), onDelete: vi.fn<() => void>()}) {
+function renderDropdown(
+	handlers =
+	{
+		onCopy: vi.fn<() => void>(),
+		onDelete: vi.fn<() => void>(),
+	},
+)
+{
 	render(
 		<CompactScope>
 			<Menu>
@@ -95,14 +111,24 @@ function renderDropdown(handlers = {onCopy: vi.fn<() => void>(), onDelete: vi.fn
 	return handlers;
 }
 
-async function openDropdown() {
-	fireEvent.click(screen.getByRole("button", {name: "More options"}));
+async function openDropdown()
+{
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "More options",
+			},
+		),
+	);
 	await flush();
 	return screen.getByRole("menu");
 }
 
-describe("Menu", () => {
-	it("renders items with menuitem, menuitemcheckbox and menuitemradio roles", async () => {
+describe("Menu", () =>
+{
+	it("renders items with menuitem, menuitemcheckbox and menuitemradio roles", async () =>
+	{
 		renderDropdown();
 		await openDropdown();
 
@@ -118,7 +144,8 @@ describe("Menu", () => {
 		expect(screen.getAllByRole("separator")).toHaveLength(1);
 	});
 
-	it("weights every item with upstream's `font-normal font-control` (font-control-regular: 400, 435 under fizzy type)", async () => {
+	it("weights every item with upstream's `font-normal font-control` (font-control-regular: 400, 435 under fizzy type)", async () =>
+	{
 		renderDropdown();
 		await openDropdown();
 
@@ -130,42 +157,53 @@ describe("Menu", () => {
 		]);
 	});
 
-	it("matches upstream's compact density on the container, items and shortcut hint", async () => {
+	it("matches upstream's compact density on the container, items and shortcut hint", async () =>
+	{
 		renderDropdown();
 		const menu = await openDropdown();
-		const item = screen.getByRole("menuitem", {name: /Copy link/});
+		const item = screen.getByRole(
+			"menuitem",
+			{
+				name: /Copy link/,
+			},
+		);
 		const hint = item.querySelector('[data-cds="Shortcut"]')?.parentElement;
 
-		expect({
-			container: menu.className.split(" ").filter((c) => ["rounded-r7", "p-1"].includes(c)),
-			item: item.className
-				.split(" ")
-				.filter((c) =>
-					[
-						"h-6",
-						"rounded-r5",
-						"px-2",
-						"py-[2.5px]",
-						"text-[13px]/[19px]",
-						"[--shortcut-cap-ink:var(--menu-muted)]",
-					].includes(c),
-				),
-			hint: hint?.className.split(" ").filter((c) => ["ms-3", "gap-1.5"].includes(c)),
-		}).toEqual({
-			container: ["rounded-r7"],
-			item: [
-				"h-6",
-				"rounded-r5",
-				"px-2",
-				"py-[2.5px]",
-				"text-[13px]/[19px]",
-				"[--shortcut-cap-ink:var(--menu-muted)]",
-			],
-			hint: ["ms-3", "gap-1.5"],
-		});
+		expect(
+			{
+				container: menu.className.split(" ").filter((c) => ["rounded-r7", "p-1"].includes(c)),
+				item: item.className
+					.split(" ")
+					.filter((c) =>
+						[
+							"h-6",
+							"rounded-r5",
+							"px-2",
+							"py-[2.5px]",
+							"text-[13px]/[19px]",
+							"[--shortcut-cap-ink:var(--menu-muted)]",
+						].includes(c),
+					),
+				hint: hint?.className.split(" ").filter((c) => ["ms-3", "gap-1.5"].includes(c)),
+			},
+		).toEqual(
+			{
+				container: ["rounded-r7"],
+				item: [
+					"h-6",
+					"rounded-r5",
+					"px-2",
+					"py-[2.5px]",
+					"text-[13px]/[19px]",
+					"[--shortcut-cap-ink:var(--menu-muted)]",
+				],
+				hint: ["ms-3", "gap-1.5"],
+			},
+		);
 	});
 
-	it("inherits comfortable density through a portaled submenu while preserving keyboard navigation", async () => {
+	it("inherits comfortable density through a portaled submenu while preserving keyboard navigation", async () =>
+	{
 		render(
 			<Menu>
 				<MenuTrigger aria-label="More options">...</MenuTrigger>
@@ -175,41 +213,83 @@ describe("Menu", () => {
 			</Menu>,
 		);
 		await openDropdown();
-		const trigger = screen.getByRole("menuitem", {name: /Status/});
-		act(() => {
+		const trigger = screen.getByRole(
+			"menuitem",
+			{
+				name: /Status/,
+			},
+		);
+		act(() =>
+		{
 			trigger.focus();
 		});
-		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		fireEvent.keyDown(
+			trigger,
+			{
+				key: "ArrowRight",
+			},
+		);
 		await flush();
 
 		const densityClasses = ["h-8", "rounded-r6", "px-2.5", "py-1.5", "text-[14px]/[20px]"];
 		const items = [
 			trigger,
-			screen.getByRole("menuitem", {name: /Copy link/}),
-			screen.getByRole("menuitemcheckbox", {name: "Show PR status"}),
-			screen.getByRole("menuitemradio", {name: "Active"}),
+			screen.getByRole(
+				"menuitem",
+				{
+					name: /Copy link/,
+				},
+			),
+			screen.getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Show PR status",
+				},
+			),
+			screen.getByRole(
+				"menuitemradio",
+				{
+					name: "Active",
+				},
+			),
 		];
-		expect({
-			popups: screen
-				.getAllByRole("menu")
-				.map((menu) =>
-					menu.className
-						.split(" ")
-						.filter((value) => ["rounded-card", "p-1", "text-[14px]/[20px]"].includes(value)),
+		expect(
+			{
+				popups: screen
+					.getAllByRole("menu")
+					.map((menu) =>
+						menu.className
+							.split(" ")
+							.filter((value) => ["rounded-card", "p-1", "text-[14px]/[20px]"].includes(value)),
+					),
+				items: items.map((item) => item.className.split(" ").filter((value) => densityClasses.includes(value))),
+				separator: screen.getByRole("separator").className,
+				expanded: trigger.getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				popups: Array.from(
+					{
+						length: 2,
+					},
+					() => ["rounded-card", "text-[14px]/[20px]"],
 				),
-			items: items.map((item) => item.className.split(" ").filter((value) => densityClasses.includes(value))),
-			separator: screen.getByRole("separator").className,
-			expanded: trigger.getAttribute("aria-expanded"),
-		}).toStrictEqual({
-			popups: Array.from({length: 2}, () => ["rounded-card", "text-[14px]/[20px]"]),
-			items: Array.from({length: 4}, () => densityClasses),
-			separator: "mx-2.5 my-1 h-px bg-border",
-			expanded: "true",
-		});
+				items: Array.from(
+					{
+						length: 4,
+					},
+					() => densityClasses,
+				),
+				separator: "mx-2.5 my-1 h-px bg-border",
+				expanded: "true",
+			},
+		);
 	});
 
-	it("sizes leading icons like upstream's size:auto glyphs: 20px in comfortable menus, 16px in compact", async () => {
-		const glyphSize = async (density: "compact" | "comfortable") => {
+	it("sizes leading icons like upstream's size:auto glyphs: 20px in comfortable menus, 16px in compact", async () =>
+	{
+		const glyphSize = async (density: "compact" | "comfortable") =>
+		{
 			render(
 				<PanelsOff>
 					<Menu>
@@ -226,14 +306,23 @@ describe("Menu", () => {
 			cleanup();
 			return sizes;
 		};
-		expect({compact: await glyphSize("compact"), comfortable: await glyphSize("comfortable")}).toStrictEqual({
-			compact: ["[&_svg]:size-icon"],
-			comfortable: ["[&_svg]:size-icon"],
-		});
+		expect(
+			{
+				compact: await glyphSize("compact"),
+				comfortable: await glyphSize("comfortable"),
+			},
+		).toStrictEqual(
+			{
+				compact: ["[&_svg]:size-icon"],
+				comfortable: ["[&_svg]:size-icon"],
+			},
+		);
 	});
 
-	it("lays icon rows out like cds: a size-icon slot with no margin and the row's gap-xs, so the label starts 30px in", async () => {
-		const layout = async (density: "compact" | "comfortable") => {
+	it("lays icon rows out like cds: a size-icon slot with no margin and the row's gap-xs, so the label starts 30px in", async () =>
+	{
+		const layout = async (density: "compact" | "comfortable") =>
+		{
 			render(
 				<PanelsOff>
 					<Menu>
@@ -251,7 +340,8 @@ describe("Menu", () => {
 			const [row, twoLine] = screen.getAllByRole("menuitem");
 			const gaps = (el: Element | undefined) =>
 				[...(el?.classList ?? [])].filter((value) => value.startsWith("gap-") || value === "mr-1");
-			const result = {
+			const result =
+			{
 				rowGap: gaps(row),
 				slot: screen.getByTestId("glyph").parentElement?.className,
 				twoLineGap: gaps(twoLine),
@@ -260,25 +350,35 @@ describe("Menu", () => {
 			cleanup();
 			return result;
 		};
-		expect({compact: await layout("compact"), comfortable: await layout("comfortable")}).toStrictEqual({
-			compact: {
-				rowGap: ["gap-1.5"],
-				slot: "flex size-icon shrink-0 items-center justify-center -my-[max(0px,calc((var(--cds-icon)_-_1lh)_/_2))] [&_svg]:shrink-0 [&_svg]:size-icon",
-				twoLineGap: ["gap-1.5"],
-				twoLineSlot:
-					"flex h-[1lh] w-icon shrink-0 items-center justify-center self-start [&_svg]:shrink-0 [&_svg]:size-icon",
+		expect(
+			{
+				compact: await layout("compact"),
+				comfortable: await layout("comfortable"),
 			},
-			comfortable: {
-				rowGap: ["gap-2"],
-				slot: "flex size-icon shrink-0 items-center justify-center -my-[max(0px,calc((var(--cds-icon)_-_1lh)_/_2))] [&_svg]:shrink-0 [&_svg]:size-icon",
-				twoLineGap: ["gap-2"],
-				twoLineSlot:
-					"flex h-[1lh] w-icon shrink-0 items-center justify-center self-start [&_svg]:shrink-0 [&_svg]:size-icon",
+		).toStrictEqual(
+			{
+				compact:
+				{
+					rowGap: ["gap-1.5"],
+					slot: "flex size-icon shrink-0 items-center justify-center -my-[max(0px,calc((var(--cds-icon)_-_1lh)_/_2))] [&_svg]:shrink-0 [&_svg]:size-icon",
+					twoLineGap: ["gap-1.5"],
+					twoLineSlot:
+						"flex h-[1lh] w-icon shrink-0 items-center justify-center self-start [&_svg]:shrink-0 [&_svg]:size-icon",
+				},
+				comfortable:
+				{
+					rowGap: ["gap-2"],
+					slot: "flex size-icon shrink-0 items-center justify-center -my-[max(0px,calc((var(--cds-icon)_-_1lh)_/_2))] [&_svg]:shrink-0 [&_svg]:size-icon",
+					twoLineGap: ["gap-2"],
+					twoLineSlot:
+						"flex h-[1lh] w-icon shrink-0 items-center justify-center self-start [&_svg]:shrink-0 [&_svg]:size-icon",
+				},
 			},
-		});
+		);
 	});
 
-	it("sizes a compact two-line row at upstream's 40.5px: no min-height, 2.5px top, 4px bottom, a wrapping description", async () => {
+	it("sizes a compact two-line row at upstream's 40.5px: no min-height, 2.5px top, 4px bottom, a wrapping description", async () =>
+	{
 		render(
 			<CompactScope>
 				<Menu>
@@ -290,23 +390,33 @@ describe("Menu", () => {
 			</CompactScope>,
 		);
 		await openDropdown();
-		const row = screen.getByRole("menuitem", {name: /Sentry/});
+		const row = screen.getByRole(
+			"menuitem",
+			{
+				name: /Sentry/,
+			},
+		);
 		const rowClasses = row.className.split(" ");
 
-		expect({
-			rowHeight: rowClasses.filter((value) => /^(min-h-|h-\d|py-|pt-|pb-|items-)/.test(value)),
-			description: row.querySelector("[data-menu-item-description]")?.className,
-		}).toStrictEqual({
-			rowHeight: [
-				"items-start",
-				"pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]",
-				"py-[2.5px]",
-			],
-			description: "break-words text-footnote text-[var(--menu-muted)]",
-		});
+		expect(
+			{
+				rowHeight: rowClasses.filter((value) => /^(min-h-|h-\d|py-|pt-|pb-|items-)/.test(value)),
+				description: row.querySelector("[data-menu-item-description]")?.className,
+			},
+		).toStrictEqual(
+			{
+				rowHeight: [
+					"items-start",
+					"pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]",
+					"py-[2.5px]",
+				],
+				description: "break-words text-footnote text-[var(--menu-muted)]",
+			},
+		);
 	});
 
-	it("pads a comfortable two-line row's bottom by upstream's formula (also under panels) and sizes its check to the 20px comfortable size-icon", () => {
+	it("pads a comfortable two-line row's bottom by upstream's formula (also under panels) and sizes its check to the 20px comfortable size-icon", () =>
+	{
 		render(
 			<PanelsOff>
 				<Menu defaultOpen>
@@ -321,51 +431,80 @@ describe("Menu", () => {
 				</Menu>
 			</PanelsOff>,
 		);
-		const row = screen.getByRole("menuitemradio", {name: /Auto/});
+		const row = screen.getByRole(
+			"menuitemradio",
+			{
+				name: /Auto/,
+			},
+		);
 		const group = screen.getByRole("group");
 		const labelId = group.getAttribute("aria-labelledby");
 		const label = labelId === null ? null : document.getElementById(labelId);
 
-		expect({
-			padding: row.className.split(" ").filter((value) => /^(panels-fine:)?(py-|pb-)/.test(value)),
-			check: row.querySelector<SVGElement>('[data-cds="Icon"]')?.style.fontSize,
-			label: {
-				text: label?.textContent,
-				hidden: label?.getAttribute("aria-hidden"),
-				inGroup: label?.parentElement === group,
-				className: label?.className,
+		expect(
+			{
+				padding: row.className.split(" ").filter((value) => /^(panels-fine:)?(py-|pb-)/.test(value)),
+				check: row.querySelector<SVGElement>('[data-cds="Icon"]')?.style.fontSize,
+				label:
+				{
+					text: label?.textContent,
+					hidden: label?.getAttribute("aria-hidden"),
+					inGroup: label?.parentElement === group,
+					className: label?.className,
+				},
 			},
-		}).toStrictEqual({
-			padding: [
-				"pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]",
-				"panels-fine:pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]",
-				"py-1.5",
-				"panels-fine:py-1",
-			],
-			check: "calc(1.25rem * var(--cds-rem-scale, 1))",
-			label: {
-				text: "Permissions · this session",
-				hidden: "true",
-				inGroup: true,
-				className: "px-2 comfortable:px-2.5 py-1 text-footnote font-medium text-[var(--menu-muted)]",
+		).toStrictEqual(
+			{
+				padding: [
+					"pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]",
+					"panels-fine:pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]",
+					"py-1.5",
+					"panels-fine:py-1",
+				],
+				check: "calc(1.25rem * var(--cds-rem-scale, 1))",
+				label:
+				{
+					text: "Permissions · this session",
+					hidden: "true",
+					inGroup: true,
+					className: "px-2 comfortable:px-2.5 py-1 text-footnote font-medium text-[var(--menu-muted)]",
+				},
 			},
-		});
+		);
 	});
 
-	it("keeps the text accelerator hint, hidden on touch, unless an item asks for a keycap", async () => {
+	it("keeps the text accelerator hint, hidden on touch, unless an item asks for a keycap", async () =>
+	{
 		renderDropdown();
 		await openDropdown();
-		const shortcut = screen.getByRole("menuitem", {name: /Copy link/}).querySelector('[data-cds="Shortcut"]');
+		const shortcut = screen
+			.getByRole(
+				"menuitem",
+				{
+					name: /Copy link/,
+				},
+			)
+			.querySelector('[data-cds="Shortcut"]');
 
-		expect({
-			variant: shortcut?.getAttribute("data-variant"),
-			coarseHidden: shortcut?.parentElement?.classList.contains("pointer-coarse:hidden"),
-			kbd: shortcut?.parentElement?.querySelector('[data-cds="Kbd"]') ?? null,
-		}).toStrictEqual({variant: "text", coarseHidden: true, kbd: null});
+		expect(
+			{
+				variant: shortcut?.getAttribute("data-variant"),
+				coarseHidden: shortcut?.parentElement?.classList.contains("pointer-coarse:hidden"),
+				kbd: shortcut?.parentElement?.querySelector('[data-cds="Kbd"]') ?? null,
+			},
+		).toStrictEqual(
+			{
+				variant: "text",
+				coarseHidden: true,
+				kbd: null,
+			},
+		);
 	});
 
-	it("draws text hints at upstream's eJ size in the ms-md gap-xs group, tabular digits only", () => {
-		function hints(density: Density) {
+	it("draws text hints at upstream's eJ size in the ms-md gap-xs group, tabular digits only", () =>
+	{
+		function hints(density: Density)
+		{
 			render(
 				<PanelsOff>
 					<Menu defaultOpen>
@@ -378,9 +517,13 @@ describe("Menu", () => {
 					</Menu>
 				</PanelsOff>,
 			);
-			return screen.getAllByRole("menuitem").map((item) => {
+			return screen.getAllByRole("menuitem").map((item) =>
+			{
 				const shortcut = item.querySelector('[data-cds="Shortcut"]');
-				return {group: shortcut?.parentElement?.className, hint: shortcut?.getAttribute("class")};
+				return {
+					group: shortcut?.parentElement?.className,
+					hint: shortcut?.getAttribute("class"),
+				};
 			});
 		}
 		const base =
@@ -394,21 +537,47 @@ describe("Menu", () => {
 		cleanup();
 		const comfortable = hints("comfortable");
 
-		expect({compact, comfortable}).toStrictEqual({
-			compact: [
-				{group: compactGroup, hint: letter},
-				{group: compactGroup, hint: digit},
-				{group: compactGroup, hint: letter},
-			],
-			comfortable: [
-				{group: comfortableGroup, hint: letter},
-				{group: comfortableGroup, hint: digit},
-				{group: comfortableGroup, hint: letter},
-			],
-		});
+		expect(
+			{
+				compact,
+				comfortable,
+			},
+		).toStrictEqual(
+			{
+				compact: [
+					{
+						group: compactGroup,
+						hint: letter,
+					},
+					{
+						group: compactGroup,
+						hint: digit,
+					},
+					{
+						group: compactGroup,
+						hint: letter,
+					},
+				],
+				comfortable: [
+					{
+						group: comfortableGroup,
+						hint: letter,
+					},
+					{
+						group: comfortableGroup,
+						hint: digit,
+					},
+					{
+						group: comfortableGroup,
+						hint: letter,
+					},
+				],
+			},
+		);
 	});
 
-	it("sets aria-keyshortcuts from the accelerator letter", async () => {
+	it("sets aria-keyshortcuts from the accelerator letter", async () =>
+	{
 		renderDropdown();
 		await openDropdown();
 
@@ -419,42 +588,79 @@ describe("Menu", () => {
 		]);
 	});
 
-	it("marks danger items", async () => {
+	it("marks danger items", async () =>
+	{
 		renderDropdown();
 		await openDropdown();
 
-		expect(screen.getByRole("menuitem", {name: /Delete/}).getAttribute("data-variant")).toBe("danger");
+		expect(
+			screen
+				.getByRole(
+					"menuitem",
+					{
+						name: /Delete/,
+					},
+				)
+				.getAttribute("data-variant"),
+		).toBe("danger");
 	});
 
-	it("opens a submenu on hover alone, without a click", async () => {
+	it("opens a submenu on hover alone, without a click", async () =>
+	{
 		renderDropdown();
 		await openDropdown();
-		const trigger = screen.getByRole("menuitem", {name: /Status/});
+		const trigger = screen.getByRole(
+			"menuitem",
+			{
+				name: /Status/,
+			},
+		);
 
-		fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		fireEvent.pointerEnter(
+			trigger,
+			{
+				pointerType: "mouse",
+			},
+		);
 		fireEvent.mouseEnter(trigger);
-		fireEvent.pointerMove(trigger, {pointerType: "mouse"});
+		fireEvent.pointerMove(
+			trigger,
+			{
+				pointerType: "mouse",
+			},
+		);
 		fireEvent.mouseMove(trigger);
-		await act(async () => {
-			await new Promise((resolve) => {
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 250);
 			});
 		});
 
-		expect({
-			menus: screen.getAllByRole("menu").length,
-			expanded: trigger.getAttribute("aria-expanded"),
-		}).toEqual({menus: 2, expanded: "true"});
+		expect(
+			{
+				menus: screen.getAllByRole("menu").length,
+				expanded: trigger.getAttribute("aria-expanded"),
+			},
+		).toEqual(
+			{
+				menus: 2,
+				expanded: "true",
+			},
+		);
 	});
 
-	it("gives popups upstream's 128px minimum width", async () => {
+	it("gives popups upstream's 128px minimum width", async () =>
+	{
 		renderDropdown();
 		const menu = await openDropdown();
 
 		expect(menu.className.split(" ").filter((c) => c.startsWith("min-w-"))).toEqual(["min-w-[128px]"]);
 	});
 
-	it("lets the scroller own upstream's gutter, edge fade and 1px transparent bottom border, so a two-row popup is 81px", async () => {
+	it("lets the scroller own upstream's gutter, edge fade and 1px transparent bottom border, so a two-row popup is 81px", async () =>
+	{
 		renderDropdown();
 		const menu = await openDropdown();
 		const scroller = menu.querySelector("[data-menu-scroller]");
@@ -464,18 +670,27 @@ describe("Menu", () => {
 		);
 	});
 
-	it("marks the anchored scroller data-cds-sheet-scroll, as upstream's z0 does in both presentations", async () => {
+	it("marks the anchored scroller data-cds-sheet-scroll, as upstream's z0 does in both presentations", async () =>
+	{
 		renderDropdown();
 		const menu = await openDropdown();
 		const scroller = menu.querySelector("[data-menu-scroller]");
 
-		expect({
-			sheetScroll: scroller?.getAttribute("data-cds-sheet-scroll"),
-			count: menu.querySelectorAll("[data-cds-sheet-scroll]").length,
-		}).toStrictEqual({sheetScroll: "", count: 1});
+		expect(
+			{
+				sheetScroll: scroller?.getAttribute("data-cds-sheet-scroll"),
+				count: menu.querySelectorAll("[data-cds-sheet-scroll]").length,
+			},
+		).toStrictEqual(
+			{
+				sheetScroll: "",
+				count: 1,
+			},
+		);
 	});
 
-	it("marks the anchored scroller under a header data-cds-sheet-scroll, as upstream's f9 body", async () => {
+	it("marks the anchored scroller under a header data-cds-sheet-scroll, as upstream's f9 body", async () =>
+	{
 		render(
 			<CompactScope>
 				<Menu>
@@ -489,14 +704,23 @@ describe("Menu", () => {
 		const menu = await openDropdown();
 		const scroller = menu.querySelector("[data-menu-scroller]");
 
-		expect({
-			sheetScroll: scroller?.getAttribute("data-cds-sheet-scroll"),
-			count: menu.querySelectorAll("[data-cds-sheet-scroll]").length,
-			ptZero: scroller?.className.endsWith(" pt-0"),
-		}).toStrictEqual({sheetScroll: "", count: 1, ptZero: true});
+		expect(
+			{
+				sheetScroll: scroller?.getAttribute("data-cds-sheet-scroll"),
+				count: menu.querySelectorAll("[data-cds-sheet-scroll]").length,
+				ptZero: scroller?.className.endsWith(" pt-0"),
+			},
+		).toStrictEqual(
+			{
+				sheetScroll: "",
+				count: 1,
+				ptZero: true,
+			},
+		);
 	});
 
-	it("outlines every popup in CanvasText under forced colors, as cds Menu does", async () => {
+	it("outlines every popup in CanvasText under forced colors, as cds Menu does", async () =>
+	{
 		renderDropdown();
 		const menu = await openDropdown();
 
@@ -507,62 +731,122 @@ describe("Menu", () => {
 		]);
 	});
 
-	async function openStatusSub() {
+	async function openStatusSub()
+	{
 		await openDropdown();
-		const trigger = screen.getByRole("menuitem", {name: /Status/});
-		act(() => {
+		const trigger = screen.getByRole(
+			"menuitem",
+			{
+				name: /Status/,
+			},
+		);
+		act(() =>
+		{
 			trigger.focus();
 		});
-		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		fireEvent.keyDown(
+			trigger,
+			{
+				key: "ArrowRight",
+			},
+		);
 		await flush();
-		return {trigger, positioner: screen.getAllByRole("menu")[1]?.parentElement};
+		return {
+			trigger,
+			positioner: screen.getAllByRole("menu")[1]?.parentElement,
+		};
 	}
 
-	it("opens a submenu like cds: inline-end, 2px past the parent popup, aligned to the trigger's top", async () => {
+	it("opens a submenu like cds: inline-end, 2px past the parent popup, aligned to the trigger's top", async () =>
+	{
 		renderDropdown();
 		const {positioner} = await openStatusSub();
 
-		expect({
-			side: positioner?.getAttribute("data-side"),
-			sideOffset: positioner?.getAttribute("data-side-offset"),
-			alignOffset: positioner?.getAttribute("data-align-offset"),
-		}).toStrictEqual({side: "right", sideOffset: "2", alignOffset: "0"});
+		expect(
+			{
+				side: positioner?.getAttribute("data-side"),
+				sideOffset: positioner?.getAttribute("data-side-offset"),
+				alignOffset: positioner?.getAttribute("data-align-offset"),
+			},
+		).toStrictEqual(
+			{
+				side: "right",
+				sideOffset: "2",
+				alignOffset: "0",
+			},
+		);
 	});
 
-	it("opens a submenu to the left under dir=rtl, as cds resolves inline-end", async () => {
+	it("opens a submenu to the left under dir=rtl, as cds resolves inline-end", async () =>
+	{
 		document.documentElement.dir = "rtl";
-		try {
+		try
+		{
 			renderDropdown();
 			const {positioner} = await openStatusSub();
 
 			expect(positioner?.getAttribute("data-side")).toBe("left");
-		} finally {
+		}
+		finally
+		{
 			document.documentElement.dir = "";
 		}
 	});
 
-	it("anchors a submenu to the parent popup's horizontal span at the trigger's height, as cds ua() does", () => {
+	it("anchors a submenu to the parent popup's horizontal span at the trigger's height, as cds ua() does", () =>
+	{
 		const popup = document.createElement("div");
 		popup.setAttribute("role", "menu");
 		const trigger = document.createElement("div");
 		popup.append(trigger);
 		document.body.append(popup);
 		const rect = (x: number, y: number, width: number, height: number) =>
-			({x, y, width, height, top: y, left: x, right: x + width, bottom: y + height}) as DOMRect;
+			(
+			{
+				x,
+				y,
+				width,
+				height,
+				top: y,
+				left: x,
+				right: x + width,
+				bottom: y + height,
+			}) as DOMRect;
 		popup.getBoundingClientRect = () => rect(353.4, 43, 128, 120);
 		trigger.getBoundingClientRect = () => rect(357.4, 47, 120, 24);
 
-		const anchor = submenuAnchor({current: trigger});
-		const actual = {contextElement: anchor.contextElement === trigger, rect: anchor.getBoundingClientRect()};
+		const anchor = submenuAnchor(
+			{
+				current: trigger,
+			},
+		);
+		const actual =
+		{
+			contextElement: anchor.contextElement === trigger,
+			rect: anchor.getBoundingClientRect(),
+		};
 		popup.remove();
 
-		expect(actual).toStrictEqual({
-			contextElement: true,
-			rect: {x: 353.4, y: 47, width: 128, height: 24, top: 47, left: 353.4, right: 481.4, bottom: 71},
-		});
+		expect(actual).toStrictEqual(
+			{
+				contextElement: true,
+				rect:
+				{
+					x: 353.4,
+					y: 47,
+					width: 128,
+					height: 24,
+					top: 47,
+					left: 353.4,
+					right: 481.4,
+					bottom: 71,
+				},
+			},
+		);
 	});
 
-	it("lets side-opening popups fall back to the end of the cross axis so they stay on screen", async () => {
+	it("lets side-opening popups fall back to the end of the cross axis so they stay on screen", async () =>
+	{
 		render(
 			<>
 				<Menu>
@@ -579,33 +863,91 @@ describe("Menu", () => {
 				</Menu>
 			</>,
 		);
-		fireEvent.click(screen.getByRole("button", {name: "Right menu"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Right menu",
+				},
+			),
+		);
 		await flush();
-		const right = screen.getByRole("menuitem", {name: "Right item"}).closest("[data-side-offset]");
-		fireEvent.click(screen.getByRole("button", {name: "Bottom menu"}));
+		const right = screen
+			.getByRole(
+				"menuitem",
+				{
+					name: "Right item",
+				},
+			)
+			.closest("[data-side-offset]");
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Bottom menu",
+				},
+			),
+		);
 		await flush();
-		const bottom = screen.getByRole("menuitem", {name: "Bottom item"}).closest("[data-side-offset]");
+		const bottom = screen
+			.getByRole(
+				"menuitem",
+				{
+					name: "Bottom item",
+				},
+			)
+			.closest("[data-side-offset]");
 
-		expect({
-			right: right?.getAttribute("data-collision-fallback"),
-			bottom: bottom?.getAttribute("data-collision-fallback"),
-		}).toEqual({right: "end", bottom: null});
+		expect(
+			{
+				right: right?.getAttribute("data-collision-fallback"),
+				bottom: bottom?.getAttribute("data-collision-fallback"),
+			},
+		).toEqual(
+			{
+				right: "end",
+				bottom: null,
+			},
+		);
 	});
 
-	it("draws radio and checkbox checks as upstream's bold sm Check Icon in fill-accent ink", async () => {
+	it("draws radio and checkbox checks as upstream's bold sm Check Icon in fill-accent ink", async () =>
+	{
 		renderDropdown();
 		await openDropdown();
-		const trigger = screen.getByRole("menuitem", {name: /Status/});
-		act(() => {
+		const trigger = screen.getByRole(
+			"menuitem",
+			{
+				name: /Status/,
+			},
+		);
+		act(() =>
+		{
 			trigger.focus();
 		});
-		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		fireEvent.keyDown(
+			trigger,
+			{
+				key: "ArrowRight",
+			},
+		);
 		await flush();
 
 		const checks = [
-			screen.getByRole("menuitemcheckbox", {name: "Show PR status"}),
-			screen.getByRole("menuitemradio", {name: "Active"}),
-		].map((item) => {
+			screen.getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Show PR status",
+				},
+			),
+			screen.getByRole(
+				"menuitemradio",
+				{
+					name: "Active",
+				},
+			),
+		].map((item) =>
+		{
 			const svg = item.querySelector("svg");
 			return [
 				svg?.getAttribute("class")?.includes("text-fill-accent"),
@@ -619,7 +961,8 @@ describe("Menu", () => {
 		expect(checks).toStrictEqual([check, check]);
 	});
 
-	it("puts a radio row's check slot before its digit, both in one first-line trailing wrapper", async () => {
+	it("puts a radio row's check slot before its digit, both in one first-line trailing wrapper", async () =>
+	{
 		render(
 			<PanelsOff>
 				<Menu defaultOpen>
@@ -639,11 +982,13 @@ describe("Menu", () => {
 		);
 		await flush();
 
-		const rows = screen.getAllByRole("menuitemradio").map((item) => {
+		const rows = screen.getAllByRole("menuitemradio").map((item) =>
+		{
 			const trailing = item.querySelector("[data-menu-item-trailing]");
 			return {
 				trailing: trailing?.className,
-				children: Array.from(trailing?.children ?? []).map((child) => ({
+				children: Array.from(trailing?.children ?? []).map((child) => (
+				{
 					cds: child.getAttribute("data-cds"),
 					className: child.getAttribute("class"),
 					checked: child.querySelector("svg") !== null,
@@ -654,7 +999,8 @@ describe("Menu", () => {
 
 		const trailing = "flex shrink-0 items-center gap-1.5 ms-3 h-[1lh] self-start";
 		const checkSlot = "flex size-4 shrink-0 items-center justify-center pointer-coarse:-me-1";
-		const digit = (text: string) => ({
+		const digit = (text: string) => (
+		{
 			cds: "Shortcut",
 			className:
 				"inline-flex shrink-0 items-baseline gap-[0.15em] [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse pointer-coarse:hidden text-footnote tabular-nums",
@@ -662,12 +1008,35 @@ describe("Menu", () => {
 			text,
 		});
 		expect(rows).toStrictEqual([
-			{trailing, children: [{cds: null, className: checkSlot, checked: true, text: ""}, digit("1")]},
-			{trailing, children: [{cds: null, className: checkSlot, checked: false, text: ""}, digit("2")]},
+			{
+				trailing,
+				children: [
+					{
+						cds: null,
+						className: checkSlot,
+						checked: true,
+						text: "",
+					},
+					digit("1"),
+				],
+			},
+			{
+				trailing,
+				children: [
+					{
+						cds: null,
+						className: checkSlot,
+						checked: false,
+						text: "",
+					},
+					digit("2"),
+				],
+			},
 		]);
 	});
 
-	it("spaces a comfortable radio row's check slot and digit at upstream's gap-xs and ms-md", async () => {
+	it("spaces a comfortable radio row's check slot and digit at upstream's gap-xs and ms-md", async () =>
+	{
 		render(
 			<PanelsOff>
 				<Menu defaultOpen>
@@ -689,7 +1058,8 @@ describe("Menu", () => {
 		);
 	});
 
-	it("puts a model row's digit inside its check slot, where the checked row's tick replaces it", async () => {
+	it("puts a model row's digit inside its check slot, where the checked row's tick replaces it", async () =>
+	{
 		const onValueChange = vi.fn<(value: string) => void>();
 		render(
 			<PanelsOff>
@@ -710,13 +1080,15 @@ describe("Menu", () => {
 		);
 		await flush();
 
-		const rows = screen.getAllByRole("menuitemradio").map((item) => {
+		const rows = screen.getAllByRole("menuitemradio").map((item) =>
+		{
 			const trailing = item.querySelector("[data-menu-item-trailing]");
 			return {
 				key: item.getAttribute("aria-keyshortcuts"),
 				accelerator: item.getAttribute("data-accelerator"),
 				trailing: trailing?.className,
-				slots: Array.from(trailing?.children ?? []).map((slot) => ({
+				slots: Array.from(trailing?.children ?? []).map((slot) => (
+				{
 					ariaHidden: slot.getAttribute("aria-hidden"),
 					className: slot.getAttribute("class"),
 					check: slot.querySelector("svg") !== null,
@@ -724,37 +1096,58 @@ describe("Menu", () => {
 				})),
 			};
 		});
-		fireEvent.keyDown(screen.getByRole("menu"), {key: "2", code: "Digit2"});
+		fireEvent.keyDown(
+			screen.getByRole("menu"),
+			{
+				key: "2",
+				code: "Digit2",
+			},
+		);
 
 		const slot = "-me-1 flex size-4 shrink-0 items-center justify-center";
 		const trailing = "ms-3 flex shrink-0 items-center gap-1.5";
-		expect({rows, picked: onValueChange.mock.calls.map((call) => call[0])}).toStrictEqual({
-			rows: [
-				{
-					key: "1",
-					accelerator: "1",
-					trailing,
-					slots: [{ariaHidden: "true", className: slot, check: true, digit: []}],
-				},
-				{
-					key: "2",
-					accelerator: "2",
-					trailing,
-					slots: [
-						{
-							ariaHidden: "true",
-							className: slot,
-							check: false,
-							digit: [["pointer-coarse:hidden text-footnote text-[var(--menu-muted)]", "2"]],
-						},
-					],
-				},
-			],
-			picked: ["fable"],
-		});
+		expect(
+			{
+				rows,
+				picked: onValueChange.mock.calls.map((call) => call[0]),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						key: "1",
+						accelerator: "1",
+						trailing,
+						slots: [
+							{
+								ariaHidden: "true",
+								className: slot,
+								check: true,
+								digit: [],
+							},
+						],
+					},
+					{
+						key: "2",
+						accelerator: "2",
+						trailing,
+						slots: [
+							{
+								ariaHidden: "true",
+								className: slot,
+								check: false,
+								digit: [["pointer-coarse:hidden text-footnote text-[var(--menu-muted)]", "2"]],
+							},
+						],
+					},
+				],
+				picked: ["fable"],
+			},
+		);
 	});
 
-	it("matches a digit accelerator by e.code (AZERTY Digit2 types é) and ignores key repeat", async () => {
+	it("matches a digit accelerator by e.code (AZERTY Digit2 types é) and ignores key repeat", async () =>
+	{
 		const onValueChange = vi.fn<(value: string) => void>();
 		render(
 			<Menu defaultOpen>
@@ -777,22 +1170,47 @@ describe("Menu", () => {
 		await flush();
 		const menu = screen.getByRole("menu");
 
-		fireEvent.keyDown(menu, {key: "3", code: "Digit3", repeat: true});
-		fireEvent.keyDown(menu, {key: "é", code: "Digit2"});
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "3",
+				code: "Digit3",
+				repeat: true,
+			},
+		);
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "é",
+				code: "Digit2",
+			},
+		);
 		await flush();
 
 		expect(onValueChange.mock.calls.map(([value]) => value)).toStrictEqual(["fable"]);
 	});
 
-	it("opens a submenu with ArrowRight and shows radio items", async () => {
+	it("opens a submenu with ArrowRight and shows radio items", async () =>
+	{
 		renderDropdown();
 		await openDropdown();
-		const trigger = screen.getByRole("menuitem", {name: /Status/});
+		const trigger = screen.getByRole(
+			"menuitem",
+			{
+				name: /Status/,
+			},
+		);
 
-		act(() => {
+		act(() =>
+		{
 			trigger.focus();
 		});
-		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		fireEvent.keyDown(
+			trigger,
+			{
+				key: "ArrowRight",
+			},
+		);
 		await flush();
 
 		expect(screen.getAllByRole("menu")).toHaveLength(2);
@@ -804,11 +1222,17 @@ describe("Menu", () => {
 		]);
 	});
 
-	it("activates the item for an accelerator letter and closes the menu", async () => {
+	it("activates the item for an accelerator letter and closes the menu", async () =>
+	{
 		const handlers = renderDropdown();
 		const menu = await openDropdown();
 
-		fireEvent.keyDown(menu, {key: "c"});
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "c",
+			},
+		);
 		await flush();
 
 		expect(handlers.onCopy).toHaveBeenCalledTimes(1);
@@ -816,18 +1240,27 @@ describe("Menu", () => {
 		expect(screen.queryByRole("menu")).toBeNull();
 	});
 
-	it("ignores accelerator letters pressed with a modifier", async () => {
+	it("ignores accelerator letters pressed with a modifier", async () =>
+	{
 		const handlers = renderDropdown();
 		const menu = await openDropdown();
 
-		fireEvent.keyDown(menu, {key: "c", metaKey: true});
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "c",
+				metaKey: true,
+			},
+		);
 		await flush();
 
 		expect(handlers.onCopy).not.toHaveBeenCalled();
 	});
 
-	it("opens a menu button's own dropdown on right-click, anchored to the trigger", async () => {
-		function RepoMenu() {
+	it("opens a menu button's own dropdown on right-click, anchored to the trigger", async () =>
+	{
+		function RepoMenu()
+		{
 			const {rootProps, onContextMenu} = useMenuOpensOnContextMenu();
 			return (
 				<Menu {...rootProps}>
@@ -839,32 +1272,60 @@ describe("Menu", () => {
 			);
 		}
 		render(<RepoMenu />);
-		const trigger = screen.getByRole("button", {name: "Repo"});
+		const trigger = screen.getByRole(
+			"button",
+			{
+				name: "Repo",
+			},
+		);
 
 		const prevented = !fireEvent.contextMenu(trigger);
 		await flush();
 
-		expect({
-			prevented,
-			items: screen.getAllByRole("menuitem").map((item) => item.textContent),
-			expanded: trigger.getAttribute("aria-expanded"),
-		}).toStrictEqual({prevented: true, items: ["Copy path"], expanded: "true"});
+		expect(
+			{
+				prevented,
+				items: screen.getAllByRole("menuitem").map((item) => item.textContent),
+				expanded: trigger.getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				items: ["Copy path"],
+				expanded: "true",
+			},
+		);
 	});
 
-	it("closes on Escape and restores focus to the trigger", async () => {
+	it("closes on Escape and restores focus to the trigger", async () =>
+	{
 		renderDropdown();
 		const menu = await openDropdown();
 
-		fireEvent.keyDown(menu, {key: "Escape"});
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "Escape",
+			},
+		);
 		await flush();
 
 		expect(screen.queryByRole("menu")).toBeNull();
-		expect(document.activeElement).toBe(screen.getByRole("button", {name: "More options"}));
+		expect(document.activeElement).toBe(
+			screen.getByRole(
+				"button",
+				{
+					name: "More options",
+				},
+			),
+		);
 	});
 });
 
-describe("MenuCheckboxItem closeOnClick", () => {
-	function renderCheckboxMenu(closeOnClick?: boolean) {
+describe("MenuCheckboxItem closeOnClick", () =>
+{
+	function renderCheckboxMenu(closeOnClick?: boolean)
+	{
 		const onCheckedChange = vi.fn<(checked: boolean) => void>();
 		render(
 			<Menu>
@@ -873,7 +1334,12 @@ describe("MenuCheckboxItem closeOnClick", () => {
 					<MenuCheckboxItem
 						checked={false}
 						onCheckedChange={onCheckedChange}
-						{...(closeOnClick === undefined ? {} : {closeOnClick})}
+						{...(closeOnClick === undefined
+							? {}
+							:
+								{
+									closeOnClick,
+								})}
 					>
 						Background tasks
 					</MenuCheckboxItem>
@@ -883,14 +1349,30 @@ describe("MenuCheckboxItem closeOnClick", () => {
 		return onCheckedChange;
 	}
 
-	async function clickRow() {
-		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+	async function clickRow()
+	{
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
 		await flush();
-		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Background tasks"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Background tasks",
+				},
+			),
+		);
 		await flush();
 	}
 
-	it("keeps the menu open on pick by default", async () => {
+	it("keeps the menu open on pick by default", async () =>
+	{
 		const onCheckedChange = renderCheckboxMenu();
 		await clickRow();
 
@@ -898,18 +1380,28 @@ describe("MenuCheckboxItem closeOnClick", () => {
 		expect(screen.getByRole("menu").getAttribute("data-cds")).toBe("Menu");
 	});
 
-	it("closes the menu on pick and returns focus to the trigger with closeOnClick", async () => {
+	it("closes the menu on pick and returns focus to the trigger with closeOnClick", async () =>
+	{
 		const onCheckedChange = renderCheckboxMenu(true);
 		await clickRow();
 
 		expect(onCheckedChange.mock.calls.map(([checked]) => checked)).toEqual([true]);
 		expect(screen.queryByRole("menu")).toBeNull();
-		expect(document.activeElement).toBe(screen.getByRole("button", {name: "View options"}));
+		expect(document.activeElement).toBe(
+			screen.getByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
 	});
 });
 
-describe("MenuCheckboxItem leadingCheck edge, as upstream's cds Checkbox Rh", () => {
-	it("draws the unchecked box with the checkbox edge and its hover bump, and the checked box in accent", async () => {
+describe("MenuCheckboxItem leadingCheck edge, as upstream's cds Checkbox Rh", () =>
+{
+	it("draws the unchecked box with the checkbox edge and its hover bump, and the checked box in accent", async () =>
+	{
 		render(
 			<Menu defaultOpen>
 				<MenuTrigger aria-label="Type">...</MenuTrigger>
@@ -926,7 +1418,8 @@ describe("MenuCheckboxItem leadingCheck edge, as upstream's cds Checkbox Rh", ()
 		await flush();
 
 		expect(
-			screen.getAllByRole("menuitemcheckbox").map((row) => ({
+			screen.getAllByRole("menuitemcheckbox").map((row) => (
+			{
 				group: row.classList.contains("group/cb"),
 				box: row.querySelector("[data-cds-checkbox]")?.className,
 			})),
@@ -943,53 +1436,85 @@ describe("MenuCheckboxItem leadingCheck edge, as upstream's cds Checkbox Rh", ()
 	});
 });
 
-describe("MenuItem with a disabled reason", () => {
+describe("MenuItem with a disabled reason", () =>
+{
 	const REASON = "Session file is still being written";
 
-	function renderReasonMenu() {
+	function renderReasonMenu()
+	{
 		render(
 			<CompactScope>
 				<Menu>
 					<MenuTrigger aria-label="More options">...</MenuTrigger>
 					<MenuContent>
-						<MenuItem onSelect={() => {}}>Copy link</MenuItem>
+						<MenuItem
+							onSelect={() =>
+							{
+							}}
+						>
+							Copy link
+						</MenuItem>
 						<MenuItem disabled disabledReason={REASON}>
 							Fork
 						</MenuItem>
-						<MenuItem onSelect={() => {}}>Archive</MenuItem>
+						<MenuItem
+							onSelect={() =>
+							{
+							}}
+						>
+							Archive
+						</MenuItem>
 					</MenuContent>
 				</Menu>
 			</CompactScope>,
 		);
 	}
 
-	it("describes the disabled item by a hidden reason inside a role=none row, as upstream's UV", async () => {
+	it("describes the disabled item by a hidden reason inside a role=none row, as upstream's UV", async () =>
+	{
 		renderReasonMenu();
 		await openDropdown();
-		const fork = screen.getByRole("menuitem", {name: "Fork"});
+		const fork = screen.getByRole(
+			"menuitem",
+			{
+				name: "Fork",
+			},
+		);
 		const reasonId = fork.getAttribute("aria-describedby") ?? "";
 		const hiddenReason = document.getElementById(reasonId);
 
-		expect({
-			disabled: fork.getAttribute("aria-disabled"),
-			title: fork.getAttribute("title"),
-			parentRole: fork.parentElement?.getAttribute("role"),
-			hiddenReason: hiddenReason?.outerHTML,
-			reasonSibling: hiddenReason?.parentElement === fork.parentElement,
-		}).toStrictEqual({
-			disabled: "true",
-			title: null,
-			parentRole: "none",
-			hiddenReason: `<span id="${reasonId}" hidden="" data-cds-disabled-reason="">${REASON}</span>`,
-			reasonSibling: true,
-		});
+		expect(
+			{
+				disabled: fork.getAttribute("aria-disabled"),
+				title: fork.getAttribute("title"),
+				parentRole: fork.parentElement?.getAttribute("role"),
+				hiddenReason: hiddenReason?.outerHTML,
+				reasonSibling: hiddenReason?.parentElement === fork.parentElement,
+			},
+		).toStrictEqual(
+			{
+				disabled: "true",
+				title: null,
+				parentRole: "none",
+				hiddenReason: `<span id="${reasonId}" hidden="" data-cds-disabled-reason="">${REASON}</span>`,
+				reasonSibling: true,
+			},
+		);
 		expect(document.getElementById(fork.getAttribute("aria-describedby") ?? "")?.textContent).toBe(REASON);
 	});
 
-	it("paints disabled items at upstream's opacity-disabled (.4) with the focus ring kept", async () => {
+	it("paints disabled items at upstream's opacity-disabled (.4) with the focus ring kept", async () =>
+	{
 		renderReasonMenu();
 		await openDropdown();
-		const classes = screen.getByRole("menuitem", {name: "Fork"}).className.split(" ");
+		const classes = screen
+			.getByRole(
+				"menuitem",
+				{
+					name: "Fork",
+				},
+			)
+			.className.split(" ");
 
 		expect(classes.filter((c) => c.startsWith("data-[disabled]:"))).toStrictEqual([
 			"data-[disabled]:pointer-events-none",
@@ -998,44 +1523,83 @@ describe("MenuItem with a disabled reason", () => {
 		]);
 	});
 
-	it("shows the reason on side right when the row is hovered, and keeps it open on click", async () => {
+	it("shows the reason on side right when the row is hovered, and keeps it open on click", async () =>
+	{
 		renderReasonMenu();
 		await openDropdown();
-		const row = screen.getByRole("menuitem", {name: "Fork"}).parentElement!;
+		const row = screen.getByRole(
+			"menuitem",
+			{
+				name: "Fork",
+			},
+		).parentElement!;
 
 		vi.useFakeTimers();
-		try {
+		try
+		{
 			fireEvent.pointerEnter(row);
-			act(() => {
+			act(() =>
+			{
 				vi.advanceTimersByTime(300);
 			});
 			fireEvent.click(row);
 			const tip = screen.getByRole("tooltip");
-			expect({side: tip.getAttribute("data-side"), text: tip.textContent}).toStrictEqual({
-				side: "right",
-				text: REASON,
-			});
-		} finally {
+			expect(
+				{
+					side: tip.getAttribute("data-side"),
+					text: tip.textContent,
+				},
+			).toStrictEqual(
+				{
+					side: "right",
+					text: REASON,
+				},
+			);
+		}
+		finally
+		{
 			vi.useRealTimers();
 		}
 	});
 
-	it("reaches the disabled item with ArrowDown and opens its reason at once on highlight", async () => {
+	it("reaches the disabled item with ArrowDown and opens its reason at once on highlight", async () =>
+	{
 		renderReasonMenu();
 		await openDropdown();
-		screen.getByRole("menuitem", {name: "Copy link"}).focus();
+		screen
+			.getByRole(
+				"menuitem",
+				{
+					name: "Copy link",
+				},
+			)
+			.focus();
 
-		fireEvent.keyDown(document.activeElement as HTMLElement, {key: "ArrowDown"});
+		fireEvent.keyDown(
+			document.activeElement as HTMLElement,
+			{
+				key: "ArrowDown",
+			},
+		);
 		await flush();
 
-		expect({
-			active: document.activeElement?.textContent,
-			highlighted: document.activeElement?.getAttribute("data-highlighted"),
-			tooltip: screen.queryByRole("tooltip")?.textContent,
-		}).toStrictEqual({active: "Fork", highlighted: "", tooltip: REASON});
+		expect(
+			{
+				active: document.activeElement?.textContent,
+				highlighted: document.activeElement?.getAttribute("data-highlighted"),
+				tooltip: screen.queryByRole("tooltip")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				active: "Fork",
+				highlighted: "",
+				tooltip: REASON,
+			},
+		);
 	});
 
-	it("leaves an enabled item with a reason prop unwrapped and undescribed", async () => {
+	it("leaves an enabled item with a reason prop unwrapped and undescribed", async () =>
+	{
 		render(
 			<Menu>
 				<MenuTrigger aria-label="More options">...</MenuTrigger>
@@ -1045,17 +1609,31 @@ describe("MenuItem with a disabled reason", () => {
 			</Menu>,
 		);
 		await openDropdown();
-		const fork = screen.getByRole("menuitem", {name: "Fork"});
+		const fork = screen.getByRole(
+			"menuitem",
+			{
+				name: "Fork",
+			},
+		);
 
-		expect({
-			describedBy: fork.getAttribute("aria-describedby"),
-			parentRole: fork.parentElement?.getAttribute("role"),
-		}).toStrictEqual({describedBy: null, parentRole: null});
+		expect(
+			{
+				describedBy: fork.getAttribute("aria-describedby"),
+				parentRole: fork.parentElement?.getAttribute("role"),
+			},
+		).toStrictEqual(
+			{
+				describedBy: null,
+				parentRole: null,
+			},
+		);
 	});
 });
 
-describe("ContextMenu", () => {
-	it("opens the same content on right-click", async () => {
+describe("ContextMenu", () =>
+{
+	it("opens the same content on right-click", async () =>
+	{
 		const onCopy = vi.fn<() => void>();
 		render(
 			<ContextMenu>
@@ -1069,7 +1647,13 @@ describe("ContextMenu", () => {
 		);
 		expect(screen.queryByRole("menu")).toBeNull();
 
-		fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+		fireEvent.contextMenu(
+			screen.getByText("Row title"),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
 		await flush();
 
 		const menu = screen.getByRole("menu");
@@ -1080,22 +1664,31 @@ describe("ContextMenu", () => {
 			["font-control-regular"],
 			["font-control-regular"],
 		]);
-		fireEvent.keyDown(menu, {key: "c"});
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "c",
+			},
+		);
 		await flush();
 		expect(onCopy).toHaveBeenCalledTimes(1);
 		expect(screen.queryByRole("menu")).toBeNull();
 	});
 });
 
-describe("MenuContent on a coarse pointer", () => {
-	afterEach(() => {
+describe("MenuContent on a coarse pointer", () =>
+{
+	afterEach(() =>
+	{
 		vi.unstubAllGlobals();
 	});
 
-	function stubPointer(coarse: boolean) {
+	function stubPointer(coarse: boolean)
+	{
 		vi.stubGlobal(
 			"matchMedia",
-			vi.fn((query: string) => ({
+			vi.fn((query: string) => (
+			{
 				matches: query === "(pointer: coarse)" ? coarse : false,
 				media: query,
 				onchange: null,
@@ -1125,11 +1718,13 @@ describe("MenuContent on a coarse pointer", () => {
 		"[&_svg]:size-icon",
 	]);
 
-	function tokens(element: Element | null | undefined): string[] {
+	function tokens(element: Element | null | undefined): string[]
+	{
 		return (element?.getAttribute("class") ?? "").split(" ").filter((value) => DENSITY_TOKENS.has(value));
 	}
 
-	async function openCompactMenu() {
+	async function openCompactMenu()
+	{
 		render(
 			<PanelsOff>
 				<Menu>
@@ -1147,63 +1742,98 @@ describe("MenuContent on a coarse pointer", () => {
 			</PanelsOff>,
 		);
 		await openDropdown();
-		const trigger = screen.getByRole("menuitem", {name: /Status/});
-		act(() => {
+		const trigger = screen.getByRole(
+			"menuitem",
+			{
+				name: /Status/,
+			},
+		);
+		act(() =>
+		{
 			trigger.focus();
 		});
-		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		fireEvent.keyDown(
+			trigger,
+			{
+				key: "ArrowRight",
+			},
+		);
 		await flush();
 		const [popup, subPopup] = screen.getAllByRole("menu");
 		return {
 			popup: tokens(popup),
 			popupDensity: popup?.parentElement?.getAttribute("data-density"),
-			item: tokens(screen.getByRole("menuitem", {name: "Routines"})),
+			item: tokens(
+				screen.getByRole(
+					"menuitem",
+					{
+						name: "Routines",
+					},
+				),
+			),
 			icon: tokens(screen.getByTestId("glyph").parentElement),
 			subPopup: tokens(subPopup),
 			subPopupDensity: subPopup?.parentElement?.getAttribute("data-density"),
-			subItem: tokens(screen.getByRole("menuitem", {name: "Active"})),
+			subItem: tokens(
+				screen.getByRole(
+					"menuitem",
+					{
+						name: "Active",
+					},
+				),
+			),
 		};
 	}
 
-	it("forces an explicitly compact menu and its submenu comfortable, as upstream's si does under (pointer: coarse)", async () => {
+	it("forces an explicitly compact menu and its submenu comfortable, as upstream's si does under (pointer: coarse)", async () =>
+	{
 		stubPointer(true);
 		const comfortableItem = ["h-8", "items-center", "rounded-r6", "px-2.5", "py-1.5", "text-[14px]/[20px]"];
-		expect(await openCompactMenu()).toStrictEqual({
-			popup: ["rounded-card", "text-[14px]/[20px]"],
-			popupDensity: "comfortable",
-			item: comfortableItem,
-			icon: ["items-center", "[&_svg]:size-icon"],
-			subPopup: ["rounded-card", "text-[14px]/[20px]"],
-			subPopupDensity: "comfortable",
-			subItem: comfortableItem,
-		});
+		expect(await openCompactMenu()).toStrictEqual(
+			{
+				popup: ["rounded-card", "text-[14px]/[20px]"],
+				popupDensity: "comfortable",
+				item: comfortableItem,
+				icon: ["items-center", "[&_svg]:size-icon"],
+				subPopup: ["rounded-card", "text-[14px]/[20px]"],
+				subPopupDensity: "comfortable",
+				subItem: comfortableItem,
+			},
+		);
 	});
 
-	it("keeps the compact menu on a fine pointer", async () => {
+	it("keeps the compact menu on a fine pointer", async () =>
+	{
 		stubPointer(false);
 		const compactItem = ["h-6", "items-center", "rounded-r5", "px-2", "py-[2.5px]", "text-[13px]/[19px]"];
-		expect(await openCompactMenu()).toStrictEqual({
-			popup: ["rounded-r7", "text-[13px]/[19px]"],
-			popupDensity: "compact",
-			item: compactItem,
-			icon: ["items-center", "[&_svg]:size-icon"],
-			subPopup: ["rounded-r7", "text-[13px]/[19px]"],
-			subPopupDensity: "compact",
-			subItem: compactItem,
-		});
+		expect(await openCompactMenu()).toStrictEqual(
+			{
+				popup: ["rounded-r7", "text-[13px]/[19px]"],
+				popupDensity: "compact",
+				item: compactItem,
+				icon: ["items-center", "[&_svg]:size-icon"],
+				subPopup: ["rounded-r7", "text-[13px]/[19px]"],
+				subPopupDensity: "compact",
+				subItem: compactItem,
+			},
+		);
 	});
 });
 
-describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
-	afterEach(() => {
+describe("Menu sheet gate (coarse pointer, width < 640px)", () =>
+{
+	afterEach(() =>
+	{
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
 
-	function stubCoarseAtWidth(width: number) {
+	function stubCoarseAtWidth(width: number)
+	{
 		vi.stubGlobal(
 			"matchMedia",
-			vi.fn((query: string) => ({
+			vi.fn((query: string) => (
+			{
 				matches:
 					query === "(pointer: coarse)" ||
 					(query === "(pointer: coarse) and (max-width: 639.98px)" && width < 640),
@@ -1218,28 +1848,42 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		);
 	}
 
-	function presentation() {
+	function presentation()
+	{
 		return {
 			presentation: screen.getByRole("menu").getAttribute("data-presentation"),
 			scrim: document.querySelector("[data-sheet-scrim]") !== null,
 		};
 	}
 
-	it("keeps a coarse-pointer menu anchored at 1024px", async () => {
+	it("keeps a coarse-pointer menu anchored at 1024px", async () =>
+	{
 		stubCoarseAtWidth(1024);
 		renderDropdown();
 		await openDropdown();
-		expect(presentation()).toStrictEqual({presentation: null, scrim: false});
+		expect(presentation()).toStrictEqual(
+			{
+				presentation: null,
+				scrim: false,
+			},
+		);
 	});
 
-	it("presents a coarse-pointer menu as a sheet at 639px", async () => {
+	it("presents a coarse-pointer menu as a sheet at 639px", async () =>
+	{
 		stubCoarseAtWidth(639);
 		renderDropdown();
 		await openDropdown();
-		expect(presentation()).toStrictEqual({presentation: "sheet", scrim: true});
+		expect(presentation()).toStrictEqual(
+			{
+				presentation: "sheet",
+				scrim: true,
+			},
+		);
 	});
 
-	function sheetAnatomy() {
+	function sheetAnatomy()
+	{
 		const menu = screen.getByRole("menu");
 		const treeId = menu.getAttribute("data-sheet-tree");
 		const scrim = document.querySelector<HTMLElement>("[data-sheet-scrim]");
@@ -1248,7 +1892,8 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		const wrapper = handle?.nextElementSibling;
 		const scroll = wrapper?.firstElementChild;
 		return {
-			popup: {
+			popup:
+			{
 				presentation: menu.getAttribute("data-presentation"),
 				size: menu.getAttribute("data-size"),
 				depth: menu.getAttribute("data-cds-sheet-depth"),
@@ -1266,27 +1911,31 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 				maxHeight: menu.style.maxHeight,
 				availableHeight: menu.style.getPropertyValue("--available-height"),
 			},
-			scrim: {
+			scrim:
+			{
 				role: scrim?.getAttribute("role"),
 				presentation: scrim?.getAttribute("data-presentation"),
 				matchesTree: scrim?.getAttribute("data-sheet-scrim") === treeId,
 				className: scrim?.className,
 			},
-			positioner: {
+			positioner:
+			{
 				position: positioner?.style.position,
 				inset: positioner?.style.inset,
 				width: positioner?.style.width,
 				transform: positioner?.style.transform,
 				afterFill: positioner?.classList.contains("after:bg-surface-3"),
 			},
-			handle: {
+			handle:
+			{
 				marker: handle?.hasAttribute("data-cds-sheet-handle"),
 				ariaHidden: handle?.getAttribute("aria-hidden"),
 				className: handle?.className,
 				pill: handle?.firstElementChild?.className,
 			},
 			wrapper: wrapper?.className,
-			scroll: {
+			scroll:
+			{
 				marker: scroll?.hasAttribute("data-cds-sheet-scroll"),
 				className: scroll?.className,
 				items: scroll?.querySelectorAll("[role=menuitem]").length,
@@ -1294,57 +1943,74 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		};
 	}
 
-	it("renders the root sheet anatomy at coarse 639px, as upstream's MenuSheetPopup", async () => {
+	it("renders the root sheet anatomy at coarse 639px, as upstream's MenuSheetPopup", async () =>
+	{
 		stubCoarseAtWidth(639);
 		renderDropdown();
 		await openDropdown();
-		expect(sheetAnatomy()).toStrictEqual({
-			popup: {
-				presentation: "sheet",
-				size: "lg",
-				depth: "0",
-				hasTreeId: true,
-				classes: 8,
-				/* jsdom serializes the .95 product in canonical order. */
-				maxHeight: "calc(0.95 * (100dvh - env(safe-area-inset-top, 0px)))",
-				availableHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
+		expect(sheetAnatomy()).toStrictEqual(
+			{
+				popup:
+				{
+					presentation: "sheet",
+					size: "lg",
+					depth: "0",
+					hasTreeId: true,
+					classes: 8,
+					/* jsdom serializes the .95 product in canonical order. */
+					maxHeight: "calc(0.95 * (100dvh - env(safe-area-inset-top, 0px)))",
+					availableHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
+				},
+				scrim:
+				{
+					role: "presentation",
+					presentation: "sheet",
+					matchesTree: true,
+					className:
+						"draggable-none fixed inset-0 bg-backdrop transition-opacity duration-[300ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
+				},
+				positioner:
+				{
+					position: "fixed",
+					inset: "auto 0 0",
+					width: "auto",
+					transform: "none",
+					afterFill: true,
+				},
+				handle:
+				{
+					marker: true,
+					ariaHidden: "true",
+					className: "flex min-h-8 shrink-0 touch-none items-center justify-center select-none",
+					pill: "h-1 w-9 rounded-full bg-border",
+				},
+				wrapper:
+					"flex min-h-0 flex-1 flex-col transition-[translate] duration-[300ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none group-data-[cds-sheet-drilled]/sheet:-translate-x-[calc(100%+env(safe-area-inset-left,0px))] rtl:group-data-[cds-sheet-drilled]/sheet:translate-x-[calc(100%+env(safe-area-inset-right,0px))]",
+				scroll:
+				{
+					marker: true,
+					className:
+						"relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden scroll-fade-y overscroll-contain p-1",
+					items: 4,
+				},
 			},
-			scrim: {
-				role: "presentation",
-				presentation: "sheet",
-				matchesTree: true,
-				className:
-					"draggable-none fixed inset-0 bg-backdrop transition-opacity duration-[300ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
-			},
-			positioner: {position: "fixed", inset: "auto 0 0", width: "auto", transform: "none", afterFill: true},
-			handle: {
-				marker: true,
-				ariaHidden: "true",
-				className: "flex min-h-8 shrink-0 touch-none items-center justify-center select-none",
-				pill: "h-1 w-9 rounded-full bg-border",
-			},
-			wrapper:
-				"flex min-h-0 flex-1 flex-col transition-[translate] duration-[300ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none group-data-[cds-sheet-drilled]/sheet:-translate-x-[calc(100%+env(safe-area-inset-left,0px))] rtl:group-data-[cds-sheet-drilled]/sheet:translate-x-[calc(100%+env(safe-area-inset-right,0px))]",
-			scroll: {
-				marker: true,
-				className:
-					"relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden scroll-fade-y overscroll-contain p-1",
-				items: 4,
-			},
-		});
+		);
 	});
 
 	const CLOSE_ROW_CLASS =
 		"group/sheet-close block w-full rounded-r7 outline-none select-none focus-visible:outline-hidden [&:not(:focus-visible):not([data-highlighted]):not([data-cds-sheet-control-held])]:sr-only";
 
-	function renderControlledSheet() {
+	function renderControlledSheet()
+	{
 		const onOpenChange = vi.fn<(open: boolean) => void>();
-		function Harness() {
+		function Harness()
+		{
 			const [open, setOpen] = useState(false);
 			return (
 				<Menu
 					open={open}
-					onOpenChange={(next) => {
+					onOpenChange={(next) =>
+					{
 						onOpenChange(next);
 						setOpen(next);
 					}}
@@ -1360,81 +2026,134 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		return onOpenChange;
 	}
 
-	it("ends the root sheet with an sr-only Close row, as upstream's Vt", async () => {
+	it("ends the root sheet with an sr-only Close row, as upstream's Vt", async () =>
+	{
 		stubCoarseAtWidth(639);
 		renderDropdown();
 		await openDropdown();
 		const items = screen.getAllByRole("menuitem");
 		const close = items.at(-1);
 		const box = close?.firstElementChild;
-		expect({
-			last: close?.getAttribute("aria-label"),
-			control: close?.hasAttribute("data-cds-sheet-control"),
-			className: close?.className,
-			inScroll: close?.parentElement?.hasAttribute("data-cds-sheet-scroll"),
-			box: {
-				highlightFill: box?.classList.contains("group-data-[highlighted]/sheet-close:bg-fill-ghost-hover"),
-				lgRow: box?.classList.contains("min-h-10"),
-				icon: box?.firstElementChild?.className,
-				label: box?.lastElementChild?.className,
-				text: box?.textContent,
+		expect(
+			{
+				last: close?.getAttribute("aria-label"),
+				control: close?.hasAttribute("data-cds-sheet-control"),
+				className: close?.className,
+				inScroll: close?.parentElement?.hasAttribute("data-cds-sheet-scroll"),
+				box:
+				{
+					highlightFill: box?.classList.contains("group-data-[highlighted]/sheet-close:bg-fill-ghost-hover"),
+					lgRow: box?.classList.contains("min-h-10"),
+					icon: box?.firstElementChild?.className,
+					label: box?.lastElementChild?.className,
+					text: box?.textContent,
+				},
 			},
-		}).toStrictEqual({
-			last: "Close",
-			control: true,
-			className: CLOSE_ROW_CLASS,
-			inScroll: true,
-			box: {
-				highlightFill: true,
-				lgRow: true,
-				icon: "flex size-6 shrink-0 items-center justify-center",
-				label: "min-w-0 flex-1 truncate",
-				text: "Close",
+		).toStrictEqual(
+			{
+				last: "Close",
+				control: true,
+				className: CLOSE_ROW_CLASS,
+				inScroll: true,
+				box:
+				{
+					highlightFill: true,
+					lgRow: true,
+					icon: "flex size-6 shrink-0 items-center justify-center",
+					label: "min-w-0 flex-1 truncate",
+					text: "Close",
+				},
 			},
-		});
+		);
 	});
 
-	it("closes the sheet when the Close row is pressed", async () => {
+	it("closes the sheet when the Close row is pressed", async () =>
+	{
 		stubCoarseAtWidth(639);
 		const onOpenChange = renderControlledSheet();
 		await openDropdown();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Close"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Close",
+				},
+			),
+		);
 		await flush();
 		expect(onOpenChange.mock.calls.map(([open]) => open)).toStrictEqual([true, false]);
 	});
 
-	it("marks the popup pressed and a highlighted Close row held until the next click", async () => {
+	it("marks the popup pressed and a highlighted Close row held until the next click", async () =>
+	{
 		stubCoarseAtWidth(639);
 		renderDropdown();
 		const menu = await openDropdown();
-		const close = screen.getByRole("menuitem", {name: "Close"});
+		const close = screen.getByRole(
+			"menuitem",
+			{
+				name: "Close",
+			},
+		);
 		close.setAttribute("data-highlighted", "");
 		fireEvent.pointerDown(menu);
-		const held = {
+		const held =
+		{
 			pressed: menu.hasAttribute("data-cds-sheet-pressed"),
 			held: close.hasAttribute("data-cds-sheet-control-held"),
 		};
-		fireEvent.keyDown(document, {key: "Shift"});
-		expect({
-			held,
-			released: {
-				pressed: menu.hasAttribute("data-cds-sheet-pressed"),
-				held: close.hasAttribute("data-cds-sheet-control-held"),
+		fireEvent.keyDown(
+			document,
+			{
+				key: "Shift",
 			},
-		}).toStrictEqual({held: {pressed: true, held: true}, released: {pressed: false, held: false}});
+		);
+		expect(
+			{
+				held,
+				released:
+				{
+					pressed: menu.hasAttribute("data-cds-sheet-pressed"),
+					held: close.hasAttribute("data-cds-sheet-control-held"),
+				},
+			},
+		).toStrictEqual(
+			{
+				held:
+				{
+					pressed: true,
+					held: true,
+				},
+				released:
+				{
+					pressed: false,
+					held: false,
+				},
+			},
+		);
 	});
 
-	it("adds no Close row to an anchored menu", async () => {
+	it("adds no Close row to an anchored menu", async () =>
+	{
 		stubCoarseAtWidth(1024);
 		renderDropdown();
 		await openDropdown();
-		expect(screen.queryByRole("menuitem", {name: "Close"})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"menuitem",
+				{
+					name: "Close",
+				},
+			),
+		).toBeNull();
 	});
 
-	it("renders none of the sheet anatomy on a fine pointer at 639px", async () => {
+	it("renders none of the sheet anatomy on a fine pointer at 639px", async () =>
+	{
 		vi.stubGlobal(
 			"matchMedia",
-			vi.fn((query: string) => ({
+			vi.fn((query: string) => (
+			{
 				matches: false,
 				media: query,
 				onchange: null,
@@ -1447,17 +2166,29 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		);
 		renderDropdown();
 		const menu = await openDropdown();
-		expect({
-			presentation: menu.getAttribute("data-presentation"),
-			size: menu.getAttribute("data-size"),
-			sheetMarkers: document.querySelectorAll("[data-sheet-scrim], [data-sheet-tree], [data-cds-sheet-handle]")
-				.length,
-			scrollMarker: menu.querySelectorAll("[data-cds-sheet-scroll]").length,
-			roundedTop: menu.className.includes("rounded-t-[14px]"),
-		}).toStrictEqual({presentation: null, size: null, sheetMarkers: 0, scrollMarker: 1, roundedTop: false});
+		expect(
+			{
+				presentation: menu.getAttribute("data-presentation"),
+				size: menu.getAttribute("data-size"),
+				sheetMarkers: document.querySelectorAll(
+					"[data-sheet-scrim], [data-sheet-tree], [data-cds-sheet-handle]",
+				).length,
+				scrollMarker: menu.querySelectorAll("[data-cds-sheet-scroll]").length,
+				roundedTop: menu.className.includes("rounded-t-[14px]"),
+			},
+		).toStrictEqual(
+			{
+				presentation: null,
+				size: null,
+				sheetMarkers: 0,
+				scrollMarker: 1,
+				roundedTop: false,
+			},
+		);
 	});
 
-	async function openCompactSheet(override?: Density) {
+	async function openCompactSheet(override?: Density)
+	{
 		const menu = (
 			<Menu>
 				<MenuTrigger aria-label="More options">...</MenuTrigger>
@@ -1477,12 +2208,22 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		);
 		const popup = await openDropdown();
 		const glyphSlot = screen.getByTestId("glyph").parentElement;
-		const shortcut = screen.getByRole("menuitem", {name: /Copy link/}).lastElementChild;
+		const shortcut = screen.getByRole(
+			"menuitem",
+			{
+				name: /Copy link/,
+			},
+		).lastElementChild;
 		return {
 			density: popup.parentElement?.getAttribute("data-density"),
 			popupText: popup.classList.contains("text-[15px]/[22px]"),
 			item: screen
-				.getByRole("menuitem", {name: "Delete"})
+				.getByRole(
+					"menuitem",
+					{
+						name: "Delete",
+					},
+				)
 				.className.split(" ")
 				.filter((name) => SHEET_ITEM_TOKENS.has(name)),
 			icon: glyphSlot?.classList.contains("[&_svg]:size-icon"),
@@ -1512,7 +2253,8 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		"text-[15px]/[22px]",
 	]);
 
-	const LG_SHEET = {
+	const LG_SHEET =
+	{
 		density: "comfortable",
 		popupText: true,
 		item: ["min-h-10", "items-center", "rounded-r7", "px-2.5", "py-[9px]", "text-[15px]/[22px]"],
@@ -1521,17 +2263,20 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		separator: ["mx-2.5"],
 	};
 
-	it("renders a compact menu's sheet with lg rows at forced comfortable density, as upstream's ta(\"lg\")", async () => {
+	it("renders a compact menu's sheet with lg rows at forced comfortable density, as upstream's ta(\"lg\")", async () =>
+	{
 		stubCoarseAtWidth(639);
 		expect(await openCompactSheet()).toStrictEqual(LG_SHEET);
 	});
 
-	it("lets the sheet's lg comfortable sizing win over a compact density override", async () => {
+	it("lets the sheet's lg comfortable sizing win over a compact density override", async () =>
+	{
 		stubCoarseAtWidth(639);
 		expect(await openCompactSheet("compact")).toStrictEqual(LG_SHEET);
 	});
 
-	it("keeps a controlled menu without onOpenChange anchored at 639px", async () => {
+	it("keeps a controlled menu without onOpenChange anchored at 639px", async () =>
+	{
 		stubCoarseAtWidth(639);
 		render(
 			<Menu open>
@@ -1542,10 +2287,16 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 			</Menu>,
 		);
 		await flush();
-		expect(presentation()).toStrictEqual({presentation: null, scrim: false});
+		expect(presentation()).toStrictEqual(
+			{
+				presentation: null,
+				scrim: false,
+			},
+		);
 	});
 
-	it("keeps a structurally anchored menu anchored at 639px", async () => {
+	it("keeps a structurally anchored menu anchored at 639px", async () =>
+	{
 		stubCoarseAtWidth(639);
 		render(
 			<Menu>
@@ -1556,10 +2307,16 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 			</Menu>,
 		);
 		await openDropdown();
-		expect(presentation()).toStrictEqual({presentation: null, scrim: false});
+		expect(presentation()).toStrictEqual(
+			{
+				presentation: null,
+				scrim: false,
+			},
+		);
 	});
 
-	it("keeps a coarse-pointer ContextMenu anchored at 1024px", async () => {
+	it("keeps a coarse-pointer ContextMenu anchored at 1024px", async () =>
+	{
 		stubCoarseAtWidth(1024);
 		render(
 			<ContextMenu>
@@ -1571,12 +2328,24 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 				</MenuContent>
 			</ContextMenu>,
 		);
-		fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+		fireEvent.contextMenu(
+			screen.getByText("Row title"),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
 		await flush();
-		expect(presentation()).toStrictEqual({presentation: null, scrim: false});
+		expect(presentation()).toStrictEqual(
+			{
+				presentation: null,
+				scrim: false,
+			},
+		);
 	});
 
-	it("presents a coarse-pointer ContextMenu as a sheet at 639px", async () => {
+	it("presents a coarse-pointer ContextMenu as a sheet at 639px", async () =>
+	{
 		stubCoarseAtWidth(639);
 		render(
 			<ContextMenu>
@@ -1588,22 +2357,45 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 				</MenuContent>
 			</ContextMenu>,
 		);
-		fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+		fireEvent.contextMenu(
+			screen.getByText("Row title"),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
 		await flush();
-		expect(presentation()).toStrictEqual({presentation: "sheet", scrim: true});
+		expect(presentation()).toStrictEqual(
+			{
+				presentation: "sheet",
+				scrim: true,
+			},
+		);
 	});
 
-	async function drillIntoStatus() {
+	async function drillIntoStatus()
+	{
 		stubCoarseAtWidth(639);
 		renderDropdown();
 		const root = await openDropdown();
-		fireEvent.click(screen.getByRole("menuitem", {name: /Status/}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: /Status/,
+				},
+			),
+		);
 		await flush();
 		const child = Array.from(document.querySelectorAll<HTMLElement>("[role=menu]")).find((menu) => menu !== root);
-		return {root, child};
+		return {
+			root,
+			child,
+		};
 	}
 
-	function levelState(root: HTMLElement) {
+	function levelState(root: HTMLElement)
+	{
 		return {
 			drilled: root.hasAttribute("data-cds-sheet-drilled"),
 			ariaHidden: root.getAttribute("aria-hidden"),
@@ -1628,91 +2420,117 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		"data-[cds-sheet-covered]:after:opacity-100",
 	];
 
-	it("gives every sheet level the covered-stack look and reduced-motion overrides, as upstream's cD", async () => {
+	it("gives every sheet level the covered-stack look and reduced-motion overrides, as upstream's cD", async () =>
+	{
 		const {root, child} = await drillIntoStatus();
 		const covered = (level: HTMLElement | undefined) =>
 			COVERED_CLASSES.concat("motion-reduce:transition-none").filter((name) => level?.classList.contains(name));
-		expect({root: covered(root), child: covered(child)}).toStrictEqual({
-			root: [...COVERED_CLASSES, "motion-reduce:transition-none"],
-			child: [...COVERED_CLASSES, "motion-reduce:transition-none"],
-		});
+		expect(
+			{
+				root: covered(root),
+				child: covered(child),
+			},
+		).toStrictEqual(
+			{
+				root: [...COVERED_CLASSES, "motion-reduce:transition-none"],
+				child: [...COVERED_CLASSES, "motion-reduce:transition-none"],
+			},
+		);
 	});
 
-	it("drills a submenu into the sheet with a Back header titled by the trigger, as upstream's Bt", async () => {
+	it("drills a submenu into the sheet with a Back header titled by the trigger, as upstream's Bt", async () =>
+	{
 		const {root, child} = await drillIntoStatus();
 		const positioner = child?.parentElement;
 		const header = child?.querySelector("[data-cds-sheet-scroll]")?.nextElementSibling;
 		const back = header?.querySelector("[aria-label=Back]");
 		const title = header?.lastElementChild;
-		expect({
-			parent: levelState(root),
-			firstHighlighted: child
-				?.querySelector("[data-cds-sheet-scroll] [role^=menuitem]")
-				?.hasAttribute("data-highlighted"),
-			positioner: {
-				className: positioner?.className,
-				position: positioner?.style.position,
-				inset: positioner?.style.inset,
-				zIndex: positioner?.style.zIndex,
+		expect(
+			{
+				parent: levelState(root),
+				firstHighlighted: child
+					?.querySelector("[data-cds-sheet-scroll] [role^=menuitem]")
+					?.hasAttribute("data-highlighted"),
+				positioner:
+				{
+					className: positioner?.className,
+					position: positioner?.style.position,
+					inset: positioner?.style.inset,
+					zIndex: positioner?.style.zIndex,
+				},
+				child:
+				{
+					presentation: child?.getAttribute("data-presentation"),
+					nested: child?.hasAttribute("data-nested"),
+					sameTree: child?.getAttribute("data-sheet-tree") === root.getAttribute("data-sheet-tree"),
+					depth: child?.getAttribute("data-cds-sheet-depth"),
+					size: child?.getAttribute("data-size"),
+					classes: [
+						"bg-transparent",
+						"shadow-none",
+						"[&[data-ending-style]:not([data-cds-sheet-tree-closing])]:translate-x-full",
+						"[&[data-ending-style][data-cds-sheet-tree-closing]]:translate-y-[calc(100%+1.5rem)]",
+					].filter((name) => child?.classList.contains(name) === true).length,
+					pill: child?.querySelector("[data-cds-sheet-handle]")?.firstElementChild?.className,
+					closeRow: child?.querySelector("[aria-label=Close]") ?? null,
+				},
+				header:
+				{
+					className: header?.className,
+					backRole: back?.getAttribute("role"),
+					backWrapper: back?.parentElement?.className,
+					backIcon: back?.firstElementChild?.className,
+					backSvg: back?.querySelector("svg")?.classList.contains("size-5"),
+					titleText: title?.textContent,
+					titleHidden: title?.getAttribute("aria-hidden"),
+					titleClass: title?.className,
+				},
 			},
-			child: {
-				presentation: child?.getAttribute("data-presentation"),
-				nested: child?.hasAttribute("data-nested"),
-				sameTree: child?.getAttribute("data-sheet-tree") === root.getAttribute("data-sheet-tree"),
-				depth: child?.getAttribute("data-cds-sheet-depth"),
-				size: child?.getAttribute("data-size"),
-				classes: [
-					"bg-transparent",
-					"shadow-none",
-					"[&[data-ending-style]:not([data-cds-sheet-tree-closing])]:translate-x-full",
-					"[&[data-ending-style][data-cds-sheet-tree-closing]]:translate-y-[calc(100%+1.5rem)]",
-				].filter((name) => child?.classList.contains(name) === true).length,
-				pill: child?.querySelector("[data-cds-sheet-handle]")?.firstElementChild?.className,
-				closeRow: child?.querySelector("[aria-label=Close]") ?? null,
+		).toStrictEqual(
+			{
+				parent:
+				{
+					drilled: true,
+					ariaHidden: "true",
+					menus: 2,
+				},
+				firstHighlighted: true,
+				positioner:
+				{
+					className: "[clip-path:inset(0_0_-200vh_0)]",
+					position: "fixed",
+					inset: "auto 0 0",
+					zIndex: "220",
+				},
+				child:
+				{
+					presentation: "sheet",
+					nested: true,
+					sameTree: true,
+					depth: "0",
+					size: "lg",
+					classes: 4,
+					pill: "h-1 w-9 rounded-full bg-border opacity-0",
+					closeRow: null,
+				},
+				header:
+				{
+					className:
+						"order-first flex min-h-10 shrink-0 touch-none items-center gap-1.5 px-1 pb-1 select-none",
+					backRole: "menuitem",
+					backWrapper: "-me-2.5 shrink-0",
+					backIcon: "flex size-6 shrink-0 items-center justify-center",
+					backSvg: true,
+					titleText: "Status",
+					titleHidden: "true",
+					titleClass: "min-w-0 flex-1 truncate text-start text-[15px]/[20px] font-semibold text-primary",
+				},
 			},
-			header: {
-				className: header?.className,
-				backRole: back?.getAttribute("role"),
-				backWrapper: back?.parentElement?.className,
-				backIcon: back?.firstElementChild?.className,
-				backSvg: back?.querySelector("svg")?.classList.contains("size-5"),
-				titleText: title?.textContent,
-				titleHidden: title?.getAttribute("aria-hidden"),
-				titleClass: title?.className,
-			},
-		}).toStrictEqual({
-			parent: {drilled: true, ariaHidden: "true", menus: 2},
-			firstHighlighted: true,
-			positioner: {
-				className: "[clip-path:inset(0_0_-200vh_0)]",
-				position: "fixed",
-				inset: "auto 0 0",
-				zIndex: "220",
-			},
-			child: {
-				presentation: "sheet",
-				nested: true,
-				sameTree: true,
-				depth: "0",
-				size: "lg",
-				classes: 4,
-				pill: "h-1 w-9 rounded-full bg-border opacity-0",
-				closeRow: null,
-			},
-			header: {
-				className: "order-first flex min-h-10 shrink-0 touch-none items-center gap-1.5 px-1 pb-1 select-none",
-				backRole: "menuitem",
-				backWrapper: "-me-2.5 shrink-0",
-				backIcon: "flex size-6 shrink-0 items-center justify-center",
-				backSvg: true,
-				titleText: "Status",
-				titleHidden: "true",
-				titleClass: "min-w-0 flex-1 truncate text-start text-[15px]/[20px] font-semibold text-primary",
-			},
-		});
+		);
 	});
 
-	it("gives the sheet levels upstream's forced-colors resets and pressed scroll padding", async () => {
+	it("gives the sheet levels upstream's forced-colors resets and pressed scroll padding", async () =>
+	{
 		const {root, child} = await drillIntoStatus();
 		const tokens = [
 			"forced-colors:border",
@@ -1722,24 +2540,33 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 			"[&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px]",
 		];
 		const present = (level: HTMLElement | undefined) => tokens.filter((name) => level?.classList.contains(name));
-		expect({root: present(root), child: present(child)}).toStrictEqual({
-			root: [
-				"forced-colors:border",
-				"forced-colors:border-x-0",
-				"forced-colors:border-b-0",
-				"[&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px]",
-			],
-			child: [
-				"forced-colors:border-x-0",
-				"forced-colors:border-b-0",
-				"forced-colors:border-0",
-				"[&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px]",
-			],
-		});
+		expect(
+			{
+				root: present(root),
+				child: present(child),
+			},
+		).toStrictEqual(
+			{
+				root: [
+					"forced-colors:border",
+					"forced-colors:border-x-0",
+					"forced-colors:border-b-0",
+					"[&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px]",
+				],
+				child: [
+					"forced-colors:border-x-0",
+					"forced-colors:border-b-0",
+					"forced-colors:border-0",
+					"[&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px]",
+				],
+			},
+		);
 	});
 
-	it("pins every open level to the tallest level's height, as upstream's pinHeight and pushLevelHeight", async () => {
-		vi.spyOn(Element.prototype, "scrollHeight", "get").mockImplementation(function (this: Element) {
+	it("pins every open level to the tallest level's height, as upstream's pinHeight and pushLevelHeight", async () =>
+	{
+		vi.spyOn(Element.prototype, "scrollHeight", "get").mockImplementation(function (this: Element)
+		{
 			if (this.getAttribute("role") !== "menu") return 0;
 			return this.hasAttribute("data-nested") ? 320 : 200;
 		});
@@ -1747,20 +2574,51 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		renderDropdown();
 		const root = await openDropdown();
 		const atOpen = root.style.height;
-		fireEvent.click(screen.getByRole("menuitem", {name: /Status/}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: /Status/,
+				},
+			),
+		);
 		await flush();
 		const child = Array.from(document.querySelectorAll<HTMLElement>("[role=menu]")).find((menu) => menu !== root);
-		const drilled = {root: root.style.height, child: child?.style.height};
-		fireEvent.click(screen.getByRole("menuitem", {name: "Back"}));
+		const drilled =
+		{
+			root: root.style.height,
+			child: child?.style.height,
+		};
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Back",
+				},
+			),
+		);
 		await flush();
-		expect({atOpen, drilled, back: root.style.height}).toStrictEqual({
-			atOpen: "200px",
-			drilled: {root: "320px", child: "320px"},
-			back: "200px",
-		});
+		expect(
+			{
+				atOpen,
+				drilled,
+				back: root.style.height,
+			},
+		).toStrictEqual(
+			{
+				atOpen: "200px",
+				drilled:
+				{
+					root: "320px",
+					child: "320px",
+				},
+				back: "200px",
+			},
+		);
 	});
 
-	it("forwards popupProps to the sheet popup and moves the consumer className onto the content", async () => {
+	it("forwards popupProps to the sheet popup and moves the consumer className onto the content", async () =>
+	{
 		stubCoarseAtWidth(639);
 		const onKeyDownCapture = vi.fn<() => void>();
 		render(
@@ -1768,37 +2626,53 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 				<MenuTrigger aria-label="More options">...</MenuTrigger>
 				<MenuContent
 					className="w-[240px]"
-					popupProps={{"aria-label": "Templates", "data-x": "", onKeyDownCapture}}
+					popupProps={
+					{
+						"aria-label": "Templates",
+						"data-x": "",
+						onKeyDownCapture,
+					}}
 				>
 					<MenuItem>Copy link</MenuItem>
 				</MenuContent>
 			</Menu>,
 		);
 		const menu = await openDropdown();
-		fireEvent.keyDown(menu, {key: "a"});
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "a",
+			},
+		);
 		const content = menu.querySelector("[data-cds-sheet-scroll]")?.parentElement;
-		expect({
-			presentation: menu.getAttribute("data-presentation"),
-			label: menu.getAttribute("aria-label"),
-			x: menu.hasAttribute("data-x"),
-			popupWidth: menu.classList.contains("w-[240px]"),
-			popupFull: menu.classList.contains("w-full"),
-			contentWidth: content?.classList.contains("w-[240px]"),
-			keyDownCapture: onKeyDownCapture.mock.calls.length,
-		}).toStrictEqual({
-			presentation: "sheet",
-			label: "Templates",
-			x: true,
-			popupWidth: false,
-			popupFull: true,
-			contentWidth: true,
-			keyDownCapture: 1,
-		});
+		expect(
+			{
+				presentation: menu.getAttribute("data-presentation"),
+				label: menu.getAttribute("aria-label"),
+				x: menu.hasAttribute("data-x"),
+				popupWidth: menu.classList.contains("w-[240px]"),
+				popupFull: menu.classList.contains("w-full"),
+				contentWidth: content?.classList.contains("w-[240px]"),
+				keyDownCapture: onKeyDownCapture.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				presentation: "sheet",
+				label: "Templates",
+				x: true,
+				popupWidth: false,
+				popupFull: true,
+				contentWidth: true,
+				keyDownCapture: 1,
+			},
+		);
 	});
 
-	it("names the popup with the cds prop, anchored and as a sheet", async () => {
+	it("names the popup with the cds prop, anchored and as a sheet", async () =>
+	{
 		const names: (string | null)[] = [];
-		for (const width of [1024, 639]) {
+		for (const width of [1024, 639])
+		{
 			stubCoarseAtWidth(width);
 			render(
 				<Menu>
@@ -1814,20 +2688,38 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		expect(names).toStrictEqual(["ModelSelector", "ModelSelector"]);
 	});
 
-	it("closes the drilled level on Back and restores the parent", async () => {
+	it("closes the drilled level on Back and restores the parent", async () =>
+	{
 		const {root} = await drillIntoStatus();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Back"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Back",
+				},
+			),
+		);
 		await flush();
-		expect(levelState(root)).toStrictEqual({drilled: false, ariaHidden: null, menus: 1});
+		expect(levelState(root)).toStrictEqual(
+			{
+				drilled: false,
+				ariaHidden: null,
+				menus: 1,
+			},
+		);
 	});
 
 	/** Each level's tree-closing marker when Base UI starts its exit (`data-closed` with `data-ending-style`). */
-	function recordEndingStyles(levels: HTMLElement[]) {
+	function recordEndingStyles(levels: HTMLElement[])
+	{
 		const seen = new Map<HTMLElement, boolean>();
-		const observer = new MutationObserver((records) => {
-			for (const record of records) {
+		const observer = new MutationObserver((records) =>
+		{
+			for (const record of records)
+			{
 				/* A level unmounted without an exit transition ends there. */
-				for (const level of levels) {
+				for (const level of levels)
+				{
 					if (!level.isConnected && !seen.has(level))
 						seen.set(level, level.hasAttribute("data-cds-sheet-tree-closing"));
 				}
@@ -1836,30 +2728,73 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 					level instanceof HTMLElement &&
 					(level.hasAttribute("data-closed") || level.hasAttribute("data-ending-style")) &&
 					!seen.has(level)
-				) {
+				)
+				{
 					seen.set(level, level.hasAttribute("data-cds-sheet-tree-closing"));
 				}
 			}
 		});
-		for (const level of levels) observer.observe(level, {attributes: true});
-		observer.observe(document.body, {childList: true, subtree: true});
-		return () => {
+		for (const level of levels)
+			observer.observe(
+				level,
+				{
+					attributes: true,
+				},
+			);
+		observer.observe(
+			document.body,
+			{
+				childList: true,
+				subtree: true,
+			},
+		);
+		return () =>
+		{
 			observer.disconnect();
 			return levels.map((level) => seen.get(level) ?? null);
 		};
 	}
 
-	function pressScrim() {
+	function pressScrim()
+	{
 		const scrim = document.querySelector<HTMLElement>("[data-sheet-scrim]");
 		if (scrim === null) throw new Error("no scrim");
-		fireEvent.pointerDown(scrim, {pointerType: "touch", button: 0});
-		fireEvent.mouseDown(scrim, {button: 0});
-		fireEvent.pointerUp(scrim, {pointerType: "touch", button: 0});
-		fireEvent.mouseUp(scrim, {button: 0});
-		fireEvent.click(scrim, {button: 0});
+		fireEvent.pointerDown(
+			scrim,
+			{
+				pointerType: "touch",
+				button: 0,
+			},
+		);
+		fireEvent.mouseDown(
+			scrim,
+			{
+				button: 0,
+			},
+		);
+		fireEvent.pointerUp(
+			scrim,
+			{
+				pointerType: "touch",
+				button: 0,
+			},
+		);
+		fireEvent.mouseUp(
+			scrim,
+			{
+				button: 0,
+			},
+		);
+		fireEvent.click(
+			scrim,
+			{
+				button: 0,
+			},
+		);
 	}
 
-	it("marks every open level tree-closing before its exit when the scrim closes the sheet", async () => {
+	it("marks every open level tree-closing before its exit when the scrim closes the sheet", async () =>
+	{
 		const {root, child} = await drillIntoStatus();
 		if (child === undefined) throw new Error("no drilled level");
 		const stop = recordEndingStyles([root, child]);
@@ -1868,71 +2803,142 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		expect(stop()).toStrictEqual([true, true]);
 	});
 
-	it("lets a drilled level close on Back without the tree-closing marker", async () => {
+	it("lets a drilled level close on Back without the tree-closing marker", async () =>
+	{
 		const {root, child} = await drillIntoStatus();
 		if (child === undefined) throw new Error("no drilled level");
 		const stop = recordEndingStyles([root, child]);
-		fireEvent.click(screen.getByRole("menuitem", {name: "Back"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Back",
+				},
+			),
+		);
 		await flush();
 		expect(stop()).toStrictEqual([null, false]);
 	});
 
-	it("does not open a sheet submenu on hover", async () => {
+	it("does not open a sheet submenu on hover", async () =>
+	{
 		stubCoarseAtWidth(639);
 		renderDropdown();
 		await openDropdown();
-		const trigger = screen.getByRole("menuitem", {name: /Status/});
-		fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		const trigger = screen.getByRole(
+			"menuitem",
+			{
+				name: /Status/,
+			},
+		);
+		fireEvent.pointerEnter(
+			trigger,
+			{
+				pointerType: "mouse",
+			},
+		);
 		fireEvent.mouseEnter(trigger);
-		fireEvent.pointerMove(trigger, {pointerType: "mouse"});
+		fireEvent.pointerMove(
+			trigger,
+			{
+				pointerType: "mouse",
+			},
+		);
 		fireEvent.mouseMove(trigger);
-		await act(async () => {
-			await new Promise((resolve) => {
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 250);
 			});
 		});
-		expect({
-			menus: document.querySelectorAll("[role=menu]").length,
-			expanded: trigger.getAttribute("aria-expanded"),
-		}).toStrictEqual({menus: 1, expanded: "false"});
+		expect(
+			{
+				menus: document.querySelectorAll("[role=menu]").length,
+				expanded: trigger.getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				menus: 1,
+				expanded: "false",
+			},
+		);
 	});
 
 	/** A pointer event at `clientY` with a fixed timeStamp, so velocity is deterministic. */
-	function pointer(target: Element, type: string, clientY: number, timeStamp: number) {
-		const event = new MouseEvent(type, {bubbles: true, cancelable: true, button: 0, clientY});
-		Object.defineProperty(event, "pointerId", {value: 1});
-		Object.defineProperty(event, "timeStamp", {value: timeStamp});
+	function pointer(target: Element, type: string, clientY: number, timeStamp: number)
+	{
+		const event = new MouseEvent(
+			type,
+			{
+				bubbles: true,
+				cancelable: true,
+				button: 0,
+				clientY,
+			},
+		);
+		Object.defineProperty(
+			event,
+			"pointerId",
+			{
+				value: 1,
+			},
+		);
+		Object.defineProperty(
+			event,
+			"timeStamp",
+			{
+				value: timeStamp,
+			},
+		);
 		fireEvent(target, event);
 	}
 
 	/** jsdom has no pointer capture; the drag captures on the handle and releases on pointerup. */
-	function stubPointerCapture() {
+	function stubPointerCapture()
+	{
 		const captured = new Set<number>();
-		HTMLElement.prototype.setPointerCapture = (pointerId) => {
+		HTMLElement.prototype.setPointerCapture = (pointerId) =>
+		{
 			captured.add(pointerId);
 		};
 		HTMLElement.prototype.hasPointerCapture = (pointerId) => captured.has(pointerId);
-		HTMLElement.prototype.releasePointerCapture = (pointerId) => {
+		HTMLElement.prototype.releasePointerCapture = (pointerId) =>
+		{
 			captured.delete(pointerId);
 		};
 	}
 
 	/** Every sheet level is 400px tall, resting on the viewport bottom at 800. */
-	function stubSheetRects() {
+	function stubSheetRects()
+	{
 		stubPointerCapture();
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-			DOMRect.fromRect({x: 0, y: 400, width: 639, height: 400}),
+			DOMRect.fromRect(
+				{
+					x: 0,
+					y: 400,
+					width: 639,
+					height: 400,
+				},
+			),
 		);
 	}
 
-	function dragStyles(levels: HTMLElement[]) {
+	function dragStyles(levels: HTMLElement[])
+	{
 		return {
-			levels: levels.map((level) => ({translate: level.style.translate, height: level.style.height})),
+			levels: levels.map((level) => (
+			{
+				translate: level.style.translate,
+				height: level.style.height,
+			})),
 			scrim: document.querySelector<HTMLElement>("[data-sheet-scrim]")?.style.opacity,
 		};
 	}
 
-	it("follows a handle drag down and dismisses past a quarter of the rest height, as upstream's ct", async () => {
+	it("follows a handle drag down and dismisses past a quarter of the rest height, as upstream's ct", async () =>
+	{
 		stubCoarseAtWidth(639);
 		stubSheetRects();
 		renderDropdown();
@@ -1944,19 +2950,52 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		const during = dragStyles([menu]);
 		const scrim = document.querySelector<HTMLElement>("[data-sheet-scrim]");
 		pointer(handle, "pointerup", 600, 1000);
-		const released = {
-			levels: [{translate: menu.style.translate, height: menu.style.height}],
+		const released =
+		{
+			levels: [
+				{
+					translate: menu.style.translate,
+					height: menu.style.height,
+				},
+			],
 			scrim: scrim?.style.opacity,
 		};
 		await flush();
-		expect({during, released, open: screen.queryByRole("menu") !== null}).toStrictEqual({
-			during: {levels: [{translate: "0 200px", height: "400px"}], scrim: "0.5"},
-			released: {levels: [{translate: "0 calc(100% + 1.5rem)", height: "400px"}], scrim: ""},
-			open: false,
-		});
+		expect(
+			{
+				during,
+				released,
+				open: screen.queryByRole("menu") !== null,
+			},
+		).toStrictEqual(
+			{
+				during:
+				{
+					levels: [
+						{
+							translate: "0 200px",
+							height: "400px",
+						},
+					],
+					scrim: "0.5",
+				},
+				released:
+				{
+					levels: [
+						{
+							translate: "0 calc(100% + 1.5rem)",
+							height: "400px",
+						},
+					],
+					scrim: "",
+				},
+				open: false,
+			},
+		);
 	});
 
-	it("springs back from a short, slow handle drag", async () => {
+	it("springs back from a short, slow handle drag", async () =>
+	{
 		stubCoarseAtWidth(639);
 		stubSheetRects();
 		renderDropdown();
@@ -1967,13 +3006,30 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		pointer(handle, "pointermove", 450, 1000);
 		pointer(handle, "pointerup", 450, 1000);
 		await flush();
-		expect({styles: dragStyles([menu]), open: screen.queryByRole("menu") !== null}).toStrictEqual({
-			styles: {levels: [{translate: "", height: ""}], scrim: ""},
-			open: true,
-		});
+		expect(
+			{
+				styles: dragStyles([menu]),
+				open: screen.queryByRole("menu") !== null,
+			},
+		).toStrictEqual(
+			{
+				styles:
+				{
+					levels: [
+						{
+							translate: "",
+							height: "",
+						},
+					],
+					scrim: "",
+				},
+				open: true,
+			},
+		);
 	});
 
-	it("dismisses on a fast flick, but not when the finger rested before release", async () => {
+	it("dismisses on a fast flick, but not when the finger rested before release", async () =>
+	{
 		stubCoarseAtWidth(639);
 		stubSheetRects();
 		renderDropdown();
@@ -1989,13 +3045,21 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		pointer(handle, "pointermove", 420, 210);
 		pointer(handle, "pointerup", 420, 220);
 		await flush();
-		expect({restedOpen, flickedOpen: screen.queryByRole("menu") !== null}).toStrictEqual({
-			restedOpen: true,
-			flickedOpen: false,
-		});
+		expect(
+			{
+				restedOpen,
+				flickedOpen: screen.queryByRole("menu") !== null,
+			},
+		).toStrictEqual(
+			{
+				restedOpen: true,
+				flickedOpen: false,
+			},
+		);
 	});
 
-	it("opens the tall detent when an overflowing sheet is dragged up past 40px", async () => {
+	it("opens the tall detent when an overflowing sheet is dragged up past 40px", async () =>
+	{
 		stubCoarseAtWidth(639);
 		stubSheetRects();
 		renderDropdown();
@@ -2003,31 +3067,63 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		const scroll = menu.querySelector("[data-cds-sheet-scroll]");
 		const handle = menu.querySelector("[data-cds-sheet-handle]");
 		if (scroll === null || handle === null) throw new Error("no sheet chrome");
-		Object.defineProperty(scroll, "scrollHeight", {configurable: true, value: 900});
+		Object.defineProperty(
+			scroll,
+			"scrollHeight",
+			{
+				configurable: true,
+				value: 900,
+			},
+		);
 		const before = menu.getAttribute("data-cds-sheet-detent");
 		pointer(handle, "pointerdown", 400, 0);
 		pointer(handle, "pointermove", 340, 1000);
 		pointer(handle, "pointerup", 340, 1000);
 		await flush();
-		expect({before, after: menu.getAttribute("data-cds-sheet-detent"), height: menu.style.height}).toStrictEqual({
-			before: "default",
-			after: "tall",
-			height: "calc(0.9 * (100dvh - env(safe-area-inset-top, 0px)))",
-		});
+		expect(
+			{
+				before,
+				after: menu.getAttribute("data-cds-sheet-detent"),
+				height: menu.style.height,
+			},
+		).toStrictEqual(
+			{
+				before: "default",
+				after: "tall",
+				height: "calc(0.9 * (100dvh - env(safe-area-inset-top, 0px)))",
+			},
+		);
 	});
 
-	it("never starts a drag from a menu item", async () => {
+	it("never starts a drag from a menu item", async () =>
+	{
 		stubCoarseAtWidth(639);
 		stubSheetRects();
 		renderDropdown();
 		const menu = await openDropdown();
-		const item = screen.getByRole("menuitem", {name: /Copy link/});
+		const item = screen.getByRole(
+			"menuitem",
+			{
+				name: /Copy link/,
+			},
+		);
 		pointer(item, "pointerdown", 400, 0);
 		pointer(item, "pointermove", 600, 1000);
-		expect(dragStyles([menu])).toStrictEqual({levels: [{translate: "", height: ""}], scrim: ""});
+		expect(dragStyles([menu])).toStrictEqual(
+			{
+				levels: [
+					{
+						translate: "",
+						height: "",
+					},
+				],
+				scrim: "",
+			},
+		);
 	});
 
-	it("drags every level of the tree from a drilled level's header", async () => {
+	it("drags every level of the tree from a drilled level's header", async () =>
+	{
 		stubSheetRects();
 		const {root, child} = await drillIntoStatus();
 		if (child === undefined) throw new Error("no drilled level");
@@ -2035,45 +3131,88 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		if (header === null || header === undefined) throw new Error("no header");
 		pointer(header, "pointerdown", 400, 0);
 		pointer(header, "pointermove", 500, 1000);
-		expect(dragStyles([root, child])).toStrictEqual({
-			levels: [
-				{translate: "0 100px", height: "400px"},
-				{translate: "0 100px", height: "400px"},
-			],
-			scrim: "0.75",
-		});
+		expect(dragStyles([root, child])).toStrictEqual(
+			{
+				levels: [
+					{
+						translate: "0 100px",
+						height: "400px",
+					},
+					{
+						translate: "0 100px",
+						height: "400px",
+					},
+				],
+				scrim: "0.75",
+			},
+		);
 	});
-	it("swallows Tab and Shift+Tab inside a sheet, as upstream's Pt, and keeps it open", async () => {
+	it("swallows Tab and Shift+Tab inside a sheet, as upstream's Pt, and keeps it open", async () =>
+	{
 		stubCoarseAtWidth(639);
 		renderDropdown();
 		const menu = await openDropdown();
-		const tab = fireEvent.keyDown(menu, {key: "Tab"});
-		const shiftTab = fireEvent.keyDown(menu, {key: "Tab", shiftKey: true});
+		const tab = fireEvent.keyDown(
+			menu,
+			{
+				key: "Tab",
+			},
+		);
+		const shiftTab = fireEvent.keyDown(
+			menu,
+			{
+				key: "Tab",
+				shiftKey: true,
+			},
+		);
 		await flush();
-		expect({
-			tabPrevented: !tab,
-			shiftTabPrevented: !shiftTab,
-			open: screen.queryByRole("menu") !== null,
-		}).toStrictEqual({tabPrevented: true, shiftTabPrevented: true, open: true});
+		expect(
+			{
+				tabPrevented: !tab,
+				shiftTabPrevented: !shiftTab,
+				open: screen.queryByRole("menu") !== null,
+			},
+		).toStrictEqual(
+			{
+				tabPrevented: true,
+				shiftTabPrevented: true,
+				open: true,
+			},
+		);
 	});
 
-	it("leaves Tab to Base UI in an anchored menu", async () => {
+	it("leaves Tab to Base UI in an anchored menu", async () =>
+	{
 		stubCoarseAtWidth(1024);
 		renderDropdown();
 		const menu = await openDropdown();
-		expect(fireEvent.keyDown(menu, {key: "Tab"})).toBe(true);
+		expect(
+			fireEvent.keyDown(
+				menu,
+				{
+					key: "Tab",
+				},
+			),
+		).toBe(true);
 	});
 
-	it("still closes a sheet on Escape", async () => {
+	it("still closes a sheet on Escape", async () =>
+	{
 		stubCoarseAtWidth(639);
 		const onOpenChange = renderControlledSheet();
 		const menu = await openDropdown();
-		fireEvent.keyDown(menu, {key: "Escape"});
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "Escape",
+			},
+		);
 		await flush();
 		expect(onOpenChange.mock.calls.map(([open]) => open)).toStrictEqual([true, false]);
 	});
 
-	it("highlights the Close row on ArrowDown past the last real item", async () => {
+	it("highlights the Close row on ArrowDown past the last real item", async () =>
+	{
 		stubCoarseAtWidth(639);
 		renderDropdown();
 		await openDropdown();
@@ -2081,42 +3220,77 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		const last = items.at(-2);
 		const close = items.at(-1);
 		if (last === undefined || close === undefined) throw new Error("no items");
-		act(() => {
+		act(() =>
+		{
 			last.focus();
 		});
-		fireEvent.keyDown(last, {key: "ArrowDown"});
+		fireEvent.keyDown(
+			last,
+			{
+				key: "ArrowDown",
+			},
+		);
 		await flush();
-		expect({
-			highlighted: close.hasAttribute("data-highlighted"),
-			srOnly: close.matches(":not(:focus-visible):not([data-highlighted]):not([data-cds-sheet-control-held])"),
-		}).toStrictEqual({highlighted: true, srOnly: false});
+		expect(
+			{
+				highlighted: close.hasAttribute("data-highlighted"),
+				srOnly: close.matches(
+					":not(:focus-visible):not([data-highlighted]):not([data-cds-sheet-control-held])",
+				),
+			},
+		).toStrictEqual(
+			{
+				highlighted: true,
+				srOnly: false,
+			},
+		);
 	});
 });
 
-describe("Menu under fizzy-lake panels on a fine pointer", () => {
-	afterEach(() => {
+describe("Menu under fizzy-lake panels on a fine pointer", () =>
+{
+	afterEach(() =>
+	{
 		vi.unstubAllGlobals();
 	});
 
 	/** The classes a panels-fine (fizzy-lake panels, fine pointer) media rule adds. */
-	function panelsFine(element: Element | null | undefined): string[] {
+	function panelsFine(element: Element | null | undefined): string[]
+	{
 		return (element?.className ?? "").split(" ").filter((name) => name.startsWith("panels-fine:"));
 	}
 
-	function anatomy() {
+	function anatomy()
+	{
 		const menu = screen.getByRole("menu");
 		return {
 			popup: panelsFine(menu),
 			scroller: panelsFine(menu.querySelector("[data-menu-scroller]")),
 			rows: [
-				screen.getByRole("menuitem", {name: /Status/}),
-				screen.getByRole("menuitem", {name: /Copy link/}),
-				screen.getByRole("menuitemcheckbox", {name: "Show PR status"}),
+				screen.getByRole(
+					"menuitem",
+					{
+						name: /Status/,
+					},
+				),
+				screen.getByRole(
+					"menuitem",
+					{
+						name: /Copy link/,
+					},
+				),
+				screen.getByRole(
+					"menuitemcheckbox",
+					{
+						name: "Show PR status",
+					},
+				),
 			].map(panelsFine),
 		};
 	}
 
-	it("sizes comfortable menus like upstream's Filter and sort: 28px rows with 4px block pads, a 6px gutter, a 14px popup radius", async () => {
+	it("sizes comfortable menus like upstream's Filter and sort: 28px rows with 4px block pads, a 6px gutter, a 14px popup radius", async () =>
+	{
 		render(
 			<Menu>
 				<MenuTrigger aria-label="More options">...</MenuTrigger>
@@ -2127,14 +3301,22 @@ describe("Menu under fizzy-lake panels on a fine pointer", () => {
 		);
 		await openDropdown();
 
-		expect(anatomy()).toStrictEqual({
-			popup: ["panels-fine:rounded-menu-comfortable"],
-			scroller: ["panels-fine:p-1.5", "panels-fine:border-b-0"],
-			rows: Array.from({length: 3}, () => ["panels-fine:h-7", "panels-fine:py-1"]),
-		});
+		expect(anatomy()).toStrictEqual(
+			{
+				popup: ["panels-fine:rounded-menu-comfortable"],
+				scroller: ["panels-fine:p-1.5", "panels-fine:border-b-0"],
+				rows: Array.from(
+					{
+						length: 3,
+					},
+					() => ["panels-fine:h-7", "panels-fine:py-1"],
+				),
+			},
+		);
 	});
 
-	it("lays a submenu trigger's value out as upstream's Filter and sort rows: ms-md gap-xs trailing group, max-w-[160px] footnote value", async () => {
+	it("lays a submenu trigger's value out as upstream's Filter and sort rows: ms-md gap-xs trailing group, max-w-[160px] footnote value", async () =>
+	{
 		render(
 			<Menu>
 				<MenuTrigger aria-label="More options">...</MenuTrigger>
@@ -2144,25 +3326,48 @@ describe("Menu under fizzy-lake panels on a fine pointer", () => {
 			</Menu>,
 		);
 		await openDropdown();
-		const value = screen.getByRole("menuitem", {name: /Status/}).querySelector("[data-menu-value]");
+		const value = screen
+			.getByRole(
+				"menuitem",
+				{
+					name: /Status/,
+				},
+			)
+			.querySelector("[data-menu-value]");
 
-		expect({trailing: value?.parentElement?.className, value: value?.className}).toStrictEqual({
-			trailing: "ms-4 flex shrink-0 items-center gap-2",
-			value: "max-w-[160px] shrink-0 truncate text-footnote text-[var(--menu-muted)]",
-		});
+		expect(
+			{
+				trailing: value?.parentElement?.className,
+				value: value?.className,
+			},
+		).toStrictEqual(
+			{
+				trailing: "ms-4 flex shrink-0 items-center gap-2",
+				value: "max-w-[160px] shrink-0 truncate text-footnote text-[var(--menu-muted)]",
+			},
+		);
 	});
 
-	it("leaves compact menus on their classic metrics", async () => {
+	it("leaves compact menus on their classic metrics", async () =>
+	{
 		renderDropdown();
 		await openDropdown();
 
-		expect(anatomy()).toStrictEqual({popup: [], scroller: [], rows: [[], [], []]});
+		expect(anatomy()).toStrictEqual(
+			{
+				popup: [],
+				scroller: [],
+				rows: [[], [], []],
+			},
+		);
 	});
 
-	it("leaves a coarse-pointer sheet on its lg rows", async () => {
+	it("leaves a coarse-pointer sheet on its lg rows", async () =>
+	{
 		vi.stubGlobal(
 			"matchMedia",
-			vi.fn((query: string) => ({
+			vi.fn((query: string) => (
+			{
 				matches: query === "(pointer: coarse)" || query === "(pointer: coarse) and (max-width: 639.98px)",
 				media: query,
 				onchange: null,
@@ -2177,13 +3382,31 @@ describe("Menu under fizzy-lake panels on a fine pointer", () => {
 		await openDropdown();
 		const menu = screen.getByRole("menu");
 
-		expect({
-			presentation: menu.getAttribute("data-presentation"),
-			popup: panelsFine(menu),
-			rows: [
-				screen.getByRole("menuitem", {name: /Copy link/}),
-				screen.getByRole("menuitemcheckbox", {name: "Show PR status"}),
-			].map(panelsFine),
-		}).toStrictEqual({presentation: "sheet", popup: [], rows: [[], []]});
+		expect(
+			{
+				presentation: menu.getAttribute("data-presentation"),
+				popup: panelsFine(menu),
+				rows: [
+					screen.getByRole(
+						"menuitem",
+						{
+							name: /Copy link/,
+						},
+					),
+					screen.getByRole(
+						"menuitemcheckbox",
+						{
+							name: "Show PR status",
+						},
+					),
+				].map(panelsFine),
+			},
+		).toStrictEqual(
+			{
+				presentation: "sheet",
+				popup: [],
+				rows: [[], []],
+			},
+		);
 	});
 });

@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	RECENTS_HISTORY_MAX,
 	RECENTS_HISTORY_STORAGE_KEY,
 	type RecentEntry,
@@ -13,58 +14,80 @@ import {
 	switcherRecents,
 } from "../src/lib/recents-history";
 
-class MemoryStorage implements Storage {
+class MemoryStorage implements Storage
+{
 	readonly values = new Map<string, string>();
-	get length(): number {
+	get length(): number
+	{
 		return this.values.size;
 	}
-	clear(): void {
+	clear(): void
+	{
 		this.values.clear();
 	}
-	getItem(key: string): string | null {
+	getItem(key: string): string | null
+	{
 		return this.values.get(key) ?? null;
 	}
-	key(index: number): string | null {
+	key(index: number): string | null
+	{
 		return [...this.values.keys()][index] ?? null;
 	}
-	removeItem(key: string): void {
+	removeItem(key: string): void
+	{
 		this.values.delete(key);
 	}
-	setItem(key: string, value: string): void {
+	setItem(key: string, value: string): void
+	{
 		this.values.set(key, value);
 	}
 }
 
-class ThrowingStorage implements Storage {
-	get length(): number {
+class ThrowingStorage implements Storage
+{
+	get length(): number
+	{
 		throw new Error("denied");
 	}
-	clear(): void {
+	clear(): void
+	{
 		throw new Error("denied");
 	}
-	getItem(): string | null {
+	getItem(): string | null
+	{
 		throw new Error("denied");
 	}
-	key(): string | null {
+	key(): string | null
+	{
 		throw new Error("denied");
 	}
-	removeItem(): void {
+	removeItem(): void
+	{
 		throw new Error("denied");
 	}
-	setItem(): void {
+	setItem(): void
+	{
 		throw new Error("denied");
 	}
 }
 
-const session = (id: string, title?: string): RecentEntry => ({
+const session = (id: string, title?: string): RecentEntry => (
+{
 	key: `session:${id}`,
 	kind: "session",
 	href: `/session/${id}`,
-	...(title === undefined ? {} : {title}),
+	...(title === undefined
+		? {}
+		:
+			{
+				title,
+			}),
 });
 
-describe("routeToRecent", () => {
-	it("optionally resolves session owners while retaining unknown aliases as navigation targets", () => {
+describe("routeToRecent", () =>
+{
+	it("optionally resolves session owners while retaining unknown aliases as navigation targets", () =>
+	{
 		const resolveAlias = (alias: string) => (alias === "session_example" ? "alice" : null);
 		expect([
 			routeToRecent("/session/session_example", resolveAlias),
@@ -74,21 +97,76 @@ describe("routeToRecent", () => {
 			routeToRecent("/plan/example", resolveAlias),
 			routeToRecent("/settings", resolveAlias),
 		]).toStrictEqual([
-			{key: "session:alice", kind: "session", href: "/session/session_example"},
-			{key: "subagents:alice", kind: "subagents", href: "/session/session_example/subagents"},
-			{key: "session:session_unknown", kind: "session", href: "/session/session_unknown"},
-			{key: "session:alice", kind: "session", href: "/session/alice"},
-			{key: "plan:example", kind: "plan", href: "/plan/example"},
+			{
+				key: "session:alice",
+				kind: "session",
+				href: "/session/session_example",
+			},
+			{
+				key: "subagents:alice",
+				kind: "subagents",
+				href: "/session/session_example/subagents",
+			},
+			{
+				key: "session:session_unknown",
+				kind: "session",
+				href: "/session/session_unknown",
+			},
+			{
+				key: "session:alice",
+				kind: "session",
+				href: "/session/alice",
+			},
+			{
+				key: "plan:example",
+				kind: "plan",
+				href: "/plan/example",
+			},
 			null,
 		]);
 	});
 
 	it.each([
-		["/session/abc", {key: "session:abc", kind: "session", href: "/session/abc"}],
-		["/session/abc/", {key: "session:abc", kind: "session", href: "/session/abc"}],
-		["/session/abc/subagents", {key: "subagents:abc", kind: "subagents", href: "/session/abc/subagents"}],
-		["/plan/my-plan", {key: "plan:my-plan", kind: "plan", href: "/plan/my-plan"}],
-		["/plan/my-plan.md", {key: "plan:my-plan", kind: "plan", href: "/plan/my-plan"}],
+		[
+			"/session/abc",
+			{
+				key: "session:abc",
+				kind: "session",
+				href: "/session/abc",
+			},
+		],
+		[
+			"/session/abc/",
+			{
+				key: "session:abc",
+				kind: "session",
+				href: "/session/abc",
+			},
+		],
+		[
+			"/session/abc/subagents",
+			{
+				key: "subagents:abc",
+				kind: "subagents",
+				href: "/session/abc/subagents",
+			},
+		],
+		[
+			"/plan/my-plan",
+			{
+				key: "plan:my-plan",
+				kind: "plan",
+				href: "/plan/my-plan",
+			},
+		],
+		[
+			"/plan/my-plan.md",
+			{
+				key: "plan:my-plan",
+				kind: "plan",
+				href: "/plan/my-plan",
+			},
+		],
 		[
 			"/memory/-Users-craig-proj/MEMORY",
 			{
@@ -105,10 +183,32 @@ describe("routeToRecent", () => {
 				href: "/memory/-Users-craig-proj/MEMORY",
 			},
 		],
-		["/project/p1", {key: "project:p1", kind: "project", href: "/project/p1"}],
-		["/command/user/do-task", {key: "command:user/do-task", kind: "command", href: "/command/user/do-task"}],
-		["/command/user/do-task.md", {key: "command:user/do-task", kind: "command", href: "/command/user/do-task"}],
-	])("records %s", (pathname, expected) => {
+		[
+			"/project/p1",
+			{
+				key: "project:p1",
+				kind: "project",
+				href: "/project/p1",
+			},
+		],
+		[
+			"/command/user/do-task",
+			{
+				key: "command:user/do-task",
+				kind: "command",
+				href: "/command/user/do-task",
+			},
+		],
+		[
+			"/command/user/do-task.md",
+			{
+				key: "command:user/do-task",
+				kind: "command",
+				href: "/command/user/do-task",
+			},
+		],
+	])("records %s", (pathname, expected) =>
+	{
 		expect(routeToRecent(pathname)).toEqual(expected);
 	});
 
@@ -140,17 +240,21 @@ describe("routeToRecent", () => {
 		"/project/p1/tasks",
 		"/command/user",
 		"/command/user/do-task/extra",
-	])("does not record %s", (pathname) => {
+	])("does not record %s", (pathname) =>
+	{
 		expect(routeToRecent(pathname)).toBeNull();
 	});
 });
 
-describe("push", () => {
-	it("adds a new entry to the front", () => {
+describe("push", () =>
+{
+	it("adds a new entry to the front", () =>
+	{
 		expect(push([session("a", "A")], session("b", "B"))).toEqual([session("b", "B"), session("a", "A")]);
 	});
 
-	it("moves an existing key to the front without duplicating it", () => {
+	it("moves an existing key to the front without duplicating it", () =>
+	{
 		expect(push([session("c", "C"), session("b", "B"), session("a", "A")], session("a", "A2"))).toEqual([
 			session("a", "A2"),
 			session("c", "C"),
@@ -158,24 +262,55 @@ describe("push", () => {
 		]);
 	});
 
-	it("keeps the known title when the pushed entry has none", () => {
+	it("keeps the known title when the pushed entry has none", () =>
+	{
 		expect(push([session("b", "B"), session("a", "A")], session("a"))).toEqual([
 			session("a", "A"),
 			session("b", "B"),
 		]);
 	});
 
-	it("caps the history at 30 entries, dropping the oldest", () => {
-		const entries = Array.from({length: RECENTS_HISTORY_MAX}, (_, index) => session(String(index)));
+	it("caps the history at 30 entries, dropping the oldest", () =>
+	{
+		const entries = Array.from(
+			{
+				length: RECENTS_HISTORY_MAX,
+			},
+			(_, index) => session(String(index)),
+		);
 		const result = push(entries, session("new"));
 		expect(RECENTS_HISTORY_MAX).toBe(30);
-		expect(result).toEqual([session("new"), ...Array.from({length: 29}, (_, index) => session(String(index)))]);
+		expect(result).toEqual([
+			session("new"),
+			...Array.from(
+				{
+					length: 29,
+				},
+				(_, index) => session(String(index)),
+			),
+		]);
 	});
 
-	it("caps sessions and projects at 30 apart from other pages, so page visits never crowd the ⌃Q list", () => {
-		const plan = (id: string): RecentEntry => ({key: `plan:${id}`, kind: "plan", href: `/plan/${id}`});
-		const sessions = Array.from({length: RECENTS_HISTORY_MAX}, (_, index) => session(String(index)));
-		const plans = Array.from({length: RECENTS_HISTORY_MAX}, (_, index) => plan(String(index)));
+	it("caps sessions and projects at 30 apart from other pages, so page visits never crowd the ⌃Q list", () =>
+	{
+		const plan = (id: string): RecentEntry => (
+		{
+			key: `plan:${id}`,
+			kind: "plan",
+			href: `/plan/${id}`,
+		});
+		const sessions = Array.from(
+			{
+				length: RECENTS_HISTORY_MAX,
+			},
+			(_, index) => session(String(index)),
+		);
+		const plans = Array.from(
+			{
+				length: RECENTS_HISTORY_MAX,
+			},
+			(_, index) => plan(String(index)),
+		);
 		expect(push([...sessions, ...plans], plan("new"))).toStrictEqual([
 			plan("new"),
 			...sessions,
@@ -183,57 +318,99 @@ describe("push", () => {
 		]);
 	});
 
-	it("does not mutate its input", () => {
+	it("does not mutate its input", () =>
+	{
 		const entries = [session("a", "A")];
 		push(entries, session("b"));
 		expect(entries).toEqual([session("a", "A")]);
 	});
 });
 
-describe("switcherRecents", () => {
-	it("keeps only upstream's switchable kinds, sessions and projects, in visit order", () => {
+describe("switcherRecents", () =>
+{
+	it("keeps only upstream's switchable kinds, sessions and projects, in visit order", () =>
+	{
 		const entries: RecentEntry[] = [
-			{key: "plan:p", kind: "plan", href: "/plan/p", title: "Plan"},
+			{
+				key: "plan:p",
+				kind: "plan",
+				href: "/plan/p",
+				title: "Plan",
+			},
 			session("a", "A"),
-			{key: "subagents:a", kind: "subagents", href: "/session/a/subagents"},
-			{key: "memory:proj/notes", kind: "memory", href: "/memory/proj/notes"},
-			{key: "project:proj", kind: "project", href: "/project/proj", title: "proj"},
-			{key: "command:user/deploy", kind: "command", href: "/command/user/deploy"},
+			{
+				key: "subagents:a",
+				kind: "subagents",
+				href: "/session/a/subagents",
+			},
+			{
+				key: "memory:proj/notes",
+				kind: "memory",
+				href: "/memory/proj/notes",
+			},
+			{
+				key: "project:proj",
+				kind: "project",
+				href: "/project/proj",
+				title: "proj",
+			},
+			{
+				key: "command:user/deploy",
+				kind: "command",
+				href: "/command/user/deploy",
+			},
 			session("b"),
 		];
 		expect(switcherRecents(entries)).toStrictEqual([
 			session("a", "A"),
-			{key: "project:proj", kind: "project", href: "/project/proj", title: "proj"},
+			{
+				key: "project:proj",
+				kind: "project",
+				href: "/project/proj",
+				title: "proj",
+			},
 			session("b"),
 		]);
 	});
 });
 
-describe("retitle", () => {
-	it("sets the title of the matching entry only", () => {
+describe("retitle", () =>
+{
+	it("sets the title of the matching entry only", () =>
+	{
 		expect(retitle([session("b", "B"), session("a")], "session:a", "Alpha")).toEqual([
 			session("b", "B"),
 			session("a", "Alpha"),
 		]);
 	});
 
-	it("returns the entries unchanged when the key is unknown", () => {
+	it("returns the entries unchanged when the key is unknown", () =>
+	{
 		expect(retitle([session("a", "A")], "session:z", "Zed")).toEqual([session("a", "A")]);
 	});
 });
 
-describe("remove", () => {
-	it("drops the matching entry", () => {
+describe("remove", () =>
+{
+	it("drops the matching entry", () =>
+	{
 		expect(remove([session("b"), session("a"), session("c")], "session:a")).toEqual([session("b"), session("c")]);
 	});
 });
 
-describe("storage", () => {
-	it("round-trips entries through sessionStorage under ccb-navigation-history", () => {
+describe("storage", () =>
+{
+	it("round-trips entries through sessionStorage under ccb-navigation-history", () =>
+	{
 		const storage = new MemoryStorage();
 		const entries: RecentEntry[] = [
 			session("a", "Alpha"),
-			{key: "plan:p", kind: "plan", href: "/plan/p", title: "Plan P"},
+			{
+				key: "plan:p",
+				kind: "plan",
+				href: "/plan/p",
+				title: "Plan P",
+			},
 		];
 		saveRecents(entries, storage);
 		expect(RECENTS_HISTORY_STORAGE_KEY).toBe("ccb-navigation-history");
@@ -241,7 +418,8 @@ describe("storage", () => {
 		expect(loadRecents(storage)).toEqual(entries);
 	});
 
-	it("loads [] when nothing is stored", () => {
+	it("loads [] when nothing is stored", () =>
+	{
 		expect(loadRecents(new MemoryStorage())).toEqual([]);
 	});
 
@@ -250,40 +428,49 @@ describe("storage", () => {
 		["a non-array", '{"key":"session:a"}'],
 		["an unknown kind", '[{"key":"x:a","kind":"chat","href":"/x/a"}]'],
 		["an extra field", '[{"key":"session:a","kind":"session","href":"/session/a","extra":1}]'],
-	])("loads [] for %s", (_label, raw) => {
+	])("loads [] for %s", (_label, raw) =>
+	{
 		const storage = new MemoryStorage();
 		storage.setItem(RECENTS_HISTORY_STORAGE_KEY, raw);
 		expect(loadRecents(storage)).toEqual([]);
 	});
 
-	it("is a no-op when storage throws or is missing", () => {
+	it("is a no-op when storage throws or is missing", () =>
+	{
 		expect(loadRecents(new ThrowingStorage())).toEqual([]);
-		expect(() => {
+		expect(() =>
+		{
 			saveRecents([session("a")], new ThrowingStorage());
 		}).not.toThrow();
 		expect(loadRecents(null)).toEqual([]);
-		expect(() => {
+		expect(() =>
+		{
 			saveRecents([session("a")], null);
 		}).not.toThrow();
 	});
 });
 
-describe("resolved recent session identities", () => {
-	const alias: RecentEntry = {
+describe("resolved recent session identities", () =>
+{
+	const alias: RecentEntry =
+	{
 		key: "session:session_alice_100",
 		kind: "session",
 		href: "/session/session_alice_100",
 		title: "Alice visit",
 	};
-	const local: RecentEntry = {
+	const local: RecentEntry =
+	{
 		key: "session:local-alice",
 		kind: "session",
 		href: "/session/local-alice",
 		title: "Earlier visit",
 	};
 
-	it("resolves and deduplicates aliases in visit order while retaining unresolved navigation entries", () => {
-		const pending: RecentEntry = {
+	it("resolves and deduplicates aliases in visit order while retaining unresolved navigation entries", () =>
+	{
+		const pending: RecentEntry =
+		{
 			...alias,
 			key: "session:session_bob_100",
 			href: "/session/session_bob_100",
@@ -291,22 +478,49 @@ describe("resolved recent session identities", () => {
 		};
 		expect(
 			resolveRecentSessions([alias, pending, local], (id) => (id === "session_alice_100" ? "local-alice" : null)),
-		).toStrictEqual([{...alias, key: "session:local-alice"}, pending]);
-	});
-
-	it("keeps an older UUID title when the newest alias visit has no title", () => {
-		const {title: _title, ...untitledAlias} = alias;
-		expect(resolveRecentSessions([untitledAlias, local], () => "local-alice")).toStrictEqual([
-			{...untitledAlias, key: "session:local-alice", title: "Earlier visit"},
+		).toStrictEqual([
+			{
+				...alias,
+				key: "session:local-alice",
+			},
+			pending,
 		]);
 	});
 
-	it.each([null, "local-bob"])("keeps a known UUID owner when its saved alias resolves to %s", (owner) => {
-		expect(resolveRecentSessions([{...local, href: alias.href}], () => owner)).toStrictEqual([local]);
+	it("keeps an older UUID title when the newest alias visit has no title", () =>
+	{
+		const {title: _title, ...untitledAlias} = alias;
+		expect(resolveRecentSessions([untitledAlias, local], () => "local-alice")).toStrictEqual([
+			{
+				...untitledAlias,
+				key: "session:local-alice",
+				title: "Earlier visit",
+			},
+		]);
 	});
 
-	it("keeps a verified alias href for its known UUID owner", () => {
-		const verified = {...local, href: alias.href};
+	it.each([null, "local-bob"])("keeps a known UUID owner when its saved alias resolves to %s", (owner) =>
+	{
+		expect(
+			resolveRecentSessions(
+				[
+					{
+						...local,
+						href: alias.href,
+					},
+				],
+				() => owner,
+			),
+		).toStrictEqual([local]);
+	});
+
+	it("keeps a verified alias href for its known UUID owner", () =>
+	{
+		const verified =
+		{
+			...local,
+			href: alias.href,
+		};
 		expect(resolveRecentSessions([verified], () => "local-alice")).toStrictEqual([verified]);
 	});
 });

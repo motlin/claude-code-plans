@@ -9,13 +9,15 @@ import type {FileVersion} from "./conditional-get";
  */
 type SourceKind = "plan" | "memory" | "task" | "command";
 
-export interface SourceKindConfig {
+export interface SourceKindConfig
+{
 	root: string;
 	extension: ".md" | ".json";
 	language: "markdown" | "json";
 }
 
-export interface SourceFile {
+export interface SourceFile
+{
 	kind: SourceKind;
 	relativePath: string;
 	absolutePath: string;
@@ -29,13 +31,15 @@ export interface SourceFile {
  * Resolve a kind + relative path to an absolute path inside the kind's root.
  * Returns null when the relative path tries to escape the root or has the wrong extension.
  */
-export function resolveSourcePath(config: SourceKindConfig, relativePath: string): string | null {
+export function resolveSourcePath(config: SourceKindConfig, relativePath: string): string | null
+{
 	if (!relativePath || relativePath.length === 0) return null;
 	if (relativePath.startsWith("/") || relativePath.startsWith(sep)) return null;
 	if (!relativePath.endsWith(config.extension)) return null;
 
 	const segments = relativePath.split(/[/\\]/);
-	for (const seg of segments) {
+	for (const seg of segments)
+	{
 		if (seg === "" || seg === "." || seg === "..") return null;
 	}
 
@@ -50,11 +54,13 @@ export async function readSourceFile(
 	kind: SourceKind,
 	config: SourceKindConfig,
 	relativePath: string,
-): Promise<SourceFile | null> {
+): Promise<SourceFile | null>
+{
 	const absolutePath = resolveSourcePath(config, relativePath);
 	if (!absolutePath) return null;
 
-	try {
+	try
+	{
 		const [content, fileStat] = await Promise.all([readFile(absolutePath, "utf-8"), stat(absolutePath)]);
 		return {
 			kind,
@@ -62,15 +68,23 @@ export async function readSourceFile(
 			absolutePath,
 			content,
 			language: config.language,
-			version: {mtimeMs: fileStat.mtimeMs, size: fileStat.size},
+			version:
+			{
+				mtimeMs: fileStat.mtimeMs,
+				size: fileStat.size,
+			},
 		};
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-export function buildSourceConfig(kind: SourceKind, claudeHome: string): SourceKindConfig | null {
-	switch (kind) {
+export function buildSourceConfig(kind: SourceKind, claudeHome: string): SourceKindConfig | null
+{
+	switch (kind)
+	{
 		case "plan":
 			return {
 				root: join(claudeHome, "plans"),
@@ -96,6 +110,7 @@ export function buildSourceConfig(kind: SourceKind, claudeHome: string): SourceK
 	}
 }
 
-export function isValidSourceKind(value: string): value is SourceKind {
+export function isValidSourceKind(value: string): value is SourceKind
+{
 	return value === "plan" || value === "memory" || value === "task" || value === "command";
 }

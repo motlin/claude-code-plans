@@ -12,34 +12,56 @@ import {TaskMetadata} from "../components/task-metadata";
 import {TaskOwner} from "../components/task-owner";
 import {filterTasks} from "../lib/task-search";
 
-export const Route = createFileRoute("/project/$id_/tasks")({
-	component: ProjectTasksPage,
-	loader: async ({context: {queryClient}, params}) => {
-		const [detail] = await Promise.all([
-			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
-			queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
-			queryClient.query({...projectTasksQueryOptions(params.id), staleTime: "static"}),
-		]);
-		return detail;
+export const Route = createFileRoute("/project/$id_/tasks")(
+	{
+		component: ProjectTasksPage,
+		loader: async ({context: {queryClient}, params}) =>
+		{
+			const [detail] = await Promise.all([
+				queryClient.query(
+					{
+						...projectDetailQueryOptions(params.id),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...projectsQueryOptions(),
+						staleTime: "static",
+					},
+				),
+				queryClient.query(
+					{
+						...projectTasksQueryOptions(params.id),
+						staleTime: "static",
+					},
+				),
+			]);
+			return detail;
+		},
+		head: ({loaderData}) => (
+		{
+			meta: [pageTitle(loaderData ? `${loaderData.name} tasks` : "Project Not Found")],
+		}),
 	},
-	head: ({loaderData}) => ({
-		meta: [pageTitle(loaderData ? `${loaderData.name} tasks` : "Project Not Found")],
-	}),
-});
+);
 
-const statusBadgeClasses: Record<string, string> = {
+const statusBadgeClasses: Record<string, string> =
+{
 	pending: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
 	in_progress: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400",
 	completed: "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400",
 };
 
-const statusLabel: Record<string, string> = {
+const statusLabel: Record<string, string> =
+{
 	pending: "Pending",
 	in_progress: "In Progress",
 	completed: "Completed",
 };
 
-function ProjectTasksPage() {
+function ProjectTasksPage()
+{
 	const {id} = Route.useParams();
 	const {data: project} = useSuspenseQuery(projectDetailQueryOptions(id));
 	const {data: tasksData} = useSuspenseQuery(projectTasksQueryOptions(id));
@@ -47,7 +69,8 @@ function ProjectTasksPage() {
 	const {todos, todoCounts} = tasksData;
 	const visibleTodos = useMemo(() => filterTasks(todos, searchQuery), [todos, searchQuery]);
 
-	if (!project) {
+	if (!project)
+	{
 		return <NotFoundContent />;
 	}
 
@@ -69,7 +92,8 @@ function ProjectTasksPage() {
 			<input
 				type="search"
 				value={searchQuery}
-				onChange={(event) => {
+				onChange={(event) =>
+				{
 					setSearchQuery(event.target.value);
 				}}
 				placeholder="Search tasks by title, description, active form, or owner..."

@@ -4,7 +4,8 @@ import {useRef} from "react";
 import {STALE_COMPACT_COPY, staleCompactLine, staleCompactWhy} from "../lib/stale-compact";
 import {INFO_TIP_POPUP_CLASS} from "./ui/info-tip";
 
-export interface StaleCompactBandProps {
+export interface StaleCompactBandProps
+{
 	ageMinutes: number;
 	contextTokens: number;
 	tokensInLine: boolean;
@@ -32,7 +33,8 @@ export function StaleCompactBand({
 	compacting,
 	onCompact,
 	focusComposer,
-}: StaleCompactBandProps) {
+}: StaleCompactBandProps)
+{
 	const rootRef = useRef<HTMLDivElement>(null);
 	return (
 		<div
@@ -44,13 +46,25 @@ export function StaleCompactBand({
 			<span role="status" aria-live="polite" aria-atomic="true" className="min-w-0 text-secondary">
 				<Popover.Root>
 					<Popover.Trigger type="button" openOnHover delay={300} className={TRIGGER_CLASS}>
-						{staleCompactLine({tokensInLine, contextTokens})}
+						{staleCompactLine(
+							{
+								tokensInLine,
+								contextTokens,
+							},
+						)}
 					</Popover.Trigger>
 					<Popover.Portal>
 						<Popover.Positioner side="top" align="center" sideOffset={6} className="z-[120]">
 							<Popover.Popup aria-label={STALE_COMPACT_COPY.whyLabel} className={POPUP_CLASS}>
 								<div className="px-2 py-1.5 min-w-0 break-words">
-									<p className="text-footnote">{staleCompactWhy({ageMinutes, contextTokens})}</p>
+									<p className="text-footnote">
+										{staleCompactWhy(
+											{
+												ageMinutes,
+												contextTokens,
+											},
+										)}
+									</p>
 								</div>
 							</Popover.Popup>
 						</Popover.Positioner>
@@ -63,7 +77,8 @@ export function StaleCompactBand({
 				disabled={compacting}
 				aria-busy={compacting ? true : undefined}
 				className={`cds-reset text-link inline ${compacting ? "cursor-default opacity-disabled" : "cursor-pointer"} shrink-0`}
-				onClick={() => {
+				onClick={() =>
+				{
 					// Upstream moves focus first so it isn't stranded when the line unmounts.
 					if (rootRef.current?.contains(document.activeElement) === true) focusComposer();
 					onCompact();

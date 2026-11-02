@@ -1,6 +1,7 @@
 import type {ThemedToken} from "@shikijs/core";
 import {useEffect, useMemo, useSyncExternalStore} from "react";
-import {
+import
+{
 	getHighlighterSync,
 	getHighlighterVersion,
 	requestLanguage,
@@ -12,51 +13,84 @@ import {SHIKI_TOKENIZE_OPTIONS} from "../../lib/shiki-tokenize-options";
 
 /** Upstream's Code appearance sample: one line removed, one added, each with its changed word. */
 const PREVIEW_LINES = [
-	{number: 1, sign: " ", text: "function greet(name: string) {", word: ""},
-	{number: 2, sign: "-", text: '  return "Hello, " + name;', word: '" +'},
-	{number: 2, sign: "+", text: "  return `Hello, ${name}!`;", word: "${name}!"},
-	{number: 3, sign: " ", text: "}", word: ""},
+	{
+		number: 1,
+		sign: " ",
+		text: "function greet(name: string) {",
+		word: "",
+	},
+	{
+		number: 2,
+		sign: "-",
+		text: '  return "Hello, " + name;',
+		word: '" +',
+	},
+	{
+		number: 2,
+		sign: "+",
+		text: "  return `Hello, ${name}!`;",
+		word: "${name}!",
+	},
+	{
+		number: 3,
+		sign: " ",
+		text: "}",
+		word: "",
+	},
 ] as const;
 
 const PREVIEW_CODE = PREVIEW_LINES.map((line) => line.text).join("\n");
 
-const ROW_TINT = {
+const ROW_TINT =
+{
 	" ": "",
 	"-": "bg-[color-mix(in_srgb,var(--upstream-git-removed)_18%,transparent)]",
 	"+": "bg-[color-mix(in_srgb,var(--upstream-git-added)_18%,transparent)]",
 } as const;
 
-const NUMBER_TINT = {
+const NUMBER_TINT =
+{
 	" ": "opacity-50",
 	"-": "text-[var(--upstream-git-removed)]",
 	"+": "text-[var(--upstream-git-added)]",
 } as const;
 
-const WORD_TINT = {
+const WORD_TINT =
+{
 	" ": "",
 	"-": "bg-[color-mix(in_srgb,var(--upstream-git-removed)_30%,transparent)]",
 	"+": "bg-[color-mix(in_srgb,var(--upstream-git-added)_30%,transparent)]",
 } as const;
 
-interface Segment {
+interface Segment
+{
 	content: string;
 	color?: string | undefined;
 }
 
 /** Splits a line's tokens into the runs before, inside and after its changed word. */
-function splitAtWord(tokens: readonly Segment[], text: string, word: string): [Segment[], Segment[], Segment[]] {
+function splitAtWord(tokens: readonly Segment[], text: string, word: string): [Segment[], Segment[], Segment[]]
+{
 	const start = word === "" ? text.length : text.indexOf(word);
 	const end = start + word.length;
 	const before: Segment[] = [];
 	const inside: Segment[] = [];
 	const after: Segment[] = [];
 	let offset = 0;
-	for (const token of tokens) {
+	for (const token of tokens)
+	{
 		const clamp = (at: number) => Math.min(Math.max(at - offset, 0), token.content.length);
-		const push = (into: Segment[], from: number, to: number) => {
+		const push = (into: Segment[], from: number, to: number) =>
+		{
 			const content = token.content.slice(from, to);
-			if (content !== "") {
-				into.push({content, color: token.color});
+			if (content !== "")
+			{
+				into.push(
+					{
+						content,
+						color: token.color,
+					},
+				);
 			}
 		};
 		push(before, 0, clamp(start));
@@ -67,44 +101,67 @@ function splitAtWord(tokens: readonly Segment[], text: string, word: string): [S
 	return [before, inside, after];
 }
 
-function renderSegments(segments: readonly Segment[]) {
+function renderSegments(segments: readonly Segment[])
+{
 	return segments.map((segment, index) => (
-		<span key={index} style={{color: segment.color}}>
+		<span
+			key={index}
+			style={
+			{
+				color: segment.color,
+			}}
+		>
 			{segment.content}
 		</span>
 	));
 }
 
-interface HighlightedPreview {
+interface HighlightedPreview
+{
 	bg: string | undefined;
 	fg: string | undefined;
 	lines: ThemedToken[][] | null;
 }
 
-function useHighlightedPreview(theme: CodeThemeId): HighlightedPreview {
+function useHighlightedPreview(theme: CodeThemeId): HighlightedPreview
+{
 	const highlighterVersion = useSyncExternalStore(subscribeHighlighter, getHighlighterVersion, () => 0);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		void requestLanguage("typescript");
 		void requestTheme(theme);
 	}, [theme]);
 
-	return useMemo(() => {
+	return useMemo(() =>
+	{
 		void highlighterVersion;
 		const highlighter = getHighlighterSync();
 		if (
 			highlighter === null ||
 			!highlighter.getLoadedThemes().includes(theme) ||
 			!highlighter.getLoadedLanguages().includes("typescript")
-		) {
-			return {bg: undefined, fg: undefined, lines: null};
+		)
+		{
+			return {
+				bg: undefined,
+				fg: undefined,
+				lines: null,
+			};
 		}
-		const result = highlighter.codeToTokens(PREVIEW_CODE, {
-			...SHIKI_TOKENIZE_OPTIONS,
-			lang: "typescript",
-			theme,
-		});
-		return {bg: result.bg, fg: result.fg, lines: result.tokens};
+		const result = highlighter.codeToTokens(
+			PREVIEW_CODE,
+			{
+				...SHIKI_TOKENIZE_OPTIONS,
+				lang: "typescript",
+				theme,
+			},
+		);
+		return {
+			bg: result.bg,
+			fg: result.fg,
+			lines: result.tokens,
+		};
 	}, [theme, highlighterVersion]);
 }
 
@@ -120,7 +177,8 @@ export function CodeThemePreview({
 	theme: CodeThemeId;
 	label: string;
 	codeFontSize: CodeFontSize | null;
-}) {
+})
+{
 	const {bg, fg, lines} = useHighlightedPreview(theme);
 	const minHeight = `${4 * codeLeadingPx(codeFontSize ?? DEFAULT_CODE_FONT_SIZE) + 18}px`;
 
@@ -129,12 +187,23 @@ export function CodeThemePreview({
 			<figure
 				aria-label={label}
 				data-code-theme={theme}
-				style={{backgroundColor: bg, color: fg, minHeight}}
+				style={
+				{
+					backgroundColor: bg,
+					color: fg,
+					minHeight,
+				}}
 				className="m-0 py-2 font-mono text-code leading-[var(--code-leading,20px)]"
 			>
-				{PREVIEW_LINES.map((line, index) => {
+				{PREVIEW_LINES.map((line, index) =>
+				{
 					const [before, word, after] = splitAtWord(
-						lines?.[index] ?? [{content: line.text, color: undefined}],
+						lines?.[index] ?? [
+							{
+								content: line.text,
+								color: undefined,
+							},
+						],
 						line.text,
 						line.word,
 					);

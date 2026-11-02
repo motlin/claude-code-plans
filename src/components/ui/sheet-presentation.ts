@@ -6,7 +6,8 @@ export const SHEET_QUERY = "(pointer: coarse) and (max-width: 639.98px)";
 
 type Presentation = "auto" | "sheet" | "anchored";
 
-interface SheetDecisionInput {
+interface SheetDecisionInput
+{
 	presentation: Presentation;
 	coarseNarrow: boolean;
 	closable?: boolean;
@@ -22,7 +23,8 @@ export function decideSheet({
 	coarseNarrow,
 	closable = true,
 	structurallyAnchored = false,
-}: SheetDecisionInput): boolean {
+}: SheetDecisionInput): boolean
+{
 	if (structurallyAnchored) return false;
 	return presentation === "auto" ? coarseNarrow && closable : presentation === "sheet";
 }
@@ -30,12 +32,14 @@ export function decideSheet({
 /** Upstream cds `al`: the presentation an overlay subtree asks for; `"auto"` lets the width gate decide. */
 const PresentationContext = createContext<Presentation>("auto");
 
-interface SheetPresentationOptions {
+interface SheetPresentationOptions
+{
 	closable?: boolean;
 	structurallyAnchored?: boolean;
 }
 
-interface SheetLatch {
+interface SheetLatch
+{
 	open: boolean;
 	showing: boolean;
 	sheet: boolean;
@@ -49,24 +53,71 @@ interface SheetLatch {
 export function useSheetPresentation(
 	open: boolean,
 	{closable, structurallyAnchored}: SheetPresentationOptions = {},
-): {sheet: boolean; onOpenChangeComplete: (open: boolean) => void} {
+):
+{
+	sheet: boolean;
+	onOpenChangeComplete: (open: boolean) => void;
+}
+{
 	const presentation = useContext(PresentationContext);
 	const coarseNarrow = useMediaQuery(SHEET_QUERY);
-	const live = decideSheet({
-		presentation,
-		coarseNarrow,
-		...(closable === undefined ? {} : {closable}),
-		...(structurallyAnchored === undefined ? {} : {structurallyAnchored}),
-	});
-	const [latch, setLatch] = useState<SheetLatch>({open, showing: open, sheet: live});
+	const live = decideSheet(
+		{
+			presentation,
+			coarseNarrow,
+			...(closable === undefined
+				? {}
+				:
+					{
+						closable,
+					}),
+			...(structurallyAnchored === undefined
+				? {}
+				:
+					{
+						structurallyAnchored,
+					}),
+		},
+	);
+	const [latch, setLatch] = useState<SheetLatch>(
+		{
+			open,
+			showing: open,
+			sheet: live,
+		},
+	);
 	let current = latch;
-	if (latch.open !== open) {
-		current = open ? {open, showing: true, sheet: live} : {...latch, open};
+	if (latch.open !== open)
+	{
+		current = open
+			?
+				{
+					open,
+					showing: true,
+					sheet: live,
+				}
+			:
+				{
+					...latch,
+					open,
+				};
 		setLatch(current);
 	}
-	const onOpenChangeComplete = useCallback((completedOpen: boolean) => {
+	const onOpenChangeComplete = useCallback((completedOpen: boolean) =>
+	{
 		if (completedOpen) return;
-		setLatch((previous) => (previous.open ? previous : {...previous, showing: false}));
+		setLatch((previous) =>
+			previous.open
+				? previous
+				:
+					{
+						...previous,
+						showing: false,
+					},
+		);
 	}, []);
-	return {sheet: current.open || current.showing ? current.sheet : live, onOpenChangeComplete};
+	return {
+		sheet: current.open || current.showing ? current.sheet : live,
+		onOpenChangeComplete,
+	};
 }

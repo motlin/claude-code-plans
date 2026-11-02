@@ -11,14 +11,20 @@ import {isMotionReduced} from "./reduced-motion";
 
 const MORPH_NAME = "image-viewer-morph";
 
-interface TransitionDocument {
-	startViewTransition?: (update: () => void) => {finished: Promise<unknown>};
+interface TransitionDocument
+{
+	startViewTransition?: (update: () => void) =>
+	{
+		finished: Promise<unknown>;
+	};
 }
 
 /** Starts a view transition running `update`, or runs it at once when motion is unwanted or unsupported. */
-export function morph(update: () => void, onFinished?: () => void): boolean {
+export function morph(update: () => void, onFinished?: () => void): boolean
+{
 	const start = (document as TransitionDocument).startViewTransition;
-	if (start === undefined || isMotionReduced()) {
+	if (start === undefined || isMotionReduced())
+	{
 		update();
 		return false;
 	}
@@ -28,6 +34,7 @@ export function morph(update: () => void, onFinished?: () => void): boolean {
 }
 
 /** Names (or unnames) one end of the morph; the composer's image preview passes its own `chat-image-preview`. */
-export function setMorphName(element: HTMLElement | null, named: boolean, name: string = MORPH_NAME): void {
+export function setMorphName(element: HTMLElement | null, named: boolean, name: string = MORPH_NAME): void
+{
 	if (element !== null) element.style.viewTransitionName = named ? name : "";
 }

@@ -15,43 +15,110 @@ const runId = "wf_poems-1";
 const sessionDir = join(testDir, projectId, sessionId);
 const runDir = join(sessionDir, "subagents", "workflows", runId);
 
-function jsonl(records: unknown[]): string {
+function jsonl(records: unknown[]): string
+{
 	return records.map((record) => JSON.stringify(record)).join("\n") + "\n";
 }
 
 /** started ×3, result ×1, failed ×1: a resumed run whose third agent never finished. */
 const JOURNAL = jsonl([
-	{type: "launched"},
-	{type: "started", key: "k1", agentId: "a1", label: "poem-1", phase: "Draft"},
-	{type: "started", key: "k2", agentId: "a2", label: "poem-2", phase: "Draft"},
-	{type: "started", key: "k3", agentId: "a3", label: "poem-3", phase: "Draft"},
-	{type: "result", key: "k1", agentId: "a1", result: "roses"},
-	{type: "failed", key: "k2", agentId: "a2"},
+	{
+		type: "launched",
+	},
+	{
+		type: "started",
+		key: "k1",
+		agentId: "a1",
+		label: "poem-1",
+		phase: "Draft",
+	},
+	{
+		type: "started",
+		key: "k2",
+		agentId: "a2",
+		label: "poem-2",
+		phase: "Draft",
+	},
+	{
+		type: "started",
+		key: "k3",
+		agentId: "a3",
+		label: "poem-3",
+		phase: "Draft",
+	},
+	{
+		type: "result",
+		key: "k1",
+		agentId: "a1",
+		result: "roses",
+	},
+	{
+		type: "failed",
+		key: "k2",
+		agentId: "a2",
+	},
 ]);
 
-describe("workflowAgentStatuses", () => {
-	it("takes each agent's state from its last journal event, and marks agents absent from the run file superseded", () => {
+describe("workflowAgentStatuses", () =>
+{
+	it("takes each agent's state from its last journal event, and marks agents absent from the run file superseded", () =>
+	{
 		expect(
 			Object.fromEntries(
-				workflowAgentStatuses(JOURNAL, {
-					agentIds: new Set(["a1", "a2"]),
-					writtenAt: "2026-10-20T11:00:00.000Z",
-				}),
+				workflowAgentStatuses(
+					JOURNAL,
+					{
+						agentIds: new Set(["a1", "a2"]),
+						writtenAt: "2026-10-20T11:00:00.000Z",
+					},
+				),
 			),
-		).toStrictEqual({
-			a1: {state: "done", attempt: "final"},
-			a2: {state: "failed", attempt: "final"},
-			a3: {state: "ended", attempt: "superseded"},
-		});
+		).toStrictEqual(
+			{
+				a1:
+				{
+					state: "done",
+					attempt: "final",
+				},
+				a2:
+				{
+					state: "failed",
+					attempt: "final",
+				},
+				a3:
+				{
+					state: "ended",
+					attempt: "superseded",
+				},
+			},
+		);
 	});
 
-	it("keeps agents a resumed launch started after the previous launch's run file running and final", () => {
+	it("keeps agents a resumed launch started after the previous launch's run file running and final", () =>
+	{
 		const resumed =
 			JOURNAL +
 			jsonl([
-				{type: "started", key: "k3", agentId: "a4", label: "poem-3", phase: "Draft"},
-				{type: "started", key: "k4", agentId: "a5", label: "poem-4", phase: "Draft"},
-				{type: "result", key: "k4", agentId: "a5", result: "violets"},
+				{
+					type: "started",
+					key: "k3",
+					agentId: "a4",
+					label: "poem-3",
+					phase: "Draft",
+				},
+				{
+					type: "started",
+					key: "k4",
+					agentId: "a5",
+					label: "poem-4",
+					phase: "Draft",
+				},
+				{
+					type: "result",
+					key: "k4",
+					agentId: "a5",
+					result: "violets",
+				},
 			]);
 		const startedAt = new Map([
 			["a1", "2026-10-20T10:00:00.000Z"],
@@ -64,54 +131,133 @@ describe("workflowAgentStatuses", () => {
 			Object.fromEntries(
 				workflowAgentStatuses(
 					resumed,
-					{agentIds: new Set(["a1", "a2"]), writtenAt: "2026-10-20T11:00:00.000Z"},
+					{
+						agentIds: new Set(["a1", "a2"]),
+						writtenAt: "2026-10-20T11:00:00.000Z",
+					},
 					startedAt,
 				),
 			),
-		).toStrictEqual({
-			a1: {state: "done", attempt: "final"},
-			a2: {state: "failed", attempt: "final"},
-			a3: {state: "ended", attempt: "superseded"},
-			a4: {state: "running", attempt: "final"},
-			a5: {state: "done", attempt: "final"},
-		});
+		).toStrictEqual(
+			{
+				a1:
+				{
+					state: "done",
+					attempt: "final",
+				},
+				a2:
+				{
+					state: "failed",
+					attempt: "final",
+				},
+				a3:
+				{
+					state: "ended",
+					attempt: "superseded",
+				},
+				a4:
+				{
+					state: "running",
+					attempt: "final",
+				},
+				a5:
+				{
+					state: "done",
+					attempt: "final",
+				},
+			},
+		);
 	});
 
-	it("keeps every agent final and an unfinished one running while the run has no run file", () => {
-		expect(Object.fromEntries(workflowAgentStatuses(JOURNAL, null))).toStrictEqual({
-			a1: {state: "done", attempt: "final"},
-			a2: {state: "failed", attempt: "final"},
-			a3: {state: "running", attempt: "final"},
-		});
+	it("keeps every agent final and an unfinished one running while the run has no run file", () =>
+	{
+		expect(Object.fromEntries(workflowAgentStatuses(JOURNAL, null))).toStrictEqual(
+			{
+				a1:
+				{
+					state: "done",
+					attempt: "final",
+				},
+				a2:
+				{
+					state: "failed",
+					attempt: "final",
+				},
+				a3:
+				{
+					state: "running",
+					attempt: "final",
+				},
+			},
+		);
 	});
 
-	it("lets a later start after a failure (a retry) put the agent back to running", () => {
+	it("lets a later start after a failure (a retry) put the agent back to running", () =>
+	{
 		const retried = jsonl([
-			{type: "started", key: "k1", agentId: "a1"},
-			{type: "failed", key: "k1", agentId: "a1"},
-			{type: "started", key: "k1", agentId: "a1"},
+			{
+				type: "started",
+				key: "k1",
+				agentId: "a1",
+			},
+			{
+				type: "failed",
+				key: "k1",
+				agentId: "a1",
+			},
+			{
+				type: "started",
+				key: "k1",
+				agentId: "a1",
+			},
 		]);
-		expect(Object.fromEntries(workflowAgentStatuses(retried, null))).toStrictEqual({
-			a1: {state: "running", attempt: "final"},
-		});
+		expect(Object.fromEntries(workflowAgentStatuses(retried, null))).toStrictEqual(
+			{
+				a1:
+				{
+					state: "running",
+					attempt: "final",
+				},
+			},
+		);
 	});
 });
 
-describe("sessionSubagentsWithStops workflow attempts", () => {
+describe("sessionSubagentsWithStops workflow attempts", () =>
+{
 	let db: AppDb;
 
-	beforeEach(() => {
-		mkdirSync(runDir, {recursive: true});
-		mkdirSync(join(sessionDir, "workflows"), {recursive: true});
+	beforeEach(() =>
+	{
+		mkdirSync(
+			runDir,
+			{
+				recursive: true,
+			},
+		);
+		mkdirSync(
+			join(sessionDir, "workflows"),
+			{
+				recursive: true,
+			},
+		);
 		db = openTestDb();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		db.close();
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	function writeAgent(agentId: string, timestamp = "2026-10-20T10:00:00.000Z"): string {
+	function writeAgent(agentId: string, timestamp = "2026-10-20T10:00:00.000Z"): string
+	{
 		const path = join(runDir, `agent-${agentId}.jsonl`);
 		writeFileSync(
 			path,
@@ -123,7 +269,11 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 					agentId,
 					sessionId,
 					timestamp,
-					message: {role: "user", content: "Write a poem"},
+					message:
+					{
+						role: "user",
+						content: "Write a poem",
+					},
 				},
 			]),
 		);
@@ -131,47 +281,55 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 	}
 
 	/** Launch 1's run file: a1 and a2, written at 11:00. */
-	function writeRunFile(): void {
+	function writeRunFile(): void
+	{
 		writeFileSync(
 			join(sessionDir, "workflows", `${runId}.json`),
-			JSON.stringify({
-				runId,
-				timestamp: "2026-10-20T11:00:00.000Z",
-				status: "completed",
-				workflowProgress: [
-					{type: "workflow_phase", index: 1, title: "Draft"},
-					{
-						type: "workflow_agent",
-						index: 1,
-						label: "poem-1",
-						phaseIndex: 1,
-						phaseTitle: "Draft",
-						agentId: "a1",
-						state: "done",
-					},
-					{
-						type: "workflow_agent",
-						index: 2,
-						label: "poem-2",
-						phaseIndex: 1,
-						phaseTitle: "Draft",
-						agentId: "a2",
-						state: "error",
-					},
-					{
-						type: "workflow_agent",
-						index: 3,
-						label: "poem-4",
-						phaseIndex: 1,
-						phaseTitle: "Draft",
-						state: "start",
-					},
-				],
-			}),
+			JSON.stringify(
+				{
+					runId,
+					timestamp: "2026-10-20T11:00:00.000Z",
+					status: "completed",
+					workflowProgress: [
+						{
+							type: "workflow_phase",
+							index: 1,
+							title: "Draft",
+						},
+						{
+							type: "workflow_agent",
+							index: 1,
+							label: "poem-1",
+							phaseIndex: 1,
+							phaseTitle: "Draft",
+							agentId: "a1",
+							state: "done",
+						},
+						{
+							type: "workflow_agent",
+							index: 2,
+							label: "poem-2",
+							phaseIndex: 1,
+							phaseTitle: "Draft",
+							agentId: "a2",
+							state: "error",
+						},
+						{
+							type: "workflow_agent",
+							index: 3,
+							label: "poem-4",
+							phaseIndex: 1,
+							phaseTitle: "Draft",
+							state: "start",
+						},
+					],
+				},
+			),
 		);
 	}
 
-	it("adds each workflow agent's journal state and attempt, leaving other subagents untouched", async () => {
+	it("adds each workflow agent's journal state and attempt, leaving other subagents untouched", async () =>
+	{
 		writeFileSync(join(runDir, "journal.jsonl"), JOURNAL);
 		writeRunFile();
 		for (const agentId of ["a1", "a2", "a3"])
@@ -187,7 +345,11 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 					agentId: "plain",
 					sessionId,
 					timestamp: "2026-10-20T09:00:00.000Z",
-					message: {role: "user", content: "Explore"},
+					message:
+					{
+						role: "user",
+						content: "Explore",
+					},
 				},
 			]),
 		);
@@ -195,20 +357,51 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 
 		expect(
 			sessionSubagentsWithStops(db.index, sessionId)
-				.map(({id, workflowState, workflowAttempt}) => ({id, workflowState, workflowAttempt}))
+				.map(({id, workflowState, workflowAttempt}) => (
+				{
+					id,
+					workflowState,
+					workflowAttempt,
+				}))
 				.toSorted((a, b) => a.id.localeCompare(b.id)),
 		).toStrictEqual([
-			{id: "agent-a1", workflowState: "done", workflowAttempt: "final"},
-			{id: "agent-a2", workflowState: "failed", workflowAttempt: "final"},
-			{id: "agent-a3", workflowState: "ended", workflowAttempt: "superseded"},
-			{id: "agent-plain", workflowState: undefined, workflowAttempt: undefined},
+			{
+				id: "agent-a1",
+				workflowState: "done",
+				workflowAttempt: "final",
+			},
+			{
+				id: "agent-a2",
+				workflowState: "failed",
+				workflowAttempt: "final",
+			},
+			{
+				id: "agent-a3",
+				workflowState: "ended",
+				workflowAttempt: "superseded",
+			},
+			{
+				id: "agent-plain",
+				workflowState: undefined,
+				workflowAttempt: undefined,
+			},
 		]);
 	});
 
-	it("keeps a resumed launch's agents started after the previous run file running and final", async () => {
+	it("keeps a resumed launch's agents started after the previous run file running and final", async () =>
+	{
 		writeFileSync(
 			join(runDir, "journal.jsonl"),
-			JOURNAL + jsonl([{type: "started", key: "k3", agentId: "a4", label: "poem-3", phase: "Draft"}]),
+			JOURNAL +
+				jsonl([
+					{
+						type: "started",
+						key: "k3",
+						agentId: "a4",
+						label: "poem-3",
+						phase: "Draft",
+					},
+				]),
 		);
 		writeRunFile();
 		for (const agentId of ["a1", "a2", "a3"])
@@ -217,13 +410,34 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 
 		expect(
 			sessionSubagentsWithStops(db.index, sessionId)
-				.map(({id, workflowState, workflowAttempt}) => ({id, workflowState, workflowAttempt}))
+				.map(({id, workflowState, workflowAttempt}) => (
+				{
+					id,
+					workflowState,
+					workflowAttempt,
+				}))
 				.toSorted((a, b) => a.id.localeCompare(b.id)),
 		).toStrictEqual([
-			{id: "agent-a1", workflowState: "done", workflowAttempt: "final"},
-			{id: "agent-a2", workflowState: "failed", workflowAttempt: "final"},
-			{id: "agent-a3", workflowState: "ended", workflowAttempt: "superseded"},
-			{id: "agent-a4", workflowState: "running", workflowAttempt: "final"},
+			{
+				id: "agent-a1",
+				workflowState: "done",
+				workflowAttempt: "final",
+			},
+			{
+				id: "agent-a2",
+				workflowState: "failed",
+				workflowAttempt: "final",
+			},
+			{
+				id: "agent-a3",
+				workflowState: "ended",
+				workflowAttempt: "superseded",
+			},
+			{
+				id: "agent-a4",
+				workflowState: "running",
+				workflowAttempt: "final",
+			},
 		]);
 	});
 });

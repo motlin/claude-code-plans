@@ -9,7 +9,8 @@ import {assertNever} from "../lib/assert-never";
 import {pin, unpin, usePins} from "../lib/pin-store";
 import {relativeBucket} from "../lib/search-text";
 import {copySessionLink, sessionUrl} from "../lib/session-open-in";
-import {
+import
+{
 	getSessionMenuItems,
 	type SessionMenuCapability,
 	type SessionMenuItemId,
@@ -27,7 +28,8 @@ import {inlineEndSide} from "./ui/menu-anchor";
 import {Tooltip} from "./ui/tooltip";
 
 /** A session row the ⌥⏎ card can act on; `archived`/`bucket` are unknown for server-only hits. */
-export interface PaletteCardSession {
+export interface PaletteCardSession
+{
 	id: string;
 	title: string;
 	mtime: string;
@@ -37,12 +39,17 @@ export interface PaletteCardSession {
 
 type CardItemId = "open" | "open-new-tab" | SessionMenuItemId;
 
-interface CardItem {
+interface CardItem
+{
 	id: CardItemId;
 	label: string;
 }
 
-const SHIFT_COLLISION_AVOIDANCE = {side: "shift", align: "shift"} as const;
+const SHIFT_COLLISION_AVOIDANCE =
+{
+	side: "shift",
+	align: "shift",
+} as const;
 
 /** Upstream's `Ze`: digits are ignored this long after the item list changes, so a late item isn't mis-hit. */
 const ROW_ACTIONS_DIGIT_GUARD_MS = 300;
@@ -52,7 +59,8 @@ const DIGIT_KEY = /^(?:Digit|Numpad)?([1-9])$/;
 /** A held key whose auto-repeats the palette swallows after the card opens or closes on its first press. */
 export type RowActionsRepeatKey = "Enter" | "ArrowLeft";
 
-export interface RowActionsCloseOptions {
+export interface RowActionsCloseOptions
+{
 	refocus: boolean;
 	swallowRepeat?: RowActionsRepeatKey;
 }
@@ -78,7 +86,8 @@ export function PaletteRowActionsCard({
 	/** Opens upstream's Rename session dialog over the palette, which stays open. */
 	onRename: (session: PaletteCardSession) => void;
 	onClose: (options: RowActionsCloseOptions) => void;
-}) {
+})
+{
 	const queryClient = useQueryClient();
 	const unseen = useHasUnseenWork(session.id);
 	const pins = usePins();
@@ -101,11 +110,19 @@ export function PaletteRowActionsCard({
 			bridgeSessionId: null,
 		},
 		capabilities,
-		{surface: "palette-card"},
+		{
+			surface: "palette-card",
+		},
 	).flatMap((entry): CardItem[] => (entry.kind === "item" ? [entry] : []));
 	const items: CardItem[] = [
-		{id: "open", label: "Open"},
-		{id: "open-new-tab", label: "Open in new tab"},
+		{
+			id: "open",
+			label: "Open",
+		},
+		{
+			id: "open-new-tab",
+			label: "Open in new tab",
+		},
 		...sessionItems,
 	];
 
@@ -113,39 +130,54 @@ export function PaletteRowActionsCard({
 	const itemsKey = items.map((item) => item.id).join(" ");
 	const itemsKeyRef = useRef(itemsKey);
 	const itemsChangedAtRef = useRef(Number.NEGATIVE_INFINITY);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (itemsKeyRef.current === itemsKey) return;
 		itemsKeyRef.current = itemsKey;
 		itemsChangedAtRef.current = performance.now();
 	}, [itemsKey]);
 
 	// Upstream focuses the first item after two frames, once Base UI has settled the popup's own focus.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		let second = 0;
-		const first = requestAnimationFrame(() => {
-			second = requestAnimationFrame(() => {
-				document
-					.querySelector<HTMLElement>('[data-palette-row-actions] [role="menuitem"]')
-					?.focus({preventScroll: true});
+		const first = requestAnimationFrame(() =>
+		{
+			second = requestAnimationFrame(() =>
+			{
+				document.querySelector<HTMLElement>('[data-palette-row-actions] [role="menuitem"]')?.focus(
+					{
+						preventScroll: true,
+					},
+				);
 			});
 		});
-		return () => {
+		return () =>
+		{
 			cancelAnimationFrame(first);
 			cancelAnimationFrame(second);
 		};
 	}, []);
 
-	const run = (id: CardItemId): void => {
-		if (id === "open") {
+	const run = (id: CardItemId): void =>
+	{
+		if (id === "open")
+		{
 			onOpen(session.id);
 			return;
 		}
-		if (id === "rename") {
+		if (id === "rename")
+		{
 			onRename(session);
 			return;
 		}
-		onClose({refocus: true});
-		switch (id) {
+		onClose(
+			{
+				refocus: true,
+			},
+		);
+		switch (id)
+		{
 			case "open-new-tab":
 				window.open(sessionUrl(session.id), "_blank", "noopener,noreferrer");
 				return;
@@ -194,24 +226,50 @@ export function PaletteRowActionsCard({
 		}
 	};
 
-	function closeFromKey(event: KeyboardEvent<HTMLDivElement>, options: RowActionsCloseOptions) {
+	function closeFromKey(event: KeyboardEvent<HTMLDivElement>, options: RowActionsCloseOptions)
+	{
 		event.preventDefault();
 		event.stopPropagation();
 		onClose(options);
 	}
 
-	function handleKeyDownCapture(event: KeyboardEvent<HTMLDivElement>) {
+	function handleKeyDownCapture(event: KeyboardEvent<HTMLDivElement>)
+	{
 		const plain = !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
-		if (isAltEnter(event) || (event.key === "Enter" && event.repeat)) {
-			closeFromKey(event, {refocus: true, swallowRepeat: "Enter"});
-		} else if (event.key === "ArrowLeft" && plain && !event.repeat) {
-			closeFromKey(event, {refocus: true, swallowRepeat: "ArrowLeft"});
-		} else if (event.key === "Tab") {
-			closeFromKey(event, {refocus: true});
-		} else if (
+		if (isAltEnter(event) || (event.key === "Enter" && event.repeat))
+		{
+			closeFromKey(
+				event,
+				{
+					refocus: true,
+					swallowRepeat: "Enter",
+				},
+			);
+		}
+		else if (event.key === "ArrowLeft" && plain && !event.repeat)
+		{
+			closeFromKey(
+				event,
+				{
+					refocus: true,
+					swallowRepeat: "ArrowLeft",
+				},
+			);
+		}
+		else if (event.key === "Tab")
+		{
+			closeFromKey(
+				event,
+				{
+					refocus: true,
+				},
+			);
+		}
+		else if (
 			DIGIT_KEY.test(event.code) &&
 			performance.now() - itemsChangedAtRef.current < ROW_ACTIONS_DIGIT_GUARD_MS
-		) {
+		)
+		{
 			// The accelerator handler skips default-prevented keys.
 			event.preventDefault();
 		}
@@ -222,8 +280,14 @@ export function PaletteRowActionsCard({
 	return (
 		<Menu
 			open
-			onOpenChange={(open) => {
-				if (!open) onClose({refocus: true});
+			onOpenChange={(open) =>
+			{
+				if (!open)
+					onClose(
+						{
+							refocus: true,
+						},
+					);
 			}}
 		>
 			<MenuContent
@@ -235,11 +299,15 @@ export function PaletteRowActionsCard({
 				anchor={anchor}
 				finalFocus={false}
 				className="w-[280px] animate-palette-card-in motion-reduce:animate-none"
-				popupProps={{
+				popupProps={
+				{
 					"aria-label": "Actions",
 					"data-palette-row-actions": "",
 					// Upstream's cardSlide: the enter starts 12px back toward the palette (mirrored in RTL).
-					style: {"--cp-card-slide": inlineEndSide() === "left" ? "12px" : "-12px"},
+					style:
+					{
+						"--cp-card-slide": inlineEndSide() === "left" ? "12px" : "-12px",
+					},
 					onKeyDownCapture: handleKeyDownCapture,
 				}}
 				header={
@@ -264,7 +332,8 @@ export function PaletteRowActionsCard({
 						acceleratorVariant="keycap"
 						closeOnClick={false}
 						data-card-item={item.id}
-						onSelect={() => {
+						onSelect={() =>
+						{
 							run(item.id);
 						}}
 					>
@@ -277,7 +346,8 @@ export function PaletteRowActionsCard({
 }
 
 /** Upstream's hover "…" beside a session row; hidden from AT, which uses ⌥⏎ instead. */
-export function PaletteRowActionsButton({onOpen}: {onOpen: () => void}) {
+export function PaletteRowActionsButton({onOpen}: {onOpen: () => void})
+{
 	return (
 		<span
 			aria-hidden="true"
@@ -290,7 +360,8 @@ export function PaletteRowActionsButton({onOpen}: {onOpen: () => void}) {
 					aria-label="Actions"
 					tabIndex={-1}
 					data-palette-row-actions-button=""
-					onMouseDown={(event) => {
+					onMouseDown={(event) =>
+					{
 						event.preventDefault();
 					}}
 					onClick={onOpen}
@@ -316,7 +387,8 @@ export function PaletteRenameDialog({
 	onClose: () => void;
 	onClosed: () => void;
 	finalFocus: RefObject<HTMLElement | null>;
-}) {
+})
+{
 	const mutation = useRenameSessionMutation(session.id);
 	const toast = useToast();
 	return (
@@ -326,12 +398,22 @@ export function PaletteRenameDialog({
 			onClose={onClose}
 			onClosed={onClosed}
 			finalFocus={finalFocus}
-			onRename={(name) => {
-				mutation.mutate(name, {
-					onError: () => {
-						toast({kind: "error", message: RENAME_FAILED_MESSAGE});
+			onRename={(name) =>
+			{
+				mutation.mutate(
+					name,
+					{
+						onError: () =>
+						{
+							toast(
+								{
+									kind: "error",
+									message: RENAME_FAILED_MESSAGE,
+								},
+							);
+						},
 					},
-				});
+				);
 			}}
 		/>
 	);

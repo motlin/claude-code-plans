@@ -3,7 +3,8 @@ import {execFile} from "node:child_process";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {realpath, stat} from "node:fs/promises";
 import {isAbsolute, relative} from "node:path";
-import {
+import
+{
 	formatDiffScope,
 	parseDiffScope,
 	SessionDiffErrorResponseSchema,
@@ -18,7 +19,8 @@ import {
 import {getDb} from "./db";
 import * as schema from "./db/schema";
 import {parseJsonlRecord, type JsonlRecord} from "./schemas";
-import {
+import
+{
 	buildScopeDiff,
 	listScopes,
 	readDiffFileSides,
@@ -40,7 +42,8 @@ const INLINE_PATCH_LINE_LIMIT = 2000;
 
 const PRIVATE_NO_CACHE = "private, max-age=0, must-revalidate";
 
-export interface SessionDiffHandlerDependencies {
+export interface SessionDiffHandlerDependencies
+{
 	index: IndexDb;
 	resolveDirectory(cwd: string): Promise<string | null>;
 	listScopes(cwd: string): Promise<DiffScopes | NoGit>;
@@ -56,7 +59,8 @@ export interface SessionDiffHandlerDependencies {
 	): Promise<DiffFileSides | null>;
 }
 
-function defaultDependencies(): SessionDiffHandlerDependencies {
+function defaultDependencies(): SessionDiffHandlerDependencies
+{
 	return {
 		index: getDb().index,
 		resolveDirectory,
@@ -68,25 +72,43 @@ function defaultDependencies(): SessionDiffHandlerDependencies {
 	};
 }
 
-export async function resolveRepoRoot(directory: string): Promise<string | null> {
-	const toplevel = await new Promise<string | null>((resolve) => {
-		execFile("git", ["rev-parse", "--show-toplevel"], {cwd: directory, encoding: "utf8"}, (error, stdout) => {
-			resolve(error ? null : stdout.trim());
-		});
+export async function resolveRepoRoot(directory: string): Promise<string | null>
+{
+	const toplevel = await new Promise<string | null>((resolve) =>
+	{
+		execFile(
+			"git",
+			["rev-parse", "--show-toplevel"],
+			{
+				cwd: directory,
+				encoding: "utf8",
+			},
+			(error, stdout) =>
+			{
+				resolve(error ? null : stdout.trim());
+			},
+		);
 	});
 	if (toplevel === null || toplevel === "") return null;
-	try {
+	try
+	{
 		return await realpath(toplevel);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-async function resolveDirectory(cwd: string): Promise<string | null> {
-	try {
+async function resolveDirectory(cwd: string): Promise<string | null>
+{
+	try
+	{
 		const resolved = await realpath(cwd);
 		return (await stat(resolved)).isDirectory() ? resolved : null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -96,57 +118,114 @@ async function resolveDirectory(cwd: string): Promise<string | null> {
  * transcript runs at a time: the changes pane asks for the session diff and each long file's patch at once, and every
  * append refetches them.
  */
-export const readRecords: (filePath: string) => Promise<JsonlRecord[]> = coalescePerKey(async (filePath) => {
+export const readRecords: (filePath: string) => Promise<JsonlRecord[]> = coalescePerKey(async (filePath) =>
+{
 	const records: JsonlRecord[] = [];
-	try {
-		await forEachTranscriptLine(filePath, (line) => {
+	try
+	{
+		await forEachTranscriptLine(filePath, (line) =>
+		{
 			const record = parseJsonlRecord(line);
 			if (record !== null) records.push(record);
 		});
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 	return records;
 });
 
-export function jsonResponse(body: unknown, status = 200): Response {
-	return Response.json(body, {status, headers: {"Cache-Control": PRIVATE_NO_CACHE}});
+export function jsonResponse(body: unknown, status = 200): Response
+{
+	return Response.json(
+		body,
+		{
+			status,
+			headers:
+			{
+				"Cache-Control": PRIVATE_NO_CACHE,
+			},
+		},
+	);
 }
 
-export function errorResponse(error: string, status: number): Response {
-	return jsonResponse(SessionDiffErrorResponseSchema.parse({error}), status);
+export function errorResponse(error: string, status: number): Response
+{
+	return jsonResponse(
+		SessionDiffErrorResponseSchema.parse(
+			{
+				error,
+			},
+		),
+		status,
+	);
 }
 
-interface SessionLocation {
+interface SessionLocation
+{
 	cwd: string;
 	filePath: string;
 }
 
-export function findSession(index: IndexDb, sessionId: string): {location: SessionLocation} | {error: Response} {
+export function findSession(
+	index: IndexDb,
+	sessionId: string,
+):
+	|
+	  {
+			location: SessionLocation;
+	  }
+	|
+	  {
+			error: Response;
+	  }
+{
 	const session = index
-		.select({cwd: schema.sessions.cwd, filePath: schema.sessions.filePath})
+		.select(
+			{
+				cwd: schema.sessions.cwd,
+				filePath: schema.sessions.filePath,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
-	if (!session) return {error: errorResponse("Session not found", 404)};
-	if (!session.cwd) return {error: errorResponse("Session has no working directory", 422)};
-	return {location: {cwd: session.cwd, filePath: session.filePath}};
+	if (!session)
+		return {
+			error: errorResponse("Session not found", 404),
+		};
+	if (!session.cwd)
+		return {
+			error: errorResponse("Session has no working directory", 422),
+		};
+	return {
+		location:
+		{
+			cwd: session.cwd,
+			filePath: session.filePath,
+		},
+	};
 }
 
-function displayPath(path: string, cwd: string): string {
+function displayPath(path: string, cwd: string): string
+{
 	const relativePath = relative(cwd, path);
 	return relativePath === "" || relativePath.startsWith("..") || isAbsolute(relativePath) ? path : relativePath;
 }
 
-function countPatchLines(patch: string): number {
+function countPatchLines(patch: string): number
+{
 	if (patch === "") return 0;
 	return patch.endsWith("\n") ? patch.split("\n").length - 1 : patch.split("\n").length;
 }
 
-function toResponseFile(file: DiffFile, inline: boolean): SessionDiffFile {
+function toResponseFile(file: DiffFile, inline: boolean): SessionDiffFile
+{
 	const patchLineCount = countPatchLines(file.patch);
 	const patch = inline || patchLineCount <= INLINE_PATCH_LINE_LIMIT ? file.patch : null;
-	const base = {
+	const base =
+	{
 		path: file.path,
 		status: file.status,
 		additions: file.additions,
@@ -155,11 +234,18 @@ function toResponseFile(file: DiffFile, inline: boolean): SessionDiffFile {
 		patchLineCount,
 		patch,
 	};
-	return file.oldPath === undefined ? base : {...base, oldPath: file.oldPath};
+	return file.oldPath === undefined
+		? base
+		:
+			{
+				...base,
+				oldPath: file.oldPath,
+			};
 }
 
 type ResolvedDiff =
-	| {
+	|
+	  {
 			kind: "ok";
 			scope: string;
 			source: SessionDiffResponse["source"];
@@ -168,22 +254,46 @@ type ResolvedDiff =
 			/** The git scope served, when the diff came from the checkout. */
 			gitScope?: DiffScope;
 	  }
-	| {kind: "error"; response: Response};
+	|
+	  {
+			kind: "error";
+			response: Response;
+	  };
 
 async function sessionEditsDiff(
 	dependencies: SessionDiffHandlerDependencies,
 	location: SessionLocation,
-	scope: Extract<SessionDiffScope, {kind: "session" | "turn"}>,
-): Promise<ResolvedDiff> {
+	scope: Extract<
+		SessionDiffScope,
+		{
+			kind: "session" | "turn";
+		}
+	>,
+): Promise<ResolvedDiff>
+{
 	const records = await dependencies.readRecords(location.filePath);
 	let uuids: Set<string> | undefined;
-	if (scope.kind === "turn") {
+	if (scope.kind === "turn")
+	{
 		const found = findTurnUuids(records, scope.uuid);
-		if (found === null) return {kind: "error", response: errorResponse("Turn not found", 404)};
+		if (found === null)
+			return {
+				kind: "error",
+				response: errorResponse("Turn not found", 404),
+			};
 		uuids = found;
 	}
-	const edits = aggregateSessionEdits(records, uuids === undefined ? {} : {turnUuids: uuids});
-	const files = edits.map((file): DiffFile => ({
+	const edits = aggregateSessionEdits(
+		records,
+		uuids === undefined
+			? {}
+			:
+				{
+					turnUuids: uuids,
+				},
+	);
+	const files = edits.map((file): DiffFile => (
+	{
 		path: displayPath(file.path, location.cwd),
 		status: file.status,
 		additions: file.additions,
@@ -192,7 +302,13 @@ async function sessionEditsDiff(
 		patch: file.patch,
 	}));
 	const root = (await dependencies.resolveDirectory(location.cwd)) ?? location.cwd;
-	return {kind: "ok", scope: formatDiffScope(scope), source: "session-edits", root, files};
+	return {
+		kind: "ok",
+		scope: formatDiffScope(scope),
+		source: "session-edits",
+		root,
+		files,
+	};
 }
 
 async function resolveDiff(
@@ -200,25 +316,53 @@ async function resolveDiff(
 	location: SessionLocation,
 	scope: SessionDiffScope,
 	hideWhitespace: boolean,
-): Promise<ResolvedDiff> {
-	if (scope.kind === "session" || scope.kind === "turn") {
+): Promise<ResolvedDiff>
+{
+	if (scope.kind === "session" || scope.kind === "turn")
+	{
 		return sessionEditsDiff(dependencies, location, scope);
 	}
 
-	const fallback = async () => sessionEditsDiff(dependencies, location, {kind: "session"});
+	const fallback = async () =>
+		sessionEditsDiff(
+			dependencies,
+			location,
+			{
+				kind: "session",
+			},
+		);
 	const directory = await dependencies.resolveDirectory(location.cwd);
 	if (directory === null) return fallback();
 
 	let diff: ScopeDiff | NoGit;
-	try {
-		diff = await dependencies.buildScopeDiff(directory, scope, {hideWhitespace});
-	} catch (error) {
+	try
+	{
+		diff = await dependencies.buildScopeDiff(
+			directory,
+			scope,
+			{
+				hideWhitespace,
+			},
+		);
+	}
+	catch (error)
+	{
 		if (scope.kind !== "commit") throw error;
-		return {kind: "error", response: errorResponse("Commit not found", 404)};
+		return {
+			kind: "error",
+			response: errorResponse("Commit not found", 404),
+		};
 	}
 	if (diff.kind === "no-git") return fallback();
 	const root = (await dependencies.resolveRepoRoot(directory)) ?? directory;
-	return {kind: "ok", scope: formatDiffScope(scope), source: "git", root, files: diff.files, gitScope: scope};
+	return {
+		kind: "ok",
+		scope: formatDiffScope(scope),
+		source: "git",
+		root,
+		files: diff.files,
+		gitScope: scope,
+	};
 }
 
 /** `GET /api/sessions/$id/diff?scope=…&ws=0|1[&file=<path>[&lines=1]]` */
@@ -226,7 +370,8 @@ export async function handleSessionDiffRequest(
 	sessionId: string,
 	parameters: URLSearchParams,
 	dependencies?: SessionDiffHandlerDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	if (!sessionId) return errorResponse("A session id is required", 400);
 	const scope = parseDiffScope(parameters.get("scope") ?? "branch");
 	if (scope === null) return errorResponse("Invalid diff scope", 400);
@@ -241,43 +386,68 @@ export async function handleSessionDiffRequest(
 	if (diff.kind === "error") return diff.response;
 
 	const filePath = parameters.get("file");
-	if (filePath !== null) {
+	if (filePath !== null)
+	{
 		const file = diff.files.find((candidate) => candidate.path === filePath);
 		if (file === undefined) return errorResponse("File not in diff", 404);
-		if (parameters.get("lines") === "1") {
+		if (parameters.get("lines") === "1")
+		{
 			// Upstream desktop `getDiffFileContent(cwd, mergeBase, path, prevPath)`: session edits have no checkout to read.
 			if (diff.gitScope === undefined) return errorResponse("No checkout", 404);
 			const {path, oldPath, status} = file;
 			const sides = await resolvedDependencies.readDiffFileSides(
 				diff.root,
 				diff.gitScope,
-				oldPath === undefined ? {path, status} : {path, oldPath, status},
+				oldPath === undefined
+					?
+						{
+							path,
+							status,
+						}
+					:
+						{
+							path,
+							oldPath,
+							status,
+						},
 			);
 			if (sides === null) return errorResponse("File not in diff", 404);
-			return jsonResponse(SessionDiffFileLinesResponseSchema.parse({scope: diff.scope, ...sides}));
+			return jsonResponse(
+				SessionDiffFileLinesResponseSchema.parse(
+					{
+						scope: diff.scope,
+						...sides,
+					},
+				),
+			);
 		}
 		return jsonResponse(
-			SessionDiffFileResponseSchema.parse({
-				scope: diff.scope,
-				root: diff.root,
-				file: toResponseFile(file, true),
-			}),
+			SessionDiffFileResponseSchema.parse(
+				{
+					scope: diff.scope,
+					root: diff.root,
+					file: toResponseFile(file, true),
+				},
+			),
 		);
 	}
 
 	const files = diff.files.map((file) => toResponseFile(file, false));
 	return jsonResponse(
-		SessionDiffResponseSchema.parse({
-			scope: diff.scope,
-			source: diff.source,
-			root: diff.root,
-			stats: {
-				files: files.length,
-				additions: files.reduce((sum, file) => sum + file.additions, 0),
-				deletions: files.reduce((sum, file) => sum + file.deletions, 0),
+		SessionDiffResponseSchema.parse(
+			{
+				scope: diff.scope,
+				source: diff.source,
+				root: diff.root,
+				stats:
+				{
+					files: files.length,
+					additions: files.reduce((sum, file) => sum + file.additions, 0),
+					deletions: files.reduce((sum, file) => sum + file.deletions, 0),
+				},
+				files,
 			},
-			files,
-		}),
+		),
 	);
 }
 
@@ -285,7 +455,8 @@ export async function handleSessionDiffRequest(
 export async function handleSessionDiffScopesRequest(
 	sessionId: string,
 	dependencies?: SessionDiffHandlerDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	if (!sessionId) return errorResponse("A session id is required", 400);
 	const resolvedDependencies = dependencies ?? defaultDependencies();
 	const session = findSession(resolvedDependencies.index, sessionId);
@@ -293,8 +464,21 @@ export async function handleSessionDiffScopesRequest(
 
 	const directory = await resolvedDependencies.resolveDirectory(session.location.cwd);
 	const scopes: DiffScopes | NoGit =
-		directory === null ? {kind: "no-git"} : await resolvedDependencies.listScopes(directory);
+		directory === null
+			?
+				{
+					kind: "no-git",
+				}
+			: await resolvedDependencies.listScopes(directory);
 	return jsonResponse(
-		SessionDiffScopesResponseSchema.parse(scopes.kind === "no-git" ? scopes : {...scopes, kind: "git"}),
+		SessionDiffScopesResponseSchema.parse(
+			scopes.kind === "no-git"
+				? scopes
+				:
+					{
+						...scopes,
+						kind: "git",
+					},
+		),
 	);
 }

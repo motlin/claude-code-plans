@@ -13,23 +13,46 @@ const MIN_TERM_CHARS = 2;
 /** Upstream caps the query it sends at 200 characters. */
 const MAX_TERM_CODE_POINTS = 200;
 
-export function searchTermReady(q: string): boolean {
+export function searchTermReady(q: string): boolean
+{
 	return (q.match(/[\p{L}\p{N}]/gu)?.length ?? 0) >= MIN_TERM_CHARS;
 }
 
 export type UnifiedHitKind = "Skill" | "Custom command" | "Connector" | "Plugin";
 
 /** Where a hit leads: a Customize detail, claude.ai, or nowhere (commands and addable plugins). */
-export type UnifiedHitOpen = CustomizeTarget | {kind: "external"; href: string} | null;
+export type UnifiedHitOpen =
+	| CustomizeTarget
+	|
+	  {
+			kind: "external";
+			href: string;
+	  }
+	| null;
 
 /** The row's trailing controls: the Yours kebabs, or "Add" for catalog plugins. */
 export type UnifiedHitActions =
-	| {kind: "skill"; skill: SkillSummary}
-	| {kind: "plugin"; pluginId: string; name: string; installPath: string}
-	| {kind: "add"; pluginId: string}
+	|
+	  {
+			kind: "skill";
+			skill: SkillSummary;
+	  }
+	|
+	  {
+			kind: "plugin";
+			pluginId: string;
+			name: string;
+			installPath: string;
+	  }
+	|
+	  {
+			kind: "add";
+			pluginId: string;
+	  }
 	| null;
 
-export interface UnifiedHit {
+export interface UnifiedHit
+{
 	key: string;
 	kind: UnifiedHitKind;
 	name: string;
@@ -42,7 +65,8 @@ export interface UnifiedHit {
 	actions: UnifiedHitActions;
 }
 
-export interface UnifiedSearchSources {
+export interface UnifiedSearchSources
+{
 	skills: readonly SkillSummary[];
 	commands: readonly UserCommandGroupData[];
 	servers: readonly McpServerSummary[];
@@ -53,20 +77,32 @@ export interface UnifiedSearchSources {
 	marketplaceRepos?: ReadonlyMap<string, string>;
 }
 
-export interface UnifiedSearch {
+export interface UnifiedSearch
+{
 	yours: UnifiedHit[];
 	more: UnifiedHit[];
 }
 
-function matchRange(name: string, term: string): readonly [number, number] | null {
+function matchRange(name: string, term: string): readonly [number, number] | null
+{
 	const start = name.toLowerCase().indexOf(term);
 	return start === -1 ? null : [start, start + term.length];
 }
 
-const byName = (a: {name: string}, b: {name: string}) => a.name.localeCompare(b.name);
+const byName = (
+	a:
+	{
+		name: string;
+	},
+	b:
+	{
+		name: string;
+	},
+) => a.name.localeCompare(b.name);
 
 /** Plugin skill ids are `plugin:<name>@<marketplace>:<skill>`. */
-function skillMarketplace(skill: SkillSummary): string | null {
+function skillMarketplace(skill: SkillSummary): string | null
+{
 	if (skill.source !== "plugin") return null;
 	const pluginId = skill.id.slice("plugin:".length, skill.id.lastIndexOf(":"));
 	return pluginId.slice(pluginId.lastIndexOf("@") + 1);
@@ -77,14 +113,20 @@ function skillMarketplace(skill: SkillSummary): string | null {
  * in "Yours" (skills, custom commands, connectors, then installed plugins),
  * and catalog plugins you could add go in "More you can add".
  */
-export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): UnifiedSearch {
+export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): UnifiedSearch
+{
 	const term = Array.from(q.trim()).slice(0, MAX_TERM_CODE_POINTS).join("").toLowerCase();
-	if (!searchTermReady(term)) return {yours: [], more: []};
+	if (!searchTermReady(term))
+		return {
+			yours: [],
+			more: [],
+		};
 
 	const skills = sources.skills
 		.filter((skill) => matchesQuery(term, skill.name, skill.description, skill.sourceLabel))
 		.toSorted(byName)
-		.map((skill): UnifiedHit => {
+		.map((skill): UnifiedHit =>
+		{
 			const marketplace = skillMarketplace(skill);
 			return {
 				key: `skill:${skill.id}`,
@@ -94,12 +136,22 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 				description: skill.description,
 				verified: marketplace !== null && isOfficialMarketplace(marketplace),
 				match: matchRange(skill.name, term),
-				open: {kind: "skill", id: skill.id, tab: "overview"},
-				actions: {kind: "skill", skill},
+				open:
+				{
+					kind: "skill",
+					id: skill.id,
+					tab: "overview",
+				},
+				actions:
+				{
+					kind: "skill",
+					skill,
+				},
 			};
 		});
 
-	const commands = commandRows(sources.commands, "all", term).map((row): UnifiedHit => ({
+	const commands = commandRows(sources.commands, "all", term).map((row): UnifiedHit => (
+	{
 		key: `command:${row.key}`,
 		kind: "Custom command",
 		name: row.invocation,
@@ -107,14 +159,20 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 		description: row.description,
 		verified: false,
 		match: matchRange(row.invocation, term),
-		open: {kind: "command", source: row.source, filename: row.filename},
+		open:
+		{
+			kind: "command",
+			source: row.source,
+			filename: row.filename,
+		},
 		actions: null,
 	}));
 
 	const servers = sources.servers
 		.filter((server) => matchesQuery(term, server.name, server.urlOrCommand))
 		.toSorted(byName)
-		.map((server): UnifiedHit => ({
+		.map((server): UnifiedHit => (
+		{
 			key: `server:${server.id}`,
 			kind: "Connector",
 			name: server.name,
@@ -122,14 +180,19 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 			description: server.urlOrCommand,
 			verified: false,
 			match: matchRange(server.name, term),
-			open: {kind: "connector", slug: toConnectorSlug(server.id)},
+			open:
+			{
+				kind: "connector",
+				slug: toConnectorSlug(server.id),
+			},
 			actions: null,
 		}));
 
 	const claudeAi = sources.claudeAi
 		.filter((connector) => matchesQuery(term, connector.name))
 		.toSorted(byName)
-		.map((connector): UnifiedHit => ({
+		.map((connector): UnifiedHit => (
+		{
 			key: `claude-ai:${connector.key}`,
 			kind: "Connector",
 			name: connector.name,
@@ -137,14 +200,19 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 			description: "",
 			verified: false,
 			match: matchRange(connector.name, term),
-			open: {kind: "external", href: CLAUDE_AI_CONNECTORS_URL},
+			open:
+			{
+				kind: "external",
+				href: CLAUDE_AI_CONNECTORS_URL,
+			},
 			actions: null,
 		}));
 
 	const plugins = sources.plugins
 		.filter((plugin) => matchesQuery(term, plugin.name, plugin.description))
 		.toSorted(byName)
-		.map((plugin): UnifiedHit => ({
+		.map((plugin): UnifiedHit => (
+		{
 			key: `plugin:${plugin.id}`,
 			kind: "Plugin",
 			name: plugin.name,
@@ -152,11 +220,23 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 			description: plugin.description,
 			verified: isOfficialMarketplace(plugin.marketplace),
 			match: matchRange(plugin.name, term),
-			open: {kind: "plugin", id: plugin.id, tab: "overview"},
-			actions: {kind: "plugin", pluginId: plugin.id, name: plugin.name, installPath: plugin.installPath},
+			open:
+			{
+				kind: "plugin",
+				id: plugin.id,
+				tab: "overview",
+			},
+			actions:
+			{
+				kind: "plugin",
+				pluginId: plugin.id,
+				name: plugin.name,
+				installPath: plugin.installPath,
+			},
 		}));
 
-	const more = addableMatches(sources.catalog, term).map((plugin): UnifiedHit => ({
+	const more = addableMatches(sources.catalog, term).map((plugin): UnifiedHit => (
+	{
 		key: `catalog:${plugin.id}`,
 		kind: "Plugin",
 		name: plugin.title,
@@ -165,8 +245,15 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 		verified: isOfficialMarketplace(plugin.marketplace),
 		match: matchRange(plugin.title, term),
 		open: null,
-		actions: {kind: "add", pluginId: plugin.id},
+		actions:
+		{
+			kind: "add",
+			pluginId: plugin.id,
+		},
 	}));
 
-	return {yours: [...skills, ...commands, ...servers, ...claudeAi, ...plugins], more};
+	return {
+		yours: [...skills, ...commands, ...servers, ...claudeAi, ...plugins],
+		more,
+	};
 }

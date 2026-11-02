@@ -2,7 +2,8 @@ import {settingsTabLabels} from "./schema-choices";
 import {type SettingsTab, SettingsTabSchema} from "./settings-hash";
 import {type SettingsNavMemberKey, type SettingsSearchName, settingsSearchNames} from "./settings-nav";
 
-export interface SettingsIndexEntry {
+export interface SettingsIndexEntry
+{
 	tab: SettingsTab;
 	rowSlug: string;
 	title: string;
@@ -22,52 +23,144 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 		title: "Theme",
 		searchPhrases: ["dark mode", "light mode", "dark theme", "light theme"],
 	},
-	{tab: "general", rowSlug: "interface-font", title: "Interface font"},
+	{
+		tab: "general",
+		rowSlug: "interface-font",
+		title: "Interface font",
+	},
 	{
 		tab: "general",
 		rowSlug: "transcript-text-size",
 		title: "Transcript text size",
 		searchPhrases: ["font size"],
 	},
-	{tab: "general", rowSlug: "transcript-width", title: "Transcript width"},
-	{tab: "general", rowSlug: "motion", title: "Motion"},
-	{tab: "general", rowSlug: "hide-chrome", title: "Hide chrome"},
-	{tab: "general", rowSlug: "terminal-colors", title: "Terminal colors"},
-	{tab: "general", rowSlug: "code-font", title: "Code font"},
+	{
+		tab: "general",
+		rowSlug: "transcript-width",
+		title: "Transcript width",
+	},
+	{
+		tab: "general",
+		rowSlug: "motion",
+		title: "Motion",
+	},
+	{
+		tab: "general",
+		rowSlug: "hide-chrome",
+		title: "Hide chrome",
+	},
+	{
+		tab: "general",
+		rowSlug: "terminal-colors",
+		title: "Terminal colors",
+	},
+	{
+		tab: "general",
+		rowSlug: "code-font",
+		title: "Code font",
+	},
 	{
 		tab: "general",
 		rowSlug: "code-font-size",
 		title: "Code font size",
 		searchPhrases: ["editor font size", "terminal font size"],
 	},
-	{tab: "general", rowSlug: "reset-settings", title: "Reset settings"},
-	{tab: "notifications", rowSlug: "response-completions", title: "Response completions"},
-	{tab: "notifications", rowSlug: "code-permission-requests", title: "Code permission requests"},
-	{tab: "notifications", rowSlug: "notification-sound", title: "Notification sound"},
-	{tab: "claude-code", rowSlug: "default-transcript-view", title: "Default transcript view"},
+	{
+		tab: "general",
+		rowSlug: "reset-settings",
+		title: "Reset settings",
+	},
+	{
+		tab: "notifications",
+		rowSlug: "response-completions",
+		title: "Response completions",
+	},
+	{
+		tab: "notifications",
+		rowSlug: "code-permission-requests",
+		title: "Code permission requests",
+	},
+	{
+		tab: "notifications",
+		rowSlug: "notification-sound",
+		title: "Notification sound",
+	},
+	{
+		tab: "claude-code",
+		rowSlug: "default-transcript-view",
+		title: "Default transcript view",
+	},
 	{
 		tab: "claude-code",
 		rowSlug: "connect-new-sessions-to-remote-control",
 		title: "Connect new sessions to Remote Control",
 	},
-	{tab: "claude-code", rowSlug: "allow-bypass-permissions-mode", title: "Allow bypass permissions mode"},
-	{tab: "claude-code", rowSlug: "dynamic-workflows", title: "Dynamic workflows"},
-	{tab: "claude-code", rowSlug: "archive-inactive-sessions", title: "Archive inactive sessions"},
+	{
+		tab: "claude-code",
+		rowSlug: "allow-bypass-permissions-mode",
+		title: "Allow bypass permissions mode",
+	},
+	{
+		tab: "claude-code",
+		rowSlug: "dynamic-workflows",
+		title: "Dynamic workflows",
+	},
+	{
+		tab: "claude-code",
+		rowSlug: "archive-inactive-sessions",
+		title: "Archive inactive sessions",
+	},
 	{
 		tab: "claude-code",
 		rowSlug: "output-style",
 		title: "Output style",
 		searchPhrases: ["concise", "terse", "brief", "response style"],
 	},
-	{tab: "claude-code", rowSlug: "local-sandbox", title: "Local sandbox"},
-	{tab: "transcript", rowSlug: "thinking", title: "Thinking"},
-	{tab: "transcript", rowSlug: "tools", title: "Tools"},
-	{tab: "transcript", rowSlug: "tool-duration", title: "Tool duration"},
-	{tab: "transcript", rowSlug: "debug", title: "Debug"},
-	{tab: "transcript", rowSlug: "passed-hooks", title: "Passed hooks"},
-	{tab: "transcript", rowSlug: "hook-warnings", title: "Hook warnings"},
-	{tab: "transcript", rowSlug: "hook-errors", title: "Hook errors"},
-	{tab: "transcript", rowSlug: "system-banners", title: "System banners"},
+	{
+		tab: "claude-code",
+		rowSlug: "local-sandbox",
+		title: "Local sandbox",
+	},
+	{
+		tab: "transcript",
+		rowSlug: "thinking",
+		title: "Thinking",
+	},
+	{
+		tab: "transcript",
+		rowSlug: "tools",
+		title: "Tools",
+	},
+	{
+		tab: "transcript",
+		rowSlug: "tool-duration",
+		title: "Tool duration",
+	},
+	{
+		tab: "transcript",
+		rowSlug: "debug",
+		title: "Debug",
+	},
+	{
+		tab: "transcript",
+		rowSlug: "passed-hooks",
+		title: "Passed hooks",
+	},
+	{
+		tab: "transcript",
+		rowSlug: "hook-warnings",
+		title: "Hook warnings",
+	},
+	{
+		tab: "transcript",
+		rowSlug: "hook-errors",
+		title: "Hook errors",
+	},
+	{
+		tab: "transcript",
+		rowSlug: "system-banners",
+		title: "System banners",
+	},
 	{
 		tab: "transcript",
 		rowSlug: "show-compact-summaries-inline",
@@ -78,10 +171,26 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 		rowSlug: "show-transcript-only-system-records",
 		title: "Show transcript-only system records",
 	},
-	{tab: "sessions", rowSlug: "active-session-order", title: "Active session order"},
-	{tab: "sessions", rowSlug: "sessions-page-grouping", title: "Sessions page grouping"},
-	{tab: "sessions", rowSlug: "active-timeout-seconds", title: "Active timeout (seconds)"},
-	{tab: "sessions", rowSlug: "show-ai-titles", title: "Show AI titles"},
+	{
+		tab: "sessions",
+		rowSlug: "active-session-order",
+		title: "Active session order",
+	},
+	{
+		tab: "sessions",
+		rowSlug: "sessions-page-grouping",
+		title: "Sessions page grouping",
+	},
+	{
+		tab: "sessions",
+		rowSlug: "active-timeout-seconds",
+		title: "Active timeout (seconds)",
+	},
+	{
+		tab: "sessions",
+		rowSlug: "show-ai-titles",
+		title: "Show AI titles",
+	},
 	{
 		tab: "sessions",
 		rowSlug: "show-working-copy-changes-strip",
@@ -92,15 +201,51 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 		rowSlug: "offer-to-review-uncommitted-changes",
 		title: "Offer to review uncommitted changes",
 	},
-	{tab: "sessions", rowSlug: "default-view", title: "Default view"},
-	{tab: "application", rowSlug: "terminal-host", title: "Terminal host"},
-	{tab: "application", rowSlug: "live-terminal-input", title: "Live terminal input"},
-	{tab: "application", rowSlug: "shell-tabs", title: "Shell tabs"},
-	{tab: "ai-features", rowSlug: "summary-button", title: "Summary button"},
-	{tab: "ai-features", rowSlug: "working-copy-review", title: "Working-copy review"},
-	{tab: "ai-features", rowSlug: "review-behavior", title: "Review behavior"},
-	{tab: "ai-features", rowSlug: "session-context-brief", title: "Session context brief"},
-	{tab: "ai-features", rowSlug: "read-only-mcp-server", title: "Read-only MCP server"},
+	{
+		tab: "sessions",
+		rowSlug: "default-view",
+		title: "Default view",
+	},
+	{
+		tab: "application",
+		rowSlug: "terminal-host",
+		title: "Terminal host",
+	},
+	{
+		tab: "application",
+		rowSlug: "live-terminal-input",
+		title: "Live terminal input",
+	},
+	{
+		tab: "application",
+		rowSlug: "shell-tabs",
+		title: "Shell tabs",
+	},
+	{
+		tab: "ai-features",
+		rowSlug: "summary-button",
+		title: "Summary button",
+	},
+	{
+		tab: "ai-features",
+		rowSlug: "working-copy-review",
+		title: "Working-copy review",
+	},
+	{
+		tab: "ai-features",
+		rowSlug: "review-behavior",
+		title: "Review behavior",
+	},
+	{
+		tab: "ai-features",
+		rowSlug: "session-context-brief",
+		title: "Session context brief",
+	},
+	{
+		tab: "ai-features",
+		rowSlug: "read-only-mcp-server",
+		title: "Read-only MCP server",
+	},
 	{
 		tab: "claude-config",
 		rowSlug: "claude-code-settings-files",
@@ -112,7 +257,8 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
  * Extra words that find a whole section (upstream's per-section keyword map). A keyword-only hit
  * scores 10, after every name and row hit.
  */
-export const SETTINGS_SECTION_KEYWORDS: Partial<Record<SettingsTab, readonly string[]>> = {
+export const SETTINGS_SECTION_KEYWORDS: Partial<Record<SettingsTab, readonly string[]>> =
+{
 	usage: ["overage", "extra usage", "spend limit", "usage credits"],
 	"claude-config": ["settings.json"],
 	application: ["herdr", "tmux"],
@@ -122,7 +268,8 @@ export const SETTINGS_SECTION_KEYWORDS: Partial<Record<SettingsTab, readonly str
  * Upstream's query normaliser: NFKD, lowercase, accents stripped, smart quotes folded, and runs of
  * whitespace, hyphens and underscores collapsed to one space.
  */
-export function normalizeSettingsQuery(query: string): string {
+export function normalizeSettingsQuery(query: string): string
+{
 	return query
 		.normalize("NFKD")
 		.toLowerCase()
@@ -138,7 +285,8 @@ export function normalizeSettingsQuery(query: string): string {
  * query word starts some word-suffix of the label (order-free), 3 every query word is a substring,
  * -1 no match.
  */
-export function rankSettingsLabel(query: string, label: string): number {
+export function rankSettingsLabel(query: string, label: string): number
+{
 	const needle = normalizeSettingsQuery(query);
 	if (needle === "") return -1;
 	const haystack = normalizeSettingsQuery(label);
@@ -157,22 +305,26 @@ export function rankSettingsLabel(query: string, label: string): number {
 const PHRASE_RANK = 4;
 
 /** A row's rank: its title rank, else 4 when a search phrase matches at rank <= 2, else -1. */
-function rankEntry(query: string, entry: SettingsIndexEntry): number {
+function rankEntry(query: string, entry: SettingsIndexEntry): number
+{
 	const rank = rankSettingsLabel(query, entry.title);
 	if (rank !== -1) return rank;
-	const phraseHit = (entry.searchPhrases ?? []).some((phrase) => {
+	const phraseHit = (entry.searchPhrases ?? []).some((phrase) =>
+	{
 		const phraseRank = rankSettingsLabel(query, phrase);
 		return phraseRank !== -1 && phraseRank <= 2;
 	});
 	return phraseHit ? PHRASE_RANK : -1;
 }
 
-export interface RankedSettingsRow {
+export interface RankedSettingsRow
+{
 	entry: SettingsIndexEntry;
 	rank: number;
 }
 
-export interface RankedSettingsSection {
+export interface RankedSettingsSection
+{
 	tab: SettingsTab;
 	/** Name rank (0-3), else 5 + best row rank, else 10 for a keyword-only hit. */
 	score: number;
@@ -196,15 +348,31 @@ type SettingsSearchNames = Partial<Record<SettingsNavMemberKey, SettingsSearchNa
 const NAV_SEARCH_NAMES: SettingsSearchNames = settingsSearchNames();
 
 /** The section's name in search results: its nav row's new name (Appearance, Code), else its tab label. */
-export function settingsSectionName(tab: SettingsTab): string {
+export function settingsSectionName(tab: SettingsTab): string
+{
 	return NAV_SEARCH_NAMES[tab]?.name ?? settingsTabLabels[tab];
 }
 
 /** The first `alsoFoundBy` name that matches, with its rank. */
-function matchAlias(query: string, aliases: readonly string[]): {alias: string; rank: number} | undefined {
-	for (const alias of aliases) {
+function matchAlias(
+	query: string,
+	aliases: readonly string[],
+):
+	|
+	  {
+			alias: string;
+			rank: number;
+	  }
+	| undefined
+{
+	for (const alias of aliases)
+	{
 		const rank = rankSettingsLabel(query, alias);
-		if (rank !== -1) return {alias, rank};
+		if (rank !== -1)
+			return {
+				alias,
+				rank,
+			};
 	}
 	return undefined;
 }
@@ -216,12 +384,14 @@ function matchAlias(query: string, aliases: readonly string[]): {alias: string; 
 export function rankSettingsSections(
 	query: string,
 	searchNames: SettingsSearchNames = NAV_SEARCH_NAMES,
-): RankedSettingsSection[] {
+): RankedSettingsSection[]
+{
 	const normalized = normalizeSettingsQuery(query);
 	if (normalized === "") return [];
 	const aliasesApply = normalized.length >= MIN_ALIAS_QUERY_LENGTH;
 	return SettingsTabSchema.options
-		.flatMap((tab): RankedSettingsSection[] => {
+		.flatMap((tab): RankedSettingsSection[] =>
+		{
 			const searchName = searchNames[tab];
 			const name = searchName?.name ?? settingsTabLabels[tab];
 			const rows = SETTINGS_INDEX.filter(
@@ -229,25 +399,61 @@ export function rankSettingsSections(
 					entry.tab === tab &&
 					(searchName?.name === undefined || entry.title.toLowerCase() !== name.toLowerCase()),
 			)
-				.map((entry) => ({entry, rank: rankEntry(query, entry)}))
+				.map((entry) => (
+				{
+					entry,
+					rank: rankEntry(query, entry),
+				}))
 				.filter((row) => row.rank !== -1)
 				.toSorted((a, b) => a.rank - b.rank);
 			const nameRank = rankSettingsLabel(query, name);
-			if (nameRank !== -1) return [{tab, score: nameRank, rows}];
+			if (nameRank !== -1)
+				return [
+					{
+						tab,
+						score: nameRank,
+						rows,
+					},
+				];
 			const aliasMatch = aliasesApply ? matchAlias(query, searchName?.alsoFoundBy ?? []) : undefined;
-			if (aliasMatch !== undefined) return [{tab, score: aliasMatch.rank, alias: aliasMatch.alias, rows}];
+			if (aliasMatch !== undefined)
+				return [
+					{
+						tab,
+						score: aliasMatch.rank,
+						alias: aliasMatch.alias,
+						rows,
+					},
+				];
 			const [best] = rows;
-			if (best !== undefined) return [{tab, score: ROW_SCORE_BASE + best.rank, rows}];
+			if (best !== undefined)
+				return [
+					{
+						tab,
+						score: ROW_SCORE_BASE + best.rank,
+						rows,
+					},
+				];
 			const keyword = SETTINGS_SECTION_KEYWORDS[tab]?.find(
 				(candidate) => rankSettingsLabel(query, candidate) !== -1,
 			);
-			return keyword === undefined ? [] : [{tab, score: KEYWORD_SCORE, keyword, rows}];
+			return keyword === undefined
+				? []
+				: [
+						{
+							tab,
+							score: KEYWORD_SCORE,
+							keyword,
+							rows,
+						},
+					];
 		})
 		.toSorted((a, b) => a.score - b.score);
 }
 
 /** True when the character before `start` is not a letter or digit. */
-function isWordStart(title: string, start: number): boolean {
+function isWordStart(title: string, start: number): boolean
+{
 	return start === 0 || /[^a-z0-9]/i.test(title.charAt(start - 1));
 }
 
@@ -256,12 +462,14 @@ function isWordStart(title: string, start: number): boolean {
  * query, else its first occurrence, else -1. Rows found through phrases, collapsed spaces or
  * out-of-order words have no literal match and get no highlight.
  */
-export function settingsMatchStart(label: string, query: string): number {
+export function settingsMatchStart(label: string, query: string): number
+{
 	const haystack = label.toLowerCase();
 	const needle = query.trim().toLowerCase();
 	if (needle === "") return -1;
 	let first = -1;
-	for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, at + 1)) {
+	for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, at + 1))
+	{
 		if (first === -1) first = at;
 		if (isWordStart(haystack, at)) return at;
 	}
@@ -273,17 +481,40 @@ export function settingsMatchStart(label: string, query: string): number {
  * a `child` row indented under its section, or a "+N more" row.
  */
 export type SettingsResultRow =
-	| {kind: "hit"; tab: SettingsTab; via?: string; rowSlug?: string}
-	| {kind: "child"; tab: SettingsTab; rowSlug: string; title: string}
-	| {kind: "more"; tab: SettingsTab; count: number};
+	|
+	  {
+			kind: "hit";
+			tab: SettingsTab;
+			via?: string;
+			rowSlug?: string;
+	  }
+	|
+	  {
+			kind: "child";
+			tab: SettingsTab;
+			rowSlug: string;
+			title: string;
+	  }
+	|
+	  {
+			kind: "more";
+			tab: SettingsTab;
+			count: number;
+	  };
 
 /** Upstream's `tn`: children shown under a section before "+N more". */
 const MAX_CHILDREN = 3;
 /** Upstream's `nn`: shorter queries show one via-hit per section. */
 const MIN_CHILD_QUERY_LENGTH = 2;
 
-function viaHit(tab: SettingsTab, entry: SettingsIndexEntry): SettingsResultRow {
-	return {kind: "hit", tab, via: entry.title, rowSlug: entry.rowSlug};
+function viaHit(tab: SettingsTab, entry: SettingsIndexEntry): SettingsResultRow
+{
+	return {
+		kind: "hit",
+		tab,
+		via: entry.title,
+		rowSlug: entry.rowSlug,
+	};
 }
 
 /**
@@ -299,42 +530,91 @@ export function layoutSettingsResultRows(
 	sections: readonly RankedSettingsSection[],
 	query: string,
 	expanded: ReadonlySet<SettingsTab>,
-): SettingsResultRow[] {
+): SettingsResultRow[]
+{
 	const short = normalizeSettingsQuery(query).length < MIN_CHILD_QUERY_LENGTH;
 	const shown = new Set<string>();
-	return sections.flatMap(({tab, score, keyword, alias, rows}): SettingsResultRow[] => {
+	return sections.flatMap(({tab, score, keyword, alias, rows}): SettingsResultRow[] =>
+	{
 		const entries = rows.map((row) => row.entry).filter((entry) => !shown.has(entry.title));
 		const [first] = entries;
-		if (short || (score >= ROW_SCORE_BASE && entries.length === 1)) {
-			if (first !== undefined) {
+		if (short || (score >= ROW_SCORE_BASE && entries.length === 1))
+		{
+			if (first !== undefined)
+			{
 				shown.add(first.title);
 				return [viaHit(tab, first)];
 			}
-			return [keyword === undefined ? {kind: "hit", tab} : {kind: "hit", tab, via: keyword}];
+			return [
+				keyword === undefined
+					?
+						{
+							kind: "hit",
+							tab,
+						}
+					:
+						{
+							kind: "hit",
+							tab,
+							via: keyword,
+						},
+			];
 		}
 		// A section found by its alias (upstream `shownSectionName`) names the alias on its via line.
-		const hit: SettingsResultRow = alias === undefined ? {kind: "hit", tab} : {kind: "hit", tab, via: alias};
-		if (first === undefined) {
-			return [keyword === undefined ? hit : {kind: "hit", tab, via: keyword}];
+		const hit: SettingsResultRow =
+			alias === undefined
+				?
+					{
+						kind: "hit",
+						tab,
+					}
+				:
+					{
+						kind: "hit",
+						tab,
+						via: alias,
+					};
+		if (first === undefined)
+		{
+			return [
+				keyword === undefined
+					? hit
+					:
+						{
+							kind: "hit",
+							tab,
+							via: keyword,
+						},
+			];
 		}
 		const visible = expanded.has(tab) ? entries : entries.slice(0, MAX_CHILDREN);
 		for (const entry of visible) shown.add(entry.title);
 		const hidden = entries.length - visible.length;
 		return [
 			hit,
-			...visible.map((entry): SettingsResultRow => ({
+			...visible.map((entry): SettingsResultRow => (
+			{
 				kind: "child",
 				tab,
 				rowSlug: entry.rowSlug,
 				title: entry.title,
 			})),
-			...(hidden > 0 ? [{kind: "more" as const, tab, count: hidden}] : []),
+			...(hidden > 0
+				? [
+						{
+							kind: "more" as const,
+							tab,
+							count: hidden,
+						},
+					]
+				: []),
 		];
 	});
 }
 
 /** The popover rows for `query`, with the tabs in `expanded` showing every child. */
-export function buildSettingsResultRows(query: string, expanded: ReadonlySet<SettingsTab>): SettingsResultRow[] {
+export function buildSettingsResultRows(query: string, expanded: ReadonlySet<SettingsTab>): SettingsResultRow[]
+{
 	return layoutSettingsResultRows(rankSettingsSections(query), query, expanded);
 }
 
@@ -343,7 +623,13 @@ export function splitMatch(
 	title: string,
 	start: number,
 	length: number,
-): {before: string; match: string; after: string} {
+):
+{
+	before: string;
+	match: string;
+	after: string;
+}
+{
 	return {
 		before: title.slice(0, start),
 		match: title.slice(start, start + length),

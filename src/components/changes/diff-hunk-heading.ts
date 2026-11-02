@@ -21,7 +21,8 @@ const ACCESS_LABEL = /^(public|private|protected):$/;
 const LABEL_FRIENDLY_FILE = /(\.(ya?ml|mk)|(^|\/)(GNU)?makefile)$/i;
 
 /** Upstream c91a5e4a6 `h`: the heading to show for `hunk`, or `undefined` for none. */
-export function hunkHeading(fileDiff: FileDiffMetadata, hunk: Hunk): string | undefined {
+export function hunkHeading(fileDiff: FileDiffMetadata, hunk: Hunk): string | undefined
+{
 	const context = hunk.hunkContext?.trim();
 	const pattern = HEADING_PATTERNS.find((regex) => context !== undefined && context !== "" && regex.test(context));
 	if (
@@ -29,7 +30,8 @@ export function hunkHeading(fileDiff: FileDiffMetadata, hunk: Hunk): string | un
 		(context && BLOCK_CLOSER.test(context)) ||
 		(context && ACCESS_LABEL.test(context) && !LABEL_FRIENDLY_FILE.test(fileDiff.name)) ||
 		(pattern === HEADING_PATTERNS[0] && PROSE_FILE.test(fileDiff.name))
-	) {
+	)
+	{
 		return undefined;
 	}
 	const change = hunk.hunkContent.find((content) => content.type === "change");
@@ -45,7 +47,8 @@ export function hunkHeading(fileDiff: FileDiffMetadata, hunk: Hunk): string | un
 }
 
 /** Upstream c91a5e4a6 `I`: which side a diff row belongs to. */
-function rowSide(row: Element): "additions" | "deletions" {
+function rowSide(row: Element): "additions" | "deletions"
+{
 	return row.getAttribute("data-line-type") === "change-deletion" || row.closest("[data-deletions]") !== null
 		? "deletions"
 		: "additions";
@@ -58,21 +61,25 @@ const GUTTER_LABELS = "[data-code]:not([data-additions]) > [data-gutter] > [data
  * and append a `[data-hunk-heading]` for the hunk below it; without a heading (or a fileDiff) undo both.
  * Idempotent, so it runs after every render.
  */
-export function decorateHunkHeadings(host: Element, fileDiff: FileDiffMetadata | undefined): void {
-	for (const label of host.shadowRoot?.querySelectorAll(GUTTER_LABELS) ?? []) {
+export function decorateHunkHeadings(host: Element, fileDiff: FileDiffMetadata | undefined): void
+{
+	for (const label of host.shadowRoot?.querySelectorAll(GUTTER_LABELS) ?? [])
+	{
 		const next = label.closest("[data-separator]")?.nextElementSibling;
 		const start = Number(next?.getAttribute("data-column-number") ?? Number.NaN);
 		const deletions = next !== null && next !== undefined && rowSide(next) === "deletions";
 		const hunk = fileDiff?.hunks.find((h) => (deletions ? h.deletionStart : h.additionStart) === start);
 		const text = fileDiff && hunk && hunkHeading(fileDiff, hunk);
 		let heading = label.querySelector("[data-hunk-heading]");
-		if (!text) {
+		if (!text)
+		{
 			const count = label.querySelector("[data-unmodified-count]");
 			count?.replaceWith(...count.childNodes);
 			heading?.remove();
 			continue;
 		}
-		if (!heading) {
+		if (!heading)
+		{
 			const count = label.ownerDocument.createElement("span");
 			count.setAttribute("data-unmodified-count", "");
 			count.append(...label.childNodes);
@@ -80,7 +87,8 @@ export function decorateHunkHeadings(host: Element, fileDiff: FileDiffMetadata |
 			heading.setAttribute("data-hunk-heading", "");
 			label.append(count, heading);
 		}
-		if (heading.textContent !== text) {
+		if (heading.textContent !== text)
+		{
 			heading.textContent = text;
 			heading.setAttribute("title", text);
 		}

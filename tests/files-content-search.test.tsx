@@ -9,7 +9,8 @@ import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-conte
 import {FilesTree, FilesTreeColumn} from "../src/components/files/files-tree";
 import {SettingsProvider} from "../src/components/settings-provider";
 import type {FileSearchResult} from "../src/lib/api/search";
-import {
+import
+{
 	askAboutPrompt,
 	groupContentSearchResults,
 	matchesSmartCase,
@@ -20,16 +21,25 @@ import {
 import {installLocalStorage} from "./fake-storage";
 import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 
-class FakeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-describe("parseContentSearchQuery", () => {
+describe("parseContentSearchQuery", () =>
+{
 	it.each([
 		["", null],
 		["src/", null],
@@ -39,109 +49,230 @@ describe("parseContentSearchQuery", () => {
 		["?  ", ""],
 		["?needle", "needle"],
 		["? two words ", "two words"],
-	])("%j → %j", (filter, expected) => {
+	])("%j → %j", (filter, expected) =>
+	{
 		expect(parseContentSearchQuery(filter)).toBe(expected);
 	});
 });
 
-describe("parseMarkedSnippet", () => {
-	it("unescapes the server's HTML and finds the first highlighted range", () => {
+describe("parseMarkedSnippet", () =>
+{
+	it("unescapes the server's HTML and finds the first highlighted range", () =>
+	{
 		expect(
 			parseMarkedSnippet("if (a &lt; b &amp;&amp; <mark>needle</mark>) &quot;x&#39;s&quot; <mark>needle</mark>"),
-		).toStrictEqual({
-			text: `if (a < b && needle) "x's" needle`,
-			match: {start: 13, end: 19},
-		});
+		).toStrictEqual(
+			{
+				text: `if (a < b && needle) "x's" needle`,
+				match:
+				{
+					start: 13,
+					end: 19,
+				},
+			},
+		);
 	});
 
-	it("returns no match when nothing is highlighted", () => {
-		expect(parseMarkedSnippet("plain &gt; text")).toStrictEqual({
-			text: "plain > text",
-			match: null,
-		});
+	it("returns no match when nothing is highlighted", () =>
+	{
+		expect(parseMarkedSnippet("plain &gt; text")).toStrictEqual(
+			{
+				text: "plain > text",
+				match: null,
+			},
+		);
 	});
 });
 
-describe("windowSnippet", () => {
-	it("keeps a short lead as is, with whitespace collapsed and trimmed", () => {
+describe("windowSnippet", () =>
+{
+	it("keeps a short lead as is, with whitespace collapsed and trimmed", () =>
+	{
 		const text = "    const   value =\tneedle;  ";
-		expect(windowSnippet(text, {start: 20, end: 26})).toStrictEqual({
-			text: "const value = needle;",
-			match: {start: 14, end: 20},
-		});
+		expect(
+			windowSnippet(
+				text,
+				{
+					start: 20,
+					end: 26,
+				},
+			),
+		).toStrictEqual(
+			{
+				text: "const value = needle;",
+				match:
+				{
+					start: 14,
+					end: 20,
+				},
+			},
+		);
 	});
 
-	it("keeps a lead of exactly 26 characters", () => {
+	it("keeps a lead of exactly 26 characters", () =>
+	{
 		const lead = "abcdefghijklmnopqrstuvwxy ";
-		expect(windowSnippet(`${lead}needle`, {start: 26, end: 32})).toStrictEqual({
-			text: `${lead}needle`,
-			match: {start: 26, end: 32},
-		});
+		expect(
+			windowSnippet(
+				`${lead}needle`,
+				{
+					start: 26,
+					end: 32,
+				},
+			),
+		).toStrictEqual(
+			{
+				text: `${lead}needle`,
+				match:
+				{
+					start: 26,
+					end: 32,
+				},
+			},
+		);
 	});
 
-	it("cuts a long lead to at most 26 characters, snapped to a word start, behind an ellipsis", () => {
+	it("cuts a long lead to at most 26 characters, snapped to a word start, behind an ellipsis", () =>
+	{
 		const text = "aaaa bbbb cccc dddd eeee ffff gggg needle tail";
-		expect(windowSnippet(text, {start: 35, end: 41})).toStrictEqual({
-			text: "…cccc dddd eeee ffff gggg needle tail",
-			match: {start: 26, end: 32},
-		});
+		expect(
+			windowSnippet(
+				text,
+				{
+					start: 35,
+					end: 41,
+				},
+			),
+		).toStrictEqual(
+			{
+				text: "…cccc dddd eeee ffff gggg needle tail",
+				match:
+				{
+					start: 26,
+					end: 32,
+				},
+			},
+		);
 	});
 
-	it("cuts exactly at 26 characters when the cut already falls on a word start", () => {
+	it("cuts exactly at 26 characters when the cut already falls on a word start", () =>
+	{
 		const text = "aaaaaaa bbbb cccc dddd eeee fffff needle";
-		expect(windowSnippet(text, {start: 34, end: 40})).toStrictEqual({
-			text: "…bbbb cccc dddd eeee fffff needle",
-			match: {start: 27, end: 33},
-		});
+		expect(
+			windowSnippet(
+				text,
+				{
+					start: 34,
+					end: 40,
+				},
+			),
+		).toStrictEqual(
+			{
+				text: "…bbbb cccc dddd eeee fffff needle",
+				match:
+				{
+					start: 27,
+					end: 33,
+				},
+			},
+		);
 	});
 
-	it("cuts mid-word when the lead has no word boundary to snap to", () => {
+	it("cuts mid-word when the lead has no word boundary to snap to", () =>
+	{
 		const text = `${"x".repeat(40)}needle`;
-		expect(windowSnippet(text, {start: 40, end: 46})).toStrictEqual({
-			text: `…${"x".repeat(26)}needle`,
-			match: {start: 27, end: 33},
-		});
+		expect(
+			windowSnippet(
+				text,
+				{
+					start: 40,
+					end: 46,
+				},
+			),
+		).toStrictEqual(
+			{
+				text: `…${"x".repeat(26)}needle`,
+				match:
+				{
+					start: 27,
+					end: 33,
+				},
+			},
+		);
 	});
 
-	it("returns the collapsed text when there is no match", () => {
-		expect(windowSnippet("  a   b  ", null)).toStrictEqual({text: "a b", match: null});
+	it("returns the collapsed text when there is no match", () =>
+	{
+		expect(windowSnippet("  a   b  ", null)).toStrictEqual(
+			{
+				text: "a b",
+				match: null,
+			},
+		);
 	});
 });
 
-describe("matchesSmartCase", () => {
+describe("matchesSmartCase", () =>
+{
 	it.each([
 		["const Needle = 1", "needle", true],
 		["const Needle = 1", "Needle", true],
 		["const needle = 1", "Needle", false],
 		["const Needle = other", "Needle other", true],
-	])("%j with %j → %s", (text, query, expected) => {
+	])("%j with %j → %s", (text, query, expected) =>
+	{
 		expect(matchesSmartCase(text, query)).toBe(expected);
 	});
 });
 
-describe("askAboutPrompt", () => {
-	it("fills the upstream template", () => {
+describe("askAboutPrompt", () =>
+{
+	it("fills the upstream template", () =>
+	{
 		expect(askAboutPrompt("src/a.ts", 12, "const needle = 1;")).toBe(
 			"In src/a.ts at line 12: `const needle = 1;` — explain what this does and where it’s used.",
 		);
 	});
 });
 
-function searchFile(path: string, matchCount: number, matches: Array<{lineNumber: number; snippet: string}>) {
-	return {path, matchCount, matches, mtime: "2026-09-01T00:00:00.000Z", rank: -1};
+function searchFile(
+	path: string,
+	matchCount: number,
+	matches: Array<
+	{
+		lineNumber: number;
+		snippet: string;
+	}>,
+)
+{
+	return {
+		path,
+		matchCount,
+		matches,
+		mtime: "2026-09-01T00:00:00.000Z",
+		rank: -1,
+	};
 }
 
-const RESULT: FileSearchResult = {
+const RESULT: FileSearchResult =
+{
 	files: [
 		searchFile("/repo/src/a.ts", 2, [
-			{lineNumber: 3, snippet: "const <mark>needle</mark> = 1;"},
-			{lineNumber: 9, snippet: "  return <mark>Needle</mark>;"},
+			{
+				lineNumber: 3,
+				snippet: "const <mark>needle</mark> = 1;",
+			},
+			{
+				lineNumber: 9,
+				snippet: "  return <mark>Needle</mark>;",
+			},
 		]),
 		searchFile("/repo/notes.md", 0, []),
 		searchFile(
 			"/repo/big.txt",
 			7,
-			[1, 2, 3, 4, 5, 6].map((lineNumber) => ({
+			[1, 2, 3, 4, 5, 6].map((lineNumber) => (
+			{
 				lineNumber,
 				snippet: `line ${lineNumber} <mark>needle</mark>`,
 			})),
@@ -152,67 +283,137 @@ const RESULT: FileSearchResult = {
 	isTruncated: false,
 };
 
-describe("groupContentSearchResults", () => {
-	it("groups matches per file relative to the working directory and drops path-only hits", () => {
-		expect(groupContentSearchResults(RESULT, "/repo", "needle")).toStrictEqual({
-			groups: [
-				{
-					path: "/repo/src/a.ts",
-					relPath: "src/a.ts",
-					more: false,
-					matches: [
+describe("groupContentSearchResults", () =>
+{
+	it("groups matches per file relative to the working directory and drops path-only hits", () =>
+	{
+		expect(groupContentSearchResults(RESULT, "/repo", "needle")).toStrictEqual(
+			{
+				groups: [
+					{
+						path: "/repo/src/a.ts",
+						relPath: "src/a.ts",
+						more: false,
+						matches: [
+							{
+								line: 3,
+								text: "const needle = 1;",
+								snippet:
+								{
+									text: "const needle = 1;",
+									match:
+									{
+										start: 6,
+										end: 12,
+									},
+								},
+							},
+							{
+								line: 9,
+								text: "return Needle;",
+								snippet:
+								{
+									text: "return Needle;",
+									match:
+									{
+										start: 7,
+										end: 13,
+									},
+								},
+							},
+						],
+					},
+					{
+						path: "/repo/big.txt",
+						relPath: "big.txt",
+						more: true,
+						matches: [1, 2, 3, 4, 5].map((line) => (
 						{
-							line: 3,
-							text: "const needle = 1;",
-							snippet: {text: "const needle = 1;", match: {start: 6, end: 12}},
-						},
-						{
-							line: 9,
-							text: "return Needle;",
-							snippet: {text: "return Needle;", match: {start: 7, end: 13}},
-						},
-					],
-				},
-				{
-					path: "/repo/big.txt",
-					relPath: "big.txt",
-					more: true,
-					matches: [1, 2, 3, 4, 5].map((line) => ({
-						line,
-						text: `line ${line} needle`,
-						snippet: {text: `line ${line} needle`, match: {start: 7, end: 13}},
-					})),
-				},
-			],
-			shownCount: 7,
-			capped: false,
-		});
+							line,
+							text: `line ${line} needle`,
+							snippet:
+							{
+								text: `line ${line} needle`,
+								match:
+								{
+									start: 7,
+									end: 13,
+								},
+							},
+						})),
+					},
+				],
+				shownCount: 7,
+				capped: false,
+			},
+		);
 	});
 
-	it("applies smart case when the query has capitals", () => {
+	it("applies smart case when the query has capitals", () =>
+	{
 		const grouped = groupContentSearchResults(RESULT, "/repo/", "Needle");
 		expect(
-			grouped.groups.map((group) => ({
+			grouped.groups.map((group) => (
+			{
 				relPath: group.relPath,
 				lines: group.matches.map((match) => match.line),
 				more: group.more,
 			})),
-		).toStrictEqual([{relPath: "src/a.ts", lines: [9], more: false}]);
+		).toStrictEqual([
+			{
+				relPath: "src/a.ts",
+				lines: [9],
+				more: false,
+			},
+		]);
 	});
 
-	it("reports a capped result only when the server left files out", () => {
-		expect({
-			filesLeftOut: groupContentSearchResults({...RESULT, isTruncated: true, totalFiles: 150}, "/repo", "needle")
-				.capped,
-			matchesLeftOut: groupContentSearchResults({...RESULT, isTruncated: true}, "/repo", "needle").capped,
-		}).toStrictEqual({filesLeftOut: true, matchesLeftOut: false});
+	it("reports a capped result only when the server left files out", () =>
+	{
+		expect(
+			{
+				filesLeftOut: groupContentSearchResults(
+					{
+						...RESULT,
+						isTruncated: true,
+						totalFiles: 150,
+					},
+					"/repo",
+					"needle",
+				).capped,
+				matchesLeftOut: groupContentSearchResults(
+					{
+						...RESULT,
+						isTruncated: true,
+					},
+					"/repo",
+					"needle",
+				).capped,
+			},
+		).toStrictEqual(
+			{
+				filesLeftOut: true,
+				matchesLeftOut: false,
+			},
+		);
 	});
 });
 
-const SEARCH_RESPONSE: FileSearchResult = {
+const SEARCH_RESPONSE: FileSearchResult =
+{
 	files: [
-		searchFile("/repo/src/a.ts", 1, [{lineNumber: 3, snippet: "const <mark>needle</mark> = 1;"}]),
-		searchFile("/repo/big.txt", 9, [{lineNumber: 4, snippet: "line 4 <mark>needle</mark>"}]),
+		searchFile("/repo/src/a.ts", 1, [
+			{
+				lineNumber: 3,
+				snippet: "const <mark>needle</mark> = 1;",
+			},
+		]),
+		searchFile("/repo/big.txt", 9, [
+			{
+				lineNumber: 4,
+				snippet: "line 4 <mark>needle</mark>",
+			},
+		]),
 	],
 	totalResults: 10,
 	totalFiles: 2,
@@ -221,30 +422,59 @@ const SEARCH_RESPONSE: FileSearchResult = {
 
 let requests: string[];
 
-function stubFetch(): void {
+function stubFetch(): void
+{
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async (input: string) => {
+		vi.fn(async (input: string) =>
+		{
 			const url = new URL(input, "http://localhost");
 			requests.push(`${url.pathname}?${url.searchParams.toString()}`);
-			if (url.pathname === "/api/search/files") {
+			if (url.pathname === "/api/search/files")
+			{
 				return Promise.resolve(
 					Response.json(
 						url.searchParams.get("query") === "needle"
 							? SEARCH_RESPONSE
-							: {files: [], totalResults: 0, totalFiles: 0, isTruncated: false},
+							:
+								{
+									files: [],
+									totalResults: 0,
+									totalFiles: 0,
+									isTruncated: false,
+								},
 					),
 				);
 			}
-			return Promise.resolve(Response.json({kind: "listing", dir: "", entries: [], partial: false}));
+			return Promise.resolve(
+				Response.json(
+					{
+						kind: "listing",
+						dir: "",
+						entries: [],
+						partial: false,
+					},
+				),
+			);
 		}),
 	);
 }
 
-function renderTree() {
+function renderTree()
+{
 	const onOpenFile = vi.fn<NonNullable<ComponentProps<typeof FilesTree>["onOpenFile"]>>();
 	const onAsk = vi.fn<NonNullable<ComponentProps<typeof FilesTree>["onAsk"]>>();
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	render(
 		<QueryClientProvider client={queryClient}>
 			<SettingsProvider>
@@ -256,111 +486,224 @@ function renderTree() {
 			</SettingsProvider>
 		</QueryClientProvider>,
 	);
-	return {onOpenFile, onAsk};
+	return {
+		onOpenFile,
+		onAsk,
+	};
 }
 
-function filterInput(): HTMLInputElement {
-	return screen.getByRole("textbox", {name: "Filter files"});
+function filterInput(): HTMLInputElement
+{
+	return screen.getByRole(
+		"textbox",
+		{
+			name: "Filter files",
+		},
+	);
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	requests = [];
 	stubFetch();
 	vi.stubGlobal("ResizeObserver", FakeObserver);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
 
-describe("FilesTree content search", () => {
-	it("uses upstream's placeholder and describes ? content search in the hint", () => {
+describe("FilesTree content search", () =>
+{
+	it("uses upstream's placeholder and describes ? content search in the hint", () =>
+	{
 		renderTree();
 		const input = filterInput();
 		const hint = document.getElementById(input.getAttribute("aria-describedby") ?? "");
-		expect({placeholder: input.placeholder, hint: hint?.textContent}).toStrictEqual({
-			placeholder: "Search files…",
-			hint: "Results update as you type. Start with ? to search file contents. Press Down Arrow to go to results, and Up Arrow on the first result to return here.",
-		});
+		expect(
+			{
+				placeholder: input.placeholder,
+				hint: hint?.textContent,
+			},
+		).toStrictEqual(
+			{
+				placeholder: "Search files…",
+				hint: "Results update as you type. Start with ? to search file contents. Press Down Arrow to go to results, and Up Arrow on the first result to return here.",
+			},
+		);
 	});
 
-	it("reveals each match's hover-only Ask about this button on touch", async () => {
+	it("reveals each match's hover-only Ask about this button on touch", async () =>
+	{
 		renderTree();
-		fireEvent.change(filterInput(), {target: {value: "?needle"}});
+		fireEvent.change(
+			filterInput(),
+			{
+				target:
+				{
+					value: "?needle",
+				},
+			},
+		);
 		await screen.findByText("a.ts");
 
 		expect(
 			screen
-				.getAllByRole("button", {name: "Ask about this"})
+				.getAllByRole(
+					"button",
+					{
+						name: "Ask about this",
+					},
+				)
 				.every((button) => button.className.includes(TOUCH_REVEAL)),
 		).toBe(true);
 	});
 
-	it("draws upstream's 12px file-type icon on each matched file row", async () => {
+	it("draws upstream's 12px file-type icon on each matched file row", async () =>
+	{
 		renderTree();
-		fireEvent.change(filterInput(), {target: {value: "?needle"}});
+		fireEvent.change(
+			filterInput(),
+			{
+				target:
+				{
+					value: "?needle",
+				},
+			},
+		);
 		const svg = (await screen.findByText("a.ts")).closest("[data-content-file]")?.querySelector("svg");
 
-		expect({
-			fileTypeIcon: svg?.hasAttribute("data-file-type-icon"),
-			width: svg?.style.width,
-			className: svg?.getAttribute("class"),
-			fill: svg?.querySelector("path")?.getAttribute("fill"),
-		}).toStrictEqual({
-			fileTypeIcon: true,
-			width: "12px",
-			className: "shrink-0 self-center text-ink-muted",
-			fill: "var(--fti-typescript)",
-		});
+		expect(
+			{
+				fileTypeIcon: svg?.hasAttribute("data-file-type-icon"),
+				width: svg?.style.width,
+				className: svg?.getAttribute("class"),
+				fill: svg?.querySelector("path")?.getAttribute("fill"),
+			},
+		).toStrictEqual(
+			{
+				fileTypeIcon: true,
+				width: "12px",
+				className: "shrink-0 self-center text-ink-muted",
+				fill: "var(--fti-typescript)",
+			},
+		);
 	});
 
-	it("prompts for a query after a bare ?", async () => {
+	it("prompts for a query after a bare ?", async () =>
+	{
 		renderTree();
-		fireEvent.change(filterInput(), {target: {value: "?"}});
+		fireEvent.change(
+			filterInput(),
+			{
+				target:
+				{
+					value: "?",
+				},
+			},
+		);
 		expect(await screen.findByText("Type after ? to search file contents")).toBeTruthy();
 	});
 
-	it("routes a ? query to the file content search scoped to the working directory", async () => {
+	it("routes a ? query to the file content search scoped to the working directory", async () =>
+	{
 		const {onOpenFile, onAsk} = renderTree();
-		fireEvent.change(filterInput(), {target: {value: "?needle"}});
+		fireEvent.change(
+			filterInput(),
+			{
+				target:
+				{
+					value: "?needle",
+				},
+			},
+		);
 		await screen.findByText("a.ts");
 
-		const groups = screen.getAllByRole("group").map((group) => ({
+		const groups = screen.getAllByRole("group").map((group) => (
+		{
 			file: group.getAttribute("aria-label"),
 			rows: [...group.querySelectorAll("[data-content-match]")].map((row) => row.textContent),
 			more: group.querySelector("[data-content-more]")?.textContent ?? null,
 		}));
 
-		fireEvent.keyDown(filterInput(), {key: "ArrowDown"});
-		fireEvent.keyDown(document.activeElement!, {key: "Enter"});
-		fireEvent.click(screen.getAllByRole("button", {name: "Ask about this"})[0]!);
+		fireEvent.keyDown(
+			filterInput(),
+			{
+				key: "ArrowDown",
+			},
+		);
+		fireEvent.keyDown(
+			document.activeElement!,
+			{
+				key: "Enter",
+			},
+		);
+		fireEvent.click(
+			screen.getAllByRole(
+				"button",
+				{
+					name: "Ask about this",
+				},
+			)[0]!,
+		);
 
-		expect({
-			contentRequests: requests.filter((request) => request.startsWith("/api/search/files")),
-			treeRequestedQuestion: requests.some(
-				(request) => !request.startsWith("/api/search/files") && request.includes("%3F"),
-			),
-			groups,
-			opens: onOpenFile.mock.calls,
-			asks: onAsk.mock.calls,
-		}).toStrictEqual({
-			contentRequests: ["/api/search/files?query=needle&scopeRoot=%2Frepo"],
-			treeRequestedQuestion: false,
-			groups: [
-				{file: "src/a.ts", rows: ["3const needle = 1;"], more: null},
-				{file: "big.txt", rows: ["4line 4 needle"], more: "More matches in this file."},
-			],
-			opens: [["src/a.ts", {pin: false, line: 3, findQuery: "needle"}]],
-			asks: [["In src/a.ts at line 3: `const needle = 1;` — explain what this does and where it’s used."]],
-		});
+		expect(
+			{
+				contentRequests: requests.filter((request) => request.startsWith("/api/search/files")),
+				treeRequestedQuestion: requests.some(
+					(request) => !request.startsWith("/api/search/files") && request.includes("%3F"),
+				),
+				groups,
+				opens: onOpenFile.mock.calls,
+				asks: onAsk.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				contentRequests: ["/api/search/files?query=needle&scopeRoot=%2Frepo"],
+				treeRequestedQuestion: false,
+				groups: [
+					{
+						file: "src/a.ts",
+						rows: ["3const needle = 1;"],
+						more: null,
+					},
+					{
+						file: "big.txt",
+						rows: ["4line 4 needle"],
+						more: "More matches in this file.",
+					},
+				],
+				opens: [
+					[
+						"src/a.ts",
+						{
+							pin: false,
+							line: 3,
+							findQuery: "needle",
+						},
+					],
+				],
+				asks: [["In src/a.ts at line 3: `const needle = 1;` — explain what this does and where it’s used."]],
+			},
+		);
 	});
 
-	it("says when file contents have no matches", async () => {
+	it("says when file contents have no matches", async () =>
+	{
 		renderTree();
-		fireEvent.change(filterInput(), {target: {value: "?nothing"}});
+		fireEvent.change(
+			filterInput(),
+			{
+				target:
+				{
+					value: "?nothing",
+				},
+			},
+		);
 		expect(await screen.findByText("No matches in file contents")).toBeTruthy();
 	});
 });

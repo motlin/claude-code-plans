@@ -2,7 +2,8 @@
 
 import {act, cleanup, renderHook} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {
+import
+{
 	type BackgroundTaskFocus,
 	finishedExpanded,
 	onBackgroundTaskFocusRequest,
@@ -15,37 +16,83 @@ import {
 	useOpenTaskRows,
 } from "../src/lib/background-task-focus";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 });
 
-describe("background task focus requests", () => {
-	it("returns a request made with no listener once, then null", () => {
-		requestBackgroundTaskFocus("session-pending", {taskId: "b1", finished: true});
+describe("background task focus requests", () =>
+{
+	it("returns a request made with no listener once, then null", () =>
+	{
+		requestBackgroundTaskFocus(
+			"session-pending",
+			{
+				taskId: "b1",
+				finished: true,
+			},
+		);
 
-		expect(takePendingBackgroundTaskFocus("session-pending")).toStrictEqual({taskId: "b1", finished: true});
+		expect(takePendingBackgroundTaskFocus("session-pending")).toStrictEqual(
+			{
+				taskId: "b1",
+				finished: true,
+			},
+		);
 		expect(takePendingBackgroundTaskFocus("session-pending")).toBeNull();
 	});
 
-	it("delivers a request to a mounted listener instead of leaving it pending", () => {
+	it("delivers a request to a mounted listener instead of leaving it pending", () =>
+	{
 		const listener = vi.fn<(focus: BackgroundTaskFocus) => void>();
 		const unsubscribe = onBackgroundTaskFocusRequest("session-listener", listener);
 
-		requestBackgroundTaskFocus("session-listener", {taskId: "b1", finished: true});
+		requestBackgroundTaskFocus(
+			"session-listener",
+			{
+				taskId: "b1",
+				finished: true,
+			},
+		);
 
-		expect(listener.mock.calls).toStrictEqual([[{taskId: "b1", finished: true}]]);
+		expect(listener.mock.calls).toStrictEqual([
+			[
+				{
+					taskId: "b1",
+					finished: true,
+				},
+			],
+		]);
 		expect(takePendingBackgroundTaskFocus("session-listener")).toBeNull();
 
 		unsubscribe();
-		requestBackgroundTaskFocus("session-listener", {finished: false});
+		requestBackgroundTaskFocus(
+			"session-listener",
+			{
+				finished: false,
+			},
+		);
 
-		expect(listener.mock.calls).toStrictEqual([[{taskId: "b1", finished: true}]]);
-		expect(takePendingBackgroundTaskFocus("session-listener")).toStrictEqual({finished: false});
+		expect(listener.mock.calls).toStrictEqual([
+			[
+				{
+					taskId: "b1",
+					finished: true,
+				},
+			],
+		]);
+		expect(takePendingBackgroundTaskFocus("session-listener")).toStrictEqual(
+			{
+				finished: false,
+			},
+		);
 	});
 });
 
-describe("background task view state", () => {
-	it("records open task rows per session", () => {
+describe("background task view state", () =>
+{
+	it("records open task rows per session", () =>
+	{
 		setTaskRowsOpen("session-rows", ["a", "b"], true);
 
 		expect(openTaskRows("session-rows")).toStrictEqual(
@@ -66,7 +113,8 @@ describe("background task view state", () => {
 		);
 	});
 
-	it("reads back the Finished section's expanded state", () => {
+	it("reads back the Finished section's expanded state", () =>
+	{
 		expect(finishedExpanded("session-finished")).toBeUndefined();
 
 		setFinishedExpanded("session-finished", true);
@@ -75,19 +123,32 @@ describe("background task view state", () => {
 		expect(finishedExpanded("session-finished-other")).toBeUndefined();
 	});
 
-	it("re-renders hooks when the session's view state changes", () => {
-		const {result} = renderHook(() => ({
+	it("re-renders hooks when the session's view state changes", () =>
+	{
+		const {result} = renderHook(() => (
+		{
 			finished: useFinishedExpanded("session-hooks"),
 			rows: useOpenTaskRows("session-hooks"),
 		}));
 
-		expect(result.current).toStrictEqual({finished: undefined, rows: new Map()});
+		expect(result.current).toStrictEqual(
+			{
+				finished: undefined,
+				rows: new Map(),
+			},
+		);
 
-		act(() => {
+		act(() =>
+		{
 			setFinishedExpanded("session-hooks", false);
 			setTaskRowsOpen("session-hooks", ["b1"], true);
 		});
 
-		expect(result.current).toStrictEqual({finished: false, rows: new Map([["b1", true]])});
+		expect(result.current).toStrictEqual(
+			{
+				finished: false,
+				rows: new Map([["b1", true]]),
+			},
+		);
 	});
 });

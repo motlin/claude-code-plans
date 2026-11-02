@@ -9,8 +9,10 @@ const EMPTY_COPY = "Artifacts published in this session appear here.";
  * live on claude.ai, so instead of a frame switcher over iframes this lists
  * one upstream "Open artifact" card per artifact, linking out.
  */
-export function SessionArtifactsList({artifacts}: {artifacts: readonly SessionArtifact[]}) {
-	if (artifacts.length === 0) {
+export function SessionArtifactsList({artifacts}: {artifacts: readonly SessionArtifact[]})
+{
+	if (artifacts.length === 0)
+	{
 		return <p className="px-3 py-6 text-center text-body text-ink-muted">{EMPTY_COPY}</p>;
 	}
 	return (

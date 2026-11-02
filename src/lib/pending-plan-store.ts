@@ -11,7 +11,8 @@ import {toolInputSchemas} from "./tool-input-schemas";
 const store = persistedSessionMap<PendingPlan>("pendingPlan", PendingPlanSchema);
 
 /** Mirror the store to `file` from now on, first replacing it with what the file holds. */
-export function persistPendingPlansTo(file: string): void {
+export function persistPendingPlansTo(file: string): void
+{
 	store.persistTo(file);
 }
 
@@ -19,33 +20,43 @@ export function persistPendingPlansTo(file: string): void {
  * Trim a hook's ExitPlanMode input to the fields the card shows, or null when it is not an ExitPlanMode input.
  * A call with no plan keeps an empty one: upstream still asks to leave plan mode.
  */
-export function pendingPlanFromToolInput(toolUseId: string, toolInput: unknown): PendingPlan | null {
+export function pendingPlanFromToolInput(toolUseId: string, toolInput: unknown): PendingPlan | null
+{
 	const input = toolInputSchemas.ExitPlanMode.safeParse(toolInput);
 	if (!input.success) return null;
-	const pending: PendingPlan = {toolUseId, plan: input.data.plan ?? ""};
+	const pending: PendingPlan =
+	{
+		toolUseId,
+		plan: input.data.plan ?? "",
+	};
 	if (input.data.planFilePath !== undefined) pending.planFilePath = input.data.planFilePath;
 	return pending;
 }
 
-export function setPendingPlan(sessionId: string, pending: PendingPlan): void {
+export function setPendingPlan(sessionId: string, pending: PendingPlan): void
+{
 	store.set(sessionId, pending);
 }
 
 /** Forget the session's pending plan; true when there was one. */
-export function clearPendingPlan(sessionId: string): boolean {
+export function clearPendingPlan(sessionId: string): boolean
+{
 	return store.delete(sessionId);
 }
 
-export function getPendingPlan(sessionId: string): PendingPlan | null {
+export function getPendingPlan(sessionId: string): PendingPlan | null
+{
 	return store.get(sessionId);
 }
 
 /** Whether the session's pending plan was reloaded from disk at startup, so its answer may have gone unseen. */
-export function pendingPlanWasReloaded(sessionId: string): boolean {
+export function pendingPlanWasReloaded(sessionId: string): boolean
+{
 	return store.wasReloaded(sessionId);
 }
 
 /** Forget every pending plan in memory and stop mirroring to disk, as a fresh process starts. */
-export function clearAllPendingPlans(): void {
+export function clearAllPendingPlans(): void
+{
 	store.reset();
 }

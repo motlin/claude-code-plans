@@ -1,7 +1,8 @@
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {QueryClient, QueryObserver} from "@tanstack/react-query";
 import {applySessionLinesAppended, applySessionTranscriptRewritten} from "../src/hooks/use-claude-events";
-import {
+import
+{
 	sessionQueryKeys,
 	transcriptEndIndex,
 	transcriptQueryOptions,
@@ -17,23 +18,38 @@ import type {JsonValue} from "../src/lib/hook-events";
  * a fresh tail instead of merging by index.
  */
 
-afterEach(() => {
+afterEach(() =>
+{
 	vi.restoreAllMocks();
 });
 
 const SESSION = "sess-rewritten";
 
-type TranscriptRecord = {[key: string]: JsonValue};
+type TranscriptRecord =
+{
+	[key: string]: JsonValue;
+};
 
-function row(index: number): TranscriptRecord {
-	return {type: "user", uuid: `u-${index}`, message: {role: "user", content: `turn ${index}`}};
+function row(index: number): TranscriptRecord
+{
+	return {
+		type: "user",
+		uuid: `u-${index}`,
+		message:
+		{
+			role: "user",
+			content: `turn ${index}`,
+		},
+	};
 }
 
-function rows(...indices: number[]): TranscriptRecord[] {
+function rows(...indices: number[]): TranscriptRecord[]
+{
 	return indices.map(row);
 }
 
-function transcript(records: TranscriptRecord[], startIndex: number): TranscriptData {
+function transcript(records: TranscriptRecord[], startIndex: number): TranscriptData
+{
 	return {
 		records,
 		byteOffset: 1000 + startIndex + records.length,
@@ -46,21 +62,41 @@ function transcript(records: TranscriptRecord[], startIndex: number): Transcript
 	};
 }
 
-function jsonResponse(body: unknown): Response {
-	return new Response(JSON.stringify(body), {status: 200, headers: {"Content-Type": "application/json"}});
+function jsonResponse(body: unknown): Response
+{
+	return new Response(
+		JSON.stringify(body),
+		{
+			status: 200,
+			headers:
+			{
+				"Content-Type": "application/json",
+			},
+		},
+	);
 }
 
 /** A client with the transcript cached and observed, as the session page holds it. */
-function observedClient(data: TranscriptData): {queryClient: QueryClient; unsubscribe: () => void} {
+function observedClient(data: TranscriptData):
+{
+	queryClient: QueryClient;
+	unsubscribe: () => void;
+}
+{
 	const queryClient = new QueryClient();
 	queryClient.setQueryData(sessionQueryKeys.transcript(SESSION), data);
 	const observer = new QueryObserver(queryClient, transcriptQueryOptions(SESSION));
 	const unsubscribe = observer.subscribe(() => undefined);
-	return {queryClient, unsubscribe};
+	return {
+		queryClient,
+		unsubscribe,
+	};
 }
 
-describe("applySessionTranscriptRewritten", () => {
-	it("replaces the cached window with the fetched tail, dropping the retracted row", async () => {
+describe("applySessionTranscriptRewritten", () =>
+{
+	it("replaces the cached window with the fetched tail, dropping the retracted row", async () =>
+	{
 		const fresh = transcript(rows(0, 1, 2, 4, 5, 6), 0);
 		const fetchSpy = vi
 			.spyOn(globalThis, "fetch")
@@ -78,11 +114,17 @@ describe("applySessionTranscriptRewritten", () => {
 		unsubscribe();
 	});
 
-	it("drops earlier pages, keeping only the fetched tail", async () => {
+	it("drops earlier pages, keeping only the fetched tail", async () =>
+	{
 		const fresh = transcript(rows(399, 400, 401), 399);
 		vi.spyOn(globalThis, "fetch").mockImplementation(async () => Promise.resolve(jsonResponse(fresh)));
 		const earlierAndTail = transcript(
-			Array.from({length: 400}, (_, index) => row(index)),
+			Array.from(
+				{
+					length: 400,
+				},
+				(_, index) => row(index),
+			),
 			0,
 		);
 		const {queryClient, unsubscribe} = observedClient(earlierAndTail);
@@ -93,12 +135,14 @@ describe("applySessionTranscriptRewritten", () => {
 		unsubscribe();
 	});
 
-	it("does not merge appended lines into the old window while the replacement is in flight", async () => {
+	it("does not merge appended lines into the old window while the replacement is in flight", async () =>
+	{
 		const fresh = transcript(rows(0, 1, 2, 4, 5, 6), 0);
 		let respond: (response: Response) => void = () => undefined;
 		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
 			async () =>
-				new Promise<Response>((resolve) => {
+				new Promise<Response>((resolve) =>
+				{
 					respond = resolve;
 				}),
 		);
@@ -106,29 +150,54 @@ describe("applySessionTranscriptRewritten", () => {
 		const {queryClient, unsubscribe} = observedClient(old);
 
 		const replacing = applySessionTranscriptRewritten(queryClient, SESSION);
-		const firstLine = applySessionLinesAppended(queryClient, SESSION, {sessionId: SESSION, lines: [row(6)]});
+		const firstLine = applySessionLinesAppended(
+			queryClient,
+			SESSION,
+			{
+				sessionId: SESSION,
+				lines: [row(6)],
+			},
+		);
 
 		expect(firstLine).toBeNull();
 		expect(queryClient.getQueryData(sessionQueryKeys.transcript(SESSION))).toStrictEqual(old);
-		await vi.waitFor(() => {
+		await vi.waitFor(() =>
+		{
 			expect(fetchSpy).toHaveBeenCalledTimes(1);
 		});
 		respond(jsonResponse(fresh));
 		await replacing;
 		expect(queryClient.getQueryData(sessionQueryKeys.transcript(SESSION))).toStrictEqual(fresh);
-		expect(applySessionLinesAppended(queryClient, SESSION, {sessionId: SESSION, lines: [row(7)]})).toBe(6);
+		expect(
+			applySessionLinesAppended(
+				queryClient,
+				SESSION,
+				{
+					sessionId: SESSION,
+					lines: [row(7)],
+				},
+			),
+		).toBe(6);
 		unsubscribe();
 	});
 
-	it("fetches nothing when no transcript is cached", async () => {
+	it("fetches nothing when no transcript is cached", async () =>
+	{
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
 		const queryClient = new QueryClient();
 
 		await applySessionTranscriptRewritten(queryClient, SESSION);
 
-		expect({
-			calls: fetchSpy.mock.calls.length,
-			cached: queryClient.getQueryData(sessionQueryKeys.transcript(SESSION)),
-		}).toStrictEqual({calls: 0, cached: undefined});
+		expect(
+			{
+				calls: fetchSpy.mock.calls.length,
+				cached: queryClient.getQueryData(sessionQueryKeys.transcript(SESSION)),
+			},
+		).toStrictEqual(
+			{
+				calls: 0,
+				cached: undefined,
+			},
+		);
 	});
 });

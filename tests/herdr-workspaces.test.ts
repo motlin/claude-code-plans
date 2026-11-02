@@ -4,13 +4,16 @@ import {createHerdrPaneTable} from "../src/lib/herdr/pane-table";
 import {HerdrPaneInfoSchema} from "../src/lib/herdr/schema";
 import {getHerdrWorkspaces} from "../src/lib/herdr/workspaces";
 
-vi.mock("../src/lib/db", () => ({
-	getDb: () => {
+vi.mock("../src/lib/db", () => (
+{
+	getDb: () =>
+	{
 		throw new Error("Database should not be initialized");
 	},
 }));
 
-interface WirePaneOverrides {
+interface WirePaneOverrides
+{
 	paneId: string;
 	workspaceId: string;
 	tabId?: string;
@@ -30,7 +33,8 @@ function wirePane({
 	claudeSessionId = null,
 	focused = false,
 	terminalTitle = `Terminal ${paneId}`,
-}: WirePaneOverrides) {
+}: WirePaneOverrides)
+{
 	return {
 		pane_id: paneId,
 		terminal_id: `terminal-${paneId}`,
@@ -45,8 +49,10 @@ function wirePane({
 		revision: 1,
 		...(claudeSessionId === null
 			? {}
-			: {
-					agent_session: {
+			:
+				{
+					agent_session:
+					{
 						source: "herdr:claude",
 						agent: "claude",
 						kind: "id",
@@ -74,7 +80,8 @@ function wireWorkspace({
 	tabCount?: number;
 	paneCount?: number;
 	worktreeRepoName?: string;
-}) {
+})
+{
 	return {
 		workspace_id: workspaceId,
 		number,
@@ -86,8 +93,10 @@ function wireWorkspace({
 		agent_status: agentStatus,
 		...(worktreeRepoName === undefined
 			? {}
-			: {
-					worktree: {
+			:
+				{
+					worktree:
+					{
 						repo_key: `key-${worktreeRepoName}`,
 						repo_name: worktreeRepoName,
 						repo_root: `/tmp/test/${worktreeRepoName}`,
@@ -98,63 +107,83 @@ function wireWorkspace({
 	};
 }
 
-function snapshotRequester(snapshot: Record<string, unknown>, requests: object[] = []): HerdrRequester {
-	return async (request) => {
+function snapshotRequester(snapshot: Record<string, unknown>, requests: object[] = []): HerdrRequester
+{
+	return async (request) =>
+	{
 		requests.push(request);
-		return Promise.resolve({
-			ok: true,
-			value: {
-				type: "session_snapshot",
-				snapshot: {
-					version: "99.0.0-test",
-					protocol: 100,
-					workspaces: [],
-					tabs: [],
-					panes: [],
-					layouts: [],
-					agents: [],
-					...snapshot,
+		return Promise.resolve(
+			{
+				ok: true,
+				value:
+				{
+					type: "session_snapshot",
+					snapshot:
+					{
+						version: "99.0.0-test",
+						protocol: 100,
+						workspaces: [],
+						tabs: [],
+						panes: [],
+						layouts: [],
+						agents: [],
+						...snapshot,
+					},
 				},
 			},
-		});
+		);
 	};
 }
 
 const indexEverything: IndexedSessionFilter = (sessionIds) => new Set(sessionIds);
 const indexNothing: IndexedSessionFilter = () => new Set();
 
-describe("getHerdrWorkspaces", () => {
-	it("groups panes under their workspace and separates agents from bare shells", async () => {
+describe("getHerdrWorkspaces", () =>
+{
+	it("groups panes under their workspace and separates agents from bare shells", async () =>
+	{
 		const requests: object[] = [];
 		const workspaces = await getHerdrWorkspaces(
 			snapshotRequester(
 				{
 					workspaces: [
-						wireWorkspace({
-							workspaceId: "wA",
-							number: 1,
-							label: "kalshi",
-							agentStatus: "idle",
-							worktreeRepoName: "kalshi-upstream",
-						}),
+						wireWorkspace(
+							{
+								workspaceId: "wA",
+								number: 1,
+								label: "kalshi",
+								agentStatus: "idle",
+								worktreeRepoName: "kalshi-upstream",
+							},
+						),
 					],
 					panes: [
-						wirePane({
-							paneId: "wA:p1",
-							workspaceId: "wA",
-							agent: "claude",
-							agentStatus: "idle",
-							claudeSessionId: "session-test-100",
-							terminalTitle: "✓ kalshi",
-						}),
-						wirePane({
-							paneId: "wA:p2",
-							workspaceId: "wA",
-							agent: "codex",
-							agentStatus: "working",
-							terminalTitle: "codex kalshi",
-						}),
-						wirePane({paneId: "wA:p3", workspaceId: "wA", terminalTitle: "kalshi shell"}),
+						wirePane(
+							{
+								paneId: "wA:p1",
+								workspaceId: "wA",
+								agent: "claude",
+								agentStatus: "idle",
+								claudeSessionId: "session-test-100",
+								terminalTitle: "✓ kalshi",
+							},
+						),
+						wirePane(
+							{
+								paneId: "wA:p2",
+								workspaceId: "wA",
+								agent: "codex",
+								agentStatus: "working",
+								terminalTitle: "codex kalshi",
+							},
+						),
+						wirePane(
+							{
+								paneId: "wA:p3",
+								workspaceId: "wA",
+								terminalTitle: "kalshi shell",
+							},
+						),
 					],
 				},
 				requests,
@@ -162,55 +191,80 @@ describe("getHerdrWorkspaces", () => {
 			indexEverything,
 		);
 
-		expect({requests, workspaces}).toStrictEqual({
-			requests: [{id: "ccp:snap", method: "session.snapshot", params: {}}],
-			workspaces: [
-				{
-					workspaceId: "wA",
-					number: 1,
-					label: "kalshi",
-					agentStatus: "idle",
-					worktreeName: "kalshi-upstream",
-					agentPanes: [
-						{
-							paneId: "wA:p2",
-							agent: "codex",
-							agentStatus: "working",
-							sessionId: null,
-							title: "codex kalshi",
-						},
-						{
-							paneId: "wA:p1",
-							agent: "claude",
-							agentStatus: "idle",
-							sessionId: "session-test-100",
-							title: "✓ kalshi",
-						},
-					],
-					shellPanes: [
-						{
-							paneId: "wA:p3",
-							agent: null,
-							agentStatus: "unknown",
-							sessionId: null,
-							title: "kalshi shell",
-						},
-					],
-				},
-			],
-		});
+		expect(
+			{
+				requests,
+				workspaces,
+			},
+		).toStrictEqual(
+			{
+				requests: [
+					{
+						id: "ccp:snap",
+						method: "session.snapshot",
+						params: {},
+					},
+				],
+				workspaces: [
+					{
+						workspaceId: "wA",
+						number: 1,
+						label: "kalshi",
+						agentStatus: "idle",
+						worktreeName: "kalshi-upstream",
+						agentPanes: [
+							{
+								paneId: "wA:p2",
+								agent: "codex",
+								agentStatus: "working",
+								sessionId: null,
+								title: "codex kalshi",
+							},
+							{
+								paneId: "wA:p1",
+								agent: "claude",
+								agentStatus: "idle",
+								sessionId: "session-test-100",
+								title: "✓ kalshi",
+							},
+						],
+						shellPanes: [
+							{
+								paneId: "wA:p3",
+								agent: null,
+								agentStatus: "unknown",
+								sessionId: null,
+								title: "kalshi shell",
+							},
+						],
+					},
+				],
+			},
+		);
 	});
 
-	it("only links a Claude pane whose transcript ccp has indexed", async () => {
-		const snapshot = {
-			workspaces: [wireWorkspace({workspaceId: "wA", number: 1, label: "kalshi"})],
+	it("only links a Claude pane whose transcript ccp has indexed", async () =>
+	{
+		const snapshot =
+		{
+			workspaces: [
+				wireWorkspace(
+					{
+						workspaceId: "wA",
+						number: 1,
+						label: "kalshi",
+					},
+				),
+			],
 			panes: [
-				wirePane({
-					paneId: "wA:p1",
-					workspaceId: "wA",
-					agent: "claude",
-					claudeSessionId: "session-test-100",
-				}),
+				wirePane(
+					{
+						paneId: "wA:p1",
+						workspaceId: "wA",
+						agent: "claude",
+						claudeSessionId: "session-test-100",
+					},
+				),
 			],
 		};
 
@@ -219,23 +273,68 @@ describe("getHerdrWorkspaces", () => {
 			getHerdrWorkspaces(snapshotRequester(snapshot), indexNothing),
 		]);
 
-		expect({
-			indexed: indexed[0]?.agentPanes.map((pane) => pane.sessionId),
-			unindexed: unindexed[0]?.agentPanes.map((pane) => pane.sessionId),
-		}).toStrictEqual({indexed: ["session-test-100"], unindexed: [null]});
+		expect(
+			{
+				indexed: indexed[0]?.agentPanes.map((pane) => pane.sessionId),
+				unindexed: unindexed[0]?.agentPanes.map((pane) => pane.sessionId),
+			},
+		).toStrictEqual(
+			{
+				indexed: ["session-test-100"],
+				unindexed: [null],
+			},
+		);
 	});
 
-	it("orders workspaces by how much attention they need, then by workspace number", async () => {
+	it("orders workspaces by how much attention they need, then by workspace number", async () =>
+	{
 		const workspaces = await getHerdrWorkspaces(
-			snapshotRequester({
-				workspaces: [
-					wireWorkspace({workspaceId: "w1", number: 1, label: "idle-one", agentStatus: "idle"}),
-					wireWorkspace({workspaceId: "w2", number: 2, label: "working", agentStatus: "working"}),
-					wireWorkspace({workspaceId: "w3", number: 3, label: "blocked", agentStatus: "blocked"}),
-					wireWorkspace({workspaceId: "w4", number: 4, label: "done", agentStatus: "done"}),
-					wireWorkspace({workspaceId: "w5", number: 5, label: "idle-two", agentStatus: "idle"}),
-				],
-			}),
+			snapshotRequester(
+				{
+					workspaces: [
+						wireWorkspace(
+							{
+								workspaceId: "w1",
+								number: 1,
+								label: "idle-one",
+								agentStatus: "idle",
+							},
+						),
+						wireWorkspace(
+							{
+								workspaceId: "w2",
+								number: 2,
+								label: "working",
+								agentStatus: "working",
+							},
+						),
+						wireWorkspace(
+							{
+								workspaceId: "w3",
+								number: 3,
+								label: "blocked",
+								agentStatus: "blocked",
+							},
+						),
+						wireWorkspace(
+							{
+								workspaceId: "w4",
+								number: 4,
+								label: "done",
+								agentStatus: "done",
+							},
+						),
+						wireWorkspace(
+							{
+								workspaceId: "w5",
+								number: 5,
+								label: "idle-two",
+								agentStatus: "idle",
+							},
+						),
+					],
+				},
+			),
 			indexEverything,
 		);
 
@@ -248,97 +347,187 @@ describe("getHerdrWorkspaces", () => {
 		]);
 	});
 
-	it("keeps panes whose workspace is missing from the snapshot visible under a placeholder", async () => {
+	it("keeps panes whose workspace is missing from the snapshot visible under a placeholder", async () =>
+	{
 		const workspaces = await getHerdrWorkspaces(
-			snapshotRequester({
-				workspaces: [],
-				panes: [wirePane({paneId: "wZ:p1", workspaceId: "wZ", agent: "claude"})],
-			}),
+			snapshotRequester(
+				{
+					workspaces: [],
+					panes: [
+						wirePane(
+							{
+								paneId: "wZ:p1",
+								workspaceId: "wZ",
+								agent: "claude",
+							},
+						),
+					],
+				},
+			),
 			indexEverything,
 		);
 
 		expect(
-			workspaces.map((workspace) => ({
+			workspaces.map((workspace) => (
+			{
 				workspaceId: workspace.workspaceId,
 				label: workspace.label,
 				number: workspace.number,
 				agentPaneIds: workspace.agentPanes.map((pane) => pane.paneId),
 			})),
-		).toStrictEqual([{workspaceId: "wZ", label: "wZ", number: 0, agentPaneIds: ["wZ:p1"]}]);
+		).toStrictEqual([
+			{
+				workspaceId: "wZ",
+				label: "wZ",
+				number: 0,
+				agentPaneIds: ["wZ:p1"],
+			},
+		]);
 	});
 
-	it("returns no workspaces when herdr is unreachable or the protocol drifted", async () => {
+	it("returns no workspaces when herdr is unreachable or the protocol drifted", async () =>
+	{
 		const unreachable: HerdrRequester = async () =>
-			Promise.resolve({
-				ok: false,
-				code: "connect-failed",
-				message: "no herdr socket",
-			});
-		const drifted: HerdrRequester = async () => Promise.resolve({ok: true, value: {type: "surprise"}});
+			Promise.resolve(
+				{
+					ok: false,
+					code: "connect-failed",
+					message: "no herdr socket",
+				},
+			);
+		const drifted: HerdrRequester = async () =>
+			Promise.resolve(
+				{
+					ok: true,
+					value:
+					{
+						type: "surprise",
+					},
+				},
+			);
 
 		const [unreachable_, drifted_] = await Promise.all([
 			getHerdrWorkspaces(unreachable, indexEverything),
 			getHerdrWorkspaces(drifted, indexEverything),
 		]);
 
-		expect({unreachable: unreachable_, drifted: drifted_}).toStrictEqual({
-			unreachable: [],
-			drifted: [],
-		});
+		expect(
+			{
+				unreachable: unreachable_,
+				drifted: drifted_,
+			},
+		).toStrictEqual(
+			{
+				unreachable: [],
+				drifted: [],
+			},
+		);
 	});
 
-	it("serves workspaces from a current pane table without a socket round trip", async () => {
+	it("serves workspaces from a current pane table without a socket round trip", async () =>
+	{
 		const requests: object[] = [];
 		const table = createHerdrPaneTable();
-		table.seed({
-			workspaces: [wireWorkspace({workspaceId: "w1", number: 1, label: "alpha", agentStatus: "idle"})],
-			panes: [
-				HerdrPaneInfoSchema.parse(
-					wirePane({paneId: "w1:p1", workspaceId: "w1", agent: "claude", agentStatus: "idle"}),
-				),
-			],
-		});
-		table.apply("pane_agent_status_changed", {pane_id: "w1:p1", workspace_id: "w1", agent_status: "blocked"});
+		table.seed(
+			{
+				workspaces: [
+					wireWorkspace(
+						{
+							workspaceId: "w1",
+							number: 1,
+							label: "alpha",
+							agentStatus: "idle",
+						},
+					),
+				],
+				panes: [
+					HerdrPaneInfoSchema.parse(
+						wirePane(
+							{
+								paneId: "w1:p1",
+								workspaceId: "w1",
+								agent: "claude",
+								agentStatus: "idle",
+							},
+						),
+					),
+				],
+			},
+		);
+		table.apply(
+			"pane_agent_status_changed",
+			{
+				pane_id: "w1:p1",
+				workspace_id: "w1",
+				agent_status: "blocked",
+			},
+		);
 
 		const workspaces = await getHerdrWorkspaces(snapshotRequester({}, requests), indexEverything, table);
 
-		expect({workspaces, requests}).toStrictEqual({
-			workspaces: [
-				{
-					workspaceId: "w1",
-					number: 1,
-					label: "alpha",
-					agentStatus: "blocked",
-					worktreeName: null,
-					agentPanes: [
-						{
-							paneId: "w1:p1",
-							title: "Terminal w1:p1",
-							agent: "claude",
-							agentStatus: "blocked",
-							sessionId: null,
-						},
-					],
-					shellPanes: [],
-				},
-			],
-			requests: [],
-		});
+		expect(
+			{
+				workspaces,
+				requests,
+			},
+		).toStrictEqual(
+			{
+				workspaces: [
+					{
+						workspaceId: "w1",
+						number: 1,
+						label: "alpha",
+						agentStatus: "blocked",
+						worktreeName: null,
+						agentPanes: [
+							{
+								paneId: "w1:p1",
+								title: "Terminal w1:p1",
+								agent: "claude",
+								agentStatus: "blocked",
+								sessionId: null,
+							},
+						],
+						shellPanes: [],
+					},
+				],
+				requests: [],
+			},
+		);
 	});
 
-	it("names a named herdr session's workspaces after that session", async () => {
+	it("names a named herdr session's workspaces after that session", async () =>
+	{
 		const table = createHerdrPaneTable();
-		table.seed({
-			workspaces: [
-				wireWorkspace({workspaceId: "wM@later", number: 1, label: "eclipse-collections", agentStatus: "idle"}),
-			],
-			panes: [],
-		});
+		table.seed(
+			{
+				workspaces: [
+					wireWorkspace(
+						{
+							workspaceId: "wM@later",
+							number: 1,
+							label: "eclipse-collections",
+							agentStatus: "idle",
+						},
+					),
+				],
+				panes: [],
+			},
+		);
 
 		const workspaces = await getHerdrWorkspaces(snapshotRequester({}), indexEverything, table);
 
-		expect(workspaces.map(({workspaceId, label}) => ({workspaceId, label}))).toStrictEqual([
-			{workspaceId: "wM@later", label: "eclipse-collections (later)"},
+		expect(
+			workspaces.map(({workspaceId, label}) => (
+			{
+				workspaceId,
+				label,
+			})),
+		).toStrictEqual([
+			{
+				workspaceId: "wM@later",
+				label: "eclipse-collections (later)",
+			},
 		]);
 	});
 });

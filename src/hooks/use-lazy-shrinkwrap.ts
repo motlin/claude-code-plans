@@ -13,36 +13,53 @@ import {loadedShrinkwrapEngine, loadShrinkwrapEngine, type ShrinkwrapEngine} fro
 export function useLazyShrinkwrap({
 	enabled = true,
 	immediate = false,
-}: {enabled?: boolean; immediate?: boolean} = {}): RefCallback<HTMLElement> {
+}:
+{
+	enabled?: boolean;
+	immediate?: boolean;
+} = {}): RefCallback<HTMLElement>
+{
 	const dispose = useRef<(() => void) | null>(null);
 	/** Bumped on every ref call, so a download that lands after a detach or re-attach fits nothing. */
 	const attachment = useRef(0);
 	return useCallback(
-		(el: HTMLElement | null) => {
+		(el: HTMLElement | null) =>
+		{
 			const previous = dispose.current;
 			dispose.current = null;
 			previous?.();
 			const current = ++attachment.current;
 			if (el === null) return;
-			const fit = (engine: ShrinkwrapEngine) => {
-				if (!enabled) {
+			const fit = (engine: ShrinkwrapEngine) =>
+			{
+				if (!enabled)
+				{
 					engine.restoreShrinkwrap(el);
 					return;
 				}
-				dispose.current = engine.attachShrinkwrap(el, {immediate, remember: true});
+				dispose.current = engine.attachShrinkwrap(
+					el,
+					{
+						immediate,
+						remember: true,
+					},
+				);
 			};
 			const engine = loadedShrinkwrapEngine();
-			if (engine !== undefined) {
+			if (engine !== undefined)
+			{
 				fit(engine);
 				return;
 			}
 			// Nothing was fitted without the engine, so a disabled element has no width to restore.
 			if (!enabled) return;
 			loadShrinkwrapEngine().then(
-				(loaded) => {
+				(loaded) =>
+				{
 					if (attachment.current === current) fit(loaded);
 				},
-				() => {
+				() =>
+				{
 					// Unfitted is the element's own layout; the next attach retries the download.
 				},
 			);

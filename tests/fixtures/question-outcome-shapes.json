@@ -6,14 +6,16 @@
 			{
 				"type": "assistant",
 				"uuid": "a-replied",
-				"message": {
+				"message":
+				{
 					"role": "assistant",
 					"content": [
 						{
 							"type": "tool_use",
 							"id": "toolu_replied",
 							"name": "AskUserQuestion",
-							"input": {
+							"input":
+							{
 								"questions": [
 									{
 										"question": "Approve the two parser fixes?",
@@ -50,7 +52,8 @@
 				"uuid": "r-replied",
 				"parentUuid": "a-replied",
 				"sourceToolAssistantUUID": "a-replied",
-				"message": {
+				"message":
+				{
 					"role": "user",
 					"content": [
 						{
@@ -60,7 +63,8 @@
 						}
 					]
 				},
-				"toolUseResult": {
+				"toolUseResult":
+				{
 					"questions": [
 						{
 							"header": "Parser fixes",
@@ -81,7 +85,8 @@
 							"question": "How to resolve the lint disagreements?"
 						}
 					],
-					"answers": {
+					"answers":
+					{
 						"Approve the two parser fixes?": "[User did not answer this question — they sent a message instead. Treat that message as their response; do not re-ask.]",
 						"How to resolve the lint disagreements?": "[User did not answer this question — they sent a message instead. Treat that message as their response; do not re-ask.]"
 					}
@@ -96,14 +101,16 @@
 			{
 				"type": "assistant",
 				"uuid": "a-dismissed",
-				"message": {
+				"message":
+				{
 					"role": "assistant",
 					"content": [
 						{
 							"type": "tool_use",
 							"id": "toolu_dismissed",
 							"name": "AskUserQuestion",
-							"input": {
+							"input":
+							{
 								"questions": [
 									{
 										"question": "The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?",
@@ -129,7 +136,8 @@
 				"uuid": "r-dismissed",
 				"parentUuid": "a-dismissed",
 				"sourceToolAssistantUUID": "a-dismissed",
-				"message": {
+				"message":
+				{
 					"role": "user",
 					"content": [
 						{
@@ -139,7 +147,8 @@
 						}
 					]
 				},
-				"toolUseResult": {
+				"toolUseResult":
+				{
 					"questions": [
 						{
 							"header": "Next",
@@ -155,7 +164,8 @@
 							"question": "The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?"
 						}
 					],
-					"answers": {
+					"answers":
+					{
 						"The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?": "[User dismissed — do not proceed, wait for next instruction]"
 					}
 				}
@@ -169,14 +179,16 @@
 			{
 				"type": "assistant",
 				"uuid": "a-terminal-skip",
-				"message": {
+				"message":
+				{
 					"role": "assistant",
 					"content": [
 						{
 							"type": "tool_use",
 							"id": "toolu_terminal_skip",
 							"name": "AskUserQuestion",
-							"input": {
+							"input":
+							{
 								"questions": [
 									{
 										"question": "Gee?",
@@ -207,7 +219,8 @@
 				"uuid": "r-terminal-skip",
 				"parentUuid": "a-terminal-skip",
 				"sourceToolAssistantUUID": "a-terminal-skip",
-				"message": {
+				"message":
+				{
 					"role": "user",
 					"content": [
 						{
@@ -217,7 +230,8 @@
 						}
 					]
 				},
-				"toolUseResult": {
+				"toolUseResult":
+				{
 					"questions": [
 						{
 							"question": "Gee?",
@@ -251,14 +265,16 @@
 			{
 				"type": "assistant",
 				"uuid": "a-stopped",
-				"message": {
+				"message":
+				{
 					"role": "assistant",
 					"content": [
 						{
 							"type": "tool_use",
 							"id": "toolu_stopped",
 							"name": "AskUserQuestion",
-							"input": {
+							"input":
+							{
 								"questions": [
 									{
 										"question": "Game \"Raw\" resource-panel screenshot — where does it belong?",
@@ -286,7 +302,8 @@
 				"uuid": "r-stopped",
 				"parentUuid": "a-stopped",
 				"sourceToolAssistantUUID": "a-stopped",
-				"message": {
+				"message":
+				{
 					"role": "user",
 					"content": [
 						{
@@ -304,7 +321,8 @@
 				"type": "user",
 				"uuid": "u-stopped-interrupt",
 				"parentUuid": "r-stopped",
-				"message": {
+				"message":
+				{
 					"role": "user",
 					"content": [{"type": "text", "text": "[Request interrupted by user for tool use]"}]
 				}
@@ -318,14 +336,16 @@
 			{
 				"type": "assistant",
 				"uuid": "a-stopped-two",
-				"message": {
+				"message":
+				{
 					"role": "assistant",
 					"content": [
 						{
 							"type": "tool_use",
 							"id": "toolu_stopped_two",
 							"name": "AskUserQuestion",
-							"input": {
+							"input":
+							{
 								"questions": [
 									{
 										"question": "Game \"Raw\" resource-panel screenshot — where does it belong?",
@@ -362,7 +382,8 @@
 				"uuid": "r-stopped-two",
 				"parentUuid": "a-stopped-two",
 				"sourceToolAssistantUUID": "a-stopped-two",
-				"message": {
+				"message":
+				{
 					"role": "user",
 					"content": [
 						{
@@ -380,7 +401,8 @@
 				"type": "user",
 				"uuid": "u-stopped-two-interrupt",
 				"parentUuid": "r-stopped-two",
-				"message": {
+				"message":
+				{
 					"role": "user",
 					"content": [{"type": "text", "text": "[Request interrupted by user for tool use]"}]
 				}
@@ -394,14 +416,16 @@
 			{
 				"type": "assistant",
 				"uuid": "a-no-preference-1",
-				"message": {
+				"message":
+				{
 					"role": "assistant",
 					"content": [
 						{
 							"type": "tool_use",
 							"id": "toolu_no_preference_1",
 							"name": "AskUserQuestion",
-							"input": {
+							"input":
+							{
 								"questions": [
 									{
 										"question": "Which color do you prefer?",
@@ -423,7 +447,8 @@
 				"uuid": "r-no-preference-1",
 				"parentUuid": "a-no-preference-1",
 				"sourceToolAssistantUUID": "a-no-preference-1",
-				"message": {
+				"message":
+				{
 					"role": "user",
 					"content": [
 						{
@@ -433,7 +458,8 @@
 						}
 					]
 				},
-				"toolUseResult": {
+				"toolUseResult":
+				{
 					"questions": [
 						{
 							"question": "Which color do you prefer?",
@@ -457,14 +483,16 @@
 			{
 				"type": "assistant",
 				"uuid": "a-no-preference-2",
-				"message": {
+				"message":
+				{
 					"role": "assistant",
 					"content": [
 						{
 							"type": "tool_use",
 							"id": "toolu_no_preference_2",
 							"name": "AskUserQuestion",
-							"input": {
+							"input":
+							{
 								"questions": [
 									{
 										"question": "Which fruit do you prefer?",
@@ -495,7 +523,8 @@
 				"uuid": "r-no-preference-2",
 				"parentUuid": "a-no-preference-2",
 				"sourceToolAssistantUUID": "a-no-preference-2",
-				"message": {
+				"message":
+				{
 					"role": "user",
 					"content": [
 						{
@@ -505,7 +534,8 @@
 						}
 					]
 				},
-				"toolUseResult": {
+				"toolUseResult":
+				{
 					"questions": [
 						{
 							"question": "Which fruit do you prefer?",
@@ -526,7 +556,8 @@
 							]
 						}
 					],
-					"answers": {
+					"answers":
+					{
 						"Which fruit do you prefer?": "[No preference]",
 						"Which sizes do you want?": "[No preference]"
 					}

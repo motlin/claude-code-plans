@@ -3,7 +3,8 @@ import type {Readable, Writable} from "node:stream";
 import {z} from "zod";
 import {terminalWritesEnabled} from "../config";
 import {rejectCrossSite} from "../same-origin-guard";
-import {
+import
+{
 	bridgeTerminalStream,
 	herdrTerminalSpawnTarget,
 	parseViewport,
@@ -17,13 +18,22 @@ import {
 } from "./terminal-observer";
 
 const TerminalControlFrameSchema = z.discriminatedUnion("type", [
-	z.object({type: z.literal("data"), data: z.string().max(64 * 1024)}).strict(),
 	z
-		.object({
-			type: z.literal("resize"),
-			cols: ViewportDimensionSchema,
-			rows: ViewportDimensionSchema,
-		})
+		.object(
+			{
+				type: z.literal("data"),
+				data: z.string().max(64 * 1024),
+			},
+		)
+		.strict(),
+	z
+		.object(
+			{
+				type: z.literal("resize"),
+				cols: ViewportDimensionSchema,
+				rows: ViewportDimensionSchema,
+			},
+		)
 		.strict(),
 ]);
 
@@ -31,24 +41,34 @@ type ControllerChild = ChildProcessByStdio<Writable, Readable, Readable>;
 type SpawnController = (
 	command: string,
 	arguments_: readonly string[],
-	options: {stdio: ["pipe", "pipe", "pipe"]; env?: NodeJS.ProcessEnv},
+	options:
+	{
+		stdio: ["pipe", "pipe", "pipe"];
+		env?: NodeJS.ProcessEnv;
+	},
 ) => ControllerChild;
 
-export interface TerminalController extends TerminalObserver {
+export interface TerminalController extends TerminalObserver
+{
 	/** Apply one client WebSocket frame: `{type:"data"}` or `{type:"resize"}`. */
 	input: (message: string) => void;
 }
 
-export interface TerminalControllerDependencies {
+export interface TerminalControllerDependencies
+{
 	resolveTarget: (sessionId: string) => Promise<string>;
 	spawnController: SpawnController;
 }
 
-function parseFrame(message: string): z.infer<typeof TerminalControlFrameSchema> | null {
-	try {
+function parseFrame(message: string): z.infer<typeof TerminalControlFrameSchema> | null
+{
+	try
+	{
 		const parsed = TerminalControlFrameSchema.safeParse(JSON.parse(message));
 		return parsed.success ? parsed.data : null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -62,41 +82,82 @@ export function startTerminalController(
 	options: ObserverOptions,
 	socket: TerminalObserverSocket,
 	spawnController: SpawnController = spawn,
-): TerminalController {
+): TerminalController
+{
 	const viewport = parseViewport(options.columns, options.rows);
 	const {target, env} = herdrTerminalSpawnTarget(options.target);
-	const child = spawnController("herdr", sessionStreamArguments("control", {target, ...viewport}), {
-		stdio: ["pipe", "pipe", "pipe"],
-		...(env ? {env} : {}),
-	});
+	const child = spawnController(
+		"herdr",
+		sessionStreamArguments(
+			"control",
+			{
+				target,
+				...viewport,
+			},
+		),
+		{
+			stdio: ["pipe", "pipe", "pipe"],
+			...(env
+				?
+					{
+						env,
+					}
+				: {}),
+		},
+	);
 	const stream = bridgeTerminalStream(child, socket);
 	let stopped = false;
 
-	const stop = (): void => {
+	const stop = (): void =>
+	{
 		stopped = true;
 		child.stdin.end();
 		stream.stop();
 	};
 
-	const writeCommand = (command: Record<string, unknown>): void => {
+	const writeCommand = (command: Record<string, unknown>): void =>
+	{
 		child.stdin.write(`${JSON.stringify(command)}\n`);
 	};
 
 	return {
-		input(message) {
+		input(message)
+		{
 			if (stopped) return;
 			const frame = parseFrame(message);
-			if (frame === null) {
-				socket.send(JSON.stringify({type: "observer.error", message: "invalid terminal control frame"}));
+			if (frame === null)
+			{
+				socket.send(
+					JSON.stringify(
+						{
+							type: "observer.error",
+							message: "invalid terminal control frame",
+						},
+					),
+				);
 				socket.close(1008, "invalid terminal control frame");
 				stop();
 				return;
 			}
-			if (frame.type === "data") writeCommand({type: "terminal.input", text: frame.data});
-			else writeCommand({type: "terminal.resize", cols: frame.cols, rows: frame.rows});
+			if (frame.type === "data")
+				writeCommand(
+					{
+						type: "terminal.input",
+						text: frame.data,
+					},
+				);
+			else
+				writeCommand(
+					{
+						type: "terminal.resize",
+						cols: frame.cols,
+						rows: frame.rows,
+					},
+				);
 		},
 		stop,
-		shutdown() {
+		shutdown()
+		{
 			stopped = true;
 			child.stdin.end();
 			stream.shutdown();
@@ -104,7 +165,8 @@ export function startTerminalController(
 	};
 }
 
-const defaultDependencies: TerminalControllerDependencies = {
+const defaultDependencies: TerminalControllerDependencies =
+{
 	resolveTarget: resolveSessionTerminal,
 	spawnController: spawn,
 };
@@ -115,9 +177,18 @@ export async function controlHerdrSession(
 	rows: number,
 	socket: TerminalObserverSocket,
 	dependencies: TerminalControllerDependencies = defaultDependencies,
-): Promise<TerminalController> {
+): Promise<TerminalController>
+{
 	const target = await dependencies.resolveTarget(sessionId);
-	return startTerminalController({target, columns, rows}, socket, dependencies.spawnController);
+	return startTerminalController(
+		{
+			target,
+			columns,
+			rows,
+		},
+		socket,
+		dependencies.spawnController,
+	);
 }
 
 /** Stream any herdr pane by its id, plain shells included, and accept keyboard frames. */
@@ -127,20 +198,44 @@ export async function controlHerdrPane(
 	rows: number,
 	socket: TerminalObserverSocket,
 	spawnController: SpawnController = spawn,
-): Promise<TerminalController> {
+): Promise<TerminalController>
+{
 	const target = await resolvePaneTerminal(paneId);
-	return startTerminalController({target, columns, rows}, socket, spawnController);
+	return startTerminalController(
+		{
+			target,
+			columns,
+			rows,
+		},
+		socket,
+		spawnController,
+	);
 }
 
 /** Upgrade gate: same-origin only, and only while herdr writes are enabled. */
 export function authorizeTerminalControl(
 	request: Request,
-	dependencies: {writesEnabled: () => boolean} = {writesEnabled: terminalWritesEnabled},
-): Response | null {
+	dependencies:
+	{
+		writesEnabled: () => boolean;
+	} =
+	{
+		writesEnabled: terminalWritesEnabled,
+	},
+): Response | null
+{
 	const rejection = rejectCrossSite(request);
 	if (rejection) return rejection;
-	if (!dependencies.writesEnabled()) {
-		return Response.json({error: "herdr writes are disabled"}, {status: 403});
+	if (!dependencies.writesEnabled())
+	{
+		return Response.json(
+			{
+				error: "herdr writes are disabled",
+			},
+			{
+				status: 403,
+			},
+		);
 	}
 	return null;
 }

@@ -14,7 +14,8 @@ const SWITCH_MODEL_AND_RETRY = "Switch model and retry";
 const MODEL_TRIGGER_CLASS =
 	"inline-flex h-6 shrink min-w-0 max-w-[9rem] cursor-pointer items-center justify-start rounded-r5 px-2 text-[13px]/[19px] text-ink-muted hover:text-primary hover:bg-alpha-2 aria-expanded:bg-alpha-2 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-export interface RecoveryHandlers {
+export interface RecoveryHandlers
+{
 	onRetry?: () => void;
 	onCompact?: () => void;
 	onRewind?: () => void;
@@ -35,7 +36,8 @@ function SwitchModelMenu({
 	label: string;
 	current: string | undefined;
 	onSelect: (model: string) => void;
-}) {
+})
+{
 	const [open, setOpen] = useState(false);
 	return (
 		<Menu open={open} onOpenChange={setOpen}>
@@ -49,7 +51,8 @@ function SwitchModelMenu({
 					<MenuLabel>{SWITCH_MODEL_AND_RETRY}</MenuLabel>
 					<MenuRadioGroup
 						value={current ?? ""}
-						onValueChange={(value: string) => {
+						onValueChange={(value: string) =>
+						{
 							setOpen(false);
 							onSelect(value);
 						}}
@@ -79,20 +82,26 @@ export function ErrorRecoveryActions({
 	actions: readonly RecoveryAction[];
 	handlers: RecoveryHandlers;
 	onActed: () => void;
-}) {
-	const act = (handler: (() => void) | undefined) => () => {
+})
+{
+	const act = (handler: (() => void) | undefined) => () =>
+	{
 		handler?.();
 		onActed();
 	};
 	// Upstream latches only when the model switch went through (`onSelect()!==false`).
-	const retryWithModel = (model: string) => {
-		void handlers.onRetryWithModel?.(model).then((switched) => {
+	const retryWithModel = (model: string) =>
+	{
+		void handlers.onRetryWithModel?.(model).then((switched) =>
+		{
 			if (switched) onActed();
 		});
 	};
-	return actions.map((action) => {
+	return actions.map((action) =>
+	{
 		const variant = action.primary ? "primary" : "secondary";
-		switch (action.key) {
+		switch (action.key)
+		{
 			case "rewind":
 				return (
 					<ApprovalActionButton key={action.key} variant={variant} onClick={act(handlers.onRewind)}>
@@ -113,7 +122,12 @@ export function ErrorRecoveryActions({
 						label={action.label}
 						menuLabel="More recovery options"
 						onPrimaryClick={act(handlers.onCompact)}
-						items={[{label: "Rewind", onSelect: act(handlers.onRewind)}]}
+						items={[
+							{
+								label: "Rewind",
+								onSelect: act(handlers.onRewind),
+							},
+						]}
 					/>
 				);
 			case "retry":
@@ -122,13 +136,15 @@ export function ErrorRecoveryActions({
 						{action.label}
 					</ApprovalActionButton>
 				);
-			case "fallback": {
+			case "fallback":
+			{
 				const {fallbackAlias} = handlers;
 				return (
 					<ApprovalActionButton
 						key={action.key}
 						variant={variant}
-						onClick={() => {
+						onClick={() =>
+						{
 							if (fallbackAlias !== undefined) retryWithModel(fallbackAlias);
 						}}
 					>

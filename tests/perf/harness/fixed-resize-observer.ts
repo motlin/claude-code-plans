@@ -1,6 +1,7 @@
 import {vi} from "vite-plus/test";
 
-export interface FixedSize {
+export interface FixedSize
+{
 	width: number;
 	height: number;
 }
@@ -10,19 +11,44 @@ export interface FixedSize {
  * synchronously on `observe`, so virtualizer layouts and commit counts do not depend on timing. Pass a function to give
  * elements different sizes.
  */
-export function installFixedResizeObserver(size: FixedSize | ((element: Element) => FixedSize)): void {
+export function installFixedResizeObserver(size: FixedSize | ((element: Element) => FixedSize)): void
+{
 	const sizeOf = typeof size === "function" ? size : () => size;
 
-	class FixedResizeObserver {
-		constructor(private readonly callback: ResizeObserverCallback) {}
+	class FixedResizeObserver
+	{
+		constructor(private readonly callback: ResizeObserverCallback)
+		{
+		}
 
-		observe(target: Element): void {
+		observe(target: Element): void
+		{
 			const {width, height} = sizeOf(target);
-			const boxSize = [{inlineSize: width, blockSize: height}];
-			const contentRect = {x: 0, y: 0, top: 0, left: 0, right: width, bottom: height, width, height};
-			const entry: ResizeObserverEntry = {
+			const boxSize = [
+				{
+					inlineSize: width,
+					blockSize: height,
+				},
+			];
+			const contentRect =
+			{
+				x: 0,
+				y: 0,
+				top: 0,
+				left: 0,
+				right: width,
+				bottom: height,
+				width,
+				height,
+			};
+			const entry: ResizeObserverEntry =
+			{
 				target,
-				contentRect: {...contentRect, toJSON: () => contentRect},
+				contentRect:
+				{
+					...contentRect,
+					toJSON: () => contentRect,
+				},
 				borderBoxSize: boxSize,
 				contentBoxSize: boxSize,
 				devicePixelContentBoxSize: boxSize,
@@ -30,11 +56,16 @@ export function installFixedResizeObserver(size: FixedSize | ((element: Element)
 			this.callback([entry], this);
 		}
 
-		unobserve(): void {}
+		unobserve(): void
+		{
+		}
 
-		disconnect(): void {}
+		disconnect(): void
+		{
+		}
 
-		takeRecords(): Array<ResizeObserverEntry> {
+		takeRecords(): Array<ResizeObserverEntry>
+		{
 			return [];
 		}
 	}

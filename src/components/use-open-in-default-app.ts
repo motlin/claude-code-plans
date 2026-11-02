@@ -9,13 +9,21 @@ import {ToastContext} from "./toast-context";
  * fails. Like upstream, a refusal (403: outside the roots, a folder, an
  * executable) stays silent. Outside a toast provider every failure is silent.
  */
-export function useOpenInDefaultApp(): (path: string) => void {
+export function useOpenInDefaultApp(): (path: string) => void
+{
 	const toast = useContext(ToastContext);
 	return useCallback(
-		(path) => {
-			openFileInDefaultApp(path).catch((error: unknown) => {
+		(path) =>
+		{
+			openFileInDefaultApp(path).catch((error: unknown) =>
+			{
 				if (error instanceof ApiResponseError && error.status === 403) return;
-				toast?.({kind: "error", message: "Couldn’t open this file with the default app."});
+				toast?.(
+					{
+						kind: "error",
+						message: "Couldn’t open this file with the default app.",
+					},
+				);
 			});
 		},
 		[toast],

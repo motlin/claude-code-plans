@@ -23,12 +23,17 @@ export function FindBar({
 	onQueryChange: (query: string) => void;
 	onStep: (direction: 1 | -1) => void;
 	onClose: () => void;
-}) {
-	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-		if (event.key === "Enter") {
+})
+{
+	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) =>
+	{
+		if (event.key === "Enter")
+		{
 			event.preventDefault();
 			onStep(event.shiftKey ? -1 : 1);
-		} else if (event.key === "Escape") {
+		}
+		else if (event.key === "Escape")
+		{
 			event.preventDefault();
 			event.stopPropagation();
 			onClose();
@@ -49,7 +54,8 @@ export function FindBar({
 					spellCheck={false}
 					autoComplete="off"
 					value={query}
-					onChange={(event) => {
+					onChange={(event) =>
+					{
 						onQueryChange(event.target.value);
 					}}
 					onKeyDown={handleKeyDown}
@@ -69,7 +75,8 @@ export function FindBar({
 					aria-label="Previous match"
 					title="Previous match (⇧Enter)"
 					disabled={total === 0}
-					onClick={() => {
+					onClick={() =>
+					{
 						onStep(-1);
 					}}
 					className={BAR_BUTTON}
@@ -81,7 +88,8 @@ export function FindBar({
 					aria-label="Next match"
 					title="Next match (Enter)"
 					disabled={total === 0}
-					onClick={() => {
+					onClick={() =>
+					{
 						onStep(1);
 					}}
 					className={BAR_BUTTON}

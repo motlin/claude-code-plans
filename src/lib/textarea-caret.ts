@@ -38,17 +38,20 @@ const MIRRORED_PROPERTIES = [
 	"direction",
 ] as const satisfies readonly (keyof CSSStyleDeclaration)[];
 
-export interface TextareaCaretRect {
+export interface TextareaCaretRect
+{
 	left: number;
 	top: number;
 	height: number;
 }
 
-export function textareaCaretRect(textarea: HTMLTextAreaElement, index: number): TextareaCaretRect {
+export function textareaCaretRect(textarea: HTMLTextAreaElement, index: number): TextareaCaretRect
+{
 	const computed = window.getComputedStyle(textarea);
 	const mirror = document.createElement("div");
 	mirror.dataset["textareaCaretMirror"] = "";
-	for (const property of MIRRORED_PROPERTIES) {
+	for (const property of MIRRORED_PROPERTIES)
+	{
 		mirror.style[property] = computed[property];
 	}
 	mirror.style.position = "absolute";
@@ -67,7 +70,8 @@ export function textareaCaretRect(textarea: HTMLTextAreaElement, index: number):
 	mirror.append(marker, document.createTextNode(value.slice(index + 1)));
 
 	document.body.append(mirror);
-	try {
+	try
+	{
 		const mirrorRect = mirror.getBoundingClientRect();
 		const markerRect = marker.getBoundingClientRect();
 		return {
@@ -75,7 +79,9 @@ export function textareaCaretRect(textarea: HTMLTextAreaElement, index: number):
 			top: markerRect.top - mirrorRect.top - textarea.scrollTop,
 			height: markerRect.height,
 		};
-	} finally {
+	}
+	finally
+	{
 		mirror.remove();
 	}
 }

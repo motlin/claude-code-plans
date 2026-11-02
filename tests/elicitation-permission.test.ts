@@ -1,11 +1,13 @@
 import {QueryClient} from "@tanstack/react-query";
-import {
+import
+{
 	PendingElicitationsResponse,
 	applyPendingElicitationsChanged,
 	pendingElicitationsQueryOptions,
 } from "../src/lib/api/pending-elicitations";
 import type {PendingElicitation} from "../src/lib/domain-event-payload-schemas";
-import {
+import
+{
 	findElicitationWaitingNotice,
 	findPendingElicitationPermission,
 	findUrlElicitationCard,
@@ -15,19 +17,29 @@ import {addPendingElicitation, clearAllPendingElicitations} from "../src/lib/pen
 import {handlePendingElicitationsRequest} from "../src/routes/api/sessions.$id.pending-elicitations";
 import {elicitationFormFixture, elicitationUrlFixture, elicitationVerdictFixture} from "./fixtures/elicitation";
 
-afterEach(() => {
+afterEach(() =>
+{
 	clearAllPendingElicitations();
 });
 
-function verdictEntry(verdictEnum: string[], overrides: Partial<PendingElicitation> = {}): PendingElicitation {
+function verdictEntry(verdictEnum: string[], overrides: Partial<PendingElicitation> = {}): PendingElicitation
+{
 	return {
 		elicitationId: elicitationVerdictFixture.elicitation_id,
 		serverName: elicitationVerdictFixture.mcp_server_name,
 		message: elicitationVerdictFixture.message,
 		mode: "form",
-		requestedSchema: {
+		requestedSchema:
+		{
 			type: "object",
-			properties: {verdict: {type: "string", enum: verdictEnum}},
+			properties:
+			{
+				verdict:
+				{
+					type: "string",
+					enum: verdictEnum,
+				},
+			},
 			required: ["verdict"],
 		},
 		receivedAt: 1_700_000_000_000,
@@ -35,7 +47,8 @@ function verdictEntry(verdictEnum: string[], overrides: Partial<PendingElicitati
 	};
 }
 
-const FORM_ENTRY: PendingElicitation = {
+const FORM_ENTRY: PendingElicitation =
+{
 	serverName: elicitationFormFixture.mcp_server_name,
 	message: elicitationFormFixture.message,
 	mode: "form",
@@ -43,54 +56,116 @@ const FORM_ENTRY: PendingElicitation = {
 	receivedAt: 1_700_000_000_000,
 };
 
-describe("isVerdictSchema", () => {
+describe("isVerdictSchema", () =>
+{
 	it.each([
-		{name: "allow + deny + always_allow", schema: elicitationVerdictFixture.requested_schema, expected: true},
+		{
+			name: "allow + deny + always_allow",
+			schema: elicitationVerdictFixture.requested_schema,
+			expected: true,
+		},
 		{
 			name: "allow + deny",
-			schema: {type: "object", properties: {verdict: {type: "string", enum: ["allow", "deny"]}}},
+			schema:
+			{
+				type: "object",
+				properties:
+				{
+					verdict:
+					{
+						type: "string",
+						enum: ["allow", "deny"],
+					},
+				},
+			},
 			expected: true,
 		},
 		{
 			name: "no deny",
-			schema: {type: "object", properties: {verdict: {type: "string", enum: ["allow", "always_allow"]}}},
+			schema:
+			{
+				type: "object",
+				properties:
+				{
+					verdict:
+					{
+						type: "string",
+						enum: ["allow", "always_allow"],
+					},
+				},
+			},
 			expected: false,
 		},
-		{name: "a form", schema: elicitationFormFixture.requested_schema, expected: false},
+		{
+			name: "a form",
+			schema: elicitationFormFixture.requested_schema,
+			expected: false,
+		},
 		{
 			name: "verdict without an enum",
-			schema: {type: "object", properties: {verdict: {type: "string"}}},
+			schema:
+			{
+				type: "object",
+				properties:
+				{
+					verdict:
+					{
+						type: "string",
+					},
+				},
+			},
 			expected: false,
 		},
-		{name: "no schema", schema: undefined, expected: false},
-	])("$name → $expected", ({schema, expected}) => {
+		{
+			name: "no schema",
+			schema: undefined,
+			expected: false,
+		},
+	])("$name → $expected", ({schema, expected}) =>
+	{
 		expect(isVerdictSchema(schema)).toStrictEqual(expected);
 	});
 });
 
-describe("findPendingElicitationPermission", () => {
-	it("draws a verdict elicitation as upstream's 'use {server}' permission card, with Always allow when offered", () => {
-		expect(findPendingElicitationPermission([verdictEntry(["allow", "deny", "always_allow"])])).toStrictEqual({
-			notificationId: "elicitation:elicit-verdict-1",
-			toolUseId: null,
-			title: {action: "use my-mcp-server", meta: null},
-			detail: null,
-			description: "Allow my-mcp-server to delete the deploy branch?",
-			persistentAllow: "always",
-		});
+describe("findPendingElicitationPermission", () =>
+{
+	it("draws a verdict elicitation as upstream's 'use {server}' permission card, with Always allow when offered", () =>
+	{
+		expect(findPendingElicitationPermission([verdictEntry(["allow", "deny", "always_allow"])])).toStrictEqual(
+			{
+				notificationId: "elicitation:elicit-verdict-1",
+				toolUseId: null,
+				title:
+				{
+					action: "use my-mcp-server",
+					meta: null,
+				},
+				detail: null,
+				description: "Allow my-mcp-server to delete the deploy branch?",
+				persistentAllow: "always",
+			},
+		);
 	});
 
-	it("offers only Deny / Allow once when the enum has no always_allow", () => {
-		expect(findPendingElicitationPermission([verdictEntry(["allow", "deny"])])).toStrictEqual({
-			notificationId: "elicitation:elicit-verdict-1",
-			toolUseId: null,
-			title: {action: "use my-mcp-server", meta: null},
-			detail: null,
-			description: "Allow my-mcp-server to delete the deploy branch?",
-		});
+	it("offers only Deny / Allow once when the enum has no always_allow", () =>
+	{
+		expect(findPendingElicitationPermission([verdictEntry(["allow", "deny"])])).toStrictEqual(
+			{
+				notificationId: "elicitation:elicit-verdict-1",
+				toolUseId: null,
+				title:
+				{
+					action: "use my-mcp-server",
+					meta: null,
+				},
+				detail: null,
+				description: "Allow my-mcp-server to delete the deploy branch?",
+			},
+		);
 	});
 
-	it("keys an elicitation without an id by its server and arrival", () => {
+	it("keys an elicitation without an id by its server and arrival", () =>
+	{
 		const {elicitationId: _, ...withoutId} = verdictEntry(["allow", "deny"]);
 		expect(findPendingElicitationPermission([withoutId])?.notificationId).toStrictEqual(
 			"elicitation:my-mcp-server:1700000000000",
@@ -98,23 +173,44 @@ describe("findPendingElicitationPermission", () => {
 	});
 
 	it.each([
-		{name: "a form schema", entries: [FORM_ENTRY]},
-		{name: "an enum without deny", entries: [verdictEntry(["allow", "always_allow"])]},
-		{name: "a url elicitation", entries: [{...verdictEntry(["allow", "deny"]), mode: "url" as const}]},
-		{name: "nothing pending", entries: []},
-	])("is null for $name", ({entries}) => {
+		{
+			name: "a form schema",
+			entries: [FORM_ENTRY],
+		},
+		{
+			name: "an enum without deny",
+			entries: [verdictEntry(["allow", "always_allow"])],
+		},
+		{
+			name: "a url elicitation",
+			entries: [
+				{
+					...verdictEntry(["allow", "deny"]),
+					mode: "url" as const,
+				},
+			],
+		},
+		{
+			name: "nothing pending",
+			entries: [],
+		},
+	])("is null for $name", ({entries}) =>
+	{
 		expect(findPendingElicitationPermission(entries)).toStrictEqual(null);
 	});
 
-	it("picks the oldest verdict elicitation past a form one", () => {
+	it("picks the oldest verdict elicitation past a form one", () =>
+	{
 		expect(
 			findPendingElicitationPermission([FORM_ENTRY, verdictEntry(["allow", "deny"])])?.notificationId,
 		).toStrictEqual("elicitation:elicit-verdict-1");
 	});
 });
 
-describe("findElicitationWaitingNotice", () => {
-	const URL_ENTRY: PendingElicitation = {
+describe("findElicitationWaitingNotice", () =>
+{
+	const URL_ENTRY: PendingElicitation =
+	{
 		serverName: elicitationUrlFixture.mcp_server_name,
 		message: elicitationUrlFixture.message,
 		mode: "url",
@@ -122,34 +218,61 @@ describe("findElicitationWaitingNotice", () => {
 		receivedAt: 1_700_000_000_001,
 	};
 
-	it("names the server of the oldest form or url elicitation with upstream's heading and its message", () => {
+	it("names the server of the oldest form or url elicitation with upstream's heading and its message", () =>
+	{
 		expect([
 			findElicitationWaitingNotice([FORM_ENTRY, URL_ENTRY]),
 			findElicitationWaitingNotice([URL_ENTRY]),
 		]).toStrictEqual([
-			{title: "my-mcp-server requests your input", message: "Please provide your credentials"},
-			{title: "my-mcp-server requests your input", message: "Please authenticate"},
+			{
+				title: "my-mcp-server requests your input",
+				message: "Please provide your credentials",
+			},
+			{
+				title: "my-mcp-server requests your input",
+				message: "Please authenticate",
+			},
 		]);
 	});
 
-	it("skips verdict elicitations, which draw a permission card instead", () => {
+	it("skips verdict elicitations, which draw a permission card instead", () =>
+	{
 		expect([
 			findElicitationWaitingNotice([verdictEntry(["allow", "deny"])]),
 			findElicitationWaitingNotice([verdictEntry(["allow", "deny"]), URL_ENTRY]),
 			findElicitationWaitingNotice([]),
-		]).toStrictEqual([null, {title: "my-mcp-server requests your input", message: "Please authenticate"}, null]);
+		]).toStrictEqual([
+			null,
+			{
+				title: "my-mcp-server requests your input",
+				message: "Please authenticate",
+			},
+			null,
+		]);
 	});
 
-	it("caps the message at upstream's 4000 characters", () => {
-		expect(findElicitationWaitingNotice([{...URL_ENTRY, message: "x".repeat(4005)}])).toStrictEqual({
-			title: "my-mcp-server requests your input",
-			message: "x".repeat(4000),
-		});
+	it("caps the message at upstream's 4000 characters", () =>
+	{
+		expect(
+			findElicitationWaitingNotice([
+				{
+					...URL_ENTRY,
+					message: "x".repeat(4005),
+				},
+			]),
+		).toStrictEqual(
+			{
+				title: "my-mcp-server requests your input",
+				message: "x".repeat(4000),
+			},
+		);
 	});
 });
 
-describe("findUrlElicitationCard", () => {
-	const URL_ENTRY: PendingElicitation = {
+describe("findUrlElicitationCard", () =>
+{
+	const URL_ENTRY: PendingElicitation =
+	{
 		elicitationId: "elicit-url-1",
 		serverName: elicitationUrlFixture.mcp_server_name,
 		message: elicitationUrlFixture.message,
@@ -158,7 +281,8 @@ describe("findUrlElicitationCard", () => {
 		receivedAt: 1_700_000_000_001,
 	};
 
-	it("is the oldest form-or-url elicitation when it is a url ask with a url", () => {
+	it("is the oldest form-or-url elicitation when it is a url ask with a url", () =>
+	{
 		const {elicitationId: _id, ...withoutId} = URL_ENTRY;
 		expect([
 			findUrlElicitationCard([URL_ENTRY]),
@@ -179,7 +303,8 @@ describe("findUrlElicitationCard", () => {
 		]);
 	});
 
-	it("is null behind an older form, for a url ask without a url, and with nothing pending", () => {
+	it("is null behind an older form, for a url ask without a url, and with nothing pending", () =>
+	{
 		const {url: _url, ...withoutUrl} = URL_ENTRY;
 		expect([
 			findUrlElicitationCard([FORM_ENTRY, URL_ENTRY]),
@@ -189,8 +314,10 @@ describe("findUrlElicitationCard", () => {
 	});
 });
 
-describe("GET /api/sessions/$id/pending-elicitations", () => {
-	it("returns the session's pending elicitations, or none for a session without one", async () => {
+describe("GET /api/sessions/$id/pending-elicitations", () =>
+{
+	it("returns the session's pending elicitations, or none for a session without one", async () =>
+	{
 		addPendingElicitation("session-alice", FORM_ENTRY);
 
 		const bodies = await Promise.all(
@@ -199,23 +326,57 @@ describe("GET /api/sessions/$id/pending-elicitations", () => {
 			),
 		);
 
-		expect(bodies).toStrictEqual([{pendingElicitations: [FORM_ENTRY]}, {pendingElicitations: []}]);
+		expect(bodies).toStrictEqual([
+			{
+				pendingElicitations: [FORM_ENTRY],
+			},
+			{
+				pendingElicitations: [],
+			},
+		]);
 	});
 });
 
-describe("applyPendingElicitationsChanged", () => {
-	it("patches the session's cached elicitations from the SSE payload", () => {
+describe("applyPendingElicitationsChanged", () =>
+{
+	it("patches the session's cached elicitations from the SSE payload", () =>
+	{
 		const queryClient = new QueryClient();
 		const key = pendingElicitationsQueryOptions("session-alice").queryKey;
 
-		applyPendingElicitationsChanged(queryClient, {sessionId: "session-alice", pendingElicitations: [FORM_ENTRY]});
+		applyPendingElicitationsChanged(
+			queryClient,
+			{
+				sessionId: "session-alice",
+				pendingElicitations: [FORM_ENTRY],
+			},
+		);
 		const added = queryClient.getQueryData(key);
-		applyPendingElicitationsChanged(queryClient, {sessionId: "session-alice", pendingElicitations: []});
+		applyPendingElicitationsChanged(
+			queryClient,
+			{
+				sessionId: "session-alice",
+				pendingElicitations: [],
+			},
+		);
 		const resolved = queryClient.getQueryData(key);
 
-		expect({added, resolved}).toStrictEqual({
-			added: {pendingElicitations: [FORM_ENTRY]},
-			resolved: {pendingElicitations: []},
-		});
+		expect(
+			{
+				added,
+				resolved,
+			},
+		).toStrictEqual(
+			{
+				added:
+				{
+					pendingElicitations: [FORM_ENTRY],
+				},
+				resolved:
+				{
+					pendingElicitations: [],
+				},
+			},
+		);
 	});
 });

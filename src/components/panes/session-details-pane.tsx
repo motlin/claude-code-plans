@@ -5,32 +5,64 @@ import {isRecord} from "../../lib/narrow";
 import {formatCount} from "../../lib/pluralize";
 
 // Tokyo Night–inspired segment colors from claude-powerline.json
-const SEGMENT_COLORS = {
-	version: {bg: "#7a7a7a", fg: "#f0f0f0"},
-	metrics: {bg: "#565656", fg: "#e5e5e5"},
-	context: {bg: "#6a6a6a", fg: "#ffffff"},
-	rate: {bg: "#4a4a4a", fg: "#c0c0c0"},
-	cost: {bg: "#5a5a5a", fg: "#b0b0b0"},
+const SEGMENT_COLORS =
+{
+	version:
+	{
+		bg: "#7a7a7a",
+		fg: "#f0f0f0",
+	},
+	metrics:
+	{
+		bg: "#565656",
+		fg: "#e5e5e5",
+	},
+	context:
+	{
+		bg: "#6a6a6a",
+		fg: "#ffffff",
+	},
+	rate:
+	{
+		bg: "#4a4a4a",
+		fg: "#c0c0c0",
+	},
+	cost:
+	{
+		bg: "#5a5a5a",
+		fg: "#b0b0b0",
+	},
 } as const;
 
-interface SegmentProps {
+interface SegmentProps
+{
 	label: string;
-	color: {bg: string; fg: string};
+	color:
+	{
+		bg: string;
+		fg: string;
+	};
 }
 
-function Segment({label, color}: SegmentProps) {
+function Segment({label, color}: SegmentProps)
+{
 	return (
 		<span
 			data-status-segment=""
 			className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap"
-			style={{backgroundColor: color.bg, color: color.fg}}
+			style={
+			{
+				backgroundColor: color.bg,
+				color: color.fg,
+			}}
 		>
 			{label}
 		</span>
 	);
 }
 
-function formatDuration(ms: number): string {
+function formatDuration(ms: number): string
+{
 	const seconds = Math.floor(ms / 1000);
 	if (seconds < 60) return `${seconds}s`;
 	const minutes = Math.floor(seconds / 60);
@@ -41,27 +73,32 @@ function formatDuration(ms: number): string {
 	return `${hours}h ${remainingMinutes}m`;
 }
 
-function formatCost(usd: number): string {
+function formatCost(usd: number): string
+{
 	if (usd < 0.01) return `$${usd.toFixed(4)}`;
 	return `$${usd.toFixed(2)}`;
 }
 
-function formatTokens(n: number): string {
+function formatTokens(n: number): string
+{
 	if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
 	if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
 	return String(n);
 }
 
-function getNestedNumber(obj: Record<string, unknown>, ...keys: string[]): number | undefined {
+function getNestedNumber(obj: Record<string, unknown>, ...keys: string[]): number | undefined
+{
 	let current: unknown = obj;
-	for (const key of keys) {
+	for (const key of keys)
+	{
 		if (!isRecord(current)) return undefined;
 		current = current[key];
 	}
 	return typeof current === "number" ? current : undefined;
 }
 
-interface SessionDetailsProps {
+interface SessionDetailsProps
+{
 	data: Record<string, unknown>;
 	messageCount: number;
 }
@@ -70,43 +107,59 @@ interface SessionDetailsProps {
  * Statusline data with no upstream home — version, duration · msgs, context, rate limits and
  * cost. Project, branch and line counts live in the branch strip, and the model in the composer chin.
  */
-export function SessionDetails({data, messageCount}: SessionDetailsProps) {
+export function SessionDetails({data, messageCount}: SessionDetailsProps)
+{
 	const [rawExpanded, setRawExpanded] = useState(false);
 
-	const segments: Array<{
+	const segments: Array<
+	{
 		key: string;
 		label: string;
-		color: {bg: string; fg: string};
+		color:
+		{
+			bg: string;
+			fg: string;
+		};
 	}> = [];
 
 	// Version
 	const version = data["version"];
-	if (typeof version === "string") {
-		segments.push({
-			key: "ver",
-			label: `v${version}`,
-			color: SEGMENT_COLORS.version,
-		});
+	if (typeof version === "string")
+	{
+		segments.push(
+			{
+				key: "ver",
+				label: `v${version}`,
+				color: SEGMENT_COLORS.version,
+			},
+		);
 	}
 
 	// Duration + message count
 	const durationMs = getNestedNumber(data, "cost", "total_duration_ms");
-	if (durationMs !== undefined) {
+	if (durationMs !== undefined)
+	{
 		const durationLabel =
 			messageCount > 0
 				? `${formatDuration(durationMs)} · ${formatCount(messageCount, "msg")}`
 				: formatDuration(durationMs);
-		segments.push({
-			key: "dur",
-			label: durationLabel,
-			color: SEGMENT_COLORS.metrics,
-		});
-	} else if (messageCount > 0) {
-		segments.push({
-			key: "msgs",
-			label: formatCount(messageCount, "msg"),
-			color: SEGMENT_COLORS.metrics,
-		});
+		segments.push(
+			{
+				key: "dur",
+				label: durationLabel,
+				color: SEGMENT_COLORS.metrics,
+			},
+		);
+	}
+	else if (messageCount > 0)
+	{
+		segments.push(
+			{
+				key: "msgs",
+				label: formatCount(messageCount, "msg"),
+				color: SEGMENT_COLORS.metrics,
+			},
+		);
 	}
 
 	// Context window: tokens + percentage
@@ -115,34 +168,47 @@ export function SessionDetails({data, messageCount}: SessionDetailsProps) {
 	const totalOutput = getNestedNumber(data, "context_window", "total_output_tokens") ?? 0;
 	const totalTokens = totalInput + totalOutput;
 	const windowSize = getNestedNumber(data, "context_window", "context_window_size");
-	if (contextPct !== undefined) {
+	if (contextPct !== undefined)
+	{
 		let label = `${formatTokens(totalTokens)} (${Math.round(contextPct)}%)`;
 		if (windowSize) label += ` / ${formatTokens(windowSize)}`;
-		segments.push({key: "ctx", label, color: SEGMENT_COLORS.context});
+		segments.push(
+			{
+				key: "ctx",
+				label,
+				color: SEGMENT_COLORS.context,
+			},
+		);
 	}
 
 	// Rate limits
 	const rate5h = getNestedNumber(data, "rate_limits", "five_hour", "used_percentage");
 	const rate7d = getNestedNumber(data, "rate_limits", "seven_day", "used_percentage");
-	if (rate5h !== undefined || rate7d !== undefined) {
+	if (rate5h !== undefined || rate7d !== undefined)
+	{
 		const parts: string[] = [];
 		if (rate5h !== undefined) parts.push(`5h:${Math.round(rate5h)}%`);
 		if (rate7d !== undefined) parts.push(`7d:${Math.round(rate7d)}%`);
-		segments.push({
-			key: "rate",
-			label: parts.join(" "),
-			color: SEGMENT_COLORS.rate,
-		});
+		segments.push(
+			{
+				key: "rate",
+				label: parts.join(" "),
+				color: SEGMENT_COLORS.rate,
+			},
+		);
 	}
 
 	// Cost
 	const costUsd = getNestedNumber(data, "cost", "total_cost_usd");
-	if (costUsd !== undefined) {
-		segments.push({
-			key: "cost",
-			label: formatCost(costUsd),
-			color: SEGMENT_COLORS.cost,
-		});
+	if (costUsd !== undefined)
+	{
+		segments.push(
+			{
+				key: "cost",
+				label: formatCost(costUsd),
+				color: SEGMENT_COLORS.cost,
+			},
+		);
 	}
 
 	return (
@@ -159,7 +225,8 @@ export function SessionDetails({data, messageCount}: SessionDetailsProps) {
 			<button
 				type="button"
 				aria-expanded={rawExpanded}
-				onClick={() => {
+				onClick={() =>
+				{
 					setRawExpanded(!rawExpanded);
 				}}
 				className="flex w-fit cursor-pointer items-center gap-1 text-caption text-t6 transition-colors hover:text-primary"

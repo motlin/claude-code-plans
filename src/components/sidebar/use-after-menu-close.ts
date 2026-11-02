@@ -5,18 +5,23 @@ import {useRef} from "react";
  * back to its trigger, for actions that move focus themselves (the home composer, a confirm).
  * Spread `menuProps` on the menu root and `contentProps` on its MenuContent.
  */
-export function useAfterMenuClose() {
+export function useAfterMenuClose()
+{
 	const afterClose = useRef<(() => void) | null>(null);
 	// Menus hand focus back after onOpenChangeComplete, so this outlives the queued action.
 	const keepFocus = useRef(false);
 	return {
-		later: (action: () => void) => () => {
+		later: (action: () => void) => () =>
+		{
 			afterClose.current = action;
 			keepFocus.current = true;
 		},
-		menuProps: {
-			onOpenChangeComplete: (open: boolean) => {
-				if (open) {
+		menuProps:
+		{
+			onOpenChangeComplete: (open: boolean) =>
+			{
+				if (open)
+				{
 					keepFocus.current = false;
 					return;
 				}
@@ -25,6 +30,9 @@ export function useAfterMenuClose() {
 				action?.();
 			},
 		},
-		contentProps: {finalFocus: () => !keepFocus.current},
+		contentProps:
+		{
+			finalFocus: () => !keepFocus.current,
+		},
 	};
 }

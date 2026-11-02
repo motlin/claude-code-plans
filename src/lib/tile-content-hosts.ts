@@ -29,7 +29,8 @@ const SCROLL_MEMORY_SIZE = 32;
 /** Upstream `atBottom`: within 2px of the bottom. */
 const AT_BOTTOM_SLOP_PX = 2;
 
-export interface TileBox {
+export interface TileBox
+{
 	width: number;
 	height: number;
 }
@@ -38,25 +39,29 @@ type Focusable = Element & HTMLOrSVGElement;
 type InteractHandler = (id: string) => void;
 type Caret = readonly [anchor: Node, anchorOffset: number, focus: Node, focusOffset: number];
 
-interface ScrollEntry {
+interface ScrollEntry
+{
 	el: Element;
 	top: number;
 	left: number;
 	atBottom: boolean;
 }
 
-interface PendingRestore {
+interface PendingRestore
+{
 	focused: Focusable | null;
 	caret: Caret | null;
 	scrolls: ScrollEntry[];
 }
 
-interface ScrollMemory {
+interface ScrollMemory
+{
 	entries: () => Element[];
 	dispose: () => void;
 }
 
-interface HostRecord {
+interface HostRecord
+{
 	host: HTMLDivElement;
 	scrollMemory: ScrollMemory;
 	pending: PendingRestore | null;
@@ -67,7 +72,8 @@ interface HostRecord {
 	dispose: () => void;
 }
 
-export class TileContentHosts {
+export class TileContentHosts
+{
 	private readonly records = new Map<string, HostRecord>();
 	private penEl: HTMLDivElement | null = null;
 	private liveIds: ReadonlySet<string> | null = null;
@@ -76,17 +82,20 @@ export class TileContentHosts {
 	/** The tile focus last entered, so a tile whose focus fell to the body still holds it (upstream `holdsFocus`). */
 	private lastFocusTile: string | null = null;
 
-	constructor(readonly doc: Document) {
+	constructor(readonly doc: Document)
+	{
 		this.canMove =
 			typeof (doc.createElement("div") as Partial<Pick<Element, "moveBefore">>).moveBefore === "function";
 	}
 
-	host(id: string): HTMLDivElement {
+	host(id: string): HTMLDivElement
+	{
 		return this.record(id).host;
 	}
 
 	/** Upstream `setInteractHandler`: the active-tile setter; a first handler hears at once about the focused tile. */
-	setInteractHandler(handler: InteractHandler | undefined): void {
+	setInteractHandler(handler: InteractHandler | undefined): void
+	{
 		const first = handler !== undefined && this.onInteract === undefined;
 		this.onInteract = handler;
 		if (!first) return;
@@ -95,13 +104,15 @@ export class TileContentHosts {
 	}
 
 	/** Moves the tile's host into `cell` and restores its snapshot; the cleanup snapshots and parks it again. */
-	adopt(id: string, cell: Element, box?: TileBox): () => void {
+	adopt(id: string, cell: Element, box?: TileBox): () => void
+	{
 		const record = this.record(id);
 		const {host} = record;
 		this.place(record, cell);
 		restore(record);
 		if (this.tileOf(this.doc.activeElement) === id) this.onInteract?.(id);
-		return () => {
+		return () =>
+		{
 			if (host.parentNode !== cell) return;
 			snapshot(record);
 			this.park(id, record, box);
@@ -113,7 +124,8 @@ export class TileContentHosts {
 	 * `parkIframes` (a sibling moves ahead of the tile), a host holding an iframe is parked first, so React's move of
 	 * the cell never reloads the frame.
 	 */
-	slotWillMove(id: string, cell: Element, parkIframes = false): void {
+	slotWillMove(id: string, cell: Element, parkIframes = false): void
+	{
 		const record = this.records.get(id);
 		if (record?.host.parentNode !== cell) return;
 		snapshot(record);
@@ -121,7 +133,8 @@ export class TileContentHosts {
 	}
 
 	/** Restores a host after its cell moved in place, re-placing it if it was parked meanwhile. */
-	slotMoved(id: string, cell: Element): void {
+	slotMoved(id: string, cell: Element): void
+	{
 		const record = this.records.get(id);
 		if (record === undefined) return;
 		const wasParked = record.cell !== null;
@@ -130,18 +143,29 @@ export class TileContentHosts {
 	}
 
 	/** Upstream `Ct` getSnapshotBeforeUpdate: records every host's scrolls and box before a structural change. */
-	freezeScrolls(liveIds?: ReadonlySet<string>): void {
+	freezeScrolls(liveIds?: ReadonlySet<string>): void
+	{
 		this.liveIds = liveIds ?? null;
-		for (const record of this.records.values()) {
+		for (const record of this.records.values())
+		{
 			const parent = record.host.isConnected ? record.host.parentElement : null;
 			record.frozen = parent === null ? null : readScrolls(record.scrollMemory);
-			record.frozenBox = parent === null ? null : {width: parent.clientWidth, height: parent.clientHeight};
+			record.frozenBox =
+				parent === null
+					? null
+					:
+						{
+							width: parent.clientWidth,
+							height: parent.clientHeight,
+						};
 		}
 	}
 
-	thawScrolls(): void {
+	thawScrolls(): void
+	{
 		this.liveIds = null;
-		for (const record of this.records.values()) {
+		for (const record of this.records.values())
+		{
 			record.frozen = null;
 			record.frozenBox = null;
 		}
@@ -151,15 +175,18 @@ export class TileContentHosts {
 	 * Disposes the hosts of tiles no longer live and drops an empty pen. Returns the disposed tile whose last snapshot
 	 * held focus when focus has since fallen to the body (the close hand-off's source), else null.
 	 */
-	retain(liveIds: ReadonlySet<string>): string | null {
+	retain(liveIds: ReadonlySet<string>): string | null
+	{
 		let focusedClosed: string | null = null;
-		for (const [id, record] of this.records) {
+		for (const [id, record] of this.records)
+		{
 			if (liveIds.has(id)) continue;
 			if (record.pending?.focused && focusFellToBody(this.doc)) focusedClosed = id;
 			record.dispose();
 			this.records.delete(id);
 		}
-		if (this.penEl?.childElementCount === 0) {
+		if (this.penEl?.childElementCount === 0)
+		{
 			this.penEl.remove();
 			this.penEl = null;
 		}
@@ -167,12 +194,17 @@ export class TileContentHosts {
 	}
 
 	/** Upstream `focusTile`: focuses the tile's focus target; true when it took focus. */
-	focusTile(id: string): boolean {
+	focusTile(id: string): boolean
+	{
 		const host = this.records.get(id)?.host;
 		if (host?.isConnected !== true) return false;
 		const target = focusTargetOrCell(host);
 		if (target === null) return false;
-		target.focus({preventScroll: true});
+		target.focus(
+			{
+				preventScroll: true,
+			},
+		);
 		if (host.ownerDocument.activeElement !== target) return false;
 		// Focus inside the host reaches the handler through its focusin listener; the cell sits outside it.
 		if (!host.contains(target)) this.onInteract?.(id);
@@ -180,9 +212,11 @@ export class TileContentHosts {
 	}
 
 	/** The tile whose host holds `node`, skipping hosts of other registries. */
-	tileOf(node: EventTarget | null): string | null {
+	tileOf(node: EventTarget | null): string | null
+	{
 		let host = node instanceof Element ? node.closest(HOST_SELECTOR) : null;
-		while (host !== null) {
+		while (host !== null)
+		{
 			const id = host.getAttribute(HOST_ATTRIBUTE);
 			if (id !== null && this.records.get(id)?.host === host) return id;
 			host = host.parentElement?.closest(HOST_SELECTOR) ?? null;
@@ -191,44 +225,53 @@ export class TileContentHosts {
 	}
 
 	/** Whether the tile has an eligible `[data-tile-focus-target]` (upstream `hasFocusTarget`). */
-	hasFocusTarget(id: string): boolean {
+	hasFocusTarget(id: string): boolean
+	{
 		const host = this.records.get(id)?.host;
 		return host?.isConnected === true && markedFocusTarget(host) !== null;
 	}
 
 	/** Focus is inside the tile, or it was the last tile focused and focus fell to the body (upstream `holdsFocus`). */
-	holdsFocus(id: string): boolean {
+	holdsFocus(id: string): boolean
+	{
 		const host = this.records.get(id)?.host;
 		if (host?.isConnected !== true) return false;
 		return holdsFocusWithin(host) || (this.lastFocusTile === id && focusFellToBody(this.doc));
 	}
 
 	/** On unmount: removes parked hosts whose portal content is gone, then the pen once empty. */
-	releaseParked(): void {
+	releaseParked(): void
+	{
 		const pen = this.penEl;
 		if (pen === null) return;
-		for (const record of this.records.values()) {
-			if (record.cell !== null && record.host.firstChild === null) {
+		for (const record of this.records.values())
+		{
+			if (record.cell !== null && record.host.firstChild === null)
+			{
 				record.host.remove();
 				dropEmptyCell(record);
 			}
 		}
-		if (pen.childElementCount === 0) {
+		if (pen.childElementCount === 0)
+		{
 			pen.remove();
 			this.penEl = null;
 		}
 	}
 
-	private place(record: HostRecord, cell: Element): void {
+	private place(record: HostRecord, cell: Element): void
+	{
 		const {host} = record;
-		if (host.parentNode !== cell) {
+		if (host.parentNode !== cell)
+		{
 			if (this.canMoveInto(cell, host)) cell.moveBefore(host, null);
 			else cell.appendChild(host);
 		}
 		dropEmptyCell(record);
 	}
 
-	private park(id: string, record: HostRecord, box: TileBox | undefined): void {
+	private park(id: string, record: HostRecord, box: TileBox | undefined): void
+	{
 		const {host} = record;
 		const pen = this.pen();
 		if (pen === null || !this.canMoveInto(pen, host)) return;
@@ -236,10 +279,13 @@ export class TileContentHosts {
 		cell.setAttribute("style", PEN_CELL_STYLE);
 		const frozen = record.frozenBox;
 		const size = frozen !== null && frozen.width > 0 && frozen.height > 0 ? frozen : box;
-		if (size !== undefined && size.width > 0 && size.height > 0) {
+		if (size !== undefined && size.width > 0 && size.height > 0)
+		{
 			cell.style.width = `${size.width}px`;
 			cell.style.height = `${size.height}px`;
-		} else {
+		}
+		else
+		{
 			cell.style.display = "none";
 		}
 		if (this.liveIds?.has(id) === false) cell.style.setProperty("content-visibility", "hidden");
@@ -248,11 +294,13 @@ export class TileContentHosts {
 		cell.moveBefore(host, null);
 	}
 
-	private canMoveInto(parent: Element, node: Element): boolean {
+	private canMoveInto(parent: Element, node: Element): boolean
+	{
 		return this.canMove && node.isConnected && parent.isConnected && parent.ownerDocument === node.ownerDocument;
 	}
 
-	private pen(): HTMLDivElement | null {
+	private pen(): HTMLDivElement | null
+	{
 		if (!this.canMove) return null;
 		if (this.penEl?.isConnected === true) return this.penEl;
 		const pen = this.doc.createElement("div");
@@ -264,31 +312,36 @@ export class TileContentHosts {
 		return pen;
 	}
 
-	private record(id: string): HostRecord {
+	private record(id: string): HostRecord
+	{
 		const existing = this.records.get(id);
 		if (existing) return existing;
 		const host = this.doc.createElement("div");
 		host.setAttribute(HOST_ATTRIBUTE, id);
 		host.setAttribute("style", HOST_STYLE);
 		const scrollMemory = rememberScrollers(host);
-		const onPointerDown = (event: Event) => {
+		const onPointerDown = (event: Event) =>
+		{
 			if (this.tileOf(event.target) === id) this.onInteract?.(id);
 		};
-		const onFocusIn = (event: Event) => {
+		const onFocusIn = (event: Event) =>
+		{
 			if (this.tileOf(event.target) !== id) return;
 			this.lastFocusTile = id;
 			this.onInteract?.(id);
 		};
 		host.addEventListener("focusin", onFocusIn, true);
 		host.addEventListener("pointerdown", onPointerDown, true);
-		const record: HostRecord = {
+		const record: HostRecord =
+		{
 			host,
 			scrollMemory,
 			pending: null,
 			frozen: null,
 			frozenBox: null,
 			cell: null,
-			dispose: () => {
+			dispose: () =>
+			{
 				scrollMemory.dispose();
 				host.removeEventListener("focusin", onFocusIn, true);
 				host.removeEventListener("pointerdown", onPointerDown, true);
@@ -305,10 +358,12 @@ export class TileContentHosts {
  * Upstream `yt`: whether an in-place move puts a sibling ahead of the tile that was not ahead before. Keys are
  * `/`-joined levels of `,`-joined node ids: `orderKey` lists the tile's parents' children, `aheadKey` the ones before it.
  */
-export function siblingMovedAhead(orderKey: string, aheadKey: string, nextAheadKey: string): boolean {
+export function siblingMovedAhead(orderKey: string, aheadKey: string, nextAheadKey: string): boolean
+{
 	const order = orderKey.split("/");
 	const ahead = aheadKey.split("/");
-	return nextAheadKey.split("/").some((level, index) => {
+	return nextAheadKey.split("/").some((level, index) =>
+	{
 		const wasAhead = ahead.at(index)?.split(",");
 		const siblings = order.at(index)?.split(",");
 		return (
@@ -320,57 +375,82 @@ export function siblingMovedAhead(orderKey: string, aheadKey: string, nextAheadK
 }
 
 /** Upstream `v`: a capture-phase scroll listener keeping the last 32 distinct scrolled elements (weakly). */
-function rememberScrollers(host: Element): ScrollMemory {
+function rememberScrollers(host: Element): ScrollMemory
+{
 	const seen = new WeakSet<Element>();
 	let ring: Array<WeakRef<Element>> = [];
-	const entries = () => {
+	const entries = () =>
+	{
 		const live: Element[] = [];
 		const kept: Array<WeakRef<Element>> = [];
-		for (const ref of ring) {
+		for (const ref of ring)
+		{
 			const element = ref.deref();
 			if (element === undefined) continue;
-			if (host.contains(element)) {
+			if (host.contains(element))
+			{
 				live.push(element);
 				kept.push(ref);
-			} else {
+			}
+			else
+			{
 				seen.delete(element);
 			}
 		}
 		ring = kept;
 		return live;
 	};
-	const onScroll = (event: Event) => {
+	const onScroll = (event: Event) =>
+	{
 		const target = event.target;
 		if (!(target instanceof Element) || seen.has(target)) return;
 		entries();
-		if (ring.length >= SCROLL_MEMORY_SIZE) {
+		if (ring.length >= SCROLL_MEMORY_SIZE)
+		{
 			const oldest = ring.shift()?.deref();
 			if (oldest !== undefined) seen.delete(oldest);
 		}
 		seen.add(target);
 		ring.push(new WeakRef(target));
 	};
-	host.addEventListener("scroll", onScroll, {capture: true, passive: true});
+	host.addEventListener(
+		"scroll",
+		onScroll,
+		{
+			capture: true,
+			passive: true,
+		},
+	);
 	return {
 		entries,
-		dispose: () => {
-			host.removeEventListener("scroll", onScroll, {capture: true});
+		dispose: () =>
+		{
+			host.removeEventListener(
+				"scroll",
+				onScroll,
+				{
+					capture: true,
+				},
+			);
 			ring = [];
 		},
 	};
 }
 
-function focusFellToBody(doc: Document): boolean {
+function focusFellToBody(doc: Document): boolean
+{
 	const active = doc.activeElement;
 	return active === null || active === doc.body || active === doc.documentElement;
 }
 
-function holdsFocusWithin(host: Element): boolean {
+function holdsFocusWithin(host: Element): boolean
+{
 	const active = host.ownerDocument.activeElement;
 	return active !== null && active !== host && host.contains(active);
 }
 
-function isFocusable(element: Element | null): element is Focusable {
+function isFocusable(element: Element | null): element is Focusable
+{
 	return element !== null && "focus" in element && typeof element.focus === "function";
 }
 
@@ -378,24 +458,35 @@ function isFocusable(element: Element | null): element is Focusable {
  * Upstream `x`: a focus target must be focusable at a non-negative tabindex (a contenteditable without one counts),
  * enabled, not a drag handle, outside inert, hidden and focus-pass subtrees, and visible.
  */
-function isFocusEligible(element: Element): element is Focusable {
+function isFocusEligible(element: Element): element is Focusable
+{
 	if (!isFocusable(element)) return false;
 	const tabbable = element.tabIndex >= 0 || (element.matches(EDITABLE_SELECTOR) && !element.hasAttribute("tabindex"));
 	if (!tabbable || ("disabled" in element && element.disabled === true)) return false;
 	if (element.classList.contains("tiles-drag-handle")) return false;
 	if (element.closest(`[inert],[hidden],[aria-hidden='true'],[${TILE_FOCUS_PASS}]`) !== null) return false;
-	return typeof element.checkVisibility !== "function" || element.checkVisibility({visibilityProperty: true});
+	return (
+		typeof element.checkVisibility !== "function" ||
+		element.checkVisibility(
+			{
+				visibilityProperty: true,
+			},
+		)
+	);
 }
 
 /** Upstream `S`: the first eligible match of `selector` under `root`. */
-function firstEligible(root: Element, selector = FOCUSABLE_SELECTOR): Focusable | null {
+function firstEligible(root: Element, selector = FOCUSABLE_SELECTOR): Focusable | null
+{
 	for (const element of root.querySelectorAll(selector)) if (isFocusEligible(element)) return element;
 	return null;
 }
 
 /** Upstream `C`: the first marked target outside a pane miniature, else its first eligible focusable. */
-function markedFocusTarget(root: Element): Focusable | null {
-	for (const marked of root.querySelectorAll(`[${TILE_FOCUS_TARGET}]`)) {
+function markedFocusTarget(root: Element): Focusable | null
+{
+	for (const marked of root.querySelectorAll(`[${TILE_FOCUS_TARGET}]`))
+	{
 		if (marked.closest("[data-pane-miniature]") !== null) continue;
 		return isFocusEligible(marked) ? marked : firstEligible(marked);
 	}
@@ -403,7 +494,8 @@ function markedFocusTarget(root: Element): Focusable | null {
 }
 
 /** Upstream `T`: the marked target, else the first eligible focusable, else the host's cell at tabindex -1. */
-function focusTargetOrCell(host: Element): Focusable | null {
+function focusTargetOrCell(host: Element): Focusable | null
+{
 	const target = markedFocusTarget(host) ?? firstEligible(host);
 	if (target !== null) return target;
 	const cell = host.parentElement;
@@ -412,24 +504,33 @@ function focusTargetOrCell(host: Element): Focusable | null {
 	return cell;
 }
 
-function dropEmptyCell(record: HostRecord): void {
+function dropEmptyCell(record: HostRecord): void
+{
 	const {cell} = record;
-	if (cell !== null && !cell.contains(record.host)) {
+	if (cell !== null && !cell.contains(record.host))
+	{
 		cell.remove();
 		record.cell = null;
 	}
 }
 
 /** Upstream `D`: the focused element, its caret and the (frozen, else live) scrolls, to restore after the move. */
-function snapshot(record: HostRecord): void {
+function snapshot(record: HostRecord): void
+{
 	const {host, scrollMemory, frozen} = record;
 	const active = host.ownerDocument.activeElement;
 	const focused = holdsFocusWithin(host) && isFocusable(active) ? active : null;
-	record.pending = {focused, caret: caretOf(focused), scrolls: frozen ?? readScrolls(scrollMemory)};
+	record.pending =
+	{
+		focused,
+		caret: caretOf(focused),
+		scrolls: frozen ?? readScrolls(scrollMemory),
+	};
 }
 
 /** Upstream `O`: the selection, when both of its ends sit inside the focused element. */
-function caretOf(element: Element | null): Caret | null {
+function caretOf(element: Element | null): Caret | null
+{
 	const selection = element?.ownerDocument.getSelection();
 	if (!element || !selection) return null;
 	const {anchorNode, anchorOffset, focusNode, focusOffset} = selection;
@@ -438,18 +539,28 @@ function caretOf(element: Element | null): Caret | null {
 		: null;
 }
 
-function nodeLength(node: Node): number {
+function nodeLength(node: Node): number
+{
 	return node.nodeValue?.length ?? node.childNodes.length;
 }
 
 /** Upstream `A`: every remembered scroller off its origin, with whether it sat at the bottom. */
-function readScrolls(memory: ScrollMemory): ScrollEntry[] {
+function readScrolls(memory: ScrollMemory): ScrollEntry[]
+{
 	const scrolls: ScrollEntry[] = [];
-	for (const el of memory.entries()) {
+	for (const el of memory.entries())
+	{
 		if (el.scrollTop === 0 && el.scrollLeft === 0) continue;
 		const atBottom =
 			el.scrollHeight > el.clientHeight && el.scrollHeight - el.clientHeight - el.scrollTop <= AT_BOTTOM_SLOP_PX;
-		scrolls.push({el, top: el.scrollTop, left: el.scrollLeft, atBottom});
+		scrolls.push(
+			{
+				el,
+				top: el.scrollTop,
+				left: el.scrollLeft,
+				atBottom,
+			},
+		);
 	}
 	return scrolls;
 }
@@ -458,27 +569,38 @@ function readScrolls(memory: ScrollMemory): ScrollEntry[] {
  * Upstream `j`: pins at-bottom scrollers to the new bottom, reapplies offsets a move reset (or, after a park, lowered),
  * then refocuses the remembered element when focus fell to the body and reapplies its caret.
  */
-function restore(record: HostRecord, wasParked = false): void {
+function restore(record: HostRecord, wasParked = false): void
+{
 	const {host, pending} = record;
 	record.pending = null;
 	if (!pending || !host.isConnected) return;
-	for (const {el, top, left, atBottom} of pending.scrolls) {
+	for (const {el, top, left, atBottom} of pending.scrolls)
+	{
 		if (!host.contains(el)) continue;
-		if (atBottom && el.scrollTop < top) {
+		if (atBottom && el.scrollTop < top)
+		{
 			const bottom = el.scrollHeight - el.clientHeight;
 			if (bottom - el.scrollTop > AT_BOTTOM_SLOP_PX) setScrollTop(el, bottom);
-		} else if (top !== 0 && (el.scrollTop === 0 || (wasParked && el.scrollTop < top))) {
+		}
+		else if (top !== 0 && (el.scrollTop === 0 || (wasParked && el.scrollTop < top)))
+		{
 			setScrollTop(el, top);
 		}
 		if (left !== 0 && el.scrollLeft === 0) el.scrollLeft = left;
 	}
 	const {focused, caret} = pending;
-	if (focused && focusFellToBody(host.ownerDocument) && host.contains(focused)) focused.focus({preventScroll: true});
+	if (focused && focusFellToBody(host.ownerDocument) && host.contains(focused))
+		focused.focus(
+			{
+				preventScroll: true,
+			},
+		);
 	if (focused && caret) restoreCaret(focused, caret);
 }
 
 /** Upstream `M`: reapplies the caret, clamped to the nodes' lengths, unless the selection is already inside. */
-function restoreCaret(element: Element, [anchor, anchorOffset, focus, focusOffset]: Caret): void {
+function restoreCaret(element: Element, [anchor, anchorOffset, focus, focusOffset]: Caret): void
+{
 	const selection = element.ownerDocument.getSelection();
 	if (
 		selection === null ||

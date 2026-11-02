@@ -9,7 +9,8 @@ import {useDialogPad} from "./ui/dialog-pad";
 import {DialogPopup} from "./ui/dialog-popup";
 import {DIALOG_BODY_CLASS} from "./ui/dialog-classes";
 
-export interface RewindPickerProps {
+export interface RewindPickerProps
+{
 	open: boolean;
 	/** The prompts to offer, oldest first. */
 	turns: readonly RewindTurn[];
@@ -28,53 +29,73 @@ const optionClass = (scrollMb: string) => `rounded-r4 px-[6px] py-[5px] ${scroll
  * selection (clamped) and focus the list, Enter picks while focus is in it,
  * a pointer that has moved selects (without scrolling) and clicking picks.
  */
-export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps) {
+export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps)
+{
 	const last = Math.max(turns.length - 1, 0);
 	const [selected, setSelected] = useState(last);
 	// Upstream's `reveal`: the initial open and keyboard moves scroll the selection into view; hovers don't.
 	const [reveal, setReveal] = useState(true);
 	const listRef = useRef<HTMLUListElement>(null);
-	const pad = useDialogPad({compactOrigin: true});
+	const pad = useDialogPad(
+		{
+			compactOrigin: true,
+		},
+	);
 	const bandBody = useDialogBandBodyClass();
 
 	// Each opening starts on the newest prompt; a transcript update while open keeps the selection.
 	const [wasOpen, setWasOpen] = useState(open);
-	if (wasOpen !== open) {
+	if (wasOpen !== open)
+	{
 		setWasOpen(open);
-		if (open) {
+		if (open)
+		{
 			setSelected(last);
 			setReveal(true);
 		}
 	}
-	const hoverSelect = useCallback((index: number) => {
+	const hoverSelect = useCallback((index: number) =>
+	{
 		setSelected(index);
 		setReveal(false);
 	}, []);
 	const pointer = usePointerHoverSelect(hoverSelect);
 
 	// The selected row scrolls into view as it mounts with the dialog and on each keyboard move.
-	const scrollSelectedIntoView = useCallback((row: HTMLLIElement | null) => {
-		row?.scrollIntoView({block: "nearest"});
+	const scrollSelectedIntoView = useCallback((row: HTMLLIElement | null) =>
+	{
+		row?.scrollIntoView(
+			{
+				block: "nearest",
+			},
+		);
 	}, []);
 
-	const pick = (index: number) => {
+	const pick = (index: number) =>
+	{
 		const turn = turns[index];
 		onClose();
 		if (turn !== undefined) onSelect(turn.uuid, turn.text);
 	};
 
-	const onKeyDown = (event: React.KeyboardEvent) => {
-		if (event.key === "ArrowDown") {
+	const onKeyDown = (event: React.KeyboardEvent) =>
+	{
+		if (event.key === "ArrowDown")
+		{
 			event.preventDefault();
 			listRef.current?.focus();
 			setReveal(true);
 			setSelected((index) => Math.min(index + 1, last));
-		} else if (event.key === "ArrowUp") {
+		}
+		else if (event.key === "ArrowUp")
+		{
 			event.preventDefault();
 			listRef.current?.focus();
 			setReveal(true);
 			setSelected((index) => Math.max(index - 1, 0));
-		} else if (event.key === "Enter") {
+		}
+		else if (event.key === "Enter")
+		{
 			if (!(event.target instanceof Node && listRef.current?.contains(event.target))) return;
 			event.preventDefault();
 			pick(Math.min(selected, last));
@@ -85,7 +106,8 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 	return (
 		<Dialog.Root
 			open={open}
-			onOpenChange={(next) => {
+			onOpenChange={(next) =>
+			{
 				if (!next) onClose();
 			}}
 		>
@@ -129,10 +151,12 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 										aria-selected={index === current}
 										ref={reveal && index === current ? scrollSelectedIntoView : undefined}
 										className={`${optionClass(pad.scrollMb)} ${index === current ? "bg-fill-ghost-hover text-primary" : "text-secondary"}`}
-										onMouseMove={(event) => {
+										onMouseMove={(event) =>
+										{
 											pointer.hoverSelect(index, event);
 										}}
-										onClick={() => {
+										onClick={() =>
+										{
 											pick(index);
 										}}
 									>

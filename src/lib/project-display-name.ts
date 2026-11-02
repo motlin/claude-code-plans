@@ -3,13 +3,15 @@ import {homedir} from "node:os";
 import {join} from "node:path";
 import {encodeProjectPath} from "./memory.js";
 
-export interface KnownProjectName {
+export interface KnownProjectName
+{
 	id: string;
 	name: string;
 	projectPath: string | null;
 }
 
-export interface DeriveProjectDisplayNameOptions {
+export interface DeriveProjectDisplayNameOptions
+{
 	workspaceRoots?: readonly string[];
 	directoryExists?: (path: string) => boolean;
 }
@@ -25,23 +27,30 @@ const ENCODED_WORKTREE_MARKER = /(?:--|-\.)[A-Za-z0-9_]+-worktrees-/;
 
 const UUID_SEGMENT_PREFIX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}-/;
 
-function defaultWorkspaceRoots(): string[] {
+function defaultWorkspaceRoots(): string[]
+{
 	const home = homedir();
 	return [home, join(home, "projects"), "/tmp", "/private/tmp"];
 }
 
-function defaultDirectoryExists(path: string): boolean {
-	try {
+function defaultDirectoryExists(path: string): boolean
+{
+	try
+	{
 		return statSync(path).isDirectory();
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
 
 /** The pre-fix naming rule: the final hyphen-delimited token of the encoded id. */
-export function lastEncodedSegment(encodedId: string): string {
+export function lastEncodedSegment(encodedId: string): string
+{
 	const segments = encodedId.split("-");
-	for (let index = segments.length - 1; index >= 0; index--) {
+	for (let index = segments.length - 1; index >= 0; index--)
+	{
 		const segment = segments[index];
 		if (segment) return segment;
 	}
@@ -62,11 +71,13 @@ export function deriveProjectDisplayName(
 	projectPath: string | null,
 	knownProjects: readonly KnownProjectName[],
 	options?: DeriveProjectDisplayNameOptions,
-): string {
+): string
+{
 	const workspaceRoots = options?.workspaceRoots ?? defaultWorkspaceRoots();
 	const directoryExists = options?.directoryExists ?? defaultDirectoryExists;
 
-	if (projectPath) {
+	if (projectPath)
+	{
 		const fromPath = nameFromProjectPath(encodedId, projectPath, knownProjects, workspaceRoots);
 		if (fromPath) return fromPath;
 	}
@@ -78,17 +89,20 @@ function nameFromProjectPath(
 	projectPath: string,
 	knownProjects: readonly KnownProjectName[],
 	workspaceRoots: readonly string[],
-): string | null {
+): string | null
+{
 	const segments = projectPath.split("/").filter(Boolean);
 	if (segments.length === 0) return null;
 
 	const worktreeIndex = segments.findIndex((segment) => WORKTREE_DIR_PATTERN.test(segment));
-	if (worktreeIndex > 0 && worktreeIndex < segments.length - 1) {
+	if (worktreeIndex > 0 && worktreeIndex < segments.length - 1)
+	{
 		return `${segments[worktreeIndex - 1]}/${segments.slice(worktreeIndex + 1).join("/")}`;
 	}
 
 	const ancestor = deepestKnownAncestor(encodedId, projectPath, knownProjects, workspaceRoots);
-	if (ancestor?.projectPath) {
+	if (ancestor?.projectPath)
+	{
 		return `${ancestor.name}${projectPath.slice(ancestor.projectPath.length)}`;
 	}
 
@@ -100,13 +114,16 @@ function deepestKnownAncestor(
 	projectPath: string,
 	knownProjects: readonly KnownProjectName[],
 	workspaceRoots: readonly string[],
-): KnownProjectName | null {
+): KnownProjectName | null
+{
 	let deepest: KnownProjectName | null = null;
-	for (const known of knownProjects) {
+	for (const known of knownProjects)
+	{
 		if (known.id === encodedId || !known.projectPath) continue;
 		if (workspaceRoots.includes(known.projectPath)) continue;
 		if (!projectPath.startsWith(`${known.projectPath}/`)) continue;
-		if (!deepest?.projectPath || known.projectPath.length > deepest.projectPath.length) {
+		if (!deepest?.projectPath || known.projectPath.length > deepest.projectPath.length)
+		{
 			deepest = known;
 		}
 	}
@@ -118,12 +135,15 @@ function nameFromEncodedId(
 	knownProjects: readonly KnownProjectName[],
 	workspaceRoots: readonly string[],
 	directoryExists: (path: string) => boolean,
-): string {
+): string
+{
 	const marker = ENCODED_WORKTREE_MARKER.exec(encodedId);
-	if (marker && marker.index > 0) {
+	if (marker && marker.index > 0)
+	{
 		const base = encodedId.slice(0, marker.index);
 		const leaf = encodedId.slice(marker.index + marker[0].length);
-		if (leaf) {
+		if (leaf)
+		{
 			const baseKnown = knownProjects.find((known) => known.id === base);
 			const baseName = baseKnown?.name ?? nameFromEncodedId(base, knownProjects, workspaceRoots, directoryExists);
 			return `${baseName}/${leaf}`;
@@ -131,17 +151,21 @@ function nameFromEncodedId(
 	}
 
 	const parentMatch = bestKnownParentMatch(encodedId, knownProjects, workspaceRoots);
-	if (parentMatch) {
+	if (parentMatch)
+	{
 		const rest = encodedId.slice(parentMatch.restStart).replace(UUID_SEGMENT_PREFIX, "");
-		if (rest) {
+		if (rest)
+		{
 			const {known, isPrefix} = parentMatch;
 			// "<parent>-<rest>" decodes to either the nested checkout
 			// "<parentPath>/<rest>" or the peer directory "<parentPath>-<rest>".
 			// Trust whichever one actually exists on disk before guessing nested.
-			if (isPrefix && known.projectPath) {
+			if (isPrefix && known.projectPath)
+			{
 				const nestedPath = `${known.projectPath}/${rest}`;
 				const peerPath = `${known.projectPath}-${rest}`;
-				if (!directoryExists(nestedPath) && directoryExists(peerPath)) {
+				if (!directoryExists(nestedPath) && directoryExists(peerPath))
+				{
 					return lastPathSegment(peerPath) ?? `${known.name}/${rest}`;
 				}
 			}
@@ -152,7 +176,8 @@ function nameFromEncodedId(
 	return lastEncodedSegment(encodedId);
 }
 
-interface KnownParentMatch {
+interface KnownParentMatch
+{
 	known: KnownProjectName;
 	restStart: number;
 	isPrefix: boolean;
@@ -169,18 +194,23 @@ function bestKnownParentMatch(
 	encodedId: string,
 	knownProjects: readonly KnownProjectName[],
 	workspaceRoots: readonly string[],
-): KnownParentMatch | null {
+): KnownParentMatch | null
+{
 	const rootIds = new Set(workspaceRoots.map(encodeProjectPath));
 	let best: KnownParentMatch | null = null;
-	for (const known of knownProjects) {
+	for (const known of knownProjects)
+	{
 		if (known.id === encodedId || rootIds.has(known.id)) continue;
 		if (known.projectPath && workspaceRoots.includes(known.projectPath)) continue;
 
 		const needle = `${known.id}-`;
 		let matchStart = -1;
-		if (encodedId.startsWith(needle)) {
+		if (encodedId.startsWith(needle))
+		{
 			matchStart = 0;
-		} else {
+		}
+		else
+		{
 			const embedded = encodedId.indexOf(`-${needle}`);
 			if (embedded >= 0) matchStart = embedded + 1;
 		}
@@ -190,14 +220,21 @@ function bestKnownParentMatch(
 			!best ||
 			known.id.length > best.known.id.length ||
 			(known.id.length === best.known.id.length && matchStart === 0 && !best.isPrefix)
-		) {
-			best = {known, restStart: matchStart + needle.length, isPrefix: matchStart === 0};
+		)
+		{
+			best =
+			{
+				known,
+				restStart: matchStart + needle.length,
+				isPrefix: matchStart === 0,
+			};
 		}
 	}
 	return best;
 }
 
-function lastPathSegment(path: string): string | null {
+function lastPathSegment(path: string): string | null
+{
 	const segments = path.split("/").filter(Boolean);
 	return segments[segments.length - 1] ?? null;
 }

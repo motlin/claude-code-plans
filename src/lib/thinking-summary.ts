@@ -10,7 +10,8 @@ const LINK = /\[([^\]]*)\]\([^)\s]*\)/g;
 const CODE_AND_EMPHASIS = /[`*]+/g;
 
 /** Upstream's `Q2`: one line with its markdown markers stripped, or "" when nothing visible is left. */
-function cleanLine(line: string): string {
+function cleanLine(line: string): string
+{
 	const cleaned = line
 		.trim()
 		.replace(FENCE_LINE, "")
@@ -24,7 +25,8 @@ function cleanLine(line: string): string {
 }
 
 /** Upstream's `wZ`: cut past 200 units, dropping a dangling high surrogate, and end with an ellipsis. */
-function cutSummary(line: string): string {
+function cutSummary(line: string): string
+{
 	if (line.length <= SUMMARY_MAX) return line;
 	let cut = line.slice(0, SUMMARY_MAX);
 	const last = cut.charCodeAt(cut.length - 1);
@@ -36,8 +38,10 @@ function cutSummary(line: string): string {
  * Upstream's `k$` (shared-38): a thinking block's summary line, the first line (split on `\n` only) with
  * visible content once its markdown markers go, cut to 200 units. Undefined when no line has content.
  */
-export function thinkingSummary(text: string): string | undefined {
-	for (const line of text.split("\n")) {
+export function thinkingSummary(text: string): string | undefined
+{
+	for (const line of text.split("\n"))
+	{
 		const cleaned = cleanLine(line);
 		if (cleaned !== "") return cutSummary(cleaned);
 	}
@@ -45,6 +49,7 @@ export function thinkingSummary(text: string): string | undefined {
 }
 
 /** Upstream's `kN`: the thinking step's label, its summary line or "Thinking…". */
-export function thinkingStepLabel(text: string): string {
+export function thinkingStepLabel(text: string): string
+{
 	return thinkingSummary(text) ?? "Thinking…";
 }

@@ -3,7 +3,8 @@ import type {ReactNode} from "react";
 import {ListRow} from "./list-row";
 import {SectionHeader} from "./section-header";
 
-interface CustomizeListItem {
+interface CustomizeListItem
+{
 	key: string;
 	title: string;
 	source: string;
@@ -13,20 +14,23 @@ interface CustomizeListItem {
 	onView?: () => void;
 }
 
-interface CustomizeListGroup {
+interface CustomizeListGroup
+{
 	key: string;
 	title: string;
 	items: readonly CustomizeListItem[];
 }
 
-interface CustomizeListProps {
+interface CustomizeListProps
+{
 	groups: readonly CustomizeListGroup[];
 	icon: LucideIcon;
 	empty: ReactNode;
 }
 
 /** One `<section>` per group, each a SectionHeader + Counter over its ListRows. */
-export function CustomizeList({groups, icon, empty}: CustomizeListProps): ReactNode {
+export function CustomizeList({groups, icon, empty}: CustomizeListProps): ReactNode
+{
 	const visible = groups.filter((group) => group.items.length > 0);
 	if (visible.length === 0) return empty;
 
@@ -42,9 +46,24 @@ export function CustomizeList({groups, icon, empty}: CustomizeListProps): ReactN
 							title={item.title}
 							source={item.source}
 							subtitle={item.subtitle}
-							{...(item.meta === undefined ? {} : {meta: item.meta})}
-							{...(item.actions === undefined ? {} : {actions: item.actions})}
-							{...(item.onView === undefined ? {} : {onView: item.onView})}
+							{...(item.meta === undefined
+								? {}
+								:
+									{
+										meta: item.meta,
+									})}
+							{...(item.actions === undefined
+								? {}
+								:
+									{
+										actions: item.actions,
+									})}
+							{...(item.onView === undefined
+								? {}
+								:
+									{
+										onView: item.onView,
+									})}
 						/>
 					))}
 				</section>
@@ -53,9 +72,18 @@ export function CustomizeList({groups, icon, empty}: CustomizeListProps): ReactN
 	);
 }
 
-export function ShortDate({ms}: {ms: number}) {
+export function ShortDate({ms}: {ms: number})
+{
 	const date = new Date(ms);
 	return (
-		<time dateTime={date.toISOString()}>{date.toLocaleDateString("en-US", {month: "short", day: "numeric"})}</time>
+		<time dateTime={date.toISOString()}>
+			{date.toLocaleDateString(
+				"en-US",
+				{
+					month: "short",
+					day: "numeric",
+				},
+			)}
+		</time>
 	);
 }

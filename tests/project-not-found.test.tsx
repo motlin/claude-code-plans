@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRouteWithContext,
 	createRouter,
@@ -18,7 +19,8 @@ import {applicationSettingsQueryOptions} from "../src/lib/api/application-settin
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import type {SessionListItem} from "../src/lib/api/sessions";
 import {ToastProvider} from "../src/components/toast";
-import {
+import
+{
 	ProjectDetailResponse,
 	projectsQueryOptions,
 	projectDetailQueryOptions,
@@ -34,35 +36,76 @@ import {Route as ProjectSessionsRoute} from "../src/routes/project.$id_.sessions
 import {Route as ProjectSubagentsRoute} from "../src/routes/project.$id_.subagents";
 import {Route as ProjectTasksRoute} from "../src/routes/project.$id_.tasks";
 
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({activeSessions: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		activeSessions: new Map(),
+	}),
 }));
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 });
 
 const ID = "does-not-exist";
 
-function seededClient(): QueryClient {
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+function seededClient(): QueryClient
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	queryClient.setQueryData(projectDetailQueryOptions(ID).queryKey, null);
 	queryClient.setQueryData(projectSessionsQueryOptions(ID).queryKey, []);
 	queryClient.setQueryData(projectPlansQueryOptions(ID).queryKey, []);
 	queryClient.setQueryData(projectSubagentsQueryOptions(ID).queryKey, []);
-	queryClient.setQueryData(projectTasksQueryOptions(ID).queryKey, {
-		todos: [],
-		todoCounts: {total: 0, pending: 0, inProgress: 0, completed: 0},
-	});
+	queryClient.setQueryData(
+		projectTasksQueryOptions(ID).queryKey,
+		{
+			todos: [],
+			todoCounts:
+			{
+				total: 0,
+				pending: 0,
+				inProgress: 0,
+				completed: 0,
+			},
+		},
+	);
 	queryClient.setQueryData(projectMemoriesQueryOptions(ID).queryKey, null);
-	queryClient.setQueryData(projectApprovalsQueryOptions(ID).queryKey, {approvals: []});
+	queryClient.setQueryData(
+		projectApprovalsQueryOptions(ID).queryKey,
+		{
+			approvals: [],
+		},
+	);
 	queryClient.setQueryData(projectsQueryOptions().queryKey, []);
 	return queryClient;
 }
 
-const cases: Array<{id: string; path: string; url: string; route: AnyRoute}> = [
-	{id: "/project/$id", path: "/project/$id", url: `/project/${ID}`, route: ProjectRoute},
+const cases: Array<
+{
+	id: string;
+	path: string;
+	url: string;
+	route: AnyRoute;
+}> = [
+	{
+		id: "/project/$id",
+		path: "/project/$id",
+		url: `/project/${ID}`,
+		route: ProjectRoute,
+	},
 	{
 		id: "/project/$id_/sessions",
 		path: "/project/$id/sessions",
@@ -95,20 +138,40 @@ const cases: Array<{id: string; path: string; url: string; route: AnyRoute}> = [
 	},
 ];
 
-describe("missing project", () => {
+describe("missing project", () =>
+{
 	it.each(cases)(
 		"$url renders the generic 404 instead of a Project Not Found page",
-		async ({id, path, url, route}) => {
+		async ({id, path, url, route}) =>
+		{
 			const queryClient = seededClient();
-			const root = createRootRouteWithContext<{queryClient: QueryClient}>()();
+			const root = createRootRouteWithContext<
+			{
+				queryClient: QueryClient;
+			}>()();
 			// The same wiring routeTree.gen.ts applies, so Route.useParams() resolves against the real route id.
 			// update() is typed for user options only; the generated tree passes id/path the same way (`as any`).
-			route.update({id, path, getParentRoute: () => root} as Parameters<AnyRoute["update"]>[0]);
-			const router = createRouter({
-				routeTree: root.addChildren([route]),
-				context: {queryClient},
-				history: createMemoryHistory({initialEntries: [url]}),
-			});
+			route.update(
+				{
+					id,
+					path,
+					getParentRoute: () => root,
+				} as Parameters<AnyRoute["update"]>[0],
+			);
+			const router = createRouter(
+				{
+					routeTree: root.addChildren([route]),
+					context:
+					{
+						queryClient,
+					},
+					history: createMemoryHistory(
+						{
+							initialEntries: [url],
+						},
+					),
+				},
+			);
 			await router.load();
 			render(
 				<QueryClientProvider client={queryClient}>
@@ -116,21 +179,35 @@ describe("missing project", () => {
 				</QueryClientProvider>,
 			);
 
-			const heading = await screen.findByRole("heading", {level: 2});
-			const home = screen.getByRole("link", {name: "Go back home"});
-			expect({
-				inNotFound: heading.closest("[data-not-found]") !== null,
-				heading: heading.textContent,
-				homeHref: home.getAttribute("href"),
-				projectNotFound: screen.queryByText("Project Not Found"),
-				projectLine: screen.queryByText("This project could not be found."),
-			}).toStrictEqual({
-				inNotFound: true,
-				heading: "Page not found",
-				homeHref: "/",
-				projectNotFound: null,
-				projectLine: null,
-			});
+			const heading = await screen.findByRole(
+				"heading",
+				{
+					level: 2,
+				},
+			);
+			const home = screen.getByRole(
+				"link",
+				{
+					name: "Go back home",
+				},
+			);
+			expect(
+				{
+					inNotFound: heading.closest("[data-not-found]") !== null,
+					heading: heading.textContent,
+					homeHref: home.getAttribute("href"),
+					projectNotFound: screen.queryByText("Project Not Found"),
+					projectLine: screen.queryByText("This project could not be found."),
+				},
+			).toStrictEqual(
+				{
+					inNotFound: true,
+					heading: "Page not found",
+					homeHref: "/",
+					projectNotFound: null,
+					projectLine: null,
+				},
+			);
 		},
 	);
 });
@@ -140,7 +217,8 @@ const PROJECT = "-Users-alice-projects-demo";
 type ProjectDetail = NonNullable<z.infer<typeof ProjectDetailResponse>>;
 type ProjectMemories = NonNullable<z.infer<typeof MemoryListResponse>>;
 
-function session(id: string, title: string, mtime: string): SessionListItem {
+function session(id: string, title: string, mtime: string): SessionListItem
+{
 	return {
 		id,
 		title,
@@ -159,13 +237,24 @@ function session(id: string, title: string, mtime: string): SessionListItem {
 	};
 }
 
-function projectClient(): QueryClient {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+function projectClient(): QueryClient
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	const detail: ProjectDetail = {
+	);
+	const detail: ProjectDetail =
+	{
 		id: PROJECT,
 		name: "demo",
 		projectPath: "/Users/alice/projects/demo",
@@ -191,12 +280,27 @@ function projectClient(): QueryClient {
 	]);
 	queryClient.setQueryData(projectPlansQueryOptions(PROJECT).queryKey, []);
 	queryClient.setQueryData(projectSubagentsQueryOptions(PROJECT).queryKey, []);
-	queryClient.setQueryData(projectTasksQueryOptions(PROJECT).queryKey, {
-		todos: [],
-		todoCounts: {total: 0, pending: 0, inProgress: 0, completed: 0},
-	});
-	const memories: ProjectMemories = {
-		project: {id: PROJECT, name: "demo", projectPath: "/Users/alice/projects/demo"},
+	queryClient.setQueryData(
+		projectTasksQueryOptions(PROJECT).queryKey,
+		{
+			todos: [],
+			todoCounts:
+			{
+				total: 0,
+				pending: 0,
+				inProgress: 0,
+				completed: 0,
+			},
+		},
+	);
+	const memories: ProjectMemories =
+	{
+		project:
+		{
+			id: PROJECT,
+			name: "demo",
+			projectPath: "/Users/alice/projects/demo",
+		},
 		memories: [
 			{
 				filename: "notes.md",
@@ -207,25 +311,60 @@ function projectClient(): QueryClient {
 		],
 	};
 	queryClient.setQueryData(projectMemoriesQueryOptions(PROJECT).queryKey, memories);
-	queryClient.setQueryData(projectApprovalsQueryOptions(PROJECT).queryKey, {approvals: []});
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
+	queryClient.setQueryData(
+		projectApprovalsQueryOptions(PROJECT).queryKey,
+		{
+			approvals: [],
+		},
+	);
+	queryClient.setQueryData(
+		herdrPanesQueryOptions.queryKey,
+		{
+			panes: [],
+			writesEnabled: false,
+		},
+	);
 	return queryClient;
 }
 
-const sectionCases = cases.map((c) => ({...c, url: c.url.replace(ID, PROJECT)}));
+const sectionCases = cases.map((c) => (
+{
+	...c,
+	url: c.url.replace(ID, PROJECT),
+}));
 
-describe("existing project", () => {
+describe("existing project", () =>
+{
 	it.each(sectionCases)(
 		"$url draws the shared page header with linked section counts, hiding empty sections",
-		async ({id, path, url, route}) => {
+		async ({id, path, url, route}) =>
+		{
 			const queryClient = projectClient();
-			const root = createRootRouteWithContext<{queryClient: QueryClient}>()();
-			route.update({id, path, getParentRoute: () => root} as Parameters<AnyRoute["update"]>[0]);
-			const router = createRouter({
-				routeTree: root.addChildren([route]),
-				context: {queryClient},
-				history: createMemoryHistory({initialEntries: [url]}),
-			});
+			const root = createRootRouteWithContext<
+			{
+				queryClient: QueryClient;
+			}>()();
+			route.update(
+				{
+					id,
+					path,
+					getParentRoute: () => root,
+				} as Parameters<AnyRoute["update"]>[0],
+			);
+			const router = createRouter(
+				{
+					routeTree: root.addChildren([route]),
+					context:
+					{
+						queryClient,
+					},
+					history: createMemoryHistory(
+						{
+							initialEntries: [url],
+						},
+					),
+				},
+			);
 			await router.load();
 			render(
 				<QueryClientProvider client={queryClient}>
@@ -235,47 +374,89 @@ describe("existing project", () => {
 				</QueryClientProvider>,
 			);
 
-			const heading = await screen.findByRole("heading", {level: 1});
-			const tabs = screen.getByRole("navigation", {name: "Project sections"});
-			const back = screen.getByRole("link", {name: "Projects"});
-			expect({
-				inPageHeader: heading.closest('[data-cds="PageHeader"]') !== null,
-				heading: heading.textContent,
-				path: screen.getByText("/Users/alice/projects/demo").tagName,
-				backHref: back.getAttribute("href"),
-				tabs: within(tabs)
-					.getAllByRole("link")
-					.map((link) => [link.textContent, link.getAttribute("href"), link.getAttribute("aria-current")]),
-				topBar: document.querySelector(".-mt-9"),
-			}).toStrictEqual({
-				inPageHeader: true,
-				heading: "demo",
-				path: "P",
-				backHref: "/projects",
-				tabs: [
-					["Overview", `/project/${PROJECT}`, url === `/project/${PROJECT}` ? "page" : null],
-					["Sessions · 2", `/project/${PROJECT}/sessions`, url.endsWith("/sessions") ? "page" : null],
-					...(url.endsWith("/tasks") ? [["Tasks · 0", `/project/${PROJECT}/tasks`, "page"]] : []),
-					["Memories · 1", `/project/${PROJECT}/memories`, url.endsWith("/memories") ? "page" : null],
-					...(url.endsWith("/plans") ? [["Plans · 0", `/project/${PROJECT}/plans`, "page"]] : []),
-					["Subagents · 3", `/project/${PROJECT}/subagents`, url.endsWith("/subagents") ? "page" : null],
-				],
-				topBar: null,
-			});
+			const heading = await screen.findByRole(
+				"heading",
+				{
+					level: 1,
+				},
+			);
+			const tabs = screen.getByRole(
+				"navigation",
+				{
+					name: "Project sections",
+				},
+			);
+			const back = screen.getByRole(
+				"link",
+				{
+					name: "Projects",
+				},
+			);
+			expect(
+				{
+					inPageHeader: heading.closest('[data-cds="PageHeader"]') !== null,
+					heading: heading.textContent,
+					path: screen.getByText("/Users/alice/projects/demo").tagName,
+					backHref: back.getAttribute("href"),
+					tabs: within(tabs)
+						.getAllByRole("link")
+						.map((link) => [
+							link.textContent,
+							link.getAttribute("href"),
+							link.getAttribute("aria-current"),
+						]),
+					topBar: document.querySelector(".-mt-9"),
+				},
+			).toStrictEqual(
+				{
+					inPageHeader: true,
+					heading: "demo",
+					path: "P",
+					backHref: "/projects",
+					tabs: [
+						["Overview", `/project/${PROJECT}`, url === `/project/${PROJECT}` ? "page" : null],
+						["Sessions · 2", `/project/${PROJECT}/sessions`, url.endsWith("/sessions") ? "page" : null],
+						...(url.endsWith("/tasks") ? [["Tasks · 0", `/project/${PROJECT}/tasks`, "page"]] : []),
+						["Memories · 1", `/project/${PROJECT}/memories`, url.endsWith("/memories") ? "page" : null],
+						...(url.endsWith("/plans") ? [["Plans · 0", `/project/${PROJECT}/plans`, "page"]] : []),
+						["Subagents · 3", `/project/${PROJECT}/subagents`, url.endsWith("/subagents") ? "page" : null],
+					],
+					topBar: null,
+				},
+			);
 		},
 	);
 
 	it.each(sectionCases.filter((c) => c.url.endsWith(PROJECT) || c.url.endsWith("/sessions")))(
 		"$url lists sessions with the shared session row",
-		async ({id, path, url, route}) => {
+		async ({id, path, url, route}) =>
+		{
 			const queryClient = projectClient();
-			const root = createRootRouteWithContext<{queryClient: QueryClient}>()();
-			route.update({id, path, getParentRoute: () => root} as Parameters<AnyRoute["update"]>[0]);
-			const router = createRouter({
-				routeTree: root.addChildren([route]),
-				context: {queryClient},
-				history: createMemoryHistory({initialEntries: [url]}),
-			});
+			const root = createRootRouteWithContext<
+			{
+				queryClient: QueryClient;
+			}>()();
+			route.update(
+				{
+					id,
+					path,
+					getParentRoute: () => root,
+				} as Parameters<AnyRoute["update"]>[0],
+			);
+			const router = createRouter(
+				{
+					routeTree: root.addChildren([route]),
+					context:
+					{
+						queryClient,
+					},
+					history: createMemoryHistory(
+						{
+							initialEntries: [url],
+						},
+					),
+				},
+			);
 			await router.load();
 			render(
 				<QueryClientProvider client={queryClient}>
@@ -285,12 +466,18 @@ describe("existing project", () => {
 				</QueryClientProvider>,
 			);
 
-			await screen.findByRole("heading", {level: 1});
+			await screen.findByRole(
+				"heading",
+				{
+					level: 1,
+				},
+			);
 			const rows = screen
 				.getAllByRole("link")
 				.filter((link) => link.getAttribute("href")?.startsWith("/session/"));
 			expect(
-				rows.map((row) => ({
+				rows.map((row) => (
+				{
 					href: row.getAttribute("href"),
 					title: row.firstElementChild?.textContent,
 					time: row.querySelector("time")?.getAttribute("dateTime"),
@@ -313,28 +500,46 @@ describe("existing project", () => {
 		},
 	);
 
-	async function renderOverviewWithWrites(writesEnabled: boolean) {
+	async function renderOverviewWithWrites(writesEnabled: boolean)
+	{
 		const queryClient = projectClient();
-		queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
-			terminalWritesEnabled: writesEnabled,
-			terminalHost: "auto",
-			shellPaneEnabled: false,
-			visibleNavSections: [],
-			ignoredDirs: ["node_modules"],
-		});
+		queryClient.setQueryData(
+			applicationSettingsQueryOptions.queryKey,
+			{
+				terminalWritesEnabled: writesEnabled,
+				terminalHost: "auto",
+				shellPaneEnabled: false,
+				visibleNavSections: [],
+				ignoredDirs: ["node_modules"],
+			},
+		);
 		const [overview] = sectionCases;
 		if (overview === undefined) throw new Error("Expected the overview case");
-		const root = createRootRouteWithContext<{queryClient: QueryClient}>()();
-		overview.route.update({
-			id: overview.id,
-			path: overview.path,
-			getParentRoute: () => root,
-		} as Parameters<AnyRoute["update"]>[0]);
-		const router = createRouter({
-			routeTree: root.addChildren([overview.route]),
-			context: {queryClient},
-			history: createMemoryHistory({initialEntries: [overview.url]}),
-		});
+		const root = createRootRouteWithContext<
+		{
+			queryClient: QueryClient;
+		}>()();
+		overview.route.update(
+			{
+				id: overview.id,
+				path: overview.path,
+				getParentRoute: () => root,
+			} as Parameters<AnyRoute["update"]>[0],
+		);
+		const router = createRouter(
+			{
+				routeTree: root.addChildren([overview.route]),
+				context:
+				{
+					queryClient,
+				},
+				history: createMemoryHistory(
+					{
+						initialEntries: [overview.url],
+					},
+				),
+			},
+		);
 		await router.load();
 		render(
 			<QueryClientProvider client={queryClient}>
@@ -343,27 +548,63 @@ describe("existing project", () => {
 				</ToastProvider>
 			</QueryClientProvider>,
 		);
-		await screen.findByRole("heading", {level: 1});
+		await screen.findByRole(
+			"heading",
+			{
+				level: 1,
+			},
+		);
 		return router;
 	}
 
-	it("opens a herdr shell in the project's directory with Open terminal here", async () => {
+	it("opens a herdr shell in the project's directory with Open terminal here", async () =>
+	{
 		const bodies: unknown[] = [];
-		vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) =>
+		{
 			bodies.push(JSON.parse(String(init?.body)));
-			return Promise.resolve(Response.json({ok: true, tabId: "w1:t5", paneId: "w1:p5"}));
+			return Promise.resolve(
+				Response.json(
+					{
+						ok: true,
+						tabId: "w1:t5",
+						paneId: "w1:p5",
+					},
+				),
+			);
 		});
 		const router = await renderOverviewWithWrites(true);
 
-		fireEvent.click(screen.getByRole("button", {name: "Open terminal here"}));
-		await waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Open terminal here",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/terminals/pane/w1%3Ap5");
 		});
-		expect(bodies).toStrictEqual([{action: "create-tab", cwd: "/Users/alice/projects/demo"}]);
+		expect(bodies).toStrictEqual([
+			{
+				action: "create-tab",
+				cwd: "/Users/alice/projects/demo",
+			},
+		]);
 	});
 
-	it("offers no Open terminal here while Live terminal input is off", async () => {
+	it("offers no Open terminal here while Live terminal input is off", async () =>
+	{
 		await renderOverviewWithWrites(false);
-		expect(screen.queryByRole("button", {name: "Open terminal here"})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: "Open terminal here",
+				},
+			),
+		).toBeNull();
 	});
 });

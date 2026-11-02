@@ -2,7 +2,8 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import {homedir, tmpdir} from "node:os";
 import {join} from "node:path";
-import {
+import
+{
 	JobStateFileSchema,
 	JobTimelineEntrySchema,
 	jobSessionLink,
@@ -15,13 +16,23 @@ import {readJobs} from "../src/lib/jobs-reader";
 import {__testing} from "../src/lib/watcher";
 import {DOMAIN_EVENTS} from "../src/lib/hook-events";
 
-const DONE_STATE = {
+const DONE_STATE =
+{
 	state: "done",
 	detail: "Treemap of recurring expenses built",
 	tempo: "idle",
-	inFlight: {tasks: 0, queued: 0, kinds: [], drainableMonitors: 0},
+	inFlight:
+	{
+		tasks: 0,
+		queued: 0,
+		kinds: [],
+		drainableMonitors: 0,
+	},
 	tokens: 43332,
-	output: {result: "Treemap visualization of recurring expenses by category"},
+	output:
+	{
+		result: "Treemap visualization of recurring expenses by category",
+	},
 	children: [
 		{
 			id: "treemap.html",
@@ -29,7 +40,11 @@ const DONE_STATE = {
 			kind: "frame",
 			title: "Where the money goes",
 		},
-		{id: "12", href: "https://github.com/alice/app/pull/12", kind: "pr"},
+		{
+			id: "12",
+			href: "https://github.com/alice/app/pull/12",
+			kind: "pr",
+		},
 	],
 	linkScanOffset: 3273917,
 	linkScanPath: "/Users/alice/.claude/projects/-Users-alice-projects-app/0b3837ca-bfa3-4316.jsonl",
@@ -61,11 +76,17 @@ const DONE_STATE = {
 	bridgeSessionSeq: 4,
 };
 
-const BLOCKED_STATE = {
+const BLOCKED_STATE =
+{
 	state: "blocked",
 	detail: "Which walk should this fork take?",
 	tempo: "blocked",
-	inFlight: {tasks: 4, queued: 0, kinds: ["in_process_teammate"]},
+	inFlight:
+	{
+		tasks: 4,
+		queued: 0,
+		kinds: ["in_process_teammate"],
+	},
 	fan: [
 		{
 			id: "tcs2z67mo",
@@ -96,20 +117,28 @@ const BLOCKED_STATE = {
 	updatedAt: "2026-05-27T13:05:02.592Z",
 	firstTerminalAt: null,
 	needs: "answer: Which walk should this fork take?",
-	block: {
+	block:
+	{
 		questions: [
 			{
 				question: "Which walk should this fork take?",
 				options: [
-					{label: "Take over the walk", description: "Continue where it stopped"},
-					{label: "Read-only analysis", description: "Only report"},
+					{
+						label: "Take over the walk",
+						description: "Continue where it stopped",
+					},
+					{
+						label: "Read-only analysis",
+						description: "Only report",
+					},
 				],
 			},
 		],
 	},
 };
 
-const REAPED_STATE = {
+const REAPED_STATE =
+{
 	state: "failed",
 	detail: "process gone while supervisor was down",
 	tempo: "idle",
@@ -135,8 +164,18 @@ const REAPED_STATE = {
 };
 
 const TIMELINE = [
-	{at: "2026-09-02T21:52:10.000Z", state: "running", detail: "Build the treemap", text: ""},
-	{at: "2026-09-02T22:00:00.000Z", state: "working", detail: "Reading statements", text: ""},
+	{
+		at: "2026-09-02T21:52:10.000Z",
+		state: "running",
+		detail: "Build the treemap",
+		text: "",
+	},
+	{
+		at: "2026-09-02T22:00:00.000Z",
+		state: "working",
+		detail: "Reading statements",
+		text: "",
+	},
 	{
 		at: "2026-09-03T00:20:49.936Z",
 		state: "done",
@@ -145,19 +184,24 @@ const TIMELINE = [
 	},
 ];
 
-function timelineText(entries: readonly object[]): string {
+function timelineText(entries: readonly object[]): string
+{
 	return entries.map((entry) => JSON.stringify(entry)).join("\n") + "\n";
 }
 
-describe("JobStateFileSchema", () => {
-	it("parses done, blocked and reaped job state files", () => {
+describe("JobStateFileSchema", () =>
+{
+	it("parses done, blocked and reaped job state files", () =>
+	{
 		expect(
 			[DONE_STATE, BLOCKED_STATE, REAPED_STATE].map((state) => JobStateFileSchema.safeParse(state).success),
 		).toStrictEqual([true, true, true]);
 	});
 
-	it("parses a job state file started in a worktree", () => {
-		const state = {
+	it("parses a job state file started in a worktree", () =>
+	{
+		const state =
+		{
 			...DONE_STATE,
 			originCwd: "/Users/alice/projects/app",
 			worktreePath: "/Users/alice/projects/app-worktrees/expenses-treemap",
@@ -168,84 +212,156 @@ describe("JobStateFileSchema", () => {
 		expect(JobStateFileSchema.parse(state)).toStrictEqual(state);
 	});
 
-	it("rejects unknown keys and unknown states", () => {
-		expect({
-			extraKey: JobStateFileSchema.safeParse({...DONE_STATE, surprise: 1}).success,
-			unknownState: JobStateFileSchema.safeParse({...DONE_STATE, state: "exploded"}).success,
-		}).toStrictEqual({extraKey: false, unknownState: false});
+	it("rejects unknown keys and unknown states", () =>
+	{
+		expect(
+			{
+				extraKey: JobStateFileSchema.safeParse(
+					{
+						...DONE_STATE,
+						surprise: 1,
+					},
+				).success,
+				unknownState: JobStateFileSchema.safeParse(
+					{
+						...DONE_STATE,
+						state: "exploded",
+					},
+				).success,
+			},
+		).toStrictEqual(
+			{
+				extraKey: false,
+				unknownState: false,
+			},
+		);
 	});
 });
 
-describe("parseJobTimeline", () => {
-	it("parses each timeline.jsonl line and skips blank lines", () => {
+describe("parseJobTimeline", () =>
+{
+	it("parses each timeline.jsonl line and skips blank lines", () =>
+	{
 		expect(parseJobTimeline(timelineText(TIMELINE) + "\n")).toStrictEqual(TIMELINE);
 	});
 
-	it("rejects timeline entries with unknown keys", () => {
-		expect(JobTimelineEntrySchema.safeParse({...TIMELINE[0], extra: true}).success).toBe(false);
+	it("rejects timeline entries with unknown keys", () =>
+	{
+		expect(
+			JobTimelineEntrySchema.safeParse(
+				{
+					...TIMELINE[0],
+					extra: true,
+				},
+			).success,
+		).toBe(false);
 	});
 });
 
-describe("jobSessionLink", () => {
-	it("derives the session and project from linkScanPath", () => {
+describe("jobSessionLink", () =>
+{
+	it("derives the session and project from linkScanPath", () =>
+	{
 		expect(
 			jobSessionLink("/Users/alice/.claude/projects/-Users-alice-projects-app/0b3837ca-bfa3-4316.jsonl"),
-		).toStrictEqual({sessionId: "0b3837ca-bfa3-4316", projectId: "-Users-alice-projects-app"});
+		).toStrictEqual(
+			{
+				sessionId: "0b3837ca-bfa3-4316",
+				projectId: "-Users-alice-projects-app",
+			},
+		);
 	});
 
-	it("has no link without a linkScanPath or for a non-JSONL path", () => {
+	it("has no link without a linkScanPath or for a non-JSONL path", () =>
+	{
 		expect([jobSessionLink(undefined), jobSessionLink("/Users/alice/notes.txt")]).toStrictEqual([null, null]);
 	});
 });
 
-describe("toJob", () => {
-	it("derives the list row from state.json and timeline.jsonl", () => {
+describe("toJob", () =>
+{
+	it("derives the list row from state.json and timeline.jsonl", () =>
+	{
 		const state: JobStateFile = JobStateFileSchema.parse(DONE_STATE);
-		expect(toJob("0b3837ca", state, parseJobTimeline(timelineText(TIMELINE)))).toStrictEqual({
-			id: "0b3837ca",
-			name: "expenses-treemap",
-			intent: "Build a treemap of recurring expenses",
-			state: "done",
-			detail: "Treemap of recurring expenses built",
-			needs: null,
-			result: "Treemap visualization of recurring expenses by category",
-			cwd: "/Users/alice/projects/app",
-			createdAt: Date.parse("2026-09-02T21:52:09.290Z"),
-			updatedAt: Date.parse("2026-09-03T00:20:49.936Z"),
-			sessionId: "0b3837ca-bfa3-4316",
-			projectId: "-Users-alice-projects-app",
-			children: [
+		expect(toJob("0b3837ca", state, parseJobTimeline(timelineText(TIMELINE)))).toStrictEqual(
+			{
+				id: "0b3837ca",
+				name: "expenses-treemap",
+				intent: "Build a treemap of recurring expenses",
+				state: "done",
+				detail: "Treemap of recurring expenses built",
+				needs: null,
+				result: "Treemap visualization of recurring expenses by category",
+				cwd: "/Users/alice/projects/app",
+				createdAt: Date.parse("2026-09-02T21:52:09.290Z"),
+				updatedAt: Date.parse("2026-09-03T00:20:49.936Z"),
+				sessionId: "0b3837ca-bfa3-4316",
+				projectId: "-Users-alice-projects-app",
+				children: [
+					{
+						id: "treemap.html",
+						href: "https://claude.ai/code/artifact/0000",
+						kind: "frame",
+						title: "Where the money goes",
+					},
+					{
+						id: "12",
+						href: "https://github.com/alice/app/pull/12",
+						kind: "pr",
+						title: null,
+					},
+				],
+				timeline: TIMELINE.map((entry) => (
 				{
-					id: "treemap.html",
-					href: "https://claude.ai/code/artifact/0000",
-					kind: "frame",
-					title: "Where the money goes",
-				},
-				{id: "12", href: "https://github.com/alice/app/pull/12", kind: "pr", title: null},
-			],
-			timeline: TIMELINE.map((entry) => ({...entry, at: Date.parse(entry.at)})),
-		});
+					...entry,
+					at: Date.parse(entry.at),
+				})),
+			},
+		);
 	});
 
-	it("carries needs for blocked jobs and no link for reaped jobs", () => {
+	it("carries needs for blocked jobs and no link for reaped jobs", () =>
+	{
 		const blocked = toJob("221f2efe", JobStateFileSchema.parse(BLOCKED_STATE), []);
 		const reaped = toJob("171ac680", JobStateFileSchema.parse(REAPED_STATE), []);
-		expect({
-			blocked: {needs: blocked.needs, result: blocked.result, sessionId: blocked.sessionId},
-			reaped: {state: reaped.state, sessionId: reaped.sessionId, projectId: reaped.projectId},
-		}).toStrictEqual({
-			blocked: {
-				needs: "answer: Which walk should this fork take?",
-				result: null,
-				sessionId: "221f2efe-7e21",
+		expect(
+			{
+				blocked:
+				{
+					needs: blocked.needs,
+					result: blocked.result,
+					sessionId: blocked.sessionId,
+				},
+				reaped:
+				{
+					state: reaped.state,
+					sessionId: reaped.sessionId,
+					projectId: reaped.projectId,
+				},
 			},
-			reaped: {state: "failed", sessionId: null, projectId: null},
-		});
+		).toStrictEqual(
+			{
+				blocked:
+				{
+					needs: "answer: Which walk should this fork take?",
+					result: null,
+					sessionId: "221f2efe-7e21",
+				},
+				reaped:
+				{
+					state: "failed",
+					sessionId: null,
+					projectId: null,
+				},
+			},
+		);
 	});
 });
 
-describe("sortJobs", () => {
-	it("lists the most recently updated jobs first", () => {
+describe("sortJobs", () =>
+{
+	it("lists the most recently updated jobs first", () =>
+	{
 		const jobs = [
 			toJob("reaped", JobStateFileSchema.parse(REAPED_STATE), []),
 			toJob("blocked", JobStateFileSchema.parse(BLOCKED_STATE), []),
@@ -255,47 +371,97 @@ describe("sortJobs", () => {
 	});
 });
 
-describe("readJobs", () => {
+describe("readJobs", () =>
+{
 	let jobsDir: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		jobsDir = mkdtempSync(join(tmpdir(), "jobs-test-"));
 	});
 
-	afterEach(() => {
-		rmSync(jobsDir, {recursive: true, force: true});
+	afterEach(() =>
+	{
+		rmSync(
+			jobsDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	function writeJob(id: string, state: object, timeline?: readonly object[]): void {
-		mkdirSync(join(jobsDir, id, "tmp"), {recursive: true});
+	function writeJob(id: string, state: object, timeline?: readonly object[]): void
+	{
+		mkdirSync(
+			join(jobsDir, id, "tmp"),
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(join(jobsDir, id, "state.json"), JSON.stringify(state));
 		if (timeline) writeFileSync(join(jobsDir, id, "timeline.jsonl"), timelineText(timeline));
 	}
 
-	it("reads every job directory with a state.json, newest first", async () => {
+	it("reads every job directory with a state.json, newest first", async () =>
+	{
 		writeJob("0b3837ca", DONE_STATE, TIMELINE);
 		writeJob("171ac680", REAPED_STATE);
-		writeJob("broken00", {...DONE_STATE, state: "exploded"});
+		writeJob(
+			"broken00",
+			{
+				...DONE_STATE,
+				state: "exploded",
+			},
+		);
 		mkdirSync(join(jobsDir, "05108040"));
 		writeFileSync(join(jobsDir, "pins.json"), "[]");
 
 		const jobs = await readJobs(jobsDir);
 
-		expect(jobs.map((job) => ({id: job.id, state: job.state, timeline: job.timeline.length}))).toStrictEqual([
-			{id: "0b3837ca", state: "done", timeline: 3},
-			{id: "171ac680", state: "failed", timeline: 0},
+		expect(
+			jobs.map((job) => (
+			{
+				id: job.id,
+				state: job.state,
+				timeline: job.timeline.length,
+			})),
+		).toStrictEqual([
+			{
+				id: "0b3837ca",
+				state: "done",
+				timeline: 3,
+			},
+			{
+				id: "171ac680",
+				state: "failed",
+				timeline: 0,
+			},
 		]);
 	});
 
-	it("returns no jobs when the jobs directory is missing", async () => {
+	it("returns no jobs when the jobs directory is missing", async () =>
+	{
 		expect(await readJobs(join(jobsDir, "missing"))).toStrictEqual([]);
 	});
 });
 
-describe("handleJobFileEvent", () => {
-	it("broadcasts jobs:changed for a job's state.json or timeline.jsonl only", () => {
-		const broadcasts: Array<{type: string; data: Record<string, unknown>}> = [];
-		const broadcast = (type: string, data: Record<string, unknown>) => broadcasts.push({type, data});
+describe("handleJobFileEvent", () =>
+{
+	it("broadcasts jobs:changed for a job's state.json or timeline.jsonl only", () =>
+	{
+		const broadcasts: Array<
+		{
+			type: string;
+			data: Record<string, unknown>;
+		}> = [];
+		const broadcast = (type: string, data: Record<string, unknown>) =>
+			broadcasts.push(
+				{
+					type,
+					data,
+				},
+			);
 		const jobsDir = "/Users/alice/.claude/jobs";
 
 		const handled = [
@@ -306,48 +472,83 @@ describe("handleJobFileEvent", () => {
 			__testing.handleJobFileEvent("/Users/alice/.claude/projects/p/timeline.jsonl", jobsDir, broadcast),
 		];
 
-		expect({handled, broadcasts}).toStrictEqual({
-			handled: [true, true, true, true, false],
-			broadcasts: [
-				{type: DOMAIN_EVENTS.JOBS_CHANGED, data: {jobId: "0b3837ca"}},
-				{type: DOMAIN_EVENTS.JOBS_CHANGED, data: {jobId: "0b3837ca"}},
-			],
-		});
+		expect(
+			{
+				handled,
+				broadcasts,
+			},
+		).toStrictEqual(
+			{
+				handled: [true, true, true, true, false],
+				broadcasts: [
+					{
+						type: DOMAIN_EVENTS.JOBS_CHANGED,
+						data:
+						{
+							jobId: "0b3837ca",
+						},
+					},
+					{
+						type: DOMAIN_EVENTS.JOBS_CHANGED,
+						data:
+						{
+							jobId: "0b3837ca",
+						},
+					},
+				],
+			},
+		);
 	});
 });
 
-describe("JobStateFileSchema against disk", () => {
+describe("JobStateFileSchema against disk", () =>
+{
 	const jobsDir = join(homedir(), ".claude", "jobs");
 
-	it("validates every job state.json and timeline.jsonl on disk", () => {
+	it("validates every job state.json and timeline.jsonl on disk", () =>
+	{
 		let entries: string[];
-		try {
+		try
+		{
 			entries = readdirSync(jobsDir);
-		} catch {
+		}
+		catch
+		{
 			return;
 		}
 
 		const failures: string[] = [];
-		for (const entry of entries) {
+		for (const entry of entries)
+		{
 			let stateRaw: string;
-			try {
+			try
+			{
 				stateRaw = readFileSync(join(jobsDir, entry, "state.json"), "utf-8");
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
 			const state = JobStateFileSchema.safeParse(JSON.parse(stateRaw));
-			if (!state.success) {
+			if (!state.success)
+			{
 				failures.push(`${entry}/state.json: ${state.error.message}`);
 			}
 			let timelineRaw: string;
-			try {
+			try
+			{
 				timelineRaw = readFileSync(join(jobsDir, entry, "timeline.jsonl"), "utf-8");
-			} catch {
+			}
+			catch
+			{
 				continue;
 			}
-			try {
+			try
+			{
 				parseJobTimeline(timelineRaw);
-			} catch (error) {
+			}
+			catch (error)
+			{
 				failures.push(`${entry}/timeline.jsonl: ${String(error)}`);
 			}
 		}

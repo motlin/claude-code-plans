@@ -16,12 +16,14 @@ const HIGHLIGHT_BASE_CLASS = "absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5
  * Under fizzy-lake `color` (upstream's `stacks:` variants) the hover is the translucent
  * 6% `bg-accent-layer`, which also stacks (as a gradient) over an open or selected chip's 12% `bg-accent`.
  */
-const HIGHLIGHT_CLASS = {
+const HIGHLIGHT_CLASS =
+{
 	fizzy: `${HIGHLIGHT_BASE_CLASS} [@media(hover:hover)]:group-hover/chip:bg-upstream-accent-layer group-data-[card-open]/chip:bg-upstream-accent-pressed [@media(hover:hover)]:group-data-[card-open]/chip:group-hover/chip:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]`,
 	base: `${HIGHLIGHT_BASE_CLASS} group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed`,
 };
 
-const HIGHLIGHT_SELECTED_CLASS = {
+const HIGHLIGHT_SELECTED_CLASS =
+{
 	fizzy: `${HIGHLIGHT_BASE_CLASS} bg-upstream-accent-pressed [@media(hover:hover)]:group-hover/chip:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]`,
 	base: `${HIGHLIGHT_BASE_CLASS} bg-upstream-accent-pressed`,
 };
@@ -46,15 +48,18 @@ export function ComposerSkillChip({
 	description: string | undefined;
 	selected: boolean;
 	onPress: (event: MouseEvent<HTMLSpanElement>) => void;
-}) {
+})
+{
 	const [cardOpen, setCardOpen] = useState(false);
 	const look = useFizzyLake("color") ? "fizzy" : "base";
 	const chipRef = useRef<HTMLSpanElement>(null);
 	const plainRef = useRef<HTMLSpanElement>(null);
 	const [offset, setOffset] = useState(0);
 
-	useLayoutEffect(() => {
-		const measure = () => {
+	useLayoutEffect(() =>
+	{
+		const measure = () =>
+		{
 			const chip = chipRef.current;
 			const plain = plainRef.current;
 			if (chip === null || plain === null) return;
@@ -64,7 +69,8 @@ export function ComposerSkillChip({
 		// Re-measure when the plain text's width changes: web fonts loading, the coarse-pointer 16px floor.
 		const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
 		if (plainRef.current !== null) observer?.observe(plainRef.current);
-		return () => {
+		return () =>
+		{
 			observer?.disconnect();
 		};
 	}, [name]);
@@ -78,7 +84,14 @@ export function ComposerSkillChip({
 				dir="auto"
 				className={CHIP_CLASS}
 				data-card-open={cardOpen ? "true" : undefined}
-				style={offset === 0 ? undefined : {marginInlineStart: `${offset}px`}}
+				style={
+					offset === 0
+						? undefined
+						:
+							{
+								marginInlineStart: `${offset}px`,
+							}
+				}
 			>
 				<PreviewCard.Root onOpenChange={setCardOpen}>
 					<PreviewCard.Trigger render={<span />} delay={300} className={TRIGGER_CLASS} onMouseDown={onPress}>

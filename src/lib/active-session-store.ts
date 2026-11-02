@@ -5,13 +5,15 @@ import type {LiveSessionRoutines} from "./routines";
 import {touchStoredLiveSubagent} from "./live-subagent-store";
 
 /** The CLI's latest PermissionRequest hook: the tool asking, the dialog's persistent-option updates, and the mode it asked in. */
-export interface PendingPermissionRequest {
+export interface PendingPermissionRequest
+{
 	toolName: string;
 	suggestions: PermissionUpdate[];
 	permissionMode?: string;
 }
 
-export interface ActiveSessionEntry {
+export interface ActiveSessionEntry
+{
 	sessionId: string;
 	state: ActivityState;
 	cwd: string;
@@ -64,7 +66,11 @@ export interface ActiveSessionEntry {
 	 */
 	pendingPermissionRequest?: PendingPermissionRequest;
 	/** Scheduled prompts the session's latest `Stop` reported, and when (absent before any). */
-	sessionCrons?: {crons: HookSessionCronPayload[]; reportedAt: number};
+	sessionCrons?:
+	{
+		crons: HookSessionCronPayload[];
+		reportedAt: number;
+	};
 }
 
 /**
@@ -74,21 +80,28 @@ export interface ActiveSessionEntry {
  * (session not running inside tmux, or hooks not yet re-installed to forward
  * `TMUX`/`TMUX_PANE`).
  */
-function deriveTmux(claudeEnv: Record<string, string> | undefined): {
+function deriveTmux(claudeEnv: Record<string, string> | undefined):
+{
 	tmuxPane: string;
 	tmuxServerSocket: string;
-} {
+}
+{
 	const tmuxPane = claudeEnv?.["TMUX_PANE"] ?? "";
 	const tmux = claudeEnv?.["TMUX"] ?? "";
 	const tmuxServerSocket = tmux.split(",")[0] ?? "";
-	return {tmuxPane, tmuxServerSocket};
+	return {
+		tmuxPane,
+		tmuxServerSocket,
+	};
 }
 
-function deriveHerdr(claudeEnv: Record<string, string> | undefined): {
+function deriveHerdr(claudeEnv: Record<string, string> | undefined):
+{
 	herdrPane: string;
 	herdrWorkspace: string;
 	herdrSocketPath: string;
-} {
+}
+{
 	return {
 		herdrPane: claudeEnv?.["HERDR_PANE_ID"] ?? "",
 		herdrWorkspace: claudeEnv?.["HERDR_WORKSPACE_ID"] ?? "",
@@ -101,7 +114,8 @@ function deriveHerdr(claudeEnv: Record<string, string> | undefined): {
  * placement. Callers guard on a present `claudeEnv` so a missing env never
  * clobbers a previously known mapping.
  */
-function applyClaudeEnv(entry: ActiveSessionEntry, claudeEnv: Record<string, string>): void {
+function applyClaudeEnv(entry: ActiveSessionEntry, claudeEnv: Record<string, string>): void
+{
 	entry.claudeEnv = claudeEnv;
 	const {tmuxPane, tmuxServerSocket} = deriveTmux(claudeEnv);
 	const {herdrPane, herdrWorkspace, herdrSocketPath} = deriveHerdr(claudeEnv);
@@ -114,7 +128,8 @@ function applyClaudeEnv(entry: ActiveSessionEntry, claudeEnv: Record<string, str
 
 const store = hmrPersist("activeSessionStore", () => new Map<string, ActiveSessionEntry>());
 
-function normalizeEntryState(entry: ActiveSessionEntry): ActiveSessionEntry {
+function normalizeEntryState(entry: ActiveSessionEntry): ActiveSessionEntry
+{
 	// HMR may retain entries created before these fields existed.
 	// oxlint-disable-next-line typescript/no-unnecessary-condition -- older entries lack the field despite the type
 	entry.state ??= "unknown";
@@ -124,7 +139,8 @@ function normalizeEntryState(entry: ActiveSessionEntry): ActiveSessionEntry {
 	return entry;
 }
 
-function findSession(sessionId: string): ActiveSessionEntry | undefined {
+function findSession(sessionId: string): ActiveSessionEntry | undefined
+{
 	const entry = store.get(sessionId);
 	return entry ? normalizeEntryState(entry) : undefined;
 }
@@ -138,49 +154,71 @@ export const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 export function markSessionActive(
 	sessionId: string,
-	meta: {cwd: string; model?: string; claudeEnv?: Record<string, string>},
-): void {
+	meta:
+	{
+		cwd: string;
+		model?: string;
+		claudeEnv?: Record<string, string>;
+	},
+): void
+{
 	const existing = findSession(sessionId);
-	if (existing) {
+	if (existing)
+	{
 		existing.lastActivity = Date.now();
 		existing.cwd = meta.cwd;
 		// Only re-derive terminal mappings when a fresh claude_env is supplied.
 		// Callers without one (e.g. CwdChanged) must not clobber a known pane.
 		if (meta.claudeEnv) applyClaudeEnv(existing, meta.claudeEnv);
-	} else {
+	}
+	else
+	{
 		const {tmuxPane, tmuxServerSocket} = deriveTmux(meta.claudeEnv);
 		const {herdrPane, herdrWorkspace, herdrSocketPath} = deriveHerdr(meta.claudeEnv);
-		store.set(sessionId, {
+		store.set(
 			sessionId,
-			state: "unknown",
-			cwd: meta.cwd,
-			model: meta.model ?? "",
-			startedAt: Date.now(),
-			lastActivity: Date.now(),
-			claudeEnv: meta.claudeEnv ?? {},
-			tmuxPane,
-			tmuxServerSocket,
-			herdrPane,
-			herdrWorkspace,
-			herdrSocketPath,
-			lastSubagentActivityAt: null,
-			backgroundTasks: [],
-		});
+			{
+				sessionId,
+				state: "unknown",
+				cwd: meta.cwd,
+				model: meta.model ?? "",
+				startedAt: Date.now(),
+				lastActivity: Date.now(),
+				claudeEnv: meta.claudeEnv ?? {},
+				tmuxPane,
+				tmuxServerSocket,
+				herdrPane,
+				herdrWorkspace,
+				herdrSocketPath,
+				lastSubagentActivityAt: null,
+				backgroundTasks: [],
+			},
+		);
 	}
 }
 
-export function markSessionEnded(sessionId: string): void {
+export function markSessionEnded(sessionId: string): void
+{
 	store.delete(sessionId);
 }
 
-export function setSessionState(sessionId: string, state: ActivityState): void {
+export function setSessionState(sessionId: string, state: ActivityState): void
+{
 	const entry = findSession(sessionId);
 	if (entry) entry.state = state;
 }
 
-export function touchSession(sessionId: string, meta?: {claudeEnv?: Record<string, string>}): void {
+export function touchSession(
+	sessionId: string,
+	meta?:
+	{
+		claudeEnv?: Record<string, string>;
+	},
+): void
+{
 	const entry = findSession(sessionId);
-	if (entry) {
+	if (entry)
+	{
 		entry.lastActivity = Date.now();
 		// Re-stamp terminal mappings when a fresh claude_env is supplied (every
 		// UserPromptSubmit) so placement stays correct after a `claude --resume`.
@@ -194,7 +232,8 @@ export function touchSession(sessionId: string, meta?: {claudeEnv?: Record<strin
  * root session and the live subagent node alive (the latter feeds the stale
  * sweep) without touching the root's `state`, which only main-turn hooks own.
  */
-export function touchSubagentActivity(sessionId: string, agentId: string): void {
+export function touchSubagentActivity(sessionId: string, agentId: string): void
+{
 	touchStoredLiveSubagent(agentId);
 	const entry = findSession(sessionId);
 	if (!entry) return;
@@ -203,25 +242,34 @@ export function touchSubagentActivity(sessionId: string, agentId: string): void 
 	entry.lastSubagentActivityAt = now;
 }
 
-export function setBackgroundTasks(sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]): void {
+export function setBackgroundTasks(sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]): void
+{
 	const entry = findSession(sessionId);
 	if (entry) entry.backgroundTasks = backgroundTasks;
 }
 
-export function setPendingPermissionRequest(sessionId: string, request: PendingPermissionRequest | null): void {
+export function setPendingPermissionRequest(sessionId: string, request: PendingPermissionRequest | null): void
+{
 	const entry = findSession(sessionId);
 	if (!entry) return;
 	if (request === null) delete entry.pendingPermissionRequest;
 	else entry.pendingPermissionRequest = request;
 }
 
-export function setSessionCrons(sessionId: string, crons: HookSessionCronPayload[]): void {
+export function setSessionCrons(sessionId: string, crons: HookSessionCronPayload[]): void
+{
 	const entry = findSession(sessionId);
-	if (entry) entry.sessionCrons = {crons, reportedAt: Date.now()};
+	if (entry)
+		entry.sessionCrons =
+		{
+			crons,
+			reportedAt: Date.now(),
+		};
 }
 
 /** Each running session's latest Stop `session_crons`, keyed by session id. */
-export function liveSessionRoutines(): Map<string, LiveSessionRoutines> {
+export function liveSessionRoutines(): Map<string, LiveSessionRoutines>
+{
 	return new Map(
 		getActiveSessionEntries().map((entry) => [
 			entry.sessionId,
@@ -233,41 +281,51 @@ export function liveSessionRoutines(): Map<string, LiveSessionRoutines> {
 	);
 }
 
-export function getActiveSessionEntries(): ActiveSessionEntry[] {
+export function getActiveSessionEntries(): ActiveSessionEntry[]
+{
 	return [...store.values()].map(normalizeEntryState);
 }
 
-export function getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null {
+export function getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null
+{
 	return findSession(sessionId) ?? null;
 }
 
-export function isSessionActiveInStore(sessionId: string): boolean {
+export function isSessionActiveInStore(sessionId: string): boolean
+{
 	return store.has(sessionId);
 }
 
-export function hasAnyActiveSessions(): boolean {
+export function hasAnyActiveSessions(): boolean
+{
 	return store.size > 0;
 }
 
-export function sweepSessions(target: Map<string, ActiveSessionEntry>): void {
+export function sweepSessions(target: Map<string, ActiveSessionEntry>): void
+{
 	const now = Date.now();
-	for (const [id, entry] of target) {
-		if (now - entry.lastActivity > STALE_THRESHOLD_MS) {
+	for (const [id, entry] of target)
+	{
+		if (now - entry.lastActivity > STALE_THRESHOLD_MS)
+		{
 			target.delete(id);
 		}
 	}
 }
 
-function sweep(): void {
+function sweep(): void
+{
 	sweepSessions(store);
 }
 
-export function startSweep(): void {
+export function startSweep(): void
+{
 	stopSweep();
 	sweepTimer = setInterval(sweep, SWEEP_INTERVAL_MS);
 }
 
-export function stopSweep(): void {
+export function stopSweep(): void
+{
 	if (sweepTimer) clearInterval(sweepTimer);
 	sweepTimer = null;
 }

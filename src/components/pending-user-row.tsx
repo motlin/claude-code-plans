@@ -12,7 +12,8 @@ import {USER_PARAGRAPH_CLASS} from "./user-plain-text";
  * The prompt whose POST to the live pane is still in flight, drawn like upstream's user row with
  * `deliveryStatus:"sending"`: dimmed, no toolbar, and a "Sending…" status under the bubble.
  */
-export function SendingUserRow({prompt}: {prompt: string}) {
+export function SendingUserRow({prompt}: {prompt: string})
+{
 	return (
 		<PendingUserRowShell
 			prompt={prompt}
@@ -43,7 +44,8 @@ export function HeldUserRow({
 	prompt: string;
 	reconnecting: boolean;
 	onWithdraw: () => void;
-}) {
+})
+{
 	const {ref, onFocus, onKeyDown} = useRovingToolbar();
 	return (
 		<PendingUserRowShell prompt={prompt} rowClass="" deliveryStatus="held">
@@ -75,7 +77,8 @@ export function HeldUserRow({
 					type="button"
 					aria-label="Withdraw message"
 					className="inline-flex size-5 comfortable:size-6 shrink-0 items-center justify-center rounded-r4 comfortable:rounded-r5 text-ink-muted hover:text-primary"
-					onMouseDown={(event) => {
+					onMouseDown={(event) =>
+					{
 						// Upstream `xi`: the click leaves focus where it was.
 						event.preventDefault();
 					}}
@@ -89,7 +92,8 @@ export function HeldUserRow({
 }
 
 /** Upstream's `$T`: the held text in a muted shimmer that sweeps only while reconnecting, in phase with the rest. */
-function HeldShimmer({sweeps, children}: {sweeps: boolean; children: ReactNode}) {
+function HeldShimmer({sweeps, children}: {sweeps: boolean; children: ReactNode})
+{
 	const [delay] = useState(shimmerPhaseDelay);
 	return (
 		<ShimmerText variant="muted" active={sweeps} delay={delay}>
@@ -108,7 +112,8 @@ function PendingUserRowShell({
 	rowClass: string;
 	deliveryStatus: "sending" | "held";
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<div className={`${CHAT_COLUMN_CLASS} flex flex-col gap-2 pb-[var(--chat-turn-gap)]`}>
 			<div

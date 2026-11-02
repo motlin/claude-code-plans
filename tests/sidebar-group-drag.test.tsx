@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -24,7 +25,8 @@ import {rowTitle} from "./sidebar-row-title";
 
 const MINUTE = 60 * 1000;
 
-function session(id: string, title: string, minutesAgo: number) {
+function session(id: string, title: string, minutesAgo: number)
+{
 	const mtime = new Date(Date.now() - minutesAgo * MINUTE).toISOString();
 	return {
 		id,
@@ -51,54 +53,114 @@ const FIXTURE = [
 	session("u2", "Loose two", 5),
 ];
 
-const ALPHA = {id: "cg-a", name: "Alpha"};
-const BETA = {id: "cg-b", name: "Beta"};
-const SEEDED_ASSIGNMENTS = {a1: "cg-a", a2: "cg-a", b1: "cg-b"};
+const ALPHA =
+{
+	id: "cg-a",
+	name: "Alpha",
+};
+const BETA =
+{
+	id: "cg-b",
+	name: "Beta",
+};
+const SEEDED_ASSIGNMENTS =
+{
+	a1: "cg-a",
+	a2: "cg-a",
+	b1: "cg-b",
+};
 
-function seedGroups(): void {
+function seedGroups(): void
+{
 	localStorage.setItem(
 		SESSION_GROUP_STORAGE_KEY,
-		JSON.stringify({groups: [ALPHA, BETA], assignments: SEEDED_ASSIGNMENTS, order: {}}),
+		JSON.stringify(
+			{
+				groups: [ALPHA, BETA],
+				assignments: SEEDED_ASSIGNMENTS,
+				order: {},
+			},
+		),
 	);
 }
 
-async function renderGroups() {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+async function renderGroups()
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [RecentSessionsResponse.parse({sessions: FIXTURE, nextCursor: null})],
-		pageParams: [null],
-	});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<SessionGroups activeItemId={null} prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy: "none"}} />
-					<Outlet />
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const homeRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: () => null,
-	});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/session/$id",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	);
+	queryClient.setQueryData(
+		recentSessionsInfiniteQueryOptions().queryKey,
+		{
+			pages: [
+				RecentSessionsResponse.parse(
+					{
+						sessions: FIXTURE,
+						nextCursor: null,
+					},
+				),
+			],
+			pageParams: [null],
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SessionGroups
+							activeItemId={null}
+							prefs={
+							{
+								...DEFAULT_SESSION_LIST_PREFS,
+								groupBy: "none",
+							}}
+						/>
+						<Outlet />
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/session/$id",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
 	});
 	return result;
@@ -108,7 +170,8 @@ const ROW_STEP = 33;
 const RECENTS_TOP = 300;
 const UNIT_SELECTOR = "[data-sidebar-group-label], [data-drag-id], [data-ungroup-drop-row]";
 
-function rect(top: number, height: number): DOMRect {
+function rect(top: number, height: number): DOMRect
+{
 	return {
 		top,
 		bottom: top + height,
@@ -127,11 +190,13 @@ function rect(top: number, height: number): DOMRect {
  * the pin drop row at 200). Below it, from 300, every group header, row and the
  * Ungroup drop row takes a 33px step in DOM order; containers span their units.
  */
-function layout(element: Element): DOMRect {
+function layout(element: Element): DOMRect
+{
 	if (element.matches('[data-testid="sidebar-pinned"]')) return rect(0, 250);
 	if (element.matches("[data-pin-drop-row]")) return rect(200, 32);
 	const pinned = element.closest('[data-testid="sidebar-pinned"]');
-	if (pinned !== null) {
+	if (pinned !== null)
+	{
 		const index = [...pinned.querySelectorAll("[data-drag-id]")].indexOf(element);
 		return index === -1 ? rect(0, 0) : rect(ROW_STEP * (index + 1), 32);
 	}
@@ -152,43 +217,74 @@ function layout(element: Element): DOMRect {
 }
 
 /** Center y of the n-th layout unit below the Pinned section. */
-function unitY(index: number): number {
+function unitY(index: number): number
+{
 	return RECENTS_TOP + ROW_STEP * index + 16;
 }
 
-function rowLink(title: string): HTMLElement {
+function rowLink(title: string): HTMLElement
+{
 	const link = screen.getByText(title).closest("a[data-row-main-button]");
 	if (!(link instanceof HTMLElement)) throw new Error(`no row ${title}`);
 	return link;
 }
 
-function groupToggle(label: string): HTMLElement {
+function groupToggle(label: string): HTMLElement
+{
 	const toggle = screen.getByText(label).closest("[data-group-toggle]");
 	if (!(toggle instanceof HTMLElement)) throw new Error(`no group ${label}`);
 	return toggle;
 }
 
-function pointerMove(clientY: number): void {
-	act(() => {
-		fireEvent.pointerMove(window, {pointerId: 1, clientX: 50, clientY});
+function pointerMove(clientY: number): void
+{
+	act(() =>
+	{
+		fireEvent.pointerMove(
+			window,
+			{
+				pointerId: 1,
+				clientX: 50,
+				clientY,
+			},
+		);
 	});
 }
 
-function pointerUp(clientY: number): void {
-	act(() => {
-		fireEvent.pointerUp(window, {pointerId: 1, clientX: 50, clientY});
+function pointerUp(clientY: number): void
+{
+	act(() =>
+	{
+		fireEvent.pointerUp(
+			window,
+			{
+				pointerId: 1,
+				clientX: 50,
+				clientY,
+			},
+		);
 	});
 }
 
-function drag(element: HTMLElement, fromY: number, toY: number): void {
-	fireEvent.pointerDown(element, {button: 0, pointerId: 1, clientX: 50, clientY: fromY});
+function drag(element: HTMLElement, fromY: number, toY: number): void
+{
+	fireEvent.pointerDown(
+		element,
+		{
+			button: 0,
+			pointerId: 1,
+			clientX: 50,
+			clientY: fromY,
+		},
+	);
 	pointerMove(fromY - 20);
 	pointerMove(toY);
 	pointerUp(toY);
 }
 
 /** Section labels with their row titles, in display order. */
-function sections(container: HTMLElement): [string, string[]][] {
+function sections(container: HTMLElement): [string, string[]][]
+{
 	return [
 		...container.querySelectorAll(
 			'[data-testid="sidebar-sections"] [data-group-key], [data-testid="sidebar-recents"] [data-group-key]',
@@ -199,76 +295,104 @@ function sections(container: HTMLElement): [string, string[]][] {
 	]);
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 });
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	seedGroups();
-	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element)
+	{
 		return layout(this);
 	});
 });
 
 // Units: 0 Alpha, 1 Alpha one, 2 Alpha two, 3 Beta, 4 Beta one, 5 Recents, 6 Loose one, 7 Loose two.
 
-describe("sidebar drag to custom groups", () => {
-	it("assigns an ungrouped row dropped between two group rows at that slot", async () => {
+describe("sidebar drag to custom groups", () =>
+{
+	it("assigns an ungrouped row dropped between two group rows at that slot", async () =>
+	{
 		const {container} = await renderGroups();
 
 		drag(rowLink("Loose one"), unitY(6), unitY(1) + 12);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Loose one", "Alpha two"]],
 				["Beta", ["Beta one"]],
 				["Recents", ["Loose two"]],
 			]);
 		});
-		expect(readSessionGroupState()).toStrictEqual({
-			groups: [ALPHA, BETA],
-			assignments: {...SEEDED_ASSIGNMENTS, u1: "cg-a"},
-			order: {"cg-a": ["a1", "u1", "a2"]},
-		});
+		expect(readSessionGroupState()).toStrictEqual(
+			{
+				groups: [ALPHA, BETA],
+				assignments:
+				{
+					...SEEDED_ASSIGNMENTS,
+					u1: "cg-a",
+				},
+				order:
+				{
+					"cg-a": ["a1", "u1", "a2"],
+				},
+			},
+		);
 	});
 
-	it("puts a row dropped on a group header at the top of that group", async () => {
+	it("puts a row dropped on a group header at the top of that group", async () =>
+	{
 		const {container} = await renderGroups();
 
 		drag(rowLink("Loose two"), unitY(7), unitY(3));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Alpha two"]],
 				["Beta", ["Loose two", "Beta one"]],
 				["Recents", ["Loose one"]],
 			]);
 		});
-		expect(readSessionGroupState().order).toStrictEqual({"cg-b": ["u2", "b1"]});
+		expect(readSessionGroupState().order).toStrictEqual(
+			{
+				"cg-b": ["u2", "b1"],
+			},
+		);
 	});
 
-	it("shows the Ungroup row only while a grouped row is dragged and ungroups on drop", async () => {
+	it("shows the Ungroup row only while a grouped row is dragged and ungroups on drop", async () =>
+	{
 		const {container} = await renderGroups();
 		const ungroupRow = () => container.querySelector("[data-ungroup-drop-row]");
 
-		fireEvent.pointerDown(rowLink("Loose one"), {
-			button: 0,
-			pointerId: 1,
-			clientX: 50,
-			clientY: unitY(6),
-		});
+		fireEvent.pointerDown(
+			rowLink("Loose one"),
+			{
+				button: 0,
+				pointerId: 1,
+				clientX: 50,
+				clientY: unitY(6),
+			},
+		);
 		pointerMove(unitY(6) - 20);
 		const whileLoose = ungroupRow();
 		pointerUp(unitY(6) - 20);
 
-		fireEvent.pointerDown(rowLink("Alpha one"), {
-			button: 0,
-			pointerId: 1,
-			clientX: 50,
-			clientY: unitY(1),
-		});
+		fireEvent.pointerDown(
+			rowLink("Alpha one"),
+			{
+				button: 0,
+				pointerId: 1,
+				clientX: 50,
+				clientY: unitY(1),
+			},
+		);
 		pointerMove(unitY(1) + 20);
 		const ink = () =>
 			[
@@ -281,70 +405,114 @@ describe("sidebar drag to custom groups", () => {
 		const idleInk = ink();
 		// The Remove from Alpha row is unit 5, between Beta one and the Recents header.
 		pointerMove(unitY(5));
-		const hot = {text: ungroupRow()?.textContent, hot: ungroupRow()?.hasAttribute("data-hot"), ink: ink()};
+		const hot =
+		{
+			text: ungroupRow()?.textContent,
+			hot: ungroupRow()?.hasAttribute("data-hot"),
+			ink: ink(),
+		};
 		pointerUp(unitY(5));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha two"]],
 				["Beta", ["Beta one"]],
 				["Recents", ["Alpha one", "Loose one", "Loose two"]],
 			]);
 		});
-		expect({
-			whileLoose,
-			idleInk,
-			hot,
-			after: ungroupRow(),
-			assignments: readSessionGroupState().assignments,
-		}).toStrictEqual({
-			whileLoose: null,
-			idleInk: ["text-muted-as-secondary"],
-			hot: {text: "Remove from Alpha", hot: true, ink: ["bg-[var(--sb-hover)]", "text-secondary"]},
-			after: null,
-			assignments: {a2: "cg-a", b1: "cg-b"},
-		});
+		expect(
+			{
+				whileLoose,
+				idleInk,
+				hot,
+				after: ungroupRow(),
+				assignments: readSessionGroupState().assignments,
+			},
+		).toStrictEqual(
+			{
+				whileLoose: null,
+				idleInk: ["text-muted-as-secondary"],
+				hot:
+				{
+					text: "Remove from Alpha",
+					hot: true,
+					ink: ["bg-[var(--sb-hover)]", "text-secondary"],
+				},
+				after: null,
+				assignments:
+				{
+					a2: "cg-a",
+					b1: "cg-b",
+				},
+			},
+		);
 	});
 
-	it("removes a section row dropped on a Recents row from its section", async () => {
+	it("removes a section row dropped on a Recents row from its section", async () =>
+	{
 		const {container} = await renderGroups();
 
 		// While Alpha one is dragged, the Remove from Alpha row is unit 5, so Loose one is unit 7.
 		drag(rowLink("Alpha one"), unitY(1), unitY(7));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha two"]],
 				["Beta", ["Beta one"]],
 				["Recents", ["Alpha one", "Loose one", "Loose two"]],
 			]);
 		});
-		expect(readSessionGroupState().assignments).toStrictEqual({a2: "cg-a", b1: "cg-b"});
+		expect(readSessionGroupState().assignments).toStrictEqual(
+			{
+				a2: "cg-a",
+				b1: "cg-b",
+			},
+		);
 	});
 
-	it("removes every selected section row dropped on Recents from its section", async () => {
+	it("removes every selected section row dropped on Recents from its section", async () =>
+	{
 		const {container} = await renderGroups();
-		fireEvent.click(rowLink("Alpha one"), {metaKey: true});
-		fireEvent.click(rowLink("Beta one"), {metaKey: true});
+		fireEvent.click(
+			rowLink("Alpha one"),
+			{
+				metaKey: true,
+			},
+		);
+		fireEvent.click(
+			rowLink("Beta one"),
+			{
+				metaKey: true,
+			},
+		);
 
 		drag(rowLink("Alpha one"), unitY(1), unitY(7));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha two"]],
 				["Beta", []],
 				["Recents", ["Alpha one", "Beta one", "Loose one", "Loose two"]],
 			]);
 		});
-		expect(readSessionGroupState().assignments).toStrictEqual({a2: "cg-a"});
+		expect(readSessionGroupState().assignments).toStrictEqual(
+			{
+				a2: "cg-a",
+			},
+		);
 	});
 
-	it("reorders sections when a group header is dragged onto another", async () => {
+	it("reorders sections when a group header is dragged onto another", async () =>
+	{
 		const {container} = await renderGroups();
 
 		drag(groupToggle("Beta"), unitY(3), unitY(0));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Recents"]);
 		});
 		expect(readSidebarSections().map((section) => section.id)).toStrictEqual([
@@ -355,61 +523,123 @@ describe("sidebar drag to custom groups", () => {
 		]);
 	});
 
-	it("unpins a pinned row dropped into a group and places it there", async () => {
-		localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({pinnedIds: ["u2"], pinnedOrder: []}));
+	it("unpins a pinned row dropped into a group and places it there", async () =>
+	{
+		localStorage.setItem(
+			PIN_STORAGE_KEY,
+			JSON.stringify(
+				{
+					pinnedIds: ["u2"],
+					pinnedOrder: [],
+				},
+			),
+		);
 		const {container} = await renderGroups();
 
 		drag(rowLink("Loose two"), 33 + 16, unitY(1) + 12);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Loose two", "Alpha two"]],
 				["Beta", ["Beta one"]],
 				["Recents", ["Loose one"]],
 			]);
 		});
-		expect({
-			pins: readPinState(),
-			order: readSessionGroupState().order,
-		}).toStrictEqual({
-			pins: {pinnedIds: [], pinnedOrder: []},
-			order: {"cg-a": ["a1", "u2", "a2"]},
-		});
+		expect(
+			{
+				pins: readPinState(),
+				order: readSessionGroupState().order,
+			},
+		).toStrictEqual(
+			{
+				pins:
+				{
+					pinnedIds: [],
+					pinnedOrder: [],
+				},
+				order:
+				{
+					"cg-a": ["a1", "u2", "a2"],
+				},
+			},
+		);
 	});
 
-	it("still unpins a pinned row dropped on Recents", async () => {
-		localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({pinnedIds: ["u2"], pinnedOrder: []}));
+	it("still unpins a pinned row dropped on Recents", async () =>
+	{
+		localStorage.setItem(
+			PIN_STORAGE_KEY,
+			JSON.stringify(
+				{
+					pinnedIds: ["u2"],
+					pinnedOrder: [],
+				},
+			),
+		);
 		const {container} = await renderGroups();
 
 		drag(rowLink("Loose two"), 33 + 16, unitY(6));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Alpha two"]],
 				["Beta", ["Beta one"]],
 				["Recents", ["Loose one", "Loose two"]],
 			]);
 		});
-		expect(readPinState()).toStrictEqual({pinnedIds: [], pinnedOrder: []});
+		expect(readPinState()).toStrictEqual(
+			{
+				pinnedIds: [],
+				pinnedOrder: [],
+			},
+		);
 	});
 });
 
-describe("keyboard section reorder", () => {
-	function keyMove(label: string, key: "ArrowUp" | "ArrowDown", modifiers: {altKey?: boolean; shiftKey?: boolean}) {
+describe("keyboard section reorder", () =>
+{
+	function keyMove(
+		label: string,
+		key: "ArrowUp" | "ArrowDown",
+		modifiers:
+		{
+			altKey?: boolean;
+			shiftKey?: boolean;
+		},
+	)
+	{
 		const toggle = groupToggle(label);
 		toggle.focus();
-		fireEvent.keyDown(toggle, {key, ...modifiers});
+		fireEvent.keyDown(
+			toggle,
+			{
+				key,
+				...modifiers,
+			},
+		);
 	}
 
-	it("moves a section up with Alt+Shift+ArrowUp and keeps focus on its header", async () => {
+	it("moves a section up with Alt+Shift+ArrowUp and keeps focus on its header", async () =>
+	{
 		const {container} = await renderGroups();
 
-		keyMove("Beta", "ArrowUp", {altKey: true, shiftKey: true});
+		keyMove(
+			"Beta",
+			"ArrowUp",
+			{
+				altKey: true,
+				shiftKey: true,
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Recents"]);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(document.activeElement).toBe(groupToggle("Beta"));
 		});
 		expect(readSidebarSections().map((section) => section.id)).toStrictEqual([
@@ -420,30 +650,70 @@ describe("keyboard section reorder", () => {
 		]);
 	});
 
-	it("moves a section down with Alt+Shift+ArrowDown", async () => {
+	it("moves a section down with Alt+Shift+ArrowDown", async () =>
+	{
 		const {container} = await renderGroups();
 
-		keyMove("Alpha", "ArrowDown", {altKey: true, shiftKey: true});
+		keyMove(
+			"Alpha",
+			"ArrowDown",
+			{
+				altKey: true,
+				shiftKey: true,
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Recents"]);
 		});
 	});
 
-	it("leaves the order alone past either end or without both modifiers", async () => {
+	it("leaves the order alone past either end or without both modifiers", async () =>
+	{
 		const {container} = await renderGroups();
 
-		keyMove("Alpha", "ArrowUp", {altKey: true, shiftKey: true});
-		keyMove("Beta", "ArrowDown", {altKey: true, shiftKey: true});
-		keyMove("Beta", "ArrowUp", {altKey: true});
-		keyMove("Beta", "ArrowUp", {shiftKey: true});
+		keyMove(
+			"Alpha",
+			"ArrowUp",
+			{
+				altKey: true,
+				shiftKey: true,
+			},
+		);
+		keyMove(
+			"Beta",
+			"ArrowDown",
+			{
+				altKey: true,
+				shiftKey: true,
+			},
+		);
+		keyMove(
+			"Beta",
+			"ArrowUp",
+			{
+				altKey: true,
+			},
+		);
+		keyMove(
+			"Beta",
+			"ArrowUp",
+			{
+				shiftKey: true,
+			},
+		);
 
-		expect({
-			shown: sections(container).map(([label]) => label),
-			stored: readSidebarSections().map((section) => section.id),
-		}).toStrictEqual({
-			shown: ["Alpha", "Beta", "Recents"],
-			stored: ["pinned", "cg-a", "cg-b", "sessions"],
-		});
+		expect(
+			{
+				shown: sections(container).map(([label]) => label),
+				stored: readSidebarSections().map((section) => section.id),
+			},
+		).toStrictEqual(
+			{
+				shown: ["Alpha", "Beta", "Recents"],
+				stored: ["pinned", "cg-a", "cg-b", "sessions"],
+			},
+		);
 	});
 });

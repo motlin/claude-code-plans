@@ -47,35 +47,44 @@ import * as ClaudeInChromeStories from "../src/stories/session-detail/tool-rende
 // Helpers
 // ---------------------------------------------------------------------------
 
-interface StoryWithToolCall {
-	args?: {
-		toolCall?: {
+interface StoryWithToolCall
+{
+	args?:
+	{
+		toolCall?:
+		{
 			name?: string;
 			input?: Record<string, unknown>;
 		};
 	};
 }
 
-function extractToolCallStories(storyModule: Record<string, unknown>): Array<{
+function extractToolCallStories(storyModule: Record<string, unknown>): Array<
+{
 	storyName: string;
 	toolName: string;
 	input: Record<string, unknown>;
-}> {
-	const results: Array<{
+}>
+{
+	const results: Array<
+	{
 		storyName: string;
 		toolName: string;
 		input: Record<string, unknown>;
 	}> = [];
-	for (const [key, value] of Object.entries(storyModule)) {
+	for (const [key, value] of Object.entries(storyModule))
+	{
 		if (key === "default") continue;
 		const story = value as StoryWithToolCall;
 		const toolCall = story.args?.toolCall;
 		if (!toolCall?.name || !toolCall.input) continue;
-		results.push({
-			storyName: key,
-			toolName: toolCall.name,
-			input: toolCall.input,
-		});
+		results.push(
+			{
+				storyName: key,
+				toolName: toolCall.name,
+				input: toolCall.input,
+			},
+		);
 	}
 	return results;
 }
@@ -84,7 +93,8 @@ function extractToolCallStories(storyModule: Record<string, unknown>): Array<{
 // Validate tool input fixtures against strict Zod schemas
 // ---------------------------------------------------------------------------
 
-const allStoryModules: Array<{
+const allStoryModules: Array<
+{
 	moduleName: string;
 	module: Record<string, unknown>;
 }> = [
@@ -172,7 +182,10 @@ const allStoryModules: Array<{
 		moduleName: "CronCreateRenderer",
 		module: CronCreateStories,
 	},
-	{moduleName: "McpRenderer", module: McpStories},
+	{
+		moduleName: "McpRenderer",
+		module: McpStories,
+	},
 	{
 		moduleName: "GithubRenderer",
 		module: GithubStories,
@@ -195,13 +208,19 @@ const allStoryModules: Array<{
 	},
 ];
 
-describe("Story fixture validation against strict Zod schemas", () => {
-	describe("tool renderer stories", () => {
-		for (const {moduleName, module} of allStoryModules) {
+describe("Story fixture validation against strict Zod schemas", () =>
+{
+	describe("tool renderer stories", () =>
+	{
+		for (const {moduleName, module} of allStoryModules)
+		{
 			const stories = extractToolCallStories(module);
-			for (const {storyName, toolName, input} of stories) {
-				it(`${moduleName}/${storyName} — ${toolName} input passes schema`, () => {
-					if (isMcpTool(toolName)) {
+			for (const {storyName, toolName, input} of stories)
+			{
+				it(`${moduleName}/${storyName} — ${toolName} input passes schema`, () =>
+				{
+					if (isMcpTool(toolName))
+					{
 						return;
 					}
 
@@ -214,47 +233,61 @@ describe("Story fixture validation against strict Zod schemas", () => {
 		}
 	});
 
-	describe("AttachmentBanner stories — attachmentJson passes AttachmentPayloadSchema", () => {
-		interface AttachmentStory {
-			args?: {
+	describe("AttachmentBanner stories — attachmentJson passes AttachmentPayloadSchema", () =>
+	{
+		interface AttachmentStory
+		{
+			args?:
+			{
 				attachmentJson?: string;
 			};
 		}
 
-		for (const [storyName, value] of Object.entries(AttachmentBannerStories as Record<string, unknown>)) {
+		for (const [storyName, value] of Object.entries(AttachmentBannerStories as Record<string, unknown>))
+		{
 			if (storyName === "default") continue;
 			const story = value as AttachmentStory;
 			const json = story.args?.attachmentJson;
 			if (!json) continue;
 
-			it(`AttachmentBanner/${storyName} passes AttachmentPayloadSchema`, () => {
+			it(`AttachmentBanner/${storyName} passes AttachmentPayloadSchema`, () =>
+			{
 				const input = JSON.parse(json);
 				expect(AttachmentPayloadSchema.parse(input)).toStrictEqual(input);
 			});
 		}
 	});
 
-	describe("SessionChat stories — content blocks pass ContentBlockSchema", () => {
-		interface SessionChatStory {
-			args?: {
-				lines?: Array<{
-					message?: {
+	describe("SessionChat stories — content blocks pass ContentBlockSchema", () =>
+	{
+		interface SessionChatStory
+		{
+			args?:
+			{
+				lines?: Array<
+				{
+					message?:
+					{
 						content?: string | Array<Record<string, unknown>>;
 					};
 				}>;
 			};
 		}
 
-		for (const [storyName, value] of Object.entries(SessionChatStories as Record<string, unknown>)) {
+		for (const [storyName, value] of Object.entries(SessionChatStories as Record<string, unknown>))
+		{
 			if (storyName === "default") continue;
 			const story = value as SessionChatStory;
 			const lines = story.args?.lines ?? [];
-			for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+			for (let lineIndex = 0; lineIndex < lines.length; lineIndex++)
+			{
 				const content = lines[lineIndex]?.message?.content;
 				if (!Array.isArray(content)) continue;
-				for (let blockIndex = 0; blockIndex < content.length; blockIndex++) {
+				for (let blockIndex = 0; blockIndex < content.length; blockIndex++)
+				{
 					const block = content[blockIndex]!;
-					it(`SessionChat/${storyName} line[${lineIndex}] block[${blockIndex}] (${String(block["type"])}) passes ContentBlockSchema`, () => {
+					it(`SessionChat/${storyName} line[${lineIndex}] block[${blockIndex}] (${String(block["type"])}) passes ContentBlockSchema`, () =>
+					{
 						expect(ContentBlockSchema.parse(block)).toStrictEqual(block);
 					});
 				}

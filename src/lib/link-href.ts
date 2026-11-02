@@ -1,7 +1,8 @@
 // Upstream claude.ai/code's href normalisers for a drawn link (cbb72cde9 `mr`'s `L(re(t))`): shared-l-p-m-w-2
 // `_0` drops the desktop app's `open_in_browser` flag, then cf6507c5a `cs` sanitises what is left.
 
-import {
+import
+{
 	isAccountLinkingLink,
 	isApiRoute,
 	isDesktopDownload,
@@ -18,7 +19,8 @@ const MAX_HREF = 16_384;
 const FALLBACK_ORIGIN = "https://claude.ai";
 
 /** Upstream `qc` (`rm`): the href with tabs and newlines dropped and its ends trimmed of spaces and controls. */
-function trimHref(href: string): string {
+function trimHref(href: string): string
+{
 	const text = href.replace(/[\t\n\r]/g, "");
 	let start = 0;
 	let end = text.length;
@@ -31,7 +33,8 @@ function trimHref(href: string): string {
  * Upstream `ng` (through `KF`) with `_0`'s one key: the query without `open_in_browser`. An href without the key
  * comes back exactly as written.
  */
-function stripOpenInBrowser(href: string): string {
+function stripOpenInBrowser(href: string): string
+{
 	const text = trimHref(href);
 	const hashAt = text.indexOf("#");
 	const hash = hashAt === -1 ? "" : text.slice(hashAt);
@@ -55,19 +58,25 @@ const ENCODED_LEAD = new RegExp(String.raw`^(?:%[0-9a-f]{2}|(?:\s|${INVISIBLE.so
 const UNSEEN_LEAD = new RegExp(String.raw`^(?:\s|${INVISIBLE.source})+`, "u");
 
 /** Upstream `n4`: an http(s) scheme without `//`. */
-function lacksSlashes(href: string): boolean {
+function lacksSlashes(href: string): boolean
+{
 	return /^https?:(?![/\\]{2})/i.test(trimHref(href));
 }
 
 /** Upstream `RT`: the href starts with whitespace, a combining mark or an invisible character, encoded or not. */
-function hasHiddenLead(href: string): boolean {
+function hasHiddenLead(href: string): boolean
+{
 	const text = trimHref(href);
 	const encoded = /^(?:%[0-9a-f]{2}){1,4}/i.exec(text)?.[0];
 	if (encoded === undefined) return HIDDEN_LEAD.test(text);
-	for (let end = 3; end <= encoded.length; end += 3) {
-		try {
+	for (let end = 3; end <= encoded.length; end += 3)
+	{
+		try
+		{
 			return HIDDEN_LEAD.test(decodeURIComponent(encoded.slice(0, end)));
-		} catch {
+		}
+		catch
+		{
 			// A partial UTF-8 sequence: try a longer prefix.
 		}
 	}
@@ -75,34 +84,44 @@ function hasHiddenLead(href: string): boolean {
 }
 
 /** Upstream `l9`: the href's encoded lead decodes to a backslash. */
-function hasBackslashLead(href: string): boolean {
+function hasBackslashLead(href: string): boolean
+{
 	const lead = ENCODED_LEAD.exec(trimHref(href))?.[0] ?? "";
 	if (!/%5c/i.test(lead)) return false;
-	try {
+	try
+	{
 		return decodeURIComponent(lead).replace(UNSEEN_LEAD, "").startsWith("\\");
-	} catch {
+	}
+	catch
+	{
 		return true;
 	}
 }
 
 /** Upstream `T7`: this page's origin. */
-function pageOrigin(): string {
+function pageOrigin(): string
+{
 	return typeof window === "undefined" ? FALLBACK_ORIGIN : window.location.origin;
 }
 
 /** Upstream `UY` with one host rule: the href resolved against this page, kept when `onSite` accepts it. */
-function resolvedOnSite(href: string, onSite: (url: URL, page: URL) => boolean): URL[] {
+function resolvedOnSite(href: string, onSite: (url: URL, page: URL) => boolean): URL[]
+{
 	const page = new URL(pageOrigin());
-	try {
+	try
+	{
 		const url = new URL(trimHref(href), page);
 		return onSite(url, page) ? [url] : [];
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 }
 
 /** Upstream `xm`: claude.com's OAuth authorize page, which a link may open. */
-function isClaudeComAuthorize(url: URL): boolean {
+function isClaudeComAuthorize(url: URL): boolean
+{
 	return (
 		(url.hostname === "claude.com" || url.hostname === "www.claude.com") && url.pathname === "/cai/oauth/authorize"
 	);
@@ -113,7 +132,8 @@ function isClaudeComAuthorize(url: URL): boolean {
  * (on this site or a Claude app host) an API, sign-out or account-linking route. Not ported: `cB`, claude.ai's own
  * chat and task session routes (`G5`), which this app never links to.
  */
-function isUnsafeHref(href: string): boolean {
+function isUnsafeHref(href: string): boolean
+{
 	return (
 		href.length > MAX_HREF ||
 		lacksSlashes(href) ||
@@ -130,13 +150,15 @@ function isUnsafeHref(href: string): boolean {
  * Upstream `cs` (via `hs` and `XR`): the href a link may carry, or null. Not ported: `XR`'s `$A`, which strips
  * claude.ai's own sign-in and checkout query keys from links back to claude.ai.
  */
-export function sanitizeHref(href: string): string | null {
+export function sanitizeHref(href: string): string | null
+{
 	if (href.length > MAX_HREF) return null;
 	if (/^https?:(?!\/\/)/i.test(href)) return null;
 	return isUnsafeHref(href) ? null : href;
 }
 
 /** Upstream `mr`'s `L(re(t))`: the href with `open_in_browser` dropped, then sanitised. */
-export function linkHref(href: string): string | null {
+export function linkHref(href: string): string | null
+{
 	return sanitizeHref(stripOpenInBrowser(href));
 }

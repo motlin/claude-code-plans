@@ -10,21 +10,26 @@ import {ReadRenderer} from "../src/components/tool-renderers/read-renderer";
 import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
-vi.mock("../src/components/tool-renderers/inline-diff", () => ({
+vi.mock("../src/components/tool-renderers/inline-diff", () => (
+{
 	InlineDiff: () => <div data-testid="diff-view" />,
 }));
 
-vi.mock("../src/hooks/use-shiki", () => ({
+vi.mock("../src/hooks/use-shiki", () => (
+{
 	useHighlightedLines: () => null,
 	getHighlighterSync: () => null,
 	getHighlighterVersion: () => 0,
-	subscribeHighlighter: () => () => {},
+	subscribeHighlighter: () => () =>
+	{
+	},
 }));
 
 /** Upstream caps every expanded tool body at 400px with an inner scroller. */
 const CAP = "max-h-[400px] overflow-y-auto";
 
-function toolCall(name: string, input: Record<string, unknown>, result?: string): ClientToolCall {
+function toolCall(name: string, input: Record<string, unknown>, result?: string): ClientToolCall
+{
 	return {
 		id: "tool-call-400",
 		name,
@@ -35,20 +40,32 @@ function toolCall(name: string, input: Record<string, unknown>, result?: string)
 	};
 }
 
-function cappedElements(container: HTMLElement): HTMLElement[] {
+function cappedElements(container: HTMLElement): HTMLElement[]
+{
 	return [...container.querySelectorAll<HTMLElement>('[class*="max-h-["]')];
 }
 
-function cappedClassNames(container: HTMLElement): string[] {
+function cappedClassNames(container: HTMLElement): string[]
+{
 	return cappedElements(container).map((element) => element.className);
 }
 
 afterEach(cleanup);
 
-describe("expanded tool bodies cap at 400px", () => {
-	it("clamps KeyValueCard input to max-h-40 and its output to 400px, leaving the copy button outside both", () => {
+describe("expanded tool bodies cap at 400px", () =>
+{
+	it("clamps KeyValueCard input to max-h-40 and its output to 400px, leaving the copy button outside both", () =>
+	{
 		const {container} = render(
-			<KeyValueCard params={[{key: "pattern", value: "alice"}]} result="one\ntwo">
+			<KeyValueCard
+				params={[
+					{
+						key: "pattern",
+						value: "alice",
+					},
+				]}
+				result="one\ntwo"
+			>
 				<div data-testid="extra-child" />
 			</KeyValueCard>,
 		);
@@ -56,49 +73,74 @@ describe("expanded tool bodies cap at 400px", () => {
 		const input = container.querySelector<HTMLElement>('[aria-label="Tool call input"]');
 		const scrollers = cappedElements(container);
 
-		expect({
-			inputClass: input?.className,
-			inputText: input?.textContent,
-			scrollers: scrollers.map((scroller) => [scroller.className, scroller.textContent]),
-			childAfterOutput:
-				container.querySelector("[data-testid='extra-child']")?.previousElementSibling?.textContent,
-			copyButtonInsideScroller: scrollers.some(
-				(scroller) => scroller.querySelector("button[aria-label='Copy']") !== null,
-			),
-			copyButtonInsideCard: container.querySelector("button[aria-label='Copy']") !== null,
-		}).toStrictEqual({
-			inputClass: "max-h-40 overflow-y-auto",
-			inputText: "pattern: alice",
-			scrollers: [[CAP, "one\\ntwo"]],
-			childAfterOutput: "Outputone\\ntwo",
-			copyButtonInsideScroller: false,
-			copyButtonInsideCard: true,
-		});
+		expect(
+			{
+				inputClass: input?.className,
+				inputText: input?.textContent,
+				scrollers: scrollers.map((scroller) => [scroller.className, scroller.textContent]),
+				childAfterOutput:
+					container.querySelector("[data-testid='extra-child']")?.previousElementSibling?.textContent,
+				copyButtonInsideScroller: scrollers.some(
+					(scroller) => scroller.querySelector("button[aria-label='Copy']") !== null,
+				),
+				copyButtonInsideCard: container.querySelector("button[aria-label='Copy']") !== null,
+			},
+		).toStrictEqual(
+			{
+				inputClass: "max-h-40 overflow-y-auto",
+				inputText: "pattern: alice",
+				scrollers: [[CAP, "one\\ntwo"]],
+				childAfterOutput: "Outputone\\ntwo",
+				copyButtonInsideScroller: false,
+				copyButtonInsideCard: true,
+			},
+		);
 	});
 
-	it("caps Bash stdout but not the command line", () => {
+	it("caps Bash stdout but not the command line", () =>
+	{
 		const {container} = render(
-			<BashRenderer toolCall={toolCall("Bash", {command: "ls -la"}, "$ ls -la\nalice.ts")} />,
+			<BashRenderer
+				toolCall={toolCall(
+					"Bash",
+					{
+						command: "ls -la",
+					},
+					"$ ls -la\nalice.ts",
+				)}
+			/>,
 		);
 
 		const scrollers = cappedElements(container);
 
-		expect({
-			classNames: cappedClassNames(container),
-			capsOutput: scrollers[0]?.textContent,
-		}).toStrictEqual({
-			classNames: [
-				`epitaxy-code-size ${CAP} whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] text-secondary`,
-			],
-			capsOutput: "alice.ts",
-		});
+		expect(
+			{
+				classNames: cappedClassNames(container),
+				capsOutput: scrollers[0]?.textContent,
+			},
+		).toStrictEqual(
+			{
+				classNames: [
+					`epitaxy-code-size ${CAP} whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] text-secondary`,
+				],
+				capsOutput: "alice.ts",
+			},
+		);
 	});
 
-	it("caps failed Bash stdout in the error color", () => {
+	it("caps failed Bash stdout in the error color", () =>
+	{
 		const {container} = render(
 			<BashRenderer
-				toolCall={{
-					...toolCall("Bash", {command: "ls -la"}, "$ ls -la\nboom"),
+				toolCall={
+				{
+					...toolCall(
+						"Bash",
+						{
+							command: "ls -la",
+						},
+						"$ ls -la\nboom",
+					),
 					isError: true,
 				}}
 			/>,
@@ -109,70 +151,70 @@ describe("expanded tool bodies cap at 400px", () => {
 		]);
 	});
 
-	it("caps the Read body without hiding lines behind an expand button", () => {
+	it("caps the Read body without hiding lines behind an expand button", () =>
+	{
 		const {container} = render(
 			<ReadRenderer
 				toolCall={toolCall(
 					"Read",
-					{file_path: "/test/alice.ts"},
-					Array.from({length: 60}, (_, index) => `${index + 1}→const alice = ${index};`).join("\n"),
+					{
+						file_path: "/test/alice.ts",
+					},
+					Array.from(
+						{
+							length: 60,
+						},
+						(_, index) => `${index + 1}→const alice = ${index};`,
+					).join("\n"),
 				)}
 			/>,
 		);
 
-		expect({
-			classNames: cappedClassNames(container),
-			renderedLines: container.querySelectorAll("[data-content]").length,
-			expandButtons: container.querySelectorAll("button").length,
-		}).toStrictEqual({
-			classNames: [`m-0 ${CAP} font-mono text-code text-primary`],
-			renderedLines: 60,
-			expandButtons: 1,
-		});
-	});
-
-	it("caps the Write diff body", () => {
-		const {container} = render(
-			<WriteRenderer toolCall={toolCall("Write", {file_path: "/test/alice.ts", content: "const alice = 1;"})} />,
+		expect(
+			{
+				classNames: cappedClassNames(container),
+				renderedLines: container.querySelectorAll("[data-content]").length,
+				expandButtons: container.querySelectorAll("button").length,
+			},
+		).toStrictEqual(
+			{
+				classNames: [`m-0 ${CAP} font-mono text-code text-primary`],
+				renderedLines: 60,
+				expandButtons: 1,
+			},
 		);
-
-		expect(cappedClassNames(container)).toStrictEqual([`${CAP} text-code`]);
 	});
 
-	it("caps the Write error body when the write failed", () => {
+	it("caps the Write diff body", () =>
+	{
 		const {container} = render(
 			<WriteRenderer
-				toolCall={{
-					...toolCall("Write", {file_path: "/test/alice.ts"}, "EACCES: permission denied"),
-					isError: true,
-				}}
-			/>,
-		);
-
-		expect(cappedClassNames(container)).toStrictEqual([
-			`${CAP} text-code font-mono whitespace-pre-wrap break-all text-danger-ink`,
-		]);
-	});
-
-	it("caps the Edit diff body", () => {
-		const {container} = render(
-			<EditRenderer
-				toolCall={toolCall("Edit", {
-					file_path: "/test/alice.ts",
-					old_string: "const alice = 1;",
-					new_string: "const alice = 2;",
-				})}
+				toolCall={toolCall(
+					"Write",
+					{
+						file_path: "/test/alice.ts",
+						content: "const alice = 1;",
+					},
+				)}
 			/>,
 		);
 
 		expect(cappedClassNames(container)).toStrictEqual([`${CAP} text-code`]);
 	});
 
-	it("caps the Edit error body when the edit failed", () => {
+	it("caps the Write error body when the write failed", () =>
+	{
 		const {container} = render(
-			<EditRenderer
-				toolCall={{
-					...toolCall("Edit", {file_path: "/test/alice.ts"}, "String to replace not found"),
+			<WriteRenderer
+				toolCall={
+				{
+					...toolCall(
+						"Write",
+						{
+							file_path: "/test/alice.ts",
+						},
+						"EACCES: permission denied",
+					),
 					isError: true,
 				}}
 			/>,
@@ -183,12 +225,56 @@ describe("expanded tool bodies cap at 400px", () => {
 		]);
 	});
 
-	it("lets the Context7 result ride the KeyValueCard output scroller", () => {
+	it("caps the Edit diff body", () =>
+	{
+		const {container} = render(
+			<EditRenderer
+				toolCall={toolCall(
+					"Edit",
+					{
+						file_path: "/test/alice.ts",
+						old_string: "const alice = 1;",
+						new_string: "const alice = 2;",
+					},
+				)}
+			/>,
+		);
+
+		expect(cappedClassNames(container)).toStrictEqual([`${CAP} text-code`]);
+	});
+
+	it("caps the Edit error body when the edit failed", () =>
+	{
+		const {container} = render(
+			<EditRenderer
+				toolCall={
+				{
+					...toolCall(
+						"Edit",
+						{
+							file_path: "/test/alice.ts",
+						},
+						"String to replace not found",
+					),
+					isError: true,
+				}}
+			/>,
+		);
+
+		expect(cappedClassNames(container)).toStrictEqual([
+			`${CAP} text-code font-mono whitespace-pre-wrap break-all text-danger-ink`,
+		]);
+	});
+
+	it("lets the Context7 result ride the KeyValueCard output scroller", () =>
+	{
 		const {container} = render(
 			<Context7Renderer
 				toolCall={toolCall(
 					"mcp__plugin_context7_context7__query-docs",
-					{libraryName: "drizzle"},
+					{
+						libraryName: "drizzle",
+					},
 					"# Drizzle\n\n- one\n- two",
 				)}
 			/>,

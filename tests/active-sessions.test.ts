@@ -18,82 +18,127 @@ import {markSessionCompletionUnreviewed, markSessionReviewed} from "../src/lib/d
  */
 
 let tempHome: string;
-let pendingApprovals: Array<{sessionId: string; blockedSince: string}>;
+let pendingApprovals: Array<
+{
+	sessionId: string;
+	blockedSince: string;
+}>;
 let testDb: AppDb | null;
 
 /** Encode a cwd into the `~/.claude/projects` directory-name form. */
-function encode(cwd: string): string {
+function encode(cwd: string): string
+{
 	return cwd.replace(/\//g, "-");
 }
 
-function projectsDir(): string {
+function projectsDir(): string
+{
 	return join(tempHome, ".claude", "projects");
 }
 
 /** Create `<projects>/<encoded(cwd)>/<sessionId>.jsonl` with the given mtime. */
-function writeSessionFile(cwd: string, sessionId: string, mtime: Date): string {
+function writeSessionFile(cwd: string, sessionId: string, mtime: Date): string
+{
 	const dir = join(projectsDir(), encode(cwd));
-	mkdirSync(dir, {recursive: true});
+	mkdirSync(
+		dir,
+		{
+			recursive: true,
+		},
+	);
 	const file = join(dir, `${sessionId}.jsonl`);
 	writeFileSync(file, "{}\n");
 	utimesSync(file, mtime, mtime);
 	return file;
 }
 
-async function loadModules() {
+async function loadModules()
+{
 	vi.resetModules();
 	const db = openTestDb();
 	testDb = db;
-	vi.doMock("../src/lib/db", () => ({getDb: () => db}));
-	vi.doMock("node:os", async () => {
+	vi.doMock("../src/lib/db", () => (
+	{
+		getDb: () => db,
+	}));
+	vi.doMock("node:os", async () =>
+	{
 		const actual = await vi.importActual<typeof import("node:os")>("node:os");
-		return {...actual, homedir: () => tempHome};
+		return {
+			...actual,
+			homedir: () => tempHome,
+		};
 	});
-	vi.doMock("../src/lib/memory", async () => {
+	vi.doMock("../src/lib/memory", async () =>
+	{
 		const actual = await vi.importActual<typeof import("../src/lib/memory")>("../src/lib/memory");
 		return {
 			...actual,
 			// Deterministic decode: "-Users-test-alpha" -> "alpha".
-			resolveProjectName: async (encoded: string): Promise<string> => {
+			resolveProjectName: async (encoded: string): Promise<string> =>
+			{
 				const decoded = "/" + encoded.slice(1).replace(/-/g, "/");
 				const segments = decoded.split("/");
 				return Promise.resolve(segments[segments.length - 1]!);
 			},
 		};
 	});
-	vi.doMock("../src/lib/db/pending-approvals-cache", () => ({
+	vi.doMock("../src/lib/db/pending-approvals-cache", () => (
+	{
 		getPendingApprovals: () => pendingApprovals,
-		revalidatePendingApprovals: async (): Promise<void> => {},
+		revalidatePendingApprovals: async (): Promise<void> =>
+		{
+		},
 	}));
 	const scanMod = await import("../src/lib/active-sessions");
 	const storeMod = await import("../src/lib/active-session-store");
-	return {scanMod, storeMod, db};
+	return {
+		scanMod,
+		storeMod,
+		db,
+	};
 }
 
 /** Insert a minimal indexed session row so the title lookup finds it. */
-function seedSessionTitle(db: AppDb, sessionId: string, title: string): void {
+function seedSessionTitle(db: AppDb, sessionId: string, title: string): void
+{
 	db.index
 		.insert(schema.sessions)
-		.values({
-			id: sessionId,
-			projectId: "test-project",
-			title,
-			createdAt: 0,
-			mtimeMs: 0,
-			filePath: `/tmp/${sessionId}.jsonl`,
-		})
+		.values(
+			{
+				id: sessionId,
+				projectId: "test-project",
+				title,
+				createdAt: 0,
+				mtimeMs: 0,
+				filePath: `/tmp/${sessionId}.jsonl`,
+			},
+		)
 		.run();
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	tempHome = mkdtempSync(join(tmpdir(), "active-sessions-test-"));
 	pendingApprovals = [];
 	testDb = null;
-	mkdirSync(projectsDir(), {recursive: true});
+	mkdirSync(
+		projectsDir(),
+		{
+			recursive: true,
+		},
+	);
 });
 
-afterEach(() => {
-	rmSync(tempHome, {recursive: true, force: true});
+afterEach(() =>
+{
+	rmSync(
+		tempHome,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 	testDb?.close();
 	vi.doUnmock("node:os");
 	vi.doUnmock("../src/lib/memory");
@@ -102,8 +147,10 @@ afterEach(() => {
 	vi.resetModules();
 });
 
-describe("scanActiveSessions", () => {
-	it("shows a filesystem-only session modified within the active window", async () => {
+describe("scanActiveSessions", () =>
+{
+	it("shows a filesystem-only session modified within the active window", async () =>
+	{
 		const file = writeSessionFile("/Users/test/alpha", "fs-only", new Date(Date.now() - 60_000));
 		const {scanMod} = await loadModules();
 
@@ -124,7 +171,8 @@ describe("scanActiveSessions", () => {
 		]);
 	});
 
-	it("excludes a filesystem session older than the active window", async () => {
+	it("excludes a filesystem session older than the active window", async () =>
+	{
 		writeSessionFile("/Users/test/alpha", "stale", new Date(Date.now() - 6 * 60_000));
 		const {scanMod} = await loadModules();
 
@@ -133,11 +181,17 @@ describe("scanActiveSessions", () => {
 		expect(result).toStrictEqual([]);
 	});
 
-	it("dedups a session present in both sources, preferring the fresher lastModified", async () => {
+	it("dedups a session present in both sources, preferring the fresher lastModified", async () =>
+	{
 		const file = writeSessionFile("/Users/test/alpha", "shared", new Date(Date.now() - 10_000));
 		const {scanMod, storeMod} = await loadModules();
 
-		storeMod.markSessionActive("shared", {cwd: "/Users/test/alpha"});
+		storeMod.markSessionActive(
+			"shared",
+			{
+				cwd: "/Users/test/alpha",
+			},
+		);
 		storeMod.setSessionState("shared", "working");
 		// Make the store entry older than the filesystem file so the fs mtime wins.
 		const entry = storeMod.getActiveSessionEntries().find((e) => e.sessionId === "shared")!;
@@ -160,13 +214,24 @@ describe("scanActiveSessions", () => {
 		]);
 	});
 
-	it("surfaces a store-only session alongside a filesystem-only one", async () => {
+	it("surfaces a store-only session alongside a filesystem-only one", async () =>
+	{
 		writeSessionFile("/Users/test/alpha", "fs-only", new Date(Date.now() - 30_000));
 		// beta has no jsonl file; findProjectDirForCwd only needs the dir to exist.
-		mkdirSync(join(projectsDir(), encode("/Users/test/beta")), {recursive: true});
+		mkdirSync(
+			join(projectsDir(), encode("/Users/test/beta")),
+			{
+				recursive: true,
+			},
+		);
 		const {scanMod, storeMod} = await loadModules();
 
-		storeMod.markSessionActive("store-only", {cwd: "/Users/test/beta"});
+		storeMod.markSessionActive(
+			"store-only",
+			{
+				cwd: "/Users/test/beta",
+			},
+		);
 
 		const result = await scanMod.scanActiveSessions();
 
@@ -176,53 +241,83 @@ describe("scanActiveSessions", () => {
 		expect(byId.get("store-only")!.projectName).toBe("beta");
 	});
 
-	it("prefers durable pending-approval state and exposes its blocked-since clock", async () => {
+	it("prefers durable pending-approval state and exposes its blocked-since clock", async () =>
+	{
 		writeSessionFile("/Users/test/alpha", "waiting", new Date(Date.now() - 30_000));
-		pendingApprovals = [{sessionId: "waiting", blockedSince: "2000-01-01T00:00:00.000Z"}];
+		pendingApprovals = [
+			{
+				sessionId: "waiting",
+				blockedSince: "2000-01-01T00:00:00.000Z",
+			},
+		];
 		const {scanMod} = await loadModules();
 
 		const result = await scanMod.scanActiveSessions();
 
-		expect(result[0]).toMatchObject({
-			sessionId: "waiting",
-			state: "waiting",
-			blockedSince: "2000-01-01T00:00:00.000Z",
-		});
+		expect(result[0]).toMatchObject(
+			{
+				sessionId: "waiting",
+				state: "waiting",
+				blockedSince: "2000-01-01T00:00:00.000Z",
+			},
+		);
 	});
 
-	it("reads live registry status: a quiet session waiting on input, and busy over an orphaned approval", async () => {
-		mkdirSync(join(projectsDir(), encode("/Users/test/beta")), {recursive: true});
+	it("reads live registry status: a quiet session waiting on input, and busy over an orphaned approval", async () =>
+	{
+		mkdirSync(
+			join(projectsDir(), encode("/Users/test/beta")),
+			{
+				recursive: true,
+			},
+		);
 		const file = writeSessionFile("/Users/test/alpha", "busy-session", new Date(Date.now() - 30_000));
-		pendingApprovals = [{sessionId: "busy-session", blockedSince: "2000-01-01T00:00:00.000Z"}];
+		pendingApprovals = [
+			{
+				sessionId: "busy-session",
+				blockedSince: "2000-01-01T00:00:00.000Z",
+			},
+		];
 		const registryDir = join(tempHome, ".claude", "sessions");
-		mkdirSync(registryDir, {recursive: true});
-		const registryFile = (pid: number, sessionId: string, cwd: string, status: string, statusUpdatedAt: number) => {
+		mkdirSync(
+			registryDir,
+			{
+				recursive: true,
+			},
+		);
+		const registryFile = (pid: number, sessionId: string, cwd: string, status: string, statusUpdatedAt: number) =>
+		{
 			writeFileSync(
 				join(registryDir, `${pid}.json`),
-				JSON.stringify({
-					pid,
-					sessionId,
-					cwd,
-					startedAt: 946_598_400_000,
-					procStart: "Fri Dec 31 00:00:00 1999",
-					version: "2.0.0",
-					kind: "interactive",
-					entrypoint: "cli",
-					pidDomain: "darwin",
-					status,
-					updatedAt: statusUpdatedAt,
-					statusUpdatedAt,
-				}),
+				JSON.stringify(
+					{
+						pid,
+						sessionId,
+						cwd,
+						startedAt: 946_598_400_000,
+						procStart: "Fri Dec 31 00:00:00 1999",
+						version: "2.0.0",
+						kind: "interactive",
+						entrypoint: "cli",
+						pidDomain: "darwin",
+						status,
+						updatedAt: statusUpdatedAt,
+						statusUpdatedAt,
+					},
+				),
 			);
 		};
 		registryFile(4242, "waiting-session", "/Users/test/beta", "waiting", 946_598_402_000);
 		registryFile(4343, "busy-session", "/Users/test/alpha", "busy", 946_598_403_000);
 		const {scanMod} = await loadModules();
 		const registryMod = await import("../src/lib/session-registry-store");
-		await registryMod.refreshSessionRegistry(registryDir, {
-			isAlive: () => true,
-			readStartTimes: async () => Promise.resolve(null),
-		});
+		await registryMod.refreshSessionRegistry(
+			registryDir,
+			{
+				isAlive: () => true,
+				readStartTimes: async () => Promise.resolve(null),
+			},
+		);
 
 		const result = await scanMod.scanActiveSessions();
 
@@ -252,7 +347,8 @@ describe("scanActiveSessions", () => {
 		]);
 	});
 
-	it("reports the durable unseen flag for each active session", async () => {
+	it("reports the durable unseen flag for each active session", async () =>
+	{
 		writeSessionFile("/Users/test/alpha", "unseen", new Date(Date.now() - 10_000));
 		writeSessionFile("/Users/test/alpha", "seen", new Date(Date.now() - 20_000));
 		const {scanMod, db} = await loadModules();
@@ -269,7 +365,8 @@ describe("scanActiveSessions", () => {
 		);
 	});
 
-	it("attaches the indexed session title, falling back to the session id", async () => {
+	it("attaches the indexed session title, falling back to the session id", async () =>
+	{
 		writeSessionFile("/Users/test/alpha", "titled", new Date(Date.now() - 10_000));
 		writeSessionFile("/Users/test/alpha", "untitled", new Date(Date.now() - 20_000));
 		const {scanMod, db} = await loadModules();
@@ -286,13 +383,21 @@ describe("scanActiveSessions", () => {
 		);
 	});
 
-	it("labels a session with its indexed project display name, matching /api/projects", async () => {
+	it("labels a session with its indexed project display name, matching /api/projects", async () =>
+	{
 		const cwd = "/Users/test/repo/.claude/worktrees/next-line";
 		const file = writeSessionFile(cwd, "worktree-session", new Date(Date.now() - 30_000));
 		const {scanMod, db} = await loadModules();
 		db.index
 			.insert(schema.projects)
-			.values({id: encode(cwd), name: "repo/next-line", projectPath: cwd, updatedAt: 0})
+			.values(
+				{
+					id: encode(cwd),
+					name: "repo/next-line",
+					projectPath: cwd,
+					updatedAt: 0,
+				},
+			)
 			.run();
 
 		const result = await scanMod.scanActiveSessions();
@@ -312,7 +417,8 @@ describe("scanActiveSessions", () => {
 		]);
 	});
 
-	it("orders sessions by lastModified descending", async () => {
+	it("orders sessions by lastModified descending", async () =>
+	{
 		const now = Date.now();
 		writeSessionFile("/Users/test/alpha", "middle", new Date(now - 20_000));
 		writeSessionFile("/Users/test/beta", "newest", new Date(now - 5_000));

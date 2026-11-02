@@ -18,7 +18,8 @@ import {__unreadStoreTesting, hasUnseenWork, syncUnseenFromSummaries, toggleUnse
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 
-function listItem(bucket: SessionBucket, overrides: Partial<SessionListItem> = {}): SessionListItem {
+function listItem(bucket: SessionBucket, overrides: Partial<SessionListItem> = {}): SessionListItem
+{
 	return {
 		id: SESSION_ID,
 		title: "Fix the flaky test",
@@ -37,7 +38,8 @@ function listItem(bucket: SessionBucket, overrides: Partial<SessionListItem> = {
 	};
 }
 
-const VIEWED_STATE = {
+const VIEWED_STATE =
+{
 	currentMessageIndex: 3,
 	lastViewedMessageIndex: 3,
 	reviewTargetMessageIndex: 3,
@@ -49,49 +51,87 @@ const VIEWED_STATE = {
 
 const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>();
 
-function viewedCalls(): Array<{url: string; method: string; body: unknown}> {
+function viewedCalls(): Array<
+{
+	url: string;
+	method: string;
+	body: unknown;
+}>
+{
 	return fetchMock.mock.calls
 		.filter(([input]) => input.endsWith("/viewed"))
-		.map(([input, init]) => ({
+		.map(([input, init]) => (
+		{
 			url: input,
 			method: init?.method ?? "GET",
 			body: typeof init?.body === "string" ? JSON.parse(init.body) : init?.body,
 		}));
 }
 
-async function flush() {
-	await act(async () => {
-		await new Promise((resolve) => {
+async function flush()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-async function renderWithProviders(content: ReactNode) {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
-			mutations: {retry: false},
+async function renderWithProviders(content: ReactNode)
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+				mutations:
+				{
+					retry: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>{content}</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const router = createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	);
+	queryClient.setQueryData(
+		herdrPanesQueryOptions.queryKey,
+		{
+			panes: [],
+			writesEnabled: false,
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>{content}</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	await flush();
 }
 
-async function renderRow(session: SessionListItem) {
+async function renderRow(session: SessionListItem)
+{
 	await renderWithProviders(
 		<SessionActionsMenu session={session}>
 			<a href={`/session/${session.id}`}>Row title</a>
@@ -99,8 +139,15 @@ async function renderRow(session: SessionListItem) {
 	);
 }
 
-async function readStateItems(): Promise<string[]> {
-	fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+async function readStateItems(): Promise<string[]>
+{
+	fireEvent.contextMenu(
+		screen.getByText("Row title"),
+		{
+			clientX: 40,
+			clientY: 50,
+		},
+	);
 	await flush();
 	const menu = screen.getByRole("menu");
 	return [...menu.querySelectorAll('[role="menuitem"]')]
@@ -108,18 +155,42 @@ async function readStateItems(): Promise<string[]> {
 		.filter((label) => label.startsWith("Mark as"));
 }
 
-async function selectItem(name: string) {
-	fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+async function selectItem(name: string)
+{
+	fireEvent.contextMenu(
+		screen.getByText("Row title"),
+		{
+			clientX: 40,
+			clientY: 50,
+		},
+	);
 	await flush();
-	fireEvent.click(screen.getByRole("menuitem", {name: new RegExp(`^${name}`)}));
+	fireEvent.click(
+		screen.getByRole(
+			"menuitem",
+			{
+				name: new RegExp(`^${name}`),
+			},
+		),
+	);
 	await flush();
 }
 
-function pressOptionCommandU() {
-	fireEvent.keyDown(document.body, {key: "¨", code: "KeyU", metaKey: true, altKey: true});
+function pressOptionCommandU()
+{
+	fireEvent.keyDown(
+		document.body,
+		{
+			key: "¨",
+			code: "KeyU",
+			metaKey: true,
+			altKey: true,
+		},
+	);
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("fetch", fetchMock);
 	fetchMock.mockImplementation(async () => Promise.resolve(Response.json(VIEWED_STATE)));
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
@@ -127,7 +198,8 @@ beforeEach(() => {
 	__awaitingAckTesting.reset();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	fetchMock.mockReset();
 	vi.unstubAllGlobals();
@@ -135,86 +207,197 @@ afterEach(() => {
 	__unreadStoreTesting.reset();
 });
 
-describe("read state in the row menu", () => {
-	it("labels the item by the row's state", async () => {
+describe("read state in the row menu", () =>
+{
+	it("labels the item by the row's state", async () =>
+	{
 		await renderRow(listItem("done"));
 		const read = await readStateItems();
 		cleanup();
 
-		syncUnseenFromSummaries([{id: SESSION_ID, unseen: true}]);
-		await renderRow(listItem("review", {unseen: true}));
+		syncUnseenFromSummaries([
+			{
+				id: SESSION_ID,
+				unseen: true,
+			},
+		]);
+		await renderRow(
+			listItem(
+				"review",
+				{
+					unseen: true,
+				},
+			),
+		);
 		const unread = await readStateItems();
 		cleanup();
 
-		await renderRow(listItem("blocked", {state: "waiting"}));
+		await renderRow(
+			listItem(
+				"blocked",
+				{
+					state: "waiting",
+				},
+			),
+		);
 		const waiting = await readStateItems();
 
-		expect({read, unread, waiting}).toStrictEqual({
-			read: ["Mark as unreadU [u]"],
-			unread: ["Mark as readU [u]"],
-			waiting: ["Mark as completedU [u]"],
-		});
+		expect(
+			{
+				read,
+				unread,
+				waiting,
+			},
+		).toStrictEqual(
+			{
+				read: ["Mark as unreadU [u]"],
+				unread: ["Mark as readU [u]"],
+				waiting: ["Mark as completedU [u]"],
+			},
+		);
 	});
 
-	it("offers no read-state item for a working row", async () => {
-		await renderRow(listItem("working", {state: "working"}));
+	it("offers no read-state item for a working row", async () =>
+	{
+		await renderRow(
+			listItem(
+				"working",
+				{
+					state: "working",
+				},
+			),
+		);
 
 		expect(await readStateItems()).toStrictEqual([]);
 	});
 
-	it("round-trips unread and read through the viewed-state API", async () => {
+	it("round-trips unread and read through the viewed-state API", async () =>
+	{
 		await renderRow(listItem("done"));
 
 		await selectItem("Mark as unread");
 		const afterUnread = hasUnseenWork(SESSION_ID);
 		await selectItem("Mark as read");
 
-		expect({
-			afterUnread,
-			afterRead: hasUnseenWork(SESSION_ID),
-			calls: viewedCalls(),
-		}).toStrictEqual({
-			afterUnread: true,
-			afterRead: false,
-			calls: [
-				{
-					url: `/api/sessions/${SESSION_ID}/viewed`,
-					method: "PUT",
-					body: {action: "unreviewed"},
-				},
-				{url: `/api/sessions/${SESSION_ID}/viewed`, method: "PUT", body: {action: "reviewed"}},
-			],
-		});
+		expect(
+			{
+				afterUnread,
+				afterRead: hasUnseenWork(SESSION_ID),
+				calls: viewedCalls(),
+			},
+		).toStrictEqual(
+			{
+				afterUnread: true,
+				afterRead: false,
+				calls: [
+					{
+						url: `/api/sessions/${SESSION_ID}/viewed`,
+						method: "PUT",
+						body:
+						{
+							action: "unreviewed",
+						},
+					},
+					{
+						url: `/api/sessions/${SESSION_ID}/viewed`,
+						method: "PUT",
+						body:
+						{
+							action: "reviewed",
+						},
+					},
+				],
+			},
+		);
 	});
 
-	it("acknowledges a waiting row without answering it", async () => {
-		syncUnseenFromSummaries([{id: SESSION_ID, unseen: true}]);
-		await renderRow(listItem("blocked", {state: "waiting", unseen: true, mtime: "2026-11-04T10:00:00.000Z"}));
+	it("acknowledges a waiting row without answering it", async () =>
+	{
+		syncUnseenFromSummaries([
+			{
+				id: SESSION_ID,
+				unseen: true,
+			},
+		]);
+		await renderRow(
+			listItem(
+				"blocked",
+				{
+					state: "waiting",
+					unseen: true,
+					mtime: "2026-11-04T10:00:00.000Z",
+				},
+			),
+		);
 
 		await selectItem("Mark as completed");
 
-		expect({unseen: hasUnseenWork(SESSION_ID), ackedAt: ackedAt(SESSION_ID), calls: viewedCalls()}).toStrictEqual({
-			unseen: false,
-			ackedAt: Date.parse("2026-11-04T10:00:00.000Z"),
-			calls: [{url: `/api/sessions/${SESSION_ID}/viewed`, method: "PUT", body: {action: "reviewed"}}],
-		});
+		expect(
+			{
+				unseen: hasUnseenWork(SESSION_ID),
+				ackedAt: ackedAt(SESSION_ID),
+				calls: viewedCalls(),
+			},
+		).toStrictEqual(
+			{
+				unseen: false,
+				ackedAt: Date.parse("2026-11-04T10:00:00.000Z"),
+				calls: [
+					{
+						url: `/api/sessions/${SESSION_ID}/viewed`,
+						method: "PUT",
+						body:
+						{
+							action: "reviewed",
+						},
+					},
+				],
+			},
+		);
 	});
 
-	it("marks a finished row read without acking it", async () => {
-		syncUnseenFromSummaries([{id: SESSION_ID, unseen: true}]);
-		await renderRow(listItem("done", {unseen: true}));
+	it("marks a finished row read without acking it", async () =>
+	{
+		syncUnseenFromSummaries([
+			{
+				id: SESSION_ID,
+				unseen: true,
+			},
+		]);
+		await renderRow(
+			listItem(
+				"done",
+				{
+					unseen: true,
+				},
+			),
+		);
 
 		await selectItem("Mark as read");
 
-		expect({unseen: hasUnseenWork(SESSION_ID), ackedAt: ackedAt(SESSION_ID)}).toStrictEqual({
-			unseen: false,
-			ackedAt: undefined,
-		});
+		expect(
+			{
+				unseen: hasUnseenWork(SESSION_ID),
+				ackedAt: ackedAt(SESSION_ID),
+			},
+		).toStrictEqual(
+			{
+				unseen: false,
+				ackedAt: undefined,
+			},
+		);
 	});
 });
 
-describe("status dot toggle", () => {
-	function dot(): {label: string | null; title: string | null; kind: string | null} {
+describe("status dot toggle", () =>
+{
+	function dot():
+	{
+		label: string | null;
+		title: string | null;
+		kind: string | null;
+	}
+	{
 		const button = screen.queryByRole("button");
 		const glyph = button ?? screen.getByRole("img");
 		return {
@@ -224,49 +407,111 @@ describe("status dot toggle", () => {
 		};
 	}
 
-	it("is a plain icon on a read row and marks an unread row read", async () => {
+	it("is a plain icon on a read row and marks an unread row read", async () =>
+	{
 		render(<SessionRowStatusDot session={listItem("done")} />);
 		const before = dot();
 
-		act(() => {
+		act(() =>
+		{
 			toggleUnseen(SESSION_ID);
 		});
 		await flush();
 		const afterUnread = dot();
 
-		fireEvent.click(screen.getByRole("button", {name: "Click to mark as read"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Click to mark as read",
+				},
+			),
+		);
 		await flush();
 
-		expect({before, afterUnread, afterRead: dot(), calls: viewedCalls()}).toStrictEqual({
-			before: {label: null, title: null, kind: "idle"},
-			afterUnread: {label: "Click to mark as read", title: null, kind: "ready"},
-			afterRead: {label: null, title: null, kind: "idle"},
-			calls: [
+		expect(
+			{
+				before,
+				afterUnread,
+				afterRead: dot(),
+				calls: viewedCalls(),
+			},
+		).toStrictEqual(
+			{
+				before:
 				{
-					url: `/api/sessions/${SESSION_ID}/viewed`,
-					method: "PUT",
-					body: {action: "unreviewed"},
+					label: null,
+					title: null,
+					kind: "idle",
 				},
-				{url: `/api/sessions/${SESSION_ID}/viewed`, method: "PUT", body: {action: "reviewed"}},
-			],
-		});
+				afterUnread:
+				{
+					label: "Click to mark as read",
+					title: null,
+					kind: "ready",
+				},
+				afterRead:
+				{
+					label: null,
+					title: null,
+					kind: "idle",
+				},
+				calls: [
+					{
+						url: `/api/sessions/${SESSION_ID}/viewed`,
+						method: "PUT",
+						body:
+						{
+							action: "unreviewed",
+						},
+					},
+					{
+						url: `/api/sessions/${SESSION_ID}/viewed`,
+						method: "PUT",
+						body:
+						{
+							action: "reviewed",
+						},
+					},
+				],
+			},
+		);
 	});
 
 	it.each([
 		["working", "working", "running"],
 		["blocked", "waiting", "awaiting"],
-	] as const)("is a plain icon on a %s row", (bucket, state, kind) => {
-		const {container} = render(<SessionRowStatusDot session={listItem(bucket, {state})} />);
+	] as const)("is a plain icon on a %s row", (bucket, state, kind) =>
+	{
+		const {container} = render(
+			<SessionRowStatusDot
+				session={listItem(
+					bucket,
+					{
+						state,
+					},
+				)}
+			/>,
+		);
 
-		expect({
-			button: screen.queryByRole("button"),
-			kind: container.querySelector("[data-kind]")?.getAttribute("data-kind"),
-		}).toStrictEqual({button: null, kind});
+		expect(
+			{
+				button: screen.queryByRole("button"),
+				kind: container.querySelector("[data-kind]")?.getAttribute("data-kind"),
+			},
+		).toStrictEqual(
+			{
+				button: null,
+				kind,
+			},
+		);
 	});
 });
 
-describe("⌥⌘U on the session page", () => {
-	it("toggles the session between unread and read", async () => {
+describe("⌥⌘U on the session page", () =>
+{
+	it("toggles the session between unread and read", async () =>
+	{
 		await renderWithProviders(
 			<SessionTitleHeading sessionId={SESSION_ID} title="Fix the flaky test" archived={false} />,
 		);
@@ -277,21 +522,35 @@ describe("⌥⌘U on the session page", () => {
 		pressOptionCommandU();
 		await flush();
 
-		expect({
-			afterFirst,
-			afterSecond: hasUnseenWork(SESSION_ID),
-			calls: viewedCalls(),
-		}).toStrictEqual({
-			afterFirst: true,
-			afterSecond: false,
-			calls: [
-				{
-					url: `/api/sessions/${SESSION_ID}/viewed`,
-					method: "PUT",
-					body: {action: "unreviewed"},
-				},
-				{url: `/api/sessions/${SESSION_ID}/viewed`, method: "PUT", body: {action: "reviewed"}},
-			],
-		});
+		expect(
+			{
+				afterFirst,
+				afterSecond: hasUnseenWork(SESSION_ID),
+				calls: viewedCalls(),
+			},
+		).toStrictEqual(
+			{
+				afterFirst: true,
+				afterSecond: false,
+				calls: [
+					{
+						url: `/api/sessions/${SESSION_ID}/viewed`,
+						method: "PUT",
+						body:
+						{
+							action: "unreviewed",
+						},
+					},
+					{
+						url: `/api/sessions/${SESSION_ID}/viewed`,
+						method: "PUT",
+						body:
+						{
+							action: "reviewed",
+						},
+					},
+				],
+			},
+		);
 	});
 });

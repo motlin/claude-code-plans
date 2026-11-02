@@ -1,4 +1,5 @@
-import {
+import
+{
 	MDXEditor,
 	headingsPlugin,
 	listsPlugin,
@@ -20,17 +21,20 @@ import {
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
 
-interface Props {
+interface Props
+{
 	markdown: string;
 	onChange: (markdown: string) => void;
 }
 
-export function MarkdownEditor({markdown, onChange}: Props) {
+export function MarkdownEditor({markdown, onChange}: Props)
+{
 	return (
 		<div className="mdx-editor-wrapper [&_.mdxeditor]:bg-surface-2 [&_.mdxeditor]:text-primary [&_.mdxeditor-toolbar]:bg-surface-0 [&_.mdxeditor-toolbar]:border-border">
 			<MDXEditor
 				markdown={markdown}
-				onChange={(next, initialMarkdownNormalize) => {
+				onChange={(next, initialMarkdownNormalize) =>
+				{
 					if (!initialMarkdownNormalize) onChange(next);
 				}}
 				plugins={[
@@ -41,29 +45,38 @@ export function MarkdownEditor({markdown, onChange}: Props) {
 					markdownShortcutPlugin(),
 					linkPlugin(),
 					tablePlugin(),
-					codeBlockPlugin({defaultCodeBlockLanguage: ""}),
-					codeMirrorPlugin({
-						codeBlockLanguages: {
-							ts: "TypeScript",
-							js: "JavaScript",
-							py: "Python",
-							sh: "Shell",
-							"": "Plain text",
+					codeBlockPlugin(
+						{
+							defaultCodeBlockLanguage: "",
 						},
-					}),
-					toolbarPlugin({
-						toolbarContents: () => (
-							<>
-								<BlockTypeSelect />
-								<BoldItalicUnderlineToggles />
-								<CodeToggle />
-								<ListsToggle />
-								<CreateLink />
-								<InsertTable />
-								<InsertThematicBreak />
-							</>
-						),
-					}),
+					),
+					codeMirrorPlugin(
+						{
+							codeBlockLanguages:
+							{
+								ts: "TypeScript",
+								js: "JavaScript",
+								py: "Python",
+								sh: "Shell",
+								"": "Plain text",
+							},
+						},
+					),
+					toolbarPlugin(
+						{
+							toolbarContents: () => (
+								<>
+									<BlockTypeSelect />
+									<BoldItalicUnderlineToggles />
+									<CodeToggle />
+									<ListsToggle />
+									<CreateLink />
+									<InsertTable />
+									<InsertThematicBreak />
+								</>
+							),
+						},
+					),
 				]}
 			/>
 		</div>

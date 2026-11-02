@@ -58,7 +58,8 @@ const JOIN_LENGTH_DIVISOR = 4;
 const MAX_READ = 262_144;
 const NON_ASCII_ALL = /[^\t\n\r\x20-\x7E]/g;
 
-interface Collected {
+interface Collected
+{
 	svg: boolean;
 	altersGlyphs: boolean;
 	nodes: string[];
@@ -71,24 +72,28 @@ interface Collected {
 }
 
 /** F: a separator other than a dot. Callers only pass chars inside the text. */
-function isBreak(char: string | undefined): boolean {
+function isBreak(char: string | undefined): boolean
+{
 	return char !== undefined && char !== "." && SEPARATOR.test(char);
 }
 
 /** me. Callers only pass chars inside the text. */
-function isWordChar(char: string | undefined): boolean {
+function isWordChar(char: string | undefined): boolean
+{
 	return char !== undefined && WORD_CHAR.test(char);
 }
 
 /** Upstream's `w.test(char)`. Callers only pass chars inside the text. */
-function isSeparator(char: string | undefined): boolean {
+function isSeparator(char: string | undefined): boolean
+{
 	return char !== undefined && SEPARATOR.test(char);
 }
 
 /** F tested over a whole line; every separator is ASCII, so code points and code units agree. */
 const BREAK = /[\t\n\r \x21-\x2C\x2F\x3A-\x40\x5B-\x5E\x60\x7B-\x7E]/;
 
-function isElement(node: Node): node is Element {
+function isElement(node: Node): node is Element
+{
 	return node.nodeType === Node.ELEMENT_NODE;
 }
 
@@ -96,17 +101,21 @@ function isElement(node: Node): node is Element {
  * pe: every run of consecutive lines a secret could span (lines with no break char join their neighbours), or null
  * when more than {@link MAX_RUN_PIECES} unbroken lines follow one another.
  */
-function joinedRuns(lines: string[]): string[] | null {
+function joinedRuns(lines: string[]): string[] | null
+{
 	const breaks = lines.map((line) => BREAK.test(line));
 	let unbroken = 0;
-	for (const broken of breaks) {
+	for (const broken of breaks)
+	{
 		unbroken = broken ? 0 : unbroken + 1;
 		if (unbroken > MAX_RUN_PIECES) return null;
 	}
 	const runs: string[] = [];
-	for (const [first, line] of lines.entries()) {
+	for (const [first, line] of lines.entries())
+	{
 		let run = line;
-		for (let next = first + 1; next < lines.length && !(next - 1 > first && breaks[next - 1] === true); next++) {
+		for (let next = first + 1; next < lines.length && !(next - 1 > first && breaks[next - 1] === true); next++)
+		{
 			run += lines[next] ?? "";
 			runs.push(run);
 		}
@@ -115,9 +124,12 @@ function joinedRuns(lines: string[]): string[] | null {
 }
 
 /** I: walks the tree, shadow roots included, gathering label text and whether any style bends glyphs. */
-function collect(parent: Node, into: Collected, insideLabel: boolean): void {
-	for (const child of parent.childNodes) {
-		if (child.nodeType === Node.TEXT_NODE) {
+function collect(parent: Node, into: Collected, insideLabel: boolean): void
+{
+	for (const child of parent.childNodes)
+	{
+		if (child.nodeType === Node.TEXT_NODE)
+		{
 			into.nodes.push(child.nodeValue ?? "");
 			continue;
 		}
@@ -125,7 +137,8 @@ function collect(parent: Node, into: Collected, insideLabel: boolean): void {
 		const element = child;
 		const tag = element.localName.toLowerCase();
 		if (tag === "script") continue;
-		if (tag === "style") {
+		if (tag === "style")
+		{
 			into.altersGlyphs ||= GLYPH_CSS.test(element.textContent);
 			continue;
 		}
@@ -135,7 +148,8 @@ function collect(parent: Node, into: Collected, insideLabel: boolean): void {
 			GLYPH_ATTRIBUTES.some((name) => element.hasAttribute(name)) ||
 			SPACING_ATTRIBUTES.some((name) => /[-(]/.test(element.getAttribute(name) ?? ""));
 		const label = !insideLabel && LABEL_TAGS.has(tag);
-		if (label) {
+		if (label)
+		{
 			into.pieces.push(element.textContent);
 			const lines = Array.from(element.childNodes, (node) => node.textContent ?? "");
 			into.lines.push(...lines);
@@ -154,18 +168,22 @@ function collect(parent: Node, into: Collected, insideLabel: boolean): void {
 let work = 0;
 
 /** R: the secrets in `text`, charged to the work budget; over budget, or over upstream's read limit, it throws. */
-function probe(text: string): ReturnType<typeof findSecrets> {
+function probe(text: string): ReturnType<typeof findSecrets>
+{
 	work += text.length * (MARKED.test(text) ? MARKED_COST : 1);
 	if (work > WORK_BUDGET || text.length > MAX_READ) throw new Error("more than is read");
 	return findSecrets(text);
 }
 
 /** z: whether some token in `run` is the start of a secret, found by padding each token prefix and probing it. */
-function startsSecret(run: string): boolean {
-	for (let start = 0; start < run.length; start++) {
+function startsSecret(run: string): boolean
+{
+	for (let start = 0; start < run.length; start++)
+	{
 		if (!isWordChar(run[start]) || (start > 0 && isWordChar(run[start - 1]))) continue;
 		let count = 0;
-		for (let end = start; end < run.length && count < TAIL_WORD_CHARS; end++) {
+		for (let end = start; end < run.length && count < TAIL_WORD_CHARS; end++)
+		{
 			if (!isWordChar(run[end])) continue;
 			count++;
 			const prefix = run.slice(start, end + 1);
@@ -176,16 +194,19 @@ function startsSecret(run: string): boolean {
 }
 
 /** B: whether some piece's tail joined to some piece's head makes a secret that crosses the seam. */
-function seamSecret(pieces: Set<string>): boolean {
+function seamSecret(pieces: Set<string>): boolean
+{
 	const tails = new Set<string>();
 	const heads = new Set<string>();
-	for (const piece of pieces) {
+	for (const piece of pieces)
+	{
 		let last = piece.length - 1;
 		while (last >= 0 && !isWordChar(piece[last])) last--;
 		let tailStart = -1;
 		let words = 0;
 		for (let at = last; at >= 0 && last - at < MAX_RUN && !isSeparator(piece[at]); at--)
-			if (isWordChar(piece[at])) {
+			if (isWordChar(piece[at]))
+			{
 				words++;
 				if (words >= TAIL_WORD_CHARS) break;
 				if (at === 0 || !isWordChar(piece[at - 1])) tailStart = at;
@@ -211,25 +232,29 @@ function seamSecret(pieces: Set<string>): boolean {
 }
 
 /** V */
-function trimEnd(text: string, keep: (char: string | undefined) => boolean): string {
+function trimEnd(text: string, keep: (char: string | undefined) => boolean): string
+{
 	let end = text.length;
 	while (end > 0 && !keep(text[end - 1])) end--;
 	return text.slice(0, end);
 }
 
 /** H */
-function trimStart(text: string, keep: (char: string | undefined) => boolean): string {
+function trimStart(text: string, keep: (char: string | undefined) => boolean): string
+{
 	let start = 0;
 	while (start < text.length && !keep(text[start])) start++;
 	return text.slice(start);
 }
 
 /** he: the seam probe again, cut at break chars but not dots, so domain- and JWT-shaped secrets join across pieces. */
-function dottedSeamSecret(pieces: Set<string>): boolean {
+function dottedSeamSecret(pieces: Set<string>): boolean
+{
 	const tails = new Set<string>();
 	const heads = new Set<string>();
 	const isJoiner = (char: string | undefined) => char !== undefined && !isWordChar(char) && !isSeparator(char);
-	for (const piece of pieces) {
+	for (const piece of pieces)
+	{
 		work += piece.length * DOT_PROBE_COST;
 		if (work > WORK_BUDGET) return true;
 		let last = piece.length - 1;
@@ -262,7 +287,8 @@ function dottedSeamSecret(pieces: Set<string>): boolean {
 }
 
 /** U: whether a piece or line's end joined to another's start makes a private key header. */
-function keyHeaderAcrossLines({pieces, linesButLast, linesButFirst}: Collected): boolean {
+function keyHeaderAcrossLines({pieces, linesButLast, linesButFirst}: Collected): boolean
+{
 	const ascii = (text: string) => text.replace(NON_ASCII_ALL, "").replace(/[\t\n\r ]+/g, " ");
 	const ends = new Set([...pieces, ...linesButLast].map((text) => trimEnd(ascii(text), isWordChar)));
 	const starts = new Set([...pieces, ...linesButFirst].map((text) => trimStart(ascii(text), isWordChar)));
@@ -279,7 +305,8 @@ function keyHeaderAcrossLines({pieces, linesButLast, linesButFirst}: Collected):
 }
 
 /** W: the split-secret search over everything {@link collect} gathered. */
-function splitSecret(collected: Collected): boolean {
+function splitSecret(collected: Collected): boolean
+{
 	const {pieces, nodes, lines, runs} = collected;
 	if (collected.runsTooLong) return true;
 	work = 0;
@@ -296,10 +323,13 @@ function splitSecret(collected: Collected): boolean {
  * style could bend its glyphs, when its label text is too long or holds a bidi control, a stand-in glyph or a secret,
  * when a secret could be read across its labels, or when checking costs more than upstream's budget.
  */
-export function svgWithheld(root: Node | null): boolean {
+export function svgWithheld(root: Node | null): boolean
+{
 	if (root === null) return true;
-	try {
-		const collected: Collected = {
+	try
+	{
+		const collected: Collected =
+		{
 			svg: false,
 			altersGlyphs: false,
 			nodes: [],
@@ -321,7 +351,9 @@ export function svgWithheld(root: Node | null): boolean {
 					findSecrets(text).length > 0,
 			) || splitSecret(collected)
 		);
-	} catch {
+	}
+	catch
+	{
 		return true;
 	}
 }

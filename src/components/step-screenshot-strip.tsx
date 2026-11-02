@@ -3,13 +3,20 @@ import {lazy, type MouseEvent, type ReactNode, Suspense, useId, useState} from "
 
 import type {ToolResultImage} from "../lib/session-utils";
 
-const ImageViewer = lazy(async () => import("./image-viewer").then((module) => ({default: module.ImageViewer})));
+const ImageViewer = lazy(async () =>
+	import("./image-viewer").then((module) => (
+	{
+		default: module.ImageViewer,
+	})),
+);
 
-function imageSrc(image: ToolResultImage): string {
+function imageSrc(image: ToolResultImage): string
+{
 	return `data:${image.mimeType};base64,${image.data}`;
 }
 
-interface Viewing {
+interface Viewing
+{
 	index: number;
 	origin: HTMLElement;
 	/** The row holding the opener, whose toggle takes focus if the opener is gone on close. */
@@ -25,16 +32,30 @@ interface Viewing {
 function useScreenshotViewer(
 	images: readonly ToolResultImage[],
 	captions: readonly (string | undefined)[],
-): {viewerOpen: boolean; open: (index: number, origin: HTMLElement) => void; viewer: ReactNode} {
+):
+{
+	viewerOpen: boolean;
+	open: (index: number, origin: HTMLElement) => void;
+	viewer: ReactNode;
+}
+{
 	const [viewing, setViewing] = useState<Viewing | null>(null);
-	const open = (index: number, origin: HTMLElement) => {
-		setViewing({index, origin, row: origin.closest("[data-turn-status]")});
+	const open = (index: number, origin: HTMLElement) =>
+	{
+		setViewing(
+			{
+				index,
+				origin,
+				row: origin.closest("[data-turn-status]"),
+			},
+		);
 	};
 	const viewer =
 		viewing === null ? null : (
 			<Suspense fallback={null}>
 				<ImageViewer
-					images={images.map((image, index) => ({
+					images={images.map((image, index) => (
+					{
 						key: String(index),
 						src: imageSrc(image),
 						label: captions[index] ?? "Screenshot",
@@ -47,16 +68,27 @@ function useScreenshotViewer(
 							? viewing.row.querySelector<HTMLElement>("button[aria-expanded]")
 							: null
 					}
-					onIndexChange={(index) => {
-						setViewing({...viewing, index});
+					onIndexChange={(index) =>
+					{
+						setViewing(
+							{
+								...viewing,
+								index,
+							},
+						);
 					}}
-					onClose={() => {
+					onClose={() =>
+					{
 						setViewing(null);
 					}}
 				/>
 			</Suspense>
 		);
-	return {viewerOpen: viewing !== null, open, viewer};
+	return {
+		viewerOpen: viewing !== null,
+		open,
+		viewer,
+	};
 }
 
 /** Upstream shows at most this many thumbnails on desktop (shared-13 `dN`). */
@@ -65,7 +97,8 @@ const VISIBLE_SHOTS = 3;
 const THUMB_CLASS =
 	"h-6 max-w-11 shrink-0 cursor-zoom-in overflow-hidden rounded-sm border-[0.5px] border-strong shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-fill-accent";
 
-export interface StepScreenshotStripProps {
+export interface StepScreenshotStripProps
+{
 	/** The strip's images, in step order. */
 	shots: readonly ToolResultImage[];
 	/** Each shot's step label (its accessible description), aligned with `shots`. */
@@ -95,7 +128,8 @@ export function StepScreenshotStrip({
 	lazy = false,
 	viewerOpen = false,
 	onOpen,
-}: StepScreenshotStripProps) {
+}: StepScreenshotStripProps)
+{
 	const id = useId();
 	const viewer = useScreenshotViewer(shots, captions);
 	const count = shots.length;
@@ -115,7 +149,8 @@ export function StepScreenshotStrip({
 				</span>
 			)}
 			<div className="flex h-6 items-center gap-1">
-				{shots.slice(firstVisible).map((shot, offset) => {
+				{shots.slice(firstVisible).map((shot, offset) =>
+				{
 					const index = firstVisible + offset;
 					const groupIndex = from + index;
 					const caption = captions[index];
@@ -130,7 +165,8 @@ export function StepScreenshotStrip({
 								total={total}
 								lazy={lazy}
 								viewerOpen={viewerOpen || viewer.viewerOpen}
-								onOpen={(index, origin) => {
+								onOpen={(index, origin) =>
+								{
 									viewer.open(index - from, origin);
 									onOpen?.(index);
 								}}
@@ -155,7 +191,8 @@ const PREVIEW_DELAY_MS = 150;
 const PREVIEW_POPUP_CLASS =
 	"flex flex-col gap-1 overflow-hidden rounded-r7 bg-surface-3 p-0 shadow-[var(--menu-shadow)] outline-none w-[min(20rem,100vw-2rem)]";
 
-interface ThumbnailProps {
+interface ThumbnailProps
+{
 	shot: ToolResultImage;
 	caption: string | undefined;
 	descriptionId: string;
@@ -173,11 +210,13 @@ interface ThumbnailProps {
  * closes as the pointer leaves the thumbnail, and stays shut while the viewer
  * is open.
  */
-function Thumbnail({shot, caption, descriptionId, groupIndex, total, lazy, viewerOpen, onOpen}: ThumbnailProps) {
+function Thumbnail({shot, caption, descriptionId, groupIndex, total, lazy, viewerOpen, onOpen}: ThumbnailProps)
+{
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const src = imageSrc(shot);
 	const label = total === 1 ? "Screenshot" : `Screenshot ${groupIndex + 1} of ${total}`;
-	const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+	const handleClick = (event: MouseEvent<HTMLButtonElement>) =>
+	{
 		event.stopPropagation();
 		onOpen(groupIndex, event.currentTarget);
 	};
@@ -200,7 +239,13 @@ function Thumbnail({shot, caption, descriptionId, groupIndex, total, lazy, viewe
 					alt=""
 					className="h-full w-auto max-w-full object-cover object-left-top"
 					src={src}
-					{...(lazy ? {loading: "lazy", decoding: "async"} : {})}
+					{...(lazy
+						?
+							{
+								loading: "lazy",
+								decoding: "async",
+							}
+						: {})}
 				/>
 			</PreviewCard.Trigger>
 			<PreviewCard.Portal>
@@ -228,7 +273,8 @@ function Thumbnail({shot, caption, descriptionId, groupIndex, total, lazy, viewe
 	);
 }
 
-export interface StepScreenshotsProps {
+export interface StepScreenshotsProps
+{
 	images: readonly ToolResultImage[];
 	/** Open 8px above the images, as an expanded step's body does; a lone row's card sits flush. */
 	padTop?: boolean;
@@ -241,7 +287,8 @@ export interface StepScreenshotsProps {
  * screenshot" button per image, drawn at the end of an expanded step's body
  * and, for a lone tool row, as a card after the row.
  */
-export function StepScreenshots({images, padTop = true, captions}: StepScreenshotsProps) {
+export function StepScreenshots({images, padTop = true, captions}: StepScreenshotsProps)
+{
 	const viewer = useScreenshotViewer(images, captions);
 	return (
 		<div data-step-screenshots="" className={`flex flex-col items-start gap-1${padTop ? " pt-p8" : ""}`}>
@@ -251,7 +298,8 @@ export function StepScreenshots({images, padTop = true, captions}: StepScreensho
 					type="button"
 					aria-label="View screenshot"
 					className="max-w-full cursor-zoom-in focus-visible:outline-hidden hide-focus-ring focus-visible:ring-focus rounded-sm"
-					onClick={(event) => {
+					onClick={(event) =>
+					{
 						viewer.open(index, event.currentTarget);
 					}}
 				>

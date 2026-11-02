@@ -15,7 +15,8 @@ export const SLASH_COMMAND_SOURCES = [
 
 export type SlashCommandSource = (typeof SLASH_COMMAND_SOURCES)[number];
 
-export interface SlashCommand {
+export interface SlashCommand
+{
 	name: string;
 	description: string;
 	source: SlashCommandSource;
@@ -34,13 +35,32 @@ export interface SlashCommand {
 
 /** One row of the "/" popup, mirroring upstream's `SlashCommandMenuPopupBody` item types. */
 export type SlashMenuItem =
-	| {type: "command"; command: SlashCommand}
-	| {type: "section-header"; label: string}
-	| {type: "separator"}
-	| {type: "loading"};
+	|
+	  {
+			type: "command";
+			command: SlashCommand;
+	  }
+	|
+	  {
+			type: "section-header";
+			label: string;
+	  }
+	|
+	  {
+			type: "separator";
+	  }
+	|
+	  {
+			type: "loading";
+	  };
 
 /** Upstream's `bB`: ↑/↓ skip headers, separators and the loading row. */
-function isSelectableSlashItem(item: SlashMenuItem): item is {type: "command"; command: SlashCommand} {
+function isSelectableSlashItem(item: SlashMenuItem): item is
+{
+	type: "command";
+	command: SlashCommand;
+}
+{
 	return item.type === "command";
 }
 
@@ -48,7 +68,8 @@ function isSelectableSlashItem(item: SlashMenuItem): item is {type: "command"; c
  * The highlight after ↑/↓ (`move` ±1) from `current`, skipping unselectable items and
  * clamping at both ends; from nothing highlighted (-1), ↓ picks the first row and ↑ the last.
  */
-export function stepSlashHighlight(items: readonly SlashMenuItem[], current: number, move: 1 | -1): number {
+export function stepSlashHighlight(items: readonly SlashMenuItem[], current: number, move: 1 | -1): number
+{
 	const selectable = items.flatMap((item, index) => (isSelectableSlashItem(item) ? [index] : []));
 	if (current === -1) return (move === 1 ? selectable[0] : selectable.at(-1)) ?? -1;
 	const next =
@@ -57,19 +78,22 @@ export function stepSlashHighlight(items: readonly SlashMenuItem[], current: num
 }
 
 /** The first selectable item, or -1 when none is. */
-export function firstSlashHighlight(items: readonly SlashMenuItem[]): number {
+export function firstSlashHighlight(items: readonly SlashMenuItem[]): number
+{
 	return stepSlashHighlight(items, -1, 1);
 }
 
 /** Keeps a remembered highlight on a selectable item after the list shrinks. */
-export function clampSlashHighlight(items: readonly SlashMenuItem[], index: number): number {
+export function clampSlashHighlight(items: readonly SlashMenuItem[], index: number): number
+{
 	if (index === -1) return -1;
 	const selectable = items.flatMap((item, i) => (isSelectableSlashItem(item) ? [i] : []));
 	return selectable.find((i) => i >= index) ?? selectable.at(-1) ?? -1;
 }
 
 /** The row label: a plugin entry's name without its `plugin:` namespace, as upstream shows plugin skills. */
-export function slashCommandLabel(command: SlashCommand): string {
+export function slashCommandLabel(command: SlashCommand): string
+{
 	const prefix = command.pluginName === undefined ? undefined : `${command.pluginName}:`;
 	return prefix !== undefined && command.name.startsWith(prefix) ? command.name.slice(prefix.length) : command.name;
 }
@@ -79,7 +103,11 @@ export function slashCommandLabel(command: SlashCommand): string {
  * page). `GET /api/commands` leaves them out; `useSlashCommands` adds them for sessions.
  */
 export const SESSION_SLASH_COMMANDS: readonly SlashCommand[] = [
-	{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"},
+	{
+		name: "rewind",
+		description: "Rewind the session to an earlier message",
+		source: "builtin",
+	},
 	{
 		name: "autocompact",
 		description: "Show context usage or set when auto-compact runs",
@@ -93,14 +121,24 @@ export const SESSION_SLASH_COMMANDS: readonly SlashCommand[] = [
  * aliases, followed by the local-only CLI built-ins.
  */
 export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
-	{name: "model", description: "Set the model for this session", source: "builtin", argumentHint: "[model-id]"},
+	{
+		name: "model",
+		description: "Set the model for this session",
+		source: "builtin",
+		argumentHint: "[model-id]",
+	},
 	{
 		name: "effort",
 		description: "Set the effort level for this session",
 		source: "builtin",
 		argumentHint: "[level]",
 	},
-	{name: "fast", description: "Turn fast mode on or off", source: "builtin", argumentHint: "[on|off]"},
+	{
+		name: "fast",
+		description: "Turn fast mode on or off",
+		source: "builtin",
+		argumentHint: "[on|off]",
+	},
 	{
 		name: "plan",
 		description: "Switch to plan mode or view this session’s plan",
@@ -113,7 +151,11 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 		source: "builtin",
 		aliases: ["allowed-tools"],
 	},
-	{name: "skills", description: "Browse and manage your skills", source: "builtin"},
+	{
+		name: "skills",
+		description: "Browse and manage your skills",
+		source: "builtin",
+	},
 	{
 		name: "workflows",
 		description: "Browse workflow history (running and completed)",
@@ -126,14 +168,23 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 		source: "builtin",
 		aliases: ["stats", "cost"],
 	},
-	{name: "config", description: "Open Claude Code settings", source: "builtin", aliases: ["settings"]},
+	{
+		name: "config",
+		description: "Open Claude Code settings",
+		source: "builtin",
+		aliases: ["settings"],
+	},
 	{
 		name: "theme",
 		description: "Set the appearance (system, light, or dark)",
 		source: "builtin",
 		argumentHint: "[system|light|dark]",
 	},
-	{name: "help", description: "Get help and support", source: "builtin"},
+	{
+		name: "help",
+		description: "Get help and support",
+		source: "builtin",
+	},
 	/* Local-only built-ins with no claude.ai/code row. */
 	{
 		name: "btw",
@@ -141,7 +192,12 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 		source: "builtin",
 		argumentHint: "<question>",
 	},
-	{name: "rename", description: "Rename this session", source: "builtin", argumentHint: "[name]"},
+	{
+		name: "rename",
+		description: "Rename this session",
+		source: "builtin",
+		argumentHint: "[name]",
+	},
 	{
 		name: "status",
 		description: "Show this session’s version, model, environment, and account",
@@ -153,9 +209,21 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 		source: "builtin",
 		argumentHint: "<optional custom summarization instructions>",
 	},
-	{name: "clear", description: "Start a new session with empty context", source: "builtin"},
-	{name: "context", description: "Show current context usage", source: "builtin"},
-	{name: "recap", description: "Generate a one-line session recap", source: "builtin"},
+	{
+		name: "clear",
+		description: "Start a new session with empty context",
+		source: "builtin",
+	},
+	{
+		name: "context",
+		description: "Show current context usage",
+		source: "builtin",
+	},
+	{
+		name: "recap",
+		description: "Generate a one-line session recap",
+		source: "builtin",
+	},
 	{
 		name: "review",
 		description: "Review the current diff or a PR for bugs and cleanups",
@@ -351,7 +419,8 @@ export const CLI_COMMAND_NAMES: ReadonlySet<string> = new Set([
  * Whether the CLI would run `/name`: a CLI built-in or alias, or a command from `GET /api/commands`
  * by its name, an alias, or the part after the last `:` of a plugin entry. Case-insensitive.
  */
-export function isKnownSlashCommand(name: string, slashCommands: readonly SlashCommand[]): boolean {
+export function isKnownSlashCommand(name: string, slashCommands: readonly SlashCommand[]): boolean
+{
 	const needle = name.toLowerCase();
 	if (CLI_COMMAND_NAMES.has(needle)) return true;
 	return slashCommands.some((command) =>
@@ -365,7 +434,8 @@ export function isKnownSlashCommand(name: string, slashCommands: readonly SlashC
  * Flattens groups given in precedence order; the first entry for a name wins, except that the first
  * non-built-in entry colliding with a built-in's name or alias is also kept, marked `shadowsHost`.
  */
-export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[]): SlashCommand[] {
+export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[]): SlashCommand[]
+{
 	const builtinNames = new Set(
 		groups
 			.flat()
@@ -374,15 +444,23 @@ export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[])
 	const seen = new Set<string>();
 	const seenShadows = new Set<string>();
 	const merged: SlashCommand[] = [];
-	for (const group of groups) {
-		for (const command of group) {
+	for (const group of groups)
+	{
+		for (const command of group)
+		{
 			const collides =
 				command.source !== "builtin" &&
 				[command.name, ...(command.aliases ?? [])].some((name) => builtinNames.has(name));
-			if (collides) {
+			if (collides)
+			{
 				if (seenShadows.has(command.name)) continue;
 				seenShadows.add(command.name);
-				merged.push({...command, shadowsHost: true});
+				merged.push(
+					{
+						...command,
+						shadowsHost: true,
+					},
+				);
 				continue;
 			}
 			if (seen.has(command.name)) continue;
@@ -397,7 +475,8 @@ export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[])
 const MAX_SLASH_QUERY_LENGTH = 50;
 
 /* Upstream's synchronous fallback tiers (`W$`), plus a description tier the local menu matches synchronously. */
-function slashRank(command: SlashCommand, needle: string): number | null {
+function slashRank(command: SlashCommand, needle: string): number | null
+{
 	/* A plugin entry ranks by its bare label, and its `plugin:name` still matches. */
 	const names = [...new Set([slashCommandLabel(command), command.name])].map((name) => name.toLowerCase());
 	const aliases = (command.aliases ?? []).map((alias) => alias.toLowerCase());
@@ -415,12 +494,14 @@ function slashRank(command: SlashCommand, needle: string): number | null {
  * contains the query, ranked exact name > exact alias > name prefix > alias prefix >
  * name or alias contains > description contains, keeping list order within a rank.
  */
-export function filterSlashCommands(commands: readonly SlashCommand[], query: string): SlashCommand[] {
+export function filterSlashCommands(commands: readonly SlashCommand[], query: string): SlashCommand[]
+{
 	if (query === "") return [...commands];
 	if (query.length > MAX_SLASH_QUERY_LENGTH) return [];
 	const needle = query.toLowerCase();
 	const ranks: SlashCommand[][] = [[], [], [], [], [], []];
-	for (const command of commands) {
+	for (const command of commands)
+	{
 		const rank = slashRank(command, needle);
 		if (rank !== null) ranks[rank]?.push(command);
 	}
@@ -428,30 +509,57 @@ export function filterSlashCommands(commands: readonly SlashCommand[], query: st
 }
 
 /** The first alias that starts with the query, which upstream appends to the row as `(alias)`. */
-export function matchingAlias(command: SlashCommand, query: string): string | undefined {
+export function matchingAlias(command: SlashCommand, query: string): string | undefined
+{
 	if (query === "") return undefined;
 	const needle = query.toLowerCase();
 	return command.aliases?.find((alias) => alias.toLowerCase().startsWith(needle));
 }
 
-export interface HighlightSegment {
+export interface HighlightSegment
+{
 	text: string;
 	match: boolean;
 }
 
 /** Splits `text` around the first case-insensitive occurrence of `query`, as upstream bolds only the first match. */
-export function highlightMatches(text: string, query: string): HighlightSegment[] {
+export function highlightMatches(text: string, query: string): HighlightSegment[]
+{
 	const index = query === "" ? -1 : text.toLowerCase().indexOf(query.toLowerCase());
-	if (index === -1) return [{text, match: false}];
+	if (index === -1)
+		return [
+			{
+				text,
+				match: false,
+			},
+		];
 	const end = index + query.length;
 	const segments: HighlightSegment[] = [];
-	if (index > 0) segments.push({text: text.slice(0, index), match: false});
-	segments.push({text: text.slice(index, end), match: true});
-	if (end < text.length) segments.push({text: text.slice(end), match: false});
+	if (index > 0)
+		segments.push(
+			{
+				text: text.slice(0, index),
+				match: false,
+			},
+		);
+	segments.push(
+		{
+			text: text.slice(index, end),
+			match: true,
+		},
+	);
+	if (end < text.length)
+		segments.push(
+			{
+				text: text.slice(end),
+				match: false,
+			},
+		);
 	return segments;
 }
 
-export interface SlashTrigger {
+export interface SlashTrigger
+{
 	/** Index of the `/` in the prompt. */
 	start: number;
 	query: string;
@@ -463,7 +571,8 @@ export interface SlashTrigger {
  * The `/query` token ending at the caret, or null. Upstream opens on a `/` at the start of the
  * prompt (selected) or after whitespace (unselected, and only once the query is non-empty).
  */
-export function slashTrigger(prompt: string, caret: number): SlashTrigger | null {
+export function slashTrigger(prompt: string, caret: number): SlashTrigger | null
+{
 	if (/^\S/.test(prompt.slice(caret))) return null;
 	const match = /(?:^|\s)\/([^\s/]*)$/.exec(prompt.slice(0, caret));
 	if (match === null) return null;
@@ -471,7 +580,11 @@ export function slashTrigger(prompt: string, caret: number): SlashTrigger | null
 	const start = caret - query.length - 1;
 	const atStart = start === 0;
 	if (!atStart && query === "") return null;
-	return {start, query, atStart};
+	return {
+		start,
+		query,
+		atStart,
+	};
 }
 
 /** Upstream `skillChipArgumentHint` gives up past this doc size. */
@@ -482,9 +595,14 @@ const SKILL_CHIP_HINT_MAX_LENGTH = 128;
  * after the chip, and at least one space or tab right after it on the chip's own line.
  */
 export function skillChipArgumentHint(
-	chip: {name: string; argumentHint: string | undefined},
+	chip:
+	{
+		name: string;
+		argumentHint: string | undefined;
+	},
 	prompt: string,
-): string | null {
+): string | null
+{
 	if (chip.argumentHint === undefined || chip.argumentHint === "") return null;
 	const token = `/${chip.name}`;
 	if (!prompt.startsWith(token) || prompt.length > SKILL_CHIP_HINT_MAX_LENGTH) return null;
@@ -499,9 +617,17 @@ const LEADING_SLASH_COMMAND_RE = /^\/([A-Za-z0-9][\w:.-]*)(?:[ \t]+|\n|$)/;
  * Split a prompt that opens with a `/name` token into the command name and the text after it,
  * as upstream renders a leading slash command as a chip. A path such as `/Users/…` is not a command.
  */
-export function splitLeadingSlashCommand(text: string): {name: string; rest: string} | null {
+export function splitLeadingSlashCommand(text: string):
+{
+	name: string;
+	rest: string;
+} | null
+{
 	const match = LEADING_SLASH_COMMAND_RE.exec(text);
 	const name = match?.[1];
 	if (match === null || name === undefined) return null;
-	return {name, rest: text.slice(match[0].length)};
+	return {
+		name,
+		rest: text.slice(match[0].length),
+	};
 }

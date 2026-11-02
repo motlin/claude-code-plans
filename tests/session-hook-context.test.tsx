@@ -4,12 +4,15 @@ import {render} from "@testing-library/react";
 import {describe, expect, it} from "vite-plus/test";
 import {SessionHookContext} from "../src/components/session-hook-context";
 
-describe("SessionHookContext", () => {
-	it("renders turn settings and paused background work in Verbose", () => {
+describe("SessionHookContext", () =>
+{
+	it("renders turn settings and paused background work in Verbose", () =>
+	{
 		const {getByRole} = render(
 			<SessionHookContext
 				verbose
-				context={{
+				context={
+				{
 					sessionId: "session-test-100",
 					promptId: "prompt-test-100",
 					permissionMode: "auto",
@@ -34,24 +37,48 @@ describe("SessionHookContext", () => {
 			/>,
 		);
 
-		expect(getByRole("region", {name: "Live hook context"}).textContent).toBe(
+		expect(
+			getByRole(
+				"region",
+				{
+					name: "Live hook context",
+				},
+			).textContent,
+		).toBe(
 			"PermissionautoEfforthighPromptprompt-tPaused with 1 background taskrunningInspect the example projectPaused until 1 scheduled wakeup0 * * * *Check the example servicerecurring",
 		);
 	});
 
-	it("shows the model a mid-session switch moved to", () => {
+	it("shows the model a mid-session switch moved to", () =>
+	{
 		const {getByRole} = render(
-			<SessionHookContext verbose context={{sessionId: "session-test-100", model: "claude-haiku-5-5"}} />,
+			<SessionHookContext
+				verbose
+				context={
+				{
+					sessionId: "session-test-100",
+					model: "claude-haiku-5-5",
+				}}
+			/>,
 		);
 
-		expect(getByRole("region", {name: "Live hook context"}).textContent).toBe("Modelclaude-haiku-5-5");
+		expect(
+			getByRole(
+				"region",
+				{
+					name: "Live hook context",
+				},
+			).textContent,
+		).toBe("Modelclaude-haiku-5-5");
 	});
 
-	it("renders nothing outside Verbose, as upstream's header shows only the title", () => {
+	it("renders nothing outside Verbose, as upstream's header shows only the title", () =>
+	{
 		const {container} = render(
 			<SessionHookContext
 				verbose={false}
-				context={{
+				context={
+				{
 					sessionId: "session-test-100",
 					promptId: "prompt-test-100",
 					permissionMode: "auto",

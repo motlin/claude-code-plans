@@ -5,7 +5,8 @@ import {useFizzyLake} from "../lib/fizzy-lake";
 import {Dialog} from "@base-ui/react/dialog";
 import {Command, defaultFilter, useCommandState} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
-import {
+import
+{
 	type ClipboardEvent,
 	type KeyboardEvent,
 	type ReactNode,
@@ -17,7 +18,8 @@ import {
 	useState,
 } from "react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
-import {
+import
+{
 	FileText,
 	Brain,
 	CodeXml,
@@ -81,13 +83,15 @@ import {projectsQueryOptions} from "../lib/api/projects";
 import {routinesQueryOptions, type Routine} from "../lib/api/routines";
 import {artifactTimestamp} from "../lib/artifact-gallery";
 import {unifiedSearchQueryOptions, type UnifiedSearchItem} from "../lib/api/search";
-import {
+import
+{
 	recentSessionsQueryOptions,
 	sessionDetailQueryOptions,
 	type SessionDetailData,
 	type SessionListItem,
 } from "../lib/api/sessions";
-import {
+import
+{
 	fitPaletteEmptyView,
 	PALETTE_MARK_LABELS,
 	paletteMark,
@@ -98,7 +102,8 @@ import {
 	type PaletteMarkEntry,
 } from "../lib/palette-marks";
 import {buildClaudeCopyCommand} from "../lib/claude-launch-command";
-import {
+import
+{
 	appendAttachment,
 	attachContext,
 	attachUploadedFiles,
@@ -110,7 +115,8 @@ import {
 } from "../lib/context-attach";
 import {writeClipboardText} from "../lib/clipboard";
 import {requestHomeComposerFocus} from "../lib/home-composer-focus";
-import {
+import
+{
 	PALETTE_FILTER_TOKENS,
 	PaletteTypeSchema,
 	applyPaletteFilters,
@@ -143,7 +149,8 @@ import {
 	type PaletteType,
 	type ServerPaletteType,
 } from "../lib/palette-tokens";
-import {
+import
+{
 	findLaunchedSession,
 	startSessionProjects,
 	type PendingLaunch,
@@ -170,7 +177,8 @@ import {type ShortcutKeys, useShortcut, useShortcutKeys} from "../hooks/use-shor
 import {clearAll} from "../lib/unread-store";
 import {startPaletteSearchJourney} from "../lib/perf/field-journeys";
 import {HighlightRuns} from "./highlight-runs";
-import {
+import
+{
 	type PaletteCardSession,
 	PaletteRenameDialog,
 	PaletteRowActionsButton,
@@ -202,7 +210,8 @@ import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-open";
  * footer copy upstream's geometry.
  */
 
-const MODE_LABELS = {
+const MODE_LABELS =
+{
 	search: "Search",
 	compose: "Write a message…",
 } as const satisfies Record<PaletteMode, string>;
@@ -238,7 +247,8 @@ const PALETTE_FILTERED_STALL_MS = 8000;
 /** Server hit kinds plus the kinds the Projects, Artifacts and Scheduled tabs list client-side. */
 type SearchKind = UnifiedSearchItem["kind"] | "project" | "artifact" | "routine";
 
-const KIND_ICONS = {
+const KIND_ICONS =
+{
 	session: <CodeXml />,
 	plan: <FileText />,
 	memory: <Brain />,
@@ -249,7 +259,8 @@ const KIND_ICONS = {
 } as const satisfies Record<SearchKind, ReactNode>;
 
 /** Upstream's hint-row icon map `__` (owner, a cloud facet, dropped). */
-const PALETTE_FILTER_ICONS = {
+const PALETTE_FILTER_ICONS =
+{
 	date: <Clock />,
 	repo: <GitBranch />,
 	project: <FolderOpen />,
@@ -262,16 +273,22 @@ const PALETTE_FILTER_ICONS = {
  * Upstream's neutral Badge in a "Filter by" hint row: filled, or (fizzy-lake color, upstream's
  * `stacks:` variants) an outlined pill on the border-line ink.
  */
-const FILTER_BADGE_CLASS = {
+const FILTER_BADGE_CLASS =
+{
 	fizzy: "inline-flex items-center gap-1 h-[22px] rounded-full border-[1.5px] border-solid border-[color:var(--upstream-border-line)] dark:border-strong bg-transparent px-[7px] text-xs leading-[15px] font-[540] text-secondary shrink-0 -my-px relative top-px",
 	base: "inline-flex items-center gap-1 h-[22px] rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-fill-ghost-hover text-secondary shrink-0 -my-px relative top-px",
 };
 
 /** A Badge label's descender pad, which upstream's `stacks:pb-0` drops. */
-const BADGE_LABEL_PAD = {fizzy: "pb-0", base: "pb-[0.05em]"};
+const BADGE_LABEL_PAD =
+{
+	fizzy: "pb-0",
+	base: "pb-[0.05em]",
+};
 
 /** One typed-search row: an instant title match over recents, or a server hit. */
-interface SearchRow {
+interface SearchRow
+{
 	kind: SearchKind;
 	id: string;
 	title: string;
@@ -295,8 +312,13 @@ interface SearchRow {
  * Upstream c74dd5c13 `x_(…, "palette", fallback)`: a typed artifact gets the bare 20px tinted ArtifactMark,
  * an untyped one its own icon at md in the row's ink (the icon word's glyph, else the Artifacts glyph).
  */
-function ArtifactRowIcon({artifact}: {artifact: Pick<ArtifactSummary, "kind" | "icon">}) {
-	const mark = resolveArtifactMark({typeKind: artifact.kind});
+function ArtifactRowIcon({artifact}: {artifact: Pick<ArtifactSummary, "kind" | "icon">})
+{
+	const mark = resolveArtifactMark(
+		{
+			typeKind: artifact.kind,
+		},
+	);
 	if (mark !== undefined) return <ArtifactMark kind={mark.kind} size="menu" />;
 	const {icon} = artifact;
 	return (
@@ -308,7 +330,8 @@ function ArtifactRowIcon({artifact}: {artifact: Pick<ArtifactSummary, "kind" | "
 	);
 }
 
-function rowIcon(row: SearchRow): ReactNode {
+function rowIcon(row: SearchRow): ReactNode
+{
 	if (row.mark !== undefined) return <PaletteSessionIcon mark={row.mark} />;
 	if (row.artifact !== undefined) return <ArtifactRowIcon artifact={row.artifact} />;
 	return KIND_ICONS[row.kind];
@@ -317,7 +340,8 @@ function rowIcon(row: SearchRow): ReactNode {
 /** Resolves a session's mark: live, or from the snapshot frozen when the palette settled. */
 type MarkOf = (session: SessionListItem) => PaletteMarkEntry | undefined;
 
-function sessionRow(session: SessionListItem, matches: readonly TextMatch[], markOf: MarkOf): SearchRow {
+function sessionRow(session: SessionListItem, matches: readonly TextMatch[], markOf: MarkOf): SearchRow
+{
 	const mark = markOf(session)?.mark;
 	return {
 		kind: "session",
@@ -326,16 +350,28 @@ function sessionRow(session: SessionListItem, matches: readonly TextMatch[], mar
 		titleMatches: matches,
 		snippet: undefined,
 		mtime: session.mtime,
-		...(mark === undefined ? {} : {mark}),
+		...(mark === undefined
+			? {}
+			:
+				{
+					mark,
+				}),
 		archived: session.archived,
-		...(session.pr === undefined ? {} : {prNumber: session.pr.number}),
+		...(session.pr === undefined
+			? {}
+			:
+				{
+					prNumber: session.pr.number,
+				}),
 		href: undefined,
 	};
 }
 
-function instantRows(sessions: readonly SessionListItem[], query: string, markOf: MarkOf): SearchRow[] {
+function instantRows(sessions: readonly SessionListItem[], query: string, markOf: MarkOf): SearchRow[]
+{
 	const rows: SearchRow[] = [];
-	for (const session of sessions) {
+	for (const session of sessions)
+	{
 		const matches = titleMatches(session.title, query);
 		if (matches !== null) rows.push(sessionRow(session, matches, markOf));
 	}
@@ -348,75 +384,98 @@ function filterSessions(
 	tokens: PaletteTokens,
 	projects: readonly PaletteProject[],
 	now: number,
-): SessionListItem[] {
+): SessionListItem[]
+{
 	const {project, date} = tokens;
 	const cutoff = date === undefined ? null : paletteDateCutoff(date, now);
 	const resolved = project === undefined ? undefined : projects.find((p) => paletteProjectMatches(project, p));
-	return sessions.filter((session) => {
+	return sessions.filter((session) =>
+	{
 		if (cutoff !== null && Date.parse(session.mtime) < cutoff) return false;
 		if (project === undefined) return true;
-		if (resolved !== undefined) {
+		if (resolved !== undefined)
+		{
 			return session.projectName === resolved.name || session.project === resolved.projectPath;
 		}
-		return paletteProjectMatches(project, {
-			id: "",
-			name: session.projectName,
-			projectPath: session.project,
-		});
+		return paletteProjectMatches(
+			project,
+			{
+				id: "",
+				name: session.projectName,
+				projectPath: session.project,
+			},
+		);
 	});
 }
 
-function projectRows(projects: readonly PaletteProjectItem[], text: string): SearchRow[] {
+function projectRows(projects: readonly PaletteProjectItem[], text: string): SearchRow[]
+{
 	const rows: SearchRow[] = [];
-	for (const project of projects) {
+	for (const project of projects)
+	{
 		const matches = text === "" ? [] : titleMatches(project.name, text);
 		if (matches === null) continue;
-		rows.push({
-			kind: "project",
-			id: project.id,
-			title: project.name,
-			titleMatches: matches,
-			snippet: undefined,
-			mtime: project.lastActivity,
-			href: undefined,
-		});
+		rows.push(
+			{
+				kind: "project",
+				id: project.id,
+				title: project.name,
+				titleMatches: matches,
+				snippet: undefined,
+				mtime: project.lastActivity,
+				href: undefined,
+			},
+		);
 		if (rows.length === PALETTE_RECENT_LIMIT) break;
 	}
 	return rows;
 }
 
 /** The Artifacts tab: newest first, narrowed by the query text. */
-function artifactRows(artifacts: readonly ArtifactSummary[], text: string): SearchRow[] {
+function artifactRows(artifacts: readonly ArtifactSummary[], text: string): SearchRow[]
+{
 	const rows: SearchRow[] = [];
-	for (const artifact of artifacts.toSorted((a, b) => artifactTimestamp(b) - artifactTimestamp(a))) {
+	for (const artifact of artifacts.toSorted((a, b) => artifactTimestamp(b) - artifactTimestamp(a)))
+	{
 		const matches = text === "" ? [] : titleMatches(artifact.title, text);
 		if (matches === null) continue;
-		rows.push({
-			kind: "artifact",
-			id: artifact.id,
-			title: artifact.title,
-			titleMatches: matches,
-			snippet: undefined,
-			mtime: new Date(artifactTimestamp(artifact)).toISOString(),
-			href: undefined,
-			artifact: {kind: artifact.kind, icon: artifact.icon},
-		});
+		rows.push(
+			{
+				kind: "artifact",
+				id: artifact.id,
+				title: artifact.title,
+				titleMatches: matches,
+				snippet: undefined,
+				mtime: new Date(artifactTimestamp(artifact)).toISOString(),
+				href: undefined,
+				artifact:
+				{
+					kind: artifact.kind,
+					icon: artifact.icon,
+				},
+			},
+		);
 		if (rows.length === PALETTE_RECENT_LIMIT) break;
 	}
 	return rows;
 }
 
 /** The Scheduled tab: active routines by next run, narrowed like the /routines search. */
-function routineRows(routines: readonly Routine[], text: string, now: number): SearchRow[] {
-	const {visible} = filterRoutines(routines, {
-		search: text,
-		schedule: "all",
-		status: "all",
-		includeCompleted: false,
-	});
+function routineRows(routines: readonly Routine[], text: string, now: number): SearchRow[]
+{
+	const {visible} = filterRoutines(
+		routines,
+		{
+			search: text,
+			schedule: "all",
+			status: "all",
+			includeCompleted: false,
+		},
+	);
 	return sortRoutines(visible, "next-run")
 		.slice(0, PALETTE_RECENT_LIMIT)
-		.map((routine) => {
+		.map((routine) =>
+		{
 			const title = routineTitle(routine);
 			return {
 				kind: "routine",
@@ -434,13 +493,15 @@ function routineRows(routines: readonly Routine[], text: string, now: number): S
 		});
 }
 
-interface PaletteProjectItem extends PaletteProject {
+interface PaletteProjectItem extends PaletteProject
+{
 	lastActivity: string;
 	memoryCount: number;
 }
 
 /** A plan or memory the Plans and Memories tabs list with an empty query. */
-interface PaletteDoc {
+interface PaletteDoc
+{
 	kind: "plan" | "memory";
 	id: string;
 	title: string;
@@ -449,8 +510,10 @@ interface PaletteDoc {
 	projectIds: readonly string[];
 }
 
-function planDocs(plans: readonly PlanListItem[]): PaletteDoc[] {
-	return plans.map((plan) => {
+function planDocs(plans: readonly PlanListItem[]): PaletteDoc[]
+{
+	return plans.map((plan) =>
+	{
 		const slug = toMdSlug(plan.filename);
 		return {
 			kind: "plan",
@@ -469,18 +532,21 @@ function recentDocRows(
 	tokens: PaletteTokens,
 	projects: readonly PaletteProject[],
 	now: number,
-): SearchRow[] {
+): SearchRow[]
+{
 	const {project, date} = tokens;
 	const cutoff = date === undefined ? null : paletteDateCutoff(date, now);
 	const resolved = project === undefined ? undefined : projects.find((p) => paletteProjectMatches(project, p));
 	return docs
-		.filter((doc) => {
+		.filter((doc) =>
+		{
 			if (cutoff !== null && Date.parse(doc.mtime) < cutoff) return false;
 			return project === undefined || (resolved !== undefined && doc.projectIds.includes(resolved.id));
 		})
 		.toSorted((a, b) => Date.parse(b.mtime) - Date.parse(a.mtime))
 		.slice(0, PALETTE_RECENT_LIMIT)
-		.map((doc) => ({
+		.map((doc) => (
+		{
 			kind: doc.kind,
 			id: doc.id,
 			title: doc.title,
@@ -496,8 +562,10 @@ function serverRow(
 	item: UnifiedSearchItem,
 	sessionsById: ReadonlyMap<string, SessionListItem>,
 	markOf: MarkOf,
-): SearchRow {
-	const row: SearchRow = {
+): SearchRow
+{
+	const row: SearchRow =
+	{
 		kind: item.kind,
 		id: item.id,
 		title: item.title,
@@ -507,15 +575,32 @@ function serverRow(
 		href: item.href,
 	};
 	const session = item.kind === "session" ? sessionsById.get(item.id) : undefined;
-	if (session === undefined) {
-		return item.state === "waiting" ? {...row, mark: "awaiting"} : row;
+	if (session === undefined)
+	{
+		return item.state === "waiting"
+			?
+				{
+					...row,
+					mark: "awaiting",
+				}
+			: row;
 	}
 	const mark = markOf(session)?.mark;
 	return {
 		...row,
-		...(mark === undefined ? {} : {mark}),
+		...(mark === undefined
+			? {}
+			:
+				{
+					mark,
+				}),
 		archived: session.archived,
-		...(session.pr === undefined ? {} : {prNumber: session.pr.number}),
+		...(session.pr === undefined
+			? {}
+			:
+				{
+					prNumber: session.pr.number,
+				}),
 	};
 }
 
@@ -526,28 +611,38 @@ const NO_ROUTINES: readonly Routine[] = [];
 const NO_PLANS: readonly PlanListItem[] = [];
 
 /** Module-level so useQueries memoizes the combined lists across renders. */
-function memoryListData<T>(results: ReadonlyArray<{data: T}>): T[] {
+function memoryListData<T>(
+	results: ReadonlyArray<
+	{
+		data: T;
+	}>,
+): T[]
+{
 	return results.map((result) => result.data);
 }
 
 /** "/…" hint rows, or null to search normally (also when no hint matches). */
-function hintsFor(query: string): PaletteFilter[] | null {
+function hintsFor(query: string): PaletteFilter[] | null
+{
 	const hints = paletteFilterHints(query);
 	return hints === null || hints.length === 0 ? null : hints;
 }
 
 const NEW_SESSION_VALUE = "start:new-session";
 
-function rowKey(row: Pick<SearchRow, "kind" | "id">): string {
+function rowKey(row: Pick<SearchRow, "kind" | "id">): string
+{
 	return `${row.kind}:${row.id}`;
 }
 
-function commandMatches(label: string, query: string, keywords: readonly string[] = []): boolean {
+function commandMatches(label: string, query: string, keywords: readonly string[] = []): boolean
+{
 	return defaultFilter(label, query, [...keywords]) > 0;
 }
 
 /** A marked session promoted above Recents into Needs attention or Active. */
-interface LeadSession {
+interface LeadSession
+{
 	kind: "session";
 	id: string;
 	title: string;
@@ -556,7 +651,8 @@ interface LeadSession {
 }
 
 /** What an empty-view session row shows besides its title. */
-interface PaletteSessionRow {
+interface PaletteSessionRow
+{
 	kind: "session";
 	id: string;
 	title: string;
@@ -565,10 +661,19 @@ interface PaletteSessionRow {
 }
 
 /** A Recents row: a visited page from the per-tab MRU, or an mtime-ordered session fallback. */
-type PaletteRecent = PaletteSessionRow | {kind: "page"; id: string; entry: PalettePageEntry; title: string};
+type PaletteRecent =
+	| PaletteSessionRow
+	|
+	  {
+			kind: "page";
+			id: string;
+			entry: PalettePageEntry;
+			title: string;
+	  };
 
 /** The empty view's action rows: upstream's "New session" and the pinned "Jump to question". */
-interface PaletteActionRow {
+interface PaletteActionRow
+{
 	kind: "action";
 	id: "new_session" | "jump_to_question";
 }
@@ -576,16 +681,21 @@ interface PaletteActionRow {
 type EmptyViewRow = LeadSession | PaletteRecent | PaletteActionRow;
 
 type PalettePageKind = "plan" | "memory" | "project" | "command";
-type PalettePageEntry = RecentEntry & {kind: PalettePageKind};
+type PalettePageEntry = RecentEntry &
+{
+	kind: PalettePageKind;
+};
 
-const PAGE_ICONS = {
+const PAGE_ICONS =
+{
 	plan: <FileText />,
 	memory: <Brain />,
 	project: <FolderOpen />,
 	command: <SquareSlash />,
 } as const satisfies Record<PalettePageKind, ReactNode>;
 
-function isPageEntry(entry: RecentEntry): entry is PalettePageEntry {
+function isPageEntry(entry: RecentEntry): entry is PalettePageEntry
+{
 	return entry.kind in PAGE_ICONS;
 }
 
@@ -594,33 +704,64 @@ function mruRecents(
 	history: readonly RecentEntry[],
 	currentKey: string | undefined,
 	sessionRows: ReadonlyMap<string, PaletteSessionRow>,
-): PaletteRecent[] {
+): PaletteRecent[]
+{
 	const recents: PaletteRecent[] = [];
-	for (const entry of history) {
+	for (const entry of history)
+	{
 		if (entry.key === currentKey) continue;
-		if (entry.kind === "session") {
+		if (entry.kind === "session")
+		{
 			const id = entry.key.slice("session:".length);
 			if (isSessionRouteAlias(id)) continue;
-			recents.push(sessionRows.get(id) ?? {kind: "session", id, title: entry.title ?? "Untitled"});
-		} else if (isPageEntry(entry)) {
-			recents.push({kind: "page", id: entry.key, entry, title: entry.title ?? "Untitled"});
+			recents.push(
+				sessionRows.get(id) ??
+				{
+					kind: "session",
+					id,
+					title: entry.title ?? "Untitled",
+				},
+			);
+		}
+		else if (isPageEntry(entry))
+		{
+			recents.push(
+				{
+					kind: "page",
+					id: entry.key,
+					entry,
+					title: entry.title ?? "Untitled",
+				},
+			);
 		}
 	}
 	return recents;
 }
 
-function paletteSessionRow(session: SessionListItem, mark: PaletteMark | undefined): PaletteSessionRow {
+function paletteSessionRow(session: SessionListItem, mark: PaletteMark | undefined): PaletteSessionRow
+{
 	return {
 		kind: "session",
 		id: session.id,
 		title: session.title,
-		...(mark === undefined ? {} : {mark}),
-		...(session.pr === undefined ? {} : {prNumber: session.pr.number}),
+		...(mark === undefined
+			? {}
+			:
+				{
+					mark,
+				}),
+		...(session.pr === undefined
+			? {}
+			:
+				{
+					prNumber: session.pr.number,
+				}),
 	};
 }
 
 /** The empty view's membership frozen at the palette's first settle (upstream's `{recentIds, leadIds}`). */
-interface PaletteViewSnapshot {
+interface PaletteViewSnapshot
+{
 	leadIds: readonly string[];
 	recentIds: readonly string[];
 }
@@ -641,54 +782,138 @@ function paletteGroups(
 	markOf: MarkOf,
 	view: PaletteViewSnapshot | null,
 	jumpOffered: boolean,
-): {groups: PaletteGroup<EmptyViewRow>[]; view: PaletteViewSnapshot} {
+):
+{
+	groups: PaletteGroup<EmptyViewRow>[];
+	view: PaletteViewSnapshot;
+}
+{
 	const leads: LeadSession[] = [];
 	const marked = new Map<string, LeadSession>();
 	const sessionRows = new Map<string, PaletteSessionRow>();
 	const fallback: PaletteRecent[] = [];
-	for (const session of sessions) {
+	for (const session of sessions)
+	{
 		const entry = session.id === currentSessionId ? undefined : markOf(session);
 		const row = paletteSessionRow(session, entry?.mark);
 		sessionRows.set(session.id, row);
 		if (session.id === currentSessionId) continue;
-		if (entry !== undefined) marked.set(session.id, {...row, mark: entry.mark});
-		if (entry?.leads === true) leads.push({...row, mark: entry.mark});
+		if (entry !== undefined)
+			marked.set(
+				session.id,
+				{
+					...row,
+					mark: entry.mark,
+				},
+			);
+		if (entry?.leads === true)
+			leads.push(
+				{
+					...row,
+					mark: entry.mark,
+				},
+			);
 		fallback.push(row);
 	}
 	const visited = mruRecents(history, currentKey, sessionRows);
 	const recents = visited.length > 0 ? visited : fallback;
 	let leadRows: LeadSession[];
 	let pool: PaletteRecent[];
-	if (view === null) {
+	if (view === null)
+	{
 		leadRows = sortLeads(leads);
 		pool = recents.slice(0, RECENTS_POOL);
-	} else {
+	}
+	else
+	{
 		const recentRows = new Map(recents.map((row) => [row.id, row]));
 		leadRows = view.leadIds.flatMap((id) => marked.get(id) ?? []);
 		pool = view.recentIds.flatMap((id) => recentRows.get(id) ?? []);
 	}
 	return {
-		groups: fitPaletteEmptyView<EmptyViewRow>({
-			leads: leadRows,
-			recents: pool,
-			actions: [{kind: "action", id: "new_session"}],
-			jump: jumpOffered ? {kind: "action", id: "jump_to_question"} : undefined,
-		}),
-		view: view ?? {leadIds: leadRows.map((row) => row.id), recentIds: pool.map((row) => row.id)},
+		groups: fitPaletteEmptyView<EmptyViewRow>(
+			{
+				leads: leadRows,
+				recents: pool,
+				actions: [
+					{
+						kind: "action",
+						id: "new_session",
+					},
+				],
+				jump: jumpOffered
+					?
+						{
+							kind: "action",
+							id: "jump_to_question",
+						}
+					: undefined,
+			},
+		),
+		view: view ??
+		{
+			leadIds: leadRows.map((row) => row.id),
+			recentIds: pool.map((row) => row.id),
+		},
 	};
 }
 
 /** Pages reachable by typing; upstream keeps navigation out of the empty state. */
 const NAV_COMMANDS = [
-	{to: "/", label: "Home", icon: <Home />, keywords: ["home", "start"]},
-	{to: "/sessions", label: "Sessions", icon: <MessageSquare />, keywords: ["session", "history"]},
-	{to: "/active", label: "Active", icon: <Activity />, keywords: ["active", "live", "running"]},
-	{to: "/pinned", label: "Pinned", icon: <Pin />, keywords: ["pin", "star", "favorite"]},
-	{to: "/projects", label: "Projects", icon: <FolderOpen />, keywords: ["project", "repo"]},
-	{to: "/plans", label: "Plans", icon: <FileText />, keywords: ["plan", "markdown"]},
-	{to: "/memories", label: "Memories", icon: <Brain />, keywords: ["memory", "claude.md"]},
-	{to: "/tasks", label: "Tasks", icon: <ListChecks />, keywords: ["task", "todo"]},
-	{to: "/customize", label: "Customize", icon: <Puzzle />, keywords: ["skill", "plugin"]},
+	{
+		to: "/",
+		label: "Home",
+		icon: <Home />,
+		keywords: ["home", "start"],
+	},
+	{
+		to: "/sessions",
+		label: "Sessions",
+		icon: <MessageSquare />,
+		keywords: ["session", "history"],
+	},
+	{
+		to: "/active",
+		label: "Active",
+		icon: <Activity />,
+		keywords: ["active", "live", "running"],
+	},
+	{
+		to: "/pinned",
+		label: "Pinned",
+		icon: <Pin />,
+		keywords: ["pin", "star", "favorite"],
+	},
+	{
+		to: "/projects",
+		label: "Projects",
+		icon: <FolderOpen />,
+		keywords: ["project", "repo"],
+	},
+	{
+		to: "/plans",
+		label: "Plans",
+		icon: <FileText />,
+		keywords: ["plan", "markdown"],
+	},
+	{
+		to: "/memories",
+		label: "Memories",
+		icon: <Brain />,
+		keywords: ["memory", "claude.md"],
+	},
+	{
+		to: "/tasks",
+		label: "Tasks",
+		icon: <ListChecks />,
+		keywords: ["task", "todo"],
+	},
+	{
+		to: "/customize",
+		label: "Customize",
+		icon: <Puzzle />,
+		keywords: ["skill", "plugin"],
+	},
 ] as const;
 
 type SessionCommandId =
@@ -701,12 +926,14 @@ type SessionCommandId =
 	| "copy-resume"
 	| "copy-fork";
 
-interface SessionCommand {
+interface SessionCommand
+{
 	id: SessionCommandId;
 	label: string;
 }
 
-const SESSION_COMMAND_ICONS = {
+const SESSION_COMMAND_ICONS =
+{
 	pin: <Pin />,
 	unpin: <PinOff />,
 	rename: <Pencil />,
@@ -718,7 +945,8 @@ const SESSION_COMMAND_ICONS = {
 } as const satisfies Record<SessionCommandId, ReactNode>;
 
 /** Upstream's contextual commands surface for "session" plus each action's own verb. */
-const SESSION_COMMAND_KEYWORDS = {
+const SESSION_COMMAND_KEYWORDS =
+{
 	pin: ["session", "pin", "star"],
 	unpin: ["session", "unpin", "pin", "star"],
 	rename: ["session", "rename", "title"],
@@ -737,7 +965,8 @@ const SESSION_COMMAND_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set
 ]);
 
 /** The session on screen as ⌘K commands: the shared menu model's quoted titles, then the CLI copies. */
-function currentSessionCommands(detail: SessionDetailData, pinned: boolean): SessionCommand[] {
+function currentSessionCommands(detail: SessionDetailData, pinned: boolean): SessionCommand[]
+{
 	const menu = getSessionMenuItems(
 		{
 			title: detail.title,
@@ -751,37 +980,54 @@ function currentSessionCommands(detail: SessionDetailData, pinned: boolean): Ses
 			bridgeSessionId: null,
 		},
 		SESSION_COMMAND_CAPABILITIES,
-		{surface: "palette"},
+		{
+			surface: "palette",
+		},
 	);
-	const commands = menu.flatMap((entry): SessionCommand[] => {
+	const commands = menu.flatMap((entry): SessionCommand[] =>
+	{
 		if (entry.kind !== "item") return [];
-		switch (entry.id) {
+		switch (entry.id)
+		{
 			case "pin":
 			case "unpin":
 			case "rename":
 			case "copy-link":
 			case "archive":
 			case "unarchive":
-				return [{id: entry.id, label: entry.label}];
+				return [
+					{
+						id: entry.id,
+						label: entry.label,
+					},
+				];
 			default:
 				return [];
 		}
 	});
 	return [
 		...commands,
-		{id: "copy-resume", label: "Copy resume command"},
-		{id: "copy-fork", label: "Copy fork command"},
+		{
+			id: "copy-resume",
+			label: "Copy resume command",
+		},
+		{
+			id: "copy-fork",
+			label: "Copy fork command",
+		},
 	];
 }
 
-function startProjectValue(project: StartProject): string {
+function startProjectValue(project: StartProject): string
+{
 	return `start-project:${project.id}`;
 }
 
 /** The "New session" flow: the typed text, then a project picker, then the herdr launch. */
 type StartStep = "idle" | "picker" | "launching";
 
-interface PaletteAction {
+interface PaletteAction
+{
 	label: string;
 	icon: ReactNode;
 	run: () => void;
@@ -798,20 +1044,26 @@ interface PaletteAction {
 const SETTINGS_COMMANDS = settingsPaletteCommands();
 
 /** Prefetches a settings command's section: the Settings dialog, plus the Customize panel for its members. */
-function warmSettingsCommand(command: SettingsPaletteCommand): void {
+function warmSettingsCommand(command: SettingsPaletteCommand): void
+{
 	void loadSettingsDialog();
 	if (command.member.kind === "customize") void preloadCustomizeDialogPanel();
 }
 
-function useCurrentSessionId(): string | undefined {
-	const routeId = useRouterState({
-		select: (state) => {
-			for (const match of state.matches) {
-				if (match.routeId === "/session/$id") return match.params.id;
-			}
-			return null;
+function useCurrentSessionId(): string | undefined
+{
+	const routeId = useRouterState(
+		{
+			select: (state) =>
+			{
+				for (const match of state.matches)
+				{
+					if (match.routeId === "/session/$id") return match.params.id;
+				}
+				return null;
+			},
 		},
-	});
+	);
 	return useSessionIdentity(routeId) ?? undefined;
 }
 
@@ -819,7 +1071,12 @@ function useCurrentSessionId(): string | undefined {
  * Keep this opening's MRU fixed while its legacy alias identities finish loading; `settled` turns
  * true once none is still pending.
  */
-function usePaletteHistory(): {entries: RecentEntry[]; settled: boolean} {
+function usePaletteHistory():
+{
+	entries: RecentEntry[];
+	settled: boolean;
+}
+{
 	const [snapshot] = useState(loadRecents);
 	const aliases = useMemo(
 		() => [
@@ -832,9 +1089,14 @@ function usePaletteHistory(): {entries: RecentEntry[]; settled: boolean} {
 		],
 		[snapshot],
 	);
-	const identities = useQueries({queries: aliases.map(sessionIdentityQueryOptions)});
+	const identities = useQueries(
+		{
+			queries: aliases.map(sessionIdentityQueryOptions),
+		},
+	);
 	const owners = new Map(
-		aliases.map((alias, index) => {
+		aliases.map((alias, index) =>
+		{
 			const identity = identities[index];
 			return [alias, identity?.isSuccess ? identity.data.sessionId : null] as const;
 		}),
@@ -849,23 +1111,27 @@ function usePaletteHistory(): {entries: RecentEntry[]; settled: boolean} {
 const PALETTE_SETTLE_FALLBACK_MS = 3000;
 
 /** Every listed session's mark at the palette's first settle (upstream's `poolMarks`). */
-function freezeMarks(sessions: readonly SessionListItem[], now: number): ReadonlyMap<string, PaletteMarkEntry> {
+function freezeMarks(sessions: readonly SessionListItem[], now: number): ReadonlyMap<string, PaletteMarkEntry>
+{
 	return new Map(
-		sessions.flatMap((session) => {
+		sessions.flatMap((session) =>
+		{
 			const entry = paletteMark(session, now);
 			return entry === undefined ? [] : [[session.id, entry] as const];
 		}),
 	);
 }
 
-export interface CommandPaletteProps {
+export interface CommandPaletteProps
+{
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	mode?: PaletteMode;
 	onModeChange?: (mode: PaletteMode, options?: PaletteModeChangeOptions) => void;
 }
 
-export function CommandPalette({open, onOpenChange, mode: controlledMode, onModeChange}: CommandPaletteProps) {
+export function CommandPalette({open, onOpenChange, mode: controlledMode, onModeChange}: CommandPaletteProps)
+{
 	const [uncontrolledMode, setUncontrolledMode] = useState<PaletteMode>("search");
 	const mode = controlledMode ?? uncontrolledMode;
 	const setMode = onModeChange ?? setUncontrolledMode;
@@ -889,42 +1155,61 @@ function PalettePopup({
 	mode: PaletteMode;
 	onModeChange: (mode: PaletteMode, options?: PaletteModeChangeOptions) => void;
 	onOpenChange: (open: boolean) => void;
-}) {
+})
+{
 	const navigate = useNavigate();
 	const openSettings = useOpenSettings();
 	const look = useFizzyLake("color") ? "fizzy" : "base";
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const popupRef = useRef<HTMLDivElement>(null);
 	const cardRef = useRef<HTMLDivElement>(null);
-	const [rowActions, setRowActions] = useState<{
+	const [rowActions, setRowActions] = useState<
+	{
 		session: PaletteCardSession;
 		anchorRect: ReturnType<typeof rowActionsAnchorRect>;
 	} | null>(null);
 	// The row card's Rename dialog, kept mounted through its close animation.
-	const [renaming, setRenaming] = useState<{session: PaletteCardSession; open: boolean} | null>(null);
+	const [renaming, setRenaming] = useState<
+	{
+		session: PaletteCardSession;
+		open: boolean;
+	} | null>(null);
 	// Upstream keeps separate Search and Compose drafts; `query` is the active view's.
-	const [buffers, setBuffers] = useState<PaletteBuffers>({search: "", compose: ""});
+	const [buffers, setBuffers] = useState<PaletteBuffers>(
+		{
+			search: "",
+			compose: "",
+		},
+	);
 	const [tab, setTab] = useState<PaletteType>("all");
 	// Upstream's filter object: committed chips, kept apart from the query text.
 	const [filters, setFilters] = useState<PaletteFilters>({});
 	// A session this tab just answered marks as running at the click, as the sidebar row draws it.
 	const answeredIds = useAnsweredSessionIds();
-	const {data} = useQuery({
-		...recentSessionsQueryOptions(PALETTE_RECENT_LIMIT),
-		select: useCallback(
-			(recent: {sessions: SessionListItem[]}) =>
-				answeredIds.size === 0
-					? recent
-					: {...recent, sessions: withAnsweredHolds(recent.sessions, answeredIds)},
-			[answeredIds],
-		),
-	});
+	const {data} = useQuery(
+		{
+			...recentSessionsQueryOptions(PALETTE_RECENT_LIMIT),
+			select: useCallback(
+				(recent: {sessions: SessionListItem[]}) =>
+					answeredIds.size === 0
+						? recent
+						:
+							{
+								...recent,
+								sessions: withAnsweredHolds(recent.sessions, answeredIds),
+							},
+				[answeredIds],
+			),
+		},
+	);
 	const queryClient = useQueryClient();
 	const currentSessionId = useCurrentSessionId();
-	const detailQuery = useQuery({
-		...sessionDetailQueryOptions(currentSessionId ?? ""),
-		enabled: currentSessionId !== undefined,
-	});
+	const detailQuery = useQuery(
+		{
+			...sessionDetailQueryOptions(currentSessionId ?? ""),
+			enabled: currentSessionId !== undefined,
+		},
+	);
 	const currentDetail = currentSessionId === undefined ? null : (detailQuery.data ?? null);
 	const pins = usePins();
 	const setArchived = useSessionArchive(currentSessionId ?? "");
@@ -935,7 +1220,8 @@ function PalettePopup({
 	// Controlled so the picker can preselect its first project; cmdk selects the first row otherwise.
 	const [selectedValue, setSelectedValue] = useState("");
 	// Upstream's onDwell: a settings command reached by the keyboard warms its section like a hover does.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const command = SETTINGS_COMMANDS.find(({key}) => selectedValue === `settings:${key}`);
 		if (command !== undefined) warmSettingsCommand(command);
 	}, [selectedValue]);
@@ -949,40 +1235,71 @@ function PalettePopup({
 	const restoredComposeChipIds = useRestoredChipIds(COMPOSE_DRAFT_KEY);
 	const compose = mode === "compose";
 	const query = compose ? buffers.compose : buffers.search;
-	function setQuery(next: string) {
-		setBuffers((current) => (compose ? {...current, compose: next} : {...current, search: next}));
+	function setQuery(next: string)
+	{
+		setBuffers((current) =>
+			compose
+				?
+					{
+						...current,
+						compose: next,
+					}
+				:
+					{
+						...current,
+						search: next,
+					},
+		);
 	}
 
-	function switchView(next: PaletteMode, options?: PaletteModeChangeOptions) {
+	function switchView(next: PaletteMode, options?: PaletteModeChangeOptions)
+	{
 		setBuffers((current) => switchPaletteView(next, current));
 		onModeChange(next, options);
 	}
 
 	// Compose attachments land as chips here (⌘U, the paperclip); they are dropped when the palette closes.
-	useEffect(() => {
-		const unregister = registerComposer(COMPOSE_DRAFT_KEY, {
-			insertText: (text) => {
-				setBuffers((current) => ({...current, compose: appendAttachment(current.compose, text)}));
+	useEffect(() =>
+	{
+		const unregister = registerComposer(
+			COMPOSE_DRAFT_KEY,
+			{
+				insertText: (text) =>
+				{
+					setBuffers((current) => (
+					{
+						...current,
+						compose: appendAttachment(current.compose, text),
+					}));
+				},
+				focus: () => inputRef.current?.focus(),
 			},
-			focus: () => inputRef.current?.focus(),
-		});
-		return () => {
+		);
+		return () =>
+		{
 			unregister();
 			takeContextChips(COMPOSE_DRAFT_KEY);
 		};
 	}, []);
 
-	const pathname = useRouterState({select: (state) => state.location.pathname});
+	const pathname = useRouterState(
+		{
+			select: (state) => state.location.pathname,
+		},
+	);
 	const {entries: history, settled: historySettled} = usePaletteHistory();
 	// Upstream freezes the open palette at its first settle: marks for every listed row, then the
 	// empty view's membership, so rows never jump groups while it is open. Rows acted on through
 	// row actions read their live mark again. The popup unmounts on close, so reopening starts fresh.
 	const [settleTimedOut, setSettleTimedOut] = useState(false);
-	useEffect(() => {
-		const timer = setTimeout(() => {
+	useEffect(() =>
+	{
+		const timer = setTimeout(() =>
+		{
 			setSettleTimedOut(true);
 		}, PALETTE_SETTLE_FALLBACK_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 		};
 	}, []);
@@ -1072,39 +1389,60 @@ function PalettePopup({
 			? query.slice(0, hintMatch.start).trim() === ""
 			: hintMatch.keys.every((filter) => PALETTE_FILTER_TOKENS[filter].startsWith(trimmedQuery.toLowerCase())));
 	// `archived:` searches archived sessions only, like upstream.
-	const archivedQuery = useQuery({
-		...recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "archived"),
-		enabled: tokens.archived === true,
-	});
+	const archivedQuery = useQuery(
+		{
+			...recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "archived"),
+			enabled: tokens.archived === true,
+		},
+	);
 	const searchedSessions = (tokens.archived === true ? archivedQuery.data : data)?.sessions ?? NO_SESSIONS;
-	const projectsQuery = useQuery({
-		...projectsQueryOptions(),
-		enabled: type === "projects" || type === "memories" || tokens.project !== undefined || startStep === "picker",
-	});
+	const projectsQuery = useQuery(
+		{
+			...projectsQueryOptions(),
+			enabled:
+				type === "projects" || type === "memories" || tokens.project !== undefined || startStep === "picker",
+		},
+	);
 	const projects = projectsQuery.data ?? NO_PROJECTS;
-	const artifactsQuery = useQuery({...artifactsQueryOptions, enabled: type === "artifacts"});
+	const artifactsQuery = useQuery(
+		{
+			...artifactsQueryOptions,
+			enabled: type === "artifacts",
+		},
+	);
 	const artifacts = artifactsQuery.data ?? NO_ARTIFACTS;
-	const routinesQuery = useQuery({...routinesQueryOptions, enabled: type === "scheduled"});
+	const routinesQuery = useQuery(
+		{
+			...routinesQueryOptions,
+			enabled: type === "scheduled",
+		},
+	);
 	const routines = routinesQuery.data ?? NO_ROUTINES;
 	const listsRecentDocs = searchable && tokens.text === "";
-	const plansQuery = useQuery({
-		...plansQueryOptions(),
-		enabled: listsRecentDocs && type === "plans",
-	});
+	const plansQuery = useQuery(
+		{
+			...plansQueryOptions(),
+			enabled: listsRecentDocs && type === "plans",
+		},
+	);
 	const plans = plansQuery.data ?? NO_PLANS;
-	const memoryLists = useQueries({
-		queries: projects
-			.filter((project) => project.memoryCount > 0)
-			.map((project) => ({
-				...projectMemoriesQueryOptions(project.id),
-				enabled: listsRecentDocs && type === "memories",
-			})),
-		combine: memoryListData,
-	});
+	const memoryLists = useQueries(
+		{
+			queries: projects
+				.filter((project) => project.memoryCount > 0)
+				.map((project) => (
+				{
+					...projectMemoriesQueryOptions(project.id),
+					enabled: listsRecentDocs && type === "memories",
+				})),
+			combine: memoryListData,
+		},
+	);
 	const memoryDocs = useMemo(
 		(): PaletteDoc[] =>
 			memoryLists.flatMap((list) =>
-				(list?.memories ?? []).map((memory) => {
+				(list?.memories ?? []).map((memory) =>
+				{
 					const slug = toMdSlug(memory.filename);
 					return {
 						kind: "memory" as const,
@@ -1130,20 +1468,30 @@ function PalettePopup({
 		tokens.text !== "" &&
 		!isClientPaletteType(type) &&
 		(tokens.project === undefined || !projectsQuery.isPending);
-	const serverSearch = useQuery({
-		...unifiedSearchQueryOptions(debouncedParams ?? {query: ""}),
-		enabled: serverActive && debouncedParams !== null && debouncedParams.query !== "",
-	});
+	const serverSearch = useQuery(
+		{
+			...unifiedSearchQueryOptions(
+				debouncedParams ??
+				{
+					query: "",
+				},
+			),
+			enabled: serverActive && debouncedParams !== null && debouncedParams.query !== "",
+		},
+	);
 	const fetching = serverActive && (debouncedQuery !== trimmedQuery || serverSearch.isFetching);
 	const stallKey =
 		fetching && (type !== "all" || hasFilterTokens) ? JSON.stringify([trimmedQuery, tab, filters]) : null;
 	const [stalledKey, setStalledKey] = useState<string | null>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (stallKey === null) return undefined;
-		const timer = setTimeout(() => {
+		const timer = setTimeout(() =>
+		{
 			setStalledKey(stallKey);
 		}, PALETTE_FILTERED_STALL_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 			setStalledKey(null);
 		};
@@ -1163,14 +1511,16 @@ function PalettePopup({
 	);
 
 	// Sessions (or All with only filter tokens) and no text lists recents; Projects, Artifacts and Scheduled are searched client-side.
-	const listing = useMemo((): SearchRow[] | null => {
+	const listing = useMemo((): SearchRow[] | null =>
+	{
 		if (!searchable || (trimmedQuery === "" && tab === "all" && chips.length === 0)) return null;
 		if (type === "projects") return projectRows(projects, tokens.text);
 		if (type === "artifacts") return artifactRows(artifacts, tokens.text);
 		if (type === "scheduled") return routineRows(routines, tokens.text, Date.now());
 		if (type === "plans" && tokens.text === "") return recentDocRows(planDocs(plans), tokens, projects, Date.now());
 		if (type === "memories" && tokens.text === "") return recentDocRows(memoryDocs, tokens, projects, Date.now());
-		if ((type === "sessions" || type === "all") && tokens.text === "") {
+		if ((type === "sessions" || type === "all") && tokens.text === "")
+		{
 			return visibleSessions.slice(0, PALETTE_RECENT_LIMIT).map((session) => sessionRow(session, [], markOf));
 		}
 		return null;
@@ -1200,8 +1550,10 @@ function PalettePopup({
 		() => new Map(searchedSessions.map((session) => [session.id, session])),
 		[searchedSessions],
 	);
-	const serverRows = useMemo(() => {
-		if (!serverActive || debouncedQuery !== trimmedQuery || serverSearch.data === undefined) {
+	const serverRows = useMemo(() =>
+	{
+		if (!serverActive || debouncedQuery !== trimmedQuery || serverSearch.data === undefined)
+		{
 			return [];
 		}
 		const shown = new Set(instant.map(rowKey));
@@ -1221,31 +1573,41 @@ function PalettePopup({
 	]);
 
 	// Sessions the → card can act on: recents carry archive/bucket state, server hits do not.
-	const cardSessions = useMemo(() => {
+	const cardSessions = useMemo(() =>
+	{
 		const byId = new Map<string, PaletteCardSession>();
-		for (const row of serverRows) {
+		for (const row of serverRows)
+		{
 			if (row.kind !== "session") continue;
-			byId.set(row.id, {
-				id: row.id,
-				title: row.title,
-				mtime: row.mtime,
-				archived: undefined,
-				bucket: undefined,
-			});
+			byId.set(
+				row.id,
+				{
+					id: row.id,
+					title: row.title,
+					mtime: row.mtime,
+					archived: undefined,
+					bucket: undefined,
+				},
+			);
 		}
-		for (const session of searchedSessions) {
-			byId.set(session.id, {
-				id: session.id,
-				title: session.title,
-				mtime: session.mtime,
-				archived: session.archived,
-				bucket: session.bucket,
-			});
+		for (const session of searchedSessions)
+		{
+			byId.set(
+				session.id,
+				{
+					id: session.id,
+					title: session.title,
+					mtime: session.mtime,
+					archived: session.archived,
+					bucket: session.bucket,
+				},
+			);
 		}
 		return byId;
 	}, [searchedSessions, serverRows]);
 
-	function openRowActions(id: string) {
+	function openRowActions(id: string)
+	{
 		const session = cardSessions.get(id);
 		const popup = popupRef.current;
 		if (session === undefined || popup === null) return;
@@ -1256,13 +1618,20 @@ function PalettePopup({
 		const list = popup.querySelector("[cmdk-list]") ?? popup;
 		const dialog = cardRef.current ?? popup;
 		// Measured before the recede starts, so the scale is applied once.
-		const anchorRect = rowActionsAnchorRect({
-			list: list.getBoundingClientRect(),
-			row: (row ?? list).getBoundingClientRect(),
-			dialog: dialog.getBoundingClientRect(),
-			reducedMotion: isMotionReduced(),
-		});
-		setRowActions({session, anchorRect});
+		const anchorRect = rowActionsAnchorRect(
+			{
+				list: list.getBoundingClientRect(),
+				row: (row ?? list).getBoundingClientRect(),
+				dialog: dialog.getBoundingClientRect(),
+				reducedMotion: isMotionReduced(),
+			},
+		);
+		setRowActions(
+			{
+				session,
+				anchorRect,
+			},
+		);
 	}
 
 	// Set by a press on the palette while the card is open, so that press's click only closes the card.
@@ -1271,7 +1640,8 @@ function PalettePopup({
 	// Upstream's `Na`/`Ea`: once ⌥⏎ or ← has opened or closed the card, that key's auto-repeats are swallowed.
 	const swallowRepeatRef = useRef<RowActionsRepeatKey | null>(null);
 
-	function closeRowActions({refocus, swallowRepeat}: RowActionsCloseOptions) {
+	function closeRowActions({refocus, swallowRepeat}: RowActionsCloseOptions)
+	{
 		setRowActions(null);
 		swallowRepeatRef.current = swallowRepeat ?? null;
 		if (refocus) inputRef.current?.focus();
@@ -1280,41 +1650,106 @@ function PalettePopup({
 	// Upstream's `Sa===null → _a(null)`: the card closes once its row is no longer in the list.
 	// Runs after every commit because rows come from several queries and filters.
 	const rowActionsId = rowActions?.session.id;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (rowActionsId === undefined) return;
 		const row = popupRef.current?.querySelector(`[cmdk-item][data-value="session:${CSS.escape(rowActionsId)}"]`);
-		if (row === null || row === undefined) closeRowActions({refocus: true});
+		if (row === null || row === undefined)
+			closeRowActions(
+				{
+					refocus: true,
+				},
+			);
 	});
 
 	// Upstream's Open closes without refocusing the opener; the session page focuses its own composer.
-	function openSession(id: string) {
+	function openSession(id: string)
+	{
 		restoreFocusRef.current = false;
-		void navigate({to: "/session/$id", params: {id}});
-	}
-
-	function openRow(row: SearchRow) {
-		if (row.kind === "session") openSession(row.id);
-		else if (row.kind === "project") void navigate({to: "/project/$id", params: {id: row.id}});
-		else if (row.kind === "artifact") void navigate({to: "/artifact/$id", params: {id: row.id}});
-		else if (row.kind === "routine") void navigate({to: "/routines"});
-		else if (row.kind === "file") {
-			void navigate({to: "/file/$", params: {_splat: encodeFilePath(row.id)}});
-		} else if (row.href !== undefined) void navigate({href: row.href});
-	}
-
-	async function copyCommand(command: string) {
-		const copied = await writeClipboardText(command);
-		toast(
-			copied
-				? {kind: "success", message: "Command copied to clipboard."}
-				: {kind: "error", message: "Couldn’t copy the command. Try again."},
+		void navigate(
+			{
+				to: "/session/$id",
+				params:
+				{
+					id,
+				},
+			},
 		);
 	}
 
-	function runSessionCommand(id: SessionCommandId) {
+	function openRow(row: SearchRow)
+	{
+		if (row.kind === "session") openSession(row.id);
+		else if (row.kind === "project")
+			void navigate(
+				{
+					to: "/project/$id",
+					params:
+					{
+						id: row.id,
+					},
+				},
+			);
+		else if (row.kind === "artifact")
+			void navigate(
+				{
+					to: "/artifact/$id",
+					params:
+					{
+						id: row.id,
+					},
+				},
+			);
+		else if (row.kind === "routine")
+			void navigate(
+				{
+					to: "/routines",
+				},
+			);
+		else if (row.kind === "file")
+		{
+			void navigate(
+				{
+					to: "/file/$",
+					params:
+					{
+						_splat: encodeFilePath(row.id),
+					},
+				},
+			);
+		}
+		else if (row.href !== undefined)
+			void navigate(
+				{
+					href: row.href,
+				},
+			);
+	}
+
+	async function copyCommand(command: string)
+	{
+		const copied = await writeClipboardText(command);
+		toast(
+			copied
+				?
+					{
+						kind: "success",
+						message: "Command copied to clipboard.",
+					}
+				:
+					{
+						kind: "error",
+						message: "Couldn’t copy the command. Try again.",
+					},
+		);
+	}
+
+	function runSessionCommand(id: SessionCommandId)
+	{
 		if (currentSessionId === undefined || currentDetail === null) return;
 		const shell = createSessionCommands(currentSessionId, currentDetail.projectPath);
-		switch (id) {
+		switch (id)
+		{
 			case "pin":
 			case "unpin":
 				if (id === "pin") pin(currentSessionId);
@@ -1353,51 +1788,91 @@ function PalettePopup({
 	);
 	const startProjectName = currentDetail?.projectName ?? data?.sessions[0]?.projectName;
 
-	function openStartPicker() {
+	function openStartPicker()
+	{
 		setStartStep("picker");
 		const first = startProjects[0];
 		setSelectedValue(first === undefined ? "" : startProjectValue(first));
 	}
 
-	async function launchSession(project: StartProject) {
-		const launch = {
+	async function launchSession(project: StartProject)
+	{
+		const launch =
+		{
 			cwd: project.projectPath,
 			prompt: composePrompt(startPrompt, takeContextChips(COMPOSE_DRAFT_KEY), []),
 		};
 		const since = Date.now();
 		setStartStep("launching");
-		try {
+		try
+		{
 			const {sessionId} = await launchHerdrSession(launch);
-			setPendingLaunch({cwd: launch.cwd, since, sessionId});
-		} catch {
+			setPendingLaunch(
+				{
+					cwd: launch.cwd,
+					since,
+					sessionId,
+				},
+			);
+		}
+		catch
+		{
 			const copied = await writeClipboardText(buildClaudeCopyCommand(launch));
 			toast(
 				copied
-					? {kind: "success", message: "Copied command — no terminal to launch in"}
-					: {kind: "error", message: "Couldn’t start a session. Try again."},
+					?
+						{
+							kind: "success",
+							message: "Copied command — no terminal to launch in",
+						}
+					:
+						{
+							kind: "error",
+							message: "Couldn’t start a session. Try again.",
+						},
 			);
 			onOpenChange(false);
 		}
 	}
 
 	// The launched session opens once its SessionStart hook arrives over SSE.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (pendingLaunch === null) return;
 		const id = findLaunchedSession(activeSessions.values(), pendingLaunch);
 		if (id === null) return;
 		restoreFocusRef.current = false;
 		onOpenChange(false);
-		void navigate({to: "/session/$id", params: {id}});
+		void navigate(
+			{
+				to: "/session/$id",
+				params:
+				{
+					id,
+				},
+			},
+		);
 	}, [pendingLaunch, activeSessions, onOpenChange, navigate]);
 
-	function seeAllResults(apiType: ServerPaletteType) {
-		void navigate({to: "/search", search: {q: tokens.text, type: apiType}});
+	function seeAllResults(apiType: ServerPaletteType)
+	{
+		void navigate(
+			{
+				to: "/search",
+				search:
+				{
+					q: tokens.text,
+					type: apiType,
+				},
+			},
+		);
 	}
 
 	// Upstream resets the highlight to row 0 on every tab change (`pg={index:0}`); the stale cmdk value
 	// from the previous tab would otherwise leave no row selected. Quick actions still win when shown.
 	const pendingFirstRowRef = useRef(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!pendingFirstRowRef.current) return;
 		const first = offersNewSession
 			? NEW_SESSION_VALUE
@@ -1413,7 +1888,8 @@ function PalettePopup({
 	// controlled value, so every commit points the textarea at the selected row itself. It writes the
 	// attribute directly (a state round trip would cost the palette a second commit), and the textarea
 	// overrides cmdk's own prop with undefined so React never writes cmdk's stale id over it.
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const input = inputRef.current;
 		if (input === null) return;
 		const items = cardRef.current?.querySelectorAll<HTMLElement>("[cmdk-item]") ?? [];
@@ -1423,7 +1899,8 @@ function PalettePopup({
 	});
 
 	// Upstream's Actions mode is exclusive, so choosing any type leaves it.
-	function chooseTab(next: PaletteType) {
+	function chooseTab(next: PaletteType)
+	{
 		setTab(next);
 		setFilters(({actions: _actions, ...rest}) => rest);
 		setSelectedValue("");
@@ -1433,7 +1910,8 @@ function PalettePopup({
 
 	// Upstream commits the flag filters (Archived, Actions) at once; the others open their value list.
 	// Either way the hint replaces the query from `start`, where its "filter by" words begin.
-	function chooseFilter(filter: PaletteFilter, start = 0) {
+	function chooseFilter(filter: PaletteFilter, start = 0)
+	{
 		const token = `${query.slice(0, start)}${PALETTE_FILTER_TOKENS[filter]}`;
 		if (filter === "archived" || filter === "actions") changeQuery(`${token} `);
 		else setQuery(token);
@@ -1441,13 +1919,15 @@ function PalettePopup({
 	}
 
 	// An inline suggestion commits its chip in place of the words it matched.
-	function chooseInlineSuggestion(suggestion: PaletteInlineSuggestion) {
+	function chooseInlineSuggestion(suggestion: PaletteInlineSuggestion)
+	{
 		chooseFilterValue(
 			`${query.slice(0, suggestion.start)}${PALETTE_FILTER_TOKENS[suggestion.filter]}${suggestion.value} `,
 		);
 	}
 
-	function filterHintItem(filter: PaletteFilter, start = 0) {
+	function filterHintItem(filter: PaletteFilter, start = 0)
+	{
 		return (
 			<CommandItem
 				key={filter}
@@ -1458,7 +1938,8 @@ function PalettePopup({
 						<span className={BADGE_LABEL_PAD[look]}>{paletteFilterLabels[filter]}</span>
 					</span>
 				}
-				onSelect={() => {
+				onSelect={() =>
+				{
 					chooseFilter(filter, start);
 				}}
 			>
@@ -1469,14 +1950,17 @@ function PalettePopup({
 
 	const inlineHintItems = inlineHints.map((filter) => filterHintItem(filter, hintMatch?.start));
 
-	function chooseFilterValue(next: string) {
+	function chooseFilterValue(next: string)
+	{
 		changeQuery(next);
 		inputRef.current?.focus();
 	}
 
 	// Upstream's `ht`: each `key:value` word a whitespace follows becomes a chip (or, for `type:`, the tab).
-	function changeQuery(next: string) {
-		if (compose || !shouldCommitPaletteTokens(next)) {
+	function changeQuery(next: string)
+	{
+		if (compose || !shouldCommitPaletteTokens(next))
+		{
 			setQuery(next);
 			return;
 		}
@@ -1489,21 +1973,27 @@ function PalettePopup({
 
 	// Upstream grows the Compose field to its content (capped by max-h-24) once the draft is multi-line
 	// or past 50 characters; otherwise, and always in Search, the rows height applies.
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const input = inputRef.current;
 		if (!input) return;
-		if (compose && (query.includes("\n") || query.length > 50)) {
+		if (compose && (query.includes("\n") || query.length > 50))
+		{
 			input.style.height = "auto";
 			input.style.height = `${input.scrollHeight}px`;
-		} else {
+		}
+		else
+		{
 			input.style.height = "";
 		}
 	}, [compose, query]);
 
 	// Upstream's Compose paste: files attach, and text of 500+ chars becomes a pasted-text chip instead of inline text.
-	function handleComposePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+	function handleComposePaste(event: ClipboardEvent<HTMLTextAreaElement>)
+	{
 		const files = Array.from(event.clipboardData.files);
-		if (files.length > 0) {
+		if (files.length > 0)
+		{
 			event.preventDefault();
 			attachUploadedFiles(COMPOSE_DRAFT_KEY, files, toast);
 			return;
@@ -1511,33 +2001,44 @@ function PalettePopup({
 		const text = event.clipboardData.getData("text/plain");
 		if (text.length < PASTE_ATTACH_CHARS) return;
 		event.preventDefault();
-		attachContext(COMPOSE_DRAFT_KEY, {kind: "pasted-text", text});
+		attachContext(
+			COMPOSE_DRAFT_KEY,
+			{
+				kind: "pasted-text",
+				text,
+			},
+		);
 	}
 
 	// Shift+Enter inserts the newline natively; stopping it here keeps cmdk's Enter from selecting a row.
-	function handleComposeKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+	function handleComposeKeyDown(event: KeyboardEvent<HTMLTextAreaElement>)
+	{
 		if (compose && event.key === "Enter" && event.shiftKey) event.stopPropagation();
 	}
 
-	function clearFilter(filter: PaletteChipFilter) {
+	function clearFilter(filter: PaletteChipFilter)
+	{
 		setFilters(({[filter]: _removed, ...rest}) => rest);
 		clearFilterSelection();
 	}
 
 	// Upstream's phone-fold Clear filters drops every chip but keeps the type tab.
-	function clearFoldedFilters() {
+	function clearFoldedFilters()
+	{
 		setFilters({});
 		clearFilterSelection();
 	}
 
 	// Like a tab change, a chip change resets the highlight to the first row.
-	function clearFilterSelection() {
+	function clearFilterSelection()
+	{
 		setSelectedValue("");
 		pendingFirstRowRef.current = true;
 	}
 
 	// Upstream's Search all clears the type and every chip, keeping only the typed text.
-	function searchAll() {
+	function searchAll()
+	{
 		setQuery(tokens.text);
 		setFilters({});
 		chooseTab("all");
@@ -1545,15 +2046,23 @@ function PalettePopup({
 
 	// Upstream's $n(["question"], true): closes the palette, then resolves the card now, the one after the card
 	// that held focus before the palette opened, else refocuses that element while it is still shown.
-	function jumpToQuestion() {
+	function jumpToQuestion()
+	{
 		const from = paletteFocusOrigin();
 		restoreFocusRef.current = false;
-		select(() => {
-			requestAnimationFrame(() => {
+		select(() =>
+		{
+			requestAnimationFrame(() =>
+			{
 				const card = findWaitingCard(document, from);
 				if (card !== null) landOnWaitingCard(card);
-				else if (from instanceof HTMLElement && from.isConnected && isAvailable(from)) {
-					from.focus({preventScroll: true});
+				else if (from instanceof HTMLElement && from.isConnected && isAvailable(from))
+				{
+					from.focus(
+						{
+							preventScroll: true,
+						},
+					);
 				}
 			});
 		});
@@ -1561,26 +2070,36 @@ function PalettePopup({
 
 	// A settings member opens its tab; a customize member its Yours list. Both are hash changes over the current
 	// page, so an open Settings dialog switches section in place.
-	function openSettingsMember({member}: SettingsPaletteCommand) {
+	function openSettingsMember({member}: SettingsPaletteCommand)
+	{
 		if (member.kind === "settings") openSettings(member.tab);
 		else
-			void navigate({
-				to: ".",
-				search: true,
-				params: true,
-				hash: customizeHash({section: member.section}),
-				resetScroll: false,
-				hashScrollIntoView: false,
-			});
+			void navigate(
+				{
+					to: ".",
+					search: true,
+					params: true,
+					hash: customizeHash(
+						{
+							section: member.section,
+						},
+					),
+					resetScroll: false,
+					hashScrollIntoView: false,
+				},
+			);
 	}
 
-	function regionJumpAction(id: PaletteJumpActionId, icon: ReactNode, region: JumpRegionName): PaletteAction {
+	function regionJumpAction(id: PaletteJumpActionId, icon: ReactNode, region: JumpRegionName): PaletteAction
+	{
 		return {
 			label: PALETTE_JUMP_ACTIONS[id].label,
 			icon,
 			// Runs after the palette closes; the next frame lands after the palette's final focus.
-			run: () => {
-				requestAnimationFrame(() => {
+			run: () =>
+			{
+				requestAnimationFrame(() =>
+				{
 					focusRegionByName(document, region);
 				});
 			},
@@ -1594,13 +2113,24 @@ function PalettePopup({
 			{
 				label: "Search sessions",
 				icon: <Search />,
-				run: () => void navigate({to: "/search", search: {q: "", type: "all" as const}}),
+				run: () =>
+					void navigate(
+						{
+							to: "/search",
+							search:
+							{
+								q: "",
+								type: "all" as const,
+							},
+						},
+					),
 				shortcut: "search",
 			},
 			{
 				label: "Keyboard shortcuts",
 				icon: <Keyboard />,
-				run: () => {
+				run: () =>
+				{
 					setKeyboardShortcutsOpen(true);
 				},
 				shortcut: "shortcuts_modal",
@@ -1611,13 +2141,18 @@ function PalettePopup({
 				run: toggleSidebar,
 				shortcut: "toggle_sidebar",
 			},
-			{label: "Mark all sessions seen", icon: <CircleCheckBig />, run: clearAll},
+			{
+				label: "Mark all sessions seen",
+				icon: <CircleCheckBig />,
+				run: clearAll,
+			},
 			...(currentSessionId !== undefined && currentDetail !== null
 				? [
 						{
 							label: "Show side chat",
 							icon: <MessagesSquare />,
-							run: () => {
+							run: () =>
+							{
 								openSideChat(currentSessionId);
 							},
 							shortcut: "toggle_side_chat",
@@ -1639,44 +2174,62 @@ function PalettePopup({
 				: []),
 			regionJumpAction("jump_to_input", <TextCursorInput />, "composer"),
 			// Upstream appends `Ss()` after the registry, which hides its plain Settings action from the palette.
-			...SETTINGS_COMMANDS.map((command): PaletteAction => ({
+			...SETTINGS_COMMANDS.map((command): PaletteAction => (
+			{
 				label: command.description,
 				icon: command.icon === "usage" ? <Gauge /> : <SlidersHorizontal />,
 				keywords: command.searchHints,
 				value: `settings:${command.key}`,
-				run: () => {
+				run: () =>
+				{
 					openSettingsMember(command);
 				},
-				warm: () => {
+				warm: () =>
+				{
 					warmSettingsCommand(command);
 				},
 			})),
 		] satisfies PaletteAction[]
 	).filter((action: PaletteAction) => action.shortcut === undefined || SHORTCUTS[action.shortcut].enabled);
 
-	function select(callback: () => void) {
+	function select(callback: () => void)
+	{
 		onOpenChange(false);
 		callback();
 	}
 
 	/** Upstream's sole send_message item: an empty draft is a shortcut to the New session page. */
-	function onSend() {
-		if (trimmedQuery === "" && composeChips.length === 0) {
-			select(() => void navigate({to: "/"}).then(requestHomeComposerFocus));
-		} else if (canSend) {
+	function onSend()
+	{
+		if (trimmedQuery === "" && composeChips.length === 0)
+		{
+			select(
+				() =>
+					void navigate(
+						{
+							to: "/",
+						},
+					).then(requestHomeComposerFocus),
+			);
+		}
+		else if (canSend)
+		{
 			openStartPicker();
 		}
 	}
 
-	function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-		if (event.repeat && event.key === swallowRepeatRef.current) {
+	function handleKeyDown(event: KeyboardEvent<HTMLDivElement>)
+	{
+		if (event.repeat && event.key === swallowRepeatRef.current)
+		{
 			event.preventDefault();
 			event.stopPropagation();
 			return;
 		}
 		if (!event.repeat) swallowRepeatRef.current = null;
 		if (!compose && event.target === inputRef.current) startPaletteSearchJourney(event.nativeEvent);
-		if (event.key === "Escape" && startStep === "picker") {
+		if (event.key === "Escape" && startStep === "picker")
+		{
 			event.preventDefault();
 			event.stopPropagation();
 			setStartStep("idle");
@@ -1684,17 +2237,20 @@ function PalettePopup({
 			inputRef.current?.focus();
 			return;
 		}
-		if (event.key === "Enter" && event.metaKey && canStart && startStep === "idle") {
+		if (event.key === "Enter" && event.metaKey && canStart && startStep === "idle")
+		{
 			event.preventDefault();
 			openStartPicker();
 			return;
 		}
 		// Upstream's modifiedEnterPicksNothing: while the jump is offered, ⌘/Ctrl+Enter picks no row.
-		if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !compose && jumpOffered) {
+		if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !compose && jumpOffered)
+		{
 			event.preventDefault();
 			return;
 		}
-		if (isAltEnter(event)) {
+		if (isAltEnter(event))
+		{
 			openSelectedRowActions(event);
 			return;
 		}
@@ -1707,24 +2263,28 @@ function PalettePopup({
 			!event.metaKey &&
 			!event.ctrlKey &&
 			!event.nativeEvent.isComposing
-		) {
+		)
+		{
 			event.preventDefault();
 			event.stopPropagation();
 			onSend();
 			return;
 		}
-		if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+		if (event.key === "ArrowLeft" || event.key === "ArrowRight")
+		{
 			stepTab(event);
 			return;
 		}
-		if (event.key === "Backspace" || event.key === "Delete") {
+		if (event.key === "Backspace" || event.key === "Delete")
+		{
 			if (compose) leaveEmptyCompose(event);
 			else popFilter(event);
 			return;
 		}
 		// Upstream excludes Alt/Meta/Ctrl but not Shift, so Shift+Tab toggles too; a held Tab is
 		// swallowed without toggling.
-		if (event.key !== "Tab" || event.metaKey || event.ctrlKey || event.altKey) {
+		if (event.key !== "Tab" || event.metaKey || event.ctrlKey || event.altKey)
+		{
 			return;
 		}
 		event.preventDefault();
@@ -1734,16 +2294,23 @@ function PalettePopup({
 
 	// Upstream: Backspace/Delete on an empty Compose drops back to Search for this open only, so the
 	// next ⌘K still opens Compose. Attachments count as content here, since local Search can't show them.
-	function leaveEmptyCompose(event: KeyboardEvent<HTMLDivElement>) {
+	function leaveEmptyCompose(event: KeyboardEvent<HTMLDivElement>)
+	{
 		if (event.target !== inputRef.current || startStep !== "idle") return;
 		if (query !== "" || composeChips.length > 0 || event.repeat || isComposingKey(event)) return;
 		event.preventDefault();
-		switchView("search", {remember: false});
+		switchView(
+			"search",
+			{
+				remember: false,
+			},
+		);
 	}
 
 	// ← / → at the matching edge of the input (or with no query) step through the type tabs:
 	// upstream's `yu` decides, and `bu` wraps unless the key is held.
-	function stepTab(event: KeyboardEvent<HTMLDivElement>) {
+	function stepTab(event: KeyboardEvent<HTMLDivElement>)
+	{
 		const input = inputRef.current;
 		if (compose || input === null || event.target !== input) return;
 		const direction = paletteTypeStep(
@@ -1756,7 +2323,11 @@ function PalettePopup({
 				repeat: event.repeat,
 				composing: isComposingKey(event),
 			},
-			{text: input.value, selectionStart: input.selectionStart, selectionEnd: input.selectionEnd},
+			{
+				text: input.value,
+				selectionStart: input.selectionStart,
+				selectionEnd: input.selectionEnd,
+			},
 			getComputedStyle(input).direction === "rtl",
 		);
 		if (direction === 0) return;
@@ -1766,7 +2337,8 @@ function PalettePopup({
 	}
 
 	// Upstream's `A_` pops the newest chip on Backspace/Delete in an empty query, then the type tab.
-	function popFilter(event: KeyboardEvent<HTMLDivElement>) {
+	function popFilter(event: KeyboardEvent<HTMLDivElement>)
+	{
 		const input = inputRef.current;
 		if (compose || input === null || event.target !== input) return;
 		if (query !== "" || event.repeat || isComposingKey(event)) return;
@@ -1778,13 +2350,15 @@ function PalettePopup({
 		else chooseTab(popped.tab);
 	}
 
-	function isComposingKey(event: KeyboardEvent<HTMLDivElement>) {
+	function isComposingKey(event: KeyboardEvent<HTMLDivElement>)
+	{
 		// oxlint-disable-next-line typescript/no-deprecated -- Safari reports IME keydowns only as keyCode 229, as upstream checks
 		return event.nativeEvent.isComposing || event.keyCode === 229;
 	}
 
 	// ⌥⏎ opens the row-actions card for the selected session row.
-	function openSelectedRowActions(event: KeyboardEvent<HTMLDivElement>) {
+	function openSelectedRowActions(event: KeyboardEvent<HTMLDivElement>)
+	{
 		const input = inputRef.current;
 		if (input === null || event.target !== input) return;
 		// Never fall through to cmdk's Enter, which would run a non-session row.
@@ -1811,13 +2385,18 @@ function PalettePopup({
 	const canSend = canStart && startStep === "idle";
 	const addFilesKeys = useShortcutKeys("add_files").keys;
 
-	function openFilePicker() {
+	function openFilePicker()
+	{
 		fileInputRef.current?.click();
 	}
-	useShortcut("add_files", openFilePicker, {
-		disabled: !compose || startStep !== "idle",
-		allowInModal: true,
-	});
+	useShortcut(
+		"add_files",
+		openFilePicker,
+		{
+			disabled: !compose || startStep !== "idle",
+			allowInModal: true,
+		},
+	);
 	const matchesCommands = searchable && !filtered && tokens.text !== "";
 	const matchedSessionCommands =
 		matchesCommands && currentDetail !== null
@@ -1844,22 +2423,27 @@ function PalettePopup({
 		serverRows.length +
 		inlineHints.length +
 		inlineSuggestions.length;
-	const emptyKind = paletteEmptyKind({
-		query: tokens.text,
-		searching,
-		rowCount: resultCount,
-		filtered: type !== "all" || hasFilterTokens,
-		failed: serverActive && serverSearch.isError,
-		stalled,
-	});
+	const emptyKind = paletteEmptyKind(
+		{
+			query: tokens.text,
+			searching,
+			rowCount: resultCount,
+			filtered: type !== "all" || hasFilterTokens,
+			failed: serverActive && serverSearch.isError,
+			stalled,
+		},
+	);
 	const silentText = emptyKind === "silent" ? tokens.text : null;
 	const [silentSpokenFor, setSilentSpokenFor] = useState<string | null>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (silentText === null) return undefined;
-		const timer = setTimeout(() => {
+		const timer = setTimeout(() =>
+		{
 			setSilentSpokenFor(silentText);
 		}, PALETTE_SILENT_LIVE_DELAY_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 			setSilentSpokenFor(null);
 		};
@@ -1887,7 +2471,8 @@ function PalettePopup({
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all" && chips.length === 0;
 	// Upstream's `nn` fails for whitespace over 50 characters: only the Actions group shows, and it isn't frozen.
 	const whitespacePrompt = showEmptyState && !paletteSearchable(query);
-	if (frozenMarks !== null && frozenView === null && showEmptyState && !whitespacePrompt) {
+	if (frozenMarks !== null && frozenView === null && showEmptyState && !whitespacePrompt)
+	{
 		setFrozenView(emptyView.view);
 	}
 	const showResults =
@@ -1923,22 +2508,29 @@ function PalettePopup({
 				onPointerMoveCapture={
 					rowActions === null
 						? undefined
-						: (event) => {
+						: (event) =>
+							{
 								event.stopPropagation();
 							}
 				}
 				// Upstream's modal menu backdrop eats the first click outside the card. A press that slips past it
 				// still only closes the card: its click must not reach a row, even after the press closed the card.
-				onPointerDownCapture={(event) => {
+				onPointerDownCapture={(event) =>
+				{
 					swallowClickRef.current = rowActions !== null;
 					if (rowActions !== null) event.stopPropagation();
 				}}
-				onClickCapture={(event) => {
+				onClickCapture={(event) =>
+				{
 					if (rowActions === null && !swallowClickRef.current) return;
 					swallowClickRef.current = false;
 					event.preventDefault();
 					event.stopPropagation();
-					closeRowActions({refocus: true});
+					closeRowActions(
+						{
+							refocus: true,
+						},
+					);
 				}}
 			>
 				<div
@@ -2039,7 +2631,8 @@ function PalettePopup({
 										aria-label="Add files or photos"
 										tabIndex={-1}
 										className="hidden"
-										onChange={(event) => {
+										onChange={(event) =>
+										{
 											attachUploadedFiles(
 												COMPOSE_DRAFT_KEY,
 												Array.from(event.target.files ?? []),
@@ -2054,7 +2647,8 @@ function PalettePopup({
 												type="button"
 												aria-label="Add files or photos"
 												disabled={startStep !== "idle"}
-												onMouseDown={(event) => {
+												onMouseDown={(event) =>
+												{
 													event.preventDefault();
 												}}
 												onClick={openFilePicker}
@@ -2069,7 +2663,8 @@ function PalettePopup({
 												aria-label="Send"
 												aria-busy={launching ? true : undefined}
 												disabled={startStep !== "idle"}
-												onMouseDown={(event) => {
+												onMouseDown={(event) =>
+												{
 													event.preventDefault();
 												}}
 												onClick={onSend}
@@ -2103,10 +2698,17 @@ function PalettePopup({
 						].join(" ")}
 						{...(compose
 							? {}
-							: {
-									style: {
+							:
+								{
+									style:
+									{
 										...LIST_MAX_HEIGHT_STYLE,
-										...(listHeight === null ? {} : {height: `${listHeight}px`}),
+										...(listHeight === null
+											? {}
+											:
+												{
+													height: `${listHeight}px`,
+												}),
 									},
 								})}
 					>
@@ -2115,7 +2717,9 @@ function PalettePopup({
 								<CommandItem
 									value={NEW_SESSION_VALUE}
 									icon={<LoaderCircle className="animate-spin" />}
-									onSelect={() => {}}
+									onSelect={() =>
+									{
+									}}
 								>
 									Starting session…
 								</CommandItem>
@@ -2157,7 +2761,8 @@ function PalettePopup({
 									<CommandItem
 										key={value.query}
 										value={`filter-value:${value.query}`}
-										onSelect={() => {
+										onSelect={() =>
+										{
 											chooseFilterValue(value.query);
 										}}
 									>
@@ -2189,21 +2794,34 @@ function PalettePopup({
 													<EmptyViewItem
 														key={row.id}
 														row={row}
-														onOpenSession={(id) => {
-															select(() => {
+														onOpenSession={(id) =>
+														{
+															select(() =>
+															{
 																openSession(id);
 															});
 														}}
 														onOpenRowActions={openRowActions}
-														onNavigate={(href) => {
-															select(() => void navigate({href}));
-														}}
-														onNewSession={() => {
+														onNavigate={(href) =>
+														{
 															select(
 																() =>
-																	void navigate({to: "/"}).then(
-																		requestHomeComposerFocus,
+																	void navigate(
+																		{
+																			href,
+																		},
 																	),
+															);
+														}}
+														onNewSession={() =>
+														{
+															select(
+																() =>
+																	void navigate(
+																		{
+																			to: "/",
+																		},
+																	).then(requestHomeComposerFocus),
 															);
 														}}
 													/>
@@ -2229,12 +2847,15 @@ function PalettePopup({
 											key={rowKey(row)}
 											row={row}
 											now={now}
-											onSelect={() => {
-												select(() => {
+											onSelect={() =>
+											{
+												select(() =>
+												{
 													openRow(row);
 												});
 											}}
-											onRowActions={() => {
+											onRowActions={() =>
+											{
 												openRowActions(row.id);
 											}}
 										/>
@@ -2244,12 +2865,15 @@ function PalettePopup({
 											key={rowKey(row)}
 											row={row}
 											now={now}
-											onSelect={() => {
-												select(() => {
+											onSelect={() =>
+											{
+												select(() =>
+												{
 													openRow(row);
 												});
 											}}
-											onRowActions={() => {
+											onRowActions={() =>
+											{
 												openRowActions(row.id);
 											}}
 										/>
@@ -2259,8 +2883,10 @@ function PalettePopup({
 											key={command.id}
 											value={`session-command:${command.id}`}
 											icon={SESSION_COMMAND_ICONS[command.id]}
-											onSelect={() => {
-												select(() => {
+											onSelect={() =>
+											{
+												select(() =>
+												{
 													runSessionCommand(command.id);
 												});
 											}}
@@ -2274,8 +2900,14 @@ function PalettePopup({
 												key={action.label}
 												value={action.value ?? `action:${action.label}`}
 												icon={action.icon}
-												{...(action.warm === undefined ? {} : {onPointerEnter: action.warm})}
-												onSelect={() => {
+												{...(action.warm === undefined
+													? {}
+													:
+														{
+															onPointerEnter: action.warm,
+														})}
+												onSelect={() =>
+												{
 													select(action.run);
 												}}
 											>
@@ -2287,7 +2919,8 @@ function PalettePopup({
 												value={`action:${action.label}`}
 												id={action.shortcut}
 												icon={action.icon}
-												onSelect={() => {
+												onSelect={() =>
+												{
 													select(action.run);
 												}}
 											>
@@ -2300,9 +2933,15 @@ function PalettePopup({
 											key={command.to}
 											value={`nav:${command.to}`}
 											icon={command.icon}
-											onSelect={() => {
-												select(() => {
-													void navigate({to: command.to});
+											onSelect={() =>
+											{
+												select(() =>
+												{
+													void navigate(
+														{
+															to: command.to,
+														},
+													);
 												});
 											}}
 										>
@@ -2314,12 +2953,15 @@ function PalettePopup({
 											key={rowKey(row)}
 											row={row}
 											now={now}
-											onSelect={() => {
-												select(() => {
+											onSelect={() =>
+											{
+												select(() =>
+												{
 													openRow(row);
 												});
 											}}
-											onRowActions={() => {
+											onRowActions={() =>
+											{
 												openRowActions(row.id);
 											}}
 										/>
@@ -2334,7 +2976,8 @@ function PalettePopup({
 													<span className={BADGE_LABEL_PAD[look]}>{suggestion.label}</span>
 												</span>
 											}
-											onSelect={() => {
+											onSelect={() =>
+											{
 												chooseInlineSuggestion(suggestion);
 											}}
 										>
@@ -2352,8 +2995,10 @@ function PalettePopup({
 											<CommandItem
 												value="see-all-results"
 												icon={<Search />}
-												onSelect={() => {
-													select(() => {
+												onSelect={() =>
+												{
+													select(() =>
+													{
 														seeAllResults(type);
 													});
 												}}
@@ -2368,7 +3013,8 @@ function PalettePopup({
 										kind={emptyKind}
 										message={emptyMessage}
 										onSearchAll={searchAll}
-										onCompose={() => {
+										onCompose={() =>
+										{
 											switchView("compose");
 										}}
 									/>
@@ -2393,10 +3039,12 @@ function PalettePopup({
 								filters.archived,
 								filters.actions,
 							])}
-							words={`Showing ${new Intl.ListFormat("en", {type: "unit"}).format([
-								paletteTypeLabels[tab],
-								...chips.map((chip) => chip.label),
-							])}`}
+							words={`Showing ${new Intl.ListFormat(
+								"en",
+								{
+									type: "unit",
+								},
+							).format([paletteTypeLabels[tab], ...chips.map((chip) => chip.label)])}`}
 						/>
 					)}
 
@@ -2418,7 +3066,8 @@ function PalettePopup({
 									<ViewHint
 										label="Search"
 										disabled={startStep !== "idle"}
-										onSwitch={() => {
+										onSwitch={() =>
+										{
 											switchView("search");
 										}}
 									/>
@@ -2445,7 +3094,8 @@ function PalettePopup({
 								trailing={
 									<ViewHint
 										label="Compose"
-										onSwitch={() => {
+										onSwitch={() =>
+										{
 											switchView("compose");
 										}}
 									/>
@@ -2460,14 +3110,26 @@ function PalettePopup({
 					key={rowActions.session.id}
 					session={rowActions.session}
 					anchorRect={rowActions.anchorRect}
-					onOpen={(id) => {
-						select(() => {
+					onOpen={(id) =>
+					{
+						select(() =>
+						{
 							openSession(id);
 						});
 					}}
-					onRename={(session) => {
-						closeRowActions({refocus: false});
-						setRenaming({session, open: true});
+					onRename={(session) =>
+					{
+						closeRowActions(
+							{
+								refocus: false,
+							},
+						);
+						setRenaming(
+							{
+								session,
+								open: true,
+							},
+						);
 					}}
 					onClose={closeRowActions}
 				/>
@@ -2478,10 +3140,20 @@ function PalettePopup({
 					session={renaming.session}
 					open={renaming.open}
 					finalFocus={inputRef}
-					onClose={() => {
-						setRenaming((current) => (current === null ? null : {...current, open: false}));
+					onClose={() =>
+					{
+						setRenaming((current) =>
+							current === null
+								? null
+								:
+									{
+										...current,
+										open: false,
+									},
+						);
 					}}
-					onClosed={() => {
+					onClosed={() =>
+					{
 						setRenaming(null);
 					}}
 				/>
@@ -2504,14 +3176,16 @@ function ViewHint({
 	/** Upstream disables it while a Compose send is launching. */
 	disabled?: boolean;
 	onSwitch: () => void;
-}) {
+})
+{
 	return (
 		<button
 			type="button"
 			aria-keyshortcuts="Tab"
 			data-palette-own-keys=""
 			disabled={disabled}
-			onMouseDown={(event) => {
+			onMouseDown={(event) =>
+			{
 				event.preventDefault();
 			}}
 			onClick={onSwitch}
@@ -2530,7 +3204,8 @@ function ViewHint({
 
 /** Upstream sets this on the card while the footer is collapsed, so the list cap grows by the footer's 41px. */
 const FOOTER_COLLAPSED_CARD_CLASS = "[--cp-footer-collapsed:1] pointer-coarse:[--cp-footer-collapsed:0]";
-const LIST_MAX_HEIGHT_STYLE = {
+const LIST_MAX_HEIGHT_STYLE =
+{
 	maxHeight: "calc(440px + var(--cp-footer-collapsed, 0) * 41px)",
 } as const;
 const LIST_CAP_PX = 440;
@@ -2541,15 +3216,18 @@ const LIST_SCROLLER_CLASS =
 	"flex flex-col min-h-0 overflow-y-auto p-2.5 transition-[height,max-height] duration-150 ease-out motion-reduce:transition-none";
 
 /** Observes cmdk's list sizer so the scroller can transition to its content height; null until measured. */
-function useListContentHeight(): [(list: HTMLDivElement | null) => void, number | null] {
+function useListContentHeight(): [(list: HTMLDivElement | null) => void, number | null]
+{
 	const [height, setHeight] = useState<number | null>(null);
 	const observerRef = useRef<ResizeObserver | null>(null);
-	const ref = useCallback((list: HTMLDivElement | null) => {
+	const ref = useCallback((list: HTMLDivElement | null) =>
+	{
 		observerRef.current?.disconnect();
 		observerRef.current = null;
 		const sizer = list?.querySelector("[cmdk-list-sizer]");
 		if (sizer == null || typeof ResizeObserver === "undefined") return;
-		const observer = new ResizeObserver((entries) => {
+		const observer = new ResizeObserver((entries) =>
+		{
 			const entry = entries.at(-1);
 			if (entry !== undefined) setHeight(entry.contentRect.height);
 		});
@@ -2560,7 +3238,8 @@ function useListContentHeight(): [(list: HTMLDivElement | null) => void, number 
 }
 
 /** Upstream collapses the footer with a grid-rows transition rather than unmounting it. */
-function FooterCollapse({open, children}: {open: boolean; children: ReactNode}) {
+function FooterCollapse({open, children}: {open: boolean; children: ReactNode})
+{
 	return (
 		<div
 			aria-hidden={!open}
@@ -2586,7 +3265,8 @@ function PaletteFooter({
 	hints: ReadonlyArray<readonly [label: string, keys: readonly string[], className?: string]>;
 	/** Right-aligned extra: upstream's Compose Tab or Search Tab view hint. */
 	trailing?: ReactNode;
-}) {
+})
+{
 	return (
 		<div
 			data-palette-footer=""
@@ -2616,7 +3296,8 @@ function PaletteFooter({
 }
 
 /** Each chip's `data-filter`: upstream's filter key, which names the Date filter `active`. */
-const CHIP_DATA_FILTER = {
+const CHIP_DATA_FILTER =
+{
 	date: "active",
 	repo: "repo",
 	project: "project",
@@ -2637,12 +3318,14 @@ function FilterChips({
 	onClear: (filter: PaletteChipFilter) => void;
 	/** Upstream's phone-fold Clear filters. */
 	onClearAll: () => void;
-}) {
+})
+{
 	const stripRef = useRef<HTMLDivElement>(null);
 	const shownRef = useRef<ReadonlySet<PaletteChipFilter>>(new Set());
 	const look = useFizzyLake("color") ? "fizzy" : "base";
 	// Upstream's `$t`: scroll a newly set chip into view.
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const strip = stripRef.current;
 		const added = chips.find((chip) => !shownRef.current.has(chip.filter));
 		shownRef.current = new Set(chips.map((chip) => chip.filter));
@@ -2660,17 +3343,24 @@ function FilterChips({
 			data-palette-own-keys=""
 			className="-mx-1 flex h-8 min-w-0 shrink items-center gap-2 self-start overflow-x-auto overscroll-x-contain scroll-px-1 px-1 [scrollbar-width:none]"
 			// Clearing a chip leaves focus and the caret in the textarea.
-			onMouseDown={(event) => {
+			onMouseDown={(event) =>
+			{
 				event.preventDefault();
 			}}
-			onWheel={(event) => {
+			onWheel={(event) =>
+			{
 				if (event.deltaX === 0) event.currentTarget.scrollLeft += event.deltaY;
 			}}
 		>
 			{folded && (
 				<span
 					role="group"
-					aria-label={`${foldText}: ${new Intl.ListFormat("en", {type: "unit"}).format(chips.map((chip) => chip.label))}`}
+					aria-label={`${foldText}: ${new Intl.ListFormat(
+						"en",
+						{
+							type: "unit",
+						},
+					).format(chips.map((chip) => chip.label))}`}
 					className={`${CHIP_BADGE_CLASSES} sm:hidden`}
 				>
 					<span className={BADGE_LABEL_PAD[look]}>{foldText}</span>
@@ -2693,7 +3383,8 @@ function FilterChips({
 					</span>
 					<ChipClearButton
 						label="Clear filter"
-						onClear={() => {
+						onClear={() =>
+						{
 							onClear(chip.filter);
 						}}
 					/>
@@ -2703,13 +3394,15 @@ function FilterChips({
 	);
 }
 
-function ChipClearButton({label, onClear}: {label: string; onClear: () => void}) {
+function ChipClearButton({label, onClear}: {label: string; onClear: () => void})
+{
 	return (
 		<button
 			type="button"
 			aria-label={label}
 			className="relative inline-flex size-4 shrink-0 items-center justify-center rounded-[2.5px] -ml-0.5 -mr-[5px] text-current before:absolute before:-left-0.5 before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-6 hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-			onMouseDown={(event) => {
+			onMouseDown={(event) =>
+			{
 				event.preventDefault();
 			}}
 			onClick={onClear}
@@ -2721,27 +3414,39 @@ function ChipClearButton({label, onClear}: {label: string; onClear: () => void})
 
 /** Upstream's 28px type tablist under the input; cloud-only tabs are replaced by local types. */
 /** `value` is null in Actions mode, where upstream shows no active tab. */
-function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type: PaletteType) => void}) {
+function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type: PaletteType) => void})
+{
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	// Base UI keeps the last change's direction until the next one, so track it across renders.
-	const [shown, setShown] = useState<{value: PaletteType | null; direction: ActivationDirection}>({
-		value,
-		direction: "none",
-	});
-	if (shown.value !== value) {
-		setShown({
+	const [shown, setShown] = useState<
+	{
+		value: PaletteType | null;
+		direction: ActivationDirection;
+	}>(
+		{
 			value,
-			direction:
-				value === null || shown.value === null
-					? "none"
-					: activationDirection(PaletteTypeSchema.options, shown.value, value),
-		});
+			direction: "none",
+		},
+	);
+	if (shown.value !== value)
+	{
+		setShown(
+			{
+				value,
+				direction:
+					value === null || shown.value === null
+						? "none"
+						: activationDirection(PaletteTypeSchema.options, shown.value, value),
+			},
+		);
 	}
 	const direction = value === null ? "none" : shown.direction;
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const scroller = scrollerRef.current;
 		const tab = scroller?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
-		if (scroller && tab) {
+		if (scroller && tab)
+		{
 			scrollIntoStrip(scroller, tab, getComputedStyle(scroller).paddingLeft);
 		}
 	}, [value]);
@@ -2756,12 +3461,15 @@ function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type
 				ref={scrollerRef}
 				role="presentation"
 				className="-mx-6 -my-2 min-w-0 scroll-px-6 overflow-x-auto overscroll-x-contain px-6 py-2 [scrollbar-width:none]"
-				onMouseDown={(event) => {
+				onMouseDown={(event) =>
+				{
 					event.preventDefault();
 				}}
-				onWheel={(event) => {
+				onWheel={(event) =>
+				{
 					// Upstream's `en`: a vertical-only wheel scrolls the strip sideways, mirrored in RTL.
-					if (event.deltaX === 0) {
+					if (event.deltaX === 0)
+					{
 						const scroller = event.currentTarget;
 						const direction = getComputedStyle(scroller).direction === "rtl" ? -1 : 1;
 						scroller.scrollLeft += event.deltaY * direction;
@@ -2786,7 +3494,8 @@ function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type
 								data-activation-direction={direction}
 								className="flex items-center font-sans data-[orientation=horizontal]:[&>[role=tab]:first-child]:before:start-0 data-[orientation=horizontal]:[&>[role=tab]:last-child]:before:end-0"
 							>
-								{PaletteTypeSchema.options.map((type) => {
+								{PaletteTypeSchema.options.map((type) =>
+								{
 									const selected = type === value;
 									return (
 										<button
@@ -2800,10 +3509,12 @@ function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type
 											aria-disabled="false"
 											data-composite-item-active={selected ? "" : undefined}
 											tabIndex={selected || (value === null && type === "all") ? 0 : -1}
-											onMouseDown={(event) => {
+											onMouseDown={(event) =>
+											{
 												event.preventDefault();
 											}}
-											onClick={() => {
+											onClick={() =>
+											{
 												onChange(type);
 											}}
 											// Comfortable-density geometry (28px, 0 10px, 14px/20px, 7px pill) to match the rest of the
@@ -2836,8 +3547,10 @@ function EmptyViewItem({
 	onOpenRowActions: (id: string) => void;
 	onNavigate: (href: string) => void;
 	onNewSession: () => void;
-}) {
-	if (row.kind === "action") {
+})
+{
+	if (row.kind === "action")
+	{
 		// Upstream's empty state lists only New session, without keycaps; the other actions answer a typed query.
 		return (
 			<CommandItem value="action:New session" icon={<CirclePlus />} onSelect={onNewSession}>
@@ -2845,12 +3558,14 @@ function EmptyViewItem({
 			</CommandItem>
 		);
 	}
-	if (row.kind === "page") {
+	if (row.kind === "page")
+	{
 		return (
 			<CommandItem
 				icon={PAGE_ICONS[row.entry.kind]}
 				value={`recent:${row.entry.key}`}
-				onSelect={() => {
+				onSelect={() =>
+				{
 					onNavigate(row.entry.href);
 				}}
 			>
@@ -2859,24 +3574,34 @@ function EmptyViewItem({
 		);
 	}
 	const {mark} = row;
-	const secondary = paletteSecondary({prNumber: row.prNumber, time: undefined});
+	const secondary = paletteSecondary(
+		{
+			prNumber: row.prNumber,
+			time: undefined,
+		},
+	);
 	return (
 		<SessionRowActions
 			value={`session:${row.id}`}
-			onOpen={() => {
+			onOpen={() =>
+			{
 				onOpenRowActions(row.id);
 			}}
 		>
 			<CommandItem
 				icon={<PaletteSessionIcon mark={mark} />}
 				value={`session:${row.id}`}
-				onSelect={() => {
+				onSelect={() =>
+				{
 					onOpenSession(row.id);
 				}}
 				rowActions
 				{...(secondary === undefined
 					? {}
-					: {secondary: <PaletteSecondary text={secondary} archived={false} />})}
+					:
+						{
+							secondary: <PaletteSecondary text={secondary} archived={false} />,
+						})}
 			>
 				{row.title}
 				{mark !== undefined && <span className="sr-only"> {PALETTE_MARK_LABELS[mark]}</span>}
@@ -2886,7 +3611,8 @@ function EmptyViewItem({
 }
 
 /** Upstream's static mark Pulse colors (`fn`): accent for awaiting, error and unread; brand for running. */
-const MARK_DOT_COLOR = {
+const MARK_DOT_COLOR =
+{
 	awaiting: "var(--cds-fill-accent)",
 	error: "var(--cds-fill-accent)",
 	unread: "var(--cds-fill-accent)",
@@ -2894,8 +3620,10 @@ const MARK_DOT_COLOR = {
 } as const satisfies Record<PaletteMark, string>;
 
 /** Upstream's code-session icon (`mn`): bare when unmarked, else notched by a rem-scaled `--dot-r` mask (mirrored in RTL) under its mark Pulse. */
-function PaletteSessionIcon({mark}: {mark: PaletteMark | undefined}) {
-	if (mark === undefined) {
+function PaletteSessionIcon({mark}: {mark: PaletteMark | undefined})
+{
+	if (mark === undefined)
+	{
 		return (
 			<div className="relative shrink-0">
 				<CodeXml />
@@ -2919,7 +3647,14 @@ function PaletteSessionIcon({mark}: {mark: PaletteMark | undefined}) {
 }
 
 /** A command row advertising its registry shortcut as keycaps and `aria-keyshortcuts`. */
-function ShortcutCommandItem({id, ...props}: {id: ShortcutId} & Omit<Parameters<typeof CommandItem>[0], "shortcut">) {
+function ShortcutCommandItem({
+	id,
+	...props
+}:
+{
+	id: ShortcutId;
+} & Omit<Parameters<typeof CommandItem>[0], "shortcut">)
+{
 	const shortcut = useShortcutKeys(id);
 	return <CommandItem {...props} shortcut={shortcut} />;
 }
@@ -2929,7 +3664,8 @@ const ROW_CLASS =
 
 const ARCHIVED_ROW_CLASS = ROW_CLASS.replace("text-secondary", "text-ink-muted");
 
-function ReturnGlyph() {
+function ReturnGlyph()
+{
 	return (
 		<span className="hidden shrink-0 text-xs text-ink-muted group-data-[selected=true]:inline-flex pointer-coarse:!hidden">
 			<CornerDownLeft aria-hidden="true" className="size-4" />
@@ -2938,7 +3674,8 @@ function ReturnGlyph() {
 }
 
 /** Upstream's selected send_message enter cap: the 24px brand-filled `accent-badge` instead of the plain glyph. */
-function AccentReturnCap() {
+function AccentReturnCap()
+{
 	return (
 		<span className="hidden shrink-0 items-center text-xs text-ink-muted group-data-[selected=true]:flex">
 			<span className="pointer-coarse:hidden">
@@ -2954,7 +3691,8 @@ function AccentReturnCap() {
 }
 
 /** A session row with upstream's "…" (`tr`), rendered only while the row is cmdk-selected, that opens the row-actions card. */
-function SessionRowActions({value, children, onOpen}: {value: string; children: ReactNode; onOpen: () => void}) {
+function SessionRowActions({value, children, onOpen}: {value: string; children: ReactNode; onOpen: () => void})
+{
 	const selected = useCommandState((state) => state.value === value);
 	return (
 		<div className="group/palette-row relative">
@@ -2965,7 +3703,8 @@ function SessionRowActions({value, children, onOpen}: {value: string; children: 
 }
 
 /** Upstream's trailing secondary: the PR/time text, then the Archived badge on an archived row; ⏎ replaces it when selected. */
-function PaletteSecondary({text, archived}: {text: string | undefined; archived: boolean}) {
+function PaletteSecondary({text, archived}: {text: string | undefined; archived: boolean})
+{
 	return (
 		<span
 			data-palette-meta=""
@@ -2996,7 +3735,8 @@ function SearchResultItem({
 	now: number;
 	onSelect: () => void;
 	onRowActions: () => void;
-}) {
+})
+{
 	const session = row.kind === "session";
 	const archived = row.archived === true;
 	const item = (
@@ -3004,8 +3744,18 @@ function SearchResultItem({
 			value={rowKey(row)}
 			onSelect={onSelect}
 			data-item-type={row.kind === "session" ? "code_session" : row.kind}
-			{...(session ? {"aria-keyshortcuts": "Alt+Enter"} : {})}
-			{...(archived ? {"data-archived": ""} : {})}
+			{...(session
+				?
+					{
+						"aria-keyshortcuts": "Alt+Enter",
+					}
+				: {})}
+			{...(archived
+				?
+					{
+						"data-archived": "",
+					}
+				: {})}
 			className={archived ? ARCHIVED_ROW_CLASS : ROW_CLASS}
 		>
 			<span className={`flex min-w-0 flex-1 items-center gap-2 ${session ? ROW_ACTIONS_LABEL_CLASS : ""}`}>
@@ -3028,10 +3778,12 @@ function SearchResultItem({
 				{row.mark !== undefined && <span className="sr-only"> {PALETTE_MARK_LABELS[row.mark]}</span>}
 			</span>
 			<PaletteSecondary
-				text={paletteSecondary({
-					prNumber: row.prNumber,
-					time: row.meta ?? relativeBucket(Date.parse(row.mtime), now),
-				})}
+				text={paletteSecondary(
+					{
+						prNumber: row.prNumber,
+						time: row.meta ?? relativeBucket(Date.parse(row.mtime), now),
+					},
+				)}
 				archived={archived}
 			/>
 			<ReturnGlyph />
@@ -3055,7 +3807,8 @@ function NewSessionItem({
 	prompt: string;
 	projectName: string | undefined;
 	onSelect: () => void;
-}) {
+})
+{
 	return (
 		<Command.Item value={NEW_SESSION_VALUE} onSelect={onSelect} className={ROW_CLASS}>
 			<span className="flex min-w-0 flex-1 items-center gap-2">
@@ -3108,14 +3861,25 @@ function CommandItem({
 	/** Upstream's trailing secondary text, e.g. "PR #N". */
 	secondary?: ReactNode;
 	onPointerEnter?: () => void;
-}) {
+})
+{
 	const keyShortcuts = rowActions ? "Alt+Enter" : shortcut?.ariaKeyShortcuts;
 	return (
 		<Command.Item
 			value={value}
 			onSelect={onSelect}
-			{...(onPointerEnter === undefined ? {} : {onPointerEnter})}
-			{...(keyShortcuts === undefined ? {} : {"aria-keyshortcuts": keyShortcuts})}
+			{...(onPointerEnter === undefined
+				? {}
+				:
+					{
+						onPointerEnter,
+					})}
+			{...(keyShortcuts === undefined
+				? {}
+				:
+					{
+						"aria-keyshortcuts": keyShortcuts,
+					})}
 			className={ROW_CLASS}
 		>
 			<span className={`flex min-w-0 flex-1 items-center gap-2 ${rowActions ? ROW_ACTIONS_LABEL_CLASS : ""}`}>

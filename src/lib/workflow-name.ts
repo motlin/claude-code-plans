@@ -5,14 +5,16 @@ const META_NAME_PATTERN = /\bmeta\s*=\s*\{[^}]*?\bname\s*:\s*['"]([^'"]+)['"]/;
 const META_SCAN_CHARS = 4096;
 
 /** Upstream `m5`: last path segment, tolerating one trailing separator and Windows paths. */
-function pathBasename(path: string): string {
+function pathBasename(path: string): string
+{
 	const trimmed = path.replace(/[\\/]$/, "");
 	const lastSeparator = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
 	return lastSeparator === -1 ? trimmed : trimmed.slice(lastSeparator + 1);
 }
 
 /** Upstream `Kc`: drop the final extension unless that leaves nothing. */
-function stripExtension(fileName: string): string {
+function stripExtension(fileName: string): string
+{
 	return fileName.replace(/\.\w+$/, "") || fileName;
 }
 
@@ -21,9 +23,11 @@ function stripExtension(fileName: string): string {
  * `input.name`, then the script's `meta.name` (first 4096 chars), then the
  * extensionless basename of `input.scriptPath`.
  */
-export function workflowName(input: WorkflowInput): string | undefined {
+export function workflowName(input: WorkflowInput): string | undefined
+{
 	if (input.name) return input.name;
-	if (input.script !== undefined) {
+	if (input.script !== undefined)
+	{
 		const match = META_NAME_PATTERN.exec(input.script.slice(0, META_SCAN_CHARS));
 		if (match?.[1] !== undefined) return match[1];
 	}
@@ -32,23 +36,52 @@ export function workflowName(input: WorkflowInput): string | undefined {
 }
 
 /** `workflowName` for a tool call's raw input, reading only its string fields. */
-export function workflowCallName(input: Readonly<Record<string, unknown>>): string | undefined {
+export function workflowCallName(input: Readonly<Record<string, unknown>>): string | undefined
+{
 	const field = (key: string) => (typeof input[key] === "string" ? input[key] : undefined);
 	const name = field("name");
 	const script = field("script");
 	const scriptPath = field("scriptPath");
-	return workflowName({
-		...(name === undefined ? null : {name}),
-		...(script === undefined ? null : {script}),
-		...(scriptPath === undefined ? null : {scriptPath}),
-	});
+	return workflowName(
+		{
+			...(name === undefined
+				? null
+				:
+					{
+						name,
+					}),
+			...(script === undefined
+				? null
+				:
+					{
+						script,
+					}),
+			...(scriptPath === undefined
+				? null
+				:
+					{
+						scriptPath,
+					}),
+		},
+	);
 }
 
 /** Whether any assistant line calls the Workflow tool, so the page only fetches workflow runs when it can draw one. */
 export function linesHaveWorkflowCall(
-	lines: ReadonlyArray<{type: string; message?: {content?: unknown} | undefined}>,
-): boolean {
-	return lines.some((line) => {
+	lines: ReadonlyArray<
+	{
+		type: string;
+		message?:
+			|
+			  {
+					content?: unknown;
+			  }
+			| undefined;
+	}>,
+): boolean
+{
+	return lines.some((line) =>
+	{
 		if (line.type !== "assistant") return false;
 		const content = line.message?.content;
 		return (
@@ -69,7 +102,8 @@ export function linesHaveWorkflowCall(
 /** Upstream `Se`. */
 const SUMMARY_PREFIX = /^(?:Dynamic w|W)orkflow ".*" (?:completed|failed|stopped|was killed)(?::\s*(.+))?\.?\s*$/s;
 
-function capitalize(text: string): string {
+function capitalize(text: string): string
+{
 	return text.length > 0 ? (text[0] ?? "").toUpperCase() + text.slice(1) : text;
 }
 
@@ -77,10 +111,12 @@ function capitalize(text: string): string {
  * Upstream `we`: a task summary without the `Workflow "…" completed|failed|…:`
  * boilerplate, capitalized; undefined when it says nothing beyond the description.
  */
-export function workflowSummary(summary: string | undefined, description: string | undefined): string | undefined {
+export function workflowSummary(summary: string | undefined, description: string | undefined): string | undefined
+{
 	if (!summary || summary === description) return undefined;
 	const match = SUMMARY_PREFIX.exec(summary);
-	if (match) {
+	if (match)
+	{
 		const detail = match[1]?.trim();
 		return detail ? capitalize(detail) : undefined;
 	}

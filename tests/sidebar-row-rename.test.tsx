@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -45,86 +46,188 @@ const FIXTURE = [
 
 const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>();
 
-function renameCalls(): Array<{url: string; method: string | undefined; body: unknown}> {
+function renameCalls(): Array<
+{
+	url: string;
+	method: string | undefined;
+	body: unknown;
+}>
+{
 	return fetchMock.mock.calls
 		.filter(([input]) => input.endsWith("/title"))
-		.map(([input, init]) => ({
+		.map(([input, init]) => (
+		{
 			url: input,
 			method: init?.method,
 			body: typeof init?.body === "string" ? JSON.parse(init.body) : init?.body,
 		}));
 }
 
-async function flush() {
-	await act(async () => {
-		await new Promise((resolve) => {
+async function flush()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-async function renderSidebar(sessions: readonly object[] = FIXTURE) {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
-			mutations: {retry: false},
+async function renderSidebar(sessions: readonly object[] = FIXTURE)
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+				mutations:
+				{
+					retry: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [RecentSessionsResponse.parse({sessions, nextCursor: null})],
-		pageParams: [null],
-	});
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<SessionGroups activeItemId={null} prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}} />
-					<Outlet />
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/", component: () => null});
-	const sessionRoute = createRoute({getParentRoute: () => rootRoute, path: "/session/$id", component: () => null});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	);
+	queryClient.setQueryData(
+		recentSessionsInfiniteQueryOptions().queryKey,
+		{
+			pages: [
+				RecentSessionsResponse.parse(
+					{
+						sessions,
+						nextCursor: null,
+					},
+				),
+			],
+			pageParams: [null],
+		},
+	);
+	queryClient.setQueryData(
+		herdrPanesQueryOptions.queryKey,
+		{
+			panes: [],
+			writesEnabled: false,
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SessionGroups
+							activeItemId={null}
+							prefs={
+							{
+								...DEFAULT_SESSION_LIST_PREFS,
+								groupBy: "state",
+							}}
+						/>
+						<Outlet />
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/session/$id",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(result.container.querySelector("a[data-row-main-button]")).toBeTruthy();
 	});
-	return {...result, router};
+	return {
+		...result,
+		router,
+	};
 }
 
-function rowLink(): HTMLElement {
+function rowLink(): HTMLElement
+{
 	const link = document.querySelector("a[data-row-main-button]");
 	if (!(link instanceof HTMLElement)) throw new Error("no row");
 	return link;
 }
 
-async function openKebabMenu(title = OLD_TITLE): Promise<void> {
-	fireEvent.click(screen.getByRole("button", {name: `More options for ${title}`}));
+async function openKebabMenu(title = OLD_TITLE): Promise<void>
+{
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: `More options for ${title}`,
+			},
+		),
+	);
 	await flush();
 	await waitFor(() => screen.getByRole("menu"));
 }
 
-async function openContextMenu(): Promise<void> {
-	fireEvent.contextMenu(rowLink(), {clientX: 40, clientY: 50});
+async function openContextMenu(): Promise<void>
+{
+	fireEvent.contextMenu(
+		rowLink(),
+		{
+			clientX: 40,
+			clientY: 50,
+		},
+	);
 	await flush();
 	await waitFor(() => screen.getByRole("menu"));
 }
 
-async function chooseRename(): Promise<HTMLInputElement> {
-	fireEvent.click(screen.getByRole("menuitem", {name: /Rename/}));
+async function chooseRename(): Promise<HTMLInputElement>
+{
+	fireEvent.click(
+		screen.getByRole(
+			"menuitem",
+			{
+				name: /Rename/,
+			},
+		),
+	);
 	await flush();
 	await flush();
-	return await waitFor(() => screen.getByRole("textbox", {name: "Rename"}));
+	return await waitFor(() =>
+		screen.getByRole(
+			"textbox",
+			{
+				name: "Rename",
+			},
+		),
+	);
 }
 
-function inputState(input: HTMLInputElement) {
+function inputState(input: HTMLInputElement)
+{
 	return {
 		focused: document.activeElement === input,
 		value: input.value,
@@ -133,20 +236,31 @@ function inputState(input: HTMLInputElement) {
 	};
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	fetchMock.mockReset();
 	fetchMock.mockImplementation(async (input, init) =>
 		Promise.resolve(
 			input.endsWith("/title")
-				? Response.json({customTitle: "Renamed row", title: "Renamed row"})
-				: Response.json({archived: init?.method === "PUT"}),
+				? Response.json(
+						{
+							customTitle: "Renamed row",
+							title: "Renamed row",
+						},
+					)
+				: Response.json(
+						{
+							archived: init?.method === "PUT",
+						},
+					),
 		),
 	);
 	vi.stubGlobal("fetch", fetchMock);
@@ -154,94 +268,200 @@ beforeEach(() => {
 	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
-describe("sidebar row rename", () => {
-	it("Rename from the kebab focuses an inline input holding the selected title", async () => {
+describe("sidebar row rename", () =>
+{
+	it("Rename from the kebab focuses an inline input holding the selected title", async () =>
+	{
 		await renderSidebar();
 		await openKebabMenu();
 
 		const input = await chooseRename();
 
-		expect(inputState(input)).toStrictEqual({
-			focused: true,
-			value: OLD_TITLE,
-			selection: [0, OLD_TITLE.length],
-			menuOpen: false,
-		});
+		expect(inputState(input)).toStrictEqual(
+			{
+				focused: true,
+				value: OLD_TITLE,
+				selection: [0, OLD_TITLE.length],
+				menuOpen: false,
+			},
+		);
 	});
 
-	it("starts a stand-in title's rename from an empty field while the row still reads Untitled (upstream MJ)", async () => {
-		await renderSidebar([{...FIXTURE[0], title: "Untitled", titleIsStandIn: true}]);
+	it("starts a stand-in title's rename from an empty field while the row still reads Untitled (upstream MJ)", async () =>
+	{
+		await renderSidebar([
+			{
+				...FIXTURE[0],
+				title: "Untitled",
+				titleIsStandIn: true,
+			},
+		]);
 		await openKebabMenu("Untitled");
 
 		const input = await chooseRename();
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 		await flush();
 
-		expect({value: input.value, calls: renameCalls(), row: rowTitle(rowLink())}).toStrictEqual({
-			value: "",
-			calls: [],
-			row: "Untitled",
-		});
+		expect(
+			{
+				value: input.value,
+				calls: renameCalls(),
+				row: rowTitle(rowLink()),
+			},
+		).toStrictEqual(
+			{
+				value: "",
+				calls: [],
+				row: "Untitled",
+			},
+		);
 	});
 
-	it("Rename from the context menu focuses the inline input", async () => {
+	it("Rename from the context menu focuses the inline input", async () =>
+	{
 		await renderSidebar();
 		await openContextMenu();
 
 		const input = await chooseRename();
 
-		expect(inputState(input)).toStrictEqual({
-			focused: true,
-			value: OLD_TITLE,
-			selection: [0, OLD_TITLE.length],
-			menuOpen: false,
-		});
+		expect(inputState(input)).toStrictEqual(
+			{
+				focused: true,
+				value: OLD_TITLE,
+				selection: [0, OLD_TITLE.length],
+				menuOpen: false,
+			},
+		);
 	});
 
-	it("Enter commits through the rename mutation and shows the new title", async () => {
+	it("Enter commits through the rename mutation and shows the new title", async () =>
+	{
 		await renderSidebar();
 		await openKebabMenu();
 		const input = await chooseRename();
 
-		fireEvent.change(input, {target: {value: "Renamed row"}});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "Renamed row",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 		await flush();
 
-		expect({calls: renameCalls(), row: rowTitle(rowLink())}).toStrictEqual({
-			calls: [{url: `/api/sessions/${SESSION_ID}/title`, method: "PUT", body: {title: "Renamed row"}}],
-			row: "Renamed row",
-		});
+		expect(
+			{
+				calls: renameCalls(),
+				row: rowTitle(rowLink()),
+			},
+		).toStrictEqual(
+			{
+				calls: [
+					{
+						url: `/api/sessions/${SESSION_ID}/title`,
+						method: "PUT",
+						body:
+						{
+							title: "Renamed row",
+						},
+					},
+				],
+				row: "Renamed row",
+			},
+		);
 	});
 
-	it("Escape cancels and restores the title", async () => {
+	it("Escape cancels and restores the title", async () =>
+	{
 		await renderSidebar();
 		await openKebabMenu();
 		const input = await chooseRename();
 
-		fireEvent.change(input, {target: {value: "Discarded"}});
-		fireEvent.keyDown(input, {key: "Escape"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "Discarded",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Escape",
+			},
+		);
 		await flush();
 
-		expect({
-			calls: renameCalls(),
-			row: rowTitle(rowLink()),
-			input: screen.queryByRole("textbox", {name: "Rename"}),
-		}).toStrictEqual({calls: [], row: OLD_TITLE, input: null});
+		expect(
+			{
+				calls: renameCalls(),
+				row: rowTitle(rowLink()),
+				input: screen.queryByRole(
+					"textbox",
+					{
+						name: "Rename",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				calls: [],
+				row: OLD_TITLE,
+				input: null,
+			},
+		);
 	});
 
-	it("blur cancels without saving", async () => {
+	it("blur cancels without saving", async () =>
+	{
 		await renderSidebar();
 		await openKebabMenu();
 		const input = await chooseRename();
 
-		fireEvent.change(input, {target: {value: "Discarded"}});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "Discarded",
+				},
+			},
+		);
 		fireEvent.blur(input);
 		await flush();
 
-		expect({
-			calls: renameCalls(),
-			row: rowTitle(rowLink()),
-			input: screen.queryByRole("textbox", {name: "Rename"}),
-		}).toStrictEqual({calls: [], row: OLD_TITLE, input: null});
+		expect(
+			{
+				calls: renameCalls(),
+				row: rowTitle(rowLink()),
+				input: screen.queryByRole(
+					"textbox",
+					{
+						name: "Rename",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				calls: [],
+				row: OLD_TITLE,
+				input: null,
+			},
+		);
 	});
 });

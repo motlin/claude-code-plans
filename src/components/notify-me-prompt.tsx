@@ -10,7 +10,8 @@ import {useToast} from "./toast-context";
  * granted with completions off and no opt-in. Notify asks the browser when needed, then opts
  * this session in; a refusal raises upstream's blocked toast.
  */
-export function NotifyMePrompt({sessionId}: {sessionId: string}) {
+export function NotifyMePrompt({sessionId}: {sessionId: string})
+{
 	const {settings} = useSettings();
 	const {supported, permission, requestPermission} = useNotificationPermission();
 	const optedIn = useSessionNotifyOptedIn(sessionId);
@@ -19,10 +20,17 @@ export function NotifyMePrompt({sessionId}: {sessionId: string}) {
 	if (!supported || permission === "denied") return null;
 	if (permission === "granted" && (settings.notifyCompletions || optedIn)) return null;
 
-	const enable = async () => {
+	const enable = async () =>
+	{
 		const result = await requestPermission();
 		if (result === "granted") optInSessionNotifications(sessionId);
-		else if (result === "denied") toast({kind: "error", message: NOTIFICATIONS_BLOCKED_COPY});
+		else if (result === "denied")
+			toast(
+				{
+					kind: "error",
+					message: NOTIFICATIONS_BLOCKED_COPY,
+				},
+			);
 	};
 
 	return (

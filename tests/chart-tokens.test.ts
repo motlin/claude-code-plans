@@ -1,11 +1,13 @@
 import {readFileSync} from "node:fs";
 import {describe, expect, it} from "vite-plus/test";
+import {ruleStart} from "./css-rule";
 
 const styles = readFileSync("src/styles/globals.css", "utf8");
 
 /** The body of a top-level block (`:root`, `.dark`) of globals.css. */
-function block(selector: string): string {
-	const start = styles.indexOf(`\n${selector} {`);
+function block(selector: string): string
+{
+	const start = ruleStart(styles, `\n${selector}`);
 	return styles.slice(start, styles.indexOf("\n}", start));
 }
 
@@ -30,7 +32,8 @@ const CHART_TOKENS = [
 /* fizzy-lake color ramp from the 2026-11-06 shared-styles dump: categorical blue-400/orange-400/aqua-400/yellow-350/
    magenta-400/green-500/violet-350/red-350 and status green-400/yellow-200/orange-300/red-450. The light values match
    a live claude.ai/code read of .cds-root on 2026-11-07, so both themes share them. */
-const FIZZY_PALETTE = {
+const FIZZY_PALETTE =
+{
 	"--chart-categorical-1": "#338ced",
 	"--chart-categorical-2": "#e76624",
 	"--chart-categorical-3": "#00a888",
@@ -45,29 +48,37 @@ const FIZZY_PALETTE = {
 	"--chart-status-critical": "#dc3c3d",
 } as const;
 
-function tokens(selector: string): Record<string, string | null> {
+function tokens(selector: string): Record<string, string | null>
+{
 	const body = block(selector);
 	return Object.fromEntries(
 		CHART_TOKENS.map((name) => [name, body.match(new RegExp(`\\s${name}:\\s*([^;]+);`))?.[1] ?? null]),
 	);
 }
 
-describe("chart tokens", () => {
-	it("defines upstream's light --cds-chart-* values (categorical and status read live 2026-11-07)", () => {
-		expect(tokens(":root")).toStrictEqual({
-			"--chart-reference": "#898781",
-			"--chart-muted": "#c3c2b7",
-			"--chart-reference-tint": "hsl(from var(--chart-reference) h s l / 15%)",
-			...FIZZY_PALETTE,
-		});
+describe("chart tokens", () =>
+{
+	it("defines upstream's light --cds-chart-* values (categorical and status read live 2026-11-07)", () =>
+	{
+		expect(tokens(":root")).toStrictEqual(
+			{
+				"--chart-reference": "#898781",
+				"--chart-muted": "#c3c2b7",
+				"--chart-reference-tint": "hsl(from var(--chart-reference) h s l / 15%)",
+				...FIZZY_PALETTE,
+			},
+		);
 	});
 
-	it("defines upstream's dark --cds-chart-* values", () => {
-		expect(tokens(".dark")).toStrictEqual({
-			"--chart-reference": "#97958d",
-			"--chart-muted": "#5f5e5a",
-			"--chart-reference-tint": "hsl(from var(--chart-reference) h s l / 15%)",
-			...FIZZY_PALETTE,
-		});
+	it("defines upstream's dark --cds-chart-* values", () =>
+	{
+		expect(tokens(".dark")).toStrictEqual(
+			{
+				"--chart-reference": "#97958d",
+				"--chart-muted": "#5f5e5a",
+				"--chart-reference-tint": "hsl(from var(--chart-reference) h s l / 15%)",
+				...FIZZY_PALETTE,
+			},
+		);
 	});
 });

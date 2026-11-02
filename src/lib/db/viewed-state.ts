@@ -4,7 +4,8 @@ import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-export interface DurableSessionViewedState {
+export interface DurableSessionViewedState
+{
 	currentMessageIndex: number;
 	lastViewedMessageIndex: number;
 	reviewTargetMessageIndex: number;
@@ -14,23 +15,28 @@ export interface DurableSessionViewedState {
 	viewedAnywhere: boolean;
 }
 
-interface StoredSessionViewedState {
+interface StoredSessionViewedState
+{
 	lastViewedMessageIndex: number;
 	reviewTargetMessageIndex: number;
 }
 
-const EMPTY_SESSION_VIEWED_STATE: StoredSessionViewedState = {
+const EMPTY_SESSION_VIEWED_STATE: StoredSessionViewedState =
+{
 	lastViewedMessageIndex: -1,
 	reviewTargetMessageIndex: -1,
 };
 
-function getStoredSessionViewedState(db: IndexDb, sessionId: string): StoredSessionViewedState {
+function getStoredSessionViewedState(db: IndexDb, sessionId: string): StoredSessionViewedState
+{
 	return (
 		db
-			.select({
-				lastViewedMessageIndex: schema.sessionViewStates.lastViewedMessageIndex,
-				reviewTargetMessageIndex: schema.sessionViewStates.reviewTargetMessageIndex,
-			})
+			.select(
+				{
+					lastViewedMessageIndex: schema.sessionViewStates.lastViewedMessageIndex,
+					reviewTargetMessageIndex: schema.sessionViewStates.reviewTargetMessageIndex,
+				},
+			)
 			.from(schema.sessionViewStates)
 			.where(eq(schema.sessionViewStates.sessionId, sessionId))
 			.get() ?? EMPTY_SESSION_VIEWED_STATE
@@ -42,13 +48,26 @@ function writeSessionViewedState(
 	sessionId: string,
 	state: StoredSessionViewedState,
 	now: number,
-): StoredSessionViewedState {
+): StoredSessionViewedState
+{
 	db.insert(schema.sessionViewStates)
-		.values({sessionId, ...state, updatedAt: now})
-		.onConflictDoUpdate({
-			target: schema.sessionViewStates.sessionId,
-			set: {...state, updatedAt: now},
-		})
+		.values(
+			{
+				sessionId,
+				...state,
+				updatedAt: now,
+			},
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.sessionViewStates.sessionId,
+				set:
+				{
+					...state,
+					updatedAt: now,
+				},
+			},
+		)
 		.run();
 	return state;
 }
@@ -59,7 +78,8 @@ export function markSessionReviewed(
 	sessionId: string,
 	messageIndex: number,
 	now: number = Date.now(),
-): StoredSessionViewedState {
+): StoredSessionViewedState
+{
 	const stored = getStoredSessionViewedState(db, sessionId);
 	const viewedMessageIndex = Math.max(stored.lastViewedMessageIndex, messageIndex);
 	return writeSessionViewedState(
@@ -79,10 +99,16 @@ export function markSessionUnreviewed(
 	sessionId: string,
 	messageIndex: number,
 	now: number = Date.now(),
-): StoredSessionViewedState {
+): StoredSessionViewedState
+{
 	const stored = getStoredSessionViewedState(db, sessionId);
 	db.update(schema.herdrTerminalViewStates)
-		.set({viewed: 0, updatedAt: now})
+		.set(
+			{
+				viewed: 0,
+				updatedAt: now,
+			},
+		)
 		.where(eq(schema.herdrTerminalViewStates.sessionId, sessionId))
 		.run();
 	return writeSessionViewedState(
@@ -102,7 +128,8 @@ export function markSessionCompletionUnreviewed(
 	sessionId: string,
 	messageIndex: number,
 	now: number = Date.now(),
-): StoredSessionViewedState {
+): StoredSessionViewedState
+{
 	return markSessionUnreviewed(db, sessionId, messageIndex, now);
 }
 
@@ -111,13 +138,27 @@ export function linkHerdrTerminalToSession(
 	terminalId: string,
 	sessionId: string,
 	now: number = Date.now(),
-): void {
+): void
+{
 	db.insert(schema.herdrTerminalViewStates)
-		.values({terminalId, sessionId, viewed: 0, updatedAt: now})
-		.onConflictDoUpdate({
-			target: schema.herdrTerminalViewStates.terminalId,
-			set: {sessionId, updatedAt: now},
-		})
+		.values(
+			{
+				terminalId,
+				sessionId,
+				viewed: 0,
+				updatedAt: now,
+			},
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.herdrTerminalViewStates.terminalId,
+				set:
+				{
+					sessionId,
+					updatedAt: now,
+				},
+			},
+		)
 		.run();
 }
 
@@ -127,17 +168,33 @@ export function setHerdrTerminalViewed(
 	sessionId: string,
 	viewed: boolean,
 	now: number = Date.now(),
-): void {
+): void
+{
 	db.insert(schema.herdrTerminalViewStates)
-		.values({terminalId, sessionId, viewed: viewed ? 1 : 0, updatedAt: now})
-		.onConflictDoUpdate({
-			target: schema.herdrTerminalViewStates.terminalId,
-			set: {sessionId, viewed: viewed ? 1 : 0, updatedAt: now},
-		})
+		.values(
+			{
+				terminalId,
+				sessionId,
+				viewed: viewed ? 1 : 0,
+				updatedAt: now,
+			},
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.herdrTerminalViewStates.terminalId,
+				set:
+				{
+					sessionId,
+					viewed: viewed ? 1 : 0,
+					updatedAt: now,
+				},
+			},
+		)
 		.run();
 }
 
-export function pruneHerdrTerminalLinks(db: IndexDb, sessionId: string, activeTerminalIds: string[]): void {
+export function pruneHerdrTerminalLinks(db: IndexDb, sessionId: string, activeTerminalIds: string[]): void
+{
 	if (activeTerminalIds.length === 0) return;
 	db.delete(schema.herdrTerminalViewStates)
 		.where(
@@ -153,10 +210,15 @@ export function getSessionViewedState(
 	db: IndexDb,
 	sessionId: string,
 	currentMessageIndex: number,
-): DurableSessionViewedState {
+): DurableSessionViewedState
+{
 	const stored = getStoredSessionViewedState(db, sessionId);
 	const terminalRows = db
-		.select({viewed: schema.herdrTerminalViewStates.viewed})
+		.select(
+			{
+				viewed: schema.herdrTerminalViewStates.viewed,
+			},
+		)
 		.from(schema.herdrTerminalViewStates)
 		.where(eq(schema.herdrTerminalViewStates.sessionId, sessionId))
 		.all();
@@ -181,9 +243,14 @@ export function getSessionViewedState(
  * `sessions.message_count` (see message-count.ts). The indexer keeps that
  * column current before SSE broadcasts, so this needs no transcript read.
  */
-export function getCurrentSessionMessageIndex(db: IndexDb, sessionId: string): number {
+export function getCurrentSessionMessageIndex(db: IndexDb, sessionId: string): number
+{
 	const row = db
-		.select({messageCount: schema.sessions.messageCount})
+		.select(
+			{
+				messageCount: schema.sessions.messageCount,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
@@ -191,9 +258,14 @@ export function getCurrentSessionMessageIndex(db: IndexDb, sessionId: string): n
 	return row.messageCount - 1;
 }
 
-function viewedHerdrSessionIds(db: IndexDb) {
+function viewedHerdrSessionIds(db: IndexDb)
+{
 	return db
-		.select({sessionId: schema.herdrTerminalViewStates.sessionId})
+		.select(
+			{
+				sessionId: schema.herdrTerminalViewStates.sessionId,
+			},
+		)
 		.from(schema.herdrTerminalViewStates)
 		.where(eq(schema.herdrTerminalViewStates.viewed, 1));
 }
@@ -203,7 +275,8 @@ function viewedHerdrSessionIds(db: IndexDb) {
  * viewed message and no herdr terminal that has shown the work since. This is
  * the single source of truth for the `unseen` flag on session summaries.
  */
-export function getUnseenSessionIds(db: IndexDb, sessionIds?: readonly string[]): Set<string> {
+export function getUnseenSessionIds(db: IndexDb, sessionIds?: readonly string[]): Set<string>
+{
 	const unseen = lt(
 		schema.sessionViewStates.lastViewedMessageIndex,
 		schema.sessionViewStates.reviewTargetMessageIndex,
@@ -211,13 +284,18 @@ export function getUnseenSessionIds(db: IndexDb, sessionIds?: readonly string[])
 	const notViewedInHerdr = notInArray(schema.sessionViewStates.sessionId, viewedHerdrSessionIds(db));
 	const scope = sessionIds === undefined ? undefined : inArray(schema.sessionViewStates.sessionId, [...sessionIds]);
 	const rows = db
-		.select({sessionId: schema.sessionViewStates.sessionId})
+		.select(
+			{
+				sessionId: schema.sessionViewStates.sessionId,
+			},
+		)
 		.from(schema.sessionViewStates)
 		.where(and(unseen, notViewedInHerdr, scope))
 		.all();
 	return new Set(rows.map((row) => row.sessionId));
 }
 
-export function isSessionUnseen(db: IndexDb, sessionId: string): boolean {
+export function isSessionUnseen(db: IndexDb, sessionId: string): boolean
+{
 	return getUnseenSessionIds(db, [sessionId]).has(sessionId);
 }

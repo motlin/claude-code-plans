@@ -2,7 +2,8 @@ import {mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync} from "node:
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	formatDiffScope,
 	parseDiffScope,
 	resolveAbsoluteDiffPath,
@@ -19,7 +20,8 @@ import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 import {parseJsonlRecord, type JsonlRecord} from "../src/lib/schemas";
 import {buildScopeDiff, listScopes, readDiffFileSides} from "../src/lib/session-diff";
-import {
+import
+{
 	handleSessionDiffRequest,
 	handleSessionDiffScopesRequest,
 	resolveRepoRoot,
@@ -34,75 +36,123 @@ let db: AppDb;
 let repository: string;
 let commitCounter = 0;
 
-function git(...arguments_: string[]): string {
+function git(...arguments_: string[]): string
+{
 	commitCounter += 1;
 	const date = `2026-01-01T00:00:${String(commitCounter % 60).padStart(2, "0")}Z`;
-	return runGit(repository, arguments_, {env: {GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date}});
+	return runGit(
+		repository,
+		arguments_,
+		{
+			env:
+			{
+				GIT_AUTHOR_DATE: date,
+				GIT_COMMITTER_DATE: date,
+			},
+		},
+	);
 }
 
-function write(path: string, content: string): void {
+function write(path: string, content: string): void
+{
 	writeFileSync(join(repository, path), content);
 }
 
-function insertSession(cwd: string | null): void {
+function insertSession(cwd: string | null): void
+{
 	db.index
 		.insert(schema.projects)
-		.values({id: "project-diff-100", name: "example", projectPath: "/example", updatedAt: 0})
+		.values(
+			{
+				id: "project-diff-100",
+				name: "example",
+				projectPath: "/example",
+				updatedAt: 0,
+			},
+		)
 		.run();
 	db.index
 		.insert(schema.sessions)
-		.values({
-			id: SESSION_ID,
-			projectId: "project-diff-100",
-			title: "Diff example",
-			firstPrompt: null,
-			summary: null,
-			customTitle: null,
-			messageCount: 4,
-			gitBranch: "feature",
-			cwd,
-			isSidechain: 0,
-			createdAt: 946_598_400_000,
-			mtimeMs: 946_684_800_000,
-			filePath: `/transcripts/${SESSION_ID}.jsonl`,
-		})
+		.values(
+			{
+				id: SESSION_ID,
+				projectId: "project-diff-100",
+				title: "Diff example",
+				firstPrompt: null,
+				summary: null,
+				customTitle: null,
+				messageCount: 4,
+				gitBranch: "feature",
+				cwd,
+				isSidechain: 0,
+				createdAt: 946_598_400_000,
+				mtimeMs: 946_684_800_000,
+				filePath: `/transcripts/${SESSION_ID}.jsonl`,
+			},
+		)
 		.run();
 }
 
-function record(value: Record<string, unknown>): JsonlRecord {
+function record(value: Record<string, unknown>): JsonlRecord
+{
 	const parsed = parseJsonlRecord(JSON.stringify(value));
 	if (parsed === null) throw new Error(`Invalid JSONL fixture: ${JSON.stringify(value)}`);
 	return parsed;
 }
 
-function userPrompt(uuid: string, text: string): JsonlRecord {
-	return record({
-		type: "user",
-		uuid,
-		parentUuid: null,
-		sessionId: SESSION_ID,
-		timestamp: "2026-09-29T00:00:00.000Z",
-		message: {role: "user", content: text},
-	});
-}
-
-function writeResult(uuid: string, filePath: string, content: string): JsonlRecord {
-	return record({
-		type: "user",
-		uuid,
-		parentUuid: `assistant-${uuid}`,
-		sessionId: SESSION_ID,
-		timestamp: "2026-09-29T00:00:00.000Z",
-		message: {
-			role: "user",
-			content: [{type: "tool_result", tool_use_id: `toolu_${uuid}`, content: "ok"}],
+function userPrompt(uuid: string, text: string): JsonlRecord
+{
+	return record(
+		{
+			type: "user",
+			uuid,
+			parentUuid: null,
+			sessionId: SESSION_ID,
+			timestamp: "2026-09-29T00:00:00.000Z",
+			message:
+			{
+				role: "user",
+				content: text,
+			},
 		},
-		toolUseResult: {type: "create", filePath, content, structuredPatch: [], originalFile: null},
-		sourceToolAssistantUUID: `assistant-${uuid}`,
-	});
+	);
 }
 
-function sessionRecords(cwd: string): JsonlRecord[] {
+function writeResult(uuid: string, filePath: string, content: string): JsonlRecord
+{
+	return record(
+		{
+			type: "user",
+			uuid,
+			parentUuid: `assistant-${uuid}`,
+			sessionId: SESSION_ID,
+			timestamp: "2026-09-29T00:00:00.000Z",
+			message:
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: `toolu_${uuid}`,
+						content: "ok",
+					},
+				],
+			},
+			toolUseResult:
+			{
+				type: "create",
+				filePath,
+				content,
+				structuredPatch: [],
+				originalFile: null,
+			},
+			sourceToolAssistantUUID: `assistant-${uuid}`,
+		},
+	);
+}
+
+function sessionRecords(cwd: string): JsonlRecord[]
+{
 	return [
 		userPrompt("prompt-1", "Add notes"),
 		writeResult("result-1", join(cwd, "notes.md"), "first\nsecond\n"),
@@ -111,7 +161,8 @@ function sessionRecords(cwd: string): JsonlRecord[] {
 	];
 }
 
-function dependencies(overrides: Partial<SessionDiffHandlerDependencies> = {}): SessionDiffHandlerDependencies {
+function dependencies(overrides: Partial<SessionDiffHandlerDependencies> = {}): SessionDiffHandlerDependencies
+{
 	return {
 		index: db.index,
 		resolveDirectory: async (cwd) => Promise.resolve(cwd),
@@ -124,15 +175,18 @@ function dependencies(overrides: Partial<SessionDiffHandlerDependencies> = {}): 
 	};
 }
 
-function query(parameters: Record<string, string>): URLSearchParams {
+function query(parameters: Record<string, string>): URLSearchParams
+{
 	return new URLSearchParams(parameters);
 }
 
-async function diffBody(response: Response) {
+async function diffBody(response: Response)
+{
 	return SessionDiffResponseSchema.parse(await response.json());
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	repository = mkdtempSync(join(tmpdir(), "api-session-diff-test-"));
 	commitCounter = 0;
 	db = openTestDb();
@@ -149,13 +203,22 @@ beforeEach(() => {
 	git("commit", "--message", "Edit keep.");
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(repository, {recursive: true, force: true});
+	rmSync(
+		repository,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("parseDiffScope / formatDiffScope", () => {
-	it("round-trips every scope form", () => {
+describe("parseDiffScope / formatDiffScope", () =>
+{
+	it("round-trips every scope form", () =>
+	{
 		const scopes = [
 			"branch",
 			"uncommitted",
@@ -164,14 +227,16 @@ describe("parseDiffScope / formatDiffScope", () => {
 			"turn:prompt-1",
 		];
 		expect(
-			scopes.map((scope) => {
+			scopes.map((scope) =>
+			{
 				const parsed = parseDiffScope(scope);
 				return parsed === null ? null : formatDiffScope(parsed);
 			}),
 		).toStrictEqual(scopes);
 	});
 
-	it("rejects malformed scopes", () => {
+	it("rejects malformed scopes", () =>
+	{
 		expect(["", "commit:", "commit:--output=x", "turn:", "everything"].map(parseDiffScope)).toStrictEqual([
 			null,
 			null,
@@ -182,59 +247,96 @@ describe("parseDiffScope / formatDiffScope", () => {
 	});
 });
 
-describe("handleSessionDiffRequest", () => {
-	it("returns 404 for an unknown session", async () => {
+describe("handleSessionDiffRequest", () =>
+{
+	it("returns 404 for an unknown session", async () =>
+	{
 		const response = await handleSessionDiffRequest("missing", query({}), dependencies());
 
 		expect(response.status).toBe(404);
-		expect(await response.json()).toStrictEqual({error: "Session not found"});
+		expect(await response.json()).toStrictEqual(
+			{
+				error: "Session not found",
+			},
+		);
 	});
 
-	it("returns 422 when the session has no working directory", async () => {
+	it("returns 422 when the session has no working directory", async () =>
+	{
 		insertSession(null);
 
 		const response = await handleSessionDiffRequest(SESSION_ID, query({}), dependencies());
 
 		expect(response.status).toBe(422);
-		expect(await response.json()).toStrictEqual({error: "Session has no working directory"});
+		expect(await response.json()).toStrictEqual(
+			{
+				error: "Session has no working directory",
+			},
+		);
 	});
 
-	it("returns 400 for an invalid scope or whitespace flag", async () => {
+	it("returns 400 for an invalid scope or whitespace flag", async () =>
+	{
 		insertSession(repository);
 
-		const badScope = await handleSessionDiffRequest(SESSION_ID, query({scope: "everything"}), dependencies());
-		const badWhitespace = await handleSessionDiffRequest(SESSION_ID, query({ws: "yes"}), dependencies());
+		const badScope = await handleSessionDiffRequest(
+			SESSION_ID,
+			query(
+				{
+					scope: "everything",
+				},
+			),
+			dependencies(),
+		);
+		const badWhitespace = await handleSessionDiffRequest(
+			SESSION_ID,
+			query(
+				{
+					ws: "yes",
+				},
+			),
+			dependencies(),
+		);
 
 		expect([badScope.status, badWhitespace.status]).toStrictEqual([400, 400]);
 	});
 
-	it("defaults to the branch scope with file list, stats, and patches", async () => {
+	it("defaults to the branch scope with file list, stats, and patches", async () =>
+	{
 		insertSession(repository);
 
 		const body = await diffBody(await handleSessionDiffRequest(SESSION_ID, query({}), dependencies()));
 
-		expect(body).toStrictEqual({
-			scope: "branch",
-			source: "git",
-			root: repository,
-			stats: {files: 1, additions: 1, deletions: 1},
-			files: [
+		expect(body).toStrictEqual(
+			{
+				scope: "branch",
+				source: "git",
+				root: repository,
+				stats:
 				{
-					path: "keep.txt",
-					status: "modified",
+					files: 1,
 					additions: 1,
 					deletions: 1,
-					binary: false,
-					patchLineCount: 8,
-					patch: expect.stringMatching(
-						/^diff --git a\/keep\.txt b\/keep\.txt\nindex [0-9a-f]+\.\.[0-9a-f]+ 100644\n--- a\/keep\.txt\n\+\+\+ b\/keep\.txt\n@@ -1,2 \+1,2 @@\n one\n-two\n\+TWO\n$/,
-					),
 				},
-			],
-		});
+				files: [
+					{
+						path: "keep.txt",
+						status: "modified",
+						additions: 1,
+						deletions: 1,
+						binary: false,
+						patchLineCount: 8,
+						patch: expect.stringMatching(
+							/^diff --git a\/keep\.txt b\/keep\.txt\nindex [0-9a-f]+\.\.[0-9a-f]+ 100644\n--- a\/keep\.txt\n\+\+\+ b\/keep\.txt\n@@ -1,2 \+1,2 @@\n one\n-two\n\+TWO\n$/,
+						),
+					},
+				],
+			},
+		);
 	});
 
-	it("round-trips a commit scope and honours the whitespace flag", async () => {
+	it("round-trips a commit scope and honours the whitespace flag", async () =>
+	{
 		write("keep.txt", "one\nTWO  \n");
 		write("added.txt", "added\n");
 		git("add", ".");
@@ -243,10 +345,27 @@ describe("handleSessionDiffRequest", () => {
 		insertSession(repository);
 
 		const withWhitespace = await diffBody(
-			await handleSessionDiffRequest(SESSION_ID, query({scope: `commit:${sha}`}), dependencies()),
+			await handleSessionDiffRequest(
+				SESSION_ID,
+				query(
+					{
+						scope: `commit:${sha}`,
+					},
+				),
+				dependencies(),
+			),
 		);
 		const withoutWhitespace = await diffBody(
-			await handleSessionDiffRequest(SESSION_ID, query({scope: `commit:${sha}`, ws: "1"}), dependencies()),
+			await handleSessionDiffRequest(
+				SESSION_ID,
+				query(
+					{
+						scope: `commit:${sha}`,
+						ws: "1",
+					},
+				),
+				dependencies(),
+			),
 		);
 
 		expect([
@@ -257,62 +376,92 @@ describe("handleSessionDiffRequest", () => {
 		]).toStrictEqual([`commit:${sha}`, ["added.txt", "keep.txt"], `commit:${sha}`, ["added.txt"]]);
 	});
 
-	it("returns 404 for a commit that does not exist", async () => {
+	it("returns 404 for a commit that does not exist", async () =>
+	{
 		insertSession(repository);
 
 		const response = await handleSessionDiffRequest(
 			SESSION_ID,
-			query({scope: `commit:${"f".repeat(40)}`}),
+			query(
+				{
+					scope: `commit:${"f".repeat(40)}`,
+				},
+			),
 			dependencies(),
 		);
 
 		expect(response.status).toBe(404);
 	});
 
-	it("falls back to session edits when the repository is gone", async () => {
+	it("falls back to session edits when the repository is gone", async () =>
+	{
 		insertSession(repository);
 
 		const body = await diffBody(
 			await handleSessionDiffRequest(
 				SESSION_ID,
-				query({scope: "branch"}),
-				dependencies({resolveDirectory: async () => Promise.resolve(null)}),
+				query(
+					{
+						scope: "branch",
+					},
+				),
+				dependencies(
+					{
+						resolveDirectory: async () => Promise.resolve(null),
+					},
+				),
 			),
 		);
 
-		expect(body).toStrictEqual({
-			scope: "session",
-			source: "session-edits",
-			root: repository,
-			stats: {files: 2, additions: 3, deletions: 0},
-			files: [
+		expect(body).toStrictEqual(
+			{
+				scope: "session",
+				source: "session-edits",
+				root: repository,
+				stats:
 				{
-					path: "notes.md",
-					status: "added",
-					additions: 2,
+					files: 2,
+					additions: 3,
 					deletions: 0,
-					binary: false,
-					patchLineCount: expect.any(Number),
-					patch: expect.stringContaining("+second"),
 				},
-				{
-					path: "todo.md",
-					status: "added",
-					additions: 1,
-					deletions: 0,
-					binary: false,
-					patchLineCount: expect.any(Number),
-					patch: expect.stringContaining("+only"),
-				},
-			],
-		});
+				files: [
+					{
+						path: "notes.md",
+						status: "added",
+						additions: 2,
+						deletions: 0,
+						binary: false,
+						patchLineCount: expect.any(Number),
+						patch: expect.stringContaining("+second"),
+					},
+					{
+						path: "todo.md",
+						status: "added",
+						additions: 1,
+						deletions: 0,
+						binary: false,
+						patchLineCount: expect.any(Number),
+						patch: expect.stringContaining("+only"),
+					},
+				],
+			},
+		);
 	});
 
-	it("restricts a turn scope to that turn's edits", async () => {
+	it("restricts a turn scope to that turn's edits", async () =>
+	{
 		insertSession(repository);
 
 		const body = await diffBody(
-			await handleSessionDiffRequest(SESSION_ID, query({scope: "turn:prompt-2"}), dependencies()),
+			await handleSessionDiffRequest(
+				SESSION_ID,
+				query(
+					{
+						scope: "turn:prompt-2",
+					},
+				),
+				dependencies(),
+			),
 		);
 
 		expect([body.scope, body.source, body.root, body.files.map((file) => file.path)]).toStrictEqual([
@@ -323,71 +472,130 @@ describe("handleSessionDiffRequest", () => {
 		]);
 	});
 
-	it("serves the repository toplevel as the root of a git scope, asking once per request", async () => {
+	it("serves the repository toplevel as the root of a git scope, asking once per request", async () =>
+	{
 		const calls: string[] = [];
 		insertSession(join(repository, "nested"));
 
 		const body = await diffBody(
 			await handleSessionDiffRequest(
 				SESSION_ID,
-				query({scope: "branch"}),
-				dependencies({
-					buildScopeDiff: async () => Promise.resolve({kind: "ok", patch: "", files: []}),
-					resolveRepoRoot: async (directory) => {
-						calls.push(directory);
-						return Promise.resolve("/repo");
+				query(
+					{
+						scope: "branch",
 					},
-				}),
+				),
+				dependencies(
+					{
+						buildScopeDiff: async () =>
+							Promise.resolve(
+								{
+									kind: "ok",
+									patch: "",
+									files: [],
+								},
+							),
+						resolveRepoRoot: async (directory) =>
+						{
+							calls.push(directory);
+							return Promise.resolve("/repo");
+						},
+					},
+				),
 			),
 		);
 
 		expect([body.root, calls]).toStrictEqual(["/repo", [join(repository, "nested")]]);
 	});
 
-	it("serves the session cwd as the root of session-edit scopes", async () => {
+	it("serves the session cwd as the root of session-edit scopes", async () =>
+	{
 		const calls: string[] = [];
 		insertSession(repository);
 
 		const body = await diffBody(
 			await handleSessionDiffRequest(
 				SESSION_ID,
-				query({scope: "session"}),
-				dependencies({
-					resolveRepoRoot: async (directory) => {
-						calls.push(directory);
-						return Promise.resolve("/repo");
+				query(
+					{
+						scope: "session",
 					},
-				}),
+				),
+				dependencies(
+					{
+						resolveRepoRoot: async (directory) =>
+						{
+							calls.push(directory);
+							return Promise.resolve("/repo");
+						},
+					},
+				),
 			),
 		);
 
 		expect([body.root, calls]).toStrictEqual([repository, []]);
 	});
 
-	it("returns 404 for an unknown turn", async () => {
+	it("returns 404 for an unknown turn", async () =>
+	{
 		insertSession(repository);
 
-		const response = await handleSessionDiffRequest(SESSION_ID, query({scope: "turn:nope"}), dependencies());
+		const response = await handleSessionDiffRequest(
+			SESSION_ID,
+			query(
+				{
+					scope: "turn:nope",
+				},
+			),
+			dependencies(),
+		);
 
 		expect(response.status).toBe(404);
 	});
 
-	it("omits large patches and serves them lazily by file", async () => {
-		write("large.txt", Array.from({length: LARGE_LINE_COUNT}, (_, i) => `line ${i}`).join("\n"));
+	it("omits large patches and serves them lazily by file", async () =>
+	{
+		write(
+			"large.txt",
+			Array.from(
+				{
+					length: LARGE_LINE_COUNT,
+				},
+				(_, i) => `line ${i}`,
+			).join("\n"),
+		);
 		insertSession(repository);
 
 		const list = await diffBody(
-			await handleSessionDiffRequest(SESSION_ID, query({scope: "branch"}), dependencies()),
+			await handleSessionDiffRequest(
+				SESSION_ID,
+				query(
+					{
+						scope: "branch",
+					},
+				),
+				dependencies(),
+			),
 		);
 		const lazyResponse = await handleSessionDiffRequest(
 			SESSION_ID,
-			query({scope: "branch", file: "large.txt"}),
+			query(
+				{
+					scope: "branch",
+					file: "large.txt",
+				},
+			),
 			dependencies(),
 		);
 		const lazy = SessionDiffFileResponseSchema.parse(await lazyResponse.json());
 		const missing = await handleSessionDiffRequest(
 			SESSION_ID,
-			query({scope: "branch", file: "nope.txt"}),
+			query(
+				{
+					scope: "branch",
+					file: "nope.txt",
+				},
+			),
 			dependencies(),
 		);
 
@@ -414,99 +622,243 @@ describe("handleSessionDiffRequest", () => {
 	});
 });
 
-describe("handleSessionDiffRequest &lines=1 (upstream getDiffFileContent)", () => {
-	it("serves both sides of one file of a git scope, read from the repository toplevel", async () => {
+describe("handleSessionDiffRequest &lines=1 (upstream getDiffFileContent)", () =>
+{
+	it("serves both sides of one file of a git scope, read from the repository toplevel", async () =>
+	{
 		insertSession(repository);
 		write("keep.txt", "one\nTWO\nthree\n");
 
 		const response = await handleSessionDiffRequest(
 			SESSION_ID,
-			query({scope: "branch", ws: "0", file: "keep.txt", lines: "1"}),
+			query(
+				{
+					scope: "branch",
+					ws: "0",
+					file: "keep.txt",
+					lines: "1",
+				},
+			),
 			dependencies(),
 		);
 
-		expect({
-			status: response.status,
-			body: SessionDiffFileLinesResponseSchema.parse(await response.json()),
-		}).toStrictEqual({
-			status: 200,
-			body: {scope: "branch", oldText: "one\ntwo\n", newText: "one\nTWO\nthree\n"},
-		});
+		expect(
+			{
+				status: response.status,
+				body: SessionDiffFileLinesResponseSchema.parse(await response.json()),
+			},
+		).toStrictEqual(
+			{
+				status: 200,
+				body:
+				{
+					scope: "branch",
+					oldText: "one\ntwo\n",
+					newText: "one\nTWO\nthree\n",
+				},
+			},
+		);
 	});
 
-	it("passes the file's old path and status to the reader", async () => {
+	it("passes the file's old path and status to the reader", async () =>
+	{
 		insertSession(repository);
 		git("mv", "keep.txt", "kept.txt");
 		const calls: unknown[] = [];
 
 		const response = await handleSessionDiffRequest(
 			SESSION_ID,
-			query({scope: "uncommitted", file: "kept.txt", lines: "1"}),
-			dependencies({
-				resolveRepoRoot: async () => Promise.resolve("/repo-root"),
-				readDiffFileSides: async (root, scope, file) => {
-					calls.push({root, scope, file});
-					return Promise.resolve({oldText: "a\n", newText: "b\n"});
+			query(
+				{
+					scope: "uncommitted",
+					file: "kept.txt",
+					lines: "1",
 				},
-			}),
+			),
+			dependencies(
+				{
+					resolveRepoRoot: async () => Promise.resolve("/repo-root"),
+					readDiffFileSides: async (root, scope, file) =>
+					{
+						calls.push(
+							{
+								root,
+								scope,
+								file,
+							},
+						);
+						return Promise.resolve(
+							{
+								oldText: "a\n",
+								newText: "b\n",
+							},
+						);
+					},
+				},
+			),
 		);
 
-		expect({status: response.status, calls}).toStrictEqual({
-			status: 200,
-			calls: [
-				{
-					root: "/repo-root",
-					scope: {kind: "uncommitted"},
-					file: {path: "kept.txt", oldPath: "keep.txt", status: "renamed"},
-				},
-			],
-		});
+		expect(
+			{
+				status: response.status,
+				calls,
+			},
+		).toStrictEqual(
+			{
+				status: 200,
+				calls: [
+					{
+						root: "/repo-root",
+						scope:
+						{
+							kind: "uncommitted",
+						},
+						file:
+						{
+							path: "kept.txt",
+							oldPath: "keep.txt",
+							status: "renamed",
+						},
+					},
+				],
+			},
+		);
 	});
 
-	it("returns 404 for a file not in the diff, a path the reader refuses, and scopes with no checkout", async () => {
+	it("returns 404 for a file not in the diff, a path the reader refuses, and scopes with no checkout", async () =>
+	{
 		insertSession(repository);
 		const requests: [Record<string, string>, Partial<SessionDiffHandlerDependencies>][] = [
-			[{scope: "branch", file: "missing.txt", lines: "1"}, {}],
-			[{scope: "branch", file: "keep.txt", lines: "1"}, {readDiffFileSides: async () => Promise.resolve(null)}],
-			[{scope: "session", file: "notes.md", lines: "1"}, {}],
-			[{scope: "turn:prompt-1", file: "notes.md", lines: "1"}, {}],
-			[{scope: "branch", file: "notes.md", lines: "1"}, {resolveDirectory: async () => Promise.resolve(null)}],
+			[
+				{
+					scope: "branch",
+					file: "missing.txt",
+					lines: "1",
+				},
+				{},
+			],
+			[
+				{
+					scope: "branch",
+					file: "keep.txt",
+					lines: "1",
+				},
+				{
+					readDiffFileSides: async () => Promise.resolve(null),
+				},
+			],
+			[
+				{
+					scope: "session",
+					file: "notes.md",
+					lines: "1",
+				},
+				{},
+			],
+			[
+				{
+					scope: "turn:prompt-1",
+					file: "notes.md",
+					lines: "1",
+				},
+				{},
+			],
+			[
+				{
+					scope: "branch",
+					file: "notes.md",
+					lines: "1",
+				},
+				{
+					resolveDirectory: async () => Promise.resolve(null),
+				},
+			],
 		];
 		const results = [];
-		for (const [parameters, overrides] of requests) {
+		for (const [parameters, overrides] of requests)
+		{
 			const response = await handleSessionDiffRequest(SESSION_ID, query(parameters), dependencies(overrides));
-			results.push({status: response.status, body: await response.json()});
+			results.push(
+				{
+					status: response.status,
+					body: await response.json(),
+				},
+			);
 		}
 
 		expect(results).toStrictEqual([
-			{status: 404, body: {error: "File not in diff"}},
-			{status: 404, body: {error: "File not in diff"}},
-			{status: 404, body: {error: "No checkout"}},
-			{status: 404, body: {error: "No checkout"}},
-			{status: 404, body: {error: "No checkout"}},
+			{
+				status: 404,
+				body:
+				{
+					error: "File not in diff",
+				},
+			},
+			{
+				status: 404,
+				body:
+				{
+					error: "File not in diff",
+				},
+			},
+			{
+				status: 404,
+				body:
+				{
+					error: "No checkout",
+				},
+			},
+			{
+				status: 404,
+				body:
+				{
+					error: "No checkout",
+				},
+			},
+			{
+				status: 404,
+				body:
+				{
+					error: "No checkout",
+				},
+			},
 		]);
 	});
 });
 
-describe("resolveRepoRoot", () => {
-	it("resolves a subdirectory to the realpath of the repository toplevel", async () => {
+describe("resolveRepoRoot", () =>
+{
+	it("resolves a subdirectory to the realpath of the repository toplevel", async () =>
+	{
 		mkdirSync(join(repository, "nested"));
 
 		expect(await resolveRepoRoot(join(repository, "nested"))).toBe(realpathSync(repository));
 	});
 
-	it("returns null outside a repository", async () => {
+	it("returns null outside a repository", async () =>
+	{
 		const outside = mkdtempSync(join(tmpdir(), "api-session-diff-outside-"));
-		try {
+		try
+		{
 			expect(await resolveRepoRoot(outside)).toBeNull();
-		} finally {
-			rmSync(outside, {recursive: true, force: true});
+		}
+		finally
+		{
+			rmSync(
+				outside,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
 		}
 	});
 });
 
-describe("resolveAbsoluteDiffPath", () => {
-	it("joins a relative path onto the root and passes an absolute path through", () => {
+describe("resolveAbsoluteDiffPath", () =>
+{
+	it("joins a relative path onto the root and passes an absolute path through", () =>
+	{
 		expect([
 			resolveAbsoluteDiffPath("/repo", "src/a.ts"),
 			resolveAbsoluteDiffPath("/repo/", "src/a.ts"),
@@ -515,14 +867,17 @@ describe("resolveAbsoluteDiffPath", () => {
 	});
 });
 
-describe("handleSessionDiffScopesRequest", () => {
-	it("returns 404 for an unknown session", async () => {
+describe("handleSessionDiffScopesRequest", () =>
+{
+	it("returns 404 for an unknown session", async () =>
+	{
 		const response = await handleSessionDiffScopesRequest("missing", dependencies());
 
 		expect(response.status).toBe(404);
 	});
 
-	it("returns 422 when the session has no working directory", async () => {
+	it("returns 422 when the session has no working directory", async () =>
+	{
 		insertSession(null);
 
 		const response = await handleSessionDiffScopesRequest(SESSION_ID, dependencies());
@@ -530,7 +885,8 @@ describe("handleSessionDiffScopesRequest", () => {
 		expect(response.status).toBe(422);
 	});
 
-	it("lists git scopes for the session checkout", async () => {
+	it("lists git scopes for the session checkout", async () =>
+	{
 		write("untracked.txt", "fresh\n");
 		insertSession(repository);
 
@@ -538,43 +894,62 @@ describe("handleSessionDiffScopesRequest", () => {
 			await (await handleSessionDiffScopesRequest(SESSION_ID, dependencies())).json(),
 		);
 
-		expect(body).toStrictEqual({
-			kind: "git",
-			base: "main",
-			baseRef: "main",
-			mergeBase: git("merge-base", "main", "HEAD"),
-			head: "feature",
-			uncommittedAvailable: true,
-			commits: [
-				{
-					sha: git("rev-parse", "HEAD"),
-					shortSha: git("rev-parse", "--short", "HEAD"),
-					subject: "Edit keep.",
-					author: "Alice",
-					date: expect.stringMatching(/^2026-01-01T00:00:\d\d/),
-				},
-			],
-			totalCommits: 1,
-		});
+		expect(body).toStrictEqual(
+			{
+				kind: "git",
+				base: "main",
+				baseRef: "main",
+				mergeBase: git("merge-base", "main", "HEAD"),
+				head: "feature",
+				uncommittedAvailable: true,
+				commits: [
+					{
+						sha: git("rev-parse", "HEAD"),
+						shortSha: git("rev-parse", "--short", "HEAD"),
+						subject: "Edit keep.",
+						author: "Alice",
+						date: expect.stringMatching(/^2026-01-01T00:00:\d\d/),
+					},
+				],
+				totalCommits: 1,
+			},
+		);
 	});
 
-	it("reports no-git when the repository is gone", async () => {
+	it("reports no-git when the repository is gone", async () =>
+	{
 		insertSession(repository);
 
 		const response = await handleSessionDiffScopesRequest(
 			SESSION_ID,
-			dependencies({resolveDirectory: async () => Promise.resolve(null)}),
+			dependencies(
+				{
+					resolveDirectory: async () => Promise.resolve(null),
+				},
+			),
 		);
 
-		expect(await response.json()).toStrictEqual({kind: "no-git"});
+		expect(await response.json()).toStrictEqual(
+			{
+				kind: "no-git",
+			},
+		);
 	});
 });
 
-describe("session diff query options", () => {
-	it("keys on session, scope, whitespace flag, and file", () => {
+describe("session diff query options", () =>
+{
+	it("keys on session, scope, whitespace flag, and file", () =>
+	{
 		expect([
 			sessionDiffQueryOptions(SESSION_ID, "turn:prompt-1").queryKey,
-			sessionDiffQueryOptions(SESSION_ID, "branch", {hideWhitespace: true}).queryKey,
+			sessionDiffQueryOptions(
+				SESSION_ID,
+				"branch",
+				{
+					hideWhitespace: true,
+				},
+			).queryKey,
 			sessionDiffFileQueryOptions(SESSION_ID, "branch", "src/a.ts").queryKey,
 			sessionDiffScopesQueryOptions(SESSION_ID).queryKey,
 		]).toStrictEqual([
@@ -585,32 +960,110 @@ describe("session diff query options", () => {
 		]);
 	});
 
-	it("keys a file's lines on session, scope, path and patch content, kept 5 minutes (upstream td)", () => {
-		const options = sessionDiffFileLinesQueryOptions(SESSION_ID, "branch", "src/a.ts", {contentKey: "ids:1..2"});
-		expect({key: options.queryKey, gcTime: options.gcTime}).toStrictEqual({
-			key: ["sessions", SESSION_ID, "diff", "branch", "lines", "src/a.ts", "ids:1..2"],
-			gcTime: 300_000,
-		});
+	it("keys a file's lines on session, scope, path and patch content, kept 5 minutes (upstream td)", () =>
+	{
+		const options = sessionDiffFileLinesQueryOptions(
+			SESSION_ID,
+			"branch",
+			"src/a.ts",
+			{
+				contentKey: "ids:1..2",
+			},
+		);
+		expect(
+			{
+				key: options.queryKey,
+				gcTime: options.gcTime,
+			},
+		).toStrictEqual(
+			{
+				key: ["sessions", SESSION_ID, "diff", "branch", "lines", "src/a.ts", "ids:1..2"],
+				gcTime: 300_000,
+			},
+		);
 	});
 
-	it("keeps both sides forever, rechecks a missing expected side after 30s, and refetches when fresh (upstream id)", () => {
-		const staleTime = (data: {oldText: string | null; newText: string | null}, status: string, fresh = false) => {
-			const options = sessionDiffFileLinesQueryOptions(SESSION_ID, "branch", "src/a.ts", {
-				contentKey: "k",
-				status: status as "modified",
-				fresh,
-			});
+	it("keeps both sides forever, rechecks a missing expected side after 30s, and refetches when fresh (upstream id)", () =>
+	{
+		const staleTime = (
+			data:
+			{
+				oldText: string | null;
+				newText: string | null;
+			},
+			status: string,
+			fresh = false,
+		) =>
+		{
+			const options = sessionDiffFileLinesQueryOptions(
+				SESSION_ID,
+				"branch",
+				"src/a.ts",
+				{
+					contentKey: "k",
+					status: status as "modified",
+					fresh,
+				},
+			);
 			const value = options.staleTime;
 			if (typeof value !== "function") return value;
-			return value({state: {data: {scope: "branch", ...data}}} as Parameters<typeof value>[0]);
+			return value(
+				{
+					state:
+					{
+						data:
+						{
+							scope: "branch",
+							...data,
+						},
+					},
+				} as Parameters<typeof value>[0],
+			);
 		};
 		expect([
-			staleTime({oldText: "a", newText: "b"}, "modified"),
-			staleTime({oldText: null, newText: "b"}, "modified"),
-			staleTime({oldText: "a", newText: null}, "modified"),
-			staleTime({oldText: null, newText: "b"}, "added"),
-			staleTime({oldText: "a", newText: null}, "deleted"),
-			staleTime({oldText: "a", newText: "b"}, "modified", true),
+			staleTime(
+				{
+					oldText: "a",
+					newText: "b",
+				},
+				"modified",
+			),
+			staleTime(
+				{
+					oldText: null,
+					newText: "b",
+				},
+				"modified",
+			),
+			staleTime(
+				{
+					oldText: "a",
+					newText: null,
+				},
+				"modified",
+			),
+			staleTime(
+				{
+					oldText: null,
+					newText: "b",
+				},
+				"added",
+			),
+			staleTime(
+				{
+					oldText: "a",
+					newText: null,
+				},
+				"deleted",
+			),
+			staleTime(
+				{
+					oldText: "a",
+					newText: "b",
+				},
+				"modified",
+				true,
+			),
 		]).toStrictEqual([Infinity, 30_000, 30_000, Infinity, Infinity, 0]);
 	});
 });

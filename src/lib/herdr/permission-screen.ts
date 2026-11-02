@@ -3,13 +3,15 @@ import {OPTION_LINE} from "./dialog-rows";
 
 export type PermissionRowKind = "yes" | "persistent" | "auto" | "no";
 
-export interface PermissionDialogRow {
+export interface PermissionDialogRow
+{
 	kind: PermissionRowKind;
 	label: string;
 }
 
 /** The rows of the CLI's tool permission dialog as read off the screen. */
-export interface PermissionDialogRows {
+export interface PermissionDialogRows
+{
 	/** Whether the rows carry digits; the classifier fallback hides them (`hideIndexes`). */
 	indexed: boolean;
 	rows: PermissionDialogRow[];
@@ -22,7 +24,8 @@ export interface PermissionDialogRows {
  * `denyFirst` (No first or hidden digits: the classifier fallback's defaultToNo),
  * and whether the persistent and auto rows are there to press.
  */
-export interface PermissionDialogShape {
+export interface PermissionDialogShape
+{
 	denyFirst: boolean;
 	persistent: boolean;
 	auto: boolean;
@@ -39,7 +42,8 @@ const FOCUS_MARKER = /^\s*❯/;
 const DESCRIPTION_SEPARATOR = /\s+·\s/;
 const MAX_INDEXED_ROWS = 9;
 
-function isQuestionLine(line: string): boolean {
+function isQuestionLine(line: string): boolean
+{
 	const trimmed = line.trim();
 	return trimmed.startsWith(QUESTION_PREFIX) && trimmed.endsWith("?");
 }
@@ -48,7 +52,8 @@ function isQuestionLine(line: string): boolean {
  * Whether the screen shows a tool permission question at all ("Do you want to …?"),
  * so a caller can tell a dialog this parser refuses from a screen with no dialog.
  */
-export function showsPermissionQuestion(screen: string): boolean {
+export function showsPermissionQuestion(screen: string): boolean
+{
 	return screen.split("\n").some(isQuestionLine);
 }
 
@@ -60,7 +65,8 @@ const FOCUSED_OPTION_LINE = /^\s*❯\s*\d+\.\s/u;
  * first outside-read prompt, or any select dialog with a focused numbered row (plan approval, elicitation, a
  * question). Keys meant for the prompt input are held while one is up.
  */
-export function showsAnyDialog(screen: string): boolean {
+export function showsAnyDialog(screen: string): boolean
+{
 	return (
 		showsPermissionQuestion(screen) ||
 		parseOutsideReadFirstPrompt(screen) !== null ||
@@ -68,7 +74,8 @@ export function showsAnyDialog(screen: string): boolean {
 	);
 }
 
-interface RawRow {
+interface RawRow
+{
 	label: string;
 	focused: boolean;
 	/** Where the label starts, so a wrapped continuation line can be told from the next text. */
@@ -76,14 +83,23 @@ interface RawRow {
 }
 
 /** The indexed rows, numbered 1…n, with each wrapped continuation line joined onto its row. */
-function indexedRows(block: readonly string[]): RawRow[] | null {
+function indexedRows(block: readonly string[]): RawRow[] | null
+{
 	const rows: RawRow[] = [];
-	for (const line of block) {
+	for (const line of block)
+	{
 		const match = OPTION_LINE.exec(line);
-		if (match !== null) {
+		if (match !== null)
+		{
 			if (Number(match[1]) !== rows.length + 1) return null;
 			const label = match[2] ?? "";
-			rows.push({label, focused: FOCUS_MARKER.test(line), labelColumn: line.lastIndexOf(label)});
+			rows.push(
+				{
+					label,
+					focused: FOCUS_MARKER.test(line),
+					labelColumn: line.lastIndexOf(label),
+				},
+			);
 			continue;
 		}
 		const previous = rows.at(-1);
@@ -93,18 +109,27 @@ function indexedRows(block: readonly string[]): RawRow[] | null {
 	return rows;
 }
 
-function hiddenRows(block: readonly string[]): RawRow[] | null {
+function hiddenRows(block: readonly string[]): RawRow[] | null
+{
 	const rows: RawRow[] = [];
-	for (const line of block) {
+	for (const line of block)
+	{
 		const match = HIDDEN_ROW.exec(line);
 		if (match === null) return null;
-		rows.push({label: match[2] ?? "", focused: match[1] !== undefined, labelColumn: 0});
+		rows.push(
+			{
+				label: match[2] ?? "",
+				focused: match[1] !== undefined,
+				labelColumn: 0,
+			},
+		);
 	}
 	return rows;
 }
 
 /** The row's label without an inline description (`· auto mode handles these prompts for you`). */
-function stripDescription(label: string): string {
+function stripDescription(label: string): string
+{
 	return label.split(DESCRIPTION_SEPARATOR)[0] ?? label;
 }
 
@@ -112,42 +137,100 @@ function stripDescription(label: string): string {
  * Indexed rows classify by position: Yes first, No last, so typed feedback
  * (`No, try x`) still reads as the No row and is never taken for a persistent grant.
  */
-function classifyIndexed(labels: readonly string[]): PermissionDialogRow[] | null {
+function classifyIndexed(labels: readonly string[]): PermissionDialogRow[] | null
+{
 	const last = labels.length - 1;
 	const rows: PermissionDialogRow[] = [];
-	for (const [index, label] of labels.entries()) {
-		if (index === 0) {
+	for (const [index, label] of labels.entries())
+	{
+		if (index === 0)
+		{
 			if (!label.startsWith("Yes")) return null;
-			rows.push({kind: "yes", label});
-		} else if (index === last) {
+			rows.push(
+				{
+					kind: "yes",
+					label,
+				},
+			);
+		}
+		else if (index === last)
+		{
 			if (!NO_LABEL.test(label)) return null;
-			rows.push({kind: "no", label});
-		} else if (label.startsWith(AUTO_PREFIX)) {
-			rows.push({kind: "auto", label});
-		} else if (label.startsWith("Yes")) {
-			rows.push({kind: "persistent", label});
-		} else {
+			rows.push(
+				{
+					kind: "no",
+					label,
+				},
+			);
+		}
+		else if (label.startsWith(AUTO_PREFIX))
+		{
+			rows.push(
+				{
+					kind: "auto",
+					label,
+				},
+			);
+		}
+		else if (label.startsWith("Yes"))
+		{
+			rows.push(
+				{
+					kind: "persistent",
+					label,
+				},
+			);
+		}
+		else
+		{
 			return null;
 		}
 	}
 	return rows;
 }
 
-function classifyHidden(labels: readonly string[]): PermissionDialogRow[] | null {
+function classifyHidden(labels: readonly string[]): PermissionDialogRow[] | null
+{
 	const rows: PermissionDialogRow[] = [];
-	for (const label of labels) {
+	for (const label of labels)
+	{
 		if (label === "Yes" || label.startsWith("Yes, and tell Claude what to do next"))
-			rows.push({kind: "yes", label});
-		else if (label === "No" || label.startsWith("No, and tell Claude what to do differently")) {
-			rows.push({kind: "no", label});
-		} else if (label.startsWith(AUTO_PREFIX)) rows.push({kind: "auto", label});
-		else if (label.startsWith("Yes")) rows.push({kind: "persistent", label});
+			rows.push(
+				{
+					kind: "yes",
+					label,
+				},
+			);
+		else if (label === "No" || label.startsWith("No, and tell Claude what to do differently"))
+		{
+			rows.push(
+				{
+					kind: "no",
+					label,
+				},
+			);
+		}
+		else if (label.startsWith(AUTO_PREFIX))
+			rows.push(
+				{
+					kind: "auto",
+					label,
+				},
+			);
+		else if (label.startsWith("Yes"))
+			rows.push(
+				{
+					kind: "persistent",
+					label,
+				},
+			);
 		else return null;
 	}
 	return rows;
 }
 
-function countKind(rows: readonly PermissionDialogRow[], kind: PermissionRowKind): number {
+function countKind(rows: readonly PermissionDialogRow[], kind: PermissionRowKind): number
+{
 	return rows.filter((row) => row.kind === kind).length;
 }
 
@@ -161,7 +244,8 @@ function countKind(rows: readonly PermissionDialogRow[], kind: PermissionRowKind
  * Null for any other shape, including the auto-mode outside-read first prompt,
  * whose rows mean something else.
  */
-export function parsePermissionDialog(screen: string): PermissionDialogRows | null {
+export function parsePermissionDialog(screen: string): PermissionDialogRows | null
+{
 	const lines = screen.split("\n");
 	const anchor = lines.findLastIndex(isQuestionLine);
 	if (anchor < 0) return null;
@@ -192,18 +276,30 @@ export function parsePermissionDialog(screen: string): PermissionDialogRows | nu
 	const focusedRows = raw.flatMap((row, index) => (row.focused ? [index] : []));
 	const [focused] = focusedRows;
 	if (focusedRows.length !== 1 || focused === undefined) return null;
-	return {indexed, rows, focused};
+	return {
+		indexed,
+		rows,
+		focused,
+	};
 }
 
 /** The rows of auto mode's first outside-read prompt, each the digit the screen gives it. */
-export interface OutsideReadFirstPrompt {
+export interface OutsideReadFirstPrompt
+{
 	kind: "outsideReadFirstPrompt";
-	rows: {keepAllowing: number; blockFromNowOn: number; noAskAgain: number; yesAskAgain: number};
+	rows:
+	{
+		keepAllowing: number;
+		blockFromNowOn: number;
+		noAskAgain: number;
+		yesAskAgain: number;
+	};
 }
 
 const OUTSIDE_READ_QUESTION = "Allow this read outside the working directories?";
 /** The row labels of the CLI's `ZVt` map (2.1.319). */
-const OUTSIDE_READ_ROW_LABELS = {
+const OUTSIDE_READ_ROW_LABELS =
+{
 	keepAllowing: "Yes, and keep allowing any reads outside the working directories",
 	blockFromNowOn: "No, and block reads outside the working directories from now on",
 	noAskAgain: "No, and ask again next time",
@@ -216,12 +312,14 @@ const OUTSIDE_READ_ROW_LABELS = {
  * numbered rows up to the first blank line, each matched by its exact label.
  * Null unless all four rows are there.
  */
-export function parseOutsideReadFirstPrompt(screen: string): OutsideReadFirstPrompt | null {
+export function parseOutsideReadFirstPrompt(screen: string): OutsideReadFirstPrompt | null
+{
 	const lines = screen.split("\n");
 	const anchor = lines.findLastIndex((line) => line.trim() === OUTSIDE_READ_QUESTION);
 	if (anchor < 0) return null;
 	const digits = new Map<string, number>();
-	for (const line of lines.slice(anchor + 1)) {
+	for (const line of lines.slice(anchor + 1))
+	{
 		if (line.trim() === "") break;
 		const match = OPTION_LINE.exec(line);
 		if (match === null) return null;
@@ -236,10 +334,20 @@ export function parseOutsideReadFirstPrompt(screen: string): OutsideReadFirstPro
 		blockFromNowOn === undefined ||
 		noAskAgain === undefined ||
 		yesAskAgain === undefined
-	) {
+	)
+	{
 		return null;
 	}
-	return {kind: "outsideReadFirstPrompt", rows: {keepAllowing, blockFromNowOn, noAskAgain, yesAskAgain}};
+	return {
+		kind: "outsideReadFirstPrompt",
+		rows:
+		{
+			keepAllowing,
+			blockFromNowOn,
+			noAskAgain,
+			yesAskAgain,
+		},
+	};
 }
 
 /**
@@ -251,7 +359,8 @@ export function parseOutsideReadFirstPrompt(screen: string): OutsideReadFirstPro
 export function permissionDialogSteps(
 	dialog: PermissionDialogRows,
 	decision: PermissionDialogDecision,
-): string[][] | null {
+): string[][] | null
+{
 	if (decision === "deny") return [["esc"]];
 	const kind: PermissionRowKind = decision === "allow" ? "yes" : "persistent";
 	const row = dialog.rows.findIndex((candidate) => candidate.kind === kind);
@@ -264,7 +373,8 @@ export function permissionDialogSteps(
 }
 
 /** The card shape of a dialog read off the screen. */
-export function permissionDialogShape(dialog: PermissionDialogRows): PermissionDialogShape {
+export function permissionDialogShape(dialog: PermissionDialogRows): PermissionDialogShape
+{
 	return {
 		denyFirst: dialog.rows[0]?.kind === "no" || !dialog.indexed,
 		persistent: dialog.indexed && dialog.rows.some((row) => row.kind === "persistent"),

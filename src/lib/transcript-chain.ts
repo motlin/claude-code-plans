@@ -16,7 +16,8 @@ import {isRecord} from "./narrow";
 
 type TranscriptRecord = Record<string, unknown>;
 
-export interface AbandonedCut {
+export interface AbandonedCut
+{
 	/** The parent both the abandoned prompt and its replacement hang off. */
 	parentUuid: string;
 	/** The on-chain sibling prompt that replaced the abandoned one (for a rewind with nothing sent since, the anchor). */
@@ -29,42 +30,54 @@ export interface AbandonedCut {
 	count: number;
 }
 
-export interface AbandonedBranches {
+export interface AbandonedBranches
+{
 	hidden: Set<string>;
 	cuts: AbandonedCut[];
 }
 
-function stringField(record: TranscriptRecord, key: string): string | undefined {
+function stringField(record: TranscriptRecord, key: string): string | undefined
+{
 	const value = record[key];
 	return typeof value === "string" ? value : undefined;
 }
 
-function isMessage(record: TranscriptRecord): boolean {
+function isMessage(record: TranscriptRecord): boolean
+{
 	return record["type"] === "user" || record["type"] === "assistant";
 }
 
 /** A user record's prompt text (its text blocks joined by spaces), or undefined for tool results and non-text content. */
-export function promptText(record: TranscriptRecord): string | undefined {
+export function promptText(record: TranscriptRecord): string | undefined
+{
 	const message = record["message"];
-	if (!isRecord(message)) {
+	if (!isRecord(message))
+	{
 		return undefined;
 	}
 	const content = message["content"];
-	if (typeof content === "string") {
+	if (typeof content === "string")
+	{
 		return content;
 	}
-	if (!Array.isArray(content)) {
+	if (!Array.isArray(content))
+	{
 		return undefined;
 	}
 	let hasToolResult = false;
 	const texts: string[] = [];
-	for (const block of content) {
-		if (!isRecord(block)) {
+	for (const block of content)
+	{
+		if (!isRecord(block))
+		{
 			continue;
 		}
-		if (block["type"] === "tool_result") {
+		if (block["type"] === "tool_result")
+		{
 			hasToolResult = true;
-		} else if (block["type"] === "text" && typeof block["text"] === "string") {
+		}
+		else if (block["type"] === "text" && typeof block["text"] === "string")
+		{
 			texts.push(block["text"]);
 		}
 	}
@@ -72,8 +85,10 @@ export function promptText(record: TranscriptRecord): string | undefined {
 }
 
 /** A user prompt: string content or a text block, not meta, not a tool result, not a task notification. */
-export function isPrompt(record: TranscriptRecord): boolean {
-	if (record["type"] !== "user" || record["isMeta"] === true) {
+export function isPrompt(record: TranscriptRecord): boolean
+{
+	if (record["type"] !== "user" || record["isMeta"] === true)
+	{
 		return false;
 	}
 	const text = promptText(record);
@@ -98,26 +113,36 @@ const SKELETON_FIELDS = [
  * its text; every other record drops `message`, which `computeAbandoned` reads
  * for nothing but prompt detection.
  */
-export function chainSkeleton(record: TranscriptRecord): TranscriptRecord {
+export function chainSkeleton(record: TranscriptRecord): TranscriptRecord
+{
 	const skeleton: TranscriptRecord = {};
-	for (const field of SKELETON_FIELDS) {
+	for (const field of SKELETON_FIELDS)
+	{
 		if (Object.hasOwn(record, field)) skeleton[field] = record[field];
 	}
-	if (isPrompt(record)) skeleton["message"] = {content: promptText(record)};
+	if (isPrompt(record))
+		skeleton["message"] =
+		{
+			content: promptText(record),
+		};
 	return skeleton;
 }
 
 /** The nearest user/assistant row at or above `uuid`, or undefined when the walk leaves the file. */
-function messageAncestor(byUuid: Map<string, TranscriptRecord>, start: string): string | undefined {
+function messageAncestor(byUuid: Map<string, TranscriptRecord>, start: string): string | undefined
+{
 	const seen = new Set<string>();
 	let uuid: string | undefined = start;
-	while (uuid !== undefined && !seen.has(uuid)) {
+	while (uuid !== undefined && !seen.has(uuid))
+	{
 		seen.add(uuid);
 		const current = byUuid.get(uuid);
-		if (current === undefined) {
+		if (current === undefined)
+		{
 			return undefined;
 		}
-		if (isMessage(current)) {
+		if (isMessage(current))
+		{
 			return uuid;
 		}
 		uuid = stringField(current, "parentUuid");
@@ -125,50 +150,64 @@ function messageAncestor(byUuid: Map<string, TranscriptRecord>, start: string): 
 	return undefined;
 }
 
-function findLeaf(byUuid: Map<string, TranscriptRecord>, records: TranscriptRecord[]): string | undefined {
-	for (const record of records.toReversed()) {
-		if (record["type"] !== "last-prompt") {
+function findLeaf(byUuid: Map<string, TranscriptRecord>, records: TranscriptRecord[]): string | undefined
+{
+	for (const record of records.toReversed())
+	{
+		if (record["type"] !== "last-prompt")
+		{
 			continue;
 		}
 		// A `leafUuid: null` withdrawal has no string and falls through to the next older checkpoint, as the CLI does.
 		const leafUuid = stringField(record, "leafUuid");
-		if (leafUuid === undefined || !byUuid.has(leafUuid)) {
+		if (leafUuid === undefined || !byUuid.has(leafUuid))
+		{
 			continue;
 		}
 		const leaf = messageAncestor(byUuid, leafUuid);
-		if (leaf !== undefined) {
+		if (leaf !== undefined)
+		{
 			return leaf;
 		}
 		break;
 	}
-	for (const record of records.toReversed()) {
+	for (const record of records.toReversed())
+	{
 		const uuid = stringField(record, "uuid");
-		if (uuid !== undefined && record["isSidechain"] !== true && isMessage(record)) {
+		if (uuid !== undefined && record["isSidechain"] !== true && isMessage(record))
+		{
 			return uuid;
 		}
 	}
 	return undefined;
 }
 
-export function computeAbandoned(records: TranscriptRecord[]): AbandonedBranches {
+export function computeAbandoned(records: TranscriptRecord[]): AbandonedBranches
+{
 	const byUuid = new Map<string, TranscriptRecord>();
 	/** Child uuids per parent uuid, in file order. */
 	const children = new Map<string, string[]>();
 	/** Each record's position in the file, so a rewind keeps rows written after its checkpoint. */
 	const fileIndex = new Map<string, number>();
-	for (const [index, record] of records.entries()) {
+	for (const [index, record] of records.entries())
+	{
 		const uuid = stringField(record, "uuid");
-		if (uuid === undefined || record["isSidechain"] === true) {
+		if (uuid === undefined || record["isSidechain"] === true)
+		{
 			continue;
 		}
 		byUuid.set(uuid, record);
 		fileIndex.set(uuid, index);
 		const parentUuid = stringField(record, "parentUuid");
-		if (parentUuid !== undefined) {
+		if (parentUuid !== undefined)
+		{
 			const siblings = children.get(parentUuid);
-			if (siblings === undefined) {
+			if (siblings === undefined)
+			{
 				children.set(parentUuid, [uuid]);
-			} else {
+			}
+			else
+			{
 				siblings.push(uuid);
 			}
 		}
@@ -176,9 +215,11 @@ export function computeAbandoned(records: TranscriptRecord[]): AbandonedBranches
 
 	const chain = new Set<string>();
 	let uuid = findLeaf(byUuid, records);
-	while (uuid !== undefined && !chain.has(uuid)) {
+	while (uuid !== undefined && !chain.has(uuid))
+	{
 		const current = byUuid.get(uuid);
-		if (current === undefined) {
+		if (current === undefined)
+		{
 			break;
 		}
 		chain.add(uuid);
@@ -188,11 +229,14 @@ export function computeAbandoned(records: TranscriptRecord[]): AbandonedBranches
 	const hidden = new Set<string>();
 	const cuts: AbandonedCut[] = [];
 	/** Hides `root`'s subtree (rows before `limit` in file order only) and returns how many rows it hid. */
-	const hideSubtree = (root: string, limit = Number.POSITIVE_INFINITY): number => {
+	const hideSubtree = (root: string, limit = Number.POSITIVE_INFINITY): number =>
+	{
 		let count = 0;
 		const stack = [root];
-		for (let next = stack.pop(); next !== undefined; next = stack.pop()) {
-			if (hidden.has(next) || (fileIndex.get(next) ?? 0) >= limit) {
+		for (let next = stack.pop(); next !== undefined; next = stack.pop())
+		{
+			if (hidden.has(next) || (fileIndex.get(next) ?? 0) >= limit)
+			{
 				continue;
 			}
 			hidden.add(next);
@@ -201,41 +245,52 @@ export function computeAbandoned(records: TranscriptRecord[]): AbandonedBranches
 		}
 		return count;
 	};
-	for (const [parentUuid, siblings] of children) {
-		const prompts = siblings.filter((sibling) => {
+	for (const [parentUuid, siblings] of children)
+	{
+		const prompts = siblings.filter((sibling) =>
+		{
 			const record = byUuid.get(sibling);
 			return record !== undefined && isPrompt(record);
 		});
-		if (prompts.length < 2) {
+		if (prompts.length < 2)
+		{
 			continue;
 		}
 		const replacementUuid = prompts.find((sibling) => chain.has(sibling));
-		if (replacementUuid === undefined) {
+		if (replacementUuid === undefined)
+		{
 			continue;
 		}
-		for (const abandonedUuid of prompts) {
-			if (chain.has(abandonedUuid)) {
+		for (const abandonedUuid of prompts)
+		{
+			if (chain.has(abandonedUuid))
+			{
 				continue;
 			}
 			const count = hideSubtree(abandonedUuid);
-			cuts.push({
-				parentUuid,
-				replacementUuid,
-				abandonedUuid,
-				at: stringField(byUuid.get(abandonedUuid) ?? {}, "timestamp") ?? "",
-				count,
-			});
+			cuts.push(
+				{
+					parentUuid,
+					replacementUuid,
+					abandonedUuid,
+					at: stringField(byUuid.get(abandonedUuid) ?? {}, "timestamp") ?? "",
+					count,
+				},
+			);
 		}
 	}
 
 	// Terminal rewinds: each rewound checkpoint whose anchor is on the chain cuts the anchor's off-chain children written before it.
-	for (const [checkpointIndex, record] of records.entries()) {
-		if (record["type"] !== "last-prompt" || record["rewound"] !== true) {
+	for (const [checkpointIndex, record] of records.entries())
+	{
+		if (record["type"] !== "last-prompt" || record["rewound"] !== true)
+		{
 			continue;
 		}
 		const leafUuid = stringField(record, "leafUuid");
 		const anchor = leafUuid === undefined ? undefined : messageAncestor(byUuid, leafUuid);
-		if (anchor === undefined || !chain.has(anchor)) {
+		if (anchor === undefined || !chain.has(anchor))
+		{
 			continue;
 		}
 		const anchorChildren = children.get(anchor) ?? [];
@@ -246,19 +301,26 @@ export function computeAbandoned(records: TranscriptRecord[]): AbandonedBranches
 		const roots = cutUuid !== undefined && offChain.includes(cutUuid) ? [cutUuid] : offChain;
 		const replacementUuid =
 			anchorChildren.find((child) => chain.has(child) && (fileIndex.get(child) ?? 0) > checkpointIndex) ?? anchor;
-		for (const abandonedUuid of roots) {
-			if (hidden.has(abandonedUuid)) {
+		for (const abandonedUuid of roots)
+		{
+			if (hidden.has(abandonedUuid))
+			{
 				continue;
 			}
 			const count = hideSubtree(abandonedUuid, checkpointIndex);
-			cuts.push({
-				parentUuid: anchor,
-				replacementUuid,
-				abandonedUuid,
-				at: stringField(byUuid.get(abandonedUuid) ?? {}, "timestamp") ?? "",
-				count,
-			});
+			cuts.push(
+				{
+					parentUuid: anchor,
+					replacementUuid,
+					abandonedUuid,
+					at: stringField(byUuid.get(abandonedUuid) ?? {}, "timestamp") ?? "",
+					count,
+				},
+			);
 		}
 	}
-	return {hidden, cuts};
+	return {
+		hidden,
+		cuts,
+	};
 }

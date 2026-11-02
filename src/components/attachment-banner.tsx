@@ -1,6 +1,7 @@
 import React, {useMemo} from "react";
 import {Link} from "@tanstack/react-router";
-import {
+import
+{
 	AlertTriangle,
 	Ban,
 	Bot,
@@ -64,8 +65,10 @@ export function AttachmentBanner({
 	absorbedMidTurn?: boolean | undefined;
 	/** Descriptions of deferred tools surfaced by `sameAs`, resolved from the earlier definition. */
 	sameAsDescriptions?: Readonly<Record<string, string>> | undefined;
-}) {
-	const attachment = useMemo<AttachmentPayload | null>(() => {
+})
+{
+	const attachment = useMemo<AttachmentPayload | null>(() =>
+	{
 		const parsed = AttachmentPayloadSchema.safeParse(JSON.parse(attachmentJson));
 		return parsed.success ? parsed.data : null;
 	}, [attachmentJson]);
@@ -91,12 +94,14 @@ export function AttachmentBanner({
 
 type RenderedRole = z.infer<typeof RenderedRoleSchema>;
 
-interface DetailSection {
+interface DetailSection
+{
 	label: string;
 	body: React.ReactNode;
 }
 
-const RENDERED_ROLE_LABELS = {
+const RENDERED_ROLE_LABELS =
+{
 	system: "System reminder",
 	user: "Injected into user turn",
 } satisfies Record<RenderedRole, string>;
@@ -105,37 +110,62 @@ function renderedSections(
 	rendered: readonly string[] | undefined,
 	renderedInHumanTurn: readonly string[] | undefined,
 	renderedRole: RenderedRole | undefined,
-): DetailSection[] {
+): DetailSection[]
+{
 	const sections: DetailSection[] = [];
-	if (rendered && rendered.length > 0) {
-		sections.push({
-			label: RENDERED_ROLE_LABELS[renderedRole ?? "system"],
-			body: rendered.map((text, i) => <Pre key={i}>{text}</Pre>),
-		});
+	if (rendered && rendered.length > 0)
+	{
+		sections.push(
+			{
+				label: RENDERED_ROLE_LABELS[renderedRole ?? "system"],
+				body: rendered.map((text, i) => <Pre key={i}>{text}</Pre>),
+			},
+		);
 	}
-	if (renderedInHumanTurn && renderedInHumanTurn.length > 0) {
-		sections.push({
-			label: "Rendered in human turn",
-			body: renderedInHumanTurn.map((text, i) => <Pre key={i}>{text}</Pre>),
-		});
+	if (renderedInHumanTurn && renderedInHumanTurn.length > 0)
+	{
+		sections.push(
+			{
+				label: "Rendered in human turn",
+				body: renderedInHumanTurn.map((text, i) => <Pre key={i}>{text}</Pre>),
+			},
+		);
 	}
 	return sections;
 }
 
-function linesSection(label: string, lines: (string | false | undefined)[]): DetailSection[] {
+function linesSection(label: string, lines: (string | false | undefined)[]): DetailSection[]
+{
 	const present = lines.filter((line): line is string => typeof line === "string");
-	return present.length > 0 ? [{label, body: <Pre>{present.join("\n")}</Pre>}] : [];
+	return present.length > 0
+		? [
+				{
+					label,
+					body: <Pre>{present.join("\n")}</Pre>,
+				},
+			]
+		: [];
 }
 
-function textSection(label: string, text: string | undefined): DetailSection[] {
-	return text ? [{label, body: <Pre>{text}</Pre>}] : [];
+function textSection(label: string, text: string | undefined): DetailSection[]
+{
+	return text
+		? [
+				{
+					label,
+					body: <Pre>{text}</Pre>,
+				},
+			]
+		: [];
 }
 
-function yesNo(value: boolean | undefined): string | undefined {
+function yesNo(value: boolean | undefined): string | undefined
+{
 	return value === undefined ? undefined : value ? "yes" : "no";
 }
 
-function labeled(label: string, value: string | undefined): string | undefined {
+function labeled(label: string, value: string | undefined): string | undefined
+{
 	return value === undefined ? undefined : `${label}: ${value}`;
 }
 
@@ -143,8 +173,10 @@ function labeled(label: string, value: string | undefined): string | undefined {
 function attachmentDetailSections(
 	attachment: AttachmentPayload,
 	sameAsDescriptions: Readonly<Record<string, string>>,
-): DetailSection[] {
-	if (attachment.type === "environment") {
+): DetailSection[]
+{
+	if (attachment.type === "environment")
+	{
 		const snap = attachment.snapshot;
 		return [
 			...linesSection("Environment snapshot", [
@@ -172,7 +204,8 @@ function attachmentDetailSections(
 			),
 		];
 	}
-	if (attachment.type === "instructions") {
+	if (attachment.type === "instructions")
+	{
 		const files = attachment.files ?? [];
 		return [
 			...textSection("Reason", attachment.reason),
@@ -180,7 +213,8 @@ function attachmentDetailSections(
 				? [
 						{
 							label: "Instruction files",
-							body: files.map((file) => {
+							body: files.map((file) =>
+							{
 								const title = `${file.path}${file.type ? ` (${file.type})` : ""}`;
 								return file.content ? (
 									<details key={file.path} className="mt-1">
@@ -199,7 +233,8 @@ function attachmentDetailSections(
 			...linesSection("Removed", attachment.removed ?? []),
 		];
 	}
-	if (attachment.type === "model") {
+	if (attachment.type === "model")
+	{
 		const id = attachment.identity;
 		return [
 			...linesSection("Model identity", [
@@ -210,7 +245,8 @@ function attachmentDetailSections(
 			...textSection("Model text", attachment.text),
 		];
 	}
-	if (attachment.type === "prompt_snapshot") {
+	if (attachment.type === "prompt_snapshot")
+	{
 		const tools = attachment.tools ?? [];
 		const systemPrompt = attachment.systemPrompt ?? [];
 		return [
@@ -233,7 +269,8 @@ function attachmentDetailSections(
 			...textSection("Host prompt", attachment.hostPrompt),
 		];
 	}
-	if (attachment.type === "agent_listing_delta") {
+	if (attachment.type === "agent_listing_delta")
+	{
 		const builtIn = attachment.builtInTypes ?? [];
 		return [
 			...linesSection(
@@ -242,24 +279,32 @@ function attachmentDetailSections(
 			),
 			...linesSection("Removed agents", attachment.removedTypes ?? []),
 			...(builtIn.length > 0
-				? [{label: `Built-in agents (${builtIn.length})`, body: <Pre>{builtIn.join(", ")}</Pre>}]
+				? [
+						{
+							label: `Built-in agents (${builtIn.length})`,
+							body: <Pre>{builtIn.join(", ")}</Pre>,
+						},
+					]
 				: []),
 		];
 	}
 	if (attachment.type === "fork_briefing") return textSection("Briefing", attachment.text);
-	if (attachment.type === "session_context") {
+	if (attachment.type === "session_context")
+	{
 		return [
 			...linesSection("Session context", [labeled("User email", attachment.context?.userEmail)]),
 			...textSection("Git status", attachment.context?.gitStatus),
 		];
 	}
-	if (attachment.type === "deferred_tools_delta") {
+	if (attachment.type === "deferred_tools_delta")
+	{
 		const surfaced = attachment.surfacedDefinitions ?? [];
 		const removedByBlock = attachment.removedByBlock ?? [];
 		return [
 			...linesSection(
 				`Surfaced tools (${surfaced.length})`,
-				surfaced.map((tool) => {
+				surfaced.map((tool) =>
+				{
 					const description =
 						"definition" in tool ? tool.definition.description : sameAsDescriptions[tool.name];
 					const summary = description?.split("\n")[0];
@@ -269,19 +314,24 @@ function attachmentDetailSections(
 			...linesSection(`Removed by block (${removedByBlock.length})`, removedByBlock),
 		];
 	}
-	if (attachment.type === "queued_command") {
+	if (attachment.type === "queued_command")
+	{
 		return linesSection("Queued command", [labeled("Run ID", attachment.runId)]);
 	}
-	if (attachment.type === "output_style") {
+	if (attachment.type === "output_style")
+	{
 		return textSection("Turn reminder", attachment.turnReminder);
 	}
-	if (attachment.type === "output_style_instructions") {
+	if (attachment.type === "output_style_instructions")
+	{
 		return textSection("Style prompt", attachment.style?.prompt);
 	}
-	if (attachment.type === "structured_output") {
+	if (attachment.type === "structured_output")
+	{
 		return textSection("Structured output", JSON.stringify(attachment.data, null, 2));
 	}
-	if (attachment.type === "session_cron_carry") {
+	if (attachment.type === "session_cron_carry")
+	{
 		return linesSection(
 			`Scheduled tasks (${attachment.tasks.length})`,
 			attachment.tasks.map((task) => `${task.cron} (${task.recurring ? "recurring" : "once"}): ${task.prompt}`),
@@ -290,7 +340,8 @@ function attachmentDetailSections(
 	return [];
 }
 
-function DetailSections({sections}: {sections: readonly DetailSection[]}) {
+function DetailSections({sections}: {sections: readonly DetailSection[]})
+{
 	return (
 		<div className="flex flex-col gap-2">
 			{sections.map((section, i) => (
@@ -315,9 +366,16 @@ function AttachmentContent({
 	uuid?: string | undefined;
 	details?: React.ReactNode;
 	absorbedMidTurn: boolean;
-}) {
-	const shared = {sessionId, uuid, details};
-	switch (attachment.type) {
+})
+{
+	const shared =
+	{
+		sessionId,
+		uuid,
+		details,
+	};
+	switch (attachment.type)
+	{
 		// -- Hook results --
 		case "hook_success":
 			return (
@@ -347,7 +405,8 @@ function AttachmentContent({
 					{...shared}
 				/>
 			);
-		case "hook_additional_context": {
+		case "hook_additional_context":
+		{
 			const content = hookContextText(attachment.content);
 			return (
 				<Banner
@@ -359,7 +418,8 @@ function AttachmentContent({
 				</Banner>
 			);
 		}
-		case "hook_blocking_error": {
+		case "hook_blocking_error":
+		{
 			const be = attachment.blockingError;
 			const blockingMessage =
 				be && typeof be["message"] === "string"
@@ -447,7 +507,8 @@ function AttachmentContent({
 					)}
 				</Banner>
 			);
-		case "selected_lines_in_ide": {
+		case "selected_lines_in_ide":
+		{
 			const filePart = attachment.displayPath ?? attachment.filename ?? "file";
 			const linePart =
 				attachment.lineStart === undefined
@@ -503,7 +564,8 @@ function AttachmentContent({
 			);
 
 		// -- Plan/mode transitions --
-		case "plan_mode": {
+		case "plan_mode":
+		{
 			return (
 				<Banner icon={<ClipboardList className="h-3.5 w-3.5" />} label="Plan mode" {...shared}>
 					{attachment.planFilePath && <PlanLink planFilePath={attachment.planFilePath} />}
@@ -512,14 +574,16 @@ function AttachmentContent({
 		}
 		case "plan_mode_exit":
 			return <Banner icon={<ClipboardList className="h-3.5 w-3.5" />} label="Exited plan mode" {...shared} />;
-		case "plan_mode_reentry": {
+		case "plan_mode_reentry":
+		{
 			return (
 				<Banner icon={<ClipboardList className="h-3.5 w-3.5" />} label="Re-entered plan mode" {...shared}>
 					{attachment.planFilePath && <PlanLink planFilePath={attachment.planFilePath} />}
 				</Banner>
 			);
 		}
-		case "plan_file_reference": {
+		case "plan_file_reference":
+		{
 			return (
 				<Banner icon={<ClipboardList className="h-3.5 w-3.5" />} label="Plan file" {...shared}>
 					{attachment.planFilePath && <PlanLink planFilePath={attachment.planFilePath} />}
@@ -580,12 +644,14 @@ function AttachmentContent({
 			);
 
 		// -- Tool/MCP ecosystem --
-		case "deferred_tools_delta": {
+		case "deferred_tools_delta":
+		{
 			const parts: string[] = [];
 			if (attachment.addedNames?.length) parts.push(`+${attachment.addedNames.length} tools`);
 			if (attachment.removedNames?.length) parts.push(`-${attachment.removedNames.length} tools`);
 			if (attachment.removedByBlock?.length) parts.push(`${attachment.removedByBlock.length} blocked`);
-			if (attachment.pendingMcpServers?.length) {
+			if (attachment.pendingMcpServers?.length)
+			{
 				const n = attachment.pendingMcpServers.length;
 				parts.push(`${n} MCP server${n === 1 ? "" : "s"} pending`);
 			}
@@ -597,7 +663,8 @@ function AttachmentContent({
 				/>
 			);
 		}
-		case "agent_listing_delta": {
+		case "agent_listing_delta":
+		{
 			const parts: string[] = [];
 			if (attachment.addedTypes?.length) parts.push(`+${attachment.addedTypes.length} agents`);
 			if (attachment.removedTypes?.length) parts.push(`-${attachment.removedTypes.length} agents`);
@@ -609,7 +676,8 @@ function AttachmentContent({
 				/>
 			);
 		}
-		case "mcp_instructions_delta": {
+		case "mcp_instructions_delta":
+		{
 			const parts: string[] = [];
 			if (attachment.addedNames?.length) parts.push(`+${attachment.addedNames.length}`);
 			if (attachment.removedNames?.length) parts.push(`-${attachment.removedNames.length}`);
@@ -648,7 +716,8 @@ function AttachmentContent({
 
 		// -- Reminders --
 		case "task_reminder":
-		case "todo_reminder": {
+		case "todo_reminder":
+		{
 			const kind = attachment.type === "task_reminder" ? "Task" : "Todo";
 			return (
 				<Banner
@@ -672,7 +741,8 @@ function AttachmentContent({
 					{...shared}
 				/>
 			);
-		case "task_status": {
+		case "task_status":
+		{
 			const completed = attachment.status === "completed";
 			return (
 				<Banner
@@ -686,7 +756,8 @@ function AttachmentContent({
 		}
 
 		// -- Commands --
-		case "queued_command": {
+		case "queued_command":
+		{
 			const agentMessage = typeof attachment.prompt === "string" ? parseAgentMessage(attachment.prompt) : null;
 			if (agentMessage !== null) return <AgentMessageRow message={agentMessage} />;
 			const queuedRelative = formatRelativeTimestamp(attachment.timestamp);
@@ -752,7 +823,8 @@ function AttachmentContent({
 					{...shared}
 				/>
 			);
-		case "model": {
+		case "model":
+		{
 			const modelName = attachment.identity?.marketingName ?? attachment.identity?.modelId;
 			return (
 				<Banner
@@ -763,7 +835,8 @@ function AttachmentContent({
 			);
 		}
 		case "output_style":
-		case "output_style_instructions": {
+		case "output_style_instructions":
+		{
 			const style = typeof attachment.style === "string" ? attachment.style : attachment.style?.name;
 			return (
 				<Banner
@@ -860,7 +933,8 @@ function AttachmentContent({
 	}
 }
 
-const CONTEXT_ATTACHMENT_LABELS = {
+const CONTEXT_ATTACHMENT_LABELS =
+{
 	session_context: "Session context",
 	credential_org: "Credential organization",
 	remote_session_change: "Remote session attribution",
@@ -895,8 +969,10 @@ export function Banner({
 	variant?: BannerVariant;
 	/** Expandable body; when present the pill becomes a disclosure. */
 	details?: React.ReactNode | undefined;
-}) {
-	if (variant === "status") {
+})
+{
+	if (variant === "status")
+	{
 		return (
 			<div className="flex items-center gap-1.5 min-w-0 text-footnote text-t6 select-none">
 				{label && <span className="truncate min-w-0">{label}</span>}
@@ -905,7 +981,8 @@ export function Banner({
 			</div>
 		);
 	}
-	if (details !== undefined) {
+	if (details !== undefined)
+	{
 		return (
 			<details className="group text-xs text-t6 bg-surface-1 rounded-md border border-subtle">
 				<summary className="flex flex-wrap items-center gap-2 py-1.5 px-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
@@ -929,13 +1006,15 @@ export function Banner({
 	);
 }
 
-function hookContextText(content: string | readonly unknown[] | undefined): string {
+function hookContextText(content: string | readonly unknown[] | undefined): string
+{
 	if (content === undefined) return "";
 	if (typeof content === "string") return content;
 	return content.map((part) => (typeof part === "string" ? part : JSON.stringify(part))).join("\n");
 }
 
-export function Pre({children}: {children: React.ReactNode}) {
+export function Pre({children}: {children: React.ReactNode})
+{
 	return (
 		<pre className="w-full mt-1 text-[10px] leading-tight text-t6 bg-surface-0 rounded px-2 py-1 whitespace-pre-wrap break-all">
 			{children}

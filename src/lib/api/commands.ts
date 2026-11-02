@@ -3,23 +3,28 @@ import {z} from "zod";
 import {SLASH_COMMAND_SOURCES, type SlashCommand} from "../slash-commands";
 import {apiFetch} from "./client";
 
-const SlashCommandSchema: z.ZodType<SlashCommand> = z.strictObject({
-	name: z.string().min(1),
-	description: z.string(),
-	source: z.enum(SLASH_COMMAND_SOURCES),
-	argumentHint: z.string().optional(),
-	aliases: z.array(z.string().min(1)).optional(),
-	pluginName: z.string().min(1).optional(),
-	shadowsHost: z.literal(true).optional(),
-});
+const SlashCommandSchema: z.ZodType<SlashCommand> = z.strictObject(
+	{
+		name: z.string().min(1),
+		description: z.string(),
+		source: z.enum(SLASH_COMMAND_SOURCES),
+		argumentHint: z.string().optional(),
+		aliases: z.array(z.string().min(1)).optional(),
+		pluginName: z.string().min(1).optional(),
+		shadowsHost: z.literal(true).optional(),
+	},
+);
 
 export const SlashCommandListResponse = z.array(SlashCommandSchema);
 
-export function slashCommandsQueryOptions(cwd: string | undefined) {
+export function slashCommandsQueryOptions(cwd: string | undefined)
+{
 	const url = cwd === undefined ? "/api/commands" : `/api/commands?cwd=${encodeURIComponent(cwd)}`;
-	return queryOptions({
-		queryKey: ["slash-commands", cwd ?? null],
-		queryFn: async () => apiFetch(url, SlashCommandListResponse),
-		staleTime: 30_000,
-	});
+	return queryOptions(
+		{
+			queryKey: ["slash-commands", cwd ?? null],
+			queryFn: async () => apiFetch(url, SlashCommandListResponse),
+			staleTime: 30_000,
+		},
+	);
 }

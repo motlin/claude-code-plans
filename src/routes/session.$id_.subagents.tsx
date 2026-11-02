@@ -16,32 +16,65 @@ import {useSettings} from "../components/settings-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {toSubagentSessionId} from "../lib/subagents";
 
-export const Route = createFileRoute("/session/$id_/subagents")({
-	component: SubagentsPage,
-	loader: ({context: {queryClient}, params}): {title: string} | Promise<{title: string}> => {
-		if (isSessionRouteAlias(params.id)) {
-			const options = sessionIdentityQueryOptions(params.id);
-			const identity = queryClient.getQueryState(options.queryKey);
-			if (identity?.status === "error") return {title: sessionIdentityFailure(identity.error).title};
-			void queryClient.query(options).catch(noop);
-			const owner =
-				identity?.status === "success" && !identity.isInvalidated && identity.fetchStatus === "idle"
-					? identity.data?.sessionId
-					: undefined;
-			return {title: owner === undefined ? "Subagents" : subagentsTitle(owner)};
-		}
-		return queryClient
-			.query({...sessionSubagentsQueryOptions(params.id), staleTime: "static"})
-			.then(() => ({title: subagentsTitle(params.id)}));
+export const Route = createFileRoute("/session/$id_/subagents")(
+	{
+		component: SubagentsPage,
+		loader: ({
+			context: {queryClient},
+			params,
+		}):
+			|
+			  {
+					title: string;
+			  }
+			| Promise<
+			  {
+					title: string;
+			  }> =>
+		{
+			if (isSessionRouteAlias(params.id))
+			{
+				const options = sessionIdentityQueryOptions(params.id);
+				const identity = queryClient.getQueryState(options.queryKey);
+				if (identity?.status === "error")
+					return {
+						title: sessionIdentityFailure(identity.error).title,
+					};
+				void queryClient.query(options).catch(noop);
+				const owner =
+					identity?.status === "success" && !identity.isInvalidated && identity.fetchStatus === "idle"
+						? identity.data?.sessionId
+						: undefined;
+				return {
+					title: owner === undefined ? "Subagents" : subagentsTitle(owner),
+				};
+			}
+			return queryClient
+				.query(
+					{
+						...sessionSubagentsQueryOptions(params.id),
+						staleTime: "static",
+					},
+				)
+				.then(() => (
+				{
+					title: subagentsTitle(params.id),
+				}));
+		},
+		head: ({loaderData}) => (
+		{
+			meta: [pageTitle(loaderData?.title ?? "Subagents")],
+		}),
 	},
-	head: ({loaderData}) => ({meta: [pageTitle(loaderData?.title ?? "Subagents")]}),
-});
+);
 
-function subagentsTitle(sessionId: string): string {
+function subagentsTitle(sessionId: string): string
+{
 	return `Subagents - ${sessionId.slice(0, 8)}`;
 }
 
-function SubagentsPage() {
+function SubagentsPage()
+{
 	const params = Route.useParams();
 	return (
 		<SessionRouteIdentity routeId={params.id}>
@@ -60,16 +93,28 @@ function SubagentsPage() {
 	);
 }
 
-function ResolvedSubagentsPage({sessionId}: {sessionId: string}) {
+function ResolvedSubagentsPage({sessionId}: {sessionId: string})
+{
 	const {data: agents} = useSuspenseQuery(sessionSubagentsQueryOptions(sessionId));
 	// Run names come from the session's launches; only fetched when a workflow agent is listed.
 	const hasWorkflowAgents = agents.some((agent) => agent.workflowRunId);
-	const workflowRuns = useQuery({...sessionWorkflowRunsQueryOptions(sessionId), enabled: hasWorkflowAgents}).data;
+	const workflowRuns = useQuery(
+		{
+			...sessionWorkflowRunsQueryOptions(sessionId),
+			enabled: hasWorkflowAgents,
+		},
+	).data;
 	const router = useRouter();
 	const loaderData = Route.useLoaderData();
 	const title = subagentsTitle(sessionId);
-	useEffect(() => {
-		if (loaderData.title !== title) void router.invalidate({filter: (match) => match.routeId === Route.id});
+	useEffect(() =>
+	{
+		if (loaderData.title !== title)
+			void router.invalidate(
+				{
+					filter: (match) => match.routeId === Route.id,
+				},
+			);
 	}, [loaderData.title, title, router]);
 	const {settings} = useSettings();
 	const subagentView = settings.defaultSubagentView;
@@ -82,7 +127,14 @@ function ResolvedSubagentsPage({sessionId}: {sessionId: string}) {
 	return (
 		<div>
 			<DetailTopBar>
-				<Link to="/session/$id" params={{id: sessionId}} className={pillStyles.primary}>
+				<Link
+					to="/session/$id"
+					params={
+					{
+						id: sessionId,
+					}}
+					className={pillStyles.primary}
+				>
 					<ArrowLeft className="h-3.5 w-3.5" />
 					Back to session
 				</Link>

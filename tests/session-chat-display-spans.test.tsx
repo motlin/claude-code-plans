@@ -10,45 +10,98 @@ import {writeClipboardText} from "../src/lib/clipboard";
 import {messageText} from "../src/lib/transcript-action-targets";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
+	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
-vi.mock("../src/hooks/use-claude-events", () => ({useClaudeEvents: () => ({failedTools: new Map()})}));
-vi.mock("../src/lib/clipboard", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
+	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
+}));
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
+}));
+vi.mock("../src/lib/clipboard", () => (
+{
 	writeClipboardText: vi.fn<typeof writeClipboardText>(async () => Promise.resolve(true)),
 }));
-vi.mock("../src/lib/transcript-action-targets", async (importOriginal) => {
+vi.mock("../src/lib/transcript-action-targets", async (importOriginal) =>
+{
 	const actual = await importOriginal<typeof import("../src/lib/transcript-action-targets")>();
-	return {...actual, messageText: vi.fn<typeof actual.messageText>(actual.messageText)};
+	return {
+		...actual,
+		messageText: vi.fn<typeof actual.messageText>(actual.messageText),
+	};
 });
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
 }
-class FakeUtterance {
+class FakeUtterance
+{
 	onend: (() => void) | null = null;
 	onerror: (() => void) | null = null;
-	constructor(readonly text: string) {}
+	constructor(readonly text: string)
+	{
+	}
 }
-const VOICE = {name: "Samantha", lang: "en-US", voiceURI: "Samantha", localService: true, default: true};
+const VOICE =
+{
+	name: "Samantha",
+	lang: "en-US",
+	voiceURI: "Samantha",
+	localService: true,
+	default: true,
+};
 const forkFrom = vi.fn<NonNullable<TranscriptActions["forkFrom"]>>();
 const pinChapter = vi.fn<NonNullable<TranscriptActions["pinChapter"]>>();
-const transcriptActions: TranscriptActions = {forkFrom, pinChapter};
+const transcriptActions: TranscriptActions =
+{
+	forkFrom,
+	pinChapter,
+};
 const speak = vi.fn<SpeechSynthesis["speak"]>();
 const cancel = vi.fn<SpeechSynthesis["cancel"]>();
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal("innerHeight", 4000);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
-	vi.stubGlobal("speechSynthesis", {speak, cancel, getVoices: () => [VOICE]});
+	vi.stubGlobal(
+		"speechSynthesis",
+		{
+			speak,
+			cancel,
+			getVoices: () => [VOICE],
+		},
+	);
 	vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
 });
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.clearAllMocks();
@@ -56,29 +109,45 @@ afterEach(() => {
 	document.documentElement.scrollTop = 0;
 });
 
-function text(uuid: string | undefined, value: string, sessionId = "example-main") {
+function text(uuid: string | undefined, value: string, sessionId = "example-main")
+{
 	return {
 		type: "assistant",
 		uuid,
 		sessionId,
 		timestamp: "2000-01-01T00:00:00.000Z",
-		message: {role: "assistant", content: [{type: "text", text: value}]},
+		message:
+		{
+			role: "assistant",
+			content: [
+				{
+					type: "text",
+					text: value,
+				},
+			],
+		},
 	};
 }
-function command(uuid: string, sessionId = "example-main") {
+function command(uuid: string, sessionId = "example-main")
+{
 	return [
 		{
 			type: "assistant",
 			uuid,
 			sessionId,
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
 					{
 						type: "tool_use",
 						id: `example-tool-${uuid}`,
 						name: "Bash",
-						input: {command: "echo example", description: "Print example"},
+						input:
+						{
+							command: "echo example",
+							description: "Print example",
+						},
 					},
 				],
 			},
@@ -87,25 +156,35 @@ function command(uuid: string, sessionId = "example-main") {
 			type: "user",
 			uuid: `example-result-${uuid}`,
 			sessionId,
-			message: {
+			message:
+			{
 				role: "user",
-				content: [{type: "tool_result", tool_use_id: `example-tool-${uuid}`, content: "example"}],
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: `example-tool-${uuid}`,
+						content: "example",
+					},
+				],
 			},
 		},
 	];
 }
-function notification(uuid: string) {
+function notification(uuid: string)
+{
 	return {
 		type: "user",
 		uuid,
 		sessionId: "example-main",
-		message: {
+		message:
+		{
 			role: "user",
 			content: `<task-notification><task-id>example-task</task-id><status>completed</status><summary>Example notification</summary></task-notification>`,
 		},
 	};
 }
-function chat(records: unknown[], options: Partial<SessionChatProps> = {}) {
+function chat(records: unknown[], options: Partial<SessionChatProps> = {})
+{
 	const {lines, toolResultMap} = processTranscript(records);
 	return (
 		<TranscriptActionsContext.Provider value={transcriptActions}>
@@ -120,33 +199,42 @@ function chat(records: unknown[], options: Partial<SessionChatProps> = {}) {
 		</TranscriptActionsContext.Provider>
 	);
 }
-function footers(container: HTMLElement) {
+function footers(container: HTMLElement)
+{
 	return Array.from(container.querySelectorAll<HTMLElement>("[data-assistant-span-footer]"));
 }
-function button(footer: HTMLElement, label: string) {
+function button(footer: HTMLElement, label: string)
+{
 	return footer.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
 }
-function focus(element: HTMLElement) {
-	act(() => {
+function focus(element: HTMLElement)
+{
+	act(() =>
+	{
 		element.focus();
 	});
 }
-function anchor(footer: HTMLElement) {
+function anchor(footer: HTMLElement)
+{
 	return footer.closest<HTMLElement>("[data-perf-line]")?.dataset["perfLine"];
 }
-function blur() {
+function blur()
+{
 	const outside = document.createElement("button");
 	document.body.append(outside);
 	focus(outside);
 	outside.remove();
 }
 
-describe("assistant display-span actions", () => {
-	it("gives every standalone tool disclosure the compact continuation marker, in any status, as upstream does", () => {
+describe("assistant display-span actions", () =>
+{
+	it("gives every standalone tool disclosure the compact continuation marker, in any status, as upstream does", () =>
+	{
 		const records = command("example-command");
 		const conclusion = text("example-conclusion", "Example conclusion.");
 		const view = render(chat([records[0], conclusion]));
-		const spacingState = () => ({
+		const spacingState = () => (
+		{
 			completedRows: view.container.querySelectorAll("[data-standalone-tool-row]").length,
 			footers: footers(view.container).length,
 		});
@@ -163,7 +251,8 @@ describe("assistant display-span actions", () => {
 				records[0],
 				{
 					...records[1],
-					message: {
+					message:
+					{
 						role: "user",
 						content: [
 							{
@@ -178,16 +267,47 @@ describe("assistant display-span actions", () => {
 				conclusion,
 			]),
 		);
-		expect({pending, completed, expanded, collapsed, failed: spacingState()}).toStrictEqual({
-			pending: {completedRows: 1, footers: 1},
-			completed: {completedRows: 1, footers: 1},
-			expanded: {completedRows: 1, footers: 1},
-			collapsed: {completedRows: 1, footers: 1},
-			failed: {completedRows: 1, footers: 1},
-		});
+		expect(
+			{
+				pending,
+				completed,
+				expanded,
+				collapsed,
+				failed: spacingState(),
+			},
+		).toStrictEqual(
+			{
+				pending:
+				{
+					completedRows: 1,
+					footers: 1,
+				},
+				completed:
+				{
+					completedRows: 1,
+					footers: 1,
+				},
+				expanded:
+				{
+					completedRows: 1,
+					footers: 1,
+				},
+				collapsed:
+				{
+					completedRows: 1,
+					footers: 1,
+				},
+				failed:
+				{
+					completedRows: 1,
+					footers: 1,
+				},
+			},
+		);
 	});
 
-	it("matches the 12px standalone-tool continuation rule in globals.css against a rendered completed tool row, collapsed or expanded", () => {
+	it("matches the 12px standalone-tool continuation rule in globals.css against a rendered completed tool row, collapsed or expanded", () =>
+	{
 		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
 		const selector = /\/\* A standalone tool row followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
 			.exec(styles)?.[1]
@@ -203,10 +323,21 @@ describe("assistant display-span actions", () => {
 			);
 		const completed = padded();
 		fireEvent.click(view.container.querySelector<HTMLElement>("[aria-expanded]")!);
-		expect({completed, expanded: padded()}).toStrictEqual({completed: ["0"], expanded: ["0"]});
+		expect(
+			{
+				completed,
+				expanded: padded(),
+			},
+		).toStrictEqual(
+			{
+				completed: ["0"],
+				expanded: ["0"],
+			},
+		);
 	});
 
-	it("matches the 12px grouped-tool continuation rule in globals.css against status-led grouped rows that continue into prose, collapsed or expanded", () => {
+	it("matches the 12px grouped-tool continuation rule in globals.css against status-led grouped rows that continue into prose, collapsed or expanded", () =>
+	{
 		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
 		const selector = /\/\* A grouped tool summary followed by prose[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
 			.exec(styles)?.[1]
@@ -214,18 +345,23 @@ describe("assistant display-span actions", () => {
 		const view = render(
 			<div className="transcript-text">
 				{chat([
-					...["Alice", "Bob", "Charlie"].map((name) => ({
+					...["Alice", "Bob", "Charlie"].map((name) => (
+					{
 						type: "assistant",
 						uuid: `example-${name}`,
 						sessionId: "example-main",
-						message: {
+						message:
+						{
 							role: "assistant",
 							content: [
 								{
 									type: "tool_use",
 									id: `example-task-${name}`,
 									name: "TaskCreate",
-									input: {subject: `Example ${name} task`},
+									input:
+									{
+										subject: `Example ${name} task`,
+									},
 								},
 							],
 						},
@@ -246,42 +382,69 @@ describe("assistant display-span actions", () => {
 		const padded = () => Array.from(view.container.querySelectorAll(selector ?? "[data-missing-rule]"), rowOf);
 		const collapsed = padded();
 		fireEvent.click(view.container.querySelector<HTMLElement>("button[aria-expanded]")!);
-		expect({
-			marked: Array.from(view.container.querySelectorAll("[data-grouped-tool-row]"), rowOf),
-			collapsed,
-			expanded: padded(),
-		}).toStrictEqual({
-			// The task group is an ordinary status-led group too, as upstream draws task calls.
-			marked: ["0", "4", "9", "14"],
-			collapsed: ["0", "4"],
-			expanded: ["0", "4"],
-		});
+		expect(
+			{
+				marked: Array.from(view.container.querySelectorAll("[data-grouped-tool-row]"), rowOf),
+				collapsed,
+				expanded: padded(),
+			},
+		).toStrictEqual(
+			{
+				// The task group is an ordinary status-led group too, as upstream draws task calls.
+				marked: ["0", "4", "9", "14"],
+				collapsed: ["0", "4"],
+				expanded: ["0", "4"],
+			},
+		);
 	});
 
-	it("matches the 12px prose-to-status rule in globals.css only against prose continuing into a status in its own span", () => {
+	it("matches the 12px prose-to-status rule in globals.css only against prose continuing into a status in its own span", () =>
+	{
 		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
 		const selector = /\/\* Assistant prose followed by a status[^*]*\*\/\s*([^{]+)\{\s*padding-bottom: 12px;/
 			.exec(styles)?.[1]
 			?.trim();
-		const toolUse = (uuid: string, name: string, input: object, sessionId = "example-main") => ({
+		const toolUse = (uuid: string, name: string, input: object, sessionId = "example-main") => (
+		{
 			type: "assistant",
 			uuid,
 			sessionId,
-			message: {role: "assistant", content: [{type: "tool_use", id: `example-tool-${uuid}`, name, input}]},
+			message:
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id: `example-tool-${uuid}`,
+						name,
+						input,
+					},
+				],
+			},
 		});
-		const question = toolUse("example-question", "AskUserQuestion", {
-			questions: [
-				{
-					question: "Continue the example?",
-					header: "Example",
-					multiSelect: false,
-					options: [
-						{label: "Continue", description: "Run the example"},
-						{label: "Stop", description: "Stop the example"},
-					],
-				},
-			],
-		});
+		const question = toolUse(
+			"example-question",
+			"AskUserQuestion",
+			{
+				questions: [
+					{
+						question: "Continue the example?",
+						header: "Example",
+						multiSelect: false,
+						options: [
+							{
+								label: "Continue",
+								description: "Run the example",
+							},
+							{
+								label: "Stop",
+								description: "Stop the example",
+							},
+						],
+					},
+				],
+			},
+		);
 		const view = render(
 			<div className="transcript-text">
 				{chat([
@@ -294,10 +457,23 @@ describe("assistant display-span actions", () => {
 					...command("example-other-source", "example-other"),
 					text("example-before-tasks", "Example before tasks."),
 					...["Alice", "Bob", "Charlie"].map((name) =>
-						toolUse(`example-${name}`, "TaskCreate", {subject: `Example ${name} task`}),
+						toolUse(
+							`example-${name}`,
+							"TaskCreate",
+							{
+								subject: `Example ${name} task`,
+							},
+						),
 					),
 					text("example-before-agent", "Example before agent."),
-					toolUse("example-agent", "Agent", {description: "Example agent", prompt: "Example prompt"}),
+					toolUse(
+						"example-agent",
+						"Agent",
+						{
+							description: "Example agent",
+							prompt: "Example prompt",
+						},
+					),
 					text("example-before-question", "Example before question."),
 					question,
 					text("example-before-prompt", "Example before prompt."),
@@ -305,28 +481,42 @@ describe("assistant display-span actions", () => {
 						type: "user",
 						uuid: "example-prompt",
 						sessionId: "example-main",
-						message: {role: "user", content: "Example prompt."},
+						message:
+						{
+							role: "user",
+							content: "Example prompt.",
+						},
 					},
 				])}
 			</div>,
 		);
 		const rowOf = (element: Element) => element.closest<HTMLElement>("[data-perf-line]")?.dataset["perfLine"];
-		expect({
-			marked: Array.from(view.container.querySelectorAll("[data-precedes-turn-status]"), rowOf),
-			padded: Array.from(view.container.querySelectorAll(selector ?? "[data-missing-rule]"), rowOf),
-		}).toStrictEqual({marked: ["0", "5", "11"], padded: ["0", "5", "11"]});
+		expect(
+			{
+				marked: Array.from(view.container.querySelectorAll("[data-precedes-turn-status]"), rowOf),
+				padded: Array.from(view.container.querySelectorAll(selector ?? "[data-missing-rule]"), rowOf),
+			},
+		).toStrictEqual(
+			{
+				marked: ["0", "5", "11"],
+				padded: ["0", "5", "11"],
+			},
+		);
 	});
 
-	it("draws a PreToolUse hook's message as prose inside the assistant span, 12px from the failed call above and the call below, keeping the turn gap before a prompt", () => {
+	it("draws a PreToolUse hook's message as prose inside the assistant span, 12px from the failed call above and the call below, keeping the turn gap before a prompt", () =>
+	{
 		const styles = readFileSync(join(process.cwd(), "src", "styles", "globals.css"), "utf8");
 		const rule = (comment: string) =>
 			new RegExp(`/\\* ${comment}[^*]*\\*/\\s*([^{]+)\\{\\s*padding-bottom: 12px;`).exec(styles)?.[1]?.trim() ??
 			"[data-missing-rule]";
-		const hookMessage = (uuid: string) => ({
+		const hookMessage = (uuid: string) => (
+		{
 			type: "attachment",
 			uuid,
 			sessionId: "example-main",
-			attachment: {
+			attachment:
+			{
 				type: "hook_system_message",
 				hookName: "PreToolUse:Bash",
 				hookEvent: "PreToolUse",
@@ -335,11 +525,13 @@ describe("assistant display-span actions", () => {
 			},
 		});
 		const [failedUse] = command("example-failed");
-		const failedResult = {
+		const failedResult =
+		{
 			type: "user",
 			uuid: "example-failed-result",
 			sessionId: "example-main",
-			message: {
+			message:
+			{
 				role: "user",
 				content: [
 					{
@@ -364,57 +556,87 @@ describe("assistant display-span actions", () => {
 						type: "user",
 						uuid: "example-prompt",
 						sessionId: "example-main",
-						message: {role: "user", content: "Example prompt."},
+						message:
+						{
+							role: "user",
+							content: "Example prompt.",
+						},
 					},
 				])}
 			</div>,
 		);
 		const rowOf = (element: Element) => element.closest<HTMLElement>("[data-perf-line]")?.dataset["perfLine"];
 		const rows = Array.from(view.container.querySelectorAll<HTMLElement>("[data-transcript-entry-index]"));
-		expect({
-			rows: rows.map((row) => ({
-				line: row.dataset["perfLine"],
-				perfRow: row.dataset["perfRow"],
-				span: row.dataset["assistantSpan"],
-				hook: row.querySelector("p")?.textContent ?? undefined,
-			})),
-			precedesStatus: Array.from(view.container.querySelectorAll("[data-precedes-turn-status]"), rowOf),
-			proseToStatus: Array.from(
-				view.container.querySelectorAll(rule("Assistant prose followed by a status")),
-				rowOf,
-			),
-			toolToProse: Array.from(
-				view.container.querySelectorAll(rule("A standalone tool row followed by prose")),
-				rowOf,
-			),
-			footers: footers(view.container).map(anchor),
-		}).toStrictEqual({
-			rows: [
-				{line: "0", perfRow: "assistant_text", span: "assistant-span-0", hook: "Example introduction."},
-				{line: "1", perfRow: "assistant_tool", span: "assistant-span-0", hook: undefined},
+		expect(
+			{
+				rows: rows.map((row) => (
 				{
-					line: "2",
-					perfRow: "assistant_text",
-					span: "assistant-span-0",
-					hook: "PreToolUse:Bash says: Example hook advice.",
-				},
-				{line: "4", perfRow: "assistant_tool", span: "assistant-span-0", hook: undefined},
-				{
-					line: "6",
-					perfRow: "assistant_text",
-					span: "assistant-span-0",
-					hook: "PreToolUse:Bash says: Example hook advice.",
-				},
-				{line: "7", perfRow: "human", span: undefined, hook: "Example prompt."},
-			],
-			precedesStatus: ["0", "2"],
-			proseToStatus: ["0", "2"],
-			toolToProse: ["1", "4"],
-			footers: ["6"],
-		});
+					line: row.dataset["perfLine"],
+					perfRow: row.dataset["perfRow"],
+					span: row.dataset["assistantSpan"],
+					hook: row.querySelector("p")?.textContent ?? undefined,
+				})),
+				precedesStatus: Array.from(view.container.querySelectorAll("[data-precedes-turn-status]"), rowOf),
+				proseToStatus: Array.from(
+					view.container.querySelectorAll(rule("Assistant prose followed by a status")),
+					rowOf,
+				),
+				toolToProse: Array.from(
+					view.container.querySelectorAll(rule("A standalone tool row followed by prose")),
+					rowOf,
+				),
+				footers: footers(view.container).map(anchor),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						line: "0",
+						perfRow: "assistant_text",
+						span: "assistant-span-0",
+						hook: "Example introduction.",
+					},
+					{
+						line: "1",
+						perfRow: "assistant_tool",
+						span: "assistant-span-0",
+						hook: undefined,
+					},
+					{
+						line: "2",
+						perfRow: "assistant_text",
+						span: "assistant-span-0",
+						hook: "PreToolUse:Bash says: Example hook advice.",
+					},
+					{
+						line: "4",
+						perfRow: "assistant_tool",
+						span: "assistant-span-0",
+						hook: undefined,
+					},
+					{
+						line: "6",
+						perfRow: "assistant_text",
+						span: "assistant-span-0",
+						hook: "PreToolUse:Bash says: Example hook advice.",
+					},
+					{
+						line: "7",
+						perfRow: "human",
+						span: undefined,
+						hook: "Example prompt.",
+					},
+				],
+				precedesStatus: ["0", "2"],
+				proseToStatus: ["0", "2"],
+				toolToProse: ["1", "4"],
+				footers: ["6"],
+			},
+		);
 	});
 
-	it("copies authored text in order and targets the final assistant after tools and folded notifications", async () => {
+	it("copies authored text in order and targets the final assistant after tools and folded notifications", async () =>
+	{
 		const view = render(
 			chat([
 				text("example-first", "Example introduction."),
@@ -428,27 +650,46 @@ describe("assistant display-span actions", () => {
 		fireEvent.click(button(footer, "Fork from here"));
 		fireEvent.click(button(footer, "Pin as chapter"));
 		await act(async () => {});
-		expect({
-			anchors: footers(view.container).map(anchor),
-			copy: vi.mocked(writeClipboardText).mock.calls,
-			fork: forkFrom.mock.calls,
-			pin: pinChapter.mock.calls,
-			times: Array.from(footer.querySelectorAll("time"), (time) => time.dateTime),
-		}).toStrictEqual({
-			anchors: ["4"],
-			copy: [
-				[
-					"Example introduction.\n\nExample conclusion.",
-					"<p>Example introduction.</p>\n<p>Example conclusion.</p>",
+		expect(
+			{
+				anchors: footers(view.container).map(anchor),
+				copy: vi.mocked(writeClipboardText).mock.calls,
+				fork: forkFrom.mock.calls,
+				pin: pinChapter.mock.calls,
+				times: Array.from(footer.querySelectorAll("time"), (time) => time.dateTime),
+			},
+		).toStrictEqual(
+			{
+				anchors: ["4"],
+				copy: [
+					[
+						"Example introduction.\n\nExample conclusion.",
+						"<p>Example introduction.</p>\n<p>Example conclusion.</p>",
+					],
 				],
-			],
-			fork: [[{sessionId: "example-main", uuid: "example-last"}]],
-			pin: [[{sessionId: "example-main", uuid: "example-last"}]],
-			times: ["2000-01-01T00:00:00.000Z"],
-		});
+				fork: [
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-last",
+						},
+					],
+				],
+				pin: [
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-last",
+						},
+					],
+				],
+				times: ["2000-01-01T00:00:00.000Z"],
+			},
+		);
 	});
 
-	it("copies a chapter heading's title in its place in the turn", async () => {
+	it("copies a chapter heading's title in its place in the turn", async () =>
+	{
 		const view = render(
 			chat([
 				text("example-first", "Example introduction."),
@@ -456,14 +697,18 @@ describe("assistant display-span actions", () => {
 					type: "assistant",
 					uuid: "example-chapter",
 					sessionId: "example-main",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "toolu_example_chapter",
 								name: "mcp__ccd_session__mark_chapter",
-								input: {title: "Example chapter"},
+								input:
+								{
+									title: "Example chapter",
+								},
 							},
 						],
 					},
@@ -479,19 +724,27 @@ describe("assistant display-span actions", () => {
 		]);
 	});
 
-	it("freezes the focused DOM, text, endpoint, and timestamp until focus leaves", async () => {
+	it("freezes the focused DOM, text, endpoint, and timestamp until focus leaves", async () =>
+	{
 		const initial = [text("example-first", "Example first.")];
 		const view = render(chat(initial));
 		const original = footers(view.container)[0]!;
 		const copy = button(original, "Copy");
 		focus(copy);
 		view.rerender(
-			chat([...initial, {...text("example-last", "Example last."), timestamp: "2000-01-02T00:00:00.000Z"}]),
+			chat([
+				...initial,
+				{
+					...text("example-last", "Example last."),
+					timestamp: "2000-01-02T00:00:00.000Z",
+				},
+			]),
 		);
 		fireEvent.click(copy);
 		focus(button(original, "Fork from here"));
 		fireEvent.click(button(original, "Fork from here"));
-		const held = {
+		const held =
+		{
 			sameNode: footers(view.container)[0] === original,
 			focused: document.activeElement === button(original, "Fork from here"),
 			anchors: footers(view.container).map(anchor),
@@ -502,28 +755,57 @@ describe("assistant display-span actions", () => {
 		fireEvent.click(button(moved, "Copy"));
 		fireEvent.click(button(moved, "Fork from here"));
 		await act(async () => {});
-		expect({
-			held,
-			after: {anchors: footers(view.container).map(anchor), time: moved.querySelector("time")?.dateTime},
-			copy: vi.mocked(writeClipboardText).mock.calls,
-			fork: forkFrom.mock.calls,
-		}).toStrictEqual({
-			held: {sameNode: true, focused: true, anchors: ["0"], time: "2000-01-01T00:00:00.000Z"},
-			after: {anchors: ["1"], time: "2000-01-02T00:00:00.000Z"},
-			copy: [
-				["Example first.", "<p>Example first.</p>"],
-				["Example first.\n\nExample last.", "<p>Example first.</p>\n<p>Example last.</p>"],
-			],
-			fork: [
-				[{sessionId: "example-main", uuid: "example-first"}],
-				[{sessionId: "example-main", uuid: "example-last"}],
-			],
-		});
+		expect(
+			{
+				held,
+				after:
+				{
+					anchors: footers(view.container).map(anchor),
+					time: moved.querySelector("time")?.dateTime,
+				},
+				copy: vi.mocked(writeClipboardText).mock.calls,
+				fork: forkFrom.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				held:
+				{
+					sameNode: true,
+					focused: true,
+					anchors: ["0"],
+					time: "2000-01-01T00:00:00.000Z",
+				},
+				after:
+				{
+					anchors: ["1"],
+					time: "2000-01-02T00:00:00.000Z",
+				},
+				copy: [
+					["Example first.", "<p>Example first.</p>"],
+					["Example first.\n\nExample last.", "<p>Example first.</p>\n<p>Example last.</p>"],
+				],
+				fork: [
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-first",
+						},
+					],
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-last",
+						},
+					],
+				],
+			},
+		);
 	});
 
 	it.each(["single tool", "grouped tools", "notice", "grouped notice"])(
 		"holds a focused %s entry through append and rejoins ordinary grouping on blur",
-		(kind) => {
+		(kind) =>
+		{
 			const initial =
 				kind === "single tool"
 					? command("example-first")
@@ -540,7 +822,8 @@ describe("assistant display-span actions", () => {
 			const beforeAnchor = anchor(original);
 			view.rerender(chat([...initial, ...command("example-appended")]));
 			fireEvent.click(fork);
-			const held = {
+			const held =
+			{
 				sameFooter: footers(view.container)[0] === original,
 				sameArticle: footers(view.container)[0]?.closest('[role="article"]') === originalArticle,
 				focused: document.activeElement === fork,
@@ -550,61 +833,105 @@ describe("assistant display-span actions", () => {
 			};
 			blur();
 			fireEvent.click(button(footers(view.container)[0]!, "Fork from here"));
-			expect({
-				held,
-				after: {
-					anchors: footers(view.container).map(anchor),
-					articles: view.container.querySelectorAll('[role="article"]').length,
+			expect(
+				{
+					held,
+					after:
+					{
+						anchors: footers(view.container).map(anchor),
+						articles: view.container.querySelectorAll('[role="article"]').length,
+					},
+					fork: forkFrom.mock.calls,
 				},
-				fork: forkFrom.mock.calls,
-			}).toStrictEqual({
-				held: {
-					sameFooter: true,
-					sameArticle: true,
-					focused: true,
-					anchors: [kind === "notice" ? "1" : "0"],
-					beforeAnchor: kind === "notice" ? "1" : "0",
-					articles: kind === "notice" ? 3 : 2,
+			).toStrictEqual(
+				{
+					held:
+					{
+						sameFooter: true,
+						sameArticle: true,
+						focused: true,
+						anchors: [kind === "notice" ? "1" : "0"],
+						beforeAnchor: kind === "notice" ? "1" : "0",
+						articles: kind === "notice" ? 3 : 2,
+					},
+					after:
+					{
+						anchors: [kind === "notice" ? "1" : "0"],
+						articles: kind === "notice" ? 2 : 1,
+					},
+					fork: [
+						[
+							{
+								sessionId: "example-main",
+								uuid: kind === "grouped tools" ? "example-second" : "example-first",
+							},
+						],
+						[
+							{
+								sessionId: "example-main",
+								uuid: "example-appended",
+							},
+						],
+					],
 				},
-				after: {anchors: [kind === "notice" ? "1" : "0"], articles: kind === "notice" ? 2 : 1},
-				fork: [
-					[{sessionId: "example-main", uuid: kind === "grouped tools" ? "example-second" : "example-first"}],
-					[{sessionId: "example-main", uuid: "example-appended"}],
-				],
-			});
+			);
 		},
 	);
 
-	it("highlights a shared footer from another member without rerunning the text collector", () => {
+	it("highlights a shared footer from another member without rerunning the text collector", () =>
+	{
 		const view = render(chat([text("example-first", "Example first."), text("example-last", "Example last.")]));
 		const article = view.container.querySelector('[role="article"]')!;
 		const footer = footers(view.container)[0]!;
 		vi.mocked(messageText).mockClear();
 		fireEvent.pointerOver(article);
 		const hovered = footer.querySelector("[data-message-actions]")?.hasAttribute("data-hovered");
-		fireEvent.pointerOut(article, {relatedTarget: document.body});
-		expect({
-			calls: vi.mocked(messageText).mock.calls,
-			hovered,
-			after: footer.querySelector("[data-message-actions]")?.hasAttribute("data-hovered"),
-		}).toStrictEqual({calls: [], hovered: true, after: false});
+		fireEvent.pointerOut(
+			article,
+			{
+				relatedTarget: document.body,
+			},
+		);
+		expect(
+			{
+				calls: vi.mocked(messageText).mock.calls,
+				hovered,
+				after: footer.querySelector("[data-message-actions]")?.hasAttribute("data-hovered"),
+			},
+		).toStrictEqual(
+			{
+				calls: [],
+				hovered: true,
+				after: false,
+			},
+		);
 	});
 
-	it("does not rebuild grouping when focus moves between buttons in the held toolbar", () => {
+	it("does not rebuild grouping when focus moves between buttons in the held toolbar", () =>
+	{
 		const view = render(chat([text("example-first", "Example first.")]));
 		const footer = footers(view.container)[0]!;
 		focus(button(footer, "Copy"));
 		vi.mocked(messageText).mockClear();
 		focus(button(footer, "Fork from here"));
 		focus(button(footer, "Pin as chapter"));
-		expect({
-			calls: vi.mocked(messageText).mock.calls,
-			sameFooter: footers(view.container)[0] === footer,
-			focused: document.activeElement?.getAttribute("aria-label"),
-		}).toStrictEqual({calls: [], sameFooter: true, focused: "Pin as chapter"});
+		expect(
+			{
+				calls: vi.mocked(messageText).mock.calls,
+				sameFooter: footers(view.container)[0] === footer,
+				focused: document.activeElement?.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				calls: [],
+				sameFooter: true,
+				focused: "Pin as chapter",
+			},
+		);
 	});
 
-	it("keeps source A/B/A separate even across grouped tools", async () => {
+	it("keeps source A/B/A separate even across grouped tools", async () =>
+	{
 		const view = render(
 			chat([
 				text("example-a", "Example A."),
@@ -613,7 +940,8 @@ describe("assistant display-span actions", () => {
 			]),
 		);
 		const copyLabels: string[] = [];
-		for (const footer of footers(view.container)) {
+		for (const footer of footers(view.container))
+		{
 			const copy = footer.querySelector<HTMLButtonElement>('button[aria-label^="Copy"]')!;
 			copyLabels.push(copy.getAttribute("aria-label")!);
 			fireEvent.click(copy);
@@ -621,157 +949,319 @@ describe("assistant display-span actions", () => {
 			fireEvent.click(button(footer, "Fork from here"));
 		}
 		await act(async () => {});
-		expect({
-			copyLabels,
-			copy: vi.mocked(writeClipboardText).mock.calls,
-			pin: pinChapter.mock.calls,
-			fork: forkFrom.mock.calls,
-		}).toStrictEqual({
-			copyLabels: ["Copy", "Copy: This message has no text to copy.", "Copy"],
-			copy: [
-				["Example A.", "<p>Example A.</p>"],
-				["Example C.", "<p>Example C.</p>"],
-			],
-			pin: [
-				[{sessionId: "example-main", uuid: "example-a"}],
-				[{sessionId: "example-agent", uuid: "example-b"}],
-				[{sessionId: "example-main", uuid: "example-c"}],
-			],
-			fork: [
-				[{sessionId: "example-main", uuid: "example-a"}],
-				[{sessionId: "example-agent", uuid: "example-b"}],
-				[{sessionId: "example-main", uuid: "example-c"}],
-			],
-		});
+		expect(
+			{
+				copyLabels,
+				copy: vi.mocked(writeClipboardText).mock.calls,
+				pin: pinChapter.mock.calls,
+				fork: forkFrom.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				copyLabels: ["Copy", "Copy: This message has no text to copy.", "Copy"],
+				copy: [
+					["Example A.", "<p>Example A.</p>"],
+					["Example C.", "<p>Example C.</p>"],
+				],
+				pin: [
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-a",
+						},
+					],
+					[
+						{
+							sessionId: "example-agent",
+							uuid: "example-b",
+						},
+					],
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-c",
+						},
+					],
+				],
+				fork: [
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-a",
+						},
+					],
+					[
+						{
+							sessionId: "example-agent",
+							uuid: "example-b",
+						},
+					],
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-c",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("uses the last visible assistant endpoint and disables missing UUID actions without an earlier fallback", () => {
+	it("uses the last visible assistant endpoint and disables missing UUID actions without an earlier fallback", () =>
+	{
 		const records = [text("example-first", "Example first."), ...command("example-last")];
 		const view = render(chat(records));
 		fireEvent.click(button(footers(view.container)[0]!, "Fork from here"));
-		view.rerender(chat(records, {showTools: false}));
+		view.rerender(
+			chat(
+				records,
+				{
+					showTools: false,
+				},
+			),
+		);
 		fireEvent.click(button(footers(view.container)[0]!, "Fork from here"));
 		view.rerender(chat([...records, text(undefined, "Example missing UUID.")]));
 		const footer = footers(view.container)[0]!;
-		expect({
-			fork: forkFrom.mock.calls,
-			disabled: ["Copy", "Fork from here", "Pin as chapter", "Read aloud"].map((name) => [
-				name,
-				button(footer, name).disabled,
-			]),
-		}).toStrictEqual({
-			fork: [
-				[{sessionId: "example-main", uuid: "example-last"}],
-				[{sessionId: "example-main", uuid: "example-first"}],
-			],
-			disabled: [
-				["Copy", false],
-				["Fork from here", true],
-				["Pin as chapter", true],
-				["Read aloud", false],
-			],
-		});
+		expect(
+			{
+				fork: forkFrom.mock.calls,
+				disabled: ["Copy", "Fork from here", "Pin as chapter", "Read aloud"].map((name) => [
+					name,
+					button(footer, name).disabled,
+				]),
+			},
+		).toStrictEqual(
+			{
+				fork: [
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-last",
+						},
+					],
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-first",
+						},
+					],
+				],
+				disabled: [
+					["Copy", false],
+					["Fork from here", true],
+					["Pin as chapter", true],
+					["Read aloud", false],
+				],
+			},
+		);
 	});
 
 	it.each(["normal", "thinking", "verbose"] as const)(
 		"recognizes plain notifications before prompt classification in %s mode",
-		(transcriptMode) => {
+		(transcriptMode) =>
+		{
 			const records = [
 				text("example-first", "Example first."),
 				notification("example-notice"),
 				text("example-last", "Example last."),
-				{type: "user", uuid: "example-prompt", message: {role: "user", content: "Example next prompt."}},
+				{
+					type: "user",
+					uuid: "example-prompt",
+					message:
+					{
+						role: "user",
+						content: "Example next prompt.",
+					},
+				},
 				text("example-next", "Example next answer."),
 			];
-			const view = render(chat(records, {transcriptMode}));
-			expect({
-				footers: footers(view.container).map(anchor),
-				actionCount: view.container.querySelectorAll("[data-message-actions]").length,
-			}).toStrictEqual(
-				transcriptMode === "verbose" ? {footers: [], actionCount: 5} : {footers: ["2", "4"], actionCount: 3},
+			const view = render(
+				chat(
+					records,
+					{
+						transcriptMode,
+					},
+				),
+			);
+			expect(
+				{
+					footers: footers(view.container).map(anchor),
+					actionCount: view.container.querySelectorAll("[data-message-actions]").length,
+				},
+			).toStrictEqual(
+				transcriptMode === "verbose"
+					?
+						{
+							footers: [],
+							actionCount: 5,
+						}
+					:
+						{
+							footers: ["2", "4"],
+							actionCount: 3,
+						},
 			);
 		},
 	);
 
-	it("reads aloud from the action bar only, not the context menu, and cancels when its owner unmounts", () => {
+	it("reads aloud from the action bar only, not the context menu, and cancels when its owner unmounts", () =>
+	{
 		const view = render(chat([text("example-first", "Example **first**."), text("example-last", "Example last.")]));
 		const prose = view.container.querySelector("strong")!;
-		fireEvent.contextMenu(prose, {clientX: 10, clientY: 10});
+		fireEvent.contextMenu(
+			prose,
+			{
+				clientX: 10,
+				clientY: 10,
+			},
+		);
 		const menuRows = screen.getAllByRole("menuitem").map((row) => row.textContent);
-		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		fireEvent.keyDown(
+			screen.getByRole("menu"),
+			{
+				key: "Escape",
+			},
+		);
 		fireEvent.click(button(footers(view.container)[0]!, "Read aloud"));
-		const afterClick = {
+		const afterClick =
+		{
 			texts: speak.mock.calls.map(([utterance]) => utterance.text),
 			cancels: cancel.mock.calls.map((args) => [...args]),
 			menus: screen.queryAllByRole("menu").length,
 		};
 		view.unmount();
-		expect({menuRows, afterClick, afterUnmount: cancel.mock.calls}).toStrictEqual({
-			menuRows: [
-				"Copy message",
-				"Copy message as Markdown",
-				"Attach message as context",
-				"Pin as chapter",
-				"Fork from hereStarts a new session, keeps this one",
-			],
-			afterClick: {texts: ["Example first.\n\nExample last."], cancels: [[]], menus: 0},
-			afterUnmount: [[], []],
-		});
+		expect(
+			{
+				menuRows,
+				afterClick,
+				afterUnmount: cancel.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				menuRows: [
+					"Copy message",
+					"Copy message as Markdown",
+					"Attach message as context",
+					"Pin as chapter",
+					"Fork from hereStarts a new session, keeps this one",
+				],
+				afterClick:
+				{
+					texts: ["Example first.\n\nExample last."],
+					cancels: [[]],
+					menus: 0,
+				},
+				afterUnmount: [[], []],
+			},
+		);
 	});
-	it("keeps repeated authored text and excludes thinking, tools, and reminders from speech", () => {
+	it("keeps repeated authored text and excludes thinking, tools, and reminders from speech", () =>
+	{
 		const records = [
 			text("example-first", "Example repeated."),
 			{
 				type: "attachment",
 				uuid: "example-reminder",
-				attachment: {type: "total_tokens_reminder", text: "Example hidden reminder"},
+				attachment:
+				{
+					type: "total_tokens_reminder",
+					text: "Example hidden reminder",
+				},
 			},
 			{
 				type: "assistant",
 				uuid: "example-thinking",
-				message: {role: "assistant", content: [{type: "thinking", thinking: "Example private reasoning"}]},
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "thinking",
+							thinking: "Example private reasoning",
+						},
+					],
+				},
 			},
 			...command("example-command"),
 			text("example-last", "Example repeated."),
 		];
-		const view = render(chat(records, {showThinking: true, transcriptMode: "thinking"}));
+		const view = render(
+			chat(
+				records,
+				{
+					showThinking: true,
+					transcriptMode: "thinking",
+				},
+			),
+		);
 		fireEvent.click(button(footers(view.container)[0]!, "Read aloud"));
-		expect({
-			footers: footers(view.container).map(anchor),
-			speech: speak.mock.calls.map(([utterance]) => utterance.text),
-		}).toStrictEqual({footers: ["5"], speech: ["Example repeated.\n\nExample repeated."]});
+		expect(
+			{
+				footers: footers(view.container).map(anchor),
+				speech: speak.mock.calls.map(([utterance]) => utterance.text),
+			},
+		).toStrictEqual(
+			{
+				footers: ["5"],
+				speech: ["Example repeated.\n\nExample repeated."],
+			},
+		);
 	});
 
-	it("renders no footer-only rows for hidden assistant content", () => {
+	it("renders no footer-only rows for hidden assistant content", () =>
+	{
 		const view = render(
 			chat(
 				[
 					{
 						type: "assistant",
 						uuid: "example-thinking",
-						message: {role: "assistant", content: [{type: "thinking", thinking: "Example reasoning"}]},
+						message:
+						{
+							role: "assistant",
+							content: [
+								{
+									type: "thinking",
+									thinking: "Example reasoning",
+								},
+							],
+						},
 					},
 					command("example-tool")[0],
 				],
-				{showTools: false, showThinking: false},
+				{
+					showTools: false,
+					showThinking: false,
+				},
 			),
 		);
-		expect({
-			footers: footers(view.container).map(anchor),
-			rows: Array.from(view.container.querySelectorAll('[role="article"]'), (row) => row.textContent),
-		}).toStrictEqual({footers: [], rows: []});
+		expect(
+			{
+				footers: footers(view.container).map(anchor),
+				rows: Array.from(view.container.querySelectorAll('[role="article"]'), (row) => row.textContent),
+			},
+		).toStrictEqual(
+			{
+				footers: [],
+				rows: [],
+			},
+		);
 	});
 
-	it("releases an unmounted held entry without hiding a newly focused span and keeps virtual rows bounded", () => {
+	it("releases an unmounted held entry without hiding a newly focused span and keeps virtual rows bounded", () =>
+	{
 		vi.stubGlobal("innerHeight", 1000);
 		const frames = new Map<number, FrameRequestCallback>();
 		let frameId = 0;
-		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+		{
 			frames.set(++frameId, callback);
 			return frameId;
 		});
 		vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
-		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement)
+		{
 			return new DOMRect(
 				0,
 				this.dataset["testid"] === "virtualized-transcript" ? -document.documentElement.scrollTop : 0,
@@ -779,25 +1269,44 @@ describe("assistant display-span actions", () => {
 				320,
 			);
 		});
-		const records = Array.from({length: 50}, (_, index) => [
+		const records = Array.from(
 			{
-				type: "user",
-				uuid: `example-prompt-${index}`,
-				message: {role: "user", content: `Example prompt ${index}`},
+				length: 50,
 			},
-			text(`example-answer-${index}`, `Example answer ${index}.`),
-		]).flat();
+			(_, index) => [
+				{
+					type: "user",
+					uuid: `example-prompt-${index}`,
+					message:
+					{
+						role: "user",
+						content: `Example prompt ${index}`,
+					},
+				},
+				text(`example-answer-${index}`, `Example answer ${index}.`),
+			],
+		).flat();
 		const view = render(chat(records));
 		const original = footers(view.container)[0]!;
 		focus(button(original, "Fork from here"));
-		act(() => {
-			window.dispatchEvent(new CustomEvent("transcript-jump-request", {detail: 98}));
+		act(() =>
+		{
+			window.dispatchEvent(
+				new CustomEvent(
+					"transcript-jump-request",
+					{
+						detail: 98,
+					},
+				),
+			);
 		});
 		const target = view.container.querySelector<HTMLElement>('[data-record-index="98"]')!;
 		const scrollIntoView = vi.fn<HTMLElement["scrollIntoView"]>();
 		target.scrollIntoView = scrollIntoView;
-		act(() => {
-			for (const id of [...frames.keys()]) {
+		act(() =>
+		{
+			for (const id of [...frames.keys()])
+			{
 				const callback = frames.get(id);
 				frames.delete(id);
 				callback?.(0);
@@ -808,46 +1317,74 @@ describe("assistant display-span actions", () => {
 		focus(fork);
 		view.rerender(chat([...records, text("example-appended", "Example appended.")]));
 		fireEvent.click(fork);
-		expect({
-			originalConnected: original.isConnected,
-			completedJump: scrollIntoView.mock.calls,
-			focused: document.activeElement === fork,
-			rows: Array.from(
-				view.container.querySelectorAll<HTMLElement>('[role="article"]'),
-				(row) => row.dataset["perfLine"],
-			),
-			footers: footers(view.container).map(anchor),
-			fork: forkFrom.mock.calls,
-		}).toStrictEqual({
-			originalConnected: false,
-			completedJump: [[{block: "center", behavior: "smooth"}]],
-			focused: true,
-			rows: ["95", "96", "97", "98", "99", "100"],
-			footers: ["95", "97", "99"],
-			fork: [[{sessionId: "example-main", uuid: "example-answer-49"}]],
-		});
+		expect(
+			{
+				originalConnected: original.isConnected,
+				completedJump: scrollIntoView.mock.calls,
+				focused: document.activeElement === fork,
+				rows: Array.from(
+					view.container.querySelectorAll<HTMLElement>('[role="article"]'),
+					(row) => row.dataset["perfLine"],
+				),
+				footers: footers(view.container).map(anchor),
+				fork: forkFrom.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				originalConnected: false,
+				completedJump: [
+					[
+						{
+							block: "center",
+							behavior: "smooth",
+						},
+					],
+				],
+				focused: true,
+				rows: ["95", "96", "97", "98", "99", "100"],
+				footers: ["95", "97", "99"],
+				fork: [
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-answer-49",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("preserves the answered-question group boundary while sharing one footer", () => {
-		const question = {
+	it("preserves the answered-question group boundary while sharing one footer", () =>
+	{
+		const question =
+		{
 			type: "assistant",
 			uuid: "example-question",
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
 					{
 						type: "tool_use",
 						id: "example-question-tool",
 						name: "AskUserQuestion",
-						input: {
+						input:
+						{
 							questions: [
 								{
 									question: "Continue the example?",
 									header: "Example",
 									multiSelect: false,
 									options: [
-										{label: "Continue", description: "Run the example"},
-										{label: "Stop", description: "Stop the example"},
+										{
+											label: "Continue",
+											description: "Run the example",
+										},
+										{
+											label: "Stop",
+											description: "Stop the example",
+										},
 									],
 								},
 							],
@@ -856,10 +1393,12 @@ describe("assistant display-span actions", () => {
 				],
 			},
 		};
-		const answer = {
+		const answer =
+		{
 			type: "user",
 			uuid: "example-answer",
-			message: {
+			message:
+			{
 				role: "user",
 				content: [
 					{
@@ -882,52 +1421,91 @@ describe("assistant display-span actions", () => {
 			]),
 		);
 		fireEvent.click(button(footers(view.container)[0]!, "Fork from here"));
-		expect({
-			content: Array.from(
-				view.container.querySelectorAll(
-					'[data-tool-row] > [role="button"], [data-tool-row] > button, [data-answered-question] > div, p',
+		expect(
+			{
+				content: Array.from(
+					view.container.querySelectorAll(
+						'[data-tool-row] > [role="button"], [data-tool-row] > button, [data-answered-question] > div, p',
+					),
+					(element) => element.textContent,
 				),
-				(element) => element.textContent,
-			),
-			anchors: footers(view.container).map(anchor),
-			fork: forkFrom.mock.calls,
-		}).toStrictEqual({
-			content: ["Printed example", "Continue the example?", "Continue", "Ran 2 commands", "Example conclusion."],
-			anchors: ["8"],
-			fork: [[{sessionId: "example-main", uuid: "example-end"}]],
-		});
+				anchors: footers(view.container).map(anchor),
+				fork: forkFrom.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				content: [
+					"Printed example",
+					"Continue the example?",
+					"Continue",
+					"Ran 2 commands",
+					"Example conclusion.",
+				],
+				anchors: ["8"],
+				fork: [
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-end",
+						},
+					],
+				],
+			},
+		);
 	});
 
-	it("places the span footer after its changes card and trailing notice", () => {
-		const edit = {
+	it("places the span footer after its changes card and trailing notice", () =>
+	{
+		const edit =
+		{
 			type: "assistant",
 			uuid: "example-edit",
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
 					{
 						type: "tool_use",
 						id: "example-edit-tool",
 						name: "Edit",
-						input: {
+						input:
+						{
 							file_path: "/tmp/example/cache.ts",
 							old_string: "example old",
 							new_string: "example new",
 						},
 					},
 					// A second tool keeps the run from being a sole bare edit row, which draws no card.
-					{type: "tool_use", id: "example-bash-tool", name: "Bash", input: {command: "example check"}},
+					{
+						type: "tool_use",
+						id: "example-bash-tool",
+						name: "Bash",
+						input:
+						{
+							command: "example check",
+						},
+					},
 				],
 			},
 		};
-		const result = {
+		const result =
+		{
 			type: "user",
 			uuid: "example-edit-result",
-			message: {
+			message:
+			{
 				role: "user",
 				content: [
-					{type: "tool_result", tool_use_id: "example-edit-tool", content: "example done"},
-					{type: "tool_result", tool_use_id: "example-bash-tool", content: "example checked"},
+					{
+						type: "tool_result",
+						tool_use_id: "example-edit-tool",
+						content: "example done",
+					},
+					{
+						type: "tool_result",
+						tool_use_id: "example-bash-tool",
+						content: "example checked",
+					},
 				],
 			},
 		};
@@ -936,30 +1514,38 @@ describe("assistant display-span actions", () => {
 		);
 		const footer = footers(view.container)[0]!;
 		const changes = view.container.querySelector("[data-turn-changes-card]");
-		expect({
-			anchors: footers(view.container).map(anchor),
-			changesBefore: changes?.compareDocumentPosition(footer),
-			recordOrder: Array.from(view.container.querySelectorAll("[data-record-index]"), (element) =>
-				element.getAttribute("data-record-index"),
-			),
-		}).toStrictEqual({
-			anchors: ["3"],
-			changesBefore: Node.DOCUMENT_POSITION_FOLLOWING,
-			recordOrder: ["0", "2", "3"],
-		});
+		expect(
+			{
+				anchors: footers(view.container).map(anchor),
+				changesBefore: changes?.compareDocumentPosition(footer),
+				recordOrder: Array.from(view.container.querySelectorAll("[data-record-index]"), (element) =>
+					element.getAttribute("data-record-index"),
+				),
+			},
+		).toStrictEqual(
+			{
+				anchors: ["3"],
+				changesBefore: Node.DOCUMENT_POSITION_FOLLOWING,
+				recordOrder: ["0", "2", "3"],
+			},
+		);
 	});
-	it("keeps focused group actions mounted when an appended edit result adds the changes card", () => {
-		const edit = {
+	it("keeps focused group actions mounted when an appended edit result adds the changes card", () =>
+	{
+		const edit =
+		{
 			type: "assistant",
 			uuid: "example-edit",
-			message: {
+			message:
+			{
 				role: "assistant",
 				content: [
 					{
 						type: "tool_use",
 						id: "example-edit-tool",
 						name: "Edit",
-						input: {
+						input:
+						{
 							file_path: "/tmp/example/cache.ts",
 							old_string: "example old",
 							new_string: "example new",
@@ -968,12 +1554,20 @@ describe("assistant display-span actions", () => {
 				],
 			},
 		};
-		const success = {
+		const success =
+		{
 			type: "user",
 			uuid: "example-edit-result",
-			message: {
+			message:
+			{
 				role: "user",
-				content: [{type: "tool_result", tool_use_id: "example-edit-tool", content: "example success"}],
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: "example-edit-tool",
+						content: "example success",
+					},
+				],
 			},
 		};
 		const records = [...command("example-command"), edit];
@@ -984,52 +1578,103 @@ describe("assistant display-span actions", () => {
 		const cardBefore = view.container.querySelectorAll("[data-turn-changes-card]").length;
 		view.rerender(chat([...records, success]));
 		fireEvent.click(fork);
-		expect({
-			cardBefore,
-			cardAfter: view.container.querySelectorAll("[data-turn-changes-card]").length,
-			articles: Array.from(
-				view.container.querySelectorAll<HTMLElement>('[role="article"]'),
-				(article) => article.dataset["perfLine"],
-			),
-			sameFooter: footers(view.container)[0] === original,
-			focused: document.activeElement === fork,
-			fork: forkFrom.mock.calls,
-		}).toStrictEqual({
-			cardBefore: 0,
-			cardAfter: 1,
-			articles: ["0"],
-			sameFooter: true,
-			focused: true,
-			fork: [[{sessionId: "example-main", uuid: "example-edit"}]],
-		});
+		expect(
+			{
+				cardBefore,
+				cardAfter: view.container.querySelectorAll("[data-turn-changes-card]").length,
+				articles: Array.from(
+					view.container.querySelectorAll<HTMLElement>('[role="article"]'),
+					(article) => article.dataset["perfLine"],
+				),
+				sameFooter: footers(view.container)[0] === original,
+				focused: document.activeElement === fork,
+				fork: forkFrom.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				cardBefore: 0,
+				cardAfter: 1,
+				articles: ["0"],
+				sameFooter: true,
+				focused: true,
+				fork: [
+					[
+						{
+							sessionId: "example-main",
+							uuid: "example-edit",
+						},
+					],
+				],
+			},
+		);
 	});
 
 	it.each(["ContextMenu", "F10"])(
 		"opens the earlier record menu from article keyboard navigation using %s",
-		async (key) => {
+		async (key) =>
+		{
 			const view = render(chat([text("example-first", "Example first."), text("example-last", "Example last.")]));
 			const article = view.container.querySelector<HTMLElement>('[role="article"]')!;
 			focus(article);
-			fireEvent.keyDown(article, {key, shiftKey: key === "F10"});
-			fireEvent.click(screen.getByRole("menuitem", {name: "Copy message as Markdown"}));
+			fireEvent.keyDown(
+				article,
+				{
+					key,
+					shiftKey: key === "F10",
+				},
+			);
+			fireEvent.click(
+				screen.getByRole(
+					"menuitem",
+					{
+						name: "Copy message as Markdown",
+					},
+				),
+			);
 			focus(article);
-			fireEvent.keyDown(article, {key, shiftKey: key === "F10"});
-			fireEvent.click(screen.getByRole("menuitem", {name: "Pin as chapter"}));
+			fireEvent.keyDown(
+				article,
+				{
+					key,
+					shiftKey: key === "F10",
+				},
+			);
+			fireEvent.click(
+				screen.getByRole(
+					"menuitem",
+					{
+						name: "Pin as chapter",
+					},
+				),
+			);
 			await act(async () => {});
-			expect({
-				anchors: footers(view.container).map(anchor),
-				copy: vi.mocked(writeClipboardText).mock.calls,
-				pin: pinChapter.mock.calls,
-			}).toStrictEqual({
-				anchors: ["1"],
-				copy: [["Example first."]],
-				pin: [[{sessionId: "example-main", uuid: "example-first"}]],
-			});
+			expect(
+				{
+					anchors: footers(view.container).map(anchor),
+					copy: vi.mocked(writeClipboardText).mock.calls,
+					pin: pinChapter.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					anchors: ["1"],
+					copy: [["Example first."]],
+					pin: [
+						[
+							{
+								sessionId: "example-main",
+								uuid: "example-first",
+							},
+						],
+					],
+				},
+			);
 		},
 	);
-	it("focuses a keyboard-opened record menu and returns to its article on Escape", async () => {
+	it("focuses a keyboard-opened record menu and returns to its article on Escape", async () =>
+	{
 		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
-			setTimeout(() => {
+			setTimeout(() =>
+			{
 				callback(0);
 			}, 0),
 		);
@@ -1041,67 +1686,133 @@ describe("assistant display-span actions", () => {
 			]),
 		);
 		const article = view.container.querySelector<HTMLElement>('[role="article"]')!;
-		const link = screen.getByRole("link", {name: "first"});
+		const link = screen.getByRole(
+			"link",
+			{
+				name: "first",
+			},
+		);
 		// Give this real descendant link a visible box so Base UI's tabbable lookup runs as in a browser.
 		const rect = new DOMRect(0, 0, 100, 20);
-		vi.spyOn(link, "getClientRects").mockReturnValue(Object.assign([rect], {item: () => rect}));
+		vi.spyOn(link, "getClientRects").mockReturnValue(
+			Object.assign(
+				[rect],
+				{
+					item: () => rect,
+				},
+			),
+		);
 		focus(article);
-		fireEvent.keyDown(article, {key: "F10", shiftKey: true});
-		await act(async () => {
-			await new Promise((resolve) => {
+		fireEvent.keyDown(
+			article,
+			{
+				key: "F10",
+				shiftKey: true,
+			},
+		);
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		});
 		const menu = screen.getByRole("menu");
-		const opened = {
+		const opened =
+		{
 			focusInMenu: menu.contains(document.activeElement),
 			focusedRole: document.activeElement?.getAttribute("role"),
 		};
-		fireEvent.keyDown(menu, {key: "Escape"});
-		await act(async () => {
-			await new Promise((resolve) => {
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "Escape",
+			},
+		);
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		});
-		const escaped = {
+		const escaped =
+		{
 			closedMenus: screen.queryAllByRole("menu").length,
 			restoredArticle: document.activeElement === article,
 		};
-		fireEvent.keyDown(article, {key: "ContextMenu"});
-		await act(async () => {
-			await new Promise((resolve) => {
+		fireEvent.keyDown(
+			article,
+			{
+				key: "ContextMenu",
+			},
+		);
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		});
-		fireEvent.keyDown(screen.getByRole("menu"), {key: "ArrowDown"});
+		fireEvent.keyDown(
+			screen.getByRole("menu"),
+			{
+				key: "ArrowDown",
+			},
+		);
 		const selected = document.activeElement!;
 		const selectedText = selected.textContent;
-		fireEvent.keyDown(selected, {key: "Enter"});
-		fireEvent.keyUp(selected, {key: "Enter"});
-		await act(async () => {
-			await new Promise((resolve) => {
+		fireEvent.keyDown(
+			selected,
+			{
+				key: "Enter",
+			},
+		);
+		fireEvent.keyUp(
+			selected,
+			{
+				key: "Enter",
+			},
+		);
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		});
-		expect({
-			opened,
-			escaped,
-			selectedText,
-			copy: vi.mocked(writeClipboardText).mock.calls,
-			closedMenus: screen.queryAllByRole("menu").length,
-			restoredArticle: document.activeElement === article,
-		}).toStrictEqual({
-			opened: {focusInMenu: true, focusedRole: "menu"},
-			escaped: {closedMenus: 0, restoredArticle: true},
-			selectedText: "Copy message",
-			copy: [["Example first."]],
-			closedMenus: 0,
-			restoredArticle: true,
-		});
+		expect(
+			{
+				opened,
+				escaped,
+				selectedText,
+				copy: vi.mocked(writeClipboardText).mock.calls,
+				closedMenus: screen.queryAllByRole("menu").length,
+				restoredArticle: document.activeElement === article,
+			},
+		).toStrictEqual(
+			{
+				opened:
+				{
+					focusInMenu: true,
+					focusedRole: "menu",
+				},
+				escaped:
+				{
+					closedMenus: 0,
+					restoredArticle: true,
+				},
+				selectedText: "Copy message",
+				copy: [["Example first."]],
+				closedMenus: 0,
+				restoredArticle: true,
+			},
+		);
 	});
 	it.each(["pointer origin", "outside pointer", "deferred action focus", "another menu focus"])(
 		"preserves %s when closing a linked record menu",
-		async (scenario) => {
+		async (scenario) =>
+		{
 			vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => setTimeout(callback, 0));
 			vi.stubGlobal("cancelAnimationFrame", clearTimeout);
 			const view = render(
@@ -1114,53 +1825,117 @@ describe("assistant display-span actions", () => {
 				</>,
 			);
 			const article = view.container.querySelector<HTMLElement>('[role="article"]')!;
-			const link = screen.getByRole("link", {name: "first"});
+			const link = screen.getByRole(
+				"link",
+				{
+					name: "first",
+				},
+			);
 			const rect = new DOMRect(0, 0, 100, 20);
-			vi.spyOn(link, "getClientRects").mockReturnValue(Object.assign([rect], {item: () => rect}));
-			const outside = screen.getByRole("button", {name: "Example outside"});
+			vi.spyOn(link, "getClientRects").mockReturnValue(
+				Object.assign(
+					[rect],
+					{
+						item: () => rect,
+					},
+				),
+			);
+			const outside = screen.getByRole(
+				"button",
+				{
+					name: "Example outside",
+				},
+			);
 			focus(article);
-			if (scenario === "pointer origin") {
-				fireEvent.contextMenu(article.querySelector("[data-transcript-message-menu]")!, {button: 2});
-			} else {
-				fireEvent.keyDown(article, {key: "F10", shiftKey: true});
+			if (scenario === "pointer origin")
+			{
+				fireEvent.contextMenu(
+					article.querySelector("[data-transcript-message-menu]")!,
+					{
+						button: 2,
+					},
+				);
 			}
-			await act(async () => {
-				await new Promise((resolve) => {
+			else
+			{
+				fireEvent.keyDown(
+					article,
+					{
+						key: "F10",
+						shiftKey: true,
+					},
+				);
+			}
+			await act(async () =>
+			{
+				await new Promise((resolve) =>
+				{
 					setTimeout(resolve, 0);
 				});
 			});
 			const menu = screen.getByRole("menu");
 			const openedWithMenuFocus = menu.contains(document.activeElement);
-			if (scenario === "pointer origin") {
-				fireEvent.keyDown(menu, {key: "Escape"});
-			} else if (scenario === "outside pointer") {
-				fireEvent.pointerDown(outside, {button: 0, pointerType: "mouse"});
+			if (scenario === "pointer origin")
+			{
+				fireEvent.keyDown(
+					menu,
+					{
+						key: "Escape",
+					},
+				);
+			}
+			else if (scenario === "outside pointer")
+			{
+				fireEvent.pointerDown(
+					outside,
+					{
+						button: 0,
+						pointerType: "mouse",
+					},
+				);
 				focus(outside);
-			} else {
-				pinChapter.mockImplementationOnce(() => {
+			}
+			else
+			{
+				pinChapter.mockImplementationOnce(() =>
+				{
 					if (scenario === "another menu focus") outside.setAttribute("role", "menu");
-					queueMicrotask(() => {
+					queueMicrotask(() =>
+					{
 						outside.focus();
 					});
 				});
-				fireEvent.click(screen.getByRole("menuitem", {name: "Pin as chapter"}));
+				fireEvent.click(
+					screen.getByRole(
+						"menuitem",
+						{
+							name: "Pin as chapter",
+						},
+					),
+				);
 			}
-			await act(async () => {
-				await new Promise((resolve) => {
+			await act(async () =>
+			{
+				await new Promise((resolve) =>
+				{
 					setTimeout(resolve, 0);
 				});
 			});
-			expect({
-				openedWithMenuFocus,
-				closedMenus: screen.queryAllByRole("menu").length,
-				focused: document.activeElement,
-				articleTabIndex: article.tabIndex,
-			}).toStrictEqual({
-				openedWithMenuFocus: true,
-				closedMenus: scenario === "another menu focus" ? 1 : 0,
-				focused: scenario === "pointer origin" ? link : outside,
-				articleTabIndex: -1,
-			});
+			expect(
+				{
+					openedWithMenuFocus,
+					closedMenus: screen.queryAllByRole("menu").length,
+					focused: document.activeElement,
+					articleTabIndex: article.tabIndex,
+				},
+			).toStrictEqual(
+				{
+					openedWithMenuFocus: true,
+					closedMenus: scenario === "another menu focus" ? 1 : 0,
+					focused: scenario === "pointer origin" ? link : outside,
+					articleTabIndex: -1,
+				},
+			);
 		},
 	);
 });

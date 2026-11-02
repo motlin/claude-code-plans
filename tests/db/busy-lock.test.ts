@@ -27,75 +27,131 @@ setTimeout(() => {
 }, Number(process.argv[2]));
 `;
 
-async function holdWriteLock(dbPath: string, holdMs: number): Promise<ChildProcess> {
-	const child = spawn(process.execPath, ["-e", HOLD_LOCK_SCRIPT, dbPath, String(holdMs)], {
-		cwd: REPO_ROOT,
-		stdio: ["ignore", "pipe", "inherit"],
-	});
-	return new Promise((resolve, reject) => {
+async function holdWriteLock(dbPath: string, holdMs: number): Promise<ChildProcess>
+{
+	const child = spawn(
+		process.execPath,
+		["-e", HOLD_LOCK_SCRIPT, dbPath, String(holdMs)],
+		{
+			cwd: REPO_ROOT,
+			stdio: ["ignore", "pipe", "inherit"],
+		},
+	);
+	return new Promise((resolve, reject) =>
+	{
 		child.once("error", reject);
-		child.once("exit", (code) => {
+		child.once("exit", (code) =>
+		{
 			reject(new Error(`lock holder exited early with ${code}`));
 		});
-		child.stdout.on("data", (chunk: Buffer) => {
+		child.stdout.on("data", (chunk: Buffer) =>
+		{
 			if (chunk.toString().includes("locked")) resolve(child);
 		});
 	});
 }
 
-async function exited(child: ChildProcess): Promise<void> {
+async function exited(child: ChildProcess): Promise<void>
+{
 	if (child.exitCode !== null) return Promise.resolve();
-	return new Promise((resolve) => {
-		child.once("exit", () => {
+	return new Promise((resolve) =>
+	{
+		child.once("exit", () =>
+		{
 			resolve();
 		});
 	});
 }
 
-describe("index DB writes while another connection holds the write lock", () => {
+describe("index DB writes while another connection holds the write lock", () =>
+{
 	const cleanups: (() => void)[] = [];
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
 	});
 
-	function openTempDb(): {db: AppDb; dbPath: string} {
+	function openTempDb():
+	{
+		db: AppDb;
+		dbPath: string;
+	}
+	{
 		const cacheDir = mkdtempSync(join(tmpdir(), "busy-lock-test-"));
-		const db = openAppDb({cacheDir});
-		cleanups.push(() => {
-			rmSync(cacheDir, {recursive: true, force: true});
+		const db = openAppDb(
+			{
+				cacheDir,
+			},
+		);
+		cleanups.push(() =>
+		{
+			rmSync(
+				cacheDir,
+				{
+					recursive: true,
+					force: true,
+				},
+			);
 		});
-		cleanups.push(() => {
+		cleanups.push(() =>
+		{
 			db.close();
 		});
-		return {db, dbPath: join(cacheDir, "index.db")};
+		return {
+			db,
+			dbPath: join(cacheDir, "index.db"),
+		};
 	}
 
-	it("sets an explicit busy timeout on both databases", () => {
+	it("sets an explicit busy timeout on both databases", () =>
+	{
 		const {db} = openTempDb();
-		expect({
-			index: db.index.get(sql`PRAGMA busy_timeout`),
-			summaries: db.summaries.get(sql`PRAGMA busy_timeout`),
-		}).toStrictEqual({index: {timeout: 250}, summaries: {timeout: 250}});
+		expect(
+			{
+				index: db.index.get(sql`PRAGMA busy_timeout`),
+				summaries: db.summaries.get(sql`PRAGMA busy_timeout`),
+			},
+		).toStrictEqual(
+			{
+				index:
+				{
+					timeout: 250,
+				},
+				summaries:
+				{
+					timeout: 250,
+				},
+			},
+		);
 	});
 
-	it("replaceArtifactEvents waits for the lock instead of throwing SQLITE_BUSY", async () => {
+	it("replaceArtifactEvents waits for the lock instead of throwing SQLITE_BUSY", async () =>
+	{
 		const {db, dbPath} = openTempDb();
 		const child = await holdWriteLock(dbPath, 100);
 
 		replaceArtifactEvents(
 			db.index,
-			{filePath: "/transcripts/a.jsonl", sessionId: "session-a", projectId: "project-a", isSubagent: false},
+			{
+				filePath: "/transcripts/a.jsonl",
+				sessionId: "session-a",
+				projectId: "project-a",
+				isSubagent: false,
+			},
 			[],
 		);
 
 		await exited(child);
 		expect(db.index.all(sql`SELECT value FROM metadata WHERE key = 'lock_holder'`)).toStrictEqual([
-			{value: "other-process"},
+			{
+				value: "other-process",
+			},
 		]);
 	});
 
-	it("the file-content scan's stale-row cleanup waits for the lock instead of throwing SQLITE_BUSY", async () => {
+	it("the file-content scan's stale-row cleanup waits for the lock instead of throwing SQLITE_BUSY", async () =>
+	{
 		const {db, dbPath} = openTempDb();
 		db.index.run(sql`INSERT INTO file_content(path, content) VALUES ('/gone/file.ts', 'stale')`);
 		const child = await holdWriteLock(dbPath, 100);
@@ -106,7 +162,8 @@ describe("index DB writes while another connection holds the write lock", () => 
 		expect(db.index.all(sql`SELECT path FROM file_content`)).toStrictEqual([]);
 	});
 
-	it("herdr pane sync retries its viewed-state writes past the busy timeout instead of throwing SQLITE_BUSY", async () => {
+	it("herdr pane sync retries its viewed-state writes past the busy timeout instead of throwing SQLITE_BUSY", async () =>
+	{
 		const {db, dbPath} = openTempDb();
 		db.index.run(
 			sql`INSERT INTO herdr_terminal_view_states(terminal_id, session_id, viewed, updated_at) VALUES ('terminal-closed', 'session-a', 0, 1)`,
@@ -145,6 +202,12 @@ describe("index DB writes while another connection holds the write lock", () => 
 			db.index.all(
 				sql`SELECT terminal_id, session_id, viewed FROM herdr_terminal_view_states ORDER BY terminal_id`,
 			),
-		).toStrictEqual([{terminal_id: "terminal-open", session_id: "session-a", viewed: 0}]);
+		).toStrictEqual([
+			{
+				terminal_id: "terminal-open",
+				session_id: "session-a",
+				viewed: 0,
+			},
+		]);
 	});
 });

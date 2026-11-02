@@ -10,7 +10,8 @@ export const STICKY_PROMPT_MAX_CHARS = 800;
  * prompt, or null when it has none. A long prompt keeps its tail, so the bubble's
  * one-line peek shows the prompt's last line.
  */
-export function stickyPromptText(text: string): string | null {
+export function stickyPromptText(text: string): string | null
+{
 	const trimmed = text.trim();
 	if (trimmed === "") return null;
 	const scanned = trimmed.length > STICKY_PROMPT_SCAN_CHARS ? trimmed.slice(-STICKY_PROMPT_SCAN_CHARS) : trimmed;

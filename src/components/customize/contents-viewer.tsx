@@ -9,7 +9,8 @@ import {MarkdownView} from "../markdown-view";
 import {SegmentedControl} from "../settings/segmented-control";
 import {containsFile, defaultContentsFile, isMarkdownPath, orderContentsTree, stripFrontmatter} from "./contents-order";
 
-export interface ContentsFile {
+export interface ContentsFile
+{
 	path: string;
 	content: string;
 }
@@ -19,7 +20,8 @@ export type ContentsFileQuery<TKey extends QueryKey = QueryKey> = (
 	path: string,
 ) => UseQueryOptions<ContentsFile, Error, ContentsFile, TKey>;
 
-interface ContentsViewerProps<TKey extends QueryKey> {
+interface ContentsViewerProps<TKey extends QueryKey>
+{
 	/** Shown in the version combobox as "<name> · current". */
 	name: string;
 	/** Children of the root directory, paths relative to it. */
@@ -33,17 +35,20 @@ const FILE_LIST_DEFAULT_WIDTH = 244;
 const FILE_LIST_MIN_WIDTH = 160;
 const FILE_LIST_MAX_WIDTH = 520;
 
-function baseName(path: string): string {
+function baseName(path: string): string
+{
 	return path.slice(path.lastIndexOf("/") + 1);
 }
 
-function VersionCombobox({name}: {name: string}) {
+function VersionCombobox({name}: {name: string})
+{
 	const [open, setOpen] = useState(false);
 	const label = `${name} · current`;
 	return (
 		<div
 			className="relative"
-			onBlur={(event) => {
+			onBlur={(event) =>
+			{
 				if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
 			}}
 		>
@@ -54,10 +59,12 @@ function VersionCombobox({name}: {name: string}) {
 				aria-expanded={open}
 				aria-haspopup="listbox"
 				aria-controls="contents-version-listbox"
-				onClick={() => {
+				onClick={() =>
+				{
 					setOpen((value) => !value);
 				}}
-				onKeyDown={(event) => {
+				onKeyDown={(event) =>
+				{
 					if (event.key === "Escape") setOpen(false);
 				}}
 				className="inline-flex h-8 items-center gap-1.5 rounded-r6 border border-border bg-surface-0 px-3 text-body text-primary hover:bg-fill-ghost-hover"
@@ -88,7 +95,8 @@ function VersionCombobox({name}: {name: string}) {
 	);
 }
 
-interface TreeRowsProps {
+interface TreeRowsProps
+{
 	nodes: readonly FileTreeNodeData[];
 	depth: number;
 	selected: string | null;
@@ -97,11 +105,17 @@ interface TreeRowsProps {
 	onToggle: (path: string) => void;
 }
 
-function TreeRows({nodes, depth, selected, collapsed, onSelect, onToggle}: TreeRowsProps) {
-	return nodes.map((node) => {
+function TreeRows({nodes, depth, selected, collapsed, onSelect, onToggle}: TreeRowsProps)
+{
+	return nodes.map((node) =>
+	{
 		const name = baseName(node.path);
-		const indent = {paddingInlineStart: `${8 + depth * 28}px`};
-		if (node.children !== undefined) {
+		const indent =
+		{
+			paddingInlineStart: `${8 + depth * 28}px`,
+		};
+		if (node.children !== undefined)
+		{
 			const expanded = !collapsed.has(node.path);
 			return (
 				<li key={node.path} role="none">
@@ -110,11 +124,14 @@ function TreeRows({nodes, depth, selected, collapsed, onSelect, onToggle}: TreeR
 						aria-expanded={expanded}
 						aria-selected={false}
 						tabIndex={-1}
-						onClick={() => {
+						onClick={() =>
+						{
 							onToggle(node.path);
 						}}
-						onKeyDown={(event) => {
-							if (event.key === "Enter" || event.key === " ") {
+						onKeyDown={(event) =>
+						{
+							if (event.key === "Enter" || event.key === " ")
+							{
 								event.preventDefault();
 								onToggle(node.path);
 							}
@@ -151,11 +168,14 @@ function TreeRows({nodes, depth, selected, collapsed, onSelect, onToggle}: TreeR
 					role="treeitem"
 					aria-selected={active}
 					tabIndex={active ? 0 : -1}
-					onClick={() => {
+					onClick={() =>
+					{
 						onSelect(node.path);
 					}}
-					onKeyDown={(event) => {
-						if (event.key === "Enter" || event.key === " ") {
+					onKeyDown={(event) =>
+					{
+						if (event.key === "Enter" || event.key === " ")
+						{
 							event.preventDefault();
 							onSelect(node.path);
 						}
@@ -175,7 +195,8 @@ function TreeRows({nodes, depth, selected, collapsed, onSelect, onToggle}: TreeR
 
 type ViewMode = "preview" | "code";
 
-function FilePane<TKey extends QueryKey>({path, fileQuery}: {path: string; fileQuery: ContentsFileQuery<TKey>}) {
+function FilePane<TKey extends QueryKey>({path, fileQuery}: {path: string; fileQuery: ContentsFileQuery<TKey>})
+{
 	const markdown = isMarkdownPath(path);
 	const [mode, setMode] = useState<ViewMode>("preview");
 	const {data, isPending, isError} = useQuery(fileQuery(path));
@@ -193,8 +214,16 @@ function FilePane<TKey extends QueryKey>({path, fileQuery}: {path: string; fileQ
 						value={mode}
 						onValueChange={setMode}
 						options={[
-							{value: "preview", label: "Preview", icon: <Eye aria-hidden="true" />},
-							{value: "code", label: "Code", icon: <Code aria-hidden="true" />},
+							{
+								value: "preview",
+								label: "Preview",
+								icon: <Eye aria-hidden="true" />,
+							},
+							{
+								value: "code",
+								label: "Code",
+								icon: <Code aria-hidden="true" />,
+							},
 						]}
 					/>
 				)}
@@ -220,25 +249,30 @@ function FilePane<TKey extends QueryKey>({path, fileQuery}: {path: string; fileQ
  * and the selected file — markdown gets Preview | Code, everything else is
  * highlighted code with line numbers. The selection is local state, not URL.
  */
-export function ContentsViewer<TKey extends QueryKey>({name, tree, fileQuery, initialFile}: ContentsViewerProps<TKey>) {
+export function ContentsViewer<TKey extends QueryKey>({name, tree, fileQuery, initialFile}: ContentsViewerProps<TKey>)
+{
 	const ordered = useMemo(() => orderContentsTree(tree), [tree]);
 	const [selected, setSelected] = useState<string | null>(() =>
 		initialFile !== undefined && containsFile(ordered, initialFile) ? initialFile : defaultContentsFile(ordered),
 	);
 	const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
 	const [width, setWidth] = useState(FILE_LIST_DEFAULT_WIDTH);
-	const separator = useResizableWidth({
-		label: "Resize file list",
-		min: FILE_LIST_MIN_WIDTH,
-		max: FILE_LIST_MAX_WIDTH,
-		edge: "end",
-		value: width,
-		onChange: setWidth,
-		defaultWidth: FILE_LIST_DEFAULT_WIDTH,
-	});
+	const separator = useResizableWidth(
+		{
+			label: "Resize file list",
+			min: FILE_LIST_MIN_WIDTH,
+			max: FILE_LIST_MAX_WIDTH,
+			edge: "end",
+			value: width,
+			onChange: setWidth,
+			defaultWidth: FILE_LIST_DEFAULT_WIDTH,
+		},
+	);
 
-	const toggle = (path: string) => {
-		setCollapsed((current) => {
+	const toggle = (path: string) =>
+	{
+		setCollapsed((current) =>
+		{
 			const next = new Set(current);
 			if (next.has(path)) next.delete(path);
 			else next.add(path);
@@ -253,7 +287,12 @@ export function ContentsViewer<TKey extends QueryKey>({name, tree, fileQuery, in
 			</div>
 			<div className="flex min-h-[480px] overflow-hidden rounded-xl border border-border bg-surface-0">
 				<div
-					style={{width, minWidth: FILE_LIST_MIN_WIDTH, maxWidth: `min(${FILE_LIST_MAX_WIDTH}px, 60%)`}}
+					style={
+					{
+						width,
+						minWidth: FILE_LIST_MIN_WIDTH,
+						maxWidth: `min(${FILE_LIST_MAX_WIDTH}px, 60%)`,
+					}}
 					className="relative flex shrink-0 border-r border-border"
 				>
 					<nav aria-label="Files" className="min-w-0 flex-1 overflow-auto p-2">

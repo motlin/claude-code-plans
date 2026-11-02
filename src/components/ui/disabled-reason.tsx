@@ -30,7 +30,8 @@ export function DisabledReason({
 	/** Where the reason tooltip opens (upstream Button/Switch `disabledReasonSide`); the Tooltip's default is top. */
 	side?: ComponentProps<typeof Tooltip>["side"];
 	children: ReactElement;
-}) {
+})
+{
 	const id = useId();
 	const hasReason = reason !== null && reason !== undefined && reason !== "";
 	const wrapperRef = useRef<HTMLSpanElement>(null);
@@ -39,30 +40,44 @@ export function DisabledReason({
 	// becoming disabled), cleared only when focus moves to another element.
 	const focusWasInside = useRef(false);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const wrapper = wrapperRef.current;
 		const gained = hasReason && !hadReason.current;
 		const lost = !hasReason && hadReason.current;
 		hadReason.current = hasReason;
 		if (wrapper === null) return;
 		const active = document.activeElement;
-		if (lost) {
+		if (lost)
+		{
 			if (active !== wrapper) return;
-			wrapper
-				.querySelector<HTMLElement>("button, [role=switch], [tabindex]:not([tabindex='-1'])")
-				?.focus({preventScroll: true});
+			wrapper.querySelector<HTMLElement>("button, [role=switch], [tabindex]:not([tabindex='-1'])")?.focus(
+				{
+					preventScroll: true,
+				},
+			);
 			return;
 		}
 		if (!gained) return;
 		const focusDropped = (active === null || active === document.body) && focusWasInside.current;
-		if (wrapper.contains(active) || focusDropped) wrapper.focus({preventScroll: true});
+		if (wrapper.contains(active) || focusDropped)
+			wrapper.focus(
+				{
+					preventScroll: true,
+				},
+			);
 	}, [hasReason]);
 
 	return (
 		<Tooltip
 			content={reason ?? ""}
 			variant="reason"
-			{...(side === undefined ? {} : {side})}
+			{...(side === undefined
+				? {}
+				:
+					{
+						side,
+					})}
 			closeOnClick={false}
 			openWhen={() => hasReason}
 		>
@@ -72,10 +87,12 @@ export function DisabledReason({
 				// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's wrapper is the tab stop that reaches a disabled control's reason
 				tabIndex={hasReason ? tabIndex : -1}
 				aria-describedby={hasReason ? id : undefined}
-				onFocus={() => {
+				onFocus={() =>
+				{
 					focusWasInside.current = true;
 				}}
-				onBlur={(event) => {
+				onBlur={(event) =>
+				{
 					const next = event.relatedTarget;
 					if (next !== null && !event.currentTarget.contains(next)) focusWasInside.current = false;
 				}}

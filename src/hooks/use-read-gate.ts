@@ -1,6 +1,7 @@
 import {useEffect, useRef, type RefObject} from "react";
 
-import {
+import
+{
 	approvalCardOf,
 	createReadLatch,
 	endLineHeight,
@@ -26,9 +27,11 @@ export type ReadGateHeld = (held: boolean, quiet?: boolean, upward?: boolean) =>
  * `signal` (upstream: the approval presentation) changes, so a card that moves between dock and inline starts
  * unread again.
  */
-function useReadGateKick(signal: unknown): RefObject<(() => void) | null> {
+function useReadGateKick(signal: unknown): RefObject<(() => void) | null>
+{
 	const kick = useRef<(() => void) | null>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		kick.current?.();
 	}, [signal]);
 	return kick;
@@ -64,12 +67,15 @@ export function useReadGate({
 	/** The approval presentation; a change re-kicks the gate. */
 	presentation?: "card" | "dock";
 	onHeld: ReadGateHeld;
-}): void {
+}): void
+{
 	const kick = useReadGateKick(presentation);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const element = ref.current;
 		const win = windowOf(element);
-		if (!watched || element === null || win === null) {
+		if (!watched || element === null || win === null)
+		{
 			onHeld(false);
 			return undefined;
 		}
@@ -79,20 +85,25 @@ export function useReadGate({
 		let endSeen = false;
 		let cardOnScreen = true;
 		let headPassed = false;
-		const check = (report: (state: ReadGateState) => void) => {
-			rerun ??= () => {
+		const check = (report: (state: ReadGateState) => void) =>
+		{
+			rerun ??= () =>
+			{
 				check(report);
 			};
-			if (element.clientHeight === 0) {
+			if (element.clientHeight === 0)
+			{
 				report("unlaid");
 				return;
 			}
-			if (!inScroller && !hostClips && element.scrollHeight - element.clientHeight <= SLACK) {
+			if (!inScroller && !hostClips && element.scrollHeight - element.clientHeight <= SLACK)
+			{
 				report("read");
 				return;
 			}
 			const lineHeight = Number.parseFloat(win.getComputedStyle(element).lineHeight);
-			if ((inScroller || hostClips) && !Number.isFinite(lineHeight)) {
+			if ((inScroller || hostClips) && !Number.isFinite(lineHeight))
+			{
 				onHeld(true, true);
 				report("unlaid");
 				return;
@@ -121,19 +132,32 @@ export function useReadGate({
 			endSeen = end;
 			const rect = element.getBoundingClientRect();
 			const firstLineTop = rect.top + inset(element, win, "first");
-			const clip = visibleClip(element, {box: rect, ownScope: approvalCardOf(element), topCover: cover});
+			const clip = visibleClip(
+				element,
+				{
+					box: rect,
+					ownScope: approvalCardOf(element),
+					topCover: cover,
+				},
+			);
 			headPassed =
 				element.scrollTop > SLACK ||
 				firstLineTop < -SLACK ||
 				(clip !== null && clip.top > firstLineTop + SLACK);
-			const cardClip = visibleClip(approvalCardOf(element) ?? element, {topCover: cover});
+			const cardClip = visibleClip(
+				approvalCardOf(element) ?? element,
+				{
+					topCover: cover,
+				},
+			);
 			cardOnScreen =
 				cardClip === null || Math.min(cardClip.bottom, win.innerHeight) - Math.max(0, cardClip.top) > SLACK;
 			report(end && head ? (latch.waiting() ? "waiting" : "read") : "unread");
 		};
 		let settled = false;
 		let settleFrame: number | undefined;
-		const watch = watchReadGate(element, win, [], check, (state) => {
+		const watch = watchReadGate(element, win, [], check, (state) =>
+		{
 			if (state === "unlaid" || ((inScroller || hostClips) && state === "waiting")) return;
 			const held = state !== "read";
 			const upward =
@@ -142,10 +166,14 @@ export function useReadGate({
 					? headUnseen && endSeen
 					: headUnseen || element.scrollHeight - element.clientHeight <= SLACK);
 			const quiet = held && upward && !settled;
-			if (quiet && cardOnScreen && headPassed && settleFrame === undefined) {
-				settleFrame = win.requestAnimationFrame(() => {
-					settleFrame = win.requestAnimationFrame(() => {
-						queueMicrotask(() => {
+			if (quiet && cardOnScreen && headPassed && settleFrame === undefined)
+			{
+				settleFrame = win.requestAnimationFrame(() =>
+				{
+					settleFrame = win.requestAnimationFrame(() =>
+					{
+						queueMicrotask(() =>
+						{
 							settled = true;
 							rerun?.();
 						});
@@ -154,11 +182,13 @@ export function useReadGate({
 			}
 			onHeld(held, quiet, upward);
 		});
-		kick.current = () => {
+		kick.current = () =>
+		{
 			latch.forget();
 			watch.kick();
 		};
-		return () => {
+		return () =>
+		{
 			kick.current = null;
 			rerun = null;
 			if (settleFrame !== undefined) win.cancelAnimationFrame(settleFrame);

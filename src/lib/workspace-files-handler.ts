@@ -1,7 +1,8 @@
 import {eq} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {realpath, stat} from "node:fs/promises";
-import {
+import
+{
 	SessionFilesErrorResponseSchema,
 	SessionFilesResponseSchema,
 	type SessionFilesResponse,
@@ -9,7 +10,8 @@ import {
 import {resolveConfiguredFileRoots, resolveFileSearchRoots} from "./config";
 import {getDb} from "./db";
 import * as schema from "./db/schema";
-import {
+import
+{
 	FUZZY_RESULT_CAP,
 	fuzzyFilePaths,
 	gitCheckIgnored,
@@ -25,14 +27,16 @@ type IndexDb = BetterSQLite3Database<typeof schema>;
 
 const PRIVATE_NO_CACHE = "private, max-age=0, must-revalidate";
 
-export interface SessionFilesHandlerDependencies {
+export interface SessionFilesHandlerDependencies
+{
 	index: IndexDb;
 	/** Real directories a working directory must sit inside (the `file_roots` allowlist). */
 	allowedRoots(): Promise<string[]>;
 	checkIgnored: IgnoreCheck;
 }
 
-function defaultDependencies(): SessionFilesHandlerDependencies {
+function defaultDependencies(): SessionFilesHandlerDependencies
+{
 	const index = getDb().index;
 	return {
 		index,
@@ -41,40 +45,76 @@ function defaultDependencies(): SessionFilesHandlerDependencies {
 	};
 }
 
-function jsonResponse(body: unknown, status = 200): Response {
-	return Response.json(body, {status, headers: {"Cache-Control": PRIVATE_NO_CACHE}});
+function jsonResponse(body: unknown, status = 200): Response
+{
+	return Response.json(
+		body,
+		{
+			status,
+			headers:
+			{
+				"Cache-Control": PRIVATE_NO_CACHE,
+			},
+		},
+	);
 }
 
-function errorResponse(error: string, status: number): Response {
-	return jsonResponse(SessionFilesErrorResponseSchema.parse({error}), status);
+function errorResponse(error: string, status: number): Response
+{
+	return jsonResponse(
+		SessionFilesErrorResponseSchema.parse(
+			{
+				error,
+			},
+		),
+		status,
+	);
 }
 
-function filesResponse(body: SessionFilesResponse): Response {
+function filesResponse(body: SessionFilesResponse): Response
+{
 	return jsonResponse(SessionFilesResponseSchema.parse(body));
 }
 
-async function resolveDirectory(cwd: string): Promise<string | null> {
-	try {
+async function resolveDirectory(cwd: string): Promise<string | null>
+{
+	try
+	{
 		const resolved = await realpath(cwd);
 		return (await stat(resolved)).isDirectory() ? resolved : null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-type MarkedEntry = WorkspaceEntry & {ignored?: true};
+type MarkedEntry = WorkspaceEntry &
+{
+	ignored?: true;
+};
 
-async function markIgnored(root: string, entries: WorkspaceEntry[], checkIgnored: IgnoreCheck): Promise<MarkedEntry[]> {
+async function markIgnored(root: string, entries: WorkspaceEntry[], checkIgnored: IgnoreCheck): Promise<MarkedEntry[]>
+{
 	if (entries.length === 0) return entries;
 	const ignoredPaths = await checkIgnored(
 		root,
 		entries.map((entry) => entry.relPath),
 	);
-	return entries.map((entry) => (ignoredPaths.has(entry.relPath) ? {...entry, ignored: true} : entry));
+	return entries.map((entry) =>
+		ignoredPaths.has(entry.relPath)
+			?
+				{
+					...entry,
+					ignored: true,
+				}
+			: entry,
+	);
 }
 
 /** Stable partition: tracked matches keep their fuzzy order ahead of gitignored ones. */
-function rankTrackedFirst(entries: MarkedEntry[]): MarkedEntry[] {
+function rankTrackedFirst(entries: MarkedEntry[]): MarkedEntry[]
+{
 	return [...entries.filter((entry) => entry.ignored !== true), ...entries.filter((entry) => entry.ignored === true)];
 }
 
@@ -88,14 +128,17 @@ export async function handleSessionFilesRequest(
 	sessionId: string,
 	parameters: URLSearchParams,
 	dependencies?: SessionFilesHandlerDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	if (!sessionId) return errorResponse("A session id is required", 400);
 	const hideIgnoredFlag = parameters.get("hideIgnored") ?? "0";
-	if (hideIgnoredFlag !== "0" && hideIgnoredFlag !== "1") {
+	if (hideIgnoredFlag !== "0" && hideIgnoredFlag !== "1")
+	{
 		return errorResponse("Invalid hideIgnored flag", 400);
 	}
 	const markIgnoredFlag = parameters.get("markIgnored") ?? "0";
-	if (markIgnoredFlag !== "0" && markIgnoredFlag !== "1") {
+	if (markIgnoredFlag !== "0" && markIgnoredFlag !== "1")
+	{
 		return errorResponse("Invalid markIgnored flag", 400);
 	}
 	const dir = parameters.get("dir") ?? "";
@@ -103,34 +146,59 @@ export async function handleSessionFilesRequest(
 
 	const resolvedDependencies = dependencies ?? defaultDependencies();
 	const session = resolvedDependencies.index
-		.select({cwd: schema.sessions.cwd})
+		.select(
+			{
+				cwd: schema.sessions.cwd,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
 	if (!session) return errorResponse("Session not found", 404);
-	if (!session.cwd) return filesResponse({kind: "no-cwd"});
+	if (!session.cwd)
+		return filesResponse(
+			{
+				kind: "no-cwd",
+			},
+		);
 
 	const root = await resolveDirectory(session.cwd);
-	if (root === null) return filesResponse({kind: "no-cwd"});
+	if (root === null)
+		return filesResponse(
+			{
+				kind: "no-cwd",
+			},
+		);
 	const allowedRoots = await resolvedDependencies.allowedRoots();
-	if (!allowedRoots.some((allowedRoot) => isContainedPath(root, allowedRoot))) {
+	if (!allowedRoots.some((allowedRoot) => isContainedPath(root, allowedRoot)))
+	{
 		return errorResponse("Working directory is not allowed", 403);
 	}
 
-	const options = hideIgnoredFlag === "1" ? {ignored: resolvedDependencies.checkIgnored} : {};
+	const options =
+		hideIgnoredFlag === "1"
+			?
+				{
+					ignored: resolvedDependencies.checkIgnored,
+				}
+			: {};
 	const marking = markIgnoredFlag === "1" && hideIgnoredFlag === "0";
 	const mark: (entries: WorkspaceEntry[]) => Promise<MarkedEntry[]> = marking
 		? async (entries: WorkspaceEntry[]) => markIgnored(root, entries, resolvedDependencies.checkIgnored)
 		: async (entries: WorkspaceEntry[]) => Promise.resolve(entries);
-	try {
-		if (query === "") {
+	try
+	{
+		if (query === "")
+		{
 			const listing = await listDir(root, dir, options);
-			return filesResponse({
-				kind: "listing",
-				dir,
-				entries: await mark(listing.entries),
-				partial: listing.partial,
-			});
+			return filesResponse(
+				{
+					kind: "listing",
+					dir,
+					entries: await mark(listing.entries),
+					partial: listing.partial,
+				},
+			);
 		}
 		const walk = await walkWorkspace(root, dir, options);
 		const byPath = new Map(
@@ -139,15 +207,19 @@ export async function handleSessionFilesRequest(
 		// When marking, rank every match before capping so gitignored matches can't crowd tracked ones out.
 		const matches = fuzzyFilePaths(query, [...byPath.keys()], marking ? Infinity : FUZZY_RESULT_CAP);
 		const ranked = rankTrackedFirst(await mark(matches.paths.flatMap((path) => byPath.get(path) ?? [])));
-		return filesResponse({
-			kind: "search",
-			dir,
-			query,
-			results: ranked.slice(0, FUZZY_RESULT_CAP),
-			partial: walk.partial,
-			capped: matches.partial || ranked.length > FUZZY_RESULT_CAP,
-		});
-	} catch (error) {
+		return filesResponse(
+			{
+				kind: "search",
+				dir,
+				query,
+				results: ranked.slice(0, FUZZY_RESULT_CAP),
+				partial: walk.partial,
+				capped: matches.partial || ranked.length > FUZZY_RESULT_CAP,
+			},
+		);
+	}
+	catch (error)
+	{
 		if (error instanceof WorkspacePathError) return errorResponse(error.message, error.status);
 		throw error;
 	}

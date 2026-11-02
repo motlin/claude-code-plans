@@ -2,7 +2,8 @@ import {statSync} from "node:fs";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {eq} from "drizzle-orm";
 import * as schema from "./schema";
-import {
+import
+{
 	createPendingApprovalScanCache,
 	scanAllPendingApprovals,
 	scanPendingApproval,
@@ -14,7 +15,8 @@ import {broadcastTyped} from "../sse-broadcast";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-interface CacheEntry {
+interface CacheEntry
+{
 	approval: PendingApproval;
 	filePath: string | null;
 	/** mtime of filePath sampled immediately *before* the scan that produced `approval`. */
@@ -27,7 +29,8 @@ let revalidation: Promise<void> | null = null;
 /** Live transcripts' scan state, so the rescan after each append reads only the appended lines. */
 let scanCache = createPendingApprovalScanCache();
 
-function approvalsEqual(a: PendingApproval, b: PendingApproval): boolean {
+function approvalsEqual(a: PendingApproval, b: PendingApproval): boolean
+{
 	return (
 		a.sessionId === b.sessionId &&
 		a.projectId === b.projectId &&
@@ -42,18 +45,28 @@ function approvalsEqual(a: PendingApproval, b: PendingApproval): boolean {
 	);
 }
 
-function lookupProjectName(db: IndexDb, projectId: string): string {
+function lookupProjectName(db: IndexDb, projectId: string): string
+{
 	const row = db
-		.select({name: schema.projects.name})
+		.select(
+			{
+				name: schema.projects.name,
+			},
+		)
 		.from(schema.projects)
 		.where(eq(schema.projects.id, projectId))
 		.get();
 	return row?.name ?? projectId;
 }
 
-function lookupSessionFilePath(db: IndexDb, sessionId: string): string | null {
+function lookupSessionFilePath(db: IndexDb, sessionId: string): string | null
+{
 	const row = db
-		.select({filePath: schema.sessions.filePath})
+		.select(
+			{
+				filePath: schema.sessions.filePath,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
@@ -61,10 +74,14 @@ function lookupSessionFilePath(db: IndexDb, sessionId: string): string | null {
 }
 
 /** mtime of `filePath`, or null when it cannot be stat'd (deleted, permissions). */
-function statMtimeMs(filePath: string): number | null {
-	try {
+function statMtimeMs(filePath: string): number | null
+{
+	try
+	{
 		return statSync(filePath).mtimeMs;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -73,29 +90,36 @@ function statMtimeMs(filePath: string): number | null {
  * Warms the cache from every recent transcript. Once `signal` aborts (server
  * shutdown, which closes the DB) it stops before its next DB call and resolves.
  */
-export async function initPendingApprovalsCache(db: IndexDb, signal?: AbortSignal): Promise<void> {
+export async function initPendingApprovalsCache(db: IndexDb, signal?: AbortSignal): Promise<void>
+{
 	cache.clear();
 	expiredThroughBySession.clear();
 	scanCache = createPendingApprovalScanCache();
 	const approvals = await scanAllPendingApprovals(db, signal);
 	if (signal?.aborted) return;
-	for (const approval of approvals) {
+	for (const approval of approvals)
+	{
 		const filePath = lookupSessionFilePath(db, approval.sessionId);
-		cache.set(approval.sessionId, {
-			approval,
-			filePath,
-			mtimeMs: filePath === null ? 0 : (statMtimeMs(filePath) ?? 0),
-		});
+		cache.set(
+			approval.sessionId,
+			{
+				approval,
+				filePath,
+				mtimeMs: filePath === null ? 0 : (statMtimeMs(filePath) ?? 0),
+			},
+		);
 	}
 }
 
-export function getPendingApprovals(): PendingApproval[] {
+export function getPendingApprovals(): PendingApproval[]
+{
 	return Array.from(cache.values(), (entry) => entry.approval).toSorted((a, b) =>
 		a.blockedSince.localeCompare(b.blockedSince),
 	);
 }
 
-export function getPendingApprovalsForProject(projectId: string): PendingApproval[] {
+export function getPendingApprovalsForProject(projectId: string): PendingApproval[]
+{
 	return getPendingApprovals().filter((a) => a.projectId === projectId);
 }
 
@@ -106,30 +130,40 @@ export async function updatePendingApprovalForSession(
 	projectId: string,
 	projectName?: string,
 	broadcast: (type: string, data: Record<string, unknown>) => void = broadcastTyped,
-): Promise<void> {
+): Promise<void>
+{
 	// Sample the mtime before reading: a write that races the scan leaves an mtime
 	// newer than the one recorded, so revalidation rescans instead of trusting it.
 	const mtimeMs = statMtimeMs(filePath) ?? 0;
 	const scanned = await scanPendingApproval(filePath, scanCache);
 	const prior = cache.get(sessionId);
 
-	if (!scanned) {
-		if (prior) {
+	if (!scanned)
+	{
+		if (prior)
+		{
 			cache.delete(sessionId);
-			broadcast(DOMAIN_EVENTS.APPROVAL_RESOLVED, {sessionId});
+			broadcast(
+				DOMAIN_EVENTS.APPROVAL_RESOLVED,
+				{
+					sessionId,
+				},
+			);
 		}
 		return;
 	}
 
 	const expiredThrough = expiredThroughBySession.get(sessionId);
-	if (expiredThrough !== undefined && scanned.blockedSince <= expiredThrough) {
+	if (expiredThrough !== undefined && scanned.blockedSince <= expiredThrough)
+	{
 		return;
 	}
 
 	const resolvedProjectName = projectName ?? lookupProjectName(db, projectId);
 	const planFilename = scanned.planFilename ?? getPlanFilenameForSession(db, sessionId);
 
-	const approval: PendingApproval = {
+	const approval: PendingApproval =
+	{
 		sessionId,
 		projectId,
 		projectName: resolvedProjectName,
@@ -141,13 +175,33 @@ export async function updatePendingApprovalForSession(
 		questionOptions: scanned.questionOptions,
 	};
 
-	if (prior && approvalsEqual(prior.approval, approval)) {
-		cache.set(sessionId, {approval: prior.approval, filePath, mtimeMs});
+	if (prior && approvalsEqual(prior.approval, approval))
+	{
+		cache.set(
+			sessionId,
+			{
+				approval: prior.approval,
+				filePath,
+				mtimeMs,
+			},
+		);
 		return;
 	}
 
-	cache.set(sessionId, {approval, filePath, mtimeMs});
-	broadcast(DOMAIN_EVENTS.APPROVAL_CHANGED, {approval});
+	cache.set(
+		sessionId,
+		{
+			approval,
+			filePath,
+			mtimeMs,
+		},
+	);
+	broadcast(
+		DOMAIN_EVENTS.APPROVAL_CHANGED,
+		{
+			approval,
+		},
+	);
 }
 
 /**
@@ -160,20 +214,25 @@ export async function updatePendingApprovalForSession(
  * has changed since it was scanned is rescanned, and any entry whose file is
  * gone is dropped. Concurrent calls share one pass.
  */
-export async function revalidatePendingApprovals(db: IndexDb): Promise<void> {
-	revalidation ??= runRevalidation(db).finally(() => {
+export async function revalidatePendingApprovals(db: IndexDb): Promise<void>
+{
+	revalidation ??= runRevalidation(db).finally(() =>
+	{
 		revalidation = null;
 	});
 	return revalidation;
 }
 
-async function runRevalidation(db: IndexDb): Promise<void> {
-	for (const [sessionId, entry] of [...cache]) {
+async function runRevalidation(db: IndexDb): Promise<void>
+{
+	for (const [sessionId, entry] of [...cache])
+	{
 		const filePath = entry.filePath ?? lookupSessionFilePath(db, sessionId);
 		if (filePath === null) continue;
 
 		const mtimeMs = statMtimeMs(filePath);
-		if (mtimeMs === null) {
+		if (mtimeMs === null)
+		{
 			removePendingApprovalForSession(sessionId);
 			continue;
 		}
@@ -189,17 +248,25 @@ async function runRevalidation(db: IndexDb): Promise<void> {
 	}
 }
 
-export function removePendingApprovalForSession(sessionId: string): void {
+export function removePendingApprovalForSession(sessionId: string): void
+{
 	if (!cache.has(sessionId)) return;
 	cache.delete(sessionId);
-	broadcastTyped(DOMAIN_EVENTS.APPROVAL_RESOLVED, {sessionId});
+	broadcastTyped(
+		DOMAIN_EVENTS.APPROVAL_RESOLVED,
+		{
+			sessionId,
+		},
+	);
 }
 
-export function expirePendingApprovalForSession(sessionId: string): void {
+export function expirePendingApprovalForSession(sessionId: string): void
+{
 	expiredThroughBySession.set(sessionId, new Date().toISOString());
 	removePendingApprovalForSession(sessionId);
 }
 
-export function resumePendingApprovalsForSession(sessionId: string): void {
+export function resumePendingApprovalsForSession(sessionId: string): void
+{
 	expiredThroughBySession.delete(sessionId);
 }

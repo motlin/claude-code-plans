@@ -8,13 +8,17 @@ import {SessionActionsMenu, SessionRowTitle} from "./session-actions-menu";
 import {SessionRowStatusDot} from "./session-unread-control";
 import {SessionStateIcon} from "./status-dot";
 
-function formatDate(iso: string): string {
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		hour: "numeric",
-		minute: "2-digit",
-	});
+function formatDate(iso: string): string
+{
+	return new Date(iso).toLocaleDateString(
+		"en-US",
+		{
+			month: "short",
+			day: "numeric",
+			hour: "numeric",
+			minute: "2-digit",
+		},
+	);
 }
 
 /**
@@ -29,7 +33,8 @@ export function SessionRow({
 	session: SessionListItem;
 	isActive: boolean;
 	showProject?: boolean;
-}) {
+})
+{
 	const queryClient = useQueryClient();
 	return (
 		<li>
@@ -37,13 +42,24 @@ export function SessionRow({
 			<SessionActionsMenu session={session} touchMenu>
 				<Link
 					to="/session/$id"
-					params={{id: session.id}}
-					onPointerDown={(event) => {
+					params={
+					{
+						id: session.id,
+					}}
+					onPointerDown={(event) =>
+					{
 						startSessionSwitchJourney(event.nativeEvent, session.id, queryClient);
 					}}
 					className="block rounded-md p-2 pr-36 cursor-pointer transition-colors hover:bg-surface-0"
 				>
-					<div className="flex items-center gap-1.5 truncate" style={{fontSize: "14px", fontWeight: 430}}>
+					<div
+						className="flex items-center gap-1.5 truncate"
+						style={
+						{
+							fontSize: "14px",
+							fontWeight: 430,
+						}}
+					>
 						{/* A row the active feed reports live whose summary still says "ended" shows as running. */}
 						{isActive &&
 							(isLiveSessionState(session.state) ? (

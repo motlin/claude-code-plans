@@ -2,7 +2,13 @@ import type {Meta, StoryObj} from "@storybook/react-vite";
 import {TaskChecklistRenderer} from "../../../components/tool-renderers/task-checklist-renderer";
 import type {ClientToolCall} from "../../../components/tool-renderers/types";
 
-function makeToolCall(overrides: Partial<ClientToolCall> & {input: ClientToolCall["input"]}): ClientToolCall {
+function makeToolCall(
+	overrides: Partial<ClientToolCall> &
+	{
+		input: ClientToolCall["input"];
+	},
+): ClientToolCall
+{
 	return {
 		id: "tool-task-create-1",
 		name: "TaskCreate",
@@ -12,7 +18,8 @@ function makeToolCall(overrides: Partial<ClientToolCall> & {input: ClientToolCal
 	};
 }
 
-const meta = {
+const meta =
+{
 	title: "Session Detail/Tool Renderers/TaskCreateRenderer",
 	component: TaskChecklistRenderer,
 } satisfies Meta<typeof TaskChecklistRenderer>;
@@ -20,25 +27,37 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Success: Story = {
-	args: {
-		toolCall: makeToolCall({
-			input: {
-				subject: "Implement user authentication",
-				description: "Add JWT-based auth with refresh tokens",
-				status: "pending",
+export const Success: Story =
+{
+	args:
+	{
+		toolCall: makeToolCall(
+			{
+				input:
+				{
+					subject: "Implement user authentication",
+					description: "Add JWT-based auth with refresh tokens",
+					status: "pending",
+				},
+				result: "Created task #5",
 			},
-			result: "Created task #5",
-		}),
+		),
 	},
 };
 
-export const Error: Story = {
-	args: {
-		toolCall: makeToolCall({
-			input: {subject: "Invalid task"},
-			result: "Error: Failed to create task — subject must be non-empty",
-			isError: true,
-		}),
+export const Error: Story =
+{
+	args:
+	{
+		toolCall: makeToolCall(
+			{
+				input:
+				{
+					subject: "Invalid task",
+				},
+				result: "Error: Failed to create task — subject must be non-empty",
+				isError: true,
+			},
+		),
 	},
 };

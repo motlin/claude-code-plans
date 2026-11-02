@@ -13,63 +13,126 @@ const AI_TITLE = "Parallel do-task workstreams";
 
 const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 
-function renderRename() {
-	const queryClient = new QueryClient({defaultOptions: {mutations: {retry: false}}});
+function renderRename()
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				mutations:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
 	const wrapper = ({children}: {children: ReactNode}) => (
 		<QueryClientProvider client={queryClient}>
 			<ToastProvider>{children}</ToastProvider>
 		</QueryClientProvider>
 	);
-	return renderHook(({serverTitle}: {serverTitle: string}) => useSessionRename(SESSION_ID, serverTitle), {
-		wrapper,
-		initialProps: {serverTitle: AI_TITLE},
-	});
+	return renderHook(
+		({serverTitle}: {serverTitle: string}) => useSessionRename(SESSION_ID, serverTitle),
+		{
+			wrapper,
+			initialProps:
+			{
+				serverTitle: AI_TITLE,
+			},
+		},
+	);
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	fetchMock.mockReset();
 	vi.stubGlobal("fetch", fetchMock);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-describe("useSessionRename for a bridged session", () => {
-	it("shows the pushed name while the bridge has not titled the session yet, then the bridge's title", async () => {
-		fetchMock.mockResolvedValue(Response.json({customTitle: "Build fixer", title: "Build fixer"}));
+describe("useSessionRename for a bridged session", () =>
+{
+	it("shows the pushed name while the bridge has not titled the session yet, then the bridge's title", async () =>
+	{
+		fetchMock.mockResolvedValue(
+			Response.json(
+				{
+					customTitle: "Build fixer",
+					title: "Build fixer",
+				},
+			),
+		);
 		const {result, rerender} = renderRename();
 
-		act(() => {
+		act(() =>
+		{
 			result.current.commit("Build fixer");
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(fetchMock).toHaveBeenCalledTimes(1);
 		});
 		// The refetched server title still lags: the CLI has not recorded the rename.
-		rerender({serverTitle: AI_TITLE});
+		rerender(
+			{
+				serverTitle: AI_TITLE,
+			},
+		);
 		const lagging = result.current.title;
-		rerender({serverTitle: "Build fixer"});
+		rerender(
+			{
+				serverTitle: "Build fixer",
+			},
+		);
 		const landed = result.current.title;
-		rerender({serverTitle: "Renamed on claude.ai"});
+		rerender(
+			{
+				serverTitle: "Renamed on claude.ai",
+			},
+		);
 
-		expect({lagging, landed, later: result.current.title}).toStrictEqual({
-			lagging: "Build fixer",
-			landed: "Build fixer",
-			later: "Renamed on claude.ai",
-		});
+		expect(
+			{
+				lagging,
+				landed,
+				later: result.current.title,
+			},
+		).toStrictEqual(
+			{
+				lagging: "Build fixer",
+				landed: "Build fixer",
+				later: "Renamed on claude.ai",
+			},
+		);
 	});
 
-	it("rolls back to the server title when the live CLI cannot take the rename", async () => {
-		fetchMock.mockResolvedValue(Response.json({error: "agent is busy", code: "agent_not_ready"}, {status: 409}));
+	it("rolls back to the server title when the live CLI cannot take the rename", async () =>
+	{
+		fetchMock.mockResolvedValue(
+			Response.json(
+				{
+					error: "agent is busy",
+					code: "agent_not_ready",
+				},
+				{
+					status: 409,
+				},
+			),
+		);
 		const {result} = renderRename();
 
-		act(() => {
+		act(() =>
+		{
 			result.current.commit("Build fixer");
 		});
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(result.current.title).toBe(AI_TITLE);
 		});
 	});

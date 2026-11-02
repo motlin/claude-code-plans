@@ -10,34 +10,57 @@ import {Route as SessionRoute, sessionHeadTitle} from "../src/routes/session.$id
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate; the
 // pending states under test never render it.
-vi.mock("../src/components/session-chat", () => ({
+vi.mock("../src/components/session-chat", () => (
+{
 	SessionChat: () => null,
 }));
 
-async function renderWithRouter(element: React.ReactNode) {
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>{element}</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const router = createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/session/session-test-100"]}),
-	});
+async function renderWithRouter(element: React.ReactNode)
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>{element}</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/session/session-test-100"],
+				},
+			),
+		},
+	);
 	await router.load();
 	return render(<RouterProvider router={router} />);
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-describe("blank-screen prevention on /session/$id", () => {
-	it("renders a transcript skeleton, not a not-found page, while the queries are pending", async () => {
+describe("blank-screen prevention on /session/$id", () =>
+{
+	it("renders a transcript skeleton, not a not-found page, while the queries are pending", async () =>
+	{
 		// A fetch that never resolves keeps every session query pending forever.
 		vi.stubGlobal(
 			"fetch",
@@ -46,48 +69,105 @@ describe("blank-screen prevention on /session/$id", () => {
 
 		await renderWithRouter(<SessionPage sessionId="session-test-100" />);
 
-		expect({
-			skeleton: screen.queryByTestId("session-skeleton") !== null,
-			notFound: screen.queryByText("This session couldn’t be found"),
-		}).toStrictEqual({skeleton: true, notFound: null});
+		expect(
+			{
+				skeleton: screen.queryByTestId("session-skeleton") !== null,
+				notFound: screen.queryByText("This session couldn’t be found"),
+			},
+		).toStrictEqual(
+			{
+				skeleton: true,
+				notFound: null,
+			},
+		);
 	});
 
-	it("warms the caches without awaiting any of them", () => {
+	it("warms the caches without awaiting any of them", () =>
+	{
 		// With `ssr: false` nothing paints until every matched loader resolves, so
 		// this loader must never await the (multi-megabyte) transcript payload.
 		const never = new Promise<never>(() => {});
-		const queryClient = {
+		const queryClient =
+		{
 			query: vi.fn<(options: {staleTime?: unknown}) => Promise<never>>(async () => never),
 			infiniteQuery: vi.fn<(options: {staleTime?: unknown}) => Promise<never>>(async () => never),
 			getQueryData: vi.fn<() => undefined>(() => undefined),
 		};
 
-		const loader = SessionRoute.options.loader as (args: {context: unknown; params: {id: string}}) => unknown;
+		const loader = SessionRoute.options.loader as (args: {
+			context: unknown;
+			params:
+			{
+				id: string;
+			};
+		}) => unknown;
 
-		expect({
-			loaderData: loader({context: {queryClient}, params: {id: "session-test-100"}}),
-			queried: queryClient.query.mock.calls.length + queryClient.infiniteQuery.mock.calls.length,
-			ensured: [...queryClient.query.mock.calls, ...queryClient.infiniteQuery.mock.calls].filter(
-				([options]) => options.staleTime === "static",
-			).length,
-		}).toStrictEqual({loaderData: undefined, queried: 4, ensured: 0});
+		expect(
+			{
+				loaderData: loader(
+					{
+						context:
+						{
+							queryClient,
+						},
+						params:
+						{
+							id: "session-test-100",
+						},
+					},
+				),
+				queried: queryClient.query.mock.calls.length + queryClient.infiniteQuery.mock.calls.length,
+				ensured: [...queryClient.query.mock.calls, ...queryClient.infiniteQuery.mock.calls].filter(
+					([options]) => options.staleTime === "static",
+				).length,
+			},
+		).toStrictEqual(
+			{
+				loaderData: undefined,
+				queried: 4,
+				ensured: 0,
+			},
+		);
 	});
 
-	it("titles a pending session honestly and keeps not-found for a real 404", () => {
+	it("titles a pending session honestly and keeps not-found for a real 404", () =>
+	{
 		expect([
 			sessionHeadTitle(undefined),
 			sessionHeadTitle(null),
-			sessionHeadTitle({title: "Fix the blank session page"}),
+			sessionHeadTitle(
+				{
+					title: "Fix the blank session page",
+				},
+			),
 		]).toStrictEqual(["Loading session…", "Session Not Found", "Fix the blank session page"]);
 	});
 
-	it("never titles a pending match Session Not Found", () => {
-		const head = SessionRoute.options.head as (args: {loaderData: undefined}) => {
-			meta?: Array<{title?: string}>;
+	it("never titles a pending match Session Not Found", () =>
+	{
+		const head = SessionRoute.options.head as (args: {loaderData: undefined}) =>
+		{
+			meta?: Array<
+			{
+				title?: string;
+			}>;
 		};
 
-		expect(head({loaderData: undefined})).toStrictEqual({
-			meta: [{name: "ccb-page-title", content: "Loading session…"}],
-		});
+		expect(
+			head(
+				{
+					loaderData: undefined,
+				},
+			),
+		).toStrictEqual(
+			{
+				meta: [
+					{
+						name: "ccb-page-title",
+						content: "Loading session…",
+					},
+				],
+			},
+		);
 	});
 });

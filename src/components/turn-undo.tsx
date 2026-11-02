@@ -2,12 +2,14 @@ import {ConfirmDialog} from "./confirm-dialog";
 import {type TurnUndo, plural, basename} from "./use-turn-undo";
 
 /** The Undo confirm: the files the turn touched, and a red [Undo changes]. */
-export function TurnUndoConfirm({undo}: {undo: TurnUndo}) {
+export function TurnUndoConfirm({undo}: {undo: TurnUndo})
+{
 	const files = undo.state.kind === "confirming" ? undo.state.files : [];
 	return (
 		<ConfirmDialog
 			open={undo.state.kind === "confirming"}
-			onOpenChange={(open) => {
+			onOpenChange={(open) =>
+			{
 				if (!open) undo.cancel();
 			}}
 			title="Undo changes from this turn?"

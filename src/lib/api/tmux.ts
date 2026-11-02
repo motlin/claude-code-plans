@@ -6,13 +6,15 @@ import {z} from "zod";
  * tmux. `.strict()` so any drift from that interface fails loudly at parse time.
  */
 export const TmuxWindowSchema = z
-	.object({
-		sessionId: z.string(),
-		projectName: z.string(),
-		windowIndex: z.number(),
-		windowName: z.string(),
-		windowActive: z.boolean(),
-		tmuxPane: z.string(),
-		socket: z.string(),
-	})
+	.object(
+		{
+			sessionId: z.string(),
+			projectName: z.string(),
+			windowIndex: z.number(),
+			windowName: z.string(),
+			windowActive: z.boolean(),
+			tmuxPane: z.string(),
+			socket: z.string(),
+		},
+	)
 	.strict();

@@ -16,14 +16,17 @@ const THINKING_DROPPED = "thinking_dropped";
 const NOT_FLAGGED = "not_flagged";
 const AVAILABLE = "available";
 
-function plural(count: number, noun: string): string {
+function plural(count: number, noun: string): string
+{
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 /** Compact token usage, e.g. "595.8k in / 595 out", counting cache reads and writes as input. */
-function usageDetail(usage: MessageSessionLine["usage"]): string | undefined {
+function usageDetail(usage: MessageSessionLine["usage"]): string | undefined
+{
 	if (usage === undefined) return undefined;
-	const num = (key: string): number => {
+	const num = (key: string): number =>
+	{
 		const value = usage[key];
 		return typeof value === "number" ? value : 0;
 	};
@@ -34,11 +37,13 @@ function usageDetail(usage: MessageSessionLine["usage"]): string | undefined {
 }
 
 /** Dropped-thinking count with a reason tally, e.g. "3 thinking blocks dropped (model_binding_mismatch ×2)". */
-function droppedThinkingDetail(transformations: readonly InputTransformation[] | undefined): string | undefined {
+function droppedThinkingDetail(transformations: readonly InputTransformation[] | undefined): string | undefined
+{
 	const dropped = (transformations ?? []).filter((t) => t.type === THINKING_DROPPED);
 	if (dropped.length === 0) return undefined;
 	const reasons = new Map<string, number>();
-	for (const t of dropped) {
+	for (const t of dropped)
+	{
 		const reason = t.reason ?? "unknown";
 		reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
 	}
@@ -47,18 +52,22 @@ function droppedThinkingDetail(transformations: readonly InputTransformation[] |
 }
 
 /** Safeguard results worth flagging: tool calls with a non-clean outcome, and checks that did not run. */
-function safeguardDetail(results: readonly SafeguardResult[] | undefined): string | undefined {
+function safeguardDetail(results: readonly SafeguardResult[] | undefined): string | undefined
+{
 	const details: string[] = [];
 	let flagged = 0;
 	let unavailable = 0;
-	for (const result of results ?? []) {
+	for (const result of results ?? [])
+	{
 		const status = result.status;
-		if (status?.type !== AVAILABLE) {
+		if (status?.type !== AVAILABLE)
+		{
 			unavailable++;
 			details.push(`${result.type}: ${status?.type ?? "no status"}`);
 			continue;
 		}
-		for (const [toolUseId, toolUse] of Object.entries(status.tool_uses ?? {})) {
+		for (const [toolUseId, toolUse] of Object.entries(status.tool_uses ?? {}))
+		{
 			if (toolUse.outcome === undefined || toolUse.outcome === NOT_FLAGGED) continue;
 			flagged++;
 			details.push(`${result.type}: ${toolUseId} ${toolUse.outcome}`);
@@ -72,7 +81,8 @@ function safeguardDetail(results: readonly SafeguardResult[] | undefined): strin
 }
 
 /** A turn some other model answered than the one requested, e.g. after a fallback. */
-function modelMismatchDetail(mismatch: MessageSessionLine["modelMismatch"]): string | undefined {
+function modelMismatchDetail(mismatch: MessageSessionLine["modelMismatch"]): string | undefined
+{
 	if (mismatch === undefined) return undefined;
 	const requested = formatModelName(mismatch.requested) ?? mismatch.requested;
 	const actual = formatModelName(mismatch.actual) ?? mismatch.actual;
@@ -83,7 +93,16 @@ function modelMismatchDetail(mismatch: MessageSessionLine["modelMismatch"]): str
  * An assistant turn's usage, truncation, effort, advisor, model fallback, dropped thinking and safeguard flags.
  * The dropped-thinking count is a diagnostic upstream never shows, so only Verbose lists it.
  */
-export function assistantTurnDetails(line: MessageSessionLine, {verbose}: {verbose: boolean}): string[] {
+export function assistantTurnDetails(
+	line: MessageSessionLine,
+	{
+		verbose,
+	}:
+	{
+		verbose: boolean;
+	},
+): string[]
+{
 	const advisor =
 		line.advisorModel === undefined ? undefined : (formatModelName(line.advisorModel) ?? line.advisorModel);
 	return [
@@ -98,15 +117,20 @@ export function assistantTurnDetails(line: MessageSessionLine, {verbose}: {verbo
 }
 
 /** Where a user turn came from (peer, task notification, scheduled task, system notice) and how it was submitted. */
-function originDetail(line: MessageSessionLine): string | undefined {
+function originDetail(line: MessageSessionLine): string | undefined
+{
 	const parts: string[] = [];
-	if (line.turnOrigin !== undefined && line.turnOrigin !== "human") {
+	if (line.turnOrigin !== undefined && line.turnOrigin !== "human")
+	{
 		const origin = turnOriginLabels[line.turnOrigin];
-		if (line.turnOrigin === "scheduled") {
+		if (line.turnOrigin === "scheduled")
+		{
 			const taskId = line.scheduledTaskId === undefined ? "" : ` ${line.scheduledTaskId}`;
 			const wakeup = line.wakeupSource === undefined ? "" : ` (${wakeupSourceLabels[line.wakeupSource]})`;
 			parts.push(`${origin}${taskId}${wakeup}`);
-		} else {
+		}
+		else
+		{
 			parts.push(origin);
 		}
 	}
@@ -116,7 +140,8 @@ function originDetail(line: MessageSessionLine): string | undefined {
 }
 
 /** The branch (or live cwd) the server-side classifier saw for a user turn. */
-function classifierDetail(line: MessageSessionLine): string | undefined {
+function classifierDetail(line: MessageSessionLine): string | undefined
+{
 	const context = line.classifierContext;
 	if (context === undefined) return undefined;
 	const where = [context.liveCwd, context.platform].filter((part) => part !== undefined).join(" · ");
@@ -127,6 +152,7 @@ function classifierDetail(line: MessageSessionLine): string | undefined {
 }
 
 /** A user turn's origin caption and classifier context. */
-export function userTurnDetails(line: MessageSessionLine): string[] {
+export function userTurnDetails(line: MessageSessionLine): string[]
+{
 	return [originDetail(line), classifierDetail(line)].filter((detail) => detail !== undefined);
 }

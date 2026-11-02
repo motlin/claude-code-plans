@@ -9,17 +9,29 @@ import {openEventSourceListeners} from "./fake-event-source";
  * costs: React commits, DOM mutations, fetches, hidden query reloads, component renders and live subscriptions. It
  * counts and never times.
  */
-export interface InteractionMeasurement {
+export interface InteractionMeasurement
+{
 	commits: number;
 	commitsBySubtree: Record<string, number>;
 	mutations: number;
-	fetches: {count: number; bytes: number; urls: Array<string>};
+	fetches:
+	{
+		count: number;
+		bytes: number;
+		urls: Array<string>;
+	};
 	hiddenReloads: number;
 	rendersByComponent: Record<string, number>;
-	subscriptions: {queryCacheListeners: number; queryObservers: number; eventSourceListeners: number};
+	subscriptions:
+	{
+		queryCacheListeners: number;
+		queryObservers: number;
+		eventSourceListeners: number;
+	};
 }
 
-export interface MeasureOptions {
+export interface MeasureOptions
+{
 	/** Response bodies keyed by request URL (or its path and query); each is served as JSON. */
 	fixtures: Record<string, unknown>;
 	queryClient?: QueryClient;
@@ -27,13 +39,15 @@ export interface MeasureOptions {
 	expectedQueryFetches?: number;
 }
 
-export interface InteractionContext {
+export interface InteractionContext
+{
 	queryClient: QueryClient;
 }
 
 export type Interaction = (context: InteractionContext) => void | Promise<void>;
 
-interface Recorder {
+interface Recorder
+{
 	measuring: boolean;
 	commits: number;
 	commitsBySubtree: Map<string, number>;
@@ -42,59 +56,93 @@ interface Recorder {
 
 let activeRecorder: Recorder | undefined;
 
-function increment(map: Map<string, number>, key: string): void {
+function increment(map: Map<string, number>, key: string): void
+{
 	map.set(key, (map.get(key) ?? 0) + 1);
 }
 
-function sortedRecord(map: Map<string, number>): Record<string, number> {
+function sortedRecord(map: Map<string, number>): Record<string, number>
+{
 	return Object.fromEntries([...map].toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
 /** The `<Profiler>` callback behind `PerfSubtree`: counts commits under `commitsBySubtree[id]`. */
-export function onSubtreeRender(id: string): void {
-	if (activeRecorder?.measuring === true) {
+export function onSubtreeRender(id: string): void
+{
+	if (activeRecorder?.measuring === true)
+	{
 		increment(activeRecorder.commitsBySubtree, id);
 	}
 }
 
 /** Counts this component's renders under `rendersByComponent[name]` while an interaction is measured. */
-export function useRenderCount(name: string): void {
-	if (activeRecorder?.measuring === true) {
+export function useRenderCount(name: string): void
+{
+	if (activeRecorder?.measuring === true)
+	{
 		increment(activeRecorder.renders, name);
 	}
 }
 
-function requestUrl(input: RequestInfo | URL): string {
-	if (typeof input === "string") {
+function requestUrl(input: RequestInfo | URL): string
+{
+	if (typeof input === "string")
+	{
 		return input;
 	}
 	return input instanceof URL ? input.href : input.url;
 }
 
-function fixtureFor(fixtures: Record<string, unknown>, url: string): {found: boolean; body: unknown} {
-	if (Object.hasOwn(fixtures, url)) {
-		return {found: true, body: fixtures[url]};
+function fixtureFor(
+	fixtures: Record<string, unknown>,
+	url: string,
+):
+{
+	found: boolean;
+	body: unknown;
+}
+{
+	if (Object.hasOwn(fixtures, url))
+	{
+		return {
+			found: true,
+			body: fixtures[url],
+		};
 	}
 	const parsed = new URL(url, "http://localhost");
 	const pathAndQuery = `${parsed.pathname}${parsed.search}`;
-	if (Object.hasOwn(fixtures, pathAndQuery)) {
-		return {found: true, body: fixtures[pathAndQuery]};
+	if (Object.hasOwn(fixtures, pathAndQuery))
+	{
+		return {
+			found: true,
+			body: fixtures[pathAndQuery],
+		};
 	}
-	return {found: false, body: undefined};
+	return {
+		found: false,
+		body: undefined,
+	};
 }
 
 const MAX_SETTLE_ROUNDS = 100;
 
 /** Drains microtasks and one macrotask turn, which is where TanStack Query's notifyManager delivers updates. */
-async function flushRound(): Promise<void> {
-	await act(async () => {
-		for (let index = 0; index < 10; index++) {
+async function flushRound(): Promise<void>
+{
+	await act(async () =>
+	{
+		for (let index = 0; index < 10; index++)
+		{
 			await Promise.resolve();
 		}
-		if (vi.isFakeTimers()) {
+		if (vi.isFakeTimers())
+		{
 			vi.advanceTimersByTime(0);
-		} else {
-			await new Promise<void>((resolve) => {
+		}
+		else
+		{
+			await new Promise<void>((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		}
@@ -105,50 +153,97 @@ export async function measureInteraction(
 	renderTree: () => ReactNode,
 	interact: Interaction | ReadonlyArray<Interaction>,
 	options: MeasureOptions,
-): Promise<InteractionMeasurement> {
-	const queryClient = options.queryClient ?? new QueryClient({defaultOptions: {queries: {retry: false}}});
+): Promise<InteractionMeasurement>
+{
+	const queryClient =
+		options.queryClient ??
+		new QueryClient(
+			{
+				defaultOptions:
+				{
+					queries:
+					{
+						retry: false,
+					},
+				},
+			},
+		);
 	const queryCache = queryClient.getQueryCache();
-	const recorder: Recorder = {measuring: false, commits: 0, commitsBySubtree: new Map(), renders: new Map()};
+	const recorder: Recorder =
+	{
+		measuring: false,
+		commits: 0,
+		commitsBySubtree: new Map(),
+		renders: new Map(),
+	};
 	activeRecorder = recorder;
 
-	const fetched: Array<{url: string; bytes: number}> = [];
+	const fetched: Array<
+	{
+		url: string;
+		bytes: number;
+	}> = [];
 	const unmatched: Array<string> = [];
 	let inFlight = 0;
 	vi.stubGlobal(
 		"fetch",
-		vi.fn(async (input: RequestInfo | URL) => {
+		vi.fn(async (input: RequestInfo | URL) =>
+		{
 			const url = requestUrl(input);
 			const fixture = fixtureFor(options.fixtures, url);
-			if (!fixture.found) {
+			if (!fixture.found)
+			{
 				unmatched.push(url);
 				return new Promise<Response>(() => {});
 			}
 			const text = JSON.stringify(fixture.body);
-			if (recorder.measuring) {
-				fetched.push({url, bytes: Buffer.byteLength(text)});
+			if (recorder.measuring)
+			{
+				fetched.push(
+					{
+						url,
+						bytes: Buffer.byteLength(text),
+					},
+				);
 			}
 			inFlight++;
-			try {
+			try
+			{
 				await Promise.resolve();
-				return new Response(text, {status: 200, headers: {"content-type": "application/json"}});
-			} finally {
+				return new Response(
+					text,
+					{
+						status: 200,
+						headers:
+						{
+							"content-type": "application/json",
+						},
+					},
+				);
+			}
+			finally
+			{
 				inFlight--;
 			}
 		}),
 	);
 
 	let queryFetches = 0;
-	queryCache.subscribe((event) => {
-		if (recorder.measuring && event.type === "updated" && event.action.type === "fetch") {
+	queryCache.subscribe((event) =>
+	{
+		if (recorder.measuring && event.type === "updated" && event.action.type === "fetch")
+		{
 			queryFetches++;
 		}
 	});
 	let queryCacheListeners = 0;
 	const subscribe = queryCache.subscribe.bind(queryCache);
-	queryCache.subscribe = (listener) => {
+	queryCache.subscribe = (listener) =>
+	{
 		queryCacheListeners++;
 		const unsubscribe = subscribe(listener);
-		return () => {
+		return () =>
+		{
 			queryCacheListeners--;
 			unsubscribe();
 		};
@@ -158,8 +253,10 @@ export async function measureInteraction(
 	let allCommits = 0;
 	// Settled means a whole round that stays idle and commits nothing: a component that mounts in that round (the
 	// router rendering a route, say) can start a fetch of its own, which must land before measuring starts.
-	const settle = async () => {
-		for (let round = 0; round < MAX_SETTLE_ROUNDS; round++) {
+	const settle = async () =>
+	{
+		for (let round = 0; round < MAX_SETTLE_ROUNDS; round++)
+		{
 			await flushRound();
 			if (!idle()) continue;
 			const commitsBefore = allCommits;
@@ -169,21 +266,26 @@ export async function measureInteraction(
 		throw new Error("measureInteraction: the tree did not settle");
 	};
 
-	const onAppRender = () => {
+	const onAppRender = () =>
+	{
 		allCommits++;
-		if (recorder.measuring) {
+		if (recorder.measuring)
+		{
 			recorder.commits++;
 		}
 	};
 
 	let mutations = 0;
-	const observer = new MutationObserver((records) => {
-		if (recorder.measuring) {
+	const observer = new MutationObserver((records) =>
+	{
+		if (recorder.measuring)
+		{
 			mutations += records.length;
 		}
 	});
 
-	try {
+	try
+	{
 		render(
 			<Profiler id="app" onRender={onAppRender}>
 				<QueryClientProvider client={queryClient}>{renderTree()}</QueryClientProvider>
@@ -191,19 +293,34 @@ export async function measureInteraction(
 		);
 		await settle();
 
-		observer.observe(document.body, {subtree: true, childList: true, attributes: true, characterData: true});
+		observer.observe(
+			document.body,
+			{
+				subtree: true,
+				childList: true,
+				attributes: true,
+				characterData: true,
+			},
+		);
 		recorder.measuring = true;
 		// Updates inside one act are batched into one commit, so each step (one keystroke, say) gets its own act.
-		for (const step of typeof interact === "function" ? [interact] : interact) {
-			await act(async () => {
-				await step({queryClient});
+		for (const step of typeof interact === "function" ? [interact] : interact)
+		{
+			await act(async () =>
+			{
+				await step(
+					{
+						queryClient,
+					},
+				);
 			});
 			await settle();
 		}
 		mutations += observer.takeRecords().length;
 		recorder.measuring = false;
 
-		if (unmatched.length > 0) {
+		if (unmatched.length > 0)
+		{
 			throw new Error(`measureInteraction: no fixture for fetch ${unmatched.join(", ")}`);
 		}
 
@@ -211,23 +328,28 @@ export async function measureInteraction(
 			commits: recorder.commits,
 			commitsBySubtree: sortedRecord(recorder.commitsBySubtree),
 			mutations,
-			fetches: {
+			fetches:
+			{
 				count: fetched.length,
 				bytes: fetched.reduce((sum, entry) => sum + entry.bytes, 0),
 				urls: fetched.map((entry) => entry.url),
 			},
 			hiddenReloads: Math.max(0, queryFetches - (options.expectedQueryFetches ?? 0)),
 			rendersByComponent: sortedRecord(recorder.renders),
-			subscriptions: {
+			subscriptions:
+			{
 				queryCacheListeners,
 				queryObservers: queryCache.getAll().reduce((sum, query) => sum + query.getObserversCount(), 0),
 				eventSourceListeners: openEventSourceListeners(),
 			},
 		};
-	} finally {
+	}
+	finally
+	{
 		recorder.measuring = false;
 		observer.disconnect();
-		if (activeRecorder === recorder) {
+		if (activeRecorder === recorder)
+		{
 			activeRecorder = undefined;
 		}
 	}

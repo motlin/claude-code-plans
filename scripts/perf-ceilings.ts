@@ -1,7 +1,8 @@
 import {writeFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
-import {
+import
+{
 	CEILINGS_PATH,
 	currentTree,
 	DEFAULT_RESULTS_PATH,
@@ -18,49 +19,107 @@ import {assertNever} from "../src/lib/assert-never";
  * raise needs a hand-written `reason` and `raisedAt`. Never run this from CI, a bot or a schedule.
  */
 
-interface CeilingChange {
+interface CeilingChange
+{
 	id: string;
 	kind: "added" | "lowered" | "raised";
 	from: number | undefined;
 	to: number;
 }
 
-function compareKeys(a: string, b: string): number {
+function compareKeys(a: string, b: string): number
+{
 	return a < b ? -1 : a > b ? 1 : 0;
 }
 
-export function rewriteCeilings(ceilings: Ceilings, results: Results): {ceilings: Ceilings; changes: CeilingChange[]} {
-	const next: Ceilings = {...ceilings};
+export function rewriteCeilings(
+	ceilings: Ceilings,
+	results: Results,
+):
+{
+	ceilings: Ceilings;
+	changes: CeilingChange[];
+}
+{
+	const next: Ceilings =
+	{
+		...ceilings,
+	};
 	const changes: CeilingChange[] = [];
-	for (const [id, {value, unit}] of Object.entries(results).toSorted(([a], [b]) => compareKeys(a, b))) {
+	for (const [id, {value, unit}] of Object.entries(results).toSorted(([a], [b]) => compareKeys(a, b)))
+	{
 		const entry = ceilings[id];
-		if (entry === undefined) {
-			next[id] = {ceiling: value, unit: unit ?? "count", tolerance: 0};
-			changes.push({id, kind: "added", from: undefined, to: value});
-		} else if (value < entry.ceiling) {
-			next[id] = {ceiling: value, unit: entry.unit, tolerance: entry.tolerance};
-			changes.push({id, kind: "lowered", from: entry.ceiling, to: value});
-		} else if (value > entry.ceiling) {
-			changes.push({id, kind: "raised", from: entry.ceiling, to: value});
+		if (entry === undefined)
+		{
+			next[id] =
+			{
+				ceiling: value,
+				unit: unit ?? "count",
+				tolerance: 0,
+			};
+			changes.push(
+				{
+					id,
+					kind: "added",
+					from: undefined,
+					to: value,
+				},
+			);
+		}
+		else if (value < entry.ceiling)
+		{
+			next[id] =
+			{
+				ceiling: value,
+				unit: entry.unit,
+				tolerance: entry.tolerance,
+			};
+			changes.push(
+				{
+					id,
+					kind: "lowered",
+					from: entry.ceiling,
+					to: value,
+				},
+			);
+		}
+		else if (value > entry.ceiling)
+		{
+			changes.push(
+				{
+					id,
+					kind: "raised",
+					from: entry.ceiling,
+					to: value,
+				},
+			);
 		}
 	}
 	const sorted = Object.fromEntries(Object.entries(next).toSorted(([a], [b]) => compareKeys(a, b)));
-	return {ceilings: sorted, changes};
+	return {
+		ceilings: sorted,
+		changes,
+	};
 }
 
-function status(ceiling: number | undefined, value: number): string {
-	if (ceiling === undefined) {
+function status(ceiling: number | undefined, value: number): string
+{
+	if (ceiling === undefined)
+	{
 		return "new";
 	}
 	return value < ceiling ? "lowered" : value > ceiling ? "raised" : "ok";
 }
 
-export function formatResultsTable(ceilings: Ceilings, results: Results): string {
+export function formatResultsTable(ceilings: Ceilings, results: Results): string
+{
 	const entries = Object.entries(results).toSorted(([a], [b]) => compareKeys(a, b));
-	if (entries.length === 0) {
+	if (entries.length === 0)
+	{
 		return "No perf results recorded.";
 	}
-	const rows = entries.map(([id, {value, unit}]) => {
+	const rows = entries.map(([id, {value, unit}]) =>
+	{
 		const entry = ceilings[id];
 		return [
 			id,
@@ -89,8 +148,10 @@ export function formatResultsTable(ceilings: Ceilings, results: Results): string
 		.join("\n");
 }
 
-function formatChange({id, kind, from, to}: CeilingChange): string {
-	switch (kind) {
+function formatChange({id, kind, from, to}: CeilingChange): string
+{
+	switch (kind)
+	{
 		case "added":
 			return `+ ${id}: ${to}`;
 		case "lowered":
@@ -102,25 +163,30 @@ function formatChange({id, kind, from, to}: CeilingChange): string {
 	}
 }
 
-function main(): void {
+function main(): void
+{
 	const ceilings = loadCeilings();
 	const results = readResults(DEFAULT_RESULTS_PATH, currentTree());
-	if (process.argv.includes("--table")) {
+	if (process.argv.includes("--table"))
+	{
 		console.log(formatResultsTable(ceilings, results));
 		return;
 	}
 	const {ceilings: next, changes} = rewriteCeilings(ceilings, results);
 	const written = changes.filter((change) => change.kind !== "raised");
-	if (written.length > 0) {
+	if (written.length > 0)
+	{
 		writeFileSync(CEILINGS_PATH, `${JSON.stringify(next, null, "\t")}\n`);
 	}
-	if (changes.length === 0) {
+	if (changes.length === 0)
+	{
 		console.log("tests/perf/ceilings.json already matches results.json.");
 		return;
 	}
 	console.log(changes.map(formatChange).join("\n"));
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+{
 	main();
 }

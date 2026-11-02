@@ -10,28 +10,43 @@ import {TOUCH_REVEAL} from "../lib/touch-reveal";
 import {ListPageHeader} from "./list-page-header";
 import {SessionRowStatusDot} from "./session-unread-control";
 
-function formatDate(iso: string): string {
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
+function formatDate(iso: string): string
+{
+	return new Date(iso).toLocaleDateString(
+		"en-US",
+		{
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+		},
+	);
 }
 
 const newestFirst = (a: SessionListItem, b: SessionListItem): number =>
 	new Date(b.mtime).getTime() - new Date(a.mtime).getTime();
 
 /** This browser's pinned sessions: user-ordered pins first, then newest first. */
-export function PinnedSessionsPage() {
+export function PinnedSessionsPage()
+{
 	const {pinnedIds, pinnedOrder} = usePins();
-	const {data} = useQuery({
-		...sessionsByIdsQueryOptions(pinnedIds),
-		placeholderData: keepPreviousData,
-	});
+	const {data} = useQuery(
+		{
+			...sessionsByIdsQueryOptions(pinnedIds),
+			placeholderData: keepPreviousData,
+		},
+	);
 	const sessions = useMemo(
-		() => orderedPins(data ?? [], newestFirst, {pinnedIds, pinnedOrder}),
+		() =>
+			orderedPins(
+				data ?? [],
+				newestFirst,
+				{
+					pinnedIds,
+					pinnedOrder,
+				},
+			),
 		[data, pinnedIds, pinnedOrder],
 	);
 	const loading = pinnedIds.length > 0 && data === undefined;
@@ -50,10 +65,20 @@ export function PinnedSessionsPage() {
 						<li key={session.id} className="group relative">
 							<Link
 								to="/session/$id"
-								params={{id: session.id}}
+								params={
+								{
+									id: session.id,
+								}}
 								className="block rounded-md p-2 pr-40 cursor-pointer transition-colors hover:bg-surface-0"
 							>
-								<div className="truncate pr-8" style={{fontSize: "14px", fontWeight: 430}}>
+								<div
+									className="truncate pr-8"
+									style={
+									{
+										fontSize: "14px",
+										fontWeight: 430,
+									}}
+								>
 									{session.title}
 								</div>
 								<div className="mt-0.5 flex items-center gap-2 text-xs text-t6">
@@ -76,7 +101,8 @@ export function PinnedSessionsPage() {
 							</div>
 							<button
 								type="button"
-								onClick={(e) => {
+								onClick={(e) =>
+								{
 									e.preventDefault();
 									unpin(session.id);
 								}}

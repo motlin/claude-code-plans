@@ -38,7 +38,8 @@ export const MERMAID_SHADOW_STYLE_AUTO_DIRECTION = [
 ].join("\n");
 
 /** Upstream `mF`: an Error with a name the callers branch on. */
-function namedError(name: string, message: string): Error {
+function namedError(name: string, message: string): Error
+{
 	const error = new Error(message);
 	error.name = name;
 	return error;
@@ -47,8 +48,13 @@ function namedError(name: string, message: string): Error {
 // ---- sanitizing (upstream Vb and its helpers) ----
 
 /** Upstream `WH`. */
-const SANITIZE_CONFIG = {
-	USE_PROFILES: {svg: true, svgFilters: true},
+const SANITIZE_CONFIG =
+{
+	USE_PROFILES:
+	{
+		svg: true,
+		svgFilters: true,
+	},
 	KEEP_CONTENT: false,
 	FORBID_TAGS: ["image", "feimage", "link", "animate", "set", "animatecolor", "animatemotion", "animatetransform"],
 	FORBID_ATTR: ["target", "color-profile", "direction", "writing-mode", "letter-spacing", "word-spacing"],
@@ -77,32 +83,37 @@ const MAY_HOLD_BIDI = new RegExp(`${BIDI_PROPERTIES.join("|")}|-spacing`, "i");
 const MAY_HOLD_LAYOUT_ESCAPE = new RegExp(`${LAYOUT_ESCAPE_PROPERTIES.join("|")}|/\\*`, "i");
 
 /** Upstream `mS`: a bidi property, or letter/word spacing that is not a plain length. */
-function altersGlyphOrder(style: CSSStyleDeclaration, property: string): boolean {
+function altersGlyphOrder(style: CSSStyleDeclaration, property: string): boolean
+{
 	return (
 		BIDI_PROPERTY.test(property) ||
 		(SPACING_PROPERTY.test(property) && !PLAIN_SPACING.test(style.getPropertyValue(property).trim()))
 	);
 }
 
-function propertiesOf(style: CSSStyleDeclaration): string[] {
+function propertiesOf(style: CSSStyleDeclaration): string[]
+{
 	const properties: string[] = [];
 	for (let index = 0; index < style.length; index++) properties.push(style.item(index));
 	return properties;
 }
 
 /** Upstream `aQ`: a style attribute without layout-escaping or glyph-reordering properties. */
-function stripStyleProperties(css: string): string {
+function stripStyleProperties(css: string): string
+{
 	if (!MAY_HOLD_LAYOUT_ESCAPE.test(css) && !MAY_HOLD_BIDI.test(css)) return css;
 	const {style} = document.createElement("div");
 	style.cssText = css;
-	for (const property of propertiesOf(style)) {
+	for (const property of propertiesOf(style))
+	{
 		if (LAYOUT_ESCAPE_PROPERTY.test(property) || altersGlyphOrder(style, property)) style.removeProperty(property);
 	}
 	return style.cssText;
 }
 
 /** Upstream `D$`: CSS that can fetch nothing (no external url(), image functions or @import). */
-function blockCssFetches(css: string): string {
+function blockCssFetches(css: string): string
+{
 	return css
 		.replace(/\\/g, "-")
 		.replace(/\burl\((?!\s*["']?#)/gi, "url-blocked(")
@@ -111,38 +122,49 @@ function blockCssFetches(css: string): string {
 }
 
 /** Upstream `Sv`: the rules of a stylesheet, or null without a CSS parser. */
-function parseRules(css: string): CSSRuleList | null {
-	try {
+function parseRules(css: string): CSSRuleList | null
+{
+	try
+	{
 		const sheet = new CSSStyleSheet();
 		sheet.replaceSync(css);
 		return sheet.cssRules;
-	} catch {
+	}
+	catch
+	{
 		// Fall back to a detached document's <style>.
 	}
-	try {
+	try
+	{
 		const doc = document.implementation.createHTMLDocument("");
 		const style = doc.createElement("style");
 		style.textContent = css;
 		doc.head.appendChild(style);
 		return style.sheet?.cssRules ?? null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
 /** Upstream `Uk`: keeps only plain style rules scoped under `#<scopeId>`. */
-function scopeStyle(css: string, scopeId: string): string {
+function scopeStyle(css: string, scopeId: string): string
+{
 	const rules = parseRules(css);
-	if (rules === null) {
+	if (rules === null)
+	{
 		console.warn("mermaid style sanitize: no CSS parser available; dropping styles");
 		return "";
 	}
 	const scope = `#${scopeId}`;
 	const kept: string[] = [];
-	for (const rule of Array.from(rules)) {
+	for (const rule of Array.from(rules))
+	{
 		if (!(rule instanceof CSSStyleRule)) continue;
 		const selector = rule.selectorText;
-		const scoped = selector.split(",").every((part) => {
+		const scoped = selector.split(",").every((part) =>
+		{
 			const trimmed = part.trim();
 			if (!trimmed.startsWith(scope)) return false;
 			const next = trimmed.charAt(scope.length);
@@ -151,12 +173,15 @@ function scopeStyle(css: string, scopeId: string): string {
 		});
 		if (!scoped) continue;
 		const {style} = rule;
-		for (const property of propertiesOf(style)) {
-			if (LAYOUT_ESCAPE_PROPERTY.test(property) || altersGlyphOrder(style, property)) {
+		for (const property of propertiesOf(style))
+		{
+			if (LAYOUT_ESCAPE_PROPERTY.test(property) || altersGlyphOrder(style, property))
+			{
 				style.removeProperty(property);
 				continue;
 			}
-			if (/^(?:-\w+-)?position$/i.test(property)) {
+			if (/^(?:-\w+-)?position$/i.test(property))
+			{
 				const value = style.getPropertyValue(property).trim().toLowerCase();
 				if (value !== "static" && value !== "relative" && value !== "absolute") style.removeProperty(property);
 			}
@@ -169,7 +194,8 @@ function scopeStyle(css: string, scopeId: string): string {
 }
 
 /** Upstream `Ej`. */
-function blockStyleElementFetches(svg: string): string {
+function blockStyleElementFetches(svg: string): string
+{
 	return svg.replace(
 		/(<style[^>]*>)([\s\S]*?)(<\/style>)/gi,
 		(_match, open: string, body: string, close: string) => open + blockCssFetches(body) + close,
@@ -190,23 +216,32 @@ const PAINT_ATTRIBUTES: ReadonlySet<string> = new Set([
 const BIDI_OVERRIDES = /[\u202D\u202E]/g;
 
 /** Upstream `Vb`: a drawn SVG made inert, its styles confined to `#<scopeId>`. */
-export function sanitizeMermaidSvg(svg: string, scopeId: string): string {
-	DOMPurify.addHook("uponSanitizeAttribute", (_node, data) => {
-		if (data.attrName === "style" || PAINT_ATTRIBUTES.has(data.attrName)) {
+export function sanitizeMermaidSvg(svg: string, scopeId: string): string
+{
+	DOMPurify.addHook("uponSanitizeAttribute", (_node, data) =>
+	{
+		if (data.attrName === "style" || PAINT_ATTRIBUTES.has(data.attrName))
+		{
 			data.attrValue = blockCssFetches(data.attrValue);
 			if (data.attrName === "style") data.attrValue = stripStyleProperties(data.attrValue);
-		} else if (data.attrName === "href" || data.attrName === "xlink:href") {
+		}
+		else if (data.attrName === "href" || data.attrName === "xlink:href")
+		{
 			if (!data.attrValue.trim().startsWith("#")) data.keepAttr = false;
 		}
 	});
-	DOMPurify.addHook("uponSanitizeElement", (node, data) => {
+	DOMPurify.addHook("uponSanitizeElement", (node, data) =>
+	{
 		if (data.tagName === "style" && node.textContent) node.textContent = scopeStyle(node.textContent, scopeId);
 		else if (data.tagName === "#text" && node.nodeValue)
 			node.nodeValue = node.nodeValue.replace(BIDI_OVERRIDES, "\uFFFD");
 	});
-	try {
+	try
+	{
 		return DOMPurify.sanitize(blockStyleElementFetches(svg), SANITIZE_CONFIG);
-	} finally {
+	}
+	finally
+	{
 		DOMPurify.removeHook("uponSanitizeAttribute");
 		DOMPurify.removeHook("uponSanitizeElement");
 	}
@@ -218,7 +253,8 @@ export function sanitizeMermaidSvg(svg: string, scopeId: string): string {
  * Upstream `Mv`: drops `@{…}` shape data and any `%%{…}%%` directive that itself holds shape data or a nested
  * directive, refusing to draw a source the strip cannot settle.
  */
-function stripShapeData(source: string): string {
+function stripShapeData(source: string): string
+{
 	const text = source.replace(/\r\n?/g, "\n");
 	const frontMatter = /^-{3}[^\S\n\r]*[\n\r]([\s\S]*?)[\n\r]-{3}[^\S\n\r]*[\n\r]+/;
 	const directive = /%{2}\{\s*(?:\w+\s*:|\w+)\s*(?:\w+|(?:(?!\}%{2}).|\r?\n)*)?\s*(?:\}%{2})?/gi;
@@ -229,15 +265,18 @@ function stripShapeData(source: string): string {
 	const kept = clean(head) ? head : "";
 	let body = text.slice(kept.length);
 	const directives: string[] = [];
-	body = body.replace(directive, (match) => {
+	body = body.replace(directive, (match) =>
+	{
 		if (clean(match.slice(3))) directives.push(match.endsWith("}%%") ? match : `${match}}%%`);
 		return "";
 	});
 	let converged = false;
-	for (let pass = 0; pass < 32; pass++) {
+	for (let pass = 0; pass < 32; pass++)
+	{
 		const before = body;
 		body = body.replace(shapeData, "").replace(directive, "");
-		if (body === before) {
+		if (body === before)
+		{
 			converged = true;
 			break;
 		}
@@ -257,7 +296,8 @@ function stripShapeData(source: string): string {
 }
 
 /** Upstream `fW`: a block diagram's `space:N` capped at 100. */
-function capBlockSpace(source: string): string {
+function capBlockSpace(source: string): string
+{
 	if (!/^[^\S\n\r\u2028\u2029]*block/m.test(source)) return source;
 	return source.replace(
 		/s;{0,2}p;{0,2}a;{0,2}c;{0,2}e;{0,2}:;{0,2}(\d(?:;{0,2}\d)*)/g,
@@ -271,7 +311,8 @@ function capBlockSpace(source: string): string {
 }
 
 /** Upstream `c$`: every `$` of a sequence diagram as mermaid's encoded `#36;`, so no `$$…$$` becomes KaTeX math. */
-export function sequenceDollarsAsEntities(source: string): string {
+export function sequenceDollarsAsEntities(source: string): string
+{
 	return /sequencediagram/i.test(source.replaceAll(";", ""))
 		? source.replaceAll("$", "\uFB02\u00B0\u00B036\u00B6\u00DF")
 		: source;
@@ -301,14 +342,16 @@ const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 type Rgb = [number, number, number];
 
 /** Upstream `Ye`: a hex colour's RGB, or undefined when it is not solid. */
-function hexRgb(hex: string): Rgb | undefined {
+function hexRgb(hex: string): Rgb | undefined
+{
 	let digits = hex.slice(1);
 	if (digits.length <= 4)
 		digits = digits
 			.split("")
 			.map((digit) => digit + digit)
 			.join("");
-	if (digits.length === 8) {
+	if (digits.length === 8)
+	{
 		if (parseInt(digits.slice(6), 16) / 255 < SOLID_OPACITY) return undefined;
 		digits = digits.slice(0, 6);
 	}
@@ -326,7 +369,8 @@ const hexOf = (rgb: Rgb) =>
 let colorParser: CanvasRenderingContext2D | null | undefined;
 
 /** Upstream `uD`: any CSS colour's RGB, read back through a canvas for names and functions. */
-function cssRgb(color: string): Rgb | undefined {
+function cssRgb(color: string): Rgb | undefined
+{
 	const trimmed = color.trim();
 	if (HEX_COLOR.test(trimmed)) return hexRgb(trimmed);
 	if (colorParser === undefined)
@@ -340,15 +384,18 @@ function cssRgb(color: string): Rgb | undefined {
 }
 
 /** Upstream `TK`. */
-function opacityOf(value: string): number {
+function opacityOf(value: string): number
+{
 	const trimmed = value.trim();
 	const opacity = trimmed.endsWith("%") ? Number(trimmed.slice(0, -1)) / 100 : Number(trimmed);
 	return Number.isFinite(opacity) ? opacity : 0;
 }
 
 /** Upstream `Cj`. */
-function luminance([red, green, blue]: Rgb): number {
-	const channel = (value: number) => {
+function luminance([red, green, blue]: Rgb): number
+{
+	const channel = (value: number) =>
+	{
 		const ratio = value / 255;
 		return ratio <= 0.03928 ? ratio / 12.92 : ((ratio + 0.055) / 1.055) ** 2.4;
 	};
@@ -356,14 +403,16 @@ function luminance([red, green, blue]: Rgb): number {
 }
 
 /** Upstream `Di`. */
-function contrast(first: Rgb, second: Rgb): number {
+function contrast(first: Rgb, second: Rgb): number
+{
 	const a = luminance(first);
 	const b = luminance(second);
 	return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
 /** Upstream `Ex`: `text`, or the near-black or near-white that reads better on `fill` when `text` does not. */
-function readableOn(fill: Rgb | undefined, text: Rgb): Rgb {
+function readableOn(fill: Rgb | undefined, text: Rgb): Rgb
+{
 	if (!fill) return text;
 	const current = contrast(fill, text);
 	if (current >= READABLE_CONTRAST) return text;
@@ -372,7 +421,8 @@ function readableOn(fill: Rgb | undefined, text: Rgb): Rgb {
 	return Math.max(onBlack, onWhite) <= current ? text : onBlack >= onWhite ? NEAR_BLACK : NEAR_WHITE;
 }
 
-interface StyleLine {
+interface StyleLine
+{
 	head: string;
 	isClassDef: boolean;
 	ids: string[];
@@ -385,7 +435,8 @@ interface StyleLine {
 }
 
 /** Upstream `m8`: a `style` / `classDef` line's ids and the fill and colour it sets. */
-function styleLine(line: string): StyleLine | undefined {
+function styleLine(line: string): StyleLine | undefined
+{
 	const match = STYLE_LINE.exec(line);
 	if (!match) return undefined;
 	const [head, keyword = "", ids = ""] = match;
@@ -398,16 +449,20 @@ function styleLine(line: string): StyleLine | undefined {
 	let setsColor = false;
 	let fill: Rgb | undefined;
 	let solid = true;
-	for (const declaration of declarations.split(",")) {
+	for (const declaration of declarations.split(","))
+	{
 		const colon = declaration.indexOf(":");
 		if (colon < 0) continue;
 		const property = declaration.slice(0, colon).trim().toLowerCase();
 		const value = declaration.slice(colon + 1);
 		if (property === "color") setsColor = true;
-		else if (property === "fill") {
+		else if (property === "fill")
+		{
 			setsFill = true;
 			fill = cssRgb(value);
-		} else if (property === "fill-opacity" || property === "opacity") {
+		}
+		else if (property === "fill-opacity" || property === "opacity")
+		{
 			setsFill = true;
 			solid &&= opacityOf(value) >= SOLID_OPACITY;
 		}
@@ -430,11 +485,8 @@ function styleLine(line: string): StyleLine | undefined {
  * text cannot be read on a `color:` that can, unless the line or another for its ids already sets one. The source
  * stays as written when nothing changes or the result would pass `maxText`.
  */
-export function readableStyleColors(
-	source: string,
-	textColor: string | undefined,
-	maxText: number | undefined,
-): string {
+export function readableStyleColors(source: string, textColor: string | undefined, maxText: number | undefined): string
+{
 	const text = textColor === undefined ? undefined : cssRgb(textColor);
 	if (!text || !HAS_STYLE_LINE.test(source) || ER_DIAGRAM.test(source)) return source;
 	const lines = source.split("\n");
@@ -442,7 +494,8 @@ export function readableStyleColors(
 	const coloured = new Set(parsed.flatMap((line) => (line?.setsColor ? line.ids : [])));
 	const styleSetsFill = parsed.some((line) => line?.setsFill && !line.isClassDef);
 	const recoloured: boolean[] = [];
-	const rewritten = lines.map((line, index) => {
+	const rewritten = lines.map((line, index) =>
+	{
 		const style = parsed[index];
 		if (!style?.appendable || !style.setsFill || style.ids.some((id) => coloured.has(id))) return line;
 		const color = readableOn(style.fill, text);
@@ -456,29 +509,49 @@ export function readableStyleColors(
 }
 
 /** Upstream `sg`: a fill attribute's RGB and opacity. */
-function fillOf(color: string): {rgb: Rgb; opacity: number} | undefined {
+function fillOf(color: string):
+	|
+	  {
+			rgb: Rgb;
+			opacity: number;
+	  }
+	| undefined
+{
 	if (color.length > MAX_COLOR_CHARS) return undefined;
 	const parts = RGB_FUNCTION.exec(color)?.[1]
 		?.split(",")
 		.map((part) => part.trim());
-	if (parts) {
+	if (parts)
+	{
 		if ((parts.length !== 3 && parts.length !== 4) || !parts.every((part) => PLAIN_NUMBER.test(part)))
 			return undefined;
 		const [red = 0, green = 0, blue = 0, opacity = 1] = parts.map(Number);
 		const channel = (value: number) => Math.round(Math.min(value, 255));
-		return {rgb: [channel(red), channel(green), channel(blue)], opacity};
+		return {
+			rgb: [channel(red), channel(green), channel(blue)],
+			opacity,
+		};
 	}
 	const rgb = HEX_COLOR.test(color) || NAMED_OR_HSL.test(color) ? cssRgb(color) : undefined;
-	return rgb && {rgb, opacity: 1};
+	return (
+		rgb &&
+		{
+			rgb,
+			opacity: 1,
+		}
+	);
 }
 
 /** Upstream `cx`: a sequence diagram's `rect` bands the text cannot be read on, thinned to 10% opacity. */
-export function dimUnreadableSequenceBands(svg: Element, textColor: string | undefined): void {
+export function dimUnreadableSequenceBands(svg: Element, textColor: string | undefined): void
+{
 	const text = textColor === undefined ? undefined : cssRgb(textColor);
 	if (!text) return;
-	svg.querySelectorAll("rect.rect").forEach((rect) => {
+	svg.querySelectorAll("rect.rect").forEach((rect) =>
+	{
 		const fill = fillOf(rect.getAttribute("fill") ?? "");
-		if (fill && fill.opacity > THIN_BAND_OPACITY && contrast(fill.rgb, text) < READABLE_CONTRAST) {
+		if (fill && fill.opacity > THIN_BAND_OPACITY && contrast(fill.rgb, text) < READABLE_CONTRAST)
+		{
 			const [red, green, blue] = fill.rgb;
 			rect.setAttribute("fill", `rgba(${red}, ${green}, ${blue}, ${THIN_BAND_OPACITY})`);
 		}
@@ -486,7 +559,8 @@ export function dimUnreadableSequenceBands(svg: Element, textColor: string | und
 }
 
 /** Upstream `W$`: the colour the theme draws node text in. */
-export function textColorOf(config: MermaidConfig): string | undefined {
+export function textColorOf(config: MermaidConfig): string | undefined
+{
 	const variables: unknown = config.themeVariables;
 	const color: unknown =
 		typeof variables === "object" && variables !== null
@@ -505,7 +579,8 @@ const fontKey = (family: string) =>
 		.toLowerCase();
 
 /** Upstream `qT`: the body's font stack without web fonts (the sandbox cannot load them), else sans-serif. */
-function mermaidFontFamily(): string {
+function mermaidFontFamily(): string
+{
 	const webFonts = new Set<string>();
 	// oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom and older engines have no FontFaceSet
 	document.fonts?.forEach((face) => webFonts.add(fontKey(face.family)));
@@ -519,16 +594,20 @@ function mermaidFontFamily(): string {
  * Upstream `Mp`: the SVG out of the base64 `src` of mermaid's sandbox iframe, after `adjust` (a colour fix that
  * may fail without losing the drawing).
  */
-function extractSandboxSvg(html: string, adjust?: (svg: SVGSVGElement) => void): string {
+function extractSandboxSvg(html: string, adjust?: (svg: SVGSVGElement) => void): string
+{
 	const encoded = /;base64,([^"]+)"/.exec(html)?.[1];
 	if (encoded === undefined)
 		throw namedError("MermaidSandboxNoIframeSrc", "mermaid sandbox render: missing data-uri iframe src");
 	const bytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
 	const svg = new DOMParser().parseFromString(new TextDecoder().decode(bytes), "text/html").querySelector("svg");
 	if (!svg) throw namedError("MermaidSandboxNoSvg", "mermaid sandbox render: no <svg> in iframe body");
-	try {
+	try
+	{
 		adjust?.(svg);
-	} catch {
+	}
+	catch
+	{
 		console.warn(
 			"mermaid: a step that changes a finished diagram's colours failed; the diagram is shown without the change, or with part of it",
 		);
@@ -537,27 +616,37 @@ function extractSandboxSvg(html: string, adjust?: (svg: SVGSVGElement) => void):
 }
 
 /** Upstream `I7`: `work`, or a MermaidRenderTimeout after `ms`, calling `onTimeout` first. */
-async function withTimeLimit<T>(work: Promise<T>, ms: number, onTimeout?: () => void): Promise<T> {
+async function withTimeLimit<T>(work: Promise<T>, ms: number, onTimeout?: () => void): Promise<T>
+{
 	let timer: ReturnType<typeof setTimeout> | undefined;
-	try {
+	try
+	{
 		return await Promise.race([
 			work,
-			new Promise<never>((_resolve, reject) => {
-				timer = setTimeout(() => {
-					try {
+			new Promise<never>((_resolve, reject) =>
+			{
+				timer = setTimeout(() =>
+				{
+					try
+					{
 						onTimeout?.();
-					} finally {
+					}
+					finally
+					{
 						reject(namedError("MermaidRenderTimeout", `mermaid render exceeded ${ms}ms`));
 					}
 				}, ms);
 			}),
 		]);
-	} finally {
+	}
+	finally
+	{
 		clearTimeout(timer);
 	}
 }
 
-interface DrawQueue {
+interface DrawQueue
+{
 	last: Promise<unknown>;
 	drawnMs: number;
 	/** A draw that ran past its limit and is still running in mermaid. */
@@ -565,7 +654,11 @@ interface DrawQueue {
 }
 
 /** Upstream `iL`: every draw waits for the one before it. */
-let queue: DrawQueue = {last: Promise.resolve(), drawnMs: 0};
+let queue: DrawQueue =
+{
+	last: Promise.resolve(),
+	drawnMs: 0,
+};
 
 type MermaidGuard = typeof import("./mermaid-guard");
 
@@ -574,8 +667,10 @@ let guard: MermaidGuard | undefined;
 let guardModule: Promise<MermaidGuard> | undefined;
 
 /** Upstream `FF`: the guard (chunk c763d2034), imported once beside mermaid. */
-export async function loadMermaidGuard(): Promise<MermaidGuard> {
-	guardModule ??= import("./mermaid-guard").then((module) => {
+export async function loadMermaidGuard(): Promise<MermaidGuard>
+{
+	guardModule ??= import("./mermaid-guard").then((module) =>
+	{
 		guard = module;
 		return module;
 	});
@@ -583,7 +678,8 @@ export async function loadMermaidGuard(): Promise<MermaidGuard> {
 }
 
 /** Upstream `Kx`: mermaid, with the guard starting to load beside it. */
-export async function loadMermaidWithGuard(): Promise<Mermaid> {
+export async function loadMermaidWithGuard(): Promise<Mermaid>
+{
 	loadMermaidGuard().catch(() => undefined);
 	return loadMermaid();
 }
@@ -595,7 +691,8 @@ export const mermaidGuardLoaded = (): boolean => guard !== undefined;
 export const asMermaidRefusal = (error: unknown): MermaidRefusal | undefined =>
 	guard?.isMermaidRefusal(error) ? error : undefined;
 
-export interface DrawnMermaid {
+export interface DrawnMermaid
+{
 	svg: string;
 	/** The render id the drawing's styles are scoped under. */
 	diagramId: string;
@@ -611,7 +708,8 @@ type MermaidApi = Pick<Mermaid, "initialize" | "render"> & Partial<Pick<Mermaid,
 
 type Now = () => number;
 
-export interface DrawOptions {
+export interface DrawOptions
+{
 	signal?: AbortSignal;
 	limitMs?: number;
 	now?: Now;
@@ -627,7 +725,8 @@ export interface DrawOptions {
 	dimUnreadableBands?: boolean;
 }
 
-interface DrawRun {
+interface DrawRun
+{
 	signal: AbortSignal | undefined;
 	limitMs: number | undefined;
 	queue: DrawQueue;
@@ -654,15 +753,18 @@ async function drawGuarded(
 	scopeId: string,
 	source: string,
 	run: DrawRun,
-): Promise<DrawnMermaid> {
+): Promise<DrawnMermaid>
+{
 	const fontFamily = !config.fontFamily || config.fontFamily === "inherit" ? mermaidFontFamily() : config.fontFamily;
-	mermaid.initialize({
-		...config,
-		fontFamily,
-		htmlLabels: false,
-		securityLevel: "sandbox",
-		secure: MERMAID_SECURE_KEYS,
-	});
+	mermaid.initialize(
+		{
+			...config,
+			fontFamily,
+			htmlLabels: false,
+			securityLevel: "sandbox",
+			secure: MERMAID_SECURE_KEYS,
+		},
+	);
 	const prepared = sequenceDollarsAsEntities(
 		readableStyleColors(
 			capBlockSpace(stripShapeData(source)),
@@ -671,21 +773,26 @@ async function drawGuarded(
 		),
 	);
 	let detected: (() => string) | undefined;
-	const noteUnparsed = (detect: () => string) => {
+	const noteUnparsed = (detect: () => string) =>
+	{
 		let type: string | undefined;
 		detected = () => (type ??= detect());
 		if (run.onUnparsed) run.onUnparsed(detected());
 	};
-	try {
+	try
+	{
 		return await drawChecked(checks, mermaid, config, scopeId, source, prepared, run, noteUnparsed);
-	} catch (error) {
+	}
+	catch (error)
+	{
 		const repaired =
 			detected !== undefined && isParseError(error) && detected() === "sequence"
 				? checks.repairSequenceText(prepared, error)
 				: undefined;
 		if (!repaired || repaired.text.length > checks.mermaidMaxText(config.maxTextSize)) throw error;
 		const waitedFrom = performance.now();
-		await new Promise<void>((resolve) => {
+		await new Promise<void>((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 		run.queue.drawnMs -= performance.now() - waitedFrom;
@@ -709,17 +816,26 @@ async function drawChecked(
 	prepared: string,
 	{limitMs, queue: drawQueue, now, onParsed, fonts, dimBands}: DrawRun,
 	noteUnparsed: (detect: () => string) => void,
-): Promise<DrawnMermaid> {
+): Promise<DrawnMermaid>
+{
 	checks.checkMermaidLength(prepared, config.maxTextSize);
-	const seen: MermaidDrawSeen = {ran: false, diagramType: "other"};
+	const seen: MermaidDrawSeen =
+	{
+		ran: false,
+		diagramType: "other",
+	};
 	let frame: HTMLIFrameElement | undefined;
-	const handle = checks.registerMermaidCheck(scopeId, (diagram) => {
-		try {
+	const handle = checks.registerMermaidCheck(scopeId, (diagram) =>
+	{
+		try
+		{
 			checks.checkParsedDiagram(diagram, seen, now);
 			checks.checkGitgraphText(source, prepared, seen);
 			const lost = checks.mermaidMeterLost(seen, frame, false);
 			if (lost) throw lost;
-		} finally {
+		}
+		finally
+		{
 			onParsed?.(seen.diagramType);
 		}
 	});
@@ -729,14 +845,20 @@ async function drawChecked(
 	host.setAttribute("aria-hidden", "true");
 	host.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;visibility:hidden;pointer-events:none";
 	document.body.appendChild(host);
-	const csp = {injected: false};
+	const csp =
+	{
+		injected: false,
+	};
 	const append = host.appendChild.bind(host);
-	host.appendChild = <T extends Node>(child: T): T => {
+	host.appendChild = <T extends Node>(child: T): T =>
+	{
 		const added = append(child);
-		if (child instanceof HTMLIFrameElement) {
+		if (child instanceof HTMLIFrameElement)
+		{
 			const doc = child.contentDocument;
 			if (doc && doc.readyState !== "complete") doc.defaultView?.stop();
-			if (doc?.head && !doc.head.querySelector("meta[http-equiv]")) {
+			if (doc?.head && !doc.head.querySelector("meta[http-equiv]"))
+			{
 				const meta = doc.createElement("meta");
 				meta.httpEquiv = "Content-Security-Policy";
 				meta.content = MERMAID_FRAME_CSP;
@@ -745,46 +867,56 @@ async function drawChecked(
 				if (fonts) for (const face of fonts) doc.fonts.add(face);
 			}
 			frame = child;
-			checks.meterMermaidFrame(doc?.defaultView, seen, now, undefined, () => {
+			checks.meterMermaidFrame(doc?.defaultView, seen, now, undefined, () =>
+			{
 				host.remove();
 			});
 		}
 		return added;
 	};
 	let stopMeasuring: () => void;
-	try {
+	try
+	{
 		stopMeasuring = checks.startMermaidMeasuring(seen, now);
-	} catch (error) {
+	}
+	catch (error)
+	{
 		handle.done();
 		host.remove();
 		throw error;
 	}
 	const drawing = mermaid.render(id, prepared, host);
 	const settled = drawing.catch(() => undefined);
-	void settled.then(() => {
+	void settled.then(() =>
+	{
 		handle.done();
 		seen.cleanup?.();
 		stopMeasuring();
 		checks.noteMermaidRenderSettled(now);
 	});
 	void drawing.then(
-		() => {
+		() =>
+		{
 			if (!seen.ran) checks.noteMermaidHookMissing();
 		},
 		() => undefined,
 	);
-	const markStuck = () => {
+	const markStuck = () =>
+	{
 		drawQueue.stuck = settled;
-		void settled.then(() => {
+		void settled.then(() =>
+		{
 			if (drawQueue.stuck === settled) drawQueue.stuck = undefined;
 		});
 	};
-	try {
+	try
+	{
 		const {svg} = await withTimeLimit(
 			drawing,
 			limitMs ?? 5000,
 			limitMs === undefined ? undefined : markStuck,
-		).catch((error: unknown) => {
+		).catch((error: unknown) =>
+		{
 			const due = checks.mermaidRefusalDue(seen);
 			if (!due && !seen.ran)
 				noteUnparsed(() =>
@@ -803,7 +935,8 @@ async function drawChecked(
 				"MermaidCspNotInjected",
 				"mermaid sandbox render: CSP not injected via host.appendChild \u2014 iframe insertion path changed",
 			);
-		if (!seen.ran) {
+		if (!seen.ran)
+		{
 			checks.noteMermaidHookMissing();
 			throw checks.mermaidRefusal("MermaidGuardNotRun");
 		}
@@ -814,7 +947,8 @@ async function drawChecked(
 			svg: extractSandboxSvg(
 				svg,
 				dimBands && seen.diagramType === "sequence"
-					? (drawn) => {
+					? (drawn) =>
+						{
 							dimUnreadableSequenceBands(drawn, textColor);
 						}
 					: undefined,
@@ -825,13 +959,16 @@ async function drawChecked(
 			...checks.closeMermaidDraw(seen, now),
 			measured: seen.measured,
 		};
-	} finally {
+	}
+	finally
+	{
 		stopMeasuring();
 		host.remove();
 	}
 }
 
-function throwIfAborted(signal: AbortSignal | undefined): void {
+function throwIfAborted(signal: AbortSignal | undefined): void
+{
 	if (signal?.aborted !== true) return;
 	const reason: unknown = signal.reason;
 	throw reason instanceof Error
@@ -855,11 +992,14 @@ export async function drawMermaid(
 		fonts,
 		dimUnreadableBands = false,
 	}: DrawOptions = {},
-): Promise<DrawnMermaid> {
+): Promise<DrawnMermaid>
+{
 	const drawQueue = queue;
 	const drawnBefore = drawQueue.drawnMs;
-	const result = loadMermaidGuard().then(async (checks) => {
-		const run = drawQueue.last.then(async () => {
+	const result = loadMermaidGuard().then(async (checks) =>
+	{
+		const run = drawQueue.last.then(async () =>
+		{
 			throwIfAborted(signal);
 			if (drawQueue.stuck)
 				throw namedError(
@@ -871,24 +1011,35 @@ export async function drawMermaid(
 					"MermaidQueueTimeout",
 					"not drawn: the diagrams ahead of this one took longer to draw than its time limit; it is asked for again when it next mounts",
 				);
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 			throwIfAborted(signal);
 			const start = performance.now();
-			try {
-				return await drawGuarded(checks, mermaid, config, scopeId, source, {
-					signal,
-					limitMs,
-					queue: drawQueue,
-					now,
-					onParsed,
-					onUnparsed,
-					onRepair,
-					fonts,
-					dimBands: dimUnreadableBands,
-				});
-			} finally {
+			try
+			{
+				return await drawGuarded(
+					checks,
+					mermaid,
+					config,
+					scopeId,
+					source,
+					{
+						signal,
+						limitMs,
+						queue: drawQueue,
+						now,
+						onParsed,
+						onUnparsed,
+						onRepair,
+						fonts,
+						dimBands: dimUnreadableBands,
+					},
+				);
+			}
+			finally
+			{
 				drawQueue.drawnMs += performance.now() - start;
 			}
 		});
@@ -901,7 +1052,8 @@ export async function drawMermaid(
 
 // ---- caches (upstream yL/cy/u$/B1 and Pw/vR) ----
 
-export interface CachedDiagram {
+export interface CachedDiagram
+{
 	svg: string;
 	scopeId: string;
 	/** The window width it was drawn at. */
@@ -922,7 +1074,8 @@ const windowWidth = () => (typeof window === "undefined" ? 0 : window.innerWidth
 /** Upstream `bO`: a drawn diagram's cache key. */
 export const drawnKey = (mode: string, code: string): string => JSON.stringify([mode, code]);
 
-function forgetDrawn(key: string): void {
+function forgetDrawn(key: string): void
+{
 	const entry = drawn.get(key);
 	if (!entry) return;
 	drawn.delete(key);
@@ -930,12 +1083,14 @@ function forgetDrawn(key: string): void {
 }
 
 /** Upstream `cy`: remember a drawn diagram, evicting the oldest past 48 entries or 4M chars. */
-export function rememberDrawn(key: string, entry: CachedDiagram): void {
+export function rememberDrawn(key: string, entry: CachedDiagram): void
+{
 	if (entry.svg.length > DRAWN_SKIP_CHARS) return;
 	forgetDrawn(key);
 	drawn.set(key, entry);
 	drawnChars += entry.svg.length;
-	while (drawn.size > DRAWN_ENTRIES || drawnChars > DRAWN_CHARS) {
+	while (drawn.size > DRAWN_ENTRIES || drawnChars > DRAWN_CHARS)
+	{
 		const oldest = drawn.keys().next().value;
 		if (oldest === undefined) break;
 		forgetDrawn(oldest);
@@ -943,7 +1098,8 @@ export function rememberDrawn(key: string, entry: CachedDiagram): void {
 }
 
 /** Upstream `u$`: mark a cached diagram as just used. */
-export function touchDrawn(key: string): void {
+export function touchDrawn(key: string): void
+{
 	const entry = drawn.get(key);
 	if (!entry) return;
 	drawn.delete(key);
@@ -956,7 +1112,8 @@ const SCOPE_ID = /^[A-Za-z0-9-]+$/;
  * Upstream `B1`: a cached diagram re-scoped to `scopeId` and sanitized again, unless the window has changed width
  * by more than 120px since it was drawn.
  */
-export function cachedDiagram(key: string, scopeId: string): CachedDiagram | undefined {
+export function cachedDiagram(key: string, scopeId: string): CachedDiagram | undefined
+{
 	const entry = drawn.get(key);
 	if (!entry || Math.abs(entry.width - windowWidth()) > WIDTH_DRIFT) return undefined;
 	if (!SCOPE_ID.test(entry.scopeId) || !SCOPE_ID.test(scopeId)) return undefined;
@@ -973,17 +1130,20 @@ const REFUSED_CHARS = 1_000_000;
 const refused = new Map<string, string>();
 let refusedChars = 0;
 
-function forgetRefusal(code: string): void {
+function forgetRefusal(code: string): void
+{
 	if (refused.delete(code)) refusedChars -= code.length;
 }
 
 /** Upstream `vR`: remember why a source was refused, so a remount does not draw it again. */
-export function rememberRefusal(code: string, reason: string): void {
+export function rememberRefusal(code: string, reason: string): void
+{
 	forgetRefusal(code);
 	if (code.length > REFUSED_CHARS) return;
 	refused.set(code, reason);
 	refusedChars += code.length;
-	for (const oldest of refused.keys()) {
+	for (const oldest of refused.keys())
+	{
 		if (refused.size <= REFUSED_ENTRIES && refusedChars <= REFUSED_CHARS) break;
 		forgetRefusal(oldest);
 	}
@@ -993,7 +1153,8 @@ export function rememberRefusal(code: string, reason: string): void {
  * Upstream `sy`: whether a refusal is remembered for the source. Not the length (the cleaned text may change),
  * not an unreadable measure, and not a clock refusal that the page being hidden (or a report-only count) explains.
  */
-export function rememberedRefusal(refusal: MermaidRefusal | undefined): boolean {
+export function rememberedRefusal(refusal: MermaidRefusal | undefined): boolean
+{
 	return (
 		refusal?.refusedBy !== undefined &&
 		refusal.refusedBy !== "length" &&
@@ -1006,7 +1167,8 @@ export function rememberedRefusal(refusal: MermaidRefusal | undefined): boolean 
 }
 
 /** Upstream `Pw.get`. */
-export function refusalFor(code: string): string | undefined {
+export function refusalFor(code: string): string | undefined
+{
 	return refused.get(code);
 }
 
@@ -1014,10 +1176,18 @@ export function refusalFor(code: string): string | undefined {
 export const mermaidScopeId = (reactId: string): string => `mermaid-${reactId.replace(/[^a-zA-Z0-9]/g, "")}`;
 
 /** Upstream `I8`: the shadow root's drawing `<div>`, created after a leading `<style>` the first time. */
-function shadowDrawing(host: HTMLElement, style: string): HTMLElement {
-	const root = host.shadowRoot ?? host.attachShadow({mode: "open"});
+function shadowDrawing(host: HTMLElement, style: string): HTMLElement
+{
+	const root =
+		host.shadowRoot ??
+		host.attachShadow(
+			{
+				mode: "open",
+			},
+		);
 	const last = root.lastElementChild;
-	if (last instanceof HTMLElement && last.localName === "div") {
+	if (last instanceof HTMLElement && last.localName === "div")
+	{
 		const first = root.firstElementChild;
 		if (first?.localName === "style" && first.textContent !== style) first.textContent = style;
 		return last;
@@ -1033,7 +1203,8 @@ function shadowDrawing(host: HTMLElement, style: string): HTMLElement {
 const written = new WeakMap<HTMLElement, string>();
 
 /** Upstream `ZU`: write an SVG into the host's shadow root, skipping an unchanged one. */
-export function writeShadowSvg(host: HTMLElement, svg: string, style: string): void {
+export function writeShadowSvg(host: HTMLElement, svg: string, style: string): void
+{
 	const drawing = shadowDrawing(host, style);
 	if (written.get(drawing) === svg) return;
 	drawing.innerHTML = svg;
@@ -1041,11 +1212,16 @@ export function writeShadowSvg(host: HTMLElement, svg: string, style: string): v
 }
 
 /** Clears the module state between tests. */
-export function resetMermaidCachesForTests(): void {
+export function resetMermaidCachesForTests(): void
+{
 	drawn.clear();
 	drawnChars = 0;
 	refused.clear();
 	refusedChars = 0;
-	queue = {last: Promise.resolve(), drawnMs: 0};
+	queue =
+	{
+		last: Promise.resolve(),
+		drawnMs: 0,
+	};
 	guard?._test.reset();
 }

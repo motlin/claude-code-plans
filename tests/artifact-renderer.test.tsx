@@ -12,49 +12,82 @@ import {buildClientToolCall, type ClientToolCall} from "../src/components/tool-r
 import {toolLabel} from "../src/lib/tool-labels";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false}}),
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+		},
+	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class NoopResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords(): ResizeObserverEntry[] {
+class NoopResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords(): ResizeObserverEntry[]
+	{
 		return [];
 	}
 }
 
 globalThis.ResizeObserver = NoopResizeObserver;
-Element.prototype.scrollIntoView = () => {};
+Element.prototype.scrollIntoView = () =>
+{
+};
 
 afterEach(cleanup);
 
-interface Sample {
+interface Sample
+{
 	input: Record<string, unknown>;
 	tool_result_text: string;
 	toolUseResult: unknown;
 }
 
 const SAMPLES = (
-	JSON.parse(readFileSync(resolve(__dirname, "fixtures/artifact-tool-samples.json"), "utf8")) as {
+	JSON.parse(readFileSync(resolve(__dirname, "fixtures/artifact-tool-samples.json"), "utf8")) as
+	{
 		samples: Sample[];
 	}
 ).samples;
 
-function sample(predicate: (s: Sample) => boolean): Sample {
+function sample(predicate: (s: Sample) => boolean): Sample
+{
 	const found = SAMPLES.find(predicate);
 	if (found === undefined) throw new Error("fixture sample missing");
 	return found;
 }
 
-const PUBLISH = sample((s) => (s.toolUseResult as {title?: string}).title === "Quarto Oracle");
+const PUBLISH = sample(
+	(s) =>
+		(
+			s.toolUseResult as
+			{
+				title?: string;
+			}
+		).title === "Quarto Oracle",
+);
 const TYPE_CREATE = sample((s) => s.input["action"] === "publish");
 const LIST = sample((s) => s.input["action"] === "list");
 const READ = sample((s) => s.input["action"] === "read");
@@ -73,21 +106,31 @@ function transcriptRecords(
 	resultText: string,
 	toolUseResult: unknown,
 	isError = false,
-): unknown[] {
+): unknown[]
+{
 	return [
 		{
 			type: "assistant",
 			uuid: "a1",
-			message: {
+			message:
+			{
 				role: "assistant",
-				content: [{type: "tool_use", id: "toolu_art", name: "Artifact", input}],
+				content: [
+					{
+						type: "tool_use",
+						id: "toolu_art",
+						name: "Artifact",
+						input,
+					},
+				],
 			},
 		},
 		{
 			type: "user",
 			uuid: "u1",
 			toolUseResult,
-			message: {
+			message:
+			{
 				role: "user",
 				content: [
 					{
@@ -108,12 +151,23 @@ function transcriptCall(
 	resultText: string,
 	toolUseResult: unknown,
 	isError = false,
-): ClientToolCall {
+): ClientToolCall
+{
 	const {toolResultMap} = processTranscript(transcriptRecords(input, resultText, toolUseResult, isError));
-	return buildClientToolCall({type: "tool_use", id: "toolu_art", name: "Artifact", input}, "a1", toolResultMap);
+	return buildClientToolCall(
+		{
+			type: "tool_use",
+			id: "toolu_art",
+			name: "Artifact",
+			input,
+		},
+		"a1",
+		toolResultMap,
+	);
 }
 
-function cardSummary(container: HTMLElement) {
+function cardSummary(container: HTMLElement)
+{
 	const card = container.querySelector('[role="button"]');
 	return {
 		wrapper: card?.parentElement?.className,
@@ -128,61 +182,113 @@ function cardSummary(container: HTMLElement) {
 	};
 }
 
-describe("Artifact tool labels", () => {
-	it("labels each action with the upstream verb and meta", () => {
-		const label = (input: Record<string, unknown>) => toolLabel({name: "Artifact", input});
+describe("Artifact tool labels", () =>
+{
+	it("labels each action with the upstream verb and meta", () =>
+	{
+		const label = (input: Record<string, unknown>) =>
+			toolLabel(
+				{
+					name: "Artifact",
+					input,
+				},
+			);
 
-		expect({
-			publish: label(PUBLISH.input),
-			explicitPublish: label({action: "publish", file_path: "/tmp/x/report.html"}),
-			typeCreate: label(TYPE_CREATE.input),
-			pin: label({action: "pin", url: PIN_URL}),
-			unpin: label({action: "unpin", url: PIN_URL}),
-			list: label(LIST.input),
-			read: label(READ.input),
-			readDb: label(READ_DB.input),
-			quickstart: label(QUICKSTART.input),
-		}).toStrictEqual({
-			publish: {
-				verb: "Published artifact",
-				meta: "quarto.html",
+		expect(
+			{
+				publish: label(PUBLISH.input),
+				explicitPublish: label(
+					{
+						action: "publish",
+						file_path: "/tmp/x/report.html",
+					},
+				),
+				typeCreate: label(TYPE_CREATE.input),
+				pin: label(
+					{
+						action: "pin",
+						url: PIN_URL,
+					},
+				),
+				unpin: label(
+					{
+						action: "unpin",
+						url: PIN_URL,
+					},
+				),
+				list: label(LIST.input),
+				read: label(READ.input),
+				readDb: label(READ_DB.input),
+				quickstart: label(QUICKSTART.input),
 			},
-			explicitPublish: {
-				verb: "Published artifact",
-				meta: "report.html",
+		).toStrictEqual(
+			{
+				publish:
+				{
+					verb: "Published artifact",
+					meta: "quarto.html",
+				},
+				explicitPublish:
+				{
+					verb: "Published artifact",
+					meta: "report.html",
+				},
+				typeCreate:
+				{
+					verb: "Published artifact",
+				},
+				pin:
+				{
+					verb: "Pinned artifact",
+				},
+				unpin:
+				{
+					verb: "Unpinned artifact",
+				},
+				list:
+				{
+					verb: "Listed artifacts",
+				},
+				read:
+				{
+					verb: "Used artifact tool",
+					meta: "read",
+				},
+				readDb:
+				{
+					verb: "Used artifact tool",
+					meta: "read_db",
+				},
+				quickstart:
+				{
+					verb: "Used artifact tool",
+					meta: "quickstart",
+				},
 			},
-			typeCreate: {verb: "Published artifact"},
-			pin: {verb: "Pinned artifact"},
-			unpin: {verb: "Unpinned artifact"},
-			list: {verb: "Listed artifacts"},
-			read: {verb: "Used artifact tool", meta: "read"},
-			readDb: {
-				verb: "Used artifact tool",
-				meta: "read_db",
-			},
-			quickstart: {
-				verb: "Used artifact tool",
-				meta: "quickstart",
-			},
-		});
+		);
 	});
 });
 
-describe("Artifact transcript decoration", () => {
-	it("attaches the parsed artifact with its toolUseResult title to a publish call", () => {
+describe("Artifact transcript decoration", () =>
+{
+	it("attaches the parsed artifact with its toolUseResult title to a publish call", () =>
+	{
 		const call = transcriptCall(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult);
 
-		expect(call.artifact).toStrictEqual({
-			url: QUARTO_URL,
-			kind: "uuid",
-			id: "29d89ae8-e33b-4f55-bbbd-874d5d316169",
-			path: "/Users/craig/projects/quarto/dist/quarto.html",
-			version: "1788236255-caec",
-			title: "Quarto Oracle",
-		});
+		expect(call.artifact).toStrictEqual(
+			{
+				url: QUARTO_URL,
+				kind: "uuid",
+				id: "29d89ae8-e33b-4f55-bbbd-874d5d316169",
+				path: "/Users/craig/projects/quarto/dist/quarto.html",
+				version: "1788236255-caec",
+				title: "Quarto Oracle",
+			},
+		);
 	});
 
-	it("attaches the returned artifacts to a list call", () => {
+	it("attaches the returned artifacts to a list call", () =>
+	{
 		const call = transcriptCall(LIST.input, LIST.tool_result_text, LIST.toolUseResult);
 
 		expect(call.artifactList?.slice(0, 2)).toStrictEqual([
@@ -201,54 +307,78 @@ describe("Artifact transcript decoration", () => {
 		]);
 	});
 
-	it("leaves a failed publish undecorated", () => {
+	it("leaves a failed publish undecorated", () =>
+	{
 		const call = transcriptCall(PUBLISH.input, "Error: upload failed", "Error: upload failed", true);
 
-		expect({artifact: call.artifact, artifactList: call.artifactList}).toStrictEqual({
-			artifact: undefined,
-			artifactList: undefined,
-		});
+		expect(
+			{
+				artifact: call.artifact,
+				artifactList: call.artifactList,
+			},
+		).toStrictEqual(
+			{
+				artifact: undefined,
+				artifactList: undefined,
+			},
+		);
 	});
 });
 
-describe("ArtifactRenderer", () => {
-	it("is the registered body for Artifact", () => {
+describe("ArtifactRenderer", () =>
+{
+	it("is the registered body for Artifact", () =>
+	{
 		expect(getToolRenderer("Artifact")).not.toBe(getToolRenderer("Frobnicate"));
 	});
 
-	it("renders a publish as an Open artifact card titled from the toolUseResult", () => {
+	it("renders a publish as an Open artifact card titled from the toolUseResult", () =>
+	{
 		const call = transcriptCall(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult);
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
 
-		expect(cardSummary(container)).toStrictEqual({
-			wrapper: "flex flex-col w-full my-[6px]",
-			tag: "A",
-			ariaLabel: "Open artifact Quarto Oracle",
-			href: QUARTO_URL,
-			target: "_blank",
-			rel: "noopener noreferrer",
-			className: CARD_CLASS,
-			label: "Quarto Oracle",
-			surface:
-				"card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover",
-		});
+		expect(cardSummary(container)).toStrictEqual(
+			{
+				wrapper: "flex flex-col w-full my-[6px]",
+				tag: "A",
+				ariaLabel: "Open artifact Quarto Oracle",
+				href: QUARTO_URL,
+				target: "_blank",
+				rel: "noopener noreferrer",
+				className: CARD_CLASS,
+				label: "Quarto Oracle",
+				surface:
+					"card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover",
+			},
+		);
 	});
 
-	it("falls back to the file basename when the result has no title", () => {
+	it("falls back to the file basename when the result has no title", () =>
+	{
 		const call = transcriptCall(
-			{file_path: "/Users/craig/projects/quarto/dist/quarto.html"},
+			{
+				file_path: "/Users/craig/projects/quarto/dist/quarto.html",
+			},
 			QUARTO_TEXT,
 			undefined,
 		);
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
 
-		expect({
-			ariaLabel: cardSummary(container).ariaLabel,
-			href: cardSummary(container).href,
-		}).toStrictEqual({ariaLabel: "Open artifact quarto.html", href: QUARTO_URL});
+		expect(
+			{
+				ariaLabel: cardSummary(container).ariaLabel,
+				href: cardSummary(container).href,
+			},
+		).toStrictEqual(
+			{
+				ariaLabel: "Open artifact quarto.html",
+				href: QUARTO_URL,
+			},
+		);
 	});
 
-	it("renders a type-created publish with its title and slug URL", () => {
+	it("renders a type-created publish with its title and slug URL", () =>
+	{
 		const call = transcriptCall(
 			TYPE_CREATE.input,
 			"Created a new Artifact at https://claude.ai/artifact/88kDDG41ePqvfVZNsq4HCF (version 1790103359-22eb) from the Artifact type https://claude.ai/artifact/Rp9naXUCj2xozpUkyQy19W",
@@ -256,19 +386,24 @@ describe("ArtifactRenderer", () => {
 		);
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
 
-		expect({
-			ariaLabel: cardSummary(container).ariaLabel,
-			href: cardSummary(container).href,
-			target: cardSummary(container).target,
-		}).toStrictEqual({
-			ariaLabel: "Open artifact Blueprint Bot renderer routing",
-			href: "https://claude.ai/artifact/88kDDG41ePqvfVZNsq4HCF",
-			target: "_blank",
-		});
+		expect(
+			{
+				ariaLabel: cardSummary(container).ariaLabel,
+				href: cardSummary(container).href,
+				target: cardSummary(container).target,
+			},
+		).toStrictEqual(
+			{
+				ariaLabel: "Open artifact Blueprint Bot renderer routing",
+				href: "https://claude.ai/artifact/88kDDG41ePqvfVZNsq4HCF",
+				target: "_blank",
+			},
+		);
 	});
 
 	// Upstream c33aef2b7 `L`: `Q$(…, "sm")` puts the typed mark's ink on the slot; untyped keeps the muted fallback.
-	it("leads a Docs-type publish with the 16px tint-blue document glyph and a plain publish with the muted fallback", () => {
+	it("leads a Docs-type publish with the 16px tint-blue document glyph and a plain publish with the muted fallback", () =>
+	{
 		const typed = render(
 			<ArtifactRenderer
 				toolCall={transcriptCall(
@@ -279,7 +414,8 @@ describe("ArtifactRenderer", () => {
 			/>,
 		);
 		const mark = typed.container.querySelector<HTMLElement>("[data-artifact-mark]");
-		const typedState = {
+		const typedState =
+		{
 			slot: mark?.parentElement?.className,
 			mark: [mark?.dataset["artifactMark"], mark?.className],
 			px: mark?.querySelector("svg")?.style.fontSize,
@@ -288,147 +424,247 @@ describe("ArtifactRenderer", () => {
 		const plain = render(
 			<ArtifactRenderer toolCall={transcriptCall(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult)} />,
 		);
-		expect({
-			typed: typedState,
-			plain: {
-				marks: plain.container.querySelectorAll("[data-artifact-mark]").length,
-				fallback: plain.container.querySelector('[role="button"] > svg')?.getAttribute("class"),
+		expect(
+			{
+				typed: typedState,
+				plain:
+				{
+					marks: plain.container.querySelectorAll("[data-artifact-mark]").length,
+					fallback: plain.container.querySelector('[role="button"] > svg')?.getAttribute("class"),
+				},
 			},
-		}).toStrictEqual({
-			typed: {
-				slot: "flex shrink-0 self-center text-tint-blue",
-				mark: ["document", "flex"],
-				px: "calc(1rem * var(--cds-rem-scale, 1))",
+		).toStrictEqual(
+			{
+				typed:
+				{
+					slot: "flex shrink-0 self-center text-tint-blue",
+					mark: ["document", "flex"],
+					px: "calc(1rem * var(--cds-rem-scale, 1))",
+				},
+				plain:
+				{
+					marks: 0,
+					fallback: "lucide lucide-app-window shrink-0 self-center text-muted-as-secondary",
+				},
 			},
-			plain: {
-				marks: 0,
-				fallback: "lucide lucide-app-window shrink-0 self-center text-muted-as-secondary",
-			},
-		});
+		);
 	});
 
-	it("renders an open with the artifact id when nothing else names it", () => {
-		const call = transcriptCall({action: "open", url: PIN_URL}, `Opened the Artifact at ${PIN_URL}`, undefined);
+	it("renders an open with the artifact id when nothing else names it", () =>
+	{
+		const call = transcriptCall(
+			{
+				action: "open",
+				url: PIN_URL,
+			},
+			`Opened the Artifact at ${PIN_URL}`,
+			undefined,
+		);
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
 
-		expect({
-			ariaLabel: cardSummary(container).ariaLabel,
-			href: cardSummary(container).href,
-		}).toStrictEqual({
-			ariaLabel: "Open artifact 17b8a2c1-4c41-46bf-b064-a272240be709",
-			href: PIN_URL,
-		});
+		expect(
+			{
+				ariaLabel: cardSummary(container).ariaLabel,
+				href: cardSummary(container).href,
+			},
+		).toStrictEqual(
+			{
+				ariaLabel: "Open artifact 17b8a2c1-4c41-46bf-b064-a272240be709",
+				href: PIN_URL,
+			},
+		);
 	});
 
-	it("offers a Preview source link when the publish came from a local HTML or Markdown file", () => {
+	it("offers a Preview source link when the publish came from a local HTML or Markdown file", () =>
+	{
 		const call = transcriptCall(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult);
 		render(<ArtifactRenderer toolCall={call} />);
 
-		const link = screen.getByRole("link", {name: "Preview source"});
-		expect({href: link.getAttribute("href"), target: link.getAttribute("target")}).toStrictEqual({
-			href: "/artifact/29d89ae8-e33b-4f55-bbbd-874d5d316169",
-			target: null,
-		});
+		const link = screen.getByRole(
+			"link",
+			{
+				name: "Preview source",
+			},
+		);
+		expect(
+			{
+				href: link.getAttribute("href"),
+				target: link.getAttribute("target"),
+			},
+		).toStrictEqual(
+			{
+				href: "/artifact/29d89ae8-e33b-4f55-bbbd-874d5d316169",
+				target: null,
+			},
+		);
 	});
 
-	it("offers no Preview source link without a previewable local file", () => {
-		const call = transcriptCall({action: "open", url: PIN_URL}, `Opened the Artifact at ${PIN_URL}`, undefined);
+	it("offers no Preview source link without a previewable local file", () =>
+	{
+		const call = transcriptCall(
+			{
+				action: "open",
+				url: PIN_URL,
+			},
+			`Opened the Artifact at ${PIN_URL}`,
+			undefined,
+		);
 		render(<ArtifactRenderer toolCall={call} />);
 
-		expect(screen.queryByRole("link", {name: "Preview source"})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"link",
+				{
+					name: "Preview source",
+				},
+			),
+		).toBeNull();
 	});
 
-	it("opens the artifact in a new tab on Space", () => {
+	it("opens the artifact in a new tab on Space", () =>
+	{
 		const open = vi.spyOn(window, "open").mockReturnValue(null);
 		const call = transcriptCall(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult);
 		render(<ArtifactRenderer toolCall={call} />);
 
-		fireEvent.keyDown(screen.getByRole("button", {name: "Open artifact Quarto Oracle"}), {
-			key: " ",
-		});
+		fireEvent.keyDown(
+			screen.getByRole(
+				"button",
+				{
+					name: "Open artifact Quarto Oracle",
+				},
+			),
+			{
+				key: " ",
+			},
+		);
 
 		expect(open.mock.calls).toStrictEqual([[QUARTO_URL, "_blank", "noopener,noreferrer"]]);
 		open.mockRestore();
 	});
 
-	it("renders a list as link rows to each returned artifact", () => {
+	it("renders a list as link rows to each returned artifact", () =>
+	{
 		const call = transcriptCall(LIST.input, LIST.tool_result_text, LIST.toolUseResult);
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
-		const links = [...container.querySelectorAll("a")].slice(0, 2).map((a) => ({
+		const links = [...container.querySelectorAll("a")].slice(0, 2).map((a) => (
+		{
 			text: a.textContent,
 			href: a.getAttribute("href"),
 			target: a.getAttribute("target"),
 			rel: a.getAttribute("rel"),
 		}));
 
-		expect({
-			count: container.querySelectorAll("a").length,
-			links,
-		}).toStrictEqual({
-			count: (LIST.toolUseResult as {artifacts: unknown[]}).artifacts.length,
-			links: [
-				{
-					text: "🪜Asap Ladder Rebalance",
-					href: "https://claude.ai/code/artifact/546d3910-4e9a-4730-9e91-62742a47c7c6",
-					target: "_blank",
-					rel: "noopener noreferrer",
-				},
-				{
-					text: "📌Asap Ladder Queue",
-					href: "https://claude.ai/code/artifact/17b8a2c1-4c41-46bf-b064-a272240be709",
-					target: "_blank",
-					rel: "noopener noreferrer",
-				},
-			],
-		});
+		expect(
+			{
+				count: container.querySelectorAll("a").length,
+				links,
+			},
+		).toStrictEqual(
+			{
+				count: (
+					LIST.toolUseResult as
+					{
+						artifacts: unknown[];
+					}
+				).artifacts.length,
+				links: [
+					{
+						text: "🪜Asap Ladder Rebalance",
+						href: "https://claude.ai/code/artifact/546d3910-4e9a-4730-9e91-62742a47c7c6",
+						target: "_blank",
+						rel: "noopener noreferrer",
+					},
+					{
+						text: "📌Asap Ladder Queue",
+						href: "https://claude.ai/code/artifact/17b8a2c1-4c41-46bf-b064-a272240be709",
+						target: "_blank",
+						rel: "noopener noreferrer",
+					},
+				],
+			},
+		);
 	});
 
 	it.each([
 		["read", READ],
 		["read_db", READ_DB],
 		["quickstart", QUICKSTART],
-	])("keeps the key/value body for %s", (_action, fixture) => {
+	])("keeps the key/value body for %s", (_action, fixture) =>
+	{
 		const call = transcriptCall(fixture.input, fixture.tool_result_text, fixture.toolUseResult);
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
 		const expected = render(<FallbackRenderer toolCall={call} />).container;
 
 		// React numbers each render's ids (a param URL's "opens in new tab" note) on, so compare without them.
 		const withoutIds = (html: string) => html.replaceAll(/_r_\w+_/g, "_r_");
-		expect({
-			cards: container.querySelectorAll('[role="button"]').length,
-			html: withoutIds(container.innerHTML),
-		}).toStrictEqual({cards: 0, html: withoutIds(expected.innerHTML)});
+		expect(
+			{
+				cards: container.querySelectorAll('[role="button"]').length,
+				html: withoutIds(container.innerHTML),
+			},
+		).toStrictEqual(
+			{
+				cards: 0,
+				html: withoutIds(expected.innerHTML),
+			},
+		);
 	});
 
-	it.each(["pin", "unpin"])("keeps the key/value body for %s", (action) => {
-		const call = transcriptCall({action, url: PIN_URL}, `${action}ned ${PIN_URL}`, undefined);
+	it.each(["pin", "unpin"])("keeps the key/value body for %s", (action) =>
+	{
+		const call = transcriptCall(
+			{
+				action,
+				url: PIN_URL,
+			},
+			`${action}ned ${PIN_URL}`,
+			undefined,
+		);
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
 		const expected = render(<FallbackRenderer toolCall={call} />).container;
 		// The linked URL's "(opens in new tab)" hint takes a per-render useId.
 		const html = (element: HTMLElement) => element.innerHTML.replaceAll(/_r_\w+_/g, "id");
 
-		expect({
-			cards: container.querySelectorAll('[role="button"]').length,
-			html: html(container),
-		}).toStrictEqual({cards: 0, html: html(expected)});
+		expect(
+			{
+				cards: container.querySelectorAll('[role="button"]').length,
+				html: html(container),
+			},
+		).toStrictEqual(
+			{
+				cards: 0,
+				html: html(expected),
+			},
+		);
 	});
 
-	it("shows a failed publish as the key/value error body", () => {
+	it("shows a failed publish as the key/value error body", () =>
+	{
 		const call = transcriptCall(PUBLISH.input, "Error: upload failed", "Error: upload failed", true);
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
 		const expected = render(<FallbackRenderer toolCall={call} />).container;
 
 		// React numbers each render's ids (a param URL's "opens in new tab" note) on, so compare without them.
 		const withoutIds = (html: string) => html.replaceAll(/_r_\w+_/g, "_r_");
-		expect({
-			cards: container.querySelectorAll('[role="button"]').length,
-			html: withoutIds(container.innerHTML),
-		}).toStrictEqual({cards: 0, html: withoutIds(expected.innerHTML)});
+		expect(
+			{
+				cards: container.querySelectorAll('[role="button"]').length,
+				html: withoutIds(container.innerHTML),
+			},
+		).toStrictEqual(
+			{
+				cards: 0,
+				html: withoutIds(expected.innerHTML),
+			},
+		);
 	});
 });
 
-describe("Artifact row in the session transcript", () => {
-	it("shows the publish row with its card always visible and no disclosure", async () => {
+describe("Artifact row in the session transcript", () =>
+{
+	it("shows the publish row with its card always visible and no disclosure", async () =>
+	{
 		const {lines, toolResultMap} = processTranscript(
 			transcriptRecords(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult),
 		);
@@ -441,13 +677,27 @@ describe("Artifact row in the session transcript", () => {
 				showTranscriptOnly
 			/>,
 		);
-		const card = await screen.findByRole("button", {name: "Open artifact Quarto Oracle"});
+		const card = await screen.findByRole(
+			"button",
+			{
+				name: "Open artifact Quarto Oracle",
+			},
+		);
 
-		expect({
-			href: card.getAttribute("href"),
-			expandables: container.querySelectorAll("[aria-expanded]").length,
-			verb: screen.getByText("Published artifact").tagName,
-			meta: screen.getByText("quarto.html").tagName,
-		}).toStrictEqual({href: QUARTO_URL, expandables: 0, verb: "SPAN", meta: "SPAN"});
+		expect(
+			{
+				href: card.getAttribute("href"),
+				expandables: container.querySelectorAll("[aria-expanded]").length,
+				verb: screen.getByText("Published artifact").tagName,
+				meta: screen.getByText("quarto.html").tagName,
+			},
+		).toStrictEqual(
+			{
+				href: QUARTO_URL,
+				expandables: 0,
+				verb: "SPAN",
+				meta: "SPAN",
+			},
+		);
 	});
 });

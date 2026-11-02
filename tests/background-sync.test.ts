@@ -1,15 +1,19 @@
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {runBackgroundSync} from "../src/hooks/use-session-viewed-state";
 
-describe("runBackgroundSync", () => {
-	afterEach(() => {
+describe("runBackgroundSync", () =>
+{
+	afterEach(() =>
+	{
 		vi.restoreAllMocks();
 	});
 
-	it("swallows a rejected background call instead of leaving an unhandled rejection", async () => {
+	it("swallows a rejected background call instead of leaving an unhandled rejection", async () =>
+	{
 		const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
 		const rejections: unknown[] = [];
-		const onUnhandled = (reason: unknown): void => {
+		const onUnhandled = (reason: unknown): void =>
+		{
 			rejections.push(reason);
 		};
 		process.on("unhandledRejection", onUnhandled);
@@ -18,29 +22,37 @@ describe("runBackgroundSync", () => {
 		runBackgroundSync("visibility-update", async () => Promise.reject(failure));
 
 		// Give the microtask queue and the rejection check a full turn to settle.
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 10);
 		});
 		process.off("unhandledRejection", onUnhandled);
 
-		expect({
-			rejections,
-			debugCalls: debugSpy.mock.calls.map((call) => [call[0], call[1]]),
-		}).toStrictEqual({
-			rejections: [],
-			debugCalls: [["[session-viewed-state] background visibility-update failed", failure]],
-		});
+		expect(
+			{
+				rejections,
+				debugCalls: debugSpy.mock.calls.map((call) => [call[0], call[1]]),
+			},
+		).toStrictEqual(
+			{
+				rejections: [],
+				debugCalls: [["[session-viewed-state] background visibility-update failed", failure]],
+			},
+		);
 	});
 
-	it("swallows a synchronous throw from the background call", async () => {
+	it("swallows a synchronous throw from the background call", async () =>
+	{
 		const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
 		const failure = new Error("boom");
 
-		runBackgroundSync("mark-reviewed", () => {
+		runBackgroundSync("mark-reviewed", () =>
+		{
 			throw failure;
 		});
 
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 10);
 		});
 		expect(debugSpy.mock.calls.map((call) => [call[0], call[1]])).toStrictEqual([
@@ -48,33 +60,45 @@ describe("runBackgroundSync", () => {
 		]);
 	});
 
-	it("logs failures at warning level and reports them to the error hook", async () => {
+	it("logs failures at warning level and reports them to the error hook", async () =>
+	{
 		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		const reportedErrors: unknown[] = [];
 		const failure = new Error("background sync failed");
 
-		runBackgroundSync("mark-reviewed", async () => Promise.reject(failure), {
-			level: "warn",
-			onError: (error) => reportedErrors.push(error),
-		});
-		await new Promise((resolve) => {
+		runBackgroundSync(
+			"mark-reviewed",
+			async () => Promise.reject(failure),
+			{
+				level: "warn",
+				onError: (error) => reportedErrors.push(error),
+			},
+		);
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 10);
 		});
 
-		expect({
-			reportedErrors,
-			warnCalls: warnSpy.mock.calls.map((call) => [call[0], call[1]]),
-		}).toStrictEqual({
-			reportedErrors: [failure],
-			warnCalls: [["[session-viewed-state] background mark-reviewed failed", failure]],
-		});
+		expect(
+			{
+				reportedErrors,
+				warnCalls: warnSpy.mock.calls.map((call) => [call[0], call[1]]),
+			},
+		).toStrictEqual(
+			{
+				reportedErrors: [failure],
+				warnCalls: [["[session-viewed-state] background mark-reviewed failed", failure]],
+			},
+		);
 	});
 
-	it("stays silent when the background call succeeds", async () => {
+	it("stays silent when the background call succeeds", async () =>
+	{
 		const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
 
 		runBackgroundSync("visibility-update", async () => Promise.resolve());
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 10);
 		});
 

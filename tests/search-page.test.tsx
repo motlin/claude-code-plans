@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -15,12 +16,18 @@ import type {UnifiedSearchItem} from "../src/lib/api/search";
 import {SearchView} from "../src/components/search-view";
 import {validateSearchParameters} from "../src/routes/search";
 
-function item(id: string, title: string, overrides: Partial<UnifiedSearchItem> = {}) {
+function item(id: string, title: string, overrides: Partial<UnifiedSearchItem> = {})
+{
 	return {
 		kind: "session",
 		id,
 		title,
-		titleMatches: [{start: 0, end: 4}],
+		titleMatches: [
+			{
+				start: 0,
+				end: 4,
+			},
+		],
 		projectId: "-users-dev-alpha",
 		projectName: "alpha",
 		mtime: new Date().toISOString(),
@@ -30,176 +37,375 @@ function item(id: string, title: string, overrides: Partial<UnifiedSearchItem> =
 
 const ITEMS: UnifiedSearchItem[] = [
 	item("sess-1", "auth one"),
-	item("sess-2", "auth two", {
-		snippet: {text: "the auth token", matches: [{start: 4, end: 8}]},
-	}),
-	item("plan-1", "auth plan", {kind: "plan", href: "/plans/auth-plan"}),
+	item(
+		"sess-2",
+		"auth two",
+		{
+			snippet:
+			{
+				text: "the auth token",
+				matches: [
+					{
+						start: 4,
+						end: 8,
+					},
+				],
+			},
+		},
+	),
+	item(
+		"plan-1",
+		"auth plan",
+		{
+			kind: "plan",
+			href: "/plans/auth-plan",
+		},
+	),
 ];
 
 let requests: string[] = [];
 
-async function fetchMock(url: string): Promise<unknown> {
+async function fetchMock(url: string): Promise<unknown>
+{
 	requests.push(url);
-	return Promise.resolve({ok: true, status: 200, json: async () => Promise.resolve({items: ITEMS})});
+	return Promise.resolve(
+		{
+			ok: true,
+			status: 200,
+			json: async () =>
+				Promise.resolve(
+					{
+						items: ITEMS,
+					},
+				),
+		},
+	);
 }
 
-async function renderPage(initialEntry: string) {
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<Outlet />
-			</QueryClientProvider>
-		),
-	});
-	const searchRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "search",
-		validateSearch: validateSearchParameters,
-		component: function SearchRouteComponent() {
-			const {q, type} = searchRoute.useSearch();
-			return <SearchView q={q} type={type} />;
+async function renderPage(initialEntry: string)
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
 		},
-	});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "session/$id",
-		component: () => <div>session page</div>,
-	});
-	const plansRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "plans/$slug",
-		component: () => <div>plan page</div>,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([searchRoute, sessionRoute, plansRoute]),
-		history: createMemoryHistory({initialEntries: [initialEntry]}),
-	});
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<Outlet />
+				</QueryClientProvider>
+			),
+		},
+	);
+	const searchRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "search",
+			validateSearch: validateSearchParameters,
+			component: function SearchRouteComponent()
+			{
+				const {q, type} = searchRoute.useSearch();
+				return <SearchView q={q} type={type} />;
+			},
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "session/$id",
+			component: () => <div>session page</div>,
+		},
+	);
+	const plansRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "plans/$slug",
+			component: () => <div>plan page</div>,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([searchRoute, sessionRoute, plansRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [initialEntry],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	return router;
 }
 
-function listbox(): HTMLElement {
-	return screen.getByRole("listbox", {name: "Search results"});
+function listbox(): HTMLElement
+{
+	return screen.getByRole(
+		"listbox",
+		{
+			name: "Search results",
+		},
+	);
 }
 
-function optionTitles(): string[] {
+function optionTitles(): string[]
+{
 	return within(listbox())
 		.getAllByRole("option")
 		.map((option) => option.querySelector("[data-search-label]")?.textContent ?? "");
 }
 
-function selectedTitle(): string | null {
+function selectedTitle(): string | null
+{
 	const selected = within(listbox())
 		.getAllByRole("option")
 		.find((option) => option.getAttribute("aria-selected") === "true");
 	return selected?.querySelector("[data-search-label]")?.textContent ?? null;
 }
 
-describe("/search page", () => {
-	beforeEach(() => {
+describe("/search page", () =>
+{
+	beforeEach(() =>
+	{
 		requests = [];
 		vi.stubGlobal("fetch", fetchMock);
-		Element.prototype.scrollIntoView = () => {};
+		Element.prototype.scrollIntoView = () =>
+		{
+		};
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
 
-	it("titles the page with upstream's 24/32 serif PageHeader", async () => {
+	it("titles the page with upstream's 24/32 serif PageHeader", async () =>
+	{
 		await renderPage("/search?q=auth");
-		expect((await screen.findByRole("heading", {level: 1, name: "Search"})).className).toBe(
-			"min-w-0 font-voice text-[24px]/[32px] font-medium text-primary",
+		expect(
+			(
+				await screen.findByRole(
+					"heading",
+					{
+						level: 1,
+						name: "Search",
+					},
+				)
+			).className,
+		).toBe("min-w-0 font-voice text-[24px]/[32px] font-medium text-primary");
+	});
+
+	it("renders unified search rows as highlight runs, not <mark>", async () =>
+	{
+		await renderPage("/search?q=auth");
+
+		await waitFor(() =>
+		{
+			expect(optionTitles()).toStrictEqual(["auth one", "auth two", "auth plan"]);
+		});
+		expect(
+			{
+				requests,
+				marks: document.querySelectorAll("mark").length,
+				runs: [...listbox().querySelectorAll(".font-semibold.text-primary")].map((run) => run.textContent),
+			},
+		).toStrictEqual(
+			{
+				requests: ["/api/search?query=auth&limit=100"],
+				marks: 0,
+				runs: ["auth", "auth", "auth", "auth"],
+			},
 		);
 	});
 
-	it("renders unified search rows as highlight runs, not <mark>", async () => {
-		await renderPage("/search?q=auth");
-
-		await waitFor(() => {
-			expect(optionTitles()).toStrictEqual(["auth one", "auth two", "auth plan"]);
-		});
-		expect({
-			requests,
-			marks: document.querySelectorAll("mark").length,
-			runs: [...listbox().querySelectorAll(".font-semibold.text-primary")].map((run) => run.textContent),
-		}).toStrictEqual({
-			requests: ["/api/search?query=auth&limit=100"],
-			marks: 0,
-			runs: ["auth", "auth", "auth", "auth"],
-		});
-	});
-
-	it("moves the selection with ↑/↓ and opens the selected row on Enter", async () => {
+	it("moves the selection with ↑/↓ and opens the selected row on Enter", async () =>
+	{
 		const router = await renderPage("/search?q=auth");
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(optionTitles()).toHaveLength(3);
 		});
-		const input = screen.getByRole("combobox", {name: "Search"});
+		const input = screen.getByRole(
+			"combobox",
+			{
+				name: "Search",
+			},
+		);
 
 		const trail = [selectedTitle()];
-		fireEvent.keyDown(input, {key: "ArrowDown"});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowDown",
+			},
+		);
 		trail.push(selectedTitle());
-		fireEvent.keyDown(input, {key: "ArrowDown"});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowDown",
+			},
+		);
 		trail.push(selectedTitle());
-		fireEvent.keyDown(input, {key: "ArrowDown"});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowDown",
+			},
+		);
 		trail.push(selectedTitle());
-		fireEvent.keyDown(input, {key: "ArrowUp"});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowUp",
+			},
+		);
 		trail.push(selectedTitle());
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 
 		await screen.findByText("session page");
-		expect({trail, pathname: router.state.location.pathname}).toStrictEqual({
-			trail: ["auth one", "auth two", "auth plan", "auth plan", "auth two"],
-			pathname: "/session/sess-2",
-		});
+		expect(
+			{
+				trail,
+				pathname: router.state.location.pathname,
+			},
+		).toStrictEqual(
+			{
+				trail: ["auth one", "auth two", "auth plan", "auth plan", "auth two"],
+				pathname: "/session/sess-2",
+			},
+		);
 	});
 
-	it("opens plans and memories by their href", async () => {
+	it("opens plans and memories by their href", async () =>
+	{
 		const router = await renderPage("/search?q=auth");
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(optionTitles()).toHaveLength(3);
 		});
-		const input = screen.getByRole("combobox", {name: "Search"});
+		const input = screen.getByRole(
+			"combobox",
+			{
+				name: "Search",
+			},
+		);
 
-		fireEvent.keyDown(input, {key: "ArrowDown"});
-		fireEvent.keyDown(input, {key: "ArrowDown"});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowDown",
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowDown",
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 
 		await screen.findByText("plan page");
 		expect(router.state.location.pathname).toBe("/plans/auth-plan");
 	});
 
-	it("writes the typed query and the chosen type tab back to the URL", async () => {
+	it("writes the typed query and the chosen type tab back to the URL", async () =>
+	{
 		const router = await renderPage("/search?q=auth");
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(optionTitles()).toHaveLength(3);
 		});
 
-		fireEvent.change(screen.getByRole("combobox", {name: "Search"}), {
-			target: {value: "token"},
-		});
-		await waitFor(() => {
-			expect({...router.state.location.search}).toStrictEqual({q: "token", type: "all"});
+		fireEvent.change(
+			screen.getByRole(
+				"combobox",
+				{
+					name: "Search",
+				},
+			),
+			{
+				target:
+				{
+					value: "token",
+				},
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(
+				{
+					...router.state.location.search,
+				},
+			).toStrictEqual(
+				{
+					q: "token",
+					type: "all",
+				},
+			);
 		});
 
-		fireEvent.click(screen.getByRole("tab", {name: "Plans"}));
-		await waitFor(() => {
-			expect({...router.state.location.search}).toStrictEqual({q: "token", type: "plans"});
+		fireEvent.click(
+			screen.getByRole(
+				"tab",
+				{
+					name: "Plans",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(
+				{
+					...router.state.location.search,
+				},
+			).toStrictEqual(
+				{
+					q: "token",
+					type: "plans",
+				},
+			);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(requests.at(-1)).toBe("/api/search?query=token&type=plans&limit=100");
 		});
-		expect(screen.getByRole("tab", {name: "Plans"}).getAttribute("aria-selected")).toBe("true");
+		expect(
+			screen
+				.getByRole(
+					"tab",
+					{
+						name: "Plans",
+					},
+				)
+				.getAttribute("aria-selected"),
+		).toBe("true");
 	});
 
-	it("hides the ↵ hint on coarse pointers", async () => {
+	it("hides the ↵ hint on coarse pointers", async () =>
+	{
 		await renderPage("/search?q=auth");
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(optionTitles()).toHaveLength(3);
 		});
 		const hints = within(listbox())
@@ -211,28 +417,89 @@ describe("/search page", () => {
 	});
 });
 
-describe("validateSearchParameters", () => {
-	it("round-trips q and type, defaults the type, and maps the legacy files mode", () => {
-		expect({
-			roundTrip: validateSearchParameters(validateSearchParameters({q: "auth", type: "plans"})),
-			defaults: validateSearchParameters({}),
-			nonStringQuery: validateSearchParameters({q: 100}),
-			legacyFiles: validateSearchParameters({q: "needle", mode: "files"}),
-			legacyTitles: validateSearchParameters({q: "auth", mode: "titles"}),
-			legacyConversations: validateSearchParameters({q: "auth", mode: "conversations"}),
-		}).toStrictEqual({
-			roundTrip: {q: "auth", type: "plans"},
-			defaults: {q: "", type: "all"},
-			nonStringQuery: {q: "", type: "all"},
-			legacyFiles: {q: "needle", type: "files"},
-			legacyTitles: {q: "auth", type: "all"},
-			legacyConversations: {q: "auth", type: "all"},
-		});
+describe("validateSearchParameters", () =>
+{
+	it("round-trips q and type, defaults the type, and maps the legacy files mode", () =>
+	{
+		expect(
+			{
+				roundTrip: validateSearchParameters(
+					validateSearchParameters(
+						{
+							q: "auth",
+							type: "plans",
+						},
+					),
+				),
+				defaults: validateSearchParameters({}),
+				nonStringQuery: validateSearchParameters(
+					{
+						q: 100,
+					},
+				),
+				legacyFiles: validateSearchParameters(
+					{
+						q: "needle",
+						mode: "files",
+					},
+				),
+				legacyTitles: validateSearchParameters(
+					{
+						q: "auth",
+						mode: "titles",
+					},
+				),
+				legacyConversations: validateSearchParameters(
+					{
+						q: "auth",
+						mode: "conversations",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				roundTrip:
+				{
+					q: "auth",
+					type: "plans",
+				},
+				defaults:
+				{
+					q: "",
+					type: "all",
+				},
+				nonStringQuery:
+				{
+					q: "",
+					type: "all",
+				},
+				legacyFiles:
+				{
+					q: "needle",
+					type: "files",
+				},
+				legacyTitles:
+				{
+					q: "auth",
+					type: "all",
+				},
+				legacyConversations:
+				{
+					q: "auth",
+					type: "all",
+				},
+			},
+		);
 	});
 
-	it("rejects an unknown type", () => {
-		expect(() => validateSearchParameters({type: "bogus"})).toThrow(
-			'Unknown search type "bogus": expected all, sessions, plans, memories, files',
-		);
+	it("rejects an unknown type", () =>
+	{
+		expect(() =>
+			validateSearchParameters(
+				{
+					type: "bogus",
+				},
+			),
+		).toThrow('Unknown search type "bogus": expected all, sessions, plans, memories, files');
 	});
 });

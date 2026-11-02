@@ -1,17 +1,25 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {
+import
+{
 	buildChangedFileTree,
 	type ChangedFileInput,
 	classifyChangedFile,
 } from "../src/components/changes/changed-file-tree";
 
-function file(path: string, additions = 1, deletions = 0): ChangedFileInput {
-	return {path, additions, deletions};
+function file(path: string, additions = 1, deletions = 0): ChangedFileInput
+{
+	return {
+		path,
+		additions,
+		deletions,
+	};
 }
 
-describe("classifyChangedFile", () => {
-	it("classifies test, build, generated, and source paths", () => {
+describe("classifyChangedFile", () =>
+{
+	it("classifies test, build, generated, and source paths", () =>
+	{
 		const paths = [
 			"src/lib/session-diff.ts",
 			"tests/session-diff.test.ts",
@@ -70,8 +78,10 @@ describe("classifyChangedFile", () => {
 	});
 });
 
-describe("buildChangedFileTree", () => {
-	it("compacts single-child directory chains and puts directories before files", () => {
+describe("buildChangedFileTree", () =>
+{
+	it("compacts single-child directory chains and puts directories before files", () =>
+	{
 		const sections = buildChangedFileTree(
 			[
 				file(".github/workflows/just-format.yml", 0, 21),
@@ -80,7 +90,10 @@ describe("buildChangedFileTree", () => {
 				file("src/lib/deep/nested/a.ts", 5, 0),
 				file("src/lib/b.ts", 1, 1),
 			],
-			{groupByFolder: true, groupByKind: false},
+			{
+				groupByFolder: true,
+				groupByKind: false,
+			},
 		);
 
 		expect(sections).toEqual([
@@ -161,10 +174,14 @@ describe("buildChangedFileTree", () => {
 		]);
 	});
 
-	it("lists files flat in diff order with their directory when not grouped by folder", () => {
+	it("lists files flat in diff order with their directory when not grouped by folder", () =>
+	{
 		const sections = buildChangedFileTree(
 			[file("src/b.ts", 1, 0), file("a.ts", 0, 1), file("src/lib/c.ts", 2, 2)],
-			{groupByFolder: false, groupByKind: false},
+			{
+				groupByFolder: false,
+				groupByKind: false,
+			},
 		);
 
 		expect(sections).toEqual([
@@ -203,10 +220,14 @@ describe("buildChangedFileTree", () => {
 		]);
 	});
 
-	it("separates test, build, and generated files into trailing sections in that order", () => {
+	it("separates test, build, and generated files into trailing sections in that order", () =>
+	{
 		const sections = buildChangedFileTree(
 			[file("src/routeTree.gen.ts"), file("package.json"), file("tests/a.test.ts"), file("src/a.ts")],
-			{groupByFolder: false, groupByKind: true},
+			{
+				groupByFolder: false,
+				groupByKind: true,
+			},
 		);
 
 		expect(sections.map((section) => [section.kind, section.nodes.map((node) => node.path)])).toEqual([
@@ -217,14 +238,38 @@ describe("buildChangedFileTree", () => {
 		]);
 	});
 
-	it("omits empty kind sections and returns nothing for no files", () => {
-		expect({
-			testsOnly: buildChangedFileTree([file("tests/a.test.ts")], {
-				groupByFolder: true,
-				groupByKind: true,
-			}).map((section) => section.kind),
-			none: buildChangedFileTree([], {groupByFolder: true, groupByKind: true}),
-			noneUngrouped: buildChangedFileTree([], {groupByFolder: true, groupByKind: false}),
-		}).toEqual({testsOnly: ["test"], none: [], noneUngrouped: []});
+	it("omits empty kind sections and returns nothing for no files", () =>
+	{
+		expect(
+			{
+				testsOnly: buildChangedFileTree(
+					[file("tests/a.test.ts")],
+					{
+						groupByFolder: true,
+						groupByKind: true,
+					},
+				).map((section) => section.kind),
+				none: buildChangedFileTree(
+					[],
+					{
+						groupByFolder: true,
+						groupByKind: true,
+					},
+				),
+				noneUngrouped: buildChangedFileTree(
+					[],
+					{
+						groupByFolder: true,
+						groupByKind: false,
+					},
+				),
+			},
+		).toEqual(
+			{
+				testsOnly: ["test"],
+				none: [],
+				noneUngrouped: [],
+			},
+		);
 	});
 });

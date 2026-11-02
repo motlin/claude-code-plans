@@ -6,7 +6,8 @@ import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
 import {useShortcut} from "../hooks/use-shortcut";
 import {platformBindings} from "../lib/shortcuts/match";
 import {bindingToKeys, SHORTCUT_IDS, SHORTCUTS, type ShortcutDefinition} from "../lib/shortcuts/registry";
-import {
+import
+{
 	chordFromEvent,
 	chordLabel,
 	shortcutMatcher,
@@ -15,7 +16,8 @@ import {
 } from "../lib/shortcuts/search";
 import {Kbd, Shortcut} from "./ui/shortcut";
 import {shortcutSections} from "./keyboard-shortcut-sections";
-import {
+import
+{
 	getKeyboardShortcutsOpen,
 	getServerKeyboardShortcutsOpen,
 	setKeyboardShortcutsOpen,
@@ -28,7 +30,8 @@ import {DialogPopup} from "./ui/dialog-popup";
 import {Icon} from "./ui/icon";
 import {TextInput} from "./ui/text-input";
 
-function rowKeys(definition: ShortcutDefinition, isMac: boolean, isWindows: boolean): string[] {
+function rowKeys(definition: ShortcutDefinition, isMac: boolean, isWindows: boolean): string[]
+{
 	const keys = platformBindings(definition, isMac, isWindows).map(bindingToKeys);
 	// Upstream hides a row whose keys resolve empty on this platform.
 	if (keys.length === 0) return [];
@@ -47,7 +50,8 @@ export function ShortcutRow({
 	definition: ShortcutDefinition;
 	isMac: boolean;
 	isWindows: boolean;
-}) {
+})
+{
 	const keys = rowKeys(definition, isMac, isWindows);
 	if (keys.length === 0) return null;
 	return (
@@ -73,12 +77,21 @@ export function ShortcutRow({
 }
 
 /** Upstream's sr-only non-breaking space, so screen readers read "label, keys" apart. */
-function NbspGap() {
+function NbspGap()
+{
 	return <span className="sr-only select-none">{"\u00a0"}</span>;
 }
 
-const TEXT_FIND: ShortcutFind = {by: "text", text: ""};
-const PRESS_FIND: ShortcutFind = {by: "press", pressed: null};
+const TEXT_FIND: ShortcutFind =
+{
+	by: "text",
+	text: "",
+};
+const PRESS_FIND: ShortcutFind =
+{
+	by: "press",
+	pressed: null,
+};
 
 /**
  * Upstream's Search shortcuts toolbar (`Vt`): a text filter plus a Record keys toggle that turns the
@@ -95,20 +108,25 @@ function ShortcutsSearch({
 	onFind: (next: ShortcutFind) => void;
 	inputRef: RefObject<HTMLInputElement | null>;
 	isMac: boolean;
-}) {
+})
+{
 	const [recording, setRecording] = useState(false);
 	const hintId = useId();
 	const chord = find.by === "press" ? find.pressed?.all[0] : undefined;
 	const chordText = chord === undefined ? "" : chordLabel(chord, isMac);
 	const value = find.by === "text" ? find.text : chordText;
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const input = inputRef.current;
 		if (input === null) return undefined;
-		const onKey = (event: KeyboardEvent) => {
-			if (!recording) {
+		const onKey = (event: KeyboardEvent) =>
+		{
+			if (!recording)
+			{
 				// The first Escape clears a query; Base UI's dismiss only sees it once the field is empty.
-				if (event.type === "keydown" && event.key === "Escape" && input.value !== "") {
+				if (event.type === "keydown" && event.key === "Escape" && input.value !== "")
+				{
 					event.preventDefault();
 					event.stopPropagation();
 					onFind(TEXT_FIND);
@@ -120,16 +138,24 @@ function ShortcutsSearch({
 			event.preventDefault();
 			event.stopImmediatePropagation();
 			if (event.type !== "keydown" || event.repeat) return;
-			if (event.key === "Escape" && !modified && !event.shiftKey) {
+			if (event.key === "Escape" && !modified && !event.shiftKey)
+			{
 				setRecording(false);
 				return;
 			}
 			const pressed = chordFromEvent(event, isMac);
-			if (pressed !== null) onFind({by: "press", pressed});
+			if (pressed !== null)
+				onFind(
+					{
+						by: "press",
+						pressed,
+					},
+				);
 		};
 		input.addEventListener("keydown", onKey, true);
 		input.addEventListener("keyup", onKey, true);
-		return () => {
+		return () =>
+		{
 			input.removeEventListener("keydown", onKey, true);
 			input.removeEventListener("keyup", onKey, true);
 		};
@@ -153,18 +179,22 @@ function ShortcutsSearch({
 					aria-describedby={recording ? hintId : undefined}
 					placeholder={recording ? "Press a shortcut" : "Search shortcuts"}
 					value={value}
-					onChange={(event) => {
+					onChange={(event) =>
+					{
 						setRecording(false);
-						onFind({
-							by: "text",
-							text: stripChordPrefix(
-								event.target.value,
-								chordText,
-								event.target.selectionStart ?? undefined,
-							),
-						});
+						onFind(
+							{
+								by: "text",
+								text: stripChordPrefix(
+									event.target.value,
+									chordText,
+									event.target.selectionStart ?? undefined,
+								),
+							},
+						);
 					}}
-					onBlur={() => {
+					onBlur={() =>
+					{
 						setRecording(false);
 					}}
 					className="flex-1"
@@ -177,7 +207,8 @@ function ShortcutsSearch({
 						) : undefined
 					}
 					clearable
-					onClear={() => {
+					onClear={() =>
+					{
 						onFind(recording ? PRESS_FIND : TEXT_FIND);
 					}}
 				/>
@@ -187,10 +218,12 @@ function ShortcutsSearch({
 				aria-label="Record keys"
 				aria-pressed={recording}
 				className={`${GHOST_ICON_BUTTON} -me-1 size-7 rounded-r6 aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent`}
-				onMouseDown={(event) => {
+				onMouseDown={(event) =>
+				{
 					event.preventDefault();
 				}}
-				onClick={() => {
+				onClick={() =>
+				{
 					if (!recording) onFind(PRESS_FIND);
 					setRecording(!recording);
 					inputRef.current?.focus();
@@ -203,7 +236,8 @@ function ShortcutsSearch({
 }
 
 /** The upstream ⌘/ Keyboard shortcuts modal, listing only shortcuts wired locally. */
-export function KeyboardShortcutsDialog() {
+export function KeyboardShortcutsDialog()
+{
 	const isOpen = useSyncExternalStore(
 		subscribeKeyboardShortcutsOpen,
 		getKeyboardShortcutsOpen,
@@ -216,15 +250,19 @@ export function KeyboardShortcutsDialog() {
 
 	useShortcut(
 		"shortcuts_modal",
-		(event) => {
+		(event) =>
+		{
 			event.stopImmediatePropagation();
 			event.stopPropagation();
 			setKeyboardShortcutsOpen(true);
 		},
-		{allowInModal: true},
+		{
+			allowInModal: true,
+		},
 	);
 
-	const onOpenChange = useCallback((open: boolean) => {
+	const onOpenChange = useCallback((open: boolean) =>
+	{
 		setKeyboardShortcutsOpen(open);
 		if (!open) setFind(TEXT_FIND);
 	}, []);
@@ -237,12 +275,17 @@ export function KeyboardShortcutsDialog() {
 			rowKeys(SHORTCUTS[id], isMac, isWindows).length > 0,
 	);
 	const matcher = shortcutMatcher(find, isMac);
-	const visible = (id: (typeof SHORTCUT_IDS)[number]) => {
+	const visible = (id: (typeof SHORTCUT_IDS)[number]) =>
+	{
 		const definition = SHORTCUTS[id];
 		const typedOnly = platformBindings(definition, isMac, isWindows)[0]?.code === undefined;
 		return matcher === null || matcher(definition.description, rowKeys(definition, isMac, isWindows), typedOnly);
 	};
-	const filtered = sections.map((section) => ({...section, visibleIds: section.ids.filter(visible)}));
+	const filtered = sections.map((section) => (
+	{
+		...section,
+		visibleIds: section.ids.filter(visible),
+	}));
 	const count = filtered.reduce((total, section) => total + section.visibleIds.length, 0);
 	const chord = find.by === "press" ? find.pressed?.all[0] : undefined;
 

@@ -13,22 +13,26 @@ const ANDROID_UA =
 const MAC_UA =
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
-interface StubWatcher {
+interface StubWatcher
+{
 	onclose: (() => void) | null;
 	destroyed: boolean;
 }
 
 const watchers: StubWatcher[] = [];
 
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await Promise.all([preloadPopoverSheet(), preloadMenuSheet()]);
 });
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	watchers.length = 0;
 	vi.stubGlobal(
 		"matchMedia",
-		vi.fn((query: string) => ({
+		vi.fn((query: string) => (
+		{
 			matches: query === "(pointer: coarse)" || query === "(pointer: coarse) and (max-width: 639.98px)",
 			media: query,
 			onchange: null,
@@ -41,30 +45,36 @@ beforeEach(() => {
 	);
 	vi.stubGlobal(
 		"CloseWatcher",
-		class implements StubWatcher {
+		class implements StubWatcher
+		{
 			onclose: (() => void) | null = null;
 			destroyed = false;
-			constructor() {
+			constructor()
+			{
 				watchers.push(this);
 			}
-			destroy() {
+			destroy()
+			{
 				this.destroyed = true;
 			}
 		},
 	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
 
-function stubUserAgent(userAgent: string) {
+function stubUserAgent(userAgent: string)
+{
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
 }
 
-function openPopoverSheet() {
+function openPopoverSheet()
+{
 	render(
 		<PopoverRoot>
 			<PopoverTrigger>Usage</PopoverTrigger>
@@ -73,25 +83,43 @@ function openPopoverSheet() {
 			</PopoverContent>
 		</PopoverRoot>,
 	);
-	fireEvent.click(screen.getByRole("button", {name: "Usage"}));
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "Usage",
+			},
+		),
+	);
 }
 
-describe("Android back closes a bottom sheet, as upstream's CloseWatcher (Sp)", () => {
-	it("closes the popover sheet when its CloseWatcher fires", async () => {
+describe("Android back closes a bottom sheet, as upstream's CloseWatcher (Sp)", () =>
+{
+	it("closes the popover sheet when its CloseWatcher fires", async () =>
+	{
 		stubUserAgent(ANDROID_UA);
 		openPopoverSheet();
 		const opened = watchers.length;
 		watchers[0]?.onclose?.();
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
-		expect({opened, destroyed: watchers.map((watcher) => watcher.destroyed)}).toStrictEqual({
-			opened: 1,
-			destroyed: [true],
-		});
+		expect(
+			{
+				opened,
+				destroyed: watchers.map((watcher) => watcher.destroyed),
+			},
+		).toStrictEqual(
+			{
+				opened: 1,
+				destroyed: [true],
+			},
+		);
 	});
 
-	it("closes the menu sheet when its CloseWatcher fires", async () => {
+	it("closes the menu sheet when its CloseWatcher fires", async () =>
+	{
 		stubUserAgent(ANDROID_UA);
 		render(
 			<Menu>
@@ -101,34 +129,58 @@ describe("Android back closes a bottom sheet, as upstream's CloseWatcher (Sp)", 
 				</MenuContent>
 			</Menu>,
 		);
-		fireEvent.click(screen.getByRole("button", {name: "More options"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "More options",
+				},
+			),
+		);
 		await screen.findByRole("menu");
 		const opened = watchers.length;
 		watchers[0]?.onclose?.();
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("menu")).toBeNull();
 		});
 		expect(opened).toBe(1);
 	});
 
-	it("swallows the pointerup that follows the back gesture once", () => {
+	it("swallows the pointerup that follows the back gesture once", () =>
+	{
 		stubUserAgent(ANDROID_UA);
 		openPopoverSheet();
 		watchers[0]?.onclose?.();
 		const first = fireEvent.pointerUp(document.body);
 		const second = fireEvent.pointerUp(document.body);
-		expect({first, second}).toStrictEqual({first: false, second: true});
+		expect(
+			{
+				first,
+				second,
+			},
+		).toStrictEqual(
+			{
+				first: false,
+				second: true,
+			},
+		);
 	});
 
-	it("creates no CloseWatcher off Android", () => {
+	it("creates no CloseWatcher off Android", () =>
+	{
 		stubUserAgent(MAC_UA);
 		openPopoverSheet();
-		expect({
-			sheet: screen.getByRole("dialog").getAttribute("data-presentation"),
-			watchers: watchers.length,
-		}).toStrictEqual({
-			sheet: "sheet",
-			watchers: 0,
-		});
+		expect(
+			{
+				sheet: screen.getByRole("dialog").getAttribute("data-presentation"),
+				watchers: watchers.length,
+			},
+		).toStrictEqual(
+			{
+				sheet: "sheet",
+				watchers: 0,
+			},
+		);
 	});
 });

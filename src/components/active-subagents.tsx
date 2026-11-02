@@ -2,7 +2,8 @@ import {Link} from "@tanstack/react-router";
 import {Bot} from "lucide-react";
 import {toSubagentSessionId, type ActiveSubagent} from "../lib/subagents";
 
-function ActiveSubagentContent({agent}: {agent: ActiveSubagent}) {
+function ActiveSubagentContent({agent}: {agent: ActiveSubagent})
+{
 	return (
 		<>
 			<Bot className="h-3.5 w-3.5 shrink-0 text-success-000" />
@@ -16,7 +17,8 @@ function ActiveSubagentContent({agent}: {agent: ActiveSubagent}) {
 	);
 }
 
-export function ActiveSubagents({agents}: {agents: ActiveSubagent[]}) {
+export function ActiveSubagents({agents}: {agents: ActiveSubagent[]})
+{
 	if (agents.length === 0) return null;
 
 	return (
@@ -34,7 +36,10 @@ export function ActiveSubagents({agents}: {agents: ActiveSubagent[]}) {
 						{agent.agentId ? (
 							<Link
 								to="/session/$id"
-								params={{id: toSubagentSessionId(agent.agentId)}}
+								params={
+								{
+									id: toSubagentSessionId(agent.agentId),
+								}}
 								className="flex min-w-0 items-center gap-2 rounded px-1.5 py-1 text-xs no-underline hover:bg-success-900/60"
 							>
 								<ActiveSubagentContent agent={agent} />

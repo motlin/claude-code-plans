@@ -19,7 +19,8 @@ const OPEN_IN: ReadonlySet<SessionMenuCapability> = new Set<SessionMenuCapabilit
 	"openClaudeAi",
 ]);
 
-function session(overrides: Partial<SessionMenuSession> = {}): SessionMenuSession {
+function session(overrides: Partial<SessionMenuSession> = {}): SessionMenuSession
+{
 	return {
 		title: "Fix the flaky test",
 		pinned: false,
@@ -34,59 +35,142 @@ function session(overrides: Partial<SessionMenuSession> = {}): SessionMenuSessio
 	};
 }
 
-function openInSubmenu(overrides: Partial<SessionMenuSession>) {
-	const [first] = getSessionMenuItems(session(overrides), OPEN_IN, {surface: "row"});
+function openInSubmenu(overrides: Partial<SessionMenuSession>)
+{
+	const [first] = getSessionMenuItems(
+		session(overrides),
+		OPEN_IN,
+		{
+			surface: "row",
+		},
+	);
 	return first?.kind === "item" && first.id === "open-in" ? first.submenu : undefined;
 }
 
-describe("Open in ▸ submenu", () => {
-	it("numbers every local target when a pane is live and a bridge session exists", () => {
-		expect(openInSubmenu({hasLiveTerminal: true, bridgeSessionId: "cse_alice_100"})).toEqual([
-			{kind: "item", id: "open-vscode", label: "VS Code", accelerator: "1"},
-			{kind: "item", id: "open-terminal", label: "Terminal", accelerator: "2"},
-			{kind: "item", id: "open-live-terminal", label: "Live terminal", accelerator: "3"},
-			{kind: "item", id: "open-claude-ai", label: "claude.ai", accelerator: "4"},
-			{kind: "item", id: "open-finder", label: "Finder", accelerator: "5"},
-		]);
-	});
-
-	it("omits the live terminal and claude.ai without a pane or bridge session", () => {
-		expect(openInSubmenu({})).toEqual([
-			{kind: "item", id: "open-vscode", label: "VS Code", accelerator: "1"},
-			{kind: "item", id: "open-terminal", label: "Terminal", accelerator: "2"},
-			{kind: "item", id: "open-finder", label: "Finder", accelerator: "3"},
-		]);
-	});
-
-	it("offers only claude.ai when the session has no known directory", () => {
-		expect(openInSubmenu({cwd: null, bridgeSessionId: "cse_alice_100"})).toEqual([
-			{kind: "item", id: "open-claude-ai", label: "claude.ai", accelerator: "1"},
-		]);
-	});
-
-	it("has no Open in submenu without a directory, pane or bridge session", () => {
+describe("Open in ▸ submenu", () =>
+{
+	it("numbers every local target when a pane is live and a bridge session exists", () =>
+	{
 		expect(
-			getSessionMenuItems(session({cwd: null}), OPEN_IN, {surface: "row"}).map((entry) =>
-				entry.kind === "item" ? entry.id : "|",
+			openInSubmenu(
+				{
+					hasLiveTerminal: true,
+					bridgeSessionId: "cse_alice_100",
+				},
 			),
+		).toEqual([
+			{
+				kind: "item",
+				id: "open-vscode",
+				label: "VS Code",
+				accelerator: "1",
+			},
+			{
+				kind: "item",
+				id: "open-terminal",
+				label: "Terminal",
+				accelerator: "2",
+			},
+			{
+				kind: "item",
+				id: "open-live-terminal",
+				label: "Live terminal",
+				accelerator: "3",
+			},
+			{
+				kind: "item",
+				id: "open-claude-ai",
+				label: "claude.ai",
+				accelerator: "4",
+			},
+			{
+				kind: "item",
+				id: "open-finder",
+				label: "Finder",
+				accelerator: "5",
+			},
+		]);
+	});
+
+	it("omits the live terminal and claude.ai without a pane or bridge session", () =>
+	{
+		expect(openInSubmenu({})).toEqual([
+			{
+				kind: "item",
+				id: "open-vscode",
+				label: "VS Code",
+				accelerator: "1",
+			},
+			{
+				kind: "item",
+				id: "open-terminal",
+				label: "Terminal",
+				accelerator: "2",
+			},
+			{
+				kind: "item",
+				id: "open-finder",
+				label: "Finder",
+				accelerator: "3",
+			},
+		]);
+	});
+
+	it("offers only claude.ai when the session has no known directory", () =>
+	{
+		expect(
+			openInSubmenu(
+				{
+					cwd: null,
+					bridgeSessionId: "cse_alice_100",
+				},
+			),
+		).toEqual([
+			{
+				kind: "item",
+				id: "open-claude-ai",
+				label: "claude.ai",
+				accelerator: "1",
+			},
+		]);
+	});
+
+	it("has no Open in submenu without a directory, pane or bridge session", () =>
+	{
+		expect(
+			getSessionMenuItems(
+				session(
+					{
+						cwd: null,
+					},
+				),
+				OPEN_IN,
+				{
+					surface: "row",
+				},
+			).map((entry) => (entry.kind === "item" ? entry.id : "|")),
 		).toEqual([]);
 	});
 });
 
-describe("Open in targets", () => {
-	it("builds the resume command from the session directory", () => {
+describe("Open in targets", () =>
+{
+	it("builds the resume command from the session directory", () =>
+	{
 		expect(sessionResumeCommand(SESSION_ID, "/Users/alice/projects/alpha")).toBe(
 			`cd '/Users/alice/projects/alpha' && claude -r ${SESSION_ID}`,
 		);
 	});
 
-	it("shell-escapes single quotes in the directory", () => {
+	it("shell-escapes single quotes in the directory", () =>
+	{
 		expect(sessionResumeCommand(SESSION_ID, "/Users/alice/it's here")).toBe(
 			`cd '/Users/alice/it'\\''s here' && claude -r ${SESSION_ID}`,
 		);
 	});
 
-	it("builds a vscode://file URL with each path segment encoded", () => {
+	it("builds a vscode://file URL with each path segment encoded", () =>
+	{
 		expect(vscodeFolderUrl("/Users/alice/my project/#1?")).toBe("vscode://file/Users/alice/my%20project/%231%3F");
 	});
 
@@ -95,23 +179,34 @@ describe("Open in targets", () => {
 		["session_alice_100", "https://claude.ai/code/session_alice_100"],
 		["alice_cse_100", "https://claude.ai/code/alice_cse_100"],
 		["cse_alice/100?", "https://claude.ai/code/session_alice%2F100%3F"],
-	])("links bridge session %s using its canonical claude.ai URL", (bridgeSessionId, expectedUrl) => {
+	])("links bridge session %s using its canonical claude.ai URL", (bridgeSessionId, expectedUrl) =>
+	{
 		expect(claudeAiSessionUrl(bridgeSessionId)).toBe(expectedUrl);
 	});
 });
 
-describe("readBridgeSession", () => {
+describe("readBridgeSession", () =>
+{
 	let dir: string;
 
-	beforeEach(async () => {
+	beforeEach(async () =>
+	{
 		dir = await mkdtemp(join(tmpdir(), "ccp-bridge-"));
 	});
 
-	afterEach(async () => {
-		await rm(dir, {recursive: true, force: true});
+	afterEach(async () =>
+	{
+		await rm(
+			dir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	function bridgeRecord(bridgeSessionId: string, lastSequenceNum: number) {
+	function bridgeRecord(bridgeSessionId: string, lastSequenceNum: number)
+	{
 		return {
 			type: "bridge-session",
 			sessionId: SESSION_ID,
@@ -122,54 +217,99 @@ describe("readBridgeSession", () => {
 		};
 	}
 
-	async function transcript(records: unknown[]): Promise<string> {
+	async function transcript(records: unknown[]): Promise<string>
+	{
 		const filePath = join(dir, `${SESSION_ID}.jsonl`);
 		await writeFile(filePath, records.map((record) => JSON.stringify(record)).join("\n") + "\n");
 		return filePath;
 	}
 
-	it("returns the latest bridge-session record's id", async () => {
+	it("returns the latest bridge-session record's id", async () =>
+	{
 		const filePath = await transcript([
-			{type: "user", message: {role: "user", content: "mentions bridge-session in text"}},
+			{
+				type: "user",
+				message:
+				{
+					role: "user",
+					content: "mentions bridge-session in text",
+				},
+			},
 			bridgeRecord("cse_alice_100", 1),
 			bridgeRecord("cse_alice_200", 2),
 		]);
 
-		expect(await readBridgeSession(filePath)).toStrictEqual({
-			bridgeSessionId: "cse_alice_200",
-			remoteHistory: null,
-		});
+		expect(await readBridgeSession(filePath)).toStrictEqual(
+			{
+				bridgeSessionId: "cse_alice_200",
+				remoteHistory: null,
+			},
+		);
 	});
 
-	it("returns null without a bridge-session record", async () => {
-		const filePath = await transcript([{type: "custom-title", customTitle: "Daily"}]);
+	it("returns null without a bridge-session record", async () =>
+	{
+		const filePath = await transcript([
+			{
+				type: "custom-title",
+				customTitle: "Daily",
+			},
+		]);
 
-		expect(await readBridgeSession(filePath)).toStrictEqual({bridgeSessionId: null, remoteHistory: null});
+		expect(await readBridgeSession(filePath)).toStrictEqual(
+			{
+				bridgeSessionId: null,
+				remoteHistory: null,
+			},
+		);
 	});
 
-	it("reads bridge-session records carrying keys newer than the schema", async () => {
-		const filePath = await transcript([{...bridgeRecord("cse_alice_100", 1), extra: true}]);
+	it("reads bridge-session records carrying keys newer than the schema", async () =>
+	{
+		const filePath = await transcript([
+			{
+				...bridgeRecord("cse_alice_100", 1),
+				extra: true,
+			},
+		]);
 
-		expect(await readBridgeSession(filePath)).toStrictEqual({
-			bridgeSessionId: "cse_alice_100",
-			remoteHistory: null,
-		});
+		expect(await readBridgeSession(filePath)).toStrictEqual(
+			{
+				bridgeSessionId: "cse_alice_100",
+				remoteHistory: null,
+			},
+		);
 	});
 
-	it("ignores bridge-session records that fail the schema", async () => {
-		const filePath = await transcript([{...bridgeRecord("cse_alice_100", 1), lastSequenceNum: "one"}]);
+	it("ignores bridge-session records that fail the schema", async () =>
+	{
+		const filePath = await transcript([
+			{
+				...bridgeRecord("cse_alice_100", 1),
+				lastSequenceNum: "one",
+			},
+		]);
 
-		expect(await readBridgeSession(filePath)).toStrictEqual({bridgeSessionId: null, remoteHistory: null});
+		expect(await readBridgeSession(filePath)).toStrictEqual(
+			{
+				bridgeSessionId: null,
+				remoteHistory: null,
+			},
+		);
 	});
 
-	it("returns null for a missing file", async () => {
-		expect(await readBridgeSession(join(dir, "missing.jsonl"))).toStrictEqual({
-			bridgeSessionId: null,
-			remoteHistory: null,
-		});
+	it("returns null for a missing file", async () =>
+	{
+		expect(await readBridgeSession(join(dir, "missing.jsonl"))).toStrictEqual(
+			{
+				bridgeSessionId: null,
+				remoteHistory: null,
+			},
+		);
 	});
 
-	it("reports unsynced remote history from the latest bridge record's noHistoryBackfill, with the latest suppression cause", async () => {
+	it("reports unsynced remote history from the latest bridge record's noHistoryBackfill, with the latest suppression cause", async () =>
+	{
 		const suppressedResult = await readBridgeSession(
 			await transcript([
 				{
@@ -184,12 +324,18 @@ describe("readBridgeSession", () => {
 					cause: "migration",
 					ts: "2026-10-23T01:10:36.337Z",
 				},
-				{...bridgeRecord("cse_alice_100", 0), noHistoryBackfill: true},
+				{
+					...bridgeRecord("cse_alice_100", 0),
+					noHistoryBackfill: true,
+				},
 			]),
 		);
 		const backfilledResult = await readBridgeSession(
 			await transcript([
-				{...bridgeRecord("cse_alice_100", 0), noHistoryBackfill: true},
+				{
+					...bridgeRecord("cse_alice_100", 0),
+					noHistoryBackfill: true,
+				},
 				bridgeRecord("cse_alice_200", 1),
 			]),
 		);
@@ -201,99 +347,236 @@ describe("readBridgeSession", () => {
 					cause: "future_cause",
 					ts: "2026-10-23T01:10:36.337Z",
 				},
-				{...bridgeRecord("cse_alice_100", 0), noHistoryBackfill: true},
+				{
+					...bridgeRecord("cse_alice_100", 0),
+					noHistoryBackfill: true,
+				},
 			]),
 		);
 		const noCause = await readBridgeSession(
-			await transcript([{...bridgeRecord("cse_alice_100", 0), noHistoryBackfill: true}]),
+			await transcript([
+				{
+					...bridgeRecord("cse_alice_100", 0),
+					noHistoryBackfill: true,
+				},
+			]),
 		);
-		expect({suppressedResult, backfilledResult, unknownCause, noCause}).toStrictEqual({
-			suppressedResult: {bridgeSessionId: "cse_alice_100", remoteHistory: {cause: "migration"}},
-			backfilledResult: {bridgeSessionId: "cse_alice_200", remoteHistory: null},
-			unknownCause: {bridgeSessionId: "cse_alice_100", remoteHistory: {cause: "future_cause"}},
-			noCause: {bridgeSessionId: "cse_alice_100", remoteHistory: {cause: null}},
-		});
+		expect(
+			{
+				suppressedResult,
+				backfilledResult,
+				unknownCause,
+				noCause,
+			},
+		).toStrictEqual(
+			{
+				suppressedResult:
+				{
+					bridgeSessionId: "cse_alice_100",
+					remoteHistory:
+					{
+						cause: "migration",
+					},
+				},
+				backfilledResult:
+				{
+					bridgeSessionId: "cse_alice_200",
+					remoteHistory: null,
+				},
+				unknownCause:
+				{
+					bridgeSessionId: "cse_alice_100",
+					remoteHistory:
+					{
+						cause: "future_cause",
+					},
+				},
+				noCause:
+				{
+					bridgeSessionId: "cse_alice_100",
+					remoteHistory:
+					{
+						cause: null,
+					},
+				},
+			},
+		);
 	});
 });
 
-describe("POST /api/open-in-finder", () => {
+describe("POST /api/open-in-finder", () =>
+{
 	const CWD = "/Users/alice/projects/alpha";
 
-	function request(body: unknown, headers?: HeadersInit): Request {
+	function request(body: unknown, headers?: HeadersInit): Request
+	{
 		const requestHeaders = new Headers(headers);
 		requestHeaders.set("Content-Type", "application/json");
-		return new Request("http://127.0.0.1:7526/api/open-in-finder", {
-			method: "POST",
-			headers: requestHeaders,
-			body: JSON.stringify(body),
-		});
+		return new Request(
+			"http://127.0.0.1:7526/api/open-in-finder",
+			{
+				method: "POST",
+				headers: requestHeaders,
+				body: JSON.stringify(body),
+			},
+		);
 	}
 
-	function fakes(cwds: Record<string, string>, directories: readonly string[] = [CWD]) {
+	function fakes(cwds: Record<string, string>, directories: readonly string[] = [CWD])
+	{
 		const opened: string[] = [];
-		const dependencies: OpenInFinderDependencies = {
+		const dependencies: OpenInFinderDependencies =
+		{
 			rejectRequest: rejectCrossSite,
 			resolveSessionCwd: async (sessionId) => Promise.resolve(cwds[sessionId] ?? null),
 			isDirectory: async (path) => Promise.resolve(directories.includes(path)),
-			openPath: async (path) => {
+			openPath: async (path) =>
+			{
 				opened.push(path);
 				return Promise.resolve();
 			},
 		};
-		return {dependencies, opened};
+		return {
+			dependencies,
+			opened,
+		};
 	}
 
-	async function describeResponse(response: Response) {
-		return {status: response.status, body: await response.json()};
+	async function describeResponse(response: Response)
+	{
+		return {
+			status: response.status,
+			body: await response.json(),
+		};
 	}
 
-	it("opens the session's directory", async () => {
-		const {dependencies, opened} = fakes({[SESSION_ID]: CWD});
+	it("opens the session's directory", async () =>
+	{
+		const {dependencies, opened} = fakes(
+			{
+				[SESSION_ID]: CWD,
+			},
+		);
 
-		const response = await handleOpenInFinder(request({sessionId: SESSION_ID}), dependencies);
+		const response = await handleOpenInFinder(
+			request(
+				{
+					sessionId: SESSION_ID,
+				},
+			),
+			dependencies,
+		);
 
-		expect(await describeResponse(response)).toEqual({status: 200, body: {ok: true}});
+		expect(await describeResponse(response)).toEqual(
+			{
+				status: 200,
+				body:
+				{
+					ok: true,
+				},
+			},
+		);
 		expect(opened).toEqual([CWD]);
 	});
 
-	it("refuses a caller-supplied path", async () => {
-		const {dependencies, opened} = fakes({[SESSION_ID]: CWD});
+	it("refuses a caller-supplied path", async () =>
+	{
+		const {dependencies, opened} = fakes(
+			{
+				[SESSION_ID]: CWD,
+			},
+		);
 
-		const response = await handleOpenInFinder(request({sessionId: SESSION_ID, path: "/etc"}), dependencies);
+		const response = await handleOpenInFinder(
+			request(
+				{
+					sessionId: SESSION_ID,
+					path: "/etc",
+				},
+			),
+			dependencies,
+		);
 
 		expect(response.status).toBe(400);
 		expect(opened).toEqual([]);
 	});
 
-	it("refuses an unknown session", async () => {
-		const {dependencies, opened} = fakes({[SESSION_ID]: CWD});
-
-		const response = await handleOpenInFinder(request({sessionId: "../../etc"}), dependencies);
-
-		expect(await describeResponse(response)).toEqual({
-			status: 404,
-			body: {error: "Unknown session"},
-		});
-		expect(opened).toEqual([]);
-	});
-
-	it("refuses a session directory that no longer exists", async () => {
-		const {dependencies, opened} = fakes({[SESSION_ID]: CWD}, []);
-
-		const response = await handleOpenInFinder(request({sessionId: SESSION_ID}), dependencies);
-
-		expect(await describeResponse(response)).toEqual({
-			status: 404,
-			body: {error: "Session directory not found"},
-		});
-		expect(opened).toEqual([]);
-	});
-
-	it("refuses cross-site requests", async () => {
-		const {dependencies, opened} = fakes({[SESSION_ID]: CWD});
+	it("refuses an unknown session", async () =>
+	{
+		const {dependencies, opened} = fakes(
+			{
+				[SESSION_ID]: CWD,
+			},
+		);
 
 		const response = await handleOpenInFinder(
-			request({sessionId: SESSION_ID}, {Origin: "https://evil.example"}),
+			request(
+				{
+					sessionId: "../../etc",
+				},
+			),
+			dependencies,
+		);
+
+		expect(await describeResponse(response)).toEqual(
+			{
+				status: 404,
+				body:
+				{
+					error: "Unknown session",
+				},
+			},
+		);
+		expect(opened).toEqual([]);
+	});
+
+	it("refuses a session directory that no longer exists", async () =>
+	{
+		const {dependencies, opened} = fakes(
+			{
+				[SESSION_ID]: CWD,
+			},
+			[],
+		);
+
+		const response = await handleOpenInFinder(
+			request(
+				{
+					sessionId: SESSION_ID,
+				},
+			),
+			dependencies,
+		);
+
+		expect(await describeResponse(response)).toEqual(
+			{
+				status: 404,
+				body:
+				{
+					error: "Session directory not found",
+				},
+			},
+		);
+		expect(opened).toEqual([]);
+	});
+
+	it("refuses cross-site requests", async () =>
+	{
+		const {dependencies, opened} = fakes(
+			{
+				[SESSION_ID]: CWD,
+			},
+		);
+
+		const response = await handleOpenInFinder(
+			request(
+				{
+					sessionId: SESSION_ID,
+				},
+				{
+					Origin: "https://evil.example",
+				},
+			),
 			dependencies,
 		);
 

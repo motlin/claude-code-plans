@@ -7,49 +7,64 @@ import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
 const useHighlightedLines = vi.hoisted(() => vi.fn<(code: string, language: string | null) => null>(() => null));
 
-vi.mock("../src/hooks/use-shiki", () => ({useHighlightedLines}));
+vi.mock("../src/hooks/use-shiki", () => (
+{
+	useHighlightedLines,
+}));
 
-const readToolCall: ClientToolCall = {
+const readToolCall: ClientToolCall =
+{
 	id: "tool-call-read-theme",
 	name: "Read",
-	input: {file_path: "/test/alice.ts"},
+	input:
+	{
+		file_path: "/test/alice.ts",
+	},
 	param: "/test/alice.ts",
 	result: "1→const alice = 100;",
 	sourceUuid: "source-read-theme",
 };
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	useHighlightedLines.mockClear();
 });
 
 afterEach(cleanup);
 
-describe("Read body follows the active theme", () => {
-	it("paints the code slab from theme tokens instead of hardcoded GitHub-dark colors", () => {
+describe("Read body follows the active theme", () =>
+{
+	it("paints the code slab from theme tokens instead of hardcoded GitHub-dark colors", () =>
+	{
 		const {container} = render(<ReadRenderer toolCall={readToolCall} />);
 
 		const pre = container.querySelector("pre");
 		const gutterRow = container.querySelector<HTMLElement>("[data-gutter]");
 		const contentRow = container.querySelector<HTMLElement>("[data-content]");
 
-		expect({
-			preClassName: pre?.className,
-			preBackgroundColor: pre?.style.backgroundColor,
-			preColor: pre?.style.color,
-			gutterClassName: gutterRow?.className,
-			gutterColor: gutterRow?.style.color,
-			contentColor: contentRow?.style.color,
-		}).toStrictEqual({
-			preClassName: "m-0 max-h-[400px] overflow-y-auto font-mono text-code text-primary",
-			preBackgroundColor: "",
-			preColor: "",
-			gutterClassName: "min-h-[var(--upstream-leading-code)] select-none text-right text-secondary",
-			gutterColor: "",
-			contentColor: "",
-		});
+		expect(
+			{
+				preClassName: pre?.className,
+				preBackgroundColor: pre?.style.backgroundColor,
+				preColor: pre?.style.color,
+				gutterClassName: gutterRow?.className,
+				gutterColor: gutterRow?.style.color,
+				contentColor: contentRow?.style.color,
+			},
+		).toStrictEqual(
+			{
+				preClassName: "m-0 max-h-[400px] overflow-y-auto font-mono text-code text-primary",
+				preBackgroundColor: "",
+				preColor: "",
+				gutterClassName: "min-h-[var(--upstream-leading-code)] select-none text-right text-secondary",
+				gutterColor: "",
+				contentColor: "",
+			},
+		);
 	});
 
-	it("highlights tokens with the resolved theme rather than forcing dark", () => {
+	it("highlights tokens with the resolved theme rather than forcing dark", () =>
+	{
 		render(<ReadRenderer toolCall={readToolCall} />);
 
 		expect(useHighlightedLines.mock.calls).toStrictEqual([["const alice = 100;", "typescript"]]);

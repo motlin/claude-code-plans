@@ -1,3 +1,4 @@
-export function slashCommandOptionId(menuId: string, index: number): string {
+export function slashCommandOptionId(menuId: string, index: number): string
+{
 	return `${menuId}-option-${index}`;
 }

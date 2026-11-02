@@ -7,34 +7,49 @@ import {currentPerfCounters} from "./server-scope";
  */
 export function trackedCreateReadStream(
 	path: string,
-	options: {encoding?: BufferEncoding; start?: number},
-): ReadStream {
+	options:
+	{
+		encoding?: BufferEncoding;
+		start?: number;
+	},
+): ReadStream
+{
 	const stream = createReadStream(path, options);
 	const counters = currentPerfCounters();
 	if (counters === undefined) return stream;
 
 	const fromStart = (options.start ?? 0) === 0;
 	const push = stream.push.bind(stream);
-	Object.defineProperty(stream, "push", {
-		configurable: true,
-		writable: true,
-		value(chunk: unknown, encoding?: BufferEncoding): boolean {
-			if (chunk === null) {
-				if (fromStart) counters.jsonl.fullScans += 1;
-			} else if (Buffer.isBuffer(chunk)) {
-				counters.jsonl.bytesRead += chunk.length;
-			}
-			return push(chunk, encoding);
+	Object.defineProperty(
+		stream,
+		"push",
+		{
+			configurable: true,
+			writable: true,
+			value(chunk: unknown, encoding?: BufferEncoding): boolean
+			{
+				if (chunk === null)
+				{
+					if (fromStart) counters.jsonl.fullScans += 1;
+				}
+				else if (Buffer.isBuffer(chunk))
+				{
+					counters.jsonl.bytesRead += chunk.length;
+				}
+				return push(chunk, encoding);
+			},
 		},
-	});
+	);
 	return stream;
 }
 
 /** `readFileSync(path, "utf-8")` that reports the whole file as bytes read and one full scan. */
-export function trackedReadFileSync(path: string): string {
+export function trackedReadFileSync(path: string): string
+{
 	const buffer = readFileSync(path);
 	const counters = currentPerfCounters();
-	if (counters !== undefined) {
+	if (counters !== undefined)
+	{
 		counters.jsonl.bytesRead += buffer.length;
 		counters.jsonl.fullScans += 1;
 	}
@@ -45,16 +60,19 @@ export function trackedReadFileSync(path: string): string {
  * Bytes `[start, end)` of an open file, reported as bytes read; it counts one full scan when the range covers the
  * whole file (`start` 0 and `end` at `fileSize`).
  */
-export function trackedReadRange(fd: number, start: number, end: number, fileSize: number): Buffer {
+export function trackedReadRange(fd: number, start: number, end: number, fileSize: number): Buffer
+{
 	const buffer = Buffer.alloc(Math.max(0, end - start));
 	let filled = 0;
-	while (filled < buffer.length) {
+	while (filled < buffer.length)
+	{
 		const read = readSync(fd, buffer, filled, buffer.length - filled, start + filled);
 		if (read === 0) break;
 		filled += read;
 	}
 	const counters = currentPerfCounters();
-	if (counters !== undefined) {
+	if (counters !== undefined)
+	{
 		counters.jsonl.bytesRead += filled;
 		if (start === 0 && end === fileSize) counters.jsonl.fullScans += 1;
 	}

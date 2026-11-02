@@ -4,10 +4,16 @@ import {BADGE_CLASS} from "./attachment-tile-classes";
 
 const QUOTE_MAX_GRAPHEMES = 240;
 
-const graphemes = new Intl.Segmenter(undefined, {granularity: "grapheme"});
+const graphemes = new Intl.Segmenter(
+	undefined,
+	{
+		granularity: "grapheme",
+	},
+);
 
 /** Upstream's quote text: whitespace collapsed to single spaces, capped at 240 graphemes with an ellipsis. */
-function quoteText(text: string): string {
+function quoteText(text: string): string
+{
 	const collapsed = text.replace(/\s+/g, " ").trim();
 	const parts = Array.from(graphemes.segment(collapsed), ({segment}) => segment);
 	return parts.length <= QUOTE_MAX_GRAPHEMES ? collapsed : `${parts.slice(0, QUOTE_MAX_GRAPHEMES - 1).join("")}…`;
@@ -17,7 +23,8 @@ function quoteText(text: string): string {
  * Upstream's quote tile body: a rail beside the clamped text, over its badge (five lines above a badge,
  * six without one). `badge` replaces the plain label badge, as the sent tiles' hinted badge does.
  */
-export function ExcerptQuote({text, label, badge}: {text: string; label?: string; badge?: ReactNode}) {
+export function ExcerptQuote({text, label, badge}: {text: string; label?: string; badge?: ReactNode})
+{
 	return (
 		<div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-xs">
 			<div className="flex min-h-0 min-w-0 gap-xs">

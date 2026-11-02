@@ -1,5 +1,6 @@
 import {SessionTileGeometryReadyContext} from "./session-tile-geometry-context";
-import React, {
+import React,
+{
 	Suspense,
 	createContext,
 	useCallback,
@@ -45,7 +46,8 @@ import {AgentMessageRow} from "./agent-message-row";
 import {AgentNameContext, type AgentNameResolver} from "./agent-name-context";
 import {parseAgentMessage, type AgentMessage} from "../lib/agent-message";
 import {backgroundNoticeSummary} from "../lib/background-notice-summary";
-import {
+import
+{
 	noticeKind,
 	parseTaskNotification,
 	stoppedAgentDescription,
@@ -114,7 +116,8 @@ import {estimatedRowHeight} from "../lib/transcript-row-estimate";
 import {renameChapter, useSessionChapters, type UserChapter} from "../lib/chapter-store";
 import {toolCardStage, toolGroupStage} from "../lib/tool-card-stage";
 import {AttachmentBanner, Banner} from "./attachment-banner";
-import {
+import
+{
 	stripCommandTags,
 	cleanPromptText,
 	parseCommandBlock,
@@ -150,21 +153,24 @@ import {stickyPromptText} from "../lib/sticky-prompt";
 import {StickyPromptOverlay, type StickyPromptCandidate} from "./sticky-prompt-overlay";
 import {TranscriptOverlayHostContext} from "./transcript-overlay-host-context";
 import {TranscriptTailContext} from "./transcript-tail-context";
-import {
+import
+{
 	readTranscriptMeasurements,
 	discardTranscriptMeasurements,
 	rememberTranscriptMeasurements,
 } from "../lib/transcript-measurements";
 import {ApiRequestDisclosure} from "./api-request-disclosure";
 import {registerScrollSetter} from "../lib/scroll-setter";
-import {
+import
+{
 	jumpToMessage,
 	TRANSCRIPT_JUMP_REQUEST_EVENT,
 	TRANSCRIPT_RELEASE_END_FOLLOW_EVENT,
 } from "../lib/jump-to-message";
 import {asRecord, isKeyOf} from "../lib/narrow";
 import {toolMarkActivity} from "../lib/working-mark-activity";
-import {
+import
+{
 	CODE_RESERVES_ACTIONS_GAP,
 	RESERVES_ACTIONS_GAP_ATTR,
 	USER_TRAILING_AFTER_FRAME_CLASS,
@@ -176,11 +182,13 @@ import {WorkingMark} from "./working-mark";
 import {StepScreenshotStrip, StepScreenshots} from "./step-screenshot-strip";
 import {Tooltip} from "./ui/tooltip";
 
-function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string {
+function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string
+{
 	return "sessionId" in line && line.sessionId !== undefined ? line.sessionId : fallbackSessionId;
 }
 
-export interface SessionChatProps {
+export interface SessionChatProps
+{
 	sessionId: string;
 	lines: SessionLine[];
 	toolResultMap: Map<string, ToolResultInfo>;
@@ -244,26 +252,32 @@ const NO_REWOUND_UUIDS: ReadonlySet<string> = new Set();
 const NO_WORKFLOW_RUNS: readonly SessionWorkflowRun[] = [];
 
 /** Workflow runs are rare, so the card and its progress model load only when a transcript draws one. */
-const WorkflowCard = React.lazy(async () => {
+const WorkflowCard = React.lazy(async () =>
+{
 	const {WorkflowCard: Card} = await import("./tool-renderers/workflow-card");
-	return {default: Card};
+	return {
+		default: Card,
+	};
 });
 
 /** Each workflow run keyed by its latest launch's tool_use id; earlier launches of a resumed run have settled. */
 const WorkflowRunsContext = createContext<ReadonlyMap<string, SessionWorkflowRun>>(new Map());
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
-interface SendNowHandlers {
+interface SendNowHandlers
+{
 	sendNow: ((entryId: string) => Promise<void>) | undefined;
 	/** The waiting row whose Send now already interrupted and waits for the CLI to take its prompt. */
 	pendingEntryId: string | null;
 	focusComposer: (() => void) | undefined;
 }
-const SendNowContext = createContext<SendNowHandlers>({
-	sendNow: undefined,
-	pendingEntryId: null,
-	focusComposer: undefined,
-});
+const SendNowContext = createContext<SendNowHandlers>(
+	{
+		sendNow: undefined,
+		pendingEntryId: null,
+		focusComposer: undefined,
+	},
+);
 
 /** How long a CLI-queue Send now stays busy waiting for the CLI to take its prompt. */
 const SEND_NOW_PICKUP_TIMEOUT_MS = 3000;
@@ -278,37 +292,48 @@ const SEND_NOW_PICKUP_TIMEOUT_MS = 3000;
 function useQueuedSendNow(
 	interrupt: (() => Promise<void> | void) | undefined,
 	waitingIds: readonly string[],
-): Pick<SendNowHandlers, "sendNow" | "pendingEntryId"> {
+): Pick<SendNowHandlers, "sendNow" | "pendingEntryId">
+{
 	const [pendingEntryId, setPendingEntryId] = useState<string | null>(null);
 	const pendingRef = useRef<string | null>(null);
-	if (pendingEntryId !== null && !waitingIds.includes(pendingEntryId)) {
+	if (pendingEntryId !== null && !waitingIds.includes(pendingEntryId))
+	{
 		pendingRef.current = null;
 		setPendingEntryId(null);
 	}
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (pendingEntryId === null) return undefined;
-		const timer = setTimeout(() => {
+		const timer = setTimeout(() =>
+		{
 			pendingRef.current = null;
 			setPendingEntryId(null);
 		}, SEND_NOW_PICKUP_TIMEOUT_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 		};
 	}, [pendingEntryId]);
-	const sendNow = useMemo(() => {
+	const sendNow = useMemo(() =>
+	{
 		if (interrupt === undefined) return undefined;
-		return async (entryId: string) => {
+		return async (entryId: string) =>
+		{
 			if (pendingRef.current !== null) return;
 			pendingRef.current = entryId;
 			setPendingEntryId(entryId);
 			await interrupt();
 		};
 	}, [interrupt]);
-	return {sendNow, pendingEntryId};
+	return {
+		sendNow,
+		pendingEntryId,
+	};
 }
 
 /** A prompt waiting in the CLI's queue, whose head row's Send now interrupts the running turn. */
-function QueuedWaitingTurn({entryId, text, head}: {entryId: string; text: string; head: boolean}) {
+function QueuedWaitingTurn({entryId, text, head}: {entryId: string; text: string; head: boolean})
+{
 	const {sendNow, pendingEntryId, focusComposer} = useContext(SendNowContext);
 	return (
 		<WaitingUserTurn
@@ -323,7 +348,8 @@ function QueuedWaitingTurn({entryId, text, head}: {entryId: string; text: string
 	);
 }
 
-interface ExpansionToggle {
+interface ExpansionToggle
+{
 	mode: TranscriptMode;
 	expanded: boolean;
 }
@@ -335,7 +361,8 @@ interface ExpansionToggle {
 const ExpansionStoreContext = createContext<Map<string, ExpansionToggle> | null>(null);
 
 /** Reads a context this module always provides above its consumers, failing loudly when rendered outside it. */
-function useProvidedContext<T>(context: Context<T | null>, name: string): T {
+function useProvidedContext<T>(context: Context<T | null>, name: string): T
+{
 	const value = useContext(context);
 	if (value === null) throw new Error(`${name} must be rendered inside its provider`);
 	return value;
@@ -345,13 +372,19 @@ function useProvidedContext<T>(context: Context<T | null>, name: string): T {
  * A disclosure that starts expanded in Verbose and collapsed otherwise, like upstream. A user
  * toggle holds until the transcript mode changes, which resets it to the new mode's default.
  */
-function useModeExpansion(key: string): [boolean, () => void] {
+function useModeExpansion(key: string): [boolean, () => void]
+{
 	const mode = useContext(TranscriptModeContext);
 	const store = useContext(ExpansionStoreContext);
 	const [toggle, setToggle] = useState<ExpansionToggle | null>(() => store?.get(key) ?? null);
 	const expanded = toggle?.mode === mode ? toggle.expanded : mode === "verbose";
-	const flip = useCallback(() => {
-		const next = {mode, expanded: !expanded};
+	const flip = useCallback(() =>
+	{
+		const next =
+		{
+			mode,
+			expanded: !expanded,
+		};
 		store?.set(key, next);
 		setToggle(next);
 	}, [mode, expanded, store, key]);
@@ -369,20 +402,25 @@ const END_FOLLOW_THRESHOLD_PIXELS = 32;
  * visibility-hidden wrap (upstream rt) or in the inert off-screen pen, or under an older `[hidden]` wrapper. Its
  * rectangles are not row measurements.
  */
-function inHiddenTile(el: Element): boolean {
+function inHiddenTile(el: Element): boolean
+{
 	return el.closest("[hidden], [data-tile-slot][inert], [data-tile-host-pen]") !== null;
 }
 
-function isDocumentScrollContainer(scroller: Element): boolean {
+function isDocumentScrollContainer(scroller: Element): boolean
+{
 	return scroller === document.documentElement || scroller === document.scrollingElement;
 }
 
-function scrollMetrics(scroller: Element): {
+function scrollMetrics(scroller: Element):
+{
 	scrollTop: number;
 	scrollHeight: number;
 	clientHeight: number;
-} {
-	if (isDocumentScrollContainer(scroller)) {
+}
+{
+	if (isDocumentScrollContainer(scroller))
+	{
 		return {
 			scrollTop: window.scrollY,
 			scrollHeight: document.documentElement.scrollHeight,
@@ -392,24 +430,35 @@ function scrollMetrics(scroller: Element): {
 	return scroller;
 }
 
-function messageRef(line: MessageSessionLine, fallbackSessionId: string): TranscriptMessageRef | undefined {
+function messageRef(line: MessageSessionLine, fallbackSessionId: string): TranscriptMessageRef | undefined
+{
 	if (line.uuid === undefined) return undefined;
-	return {sessionId: getSourceSessionId(line, fallbackSessionId), uuid: line.uuid};
+	return {
+		sessionId: getSourceSessionId(line, fallbackSessionId),
+		uuid: line.uuid,
+	};
 }
 
-function AssistantTurnActions({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
+function AssistantTurnActions({line, sessionId}: {line: MessageSessionLine; sessionId: string})
+{
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	return (
 		<AssistantMessageActions
 			message={messageRef(line, sessionId)}
 			text={messageText(line)}
 			timestamp={line.timestamp}
-			details={assistantTurnDetails(line, {verbose})}
+			details={assistantTurnDetails(
+				line,
+				{
+					verbose,
+				},
+			)}
 		/>
 	);
 }
 
-interface AssistantDisplaySpan {
+interface AssistantDisplaySpan
+{
 	key: string;
 	sourceSessionId: string;
 	endpoint: MessageSessionLine;
@@ -420,7 +469,8 @@ interface AssistantDisplaySpan {
 }
 
 /** Whether the line asks an AskUserQuestion that has no answer yet. */
-function asksPendingQuestion(line: SessionLine, toolResultMap: ReadonlyMap<string, ToolResultInfo>): boolean {
+function asksPendingQuestion(line: SessionLine, toolResultMap: ReadonlyMap<string, ToolResultInfo>): boolean
+{
 	const content = line.type === "assistant" ? line.message?.content : undefined;
 	return (
 		Array.isArray(content) &&
@@ -437,21 +487,27 @@ function asksPendingQuestion(line: SessionLine, toolResultMap: ReadonlyMap<strin
 function withOrphanedQuestions(
 	lines: readonly SessionLine[],
 	toolResultMap: Map<string, ToolResultInfo>,
-): Map<string, ToolResultInfo> {
+): Map<string, ToolResultInfo>
+{
 	let orphaned: Map<string, ToolResultInfo> | null = null;
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		const content = line.type === "assistant" ? line.message?.content : undefined;
 		if (!Array.isArray(content)) continue;
-		for (const block of content) {
+		for (const block of content)
+		{
 			if (block.type !== "tool_use" || block.name !== "AskUserQuestion" || toolResultMap.has(block.id)) continue;
 			orphaned ??= new Map(toolResultMap);
-			orphaned.set(block.id, {
-				result: "",
-				isError: true,
-				stopped: true,
-				orphaned: true,
-				resultUuid: "",
-			});
+			orphaned.set(
+				block.id,
+				{
+					result: "",
+					isError: true,
+					stopped: true,
+					orphaned: true,
+					resultUuid: "",
+				},
+			);
 		}
 	}
 	return orphaned ?? toolResultMap;
@@ -463,10 +519,12 @@ function collectAssistantDisplaySpans(
 	renderProps: LineRenderProps,
 	skipSet: ReadonlySet<number>,
 	compactionStatuses: ReadonlySet<number>,
-): Map<number, AssistantDisplaySpan> {
+): Map<number, AssistantDisplaySpan>
+{
 	const byLine = new Map<number, AssistantDisplaySpan>();
 	let current: AssistantDisplaySpan | undefined;
-	for (const [index, line] of lines.entries()) {
+	for (const [index, line] of lines.entries())
+	{
 		const sourceSessionId = getSourceSessionId(line, renderProps.sessionId);
 		if (current !== undefined && sourceSessionId !== current.sourceSessionId) current = undefined;
 		if (skipSet.has(index) || !isLineVisible(line, renderProps, false)) continue;
@@ -474,16 +532,20 @@ function collectAssistantDisplaySpans(
 		if (
 			taskNotificationOf(line) !== null ||
 			foldablePeerMessage(lines, index, renderProps.subagentLookup) !== null
-		) {
-			if (current !== undefined) {
+		)
+		{
+			if (current !== undefined)
+			{
 				current.anchorLineIndex = line.lineIndex;
 				byLine.set(line.lineIndex, current);
 			}
 			continue;
 		}
-		if (isPromptLine(line)) {
+		if (isPromptLine(line))
+		{
 			// Upstream ends the span a stopped background agent's notice follows with its status row.
-			if (current !== undefined && stoppedAgentNoticeOf(line) !== null) {
+			if (current !== undefined && stoppedAgentNoticeOf(line) !== null)
+			{
 				current.anchorLineIndex = stoppedStatusIndex(line);
 				byLine.set(current.anchorLineIndex, current);
 			}
@@ -493,8 +555,10 @@ function collectAssistantDisplaySpans(
 		// Upstream sends a hook's message as a synthetic assistant text between a call and its result,
 		// and draws a compaction's status row inside the span it follows, the span's actions after it.
 		// A hook_notice is an item pushed into the open assistant entry, so the actions follow it too.
-		if (isHookSystemMessageLine(line) || line.type === "hook-notice" || compactionStatuses.has(line.lineIndex)) {
-			if (current !== undefined) {
+		if (isHookSystemMessageLine(line) || line.type === "hook-notice" || compactionStatuses.has(line.lineIndex))
+		{
+			if (current !== undefined)
+			{
 				current.anchorLineIndex = line.lineIndex;
 				byLine.set(line.lineIndex, current);
 			}
@@ -505,15 +569,19 @@ function collectAssistantDisplaySpans(
 		// `title + "\n"`), so whatever follows it starts on the next line, not after a blank one.
 		const chapter = chapterLineDisposition(line, renderProps.toolResultMap);
 		const text = chapter?.kind === "heading" ? `${chapter.chapter.title}\n` : messageText(line);
-		if (current === undefined) {
-			current = {
+		if (current === undefined)
+		{
+			current =
+			{
 				key: `assistant-span-${line.lineIndex}`,
 				sourceSessionId,
 				endpoint: line,
 				anchorLineIndex: line.lineIndex,
 				text,
 			};
-		} else {
+		}
+		else
+		{
 			current.endpoint = line;
 			current.anchorLineIndex = line.lineIndex;
 			if (text !== "") current.text = joinSpanText(current.text, text, current.endsWithChapter === true);
@@ -525,24 +593,28 @@ function collectAssistantDisplaySpans(
 }
 
 /** A span's copy text with the next item's appended: after a blank line, or straight on after a chapter's own newline. */
-function joinSpanText(spanText: string, text: string, endsWithChapter: boolean): string {
+function joinSpanText(spanText: string, text: string, endsWithChapter: boolean): string
+{
 	if (spanText === "" || endsWithChapter) return `${spanText}${text}`;
 	return `${spanText}\n\n${text}`;
 }
 
-interface HeldAssistantFooter {
+interface HeldAssistantFooter
+{
 	entryKey: string;
 	startRecordIndex: number;
 	endRecordIndex: number;
 	span: AssistantDisplaySpan;
 }
 
-interface AssistantFooterFocus {
+interface AssistantFooterFocus
+{
 	held: HeldAssistantFooter | null;
 	setHeld: React.Dispatch<React.SetStateAction<HeldAssistantFooter | null>>;
 }
 
-interface AssistantSpanInteraction extends AssistantFooterFocus {
+interface AssistantSpanInteraction extends AssistantFooterFocus
+{
 	hoveredKey: string | null;
 	focusedKey: string | null;
 }
@@ -550,31 +622,53 @@ interface AssistantSpanInteraction extends AssistantFooterFocus {
 const AssistantSpanInteractionContext = createContext<AssistantSpanInteraction | null>(null);
 const AssistantSpanEntryContext = createContext<SessionListEntry | null>(null);
 
-function assistantSpanAt(target: EventTarget | null): string | null {
+function assistantSpanAt(target: EventTarget | null): string | null
+{
 	return target instanceof Element
 		? (target.closest<HTMLElement>("[data-assistant-span]")?.dataset["assistantSpan"] ?? null)
 		: null;
 }
 
 /** Pointer/focus highlighting stays below the linear transcript-entry builder. */
-function AssistantSpanInteractions({children, held, setHeld}: AssistantFooterFocus & {children: React.ReactNode}) {
+function AssistantSpanInteractions({
+	children,
+	held,
+	setHeld,
+}: AssistantFooterFocus &
+{
+	children: React.ReactNode;
+})
+{
 	const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 	const [focusedKey, setFocusedKey] = useState<string | null>(null);
-	const value = useMemo(() => ({hoveredKey, focusedKey, held, setHeld}), [hoveredKey, focusedKey, held, setHeld]);
+	const value = useMemo(
+		() => (
+		{
+			hoveredKey,
+			focusedKey,
+			held,
+			setHeld,
+		}),
+		[hoveredKey, focusedKey, held, setHeld],
+	);
 	return (
 		<AssistantSpanInteractionContext.Provider value={value}>
 			<div
 				className="contents"
-				onPointerOver={(event) => {
+				onPointerOver={(event) =>
+				{
 					setHoveredKey(assistantSpanAt(event.target));
 				}}
-				onPointerOut={(event) => {
+				onPointerOut={(event) =>
+				{
 					setHoveredKey(assistantSpanAt(event.relatedTarget));
 				}}
-				onFocusCapture={(event) => {
+				onFocusCapture={(event) =>
+				{
 					setFocusedKey(assistantSpanAt(event.target));
 				}}
-				onBlurCapture={(event) => {
+				onBlurCapture={(event) =>
+				{
 					setFocusedKey(assistantSpanAt(event.relatedTarget));
 				}}
 			>
@@ -589,7 +683,8 @@ function AssistantSpanInteractions({children, held, setHeld}: AssistantFooterFoc
  * belong to the span and start at or before its (possibly held) endpoint, read at click time. Undefined when no
  * prose is mounted, so Copy writes text only.
  */
-function spanProseHtml(footer: HTMLElement | null, span: AssistantDisplaySpan): string | undefined {
+function spanProseHtml(footer: HTMLElement | null, span: AssistantDisplaySpan): string | undefined
+{
 	const list = footer?.closest("[data-transcript-entry-index]")?.parentElement;
 	if (list === null || list === undefined) return undefined;
 	const rows = list.querySelectorAll<HTMLElement>(`[data-assistant-span="${CSS.escape(span.key)}"]`);
@@ -598,7 +693,8 @@ function spanProseHtml(footer: HTMLElement | null, span: AssistantDisplaySpan): 
 		.flatMap((row) => Array.from(row.querySelectorAll("[data-transcript-prose]")));
 	if (prose.length === 0) return undefined;
 	return prose
-		.map((element) => {
+		.map((element) =>
+		{
 			// The markdown article wrapper carries only a CSS-module class, which means nothing pasted elsewhere.
 			const only = element.childElementCount === 1 ? element.firstElementChild : null;
 			return (only?.tagName === "ARTICLE" ? only : element).innerHTML.trim();
@@ -607,12 +703,14 @@ function spanProseHtml(footer: HTMLElement | null, span: AssistantDisplaySpan): 
 }
 
 /** Every member has a slot, so a focused footer can remain at its former endpoint. */
-function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan}) {
+function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan})
+{
 	const interaction = useProvidedContext(AssistantSpanInteractionContext, "AssistantSpanInteractionContext");
 	const entry = useProvidedContext(AssistantSpanEntryContext, "AssistantSpanEntryContext");
 	const {setHeld} = interaction;
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			setHeld((held) => (held?.entryKey === entry.key && held.span.key === span.key ? null : held));
 		},
 		[setHeld, entry.key, span.key],
@@ -626,16 +724,23 @@ function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan}) {
 		<div
 			ref={footerRef}
 			data-assistant-span-footer={span.key}
-			onFocusCapture={() => {
+			onFocusCapture={() =>
+			{
 				if (interaction.held?.entryKey === entry.key && interaction.held.span.key === span.key) return;
-				setHeld({
-					entryKey: entry.key,
-					startRecordIndex: entry.startRecordIndex,
-					endRecordIndex: entry.endRecordIndex,
-					span: {...displayed},
-				});
+				setHeld(
+					{
+						entryKey: entry.key,
+						startRecordIndex: entry.startRecordIndex,
+						endRecordIndex: entry.endRecordIndex,
+						span:
+						{
+							...displayed,
+						},
+					},
+				);
 			}}
-			onBlurCapture={(event) => {
+			onBlurCapture={(event) =>
+			{
 				if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
 				setHeld((current) =>
 					current?.entryKey === entry.key && current.span.key === span.key ? null : current,
@@ -646,7 +751,12 @@ function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan}) {
 				message={messageRef(displayed.endpoint, displayed.sourceSessionId)}
 				text={displayed.text}
 				timestamp={displayed.endpoint.timestamp}
-				details={assistantTurnDetails(displayed.endpoint, {verbose: false})}
+				details={assistantTurnDetails(
+					displayed.endpoint,
+					{
+						verbose: false,
+					},
+				)}
 				hovered={interaction.hoveredKey === span.key || interaction.focusedKey === span.key}
 				getHtml={() => spanProseHtml(footerRef.current, displayed)}
 			/>
@@ -665,11 +775,17 @@ function UserTurnActions({
 	contextText?: string;
 	/** A human prompt in the JSONL was taken into a turn by the CLI, so it reads "Read by Claude". */
 	readByClaude?: boolean;
-}) {
+})
+{
 	const settling = usePickupSettling(messageText(line));
 	return (
 		<UserMessageActions
-			{...(contextText === undefined ? {} : {contextText})}
+			{...(contextText === undefined
+				? {}
+				:
+					{
+						contextText,
+					})}
 			readByClaude={readByClaude}
 			settling={settling}
 			message={messageRef(line, sessionId)}
@@ -715,7 +831,8 @@ export const SessionChat = React.memo(function SessionChat({
 	rewoundUuids = NO_REWOUND_UUIDS,
 	workflowRuns = NO_WORKFLOW_RUNS,
 	renderClientRowCard,
-}: SessionChatProps) {
+}: SessionChatProps)
+{
 	const measurementKey = JSON.stringify([
 		sessionId,
 		initialScrollKey,
@@ -754,12 +871,24 @@ export const SessionChat = React.memo(function SessionChat({
 	const fullErrorLine = useMemo(() => lastErrorLine(lines), [lines]);
 	const blockedLine = useMemo(() => lastEntryPromptBlocked(lines), [lines]);
 	const lastError = useMemo(
-		() => ({line: fullErrorLine, recovery: errorRecovery, blockedLine}),
+		() => (
+		{
+			line: fullErrorLine,
+			recovery: errorRecovery,
+			blockedLine,
+		}),
 		[fullErrorLine, errorRecovery, blockedLine],
 	);
 	const staleCompactEntry = useMemo(() => lastAssistantReplyEntry(lines), [lines]);
 	const staleCompactTail = useMemo(
-		() => (staleCompact === undefined ? null : {line: staleCompactEntry, band: staleCompact}),
+		() =>
+			staleCompact === undefined
+				? null
+				:
+					{
+						line: staleCompactEntry,
+						band: staleCompact,
+					},
 		[staleCompactEntry, staleCompact],
 	);
 	const listedLines = useMemo(() => withQueuedPromptsAtTail(lines, sessionLive), [lines, sessionLive]);
@@ -767,13 +896,19 @@ export const SessionChat = React.memo(function SessionChat({
 	const waitingEntries = useMemo(() => queuedEntries(listedLines), [listedLines]);
 	const {sendNow, pendingEntryId} = useQueuedSendNow(onSendNow, waitingIds);
 	const sendNowHandlers = useMemo(
-		() => ({sendNow, pendingEntryId, focusComposer: onFocusComposer}),
+		() => (
+		{
+			sendNow,
+			pendingEntryId,
+			focusComposer: onFocusComposer,
+		}),
 		[sendNow, pendingEntryId, onFocusComposer],
 	);
 	useTranscriptSelectionAttach(sessionId, containerRef);
 	const clientRows = useClientRows(sessionId);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const container = containerRef.current;
 		if (!container) throw new Error("Expected the session chat container to be mounted.");
 		const scroller = findScrollContainer(container);
@@ -794,24 +929,38 @@ export const SessionChat = React.memo(function SessionChat({
 		let resizeFrame: number | undefined;
 		let touchY: number | undefined;
 
-		const scrollToEnd = () => {
+		const scrollToEnd = () =>
+		{
 			const {scrollHeight, clientHeight} = scrollMetrics(scroller);
 			if (clientHeight === 0) return;
 			previousHeight = scrollHeight;
 			previousClientHeight = clientHeight;
-			if (isDocumentScrollContainer(scroller)) window.scrollTo({top: scrollHeight});
-			else scroller.scrollTo({top: scrollHeight});
+			if (isDocumentScrollContainer(scroller))
+				window.scrollTo(
+					{
+						top: scrollHeight,
+					},
+				);
+			else
+				scroller.scrollTo(
+					{
+						top: scrollHeight,
+					},
+				);
 		};
-		const queueLayoutFollow = () => {
+		const queueLayoutFollow = () =>
+		{
 			if (!followsEnd || resizeFrame !== undefined) return;
 			pendingLayoutFollow = true;
-			resizeFrame = requestAnimationFrame(() => {
+			resizeFrame = requestAnimationFrame(() =>
+			{
 				resizeFrame = undefined;
 				if (followsEnd) scrollToEnd();
 				pendingLayoutFollow = false;
 			});
 		};
-		const updateFollowsEnd = () => {
+		const updateFollowsEnd = () =>
+		{
 			const {scrollHeight, scrollTop, clientHeight} = scrollMetrics(scroller);
 			if (clientHeight === 0) return;
 			const extentChanged = scrollHeight !== previousHeight || clientHeight !== previousClientHeight;
@@ -824,19 +973,22 @@ export const SessionChat = React.memo(function SessionChat({
 			previousClientHeight = clientHeight;
 			if (followsEnd && extentChanged) queueLayoutFollow();
 		};
-		const cancelLayoutFollow = () => {
+		const cancelLayoutFollow = () =>
+		{
 			followsEnd = false;
 			pendingLayoutFollow = false;
 			if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
 			resizeFrame = undefined;
 		};
-		const scrollReachesOwner = (target: EventTarget | null) => {
+		const scrollReachesOwner = (target: EventTarget | null) =>
+		{
 			// Nested tool output and composer fields consume upward input before it reaches the transcript.
 			for (
 				let element = target instanceof Element ? target : null;
 				element && element !== scroller;
 				element = element.parentElement
-			) {
+			)
+			{
 				const style = getComputedStyle(element);
 				if (
 					(style.overflowY === "auto" || style.overflowY === "scroll") &&
@@ -848,11 +1000,13 @@ export const SessionChat = React.memo(function SessionChat({
 			}
 			return true;
 		};
-		const onWheel = (event: Event) => {
+		const onWheel = (event: Event) =>
+		{
 			if (event instanceof WheelEvent && event.deltaY < 0 && scrollReachesOwner(event.target))
 				cancelLayoutFollow();
 		};
-		const onKeyDown = (event: Event) => {
+		const onKeyDown = (event: Event) =>
+		{
 			if (!(event instanceof KeyboardEvent)) return;
 			const key = event;
 			if (isEditableTarget(key.target) || !scrollReachesOwner(key.target)) return;
@@ -864,10 +1018,12 @@ export const SessionChat = React.memo(function SessionChat({
 			)
 				cancelLayoutFollow();
 		};
-		const onTouchStart = (event: Event) => {
+		const onTouchStart = (event: Event) =>
+		{
 			if (event instanceof TouchEvent) touchY = event.touches[0]?.clientY;
 		};
-		const onTouchMove = (event: Event) => {
+		const onTouchMove = (event: Event) =>
+		{
 			if (!(event instanceof TouchEvent)) return;
 			const nextY = event.touches[0]?.clientY;
 			if (touchY !== undefined && nextY !== undefined && nextY > touchY && scrollReachesOwner(event.target))
@@ -878,10 +1034,17 @@ export const SessionChat = React.memo(function SessionChat({
 		resizeObserver.observe(container);
 		if (scrollContentRef?.current && scrollContentRef.current !== container)
 			resizeObserver.observe(scrollContentRef.current);
-		scrollEventTarget.addEventListener("scroll", updateFollowsEnd, {passive: true});
+		scrollEventTarget.addEventListener(
+			"scroll",
+			updateFollowsEnd,
+			{
+				passive: true,
+			},
+		);
 		scrollEventTarget.addEventListener(TRANSCRIPT_RELEASE_END_FOLLOW_EVENT, cancelLayoutFollow);
 		// Upstream's transcript registers its gT setter, so a tile move's scroll restore updates follow at once.
-		const unregisterScrollSetter = registerScrollSetter(scroller, (top) => {
+		const unregisterScrollSetter = registerScrollSetter(scroller, (top) =>
+		{
 			scroller.scrollTop = top;
 			updateFollowsEnd();
 		});
@@ -892,18 +1055,29 @@ export const SessionChat = React.memo(function SessionChat({
 			["touchmove", onTouchMove],
 		] as const;
 		for (const [type, handler] of inputs)
-			scrollEventTarget.addEventListener(type, handler, {passive: true, capture: true});
+			scrollEventTarget.addEventListener(
+				type,
+				handler,
+				{
+					passive: true,
+					capture: true,
+				},
+			);
 
-		if (shouldScrollToEnd && !autoScrolledLocations.has(initialScrollKey)) {
-			initialFrame = requestAnimationFrame(() => {
-				paintedFrame = requestAnimationFrame(() => {
+		if (shouldScrollToEnd && !autoScrolledLocations.has(initialScrollKey))
+		{
+			initialFrame = requestAnimationFrame(() =>
+			{
+				paintedFrame = requestAnimationFrame(() =>
+				{
 					autoScrolledLocations.add(initialScrollKey);
 					scrollToEnd();
 					followsEnd = true;
 				});
 			});
 		}
-		return () => {
+		return () =>
+		{
 			resizeObserver.disconnect();
 			unregisterScrollSetter();
 			scrollEventTarget.removeEventListener("scroll", updateFollowsEnd);
@@ -994,12 +1168,15 @@ export const SessionChat = React.memo(function SessionChat({
  * Build a set of line indices that should be skipped because they've been
  * coalesced into a preceding line (e.g., bash-output following bash-input).
  */
-function buildSkipSet(lines: SessionLine[]): Set<number> {
+function buildSkipSet(lines: SessionLine[]): Set<number>
+{
 	const skip = new Set<number>();
-	for (const [i, line] of lines.entries()) {
+	for (const [i, line] of lines.entries())
+	{
 		const next = lines[i + 1];
 		if (next === undefined) break;
-		if (line.type === "user" && next.type === "user" && hasBashInput(line) && hasBashOutput(next)) {
+		if (line.type === "user" && next.type === "user" && hasBashInput(line) && hasBashOutput(next))
+		{
 			skip.add(i + 1);
 		}
 	}
@@ -1011,10 +1188,12 @@ function buildSkipSet(lines: SessionLine[]): Set<number> {
  * command line a local-command caveat opens, and every local-command stdout.
  * Upstream draws none of these, so only Verbose keeps them.
  */
-function localCommandIndices(lines: readonly SessionLine[]): number[] {
+function localCommandIndices(lines: readonly SessionLine[]): number[]
+{
 	const stringContent = (line: SessionLine | undefined): string | null =>
 		line?.type === "user" && typeof line.message?.content === "string" ? line.message.content : null;
-	return lines.flatMap((line, index) => {
+	return lines.flatMap((line, index) =>
+	{
 		const content = stringContent(line);
 		if (content === null) return [];
 		if (content.startsWith("<local-command-stdout>")) return [index];
@@ -1025,7 +1204,8 @@ function localCommandIndices(lines: readonly SessionLine[]): number[] {
 	});
 }
 
-interface LineRenderProps {
+interface LineRenderProps
+{
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
 	allowedImageRoots: readonly string[];
@@ -1056,7 +1236,8 @@ const USER_ROW_GAP_CLASS = "pb-[var(--chat-user-row-gap)] empty:pb-0";
  * screen readers a heading list to navigate the transcript turn by turn. It is
  * hidden from sight and from text selection, so copying a turn never picks it up.
  */
-function TurnHeading({speaker, text}: {speaker: "user" | "assistant"; text: string}) {
+function TurnHeading({speaker, text}: {speaker: "user" | "assistant"; text: string})
+{
 	return (
 		<h2 data-find-omitted="" className="sr-only select-none">
 			{messageHeading(speaker, text)}
@@ -1085,8 +1266,10 @@ function UserTurn({
 	 * (upstream p8 `qe`). Code's carded turns never have one; see user-carded-turn-copy-actions.
 	 */
 	frameHasContent?: boolean;
-}) {
-	if (turnKey === undefined) {
+})
+{
+	if (turnKey === undefined)
+	{
 		return (
 			<div className="group/msg flex justify-end w-full">
 				<TurnHeading speaker="user" text={text} />
@@ -1111,14 +1294,19 @@ function UserTurn({
 					// Local rows are one per turn ("only"), never stacked or inside a reply scope.
 					<div
 						data-user-trailing=""
-						{...(reservesUserActionsGap({
-							reservesActionsGap: CODE_RESERVES_ACTIONS_GAP,
-							position: "only",
-							awaiting: undefined,
-							insideReply: false,
-							trailingCount: 1,
-						})
-							? {[RESERVES_ACTIONS_GAP_ATTR]: ""}
+						{...(reservesUserActionsGap(
+							{
+								reservesActionsGap: CODE_RESERVES_ACTIONS_GAP,
+								position: "only",
+								awaiting: undefined,
+								insideReply: false,
+								trailingCount: 1,
+							},
+						)
+							?
+								{
+									[RESERVES_ACTIONS_GAP_ATTR]: "",
+								}
 							: {})}
 						className={[
 							USER_TRAILING_CLASS,
@@ -1142,7 +1330,14 @@ const TRANSCRIPT_ROW_CLASS =
  * Upstream's `[data-cds=UserMessage]` column, keyed like its row. Upstream sets `data-text-size="md"` only under
  * compact density (`Fi()`), its default.
  */
-function UserMessageColumn({turnKey, ...props}: React.ComponentProps<"div"> & {turnKey: string | undefined}) {
+function UserMessageColumn({
+	turnKey,
+	...props
+}: React.ComponentProps<"div"> &
+{
+	turnKey: string | undefined;
+})
+{
 	const compact = useDensity() === "compact";
 	if (turnKey === undefined) return <div {...props} />;
 	return (
@@ -1161,7 +1356,8 @@ function LineEntry({
 	precedesStatus = null,
 	precedesPrompt = false,
 	...renderProps
-}: LineRenderProps & {
+}: LineRenderProps &
+{
 	line: SessionLine;
 	nextLine: SessionLine | undefined;
 	className?: string;
@@ -1177,12 +1373,15 @@ function LineEntry({
 	undoable?: boolean;
 	/** Undefined preserves Verbose record actions; null suppresses a non-endpoint footer. */
 	footer?: React.ReactNode;
-}) {
-	const content = renderSessionMessage({
-		line,
-		...renderProps,
-		nextLine,
-	});
+})
+{
+	const content = renderSessionMessage(
+		{
+			line,
+			...renderProps,
+			nextLine,
+		},
+	);
 	const staleCompactTail = useContext(StaleCompactTailContext);
 
 	const isAssistant = line.type === "assistant";
@@ -1244,17 +1443,23 @@ function LineEntry({
  * `PostToolUseFailure` SSE events for the given session. Empty when the
  * session has no in-flight failures or the JSONL has already caught up.
  */
-function useLiveToolFailures(sessionId: string): Map<string, LiveToolFailure> {
+function useLiveToolFailures(sessionId: string): Map<string, LiveToolFailure>
+{
 	const {failedTools} = useClaudeEvents();
-	return useMemo(() => {
+	return useMemo(() =>
+	{
 		const map = new Map<string, LiveToolFailure>();
-		for (const failed of failedTools.values()) {
+		for (const failed of failedTools.values())
+		{
 			if (failed.sessionId !== sessionId) continue;
 			if (!failed.toolUseId) continue;
-			map.set(failed.toolUseId, {
-				toolUseId: failed.toolUseId,
-				error: failed.error,
-			});
+			map.set(
+				failed.toolUseId,
+				{
+					toolUseId: failed.toolUseId,
+					error: failed.error,
+				},
+			);
 		}
 		return map;
 	}, [failedTools, sessionId]);
@@ -1266,13 +1471,15 @@ function buildLineToolCalls(
 	toolResultMap: Map<string, ToolResultInfo>,
 	liveFailures: Map<string, LiveToolFailure>,
 	subagentLookup: SubagentLookup,
-): ClientToolCall[] {
+): ClientToolCall[]
+{
 	const content = line.message?.content;
 	if (!Array.isArray(content)) return [];
 	const invalid = new Set(line.invalidToolInputIds);
 	return content
 		.filter((b): b is ToolUseBlock => b.type === "tool_use")
-		.map((block) => {
+		.map((block) =>
+		{
 			const call = buildClientToolCall(
 				block,
 				line.uuid ?? "",
@@ -1281,12 +1488,19 @@ function buildLineToolCalls(
 				subagentLookup,
 				invalid.has(block.id),
 			);
-			return line.timestamp === undefined ? call : {...call, startedAt: line.timestamp};
+			return line.timestamp === undefined
+				? call
+				:
+					{
+						...call,
+						startedAt: line.timestamp,
+					};
 		});
 }
 
 /** A run of tool calls sharing one source session, ready to summarize. */
-interface ToolCallBatch {
+interface ToolCallBatch
+{
 	/** The run's first line: the row is anchored on it and carries its record index. */
 	head: MessageSessionLine;
 	sourceSessionId: string;
@@ -1327,23 +1541,32 @@ function GroupedToolCallEntry({
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
 	subagentLookup: SubagentLookup;
-}) {
+})
+{
 	const liveFailures = useLiveToolFailures(sessionId);
 	const opensReply = useContext(AssistantSpanEntryContext)?.opensReply === true;
 	const verbose = useContext(TranscriptModeContext) === "verbose";
-	const batches = useMemo(() => {
+	const batches = useMemo(() =>
+	{
 		const result: ToolCallBatch[] = [];
 		let openBatch: ToolCallBatch | undefined;
-		for (const line of entries) {
+		for (const line of entries)
+		{
 			if (line.type !== "assistant") continue;
 			const calls = buildLineToolCalls(line, toolResultMap, liveFailures, subagentLookup);
 			if (calls.length === 0) continue;
 			const sourceSessionId = getSourceSessionId(line, sessionId);
-			if (openBatch?.sourceSessionId === sourceSessionId) {
+			if (openBatch?.sourceSessionId === sourceSessionId)
+			{
 				openBatch.calls.push(...calls);
 				continue;
 			}
-			openBatch = {head: line, sourceSessionId, calls};
+			openBatch =
+			{
+				head: line,
+				sourceSessionId,
+				calls,
+			};
 			result.push(openBatch);
 		}
 		return result;
@@ -1402,14 +1625,16 @@ function GroupedToolCallEntry({
 }
 
 /** A `<task-notification>` user turn folded into the tool group beside it. */
-interface BackgroundNotice {
+interface BackgroundNotice
+{
 	kind: "task";
 	lineIndex: number;
 	notification: TaskNotification;
 }
 
 /** An agent message folded into the tool group it arrived before or among. */
-interface PeerNotice {
+interface PeerNotice
+{
 	kind: "peer";
 	lineIndex: number;
 	message: AgentMessage;
@@ -1418,7 +1643,8 @@ interface PeerNotice {
 }
 
 /** Stop-hook feedback that re-prompted Claude straight into the tool group after it. */
-interface HookNotice {
+interface HookNotice
+{
 	kind: "hook";
 	lineIndex: number;
 	line: MessageSessionLine;
@@ -1428,10 +1654,16 @@ interface HookNotice {
  * A notice-level "Claude Code notice" line rolled up into the tool run before it (upstream `Yl`,
  * rule notice-without-warning-or-recap). Each of its notices draws its own step.
  */
-interface ClaudeCodeNotice {
+interface ClaudeCodeNotice
+{
 	kind: "claude-notice";
 	lineIndex: number;
-	notices: Extract<SessionLine, {type: "hook-notice"}>["notices"];
+	notices: Extract<
+		SessionLine,
+		{
+			type: "hook-notice";
+		}
+	>["notices"];
 }
 
 type FoldedNotice = BackgroundNotice | PeerNotice | HookNotice | ClaudeCodeNotice;
@@ -1442,12 +1674,14 @@ const NO_NOTICES: readonly FoldedNotice[] = [];
  * The agent message a meta user line delivers. One the turn absorbed as a
  * queued_command attachment never reaches upstream, so it is Verbose-only.
  */
-function agentMessageOf(line: SessionLine): AgentMessage | null {
+function agentMessageOf(line: SessionLine): AgentMessage | null
+{
 	if (line.type !== "user" || classifyUserContent(line) !== "agent-message") return null;
 	return parseAgentMessage(getUserContentText(line));
 }
 
-function lineTimestamp(line: SessionLine): string | undefined {
+function lineTimestamp(line: SessionLine): string | undefined
+{
 	return "timestamp" in line ? line.timestamp : undefined;
 }
 
@@ -1461,7 +1695,8 @@ function heldBySlowCommand(
 	index: number,
 	sender: string,
 	subagentLookup: SubagentLookup,
-): boolean {
+): boolean
+{
 	const ends = subagentLookup.byBareId.get(sender)?.slowCommands;
 	const arrived = lineTimestamp(defined(lines[index], "heldBySlowCommand index is in range"));
 	if (ends === undefined || arrived === undefined) return false;
@@ -1471,7 +1706,8 @@ function heldBySlowCommand(
 	const parentSpoke = parent === undefined ? undefined : lineTimestamp(parent);
 	const after = parentSpoke === undefined ? -Infinity : Date.parse(parentSpoke);
 	const until = Date.parse(arrived);
-	return ends.some(({finishedAt}) => {
+	return ends.some(({finishedAt}) =>
+	{
 		const at = Date.parse(finishedAt);
 		return at > after && at <= until;
 	});
@@ -1487,10 +1723,12 @@ function foldablePeerMessage(
 	lines: readonly SessionLine[],
 	index: number,
 	subagentLookup: SubagentLookup,
-): AgentMessage | null {
+): AgentMessage | null
+{
 	const message = agentMessageOf(defined(lines[index], "foldablePeerMessage index is in range"));
 	if (message === null || heldBySlowCommand(lines, index, message.from, subagentLookup)) return null;
-	for (let next = index + 1; next < lines.length; next++) {
+	for (let next = index + 1; next < lines.length; next++)
+	{
 		const line = lines[next];
 		if (line?.type !== "assistant") continue;
 		const content = line.message?.content;
@@ -1503,15 +1741,19 @@ function foldablePeerMessage(
 function launchedAgentDescriptions(
 	lines: readonly SessionLine[],
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
-): ReadonlyMap<string, string> {
+): ReadonlyMap<string, string>
+{
 	const descriptions = new Map<string, string>();
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		if (line.type !== "assistant" || !Array.isArray(line.message?.content)) continue;
-		for (const block of line.message.content) {
+		for (const block of line.message.content)
+		{
 			if (block.type !== "tool_use" || (block.name !== "Agent" && block.name !== "Task")) continue;
 			const description: unknown = block.input["description"];
 			const agentId = toolResultMap.get(block.id)?.resultMeta?.agentId;
-			if (typeof description === "string" && description !== "" && agentId !== undefined) {
+			if (typeof description === "string" && description !== "" && agentId !== undefined)
+			{
 				descriptions.set(agentId, description);
 			}
 		}
@@ -1519,9 +1761,11 @@ function launchedAgentDescriptions(
 	return descriptions;
 }
 
-function transcriptToolUseIds(lines: readonly SessionLine[]): Set<string> {
+function transcriptToolUseIds(lines: readonly SessionLine[]): Set<string>
+{
 	const ids = new Set<string>();
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		if (line.type !== "assistant" || !Array.isArray(line.message?.content)) continue;
 		for (const block of line.message.content) if (block.type === "tool_use") ids.add(block.id);
 	}
@@ -1535,9 +1779,11 @@ function transcriptToolUseIds(lines: readonly SessionLine[]): Set<string> {
  * One that opens a turn as a user record still draws (an agent's as its
  * completion row).
  */
-function settledCompletionIndices(lines: readonly SessionLine[]): number[] {
+function settledCompletionIndices(lines: readonly SessionLine[]): number[]
+{
 	let launches: Set<string> | null = null;
-	return lines.flatMap((line, index) => {
+	return lines.flatMap((line, index) =>
+	{
 		const notification = taskNotificationOf(line);
 		if (notification?.status !== "completed" || line.type !== "attachment") return [];
 		if (notification.agent) return [index];
@@ -1555,12 +1801,24 @@ function settledCompletionIndices(lines: readonly SessionLine[]): number[] {
  * hand-back (5f402159:2172) it drops the started row and draws the completion
  * where the notification arrived.
  */
-function hoistedAgentCompletions(
-	lines: readonly SessionLine[],
-): Map<number, {index: number; completion: TaskNotification}> {
-	const hoisted = new Map<number, {index: number; completion: TaskNotification}>();
+function hoistedAgentCompletions(lines: readonly SessionLine[]): Map<
+	number,
+	{
+		index: number;
+		completion: TaskNotification;
+	}
+>
+{
+	const hoisted = new Map<
+		number,
+		{
+			index: number;
+			completion: TaskNotification;
+		}
+	>();
 	let launches: Map<string, number> | null = null;
-	for (const [index, line] of lines.entries()) {
+	for (const [index, line] of lines.entries())
+	{
 		const completion = agentCompletionOf(line);
 		if (completion?.toolUseId == null) continue;
 		launches ??= new Map(
@@ -1577,13 +1835,21 @@ function hoistedAgentCompletions(
 		const handedBack = lines
 			.slice(launch + 1, index)
 			.some((between) => agentMessageOf(between)?.from === completion.taskId);
-		if (!handedBack) hoisted.set(launch, {index, completion});
+		if (!handedBack)
+			hoisted.set(
+				launch,
+				{
+					index,
+					completion,
+				},
+			);
 	}
 	return hoisted;
 }
 
 /** The description a user line's plain-text "Background agent ... was stopped" notice names. */
-function stoppedAgentNoticeOf(line: SessionLine): string | null {
+function stoppedAgentNoticeOf(line: SessionLine): string | null
+{
 	return line.type === "user" ? stoppedAgentDescription(getUserContentText(line)) : null;
 }
 
@@ -1591,14 +1857,16 @@ function stoppedAgentNoticeOf(line: SessionLine): string | null {
  * The record index of the status row a stopped-agent notice draws just before
  * its own bubble, between the two so each keeps its own transcript row.
  */
-function stoppedStatusIndex(line: SessionLine): number {
+function stoppedStatusIndex(line: SessionLine): number
+{
 	return line.lineIndex - 0.5;
 }
 
 /** How a background launch ended when it did not complete, keyed by the launching tool_use id. */
 type BackgroundOutcome = "failed" | "stopped";
 
-interface BackgroundOutcomes {
+interface BackgroundOutcomes
+{
 	byLaunch: ReadonlyMap<string, BackgroundOutcome>;
 	/** The notification that settled each launch, whose summary a Workflow row's status tooltip shows. */
 	notificationByLaunch: ReadonlyMap<string, TaskNotification>;
@@ -1606,11 +1874,13 @@ interface BackgroundOutcomes {
 	stoppedBy: ReadonlyMap<string, string>;
 }
 
-const BackgroundOutcomeContext = createContext<BackgroundOutcomes>({
-	byLaunch: new Map(),
-	notificationByLaunch: new Map(),
-	stoppedBy: new Map(),
-});
+const BackgroundOutcomeContext = createContext<BackgroundOutcomes>(
+	{
+		byLaunch: new Map(),
+		notificationByLaunch: new Map(),
+		stoppedBy: new Map(),
+	},
+);
 
 /** The tool_use id the session's permission prompt waits on, if any. */
 const PermissionWaitContext = createContext<string | null>(null);
@@ -1621,11 +1891,26 @@ const PermissionWaitContext = createContext<string | null>(null);
 const HeldImagesCallContext = createContext<string | null>(null);
 
 /** The call as its running label reads it: flagged when the permission prompt holds it. */
-function withPermissionWait<Call extends {id: string}>(
+function withPermissionWait<
+	Call extends
+	{
+		id: string;
+	},
+>(
 	call: Call,
 	waitingId: string | null,
-): Call & {awaitingPermission?: true} {
-	return call.id === waitingId ? {...call, awaitingPermission: true} : call;
+): Call &
+{
+	awaitingPermission?: true;
+}
+{
+	return call.id === waitingId
+		?
+			{
+				...call,
+				awaitingPermission: true,
+			}
+		: call;
 }
 
 const BACKGROUND_LAUNCH_ID = /running in background with ID: (\S+?)\.?(?:\s|$)/;
@@ -1634,10 +1919,8 @@ const WORKFLOW_LAUNCH_ID = /^Workflow launched in background\. Task ID: (\S+)/;
 const TASK_STOPPERS = new Set(["TaskStop", "KillShell"]);
 
 /** The background task id a `run_in_background` Bash call's or a Workflow call's result reports. */
-function backgroundLaunchTaskId(
-	block: ToolUseBlock,
-	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
-): string | null {
+function backgroundLaunchTaskId(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, ToolResultInfo>): string | null
+{
 	const pattern =
 		block.name === "Workflow"
 			? WORKFLOW_LAUNCH_ID
@@ -1651,7 +1934,8 @@ function backgroundLaunchTaskId(
 }
 
 /** The task id a successful TaskStop (or older KillShell) call stopped. */
-function stoppedTaskId(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, ToolResultInfo>): string | null {
+function stoppedTaskId(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, ToolResultInfo>): string | null
+{
 	if (!TASK_STOPPERS.has(block.name)) return null;
 	const info = toolResultMap.get(block.id);
 	if (info === undefined || info.isError) return null;
@@ -1660,7 +1944,8 @@ function stoppedTaskId(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, T
 }
 
 /** Upstream `we`: a workflow notification's summary less its `Workflow "…" failed:` prefix, capitalized. */
-function workflowNotificationSummary(notification: TaskNotification | undefined): string | undefined {
+function workflowNotificationSummary(notification: TaskNotification | undefined): string | undefined
+{
 	return notification === undefined ? undefined : workflowSummary(notification.summary, notification.description);
 }
 
@@ -1673,53 +1958,80 @@ function workflowNotificationSummary(notification: TaskNotification | undefined)
 function backgroundLaunchOutcomes(
 	lines: readonly SessionLine[],
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
-): BackgroundOutcomes {
+): BackgroundOutcomes
+{
 	const byLaunch = new Map<string, BackgroundOutcome>();
 	const notificationByLaunch = new Map<string, TaskNotification>();
 	const notified = new Set<string>();
 	const launchByTaskId = new Map<string, string>();
-	const stops: {stopId: string; taskId: string}[] = [];
-	for (const line of lines) {
+	const stops:
+	{
+		stopId: string;
+		taskId: string;
+	}[] = [];
+	for (const line of lines)
+	{
 		const notification = taskNotificationOf(line);
-		if (notification !== null && notification.toolUseId !== null) {
+		if (notification !== null && notification.toolUseId !== null)
+		{
 			notified.add(notification.toolUseId);
 			notificationByLaunch.set(notification.toolUseId, notification);
 			if (notification.status !== "completed") byLaunch.set(notification.toolUseId, notification.status);
 		}
 		const content = line.type === "assistant" ? line.message?.content : undefined;
 		if (!Array.isArray(content)) continue;
-		for (const block of content) {
+		for (const block of content)
+		{
 			if (block.type !== "tool_use") continue;
 			const launched = backgroundLaunchTaskId(block, toolResultMap);
 			if (launched !== null) launchByTaskId.set(launched, block.id);
 			const stopped = stoppedTaskId(block, toolResultMap);
-			if (stopped !== null) stops.push({stopId: block.id, taskId: stopped});
+			if (stopped !== null)
+				stops.push(
+					{
+						stopId: block.id,
+						taskId: stopped,
+					},
+				);
 		}
 	}
 	const stoppedBy = new Map<string, string>();
-	for (const {stopId, taskId} of stops) {
+	for (const {stopId, taskId} of stops)
+	{
 		const launch = launchByTaskId.get(taskId);
 		if (launch === undefined || notified.has(launch)) continue;
 		byLaunch.set(launch, "stopped");
 		stoppedBy.set(stopId, launch);
 	}
-	return {byLaunch, notificationByLaunch, stoppedBy};
+	return {
+		byLaunch,
+		notificationByLaunch,
+		stoppedBy,
+	};
 }
 
-function failedLaunchIds({byLaunch}: BackgroundOutcomes): ReadonlySet<string> {
+function failedLaunchIds({byLaunch}: BackgroundOutcomes): ReadonlySet<string>
+{
 	const ids = new Set<string>();
 	for (const [id, outcome] of byLaunch) if (outcome === "failed") ids.add(id);
 	return ids;
 }
 
 /** The stopped background tasks the group's TaskStop calls ended, as upstream folds them in. */
-function stopCompletions(
-	calls: readonly ClientToolCall[],
-	{stoppedBy}: BackgroundOutcomes,
-): BackgroundCompletionLike[] {
-	return calls.flatMap((call) => {
+function stopCompletions(calls: readonly ClientToolCall[], {stoppedBy}: BackgroundOutcomes): BackgroundCompletionLike[]
+{
+	return calls.flatMap((call) =>
+	{
 		const launch = stoppedBy.get(call.id);
-		return launch === undefined ? [] : [{command: false, status: "stopped", toolUseId: launch}];
+		return launch === undefined
+			? []
+			: [
+					{
+						command: false,
+						status: "stopped",
+						toolUseId: launch,
+					},
+				];
 	});
 }
 
@@ -1728,7 +2040,8 @@ function stopCompletions(
  * description in primary ink, and a danger "Failed" or secondary "Stopped" when
  * the task did not complete.
  */
-function BackgroundNoticeRow({notice}: {notice: BackgroundNotice}) {
+function BackgroundNoticeRow({notice}: {notice: BackgroundNotice})
+{
 	const {status, description, command, taskType} = notice.notification;
 	const segments = taskDescriptionSegments(description, taskType);
 	return (
@@ -1760,7 +2073,8 @@ function BackgroundNoticeRow({notice}: {notice: BackgroundNotice}) {
  * Upstream's `nz` group step for two or more task notices at one position: one sub-row whose
  * `bdi` label reads "1 background command completed, 1 failed", failed parts in danger ink.
  */
-function BackgroundNoticeStep({notices}: {notices: readonly BackgroundNotice[]}) {
+function BackgroundNoticeStep({notices}: {notices: readonly BackgroundNotice[]})
+{
 	const parts = backgroundNoticeSummary(notices.map((notice) => taskEvent(notice.notification)));
 	return (
 		<div
@@ -1776,35 +2090,47 @@ function BackgroundNoticeStep({notices}: {notices: readonly BackgroundNotice[]})
 }
 
 /** A lone notice keeps its own sub-row; a run of them draws one combined step. */
-function BackgroundNoticeRun({notices}: {notices: readonly BackgroundNotice[]}) {
+function BackgroundNoticeRun({notices}: {notices: readonly BackgroundNotice[]})
+{
 	const [first] = notices;
 	if (first === undefined) return null;
 	return notices.length === 1 ? <BackgroundNoticeRow notice={first} /> : <BackgroundNoticeStep notices={notices} />;
 }
 
-function splitNotices(notices: readonly FoldedNotice[]): {
+function splitNotices(notices: readonly FoldedNotice[]):
+{
 	taskNotices: BackgroundNotice[];
 	leadingPeers: PeerNotice[];
 	trailingPeers: PeerNotice[];
 	hooks: HookNotice[];
 	claudeNotices: ClaudeCodeNotice[];
-} {
+}
+{
 	const taskNotices: BackgroundNotice[] = [];
 	const leadingPeers: PeerNotice[] = [];
 	const trailingPeers: PeerNotice[] = [];
 	const hooks: HookNotice[] = [];
 	const claudeNotices: ClaudeCodeNotice[] = [];
-	for (const notice of notices) {
+	for (const notice of notices)
+	{
 		if (notice.kind === "task") taskNotices.push(notice);
 		else if (notice.kind === "hook") hooks.push(notice);
 		else if (notice.kind === "claude-notice") claudeNotices.push(notice);
 		else (notice.leads ? leadingPeers : trailingPeers).push(notice);
 	}
-	return {taskNotices, leadingPeers, trailingPeers, hooks, claudeNotices};
+	return {
+		taskNotices,
+		leadingPeers,
+		trailingPeers,
+		hooks,
+		claudeNotices,
+	};
 }
 
-function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
-	switch (notice.kind) {
+function FoldedNoticeRow({notice}: {notice: FoldedNotice})
+{
+	switch (notice.kind)
+	{
 		case "task":
 			return <BackgroundNoticeRow notice={notice} />;
 		case "peer":
@@ -1832,7 +2158,8 @@ function TaskEventRunRow({
 	footer: React.ReactNode;
 	/** The transcript line the row draws, when it draws delivered notifications. */
 	recordIndex?: number;
-}) {
+})
+{
 	return (
 		<div
 			data-task-event-row=""
@@ -1857,7 +2184,8 @@ function ArtifactWatchEndedRow({
 	displayName: string;
 	footer: React.ReactNode;
 	recordIndex: number;
-}) {
+})
+{
 	return (
 		<div
 			data-record-index={recordIndex}
@@ -1875,10 +2203,18 @@ function ArtifactWatchEndedRow({
 	);
 }
 
-type ContextRefresh = NonNullable<Extract<SessionLine, {type: "attachment"}>["contextRefresh"]>;
+type ContextRefresh = NonNullable<
+	Extract<
+		SessionLine,
+		{
+			type: "attachment";
+		}
+	>["contextRefresh"]
+>;
 
 /** "Instructions re-read after the conversation was compacted", or without the reason when it is unknown. */
-function contextRefreshText({subject, reason}: ContextRefresh): string {
+function contextRefreshText({subject, reason}: ContextRefresh): string
+{
 	const lead = contextRefreshSubjectLabels[subject];
 	const phrase = reason === undefined ? undefined : contextRefreshReasonLabel(reason);
 	return phrase === undefined ? lead : `${lead} ${phrase}`;
@@ -1893,7 +2229,8 @@ function ContextRefreshRow({
 	refresh: ContextRefresh;
 	footer: React.ReactNode;
 	recordIndex: number;
-}) {
+})
+{
 	return (
 		<div
 			data-record-index={recordIndex}
@@ -1911,7 +2248,8 @@ function ContextRefreshRow({
 	);
 }
 
-function TaskEventRunStatus({events}: {events: readonly TaskEvent[]}) {
+function TaskEventRunStatus({events}: {events: readonly TaskEvent[]})
+{
 	return (
 		<TurnStatusFrame leading={false}>
 			<div data-turn-status="" className={TURN_STATUS_CLASS}>
@@ -1930,13 +2268,20 @@ function TaskEventRunStatus({events}: {events: readonly TaskEvent[]}) {
 function undeliveredTaskRows(
 	lines: readonly SessionLine[],
 	renders: (index: number) => boolean,
-): Map<number, TaskEvent[]> {
+): Map<number, TaskEvent[]>
+{
 	const rows = new Map<number, TaskEvent[]>();
 	let launches: Set<string> | null = null;
-	let slot: Array<{index: number; notification: TaskNotification}> = [];
-	const flush = () => {
+	let slot: Array<
+	{
+		index: number;
+		notification: TaskNotification;
+	}> = [];
+	const flush = () =>
+	{
 		const [first] = slot;
-		if (first !== undefined) {
+		if (first !== undefined)
+		{
 			rows.set(
 				first.index,
 				slot.map(({notification}) => taskEvent(notification)),
@@ -1944,8 +2289,10 @@ function undeliveredTaskRows(
 		}
 		slot = [];
 	};
-	for (const [index, line] of lines.entries()) {
-		if (line.type !== "queued-task-notification") {
+	for (const [index, line] of lines.entries())
+	{
+		if (line.type !== "queued-task-notification")
+		{
 			if (renders(index)) flush();
 			continue;
 		}
@@ -1953,13 +2300,19 @@ function undeliveredTaskRows(
 		if (notification === null) continue;
 		launches ??= transcriptToolUseIds(lines);
 		if (notification.toolUseId !== null && launches.has(notification.toolUseId)) continue;
-		slot.push({index, notification});
+		slot.push(
+			{
+				index,
+				notification,
+			},
+		);
 	}
 	flush();
 	return rows;
 }
 
-function taskEvent(notification: TaskNotification): TaskEvent {
+function taskEvent(notification: TaskNotification): TaskEvent
+{
 	return {
 		taskId: notification.taskId,
 		status: notification.status,
@@ -1971,32 +2324,59 @@ function taskEvent(notification: TaskNotification): TaskEvent {
 }
 
 /** A completed background Agent's "<done description> · took Ns" task-event row. */
-function AgentCompletionRow({completion, footer}: {completion: TaskNotification; footer: React.ReactNode}) {
+function AgentCompletionRow({completion, footer}: {completion: TaskNotification; footer: React.ReactNode})
+{
 	return (
 		<TaskEventRunRow
-			events={[{...taskEvent(completion), phrase: pastTense(completion.description)}]}
+			events={[
+				{
+					...taskEvent(completion),
+					phrase: pastTense(completion.description),
+				},
+			]}
 			footer={footer}
 		/>
 	);
 }
 
 type NoticeSegment =
-	| {kind: "run"; lineIndex: number; events: TaskEvent[]}
-	| {kind: "notice"; lineIndex: number; notice: PeerNotice | HookNotice | ClaudeCodeNotice};
+	|
+	  {
+			kind: "run";
+			lineIndex: number;
+			events: TaskEvent[];
+	  }
+	|
+	  {
+			kind: "notice";
+			lineIndex: number;
+			notice: PeerNotice | HookNotice | ClaudeCodeNotice;
+	  };
 
 /** Each maximal run of consecutive task notices becomes one segment; peer and hook notices keep their own. */
-function noticeSegments(notices: readonly FoldedNotice[]): NoticeSegment[] {
+function noticeSegments(notices: readonly FoldedNotice[]): NoticeSegment[]
+{
 	const segments: NoticeSegment[] = [];
-	for (const notice of notices) {
+	for (const notice of notices)
+	{
 		const last = segments.at(-1);
-		if (notice.kind !== "task") segments.push({kind: "notice", lineIndex: notice.lineIndex, notice});
+		if (notice.kind !== "task")
+			segments.push(
+				{
+					kind: "notice",
+					lineIndex: notice.lineIndex,
+					notice,
+				},
+			);
 		else if (last?.kind === "run") last.events.push(taskEvent(notice.notification));
 		else
-			segments.push({
-				kind: "run",
-				lineIndex: notice.lineIndex,
-				events: [taskEvent(notice.notification)],
-			});
+			segments.push(
+				{
+					kind: "run",
+					lineIndex: notice.lineIndex,
+					events: [taskEvent(notice.notification)],
+				},
+			);
 	}
 	return segments;
 }
@@ -2005,7 +2385,8 @@ function noticeSegments(notices: readonly FoldedNotice[]): NoticeSegment[] {
  * Notifications with no tool group to join. As upstream draws a top-level run of task events,
  * each run of task notices is one task-event row: a single row, or one summary row.
  */
-function BackgroundNoticeRows({notices, footer}: {notices: readonly FoldedNotice[]; footer?: React.ReactNode}) {
+function BackgroundNoticeRows({notices, footer}: {notices: readonly FoldedNotice[]; footer?: React.ReactNode})
+{
 	const segments = noticeSegments(notices);
 	const [only] = segments;
 	if (segments.length === 1 && only?.kind === "run")
@@ -2047,7 +2428,8 @@ function MarkerDisclosureButton({
 	expanded: boolean;
 	bodyId: string;
 	onToggle: () => void;
-}) {
+})
+{
 	return (
 		<button
 			type="button"
@@ -2068,7 +2450,8 @@ function MarkerDisclosureButton({
  * A transcript whose first records carry another session's id was carried
  * over from an earlier session, which upstream heads "Resumed session".
  */
-function isResumedTranscript(lines: SessionLine[], renderProps: LineRenderProps): boolean {
+function isResumedTranscript(lines: SessionLine[], renderProps: LineRenderProps): boolean
+{
 	if (renderProps.isSubagentSession) return false;
 	const first = lines.find((line) => "sessionId" in line && line.sessionId !== undefined);
 	return first !== undefined && "sessionId" in first && first.sessionId !== renderProps.sessionId;
@@ -2080,11 +2463,13 @@ function SessionInitEntry({
 	indices,
 	resumed,
 	...renderProps
-}: LineRenderProps & {
+}: LineRenderProps &
+{
 	lines: SessionLine[];
 	indices: number[];
 	resumed: boolean;
-}) {
+})
+{
 	const [expanded, setExpanded] = useState(false);
 	const bodyId = useId();
 
@@ -2094,7 +2479,8 @@ function SessionInitEntry({
 				label={resumed ? "Resumed session" : "Initialized session"}
 				expanded={expanded}
 				bodyId={bodyId}
-				onToggle={() => {
+				onToggle={() =>
+				{
 					setExpanded(!expanded);
 				}}
 			/>
@@ -2131,7 +2517,8 @@ const BANNER_LINE_TYPES = new Set([
  * Text, or narration (Claude Code's user-facing prose in a thinking block), that
  * draws as assistant prose. Upstream closes a tool run at either.
  */
-function isAssistantProseBlock(block: SessionContentBlock): boolean {
+function isAssistantProseBlock(block: SessionContentBlock): boolean
+{
 	if (block.type === "text") return typeof block.text === "string" && block.text.trim() !== "";
 	return narrationProse(block) !== null;
 }
@@ -2144,7 +2531,8 @@ function isAssistantProseBlock(block: SessionContentBlock): boolean {
 function chapterLineDisposition(
 	line: SessionLine,
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
-): ChapterDisposition | null {
+): ChapterDisposition | null
+{
 	if (line.type !== "assistant") return null;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length !== 1) return null;
@@ -2153,15 +2541,18 @@ function chapterLineDisposition(
 	return chapterDisposition(block, toolResultMap.get(block.id));
 }
 
-function toolBucketOf(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, ToolResultInfo>): ToolBucket {
+function toolBucketOf(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, ToolResultInfo>): ToolBucket
+{
 	const info = toolResultMap.get(block.id);
-	return toolBucket({
-		name: block.name,
-		input: block.input,
-		result: info?.result,
-		isError: info?.isError,
-		pending: info === undefined,
-	});
+	return toolBucket(
+		{
+			name: block.name,
+			input: block.input,
+			result: info?.result,
+			isError: info?.isError,
+			pending: info === undefined,
+		},
+	);
 }
 
 /**
@@ -2172,7 +2563,8 @@ function isGroupableToolOnlyAssistantLine(
 	line: SessionLine,
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
 	showThinking: boolean,
-): boolean {
+): boolean
+{
 	const buckets = toolOnlyBuckets(line, toolResultMap, showThinking);
 	return buckets?.every((bucket) => bucket === "default") === true;
 }
@@ -2182,7 +2574,8 @@ function isStandaloneToolOnlyAssistantLine(
 	line: SessionLine,
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
 	showThinking: boolean,
-): boolean {
+): boolean
+{
 	return toolOnlyBuckets(line, toolResultMap, showThinking)?.includes("standalone") === true;
 }
 
@@ -2194,7 +2587,8 @@ function toolOnlyBuckets(
 	line: SessionLine,
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
 	showThinking: boolean,
-): ToolBucket[] | null {
+): ToolBucket[] | null
+{
 	if (line.type !== "assistant" || line.stopReason === "refusal") return null;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return null;
@@ -2202,7 +2596,8 @@ function toolOnlyBuckets(
 	const chapter = chapterLineDisposition(line, toolResultMap);
 	if (chapter !== null) return chapter.kind === "failedTool" ? ["standalone"] : null;
 	const buckets: ToolBucket[] = [];
-	for (const b of content) {
+	for (const b of content)
+	{
 		if (b.type === "tool_use") buckets.push(toolBucketOf(b, toolResultMap));
 		else if (
 			!(
@@ -2216,7 +2611,8 @@ function toolOnlyBuckets(
 }
 
 /** An assistant line drawn as prose alone: visible text and no tool calls. */
-function isProseOnlyAssistantLine(line: SessionLine): boolean {
+function isProseOnlyAssistantLine(line: SessionLine): boolean
+{
 	if (line.type !== "assistant" || transcriptRowKind(line) !== "assistant_text") return false;
 	const content = line.message?.content;
 	return !Array.isArray(content) || content.every((b) => b.type !== "tool_use");
@@ -2226,12 +2622,21 @@ function isProseOnlyAssistantLine(line: SessionLine): boolean {
 function backgroundToolNames(
 	lines: readonly SessionLine[],
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
-): string[] {
-	return lines.flatMap((line) => {
+): string[]
+{
+	return lines.flatMap((line) =>
+	{
 		const content = line.type === "assistant" ? line.message?.content : undefined;
 		if (!Array.isArray(content)) return [];
 		return content.flatMap((b) =>
-			b.type === "tool_use" && !isProminentCall({...toolResultMap.get(b.id), name: b.name, input: b.input})
+			b.type === "tool_use" &&
+			!isProminentCall(
+				{
+					...toolResultMap.get(b.id),
+					name: b.name,
+					input: b.input,
+				},
+			)
 				? [b.name]
 				: [],
 		);
@@ -2239,14 +2644,16 @@ function backgroundToolNames(
 }
 
 /** Whether ToolCallSection, given its row calls and notices, draws a TurnStatus first. */
-function toolSectionOpensWithStatus(background: readonly string[], noticeCount: number): boolean {
+function toolSectionOpensWithStatus(background: readonly string[], noticeCount: number): boolean
+{
 	if (background.length === 0 && noticeCount === 0) return false;
 	// A lone Agent row navigates rather than disclosing a status.
 	if (background.length === 1 && noticeCount === 0) return background[0] !== "Agent";
 	return true;
 }
 
-function isToolResultOnlyUserLine(line: SessionLine): boolean {
+function isToolResultOnlyUserLine(line: SessionLine): boolean
+{
 	if (line.type !== "user") return false;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return false;
@@ -2264,7 +2671,8 @@ type TranscriptRowKind =
 	| "marker";
 
 /** The upstream row type for a single line drawn as its own transcript row. */
-function transcriptRowKind(line: SessionLine): TranscriptRowKind {
+function transcriptRowKind(line: SessionLine): TranscriptRowKind
+{
 	if (line.type === "user") return "human";
 	if (isHookSystemMessageLine(line)) return "assistant_text";
 	if (line.type !== "assistant") return "marker";
@@ -2277,7 +2685,8 @@ function transcriptRowKind(line: SessionLine): TranscriptRowKind {
 	return "assistant";
 }
 
-interface SessionListEntry {
+interface SessionListEntry
+{
 	key: string;
 	startRecordIndex: number;
 	endRecordIndex: number;
@@ -2297,11 +2706,13 @@ interface SessionListEntry {
 }
 
 /** A row under construction, before its rendered neighbours are known. */
-interface PendingSessionListEntry extends Omit<SessionListEntry, "endRecordIndex" | "opensReply"> {
+interface PendingSessionListEntry extends Omit<SessionListEntry, "endRecordIndex" | "opensReply">
+{
 	/** The assistant line a reply row starts with. */
 	replyHead?: SessionLine;
 	/** An ordinary prompt row, rendered once it is known whether its reply follows it. */
-	prompt?: {
+	prompt?:
+	{
 		line: SessionLine;
 		render: (
 			precedesReply: boolean,
@@ -2310,7 +2721,10 @@ interface PendingSessionListEntry extends Omit<SessionListEntry, "endRecordIndex
 		) => React.ReactNode;
 	};
 	/** A prose row, rendered once it is known whether a status in its span follows it. */
-	prose?: {render: (precedesStatus: OpeningStatus) => React.ReactNode};
+	prose?:
+	{
+		render: (precedesStatus: OpeningStatus) => React.ReactNode;
+	};
 	/** A row whose first drawn block is a TurnStatus disclosure, or a plain status marker. */
 	opensWithStatus?: OpeningStatus;
 }
@@ -2324,14 +2738,16 @@ type OpeningStatus = "status" | "marker";
 
 const PROMPT_KINDS: ReadonlySet<UserContentKind> = new Set(["text", "command", "bash"]);
 
-function isPromptLine(line: SessionLine): boolean {
+function isPromptLine(line: SessionLine): boolean
+{
 	return line.type === "user" && PROMPT_KINDS.has(classifyUserContent(line));
 }
 
 const ORDINARY_PROMPT_KINDS: ReadonlySet<UserContentKind> = new Set(["text", "command"]);
 
 /** A typed prompt or slash command drawn as the user's own bubble, not a bash, label or subagent row. */
-function isOrdinaryPromptLine(line: SessionLine, renderProps: LineRenderProps): boolean {
+function isOrdinaryPromptLine(line: SessionLine, renderProps: LineRenderProps): boolean
+{
 	return (
 		line.type === "user" &&
 		!renderProps.isSubagentSession &&
@@ -2341,21 +2757,35 @@ function isOrdinaryPromptLine(line: SessionLine, renderProps: LineRenderProps): 
 }
 
 /** Upstream `qw`: only the user's own typed prompts with text are sticky prompt candidates. */
-function stickyTextEntry(line: SessionLine, renderProps: LineRenderProps): {stickyText?: string} {
+function stickyTextEntry(
+	line: SessionLine,
+	renderProps: LineRenderProps,
+):
+{
+	stickyText?: string;
+}
+{
 	if (line.type !== "user" || !isOrdinaryPromptLine(line, renderProps)) return {};
 	const text = stickyPromptText(messageText(line));
-	return text === null ? {} : {stickyText: text};
+	return text === null
+		? {}
+		:
+			{
+				stickyText: text,
+			};
 }
 
 /** Height of the sticky session header that covers the top of the scroller. */
 /** Upstream c1c1ec7b9 `Fe`: a smooth jump lands the row's content this far below the scroller's top. */
 const SMOOTH_ENTRY_LANDING_OFFSET = 20;
 
-function stickyHeaderInset(scroller: Element): number {
+function stickyHeaderInset(scroller: Element): number
+{
 	return scroller.querySelector("[data-transcript-sticky-header]")?.getBoundingClientRect().height ?? 0;
 }
 
-interface VirtualRange {
+interface VirtualRange
+{
 	startIndex: number;
 	endIndex: number;
 }
@@ -2365,14 +2795,17 @@ export const TRANSCRIPT_OVERSCAN_PIXELS = 320;
 export const INITIAL_MOUNTED_TURN_COUNT = 8;
 
 /** The summed height of the entries before `index`; callers stay within 0..entries.length. */
-function prefixHeightAt(prefixHeights: readonly number[], index: number): number {
+function prefixHeightAt(prefixHeights: readonly number[], index: number): number
+{
 	return defined(prefixHeights[index], "prefix height index is in range");
 }
 
-function entryIndexAtOffset(prefixHeights: readonly number[], offset: number): number {
+function entryIndexAtOffset(prefixHeights: readonly number[], offset: number): number
+{
 	let lower = 0;
 	let upper = prefixHeights.length - 1;
-	while (lower < upper) {
+	while (lower < upper)
+	{
 		const middle = Math.floor((lower + upper + 1) / 2);
 		if (prefixHeightAt(prefixHeights, middle) <= offset) lower = middle;
 		else upper = middle - 1;
@@ -2380,9 +2813,14 @@ function entryIndexAtOffset(prefixHeights: readonly number[], offset: number): n
 	return Math.min(lower, prefixHeights.length - 2);
 }
 
-function rangeForViewport(prefixHeights: readonly number[], viewportStart: number, viewportEnd: number): VirtualRange {
+function rangeForViewport(prefixHeights: readonly number[], viewportStart: number, viewportEnd: number): VirtualRange
+{
 	const lastEntryIndex = prefixHeights.length - 2;
-	if (lastEntryIndex < 0) return {startIndex: 0, endIndex: 0};
+	if (lastEntryIndex < 0)
+		return {
+			startIndex: 0,
+			endIndex: 0,
+		};
 	const startOffset = Math.max(0, viewportStart - TRANSCRIPT_OVERSCAN_PIXELS);
 	const endOffset = viewportEnd + TRANSCRIPT_OVERSCAN_PIXELS;
 	return {
@@ -2399,9 +2837,11 @@ function prependedRowCount(
 	committed: readonly SessionListEntry[],
 	next: readonly SessionListEntry[],
 	startIndex: number,
-): number {
+): number
+{
 	const nextIndex = new Map(next.map((entry, index) => [entry.key, index]));
-	for (let index = startIndex; index < committed.length; index++) {
+	for (let index = startIndex; index < committed.length; index++)
+	{
 		const moved = nextIndex.get(defined(committed[index], "committed index is in range").key);
 		if (moved !== undefined) return moved - index;
 	}
@@ -2409,13 +2849,16 @@ function prependedRowCount(
 }
 
 /** The reader's place: a painted row and its offset within the scroller's content. */
-interface ScrollAnchor {
+interface ScrollAnchor
+{
 	entryKey: string;
 	contentTop: number;
 }
 
-function mountedRowFor(list: Element, entries: readonly SessionListEntry[], key: string): HTMLElement | undefined {
-	for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
+function mountedRowFor(list: Element, entries: readonly SessionListEntry[], key: string): HTMLElement | undefined
+{
+	for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]"))
+	{
 		if (entries[Number(row.dataset["transcriptEntryIndex"])]?.key === key) return row;
 	}
 	return undefined;
@@ -2424,12 +2867,18 @@ function mountedRowFor(list: Element, entries: readonly SessionListEntry[], key:
 function firstPaintedRow(
 	list: Element,
 	scroller: Element,
-	viewport: {top: number; height: number},
+	viewport:
+	{
+		top: number;
+		height: number;
+	},
 	entries: readonly SessionListEntry[],
 	survives: (key: string) => boolean = () => true,
-): ScrollAnchor | null {
+): ScrollAnchor | null
+{
 	const {scrollTop} = scrollMetrics(scroller);
-	for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
+	for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]"))
+	{
 		const rect = row.getBoundingClientRect();
 		if (rect.bottom <= viewport.top) continue;
 		if (rect.top >= viewport.top + viewport.height) return null;
@@ -2437,17 +2886,32 @@ function firstPaintedRow(
 		if (!entry) return null;
 		// A page landing above can regroup the record at its seam under a new key.
 		if (!survives(entry.key)) continue;
-		return {entryKey: entry.key, contentTop: rect.top - viewport.top + scrollTop};
+		return {
+			entryKey: entry.key,
+			contentTop: rect.top - viewport.top + scrollTop,
+		};
 	}
 	return null;
 }
 
-function scrollerViewport(scroller: Element): {top: number; height: number} {
-	if (scroller === document.documentElement || scroller === document.scrollingElement) {
-		return {top: 0, height: window.innerHeight};
+function scrollerViewport(scroller: Element):
+{
+	top: number;
+	height: number;
+}
+{
+	if (scroller === document.documentElement || scroller === document.scrollingElement)
+	{
+		return {
+			top: 0,
+			height: window.innerHeight,
+		};
 	}
 	const rect = scroller.getBoundingClientRect();
-	return {top: rect.top, height: scroller.clientHeight || rect.height || window.innerHeight};
+	return {
+		top: rect.top,
+		height: scroller.clientHeight || rect.height || window.innerHeight,
+	};
 }
 
 /**
@@ -2456,21 +2920,48 @@ function scrollerViewport(scroller: Element): {top: number; height: number} {
  * with the time it was typed. A prompt the CLI later also wrote as a user record
  * keeps only that record.
  */
-function withQueuedPrompts(lines: SessionLine[]): SessionLine[] {
+function withQueuedPrompts(lines: SessionLine[]): SessionLine[]
+{
 	let result: SessionLine[] | null = null;
 	let laterPrompts: Map<string, number> | null = null;
-	for (const [index, line] of lines.entries()) {
+	for (const [index, line] of lines.entries())
+	{
 		if (line.type !== "attachment" || line.humanPrompt === undefined) continue;
 		const {content, timestamp = line.timestamp, sourceUuid} = line.humanPrompt;
-		const prompt: MessageSessionLine = {
+		const prompt: MessageSessionLine =
+		{
 			type: "user",
-			message: {role: "user", content},
+			message:
+			{
+				role: "user",
+				content,
+			},
 			lineIndex: line.lineIndex,
 			absorbedPrompt: true,
-			...(sourceUuid === undefined ? {} : {turnKey: sourceUuid}),
-			...(line.uuid === undefined ? {} : {uuid: line.uuid}),
-			...(timestamp === undefined ? {} : {timestamp}),
-			...(line.sessionId === undefined ? {} : {sessionId: line.sessionId}),
+			...(sourceUuid === undefined
+				? {}
+				:
+					{
+						turnKey: sourceUuid,
+					}),
+			...(line.uuid === undefined
+				? {}
+				:
+					{
+						uuid: line.uuid,
+					}),
+			...(timestamp === undefined
+				? {}
+				:
+					{
+						timestamp,
+					}),
+			...(line.sessionId === undefined
+				? {}
+				:
+					{
+						sessionId: line.sessionId,
+					}),
 		};
 		laterPrompts ??= new Map(
 			lines.flatMap((other, otherIndex) =>
@@ -2490,34 +2981,74 @@ function withQueuedPrompts(lines: SessionLine[]): SessionLine[] {
  * in the reply it follows, so outside Verbose each non-empty one reads as an
  * assistant text line; the user-record stdout stays hidden.
  */
-function withLocalCommandProse(lines: SessionLine[]): SessionLine[] {
+function withLocalCommandProse(lines: SessionLine[]): SessionLine[]
+{
 	let result: SessionLine[] | null = null;
-	for (const [index, line] of lines.entries()) {
+	for (const [index, line] of lines.entries())
+	{
 		if (line.type !== "system" || line.subtype !== "local_command") continue;
 		const output = localCommandOutput(line.content);
 		if (output === "") continue;
 		result ??= [...lines];
-		result[index] = {
+		result[index] =
+		{
 			type: "assistant",
-			message: {role: "assistant", content: [{type: "text", text: output}]},
+			message:
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "text",
+						text: output,
+					},
+				],
+			},
 			lineIndex: line.lineIndex,
-			...(line.uuid === undefined ? {} : {uuid: line.uuid}),
-			...(line.timestamp === undefined ? {} : {timestamp: line.timestamp}),
-			...(line.sessionId === undefined ? {} : {sessionId: line.sessionId}),
+			...(line.uuid === undefined
+				? {}
+				:
+					{
+						uuid: line.uuid,
+					}),
+			...(line.timestamp === undefined
+				? {}
+				:
+					{
+						timestamp: line.timestamp,
+					}),
+			...(line.sessionId === undefined
+				? {}
+				:
+					{
+						sessionId: line.sessionId,
+					}),
 		};
 	}
 	return result ?? lines;
 }
 
 /** The row id of each prompt waiting in the CLI's queue, as the transcript tail draws it. */
-function queuedEntryIds(lines: SessionLine[]): string[] {
+function queuedEntryIds(lines: SessionLine[]): string[]
+{
 	return lines.flatMap((line) => (line.type === "queued-prompt" ? [queuedEntryId(line.lineIndex)] : []));
 }
 
 /** The CLI's waiting prompts with their text, which the transcript row each becomes is matched by. */
-function queuedEntries(lines: SessionLine[]): {id: string; text: string}[] {
+function queuedEntries(lines: SessionLine[]):
+{
+	id: string;
+	text: string;
+}[]
+{
 	return lines.flatMap((line) =>
-		line.type === "queued-prompt" ? [{id: queuedEntryId(line.lineIndex), text: line.content}] : [],
+		line.type === "queued-prompt"
+			? [
+					{
+						id: queuedEntryId(line.lineIndex),
+						text: line.content,
+					},
+				]
+			: [],
 	);
 }
 
@@ -2527,7 +3058,8 @@ const queuedEntryId = (lineIndex: number): string => `queued-${lineIndex}`;
  * A prompt waiting in the CLI's queue is read after everything already written, so it sits after
  * the last other line, in enqueue order. Once the CLI is gone nothing will read it, so it is dropped.
  */
-function withQueuedPromptsAtTail(lines: SessionLine[], sessionLive: boolean): SessionLine[] {
+function withQueuedPromptsAtTail(lines: SessionLine[], sessionLive: boolean): SessionLine[]
+{
 	if (!lines.some((line) => line.type === "queued-prompt")) return lines;
 	const others = lines.filter((line) => line.type !== "queued-prompt");
 	return sessionLive ? [...others, ...lines.filter((line) => line.type === "queued-prompt")] : others;
@@ -2539,15 +3071,18 @@ function withQueuedPromptsAtTail(lines: SessionLine[], sessionLive: boolean): Se
  * places it by its enqueue time: after the last line timestamped at or before it. Walking from the
  * end keeps a run of notifications in order, since none moves past the next one.
  */
-function withNotificationsAtEnqueueTime(lines: SessionLine[]): SessionLine[] {
+function withNotificationsAtEnqueueTime(lines: SessionLine[]): SessionLine[]
+{
 	let result: SessionLine[] | null = null;
-	for (let index = lines.length - 1; index >= 0; index--) {
+	for (let index = lines.length - 1; index >= 0; index--)
+	{
 		const line = defined(lines[index], "session line index is in range");
 		if (line.type !== "queued-task-notification" || line.timestamp === undefined) continue;
 		const enqueuedAt = Date.parse(line.timestamp);
 		const current: SessionLine[] = result ?? lines;
 		let target = index;
-		for (let next = index + 1; next < current.length; next++) {
+		for (let next = index + 1; next < current.length; next++)
+		{
 			const later = defined(current[next], "session line index is in range");
 			if (later.type === "queued-task-notification") break;
 			const laterAt = lineTimestamp(later);
@@ -2570,11 +3105,13 @@ function withNotificationsAtEnqueueTime(lines: SessionLine[]): SessionLine[] {
  * commands, finished 8 background commands" for a notification plus the seven
  * slow commands a teammate ran while the parent waited.
  */
-class SlowCommandAbsorber {
+class SlowCommandAbsorber
+{
 	private readonly commands: SlowCommand[];
 	private next = 0;
 
-	constructor(subagentLookup: SubagentLookup) {
+	constructor(subagentLookup: SubagentLookup)
+	{
 		this.commands = [...subagentLookup.byBareId.values()]
 			.flatMap((agent) => agent.slowCommands ?? [])
 			.toSorted((a, b) => Date.parse(a.finishedAt) - Date.parse(b.finishedAt));
@@ -2585,16 +3122,19 @@ class SlowCommandAbsorber {
 	 * group's last record. Any finished earlier stood alone upstream, which
 	 * draws nothing for them.
 	 */
-	absorbInto(groupLines: readonly SessionLine[], since: number): BackgroundNotice[] {
+	absorbInto(groupLines: readonly SessionLine[], since: number): BackgroundNotice[]
+	{
 		const last = groupLines.at(-1);
 		const end = Math.max(
-			...groupLines.flatMap((line) => {
+			...groupLines.flatMap((line) =>
+			{
 				const at = lineTimestamp(line);
 				return at === undefined ? [] : [Date.parse(at)];
 			}),
 		);
 		if (last === undefined || !Number.isFinite(end)) return [];
-		return this.take(since, end).map((command) => ({
+		return this.take(since, end).map((command) => (
+		{
 			kind: "task",
 			lineIndex: last.lineIndex,
 			notification: slowCommandCompletion(command),
@@ -2606,9 +3146,11 @@ class SlowCommandAbsorber {
 	 * one finished by `until`: those before `since` finished while the parent
 	 * talked, which upstream draws nothing for.
 	 */
-	take(since: number, until: number): SlowCommand[] {
+	take(since: number, until: number): SlowCommand[]
+	{
 		const taken: SlowCommand[] = [];
-		for (let command = this.commands[this.next]; command !== undefined; command = this.commands[this.next]) {
+		for (let command = this.commands[this.next]; command !== undefined; command = this.commands[this.next])
+		{
 			const finishedAt = Date.parse(command.finishedAt);
 			if (finishedAt > until) break;
 			this.next++;
@@ -2618,7 +3160,8 @@ class SlowCommandAbsorber {
 	}
 }
 
-function slowCommandCompletion(command: SlowCommand): TaskNotification {
+function slowCommandCompletion(command: SlowCommand): TaskNotification
+{
 	return {
 		taskId: null,
 		toolUseId: null,
@@ -2637,10 +3180,12 @@ function slowCommandCompletion(command: SlowCommand): TaskNotification {
  * parent idled between turns: "Background command completed · <description>"
  * for one, "N background commands completed, 1 failed" for several.
  */
-function IdleCommandsRow({commands}: {commands: readonly SlowCommand[]}) {
+function IdleCommandsRow({commands}: {commands: readonly SlowCommand[]})
+{
 	return (
 		<TaskEventRunRow
-			events={commands.map(({status, description}) => ({
+			events={commands.map(({status, description}) => (
+			{
 				taskId: null,
 				status,
 				kind: "shell",
@@ -2654,7 +3199,8 @@ function IdleCommandsRow({commands}: {commands: readonly SlowCommand[]}) {
 }
 
 /** A line that opens a parent turn: a prompt, hand-back or notification rather than a tool result. */
-function opensTurn(line: SessionLine): boolean {
+function opensTurn(line: SessionLine): boolean
+{
 	return (line.type === "user" && !isToolResultOnlyUserLine(line)) || line.type === "queued-task-notification";
 }
 
@@ -2662,7 +3208,8 @@ function opensTurn(line: SessionLine): boolean {
  * Whether the line is the tool result answering an AskUserQuestion: the parent
  * idled while it waited for the answer, as it does between turns.
  */
-function answersQuestion(lines: readonly SessionLine[], index: number): boolean {
+function answersQuestion(lines: readonly SessionLine[], index: number): boolean
+{
 	const line = defined(lines[index], "session line index is in range");
 	if (line.type !== "user" || !isToolResultOnlyUserLine(line)) return false;
 	const content = line.message?.content;
@@ -2671,7 +3218,8 @@ function answersQuestion(lines: readonly SessionLine[], index: number): boolean 
 			? content.flatMap((block) => (block.type === "tool_result" ? [block.tool_use_id] : []))
 			: [],
 	);
-	for (let previous = index - 1; previous >= 0; previous--) {
+	for (let previous = index - 1; previous >= 0; previous--)
+	{
 		const asked = defined(lines[previous], "session line index is in range");
 		const blocks = asked.type === "assistant" ? asked.message?.content : undefined;
 		if (!Array.isArray(blocks) || !blocks.some((block) => block.type === "tool_use")) continue;
@@ -2683,14 +3231,17 @@ function answersQuestion(lines: readonly SessionLine[], index: number): boolean 
 }
 
 /** Whether an assistant line calls a tool, so the parent is still mid-turn after it. */
-function callsTool(line: SessionLine): boolean {
+function callsTool(line: SessionLine): boolean
+{
 	const content = line.type === "assistant" ? line.message?.content : undefined;
 	return Array.isArray(content) && content.some((block) => block.type === "tool_use");
 }
 
 /** The time of the parent's last record before `index`, when it last spoke or ran a tool. */
-function lastParentRecordAt(lines: readonly SessionLine[], index: number): number {
-	for (let previous = index - 1; previous >= 0; previous--) {
+function lastParentRecordAt(lines: readonly SessionLine[], index: number): number
+{
+	for (let previous = index - 1; previous >= 0; previous--)
+	{
 		const line = defined(lines[previous], "session line index is in range");
 		const at = lineTimestamp(line);
 		if ((line.type === "assistant" || line.type === "user") && at !== undefined) return Date.parse(at);
@@ -2710,10 +3261,22 @@ function buildSessionListEntries(
 	held: HeldAssistantFooter | null,
 	turnInProgress: boolean,
 	archived: boolean,
-	rewindMarkers: {anchors: readonly number[]; render: (anchor: number) => React.ReactNode},
-): SessionListEntry[] {
+	rewindMarkers:
+	{
+		anchors: readonly number[];
+		render: (anchor: number) => React.ReactNode;
+	},
+): SessionListEntry[]
+{
 	const waitingPrompts = recordLines.filter(
-		(line): line is Extract<SessionLine, {type: "queued-prompt"}> => line.type === "queued-prompt",
+		(
+			line,
+		): line is Extract<
+			SessionLine,
+			{
+				type: "queued-prompt";
+			}
+		> => line.type === "queued-prompt",
 	);
 	const transcriptLines =
 		waitingPrompts.length === 0 ? recordLines : recordLines.filter((line) => line.type !== "queued-prompt");
@@ -2722,22 +3285,41 @@ function buildSessionListEntries(
 		: withLocalCommandProse(withQueuedPrompts(withNotificationsAtEnqueueTime(transcriptLines)));
 	const lineAt = (index: number): SessionLine => defined(lines[index], "session line index is in range");
 	const foldNotifications = !verbose;
-	const noticeOf = (index: number): FoldedNotice | null => {
+	const noticeOf = (index: number): FoldedNotice | null =>
+	{
 		if (!foldNotifications) return null;
 		const line = lineAt(index);
 		const notification = foldedTaskNotificationOf(line);
-		if (notification !== null) return {kind: "task", lineIndex: line.lineIndex, notification};
+		if (notification !== null)
+			return {
+				kind: "task",
+				lineIndex: line.lineIndex,
+				notification,
+			};
 		const message = foldablePeerMessage(lines, index, renderProps.subagentLookup);
-		if (message !== null) return {kind: "peer", lineIndex: line.lineIndex, message, leads: true};
+		if (message !== null)
+			return {
+				kind: "peer",
+				lineIndex: line.lineIndex,
+				message,
+				leads: true,
+			};
 		return repromptsIntoTools(index) && line.type === "user"
-			? {kind: "hook", lineIndex: line.lineIndex, line}
+			?
+				{
+					kind: "hook",
+					lineIndex: line.lineIndex,
+					line,
+				}
 			: null;
 	};
 	/** Stop-hook feedback whose next shown line is a tool-only line, which upstream folds it into. */
-	const repromptsIntoTools = (index: number): boolean => {
+	const repromptsIntoTools = (index: number): boolean =>
+	{
 		const line = lineAt(index);
 		if (line.type !== "user" || classifyUserContent(line) !== "stop-hook" || !renderProps.showTools) return false;
-		for (let next = index + 1; next < lines.length; next++) {
+		for (let next = index + 1; next < lines.length; next++)
+		{
 			if (skipSet.has(next) || !isLineVisible(lineAt(next), renderProps, verbose)) continue;
 			return isGroupableToolOnlyAssistantLine(lineAt(next), renderProps.toolResultMap, renderProps.showThinking);
 		}
@@ -2745,7 +3327,8 @@ function buildSessionListEntries(
 	};
 	const skipSet = buildSkipSet(lines);
 	const hoistedCompletions = verbose ? new Map<number, never>() : hoistedAgentCompletions(lines);
-	if (!verbose) {
+	if (!verbose)
+	{
 		for (const index of settledCompletionIndices(lines)) skipSet.add(index);
 		for (const index of localCommandIndices(lines)) skipSet.add(index);
 		for (const {index} of hoistedCompletions.values()) skipSet.add(index);
@@ -2754,7 +3337,8 @@ function buildSessionListEntries(
 		lines,
 		(index) => !skipSet.has(index) && isLineVisible(lineAt(index), renderProps, verbose),
 	);
-	for (const [index, line] of lines.entries()) {
+	for (const [index, line] of lines.entries())
+	{
 		if (line.type === "queued-task-notification" && !undeliveredRows.has(index)) skipSet.add(index);
 	}
 	const compactionStatuses: ReadonlySet<number> = renderProps.showCompactSummaries
@@ -2772,28 +3356,35 @@ function buildSessionListEntries(
 		held !== null &&
 		((start < held.startRecordIndex && next >= held.startRecordIndex) ||
 			(start <= held.endRecordIndex && next > held.endRecordIndex));
-	const footerFor = (line: SessionLine) => {
+	const footerFor = (line: SessionLine) =>
+	{
 		if (verbose) return undefined;
 		const span = displaySpans?.get(line.lineIndex);
 		// A turn still waiting on its question has no actions yet upstream.
 		if (span === undefined || asksPendingQuestion(line, renderProps.toolResultMap)) return null;
 		return <AssistantDisplaySpanFooter span={span} />;
 	};
-	const turnChangesByLine = collectTurnChanges(lines, renderProps.toolResultMap, {
-		showTools: renderProps.showTools,
-		showThinking: renderProps.showThinking,
-		turnInProgress,
-		verbose,
-	});
+	const turnChangesByLine = collectTurnChanges(
+		lines,
+		renderProps.toolResultMap,
+		{
+			showTools: renderProps.showTools,
+			showThinking: renderProps.showThinking,
+			turnInProgress,
+			verbose,
+		},
+	);
 	const undoAnchor = archived ? undefined : lastTurnChangesAnchor(lines, turnChangesByLine);
 	const entries: PendingSessionListEntry[] = [];
 	let prevVisibleType: string | null = null;
 	let i = 0;
 
 	const initIndices: number[] = [];
-	while (i < lines.length) {
+	while (i < lines.length)
+	{
 		const line = lineAt(i);
-		if (skipSet.has(i) || !isLineVisible(line, renderProps, verbose)) {
+		if (skipSet.has(i) || !isLineVisible(line, renderProps, verbose))
+		{
 			i++;
 			continue;
 		}
@@ -2802,22 +3393,25 @@ function buildSessionListEntries(
 		i++;
 	}
 	const [firstInitIndex] = initIndices;
-	if (firstInitIndex !== undefined) {
-		entries.push({
-			key: "session-init",
-			startRecordIndex: lineAt(firstInitIndex).lineIndex,
-			isPrompt: false,
-			kind: "marker",
-			element: (
-				<SessionInitEntry
-					key="session-init"
-					lines={lines}
-					indices={initIndices}
-					resumed={isResumedTranscript(lines, renderProps)}
-					{...renderProps}
-				/>
-			),
-		});
+	if (firstInitIndex !== undefined)
+	{
+		entries.push(
+			{
+				key: "session-init",
+				startRecordIndex: lineAt(firstInitIndex).lineIndex,
+				isPrompt: false,
+				kind: "marker",
+				element: (
+					<SessionInitEntry
+						key="session-init"
+						lines={lines}
+						indices={initIndices}
+						resumed={isResumedTranscript(lines, renderProps)}
+						{...renderProps}
+					/>
+				),
+			},
+		);
 		prevVisibleType = "session-init";
 	}
 
@@ -2831,7 +3425,8 @@ function buildSessionListEntries(
 	 * The latest tool run drawn and how many standalone rows followed it. Upstream moves a notice
 	 * beside a standalone call into the latest default run at or before it, else the next one.
 	 */
-	let lastDefaultRun: {
+	let lastDefaultRun:
+	{
 		entryIndex: number;
 		rebuild: (notices: readonly FoldedNotice[]) => PendingSessionListEntry;
 		line: SessionLine;
@@ -2847,9 +3442,11 @@ function buildSessionListEntries(
 			? lastDefaultRun
 			: null;
 	/** Whether the shown line after `index` past standalone rows opens a tool run in `line`'s span. */
-	const nextDefaultRunAfterStandalone = (index: number, line: SessionLine): boolean => {
+	const nextDefaultRunAfterStandalone = (index: number, line: SessionLine): boolean =>
+	{
 		let passedStandalone = false;
-		for (let next = index; next < lines.length; next++) {
+		for (let next = index; next < lines.length; next++)
+		{
 			const nextLine = lineAt(next);
 			if (
 				skipSet.has(next) ||
@@ -2858,7 +3455,8 @@ function buildSessionListEntries(
 			)
 				continue;
 			if (!sameSpan(line, nextLine) || crossesHeldEntry(line.lineIndex, nextLine.lineIndex)) return false;
-			if (isStandaloneToolOnlyAssistantLine(nextLine, renderProps.toolResultMap, renderProps.showThinking)) {
+			if (isStandaloneToolOnlyAssistantLine(nextLine, renderProps.toolResultMap, renderProps.showThinking))
+			{
 				passedStandalone = true;
 				continue;
 			}
@@ -2870,20 +3468,24 @@ function buildSessionListEntries(
 		return false;
 	};
 	const slowCommands = new SlowCommandAbsorber(renderProps.subagentLookup);
-	const pushIdleRow = (commands: readonly SlowCommand[], startRecordIndex: number) => {
+	const pushIdleRow = (commands: readonly SlowCommand[], startRecordIndex: number) =>
+	{
 		if (commands.length === 0) return;
 		prevVisibleType = "assistant";
-		entries.push({
-			key: `idle-commands-${startRecordIndex}`,
-			startRecordIndex,
-			isPrompt: false,
-			kind: "assistant_tool",
-			opensWithStatus: "marker",
-			element: <IdleCommandsRow commands={commands} />,
-		});
+		entries.push(
+			{
+				key: `idle-commands-${startRecordIndex}`,
+				startRecordIndex,
+				isPrompt: false,
+				kind: "assistant_tool",
+				opensWithStatus: "marker",
+				element: <IdleCommandsRow commands={commands} />,
+			},
+		);
 	};
 	/** Draws the slow commands that finished while the parent idled before the turn line `index` opens. */
-	const pushIdleCommands = (index: number) => {
+	const pushIdleCommands = (index: number) =>
+	{
 		const line = lineAt(index);
 		const at = lineTimestamp(line);
 		if (verbose || !opensTurn(line) || at === undefined) return;
@@ -2891,7 +3493,8 @@ function buildSessionListEntries(
 	};
 
 	let nextRewindMarker = 0;
-	while (i < lines.length) {
+	while (i < lines.length)
+	{
 		const line = lineAt(i);
 
 		// A rewind cut's marker row opens the first row at or after its anchor, which Verbose may hold back.
@@ -2899,50 +3502,61 @@ function buildSessionListEntries(
 			let anchor = rewindMarkers.anchors[nextRewindMarker];
 			anchor !== undefined && anchor <= line.lineIndex;
 			anchor = rewindMarkers.anchors[++nextRewindMarker]
-		) {
-			entries.push({
-				key: `rewind-${anchor}`,
-				startRecordIndex: anchor - 0.25,
-				isPrompt: false,
-				kind: "marker",
-				opensWithStatus: "marker",
-				element: rewindMarkers.render(anchor),
-			});
+		)
+		{
+			entries.push(
+				{
+					key: `rewind-${anchor}`,
+					startRecordIndex: anchor - 0.25,
+					isPrompt: false,
+					kind: "marker",
+					opensWithStatus: "marker",
+					element: rewindMarkers.render(anchor),
+				},
+			);
 		}
 
 		// The answer to a question draws the slow commands that finished while the parent waited for it.
 		const answeredAt = verbose || !answersQuestion(lines, i) ? undefined : lineTimestamp(line);
-		if (answeredAt !== undefined) {
+		if (answeredAt !== undefined)
+		{
 			pushIdleRow(slowCommands.take(lastParentRecordAt(lines, i), Date.parse(answeredAt)), line.lineIndex - 0.75);
 		}
 
-		if (skipSet.has(i) || !isLineVisible(line, renderProps, verbose)) {
+		if (skipSet.has(i) || !isLineVisible(line, renderProps, verbose))
+		{
 			i++;
 			continue;
 		}
 
 		const hoisted = hoistedCompletions.get(i);
-		if (hoisted !== undefined) {
+		if (hoisted !== undefined)
+		{
 			const statusIndex = line.lineIndex - 0.5;
-			entries.push({
-				key: `started-${line.lineIndex}`,
-				startRecordIndex: statusIndex,
-				isPrompt: false,
-				kind: "assistant_tool",
-				assistantSpan: displaySpans?.get(line.lineIndex),
-				replyHead: line,
-				opensWithStatus: "marker",
-				element: <AgentCompletionRow completion={hoisted.completion} footer={null} />,
-			});
+			entries.push(
+				{
+					key: `started-${line.lineIndex}`,
+					startRecordIndex: statusIndex,
+					isPrompt: false,
+					kind: "assistant_tool",
+					assistantSpan: displaySpans?.get(line.lineIndex),
+					replyHead: line,
+					opensWithStatus: "marker",
+					element: <AgentCompletionRow completion={hoisted.completion} footer={null} />,
+				},
+			);
 		}
 
 		const notice = noticeOf(i);
-		if (notice !== null) {
+		if (notice !== null)
+		{
 			const notices = [notice];
 			let j = i + 1;
-			while (j < lines.length) {
+			while (j < lines.length)
+			{
 				if (crossesHeldEntry(line.lineIndex, lineAt(j).lineIndex)) break;
-				if (skipSet.has(j) || !isLineVisible(lineAt(j), renderProps, verbose)) {
+				if (skipSet.has(j) || !isLineVisible(lineAt(j), renderProps, verbose))
+				{
 					j++;
 					continue;
 				}
@@ -2968,23 +3582,30 @@ function buildSessionListEntries(
 			const deferred = besideStandalone && previousRun === null && nextDefaultRunAfterStandalone(j, line);
 			// A task notification opening a run gathers the idle slow commands into it instead.
 			if (!(leadsRun && notice.kind === "task")) pushIdleCommands(i);
-			if (previousRun !== null) {
+			if (previousRun !== null)
+			{
 				previousRun.notices = [...previousRun.notices, ...notices];
 				entries[previousRun.entryIndex] = previousRun.rebuild(previousRun.notices);
-			} else if (leadsRun || deferred) {
+			}
+			else if (leadsRun || deferred)
+			{
 				leadingNotices = notices;
 				leadingNoticesIndex = i;
 				leadingNoticesDeferred = deferred;
-			} else {
+			}
+			else
+			{
 				prevVisibleType = "assistant";
-				entries.push({
-					key: `notice-${line.lineIndex}`,
-					startRecordIndex: line.lineIndex,
-					isPrompt: false,
-					kind: "assistant_tool",
-					assistantSpan: displaySpans?.get(line.lineIndex),
-					element: <BackgroundNoticeRows notices={notices} footer={footerFor(line)} />,
-				});
+				entries.push(
+					{
+						key: `notice-${line.lineIndex}`,
+						startRecordIndex: line.lineIndex,
+						isPrompt: false,
+						kind: "assistant_tool",
+						assistantSpan: displaySpans?.get(line.lineIndex),
+						element: <BackgroundNoticeRows notices={notices} footer={footerFor(line)} />,
+					},
+				);
 			}
 			i = j;
 			continue;
@@ -2996,7 +3617,8 @@ function buildSessionListEntries(
 		if (
 			isGroupableToolOnlyAssistantLine(line, renderProps.toolResultMap, renderProps.showThinking) &&
 			renderProps.showTools
-		) {
+		)
+		{
 			const groupStart = i;
 			const groupIndices: number[] = [i];
 			const notices = leadingNotices;
@@ -3006,34 +3628,53 @@ function buildSessionListEntries(
 				: (notices[0]?.lineIndex ?? line.lineIndex);
 			leadingNoticesDeferred = false;
 			let j = i + 1;
-			while (j < lines.length) {
+			while (j < lines.length)
+			{
 				const nextLine = lineAt(j);
-				if (skipSet.has(j) || !isLineVisible(nextLine, renderProps, verbose)) {
+				if (skipSet.has(j) || !isLineVisible(nextLine, renderProps, verbose))
+				{
 					j++;
 					continue;
 				}
-				if (isToolResultOnlyUserLine(nextLine)) {
+				if (isToolResultOnlyUserLine(nextLine))
+				{
 					j++;
 					continue;
 				}
 				if (crossesHeldEntry(startRecordIndex, nextLine.lineIndex)) break;
 				// Upstream rolls a notice-level "Claude Code notice" into the tool run it follows; a warning or recap stands alone.
 				// A notice belongs to no display span (it never moves the turn's footer), so only its session must match.
-				if (nextLine.type === "hook-notice") {
+				if (nextLine.type === "hook-notice")
+				{
 					if (
 						!foldsIntoToolRun(nextLine.notices) ||
 						getSourceSessionId(nextLine, renderProps.sessionId) !==
 							getSourceSessionId(line, renderProps.sessionId)
 					)
 						break;
-					notices.push({kind: "claude-notice", lineIndex: nextLine.lineIndex, notices: nextLine.notices});
+					notices.push(
+						{
+							kind: "claude-notice",
+							lineIndex: nextLine.lineIndex,
+							notices: nextLine.notices,
+						},
+					);
 					j++;
 					continue;
 				}
 				const next = noticeOf(j);
-				if (next !== null) {
+				if (next !== null)
+				{
 					if (next.kind === "hook" || !sameSpan(line, nextLine)) break;
-					notices.push(next.kind === "peer" ? {...next, leads: false} : next);
+					notices.push(
+						next.kind === "peer"
+							?
+								{
+									...next,
+									leads: false,
+								}
+							: next,
+					);
 					j++;
 					continue;
 				}
@@ -3041,21 +3682,27 @@ function buildSessionListEntries(
 					isGroupableToolOnlyAssistantLine(nextLine, renderProps.toolResultMap, renderProps.showThinking) &&
 					sameSpan(line, nextLine) &&
 					!hoistedCompletions.has(j)
-				) {
+				)
+				{
 					groupIndices.push(j);
 					j++;
-				} else {
+				}
+				else
+				{
 					break;
 				}
 			}
 
-			if (!verbose) {
+			if (!verbose)
+			{
 				const openerIndex = notices.length > 0 ? leadingNoticesIndex : groupStart;
 				// A task notification opening the run gathers the slow commands since the last row before it.
 				let since = Date.parse(lineTimestamp(lineAt(openerIndex)) ?? "");
-				if (notices[0]?.kind === "task") {
+				if (notices[0]?.kind === "task")
+				{
 					since = Number.NEGATIVE_INFINITY;
-					for (let previous = openerIndex - 1; previous >= 0; previous--) {
+					for (let previous = openerIndex - 1; previous >= 0; previous--)
+					{
 						const at = lineTimestamp(lineAt(previous));
 						if (
 							skipSet.has(previous) ||
@@ -3072,8 +3719,10 @@ function buildSessionListEntries(
 
 			prevVisibleType = "assistant";
 
-			const buildRun = (runNotices: readonly FoldedNotice[]): PendingSessionListEntry => {
-				if (groupIndices.length === 1 && runNotices.length === 0) {
+			const buildRun = (runNotices: readonly FoldedNotice[]): PendingSessionListEntry =>
+			{
+				if (groupIndices.length === 1 && runNotices.length === 0)
+				{
 					return {
 						key: `line-${line.lineIndex}`,
 						startRecordIndex: line.lineIndex,
@@ -3084,7 +3733,10 @@ function buildSessionListEntries(
 						...(line.type === "assistant" &&
 						!hasAttribution(line, verbose) &&
 						toolSectionOpensWithStatus(backgroundToolNames([line], renderProps.toolResultMap), 0)
-							? {opensWithStatus: "status"}
+							?
+								{
+									opensWithStatus: "status",
+								}
 							: {}),
 						element: (
 							<LineEntry
@@ -3097,7 +3749,9 @@ function buildSessionListEntries(
 							/>
 						),
 					};
-				} else {
+				}
+				else
+				{
 					const groupLines = groupIndices.map((index) => lineAt(index));
 					const groupChanges = groupLines
 						.map((groupLine) => turnChangesByLine.get(groupLine.lineIndex))
@@ -3120,7 +3774,10 @@ function buildSessionListEntries(
 							backgroundToolNames(firstBatch, renderProps.toolResultMap),
 							firstBatchEnd === -1 ? runNotices.length : 0,
 						)
-							? {opensWithStatus: "status"}
+							?
+								{
+									opensWithStatus: "status",
+								}
 							: {}),
 						element: (
 							<GroupedToolCallEntry
@@ -3135,7 +3792,8 @@ function buildSessionListEntries(
 					};
 				}
 			};
-			lastDefaultRun = {
+			lastDefaultRun =
+			{
 				entryIndex: entries.length,
 				rebuild: buildRun,
 				line,
@@ -3148,127 +3806,149 @@ function buildSessionListEntries(
 		}
 
 		const chapter = chapterLineDisposition(line, renderProps.toolResultMap);
-		if (chapter?.kind === "heading") {
+		if (chapter?.kind === "heading")
+		{
 			prevVisibleType = "assistant";
-			entries.push({
-				key: `chapter-${chapter.chapter.id}`,
-				startRecordIndex: line.lineIndex,
-				isPrompt: false,
-				kind: "assistant_other",
-				assistantSpan: displaySpans?.get(line.lineIndex),
-				replyHead: line,
-				element: (
-					<>
-						<ClaudeChapterHeading
-							sessionId={renderProps.sessionId}
-							id={chapter.chapter.id}
-							title={chapter.chapter.title}
-						/>
-						{footerFor(line)}
-					</>
-				),
-			});
+			entries.push(
+				{
+					key: `chapter-${chapter.chapter.id}`,
+					startRecordIndex: line.lineIndex,
+					isPrompt: false,
+					kind: "assistant_other",
+					assistantSpan: displaySpans?.get(line.lineIndex),
+					replyHead: line,
+					element: (
+						<>
+							<ClaudeChapterHeading
+								sessionId={renderProps.sessionId}
+								id={chapter.chapter.id}
+								title={chapter.chapter.title}
+							/>
+							{footerFor(line)}
+						</>
+					),
+				},
+			);
 			i++;
 			continue;
 		}
 
 		const undelivered = undeliveredRows.get(i);
-		if (undelivered !== undefined) {
+		if (undelivered !== undefined)
+		{
 			prevVisibleType = "assistant";
-			entries.push({
-				key: `line-${line.lineIndex}`,
-				startRecordIndex: line.lineIndex,
-				isPrompt: false,
-				kind: "assistant_tool",
-				assistantSpan: displaySpans?.get(line.lineIndex),
-				opensWithStatus: "marker",
-				element: <TaskEventRunRow events={undelivered} footer={footerFor(line)} />,
-			});
+			entries.push(
+				{
+					key: `line-${line.lineIndex}`,
+					startRecordIndex: line.lineIndex,
+					isPrompt: false,
+					kind: "assistant_tool",
+					assistantSpan: displaySpans?.get(line.lineIndex),
+					opensWithStatus: "marker",
+					element: <TaskEventRunRow events={undelivered} footer={footerFor(line)} />,
+				},
+			);
 			i++;
 			continue;
 		}
 
 		const agentCompletion = verbose ? null : agentCompletionOf(line);
-		if (agentCompletion !== null) {
+		if (agentCompletion !== null)
+		{
 			prevVisibleType = "assistant";
-			entries.push({
-				key: `line-${line.lineIndex}`,
-				startRecordIndex: line.lineIndex,
-				isPrompt: false,
-				kind: "assistant_tool",
-				assistantSpan: displaySpans?.get(line.lineIndex),
-				opensWithStatus: "marker",
-				element: <AgentCompletionRow completion={agentCompletion} footer={footerFor(line)} />,
-			});
+			entries.push(
+				{
+					key: `line-${line.lineIndex}`,
+					startRecordIndex: line.lineIndex,
+					isPrompt: false,
+					kind: "assistant_tool",
+					assistantSpan: displaySpans?.get(line.lineIndex),
+					opensWithStatus: "marker",
+					element: <AgentCompletionRow completion={agentCompletion} footer={footerFor(line)} />,
+				},
+			);
 			i++;
 			continue;
 		}
 
 		const watchEnded = verbose || line.type !== "user" ? undefined : line.artifactWatchEnded;
-		if (watchEnded !== undefined) {
-			entries.push({
-				key: `line-${line.lineIndex}`,
-				startRecordIndex: line.lineIndex,
-				isPrompt: false,
-				kind: "assistant_tool",
-				assistantSpan: displaySpans?.get(line.lineIndex),
-				opensWithStatus: "marker",
-				element: (
-					<ArtifactWatchEndedRow
-						displayName={watchEnded}
-						footer={footerFor(line)}
-						recordIndex={line.lineIndex}
-					/>
-				),
-			});
+		if (watchEnded !== undefined)
+		{
+			entries.push(
+				{
+					key: `line-${line.lineIndex}`,
+					startRecordIndex: line.lineIndex,
+					isPrompt: false,
+					kind: "assistant_tool",
+					assistantSpan: displaySpans?.get(line.lineIndex),
+					opensWithStatus: "marker",
+					element: (
+						<ArtifactWatchEndedRow
+							displayName={watchEnded}
+							footer={footerFor(line)}
+							recordIndex={line.lineIndex}
+						/>
+					),
+				},
+			);
 			i++;
 			continue;
 		}
 
 		const contextRefresh = verbose || line.type !== "attachment" ? undefined : line.contextRefresh;
-		if (contextRefresh !== undefined) {
-			entries.push({
-				key: `line-${line.lineIndex}`,
-				startRecordIndex: line.lineIndex,
-				isPrompt: false,
-				kind: "assistant_tool",
-				assistantSpan: displaySpans?.get(line.lineIndex),
-				opensWithStatus: "marker",
-				element: (
-					<ContextRefreshRow refresh={contextRefresh} footer={footerFor(line)} recordIndex={line.lineIndex} />
-				),
-			});
+		if (contextRefresh !== undefined)
+		{
+			entries.push(
+				{
+					key: `line-${line.lineIndex}`,
+					startRecordIndex: line.lineIndex,
+					isPrompt: false,
+					kind: "assistant_tool",
+					assistantSpan: displaySpans?.get(line.lineIndex),
+					opensWithStatus: "marker",
+					element: (
+						<ContextRefreshRow
+							refresh={contextRefresh}
+							footer={footerFor(line)}
+							recordIndex={line.lineIndex}
+						/>
+					),
+				},
+			);
 			i++;
 			continue;
 		}
 
 		const stoppedAgent = verbose ? null : stoppedAgentNoticeOf(line);
-		if (stoppedAgent !== null) {
+		if (stoppedAgent !== null)
+		{
 			const statusIndex = stoppedStatusIndex(line);
 			const span = displaySpans?.get(statusIndex);
-			entries.push({
-				key: `stopped-${line.lineIndex}`,
-				startRecordIndex: statusIndex,
-				isPrompt: false,
-				kind: "assistant_tool",
-				assistantSpan: span,
-				opensWithStatus: "marker",
-				element: (
-					<TaskEventRunRow
-						events={[
-							{
-								taskId: null,
-								status: "stopped",
-								kind: "task",
-								taskType: null,
-								description: stoppedAgent,
-								durationMs: null,
-							},
-						]}
-						footer={span === undefined ? null : <AssistantDisplaySpanFooter span={span} />}
-					/>
-				),
-			});
+			entries.push(
+				{
+					key: `stopped-${line.lineIndex}`,
+					startRecordIndex: statusIndex,
+					isPrompt: false,
+					kind: "assistant_tool",
+					assistantSpan: span,
+					opensWithStatus: "marker",
+					element: (
+						<TaskEventRunRow
+							events={[
+								{
+									taskId: null,
+									status: "stopped",
+									kind: "task",
+									taskType: null,
+									description: stoppedAgent,
+									durationMs: null,
+								},
+							]}
+							footer={span === undefined ? null : <AssistantDisplaySpanFooter span={span} />}
+						/>
+					),
+				},
+			);
 		}
 
 		const isBannerAfterBanner =
@@ -3291,27 +3971,57 @@ function buildSessionListEntries(
 				precedesReply={precedesReply}
 				precedesStatus={precedesStatus}
 				precedesPrompt={precedesPrompt}
-				{...(isBannerAfterBanner ? {className: "mt-1"} : {})}
+				{...(isBannerAfterBanner
+					?
+						{
+							className: "mt-1",
+						}
+					: {})}
 				{...renderProps}
 			/>
 		);
-		entries.push({
-			key: `line-${line.lineIndex}`,
-			startRecordIndex: line.lineIndex,
-			isPrompt: isPromptLine(line),
-			kind: transcriptRowKind(line),
-			assistantSpan: displaySpans?.get(line.lineIndex),
-			...(line.type === "assistant" ? {replyHead: line} : {}),
-			...(compactionStatuses.has(line.lineIndex) ? {opensWithStatus: "marker"} : {}),
-			...(!verbose && isOrdinaryPromptLine(line, renderProps) ? {prompt: {line, render: renderLine}} : {}),
-			...stickyTextEntry(line, renderProps),
-			...(!verbose && (isProseOnlyAssistantLine(line) || isHookSystemMessageLine(line))
-				? {
-						prose: {render: (precedesStatus: OpeningStatus) => renderLine(false, precedesStatus)},
-					}
-				: {}),
-			element: renderLine(false),
-		});
+		entries.push(
+			{
+				key: `line-${line.lineIndex}`,
+				startRecordIndex: line.lineIndex,
+				isPrompt: isPromptLine(line),
+				kind: transcriptRowKind(line),
+				assistantSpan: displaySpans?.get(line.lineIndex),
+				...(line.type === "assistant"
+					?
+						{
+							replyHead: line,
+						}
+					: {}),
+				...(compactionStatuses.has(line.lineIndex)
+					?
+						{
+							opensWithStatus: "marker",
+						}
+					: {}),
+				...(!verbose && isOrdinaryPromptLine(line, renderProps)
+					?
+						{
+							prompt:
+							{
+								line,
+								render: renderLine,
+							},
+						}
+					: {}),
+				...stickyTextEntry(line, renderProps),
+				...(!verbose && (isProseOnlyAssistantLine(line) || isHookSystemMessageLine(line))
+					?
+						{
+							prose:
+							{
+								render: (precedesStatus: OpeningStatus) => renderLine(false, precedesStatus),
+							},
+						}
+					: {}),
+				element: renderLine(false),
+			},
+		);
 		if (
 			lastDefaultRun !== null &&
 			isStandaloneToolOnlyAssistantLine(line, renderProps.toolResultMap, renderProps.showThinking)
@@ -3323,26 +4033,35 @@ function buildSessionListEntries(
 	// Commands that finished since the parent ended its last turn, which it still idles in.
 	const lastSpoken = lines.findLast((line) => line.type === "assistant" || line.type === "user");
 	const lastSpokenAt = lastSpoken === undefined ? undefined : lineTimestamp(lastSpoken);
-	if (!verbose && lastSpoken?.type === "assistant" && lastSpokenAt !== undefined && !callsTool(lastSpoken)) {
+	if (!verbose && lastSpoken?.type === "assistant" && lastSpokenAt !== undefined && !callsTool(lastSpoken))
+	{
 		pushIdleRow(slowCommands.take(Date.parse(lastSpokenAt), Number.POSITIVE_INFINITY), lastSpoken.lineIndex + 0.5);
 	}
 
 	// Prompts still waiting in the CLI's queue close the transcript, after every written record.
 	const lastRecordIndex = lines.at(-1)?.lineIndex ?? 0;
-	for (const [position, line] of waitingPrompts.entries()) {
-		entries.push({
-			key: queuedEntryId(line.lineIndex),
-			startRecordIndex: lastRecordIndex + (position + 1) / (waitingPrompts.length + 1),
-			isPrompt: false,
-			kind: "human",
-			element: (
-				<QueuedWaitingTurn entryId={queuedEntryId(line.lineIndex)} text={line.content} head={position === 0} />
-			),
-		});
+	for (const [position, line] of waitingPrompts.entries())
+	{
+		entries.push(
+			{
+				key: queuedEntryId(line.lineIndex),
+				startRecordIndex: lastRecordIndex + (position + 1) / (waitingPrompts.length + 1),
+				isPrompt: false,
+				kind: "human",
+				element: (
+					<QueuedWaitingTurn
+						entryId={queuedEntryId(line.lineIndex)}
+						text={line.content}
+						head={position === 0}
+					/>
+				),
+			},
+		);
 	}
 
 	// Decided on the final rendered sequence, so the boundary never depends on which rows are mounted.
-	const opensReply = (index: number): boolean => {
+	const opensReply = (index: number): boolean =>
+	{
 		const prompt = entries[index - 1]?.prompt;
 		const replyHead = entries[index]?.replyHead;
 		return (
@@ -3354,21 +4073,36 @@ function buildSessionListEntries(
 	};
 	// Upstream leaves 12px between prose and a status in the same assistant span (16px above a plain
 	// marker), never across a span, a question card or a tasks view.
-	const precedesStatus = (index: number): OpeningStatus | null => {
+	const precedesStatus = (index: number): OpeningStatus | null =>
+	{
 		const span = entries[index]?.assistantSpan;
 		const next = entries[index + 1];
 		return span !== undefined && next?.assistantSpan?.key === span.key ? (next.opensWithStatus ?? null) : null;
 	};
 	const finalRecordIndex = lines.at(-1)?.lineIndex ?? 0;
-	return entries.map(({replyHead: _replyHead, prompt, prose, opensWithStatus: _opensWithStatus, ...entry}, index) => {
+	return entries.map(({replyHead: _replyHead, prompt, prose, opensWithStatus: _opensWithStatus, ...entry}, index) =>
+	{
 		const followingStatus = prose === undefined ? null : precedesStatus(index);
 		return {
 			...entry,
-			...(prompt !== undefined && opensReply(index + 1) ? {element: prompt.render(true)} : {}),
-			...(prompt !== undefined && entries[index + 1]?.prompt !== undefined
-				? {element: prompt.render(false, null, true)}
+			...(prompt !== undefined && opensReply(index + 1)
+				?
+					{
+						element: prompt.render(true),
+					}
 				: {}),
-			...(prose !== undefined && followingStatus !== null ? {element: prose.render(followingStatus)} : {}),
+			...(prompt !== undefined && entries[index + 1]?.prompt !== undefined
+				?
+					{
+						element: prompt.render(false, null, true),
+					}
+				: {}),
+			...(prose !== undefined && followingStatus !== null
+				?
+					{
+						element: prose.render(followingStatus),
+					}
+				: {}),
 			opensReply: opensReply(index),
 			// A status row drawn between two records starts at a half index; it still spans itself.
 			endRecordIndex: Math.max(
@@ -3380,7 +4114,8 @@ function buildSessionListEntries(
 }
 
 /** Reads the tail alone, so its per-second ticks re-render only this slot. */
-function TranscriptTail(): React.ReactNode {
+function TranscriptTail(): React.ReactNode
+{
 	return useContext(TranscriptTailContext);
 }
 
@@ -3397,7 +4132,8 @@ function VirtualizedSessionEntries({
 	measurementSource: object | undefined;
 	/** Upstream's transcript `scrollKey` (its session's transcript key): a new one re-runs the sticky prompt's detection. */
 	scrollKey: string;
-}) {
+})
+{
 	const geometryReady = useContext(SessionTileGeometryReadyContext);
 	// Upstream AssistantMessage `data-cds-reply-type` (shared-9 `nB`): under fizzy-lake `type` it opts the
 	// reply into the reply-type prose CSS. User rows never carry it.
@@ -3407,12 +4143,17 @@ function VirtualizedSessionEntries({
 	const listRef = useRef<HTMLDivElement>(null);
 	const scrollerRef = useRef<Element | null>(null);
 	const expansionStore = useProvidedContext(ExpansionStoreContext, "ExpansionStoreContext");
-	const [restoration] = useState(() => {
+	const [restoration] = useState(() =>
+	{
 		const saved =
 			measurementSource !== undefined && expansionStore.size === 0
 				? readTranscriptMeasurements(measurementKey, measurementSource)
 				: undefined;
-		return {source: measurementSource, saved, heights: new Map<string, number>(saved?.heights)};
+		return {
+			source: measurementSource,
+			saved,
+			heights: new Map<string, number>(saved?.heights),
+		};
 	});
 	const measuredHeightsRef = useRef(restoration.heights);
 	const reusableRef = useRef(true);
@@ -3422,27 +4163,43 @@ function VirtualizedSessionEntries({
 	const scrollAnchorRef = useRef<ScrollAnchor | null>(null);
 	const prependAnchorRef = useRef<ScrollAnchor | null>(null);
 	const discardedGeometryRef = useRef<Map<string, number> | null>(null);
-	const rangeSyncInputsRef = useRef<{heights?: Map<string, number>; update?: () => void}>({});
+	const rangeSyncInputsRef = useRef<
+	{
+		heights?: Map<string, number>;
+		update?: () => void;
+	}>({});
 	const pendingJumpRef = useRef<number | null>(null);
 	const pendingFocusIndexRef = useRef<number | null>(null);
 	const [measuredHeights, setMeasuredHeights] = useState(measuredHeightsRef.current);
 	const [jumpVersion, setJumpVersion] = useState(0);
-	const [range, setRange] = useState<VirtualRange>(() => {
+	const [range, setRange] = useState<VirtualRange>(() =>
+	{
 		if (restoration.saved) return restoration.saved.range;
-		if (typeof window === "undefined" || entries.length <= INITIAL_MOUNTED_TURN_COUNT) {
-			return {startIndex: 0, endIndex: entries.length};
+		if (typeof window === "undefined" || entries.length <= INITIAL_MOUNTED_TURN_COUNT)
+		{
+			return {
+				startIndex: 0,
+				endIndex: entries.length,
+			};
 		}
 		return shouldScrollToEnd
-			? {
+			?
+				{
 					startIndex: entries.length - INITIAL_MOUNTED_TURN_COUNT,
 					endIndex: entries.length,
 				}
-			: {startIndex: 0, endIndex: INITIAL_MOUNTED_TURN_COUNT};
+			:
+				{
+					startIndex: 0,
+					endIndex: INITIAL_MOUNTED_TURN_COUNT,
+				};
 	});
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (measurementSource !== restoration.source) reusableRef.current = false;
 	}, [measurementSource, restoration.source]);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const list = listRef.current;
 		const source = restoration.source;
 		if (!list || source === undefined) return undefined;
@@ -3453,14 +4210,16 @@ function VirtualizedSessionEntries({
 		// Rendering only reads/clones. A committed mount owns the retained generation.
 		discardTranscriptMeasurements(measurementKey);
 		measurementWidthRef.current = width;
-		if (!hidden && restoration.saved && restoration.saved.width !== width) {
+		if (!hidden && restoration.saved && restoration.saved.width !== width)
+		{
 			restoringRangeRef.current = false;
 			measuredHeightsRef.current = new Map();
 			if (managesTileGeometry) pendingGeometry.current = measuredHeightsRef.current;
 			discardedGeometryRef.current = measuredHeightsRef.current;
 			setMeasuredHeights(measuredHeightsRef.current);
 		}
-		return () => {
+		return () =>
+		{
 			if (pendingGeometry.current) return;
 			const savedRange = savedRangeRef.current;
 			if (
@@ -3468,7 +4227,8 @@ function VirtualizedSessionEntries({
 				!reusableRef.current ||
 				expansionStore.size !== 0 ||
 				(!inHiddenTile(list) && list.getBoundingClientRect().width !== measurementWidthRef.current)
-			) {
+			)
+			{
 				discardTranscriptMeasurements(measurementKey);
 				return;
 			}
@@ -3484,10 +4244,12 @@ function VirtualizedSessionEntries({
 		};
 	}, [measurementKey, restoration, expansionStore, managesTileGeometry]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (!pendingGeometry.current || pendingGeometry.current === measuredHeights) savedRangeRef.current = range;
 	}, [range, measuredHeights]);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (pendingGeometry.current && pendingGeometry.current !== measuredHeights) return;
 		pendingGeometry.current = null;
 		if (listRef.current !== null && inHiddenTile(listRef.current)) return;
@@ -3499,39 +4261,48 @@ function VirtualizedSessionEntries({
 	// prepend commit mounts the rows the reader sees and holdScrollAnchor puts them back before paint.
 	const committedEntriesRef = useRef(entries);
 	const [rangeFirstKey, setRangeFirstKey] = useState(entries[0]?.key);
-	if (rangeFirstKey !== entries[0]?.key) {
+	if (rangeFirstKey !== entries[0]?.key)
+	{
 		setRangeFirstKey(entries[0]?.key);
 		const committed = committedEntriesRef.current;
 		const shift = prependedRowCount(committed, entries, range.startIndex);
-		if (shift > 0) {
-			setRange({
-				startIndex: Math.min(entries.length, range.startIndex + shift),
-				endIndex: Math.min(entries.length, range.endIndex + shift),
-			});
+		if (shift > 0)
+		{
+			setRange(
+				{
+					startIndex: Math.min(entries.length, range.startIndex + shift),
+					endIndex: Math.min(entries.length, range.endIndex + shift),
+				},
+			);
 		}
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
-		if (list && scroller) {
+		if (list && scroller)
+		{
 			const nextKeys = new Set(entries.map((entry) => entry.key));
 			prependAnchorRef.current = firstPaintedRow(list, scroller, scrollerViewport(scroller), committed, (key) =>
 				nextKeys.has(key),
 			);
 		}
 	}
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		committedEntriesRef.current = entries;
 	}, [entries]);
 	// A row placed by discarded geometry is no reader's place; the estimated window starts afresh.
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (measuredHeights !== discardedGeometryRef.current) return;
 		discardedGeometryRef.current = null;
 		scrollAnchorRef.current = null;
 	}, [measuredHeights]);
 
-	const prefixHeights = useMemo(() => {
+	const prefixHeights = useMemo(() =>
+	{
 		let total = 0;
 		const result = [total];
-		for (const entry of entries) {
+		for (const entry of entries)
+		{
 			total += measuredHeights.get(entry.key) ?? estimatedRowHeight(entry.kind);
 			result.push(total);
 		}
@@ -3545,7 +4316,8 @@ function VirtualizedSessionEntries({
 	 * that row back before the browser paints the move. Returns false while a jump,
 	 * focus move or pending geometry owns the scroll position.
 	 */
-	const holdScrollAnchor = useCallback((): boolean => {
+	const holdScrollAnchor = useCallback((): boolean =>
+	{
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
 		if (
@@ -3555,10 +4327,12 @@ function VirtualizedSessionEntries({
 			pendingFocusIndexRef.current !== null ||
 			pendingGeometry.current ||
 			inHiddenTile(list)
-		) {
+		)
+		{
 			// The scroll subscription re-attaches the scroller later in the same commit (whenever the
 			// measured heights change), and the reader's row waits for it like a landed page does.
-			if (list && scroller) {
+			if (list && scroller)
+			{
 				scrollAnchorRef.current = null;
 				prependAnchorRef.current = null;
 			}
@@ -3568,7 +4342,8 @@ function VirtualizedSessionEntries({
 		const anchor = prependAnchorRef.current ?? scrollAnchorRef.current;
 		prependAnchorRef.current = null;
 		const row = anchor ? mountedRowFor(list, entries, anchor.entryKey) : undefined;
-		if (anchor && row) {
+		if (anchor && row)
+		{
 			const {scrollTop} = scrollMetrics(scroller);
 			const shift = row.getBoundingClientRect().top - viewport.top + scrollTop - anchor.contentTop;
 			if (Math.abs(shift) >= 0.5) scroller.scrollTop = scrollTop + shift;
@@ -3576,8 +4351,10 @@ function VirtualizedSessionEntries({
 			// above it would ride along when that row settles its own height (a prompt's clamp
 			// lands a render after it mounts), throwing the reader back down the transcript.
 			const rect = row.getBoundingClientRect();
-			if (rect.bottom > viewport.top && rect.top < viewport.top + viewport.height) {
-				scrollAnchorRef.current = {
+			if (rect.bottom > viewport.top && rect.top < viewport.top + viewport.height)
+			{
+				scrollAnchorRef.current =
+				{
 					entryKey: anchor.entryKey,
 					contentTop: rect.top - viewport.top + scrollMetrics(scroller).scrollTop,
 				};
@@ -3588,7 +4365,8 @@ function VirtualizedSessionEntries({
 		return true;
 	}, [entries]);
 
-	const updateVisibleRange = useCallback(() => {
+	const updateVisibleRange = useCallback(() =>
+	{
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
 		if (!list || !scroller || entries.length === 0 || !holdScrollAnchor()) return;
@@ -3608,14 +4386,16 @@ function VirtualizedSessionEntries({
 		);
 	}, [entries, prefixHeights, holdScrollAnchor]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		// A committed window can mount rows whose estimates were wrong. Hold the reader's
 		// row, then measure those rows now so the window grows to cover the viewport
 		// before paint rather than a frame later through the resize observer.
 		const list = listRef.current;
 		if (!list || !holdScrollAnchor()) return;
 		let changed = false;
-		for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
+		for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]"))
+		{
 			const entry = entries[Number(row.dataset["transcriptEntryIndex"])];
 			if (!entry) continue;
 			const height = row.getBoundingClientRect().height;
@@ -3628,7 +4408,8 @@ function VirtualizedSessionEntries({
 		if (changed) setMeasuredHeights(new Map(measuredHeightsRef.current));
 	}, [entries, range.startIndex, range.endIndex, measuredHeights, holdScrollAnchor]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const list = listRef.current;
 		if (!list) return undefined;
 		const scroller = findScrollContainer(list);
@@ -3637,12 +4418,26 @@ function VirtualizedSessionEntries({
 		const frame = restoringRangeRef.current ? requestAnimationFrame(updateVisibleRange) : undefined;
 		// Commit the window inside the scroll event, ahead of this frame's paint. A
 		// scheduled render lands a frame later, after the scrolled-to spacer paints blank.
-		const onScroll = () => {
+		const onScroll = () =>
+		{
 			flushSync(updateVisibleRange);
 		};
-		scroller.addEventListener("scroll", onScroll, {passive: true});
-		window.addEventListener("resize", updateVisibleRange, {passive: true});
-		return () => {
+		scroller.addEventListener(
+			"scroll",
+			onScroll,
+			{
+				passive: true,
+			},
+		);
+		window.addEventListener(
+			"resize",
+			updateVisibleRange,
+			{
+				passive: true,
+			},
+		);
+		return () =>
+		{
 			if (frame !== undefined) cancelAnimationFrame(frame);
 			scroller.removeEventListener("scroll", onScroll);
 			window.removeEventListener("resize", updateVisibleRange);
@@ -3650,17 +4445,22 @@ function VirtualizedSessionEntries({
 		};
 	}, [updateVisibleRange]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const list = listRef.current;
 		if (!list || typeof ResizeObserver === "undefined") return undefined;
-		const observer = new ResizeObserver((observations) => {
+		const observer = new ResizeObserver((observations) =>
+		{
 			// Expanded panes make chat inert and visibility-hidden; its rectangles are not new row measurements.
 			if (inHiddenTile(list)) return;
 			let changed = false;
-			for (const observation of observations) {
-				if (observation.target === list) {
+			for (const observation of observations)
+			{
+				if (observation.target === list)
+				{
 					const width = list.getBoundingClientRect().width;
-					if (width !== measurementWidthRef.current) {
+					if (width !== measurementWidthRef.current)
+					{
 						// Preserve the settled tile's rendered prefix, including offscreen estimates.
 						if (managesTileGeometry) measurementWidthRef.current = width;
 						else reusableRef.current = false;
@@ -3683,30 +4483,40 @@ function VirtualizedSessionEntries({
 			setMeasuredHeights(new Map(measuredHeightsRef.current));
 		});
 		if (restoration.source !== undefined) observer.observe(list);
-		for (const element of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
+		for (const element of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]"))
+		{
 			observer.observe(element);
 		}
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [entries, range.startIndex, range.endIndex, managesTileGeometry, holdScrollAnchor, restoration.source]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (
 			rangeSyncInputsRef.current.heights === measuredHeights &&
 			rangeSyncInputsRef.current.update === updateVisibleRange
-		) {
+		)
+		{
 			// A plain range commit must not re-derive the range in the same frame: on a cold
 			// deep link each mounted tail row clamps the scroller, cascading window swaps
 			// before paint that register as layout shift. Scroll events and measurements drive it.
 			return;
 		}
-		rangeSyncInputsRef.current = {heights: measuredHeights, update: updateVisibleRange};
+		rangeSyncInputsRef.current =
+		{
+			heights: measuredHeights,
+			update: updateVisibleRange,
+		};
 		updateVisibleRange();
 	}, [measuredHeights, updateVisibleRange]);
 
-	useEffect(() => {
-		function requestJump(event: Event) {
+	useEffect(() =>
+	{
+		function requestJump(event: Event)
+		{
 			if (!(event instanceof CustomEvent) || typeof event.detail !== "number") return;
 			const recordIndex = event.detail;
 			const entryIndex = entries.findIndex(
@@ -3714,19 +4524,23 @@ function VirtualizedSessionEntries({
 			);
 			if (entryIndex < 0) return;
 			pendingJumpRef.current = recordIndex;
-			setRange({
-				startIndex: Math.max(0, entryIndex - 1),
-				endIndex: Math.min(entries.length, entryIndex + 2),
-			});
+			setRange(
+				{
+					startIndex: Math.max(0, entryIndex - 1),
+					endIndex: Math.min(entries.length, entryIndex + 2),
+				},
+			);
 			setJumpVersion((version) => version + 1);
 		}
 		window.addEventListener(TRANSCRIPT_JUMP_REQUEST_EVENT, requestJump);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener(TRANSCRIPT_JUMP_REQUEST_EVENT, requestJump);
 		};
 	}, [entries]);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const recordIndex = pendingJumpRef.current;
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
@@ -3738,12 +4552,14 @@ function VirtualizedSessionEntries({
 		const viewport = scrollerViewport(scroller);
 		const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
 		scroller.scrollTop = Math.max(0, listOffset + prefixHeightAt(prefixHeights, entryIndex) - viewport.height / 2);
-		const frame = requestAnimationFrame(() => {
+		const frame = requestAnimationFrame(() =>
+		{
 			pendingJumpRef.current = null;
 			jumpToMessage(recordIndex);
 			updateVisibleRange();
 		});
-		return () => {
+		return () =>
+		{
 			cancelAnimationFrame(frame);
 		};
 	}, [entries, jumpVersion, prefixHeights, range.endIndex, range.startIndex, updateVisibleRange]);
@@ -3754,13 +4570,15 @@ function VirtualizedSessionEntries({
 	 * ("smooth"), upstream c1c1ec7b9 `Fe` lands the row's content 20px below the top instead: a
 	 * glide re-aimed every frame, or one jump under reduced motion or once the row unmounts.
 	 */
-	const scrollToEntry = (index: number, behavior?: ScrollBehavior) => {
+	const scrollToEntry = (index: number, behavior?: ScrollBehavior) =>
+	{
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
 		if (!list || !scroller) return;
 		const viewport = scrollerViewport(scroller);
 		const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
-		if (behavior !== "smooth") {
+		if (behavior !== "smooth")
+		{
 			scroller.scrollTop = Math.max(
 				0,
 				listOffset + prefixHeightAt(prefixHeights, index) - stickyHeaderInset(scroller),
@@ -3770,7 +4588,8 @@ function VirtualizedSessionEntries({
 		}
 		const clamp = (top: number) =>
 			Math.max(0, Math.min(Math.max(0, scroller.scrollHeight - scroller.clientHeight), top));
-		const landing = () => {
+		const landing = () =>
+		{
 			const row = list.querySelector(`[data-transcript-entry-index="${index}"]`);
 			if (row === null) return null;
 			const content = row.firstElementChild ?? row;
@@ -3778,46 +4597,62 @@ function VirtualizedSessionEntries({
 				scroller.scrollTop + content.getBoundingClientRect().top - viewport.top - SMOOTH_ENTRY_LANDING_OFFSET,
 			);
 		};
-		const jump = () => {
+		const jump = () =>
+		{
 			scroller.scrollTop = clamp(
 				landing() ?? listOffset + prefixHeightAt(prefixHeights, index) - SMOOTH_ENTRY_LANDING_OFFSET,
 			);
 			updateVisibleRange();
 		};
-		if (!(scroller instanceof HTMLElement) || isMotionReduced(scroller.ownerDocument)) {
+		if (!(scroller instanceof HTMLElement) || isMotionReduced(scroller.ownerDocument))
+		{
 			jump();
 			return;
 		}
-		glideScrollTo(scroller, () => {
+		glideScrollTo(scroller, () =>
+		{
 			const top = landing();
 			if (top === null) jump();
 			return top;
 		});
 	};
-	usePromptJump({
-		promptIndices,
-		entryOffset: (index) => prefixHeightAt(prefixHeights, index),
-		viewportOffset: () => {
-			const list = listRef.current;
-			const scroller = scrollerRef.current;
-			if (!list || !scroller) return 0;
-			const viewport = scrollerViewport(scroller);
-			return viewport.top + stickyHeaderInset(scroller) - list.getBoundingClientRect().top;
+	usePromptJump(
+		{
+			promptIndices,
+			entryOffset: (index) => prefixHeightAt(prefixHeights, index),
+			viewportOffset: () =>
+			{
+				const list = listRef.current;
+				const scroller = scrollerRef.current;
+				if (!list || !scroller) return 0;
+				const viewport = scrollerViewport(scroller);
+				return viewport.top + stickyHeaderInset(scroller) - list.getBoundingClientRect().top;
+			},
+			scrollToEntry: (index) =>
+			{
+				scrollToEntry(index);
+			},
 		},
-		scrollToEntry: (index) => {
-			scrollToEntry(index);
-		},
-	});
+	);
 	const overlayHost = useContext(TranscriptOverlayHostContext);
 	const stickyCandidates = useMemo(
 		(): StickyPromptCandidate[] =>
 			entries.flatMap((entry, index) =>
-				entry.stickyText === undefined ? [] : [{key: entry.key, index, text: entry.stickyText}],
+				entry.stickyText === undefined
+					? []
+					: [
+							{
+								key: entry.key,
+								index,
+								text: entry.stickyText,
+							},
+						],
 			),
 		[entries],
 	);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const index = pendingFocusIndexRef.current;
 		if (index === null || index < range.startIndex || index >= range.endIndex) return;
 		pendingFocusIndexRef.current = null;
@@ -3825,20 +4660,26 @@ function VirtualizedSessionEntries({
 	}, [range.startIndex, range.endIndex]);
 
 	/** Upstream's arrow-key turn navigation: ArrowUp/ArrowDown on a focused article move to its neighbour. */
-	const focusNeighbour = (event: React.KeyboardEvent<HTMLDivElement>, index: number) => {
+	const focusNeighbour = (event: React.KeyboardEvent<HTMLDivElement>, index: number) =>
+	{
 		if (event.target !== event.currentTarget) return;
-		if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+		if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey))
+		{
 			const trigger = event.currentTarget.querySelector<HTMLElement>("[data-transcript-message-menu]");
-			if (trigger) {
+			if (trigger)
+			{
 				event.preventDefault();
 				const rect = trigger.getBoundingClientRect();
 				trigger.dispatchEvent(
-					new MouseEvent("contextmenu", {
-						bubbles: true,
-						cancelable: true,
-						clientX: rect.left,
-						clientY: rect.top,
-					}),
+					new MouseEvent(
+						"contextmenu",
+						{
+							bubbles: true,
+							cancelable: true,
+							clientX: rect.left,
+							clientY: rect.top,
+						},
+					),
 				);
 			}
 			return;
@@ -3848,15 +4689,18 @@ function VirtualizedSessionEntries({
 		if (step === 0 || target < 0 || target >= entries.length) return;
 		event.preventDefault();
 		const mounted = listRef.current?.querySelector<HTMLElement>(`[data-transcript-entry-index="${target}"]`);
-		if (mounted) {
+		if (mounted)
+		{
 			mounted.focus();
 			return;
 		}
 		pendingFocusIndexRef.current = target;
-		setRange({
-			startIndex: Math.max(0, target - 1),
-			endIndex: Math.min(entries.length, target + 2),
-		});
+		setRange(
+			{
+				startIndex: Math.max(0, target - 1),
+				endIndex: Math.min(entries.length, target + 2),
+			},
+		);
 	};
 
 	const startIndex = Math.min(range.startIndex, entries.length);
@@ -3879,14 +4723,23 @@ function VirtualizedSessionEntries({
 				data-testid="virtualized-transcript"
 				// Upstream's feedKeyboardNav scroll margins (on its scroller; the feed matches the same articles).
 				className="[&_[role=article]]:[scroll-margin-top:calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px))+8px)] [&_[role=article]]:[scroll-margin-bottom:calc(max(var(--epitaxy-bottom-fade-height,0px)-var(--epitaxy-foot-reserve,0px),0px)+8px)]"
-				onClickCapture={(event) => {
+				onClickCapture={(event) =>
+				{
 					if (event.target instanceof Element && event.target.closest("[aria-expanded],summary"))
 						reusableRef.current = false;
 				}}
 			>
 				<div className="sr-only">Use the up and down arrow keys to move between messages</div>
-				<div aria-hidden="true" data-transcript-spacer="before" style={{height: prefixHeights[startIndex]}} />
-				{entries.slice(startIndex, endIndex).map((entry, offset) => {
+				<div
+					aria-hidden="true"
+					data-transcript-spacer="before"
+					style={
+					{
+						height: prefixHeights[startIndex],
+					}}
+				/>
+				{entries.slice(startIndex, endIndex).map((entry, offset) =>
+				{
 					const index = startIndex + offset;
 					const isLast = index === entries.length - 1;
 					return (
@@ -3899,7 +4752,8 @@ function VirtualizedSessionEntries({
 							aria-setsize={entries.length}
 							// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- ARIA feed articles are focusable
 							tabIndex={isLast ? 0 : -1}
-							onKeyDown={(event) => {
+							onKeyDown={(event) =>
+							{
 								focusNeighbour(event, index);
 							}}
 							data-assistant-span={entry.assistantSpan?.key}
@@ -3933,7 +4787,10 @@ function VirtualizedSessionEntries({
 				<div
 					aria-hidden="true"
 					data-transcript-spacer="after"
-					style={{height: totalHeight - prefixHeightAt(prefixHeights, endIndex)}}
+					style={
+					{
+						height: totalHeight - prefixHeightAt(prefixHeights, endIndex),
+					}}
 				/>
 			</div>
 			{!tailInline && <TranscriptTail />}
@@ -3960,7 +4817,8 @@ function heldImagesCallId(
 	renderProps: LineRenderProps,
 	verbose: boolean,
 	turnInProgress: boolean,
-): string | null {
+): string | null
+{
 	if (!turnInProgress) return null;
 	const last = lines.findLast((line) => isLineVisible(line, renderProps, verbose));
 	if (last?.type !== "assistant") return null;
@@ -3981,7 +4839,8 @@ function liveThinkingKey(
 	renderProps: LineRenderProps,
 	verbose: boolean,
 	turnInProgress: boolean,
-): string | null {
+): string | null
+{
 	if (!turnInProgress) return null;
 	const last = lines.findLast((line) => isLineVisible(line, renderProps, verbose));
 	if (last?.type !== "assistant") return null;
@@ -4006,7 +4865,8 @@ function SessionLineList({
 	clientRows,
 	renderClientRowCard,
 	...renderProps
-}: LineRenderProps & {
+}: LineRenderProps &
+{
 	lines: SessionLine[];
 	shouldScrollToEnd: boolean;
 	measurementKey: string;
@@ -4017,7 +4877,8 @@ function SessionLineList({
 	rewoundUuids: ReadonlySet<string>;
 	clientRows: readonly ClientRow[];
 	renderClientRowCard: ((row: ClientRow) => React.ReactNode) | undefined;
-}) {
+})
+{
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const [held, setHeld] = useState<HeldAssistantFooter | null>(null);
 	const [openCuts, setOpenCuts] = useState<ReadonlySet<string>>(() => new Set());
@@ -4025,8 +4886,10 @@ function SessionLineList({
 		() => rewindLayout(chainLines, rewindCuts, rewoundUuids, verbose, openCuts),
 		[chainLines, rewindCuts, rewoundUuids, verbose, openCuts],
 	);
-	const toggleCut = useCallback((replacementUuid: string) => {
-		setOpenCuts((open) => {
+	const toggleCut = useCallback((replacementUuid: string) =>
+	{
+		setOpenCuts((open) =>
+		{
 			const next = new Set(open);
 			if (!next.delete(replacementUuid)) next.add(replacementUuid);
 			return next;
@@ -4049,10 +4912,18 @@ function SessionLineList({
 	const entries = withClientRows(
 		withRewoundRowsGreyed(
 			withPinnedChapterHeadings(
-				buildSessionListEntries(lines, renderProps, verbose, verbose ? null : held, turnInProgress, archived, {
-					anchors: [...rewind.markersBefore.keys()].toSorted((a, b) => a - b),
-					render: renderRewindMarkers,
-				}),
+				buildSessionListEntries(
+					lines,
+					renderProps,
+					verbose,
+					verbose ? null : held,
+					turnInProgress,
+					archived,
+					{
+						anchors: [...rewind.markersBefore.keys()].toSorted((a, b) => a - b),
+						render: renderRewindMarkers,
+					},
+				),
 				lines,
 				pinnedChapters,
 				renderProps.sessionId,
@@ -4143,14 +5014,17 @@ const SYSTEM_BANNER_SUBTYPES = new Set([
 	"session_cron_carry",
 ]);
 
-interface AttachmentHead {
+interface AttachmentHead
+{
 	type: string | null;
 	hookEvent: string | null;
 	prompt: string | null;
 }
 
-function getAttachmentHead(json: string): AttachmentHead {
-	try {
+function getAttachmentHead(json: string): AttachmentHead
+{
+	try
+	{
 		const parsed = asRecord(JSON.parse(json)) ?? {};
 		const {type, hookEvent, prompt} = parsed;
 		return {
@@ -4158,13 +5032,20 @@ function getAttachmentHead(json: string): AttachmentHead {
 			hookEvent: typeof hookEvent === "string" ? hookEvent : null,
 			prompt: typeof prompt === "string" ? prompt : null,
 		};
-	} catch {
-		return {type: null, hookEvent: null, prompt: null};
+	}
+	catch
+	{
+		return {
+			type: null,
+			hookEvent: null,
+			prompt: null,
+		};
 	}
 }
 
 /** A hook's message to the user, which upstream draws as assistant prose ("PreToolUse:Bash says: …"). */
-function isHookSystemMessageLine(line: SessionLine): boolean {
+function isHookSystemMessageLine(line: SessionLine): boolean
+{
 	return line.type === "attachment" && getAttachmentHead(line.attachmentJson).type === "hook_system_message";
 }
 
@@ -4173,7 +5054,8 @@ function isHookSystemMessageLine(line: SessionLine): boolean {
  * turn absorbed, which upstream never receives; queued task notifications fold
  * into the tool group.
  */
-function isVerboseOnlyAttachment({type, hookEvent, prompt}: AttachmentHead): boolean {
+function isVerboseOnlyAttachment({type, hookEvent, prompt}: AttachmentHead): boolean
+{
 	if (type === "queued_command") return prompt === null || parseTaskNotification(prompt) === null;
 	if (type === "hook_blocking_error") return hookEvent !== null && STOP_HOOK_EVENTS.has(hookEvent);
 	return type !== null && VERBOSE_ONLY_SUBTYPES.has(type);
@@ -4184,7 +5066,8 @@ function isVerboseOnlyAttachment({type, hookEvent, prompt}: AttachmentHead): boo
  * Returns false when all content blocks are empty text, hidden thinking,
  * or tool_use blocks with showTools off -- avoiding blank rows.
  */
-function hasAssistantVisibleContent(line: SessionLine, showThinking: boolean, showTools: boolean): boolean {
+function hasAssistantVisibleContent(line: SessionLine, showThinking: boolean, showTools: boolean): boolean
+{
 	if (line.type !== "assistant") return true;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return false;
@@ -4227,17 +5110,20 @@ function isLineVisible(
 		| "toolResultMap"
 	>,
 	verbose: boolean,
-): boolean {
+): boolean
+{
 	if (line.type === "agent-name" || line.type === "agent-color" || line.type === "permission-mode")
 		return showSystemBanners;
 	if (line.type === "worktree") return showSystemBanners;
 	// Upstream always draws its "Claude Code notice" rows; no banner setting hides them.
 	if (line.type === "hook-notice") return true;
-	if (line.type === "system") {
+	if (line.type === "system")
+	{
 		if (line.subtype === "stop_hook_summary") return verbose;
 		return showSystemBanners;
 	}
-	if (line.type === "attachment") {
+	if (line.type === "attachment")
+	{
 		if (line.contextRefresh !== undefined) return true;
 		const head = getAttachmentHead(line.attachmentJson);
 		if (isVerboseOnlyAttachment(head)) return verbose;
@@ -4252,10 +5138,12 @@ function isLineVisible(
 		line.isVisibleInTranscriptOnly === true &&
 		line.isCompactSummary !== true &&
 		!showTranscriptOnly
-	) {
+	)
+	{
 		return false;
 	}
-	if (line.type === "user") {
+	if (line.type === "user")
+	{
 		const kind = classifyUserContent(line);
 		// Upstream draws nothing for an interruption, so outside Verbose it must not break a reply boundary either.
 		if (kind === "request-interrupted") return verbose;
@@ -4288,13 +5176,16 @@ function renderSessionMessage({
 	showCompactSummaries,
 	allowedImageRoots,
 	nextLine,
-}: LineRenderProps & {
+}: LineRenderProps &
+{
 	line: SessionLine;
 	nextLine?: SessionLine | undefined;
-}) {
+})
+{
 	const sourceSessionId = getSourceSessionId(line, sessionId);
 
-	switch (line.type) {
+	switch (line.type)
+	{
 		case "user":
 			return (
 				<UserEntry
@@ -4395,20 +5286,24 @@ type UserContentKind =
 	| "slash-command-body"
 	| "agent-message";
 
-function getUserContentText(line: MessageSessionLine): string {
+function getUserContentText(line: MessageSessionLine): string
+{
 	const content = line.message?.content;
 	if (!content) return "";
 	if (typeof content === "string") return content;
 	const parts: string[] = [];
-	for (const block of content) {
-		if (block.type === "text" && typeof block.text === "string") {
+	for (const block of content)
+	{
+		if (block.type === "text" && typeof block.text === "string")
+		{
 			parts.push(block.text);
 		}
 	}
 	return parts.join("\n").trim();
 }
 
-function hasDocumentBlock(line: MessageSessionLine): boolean {
+function hasDocumentBlock(line: MessageSessionLine): boolean
+{
 	const content = line.message?.content;
 	if (!content || typeof content === "string") return false;
 	return content.some((block) => block.type === "document");
@@ -4417,19 +5312,22 @@ function hasDocumentBlock(line: MessageSessionLine): boolean {
 /**
  * Classify a user line's content: is it a command, bash input/output, or regular text?
  */
-function classifyUserContent(line: MessageSessionLine): UserContentKind {
+function classifyUserContent(line: MessageSessionLine): UserContentKind
+{
 	const content = line.message?.content;
 	if (!content) return "text";
 
 	const text = getUserContentText(line);
 
 	// Compact-summary: explicit flags trump everything.
-	if (line.isCompactSummary === true || line.isVisibleInTranscriptOnly === true) {
+	if (line.isCompactSummary === true || line.isVisibleInTranscriptOnly === true)
+	{
 		return "compact-summary";
 	}
 
 	// Request-interrupted: detect by content text shape.
-	if (text && isRequestInterrupted(text)) {
+	if (text && isRequestInterrupted(text))
+	{
 		return "request-interrupted";
 	}
 
@@ -4438,12 +5336,14 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind {
 
 	// Document attachments are always user-initiated, even when isMeta is set —
 	// otherwise an isMeta line is either stop-hook feedback or a slash-command body.
-	if (line.isMeta === true && !hasDocumentBlock(line)) {
+	if (line.isMeta === true && !hasDocumentBlock(line))
+	{
 		if (text.startsWith("Stop hook feedback:")) return "stop-hook";
 		return "slash-command-body";
 	}
 
-	if (typeof content === "string") {
+	if (typeof content === "string")
+	{
 		if (parseCommandBlock(content)) return "command";
 		if (parseBashInput(content)) return "bash";
 		if (parseBashOutput(content)) return "bash";
@@ -4455,20 +5355,29 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind {
 	let hasBash = false;
 	let hasText = false;
 	let hasToolResult = false;
-	for (const block of content) {
-		if (block.type === "text" && typeof block.text === "string") {
+	for (const block of content)
+	{
+		if (block.type === "text" && typeof block.text === "string")
+		{
 			if (parseCommandBlock(block.text)) hasCommand = true;
 			else if (parseBashInput(block.text)) hasBash = true;
 			else if (parseBashOutput(block.text)) hasBash = true;
-			else if (block.text.includes("<local-command-caveat>")) {
+			else if (block.text.includes("<local-command-caveat>"))
+			{
 				// skip caveat blocks
-			} else {
+			}
+			else
+			{
 				const cleaned = stripCommandTags(block.text);
 				if (cleaned) hasText = true;
 			}
-		} else if (block.type === "tool_result") {
+		}
+		else if (block.type === "tool_result")
+		{
 			hasToolResult = true;
-		} else if (block.type === "image" || block.type === "document") {
+		}
+		else if (block.type === "image" || block.type === "document")
+		{
 			hasText = true;
 		}
 	}
@@ -4481,7 +5390,8 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind {
 }
 
 /** The human prompt's bubble, which flashes upstream's accent when a promoted queued prompt lands as it. */
-function UserPromptBubble({text, children}: {text: string; children: ReactNode}) {
+function UserPromptBubble({text, children}: {text: string; children: ReactNode})
+{
 	const {isolate, accent} = useLandedFlash(text);
 	return (
 		<UserBubbleBox className={`${USER_BUBBLE_CLASS}${isolate === "" ? "" : ` ${isolate}`}`}>
@@ -4505,14 +5415,17 @@ function UserEntry({
 	isSubagentSession: boolean;
 	showCompactSummaries: boolean;
 	allowedImageRoots: readonly string[];
-}) {
+})
+{
 	const kind = classifyUserContent(line);
 
-	if (line.isCompactSummary === true && !showCompactSummaries) {
+	if (line.isCompactSummary === true && !showCompactSummaries)
+	{
 		return <CompactSummaryStub line={line} sessionId={sessionId} allowedImageRoots={allowedImageRoots} />;
 	}
 
-	if (kind === "command") {
+	if (kind === "command")
+	{
 		return <CommandEntry line={line} sessionId={sessionId} />;
 	}
 
@@ -4520,7 +5433,8 @@ function UserEntry({
 	// Upstream annotates a carded non-synthetic turn with ["copy"], but p8 drops it (shared-80 `Gq`: none of the
 	// turn's items is text, an attachment or a placed card) and its extras/receipt slots skip carded turns, so no
 	// Copy toolbar, timestamp or frame mounts and the strip never gets its mt-5 (user-carded-turn-copy-actions).
-	if (kind === "bash") {
+	if (kind === "bash")
+	{
 		const coalesceNext = hasBashInput(line) && nextLine?.type === "user" && hasBashOutput(nextLine);
 		const outputLine = coalesceNext ? nextLine : undefined;
 		const bash = extractBash(line, outputLine);
@@ -4535,11 +5449,13 @@ function UserEntry({
 	}
 
 	// Upstream never shows the CLI-injected skill expansion or meta notes; the invoking prompt stands alone.
-	if (kind === "tool-result-only" || kind === "slash-command-body") {
+	if (kind === "tool-result-only" || kind === "slash-command-body")
+	{
 		return null;
 	}
 
-	if (kind === "agent-message") {
+	if (kind === "agent-message")
+	{
 		const message = parseAgentMessage(getUserContentText(line));
 		return message === null ? null : (
 			<UserTurn
@@ -4550,13 +5466,15 @@ function UserEntry({
 		);
 	}
 
-	if (isSubagentSession) {
+	if (isSubagentSession)
+	{
 		return <SubagentPromptEntry line={line} sessionId={sessionId} />;
 	}
 
 	if (kind === "stop-hook") return <StopHookMarker line={line} />;
 
-	if (isKeyOf(LABEL_BY_KIND, kind)) {
+	if (isKeyOf(LABEL_BY_KIND, kind))
+	{
 		const label = LABEL_BY_KIND[kind];
 		return (
 			<LabeledAutomatedEntry
@@ -4601,15 +5519,24 @@ const ABSORBED_REWIND_REASON = "Rewind isn't available for a message sent mid-tu
  * A prompt absorbed mid-turn exists only as a queued_command attachment, which the CLI's rewind picker
  * (`mmo` in 2.1.317: `type==="user"` records only) never lists, so Rewind to here stays visible but disabled.
  */
-function AbsorbedPromptActions({children}: {children: ReactNode}) {
+function AbsorbedPromptActions({children}: {children: ReactNode})
+{
 	const actions = useContext(TranscriptActionsContext);
-	const value = useMemo(() => ({...actions, rewindDisabledReason: ABSORBED_REWIND_REASON}), [actions]);
+	const value = useMemo(
+		() => (
+		{
+			...actions,
+			rewindDisabledReason: ABSORBED_REWIND_REASON,
+		}),
+		[actions],
+	);
 	return <TranscriptActionsContext.Provider value={value}>{children}</TranscriptActionsContext.Provider>;
 }
 
 type LabeledKind = "request-interrupted" | "compact-summary";
 
-const LABEL_BY_KIND: Record<LabeledKind, string> = {
+const LABEL_BY_KIND: Record<LabeledKind, string> =
+{
 	"request-interrupted": "Request interrupted",
 	"compact-summary": "Compact summary",
 };
@@ -4622,7 +5549,8 @@ const STOP_HOOK_LABEL = "Hook re-prompted Claude";
  * assistant column whose body is the hook's feedback without its prefix.
  */
 /** Each notice of a rolled-up "Claude Code notice" line as its own event step in the tool run (upstream `NQ`/`afe`). */
-function ClaudeCodeNoticeSteps({notice}: {notice: ClaudeCodeNotice}) {
+function ClaudeCodeNoticeSteps({notice}: {notice: ClaudeCodeNotice})
+{
 	return notice.notices.map((hookNotice, index) => (
 		<ClaudeCodeNoticeStep key={hookNotice.uuid ?? index} notice={hookNotice} />
 	));
@@ -4630,7 +5558,8 @@ function ClaudeCodeNoticeSteps({notice}: {notice: ClaudeCodeNotice}) {
 
 const CLAUDE_CODE_NOTICE_LABEL = "Claude Code notice";
 
-function ClaudeCodeNoticeStep({notice}: {notice: ClaudeCodeNotice["notices"][number]}) {
+function ClaudeCodeNoticeStep({notice}: {notice: ClaudeCodeNotice["notices"][number]})
+{
 	const [expanded, setExpanded] = useState(false);
 	const restInk = useRestInk();
 	const rowCut = useTypeRowCut(CLAUDE_CODE_NOTICE_LABEL);
@@ -4663,7 +5592,8 @@ function ClaudeCodeNoticeStep({notice}: {notice: ClaudeCodeNotice["notices"][num
 	);
 }
 
-function StopHookMarker({line}: {line: MessageSessionLine}) {
+function StopHookMarker({line}: {line: MessageSessionLine})
+{
 	const [expanded, setExpanded] = useState(false);
 	const restInk = useRestInk();
 	const bodyId = useId();
@@ -4676,7 +5606,8 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
 				type="button"
 				aria-expanded={expanded}
 				aria-controls={bodyId}
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded(!expanded);
 				}}
 				data-cds-row=""
@@ -4712,30 +5643,50 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
  * handlers for that card.
  */
 /** Upstream `Xu`'s staleCompact closing line: the band and the last entry it may close (an assistant reply). */
-const StaleCompactTailContext = createContext<{line: SessionLine | null; band: StaleCompactBandProps} | null>(null);
+const StaleCompactTailContext = createContext<
+{
+	line: SessionLine | null;
+	band: StaleCompactBandProps;
+} | null>(null);
 
-const LastErrorLineContext = createContext<{
+const LastErrorLineContext = createContext<
+{
 	line: SessionLine | null;
 	recovery: ApiErrorRecovery | undefined;
 	/** The hook-blocked prompt that is the transcript's last entry, drawn as the full card. */
 	blockedLine: SessionLine | null;
-}>({
-	line: null,
-	recovery: undefined,
-	blockedLine: null,
-});
+}>(
+	{
+		line: null,
+		recovery: undefined,
+		blockedLine: null,
+	},
+);
 
-function HookNoticeForLine({notices}: {notices: Extract<SessionLine, {type: "hook-notice"}>["notices"]}) {
+function HookNoticeForLine({
+	notices,
+}: {
+	notices: Extract<
+		SessionLine,
+		{
+			type: "hook-notice";
+		}
+	>["notices"];
+})
+{
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	return <HookNoticeRow notices={notices} verbose={verbose} />;
 }
 
-function isErrorLine(line: SessionLine): boolean {
+function isErrorLine(line: SessionLine): boolean
+{
 	return line.type === "assistant" && (line.isApiErrorMessage === true || line.stopReason === "refusal");
 }
 
-function lastErrorLine(lines: readonly SessionLine[]): SessionLine | null {
-	for (const line of lines.toReversed()) {
+function lastErrorLine(lines: readonly SessionLine[]): SessionLine | null
+{
+	for (const line of lines.toReversed())
+	{
 		if (isErrorLine(line)) return line;
 		// A blocked prompt ends the turn like a prompt does (upstream `cd`).
 		if (isPromptLine(line) || line.type === "prompt-blocked") return null;
@@ -4747,7 +5698,8 @@ function lastErrorLine(lines: readonly SessionLine[]): SessionLine | null {
  * The hook-blocked prompt when it is the transcript's last entry: no later user or
  * assistant entry or block (system and attachment records don't count).
  */
-function lastEntryPromptBlocked(lines: readonly SessionLine[]): SessionLine | null {
+function lastEntryPromptBlocked(lines: readonly SessionLine[]): SessionLine | null
+{
 	const last = lines.findLast(
 		(line) =>
 			line.type === "assistant" ||
@@ -4757,22 +5709,52 @@ function lastEntryPromptBlocked(lines: readonly SessionLine[]): SessionLine | nu
 	return last?.type === "prompt-blocked" ? last : null;
 }
 
-const CompactBoundaryContext = createContext<ReadonlyMap<number, {meta: CompactMetadata}>>(new Map());
+const CompactBoundaryContext = createContext<
+	ReadonlyMap<
+		number,
+		{
+			meta: CompactMetadata;
+		}
+	>
+>(new Map());
 
 /**
  * Pair each compact summary with the `compact_boundary` record written just
  * before it, looking back past other system and attachment records.
  */
-function compactBoundariesBySummary(lines: readonly SessionLine[]): ReadonlyMap<number, {meta: CompactMetadata}> {
-	const bySummary = new Map<number, {meta: CompactMetadata}>();
-	let boundary: {meta: CompactMetadata} | null = null;
-	for (const line of lines) {
-		if (line.type === "system" && line.subtype === "compact_boundary") {
-			boundary = {meta: line.compactMetadata};
-		} else if (line.type === "user" && line.isCompactSummary === true) {
+function compactBoundariesBySummary(lines: readonly SessionLine[]): ReadonlyMap<
+	number,
+	{
+		meta: CompactMetadata;
+	}
+>
+{
+	const bySummary = new Map<
+		number,
+		{
+			meta: CompactMetadata;
+		}
+	>();
+	let boundary:
+	{
+		meta: CompactMetadata;
+	} | null = null;
+	for (const line of lines)
+	{
+		if (line.type === "system" && line.subtype === "compact_boundary")
+		{
+			boundary =
+			{
+				meta: line.compactMetadata,
+			};
+		}
+		else if (line.type === "user" && line.isCompactSummary === true)
+		{
 			if (boundary !== null) bySummary.set(line.lineIndex, boundary);
 			boundary = null;
-		} else if (line.type === "user" || line.type === "assistant") {
+		}
+		else if (line.type === "user" || line.type === "assistant")
+		{
 			boundary = null;
 		}
 	}
@@ -4794,13 +5776,15 @@ function CompactedSessionStatus({
 	line: MessageSessionLine;
 	sessionId: string;
 	allowedImageRoots: readonly string[];
-}) {
+})
+{
 	const [expanded, setExpanded] = useState(false);
 	const bodyId = useId();
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const restInk = useRestInk();
 	const rowCut = useTypeRowCut(label);
-	if (!verbose) {
+	if (!verbose)
+	{
 		return (
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" className={TURN_STATUS_CLASS}>
@@ -4825,7 +5809,8 @@ function CompactedSessionStatus({
 					type="button"
 					aria-expanded={expanded}
 					aria-controls={bodyId}
-					onClick={() => {
+					onClick={() =>
+					{
 						setExpanded(!expanded);
 					}}
 					data-cds-row=""
@@ -4870,10 +5855,12 @@ function RewindMarker({
 	verbose: boolean;
 	expanded: boolean;
 	onToggle: (replacementUuid: string) => void;
-}) {
+})
+{
 	const restInk = useRestInk();
 	const rowCut = useTypeRowCut(placement.label);
-	if (!verbose || !placement.hasRows) {
+	if (!verbose || !placement.hasRows)
+	{
 		return (
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" data-testid="rewind-marker" data-find-omitted="" className={TURN_STATUS_CLASS}>
@@ -4897,7 +5884,8 @@ function RewindMarker({
 				<button
 					type="button"
 					aria-expanded={expanded}
-					onClick={() => {
+					onClick={() =>
+					{
 						onToggle(placement.replacementUuid);
 					}}
 					data-cds-row=""
@@ -4920,7 +5908,8 @@ function RewindMarker({
 }
 
 /** The user row of a host-intercepted command: the command as sent, in a plain prompt bubble. */
-function ClientUserRow({row}: {row: ClientRow}) {
+function ClientUserRow({row}: {row: ClientRow})
+{
 	return (
 		<UserTurn text={row.text} turnKey={row.id}>
 			<UserMessageColumn turnKey={row.id} className={USER_MESSAGE_CLASS}>
@@ -4942,14 +5931,17 @@ function withClientRows(
 	lines: readonly SessionLine[],
 	clientRows: readonly ClientRow[],
 	renderCard: ((row: ClientRow) => React.ReactNode) | undefined,
-): SessionListEntry[] {
+): SessionListEntry[]
+{
 	if (clientRows.length === 0) return entries;
 	const lineIndexByUuid = new Map<string, number>();
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		if ("uuid" in line && line.uuid !== undefined) lineIndexByUuid.set(line.uuid, line.lineIndex);
 	}
 	const rowsAfter = new Map<number, ClientRow[]>();
-	for (const row of clientRows) {
+	for (const row of clientRows)
+	{
 		const anchor = row.afterUuid === null ? undefined : lineIndexByUuid.get(row.afterUuid);
 		const after =
 			anchor === undefined
@@ -4958,7 +5950,8 @@ function withClientRows(
 		rowsAfter.set(after, [...(rowsAfter.get(after) ?? []), row]);
 	}
 	const spliced: SessionListEntry[] = [...clientRowEntries(rowsAfter.get(-1), -1, renderCard)];
-	for (const [index, entry] of entries.entries()) {
+	for (const [index, entry] of entries.entries())
+	{
 		spliced.push(entry, ...clientRowEntries(rowsAfter.get(index), entry.endRecordIndex, renderCard));
 	}
 	return spliced;
@@ -4968,11 +5961,19 @@ function clientRowEntries(
 	rows: readonly ClientRow[] | undefined,
 	recordIndex: number,
 	renderCard: ((row: ClientRow) => React.ReactNode) | undefined,
-): SessionListEntry[] {
+): SessionListEntry[]
+{
 	if (rows === undefined) return [];
-	return rows.flatMap((row): SessionListEntry[] => {
-		const shared = {startRecordIndex: recordIndex, endRecordIndex: recordIndex, opensReply: false};
-		const prompt: SessionListEntry = {
+	return rows.flatMap((row): SessionListEntry[] =>
+	{
+		const shared =
+		{
+			startRecordIndex: recordIndex,
+			endRecordIndex: recordIndex,
+			opensReply: false,
+		};
+		const prompt: SessionListEntry =
+		{
 			...shared,
 			key: `${row.id}-u`,
 			isPrompt: true,
@@ -5003,14 +6004,17 @@ function withPinnedChapterHeadings(
 	lines: readonly SessionLine[],
 	chapters: readonly UserChapter[],
 	sessionId: string,
-): SessionListEntry[] {
+): SessionListEntry[]
+{
 	if (chapters.length === 0) return entries;
 	const lineIndexByUuid = new Map<string, number>();
-	for (const line of lines) {
+	for (const line of lines)
+	{
 		if ("uuid" in line && typeof line.uuid === "string") lineIndexByUuid.set(line.uuid, line.lineIndex);
 	}
 	const headingsByEntry = new Map<number, UserChapter[]>();
-	for (const chapter of chapters) {
+	for (const chapter of chapters)
+	{
 		const at = lineIndexByUuid.get(chapter.afterId);
 		if (at === undefined) continue;
 		const entryIndex = entries.findIndex((entry) => entry.startRecordIndex <= at && at <= entry.endRecordIndex);
@@ -5018,7 +6022,8 @@ function withPinnedChapterHeadings(
 		headingsByEntry.set(entryIndex, [...(headingsByEntry.get(entryIndex) ?? []), chapter]);
 	}
 	if (headingsByEntry.size === 0) return entries;
-	return entries.map((entry, index) => {
+	return entries.map((entry, index) =>
+	{
 		const headings = headingsByEntry.get(index);
 		if (headings === undefined) return entry;
 		return {
@@ -5030,7 +6035,8 @@ function withPinnedChapterHeadings(
 							key={chapter.id}
 							id={chapter.id}
 							title={chapter.title}
-							onRename={(title) => {
+							onRename={(title) =>
+							{
 								renameChapter(sessionId, chapter.id, title);
 							}}
 						/>
@@ -5042,11 +6048,13 @@ function withPinnedChapterHeadings(
 	});
 }
 
-function withRewoundRowsGreyed(entries: SessionListEntry[], greyed: ReadonlySet<number>): SessionListEntry[] {
+function withRewoundRowsGreyed(entries: SessionListEntry[], greyed: ReadonlySet<number>): SessionListEntry[]
+{
 	if (greyed.size === 0) return entries;
 	return entries.map((entry) =>
 		greyed.has(entry.startRecordIndex)
-			? {
+			?
+				{
 					...entry,
 					element: (
 						<div data-rewound-away="" className="opacity-60">
@@ -5071,12 +6079,14 @@ function CompactSummaryStub({
 	line: MessageSessionLine;
 	sessionId: string;
 	allowedImageRoots: readonly string[];
-}) {
+})
+{
 	const [expanded, setExpanded] = useState(false);
 	const bodyId = useId();
 	const boundary = useContext(CompactBoundaryContext).get(line.lineIndex);
 
-	if (boundary !== undefined) {
+	if (boundary !== undefined)
+	{
 		return (
 			<CompactedSessionStatus
 				label={compactBoundaryLabel(boundary.meta)}
@@ -5094,7 +6104,8 @@ function CompactSummaryStub({
 					label="Compacted conversation"
 					expanded={expanded}
 					bodyId={bodyId}
-					onToggle={() => {
+					onToggle={() =>
+					{
 						setExpanded(!expanded);
 					}}
 				/>
@@ -5121,7 +6132,8 @@ function CompactSummaryBody({
 	line: MessageSessionLine;
 	sessionId: string;
 	allowedImageRoots: readonly string[];
-}) {
+})
+{
 	const {textNodes, mediaNodes, images} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
 	return (
@@ -5146,7 +6158,8 @@ function LabeledAutomatedEntry({
 	sessionId: string;
 	label: string;
 	allowedImageRoots: readonly string[];
-}) {
+})
+{
 	const {textNodes, mediaNodes, images} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
 	if (textNodes.length === 0 && mediaNodes.length === 0 && images.length === 0) return null;
@@ -5168,17 +6181,23 @@ function LabeledAutomatedEntry({
 	);
 }
 
-function SubagentPromptEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
+function SubagentPromptEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string})
+{
 	const content = line.message?.content;
 	if (!content) return null;
 
 	const textBlocks: string[] = [];
-	if (typeof content === "string") {
+	if (typeof content === "string")
+	{
 		const cleaned = stripCommandTags(content);
 		if (cleaned) textBlocks.push(cleaned);
-	} else if (Array.isArray(content)) {
-		for (const block of content) {
-			if (block.type === "text" && typeof block.text === "string") {
+	}
+	else if (Array.isArray(content))
+	{
+		for (const block of content)
+		{
+			if (block.type === "text" && typeof block.text === "string")
+			{
 				if (block.text.includes("<local-command-caveat>")) continue;
 				const cleaned = stripCommandTags(block.text);
 				if (cleaned) textBlocks.push(cleaned);
@@ -5207,24 +6226,29 @@ function SubagentPromptEntry({line, sessionId}: {line: MessageSessionLine; sessi
 	);
 }
 
-function lineMatchesBash(line: MessageSessionLine, parser: (text: string) => unknown): boolean {
+function lineMatchesBash(line: MessageSessionLine, parser: (text: string) => unknown): boolean
+{
 	const content = line.message?.content;
 	if (typeof content === "string") return parser(content) !== null;
-	if (Array.isArray(content)) {
+	if (Array.isArray(content))
+	{
 		return content.some((b) => b.type === "text" && typeof b.text === "string" && parser(b.text) !== null);
 	}
 	return false;
 }
 
-function hasBashInput(line: MessageSessionLine): boolean {
+function hasBashInput(line: MessageSessionLine): boolean
+{
 	return lineMatchesBash(line, parseBashInput);
 }
 
-function hasBashOutput(line: MessageSessionLine): boolean {
+function hasBashOutput(line: MessageSessionLine): boolean
+{
 	return lineMatchesBash(line, parseBashOutput);
 }
 
-interface UserContentBlocks {
+interface UserContentBlocks
+{
 	textNodes: React.ReactNode[];
 	mediaNodes: React.ReactNode[];
 	/** Pasted and path-referenced images, for the attachments strip above the bubble. */
@@ -5239,14 +6263,25 @@ interface UserContentBlocks {
  * The prompt text minus harness tags, with its `<!-- attach -->` blocks split out as snippets and then its
  * diff comment blocks as annotations (upstream `Q`: `B` first, then the fences).
  */
-function cleanPromptParts(text: string): {snippets: AttachSnippet[]; annotations: DiffAnnotation[]; rest: string} {
+function cleanPromptParts(text: string):
+{
+	snippets: AttachSnippet[];
+	annotations: DiffAnnotation[];
+	rest: string;
+}
+{
 	const {snippets, rest} = parseAttachSnippets(cleanPromptText(text));
 	const parsed = parseDiffAnnotations(rest);
-	return {snippets, annotations: parsed.annotations, rest: parsed.rest};
+	return {
+		snippets,
+		annotations: parsed.annotations,
+		rest: parsed.rest,
+	};
 }
 
 /** A prompt's text; the first block of a prompt opens with a slash-command chip when it starts with `/name`. */
-function UserPromptText({text, leading}: {text: string; leading: boolean}) {
+function UserPromptText({text, leading}: {text: string; leading: boolean})
+{
 	const command = leading ? splitLeadingSlashCommand(text) : null;
 	if (command === null) return <UserPlainText text={text} />;
 	return <SlashCommandText name={command.name} rest={command.rest} />;
@@ -5256,13 +6291,29 @@ function renderUserContentBlocks(
 	line: MessageSessionLine,
 	sessionId: string,
 	allowedImageRoots: readonly string[],
-): UserContentBlocks {
+): UserContentBlocks
+{
 	const content = line.message?.content;
-	if (!content) return {textNodes: [], mediaNodes: [], images: [], excerpts: [], annotations: []};
+	if (!content)
+		return {
+			textNodes: [],
+			mediaNodes: [],
+			images: [],
+			excerpts: [],
+			annotations: [],
+		};
 
-	if (typeof content === "string") {
+	if (typeof content === "string")
+	{
 		const {snippets: excerpts, annotations, rest: cleaned} = cleanPromptParts(content);
-		if (!cleaned) return {textNodes: [], mediaNodes: [], images: [], excerpts, annotations};
+		if (!cleaned)
+			return {
+				textNodes: [],
+				mediaNodes: [],
+				images: [],
+				excerpts,
+				annotations,
+			};
 		return {
 			excerpts,
 			annotations,
@@ -5285,8 +6336,10 @@ function renderUserContentBlocks(
 	const excerpts: AttachSnippet[] = [];
 	const annotations: DiffAnnotation[] = [];
 	const inlineImageText: string[] = [];
-	for (const [i, block] of content.entries()) {
-		if (block.type === "text" && typeof block.text === "string") {
+	for (const [i, block] of content.entries())
+	{
+		if (block.type === "text" && typeof block.text === "string")
+		{
 			if (block.text.includes("<local-command-caveat>")) continue;
 			const {snippets, annotations: blockAnnotations, rest: cleaned} = cleanPromptParts(block.text);
 			excerpts.push(...snippets);
@@ -5301,13 +6354,19 @@ function renderUserContentBlocks(
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</React.Fragment>,
 			);
-		} else if (block.type === "image") {
-			images.push({
-				key: `img-${i}`,
-				src: `data:${block.source.media_type};base64,${block.source.data}`,
-				label: "Attached image",
-			});
-		} else if (block.type === "document") {
+		}
+		else if (block.type === "image")
+		{
+			images.push(
+				{
+					key: `img-${i}`,
+					src: `data:${block.source.media_type};base64,${block.source.data}`,
+					label: "Attached image",
+				},
+			);
+		}
+		else if (block.type === "document")
+		{
 			mediaNodes.push(
 				<div
 					key={`doc-${i}`}
@@ -5333,25 +6392,39 @@ function renderUserContentBlocks(
 		// tool_result blocks are intentionally skipped in user rendering
 	}
 	if (inlineImageText.length > 0) images.push(...inlinePathImages(inlineImageText.join("\n"), allowedImageRoots));
-	return {textNodes, mediaNodes, images, excerpts, annotations};
+	return {
+		textNodes,
+		mediaNodes,
+		images,
+		excerpts,
+		annotations,
+	};
 }
 
-function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {
+function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string})
+{
 	const content = line.message?.content;
 	let cmdName = "";
 	let cmdArgs: string | undefined;
 
-	if (typeof content === "string") {
+	if (typeof content === "string")
+	{
 		const cmd = parseCommandBlock(content);
-		if (cmd) {
+		if (cmd)
+		{
 			cmdName = cmd.name;
 			cmdArgs = cmd.args;
 		}
-	} else if (Array.isArray(content)) {
-		for (const block of content) {
-			if (block.type === "text" && typeof block.text === "string") {
+	}
+	else if (Array.isArray(content))
+	{
+		for (const block of content)
+		{
+			if (block.type === "text" && typeof block.text === "string")
+			{
 				const cmd = parseCommandBlock(block.text);
-				if (cmd) {
+				if (cmd)
+				{
 					cmdName = cmd.name;
 					cmdArgs = cmd.args;
 					break;
@@ -5382,33 +6455,45 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 	);
 }
 
-interface BashParts {
+interface BashParts
+{
 	command: string;
 	stdout: string | undefined;
 	stderr: string | undefined;
 }
 
 /** A `!` command's input and its (possibly coalesced) output, read from the CLI's bash tags. */
-function extractBash(line: MessageSessionLine, outputLine: MessageSessionLine | undefined): BashParts {
-	const parts: BashParts = {command: "", stdout: undefined, stderr: undefined};
+function extractBash(line: MessageSessionLine, outputLine: MessageSessionLine | undefined): BashParts
+{
+	const parts: BashParts =
+	{
+		command: "",
+		stdout: undefined,
+		stderr: undefined,
+	};
 
-	function read(text: string) {
+	function read(text: string)
+	{
 		const bashIn = parseBashInput(text);
 		if (bashIn) parts.command = bashIn.command;
 		const bashOut = parseBashOutput(text);
-		if (bashOut) {
+		if (bashOut)
+		{
 			parts.stdout = bashOut.stdout;
 			parts.stderr = bashOut.stderr;
 		}
 	}
 
-	function readContent(content: string | SessionContentBlock[] | undefined) {
+	function readContent(content: string | SessionContentBlock[] | undefined)
+	{
 		if (!content) return;
-		if (typeof content === "string") {
+		if (typeof content === "string")
+		{
 			read(content);
 			return;
 		}
-		for (const block of content) {
+		for (const block of content)
+		{
 			if (block.type === "text" && typeof block.text === "string") read(block.text);
 		}
 	}
@@ -5428,7 +6513,8 @@ function BashCard({
 	line: MessageSessionLine;
 	outputUuid: string | undefined;
 	sessionId: string;
-}) {
+})
+{
 	return (
 		<div className="relative rounded-lg p-2 bg-surface-1 text-primary max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] min-w-0">
 			{command && (
@@ -5483,17 +6569,25 @@ function ThinkingBlock({
 	sessionId: string;
 	sourceUuid: string | undefined;
 	durationMs: number | undefined;
-}) {
+})
+{
 	const [expanded, toggleExpanded] = useModeExpansion(expansionKey);
 	// Upstream's $X confirms the copy with a "Copied" toast and relabels the
 	// button "Copied" for its copy hook's 2000ms default. Read the context
 	// directly so a SessionChat rendered without a ToastProvider still copies.
 	const toast = useContext(ToastContext);
-	const handleCopied = useCallback(() => {
-		toast?.({message: "Copied", kind: "success"});
+	const handleCopied = useCallback(() =>
+	{
+		toast?.(
+			{
+				message: "Copied",
+				kind: "success",
+			},
+		);
 	}, [toast]);
 	const handleOpenChange = useCallback(
-		(open: boolean) => {
+		(open: boolean) =>
+		{
 			if (open !== expanded) toggleExpanded();
 		},
 		[expanded, toggleExpanded],
@@ -5527,7 +6621,8 @@ function ThinkingBlock({
  * legacy rail with its duration label, a placeholder where the text would be and
  * nothing to copy.
  */
-function OmittedThinkingBlock({durationMs}: {durationMs: number | undefined}) {
+function OmittedThinkingBlock({durationMs}: {durationMs: number | undefined})
+{
 	return (
 		<div className="border-l-2 border-t2 pl-3">
 			{durationMs !== undefined && (
@@ -5538,7 +6633,8 @@ function OmittedThinkingBlock({durationMs}: {durationMs: number | undefined}) {
 	);
 }
 
-function formatThinkingDuration(ms: number): string {
+function formatThinkingDuration(ms: number): string
+{
 	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
 	const mins = Math.floor(ms / 60_000);
 	const secs = Math.round((ms % 60_000) / 1000);
@@ -5546,7 +6642,8 @@ function formatThinkingDuration(ms: number): string {
 }
 
 /** Upstream's QX: a token-estimate header, then each line quoted, empty lines as a bare `>`. */
-function toMarkdownQuote(text: string): string {
+function toMarkdownQuote(text: string): string
+{
 	const quoted = text
 		.split("\n")
 		.map((line) => (line === "" ? ">" : `> ${line}`))
@@ -5571,7 +6668,8 @@ function AssistantEntry({
 	subagentLookup: SubagentLookup;
 	showThinking: boolean;
 	showTools: boolean;
-}) {
+})
+{
 	const liveFailures = useLiveToolFailures(sessionId);
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const opensReply = useContext(AssistantSpanEntryContext)?.opensReply === true;
@@ -5581,7 +6679,8 @@ function AssistantEntry({
 	);
 
 	const content = line.message?.content;
-	if (!Array.isArray(content) || content.length === 0) {
+	if (!Array.isArray(content) || content.length === 0)
+	{
 		return null;
 	}
 
@@ -5601,7 +6700,8 @@ function AssistantEntry({
 	const hasToolUse = toolCalls.length > 0;
 
 	// No visible content at all -- hide the entry entirely
-	if (!hasVisibleNonToolContent && !hasToolUse) {
+	if (!hasVisibleNonToolContent && !hasToolUse)
+	{
 		return null;
 	}
 
@@ -5611,7 +6711,8 @@ function AssistantEntry({
 	);
 
 	// Only tool_use blocks -- render as a tool call section
-	if (!hasVisibleNonToolContent && hasToolUse) {
+	if (!hasVisibleNonToolContent && hasToolUse)
+	{
 		if (!showTools) return null;
 		return (
 			<>
@@ -5661,7 +6762,8 @@ function AssistantEntry({
 }
 
 /** Upstream draws no skill or MCP attribution, so only Verbose shows it. */
-function hasAttribution(line: MessageSessionLine, verbose: boolean): boolean {
+function hasAttribution(line: MessageSessionLine, verbose: boolean): boolean
+{
 	return verbose && (line.attributionSkill ?? line.attributionPlugin ?? line.attributionMcpServer) !== undefined;
 }
 
@@ -5670,7 +6772,8 @@ function hasAttribution(line: MessageSessionLine, verbose: boolean): boolean {
  * it. The transcript layer dedupes consecutive identical attribution, so this
  * renders once per skill/MCP block.
  */
-function AttributionRow({line, verbose}: {line: MessageSessionLine; verbose: boolean}) {
+function AttributionRow({line, verbose}: {line: MessageSessionLine; verbose: boolean})
+{
 	if (!hasAttribution(line, verbose)) return null;
 	const skillLabel = line.attributionSkill ?? line.attributionPlugin;
 	const mcpLabel = line.attributionMcpServer
@@ -5700,9 +6803,18 @@ function AttributionRow({line, verbose}: {line: MessageSessionLine; verbose: boo
  * again and Open usage settings are left out: a resend is not safe from here
  * and the settings fix is billing.
  */
-function UsageLimitCardView({card}: {card: UsageLimitCard}) {
+function UsageLimitCardView({card}: {card: UsageLimitCard})
+{
 	return (
-		<ErrorCardShell data={{"data-usage-limit-card": ""}} headline={card.headline} hint={card.hint} icon="gauge" />
+		<ErrorCardShell
+			data={
+			{
+				"data-usage-limit-card": "",
+			}}
+			headline={card.headline}
+			hint={card.hint}
+			icon="gauge"
+		/>
 	);
 }
 
@@ -5714,9 +6826,15 @@ function PromptBlockedForLine({
 	line,
 	sessionId,
 }: {
-	line: Extract<SessionLine, {type: "prompt-blocked"}>;
+	line: Extract<
+		SessionLine,
+		{
+			type: "prompt-blocked";
+		}
+	>;
 	sessionId: string;
-}) {
+})
+{
 	const {blockedLine} = useContext(LastErrorLineContext);
 	const composerMounted = useHasComposer(sessionId);
 	if (blockedLine !== line) return <HookBlockedPromptMarker reason={line.reason} />;
@@ -5731,7 +6849,8 @@ function PromptBlockedForLine({
 }
 
 /** The API error card for an assistant turn flagged as an API error message, or its marker when a later error or prompt supersedes it. */
-function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: string}) {
+function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: string})
+{
 	const lastError = useContext(LastErrorLineContext);
 	const full = lastError.line === line;
 	const Form = full ? ApiErrorCard : ApiErrorMarker;
@@ -5741,13 +6860,35 @@ function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: stri
 	return (
 		<Form
 			text={text}
-			{...(detailsText !== undefined && {details: detailsText})}
-			{...(line.apiErrorStatus !== undefined && {status: line.apiErrorStatus})}
-			{...(line.requestId !== undefined && {requestId: line.requestId})}
-			{...(line.messageId !== undefined && {messageId: line.messageId})}
-			{...(line.apiErrorCode !== undefined && {code: line.apiErrorCode})}
-			{...(line.stopReason !== undefined && {stopReason: line.stopReason})}
-			{...(full && lastError.recovery !== undefined && {recovery: lastError.recovery})}
+			{...(detailsText !== undefined &&
+			{
+				details: detailsText,
+			})}
+			{...(line.apiErrorStatus !== undefined &&
+			{
+				status: line.apiErrorStatus,
+			})}
+			{...(line.requestId !== undefined &&
+			{
+				requestId: line.requestId,
+			})}
+			{...(line.messageId !== undefined &&
+			{
+				messageId: line.messageId,
+			})}
+			{...(line.apiErrorCode !== undefined &&
+			{
+				code: line.apiErrorCode,
+			})}
+			{...(line.stopReason !== undefined &&
+			{
+				stopReason: line.stopReason,
+			})}
+			{...(full &&
+				lastError.recovery !== undefined &&
+				{
+					recovery: lastError.recovery,
+				})}
 		/>
 	);
 }
@@ -5771,10 +6912,12 @@ function ContentBlock({
 	showThinking: boolean;
 	showTools: boolean;
 	toolCalls: ClientToolCall[];
-}) {
+})
+{
 	const liveThinking = useContext(LiveThinkingContext);
 	const prose = block.type === "text" ? block.text : narrationProse(block);
-	if (typeof prose === "string") {
+	if (typeof prose === "string")
+	{
 		if (!prose.trim()) return null;
 		return (
 			<div className="relative min-w-0 text-body text-primary" data-transcript-prose>
@@ -5785,9 +6928,11 @@ function ContentBlock({
 		);
 	}
 
-	if (block.type === "thinking" && typeof block.thinking === "string") {
+	if (block.type === "thinking" && typeof block.thinking === "string")
+	{
 		if (!showThinking) return null;
-		if (!block.thinking.trim()) {
+		if (!block.thinking.trim())
+		{
 			return line.thinkingOmitted === true ? <OmittedThinkingBlock durationMs={line.thinkingDurationMs} /> : null;
 		}
 		const expansionKey = `${line.uuid}:thinking:${blockIndex}`;
@@ -5803,7 +6948,8 @@ function ContentBlock({
 		);
 	}
 
-	if (block.type === "tool_use") {
+	if (block.type === "tool_use")
+	{
 		if (!showTools) return null;
 		// Render the full tool call section when we hit the first tool_use block
 		// (subsequent tool_use blocks in the same line are rendered as part of this section)
@@ -5813,7 +6959,8 @@ function ContentBlock({
 		return <ToolCallSection calls={toolCalls} sessionId={sessionId} />;
 	}
 
-	if (block.type === "image") {
+	if (block.type === "image")
+	{
 		return (
 			<div className="relative inline-block">
 				<img
@@ -5826,7 +6973,8 @@ function ContentBlock({
 		);
 	}
 
-	if (block.type === "document") {
+	if (block.type === "document")
+	{
 		return (
 			<div className="relative rounded-lg px-3 py-2 bg-surface-1 text-primary flex items-center gap-1.5">
 				<svg
@@ -5851,8 +6999,18 @@ function ContentBlock({
 }
 
 /** A row's range suffix (upstream `_`): a Read's line ranges, or a notebook run's `×N`. */
-function rowRangeLabel(calls: readonly ClientToolCall[]): string | null {
-	return runSuffix(calls.map((c) => ({name: c.name, input: c.input, readFile: c.resultMeta?.readFile}))) ?? null;
+function rowRangeLabel(calls: readonly ClientToolCall[]): string | null
+{
+	return (
+		runSuffix(
+			calls.map((c) => (
+			{
+				name: c.name,
+				input: c.input,
+				readFile: c.resultMeta?.readFile,
+			})),
+		) ?? null
+	);
 }
 
 /**
@@ -5863,7 +7021,13 @@ function rowRangeLabel(calls: readonly ClientToolCall[]): string | null {
 const PROMINENT_TOOLS = new Set(["AskUserQuestion"]);
 
 /** A prominent tool's call, unless the user withdrew the question, which upstream draws as a row. */
-function isProminentCall(call: AskedCall & {name: string}): boolean {
+function isProminentCall(
+	call: AskedCall &
+	{
+		name: string;
+	},
+): boolean
+{
 	return PROMINENT_TOOLS.has(call.name) && !isWithdrawnQuestion(call);
 }
 
@@ -5878,7 +7042,8 @@ function ToolCallSection({
 	notices?: readonly FoldedNotice[];
 	/** The section is the first thing drawn in the row that opens a reply. */
 	leading?: boolean;
-}) {
+})
+{
 	const prominentCalls = calls.filter(isProminentCall);
 	const backgroundCalls = calls.filter((c) => !isProminentCall(c));
 	const [loneBackgroundCall] = backgroundCalls;
@@ -5924,7 +7089,8 @@ function ToolCallSection({
 }
 
 /** A prominent call's card: its renderer drawn in full, with the debug link in its corner. */
-function ProminentCall({call, sessionId}: {call: ClientToolCall; sessionId: string}) {
+function ProminentCall({call, sessionId}: {call: ClientToolCall; sessionId: string})
+{
 	const Renderer = getCallRenderer(call);
 	return (
 		<div className="relative">
@@ -5993,7 +7159,8 @@ const NON_EXPANDING_TOOLS = new Set(["EnterPlanMode"]);
 /** Task tools draw upstream's checklist; a call whose list is empty has nothing to disclose. */
 const TASK_CHECKLIST_TOOLS = new Set(["TodoWrite", "TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "TaskStop"]);
 
-function rendersEmptyBody(call: ClientToolCall): boolean {
+function rendersEmptyBody(call: ClientToolCall): boolean
+{
 	return TASK_CHECKLIST_TOOLS.has(call.name) && taskChecklist(call.name, call.input).length === 0;
 }
 
@@ -6004,24 +7171,38 @@ const DIFF_STAT_TOOLS = new Set(["Edit", "MultiEdit", "Write"]);
  * A row's diff stat, counted as the group header counts it. Upstream draws none
  * on a call that failed, since it changed nothing, nor on one that changed no lines.
  */
-function useEditDiffStats(calls: readonly ClientToolCall[]): {added: number; removed: number} | null {
-	return useMemo(() => {
+function useEditDiffStats(calls: readonly ClientToolCall[]):
+{
+	added: number;
+	removed: number;
+} | null
+{
+	return useMemo(() =>
+	{
 		// Upstream leaves a run's summed diff out while any of its calls is running.
 		if (calls.length > 1 && calls.some(isPendingToolCall)) return null;
 		let added = 0;
 		let removed = 0;
-		for (const c of calls) {
+		for (const c of calls)
+		{
 			if (!DIFF_STAT_TOOLS.has(c.name) || c.isError === true) continue;
 			const stats = diffStatsForCall(c);
 			added += stats.added;
 			removed += stats.removed;
 		}
-		return added === 0 && removed === 0 ? null : {added, removed};
+		return added === 0 && removed === 0
+			? null
+			:
+				{
+					added,
+					removed,
+				};
 	}, [calls]);
 }
 
 /** Upstream `zJ`: a same-target run is named by its last running call, else its last call. */
-function runLabelCall(run: readonly ClientToolCall[]): ClientToolCall {
+function runLabelCall(run: readonly ClientToolCall[]): ClientToolCall
+{
 	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
 	const label = run.findLast(isPendingToolCall) ?? run.at(-1);
 	if (label === undefined) throw new Error("empty same-target run");
@@ -6031,12 +7212,14 @@ function runLabelCall(run: readonly ClientToolCall[]): ClientToolCall {
 const NO_RUN: readonly ClientToolCall[] = [];
 
 /** A call whose tool_result has not arrived yet. */
-function isPendingToolCall(call: ClientToolCall): boolean {
+function isPendingToolCall(call: ClientToolCall): boolean
+{
 	return call.resultUuid === undefined && call.result === undefined && call.isError !== true;
 }
 
 /** An in-flight row's live elapsed time, in the rest ink after its label. */
-function RunningElapsed({startedAt}: {startedAt: string | undefined}) {
+function RunningElapsed({startedAt}: {startedAt: string | undefined})
+{
 	const seconds = useElapsedSeconds(startedAt);
 	const restInk = useRestInk();
 	if (seconds === null || seconds < ELAPSED_MIN_SECONDS) return null;
@@ -6071,14 +7254,25 @@ function InkedLabel({
 	id?: string;
 	ref?: RefCallback<HTMLElement> | undefined;
 	children: ReactNode;
-}) {
+})
+{
 	if (ink === null)
 		return (
 			<ShimmerText
 				ref={ref}
 				variant="secondary"
-				{...(className === "" ? {} : {className})}
-				{...(id === undefined ? {} : {id})}
+				{...(className === ""
+					? {}
+					:
+						{
+							className,
+						})}
+				{...(id === undefined
+					? {}
+					:
+						{
+							id,
+						})}
 			>
 				{children}
 			</ShimmerText>
@@ -6097,7 +7291,8 @@ function InkedLabel({
  * reply keeps its top outset, rising into the reply boundary to sit 2px under
  * the prompt as upstream's does.
  */
-function TurnStatusFrame({leading, children}: {leading: boolean; children: React.ReactNode}) {
+function TurnStatusFrame({leading, children}: {leading: boolean; children: React.ReactNode})
+{
 	return (
 		<div
 			data-turn-status-frame=""
@@ -6133,7 +7328,8 @@ const ROW_MEDIA_CLASS = "order-last ms-auto inline-flex h-[1lh] shrink-0 items-c
  * (`Ka`). Upstream builds it raw, neither masked nor stripped of controls; only
  * the viewer's hover title is cleaned (`CP`, see `nativeTitle`).
  */
-function screenshotCaption(call: ClientToolCall): string {
+function screenshotCaption(call: ClientToolCall): string
+{
 	const label = toolLabel(call);
 	if (label.doneLabel !== undefined) return label.doneLabel;
 	const subject = FILE_PARAM_TOOLS.has(call.name)
@@ -6143,7 +7339,8 @@ function screenshotCaption(call: ClientToolCall): string {
 }
 
 /** Where a step's screenshots sit in its group's strip, so its own strip keeps group-wide numbering. */
-interface StepShotsPlacement {
+interface StepShotsPlacement
+{
 	from: number;
 	total: number;
 }
@@ -6163,7 +7360,8 @@ function RowMedia({
 	step?: boolean;
 	/** Lazy-loads the images, as a step inside an expanded group does. */
 	lazy?: boolean;
-}) {
+})
+{
 	const shots = calls.flatMap((call) => call.outputImages ?? []);
 	if (shots.length === 0) return null;
 	const captions = calls.flatMap((call) => (call.outputImages ?? []).map(() => screenshotCaption(call)));
@@ -6181,12 +7379,14 @@ function RowMedia({
 }
 
 /** Whether a key event came from a control nested in the row (a thumbnail), not the row itself. */
-function fromNestedControl(event: React.KeyboardEvent): boolean {
+function fromNestedControl(event: React.KeyboardEvent): boolean
+{
 	return event.target !== event.currentTarget;
 }
 
 /** The words a user typed when they sent an ExitPlanMode back with Revise, or null. */
-function planRejectionFeedback(call: ClientToolCall): string | null {
+function planRejectionFeedback(call: ClientToolCall): string | null
+{
 	if (call.name !== "ExitPlanMode" || call.result === undefined) return null;
 	return parseToolRejection(call.result.trim())?.feedback ?? null;
 }
@@ -6196,7 +7396,8 @@ function planRejectionFeedback(call: ClientToolCall): string | null {
  * plan row; the CLI records it only inside the ExitPlanMode tool_result, so
  * it is drawn here from that text.
  */
-function PlanFeedbackBubble({text}: {text: string}) {
+function PlanFeedbackBubble({text}: {text: string})
+{
 	return (
 		<UserTurn text={text}>
 			<div data-plan-feedback="" className={USER_MESSAGE_CLASS}>
@@ -6213,7 +7414,8 @@ function PlanFeedbackBubble({text}: {text: string}) {
  * record yet, and live at mount or still pending) or whose run is still running draws upstream's workflow card
  * (`S1` -> `Vme`); every other call, and a settled workflow, is a row.
  */
-function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; sessionId: string; leading: boolean}) {
+function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; sessionId: string; leading: boolean})
+{
 	const run = useContext(WorkflowRunsContext).get(call.id);
 	const permissionWaitId = useContext(PermissionWaitContext);
 	const backgroundTasks = useBackgroundTasksOpener();
@@ -6223,7 +7425,8 @@ function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; session
 	const [wasLive] = useState(() => isPendingToolCall(call) || permissionWaitId === call.id);
 	const isWorkflow = call.name === "Workflow" && call.isError !== true && permissionWaitId !== call.id;
 	const preLaunch = isWorkflow && run === undefined && (wasLive || isPendingToolCall(call));
-	if (!preLaunch && !(isWorkflow && run?.status === "running")) {
+	if (!preLaunch && !(isWorkflow && run?.status === "running"))
+	{
 		const feedback = planRejectionFeedback(call);
 		const row = <ToolCallRow call={call} sessionId={sessionId} leading={leading} />;
 		if (feedback === null) return row;
@@ -6238,8 +7441,16 @@ function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; session
 	const onOpen =
 		backgroundTasks === null
 			? undefined
-			: () => {
-					backgroundTasks.open(run === undefined ? undefined : {taskId: run.taskId});
+			: () =>
+				{
+					backgroundTasks.open(
+						run === undefined
+							? undefined
+							:
+								{
+									taskId: run.taskId,
+								},
+					);
 				};
 	return (
 		<div data-tool-anchor={call.id} className="contents">
@@ -6274,7 +7485,8 @@ function ToolCallRow({
 	leading?: boolean;
 	/** A grouped step's place in its group's screenshot strip; omitted outside a group. */
 	shots?: StepShotsPlacement | undefined;
-}) {
+})
+{
 	const members = useMemo(() => (run.length > 0 ? run : [call]), [run, call]);
 	const firstMember = members[0] ?? call;
 	// Upstream keys a run's open state by its first call (`setOpen(first.key)`).
@@ -6301,7 +7513,11 @@ function ToolCallRow({
 	const resolveAgentName = useContext(AgentNameContext);
 	const labelCall =
 		call.name === "SendMessage" && typeof call.input["to"] === "string"
-			? {...call, recipientDescription: resolveAgentName(call.input["to"])}
+			?
+				{
+					...call,
+					recipientDescription: resolveAgentName(call.input["to"]),
+				}
 			: call;
 	const toolRowLabel = toolLabel(labelCall);
 	const permissionWaitId = useContext(PermissionWaitContext);
@@ -6449,8 +7665,13 @@ function ToolCallRow({
 	const liveTaskId = call.name === "Bash" ? backgroundTasks?.running.get(call.id) : undefined;
 	const liveOutput =
 		backgroundTasks !== null && liveTaskId !== undefined
-			? () => {
-					backgroundTasks.open({taskId: liveTaskId});
+			? () =>
+				{
+					backgroundTasks.open(
+						{
+							taskId: liveTaskId,
+						},
+					);
 				}
 			: null;
 	const paramInk = isFileParam ? "text-primary" : paramHref ? "text-secondary" : paramClass;
@@ -6460,7 +7681,8 @@ function ToolCallRow({
 				<ExternalTextLink
 					href={paramHref}
 					rel="noopener noreferrer"
-					onClick={(e) => {
+					onClick={(e) =>
+					{
 						e.stopPropagation();
 					}}
 					className="underline decoration-[color-mix(in_srgb,currentColor_65%,transparent)] underline-offset-[3px]"
@@ -6510,7 +7732,12 @@ function ToolCallRow({
 					{label && (
 						<InkedLabel
 							id={`${statusId}-label`}
-							{...(isPhraseLabel ? {ref: rowCut} : {})}
+							{...(isPhraseLabel
+								?
+									{
+										ref: rowCut,
+									}
+								: {})}
 							className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body`}
 							ink={labelClass}
 						>
@@ -6557,7 +7784,8 @@ function ToolCallRow({
 			{liveOutput !== null && (
 				<button
 					type="button"
-					onClick={(event) => {
+					onClick={(event) =>
+					{
 						event.stopPropagation();
 						liveOutput();
 					}}
@@ -6624,10 +7852,18 @@ function ToolCallRow({
 	);
 
 	// Upstream's `B_` hides a blocked call's raw denial; the renderers show its reason instead.
-	const memberBody = (member: ClientToolCall) => {
+	const memberBody = (member: ClientToolCall) =>
+	{
 		const MemberRenderer = member === call ? Renderer : getCallRenderer(member);
 		const blockedCall = member.blocked === true ? member : null;
-		const rendererCall = member.blocked === true ? {...member, result: undefined} : member;
+		const rendererCall =
+			member.blocked === true
+				?
+					{
+						...member,
+						result: undefined,
+					}
+				: member;
 		// Upstream `xu`: in flight and not held by the permission prompt.
 		const awaitingResult = isPendingToolCall(member) && permissionWaitId !== member.id;
 		return isCardStyle ? (
@@ -6674,8 +7910,10 @@ function ToolCallRow({
 	// Upstream's run lists every call it stands for, so find and jump land on the one row.
 	const toolAnchor = members.length > 1 ? members.map((member) => member.id).join(" ") : undefined;
 
-	if (paneAgentId !== undefined && openSubagent !== null) {
-		const open = () => {
+	if (paneAgentId !== undefined && openSubagent !== null)
+	{
+		const open = () =>
+		{
 			openSubagent(paneAgentId);
 		};
 		return (
@@ -6692,8 +7930,10 @@ function ToolCallRow({
 					data-cds-row=""
 					data-transcript-keeps-pin=""
 					onClick={open}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" || e.key === " ") {
+					onKeyDown={(e) =>
+					{
+						if (e.key === "Enter" || e.key === " ")
+						{
 							e.preventDefault();
 							open();
 						}
@@ -6740,7 +7980,8 @@ function ToolCallRow({
 			</>
 		);
 
-	if (!expandable) {
+	if (!expandable)
+	{
 		return withHoistedImages(
 			<div data-tool-row="" data-tool-anchor={toolAnchor} className="flex flex-col w-full">
 				<div
@@ -6781,9 +8022,11 @@ function ToolCallRow({
 				data-cds-row=""
 				data-cds-row-toggle={isTurnStatus ? "" : undefined}
 				onClick={toggleExpanded}
-				onKeyDown={(e) => {
+				onKeyDown={(e) =>
+				{
 					if (fromNestedControl(e)) return;
-					if (e.key === "Enter" || e.key === " ") {
+					if (e.key === "Enter" || e.key === " ")
+					{
 						e.preventDefault();
 						toggleExpanded();
 					}
@@ -6835,7 +8078,8 @@ function ToolCallRow({
  *   <span> {rest}</span>
  * with commas between segments; the color comes from the hover-aware wrapper.
  */
-function SummarySpans({segments}: {segments: SummarySegment[]}) {
+function SummarySpans({segments}: {segments: SummarySegment[]})
+{
 	return (
 		<>
 			{segments.map((segment, i) => (
@@ -6866,9 +8110,11 @@ function CountedLine({
 	trailing: string | null;
 	/** A meta slot follows, so the label keeps its width and the meta truncates first. */
 	beforeMeta?: boolean;
-}) {
+})
+{
 	const rowCut = useTypeRowCut(summaryNamesText(segments));
-	if (trailing === null) {
+	if (trailing === null)
+	{
 		return (
 			<span
 				ref={rowCut}
@@ -6904,7 +8150,8 @@ function ToolCallSummary({
 	sessionId: string;
 	notices?: readonly FoldedNotice[];
 	leading: boolean;
-}) {
+})
+{
 	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? `notice-${notices[0]?.lineIndex}`}`);
 	const {rootRef, panelMounted} = useStepCollapseFocusReturn(expanded);
 	const restInk = useRestInk();
@@ -6956,13 +8203,19 @@ function ToolCallSummary({
 	const busyRowCut = useTypeRowCut(busy ? runningText : "");
 
 	// Each step's place in the group's screenshot strip, which collapsed groups show at the row's end.
-	const shotPlacements = useMemo(() => {
+	const shotPlacements = useMemo(() =>
+	{
 		const total = calls.reduce((sum, call) => sum + (call.outputImages?.length ?? 0), 0);
 		let from = 0;
 		// Keyed by call id; a coalesced run takes its first call's place and strips every call's shots.
 		return new Map(
-			calls.map((call) => {
-				const placement = {from, total};
+			calls.map((call) =>
+			{
+				const placement =
+				{
+					from,
+					total,
+				};
 				from += call.outputImages?.length ?? 0;
 				return [call.id, placement];
 			}),
@@ -7042,7 +8295,8 @@ function ToolCallSummary({
 			<div
 				data-cds-row=""
 				title={fileMeta.file.path}
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					if (event.target instanceof Element && event.target.closest("[data-file-ref]") !== null) return;
 					toggleExpanded();
 				}}

@@ -30,15 +30,23 @@ export function HookBlockedPromptCard({
 	reason: string;
 	originalPrompt?: string | undefined;
 	onEditPrompt?: ((text: string) => boolean) | undefined;
-}) {
+})
+{
 	const [edited, setEdited] = useState(() => editedEntries.has(entryKey));
 	const details =
-		originalPrompt === undefined ? undefined : {body: capDetails(originalPrompt), raw: capDetails(originalPrompt)};
+		originalPrompt === undefined
+			? undefined
+			:
+				{
+					body: capDetails(originalPrompt),
+					raw: capDetails(originalPrompt),
+				};
 	const action =
 		originalPrompt !== undefined && onEditPrompt !== undefined && !edited ? (
 			<ApprovalActionButton
 				variant="primary"
-				onClick={() => {
+				onClick={() =>
+				{
 					if (!onEditPrompt(originalPrompt)) return;
 					editedEntries.add(entryKey);
 					setEdited(true);
@@ -49,7 +57,10 @@ export function HookBlockedPromptCard({
 		) : undefined;
 	return (
 		<ErrorCardShell
-			data={{"data-hook-blocked-card": ""}}
+			data={
+			{
+				"data-hook-blocked-card": "",
+			}}
 			headline="A hook blocked your prompt"
 			hint={capDetails(reason.trim()) || HINT_FALLBACK}
 			icon="warning"
@@ -65,7 +76,8 @@ export function HookBlockedPromptCard({
  * Upstream's "Prompt blocked by a hook" marker (cbb2d9547 `RX`), drawn once
  * anything follows the blocked prompt. View details shows the hook's reason.
  */
-export function HookBlockedPromptMarker({reason}: {reason: string}) {
+export function HookBlockedPromptMarker({reason}: {reason: string})
+{
 	const trimmed = capDetails(reason.trim());
 	return (
 		<div data-hook-blocked-marker="" className={MARKER_ROOT_CLASS}>
@@ -73,7 +85,16 @@ export function HookBlockedPromptMarker({reason}: {reason: string}) {
 				<MarkerWarningIcon />
 				<span className="min-w-0 text-body text-secondary break-words">Prompt blocked by a hook</span>
 			</div>
-			{trimmed !== "" && <ErrorDetails details={{body: trimmed, raw: trimmed}} inCard={false} />}
+			{trimmed !== "" && (
+				<ErrorDetails
+					details={
+					{
+						body: trimmed,
+						raw: trimmed,
+					}}
+					inCard={false}
+				/>
+			)}
 		</div>
 	);
 }

@@ -2,7 +2,8 @@ import {pageTitle} from "../lib/route-title";
 import {isSessionRouteAlias} from "../lib/session-route-alias";
 import type {MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {SessionRouteIdentity} from "../components/session-route-identity";
-import {
+import
+{
 	getCachedCanonicalSessionRouteId,
 	sessionIdentityFailure,
 	sessionIdentityQueryOptions,
@@ -17,58 +18,79 @@ import {herdrPanesQueryOptions} from "../lib/api/herdr";
 import {validateSessionSearch} from "../lib/session-search";
 import {sessionDetailQueryOptions, sessionSubagentsQueryOptions, transcriptQueryOptions} from "../lib/api/sessions";
 
-export const Route = createFileRoute("/session/$id")({
-	component: SessionRouteComponent,
-	staticData: {tileShell: "session"},
-	validateSearch: validateSessionSearch,
-	// Warm the caches without awaiting them. With `ssr: false` nothing paints
-	// until every matched loader resolves, and a long session's transcript runs
-	// to megabytes of JSONL, so awaiting here means a blank white page. The
-	// component renders the shell plus a skeleton instead. Reading the detail
-	// cache is synchronous, so a warm visit still titles the tab immediately.
-	loader: ({context: {queryClient}, params}) => {
-		let sessionId = params.id;
-		if (isSessionRouteAlias(sessionId)) {
-			const options = sessionIdentityQueryOptions(sessionId);
-			const identity = queryClient.getQueryState(options.queryKey);
-			// A title refresh must not restart a terminal failure's automatic retries.
-			if (identity?.status === "error") return {title: sessionIdentityFailure(identity.error).title};
-			void queryClient.query(options).catch(noop);
-			if (
-				identity?.status !== "success" ||
-				!identity.data ||
-				identity.isInvalidated ||
-				identity.fetchStatus !== "idle"
-			)
-				return undefined;
-			sessionId = identity.data.sessionId;
-		}
-		void queryClient.query(sessionDetailQueryOptions(sessionId)).catch(noop);
-		void queryClient.query(transcriptQueryOptions(sessionId)).catch(noop);
-		void queryClient.query(sessionSubagentsQueryOptions(sessionId)).catch(noop);
-		void queryClient.query(herdrPanesQueryOptions).catch(noop);
-		// Bound before returning: as a return expression, getQueryData infers its data type from the loader (any).
-		const detail = queryClient.getQueryData(sessionDetailQueryOptions(sessionId).queryKey);
-		return detail;
+export const Route = createFileRoute("/session/$id")(
+	{
+		component: SessionRouteComponent,
+		staticData:
+		{
+			tileShell: "session",
+		},
+		validateSearch: validateSessionSearch,
+		// Warm the caches without awaiting them. With `ssr: false` nothing paints
+		// until every matched loader resolves, and a long session's transcript runs
+		// to megabytes of JSONL, so awaiting here means a blank white page. The
+		// component renders the shell plus a skeleton instead. Reading the detail
+		// cache is synchronous, so a warm visit still titles the tab immediately.
+		loader: ({context: {queryClient}, params}) =>
+		{
+			let sessionId = params.id;
+			if (isSessionRouteAlias(sessionId))
+			{
+				const options = sessionIdentityQueryOptions(sessionId);
+				const identity = queryClient.getQueryState(options.queryKey);
+				// A title refresh must not restart a terminal failure's automatic retries.
+				if (identity?.status === "error")
+					return {
+						title: sessionIdentityFailure(identity.error).title,
+					};
+				void queryClient.query(options).catch(noop);
+				if (
+					identity?.status !== "success" ||
+					!identity.data ||
+					identity.isInvalidated ||
+					identity.fetchStatus !== "idle"
+				)
+					return undefined;
+				sessionId = identity.data.sessionId;
+			}
+			void queryClient.query(sessionDetailQueryOptions(sessionId)).catch(noop);
+			void queryClient.query(transcriptQueryOptions(sessionId)).catch(noop);
+			void queryClient.query(sessionSubagentsQueryOptions(sessionId)).catch(noop);
+			void queryClient.query(herdrPanesQueryOptions).catch(noop);
+			// Bound before returning: as a return expression, getQueryData infers its data type from the loader (any).
+			const detail = queryClient.getQueryData(sessionDetailQueryOptions(sessionId).queryKey);
+			return detail;
+		},
+		errorComponent: SessionErrorComponent,
+		head: ({loaderData}) => (
+		{
+			meta: [pageTitle(sessionHeadTitle(loaderData))],
+		}),
 	},
-	errorComponent: SessionErrorComponent,
-	head: ({loaderData}) => ({
-		meta: [pageTitle(sessionHeadTitle(loaderData))],
-	}),
-});
+);
 
 /**
  * A pending session is not a missing session. `undefined` means the detail
  * query is still in flight; only `null` — what the API returns for an unknown
  * id — is a genuine 404.
  */
-export function sessionHeadTitle(detail: {title: string} | null | undefined): string {
+export function sessionHeadTitle(
+	detail:
+		|
+		  {
+				title: string;
+		  }
+		| null
+		| undefined,
+): string
+{
 	if (detail === undefined) return "Loading session…";
 	if (detail === null) return "Session Not Found";
 	return detail.title;
 }
 
-function SessionErrorComponent({error, reset}: ErrorComponentProps) {
+function SessionErrorComponent({error, reset}: ErrorComponentProps)
+{
 	const router = useRouter();
 	const message = error instanceof Error ? error.message : "Failed to load session";
 
@@ -88,8 +110,13 @@ function SessionErrorComponent({error, reset}: ErrorComponentProps) {
 				</button>
 				<button
 					type="button"
-					onClick={() => {
-						void router.navigate({to: "/sessions"});
+					onClick={() =>
+					{
+						void router.navigate(
+							{
+								to: "/sessions",
+							},
+						);
 					}}
 					className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-secondary hover:bg-surface-0"
 				>
@@ -105,21 +132,28 @@ function SessionErrorComponent({error, reset}: ErrorComponentProps) {
  * cold visit titles the tab "Loading session…". Re-run this route's loader once
  * the query lands so the tab picks up the real title.
  */
-function useSessionHeadTitle(sessionId: string) {
+function useSessionHeadTitle(sessionId: string)
+{
 	const router = useRouter();
 	const loaderData = Route.useLoaderData();
 	const query = useQuery(sessionDetailQueryOptions(sessionId));
 	const detail = query.data;
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (detail === undefined) return;
 		if (sessionHeadTitle(loaderData) === sessionHeadTitle(detail)) return;
-		void router.invalidate({filter: (match) => match.routeId === Route.id});
+		void router.invalidate(
+			{
+				filter: (match) => match.routeId === Route.id,
+			},
+		);
 	}, [detail, loaderData, router]);
 	return query;
 }
 
-function SessionRouteComponent() {
+function SessionRouteComponent()
+{
 	const params = Route.useParams();
 	return (
 		<SessionRouteIdentity routeId={params.id} captureScrollRestoration>
@@ -145,7 +179,8 @@ function ResolvedSessionRoute({
 	routeId: string;
 	scrollKey: string;
 	scrollRestoration?: MainScrollRestorationSnapshot | undefined;
-}) {
+})
+{
 	const router = useRouter();
 	const {pane} = Route.useSearch();
 	const navigate = Route.useNavigate();
@@ -154,24 +189,39 @@ function ResolvedSessionRoute({
 	const params = Route.useParams();
 	// The deep link is a one-shot request: drop it once the pane opened so a
 	// reload or Back does not reopen a pane the user has since closed.
-	const clearRequestedPane = useCallback(() => {
-		void navigate({
-			search: {},
-			state: (state) => ({
-				...state,
-				sessionIdentity: {
-					sessionId,
-					routeId,
-					...(state.sessionIdentity?.aliasRouteId ? {aliasRouteId: state.sessionIdentity.aliasRouteId} : {}),
-					...(isSessionRouteAlias(params.id) ? {aliasRouteId: params.id} : {}),
-					scrollKey: sessionScrollKey(router.state.location, sessionId),
-				},
-			}),
-			hash: true,
-			replace: true,
-			resetScroll: false,
-			hashScrollIntoView: false,
-		});
+	const clearRequestedPane = useCallback(() =>
+	{
+		void navigate(
+			{
+				search: {},
+				state: (state) => (
+				{
+					...state,
+					sessionIdentity:
+					{
+						sessionId,
+						routeId,
+						...(state.sessionIdentity?.aliasRouteId
+							?
+								{
+									aliasRouteId: state.sessionIdentity.aliasRouteId,
+								}
+							: {}),
+						...(isSessionRouteAlias(params.id)
+							?
+								{
+									aliasRouteId: params.id,
+								}
+							: {}),
+						scrollKey: sessionScrollKey(router.state.location, sessionId),
+					},
+				}),
+				hash: true,
+				replace: true,
+				resetScroll: false,
+				hashScrollIntoView: false,
+			},
+		);
 	}, [navigate, router, sessionId, routeId, params.id]);
 
 	return (
@@ -191,15 +241,26 @@ function useCanonicalSessionRoute(
 	sessionId: string,
 	initialRouteId: string,
 	detail: ReturnType<typeof useSessionHeadTitle>,
-) {
+)
+{
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const location = useLocation();
 	const params = Route.useParams();
 	const entryKey = sessionScrollKey(location, sessionId);
-	const visit = useRef({entryKey, seeded: new Set<string>()});
+	const visit = useRef(
+		{
+			entryKey,
+			seeded: new Set<string>(),
+		},
+	);
 	const replacing = useRef<string | undefined>(undefined);
-	if (visit.current.entryKey !== entryKey) visit.current = {entryKey, seeded: new Set<string>()};
+	if (visit.current.entryKey !== entryKey)
+		visit.current =
+		{
+			entryKey,
+			seeded: new Set<string>(),
+		};
 	// An explicitly opened historical alias is already the user's chosen URL.
 	const canonical = isSessionRouteAlias(initialRouteId) ? undefined : detail.data?.canonicalRouteId;
 	const freshDetail =
@@ -219,18 +280,26 @@ function useCanonicalSessionRoute(
 					{
 						...sessionIdentityQueryOptions(canonical),
 						enabled: freshDetail,
-						initialData: () => {
+						initialData: () =>
+						{
 							if (!canSeed) return undefined;
-							return {sessionId};
+							return {
+								sessionId,
+							};
 						},
 						initialDataUpdatedAt: detail.dataUpdatedAt,
 					},
 				];
-	const [identity] = useQueries({queries});
+	const [identity] = useQueries(
+		{
+			queries,
+		},
+	);
 
 	if (canonical !== undefined && freshDetail) visit.current.seeded.add(canonical);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!freshDetail || params.id !== sessionId || location.pathname !== `/session/${sessionId}`) return;
 		if (!identity?.isSuccess || identity.isStale || identity.isFetching || identity.data.sessionId !== sessionId)
 			return;
@@ -239,19 +308,31 @@ function useCanonicalSessionRoute(
 		const nativeKey = location.state.__TSR_key ?? location.href;
 		if (replacing.current === nativeKey) return;
 		replacing.current = nativeKey;
-		void router.navigate({
-			to: "/session/$id",
-			params: {id: canonical},
-			search: true,
-			hash: true,
-			state: {
-				...location.state,
-				sessionIdentity: {sessionId, scrollKey: entryKey, routeId: initialRouteId, aliasRouteId: canonical},
+		void router.navigate(
+			{
+				to: "/session/$id",
+				params:
+				{
+					id: canonical,
+				},
+				search: true,
+				hash: true,
+				state:
+				{
+					...location.state,
+					sessionIdentity:
+					{
+						sessionId,
+						scrollKey: entryKey,
+						routeId: initialRouteId,
+						aliasRouteId: canonical,
+					},
+				},
+				replace: true,
+				resetScroll: false,
+				hashScrollIntoView: false,
 			},
-			replace: true,
-			resetScroll: false,
-			hashScrollIntoView: false,
-		});
+		);
 	}, [
 		freshDetail,
 		canonical,

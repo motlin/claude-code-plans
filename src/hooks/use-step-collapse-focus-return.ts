@@ -9,25 +9,35 @@ import {type RefObject, useLayoutEffect, useReducer, useRef} from "react";
  * one render in which `open` went false. Render the panel while `panelMounted` (with `hidden` while `!open`); the
  * layout effect then drops it in the next commit.
  */
-export function useStepCollapseFocusReturn(open: boolean): {
+export function useStepCollapseFocusReturn(open: boolean):
+{
 	rootRef: RefObject<HTMLDivElement | null>;
 	panelMounted: boolean;
-} {
+}
+{
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const wasOpen = useRef(open);
 	const [, rerender] = useReducer((tick: number) => tick + 1, 0);
 	const closing = wasOpen.current && !open;
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const latched = wasOpen.current;
 		wasOpen.current = open;
 		if (open) return;
 		const n = rootRef.current;
 		const active = n?.ownerDocument.activeElement ?? null;
 		if (n && active !== null && n.querySelector("[data-cds-row-panel]")?.contains(active))
-			n.querySelector<HTMLElement>("[data-cds-row-toggle]")?.focus({preventScroll: true});
+			n.querySelector<HTMLElement>("[data-cds-row-toggle]")?.focus(
+				{
+					preventScroll: true,
+				},
+			);
 		if (latched) rerender();
 	}, [open]);
 
-	return {rootRef, panelMounted: open || closing};
+	return {
+		rootRef,
+		panelMounted: open || closing,
+	};
 }

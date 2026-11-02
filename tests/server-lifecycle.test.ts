@@ -3,7 +3,8 @@ import {mkdirSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import {promisify} from "node:util";
 import {afterAll, beforeEach, describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	isolatedServerEnv,
 	PhaseTimer,
 	newServerScriptRun,
@@ -40,81 +41,128 @@ let PORT = "";
 let env: NodeJS.ProcessEnv = {};
 const runEnvs: NodeJS.ProcessEnv[] = [];
 
-beforeEach(async () => {
+beforeEach(async () =>
+{
 	const serverRun = newServerScriptRun("server-lifecycle");
 	({runDir, instance} = serverRun);
 	MATCH = `fixtures/fake-server\\.mjs ${instance}`;
 	TITLE = serverRun.title;
 	ENTRY_MATCH = `${instance}/never-matches\\.mjs`;
 	PORT = await reservePort();
-	env = isolatedServerEnv(serverRun, {
-		port: PORT,
-		overrides: {
-			SERVER_CMD: `node ${fixture} ${instance}`,
-			SERVER_MATCH: MATCH,
-			LOG_FILE: join(runDir, "server.log"),
+	env = isolatedServerEnv(
+		serverRun,
+		{
+			port: PORT,
+			overrides:
+			{
+				SERVER_CMD: `node ${fixture} ${instance}`,
+				SERVER_MATCH: MATCH,
+				LOG_FILE: join(runDir, "server.log"),
+			},
 		},
-	});
+	);
 	runEnvs.push(env);
 });
 
-function run(command: string): string {
-	return execFileSync("bash", [script, command], {
-		cwd: projectRoot,
-		encoding: "utf8",
-		env,
-	});
+function run(command: string): string
+{
+	return execFileSync(
+		"bash",
+		[script, command],
+		{
+			cwd: projectRoot,
+			encoding: "utf8",
+			env,
+		},
+	);
 }
 
-function serverPids(): string[] {
-	try {
-		return execSync(`pgrep -f '${MATCH}'`, {encoding: "utf8"}).trim().split("\n").filter(Boolean).toSorted();
-	} catch {
+function serverPids(): string[]
+{
+	try
+	{
+		return execSync(
+			`pgrep -f '${MATCH}'`,
+			{
+				encoding: "utf8",
+			},
+		)
+			.trim()
+			.split("\n")
+			.filter(Boolean)
+			.toSorted();
+	}
+	catch
+	{
 		return [];
 	}
 }
 
-function titledPids(): string[] {
-	try {
+function titledPids(): string[]
+{
+	try
+	{
 		// macOS pgrep -f sees environment data after a rewritten title, so the
 		// title is anchored with ( |$) rather than $.
-		return execFileSync("pgrep", ["-f", `^${TITLE}( |$)`], {encoding: "utf8", timeout: 2000})
+		return execFileSync(
+			"pgrep",
+			["-f", `^${TITLE}( |$)`],
+			{
+				encoding: "utf8",
+				timeout: 2000,
+			},
+		)
 			.trim()
 			.split("\n")
 			.filter(Boolean);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 }
 
-function entryPids(): string[] {
-	try {
-		return execFileSync("pgrep", ["-f", `${instance}/\\.output/server/index\\.mjs`], {
-			encoding: "utf8",
-			timeout: 2000,
-		})
+function entryPids(): string[]
+{
+	try
+	{
+		return execFileSync(
+			"pgrep",
+			["-f", `${instance}/\\.output/server/index\\.mjs`],
+			{
+				encoding: "utf8",
+				timeout: 2000,
+			},
+		)
 			.trim()
 			.split("\n")
 			.filter(Boolean);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 }
 
 // Resolves once the spawned fixture prints its first line, which it does only
 // after setting process.title and starting to listen.
-async function readyLine(child: ChildProcess): Promise<string> {
-	return new Promise((resolveLine, reject) => {
+async function readyLine(child: ChildProcess): Promise<string>
+{
+	return new Promise((resolveLine, reject) =>
+	{
 		let output = "";
 		child.stdout?.setEncoding("utf8");
-		child.stdout?.on("data", (chunk: string) => {
+		child.stdout?.on("data", (chunk: string) =>
+		{
 			output += chunk;
-			if (output.includes("\n")) {
+			if (output.includes("\n"))
+			{
 				resolveLine(output.slice(0, output.indexOf("\n")));
 			}
 		});
 		child.once("error", reject);
-		child.once("exit", (code, signal) => {
+		child.once("exit", (code, signal) =>
+		{
 			reject(new Error(`Fixture exited before it was ready (code ${String(code)}, signal ${String(signal)})`));
 		});
 	});
@@ -122,8 +170,19 @@ async function readyLine(child: ChildProcess): Promise<string> {
 
 const execFileAsync = promisify(execFile);
 
-function darwinListeners(): Array<{address: string; processId: string}> {
-	return execFileSync("netstat", ["-anv", "-p", "tcp"], {encoding: "utf8"})
+function darwinListeners(): Array<
+{
+	address: string;
+	processId: string;
+}>
+{
+	return execFileSync(
+		"netstat",
+		["-anv", "-p", "tcp"],
+		{
+			encoding: "utf8",
+		},
+	)
 		.split("\n")
 		.map((line) => line.trim().split(/\s+/))
 		.filter(
@@ -132,10 +191,12 @@ function darwinListeners(): Array<{address: string; processId: string}> {
 				fields[3]?.endsWith(`.${PORT}`) === true &&
 				fields[5] === "LISTEN",
 		)
-		.map((fields) => {
+		.map((fields) =>
+		{
 			const address = fields[3];
 			const processId = fields[10];
-			if (address === undefined || processId === undefined) {
+			if (address === undefined || processId === undefined)
+			{
 				throw new Error(`Unexpected netstat listener row: ${fields.join(" ")}`);
 			}
 			return {
@@ -145,32 +206,52 @@ function darwinListeners(): Array<{address: string; processId: string}> {
 		});
 }
 
-function portOwners(): string[] {
+function portOwners(): string[]
+{
 	return listeningPids(PORT);
 }
 
-function listenerAddresses(): string[] {
-	if (process.platform === "darwin") {
+function listenerAddresses(): string[]
+{
+	if (process.platform === "darwin")
+	{
 		return darwinListeners().map(({address}) => address);
 	}
-	return execFileSync("lsof", ["-a", `-iTCP:${PORT}`, "-sTCP:LISTEN", "-P", "-n", "-Fn"], {
-		encoding: "utf8",
-	})
+	return execFileSync(
+		"lsof",
+		["-a", `-iTCP:${PORT}`, "-sTCP:LISTEN", "-P", "-n", "-Fn"],
+		{
+			encoding: "utf8",
+		},
+	)
 		.split("\n")
 		.filter((line) => line.startsWith("n"))
 		.map((line) => line.slice(1));
 }
 
 // A safety net: each test stops what it starts.
-afterAll(() => {
-	for (const runEnv of runEnvs) {
-		execFileSync("bash", [script, "stop"], {cwd: projectRoot, encoding: "utf8", env: runEnv});
+afterAll(() =>
+{
+	for (const runEnv of runEnvs)
+	{
+		execFileSync(
+			"bash",
+			[script, "stop"],
+			{
+				cwd: projectRoot,
+				encoding: "utf8",
+				env: runEnv,
+			},
+		);
 	}
 });
 
-describe("scripts/server.sh", () => {
-	it("starting twice leaves exactly one process and it owns the port", () => {
-		try {
+describe("scripts/server.sh", () =>
+{
+	it("starting twice leaves exactly one process and it owns the port", () =>
+	{
+		try
+		{
 			run("start");
 			const firstPids = serverPids();
 			expect(firstPids.length).toBe(1);
@@ -181,33 +262,51 @@ describe("scripts/server.sh", () => {
 			expect(portOwners()).toStrictEqual(secondPids);
 			// The second start replaced the first process rather than piling on.
 			expect(secondPids).not.toStrictEqual(firstPids);
-		} finally {
+		}
+		finally
+		{
 			run("stop");
 		}
 	}, 150_000);
 
-	it("dev refuses to compete with a wildcard-bound production listener", () => {
-		try {
+	it("dev refuses to compete with a wildcard-bound production listener", () =>
+	{
+		try
+		{
 			run("start");
 			const productionPids = serverPids();
 			expect(productionPids.length).toBe(1);
 			expect(portOwners()).toStrictEqual(productionPids);
 			expect(listenerAddresses()).toStrictEqual([`*:${PORT}`]);
 
-			const result = spawnSync("bash", [script, "dev", "node", fixture, instance], {
-				cwd: projectRoot,
-				encoding: "utf8",
-				env,
-			});
+			const result = spawnSync(
+				"bash",
+				[script, "dev", "node", fixture, instance],
+				{
+					cwd: projectRoot,
+					encoding: "utf8",
+					env,
+				},
+			);
 
-			expect({status: result.status, stdout: result.stdout, stderr: result.stderr}).toStrictEqual({
-				status: 1,
-				stdout: "",
-				stderr: `Port ${PORT} is already in use by pid(s): ${productionPids[0]}. Run 'just stop' before 'just dev'.\n`,
-			});
+			expect(
+				{
+					status: result.status,
+					stdout: result.stdout,
+					stderr: result.stderr,
+				},
+			).toStrictEqual(
+				{
+					status: 1,
+					stdout: "",
+					stderr: `Port ${PORT} is already in use by pid(s): ${productionPids[0]}. Run 'just stop' before 'just dev'.\n`,
+				},
+			);
 			expect(serverPids()).toStrictEqual(productionPids);
 			expect(portOwners()).toStrictEqual(productionPids);
-		} finally {
+		}
+		finally
+		{
 			run("stop");
 		}
 	}, 150_000);
@@ -215,21 +314,42 @@ describe("scripts/server.sh", () => {
 	// A phase still running at 28s, just under the test's 30s, fails naming
 	// itself with every phase's timing instead of as a bare test timeout. The
 	// fixture boots in ~100ms; its estimate only flags slow runs in the report.
-	it("stop finds a server renamed by process.title via SERVER_MATCH's title alternative", async () => {
+	it("stop finds a server renamed by process.title via SERVER_MATCH's title alternative", async () =>
+	{
 		const phases = new PhaseTimer(28_000);
 		// Listen on a different port so only the command-line match, not the
 		// port fallback, can find this process.
 		const otherPort = await phases.step("reserve the fixture's port", 2000, reservePort);
-		const child = spawn("node", [fixture, instance], {
-			cwd: runDir,
-			detached: true,
-			stdio: ["ignore", "pipe", "ignore"],
-			env: {...process.env, PORT: otherPort, FAKE_SERVER_TITLE: TITLE},
-		});
+		const child = spawn(
+			"node",
+			[fixture, instance],
+			{
+				cwd: runDir,
+				detached: true,
+				stdio: ["ignore", "pipe", "ignore"],
+				env:
+				{
+					...process.env,
+					PORT: otherPort,
+					FAKE_SERVER_TITLE: TITLE,
+				},
+			},
+		);
 		// lsof stats mounts and stalled stop for over 15s under load; stop must not need it at all.
 		const stalledLsofBin = join(runDir, "stalled-lsof-bin");
-		mkdirSync(stalledLsofBin, {recursive: true});
-		writeFileSync(join(stalledLsofBin, "lsof"), "#!/bin/sh\nexec sleep 60\n", {mode: 0o755});
+		mkdirSync(
+			stalledLsofBin,
+			{
+				recursive: true,
+			},
+		);
+		writeFileSync(
+			join(stalledLsofBin, "lsof"),
+			"#!/bin/sh\nexec sleep 60\n",
+			{
+				mode: 0o755,
+			},
+		);
 		// Shaped like an unrenamed production server's command line and sharing
 		// PROJECT_DIR as its cwd: stop must leave it alone when SERVER_ENTRY_MATCH
 		// says not to match entry points.
@@ -240,9 +360,14 @@ describe("scripts/server.sh", () => {
 				"console.log('ready'); setInterval(() => {}, 1_000_000)",
 				join(runDir, ".output", "server", "index.mjs"),
 			],
-			{cwd: runDir, detached: true, stdio: ["ignore", "pipe", "ignore"]},
+			{
+				cwd: runDir,
+				detached: true,
+				stdio: ["ignore", "pipe", "ignore"],
+			},
 		);
-		try {
+		try
+		{
 			expect(
 				await phases.step(
 					"fixture and decoy ready",
@@ -256,20 +381,35 @@ describe("scripts/server.sh", () => {
 			]);
 			const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
 			await phases.step("server.sh stop", 15_000, async () =>
-				runServerScript("stop", {
-					env: {
-						...defaultMatchEnv,
-						PATH: `${stalledLsofBin}:${process.env["PATH"] ?? ""}`,
-						SERVER_TITLE: TITLE,
-						SERVER_ENTRY_MATCH: ENTRY_MATCH,
+				runServerScript(
+					"stop",
+					{
+						env:
+						{
+							...defaultMatchEnv,
+							PATH: `${stalledLsofBin}:${process.env["PATH"] ?? ""}`,
+							SERVER_TITLE: TITLE,
+							SERVER_ENTRY_MATCH: ENTRY_MATCH,
+						},
+						timeoutMs: 15_000,
 					},
-					timeoutMs: 15_000,
-				}),
+				),
 			);
 			expect(
-				await phases.step("pgrep after stop", 2000, () => ({titled: titledPids(), decoy: entryPids()})),
-			).toStrictEqual({titled: [], decoy: [String(decoy.pid)]});
-		} finally {
+				await phases.step("pgrep after stop", 2000, () => (
+				{
+					titled: titledPids(),
+					decoy: entryPids(),
+				})),
+			).toStrictEqual(
+				{
+					titled: [],
+					decoy: [String(decoy.pid)],
+				},
+			);
+		}
+		finally
+		{
 			child.kill("SIGKILL");
 			decoy.kill("SIGKILL");
 		}
@@ -280,19 +420,41 @@ describe("scripts/server.sh", () => {
 	// lookup is a libproc call made through perl on macOS.
 	it.skipIf(process.platform !== "darwin")(
 		"stop fails loudly when the cwd lookup stalls past LOOKUP_TIMEOUT_SECONDS",
-		async () => {
+		async () =>
+		{
 			const phases = new PhaseTimer(28_000);
 			const otherPort = await phases.step("reserve the fixture's port", 2000, reservePort);
-			const child = spawn("node", [fixture, instance], {
-				cwd: runDir,
-				detached: true,
-				stdio: ["ignore", "pipe", "ignore"],
-				env: {...process.env, PORT: otherPort, FAKE_SERVER_TITLE: TITLE},
-			});
+			const child = spawn(
+				"node",
+				[fixture, instance],
+				{
+					cwd: runDir,
+					detached: true,
+					stdio: ["ignore", "pipe", "ignore"],
+					env:
+					{
+						...process.env,
+						PORT: otherPort,
+						FAKE_SERVER_TITLE: TITLE,
+					},
+				},
+			);
 			const fakeBin = join(runDir, "stalled-perl-bin");
-			mkdirSync(fakeBin, {recursive: true});
-			writeFileSync(join(fakeBin, "perl"), "#!/bin/sh\nexec sleep 60\n", {mode: 0o755});
-			try {
+			mkdirSync(
+				fakeBin,
+				{
+					recursive: true,
+				},
+			);
+			writeFileSync(
+				join(fakeBin, "perl"),
+				"#!/bin/sh\nexec sleep 60\n",
+				{
+					mode: 0o755,
+				},
+			);
+			try
+			{
 				expect(
 					await phases.step(
 						"fixture ready",
@@ -303,65 +465,103 @@ describe("scripts/server.sh", () => {
 				).toBe(`listening on ${otherPort}`);
 				const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
 				const failure: unknown = await phases.step("server.sh stop", 15_000, async () =>
-					execFileAsync("bash", [script, "stop"], {
-						cwd: projectRoot,
-						encoding: "utf8",
-						timeout: 15_000,
-						env: {
-							...defaultMatchEnv,
-							PATH: `${fakeBin}:${process.env["PATH"] ?? ""}`,
-							SERVER_TITLE: TITLE,
-							SERVER_ENTRY_MATCH: ENTRY_MATCH,
-							LOOKUP_TIMEOUT_SECONDS: "1",
+					execFileAsync(
+						"bash",
+						[script, "stop"],
+						{
+							cwd: projectRoot,
+							encoding: "utf8",
+							timeout: 15_000,
+							env:
+							{
+								...defaultMatchEnv,
+								PATH: `${fakeBin}:${process.env["PATH"] ?? ""}`,
+								SERVER_TITLE: TITLE,
+								SERVER_ENTRY_MATCH: ENTRY_MATCH,
+								LOOKUP_TIMEOUT_SECONDS: "1",
+							},
 						},
-					}).then(
+					).then(
 						() => "stop succeeded",
 						(error: unknown) => error,
 					),
 				);
 				// bounded() prints "did not finish" only when the lookup is still running at the 1s deadline, then
 				// kills it without waiting; a lookup left to finish (the stub sleeps 60s) would outlast the step.
-				expect({
-					code: Reflect.get(Object(failure), "code"),
-					stdout: Reflect.get(Object(failure), "stdout"),
-					stderr: Reflect.get(Object(failure), "stderr"),
-					titled: titledPids(),
-				}).toStrictEqual({
-					code: 1,
-					stdout: "",
-					stderr: `Reading the cwd of pid(s) ${String(child.pid)} did not finish within 1s\nCould not tell which server processes are running; stopped nothing\n`,
-					titled: [String(child.pid)],
-				});
-			} finally {
+				expect(
+					{
+						code: Reflect.get(Object(failure), "code"),
+						stdout: Reflect.get(Object(failure), "stdout"),
+						stderr: Reflect.get(Object(failure), "stderr"),
+						titled: titledPids(),
+					},
+				).toStrictEqual(
+					{
+						code: 1,
+						stdout: "",
+						stderr: `Reading the cwd of pid(s) ${String(child.pid)} did not finish within 1s\nCould not tell which server processes are running; stopped nothing\n`,
+						titled: [String(child.pid)],
+					},
+				);
+			}
+			finally
+			{
 				child.kill("SIGKILL");
 			}
 		},
 		30_000,
 	);
 
-	it("start gives up on a server that does not listen within START_TIMEOUT_SECONDS", () => {
-		const result = spawnSync("bash", [script, "start"], {
-			cwd: projectRoot,
-			encoding: "utf8",
-			env: {...env, START_TIMEOUT_SECONDS: "1", FAKE_SERVER_LISTEN_DELAY_MS: "5000"},
-		});
+	it("start gives up on a server that does not listen within START_TIMEOUT_SECONDS", () =>
+	{
+		const result = spawnSync(
+			"bash",
+			[script, "start"],
+			{
+				cwd: projectRoot,
+				encoding: "utf8",
+				env:
+				{
+					...env,
+					START_TIMEOUT_SECONDS: "1",
+					FAKE_SERVER_LISTEN_DELAY_MS: "5000",
+				},
+			},
+		);
 		run("stop");
 
-		expect({status: result.status, stdout: result.stdout, stderr: result.stderr}).toStrictEqual({
-			status: 1,
-			stdout: `No server running (port ${PORT})\n`,
-			stderr: `Server failed to listen on port ${PORT} within 1s; see ${join(runDir, "server.log")}\n`,
-		});
+		expect(
+			{
+				status: result.status,
+				stdout: result.stdout,
+				stderr: result.stderr,
+			},
+		).toStrictEqual(
+			{
+				status: 1,
+				stdout: `No server running (port ${PORT})\n`,
+				stderr: `Server failed to listen on port ${PORT} within 1s; see ${join(runDir, "server.log")}\n`,
+			},
+		);
 	}, 30_000);
 
 	// On a heavily loaded machine the server can take well over 20s to bind, so
 	// the default wait must outlast that; it polls, so a fast start stays fast.
-	it("start waits by default for a server that takes longer than 20s to listen", () => {
-		const output = execFileSync("bash", [script, "start"], {
-			cwd: projectRoot,
-			encoding: "utf8",
-			env: {...env, FAKE_SERVER_LISTEN_DELAY_MS: "21000"},
-		});
+	it("start waits by default for a server that takes longer than 20s to listen", () =>
+	{
+		const output = execFileSync(
+			"bash",
+			[script, "start"],
+			{
+				cwd: projectRoot,
+				encoding: "utf8",
+				env:
+				{
+					...env,
+					FAKE_SERVER_LISTEN_DELAY_MS: "21000",
+				},
+			},
+		);
 		const pids = portOwners();
 		run("stop");
 
@@ -370,46 +570,84 @@ describe("scripts/server.sh", () => {
 		);
 	}, 120_000);
 
-	it("start fails fast when the server exits before it listens", () => {
-		const result = spawnSync("bash", [script, "start"], {
-			cwd: projectRoot,
-			encoding: "utf8",
-			env: {...env, SERVER_CMD: `node -e 'process.exit(1)' ${instance}`},
-		});
+	it("start fails fast when the server exits before it listens", () =>
+	{
+		const result = spawnSync(
+			"bash",
+			[script, "start"],
+			{
+				cwd: projectRoot,
+				encoding: "utf8",
+				env:
+				{
+					...env,
+					SERVER_CMD: `node -e 'process.exit(1)' ${instance}`,
+				},
+			},
+		);
 
 		// Only the early-exit branch, which returns at once, prints this; waiting out START_TIMEOUT_SECONDS
 		// ends with "failed to listen ... within" instead.
-		expect({status: result.status, stderr: result.stderr}).toStrictEqual({
-			status: 1,
-			stderr: `Server exited before listening on port ${PORT}; see ${join(runDir, "server.log")}\n`,
-		});
+		expect(
+			{
+				status: result.status,
+				stderr: result.stderr,
+			},
+		).toStrictEqual(
+			{
+				status: 1,
+				stderr: `Server exited before listening on port ${PORT}; see ${join(runDir, "server.log")}\n`,
+			},
+		);
 	}, 120_000);
 
-	it("start shows what the dead server logged during this launch", () => {
-		const result = spawnSync("bash", [script, "start"], {
-			cwd: projectRoot,
-			encoding: "utf8",
-			env: {...env, SERVER_CMD: `node -e 'console.error("boom: EADDRINUSE"); process.exit(1)' ${instance}`},
-		});
+	it("start shows what the dead server logged during this launch", () =>
+	{
+		const result = spawnSync(
+			"bash",
+			[script, "start"],
+			{
+				cwd: projectRoot,
+				encoding: "utf8",
+				env:
+				{
+					...env,
+					SERVER_CMD: `node -e 'console.error("boom: EADDRINUSE"); process.exit(1)' ${instance}`,
+				},
+			},
+		);
 
-		expect({status: result.status, stderr: result.stderr}).toStrictEqual({
-			status: 1,
-			stderr: `Server exited before listening on port ${PORT}; see ${join(runDir, "server.log")}\nboom: EADDRINUSE\n`,
-		});
+		expect(
+			{
+				status: result.status,
+				stderr: result.stderr,
+			},
+		).toStrictEqual(
+			{
+				status: 1,
+				stderr: `Server exited before listening on port ${PORT}; see ${join(runDir, "server.log")}\nboom: EADDRINUSE\n`,
+			},
+		);
 	}, 120_000);
 
 	// The launched pid is only the head of the server's process group: a
 	// launcher that forks the real server and exits is not an early exit.
-	it("start keeps waiting when the launcher exits but the server it forked lives on", () => {
-		const output = execFileSync("bash", [script, "start"], {
-			cwd: projectRoot,
-			encoding: "utf8",
-			env: {
-				...env,
-				SERVER_CMD: `sh -c 'node ${fixture} ${instance} & exit 0'`,
-				FAKE_SERVER_LISTEN_DELAY_MS: "3000",
+	it("start keeps waiting when the launcher exits but the server it forked lives on", () =>
+	{
+		const output = execFileSync(
+			"bash",
+			[script, "start"],
+			{
+				cwd: projectRoot,
+				encoding: "utf8",
+				env:
+				{
+					...env,
+					SERVER_CMD: `sh -c 'node ${fixture} ${instance} & exit 0'`,
+					FAKE_SERVER_LISTEN_DELAY_MS: "3000",
+				},
 			},
-		});
+		);
 		const pids = portOwners();
 		run("stop");
 
@@ -418,7 +656,8 @@ describe("scripts/server.sh", () => {
 		);
 	}, 120_000);
 
-	it("stop terminates the server and is a no-op when nothing is running", () => {
+	it("stop terminates the server and is a no-op when nothing is running", () =>
+	{
 		run("start");
 		run("stop");
 		expect(serverPids()).toStrictEqual([]);

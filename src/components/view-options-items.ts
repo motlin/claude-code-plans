@@ -15,45 +15,69 @@ export function viewOptionsItems({
 	registered: ReadonlySet<PaneKind>;
 	isOpen: (kind: PaneKind) => boolean;
 	facts: ViewOptionsFacts;
-}): ViewOptionsItem[] {
+}): ViewOptionsItem[]
+{
 	return candidates(facts)
 		.filter((item) => registered.has(item.kind) && (item.applies || isOpen(item.kind)))
 		.map(({applies: _applies, ...item}) => item);
 }
 
 /** What the session offers, deciding which View options items apply. */
-export interface ViewOptionsFacts {
+export interface ViewOptionsFacts
+{
 	artifactCount?: number;
 	/** The session has a plan for the Plan pane: a linked plan file, plan text, a plan-file edit or todos. */
 	hasPlan?: boolean;
 	/** Earlier transcript messages are still unloaded, so the plan might be in them. */
 	hasUnloadedHistory?: boolean;
-	backgroundTasks?: {total: number; running: number};
+	backgroundTasks?:
+	{
+		total: number;
+		running: number;
+	};
 	subagentCount?: number;
 }
 
-export interface ViewOptionsItem extends PaneMenuEntry {
+export interface ViewOptionsItem extends PaneMenuEntry
+{
 	/** Running-count badge (Background tasks). */
 	badge?: number;
 }
 
-function candidates(facts: ViewOptionsFacts): ViewOptionsCandidate[] {
+function candidates(facts: ViewOptionsFacts): ViewOptionsCandidate[]
+{
 	const running = facts.backgroundTasks?.running ?? 0;
 	return [
-		{kind: "terminal", label: "Terminal", icon: SquareTerminal, shortcut: "toggle_terminal", applies: true},
+		{
+			kind: "terminal",
+			label: "Terminal",
+			icon: SquareTerminal,
+			shortcut: "toggle_terminal",
+			applies: true,
+		},
 		{
 			kind: "artifacts",
 			label: "Artifacts",
 			icon: AppWindow,
 			applies: (facts.artifactCount ?? 0) > 0,
 		},
-		{kind: "links", label: "Links", icon: Link2, applies: true},
+		{
+			kind: "links",
+			label: "Links",
+			icon: Link2,
+			applies: true,
+		},
 		{
 			kind: "background-tasks",
 			label: "Background tasks",
 			icon: ListChecks,
 			applies: (facts.backgroundTasks?.total ?? 0) > 0,
-			...(running > 0 ? {badge: running} : {}),
+			...(running > 0
+				?
+					{
+						badge: running,
+					}
+				: {}),
 		},
 		{
 			kind: "plan",
@@ -67,17 +91,24 @@ function candidates(facts: ViewOptionsFacts): ViewOptionsCandidate[] {
 			icon: GitFork,
 			applies: (facts.subagentCount ?? 0) > 0,
 		},
-		{kind: "session-details", label: "Session details", icon: Info, applies: true},
+		{
+			kind: "session-details",
+			label: "Session details",
+			icon: Info,
+			applies: true,
+		},
 	];
 }
 
-export interface PaneMenuEntry {
+export interface PaneMenuEntry
+{
 	kind: PaneKind;
 	label: string;
 	icon: LucideIcon;
 	shortcut?: ShortcutId;
 }
 
-interface ViewOptionsCandidate extends ViewOptionsItem {
+interface ViewOptionsCandidate extends ViewOptionsItem
+{
 	applies: boolean;
 }

@@ -1,6 +1,7 @@
 import {useCallback, useMemo, useRef} from "react";
 
-interface PointerPosition {
+interface PointerPosition
+{
 	x: number;
 	y: number;
 }
@@ -12,21 +13,37 @@ interface PointerPosition {
  * one, doesn't steal the selection. The row handler runs before the list's (events bubble), so it
  * compares against the previous position.
  */
-export function usePointerHoverSelect(select: (index: number) => void) {
+export function usePointerHoverSelect(select: (index: number) => void)
+{
 	const pointer = useRef<PointerPosition | null>(null);
-	const recordPointer = useCallback((event: React.MouseEvent) => {
-		pointer.current = {x: event.screenX, y: event.screenY};
+	const recordPointer = useCallback((event: React.MouseEvent) =>
+	{
+		pointer.current =
+		{
+			x: event.screenX,
+			y: event.screenY,
+		};
 	}, []);
-	const forgetPointer = useCallback(() => {
+	const forgetPointer = useCallback(() =>
+	{
 		pointer.current = null;
 	}, []);
 	const hoverSelect = useCallback(
-		(index: number, event: React.MouseEvent) => {
+		(index: number, event: React.MouseEvent) =>
+		{
 			const last = pointer.current;
 			if (last === null || (last.x === event.screenX && last.y === event.screenY)) return;
 			select(index);
 		},
 		[select],
 	);
-	return useMemo(() => ({recordPointer, forgetPointer, hoverSelect}), [recordPointer, forgetPointer, hoverSelect]);
+	return useMemo(
+		() => (
+		{
+			recordPointer,
+			forgetPointer,
+			hoverSelect,
+		}),
+		[recordPointer, forgetPointer, hoverSelect],
+	);
 }

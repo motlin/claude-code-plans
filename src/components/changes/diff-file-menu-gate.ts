@@ -3,7 +3,8 @@ import type {DiffFileMark} from "../../lib/diff-file-marks";
 export type {DiffFileMark};
 
 /** Upstream `Iu` (was `Rs`): the "… N more" and index-flag rows of huge or flagged diffs, which get no More button. */
-export function isSyntheticDiffRow(path: string): boolean {
+export function isSyntheticDiffRow(path: string): boolean
+{
 	return path.startsWith("… ") || path.includes(" hidden from Git by index flags (");
 }
 
@@ -19,6 +20,7 @@ export function diffFileMenuButtonShown({
 	path: string;
 	mark: DiffFileMark | undefined;
 	wholeFileOffered: boolean;
-}): boolean {
+}): boolean
+{
 	return mark !== undefined || (wholeFileOffered && !isSyntheticDiffRow(path));
 }

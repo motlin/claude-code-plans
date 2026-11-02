@@ -9,11 +9,13 @@ import {SettingsProvider} from "../../components/settings-provider";
  * Uses `render` instead of `args` because the component's discriminated union
  * props cannot be represented via Storybook's flattened args type.
  */
-const meta: Meta<typeof DebugLink> = {
+const meta: Meta<typeof DebugLink> =
+{
 	title: "Shared/DebugLink",
 	component: DebugLink,
 	decorators: [
-		(Story) => {
+		(Story) =>
+		{
 			localStorage.setItem("ccp-show-debug", "true");
 			return (
 				<SettingsProvider>
@@ -30,10 +32,12 @@ export default meta;
 // Use a plain StoryObj since we use `render` instead of `args`.
 type Story = StoryObj;
 
-export const SessionLink: Story = {
+export const SessionLink: Story =
+{
 	render: () => <DebugLink sessionId="abc123" uuid="deadbeef-1234-5678-9abc-def012345678" />,
 };
 
-export const MissingUuid: Story = {
+export const MissingUuid: Story =
+{
 	render: () => <DebugLink sessionId="abc123" uuid={undefined} />,
 };

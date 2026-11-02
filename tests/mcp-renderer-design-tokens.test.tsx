@@ -42,20 +42,31 @@ const SHADCN_CUSTOM_PROPERTIES = [
 	"--color-input",
 ];
 
-function collectSourceFiles(dir: string): string[] {
+function collectSourceFiles(dir: string): string[]
+{
 	const files: string[] = [];
-	for (const entry of readdirSync(dir, {withFileTypes: true})) {
+	for (const entry of readdirSync(
+		dir,
+		{
+			withFileTypes: true,
+		},
+	))
+	{
 		const fullPath = join(dir, entry.name);
-		if (entry.isDirectory()) {
+		if (entry.isDirectory())
+		{
 			files.push(...collectSourceFiles(fullPath));
-		} else if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")) {
+		}
+		else if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts"))
+		{
 			files.push(fullPath);
 		}
 	}
 	return files.toSorted();
 }
 
-function toolCall(name: string, input: Record<string, unknown>, result: string): ClientToolCall {
+function toolCall(name: string, input: Record<string, unknown>, result: string): ClientToolCall
+{
 	return {
 		id: "tool-call-1",
 		name,
@@ -68,8 +79,10 @@ function toolCall(name: string, input: Record<string, unknown>, result: string):
 
 afterEach(cleanup);
 
-describe("undefined shadcn tokens", () => {
-	it("globals.css defines none of the shadcn color custom properties", () => {
+describe("undefined shadcn tokens", () =>
+{
+	it("globals.css defines none of the shadcn color custom properties", () =>
+	{
 		const css = readFileSync(GLOBALS_CSS, "utf8");
 		const defined = SHADCN_CUSTOM_PROPERTIES.filter((property) =>
 			new RegExp(`^\\s*${property}\\s*:`, "m").test(css),
@@ -77,7 +90,8 @@ describe("undefined shadcn tokens", () => {
 		expect(defined).toStrictEqual([]);
 	});
 
-	it("no source file uses a shadcn utility that compiles to nothing", () => {
+	it("no source file uses a shadcn utility that compiles to nothing", () =>
+	{
 		const pattern = new RegExp(
 			`(?<![\\w-])(?:hover:|focus:|group-hover:|dark:)?(?:${UNDEFINED_SHADCN_UTILITIES.join("|")})(?![\\w-])`,
 		);
@@ -88,8 +102,10 @@ describe("undefined shadcn tokens", () => {
 	});
 });
 
-describe("MCP renderers use transcript design tokens", () => {
-	it("no source file uses the retired assistant-prefixed text utilities", () => {
+describe("MCP renderers use transcript design tokens", () =>
+{
+	it("no source file uses the retired assistant-prefixed text utilities", () =>
+	{
 		const retiredUtility = /text-assistant-(?:primary|secondary)/;
 		const offenders = collectSourceFiles(SRC_DIR)
 			.filter((file) => retiredUtility.test(readFileSync(file, "utf8")))
@@ -97,7 +113,8 @@ describe("MCP renderers use transcript design tokens", () => {
 		expect(offenders).toStrictEqual([]);
 	});
 
-	it("renders chrome-devtools console output with token classes", () => {
+	it("renders chrome-devtools console output with token classes", () =>
+	{
 		const {container} = render(
 			<ChromeDevtoolsRenderer
 				toolCall={toolCall(
@@ -113,7 +130,8 @@ describe("MCP renderers use transcript design tokens", () => {
 		expect(html).not.toContain("text-foreground");
 	});
 
-	it("renders claude-in-chrome tab context with token classes", () => {
+	it("renders claude-in-chrome tab context with token classes", () =>
+	{
 		const {container} = render(
 			<ClaudeInChromeRenderer
 				toolCall={toolCall("mcp__claude-in-chrome__tabs_context_mcp", {}, "tab 1\ntab 2")}
@@ -126,7 +144,8 @@ describe("MCP renderers use transcript design tokens", () => {
 		expect(html).not.toContain("text-muted-foreground");
 	});
 
-	it("renders playwright console messages with token classes", () => {
+	it("renders playwright console messages with token classes", () =>
+	{
 		const {container} = render(
 			<PlaywrightRenderer
 				toolCall={toolCall("mcp__plugin_playwright_playwright__browser_console_messages", {}, "[LOG] hello")}
@@ -139,7 +158,8 @@ describe("MCP renderers use transcript design tokens", () => {
 		expect(html).not.toContain("text-muted-foreground");
 	});
 
-	it("renders github default output with token classes", () => {
+	it("renders github default output with token classes", () =>
+	{
 		const {container} = render(
 			<GithubRenderer toolCall={toolCall("mcp__github__get_me", {}, "some plain github response text")} />,
 		);

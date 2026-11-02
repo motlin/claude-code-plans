@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -25,7 +26,8 @@ import {rowTitle} from "./sidebar-row-title";
 
 const MINUTE = 60 * 1000;
 
-function session(id: string, title: string, bucket: SessionBucket, minutesAgo: number) {
+function session(id: string, title: string, bucket: SessionBucket, minutesAgo: number)
+{
 	const mtime = new Date(Date.now() - minutesAgo * MINUTE).toISOString();
 	return {
 		id,
@@ -52,174 +54,295 @@ const FIXTURE = [
 	session("d2", "Completed older", "done", 30),
 ];
 
-function seedPins(pinnedIds: string[], pinnedOrder: string[] = []): void {
-	localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({pinnedIds, pinnedOrder}));
+function seedPins(pinnedIds: string[], pinnedOrder: string[] = []): void
+{
+	localStorage.setItem(
+		PIN_STORAGE_KEY,
+		JSON.stringify(
+			{
+				pinnedIds,
+				pinnedOrder,
+			},
+		),
+	);
 }
 
-async function renderGroups(sessions: unknown[]) {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+async function renderGroups(sessions: unknown[])
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [RecentSessionsResponse.parse({sessions, nextCursor: null})],
-		pageParams: [null],
-	});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<SettingsProvider>
-				<QueryClientProvider client={queryClient}>
-					<ToastProvider>
-						<SessionGroups activeItemId={null} prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}} />
-						<Outlet />
-					</ToastProvider>
-				</QueryClientProvider>
-			</SettingsProvider>
-		),
-	});
-	const homeRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: () => null,
-	});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/session/$id",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	);
+	queryClient.setQueryData(
+		recentSessionsInfiniteQueryOptions().queryKey,
+		{
+			pages: [
+				RecentSessionsResponse.parse(
+					{
+						sessions,
+						nextCursor: null,
+					},
+				),
+			],
+			pageParams: [null],
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<SettingsProvider>
+					<QueryClientProvider client={queryClient}>
+						<ToastProvider>
+							<SessionGroups
+								activeItemId={null}
+								prefs={
+								{
+									...DEFAULT_SESSION_LIST_PREFS,
+									groupBy: "state",
+								}}
+							/>
+							<Outlet />
+						</ToastProvider>
+					</QueryClientProvider>
+				</SettingsProvider>
+			),
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/session/$id",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
 	});
 	return result;
 }
 
-function pinnedSection(container: HTMLElement): HTMLElement {
+function pinnedSection(container: HTMLElement): HTMLElement
+{
 	const section = container.querySelector('[data-testid="sidebar-pinned"]');
 	if (!(section instanceof HTMLElement)) throw new Error("no Pinned section");
 	return section;
 }
 
-function rowTitles(element: Element | null): string[] {
+function rowTitles(element: Element | null): string[]
+{
 	if (element === null) return [];
 	return [...element.querySelectorAll("a[data-row-main-button]")]
 		.filter((link) => link.closest("[hidden]") === null)
 		.map((link) => rowTitle(link));
 }
 
-function visibleGroupNames(container: HTMLElement): string[] {
+function visibleGroupNames(container: HTMLElement): string[]
+{
 	return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
 		(node) => node.textContent,
 	);
 }
 
-async function openRowMenu(title: string): Promise<HTMLElement> {
-	fireEvent.contextMenu(screen.getByText(title), {clientX: 40, clientY: 50});
-	await act(async () => {
-		await new Promise((resolve) => {
+async function openRowMenu(title: string): Promise<HTMLElement>
+{
+	fireEvent.contextMenu(
+		screen.getByText(title),
+		{
+			clientX: 40,
+			clientY: 50,
+		},
+	);
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 	return screen.getByRole("menu");
 }
 
-function menuItemNames(menu: HTMLElement): string[] {
+function menuItemNames(menu: HTMLElement): string[]
+{
 	return [...menu.querySelectorAll('[role="menuitem"]')].map((item) => (item.firstChild?.textContent ?? "").trim());
 }
 
 afterEach(cleanup);
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 });
 
-describe("sidebar Pinned section", () => {
-	it("marks the Pinned and recents lists with the upstream data-perf-region anchors", async () => {
+describe("sidebar Pinned section", () =>
+{
+	it("marks the Pinned and recents lists with the upstream data-perf-region anchors", async () =>
+	{
 		const {container} = await renderGroups(FIXTURE);
 
-		expect({
-			pinned: pinnedSection(container).getAttribute("data-perf-region"),
-			recents: container.querySelector('[data-testid="sidebar-recents"]')?.getAttribute("data-perf-region"),
-		}).toStrictEqual({pinned: "sidebar_pinned", recents: "sidebar_recents"});
+		expect(
+			{
+				pinned: pinnedSection(container).getAttribute("data-perf-region"),
+				recents: container.querySelector('[data-testid="sidebar-recents"]')?.getAttribute("data-perf-region"),
+			},
+		).toStrictEqual(
+			{
+				pinned: "sidebar_pinned",
+				recents: "sidebar_recents",
+			},
+		);
 	});
 
-	it("is a hidden, inert stub above the groups when nothing is pinned", async () => {
+	it("is a hidden, inert stub above the groups when nothing is pinned", async () =>
+	{
 		const {container} = await renderGroups(FIXTURE);
 
 		const section = pinnedSection(container);
-		expect({
-			stub: section.hasAttribute("data-stub"),
-			inert: section.hasAttribute("inert"),
-			reveal: section.classList.contains("df-pin-section-reveal"),
-			rows: rowTitles(section),
-			beforeRecents:
-				section.compareDocumentPosition(container.querySelector('[data-testid="sidebar-recents"]') as Node) ===
-				Node.DOCUMENT_POSITION_FOLLOWING,
-		}).toEqual({stub: true, inert: true, reveal: true, rows: [], beforeRecents: true});
+		expect(
+			{
+				stub: section.hasAttribute("data-stub"),
+				inert: section.hasAttribute("inert"),
+				reveal: section.classList.contains("df-pin-section-reveal"),
+				rows: rowTitles(section),
+				beforeRecents:
+					section.compareDocumentPosition(
+						container.querySelector('[data-testid="sidebar-recents"]') as Node,
+					) === Node.DOCUMENT_POSITION_FOLLOWING,
+			},
+		).toEqual(
+			{
+				stub: true,
+				inert: true,
+				reveal: true,
+				rows: [],
+				beforeRecents: true,
+			},
+		);
 	});
 
-	it("lists user-ordered pins first, then the rest by Sort by", async () => {
+	it("lists user-ordered pins first, then the rest by Sort by", async () =>
+	{
 		seedPins(["r1", "w1", "d2"], ["d2", "w1"]);
 		const {container} = await renderGroups(FIXTURE);
 
 		const section = pinnedSection(container);
-		expect({
-			stub: section.hasAttribute("data-stub"),
-			inert: section.hasAttribute("inert"),
-			reveal: section.classList.contains("df-pin-section-reveal"),
-			label: section.querySelector("[data-group-name]")?.textContent,
-			rows: rowTitles(section),
-		}).toEqual({
-			stub: false,
-			inert: false,
-			reveal: false,
-			label: "Pinned",
-			rows: ["Completed older", "Working one", "Review one"],
-		});
+		expect(
+			{
+				stub: section.hasAttribute("data-stub"),
+				inert: section.hasAttribute("inert"),
+				reveal: section.classList.contains("df-pin-section-reveal"),
+				label: section.querySelector("[data-group-name]")?.textContent,
+				rows: rowTitles(section),
+			},
+		).toEqual(
+			{
+				stub: false,
+				inert: false,
+				reveal: false,
+				label: "Pinned",
+				rows: ["Completed older", "Working one", "Review one"],
+			},
+		);
 	});
 
-	it("moves pinned sessions out of their groups", async () => {
+	it("moves pinned sessions out of their groups", async () =>
+	{
 		seedPins(["r1", "d2"]);
 		const {container} = await renderGroups(FIXTURE);
 
-		expect({
-			groups: visibleGroupNames(container),
-			recents: rowTitles(container.querySelector('[data-testid="sidebar-recents"]')),
-		}).toEqual({
-			groups: ["Needs input", "Working", "Idle"],
-			recents: ["Blocked one", "Working one", "Completed newest"],
-		});
+		expect(
+			{
+				groups: visibleGroupNames(container),
+				recents: rowTitles(container.querySelector('[data-testid="sidebar-recents"]')),
+			},
+		).toEqual(
+			{
+				groups: ["Needs input", "Working", "Idle"],
+				recents: ["Blocked one", "Working one", "Completed newest"],
+			},
+		);
 	});
 
-	it("draws no PR tail on a pinned row, as upstream, while its unpinned twin keeps one", async () => {
+	it("draws no PR tail on a pinned row, as upstream, while its unpinned twin keeps one", async () =>
+	{
 		seedPins(["r1"]);
 		localStorage.setItem(
 			"ccp-session-list-prefs",
-			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showPrStatus: true}),
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					showPrStatus: true,
+				},
+			),
 		);
-		const pr = {prStatus: {number: 6, state: "open"}};
+		const pr =
+		{
+			prStatus:
+			{
+				number: 6,
+				state: "open",
+			},
+		};
 		const {container} = await renderGroups([
-			{...session("r1", "Review one", "review", 2), ...pr},
-			{...session("d1", "Completed newest", "done", 5), ...pr},
+			{
+				...session("r1", "Review one", "review", 2),
+				...pr,
+			},
+			{
+				...session("d1", "Completed newest", "done", 5),
+				...pr,
+			},
 		]);
 		const tails = (element: Element | null) =>
 			[...(element?.querySelectorAll("a[data-row-main-button] [data-pr-glyph]") ?? [])].map((node) =>
 				node.getAttribute("data-pr-glyph"),
 			);
 
-		expect({
-			pinned: tails(pinnedSection(container)),
-			recents: tails(container.querySelector('[data-testid="sidebar-recents"]')),
-		}).toStrictEqual({pinned: [], recents: ["opened"]});
+		expect(
+			{
+				pinned: tails(pinnedSection(container)),
+				recents: tails(container.querySelector('[data-testid="sidebar-recents"]')),
+			},
+		).toStrictEqual(
+			{
+				pinned: [],
+				recents: ["opened"],
+			},
+		);
 	});
 
-	it("persists collapsing the Pinned header in collapsedGroups", async () => {
+	it("persists collapsing the Pinned header in collapsedGroups", async () =>
+	{
 		seedPins(["w1"]);
 		const {container} = await renderGroups(FIXTURE);
 
@@ -228,60 +351,106 @@ describe("sidebar Pinned section", () => {
 		if (!(toggle instanceof HTMLElement)) throw new Error("no Pinned toggle");
 		fireEvent.click(toggle);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(rowTitles(section)).toEqual([]);
 		});
 		expect(readSidebarState().collapsedGroups).toEqual(["pinned"]);
 		expect(toggle.getAttribute("aria-expanded")).toBe("false");
 	});
 
-	it("caps Pinned at 5 rows and pages it 5 at a time with Show more", async () => {
-		const sessions = Array.from({length: 8}, (_, index) =>
-			session(`p${index}`, `Pinned ${index}`, "done", index + 1),
+	it("caps Pinned at 5 rows and pages it 5 at a time with Show more", async () =>
+	{
+		const sessions = Array.from(
+			{
+				length: 8,
+			},
+			(_, index) => session(`p${index}`, `Pinned ${index}`, "done", index + 1),
 		);
 		seedPins(sessions.map((pinned) => pinned.id));
 		const {container} = await renderGroups(sessions);
 
 		expect(rowTitles(pinnedSection(container))).toHaveLength(5);
-		fireEvent.click(screen.getByRole("button", {name: "Show 3 more in Pinned"}));
-		await waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 3 more in Pinned",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(rowTitles(pinnedSection(container))).toHaveLength(8);
 		});
-		fireEvent.click(screen.getByRole("button", {name: "Show less in Pinned"}));
-		await waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show less in Pinned",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(rowTitles(pinnedSection(container))).toHaveLength(5);
 		});
-		expect(screen.getByRole("button", {name: "Show 3 more in Pinned"})).toBeTruthy();
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 3 more in Pinned",
+				},
+			),
+		).toBeTruthy();
 	});
 
-	it("offers Move up and Move down on pinned rows, omitted at the ends", async () => {
+	it("offers Move up and Move down on pinned rows, omitted at the ends", async () =>
+	{
 		seedPins(["r1", "w1", "d2"], ["r1", "w1", "d2"]);
 		await renderGroups(FIXTURE);
 
 		const top = menuItemNames(await openRowMenu("Review one"));
-		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
-		await waitFor(() => {
+		fireEvent.keyDown(
+			screen.getByRole("menu"),
+			{
+				key: "Escape",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("menu")).toBeNull();
 		});
 		const middle = menuItemNames(await openRowMenu("Working one"));
-		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
-		await waitFor(() => {
+		fireEvent.keyDown(
+			screen.getByRole("menu"),
+			{
+				key: "Escape",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("menu")).toBeNull();
 		});
 		const bottom = menuItemNames(await openRowMenu("Completed older"));
 
-		expect({
-			top: top.slice(0, 2),
-			middle: middle.slice(0, 3),
-			bottom: bottom.slice(0, 2),
-		}).toEqual({
-			top: ["Move down", "Unpin"],
-			middle: ["Move up", "Move down", "Unpin"],
-			bottom: ["Move up", "Unpin"],
-		});
+		expect(
+			{
+				top: top.slice(0, 2),
+				middle: middle.slice(0, 3),
+				bottom: bottom.slice(0, 2),
+			},
+		).toEqual(
+			{
+				top: ["Move down", "Unpin"],
+				middle: ["Move up", "Move down", "Unpin"],
+				bottom: ["Move up", "Unpin"],
+			},
+		);
 	});
 
-	it("moves a pinned row up, writes the pin order and refocuses the row", async () => {
+	it("moves a pinned row up, writes the pin order and refocuses the row", async () =>
+	{
 		seedPins(["r1", "w1", "d2"]);
 		const {container} = await renderGroups(FIXTURE);
 		expect(rowTitles(pinnedSection(container))).toEqual(["Working one", "Review one", "Completed older"]);
@@ -293,18 +462,28 @@ describe("sidebar Pinned section", () => {
 		if (moveUp === undefined) throw new Error("no Move up");
 		fireEvent.click(moveUp);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(rowTitles(pinnedSection(container))).toEqual(["Working one", "Completed older", "Review one"]);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(rowTitle(document.activeElement)).toBe("Completed older");
 		});
-		expect({
-			pins: readPinState(),
-			focusedRow: document.activeElement?.hasAttribute("data-row-main-button"),
-		}).toStrictEqual({
-			pins: {pinnedIds: ["r1", "w1", "d2"], pinnedOrder: ["w1", "d2", "r1"]},
-			focusedRow: true,
-		});
+		expect(
+			{
+				pins: readPinState(),
+				focusedRow: document.activeElement?.hasAttribute("data-row-main-button"),
+			},
+		).toStrictEqual(
+			{
+				pins:
+				{
+					pinnedIds: ["r1", "w1", "d2"],
+					pinnedOrder: ["w1", "d2", "r1"],
+				},
+				focusedRow: true,
+			},
+		);
 	});
 });

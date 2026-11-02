@@ -3,7 +3,10 @@ import {type KeyboardEvent, useEffect, useRef} from "react";
 import {isEditableTarget} from "../../lib/shortcuts/match";
 
 /** Marks an element as one stop of the sidebar session list's roving focus. */
-export const ROVING_ITEM_PROPS = {"data-roving-item": ""} as const;
+export const ROVING_ITEM_PROPS =
+{
+	"data-roving-item": "",
+} as const;
 
 /** Marks the session list while rows are selected; upstream's `sectionTabStops:!editing` then stops re-choosing tab stops. */
 const SELECTING_ATTRIBUTE = "data-sidebar-selecting";
@@ -15,7 +18,8 @@ const SECTION_SELECTOR = "[data-tab-section]";
 const NATURAL_SECTION_SELECTOR = '[data-tab-section="natural"]';
 
 /** The body's rendered, enabled, non-inert roving items in DOM order (upstream `RT` + `Wb`). */
-function bodyItems(container: HTMLElement): HTMLElement[] {
+function bodyItems(container: HTMLElement): HTMLElement[]
+{
 	return [...container.querySelectorAll<HTMLElement>(BODY_ITEM_SELECTOR)].filter(
 		(item) =>
 			item.offsetParent !== null &&
@@ -30,7 +34,8 @@ function bodyItems(container: HTMLElement): HTMLElement[] {
  * of its row or group header when that sits in the same tab section, so a kebab or header button maps
  * to its row.
  */
-function owningItem(element: Element): HTMLElement | null {
+function owningItem(element: Element): HTMLElement | null
+{
 	const own = element.closest<HTMLElement>(BODY_ITEM_SELECTOR);
 	if (own !== null) return own;
 	const rowItem = element.closest(ROW_SELECTOR)?.querySelector<HTMLElement>(BODY_ITEM_SELECTOR) ?? null;
@@ -38,8 +43,10 @@ function owningItem(element: Element): HTMLElement | null {
 }
 
 /** The key's target index among `count` items with wrap-around, or null when the key does not rove. */
-function bodyTargetIndex(key: string, current: number, count: number): number | null {
-	switch (key) {
+function bodyTargetIndex(key: string, current: number, count: number): number | null
+{
+	switch (key)
+	{
 		case "Home":
 			return 0;
 		case "End":
@@ -54,7 +61,8 @@ function bodyTargetIndex(key: string, current: number, count: number): number | 
 }
 
 /** Sets `element`'s tabindex, writing the attribute only when it changes. */
-function setTabIndex(element: HTMLElement, tabIndex: number): void {
+function setTabIndex(element: HTMLElement, tabIndex: number): void
+{
 	if (element.getAttribute("tabindex") !== String(tabIndex)) element.tabIndex = tabIndex;
 }
 
@@ -62,10 +70,12 @@ function setTabIndex(element: HTMLElement, tabIndex: number): void {
  * The items' runs of consecutive items sharing a `[data-tab-section]` ancestor (items with none
  * form runs too), each run being one Tab stop.
  */
-function tabGroups(items: readonly HTMLElement[]): HTMLElement[][] {
+function tabGroups(items: readonly HTMLElement[]): HTMLElement[][]
+{
 	const groups: HTMLElement[][] = [];
 	let section: Element | null | undefined;
-	for (const item of items) {
+	for (const item of items)
+	{
 		const itemSection = item.closest(SECTION_SELECTOR);
 		const last = groups.at(-1);
 		if (last !== undefined && itemSection === section) last.push(item);
@@ -76,10 +86,12 @@ function tabGroups(items: readonly HTMLElement[]): HTMLElement[][] {
 }
 
 /** The focusable controls of `element`'s row or group header, which ArrowLeft/Right move along (upstream `C1`). */
-function rowControls(element: Element): HTMLElement[] {
+function rowControls(element: Element): HTMLElement[]
+{
 	const row = element.closest(ROW_SELECTOR);
 	if (row === null) return [];
-	if (row.matches("[data-sidebar-group-label]")) {
+	if (row.matches("[data-sidebar-group-label]"))
+	{
 		const section = element.closest(SECTION_SELECTOR);
 		return [...row.querySelectorAll<HTMLElement>("button:enabled")].filter(
 			(button) => button.offsetParent !== null && button.closest(SECTION_SELECTOR) === section,
@@ -95,7 +107,8 @@ function rowControls(element: Element): HTMLElement[] {
  * Upstream's `Tl`: a control of the focused row that Tab may stop on — not part of the row's item,
  * not aria-disabled, and not an arrows-only control such as the row's PR glyph.
  */
-function isTabbableRowControl(item: HTMLElement, control: HTMLElement): boolean {
+function isTabbableRowControl(item: HTMLElement, control: HTMLElement): boolean
+{
 	return (
 		!item.contains(control) &&
 		control.getAttribute("aria-disabled") !== "true" &&
@@ -109,28 +122,33 @@ function isTabbableRowControl(item: HTMLElement, control: HTMLElement): boolean 
  * section keeps its remembered row. The focused row's own controls (kebab, Group and sort, a +)
  * are Tab stops too; every other item and row control leaves the Tab order.
  */
-function assignTabStops(container: HTMLElement, remembered: WeakSet<HTMLElement>): void {
+function assignTabStops(container: HTMLElement, remembered: WeakSet<HTMLElement>): void
+{
 	const items = bodyItems(container);
 	const active = document.activeElement;
 	const inside = active !== null && container.contains(active);
 	const focusedItem = inside ? owningItem(active) : null;
 	const activeRow = inside ? active.closest(ROW_SELECTOR) : null;
 	const headerButton = focusedItem?.hasAttribute("data-group-toggle") === true && !focusedItem.contains(active);
-	for (const item of items) {
+	for (const item of items)
+	{
 		const row = item.closest(ROW_SELECTOR);
-		for (const control of rowControls(item)) {
+		for (const control of rowControls(item))
+		{
 			if (control === item) continue;
 			setTabIndex(control, row !== null && row === activeRow && isTabbableRowControl(item, control) ? 0 : -1);
 		}
 	}
-	for (const group of tabGroups(items)) {
+	for (const group of tabGroups(items))
+	{
 		const rememberedStop = group.find((item) => remembered.has(item));
 		const stop =
 			(headerButton ? rememberedStop : undefined) ??
 			group.find((item) => item === focusedItem) ??
 			rememberedStop ??
 			group[0];
-		for (const item of group) {
+		for (const item of group)
+		{
 			if (item === stop) remembered.add(item);
 			else remembered.delete(item);
 			setTabIndex(item, item === stop ? 0 : -1);
@@ -139,7 +157,8 @@ function assignTabStops(container: HTMLElement, remembered: WeakSet<HTMLElement>
 }
 
 /** ArrowRight/Left: focus the next or previous control in the focused element's row, clamping at the ends. */
-function moveWithinRow(active: Element, step: 1 | -1, event: KeyboardEvent<HTMLElement>): void {
+function moveWithinRow(active: Element, step: 1 | -1, event: KeyboardEvent<HTMLElement>): void
+{
 	const controls = rowControls(active);
 	if (controls.length < 2) return;
 	const index = controls.findIndex((control) => control === active);
@@ -150,12 +169,14 @@ function moveWithinRow(active: Element, step: 1 | -1, event: KeyboardEvent<HTMLE
 }
 
 /** Upstream's `K9`: macOS, where the keyboard context-menu keys need a synthetic event. */
-function isMac(): boolean {
+function isMac(): boolean
+{
 	return /(macintosh|macintel|macppc|mac68k|macos)/i.test(navigator.userAgent);
 }
 
 /** Upstream's `So`: the Menu key, or Shift+F10 without other modifiers. */
-function isMenuKey(event: KeyboardEvent): boolean {
+function isMenuKey(event: KeyboardEvent): boolean
+{
 	return (
 		event.key === "ContextMenu" ||
 		(event.key === "F10" && event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey)
@@ -163,7 +184,8 @@ function isMenuKey(event: KeyboardEvent): boolean {
 }
 
 /** Upstream's `vR`: macOS Ctrl+Enter, or a held Enter. */
-function isMenuEnter(event: KeyboardEvent): boolean {
+function isMenuEnter(event: KeyboardEvent): boolean
+{
 	return event.key === "Enter" && (event.ctrlKey || event.repeat) && isMac();
 }
 
@@ -171,7 +193,8 @@ function isMenuEnter(event: KeyboardEvent): boolean {
  * Upstream's `YB`: open `item`'s context menu anchored at its start-bottom with a synthetic
  * contextmenu event; true when a context menu took it.
  */
-function openContextMenu(item: HTMLElement): boolean {
+function openContextMenu(item: HTMLElement): boolean
+{
 	const rect = item.getBoundingClientRect();
 	const style = getComputedStyle(item);
 	const clientX =
@@ -179,14 +202,17 @@ function openContextMenu(item: HTMLElement): boolean {
 			? rect.right - (Number.parseFloat(style.paddingRight) || 0)
 			: rect.left + (Number.parseFloat(style.paddingLeft) || 0);
 	return !item.dispatchEvent(
-		new PointerEvent("contextmenu", {
-			bubbles: true,
-			cancelable: true,
-			button: -1,
-			pointerType: "mouse",
-			clientX,
-			clientY: rect.bottom,
-		}),
+		new PointerEvent(
+			"contextmenu",
+			{
+				bubbles: true,
+				cancelable: true,
+				button: -1,
+				pointerType: "mouse",
+				clientX,
+				clientY: rect.bottom,
+			},
+		),
 	);
 }
 
@@ -196,8 +222,10 @@ function openContextMenu(item: HTMLElement): boolean {
  * (elsewhere the browser's native contextmenu event does). True when the key is handled and must
  * not rove.
  */
-function handleMenuKeys(event: KeyboardEvent<HTMLElement>, item: HTMLElement | null): boolean {
-	if (isMenuEnter(event)) {
+function handleMenuKeys(event: KeyboardEvent<HTMLElement>, item: HTMLElement | null): boolean
+{
+	if (isMenuEnter(event))
+	{
 		if (item === null || isEditableTarget(event.target)) return false;
 		const fresh = !event.repeat && !event.metaKey && !event.shiftKey && !event.altKey && !event.defaultPrevented;
 		const handled = fresh ? openContextMenu(item) : document.querySelector('[role="menu"][data-open]') !== null;
@@ -205,7 +233,8 @@ function handleMenuKeys(event: KeyboardEvent<HTMLElement>, item: HTMLElement | n
 		return handled;
 	}
 	if (!isMenuKey(event)) return false;
-	if (item !== null && isMac()) {
+	if (item !== null && isMac())
+	{
 		event.preventDefault();
 		openContextMenu(item);
 	}
@@ -213,8 +242,10 @@ function handleMenuKeys(event: KeyboardEvent<HTMLElement>, item: HTMLElement | n
 }
 
 /** Upstream's `aU`: holding Enter on a menu item opened from the sidebar doesn't fire it. */
-function swallowMenuItemEnter(event: KeyboardEvent<HTMLElement>): void {
-	if (isMenuEnter(event) && event.target instanceof Element && event.target.matches('[role^="menuitem"]')) {
+function swallowMenuItemEnter(event: KeyboardEvent<HTMLElement>): void
+{
+	if (isMenuEnter(event) && event.target instanceof Element && event.target.matches('[role^="menuitem"]'))
+	{
 		event.preventDefault();
 	}
 }
@@ -230,39 +261,47 @@ const CLOSED_MENU_TRIGGER_SELECTOR = '[aria-haspopup="menu"]:not([aria-expanded=
  * ignored, as upstream does; Meta, Ctrl and Alt opt out. Each tab section is one
  * Tab stop, re-chosen on Tab and whenever focus moves inside the body, except while rows are selected.
  */
-export function useSidebarBodyRoving() {
+export function useSidebarBodyRoving()
+{
 	const ref = useRef<HTMLDivElement | null>(null);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const remembered = new WeakSet<HTMLElement>();
-		const sync = () => {
+		const sync = () =>
+		{
 			const container = ref.current;
 			if (container === null) return;
 			if (container.querySelector(`[${SELECTING_ATTRIBUTE}]`) !== null) return;
 			assignTabStops(container, remembered);
 		};
-		const onKeyDown = (event: globalThis.KeyboardEvent) => {
+		const onKeyDown = (event: globalThis.KeyboardEvent) =>
+		{
 			if (event.key === "Tab") sync();
 		};
-		const onFocusIn = () => {
+		const onFocusIn = () =>
+		{
 			const active = document.activeElement;
 			if (active !== null && ref.current?.contains(active) === true) sync();
 		};
 		document.addEventListener("keydown", onKeyDown, true);
 		document.addEventListener("focusin", onFocusIn);
-		return () => {
+		return () =>
+		{
 			document.removeEventListener("keydown", onKeyDown, true);
 			document.removeEventListener("focusin", onFocusIn);
 		};
 	}, []);
 
-	const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+	const onKeyDown = (event: KeyboardEvent<HTMLElement>) =>
+	{
 		const container = ref.current;
 		const active = document.activeElement;
 		if (container === null || active === null || !container.contains(active)) return;
 		const item = owningItem(active);
 		if (handleMenuKeys(event, item) || event.metaKey || event.ctrlKey || event.altKey) return;
-		if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+		if (event.key === "ArrowRight" || event.key === "ArrowLeft")
+		{
 			moveWithinRow(active, event.key === "ArrowRight" ? 1 : -1, event);
 			return;
 		}
@@ -275,7 +314,11 @@ export function useSidebarBodyRoving() {
 		if (target === undefined) return;
 		event.preventDefault();
 		target.focus();
-		target.scrollIntoView({block: "nearest"});
+		target.scrollIntoView(
+			{
+				block: "nearest",
+			},
+		);
 	};
 
 	/*
@@ -283,7 +326,8 @@ export function useSidebarBodyRoving() {
 	 * menu trigger (More, a row or header kebab, Group and sort) roves in the capture phase, and the
 	 * trigger never sees a key the body used, so it doesn't open its menu.
 	 */
-	const onKeyDownCapture = (event: KeyboardEvent<HTMLElement>) => {
+	const onKeyDownCapture = (event: KeyboardEvent<HTMLElement>) =>
+	{
 		swallowMenuItemEnter(event);
 		if (event.defaultPrevented || (event.key !== "ArrowDown" && event.key !== "ArrowUp")) return;
 		const target = event.target;
@@ -293,5 +337,9 @@ export function useSidebarBodyRoving() {
 		if (event.isDefaultPrevented()) event.stopPropagation();
 	};
 
-	return {ref, onKeyDown, onKeyDownCapture};
+	return {
+		ref,
+		onKeyDown,
+		onKeyDownCapture,
+	};
 }

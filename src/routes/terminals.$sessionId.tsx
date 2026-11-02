@@ -7,10 +7,15 @@ import {applicationSettingsQueryOptions} from "../lib/api/application-settings";
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
 import {terminalHostLabel} from "../lib/session-environment";
 
-export const Route = createFileRoute("/terminals/$sessionId")({
-	component: TerminalPage,
-	head: () => ({meta: [pageTitle("Live terminal")]}),
-});
+export const Route = createFileRoute("/terminals/$sessionId")(
+	{
+		component: TerminalPage,
+		head: () => (
+		{
+			meta: [pageTitle("Live terminal")],
+		}),
+	},
+);
 
 /**
  * The full-bleed pop-out of a session's Terminal pane (upstream's "Open in
@@ -18,14 +23,17 @@ export const Route = createFileRoute("/terminals/$sessionId")({
  * Until herdr's pane list loads the Claude tab is assumed live; once it has
  * loaded without this session, the tab shows "Session ended".
  */
-function TerminalPage() {
+function TerminalPage()
+{
 	const {sessionId} = Route.useParams();
 	const herdr = useQuery(herdrPanesQueryOptions).data;
 	const shells =
-		useQuery({
-			...applicationSettingsQueryOptions,
-			select: (settings) => settings.shellPaneEnabled,
-		}).data ?? false;
+		useQuery(
+			{
+				...applicationSettingsQueryOptions,
+				select: (settings) => settings.shellPaneEnabled,
+			},
+		).data ?? false;
 	const pane = herdr?.panes.find((candidate) => candidate.sessionId === sessionId) ?? null;
 	const livePane = herdr === undefined || pane !== null;
 	const hostLabel = pane === null ? null : terminalHostLabel(pane);
@@ -48,7 +56,8 @@ function TerminalPage() {
 			<div className="min-h-0 flex-1">
 				<TerminalPane
 					sessionId={sessionId}
-					availability={{
+					availability={
+					{
 						livePane,
 						interactive: livePane && (herdr?.writesEnabled ?? false),
 						shells,

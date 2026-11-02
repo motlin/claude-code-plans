@@ -26,7 +26,8 @@ const PROJECT = "-Users-alice-projects-ladder";
 function event(
 	overrides: Partial<typeof schema.artifactEvents.$inferInsert> &
 		Pick<typeof schema.artifactEvents.$inferInsert, "toolUseId" | "ts" | "action" | "url">,
-): typeof schema.artifactEvents.$inferInsert {
+): typeof schema.artifactEvents.$inferInsert
+{
 	return {
 		sessionId: "session-ladder",
 		projectId: PROJECT,
@@ -42,7 +43,8 @@ function event(
 	};
 }
 
-function seed(db: AppDb): void {
+function seed(db: AppDb): void
+{
 	db.index
 		.insert(schema.artifacts)
 		.values([
@@ -100,45 +102,77 @@ function seed(db: AppDb): void {
 	db.index
 		.insert(schema.artifactEvents)
 		.values([
-			event({
-				toolUseId: "t1",
-				ts: 1_000,
-				action: "publish",
-				url: LADDER_URL,
-				title: "Asap Ladder Rebalance",
-				sourcePath: LADDER_SOURCE,
-			}),
-			event({
-				toolUseId: "t2",
-				ts: 2_000,
-				action: "publish",
-				url: CHART_URL,
-				sourcePath: "/private/tmp/scratchpad/household-cash.html",
-			}),
-			event({
-				toolUseId: "t3",
-				ts: 3_000,
-				action: "publish",
-				url: LADDER_URL,
-				title: "Asap Ladder Queue",
-				sourcePath: LADDER_SOURCE,
-			}),
-			event({toolUseId: "t4", ts: 4_000, action: "open", url: DOCS_URL, isSubagent: 1}),
-			event({toolUseId: "t5", ts: 5_000, action: "read", url: CHART_URL}),
-			event({toolUseId: "t6", ts: 6_000, action: "pin", url: CHART_URL}),
-			event({
-				toolUseId: "t7",
-				ts: 7_000,
-				action: "publish",
-				url: OTHER_URL,
-				sessionId: "session-other",
-			}),
+			event(
+				{
+					toolUseId: "t1",
+					ts: 1_000,
+					action: "publish",
+					url: LADDER_URL,
+					title: "Asap Ladder Rebalance",
+					sourcePath: LADDER_SOURCE,
+				},
+			),
+			event(
+				{
+					toolUseId: "t2",
+					ts: 2_000,
+					action: "publish",
+					url: CHART_URL,
+					sourcePath: "/private/tmp/scratchpad/household-cash.html",
+				},
+			),
+			event(
+				{
+					toolUseId: "t3",
+					ts: 3_000,
+					action: "publish",
+					url: LADDER_URL,
+					title: "Asap Ladder Queue",
+					sourcePath: LADDER_SOURCE,
+				},
+			),
+			event(
+				{
+					toolUseId: "t4",
+					ts: 4_000,
+					action: "open",
+					url: DOCS_URL,
+					isSubagent: 1,
+				},
+			),
+			event(
+				{
+					toolUseId: "t5",
+					ts: 5_000,
+					action: "read",
+					url: CHART_URL,
+				},
+			),
+			event(
+				{
+					toolUseId: "t6",
+					ts: 6_000,
+					action: "pin",
+					url: CHART_URL,
+				},
+			),
+			event(
+				{
+					toolUseId: "t7",
+					ts: 7_000,
+					action: "publish",
+					url: OTHER_URL,
+					sessionId: "session-other",
+				},
+			),
 		])
 		.run();
 }
 
-describe("getSessionArtifacts", () => {
-	it("lists the session's published and opened artifacts, most recent first, one row each", () => {
+describe("getSessionArtifacts", () =>
+{
+	it("lists the session's published and opened artifacts, most recent first, one row each", () =>
+	{
 		const db = openTestDb();
 		seed(db);
 
@@ -170,14 +204,16 @@ describe("getSessionArtifacts", () => {
 		]);
 	});
 
-	it("is empty for a session without artifacts", () => {
+	it("is empty for a session without artifacts", () =>
+	{
 		const db = openTestDb();
 		seed(db);
 
 		expect(getSessionArtifacts(db.index, "session-none")).toStrictEqual([]);
 	});
 
-	it("matches the API response schema", () => {
+	it("matches the API response schema", () =>
+	{
 		const db = openTestDb();
 		seed(db);
 		const artifacts = getSessionArtifacts(db.index, "session-ladder");
@@ -205,25 +241,41 @@ const ARTIFACTS: SessionArtifact[] = [
 	},
 ];
 
-describe("SessionArtifactsList", () => {
+describe("SessionArtifactsList", () =>
+{
 	afterEach(cleanup);
 
-	it("shows upstream's empty copy when the session has no artifacts", () => {
+	it("shows upstream's empty copy when the session has no artifacts", () =>
+	{
 		const {container} = render(<SessionArtifactsList artifacts={[]} />);
 
 		const empty = container.querySelector("p");
-		expect({text: container.textContent, muted: empty?.classList.contains("text-ink-muted")}).toStrictEqual({
-			text: "Artifacts published in this session appear here.",
-			muted: true,
-		});
+		expect(
+			{
+				text: container.textContent,
+				muted: empty?.classList.contains("text-ink-muted"),
+			},
+		).toStrictEqual(
+			{
+				text: "Artifacts published in this session appear here.",
+				muted: true,
+			},
+		);
 	});
 
-	it("renders one upstream card per artifact, in order, linking out to claude.ai", () => {
+	it("renders one upstream card per artifact, in order, linking out to claude.ai", () =>
+	{
 		render(<SessionArtifactsList artifacts={ARTIFACTS} />);
 
-		const cards = screen.getAllByRole("button", {name: /^Open artifact /});
+		const cards = screen.getAllByRole(
+			"button",
+			{
+				name: /^Open artifact /,
+			},
+		);
 		expect(
-			cards.map((card) => ({
+			cards.map((card) => (
+			{
 				label: card.getAttribute("aria-label"),
 				href: card.getAttribute("href"),
 				target: card.getAttribute("target"),
@@ -243,88 +295,187 @@ describe("SessionArtifactsList", () => {
 				rel: "noopener noreferrer",
 			},
 		]);
-		expect(screen.getAllByRole("link", {name: "Preview source"}).map((a) => a.getAttribute("href"))).toStrictEqual([
-			artifactPreviewPath("546d3910-4e9a-4730-9e91-62742a47c7c6"),
-		]);
+		expect(
+			screen
+				.getAllByRole(
+					"link",
+					{
+						name: "Preview source",
+					},
+				)
+				.map((a) => a.getAttribute("href")),
+		).toStrictEqual([artifactPreviewPath("546d3910-4e9a-4730-9e91-62742a47c7c6")]);
 	});
 });
 
-class FakeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-describe("View options ▸ Artifacts", () => {
-	let unregister: () => void = () => {};
+describe("View options ▸ Artifacts", () =>
+{
+	let unregister: () => void = () =>
+	{
+	};
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		installLocalStorage();
 		vi.stubGlobal("ResizeObserver", FakeObserver);
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-			DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+			DOMRect.fromRect(
+				{
+					x: 0,
+					y: 0,
+					width: 1200,
+					height: 800,
+				},
+			),
 		);
-		unregister = registerPane("artifacts", {
-			title: "Artifacts",
-			render: () => <SessionArtifactsList artifacts={ARTIFACTS} />,
-		});
+		unregister = registerPane(
+			"artifacts",
+			{
+				title: "Artifacts",
+				render: () => <SessionArtifactsList artifacts={ARTIFACTS} />,
+			},
+		);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		unregister();
 		cleanup();
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
 
-	function renderControls(artifactCount: number) {
+	function renderControls(artifactCount: number)
+	{
 		return render(
 			<SettingsProvider>
 				<TileHost sessionId="session-artifacts">
-					<SessionPaneControls facts={{artifactCount}} />
+					<SessionPaneControls
+						facts={
+						{
+							artifactCount,
+						}}
+					/>
 				</TileHost>
 			</SettingsProvider>,
 		);
 	}
 
-	async function settle() {
-		await act(async () => {
-			await new Promise((resolve) => {
+	async function settle()
+	{
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
 				setTimeout(resolve, 0);
 			});
 		});
 	}
 
-	it("opens the Artifacts pane from the View options menu", async () => {
+	it("opens the Artifacts pane from the View options menu", async () =>
+	{
 		renderControls(2);
-		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
 		await settle();
 
-		expect(screen.getByRole("menuitemcheckbox", {name: "Artifacts"}).getAttribute("aria-checked")).toBe("false");
+		expect(
+			screen
+				.getByRole(
+					"menuitemcheckbox",
+					{
+						name: "Artifacts",
+					},
+				)
+				.getAttribute("aria-checked"),
+		).toBe("false");
 
-		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Artifacts"}));
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Artifacts",
+				},
+			),
+		);
 		await settle();
-		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
 		await settle();
 
-		const pane = screen.getByRole("region", {name: "Artifacts"});
-		expect({
-			checked: screen.getByRole("menuitemcheckbox", {name: "Artifacts"}).getAttribute("aria-checked"),
-			cards: within(pane)
-				.getAllByRole("button", {name: /^Open artifact /})
-				.map((card) => card.getAttribute("aria-label")),
-		}).toStrictEqual({
-			checked: "true",
-			cards: ["Open artifact Quarterly plan", "Open artifact Asap Ladder Queue"],
-		});
+		const pane = screen.getByRole(
+			"region",
+			{
+				name: "Artifacts",
+			},
+		);
+		expect(
+			{
+				checked: screen
+					.getByRole(
+						"menuitemcheckbox",
+						{
+							name: "Artifacts",
+						},
+					)
+					.getAttribute("aria-checked"),
+				cards: within(pane)
+					.getAllByRole(
+						"button",
+						{
+							name: /^Open artifact /,
+						},
+					)
+					.map((card) => card.getAttribute("aria-label")),
+			},
+		).toStrictEqual(
+			{
+				checked: "true",
+				cards: ["Open artifact Quarterly plan", "Open artifact Asap Ladder Queue"],
+			},
+		);
 	});
 
-	it("offers no Artifacts item while the session has no artifacts and the pane is closed", () => {
+	it("offers no Artifacts item while the session has no artifacts and the pane is closed", () =>
+	{
 		renderControls(0);
 
-		expect(screen.queryByRole("button", {name: "View options"})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		).toBeNull();
 	});
 });

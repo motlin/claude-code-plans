@@ -10,9 +10,22 @@ const LANDED_FLASH_CLASS =
  * Upstream's "landed" accent flash (`Di`) on the user row a promoted queued message became: the
  * accent span to put inside the bubble, and the `isolate` the bubble takes while it shows.
  */
-export function useLandedFlash(text: string): {isolate: string; accent: ReactNode} {
+export function useLandedFlash(text: string):
+{
+	isolate: string;
+	accent: ReactNode;
+}
+{
 	const landed = useLanded(text);
 	return landed
-		? {isolate: "isolate", accent: <span key="landed" aria-hidden className={LANDED_FLASH_CLASS} />}
-		: {isolate: "", accent: null};
+		?
+			{
+				isolate: "isolate",
+				accent: <span key="landed" aria-hidden className={LANDED_FLASH_CLASS} />,
+			}
+		:
+			{
+				isolate: "",
+				accent: null,
+			};
 }

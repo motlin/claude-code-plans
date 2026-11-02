@@ -25,7 +25,8 @@ export function SessionPlanPane({
 	planFilename: string | undefined;
 	model: SessionPlanModel;
 	commentsEnabled: boolean;
-}) {
+})
+{
 	return planFilename === undefined ? (
 		<PlanBody sessionId={sessionId} content={model.content} todos={model.todos} commentsEnabled={commentsEnabled} />
 	) : (
@@ -49,9 +50,11 @@ function LinkedPlanBody({
 	planFilename: string;
 	model: SessionPlanModel;
 	commentsEnabled: boolean;
-}) {
+})
+{
 	const {data: plan, isPending} = useQuery(planQueryOptions(toMdSlug(planFilename)));
-	if (isPending) {
+	if (isPending)
+	{
 		return (
 			<div role="status" className="h-full">
 				<PlanEmptyState
@@ -81,9 +84,11 @@ function PlanBody({
 	content: string | null;
 	todos: readonly PlanTodo[];
 	commentsEnabled: boolean;
-}) {
+})
+{
 	const commentsRef = useRef<HTMLDivElement>(null);
-	if (content === null && todos.length === 0) {
+	if (content === null && todos.length === 0)
+	{
 		return (
 			<PlanEmptyState
 				icon={<ListChecks aria-hidden="true" className="size-7 text-ink-muted" />}
@@ -118,7 +123,8 @@ function PlanBody({
 }
 
 /** Upstream's caption row above the plan, telling the user whether they can comment on it right now. */
-function PlanCommentHint({commentsEnabled}: {commentsEnabled: boolean}) {
+function PlanCommentHint({commentsEnabled}: {commentsEnabled: boolean})
+{
 	return (
 		<div data-plan-hint className="mb-[var(--chat-item-gap)] flex items-center gap-1 text-caption text-ink-muted">
 			<MessageCircle aria-hidden="true" className="size-3 shrink-0" />
@@ -130,19 +136,26 @@ function PlanCommentHint({commentsEnabled}: {commentsEnabled: boolean}) {
 }
 
 /** Upstream's "Tasks" section under the plan: a caption heading over the shared todo list (content, never activeForm). */
-function PlanTasks({todos}: {todos: readonly PlanTodo[]}) {
+function PlanTasks({todos}: {todos: readonly PlanTodo[]})
+{
 	return (
 		<section className="mt-4">
 			<h2 className="mb-1.25 text-caption font-medium uppercase tracking-wide text-ink-muted">Tasks</h2>
 			<TodoChecklist
-				items={todos.map((todo, index) => ({id: `${index}`, content: todo.content, status: todo.status}))}
+				items={todos.map((todo, index) => (
+				{
+					id: `${index}`,
+					content: todo.content,
+					status: todo.status,
+				}))}
 			/>
 		</section>
 	);
 }
 
 /** Upstream's centred pane empty state: a glyph, a title, and an optional secondary body. */
-function PlanEmptyState({icon, title, body}: {icon: ReactNode; title: string; body?: string}) {
+function PlanEmptyState({icon, title, body}: {icon: ReactNode; title: string; body?: string})
+{
 	return (
 		<div
 			data-testid="session-plan-pane"

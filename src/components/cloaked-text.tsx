@@ -6,7 +6,8 @@ import {revealSpoofing} from "../lib/visible-text";
 import {SecretCloak} from "./secret-cloak";
 
 /** Upstream's `qM` (shared-41): each line break drawn as a `<br>`, each line through `paintLine` when given. */
-function withBreaks(text: string, key: string, paintLine?: (line: string) => ReactNode): ReactNode {
+function withBreaks(text: string, key: string, paintLine?: (line: string) => ReactNode): ReactNode
+{
 	const lines = text.split(/\r\n?|\n/);
 	if (lines.length === 1) return paintLine === undefined ? text : paintLine(text);
 	return lines.map((line, index) => (
@@ -21,7 +22,8 @@ function withBreaks(text: string, key: string, paintLine?: (line: string) => Rea
 const MASKED_WORD = /((?<![^\s\u2022])[^\s\u2022]+\u2022{7,})/;
 
 /** Upstream's `D`: on a right-to-left page, a masked word holding a letter ends in a left-to-right mark. */
-function markMaskedWords(line: string): ReactNode {
+function markMaskedWords(line: string): ReactNode
+{
 	return line.split(MASKED_WORD).map((part, index) =>
 		index % 2 === 1 && /[a-z]/i.test(part) ? (
 			<span key={index} className={String.raw`after:content-['\200E']`}>
@@ -40,11 +42,13 @@ const SEPARATOR_RANGES: readonly (readonly [number, number])[] = [
 	[0x100000, 0x10fffd],
 ];
 
-function unusedSeparator(text: string): string | undefined {
+function unusedSeparator(text: string): string | undefined
+{
 	if (!text.includes("")) return "";
 	const used = new Set(text);
 	for (const [first, last] of SEPARATOR_RANGES)
-		for (let code = first; code <= last; code++) {
+		for (let code = first; code <= last; code++)
+		{
 			const char = String.fromCodePoint(code);
 			if (!used.has(char)) return char;
 		}
@@ -55,10 +59,12 @@ function unusedSeparator(text: string): string | undefined {
  * Upstream's `k` (cb557955f): the runs around each secret with `u9` applied to them as one text, so a
  * spoofing run split by a secret is still seen whole; null when no separator is free or the split drifts.
  */
-function revealedRuns(text: string, secrets: readonly SecretMatch[]): string[] | null {
+function revealedRuns(text: string, secrets: readonly SecretMatch[]): string[] | null
+{
 	const runs: string[] = [];
 	let cursor = 0;
-	for (const secret of secrets) {
+	for (const secret of secrets)
+	{
 		runs.push(text.slice(cursor, secret.start));
 		cursor = secret.end;
 	}
@@ -74,7 +80,8 @@ function revealedRuns(text: string, secrets: readonly SecretMatch[]): string[] |
  * secret behind its own reveal button and the runs between shown through `u9`; line breaks drawn. With
  * `nonInteractive`, `u9` of the masked text, without buttons.
  */
-export function CloakedText({text, nonInteractive = false}: {text: string; nonInteractive?: boolean}) {
+export function CloakedText({text, nonInteractive = false}: {text: string; nonInteractive?: boolean})
+{
 	const secrets = findSecrets(text);
 	if (secrets.length === 0) return <>{withBreaks(revealSpoofing(text), "t")}</>;
 	if (nonInteractive)
@@ -82,7 +89,8 @@ export function CloakedText({text, nonInteractive = false}: {text: string; nonIn
 	const runs = revealedRuns(text, secrets);
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
-	secrets.forEach((secret, index) => {
+	secrets.forEach((secret, index) =>
+	{
 		const run = runs === null ? revealSpoofing(text.slice(cursor, secret.start)) : (runs[index] ?? "");
 		if (run !== "") nodes.push(withBreaks(run, `p${cursor}`));
 		nodes.push(<SecretCloak key={`s${secret.start}`} match={secret} />);

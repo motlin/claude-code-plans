@@ -5,14 +5,16 @@ import type {HerdrLaunchResult, LaunchClaudeRequest} from "../herdr/launch";
 import {errorMessage} from "../narrow";
 
 /** Runs `tmux <args>` on the default server and resolves its stdout; rejects when tmux fails. */
-export interface TmuxLaunchIo {
+export interface TmuxLaunchIo
+{
 	output: (args: readonly string[]) => Promise<string>;
 }
 
 /** The detached session ccp launches into when no client is attached. */
 const TMUX_LAUNCH_FALLBACK_SESSION = "claude";
 
-export interface TmuxLaunchTarget {
+export interface TmuxLaunchTarget
+{
 	session: string;
 	/** false: the fallback session must be created. */
 	exists: boolean;
@@ -20,10 +22,14 @@ export interface TmuxLaunchTarget {
 
 const PRINT_IDS = ["-P", "-F", "#{window_id}\t#{pane_id}"];
 
-async function outputOrEmpty(io: TmuxLaunchIo, args: readonly string[]): Promise<string> {
-	try {
+async function outputOrEmpty(io: TmuxLaunchIo, args: readonly string[]): Promise<string>
+{
+	try
+	{
 		return await io.output(args);
-	} catch {
+	}
+	catch
+	{
 		// No tmux server running: nothing attached and no sessions.
 		return "";
 	}
@@ -34,15 +40,26 @@ async function outputOrEmpty(io: TmuxLaunchIo, args: readonly string[]): Promise
  * no client attached. Control-mode clients are skipped: ccp's own live
  * terminal streams are ones, and their activity tracks the session being watched.
  */
-function mostRecentClientSession(stdout: string): string | null {
-	let best: {activity: number; session: string} | null = null;
-	for (const line of stdout.split("\n")) {
+function mostRecentClientSession(stdout: string): string | null
+{
+	let best:
+	{
+		activity: number;
+		session: string;
+	} | null = null;
+	for (const line of stdout.split("\n"))
+	{
 		const [activityRaw, controlMode, ...sessionParts] = line.split("\t");
 		if (controlMode === "1") continue;
 		const activity = Number.parseInt(activityRaw ?? "", 10);
 		const session = sessionParts.join("\t");
 		if (Number.isNaN(activity) || session === "") continue;
-		if (best === null || activity > best.activity) best = {activity, session};
+		if (best === null || activity > best.activity)
+			best =
+			{
+				activity,
+				session,
+			};
 	}
 	return best?.session ?? null;
 }
@@ -51,14 +68,19 @@ function mostRecentClientSession(stdout: string): string | null {
  * Where a new window goes: the session of the most recently active client,
  * else the detached `claude` session, which is created when it is missing.
  */
-export async function chooseTmuxLaunchSession(io: TmuxLaunchIo): Promise<TmuxLaunchTarget> {
+export async function chooseTmuxLaunchSession(io: TmuxLaunchIo): Promise<TmuxLaunchTarget>
+{
 	const clients = await outputOrEmpty(io, [
 		"list-clients",
 		"-F",
 		"#{client_activity}\t#{client_control_mode}\t#{client_session}",
 	]);
 	const session = mostRecentClientSession(clients);
-	if (session !== null) return {session, exists: true};
+	if (session !== null)
+		return {
+			session,
+			exists: true,
+		};
 	const sessions = await outputOrEmpty(io, ["list-sessions", "-F", "#{session_name}"]);
 	return {
 		session: TMUX_LAUNCH_FALLBACK_SESSION,
@@ -66,8 +88,13 @@ export async function chooseTmuxLaunchSession(io: TmuxLaunchIo): Promise<TmuxLau
 	};
 }
 
-function failure(code: string, message: string): HerdrResult<never> {
-	return {ok: false, code, message};
+function failure(code: string, message: string): HerdrResult<never>
+{
+	return {
+		ok: false,
+		code,
+		message,
+	};
 }
 
 /**
@@ -78,32 +105,65 @@ function failure(code: string, message: string): HerdrResult<never> {
 export async function launchClaudeInTmux(
 	{cwd, prompt, args = []}: LaunchClaudeRequest,
 	io: TmuxLaunchIo,
-): Promise<HerdrResult<HerdrLaunchResult>> {
-	const command = buildClaudeCopyCommand({args, ...(prompt === undefined ? {} : {prompt})});
-	try {
+): Promise<HerdrResult<HerdrLaunchResult>>
+{
+	const command = buildClaudeCopyCommand(
+		{
+			args,
+			...(prompt === undefined
+				? {}
+				:
+					{
+						prompt,
+					}),
+		},
+	);
+	try
+	{
 		const target = await chooseTmuxLaunchSession(io);
 		const create = target.exists
 			? ["new-window", "-d", "-t", `${target.session}:`]
 			: ["new-session", "-d", "-s", target.session];
 		const stdout = await io.output([...create, "-c", cwd, ...PRINT_IDS, command]);
 		const [tabId, paneId] = stdout.trim().split("\t");
-		if (!tabId?.startsWith("@") || !paneId?.startsWith("%")) {
+		if (!tabId?.startsWith("@") || !paneId?.startsWith("%"))
+		{
 			return failure("bad-response", "tmux did not print the new window's ids");
 		}
-		return {ok: true, value: {tabId, paneId, sessionId: null}};
-	} catch (error) {
+		return {
+			ok: true,
+			value:
+			{
+				tabId,
+				paneId,
+				sessionId: null,
+			},
+		};
+	}
+	catch (error)
+	{
 		return failure("tmux-failed", errorMessage(error));
 	}
 }
 
 const TMUX_LAUNCH_TIMEOUT_MS = 5000;
 
-export const defaultTmuxLaunchIo: TmuxLaunchIo = {
+export const defaultTmuxLaunchIo: TmuxLaunchIo =
+{
 	output: async (args) =>
-		new Promise((resolve, reject) => {
-			execFile("tmux", [...args], {timeout: TMUX_LAUNCH_TIMEOUT_MS}, (error: Error | null, stdout: string) => {
-				if (error) reject(error);
-				else resolve(stdout);
-			});
+		new Promise((resolve, reject) =>
+		{
+			execFile(
+				"tmux",
+				[...args],
+				{
+					timeout: TMUX_LAUNCH_TIMEOUT_MS,
+				},
+				(error: Error | null, stdout: string) =>
+				{
+					if (error) reject(error);
+					else resolve(stdout);
+				},
+			);
 		}),
 };

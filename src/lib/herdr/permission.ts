@@ -3,7 +3,8 @@ import {z} from "zod";
 import {getActiveSessionEntry, setPendingPermissionRequest} from "../active-session-store";
 import {clearNotificationsForSession} from "../notifications-store";
 import {outsideReadDialogKind, type PermissionDialogKind} from "../outside-read-prompt";
-import {
+import
+{
 	permissionDialogKey,
 	persistentAllowKind,
 	type PermissionDialogDecision,
@@ -13,7 +14,8 @@ import {rejectCrossSite} from "../same-origin-guard";
 import {sessionAwaitingPermission} from "../session-permission-wait";
 import {herdrRequest, type HerdrResult} from "./client";
 import type {HerdrRequester} from "./panes";
-import {
+import
+{
 	parseOutsideReadFirstPrompt,
 	parsePermissionDialog,
 	permissionDialogShape,
@@ -28,20 +30,25 @@ import {readHerdrScreen} from "./read-screen";
 const MAX_MODE_PRESSES = 4;
 
 const HerdrPermissionSchema = z.union([
-	z.strictObject({
-		sessionId: z.string().min(1),
-		decision: z.enum(["allow", "always", "deny"]),
-	}),
+	z.strictObject(
+		{
+			sessionId: z.string().min(1),
+			decision: z.enum(["allow", "always", "deny"]),
+		},
+	),
 	// Upstream's "Allow and switch to Auto": `presses` is the client's shift+tab count from its mode to Auto, absent
 	// when shift+tab can't reach Auto, so only the CLI's own auto row can switch.
-	z.strictObject({
-		sessionId: z.string().min(1),
-		decision: z.literal("allowAuto"),
-		presses: z.number().int().min(1).max(MAX_MODE_PRESSES).optional(),
-	}),
+	z.strictObject(
+		{
+			sessionId: z.string().min(1),
+			decision: z.literal("allowAuto"),
+			presses: z.number().int().min(1).max(MAX_MODE_PRESSES).optional(),
+		},
+	),
 ]);
 
-export interface HerdrPermissionDependencies {
+export interface HerdrPermissionDependencies
+{
 	rejectRequest: (request: Request) => Response | null;
 	writesEnabled: () => boolean;
 	hasPendingPermission: (sessionId: string) => boolean;
@@ -61,8 +68,10 @@ export interface HerdrPermissionDependencies {
 
 const STEP_PAUSE_MS = 80;
 
-function errorStatus(code: string): number {
-	switch (code) {
+function errorStatus(code: string): number
+{
+	switch (code)
+	{
 		case "agent_not_ready":
 			return 409;
 		case "invalid_key":
@@ -72,17 +81,20 @@ function errorStatus(code: string): number {
 	}
 }
 
-export const defaultHerdrPermissionDependencies: HerdrPermissionDependencies = {
+export const defaultHerdrPermissionDependencies: HerdrPermissionDependencies =
+{
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
 	hasPendingPermission: (sessionId) => sessionAwaitingPermission(sessionId),
 	persistentAllow: (sessionId) =>
 		persistentAllowKind(getActiveSessionEntry(sessionId)?.pendingPermissionRequest?.suggestions),
-	dialogKind: async (sessionId) => {
+	dialogKind: async (sessionId) =>
+	{
 		const entry = getActiveSessionEntry(sessionId);
 		return outsideReadDialogKind(entry?.pendingPermissionRequest, entry?.claudeEnv ?? {});
 	},
-	clearPendingPermission: (sessionId) => {
+	clearPendingPermission: (sessionId) =>
+	{
 		clearNotificationsForSession(sessionId);
 		setPendingPermissionRequest(sessionId, null);
 	},
@@ -91,36 +103,55 @@ export const defaultHerdrPermissionDependencies: HerdrPermissionDependencies = {
 	createRequestId: () => `ccp:permission:${crypto.randomUUID()}`,
 	readScreen: async (_sessionId, paneId) => readHerdrScreen(paneId),
 	pause: async () =>
-		new Promise((resolve) => {
+		new Promise((resolve) =>
+		{
 			setTimeout(resolve, STEP_PAUSE_MS);
 		}),
 };
 
-const DIALOG_MISMATCH = {
+const DIALOG_MISMATCH =
+{
 	error: "The terminal\u2019s permission dialog doesn\u2019t match this card",
 	code: "dialog_mismatch",
 } as const;
 
-const NOT_ACCEPTED = {
+const NOT_ACCEPTED =
+{
 	error: "The terminal\u2019s permission dialog didn\u2019t take the answer",
 	code: "not_accepted",
 } as const;
 
 /** Auto mode's first outside-read prompt: its rows are one-time or lasting grants, never a session one, so the card offers Allow once only. */
-const NO_PERSISTENT_SHAPE = {denyFirst: false, persistent: false, auto: false} as const;
+const NO_PERSISTENT_SHAPE =
+{
+	denyFirst: false,
+	persistent: false,
+	auto: false,
+} as const;
 
-const NOT_PENDING = {error: "No permission request is pending", code: "not_pending"} as const;
+const NOT_PENDING =
+{
+	error: "No permission request is pending",
+	code: "not_pending",
+} as const;
 
-const NO_SESSION_GRANT = {
+const NO_SESSION_GRANT =
+{
 	error: "The terminal offers no session-only grant for this read",
 	code: "dialog_mismatch",
 } as const;
 
 /** The keys for `decision`, and the screen they were planned from (none on the hook's legacy path). */
-type PlannedSteps = {ok: true; steps: string[][]; screen: string | null};
+type PlannedSteps =
+{
+	ok: true;
+	steps: string[][];
+	screen: string | null;
+};
 
 /** Whether the screen shows a dialog this card answers: a tool permission dialog or the outside-read first prompt. */
-function showsAnswerableDialog(screen: string): boolean {
+function showsAnswerableDialog(screen: string): boolean
+{
 	return parsePermissionDialog(screen) !== null || parseOutsideReadFirstPrompt(screen) !== null;
 }
 
@@ -139,46 +170,112 @@ async function permissionSteps(
 	paneId: string,
 	decision: PermissionDialogDecision,
 	dependencies: HerdrPermissionDependencies,
-): Promise<PlannedSteps | {ok: false; response: Response}> {
+): Promise<
+	| PlannedSteps
+	|
+	  {
+			ok: false;
+			response: Response;
+	  }
+>
+{
 	const screen = await dependencies.readScreen(sessionId, paneId);
-	if (!screen.ok && decision === "always") {
-		return {ok: false, response: Response.json(DIALOG_MISMATCH, {status: 409})};
+	if (!screen.ok && decision === "always")
+	{
+		return {
+			ok: false,
+			response: Response.json(
+				DIALOG_MISMATCH,
+				{
+					status: 409,
+				},
+			),
+		};
 	}
 	const outsideRead = screen.ok ? parseOutsideReadFirstPrompt(screen.value) : null;
-	if (screen.ok && outsideRead !== null) {
-		if (decision === "always") return {ok: false, response: Response.json(NO_SESSION_GRANT, {status: 409})};
+	if (screen.ok && outsideRead !== null)
+	{
+		if (decision === "always")
+			return {
+				ok: false,
+				response: Response.json(
+					NO_SESSION_GRANT,
+					{
+						status: 409,
+					},
+				),
+			};
 		const keys = decision === "allow" ? [String(outsideRead.rows.yesAskAgain)] : ["esc"];
-		return {ok: true, steps: [keys], screen: screen.value};
+		return {
+			ok: true,
+			steps: [keys],
+			screen: screen.value,
+		};
 	}
-	if (!screen.ok || !showsPermissionQuestion(screen.value)) {
+	if (!screen.ok || !showsPermissionQuestion(screen.value))
+	{
 		const dialogKind = await dependencies.dialogKind(sessionId);
-		if (dialogKind === "outsideReadFirstPrompt" && decision === "always") {
-			return {ok: false, response: Response.json(NO_SESSION_GRANT, {status: 409})};
+		if (dialogKind === "outsideReadFirstPrompt" && decision === "always")
+		{
+			return {
+				ok: false,
+				response: Response.json(
+					NO_SESSION_GRANT,
+					{
+						status: 409,
+					},
+				),
+			};
 		}
 		const persistent = dialogKind === "generic" ? dependencies.persistentAllow(sessionId) : null;
 		const key = permissionDialogKey(decision, persistent, dialogKind);
 		return key === null
-			? {
+			?
+				{
 					ok: false,
 					response: Response.json(
-						{error: "This permission request has no persistent allow option"},
-						{status: 409},
+						{
+							error: "This permission request has no persistent allow option",
+						},
+						{
+							status: 409,
+						},
 					),
 				}
-			: {ok: true, steps: [[key]], screen: null};
+			:
+				{
+					ok: true,
+					steps: [[key]],
+					screen: null,
+				};
 	}
 	const rows = parsePermissionDialog(screen.value);
 	const steps = rows === null ? null : permissionDialogSteps(rows, decision);
 	return steps === null || rows === null
-		? {ok: false, response: Response.json(DIALOG_MISMATCH, {status: 409})}
-		: {ok: true, steps, screen: screen.value};
+		?
+			{
+				ok: false,
+				response: Response.json(
+					DIALOG_MISMATCH,
+					{
+						status: 409,
+					},
+				),
+			}
+		:
+			{
+				ok: true,
+				steps,
+				screen: screen.value,
+			};
 }
 
 /** How many times the screen is re-read for the dialog to go after the last key. */
 const ACCEPT_READS = 3;
 
 /** The dialog block: from the last divider above its question to the end of the screen. */
-function dialogBlock(screen: string): string {
+function dialogBlock(screen: string): string
+{
 	const lines = screen.split("\n").map((line) => line.trimEnd());
 	const divider = lines.findLastIndex((line) => line.trimStart().startsWith("\u2500\u2500\u2500"));
 	return lines.slice(Math.max(divider, 0)).join("\n").trim();
@@ -194,12 +291,15 @@ async function dialogTookAnswer(
 	paneId: string,
 	before: string,
 	dependencies: HerdrPermissionDependencies,
-): Promise<boolean> {
+): Promise<boolean>
+{
 	const block = dialogBlock(before);
-	for (let read = 0; read < ACCEPT_READS; read++) {
+	for (let read = 0; read < ACCEPT_READS; read++)
+	{
 		await dependencies.pause();
 		const screen = await dependencies.readScreen(sessionId, paneId);
-		if (!screen.ok || !showsAnswerableDialog(screen.value) || dialogBlock(screen.value) !== block) {
+		if (!screen.ok || !showsAnswerableDialog(screen.value) || dialogBlock(screen.value) !== block)
+		{
 			return true;
 		}
 	}
@@ -211,7 +311,8 @@ async function focusedOnYes(
 	sessionId: string,
 	paneId: string,
 	dependencies: HerdrPermissionDependencies,
-): Promise<string | null> {
+): Promise<string | null>
+{
 	const screen = await dependencies.readScreen(sessionId, paneId);
 	if (!screen.ok) return null;
 	const dialog = parsePermissionDialog(screen.value);
@@ -228,29 +329,70 @@ async function sendSteps(
 	steps: readonly string[][],
 	screen: string | null,
 	dependencies: HerdrPermissionDependencies,
-): Promise<{ok: true; lastScreen: string | null} | {ok: false; response: Response}> {
+): Promise<
+	|
+	  {
+			ok: true;
+			lastScreen: string | null;
+	  }
+	|
+	  {
+			ok: false;
+			response: Response;
+	  }
+>
+{
 	let lastScreen = screen;
-	for (const [index, keys] of steps.entries()) {
-		if (index > 0) {
+	for (const [index, keys] of steps.entries())
+	{
+		if (index > 0)
+		{
 			await dependencies.pause();
-			if (keys[0] === "enter") {
+			if (keys[0] === "enter")
+			{
 				lastScreen = await focusedOnYes(sessionId, paneId, dependencies);
-				if (lastScreen === null) return {ok: false, response: Response.json(DIALOG_MISMATCH, {status: 409})};
+				if (lastScreen === null)
+					return {
+						ok: false,
+						response: Response.json(
+							DIALOG_MISMATCH,
+							{
+								status: 409,
+							},
+						),
+					};
 			}
 		}
-		const response = await dependencies.request({
-			id: dependencies.createRequestId(),
-			method: "agent.send_keys",
-			params: {target: paneId, keys},
-		});
-		if (!response.ok) {
+		const response = await dependencies.request(
+			{
+				id: dependencies.createRequestId(),
+				method: "agent.send_keys",
+				params:
+				{
+					target: paneId,
+					keys,
+				},
+			},
+		);
+		if (!response.ok)
+		{
 			return {
 				ok: false,
-				response: Response.json({error: response.message}, {status: errorStatus(response.code)}),
+				response: Response.json(
+					{
+						error: response.message,
+					},
+					{
+						status: errorStatus(response.code),
+					},
+				),
 			};
 		}
 	}
-	return {ok: true, lastScreen};
+	return {
+		ok: true,
+		lastScreen,
+	};
 }
 
 /** How the mode reached Auto: the CLI's own row, shift+tab after the allow, or not at all (the tool was still allowed). */
@@ -268,35 +410,82 @@ async function answerAllowAuto(
 	paneId: string,
 	presses: number | undefined,
 	dependencies: HerdrPermissionDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const screen = await dependencies.readScreen(sessionId, paneId);
 	const dialog = screen.ok ? parsePermissionDialog(screen.value) : null;
-	if (!screen.ok || dialog === null || permissionDialogShape(dialog).denyFirst) {
-		return Response.json(DIALOG_MISMATCH, {status: 409});
+	if (!screen.ok || dialog === null || permissionDialogShape(dialog).denyFirst)
+	{
+		return Response.json(
+			DIALOG_MISMATCH,
+			{
+				status: 409,
+			},
+		);
 	}
 	const autoRow = dialog.rows.findIndex((row) => row.kind === "auto");
 	const steps =
 		autoRow >= 0 ? [[String(autoRow + 1)]] : presses === undefined ? null : permissionDialogSteps(dialog, "allow");
-	if (steps === null) return Response.json(DIALOG_MISMATCH, {status: 409});
+	if (steps === null)
+		return Response.json(
+			DIALOG_MISMATCH,
+			{
+				status: 409,
+			},
+		);
 
 	const sent = await sendSteps(sessionId, paneId, steps, screen.value, dependencies);
 	if (!sent.ok) return sent.response;
-	if (sent.lastScreen !== null && !(await dialogTookAnswer(sessionId, paneId, sent.lastScreen, dependencies))) {
-		return Response.json(NOT_ACCEPTED, {status: 409});
+	if (sent.lastScreen !== null && !(await dialogTookAnswer(sessionId, paneId, sent.lastScreen, dependencies)))
+	{
+		return Response.json(
+			NOT_ACCEPTED,
+			{
+				status: 409,
+			},
+		);
 	}
 	dependencies.clearPendingPermission(sessionId);
-	if (autoRow >= 0) return Response.json({ok: true, via: "row" satisfies AllowAutoVia});
+	if (autoRow >= 0)
+		return Response.json(
+			{
+				ok: true,
+				via: "row" satisfies AllowAutoVia,
+			},
+		);
 
 	await dependencies.pause();
 	const after = await dependencies.readScreen(sessionId, paneId);
-	if (!after.ok || showsAnyDialog(after.value)) return Response.json({ok: true, via: "none" satisfies AllowAutoVia});
-	const response = await dependencies.request({
-		id: dependencies.createRequestId(),
-		method: "agent.send_keys",
-		params: {target: paneId, keys: Array.from({length: presses ?? 0}, () => "shift+tab")},
-	});
+	if (!after.ok || showsAnyDialog(after.value))
+		return Response.json(
+			{
+				ok: true,
+				via: "none" satisfies AllowAutoVia,
+			},
+		);
+	const response = await dependencies.request(
+		{
+			id: dependencies.createRequestId(),
+			method: "agent.send_keys",
+			params:
+			{
+				target: paneId,
+				keys: Array.from(
+					{
+						length: presses ?? 0,
+					},
+					() => "shift+tab",
+				),
+			},
+		},
+	);
 	const via: AllowAutoVia = response.ok ? "shiftTab" : "none";
-	return Response.json({ok: true, via});
+	return Response.json(
+		{
+			ok: true,
+			via,
+		},
+	);
 }
 
 /**
@@ -309,34 +498,63 @@ async function answerAllowAuto(
 export async function handleHerdrPermission(
 	request: Request,
 	dependencies: HerdrPermissionDependencies = defaultHerdrPermissionDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;
 
-	if (!dependencies.writesEnabled()) {
-		return Response.json({error: "herdr writes are disabled"}, {status: 403});
+	if (!dependencies.writesEnabled())
+	{
+		return Response.json(
+			{
+				error: "herdr writes are disabled",
+			},
+			{
+				status: 403,
+			},
+		);
 	}
 
 	const parsed = HerdrPermissionSchema.safeParse(await request.json());
-	if (!parsed.success) {
+	if (!parsed.success)
+	{
 		return Response.json(
-			{error: 'sessionId is required and decision must be "allow", "always", "deny", or "allowAuto"'},
-			{status: 400},
+			{
+				error: 'sessionId is required and decision must be "allow", "always", "deny", or "allowAuto"',
+			},
+			{
+				status: 400,
+			},
 		);
 	}
 	const {sessionId} = parsed.data;
 
-	if (!dependencies.hasPendingPermission(sessionId)) {
-		return Response.json(NOT_PENDING, {status: 409});
+	if (!dependencies.hasPendingPermission(sessionId))
+	{
+		return Response.json(
+			NOT_PENDING,
+			{
+				status: 409,
+			},
+		);
 	}
 
 	const target = await dependencies.resolveTarget(sessionId);
-	if (!target.ok) {
-		return Response.json({error: target.message}, {status: errorStatus(target.code)});
+	if (!target.ok)
+	{
+		return Response.json(
+			{
+				error: target.message,
+			},
+			{
+				status: errorStatus(target.code),
+			},
+		);
 	}
 	const {paneId} = target.value;
 
-	if (parsed.data.decision === "allowAuto") {
+	if (parsed.data.decision === "allowAuto")
+	{
 		return answerAllowAuto(sessionId, paneId, parsed.data.presses, dependencies);
 	}
 
@@ -347,13 +565,23 @@ export async function handleHerdrPermission(
 	if (!sent.ok) return sent.response;
 	const {lastScreen} = sent;
 
-	if (lastScreen !== null && !(await dialogTookAnswer(sessionId, paneId, lastScreen, dependencies))) {
-		return Response.json(NOT_ACCEPTED, {status: 409});
+	if (lastScreen !== null && !(await dialogTookAnswer(sessionId, paneId, lastScreen, dependencies)))
+	{
+		return Response.json(
+			NOT_ACCEPTED,
+			{
+				status: 409,
+			},
+		);
 	}
 
 	// A denial ends the turn with Stop (idle), which never clears the prompt.
 	dependencies.clearPendingPermission(sessionId);
-	return Response.json({ok: true});
+	return Response.json(
+		{
+			ok: true,
+		},
+	);
 }
 
 /**
@@ -364,36 +592,95 @@ export async function handleHerdrPermission(
 export async function handleHerdrPermissionDialog(
 	request: Request,
 	dependencies: HerdrPermissionDependencies = defaultHerdrPermissionDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;
-	if (!dependencies.writesEnabled()) {
-		return Response.json({error: "herdr writes are disabled"}, {status: 403});
+	if (!dependencies.writesEnabled())
+	{
+		return Response.json(
+			{
+				error: "herdr writes are disabled",
+			},
+			{
+				status: 403,
+			},
+		);
 	}
 	const sessionId = new URL(request.url).searchParams.get("sessionId");
-	if (sessionId === null || sessionId === "") {
-		return Response.json({error: "sessionId is required"}, {status: 400});
+	if (sessionId === null || sessionId === "")
+	{
+		return Response.json(
+			{
+				error: "sessionId is required",
+			},
+			{
+				status: 400,
+			},
+		);
 	}
-	if (!dependencies.hasPendingPermission(sessionId)) {
-		return Response.json(NOT_PENDING, {status: 409});
+	if (!dependencies.hasPendingPermission(sessionId))
+	{
+		return Response.json(
+			NOT_PENDING,
+			{
+				status: 409,
+			},
+		);
 	}
 	const target = await dependencies.resolveTarget(sessionId);
-	if (!target.ok) {
-		return Response.json({error: target.message}, {status: errorStatus(target.code)});
+	if (!target.ok)
+	{
+		return Response.json(
+			{
+				error: target.message,
+			},
+			{
+				status: errorStatus(target.code),
+			},
+		);
 	}
 	const screen = await dependencies.readScreen(sessionId, target.value.paneId);
-	if (!screen.ok) return Response.json({error: screen.message}, {status: 502});
+	if (!screen.ok)
+		return Response.json(
+			{
+				error: screen.message,
+			},
+			{
+				status: 502,
+			},
+		);
 	const rows = parsePermissionDialog(screen.value);
-	if (rows !== null) return Response.json({dialog: permissionDialogShape(rows)});
-	if (parseOutsideReadFirstPrompt(screen.value) !== null) return Response.json({dialog: NO_PERSISTENT_SHAPE});
+	if (rows !== null)
+		return Response.json(
+			{
+				dialog: permissionDialogShape(rows),
+			},
+		);
+	if (parseOutsideReadFirstPrompt(screen.value) !== null)
+		return Response.json(
+			{
+				dialog: NO_PERSISTENT_SHAPE,
+			},
+		);
 	if (
 		!showsPermissionQuestion(screen.value) &&
 		(await dependencies.dialogKind(sessionId)) === "outsideReadFirstPrompt"
-	) {
-		return Response.json({dialog: NO_PERSISTENT_SHAPE});
+	)
+	{
+		return Response.json(
+			{
+				dialog: NO_PERSISTENT_SHAPE,
+			},
+		);
 	}
 	return Response.json(
-		{error: "The terminal is not showing the permission dialog", code: "dialog_not_shown"},
-		{status: 409},
+		{
+			error: "The terminal is not showing the permission dialog",
+			code: "dialog_not_shown",
+		},
+		{
+			status: 409,
+		},
 	);
 }

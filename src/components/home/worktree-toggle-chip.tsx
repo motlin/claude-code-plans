@@ -8,7 +8,8 @@ const WORKTREE_DESCRIPTION = "Work in an isolated copy of the repository";
 /** Upstream `hit-row flex h-control items-center gap-xs px-md text-body font-normal font-control` (local `font-control-regular`). */
 const CHIP_CLASS = "hit-row flex h-control items-center gap-xs px-md text-body font-control-regular";
 
-interface WorktreeToggleChipProps {
+interface WorktreeToggleChipProps
+{
 	on: boolean;
 	/** The folder or its setup is still resolving: the switch is busy and ignores toggles. */
 	pending: boolean;
@@ -22,10 +23,12 @@ interface WorktreeToggleChipProps {
  * hidden detail and hover tooltip. A pointer click toggles and then refocuses the composer; a keyboard (virtual)
  * click toggles and keeps focus on the switch.
  */
-export function WorktreeToggleChip({on, pending, onChange, onPressed}: WorktreeToggleChipProps) {
+export function WorktreeToggleChip({on, pending, onChange, onPressed}: WorktreeToggleChipProps)
+{
 	const labelId = useId();
 	const descriptionId = useId();
-	const handleClick = (event: MouseEvent) => {
+	const handleClick = (event: MouseEvent) =>
+	{
 		if (pending || event.detail === 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 		onPressed();
 	};

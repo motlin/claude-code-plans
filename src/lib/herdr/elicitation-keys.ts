@@ -10,11 +10,37 @@ import {asRecord} from "../narrow";
 export type ElicitationDecision = "allow" | "always" | "deny" | "cancel";
 
 /** A herdr key name, literal text, or a wait in milliseconds. */
-export type ElicitationStep = {key: string} | {text: string} | {pause: number};
+export type ElicitationStep =
+	|
+	  {
+			key: string;
+	  }
+	|
+	  {
+			text: string;
+	  }
+	|
+	  {
+			pause: number;
+	  };
 
-export type ElicitationFocus = {stop: "field"; index: number} | {stop: "accept"} | {stop: "decline"};
+export type ElicitationFocus =
+	|
+	  {
+			stop: "field";
+			index: number;
+	  }
+	|
+	  {
+			stop: "accept";
+	  }
+	|
+	  {
+			stop: "decline";
+	  };
 
-export interface ElicitationDialog {
+export interface ElicitationDialog
+{
 	kind: "form" | "url";
 	server: string;
 	/** The dialog's message, with wrapped lines joined by a space. */
@@ -42,7 +68,8 @@ const FOOTER = /^\s*Esc to cancel/;
  * Read the elicitation dialog off a pane's visible screen, from the last
  * dialog title down to its Accept/Decline row. Null when no dialog is shown.
  */
-export function parseElicitationDialog(screen: string): ElicitationDialog | null {
+export function parseElicitationDialog(screen: string): ElicitationDialog | null
+{
 	const lines = screen.split("\n");
 	const start = lines.findLastIndex((line) => TITLE.test(line));
 	if (start < 0) return null;
@@ -53,7 +80,8 @@ export function parseElicitationDialog(screen: string): ElicitationDialog | null
 	const body: string[] = [];
 	const fields: string[] = [];
 	let buttons: RegExpExecArray | null = null;
-	for (const line of lines.slice(start + 1)) {
+	for (const line of lines.slice(start + 1))
+	{
 		if (line.trim() === "") continue;
 		if (FOOTER.test(line)) break;
 		buttons = BUTTONS.exec(line);
@@ -66,7 +94,14 @@ export function parseElicitationDialog(screen: string): ElicitationDialog | null
 	const messageLines = kind === "url" ? body.slice(0, -1) : body;
 
 	const fieldIndex = fields.findIndex((line) => line.startsWith("  ❯"));
-	const focus = fieldIndex >= 0 ? {stop: "field" as const, index: fieldIndex} : buttonFocus(buttons);
+	const focus =
+		fieldIndex >= 0
+			?
+				{
+					stop: "field" as const,
+					index: fieldIndex,
+				}
+			: buttonFocus(buttons);
 	return {
 		kind,
 		server: title[1] ?? "",
@@ -78,25 +113,43 @@ export function parseElicitationDialog(screen: string): ElicitationDialog | null
 }
 
 /** Which button carries the `❯` in a matched Accept/Decline row, if either does. */
-function buttonFocus(buttons: RegExpExecArray): ElicitationFocus | null {
-	if (buttons[1] !== undefined) return {stop: "accept"};
-	if (buttons[2] !== undefined) return {stop: "decline"};
+function buttonFocus(buttons: RegExpExecArray): ElicitationFocus | null
+{
+	if (buttons[1] !== undefined)
+		return {
+			stop: "accept",
+		};
+	if (buttons[2] !== undefined)
+		return {
+			stop: "decline",
+		};
 	return null;
 }
 
-function repeat(key: string, times: number): ElicitationStep[] {
-	return Array.from({length: times}, () => ({key}));
+function repeat(key: string, times: number): ElicitationStep[]
+{
+	return Array.from(
+		{
+			length: times,
+		},
+		() => (
+		{
+			key,
+		}),
+	);
 }
 
 /** The verdict enum of a permission-style schema, when `verdict` is its first property. */
-function verdictEnum(schema: unknown): unknown[] | null {
+function verdictEnum(schema: unknown): unknown[] | null
+{
 	const properties = asRecord(asRecord(schema)?.["properties"]);
 	if (properties === undefined || Object.keys(properties)[0] !== "verdict") return null;
 	const values = asRecord(properties["verdict"])?.["enum"];
 	return Array.isArray(values) ? values : null;
 }
 
-function focusIndex(dialog: ElicitationDialog): number | null {
+function focusIndex(dialog: ElicitationDialog): number | null
+{
 	const {focus} = dialog;
 	if (focus === null) return null;
 	if (focus.stop === "field") return focus.index;
@@ -113,30 +166,87 @@ export function elicitationSteps(
 	schema: unknown,
 	decision: ElicitationDecision,
 	dialog: ElicitationDialog,
-): ElicitationStep[] | null {
-	if (decision === "cancel") return dialog.expanded ? [{key: "left"}, {key: "esc"}] : [{key: "esc"}];
+): ElicitationStep[] | null
+{
+	if (decision === "cancel")
+		return dialog.expanded
+			? [
+					{
+						key: "left",
+					},
+					{
+						key: "esc",
+					},
+				]
+			: [
+					{
+						key: "esc",
+					},
+				];
 	if (dialog.kind === "url") return urlSteps(decision, dialog.focus);
-	if (decision === "deny") {
+	if (decision === "deny")
+	{
 		const index = focusIndex(dialog);
 		if (index === null || dialog.expanded) return null;
-		return [...repeat("down", dialog.fieldCount + 1 - index), {pause: ACCEPT_GUARD_PAUSE_MS}, {key: "enter"}];
+		return [
+			...repeat("down", dialog.fieldCount + 1 - index),
+			{
+				pause: ACCEPT_GUARD_PAUSE_MS,
+			},
+			{
+				key: "enter",
+			},
+		];
 	}
 	const focus = dialog.focus;
 	if (focus?.stop !== "field" || focus.index !== 0 || dialog.expanded) return null;
 	const optionIndex = verdictEnum(schema)?.indexOf(decision === "allow" ? "allow" : "always_allow") ?? -1;
 	if (optionIndex < 0) return null;
 	return [
-		{key: "right"},
+		{
+			key: "right",
+		},
 		...repeat("down", optionIndex),
-		{key: "enter"},
-		{pause: ACCEPT_GUARD_PAUSE_MS},
-		{key: "enter"},
+		{
+			key: "enter",
+		},
+		{
+			pause: ACCEPT_GUARD_PAUSE_MS,
+		},
+		{
+			key: "enter",
+		},
 	];
 }
 
-function urlSteps(decision: "allow" | "always" | "deny", focus: ElicitationFocus | null): ElicitationStep[] | null {
-	if (decision === "allow") return focus?.stop === "accept" ? [{key: "enter"}] : null;
+function urlSteps(decision: "allow" | "always" | "deny", focus: ElicitationFocus | null): ElicitationStep[] | null
+{
+	if (decision === "allow")
+		return focus?.stop === "accept"
+			? [
+					{
+						key: "enter",
+					},
+				]
+			: null;
 	if (decision === "always") return null;
-	if (focus?.stop === "accept") return [{key: "right"}, {pause: ACCEPT_GUARD_PAUSE_MS}, {key: "enter"}];
-	return focus?.stop === "decline" ? [{key: "enter"}] : null;
+	if (focus?.stop === "accept")
+		return [
+			{
+				key: "right",
+			},
+			{
+				pause: ACCEPT_GUARD_PAUSE_MS,
+			},
+			{
+				key: "enter",
+			},
+		];
+	return focus?.stop === "decline"
+		? [
+				{
+					key: "enter",
+				},
+			]
+		: null;
 }

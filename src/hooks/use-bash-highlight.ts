@@ -15,7 +15,8 @@ const versionZero = () => 0;
  * The shared highlighter loads only once bash mode first turns on, so the composer's bundle never carries Shiki.
  * Null while disabled or while the highlighter and grammar load.
  */
-export function useBashHighlight(code: string, enabled: boolean): ThemedToken[][] | null {
+export function useBashHighlight(code: string, enabled: boolean): ThemedToken[][] | null
+{
 	const [shiki, setShiki] = useState<ShikiModule | null>(null);
 	const resolvedTheme = useResolvedTheme();
 	const codeThemes = useCodeThemes();
@@ -25,32 +26,48 @@ export function useBashHighlight(code: string, enabled: boolean): ThemedToken[][
 		versionZero,
 	);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		let live = true;
-		if (enabled && shiki === null) {
-			void import("./use-shiki").then((module) => {
+		if (enabled && shiki === null)
+		{
+			void import("./use-shiki").then((module) =>
+			{
 				if (live) setShiki(() => module);
 			});
 		}
-		return () => {
+		return () =>
+		{
 			live = false;
 		};
 	}, [enabled, shiki]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (enabled && shiki !== null) void shiki.requestLanguage("bash");
 	}, [enabled, shiki]);
 
-	return useMemo(() => {
+	return useMemo(() =>
+	{
 		void version;
 		const highlighter = shiki?.getHighlighterSync() ?? null;
 		if (!enabled || shiki === null || highlighter === null) return null;
 		if (!highlighter.getLoadedLanguages().includes("bash")) return null;
 		const mode = resolvedTheme === "dark" ? "dark" : "light";
 		const theme = shiki.themeOrRequest(highlighter, codeThemes[mode], DEFAULT_CODE_THEMES[mode]);
-		try {
-			return highlighter.codeToTokens(code, {...SHIKI_TOKENIZE_OPTIONS, lang: "bash", theme}).tokens;
-		} catch {
+		try
+		{
+			return highlighter.codeToTokens(
+				code,
+				{
+					...SHIKI_TOKENIZE_OPTIONS,
+					lang: "bash",
+					theme,
+				},
+			).tokens;
+		}
+		catch
+		{
 			return null;
 		}
 	}, [code, enabled, shiki, resolvedTheme, codeThemes, version]);

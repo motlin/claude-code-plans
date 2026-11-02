@@ -18,7 +18,8 @@ const COPIED_MS = 1500;
  * Upstream's ghost "Copy plan" icon button, which copies the plan markdown and turns into
  * "Copied" with a check for a moment. Upstream draws it only while the plan has text.
  */
-export function CopyPlanButton({content}: {content: string}) {
+export function CopyPlanButton({content}: {content: string})
+{
 	const [copied, showCopied] = useTimedFlag(COPIED_MS);
 	const label = copied ? "Copied" : "Copy plan";
 	const Icon = copied ? Check : Copy;
@@ -28,11 +29,14 @@ export function CopyPlanButton({content}: {content: string}) {
 				type="button"
 				aria-label={label}
 				className={PANE_HEADER_ICON_BUTTON_CLASS}
-				onMouseDown={(event) => {
+				onMouseDown={(event) =>
+				{
 					event.preventDefault();
 				}}
-				onClick={() => {
-					void writeClipboardText(content).then((ok) => {
+				onClick={() =>
+				{
+					void writeClipboardText(content).then((ok) =>
+					{
 						if (!ok) return;
 						showCopied();
 					});
@@ -44,12 +48,16 @@ export function CopyPlanButton({content}: {content: string}) {
 	);
 }
 
-function OpenPlanFileLink({planFilename}: {planFilename: string}) {
+function OpenPlanFileLink({planFilename}: {planFilename: string})
+{
 	return (
 		<Tooltip content={PLAN_FILE_ACTION_LABEL}>
 			<Link
 				to="/plan/$filename"
-				params={{filename: toMdSlug(planFilename)}}
+				params={
+				{
+					filename: toMdSlug(planFilename),
+				}}
 				aria-label={PLAN_FILE_ACTION_LABEL}
 				className={PANE_HEADER_ICON_BUTTON_CLASS}
 			>
@@ -60,7 +68,8 @@ function OpenPlanFileLink({planFilename}: {planFilename: string}) {
 }
 
 /** A linked plan's header: the local plan-file link in upstream's "Open in" slot, then Copy plan for the file's text. */
-export function LinkedPlanHeaderActions({planFilename, model}: {planFilename: string; model: SessionPlanModel}) {
+export function LinkedPlanHeaderActions({planFilename, model}: {planFilename: string; model: SessionPlanModel})
+{
 	const {data: plan} = useQuery(planQueryOptions(toMdSlug(planFilename)));
 	const content = plan?.markdown ?? model.content;
 	return (

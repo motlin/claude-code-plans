@@ -23,7 +23,8 @@ export function ChunkErrorView({
 	placeholder?: ReactNode;
 	onRetry: () => void;
 	onReload: () => void;
-}) {
+})
+{
 	const id = useId();
 	const reload = reloadsPage(state);
 	const content = (
@@ -57,7 +58,8 @@ export function ChunkErrorView({
 	);
 }
 
-function reloadPage() {
+function reloadPage()
+{
 	browserStaleChunkDeps.reload();
 }
 
@@ -74,9 +76,16 @@ export function DeferredChunkFailure({
 	retried: boolean;
 	unrecoverable: ((reload: () => void) => ReactNode) | undefined;
 	onRetry: () => void;
-}) {
+})
+{
 	const [busy, setBusy] = useState(false);
-	const state = chunkErrorState({online: navigator.onLine, reloadUsed: staleChunkReloadRecent(), retried});
+	const state = chunkErrorState(
+		{
+			online: navigator.onLine,
+			reloadUsed: staleChunkReloadRecent(),
+			retried,
+		},
+	);
 	if (state === "reload" && unrecoverable !== undefined)
 		return (
 			<>
@@ -91,7 +100,8 @@ export function DeferredChunkFailure({
 				busy={busy}
 				placeholder={<DeferredPaneLoading title={title} />}
 				onRetry={onRetry}
-				onReload={() => {
+				onReload={() =>
+				{
 					setBusy(true);
 					reloadPage();
 				}}
@@ -101,6 +111,7 @@ export function DeferredChunkFailure({
 }
 
 /** A deferred pane's loading line, also kept invisibly under its ErrorView so the box keeps its size. */
-export function DeferredPaneLoading({title}: {title: string}) {
+export function DeferredPaneLoading({title}: {title: string})
+{
 	return <p role="status">Loading {title.toLowerCase()}…</p>;
 }

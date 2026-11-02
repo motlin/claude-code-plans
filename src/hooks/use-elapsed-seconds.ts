@@ -1,14 +1,18 @@
 import {useEffect, useState} from "react";
 
 /** Whole seconds since `startedAt`, ticking once a second; null without a start time. */
-export function useElapsedSeconds(startedAt: string | undefined): number | null {
+export function useElapsedSeconds(startedAt: string | undefined): number | null
+{
 	const [now, setNow] = useState(() => Date.now());
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (startedAt === undefined) return undefined;
-		const timer = setInterval(() => {
+		const timer = setInterval(() =>
+		{
 			setNow(Date.now());
 		}, 1000);
-		return () => {
+		return () =>
+		{
 			clearInterval(timer);
 		};
 	}, [startedAt]);

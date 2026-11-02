@@ -9,13 +9,18 @@ import {DIALOG_BODY_CLASS} from "./ui/dialog-classes";
 const BUTTON_BASE_CLASS =
 	"h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-const CONFIRM_VARIANT_CLASS = {
+const CONFIRM_VARIANT_CLASS =
+{
 	primary: "bg-fill-primary text-on-primary hover:bg-fill-primary-hover",
 	danger: "bg-[var(--menu-danger-fill)] text-[var(--menu-on-danger)] hover:opacity-90",
 } as const;
 
 /** Upstream shared-frame `kV`: the dialog's width per size. */
-const SIZE_CLASS = {sm: "max-w-[400px]", md: "max-w-[520px]"} as const;
+const SIZE_CLASS =
+{
+	sm: "max-w-[400px]",
+	md: "max-w-[520px]",
+} as const;
 
 const POPUP_BASE_CLASS =
 	"fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none";
@@ -79,7 +84,8 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	onConfirm: () => void;
 	/** Runs only when the cancel button itself is clicked, not on Escape or a backdrop click. */
 	onCancel?: () => void;
-}) {
+})
+{
 	const cancelRef = useRef<HTMLButtonElement>(null);
 	const panels = useFizzyLake("panels");
 	const popupClass = `${POPUP_BASE_CLASS} ${SIZE_CLASS[size]}`;
@@ -99,7 +105,8 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 				<button
 					type="button"
 					disabled={confirmDisabled}
-					onClick={() => {
+					onClick={() =>
+					{
 						onConfirm();
 						onOpenChange(false);
 					}}

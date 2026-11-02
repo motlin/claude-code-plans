@@ -1,4 +1,5 @@
-import {
+import
+{
 	DEFAULTS,
 	VERBOSITY_KEYS,
 	VERBOSITY_PRESETS,
@@ -9,7 +10,8 @@ import {
 	type Verbosity,
 } from "../src/components/settings-context";
 
-describe("settings-provider", () => {
+describe("settings-provider", () =>
+{
 	// Pins the preset key set against upstream-parity churn. Settled on
 	// 2026-08-12 by capturing the missing Normal-view specimen from the same
 	// claude.ai/code session and same 12 turns as the 2026-08-10 verbose dumps:
@@ -25,8 +27,10 @@ describe("settings-provider", () => {
 	// ("Read 3 files"). That is a grouping-density difference in the renderer,
 	// not a per-row visibility flag, so no per-row gating may be added to
 	// VERBOSITY_PRESETS on the strength of these dumps.
-	describe("VERBOSITY_PRESETS", () => {
-		it("gates exactly the eight content keys, with no per-row gating added", () => {
+	describe("VERBOSITY_PRESETS", () =>
+	{
+		it("gates exactly the eight content keys, with no per-row gating added", () =>
+		{
 			expect(VERBOSITY_KEYS).toEqual([
 				"showTools",
 				"showThinking",
@@ -39,64 +43,80 @@ describe("settings-provider", () => {
 			]);
 		});
 
-		it("keeps every preset on the same key set", () => {
-			for (const verbosity of ["normal", "thinking", "verbose"] satisfies Verbosity[]) {
+		it("keeps every preset on the same key set", () =>
+		{
+			for (const verbosity of ["normal", "thinking", "verbose"] satisfies Verbosity[])
+			{
 				expect(Object.keys(VERBOSITY_PRESETS[verbosity])).toEqual(VERBOSITY_KEYS);
 			}
 		});
 
-		it("keeps the normal preset unchanged", () => {
-			expect(VERBOSITY_PRESETS.normal).toEqual({
-				showTools: true,
-				showThinking: false,
-				showPassedHooks: false,
-				showHookWarnings: true,
-				showHookErrors: true,
-				showSystemBanners: false,
-				showCompactSummaries: false,
-				showTranscriptOnly: false,
-			});
+		it("keeps the normal preset unchanged", () =>
+		{
+			expect(VERBOSITY_PRESETS.normal).toEqual(
+				{
+					showTools: true,
+					showThinking: false,
+					showPassedHooks: false,
+					showHookWarnings: true,
+					showHookErrors: true,
+					showSystemBanners: false,
+					showCompactSummaries: false,
+					showTranscriptOnly: false,
+				},
+			);
 		});
 
-		it("keeps the thinking preset unchanged", () => {
-			expect(VERBOSITY_PRESETS.thinking).toEqual({
-				showTools: true,
-				showThinking: true,
-				showPassedHooks: false,
-				showHookWarnings: true,
-				showHookErrors: true,
-				showSystemBanners: false,
-				showCompactSummaries: false,
-				showTranscriptOnly: false,
-			});
+		it("keeps the thinking preset unchanged", () =>
+		{
+			expect(VERBOSITY_PRESETS.thinking).toEqual(
+				{
+					showTools: true,
+					showThinking: true,
+					showPassedHooks: false,
+					showHookWarnings: true,
+					showHookErrors: true,
+					showSystemBanners: false,
+					showCompactSummaries: false,
+					showTranscriptOnly: false,
+				},
+			);
 		});
 
-		it("keeps the verbose preset unchanged", () => {
-			expect(VERBOSITY_PRESETS.verbose).toEqual({
-				showTools: true,
-				showThinking: true,
-				showPassedHooks: true,
-				showHookWarnings: true,
-				showHookErrors: true,
-				showSystemBanners: true,
-				showCompactSummaries: true,
-				showTranscriptOnly: true,
-			});
+		it("keeps the verbose preset unchanged", () =>
+		{
+			expect(VERBOSITY_PRESETS.verbose).toEqual(
+				{
+					showTools: true,
+					showThinking: true,
+					showPassedHooks: true,
+					showHookWarnings: true,
+					showHookErrors: true,
+					showSystemBanners: true,
+					showCompactSummaries: true,
+					showTranscriptOnly: true,
+				},
+			);
 		});
 
-		it("defaults to the normal preset", () => {
-			for (const key of VERBOSITY_KEYS) {
+		it("defaults to the normal preset", () =>
+		{
+			for (const key of VERBOSITY_KEYS)
+			{
 				expect(DEFAULTS[key]).toEqual(VERBOSITY_PRESETS.normal[key]);
 			}
 		});
 	});
 
-	describe("VERBOSITY_KEYS", () => {
-		it("does not include showDebug", () => {
+	describe("VERBOSITY_KEYS", () =>
+	{
+		it("does not include showDebug", () =>
+		{
 			expect(VERBOSITY_KEYS).not.toContain("showDebug");
 		});
 
-		it("includes the expected content-related keys", () => {
+		it("includes the expected content-related keys", () =>
+		{
 			expect(VERBOSITY_KEYS).toContain("showTools");
 			expect(VERBOSITY_KEYS).toContain("showThinking");
 			expect(VERBOSITY_KEYS).toContain("showPassedHooks");
@@ -108,18 +128,27 @@ describe("settings-provider", () => {
 		});
 	});
 
-	describe("detectVerbosity", () => {
-		it("detects normal verbosity with default settings", () => {
+	describe("detectVerbosity", () =>
+	{
+		it("detects normal verbosity with default settings", () =>
+		{
 			expect(detectVerbosity(DEFAULTS)).toBe("normal");
 		});
 
-		it("detects normal verbosity when showDebug is true", () => {
-			const settings: Settings = {...DEFAULTS, showDebug: true};
+		it("detects normal verbosity when showDebug is true", () =>
+		{
+			const settings: Settings =
+			{
+				...DEFAULTS,
+				showDebug: true,
+			};
 			expect(detectVerbosity(settings)).toBe("normal");
 		});
 
-		it("detects thinking verbosity", () => {
-			const settings: Settings = {
+		it("detects thinking verbosity", () =>
+		{
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showTools: true,
 				showThinking: true,
@@ -131,8 +160,10 @@ describe("settings-provider", () => {
 			expect(detectVerbosity(settings)).toBe("thinking");
 		});
 
-		it("detects thinking verbosity even when showDebug is true", () => {
-			const settings: Settings = {
+		it("detects thinking verbosity even when showDebug is true", () =>
+		{
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showTools: true,
 				showThinking: true,
@@ -145,8 +176,10 @@ describe("settings-provider", () => {
 			expect(detectVerbosity(settings)).toBe("thinking");
 		});
 
-		it("does not detect removed minimal preset", () => {
-			const settings: Settings = {
+		it("does not detect removed minimal preset", () =>
+		{
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showTools: false,
 				showThinking: false,
@@ -159,8 +192,10 @@ describe("settings-provider", () => {
 			expect(detectVerbosity(settings)).toBe("normal");
 		});
 
-		it("detects verbose verbosity", () => {
-			const settings: Settings = {
+		it("detects verbose verbosity", () =>
+		{
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showTools: true,
 				showThinking: true,
@@ -174,8 +209,10 @@ describe("settings-provider", () => {
 			expect(detectVerbosity(settings)).toBe("verbose");
 		});
 
-		it("detects verbose verbosity even when showDebug is true", () => {
-			const settings: Settings = {
+		it("detects verbose verbosity even when showDebug is true", () =>
+		{
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showTools: true,
 				showThinking: true,
@@ -190,8 +227,10 @@ describe("settings-provider", () => {
 			expect(detectVerbosity(settings)).toBe("verbose");
 		});
 
-		it("does NOT detect verbose when showCompactSummaries is false", () => {
-			const settings: Settings = {
+		it("does NOT detect verbose when showCompactSummaries is false", () =>
+		{
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showTools: true,
 				showThinking: true,
@@ -205,8 +244,10 @@ describe("settings-provider", () => {
 			expect(detectVerbosity(settings)).not.toBe("verbose");
 		});
 
-		it("does NOT detect verbose when showTranscriptOnly is false", () => {
-			const settings: Settings = {
+		it("does NOT detect verbose when showTranscriptOnly is false", () =>
+		{
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showTools: true,
 				showThinking: true,
@@ -220,10 +261,12 @@ describe("settings-provider", () => {
 			expect(detectVerbosity(settings)).not.toBe("verbose");
 		});
 
-		it("falls back to saved verbosity when showCompactSummaries deviates from normal preset", () => {
+		it("falls back to saved verbosity when showCompactSummaries deviates from normal preset", () =>
+		{
 			// settings.verbosity ('normal') is returned as a fallback because no
 			// preset matches exactly; that's distinct from "this matches normal".
-			const settings: Settings = {
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showCompactSummaries: true,
 				verbosity: "verbose",
@@ -231,8 +274,10 @@ describe("settings-provider", () => {
 			expect(detectVerbosity(settings)).toBe("verbose");
 		});
 
-		it("falls back to saved verbosity when showTranscriptOnly deviates from normal preset", () => {
-			const settings: Settings = {
+		it("falls back to saved verbosity when showTranscriptOnly deviates from normal preset", () =>
+		{
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showTranscriptOnly: true,
 				verbosity: "verbose",
@@ -240,8 +285,10 @@ describe("settings-provider", () => {
 			expect(detectVerbosity(settings)).toBe("verbose");
 		});
 
-		it("does NOT detect thinking when showCompactSummaries is true", () => {
-			const settings: Settings = {
+		it("does NOT detect thinking when showCompactSummaries is true", () =>
+		{
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showTools: true,
 				showThinking: true,
@@ -255,8 +302,10 @@ describe("settings-provider", () => {
 			expect(detectVerbosity(settings)).not.toBe("thinking");
 		});
 
-		it("does NOT detect thinking when showTranscriptOnly is true", () => {
-			const settings: Settings = {
+		it("does NOT detect thinking when showTranscriptOnly is true", () =>
+		{
+			const settings: Settings =
+			{
 				...DEFAULTS,
 				showTools: true,
 				showThinking: true,
@@ -271,75 +320,119 @@ describe("settings-provider", () => {
 		});
 	});
 
-	describe("migrateLegacyNotificationSetting", () => {
-		function storageWith(entries: Record<string, string>) {
+	describe("migrateLegacyNotificationSetting", () =>
+	{
+		function storageWith(entries: Record<string, string>)
+		{
 			const map = new Map(Object.entries(entries));
 			return {
 				map,
-				storage: {
+				storage:
+				{
 					getItem: (key: string) => map.get(key) ?? null,
-					setItem: (key: string, value: string) => {
+					setItem: (key: string, value: string) =>
+					{
 						map.set(key, value);
 					},
-					removeItem: (key: string) => {
+					removeItem: (key: string) =>
+					{
 						map.delete(key);
 					},
 				},
 			};
 		}
 
-		it("turns both notification kinds on when the old toggle was on", () => {
-			const {map, storage} = storageWith({"ccp-desktop-notifications": "true"});
+		it("turns both notification kinds on when the old toggle was on", () =>
+		{
+			const {map, storage} = storageWith(
+				{
+					"ccp-desktop-notifications": "true",
+				},
+			);
 			migrateLegacyNotificationSetting(storage);
-			expect(Object.fromEntries(map)).toStrictEqual({
-				"ccp-notify-completions": "true",
-				"ccp-notify-permission-requests": "true",
-			});
+			expect(Object.fromEntries(map)).toStrictEqual(
+				{
+					"ccp-notify-completions": "true",
+					"ccp-notify-permission-requests": "true",
+				},
+			);
 		});
 
-		it("keeps both notification kinds off when the old toggle was off", () => {
-			const {map, storage} = storageWith({"ccp-desktop-notifications": "false"});
+		it("keeps both notification kinds off when the old toggle was off", () =>
+		{
+			const {map, storage} = storageWith(
+				{
+					"ccp-desktop-notifications": "false",
+				},
+			);
 			migrateLegacyNotificationSetting(storage);
-			expect(Object.fromEntries(map)).toStrictEqual({
-				"ccp-notify-completions": "false",
-				"ccp-notify-permission-requests": "false",
-			});
+			expect(Object.fromEntries(map)).toStrictEqual(
+				{
+					"ccp-notify-completions": "false",
+					"ccp-notify-permission-requests": "false",
+				},
+			);
 		});
 
-		it("leaves storage alone when there is no old toggle", () => {
-			const {map, storage} = storageWith({"ccp-notify-completions": "false"});
+		it("leaves storage alone when there is no old toggle", () =>
+		{
+			const {map, storage} = storageWith(
+				{
+					"ccp-notify-completions": "false",
+				},
+			);
 			migrateLegacyNotificationSetting(storage);
-			expect(Object.fromEntries(map)).toStrictEqual({"ccp-notify-completions": "false"});
+			expect(Object.fromEntries(map)).toStrictEqual(
+				{
+					"ccp-notify-completions": "false",
+				},
+			);
 		});
 
-		it("never overwrites a new key that is already stored", () => {
-			const {map, storage} = storageWith({
-				"ccp-desktop-notifications": "true",
-				"ccp-notify-permission-requests": "false",
-			});
+		it("never overwrites a new key that is already stored", () =>
+		{
+			const {map, storage} = storageWith(
+				{
+					"ccp-desktop-notifications": "true",
+					"ccp-notify-permission-requests": "false",
+				},
+			);
 			migrateLegacyNotificationSetting(storage);
-			expect(Object.fromEntries(map)).toStrictEqual({
-				"ccp-notify-completions": "true",
-				"ccp-notify-permission-requests": "false",
-			});
+			expect(Object.fromEntries(map)).toStrictEqual(
+				{
+					"ccp-notify-completions": "true",
+					"ccp-notify-permission-requests": "false",
+				},
+			);
 		});
 	});
 
-	it("stores the new notification and motion settings under their own keys", () => {
-		expect({
-			notifyCompletions: settingStorageKey("notifyCompletions"),
-			notifyPermissionRequests: settingStorageKey("notifyPermissionRequests"),
-			motion: settingStorageKey("motion"),
-			defaults: {
-				notifyCompletions: DEFAULTS.notifyCompletions,
-				notifyPermissionRequests: DEFAULTS.notifyPermissionRequests,
-				motion: DEFAULTS.motion,
+	it("stores the new notification and motion settings under their own keys", () =>
+	{
+		expect(
+			{
+				notifyCompletions: settingStorageKey("notifyCompletions"),
+				notifyPermissionRequests: settingStorageKey("notifyPermissionRequests"),
+				motion: settingStorageKey("motion"),
+				defaults:
+				{
+					notifyCompletions: DEFAULTS.notifyCompletions,
+					notifyPermissionRequests: DEFAULTS.notifyPermissionRequests,
+					motion: DEFAULTS.motion,
+				},
 			},
-		}).toStrictEqual({
-			notifyCompletions: "ccp-notify-completions",
-			notifyPermissionRequests: "ccp-notify-permission-requests",
-			motion: "ccp-motion",
-			defaults: {notifyCompletions: true, notifyPermissionRequests: false, motion: "system"},
-		});
+		).toStrictEqual(
+			{
+				notifyCompletions: "ccp-notify-completions",
+				notifyPermissionRequests: "ccp-notify-permission-requests",
+				motion: "ccp-motion",
+				defaults:
+				{
+					notifyCompletions: true,
+					notifyPermissionRequests: false,
+					motion: "system",
+				},
+			},
+		);
 	});
 });

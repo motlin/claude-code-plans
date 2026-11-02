@@ -2,7 +2,8 @@ import {useEffect, useRef, useState} from "react";
 
 import {STALE_COMPACT} from "../lib/stale-compact";
 
-export interface StaleCompactIdle {
+export interface StaleCompactIdle
+{
 	readonly anchor: number;
 	readonly ageMs: number;
 }
@@ -23,26 +24,35 @@ export function useStaleCompactIdle({
 	anchorMs: number | null;
 	responding: boolean;
 	hidden: boolean;
-}): StaleCompactIdle | null {
+}): StaleCompactIdle | null
+{
 	const [idle, setIdle] = useState<StaleCompactIdle | null>(null);
 	const respondingRef = useRef(responding);
 	respondingRef.current = responding;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (anchorMs === null) return undefined;
-		const check = () => {
+		const check = () =>
+		{
 			if (respondingRef.current || hidden) return;
 			const ageMs = Date.now() - anchorMs;
 			if (ageMs < MIN_AGE_MS) return;
 			setIdle((previous) =>
 				previous?.anchor === anchorMs && Math.floor(previous.ageMs / 60_000) === Math.floor(ageMs / 60_000)
 					? previous
-					: {anchor: anchorMs, ageMs},
+					:
+						{
+							anchor: anchorMs,
+							ageMs,
+						},
 			);
 		};
-		const onVisibility = () => {
+		const onVisibility = () =>
+		{
 			if (document.visibilityState === "visible") check();
 		};
-		const inFooter = (event: Event) => {
+		const inFooter = (event: Event) =>
+		{
 			if (event.target instanceof Element && event.target.closest("[data-session-footer]") !== null) check();
 		};
 		check();
@@ -50,7 +60,8 @@ export function useStaleCompactIdle({
 		document.addEventListener("visibilitychange", onVisibility);
 		document.addEventListener("focusin", inFooter);
 		document.addEventListener("keydown", inFooter);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("focus", check);
 			document.removeEventListener("visibilitychange", onVisibility);
 			document.removeEventListener("focusin", inFooter);

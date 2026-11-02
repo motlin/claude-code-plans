@@ -21,103 +21,137 @@ import {DOMAIN_EVENTS} from "../src/lib/hook-events";
 
 const broadcastSpy = vi.fn<(...args: unknown[]) => void>();
 
-vi.mock("../src/lib/sse-broadcast", () => ({
-	broadcastTyped: (...args: unknown[]) => {
+vi.mock("../src/lib/sse-broadcast", () => (
+{
+	broadcastTyped: (...args: unknown[]) =>
+	{
 		broadcastSpy(...args);
 	},
 }));
 
-function jsonl(...lines: Record<string, unknown>[]): string {
+function jsonl(...lines: Record<string, unknown>[]): string
+{
 	return lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
 }
 
 const PROJECT_ID = "-Users-craig-projects-app";
 const PROJECT_NAME = "app";
 
-describe("pending-approvals-cache", () => {
+describe("pending-approvals-cache", () =>
+{
 	const testDir = join(tmpdir(), "claude-pending-approvals-cache-test-" + process.pid);
 	let projectsDir: string;
 	let projectDir: string;
 	let db: AppDb;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		broadcastSpy.mockReset();
-		mkdirSync(testDir, {recursive: true});
+		mkdirSync(
+			testDir,
+			{
+				recursive: true,
+			},
+		);
 		projectsDir = join(testDir, "projects");
 		projectDir = join(projectsDir, PROJECT_ID);
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		db = openTestDb();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		db.close();
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	function writeJsonl(name: string, contents: string): string {
+	function writeJsonl(name: string, contents: string): string
+	{
 		const path = join(projectDir, name);
 		writeFileSync(path, contents);
 		return path;
 	}
 
-	function seedProject(): void {
+	function seedProject(): void
+	{
 		db.index
 			.insert(schema.projects)
-			.values({
-				id: PROJECT_ID,
-				name: PROJECT_NAME,
-				projectPath: "/Users/craig/projects/app",
-				updatedAt: 1,
-			})
+			.values(
+				{
+					id: PROJECT_ID,
+					name: PROJECT_NAME,
+					projectPath: "/Users/craig/projects/app",
+					updatedAt: 1,
+				},
+			)
 			.run();
 	}
 
-	function seedSession(sessionId: string, filePath: string): void {
+	function seedSession(sessionId: string, filePath: string): void
+	{
 		db.index
 			.insert(schema.sessions)
-			.values({
-				id: sessionId,
-				projectId: PROJECT_ID,
-				title: sessionId,
-				firstPrompt: null,
-				summary: null,
-				customTitle: null,
-				messageCount: 0,
-				gitBranch: null,
-				cwd: null,
-				isSidechain: 0,
-				createdAt: 1,
-				mtimeMs: 1,
-				filePath,
-			})
+			.values(
+				{
+					id: sessionId,
+					projectId: PROJECT_ID,
+					title: sessionId,
+					firstPrompt: null,
+					summary: null,
+					customTitle: null,
+					messageCount: 0,
+					gitBranch: null,
+					cwd: null,
+					isSidechain: 0,
+					createdAt: 1,
+					mtimeMs: 1,
+					filePath,
+				},
+			)
 			.run();
 	}
 
-	it("initPendingApprovalsCache populates the cache from a seeded DB with one blocked and one resolved session", async () => {
+	it("initPendingApprovalsCache populates the cache from a seeded DB with one blocked and one resolved session", async () =>
+	{
 		seedProject();
 
 		const blockedSessionId = "sess-blocked";
 		const blockedPath = writeJsonl(
 			`${blockedSessionId}.jsonl`,
-			jsonl({
-				type: "assistant",
-				sessionId: blockedSessionId,
-				timestamp: "2026-05-14T12:00:00.000Z",
-				message: {
-					role: "assistant",
-					content: [
-						{
-							type: "tool_use",
-							id: "toolu_blocked",
-							name: "ExitPlanMode",
-							input: {
-								plan: "## Plan",
-								planFilePath: "/Users/craig/.claude/plans/alpha.md",
+			jsonl(
+				{
+					type: "assistant",
+					sessionId: blockedSessionId,
+					timestamp: "2026-05-14T12:00:00.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_blocked",
+								name: "ExitPlanMode",
+								input:
+								{
+									plan: "## Plan",
+									planFilePath: "/Users/craig/.claude/plans/alpha.md",
+								},
 							},
-						},
-					],
+						],
+					},
 				},
-			}),
+			),
 		);
 		seedSession(blockedSessionId, blockedPath);
 
@@ -129,14 +163,18 @@ describe("pending-approvals-cache", () => {
 					type: "assistant",
 					sessionId: resolvedSessionId,
 					timestamp: "2026-05-14T11:00:00.000Z",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "toolu_done",
 								name: "ExitPlanMode",
-								input: {plan: "## P"},
+								input:
+								{
+									plan: "## P",
+								},
 							},
 						],
 					},
@@ -145,7 +183,8 @@ describe("pending-approvals-cache", () => {
 					type: "user",
 					sessionId: resolvedSessionId,
 					timestamp: "2026-05-14T11:01:00.000Z",
-					message: {
+					message:
+					{
 						role: "user",
 						content: [
 							{
@@ -173,22 +212,34 @@ describe("pending-approvals-cache", () => {
 		expect(approvals[0]!.planFilename).toBe("alpha.md");
 	});
 
-	it("initPendingApprovalsCache bails out cleanly when shutdown closes the DB mid-init", async () => {
+	it("initPendingApprovalsCache bails out cleanly when shutdown closes the DB mid-init", async () =>
+	{
 		seedProject();
 		const sessionId = "sess-shutdown";
 		const filePath = writeJsonl(
 			`${sessionId}.jsonl`,
-			jsonl({
-				type: "assistant",
-				sessionId,
-				timestamp: "2026-05-14T12:00:00.000Z",
-				message: {
-					role: "assistant",
-					content: [
-						{type: "tool_use", id: "toolu_shutdown", name: "AskUserQuestion", input: {question: "Go?"}},
-					],
+			jsonl(
+				{
+					type: "assistant",
+					sessionId,
+					timestamp: "2026-05-14T12:00:00.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_shutdown",
+								name: "AskUserQuestion",
+								input:
+								{
+									question: "Go?",
+								},
+							},
+						],
+					},
 				},
-			}),
+			),
 		);
 		seedSession(sessionId, filePath);
 
@@ -196,7 +247,8 @@ describe("pending-approvals-cache", () => {
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 		const unhandled = vi.fn<(reason: unknown, promise: Promise<unknown>) => void>();
 		process.on("unhandledRejection", unhandled);
-		try {
+		try
+		{
 			const controller = new AbortController();
 			const init = initPendingApprovalsCache(db.index, controller.signal);
 			// The init is now awaiting the transcript read; shutdown begins and closes the DB.
@@ -204,45 +256,61 @@ describe("pending-approvals-cache", () => {
 			db.close();
 
 			await expect(init).resolves.toBeUndefined();
-			await new Promise((resolve) => {
+			await new Promise((resolve) =>
+			{
 				setImmediate(resolve);
 			});
-			expect({
-				approvals: getPendingApprovals(),
-				errors: errorSpy.mock.calls,
-				unhandled: unhandled.mock.calls,
-			}).toEqual({approvals: [], errors: [], unhandled: []});
-		} finally {
+			expect(
+				{
+					approvals: getPendingApprovals(),
+					errors: errorSpy.mock.calls,
+					unhandled: unhandled.mock.calls,
+				},
+			).toEqual(
+				{
+					approvals: [],
+					errors: [],
+					unhandled: [],
+				},
+			);
+		}
+		finally
+		{
 			process.off("unhandledRejection", unhandled);
 			errorSpy.mockRestore();
 		}
 	});
 
-	it("updatePendingApprovalForSession broadcasts APPROVAL_CHANGED on add and APPROVAL_RESOLVED on resolution", async () => {
+	it("updatePendingApprovalForSession broadcasts APPROVAL_CHANGED on add and APPROVAL_RESOLVED on resolution", async () =>
+	{
 		seedProject();
 
 		const sessionId = "sess-incremental";
 		const filePath = writeJsonl(
 			`${sessionId}.jsonl`,
-			jsonl({
-				type: "assistant",
-				sessionId,
-				timestamp: "2026-05-14T13:00:00.000Z",
-				message: {
-					role: "assistant",
-					content: [
-						{
-							type: "tool_use",
-							id: "toolu_inc",
-							name: "ExitPlanMode",
-							input: {
-								plan: "## Plan",
-								planFilePath: "/Users/craig/.claude/plans/beta.md",
+			jsonl(
+				{
+					type: "assistant",
+					sessionId,
+					timestamp: "2026-05-14T13:00:00.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_inc",
+								name: "ExitPlanMode",
+								input:
+								{
+									plan: "## Plan",
+									planFilePath: "/Users/craig/.claude/plans/beta.md",
+								},
 							},
-						},
-					],
+						],
+					},
 				},
-			}),
+			),
 		);
 		seedSession(sessionId, filePath);
 
@@ -259,22 +327,28 @@ describe("pending-approvals-cache", () => {
 		const newSessionId = "sess-new";
 		const newPath = writeJsonl(
 			`${newSessionId}.jsonl`,
-			jsonl({
-				type: "assistant",
-				sessionId: newSessionId,
-				timestamp: "2026-05-14T14:00:00.000Z",
-				message: {
-					role: "assistant",
-					content: [
-						{
-							type: "tool_use",
-							id: "toolu_new",
-							name: "AskUserQuestion",
-							input: {question: "Continue?"},
-						},
-					],
+			jsonl(
+				{
+					type: "assistant",
+					sessionId: newSessionId,
+					timestamp: "2026-05-14T14:00:00.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_new",
+								name: "AskUserQuestion",
+								input:
+								{
+									question: "Continue?",
+								},
+							},
+						],
+					},
 				},
-			}),
+			),
 		);
 		seedSession(newSessionId, newPath);
 
@@ -282,8 +356,13 @@ describe("pending-approvals-cache", () => {
 
 		const changedCalls = broadcastSpy.mock.calls.filter((c) => c[0] === DOMAIN_EVENTS.APPROVAL_CHANGED);
 		expect(changedCalls).toHaveLength(1);
-		const changedPayload = changedCalls[0]![1] as {
-			approval: {sessionId: string; toolName: string};
+		const changedPayload = changedCalls[0]![1] as
+		{
+			approval:
+			{
+				sessionId: string;
+				toolName: string;
+			};
 		};
 		expect(changedPayload.approval.sessionId).toBe(newSessionId);
 		expect(changedPayload.approval.toolName).toBe("AskUserQuestion");
@@ -296,14 +375,18 @@ describe("pending-approvals-cache", () => {
 					type: "assistant",
 					sessionId: newSessionId,
 					timestamp: "2026-05-14T14:00:00.000Z",
-					message: {
+					message:
+					{
 						role: "assistant",
 						content: [
 							{
 								type: "tool_use",
 								id: "toolu_new",
 								name: "AskUserQuestion",
-								input: {question: "Continue?"},
+								input:
+								{
+									question: "Continue?",
+								},
 							},
 						],
 					},
@@ -312,9 +395,16 @@ describe("pending-approvals-cache", () => {
 					type: "user",
 					sessionId: newSessionId,
 					timestamp: "2026-05-14T14:01:00.000Z",
-					message: {
+					message:
+					{
 						role: "user",
-						content: [{type: "tool_result", tool_use_id: "toolu_new", content: "yes"}],
+						content: [
+							{
+								type: "tool_result",
+								tool_use_id: "toolu_new",
+								content: "yes",
+							},
+						],
 					},
 				},
 			),
@@ -325,35 +415,45 @@ describe("pending-approvals-cache", () => {
 
 		const resolvedCalls = broadcastSpy.mock.calls.filter((c) => c[0] === DOMAIN_EVENTS.APPROVAL_RESOLVED);
 		expect(resolvedCalls).toHaveLength(1);
-		const resolvedPayload = resolvedCalls[0]![1] as {sessionId: string};
+		const resolvedPayload = resolvedCalls[0]![1] as
+		{
+			sessionId: string;
+		};
 		expect(resolvedPayload.sessionId).toBe(newSessionId);
 
 		const finalApprovals = getPendingApprovals();
 		expect(finalApprovals.find((a) => a.sessionId === newSessionId)).toBeUndefined();
 	});
 
-	it("removePendingApprovalForSession clears the entry and broadcasts APPROVAL_RESOLVED when one was present", async () => {
+	it("removePendingApprovalForSession clears the entry and broadcasts APPROVAL_RESOLVED when one was present", async () =>
+	{
 		seedProject();
 
 		const sessionId = "sess-to-remove";
 		const filePath = writeJsonl(
 			`${sessionId}.jsonl`,
-			jsonl({
-				type: "assistant",
-				sessionId,
-				timestamp: "2026-05-14T15:00:00.000Z",
-				message: {
-					role: "assistant",
-					content: [
-						{
-							type: "tool_use",
-							id: "toolu_rm",
-							name: "ExitPlanMode",
-							input: {plan: "## P"},
-						},
-					],
+			jsonl(
+				{
+					type: "assistant",
+					sessionId,
+					timestamp: "2026-05-14T15:00:00.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_rm",
+								name: "ExitPlanMode",
+								input:
+								{
+									plan: "## P",
+								},
+							},
+						],
+					},
 				},
-			}),
+			),
 		);
 		seedSession(sessionId, filePath);
 
@@ -369,7 +469,10 @@ describe("pending-approvals-cache", () => {
 
 		const resolvedCalls = broadcastSpy.mock.calls.filter((c) => c[0] === DOMAIN_EVENTS.APPROVAL_RESOLVED);
 		expect(resolvedCalls).toHaveLength(1);
-		const payload = resolvedCalls[0]![1] as {sessionId: string};
+		const payload = resolvedCalls[0]![1] as
+		{
+			sessionId: string;
+		};
 		expect(payload.sessionId).toBe(sessionId);
 
 		expect(getPendingApprovals().some((a) => a.sessionId === sessionId)).toBe(false);
@@ -381,46 +484,65 @@ describe("pending-approvals-cache", () => {
 	});
 
 	/** Push a file's mtime forward so a rewrite is unambiguously newer than the cached stat. */
-	function touchAhead(filePath: string, secondsAhead: number): void {
+	function touchAhead(filePath: string, secondsAhead: number): void
+	{
 		const when = new Date(Date.now() + secondsAhead * 1000);
 		utimesSync(filePath, when, when);
 	}
 
-	function blockedJsonl(sessionId: string): string {
-		return jsonl({
-			type: "assistant",
-			sessionId,
-			timestamp: "2026-05-14T16:00:00.000Z",
-			message: {
-				role: "assistant",
-				content: [
-					{
-						type: "tool_use",
-						id: "toolu_missed",
-						name: "AskUserQuestion",
-						input: {question: "Continue?"},
-					},
-				],
-			},
-		});
-	}
-
-	function answeredJsonl(sessionId: string): string {
-		return (
-			blockedJsonl(sessionId) +
-			jsonl({
-				type: "user",
+	function blockedJsonl(sessionId: string): string
+	{
+		return jsonl(
+			{
+				type: "assistant",
 				sessionId,
-				timestamp: "2026-05-14T16:01:00.000Z",
-				message: {
-					role: "user",
-					content: [{type: "tool_result", tool_use_id: "toolu_missed", content: "yes"}],
+				timestamp: "2026-05-14T16:00:00.000Z",
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_missed",
+							name: "AskUserQuestion",
+							input:
+							{
+								question: "Continue?",
+							},
+						},
+					],
 				},
-			})
+			},
 		);
 	}
 
-	it("revalidatePendingApprovals drops an approval answered on disk when no watcher event arrived", async () => {
+	function answeredJsonl(sessionId: string): string
+	{
+		return (
+			blockedJsonl(sessionId) +
+			jsonl(
+				{
+					type: "user",
+					sessionId,
+					timestamp: "2026-05-14T16:01:00.000Z",
+					message:
+					{
+						role: "user",
+						content: [
+							{
+								type: "tool_result",
+								tool_use_id: "toolu_missed",
+								content: "yes",
+							},
+						],
+					},
+				},
+			)
+		);
+	}
+
+	it("revalidatePendingApprovals drops an approval answered on disk when no watcher event arrived", async () =>
+	{
 		seedProject();
 
 		const sessionId = "sess-missed-event";
@@ -442,11 +564,17 @@ describe("pending-approvals-cache", () => {
 
 		expect(getPendingApprovals()).toStrictEqual([]);
 		expect(broadcastSpy.mock.calls.filter((call) => call[0] === DOMAIN_EVENTS.APPROVAL_RESOLVED)).toStrictEqual([
-			[DOMAIN_EVENTS.APPROVAL_RESOLVED, {sessionId}],
+			[
+				DOMAIN_EVENTS.APPROVAL_RESOLVED,
+				{
+					sessionId,
+				},
+			],
 		]);
 	});
 
-	it("revalidatePendingApprovals keeps an untouched approval and rescans nothing", async () => {
+	it("revalidatePendingApprovals keeps an untouched approval and rescans nothing", async () =>
+	{
 		seedProject();
 
 		const sessionId = "sess-untouched";
@@ -465,7 +593,8 @@ describe("pending-approvals-cache", () => {
 		expect(broadcastSpy.mock.calls).toStrictEqual([]);
 	});
 
-	it("revalidatePendingApprovals drops an approval whose session file was deleted", async () => {
+	it("revalidatePendingApprovals drops an approval whose session file was deleted", async () =>
+	{
 		seedProject();
 
 		const sessionId = "sess-deleted";
@@ -484,36 +613,49 @@ describe("pending-approvals-cache", () => {
 
 		expect(getPendingApprovals()).toStrictEqual([]);
 		expect(broadcastSpy.mock.calls.filter((call) => call[0] === DOMAIN_EVENTS.APPROVAL_RESOLVED)).toStrictEqual([
-			[DOMAIN_EVENTS.APPROVAL_RESOLVED, {sessionId}],
+			[
+				DOMAIN_EVENTS.APPROVAL_RESOLVED,
+				{
+					sessionId,
+				},
+			],
 		]);
 	});
 
-	it("excludes an ended session when a delayed transcript scan still finds its approval", async () => {
+	it("excludes an ended session when a delayed transcript scan still finds its approval", async () =>
+	{
 		seedProject();
 
 		const sessionId = "sess-ended";
 		const filePath = writeJsonl(
 			`${sessionId}.jsonl`,
-			jsonl({
-				type: "assistant",
-				sessionId,
-				timestamp: "2026-05-14T15:00:00.000Z",
-				message: {
-					role: "assistant",
-					content: [
-						{
-							type: "tool_use",
-							id: "toolu_ended",
-							name: "ExitPlanMode",
-							input: {plan: "## P"},
-						},
-					],
+			jsonl(
+				{
+					type: "assistant",
+					sessionId,
+					timestamp: "2026-05-14T15:00:00.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_ended",
+								name: "ExitPlanMode",
+								input:
+								{
+									plan: "## P",
+								},
+							},
+						],
+					},
 				},
-			}),
+			),
 		);
 		seedSession(sessionId, filePath);
 
-		const {
+		const
+		{
 			expirePendingApprovalForSession,
 			getPendingApprovals,
 			initPendingApprovalsCache,

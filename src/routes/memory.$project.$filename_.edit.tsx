@@ -6,21 +6,31 @@ import {fromMdSlug} from "../lib/md-slug";
 import {lazy, Suspense, useCallback, useEffect, useRef, useState} from "react";
 
 const MarkdownEditor = lazy(async () =>
-	import("../components/markdown-editor").then((m) => ({
+	import("../components/markdown-editor").then((m) => (
+	{
 		default: m.MarkdownEditor,
 	})),
 );
 
-export const Route = createFileRoute("/memory/$project/$filename_/edit")({
-	component: MemoryEditPage,
-	loader: async ({context: {queryClient}, params}) =>
-		queryClient.query({...memoryDetailQueryOptions(params.project, params.filename), staleTime: "static"}),
-	head: ({params}) => ({
-		meta: [pageTitle(`Edit: ${fromMdSlug(params.filename)}`)],
-	}),
-});
+export const Route = createFileRoute("/memory/$project/$filename_/edit")(
+	{
+		component: MemoryEditPage,
+		loader: async ({context: {queryClient}, params}) =>
+			queryClient.query(
+				{
+					...memoryDetailQueryOptions(params.project, params.filename),
+					staleTime: "static",
+				},
+			),
+		head: ({params}) => (
+		{
+			meta: [pageTitle(`Edit: ${fromMdSlug(params.filename)}`)],
+		}),
+	},
+);
 
-function MemoryEditPage() {
+function MemoryEditPage()
+{
 	const {project, filename: slug} = Route.useParams();
 	const {data} = useSuspenseQuery(memoryDetailQueryOptions(project, slug));
 	const saveMutation = useSaveMemory(project, slug);
@@ -29,43 +39,61 @@ function MemoryEditPage() {
 	const initialMarkdown = data?.markdown ?? "";
 	const draftRef = useRef(initialMarkdown);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		draftRef.current = initialMarkdown;
 	}, [initialMarkdown]);
 
 	const [feedback, setFeedback] = useState<string | null>(null);
 
-	const handleChange = useCallback((value: string) => {
+	const handleChange = useCallback((value: string) =>
+	{
 		draftRef.current = value;
 	}, []);
 
 	const navigate = useNavigate();
 
-	const doSave = useCallback(async () => {
-		try {
+	const doSave = useCallback(async () =>
+	{
+		try
+		{
 			return await saveMutation.mutateAsync(draftRef.current);
-		} catch {
-			return {ok: false};
+		}
+		catch
+		{
+			return {
+				ok: false,
+			};
 		}
 	}, [saveMutation]);
 
-	const handleSave = useCallback(async () => {
+	const handleSave = useCallback(async () =>
+	{
 		setFeedback(null);
 		const result = await doSave();
 		setFeedback(result.ok ? "Saved" : "Failed to save");
 	}, [doSave]);
 
-	const handlePreview = useCallback(async () => {
+	const handlePreview = useCallback(async () =>
+	{
 		const result = await doSave();
-		if (result.ok) {
-			void navigate({
-				to: "/memory/$project/$filename",
-				params: {project, filename: slug},
-			});
+		if (result.ok)
+		{
+			void navigate(
+				{
+					to: "/memory/$project/$filename",
+					params:
+					{
+						project,
+						filename: slug,
+					},
+				},
+			);
 		}
 	}, [doSave, navigate, project, slug]);
 
-	if (!data) {
+	if (!data)
+	{
 		return (
 			<div>
 				<Link to="/memories" className="text-sm text-accent-100 hover:underline">
@@ -84,7 +112,8 @@ function MemoryEditPage() {
 				</Link>
 				<button
 					type="button"
-					onClick={() => {
+					onClick={() =>
+					{
 						void handlePreview();
 					}}
 					className="text-sm text-accent-100 hover:underline"
@@ -94,7 +123,8 @@ function MemoryEditPage() {
 				<span className="text-xs text-t6">{data.projectName}</span>
 				<button
 					type="button"
-					onClick={() => {
+					onClick={() =>
+					{
 						void handleSave();
 					}}
 					disabled={saving}

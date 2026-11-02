@@ -17,12 +17,19 @@ const SECRET_ENV = "sk-env-secret-value-123";
 const SECRET_HEADER = "Bearer header-secret-value-456";
 const SECRET_PLUGIN_HEADER = "plugin-secret-token-789";
 
-function writeJson(path: string, value: unknown): void {
-	mkdirSync(dirname(path), {recursive: true});
+function writeJson(path: string, value: unknown): void
+{
+	mkdirSync(
+		dirname(path),
+		{
+			recursive: true,
+		},
+	);
 	writeFileSync(path, JSON.stringify(value, null, 2));
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	root = mkdtempSync(join(tmpdir(), "customize-mcp-"));
 	claudeDir = join(root, "claude");
 	claudeJsonPath = join(root, ".claude.json");
@@ -30,106 +37,196 @@ beforeEach(() => {
 	otherProjectPath = join(root, "repos", "other");
 	pluginPath = join(root, "plugin-cache", "docs", "1.0.0");
 	flatPluginPath = join(root, "plugin-cache", "flat", "2.0.0");
-	mkdirSync(claudeDir, {recursive: true});
-	mkdirSync(otherProjectPath, {recursive: true});
-});
-
-afterEach(() => {
-	rmSync(root, {recursive: true, force: true});
-});
-
-function writeFixtures(): void {
-	writeJson(claudeJsonPath, {
-		numStartups: 42,
-		mcpServers: {
-			mail: {
-				type: "stdio",
-				command: "npx",
-				args: ["-y", "mail-mcp"],
-				env: {MAIL_TOKEN: SECRET_ENV},
-			},
-			sentry: {type: "http", url: "https://mcp.sentry.dev/mcp"},
+	mkdirSync(
+		claudeDir,
+		{
+			recursive: true,
 		},
-		projects: {
-			[projectPath]: {
-				hasTrustDialogAccepted: true,
-				lastCost: 1.5,
-				mcpServers: {
-					render: {
-						type: "http",
-						url: "https://mcp.render.com/mcp",
-						headers: {Authorization: SECRET_HEADER},
+	);
+	mkdirSync(
+		otherProjectPath,
+		{
+			recursive: true,
+		},
+	);
+});
+
+afterEach(() =>
+{
+	rmSync(
+		root,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
+});
+
+function writeFixtures(): void
+{
+	writeJson(
+		claudeJsonPath,
+		{
+			numStartups: 42,
+			mcpServers:
+			{
+				mail:
+				{
+					type: "stdio",
+					command: "npx",
+					args: ["-y", "mail-mcp"],
+					env:
+					{
+						MAIL_TOKEN: SECRET_ENV,
 					},
-					scratch: {command: "scratch-mcp"},
 				},
-				disabledMcpServers: ["scratch"],
-				enabledMcpjsonServers: ["approved"],
-				disabledMcpjsonServers: ["rejected"],
-			},
-			[otherProjectPath]: {
-				allowedTools: [],
-			},
-		},
-	});
-
-	writeJson(join(projectPath, ".mcp.json"), {
-		mcpServers: {
-			approved: {type: "sse", url: "https://example.com/sse"},
-			rejected: {command: "node", args: ["server.js"], cwd: "tools"},
-			pending: {command: "pending-mcp"},
-		},
-	});
-
-	writeJson(join(claudeDir, "settings.json"), {
-		enabledPlugins: {"docs@market": true, "flat@market": false},
-	});
-
-	writeJson(join(claudeDir, "plugins", "installed_plugins.json"), {
-		version: 2,
-		plugins: {
-			"docs@market": [
+				sentry:
 				{
-					scope: "user",
-					installPath: pluginPath,
-					version: "1.0.0",
-					installedAt: "2026-09-01T00:00:00.000Z",
-					lastUpdated: "2026-09-01T00:00:00.000Z",
+					type: "http",
+					url: "https://mcp.sentry.dev/mcp",
 				},
-			],
-			"flat@market": [
+			},
+			projects:
+			{
+				[projectPath]:
 				{
-					scope: "user",
-					installPath: flatPluginPath,
-					version: "2.0.0",
-					installedAt: "2026-09-01T00:00:00.000Z",
-					lastUpdated: "2026-09-01T00:00:00.000Z",
+					hasTrustDialogAccepted: true,
+					lastCost: 1.5,
+					mcpServers:
+					{
+						render:
+						{
+							type: "http",
+							url: "https://mcp.render.com/mcp",
+							headers:
+							{
+								Authorization: SECRET_HEADER,
+							},
+						},
+						scratch:
+						{
+							command: "scratch-mcp",
+						},
+					},
+					disabledMcpServers: ["scratch"],
+					enabledMcpjsonServers: ["approved"],
+					disabledMcpjsonServers: ["rejected"],
 				},
-			],
-		},
-	});
-
-	writeJson(join(pluginPath, ".mcp.json"), {
-		mcpServers: {
-			docs: {
-				type: "http",
-				url: "https://docs.example.com/mcp",
-				headers: {"X-Api-Key": SECRET_PLUGIN_HEADER},
-				timeout: 60000,
-				tool_timeout_sec: 60,
+				[otherProjectPath]:
+				{
+					allowedTools: [],
+				},
 			},
 		},
-	});
+	);
 
-	writeJson(join(flatPluginPath, ".mcp.json"), {
-		browser: {command: "npx", args: ["browser-mcp@latest"]},
-	});
+	writeJson(
+		join(projectPath, ".mcp.json"),
+		{
+			mcpServers:
+			{
+				approved:
+				{
+					type: "sse",
+					url: "https://example.com/sse",
+				},
+				rejected:
+				{
+					command: "node",
+					args: ["server.js"],
+					cwd: "tools",
+				},
+				pending:
+				{
+					command: "pending-mcp",
+				},
+			},
+		},
+	);
+
+	writeJson(
+		join(claudeDir, "settings.json"),
+		{
+			enabledPlugins:
+			{
+				"docs@market": true,
+				"flat@market": false,
+			},
+		},
+	);
+
+	writeJson(
+		join(claudeDir, "plugins", "installed_plugins.json"),
+		{
+			version: 2,
+			plugins:
+			{
+				"docs@market": [
+					{
+						scope: "user",
+						installPath: pluginPath,
+						version: "1.0.0",
+						installedAt: "2026-09-01T00:00:00.000Z",
+						lastUpdated: "2026-09-01T00:00:00.000Z",
+					},
+				],
+				"flat@market": [
+					{
+						scope: "user",
+						installPath: flatPluginPath,
+						version: "2.0.0",
+						installedAt: "2026-09-01T00:00:00.000Z",
+						lastUpdated: "2026-09-01T00:00:00.000Z",
+					},
+				],
+			},
+		},
+	);
+
+	writeJson(
+		join(pluginPath, ".mcp.json"),
+		{
+			mcpServers:
+			{
+				docs:
+				{
+					type: "http",
+					url: "https://docs.example.com/mcp",
+					headers:
+					{
+						"X-Api-Key": SECRET_PLUGIN_HEADER,
+					},
+					timeout: 60000,
+					tool_timeout_sec: 60,
+				},
+			},
+		},
+	);
+
+	writeJson(
+		join(flatPluginPath, ".mcp.json"),
+		{
+			browser:
+			{
+				command: "npx",
+				args: ["browser-mcp@latest"],
+			},
+		},
+	);
 }
 
-describe("listMcpServers", () => {
-	it("inventories user, local, project, and plugin servers", async () => {
+describe("listMcpServers", () =>
+{
+	it("inventories user, local, project, and plugin servers", async () =>
+	{
 		writeFixtures();
 
-		const servers = await listMcpServers({claudeDir, claudeJsonPath});
+		const servers = await listMcpServers(
+			{
+				claudeDir,
+				claudeJsonPath,
+			},
+		);
 
 		expect(servers).toStrictEqual([
 			{
@@ -240,10 +337,18 @@ describe("listMcpServers", () => {
 		expect(McpServerListResponse.parse(servers)).toStrictEqual(servers);
 	});
 
-	it("never serializes env or header values", async () => {
+	it("never serializes env or header values", async () =>
+	{
 		writeFixtures();
 
-		const serialized = JSON.stringify(await listMcpServers({claudeDir, claudeJsonPath}));
+		const serialized = JSON.stringify(
+			await listMcpServers(
+				{
+					claudeDir,
+					claudeJsonPath,
+				},
+			),
+		);
 
 		expect([
 			serialized.includes(SECRET_ENV),
@@ -252,12 +357,44 @@ describe("listMcpServers", () => {
 		]).toStrictEqual([false, false, false]);
 	});
 
-	it("enables every project server when enableAllProjectMcpServers is set", async () => {
-		writeJson(claudeJsonPath, {projects: {[projectPath]: {}}});
-		writeJson(join(projectPath, ".mcp.json"), {mcpServers: {any: {command: "any-mcp"}}});
-		writeJson(join(claudeDir, "settings.json"), {enableAllProjectMcpServers: true});
+	it("enables every project server when enableAllProjectMcpServers is set", async () =>
+	{
+		writeJson(
+			claudeJsonPath,
+			{
+				projects:
+				{
+					[projectPath]: {},
+				},
+			},
+		);
+		writeJson(
+			join(projectPath, ".mcp.json"),
+			{
+				mcpServers:
+				{
+					any:
+					{
+						command: "any-mcp",
+					},
+				},
+			},
+		);
+		writeJson(
+			join(claudeDir, "settings.json"),
+			{
+				enableAllProjectMcpServers: true,
+			},
+		);
 
-		expect(await listMcpServers({claudeDir, claudeJsonPath})).toStrictEqual([
+		expect(
+			await listMcpServers(
+				{
+					claudeDir,
+					claudeJsonPath,
+				},
+			),
+		).toStrictEqual([
 			{
 				id: `project:${projectPath}:any`,
 				name: "any",
@@ -273,15 +410,34 @@ describe("listMcpServers", () => {
 		]);
 	});
 
-	it("flags the servers the CLI's mcp-needs-auth-cache.json names, keying plugin servers by plugin name", async () => {
+	it("flags the servers the CLI's mcp-needs-auth-cache.json names, keying plugin servers by plugin name", async () =>
+	{
 		writeFixtures();
-		writeJson(join(claudeDir, "mcp-needs-auth-cache.json"), {
-			sentry: {timestamp: 1_790_000_000_000},
-			"plugin:docs:docs": {timestamp: 1_790_000_000_000, id: "mcpsrv_alice"},
-			"claude.ai Zapier": {timestamp: 1_790_000_000_000},
-		});
+		writeJson(
+			join(claudeDir, "mcp-needs-auth-cache.json"),
+			{
+				sentry:
+				{
+					timestamp: 1_790_000_000_000,
+				},
+				"plugin:docs:docs":
+				{
+					timestamp: 1_790_000_000_000,
+					id: "mcpsrv_alice",
+				},
+				"claude.ai Zapier":
+				{
+					timestamp: 1_790_000_000_000,
+				},
+			},
+		);
 
-		const servers = await listMcpServers({claudeDir, claudeJsonPath});
+		const servers = await listMcpServers(
+			{
+				claudeDir,
+				claudeJsonPath,
+			},
+		);
 
 		expect(servers.map((server) => [server.id, server.needsAuth])).toStrictEqual([
 			["user:mail", false],
@@ -296,16 +452,47 @@ describe("listMcpServers", () => {
 		]);
 	});
 
-	it("ignores a malformed needs-auth cache", async () => {
-		writeJson(claudeJsonPath, {mcpServers: {sentry: {type: "http", url: "https://mcp.sentry.dev/mcp"}}});
-		writeJson(join(claudeDir, "mcp-needs-auth-cache.json"), {sentry: true});
+	it("ignores a malformed needs-auth cache", async () =>
+	{
+		writeJson(
+			claudeJsonPath,
+			{
+				mcpServers:
+				{
+					sentry:
+					{
+						type: "http",
+						url: "https://mcp.sentry.dev/mcp",
+					},
+				},
+			},
+		);
+		writeJson(
+			join(claudeDir, "mcp-needs-auth-cache.json"),
+			{
+				sentry: true,
+			},
+		);
 
-		const servers = await listMcpServers({claudeDir, claudeJsonPath});
+		const servers = await listMcpServers(
+			{
+				claudeDir,
+				claudeJsonPath,
+			},
+		);
 
 		expect(servers.map((server) => [server.id, server.needsAuth])).toStrictEqual([["user:sentry", false]]);
 	});
 
-	it("returns an empty list when nothing is configured", async () => {
-		expect(await listMcpServers({claudeDir, claudeJsonPath})).toStrictEqual([]);
+	it("returns an empty list when nothing is configured", async () =>
+	{
+		expect(
+			await listMcpServers(
+				{
+					claudeDir,
+					claudeJsonPath,
+				},
+			),
+		).toStrictEqual([]);
 	});
 });

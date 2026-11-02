@@ -2,7 +2,8 @@ import {mkdirSync, rmSync, utimesSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {
+import
+{
 	blanketChoice,
 	claudeAiConnectors,
 	fromConnectorSlug,
@@ -21,21 +22,39 @@ import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {indexJsonlFile} from "../src/lib/db/indexer";
 import {listMcpToolNames} from "../src/lib/db/queries";
 
-describe("mcpServerKey", () => {
-	it("normalizes names the way the CLI prefixes tool names", () => {
+describe("mcpServerKey", () =>
+{
+	it("normalizes names the way the CLI prefixes tool names", () =>
+	{
 		expect([
-			mcpServerKey({id: "user:imcp", name: "imcp", scope: "user"}),
-			mcpServerKey({id: "user:my.server", name: "my.server", scope: "user"}),
-			mcpServerKey({
-				id: "plugin:playwright@claude-plugins-official:playwright",
-				name: "playwright",
-				scope: "plugin",
-			}),
-			mcpServerKey({
-				id: "plugin:chrome-devtools-mcp@official:chrome-devtools",
-				name: "chrome-devtools",
-				scope: "plugin",
-			}),
+			mcpServerKey(
+				{
+					id: "user:imcp",
+					name: "imcp",
+					scope: "user",
+				},
+			),
+			mcpServerKey(
+				{
+					id: "user:my.server",
+					name: "my.server",
+					scope: "user",
+				},
+			),
+			mcpServerKey(
+				{
+					id: "plugin:playwright@claude-plugins-official:playwright",
+					name: "playwright",
+					scope: "plugin",
+				},
+			),
+			mcpServerKey(
+				{
+					id: "plugin:chrome-devtools-mcp@official:chrome-devtools",
+					name: "chrome-devtools",
+					scope: "plugin",
+				},
+			),
 		]).toStrictEqual([
 			"imcp",
 			"my_server",
@@ -45,24 +64,34 @@ describe("mcpServerKey", () => {
 	});
 });
 
-describe("parseMcpToolName", () => {
-	it("splits server key and tool, rejecting non-MCP names", () => {
+describe("parseMcpToolName", () =>
+{
+	it("splits server key and tool, rejecting non-MCP names", () =>
+	{
 		expect([
 			parseMcpToolName("mcp__imcp__contacts_search"),
 			parseMcpToolName("mcp__claude_ai_Gmail__search_threads"),
 			parseMcpToolName("mcp__imcp"),
 			parseMcpToolName("Bash"),
 		]).toStrictEqual([
-			{serverKey: "imcp", tool: "contacts_search"},
-			{serverKey: "claude_ai_Gmail", tool: "search_threads"},
+			{
+				serverKey: "imcp",
+				tool: "contacts_search",
+			},
+			{
+				serverKey: "claude_ai_Gmail",
+				tool: "search_threads",
+			},
 			null,
 			null,
 		]);
 	});
 });
 
-describe("mcpToolsForServer", () => {
-	it("returns the distinct sorted tool names seen for one server, ignoring wildcards", () => {
+describe("mcpToolsForServer", () =>
+{
+	it("returns the distinct sorted tool names seen for one server, ignoring wildcards", () =>
+	{
 		expect(
 			mcpToolsForServer(
 				[
@@ -80,47 +109,149 @@ describe("mcpToolsForServer", () => {
 	});
 });
 
-describe("resolveToolPermission", () => {
-	it("returns no rule when nothing matches", () => {
-		expect(resolveToolPermission({allow: ["mcp__other"]}, "srv", "read")).toStrictEqual({
-			behavior: null,
-			rule: null,
-		});
+describe("resolveToolPermission", () =>
+{
+	it("returns no rule when nothing matches", () =>
+	{
+		expect(
+			resolveToolPermission(
+				{
+					allow: ["mcp__other"],
+				},
+				"srv",
+				"read",
+			),
+		).toStrictEqual(
+			{
+				behavior: null,
+				rule: null,
+			},
+		);
 	});
 
-	it("matches the server-wide rule, the wildcard rule and the tool-specific rule", () => {
+	it("matches the server-wide rule, the wildcard rule and the tool-specific rule", () =>
+	{
 		expect([
-			resolveToolPermission({allow: ["mcp__srv"]}, "srv", "read"),
-			resolveToolPermission({allow: ["mcp__srv__*"]}, "srv", "read"),
-			resolveToolPermission({allow: ["mcp__srv__read"]}, "srv", "read"),
-			resolveToolPermission({allow: ["mcp__srv__write"]}, "srv", "read"),
-			resolveToolPermission({allow: ["mcp__srvx"]}, "srv", "read"),
+			resolveToolPermission(
+				{
+					allow: ["mcp__srv"],
+				},
+				"srv",
+				"read",
+			),
+			resolveToolPermission(
+				{
+					allow: ["mcp__srv__*"],
+				},
+				"srv",
+				"read",
+			),
+			resolveToolPermission(
+				{
+					allow: ["mcp__srv__read"],
+				},
+				"srv",
+				"read",
+			),
+			resolveToolPermission(
+				{
+					allow: ["mcp__srv__write"],
+				},
+				"srv",
+				"read",
+			),
+			resolveToolPermission(
+				{
+					allow: ["mcp__srvx"],
+				},
+				"srv",
+				"read",
+			),
 		]).toStrictEqual([
-			{behavior: "allow", rule: "mcp__srv"},
-			{behavior: "allow", rule: "mcp__srv__*"},
-			{behavior: "allow", rule: "mcp__srv__read"},
-			{behavior: null, rule: null},
-			{behavior: null, rule: null},
+			{
+				behavior: "allow",
+				rule: "mcp__srv",
+			},
+			{
+				behavior: "allow",
+				rule: "mcp__srv__*",
+			},
+			{
+				behavior: "allow",
+				rule: "mcp__srv__read",
+			},
+			{
+				behavior: null,
+				rule: null,
+			},
+			{
+				behavior: null,
+				rule: null,
+			},
 		]);
 	});
 
-	it("applies deny over ask over allow regardless of specificity", () => {
+	it("applies deny over ask over allow regardless of specificity", () =>
+	{
 		expect([
-			resolveToolPermission({allow: ["mcp__srv__read"], ask: ["mcp__srv"], deny: ["mcp__srv__*"]}, "srv", "read"),
-			resolveToolPermission({allow: ["mcp__srv__read"], ask: ["mcp__srv"]}, "srv", "read"),
-			resolveToolPermission({allow: ["mcp__srv"], deny: ["mcp__srv__read"]}, "srv", "read"),
-			resolveToolPermission({allow: ["mcp__srv"], ask: ["mcp__srv__read"]}, "srv", "read"),
+			resolveToolPermission(
+				{
+					allow: ["mcp__srv__read"],
+					ask: ["mcp__srv"],
+					deny: ["mcp__srv__*"],
+				},
+				"srv",
+				"read",
+			),
+			resolveToolPermission(
+				{
+					allow: ["mcp__srv__read"],
+					ask: ["mcp__srv"],
+				},
+				"srv",
+				"read",
+			),
+			resolveToolPermission(
+				{
+					allow: ["mcp__srv"],
+					deny: ["mcp__srv__read"],
+				},
+				"srv",
+				"read",
+			),
+			resolveToolPermission(
+				{
+					allow: ["mcp__srv"],
+					ask: ["mcp__srv__read"],
+				},
+				"srv",
+				"read",
+			),
 		]).toStrictEqual([
-			{behavior: "deny", rule: "mcp__srv__*"},
-			{behavior: "ask", rule: "mcp__srv"},
-			{behavior: "deny", rule: "mcp__srv__read"},
-			{behavior: "ask", rule: "mcp__srv__read"},
+			{
+				behavior: "deny",
+				rule: "mcp__srv__*",
+			},
+			{
+				behavior: "ask",
+				rule: "mcp__srv",
+			},
+			{
+				behavior: "deny",
+				rule: "mcp__srv__read",
+			},
+			{
+				behavior: "ask",
+				rule: "mcp__srv__read",
+			},
 		]);
 	});
 });
 
-describe("toolPermissionChoice", () => {
-	it("maps rule behaviors to the three segmented choices", () => {
+describe("toolPermissionChoice", () =>
+{
+	it("maps rule behaviors to the three segmented choices", () =>
+	{
 		expect([
 			toolPermissionChoice("allow"),
 			toolPermissionChoice("ask"),
@@ -130,8 +261,10 @@ describe("toolPermissionChoice", () => {
 	});
 });
 
-describe("blanketChoice", () => {
-	it("is the shared choice, or custom when members differ", () => {
+describe("blanketChoice", () =>
+{
+	it("is the shared choice, or custom when members differ", () =>
+	{
 		expect([
 			blanketChoice(["allow", "allow"]),
 			blanketChoice(["allow", "blocked"]),
@@ -140,8 +273,10 @@ describe("blanketChoice", () => {
 	});
 });
 
-describe("isReadOnlyToolName", () => {
-	it("classifies tools by their verbs", () => {
+describe("isReadOnlyToolName", () =>
+{
+	it("classifies tools by their verbs", () =>
+	{
 		expect(
 			[
 				"get_deploy",
@@ -166,71 +301,178 @@ describe("isReadOnlyToolName", () => {
 	});
 });
 
-describe("setToolPermission", () => {
+describe("setToolPermission", () =>
+{
 	const tools = ["read", "write"];
 
-	it("adds a tool-specific rule and drops the tool's old rules", () => {
+	it("adds a tool-specific rule and drops the tool's old rules", () =>
+	{
 		expect(
-			setToolPermission({allow: ["Bash(ls)", "mcp__srv__read"], deny: []}, "srv", tools, "read", "blocked"),
-		).toStrictEqual({allow: ["Bash(ls)"], ask: [], deny: ["mcp__srv__read"]});
+			setToolPermission(
+				{
+					allow: ["Bash(ls)", "mcp__srv__read"],
+					deny: [],
+				},
+				"srv",
+				tools,
+				"read",
+				"blocked",
+			),
+		).toStrictEqual(
+			{
+				allow: ["Bash(ls)"],
+				ask: [],
+				deny: ["mcp__srv__read"],
+			},
+		);
 	});
 
-	it("uses no rule for Needs approval when nothing else applies", () => {
-		expect(setToolPermission({allow: ["mcp__srv__read"]}, "srv", tools, "read", "ask")).toStrictEqual({
-			allow: [],
-			ask: [],
-			deny: [],
-		});
-	});
-
-	it("adds an ask rule to override a server-wide allow", () => {
-		expect(setToolPermission({allow: ["mcp__srv__*"]}, "srv", tools, "read", "ask")).toStrictEqual({
-			allow: ["mcp__srv__*"],
-			ask: ["mcp__srv__read"],
-			deny: [],
-		});
-	});
-
-	it("expands a dominating server-wide rule into per-tool rules", () => {
-		expect(setToolPermission({deny: ["mcp__srv"], allow: ["Read"]}, "srv", tools, "read", "allow")).toStrictEqual({
-			allow: ["Read", "mcp__srv__read"],
-			ask: [],
-			deny: ["mcp__srv__write"],
-		});
-	});
-
-	it("does not duplicate an existing rule", () => {
+	it("uses no rule for Needs approval when nothing else applies", () =>
+	{
 		expect(
-			setToolPermission({allow: ["mcp__srv__read", "mcp__srv__read"]}, "srv", tools, "read", "allow"),
-		).toStrictEqual({allow: ["mcp__srv__read"], ask: [], deny: []});
+			setToolPermission(
+				{
+					allow: ["mcp__srv__read"],
+				},
+				"srv",
+				tools,
+				"read",
+				"ask",
+			),
+		).toStrictEqual(
+			{
+				allow: [],
+				ask: [],
+				deny: [],
+			},
+		);
+	});
+
+	it("adds an ask rule to override a server-wide allow", () =>
+	{
+		expect(
+			setToolPermission(
+				{
+					allow: ["mcp__srv__*"],
+				},
+				"srv",
+				tools,
+				"read",
+				"ask",
+			),
+		).toStrictEqual(
+			{
+				allow: ["mcp__srv__*"],
+				ask: ["mcp__srv__read"],
+				deny: [],
+			},
+		);
+	});
+
+	it("expands a dominating server-wide rule into per-tool rules", () =>
+	{
+		expect(
+			setToolPermission(
+				{
+					deny: ["mcp__srv"],
+					allow: ["Read"],
+				},
+				"srv",
+				tools,
+				"read",
+				"allow",
+			),
+		).toStrictEqual(
+			{
+				allow: ["Read", "mcp__srv__read"],
+				ask: [],
+				deny: ["mcp__srv__write"],
+			},
+		);
+	});
+
+	it("does not duplicate an existing rule", () =>
+	{
+		expect(
+			setToolPermission(
+				{
+					allow: ["mcp__srv__read", "mcp__srv__read"],
+				},
+				"srv",
+				tools,
+				"read",
+				"allow",
+			),
+		).toStrictEqual(
+			{
+				allow: ["mcp__srv__read"],
+				ask: [],
+				deny: [],
+			},
+		);
 	});
 });
 
-describe("mergePermissionRules", () => {
-	it("replaces the rule lists, keeps other keys, and omits empty lists that were absent", () => {
+describe("mergePermissionRules", () =>
+{
+	it("replaces the rule lists, keeps other keys, and omits empty lists that were absent", () =>
+	{
 		expect(
 			mergePermissionRules(
 				{
 					model: "opus",
-					permissions: {allow: ["Read"], deny: ["mcp__srv"], defaultMode: "plan"},
+					permissions:
+					{
+						allow: ["Read"],
+						deny: ["mcp__srv"],
+						defaultMode: "plan",
+					},
 				},
-				{allow: ["Read", "mcp__srv__read"], ask: [], deny: []},
+				{
+					allow: ["Read", "mcp__srv__read"],
+					ask: [],
+					deny: [],
+				},
 			),
-		).toStrictEqual({
-			model: "opus",
-			permissions: {allow: ["Read", "mcp__srv__read"], deny: [], defaultMode: "plan"},
-		});
+		).toStrictEqual(
+			{
+				model: "opus",
+				permissions:
+				{
+					allow: ["Read", "mcp__srv__read"],
+					deny: [],
+					defaultMode: "plan",
+				},
+			},
+		);
 	});
 
-	it("creates the permissions object when settings have none", () => {
-		expect(mergePermissionRules({}, {allow: [], ask: [], deny: ["mcp__srv__x"]})).toStrictEqual({
-			permissions: {deny: ["mcp__srv__x"]},
-		});
+	it("creates the permissions object when settings have none", () =>
+	{
+		expect(
+			mergePermissionRules(
+				{},
+				{
+					allow: [],
+					ask: [],
+					deny: ["mcp__srv__x"],
+				},
+			),
+		).toStrictEqual(
+			{
+				permissions:
+				{
+					deny: ["mcp__srv__x"],
+				},
+			},
+		);
 	});
 });
 
-describe("claudeAiConnectors", () => {
-	it("lists claude.ai connectors from tool names and rules with readable names", () => {
+describe("claudeAiConnectors", () =>
+{
+	it("lists claude.ai connectors from tool names and rules with readable names", () =>
+	{
 		expect(
 			claudeAiConnectors([
 				"mcp__claude_ai_Gmail__search_threads",
@@ -239,43 +481,76 @@ describe("claudeAiConnectors", () => {
 				"mcp__imcp__contacts_search",
 			]),
 		).toStrictEqual([
-			{key: "claude_ai_Gmail", name: "Gmail", tools: ["get_thread", "search_threads"]},
-			{key: "claude_ai_Google_Calendar", name: "Google Calendar", tools: ["list_events"]},
+			{
+				key: "claude_ai_Gmail",
+				name: "Gmail",
+				tools: ["get_thread", "search_threads"],
+			},
+			{
+				key: "claude_ai_Google_Calendar",
+				name: "Google Calendar",
+				tools: ["list_events"],
+			},
 		]);
 	});
 });
 
-describe("connector slugs", () => {
-	it("round-trips ids holding paths, dots and colons without dots or slashes", () => {
+describe("connector slugs", () =>
+{
+	it("round-trips ids holding paths, dots and colons without dots or slashes", () =>
+	{
 		const id = "local:/Users/test/my.app:server";
 		const slug = toConnectorSlug(id);
-		expect({hasUnsafe: /[./:]/.test(slug), back: fromConnectorSlug(slug)}).toStrictEqual({
-			hasUnsafe: false,
-			back: id,
-		});
+		expect(
+			{
+				hasUnsafe: /[./:]/.test(slug),
+				back: fromConnectorSlug(slug),
+			},
+		).toStrictEqual(
+			{
+				hasUnsafe: false,
+				back: id,
+			},
+		);
 	});
 
-	it("returns null for a malformed slug", () => {
+	it("returns null for a malformed slug", () =>
+	{
 		expect(fromConnectorSlug("!!")).toBeNull();
 	});
 });
 
-describe("MCP tool extraction from transcripts", () => {
+describe("MCP tool extraction from transcripts", () =>
+{
 	const testDir = join(tmpdir(), `claude-mcp-tools-test-${process.pid}`);
 	const projectId = "-Users-test-app";
 	let appDb: AppDb;
 
-	beforeEach(() => {
-		mkdirSync(join(testDir, projectId), {recursive: true});
+	beforeEach(() =>
+	{
+		mkdirSync(
+			join(testDir, projectId),
+			{
+				recursive: true,
+			},
+		);
 		appDb = openTestDb();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		appDb.close();
-		rmSync(testDir, {recursive: true, force: true});
+		rmSync(
+			testDir,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	function assistant(uuid: string, names: string[]) {
+	function assistant(uuid: string, names: string[])
+	{
 		return {
 			type: "assistant",
 			uuid,
@@ -283,9 +558,11 @@ describe("MCP tool extraction from transcripts", () => {
 			sessionId: "s",
 			timestamp: "2026-09-01T00:00:00.000Z",
 			cwd: "/Users/test/app",
-			message: {
+			message:
+			{
 				role: "assistant",
-				content: names.map((name, index) => ({
+				content: names.map((name, index) => (
+				{
 					type: "tool_use",
 					id: `toolu_${uuid}_${index}`,
 					name,
@@ -295,9 +572,11 @@ describe("MCP tool extraction from transcripts", () => {
 		};
 	}
 
-	it("indexes the distinct mcp__ tool_use names across sessions", async () => {
+	it("indexes the distinct mcp__ tool_use names across sessions", async () =>
+	{
 		let mtime = Date.parse("2026-09-01T00:00:00Z");
-		const write = (sessionId: string, records: unknown[]) => {
+		const write = (sessionId: string, records: unknown[]) =>
+		{
 			const path = join(testDir, projectId, `${sessionId}.jsonl`);
 			writeFileSync(path, records.map((record) => JSON.stringify(record)).join("\n") + "\n");
 			mtime += 1000;
@@ -333,90 +612,133 @@ describe("MCP tool extraction from transcripts", () => {
 	});
 });
 
-describe("readMcpServerDetail", () => {
+describe("readMcpServerDetail", () =>
+{
 	let root: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		root = join(tmpdir(), `claude-mcp-detail-test-${process.pid}`);
-		mkdirSync(join(root, "claude"), {recursive: true});
+		mkdirSync(
+			join(root, "claude"),
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(root, ".claude.json"),
-			JSON.stringify({
-				mcpServers: {
-					render: {
-						type: "http",
-						url: "https://mcp.render.com/mcp",
-						headers: {Authorization: "Bearer secret-header-value"},
+			JSON.stringify(
+				{
+					mcpServers:
+					{
+						render:
+						{
+							type: "http",
+							url: "https://mcp.render.com/mcp",
+							headers:
+							{
+								Authorization: "Bearer secret-header-value",
+							},
+						},
 					},
 				},
-			}),
+			),
 		);
 		writeFileSync(
 			join(root, "claude", "settings.json"),
-			JSON.stringify({
-				permissions: {
-					allow: ["mcp__render__*", "mcp__render__update_service"],
-					deny: ["mcp__render__delete_service"],
+			JSON.stringify(
+				{
+					permissions:
+					{
+						allow: ["mcp__render__*", "mcp__render__update_service"],
+						deny: ["mcp__render__delete_service"],
+					},
 				},
-			}),
+			),
 		);
 	});
 
-	afterEach(() => {
-		rmSync(root, {recursive: true, force: true});
-	});
-
-	it("merges seen tool names with rule-named tools and resolves each tool's state", async () => {
-		const detail = await readMcpServerDetail("user:render", {
-			claudeDir: join(root, "claude"),
-			claudeJsonPath: join(root, ".claude.json"),
-			toolNames: ["mcp__render__list_services", "mcp__imcp__contacts_search"],
-		});
-
-		expect({
-			detail,
-			leaked: JSON.stringify(detail).includes("secret-header-value"),
-		}).toStrictEqual({
-			detail: {
-				server: {
-					id: "user:render",
-					name: "render",
-					scope: "user",
-					transport: "http",
-					urlOrCommand: "https://mcp.render.com/mcp",
-					enabled: true,
-					envKeys: [],
-					headerKeys: ["Authorization"],
-					needsAuth: false,
-				},
-				serverKey: "render",
-				tools: [
-					{
-						name: "delete_service",
-						behavior: "deny",
-						rule: "mcp__render__delete_service",
-						readOnly: false,
-					},
-					{name: "list_services", behavior: "allow", rule: "mcp__render__*", readOnly: true},
-					{
-						name: "update_service",
-						behavior: "allow",
-						rule: "mcp__render__*",
-						readOnly: false,
-					},
-				],
+	afterEach(() =>
+	{
+		rmSync(
+			root,
+			{
+				recursive: true,
+				force: true,
 			},
-			leaked: false,
-		});
+		);
 	});
 
-	it("returns null for an unknown server id", async () => {
-		expect(
-			await readMcpServerDetail("user:missing", {
+	it("merges seen tool names with rule-named tools and resolves each tool's state", async () =>
+	{
+		const detail = await readMcpServerDetail(
+			"user:render",
+			{
 				claudeDir: join(root, "claude"),
 				claudeJsonPath: join(root, ".claude.json"),
-				toolNames: [],
-			}),
+				toolNames: ["mcp__render__list_services", "mcp__imcp__contacts_search"],
+			},
+		);
+
+		expect(
+			{
+				detail,
+				leaked: JSON.stringify(detail).includes("secret-header-value"),
+			},
+		).toStrictEqual(
+			{
+				detail:
+				{
+					server:
+					{
+						id: "user:render",
+						name: "render",
+						scope: "user",
+						transport: "http",
+						urlOrCommand: "https://mcp.render.com/mcp",
+						enabled: true,
+						envKeys: [],
+						headerKeys: ["Authorization"],
+						needsAuth: false,
+					},
+					serverKey: "render",
+					tools: [
+						{
+							name: "delete_service",
+							behavior: "deny",
+							rule: "mcp__render__delete_service",
+							readOnly: false,
+						},
+						{
+							name: "list_services",
+							behavior: "allow",
+							rule: "mcp__render__*",
+							readOnly: true,
+						},
+						{
+							name: "update_service",
+							behavior: "allow",
+							rule: "mcp__render__*",
+							readOnly: false,
+						},
+					],
+				},
+				leaked: false,
+			},
+		);
+	});
+
+	it("returns null for an unknown server id", async () =>
+	{
+		expect(
+			await readMcpServerDetail(
+				"user:missing",
+				{
+					claudeDir: join(root, "claude"),
+					claudeJsonPath: join(root, ".claude.json"),
+					toolNames: [],
+				},
+			),
 		).toBeNull();
 	});
 });

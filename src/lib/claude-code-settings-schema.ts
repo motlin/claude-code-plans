@@ -20,17 +20,21 @@ export const CLAUDE_CODE_SETTING_KEYS = [
 
 export type ClaudeCodeSettingKey = (typeof CLAUDE_CODE_SETTING_KEYS)[number];
 
-export const ClaudeCodeSettingsStateSchema = z.strictObject({
-	mtimeMs: z.number().nullable(),
-	values: z.partialRecord(z.enum(CLAUDE_CODE_SETTING_KEYS), z.union([z.string(), z.boolean()])),
-	/** Present when `permissions.disableBypassPermissionsMode` is "disable", which locks the bypass row. */
-	bypassPermissionsModeDisabled: z.literal(true).optional(),
-});
+export const ClaudeCodeSettingsStateSchema = z.strictObject(
+	{
+		mtimeMs: z.number().nullable(),
+		values: z.partialRecord(z.enum(CLAUDE_CODE_SETTING_KEYS), z.union([z.string(), z.boolean()])),
+		/** Present when `permissions.disableBypassPermissionsMode` is "disable", which locks the bypass row. */
+		bypassPermissionsModeDisabled: z.literal(true).optional(),
+	},
+);
 export type ClaudeCodeSettingsState = z.infer<typeof ClaudeCodeSettingsStateSchema>;
 
 /** `value` omitted (undefined) deletes the key. */
-export const ClaudeCodeSettingPatchSchema = z.strictObject({
-	key: z.enum(CLAUDE_CODE_SETTING_KEYS),
-	value: z.unknown().optional(),
-	expectedMtimeMs: z.number().nullable(),
-});
+export const ClaudeCodeSettingPatchSchema = z.strictObject(
+	{
+		key: z.enum(CLAUDE_CODE_SETTING_KEYS),
+		value: z.unknown().optional(),
+		expectedMtimeMs: z.number().nullable(),
+	},
+);

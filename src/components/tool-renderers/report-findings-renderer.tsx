@@ -7,12 +7,14 @@ import type {ToolRendererProps} from "./types";
 
 type ReportedFinding = z.infer<typeof ReportedFindingSchema>;
 
-const verdictSeverity = {
+const verdictSeverity =
+{
 	CONFIRMED: "high",
 	PLAUSIBLE: "medium",
 } satisfies Record<keyof typeof reportFindingsVerdictLabels, FindingCardProps["severity"]>;
 
-function cardProps(finding: ReportedFinding): FindingCardProps {
+function cardProps(finding: ReportedFinding): FindingCardProps
+{
 	const title = finding.short_summary ?? finding.summary;
 	const body =
 		finding.short_summary === undefined
@@ -29,7 +31,8 @@ function cardProps(finding: ReportedFinding): FindingCardProps {
 }
 
 /** ReportFindings body: one finding card per reported finding. */
-export function ReportFindingsRenderer({toolCall}: ToolRendererProps) {
+export function ReportFindingsRenderer({toolCall}: ToolRendererProps)
+{
 	const parsed = ReportFindingsInputSchema.safeParse(toolCall.input);
 	if (!parsed.success) return <FallbackRenderer toolCall={toolCall} />;
 

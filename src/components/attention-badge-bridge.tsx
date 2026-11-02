@@ -11,17 +11,22 @@ import {getCachedSessionIdentity} from "../lib/api/session-identity";
 import {sessionQueryKeys} from "../lib/api/sessions";
 import {eventQueryKey} from "../lib/query-cache-event";
 
-function viewedRouteId(router: ReturnType<typeof useRouter>): string | null {
+function viewedRouteId(router: ReturnType<typeof useRouter>): string | null
+{
 	const sessionMatch = router.state.matches.find((match) => match.routeId.startsWith("/session/$id"));
 	if (!sessionMatch || !("id" in sessionMatch.params)) return null;
 	const id = sessionMatch.params.id;
 	return typeof id === "string" ? id : null;
 }
 
-function setAppBadge(count: number): void {
-	if (count > 0 && typeof navigator.setAppBadge === "function") {
+function setAppBadge(count: number): void
+{
+	if (count > 0 && typeof navigator.setAppBadge === "function")
+	{
 		navigator.setAppBadge(count).catch(() => {});
-	} else if (count === 0 && typeof navigator.clearAppBadge === "function") {
+	}
+	else if (count === 0 && typeof navigator.clearAppBadge === "function")
+	{
 		navigator.clearAppBadge().catch(() => {});
 	}
 }
@@ -30,19 +35,29 @@ function setAppBadge(count: number): void {
  * Side-effect-only component that mirrors the live attention count to the Dock/app badge. The tab
  * title stays upstream's fixed "Claude Code": claude.ai/code never prefixes a "(N)" count.
  */
-export function AttentionBadgeBridge(): null {
+export function AttentionBadgeBridge(): null
+{
 	const {settings} = useSettings();
 	const subscribeSessionStates = useSubscribeSessionStates();
 	const router = useRouter();
 	const queryClient = useQueryClient();
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (typeof document === "undefined" || typeof navigator === "undefined") return undefined;
 
-		const activityStates = new Map<string, {state: ActivityState; archived: boolean}>();
+		const activityStates = new Map<
+			string,
+			{
+				state: ActivityState;
+				archived: boolean;
+			}
+		>();
 
-		const updateBadge = () => {
-			const sessions = Array.from(activityStates, ([sessionId, {state, archived}]) => ({
+		const updateBadge = () =>
+		{
+			const sessions = Array.from(activityStates, ([sessionId, {state, archived}]) => (
+			{
 				sessionId,
 				displayState: displayState(state, hasUnseenWork(sessionId)),
 				archived,
@@ -53,16 +68,21 @@ export function AttentionBadgeBridge(): null {
 		};
 
 		const unsubscribeUnseenWork = subscribeUnseenWork(updateBadge);
-		const unsubscribeSessionStates = subscribeSessionStates((session) => {
-			activityStates.set(session.sessionId, {
-				state: session.state,
-				archived: session.archived,
-			});
+		const unsubscribeSessionStates = subscribeSessionStates((session) =>
+		{
+			activityStates.set(
+				session.sessionId,
+				{
+					state: session.state,
+					archived: session.archived,
+				},
+			);
 			updateBadge();
 		});
 		const unsubscribeRouter = router.subscribe("onResolved", updateBadge);
 		const [sessionRoot, identityRoot] = sessionQueryKeys.identities();
-		const unsubscribeIdentity = queryClient.getQueryCache().subscribe((event) => {
+		const unsubscribeIdentity = queryClient.getQueryCache().subscribe((event) =>
+		{
 			if (event.type !== "added" && event.type !== "updated" && event.type !== "removed") return;
 			const key = eventQueryKey(event);
 			if (key[0] === sessionRoot && key[1] === identityRoot && key[2] === viewedRouteId(router)) updateBadge();
@@ -70,13 +90,15 @@ export function AttentionBadgeBridge(): null {
 		document.addEventListener("visibilitychange", updateBadge);
 		updateBadge();
 
-		return () => {
+		return () =>
+		{
 			unsubscribeSessionStates();
 			unsubscribeUnseenWork();
 			unsubscribeRouter();
 			unsubscribeIdentity();
 			document.removeEventListener("visibilitychange", updateBadge);
-			if (typeof navigator.clearAppBadge === "function") {
+			if (typeof navigator.clearAppBadge === "function")
+			{
 				navigator.clearAppBadge().catch(() => {});
 			}
 		};

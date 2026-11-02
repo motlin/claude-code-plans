@@ -1,6 +1,7 @@
 import {z} from "zod";
 
-import {
+import
+{
 	QuestionAnswerSchema,
 	type PendingQuestion,
 	type PendingQuestionItem,
@@ -12,20 +13,32 @@ import {herdrRequest, type HerdrResult} from "./client";
 import type {HerdrRequester} from "./panes";
 import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} from "./prompt";
 
-const HerdrQuestionSchema = z.strictObject({
-	sessionId: z.string().min(1),
-	toolUseId: z.string().min(1),
-	answers: z.array(QuestionAnswerSchema.nullable()).min(1),
-});
+const HerdrQuestionSchema = z.strictObject(
+	{
+		sessionId: z.string().min(1),
+		toolUseId: z.string().min(1),
+		answers: z.array(QuestionAnswerSchema.nullable()).min(1),
+	},
+);
 
-export type QuestionAnswerStep = {key: string} | {text: string};
+export type QuestionAnswerStep =
+	|
+	  {
+			key: string;
+	  }
+	|
+	  {
+			text: string;
+	  };
 
 /** Other text on one line: a newline typed into the dialog would press Enter. */
-function flattenOther(text: string | undefined): string {
+function flattenOther(text: string | undefined): string
+{
 	return (text ?? "").replace(/\s+/g, " ").trim();
 }
 
-function validSelection(question: PendingQuestionItem, answer: QuestionAnswer): boolean {
+function validSelection(question: PendingQuestionItem, answer: QuestionAnswer): boolean
+{
 	const {selected} = answer;
 	if (new Set(selected).size !== selected.length) return false;
 	if (selected.some((index) => index < 0 || index >= question.options.length)) return false;
@@ -33,8 +46,17 @@ function validSelection(question: PendingQuestionItem, answer: QuestionAnswer): 
 	return selected.length + (flattenOther(answer.other) === "" ? 0 : 1) <= 1;
 }
 
-function repeat(key: string, times: number): QuestionAnswerStep[] {
-	return Array.from({length: times}, () => ({key}));
+function repeat(key: string, times: number): QuestionAnswerStep[]
+{
+	return Array.from(
+		{
+			length: times,
+		},
+		() => (
+		{
+			key,
+		}),
+	);
 }
 
 /**
@@ -49,39 +71,98 @@ function repeat(key: string, times: number): QuestionAnswerStep[] {
 export function questionAnswerSteps(
 	questions: readonly PendingQuestionItem[],
 	answers: ReadonlyArray<QuestionAnswer | null>,
-): QuestionAnswerStep[] | null {
+): QuestionAnswerStep[] | null
+{
 	if (answers.length !== questions.length) return null;
 	const loneSingleSelect = questions.length === 1 && questions[0]?.multiSelect !== true;
 	const steps: QuestionAnswerStep[] = [];
-	for (const [index, question] of questions.entries()) {
+	for (const [index, question] of questions.entries())
+	{
 		const answer = answers[index] ?? null;
 		if (answer !== null && !validSelection(question, answer)) return null;
 		const optionCount = question.options.length;
 		const selected = answer?.selected ?? [];
 		const other = flattenOther(answer?.other);
-		if (question.multiSelect === true) {
-			steps.push(...selected.map((option) => ({key: String(option + 1)})));
-			if (other === "") {
+		if (question.multiSelect === true)
+		{
+			steps.push(
+				...selected.map((option) => (
+				{
+					key: String(option + 1),
+				})),
+			);
+			if (other === "")
+			{
 				steps.push(...repeat("down", optionCount + 1));
-			} else {
-				steps.push(...repeat("down", optionCount), {text: other}, {key: "down"});
 			}
-			steps.push({key: "enter"});
-		} else if (selected[0] !== undefined) {
-			steps.push({key: String(selected[0] + 1)});
-		} else if (other !== "") {
-			steps.push({key: String(optionCount + 1)}, {text: other}, {key: "enter"});
-		} else if (loneSingleSelect) {
-			return [{key: "esc"}];
-		} else {
-			steps.push({key: "tab"});
+			else
+			{
+				steps.push(
+					...repeat("down", optionCount),
+					{
+						text: other,
+					},
+					{
+						key: "down",
+					},
+				);
+			}
+			steps.push(
+				{
+					key: "enter",
+				},
+			);
+		}
+		else if (selected[0] !== undefined)
+		{
+			steps.push(
+				{
+					key: String(selected[0] + 1),
+				},
+			);
+		}
+		else if (other !== "")
+		{
+			steps.push(
+				{
+					key: String(optionCount + 1),
+				},
+				{
+					text: other,
+				},
+				{
+					key: "enter",
+				},
+			);
+		}
+		else if (loneSingleSelect)
+		{
+			return [
+				{
+					key: "esc",
+				},
+			];
+		}
+		else
+		{
+			steps.push(
+				{
+					key: "tab",
+				},
+			);
 		}
 	}
-	if (!loneSingleSelect) steps.push({key: "1"});
+	if (!loneSingleSelect)
+		steps.push(
+			{
+				key: "1",
+			},
+		);
 	return steps;
 }
 
-export interface HerdrQuestionDependencies {
+export interface HerdrQuestionDependencies
+{
 	rejectRequest: (request: Request) => Response | null;
 	writesEnabled: () => boolean;
 	pendingQuestion: (sessionId: string) => PendingQuestion | null;
@@ -94,7 +175,8 @@ export interface HerdrQuestionDependencies {
 
 const STEP_PAUSE_MS = 80;
 
-export const defaultHerdrQuestionDependencies: HerdrQuestionDependencies = {
+export const defaultHerdrQuestionDependencies: HerdrQuestionDependencies =
+{
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
 	pendingQuestion: getPendingQuestion,
@@ -102,15 +184,40 @@ export const defaultHerdrQuestionDependencies: HerdrQuestionDependencies = {
 	request: herdrRequest,
 	createRequestId: () => `ccp:question:${crypto.randomUUID()}`,
 	pause: async () =>
-		new Promise((resolve) => {
+		new Promise((resolve) =>
+		{
 			setTimeout(resolve, STEP_PAUSE_MS);
 		}),
 };
 
-function stepCall(paneId: string, step: QuestionAnswerStep): {method: string; params: Record<string, unknown>} {
+function stepCall(
+	paneId: string,
+	step: QuestionAnswerStep,
+):
+{
+	method: string;
+	params: Record<string, unknown>;
+}
+{
 	return "key" in step
-		? {method: "agent.send_keys", params: {target: paneId, keys: [step.key]}}
-		: {method: "pane.send_text", params: {pane_id: paneId, text: step.text}};
+		?
+			{
+				method: "agent.send_keys",
+				params:
+				{
+					target: paneId,
+					keys: [step.key],
+				},
+			}
+		:
+			{
+				method: "pane.send_text",
+				params:
+				{
+					pane_id: paneId,
+					text: step.text,
+				},
+			};
 }
 
 /** Sessions whose answer keys are still being typed into the pane. */
@@ -126,52 +233,116 @@ const sessionsTyping = new Set<string>();
 export async function handleHerdrQuestion(
 	request: Request,
 	dependencies: HerdrQuestionDependencies = defaultHerdrQuestionDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;
 
-	if (!dependencies.writesEnabled()) {
-		return Response.json({error: "herdr writes are disabled"}, {status: 403});
+	if (!dependencies.writesEnabled())
+	{
+		return Response.json(
+			{
+				error: "herdr writes are disabled",
+			},
+			{
+				status: 403,
+			},
+		);
 	}
 
 	const parsed = HerdrQuestionSchema.safeParse(await request.json());
-	if (!parsed.success) {
-		return Response.json({error: "sessionId, toolUseId and one answer per question are required"}, {status: 400});
+	if (!parsed.success)
+	{
+		return Response.json(
+			{
+				error: "sessionId, toolUseId and one answer per question are required",
+			},
+			{
+				status: 400,
+			},
+		);
 	}
 	const {sessionId, toolUseId, answers} = parsed.data;
 
 	const pending = dependencies.pendingQuestion(sessionId);
-	if (pending?.toolUseId !== toolUseId) {
-		return Response.json({error: "That question is no longer pending"}, {status: 409});
+	if (pending?.toolUseId !== toolUseId)
+	{
+		return Response.json(
+			{
+				error: "That question is no longer pending",
+			},
+			{
+				status: 409,
+			},
+		);
 	}
 	const steps = questionAnswerSteps(pending.questions, answers);
-	if (steps === null) {
-		return Response.json({error: "The answers do not fit the pending question"}, {status: 400});
+	if (steps === null)
+	{
+		return Response.json(
+			{
+				error: "The answers do not fit the pending question",
+			},
+			{
+				status: 400,
+			},
+		);
 	}
 
-	if (sessionsTyping.has(sessionId)) {
-		return Response.json({error: "An answer is already being typed into this session"}, {status: 409});
+	if (sessionsTyping.has(sessionId))
+	{
+		return Response.json(
+			{
+				error: "An answer is already being typed into this session",
+			},
+			{
+				status: 409,
+			},
+		);
 	}
 	sessionsTyping.add(sessionId);
-	try {
+	try
+	{
 		const target = await dependencies.resolveTarget(sessionId);
-		if (!target.ok) return Response.json({error: target.message}, {status: 502});
+		if (!target.ok)
+			return Response.json(
+				{
+					error: target.message,
+				},
+				{
+					status: 502,
+				},
+			);
 
-		for (const [index, step] of steps.entries()) {
+		for (const [index, step] of steps.entries())
+		{
 			if (index > 0) await dependencies.pause();
-			const response = await dependencies.request({
-				id: dependencies.createRequestId(),
-				...stepCall(target.value.paneId, step),
-			});
-			if (!response.ok) {
+			const response = await dependencies.request(
+				{
+					id: dependencies.createRequestId(),
+					...stepCall(target.value.paneId, step),
+				},
+			);
+			if (!response.ok)
+			{
 				return Response.json(
-					{error: response.message},
-					{status: response.code === "agent_not_ready" ? 409 : 502},
+					{
+						error: response.message,
+					},
+					{
+						status: response.code === "agent_not_ready" ? 409 : 502,
+					},
 				);
 			}
 		}
-		return Response.json({ok: true});
-	} finally {
+		return Response.json(
+			{
+				ok: true,
+			},
+		);
+	}
+	finally
+	{
 		sessionsTyping.delete(sessionId);
 	}
 }

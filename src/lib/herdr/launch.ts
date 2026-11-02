@@ -17,35 +17,49 @@ const PROMPT_ATTEMPTS = 20;
 const PROMPT_RETRY_DELAY_MS = 250;
 
 const HerdrLaunchRequestSchema = z
-	.object({
-		/** Absent for launches tied to no project, which start in the home directory. */
-		cwd: z.string().startsWith("/").optional(),
-		prompt: z
-			.string()
-			.refine((prompt) => prompt.trim() !== "")
-			.optional(),
-		args: z
-			.array(z.string())
-			.superRefine((args, context) => {
-				const error = validateClaudeLaunchArgs(args);
-				if (error !== null) context.addIssue({code: "custom", message: error});
-			})
-			.optional(),
-	})
+	.object(
+		{
+			/** Absent for launches tied to no project, which start in the home directory. */
+			cwd: z.string().startsWith("/").optional(),
+			prompt: z
+				.string()
+				.refine((prompt) => prompt.trim() !== "")
+				.optional(),
+			args: z
+				.array(z.string())
+				.superRefine((args, context) =>
+				{
+					const error = validateClaudeLaunchArgs(args);
+					if (error !== null)
+						context.addIssue(
+							{
+								code: "custom",
+								message: error,
+							},
+						);
+				})
+				.optional(),
+		},
+	)
 	.strict();
 
 type HerdrLaunchRequest = z.infer<typeof HerdrLaunchRequestSchema>;
 
 /** A validated launch, with the directory resolved. */
-export type LaunchClaudeRequest = HerdrLaunchRequest & {cwd: string};
+export type LaunchClaudeRequest = HerdrLaunchRequest &
+{
+	cwd: string;
+};
 
-export interface HerdrLaunchResult {
+export interface HerdrLaunchResult
+{
 	tabId: string;
 	paneId: string;
 	sessionId: string | null;
 }
 
-export interface HerdrLaunchDependencies {
+export interface HerdrLaunchDependencies
+{
 	rejectRequest: (request: Request) => Response | null;
 	writesEnabled: () => boolean;
 	request: HerdrRequester;
@@ -65,23 +79,36 @@ export interface HerdrLaunchDependencies {
 /** A launch whose prompt failed after `agent.start` names the session it left running. */
 export type HerdrLaunchOutcome =
 	| HerdrResult<HerdrLaunchResult>
-	| {ok: false; code: "agent_prompt_failed"; message: string; sessionId: string | null};
+	|
+	  {
+			ok: false;
+			code: "agent_prompt_failed";
+			message: string;
+			sessionId: string | null;
+	  };
 
-export const defaultHerdrLaunchDependencies: HerdrLaunchDependencies = {
+export const defaultHerdrLaunchDependencies: HerdrLaunchDependencies =
+{
 	rejectRequest: rejectCrossSite,
 	writesEnabled: terminalWritesEnabled,
 	request: herdrRequest,
 	createLaunchId: () => crypto.randomUUID().replaceAll("-", "").slice(0, 12),
 	wait: async (ms) =>
-		new Promise((resolve) => {
+		new Promise((resolve) =>
+		{
 			setTimeout(resolve, ms);
 		}),
 	homeDir: homedir,
 	launchServer: () => chooseHerdrLaunchServer(getActiveSessionEntries(), knownHerdrServers()),
 };
 
-function failure(code: string, message: string): HerdrResult<never> {
-	return {ok: false, code, message};
+function failure(code: string, message: string): HerdrResult<never>
+{
+	return {
+		ok: false,
+		code,
+		message,
+	};
 }
 
 /**
@@ -97,7 +124,8 @@ async function launchClaudeInHerdr(
 		wait,
 		launchServer,
 	}: Pick<HerdrLaunchDependencies, "request" | "createLaunchId" | "wait" | "launchServer">,
-): Promise<HerdrLaunchOutcome> {
+): Promise<HerdrLaunchOutcome>
+{
 	const launchId = createLaunchId();
 	const requestId = (method: string) => `ccp:launch:${launchId}:${method}`;
 
@@ -108,7 +136,11 @@ async function launchClaudeInHerdr(
 		{
 			id: requestId("tab.create"),
 			method: "tab.create",
-			params: {cwd, focus: false},
+			params:
+			{
+				cwd,
+				focus: false,
+			},
 		},
 		undefined,
 		server.socketPath,
@@ -122,7 +154,8 @@ async function launchClaudeInHerdr(
 		{
 			id: requestId("agent.start"),
 			method: "agent.start",
-			params: {
+			params:
+			{
 				name: `ccp-${launchId}`,
 				kind: "claude",
 				pane_id: qualify(tab.data.root_pane.pane_id),
@@ -133,31 +166,49 @@ async function launchClaudeInHerdr(
 		AGENT_START_REQUEST_TIMEOUT_MS,
 	);
 	const started = startResponse.ok ? HerdrAgentStartedResultSchema.safeParse(startResponse.value) : undefined;
-	if (!started?.success) {
-		await request({id: requestId("tab.close"), method: "tab.close", params: {tab_id: tabId}});
+	if (!started?.success)
+	{
+		await request(
+			{
+				id: requestId("tab.close"),
+				method: "tab.close",
+				params:
+				{
+					tab_id: tabId,
+				},
+			},
+		);
 		return startResponse.ok
 			? failure("bad-response", "herdr returned an invalid agent.start result")
 			: startResponse;
 	}
 
 	const paneId = qualify(started.data.agent.pane_id);
-	if (prompt !== undefined) {
-		const promptRequest = {
+	if (prompt !== undefined)
+	{
+		const promptRequest =
+		{
 			id: requestId("agent.prompt"),
 			method: "agent.prompt",
-			params: {target: paneId, text: prompt},
+			params:
+			{
+				target: paneId,
+				text: prompt,
+			},
 		};
 		let promptResponse = await request(promptRequest);
 		for (
 			let attempt = 1;
 			attempt < PROMPT_ATTEMPTS && !promptResponse.ok && promptResponse.code === "agent_not_ready";
 			attempt++
-		) {
+		)
+		{
 			await wait(PROMPT_RETRY_DELAY_MS);
 			promptResponse = await request(promptRequest);
 		}
 		// claude is running in its tab, so the tab stays open and the client can still open the session.
-		if (!promptResponse.ok) {
+		if (!promptResponse.ok)
+		{
 			return {
 				ok: false,
 				code: "agent_prompt_failed",
@@ -169,7 +220,8 @@ async function launchClaudeInHerdr(
 
 	return {
 		ok: true,
-		value: {
+		value:
+		{
 			tabId,
 			paneId,
 			sessionId: started.data.agent.agent_session?.value ?? null,
@@ -177,8 +229,10 @@ async function launchClaudeInHerdr(
 	};
 }
 
-function errorStatus(code: string): number {
-	switch (code) {
+function errorStatus(code: string): number
+{
+	switch (code)
+	{
 		case "agent_not_ready":
 		case "agent_prompt_stalled":
 			return 409;
@@ -193,31 +247,75 @@ function errorStatus(code: string): number {
 export async function handleHerdrLaunch(
 	request: Request,
 	dependencies: HerdrLaunchDependencies = defaultHerdrLaunchDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;
 
-	if (!dependencies.writesEnabled()) {
-		return Response.json({error: "herdr writes are disabled"}, {status: 403});
+	if (!dependencies.writesEnabled())
+	{
+		return Response.json(
+			{
+				error: "herdr writes are disabled",
+			},
+			{
+				status: 403,
+			},
+		);
 	}
 
 	const json: unknown = await request.json();
 	const parsed = HerdrLaunchRequestSchema.safeParse(json);
-	if (!parsed.success) {
-		return Response.json({error: z.prettifyError(parsed.error)}, {status: 400});
+	if (!parsed.success)
+	{
+		return Response.json(
+			{
+				error: z.prettifyError(parsed.error),
+			},
+			{
+				status: 400,
+			},
+		);
 	}
 
 	const launchClaude = dependencies.launchClaude ?? launchClaudeInHerdr;
-	const result = await launchClaude({...parsed.data, cwd: parsed.data.cwd ?? dependencies.homeDir()}, dependencies);
-	if (!result.ok) {
-		if ("sessionId" in result) {
+	const result = await launchClaude(
+		{
+			...parsed.data,
+			cwd: parsed.data.cwd ?? dependencies.homeDir(),
+		},
+		dependencies,
+	);
+	if (!result.ok)
+	{
+		if ("sessionId" in result)
+		{
 			return Response.json(
-				{error: result.message, code: result.code, sessionId: result.sessionId},
-				{status: errorStatus(result.code)},
+				{
+					error: result.message,
+					code: result.code,
+					sessionId: result.sessionId,
+				},
+				{
+					status: errorStatus(result.code),
+				},
 			);
 		}
-		return Response.json({error: result.message, code: result.code}, {status: errorStatus(result.code)});
+		return Response.json(
+			{
+				error: result.message,
+				code: result.code,
+			},
+			{
+				status: errorStatus(result.code),
+			},
+		);
 	}
 
-	return Response.json({ok: true, ...result.value});
+	return Response.json(
+		{
+			ok: true,
+			...result.value,
+		},
+	);
 }

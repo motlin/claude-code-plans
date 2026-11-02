@@ -7,11 +7,13 @@ export const NOTIFICATIONS_UNAVAILABLE_COPY =
 	"Notifications can’t be turned on here. Open Claude in its own browser tab and try again.";
 
 /** Browsers refuse a permission prompt from an embedded frame, so only a top-level tab can opt in. */
-function notificationsAvailableHere(): boolean {
+function notificationsAvailableHere(): boolean
+{
 	return typeof window !== "undefined" && "Notification" in window && window.self === window.top;
 }
 
-export interface NotificationPermissionState {
+export interface NotificationPermissionState
+{
 	/** False without the Notification API or inside a frame, where upstream says to open its own tab. */
 	supported: boolean;
 	permission: NotificationPermission;
@@ -19,23 +21,31 @@ export interface NotificationPermissionState {
 	requestPermission: () => Promise<NotificationPermission>;
 }
 
-export function useNotificationPermission(): NotificationPermissionState {
+export function useNotificationPermission(): NotificationPermissionState
+{
 	const [supported, setSupported] = useState(false);
 	const [permission, setPermission] = useState<NotificationPermission>("default");
 
-	useEffect(() => {
-		if (notificationsAvailableHere()) {
+	useEffect(() =>
+	{
+		if (notificationsAvailableHere())
+		{
 			setSupported(true);
 			setPermission(Notification.permission);
 		}
 	}, []);
 
-	const requestPermission = async (): Promise<NotificationPermission> => {
+	const requestPermission = async (): Promise<NotificationPermission> =>
+	{
 		if (Notification.permission === "granted") return "granted";
 		const result = await Notification.requestPermission();
 		setPermission(result);
 		return result;
 	};
 
-	return {supported, permission, requestPermission};
+	return {
+		supported,
+		permission,
+		requestPermission,
+	};
 }

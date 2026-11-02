@@ -5,7 +5,8 @@ import type {useNavigate} from "@tanstack/react-router";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 const navigate = vi.fn<ReturnType<typeof useNavigate>>();
-vi.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", () => (
+{
 	useNavigate: () => navigate,
 }));
 
@@ -16,7 +17,8 @@ import {useSideChatShortcut} from "../src/components/use-side-chat-shortcut";
 import {ToastProvider} from "../src/components/toast";
 import type {ToastOptions} from "../src/components/toast-context";
 import {parseBtwCommand, sideChatBranchTitle} from "../src/lib/side-chat";
-import {
+import
+{
 	askSideChat,
 	getSideChat,
 	openSideChat,
@@ -25,28 +27,48 @@ import {
 } from "../src/lib/side-chat-store";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadSideChatPanel();
 });
 
 const SESSION_ID = "session-side-chat-100";
 
-function ndjsonResponse(events: unknown[], headers: Record<string, string> = {}): Response {
+function ndjsonResponse(events: unknown[], headers: Record<string, string> = {}): Response
+{
 	const body = events.map((event) => `${JSON.stringify(event)}\n`).join("");
-	return new Response(body, {
-		status: 200,
-		headers: {"Content-Type": "application/x-ndjson", "X-Process-Id": "proc-1", ...headers},
-	});
+	return new Response(
+		body,
+		{
+			status: 200,
+			headers:
+			{
+				"Content-Type": "application/x-ndjson",
+				"X-Process-Id": "proc-1",
+				...headers,
+			},
+		},
+	);
 }
 
-function textDelta(text: string) {
+function textDelta(text: string)
+{
 	return {
 		type: "stream_event",
-		event: {type: "content_block_delta", delta: {type: "text_delta", text}},
+		event:
+		{
+			type: "content_block_delta",
+			delta:
+			{
+				type: "text_delta",
+				text,
+			},
+		},
 	};
 }
 
-function renderSideChat(messageCount = 12) {
+function renderSideChat(messageCount = 12)
+{
 	return render(
 		<ToastProvider>
 			<SideChat sessionId={SESSION_ID} messageCount={messageCount} />
@@ -54,18 +76,21 @@ function renderSideChat(messageCount = 12) {
 	);
 }
 
-function aside(): HTMLElement {
+function aside(): HTMLElement
+{
 	const element = document.querySelector<HTMLElement>('aside[aria-label="Side chat"]');
 	if (element === null) throw new Error("Side chat card is not rendered");
 	return element;
 }
 
-function ShortcutProbe({available}: {available: boolean}) {
+function ShortcutProbe({available}: {available: boolean})
+{
 	useSideChatShortcut(SESSION_ID, available);
 	return null;
 }
 
-function renderShortcutProbe(available: boolean) {
+function renderShortcutProbe(available: boolean)
+{
 	return render(
 		<ToastProvider>
 			<ShortcutProbe available={available} />
@@ -77,30 +102,38 @@ function renderShortcutProbe(available: boolean) {
 	);
 }
 
-function pressToggle(): KeyboardEvent {
-	const event = new KeyboardEvent("keydown", {
-		key: ";",
-		code: "Semicolon",
-		ctrlKey: true,
-		bubbles: true,
-		cancelable: true,
-	});
+function pressToggle(): KeyboardEvent
+{
+	const event = new KeyboardEvent(
+		"keydown",
+		{
+			key: ";",
+			code: "Semicolon",
+			ctrlKey: true,
+			bubbles: true,
+			cancelable: true,
+		},
+	);
 	document.dispatchEvent(event);
 	return event;
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	resetSideChatStore();
 	navigate.mockReset();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-describe("parseBtwCommand", () => {
-	it("matches /btw with and without a question", () => {
+describe("parseBtwCommand", () =>
+{
+	it("matches /btw with and without a question", () =>
+	{
 		expect([
 			parseBtwCommand("/btw"),
 			parseBtwCommand("/btw   what does foo do?"),
@@ -109,9 +142,15 @@ describe("parseBtwCommand", () => {
 			parseBtwCommand("ask /btw later"),
 			parseBtwCommand(" /btw"),
 		]).toEqual([
-			{question: ""},
-			{question: "what does foo do?"},
-			{question: "line one\nline two"},
+			{
+				question: "",
+			},
+			{
+				question: "what does foo do?",
+			},
+			{
+				question: "line one\nline two",
+			},
 			null,
 			null,
 			null,
@@ -119,8 +158,10 @@ describe("parseBtwCommand", () => {
 	});
 });
 
-describe("sideChatBranchTitle", () => {
-	it("prefixes btw: and cuts the question at 59 characters", () => {
+describe("sideChatBranchTitle", () =>
+{
+	it("prefixes btw: and cuts the question at 59 characters", () =>
+	{
 		const long = "a".repeat(70);
 		expect([sideChatBranchTitle("Why is the build red?"), sideChatBranchTitle(long)]).toEqual([
 			"btw: Why is the build red?",
@@ -129,116 +170,210 @@ describe("sideChatBranchTitle", () => {
 	});
 });
 
-describe("SideChat", () => {
-	it("hides the closed card from layout hit-testing so it never sits over the phone composer", () => {
+describe("SideChat", () =>
+{
+	it("hides the closed card from layout hit-testing so it never sits over the phone composer", () =>
+	{
 		renderSideChat();
 		const hiding = (classes: string) =>
 			classes
 				.split(" ")
 				.filter((c) => /^(data-\[open\]:)?(invisible|visible|pointer-events-\w+)$|visibility/.test(c));
 		const closed = hiding(aside().className);
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
-		expect({closed, open: aside().hasAttribute("data-open")}).toStrictEqual({
-			closed: [
-				"invisible",
-				"pointer-events-none",
-				"transition-[opacity,transform,visibility]",
-				"data-[open]:visible",
-				"data-[open]:pointer-events-auto",
-			],
-			open: true,
-		});
+		expect(
+			{
+				closed,
+				open: aside().hasAttribute("data-open"),
+			},
+		).toStrictEqual(
+			{
+				closed: [
+					"invisible",
+					"pointer-events-none",
+					"transition-[opacity,transform,visibility]",
+					"data-[open]:visible",
+					"data-[open]:pointer-events-auto",
+				],
+				open: true,
+			},
+		);
 	});
 
-	it("relies on the global text-entry floor on coarse pointers", () => {
+	it("relies on the global text-entry floor on coarse pointers", () =>
+	{
 		renderSideChat();
 
 		expect(
 			screen
-				.getByRole("textbox", {name: "Side chat question", hidden: true})
+				.getByRole(
+					"textbox",
+					{
+						name: "Side chat question",
+						hidden: true,
+					},
+				)
 				.className.split(" ")
 				.filter((token) => token.startsWith("pointer-coarse:")),
 		).toStrictEqual([]);
 	});
 
-	it("opens, closes with the X button, and closes on Escape", () => {
+	it("opens, closes with the X button, and closes on Escape", () =>
+	{
 		renderSideChat();
 		expect(aside().hasAttribute("data-open")).toBe(false);
 		expect(aside().hasAttribute("inert")).toBe(true);
 
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 		expect(aside().hasAttribute("data-open")).toBe(true);
 		expect(screen.getByText("Sees 12 messages from main chat · read-only")).toBeTruthy();
 
-		fireEvent.click(screen.getByRole("button", {name: "Close side chat"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Close side chat",
+				},
+			),
+		);
 		expect(aside().hasAttribute("data-open")).toBe(false);
 
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
-		fireEvent.keyDown(screen.getByRole("textbox", {name: "Side chat question"}), {
-			key: "Escape",
-		});
+		fireEvent.keyDown(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Side chat question",
+				},
+			),
+			{
+				key: "Escape",
+			},
+		);
 		expect(aside().hasAttribute("data-open")).toBe(false);
 	});
 
-	it("switches the placeholder to Follow up… once there is an answer, and Clear resets it", async () => {
+	it("switches the placeholder to Follow up… once there is an answer, and Clear resets it", async () =>
+	{
 		const fetchMock = vi.fn<typeof fetch>(async () =>
 			Promise.resolve(
 				ndjsonResponse([
 					textDelta("It parses "),
 					textDelta("the config."),
-					{type: "result", subtype: "success", is_error: false, result: "It parses the config."},
+					{
+						type: "result",
+						subtype: "success",
+						is_error: false,
+						result: "It parses the config.",
+					},
 				]),
 			),
 		);
 		vi.stubGlobal("fetch", fetchMock);
 		renderSideChat();
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 
-		const input = screen.getByRole("textbox", {name: "Side chat question"});
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Side chat question",
+			},
+		);
 		expect(input.getAttribute("placeholder")).toBe("Ask a quick question…");
-		expect(screen.queryByRole("button", {name: "Clear side chat"})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: "Clear side chat",
+				},
+			),
+		).toBeNull();
 
-		fireEvent.change(input, {target: {value: "What does load() do?"}});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "What does load() do?",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 
 		await screen.findByText("It parses the config.");
 		expect(fetchMock.mock.calls).toEqual([
 			[
 				"/api/side-chat",
-				expect.objectContaining({
-					method: "POST",
-					body: JSON.stringify({
-						sessionId: SESSION_ID,
-						messages: [],
-						question: "What does load() do?",
-					}),
-				}),
+				expect.objectContaining(
+					{
+						method: "POST",
+						body: JSON.stringify(
+							{
+								sessionId: SESSION_ID,
+								messages: [],
+								question: "What does load() do?",
+							},
+						),
+					},
+				),
 			],
 		]);
 		expect(input.getAttribute("placeholder")).toBe("Follow up…");
-		expect(screen.getByRole("button", {name: "Copy answer"})).toBeTruthy();
-		expect(screen.getByRole("button", {name: "Branch to new chat"})).toBeTruthy();
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Copy answer",
+				},
+			),
+		).toBeTruthy();
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Branch to new chat",
+				},
+			),
+		).toBeTruthy();
 
-		fireEvent.click(screen.getByRole("button", {name: "Clear side chat"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Clear side chat",
+				},
+			),
+		);
 		expect(screen.queryByText("It parses the config.")).toBeNull();
 		expect(input.getAttribute("placeholder")).toBe("Ask a quick question…");
 	});
 
-	it("renders answers as markdown", async () => {
+	it("renders answers as markdown", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () => Promise.resolve(ndjsonResponse([textDelta("Use **load()**:\n\n- reads `config.ts`")]))),
 		);
 		renderSideChat();
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 
@@ -250,7 +385,8 @@ describe("SideChat", () => {
 		]);
 	});
 
-	it("sends earlier Q/A pairs with a follow-up", async () => {
+	it("sends earlier Q/A pairs with a follow-up", async () =>
+	{
 		const fetchMock = vi
 			.fn<(url: string, init: RequestInit) => Promise<Response>>()
 			.mockResolvedValueOnce(ndjsonResponse([textDelta("First answer.")]))
@@ -260,34 +396,59 @@ describe("SideChat", () => {
 		await askSideChat(SESSION_ID, "First?");
 		await askSideChat(SESSION_ID, "Second?");
 
-		expect(JSON.parse(fetchMock.mock.calls[1]![1].body as string)).toEqual({
-			sessionId: SESSION_ID,
-			messages: [{q: "First?", a: "First answer."}],
-			question: "Second?",
-		});
+		expect(JSON.parse(fetchMock.mock.calls[1]![1].body as string)).toEqual(
+			{
+				sessionId: SESSION_ID,
+				messages: [
+					{
+						q: "First?",
+						a: "First answer.",
+					},
+				],
+				question: "Second?",
+			},
+		);
 		expect(
-			getSideChat(SESSION_ID).entries.map(({question, answer, status}) => ({
+			getSideChat(SESSION_ID).entries.map(({question, answer, status}) => (
+			{
 				question,
 				answer,
 				status,
 			})),
 		).toEqual([
-			{question: "First?", answer: "First answer.", status: "done"},
-			{question: "Second?", answer: "Second answer.", status: "done"},
+			{
+				question: "First?",
+				answer: "First answer.",
+				status: "done",
+			},
+			{
+				question: "Second?",
+				answer: "Second answer.",
+				status: "done",
+			},
 		]);
 	});
 
-	it("shows server errors in an alert", async () => {
+	it("shows server errors in an alert", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () =>
 				Promise.resolve(
-					Response.json({error: "Could not determine project directory for session"}, {status: 404}),
+					Response.json(
+						{
+							error: "Could not determine project directory for session",
+						},
+						{
+							status: 404,
+						},
+					),
 				),
 			),
 		);
 		renderSideChat();
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 
@@ -298,13 +459,15 @@ describe("SideChat", () => {
 		);
 	});
 
-	it("asks the user to send a main-chat message first when no answer comes back", async () => {
+	it("asks the user to send a main-chat message first when no answer comes back", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () => Promise.resolve(ndjsonResponse([]))),
 		);
 		renderSideChat();
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 
@@ -315,160 +478,306 @@ describe("SideChat", () => {
 		);
 	});
 
-	it("labels tool use while the answer is pending", async () => {
-		let finish: () => void = () => {};
-		const stream = new ReadableStream<Uint8Array>({
-			start(controller) {
-				const encoder = new TextEncoder();
-				controller.enqueue(
-					encoder.encode(
-						`${JSON.stringify({
-							type: "assistant",
-							message: {
-								content: [{type: "tool_use", name: "Read", input: {file_path: "/repo/src/config.ts"}}],
-							},
-						})}\n`,
-					),
-				);
-				finish = () => {
-					controller.close();
-				};
+	it("labels tool use while the answer is pending", async () =>
+	{
+		let finish: () => void = () =>
+		{
+		};
+		const stream = new ReadableStream<Uint8Array>(
+			{
+				start(controller)
+				{
+					const encoder = new TextEncoder();
+					controller.enqueue(
+						encoder.encode(
+							`${JSON.stringify(
+								{
+									type: "assistant",
+									message:
+									{
+										content: [
+											{
+												type: "tool_use",
+												name: "Read",
+												input:
+												{
+													file_path: "/repo/src/config.ts",
+												},
+											},
+										],
+									},
+								},
+							)}\n`,
+						),
+					);
+					finish = () =>
+					{
+						controller.close();
+					};
+				},
 			},
-		});
+		);
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () => Promise.resolve(new Response(stream, {status: 200}))),
+			vi.fn(async () =>
+				Promise.resolve(
+					new Response(
+						stream,
+						{
+							status: 200,
+						},
+					),
+				),
+			),
 		);
 		renderSideChat();
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 
 		let pending: Promise<void> = Promise.resolve();
-		act(() => {
+		act(() =>
+		{
 			pending = askSideChat(SESSION_ID, "Where is config?");
 		});
 
 		await screen.findByText("Reading config.ts");
-		await act(async () => {
+		await act(async () =>
+		{
 			finish();
 			await pending;
 		});
 	});
 
-	it("branches an answer into a titled fork and navigates to it", async () => {
+	it("branches an answer into a titled fork and navigates to it", async () =>
+	{
 		const fetchMock = vi
 			.fn<(url: string, init: RequestInit) => Promise<Response>>()
 			.mockResolvedValueOnce(ndjsonResponse([textDelta("An answer.")]))
 			.mockResolvedValueOnce(
 				ndjsonResponse([
-					{type: "system", subtype: "init", session_id: "session-fork-200"},
+					{
+						type: "system",
+						subtype: "init",
+						session_id: "session-fork-200",
+					},
 					textDelta("Forked answer."),
-					{type: "result", is_error: false, session_id: "session-fork-200"},
+					{
+						type: "result",
+						is_error: false,
+						session_id: "session-fork-200",
+					},
 				]),
 			)
-			.mockResolvedValueOnce(Response.json({customTitle: "btw: Why?", title: "btw: Why?"}));
+			.mockResolvedValueOnce(
+				Response.json(
+					{
+						customTitle: "btw: Why?",
+						title: "btw: Why?",
+					},
+				),
+			);
 		vi.stubGlobal("fetch", fetchMock);
 		renderSideChat();
-		act(() => {
+		act(() =>
+		{
 			openSideChat(SESSION_ID);
 		});
 		await act(async () => askSideChat(SESSION_ID, "Why?"));
 
-		fireEvent.click(screen.getByRole("button", {name: "Branch to new chat"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Branch to new chat",
+				},
+			),
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(navigate).toHaveBeenCalled();
 		});
 		expect(fetchMock.mock.calls.slice(1).map(([url, init]) => [url, init.method, init.body])).toEqual([
-			["/api/chat", "POST", JSON.stringify({sessionId: SESSION_ID, prompt: "Why?"})],
-			["/api/sessions/session-fork-200/title", "PUT", JSON.stringify({title: "btw: Why?"})],
+			[
+				"/api/chat",
+				"POST",
+				JSON.stringify(
+					{
+						sessionId: SESSION_ID,
+						prompt: "Why?",
+					},
+				),
+			],
+			[
+				"/api/sessions/session-fork-200/title",
+				"PUT",
+				JSON.stringify(
+					{
+						title: "btw: Why?",
+					},
+				),
+			],
 		]);
-		expect(navigate.mock.calls).toEqual([[{to: "/session/$id", params: {id: "session-fork-200"}}]]);
+		expect(navigate.mock.calls).toEqual([
+			[
+				{
+					to: "/session/$id",
+					params:
+					{
+						id: "session-fork-200",
+					},
+				},
+			],
+		]);
 	});
 });
 
-describe("openSideChatWithContext", () => {
-	it("opens the side chat with an Excerpt tile, focuses the input, and quotes the excerpt ahead of the next question", async () => {
+describe("openSideChatWithContext", () =>
+{
+	it("opens the side chat with an Excerpt tile, focuses the input, and quotes the excerpt ahead of the next question", async () =>
+	{
 		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(ndjsonResponse([textDelta("Crabs.")])));
 		vi.stubGlobal("fetch", fetchMock);
 		renderSideChat();
 
-		act(() => {
+		act(() =>
+		{
 			openSideChatWithContext(SESSION_ID, "Hermit crabs\nlive in shells");
 		});
 
-		const input = screen.getByRole("textbox", {name: "Side chat question"});
-		const tiles = within(aside()).getAllByRole("blockquote", {hidden: true});
-		expect({
-			open: aside().hasAttribute("data-open"),
-			tiles: tiles.map((tile) => tile.textContent),
-			badges: [...aside().querySelectorAll('[data-cds="Badge"]')].map((badge) => badge.textContent),
-			focused: document.activeElement === input,
-			placeholder: input.getAttribute("placeholder"),
-		}).toStrictEqual({
-			open: true,
-			tiles: ["Hermit crabs live in shells"],
-			badges: ["Excerpt"],
-			focused: true,
-			placeholder: "Ask a quick question…",
-		});
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Side chat question",
+			},
+		);
+		const tiles = within(aside()).getAllByRole(
+			"blockquote",
+			{
+				hidden: true,
+			},
+		);
+		expect(
+			{
+				open: aside().hasAttribute("data-open"),
+				tiles: tiles.map((tile) => tile.textContent),
+				badges: [...aside().querySelectorAll('[data-cds="Badge"]')].map((badge) => badge.textContent),
+				focused: document.activeElement === input,
+				placeholder: input.getAttribute("placeholder"),
+			},
+		).toStrictEqual(
+			{
+				open: true,
+				tiles: ["Hermit crabs live in shells"],
+				badges: ["Excerpt"],
+				focused: true,
+				placeholder: "Ask a quick question…",
+			},
+		);
 
-		fireEvent.change(input, {target: {value: "What are these?"}});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "What are these?",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 		await screen.findByText("Crabs.");
 
-		expect({
-			body: JSON.parse(fetchMock.mock.calls[0]![1]!.body as string) as unknown,
-			pendingExcerpts: getSideChat(SESSION_ID).excerpts,
-			sentTiles: [...aside().querySelectorAll('[data-cds="MessageAttachmentsQuote"] blockquote')].map(
-				(tile) => tile.textContent,
-			),
-		}).toStrictEqual({
-			body: {
-				sessionId: SESSION_ID,
-				messages: [],
-				question: "<!-- attach -->\n> Hermit crabs\n> live in shells\n\nWhat are these?",
+		expect(
+			{
+				body: JSON.parse(fetchMock.mock.calls[0]![1]!.body as string) as unknown,
+				pendingExcerpts: getSideChat(SESSION_ID).excerpts,
+				sentTiles: [...aside().querySelectorAll('[data-cds="MessageAttachmentsQuote"] blockquote')].map(
+					(tile) => tile.textContent,
+				),
 			},
-			pendingExcerpts: [],
-			sentTiles: ["Hermit crabs live in shells"],
-		});
+		).toStrictEqual(
+			{
+				body:
+				{
+					sessionId: SESSION_ID,
+					messages: [],
+					question: "<!-- attach -->\n> Hermit crabs\n> live in shells\n\nWhat are these?",
+				},
+				pendingExcerpts: [],
+				sentTiles: ["Hermit crabs live in shells"],
+			},
+		);
 	});
 
-	it("removes a pending excerpt with its remove button", () => {
+	it("removes a pending excerpt with its remove button", () =>
+	{
 		renderSideChat();
-		act(() => {
+		act(() =>
+		{
 			openSideChatWithContext(SESSION_ID, "Hermit crabs");
 		});
 
-		fireEvent.click(within(aside()).getByRole("button", {name: "Remove Hermit crabs"}));
+		fireEvent.click(
+			within(aside()).getByRole(
+				"button",
+				{
+					name: "Remove Hermit crabs",
+				},
+			),
+		);
 
 		expect(getSideChat(SESSION_ID).excerpts).toStrictEqual([]);
 	});
 });
 
-describe("useSideChatShortcut", () => {
-	it("toggles the side chat on the session page", () => {
+describe("useSideChatShortcut", () =>
+{
+	it("toggles the side chat on the session page", () =>
+	{
 		renderShortcutProbe(true);
-		screen.getByRole("button", {name: "Main chat"}).focus();
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "Main chat",
+				},
+			)
+			.focus();
 		const event = pressToggle();
 		expect([event.defaultPrevented, getSideChat(SESSION_ID).open]).toEqual([true, true]);
 		pressToggle();
 		expect(getSideChat(SESSION_ID).open).toBe(false);
 	});
 
-	it("declines the key when the session is not found", () => {
+	it("declines the key when the session is not found", () =>
+	{
 		renderShortcutProbe(false);
 		const event = pressToggle();
 		expect([event.defaultPrevented, getSideChat(SESSION_ID).open]).toEqual([false, false]);
 	});
 
-	it("refuses with a toast when focus is in a secondary pane", async () => {
+	it("refuses with a toast when focus is in a secondary pane", async () =>
+	{
 		renderShortcutProbe(true);
-		screen.getByRole("button", {name: "Pane control"}).focus();
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "Pane control",
+				},
+			)
+			.focus();
 
 		let event: KeyboardEvent | undefined;
-		act(() => {
+		act(() =>
+		{
 			event = pressToggle();
 		});
 
@@ -479,44 +788,94 @@ describe("useSideChatShortcut", () => {
 	});
 });
 
-describe("handleBtwPrompt", () => {
-	it("passes ordinary prompts through", () => {
+describe("handleBtwPrompt", () =>
+{
+	it("passes ordinary prompts through", () =>
+	{
 		const toast = vi.fn<(options: ToastOptions) => void>();
-		expect(handleBtwPrompt("fix the build", {sessionId: SESSION_ID, messageCount: 3, toast})).toBe(false);
+		expect(
+			handleBtwPrompt(
+				"fix the build",
+				{
+					sessionId: SESSION_ID,
+					messageCount: 3,
+					toast,
+				},
+			),
+		).toBe(false);
 		expect([getSideChat(SESSION_ID).open, toast.mock.calls]).toEqual([false, []]);
 	});
 
-	it("opens the side chat for a bare /btw", () => {
+	it("opens the side chat for a bare /btw", () =>
+	{
 		const toast = vi.fn<(options: ToastOptions) => void>();
-		expect(handleBtwPrompt("/btw", {sessionId: SESSION_ID, messageCount: 3, toast})).toBe(true);
+		expect(
+			handleBtwPrompt(
+				"/btw",
+				{
+					sessionId: SESSION_ID,
+					messageCount: 3,
+					toast,
+				},
+			),
+		).toBe(true);
 		expect([getSideChat(SESSION_ID), toast.mock.calls]).toEqual([
-			{open: true, mode: "floating", entries: [], excerpts: []},
+			{
+				open: true,
+				mode: "floating",
+				entries: [],
+				excerpts: [],
+			},
 			[],
 		]);
 	});
 
-	it("opens the side chat and asks the question", async () => {
+	it("opens the side chat and asks the question", async () =>
+	{
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(async () => Promise.resolve(ndjsonResponse([textDelta("Yes.")]))),
 		);
-		handleBtwPrompt("/btw is it cached?", {
-			sessionId: SESSION_ID,
-			messageCount: 3,
-			toast: vi.fn<(options: ToastOptions) => void>(),
-		});
-		await waitFor(() => {
+		handleBtwPrompt(
+			"/btw is it cached?",
+			{
+				sessionId: SESSION_ID,
+				messageCount: 3,
+				toast: vi.fn<(options: ToastOptions) => void>(),
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(getSideChat(SESSION_ID).entries[0]?.status).toBe("done");
 		});
-		expect(getSideChat(SESSION_ID).entries.map(({question, answer}) => ({question, answer}))).toEqual([
-			{question: "is it cached?", answer: "Yes."},
+		expect(
+			getSideChat(SESSION_ID).entries.map(({question, answer}) => (
+			{
+				question,
+				answer,
+			})),
+		).toEqual([
+			{
+				question: "is it cached?",
+				answer: "Yes.",
+			},
 		]);
 		expect(getSideChat(SESSION_ID).open).toBe(true);
 	});
 
-	it("refuses before the session's first message", () => {
+	it("refuses before the session's first message", () =>
+	{
 		const toast = vi.fn<(options: ToastOptions) => void>();
-		expect(handleBtwPrompt("/btw hi", {sessionId: SESSION_ID, messageCount: 0, toast})).toBe(true);
+		expect(
+			handleBtwPrompt(
+				"/btw hi",
+				{
+					sessionId: SESSION_ID,
+					messageCount: 0,
+					toast,
+				},
+			),
+		).toBe(true);
 		expect([getSideChat(SESSION_ID).open, toast.mock.calls]).toEqual([
 			false,
 			[

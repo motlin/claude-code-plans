@@ -1,5 +1,6 @@
 import {MessageCircle, X} from "lucide-react";
-import {
+import
+{
 	type KeyboardEvent as ReactKeyboardEvent,
 	type RefObject,
 	useCallback,
@@ -8,7 +9,8 @@ import {
 	useState,
 } from "react";
 
-import {
+import
+{
 	acknowledgeApproval,
 	clearApprovalAnswered,
 	markApprovalAnswered,
@@ -16,7 +18,8 @@ import {
 } from "../lib/answered-approvals";
 import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {APPROVAL_ARM_GRACE_MS, dockKeyAllowed, elementOffscreen} from "../lib/dock-keys";
-import {
+import
+{
 	PLAN_ACCEPT_LABEL,
 	PLAN_BACK_LABEL,
 	PLAN_DELETE_COMMENT_LABEL,
@@ -33,7 +36,8 @@ import {
 	type PlanKeyAction,
 	type PlanDialog,
 } from "../lib/plan-approval";
-import {
+import
+{
 	clearPlanComments,
 	formatPlanFeedback,
 	removePlanComment,
@@ -60,7 +64,8 @@ const FEEDBACK_CLASS =
 	"w-full resize-none rounded bg-alpha-1 px-md py-sm text-body text-primary placeholder:text-ink-muted shadow-[inset_0_0_0_1px_var(--color-border)] outline-none focus-visible:shadow-[var(--focus-shadow)] hover:not-focus:shadow-[inset_0_0_0_1px_var(--color-strong)]";
 
 /** Where a plan key may act: anywhere a docked card key may, plus ⇧⌘⏎ from a composer holding a draft (upstream lets it through). */
-function planKeyAllowed(target: EventTarget | null, action: PlanKeyAction): boolean {
+function planKeyAllowed(target: EventTarget | null, action: PlanKeyAction): boolean
+{
 	if (dockKeyAllowed(target)) return true;
 	return (
 		action.kind === "accept" &&
@@ -79,7 +84,8 @@ const DELETE_COMMENT_CLASS =
  * each row reopens the Plan pane and has its own Delete, then an sr-only note
  * of how many will be sent.
  */
-function PlanCommentList({sessionId}: {sessionId: string}) {
+function PlanCommentList({sessionId}: {sessionId: string})
+{
 	const comments = usePlanComments(sessionId);
 	const host = useOptionalPaneHost();
 	return (
@@ -88,7 +94,8 @@ function PlanCommentList({sessionId}: {sessionId: string}) {
 				<li key={c.id} className="flex items-center gap-0.5 rounded-r6 bg-alpha-1 pe-1.25 hover:bg-alpha-2">
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							host?.openPane("plan");
 						}}
 						className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-r6 p-1.25 text-start hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
@@ -103,10 +110,12 @@ function PlanCommentList({sessionId}: {sessionId: string}) {
 						type="button"
 						aria-label={PLAN_DELETE_COMMENT_LABEL}
 						className={DELETE_COMMENT_CLASS}
-						onMouseDown={(event) => {
+						onMouseDown={(event) =>
+						{
 							event.preventDefault();
 						}}
-						onClick={() => {
+						onClick={() =>
+						{
 							removePlanComment(sessionId, c.id);
 						}}
 					>
@@ -119,7 +128,20 @@ function PlanCommentList({sessionId}: {sessionId: string}) {
 	);
 }
 
-type DialogState = {kind: "loading"} | {kind: "ready"; dialog: PlanDialog} | {kind: "unavailable"};
+type DialogState =
+	|
+	  {
+			kind: "loading";
+	  }
+	|
+	  {
+			kind: "ready";
+			dialog: PlanDialog;
+	  }
+	|
+	  {
+			kind: "unavailable";
+	  };
 
 /** Upstream's approval presentation: the inline transcript "card", or the composer "dock". */
 export type PlanApprovalPlacement = "card" | "dock";
@@ -131,14 +153,18 @@ export type PlanApprovalPlacement = "card" | "dock";
 function useApprovalArming(
 	rootRef: RefObject<HTMLElement | null>,
 	placement: PlanApprovalPlacement,
-): RefObject<number | null> {
+): RefObject<number | null>
+{
 	const armedAt = useRef<number | null>(null);
-	useEffect(() => {
-		const arm = () => {
+	useEffect(() =>
+	{
+		const arm = () =>
+		{
 			armedAt.current = performance.now();
 		};
 		arm();
-		const onVisibility = () => {
+		const onVisibility = () =>
+		{
 			if (document.visibilityState === "visible") arm();
 		};
 		window.addEventListener("focus", arm);
@@ -146,12 +172,14 @@ function useApprovalArming(
 		const root = rootRef.current;
 		const observer =
 			placement === "card" && root !== null && typeof IntersectionObserver !== "undefined"
-				? new IntersectionObserver((entries) => {
+				? new IntersectionObserver((entries) =>
+					{
 						if (entries.some((entry) => entry.isIntersecting)) arm();
 					})
 				: null;
 		if (observer !== null && root !== null) observer.observe(root);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("focus", arm);
 			document.removeEventListener("visibilitychange", onVisibility);
 			observer?.disconnect();
@@ -172,7 +200,8 @@ function PlanApprovalActions({
 	dialog: PlanDialog;
 	decide: (decision: PlanDecision) => Promise<void>;
 	placement: PlanApprovalPlacement;
-}) {
+})
+{
 	// A card whose answer was refused, or whose Revise draft was left, while it was unmounted comes back as it was.
 	const [restored] = useState(() => getUnsentPlan(sessionId, toolUseId));
 	const [revising, setRevising] = useState(restored?.revising ?? false);
@@ -195,11 +224,23 @@ function PlanApprovalActions({
 
 	// Upstream's `unsentFeedback`: a Revise draft outlives the card, so a remount brings it back.
 	useEffect(
-		() => () => {
+		() => () =>
+		{
 			if (sending.current) return;
-			if (reviseShown.current && feedback.current.trim() !== "") {
-				setUnsentPlan(sessionId, toolUseId, {revising: true, feedback: feedback.current, error: null});
-			} else {
+			if (reviseShown.current && feedback.current.trim() !== "")
+			{
+				setUnsentPlan(
+					sessionId,
+					toolUseId,
+					{
+						revising: true,
+						feedback: feedback.current,
+						error: null,
+					},
+				);
+			}
+			else
+			{
 				clearUnsentPlan(sessionId, toolUseId);
 			}
 		},
@@ -211,22 +252,34 @@ function PlanApprovalActions({
 		async (
 			decision: PlanDecision | ((comments: ReturnType<typeof clearPlanComments>) => PlanDecision),
 			sentRevising: boolean,
-		) => {
+		) =>
+		{
 			setError(null);
 			const comments = clearPlanComments(sessionId);
 			const sentFeedback = feedback.current;
 			sending.current = true;
 			markApprovalAnswered(sessionId, toolUseId);
 			holdAnswered(sessionId, toolUseId);
-			try {
+			try
+			{
 				await decide(typeof decision === "function" ? decision(comments) : decision);
 				clearUnsentPlan(sessionId, toolUseId);
 				acknowledgeApproval(sessionId, toolUseId, "ExitPlanMode");
-			} catch (err) {
+			}
+			catch (err)
+			{
 				const message = err instanceof Error ? err.message : "Failed to answer the plan";
 				sending.current = false;
 				// Saved before the mark clears, so a card the session page dropped remounts with it.
-				setUnsentPlan(sessionId, toolUseId, {revising: sentRevising, feedback: sentFeedback, error: message});
+				setUnsentPlan(
+					sessionId,
+					toolUseId,
+					{
+						revising: sentRevising,
+						feedback: sentFeedback,
+						error: message,
+					},
+				);
 				releaseAnswered(sessionId);
 				restorePlanComments(sessionId, comments);
 				clearApprovalAnswered(sessionId, toolUseId);
@@ -236,19 +289,23 @@ function PlanApprovalActions({
 		[decide, sessionId, toolUseId],
 	);
 
-	const closeFeedback = useCallback(() => {
+	const closeFeedback = useCallback(() =>
+	{
 		feedback.current = "";
 		setRevising(false);
 	}, []);
 
-	const openRevise = useCallback(() => {
+	const openRevise = useCallback(() =>
+	{
 		setFocusOnOpen(true);
 		setRevising(true);
 	}, []);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (showRevise || answered) return undefined;
-		function onKeyDown(event: KeyboardEvent) {
+		function onKeyDown(event: KeyboardEvent)
+		{
 			if (event.defaultPrevented) return;
 			const action = planKeyAction(event, dialog);
 			if (action === null || !planKeyAllowed(event.target, action)) return;
@@ -265,15 +322,24 @@ function PlanApprovalActions({
 			else void send(action, false);
 		}
 		window.addEventListener("keydown", onKeyDown, true);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("keydown", onKeyDown, true);
 		};
 	}, [showRevise, answered, dialog, send, placement, armedAt, openRevise]);
 
-	const reviseWithFeedback = () => {
+	const reviseWithFeedback = () =>
+	{
 		// Keep the box (and its text) up while the comments are taken, in case the answer is refused.
 		setRevising(true);
-		void send((comments) => ({kind: "reject", feedback: formatPlanFeedback(comments, feedback.current)}), true);
+		void send(
+			(comments) => (
+			{
+				kind: "reject",
+				feedback: formatPlanFeedback(comments, feedback.current),
+			}),
+			true,
+		);
 	};
 
 	if (answered) return null;
@@ -291,15 +357,20 @@ function PlanApprovalActions({
 					aria-label={PLAN_FEEDBACK_LABEL}
 					placeholder={hasComments ? PLAN_FEEDBACK_WITH_COMMENTS_PLACEHOLDER : PLAN_FEEDBACK_PLACEHOLDER}
 					className={FEEDBACK_CLASS}
-					onChange={(event) => {
+					onChange={(event) =>
+					{
 						feedback.current = event.target.value;
 					}}
-					onKeyDown={(event) => {
+					onKeyDown={(event) =>
+					{
 						if (event.nativeEvent.isComposing) return;
-						if (event.key === "Escape") {
+						if (event.key === "Escape")
+						{
 							event.preventDefault();
 							if (!hasComments) closeFeedback();
-						} else if (event.key === "Enter" && !event.shiftKey) {
+						}
+						else if (event.key === "Enter" && !event.shiftKey)
+						{
 							event.preventDefault();
 							reviseWithFeedback();
 						}
@@ -327,7 +398,15 @@ function PlanApprovalActions({
 						<span className="flex gap-2">
 							<ApprovalActionButton
 								variant="secondary"
-								onClick={() => void send({kind: "reject", feedback: ""}, false)}
+								onClick={() =>
+									void send(
+										{
+											kind: "reject",
+											feedback: "",
+										},
+										false,
+									)
+								}
 							>
 								{PLAN_REJECT_LABEL}
 							</ApprovalActionButton>
@@ -347,7 +426,15 @@ function PlanApprovalActions({
 								{primary !== null && primary !== "default" && dialog.manual && (
 									<ApprovalActionButton
 										variant="secondary"
-										onClick={() => void send({kind: "accept", mode: "default"}, false)}
+										onClick={() =>
+											void send(
+												{
+													kind: "accept",
+													mode: "default",
+												},
+												false,
+											)
+										}
 									>
 										{PLAN_ACCEPT_LABEL.default}
 										{docked && (
@@ -358,7 +445,15 @@ function PlanApprovalActions({
 								{primary !== null && (
 									<ApprovalActionButton
 										variant="primary"
-										onClick={() => void send({kind: "accept", mode: primary}, false)}
+										onClick={() =>
+											void send(
+												{
+													kind: "accept",
+													mode: primary,
+												},
+												false,
+											)
+										}
 									>
 										{PLAN_ACCEPT_LABEL[primary]}
 										<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
@@ -382,7 +477,8 @@ function PlanApprovalActions({
  * Upstream's accept-group capture guard (`hh`): a held Enter or Space, or an Enter with any modifier, never
  * reaches a focused accept button's native activation, unless it is inside a menu.
  */
-function swallowAcceptRepeat(event: ReactKeyboardEvent<HTMLElement>) {
+function swallowAcceptRepeat(event: ReactKeyboardEvent<HTMLElement>)
+{
 	const held = event.repeat && (event.key === "Enter" || event.key === " ");
 	const chord = event.key === "Enter" && (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey);
 	if (!held && !chord) return;
@@ -396,11 +492,13 @@ function swallowAcceptRepeat(event: ReactKeyboardEvent<HTMLElement>) {
  * reopens it), only where side panes exist (never on a phone, where upstream
  * passes no `onOpenPlan`) and only while the tab is visible.
  */
-function useAutoOpenPlanPane(enabled: boolean): void {
+function useAutoOpenPlanPane(enabled: boolean): void
+{
 	const host = useOptionalPaneHost();
 	const phone = usePhoneSheet();
 	const opened = useRef(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!enabled || opened.current || host === null || phone || document.visibilityState !== "visible") return;
 		opened.current = true;
 		host.openPane("plan");
@@ -425,25 +523,49 @@ export function PlanApprovalCard({
 	placement?: PlanApprovalPlacement;
 	/** False for a planless ExitPlanMode, which has no plan to open. */
 	autoOpenPlan?: boolean;
-}) {
+})
+{
 	const {sessionId, answerRoute, loadDialog, decide} = plan;
 	useAutoOpenPlanPane(autoOpenPlan);
 	const live = answerRoute === "live-pane";
-	const [state, setState] = useState<DialogState>({kind: "loading"});
+	const [state, setState] = useState<DialogState>(
+		{
+			kind: "loading",
+		},
+	);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!live) return undefined;
 		let current = true;
-		setState({kind: "loading"});
-		loadDialog().then(
-			(dialog) => {
-				if (current) setState({kind: "ready", dialog});
-			},
-			() => {
-				if (current) setState({kind: "unavailable"});
+		setState(
+			{
+				kind: "loading",
 			},
 		);
-		return () => {
+		loadDialog().then(
+			(dialog) =>
+			{
+				if (current)
+					setState(
+						{
+							kind: "ready",
+							dialog,
+						},
+					);
+			},
+			() =>
+			{
+				if (current)
+					setState(
+						{
+							kind: "unavailable",
+						},
+					);
+			},
+		);
+		return () =>
+		{
 			current = false;
 		};
 	}, [live, loadDialog, toolUseId]);

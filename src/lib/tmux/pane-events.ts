@@ -11,12 +11,14 @@ import {pollTmuxSessionPanes, TMUX_NOT_INSTALLED, type TmuxSessionPane} from "./
 /** tmux pushes nothing to a plain client, so ccp polls `list-panes` this often. */
 export const TMUX_PANE_POLL_INTERVAL_MS = 2000;
 
-export interface TmuxPaneEvent {
+export interface TmuxPaneEvent
+{
 	type: string;
 	data: Record<string, unknown>;
 }
 
-interface TrackedPane {
+interface TrackedPane
+{
 	pane: TmuxSessionPane;
 	signature: string;
 	revision: number;
@@ -27,7 +29,8 @@ interface TrackedPane {
  * restart from `%0` with a new server, so the socket and pane pid are part of
  * it: a reused id is a new pane, never a tombstoned one coming back.
  */
-function paneKey({pane}: TmuxSessionPane): string {
+function paneKey({pane}: TmuxSessionPane): string
+{
 	return `${pane.socketPath}\0${pane.paneId}\0${String(pane.panePid)}`;
 }
 
@@ -36,41 +39,111 @@ function paneKey({pane}: TmuxSessionPane): string {
  * events herdr pushes, through the same pane-differ. tmux has no revisions, so
  * each change to a pane's link bumps a local one. The first poll only seeds.
  */
-export function createTmuxPaneEventTracker(): {poll: (panes: readonly TmuxSessionPane[]) => TmuxPaneEvent[]} {
+export function createTmuxPaneEventTracker():
+{
+	poll: (panes: readonly TmuxSessionPane[]) => TmuxPaneEvent[];
+}
+{
 	const differ = createHerdrPaneDiffer();
 	let tracked = new Map<string, TrackedPane>();
 	let seeded = false;
 
 	return {
-		poll(panes) {
+		poll(panes)
+		{
 			const next = new Map<string, TrackedPane>();
 			const events: TmuxPaneEvent[] = [];
-			for (const pane of panes) {
+			for (const pane of panes)
+			{
 				const key = paneKey(pane);
 				const link = toTmuxPaneLink(pane);
 				const signature = JSON.stringify(link);
 				const previous = tracked.get(key);
-				if (previous === undefined) {
-					next.set(key, {pane, signature, revision: 1});
-					if (!seeded) differ.seedKnownPanes([{paneId: key, revision: 1}]);
-					else if (differ.recordCreated({paneId: key, revision: 1})) {
-						events.push({type: HERDR_EVENTS.PANE_CREATED, data: {host: "tmux", pane: link}});
+				if (previous === undefined)
+				{
+					next.set(
+						key,
+						{
+							pane,
+							signature,
+							revision: 1,
+						},
+					);
+					if (!seeded)
+						differ.seedKnownPanes([
+							{
+								paneId: key,
+								revision: 1,
+							},
+						]);
+					else if (
+						differ.recordCreated(
+							{
+								paneId: key,
+								revision: 1,
+							},
+						)
+					)
+					{
+						events.push(
+							{
+								type: HERDR_EVENTS.PANE_CREATED,
+								data:
+								{
+									host: "tmux",
+									pane: link,
+								},
+							},
+						);
 					}
 					continue;
 				}
 				const revision = previous.signature === signature ? previous.revision : previous.revision + 1;
-				next.set(key, {pane, signature, revision});
-				if (revision !== previous.revision && differ.recordUpdated({paneId: key, revision})) {
-					events.push({type: HERDR_EVENTS.PANE_UPDATED, data: {host: "tmux", pane: link}});
+				next.set(
+					key,
+					{
+						pane,
+						signature,
+						revision,
+					},
+				);
+				if (
+					revision !== previous.revision &&
+					differ.recordUpdated(
+						{
+							paneId: key,
+							revision,
+						},
+					)
+				)
+				{
+					events.push(
+						{
+							type: HERDR_EVENTS.PANE_UPDATED,
+							data:
+							{
+								host: "tmux",
+								pane: link,
+							},
+						},
+					);
 				}
 			}
-			for (const [key, {pane}] of tracked) {
+			for (const [key, {pane}] of tracked)
+			{
 				if (next.has(key) || !differ.recordClosed(key)) continue;
 				const link = toTmuxPaneLink(pane);
-				events.push({
-					type: HERDR_EVENTS.PANE_CLOSED,
-					data: {host: "tmux", pane_id: link.paneId, terminal_id: link.terminalId},
-				});
+				events.push(
+					{
+						type: HERDR_EVENTS.PANE_CLOSED,
+						data:
+						{
+							host: "tmux",
+							pane_id: link.paneId,
+							terminal_id: link.terminalId,
+						},
+					},
+				);
 			}
 			tracked = next;
 			seeded = true;
@@ -81,7 +154,8 @@ export function createTmuxPaneEventTracker(): {poll: (panes: readonly TmuxSessio
 
 type Timer = ReturnType<typeof setTimeout>;
 
-export interface TmuxPaneEventPollerDependencies {
+export interface TmuxPaneEventPollerDependencies
+{
 	listSessionPanes: () => Promise<TmuxSessionPane[] | typeof TMUX_NOT_INSTALLED>;
 	broadcast: (type: string, data: Record<string, unknown>) => void;
 	/** Kept current with each poll's panes for request handlers. */
@@ -102,7 +176,8 @@ export interface TmuxPaneEventPollerDependencies {
  * the poller to sleep, quietly and with no table expiry, until the wake
  * signature changes.
  */
-export function createTmuxPaneEventPoller(dependencies: TmuxPaneEventPollerDependencies): () => void {
+export function createTmuxPaneEventPoller(dependencies: TmuxPaneEventPollerDependencies): () => void
+{
 	const tracker = createTmuxPaneEventTracker();
 	const {table} = dependencies;
 	let stopped = false;
@@ -110,22 +185,30 @@ export function createTmuxPaneEventPoller(dependencies: TmuxPaneEventPollerDepen
 	let timer: Timer | number | null = null;
 	let dormantSignature: string | null = null;
 
-	const poll = async (): Promise<void> => {
+	const poll = async (): Promise<void> =>
+	{
 		timer = null;
 		if (stopped) return;
-		if (dormantSignature === null || dependencies.wakeSignature() !== dormantSignature) {
+		if (dormantSignature === null || dependencies.wakeSignature() !== dormantSignature)
+		{
 			dormantSignature = null;
-			try {
+			try
+			{
 				const panes = await dependencies.listSessionPanes();
 				if (isStopped()) return;
-				if (panes === TMUX_NOT_INSTALLED) {
+				if (panes === TMUX_NOT_INSTALLED)
+				{
 					dormantSignature = dependencies.wakeSignature();
 					table.hold([]);
-				} else {
+				}
+				else
+				{
 					table.update(panes);
 					for (const event of tracker.poll(panes)) dependencies.broadcast(event.type, event.data);
 				}
-			} catch (error) {
+			}
+			catch (error)
+			{
 				table.invalidate();
 				console.error("tmux pane poll failed", error);
 			}
@@ -136,7 +219,8 @@ export function createTmuxPaneEventPoller(dependencies: TmuxPaneEventPollerDepen
 
 	timer = dependencies.schedule(() => void poll(), 0);
 
-	return () => {
+	return () =>
+	{
 		if (stopped) return;
 		stopped = true;
 		if (timer !== null) dependencies.cancel(timer);
@@ -145,7 +229,8 @@ export function createTmuxPaneEventPoller(dependencies: TmuxPaneEventPollerDepen
 	};
 }
 
-function tmuxWakeSignature(): string {
+function tmuxWakeSignature(): string
+{
 	const hookPanes = getActiveSessionEntries()
 		.filter((entry) => entry.tmuxPane !== "")
 		.map((entry) => `${entry.sessionId}:${entry.tmuxServerSocket}:${entry.tmuxPane}`)
@@ -153,26 +238,36 @@ function tmuxWakeSignature(): string {
 	return [terminalHostSetting(), ...hookPanes].join("\n");
 }
 
-const defaultDependencies: TmuxPaneEventPollerDependencies = {
+const defaultDependencies: TmuxPaneEventPollerDependencies =
+{
 	listSessionPanes: async () => pollTmuxSessionPanes(),
 	broadcast: broadcastTyped,
 	table: tmuxPaneTable,
 	wakeSignature: tmuxWakeSignature,
 	schedule: setTimeout,
-	cancel: (timer) => {
+	cancel: (timer) =>
+	{
 		clearTimeout(timer);
 	},
 };
 
-const pollerState = hmrPersist<{stop: (() => void) | null}>("tmuxPaneEventPoller", () => ({stop: null}));
+const pollerState = hmrPersist<
+{
+	stop: (() => void) | null;
+}>("tmuxPaneEventPoller", () => (
+{
+	stop: null,
+}));
 /** The poller this module instance started; other dev instances share `pollerState` but must not stop it. */
 let startedHere: (() => void) | null = null;
 
 /** Start the single process-wide tmux pane-event poller. */
-export function startTmuxPaneEvents(): () => void {
+export function startTmuxPaneEvents(): () => void
+{
 	if (pollerState.stop) return pollerState.stop;
 	const stopPoller = createTmuxPaneEventPoller(defaultDependencies);
-	const stop = (): void => {
+	const stop = (): void =>
+	{
 		stopPoller();
 		if (pollerState.stop === stop) pollerState.stop = null;
 	};
@@ -181,6 +276,7 @@ export function startTmuxPaneEvents(): () => void {
 	return stop;
 }
 
-hmrDispose(() => {
+hmrDispose(() =>
+{
 	startedHere?.();
 });

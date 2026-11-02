@@ -5,7 +5,8 @@ import type {TerminalPlacementProvider} from "../terminal-placements";
 import type {TerminalHostSetting} from "../terminal-host-setting";
 import {createTmuxPlacementProvider} from "../tmux-windows";
 import {toTmuxPaneLink} from "../tmux/pane-links";
-import {
+import
+{
 	defaultTmuxSessionPaneSources,
 	lookupTmuxSessionPanes,
 	type TmuxSessionPaneSources,
@@ -14,13 +15,15 @@ import {TERMINAL_HOST_CAPABILITIES} from "../terminal-host-capabilities";
 import {defaultTmuxLaunchIo, launchClaudeInTmux, type TmuxLaunchIo} from "../tmux/launch";
 import {defaultTmuxWriteIo, readTmuxScreen, tmuxWriteDependencies, type TmuxWriteIo} from "../tmux/writes";
 import {startTmuxPaneEvents} from "../tmux/pane-events";
-import {
+import
+{
 	defaultTmuxTerminalStreamIo,
 	startTmuxTerminalStream,
 	stopAllTmuxTerminalStreams,
 	type TmuxTerminalStreamIo,
 } from "../tmux/terminal-stream";
-import {
+import
+{
 	defaultHerdrElicitationDependencies,
 	handleHerdrElicitation,
 	handleHerdrElicitationDialog,
@@ -30,7 +33,8 @@ import {defaultHerdrInterruptDependencies, handleHerdrInterrupt} from "../herdr/
 import {defaultHerdrLaunchDependencies, handleHerdrLaunch} from "../herdr/launch";
 import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herdr/live-option";
 import {createHerdrPlacementProvider, getHerdrPanes, type HerdrPaneLink} from "../herdr/panes";
-import {
+import
+{
 	defaultHerdrPermissionDependencies,
 	handleHerdrPermission,
 	handleHerdrPermissionDialog,
@@ -45,7 +49,8 @@ import {defaultHerdrQuestionDependencies, handleHerdrQuestion} from "../herdr/qu
 import {reportHookStateToHerdr} from "../herdr/report-state";
 import {startHerdrEventBridge} from "../herdr/subscribe";
 import {controlHerdrPane, controlHerdrSession, type TerminalController} from "../herdr/terminal-controller";
-import {
+import
+{
 	observeHerdrPane,
 	observeHerdrSession,
 	stopAllTerminalObservers,
@@ -73,7 +78,8 @@ export {authorizeTerminalControl} from "../herdr/terminal-controller";
  * typing (send keys, send text, prompt, with the agent ready check), then
  * answers with the JSON the browser already expects.
  */
-export interface TerminalHost {
+export interface TerminalHost
+{
 	/** `none` when no host is available. */
 	readonly id: "herdr" | "tmux" | "none";
 	/** Whether this host can type into panes at all; Live terminal input still gates it. */
@@ -152,7 +158,8 @@ export interface TerminalHost {
 	stopAllStreams: () => void;
 }
 
-const herdrTerminalHost: TerminalHost = {
+const herdrTerminalHost: TerminalHost =
+{
 	id: "herdr",
 	...TERMINAL_HOST_CAPABILITIES.herdr,
 	listPanes: async () => getHerdrPanes(),
@@ -173,7 +180,8 @@ const herdrTerminalHost: TerminalHost = {
 	toggleRemoteControl: async (request) => handleHerdrRemoteControl(request),
 	applyLiveOption: async (request) => handleHerdrLiveOption(request),
 	launch: async (request) => handleHerdrLaunch(request),
-	reportHookState: (event, entry) => {
+	reportHookState: (event, entry) =>
+	{
 		reportHookStateToHerdr(event, entry);
 	},
 	startPaneEvents: startHerdrEventBridge,
@@ -186,20 +194,34 @@ const herdrTerminalHost: TerminalHost = {
 
 const NO_HOST_MESSAGE = "No terminal host is available for live input";
 
-async function noHostWrite(): Promise<Response> {
-	return Promise.resolve(Response.json({error: NO_HOST_MESSAGE, code: "no-terminal-host"}, {status: 503}));
+async function noHostWrite(): Promise<Response>
+{
+	return Promise.resolve(
+		Response.json(
+			{
+				error: NO_HOST_MESSAGE,
+				code: "no-terminal-host",
+			},
+			{
+				status: 503,
+			},
+		),
+	);
 }
 
-async function noHostStream(): Promise<never> {
+async function noHostStream(): Promise<never>
+{
 	return Promise.reject(new Error("No terminal host can stream this session"));
 }
 
-async function noHostPaneStream(): Promise<never> {
+async function noHostPaneStream(): Promise<never>
+{
 	return Promise.reject(new Error("No terminal host can stream this pane"));
 }
 
 /** No host: no panes, and every write is refused. */
-const noTerminalHost: TerminalHost = {
+const noTerminalHost: TerminalHost =
+{
 	id: "none",
 	canWrite: false,
 	canStream: false,
@@ -244,16 +266,22 @@ export function createTmuxTerminalHost(
 	io: TmuxWriteIo = defaultTmuxWriteIo,
 	launchIo: TmuxLaunchIo = defaultTmuxLaunchIo,
 	streamIo: TmuxTerminalStreamIo = defaultTmuxTerminalStreamIo,
-): TerminalHost {
-	const writes = {writesEnabled: io.writesEnabled};
-	const permissionDependencies = (): HerdrPermissionDependencies => ({
+): TerminalHost
+{
+	const writes =
+	{
+		writesEnabled: io.writesEnabled,
+	};
+	const permissionDependencies = (): HerdrPermissionDependencies => (
+	{
 		...defaultHerdrPermissionDependencies,
 		...writes,
 		pause: io.pause,
 		readScreen: async (sessionId: string, paneId: string) => readTmuxScreen(sessionId, paneId, sources),
 		...tmuxWriteDependencies("permission", sources, io),
 	});
-	const planDependencies = () => ({
+	const planDependencies = () => (
+	{
 		...defaultHerdrPlanDependencies,
 		...writes,
 		pause: io.pause,
@@ -263,7 +291,8 @@ export function createTmuxTerminalHost(
 		readScreen: async (sessionId: string, paneId: string) => readTmuxScreen(sessionId, paneId, sources),
 		...tmuxWriteDependencies("plan", sources, io),
 	});
-	const elicitationDependencies = (): HerdrElicitationDependencies => ({
+	const elicitationDependencies = (): HerdrElicitationDependencies => (
+	{
 		...defaultHerdrElicitationDependencies,
 		...writes,
 		readScreen: async (sessionId: string, paneId: string) => readTmuxScreen(sessionId, paneId, sources),
@@ -275,11 +304,19 @@ export function createTmuxTerminalHost(
 		rows: number,
 		socket: TerminalObserverSocket,
 		interactive: boolean,
-	): Promise<TerminalController> => {
+	): Promise<TerminalController> =>
+	{
 		parseViewport(columns, rows);
 		const match = (await lookupTmuxSessionPanes(sources)).find((candidate) => candidate.sessionId === sessionId);
 		if (match === undefined) throw new Error("No live tmux pane is linked to this session");
-		return startTmuxTerminalStream({pane: match.pane, interactive}, socket, streamIo);
+		return startTmuxTerminalStream(
+			{
+				pane: match.pane,
+				interactive,
+			},
+			socket,
+			streamIo,
+		);
 	};
 	return {
 		...noTerminalHost,
@@ -289,33 +326,43 @@ export function createTmuxTerminalHost(
 		startPaneEvents: startTmuxPaneEvents,
 		placementProvider: () => createTmuxPlacementProvider(sources),
 		prompt: async (request) =>
-			handleHerdrPrompt(request, {
-				...defaultHerdrPromptDependencies,
-				...writes,
-				...tmuxWriteDependencies("prompt", sources, io),
-				midTurn: {
-					ready: (sessionId) =>
-						midTurnPromptReady(
-							sources.entries().find((entry) => entry.sessionId === sessionId),
-							getPendingQuestion(sessionId),
-						),
-					pause: io.pause,
-					...tmuxWriteDependencies("mid-turn-prompt", sources, io),
+			handleHerdrPrompt(
+				request,
+				{
+					...defaultHerdrPromptDependencies,
+					...writes,
+					...tmuxWriteDependencies("prompt", sources, io),
+					midTurn:
+					{
+						ready: (sessionId) =>
+							midTurnPromptReady(
+								sources.entries().find((entry) => entry.sessionId === sessionId),
+								getPendingQuestion(sessionId),
+							),
+						pause: io.pause,
+						...tmuxWriteDependencies("mid-turn-prompt", sources, io),
+					},
 				},
-			}),
+			),
 		interrupt: async (request) =>
-			handleHerdrInterrupt(request, {
-				...defaultHerdrInterruptDependencies,
-				...writes,
-				...tmuxWriteDependencies("interrupt", sources, io),
-			}),
+			handleHerdrInterrupt(
+				request,
+				{
+					...defaultHerdrInterruptDependencies,
+					...writes,
+					...tmuxWriteDependencies("interrupt", sources, io),
+				},
+			),
 		answerQuestion: async (request) =>
-			handleHerdrQuestion(request, {
-				...defaultHerdrQuestionDependencies,
-				...writes,
-				pause: io.pause,
-				...tmuxWriteDependencies("question", sources, io),
-			}),
+			handleHerdrQuestion(
+				request,
+				{
+					...defaultHerdrQuestionDependencies,
+					...writes,
+					pause: io.pause,
+					...tmuxWriteDependencies("question", sources, io),
+				},
+			),
 		answerPermission: async (request) => handleHerdrPermission(request, permissionDependencies()),
 		readPermissionDialog: async (request) => handleHerdrPermissionDialog(request, permissionDependencies()),
 		readPlanDialog: async (request) => handleHerdrPlanDialog(request, planDependencies()),
@@ -323,51 +370,81 @@ export function createTmuxTerminalHost(
 		readElicitationDialog: async (request) => handleHerdrElicitationDialog(request, elicitationDependencies()),
 		answerElicitation: async (request) => handleHerdrElicitation(request, elicitationDependencies()),
 		rewind: async (request) =>
-			handleHerdrRewind(request, {
-				...defaultHerdrRewindDependencies,
-				...writes,
-				pause: io.pause,
-				ready: (sessionId: string) => {
-					const entry = sources.entries().find((candidate) => candidate.sessionId === sessionId);
-					return (
-						entry?.state === "idle" &&
-						entry.pendingPermissionRequest === undefined &&
-						getPendingQuestion(sessionId) === null
-					);
+			handleHerdrRewind(
+				request,
+				{
+					...defaultHerdrRewindDependencies,
+					...writes,
+					pause: io.pause,
+					ready: (sessionId: string) =>
+					{
+						const entry = sources.entries().find((candidate) => candidate.sessionId === sessionId);
+						return (
+							entry?.state === "idle" &&
+							entry.pendingPermissionRequest === undefined &&
+							getPendingQuestion(sessionId) === null
+						);
+					},
+					readScreen: async (sessionId: string, paneId: string) =>
+						readTmuxScreen(
+							sessionId,
+							paneId,
+							sources,
+							undefined,
+							{
+								ansi: true,
+							},
+						),
+					...tmuxWriteDependencies("rewind", sources, io),
 				},
-				readScreen: async (sessionId: string, paneId: string) =>
-					readTmuxScreen(sessionId, paneId, sources, undefined, {ansi: true}),
-				...tmuxWriteDependencies("rewind", sources, io),
-			}),
+			),
 		toggleRemoteControl: async (request) =>
-			handleHerdrRemoteControl(request, {
-				...defaultHerdrRemoteControlDependencies,
-				...writes,
-				pause: io.pause,
-				ready: (sessionId: string) => {
-					const entry = sources.entries().find((candidate) => candidate.sessionId === sessionId);
-					return (
-						entry?.state === "idle" &&
-						entry.pendingPermissionRequest === undefined &&
-						getPendingQuestion(sessionId) === null
-					);
+			handleHerdrRemoteControl(
+				request,
+				{
+					...defaultHerdrRemoteControlDependencies,
+					...writes,
+					pause: io.pause,
+					ready: (sessionId: string) =>
+					{
+						const entry = sources.entries().find((candidate) => candidate.sessionId === sessionId);
+						return (
+							entry?.state === "idle" &&
+							entry.pendingPermissionRequest === undefined &&
+							getPendingQuestion(sessionId) === null
+						);
+					},
+					readScreen: async (sessionId: string, paneId: string) =>
+						readTmuxScreen(
+							sessionId,
+							paneId,
+							sources,
+							undefined,
+							{
+								ansi: true,
+							},
+						),
+					...tmuxWriteDependencies("remote-control", sources, io),
 				},
-				readScreen: async (sessionId: string, paneId: string) =>
-					readTmuxScreen(sessionId, paneId, sources, undefined, {ansi: true}),
-				...tmuxWriteDependencies("remote-control", sources, io),
-			}),
+			),
 		applyLiveOption: async (request) =>
-			handleHerdrLiveOption(request, {
-				...defaultHerdrLiveOptionDependencies,
-				...writes,
-				...tmuxWriteDependencies("live-option", sources, io),
-			}),
+			handleHerdrLiveOption(
+				request,
+				{
+					...defaultHerdrLiveOptionDependencies,
+					...writes,
+					...tmuxWriteDependencies("live-option", sources, io),
+				},
+			),
 		launch: async (request) =>
-			handleHerdrLaunch(request, {
-				...defaultHerdrLaunchDependencies,
-				...writes,
-				launchClaude: async (launch) => launchClaudeInTmux(launch, launchIo),
-			}),
+			handleHerdrLaunch(
+				request,
+				{
+					...defaultHerdrLaunchDependencies,
+					...writes,
+					launchClaude: async (launch) => launchClaudeInTmux(launch, launchIo),
+				},
+			),
 		observe: async (sessionId, columns, rows, socket) => stream(sessionId, columns, rows, socket, false),
 		control: async (sessionId, columns, rows, socket) => stream(sessionId, columns, rows, socket, true),
 		stopAllStreams: stopAllTmuxTerminalStreams,
@@ -379,22 +456,26 @@ const tmuxTerminalHost = createTmuxTerminalHost();
 export async function resolveTerminalHost(
 	setting: TerminalHostSetting,
 	probes: TerminalHostProbes = defaultTerminalHostProbes,
-): Promise<TerminalHost> {
+): Promise<TerminalHost>
+{
 	const id = await selectTerminalHost(setting, probes);
 	return id === "herdr" ? herdrTerminalHost : tmuxTerminalHost;
 }
 
 /** The host the Terminal host setting picks right now. */
-export async function getTerminalHost(): Promise<TerminalHost> {
+export async function getTerminalHost(): Promise<TerminalHost>
+{
 	return resolveTerminalHost(terminalHostSetting());
 }
 
-interface PaneEventStarters {
+interface PaneEventStarters
+{
 	herdr: () => () => void;
 	tmux: () => () => void;
 }
 
-const defaultPaneEventStarters: PaneEventStarters = {
+const defaultPaneEventStarters: PaneEventStarters =
+{
 	herdr: herdrTerminalHost.startPaneEvents,
 	tmux: tmuxTerminalHost.startPaneEvents,
 };
@@ -408,24 +489,28 @@ const defaultPaneEventStarters: PaneEventStarters = {
 export function startTerminalHostEvents(
 	setting: TerminalHostSetting = terminalHostSetting(),
 	starters: PaneEventStarters = defaultPaneEventStarters,
-): () => void {
+): () => void
+{
 	const stops = [
 		...(setting === "tmux" ? [] : [starters.herdr()]),
 		...(setting === "herdr" ? [] : [starters.tmux()]),
 	];
-	return () => {
+	return () =>
+	{
 		for (const stop of stops) stop();
 	};
 }
 
 /** Server shutdown: stop the live terminal streams of every host that can open one. */
-export function stopAllTerminalHostStreams(): void {
+export function stopAllTerminalHostStreams(): void
+{
 	herdrTerminalHost.stopAllStreams();
 	tmuxTerminalHost.stopAllStreams();
 }
 
 /** Placement providers for the Terminals view: tmux windows always, plus herdr's panes when herdr is the host. */
-export async function terminalPlacementProviders(): Promise<TerminalPlacementProvider[]> {
+export async function terminalPlacementProviders(): Promise<TerminalPlacementProvider[]>
+{
 	const host = await getTerminalHost();
 	const hostProvider = host.id === "tmux" ? null : host.placementProvider();
 	return hostProvider === null ? [createTmuxPlacementProvider()] : [createTmuxPlacementProvider(), hostProvider];

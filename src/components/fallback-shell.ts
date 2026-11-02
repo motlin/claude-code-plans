@@ -7,7 +7,8 @@ export type FallbackShell = "artifacts" | "home" | "session";
  * routes (`/plugins`, `/customize/`, `/command/…`, `/plugin/…`) land on Customize pages, which
  * share the session default.
  */
-export function fallbackShellFor(pathname: string): FallbackShell {
+export function fallbackShellFor(pathname: string): FallbackShell
+{
 	if (pathname === "/artifacts") return "artifacts";
 	if (pathname === "/" || pathname === "/settings" || pathname === "/settings/") return "home";
 	return "session";

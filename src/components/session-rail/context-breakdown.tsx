@@ -1,6 +1,7 @@
 import {Link} from "@tanstack/react-router";
 import {ChevronRight} from "lucide-react";
-import {
+import
+{
 	Component,
 	createRef,
 	useImperativeHandle,
@@ -40,32 +41,45 @@ const EXPANDER_SCROLL_AFTER = 12;
 const EXPANDER_SCROLL_CLASS = "-mx-0.5 max-h-73 scroll-py-0.5 overflow-y-auto overscroll-contain p-0.5";
 const OVERFLOW_NAME_CLASS = "block min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap flex-1";
 
-const PERCENT = new Intl.NumberFormat("en-US", {
-	style: "percent",
-	minimumFractionDigits: 1,
-	maximumFractionDigits: 1,
-});
+const PERCENT = new Intl.NumberFormat(
+	"en-US",
+	{
+		style: "percent",
+		minimumFractionDigits: 1,
+		maximumFractionDigits: 1,
+	},
+);
 const COUNT = new Intl.NumberFormat("en-US");
 
 /** Whether a name's text is clipped, the only case its full-name tooltip opens (upstream's OverflowTooltip). */
-function nameOverflows(anchor: HTMLElement): boolean {
+function nameOverflows(anchor: HTMLElement): boolean
+{
 	const name = anchor.querySelector("[data-rail-context-row-name]");
 	return name !== null && name.scrollWidth > name.clientWidth;
 }
 
-function Swatch({color}: {color: string}) {
+function Swatch({color}: {color: string})
+{
 	return (
 		<span
 			aria-hidden
 			data-rail-context-swatch=""
 			className="shrink-0 forced-color-adjust-none"
-			style={{width: 10, height: 10, borderRadius: 2, background: color, display: "inline-block"}}
+			style={
+			{
+				width: 10,
+				height: 10,
+				borderRadius: 2,
+				background: color,
+				display: "inline-block",
+			}}
 		/>
 	);
 }
 
 /** Collapsed content mounts on first open, then stays mounted and hidden (upstream's `F`). */
-function Collapse({expanded, className, children}: {expanded: boolean; className?: string; children: ReactNode}) {
+function Collapse({expanded, className, children}: {expanded: boolean; className?: string; children: ReactNode})
+{
 	const [mounted, setMounted] = useState(expanded);
 	if (expanded && !mounted) setMounted(true);
 	if (!mounted) return null;
@@ -80,30 +94,45 @@ function Collapse({expanded, className, children}: {expanded: boolean; className
  * Keeps focus inside the rows when a re-render removes the focused row (upstream's `re`): refocus the same node
  * when it survived, else the fallback (an expander's toggle).
  */
-class FocusKeeper extends Component<{
+class FocusKeeper extends Component<
+{
 	className: string;
 	fallback?: RefObject<HTMLElement | null>;
 	children: ReactNode;
-}> {
+}>
+{
 	rows = createRef<HTMLDivElement>();
 
-	override getSnapshotBeforeUpdate(): HTMLElement | null {
+	override getSnapshotBeforeUpdate(): HTMLElement | null
+	{
 		const rows = this.rows.current;
 		const active = rows?.ownerDocument.activeElement ?? null;
 		if (!rows || !(active instanceof HTMLElement) || !rows.contains(active)) return null;
 		return active;
 	}
 
-	override componentDidUpdate(_props: unknown, _state: unknown, focused: HTMLElement | null): void {
+	override componentDidUpdate(_props: unknown, _state: unknown, focused: HTMLElement | null): void
+	{
 		const rows = this.rows.current;
 		if (!rows || focused === null) return;
 		const active = rows.ownerDocument.activeElement;
 		if (active !== null && active !== rows.ownerDocument.body) return;
-		if (focused.isConnected) focused.focus({preventScroll: true});
-		else this.props.fallback?.current?.focus({preventScroll: false});
+		if (focused.isConnected)
+			focused.focus(
+				{
+					preventScroll: true,
+				},
+			);
+		else
+			this.props.fallback?.current?.focus(
+				{
+					preventScroll: false,
+				},
+			);
 	}
 
-	override render() {
+	override render()
+	{
 		return (
 			<div ref={this.rows} className={this.props.className}>
 				{this.props.children}
@@ -114,11 +143,13 @@ class FocusKeeper extends Component<{
 
 type ExpanderKey = "mcp" | "memory" | "agents";
 
-interface ExpanderHandle {
+interface ExpanderHandle
+{
 	reveal: () => void;
 }
 
-interface ExpanderRow {
+interface ExpanderRow
+{
 	/** Distinguishes rows that share a name (upstream keys by `id ?? name`). */
 	id: string;
 	name: string;
@@ -129,7 +160,8 @@ interface ExpanderRow {
 }
 
 /** An expander row's name, clipped with a tooltip that shows the whole of it when it doesn't fit. */
-function RowName({name, className = ""}: {name: string; className?: string}) {
+function RowName({name, className = ""}: {name: string; className?: string})
+{
 	return (
 		<span className={`flex min-w-0 flex-1 text-ink-muted${className}`}>
 			<Tooltip portal content={name} side="right" openWhen={nameOverflows} className="min-w-0 flex-1">
@@ -141,13 +173,18 @@ function RowName({name, className = ""}: {name: string; className?: string}) {
 	);
 }
 
-function ExpanderRowView({row}: {row: ExpanderRow}) {
-	if (row.connectorId !== undefined) {
+function ExpanderRowView({row}: {row: ExpanderRow})
+{
+	if (row.connectorId !== undefined)
+	{
 		return (
 			<Tooltip content="Manage connector" className="flex w-full min-w-0">
 				<Link
 					to="/customize/connectors/id/$serverId"
-					params={{serverId: toConnectorSlug(row.connectorId)}}
+					params={
+					{
+						serverId: toConnectorSlug(row.connectorId),
+					}}
 					className={`group/press relative text-start ${EXPANDER_ROW_CLASS} rounded focus-visible:outline-hidden focus-visible:shadow-focus hover:bg-fill-ghost-hover active:bg-alpha-2`}
 				>
 					<span aria-hidden className="w-3 shrink-0" />
@@ -181,17 +218,29 @@ function ExpanderRowView({row}: {row: ExpanderRow}) {
 }
 
 /** Upstream's rail expander (`ie`): a toggle with the row count, then the rows, scrolling past 12. */
-function Expander({label, rows, ref}: {label: string; rows: readonly ExpanderRow[]; ref?: Ref<ExpanderHandle>}) {
+function Expander({label, rows, ref}: {label: string; rows: readonly ExpanderRow[]; ref?: Ref<ExpanderHandle>})
+{
 	const [open, setOpen] = useState(false);
 	const root = useRef<HTMLDivElement>(null);
 	const toggle = useRef<HTMLButtonElement>(null);
-	useImperativeHandle(ref, () => ({
-		reveal: () => {
-			flushSync(() => {
+	useImperativeHandle(ref, () => (
+	{
+		reveal: () =>
+		{
+			flushSync(() =>
+			{
 				setOpen(true);
 			});
-			root.current?.scrollIntoView({block: "nearest"});
-			toggle.current?.focus({preventScroll: true});
+			root.current?.scrollIntoView(
+				{
+					block: "nearest",
+				},
+			);
+			toggle.current?.focus(
+				{
+					preventScroll: true,
+				},
+			);
 		},
 	}));
 	return (
@@ -201,10 +250,12 @@ function Expander({label, rows, ref}: {label: string; rows: readonly ExpanderRow
 				type="button"
 				className={TOGGLE_CLASS}
 				aria-expanded={open}
-				onClick={() => {
+				onClick={() =>
+				{
 					setOpen((value) => !value);
 				}}
-				onKeyDown={(event) => {
+				onKeyDown={(event) =>
+				{
 					if (event.key === "Enter" && event.repeat) event.preventDefault();
 				}}
 			>
@@ -232,7 +283,8 @@ function Expander({label, rows, ref}: {label: string; rows: readonly ExpanderRow
 }
 
 /** The in-app route of an auto-memory file under `~/.claude/projects/<project>/memory/`, else undefined. */
-function memoryFileHref(path: string, homeRoot: string): string | undefined {
+function memoryFileHref(path: string, homeRoot: string): string | undefined
+{
 	const prefix = `${homeRoot}/.claude/projects/`;
 	if (!path.startsWith(prefix)) return undefined;
 	const match = /^([^/]+)\/memory\/([^/]+\.md)$/.exec(path.slice(prefix.length));
@@ -242,7 +294,8 @@ function memoryFileHref(path: string, homeRoot: string): string | undefined {
 }
 
 /** A tool's short name: the last non-empty `__` segment, leading underscores stripped (upstream's `Cs`). */
-function mcpToolShortName(name: string): string {
+function mcpToolShortName(name: string): string
+{
 	const segment = name.split("__").findLast((part) => part.length > 0) ?? name;
 	return segment.replace(/^_+/, "");
 }
@@ -251,22 +304,37 @@ function mcpToolShortName(name: string): string {
  * `mcp__github__get_me` from server `github` → `github · get_me`. A server the session can't manage reads with its
  * underscores as spaces (upstream's `ya`): `claude_ai_Claude_Docs` → `claude ai Claude Docs`.
  */
-function mcpToolName(tool: ContextBreakdown["mcpTools"][number], server: McpServerSummary | undefined): string {
+function mcpToolName(tool: ContextBreakdown["mcpTools"][number], server: McpServerSummary | undefined): string
+{
 	return `${server?.name ?? tool.serverName.replace(/_+/g, " ")} · ${mcpToolShortName(tool.name)}`;
 }
 
 /** Upstream's row id `F(t)`: `mcp__server__name` unless the name is already prefixed. */
-function mcpToolId(tool: ContextBreakdown["mcpTools"][number]): string {
+function mcpToolId(tool: ContextBreakdown["mcpTools"][number]): string
+{
 	return tool.name.startsWith("mcp__") ? tool.name : `mcp__${tool.serverName}__${tool.name}`;
 }
 
 /** Ids made unique by suffixing repeats, so rows that share one keep distinct keys. */
-function uniqueIds<T extends {id: string}>(rows: readonly T[]): T[] {
+function uniqueIds<
+	T extends
+	{
+		id: string;
+	},
+>(rows: readonly T[]): T[]
+{
 	const seen = new Map<string, number>();
-	return rows.map((row) => {
+	return rows.map((row) =>
+	{
 		const n = seen.get(row.id) ?? 0;
 		seen.set(row.id, n + 1);
-		return n === 0 ? row : {...row, id: `${row.id}#${n}`};
+		return n === 0
+			? row
+			:
+				{
+					...row,
+					id: `${row.id}#${n}`,
+				};
 	});
 }
 
@@ -274,7 +342,13 @@ function expanders(
 	b: ContextBreakdown,
 	homeRoot: string,
 	mcpServers: readonly McpServerSummary[],
-): {key: ExpanderKey; label: string; rows: ExpanderRow[]}[] {
+):
+{
+	key: ExpanderKey;
+	label: string;
+	rows: ExpanderRow[];
+}[]
+{
 	return [
 		...(b.mcpTools.length > 0
 			? [
@@ -282,13 +356,19 @@ function expanders(
 						key: "mcp" as const,
 						label: "MCP tools",
 						rows: uniqueIds(
-							b.mcpTools.map((t) => {
+							b.mcpTools.map((t) =>
+							{
 								const server = mcpServers.find((candidate) => candidate.name === t.serverName);
 								return {
 									id: mcpToolId(t),
 									name: mcpToolName(t, server),
 									tokens: t.tokens,
-									...(server === undefined ? {} : {connectorId: server.id}),
+									...(server === undefined
+										? {}
+										:
+											{
+												connectorId: server.id,
+											}),
 								};
 							}),
 						),
@@ -301,13 +381,19 @@ function expanders(
 						key: "memory" as const,
 						label: "Memory files",
 						rows: uniqueIds(
-							b.memoryFiles.map((file) => {
+							b.memoryFiles.map((file) =>
+							{
 								const href = memoryFileHref(file.path, homeRoot);
 								return {
 									id: file.path,
 									name: file.path,
 									tokens: file.tokens,
-									...(href === undefined ? {} : {href}),
+									...(href === undefined
+										? {}
+										:
+											{
+												href,
+											}),
 								};
 							}),
 						),
@@ -319,7 +405,14 @@ function expanders(
 					{
 						key: "agents" as const,
 						label: "Custom agents",
-						rows: uniqueIds(b.agents.map((a) => ({id: a.agentType, name: a.agentType, tokens: a.tokens}))),
+						rows: uniqueIds(
+							b.agents.map((a) => (
+							{
+								id: a.agentType,
+								name: a.agentType,
+								tokens: a.tokens,
+							})),
+						),
 					},
 				]
 			: []),
@@ -327,19 +420,44 @@ function expanders(
 }
 
 type RowAction =
-	| {hint: string; to: "/customize/skills" | "/customize/connectors"}
-	| {hint: string; reveals: ExpanderKey};
+	|
+	  {
+			hint: string;
+			to: "/customize/skills" | "/customize/connectors";
+	  }
+	|
+	  {
+			hint: string;
+			reveals: ExpanderKey;
+	  };
 
 /** The local analogue of upstream's `host.actionOf(category)`. */
-function actionOf(row: ContextLegendRow, available: ReadonlySet<ExpanderKey>): RowAction | null {
+function actionOf(row: ContextLegendRow, available: ReadonlySet<ExpanderKey>): RowAction | null
+{
 	if (row.kind === "deferred") return null;
-	if (row.name === "Skills") return {hint: "Manage skills", to: "/customize/skills"};
-	if (row.name === "MCP tools" || row.name === "MCP server instructions") {
-		return {hint: "Manage connectors", to: "/customize/connectors"};
+	if (row.name === "Skills")
+		return {
+			hint: "Manage skills",
+			to: "/customize/skills",
+		};
+	if (row.name === "MCP tools" || row.name === "MCP server instructions")
+	{
+		return {
+			hint: "Manage connectors",
+			to: "/customize/connectors",
+		};
 	}
 	// Upstream says "Edit memory files" only when the row opens an editor; this one reveals the list.
-	if (row.name === "Memory files" && available.has("memory")) return {hint: "View memory files", reveals: "memory"};
-	if (row.name === "Custom agents" && available.has("agents")) return {hint: "View custom agents", reveals: "agents"};
+	if (row.name === "Memory files" && available.has("memory"))
+		return {
+			hint: "View memory files",
+			reveals: "memory",
+		};
+	if (row.name === "Custom agents" && available.has("agents"))
+		return {
+			hint: "View custom agents",
+			reveals: "agents",
+		};
 	return null;
 }
 
@@ -354,7 +472,8 @@ function LegendRow({
 	rawMaxTokens: number;
 	action: RowAction | null;
 	onReveal: (key: ExpanderKey) => void;
-}) {
+})
+{
 	const deferred = row.kind === "deferred";
 	const cells = (
 		<>
@@ -378,7 +497,8 @@ function LegendRow({
 			</span>
 		</>
 	);
-	if (action === null) {
+	if (action === null)
+	{
 		return (
 			<div data-rail-context-row="" className={ROW_CLASS}>
 				{cells}
@@ -398,7 +518,8 @@ function LegendRow({
 					type="button"
 					data-rail-context-row=""
 					className={ACTION_ROW_CLASS}
-					onClick={() => {
+					onClick={() =>
+					{
 						onReveal(action.reveals);
 					}}
 				>
@@ -411,12 +532,21 @@ function LegendRow({
 }
 
 /** Rows that share a name keep distinct keys (upstream's `L`). */
-function keyed(rows: readonly ContextLegendRow[]): {key: string; row: ContextLegendRow}[] {
+function keyed(rows: readonly ContextLegendRow[]):
+{
+	key: string;
+	row: ContextLegendRow;
+}[]
+{
 	const seen = new Map<string, number>();
-	return rows.map((row) => {
+	return rows.map((row) =>
+	{
 		const n = seen.get(row.name) ?? 0;
 		seen.set(row.name, n + 1);
-		return {key: `${row.name}#${n}`, row};
+		return {
+			key: `${row.name}#${n}`,
+			row,
+		};
 	});
 }
 
@@ -432,18 +562,21 @@ export function ContextBreakdownBody({
 	homeRoot: string;
 	/** The connectors the session can manage; their MCP tool rows link to the connector page. */
 	mcpServers: readonly McpServerSummary[];
-}) {
+})
+{
 	const {legend, meterCategories, meterValues, barTotal, usedTokens, usedPct} = buildContextLegend(
 		breakdown,
 		liveTokens,
 	);
-	const expanderRefs = {
+	const expanderRefs =
+	{
 		memory: useRef<ExpanderHandle>(null),
 		agents: useRef<ExpanderHandle>(null),
 	};
 	const lists = expanders(breakdown, homeRoot, mcpServers);
 	const available = new Set(lists.map((list) => list.key));
-	const reveal = (key: ExpanderKey) => {
+	const reveal = (key: ExpanderKey) =>
+	{
 		if (key !== "mcp") expanderRefs[key].current?.reveal();
 	};
 	const rounded = Math.min(100, Math.round(usedPct));
@@ -490,7 +623,12 @@ export function ContextBreakdownBody({
 								{lists.map((list) => (
 									<Expander
 										key={list.key}
-										{...(list.key === "mcp" ? {} : {ref: expanderRefs[list.key]})}
+										{...(list.key === "mcp"
+											? {}
+											:
+												{
+													ref: expanderRefs[list.key],
+												})}
 										label={list.label}
 										rows={list.rows}
 									/>

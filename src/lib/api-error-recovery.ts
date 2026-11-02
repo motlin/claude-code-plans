@@ -7,18 +7,21 @@ import type {ApiErrorCategory} from "./api-error-category";
 
 export type RecoveryActionKey = "rewind" | "compact" | "compact-split" | "retry" | "fallback" | "switch-model";
 
-export interface RecoveryAction {
+export interface RecoveryAction
+{
 	key: RecoveryActionKey;
 	primary: boolean;
 	label: string;
 }
 
-export interface RecoveryModelItem {
+export interface RecoveryModelItem
+{
 	value: string;
 	checked: boolean;
 }
 
-export interface RecoveryInput {
+export interface RecoveryInput
+{
 	retryHelps: boolean;
 	rewindHelps: boolean;
 	compactHelps: boolean;
@@ -48,7 +51,8 @@ const BASE_ORDER: readonly RecoveryActionKey[] = [
 /** Upstream's primary preference: compact, then rewind, then retry, then fallback. */
 const PRIMARY_ORDER: readonly RecoveryActionKey[] = ["compact", "compact-split", "rewind", "retry", "fallback"];
 
-export function recoveryActions(input: RecoveryInput): RecoveryAction[] {
+export function recoveryActions(input: RecoveryInput): RecoveryAction[]
+{
 	if (input.retried) return [];
 
 	const rewind = input.rewindHelps && input.canRewind;
@@ -78,26 +82,46 @@ export function recoveryActions(input: RecoveryInput): RecoveryAction[] {
 	if (switchModel) shown.set("switch-model", input.currentModelLabel);
 
 	const primaryKey = PRIMARY_ORDER.find((key) => shown.has(key));
-	const actions = BASE_ORDER.flatMap((key): RecoveryAction[] => {
+	const actions = BASE_ORDER.flatMap((key): RecoveryAction[] =>
+	{
 		const label = shown.get(key);
-		return label === undefined ? [] : [{key, primary: key === primaryKey, label}];
+		return label === undefined
+			? []
+			: [
+					{
+						key,
+						primary: key === primaryKey,
+						label,
+					},
+				];
 	});
 	return [...actions.filter((action) => !action.primary), ...actions.filter((action) => action.primary)];
 }
 
-export interface FallbackModel {
+export interface FallbackModel
+{
 	alias: "sonnet" | "haiku";
 	label: "Sonnet" | "Haiku";
 }
 
 /** Upstream's `Aq`/`jq`: the next-smaller model to retry an overloaded turn with. */
-export function fallbackModel(runningModel: string): FallbackModel | undefined {
-	if (runningModel.startsWith("claude-opus")) return {alias: "sonnet", label: "Sonnet"};
-	if (runningModel.startsWith("claude-sonnet")) return {alias: "haiku", label: "Haiku"};
+export function fallbackModel(runningModel: string): FallbackModel | undefined
+{
+	if (runningModel.startsWith("claude-opus"))
+		return {
+			alias: "sonnet",
+			label: "Sonnet",
+		};
+	if (runningModel.startsWith("claude-sonnet"))
+		return {
+			alias: "haiku",
+			label: "Haiku",
+		};
 	return undefined;
 }
 
-export interface CategoryRecoveryHelps {
+export interface CategoryRecoveryHelps
+{
 	retryHelps: boolean;
 	compactHelps: boolean;
 	isOverloaded: boolean;
@@ -120,13 +144,15 @@ const RETRY_HELPS: ReadonlySet<ApiErrorCategory> = new Set([
  * Upstream's `at(status)` isn't in the dumped chunk; this is the Anthropic SDK's retry rule
  * (408, 409, 429 and every 5xx), which the same statuses in `wr` already follow.
  */
-function retryableStatus(status: number | undefined): boolean {
+function retryableStatus(status: number | undefined): boolean
+{
 	if (status === undefined) return false;
 	return status === 408 || status === 409 || status === 429 || status >= 500;
 }
 
 /** The per-category flags upstream's card `HW` feeds the recovery row. */
-export function categoryRecoveryHelps(category: ApiErrorCategory, status?: number): CategoryRecoveryHelps {
+export function categoryRecoveryHelps(category: ApiErrorCategory, status?: number): CategoryRecoveryHelps
+{
 	return {
 		retryHelps: RETRY_HELPS.has(category) || (category === "unknown" && retryableStatus(status)),
 		compactHelps: category === "context_length",

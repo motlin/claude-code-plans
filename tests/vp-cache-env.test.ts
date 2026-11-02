@@ -7,8 +7,16 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CLEAN_ENV = join(REPO_ROOT, "scripts", "clean-env.sh");
 
 /** The variables of `environment` that survive clean-env.sh. The OS and vp's file tracer add their own (DYLD_INSERT_LIBRARIES, __CF_USER_TEXT_ENCODING), so only the given names are compared. */
-function survivorsOf(environment: Record<string, string>): Record<string, string> {
-	const output = execFileSync(CLEAN_ENV, ["env", "-0"], {encoding: "utf8", env: environment});
+function survivorsOf(environment: Record<string, string>): Record<string, string>
+{
+	const output = execFileSync(
+		CLEAN_ENV,
+		["env", "-0"],
+		{
+			encoding: "utf8",
+			env: environment,
+		},
+	);
 	const seen = new Map(
 		output
 			.split("\0")
@@ -16,58 +24,73 @@ function survivorsOf(environment: Record<string, string>): Record<string, string
 			.map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)] as const),
 	);
 	return Object.fromEntries(
-		Object.keys(environment).flatMap((name) => {
+		Object.keys(environment).flatMap((name) =>
+		{
 			const value = seen.get(name);
 			return value === undefined ? [] : [[name, value]];
 		}),
 	);
 }
 
-function justRecipeBody(recipe: string): string {
-	return execFileSync("just", ["--justfile", join(REPO_ROOT, "justfile"), "--show", recipe], {
-		cwd: REPO_ROOT,
-		encoding: "utf8",
-	});
+function justRecipeBody(recipe: string): string
+{
+	return execFileSync(
+		"just",
+		["--justfile", join(REPO_ROOT, "justfile"), "--show", recipe],
+		{
+			cwd: REPO_ROOT,
+			encoding: "utf8",
+		},
+	);
 }
 
-describe("vp task cache environment", () => {
-	it("passes only the allowlisted variables that are set, so per-process variables never reach vp's cache key", () => {
+describe("vp task cache environment", () =>
+{
+	it("passes only the allowlisted variables that are set, so per-process variables never reach vp's cache key", () =>
+	{
 		const path = process.env["PATH"] ?? "";
 		expect(
-			survivorsOf({
+			survivorsOf(
+				{
+					HOME: "/home/test",
+					PATH: path,
+					XDG_CACHE_HOME: "/home/test/.cache",
+					XDG_DATA_HOME: "/home/test/.local/share",
+					CCB_BUILD_SHA: "abc1234",
+					TRACEPARENT: "00-abc-def-01",
+					CLAUDE_CODE_SESSION_ID: "session",
+					HERDR_PANE_ID: "pane",
+					CLAUDECODE: "1",
+					COLORTERM: "truecolor",
+					SHLVL: "3",
+					GIT_DIR: "/somewhere/.git",
+				},
+			),
+		).toStrictEqual(
+			{
 				HOME: "/home/test",
 				PATH: path,
 				XDG_CACHE_HOME: "/home/test/.cache",
 				XDG_DATA_HOME: "/home/test/.local/share",
 				CCB_BUILD_SHA: "abc1234",
-				TRACEPARENT: "00-abc-def-01",
-				CLAUDE_CODE_SESSION_ID: "session",
-				HERDR_PANE_ID: "pane",
-				CLAUDECODE: "1",
-				COLORTERM: "truecolor",
-				SHLVL: "3",
-				GIT_DIR: "/somewhere/.git",
-			}),
-		).toStrictEqual({
-			HOME: "/home/test",
-			PATH: path,
-			XDG_CACHE_HOME: "/home/test/.cache",
-			XDG_DATA_HOME: "/home/test/.local/share",
-			CCB_BUILD_SHA: "abc1234",
-		});
+			},
+		);
 	});
 
-	it("builds through the cached build:app task with the commit SHA in its environment, behind the per-worktree build lock", () => {
+	it("builds through the cached build:app task with the commit SHA in its environment, behind the per-worktree build lock", () =>
+	{
 		expect(justRecipeBody("build")).toMatch(
 			/^\s+CCB_BUILD_SHA="\$\(git rev-parse --short HEAD\)" scripts\/with-lock\.sh "\$\(git rev-parse --absolute-git-dir\)\/ccb-build\.lock" scripts\/clean-env\.sh vp run --cache build:app$/m,
 		);
 	});
 
-	it("runs the cached check task through the clean environment", () => {
+	it("runs the cached check task through the clean environment", () =>
+	{
 		expect(justRecipeBody("check")).toMatch(/^\s+scripts\/clean-env\.sh vp run --cache check /m);
 	});
 
-	it("runs the test task directly, since test:run declares the environment it reads", () => {
+	it("runs the test task directly, since test:run declares the environment it reads", () =>
+	{
 		expect(justRecipeBody("_test")).toMatch(/^\s+vp run --cache test:run /m);
 	});
 });

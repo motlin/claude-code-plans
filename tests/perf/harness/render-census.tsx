@@ -9,7 +9,8 @@ import {nonEmpty} from "../../../src/lib/non-empty";
  */
 
 /** The fiber fields the census reads; React does not export the type. */
-interface Fiber {
+interface Fiber
+{
 	tag: number;
 	type: unknown;
 	flags: number;
@@ -17,10 +18,14 @@ interface Fiber {
 	sibling: Fiber | null;
 	alternate: Fiber | null;
 	stateNode: unknown;
-	dependencies: {firstContext: ContextDependency | null} | null;
+	dependencies:
+	{
+		firstContext: ContextDependency | null;
+	} | null;
 }
 
-interface ContextDependency {
+interface ContextDependency
+{
 	context: unknown;
 	next: ContextDependency | null;
 }
@@ -36,7 +41,8 @@ const PERFORMED_WORK = 1;
 
 const CONTAINER_KEY_PREFIX = "__reactContainer$";
 
-function componentName(fiber: Fiber): string {
+function componentName(fiber: Fiber): string
+{
 	const type = fiber.tag === FORWARD_REF ? field(fiber.type, "render") : fiber.type;
 	const displayName = field(type, "displayName");
 	if (typeof displayName === "string") return displayName;
@@ -45,7 +51,8 @@ function componentName(fiber: Fiber): string {
 }
 
 /** One property of a function or object React hands back untyped (a component type, a container root). */
-function field(value: unknown, key: string): unknown {
+function field(value: unknown, key: string): unknown
+{
 	return (typeof value === "function" || (typeof value === "object" && value !== null)) && key in value
 		? Reflect.get(value, key)
 		: undefined;
@@ -55,39 +62,51 @@ function field(value: unknown, key: string): unknown {
  * React does not export its fiber type, so a fiber read off a DOM container is taken on trust, the way React DevTools
  * reads it.
  */
-function asFiber(value: unknown): Fiber {
+function asFiber(value: unknown): Fiber
+{
 	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- React's internal fiber shape has no exported type or runtime schema
 	return value as Fiber;
 }
 
-function* children(fiber: Fiber): Generator<Fiber> {
-	for (let child = fiber.child; child !== null; child = child.sibling) {
+function* children(fiber: Fiber): Generator<Fiber>
+{
+	for (let child = fiber.child; child !== null; child = child.sibling)
+	{
 		yield child;
 	}
 }
 
 /** The current HostRoot fiber of every React root rendered into `document.body`. */
-function hostRoots(): Fiber[] {
+function hostRoots(): Fiber[]
+{
 	const roots: Fiber[] = [];
-	for (const element of document.body.children) {
+	for (const element of document.body.children)
+	{
 		const container: unknown = Object.entries(element).find(([name]) => name.startsWith(CONTAINER_KEY_PREFIX))?.[1];
-		if (container !== undefined) {
+		if (container !== undefined)
+		{
 			roots.push(asFiber(field(asFiber(container).stateNode, "current")));
 		}
 	}
 	return roots;
 }
 
-function* allFibers(fiber: Fiber): Generator<Fiber> {
+function* allFibers(fiber: Fiber): Generator<Fiber>
+{
 	yield fiber;
-	for (const child of children(fiber)) {
+	for (const child of children(fiber))
+	{
 		yield* allFibers(child);
 	}
 }
 
-export interface RenderCensus {
+export interface RenderCensus
+{
 	/** Wrap the measured tree in this; it reads every commit while a step is recording. */
-	Root: ComponentType<{children: ReactNode}>;
+	Root: ComponentType<
+	{
+		children: ReactNode;
+	}>;
 	/** Starts recording a new step; renders until the next `startStep` or `stop` count toward it. */
 	startStep: () => void;
 	stop: () => void;
@@ -97,41 +116,50 @@ export interface RenderCensus {
 	contextConsumers: (provider: ComponentType<never>) => number;
 }
 
-export function createRenderCensus(): RenderCensus {
+export function createRenderCensus(): RenderCensus
+{
 	const steps: Array<Map<string, number>> = [];
 	let recording = false;
 
-	const record = (fiber: Fiber) => {
+	const record = (fiber: Fiber) =>
+	{
 		const step = defined(steps.at(-1), "renders are only recorded inside a step");
 		const name = componentName(fiber);
 		step.set(name, (step.get(name) ?? 0) + 1);
 	};
 
-	const recordMount = (fiber: Fiber) => {
-		for (const each of allFibers(fiber)) {
+	const recordMount = (fiber: Fiber) =>
+	{
+		for (const each of allFibers(fiber))
+		{
 			if (COMPONENT_TAGS.has(each.tag)) record(each);
 		}
 	};
 
 	// React DevTools' walk: a subtree whose child pointer did not change was not visited in this commit.
-	const recordUpdate = (next: Fiber, previous: Fiber) => {
+	const recordUpdate = (next: Fiber, previous: Fiber) =>
+	{
 		if (COMPONENT_TAGS.has(next.tag) && (next.flags & PERFORMED_WORK) !== 0) record(next);
 		if (next.child === previous.child) return;
-		for (const child of children(next)) {
+		for (const child of children(next))
+		{
 			if (child.alternate === null) recordMount(child);
 			else recordUpdate(child, child.alternate);
 		}
 	};
 
-	const onCommit = () => {
+	const onCommit = () =>
+	{
 		if (!recording) return;
-		for (const root of hostRoots()) {
+		for (const root of hostRoots())
+		{
 			if (root.alternate === null) recordMount(root);
 			else recordUpdate(root, root.alternate);
 		}
 	};
 
-	function Root({children: tree}: {children: ReactNode}) {
+	function Root({children: tree}: {children: ReactNode})
+	{
 		return (
 			<Profiler id="render-census" onRender={onCommit}>
 				{tree}
@@ -141,16 +169,19 @@ export function createRenderCensus(): RenderCensus {
 
 	return {
 		Root,
-		startStep: () => {
+		startStep: () =>
+		{
 			steps.push(new Map());
 			recording = true;
 		},
-		stop: () => {
+		stop: () =>
+		{
 			recording = false;
 		},
 		steps: () =>
 			steps.map((step) => Object.fromEntries([...step].toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))),
-		contextConsumers: (provider) => {
+		contextConsumers: (provider) =>
+		{
 			const fibers = hostRoots().flatMap((root) => [...allFibers(root)]);
 			const providerFiber = fibers.find((fiber) => fiber.type === provider);
 			const contextFiber =
@@ -159,8 +190,10 @@ export function createRenderCensus(): RenderCensus {
 					: [...allFibers(providerFiber)].find((fiber) => fiber.tag === CONTEXT_PROVIDER);
 			if (contextFiber === undefined) throw new Error("render census: the provider renders no context");
 			const context = contextFiber.type;
-			return fibers.filter((fiber) => {
-				for (let dependency = fiber.dependencies?.firstContext ?? null; dependency !== null;) {
+			return fibers.filter((fiber) =>
+			{
+				for (let dependency = fiber.dependencies?.firstContext ?? null; dependency !== null;)
+				{
 					if (dependency.context === context) return true;
 					dependency = dependency.next;
 				}

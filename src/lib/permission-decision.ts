@@ -1,7 +1,8 @@
 import type {z} from "zod";
 import {assertNever} from "./assert-never";
 import type {PermissionDecisionReasonTypeSchema, UserRecordSchema} from "./schemas";
-import {
+import
+{
 	permissionDecisionCircuitBreakerLabels,
 	permissionDecisionDecisionLabels,
 	permissionDecisionReasonTypeLabels,
@@ -15,7 +16,8 @@ export type PermissionDecision = NonNullable<z.infer<typeof UserRecordSchema>["p
 type ReasonType = z.infer<typeof PermissionDecisionReasonTypeSchema>;
 
 /** What a settings-sourced decision rested on, as the tail of "Allowed by …" / "Blocked by …". */
-const REASON_AGENTS = {
+const REASON_AGENTS =
+{
 	asyncAgent: "no approval prompt",
 	classifier: "auto mode",
 	hook: "hook",
@@ -33,12 +35,15 @@ const REASON_AGENTS = {
  * mode", "Approved once" or "Approved for session". Null when the user rejected or aborted the call, which the
  * row's "Denied"/"Stopped" status already says.
  */
-export function permissionDecisionLabel(permission: PermissionDecision): string | null {
-	switch (permission.source) {
+export function permissionDecisionLabel(permission: PermissionDecision): string | null
+{
+	switch (permission.source)
+	{
 		case "user_reject":
 		case "user_abort":
 			return null;
-		case "user_temporary": {
+		case "user_temporary":
+		{
 			const reach = permission.grantScope === "session" ? "for session" : "once";
 			return `${permission.decision === "accept" ? "Approved" : "Rejected"} ${reach}`;
 		}
@@ -47,7 +52,8 @@ export function permissionDecisionLabel(permission: PermissionDecision): string 
 		case "classifier":
 			return permission.decision === "accept" ? "Allowed by classifier" : "Blocked by classifier";
 		case "hook":
-		case "config": {
+		case "config":
+		{
 			const agent = permission.source === "hook" ? "hook" : REASON_AGENTS[permission.reasonType ?? "other"];
 			return `${permission.decision === "accept" ? "Allowed" : "Blocked"} by ${agent}`;
 		}
@@ -57,7 +63,8 @@ export function permissionDecisionLabel(permission: PermissionDecision): string 
 }
 
 /** A classifier category id spelled as words, e.g. "git_destructive" → "Git destructive". */
-function classifierCategoryLabel(category: string): string {
+function classifierCategoryLabel(category: string): string
+{
 	const words = category.replaceAll("_", " ");
 	return words.charAt(0).toUpperCase() + words.slice(1);
 }
@@ -67,8 +74,10 @@ function classifierCategoryLabel(category: string): string {
  * auto-mode classifier's category, or the safety check that tripped, e.g.
  * "Permission rule (User settings)" or "Safety check (Dangerous removal)".
  */
-function reasonTitle(permission: PermissionDecision): string | undefined {
-	if (permission.reasonType === undefined) {
+function reasonTitle(permission: PermissionDecision): string | undefined
+{
+	if (permission.reasonType === undefined)
+	{
 		return undefined;
 	}
 	const reason = permissionDecisionReasonTypeLabels[permission.reasonType];
@@ -85,7 +94,8 @@ function reasonTitle(permission: PermissionDecision): string | undefined {
 }
 
 /** The raw decision, source and reason spelled out, for a tooltip. */
-export function permissionDecisionTitle(permission: PermissionDecision): string {
+export function permissionDecisionTitle(permission: PermissionDecision): string
+{
 	const parts = [
 		permissionDecisionDecisionLabels[permission.decision],
 		permissionDecisionSourceLabels[permission.source],

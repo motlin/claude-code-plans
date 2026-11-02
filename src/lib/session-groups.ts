@@ -22,25 +22,28 @@ export const SessionActivityDaysSchema = z.enum(["1d", "3d", "7d", "30d", "all"]
 type SessionActivityDays = z.infer<typeof SessionActivityDaysSchema>;
 
 export const SessionListPrefsSchema = z
-	.object({
-		groupBy: SessionGroupBySchema,
-		sortBy: SessionSortBySchema,
-		/** Upstream's Sort by ▸ Descending / Ascending: Ascending reverses the sort's order. */
-		sortDirection: SessionSortDirectionSchema,
-		statusFilter: SessionStatusFilterSchema,
-		activityDays: SessionActivityDaysSchema,
-		showEmptyGroups: z.boolean(),
-		/** The PR glyph replaces the row dot on sessions with a pull request; off by default, as upstream shows none. */
-		showPrStatus: z.boolean(),
-		/** Upstream's Show ▸ Metadata: two-line rows with the branch, folder or blocked reason; off by default, as upstream. */
-		showMetadata: z.boolean(),
-		/** 2 since Show PR status defaulted off; unversioned prefs still carry the old default-on value. */
-		version: z.literal(2),
-	})
+	.object(
+		{
+			groupBy: SessionGroupBySchema,
+			sortBy: SessionSortBySchema,
+			/** Upstream's Sort by ▸ Descending / Ascending: Ascending reverses the sort's order. */
+			sortDirection: SessionSortDirectionSchema,
+			statusFilter: SessionStatusFilterSchema,
+			activityDays: SessionActivityDaysSchema,
+			showEmptyGroups: z.boolean(),
+			/** The PR glyph replaces the row dot on sessions with a pull request; off by default, as upstream shows none. */
+			showPrStatus: z.boolean(),
+			/** Upstream's Show ▸ Metadata: two-line rows with the branch, folder or blocked reason; off by default, as upstream. */
+			showMetadata: z.boolean(),
+			/** 2 since Show PR status defaulted off; unversioned prefs still carry the old default-on value. */
+			version: z.literal(2),
+		},
+	)
 	.strict();
 export type SessionListPrefs = z.infer<typeof SessionListPrefsSchema>;
 
-export const DEFAULT_SESSION_LIST_PREFS: SessionListPrefs = {
+export const DEFAULT_SESSION_LIST_PREFS: SessionListPrefs =
+{
 	groupBy: "none",
 	sortBy: "activity",
 	sortDirection: "desc",
@@ -52,7 +55,8 @@ export const DEFAULT_SESSION_LIST_PREFS: SessionListPrefs = {
 	version: 2,
 };
 
-export interface SessionGroupRow {
+export interface SessionGroupRow
+{
 	sessionId: string;
 	title: string;
 	bucket: SessionBucket;
@@ -66,7 +70,8 @@ export interface SessionGroupRow {
 	live?: boolean | undefined;
 }
 
-export interface SessionGroup<Row extends SessionGroupRow> {
+export interface SessionGroup<Row extends SessionGroupRow>
+{
 	key: string;
 	label: string;
 	rows: Row[];
@@ -81,7 +86,8 @@ export interface SessionGroup<Row extends SessionGroupRow> {
 }
 
 /** The manual sections (custom groups, src/lib/session-group-store.ts) above Recents, in section order. */
-export interface ManualSections {
+export interface ManualSections
+{
 	sections: readonly Pick<SidebarSection, "id" | "name" | "groupBy" | "sortBy" | "sortDirection">[];
 	/** sessionId → groupId; at most one group per session. */
 	assignments: Readonly<Record<string, string>>;
@@ -92,22 +98,26 @@ export interface ManualSections {
 const CUSTOM_GROUP_KEY_PREFIX = "custom-";
 
 /** A manual section's group key; its collapse state is kept under it. */
-function customGroupKey(groupId: string): string {
+function customGroupKey(groupId: string): string
+{
 	return `${CUSTOM_GROUP_KEY_PREFIX}${groupId}`;
 }
 
 /** The custom group behind a manual section's key, or null for every other section. */
-export function customGroupIdOfKey(key: string): string | null {
+export function customGroupIdOfKey(key: string): string | null
+{
 	if (!key.startsWith(CUSTOM_GROUP_KEY_PREFIX)) return null;
 	return key.slice(CUSTOM_GROUP_KEY_PREFIX.length);
 }
 
 /** Whether a section key is a Project mode section (including "Other"). */
-export function isProjectGroupKey(key: string): boolean {
+export function isProjectGroupKey(key: string): boolean
+{
 	return key.startsWith("project-");
 }
 
-export interface CustomGroupLaunchTarget {
+export interface CustomGroupLaunchTarget
+{
 	/** The project a new session in this custom group launches in, or null when none is known. */
 	projectId: string | null;
 	folderName: string | null;
@@ -120,9 +130,19 @@ export interface CustomGroupLaunchTarget {
  * else the folder of the most recently active one. Sessions whose folder is gone don't count.
  */
 export function customGroupLaunchTarget(
-	rows: readonly {projectId: string; lastActivityAt: number}[],
-	projects: readonly {id: string; name: string; projectPath: string | null}[],
-): CustomGroupLaunchTarget {
+	rows: readonly
+	{
+		projectId: string;
+		lastActivityAt: number;
+	}[],
+	projects: readonly
+	{
+		id: string;
+		name: string;
+		projectPath: string | null;
+	}[],
+): CustomGroupLaunchTarget
+{
 	const launchable = new Map(
 		projects.flatMap((project) => (project.projectPath === null ? [] : [[project.id, project]])),
 	);
@@ -132,9 +152,18 @@ export function customGroupLaunchTarget(
 		undefined,
 	);
 	const project = newest === undefined ? undefined : launchable.get(newest.projectId);
-	if (project === undefined) return {projectId: null, folderName: null, rule: "none"};
+	if (project === undefined)
+		return {
+			projectId: null,
+			folderName: null,
+			rule: "none",
+		};
 	const shared = placed.every((row) => row.projectId === project.id);
-	return {projectId: project.id, folderName: project.name, rule: shared ? "shared" : "most_recent"};
+	return {
+		projectId: project.id,
+		folderName: project.name,
+		rule: shared ? "shared" : "most_recent",
+	};
 }
 
 /** Completed, Older, Recents and Pinned show this many rows, and each Show more click reveals this many more (upstream `truncateAt: 5`). */
@@ -148,7 +177,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DATED_DAY_COUNT = 7;
 /** Upstream claude.ai/code group order (`zM`): Needs input, Ready for review, Working, Completed. */
 const STATE_ORDER: readonly SessionBucket[] = ["blocked", "review", "working", "done"];
-const ACTIVITY_WINDOW_DAYS = {
+const ACTIVITY_WINDOW_DAYS =
+{
 	"1d": 1,
 	"3d": 3,
 	"7d": 7,
@@ -160,17 +190,24 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 type RowComparator = (first: SessionGroupRow, second: SessionGroupRow) => number;
 
-const ROW_COMPARATORS = {
+const ROW_COMPARATORS =
+{
 	name: (first, second) =>
-		first.title.localeCompare(second.title, undefined, {sensitivity: "base"}) ||
-		first.sessionId.localeCompare(second.sessionId),
+		first.title.localeCompare(
+			second.title,
+			undefined,
+			{
+				sensitivity: "base",
+			},
+		) || first.sessionId.localeCompare(second.sessionId),
 	created: (first, second) => second.createdAt - first.createdAt || first.sessionId.localeCompare(second.sessionId),
 	activity: (first, second) =>
 		second.lastActivityAt - first.lastActivityAt || first.sessionId.localeCompare(second.sessionId),
 } as const satisfies Record<SessionSortBy, RowComparator>;
 
 /** The row order a Sort by choice and direction give; Pinned uses it for pins without a user order. */
-export function sessionRowComparator(sortBy: SessionSortBy, direction: SessionSortDirection = "desc"): RowComparator {
+export function sessionRowComparator(sortBy: SessionSortBy, direction: SessionSortDirection = "desc"): RowComparator
+{
 	const compare = ROW_COMPARATORS[sortBy];
 	return direction === "desc" ? compare : (first, second) => compare(second, first);
 }
@@ -178,11 +215,13 @@ export function sessionRowComparator(sortBy: SessionSortBy, direction: SessionSo
 export const PINNED_GROUP_KEY = "pinned";
 
 /** The sidebar Pinned section as a group: 5 rows, plus 5 per revealed Show more page. */
-export function pinnedGroup<Row extends SessionGroupRow>(rows: Row[], revealed: RevealedPages): SessionGroup<Row> {
+export function pinnedGroup<Row extends SessionGroupRow>(rows: Row[], revealed: RevealedPages): SessionGroup<Row>
+{
 	return group(PINNED_GROUP_KEY, "Pinned", rows, groupCap(true, PINNED_GROUP_KEY, revealed));
 }
 
-function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): boolean {
+function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): boolean
+{
 	if (prefs.statusFilter === "active" && row.archived) return false;
 	if (prefs.statusFilter === "archived" && !row.archived) return false;
 	const windowDays = ACTIVITY_WINDOW_DAYS[prefs.activityDays];
@@ -200,7 +239,8 @@ export function shouldLoadNextPage(
 	loadedRows: readonly SessionGroupRow[],
 	prefs: SessionListPrefs,
 	now: number,
-): boolean {
+): boolean
+{
 	if (groups.some((sessionGroup) => sessionGroup.hiddenCount > 0)) return false;
 	const windowDays = ACTIVITY_WINDOW_DAYS[prefs.activityDays];
 	if (windowDays === null || loadedRows.length === 0) return true;
@@ -209,7 +249,8 @@ export function shouldLoadNextPage(
 }
 
 /** Stable: running sessions lead their state group, each half keeping the Sort by order. */
-function liveFirst<Row extends SessionGroupRow>(rows: Row[]): Row[] {
+function liveFirst<Row extends SessionGroupRow>(rows: Row[]): Row[]
+{
 	return [...rows.filter((row) => row.live === true), ...rows.filter((row) => row.live !== true)];
 }
 
@@ -218,7 +259,8 @@ const NO_NESTED: ReadonlyMap<string, never[]> = new Map();
 /** null: the group never caps; a number: how many Show more pages it reveals past the first. */
 type GroupCap = number | null;
 
-function groupCap(cappable: boolean, key: string, revealed: RevealedPages): GroupCap {
+function groupCap(cappable: boolean, key: string, revealed: RevealedPages): GroupCap
+{
 	return cappable ? (revealed[key] ?? 0) : null;
 }
 
@@ -228,10 +270,12 @@ function group<Row extends SessionGroupRow>(
 	rows: Row[],
 	cap: GroupCap,
 	allNested: ReadonlyMap<string, Row[]> = NO_NESTED,
-): SessionGroup<Row> {
+): SessionGroup<Row>
+{
 	const shown = cap === null ? rows : rows.slice(0, GROUP_PAGE_SIZE * (cap + 1));
 	const nested = new Map<string, Row[]>();
-	for (const row of shown) {
+	for (const row of shown)
+	{
 		const children = allNested.get(row.sessionId);
 		if (children !== undefined) nested.set(row.sessionId, children);
 	}
@@ -251,25 +295,50 @@ function group<Row extends SessionGroupRow>(
 	};
 }
 
-function startOfLocalDay(time: number): number {
+function startOfLocalDay(time: number): number
+{
 	const date = new Date(time);
 	return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
-function localDayOffset(dayStart: number, todayStart: number): number {
+function localDayOffset(dayStart: number, todayStart: number): number
+{
 	return Math.round((todayStart - dayStart) / DAY_MS);
 }
 
-function dateGroupFor(time: number, todayStart: number): {key: string; label: string} {
+function dateGroupFor(
+	time: number,
+	todayStart: number,
+):
+{
+	key: string;
+	label: string;
+}
+{
 	const dayStart = startOfLocalDay(time);
 	const offset = localDayOffset(dayStart, todayStart);
-	if (offset <= 0) return {key: "date-today", label: "Today"};
-	if (offset === 1) return {key: "date-yesterday", label: "Yesterday"};
-	if (offset >= DATED_DAY_COUNT) return {key: "date-older", label: "Older"};
+	if (offset <= 0)
+		return {
+			key: "date-today",
+			label: "Today",
+		};
+	if (offset === 1)
+		return {
+			key: "date-yesterday",
+			label: "Yesterday",
+		};
+	if (offset >= DATED_DAY_COUNT)
+		return {
+			key: "date-older",
+			label: "Older",
+		};
 	const date = new Date(dayStart);
 	const month = date.getMonth();
 	const isoDate = `${date.getFullYear()}-${String(month + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-	return {key: `date-${isoDate}`, label: `${MONTHS[month]} ${date.getDate()}`};
+	return {
+		key: `date-${isoDate}`,
+		label: `${MONTHS[month]} ${date.getDate()}`,
+	};
 }
 
 function buildDateGroups<Row extends SessionGroupRow>(
@@ -279,14 +348,31 @@ function buildDateGroups<Row extends SessionGroupRow>(
 	nested: ReadonlyMap<string, Row[]>,
 	/** A manual section's own date headings (upstream `v8`): prefixed keys and no Show more cap. */
 	inSection?: string,
-): SessionGroup<Row>[] {
+): SessionGroup<Row>[]
+{
 	const todayStart = startOfLocalDay(now);
-	const byDay = new Map<string, {label: string; dayStart: number; rows: Row[]}>();
-	for (const row of rows) {
+	const byDay = new Map<
+		string,
+		{
+			label: string;
+			dayStart: number;
+			rows: Row[];
+		}
+	>();
+	for (const row of rows)
+	{
 		const {key, label} = dateGroupFor(row.lastActivityAt, todayStart);
 		const dayStart = key === "date-older" ? -Infinity : startOfLocalDay(row.lastActivityAt);
 		const existing = byDay.get(key);
-		if (existing === undefined) byDay.set(key, {label, dayStart, rows: [row]});
+		if (existing === undefined)
+			byDay.set(
+				key,
+				{
+					label,
+					dayStart,
+					rows: [row],
+				},
+			);
 		else existing.rows.push(row);
 	}
 	return [...byDay.entries()]
@@ -303,15 +389,25 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 	visibleRows: Row[],
 	showEmptyGroups: boolean,
 	nested: ReadonlyMap<string, Row[]>,
-): SessionGroup<Row>[] {
+): SessionGroup<Row>[]
+{
 	const projects = new Set<string>();
 	let hasNoProject = false;
-	for (const row of showEmptyGroups ? allRows : visibleRows) {
+	for (const row of showEmptyGroups ? allRows : visibleRows)
+	{
 		if (row.project === null) hasNoProject = true;
 		else projects.add(row.project);
 	}
 	const groups = [...projects]
-		.toSorted((first, second) => first.localeCompare(second, undefined, {sensitivity: "base"}))
+		.toSorted((first, second) =>
+			first.localeCompare(
+				second,
+				undefined,
+				{
+					sensitivity: "base",
+				},
+			),
+		)
 		.map((project) =>
 			group(
 				`project-${project}`,
@@ -321,7 +417,8 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 				nested,
 			),
 		);
-	if (hasNoProject) {
+	if (hasNoProject)
+	{
 		groups.push(
 			group(
 				NO_PROJECT_KEY,
@@ -336,7 +433,8 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 }
 
 /** Visible rows sorted by the list's Sort by, resolved into families. */
-interface ResolvedRows<Row extends SessionGroupRow> {
+interface ResolvedRows<Row extends SessionGroupRow>
+{
 	/** Family heads, in Sort by order. */
 	visible: Row[];
 	/** Head sessionId → the family's most urgent bucket. */
@@ -348,7 +446,8 @@ function resolveRows<Row extends SessionGroupRow>(
 	rows: readonly Row[],
 	prefs: SessionListPrefs,
 	now: number,
-): ResolvedRows<Row> {
+): ResolvedRows<Row>
+{
 	const families = resolveFamilies(
 		rows
 			.filter((row) => isVisible(row, prefs, now))
@@ -369,7 +468,8 @@ function stateGroups<Row extends SessionGroupRow>(
 	{visible, familyBucket, nested}: ResolvedRows<Row>,
 	revealed: RevealedPages,
 	inSection?: string,
-): SessionGroup<Row>[] {
+): SessionGroup<Row>[]
+{
 	return STATE_ORDER.map((bucket) =>
 		group(
 			`${inSection ?? ""}state-${bucket}`,
@@ -387,9 +487,11 @@ function groupResolved<Row extends SessionGroupRow>(
 	prefs: SessionListPrefs,
 	now: number,
 	revealed: RevealedPages,
-): SessionGroup<Row>[] {
+): SessionGroup<Row>[]
+{
 	const {visible, nested} = resolved;
-	switch (prefs.groupBy) {
+	switch (prefs.groupBy)
+	{
 		case "state":
 			return stateGroups(resolved, revealed);
 		case "date":
@@ -418,12 +520,14 @@ export function buildGroups<Row extends SessionGroupRow>(
 	prefs: SessionListPrefs,
 	now: number,
 	revealed: RevealedPages = {},
-): SessionGroup<Row>[] {
+): SessionGroup<Row>[]
+{
 	return groupResolved(rows, resolveRows(rows, prefs, now), prefs, now, revealed);
 }
 
 /** One manual section: all its rows as one group, and its own date or status headings when it groups. */
-export interface ManualSectionGroups<Row extends SessionGroupRow> {
+export interface ManualSectionGroups<Row extends SessionGroupRow>
+{
 	id: string;
 	/** Key `custom-<id>`, labelled with the section name, rows in the section's own sort. */
 	group: SessionGroup<Row>;
@@ -431,7 +535,8 @@ export interface ManualSectionGroups<Row extends SessionGroupRow> {
 	subgroups: SessionGroup<Row>[] | null;
 }
 
-export interface SidebarSectionGroups<Row extends SessionGroupRow> {
+export interface SidebarSectionGroups<Row extends SessionGroupRow>
+{
 	manual: ManualSectionGroups<Row>[];
 	/** The Recents (Sessions) section: buildGroups over the rows no manual section holds. */
 	sessions: SessionGroup<Row>[];
@@ -448,23 +553,30 @@ export function buildSidebarSections<Row extends SessionGroupRow>(
 	now: number,
 	revealed: RevealedPages,
 	manual: ManualSections,
-): SidebarSectionGroups<Row> {
+): SidebarSectionGroups<Row>
+{
 	const resolved = resolveRows(rows, prefs, now);
 	const known = new Set(manual.sections.map((section) => section.id));
-	const sectionOf = (sessionId: string): string | undefined => {
+	const sectionOf = (sessionId: string): string | undefined =>
+	{
 		const groupId = manual.assignments[sessionId];
 		return groupId !== undefined && known.has(groupId) ? groupId : undefined;
 	};
 	const sessions = groupResolved(
 		rows.filter((row) => sectionOf(row.sessionId) === undefined),
-		{...resolved, visible: resolved.visible.filter((row) => sectionOf(row.sessionId) === undefined)},
+		{
+			...resolved,
+			visible: resolved.visible.filter((row) => sectionOf(row.sessionId) === undefined),
+		},
 		prefs,
 		now,
 		revealed,
 	);
-	const manualGroups = manual.sections.map((section): ManualSectionGroups<Row> => {
+	const manualGroups = manual.sections.map((section): ManualSectionGroups<Row> =>
+	{
 		const ordered = manual.order[section.id] ?? [];
-		const rank = (row: Row) => {
+		const rank = (row: Row) =>
+		{
 			const index = ordered.indexOf(row.sessionId);
 			return index === -1 ? ordered.length : index;
 		};
@@ -474,7 +586,11 @@ export function buildSidebarSections<Row extends SessionGroupRow>(
 			.toSorted(sessionRowComparator(section.sortBy, section.sortDirection))
 			.toSorted((first, second) => rank(first) - rank(second));
 		const prefix = `section:${section.id}:`;
-		const own = {...resolved, visible: heads};
+		const own =
+		{
+			...resolved,
+			visible: heads,
+		};
 		return {
 			id: section.id,
 			group: group(customGroupKey(section.id), section.name, heads, null, resolved.nested),
@@ -486,32 +602,40 @@ export function buildSidebarSections<Row extends SessionGroupRow>(
 						: null,
 		};
 	});
-	return {manual: manualGroups, sessions};
+	return {
+		manual: manualGroups,
+		sessions,
+	};
 }
 
 /** The header label the sidebar shows over an empty list, so its Filter control stays reachable. */
-export const EMPTY_LIST_GROUP_LABELS = {
+export const EMPTY_LIST_GROUP_LABELS =
+{
 	state: sidebarStateGroupLabels.done,
 	date: "Today",
 	project: "Other",
 	none: "Recents",
 } as const satisfies Record<SessionGroupBy, string>;
 
-const LEGACY_GROUPING = {
+const LEGACY_GROUPING =
+{
 	project: "project",
 	time: "date",
 } as const satisfies Record<string, SessionGroupBy>;
 
-const LEGACY_SORT = {
+const LEGACY_SORT =
+{
 	urgency: "activity",
 	stable: "created",
 } as const satisfies Record<string, SessionSortBy>;
 
-function legacyValue<Value>(map: Readonly<Record<string, Value>>, raw: string | null): Value | undefined {
+function legacyValue<Value>(map: Readonly<Record<string, Value>>, raw: string | null): Value | undefined
+{
 	return raw !== null && Object.hasOwn(map, raw) ? map[raw] : undefined;
 }
 
-export interface StoredSessionListPrefs {
+export interface StoredSessionListPrefs
+{
 	/** The JSON-encoded prefs, if they were ever saved. */
 	stored: string | null;
 	/** Legacy `ccp-sessions-grouping` value ("project" | "time"). */
@@ -521,26 +645,37 @@ export interface StoredSessionListPrefs {
 }
 
 /** Custom groups mode is gone: the groups are their own sections now, so Recents goes ungrouped. */
-function withoutCustomGroupBy(stored: unknown): unknown {
-	if (typeof stored !== "object" || stored === null || !("groupBy" in stored) || stored.groupBy !== "custom") {
+function withoutCustomGroupBy(stored: unknown): unknown
+{
+	if (typeof stored !== "object" || stored === null || !("groupBy" in stored) || stored.groupBy !== "custom")
+	{
 		return stored;
 	}
-	return {...stored, groupBy: "none"};
+	return {
+		...stored,
+		groupBy: "none",
+	};
 }
 
 /** Reads persisted prefs, seeding them from the legacy sessionsGrouping/sessionSort settings. */
-export function migrateSessionListPrefs(input: StoredSessionListPrefs): SessionListPrefs {
-	if (input.stored !== null) {
-		try {
+export function migrateSessionListPrefs(input: StoredSessionListPrefs): SessionListPrefs
+{
+	if (input.stored !== null)
+	{
+		try
+		{
 			// Older prefs lack Show PR status, Show metadata, Sort direction or the version; default them. Unversioned
 			// prefs saved Show PR status under its old default-on, so version 2 turns it off.
-			const parsed = SessionListPrefsSchema.partial({
-				showPrStatus: true,
-				showMetadata: true,
-				sortDirection: true,
-				version: true,
-			}).safeParse(withoutCustomGroupBy(JSON.parse(input.stored)));
-			if (parsed.success) {
+			const parsed = SessionListPrefsSchema.partial(
+				{
+					showPrStatus: true,
+					showMetadata: true,
+					sortDirection: true,
+					version: true,
+				},
+			).safeParse(withoutCustomGroupBy(JSON.parse(input.stored)));
+			if (parsed.success)
+			{
 				const migrated = parsed.data.version === undefined;
 				return {
 					...parsed.data,
@@ -552,7 +687,9 @@ export function migrateSessionListPrefs(input: StoredSessionListPrefs): SessionL
 					version: DEFAULT_SESSION_LIST_PREFS.version,
 				};
 			}
-		} catch {
+		}
+		catch
+		{
 			// Unparseable JSON falls through to the legacy migration.
 		}
 	}

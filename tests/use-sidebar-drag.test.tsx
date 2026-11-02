@@ -5,8 +5,13 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {type SidebarDrop, useSidebarDrag} from "../src/hooks/use-sidebar-drag";
 
-function Harness({onDrop}: {onDrop: (drop: SidebarDrop) => void}) {
-	const {drag, rowProps, listRef, zoneRef} = useSidebarDrag({onDrop});
+function Harness({onDrop}: {onDrop: (drop: SidebarDrop) => void})
+{
+	const {drag, rowProps, listRef, zoneRef} = useSidebarDrag(
+		{
+			onDrop,
+		},
+	);
 	return (
 		<div>
 			<output data-testid="state">{JSON.stringify(drag)}</output>
@@ -28,9 +33,11 @@ function Harness({onDrop}: {onDrop: (drop: SidebarDrop) => void}) {
 	);
 }
 
-function mockRect(testId: string, top: number, height: number): void {
+function mockRect(testId: string, top: number, height: number): void
+{
 	const el = screen.getByTestId(testId);
-	el.getBoundingClientRect = () => ({
+	el.getBoundingClientRect = () => (
+	{
 		top,
 		bottom: top + height,
 		height,
@@ -43,7 +50,8 @@ function mockRect(testId: string, top: number, height: number): void {
 	});
 }
 
-function setup() {
+function setup()
+{
 	const onDrop = vi.fn<(drop: SidebarDrop) => void>();
 	render(<Harness onDrop={onDrop} />);
 	mockRect("row-a", 0, 20);
@@ -52,43 +60,71 @@ function setup() {
 	mockRect("pinned", 0, 62);
 	mockRect("zone", 100, 20);
 	mockRect("row-x", 200, 20);
-	return {onDrop};
+	return {
+		onDrop,
+	};
 }
 
-function pointerDown(testId: string, clientY: number): void {
-	fireEvent.pointerDown(screen.getByTestId(testId), {
-		button: 0,
-		pointerId: 1,
-		clientX: 50,
-		clientY,
+function pointerDown(testId: string, clientY: number): void
+{
+	fireEvent.pointerDown(
+		screen.getByTestId(testId),
+		{
+			button: 0,
+			pointerId: 1,
+			clientX: 50,
+			clientY,
+		},
+	);
+}
+
+function pointerMove(clientY: number, clientX = 50): void
+{
+	act(() =>
+	{
+		fireEvent.pointerMove(
+			window,
+			{
+				pointerId: 1,
+				clientX,
+				clientY,
+			},
+		);
 	});
 }
 
-function pointerMove(clientY: number, clientX = 50): void {
-	act(() => {
-		fireEvent.pointerMove(window, {pointerId: 1, clientX, clientY});
+function pointerUp(clientY: number): void
+{
+	act(() =>
+	{
+		fireEvent.pointerUp(
+			window,
+			{
+				pointerId: 1,
+				clientX: 50,
+				clientY,
+			},
+		);
 	});
 }
 
-function pointerUp(clientY: number): void {
-	act(() => {
-		fireEvent.pointerUp(window, {pointerId: 1, clientX: 50, clientY});
-	});
-}
-
-function sourceRow(id: string): HTMLElement {
+function sourceRow(id: string): HTMLElement
+{
 	const row = document.querySelector<HTMLElement>(`[data-drag-id="${id}"]`);
-	if (row === null) {
+	if (row === null)
+	{
 		throw new Error(`No drag row ${id}`);
 	}
 	return row;
 }
 
-function transforms(): string[] {
+function transforms(): string[]
+{
 	return ["a", "b", "c"].map((id) => sourceRow(id).style.transform);
 }
 
-function snapshot() {
+function snapshot()
+{
 	return {
 		dragging: document.documentElement.hasAttribute("data-session-dragging"),
 		ghosts: document.querySelectorAll("[data-drag-ghost]").length,
@@ -96,135 +132,303 @@ function snapshot() {
 	};
 }
 
-afterEach(async () => {
+afterEach(async () =>
+{
 	cleanup();
 	// A drop leaves a one-shot click suppressor on window until the next macrotask; let it expire before the next test clicks.
-	await new Promise((resolve) => {
+	await new Promise((resolve) =>
+	{
 		setTimeout(resolve, 0);
 	});
 });
 
-describe("useSidebarDrag", () => {
-	it("treats movement within the 4px threshold as a click", () => {
+describe("useSidebarDrag", () =>
+{
+	it("treats movement within the 4px threshold as a click", () =>
+	{
 		const {onDrop} = setup();
 		const onClick = vi.fn<(event: MouseEvent) => void>();
 		screen.getByTestId("row-x").addEventListener("click", onClick);
 
 		pointerDown("row-x", 210);
 		pointerMove(213);
-		expect(snapshot()).toStrictEqual({dragging: false, ghosts: 0, state: null});
+		expect(snapshot()).toStrictEqual(
+			{
+				dragging: false,
+				ghosts: 0,
+				state: null,
+			},
+		);
 		pointerUp(213);
 		fireEvent.click(screen.getByTestId("row-x"));
 
-		expect({drops: onDrop.mock.calls, clicks: onClick.mock.calls.length}).toStrictEqual({
-			drops: [],
-			clicks: 1,
-		});
+		expect(
+			{
+				drops: onDrop.mock.calls,
+				clicks: onClick.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				drops: [],
+				clicks: 1,
+			},
+		);
 	});
 
-	it("drops an outside row into a list slot, shifting the rows below the slot", () => {
+	it("drops an outside row into a list slot, shifting the rows below the slot", () =>
+	{
 		const {onDrop} = setup();
 
 		pointerDown("row-x", 210);
 		pointerMove(150);
-		expect(snapshot()).toStrictEqual({
-			dragging: true,
-			ghosts: 1,
-			state: {srcId: "x", target: null},
-		});
+		expect(snapshot()).toStrictEqual(
+			{
+				dragging: true,
+				ghosts: 1,
+				state:
+				{
+					srcId: "x",
+					target: null,
+				},
+			},
+		);
 		expect(sourceRow("x").style.visibility).toBe("hidden");
 
 		pointerMove(25);
-		expect({snapshot: snapshot(), transforms: transforms()}).toStrictEqual({
-			snapshot: {
-				dragging: true,
-				ghosts: 1,
-				state: {srcId: "x", target: {type: "slot", listId: "pinned", slot: 1}},
+		expect(
+			{
+				snapshot: snapshot(),
+				transforms: transforms(),
 			},
-			transforms: ["", "translateY(21px)", "translateY(21px)"],
-		});
+		).toStrictEqual(
+			{
+				snapshot:
+				{
+					dragging: true,
+					ghosts: 1,
+					state:
+					{
+						srcId: "x",
+						target:
+						{
+							type: "slot",
+							listId: "pinned",
+							slot: 1,
+						},
+					},
+				},
+				transforms: ["", "translateY(21px)", "translateY(21px)"],
+			},
+		);
 
 		pointerUp(25);
-		expect({
-			drops: onDrop.mock.calls,
-			snapshot: snapshot(),
-			transforms: transforms(),
-			visibility: sourceRow("x").style.visibility,
-		}).toStrictEqual({
-			drops: [[{srcId: "x", target: {type: "slot", listId: "pinned", slot: 1}}]],
-			snapshot: {dragging: false, ghosts: 0, state: null},
-			transforms: ["", "", ""],
-			visibility: "",
-		});
+		expect(
+			{
+				drops: onDrop.mock.calls,
+				snapshot: snapshot(),
+				transforms: transforms(),
+				visibility: sourceRow("x").style.visibility,
+			},
+		).toStrictEqual(
+			{
+				drops: [
+					[
+						{
+							srcId: "x",
+							target:
+							{
+								type: "slot",
+								listId: "pinned",
+								slot: 1,
+							},
+						},
+					],
+				],
+				snapshot:
+				{
+					dragging: false,
+					ghosts: 0,
+					state: null,
+				},
+				transforms: ["", "", ""],
+				visibility: "",
+			},
+		);
 	});
 
-	it("reorders within a list and ignores the source's no-op neighbour slots", () => {
+	it("reorders within a list and ignores the source's no-op neighbour slots", () =>
+	{
 		const {onDrop} = setup();
 
 		pointerDown("row-a", 10);
 		pointerMove(25);
-		expect(snapshot().state).toStrictEqual({srcId: "a", target: null});
+		expect(snapshot().state).toStrictEqual(
+			{
+				srcId: "a",
+				target: null,
+			},
+		);
 
 		pointerMove(60);
-		expect({state: snapshot().state, transforms: transforms()}).toStrictEqual({
-			state: {srcId: "a", target: {type: "slot", listId: "pinned", slot: 3}},
-			transforms: ["", "translateY(-21px)", "translateY(-21px)"],
-		});
+		expect(
+			{
+				state: snapshot().state,
+				transforms: transforms(),
+			},
+		).toStrictEqual(
+			{
+				state:
+				{
+					srcId: "a",
+					target:
+					{
+						type: "slot",
+						listId: "pinned",
+						slot: 3,
+					},
+				},
+				transforms: ["", "translateY(-21px)", "translateY(-21px)"],
+			},
+		);
 
 		pointerUp(60);
-		expect(onDrop.mock.calls).toStrictEqual([[{srcId: "a", target: {type: "slot", listId: "pinned", slot: 3}}]]);
+		expect(onDrop.mock.calls).toStrictEqual([
+			[
+				{
+					srcId: "a",
+					target:
+					{
+						type: "slot",
+						listId: "pinned",
+						slot: 3,
+					},
+				},
+			],
+		]);
 	});
 
-	it("drops onto a zone element, clearing list shifts", () => {
+	it("drops onto a zone element, clearing list shifts", () =>
+	{
 		const {onDrop} = setup();
 
 		pointerDown("row-x", 210);
 		pointerMove(25);
 		pointerMove(110);
-		expect({state: snapshot().state, transforms: transforms()}).toStrictEqual({
-			state: {srcId: "x", target: {type: "zone", zoneId: "group-1"}},
-			transforms: ["", "", ""],
-		});
+		expect(
+			{
+				state: snapshot().state,
+				transforms: transforms(),
+			},
+		).toStrictEqual(
+			{
+				state:
+				{
+					srcId: "x",
+					target:
+					{
+						type: "zone",
+						zoneId: "group-1",
+					},
+				},
+				transforms: ["", "", ""],
+			},
+		);
 
 		pointerUp(110);
-		expect(onDrop.mock.calls).toStrictEqual([[{srcId: "x", target: {type: "zone", zoneId: "group-1"}}]]);
+		expect(onDrop.mock.calls).toStrictEqual([
+			[
+				{
+					srcId: "x",
+					target:
+					{
+						type: "zone",
+						zoneId: "group-1",
+					},
+				},
+			],
+		]);
 	});
 
-	it("drops nothing when released away from every target", () => {
+	it("drops nothing when released away from every target", () =>
+	{
 		const {onDrop} = setup();
 
 		pointerDown("row-x", 210);
 		pointerMove(300);
 		pointerUp(300);
 
-		expect({drops: onDrop.mock.calls, snapshot: snapshot()}).toStrictEqual({
-			drops: [],
-			snapshot: {dragging: false, ghosts: 0, state: null},
-		});
+		expect(
+			{
+				drops: onDrop.mock.calls,
+				snapshot: snapshot(),
+			},
+		).toStrictEqual(
+			{
+				drops: [],
+				snapshot:
+				{
+					dragging: false,
+					ghosts: 0,
+					state: null,
+				},
+			},
+		);
 	});
 
-	it("cancels on Escape without dropping", () => {
+	it("cancels on Escape without dropping", () =>
+	{
 		const {onDrop} = setup();
 
 		pointerDown("row-x", 210);
 		pointerMove(25);
-		act(() => {
-			fireEvent.keyDown(window, {key: "Escape"});
+		act(() =>
+		{
+			fireEvent.keyDown(
+				window,
+				{
+					key: "Escape",
+				},
+			);
 		});
-		expect({snapshot: snapshot(), transforms: transforms()}).toStrictEqual({
-			snapshot: {dragging: false, ghosts: 0, state: null},
-			transforms: ["", "", ""],
-		});
+		expect(
+			{
+				snapshot: snapshot(),
+				transforms: transforms(),
+			},
+		).toStrictEqual(
+			{
+				snapshot:
+				{
+					dragging: false,
+					ghosts: 0,
+					state: null,
+				},
+				transforms: ["", "", ""],
+			},
+		);
 
 		pointerMove(30);
 		pointerUp(30);
-		expect({drops: onDrop.mock.calls, snapshot: snapshot()}).toStrictEqual({
-			drops: [],
-			snapshot: {dragging: false, ghosts: 0, state: null},
-		});
+		expect(
+			{
+				drops: onDrop.mock.calls,
+				snapshot: snapshot(),
+			},
+		).toStrictEqual(
+			{
+				drops: [],
+				snapshot:
+				{
+					dragging: false,
+					ghosts: 0,
+					state: null,
+				},
+			},
+		);
 	});
 
-	it("suppresses the click that follows a completed drag", () => {
+	it("suppresses the click that follows a completed drag", () =>
+	{
 		setup();
 		const onClick = vi.fn<(event: MouseEvent) => void>();
 		screen.getByTestId("row-x").addEventListener("click", onClick);
@@ -237,30 +441,59 @@ describe("useSidebarDrag", () => {
 		expect(onClick.mock.calls.length).toBe(0);
 	});
 
-	it("ignores pointerdown on row actions and non-primary buttons", () => {
+	it("ignores pointerdown on row actions and non-primary buttons", () =>
+	{
 		const {onDrop} = setup();
 		const [menu] = screen.getAllByText("menu");
 
-		fireEvent.pointerDown(menu!, {button: 0, pointerId: 1, clientX: 50, clientY: 10});
+		fireEvent.pointerDown(
+			menu!,
+			{
+				button: 0,
+				pointerId: 1,
+				clientX: 50,
+				clientY: 10,
+			},
+		);
 		pointerMove(60);
-		fireEvent.pointerDown(screen.getByTestId("row-x"), {
-			button: 2,
-			pointerId: 1,
-			clientX: 50,
-			clientY: 210,
-		});
+		fireEvent.pointerDown(
+			screen.getByTestId("row-x"),
+			{
+				button: 2,
+				pointerId: 1,
+				clientX: 50,
+				clientY: 210,
+			},
+		);
 		pointerMove(25);
 		pointerUp(25);
 
-		expect({drops: onDrop.mock.calls, snapshot: snapshot()}).toStrictEqual({
-			drops: [],
-			snapshot: {dragging: false, ghosts: 0, state: null},
-		});
+		expect(
+			{
+				drops: onDrop.mock.calls,
+				snapshot: snapshot(),
+			},
+		).toStrictEqual(
+			{
+				drops: [],
+				snapshot:
+				{
+					dragging: false,
+					ghosts: 0,
+					state: null,
+				},
+			},
+		);
 	});
 });
 
-function NestedHarness({onDrop}: {onDrop: (drop: SidebarDrop) => void}) {
-	const {drag, rowProps, listRef, zoneRef} = useSidebarDrag({onDrop});
+function NestedHarness({onDrop}: {onDrop: (drop: SidebarDrop) => void})
+{
+	const {drag, rowProps, listRef, zoneRef} = useSidebarDrag(
+		{
+			onDrop,
+		},
+	);
 	return (
 		<div ref={zoneRef("outer")} data-testid="outer">
 			<output data-testid="state">{JSON.stringify(drag)}</output>
@@ -277,8 +510,10 @@ function NestedHarness({onDrop}: {onDrop: (drop: SidebarDrop) => void}) {
 	);
 }
 
-describe("useSidebarDrag nested targets", () => {
-	function setupNested() {
+describe("useSidebarDrag nested targets", () =>
+{
+	function setupNested()
+	{
 		const onDrop = vi.fn<(drop: SidebarDrop) => void>();
 		render(<NestedHarness onDrop={onDrop} />);
 		mockRect("outer", 0, 300);
@@ -286,10 +521,13 @@ describe("useSidebarDrag nested targets", () => {
 		mockRect("group", 21, 40);
 		mockRect("row-g1", 21, 20);
 		mockRect("row-y", 200, 20);
-		return {onDrop};
+		return {
+			onDrop,
+		};
 	}
 
-	it("prefers the innermost zone or list over an enclosing zone", () => {
+	it("prefers the innermost zone or list over an enclosing zone", () =>
+	{
 		const {onDrop} = setupNested();
 
 		pointerDown("row-y", 210);
@@ -301,11 +539,57 @@ describe("useSidebarDrag nested targets", () => {
 		const list = snapshot().state;
 		pointerUp(50);
 
-		expect({outer, header, list, drops: onDrop.mock.calls}).toStrictEqual({
-			outer: {srcId: "y", target: {type: "zone", zoneId: "outer"}},
-			header: {srcId: "y", target: {type: "zone", zoneId: "header"}},
-			list: {srcId: "y", target: {type: "slot", listId: "group", slot: 1}},
-			drops: [[{srcId: "y", target: {type: "slot", listId: "group", slot: 1}}]],
-		});
+		expect(
+			{
+				outer,
+				header,
+				list,
+				drops: onDrop.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				outer:
+				{
+					srcId: "y",
+					target:
+					{
+						type: "zone",
+						zoneId: "outer",
+					},
+				},
+				header:
+				{
+					srcId: "y",
+					target:
+					{
+						type: "zone",
+						zoneId: "header",
+					},
+				},
+				list:
+				{
+					srcId: "y",
+					target:
+					{
+						type: "slot",
+						listId: "group",
+						slot: 1,
+					},
+				},
+				drops: [
+					[
+						{
+							srcId: "y",
+							target:
+							{
+								type: "slot",
+								listId: "group",
+								slot: 1,
+							},
+						},
+					],
+				],
+			},
+		);
 	});
 });

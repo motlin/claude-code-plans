@@ -1,6 +1,7 @@
 import {lazy, Suspense, useSyncExternalStore} from "react";
 import {handleCodeCopyClick} from "../lib/code-copy";
-import {
+import
+{
 	mermaidLoadFailed,
 	mermaidSourceDrawable,
 	noteMermaidLoadFailed,
@@ -15,8 +16,12 @@ import {Skeleton} from "./ui/skeleton";
  */
 const LazyMermaidFence = lazy(async () =>
 	import("./mermaid-fence").then(
-		(module) => ({default: module.MermaidFence}),
-		(error: unknown) => {
+		(module) => (
+		{
+			default: module.MermaidFence,
+		}),
+		(error: unknown) =>
+		{
 			noteMermaidLoadFailed();
 			throw error;
 		},
@@ -24,7 +29,8 @@ const LazyMermaidFence = lazy(async () =>
 );
 
 /** Upstream `dn`: the stand-in while the diagram code loads and the first draw runs. */
-export function MermaidPlaceholder() {
+export function MermaidPlaceholder()
+{
 	return (
 		<div data-testid="epitaxy-mermaid-fence-placeholder">
 			<div className="rounded-[var(--msg-block-radius,0.5rem)] border-0.5 border p-4">
@@ -35,14 +41,23 @@ export function MermaidPlaceholder() {
 }
 
 /** The fence's ordinary code block, from the markdown render; its copy button works through the delegated handler. */
-function CodeBlock({html}: {html: string}) {
+function CodeBlock({html}: {html: string})
+{
 	return (
 		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- delegates clicks from the copy button inside it, which is keyboard-reachable itself
-		<div className="contents" onClick={handleCodeCopyClick} dangerouslySetInnerHTML={{__html: html}} />
+		<div
+			className="contents"
+			onClick={handleCodeCopyClick}
+			dangerouslySetInnerHTML={
+			{
+				__html: html,
+			}}
+		/>
 	);
 }
 
-function reportFenceCrash(error: unknown) {
+function reportFenceCrash(error: unknown)
+{
 	console.error("[mermaid-fence]", error);
 }
 
@@ -51,7 +66,8 @@ function reportFenceCrash(error: unknown) {
  * source is not drawable; otherwise it loads the fence lazily, with the placeholder meanwhile and the code block as
  * the crash fallback (upstream's `EpitaxyMermaidFence` boundary, reset by the code).
  */
-export function MermaidFenceGate({code, codeBlockHtml}: {code: string; codeBlockHtml: string}) {
+export function MermaidFenceGate({code, codeBlockHtml}: {code: string; codeBlockHtml: string})
+{
 	const failed = useSyncExternalStore(subscribeMermaidLoad, mermaidLoadFailed, () => false);
 	const codeBlock = <CodeBlock html={codeBlockHtml} />;
 	if (failed || !mermaidSourceDrawable(code)) return codeBlock;

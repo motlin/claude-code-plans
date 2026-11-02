@@ -1,6 +1,7 @@
 import {useEffect, useState, type RefObject} from "react";
 
-import {
+import
+{
 	ACTIVE_CHAPTER_BOTTOM_SLACK_PIXELS,
 	chapterAnchorId,
 	hasOutline,
@@ -17,9 +18,11 @@ const TRAILING_PASS_MS = 50;
 const ROW_SELECTOR = "[data-transcript-entry-index]";
 
 /** Upstream's `Ci`: the first row reaching below the line, else the last row. */
-function firstRowBelow(rows: Iterable<Element>, line: number): Element | undefined {
+function firstRowBelow(rows: Iterable<Element>, line: number): Element | undefined
+{
 	let found: Element | undefined;
-	for (const row of rows) {
+	for (const row of rows)
+	{
 		found = row;
 		if (row.getBoundingClientRect().bottom > line) break;
 	}
@@ -43,11 +46,13 @@ export function useActiveChapter({
 	scrollRef: RefObject<HTMLElement | null>;
 	/** Changes when the scroller shows another visit, so the tracker re-reads it. */
 	scrollKey: string;
-}): string | null {
+}): string | null
+{
 	const [active, setActive] = useState<string | null>(null);
 	const enabled = hasOutline(chapters);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const scroller = scrollRef.current;
 		if (scroller === null || !enabled) return undefined;
 		let frame = 0;
@@ -56,15 +61,19 @@ export function useActiveChapter({
 		let lastPassAt = -Infinity;
 		let lastDistance = 0;
 
-		const pass = () => {
+		const pass = () =>
+		{
 			frame = 0;
-			if (timer !== 0) {
+			if (timer !== 0)
+			{
 				window.clearTimeout(timer);
 				timer = 0;
 			}
 			const firstRow = scroller.querySelector(ROW_SELECTOR);
-			if (firstRow === null) {
-				if (!retried) {
+			if (firstRow === null)
+			{
+				if (!retried)
+				{
 					retried = true;
 					frame = requestAnimationFrame(pass);
 				}
@@ -78,27 +87,35 @@ export function useActiveChapter({
 				(distance > ACTIVE_CHAPTER_BOTTOM_SLACK_PIXELS
 					? firstRowBelow(scroller.querySelectorAll(ROW_SELECTOR), viewportTop)
 					: undefined) ?? firstRow;
-			const next = pickActiveChapter(chapters, {
-				canScroll: scroller.scrollHeight > scroller.clientHeight,
-				distanceToBottomPx: distance,
-				viewportTopPx: viewportTop,
-				firstVisibleRecordIndex: Number(visibleRow.getAttribute("data-perf-line") ?? -1),
-				getAnchorTop: (chapter) => {
-					const anchor = document.getElementById(chapterAnchorId(chapter.id));
-					return anchor !== null && scroller.contains(anchor) ? anchor.getBoundingClientRect().top : null;
+			const next = pickActiveChapter(
+				chapters,
+				{
+					canScroll: scroller.scrollHeight > scroller.clientHeight,
+					distanceToBottomPx: distance,
+					viewportTopPx: viewportTop,
+					firstVisibleRecordIndex: Number(visibleRow.getAttribute("data-perf-line") ?? -1),
+					getAnchorTop: (chapter) =>
+					{
+						const anchor = document.getElementById(chapterAnchorId(chapter.id));
+						return anchor !== null && scroller.contains(anchor) ? anchor.getBoundingClientRect().top : null;
+					},
 				},
-			});
+			);
 			setActive(next);
 		};
 
-		const onScroll = () => {
+		const onScroll = () =>
+		{
 			if (frame !== 0) return;
 			if (
 				lastDistance <= ACTIVE_CHAPTER_BOTTOM_SLACK_PIXELS &&
 				performance.now() - lastPassAt < TRAILING_PASS_MS
-			) {
-				if (timer === 0) {
-					timer = window.setTimeout(() => {
+			)
+			{
+				if (timer === 0)
+				{
+					timer = window.setTimeout(() =>
+					{
 						timer = 0;
 						if (frame === 0) frame = requestAnimationFrame(pass);
 					}, TRAILING_PASS_MS);
@@ -108,9 +125,16 @@ export function useActiveChapter({
 			frame = requestAnimationFrame(pass);
 		};
 
-		scroller.addEventListener("scroll", onScroll, {passive: true});
+		scroller.addEventListener(
+			"scroll",
+			onScroll,
+			{
+				passive: true,
+			},
+		);
 		pass();
-		return () => {
+		return () =>
+		{
 			scroller.removeEventListener("scroll", onScroll);
 			if (frame !== 0) cancelAnimationFrame(frame);
 			if (timer !== 0) window.clearTimeout(timer);

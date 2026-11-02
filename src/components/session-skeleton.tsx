@@ -17,7 +17,13 @@ const PARAGRAPH_WIDTHS = [
  * the bar's place, beside the device glyph, as upstream's header shows it.
  * Hidden from assistive tech, as upstream's frame is.
  */
-export function SessionSkeleton({title}: {title?: string | undefined} = {}) {
+export function SessionSkeleton({
+	title,
+}:
+{
+	title?: string | undefined;
+} = {})
+{
 	return (
 		/* Upstream's whole loading frame (`Lp`) is aria-hidden, its ghost header a role-less Toolbar under it. */
 		<div data-testid="session-skeleton" aria-hidden="true">

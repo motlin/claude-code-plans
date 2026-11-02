@@ -1,5 +1,6 @@
 /** The fields of a `SpeechSynthesisVoice` the choice reads. */
-export interface VoiceLike {
+export interface VoiceLike
+{
 	name: string;
 	lang: string;
 	voiceURI: string;
@@ -32,7 +33,8 @@ const NOVELTY_VOICES = new Set([
  * network voices ("Google US English"), then ordinary local voices, and last
  * the novelty and Eloquence voices (Eddy, Flo, Grandma…).
  */
-function quality(voice: VoiceLike): number {
+function quality(voice: VoiceLike): number
+{
 	const label = `${voice.name} ${voice.voiceURI}`.toLowerCase();
 	if (NOVELTY_VOICES.has(voice.name.toLowerCase()) || label.includes("com.apple.eloquence")) return 0;
 	if (/premium|siri|neural|natural/.test(label)) return 4;
@@ -41,11 +43,13 @@ function quality(voice: VoiceLike): number {
 	return 1;
 }
 
-function normalizeLang(lang: string): string {
+function normalizeLang(lang: string): string
+{
 	return lang.replaceAll("_", "-").toLowerCase();
 }
 
-function baseLang(lang: string): string {
+function baseLang(lang: string): string
+{
 	return lang.split("-")[0] ?? lang;
 }
 
@@ -55,14 +59,17 @@ function baseLang(lang: string): string {
  * language qualify, ranked by quality, then an exact locale match, then the
  * engine's own default.
  */
-export function chooseVoice<V extends VoiceLike>(voices: readonly V[], lang: string): V | null {
+export function chooseVoice<V extends VoiceLike>(voices: readonly V[], lang: string): V | null
+{
 	const wanted = normalizeLang(lang);
 	const candidates = voices.filter((voice) => baseLang(normalizeLang(voice.lang)) === baseLang(wanted));
 	let best: V | null = null;
 	let bestRank: readonly number[] = [];
-	for (const voice of candidates) {
+	for (const voice of candidates)
+	{
 		const rank = [quality(voice), normalizeLang(voice.lang) === wanted ? 1 : 0, voice.default ? 1 : 0];
-		if (best === null || isHigher(rank, bestRank)) {
+		if (best === null || isHigher(rank, bestRank))
+		{
 			best = voice;
 			bestRank = rank;
 		}
@@ -70,8 +77,10 @@ export function chooseVoice<V extends VoiceLike>(voices: readonly V[], lang: str
 	return best;
 }
 
-function isHigher(rank: readonly number[], than: readonly number[]): boolean {
-	for (let index = 0; index < rank.length; index++) {
+function isHigher(rank: readonly number[], than: readonly number[]): boolean
+{
+	for (let index = 0; index < rank.length; index++)
+	{
 		if (rank[index] !== than[index]) return (rank[index] ?? -Infinity) > (than[index] ?? -Infinity);
 	}
 	return false;

@@ -5,7 +5,8 @@ import {terminalWritesEnabled} from "../config";
 import {rejectCrossSite} from "../same-origin-guard";
 import {herdrRequest, type HerdrResult} from "./client";
 import {qualifyHerdrId, splitHerdrId} from "./herdr-id";
-import {
+import
+{
 	claudeSessionId,
 	herdrPaneDisplayName,
 	normalizePane,
@@ -13,13 +14,15 @@ import {
 	type HerdrRequester,
 	type HerdrServerLister,
 } from "./panes";
-import {
+import
+{
 	HerdrPaneInfoResultSchema,
 	HerdrPaneProcessInfoResultSchema,
 	HerdrSessionSnapshotResultSchema,
 	HerdrTabCreatedResultSchema,
 } from "./schema";
-import {
+import
+{
 	chooseHerdrLaunchServer,
 	knownHerdrServers,
 	qualifyHerdrPaneState,
@@ -42,7 +45,8 @@ import {workspaceLabel} from "./workspaces";
  */
 export type HerdrTerminalProcess = "idle" | "running" | "exited" | "unknown";
 
-export interface HerdrTerminalPane {
+export interface HerdrTerminalPane
+{
 	paneId: string;
 	terminalId: string;
 	title: string;
@@ -57,7 +61,8 @@ export interface HerdrTerminalPane {
 	process: HerdrTerminalProcess;
 }
 
-export interface HerdrTerminalTab {
+export interface HerdrTerminalTab
+{
 	tabId: string;
 	number: number;
 	label: string;
@@ -65,7 +70,8 @@ export interface HerdrTerminalTab {
 	panes: HerdrTerminalPane[];
 }
 
-export interface HerdrTerminalWorkspace {
+export interface HerdrTerminalWorkspace
+{
 	workspaceId: string;
 	number: number;
 	label: string;
@@ -76,32 +82,61 @@ export interface HerdrTerminalWorkspace {
 type HerdrSnapshot = z.infer<typeof HerdrSessionSnapshotResultSchema>["snapshot"];
 type TerminalSnapshot = Pick<HerdrSnapshot, "workspaces" | "tabs" | "panes">;
 
-const SNAPSHOT_REQUEST = {id: "ccp:terminals:snap", method: "session.snapshot", params: {}};
+const SNAPSHOT_REQUEST =
+{
+	id: "ccp:terminals:snap",
+	method: "session.snapshot",
+	params: {},
+};
 
-async function readServerSnapshot(request: HerdrRequester, server: HerdrServer): Promise<TerminalSnapshot | null> {
+async function readServerSnapshot(request: HerdrRequester, server: HerdrServer): Promise<TerminalSnapshot | null>
+{
 	const response = await request(SNAPSHOT_REQUEST, undefined, server.socketPath);
 	if (!response.ok) return null;
 	const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
 	if (!parsed.success) return null;
 	const {workspaces, tabs, panes} = parsed.data.snapshot;
-	const qualified = qualifyHerdrPaneState({workspaces, panes}, server.session);
-	return {...qualified, tabs: qualifyHerdrTabs(tabs, server.session)};
+	const qualified = qualifyHerdrPaneState(
+		{
+			workspaces,
+			panes,
+		},
+		server.session,
+	);
+	return {
+		...qualified,
+		tabs: qualifyHerdrTabs(tabs, server.session),
+	};
 }
 
 async function readProcess(
 	request: HerdrRequester,
 	paneId: string,
-): Promise<Pick<HerdrTerminalPane, "command" | "process">> {
-	const response = await request({
-		id: "ccp:terminals:process",
-		method: "pane.process_info",
-		params: {pane_id: paneId},
-	});
+): Promise<Pick<HerdrTerminalPane, "command" | "process">>
+{
+	const response = await request(
+		{
+			id: "ccp:terminals:process",
+			method: "pane.process_info",
+			params:
+			{
+				pane_id: paneId,
+			},
+		},
+	);
 	const parsed = response.ok ? HerdrPaneProcessInfoResultSchema.safeParse(response.value) : undefined;
-	if (!parsed?.success) return {command: null, process: "unknown"};
+	if (!parsed?.success)
+		return {
+			command: null,
+			process: "unknown",
+		};
 	const info = parsed.data.process_info;
 	const shellPid = info.shell_pid ?? null;
-	if (shellPid === null) return {command: null, process: "exited"};
+	if (shellPid === null)
+		return {
+			command: null,
+			process: "exited",
+		};
 	const groupId = info.foreground_process_group_id ?? null;
 	const processes = info.foreground_processes ?? [];
 	const leader = processes.find((candidate) => candidate.pid === groupId) ?? processes[0];
@@ -119,32 +154,46 @@ async function readProcess(
 export async function getHerdrTerminals(
 	request: HerdrRequester = herdrRequest,
 	servers: HerdrServerLister = knownHerdrServers,
-): Promise<HerdrTerminalWorkspace[]> {
+): Promise<HerdrTerminalWorkspace[]>
+{
 	const snapshots = await Promise.all(servers().map(async (server) => readServerSnapshot(request, server)));
 	const workspaces: HerdrTerminalWorkspace[] = [];
-	for (const snapshot of snapshots) {
+	for (const snapshot of snapshots)
+	{
 		if (snapshot === null) continue;
 		const panes = await Promise.all(
-			snapshot.panes.map(async (wirePane): Promise<HerdrTerminalPane & {tabId: string}> => {
-				const pane = normalizePane(wirePane);
-				return {
-					tabId: pane.tabId,
-					paneId: pane.paneId,
-					terminalId: pane.terminalId,
-					title: herdrPaneDisplayName(pane),
-					cwd: pane.foregroundCwd ?? pane.cwd,
-					focused: pane.focused,
-					agent: pane.agent,
-					agentStatus: pane.agentStatus,
-					claudeSessionId: claudeSessionId(wirePane),
-					...(await readProcess(request, pane.paneId)),
-				};
-			}),
+			snapshot.panes.map(
+				async (
+					wirePane,
+				): Promise<
+					HerdrTerminalPane &
+					{
+						tabId: string;
+					}
+				> =>
+				{
+					const pane = normalizePane(wirePane);
+					return {
+						tabId: pane.tabId,
+						paneId: pane.paneId,
+						terminalId: pane.terminalId,
+						title: herdrPaneDisplayName(pane),
+						cwd: pane.foregroundCwd ?? pane.cwd,
+						focused: pane.focused,
+						agent: pane.agent,
+						agentStatus: pane.agentStatus,
+						claudeSessionId: claudeSessionId(wirePane),
+						...(await readProcess(request, pane.paneId)),
+					};
+				},
+			),
 		);
 		const tabs = snapshot.tabs
-			.map((tab) => ({
+			.map((tab) => (
+			{
 				workspaceId: tab.workspace_id,
-				tab: {
+				tab:
+				{
 					tabId: tab.tab_id,
 					number: tab.number,
 					label: tab.label,
@@ -154,7 +203,8 @@ export async function getHerdrTerminals(
 			}))
 			.toSorted((left, right) => left.tab.number - right.tab.number);
 		const serverWorkspaces = snapshot.workspaces
-			.map((workspace) => ({
+			.map((workspace) => (
+			{
 				workspaceId: workspace.workspace_id,
 				number: workspace.number,
 				label: workspaceLabel(workspace.workspace_id, workspace.label),
@@ -173,36 +223,77 @@ const IdSchema = z.string().min(1);
 
 const HerdrTerminalActionSchema = z.discriminatedUnion("action", [
 	z
-		.object({
-			action: z.literal("create-tab"),
-			/** Absent: the home directory. */
-			cwd: AbsolutePathSchema.optional(),
-			/** Typed into the new shell; absent leaves the shell at its prompt. */
-			command: CommandSchema.optional(),
-			/** Absent: herdr's focused workspace on the launch server. */
-			workspaceId: IdSchema.optional(),
-			label: IdSchema.optional(),
-		})
+		.object(
+			{
+				action: z.literal("create-tab"),
+				/** Absent: the home directory. */
+				cwd: AbsolutePathSchema.optional(),
+				/** Typed into the new shell; absent leaves the shell at its prompt. */
+				command: CommandSchema.optional(),
+				/** Absent: herdr's focused workspace on the launch server. */
+				workspaceId: IdSchema.optional(),
+				label: IdSchema.optional(),
+			},
+		)
 		.strict(),
 	z
-		.object({
-			action: z.literal("split-pane"),
-			paneId: IdSchema,
-			direction: z.enum(["right", "down"]),
-			cwd: AbsolutePathSchema.optional(),
-			command: CommandSchema.optional(),
-		})
+		.object(
+			{
+				action: z.literal("split-pane"),
+				paneId: IdSchema,
+				direction: z.enum(["right", "down"]),
+				cwd: AbsolutePathSchema.optional(),
+				command: CommandSchema.optional(),
+			},
+		)
 		.strict(),
-	z.object({action: z.literal("close-pane"), paneId: IdSchema}).strict(),
-	z.object({action: z.literal("close-tab"), tabId: IdSchema}).strict(),
-	z.object({action: z.literal("rename-tab"), tabId: IdSchema, label: IdSchema}).strict(),
-	z.object({action: z.literal("focus-pane"), paneId: IdSchema}).strict(),
-	z.object({action: z.literal("focus-tab"), tabId: IdSchema}).strict(),
+	z
+		.object(
+			{
+				action: z.literal("close-pane"),
+				paneId: IdSchema,
+			},
+		)
+		.strict(),
+	z
+		.object(
+			{
+				action: z.literal("close-tab"),
+				tabId: IdSchema,
+			},
+		)
+		.strict(),
+	z
+		.object(
+			{
+				action: z.literal("rename-tab"),
+				tabId: IdSchema,
+				label: IdSchema,
+			},
+		)
+		.strict(),
+	z
+		.object(
+			{
+				action: z.literal("focus-pane"),
+				paneId: IdSchema,
+			},
+		)
+		.strict(),
+	z
+		.object(
+			{
+				action: z.literal("focus-tab"),
+				tabId: IdSchema,
+			},
+		)
+		.strict(),
 ]);
 
 type HerdrTerminalAction = z.infer<typeof HerdrTerminalActionSchema>;
 
-export interface HerdrTerminalActionDependencies {
+export interface HerdrTerminalActionDependencies
+{
 	rejectRequest: (request: Request) => Response | null;
 	writesEnabled: () => boolean;
 	request: HerdrRequester;
@@ -212,7 +303,8 @@ export interface HerdrTerminalActionDependencies {
 	launchServer: () => HerdrServer;
 }
 
-const defaultHerdrTerminalActionDependencies: HerdrTerminalActionDependencies = {
+const defaultHerdrTerminalActionDependencies: HerdrTerminalActionDependencies =
+{
 	rejectRequest: rejectCrossSite,
 	writesEnabled: terminalWritesEnabled,
 	request: herdrRequest,
@@ -222,16 +314,32 @@ const defaultHerdrTerminalActionDependencies: HerdrTerminalActionDependencies = 
 };
 
 type ActionOutcome =
-	| {ok: true; value: Record<string, string>}
-	| {ok: false; code: string; message: string; created?: Record<string, string>};
+	|
+	  {
+			ok: true;
+			value: Record<string, string>;
+	  }
+	|
+	  {
+			ok: false;
+			code: string;
+			message: string;
+			created?: Record<string, string>;
+	  };
 
-function errorStatus(code: string): number {
+function errorStatus(code: string): number
+{
 	if (code.endsWith("not_found")) return 404;
 	return 502;
 }
 
-function failure(code: string, message: string): ActionOutcome {
-	return {ok: false, code, message};
+function failure(code: string, message: string): ActionOutcome
+{
+	return {
+		ok: false,
+		code,
+		message,
+	};
 }
 
 /** Type a command into a pane this request just created, then press Enter. */
@@ -239,14 +347,31 @@ async function typeCommand(
 	paneId: string,
 	command: string,
 	{request, createRequestId}: HerdrTerminalActionDependencies,
-): Promise<HerdrResult<unknown>> {
-	const typed = await request({
-		id: createRequestId(),
-		method: "pane.send_text",
-		params: {pane_id: paneId, text: command},
-	});
+): Promise<HerdrResult<unknown>>
+{
+	const typed = await request(
+		{
+			id: createRequestId(),
+			method: "pane.send_text",
+			params:
+			{
+				pane_id: paneId,
+				text: command,
+			},
+		},
+	);
 	if (!typed.ok) return typed;
-	return request({id: createRequestId(), method: "pane.send_keys", params: {pane_id: paneId, keys: ["enter"]}});
+	return request(
+		{
+			id: createRequestId(),
+			method: "pane.send_keys",
+			params:
+			{
+				pane_id: paneId,
+				keys: ["enter"],
+			},
+		},
+	);
 }
 
 async function finishWithCommand(
@@ -254,17 +379,43 @@ async function finishWithCommand(
 	paneId: string,
 	command: string | undefined,
 	dependencies: HerdrTerminalActionDependencies,
-): Promise<ActionOutcome> {
-	if (command === undefined) return {ok: true, value: created};
+): Promise<ActionOutcome>
+{
+	if (command === undefined)
+		return {
+			ok: true,
+			value: created,
+		};
 	const typed = await typeCommand(paneId, command, dependencies);
 	// The pane stays open either way, so the client can still open it.
-	return typed.ok ? {ok: true, value: created} : {...typed, created};
+	return typed.ok
+		?
+			{
+				ok: true,
+				value: created,
+			}
+		:
+			{
+				...typed,
+				created,
+			};
 }
 
 async function createTab(
-	{cwd, command, workspaceId, label}: Extract<HerdrTerminalAction, {action: "create-tab"}>,
+	{
+		cwd,
+		command,
+		workspaceId,
+		label,
+	}: Extract<
+		HerdrTerminalAction,
+		{
+			action: "create-tab";
+		}
+	>,
 	dependencies: HerdrTerminalActionDependencies,
-): Promise<ActionOutcome> {
+): Promise<ActionOutcome>
+{
 	const {request, createRequestId} = dependencies;
 	// A named workspace routes the request (and qualifies the new ids) by its own server.
 	const server = workspaceId === undefined ? dependencies.launchServer() : null;
@@ -273,11 +424,22 @@ async function createTab(
 		{
 			id: createRequestId(),
 			method: "tab.create",
-			params: {
+			params:
+			{
 				cwd: cwd ?? dependencies.homeDir(),
 				focus: false,
-				...(workspaceId === undefined ? {} : {workspace_id: workspaceId}),
-				...(label === undefined ? {} : {label}),
+				...(workspaceId === undefined
+					? {}
+					:
+						{
+							workspace_id: workspaceId,
+						}),
+				...(label === undefined
+					? {}
+					:
+						{
+							label,
+						}),
 			},
 		},
 		undefined,
@@ -288,37 +450,113 @@ async function createTab(
 	if (!created.success) return failure("bad-response", "herdr returned an invalid tab.create result");
 	const tabId = qualifyHerdrId(created.data.tab.tab_id, session);
 	const paneId = qualifyHerdrId(created.data.root_pane.pane_id, session);
-	return finishWithCommand({tabId, paneId}, paneId, command, dependencies);
+	return finishWithCommand(
+		{
+			tabId,
+			paneId,
+		},
+		paneId,
+		command,
+		dependencies,
+	);
 }
 
 async function splitPane(
-	{paneId, direction, cwd, command}: Extract<HerdrTerminalAction, {action: "split-pane"}>,
+	{
+		paneId,
+		direction,
+		cwd,
+		command,
+	}: Extract<
+		HerdrTerminalAction,
+		{
+			action: "split-pane";
+		}
+	>,
 	dependencies: HerdrTerminalActionDependencies,
-): Promise<ActionOutcome> {
-	const response = await dependencies.request({
-		id: dependencies.createRequestId(),
-		method: "pane.split",
-		params: {target_pane_id: paneId, direction, focus: false, ...(cwd === undefined ? {} : {cwd})},
-	});
+): Promise<ActionOutcome>
+{
+	const response = await dependencies.request(
+		{
+			id: dependencies.createRequestId(),
+			method: "pane.split",
+			params:
+			{
+				target_pane_id: paneId,
+				direction,
+				focus: false,
+				...(cwd === undefined
+					? {}
+					:
+						{
+							cwd,
+						}),
+			},
+		},
+	);
 	if (!response.ok) return response;
 	const split = HerdrPaneInfoResultSchema.safeParse(response.value);
 	if (!split.success) return failure("bad-response", "herdr returned an invalid pane.split result");
 	const newPaneId = qualifyHerdrId(split.data.pane.pane_id, splitHerdrId(paneId).session);
-	return finishWithCommand({paneId: newPaneId}, newPaneId, command, dependencies);
+	return finishWithCommand(
+		{
+			paneId: newPaneId,
+		},
+		newPaneId,
+		command,
+		dependencies,
+	);
 }
 
-function forwardedRequest(action: HerdrTerminalAction): {method: string; params: Record<string, string>} | null {
-	switch (action.action) {
+function forwardedRequest(action: HerdrTerminalAction):
+{
+	method: string;
+	params: Record<string, string>;
+} | null
+{
+	switch (action.action)
+	{
 		case "close-pane":
-			return {method: "pane.close", params: {pane_id: action.paneId}};
+			return {
+				method: "pane.close",
+				params:
+				{
+					pane_id: action.paneId,
+				},
+			};
 		case "close-tab":
-			return {method: "tab.close", params: {tab_id: action.tabId}};
+			return {
+				method: "tab.close",
+				params:
+				{
+					tab_id: action.tabId,
+				},
+			};
 		case "rename-tab":
-			return {method: "tab.rename", params: {tab_id: action.tabId, label: action.label}};
+			return {
+				method: "tab.rename",
+				params:
+				{
+					tab_id: action.tabId,
+					label: action.label,
+				},
+			};
 		case "focus-pane":
-			return {method: "pane.focus", params: {pane_id: action.paneId}};
+			return {
+				method: "pane.focus",
+				params:
+				{
+					pane_id: action.paneId,
+				},
+			};
 		case "focus-tab":
-			return {method: "tab.focus", params: {tab_id: action.tabId}};
+			return {
+				method: "tab.focus",
+				params:
+				{
+					tab_id: action.tabId,
+				},
+			};
 		default:
 			return null;
 	}
@@ -327,13 +565,25 @@ function forwardedRequest(action: HerdrTerminalAction): {method: string; params:
 async function runAction(
 	action: HerdrTerminalAction,
 	dependencies: HerdrTerminalActionDependencies,
-): Promise<ActionOutcome> {
+): Promise<ActionOutcome>
+{
 	if (action.action === "create-tab") return createTab(action, dependencies);
 	if (action.action === "split-pane") return splitPane(action, dependencies);
 	const forwarded = forwardedRequest(action);
 	if (forwarded === null) return failure("invalid-request", "unknown terminal action");
-	const response = await dependencies.request({id: dependencies.createRequestId(), ...forwarded});
-	return response.ok ? {ok: true, value: {}} : response;
+	const response = await dependencies.request(
+		{
+			id: dependencies.createRequestId(),
+			...forwarded,
+		},
+	);
+	return response.ok
+		?
+			{
+				ok: true,
+				value: {},
+			}
+		: response;
 }
 
 /**
@@ -344,26 +594,55 @@ async function runAction(
 export async function handleHerdrTerminalAction(
 	request: Request,
 	dependencies: HerdrTerminalActionDependencies = defaultHerdrTerminalActionDependencies,
-): Promise<Response> {
+): Promise<Response>
+{
 	const rejection = dependencies.rejectRequest(request);
 	if (rejection) return rejection;
 
-	if (!dependencies.writesEnabled()) {
-		return Response.json({error: "herdr writes are disabled"}, {status: 403});
+	if (!dependencies.writesEnabled())
+	{
+		return Response.json(
+			{
+				error: "herdr writes are disabled",
+			},
+			{
+				status: 403,
+			},
+		);
 	}
 
 	const json: unknown = await request.json();
 	const parsed = HerdrTerminalActionSchema.safeParse(json);
-	if (!parsed.success) {
-		return Response.json({error: z.prettifyError(parsed.error)}, {status: 400});
+	if (!parsed.success)
+	{
+		return Response.json(
+			{
+				error: z.prettifyError(parsed.error),
+			},
+			{
+				status: 400,
+			},
+		);
 	}
 
 	const outcome = await runAction(parsed.data, dependencies);
-	if (!outcome.ok) {
+	if (!outcome.ok)
+	{
 		return Response.json(
-			{error: outcome.message, code: outcome.code, ...outcome.created},
-			{status: errorStatus(outcome.code)},
+			{
+				error: outcome.message,
+				code: outcome.code,
+				...outcome.created,
+			},
+			{
+				status: errorStatus(outcome.code),
+			},
 		);
 	}
-	return Response.json({ok: true, ...outcome.value});
+	return Response.json(
+		{
+			ok: true,
+			...outcome.value,
+		},
+	);
 }

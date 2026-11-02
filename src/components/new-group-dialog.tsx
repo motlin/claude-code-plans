@@ -23,14 +23,16 @@ export function NewGroupDialog({
 	onOpenChange: (open: boolean) => void;
 	/** Called with the trimmed, non-blank name. */
 	onCreate: (name: string) => void;
-}) {
+})
+{
 	const [name, setName] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
 	const trimmed = name.trim();
 	const pad = useDialogPad();
 	const bandBody = useDialogBandBodyClass();
 
-	const submit = (event: SubmitEvent<HTMLFormElement>) => {
+	const submit = (event: SubmitEvent<HTMLFormElement>) =>
+	{
 		event.preventDefault();
 		if (trimmed === "") return;
 		onCreate(trimmed);
@@ -41,7 +43,8 @@ export function NewGroupDialog({
 		<Dialog.Root
 			open={open}
 			onOpenChange={onOpenChange}
-			onOpenChangeComplete={(isOpen) => {
+			onOpenChangeComplete={(isOpen) =>
+			{
 				if (!isOpen) setName("");
 			}}
 		>
@@ -67,7 +70,8 @@ export function NewGroupDialog({
 									ref={inputRef}
 									type="text"
 									value={name}
-									onChange={(event) => {
+									onChange={(event) =>
+									{
 										setName(event.target.value);
 									}}
 									placeholder="Section name"

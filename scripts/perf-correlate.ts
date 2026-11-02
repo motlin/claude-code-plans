@@ -36,7 +36,8 @@ const MIN_SPREAD = 0.1;
 
 // --- statistics --------------------------------------------------------------------------------------------------
 
-export function median(values: readonly number[]): number {
+export function median(values: readonly number[]): number
+{
 	if (values.length === 0) throw new Error("median of an empty list");
 	const sorted = values.toSorted((a, b) => a - b);
 	const middle = Math.floor(sorted.length / 2);
@@ -47,10 +48,23 @@ export function median(values: readonly number[]): number {
 }
 
 /** 1-based ranks, ties sharing their average rank. */
-function ranks(values: readonly number[]): number[] {
-	const order = values.map((value, index) => ({value, index})).toSorted((a, b) => a.value - b.value);
-	const result = Array.from({length: values.length}, () => 0);
-	for (let start = 0; start < order.length;) {
+function ranks(values: readonly number[]): number[]
+{
+	const order = values
+		.map((value, index) => (
+		{
+			value,
+			index,
+		}))
+		.toSorted((a, b) => a.value - b.value);
+	const result = Array.from(
+		{
+			length: values.length,
+		},
+		() => 0,
+	);
+	for (let start = 0; start < order.length;)
+	{
 		let end = start;
 		const {value} = defined(order[start], "rank start is in range");
 		while (order[end + 1]?.value === value) end++;
@@ -61,17 +75,20 @@ function ranks(values: readonly number[]): number[] {
 	return result;
 }
 
-function mean(values: readonly number[]): number {
+function mean(values: readonly number[]): number
+{
 	return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function pearson(x: readonly number[], y: readonly number[]): number | undefined {
+function pearson(x: readonly number[], y: readonly number[]): number | undefined
+{
 	const meanX = mean(x);
 	const meanY = mean(y);
 	let covariance = 0;
 	let varianceX = 0;
 	let varianceY = 0;
-	for (const [index, xValue] of x.entries()) {
+	for (const [index, xValue] of x.entries())
+	{
 		const dx = xValue - meanX;
 		const dy = defined(y[index], "pearson lists have equal length") - meanY;
 		covariance += dx * dy;
@@ -83,19 +100,22 @@ function pearson(x: readonly number[], y: readonly number[]): number | undefined
 }
 
 /** Spearman rank correlation, or undefined when either list is constant or shorter than two. */
-export function spearman(x: readonly number[], y: readonly number[]): number | undefined {
+export function spearman(x: readonly number[], y: readonly number[]): number | undefined
+{
 	if (x.length !== y.length) throw new Error(`spearman needs equal-length lists, got ${x.length} and ${y.length}`);
 	if (x.length < 2) return undefined;
 	return pearson(ranks(x), ranks(y));
 }
 
 /** Least-squares slope of y on x, or undefined when x is constant. */
-export function slope(x: readonly number[], y: readonly number[]): number | undefined {
+export function slope(x: readonly number[], y: readonly number[]): number | undefined
+{
 	const meanX = mean(x);
 	const meanY = mean(y);
 	let covariance = 0;
 	let varianceX = 0;
-	for (const [index, xValue] of x.entries()) {
+	for (const [index, xValue] of x.entries())
+	{
 		covariance += (xValue - meanX) * (defined(y[index], "slope lists have equal length") - meanY);
 		varianceX += (xValue - meanX) ** 2;
 	}
@@ -104,7 +124,8 @@ export function slope(x: readonly number[], y: readonly number[]): number | unde
 
 export type Verdict = "keep" | "demote" | "untested";
 
-export function verdict(counts: readonly number[], rho: number | undefined): Verdict {
+export function verdict(counts: readonly number[], rho: number | undefined): Verdict
+{
 	const largest = Math.max(...counts.map(Math.abs));
 	const spread = Math.max(...counts) - Math.min(...counts);
 	if (largest === 0 || spread / largest < MIN_SPREAD) return "untested";
@@ -114,41 +135,49 @@ export function verdict(counts: readonly number[], rho: number | undefined): Ver
 // --- sweep ---------------------------------------------------------------------------------------------------------
 
 const JourneySampleSchema = z
-	.object({
-		journey: z.string().min(1),
-		counts: z.record(z.string().min(1), z.number()),
-		wallMs: z.array(z.number().nonnegative()).min(1),
-	})
+	.object(
+		{
+			journey: z.string().min(1),
+			counts: z.record(z.string().min(1), z.number()),
+			wallMs: z.array(z.number().nonnegative()).min(1),
+		},
+	)
 	.strict();
 type JourneySample = z.infer<typeof JourneySampleSchema>;
 
 const ShapeSweepSchema = z
-	.object({
-		shape: z.enum(SHAPES),
-		fileBytes: z.number().int().nonnegative(),
-		loadBefore: z.array(z.number()),
-		loadAfter: z.array(z.number()),
-		journeys: z.array(JourneySampleSchema),
-	})
+	.object(
+		{
+			shape: z.enum(SHAPES),
+			fileBytes: z.number().int().nonnegative(),
+			loadBefore: z.array(z.number()),
+			loadAfter: z.array(z.number()),
+			journeys: z.array(JourneySampleSchema),
+		},
+	)
 	.strict();
 type ShapeSweep = z.infer<typeof ShapeSweepSchema>;
 
 const SweepSchema = z
-	.object({
-		sha: z.string().min(1),
-		node: z.string().min(1),
-		measuredAt: z.string().min(1),
-		runs: z.number().int().positive(),
-		shapes: z.array(ShapeSweepSchema).min(1),
-	})
+	.object(
+		{
+			sha: z.string().min(1),
+			node: z.string().min(1),
+			measuredAt: z.string().min(1),
+			runs: z.number().int().positive(),
+			shapes: z.array(ShapeSweepSchema).min(1),
+		},
+	)
 	.strict();
 export type Sweep = z.infer<typeof SweepSchema>;
 
-export function parseSweep(json: string): Sweep {
+export function parseSweep(json: string): Sweep
+{
 	return SweepSchema.parse(JSON.parse(json));
 }
 
-export interface Correlation {
+export interface Correlation
+{
 	family: string;
 	journey: string;
 	counts: number[];
@@ -158,18 +187,24 @@ export interface Correlation {
 	verdict: Verdict;
 }
 
-function family(id: string, shape: string): string {
+function family(id: string, shape: string): string
+{
 	return id.replace(`.${shape}.`, ".<shape>.");
 }
 
 /** One row per count family, sorted by family: its count and its journey's median wall time in sweep shape order. */
-export function correlate(sweep: Sweep): Correlation[] {
+export function correlate(sweep: Sweep): Correlation[]
+{
 	const rows = new Map<string, Correlation>();
-	for (const {shape, journeys} of sweep.shapes) {
-		for (const {journey, counts, wallMs} of journeys) {
-			for (const [id, count] of Object.entries(counts)) {
+	for (const {shape, journeys} of sweep.shapes)
+	{
+		for (const {journey, counts, wallMs} of journeys)
+		{
+			for (const [id, count] of Object.entries(counts))
+			{
 				const key = family(id, shape);
-				const row = rows.get(key) ?? {
+				const row = rows.get(key) ??
+				{
 					family: key,
 					journey: family(journey, shape),
 					counts: [],
@@ -185,35 +220,46 @@ export function correlate(sweep: Sweep): Correlation[] {
 		}
 	}
 	return [...rows.values()]
-		.map((row) => {
+		.map((row) =>
+		{
 			const rho = spearman(row.counts, row.wallMs);
-			return {...row, rho, slope: slope(row.counts, row.wallMs), verdict: verdict(row.counts, rho)};
+			return {
+				...row,
+				rho,
+				slope: slope(row.counts, row.wallMs),
+				verdict: verdict(row.counts, rho),
+			};
 		})
 		.toSorted((a, b) => (a.family < b.family ? -1 : a.family > b.family ? 1 : 0));
 }
 
 // --- report --------------------------------------------------------------------------------------------------------
 
-function formatNumber(value: number | undefined, digits: number): string {
+function formatNumber(value: number | undefined, digits: number): string
+{
 	return value === undefined ? "n/a" : value.toFixed(digits);
 }
 
-function formatSlope(row: Correlation): string {
+function formatSlope(row: Correlation): string
+{
 	if (row.slope === undefined) return "n/a";
 	if (/(bytes|Bytes|bytesRead)$/.test(row.family)) return `${(row.slope * 1e6).toFixed(3)} ms/MB`;
 	if (row.family.endsWith(".calls")) return `${(row.slope * 1e6).toFixed(3)} ms/10⁶ calls`;
 	return `${row.slope.toPrecision(3)} ms/unit`;
 }
 
-function ceilingStatus(row: Correlation, shapes: readonly string[], ceilings: Ceilings): string {
-	if (diagnosticFamily(row.family.replace("<shape>", "typical"), DIAGNOSTIC_FAMILIES) !== undefined) {
+function ceilingStatus(row: Correlation, shapes: readonly string[], ceilings: Ceilings): string
+{
+	if (diagnosticFamily(row.family.replace("<shape>", "typical"), DIAGNOSTIC_FAMILIES) !== undefined)
+	{
 		return "diagnostic";
 	}
 	const ids = shapes.map((shape) => row.family.replace("<shape>", shape));
 	return ids.some((id) => ceilings[id] !== undefined) ? "ceiling" : "none";
 }
 
-function table(header: readonly string[], rows: readonly (readonly string[])[]): string {
+function table(header: readonly string[], rows: readonly (readonly string[])[]): string
+{
 	return [
 		`| ${header.join(" | ")} |`,
 		`|${header.map(() => "---").join("|")}|`,
@@ -221,14 +267,18 @@ function table(header: readonly string[], rows: readonly (readonly string[])[]):
 	].join("\n");
 }
 
-function formatLoad(load: readonly number[]): string {
+function formatLoad(load: readonly number[]): string
+{
 	return load.map((value) => value.toFixed(2)).join(" ");
 }
 
-function journeyWalls(sweep: Sweep): Map<string, number[]> {
+function journeyWalls(sweep: Sweep): Map<string, number[]>
+{
 	const walls = new Map<string, number[]>();
-	for (const {shape, journeys} of sweep.shapes) {
-		for (const {journey, wallMs} of journeys) {
+	for (const {shape, journeys} of sweep.shapes)
+	{
+		for (const {journey, wallMs} of journeys)
+		{
 			const key = family(journey, shape);
 			walls.set(key, [...(walls.get(key) ?? []), median(wallMs)]);
 		}
@@ -236,17 +286,27 @@ function journeyWalls(sweep: Sweep): Map<string, number[]> {
 	return new Map([...walls].toSorted(([a], [b]) => (a < b ? -1 : 1)));
 }
 
-function negativeControl(before: Sweep, after: Sweep): string {
+function negativeControl(before: Sweep, after: Sweep): string
+{
 	const previous = new Map(correlate(before).map((row) => [row.family, row]));
-	const moved = correlate(after).flatMap((row) => {
+	const moved = correlate(after).flatMap((row) =>
+	{
 		const old = previous.get(row.family);
-		return old?.counts.some((count, index) => count !== row.counts[index]) === true ? [{row, old}] : [];
+		return old?.counts.some((count, index) => count !== row.counts[index]) === true
+			? [
+					{
+						row,
+						old,
+					},
+				]
+			: [];
 	});
 	const shapes = after.shapes.map(({shape}) => shape);
 	if (moved.length === 0) return "No lab count moved between the two sweeps.";
 	return table(
 		["count", ...shapes.map((shape) => `${shape} count`), ...shapes.map((shape) => `${shape} wall ms`)],
-		moved.map(({row, old}) => {
+		moved.map(({row, old}) =>
+		{
 			return [
 				`\`${row.family}\``,
 				...row.counts.map((count, index) => `${old.counts[index]} → ${count}`),
@@ -258,16 +318,29 @@ function negativeControl(before: Sweep, after: Sweep): string {
 
 function formatReport(
 	sweep: Sweep,
-	options: {ceilings: Ceilings; baseline?: {sweep: Sweep; label: string}; notes?: string},
-): string {
+	options:
+	{
+		ceilings: Ceilings;
+		baseline?:
+		{
+			sweep: Sweep;
+			label: string;
+		};
+		notes?: string;
+	},
+): string
+{
 	const shapes = sweep.shapes.map(({shape}) => shape);
 	const rows = correlate(sweep);
-	const mismatches = rows.flatMap((row) => {
+	const mismatches = rows.flatMap((row) =>
+	{
 		const status = ceilingStatus(row, shapes, options.ceilings);
-		if (row.verdict === "demote" && status === "ceiling") {
+		if (row.verdict === "demote" && status === "ceiling")
+		{
 			return [`- \`${row.family}\` has ρ ${formatNumber(row.rho, 2)} but still has ceilings.`];
 		}
-		if (row.verdict === "keep" && status === "diagnostic") {
+		if (row.verdict === "keep" && status === "diagnostic")
+		{
 			return [`- \`${row.family}\` is a diagnostic but has ρ ${formatNumber(row.rho, 2)} in this sweep.`];
 		}
 		return [];
@@ -317,7 +390,8 @@ function formatReport(
 		"## Verdicts that disagree with the ceilings",
 		mismatches.length === 0 ? "None." : mismatches.join("\n"),
 	];
-	if (options.baseline !== undefined) {
+	if (options.baseline !== undefined)
+	{
 		sections.push(
 			`## Before/after against ${options.baseline.label}`,
 			`Before: ${options.baseline.sweep.sha} measured ${options.baseline.sweep.measuredAt}. ` +
@@ -333,7 +407,8 @@ function formatReport(
 
 const PROJECT = "-repo";
 
-function git(cwd: string, ...args: string[]): void {
+function git(cwd: string, ...args: string[]): void
+{
 	execFileSync(
 		"git",
 		[
@@ -347,27 +422,39 @@ function git(cwd: string, ...args: string[]): void {
 			"core.hooksPath=/dev/null",
 			...args,
 		],
-		{cwd, stdio: "ignore"},
+		{
+			cwd,
+			stdio: "ignore",
+		},
 	);
 }
 
-function appendedLines(sessionId: string, count: number, batch: number): string {
+function appendedLines(sessionId: string, count: number, batch: number): string
+{
 	let text = "";
-	for (let index = 0; index < count; index++) {
+	for (let index = 0; index < count; index++)
+	{
 		const turn = `${batch}-${index}`;
-		text += `${JSON.stringify({
-			type: "user",
-			sessionId,
-			uuid: `correlate-append-${turn}`,
-			parentUuid: null,
-			timestamp: "2000-01-01T00:00:00.000Z",
-			message: {role: "user", content: `Live append ${turn}: keep going with the next step.`},
-		})}\n`;
+		text += `${JSON.stringify(
+			{
+				type: "user",
+				sessionId,
+				uuid: `correlate-append-${turn}`,
+				parentUuid: null,
+				timestamp: "2000-01-01T00:00:00.000Z",
+				message:
+				{
+					role: "user",
+					content: `Live append ${turn}: keep going with the next step.`,
+				},
+			},
+		)}\n`;
 	}
 	return text;
 }
 
-function medianCounts(samples: readonly Record<string, number>[]): Record<string, number> {
+function medianCounts(samples: readonly Record<string, number>[]): Record<string, number>
+{
 	const [first] = samples;
 	if (first === undefined) throw new Error("medianCounts of an empty list");
 	return Object.fromEntries(
@@ -378,12 +465,31 @@ function medianCounts(samples: readonly Record<string, number>[]): Record<string
 	);
 }
 
-type ApiHandler = (context: {params: {id: string}; request: Request}) => Response | Promise<Response>;
+type ApiHandler = (context: {
+	params:
+	{
+		id: string;
+	};
+	request: Request;
+}) => Response | Promise<Response>;
 
-const SESSION_OPEN_ROUTES = {
-	detail: {module: "../src/routes/api/sessions.$id", path: ""},
-	transcript: {module: "../src/routes/api/sessions.$id.transcript", path: "/transcript"},
-	subagents: {module: "../src/routes/api/sessions.$id.subagents", path: "/subagents"},
+const SESSION_OPEN_ROUTES =
+{
+	detail:
+	{
+		module: "../src/routes/api/sessions.$id",
+		path: "",
+	},
+	transcript:
+	{
+		module: "../src/routes/api/sessions.$id.transcript",
+		path: "/transcript",
+	},
+	subagents:
+	{
+		module: "../src/routes/api/sessions.$id.subagents",
+		path: "/subagents",
+	},
 } as const;
 
 /**
@@ -400,10 +506,12 @@ async function measureShape(
 	root: string,
 	runs: number,
 	mode: ChildMode,
-): Promise<JourneySample[]> {
+): Promise<JourneySample[]>
+{
 	const home = process.env["HOME"] ?? "";
 	const cache = process.env["XDG_CACHE_HOME"] ?? "";
-	if (!home.startsWith(root) || !cache.startsWith(root)) {
+	if (!home.startsWith(root) || !cache.startsWith(root))
+	{
 		throw new Error(`refusing to measure outside ${root}: HOME=${home} XDG_CACHE_HOME=${cache}`);
 	}
 	const {generateTranscript, PERF_SHAPES, seedFixtureDb} = await import("../tests/perf/fixtures/generate-transcript");
@@ -416,7 +524,12 @@ async function measureShape(
 	const ids = await import("../tests/perf/perf-ids");
 
 	const projectsDir = join(home, ".claude", "projects");
-	mkdirSync(join(projectsDir, PROJECT), {recursive: true});
+	mkdirSync(
+		join(projectsDir, PROJECT),
+		{
+			recursive: true,
+		},
+	);
 	const repo = join(root, "repo");
 	mkdirSync(repo);
 	git(repo, "init", "--quiet");
@@ -428,27 +541,53 @@ async function measureShape(
 	const sessionId = basename(file, ".jsonl");
 	const db = getDb();
 	await seedFixtureDb(db, [file]);
-	db.index.update(schema.projects).set({projectPath: repo}).where(eq(schema.projects.id, PROJECT)).run();
+	db.index
+		.update(schema.projects)
+		.set(
+			{
+				projectPath: repo,
+			},
+		)
+		.where(eq(schema.projects.id, PROJECT))
+		.run();
 
 	const samples: JourneySample[] = [];
 
-	for (const endpoint of mode === "main" ? objectKeys(SESSION_OPEN_ROUTES) : []) {
+	for (const endpoint of mode === "main" ? objectKeys(SESSION_OPEN_ROUTES) : [])
+	{
 		const {module, path} = SESSION_OPEN_ROUTES[endpoint];
 		// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a route module loaded by path is untyped; ApiHandler is the slice of TanStack's server-route contract this harness calls
-		const {Route} = (await import(module)) as {
-			Route: {options: {server: {handlers: Record<string, ApiHandler>}}};
+		const {Route} = (await import(module)) as
+		{
+			Route:
+			{
+				options:
+				{
+					server:
+					{
+						handlers: Record<string, ApiHandler>;
+					};
+				};
+			};
 		};
 		const handler = defined(Route.options.server.handlers["GET"], `${module} has no GET handler`);
 		const prefix = ids.sessionOpenPrefix(shapeName, endpoint);
 		const counts: Record<string, number>[] = [];
 		const wallMs: number[] = [];
-		for (let run = 0; run <= runs; run++) {
-			await serverScope.withPerfScope(`correlate-${endpoint}`, async () => {
+		for (let run = 0; run <= runs; run++)
+		{
+			await serverScope.withPerfScope(`correlate-${endpoint}`, async () =>
+			{
 				const started = performance.now();
-				const response = await handler({
-					params: {id: sessionId},
-					request: new Request(`http://localhost/api/sessions/${sessionId}${path}`),
-				});
+				const response = await handler(
+					{
+						params:
+						{
+							id: sessionId,
+						},
+						request: new Request(`http://localhost/api/sessions/${sessionId}${path}`),
+					},
+				);
 				const body = await response.text();
 				const elapsed = performance.now() - started;
 				const counters = defined(serverScope.currentPerfCounters(), "handler ran outside a perf scope");
@@ -456,43 +595,58 @@ async function measureShape(
 				if (run === 0) return;
 				wallMs.push(elapsed);
 				counts.push(
-					ids.metricIds(prefix, {
-						"sql.count": counters.sql.count,
-						"jsonl.bytesRead": counters.jsonl.bytesRead,
-						"jsonl.fullScans": counters.jsonl.fullScans,
-						"proc.spawned": counters.proc.spawned,
-						"resp.bytes": Buffer.byteLength(body.replaceAll(root, "")),
-					}),
+					ids.metricIds(
+						prefix,
+						{
+							"sql.count": counters.sql.count,
+							"jsonl.bytesRead": counters.jsonl.bytesRead,
+							"jsonl.fullScans": counters.jsonl.fullScans,
+							"proc.spawned": counters.proc.spawned,
+							"resp.bytes": Buffer.byteLength(body.replaceAll(root, "")),
+						},
+					),
 				);
 			});
 		}
-		samples.push({journey: prefix, counts: medianCounts(counts), wallMs});
+		samples.push(
+			{
+				journey: prefix,
+				counts: medianCounts(counts),
+				wallMs,
+			},
+		);
 	}
 
 	// Same state as tests/perf/server-live-append.perf.test.ts: the watcher has caught up with the file and snapshotted
 	// the session, then `count` lines land and one fire picks them up. In `main`, the untimed run 0 is the cold one-line
 	// append, so the 20-line runs that follow see the same warm caches as the ratcheted run.
 	const offsets = new Map<string, number>();
-	const fire = async (): Promise<{
+	const fire = async (): Promise<
+	{
 		elapsed: number;
 		bytesRead: number;
 		fullScans: number;
 		sql: number;
 		payload: number;
 	}> =>
-		serverScope.withPerfScope("correlate-live-append", async () => {
+		serverScope.withPerfScope("correlate-live-append", async () =>
+		{
 			let payload = 0;
 			const started = performance.now();
 			await watcher.processJsonlAppend(
 				db.index,
 				file,
 				offsets,
-				(type, data) => {
+				(type, data) =>
+				{
 					payload += Buffer.byteLength(
 						`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`.replaceAll(root, ""),
 					);
 				},
-				{projectsDir, plansDir: ""},
+				{
+					projectsDir,
+					plansDir: "",
+				},
 			);
 			const elapsed = performance.now() - started;
 			const counters = defined(serverScope.currentPerfCounters(), "live append ran outside a perf scope");
@@ -507,43 +661,79 @@ async function measureShape(
 	let batch = 0;
 	const [coldCount, warmCount] = ids.LIVE_APPEND_SIZES;
 	const appendRuns =
-		mode === "main" ? {count: warmCount, first: 1, last: runs} : {count: coldCount, first: 0, last: 0};
+		mode === "main"
+			?
+				{
+					count: warmCount,
+					first: 1,
+					last: runs,
+				}
+			:
+				{
+					count: coldCount,
+					first: 0,
+					last: 0,
+				};
 	{
 		const {count} = appendRuns;
 		const prefix = ids.liveAppendPrefix(shapeName, count);
 		const counts: Record<string, number>[] = [];
 		const wallMs: number[] = [];
-		for (let run = 0; run <= appendRuns.last; run++) {
+		for (let run = 0; run <= appendRuns.last; run++)
+		{
 			offsets.set(file, statSync(file).size);
 			await fire();
 			const text = appendedLines(sessionId, count, batch++);
-			writeFileSync(file, text, {flag: "a"});
+			writeFileSync(
+				file,
+				text,
+				{
+					flag: "a",
+				},
+			);
 			const measured = await fire();
 			if (run < appendRuns.first) continue;
 			wallMs.push(measured.elapsed);
 			counts.push(
-				ids.metricIds(prefix, {
-					readAmplification: Math.round(measured.bytesRead / Buffer.byteLength(text)),
-					"jsonl.fullScans": measured.fullScans,
-					"sql.count": measured.sql,
-					"sse.payloadBytes": measured.payload,
-				}),
+				ids.metricIds(
+					prefix,
+					{
+						readAmplification: Math.round(measured.bytesRead / Buffer.byteLength(text)),
+						"jsonl.fullScans": measured.fullScans,
+						"sql.count": measured.sql,
+						"sse.payloadBytes": measured.payload,
+					},
+				),
 			);
 		}
-		samples.push({journey: prefix, counts: medianCounts(counts), wallMs});
+		samples.push(
+			{
+				journey: prefix,
+				counts: medianCounts(counts),
+				wallMs,
+			},
+		);
 	}
 
-	for (const fn of mode === "main" ? ids.HOT_PATH_SHAPED_FNS : []) {
+	for (const fn of mode === "main" ? ids.HOT_PATH_SHAPED_FNS : [])
+	{
 		const run = await prepareHotPath(fn, shapeName);
 		run();
 		const wallMs: number[] = [];
-		for (let index = 0; index < runs; index++) {
+		for (let index = 0; index < runs; index++)
+		{
 			const started = performance.now();
 			run();
 			wallMs.push(performance.now() - started);
 		}
 		// The call count comes from the V8 harness in the parent; it cannot run inside this instrumented process.
-		samples.push({journey: ids.hotPathId(fn, shapeName), counts: {}, wallMs});
+		samples.push(
+			{
+				journey: ids.hotPathId(fn, shapeName),
+				counts: {},
+				wallMs,
+			},
+		);
 	}
 	db.close();
 	return samples;
@@ -553,49 +743,78 @@ async function measureShape(
 
 const execFileAsync = promisify(execFile);
 
-function lastJsonLine(stdout: string): unknown {
+function lastJsonLine(stdout: string): unknown
+{
 	return JSON.parse(defined(stdout.trim().split("\n").at(-1), "split always yields a line"));
 }
 
-async function hotPathCalls(fn: string, shape: ShapeName): Promise<number> {
+async function hotPathCalls(fn: string, shape: ShapeName): Promise<number>
+{
 	const {HOT_PATH_NODE_FLAGS} = await import("../tests/perf/perf-ids");
 	const harness = join(REPOSITORY_ROOT, "tests", "perf", "run-hot-path.mjs");
-	const {stdout} = await execFileAsync(process.execPath, [...HOT_PATH_NODE_FLAGS, harness, fn, shape], {
-		cwd: REPOSITORY_ROOT,
-		maxBuffer: 64 * 1024 * 1024,
-	});
-	return z.object({calls: z.number()}).parse(lastJsonLine(stdout)).calls;
+	const {stdout} = await execFileAsync(
+		process.execPath,
+		[...HOT_PATH_NODE_FLAGS, harness, fn, shape],
+		{
+			cwd: REPOSITORY_ROOT,
+			maxBuffer: 64 * 1024 * 1024,
+		},
+	);
+	return z
+		.object(
+			{
+				calls: z.number(),
+			},
+		)
+		.parse(lastJsonLine(stdout)).calls;
 }
 
-async function sweepShape(shape: ShapeName, runs: number): Promise<ShapeSweep> {
+async function sweepShape(shape: ShapeName, runs: number): Promise<ShapeSweep>
+{
 	const {generateTranscript, PERF_SHAPES} = await import("../tests/perf/fixtures/generate-transcript");
 	const fileBytes = statSync(await generateTranscript(PERF_SHAPES[shape])).size;
 	const loadBefore = loadavg();
 	const journeys = await runChild(shape, runs, "main");
 	const cold: JourneySample[] = [];
 	for (let run = 0; run < runs; run++) cold.push(...(await runChild(shape, 1, "cold-append")));
-	journeys.push({
-		journey: defined(cold[0], "cold-append produced no samples").journey,
-		counts: medianCounts(cold.map(({counts}) => counts)),
-		wallMs: cold.flatMap(({wallMs}) => wallMs),
-	});
-	for (const sample of journeys) {
+	journeys.push(
+		{
+			journey: defined(cold[0], "cold-append produced no samples").journey,
+			counts: medianCounts(cold.map(({counts}) => counts)),
+			wallMs: cold.flatMap(({wallMs}) => wallMs),
+		},
+	);
+	for (const sample of journeys)
+	{
 		const fn = /^hot\.([^.]+)\./.exec(sample.journey)?.[1];
-		if (fn !== undefined) sample.counts = {[sample.journey]: await hotPathCalls(fn, shape)};
+		if (fn !== undefined)
+			sample.counts =
+			{
+				[sample.journey]: await hotPathCalls(fn, shape),
+			};
 	}
-	return {shape, fileBytes, loadBefore, loadAfter: loadavg(), journeys};
+	return {
+		shape,
+		fileBytes,
+		loadBefore,
+		loadAfter: loadavg(),
+		journeys,
+	};
 }
 
-async function runChild(shape: ShapeName, runs: number, mode: ChildMode): Promise<JourneySample[]> {
+async function runChild(shape: ShapeName, runs: number, mode: ChildMode): Promise<JourneySample[]>
+{
 	const root = mkdtempSync(join(tmpdir(), "perf-correlate-"));
-	try {
+	try
+	{
 		const {stdout} = await execFileAsync(
 			process.execPath,
 			["--import", "tsx", fileURLToPath(import.meta.url), "--child", shape, root, String(runs), mode],
 			{
 				cwd: REPOSITORY_ROOT,
 				maxBuffer: 64 * 1024 * 1024,
-				env: {
+				env:
+				{
 					...process.env,
 					HOME: join(root, "home"),
 					XDG_CACHE_HOME: join(root, "cache"),
@@ -604,12 +823,21 @@ async function runChild(shape: ShapeName, runs: number, mode: ChildMode): Promis
 			},
 		);
 		return z.array(JourneySampleSchema).parse(lastJsonLine(stdout));
-	} finally {
-		rmSync(root, {recursive: true, force: true});
+	}
+	finally
+	{
+		rmSync(
+			root,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	}
 }
 
-function option(argv: readonly string[], name: string): string | undefined {
+function option(argv: readonly string[], name: string): string | undefined
+{
 	const index = argv.indexOf(name);
 	if (index === -1) return undefined;
 	const value = argv[index + 1];
@@ -617,8 +845,10 @@ function option(argv: readonly string[], name: string): string | undefined {
 	return value;
 }
 
-async function main(argv: readonly string[]): Promise<void> {
-	if (argv[0] === "--child") {
+async function main(argv: readonly string[]): Promise<void>
+{
+	if (argv[0] === "--child")
+	{
 		const [, shape, root, runs, mode] = argv;
 		const samples = await measureShape(
 			z.enum(SHAPES).parse(shape),
@@ -639,36 +869,69 @@ async function main(argv: readonly string[]): Promise<void> {
 	const out = resolve(option(argv, "--out") ?? DEFAULT_OUT);
 
 	let sweep: Sweep;
-	if (from === undefined) {
+	if (from === undefined)
+	{
 		const measured: ShapeSweep[] = [];
-		for (const shape of shapes) {
+		for (const shape of shapes)
+		{
 			console.error(`measuring ${shape} (${runs} runs)…`);
 			measured.push(await sweepShape(shape, runs));
 		}
-		sweep = {
-			sha: execFileSync("git", ["rev-parse", "--short", "HEAD"], {cwd: REPOSITORY_ROOT, encoding: "utf8"}).trim(),
+		sweep =
+		{
+			sha: execFileSync(
+				"git",
+				["rev-parse", "--short", "HEAD"],
+				{
+					cwd: REPOSITORY_ROOT,
+					encoding: "utf8",
+				},
+			).trim(),
 			node: process.version,
 			measuredAt: new Date().toISOString(),
 			runs,
 			shapes: measured,
 		};
-	} else {
+	}
+	else
+	{
 		sweep = parseSweep(readFileSync(from, "utf8"));
 	}
 	if (jsonPath !== undefined) writeFileSync(jsonPath, `${JSON.stringify(sweep, null, "\t")}\n`);
 
-	const report = formatReport(sweep, {
-		ceilings: loadCeilings(),
-		...(baselinePath === undefined
-			? {}
-			: {baseline: {sweep: parseSweep(readFileSync(baselinePath, "utf8")), label: basename(baselinePath)}}),
-		...(notesPath === undefined ? {} : {notes: readFileSync(notesPath, "utf8")}),
-	});
-	mkdirSync(dirname(out), {recursive: true});
+	const report = formatReport(
+		sweep,
+		{
+			ceilings: loadCeilings(),
+			...(baselinePath === undefined
+				? {}
+				:
+					{
+						baseline:
+						{
+							sweep: parseSweep(readFileSync(baselinePath, "utf8")),
+							label: basename(baselinePath),
+						},
+					}),
+			...(notesPath === undefined
+				? {}
+				:
+					{
+						notes: readFileSync(notesPath, "utf8"),
+					}),
+		},
+	);
+	mkdirSync(
+		dirname(out),
+		{
+			recursive: true,
+		},
+	);
 	writeFileSync(out, report);
 	console.error(`wrote ${out}`);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+{
 	await main(process.argv.slice(2));
 }

@@ -1,9 +1,11 @@
 import type {z} from "zod";
 
-export class ApiResponseError extends Error {
+export class ApiResponseError extends Error
+{
 	readonly status: number;
 
-	constructor(url: string, response: Response) {
+	constructor(url: string, response: Response)
+	{
 		super(`${url} -> ${response.status} ${response.statusText}`);
 		this.name = "ApiResponseError";
 		this.status = response.status;
@@ -16,15 +18,18 @@ export class ApiResponseError extends Error {
  * prepend the local server origin. The port is read from the `PORT`
  * environment variable, falling back to 7526 (the project's default).
  */
-export function resolveUrl(url: string): string {
+export function resolveUrl(url: string): string
+{
 	if (typeof window !== "undefined") return url;
 	if (/^https?:\/\//.test(url)) return url;
 	const port = process.env["PORT"] ?? "7526";
 	return `http://127.0.0.1:${port}${url}`;
 }
 
-async function parseOk<S extends z.ZodType>(url: string, schema: S, res: Response): Promise<z.infer<S>> {
-	if (!res.ok) {
+async function parseOk<S extends z.ZodType>(url: string, schema: S, res: Response): Promise<z.infer<S>>
+{
+	if (!res.ok)
+	{
 		throw new ApiResponseError(url, res);
 	}
 	const json: unknown = await res.json();
@@ -39,8 +44,15 @@ async function parseOk<S extends z.ZodType>(url: string, schema: S, res: Respons
  * Throws on non-2xx HTTP responses or schema validation failures so
  * react-query treats them as query errors.
  */
-export async function apiFetch<S extends z.ZodType>(url: string, schema: S, init?: RequestInit): Promise<z.infer<S>> {
-	const res = await fetch(resolveUrl(url), {credentials: "same-origin", ...init});
+export async function apiFetch<S extends z.ZodType>(url: string, schema: S, init?: RequestInit): Promise<z.infer<S>>
+{
+	const res = await fetch(
+		resolveUrl(url),
+		{
+			credentials: "same-origin",
+			...init,
+		},
+	);
 	return parseOk(url, schema, res);
 }
 
@@ -55,9 +67,17 @@ export async function apiFetchOptional<S extends z.ZodType>(
 	url: string,
 	schema: S,
 	init?: RequestInit,
-): Promise<z.infer<S> | null> {
-	const res = await fetch(resolveUrl(url), {credentials: "same-origin", ...init});
-	if (res.status === 404) {
+): Promise<z.infer<S> | null>
+{
+	const res = await fetch(
+		resolveUrl(url),
+		{
+			credentials: "same-origin",
+			...init,
+		},
+	);
+	if (res.status === 404)
+	{
 		return null;
 	}
 	return parseOk(url, schema, res);

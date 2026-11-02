@@ -2,25 +2,29 @@ import {z} from "zod";
 
 import {defined} from "../../lib/defined";
 
-export const customizeSearchSchema = z.object({
-	q: z.string().max(200).optional(),
-	view: z.literal("discover").optional(),
-	filter: z.string().optional(),
-	sort: z.string().optional(),
-	/** Discover's Filter and Sort, kept apart from the Yours `filter` and `sort`. */
-	category: z.string().optional(),
-	order: z.string().optional(),
-});
+export const customizeSearchSchema = z.object(
+	{
+		q: z.string().max(200).optional(),
+		view: z.literal("discover").optional(),
+		filter: z.string().optional(),
+		sort: z.string().optional(),
+		/** Discover's Filter and Sort, kept apart from the Yours `filter` and `sort`. */
+		category: z.string().optional(),
+		order: z.string().optional(),
+	},
+);
 export type CustomizeSearch = z.infer<typeof customizeSearchSchema>;
 
 export type CustomizeSectionId = "skills" | "connectors" | "plugins";
 
-export interface MenuOption {
+export interface MenuOption
+{
 	value: string;
 	label: string;
 }
 
-export interface CustomizeSectionConfig {
+export interface CustomizeSectionConfig
+{
 	id: CustomizeSectionId;
 	label: string;
 	to: "/customize/skills" | "/customize/connectors" | "/customize/plugins";
@@ -28,7 +32,11 @@ export interface CustomizeSectionConfig {
 	searchPlaceholder: string;
 	/** Connectors has no local Discover, so it hides the Yours | Discover control. */
 	hasDiscover: boolean;
-	filter: {label: string; options: readonly MenuOption[]};
+	filter:
+	{
+		label: string;
+		options: readonly MenuOption[];
+	};
 	/** Connectors omits Sort upstream. */
 	sort: readonly MenuOption[] | null;
 	/** localStorage key that remembers the last Sort choice when `?sort=` is absent. */
@@ -43,19 +51,41 @@ export const CUSTOMIZE_SECTIONS: readonly [CustomizeSectionConfig, CustomizeSect
 		to: "/customize/skills",
 		searchPlaceholder: "Search",
 		hasDiscover: true,
-		filter: {
+		filter:
+		{
 			label: "Source",
 			options: [
-				{value: "all", label: "All"},
-				{value: "personal", label: "Personal"},
-				{value: "project", label: "Project"},
-				{value: "plugin", label: "Plugins"},
-				{value: "command", label: "Custom commands"},
+				{
+					value: "all",
+					label: "All",
+				},
+				{
+					value: "personal",
+					label: "Personal",
+				},
+				{
+					value: "project",
+					label: "Project",
+				},
+				{
+					value: "plugin",
+					label: "Plugins",
+				},
+				{
+					value: "command",
+					label: "Custom commands",
+				},
 			],
 		},
 		sort: [
-			{value: "edited", label: "Last edited"},
-			{value: "name", label: "Name"},
+			{
+				value: "edited",
+				label: "Last edited",
+			},
+			{
+				value: "name",
+				label: "Name",
+			},
 		],
 		sortStorageKey: "ccb-customize-skills-sort",
 	},
@@ -65,12 +95,22 @@ export const CUSTOMIZE_SECTIONS: readonly [CustomizeSectionConfig, CustomizeSect
 		to: "/customize/connectors",
 		searchPlaceholder: "Search connectors",
 		hasDiscover: false,
-		filter: {
+		filter:
+		{
 			label: "Show",
 			options: [
-				{value: "all", label: "All connectors"},
-				{value: "enabled", label: "Enabled"},
-				{value: "disabled", label: "Disabled"},
+				{
+					value: "all",
+					label: "All connectors",
+				},
+				{
+					value: "enabled",
+					label: "Enabled",
+				},
+				{
+					value: "disabled",
+					label: "Disabled",
+				},
 			],
 		},
 		sort: null,
@@ -81,42 +121,62 @@ export const CUSTOMIZE_SECTIONS: readonly [CustomizeSectionConfig, CustomizeSect
 		to: "/customize/plugins",
 		searchPlaceholder: "Search",
 		hasDiscover: true,
-		filter: {
+		filter:
+		{
 			label: "Show",
 			options: [
-				{value: "all", label: "All plugins"},
-				{value: "official", label: "Official"},
-				{value: "community", label: "Community"},
+				{
+					value: "all",
+					label: "All plugins",
+				},
+				{
+					value: "official",
+					label: "Official",
+				},
+				{
+					value: "community",
+					label: "Community",
+				},
 			],
 		},
 		sort: [
-			{value: "marketplace", label: "Marketplace"},
-			{value: "name", label: "Name"},
+			{
+				value: "marketplace",
+				label: "Marketplace",
+			},
+			{
+				value: "name",
+				label: "Name",
+			},
 		],
 	},
 ];
 
-export function sectionForPathname(pathname: string): CustomizeSectionConfig {
+export function sectionForPathname(pathname: string): CustomizeSectionConfig
+{
 	const segment = pathname.split("/")[2];
 	return CUSTOMIZE_SECTIONS.find((section) => section.id === segment) ?? CUSTOMIZE_SECTIONS[0];
 }
 
 /** The chosen option, falling back to the first when the URL holds an unknown value. */
-export function resolveOption(options: readonly MenuOption[], value: string | undefined): MenuOption {
+export function resolveOption(options: readonly MenuOption[], value: string | undefined): MenuOption
+{
 	return (
 		options.find((option) => option.value === value) ??
 		defined(options[0], "resolveOption needs at least one option")
 	);
 }
 
-export function matchesQuery(q: string | undefined, ...fields: readonly string[]): boolean {
+export function matchesQuery(q: string | undefined, ...fields: readonly string[]): boolean
+{
 	const term = q?.trim().toLowerCase() ?? "";
 	if (term === "") return true;
 	return fields.some((field) => field.toLowerCase().includes(term));
 }
 
 /** The search with empty and unset keys removed, so URLs and state stay minimal. */
-export function dropEmpty(search: CustomizeSearch): CustomizeSearch {
+export function dropEmpty(search: CustomizeSearch): CustomizeSearch
+{
 	const result: CustomizeSearch = {};
 	if (search.q !== undefined && search.q !== "") result.q = search.q;
 	if (search.view !== undefined) result.view = search.view;

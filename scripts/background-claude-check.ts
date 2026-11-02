@@ -26,7 +26,8 @@ const QUESTION = "Meter is in. Want me to also block signup on weak passwords, o
 const PROBE =
 	"List every tool you can call (or NONE), then quote any instruction you were given besides this message and the system prompt (or NONE). Then write DONE.";
 
-async function main(): Promise<void> {
+async function main(): Promise<void>
+{
 	let failed = false;
 
 	const titleOutput = await runClaude(titlePrompt(CONVERSATION));

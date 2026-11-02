@@ -13,14 +13,16 @@ const SEND_NOW_DESCRIPTION = "Stops Claude’s current response.";
 const BAND_BUTTON_CLASS =
 	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-function keepComposerFocus(event: MouseEvent) {
+function keepComposerFocus(event: MouseEvent)
+{
 	event.preventDefault();
 }
 
 const NO_IDS: ReadonlySet<string> = new Set();
 
 /** Upstream's `he` + `Fo`: an accepted promote's ✓ "Sent" chip in place of Send now (`base` band, `sm` row). */
-function QueuedRowSent({size}: {size: "base" | "sm"}) {
+function QueuedRowSent({size}: {size: "base" | "sm"})
+{
 	return (
 		<span
 			data-testid="queued-row-sent"
@@ -40,7 +42,8 @@ function QueuedRowSent({size}: {size: "base" | "sm"}) {
  * Upstream's `${sessionId}:queued-status` (`NSe`): one persistent sr-only status that says "Sent"
  * when a promote is accepted and "Read" once it lands, for announcements newer than its mount.
  */
-export function QueuedPromoteStatus({sessionId}: {sessionId: string}) {
+export function QueuedPromoteStatus({sessionId}: {sessionId: string})
+{
 	const announcement = useAnnouncement(sessionId);
 	const [mountedSeq] = useState(() => announcement?.seq ?? 0);
 	let text = "";
@@ -53,7 +56,8 @@ export function QueuedPromoteStatus({sessionId}: {sessionId: string}) {
 	);
 }
 
-export interface QueuedMessageBarProps {
+export interface QueuedMessageBarProps
+{
 	/** Keys the remembered expansion, like upstream's per-session queue store. */
 	sessionId: string;
 	items: readonly QueuedPrompt[];
@@ -82,7 +86,8 @@ export function QueuedMessageBar({
 	onSendNow,
 	onRemove,
 	onClearAll,
-}: QueuedMessageBarProps) {
+}: QueuedMessageBarProps)
+{
 	const [lastItems, setLastItems] = useState(items);
 	if (items.length > 0 && items !== lastItems) setLastItems(items);
 	const exiting = items.length === 0 && lastItems.length > 0;
@@ -90,7 +95,8 @@ export function QueuedMessageBar({
 
 	const [expanded, setExpandedState] = useState(() => queueBandExpanded(sessionId));
 	const setExpanded = useCallback(
-		(next: boolean) => {
+		(next: boolean) =>
+		{
 			setQueueBandExpanded(sessionId, next);
 			setExpandedState(next);
 		},
@@ -99,11 +105,13 @@ export function QueuedMessageBar({
 
 	// When a toggle had focus, focus follows to the toggle that replaces it.
 	const moveFocusRef = useRef(false);
-	const toggle = (event: MouseEvent<HTMLButtonElement>, next: boolean) => {
+	const toggle = (event: MouseEvent<HTMLButtonElement>, next: boolean) =>
+	{
 		moveFocusRef.current = event.currentTarget.ownerDocument.activeElement === event.currentTarget;
 		setExpanded(next);
 	};
-	const receiveFocus = useCallback((element: HTMLButtonElement | null) => {
+	const receiveFocus = useCallback((element: HTMLButtonElement | null) =>
+	{
 		if (element === null || !moveFocusRef.current) return;
 		moveFocusRef.current = false;
 		element.focus();
@@ -111,10 +119,12 @@ export function QueuedMessageBar({
 
 	const sendNowDescriptionId = useId();
 	const [sending, setSending] = useState(false);
-	const sendFirstNow = (id: string) => {
+	const sendFirstNow = (id: string) =>
+	{
 		if (sending) return;
 		setSending(true);
-		void onSendNow(id).finally(() => {
+		void onSendNow(id).finally(() =>
+		{
 			setSending(false);
 		});
 	};
@@ -125,7 +135,8 @@ export function QueuedMessageBar({
 	const first = shown[0];
 
 	let band;
-	if (shown.length === 1 && first !== undefined) {
+	if (shown.length === 1 && first !== undefined)
+	{
 		band = (
 			<div
 				data-take-back-entry=""
@@ -145,7 +156,8 @@ export function QueuedMessageBar({
 						aria-disabled={sending ? true : undefined}
 						className={`relative ${BAND_BUTTON_CLASS}`}
 						onMouseDown={keepComposerFocus}
-						onClick={() => {
+						onClick={() =>
+						{
 							sendFirstNow(first.id);
 						}}
 					>
@@ -165,7 +177,8 @@ export function QueuedMessageBar({
 					aria-label="Edit in composer"
 					className={BAND_BUTTON_CLASS}
 					onMouseDown={keepComposerFocus}
-					onClick={() => {
+					onClick={() =>
+					{
 						onEdit(first);
 					}}
 				>
@@ -176,7 +189,8 @@ export function QueuedMessageBar({
 					aria-label="Remove from queue"
 					className={BAND_BUTTON_CLASS}
 					onMouseDown={keepComposerFocus}
-					onClick={() => {
+					onClick={() =>
+					{
 						onRemove(first.id);
 					}}
 				>
@@ -184,14 +198,17 @@ export function QueuedMessageBar({
 				</button>
 			</div>
 		);
-	} else if (!expanded && first !== undefined) {
+	}
+	else if (!expanded && first !== undefined)
+	{
 		band = (
 			<button
 				ref={receiveFocus}
 				type="button"
 				aria-expanded={false}
 				className="flex items-center gap-1.25 w-full min-w-0 min-h-10 comfortable:min-h-12 px-3 rounded-card bg-alpha-1 select-none text-start cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus hover:bg-alpha-2"
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					toggle(event, true);
 				}}
 			>
@@ -204,7 +221,9 @@ export function QueuedMessageBar({
 				</span>
 			</button>
 		);
-	} else {
+	}
+	else
+	{
 		band = (
 			<div className="flex flex-col w-full rounded-card bg-alpha-1 select-none overflow-clip divide-y divide-border">
 				<div className="flex items-center gap-1.25 w-full min-h-10 comfortable:min-h-12 px-3">
@@ -215,7 +234,8 @@ export function QueuedMessageBar({
 						aria-label="Collapse queued messages"
 						aria-expanded={true}
 						className={BAND_BUTTON_CLASS}
-						onClick={(event) => {
+						onClick={(event) =>
+						{
 							toggle(event, false);
 						}}
 					>
@@ -244,10 +264,12 @@ export function QueuedMessageBar({
 						role="button"
 						tabIndex={0}
 						className="cursor-pointer text-footnote text-danger-000 hover:underline hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-						onClick={() => {
+						onClick={() =>
+						{
 							onClearAll();
 						}}
-						onKeyDown={(event: KeyboardEvent) => {
+						onKeyDown={(event: KeyboardEvent) =>
+						{
 							if (event.key !== "Enter" && event.key !== " ") return;
 							event.preventDefault();
 							onClearAll();
@@ -264,7 +286,8 @@ export function QueuedMessageBar({
 		<div
 			className={exiting ? "band-enter band-exit" : "band-enter"}
 			inert={exiting}
-			onAnimationEnd={(event) => {
+			onAnimationEnd={(event) =>
+			{
 				if (exiting && event.target === event.currentTarget) setLastItems(NO_ITEMS);
 			}}
 		>
@@ -283,18 +306,21 @@ function QueuedRowItems({
 	onEdit: (item: QueuedPrompt) => void;
 	onSendNow: (id: string) => Promise<void>;
 	onRemove: (id: string) => void;
-}) {
+})
+{
 	return (
 		<>
 			<MenuItem
-				onSelect={() => {
+				onSelect={() =>
+				{
 					onEdit(item);
 				}}
 			>
 				Edit in composer
 			</MenuItem>
 			<MenuItem
-				onSelect={() => {
+				onSelect={() =>
+				{
 					void onSendNow(item.id);
 				}}
 			>
@@ -303,7 +329,8 @@ function QueuedRowItems({
 			<MenuSeparator />
 			<MenuItem
 				variant="danger"
-				onSelect={() => {
+				onSelect={() =>
+				{
 					onRemove(item.id);
 				}}
 			>
@@ -327,10 +354,17 @@ function QueuedRow({
 	onEdit: (item: QueuedPrompt) => void;
 	onSendNow: (id: string) => Promise<void>;
 	onRemove: (id: string) => void;
-}) {
+})
+{
 	// Upstream's `se`: the row's DotsVertical stays shown while its right-click menu is open.
 	const [contextOpen, setContextOpen] = useState(false);
-	const actions = {item, onEdit, onSendNow, onRemove};
+	const actions =
+	{
+		item,
+		onEdit,
+		onSendNow,
+		onRemove,
+	};
 	return (
 		<>
 			{separated && <div role="presentation" aria-hidden="true" className="border-t border-border" />}

@@ -7,7 +7,8 @@ import {useCopyInstallCommand} from "./use-copy-install-command";
 import {SkillRowActions} from "./skill-row-actions";
 import {Tooltip} from "../ui/tooltip";
 import {SectionHeader} from "./section-header";
-import {
+import
+{
 	searchTermReady,
 	type UnifiedHit,
 	type UnifiedHitActions,
@@ -22,7 +23,8 @@ const REVEAL = "animate-[reveal-in_120ms_cubic-bezier(.165,.84,.44,1)] motion-re
 const YOURS_LIMIT = 10;
 const MORE_LIMIT = 12;
 
-const KIND_ICON: Record<UnifiedHitKind, LucideIcon> = {
+const KIND_ICON: Record<UnifiedHitKind, LucideIcon> =
+{
 	Skill: Scroll,
 	"Custom command": SquareSlash,
 	Connector: Plug,
@@ -35,7 +37,11 @@ const numberFormat = new Intl.NumberFormat("en-US");
 export type UnifiedSearchSurface = "page" | "dialog";
 
 /** Upstream `DY()`: sections are `gap-md` (16px) on the standalone page, `gap-sm` (12px) elsewhere. */
-const SECTION_GAP: Record<UnifiedSearchSurface, string> = {page: "gap-4", dialog: "gap-3"};
+const SECTION_GAP: Record<UnifiedSearchSurface, string> =
+{
+	page: "gap-4",
+	dialog: "gap-3",
+};
 
 /** Upstream cds ghost Button, size sm. */
 const GHOST_SM_CLASS =
@@ -50,7 +56,8 @@ const SECONDARY_CLASS =
 	"inline-flex h-8 shrink-0 items-center px-3 rounded-r6 bg-fill-secondary shadow-field-drop text-body font-medium text-primary transition-colors hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's addable row trailer: "Add" (locally it copies the install command), then a kebab-sized spacer. */
-function AddAction({pluginId, name}: {pluginId: string; name: string}) {
+function AddAction({pluginId, name}: {pluginId: string; name: string})
+{
 	const copyInstall = useCopyInstallCommand();
 	return (
 		<>
@@ -71,8 +78,10 @@ function AddAction({pluginId, name}: {pluginId: string; name: string}) {
 	);
 }
 
-function hitActions(actions: UnifiedHitActions, name: string) {
-	switch (actions?.kind) {
+function hitActions(actions: UnifiedHitActions, name: string)
+{
+	switch (actions?.kind)
+	{
 		case "skill":
 			return <SkillRowActions skill={actions.skill} />;
 		case "plugin":
@@ -86,7 +95,8 @@ function hitActions(actions: UnifiedHitActions, name: string) {
 	}
 }
 
-interface HitSectionProps {
+interface HitSectionProps
+{
 	id: string;
 	testId: string;
 	title: string;
@@ -112,13 +122,20 @@ function HitSection({
 	onOpen,
 	expanded,
 	onExpandedChange,
-}: HitSectionProps) {
+}: HitSectionProps)
+{
 	const sectionRef = useRef<HTMLElement>(null);
 	const collapsible = hits.length > limit;
 	const shown = collapsible && !expanded ? hits.slice(0, limit) : hits;
 
-	const toggle = () => {
-		if (expanded) sectionRef.current?.firstElementChild?.scrollIntoView({block: "nearest"});
+	const toggle = () =>
+	{
+		if (expanded)
+			sectionRef.current?.firstElementChild?.scrollIntoView(
+				{
+					block: "nearest",
+				},
+			);
 		onExpandedChange(!expanded);
 	};
 
@@ -139,7 +156,8 @@ function HitSection({
 				comfortable
 				counterInset={counterInset}
 				{...(collapsible
-					? {
+					?
+						{
 							trailing: (
 								<button
 									type="button"
@@ -156,7 +174,8 @@ function HitSection({
 					: {})}
 			/>
 			<div className="flex flex-col">
-				{shown.map((hit) => {
+				{shown.map((hit) =>
+				{
 					const actions = hitActions(hit.actions, hit.name);
 					return (
 						<ListRow
@@ -170,11 +189,18 @@ function HitSection({
 							verified={hit.verified}
 							source={hit.byline}
 							subtitle={hit.description}
-							{...(actions === undefined ? {} : {actions})}
+							{...(actions === undefined
+								? {}
+								:
+									{
+										actions,
+									})}
 							{...(onOpen === undefined || hit.open === null
 								? {}
-								: {
-										onView: () => {
+								:
+									{
+										onView: () =>
+										{
 											onOpen(hit);
 										},
 									})}
@@ -186,7 +212,8 @@ function HitSection({
 	);
 }
 
-interface UnifiedSearchResultsProps {
+interface UnifiedSearchResultsProps
+{
 	q: string;
 	surface: UnifiedSearchSurface;
 	search: UnifiedSearch;
@@ -221,19 +248,23 @@ export function UnifiedSearchResults({
 	onOpen,
 	expanded: controlledExpanded,
 	onExpandedChange,
-}: UnifiedSearchResultsProps) {
+}: UnifiedSearchResultsProps)
+{
 	const [ownExpanded, setOwnExpanded] = useState<UnifiedSectionId[]>([]);
 	const expanded = controlledExpanded ?? ownExpanded;
-	const sectionProps = (sectionId: UnifiedSectionId) => ({
+	const sectionProps = (sectionId: UnifiedSectionId) => (
+	{
 		expanded: expanded.includes(sectionId),
-		onExpandedChange: (next: boolean) => {
+		onExpandedChange: (next: boolean) =>
+		{
 			const sections = next ? [...expanded, sectionId] : expanded.filter((other) => other !== sectionId);
 			setOwnExpanded(sections);
 			onExpandedChange?.(sections);
 		},
 	});
 	const term = q.trim();
-	if (!searchTermReady(term)) {
+	if (!searchTermReady(term))
+	{
 		return (
 			<p role="status" className="py-2 text-footnote text-muted-as-secondary">
 				Keep typing to search everything you can add.

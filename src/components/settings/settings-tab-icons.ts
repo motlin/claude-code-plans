@@ -1,4 +1,5 @@
-import {
+import
+{
 	Bell,
 	Code,
 	FileCog,
@@ -17,7 +18,8 @@ import {
 import type {CustomizeSection, SettingsTab} from "../../lib/settings-hash";
 
 /** The glyph shown before each Settings tab in the nav and in search-result breadcrumbs. */
-export const SETTINGS_TAB_ICONS = {
+export const SETTINGS_TAB_ICONS =
+{
 	general: Settings,
 	notifications: Bell,
 	usage: Gauge,
@@ -31,7 +33,8 @@ export const SETTINGS_TAB_ICONS = {
 } satisfies Record<SettingsTab, LucideIcon>;
 
 /** The glyph before each Customize section in the Settings nav, matching its list rows. */
-export const CUSTOMIZE_SECTION_ICONS = {
+export const CUSTOMIZE_SECTION_ICONS =
+{
 	skills: Scroll,
 	connectors: Plug,
 	plugins: Puzzle,

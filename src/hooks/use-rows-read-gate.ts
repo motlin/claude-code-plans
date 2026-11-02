@@ -6,7 +6,8 @@ import {useEffect, useState, type RefObject} from "react";
  */
 export type ReadGateState = "unlaid" | "unread" | "read";
 
-export interface ReadGateReport {
+export interface ReadGateReport
+{
 	/** Undefined until the first measure. */
 	state: ReadGateState | undefined;
 	/** The card's scroller shows all of its content (upstream `pl`); undefined until the first measure. */
@@ -19,12 +20,14 @@ const SLACK = 2;
 const SCROLLER = "[data-approval-card-body]";
 
 /** The document's font set; jsdom has none. */
-function fontsOf(doc: Document): FontFaceSet | undefined {
+function fontsOf(doc: Document): FontFaceSet | undefined
+{
 	const fonts: FontFaceSet | undefined = doc.fonts;
 	return fonts;
 }
 
-function padding(element: HTMLElement, side: "paddingTop" | "paddingBottom"): number {
+function padding(element: HTMLElement, side: "paddingTop" | "paddingBottom"): number
+{
 	const value = Number.parseFloat(getComputedStyle(element)[side]);
 	return Number.isFinite(value) ? value : 0;
 }
@@ -33,7 +36,8 @@ function padding(element: HTMLElement, side: "paddingTop" | "paddingBottom"): nu
  * Upstream `ol`: whether the element's first or last line box (`height` tall) is inside the window and the
  * scroller's visible box, within the slack. A zero-height element counts as seen.
  */
-function lineVisible(element: Element, scroller: HTMLElement | null, height: number, edge: "first" | "last"): boolean {
+function lineVisible(element: Element, scroller: HTMLElement | null, height: number, edge: "first" | "last"): boolean
+{
 	const rect = element.getBoundingClientRect();
 	if (rect.height === 0) return true;
 	const top = edge === "first" ? rect.top : rect.bottom - height;
@@ -60,36 +64,55 @@ export function useRowsReadGate({
 	watched: boolean;
 	/** The gated text's identity: a new key starts unread. */
 	gateKey: string;
-}): ReadGateReport {
-	const [report, setReport] = useState<ReadGateReport & {key: string | null}>({
-		key: null,
-		state: undefined,
-		fits: undefined,
-	});
-	useEffect(() => {
+}): ReadGateReport
+{
+	const [report, setReport] = useState<
+		ReadGateReport &
+		{
+			key: string | null;
+		}
+	>(
+		{
+			key: null,
+			state: undefined,
+			fits: undefined,
+		},
+	);
+	useEffect(() =>
+	{
 		const element = ref.current;
 		if (!watched || element === null) return undefined;
 		const seen = new Set<string>();
-		const see = (key: string, visible: () => boolean) => {
+		const see = (key: string, visible: () => boolean) =>
+		{
 			if (!seen.has(key) && visible()) seen.add(key);
 			return seen.has(key);
 		};
-		const publish = (state: ReadGateState, fits: boolean) => {
+		const publish = (state: ReadGateState, fits: boolean) =>
+		{
 			setReport((previous) =>
 				previous.key === gateKey && previous.state === state && previous.fits === fits
 					? previous
-					: {key: gateKey, state, fits},
+					:
+						{
+							key: gateKey,
+							state,
+							fits,
+						},
 			);
 		};
-		const check = () => {
+		const check = () =>
+		{
 			const scroller = element.closest<HTMLElement>(SCROLLER);
 			const fits = scroller === null || scroller.scrollHeight <= scroller.clientHeight + SLACK;
-			if (element.clientHeight === 0) {
+			if (element.clientHeight === 0)
+			{
 				publish("unlaid", fits);
 				return;
 			}
 			const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight);
-			if (!Number.isFinite(lineHeight)) {
+			if (!Number.isFinite(lineHeight))
+			{
 				publish("unread", fits);
 				return;
 			}
@@ -107,10 +130,18 @@ export function useRowsReadGate({
 		check();
 		const doc = element.ownerDocument;
 		const win = doc.defaultView ?? window;
-		doc.addEventListener("scroll", check, {capture: true, passive: true});
+		doc.addEventListener(
+			"scroll",
+			check,
+			{
+				capture: true,
+				passive: true,
+			},
+		);
 		win.addEventListener("resize", check);
 		let observer: ResizeObserver | null = null;
-		if (typeof ResizeObserver !== "undefined") {
+		if (typeof ResizeObserver !== "undefined")
+		{
 			observer = new ResizeObserver(check);
 			observer.observe(element);
 			const scroller = element.closest<HTMLElement>(SCROLLER);
@@ -118,17 +149,36 @@ export function useRowsReadGate({
 		}
 		let live = true;
 		const fonts = fontsOf(doc);
-		if (fonts !== undefined) {
-			void fonts.ready.then(() => {
+		if (fonts !== undefined)
+		{
+			void fonts.ready.then(() =>
+			{
 				if (live) check();
 			});
 		}
-		return () => {
+		return () =>
+		{
 			live = false;
-			doc.removeEventListener("scroll", check, {capture: true});
+			doc.removeEventListener(
+				"scroll",
+				check,
+				{
+					capture: true,
+				},
+			);
 			win.removeEventListener("resize", check);
 			observer?.disconnect();
 		};
 	}, [ref, watched, gateKey]);
-	return report.key === gateKey ? {state: report.state, fits: report.fits} : {state: undefined, fits: undefined};
+	return report.key === gateKey
+		?
+			{
+				state: report.state,
+				fits: report.fits,
+			}
+		:
+			{
+				state: undefined,
+				fits: undefined,
+			};
 }

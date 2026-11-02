@@ -11,12 +11,24 @@ import {toolLabel} from "../src/lib/tool-labels";
 
 afterEach(cleanup);
 
-function makeCall(name: string, input: Record<string, unknown>, extra: Partial<ClientToolCall> = {}) {
-	const call: ClientToolCall = {id: `tool-${name}`, name, param: "", sourceUuid: "uuid-1", input};
-	return {...call, ...extra};
+function makeCall(name: string, input: Record<string, unknown>, extra: Partial<ClientToolCall> = {})
+{
+	const call: ClientToolCall =
+	{
+		id: `tool-${name}`,
+		name,
+		param: "",
+		sourceUuid: "uuid-1",
+		input,
+	};
+	return {
+		...call,
+		...extra,
+	};
 }
 
-const CONFIRMED_FINDING = {
+const CONFIRMED_FINDING =
+{
 	file: "src/example.ts",
 	line: 100,
 	category: "correctness",
@@ -26,62 +38,103 @@ const CONFIRMED_FINDING = {
 	verdict: "CONFIRMED",
 };
 
-const PLAIN_FINDING = {
+const PLAIN_FINDING =
+{
 	file: "src/other.ts",
 	line: 7,
 	summary: "The other branch reads a stale cache.",
 	failure_scenario: "Bob edits the file and sees the old contents.",
 };
 
-const MONITOR_INPUT = {
+const MONITOR_INPUT =
+{
 	command: "until curl -s localhost:3000; do sleep 1; done",
 	description: "wait for dev server",
 	timeout_ms: 60000,
 	persistent: false,
 };
 
-describe("ReportFindings, Monitor and TaskOutput labels", () => {
-	it("labels each row with the upstream verb", () => {
-		const labels = (name: string, input: Record<string, unknown>) => {
-			const {verb} = toolLabel({name, input});
-			return {verb};
+describe("ReportFindings, Monitor and TaskOutput labels", () =>
+{
+	it("labels each row with the upstream verb", () =>
+	{
+		const labels = (name: string, input: Record<string, unknown>) =>
+		{
+			const {verb} = toolLabel(
+				{
+					name,
+					input,
+				},
+			);
+			return {
+				verb,
+			};
 		};
 
-		expect({
-			reportFindings: labels("ReportFindings", {findings: [CONFIRMED_FINDING]}),
-			monitor: labels("Monitor", MONITOR_INPUT),
-			taskOutput: labels("TaskOutput", {task_id: "b1", block: true, timeout: 5000}),
-		}).toStrictEqual({
-			reportFindings: {
-				verb: "Reported review findings",
+		expect(
+			{
+				reportFindings: labels(
+					"ReportFindings",
+					{
+						findings: [CONFIRMED_FINDING],
+					},
+				),
+				monitor: labels("Monitor", MONITOR_INPUT),
+				taskOutput: labels(
+					"TaskOutput",
+					{
+						task_id: "b1",
+						block: true,
+						timeout: 5000,
+					},
+				),
 			},
-			monitor: {
-				verb: "Started watching background command",
+		).toStrictEqual(
+			{
+				reportFindings:
+				{
+					verb: "Reported review findings",
+				},
+				monitor:
+				{
+					verb: "Started watching background command",
+				},
+				taskOutput:
+				{
+					verb: "Read task output",
+				},
 			},
-			taskOutput: {verb: "Read task output"},
-		});
+		);
 	});
 });
 
-describe("ReportFindingsRenderer", () => {
-	it("is the registered body for ReportFindings", () => {
+describe("ReportFindingsRenderer", () =>
+{
+	it("is the registered body for ReportFindings", () =>
+	{
 		expect(getToolRenderer("ReportFindings")).not.toBe(getToolRenderer("Frobnicate"));
 	});
 
-	it("renders one finding card per finding with location, category and verdict", () => {
+	it("renders one finding card per finding with location, category and verdict", () =>
+	{
 		const {container} = render(
 			<ReportFindingsRenderer
 				toolCall={makeCall(
 					"ReportFindings",
-					{findings: [CONFIRMED_FINDING, PLAIN_FINDING]},
-					{result: "2 findings reported."},
+					{
+						findings: [CONFIRMED_FINDING, PLAIN_FINDING],
+					},
+					{
+						result: "2 findings reported.",
+					},
 				)}
 			/>,
 		);
 
 		const cards = [...container.querySelectorAll("[data-finding-card]")];
 		expect(
-			cards.map((card) => ({
+			cards.map((card) => (
+			{
 				title: card.querySelector("[data-finding-title]")?.textContent,
 				location: card.querySelector("[data-finding-location]")?.textContent,
 				category: card.querySelector("[data-finding-category]")?.textContent ?? null,
@@ -106,38 +159,66 @@ describe("ReportFindingsRenderer", () => {
 		]);
 	});
 
-	it("shows the failure message for a failed call", () => {
+	it("shows the failure message for a failed call", () =>
+	{
 		const {container} = render(
 			<ReportFindingsRenderer
 				toolCall={makeCall(
 					"ReportFindings",
-					{findings: [CONFIRMED_FINDING]},
-					{result: "Findings rejected", isError: true},
+					{
+						findings: [CONFIRMED_FINDING],
+					},
+					{
+						result: "Findings rejected",
+						isError: true,
+					},
 				)}
 			/>,
 		);
 
-		expect({
-			error: container.querySelector(".text-danger-ink")?.textContent,
-			cards: container.querySelectorAll("[data-finding-card]").length,
-		}).toStrictEqual({error: "Findings rejected", cards: 1});
+		expect(
+			{
+				error: container.querySelector(".text-danger-ink")?.textContent,
+				cards: container.querySelectorAll("[data-finding-card]").length,
+			},
+		).toStrictEqual(
+			{
+				error: "Findings rejected",
+				cards: 1,
+			},
+		);
 	});
 });
 
-describe("Monitor and TaskOutput bodies", () => {
-	it("route through the fallback KeyValue renderer", () => {
-		expect({
-			monitor: getToolRenderer("Monitor"),
-			taskOutput: getToolRenderer("TaskOutput"),
-		}).toStrictEqual({
-			monitor: getToolRenderer("Frobnicate"),
-			taskOutput: getToolRenderer("Frobnicate"),
-		});
+describe("Monitor and TaskOutput bodies", () =>
+{
+	it("route through the fallback KeyValue renderer", () =>
+	{
+		expect(
+			{
+				monitor: getToolRenderer("Monitor"),
+				taskOutput: getToolRenderer("TaskOutput"),
+			},
+		).toStrictEqual(
+			{
+				monitor: getToolRenderer("Frobnicate"),
+				taskOutput: getToolRenderer("Frobnicate"),
+			},
+		);
 	});
 
-	it("render the Monitor input as key/value params", () => {
+	it("render the Monitor input as key/value params", () =>
+	{
 		const {container} = render(
-			<FallbackRenderer toolCall={makeCall("Monitor", MONITOR_INPUT, {result: "Monitor started"})} />,
+			<FallbackRenderer
+				toolCall={makeCall(
+					"Monitor",
+					MONITOR_INPUT,
+					{
+						result: "Monitor started",
+					},
+				)}
+			/>,
 		);
 
 		expect(container.textContent).toContain("description: wait for dev server");
@@ -145,65 +226,121 @@ describe("Monitor and TaskOutput bodies", () => {
 	});
 });
 
-describe("strict input schemas", () => {
-	it("accept the observed ReportFindings, Monitor and TaskOutput inputs", () => {
-		expect({
-			reportFindings: toolInputSchemas.ReportFindings.safeParse({
-				findings: [CONFIRMED_FINDING, PLAIN_FINDING],
-			}).success,
-			reportFindingsWithLevel: toolInputSchemas.ReportFindings.safeParse({
-				level: "high",
-				findings: [CONFIRMED_FINDING],
-			}).success,
-			monitor: toolInputSchemas.Monitor.safeParse(MONITOR_INPUT).success,
-			monitorWs: toolInputSchemas.Monitor.safeParse({
-				ws: {url: "ws://127.0.0.1:3100/api/v1/ladder/events"},
-				description: "ladder edits",
-				timeout_ms: 1800000,
-			}).success,
-			monitorStringTimeout: toolInputSchemas.Monitor.safeParse({
-				description: "Wait for CI",
-				timeout: "1000000",
-			}).success,
-			taskOutput: toolInputSchemas.TaskOutput.safeParse({
-				task_id: "b1",
-				block: true,
-				timeout: 5000,
-			}).success,
-		}).toStrictEqual({
-			reportFindings: true,
-			reportFindingsWithLevel: true,
-			monitor: true,
-			monitorWs: true,
-			monitorStringTimeout: true,
-			taskOutput: true,
-		});
+describe("strict input schemas", () =>
+{
+	it("accept the observed ReportFindings, Monitor and TaskOutput inputs", () =>
+	{
+		expect(
+			{
+				reportFindings: toolInputSchemas.ReportFindings.safeParse(
+					{
+						findings: [CONFIRMED_FINDING, PLAIN_FINDING],
+					},
+				).success,
+				reportFindingsWithLevel: toolInputSchemas.ReportFindings.safeParse(
+					{
+						level: "high",
+						findings: [CONFIRMED_FINDING],
+					},
+				).success,
+				monitor: toolInputSchemas.Monitor.safeParse(MONITOR_INPUT).success,
+				monitorWs: toolInputSchemas.Monitor.safeParse(
+					{
+						ws:
+						{
+							url: "ws://127.0.0.1:3100/api/v1/ladder/events",
+						},
+						description: "ladder edits",
+						timeout_ms: 1800000,
+					},
+				).success,
+				monitorStringTimeout: toolInputSchemas.Monitor.safeParse(
+					{
+						description: "Wait for CI",
+						timeout: "1000000",
+					},
+				).success,
+				taskOutput: toolInputSchemas.TaskOutput.safeParse(
+					{
+						task_id: "b1",
+						block: true,
+						timeout: 5000,
+					},
+				).success,
+			},
+		).toStrictEqual(
+			{
+				reportFindings: true,
+				reportFindingsWithLevel: true,
+				monitor: true,
+				monitorWs: true,
+				monitorStringTimeout: true,
+				taskOutput: true,
+			},
+		);
 	});
 
-	it("reject unknown keys and unknown verdicts", () => {
-		expect({
-			reportFindingsTopLevel: toolInputSchemas.ReportFindings.safeParse({
-				findings: [],
-				extra: 1,
-			}).success,
-			reportFindingsFinding: toolInputSchemas.ReportFindings.safeParse({
-				findings: [{...PLAIN_FINDING, severity: "high"}],
-			}).success,
-			reportFindingsVerdict: toolInputSchemas.ReportFindings.safeParse({
-				findings: [{...PLAIN_FINDING, verdict: "MAYBE"}],
-			}).success,
-			monitor: toolInputSchemas.Monitor.safeParse({...MONITOR_INPUT, extra: 1}).success,
-			monitorWs: toolInputSchemas.Monitor.safeParse({
-				ws: {url: "ws://x", protocol: "v1"},
-			}).success,
-			taskOutput: toolInputSchemas.TaskOutput.safeParse({task_id: "b1", extra: 1}).success,
-		}).toStrictEqual({
-			reportFindingsTopLevel: false,
-			reportFindingsFinding: false,
-			reportFindingsVerdict: false,
-			monitor: false,
-			monitorWs: false,
-			taskOutput: false,
-		});
+	it("reject unknown keys and unknown verdicts", () =>
+	{
+		expect(
+			{
+				reportFindingsTopLevel: toolInputSchemas.ReportFindings.safeParse(
+					{
+						findings: [],
+						extra: 1,
+					},
+				).success,
+				reportFindingsFinding: toolInputSchemas.ReportFindings.safeParse(
+					{
+						findings: [
+							{
+								...PLAIN_FINDING,
+								severity: "high",
+							},
+						],
+					},
+				).success,
+				reportFindingsVerdict: toolInputSchemas.ReportFindings.safeParse(
+					{
+						findings: [
+							{
+								...PLAIN_FINDING,
+								verdict: "MAYBE",
+							},
+						],
+					},
+				).success,
+				monitor: toolInputSchemas.Monitor.safeParse(
+					{
+						...MONITOR_INPUT,
+						extra: 1,
+					},
+				).success,
+				monitorWs: toolInputSchemas.Monitor.safeParse(
+					{
+						ws:
+						{
+							url: "ws://x",
+							protocol: "v1",
+						},
+					},
+				).success,
+				taskOutput: toolInputSchemas.TaskOutput.safeParse(
+					{
+						task_id: "b1",
+						extra: 1,
+					},
+				).success,
+			},
+		).toStrictEqual(
+			{
+				reportFindingsTopLevel: false,
+				reportFindingsFinding: false,
+				reportFindingsVerdict: false,
+				monitor: false,
+				monitorWs: false,
+				taskOutput: false,
+			},
+		);
 	});
 });

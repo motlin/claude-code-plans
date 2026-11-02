@@ -1,7 +1,8 @@
 import type {PermissionDialogShape} from "./herdr/permission-screen";
 
 /** The drawn card's slot config, as upstream's dock (`tS`) builds it. */
-export interface ApprovalSlotCard {
+export interface ApprovalSlotCard
+{
 	card: string | undefined;
 	takesFocus: boolean;
 	chordActsAnywhere: boolean;
@@ -17,16 +18,39 @@ export function sessionApprovalSlotCard({
 	planId,
 	questionId,
 }: {
-	permission: {key: string; dialog: PermissionDialogShape | "unknown" | undefined} | null;
+	permission:
+	{
+		key: string;
+		dialog: PermissionDialogShape | "unknown" | undefined;
+	} | null;
 	planId: string | null;
 	questionId: string | null;
-}): ApprovalSlotCard {
-	if (permission !== null) {
+}): ApprovalSlotCard
+{
+	if (permission !== null)
+	{
 		const denyFirst = permission.dialog === "unknown" || permission.dialog?.denyFirst === true;
-		return {card: `permission:${permission.key}`, takesFocus: !denyFirst, chordActsAnywhere: false};
+		return {
+			card: `permission:${permission.key}`,
+			takesFocus: !denyFirst,
+			chordActsAnywhere: false,
+		};
 	}
-	if (planId !== null) return {card: `plan:${planId}`, takesFocus: true, chordActsAnywhere: true};
+	if (planId !== null)
+		return {
+			card: `plan:${planId}`,
+			takesFocus: true,
+			chordActsAnywhere: true,
+		};
 	if (questionId !== null)
-		return {card: `ask_user_question:${questionId}`, takesFocus: true, chordActsAnywhere: false};
-	return {card: undefined, takesFocus: false, chordActsAnywhere: false};
+		return {
+			card: `ask_user_question:${questionId}`,
+			takesFocus: true,
+			chordActsAnywhere: false,
+		};
+	return {
+		card: undefined,
+		takesFocus: false,
+		chordActsAnywhere: false,
+	};
 }

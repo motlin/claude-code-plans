@@ -14,7 +14,8 @@ const INSTRUCTION_RESULT_PREFIX = "Entered plan mode";
  * call beyond the row's own "Entered plan mode" label. The renderer draws
  * nothing in that case; only a genuine failure gets a card.
  */
-export function EnterPlanModeRenderer({toolCall}: ToolRendererProps) {
+export function EnterPlanModeRenderer({toolCall}: ToolRendererProps)
+{
 	const {result} = toolCall;
 
 	const isBoilerplate = !result || result === "success" || result.startsWith(INSTRUCTION_RESULT_PREFIX);

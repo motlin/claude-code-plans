@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {
+import
+{
 	backgroundTaskMeta,
 	backgroundTasksFacts,
 	extractBackgroundTasks,
@@ -13,35 +14,64 @@ type TranscriptRecord = Record<string, JsonValue>;
 
 const SESSION = "5e5510a0-0000-4000-8000-00000000fab1";
 
-function toolUse(id: string, name: string, input: Record<string, JsonValue>, timestamp: string): TranscriptRecord {
+function toolUse(id: string, name: string, input: Record<string, JsonValue>, timestamp: string): TranscriptRecord
+{
 	return {
 		type: "assistant",
 		sessionId: SESSION,
 		timestamp,
-		message: {role: "assistant", content: [{type: "tool_use", id, name, input}]},
+		message:
+		{
+			role: "assistant",
+			content: [
+				{
+					type: "tool_use",
+					id,
+					name,
+					input,
+				},
+			],
+		},
 	};
 }
 
-function toolResult(toolUseId: string, content: string, toolUseResult: JsonValue, timestamp: string): TranscriptRecord {
+function toolResult(toolUseId: string, content: string, toolUseResult: JsonValue, timestamp: string): TranscriptRecord
+{
 	return {
 		type: "user",
 		sessionId: SESSION,
 		timestamp,
-		message: {
+		message:
+		{
 			role: "user",
-			content: [{type: "tool_result", tool_use_id: toolUseId, content, is_error: false}],
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: toolUseId,
+					content,
+					is_error: false,
+				},
+			],
 		},
 		toolUseResult,
 	};
 }
 
-function notification(body: string, timestamp: string): TranscriptRecord {
+function notification(body: string, timestamp: string): TranscriptRecord
+{
 	return {
 		type: "user",
 		sessionId: SESSION,
 		timestamp,
-		origin: {kind: "task-notification"},
-		message: {role: "user", content: `<task-notification>\n${body}\n</task-notification>`},
+		origin:
+		{
+			kind: "task-notification",
+		},
+		message:
+		{
+			role: "user",
+			content: `<task-notification>\n${body}\n</task-notification>`,
+		},
 	};
 }
 
@@ -50,16 +80,32 @@ const BASH_RECORDS: TranscriptRecord[] = [
 	toolUse(
 		"toolu_bash_build",
 		"Bash",
-		{command: "pnpm build", description: "Build the fabricated app", run_in_background: true},
+		{
+			command: "pnpm build",
+			description: "Build the fabricated app",
+			run_in_background: true,
+		},
 		"2026-09-28T10:00:00.000Z",
 	),
 	toolResult(
 		"toolu_bash_build",
 		"Command running in background with ID: bfab1build. Output is being written to: /tmp/fab/bfab1build.output.",
-		{stdout: "", stderr: "", interrupted: false, backgroundTaskId: "bfab1build"},
+		{
+			stdout: "",
+			stderr: "",
+			interrupted: false,
+			backgroundTaskId: "bfab1build",
+		},
 		"2026-09-28T10:00:01.000Z",
 	),
-	toolUse("toolu_read_build", "TaskOutput", {task_id: "bfab1build"}, "2026-09-28T10:00:30.000Z"),
+	toolUse(
+		"toolu_read_build",
+		"TaskOutput",
+		{
+			task_id: "bfab1build",
+		},
+		"2026-09-28T10:00:30.000Z",
+	),
 	toolResult(
 		"toolu_read_build",
 		"<retrieval_status>success</retrieval_status>\n\n<task_id>bfab1build</task_id>\n\n<task_type>local_bash</task_type>\n\n<status>completed</status>\n\n<exit_code>0</exit_code>\n\n<output>\nvite v8 building for production...\nbuilt in 1.2s\n</output>",
@@ -83,13 +129,20 @@ const MONITOR_RECORDS: TranscriptRecord[] = [
 	toolUse(
 		"toolu_monitor_ci",
 		"Monitor",
-		{command: "gh pr checks 42 --watch", description: "Fabricated PR #42 CI checks"},
+		{
+			command: "gh pr checks 42 --watch",
+			description: "Fabricated PR #42 CI checks",
+		},
 		"2026-09-28T10:01:00.000Z",
 	),
 	toolResult(
 		"toolu_monitor_ci",
 		"Monitor started (task bfab1watch, expires in 30m unless the source ends first).",
-		{taskId: "bfab1watch", timeoutMs: 1800000, persistent: false},
+		{
+			taskId: "bfab1watch",
+			timeoutMs: 1800000,
+			persistent: false,
+		},
 		"2026-09-28T10:01:01.000Z",
 	),
 	notification(
@@ -118,12 +171,17 @@ const AGENT_RECORDS: TranscriptRecord[] = [
 	toolResult(
 		"toolu_agent_review",
 		"Async agent launched successfully.\nagentId: afab1review (internal ID)",
-		{isAsync: true, status: "async_launched", agentId: "afab1review"},
+		{
+			isAsync: true,
+			status: "async_launched",
+			agentId: "afab1review",
+		},
 		"2026-09-28T10:02:01.000Z",
 	),
 ];
 
-function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): BackgroundTask {
+function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): BackgroundTask
+{
 	return {
 		toolUseId: null,
 		kind: "bash",
@@ -138,61 +196,98 @@ function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): 
 	};
 }
 
-const BUILD_TASK = task({
-	id: "bfab1build",
-	toolUseId: "toolu_bash_build",
-	description: "Build the fabricated app",
-	command: "pnpm build",
-	status: "completed",
-	output: "vite v8 building for production...\nbuilt in 1.2s",
-	summary: 'Background command "Build the fabricated app" completed (exit code 0)',
-	outputFile: "/tmp/fab/bfab1build.output",
-	startedAt: "2026-09-28T10:00:00.000Z",
-});
+const BUILD_TASK = task(
+	{
+		id: "bfab1build",
+		toolUseId: "toolu_bash_build",
+		description: "Build the fabricated app",
+		command: "pnpm build",
+		status: "completed",
+		output: "vite v8 building for production...\nbuilt in 1.2s",
+		summary: 'Background command "Build the fabricated app" completed (exit code 0)',
+		outputFile: "/tmp/fab/bfab1build.output",
+		startedAt: "2026-09-28T10:00:00.000Z",
+	},
+);
 
-const WATCH_TASK = task({
-	id: "bfab1watch",
-	toolUseId: "toolu_monitor_ci",
-	kind: "monitor",
-	description: "Fabricated PR #42 CI checks",
-	command: "gh pr checks 42 --watch",
-	output: "lint pass",
-	summary: 'Monitor event: "Fabricated PR #42 CI checks"',
-	startedAt: "2026-09-28T10:01:00.000Z",
-});
+const WATCH_TASK = task(
+	{
+		id: "bfab1watch",
+		toolUseId: "toolu_monitor_ci",
+		kind: "monitor",
+		description: "Fabricated PR #42 CI checks",
+		command: "gh pr checks 42 --watch",
+		output: "lint pass",
+		summary: 'Monitor event: "Fabricated PR #42 CI checks"',
+		startedAt: "2026-09-28T10:01:00.000Z",
+	},
+);
 
-const REVIEW_TASK = task({
-	id: "afab1review",
-	toolUseId: "toolu_agent_review",
-	kind: "agent",
-	description: "Review the fabricated diff",
-	startedAt: "2026-09-28T10:02:00.000Z",
-});
+const REVIEW_TASK = task(
+	{
+		id: "afab1review",
+		toolUseId: "toolu_agent_review",
+		kind: "agent",
+		description: "Review the fabricated diff",
+		startedAt: "2026-09-28T10:02:00.000Z",
+	},
+);
 
-describe("extractBackgroundTasks", () => {
-	it("finishes a background bash from its task-notification and keeps its TaskOutput", () => {
-		expect(extractBackgroundTasks(BASH_RECORDS, {sessionActive: true})).toStrictEqual({
-			running: [],
-			finished: [BUILD_TASK],
-		});
-	});
-
-	it("keeps a Monitor watch running and collects its events as output", () => {
-		expect(extractBackgroundTasks(MONITOR_RECORDS, {sessionActive: true})).toStrictEqual({
-			running: [WATCH_TASK],
-			finished: [],
-		});
-	});
-
-	it("lists a launched background agent as running until it notifies", () => {
+describe("extractBackgroundTasks", () =>
+{
+	it("finishes a background bash from its task-notification and keeps its TaskOutput", () =>
+	{
 		expect(
-			extractBackgroundTasks([...BASH_RECORDS, ...MONITOR_RECORDS, ...AGENT_RECORDS], {
-				sessionActive: true,
-			}),
-		).toStrictEqual({running: [WATCH_TASK, REVIEW_TASK], finished: [BUILD_TASK]});
+			extractBackgroundTasks(
+				BASH_RECORDS,
+				{
+					sessionActive: true,
+				},
+			),
+		).toStrictEqual(
+			{
+				running: [],
+				finished: [BUILD_TASK],
+			},
+		);
 	});
 
-	it("finishes an agent from a failed notification with its result as output", () => {
+	it("keeps a Monitor watch running and collects its events as output", () =>
+	{
+		expect(
+			extractBackgroundTasks(
+				MONITOR_RECORDS,
+				{
+					sessionActive: true,
+				},
+			),
+		).toStrictEqual(
+			{
+				running: [WATCH_TASK],
+				finished: [],
+			},
+		);
+	});
+
+	it("lists a launched background agent as running until it notifies", () =>
+	{
+		expect(
+			extractBackgroundTasks(
+				[...BASH_RECORDS, ...MONITOR_RECORDS, ...AGENT_RECORDS],
+				{
+					sessionActive: true,
+				},
+			),
+		).toStrictEqual(
+			{
+				running: [WATCH_TASK, REVIEW_TASK],
+				finished: [BUILD_TASK],
+			},
+		);
+	});
+
+	it("finishes an agent from a failed notification with its result as output", () =>
+	{
 		const failed = notification(
 			[
 				"<task-id>afab1review</task-id>",
@@ -203,107 +298,176 @@ describe("extractBackgroundTasks", () => {
 			].join("\n"),
 			"2026-09-28T10:05:00.000Z",
 		);
-		expect(extractBackgroundTasks([...AGENT_RECORDS, failed], {sessionActive: true})).toStrictEqual({
-			running: [],
-			finished: [
-				{
-					...REVIEW_TASK,
-					status: "failed",
-					output: "Partial review of the fabricated diff.",
-					summary: 'Agent "Review the fabricated diff" failed: stalled',
-				},
-			],
-		});
-	});
-
-	it("adds running subagents and hook background tasks the transcript window lacks", () => {
 		expect(
-			extractBackgroundTasks(BASH_RECORDS, {
-				sessionActive: true,
-				runningSubagents: [
+			extractBackgroundTasks(
+				[...AGENT_RECORDS, failed],
+				{
+					sessionActive: true,
+				},
+			),
+		).toStrictEqual(
+			{
+				running: [],
+				finished: [
 					{
-						key: "toolu_agent_sync",
-						sessionId: SESSION,
-						agentType: "Explore",
-						agentId: "",
-						description: "Explore the fabricated repo",
+						...REVIEW_TASK,
+						status: "failed",
+						output: "Partial review of the fabricated diff.",
+						summary: 'Agent "Review the fabricated diff" failed: stalled',
 					},
 				],
-				hookTasks: [
+			},
+		);
+	});
+
+	it("adds running subagents and hook background tasks the transcript window lacks", () =>
+	{
+		expect(
+			extractBackgroundTasks(
+				BASH_RECORDS,
+				{
+					sessionActive: true,
+					runningSubagents: [
+						{
+							key: "toolu_agent_sync",
+							sessionId: SESSION,
+							agentType: "Explore",
+							agentId: "",
+							description: "Explore the fabricated repo",
+						},
+					],
+					hookTasks: [
+						{
+							id: "bfab1serve",
+							type: "local_bash",
+							status: "running",
+							description: "Serve the fabricated app",
+							command: "pnpm dev",
+						},
+						{
+							id: "bfab1build",
+							type: "local_bash",
+							status: "running",
+							description: "Build the fabricated app",
+							command: "pnpm build",
+						},
+					],
+				},
+			),
+		).toStrictEqual(
+			{
+				running: [
+					task(
+						{
+							id: "toolu_agent_sync",
+							toolUseId: "toolu_agent_sync",
+							kind: "agent",
+							description: "Explore the fabricated repo",
+						},
+					),
+					task(
+						{
+							id: "bfab1serve",
+							description: "Serve the fabricated app",
+							command: "pnpm dev",
+						},
+					),
+				],
+				finished: [BUILD_TASK],
+			},
+		);
+	});
+
+	it("shows transcript tasks still unfinished in an inactive session as stopped", () =>
+	{
+		expect(
+			extractBackgroundTasks(
+				[...MONITOR_RECORDS, ...AGENT_RECORDS],
+				{
+					sessionActive: false,
+				},
+			),
+		).toStrictEqual(
+			{
+				running: [],
+				finished: [
 					{
-						id: "bfab1serve",
-						type: "local_bash",
-						status: "running",
-						description: "Serve the fabricated app",
-						command: "pnpm dev",
+						...REVIEW_TASK,
+						status: "stopped",
 					},
 					{
-						id: "bfab1build",
-						type: "local_bash",
-						status: "running",
-						description: "Build the fabricated app",
-						command: "pnpm build",
+						...WATCH_TASK,
+						status: "stopped",
 					},
 				],
-			}),
-		).toStrictEqual({
-			running: [
-				task({
-					id: "toolu_agent_sync",
-					toolUseId: "toolu_agent_sync",
-					kind: "agent",
-					description: "Explore the fabricated repo",
-				}),
-				task({id: "bfab1serve", description: "Serve the fabricated app", command: "pnpm dev"}),
-			],
-			finished: [BUILD_TASK],
-		});
+			},
+		);
 	});
 
-	it("shows transcript tasks still unfinished in an inactive session as stopped", () => {
-		expect(extractBackgroundTasks([...MONITOR_RECORDS, ...AGENT_RECORDS], {sessionActive: false})).toStrictEqual({
-			running: [],
-			finished: [
-				{...REVIEW_TASK, status: "stopped"},
-				{...WATCH_TASK, status: "stopped"},
-			],
-		});
+	it("records the output file a background command's launch result names while it runs", () =>
+	{
+		expect(
+			extractBackgroundTasks(
+				BASH_RECORDS.slice(0, 2),
+				{
+					sessionActive: true,
+				},
+			),
+		).toStrictEqual(
+			{
+				running: [
+					task(
+						{
+							id: "bfab1build",
+							toolUseId: "toolu_bash_build",
+							description: "Build the fabricated app",
+							command: "pnpm build",
+							outputFile: "/tmp/fab/bfab1build.output",
+							startedAt: "2026-09-28T10:00:00.000Z",
+						},
+					),
+				],
+				finished: [],
+			},
+		);
 	});
 
-	it("records the output file a background command's launch result names while it runs", () => {
-		expect(extractBackgroundTasks(BASH_RECORDS.slice(0, 2), {sessionActive: true})).toStrictEqual({
-			running: [
-				task({
-					id: "bfab1build",
-					toolUseId: "toolu_bash_build",
-					description: "Build the fabricated app",
-					command: "pnpm build",
-					outputFile: "/tmp/fab/bfab1build.output",
-					startedAt: "2026-09-28T10:00:00.000Z",
-				}),
-			],
-			finished: [],
-		});
-	});
-
-	it("records the notification's output file for a command whose launch result named none", () => {
+	it("records the notification's output file for a command whose launch result named none", () =>
+	{
 		const records = [
 			BASH_RECORDS[0]!,
 			toolResult(
 				"toolu_bash_build",
 				"Command running in background with ID: bfab1build.",
-				{backgroundTaskId: "bfab1build"},
+				{
+					backgroundTaskId: "bfab1build",
+				},
 				"2026-09-28T10:00:01.000Z",
 			),
 			BASH_RECORDS[4]!,
 		];
-		expect(extractBackgroundTasks(records, {sessionActive: true})).toStrictEqual({
-			running: [],
-			finished: [{...BUILD_TASK, output: null}],
-		});
+		expect(
+			extractBackgroundTasks(
+				records,
+				{
+					sessionActive: true,
+				},
+			),
+		).toStrictEqual(
+			{
+				running: [],
+				finished: [
+					{
+						...BUILD_TASK,
+						output: null,
+					},
+				],
+			},
+		);
 	});
 
-	it("never records an agent's output file, whose .output is its JSONL transcript, and keeps its result", () => {
+	it("never records an agent's output file, whose .output is its JSONL transcript, and keeps its result", () =>
+	{
 		const done = notification(
 			[
 				"<task-id>afab1review</task-id>",
@@ -315,22 +479,40 @@ describe("extractBackgroundTasks", () => {
 			].join("\n"),
 			"2026-09-28T10:05:00.000Z",
 		);
-		expect(extractBackgroundTasks([...AGENT_RECORDS, done], {sessionActive: true})).toStrictEqual({
-			running: [],
-			finished: [
+		expect(
+			extractBackgroundTasks(
+				[...AGENT_RECORDS, done],
 				{
-					...REVIEW_TASK,
-					status: "completed",
-					output: "The fabricated diff looks good.",
-					summary: 'Agent "Review the fabricated diff" finished',
+					sessionActive: true,
 				},
-			],
-		});
+			),
+		).toStrictEqual(
+			{
+				running: [],
+				finished: [
+					{
+						...REVIEW_TASK,
+						status: "completed",
+						output: "The fabricated diff looks good.",
+						summary: 'Agent "Review the fabricated diff" finished',
+					},
+				],
+			},
+		);
 	});
 
-	it("lists a Workflow launch as a workflow task under its harness task id, settled by its notification or a TaskStop", () => {
+	it("lists a Workflow launch as a workflow task under its harness task id, settled by its notification or a TaskStop", () =>
+	{
 		const launch = (id: string, taskId: string, name: string, at: string): TranscriptRecord[] => [
-			toolUse(id, "Workflow", {scriptPath: `/fab/${name}.js`, description: `Run ${name}`}, at),
+			toolUse(
+				id,
+				"Workflow",
+				{
+					scriptPath: `/fab/${name}.js`,
+					description: `Run ${name}`,
+				},
+				at,
+			),
 			toolResult(
 				id,
 				`Workflow launched in background. Task ID: ${taskId}`,
@@ -361,8 +543,22 @@ describe("extractBackgroundTasks", () => {
 				].join("\n"),
 				"2026-09-28T10:03:00.000Z",
 			),
-			toolUse("toolu_stop", "TaskStop", {task_id: "wfab1stop"}, "2026-09-28T10:04:00.000Z"),
-			toolResult("toolu_stop", "Stopped", {message: "Stopped"}, "2026-09-28T10:04:01.000Z"),
+			toolUse(
+				"toolu_stop",
+				"TaskStop",
+				{
+					task_id: "wfab1stop",
+				},
+				"2026-09-28T10:04:00.000Z",
+			),
+			toolResult(
+				"toolu_stop",
+				"Stopped",
+				{
+					message: "Stopped",
+				},
+				"2026-09-28T10:04:01.000Z",
+			),
 		];
 		const workflow = (
 			id: string,
@@ -370,7 +566,8 @@ describe("extractBackgroundTasks", () => {
 			name: string,
 			at: string,
 			status: BackgroundTask["status"],
-		) => ({
+		) => (
+		{
 			id,
 			toolUseId,
 			kind: "workflow" as const,
@@ -382,73 +579,179 @@ describe("extractBackgroundTasks", () => {
 			outputFile: null,
 			startedAt: at,
 		});
-		expect(extractBackgroundTasks(records, {sessionActive: true})).toStrictEqual({
-			running: [workflow("wfab1live", "toolu_wf_live", "fab-live", "2026-09-28T10:01:00.000Z", "running")],
-			finished: [
-				workflow("wfab1stop", "toolu_wf_stop", "fab-stop", "2026-09-28T10:02:00.000Z", "stopped"),
-				workflow("wfab1done", "toolu_wf_done", "fab-done", "2026-09-28T10:00:00.000Z", "completed"),
-			],
-		});
+		expect(
+			extractBackgroundTasks(
+				records,
+				{
+					sessionActive: true,
+				},
+			),
+		).toStrictEqual(
+			{
+				running: [workflow("wfab1live", "toolu_wf_live", "fab-live", "2026-09-28T10:01:00.000Z", "running")],
+				finished: [
+					workflow("wfab1stop", "toolu_wf_stop", "fab-stop", "2026-09-28T10:02:00.000Z", "stopped"),
+					workflow("wfab1done", "toolu_wf_done", "fab-done", "2026-09-28T10:00:00.000Z", "completed"),
+				],
+			},
+		);
 	});
 
-	it("ignores foreground bash calls", () => {
+	it("ignores foreground bash calls", () =>
+	{
 		expect(
 			extractBackgroundTasks(
 				[
-					toolUse("toolu_fg", "Bash", {command: "ls"}, "2026-09-28T10:00:00.000Z"),
-					toolResult("toolu_fg", "README.md", {stdout: "README.md"}, "2026-09-28T10:00:01.000Z"),
+					toolUse(
+						"toolu_fg",
+						"Bash",
+						{
+							command: "ls",
+						},
+						"2026-09-28T10:00:00.000Z",
+					),
+					toolResult(
+						"toolu_fg",
+						"README.md",
+						{
+							stdout: "README.md",
+						},
+						"2026-09-28T10:00:01.000Z",
+					),
 				],
-				{sessionActive: true},
+				{
+					sessionActive: true,
+				},
 			),
-		).toStrictEqual({running: [], finished: []});
+		).toStrictEqual(
+			{
+				running: [],
+				finished: [],
+			},
+		);
 	});
 });
 
-describe("groupBackgroundTasks", () => {
-	it("splits running from finished, newest finished first", () => {
-		const first = task({id: "a", status: "completed"});
-		const second = task({id: "b", status: "stopped"});
-		const live = task({id: "c"});
-		expect(groupBackgroundTasks([first, live, second])).toStrictEqual({
-			running: [live],
-			finished: [second, first],
-		});
+describe("groupBackgroundTasks", () =>
+{
+	it("splits running from finished, newest finished first", () =>
+	{
+		const first = task(
+			{
+				id: "a",
+				status: "completed",
+			},
+		);
+		const second = task(
+			{
+				id: "b",
+				status: "stopped",
+			},
+		);
+		const live = task(
+			{
+				id: "c",
+			},
+		);
+		expect(groupBackgroundTasks([first, live, second])).toStrictEqual(
+			{
+				running: [live],
+				finished: [second, first],
+			},
+		);
 	});
 });
 
-describe("backgroundTaskMeta", () => {
-	it("names the kind and status", () => {
+describe("backgroundTaskMeta", () =>
+{
+	it("names the kind and status", () =>
+	{
 		expect([
 			backgroundTaskMeta(BUILD_TASK),
 			backgroundTaskMeta(WATCH_TASK),
-			backgroundTaskMeta({...REVIEW_TASK, status: "failed"}),
-			backgroundTaskMeta(task({id: "x", kind: "task", status: "stopped"})),
+			backgroundTaskMeta(
+				{
+					...REVIEW_TASK,
+					status: "failed",
+				},
+			),
+			backgroundTaskMeta(
+				task(
+					{
+						id: "x",
+						kind: "task",
+						status: "stopped",
+					},
+				),
+			),
 		]).toStrictEqual(["Bash · Completed", "Monitor · Running", "Agent · Failed", "Task · Stopped"]);
 	});
 });
 
-describe("backgroundTasksFacts", () => {
-	it("counts the pane's rows and running tasks, with subagents keeping it available", () => {
-		const groups = {running: [WATCH_TASK], finished: [BUILD_TASK]};
+describe("backgroundTasksFacts", () =>
+{
+	it("counts the pane's rows and running tasks, with subagents keeping it available", () =>
+	{
+		const groups =
+		{
+			running: [WATCH_TASK],
+			finished: [BUILD_TASK],
+		};
 		expect([
 			backgroundTasksFacts(groups, 0),
-			backgroundTasksFacts({running: [], finished: []}, 3),
-			backgroundTasksFacts({running: [], finished: []}, 0),
+			backgroundTasksFacts(
+				{
+					running: [],
+					finished: [],
+				},
+				3,
+			),
+			backgroundTasksFacts(
+				{
+					running: [],
+					finished: [],
+				},
+				0,
+			),
 		]).toStrictEqual([
-			{total: 2, running: 1},
-			{total: 3, running: 0},
-			{total: 0, running: 0},
+			{
+				total: 2,
+				running: 1,
+			},
+			{
+				total: 3,
+				running: 0,
+			},
+			{
+				total: 0,
+				running: 0,
+			},
 		]);
 	});
 });
 
-describe("extractBackgroundTasks running count, from 01d132c8's real record shapes", () => {
+describe("extractBackgroundTasks running count, from 01d132c8's real record shapes", () =>
+{
 	const launch = (id: string, taskId: string, description: string, at: string): TranscriptRecord[] => [
-		toolUse(id, "Bash", {command: "git test run", description, run_in_background: true}, at),
+		toolUse(
+			id,
+			"Bash",
+			{
+				command: "git test run",
+				description,
+				run_in_background: true,
+			},
+			at,
+		),
 		toolResult(
 			id,
 			`Command running in background with ID: ${taskId}. Output is being written to: /tmp/fab/${taskId}.output.`,
-			{stdout: "", stderr: "", interrupted: false, backgroundTaskId: taskId},
+			{
+				stdout: "",
+				stderr: "",
+				interrupted: false,
+				backgroundTaskId: taskId,
+			},
 			at,
 		),
 	];
@@ -461,7 +764,17 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 		description: string,
 		at: string,
 	): TranscriptRecord[] => [
-		toolUse(id, "Agent", {description, name, prompt: "p", run_in_background: true}, at),
+		toolUse(
+			id,
+			"Agent",
+			{
+				description,
+				name,
+				prompt: "p",
+				run_in_background: true,
+			},
+			at,
+		),
 		toolResult(
 			id,
 			`Spawned successfully. (This tool result is internal metadata — never quote or paste any part of it, including the ID below, into a user-facing reply.)\nagent_id: ${agentId}\nname: ${name}\nThe agent is now running and will receive instructions via mailbox.`,
@@ -482,13 +795,18 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 		toolUse(
 			"toolu_monitor",
 			"Monitor",
-			{command: "watch-ci", description: "CI results for klass PRs #840-846"},
+			{
+				command: "watch-ci",
+				description: "CI results for klass PRs #840-846",
+			},
 			"2026-10-13T21:02:00.000Z",
 		),
 		toolResult(
 			"toolu_monitor",
 			"Monitor started (task b8agjsu70, timeout 1800000ms).",
-			{taskId: "b8agjsu70"},
+			{
+				taskId: "b8agjsu70",
+			},
 			"2026-10-13T21:02:01.000Z",
 		),
 		notification(
@@ -521,11 +839,16 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 			type: "attachment",
 			sessionId: SESSION,
 			timestamp: "2026-10-13T22:44:35.000Z",
-			attachment: {
+			attachment:
+			{
 				type: "queued_command",
 				prompt: finished("bqueued1", "toolu_queued"),
 				commandMode: "task-notification",
-				origin: {kind: "task-notification", producer: "session-task"},
+				origin:
+				{
+					kind: "task-notification",
+					producer: "session-task",
+				},
 			},
 		},
 		// Enqueued and never delivered as its own record.
@@ -538,12 +861,16 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 		},
 	];
 
-	it("settles commands from queued and enqueued notifications and expired monitors, and counts live in-process teammates, as upstream reads 3", () => {
+	it("settles commands from queued and enqueued notifications and expired monitors, and counts live in-process teammates, as upstream reads 3", () =>
+	{
 		expect(
-			extractBackgroundTasks(records, {
-				sessionActive: true,
-				processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
-			}).running.map((task) => [task.kind, task.id, task.description]),
+			extractBackgroundTasks(
+				records,
+				{
+					sessionActive: true,
+					processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
+				},
+			).running.map((task) => [task.kind, task.id, task.description]),
 		).toStrictEqual([
 			["agent", "atemplate-drift-4240", "Fix shared include drift in templates"],
 			["agent", "adrop-audit-script-9ba3", "Remove audit script from 4 repos"],
@@ -551,16 +878,21 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 		]);
 	});
 
-	it("counts only teammates spawned since the session's process started, as a resumed process has none of the old ones", () => {
+	it("counts only teammates spawned since the session's process started, as a resumed process has none of the old ones", () =>
+	{
 		expect(
-			extractBackgroundTasks(records, {
-				sessionActive: true,
-				processStartedAt: Date.parse("2026-10-13T22:00:00.000Z"),
-			}).running.map((task) => task.id),
+			extractBackgroundTasks(
+				records,
+				{
+					sessionActive: true,
+					processStartedAt: Date.parse("2026-10-13T22:00:00.000Z"),
+				},
+			).running.map((task) => task.id),
 		).toStrictEqual(["apr845-rework-c818"]);
 	});
 
-	it("counts live teammates from the session's subagent index when their spawn is outside the loaded transcript window", () => {
+	it("counts live teammates from the session's subagent index when their spawn is outside the loaded transcript window", () =>
+	{
 		const teammates = [
 			{
 				id: "agent-atemplate-drift-4240",
@@ -593,29 +925,44 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 		];
 
 		expect(
-			extractBackgroundTasks([], {
-				sessionActive: true,
-				processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
-				teammates,
-			}).running.map((task) => [task.kind, task.id, task.description]),
+			extractBackgroundTasks(
+				[],
+				{
+					sessionActive: true,
+					processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
+					teammates,
+				},
+			).running.map((task) => [task.kind, task.id, task.description]),
 		).toStrictEqual([["agent", "atemplate-drift-4240", "Fix shared include drift in templates"]]);
 	});
 
-	it("drops a transcript teammate a TaskStop named by its teammate name", () => {
+	it("drops a transcript teammate a TaskStop named by its teammate name", () =>
+	{
 		const stop = [
-			toolUse("toolu_stop", "TaskStop", {task_id: "pr845-rework"}, "2026-10-13T22:30:00.000Z"),
+			toolUse(
+				"toolu_stop",
+				"TaskStop",
+				{
+					task_id: "pr845-rework",
+				},
+				"2026-10-13T22:30:00.000Z",
+			),
 			toolResult("toolu_stop", "Stopped pr845-rework", {}, "2026-10-13T22:30:01.000Z"),
 		];
 
 		expect(
-			extractBackgroundTasks([...records, ...stop], {
-				sessionActive: true,
-				processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
-			}).running.map((task) => task.id),
+			extractBackgroundTasks(
+				[...records, ...stop],
+				{
+					sessionActive: true,
+					processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
+				},
+			).running.map((task) => task.id),
 		).toStrictEqual(["atemplate-drift-4240", "adrop-audit-script-9ba3"]);
 	});
 
-	it("counts a running teammate's in-flight foreground command as a task of its own, as upstream reads 5", () => {
+	it("counts a running teammate's in-flight foreground command as a task of its own, as upstream reads 5", () =>
+	{
 		const teammates = [
 			{
 				id: "agent-atemplate-drift-4240",
@@ -644,11 +991,14 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 		];
 
 		expect(
-			extractBackgroundTasks([], {
-				sessionActive: true,
-				processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
-				teammates,
-			}).running.map((task) => [task.kind, task.description]),
+			extractBackgroundTasks(
+				[],
+				{
+					sessionActive: true,
+					processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
+					teammates,
+				},
+			).running.map((task) => [task.kind, task.description]),
 		).toStrictEqual([
 			["agent", "Fix shared include drift in templates"],
 			["agent", "Grammar fix: primitives not identifiers"],
@@ -656,7 +1006,8 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 		]);
 	});
 
-	it("counts only teammates still mid-turn: one whose last turn ended idle is not a running task, as upstream reads 16 not 30", () => {
+	it("counts only teammates still mid-turn: one whose last turn ended idle is not a running task, as upstream reads 16 not 30", () =>
+	{
 		const teammates = [
 			{
 				id: "agent-atemplate-drift-4240",
@@ -685,11 +1036,14 @@ describe("extractBackgroundTasks running count, from 01d132c8's real record shap
 		];
 
 		expect(
-			extractBackgroundTasks(records, {
-				sessionActive: true,
-				processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
-				teammates,
-			}).running.map((task) => [task.kind, task.id, task.description]),
+			extractBackgroundTasks(
+				records,
+				{
+					sessionActive: true,
+					processStartedAt: Date.parse("2026-10-11T14:56:48.013Z"),
+					teammates,
+				},
+			).running.map((task) => [task.kind, task.id, task.description]),
 		).toStrictEqual([
 			["agent", "apr845-rework-c818", "Rework #845 with array and test"],
 			["agent", "agrammar-fix-5", "Grammar fix: primitives not identifiers"],

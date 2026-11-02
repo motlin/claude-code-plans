@@ -14,14 +14,16 @@ export const REFUSAL_FLAGGED_COPY =
 	"This model's safeguards flagged this message. This sometimes happens with safe, normal conversations.";
 
 /** What the card needs from `useRefusalOptOut`. */
-export interface RefusalOptOutBinding {
+export interface RefusalOptOutBinding
+{
 	view: RefusalOptOutView;
 	pending: boolean;
 	optOut: () => void;
 	openSettings: () => void;
 }
 
-function modelName(model: string): string {
+function modelName(model: string): string
+{
 	return formatModelName(model) ?? model;
 }
 
@@ -30,7 +32,8 @@ function modelName(model: string): string {
  * above and start-aligned, with the "Switched to" title, the flagged copy and, when the API sent one,
  * the raw refusal category.
  */
-function WhyCard({fallback}: {fallback: RefusalFallback}) {
+function WhyCard({fallback}: {fallback: RefusalFallback})
+{
 	const raw = fallback.apiRefusalCategoryRaw;
 	return (
 		<PreviewCard.Root>
@@ -90,22 +93,26 @@ export function RefusalFallbackNotice({
 	onDismiss?: () => void;
 	/** Upstream's `onEditPromptRetry` (refusal-edit-retry-rewind); undefined when the session can't rewind now. */
 	onEditRetry?: (() => boolean) | undefined;
-}) {
+})
+{
 	const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
 	const shown = fallback !== null && !dismissed.has(fallback.uuid) ? fallback : null;
 	let notice = null;
-	if (shown !== null) {
+	if (shown !== null)
+	{
 		const escalated = shown.strike >= 2;
 		const newSession = escalated && onNewSession !== undefined;
 		const editRetry = escalated ? undefined : onEditRetry;
 		const hasAction = newSession || editRetry !== undefined || optOut.view !== "hidden";
-		notice = {
+		notice =
+		{
 			id: "model-switched",
 			content: (
 				<NoticeBanner
 					icon={null}
 					data-testid="code-refusal-card"
-					onDismiss={() => {
+					onDismiss={() =>
+					{
 						setDismissed((previous) => new Set([...previous, shown.uuid]));
 						onDismiss?.();
 					}}
@@ -115,7 +122,8 @@ export function RefusalFallbackNotice({
 								{newSession && (
 									<ApprovalActionButton
 										variant="secondary"
-										onClick={() => {
+										onClick={() =>
+										{
 											onNewSession(shown.streakOriginalModel);
 										}}
 									>
@@ -125,7 +133,8 @@ export function RefusalFallbackNotice({
 								{editRetry !== undefined && (
 									<ApprovalActionButton
 										variant="secondary"
-										onClick={() => {
+										onClick={() =>
+										{
 											editRetry();
 										}}
 									>
@@ -166,7 +175,8 @@ export function RefusalFallbackNotice({
 	return claimed ? null : (notice?.content ?? null);
 }
 
-interface BandProps {
+interface BandProps
+{
 	sessionId: string;
 	onNewSession?: ((model: string) => void) | undefined;
 	onEditRetry?: (() => boolean) | undefined;
@@ -177,7 +187,11 @@ function BoundRefusalFallbackNotice({
 	fallback,
 	onNewSession,
 	onEditRetry,
-}: BandProps & {fallback: RefusalFallback}) {
+}: BandProps &
+{
+	fallback: RefusalFallback;
+})
+{
 	const optOut = useRefusalOptOut(sessionId);
 	return (
 		<RefusalFallbackNotice
@@ -198,7 +212,11 @@ export function RefusalFallbackBand({
 	fallback,
 	onNewSession,
 	onEditRetry,
-}: BandProps & {fallback: RefusalFallback | null}) {
+}: BandProps &
+{
+	fallback: RefusalFallback | null;
+})
+{
 	return fallback === null ? null : (
 		<BoundRefusalFallbackNotice
 			sessionId={sessionId}

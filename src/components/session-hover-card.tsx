@@ -1,5 +1,6 @@
 import {PreviewCard} from "@base-ui/react/preview-card";
-import {
+import
+{
 	createContext,
 	lazy,
 	Suspense,
@@ -10,7 +11,8 @@ import {
 	type ReactNode,
 } from "react";
 
-import {
+import
+{
 	CLOSE_DELAY_MS,
 	COLLISION_PADDING,
 	POPUP_CLASS,
@@ -24,10 +26,14 @@ type PositionerProps = ComponentProps<typeof PreviewCard.Positioner>;
 
 // The awaiting card (its reads, question chips, reply box, markdown stripping) loads with the first Needs input card.
 const AwaitingPopup = lazy(async () =>
-	import("./session-awaiting-body").then((module) => ({default: module.AwaitingPopup})),
+	import("./session-awaiting-body").then((module) => (
+	{
+		default: module.AwaitingPopup,
+	})),
 );
 
-interface SessionHoverCardProps {
+interface SessionHoverCardProps
+{
 	sessionId: string;
 	title: string;
 	summary: string | null;
@@ -58,7 +64,8 @@ export function SessionHoverCard({
 	side = "inline-end",
 	align = "center",
 	children,
-}: Readonly<SessionHoverCardProps>) {
+}: Readonly<SessionHoverCardProps>)
+{
 	const titleId = useId();
 	const kind: HoverCardKind = blocked ? "blocked" : "other";
 	const {delay, width} = SESSION_HOVER_CARD[kind];
@@ -120,13 +127,19 @@ export function SessionHoverCard({
 const BlockedPopupContext = createContext("");
 
 /** The 440px Needs input popup; the pointer passes through it unless it can answer in place. */
-function BlockedPopup({interactive, children}: {interactive: boolean; children: ReactNode}) {
+function BlockedPopup({interactive, children}: {interactive: boolean; children: ReactNode})
+{
 	const titleId = useContext(BlockedPopupContext);
 	return (
 		<PreviewCard.Popup
 			data-session-hover-card
 			data-kind="blocked"
-			{...(interactive ? {"data-interactive": ""} : {})}
+			{...(interactive
+				?
+					{
+						"data-interactive": "",
+					}
+				: {})}
 			role="group"
 			aria-labelledby={titleId}
 			tabIndex={-1}
@@ -148,7 +161,8 @@ function SummaryBody({
 	titleId: string;
 	aiTitle: string | null;
 	summary: string | null;
-}) {
+})
+{
 	return (
 		<div className="flex flex-col gap-2">
 			<div className="flex flex-col">

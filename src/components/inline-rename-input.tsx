@@ -22,16 +22,19 @@ export function InlineRenameInput({
 	className?: string;
 	ariaLabel?: string;
 	blurCancels?: boolean;
-}) {
+})
+{
 	const ref = useRef<HTMLInputElement>(null);
 	const settled = useRef(false);
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		ref.current?.focus();
 		ref.current?.select();
 	}, []);
 
-	const settle = (commit: boolean) => {
+	const settle = (commit: boolean) =>
+	{
 		if (settled.current) return;
 		settled.current = true;
 		if (commit) onCommit(ref.current?.value ?? value);
@@ -45,21 +48,27 @@ export function InlineRenameInput({
 			aria-label={ariaLabel}
 			defaultValue={value}
 			className={className ? `${INPUT_CLASS} ${className}` : INPUT_CLASS}
-			onClick={(event) => {
+			onClick={(event) =>
+			{
 				event.preventDefault();
 				event.stopPropagation();
 			}}
-			onKeyDown={(event) => {
+			onKeyDown={(event) =>
+			{
 				event.stopPropagation();
-				if (event.key === "Enter") {
+				if (event.key === "Enter")
+				{
 					event.preventDefault();
 					settle(true);
-				} else if (event.key === "Escape") {
+				}
+				else if (event.key === "Escape")
+				{
 					event.preventDefault();
 					settle(false);
 				}
 			}}
-			onBlur={() => {
+			onBlur={() =>
+			{
 				settle(!blurCancels);
 			}}
 		/>

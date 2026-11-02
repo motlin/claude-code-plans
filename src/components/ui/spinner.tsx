@@ -1,12 +1,33 @@
 import {useEffect, useState} from "react";
 
 /** Upstream cds Spinner box/stroke per size; md is the 16px ring the palette input row uses, sm the 12px busy-button ring. */
-const SPINNER_SIZES = {sm: {box: "0.75rem", stroke: "1.5px"}, md: {box: "1rem", stroke: "1.75px"}} as const;
+const SPINNER_SIZES =
+{
+	sm:
+	{
+		box: "0.75rem",
+		stroke: "1.5px",
+	},
+	md:
+	{
+		box: "1rem",
+		stroke: "1.75px",
+	},
+} as const;
 
 /** Track and arc colours: the muted ring on a surface, or upstream's busy-button ring drawn in the button's own ink. */
-const SPINNER_TONES = {
-	muted: {track: "var(--color-border)", arc: "var(--color-ink-muted)"},
-	current: {track: "color-mix(in srgb, currentColor 25%, transparent)", arc: "currentColor"},
+const SPINNER_TONES =
+{
+	muted:
+	{
+		track: "var(--color-border)",
+		arc: "var(--color-ink-muted)",
+	},
+	current:
+	{
+		track: "color-mix(in srgb, currentColor 25%, transparent)",
+		arc: "currentColor",
+	},
 } as const;
 
 /** Upstream mounts the sr-only label 100ms after the spinner shows, so a quick flash isn't announced. */
@@ -27,14 +48,18 @@ export function Spinner({
 	tone?: keyof typeof SPINNER_TONES;
 	delay?: number;
 	label?: string;
-}) {
+})
+{
 	const [elapsed, setElapsed] = useState(delay <= 0);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (delay <= 0) return undefined;
-		const timer = window.setTimeout(() => {
+		const timer = window.setTimeout(() =>
+		{
 			setElapsed(true);
 		}, delay);
-		return () => {
+		return () =>
+		{
 			window.clearTimeout(timer);
 		};
 	}, [delay]);
@@ -48,12 +73,26 @@ export function Spinner({
 			data-spinner=""
 			aria-hidden="true"
 			className="relative inline-block shrink-0 align-middle"
-			style={{width: box, height: box}}
+			style={
+			{
+				width: box,
+				height: box,
+			}}
 		>
-			<span className="absolute inset-0 rounded-full" style={{border: `${stroke} solid ${track}`}} />
+			<span
+				className="absolute inset-0 rounded-full"
+				style={
+				{
+					border: `${stroke} solid ${track}`,
+				}}
+			/>
 			<span
 				className="absolute inset-0 rounded-full animate-[spin_1s_linear_infinite] motion-reduce:animate-none"
-				style={{background: `conic-gradient(transparent 40%, ${arc})`, mask}}
+				style={
+				{
+					background: `conic-gradient(transparent 40%, ${arc})`,
+					mask,
+				}}
 			/>
 		</span>
 	) : null;
@@ -67,13 +106,17 @@ export function Spinner({
 	);
 }
 
-function SpinnerLabel({children}: {children: string}) {
+function SpinnerLabel({children}: {children: string})
+{
 	const [visible, setVisible] = useState(false);
-	useEffect(() => {
-		const timer = window.setTimeout(() => {
+	useEffect(() =>
+	{
+		const timer = window.setTimeout(() =>
+		{
 			setVisible(true);
 		}, LABEL_DELAY_MS);
-		return () => {
+		return () =>
+		{
 			window.clearTimeout(timer);
 		};
 	}, []);

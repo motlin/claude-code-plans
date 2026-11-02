@@ -5,12 +5,14 @@ import {afterEach, describe, expect, it} from "vite-plus/test";
 import {QueuedPromoteStatus} from "../src/components/queued-message-bar";
 import {announce, clearAnnouncements} from "../src/lib/landed-store";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	clearAnnouncements();
 });
 
-function statusOf(container: HTMLElement) {
+function statusOf(container: HTMLElement)
+{
 	const status = container.querySelector<HTMLElement>("[data-queued-promote-status]");
 	if (status === null) throw new Error("Expected the queued promote status");
 	return {
@@ -21,37 +23,66 @@ function statusOf(container: HTMLElement) {
 	};
 }
 
-describe("QueuedPromoteStatus", () => {
-	it("announces Sent when a promote is accepted, then Read when it lands", () => {
+describe("QueuedPromoteStatus", () =>
+{
+	it("announces Sent when a promote is accepted, then Read when it lands", () =>
+	{
 		const {container} = render(<QueuedPromoteStatus sessionId="session-alice" />);
 		const atMount = statusOf(container);
-		act(() => {
+		act(() =>
+		{
 			announce("session-alice", "sent");
 		});
 		const sent = statusOf(container).text;
-		act(() => {
+		act(() =>
+		{
 			announce("session-alice", "read");
 		});
-		expect({atMount, sent, read: statusOf(container).text}).toStrictEqual({
-			atMount: {tag: "SPAN", role: "status", className: "sr-only", text: ""},
-			sent: "Sent",
-			read: "Read",
-		});
+		expect(
+			{
+				atMount,
+				sent,
+				read: statusOf(container).text,
+			},
+		).toStrictEqual(
+			{
+				atMount:
+				{
+					tag: "SPAN",
+					role: "status",
+					className: "sr-only",
+					text: "",
+				},
+				sent: "Sent",
+				read: "Read",
+			},
+		);
 	});
 
-	it("starts empty when mounted after an announcement, and ignores other sessions", () => {
-		act(() => {
+	it("starts empty when mounted after an announcement, and ignores other sessions", () =>
+	{
+		act(() =>
+		{
 			announce("session-alice", "sent");
 		});
 		const {container} = render(<QueuedPromoteStatus sessionId="session-alice" />);
 		const atMount = statusOf(container).text;
-		act(() => {
+		act(() =>
+		{
 			announce("session-bob", "read");
 		});
-		expect({
-			atMount,
-			afterOther: statusOf(container).text,
-			roles: screen.getAllByRole("status").length,
-		}).toStrictEqual({atMount: "", afterOther: "", roles: 1});
+		expect(
+			{
+				atMount,
+				afterOther: statusOf(container).text,
+				roles: screen.getAllByRole("status").length,
+			},
+		).toStrictEqual(
+			{
+				atMount: "",
+				afterOther: "",
+				roles: 1,
+			},
+		);
 	});
 });

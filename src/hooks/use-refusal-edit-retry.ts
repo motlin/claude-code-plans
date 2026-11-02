@@ -27,42 +27,75 @@ export function useRefusalEditRetry({
 	/** The session page's `rewindAvailable && !rewindBusy`. */
 	available: boolean;
 	turns: readonly RewindTurn[];
-}): (() => boolean) | undefined {
+}): (() => boolean) | undefined
+{
 	const toast = useToast();
 	const inFlight = useRef(false);
-	const latest = useRef({sessionId, refusedUuid, turns});
-	useEffect(() => {
-		latest.current = {sessionId, refusedUuid, turns};
+	const latest = useRef(
+		{
+			sessionId,
+			refusedUuid,
+			turns,
+		},
+	);
+	useEffect(() =>
+	{
+		latest.current =
+		{
+			sessionId,
+			refusedUuid,
+			turns,
+		};
 	});
 
-	const retry = useCallback((): boolean => {
+	const retry = useCallback((): boolean =>
+	{
 		const {sessionId: session, refusedUuid: uuid, turns: current} = latest.current;
 		if (uuid === null || inFlight.current) return false;
-		if ((getComposerText(session) ?? "").trim() !== "") {
-			toast({kind: "warning", message: REFUSAL_EDIT_RETRY_BLOCKED, uniqueKey: "refusal-band-edit-retry-blocked"});
+		if ((getComposerText(session) ?? "").trim() !== "")
+		{
+			toast(
+				{
+					kind: "warning",
+					message: REFUSAL_EDIT_RETRY_BLOCKED,
+					uniqueKey: "refusal-band-edit-retry-blocked",
+				},
+			);
 			return false;
 		}
 		focusComposer(session);
-		const declined = () => {
-			toast({
-				kind: "warning",
-				message: REFUSAL_EDIT_RETRY_DECLINED,
-				uniqueKey: "refusal-band-edit-retry-declined",
-			});
+		const declined = () =>
+		{
+			toast(
+				{
+					kind: "warning",
+					message: REFUSAL_EDIT_RETRY_DECLINED,
+					uniqueKey: "refusal-band-edit-retry-declined",
+				},
+			);
 		};
 		const text = current.find((turn) => turn.uuid === uuid)?.text ?? "";
 		const stepsBack = rewindStepsBack(current, uuid);
-		if (text.trim() === "" || stepsBack === null) {
+		if (text.trim() === "" || stepsBack === null)
+		{
 			declined();
 			return true;
 		}
 		inFlight.current = true;
-		void sendHerdrRewind(session, {stepsBack, text})
-			.then(() => {
+		void sendHerdrRewind(
+			session,
+			{
+				stepsBack,
+				text,
+			},
+		)
+			.then(() =>
+			{
 				refillComposer(session, text);
 				focusComposer(session);
 			}, declined)
-			.finally(() => {
+			.finally(() =>
+			{
 				inFlight.current = false;
 			});
 		return true;

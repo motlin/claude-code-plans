@@ -2,7 +2,8 @@ import {useEffect, useRef, useState, type WheelEvent as ReactWheelEvent} from "r
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 
 /** A prompt the bubble can show: its transcript entry and its tail-clipped, masked text. */
-export interface StickyPromptCandidate {
+export interface StickyPromptCandidate
+{
 	key: string;
 	index: number;
 	text: string;
@@ -16,9 +17,11 @@ const STICKY_PROMPT_BOTTOM_SLACK = 8;
 const STICKY_PROMPT_END_VAR = "--epitaxy-sticky-prompt-end";
 
 /** Upstream `F_`: the first element whose bottom passes the line, else the last one. */
-function firstPastLine(elements: readonly Element[], line: number): Element | undefined {
+function firstPastLine(elements: readonly Element[], line: number): Element | undefined
+{
 	let found: Element | undefined;
-	for (const element of elements) {
+	for (const element of elements)
+	{
 		found = element;
 		if (element.getBoundingClientRect().bottom > line) break;
 	}
@@ -30,14 +33,16 @@ function firstPastLine(elements: readonly Element[], line: number): Element | un
  * past the line, or null while it still straddles the line, near the bottom,
  * or when the scroller is not displayed.
  */
-function currentPromptKey(scroller: HTMLElement, candidates: readonly StickyPromptCandidate[]): string | null {
+function currentPromptKey(scroller: HTMLElement, candidates: readonly StickyPromptCandidate[]): string | null
+{
 	if (scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= STICKY_PROMPT_BOTTOM_SLACK) return null;
 	// The session header sits above the scroller, so no scroll padding covers its top edge.
 	const line = scroller.getBoundingClientRect().top + STICKY_PROMPT_LINE_OFFSET;
 	const candidateByIndex = new Map(candidates.map((candidate) => [candidate.index, candidate]));
 	const rows = new Map<string, Element>();
 	const mounted: Element[] = [];
-	for (const row of scroller.querySelectorAll("[data-transcript-entry-index]")) {
+	for (const row of scroller.querySelectorAll("[data-transcript-entry-index]"))
+	{
 		const candidate = candidateByIndex.get(Number(row.getAttribute("data-transcript-entry-index")));
 		if (candidate === undefined) continue;
 		mounted.push(row);
@@ -48,10 +53,13 @@ function currentPromptKey(scroller: HTMLElement, candidates: readonly StickyProm
 		anchorRow === undefined ? -1 : Number(anchorRow.getAttribute("data-transcript-entry-index") ?? Number.NaN);
 	let current: StickyPromptCandidate | null = null;
 	let straddling = false;
-	for (const candidate of candidates) {
+	for (const candidate of candidates)
+	{
 		const row = rows.get(candidate.key);
-		if (!row) {
-			if (anchor >= 0 && candidate.index < anchor) {
+		if (!row)
+		{
+			if (anchor >= 0 && candidate.index < anchor)
+			{
 				current = candidate;
 				straddling = false;
 				continue;
@@ -68,7 +76,8 @@ function currentPromptKey(scroller: HTMLElement, candidates: readonly StickyProm
 }
 
 /** Upstream ca80fca8d `Pi`: the pixels one wheel step scrolls for each deltaMode. */
-function wheelUnit(deltaMode: number): number {
+function wheelUnit(deltaMode: number): number
+{
 	return deltaMode === 1 ? 16 : deltaMode === 2 ? 800 : 1;
 }
 
@@ -89,7 +98,8 @@ export function StickyPromptOverlay({
 	/** Upstream `scrollKey`: a new key re-runs detection, clearing the bubble first, with no scroll needed. */
 	scrollKey: string;
 	scrollToEntry: (index: number, behavior: ScrollBehavior) => void;
-}) {
+})
+{
 	const [shownKey, setShownKey] = useState<string | null>(null);
 	const candidatesRef = useRef(candidates);
 	candidatesRef.current = candidates;
@@ -97,27 +107,38 @@ export function StickyPromptOverlay({
 	getScrollerRef.current = getScroller;
 	const overlayRef = useRef<HTMLDivElement>(null);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const scroller = getScrollerRef.current();
-		if (!(scroller instanceof HTMLElement) || candidates.length === 0) {
+		if (!(scroller instanceof HTMLElement) || candidates.length === 0)
+		{
 			setShownKey(null);
 			return undefined;
 		}
 		let frame = 0;
-		const detect = () => {
+		const detect = () =>
+		{
 			frame = 0;
 			if (scroller.offsetParent === null) return;
 			setShownKey(currentPromptKey(scroller, candidatesRef.current));
 		};
-		const schedule = () => {
+		const schedule = () =>
+		{
 			frame ||= requestAnimationFrame(detect);
 		};
-		scroller.addEventListener("scroll", schedule, {passive: true});
+		scroller.addEventListener(
+			"scroll",
+			schedule,
+			{
+				passive: true,
+			},
+		);
 		const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
 		observer?.observe(scroller);
 		if (scroller.firstElementChild) observer?.observe(scroller.firstElementChild);
 		detect();
-		return () => {
+		return () =>
+		{
 			scroller.removeEventListener("scroll", schedule);
 			observer?.disconnect();
 			if (frame) cancelAnimationFrame(frame);
@@ -129,11 +150,13 @@ export function StickyPromptOverlay({
 	const visible = shown !== undefined;
 
 	// Upstream `Uw`: while shown, the overlay's bottom edge is published on its host.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const overlay = overlayRef.current;
 		const host = overlay?.closest<HTMLElement>("[data-transcript-overlay-host]") ?? overlay?.parentElement;
 		if (!visible || !overlay || !host) return undefined;
-		const write = () => {
+		const write = () =>
+		{
 			const end = `${overlay.getBoundingClientRect().bottom - host.getBoundingClientRect().top}px`;
 			if (host.style.getPropertyValue(STICKY_PROMPT_END_VAR) !== end)
 				host.style.setProperty(STICKY_PROMPT_END_VAR, end);
@@ -141,7 +164,8 @@ export function StickyPromptOverlay({
 		write();
 		const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(write);
 		observer?.observe(overlay);
-		return () => {
+		return () =>
+		{
 			observer?.disconnect();
 			host.style.removeProperty(STICKY_PROMPT_END_VAR);
 		};
@@ -149,12 +173,18 @@ export function StickyPromptOverlay({
 
 	if (shown === undefined) return null;
 
-	const forwardWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+	const forwardWheel = (event: ReactWheelEvent<HTMLDivElement>) =>
+	{
 		const scroller = getScroller();
 		if (!scroller || event.ctrlKey) return;
 		scroller.dispatchEvent(new WheelEvent(event.type, event.nativeEvent));
 		const unit = wheelUnit(event.deltaMode);
-		scroller.scrollBy({top: event.deltaY * unit, left: event.deltaX * unit});
+		scroller.scrollBy(
+			{
+				top: event.deltaY * unit,
+				left: event.deltaX * unit,
+			},
+		);
 	};
 
 	return (
@@ -166,7 +196,8 @@ export function StickyPromptOverlay({
 			<div className={`epitaxy-transcript-typography ${CHAT_COLUMN_CLASS} flex justify-start`}>
 				<button
 					type="button"
-					onClick={() => {
+					onClick={() =>
+					{
 						scrollToEntry(shown.index, "smooth");
 					}}
 					aria-label="Scroll to your message"

@@ -13,7 +13,8 @@ export function TerminalWritesTipProvider({
 }: {
 	enableWrites: EnableWrites | null;
 	children: ReactNode;
-}) {
+})
+{
 	return <TerminalWritesTipContext.Provider value={enableWrites}>{children}</TerminalWritesTipContext.Provider>;
 }
 
@@ -21,16 +22,21 @@ export function TerminalWritesTipProvider({
  * The read-only card footnote. When the session has a live pane but terminal writes are off,
  * it also offers a button that turns writes on so the card becomes answerable in place.
  */
-export function ReadOnlyAnswerHint({className}: {className?: string}) {
+export function ReadOnlyAnswerHint({className}: {className?: string})
+{
 	const enableWrites = useContext(TerminalWritesTipContext);
 	const [pending, setPending] = useState(false);
 
-	const turnOn = async () => {
+	const turnOn = async () =>
+	{
 		if (enableWrites === null || pending) return;
 		setPending(true);
-		try {
+		try
+		{
 			await enableWrites();
-		} finally {
+		}
+		finally
+		{
 			setPending(false);
 		}
 	};

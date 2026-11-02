@@ -1,7 +1,8 @@
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import type {ActiveSessionEntry} from "./active-session-store";
 import type * as schema from "./db/schema";
-import {
+import
+{
 	getCurrentSessionMessageIndex,
 	getSessionViewedState,
 	markSessionReviewed,
@@ -13,7 +14,8 @@ import {buildSessionSummaryPayloadFromDb} from "./session-summary";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-interface SessionViewedActionArgs {
+interface SessionViewedActionArgs
+{
 	db: IndexDb;
 	sessionId: string;
 	action: "reviewed" | "unreviewed";
@@ -35,15 +37,23 @@ export function applySessionViewedAction({
 	messageIndex = getCurrentSessionMessageIndex(db, sessionId),
 	broadcast,
 	activeSessionLookup,
-}: SessionViewedActionArgs): DurableSessionViewedState {
+}: SessionViewedActionArgs): DurableSessionViewedState
+{
 	if (action === "reviewed") markSessionReviewed(db, sessionId, messageIndex);
 	else markSessionUnreviewed(db, sessionId, messageIndex);
 
 	const summary = buildSessionSummaryPayloadFromDb(db, sessionId, activeSessionLookup);
-	if (summary) {
-		broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {
-			session: summary,
-		} satisfies {session: SessionSummaryPayload});
+	if (summary)
+	{
+		broadcast(
+			DOMAIN_EVENTS.SESSION_UPDATED,
+			{
+				session: summary,
+			} satisfies
+			{
+				session: SessionSummaryPayload;
+			},
+		);
 	}
 	return getSessionViewedState(db, sessionId, messageIndex);
 }

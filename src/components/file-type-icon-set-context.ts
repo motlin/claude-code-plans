@@ -12,7 +12,8 @@ import {useResolvedTheme} from "./theme-context";
 export const FileTypeIconSetContext = createContext<FileTypeIconSetName | null>(null);
 
 /** Upstream `Z()`: the icon set the code theme for the page's light/dark mode draws. */
-export function useActiveFileTypeIconSet(): FileTypeIconSetName | null {
+export function useActiveFileTypeIconSet(): FileTypeIconSetName | null
+{
 	const {settings} = useSettings();
 	const mode = useResolvedTheme();
 	return iconSetForCodeTheme(mode === "dark" ? settings.codeThemeDark : settings.codeThemeLight);

@@ -13,23 +13,29 @@ export type PlanContextLink = PlanLink;
 /** More sessions than this fold behind an "N sessions" disclosure. */
 const SESSIONS_SHOWN = 3;
 
-interface ProjectGroup {
+interface ProjectGroup
+{
 	project: string;
 	label: string;
 	sessions: PlanContextLink[];
 }
 
-function modifiedMs(link: PlanContextLink): number {
+function modifiedMs(link: PlanContextLink): number
+{
 	return link.sessionModified === null ? Number.NEGATIVE_INFINITY : Date.parse(link.sessionModified);
 }
 
 /** Projects in order of their newest session, each with its sessions newest first. */
-function groupByProject(links: readonly PlanContextLink[]): ProjectGroup[] {
+function groupByProject(links: readonly PlanContextLink[]): ProjectGroup[]
+{
 	const groups = new Map<string, ProjectGroup>();
-	for (const link of links.toSorted((a, b) => modifiedMs(b) - modifiedMs(a))) {
+	for (const link of links.toSorted((a, b) => modifiedMs(b) - modifiedMs(a)))
+	{
 		let group = groups.get(link.project);
-		if (group === undefined) {
-			group = {
+		if (group === undefined)
+		{
+			group =
+			{
 				project: link.project,
 				label: link.projectDir ?? link.projectName,
 				sessions: [],
@@ -46,7 +52,8 @@ function groupByProject(links: readonly PlanContextLink[]): ProjectGroup[] {
  * card and row idiom — a folder row per project directory, then a row per session with upstream's
  * relative time, folded to "N sessions" past three. Nothing renders when no session links the plan.
  */
-export function PlanContextHeader({links, now}: {links: readonly PlanContextLink[]; now: number}) {
+export function PlanContextHeader({links, now}: {links: readonly PlanContextLink[]; now: number})
+{
 	if (links.length === 0) return null;
 	return (
 		<section data-testid="plan-context" aria-label="Plan context" className={RAIL_CARD_CLASS}>
@@ -59,14 +66,18 @@ export function PlanContextHeader({links, now}: {links: readonly PlanContextLink
 	);
 }
 
-function ProjectRows({group, now}: {group: ProjectGroup; now: number}) {
+function ProjectRows({group, now}: {group: ProjectGroup; now: number})
+{
 	const [expanded, setExpanded] = useState(false);
 	const folded = group.sessions.length > SESSIONS_SHOWN;
 	return (
 		<>
 			<Link
 				to="/project/$id"
-				params={{id: group.project}}
+				params={
+				{
+					id: group.project,
+				}}
 				title={group.label}
 				className={`${RAIL_ROW_ACTION_CLASS} no-underline`}
 			>
@@ -76,7 +87,8 @@ function ProjectRows({group, now}: {group: ProjectGroup; now: number}) {
 				<button
 					type="button"
 					aria-expanded={expanded}
-					onClick={() => {
+					onClick={() =>
+					{
 						setExpanded((open) => !open);
 					}}
 					className={RAIL_ROW_ACTION_CLASS}
@@ -97,7 +109,10 @@ function ProjectRows({group, now}: {group: ProjectGroup; now: number}) {
 					<Link
 						key={link.sessionId}
 						to="/session/$id"
-						params={{id: link.sessionId}}
+						params={
+						{
+							id: link.sessionId,
+						}}
 						className={`${RAIL_ROW_ACTION_CLASS} no-underline`}
 					>
 						<RailRowContent
@@ -105,7 +120,10 @@ function ProjectRows({group, now}: {group: ProjectGroup; now: number}) {
 							label={nonEmpty(link.sessionTitle) ?? "Untitled session"}
 							{...(link.sessionModified === null
 								? {}
-								: {hint: formatNarrowRelativeTime(Date.parse(link.sessionModified), now)})}
+								:
+									{
+										hint: formatNarrowRelativeTime(Date.parse(link.sessionModified), now),
+									})}
 						/>
 					</Link>
 				))}

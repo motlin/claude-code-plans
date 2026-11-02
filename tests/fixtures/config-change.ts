@@ -5,7 +5,8 @@
  * directory and triggers an additional `CONTENT_UPDATED` broadcast so the
  * plugins view refreshes.
  */
-export const configChangeFixture = {
+export const configChangeFixture =
+{
 	session_id: "abc-123",
 	transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
 	cwd: "/Users/u/projects/app",

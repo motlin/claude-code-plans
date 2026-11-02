@@ -14,7 +14,8 @@ import {PanelsOff} from "./fizzy-lake-off";
 import {Route} from "../src/routes/__root";
 import {resolveShellChinLabels} from "../src/lib/shell-chin-labels";
 import {getShellChinLabels, setShellChinLabels} from "../src/lib/shell-chin-store";
-import {
+import
+{
 	ADD_BUTTON_CLASS,
 	CHIN_TRIGGER_CLASS,
 	COMPOSER_CARD_CLASS,
@@ -31,7 +32,8 @@ import {
 	PLACE_CHIP_CLASS,
 	USAGE_RING_CLASS,
 } from "../src/components/composer-tokens";
-import {
+import
+{
 	HOME_DOCK_CLASS,
 	SESSION_DOCK_COLUMN_CLASS,
 	SESSION_FOOTER_CLASS,
@@ -39,30 +41,50 @@ import {
 } from "../src/components/dock-tokens";
 
 /** Hydrates the client's fallback, which has no labels, and reports its chin before the fallback removes itself. */
-function ProbeFallback({onHydrated}: {onHydrated: (chin: Element) => void}) {
-	useLayoutEffect(() => {
+function ProbeFallback({onHydrated}: {onHydrated: (chin: Element) => void})
+{
+	useLayoutEffect(() =>
+	{
 		onHydrated(document.querySelector('[data-cds="ChatComposerChin"]')!);
 	});
 	return <AppShellFallback />;
 }
 
 /** The composer's readouts in order: "+" for the card's add icon, then each chin label's text. */
-function chinReadouts(chin: Element): string[] {
+function chinReadouts(chin: Element): string[]
+{
 	const composer = chin.closest('[data-cds="ChatComposer"]')!;
 	return Array.from(composer.querySelectorAll("[data-fallback-chin-readout]"), (node) =>
 		node.tagName.toLowerCase() === "svg" ? "+" : node.textContent,
 	);
 }
 
-vi.mock("@tanstack/react-router", async (importOriginal) => {
+vi.mock("@tanstack/react-router", async (importOriginal) =>
+{
 	const actual = await importOriginal<typeof import("@tanstack/react-router")>();
 	return {
 		...actual,
 		HeadContent: () => null,
 		Scripts: () => null,
 		// The shell picks the fallback layout from the requested path.
-		useRouterState: ({select}: {select: (state: {location: {pathname: string}}) => unknown}) =>
-			select({location: {pathname: "/session/example-alice"}}),
+		useRouterState: ({
+			select,
+		}: {
+			select: (state: {
+				location:
+				{
+					pathname: string;
+				};
+			}) => unknown;
+		}) =>
+			select(
+				{
+					location:
+					{
+						pathname: "/session/example-alice",
+					},
+				},
+			),
 	};
 });
 
@@ -70,71 +92,96 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 // for every route: /, /plugins, /tasks and the rest all share one shell. With
 // `ssr: false` the routes themselves render nothing on the server, so the shell
 // is the only thing that can paint before the client bundle hydrates.
-type ShellComponent = (props: {children: ReactNode}) => ReactElement<{
+type ShellComponent = (props: {children: ReactNode}) => ReactElement<
+{
 	suppressHydrationWarning?: boolean;
 }>;
 
 // `Route.options` is typed as RouteOptions, which omits the root-only shell
 // fields, so reaching the component the server renders needs a cast.
-function getShellComponent(): ShellComponent {
-	const {shellComponent} = Route.options as unknown as {shellComponent?: ShellComponent};
+function getShellComponent(): ShellComponent
+{
+	const {shellComponent} = Route.options as unknown as
+	{
+		shellComponent?: ShellComponent;
+	};
 	if (!shellComponent) throw new Error("root route has no shellComponent");
 	return shellComponent;
 }
 
-function renderServerShell(): string {
+function renderServerShell(): string
+{
 	return renderToStaticMarkup(createElement(getShellComponent(), null, null));
 }
 
-describe("server shell", () => {
-	it("paints the app frame instead of an empty body", () => {
+describe("server shell", () =>
+{
+	it("paints the app frame instead of an empty body", () =>
+	{
 		const html = renderServerShell();
 		const body = html.substring(html.indexOf("<body>"));
 
-		expect({
-			emptyBody: /<body>\s*<\/body>/.test(html),
-			fallback: body.includes('data-testid="app-shell-fallback"'),
-			sidebar: body.includes('aria-label="Sidebar"'),
-			title: body.includes("Claude Code Browser"),
-			skeleton: body.includes("animate-pulse"),
-		}).toStrictEqual({
-			emptyBody: false,
-			fallback: true,
-			sidebar: true,
-			title: true,
-			skeleton: true,
-		});
+		expect(
+			{
+				emptyBody: /<body>\s*<\/body>/.test(html),
+				fallback: body.includes('data-testid="app-shell-fallback"'),
+				sidebar: body.includes('aria-label="Sidebar"'),
+				title: body.includes("Claude Code Browser"),
+				skeleton: body.includes("animate-pulse"),
+			},
+		).toStrictEqual(
+			{
+				emptyBody: false,
+				fallback: true,
+				sidebar: true,
+				title: true,
+				skeleton: true,
+			},
+		);
 	});
 
-	it("resolves the theme before first paint so the frame is never a white flash", () => {
+	it("resolves the theme before first paint so the frame is never a white flash", () =>
+	{
 		const html = renderServerShell();
 		const head = html.substring(0, html.indexOf("<body>"));
 
-		expect({
-			readsStoredTheme: head.includes('localStorage.getItem("theme")'),
-			readsSystemTheme: head.includes("prefers-color-scheme"),
-		}).toStrictEqual({
-			readsStoredTheme: true,
-			readsSystemTheme: true,
-		});
+		expect(
+			{
+				readsStoredTheme: head.includes('localStorage.getItem("theme")'),
+				readsSystemTheme: head.includes("prefers-color-scheme"),
+			},
+		).toStrictEqual(
+			{
+				readsStoredTheme: true,
+				readsSystemTheme: true,
+			},
+		);
 	});
 
 	// The theme script mutates <html> before React loads, so hydration always sees
 	// attributes the server markup lacked. Without the opt-out that logs a
 	// hydration error on every hard load.
-	it("suppresses the hydration warning the theme script would otherwise trigger", () => {
-		const document = getShellComponent()({children: null});
+	it("suppresses the hydration warning the theme script would otherwise trigger", () =>
+	{
+		const document = getShellComponent()(
+			{
+				children: null,
+			},
+		);
 
 		expect(document.props.suppressHydrationWarning).toStrictEqual(true);
 	});
 });
 
-describe("AppShellFallback", () => {
-	it("renders the frame on the server", () => {
+describe("AppShellFallback", () =>
+{
+	it("renders the frame on the server", () =>
+	{
 		expect(renderToStaticMarkup(<AppShellFallback />)).toContain('data-testid="app-shell-fallback"');
 	});
 
-	it("sizes the frame to the dynamic viewport rather than 100vh", () => {
+	it("sizes the frame to the dynamic viewport rather than 100vh", () =>
+	{
 		const html = renderToStaticMarkup(<AppShellFallback />);
 		const root = new DOMParser().parseFromString(html, "text/html").getElementById("app-shell-fallback");
 
@@ -145,19 +192,23 @@ describe("AppShellFallback", () => {
 
 	// With `ssr: false` the app only renders once the route loaders resolve, so
 	// hiding on hydration left an empty body for that whole wait on every hard load.
-	it("stays painted after hydration until the app mounts, then removes itself in the same commit", async () => {
+	it("stays painted after hydration until the app mounts, then removes itself in the same commit", async () =>
+	{
 		vi.resetModules();
 		const {AppShellFallback: FreshFallback} = await import("../src/components/app-shell-fallback");
 		const {useMarkAppMounted} = await import("../src/lib/app-mounted");
-		function App() {
+		function App()
+		{
 			useMarkAppMounted();
 			return <main data-testid="app" />;
 		}
 		const {container, rerender} = render(<FreshFallback />);
 		const beforeApp = container.querySelector('[data-testid="app-shell-fallback"]') !== null;
 		let paintedWithApp: boolean | undefined;
-		function ProbeApp() {
-			useLayoutEffect(() => {
+		function ProbeApp()
+		{
+			useLayoutEffect(() =>
+			{
 				paintedWithApp = container.querySelector('[data-testid="app-shell-fallback"]') !== null;
 			});
 			return null;
@@ -176,48 +227,58 @@ describe("AppShellFallback", () => {
 			</>,
 		);
 
-		expect({
-			beforeApp,
-			paintedWithApp,
-			afterApp: container.innerHTML,
-		}).toStrictEqual({
-			beforeApp: true,
-			paintedWithApp: false,
-			afterApp: '<main data-testid="app"></main>',
-		});
+		expect(
+			{
+				beforeApp,
+				paintedWithApp,
+				afterApp: container.innerHTML,
+			},
+		).toStrictEqual(
+			{
+				beforeApp: true,
+				paintedWithApp: false,
+				afterApp: '<main data-testid="app"></main>',
+			},
+		);
 	});
 
-	it("paints the current shell's layout: serif wordmark, New row, nav and More, a session list, footer and composer", () => {
+	it("paints the current shell's layout: serif wordmark, New row, nav and More, a session list, footer and composer", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback />);
 		const sidebar = host.querySelector('[aria-label="Sidebar"]')!;
 		const rows = Array.from(sidebar.querySelectorAll(".df-nav-row"), (row) => row.textContent);
 		const pinned = getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS).pinned.map((item) => item.label);
 
-		expect({
-			wordmark: sidebar.querySelector(".font-voice")?.textContent,
-			oldLogo: host.innerHTML.includes("#C87B3A"),
-			oldSearchBox: host.textContent.includes("Search..."),
-			rows,
-			sessionRows: sidebar.querySelectorAll("[data-fallback-session-row]").length,
-			footer: sidebar.querySelector('[data-testid="sidebar-footer"]') !== null,
-			footerIcons: sidebar.querySelectorAll('[data-testid="sidebar-footer"] svg').length,
-			composer: host.querySelector('[data-cds="ChatComposer"]') !== null,
-			column: host.querySelector(".chat-column") !== null,
-		}).toStrictEqual({
-			wordmark: "Claude Code Browser",
-			oldLogo: false,
-			oldSearchBox: false,
-			rows: ["New", "SearchCtrl+K", ...pinned, "More"],
-			sessionRows: 8,
-			footer: true,
-			footerIcons: 0,
-			composer: true,
-			column: true,
-		});
+		expect(
+			{
+				wordmark: sidebar.querySelector(".font-voice")?.textContent,
+				oldLogo: host.innerHTML.includes("#C87B3A"),
+				oldSearchBox: host.textContent.includes("Search..."),
+				rows,
+				sessionRows: sidebar.querySelectorAll("[data-fallback-session-row]").length,
+				footer: sidebar.querySelector('[data-testid="sidebar-footer"]') !== null,
+				footerIcons: sidebar.querySelectorAll('[data-testid="sidebar-footer"] svg').length,
+				composer: host.querySelector('[data-cds="ChatComposer"]') !== null,
+				column: host.querySelector(".chat-column") !== null,
+			},
+		).toStrictEqual(
+			{
+				wordmark: "Claude Code Browser",
+				oldLogo: false,
+				oldSearchBox: false,
+				rows: ["New", "SearchCtrl+K", ...pinned, "More"],
+				sessionRows: 8,
+				footer: true,
+				footerIcons: 0,
+				composer: true,
+				column: true,
+			},
+		);
 	});
 
-	it("paints the sidebar Search row under New with the live row's class, label and hint, so nothing shifts on hydration", () => {
+	it("paints the sidebar Search row under New with the live row's class, label and hint, so nothing shifts on hydration", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback />);
 		const live = document.createElement("div");
@@ -226,28 +287,33 @@ describe("AppShellFallback", () => {
 		const liveRow = live.querySelector("button")!;
 		const row = header.children[1]!;
 
-		expect({
-			first: header.children[0]?.textContent,
-			tag: row.tagName.toLowerCase(),
-			className: row.className,
-			contents: row.innerHTML,
-			spacer: header.children[2]?.outerHTML,
-			children: header.children.length,
-			oldField: host.querySelector(".df-search-field"),
-			nextBlock: header.nextElementSibling?.className,
-		}).toStrictEqual({
-			first: "New",
-			tag: "span",
-			className: liveRow.className,
-			contents: liveRow.innerHTML,
-			spacer: '<div aria-hidden="true" class="h-1 shrink-0"></div>',
-			children: 3,
-			oldField: null,
-			nextBlock: "-mt-1 shrink-0",
-		});
+		expect(
+			{
+				first: header.children[0]?.textContent,
+				tag: row.tagName.toLowerCase(),
+				className: row.className,
+				contents: row.innerHTML,
+				spacer: header.children[2]?.outerHTML,
+				children: header.children.length,
+				oldField: host.querySelector(".df-search-field"),
+				nextBlock: header.nextElementSibling?.className,
+			},
+		).toStrictEqual(
+			{
+				first: "New",
+				tag: "span",
+				className: liveRow.className,
+				contents: liveRow.innerHTML,
+				spacer: '<div aria-hidden="true" class="h-1 shrink-0"></div>',
+				children: 3,
+				oldField: null,
+				nextBlock: "-mt-1 shrink-0",
+			},
+		);
 	});
 
-	it("paints the same New + Search header with fizzy-lake panels off, since upstream graduated the shell", () => {
+	it("paints the same New + Search header with fizzy-lake panels off, since upstream graduated the shell", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(
 			<PanelsOff>
@@ -256,68 +322,104 @@ describe("AppShellFallback", () => {
 		);
 		const blocks = host.querySelectorAll('[aria-label="Sidebar"] [data-nav-block]');
 
-		expect({
-			header: blocks[0]?.children[0]?.textContent,
-			searchRow: blocks[0]?.children[1]?.textContent.startsWith("Search"),
-			navBlockClass: blocks[1]?.getAttribute("class"),
-			oldField: host.querySelector(".df-search-field"),
-		}).toStrictEqual({header: "New", searchRow: true, navBlockClass: "-mt-1 shrink-0", oldField: null});
+		expect(
+			{
+				header: blocks[0]?.children[0]?.textContent,
+				searchRow: blocks[0]?.children[1]?.textContent.startsWith("Search"),
+				navBlockClass: blocks[1]?.getAttribute("class"),
+				oldField: host.querySelector(".df-search-field"),
+			},
+		).toStrictEqual(
+			{
+				header: "New",
+				searchRow: true,
+				navBlockClass: "-mt-1 shrink-0",
+				oldField: null,
+			},
+		);
 	});
 
-	it("paints the same session skeleton as an in-app switch: the header dot and bar, a bubble and 10 line bars in the column", () => {
+	it("paints the same session skeleton as an in-app switch: the header dot and bar, a bubble and 10 line bars in the column", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback />);
 		const skeleton = host.querySelector('[data-testid="session-skeleton"]');
 
-		expect({
-			skeleton: skeleton !== null,
-			header: skeleton?.querySelectorAll("[data-skeleton-header] > div").length,
-			bubbles: skeleton?.querySelectorAll("[data-skeleton-bubble]").length,
-			lines: skeleton?.querySelectorAll("[data-skeleton-paragraph] > div").length,
-			ownTranscriptBars: host.querySelectorAll(".chat-column.space-y-4").length,
-		}).toStrictEqual({skeleton: true, header: 2, bubbles: 1, lines: 10, ownTranscriptBars: 0});
+		expect(
+			{
+				skeleton: skeleton !== null,
+				header: skeleton?.querySelectorAll("[data-skeleton-header] > div").length,
+				bubbles: skeleton?.querySelectorAll("[data-skeleton-bubble]").length,
+				lines: skeleton?.querySelectorAll("[data-skeleton-paragraph] > div").length,
+				ownTranscriptBars: host.querySelectorAll(".chat-column.space-y-4").length,
+			},
+		).toStrictEqual(
+			{
+				skeleton: true,
+				header: 2,
+				bubbles: 1,
+				lines: 10,
+				ownTranscriptBars: 0,
+			},
+		);
 	});
 
-	it("paints the composer as upstream does while loading: a 40px box with the session placeholder over a chin", () => {
+	it("paints the composer as upstream does while loading: a 40px box with the session placeholder over a chin", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback />);
 		const composer = host.querySelector('[data-cds="ChatComposer"]');
 		const box = composer?.querySelector("[data-fallback-composer]");
 
-		expect({
-			placeholder: box?.textContent,
-			box: box?.className,
-			oldEmptyBox: composer?.querySelector(".min-h-\\[88px\\]") ?? null,
-			chin: composer?.querySelector('[data-cds="ChatComposerChin"] svg') !== null,
-		}).toStrictEqual({
-			placeholder: "Type / for commands",
-			box: COMPOSER_CARD_CLASS,
-			oldEmptyBox: null,
-			chin: true,
-		});
+		expect(
+			{
+				placeholder: box?.textContent,
+				box: box?.className,
+				oldEmptyBox: composer?.querySelector(".min-h-\\[88px\\]") ?? null,
+				chin: composer?.querySelector('[data-cds="ChatComposerChin"] svg') !== null,
+			},
+		).toStrictEqual(
+			{
+				placeholder: "Type / for commands",
+				box: COMPOSER_CARD_CLASS,
+				oldEmptyBox: null,
+				chin: true,
+			},
+		);
 	});
 
-	it("fills the loading chin with the settings defaults the live chin shows: +, the model and effort, the mode, then the usage ring", () => {
+	it("fills the loading chin with the settings defaults the live chin shows: +, the model and effort, the mode, then the usage ring", () =>
+	{
 		const host = document.createElement("div");
-		const chin = resolveShellChinLabels({
-			model: "opus",
-			effortLevel: "high",
-			defaultMode: "auto",
-			repoDefaultMode: null,
-			bypassPermissionsAllowed: false,
-			fastMode: false,
-			fastModeBlocked: null,
-		});
+		const chin = resolveShellChinLabels(
+			{
+				model: "opus",
+				effortLevel: "high",
+				defaultMode: "auto",
+				repoDefaultMode: null,
+				bypassPermissionsAllowed: false,
+				fastMode: false,
+				fastModeBlocked: null,
+			},
+		);
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback chin={chin} />);
 		const chinRow = host.querySelector('[data-cds="ChatComposerChin"]')!;
 
-		expect({
-			readouts: chinReadouts(chinRow),
-			ring: chinRow.querySelectorAll("[data-fallback-chin-end] svg circle").length,
-		}).toStrictEqual({readouts: ["+", "Opus 5.5 High", "Auto"], ring: 1});
+		expect(
+			{
+				readouts: chinReadouts(chinRow),
+				ring: chinRow.querySelectorAll("[data-fallback-chin-end] svg circle").length,
+			},
+		).toStrictEqual(
+			{
+				readouts: ["+", "Opus 5.5 High", "Auto"],
+				ring: 1,
+			},
+		);
 	});
 
-	it("labels the loading chin as the live chin does when settings.json is missing", () => {
+	it("labels the loading chin as the live chin does when settings.json is missing", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback chin={resolveShellChinLabels(null)} />);
 
@@ -328,17 +430,20 @@ describe("AppShellFallback", () => {
 		]);
 	});
 
-	it("paints the server's chin labels from the shell, and the client keeps them through hydration", async () => {
+	it("paints the server's chin labels from the shell, and the client keeps them through hydration", async () =>
+	{
 		setShellChinLabels(
-			resolveShellChinLabels({
-				model: "opus",
-				effortLevel: "max",
-				defaultMode: "plan",
-				repoDefaultMode: null,
-				bypassPermissionsAllowed: false,
-				fastMode: false,
-				fastModeBlocked: null,
-			}),
+			resolveShellChinLabels(
+				{
+					model: "opus",
+					effortLevel: "max",
+					defaultMode: "plan",
+					repoDefaultMode: null,
+					bypassPermissionsAllowed: false,
+					fastMode: false,
+					fastModeBlocked: null,
+				},
+			),
 		);
 		const markup = renderToStaticMarkup(<AppShellFallback chin={getShellChinLabels()} />);
 		const shell = renderServerShell();
@@ -350,7 +455,8 @@ describe("AppShellFallback", () => {
 		const errors = vi.spyOn(console, "error").mockImplementation(() => {});
 		let hydratedReadouts: string[] = [];
 		let root: ReturnType<typeof hydrateRoot> | undefined;
-		await act(async () => {
+		await act(async () =>
+		{
 			root = hydrateRoot(
 				container,
 				<ProbeFallback onHydrated={(chin) => (hydratedReadouts = chinReadouts(chin))} />,
@@ -360,145 +466,182 @@ describe("AppShellFallback", () => {
 			);
 			await Promise.resolve();
 		});
-		act(() => {
+		act(() =>
+		{
 			root?.unmount();
 		});
 		container.remove();
 		errors.mockRestore();
 
-		expect({
-			shell: shell.includes(">Plan<") && shell.includes(">Opus 5.5<") && shell.includes("> Max<"),
-			hydratedReadouts,
-			recoverableErrors: onRecoverableError.mock.calls.length,
-			consoleErrors: errors.mock.calls.length,
-		}).toStrictEqual({
-			shell: true,
-			hydratedReadouts: ["+", "Opus 5.5 Max", "Plan"],
-			recoverableErrors: 0,
-			consoleErrors: 0,
-		});
+		expect(
+			{
+				shell: shell.includes(">Plan<") && shell.includes(">Opus 5.5<") && shell.includes("> Max<"),
+				hydratedReadouts,
+				recoverableErrors: onRecoverableError.mock.calls.length,
+				consoleErrors: errors.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				shell: true,
+				hydratedReadouts: ["+", "Opus 5.5 Max", "Plan"],
+				recoverableErrors: 0,
+				consoleErrors: 0,
+			},
+		);
 	});
 
-	it("paints the home layout on the home route: the New session titlebar, Sessions rows and the home composer, with no session skeleton", () => {
+	it("paints the home layout on the home route: the New session titlebar, Sessions rows and the home composer, with no session skeleton", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/" />);
 		const home = host.querySelector('[data-testid="home-skeleton"]');
 
-		expect({
-			home: home !== null,
-			title: home?.querySelector("h1")?.textContent,
-			sessions: home?.querySelector("h2")?.textContent,
-			rows: home?.querySelectorAll("[data-home-skeleton-row]").length,
-			composer: host.querySelector("[data-fallback-composer]")?.textContent,
-			sessionSkeleton: host.querySelector('[data-testid="session-skeleton"]'),
-		}).toStrictEqual({
-			home: true,
-			title: "New session",
-			sessions: "Sessions",
-			rows: 5,
-			composer: "Describe a task or ask a question",
-			sessionSkeleton: null,
-		});
+		expect(
+			{
+				home: home !== null,
+				title: home?.querySelector("h1")?.textContent,
+				sessions: home?.querySelector("h2")?.textContent,
+				rows: home?.querySelectorAll("[data-home-skeleton-row]").length,
+				composer: host.querySelector("[data-fallback-composer]")?.textContent,
+				sessionSkeleton: host.querySelector('[data-testid="session-skeleton"]'),
+			},
+		).toStrictEqual(
+			{
+				home: true,
+				title: "New session",
+				sessions: "Sessions",
+				rows: 5,
+				composer: "Describe a task or ask a question",
+				sessionSkeleton: null,
+			},
+		);
 	});
 
-	it("paints the artifacts page's own skeleton on /artifacts: a compact header, tab row and card grid in the gutter-less route with the page's own 8px/32px box, with no session skeleton or composer", () => {
+	it("paints the artifacts page's own skeleton on /artifacts: a compact header, tab row and card grid in the gutter-less route with the page's own 8px/32px box, with no session skeleton or composer", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/artifacts" />);
 		const skeleton = host.querySelector('[data-testid="artifacts-skeleton"]');
 
-		expect({
-			skeleton: skeleton !== null,
-			cards: skeleton?.querySelectorAll("[data-artifacts-skeleton-card]").length,
-			grid: skeleton
-				?.querySelector("[data-artifacts-skeleton-grid]")
-				?.className.split(" ")
-				.includes("md:grid-cols-3"),
-			// The sticky header's pb-6 plus the content box's pt-1.
-			gridOffset: skeleton
-				?.querySelector("[data-artifacts-skeleton-grid]")
-				?.className.split(" ")
-				.filter((name) => name.startsWith("pt-")),
-			gutter: skeleton?.children[1]?.className,
-			box: skeleton?.children[1]?.firstElementChild?.className,
-			composer: host.querySelector("[data-fallback-composer]"),
-			sessionSkeleton: host.querySelector('[data-testid="session-skeleton"]'),
-		}).toStrictEqual({
-			skeleton: true,
-			cards: 6,
-			grid: true,
-			gridOffset: ["pt-7"],
-			gutter: "",
-			box: "mx-auto flex sm:-mt-1 w-full max-w-5xl flex-col px-2 md:px-8",
-			composer: null,
-			sessionSkeleton: null,
-		});
+		expect(
+			{
+				skeleton: skeleton !== null,
+				cards: skeleton?.querySelectorAll("[data-artifacts-skeleton-card]").length,
+				grid: skeleton
+					?.querySelector("[data-artifacts-skeleton-grid]")
+					?.className.split(" ")
+					.includes("md:grid-cols-3"),
+				// The sticky header's pb-6 plus the content box's pt-1.
+				gridOffset: skeleton
+					?.querySelector("[data-artifacts-skeleton-grid]")
+					?.className.split(" ")
+					.filter((name) => name.startsWith("pt-")),
+				gutter: skeleton?.children[1]?.className,
+				box: skeleton?.children[1]?.firstElementChild?.className,
+				composer: host.querySelector("[data-fallback-composer]"),
+				sessionSkeleton: host.querySelector('[data-testid="session-skeleton"]'),
+			},
+		).toStrictEqual(
+			{
+				skeleton: true,
+				cards: 6,
+				grid: true,
+				gridOffset: ["pt-7"],
+				gutter: "",
+				box: "mx-auto flex sm:-mt-1 w-full max-w-5xl flex-col px-2 md:px-8",
+				composer: null,
+				sessionSkeleton: null,
+			},
+		);
 	});
 
-	it("draws the artifacts skeleton like upstream's: ring cards with a 160px preview, divider and 70%/50% shimmer bars, and only Search + List view placeholders in the toolbar", () => {
+	it("draws the artifacts skeleton like upstream's: ring cards with a 160px preview, divider and 70%/50% shimmer bars, and only Search + List view placeholders in the toolbar", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/artifacts" />);
 		const skeleton = host.querySelector('[data-testid="artifacts-skeleton"]');
 		const card = skeleton?.querySelector("[data-artifacts-skeleton-card]");
 		const bars = [...(card?.querySelectorAll('[data-cds="Skeleton"]') ?? [])];
 
-		expect({
-			toolbar: skeleton?.querySelectorAll("[data-artifacts-skeleton-toolbar] > *").length,
-			card: card?.className,
-			preview: card?.children[0]?.className,
-			divider: card?.children[1]?.className,
-			body: card?.children[2]?.className,
-			lines: [...(card?.children[2]?.children ?? [])].map((line) => line.className),
-			bars: bars.map((bar) => ({
-				style: bar.getAttribute("style"),
-				pulse: bar.className.split(" ").includes("animate-pulse"),
-				reducedMotion: bar.className.split(" ").includes("motion-reduce:after:hidden"),
-			})),
-		}).toStrictEqual({
-			toolbar: 2,
-			card: "flex h-full flex-col rounded-card bg-surface-2 shadow-card-ring",
-			preview: "h-[160px]",
-			divider: "mx-px border-t border-alpha-1",
-			body: "flex flex-col gap-1.5 p-3.5",
-			lines: ["flex h-[1lh] items-center text-body", "flex h-[1lh] items-center text-caption"],
-			bars: [
-				{style: "width:70%;height:14px", pulse: false, reducedMotion: true},
-				{style: "width:50%;height:11px", pulse: false, reducedMotion: true},
-			],
-		});
+		expect(
+			{
+				toolbar: skeleton?.querySelectorAll("[data-artifacts-skeleton-toolbar] > *").length,
+				card: card?.className,
+				preview: card?.children[0]?.className,
+				divider: card?.children[1]?.className,
+				body: card?.children[2]?.className,
+				lines: [...(card?.children[2]?.children ?? [])].map((line) => line.className),
+				bars: bars.map((bar) => (
+				{
+					style: bar.getAttribute("style"),
+					pulse: bar.className.split(" ").includes("animate-pulse"),
+					reducedMotion: bar.className.split(" ").includes("motion-reduce:after:hidden"),
+				})),
+			},
+		).toStrictEqual(
+			{
+				toolbar: 2,
+				card: "flex h-full flex-col rounded-card bg-surface-2 shadow-card-ring",
+				preview: "h-[160px]",
+				divider: "mx-px border-t border-alpha-1",
+				body: "flex flex-col gap-1.5 p-3.5",
+				lines: ["flex h-[1lh] items-center text-body", "flex h-[1lh] items-center text-caption"],
+				bars: [
+					{
+						style: "width:70%;height:14px",
+						pulse: false,
+						reducedMotion: true,
+					},
+					{
+						style: "width:50%;height:11px",
+						pulse: false,
+						reducedMotion: true,
+					},
+				],
+			},
+		);
 	});
 
-	it("lays the home skeleton in the same tile shell as the loaded home page, titlebar first, so it does not jump", () => {
+	it("lays the home skeleton in the same tile shell as the loaded home page, titlebar first, so it does not jump", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/" />);
 		const home = host.querySelector('[data-testid="home-skeleton"]');
 		const shell = home?.parentElement?.parentElement;
 
-		expect({
-			shell: shell?.hasAttribute("data-route-tile-shell"),
-			homeFirst: shell?.firstElementChild?.firstElementChild === home,
-			tileSlot: home?.className.split(" ").includes("@container/tile-slot"),
-			titlebar: home?.firstElementChild?.className,
-		}).toStrictEqual({
-			shell: true,
-			homeFirst: true,
-			tileSlot: true,
-			titlebar: "flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12",
-		});
+		expect(
+			{
+				shell: shell?.hasAttribute("data-route-tile-shell"),
+				homeFirst: shell?.firstElementChild?.firstElementChild === home,
+				tileSlot: home?.className.split(" ").includes("@container/tile-slot"),
+				titlebar: home?.firstElementChild?.className,
+			},
+		).toStrictEqual(
+			{
+				shell: true,
+				homeFirst: true,
+				tileSlot: true,
+				titlebar: "flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12",
+			},
+		);
 	});
 
-	it("paints the live composer's tokens so hydration does not jump: the card, a 28px line beside the 28px Add, the 13/20 chin, its 24px triggers with the effort in a muted span, and the 14px ring", () => {
+	it("paints the live composer's tokens so hydration does not jump: the card, a 28px line beside the 28px Add, the 13/20 chin, its 24px triggers with the effort in a muted span, and the 14px ring", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(
 			<AppShellFallback
-				chin={resolveShellChinLabels({
-					model: "opus",
-					effortLevel: "high",
-					defaultMode: "auto",
-					repoDefaultMode: null,
-					bypassPermissionsAllowed: false,
-					fastMode: false,
-					fastModeBlocked: null,
-				})}
+				chin={resolveShellChinLabels(
+					{
+						model: "opus",
+						effortLevel: "high",
+						defaultMode: "auto",
+						repoDefaultMode: null,
+						bypassPermissionsAllowed: false,
+						fastMode: false,
+						fastModeBlocked: null,
+					},
+				)}
 			/>,
 		);
 		const card = host.querySelector("[data-fallback-composer]")!;
@@ -506,47 +649,53 @@ describe("AppShellFallback", () => {
 		const [model, mode] = Array.from(chin.querySelectorAll("[data-fallback-chin-readout]"));
 		const ring = chin.querySelector("[data-fallback-chin-end] > span > span:last-child");
 
-		expect({
-			card: card.className,
-			line: card.querySelector("[data-fallback-placeholder]")?.className,
-			add: card.querySelector("[data-fallback-add]")?.className,
-			addIcon: card.querySelector("[data-fallback-add] svg")?.getAttribute("class"),
-			chin: chin.className,
-			mode: mode?.className,
-			model: model?.className,
-			modelLabel: model?.firstElementChild?.className,
-			modelSpans: Array.from(model?.firstElementChild?.children ?? [], (span) => [
-				span.className,
-				span.textContent,
-			]),
-			ringWrapper: ring?.className,
-			ring: ring?.firstElementChild?.className,
-			ringSize: [
-				ring?.querySelector("svg")?.getAttribute("width"),
-				ring?.querySelector("svg")?.getAttribute("height"),
-			],
-		}).toStrictEqual({
-			card: COMPOSER_CARD_CLASS,
-			line: "block py-1 pl-1 text-[14px]/[20px] text-placeholder",
-			add: ADD_BUTTON_CLASS,
-			addIcon: "lucide lucide-plus size-[18px]",
-			chin: COMPOSER_CHIN_CLASS,
-			mode: CHIN_TRIGGER_CLASS,
-			model: CHIN_TRIGGER_CLASS,
-			modelLabel: CHIN_MODEL_LABEL_CLASS,
-			modelSpans: [
-				[CHIN_MODEL_NAME_CLASS, "Opus 5.5"],
-				[CHIN_EFFORT_LABEL_CLASS, " High"],
-			],
-			ringWrapper: USAGE_RING_WRAPPER_CLASS,
-			ring: USAGE_RING_CLASS,
-			ringSize: ["14", "14"],
-		});
+		expect(
+			{
+				card: card.className,
+				line: card.querySelector("[data-fallback-placeholder]")?.className,
+				add: card.querySelector("[data-fallback-add]")?.className,
+				addIcon: card.querySelector("[data-fallback-add] svg")?.getAttribute("class"),
+				chin: chin.className,
+				mode: mode?.className,
+				model: model?.className,
+				modelLabel: model?.firstElementChild?.className,
+				modelSpans: Array.from(model?.firstElementChild?.children ?? [], (span) => [
+					span.className,
+					span.textContent,
+				]),
+				ringWrapper: ring?.className,
+				ring: ring?.firstElementChild?.className,
+				ringSize: [
+					ring?.querySelector("svg")?.getAttribute("width"),
+					ring?.querySelector("svg")?.getAttribute("height"),
+				],
+			},
+		).toStrictEqual(
+			{
+				card: COMPOSER_CARD_CLASS,
+				line: "block py-1 pl-1 text-[14px]/[20px] text-placeholder",
+				add: ADD_BUTTON_CLASS,
+				addIcon: "lucide lucide-plus size-[18px]",
+				chin: COMPOSER_CHIN_CLASS,
+				mode: CHIN_TRIGGER_CLASS,
+				model: CHIN_TRIGGER_CLASS,
+				modelLabel: CHIN_MODEL_LABEL_CLASS,
+				modelSpans: [
+					[CHIN_MODEL_NAME_CLASS, "Opus 5.5"],
+					[CHIN_EFFORT_LABEL_CLASS, " High"],
+				],
+				ringWrapper: USAGE_RING_WRAPPER_CLASS,
+				ring: USAGE_RING_CLASS,
+				ringSize: ["14", "14"],
+			},
+		);
 	});
 });
 
-describe("AppShellFallback dock frame", () => {
-	it("docks the session composer where the hydrated one lands: the session tile shell, the chat tile, the footer, its pt-2 and the dock column", () => {
+describe("AppShellFallback dock frame", () =>
+{
+	it("docks the session composer where the hydrated one lands: the session tile shell, the chat tile, the footer, its pt-2 and the dock column", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/session/example-alice" />);
 		const composer = host.querySelector('[data-cds="ChatComposer"]')!;
@@ -555,39 +704,46 @@ describe("AppShellFallback dock frame", () => {
 		const footer = gap?.parentElement;
 		const tile = footer?.parentElement;
 
-		expect({
-			dock: dock?.className,
-			gap: gap?.className,
-			footer: footer?.className,
-			tile: tile?.className,
-			shell: tile?.parentElement?.parentElement?.getAttribute("data-route-tile-shell"),
-			skeletonInTile: tile?.querySelector('[data-testid="session-skeleton"]') !== null,
-			oldColumn: host.querySelector(".chat-column.pb-4"),
-		}).toStrictEqual({
-			dock: SESSION_DOCK_COLUMN_CLASS,
-			gap: "pt-2",
-			footer: SESSION_FOOTER_CLASS,
-			tile: SESSION_TILE_CLASS,
-			shell: "session",
-			skeletonInTile: true,
-			oldColumn: null,
-		});
+		expect(
+			{
+				dock: dock?.className,
+				gap: gap?.className,
+				footer: footer?.className,
+				tile: tile?.className,
+				shell: tile?.parentElement?.parentElement?.getAttribute("data-route-tile-shell"),
+				skeletonInTile: tile?.querySelector('[data-testid="session-skeleton"]') !== null,
+				oldColumn: host.querySelector(".chat-column.pb-4"),
+			},
+		).toStrictEqual(
+			{
+				dock: SESSION_DOCK_COLUMN_CLASS,
+				gap: "pt-2",
+				footer: SESSION_FOOTER_CLASS,
+				tile: SESSION_TILE_CLASS,
+				shell: "session",
+				skeletonInTile: true,
+				oldColumn: null,
+			},
+		);
 	});
 
-	it("docks the home composer as the hydrated home does: the home dock's bottom inset, and the environment bar with a place chip before the model, mode and ring instead of the chin", () => {
+	it("docks the home composer as the hydrated home does: the home dock's bottom inset, and the environment bar with a place chip before the model, mode and ring instead of the chin", () =>
+	{
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(
 			<AppShellFallback
 				pathname="/"
-				chin={resolveShellChinLabels({
-					model: "opus",
-					effortLevel: "high",
-					defaultMode: "auto",
-					repoDefaultMode: null,
-					bypassPermissionsAllowed: false,
-					fastMode: false,
-					fastModeBlocked: null,
-				})}
+				chin={resolveShellChinLabels(
+					{
+						model: "opus",
+						effortLevel: "high",
+						defaultMode: "auto",
+						repoDefaultMode: null,
+						bypassPermissionsAllowed: false,
+						fastMode: false,
+						fastModeBlocked: null,
+					},
+				)}
 			/>,
 		);
 		const composer = host.querySelector('[data-cds="ChatComposer"]')!;
@@ -595,32 +751,38 @@ describe("AppShellFallback dock frame", () => {
 		const row = bar?.firstElementChild;
 		const [place, pickers] = Array.from(row?.children ?? []);
 
-		expect({
-			dock: composer.parentElement?.className,
-			chin: composer.querySelector('[data-cds="ChatComposerChin"]'),
-			bar: bar?.className,
-			row: row?.className,
-			place: place?.className,
-			slot: place?.firstElementChild?.className,
-			chip: place?.firstElementChild?.firstElementChild?.className,
-			pickers: pickers?.className,
-			readouts: chinReadouts(bar!),
-		}).toStrictEqual({
-			dock: HOME_DOCK_CLASS,
-			chin: null,
-			bar: ENVIRONMENT_BAR_CLASS,
-			row: ENVIRONMENT_BAR_ROW_CLASS,
-			place: ENVIRONMENT_BAR_CHIPS_CLASS,
-			slot: ENVIRONMENT_BAR_PLACE_SLOT_CLASS,
-			chip: PLACE_CHIP_CLASS,
-			pickers: ENVIRONMENT_PICKERS_CLASS,
-			readouts: ["+", "Opus 5.5 High", "Auto"],
-		});
+		expect(
+			{
+				dock: composer.parentElement?.className,
+				chin: composer.querySelector('[data-cds="ChatComposerChin"]'),
+				bar: bar?.className,
+				row: row?.className,
+				place: place?.className,
+				slot: place?.firstElementChild?.className,
+				chip: place?.firstElementChild?.firstElementChild?.className,
+				pickers: pickers?.className,
+				readouts: chinReadouts(bar!),
+			},
+		).toStrictEqual(
+			{
+				dock: HOME_DOCK_CLASS,
+				chin: null,
+				bar: ENVIRONMENT_BAR_CLASS,
+				row: ENVIRONMENT_BAR_ROW_CLASS,
+				place: ENVIRONMENT_BAR_CHIPS_CLASS,
+				slot: ENVIRONMENT_BAR_PLACE_SLOT_CLASS,
+				chip: PLACE_CHIP_CLASS,
+				pickers: ENVIRONMENT_PICKERS_CLASS,
+				readouts: ["+", "Opus 5.5 High", "Auto"],
+			},
+		);
 	});
 });
 
-describe("AppShellFallback redirect-only routes", () => {
-	it("classifies each path by the shell its loaded page shows, redirect-only routes by their target's", () => {
+describe("AppShellFallback redirect-only routes", () =>
+{
+	it("classifies each path by the shell its loaded page shows, redirect-only routes by their target's", () =>
+	{
 		expect(
 			[
 				"/",
@@ -646,7 +808,8 @@ describe("AppShellFallback redirect-only routes", () => {
 		]);
 	});
 
-	it("paints the home shell on /settings, the same markup the client hydrates after redirecting to /#settings/general", () => {
+	it("paints the home shell on /settings, the same markup the client hydrates after redirecting to /#settings/general", () =>
+	{
 		expect(renderToStaticMarkup(<AppShellFallback pathname="/settings" />)).toBe(
 			renderToStaticMarkup(<AppShellFallback pathname="/" />),
 		);

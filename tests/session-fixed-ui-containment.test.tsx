@@ -6,7 +6,8 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
-import {
+import
+{
 	sessionDetailQueryOptions,
 	sessionSubagentsQueryOptions,
 	transcriptQueryOptions,
@@ -16,60 +17,90 @@ import {SessionPage} from "../src/components/session-page";
 import {ToastProvider} from "../src/components/toast";
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate.
-vi.mock("../src/components/session-chat", () => ({
+vi.mock("../src/components/session-chat", () => (
+{
 	SessionChat: ({shouldScrollToEnd}: {shouldScrollToEnd: boolean}) => (
 		<output data-testid="follow-end">{String(shouldScrollToEnd)}</output>
 	),
 }));
 
-const lateSnapshot = vi.hoisted(() => ({entry: undefined as {scrollX: number; scrollY: number} | undefined}));
-vi.mock("../src/hooks/use-main-scroll-restoration", () => ({useMainScrollRestoration: () => lateSnapshot.entry}));
+const lateSnapshot = vi.hoisted(() => (
+{
+	entry: undefined as
+		|
+		  {
+				scrollX: number;
+				scrollY: number;
+		  }
+		| undefined,
+}));
+vi.mock("../src/hooks/use-main-scroll-restoration", () => (
+{
+	useMainScrollRestoration: () => lateSnapshot.entry,
+}));
 
-class TestEventSource extends EventTarget {
+class TestEventSource extends EventTarget
+{
 	readonly close = vi.fn<() => void>();
 	onerror: ((event: Event) => void) | null = null;
 }
 
-class FakeStorage implements Storage {
+class FakeStorage implements Storage
+{
 	readonly values = new Map<string, string>();
 
-	get length(): number {
+	get length(): number
+	{
 		return this.values.size;
 	}
 
-	clear(): void {
+	clear(): void
+	{
 		this.values.clear();
 	}
 
-	getItem(key: string): string | null {
+	getItem(key: string): string | null
+	{
 		return this.values.get(key) ?? null;
 	}
 
-	key(index: number): string | null {
+	key(index: number): string | null
+	{
 		return [...this.values.keys()][index] ?? null;
 	}
 
-	removeItem(key: string): void {
+	removeItem(key: string): void
+	{
 		this.values.delete(key);
 	}
 
-	setItem(key: string, value: string): void {
+	setItem(key: string, value: string): void
+	{
 		this.values.set(key, value);
 	}
 }
 
-class TestIntersectionObserver {
-	observe(): void {}
-	unobserve(): void {}
-	disconnect(): void {}
-	takeRecords(): IntersectionObserverEntry[] {
+class TestIntersectionObserver
+{
+	observe(): void
+	{
+	}
+	unobserve(): void
+	{
+	}
+	disconnect(): void
+	{
+	}
+	takeRecords(): IntersectionObserverEntry[]
+	{
 		return [];
 	}
 }
 
 const SESSION_ID = "session-test-100";
 
-const detail: SessionDetailData = {
+const detail: SessionDetailData =
+{
 	title: "Alice's containment test",
 	projectName: "example",
 	projectId: "project-test-100",
@@ -84,7 +115,8 @@ const detail: SessionDetailData = {
 	gitClean: null,
 	messageCount: 1,
 	pendingTaskCount: 0,
-	viewedState: {
+	viewedState:
+	{
 		currentMessageIndex: 0,
 		lastViewedMessageIndex: 0,
 		reviewTargetMessageIndex: 0,
@@ -95,80 +127,118 @@ const detail: SessionDetailData = {
 	},
 };
 
-function seededQueryClient() {
-	const queryClient = new QueryClient({
-		defaultOptions: {queries: {retry: false}},
-	});
-	queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, detail);
-	queryClient.setQueryData(transcriptQueryOptions(SESSION_ID).queryKey, {
-		records: [
+function seededQueryClient()
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
 			{
-				type: "assistant",
-				uuid: "uuid-test-100",
-				message: {
-					role: "assistant",
-					content: [
-						{type: "text", text: "Docs live at https://example.com/docs"},
-						{
-							type: "tool_use",
-							id: "tool-use-read-example",
-							name: "Read",
-							input: {file_path: "/home/alice/example/read.ts"},
-						},
-					],
+				queries:
+				{
+					retry: false,
 				},
 			},
-		],
-		byteOffset: 0,
-		startIndex: 0,
-		precedingMessageCount: 0,
-		hiddenUuids: [],
-		cuts: [],
-		chainVersion: "v1",
-		chapters: [],
-	});
+		},
+	);
+	queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, detail);
+	queryClient.setQueryData(
+		transcriptQueryOptions(SESSION_ID).queryKey,
+		{
+			records: [
+				{
+					type: "assistant",
+					uuid: "uuid-test-100",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "text",
+								text: "Docs live at https://example.com/docs",
+							},
+							{
+								type: "tool_use",
+								id: "tool-use-read-example",
+								name: "Read",
+								input:
+								{
+									file_path: "/home/alice/example/read.ts",
+								},
+							},
+						],
+					},
+				},
+			],
+			byteOffset: 0,
+			startIndex: 0,
+			precedingMessageCount: 0,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v1",
+			chapters: [],
+		},
+	);
 	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, []);
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {
-		panes: [],
-		writesEnabled: false,
-	});
+	queryClient.setQueryData(
+		herdrPanesQueryOptions.queryKey,
+		{
+			panes: [],
+			writesEnabled: false,
+		},
+	);
 	return queryClient;
 }
 
-async function renderSessionInScroller(props: Partial<Parameters<typeof SessionPage>[0]> = {}) {
+async function renderSessionInScroller(props: Partial<Parameters<typeof SessionPage>[0]> = {})
+{
 	const queryClient = seededQueryClient();
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ClaudeEventsProvider>
-					<ToastProvider>
-						<main data-testid="app-scroller" style={{overflowY: "auto"}}>
-							<SessionPage sessionId={SESSION_ID} {...props} />
-						</main>
-					</ToastProvider>
-				</ClaudeEventsProvider>
-			</QueryClientProvider>
-		),
-	});
-	const router = createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({
-			initialEntries: [`/session/${SESSION_ID}`],
-		}),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ClaudeEventsProvider>
+						<ToastProvider>
+							<main
+								data-testid="app-scroller"
+								style={
+								{
+									overflowY: "auto",
+								}}
+							>
+								<SessionPage sessionId={SESSION_ID} {...props} />
+							</main>
+						</ToastProvider>
+					</ClaudeEventsProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: [`/session/${SESSION_ID}`],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	return screen.findByTestId("app-scroller");
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	lateSnapshot.entry = undefined;
 	cleanup();
 	vi.unstubAllGlobals();
 });
 
-describe("fixed-position session UI and the contained transcript scroller", () => {
-	it("keeps fixed UI outside the [contain:strict] scroller and docks the scroll pill in-flow", async () => {
+describe("fixed-position session UI and the contained transcript scroller", () =>
+{
+	it("keeps fixed UI outside the [contain:strict] scroller and docks the scroll pill in-flow", async () =>
+	{
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.stubGlobal("localStorage", new FakeStorage());
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
@@ -179,13 +249,38 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 
 		await renderSessionInScroller();
 		const scroller = document.querySelector<HTMLElement>("[data-session-scrollport]")!;
-		fireEvent.click(await screen.findByRole("button", {name: "View options"}));
-		await act(async () => {
-			fireEvent.click(await screen.findByRole("menuitemcheckbox", {name: /^Links/}));
+		fireEvent.click(
+			await screen.findByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
+		await act(async () =>
+		{
+			fireEvent.click(
+				await screen.findByRole(
+					"menuitemcheckbox",
+					{
+						name: /^Links/,
+					},
+				),
+			);
 		});
 
-		const linksPane = screen.getByRole("region", {name: "Links"});
-		const scrollPill = screen.getByLabelText("Scroll to bottom", {selector: "button"});
+		const linksPane = screen.getByRole(
+			"region",
+			{
+				name: "Links",
+			},
+		);
+		const scrollPill = screen.getByLabelText(
+			"Scroll to bottom",
+			{
+				selector: "button",
+			},
+		);
 		const containedElements = [...document.querySelectorAll("*")].filter((element) =>
 			element.classList.contains("[contain:strict]"),
 		);
@@ -193,27 +288,32 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 			[...element.querySelectorAll("*")].filter((descendant) => descendant.classList.contains("fixed")),
 		);
 
-		expect({
-			containedElements,
-			// Side content is an in-flow tile now, not a fixed overlay drawer.
-			linksPaneKind: linksPane.dataset["paneKind"],
-			linksPaneFixed: linksPane.classList.contains("fixed"),
-			fixedInsideContained,
-			scrollPillPositioning: scrollPill.classList.contains("absolute"),
-			transcriptWidth: scrollPill
-				.closest<HTMLElement>('[style*="--max-content-width"]')
-				?.style.getPropertyValue("--max-content-width"),
-		}).toStrictEqual({
-			containedElements: [scroller],
-			linksPaneKind: "links",
-			linksPaneFixed: false,
-			fixedInsideContained: [],
-			scrollPillPositioning: true,
-			transcriptWidth: "768px",
-		});
+		expect(
+			{
+				containedElements,
+				// Side content is an in-flow tile now, not a fixed overlay drawer.
+				linksPaneKind: linksPane.dataset["paneKind"],
+				linksPaneFixed: linksPane.classList.contains("fixed"),
+				fixedInsideContained,
+				scrollPillPositioning: scrollPill.classList.contains("absolute"),
+				transcriptWidth: scrollPill
+					.closest<HTMLElement>('[style*="--max-content-width"]')
+					?.style.getPropertyValue("--max-content-width"),
+			},
+		).toStrictEqual(
+			{
+				containedElements: [scroller],
+				linksPaneKind: "links",
+				linksPaneFixed: false,
+				fixedInsideContained: [],
+				scrollPillPositioning: true,
+				transcriptWidth: "768px",
+			},
+		);
 	});
 
-	it("pads the sticky composer footer above the phone home-indicator inset", async () => {
+	it("pads the sticky composer footer above the phone home-indicator inset", async () =>
+	{
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.stubGlobal("localStorage", new FakeStorage());
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
@@ -232,7 +332,8 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 		).toStrictEqual([["sticky", "pb-[var(--session-dock-bottom,max(env(safe-area-inset-bottom),9px))]"]]);
 	});
 
-	it("keeps transcript and dock gutters inside the tile without root padding compensation", async () => {
+	it("keeps transcript and dock gutters inside the tile without root padding compensation", async () =>
+	{
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.stubGlobal("localStorage", new FakeStorage());
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
@@ -242,25 +343,35 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 		);
 
 		await renderSessionInScroller();
-		const dockColumn = screen.getByLabelText("Scroll to bottom", {selector: "button"}).parentElement;
+		const dockColumn = screen.getByLabelText(
+			"Scroll to bottom",
+			{
+				selector: "button",
+			},
+		).parentElement;
 
-		expect({
-			topFade: document.querySelector('[data-testid="transcript-top-fade"],[data-transcript-fade-strip]'),
-			transcriptBleed: screen.getByTestId("follow-end").parentElement?.className,
-			dockWrapper: dockColumn?.parentElement?.className,
-			footerBleed: [...(dockColumn?.parentElement?.parentElement?.classList ?? [])].filter((token) =>
-				/^(sm:)?-mx-/.test(token),
-			),
-		}).toStrictEqual({
-			topFade: null,
-			transcriptBleed:
-				"flex-1 epitaxy-transcript-typography [--chat-turn-gap:calc(var(--spacing)*5)]! compact:[--chat-turn-gap:calc(var(--spacing)*4)]!",
-			dockWrapper: "",
-			footerBleed: [],
-		});
+		expect(
+			{
+				topFade: document.querySelector('[data-testid="transcript-top-fade"],[data-transcript-fade-strip]'),
+				transcriptBleed: screen.getByTestId("follow-end").parentElement?.className,
+				dockWrapper: dockColumn?.parentElement?.className,
+				footerBleed: [...(dockColumn?.parentElement?.parentElement?.classList ?? [])].filter((token) =>
+					/^(sm:)?-mx-/.test(token),
+				),
+			},
+		).toStrictEqual(
+			{
+				topFade: null,
+				transcriptBleed:
+					"flex-1 epitaxy-transcript-typography [--chat-turn-gap:calc(var(--spacing)*5)]! compact:[--chat-turn-gap:calc(var(--spacing)*4)]!",
+				dockWrapper: "",
+				footerBleed: [],
+			},
+		);
 	});
 
-	it("has no status footer and opens Session details from View options", async () => {
+	it("has no status footer and opens Session details from View options", async () =>
+	{
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.stubGlobal("localStorage", new FakeStorage());
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
@@ -269,38 +380,80 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 			vi.fn(async (input: RequestInfo | URL) =>
 				String(input).endsWith("/statusline")
 					? Promise.resolve(
-							new Response(JSON.stringify({version: "1.0.23", cost: {total_cost_usd: 1.47}}), {
-								status: 200,
-								headers: {"content-type": "application/json"},
-							}),
+							new Response(
+								JSON.stringify(
+									{
+										version: "1.0.23",
+										cost:
+										{
+											total_cost_usd: 1.47,
+										},
+									},
+								),
+								{
+									status: 200,
+									headers:
+									{
+										"content-type": "application/json",
+									},
+								},
+							),
 						)
 					: new Promise<Response>(() => {}),
 			),
 		);
 
 		const scroller = await renderSessionInScroller();
-		fireEvent.click(await screen.findByRole("button", {name: "View options"}));
-		const item = await screen.findByRole("menuitemcheckbox", {name: "Session details"});
+		fireEvent.click(
+			await screen.findByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		);
+		const item = await screen.findByRole(
+			"menuitemcheckbox",
+			{
+				name: "Session details",
+			},
+		);
 		const footer = scroller.querySelector<HTMLElement>("[data-session-footer]");
-		const footerContent = {
+		const footerContent =
+		{
 			buttons: [...(footer?.querySelectorAll("button") ?? [])].map((button) => button.getAttribute("aria-label")),
 			segments: footer?.querySelectorAll("[data-status-segment]").length,
 		};
-		act(() => {
+		act(() =>
+		{
 			fireEvent.click(item);
 		});
-		const pane = screen.getByRole("region", {name: "Session details"});
+		const pane = screen.getByRole(
+			"region",
+			{
+				name: "Session details",
+			},
+		);
 
-		expect({
-			footerContent,
-			segments: [...pane.querySelectorAll("[data-status-segment]")].map((segment) => segment.textContent),
-		}).toStrictEqual({
-			footerContent: {buttons: ["Scroll to bottom"], segments: 0},
-			segments: ["v1.0.23", "1 msg", "$1.47"],
-		});
+		expect(
+			{
+				footerContent,
+				segments: [...pane.querySelectorAll("[data-status-segment]")].map((segment) => segment.textContent),
+			},
+		).toStrictEqual(
+			{
+				footerContent:
+				{
+					buttons: ["Scroll to bottom"],
+					segments: 0,
+				},
+				segments: ["v1.0.23", "1 msg", "$1.47"],
+			},
+		);
 	});
 
-	it("paints the dock opaque to the viewport bottom with a top fade over the transcript", async () => {
+	it("paints the dock opaque to the viewport bottom with a top fade over the transcript", async () =>
+	{
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.stubGlobal("localStorage", new FakeStorage());
 		vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
@@ -329,11 +482,44 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 });
 
 it.each([
-	{name: "omitted", props: {}, expected: "false"},
-	{name: "captured fresh visit", props: {scrollRestoration: {entry: undefined}}, expected: "true"},
-	{name: "captured saved visit", props: {scrollRestoration: {entry: {scrollX: 0, scrollY: 200}}}, expected: "false"},
-])("distinguishes $name from a later copied fallback entry", async ({props, expected}) => {
-	lateSnapshot.entry = {scrollX: 0, scrollY: 900};
+	{
+		name: "omitted",
+		props: {},
+		expected: "false",
+	},
+	{
+		name: "captured fresh visit",
+		props:
+		{
+			scrollRestoration:
+			{
+				entry: undefined,
+			},
+		},
+		expected: "true",
+	},
+	{
+		name: "captured saved visit",
+		props:
+		{
+			scrollRestoration:
+			{
+				entry:
+				{
+					scrollX: 0,
+					scrollY: 200,
+				},
+			},
+		},
+		expected: "false",
+	},
+])("distinguishes $name from a later copied fallback entry", async ({props, expected}) =>
+{
+	lateSnapshot.entry =
+	{
+		scrollX: 0,
+		scrollY: 900,
+	};
 	vi.stubGlobal("EventSource", TestEventSource);
 	vi.stubGlobal("localStorage", new FakeStorage());
 	vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);

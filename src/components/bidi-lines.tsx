@@ -5,13 +5,15 @@ export const RTL_LETTER = /[֐-ࣿיִ-﷿ﹰ-﻿\u{10800}-\u{10FFF}\u{1E800}-\u{
 const BIDI_CONTROL = /\p{Bidi_Control}/u;
 
 /** Upstream's `ra`: the text, byte order marks aside, has a right-to-left letter or a bidi control (`Qv`). */
-function hasBidi(text: string): boolean {
+function hasBidi(text: string): boolean
+{
 	const bare = text.replaceAll("﻿", "");
 	return RTL_LETTER.test(bare) || BIDI_CONTROL.test(bare);
 }
 
 /** Upstream's `hz`: one line's class. */
-function lineClass(line: string, rtl: boolean): string {
+function lineClass(line: string, rtl: boolean): string
+{
 	if (rtl) return "block whitespace-pre-wrap [overflow-wrap:anywhere] [unicode-bidi:plaintext]";
 	return hasBidi(line)
 		? "block whitespace-pre-wrap [overflow-wrap:anywhere] [unicode-bidi:inherit]"
@@ -24,7 +26,8 @@ function lineClass(line: string, rtl: boolean): string {
  * right-to-left direction, each line is its own block span (`data-code-line-group`) so one line's direction
  * can't reorder the next.
  */
-export function BidiLines({children}: {children: string}) {
+export function BidiLines({children}: {children: string})
+{
 	const rtl = useDirection() === "rtl";
 	if (!rtl && !(children.includes("\n") && hasBidi(children))) return children;
 	return children.split(/(?<=\n)/).map((line, index) => (

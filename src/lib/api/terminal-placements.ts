@@ -6,14 +6,17 @@ import {TmuxWindowSchema} from "./tmux";
 import {SessionViewedStateSchema} from "./viewed-state";
 
 const TerminalPlacementCapabilitiesSchema = z
-	.object({
-		supportsWrite: z.boolean(),
-		supportsEvents: z.boolean(),
-		supportsObserve: z.boolean(),
-	})
+	.object(
+		{
+			supportsWrite: z.boolean(),
+			supportsEvents: z.boolean(),
+			supportsObserve: z.boolean(),
+		},
+	)
 	.strict();
 
-const TerminalPlacementFields = {
+const TerminalPlacementFields =
+{
 	sessionId: z.string(),
 	displayName: z.string(),
 	active: z.boolean(),
@@ -23,32 +26,40 @@ const TerminalPlacementFields = {
 };
 
 const TmuxTerminalPlacementSchema = z
-	.object({
-		provider: z.literal("tmux"),
-		...TerminalPlacementFields,
-		tmuxWindow: TmuxWindowSchema,
-		viewedState: SessionViewedStateSchema,
-	})
+	.object(
+		{
+			provider: z.literal("tmux"),
+			...TerminalPlacementFields,
+			tmuxWindow: TmuxWindowSchema,
+			viewedState: SessionViewedStateSchema,
+		},
+	)
 	.strict();
 
 const HerdrTerminalPlacementSchema = z
-	.object({
-		provider: z.literal("herdr"),
-		...TerminalPlacementFields,
-		herdrPane: HerdrPaneSchema,
-	})
+	.object(
+		{
+			provider: z.literal("herdr"),
+			...TerminalPlacementFields,
+			herdrPane: HerdrPaneSchema,
+		},
+	)
 	.strict();
 
 export const TerminalPlacementIndexResponse = z
-	.object({
-		placements: z.array(
-			z.discriminatedUnion("provider", [TmuxTerminalPlacementSchema, HerdrTerminalPlacementSchema]),
-		),
-		writesEnabled: z.boolean(),
-	})
+	.object(
+		{
+			placements: z.array(
+				z.discriminatedUnion("provider", [TmuxTerminalPlacementSchema, HerdrTerminalPlacementSchema]),
+			),
+			writesEnabled: z.boolean(),
+		},
+	)
 	.strict();
 
-export const terminalPlacementsQueryOptions = queryOptions({
-	queryKey: ["terminal", "placements"] as const,
-	queryFn: async () => apiFetch("/api/terminal-placements", TerminalPlacementIndexResponse),
-});
+export const terminalPlacementsQueryOptions = queryOptions(
+	{
+		queryKey: ["terminal", "placements"] as const,
+		queryFn: async () => apiFetch("/api/terminal-placements", TerminalPlacementIndexResponse),
+	},
+);

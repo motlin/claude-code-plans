@@ -1,17 +1,22 @@
 /* Upstream claude.ai/code's text reveal (shared-styles `WT`): each grapheme fades in from a blur, 30ms after the one before. */
-[data-revealing] > .grapheme {
+[data-revealing] > .grapheme
+{
 	animation: 90ms cubic-bezier(0.215, 0.61, 0.355, 1) both grapheme-reveal;
 	animation-delay: calc(var(--i, 0) * 30ms);
 }
 
-@media (prefers-reduced-motion: reduce) {
-	[data-revealing] > .grapheme {
+@media (prefers-reduced-motion: reduce)
+{
+	[data-revealing] > .grapheme
+	{
 		animation: none;
 	}
 }
 
-@keyframes grapheme-reveal {
-	0% {
+@keyframes grapheme-reveal
+{
+	0%
+	{
 		opacity: 0;
 		filter: blur(6px);
 	}

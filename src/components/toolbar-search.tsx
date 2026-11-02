@@ -31,31 +31,36 @@ export function ToolbarSearch({
 	onSearch: (next: string) => void;
 	/** Should be stable (a state setter): it runs whenever the open state settles. */
 	onOpenChange?: (open: boolean) => void;
-}) {
+})
+{
 	const [open, setOpen] = useState(search !== "");
 	const [draft, setDraft] = useState(search);
 	const [syncedSearch, setSyncedSearch] = useState(search);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const shortcutKeys = useShortcutKeys("page_search").keys;
 
-	if (search !== syncedSearch) {
+	if (search !== syncedSearch)
+	{
 		setSyncedSearch(search);
 		setDraft(search);
 		if (search !== "") setOpen(true);
 	}
 
-	function expand() {
+	function expand()
+	{
 		setOpen(true);
 		requestAnimationFrame(() => inputRef.current?.focus());
 	}
 
 	useShortcut("page_search", expand);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		onOpenChange?.(open);
 	}, [open, onOpenChange]);
 
-	if (!open) {
+	if (!open)
+	{
 		return (
 			<Tooltip content={label} shortcut={shortcutKeys}>
 				<button type="button" className={TOOLBAR_ICON_BUTTON} aria-label={label} onClick={expand}>
@@ -81,21 +86,25 @@ export function ToolbarSearch({
 					aria-label={label}
 					placeholder={placeholder}
 					value={draft}
-					onChange={(event) => {
+					onChange={(event) =>
+					{
 						setDraft(event.target.value);
 						onSearch(event.target.value);
 					}}
-					onKeyDown={(event) => {
+					onKeyDown={(event) =>
+					{
 						if (event.key === "Escape" && draft === "") setOpen(false);
 					}}
-					onBlur={(event) => {
+					onBlur={(event) =>
+					{
 						if (draft === "" && !event.currentTarget.parentElement?.contains(event.relatedTarget))
 							setOpen(false);
 					}}
 					slotStart={<Icon name="Search" size="sm" />}
 					clearable="always"
 					clearLabel="Clear search"
-					onClear={() => {
+					onClear={() =>
+					{
 						setDraft("");
 						onSearch("");
 						setOpen(false);

@@ -8,16 +8,24 @@ import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {JumpChips} from "../jump-chips";
 import {type FileSourceSelection, sessionFileLabel} from "./session-file-sources";
 
-interface FileRowProps {
+interface FileRowProps
+{
 	file: FileEntry;
 	label: string;
 	open: boolean;
 	copied: boolean;
-	onOpen: (absolutePath: string, options: {pin: boolean}) => void;
+	onOpen: (
+		absolutePath: string,
+		options:
+		{
+			pin: boolean;
+		},
+	) => void;
 	onCopy: (absolutePath: string) => Promise<void>;
 }
 
-function FileRow({file, label, open, copied, onOpen, onCopy}: FileRowProps) {
+function FileRow({file, label, open, copied, onOpen, onCopy}: FileRowProps)
+{
 	return (
 		<li data-session-file className="group/file relative">
 			<div className="flex h-6 items-center gap-1 rounded-r5 pr-1 hover:bg-fill-ghost-hover group-focus-within/file:bg-fill-ghost-hover">
@@ -27,11 +35,23 @@ function FileRow({file, label, open, copied, onOpen, onCopy}: FileRowProps) {
 					dir="rtl"
 					title={file.absolutePath}
 					aria-current={open ? "true" : undefined}
-					onClick={() => {
-						onOpen(file.absolutePath, {pin: false});
+					onClick={() =>
+					{
+						onOpen(
+							file.absolutePath,
+							{
+								pin: false,
+							},
+						);
 					}}
-					onDoubleClick={() => {
-						onOpen(file.absolutePath, {pin: true});
+					onDoubleClick={() =>
+					{
+						onOpen(
+							file.absolutePath,
+							{
+								pin: true,
+							},
+						);
 					}}
 					className="min-w-0 flex-1 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap bg-transparent pl-2 text-left text-body text-primary outline-none aria-[current=true]:font-medium"
 				>
@@ -57,7 +77,8 @@ function FileRow({file, label, open, copied, onOpen, onCopy}: FileRowProps) {
 	);
 }
 
-interface SessionFilesListProps {
+interface SessionFilesListProps
+{
 	sessionFiles: SessionFiles;
 	/** JSONL records before the loaded window, which extraction never saw. */
 	unscannedRecordCount: number;
@@ -69,7 +90,13 @@ interface SessionFilesListProps {
 	filterRef: RefObject<HTMLInputElement | null>;
 	openPath: string | null;
 	/** A single click opens a preview tab; a double-click pins it. */
-	onOpenFile: (absolutePath: string, options: {pin: boolean}) => void;
+	onOpenFile: (
+		absolutePath: string,
+		options:
+		{
+			pin: boolean;
+		},
+	) => void;
 }
 
 /**
@@ -87,7 +114,8 @@ export function SessionFilesList({
 	filterRef,
 	openPath,
 	onOpenFile,
-}: SessionFilesListProps) {
+}: SessionFilesListProps)
+{
 	const [copiedPath, setCopiedPath] = useState<string | null>(null);
 	const copiedTimeoutReference = useRef<number | undefined>(undefined);
 	const coverageNote = resourceCoverageNote(unscannedRecordCount);
@@ -96,7 +124,11 @@ export function SessionFilesList({
 		() =>
 			sessionFiles.files
 				.filter((file) => file.occurrences.some((occurrence) => sourceSelection[getFileSourceKey(occurrence)]))
-				.map((file) => ({file, label: sessionFileLabel(file.absolutePath, cwd)})),
+				.map((file) => (
+				{
+					file,
+					label: sessionFileLabel(file.absolutePath, cwd),
+				})),
 		[cwd, sessionFiles.files, sourceSelection],
 	);
 	const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -109,29 +141,35 @@ export function SessionFilesList({
 	);
 
 	useEffect(
-		() => () => {
-			if (copiedTimeoutReference.current !== undefined) {
+		() => () =>
+		{
+			if (copiedTimeoutReference.current !== undefined)
+			{
 				window.clearTimeout(copiedTimeoutReference.current);
 			}
 		},
 		[],
 	);
 
-	const copyPath = useCallback(async (absolutePath: string) => {
+	const copyPath = useCallback(async (absolutePath: string) =>
+	{
 		setCopiedPath(null);
 		const succeeded = await writeClipboardText(absolutePath);
 		if (!succeeded) return;
 
 		setCopiedPath(absolutePath);
-		if (copiedTimeoutReference.current !== undefined) {
+		if (copiedTimeoutReference.current !== undefined)
+		{
 			window.clearTimeout(copiedTimeoutReference.current);
 		}
-		copiedTimeoutReference.current = window.setTimeout(() => {
+		copiedTimeoutReference.current = window.setTimeout(() =>
+		{
 			setCopiedPath(null);
 		}, 1_500);
 	}, []);
 
-	function handleQueryChange(event: ChangeEvent<HTMLInputElement>): void {
+	function handleQueryChange(event: ChangeEvent<HTMLInputElement>): void
+	{
 		onQueryChange(event.target.value);
 	}
 

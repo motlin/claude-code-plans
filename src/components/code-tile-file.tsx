@@ -8,12 +8,14 @@ import {tileLanguage} from "../lib/code-tile-language";
 import {useResolvedTheme} from "./theme-context";
 
 /** The code tile's pierre `File` (upstream `el`'s `Qa`), loaded lazily by `CodeTile`. */
-export function CodeTileFile({code, lang}: {code: string; lang: string}) {
+export function CodeTileFile({code, lang}: {code: string; lang: string})
+{
 	const themeType = useResolvedTheme();
 	const theme = useCodeThemes();
 	const language = tileLanguage(lang);
 	const file = useMemo(
-		() => ({
+		() => (
+		{
 			name: "cmd",
 			contents: normalizeTileCode(code),
 			lang: language,
@@ -22,7 +24,8 @@ export function CodeTileFile({code, lang}: {code: string; lang: string}) {
 		[code, language],
 	);
 	const options = useMemo<FileOptions<undefined, undefined>>(
-		() => ({
+		() => (
+		{
 			theme,
 			themeType,
 			disableFileHeader: true,

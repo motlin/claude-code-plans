@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -24,13 +25,20 @@ function recentSession(
 	id: string,
 	title: string,
 	bucket: "blocked" | "working" | "done" = "done",
-	overrides: Partial<{
+	overrides: Partial<
+	{
 		unseen: boolean;
 		unseenError: true;
 		archived: boolean;
-		pr: {number: number; url: string; repository: string};
+		pr:
+		{
+			number: number;
+			url: string;
+			repository: string;
+		};
 	}> = {},
-) {
+)
+{
 	return {
 		id,
 		title,
@@ -51,7 +59,8 @@ function recentSession(
 	};
 }
 
-function serverSession(id: string, title: string, overrides: Partial<UnifiedSearchItem> = {}): UnifiedSearchItem {
+function serverSession(id: string, title: string, overrides: Partial<UnifiedSearchItem> = {}): UnifiedSearchItem
+{
 	return {
 		kind: "session",
 		id,
@@ -64,7 +73,8 @@ function serverSession(id: string, title: string, overrides: Partial<UnifiedSear
 	};
 }
 
-interface PendingSearch {
+interface PendingSearch
+{
 	url: string;
 	resolve: (items: UnifiedSearchItem[]) => void;
 	reject: () => void;
@@ -72,21 +82,39 @@ interface PendingSearch {
 
 let pending: PendingSearch[] = [];
 
-async function fetchMock(url: string): Promise<unknown> {
-	return new Promise((resolveFetch, rejectFetch) => {
-		pending.push({
-			url,
-			resolve: (items) => {
-				resolveFetch({ok: true, status: 200, json: async () => Promise.resolve({items})});
+async function fetchMock(url: string): Promise<unknown>
+{
+	return new Promise((resolveFetch, rejectFetch) =>
+	{
+		pending.push(
+			{
+				url,
+				resolve: (items) =>
+				{
+					resolveFetch(
+						{
+							ok: true,
+							status: 200,
+							json: async () =>
+								Promise.resolve(
+									{
+										items,
+									},
+								),
+						},
+					);
+				},
+				reject: () =>
+				{
+					rejectFetch(new TypeError("Failed to fetch"));
+				},
 			},
-			reject: () => {
-				rejectFetch(new TypeError("Failed to fetch"));
-			},
-		});
+		);
 	});
 }
 
-function Harness() {
+function Harness()
+{
 	const palette = useCommandPalette();
 	return (
 		<>
@@ -96,66 +124,131 @@ function Harness() {
 	);
 }
 
-async function openPalette(sessions = [recentSession("sess-1", "Refactor auth module")]) {
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
-	queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, {
-		sessions,
-		nextCursor: null,
-	});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<Harness />
-					<Outlet />
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const indexRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: () => null,
-	});
-	const searchRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "search",
-		validateSearch: (search: Record<string, unknown>) => search,
-		component: () => null,
-	});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "session/$id",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([indexRoute, searchRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+async function openPalette(sessions = [recentSession("sess-1", "Refactor auth module")])
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
+	queryClient.setQueryData(
+		recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey,
+		{
+			sessions,
+			nextCursor: null,
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<Harness />
+						<Outlet />
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const indexRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const searchRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "search",
+			validateSearch: (search: Record<string, unknown>) => search,
+			component: () => null,
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "session/$id",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([indexRoute, searchRoute, sessionRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
-	const composer = await screen.findByRole("textbox", {name: "Composer"});
+	const composer = await screen.findByRole(
+		"textbox",
+		{
+			name: "Composer",
+		},
+	);
 	composer.focus();
-	fireEvent.keyDown(composer, {key: "k", code: "KeyK", metaKey: true});
-	const dialog = await screen.findByRole("dialog", {name: "Search"});
-	return {dialog, router};
+	fireEvent.keyDown(
+		composer,
+		{
+			key: "k",
+			code: "KeyK",
+			metaKey: true,
+		},
+	);
+	const dialog = await screen.findByRole(
+		"dialog",
+		{
+			name: "Search",
+		},
+	);
+	return {
+		dialog,
+		router,
+	};
 }
 
-function type(dialog: HTMLElement, value: string) {
-	fireEvent.change(within(dialog).getByRole("combobox"), {target: {value}});
+function type(dialog: HTMLElement, value: string)
+{
+	fireEvent.change(
+		within(dialog).getByRole("combobox"),
+		{
+			target:
+			{
+				value,
+			},
+		},
+	);
 }
 
-function resultsGroup(dialog: HTMLElement): HTMLElement {
-	return within(dialog).getByRole("group", {name: "Search results"});
+function resultsGroup(dialog: HTMLElement): HTMLElement
+{
+	return within(dialog).getByRole(
+		"group",
+		{
+			name: "Search results",
+		},
+	);
 }
 
-function optionLabels(dialog: HTMLElement): string[] {
+function optionLabels(dialog: HTMLElement): string[]
+{
 	return [...resultsGroup(dialog).querySelectorAll("[cmdk-item]")].map(
 		(item) => item.querySelector("[data-palette-label]")?.textContent ?? "",
 	);
 }
 
-function option(dialog: HTMLElement, label: string): HTMLElement {
+function option(dialog: HTMLElement, label: string): HTMLElement
+{
 	const match = [...resultsGroup(dialog).querySelectorAll<HTMLElement>("[cmdk-item]")].find(
 		(item) => item.querySelector("[data-palette-label]")?.textContent === label,
 	);
@@ -163,12 +256,15 @@ function option(dialog: HTMLElement, label: string): HTMLElement {
 	return match;
 }
 
-function boldRuns(element: Element): string[] {
+function boldRuns(element: Element): string[]
+{
 	return [...element.querySelectorAll(".font-semibold.text-primary")].map((run) => run.textContent);
 }
 
-async function awaitRequest(): Promise<PendingSearch> {
-	await waitFor(() => {
+async function awaitRequest(): Promise<PendingSearch>
+{
+	await waitFor(() =>
+	{
 		expect(pending.length).toBe(1);
 	});
 	const [request] = pending;
@@ -179,29 +275,42 @@ async function awaitRequest(): Promise<PendingSearch> {
 const ACCENT_DOT = "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-page-bg);";
 const BRAND_DOT = "background: var(--cds-fill-brand); box-shadow: 0 0 0 0.5px var(--cds-page-bg);";
 
-describe("⌘K palette live search", () => {
-	beforeEach(() => {
+describe("⌘K palette live search", () =>
+{
+	beforeEach(() =>
+	{
 		pending = [];
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 		vi.stubGlobal("fetch", fetchMock);
 		vi.stubGlobal(
 			"ResizeObserver",
-			class {
-				observe() {}
-				unobserve() {}
-				disconnect() {}
+			class
+			{
+				observe()
+				{
+				}
+				unobserve()
+				{
+				}
+				disconnect()
+				{
+				}
 			},
 		);
-		Element.prototype.scrollIntoView = () => {};
+		Element.prototype.scrollIntoView = () =>
+		{
+		};
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
 
-	it("keeps instant title matches in place when server rows arrive", async () => {
+	it("keeps instant title matches in place when server rows arrive", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		type(dialog, "auth");
@@ -212,7 +321,18 @@ describe("⌘K palette live search", () => {
 		const request = await awaitRequest();
 		expect(request.url).toBe("/api/search?query=auth");
 		request.resolve([
-			serverSession("sess-2", "Auth token refresh", {titleMatches: [{start: 0, end: 4}]}),
+			serverSession(
+				"sess-2",
+				"Auth token refresh",
+				{
+					titleMatches: [
+						{
+							start: 0,
+							end: 4,
+						},
+					],
+				},
+			),
 			serverSession("sess-1", "Refactor auth module"),
 			{
 				...serverSession("auth-plan.md", "auth-plan.md"),
@@ -221,7 +341,8 @@ describe("⌘K palette live search", () => {
 			},
 		]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(optionLabels(dialog)).toStrictEqual([
 				"Refactor auth module",
 				"Auth token refresh",
@@ -235,91 +356,153 @@ describe("⌘K palette live search", () => {
 			),
 		).toStrictEqual(["code_session", "code_session", "plan", null]);
 		const group = resultsGroup(dialog);
-		expect({
-			// Upstream's rows are contiguous at a 36px pitch, and code sessions carry the </> Code glyph.
-			gap: group.className.split(" ").filter((name) => name.startsWith("gap-")),
-			glyph: group
-				.querySelector("[data-item-type=code_session] svg")
-				?.getAttribute("class")
-				?.split(" ")
-				.find((name) => name.startsWith("lucide-")),
-		}).toStrictEqual({gap: [], glyph: "lucide-code-xml"});
+		expect(
+			{
+				// Upstream's rows are contiguous at a 36px pitch, and code sessions carry the </> Code glyph.
+				gap: group.className.split(" ").filter((name) => name.startsWith("gap-")),
+				glyph: group
+					.querySelector("[data-item-type=code_session] svg")
+					?.getAttribute("class")
+					?.split(" ")
+					.find((name) => name.startsWith("lucide-")),
+			},
+		).toStrictEqual(
+			{
+				gap: [],
+				glyph: "lucide-code-xml",
+			},
+		);
 	});
 
-	it("renders matched runs in bold for instant and server rows", async () => {
+	it("renders matched runs in bold for instant and server rows", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		type(dialog, "auth");
 		(await awaitRequest()).resolve([
-			serverSession("sess-2", "Auth token refresh", {titleMatches: [{start: 0, end: 4}]}),
+			serverSession(
+				"sess-2",
+				"Auth token refresh",
+				{
+					titleMatches: [
+						{
+							start: 0,
+							end: 4,
+						},
+					],
+				},
+			),
 		]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(optionLabels(dialog)).toContain("Auth token refresh");
 		});
-		expect({
-			instant: boldRuns(option(dialog, "Refactor auth module")),
-			server: boldRuns(option(dialog, "Auth token refresh")),
-		}).toStrictEqual({instant: ["auth"], server: ["Auth"]});
+		expect(
+			{
+				instant: boldRuns(option(dialog, "Refactor auth module")),
+				server: boldRuns(option(dialog, "Auth token refresh")),
+			},
+		).toStrictEqual(
+			{
+				instant: ["auth"],
+				server: ["Auth"],
+			},
+		);
 	});
 
-	it("quotes content snippets beside the title", async () => {
+	it("quotes content snippets beside the title", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "hashing");
 		(await awaitRequest()).resolve([
-			serverSession("sess-3", "Cache layer", {
-				snippet: {text: "the HashingStrategy exists", matches: [{start: 4, end: 11}]},
-			}),
+			serverSession(
+				"sess-3",
+				"Cache layer",
+				{
+					snippet:
+					{
+						text: "the HashingStrategy exists",
+						matches: [
+							{
+								start: 4,
+								end: 11,
+							},
+						],
+					},
+				},
+			),
 		]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(optionLabels(dialog)).toContain("Cache layer");
 		});
 		const snippet = option(dialog, "Cache layer").querySelector("[data-palette-snippet]");
-		expect({
-			text: snippet?.textContent,
-			className: snippet?.className,
-			bold: snippet === null ? [] : boldRuns(snippet),
-		}).toStrictEqual({
-			text: "“the HashingStrategy exists”",
-			className: "text-xs text-ink-muted max-w-[60%] shrink-0 overflow-hidden whitespace-nowrap",
-			bold: ["Hashing"],
-		});
+		expect(
+			{
+				text: snippet?.textContent,
+				className: snippet?.className,
+				bold: snippet === null ? [] : boldRuns(snippet),
+			},
+		).toStrictEqual(
+			{
+				text: "“the HashingStrategy exists”",
+				className: "text-xs text-ink-muted max-w-[60%] shrink-0 overflow-hidden whitespace-nowrap",
+				bold: ["Hashing"],
+			},
+		);
 	});
 
-	it("shows a relative bucket meta and leaves it empty beyond a year", async () => {
+	it("shows a relative bucket meta and leaves it empty beyond a year", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "cache");
 		(await awaitRequest()).resolve([
 			serverSession("sess-4", "Cache now"),
-			serverSession("sess-5", "Cache old", {
-				mtime: new Date(Date.now() - 2 * YEAR_MS).toISOString(),
-			}),
+			serverSession(
+				"sess-5",
+				"Cache old",
+				{
+					mtime: new Date(Date.now() - 2 * YEAR_MS).toISOString(),
+				},
+			),
 		]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(optionLabels(dialog)).toContain("Cache old");
 		});
-		expect({
-			now: option(dialog, "Cache now").querySelector("[data-palette-meta]")?.textContent,
-			old: option(dialog, "Cache old").querySelector("[data-palette-meta]")?.textContent,
-		}).toStrictEqual({now: "Just now", old: ""});
+		expect(
+			{
+				now: option(dialog, "Cache now").querySelector("[data-palette-meta]")?.textContent,
+				old: option(dialog, "Cache old").querySelector("[data-palette-meta]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				now: "Just now",
+				old: "",
+			},
+		);
 	});
 
-	it("marks typed instant session results and keeps their time meta", async () => {
+	it("marks typed instant session results and keeps their time meta", async () =>
+	{
 		const {dialog} = await openPalette([
 			recentSession("s-wait", "Waiting 0", "blocked"),
 			recentSession("s-run", "Waiting run", "working"),
 		]);
 
 		type(dialog, "Waiting");
-		const marks = (label: string) => {
+		const marks = (label: string) =>
+		{
 			const row = option(dialog, label);
 			return {
 				sr: row.querySelector(".sr-only")?.textContent,
-				dot: (() => {
+				dot: (() =>
+				{
 					const dot = row.querySelector("[data-palette-mark-dot]");
 					return {
 						cds: dot?.getAttribute("data-cds"),
@@ -331,78 +514,140 @@ describe("⌘K palette live search", () => {
 				meta: row.querySelector("[data-palette-meta]")?.textContent,
 			};
 		};
-		expect({awaiting: marks("Waiting 0"), running: marks("Waiting run")}).toStrictEqual({
-			awaiting: {
-				sr: " Awaiting input",
-				dot: {
-					cds: "Pulse",
-					class: [
-						"block",
-						"size-[calc(0.375rem*var(--cds-rem-scale,1))]",
-						"rounded-full",
-						"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)]",
-						"stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)]",
-						"stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]",
-						"forced-colors:!bg-[color:CanvasText]",
-						"absolute",
-						"-top-px",
-						"-end-px",
-					],
-					style: "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
-					wrapper: "relative shrink-0 [--cds-page-bg:transparent]",
-				},
-				meta: "Just now",
+		expect(
+			{
+				awaiting: marks("Waiting 0"),
+				running: marks("Waiting run"),
 			},
-			running: {
-				sr: " Running",
-				dot: {
-					cds: "Pulse",
-					class: [
-						"block",
-						"size-[calc(0.375rem*var(--cds-rem-scale,1))]",
-						"rounded-full",
-						"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)]",
-						"stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)]",
-						"stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]",
-						"forced-colors:!bg-[color:CanvasText]",
-						"absolute",
-						"-top-px",
-						"-end-px",
-					],
-					style: "background: var(--cds-fill-brand); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
-					wrapper: "relative shrink-0 [--cds-page-bg:transparent]",
+		).toStrictEqual(
+			{
+				awaiting:
+				{
+					sr: " Awaiting input",
+					dot:
+					{
+						cds: "Pulse",
+						class: [
+							"block",
+							"size-[calc(0.375rem*var(--cds-rem-scale,1))]",
+							"rounded-full",
+							"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)]",
+							"stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)]",
+							"stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]",
+							"forced-colors:!bg-[color:CanvasText]",
+							"absolute",
+							"-top-px",
+							"-end-px",
+						],
+						style: "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
+						wrapper: "relative shrink-0 [--cds-page-bg:transparent]",
+					},
+					meta: "Just now",
 				},
-				meta: "Just now",
+				running:
+				{
+					sr: " Running",
+					dot:
+					{
+						cds: "Pulse",
+						class: [
+							"block",
+							"size-[calc(0.375rem*var(--cds-rem-scale,1))]",
+							"rounded-full",
+							"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)]",
+							"stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)]",
+							"stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]",
+							"forced-colors:!bg-[color:CanvasText]",
+							"absolute",
+							"-top-px",
+							"-end-px",
+						],
+						style: "background: var(--cds-fill-brand); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
+						wrapper: "relative shrink-0 [--cds-page-bg:transparent]",
+					},
+					meta: "Just now",
+				},
 			},
-		});
+		);
 	});
 
-	it("marks sessions awaiting input with a pulse dot", async () => {
+	it("marks sessions awaiting input with a pulse dot", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "deploy");
 		(await awaitRequest()).resolve([
-			serverSession("sess-6", "Deploy waiting", {state: "waiting"}),
-			serverSession("sess-7", "Deploy idle", {state: "idle"}),
+			serverSession(
+				"sess-6",
+				"Deploy waiting",
+				{
+					state: "waiting",
+				},
+			),
+			serverSession(
+				"sess-7",
+				"Deploy idle",
+				{
+					state: "idle",
+				},
+			),
 		]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(optionLabels(dialog)).toContain("Deploy idle");
 		});
-		expect({
-			waiting: option(dialog, "Deploy waiting").querySelector("[data-palette-mark-dot]")?.tagName,
-			waitingSr: option(dialog, "Deploy waiting").querySelector(".sr-only")?.textContent,
-			idle: option(dialog, "Deploy idle").querySelector("[data-palette-mark-dot]"),
-		}).toStrictEqual({waiting: "SPAN", waitingSr: " Awaiting input", idle: null});
+		expect(
+			{
+				waiting: option(dialog, "Deploy waiting").querySelector("[data-palette-mark-dot]")?.tagName,
+				waitingSr: option(dialog, "Deploy waiting").querySelector(".sr-only")?.textContent,
+				idle: option(dialog, "Deploy idle").querySelector("[data-palette-mark-dot]"),
+			},
+		).toStrictEqual(
+			{
+				waiting: "SPAN",
+				waitingSr: " Awaiting input",
+				idle: null,
+			},
+		);
 	});
 
-	it("marks server-only session hits from the session list, with its PR and archived state", async () => {
-		const pr = (number: number) => ({number, url: `https://github.com/o/r/pull/${number}`, repository: "o/r"});
+	it("marks server-only session hits from the session list, with its PR and archived state", async () =>
+	{
+		const pr = (number: number) => (
+		{
+			number,
+			url: `https://github.com/o/r/pull/${number}`,
+			repository: "o/r",
+		});
 		const {dialog} = await openPalette([
 			recentSession("s1", "Alpha", "working"),
-			recentSession("s2", "Bravo", "done", {unseen: true, pr: pr(863)}),
-			recentSession("s3", "Charlie", "blocked", {unseenError: true}),
-			recentSession("s4", "Delta", "done", {archived: true, pr: pr(12)}),
+			recentSession(
+				"s2",
+				"Bravo",
+				"done",
+				{
+					unseen: true,
+					pr: pr(863),
+				},
+			),
+			recentSession(
+				"s3",
+				"Charlie",
+				"blocked",
+				{
+					unseenError: true,
+				},
+			),
+			recentSession(
+				"s4",
+				"Delta",
+				"done",
+				{
+					archived: true,
+					pr: pr(12),
+				},
+			),
 		]);
 
 		type(dialog, "zebra");
@@ -411,13 +656,21 @@ describe("⌘K palette live search", () => {
 			serverSession("s2", "Bravo"),
 			serverSession("s3", "Charlie"),
 			serverSession("s4", "Delta"),
-			serverSession("s5", "Echo", {state: "waiting"}),
+			serverSession(
+				"s5",
+				"Echo",
+				{
+					state: "waiting",
+				},
+			),
 		]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(optionLabels(dialog)).toContain("Echo");
 		});
-		const row = (label: string) => {
+		const row = (label: string) =>
+		{
 			const element = option(dialog, label);
 			return {
 				sr: element.querySelector(".sr-only")?.textContent,
@@ -426,22 +679,57 @@ describe("⌘K palette live search", () => {
 				archived: element.hasAttribute("data-archived"),
 			};
 		};
-		expect({
-			s1: row("Alpha"),
-			s2: row("Bravo"),
-			s3: row("Charlie"),
-			s4: row("Delta"),
-			s5: row("Echo"),
-		}).toStrictEqual({
-			s1: {sr: " Running", dot: BRAND_DOT, meta: "Just now", archived: false},
-			s2: {sr: " Unread", dot: ACCENT_DOT, meta: "PR #863 · Just now", archived: false},
-			s3: {sr: " Error", dot: ACCENT_DOT, meta: "Just now", archived: false},
-			s4: {sr: undefined, dot: undefined, meta: "PR #12 · Just nowArchived", archived: true},
-			s5: {sr: " Awaiting input", dot: ACCENT_DOT, meta: "Just now", archived: false},
-		});
+		expect(
+			{
+				s1: row("Alpha"),
+				s2: row("Bravo"),
+				s3: row("Charlie"),
+				s4: row("Delta"),
+				s5: row("Echo"),
+			},
+		).toStrictEqual(
+			{
+				s1:
+				{
+					sr: " Running",
+					dot: BRAND_DOT,
+					meta: "Just now",
+					archived: false,
+				},
+				s2:
+				{
+					sr: " Unread",
+					dot: ACCENT_DOT,
+					meta: "PR #863 · Just now",
+					archived: false,
+				},
+				s3:
+				{
+					sr: " Error",
+					dot: ACCENT_DOT,
+					meta: "Just now",
+					archived: false,
+				},
+				s4:
+				{
+					sr: undefined,
+					dot: undefined,
+					meta: "PR #12 · Just nowArchived",
+					archived: true,
+				},
+				s5:
+				{
+					sr: " Awaiting input",
+					dot: ACCENT_DOT,
+					meta: "Just now",
+					archived: false,
+				},
+			},
+		);
 	});
 
-	it("shows the deeper-search spinner and skeletons only while fetching", async () => {
+	it("shows the deeper-search spinner and skeletons only while fetching", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		const slot = () => dialog.querySelector("[data-palette-spinner-slot]");
@@ -450,47 +738,70 @@ describe("⌘K palette live search", () => {
 		type(dialog, "auth");
 		const request = await awaitRequest();
 
-		expect({
-			idleSlot,
-			skeletons: dialog.querySelectorAll("[data-palette-skeleton]").length > 0,
-			busy: resultsGroup(dialog).getAttribute("aria-busy"),
-		}).toStrictEqual({
-			idleSlot: "flex size-4 shrink-0 items-center justify-center",
-			skeletons: true,
-			busy: "true",
-		});
-		await waitFor(() => {
+		expect(
+			{
+				idleSlot,
+				skeletons: dialog.querySelectorAll("[data-palette-skeleton]").length > 0,
+				busy: resultsGroup(dialog).getAttribute("aria-busy"),
+			},
+		).toStrictEqual(
+			{
+				idleSlot: "flex size-4 shrink-0 items-center justify-center",
+				skeletons: true,
+				busy: "true",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(within(slot() as HTMLElement).getByRole("status").textContent).toBe("Searching deeper...");
 		});
 
 		request.resolve([serverSession("sess-2", "Auth token refresh")]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(slot()?.childElementCount).toBe(0);
 		});
-		expect({
-			skeletons: dialog.querySelectorAll("[data-palette-skeleton]").length,
-			busy: resultsGroup(dialog).getAttribute("aria-busy"),
-		}).toStrictEqual({skeletons: 0, busy: "false"});
+		expect(
+			{
+				skeletons: dialog.querySelectorAll("[data-palette-skeleton]").length,
+				busy: resultsGroup(dialog).getAttribute("aria-busy"),
+			},
+		).toStrictEqual(
+			{
+				skeletons: 0,
+				busy: "false",
+			},
+		);
 	});
 
-	it("keeps the spinner off for a 1-character query, which upstream never sends to the server", async () => {
+	it("keeps the spinner off for a 1-character query, which upstream never sends to the server", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "ǂ");
 		const request = await awaitRequest();
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 400);
 		});
 
-		expect({
-			spinner: dialog.querySelector("[data-palette-spinner-slot]")?.childElementCount,
-			skeleton: dialog.querySelector("[data-palette-skeleton]") !== null,
-		}).toStrictEqual({spinner: 0, skeleton: true});
+		expect(
+			{
+				spinner: dialog.querySelector("[data-palette-spinner-slot]")?.childElementCount,
+				skeleton: dialog.querySelector("[data-palette-skeleton]") !== null,
+			},
+		).toStrictEqual(
+			{
+				spinner: 0,
+				skeleton: true,
+			},
+		);
 		request.resolve([]);
 	});
 
-	it("fills the list with upstream's wave SkeletonGroup while settling, with no option rows above it", async () => {
+	it("fills the list with upstream's wave SkeletonGroup while settling, with no option rows above it", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		type(dialog, "zqxvjkw");
@@ -500,79 +811,104 @@ describe("⌘K palette live search", () => {
 		const wrapper = group?.firstElementChild;
 		const rows = Array.from(wrapper?.children ?? []);
 		const bars = (row: Element | undefined) =>
-			Array.from(row?.querySelectorAll<HTMLElement>("[data-skeleton]") ?? []).map((bar) => ({
+			Array.from(row?.querySelectorAll<HTMLElement>("[data-skeleton]") ?? []).map((bar) => (
+			{
 				width: bar.style.width,
 				height: bar.style.height,
 				index: bar.style.getPropertyValue("--skel-i"),
 			}));
-		expect({
-			group: {
-				className: group?.className,
-				hidden: group?.getAttribute("aria-hidden"),
-				motion: group?.getAttribute("data-motion"),
-				cds: group?.getAttribute("data-cds"),
-				hold: group?.getAttribute("data-hold"),
-				reason: group?.getAttribute("data-hold-reason"),
-				shown: group?.getAttribute("data-shown"),
-				children: group?.childElementCount,
+		expect(
+			{
+				group:
+				{
+					className: group?.className,
+					hidden: group?.getAttribute("aria-hidden"),
+					motion: group?.getAttribute("data-motion"),
+					cds: group?.getAttribute("data-cds"),
+					hold: group?.getAttribute("data-hold"),
+					reason: group?.getAttribute("data-hold-reason"),
+					shown: group?.getAttribute("data-shown"),
+					children: group?.childElementCount,
+				},
+				wrapper:
+				{
+					className: wrapper?.className,
+					hidden: wrapper?.getAttribute("aria-hidden"),
+				},
+				rows: rows.length,
+				rowClass: rows[0]?.className,
+				barClass: rows[0]?.querySelector("[data-skeleton]")?.className,
+				barCds: rows[0]?.querySelector("[data-skeleton]")?.getAttribute("data-cds"),
+				first: bars(rows[0]),
+				titleWidths: rows.map((row) => bars(row)[1]?.width),
+				lastIndices: bars(rows[12]).map((bar) => bar.index),
+				options: optionLabels(dialog),
 			},
-			wrapper: {className: wrapper?.className, hidden: wrapper?.getAttribute("aria-hidden")},
-			rows: rows.length,
-			rowClass: rows[0]?.className,
-			barClass: rows[0]?.querySelector("[data-skeleton]")?.className,
-			barCds: rows[0]?.querySelector("[data-skeleton]")?.getAttribute("data-cds"),
-			first: bars(rows[0]),
-			titleWidths: rows.map((row) => bars(row)[1]?.width),
-			lastIndices: bars(rows[12]).map((bar) => bar.index),
-			options: optionLabels(dialog),
-		}).toStrictEqual({
-			group: {
-				className: "flex min-h-0 grow basis-0 flex-col flex-wrap content-start overflow-hidden",
-				hidden: "true",
-				motion: "wave",
-				cds: "SkeletonGroup",
-				hold: "none",
-				reason: "predicted-slow",
-				shown: "",
-				children: 1,
+		).toStrictEqual(
+			{
+				group:
+				{
+					className: "flex min-h-0 grow basis-0 flex-col flex-wrap content-start overflow-hidden",
+					hidden: "true",
+					motion: "wave",
+					cds: "SkeletonGroup",
+					hold: "none",
+					reason: "predicted-slow",
+					shown: "",
+					children: 1,
+				},
+				wrapper:
+				{
+					className: "contents",
+					hidden: "true",
+				},
+				rows: 13,
+				rowClass: "flex shrink-0 items-center gap-2 px-3 py-2 box-border h-9 w-full",
+				barClass: "h-[1em] max-w-full rounded bg-[var(--skeleton-base)]",
+				barCds: "Skeleton",
+				first: [
+					{
+						width: "20px",
+						height: "20px",
+						index: "0",
+					},
+					{
+						width: "224px",
+						height: "14px",
+						index: "1",
+					},
+				],
+				titleWidths: [
+					"224px",
+					"176px",
+					"256px",
+					"200px",
+					"160px",
+					"240px",
+					"192px",
+					"224px",
+					"176px",
+					"256px",
+					"200px",
+					"160px",
+					"240px",
+				],
+				// Upstream's --cds-skel-i counts 0..21 and restarts, so row 12 (bars 24, 25) breathes with row 1.
+				lastIndices: ["2", "3"],
+				options: [],
 			},
-			wrapper: {className: "contents", hidden: "true"},
-			rows: 13,
-			rowClass: "flex shrink-0 items-center gap-2 px-3 py-2 box-border h-9 w-full",
-			barClass: "h-[1em] max-w-full rounded bg-[var(--skeleton-base)]",
-			barCds: "Skeleton",
-			first: [
-				{width: "20px", height: "20px", index: "0"},
-				{width: "224px", height: "14px", index: "1"},
-			],
-			titleWidths: [
-				"224px",
-				"176px",
-				"256px",
-				"200px",
-				"160px",
-				"240px",
-				"192px",
-				"224px",
-				"176px",
-				"256px",
-				"200px",
-				"160px",
-				"240px",
-			],
-			// Upstream's --cds-skel-i counts 0..21 and restarts, so row 12 (bars 24, 25) breathes with row 1.
-			lastIndices: ["2", "3"],
-			options: [],
-		});
+		);
 
 		request.resolve([serverSession("sess-2", "Zqxvjkw notes")]);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(dialog.querySelector("[data-palette-skeleton]")).toBeNull();
 		});
 		expect(optionLabels(dialog)).toContain("See all results for “zqxvjkw”");
 	});
 
-	it("announces the result count politely once the search settles", async () => {
+	it("announces the result count politely once the search settles", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		type(dialog, "auth");
@@ -581,93 +917,136 @@ describe("⌘K palette live search", () => {
 			serverSession("sess-8", "Auth docs"),
 		]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(dialog.querySelector("[aria-live=polite]")?.textContent).toBe("3 results available");
 		});
 		expect(dialog.querySelector("[aria-live=polite]")?.getAttribute("aria-atomic")).toBe("true");
 	});
 
-	it("keeps the live region mounted but empty while the search is in flight", async () => {
+	it("keeps the live region mounted but empty while the search is in flight", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		type(dialog, "auth");
 		const request = await awaitRequest();
 
 		const live = dialog.querySelector("[aria-live=polite]");
-		expect({
-			atomic: live?.getAttribute("aria-atomic"),
-			className: live?.className,
-			text: live?.textContent,
-		}).toStrictEqual({atomic: "true", className: "sr-only", text: ""});
+		expect(
+			{
+				atomic: live?.getAttribute("aria-atomic"),
+				className: live?.className,
+				text: live?.textContent,
+			},
+		).toStrictEqual(
+			{
+				atomic: "true",
+				className: "sr-only",
+				text: "",
+			},
+		);
 		request.resolve([]);
 	});
 
-	it("announces a single result in the singular", async () => {
+	it("announces a single result in the singular", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "zzqxvq");
 		(await awaitRequest()).resolve([serverSession("sess-2", "Zzqxvq notes")]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(dialog.querySelector("[aria-live=polite]")?.textContent).toBe("1 result available");
 		});
 	});
 
-	it("navigates to the search page with the query and type from the last row", async () => {
+	it("navigates to the search page with the query and type from the last row", async () =>
+	{
 		const {dialog, router} = await openPalette();
 
 		type(dialog, "auth");
 		(await awaitRequest()).resolve([]);
 		fireEvent.click(await waitFor(() => option(dialog, "See all results for “auth”")));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
-		expect({
-			pathname: router.state.location.pathname,
-			q: router.state.location.search["q" as never],
-			type: router.state.location.search["type" as never],
-		}).toStrictEqual({pathname: "/search", q: "auth", type: "all"});
+		expect(
+			{
+				pathname: router.state.location.pathname,
+				q: router.state.location.search["q" as never],
+				type: router.state.location.search["type" as never],
+			},
+		).toStrictEqual(
+			{
+				pathname: "/search",
+				q: "auth",
+				type: "all",
+			},
+		);
 	});
 });
 
-describe("⌘K palette list height", () => {
+describe("⌘K palette list height", () =>
+{
 	const reportedHeight = 200;
 	const scrollerClass =
 		"flex flex-col min-h-0 overflow-y-auto p-2.5 transition-[height,max-height] duration-150 ease-out motion-reduce:transition-none";
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		pending = [];
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 		vi.stubGlobal("fetch", fetchMock);
 		// Every observed element reports a 200px-tall content box, as the measured sizer would.
 		vi.stubGlobal(
 			"ResizeObserver",
-			class {
+			class
+			{
 				readonly #callback: ResizeObserverCallback;
-				constructor(callback: ResizeObserverCallback) {
+				constructor(callback: ResizeObserverCallback)
+				{
 					this.#callback = callback;
 				}
-				observe(target: Element) {
+				observe(target: Element)
+				{
 					this.#callback(
-						[{target, contentRect: {height: reportedHeight}} as unknown as ResizeObserverEntry],
+						[
+							{
+								target,
+								contentRect:
+								{
+									height: reportedHeight,
+								},
+							} as unknown as ResizeObserverEntry,
+						],
 						this,
 					);
 				}
-				unobserve() {}
-				disconnect() {}
+				unobserve()
+				{
+				}
+				disconnect()
+				{
+				}
 			},
 		);
-		Element.prototype.scrollIntoView = () => {};
+		Element.prototype.scrollIntoView = () =>
+		{
+		};
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 	});
 
-	function list(dialog: HTMLElement) {
+	function list(dialog: HTMLElement)
+	{
 		const element = dialog.querySelector<HTMLElement>("[cmdk-list]");
 		return {
 			classes: element?.className.split(" ").filter((name) => !name.startsWith("[&")),
@@ -679,7 +1058,8 @@ describe("⌘K palette list height", () => {
 
 	const maxHeight = "calc(440px + var(--cp-footer-collapsed, 0) * 41px)";
 
-	it("fits settled results to their measured content plus the 20px padding", async () => {
+	it("fits settled results to their measured content plus the 20px padding", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		type(dialog, "auth");
@@ -689,23 +1069,28 @@ describe("⌘K palette list height", () => {
 			serverSession("sess-4", "Auth flows"),
 		]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(dialog.querySelector("[aria-live=polite]")?.textContent).toBe("4 results available");
 		});
-		expect(list(dialog)).toStrictEqual({
-			classes: scrollerClass.split(" "),
-			height: "220px",
-			maxHeight,
-			sizerFills: false,
-		});
+		expect(list(dialog)).toStrictEqual(
+			{
+				classes: scrollerClass.split(" "),
+				height: "220px",
+				maxHeight,
+				sizerFills: false,
+			},
+		);
 	});
 
-	it("holds the list at its cap, grown by the collapsed footer's 41px, while settling and when empty", async () => {
+	it("holds the list at its cap, grown by the collapsed footer's 41px, while settling and when empty", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "zzqxvq");
 		const request = await awaitRequest();
-		const capped = {
+		const capped =
+		{
 			classes: scrollerClass.split(" "),
 			height: "481px",
 			maxHeight,
@@ -714,52 +1099,75 @@ describe("⌘K palette list height", () => {
 		expect(list(dialog)).toStrictEqual(capped);
 
 		request.resolve([]);
-		await within(dialog).findByText("No results for “zzqxvq”", {selector: "p"});
+		await within(dialog).findByText(
+			"No results for “zzqxvq”",
+			{
+				selector: "p",
+			},
+		);
 		expect(list(dialog)).toStrictEqual(capped);
 	});
 
-	it("fits the Filter by hints to their content", async () => {
+	it("fits the Filter by hints to their content", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		type(dialog, "/");
 
-		expect(list(dialog)).toStrictEqual({
-			classes: scrollerClass.split(" "),
-			height: "220px",
-			maxHeight,
-			sizerFills: false,
-		});
+		expect(list(dialog)).toStrictEqual(
+			{
+				classes: scrollerClass.split(" "),
+				height: "220px",
+				maxHeight,
+				sizerFills: false,
+			},
+		);
 	});
 
-	it("keeps the empty-query view at its 440px cap", async () => {
+	it("keeps the empty-query view at its 440px cap", async () =>
+	{
 		const {dialog} = await openPalette();
 
-		expect(list(dialog)).toStrictEqual({
-			classes: scrollerClass.split(" "),
-			height: "440px",
-			maxHeight,
-			sizerFills: true,
-		});
+		expect(list(dialog)).toStrictEqual(
+			{
+				classes: scrollerClass.split(" "),
+				height: "440px",
+				maxHeight,
+				sizerFills: true,
+			},
+		);
 	});
 });
 
-describe("⌘K palette filters", () => {
-	beforeEach(() => {
+describe("⌘K palette filters", () =>
+{
+	beforeEach(() =>
+	{
 		pending = [];
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 		vi.stubGlobal("fetch", fetchMock);
 		vi.stubGlobal(
 			"ResizeObserver",
-			class {
-				observe() {}
-				unobserve() {}
-				disconnect() {}
+			class
+			{
+				observe()
+				{
+				}
+				unobserve()
+				{
+				}
+				disconnect()
+				{
+				}
 			},
 		);
-		Element.prototype.scrollIntoView = () => {};
+		Element.prototype.scrollIntoView = () =>
+		{
+		};
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
@@ -767,40 +1175,81 @@ describe("⌘K palette filters", () => {
 		localStorage.clear();
 	});
 
-	function tabs(dialog: HTMLElement) {
-		return within(within(dialog).getByRole("tablist", {name: "Type"}))
+	function tabs(dialog: HTMLElement)
+	{
+		return within(
+			within(dialog).getByRole(
+				"tablist",
+				{
+					name: "Type",
+				},
+			),
+		)
 			.getAllByRole("tab")
-			.map((tab) => ({name: tab.textContent, selected: tab.getAttribute("aria-selected")}));
+			.map((tab) => (
+			{
+				name: tab.textContent,
+				selected: tab.getAttribute("aria-selected"),
+			}));
 	}
 
-	function filterHints(dialog: HTMLElement): HTMLElement[] {
+	function filterHints(dialog: HTMLElement): HTMLElement[]
+	{
 		return [...dialog.querySelectorAll<HTMLElement>('[cmdk-list] [cmdk-item][data-value^="filter:"]')];
 	}
 
 	/** Each hint's "Filter by " label followed by its badge text. */
-	function filterLabels(dialog: HTMLElement): string[] {
-		return filterHints(dialog).map((item) => {
+	function filterLabels(dialog: HTMLElement): string[]
+	{
+		return filterHints(dialog).map((item) =>
+		{
 			const label = item.querySelector("[data-palette-label]");
 			return `${label?.textContent ?? ""}${label?.nextElementSibling?.textContent ?? ""}`;
 		});
 	}
 
-	it("renders local type tabs with All selected", async () => {
+	it("renders local type tabs with All selected", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		expect(tabs(dialog)).toStrictEqual([
-			{name: "All", selected: "true"},
-			{name: "Artifacts", selected: "false"},
-			{name: "Code", selected: "false"},
-			{name: "Projects", selected: "false"},
-			{name: "Scheduled", selected: "false"},
-			{name: "Plans", selected: "false"},
-			{name: "Memories", selected: "false"},
-			{name: "Files", selected: "false"},
+			{
+				name: "All",
+				selected: "true",
+			},
+			{
+				name: "Artifacts",
+				selected: "false",
+			},
+			{
+				name: "Code",
+				selected: "false",
+			},
+			{
+				name: "Projects",
+				selected: "false",
+			},
+			{
+				name: "Scheduled",
+				selected: "false",
+			},
+			{
+				name: "Plans",
+				selected: "false",
+			},
+			{
+				name: "Memories",
+				selected: "false",
+			},
+			{
+				name: "Files",
+				selected: "false",
+			},
 		]);
 	});
 
-	it("lists the Filter by hints when / is the whole query", async () => {
+	it("lists the Filter by hints when / is the whole query", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		type(dialog, "/");
@@ -816,7 +1265,8 @@ describe("⌘K palette filters", () => {
 		expect(pending).toStrictEqual([]);
 	});
 
-	it("narrows the hints as you type", async () => {
+	it("narrows the hints as you type", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		type(dialog, "/re");
@@ -824,7 +1274,8 @@ describe("⌘K palette filters", () => {
 		expect(filterLabels(dialog)).toStrictEqual(["Filter by Date", "Filter by Repo"]);
 	});
 
-	it("inserts the filter token when a hint is chosen", async () => {
+	it("inserts the filter token when a hint is chosen", async () =>
+	{
 		const {dialog} = await openPalette();
 
 		type(dialog, "/re");
@@ -835,26 +1286,39 @@ describe("⌘K palette filters", () => {
 		expect(within(dialog).getByRole("combobox")).toHaveProperty("value", "repo:");
 	});
 
-	it("lists recents with bucket meta on the Code tab with an empty query", async () => {
+	it("lists recents with bucket meta on the Code tab with an empty query", async () =>
+	{
 		const {dialog} = await openPalette([
 			recentSession("sess-1", "Refactor auth module"),
 			recentSession("sess-2", "Fix login"),
 		]);
 
-		fireEvent.click(within(dialog).getByRole("tab", {name: "Code"}));
+		fireEvent.click(
+			within(dialog).getByRole(
+				"tab",
+				{
+					name: "Code",
+				},
+			),
+		);
 
-		expect({
-			labels: optionLabels(dialog),
-			meta: [...resultsGroup(dialog).querySelectorAll("[data-palette-meta]")].map((meta) => meta.textContent),
-			headings: [...dialog.querySelectorAll("[cmdk-group-heading]")].map((heading) => heading.textContent),
-		}).toStrictEqual({
-			labels: ["Refactor auth module", "Fix login"],
-			meta: ["Just now", "Just now"],
-			headings: [],
-		});
+		expect(
+			{
+				labels: optionLabels(dialog),
+				meta: [...resultsGroup(dialog).querySelectorAll("[data-palette-meta]")].map((meta) => meta.textContent),
+				headings: [...dialog.querySelectorAll("[cmdk-group-heading]")].map((heading) => heading.textContent),
+			},
+		).toStrictEqual(
+			{
+				labels: ["Refactor auth module", "Fix login"],
+				meta: ["Just now", "Just now"],
+				headings: [],
+			},
+		);
 	});
 
-	it("maps type:code onto upstream's Code tab, the local sessions type", async () => {
+	it("maps type:code onto upstream's Code tab, the local sessions type", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "type:code auth");
@@ -862,7 +1326,8 @@ describe("⌘K palette filters", () => {
 		expect((await awaitRequest()).url).toBe("/api/search?query=auth&type=sessions");
 	});
 
-	it("maps tokens onto the search request", async () => {
+	it("maps tokens onto the search request", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "date:week type:plans auth");
@@ -870,58 +1335,90 @@ describe("⌘K palette filters", () => {
 		expect((await awaitRequest()).url).toBe("/api/search?query=auth&type=plans&date=week");
 	});
 
-	it("centers upstream's No results for the query and announces it when the All search finds nothing", async () => {
+	it("centers upstream's No results for the query and announces it when the All search finds nothing", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "zzqxvq");
 		(await awaitRequest()).resolve([]);
 
-		const empty = await within(dialog).findByText("No results for “zzqxvq”", {selector: "p"});
-		expect({
-			tag: empty.tagName,
-			block: empty.parentElement?.className
-				.split(" ")
-				.filter((name) => ["flex-1", "items-center", "justify-center", "text-center"].includes(name)),
-			// Upstream's block is a sibling after the results listbox, so flex-1 grows it through the capped list.
-			blockParent: empty.parentElement?.parentElement?.hasAttribute("cmdk-list-sizer"),
-			afterResults: empty.parentElement?.previousElementSibling === resultsGroup(dialog),
-			clear: within(dialog).queryByRole("button", {name: "Clear filters"}),
-			live: dialog.querySelector("[aria-live=polite]")?.textContent,
-			// Upstream's empty view has no option rows: the local See all row waits for results.
-			options: optionLabels(dialog),
-		}).toStrictEqual({
-			tag: "P",
-			block: ["flex-1", "items-center", "justify-center", "text-center"],
-			blockParent: true,
-			afterResults: true,
-			clear: null,
-			live: "No results for “zzqxvq”",
-			options: [],
-		});
+		const empty = await within(dialog).findByText(
+			"No results for “zzqxvq”",
+			{
+				selector: "p",
+			},
+		);
+		expect(
+			{
+				tag: empty.tagName,
+				block: empty.parentElement?.className
+					.split(" ")
+					.filter((name) => ["flex-1", "items-center", "justify-center", "text-center"].includes(name)),
+				// Upstream's block is a sibling after the results listbox, so flex-1 grows it through the capped list.
+				blockParent: empty.parentElement?.parentElement?.hasAttribute("cmdk-list-sizer"),
+				afterResults: empty.parentElement?.previousElementSibling === resultsGroup(dialog),
+				clear: within(dialog).queryByRole(
+					"button",
+					{
+						name: "Clear filters",
+					},
+				),
+				live: dialog.querySelector("[aria-live=polite]")?.textContent,
+				// Upstream's empty view has no option rows: the local See all row waits for results.
+				options: optionLabels(dialog),
+			},
+		).toStrictEqual(
+			{
+				tag: "P",
+				block: ["flex-1", "items-center", "justify-center", "text-center"],
+				blockParent: true,
+				afterResults: true,
+				clear: null,
+				live: "No results for “zzqxvq”",
+				options: [],
+			},
+		);
 	});
 
-	it("shows and announces upstream's Something went wrong when the server search fails", async () => {
+	it("shows and announces upstream's Something went wrong when the server search fails", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "zzqxvq");
 		(await awaitRequest()).reject();
 
-		const failed = await within(dialog).findByText("Something went wrong", {selector: "p"});
-		expect({
-			block: failed.parentElement?.hasAttribute("data-palette-empty"),
-			live: dialog.querySelector("[aria-live=polite]")?.textContent,
-		}).toStrictEqual({block: true, live: "Something went wrong"});
+		const failed = await within(dialog).findByText(
+			"Something went wrong",
+			{
+				selector: "p",
+			},
+		);
+		expect(
+			{
+				block: failed.parentElement?.hasAttribute("data-palette-empty"),
+				live: dialog.querySelector("[aria-live=polite]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				block: true,
+				live: "Something went wrong",
+			},
+		);
 	});
 
-	it("keeps a 1-character no-match silent, announcing No results found to the live region only after 3s", async () => {
+	it("keeps a 1-character no-match silent, announcing No results found to the live region only after 3s", async () =>
+	{
 		const {dialog} = await openPalette([]);
 		const live = () => dialog.querySelector("[aria-live=polite]")?.textContent;
-		const advance = async (ms: number) => {
-			await act(async () => {
+		const advance = async (ms: number) =>
+		{
+			await act(async () =>
+			{
 				await vi.advanceTimersByTimeAsync(ms);
 			});
 		};
-		const settle = async (query: string) => {
+		const settle = async (query: string) =>
+		{
 			type(dialog, query);
 			await advance(150);
 			const request = pending.at(-1);
@@ -932,9 +1429,11 @@ describe("⌘K palette filters", () => {
 		};
 
 		vi.useFakeTimers();
-		try {
+		try
+		{
 			await settle("ǂ");
-			const settled = {
+			const settled =
+			{
 				skeleton: dialog.querySelector("[data-palette-skeleton]"),
 				empty: dialog.querySelector("[data-palette-empty]"),
 				text: [...resultsGroup(dialog).querySelectorAll("p")].map((node) => node.textContent),
@@ -952,92 +1451,188 @@ describe("⌘K palette filters", () => {
 			await advance(1);
 			const replacedSpoken = live();
 
-			expect({settled, before, spoken, replaced, replacedBefore, replacedSpoken}).toStrictEqual({
-				settled: {skeleton: null, empty: null, text: [], options: [], live: ""},
-				before: "",
-				spoken: "No results found",
-				replaced: "",
-				replacedBefore: "",
-				replacedSpoken: "No results found",
-			});
-		} finally {
+			expect(
+				{
+					settled,
+					before,
+					spoken,
+					replaced,
+					replacedBefore,
+					replacedSpoken,
+				},
+			).toStrictEqual(
+				{
+					settled:
+					{
+						skeleton: null,
+						empty: null,
+						text: [],
+						options: [],
+						live: "",
+					},
+					before: "",
+					spoken: "No results found",
+					replaced: "",
+					replacedBefore: "",
+					replacedSpoken: "No results found",
+				},
+			);
+		}
+		finally
+		{
 			vi.useRealTimers();
 		}
 	});
 
-	it("offers upstream's Search all when filters emptied the list, clearing chips and type but keeping text and focus", async () => {
+	it("offers upstream's Search all when filters emptied the list, clearing chips and type but keeping text and focus", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "date:week zzqxvq");
 		(await awaitRequest()).resolve([]);
 
-		const searchAll = await within(dialog).findByRole("button", {name: "Search all"});
+		const searchAll = await within(dialog).findByRole(
+			"button",
+			{
+				name: "Search all",
+			},
+		);
 		const combobox = within(dialog).getByRole("combobox");
 		combobox.focus();
 		const mouseDown = fireEvent.mouseDown(searchAll);
 		fireEvent.click(searchAll);
 
-		expect({
-			defaultPrevented: !mouseDown,
-			value: (combobox as HTMLTextAreaElement).value,
-			tab: tabs(dialog)[0],
-			focused: document.activeElement === combobox,
-			clear: within(dialog).queryByRole("button", {name: "Clear filters"}),
-		}).toStrictEqual({
-			defaultPrevented: true,
-			value: "zzqxvq",
-			tab: {name: "All", selected: "true"},
-			focused: true,
-			clear: null,
-		});
+		expect(
+			{
+				defaultPrevented: !mouseDown,
+				value: (combobox as HTMLTextAreaElement).value,
+				tab: tabs(dialog)[0],
+				focused: document.activeElement === combobox,
+				clear: within(dialog).queryByRole(
+					"button",
+					{
+						name: "Clear filters",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				defaultPrevented: true,
+				value: "zzqxvq",
+				tab:
+				{
+					name: "All",
+					selected: "true",
+				},
+				focused: true,
+				clear: null,
+			},
+		);
 	});
 
-	it("hints upstream's Tab to compose on an unfiltered empty search, and its keycap switches to Compose", async () => {
+	it("hints upstream's Tab to compose on an unfiltered empty search, and its keycap switches to Compose", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "zzqxvq");
 		(await awaitRequest()).resolve([]);
 
-		const hint = await within(dialog).findByText("to compose", {exact: false, selector: "p"});
+		const hint = await within(dialog).findByText(
+			"to compose",
+			{
+				exact: false,
+				selector: "p",
+			},
+		);
 		const keycap = hint.querySelector("kbd");
 		const button = keycap?.closest("button");
-		expect({
-			hint: hint.textContent,
-			hidden: hint.getAttribute("aria-hidden"),
-			keycap: keycap?.textContent,
-			tabIndex: button?.tabIndex,
-		}).toStrictEqual({hint: "Tab to compose", hidden: "true", keycap: "Tab", tabIndex: -1});
+		expect(
+			{
+				hint: hint.textContent,
+				hidden: hint.getAttribute("aria-hidden"),
+				keycap: keycap?.textContent,
+				tabIndex: button?.tabIndex,
+			},
+		).toStrictEqual(
+			{
+				hint: "Tab to compose",
+				hidden: "true",
+				keycap: "Tab",
+				tabIndex: -1,
+			},
+		);
 
 		fireEvent.click(button as HTMLElement);
 
-		expect(await screen.findByRole("combobox", {name: "Write a message…"})).toBeDefined();
+		expect(
+			await screen.findByRole(
+				"combobox",
+				{
+					name: "Write a message…",
+				},
+			),
+		).toBeDefined();
 	});
 
-	it("shows the filtered no-results copy on the Code tab and Search all resets the tab", async () => {
+	it("shows the filtered no-results copy on the Code tab and Search all resets the tab", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
-		fireEvent.click(within(dialog).getByRole("tab", {name: "Code"}));
+		fireEvent.click(
+			within(dialog).getByRole(
+				"tab",
+				{
+					name: "Code",
+				},
+			),
+		);
 		type(dialog, "zzqxvq");
 		const request = await awaitRequest();
 		expect(request.url).toBe("/api/search?query=zzqxvq&type=sessions");
 		request.resolve([]);
 
-		await within(dialog).findByText("No results for “zzqxvq” in Code", {selector: "p"});
-		fireEvent.click(within(dialog).getByRole("button", {name: "Search all"}));
+		await within(dialog).findByText(
+			"No results for “zzqxvq” in Code",
+			{
+				selector: "p",
+			},
+		);
+		fireEvent.click(
+			within(dialog).getByRole(
+				"button",
+				{
+					name: "Search all",
+				},
+			),
+		);
 
-		expect(tabs(dialog)[0]).toStrictEqual({name: "All", selected: "true"});
-		await waitFor(() => {
+		expect(tabs(dialog)[0]).toStrictEqual(
+			{
+				name: "All",
+				selected: "true",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(pending.map((search) => search.url)).toContain("/api/search?query=zzqxvq");
 		});
 	});
 
-	it("sizes Search all at the palette's comfortable density: 28px tall, 9px padding, 8px radius", async () => {
+	it("sizes Search all at the palette's comfortable density: 28px tall, 9px padding, 8px radius", async () =>
+	{
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "date:week zzqxvq");
 		(await awaitRequest()).resolve([]);
 
-		const classes = (await within(dialog).findByRole("button", {name: "Search all"})).className.split(" ");
+		const classes = (
+			await within(dialog).findByRole(
+				"button",
+				{
+					name: "Search all",
+				},
+			)
+		).className.split(" ");
 		expect(["h-7", "px-[9px]", "rounded-r6"].map((name) => classes.includes(name))).toStrictEqual([
 			true,
 			true,
@@ -1045,23 +1640,41 @@ describe("⌘K palette filters", () => {
 		]);
 	});
 
-	it("turns a filtered search still unsettled after 8s into upstream's Something went wrong", async () => {
+	it("turns a filtered search still unsettled after 8s into upstream's Something went wrong", async () =>
+	{
 		const {dialog} = await openPalette([]);
-		const advance = async (ms: number) => {
-			await act(async () => {
+		const advance = async (ms: number) =>
+		{
+			await act(async () =>
+			{
 				await vi.advanceTimersByTimeAsync(ms);
 			});
 		};
-		const state = () => ({
+		const state = () => (
+		{
 			skeleton: dialog.querySelector("[data-palette-skeleton]") !== null,
 			copy: dialog.querySelector("[data-palette-empty] p")?.textContent ?? null,
-			searchAll: within(dialog).queryByRole("button", {name: "Search all"}) !== null,
+			searchAll:
+				within(dialog).queryByRole(
+					"button",
+					{
+						name: "Search all",
+					},
+				) !== null,
 			live: dialog.querySelector("[aria-live=polite]")?.textContent,
 		});
 
-		fireEvent.click(within(dialog).getByRole("tab", {name: "Code"}));
+		fireEvent.click(
+			within(dialog).getByRole(
+				"tab",
+				{
+					name: "Code",
+				},
+			),
+		);
 		vi.useFakeTimers();
-		try {
+		try
+		{
 			type(dialog, "zzqxvq");
 			await advance(150);
 			const requested = pending.length;
@@ -1070,12 +1683,34 @@ describe("⌘K palette filters", () => {
 			await advance(1);
 			const stalled = state();
 
-			expect({requested, before, stalled}).toStrictEqual({
-				requested: 1,
-				before: {skeleton: true, copy: null, searchAll: false, live: ""},
-				stalled: {skeleton: false, copy: "Something went wrong", searchAll: true, live: "Something went wrong"},
-			});
-		} finally {
+			expect(
+				{
+					requested,
+					before,
+					stalled,
+				},
+			).toStrictEqual(
+				{
+					requested: 1,
+					before:
+					{
+						skeleton: true,
+						copy: null,
+						searchAll: false,
+						live: "",
+					},
+					stalled:
+					{
+						skeleton: false,
+						copy: "Something went wrong",
+						searchAll: true,
+						live: "Something went wrong",
+					},
+				},
+			);
+		}
+		finally
+		{
 			vi.useRealTimers();
 		}
 	});

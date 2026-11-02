@@ -1,4 +1,5 @@
-import {
+import
+{
 	type ReactNode,
 	type Ref,
 	type TransitionEvent,
@@ -60,13 +61,15 @@ function FenceLayer({
 	instant?: boolean;
 	onFadedOut: () => void;
 	children: ReactNode;
-}) {
+})
+{
 	const shown = state === "shown";
 	const transition = instant ? "transition-none" : "transition-[opacity,visibility]";
 	const placement = shown
 		? `relative flow-root${swapping ? " starting:opacity-0" : ""}`
 		: "pointer-events-none invisible absolute inset-x-0 top-0 opacity-0";
-	const handleTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
+	const handleTransitionEnd = (event: TransitionEvent<HTMLDivElement>) =>
+	{
 		if (state === "leaving" && event.target === event.currentTarget && event.propertyName === "opacity")
 			onFadedOut();
 	};
@@ -89,7 +92,8 @@ function FenceLayer({
 /** The renderer's status, or "withheld" when its drawing failed the audit. */
 type FenceStatusName = MermaidStatus | "withheld";
 
-interface FenceStatus {
+interface FenceStatus
+{
 	code: string;
 	status: FenceStatusName;
 	/** The first status reported for this code; "success" means the drawing came from the cache. */
@@ -103,28 +107,55 @@ type ApplyUpdate = (update: () => void) => void;
  * Upstream `_e`: the diagram's status for the current code. A success whose drawing fails `passes` becomes
  * "withheld"; `askAgain` re-runs the audit on a shown drawing and withholds it if it now fails.
  */
-function useFenceStatus(code: string, passes: () => boolean) {
-	const [state, setState] = useState<FenceStatus>({code, status: "loading", first: null});
-	if (state.code !== code) setState({code, status: "loading", first: null});
+function useFenceStatus(code: string, passes: () => boolean)
+{
+	const [state, setState] = useState<FenceStatus>(
+		{
+			code,
+			status: "loading",
+			first: null,
+		},
+	);
+	if (state.code !== code)
+		setState(
+			{
+				code,
+				status: "loading",
+				first: null,
+			},
+		);
 	const onStatusChange = useCallback(
-		(reported: MermaidStatus) => {
+		(reported: MermaidStatus) =>
+		{
 			const status: FenceStatusName = reported === "success" && !passes() ? "withheld" : reported;
-			setState((previous) => {
+			setState((previous) =>
+			{
 				const first = previous.code === code && previous.first !== null ? previous.first : status;
 				return previous.code === code && previous.status === status && previous.first === first
 					? previous
-					: {code, status, first};
+					:
+						{
+							code,
+							status,
+							first,
+						};
 			});
 		},
 		[code, passes],
 	);
 	const askAgain = useCallback(
-		(apply?: ApplyUpdate) => {
+		(apply?: ApplyUpdate) =>
+		{
 			if (passes()) return;
-			const update = () => {
+			const update = () =>
+			{
 				setState((previous) =>
 					previous.code === code && previous.status === "success"
-						? {...previous, status: "withheld"}
+						?
+							{
+								...previous,
+								status: "withheld",
+							}
 						: previous,
 				);
 			};
@@ -142,7 +173,8 @@ function useFenceStatus(code: string, passes: () => boolean) {
 }
 
 /** Upstream `G`: the mutations that can change what a drawing reads as. */
-const DRAWING_MUTATIONS: MutationObserverInit = {
+const DRAWING_MUTATIONS: MutationObserverInit =
+{
 	subtree: true,
 	childList: true,
 	characterData: true,
@@ -158,40 +190,47 @@ const DRAWING_MUTATIONS: MutationObserverInit = {
 };
 
 /** Upstream `K`: `visit` on `root` and on every shadow root beneath it. */
-function eachRoot(root: ParentNode, visit: (root: ParentNode) => void): void {
+function eachRoot(root: ParentNode, visit: (root: ParentNode) => void): void
+{
 	visit(root);
 	for (const element of root.querySelectorAll("*")) if (element.shadowRoot) eachRoot(element.shadowRoot, visit);
 }
 
 /** Upstream `q`: the first `<svg>` under `root`, shadow roots included. */
-function findDrawing(root: ParentNode | null): SVGSVGElement | null {
+function findDrawing(root: ParentNode | null): SVGSVGElement | null
+{
 	let drawing: SVGSVGElement | null = null;
 	if (root) eachRoot(root, (each) => (drawing ??= each.querySelector("svg")));
 	return drawing;
 }
 
-interface DrawingWatcher {
+interface DrawingWatcher
+{
 	/** Observes the layer and any shadow root not yet observed; true when it found a new one. */
 	arm: () => boolean;
 	stop: () => void;
 }
 
 /** Upstream `xe`: watches the diagram layer and its shadow roots, calling `changed` on every mutation. */
-function watchDrawing(layer: () => HTMLElement | null, changed: () => void): DrawingWatcher {
+function watchDrawing(layer: () => HTMLElement | null, changed: () => void): DrawingWatcher
+{
 	let observer: MutationObserver | null = null;
 	const observed = new Set<ParentNode>();
-	const arm = (): boolean => {
+	const arm = (): boolean =>
+	{
 		const root = layer();
 		if (!root) return false;
 		const active =
 			observer ??
-			new MutationObserver(() => {
+			new MutationObserver(() =>
+			{
 				arm();
 				changed();
 			});
 		observer = active;
 		let found = false;
-		eachRoot(root, (each) => {
+		eachRoot(root, (each) =>
+		{
 			found ||= !observed.has(each);
 			observed.add(each);
 			active.observe(each, DRAWING_MUTATIONS);
@@ -200,7 +239,8 @@ function watchDrawing(layer: () => HTMLElement | null, changed: () => void): Dra
 	};
 	return {
 		arm,
-		stop: () => {
+		stop: () =>
+		{
 			observer?.disconnect();
 			observed.clear();
 		},
@@ -208,9 +248,12 @@ function watchDrawing(layer: () => HTMLElement | null, changed: () => void): Dra
 }
 
 /** Upstream `Ee`. */
-function ignore(): void {}
+function ignore(): void
+{
+}
 
-interface Swap {
+interface Swap
+{
 	showing: LayerName;
 	code: string;
 	leaving: LayerName | null;
@@ -219,12 +262,20 @@ interface Swap {
 }
 
 /** Upstream `Te`. */
-function endSwap(swap: Swap): Swap {
-	return swap.leaving === null ? swap : {...swap, leaving: null};
+function endSwap(swap: Swap): Swap
+{
+	return swap.leaving === null
+		? swap
+		:
+			{
+				...swap,
+				leaving: null,
+			};
 }
 
 /** Upstream `ae`: force a reflow so the next height change transitions. */
-function reflow(element: HTMLElement): void {
+function reflow(element: HTMLElement): void
+{
 	void element.offsetHeight;
 }
 
@@ -238,19 +289,30 @@ export function MermaidFence({
 	codeBlock: ReactNode;
 	/** The stand-in before this code first draws. */
 	placeholder: ReactNode;
-}) {
+})
+{
 	const mode = useResolvedTheme();
 	const [viewSource, setViewSource] = useState(false);
-	const layerRefs = useRef<Record<LayerName, HTMLDivElement | null>>({code: null, diagram: null});
+	const layerRefs = useRef<Record<LayerName, HTMLDivElement | null>>(
+		{
+			code: null,
+			diagram: null,
+		},
+	);
 	const askAgainRef = useRef<(apply?: ApplyUpdate) => void>(ignore);
 	const lastDrawing = useRef<SVGSVGElement | null>(null);
-	const audit = useRef<{drawing: SVGSVGElement; passes: boolean} | null>(null);
+	const audit = useRef<
+	{
+		drawing: SVGSVGElement;
+		passes: boolean;
+	} | null>(null);
 	const watcherRef = useRef<DrawingWatcher | null>(null);
 	const watcher = useCallback(
 		() =>
 			(watcherRef.current ??= watchDrawing(
 				() => layerRefs.current.diagram,
-				() => {
+				() =>
+				{
 					audit.current = null;
 					if (findDrawing(layerRefs.current.diagram)) askAgainRef.current(flushSync);
 				},
@@ -258,17 +320,26 @@ export function MermaidFence({
 		[],
 	);
 	// Upstream's audit, cached per drawing until the drawing or its shadow roots change.
-	const passes = useCallback(() => {
+	const passes = useCallback(() =>
+	{
 		if (watcher().arm()) audit.current = null;
 		const drawing = findDrawing(layerRefs.current.diagram);
 		lastDrawing.current = drawing;
 		if (drawing !== null && drawing === audit.current?.drawing) return audit.current.passes;
 		const passed = !svgWithheld(layerRefs.current.diagram);
-		audit.current = drawing === null ? null : {drawing, passes: passed};
+		audit.current =
+			drawing === null
+				? null
+				:
+					{
+						drawing,
+						passes: passed,
+					};
 		return passed;
 	}, [watcher]);
 	const {status, alreadyDrawn, onStatusChange, askAgain} = useFenceStatus(code, passes);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		askAgainRef.current = askAgain;
 	}, [askAgain]);
 	useEffect(() => () => watcherRef.current?.stop(), []);
@@ -285,33 +356,53 @@ export function MermaidFence({
 	const standIn = awaitingFirstDraw ? "placeholder" : "source";
 	const reducedMotion = useReducedMotion();
 
-	const [swap, setSwap] = useState<Swap>(() => ({showing, code, leaving: null, instant: false, standIn}));
-	if (swap.showing !== showing || swap.code !== code) {
+	const [swap, setSwap] = useState<Swap>(() => (
+	{
+		showing,
+		code,
+		leaving: null,
+		instant: false,
+		standIn,
+	}));
+	if (swap.showing !== showing || swap.code !== code)
+	{
 		// A cached drawing replacing the placeholder swaps at once; anything else fades.
 		const instant = alreadyDrawn && showing === "diagram" && swap.standIn === "placeholder";
-		setSwap({
-			showing,
-			code,
-			leaving:
-				!reducedMotion && swap.code === code && swap.showing !== showing && !withheld && !instant
-					? swap.showing
-					: null,
-			instant,
-			standIn: showing === "code" ? standIn : swap.standIn,
-		});
-	} else if (showing === "code" && swap.standIn !== standIn) {
-		setSwap({...swap, standIn});
+		setSwap(
+			{
+				showing,
+				code,
+				leaving:
+					!reducedMotion && swap.code === code && swap.showing !== showing && !withheld && !instant
+						? swap.showing
+						: null,
+				instant,
+				standIn: showing === "code" ? standIn : swap.standIn,
+			},
+		);
+	}
+	else if (showing === "code" && swap.standIn !== standIn)
+	{
+		setSwap(
+			{
+				...swap,
+				standIn,
+			},
+		);
 	}
 	const {leaving} = swap;
 	const shownStandIn = showing === "code" ? standIn : swap.standIn;
 
-	const fadedOut = useCallback(() => {
+	const fadedOut = useCallback(() =>
+	{
 		setSwap(endSwap);
 	}, []);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (leaving === null) return undefined;
 		const timer = setTimeout(fadedOut, FADE_FALLBACK_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(timer);
 		};
 	}, [leaving, showing, fadedOut]);
@@ -322,7 +413,8 @@ export function MermaidFence({
 	const lastStackTop = useRef(0);
 	const restHeight = useRef(0);
 	// Upstream's height tween: hold the old height, reflow, then move to the new one while the leaving layer is pinned.
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const root = rootRef.current;
 		const stack = stackRef.current;
 		if (!root || !stack) return;
@@ -330,22 +422,40 @@ export function MermaidFence({
 		const leavingLayer = leaving === null ? null : layerRefs.current[leaving];
 		const stackTop = stack.offsetTop;
 		const shift = lastStackTop.current - stackTop;
-		let tween: {from: number; to: number} | null = null;
-		if (shownLayer && leavingLayer) {
+		let tween:
+		{
+			from: number;
+			to: number;
+		} | null = null;
+		if (shownLayer && leavingLayer)
+		{
 			const shownHeight = shownLayer.offsetHeight;
-			if (root.style.height === "") {
+			if (root.style.height === "")
+			{
 				const height = root.offsetHeight;
 				restHeight.current = height - stackTop - shownHeight;
-				tween = {from: height + shift + leavingLayer.offsetHeight - shownHeight, to: height};
-			} else {
-				tween = {from: root.getBoundingClientRect().height, to: restHeight.current + stackTop + shownHeight};
+				tween =
+				{
+					from: height + shift + leavingLayer.offsetHeight - shownHeight,
+					to: height,
+				};
+			}
+			else
+			{
+				tween =
+				{
+					from: root.getBoundingClientRect().height,
+					to: restHeight.current + stackTop + shownHeight,
+				};
 			}
 		}
 		lastStackTop.current = stackTop;
-		for (const layer of Object.values(layerRefs.current)) {
+		for (const layer of Object.values(layerRefs.current))
+		{
 			if (layer !== leavingLayer) layer?.style.removeProperty("top");
 		}
-		if (!leavingLayer || !tween) {
+		if (!leavingLayer || !tween)
+		{
 			root.style.removeProperty("height");
 			return;
 		}
@@ -355,11 +465,13 @@ export function MermaidFence({
 		root.style.setProperty("height", `${tween.to}px`);
 	}, [showing, leaving, showNote, toolbarShown]);
 
-	const setCodeLayer = useCallback((element: HTMLDivElement | null) => {
+	const setCodeLayer = useCallback((element: HTMLDivElement | null) =>
+	{
 		layerRefs.current.code = element;
 	}, []);
 	const setDiagramLayer = useCallback(
-		(element: HTMLDivElement | null) => {
+		(element: HTMLDivElement | null) =>
+		{
 			layerRefs.current.diagram = element;
 			audit.current = null;
 			watcher().stop();
@@ -374,7 +486,8 @@ export function MermaidFence({
 	const codeMounted = showing === "code" || leaving === "code";
 	const diagramMounted = !(viewSource || failed) || (leaving === "diagram" && !withheld);
 	// Upstream `Se`: a drawing already in the layer while the status still reads loading counts as drawn.
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (status === "loading" && findDrawing(layerRefs.current.diagram)) onStatusChange("success");
 	}, [status, onStatusChange, diagramMounted]);
 
@@ -431,7 +544,8 @@ export function MermaidFence({
 							data-testid="epitaxy-mermaid-fence-view"
 							aria-label={label}
 							className={TOOLBAR_BUTTON_CLASS}
-							onClick={() => {
+							onClick={() =>
+							{
 								setViewSource((value) => !value);
 							}}
 						>

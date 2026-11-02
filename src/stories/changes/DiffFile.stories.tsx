@@ -75,49 +75,79 @@ index 8888888..9999999 100644
 
 // Decorate per story: a meta-level light ThemeProvider would wrap the dark one
 // and its effect would run last, forcing the Dark story back to light.
-const meta = {
+const meta =
+{
 	title: "Changes/DiffFile",
 	component: DiffFile,
-	args: {patch: MODIFIED},
+	args:
+	{
+		patch: MODIFIED,
+	},
 } satisfies Meta<typeof DiffFile>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Modified: Story = {
+export const Modified: Story =
+{
 	decorators: [withTheme],
 };
 
-export const SideBySide: Story = {
+export const SideBySide: Story =
+{
 	decorators: [withTheme],
-	args: {diffStyle: "split"},
+	args:
+	{
+		diffStyle: "split",
+	},
 };
 
-export const Rename: Story = {
+export const Rename: Story =
+{
 	decorators: [withTheme],
-	args: {patch: RENAME},
+	args:
+	{
+		patch: RENAME,
+	},
 };
 
-export const Deletion: Story = {
+export const Deletion: Story =
+{
 	decorators: [withTheme],
-	args: {patch: DELETION},
+	args:
+	{
+		patch: DELETION,
+	},
 };
 
-export const NoNewlineAtEndOfFile: Story = {
+export const NoNewlineAtEndOfFile: Story =
+{
 	decorators: [withTheme],
-	args: {patch: NO_NEWLINE},
+	args:
+	{
+		patch: NO_NEWLINE,
+	},
 };
 
-export const ContextGap: Story = {
+export const ContextGap: Story =
+{
 	decorators: [withTheme],
-	args: {patch: CONTEXT_GAP},
+	args:
+	{
+		patch: CONTEXT_GAP,
+	},
 };
 
-export const Collapsed: Story = {
+export const Collapsed: Story =
+{
 	decorators: [withTheme],
-	args: {defaultCollapsed: true},
+	args:
+	{
+		defaultCollapsed: true,
+	},
 };
 
-export const Dark: Story = {
+export const Dark: Story =
+{
 	decorators: [withDarkTheme],
 };

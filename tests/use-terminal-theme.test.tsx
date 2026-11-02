@@ -8,77 +8,163 @@ import {useTerminalTheme} from "../src/hooks/use-terminal-theme";
 import {type CodeThemeId, loadCodeTheme} from "../src/lib/code-themes";
 import {terminalBaseFromCodeTheme, terminalThemeFromCodeTheme} from "../src/lib/terminal-theme";
 
-function stubStorage(entries: Record<string, string>): void {
+function stubStorage(entries: Record<string, string>): void
+{
 	const storage = new Map(Object.entries(entries));
-	vi.stubGlobal("localStorage", {
-		getItem: (key: string) => storage.get(key) ?? null,
-		setItem: (key: string, value: string) => storage.set(key, value),
-		removeItem: (key: string) => storage.delete(key),
-	});
+	vi.stubGlobal(
+		"localStorage",
+		{
+			getItem: (key: string) => storage.get(key) ?? null,
+			setItem: (key: string, value: string) => storage.set(key, value),
+			removeItem: (key: string) => storage.delete(key),
+		},
+	);
 }
 
-async function mapped(id: CodeThemeId, mode: "light" | "dark") {
+async function mapped(id: CodeThemeId, mode: "light" | "dark")
+{
 	const base = terminalBaseFromCodeTheme(await loadCodeTheme(mode === "dark" ? "claude-dark" : "claude-light"));
 	return terminalThemeFromCodeTheme(await loadCodeTheme(id), base);
 }
 
-function wrapper({children}: {children: ReactNode}) {
+function wrapper({children}: {children: ReactNode})
+{
 	return createElement(SettingsProvider, null, children);
 }
 
-afterEach(() => {
+afterEach(() =>
+{
 	vi.unstubAllGlobals();
 	document.documentElement.classList.remove("dark");
 });
 
-describe("useTerminalTheme", () => {
-	it("follows the light code theme by default", async () => {
-		stubStorage({"ccp-code-theme-light": "min-light"});
+describe("useTerminalTheme", () =>
+{
+	it("follows the light code theme by default", async () =>
+	{
+		stubStorage(
+			{
+				"ccp-code-theme-light": "min-light",
+			},
+		);
 		const expected = await mapped("min-light", "light");
 
-		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
+		const {result} = renderHook(
+			() => useTerminalTheme(),
+			{
+				wrapper,
+			},
+		);
 
-		await waitFor(() => {
-			expect(result.current).toStrictEqual({ready: true, theme: expected, fontSize: null});
+		await waitFor(() =>
+		{
+			expect(result.current).toStrictEqual(
+				{
+					ready: true,
+					theme: expected,
+					fontSize: null,
+				},
+			);
 		});
 	});
 
-	it("switches to the dark code theme when the page goes dark", async () => {
-		stubStorage({"ccp-code-theme-light": "min-light", "ccp-code-theme-dark": "nord"});
+	it("switches to the dark code theme when the page goes dark", async () =>
+	{
+		stubStorage(
+			{
+				"ccp-code-theme-light": "min-light",
+				"ccp-code-theme-dark": "nord",
+			},
+		);
 		const light = await mapped("min-light", "light");
 		const dark = await mapped("nord", "dark");
 
-		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
-		await waitFor(() => {
-			expect(result.current).toStrictEqual({ready: true, theme: light, fontSize: null});
+		const {result} = renderHook(
+			() => useTerminalTheme(),
+			{
+				wrapper,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(result.current).toStrictEqual(
+				{
+					ready: true,
+					theme: light,
+					fontSize: null,
+				},
+			);
 		});
 
-		act(() => {
+		act(() =>
+		{
 			document.documentElement.classList.add("dark");
 		});
 
-		await waitFor(() => {
-			expect(result.current).toStrictEqual({ready: true, theme: dark, fontSize: null});
+		await waitFor(() =>
+		{
+			expect(result.current).toStrictEqual(
+				{
+					ready: true,
+					theme: dark,
+					fontSize: null,
+				},
+			);
 		});
 	});
 
-	it("uses the Ghostty colours when Terminal colors is set to Ghostty", async () => {
-		stubStorage({"ccp-terminal-appearance": "ghostty"});
+	it("uses the Ghostty colours when Terminal colors is set to Ghostty", async () =>
+	{
+		stubStorage(
+			{
+				"ccp-terminal-appearance": "ghostty",
+			},
+		);
 
-		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
+		const {result} = renderHook(
+			() => useTerminalTheme(),
+			{
+				wrapper,
+			},
+		);
 
-		await waitFor(() => {
-			expect(result.current).toStrictEqual({ready: true, theme: null, fontSize: null});
+		await waitFor(() =>
+		{
+			expect(result.current).toStrictEqual(
+				{
+					ready: true,
+					theme: null,
+					fontSize: null,
+				},
+			);
 		});
 	});
 
-	it("hands terminals the Code font size when one is set", async () => {
-		stubStorage({"ccp-terminal-appearance": "ghostty", "ccp-code-font-size": "18"});
+	it("hands terminals the Code font size when one is set", async () =>
+	{
+		stubStorage(
+			{
+				"ccp-terminal-appearance": "ghostty",
+				"ccp-code-font-size": "18",
+			},
+		);
 
-		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
+		const {result} = renderHook(
+			() => useTerminalTheme(),
+			{
+				wrapper,
+			},
+		);
 
-		await waitFor(() => {
-			expect(result.current).toStrictEqual({ready: true, theme: null, fontSize: 18});
+		await waitFor(() =>
+		{
+			expect(result.current).toStrictEqual(
+				{
+					ready: true,
+					theme: null,
+					fontSize: 18,
+				},
+			);
 		});
 	});
 });

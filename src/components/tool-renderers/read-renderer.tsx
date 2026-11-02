@@ -8,16 +8,20 @@ import {CopyButton, PolicyDenialReason, SecretRevealButton, TruncatedFilePathHea
 import {useSecretReveal} from "./use-secret-reveal";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 
-interface ParsedLine {
+interface ParsedLine
+{
 	lineNum: string | null;
 	content: string;
 }
 
-function parseLineNumbers(content: string): ParsedLine[] {
+function parseLineNumbers(content: string): ParsedLine[]
+{
 	const lines = content.split("\n");
-	return lines.map((line) => {
+	return lines.map((line) =>
+	{
 		const match = line.match(/^\s*(\d+)[→\t](.*)/);
-		if (match) {
+		if (match)
+		{
 			return {
 				lineNum: match[1] ?? null,
 				content: match[2] ?? "",
@@ -30,11 +34,18 @@ function parseLineNumbers(content: string): ParsedLine[] {
 	});
 }
 
-function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
+function HighlightedLine({tokens}: {tokens: ThemedToken[]})
+{
 	return (
 		<>
 			{tokens.map((token, index) => (
-				<span key={index} style={{color: token.color}}>
+				<span
+					key={index}
+					style={
+					{
+						color: token.color,
+					}}
+				>
 					{token.content}
 				</span>
 			))}
@@ -42,11 +53,13 @@ function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
 	);
 }
 
-function PlainLine({content}: {content: string}) {
+function PlainLine({content}: {content: string})
+{
 	return <>{content}</>;
 }
 
-export function ReadRenderer({toolCall}: ToolRendererProps) {
+export function ReadRenderer({toolCall}: ToolRendererProps)
+{
 	const filePath = inputString(toolCall.input, "file_path") ?? "";
 	const {result, isError} = toolCall;
 
@@ -56,20 +69,27 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 	const code = secrets.show(rawCode);
 	const parsedLines = code ? parseLineNumbers(code) : [];
 
-	const {text: cleanCode} = code ? extractLineNumbers(code) : {text: ""};
+	const {text: cleanCode} = code
+		? extractLineNumbers(code)
+		:
+			{
+				text: "",
+			};
 	const language = detectLanguage(filePath);
 	const tokens = useHighlightedLines(cleanCode, language);
 
 	// A failed read has no file content to highlight -- upstream just prints the
 	// failure message in the error color.
-	if (toolCall.blocked === true) {
+	if (toolCall.blocked === true)
+	{
 		return (
 			<div className="px-p6 py-p5">
 				<PolicyDenialReason call={toolCall} />
 			</div>
 		);
 	}
-	if (isError) {
+	if (isError)
+	{
 		return (
 			<div className="px-p6 py-p5">
 				<pre
@@ -97,20 +117,32 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 					{...TOOL_OUTPUT_REGION}
 					className="m-0 max-h-[400px] overflow-y-auto font-mono text-code text-primary"
 				>
-					<code className="grid py-1" style={{gridTemplateColumns: "auto minmax(0, 1fr)"}}>
+					<code
+						className="grid py-1"
+						style={
+						{
+							gridTemplateColumns: "auto minmax(0, 1fr)",
+						}}
+					>
 						{parsedLines.map((line, index) => (
 							<Fragment key={index}>
 								<div
 									data-gutter=""
 									className="min-h-[var(--upstream-leading-code)] select-none text-right text-secondary"
-									style={{padding: "0 0.6em 0 1.2em"}}
+									style={
+									{
+										padding: "0 0.6em 0 1.2em",
+									}}
 								>
 									{line.lineNum ?? ""}
 								</div>
 								<div
 									data-content=""
 									className="min-h-[var(--upstream-leading-code)] min-w-0 whitespace-pre-wrap break-words"
-									style={{padding: "0 0.6em"}}
+									style={
+									{
+										padding: "0 0.6em",
+									}}
 								>
 									{tokens?.[index] ? (
 										<HighlightedLine tokens={tokens[index]} />

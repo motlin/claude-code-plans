@@ -3,12 +3,15 @@ import {describe, expect, it} from "vite-plus/test";
 
 const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 
-function missing(rules: readonly string[]): string[] {
+function missing(rules: readonly string[]): string[]
+{
 	return rules.filter((rule) => !styles.includes(rule));
 }
 
-describe("composer attachment tray CSS", () => {
-	it("defines upstream's horizontal scroll-fade-x utility on the shared scroll-fade variables", () => {
+describe("composer attachment tray CSS", () =>
+{
+	it("defines upstream's horizontal scroll-fade-x utility on the shared scroll-fade variables", () =>
+	{
 		expect(
 			missing([
 				'@property --scroll-fade-left-raw { syntax: "<length>"; inherits: false; initial-value: 0px; }',
@@ -28,7 +31,8 @@ describe("composer attachment tray CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("copies upstream's tile and tray enter motion, skipped for restored tiles", () => {
+	it("copies upstream's tile and tray enter motion, skipped for restored tiles", () =>
+	{
 		expect(
 			missing([
 				"[data-cds-composer-attachments]:has([data-cds-attachment]) { transition: opacity 0.2s cubic-bezier(0.215, 0.61, 0.355, 1), transform 0.2s cubic-bezier(0.215, 0.61, 0.355, 1); }",
@@ -39,7 +43,8 @@ describe("composer attachment tray CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("copies upstream's cds-attachments view transition: 180ms slides and a 130ms shrink-out", () => {
+	it("copies upstream's cds-attachments view transition: 180ms slides and a 130ms shrink-out", () =>
+	{
 		expect(
 			missing([
 				":root:active-view-transition-type(cds-attachments) [data-cds-composer-attachments] [data-cds-attachment] { view-transition-name: var(--cds-attachment-vt-name); }",
@@ -52,7 +57,8 @@ describe("composer attachment tray CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("turns the tile and tray transitions off under reduced motion, OS or Settings", () => {
+	it("turns the tile and tray transitions off under reduced motion, OS or Settings", () =>
+	{
 		expect(
 			missing([
 				"@media (prefers-reduced-motion: reduce) { [data-cds-composer-attachments]:has([data-cds-attachment]), [data-cds-composer-attachments] [data-cds-attachment] { transition: none; } }",

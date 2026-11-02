@@ -8,7 +8,8 @@ import {useSyncExternalStore} from "react";
 
 export type DiffSide = "additions" | "deletions";
 
-export interface DiffCommentTarget {
+export interface DiffCommentTarget
+{
 	path: string;
 	side: DiffSide;
 	/** First commented line; the card sits under `endLine ?? line`. */
@@ -20,16 +21,19 @@ export interface DiffCommentTarget {
 	lang?: string | undefined;
 }
 
-export interface DiffCommentDraft extends DiffCommentTarget {
+export interface DiffCommentDraft extends DiffCommentTarget
+{
 	id: string;
 }
 
 /** A saved comment; it serializes as a ReviewComment. */
-export interface QueuedDiffComment extends DiffCommentDraft {
+export interface QueuedDiffComment extends DiffCommentDraft
+{
 	text: string;
 }
 
-export interface DiffComments {
+export interface DiffComments
+{
 	drafts: readonly DiffCommentDraft[];
 	queued: readonly QueuedDiffComment[];
 }
@@ -39,26 +43,38 @@ export interface DiffComments {
  * and `activeBySession`: draft and edit text survive their card unmounting, and the active card draws the
  * accent border (a saved comment is open for editing while it is active).
  */
-export interface DiffCommentEditing {
+export interface DiffCommentEditing
+{
 	bodies: Readonly<Record<string, string>>;
 	editBodies: Readonly<Record<string, string>>;
 	activeId: string | null;
 }
 
-const EMPTY: DiffComments = {drafts: [], queued: []};
-const NO_EDITING: DiffCommentEditing = {bodies: {}, editBodies: {}, activeId: null};
+const EMPTY: DiffComments =
+{
+	drafts: [],
+	queued: [],
+};
+const NO_EDITING: DiffCommentEditing =
+{
+	bodies: {},
+	editBodies: {},
+	activeId: null,
+};
 
 /** Upstream's persist key; the stored shape is `{version: 0, state: {commentsBySession}}`. */
 const DIFF_COMMENTS_STORAGE_KEY = "diff-annotations";
 
 const ID_PREFIX = "diff-comment-";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown>
+{
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** Reads one stored comment, or undefined when it is malformed (hand-checked to keep zod out of the client bundle). */
-function readStoredComment(value: unknown): QueuedDiffComment | undefined {
+function readStoredComment(value: unknown): QueuedDiffComment | undefined
+{
 	if (!isRecord(value)) return undefined;
 	const {id, path, side, line, endLine, snippet, lang, text} = value;
 	if (typeof id !== "string" || typeof path !== "string" || typeof text !== "string") return undefined;
@@ -71,27 +87,52 @@ function readStoredComment(value: unknown): QueuedDiffComment | undefined {
 		path,
 		side,
 		line,
-		...(endLine === undefined ? {} : {endLine}),
-		...(snippet === undefined ? {} : {snippet}),
-		...(lang === undefined ? {} : {lang}),
+		...(endLine === undefined
+			? {}
+			:
+				{
+					endLine,
+				}),
+		...(snippet === undefined
+			? {}
+			:
+				{
+					snippet,
+				}),
+		...(lang === undefined
+			? {}
+			:
+				{
+					lang,
+				}),
 		text,
 	};
 }
 
-function readStored(value: unknown): Map<string, DiffComments> | undefined {
+function readStored(value: unknown): Map<string, DiffComments> | undefined
+{
 	if (!isRecord(value) || value["version"] !== 0 || !isRecord(value["state"])) return undefined;
 	const bySession = value["state"]["commentsBySession"];
 	if (!isRecord(bySession)) return undefined;
 	const restored = new Map<string, DiffComments>();
-	for (const [sessionId, stored] of Object.entries(bySession)) {
+	for (const [sessionId, stored] of Object.entries(bySession))
+	{
 		if (!Array.isArray(stored)) return undefined;
 		const queued: QueuedDiffComment[] = [];
-		for (const item of stored) {
+		for (const item of stored)
+		{
 			const comment = readStoredComment(item);
 			if (comment === undefined) return undefined;
 			queued.push(comment);
 		}
-		if (queued.length > 0) restored.set(sessionId, {drafts: [], queued});
+		if (queued.length > 0)
+			restored.set(
+				sessionId,
+				{
+					drafts: [],
+					queued,
+				},
+			);
 	}
 	return restored;
 }
@@ -102,37 +143,59 @@ const listeners = new Set<() => void>();
 let nextId = 1;
 let hydrated = false;
 
-function hydrate(): void {
+function hydrate(): void
+{
 	if (hydrated) return;
 	hydrated = true;
-	try {
+	try
+	{
 		const raw = localStorage.getItem(DIFF_COMMENTS_STORAGE_KEY);
 		if (raw === null) return;
 		const restored = readStored(JSON.parse(raw));
 		if (restored === undefined) return;
-		for (const {queued} of restored.values()) {
-			for (const {id} of queued) {
+		for (const {queued} of restored.values())
+		{
+			for (const {id} of queued)
+			{
 				const n = id.startsWith(ID_PREFIX) ? Number(id.slice(ID_PREFIX.length)) : Number.NaN;
 				if (Number.isInteger(n) && n >= nextId) nextId = n + 1;
 			}
 		}
 		sessions = restored;
-	} catch {
+	}
+	catch
+	{
 		// Unreadable storage or a corrupt value starts empty.
 	}
 }
 
-function persist(): void {
+function persist(): void
+{
 	const commentsBySession: Record<string, readonly QueuedDiffComment[]> = {};
 	for (const [sessionId, {queued}] of sessions) if (queued.length > 0) commentsBySession[sessionId] = queued;
-	try {
-		localStorage.setItem(DIFF_COMMENTS_STORAGE_KEY, JSON.stringify({version: 0, state: {commentsBySession}}));
-	} catch {
+	try
+	{
+		localStorage.setItem(
+			DIFF_COMMENTS_STORAGE_KEY,
+			JSON.stringify(
+				{
+					version: 0,
+					state:
+					{
+						commentsBySession,
+					},
+				},
+			),
+		);
+	}
+	catch
+	{
 		// Storage full or blocked: comments stay in memory for this page.
 	}
 }
 
-function update(sessionId: string, change: (comments: DiffComments) => DiffComments): void {
+function update(sessionId: string, change: (comments: DiffComments) => DiffComments): void
+{
 	const before = getDiffComments(sessionId);
 	const next = change(before);
 	sessions = new Map(sessions);
@@ -142,7 +205,8 @@ function update(sessionId: string, change: (comments: DiffComments) => DiffComme
 	for (const listener of listeners) listener();
 }
 
-function updateEditing(sessionId: string, change: (state: DiffCommentEditing) => DiffCommentEditing): void {
+function updateEditing(sessionId: string, change: (state: DiffCommentEditing) => DiffCommentEditing): void
+{
 	const next = change(getDiffCommentEditing(sessionId));
 	editing = new Map(editing);
 	if (Object.keys(next.bodies).length === 0 && Object.keys(next.editBodies).length === 0 && next.activeId === null)
@@ -152,64 +216,120 @@ function updateEditing(sessionId: string, change: (state: DiffCommentEditing) =>
 }
 
 /** Drops a draft's text and clears the active card when it was this one. */
-function forgetDraft(sessionId: string, id: string): void {
-	updateEditing(sessionId, ({bodies, editBodies, activeId}) => {
+function forgetDraft(sessionId: string, id: string): void
+{
+	updateEditing(sessionId, ({bodies, editBodies, activeId}) =>
+	{
 		const {[id]: _dropped, ...rest} = bodies;
-		return {bodies: rest, editBodies, activeId: activeId === id ? null : activeId};
+		return {
+			bodies: rest,
+			editBodies,
+			activeId: activeId === id ? null : activeId,
+		};
 	});
 }
 
 /** Drops a saved comment's edit text and clears the active card when it was this one. */
-function forgetEdit(sessionId: string, id: string): void {
-	updateEditing(sessionId, ({bodies, editBodies, activeId}) => {
+function forgetEdit(sessionId: string, id: string): void
+{
+	updateEditing(sessionId, ({bodies, editBodies, activeId}) =>
+	{
 		const {[id]: _dropped, ...rest} = editBodies;
-		return {bodies, editBodies: rest, activeId: activeId === id ? null : activeId};
+		return {
+			bodies,
+			editBodies: rest,
+			activeId: activeId === id ? null : activeId,
+		};
 	});
 }
 
-function sameTarget(a: DiffCommentTarget, b: DiffCommentTarget): boolean {
+function sameTarget(a: DiffCommentTarget, b: DiffCommentTarget): boolean
+{
 	return (
 		a.path === b.path && a.side === b.side && a.line === b.line && (a.endLine ?? a.line) === (b.endLine ?? b.line)
 	);
 }
 
-export function getDiffComments(sessionId: string): DiffComments {
+export function getDiffComments(sessionId: string): DiffComments
+{
 	hydrate();
 	return sessions.get(sessionId) ?? EMPTY;
 }
 
-export function getDiffCommentEditing(sessionId: string): DiffCommentEditing {
+export function getDiffCommentEditing(sessionId: string): DiffCommentEditing
+{
 	return editing.get(sessionId) ?? NO_EDITING;
 }
 
 /** Keeps a draft's typed text in the store so it outlives its card. */
-export function setDiffCommentDraftBody(sessionId: string, id: string, text: string): void {
-	updateEditing(sessionId, (state) => ({...state, bodies: {...state.bodies, [id]: text}}));
+export function setDiffCommentDraftBody(sessionId: string, id: string, text: string): void
+{
+	updateEditing(sessionId, (state) => (
+	{
+		...state,
+		bodies:
+		{
+			...state.bodies,
+			[id]: text,
+		},
+	}));
 }
 
 /** Opens a comment card on the target lines, reusing one already open there, and makes it the active card. */
-export function openDiffCommentDraft(sessionId: string, target: DiffCommentTarget): string {
+export function openDiffCommentDraft(sessionId: string, target: DiffCommentTarget): string
+{
 	const existing = getDiffComments(sessionId).drafts.find((draft) => sameTarget(draft, target));
-	if (existing !== undefined) {
-		updateEditing(sessionId, (state) => ({...state, activeId: existing.id}));
+	if (existing !== undefined)
+	{
+		updateEditing(sessionId, (state) => (
+		{
+			...state,
+			activeId: existing.id,
+		}));
 		return existing.id;
 	}
-	const draft: DiffCommentDraft = {
+	const draft: DiffCommentDraft =
+	{
 		id: `${ID_PREFIX}${nextId++}`,
 		path: target.path,
 		side: target.side,
 		line: target.line,
-		...(target.endLine === undefined || target.endLine === target.line ? {} : {endLine: target.endLine}),
-		...(target.snippet === undefined ? {} : {snippet: target.snippet}),
-		...(target.lang === undefined ? {} : {lang: target.lang}),
+		...(target.endLine === undefined || target.endLine === target.line
+			? {}
+			:
+				{
+					endLine: target.endLine,
+				}),
+		...(target.snippet === undefined
+			? {}
+			:
+				{
+					snippet: target.snippet,
+				}),
+		...(target.lang === undefined
+			? {}
+			:
+				{
+					lang: target.lang,
+				}),
 	};
-	update(sessionId, (comments) => ({...comments, drafts: [...comments.drafts, draft]}));
-	updateEditing(sessionId, (state) => ({...state, activeId: draft.id}));
+	update(sessionId, (comments) => (
+	{
+		...comments,
+		drafts: [...comments.drafts, draft],
+	}));
+	updateEditing(sessionId, (state) => (
+	{
+		...state,
+		activeId: draft.id,
+	}));
 	return draft.id;
 }
 
-export function discardDiffCommentDraft(sessionId: string, id: string): void {
-	update(sessionId, (comments) => ({
+export function discardDiffCommentDraft(sessionId: string, id: string): void
+{
+	update(sessionId, (comments) => (
+	{
 		...comments,
 		drafts: comments.drafts.filter((draft) => draft.id !== id),
 	}));
@@ -217,18 +337,28 @@ export function discardDiffCommentDraft(sessionId: string, id: string): void {
 }
 
 /** Moves a draft into the queue with its comment text. */
-export function saveDiffComment(sessionId: string, id: string, text: string): void {
+export function saveDiffComment(sessionId: string, id: string, text: string): void
+{
 	const draft = getDiffComments(sessionId).drafts.find((candidate) => candidate.id === id);
 	if (draft === undefined || text.trim() === "") return;
-	update(sessionId, (comments) => ({
+	update(sessionId, (comments) => (
+	{
 		drafts: comments.drafts.filter((candidate) => candidate.id !== id),
-		queued: [...comments.queued, {...draft, text: text.trim()}],
+		queued: [
+			...comments.queued,
+			{
+				...draft,
+				text: text.trim(),
+			},
+		],
 	}));
 	forgetDraft(sessionId, id);
 }
 
-export function removeQueuedDiffComment(sessionId: string, id: string): void {
-	update(sessionId, (comments) => ({
+export function removeQueuedDiffComment(sessionId: string, id: string): void
+{
+	update(sessionId, (comments) => (
+	{
 		...comments,
 		queued: comments.queued.filter((comment) => comment.id !== id),
 	}));
@@ -236,28 +366,53 @@ export function removeQueuedDiffComment(sessionId: string, id: string): void {
 }
 
 /** Opens a saved comment for editing (upstream `setActive`). */
-export function activateDiffComment(sessionId: string, id: string): void {
-	updateEditing(sessionId, (state) => ({...state, activeId: id}));
+export function activateDiffComment(sessionId: string, id: string): void
+{
+	updateEditing(sessionId, (state) => (
+	{
+		...state,
+		activeId: id,
+	}));
 }
 
 /** Keeps a saved comment's in-progress edit text in the store so it outlives its card. */
-export function setDiffCommentEditBody(sessionId: string, id: string, text: string): void {
-	updateEditing(sessionId, (state) => ({...state, editBodies: {...state.editBodies, [id]: text}}));
+export function setDiffCommentEditBody(sessionId: string, id: string, text: string): void
+{
+	updateEditing(sessionId, (state) => (
+	{
+		...state,
+		editBodies:
+		{
+			...state.editBodies,
+			[id]: text,
+		},
+	}));
 }
 
 /** Saves an edit to a queued comment and closes it (upstream `updateAnnotation` + `setActive(null)`). */
-export function updateQueuedDiffComment(sessionId: string, id: string, text: string): void {
+export function updateQueuedDiffComment(sessionId: string, id: string, text: string): void
+{
 	const trimmed = text.trim();
 	if (trimmed === "") return;
-	update(sessionId, (comments) => ({
+	update(sessionId, (comments) => (
+	{
 		...comments,
-		queued: comments.queued.map((comment) => (comment.id === id ? {...comment, text: trimmed} : comment)),
+		queued: comments.queued.map((comment) =>
+			comment.id === id
+				?
+					{
+						...comment,
+						text: trimmed,
+					}
+				: comment,
+		),
 	}));
 	forgetEdit(sessionId, id);
 }
 
 /** Abandons an edit, reverting to the saved text (upstream `clearEditBody` + `setActive(null)`). */
-export function cancelDiffCommentEdit(sessionId: string, id: string): void {
+export function cancelDiffCommentEdit(sessionId: string, id: string): void
+{
 	forgetEdit(sessionId, id);
 }
 
@@ -265,7 +420,8 @@ export function cancelDiffCommentEdit(sessionId: string, id: string): void {
  * Returns the queued comments and empties the queue, as sending a prompt does. Like upstream `Me`, the
  * active card's unsaved edit text is sent in place of its saved text when it is non-empty and differs.
  */
-export function takeQueuedDiffComments(sessionId: string): readonly QueuedDiffComment[] {
+export function takeQueuedDiffComments(sessionId: string): readonly QueuedDiffComment[]
+{
 	const {queued} = getDiffComments(sessionId);
 	if (queued.length === 0) return queued;
 	const {activeId, editBodies} = getDiffCommentEditing(sessionId);
@@ -273,8 +429,20 @@ export function takeQueuedDiffComments(sessionId: string): readonly QueuedDiffCo
 	const sent =
 		edit === undefined || edit === ""
 			? queued
-			: queued.map((comment) => (comment.id === activeId ? {...comment, text: edit} : comment));
-	update(sessionId, (comments) => ({...comments, queued: []}));
+			: queued.map((comment) =>
+					comment.id === activeId
+						?
+							{
+								...comment,
+								text: edit,
+							}
+						: comment,
+				);
+	update(sessionId, (comments) => (
+	{
+		...comments,
+		queued: [],
+	}));
 	for (const comment of queued) forgetEdit(sessionId, comment.id);
 	return sent;
 }
@@ -283,25 +451,33 @@ export function takeQueuedDiffComments(sessionId: string): readonly QueuedDiffCo
  * Puts comments a rejected send took back in the queue, ahead of any queued since, skipping ids still
  * queued: upstream removes annotations only once a send lands.
  */
-export function restoreQueuedDiffComments(sessionId: string, comments: readonly QueuedDiffComment[]): void {
+export function restoreQueuedDiffComments(sessionId: string, comments: readonly QueuedDiffComment[]): void
+{
 	const queuedIds = new Set(getDiffComments(sessionId).queued.map((comment) => comment.id));
 	const missing = comments.filter((comment) => !queuedIds.has(comment.id));
 	if (missing.length === 0) return;
-	update(sessionId, (current) => ({...current, queued: [...missing, ...current.queued]}));
+	update(sessionId, (current) => (
+	{
+		...current,
+		queued: [...missing, ...current.queued],
+	}));
 }
 
-export function clearDiffComments(sessionId: string): void {
+export function clearDiffComments(sessionId: string): void
+{
 	hydrate();
 	if (sessions.has(sessionId)) update(sessionId, () => EMPTY);
 	if (editing.has(sessionId)) updateEditing(sessionId, () => NO_EDITING);
 }
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
 
-export function useDiffComments(sessionId: string | undefined): DiffComments {
+export function useDiffComments(sessionId: string | undefined): DiffComments
+{
 	return useSyncExternalStore(
 		subscribe,
 		() => (sessionId === undefined ? EMPTY : getDiffComments(sessionId)),
@@ -309,7 +485,8 @@ export function useDiffComments(sessionId: string | undefined): DiffComments {
 	);
 }
 
-export function useDiffCommentEditing(sessionId: string): DiffCommentEditing {
+export function useDiffCommentEditing(sessionId: string): DiffCommentEditing
+{
 	return useSyncExternalStore(
 		subscribe,
 		() => getDiffCommentEditing(sessionId),

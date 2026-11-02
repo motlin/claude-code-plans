@@ -4,7 +4,8 @@
 // The control flow mirrors the bundle one-to-one so behaviour stays identical;
 // upstream minified names are given in comments for cross-reference.
 
-export interface SecretMatch {
+export interface SecretMatch
+{
 	start: number;
 	end: number;
 	value: string;
@@ -12,7 +13,8 @@ export interface SecretMatch {
 	keep?: number;
 }
 
-interface RawMatch {
+interface RawMatch
+{
 	start: number;
 	end: number;
 	patternId: string;
@@ -20,16 +22,27 @@ interface RawMatch {
 	inner?: number;
 }
 
-interface Found {
+interface Found
+{
 	index: number;
 	value: string;
 	added?: boolean;
 }
 
 /** cK */
-function lazy<T>(make: () => T): () => T {
-	let cache: {value: T} | undefined;
-	return () => (cache ??= {value: make()}).value;
+function lazy<T>(make: () => T): () => T
+{
+	let cache:
+		|
+		  {
+				value: T;
+		  }
+		| undefined;
+	return () =>
+		(cache ??=
+		{
+			value: make(),
+		}).value;
 }
 
 export const MASK_CHAR = "•";
@@ -70,7 +83,8 @@ const NOT_BEFORE_BEGIN = "(?![A-Za-z0-9_-]*----BEGIN)";
 /** wL */
 const JWT = `eyJ[A-Za-z0-9_-]{10,}\\.(?:${NOT_BEFORE_BEGIN}[A-Za-z0-9_-]*\\.(?!-?eyJ)${NOT_BEFORE_BEGIN}[A-Za-z0-9_-]{10,}\\.(?!-?eyJ)${NOT_BEFORE_BEGIN}[A-Za-z0-9_-]{10,}\\.(?!-?eyJ)(?:[A-Za-z0-9_]|-(?!---)){10,64}(?:(?![A-Za-z0-9_-]*----)[A-Za-z0-9_-]*)?|eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,})`;
 
-export interface SecretPattern {
+export interface SecretPattern
+{
 	id: string;
 	inWord?: boolean;
 	regex: RegExp;
@@ -79,21 +93,35 @@ export interface SecretPattern {
 
 /** _O */
 export const SECRET_PATTERNS: readonly SecretPattern[] = [
-	{id: "anthropic", inWord: true, regex: new RegExp(`${BOUNDARY}sk-ant-[A-Za-z0-9_-]{20,}`), trigger: "sk-ant-"},
+	{
+		id: "anthropic",
+		inWord: true,
+		regex: new RegExp(`${BOUNDARY}sk-ant-[A-Za-z0-9_-]{20,}`),
+		trigger: "sk-ant-",
+	},
 	{
 		id: "openai_proj",
 		inWord: true,
 		regex: new RegExp(`${BOUNDARY}sk-(?:proj|svcacct|admin|None)-[A-Za-z0-9_-]{20,}`),
 		trigger: "sk-(?:proj|svcacct|admin|None)-",
 	},
-	{id: "openai", regex: new RegExp(`${BOUNDARY}sk-[A-Za-z0-9]{20,}`), trigger: "sk-[A-Za-z0-9]{20}"},
+	{
+		id: "openai",
+		regex: new RegExp(`${BOUNDARY}sk-[A-Za-z0-9]{20,}`),
+		trigger: "sk-[A-Za-z0-9]{20}",
+	},
 	{
 		id: "github",
 		inWord: true,
 		regex: new RegExp(`${BOUNDARY}(?:(?:gh[opsu]_|github_pat_)[A-Za-z0-9_]{20,}|ghr_[A-Za-z0-9]{20,})`),
 		trigger: "gh[oprsu]_|github_pat_",
 	},
-	{id: "aws", inWord: true, regex: new RegExp(`${BOUNDARY}AKIA[A-Z0-9]{16}`), trigger: "AKIA"},
+	{
+		id: "aws",
+		inWord: true,
+		regex: new RegExp(`${BOUNDARY}AKIA[A-Z0-9]{16}`),
+		trigger: "AKIA",
+	},
 	{
 		id: "slack",
 		inWord: true,
@@ -102,7 +130,12 @@ export const SECRET_PATTERNS: readonly SecretPattern[] = [
 		),
 		trigger: "xox[abceprs]-|xapp-[0-9]-",
 	},
-	{id: "google", inWord: true, regex: new RegExp(`${BOUNDARY}AIza[A-Za-z0-9_-]{35}`), trigger: "AIza"},
+	{
+		id: "google",
+		inWord: true,
+		regex: new RegExp(`${BOUNDARY}AIza[A-Za-z0-9_-]{35}`),
+		trigger: "AIza",
+	},
 	{
 		id: "stripe",
 		inWord: true,
@@ -142,7 +175,8 @@ export const SECRET_PATTERNS: readonly SecretPattern[] = [
 ];
 
 /** cb557955f `g`: the cloak's label per pattern id. gitlab falls back to unknown. */
-export const SECRET_LABELS: Readonly<Record<string, string>> = {
+export const SECRET_LABELS: Readonly<Record<string, string>> =
+{
 	anthropic: "Anthropic API key",
 	openai_proj: "OpenAI API key",
 	openai: "OpenAI API key",
@@ -159,11 +193,13 @@ export const SECRET_LABELS: Readonly<Record<string, string>> = {
 };
 
 /** Upstream `MT4Yqa` / `UO1fKe`: the block toggle's label. */
-export function secretToggleLabel(count: number, revealed: boolean): string {
+export function secretToggleLabel(count: number, revealed: boolean): string
+{
 	return `${revealed ? "Hide" : "Reveal"} ${count} ${count === 1 ? "secret" : "secrets"}`;
 }
 
-export function secretLabel(patternId: string): string {
+export function secretLabel(patternId: string): string
+{
 	return SECRET_LABELS[patternId] ?? "secret";
 }
 
@@ -195,53 +231,77 @@ const mayContainSecret = (text: string): boolean =>
 	TRIGGERS.test(text) || (text.includes("eyJ") && ESCAPED_JWT().test(text));
 
 /** LB */
-function allPatternsGlobal(): RegExp {
+function allPatternsGlobal(): RegExp
+{
 	return new RegExp(ALL_PATTERNS, "g");
 }
 
 /** xc */
-function* scan(text: string, atEnd: boolean, atStart: boolean): Generator<Found> {
-	for (const m of text.matchAll(allPatternsGlobal())) yield {index: m.index, value: m[0]};
-	for (const m of text.matchAll(new RegExp(AFTER_DASH, "g"))) {
+function* scan(text: string, atEnd: boolean, atStart: boolean): Generator<Found>
+{
+	for (const m of text.matchAll(allPatternsGlobal()))
+		yield {
+			index: m.index,
+			value: m[0],
+		};
+	for (const m of text.matchAll(new RegExp(AFTER_DASH, "g")))
+	{
 		const cut = m[0].search(/(?<!-)-{4,}(?=BEGIN|END|$)/);
-		yield {index: m.index, value: cut < 0 ? m[0] : m[0].slice(0, cut)};
+		yield {
+			index: m.index,
+			value: cut < 0 ? m[0] : m[0].slice(0, cut),
+		};
 	}
 	let runEnd = -1;
 	let keyAt = -1;
 	let tailEnd = -1;
-	for (const o of text.matchAll(new RegExp(GLUED, "g"))) {
+	for (const o of text.matchAll(new RegExp(GLUED, "g")))
+	{
 		const token = o.groups?.["jwt"] ?? o[0];
 		const start = o.index + o[0].length - token.length;
 		const end = o.index + o[0].length;
-		if (end > runEnd) {
+		if (end > runEnd)
+		{
 			runEnd = runThrough(text, end);
 			keyAt = -1;
-			for (let n = start; n < runEnd; n++) {
+			for (let n = start; n < runEnd; n++)
+			{
 				const a = text.charCodeAt(n) === 80 ? matchLoose(text, n, "PRIVATE") : -1;
 				if (a >= 0 && a <= runEnd && looksLikeKeyTail(text, a, atEnd)) keyAt = n;
 			}
 		}
 		let unsure = false;
-		if (!atEnd && runEnd >= text.length) {
+		if (!atEnd && runEnd >= text.length)
+		{
 			if (end > tailEnd) tailEnd = extendToken(text, end);
 			unsure = o.index - LOOKBACK_SLACK >= text.length - 8192 || tailEnd >= text.length;
 		}
 		if (keyAt >= start || unsure) continue;
 		const cut = cutBeforeDashRun(text, start, end, prefixIsLong(text, start, atStart));
-		yield {index: start, value: text.slice(start, cut), added: true};
+		yield {
+			index: start,
+			value: text.slice(start, cut),
+			added: true,
+		};
 	}
 	if (text.includes(".eyJ"))
-		for (const m of text.matchAll(new RegExp(JWT_AFTER_DOT, "g"))) {
+		for (const m of text.matchAll(new RegExp(JWT_AFTER_DOT, "g")))
+		{
 			const jwt = m[1] ?? "";
 			const cp = text.codePointAt(m.index + jwt.length);
 			const next = cp === undefined ? "" : String.fromCodePoint(cp);
 			const ok = next === "" ? atEnd : !WORDISH.test(next) && !(NON_ASCII.test(next) && isInvisible(next));
-			if (ok && !DASH_RUN_OR_PRIVATE.test(jwt)) yield {index: m.index, value: jwt};
+			if (ok && !DASH_RUN_OR_PRIVATE.test(jwt))
+				yield {
+					index: m.index,
+					value: jwt,
+				};
 		}
 }
 
 /** Z$ */
-function patternFor(value: string): SecretPattern | undefined {
+function patternFor(value: string): SecretPattern | undefined
+{
 	return SECRET_PATTERNS.find((p) => p.regex.test(value));
 }
 
@@ -250,7 +310,8 @@ const MAX_SCAN = 262144;
 /** EN */
 const INVISIBLE = lazy(() => new RegExp(String.raw`(?![\t\n\r])${INVISIBLE_BASE.source}|[\p{M}\p{Co}\p{Cn}]`, "u"));
 /** y6 */
-function isInvisible(ch: string): boolean {
+function isInvisible(ch: string): boolean
+{
 	return INVISIBLE().test(ch);
 }
 /** zT */
@@ -261,14 +322,21 @@ const NON_ASCII = /[^\t\n\r\x20-\x7E]/;
 const BEYOND_LATIN1 = new RegExp(String.raw`[\u0100-\uffff]`);
 const INVISIBLE_FLAG = 1;
 /** HN */
-const BLOCK_TABLES: (Uint8Array | undefined)[] = Array.from({length: 4352}, () => undefined);
+const BLOCK_TABLES: (Uint8Array | undefined)[] = Array.from(
+	{
+		length: 4352,
+	},
+	() => undefined,
+);
 /** z6 */
 const MAX_TABLE_BUILDS = 8;
 
 /** t5 */
-function blockTable(block: number): Uint8Array {
+function blockTable(block: number): Uint8Array
+{
 	let table = BLOCK_TABLES[block];
-	if (table === undefined) {
+	if (table === undefined)
+	{
 		table = new Uint8Array(256);
 		const cps: number[] = [];
 		for (let i = 0; i < 256; i++) cps.push((block << 8) | i);
@@ -282,15 +350,18 @@ function blockTable(block: number): Uint8Array {
 }
 
 /** Tw */
-function hasInvisible(text: string): boolean {
+function hasInvisible(text: string): boolean
+{
 	const first = NON_ASCII.exec(text);
 	if (first === null) return false;
 	if (!BEYOND_LATIN1.test(text)) return INVISIBLE().test(text);
 	let builds = 0;
-	for (let r = first.index; r < text.length; r++) {
+	for (let r = first.index; r < text.length; r++)
+	{
 		const cp = text.codePointAt(r) ?? 0;
 		let table = BLOCK_TABLES[cp >> 8];
-		if (table === undefined) {
+		if (table === undefined)
+		{
 			if (builds === MAX_TABLE_BUILDS) return INVISIBLE().test(text.slice(r));
 			builds += 1;
 			table = blockTable(cp >> 8);
@@ -315,16 +386,19 @@ const TOKEN_TAIL = /(?:[A-Za-z0-9_]|(?<=[A-Za-z0-9_])-(?=[A-Za-z0-9_]))*/y;
 const ANY_SPACE_CHAR = new RegExp(`[${ANY_SPACE}]`);
 
 /** U0 */
-function runThrough(text: string, from: number): number {
+function runThrough(text: string, from: number): number
+{
 	let lowerOk = true;
 	let r = from;
-	while (r < text.length) {
+	while (r < text.length)
+	{
 		const c = text.codePointAt(r) ?? 0;
 		if (
 			(c >= 65 && c <= 90) ||
 			(c >= 48 && c <= 57) ||
 			(lowerOk && ((c >= 97 && c <= 122) || c === 95 || c === 45))
-		) {
+		)
+		{
 			r += 1;
 			continue;
 		}
@@ -338,10 +412,13 @@ function runThrough(text: string, from: number): number {
 }
 
 /** zI: match `word` at `from`, skipping invisible non-ASCII chars between letters. */
-function matchLoose(text: string, from: number, word: string): number {
+function matchLoose(text: string, from: number, word: string): number
+{
 	let r = from;
-	for (let k = 0; k < word.length; k++) {
-		while (k > 0 && r < text.length) {
+	for (let k = 0; k < word.length; k++)
+	{
+		while (k > 0 && r < text.length)
+		{
 			const ch = String.fromCodePoint(text.codePointAt(r) ?? 0);
 			if (!NON_ASCII.test(ch) || !isInvisible(ch)) break;
 			r += ch.length;
@@ -364,14 +441,16 @@ const KEY_TAIL_PROBE = 64;
 const LOOKBACK_SLACK = 6;
 
 /** ng */
-function extendToken(text: string, from: number): number {
+function extendToken(text: string, from: number): number
+{
 	TOKEN_TAIL.lastIndex = from;
 	TOKEN_TAIL.exec(text);
 	return TOKEN_TAIL.lastIndex;
 }
 
 /** Gf */
-function looksLikeKeyTail(text: string, at: number, atEnd: boolean): boolean {
+function looksLikeKeyTail(text: string, at: number, atEnd: boolean): boolean
+{
 	const probe = text.slice(at, at + KEY_TAIL_PROBE).replace(INVISIBLE_RUNS(), "");
 	return KEY_TAIL_FULL.test(probe) || ((!atEnd || at + KEY_TAIL_PROBE < text.length) && KEY_TAIL_PARTIAL.test(probe));
 }
@@ -380,9 +459,11 @@ function looksLikeKeyTail(text: string, at: number, atEnd: boolean): boolean {
 const LONG_PREFIX = 15;
 
 /** Y2 */
-function prefixIsLong(text: string, start: number, atStart: boolean): boolean {
+function prefixIsLong(text: string, start: number, atStart: boolean): boolean
+{
 	let r = start;
-	while (r > 0 && start - r < LONG_PREFIX) {
+	while (r > 0 && start - r < LONG_PREFIX)
+	{
 		const prev = text[r - 1] ?? "";
 		if (
 			(text.charCodeAt(r - 1) !== 45 || text[r - 2] === "-" || text[r] === "-") &&
@@ -396,12 +477,15 @@ function prefixIsLong(text: string, start: number, atStart: boolean): boolean {
 }
 
 /** QL */
-function cutBeforeDashRun(text: string, start: number, end: number, force = false): number {
-	for (let i = start; i < end; i++) {
+function cutBeforeDashRun(text: string, start: number, end: number, force = false): number
+{
+	for (let i = start; i < end; i++)
+	{
 		if (text[i] !== "-") continue;
 		let dashes = 0;
 		let k = i;
-		while (k < text.length) {
+		while (k < text.length)
+		{
 			const cp = text.codePointAt(k) ?? 0;
 			if (text[k] === "-") dashes++;
 			else if (!isInvisible(String.fromCodePoint(cp))) break;
@@ -423,20 +507,23 @@ function cutBeforeDashRun(text: string, start: number, end: number, force = fals
 /** Ka */
 const EDGE_MARK = "\0";
 
-interface Shadow {
+interface Shadow
+{
 	shadow: string;
 	edges: number;
 	toRaw: (index: number) => number;
 }
 
 /** jK: remove invisible runs, mapping shadow offsets back to raw ones. */
-function shadowOf(text: string, previous?: string): Shadow {
+function shadowOf(text: string, previous?: string): Shadow
+{
 	let removed = 0;
 	const gaps: number[] = [];
 	const shifts: number[] = [];
 	let shift = 0;
 	let edges = 0;
-	const shadow = text.replace(INVISIBLE_RUNS(), (run: string, at: number) => {
+	const shadow = text.replace(INVISIBLE_RUNS(), (run: string, at: number) =>
+	{
 		const l = at - removed;
 		removed += run.length;
 		const probe =
@@ -457,10 +544,12 @@ function shadowOf(text: string, previous?: string): Shadow {
 	return {
 		shadow,
 		edges,
-		toRaw: (index) => {
+		toRaw: (index) =>
+		{
 			let lo = 0;
 			let hi = gaps.length;
-			while (lo < hi) {
+			while (lo < hi)
+			{
 				const mid = (lo + hi) >>> 1;
 				if ((gaps[mid] ?? 0) <= index) lo = mid + 1;
 				else hi = mid;
@@ -471,21 +560,40 @@ function shadowOf(text: string, previous?: string): Shadow {
 }
 
 /** s0: every secret in `text`. */
-export function findSecrets(text: string): SecretMatch[] {
+export function findSecrets(text: string): SecretMatch[]
+{
 	return findAll(text, true).map(({added: _added, ...rest}) => rest);
 }
 
 /** tz */
-function findAll(text: string, atEnd: boolean, atStart = true): (SecretMatch & {added: boolean})[] {
+function findAll(
+	text: string,
+	atEnd: boolean,
+	atStart = true,
+): (SecretMatch &
+{
+	added: boolean;
+})[]
+{
 	if (text.length > MAX_SCAN) return [];
 	const found: RawMatch[] = [];
-	const push = (start: number, end: number, value: string, added = false) => {
-		found.push({start, end, patternId: patternFor(value)?.id ?? "unknown", added});
+	const push = (start: number, end: number, value: string, added = false) =>
+	{
+		found.push(
+			{
+				start,
+				end,
+				patternId: patternFor(value)?.id ?? "unknown",
+				added,
+			},
+		);
 	};
 	if (mayContainSecret(text))
 		for (const m of scan(text, atEnd, atStart)) push(m.index, m.index + m.value.length, m.value, m.added);
-	if (hasInvisible(text)) {
-		const pass = (previous?: string): string => {
+	if (hasInvisible(text))
+	{
+		const pass = (previous?: string): string =>
+		{
 			const {shadow, edges, toRaw} = shadowOf(text, previous);
 			if ((previous === undefined || edges !== 0) && mayContainSecret(shadow))
 				for (const m of scan(shadow, atEnd, atStart))
@@ -496,45 +604,65 @@ function findAll(text: string, atEnd: boolean, atStart = true): (SecretMatch & {
 	}
 	found.sort((a, b) => a.start - b.start);
 	const merged: RawMatch[] = [];
-	const noteInner = (m: RawMatch, at: number) => {
+	const noteInner = (m: RawMatch, at: number) =>
+	{
 		if (m.added && at > m.start) m.inner = Math.min(m.inner ?? at, at);
 	};
-	for (const m of found) {
+	for (const m of found)
+	{
 		const last = merged[merged.length - 1];
-		if (last !== undefined && m.start < last.end) {
+		if (last !== undefined && m.start < last.end)
+		{
 			noteInner(last, m.start);
 			last.end = Math.max(last.end, m.end);
-		} else merged.push({...m});
+		}
+		else
+			merged.push(
+				{
+					...m,
+				},
+			);
 	}
 	const out: RawMatch[] = [];
 	let reach = 0;
-	for (const m of merged) {
+	for (const m of merged)
+	{
 		const prev = out[out.length - 1];
 		let cur: RawMatch;
-		if (prev !== undefined && m.start < reach) {
+		if (prev !== undefined && m.start < reach)
+		{
 			noteInner(prev, m.start);
 			prev.end = m.end;
 			cur = prev;
-		} else {
+		}
+		else
+		{
 			if (prev !== undefined) prev.end = Math.max(prev.end, reach);
 			out.push(m);
 			cur = m;
 		}
 		if (cur.patternId === "private_key") reach = cur.end;
-		else if (cur.end >= reach) {
+		else if (cur.end >= reach)
+		{
 			TOKEN_TAIL.lastIndex = cur.end;
 			reach = cur.end + (TOKEN_TAIL.exec(text)?.[0].length ?? 0);
 		}
 	}
 	const last = out[out.length - 1];
 	if (last !== undefined) last.end = Math.max(last.end, reach);
-	return out.map(({start, end, patternId, added, inner}) => ({
+	return out.map(({start, end, patternId, added, inner}) => (
+	{
 		start,
 		end,
 		value: text.slice(start, end),
 		patternId,
 		added,
-		...(inner === undefined ? {} : {keep: inner - start}),
+		...(inner === undefined
+			? {}
+			:
+				{
+					keep: inner - start,
+				}),
 	}));
 }
 
@@ -550,15 +678,20 @@ const PEM_END_PREFIX = "-----END";
 const PEM_TRAILER = /^[^-]*(?:-[^A-Za-z0-9]*)?$/;
 
 /** TR: index just past the PEM header's closing dash run. */
-function pemHeaderEnd(value: string): number {
+function pemHeaderEnd(value: string): number
+{
 	const invisible = INVISIBLE();
 	let dashes = 0;
-	for (let r = 10; r < value.length;) {
+	for (let r = 10; r < value.length;)
+	{
 		const ch = String.fromCodePoint(value.codePointAt(r) ?? 0);
-		if (ch === "-") {
+		if (ch === "-")
+		{
 			dashes += 1;
 			if (dashes === 5) return r + 1;
-		} else if (!invisible.test(ch)) {
+		}
+		else if (!invisible.test(ch))
+		{
 			if (dashes === 4) return r;
 			dashes = 0;
 		}
@@ -568,7 +701,8 @@ function pemHeaderEnd(value: string): number {
 }
 
 /** L9: one bullet per char, newlines kept. */
-function bulletLines(text: string): string {
+function bulletLines(text: string): string
+{
 	return text.includes("\n")
 		? text
 				.split("\n")
@@ -578,9 +712,11 @@ function bulletLines(text: string): string {
 }
 
 /** sE: mask one matched value. */
-export function maskSecretValue(value: string, keep = Infinity): string {
+export function maskSecretValue(value: string, keep = Infinity): string
+{
 	const limit = Math.max(0, keep);
-	if (value.startsWith(PEM_BEGIN_PREFIX)) {
+	if (value.startsWith(PEM_BEGIN_PREFIX))
+	{
 		const endAt = value.lastIndexOf(PEM_END_PREFIX);
 		const bodyEnd = endAt >= 0 && PEM_TRAILER.test(value.slice(endAt + 8)) ? endAt : value.length;
 		const headerEnd = pemHeaderEnd(value);
@@ -591,7 +727,8 @@ export function maskSecretValue(value: string, keep = Infinity): string {
 			maskSecrets(value.slice(bodyEnd))
 		);
 	}
-	if (!INVISIBLE().test(value)) {
+	if (!INVISIBLE().test(value))
+	{
 		if (value.length <= SHORT_MAX) return bulletLines(value);
 		const kept = Math.min(VISIBLE_PREFIX, limit);
 		return value.slice(0, kept) + bulletLines(value.slice(kept));
@@ -600,10 +737,12 @@ export function maskSecretValue(value: string, keep = Infinity): string {
 	let visible = 0;
 	let prefixEnd = 0;
 	let keepEnd = 0;
-	for (let p = 0; p < value.length;) {
+	for (let p = 0; p < value.length;)
+	{
 		const ch = String.fromCodePoint(value.codePointAt(p) ?? 0);
 		p += ch.length;
-		if (!invisible.test(ch)) {
+		if (!invisible.test(ch))
+		{
 			visible += 1;
 			if (visible === VISIBLE_PREFIX) prefixEnd = p;
 		}
@@ -615,21 +754,26 @@ export function maskSecretValue(value: string, keep = Infinity): string {
 }
 
 /** $2: mask secrets in a URL but keep its host legible. */
-export function maskUrlSecrets(url: string): string {
+export function maskUrlSecrets(url: string): string
+{
 	const matches = findSecrets(url);
 	if (matches.length === 0) return url;
 	let hostStart = -1;
 	let hostEnd = -1;
-	try {
+	try
+	{
 		const parsed = new URL(url);
 		const host = parsed.host;
-		if (host.length > 0) {
+		if (host.length > 0)
+		{
 			let a = url.indexOf(":") + 1;
 			while (a < url.length && (url[a] === "/" || url[a] === "\\")) a++;
 			let o = url.length;
-			for (let t = a; t < url.length; t++) {
+			for (let t = a; t < url.length; t++)
+			{
 				const ch = url[t];
-				if (ch === "/" || ch === "?" || ch === "#" || ch === "\\") {
+				if (ch === "/" || ch === "?" || ch === "#" || ch === "\\")
+				{
 					o = t;
 					break;
 				}
@@ -637,23 +781,31 @@ export function maskUrlSecrets(url: string): string {
 			const at = url.lastIndexOf("@", o - 1);
 			hostStart = at >= a ? at + 1 : a;
 			hostEnd = o;
-			try {
-				if (new URL(`${parsed.protocol}//${url.slice(hostStart, hostEnd)}`).host !== host) {
+			try
+			{
+				if (new URL(`${parsed.protocol}//${url.slice(hostStart, hostEnd)}`).host !== host)
+				{
 					hostStart = -1;
 					hostEnd = -1;
 				}
-			} catch {
+			}
+			catch
+			{
 				hostStart = -1;
 				hostEnd = -1;
 			}
 		}
-	} catch {
+	}
+	catch
+	{
 		// not a URL: mask everything
 	}
 	let out = "";
 	let pos = 0;
-	for (const m of matches) {
-		if (hostStart !== -1 && m.start < hostEnd && m.end > hostStart) {
+	for (const m of matches)
+	{
+		if (hostStart !== -1 && m.start < hostEnd && m.end > hostStart)
+		{
 			const before = url.slice(m.start, Math.min(m.end, hostStart));
 			const after = url.slice(Math.max(m.start, hostEnd), m.end);
 			out += url.slice(pos, m.start);
@@ -675,11 +827,13 @@ export function maskUrlSecrets(url: string): string {
 type ValueMasker = (value: string, keep?: number) => string;
 
 /** eD */
-function replaceMatches(text: string, matches: readonly SecretMatch[], mask: ValueMasker): string {
+function replaceMatches(text: string, matches: readonly SecretMatch[], mask: ValueMasker): string
+{
 	if (matches.length === 0) return text;
 	let out = "";
 	let pos = 0;
-	for (const m of matches) {
+	for (const m of matches)
+	{
 		out += text.slice(pos, m.start) + mask(m.value, m.keep);
 		pos = m.end;
 	}
@@ -692,36 +846,60 @@ const WINDOW_OVERLAP = 8192;
 const WINDOW_STEP = MAX_SCAN - WINDOW_OVERLAP;
 
 /** vk: mask every match, scanning long text in overlapping windows. */
-function maskAll(text: string, mask: ValueMasker): string {
+function maskAll(text: string, mask: ValueMasker): string
+{
 	if (text.length <= MAX_SCAN) return replaceMatches(text, findSecrets(text), mask);
-	const found: (SecretMatch & {added: boolean})[] = [];
+	const found: (SecretMatch &
+	{
+		added: boolean;
+	})[] = [];
 	for (let o = 0; o < text.length; o += WINDOW_STEP)
 		for (const m of findAll(text.slice(o, o + MAX_SCAN), o + MAX_SCAN >= text.length, o === 0))
-			found.push({
-				patternId: m.patternId,
-				value: m.value,
-				start: o + m.start,
-				end: o + m.end,
-				added: m.added,
-				...(m.keep === undefined ? {} : {keep: m.keep}),
-			});
+			found.push(
+				{
+					patternId: m.patternId,
+					value: m.value,
+					start: o + m.start,
+					end: o + m.end,
+					added: m.added,
+					...(m.keep === undefined
+						? {}
+						:
+							{
+								keep: m.keep,
+							}),
+				},
+			);
 	found.sort((a, b) => a.start - b.start || Number(a.added) - Number(b.added) || a.end - b.end);
-	const merged: (SecretMatch & {added: boolean})[] = [];
-	for (const m of found) {
+	const merged: (SecretMatch &
+	{
+		added: boolean;
+	})[] = [];
+	for (const m of found)
+	{
 		const last = merged[merged.length - 1];
 		const gluedToKey = m.added && m.start === last?.end && last.patternId === "private_key";
-		if (last !== undefined && m.start <= last.end && !gluedToKey) {
-			if (m.end > last.end) {
+		if (last !== undefined && m.start <= last.end && !gluedToKey)
+		{
+			if (m.end > last.end)
+			{
 				last.end = m.end;
 				last.value = text.slice(last.start, last.end);
 			}
-		} else merged.push({...m});
+		}
+		else
+			merged.push(
+				{
+					...m,
+				},
+			);
 	}
 	return replaceMatches(text, merged, mask);
 }
 
 /** XF: bullet every secret in place. */
-export function maskSecrets(text: string): string {
+export function maskSecrets(text: string): string
+{
 	return maskAll(text, maskSecretValue);
 }
 
@@ -731,17 +909,20 @@ const SEVEN_BULLETS = MASK_CHAR.repeat(7);
 const BULLET_RUN = new RegExp(`(?<!\\n)\\n*${MASK_CHAR}[${MASK_CHAR}\\n]*`, "g");
 
 /** Ed */
-function maskCompactValue(value: string, keep?: number): string {
+function maskCompactValue(value: string, keep?: number): string
+{
 	return maskSecretValue(value, keep).replace(BULLET_RUN, SEVEN_BULLETS);
 }
 
 /** I6: like maskSecrets, but each masked run collapses to 7 bullets. */
-export function maskSecretsCompact(text: string): string {
+export function maskSecretsCompact(text: string): string
+{
 	return maskAll(text, maskCompactValue);
 }
 
 /** AK: mask, then cap at MAX_SCAN chars plus an ellipsis. */
-export function maskAndCap(text: string): string {
+export function maskAndCap(text: string): string
+{
 	const masked = maskSecrets(text);
 	return masked.length > MAX_SCAN ? `${masked.slice(0, MAX_SCAN)}…` : masked;
 }
@@ -750,13 +931,15 @@ export function maskAndCap(text: string): string {
 const TOKEN_CHAR = /[A-Za-z0-9_.+/=-]/;
 
 /** jR: mask then truncate to `length`; a token cut at the edge keeps at most 8 visible chars. */
-export function maskedPrefix(text: string, length: number, more = false): string {
+export function maskedPrefix(text: string, length: number, more = false): string
+{
 	const head = text.slice(0, length + WINDOW_OVERLAP);
 	const masked = maskSecrets(head);
 	const cut = masked.slice(0, length);
 	if (!more && text.length <= head.length) return cut;
 	let o = head.length;
-	while (o > 0) {
+	while (o > 0)
+	{
 		const c = head.charCodeAt(o - 1);
 		const p = o > 1 ? head.charCodeAt(o - 2) : 0;
 		const pair = c >= 56320 && c <= 57343 && p >= 55296 && p <= 56319;
@@ -779,7 +962,8 @@ const MASKED_PEM_BEGIN = new RegExp(
 );
 
 /** _h: cut the text before a private-key header whose body is not masked or not terminated. */
-export function cutUnterminatedPrivateKey(text: string): string {
+export function cutUnterminatedPrivateKey(text: string): string
+{
 	if (
 		(!PRIVATE_KEY_TAIL.test(text) && !NON_ASCII.test(text)) ||
 		(!text.includes("BEGIN") && !text.includes("PRIVATE") && !hasInvisible(text))
@@ -790,7 +974,8 @@ export function cutUnterminatedPrivateKey(text: string): string {
 	const tailCut = maskedTail === null ? Infinity : toRaw(maskedTail.index) + 1;
 	const begin = new RegExp(`${PEM_BEGIN.source}|${MASKED_PEM_BEGIN.source}`, "g");
 	const end = new RegExp(PEM_END.source, "g");
-	for (let m = begin.exec(shadow); m !== null; m = begin.exec(shadow)) {
+	for (let m = begin.exec(shadow); m !== null; m = begin.exec(shadow))
+	{
 		const bodyStart = m.index + m[0].length;
 		end.lastIndex = bodyStart;
 		const close = end.exec(shadow);
@@ -808,7 +993,8 @@ export function cutUnterminatedPrivateKey(text: string): string {
 }
 
 /** VS: every secret becomes exactly 7 bullets. */
-export function maskSecretsFixed(text: string): string {
+export function maskSecretsFixed(text: string): string
+{
 	return maskAll(text, () => SEVEN_BULLETS);
 }
 
@@ -822,11 +1008,13 @@ const DISPLAY_CONTROLS = lazy(
 );
 
 /** Strip display controls (upstream `.replace(Jd(), "")`). */
-export function stripDisplayControls(text: string): string {
+export function stripDisplayControls(text: string): string
+{
 	return text.replace(DISPLAY_CONTROLS(), "");
 }
 
 /** Iv: mask, then strip display controls. */
-export function stripControlsAndMask(text: string): string {
+export function stripControlsAndMask(text: string): string
+{
 	return stripDisplayControls(maskSecrets(text));
 }

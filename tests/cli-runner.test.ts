@@ -7,13 +7,17 @@ const spawnMock = vi.hoisted(() =>
 	vi.fn<(command: string, args: readonly string[], options: SpawnOptions) => ChildProcess>(),
 );
 
-vi.mock("node:child_process", () => ({spawn: spawnMock}));
+vi.mock("node:child_process", () => (
+{
+	spawn: spawnMock,
+}));
 
 import {validateClaudeLaunchArgs} from "../src/lib/claude-launch-command";
 import {spawnClaude} from "../src/lib/cli-runner";
 import {buildLaunchFlags} from "../src/lib/launch-options";
 
-function fakeChildProcess(): ChildProcess {
+function fakeChildProcess(): ChildProcess
+{
 	const child = new EventEmitter() as ChildProcess;
 	child.stdin = new PassThrough();
 	child.stdout = new PassThrough();
@@ -22,23 +26,31 @@ function fakeChildProcess(): ChildProcess {
 	return child;
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	spawnMock.mockReset();
 });
 
-describe("spawnClaude", () => {
-	it("preserves multi-byte UTF-8 characters split across stdout chunks", async () => {
+describe("spawnClaude", () =>
+{
+	it("preserves multi-byte UTF-8 characters split across stdout chunks", async () =>
+	{
 		const child = fakeChildProcess();
 		spawnMock.mockReturnValue(child);
 		const expected = Buffer.from('{"message":"Alice 🌱"}\n');
 		const characterStart = expected.indexOf(Buffer.from("🌱"));
 
-		const {stream} = spawnClaude({
-			sessionId: "session-test-100",
-			prompt: "Review Alice's fixture",
-			projectDir: "/fixture/alice-repository",
-			environment: {FIXTURE: "alice"},
-		});
+		const {stream} = spawnClaude(
+			{
+				sessionId: "session-test-100",
+				prompt: "Review Alice's fixture",
+				projectDir: "/fixture/alice-repository",
+				environment:
+				{
+					FIXTURE: "alice",
+				},
+			},
+		);
 		child.stdout!.emit("data", expected.subarray(0, characterStart + 2));
 		child.stdout!.emit("data", expected.subarray(characterStart + 2));
 		child.emit("close", 0);
@@ -46,16 +58,19 @@ describe("spawnClaude", () => {
 		expect(new Uint8Array(await new Response(stream).arrayBuffer())).toStrictEqual(new Uint8Array(expected));
 	});
 
-	it("keeps a stdout line split across chunks intact when a stderr chunk arrives between them", async () => {
+	it("keeps a stdout line split across chunks intact when a stderr chunk arrives between them", async () =>
+	{
 		const child = fakeChildProcess();
 		spawnMock.mockReturnValue(child);
 
-		const {stream} = spawnClaude({
-			sessionId: "session-test-100",
-			prompt: "Review Alice's fixture",
-			projectDir: "/fixture/alice-repository",
-			environment: {},
-		});
+		const {stream} = spawnClaude(
+			{
+				sessionId: "session-test-100",
+				prompt: "Review Alice's fixture",
+				projectDir: "/fixture/alice-repository",
+				environment: {},
+			},
+		);
 		child.stdout!.emit("data", Buffer.from('{"type":"assistant","text":"Hel'));
 		child.stderr!.emit("data", Buffer.from("warning: Alice's config is stale\n"));
 		child.stdout!.emit("data", Buffer.from('lo Alice"}\n{"type":"result","tail":"no newline"}'));
@@ -72,86 +87,129 @@ describe("spawnClaude", () => {
 	});
 });
 
-describe("buildLaunchFlags", () => {
-	it("emits --permission-mode, --model and --effort as separate argv entries", () => {
+describe("buildLaunchFlags", () =>
+{
+	it("emits --permission-mode, --model and --effort as separate argv entries", () =>
+	{
 		expect(
-			buildLaunchFlags({
-				permissionMode: "acceptEdits",
-				model: "claude-opus-4-8",
-				effort: "xhigh",
-			}),
+			buildLaunchFlags(
+				{
+					permissionMode: "acceptEdits",
+					model: "claude-opus-4-8",
+					effort: "xhigh",
+				},
+			),
 		).toStrictEqual(["--permission-mode", "acceptEdits", "--model", "claude-opus-4-8", "--effort", "xhigh"]);
 	});
 
-	it("omits unset options", () => {
-		expect({
-			none: buildLaunchFlags({}),
-			modelOnly: buildLaunchFlags({model: "fable"}),
-		}).toStrictEqual({none: [], modelOnly: ["--model", "fable"]});
+	it("omits unset options", () =>
+	{
+		expect(
+			{
+				none: buildLaunchFlags({}),
+				modelOnly: buildLaunchFlags(
+					{
+						model: "fable",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				none: [],
+				modelOnly: ["--model", "fable"],
+			},
+		);
 	});
 
-	it("produces flags the herdr launch validator accepts", () => {
+	it("produces flags the herdr launch validator accepts", () =>
+	{
 		expect(
 			validateClaudeLaunchArgs(
-				buildLaunchFlags({permissionMode: "default", model: "claude-opus-5-5", effort: "max"}),
+				buildLaunchFlags(
+					{
+						permissionMode: "default",
+						model: "claude-opus-5-5",
+						effort: "max",
+					},
+				),
 			),
 		).toBeNull();
 	});
 });
 
-describe("spawnClaude prompt delivery", () => {
-	it("writes a prompt that looks like CLI flags to stdin instead of argv", async () => {
+describe("spawnClaude prompt delivery", () =>
+{
+	it("writes a prompt that looks like CLI flags to stdin instead of argv", async () =>
+	{
 		const child = fakeChildProcess();
 		spawnMock.mockReturnValue(child);
 		const stdinChunks: Buffer[] = [];
-		const stdinEnded = new Promise<string>((resolve) => {
-			child.stdin!.on("data", (chunk: Buffer) => {
+		const stdinEnded = new Promise<string>((resolve) =>
+		{
+			child.stdin!.on("data", (chunk: Buffer) =>
+			{
 				stdinChunks.push(chunk);
 			});
-			child.stdin!.on("end", () => {
+			child.stdin!.on("end", () =>
+			{
 				resolve(Buffer.concat(stdinChunks).toString());
 			});
 		});
 
-		spawnClaude({
-			sessionId: "session-test-100",
-			prompt: "--model opus",
-			projectDir: "/fixture/alice-repository",
-			environment: {},
-		});
+		spawnClaude(
+			{
+				sessionId: "session-test-100",
+				prompt: "--model opus",
+				projectDir: "/fixture/alice-repository",
+				environment: {},
+			},
+		);
 
-		expect({
-			args: spawnMock.mock.calls[0]?.[1],
-			stdio: spawnMock.mock.calls[0]?.[2].stdio,
-			stdin: await stdinEnded,
-		}).toStrictEqual({
-			args: [
-				"--resume",
-				"session-test-100",
-				"--fork-session",
-				"-p",
-				"--output-format",
-				"stream-json",
-				"--verbose",
-				"--include-partial-messages",
-			],
-			stdio: ["pipe", "pipe", "pipe"],
-			stdin: "--model opus",
-		});
+		expect(
+			{
+				args: spawnMock.mock.calls[0]?.[1],
+				stdio: spawnMock.mock.calls[0]?.[2].stdio,
+				stdin: await stdinEnded,
+			},
+		).toStrictEqual(
+			{
+				args: [
+					"--resume",
+					"session-test-100",
+					"--fork-session",
+					"-p",
+					"--output-format",
+					"stream-json",
+					"--verbose",
+					"--include-partial-messages",
+				],
+				stdio: ["pipe", "pipe", "pipe"],
+				stdin: "--model opus",
+			},
+		);
 	});
 });
 
-describe("spawnClaude launch flags", () => {
-	it("appends the launch flags to the argv array without shell interpolation", () => {
+describe("spawnClaude launch flags", () =>
+{
+	it("appends the launch flags to the argv array without shell interpolation", () =>
+	{
 		spawnMock.mockReturnValue(fakeChildProcess());
 
-		spawnClaude({
-			sessionId: "session-test-100",
-			prompt: "Review $(whoami) && Alice's `fixture`",
-			projectDir: "/fixture/alice-repository",
-			environment: {},
-			launchOptions: {permissionMode: "plan", model: "sonnet", effort: "low"},
-		});
+		spawnClaude(
+			{
+				sessionId: "session-test-100",
+				prompt: "Review $(whoami) && Alice's `fixture`",
+				projectDir: "/fixture/alice-repository",
+				environment: {},
+				launchOptions:
+				{
+					permissionMode: "plan",
+					model: "sonnet",
+					effort: "low",
+				},
+			},
+		);
 
 		expect(spawnMock.mock.calls[0]?.slice(0, 2)).toStrictEqual([
 			"claude",

@@ -66,13 +66,15 @@ export type SessionMenuSurface = "row" | "header" | "palette" | "palette-card";
 export type SessionMenuReadState = "working" | "awaiting" | "unread" | "read";
 
 /** Blocked rows are awaiting input; finished rows are read or unread by the unseen flag. */
-export function sessionMenuReadState(bucket: SessionBucket | undefined, unseen: boolean): SessionMenuReadState {
+export function sessionMenuReadState(bucket: SessionBucket | undefined, unseen: boolean): SessionMenuReadState
+{
 	if (bucket === "working") return "working";
 	if (bucket === "blocked") return "awaiting";
 	return unseen ? "unread" : "read";
 }
 
-export interface SessionMenuSession {
+export interface SessionMenuSession
+{
 	title: string;
 	pinned: boolean;
 	readState: SessionMenuReadState;
@@ -86,22 +88,36 @@ export interface SessionMenuSession {
 	/** claude.ai/code session the transcript's `bridge-session` record points at. */
 	bridgeSessionId: string | null;
 	/** Where a pinned row sits in the sidebar Pinned section; enables Move up / Move down. */
-	pinPosition?: {index: number; count: number};
+	pinPosition?:
+	{
+		index: number;
+		count: number;
+	};
 	/** This browser's custom groups and the row's current one; enables Move to group. */
-	customGroup?: {groups: readonly {id: string; name: string}[]; current: string | null};
+	customGroup?:
+	{
+		groups: readonly
+		{
+			id: string;
+			name: string;
+		}[];
+		current: string | null;
+	};
 	/** The session's transcript view; enables the header's Transcript view submenu. */
 	transcriptView?: TranscriptViewState;
 	/** This tab draws the session's approval card live (upstream `hasPendingApproval`); hides Mark as completed. */
 	liveApproval?: boolean;
 }
 
-export interface TranscriptViewState {
+export interface TranscriptViewState
+{
 	mode: TranscriptMode;
 	defaultMode: TranscriptMode;
 	hasThinking: boolean;
 }
 
-export interface SessionMenuItem {
+export interface SessionMenuItem
+{
 	kind: "item";
 	id: SessionMenuItemId;
 	label: string;
@@ -118,13 +134,15 @@ export interface SessionMenuItem {
 	submenu?: SessionMenuEntry[];
 }
 
-export interface SessionMenuSeparator {
+export interface SessionMenuSeparator
+{
 	kind: "separator";
 }
 
 export type SessionMenuEntry = SessionMenuItem | SessionMenuSeparator;
 
-const ACCELERATORS = {
+const ACCELERATORS =
+{
 	"open-pr": "g",
 	pin: "p",
 	unpin: "p",
@@ -141,7 +159,8 @@ const ACCELERATORS = {
 type AcceleratedId = keyof typeof ACCELERATORS;
 
 /** Upstream ⌘K contextual command wording; `{name}` is the truncated title. */
-const PALETTE_LABELS = {
+const PALETTE_LABELS =
+{
 	pin: (name) => `Pin “${name}”`,
 	unpin: (name) => `Unpin “${name}”`,
 	rename: (name) => `Rename “${name}”`,
@@ -156,12 +175,20 @@ const PALETTE_TITLE_LENGTH = 39;
 /** Maximum accelerator digit in a numbered submenu (Open in, Move to group). */
 const MAX_DIGIT = 9;
 
-function numbered(entries: SessionMenuEntry[]): SessionMenuEntry[] {
+function numbered(entries: SessionMenuEntry[]): SessionMenuEntry[]
+{
 	let digit = 0;
-	return entries.map((entry) => {
+	return entries.map((entry) =>
+	{
 		if (entry.kind !== "item") return entry;
 		digit += 1;
-		return digit > MAX_DIGIT ? entry : {...entry, accelerator: String(digit)};
+		return digit > MAX_DIGIT
+			? entry
+			:
+				{
+					...entry,
+					accelerator: String(digit),
+				};
 	});
 }
 
@@ -170,32 +197,61 @@ function numbered(entries: SessionMenuEntry[]): SessionMenuEntry[] {
  * (only when the row is in one) and New section, numbered 1…9 in that order.
  */
 function moveToGroupItem(
-	{groups, current, grouped = current !== null}: NonNullable<SessionMenuSession["customGroup"]> & {grouped?: boolean},
+	{
+		groups,
+		current,
+		grouped = current !== null,
+	}: NonNullable<SessionMenuSession["customGroup"]> &
+	{
+		grouped?: boolean;
+	},
 	label: string = sessionMenuItemLabels["move-to-group"],
-): SessionMenuItem {
-	const entries: SessionMenuEntry[] = groups.map((group) => ({
+): SessionMenuItem
+{
+	const entries: SessionMenuEntry[] = groups.map((group) => (
+	{
 		kind: "item",
 		id: "move-to-custom-group",
 		label: group.name,
 		groupId: group.id,
 		checked: group.id === current,
 	}));
-	if (entries.length > 0) entries.push({kind: "separator"});
-	if (grouped) {
+	if (entries.length > 0)
+		entries.push(
+			{
+				kind: "separator",
+			},
+		);
+	if (grouped)
+	{
 		// Upstream `Cg`: "Remove from {groupName}", or "Remove from sections" across several.
 		const currentName = groups.find((group) => group.id === current)?.name;
-		entries.push({
-			kind: "item",
-			id: "ungroup",
-			label: currentName === undefined ? sessionMenuItemLabels.ungroup : `Remove from ${currentName}`,
-			checked: false,
-		});
+		entries.push(
+			{
+				kind: "item",
+				id: "ungroup",
+				label: currentName === undefined ? sessionMenuItemLabels.ungroup : `Remove from ${currentName}`,
+				checked: false,
+			},
+		);
 	}
-	entries.push({kind: "item", id: "new-group", label: sessionMenuItemLabels["new-group"]});
-	return {kind: "item", id: "move-to-group", label, submenu: numbered(entries)};
+	entries.push(
+		{
+			kind: "item",
+			id: "new-group",
+			label: sessionMenuItemLabels["new-group"],
+		},
+	);
+	return {
+		kind: "item",
+		id: "move-to-group",
+		label,
+		submenu: numbered(entries),
+	};
 }
 
-export interface BulkSessionMenuSelection {
+export interface BulkSessionMenuSelection
+{
 	/** How many sessions are selected (two or more). */
 	count: number;
 	/** Every selected session is unread, so the read-state item marks them read. */
@@ -206,8 +262,13 @@ export interface BulkSessionMenuSelection {
 	 * This browser's custom groups; `current` is the group every selected session
 	 * shares (or null), and `anyGrouped` offers Ungrouped.
 	 */
-	customGroup?: {
-		groups: readonly {id: string; name: string}[];
+	customGroup?:
+	{
+		groups: readonly
+		{
+			id: string;
+			name: string;
+		}[];
 		current: string | null;
 		anyGrouped: boolean;
 	};
@@ -223,12 +284,21 @@ export function getBulkSessionMenuItems({
 	allUnread,
 	anyUnarchived,
 	customGroup,
-}: BulkSessionMenuSelection): SessionMenuEntry[] {
+}: BulkSessionMenuSelection): SessionMenuEntry[]
+{
 	const readId = allUnread ? "mark-read" : "mark-unread";
 	const sections: SessionMenuItem[][] = [
-		[{kind: "item", id: readId, label: sessionMenuItemLabels[readId], accelerator: "u"}],
+		[
+			{
+				kind: "item",
+				id: readId,
+				label: sessionMenuItemLabels[readId],
+				accelerator: "u",
+			},
+		],
 	];
-	if (customGroup !== undefined) {
+	if (customGroup !== undefined)
+	{
 		sections.push([
 			moveToGroupItem(
 				{
@@ -240,11 +310,26 @@ export function getBulkSessionMenuItems({
 			),
 		]);
 	}
-	if (anyUnarchived) {
-		sections.push([{kind: "item", id: "archive", label: sessionMenuItemLabels.archive, accelerator: "a"}]);
+	if (anyUnarchived)
+	{
+		sections.push([
+			{
+				kind: "item",
+				id: "archive",
+				label: sessionMenuItemLabels.archive,
+				accelerator: "a",
+			},
+		]);
 	}
 	return sections.flatMap((section, index): SessionMenuEntry[] =>
-		index === 0 ? section : [{kind: "separator"}, ...section],
+		index === 0
+			? section
+			: [
+					{
+						kind: "separator",
+					},
+					...section,
+				],
 	);
 }
 
@@ -252,9 +337,11 @@ export function getBulkSessionMenuItems({
  * Upstream's "Transcript view ▸": Normal · Thinking (only when the session has some) ·
  * Verbose as radios, then "Make {Mode} the default" when the session differs from it.
  */
-export function transcriptViewMenuItem({mode, defaultMode, hasThinking}: TranscriptViewState): SessionMenuItem {
+export function transcriptViewMenuItem({mode, defaultMode, hasThinking}: TranscriptViewState): SessionMenuItem
+{
 	const entries: SessionMenuEntry[] = TRANSCRIPT_MODES.filter((option) => hasThinking || option !== "thinking").map(
-		(option) => ({
+		(option) => (
+		{
 			kind: "item",
 			id: "transcript-mode",
 			label: transcriptModeLabels[option],
@@ -262,9 +349,12 @@ export function transcriptViewMenuItem({mode, defaultMode, hasThinking}: Transcr
 			checked: option === mode,
 		}),
 	);
-	if (mode !== defaultMode) {
+	if (mode !== defaultMode)
+	{
 		entries.push(
-			{kind: "separator"},
+			{
+				kind: "separator",
+			},
 			{
 				kind: "item",
 				id: "make-default-transcript-mode",
@@ -280,17 +370,25 @@ export function transcriptViewMenuItem({mode, defaultMode, hasThinking}: Transcr
 	};
 }
 
-function paletteName(title: string): string {
+function paletteName(title: string): string
+{
 	return title.length > PALETTE_TITLE_LENGTH ? `${title.slice(0, PALETTE_TITLE_LENGTH)}…` : title;
 }
 
 export function getSessionMenuItems(
 	session: SessionMenuSession,
 	capabilities: ReadonlySet<SessionMenuCapability>,
-	{surface}: {surface: SessionMenuSurface},
-): SessionMenuEntry[] {
+	{
+		surface,
+	}:
+	{
+		surface: SessionMenuSurface;
+	},
+): SessionMenuEntry[]
+{
 	const has = (capability: SessionMenuCapability) => capabilities.has(capability);
-	const item = (id: AcceleratedId): SessionMenuItem => ({
+	const item = (id: AcceleratedId): SessionMenuItem => (
+	{
 		kind: "item",
 		id,
 		label: sessionMenuItemLabels[id],
@@ -306,26 +404,39 @@ export function getSessionMenuItems(
 		["open-finder", session.cwd !== null && has("openFinder")],
 	];
 	const openIn = openInTargets.flatMap(([id, offered]): SessionMenuItem[] =>
-		offered ? [{kind: "item", id, label: sessionMenuItemLabels[id]}] : [],
+		offered
+			? [
+					{
+						kind: "item",
+						id,
+						label: sessionMenuItemLabels[id],
+					},
+				]
+			: [],
 	);
 
 	// Upstream's open group: Open PR with its visible `g` shortcut, then the Open in submenu.
 	const navigation: SessionMenuItem[] = [];
 	if (session.prUrl !== null && has("openPr")) navigation.push(item("open-pr"));
-	if (openIn.length > 0) {
-		navigation.push({
-			kind: "item",
-			id: "open-in",
-			label: sessionMenuItemLabels["open-in"],
-			submenu: numbered(openIn),
-		});
+	if (openIn.length > 0)
+	{
+		navigation.push(
+			{
+				kind: "item",
+				id: "open-in",
+				label: sessionMenuItemLabels["open-in"],
+				submenu: numbered(openIn),
+			},
+		);
 	}
 
 	// Upstream's `pinReorder` block: omitted at the ends, so a single pin gets neither.
 	const pinReorder: SessionMenuItem[] = [];
 	const position = session.pinPosition;
-	if (surface === "row" && session.pinned && position !== undefined) {
-		const reorder = (id: "move-up" | "move-down"): SessionMenuItem => ({
+	if (surface === "row" && session.pinned && position !== undefined)
+	{
+		const reorder = (id: "move-up" | "move-down"): SessionMenuItem => (
+		{
 			kind: "item",
 			id,
 			label: sessionMenuItemLabels[id],
@@ -337,10 +448,14 @@ export function getSessionMenuItems(
 	const actions: SessionMenuItem[] = [];
 	if (surface !== "header" && has("pin")) actions.push(item(session.pinned ? "unpin" : "pin"));
 	const readState: SessionMenuItem[] = [];
-	if (surface === "row" || surface === "palette-card") {
-		if (session.readState === "awaiting") {
+	if (surface === "row" || surface === "palette-card")
+	{
+		if (session.readState === "awaiting")
+		{
 			if (has("ackAwaiting") && session.liveApproval !== true) readState.push(item("mark-completed"));
-		} else if (session.readState !== "working" && has("readState")) {
+		}
+		else if (session.readState !== "working" && has("readState"))
+		{
 			readState.push(item(session.readState === "unread" ? "mark-read" : "mark-unread"));
 		}
 	}
@@ -349,31 +464,41 @@ export function getSessionMenuItems(
 	const copyLinkBlock: SessionMenuItem[] = [];
 	if (has("rename")) actions.push(item("rename"));
 	if (has("copyLink")) (surface === "header" ? copyLinkBlock : actions).push(item("copy-link"));
-	if (has("fork")) {
+	if (has("fork"))
+	{
 		actions.push(
 			session.forkDisabledReason === null
 				? item("fork")
-				: {...item("fork"), disabled: true, disabledReason: session.forkDisabledReason},
+				:
+					{
+						...item("fork"),
+						disabled: true,
+						disabledReason: session.forkDisabledReason,
+					},
 		);
 	}
 
 	const grouping: SessionMenuItem[] = [];
-	if (surface === "row" && has("customGroups") && session.customGroup !== undefined) {
+	if (surface === "row" && has("customGroups") && session.customGroup !== undefined)
+	{
 		grouping.push(moveToGroupItem(session.customGroup));
 	}
 
 	const settingsBlock: SessionMenuItem[] = [];
-	if (surface === "header" && session.transcriptView !== undefined) {
+	if (surface === "header" && session.transcriptView !== undefined)
+	{
 		settingsBlock.push(transcriptViewMenuItem(session.transcriptView));
 	}
 
 	// An archived session's header leaves Unarchive to the composer note, as upstream passes the header no onUnarchive.
 	const lifecycle: SessionMenuItem[] = [];
-	if (has("archive") && !(surface === "header" && session.archived)) {
+	if (has("archive") && !(surface === "header" && session.archived))
+	{
 		lifecycle.push(item(session.archived ? "unarchive" : "archive"));
 	}
 
-	if (surface === "palette-card") {
+	if (surface === "palette-card")
+	{
 		const pick = (...ids: SessionMenuItemId[]) =>
 			[...actions, ...lifecycle].filter((entry) => ids.includes(entry.id));
 		return [
@@ -382,16 +507,29 @@ export function getSessionMenuItems(
 			...pick("rename"),
 			...pick("archive", "unarchive"),
 			...readState,
-		].map(({kind, id, label}) => ({kind, id, label}));
+		].map(({kind, id, label}) => (
+		{
+			kind,
+			id,
+			label,
+		}));
 	}
 
-	if (surface === "palette") {
+	if (surface === "palette")
+	{
 		const name = paletteName(session.title);
-		return [...actions, ...lifecycle].flatMap((entry) => {
+		return [...actions, ...lifecycle].flatMap((entry) =>
+		{
 			if (!isKeyOf(PALETTE_LABELS, entry.id)) return [];
 			const label = PALETTE_LABELS[entry.id](name);
-			const command: SessionMenuItem = {kind: "item", id: entry.id, label};
-			if (entry.disabledReason !== undefined) {
+			const command: SessionMenuItem =
+			{
+				kind: "item",
+				id: entry.id,
+				label,
+			};
+			if (entry.disabledReason !== undefined)
+			{
 				command.disabled = true;
 				command.disabledReason = entry.disabledReason;
 			}
@@ -403,6 +541,13 @@ export function getSessionMenuItems(
 		(section) => section.length > 0,
 	);
 	return sections.flatMap((section, index): SessionMenuEntry[] =>
-		index === 0 ? section : [{kind: "separator"}, ...section],
+		index === 0
+			? section
+			: [
+					{
+						kind: "separator",
+					},
+					...section,
+				],
 	);
 }

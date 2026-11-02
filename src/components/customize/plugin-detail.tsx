@@ -1,7 +1,8 @@
 import {useQuery} from "@tanstack/react-query";
 import {Bot, Link, Plug, Puzzle, Scroll, SquareSlash} from "lucide-react";
 import type {ReactNode} from "react";
-import {
+import
+{
 	customizeSettingsTogglesQueryOptions,
 	isPluginEnabled,
 	type PluginDetail,
@@ -22,7 +23,8 @@ import {ListRow} from "./list-row";
 import {PluginRowActions} from "./plugin-row-actions";
 import {pluginDetailTabs, pluginNamespace} from "./plugin-view";
 
-function plural(count: number, noun: string): string {
+function plural(count: number, noun: string): string
+{
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
@@ -31,7 +33,8 @@ function plural(count: number, noun: string): string {
  * "by <author> · <version> · N skills", the Enable/Disable kebab, then the
  * underline tabs with their " · N" counts.
  */
-export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
+export function PluginDetailHeader({detail}: {detail: PluginDetail})
+{
 	const {plugin} = detail;
 	const {data: toggles} = useQuery(customizeSettingsTogglesQueryOptions);
 	const disabled = toggles !== undefined && !isPluginEnabled(toggles, plugin.id);
@@ -66,7 +69,12 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 				{pluginDetailTabs(detail).map((tab) => (
 					<CustomizeLink
 						key={tab.id}
-						target={{kind: "plugin", id: plugin.id, tab: tab.id}}
+						target={
+						{
+							kind: "plugin",
+							id: plugin.id,
+							tab: tab.id,
+						}}
 						className={DETAIL_TAB_CLASS}
 					>
 						<DetailTabLabel label={tab.label} count={tab.count} />
@@ -82,7 +90,8 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
  * from the top and 16px from the window's right edge: the frame starts below the root's 36px top
  * row inside its 8px Customize gutter.
  */
-export function PluginDetailPage({children}: {children: ReactNode}) {
+export function PluginDetailPage({children}: {children: ReactNode})
+{
 	return (
 		<div className="relative flex w-full flex-col bg-surface-1 text-body text-primary">
 			<CopyLinkButton className="absolute -top-[26px] right-2" />
@@ -92,14 +101,29 @@ export function PluginDetailPage({children}: {children: ReactNode}) {
 }
 
 /** Upstream's "Copy link": copies this detail page's URL. */
-function CopyLinkButton({className}: {className: string}) {
+function CopyLinkButton({className}: {className: string})
+{
 	const toast = useToast();
 	return (
 		<button
 			type="button"
-			onClick={() => {
-				void writeClipboardText(window.location.href).then((copied) => {
-					toast(copied ? {kind: "success", message: "Link copied"} : {kind: "error", message: "Copy failed"});
+			onClick={() =>
+			{
+				void writeClipboardText(window.location.href).then((copied) =>
+				{
+					toast(
+						copied
+							?
+								{
+									kind: "success",
+									message: "Link copied",
+								}
+							:
+								{
+									kind: "error",
+									message: "Copy failed",
+								},
+					);
 				});
 			}}
 			className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-r6 px-2.5 text-[14px]/[20px] text-primary hover:bg-fill-ghost-hover ${className}`}
@@ -110,7 +134,8 @@ function CopyLinkButton({className}: {className: string}) {
 	);
 }
 
-function AsideCard({title, children}: {title: string; children: ReactNode}) {
+function AsideCard({title, children}: {title: string; children: ReactNode})
+{
 	return (
 		<section className="flex flex-col gap-2 rounded-card border border-border bg-surface-0 p-4">
 			<h3 className="m-0 text-caption font-normal text-secondary">{title}</h3>
@@ -119,19 +144,22 @@ function AsideCard({title, children}: {title: string; children: ReactNode}) {
 	);
 }
 
-function Caption({children}: {children: ReactNode}) {
+function Caption({children}: {children: ReactNode})
+{
 	return <h3 className="m-0 text-caption font-normal text-secondary">{children}</h3>;
 }
 
 /** Overview: description, details and categories beside the "Connectors & tools" aside. */
-export function PluginOverview({detail}: {detail: PluginDetail}) {
+export function PluginOverview({detail}: {detail: PluginDetail})
+{
 	const {plugin} = detail;
 	const facts: [string, ReactNode][] = [
 		["Author", plugin.author === "" ? "Unknown" : plugin.author],
 		["Version", <PluginVersion key="version" version={plugin.version} versionKind={plugin.versionKind} />],
 		["Marketplace", plugin.marketplace],
 	];
-	if (detail.homepage !== undefined) {
+	if (detail.homepage !== undefined)
+	{
 		facts.push([
 			"Homepage",
 			<a
@@ -198,16 +226,19 @@ export function PluginOverview({detail}: {detail: PluginDetail}) {
 	);
 }
 
-function TabIntro({children}: {children: ReactNode}) {
+function TabIntro({children}: {children: ReactNode})
+{
 	return <p className="m-0 text-body text-secondary">{children}</p>;
 }
 
-function RowList({children}: {children: ReactNode}) {
+function RowList({children}: {children: ReactNode})
+{
 	return <div className="flex flex-col">{children}</div>;
 }
 
 /** Skills tab: one "/plugin:skill" row per skill, opening the skill detail. */
-export function PluginSkills({plugin}: {plugin: PluginInfoData}) {
+export function PluginSkills({plugin}: {plugin: PluginInfoData})
+{
 	const go = useCustomizeGo();
 	const namespace = pluginNamespace(plugin.id);
 	return (
@@ -222,8 +253,15 @@ export function PluginSkills({plugin}: {plugin: PluginInfoData}) {
 						icon={Scroll}
 						title={`/${namespace}:${skill.name}`}
 						subtitle={skill.description}
-						onView={() => {
-							go({kind: "skill", id: `plugin:${plugin.id}:${skill.name}`, tab: "overview"});
+						onView={() =>
+						{
+							go(
+								{
+									kind: "skill",
+									id: `plugin:${plugin.id}:${skill.name}`,
+									tab: "overview",
+								},
+							);
 						}}
 					/>
 				))}
@@ -233,7 +271,8 @@ export function PluginSkills({plugin}: {plugin: PluginInfoData}) {
 }
 
 /** Connectors tab: the servers the plugin's .mcp.json declares. */
-export function PluginConnectors({detail}: {detail: PluginDetail}) {
+export function PluginConnectors({detail}: {detail: PluginDetail})
+{
 	const go = useCustomizeGo();
 	return (
 		<div className="flex flex-col gap-3">
@@ -247,8 +286,14 @@ export function PluginConnectors({detail}: {detail: PluginDetail}) {
 						source={transportLabel(server.transport)}
 						subtitle={server.urlOrCommand}
 						meta={server.enabled ? "Enabled" : "Disabled"}
-						onView={() => {
-							go({kind: "connector", slug: toConnectorSlug(server.id)});
+						onView={() =>
+						{
+							go(
+								{
+									kind: "connector",
+									slug: toConnectorSlug(server.id),
+								},
+							);
 						}}
 					/>
 				))}
@@ -258,7 +303,8 @@ export function PluginConnectors({detail}: {detail: PluginDetail}) {
 }
 
 /** Agents or Commands tab: one row per markdown file, opening it in Contents. */
-export function PluginFiles({plugin, kind}: {plugin: PluginInfoData; kind: "agents" | "commands"}) {
+export function PluginFiles({plugin, kind}: {plugin: PluginInfoData; kind: "agents" | "commands"})
+{
 	const go = useCustomizeGo();
 	const namespace = pluginNamespace(plugin.id);
 	const files = kind === "agents" ? plugin.agents : plugin.commands;
@@ -274,8 +320,16 @@ export function PluginFiles({plugin, kind}: {plugin: PluginInfoData; kind: "agen
 						icon={kind === "agents" ? Bot : SquareSlash}
 						title={kind === "agents" ? file.name : `/${namespace}:${file.filename.replace(/\.md$/, "")}`}
 						subtitle={file.description}
-						onView={() => {
-							go({kind: "plugin", id: plugin.id, tab: "contents", file: `${kind}/${file.filename}`});
+						onView={() =>
+						{
+							go(
+								{
+									kind: "plugin",
+									id: plugin.id,
+									tab: "contents",
+									file: `${kind}/${file.filename}`,
+								},
+							);
 						}}
 					/>
 				))}
@@ -285,7 +339,8 @@ export function PluginFiles({plugin, kind}: {plugin: PluginInfoData; kind: "agen
 }
 
 /** Hooks tab: read-only hooks.json rows (event, matcher, handlers). */
-export function PluginHooks({hooks}: {hooks: readonly PluginHookRow[]}) {
+export function PluginHooks({hooks}: {hooks: readonly PluginHookRow[]})
+{
 	return (
 		<div className="flex flex-col gap-3">
 			<TabIntro>Commands this plugin runs on Claude Code events, from hooks/hooks.json.</TabIntro>

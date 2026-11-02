@@ -8,7 +8,8 @@ import {installLocalStorage} from "./fake-storage";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
-function Harness() {
+function Harness()
+{
 	useSidebarToggleShortcut();
 	return (
 		<>
@@ -18,70 +19,146 @@ function Harness() {
 	);
 }
 
-describe("sidebar toggle", () => {
-	beforeEach(() => {
+describe("sidebar toggle", () =>
+{
+	beforeEach(() =>
+	{
 		installLocalStorage();
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 	});
 
-	it("toggles with ⌘B from a focused textarea and flips the button label", () => {
+	it("toggles with ⌘B from a focused textarea and flips the button label", () =>
+	{
 		render(<Harness />);
-		const composer = screen.getByRole("textbox", {name: "Composer"});
+		const composer = screen.getByRole(
+			"textbox",
+			{
+				name: "Composer",
+			},
+		);
 		composer.focus();
 
-		expect(screen.getByRole("button", {name: "Hide sidebar"}).tagName).toBe("BUTTON");
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Hide sidebar",
+				},
+			).tagName,
+		).toBe("BUTTON");
 
-		const event = new KeyboardEvent("keydown", {
-			key: "b",
-			code: "KeyB",
-			metaKey: true,
-			bubbles: true,
-			cancelable: true,
-		});
-		act(() => {
+		const event = new KeyboardEvent(
+			"keydown",
+			{
+				key: "b",
+				code: "KeyB",
+				metaKey: true,
+				bubbles: true,
+				cancelable: true,
+			},
+		);
+		act(() =>
+		{
 			composer.dispatchEvent(event);
 		});
 
 		expect(event.defaultPrevented).toBe(true);
-		expect(screen.getByRole("button", {name: "Show sidebar"}).tagName).toBe("BUTTON");
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show sidebar",
+				},
+			).tagName,
+		).toBe("BUTTON");
 		expect(readSidebarState().collapsed).toBe(true);
 
-		act(() => {
-			fireEvent.keyDown(composer, {key: "b", code: "KeyB", metaKey: true});
+		act(() =>
+		{
+			fireEvent.keyDown(
+				composer,
+				{
+					key: "b",
+					code: "KeyB",
+					metaKey: true,
+				},
+			);
 		});
-		expect(screen.getByRole("button", {name: "Hide sidebar"}).tagName).toBe("BUTTON");
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Hide sidebar",
+				},
+			).tagName,
+		).toBe("BUTTON");
 		expect(readSidebarState().collapsed).toBe(false);
 	});
 
-	it("shows its tooltip below the button, like upstream", () => {
+	it("shows its tooltip below the button, like upstream", () =>
+	{
 		vi.useFakeTimers();
-		try {
+		try
+		{
 			render(<Harness />);
-			fireEvent.pointerEnter(screen.getByRole("button", {name: "Hide sidebar"}).parentElement!);
-			act(() => {
+			fireEvent.pointerEnter(
+				screen.getByRole(
+					"button",
+					{
+						name: "Hide sidebar",
+					},
+				).parentElement!,
+			);
+			act(() =>
+			{
 				vi.advanceTimersByTime(300);
 			});
 			const tooltip = screen.getByRole("tooltip");
-			expect({text: tooltip.textContent, below: tooltip.className.includes("top-full")}).toEqual({
-				text: "Hide sidebar⌘CommandB",
-				below: true,
-			});
-		} finally {
+			expect(
+				{
+					text: tooltip.textContent,
+					below: tooltip.className.includes("top-full"),
+				},
+			).toEqual(
+				{
+					text: "Hide sidebar⌘CommandB",
+					below: true,
+				},
+			);
+		}
+		finally
+		{
 			vi.useRealTimers();
 		}
 	});
 
-	it("toggles when the button is clicked", () => {
+	it("toggles when the button is clicked", () =>
+	{
 		render(<Harness />);
 
-		fireEvent.click(screen.getByRole("button", {name: "Hide sidebar"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Hide sidebar",
+				},
+			),
+		);
 
-		expect(screen.getByRole("button", {name: "Show sidebar"}).tagName).toBe("BUTTON");
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show sidebar",
+				},
+			).tagName,
+		).toBe("BUTTON");
 		expect(readSidebarState().collapsed).toBe(true);
 	});
 });

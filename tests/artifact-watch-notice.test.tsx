@@ -5,38 +5,64 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-		configurable: true,
-		value: vi.fn<HTMLElement["scrollIntoView"]>(),
-	});
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: vi.fn<HTMLElement["scrollIntoView"]>(),
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
@@ -51,14 +77,32 @@ const WATCH_ENDED = [
 	"</task-notification>",
 ].join("\n");
 
-function records(): unknown[] {
+function records(): unknown[]
+{
 	return [
-		{type: "user", uuid: "u-1", message: {role: "user", content: "publish the review"}},
+		{
+			type: "user",
+			uuid: "u-1",
+			message:
+			{
+				role: "user",
+				content: "publish the review",
+			},
+		},
 		{
 			type: "assistant",
 			uuid: "a-1",
 			parentUuid: "u-1",
-			message: {role: "assistant", content: [{type: "text", text: "Published."}]},
+			message:
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "text",
+						text: "Published.",
+					},
+				],
+			},
 		},
 		{
 			type: "user",
@@ -66,38 +110,62 @@ function records(): unknown[] {
 			parentUuid: "a-1",
 			promptSource: "system",
 			turnOrigin: "task_notification",
-			queueOrigin: {
+			queueOrigin:
+			{
 				kind: "task-notification",
 				source: "artifact-watch-lifecycle",
 				slug: "slug-1",
 				displayName: '"Brace Review"',
 				watchEnded: true,
 			},
-			message: {role: "user", content: WATCH_ENDED},
+			message:
+			{
+				role: "user",
+				content: WATCH_ENDED,
+			},
 		},
 		{
 			type: "assistant",
 			uuid: "a-2",
 			parentUuid: "n-1",
-			message: {role: "assistant", content: [{type: "text", text: "Noted."}]},
+			message:
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "text",
+						text: "Noted.",
+					},
+				],
+			},
 		},
 	];
 }
 
-function renderChat() {
+function renderChat()
+{
 	const {lines, toolResultMap} = processTranscript(records());
 	return render(
 		<SessionChat sessionId="test-session" lines={lines} toolResultMap={toolResultMap} shouldScrollToEnd={false} />,
 	);
 }
 
-describe("artifact watch lifecycle notifications", () => {
-	it("draws a muted 'Stopped watching' line instead of the raw task-notification", () => {
+describe("artifact watch lifecycle notifications", () =>
+{
+	it("draws a muted 'Stopped watching' line instead of the raw task-notification", () =>
+	{
 		const {container} = renderChat();
 		const notices = [...container.querySelectorAll("[data-artifact-watch-ended]")].map((el) => el.textContent);
-		expect({notices, raw: container.textContent.includes("<task-notification>")}).toStrictEqual({
-			notices: ['Stopped watching "Brace Review"'],
-			raw: false,
-		});
+		expect(
+			{
+				notices,
+				raw: container.textContent.includes("<task-notification>"),
+			},
+		).toStrictEqual(
+			{
+				notices: ['Stopped watching "Brace Review"'],
+				raw: false,
+			},
+		);
 	});
 });

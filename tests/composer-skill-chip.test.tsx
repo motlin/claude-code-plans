@@ -9,21 +9,33 @@ import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry
 import {FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
-beforeAll(async () => {
+beforeAll(async () =>
+{
 	await preloadComposerSurfaces();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	localStorage.clear();
 });
 
 const COMMANDS: SlashCommand[] = [
-	{name: "model", description: "Set the model for this session", source: "builtin", argumentHint: "[model]"},
-	{name: "plan", description: "Switch to plan mode", source: "builtin"},
+	{
+		name: "model",
+		description: "Set the model for this session",
+		source: "builtin",
+		argumentHint: "[model]",
+	},
+	{
+		name: "plan",
+		description: "Switch to plan mode",
+		source: "builtin",
+	},
 ];
 
-function setup(parts?: readonly FizzyLakePart[]) {
+function setup(parts?: readonly FizzyLakePart[])
+{
 	const composer = (
 		<Composer
 			variant="session"
@@ -39,15 +51,35 @@ function setup(parts?: readonly FizzyLakePart[]) {
 			<FizzyLakeContext.Provider value={parts}>{composer}</FizzyLakeContext.Provider>
 		),
 	);
-	return screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+	return screen.getByRole<HTMLTextAreaElement>(
+		"textbox",
+		{
+			name: "Prompt",
+		},
+	);
 }
 
-function accept(textarea: HTMLTextAreaElement, typed: string): void {
-	fireEvent.change(textarea, {target: {value: typed}});
-	fireEvent.keyDown(textarea, {key: "Enter"});
+function accept(textarea: HTMLTextAreaElement, typed: string): void
+{
+	fireEvent.change(
+		textarea,
+		{
+			target:
+			{
+				value: typed,
+			},
+		},
+	);
+	fireEvent.keyDown(
+		textarea,
+		{
+			key: "Enter",
+		},
+	);
 }
 
-function describeElement(element: Element): unknown {
+function describeElement(element: Element): unknown
+{
 	return {
 		tag: element.tagName.toLowerCase(),
 		className: element.getAttribute("class"),
@@ -57,140 +89,218 @@ function describeElement(element: Element): unknown {
 	};
 }
 
-describe("Composer skill chip", () => {
-	it("paints an accepted command as upstream's accent chip over the transparent textarea text", () => {
+describe("Composer skill chip", () =>
+{
+	it("paints an accepted command as upstream's accent chip over the transparent textarea text", () =>
+	{
 		const textarea = setup();
 		accept(textarea, "/mo");
 
 		const chip = screen.getByTestId("composer-skill-chip");
 		const overlay = chip.parentElement;
-		expect({
-			value: textarea.value,
-			skillId: chip.getAttribute("data-skill-id"),
-			text: chip.textContent,
-			chip: describeElement(chip),
-			chipLength: textarea.getAttribute("data-chip-length"),
-			textareaTransparent: textarea.className
-				.split(" ")
-				.filter((token) => /^(text-transparent|caret-)/.test(token)),
-			overlayAriaHidden: overlay?.getAttribute("aria-hidden"),
-			rest: overlay?.querySelector("[data-skill-chip-rest]")?.outerHTML,
-		}).toStrictEqual({
-			value: "/model ",
-			skillId: "model",
-			text: "/model",
-			chip: {
-				tag: "span",
-				className: "group/chip inline-flex relative cursor-interactive text-upstream-accent",
-				ariaHidden: null,
-				text: null,
-				children: [
-					{
-						tag: "span",
-						className: "inline-flex relative pointer-events-auto",
-						ariaHidden: null,
-						text: null,
-						children: [
-							{
-								tag: "span",
-								className:
-									"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none [@media(hover:hover)]:group-hover/chip:bg-upstream-accent-layer group-data-[card-open]/chip:bg-upstream-accent-pressed [@media(hover:hover)]:group-data-[card-open]/chip:group-hover/chip:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]",
-								ariaHidden: null,
-								text: "",
-								children: [],
-							},
-							{
-								tag: "span",
-								className: "relative ps-2",
-								ariaHidden: null,
-								text: null,
-								children: [
-									{
-										tag: "span",
-										className:
-											"absolute top-1/2 -translate-y-1/2 start-0 w-2 h-5 flex items-center justify-center text-[13px]/[19px] font-control opacity-50 select-none",
-										ariaHidden: "true",
-										text: "/",
-										children: [],
-									},
-									{
-										tag: "span",
-										className: "select-none",
-										ariaHidden: null,
-										text: "model",
-										children: [],
-									},
-								],
-							},
-						],
-					},
-				],
+		expect(
+			{
+				value: textarea.value,
+				skillId: chip.getAttribute("data-skill-id"),
+				text: chip.textContent,
+				chip: describeElement(chip),
+				chipLength: textarea.getAttribute("data-chip-length"),
+				textareaTransparent: textarea.className
+					.split(" ")
+					.filter((token) => /^(text-transparent|caret-)/.test(token)),
+				overlayAriaHidden: overlay?.getAttribute("aria-hidden"),
+				rest: overlay?.querySelector("[data-skill-chip-rest]")?.outerHTML,
 			},
-			chipLength: "6",
-			textareaTransparent: ["text-transparent", "caret-primary"],
-			overlayAriaHidden: "true",
-			rest: '<span data-skill-chip-rest="" class="text-primary"> </span>',
-		});
+		).toStrictEqual(
+			{
+				value: "/model ",
+				skillId: "model",
+				text: "/model",
+				chip:
+				{
+					tag: "span",
+					className: "group/chip inline-flex relative cursor-interactive text-upstream-accent",
+					ariaHidden: null,
+					text: null,
+					children: [
+						{
+							tag: "span",
+							className: "inline-flex relative pointer-events-auto",
+							ariaHidden: null,
+							text: null,
+							children: [
+								{
+									tag: "span",
+									className:
+										"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none [@media(hover:hover)]:group-hover/chip:bg-upstream-accent-layer group-data-[card-open]/chip:bg-upstream-accent-pressed [@media(hover:hover)]:group-data-[card-open]/chip:group-hover/chip:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]",
+									ariaHidden: null,
+									text: "",
+									children: [],
+								},
+								{
+									tag: "span",
+									className: "relative ps-2",
+									ariaHidden: null,
+									text: null,
+									children: [
+										{
+											tag: "span",
+											className:
+												"absolute top-1/2 -translate-y-1/2 start-0 w-2 h-5 flex items-center justify-center text-[13px]/[19px] font-control opacity-50 select-none",
+											ariaHidden: "true",
+											text: "/",
+											children: [],
+										},
+										{
+											tag: "span",
+											className: "select-none",
+											ariaHidden: null,
+											text: "model",
+											children: [],
+										},
+									],
+								},
+							],
+						},
+					],
+				},
+				chipLength: "6",
+				textareaTransparent: ["text-transparent", "caret-primary"],
+				overlayAriaHidden: "true",
+				rest: '<span data-skill-chip-rest="" class="text-primary"> </span>',
+			},
+		);
 	});
 
-	it("paints the text typed after the chip in primary ink", () => {
+	it("paints the text typed after the chip in primary ink", () =>
+	{
 		const textarea = setup();
 		accept(textarea, "/mo");
 
-		fireEvent.change(textarea, {target: {value: "/model opus"}});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/model opus",
+				},
+			},
+		);
 
-		expect({
-			chip: screen.getByTestId("composer-skill-chip").textContent,
-			rest: document.querySelector("[data-skill-chip-rest]")?.textContent,
-		}).toStrictEqual({chip: "/model", rest: " opus"});
+		expect(
+			{
+				chip: screen.getByTestId("composer-skill-chip").textContent,
+				rest: document.querySelector("[data-skill-chip-rest]")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				chip: "/model",
+				rest: " opus",
+			},
+		);
 	});
 
-	it("drops the chip once the prompt no longer starts with the command, and it doesn't come back", () => {
+	it("drops the chip once the prompt no longer starts with the command, and it doesn't come back", () =>
+	{
 		const textarea = setup();
 		accept(textarea, "/mo");
 
-		fireEvent.change(textarea, {target: {value: "hello"}});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "hello",
+				},
+			},
+		);
 		const replaced = screen.queryByTestId("composer-skill-chip");
-		fireEvent.change(textarea, {target: {value: "/model "}});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/model ",
+				},
+			},
+		);
 
-		expect({
-			replaced,
-			retyped: screen.queryByTestId("composer-skill-chip"),
-			chipLength: textarea.getAttribute("data-chip-length"),
-			textareaClasses: textarea.className.split(" ").filter((token) => /^(text-transparent|caret-)/.test(token)),
-		}).toStrictEqual({replaced: null, retyped: null, chipLength: null, textareaClasses: []});
+		expect(
+			{
+				replaced,
+				retyped: screen.queryByTestId("composer-skill-chip"),
+				chipLength: textarea.getAttribute("data-chip-length"),
+				textareaClasses: textarea.className
+					.split(" ")
+					.filter((token) => /^(text-transparent|caret-)/.test(token)),
+			},
+		).toStrictEqual(
+			{
+				replaced: null,
+				retyped: null,
+				chipLength: null,
+				textareaClasses: [],
+			},
+		);
 	});
 
-	it("renders no chip for a command typed by hand", () => {
+	it("renders no chip for a command typed by hand", () =>
+	{
 		const textarea = setup();
 
-		fireEvent.change(textarea, {target: {value: "/model "}});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/model ",
+				},
+			},
+		);
 
 		expect(screen.queryByTestId("composer-skill-chip")).toBeNull();
 	});
 
-	it("doesn't restore the chip from the saved draft", () => {
+	it("doesn't restore the chip from the saved draft", () =>
+	{
 		const first = setup();
 		accept(first, "/mo");
 		cleanup();
 
 		const textarea = setup();
 
-		expect({value: textarea.value, chip: screen.queryByTestId("composer-skill-chip")}).toStrictEqual({
-			value: "/model ",
-			chip: null,
-		});
+		expect(
+			{
+				value: textarea.value,
+				chip: screen.queryByTestId("composer-skill-chip"),
+			},
+		).toStrictEqual(
+			{
+				value: "/model ",
+				chip: null,
+			},
+		);
 	});
 
-	it("shows no argument hint for a command typed by hand", () => {
+	it("shows no argument hint for a command typed by hand", () =>
+	{
 		const textarea = setup();
 
-		fireEvent.change(textarea, {target: {value: "/model "}});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/model ",
+				},
+			},
+		);
 
 		expect(screen.queryByTestId("slash-argument-hint")).toBeNull();
 	});
 
-	it("paints the hint at 50% of the inherited ink, hidden from assistive tech", () => {
+	it("paints the hint at 50% of the inherited ink, hidden from assistive tech", () =>
+	{
 		const textarea = setup();
 		accept(textarea, "/mo");
 
@@ -199,10 +309,12 @@ describe("Composer skill chip", () => {
 		);
 	});
 
-	it("places the hint after all trailing whitespace on the chip's line", () => {
+	it("places the hint after all trailing whitespace on the chip's line", () =>
+	{
 		const textarea = setup();
 		accept(textarea, "/mo");
-		const before = (): string => {
+		const before = (): string =>
+		{
 			const overlay = screen.getByTestId("composer-skill-chip").parentElement;
 			const hint = screen.getByTestId("slash-argument-hint");
 			// The chip's invisible width probe isn't painted text.
@@ -215,22 +327,52 @@ describe("Composer skill chip", () => {
 				.join("");
 		};
 
-		fireEvent.change(textarea, {target: {value: "/model   "}});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/model   ",
+				},
+			},
+		);
 		const spaces = before();
-		fireEvent.change(textarea, {target: {value: "/model \n"}});
-		const newline = {
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/model \n",
+				},
+			},
+		);
+		const newline =
+		{
 			before: before(),
 			after: screen.getByTestId("slash-argument-hint").nextSibling?.textContent,
 		};
 
-		expect({spaces, newline}).toStrictEqual({
-			spaces: "/model   ",
-			newline: {before: "/model ", after: "\n"},
-		});
+		expect(
+			{
+				spaces,
+				newline,
+			},
+		).toStrictEqual(
+			{
+				spaces: "/model   ",
+				newline:
+				{
+					before: "/model ",
+					after: "\n",
+				},
+			},
+		);
 	});
-	it("announces the hint through an always-mounted live twin linked only while the hint shows", () => {
+	it("announces the hint through an always-mounted live twin linked only while the hint shows", () =>
+	{
 		const textarea = setup();
-		const twin = (): unknown => {
+		const twin = (): unknown =>
+		{
 			const describedBy = textarea.getAttribute("aria-describedby");
 			const span = document.querySelector('[data-skill-arg-hint-sr="skill-arg-hint"]');
 			return {
@@ -249,22 +391,61 @@ describe("Composer skill chip", () => {
 		const before = twin();
 		accept(textarea, "/mo");
 		const accepted = twin();
-		fireEvent.change(textarea, {target: {value: "/model opus"}});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/model opus",
+				},
+			},
+		);
 		const typed = twin();
-		fireEvent.change(textarea, {target: {value: "/model "}});
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/model ",
+				},
+			},
+		);
 		const restored = twin();
 
-		const shown = {describedBy: "twin", idPrefix: true, role: "status", live: "polite", style, text: "[model]"};
-		const hidden = {...shown, describedBy: null, text: ""};
-		expect({before, accepted, typed, restored}).toStrictEqual({
-			before: hidden,
-			accepted: shown,
-			typed: hidden,
-			restored: shown,
-		});
+		const shown =
+		{
+			describedBy: "twin",
+			idPrefix: true,
+			role: "status",
+			live: "polite",
+			style,
+			text: "[model]",
+		};
+		const hidden =
+		{
+			...shown,
+			describedBy: null,
+			text: "",
+		};
+		expect(
+			{
+				before,
+				accepted,
+				typed,
+				restored,
+			},
+		).toStrictEqual(
+			{
+				before: hidden,
+				accepted: shown,
+				typed: hidden,
+				restored: shown,
+			},
+		);
 	});
 
-	describe("atom editing", () => {
+	describe("atom editing", () =>
+	{
 		const highlightClass = (): string | null =>
 			screen.getByTestId("composer-skill-chip").firstElementChild?.firstElementChild?.getAttribute("class") ??
 			null;
@@ -273,84 +454,166 @@ describe("Composer skill chip", () => {
 		const selected =
 			"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none bg-upstream-accent-pressed [@media(hover:hover)]:group-hover/chip:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]";
 
-		function chipOnly(): HTMLTextAreaElement {
+		function chipOnly(): HTMLTextAreaElement
+		{
 			const textarea = setup();
 			accept(textarea, "/mo");
-			fireEvent.change(textarea, {target: {value: "/model"}});
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value: "/model",
+					},
+				},
+			);
 			textarea.focus();
 			textarea.setSelectionRange(6, 6);
 			fireEvent.select(textarea);
 			return textarea;
 		}
 
-		it("keeps the pre-rollout opaque bg-accent highlight without fizzy-lake color", () => {
+		it("keeps the pre-rollout opaque bg-accent highlight without fizzy-lake color", () =>
+		{
 			const textarea = setup(["panels", "type"]);
 			accept(textarea, "/mo");
-			fireEvent.change(textarea, {target: {value: "/model"}});
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value: "/model",
+					},
+				},
+			);
 			textarea.focus();
 			textarea.setSelectionRange(6, 6);
 			fireEvent.select(textarea);
 			const before = highlightClass();
 
-			fireEvent.keyDown(textarea, {key: "Backspace"});
+			fireEvent.keyDown(
+				textarea,
+				{
+					key: "Backspace",
+				},
+			);
 
-			expect({before, highlight: highlightClass()}).toStrictEqual({
-				before: "absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed",
-				highlight:
-					"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none bg-upstream-accent-pressed",
-			});
+			expect(
+				{
+					before,
+					highlight: highlightClass(),
+				},
+			).toStrictEqual(
+				{
+					before: "absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed",
+					highlight:
+						"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none bg-upstream-accent-pressed",
+				},
+			);
 		});
 
-		it("selects the chip on the first Backspace instead of deleting a character", () => {
+		it("selects the chip on the first Backspace instead of deleting a character", () =>
+		{
 			const textarea = chipOnly();
 			const before = highlightClass();
 
-			const notPrevented = fireEvent.keyDown(textarea, {key: "Backspace"});
+			const notPrevented = fireEvent.keyDown(
+				textarea,
+				{
+					key: "Backspace",
+				},
+			);
 
-			expect({
-				before,
-				notPrevented,
-				value: textarea.value,
-				selection: [textarea.selectionStart, textarea.selectionEnd],
-				highlight: highlightClass(),
-			}).toStrictEqual({
-				before: unselected,
-				notPrevented: false,
-				value: "/model",
-				selection: [0, 6],
-				highlight: selected,
-			});
+			expect(
+				{
+					before,
+					notPrevented,
+					value: textarea.value,
+					selection: [textarea.selectionStart, textarea.selectionEnd],
+					highlight: highlightClass(),
+				},
+			).toStrictEqual(
+				{
+					before: unselected,
+					notPrevented: false,
+					value: "/model",
+					selection: [0, 6],
+					highlight: selected,
+				},
+			);
 		});
 
-		it("removes the chip when the selected chip is deleted", () => {
+		it("removes the chip when the selected chip is deleted", () =>
+		{
 			const textarea = chipOnly();
-			fireEvent.keyDown(textarea, {key: "Backspace"});
+			fireEvent.keyDown(
+				textarea,
+				{
+					key: "Backspace",
+				},
+			);
 
-			const notPrevented = fireEvent.keyDown(textarea, {key: "Backspace"});
-			fireEvent.change(textarea, {target: {value: ""}});
+			const notPrevented = fireEvent.keyDown(
+				textarea,
+				{
+					key: "Backspace",
+				},
+			);
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value: "",
+					},
+				},
+			);
 
-			expect({
-				notPrevented,
-				value: textarea.value,
-				chip: screen.queryByTestId("composer-skill-chip"),
-			}).toStrictEqual({notPrevented: true, value: "", chip: null});
+			expect(
+				{
+					notPrevented,
+					value: textarea.value,
+					chip: screen.queryByTestId("composer-skill-chip"),
+				},
+			).toStrictEqual(
+				{
+					notPrevented: true,
+					value: "",
+					chip: null,
+				},
+			);
 		});
 
-		it("selects the chip on Delete with the caret before it", () => {
+		it("selects the chip on Delete with the caret before it", () =>
+		{
 			const textarea = chipOnly();
 			textarea.setSelectionRange(0, 0);
 			fireEvent.select(textarea);
 
-			const notPrevented = fireEvent.keyDown(textarea, {key: "Delete"});
+			const notPrevented = fireEvent.keyDown(
+				textarea,
+				{
+					key: "Delete",
+				},
+			);
 
-			expect({
-				notPrevented,
-				selection: [textarea.selectionStart, textarea.selectionEnd],
-				highlight: highlightClass(),
-			}).toStrictEqual({notPrevented: false, selection: [0, 6], highlight: selected});
+			expect(
+				{
+					notPrevented,
+					selection: [textarea.selectionStart, textarea.selectionEnd],
+					highlight: highlightClass(),
+				},
+			).toStrictEqual(
+				{
+					notPrevented: false,
+					selection: [0, 6],
+					highlight: selected,
+				},
+			);
 		});
 
-		it("keeps the caret out of the chip", () => {
+		it("keeps the caret out of the chip", () =>
+		{
 			const textarea = chipOnly();
 
 			textarea.setSelectionRange(3, 3);
@@ -366,48 +629,87 @@ describe("Composer skill chip", () => {
 			fireEvent.select(textarea);
 			const range = [textarea.selectionStart, textarea.selectionEnd];
 
-			expect({clicked, arrowLeft, arrowRight, range, highlight: highlightClass()}).toStrictEqual({
-				clicked: [6, 6],
-				arrowLeft: [0, 0],
-				arrowRight: [6, 6],
-				range: [0, 6],
-				highlight: selected,
-			});
+			expect(
+				{
+					clicked,
+					arrowLeft,
+					arrowRight,
+					range,
+					highlight: highlightClass(),
+				},
+			).toStrictEqual(
+				{
+					clicked: [6, 6],
+					arrowLeft: [0, 0],
+					arrowRight: [6, 6],
+					range: [0, 6],
+					highlight: selected,
+				},
+			);
 		});
 
-		it("inserts a space when a character is typed right after the chip", () => {
+		it("inserts a space when a character is typed right after the chip", () =>
+		{
 			const textarea = chipOnly();
 
-			fireEvent.change(textarea, {target: {value: "/modelx", selectionStart: 7, selectionEnd: 7}});
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value: "/modelx",
+						selectionStart: 7,
+						selectionEnd: 7,
+					},
+				},
+			);
 
-			expect({
-				value: textarea.value,
-				selection: [textarea.selectionStart, textarea.selectionEnd],
-				chip: screen.getByTestId("composer-skill-chip").textContent,
-			}).toStrictEqual({value: "/model x", selection: [8, 8], chip: "/model"});
+			expect(
+				{
+					value: textarea.value,
+					selection: [textarea.selectionStart, textarea.selectionEnd],
+					chip: screen.getByTestId("composer-skill-chip").textContent,
+				},
+			).toStrictEqual(
+				{
+					value: "/model x",
+					selection: [8, 8],
+					chip: "/model",
+				},
+			);
 		});
 	});
 
-	describe("hover card", () => {
-		async function hoverChip(): Promise<HTMLElement> {
+	describe("hover card", () =>
+	{
+		async function hoverChip(): Promise<HTMLElement>
+		{
 			const trigger = screen.getByTestId("composer-skill-chip").firstElementChild;
 			if (!(trigger instanceof HTMLElement)) throw new Error("no trigger");
-			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+			fireEvent.pointerEnter(
+				trigger,
+				{
+					pointerType: "mouse",
+				},
+			);
 			fireEvent.mouseEnter(trigger);
 			fireEvent.mouseMove(trigger);
-			return waitFor(() => {
+			return waitFor(() =>
+			{
 				const card = document.querySelector("[data-slash-command-card]");
 				if (!(card instanceof HTMLElement)) throw new Error("no card");
 				return card;
 			});
 		}
 
-		function describeCard(card: HTMLElement): unknown {
+		function describeCard(card: HTMLElement): unknown
+		{
 			return {
 				side: card.getAttribute("data-side"),
 				align: card.getAttribute("data-align"),
 				className: card.className,
-				children: [...card.children].map((child) => ({
+				children: [...card.children].map((child) => (
+				{
 					tag: child.tagName.toLowerCase(),
 					className: child.getAttribute("class"),
 					text: child.textContent,
@@ -415,76 +717,127 @@ describe("Composer skill chip", () => {
 			};
 		}
 
-		it("opens upstream's card with the /name line and the description above the chip", async () => {
+		it("opens upstream's card with the /name line and the description above the chip", async () =>
+		{
 			const textarea = setup();
 			accept(textarea, "/mo");
 
 			const card = await hoverChip();
-			expect({
-				card: describeCard(card),
-				cardOpen: screen.getByTestId("composer-skill-chip").getAttribute("data-card-open"),
-			}).toStrictEqual({
-				card: {
-					side: "top",
-					align: "start",
-					className:
-						"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none",
-					children: [
-						{tag: "span", className: "truncate text-ink-muted", text: "/model"},
-						{
-							tag: "span",
-							className:
-								"max-h-[min(40vh,calc(var(--available-height,100vh)-3rem))] scroll-fade-y overflow-y-auto overscroll-contain break-words text-primary",
-							text: "Set the model for this session",
-						},
-					],
+			expect(
+				{
+					card: describeCard(card),
+					cardOpen: screen.getByTestId("composer-skill-chip").getAttribute("data-card-open"),
 				},
-				cardOpen: "true",
-			});
+			).toStrictEqual(
+				{
+					card:
+					{
+						side: "top",
+						align: "start",
+						className:
+							"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none",
+						children: [
+							{
+								tag: "span",
+								className: "truncate text-ink-muted",
+								text: "/model",
+							},
+							{
+								tag: "span",
+								className:
+									"max-h-[min(40vh,calc(var(--available-height,100vh)-3rem))] scroll-fade-y overflow-y-auto overscroll-contain break-words text-primary",
+								text: "Set the model for this session",
+							},
+						],
+					},
+					cardOpen: "true",
+				},
+			);
 		});
 
-		it("shows only the /name line for a command without a description", async () => {
+		it("shows only the /name line for a command without a description", async () =>
+		{
 			render(
 				<Composer
 					variant="session"
 					draftKey="session-alice"
 					onSend={vi.fn<(prompt: string) => void>()}
-					slashCommands={[{name: "blank", description: "", source: "builtin"}]}
+					slashCommands={[
+						{
+							name: "blank",
+							description: "",
+							source: "builtin",
+						},
+					]}
 				/>,
 			);
-			accept(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"}), "/bl");
+			accept(
+				screen.getByRole<HTMLTextAreaElement>(
+					"textbox",
+					{
+						name: "Prompt",
+					},
+				),
+				"/bl",
+			);
 
 			const card = await hoverChip();
-			expect(describeCard(card)).toStrictEqual({
-				side: "top",
-				align: "start",
-				className:
-					"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none",
-				children: [{tag: "span", className: "truncate text-ink-muted", text: "/blank"}],
-			});
+			expect(describeCard(card)).toStrictEqual(
+				{
+					side: "top",
+					align: "start",
+					className:
+						"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none",
+					children: [
+						{
+							tag: "span",
+							className: "truncate text-ink-muted",
+							text: "/blank",
+						},
+					],
+				},
+			);
 		});
 
-		it("has no card-open flag while the card is closed", () => {
+		it("has no card-open flag while the card is closed", () =>
+		{
 			const textarea = setup();
 			accept(textarea, "/mo");
 
 			expect(screen.getByTestId("composer-skill-chip").getAttribute("data-card-open")).toBeNull();
 		});
 
-		it("lands the caret after the chip when the chip is pressed", () => {
+		it("lands the caret after the chip when the chip is pressed", () =>
+		{
 			const textarea = setup();
 			accept(textarea, "/mo");
-			fireEvent.change(textarea, {target: {value: "/model opus"}});
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value: "/model opus",
+					},
+				},
+			);
 			textarea.setSelectionRange(11, 11);
 
 			const trigger = screen.getByTestId("composer-skill-chip").firstElementChild!;
 			const notPrevented = fireEvent.mouseDown(trigger);
 
-			expect({
-				notPrevented,
-				focused: document.activeElement === textarea,
-				selection: [textarea.selectionStart, textarea.selectionEnd],
-			}).toStrictEqual({notPrevented: false, focused: true, selection: [6, 6]});
+			expect(
+				{
+					notPrevented,
+					focused: document.activeElement === textarea,
+					selection: [textarea.selectionStart, textarea.selectionEnd],
+				},
+			).toStrictEqual(
+				{
+					notPrevented: false,
+					focused: true,
+					selection: [6, 6],
+				},
+			);
 		});
 	});
 });

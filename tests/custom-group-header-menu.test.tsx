@@ -19,12 +19,22 @@ import {installLocalStorage} from "./fake-storage";
 
 const GROUPS_KEY = "ccp-session-groups";
 const GROUPS = [
-	{id: "cg-blog", name: "Blog"},
-	{id: "cg-gtd", name: "GTD"},
-	{id: "cg-alpha", name: "Alpha"},
+	{
+		id: "cg-blog",
+		name: "Blog",
+	},
+	{
+		id: "cg-gtd",
+		name: "GTD",
+	},
+	{
+		id: "cg-alpha",
+		name: "Alpha",
+	},
 ];
 
-function project(id: string, name: string, projectPath: string | null) {
+function project(id: string, name: string, projectPath: string | null)
+{
 	return {
 		id,
 		name,
@@ -42,7 +52,8 @@ const PROJECTS = [project("-projects-alpha", "alpha", "/p/alpha"), project("-pro
 
 const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 
-function listItem(id: string, overrides: Partial<SessionListItem> = {}): SessionListItem {
+function listItem(id: string, overrides: Partial<SessionListItem> = {}): SessionListItem
+{
 	return {
 		id,
 		title: `Session ${id}`,
@@ -61,21 +72,36 @@ function listItem(id: string, overrides: Partial<SessionListItem> = {}): Session
 	};
 }
 
-function storeGroups(assignments: Record<string, string> = {}) {
-	localStorage.setItem(GROUPS_KEY, JSON.stringify({groups: GROUPS, assignments, order: {}}));
+function storeGroups(assignments: Record<string, string> = {})
+{
+	localStorage.setItem(
+		GROUPS_KEY,
+		JSON.stringify(
+			{
+				groups: GROUPS,
+				assignments,
+				order: {},
+			},
+		),
+	);
 }
 
-async function flush() {
-	await act(async () => {
-		await new Promise((resolve) => {
+async function flush()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-async function renderGroup(groupId: string, rows: SidebarSessionRow[] = []) {
+async function renderGroup(groupId: string, rows: SidebarSessionRow[] = [])
+{
 	const name = GROUPS.find((entry) => entry.id === groupId)?.name ?? groupId;
-	const group: SessionGroup<SidebarSessionRow> = {
+	const group: SessionGroup<SidebarSessionRow> =
+	{
 		key: `custom-${groupId}`,
 		label: name,
 		rows,
@@ -84,51 +110,88 @@ async function renderGroup(groupId: string, rows: SidebarSessionRow[] = []) {
 		canShowLess: false,
 		nested: new Map(),
 	};
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
+	);
+	queryClient.setQueryData(
+		herdrPanesQueryOptions.queryKey,
+		{
+			panes: [],
+			writesEnabled: false,
+		},
+	);
 	queryClient.setQueryData(projectsQueryOptions().queryKey, ProjectListResponse.parse(PROJECTS));
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<GroupSection
-						group={group}
-						expanded
-						activeItemId={null}
-						filterSlot={null}
-						onShowMore={() => {}}
-						onShowLess={() => {}}
-					/>
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const router = createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<GroupSection
+							group={group}
+							expanded
+							activeItemId={null}
+							filterSlot={null}
+							onShowMore={() =>
+							{
+							}}
+							onShowLess={() =>
+							{
+							}}
+						/>
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 	await flush();
 }
 
-async function openHeaderMenu(name: string): Promise<HTMLElement> {
-	fireEvent.click(screen.getByRole("button", {name: `More options for ${name}`}));
+async function openHeaderMenu(name: string): Promise<HTMLElement>
+{
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: `More options for ${name}`,
+			},
+		),
+	);
 	await flush();
 	return await waitFor(() => screen.getByRole("menu"));
 }
 
-function menuOutline(menu: HTMLElement): string[] {
+function menuOutline(menu: HTMLElement): string[]
+{
 	return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((node) =>
 		node.getAttribute("role") === "separator" ? "---" : node.textContent,
 	);
 }
 
-function menuItem(menu: HTMLElement, label: string): HTMLElement {
+function menuItem(menu: HTMLElement, label: string): HTMLElement
+{
 	const item = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
 		(node) => node.textContent === label,
 	);
@@ -136,32 +199,38 @@ function menuItem(menu: HTMLElement, label: string): HTMLElement {
 	return item;
 }
 
-async function choose(name: string, label: string) {
+async function choose(name: string, label: string)
+{
 	const menu = await openHeaderMenu(name);
 	fireEvent.click(menuItem(menu, label));
 	await flush();
 }
 
 /** The manual sections' names, in section order. */
-function groupNames(): string[] {
+function groupNames(): string[]
+{
 	return readSidebarSections().flatMap((section) => (section.kind === "manual" ? [section.name] : []));
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	fetchMock.mockReset();
 	vi.stubGlobal("fetch", fetchMock);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	takePendingHomeLaunchFolder();
 	setPendingLaunchGroup(null);
 	vi.unstubAllGlobals();
 });
 
-describe("custom group header menu items", () => {
-	it("offers every section move for a middle group", async () => {
+describe("custom group header menu items", () =>
+{
+	it("offers every section move for a middle group", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd");
 
@@ -180,7 +249,8 @@ describe("custom group header menu items", () => {
 		]);
 	});
 
-	it("hides Move up on the first group", async () => {
+	it("hides Move up on the first group", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-blog");
 
@@ -198,7 +268,8 @@ describe("custom group header menu items", () => {
 		]);
 	});
 
-	it("hides Move down on the last group", async () => {
+	it("hides Move down on the last group", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-alpha");
 
@@ -216,10 +287,22 @@ describe("custom group header menu items", () => {
 		]);
 	});
 
-	it("drops the section-order block for a lone group", async () => {
+	it("drops the section-order block for a lone group", async () =>
+	{
 		localStorage.setItem(
 			GROUPS_KEY,
-			JSON.stringify({groups: [{id: "cg-blog", name: "Blog"}], assignments: {}, order: {}}),
+			JSON.stringify(
+				{
+					groups: [
+						{
+							id: "cg-blog",
+							name: "Blog",
+						},
+					],
+					assignments: {},
+					order: {},
+				},
+			),
 		);
 		await renderGroup("cg-blog");
 
@@ -234,14 +317,23 @@ describe("custom group header menu items", () => {
 		]);
 	});
 
-	it("opens the same menu on right-click of the label", async () => {
+	it("opens the same menu on right-click of the label", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd");
 
-		fireEvent.contextMenu(screen.getByRole("button", {name: "GTD"}), {
-			clientX: 20,
-			clientY: 20,
-		});
+		fireEvent.contextMenu(
+			screen.getByRole(
+				"button",
+				{
+					name: "GTD",
+				},
+			),
+			{
+				clientX: 20,
+				clientY: 20,
+			},
+		);
 		await flush();
 
 		expect(menuOutline(await waitFor(() => screen.getByRole("menu")))).toEqual([
@@ -259,12 +351,26 @@ describe("custom group header menu items", () => {
 		]);
 	});
 
-	it("offers Archive all with the count of active rows", async () => {
-		storeGroups({s1: "cg-gtd", s2: "cg-gtd", s3: "cg-gtd"});
+	it("offers Archive all with the count of active rows", async () =>
+	{
+		storeGroups(
+			{
+				s1: "cg-gtd",
+				s2: "cg-gtd",
+				s3: "cg-gtd",
+			},
+		);
 		await renderGroup("cg-gtd", [
 			toGroupRow(listItem("s1")),
 			toGroupRow(listItem("s2")),
-			toGroupRow(listItem("s3", {archived: true})),
+			toGroupRow(
+				listItem(
+					"s3",
+					{
+						archived: true,
+					},
+				),
+			),
 		]);
 
 		expect(menuOutline(await openHeaderMenu("GTD"))).toEqual([
@@ -285,8 +391,10 @@ describe("custom group header menu items", () => {
 	});
 });
 
-describe("custom group section order", () => {
-	it("moves a group up", async () => {
+describe("custom group section order", () =>
+{
+	it("moves a group up", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd");
 		await choose("GTD", "Move up");
@@ -294,7 +402,8 @@ describe("custom group section order", () => {
 		expect(groupNames()).toEqual(["GTD", "Blog", "Alpha"]);
 	});
 
-	it("moves a group down", async () => {
+	it("moves a group down", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd");
 		await choose("GTD", "Move down");
@@ -302,7 +411,8 @@ describe("custom group section order", () => {
 		expect(groupNames()).toEqual(["Blog", "Alpha", "GTD"]);
 	});
 
-	it("sorts every group A to Z", async () => {
+	it("sorts every group A to Z", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd");
 		await choose("GTD", "Sort A to Z");
@@ -311,16 +421,26 @@ describe("custom group section order", () => {
 	});
 });
 
-describe("Rename section", () => {
-	async function startRename(): Promise<HTMLInputElement> {
+describe("Rename section", () =>
+{
+	async function startRename(): Promise<HTMLInputElement>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd");
 		await choose("GTD", "Rename section");
-		const input = await waitFor(() => screen.getByRole("textbox", {name: "Rename section"}));
+		const input = await waitFor(() =>
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Rename section",
+				},
+			),
+		);
 		return input as HTMLInputElement;
 	}
 
-	it("opens an inline input holding the name, selected", async () => {
+	it("opens an inline input holding the name, selected", async () =>
+	{
 		const input = await startRename();
 
 		expect(input.value).toBe("GTD");
@@ -328,72 +448,183 @@ describe("Rename section", () => {
 		expect([input.selectionStart, input.selectionEnd]).toEqual([0, 3]);
 	});
 
-	it("saves on Enter", async () => {
+	it("saves on Enter", async () =>
+	{
 		const input = await startRename();
-		fireEvent.change(input, {target: {value: "  Getting things done  "}});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "  Getting things done  ",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 		await flush();
 
 		expect(groupNames()).toEqual(["Blog", "Getting things done", "Alpha"]);
-		expect(screen.queryByRole("textbox", {name: "Rename section"})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"textbox",
+				{
+					name: "Rename section",
+				},
+			),
+		).toBeNull();
 	});
 
-	it("cancels on Escape", async () => {
+	it("cancels on Escape", async () =>
+	{
 		const input = await startRename();
-		fireEvent.change(input, {target: {value: "Never"}});
-		fireEvent.keyDown(input, {key: "Escape"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "Never",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Escape",
+			},
+		);
 		await flush();
 
 		expect(groupNames()).toEqual(["Blog", "GTD", "Alpha"]);
-		expect(screen.queryByRole("textbox", {name: "Rename section"})).toBeNull();
-		expect(screen.getByRole("button", {name: "GTD"})).toBeTruthy();
+		expect(
+			screen.queryByRole(
+				"textbox",
+				{
+					name: "Rename section",
+				},
+			),
+		).toBeNull();
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "GTD",
+				},
+			),
+		).toBeTruthy();
 	});
 
-	it("saves on blur", async () => {
+	it("saves on blur", async () =>
+	{
 		const input = await startRename();
-		fireEvent.change(input, {target: {value: "Chores"}});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "Chores",
+				},
+			},
+		);
 		fireEvent.blur(input);
 		await flush();
 
 		expect(groupNames()).toEqual(["Blog", "Chores", "Alpha"]);
-		expect(screen.queryByRole("textbox", {name: "Rename section"})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"textbox",
+				{
+					name: "Rename section",
+				},
+			),
+		).toBeNull();
 	});
 
-	it("keeps the old name when the new one is blank", async () => {
+	it("keeps the old name when the new one is blank", async () =>
+	{
 		const input = await startRename();
-		fireEvent.change(input, {target: {value: "   "}});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "   ",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 		await flush();
 
 		expect(groupNames()).toEqual(["Blog", "GTD", "Alpha"]);
 	});
 });
 
-describe("New section", () => {
-	it("creates a group after the others", async () => {
+describe("New section", () =>
+{
+	it("creates a group after the others", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd");
 		await choose("GTD", "New section");
-		const input = await waitFor(() => screen.getByRole("textbox", {name: "Section name"}));
+		const input = await waitFor(() =>
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Section name",
+				},
+			),
+		);
 
 		expect(screen.getByRole("dialog").textContent).not.toContain("The list will switch");
-		fireEvent.change(input, {target: {value: "Blog 2"}});
-		fireEvent.click(screen.getByRole("button", {name: "Create section"}));
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "Blog 2",
+				},
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Create section",
+				},
+			),
+		);
 		await flush();
 
 		expect(groupNames()).toEqual(["Blog", "GTD", "Alpha", "Blog 2"]);
 	});
 });
 
-describe("Delete section", () => {
-	async function openDelete(assignments: Record<string, string>): Promise<HTMLElement> {
+describe("Delete section", () =>
+{
+	async function openDelete(assignments: Record<string, string>): Promise<HTMLElement>
+	{
 		storeGroups(assignments);
 		await renderGroup("cg-gtd");
 		await choose("GTD", "Delete section");
 		return await waitFor(() => screen.getByRole("alertdialog"));
 	}
 
-	function dialogText(dialog: HTMLElement): {title: string; body: string; buttons: string[]} {
+	function dialogText(dialog: HTMLElement):
+	{
+		title: string;
+		body: string;
+		buttons: string[];
+	}
+	{
 		return {
 			title: dialog.querySelector("h2")?.textContent ?? "",
 			body: dialog.querySelector("p")?.textContent ?? "",
@@ -401,91 +632,193 @@ describe("Delete section", () => {
 		};
 	}
 
-	it("says nothing is in an empty group", async () => {
-		expect(dialogText(await openDelete({}))).toEqual({
-			title: "Delete section?",
-			body: "“GTD” will be removed. Nothing is in it.",
-			buttons: ["Cancel", "Delete"],
-		});
+	it("says nothing is in an empty group", async () =>
+	{
+		expect(dialogText(await openDelete({}))).toEqual(
+			{
+				title: "Delete section?",
+				body: "“GTD” will be removed. Nothing is in it.",
+				buttons: ["Cancel", "Delete"],
+			},
+		);
 	});
 
-	it("counts one item in the singular", async () => {
-		expect(dialogText(await openDelete({s1: "cg-gtd", s2: "cg-blog"}))).toEqual({
-			title: "Delete section?",
-			body: "“GTD” will be removed. The 1 session in it moves back to your other sessions.",
-			buttons: ["Cancel", "Delete"],
-		});
+	it("counts one item in the singular", async () =>
+	{
+		expect(
+			dialogText(
+				await openDelete(
+					{
+						s1: "cg-gtd",
+						s2: "cg-blog",
+					},
+				),
+			),
+		).toEqual(
+			{
+				title: "Delete section?",
+				body: "“GTD” will be removed. The 1 session in it moves back to your other sessions.",
+				buttons: ["Cancel", "Delete"],
+			},
+		);
 	});
 
-	it("counts several items in the plural", async () => {
-		expect(dialogText(await openDelete({s1: "cg-gtd", s2: "cg-gtd", s3: "cg-gtd"}))).toEqual({
-			title: "Delete section?",
-			body: "“GTD” will be removed. The 3 sessions in it move back to your other sessions.",
-			buttons: ["Cancel", "Delete"],
-		});
+	it("counts several items in the plural", async () =>
+	{
+		expect(
+			dialogText(
+				await openDelete(
+					{
+						s1: "cg-gtd",
+						s2: "cg-gtd",
+						s3: "cg-gtd",
+					},
+				),
+			),
+		).toEqual(
+			{
+				title: "Delete section?",
+				body: "“GTD” will be removed. The 3 sessions in it move back to your other sessions.",
+				buttons: ["Cancel", "Delete"],
+			},
+		);
 	});
 
-	it("deletes the group and ungroups its sessions on Delete", async () => {
-		await openDelete({s1: "cg-gtd", s2: "cg-blog"});
-		fireEvent.click(screen.getByRole("button", {name: "Delete"}));
+	it("deletes the group and ungroups its sessions on Delete", async () =>
+	{
+		await openDelete(
+			{
+				s1: "cg-gtd",
+				s2: "cg-blog",
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Delete",
+				},
+			),
+		);
 		await flush();
 
-		expect(readSessionGroupState()).toEqual({
-			groups: [
-				{id: "cg-blog", name: "Blog"},
-				{id: "cg-alpha", name: "Alpha"},
-			],
-			assignments: {s2: "cg-blog"},
-			order: {},
-		});
-		await waitFor(() => {
+		expect(readSessionGroupState()).toEqual(
+			{
+				groups: [
+					{
+						id: "cg-blog",
+						name: "Blog",
+					},
+					{
+						id: "cg-alpha",
+						name: "Alpha",
+					},
+				],
+				assignments:
+				{
+					s2: "cg-blog",
+				},
+				order: {},
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("alertdialog")).toBeNull();
 		});
 	});
 
-	it("keeps the group on Cancel", async () => {
-		await openDelete({s1: "cg-gtd"});
-		fireEvent.click(screen.getByRole("button", {name: "Cancel"}));
+	it("keeps the group on Cancel", async () =>
+	{
+		await openDelete(
+			{
+				s1: "cg-gtd",
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Cancel",
+				},
+			),
+		);
 		await flush();
 
 		expect(groupNames()).toEqual(["Blog", "GTD", "Alpha"]);
-		expect(readSessionGroupState().assignments).toEqual({s1: "cg-gtd"});
-		await waitFor(() => {
+		expect(readSessionGroupState().assignments).toEqual(
+			{
+				s1: "cg-gtd",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("alertdialog")).toBeNull();
 		});
 	});
 });
 
-describe("Archive all", () => {
-	it("confirms, archives every active row and toasts the count", async () => {
-		fetchMock.mockImplementation(async () => Promise.resolve(Response.json({archived: true})));
-		storeGroups({s1: "cg-gtd", s2: "cg-gtd"});
+describe("Archive all", () =>
+{
+	it("confirms, archives every active row and toasts the count", async () =>
+	{
+		fetchMock.mockImplementation(async () =>
+			Promise.resolve(
+				Response.json(
+					{
+						archived: true,
+					},
+				),
+			),
+		);
+		storeGroups(
+			{
+				s1: "cg-gtd",
+				s2: "cg-gtd",
+			},
+		);
 		await renderGroup("cg-gtd", [toGroupRow(listItem("s1")), toGroupRow(listItem("s2"))]);
 		await choose("GTD", "Archive all (2)");
 		const dialog = await waitFor(() => screen.getByRole("alertdialog"));
 
 		expect(dialog.querySelector("h2")?.textContent).toBe("Archive all sessions in “GTD”?");
-		fireEvent.click(screen.getByRole("button", {name: "Archive"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Archive",
+				},
+			),
+		);
 		await flush();
 		await flush();
 
 		expect(
-			fetchMock.mock.calls.map(([input, init]) => ({
+			fetchMock.mock.calls.map(([input, init]) => (
+			{
 				url: input instanceof Request ? input.url : input.toString(),
 				method: init?.method,
 			})),
 		).toEqual([
-			{url: expect.stringMatching(/\/api\/sessions\/s1\/archived$/), method: "PUT"},
-			{url: expect.stringMatching(/\/api\/sessions\/s2\/archived$/), method: "PUT"},
+			{
+				url: expect.stringMatching(/\/api\/sessions\/s1\/archived$/),
+				method: "PUT",
+			},
+			{
+				url: expect.stringMatching(/\/api\/sessions\/s2\/archived$/),
+				method: "PUT",
+			},
 		]);
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.getByText("Archived 2 sessions")).toBeTruthy();
 		});
 	});
 });
 
-describe("custom group New session +", () => {
-	function plusLabel(): string | null {
+describe("custom group New session +", () =>
+{
+	function plusLabel(): string | null
+	{
 		return (
 			document
 				.querySelector("[data-sidebar-group-label] button[aria-label^='New session']")
@@ -493,49 +826,94 @@ describe("custom group New session +", () => {
 		);
 	}
 
-	it("names the newest session's folder and the group it will be added to", async () => {
+	it("names the newest session's folder and the group it will be added to", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd", [
-			toGroupRow(listItem("a", {mtime: "2026-09-28T10:00:00.000Z"})),
 			toGroupRow(
-				listItem("b", {project: "-projects-beta", projectName: "beta", mtime: "2026-09-28T11:00:00.000Z"}),
+				listItem(
+					"a",
+					{
+						mtime: "2026-09-28T10:00:00.000Z",
+					},
+				),
+			),
+			toGroupRow(
+				listItem(
+					"b",
+					{
+						project: "-projects-beta",
+						projectName: "beta",
+						mtime: "2026-09-28T11:00:00.000Z",
+					},
+				),
 			),
 		]);
 
 		expect(plusLabel()).toBe("New session in beta, added to GTD");
 	});
 
-	it("says no folder is picked for an empty group", async () => {
+	it("says no folder is picked for an empty group", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd");
 
 		expect(plusLabel()).toBe("New session with no folder picked, added to GTD");
 	});
 
-	it("goes home with the group's folder and adds the launched session to the group", async () => {
+	it("goes home with the group's folder and adds the launched session to the group", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd", [toGroupRow(listItem("a"))]);
 
-		fireEvent.click(screen.getByRole("button", {name: "New session in alpha, added to GTD"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "New session in alpha, added to GTD",
+				},
+			),
+		);
 		await flush();
 		assignLaunchedSession("launched");
 
-		expect({
-			folder: takePendingHomeLaunchFolder(),
-			assignments: readSessionGroupState().assignments,
-		}).toStrictEqual({folder: "-projects-alpha", assignments: {launched: "cg-gtd"}});
+		expect(
+			{
+				folder: takePendingHomeLaunchFolder(),
+				assignments: readSessionGroupState().assignments,
+			},
+		).toStrictEqual(
+			{
+				folder: "-projects-alpha",
+				assignments:
+				{
+					launched: "cg-gtd",
+				},
+			},
+		);
 	});
 
-	it("starts the same launch from the header menu's New session", async () => {
+	it("starts the same launch from the header menu's New session", async () =>
+	{
 		storeGroups();
 		await renderGroup("cg-gtd", [toGroupRow(listItem("a"))]);
 
 		await choose("GTD", "New session");
 		assignLaunchedSession("launched");
 
-		expect({
-			folder: takePendingHomeLaunchFolder(),
-			assignments: readSessionGroupState().assignments,
-		}).toStrictEqual({folder: "-projects-alpha", assignments: {launched: "cg-gtd"}});
+		expect(
+			{
+				folder: takePendingHomeLaunchFolder(),
+				assignments: readSessionGroupState().assignments,
+			},
+		).toStrictEqual(
+			{
+				folder: "-projects-alpha",
+				assignments:
+				{
+					launched: "cg-gtd",
+				},
+			},
+		);
 	});
 });

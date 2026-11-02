@@ -2,7 +2,8 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 import type {ToastOptions} from "../components/toast-context";
 import {sendHerdrLiveOption} from "../lib/api/herdr";
-import {
+import
+{
 	type LaunchOptions,
 	type LaunchPermissionMode,
 	type LiveOptionChange,
@@ -13,12 +14,14 @@ import {isKeyOf} from "../lib/narrow";
 import {launchPermissionModeLabels} from "../lib/schema-choices";
 
 /** The hook fields that confirm a mode change: the next prompt carries `permission_mode`. */
-export interface LiveHookContext {
+export interface LiveHookContext
+{
 	permissionMode?: string;
 	promptId?: string;
 }
 
-export interface LiveLaunchOptionsInput {
+export interface LiveLaunchOptionsInput
+{
 	sessionId: string;
 	/** The session's mode before any live pick (hook ?? JSONL ?? settings). */
 	currentMode: string;
@@ -31,13 +34,15 @@ export interface LiveLaunchOptionsInput {
 	onModeFailed?: ((expected: LaunchPermissionMode) => void) | undefined;
 }
 
-export interface LiveLaunchControls {
+export interface LiveLaunchControls
+{
 	/** Picks already sent to the pane, shown in the chin until superseded. */
 	options: LaunchOptions;
 	apply: (next: LaunchOptions) => Promise<void>;
 }
 
-export interface LiveLaunchSession extends LiveLaunchControls {
+export interface LiveLaunchSession extends LiveLaunchControls
+{
 	/**
 	 * A mode change made outside the chin (the permission card's switch to Auto): shown until the next hook
 	 * reports the CLI's mode, with the mismatch toast when it reports another.
@@ -46,7 +51,8 @@ export interface LiveLaunchSession extends LiveLaunchControls {
 }
 
 /** The chin's failure toast copy per live option kind. */
-export const FAILURE_MESSAGE: Record<LiveOptionChange["kind"], string> = {
+export const FAILURE_MESSAGE: Record<LiveOptionChange["kind"], string> =
+{
 	model: "Model change couldn’t be applied. You can try again.",
 	effort: "Effort change couldn’t be applied. You can try again.",
 	mode: "Mode change couldn’t be applied. You can try again.",
@@ -54,13 +60,15 @@ export const FAILURE_MESSAGE: Record<LiveOptionChange["kind"], string> = {
 	ultracode: "Ultracode couldn’t be applied. You can try again.",
 };
 
-function modeLabel(mode: string): string {
+function modeLabel(mode: string): string
+{
 	return isKeyOf(launchPermissionModeLabels, mode) ? launchPermissionModeLabels[mode] : mode;
 }
 
 const NO_OPTIONS: LaunchOptions = {};
 
-interface PendingMode {
+interface PendingMode
+{
 	sessionId: string;
 	expected: LaunchPermissionMode;
 	baseline: LiveHookContext | undefined;
@@ -69,7 +77,8 @@ interface PendingMode {
 }
 
 /** A hook event after the baseline that reports a (non-cleared) permission mode. */
-function reportedMode(pending: PendingMode, context: LiveHookContext | undefined): string | null {
+function reportedMode(pending: PendingMode, context: LiveHookContext | undefined): string | null
+{
 	const mode = context?.permissionMode;
 	if (mode === undefined || mode === "") return null;
 	const baseline = pending.baseline;
@@ -90,11 +99,18 @@ export function useLiveLaunchOptions({
 	toast,
 	send = sendHerdrLiveOption,
 	onModeFailed,
-}: LiveLaunchOptionsInput): LiveLaunchSession {
-	const [applied, setApplied] = useState<{
+}: LiveLaunchOptionsInput): LiveLaunchSession
+{
+	const [applied, setApplied] = useState<
+	{
 		sessionId: string;
 		options: Omit<LaunchOptions, "permissionMode">;
-	}>({sessionId, options: NO_OPTIONS});
+	}>(
+		{
+			sessionId,
+			options: NO_OPTIONS,
+		},
+	);
 	const [pendingMode, setPendingMode] = useState<PendingMode | null>(null);
 	const sessionOptions = applied.sessionId === sessionId ? applied.options : NO_OPTIONS;
 	const sessionPending = pendingMode?.sessionId === sessionId ? pendingMode : null;
@@ -103,70 +119,135 @@ export function useLiveLaunchOptions({
 	const unconfirmedMode = sessionPending !== null && reported === null ? sessionPending : null;
 	const options = useMemo(
 		() =>
-			unconfirmedMode === null ? sessionOptions : {...sessionOptions, permissionMode: unconfirmedMode.expected},
+			unconfirmedMode === null
+				? sessionOptions
+				:
+					{
+						...sessionOptions,
+						permissionMode: unconfirmedMode.expected,
+					},
 		[sessionOptions, unconfirmedMode],
 	);
 	const toastedRef = useRef<PendingMode | null>(null);
 
-	useEffect(() => {
-		if (sessionPending === null || reported === null || reported === sessionPending.expected) {
+	useEffect(() =>
+	{
+		if (sessionPending === null || reported === null || reported === sessionPending.expected)
+		{
 			return;
 		}
 		if (toastedRef.current === sessionPending) return;
 		toastedRef.current = sessionPending;
 		if (sessionPending.picked) onModeFailed?.(sessionPending.expected);
-		toast({
-			kind: "error",
-			message: FAILURE_MESSAGE.mode,
-			description: `Claude Code reports ${modeLabel(reported)} instead of ${modeLabel(sessionPending.expected)}.`,
-		});
+		toast(
+			{
+				kind: "error",
+				message: FAILURE_MESSAGE.mode,
+				description: `Claude Code reports ${modeLabel(reported)} instead of ${modeLabel(sessionPending.expected)}.`,
+			},
+		);
 	}, [reported, sessionPending, toast, onModeFailed]);
 
 	const apply = useCallback(
-		async (next: LaunchOptions) => {
+		async (next: LaunchOptions) =>
+		{
 			const change = nextChange(next, options, currentMode, availableModes);
 			if (change === null) return;
-			if ("error" in change) {
+			if ("error" in change)
+			{
 				if (next.permissionMode !== undefined) onModeFailed?.(next.permissionMode);
-				toast({kind: "error", message: FAILURE_MESSAGE.mode, description: change.error});
+				toast(
+					{
+						kind: "error",
+						message: FAILURE_MESSAGE.mode,
+						description: change.error,
+					},
+				);
 				return;
 			}
 			const baseline = hookContext;
-			try {
+			try
+			{
 				await send(sessionId, change.change);
-			} catch (error) {
+			}
+			catch (error)
+			{
 				if ("mode" in change) onModeFailed?.(change.mode);
-				toast({
-					kind: "error",
-					message: FAILURE_MESSAGE[change.change.kind],
-					description: error instanceof Error ? error.message : String(error),
-				});
+				toast(
+					{
+						kind: "error",
+						message: FAILURE_MESSAGE[change.change.kind],
+						description: error instanceof Error ? error.message : String(error),
+					},
+				);
 				return;
 			}
-			if ("mode" in change) {
-				setPendingMode({sessionId, expected: change.mode, baseline, picked: true});
-			} else {
-				const merged = {...sessionOptions, ...change.applied};
-				setApplied({sessionId, options: next.model === undefined ? merged : withModel(merged, next.model)});
+			if ("mode" in change)
+			{
+				setPendingMode(
+					{
+						sessionId,
+						expected: change.mode,
+						baseline,
+						picked: true,
+					},
+				);
+			}
+			else
+			{
+				const merged =
+				{
+					...sessionOptions,
+					...change.applied,
+				};
+				setApplied(
+					{
+						sessionId,
+						options: next.model === undefined ? merged : withModel(merged, next.model),
+					},
+				);
 			}
 		},
 		[availableModes, currentMode, hookContext, options, send, sessionId, sessionOptions, toast, onModeFailed],
 	);
 
 	const expectMode = useCallback(
-		(mode: LaunchPermissionMode) => {
-			setPendingMode({sessionId, expected: mode, baseline: hookContext, picked: false});
+		(mode: LaunchPermissionMode) =>
+		{
+			setPendingMode(
+				{
+					sessionId,
+					expected: mode,
+					baseline: hookContext,
+					picked: false,
+				},
+			);
 		},
 		[hookContext, sessionId],
 	);
 
-	return {options, apply, expectMode};
+	return {
+		options,
+		apply,
+		expectMode,
+	};
 }
 
 type NextChange =
-	| {change: LiveOptionChange; applied: Omit<LaunchOptions, "permissionMode">}
-	| {change: LiveOptionChange; mode: LaunchPermissionMode}
-	| {error: string}
+	|
+	  {
+			change: LiveOptionChange;
+			applied: Omit<LaunchOptions, "permissionMode">;
+	  }
+	|
+	  {
+			change: LiveOptionChange;
+			mode: LaunchPermissionMode;
+	  }
+	|
+	  {
+			error: string;
+	  }
 	| null;
 
 /** The one field the chin changed, as a pane change. */
@@ -175,28 +256,81 @@ function nextChange(
 	current: LaunchOptions,
 	currentMode: string,
 	availableModes: readonly LaunchPermissionMode[],
-): NextChange {
-	if (next.model !== undefined && next.model !== current.model) {
-		return {change: {kind: "model", model: next.model}, applied: {model: next.model}};
+): NextChange
+{
+	if (next.model !== undefined && next.model !== current.model)
+	{
+		return {
+			change:
+			{
+				kind: "model",
+				model: next.model,
+			},
+			applied:
+			{
+				model: next.model,
+			},
+		};
 	}
-	if (next.effort !== undefined && next.effort !== current.effort) {
-		return {change: {kind: "effort", effort: next.effort}, applied: {effort: next.effort}};
+	if (next.effort !== undefined && next.effort !== current.effort)
+	{
+		return {
+			change:
+			{
+				kind: "effort",
+				effort: next.effort,
+			},
+			applied:
+			{
+				effort: next.effort,
+			},
+		};
 	}
-	if (next.fastMode !== undefined && next.fastMode !== current.fastMode) {
-		return {change: {kind: "fast", on: next.fastMode}, applied: {fastMode: next.fastMode}};
+	if (next.fastMode !== undefined && next.fastMode !== current.fastMode)
+	{
+		return {
+			change:
+			{
+				kind: "fast",
+				on: next.fastMode,
+			},
+			applied:
+			{
+				fastMode: next.fastMode,
+			},
+		};
 	}
-	if (next.ultracode !== undefined && next.ultracode !== current.ultracode) {
-		return {change: {kind: "ultracode", on: next.ultracode}, applied: {ultracode: next.ultracode}};
+	if (next.ultracode !== undefined && next.ultracode !== current.ultracode)
+	{
+		return {
+			change:
+			{
+				kind: "ultracode",
+				on: next.ultracode,
+			},
+			applied:
+			{
+				ultracode: next.ultracode,
+			},
+		};
 	}
 	const target = next.permissionMode;
 	if (target === undefined || target === current.permissionMode) return null;
 	const from = current.permissionMode ?? currentMode;
 	const presses = shiftTabCount(from, target, availableModes);
-	if (presses === null) {
+	if (presses === null)
+	{
 		return {
 			error: `Shift+Tab can’t reach ${modeLabel(target)} from ${modeLabel(from)} in this session.`,
 		};
 	}
 	if (presses === 0) return null;
-	return {change: {kind: "mode", presses}, mode: target};
+	return {
+		change:
+		{
+			kind: "mode",
+			presses,
+		},
+		mode: target,
+	};
 }

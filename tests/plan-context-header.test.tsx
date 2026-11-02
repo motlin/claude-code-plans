@@ -7,22 +7,39 @@ import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {PlanContextHeader, type PlanContextLink} from "../src/components/plan-context-header";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 });
 
 const NOW = Date.parse("2026-10-17T12:00:00Z");
 
-async function renderWithRouter(node: ReactNode) {
-	const rootRoute = createRootRoute({component: (): ReactNode => node});
-	const router = createRouter({routeTree: rootRoute, history: createMemoryHistory({initialEntries: ["/"]})});
+async function renderWithRouter(node: ReactNode)
+{
+	const rootRoute = createRootRoute(
+		{
+			component: (): ReactNode => node,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	return render(<RouterProvider router={router} />);
 }
 
-function rows() {
+function rows()
+{
 	const header = screen.getByTestId("plan-context");
-	return Array.from(header.querySelectorAll("a, button"), (el) => ({
+	return Array.from(header.querySelectorAll("a, button"), (el) => (
+	{
 		tag: el.tagName.toLowerCase(),
 		href: el.getAttribute("href"),
 		label: el.querySelector("[data-rail-row-label]")?.textContent ?? null,
@@ -30,7 +47,8 @@ function rows() {
 	}));
 }
 
-function link(sessionId: string, sessionTitle: string | null, modifiedIso: string): PlanContextLink {
+function link(sessionId: string, sessionTitle: string | null, modifiedIso: string): PlanContextLink
+{
 	return {
 		sessionId,
 		project: "-Users-fabricated-projects-alpha",
@@ -41,8 +59,10 @@ function link(sessionId: string, sessionTitle: string | null, modifiedIso: strin
 	};
 }
 
-describe("PlanContextHeader", () => {
-	it("shows the project directory then each session newest first with upstream's relative time", async () => {
+describe("PlanContextHeader", () =>
+{
+	it("shows the project directory then each session newest first with upstream's relative time", async () =>
+	{
 		await renderWithRouter(
 			<PlanContextHeader
 				links={[
@@ -53,13 +73,29 @@ describe("PlanContextHeader", () => {
 			/>,
 		);
 		expect(rows()).toStrictEqual([
-			{tag: "a", href: "/project/-Users-fabricated-projects-alpha", label: "~/projects/alpha", hint: null},
-			{tag: "a", href: "/session/sess-new", label: "Untitled session", hint: "2h ago"},
-			{tag: "a", href: "/session/sess-old", label: "Draft the fabricated plan", hint: "2d ago"},
+			{
+				tag: "a",
+				href: "/project/-Users-fabricated-projects-alpha",
+				label: "~/projects/alpha",
+				hint: null,
+			},
+			{
+				tag: "a",
+				href: "/session/sess-new",
+				label: "Untitled session",
+				hint: "2h ago",
+			},
+			{
+				tag: "a",
+				href: "/session/sess-old",
+				label: "Draft the fabricated plan",
+				hint: "2d ago",
+			},
 		]);
 	});
 
-	it("collapses more than three sessions behind an N sessions disclosure", async () => {
+	it("collapses more than three sessions behind an N sessions disclosure", async () =>
+	{
 		await renderWithRouter(
 			<PlanContextHeader
 				links={[
@@ -72,26 +108,72 @@ describe("PlanContextHeader", () => {
 			/>,
 		);
 		expect(rows()).toStrictEqual([
-			{tag: "a", href: "/project/-Users-fabricated-projects-alpha", label: "~/projects/alpha", hint: null},
-			{tag: "button", href: null, label: "4 sessions", hint: null},
+			{
+				tag: "a",
+				href: "/project/-Users-fabricated-projects-alpha",
+				label: "~/projects/alpha",
+				hint: null,
+			},
+			{
+				tag: "button",
+				href: null,
+				label: "4 sessions",
+				hint: null,
+			},
 		]);
-		const disclosure = screen.getByRole("button", {name: "4 sessions"});
+		const disclosure = screen.getByRole(
+			"button",
+			{
+				name: "4 sessions",
+			},
+		);
 		expect(disclosure.getAttribute("aria-expanded")).toBe("false");
 
 		fireEvent.click(disclosure);
 
 		expect(disclosure.getAttribute("aria-expanded")).toBe("true");
 		expect(rows()).toStrictEqual([
-			{tag: "a", href: "/project/-Users-fabricated-projects-alpha", label: "~/projects/alpha", hint: null},
-			{tag: "button", href: null, label: "4 sessions", hint: null},
-			{tag: "a", href: "/session/s1", label: "One", hint: "1h ago"},
-			{tag: "a", href: "/session/s2", label: "Two", hint: "2h ago"},
-			{tag: "a", href: "/session/s3", label: "Three", hint: "3h ago"},
-			{tag: "a", href: "/session/s4", label: "Four", hint: "4h ago"},
+			{
+				tag: "a",
+				href: "/project/-Users-fabricated-projects-alpha",
+				label: "~/projects/alpha",
+				hint: null,
+			},
+			{
+				tag: "button",
+				href: null,
+				label: "4 sessions",
+				hint: null,
+			},
+			{
+				tag: "a",
+				href: "/session/s1",
+				label: "One",
+				hint: "1h ago",
+			},
+			{
+				tag: "a",
+				href: "/session/s2",
+				label: "Two",
+				hint: "2h ago",
+			},
+			{
+				tag: "a",
+				href: "/session/s3",
+				label: "Three",
+				hint: "3h ago",
+			},
+			{
+				tag: "a",
+				href: "/session/s4",
+				label: "Four",
+				hint: "4h ago",
+			},
 		]);
 	});
 
-	it("renders nothing when the plan has no linked sessions", async () => {
+	it("renders nothing when the plan has no linked sessions", async () =>
+	{
 		await renderWithRouter(
 			<div data-testid="host">
 				<PlanContextHeader links={[]} now={NOW} />
@@ -100,15 +182,25 @@ describe("PlanContextHeader", () => {
 		expect(screen.getByTestId("host").innerHTML).toBe("");
 	});
 
-	it("shares the session rail's lined 32px rows", async () => {
+	it("shares the session rail's lined 32px rows", async () =>
+	{
 		await renderWithRouter(
 			<PlanContextHeader links={[link("sess-new", null, "2026-10-17T10:00:00Z")]} now={NOW} />,
 		);
 		const header = screen.getByTestId("plan-context");
 
-		expect({
-			card: header.className.split(" ").includes("epitaxy-rail-lined"),
-			rows: Array.from(header.querySelectorAll("a, button"), (el) => el.className.split(" ").includes("min-h-8")),
-		}).toStrictEqual({card: true, rows: [true, true]});
+		expect(
+			{
+				card: header.className.split(" ").includes("epitaxy-rail-lined"),
+				rows: Array.from(header.querySelectorAll("a, button"), (el) =>
+					el.className.split(" ").includes("min-h-8"),
+				),
+			},
+		).toStrictEqual(
+			{
+				card: true,
+				rows: [true, true],
+			},
+		);
 	});
 });

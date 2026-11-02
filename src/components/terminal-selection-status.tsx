@@ -1,4 +1,5 @@
-export function TerminalSelectionStatus({announcement}: {announcement: string}) {
+export function TerminalSelectionStatus({announcement}: {announcement: string})
+{
 	return (
 		<p role="status" className="sr-only">
 			{announcement}

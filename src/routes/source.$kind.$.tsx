@@ -4,33 +4,50 @@ import {useSuspenseQuery} from "@tanstack/react-query";
 import {useState} from "react";
 import {sourceFileQueryOptions} from "../lib/api/source";
 
-export const Route = createFileRoute("/source/$kind/$")({
-	component: GenericSourcePage,
-	loader: async ({context: {queryClient}, params}) =>
-		queryClient.query({...sourceFileQueryOptions(params.kind, params._splat ?? ""), staleTime: "static"}),
-	head: ({params}) => {
-		const tail = (params._splat ?? "").split("/").pop() ?? params.kind;
-		return {meta: [pageTitle(`Source: ${tail}`)]};
+export const Route = createFileRoute("/source/$kind/$")(
+	{
+		component: GenericSourcePage,
+		loader: async ({context: {queryClient}, params}) =>
+			queryClient.query(
+				{
+					...sourceFileQueryOptions(params.kind, params._splat ?? ""),
+					staleTime: "static",
+				},
+			),
+		head: ({params}) =>
+		{
+			const tail = (params._splat ?? "").split("/").pop() ?? params.kind;
+			return {
+				meta: [pageTitle(`Source: ${tail}`)],
+			};
+		},
 	},
-});
+);
 
-function CopyButton({text}: {text: string}) {
+function CopyButton({text}: {text: string})
+{
 	const [copied, setCopied] = useState(false);
-	const copy = async () => {
-		try {
+	const copy = async () =>
+	{
+		try
+		{
 			await navigator.clipboard.writeText(text);
 			setCopied(true);
-			setTimeout(() => {
+			setTimeout(() =>
+			{
 				setCopied(false);
 			}, 1500);
-		} catch {
+		}
+		catch
+		{
 			// clipboard not available
 		}
 	};
 	return (
 		<button
 			type="button"
-			onClick={() => {
+			onClick={() =>
+			{
 				void copy();
 			}}
 			className="text-xs px-2 py-1 rounded bg-surface-0 hover:bg-fill-control text-secondary"
@@ -40,36 +57,66 @@ function CopyButton({text}: {text: string}) {
 	);
 }
 
-function prettyJson(content: string): string {
-	try {
+function prettyJson(content: string): string
+{
+	try
+	{
 		return JSON.stringify(JSON.parse(content), null, 2);
-	} catch {
+	}
+	catch
+	{
 		return content;
 	}
 }
 
-const KIND_LABELS: Record<string, string> = {
+const KIND_LABELS: Record<string, string> =
+{
 	plan: "Plan",
 	memory: "Memory",
 	task: "Task",
 	command: "Command",
 };
 
-const BACK_LINKS: Record<string, {to: string; label: string}> = {
-	plan: {to: "/plans", label: "All Plans"},
-	memory: {to: "/memories", label: "All Memories"},
-	task: {to: "/tasks", label: "All Tasks"},
-	command: {to: "/plugins", label: "All Plugins"},
+const BACK_LINKS: Record<
+	string,
+	{
+		to: string;
+		label: string;
+	}
+> =
+{
+	plan:
+	{
+		to: "/plans",
+		label: "All Plans",
+	},
+	memory:
+	{
+		to: "/memories",
+		label: "All Memories",
+	},
+	task:
+	{
+		to: "/tasks",
+		label: "All Tasks",
+	},
+	command:
+	{
+		to: "/plugins",
+		label: "All Plugins",
+	},
 };
 
-function GenericSourcePage() {
+function GenericSourcePage()
+{
 	const {kind, _splat} = Route.useParams();
 	const relativePath = _splat ?? "";
 	const {data} = useSuspenseQuery(sourceFileQueryOptions(kind, relativePath));
 	const back = BACK_LINKS[kind];
 	const kindLabel = KIND_LABELS[kind] ?? kind;
 
-	if (!data) {
+	if (!data)
+	{
 		return (
 			<div className="mx-auto max-w-3xl p-6">
 				<h1 className="text-lg font-medium text-primary mb-2">Source not found</h1>

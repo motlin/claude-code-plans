@@ -31,12 +31,14 @@ const POPUP_CLASS =
 const ITEM_CLASS =
 	"group/cbx-item flex w-full items-center gap-2 min-h-8 panels-fine:min-h-7 px-3 py-1 rounded-r6 text-body font-normal text-primary select-none outline-none data-[highlighted]:bg-fill-ghost-hover data-[disabled]:opacity-50 data-[disabled]:pointer-events-none";
 
-export interface SelectItem<T extends string> {
+export interface SelectItem<T extends string>
+{
 	value: T;
 	label: string;
 }
 
-export interface SelectProps<T extends string> {
+export interface SelectProps<T extends string>
+{
 	label: string;
 	items: readonly SelectItem<T>[];
 	value: T;
@@ -44,7 +46,8 @@ export interface SelectProps<T extends string> {
 	disabled?: boolean;
 }
 
-export function Select<T extends string>({label, items, value, onChange, disabled = false}: SelectProps<T>) {
+export function Select<T extends string>({label, items, value, onChange, disabled = false}: SelectProps<T>)
+{
 	const triggerId = useId();
 	return (
 		<div className={FIELD_CLASS}>
@@ -55,7 +58,8 @@ export function Select<T extends string>({label, items, value, onChange, disable
 				items={items}
 				value={value}
 				disabled={disabled}
-				onValueChange={(next) => {
+				onValueChange={(next) =>
+				{
 					const item = items.find((candidate) => candidate.value === next);
 					if (item !== undefined) onChange(item.value);
 				}}

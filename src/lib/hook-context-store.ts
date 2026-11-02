@@ -9,18 +9,31 @@ import type {SessionHookContextPayload} from "./hook-events";
  */
 const contexts = hmrPersist("hookContextStore", () => new Map<string, SessionHookContextPayload>());
 
-export function recordHookContext(update: SessionHookContextPayload): void {
-	contexts.set(update.sessionId, {...(contexts.get(update.sessionId) ?? {sessionId: update.sessionId}), ...update});
+export function recordHookContext(update: SessionHookContextPayload): void
+{
+	contexts.set(
+		update.sessionId,
+		{
+			...(contexts.get(update.sessionId) ??
+			{
+				sessionId: update.sessionId,
+			}),
+			...update,
+		},
+	);
 }
 
-export function forgetHookContext(sessionId: string): void {
+export function forgetHookContext(sessionId: string): void
+{
 	contexts.delete(sessionId);
 }
 
-export function getHookContexts(): ReadonlyMap<string, SessionHookContextPayload> {
+export function getHookContexts(): ReadonlyMap<string, SessionHookContextPayload>
+{
 	return contexts;
 }
 
-export function clearHookContexts(): void {
+export function clearHookContexts(): void
+{
 	contexts.clear();
 }

@@ -13,7 +13,8 @@ import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 
 type HerdrTerminalTabData = HerdrTerminalWorkspaceData["tabs"][number];
 
-interface PendingClose {
+interface PendingClose
+{
 	noun: "pane" | "tab";
 	running: HerdrTerminalPaneData;
 	close: () => Promise<void>;
@@ -23,19 +24,29 @@ interface PendingClose {
  * Close a pane or tab, asking first when a pane's process is still running
  * (closing kills it); an idle shell closes at once. `dialog` renders the ask.
  */
-function useGuardedClose(): {
+function useGuardedClose():
+{
 	request: (noun: PendingClose["noun"], panes: readonly HerdrTerminalPaneData[], close: () => Promise<void>) => void;
 	dialog: ReactNode;
-} {
+}
+{
 	const [pending, setPending] = useState<PendingClose | null>(null);
 	const request = useCallback(
-		(noun: PendingClose["noun"], panes: readonly HerdrTerminalPaneData[], close: () => Promise<void>) => {
+		(noun: PendingClose["noun"], panes: readonly HerdrTerminalPaneData[], close: () => Promise<void>) =>
+		{
 			const running = panes.find((pane) => pane.process === "running");
-			if (!closeNeedsConfirmation(panes) || running === undefined) {
+			if (!closeNeedsConfirmation(panes) || running === undefined)
+			{
 				void close();
 				return;
 			}
-			setPending({noun, running, close});
+			setPending(
+				{
+					noun,
+					running,
+					close,
+				},
+			);
 		},
 		[],
 	);
@@ -44,7 +55,8 @@ function useGuardedClose(): {
 	const dialog = (
 		<ConfirmDialog
 			open={pending !== null}
-			onOpenChange={(open) => {
+			onOpenChange={(open) =>
+			{
 				if (!open) setPending(null);
 			}}
 			title={`${label}?`}
@@ -58,7 +70,10 @@ function useGuardedClose(): {
 			onConfirm={() => void pending?.close()}
 		/>
 	);
-	return {request, dialog};
+	return {
+		request,
+		dialog,
+	};
 }
 
 /** The rename dialog for one tab, mounted only while open so it starts from the tab's current label. */
@@ -70,7 +85,8 @@ function TabRenameDialog({
 	tab: HerdrTerminalTabData | null;
 	onClose: () => void;
 	actions: HerdrTerminalActions;
-}) {
+})
+{
 	if (tab === null) return null;
 	return (
 		<SessionRenameDialog
@@ -85,7 +101,8 @@ function TabRenameDialog({
 	);
 }
 
-function ActionError({error}: {error: string}) {
+function ActionError({error}: {error: string})
+{
 	if (error === "") return null;
 	return (
 		<p role="alert" className="text-caption text-danger-000">
@@ -95,7 +112,8 @@ function ActionError({error}: {error: string}) {
 }
 
 /** The Terminals list's per-pane menu: split right or down (opening the new pane), or close. */
-export function PaneActionsMenu({pane}: {pane: HerdrTerminalPaneData}) {
+export function PaneActionsMenu({pane}: {pane: HerdrTerminalPaneData})
+{
 	const actions = useHerdrTerminalActions();
 	const guarded = useGuardedClose();
 	return (
@@ -114,7 +132,8 @@ export function PaneActionsMenu({pane}: {pane: HerdrTerminalPaneData}) {
 					<MenuItem onSelect={() => void actions.split(pane.paneId, "down")}>Split down</MenuItem>
 					<MenuItem
 						variant="danger"
-						onSelect={() => {
+						onSelect={() =>
+						{
 							guarded.request("pane", [pane], async () => actions.closePane(pane.paneId));
 						}}
 					>
@@ -128,7 +147,8 @@ export function PaneActionsMenu({pane}: {pane: HerdrTerminalPaneData}) {
 }
 
 /** The Terminals list's per-tab menu: rename, or close every pane in it. */
-export function TabActionsMenu({tab}: {tab: HerdrTerminalTabData}) {
+export function TabActionsMenu({tab}: {tab: HerdrTerminalTabData})
+{
 	const actions = useHerdrTerminalActions();
 	const guarded = useGuardedClose();
 	const [renaming, setRenaming] = useState(false);
@@ -145,7 +165,8 @@ export function TabActionsMenu({tab}: {tab: HerdrTerminalTabData}) {
 				</MenuTrigger>
 				<MenuContent>
 					<MenuItem
-						onSelect={() => {
+						onSelect={() =>
+						{
 							setRenaming(true);
 						}}
 					>
@@ -153,7 +174,8 @@ export function TabActionsMenu({tab}: {tab: HerdrTerminalTabData}) {
 					</MenuItem>
 					<MenuItem
 						variant="danger"
-						onSelect={() => {
+						onSelect={() =>
+						{
 							guarded.request("tab", tab.panes, async () => actions.closeTab(tab.tabId));
 						}}
 					>
@@ -164,7 +186,8 @@ export function TabActionsMenu({tab}: {tab: HerdrTerminalTabData}) {
 			{guarded.dialog}
 			<TabRenameDialog
 				tab={renaming ? tab : null}
-				onClose={() => {
+				onClose={() =>
+				{
 					setRenaming(false);
 				}}
 				actions={actions}
@@ -174,17 +197,22 @@ export function TabActionsMenu({tab}: {tab: HerdrTerminalTabData}) {
 }
 
 /** The pane view's links to the other panes of its tab; hidden for a one-pane tab. */
-export function PaneSwitcher({tab, paneId}: {tab: HerdrTerminalTabData; paneId: string}) {
+export function PaneSwitcher({tab, paneId}: {tab: HerdrTerminalTabData; paneId: string})
+{
 	if (tab.panes.length < 2) return null;
 	return (
 		<nav aria-label={`Panes in ${tabName(tab)}`} className="flex min-w-0 items-center gap-1 overflow-x-auto">
-			{tab.panes.map((pane) => {
+			{tab.panes.map((pane) =>
+			{
 				const current = pane.paneId === paneId;
 				return (
 					<Link
 						key={pane.paneId}
 						to="/terminals/pane/$paneId"
-						params={{paneId: pane.paneId}}
+						params={
+						{
+							paneId: pane.paneId,
+						}}
 						aria-current={current ? "page" : undefined}
 						className={`shrink-0 truncate rounded-r5 px-2 py-0.5 text-caption no-underline transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${current ? "bg-fill-ghost-hover text-primary" : "text-secondary hover:bg-fill-ghost-hover hover:text-primary"}`}
 					>
@@ -206,7 +234,8 @@ function ToolbarButton({
 	shortcut: ShortcutId;
 	onClick: () => void;
 	children: ReactNode;
-}) {
+})
+{
 	const {ariaKeyShortcuts} = useShortcutKeys(shortcut);
 	return (
 		<button
@@ -240,21 +269,26 @@ export function PaneTerminalToolbar({
 	writesEnabled: boolean;
 	onNavigate: (paneId: string) => void;
 	nextPaneAfterClose: string | null;
-}) {
+})
+{
 	const actions = useHerdrTerminalActions();
 	const guarded = useGuardedClose();
 	const [renaming, setRenaming] = useState(false);
 	const manageable = writesEnabled && tab !== null && pane !== null;
 
-	const split = (direction: "right" | "down"): void => {
+	const split = (direction: "right" | "down"): void =>
+	{
 		if (pane !== null) void actions.split(pane.paneId, direction);
 	};
-	const close = (): void => {
-		if (pane !== null) {
+	const close = (): void =>
+	{
+		if (pane !== null)
+		{
 			guarded.request("pane", [pane], async () => actions.closePane(pane.paneId, nextPaneAfterClose));
 		}
 	};
-	const step = (direction: 1 | -1): boolean => {
+	const step = (direction: 1 | -1): boolean =>
+	{
 		const target = tab === null || pane === null ? null : siblingPaneId(tab, pane.paneId, direction);
 		if (target === null) return false;
 		onNavigate(target);
@@ -263,28 +297,55 @@ export function PaneTerminalToolbar({
 
 	useShortcut(
 		"split_terminal_right",
-		() => {
+		() =>
+		{
 			split("right");
 		},
-		{disabled: !manageable},
+		{
+			disabled: !manageable,
+		},
 	);
 	useShortcut(
 		"split_terminal_down",
-		() => {
+		() =>
+		{
 			split("down");
 		},
-		{disabled: !manageable},
+		{
+			disabled: !manageable,
+		},
 	);
-	useShortcut("close_terminal_pane", close, {disabled: !manageable});
+	useShortcut(
+		"close_terminal_pane",
+		close,
+		{
+			disabled: !manageable,
+		},
+	);
 	useShortcut(
 		"rename_terminal_tab",
-		() => {
+		() =>
+		{
 			setRenaming(true);
 		},
-		{disabled: !manageable},
+		{
+			disabled: !manageable,
+		},
 	);
-	useShortcut("next_terminal_pane", () => step(1), {disabled: tab === null});
-	useShortcut("prev_terminal_pane", () => step(-1), {disabled: tab === null});
+	useShortcut(
+		"next_terminal_pane",
+		() => step(1),
+		{
+			disabled: tab === null,
+		},
+	);
+	useShortcut(
+		"prev_terminal_pane",
+		() => step(-1),
+		{
+			disabled: tab === null,
+		},
+	);
 
 	if (!manageable) return null;
 	return (
@@ -294,7 +355,8 @@ export function PaneTerminalToolbar({
 				<ToolbarButton
 					label="Split right"
 					shortcut="split_terminal_right"
-					onClick={() => {
+					onClick={() =>
+					{
 						split("right");
 					}}
 				>
@@ -303,7 +365,8 @@ export function PaneTerminalToolbar({
 				<ToolbarButton
 					label="Split down"
 					shortcut="split_terminal_down"
-					onClick={() => {
+					onClick={() =>
+					{
 						split("down");
 					}}
 				>
@@ -312,7 +375,8 @@ export function PaneTerminalToolbar({
 				<ToolbarButton
 					label="Rename tab"
 					shortcut="rename_terminal_tab"
-					onClick={() => {
+					onClick={() =>
+					{
 						setRenaming(true);
 					}}
 				>
@@ -325,7 +389,8 @@ export function PaneTerminalToolbar({
 			{guarded.dialog}
 			<TabRenameDialog
 				tab={renaming ? tab : null}
-				onClose={() => {
+				onClose={() =>
+				{
 					setRenaming(false);
 				}}
 				actions={actions}

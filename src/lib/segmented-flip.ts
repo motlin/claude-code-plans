@@ -6,13 +6,15 @@ import {isMotionReduced} from "./reduced-motion";
  * FLIP. See .llm/upstream-sync/features/segmented-control-flip-thumb.md.
  */
 
-export interface ThumbRect {
+export interface ThumbRect
+{
 	left: number;
 	width: number;
 }
 
 /** Upstream `Vf`: the group's untransformed border-box width. */
-function unscaledWidth(group: HTMLElement): number {
+function unscaledWidth(group: HTMLElement): number
+{
 	const style = getComputedStyle(group);
 	const width = parseFloat(style.width);
 	if (style.boxSizing !== "content-box") return width;
@@ -26,11 +28,21 @@ function unscaledWidth(group: HTMLElement): number {
 }
 
 /** Upstream `ag`: the group's on-screen width and whether an ancestor transform scales it. */
-export function groupScale(group: HTMLElement): {scale: number; scaled: boolean; width: number} {
+export function groupScale(group: HTMLElement):
+{
+	scale: number;
+	scaled: boolean;
+	width: number;
+}
+{
 	const width = group.getBoundingClientRect().width;
 	const ratio = width / unscaledWidth(group);
 	const scale = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
-	return {scale, scaled: scale !== 1, width};
+	return {
+		scale,
+		scaled: scale !== 1,
+		width,
+	};
 }
 
 /**
@@ -39,7 +51,8 @@ export function groupScale(group: HTMLElement): {scale: number; scaled: boolean;
  * offsetLeft when unscaled; locally icon-only radios sit in a positioned Tooltip wrapper, so the rect path
  * is kept at scale 1 too.
  */
-export function measureThumbRect(radio: HTMLElement, group: HTMLElement): ThumbRect {
+export function measureThumbRect(radio: HTMLElement, group: HTMLElement): ThumbRect
+{
 	const dpr = window.devicePixelRatio || 1;
 	const round = (value: number) => Math.round(value * dpr) / dpr;
 	const {scale} = groupScale(group);
@@ -47,20 +60,26 @@ export function measureThumbRect(radio: HTMLElement, group: HTMLElement): ThumbR
 	const radioRect = radio.getBoundingClientRect();
 	const left = round(radioRect.left) - round(groupRect.left);
 	const width = round(radioRect.right) - round(radioRect.left);
-	return {left: left / scale, width: width / scale};
+	return {
+		left: left / scale,
+		width: width / scale,
+	};
 }
 
-function cssDurationMs(style: CSSStyleDeclaration, name: string): number {
+function cssDurationMs(style: CSSStyleDeclaration, name: string): number
+{
 	const value = style.getPropertyValue(name).trim();
 	const unit = value.endsWith("ms") ? 1 : value.endsWith("s") ? 1000 : 0;
 	return Math.max(0, parseFloat(value) * unit) || 0;
 }
 
-function animations(element: HTMLElement): Animation[] {
+function animations(element: HTMLElement): Animation[]
+{
 	return typeof element.getAnimations === "function" ? element.getAnimations() : [];
 }
 
-function canAnimate(element: HTMLElement): boolean {
+function canAnimate(element: HTMLElement): boolean
+{
 	return typeof element.animate === "function" && typeof element.getAnimations === "function";
 }
 
@@ -75,11 +94,19 @@ export function applyThumb(
 	thumb: HTMLElement,
 	group: HTMLElement,
 	rect: ThumbRect | null,
-	{correction = false}: {correction?: boolean} = {},
-): () => void {
-	if (rect === null || rect.width <= 0) {
+	{
+		correction = false,
+	}:
+	{
+		correction?: boolean;
+	} = {},
+): () => void
+{
+	if (rect === null || rect.width <= 0)
+	{
 		const running = animations(thumb);
-		return () => {
+		return () =>
+		{
 			for (const animation of running) animation.cancel();
 			thumb.style.visibility = "";
 			thumb.style.willChange = "";
@@ -88,7 +115,10 @@ export function applyThumb(
 	}
 	const flipAt = `${rect.left},${rect.width}`;
 	const previous = thumb.dataset["flipAt"];
-	if (previous === flipAt) return () => {};
+	if (previous === flipAt)
+		return () =>
+		{
+		};
 	const from = thumb.getBoundingClientRect();
 	const groupLeft = group.getBoundingClientRect().left;
 	const style = getComputedStyle(thumb);
@@ -97,7 +127,8 @@ export function applyThumb(
 	const translucent = /^rgba\(|\//.test(style.backgroundColor);
 	const running = animations(thumb);
 	const snapCorrection = correction && !running.some((animation) => animation.playState === "running");
-	return () => {
+	return () =>
+	{
 		for (const animation of running) animation.cancel();
 		thumb.dataset["flipAt"] = flipAt;
 		thumb.style.width = `${rect.width}px`;
@@ -105,7 +136,8 @@ export function applyThumb(
 		thumb.style.visibility = "inherit";
 		if (!translucent) thumb.style.willChange = "";
 		if (previous === undefined || !canAnimate(thumb) || isMotionReduced() || snapCorrection) return;
-		try {
+		try
+		{
 			thumb.animate(
 				{
 					transform: [
@@ -113,10 +145,15 @@ export function applyThumb(
 						`translateX(${rect.left}px) scaleX(1)`,
 					],
 				},
-				{duration, easing},
+				{
+					duration,
+					easing,
+				},
 			);
 			if (duration > 0) thumb.style.willChange = translucent ? "transform" : "";
-		} catch {
+		}
+		catch
+		{
 			// Upstream swallows WAAPI failures; the thumb is already at its new position.
 		}
 	};

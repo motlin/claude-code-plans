@@ -4,7 +4,8 @@ import {tmpdir} from "node:os";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 import {indexJsonlFile, indexSessionsIndex} from "../src/lib/db/indexer";
-import {
+import
+{
 	getActiveSessionEntries,
 	markSessionActive,
 	markSessionEnded,
@@ -25,32 +26,59 @@ const PROJECT_ID = "-tmp-test-alice-project";
 const PROJECT_PATH = "/tmp/test/alice-project";
 let db: AppDb;
 
-function makeSessionsIndex(entries: Record<string, unknown>[]): string {
-	return JSON.stringify({version: 1, entries});
+function makeSessionsIndex(entries: Record<string, unknown>[]): string
+{
+	return JSON.stringify(
+		{
+			version: 1,
+			entries,
+		},
+	);
 }
 
-beforeEach(async () => {
-	mkdirSync(testDir, {recursive: true});
+beforeEach(async () =>
+{
+	mkdirSync(
+		testDir,
+		{
+			recursive: true,
+		},
+	);
 	db = openTestDb();
 	clearLiveSubagents();
-	for (const entry of getActiveSessionEntries()) {
+	for (const entry of getActiveSessionEntries())
+	{
 		markSessionEnded(entry.sessionId);
 	}
 	await initPendingApprovalsCache(db.index);
 });
 
-afterEach(() => {
-	for (const entry of getActiveSessionEntries()) {
+afterEach(() =>
+{
+	for (const entry of getActiveSessionEntries())
+	{
 		markSessionEnded(entry.sessionId);
 	}
 	clearLiveSubagents();
 	db.close();
-	rmSync(testDir, {recursive: true, force: true});
+	rmSync(
+		testDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-async function indexSession(transcript = ""): Promise<void> {
+async function indexSession(transcript = ""): Promise<void>
+{
 	const projectDir = join(testDir, PROJECT_ID);
-	mkdirSync(projectDir, {recursive: true});
+	mkdirSync(
+		projectDir,
+		{
+			recursive: true,
+		},
+	);
 	const transcriptPath = join(projectDir, "session-test-100.jsonl");
 	writeFileSync(transcriptPath, transcript);
 	writeFileSync(
@@ -70,9 +98,12 @@ async function indexSession(transcript = ""): Promise<void> {
 	await indexSessionsIndex(db.index, projectDir, PROJECT_ID);
 }
 
-describe("toActiveSessionPayload", () => {
-	it("maps an ActiveSessionEntry into an ActiveSessionPayload 1:1", () => {
-		const entry: ActiveSessionEntry = {
+describe("toActiveSessionPayload", () =>
+{
+	it("maps an ActiveSessionEntry into an ActiveSessionPayload 1:1", () =>
+	{
+		const entry: ActiveSessionEntry =
+		{
 			sessionId: "abc-123",
 			state: "working",
 			cwd: "/home/user/project",
@@ -91,48 +122,63 @@ describe("toActiveSessionPayload", () => {
 
 		const payload = toActiveSessionPayload(entry);
 
-		expect(payload).toStrictEqual({
-			sessionId: "abc-123",
-			cwd: "/home/user/project",
-			model: "claude-sonnet-4-6",
-			startedAt: 946_598_400_000,
-			lastActivity: 946_598_401_000,
-		});
+		expect(payload).toStrictEqual(
+			{
+				sessionId: "abc-123",
+				cwd: "/home/user/project",
+				model: "claude-sonnet-4-6",
+				startedAt: 946_598_400_000,
+				lastActivity: 946_598_401_000,
+			},
+		);
 	});
 });
 
-describe("buildSessionSummaryPayloadFromDb", () => {
-	it("returns a SessionSummaryPayload for a known session id", async () => {
+describe("buildSessionSummaryPayloadFromDb", () =>
+{
+	it("returns a SessionSummaryPayload for a known session id", async () =>
+	{
 		await indexSession();
 
 		const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
 
-		expect(payload).toStrictEqual({
-			id: "session-test-100",
-			title: "Fixed the test auth issue",
-			summary: "Fixed the test auth issue",
-			mtime: "1999-12-31T00:00:00.000Z",
-			created: "1999-12-31T00:00:00.000Z",
-			// indexSessionsIndex no longer trusts the sessions-index messageCount;
-			// the transcript is empty so the canonical count is 0.
-			messageCount: 0,
-			project: PROJECT_ID,
-			projectName: "alice-project",
-			gitBranch: undefined,
-			archived: false,
-			state: "ended",
-			bucket: "done",
-			liveAgentCount: 0,
-			unseen: false,
-			blockedSince: null,
-		});
+		expect(payload).toStrictEqual(
+			{
+				id: "session-test-100",
+				title: "Fixed the test auth issue",
+				summary: "Fixed the test auth issue",
+				mtime: "1999-12-31T00:00:00.000Z",
+				created: "1999-12-31T00:00:00.000Z",
+				// indexSessionsIndex no longer trusts the sessions-index messageCount;
+				// the transcript is empty so the canonical count is 0.
+				messageCount: 0,
+				project: PROJECT_ID,
+				projectName: "alice-project",
+				gitBranch: undefined,
+				archived: false,
+				state: "ended",
+				bucket: "done",
+				liveAgentCount: 0,
+				unseen: false,
+				blockedSince: null,
+			},
+		);
 	});
 
-	it("carries the CLI's AI title alongside a /rename title", async () => {
+	it("carries the CLI's AI title alongside a /rename title", async () =>
+	{
 		await indexSession(
 			[
-				{type: "custom-title", customTitle: "claude.ai", sessionId: "session-test-100"},
-				{type: "ai-title", aiTitle: "Parallel do-task workstreams", sessionId: "session-test-100"},
+				{
+					type: "custom-title",
+					customTitle: "claude.ai",
+					sessionId: "session-test-100",
+				},
+				{
+					type: "ai-title",
+					aiTitle: "Parallel do-task workstreams",
+					sessionId: "session-test-100",
+				},
 			]
 				.map((record) => JSON.stringify(record))
 				.join("\n") + "\n",
@@ -141,25 +187,49 @@ describe("buildSessionSummaryPayloadFromDb", () => {
 
 		const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
 
-		expect({title: payload?.title, aiTitle: payload?.aiTitle}).toStrictEqual({
-			title: "claude.ai",
-			aiTitle: "Parallel do-task workstreams",
-		});
+		expect(
+			{
+				title: payload?.title,
+				aiTitle: payload?.aiTitle,
+			},
+		).toStrictEqual(
+			{
+				title: "claude.ai",
+				aiTitle: "Parallel do-task workstreams",
+			},
+		);
 	});
 
-	it("carries the first line of the last prompt the user typed, skipping tool results and meta records", async () => {
-		const user = (content: unknown, extra: Record<string, unknown> = {}) => ({
+	it("carries the first line of the last prompt the user typed, skipping tool results and meta records", async () =>
+	{
+		const user = (content: unknown, extra: Record<string, unknown> = {}) => (
+		{
 			type: "user",
 			sessionId: "session-test-100",
-			message: {role: "user", content},
+			message:
+			{
+				role: "user",
+				content,
+			},
 			...extra,
 		});
 		await indexSession(
 			[
 				user("Fix the test login bug"),
 				user(`Run the tests\nand report back ${"x".repeat(300)}`),
-				user([{type: "tool_result", tool_use_id: "t1", content: "ok"}]),
-				user("Caveat: injected", {isMeta: true}),
+				user([
+					{
+						type: "tool_result",
+						tool_use_id: "t1",
+						content: "ok",
+					},
+				]),
+				user(
+					"Caveat: injected",
+					{
+						isMeta: true,
+					},
+				),
 			]
 				.map((record) => JSON.stringify(record))
 				.join("\n") + "\n",
@@ -169,289 +239,437 @@ describe("buildSessionSummaryPayloadFromDb", () => {
 		expect(buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.lastUserMessage).toBe("Run the tests");
 	});
 
-	it("trims a long last prompt to 200 characters", async () => {
+	it("trims a long last prompt to 200 characters", async () =>
+	{
 		await indexSession(
-			JSON.stringify({
-				type: "user",
-				sessionId: "session-test-100",
-				message: {role: "user", content: "y".repeat(300)},
-			}) + "\n",
+			JSON.stringify(
+				{
+					type: "user",
+					sessionId: "session-test-100",
+					message:
+					{
+						role: "user",
+						content: "y".repeat(300),
+					},
+				},
+			) + "\n",
 		);
 		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
 
 		expect(buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.lastUserMessage).toBe("y".repeat(200));
 	});
 
-	it("uses the active-session state when no durable approval exists", async () => {
+	it("uses the active-session state when no durable approval exists", async () =>
+	{
 		await indexSession();
-		markSessionActive("session-test-100", {cwd: PROJECT_PATH, model: "claude-test-model"});
+		markSessionActive(
+			"session-test-100",
+			{
+				cwd: PROJECT_PATH,
+				model: "claude-test-model",
+			},
+		);
 		setSessionState("session-test-100", "working");
 
 		const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
 
-		expect(payload).toStrictEqual({
-			id: "session-test-100",
-			title: "Fixed the test auth issue",
-			summary: "Fixed the test auth issue",
-			mtime: "1999-12-31T00:00:00.000Z",
-			created: "1999-12-31T00:00:00.000Z",
-			// indexSessionsIndex no longer trusts the sessions-index messageCount;
-			// the transcript is empty so the canonical count is 0.
-			messageCount: 0,
-			project: PROJECT_ID,
-			projectName: "alice-project",
-			gitBranch: undefined,
-			archived: false,
-			state: "working",
-			bucket: "working",
-			liveAgentCount: 0,
-			unseen: false,
-			blockedSince: null,
-		});
+		expect(payload).toStrictEqual(
+			{
+				id: "session-test-100",
+				title: "Fixed the test auth issue",
+				summary: "Fixed the test auth issue",
+				mtime: "1999-12-31T00:00:00.000Z",
+				created: "1999-12-31T00:00:00.000Z",
+				// indexSessionsIndex no longer trusts the sessions-index messageCount;
+				// the transcript is empty so the canonical count is 0.
+				messageCount: 0,
+				project: PROJECT_ID,
+				projectName: "alice-project",
+				gitBranch: undefined,
+				archived: false,
+				state: "working",
+				bucket: "working",
+				liveAgentCount: 0,
+				unseen: false,
+				blockedSince: null,
+			},
+		);
 	});
 
-	it("prefers a durable pending approval over the active-session state", async () => {
+	it("prefers a durable pending approval over the active-session state", async () =>
+	{
 		await indexSession(
-			JSON.stringify({
-				type: "assistant",
-				sessionId: "session-test-100",
-				timestamp: "2000-01-01T00:00:00.000Z",
-				message: {
-					role: "assistant",
-					content: [
-						{
-							type: "tool_use",
-							id: "tool-test-100",
-							name: "AskUserQuestion",
-							input: {question: "Continue the test?"},
-						},
-					],
+			JSON.stringify(
+				{
+					type: "assistant",
+					sessionId: "session-test-100",
+					timestamp: "2000-01-01T00:00:00.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "tool-test-100",
+								name: "AskUserQuestion",
+								input:
+								{
+									question: "Continue the test?",
+								},
+							},
+						],
+					},
 				},
-			}) + "\n",
+			) + "\n",
 		);
-		markSessionActive("session-test-100", {cwd: PROJECT_PATH, model: "claude-test-model"});
+		markSessionActive(
+			"session-test-100",
+			{
+				cwd: PROJECT_PATH,
+				model: "claude-test-model",
+			},
+		);
 		setSessionState("session-test-100", "idle");
 		await initPendingApprovalsCache(db.index);
 
 		const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
 
-		expect(payload).toStrictEqual({
-			id: "session-test-100",
-			title: "Fixed the test auth issue",
-			summary: "Fixed the test auth issue",
-			mtime: "1999-12-31T00:00:00.000Z",
-			created: "1999-12-31T00:00:00.000Z",
-			// indexSessionsIndex no longer trusts the sessions-index messageCount;
-			// the transcript is empty so the canonical count is 0.
-			messageCount: 0,
-			project: PROJECT_ID,
-			projectName: "alice-project",
-			gitBranch: undefined,
-			archived: false,
-			state: "waiting",
-			bucket: "blocked",
-			liveAgentCount: 0,
-			unseen: false,
-			blockedSince: "2000-01-01T00:00:00.000Z",
-		});
+		expect(payload).toStrictEqual(
+			{
+				id: "session-test-100",
+				title: "Fixed the test auth issue",
+				summary: "Fixed the test auth issue",
+				mtime: "1999-12-31T00:00:00.000Z",
+				created: "1999-12-31T00:00:00.000Z",
+				// indexSessionsIndex no longer trusts the sessions-index messageCount;
+				// the transcript is empty so the canonical count is 0.
+				messageCount: 0,
+				project: PROJECT_ID,
+				projectName: "alice-project",
+				gitBranch: undefined,
+				archived: false,
+				state: "waiting",
+				bucket: "blocked",
+				liveAgentCount: 0,
+				unseen: false,
+				blockedSince: "2000-01-01T00:00:00.000Z",
+			},
+		);
 	});
 
-	it("needs input for an ended session still blocked on a permission prompt", async () => {
+	it("needs input for an ended session still blocked on a permission prompt", async () =>
+	{
 		await indexSession();
 		clearAllNotifications();
-		addNotification(db.index, {
-			sessionId: "session-test-100",
-			cwd: PROJECT_PATH,
-			message: "Claude needs your permission to use Bash",
-			notificationType: "permission_prompt",
-		});
+		addNotification(
+			db.index,
+			{
+				sessionId: "session-test-100",
+				cwd: PROJECT_PATH,
+				message: "Claude needs your permission to use Bash",
+				notificationType: "permission_prompt",
+			},
+		);
 
 		const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
 		clearAllNotifications();
 
-		expect({state: payload?.state, bucket: payload?.bucket}).toStrictEqual({state: "waiting", bucket: "blocked"});
+		expect(
+			{
+				state: payload?.state,
+				bucket: payload?.bucket,
+			},
+		).toStrictEqual(
+			{
+				state: "waiting",
+				bucket: "blocked",
+			},
+		);
 	});
 
-	it("keeps an idle session working while its subagents are live", async () => {
+	it("keeps an idle session working while its subagents are live", async () =>
+	{
 		await indexSession();
-		markSessionActive("session-test-100", {cwd: PROJECT_PATH, model: "claude-test-model"});
+		markSessionActive(
+			"session-test-100",
+			{
+				cwd: PROJECT_PATH,
+				model: "claude-test-model",
+			},
+		);
 		setSessionState("session-test-100", "idle");
-		addLiveSubagent({
-			parentSessionId: "session-test-100",
-			agentId: "agent-test-1",
-			agentType: "Explore",
-			description: "Search the test fixtures",
-		});
+		addLiveSubagent(
+			{
+				parentSessionId: "session-test-100",
+				agentId: "agent-test-1",
+				agentType: "Explore",
+				description: "Search the test fixtures",
+			},
+		);
 
 		const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
 
-		expect(payload).toStrictEqual({
-			id: "session-test-100",
-			title: "Fixed the test auth issue",
-			summary: "Fixed the test auth issue",
-			mtime: "1999-12-31T00:00:00.000Z",
-			created: "1999-12-31T00:00:00.000Z",
-			messageCount: 0,
-			project: PROJECT_ID,
-			projectName: "alice-project",
-			gitBranch: undefined,
-			archived: false,
-			state: "idle",
-			bucket: "working",
-			liveAgentCount: 1,
-			unseen: false,
-			blockedSince: null,
-		});
+		expect(payload).toStrictEqual(
+			{
+				id: "session-test-100",
+				title: "Fixed the test auth issue",
+				summary: "Fixed the test auth issue",
+				mtime: "1999-12-31T00:00:00.000Z",
+				created: "1999-12-31T00:00:00.000Z",
+				messageCount: 0,
+				project: PROJECT_ID,
+				projectName: "alice-project",
+				gitBranch: undefined,
+				archived: false,
+				state: "idle",
+				bucket: "working",
+				liveAgentCount: 1,
+				unseen: false,
+				blockedSince: null,
+			},
+		);
 	});
 
-	it("returns null when the session id is not in the db", () => {
+	it("returns null when the session id is not in the db", () =>
+	{
 		const payload = buildSessionSummaryPayloadFromDb(db.index, "does-not-exist");
 
 		expect(payload).toBe(null);
 	});
 });
 
-describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () => {
+describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
+{
 	const askUserQuestionTranscript =
-		JSON.stringify({
-			type: "assistant",
-			sessionId: "session-test-100",
-			timestamp: "2000-01-01T00:00:00.000Z",
-			message: {
-				role: "assistant",
-				content: [{type: "tool_use", id: "tool-test-100", name: "AskUserQuestion", input: {question: "Go?"}}],
+		JSON.stringify(
+			{
+				type: "assistant",
+				sessionId: "session-test-100",
+				timestamp: "2000-01-01T00:00:00.000Z",
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "tool-test-100",
+							name: "AskUserQuestion",
+							input:
+							{
+								question: "Go?",
+							},
+						},
+					],
+				},
 			},
-		}) + "\n";
+		) + "\n";
 
 	async function registerProcess(
 		status: "idle" | "busy" | "waiting",
 		statusUpdatedAt: number,
 		extra: Record<string, unknown> = {},
-	): Promise<void> {
+	): Promise<void>
+	{
 		const dir = join(testDir, "sessions");
-		mkdirSync(dir, {recursive: true});
+		mkdirSync(
+			dir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(
 			join(dir, "4242.json"),
-			JSON.stringify({
-				pid: 4242,
-				sessionId: "session-test-100",
-				cwd: PROJECT_PATH,
-				startedAt: 946_598_400_000,
-				procStart: "Fri Dec 31 00:00:00 1999",
-				version: "2.0.0",
-				kind: "interactive",
-				entrypoint: "cli",
-				pidDomain: "darwin",
-				status,
-				...(status === "waiting" ? {waitingFor: "input needed"} : {}),
-				updatedAt: statusUpdatedAt,
-				statusUpdatedAt,
-				...extra,
-			}),
+			JSON.stringify(
+				{
+					pid: 4242,
+					sessionId: "session-test-100",
+					cwd: PROJECT_PATH,
+					startedAt: 946_598_400_000,
+					procStart: "Fri Dec 31 00:00:00 1999",
+					version: "2.0.0",
+					kind: "interactive",
+					entrypoint: "cli",
+					pidDomain: "darwin",
+					status,
+					...(status === "waiting"
+						?
+							{
+								waitingFor: "input needed",
+							}
+						: {}),
+					updatedAt: statusUpdatedAt,
+					statusUpdatedAt,
+					...extra,
+				},
+			),
 		);
-		await refreshSessionRegistry(dir, {isAlive: () => true, readStartTimes: async () => Promise.resolve(null)});
+		await refreshSessionRegistry(
+			dir,
+			{
+				isAlive: () => true,
+				readStartTimes: async () => Promise.resolve(null),
+			},
+		);
 	}
 
-	function stateOf(): {
+	function stateOf():
+	{
 		state: string | undefined;
 		bucket: string | undefined;
 		blockedSince: string | null | undefined;
-	} {
+	}
+	{
 		const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
-		return {state: payload?.state, bucket: payload?.bucket, blockedSince: payload?.blockedSince};
+		return {
+			state: payload?.state,
+			bucket: payload?.bucket,
+			blockedSince: payload?.blockedSince,
+		};
 	}
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		clearSessionRegistry();
 	});
 
-	it("needs input while the registry says waiting, blocked since the status write", async () => {
+	it("needs input while the registry says waiting, blocked since the status write", async () =>
+	{
 		await indexSession();
 		await registerProcess("waiting", 946_598_402_000);
 
-		expect(stateOf()).toStrictEqual({
-			state: "waiting",
-			bucket: "blocked",
-			blockedSince: "1999-12-31T00:00:02.000Z",
-		});
+		expect(stateOf()).toStrictEqual(
+			{
+				state: "waiting",
+				bucket: "blocked",
+				blockedSince: "1999-12-31T00:00:02.000Z",
+			},
+		);
 	});
 
-	it("is working while the registry says busy, and idle (not ended) when idle", async () => {
+	it("is working while the registry says busy, and idle (not ended) when idle", async () =>
+	{
 		await indexSession();
 		await registerProcess("busy", 946_598_402_000);
 		const busy = stateOf();
 		await registerProcess("idle", 946_598_403_000);
 
 		expect([busy, stateOf()]).toStrictEqual([
-			{state: "working", bucket: "working", blockedSince: null},
-			{state: "idle", bucket: "done", blockedSince: null},
+			{
+				state: "working",
+				bucket: "working",
+				blockedSince: null,
+			},
+			{
+				state: "idle",
+				bucket: "done",
+				blockedSince: null,
+			},
 		]);
 	});
 
-	it("carries the live process's Remote Control state from its registry bridge id, and none once it ends", async () => {
+	it("carries the live process's Remote Control state from its registry bridge id, and none once it ends", async () =>
+	{
 		await indexSession();
 		const remoteControlState = () =>
 			buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.remoteControlState;
 		const ended = remoteControlState();
-		await registerProcess("idle", 946_598_402_000, {bridgeSessionId: "session_bridge"});
+		await registerProcess(
+			"idle",
+			946_598_402_000,
+			{
+				bridgeSessionId: "session_bridge",
+			},
+		);
 		const on = remoteControlState();
-		await registerProcess("idle", 946_598_403_000, {bridgeSessionId: null});
+		await registerProcess(
+			"idle",
+			946_598_403_000,
+			{
+				bridgeSessionId: null,
+			},
+		);
 
 		expect([ended, on, remoteControlState()]).toStrictEqual([undefined, "on", "off"]);
 	});
 
-	it("ignores an orphaned transcript question while the registry says the process is idle", async () => {
+	it("ignores an orphaned transcript question while the registry says the process is idle", async () =>
+	{
 		await indexSession(askUserQuestionTranscript);
 		await initPendingApprovalsCache(db.index);
 		await registerProcess("idle", 946_598_402_000);
 
-		expect(stateOf()).toStrictEqual({state: "idle", bucket: "done", blockedSince: null});
+		expect(stateOf()).toStrictEqual(
+			{
+				state: "idle",
+				bucket: "done",
+				blockedSince: null,
+			},
+		);
 	});
 
-	it("blocks on a real-shaped registry file waiting on a permission prompt", async () => {
+	it("blocks on a real-shaped registry file waiting on a permission prompt", async () =>
+	{
 		await indexSession();
 		const dir = join(testDir, "sessions");
-		mkdirSync(dir, {recursive: true});
+		mkdirSync(
+			dir,
+			{
+				recursive: true,
+			},
+		);
 		// Key order and fields as the CLI writes them (2026-10), values sanitized.
 		writeFileSync(
 			join(dir, "29232.json"),
-			JSON.stringify({
-				pid: 29232,
-				sessionId: "session-test-100",
-				cwd: PROJECT_PATH,
-				startedAt: 946_598_400_000,
-				procStart: "Fri Dec 31 00:00:00 1999",
-				version: "2.0.0",
-				peerProtocol: 1,
-				peerFeatures: ["notify_idle", "reply_across_default_dirs", "artifact_yield"],
-				kind: "interactive",
-				entrypoint: "cli",
-				pidDomain: "darwin",
-				messagingSocketPath: "/tmp/test/alice.sock",
-				name: "test-session",
-				nameSource: "auto",
-				nameSince: 946_598_400_000,
-				updatedAt: 946_598_402_000,
-				status: "waiting",
-				statusUpdatedAt: 946_598_402_000,
-				bridgeSessionId: "session_test0001",
-				waitingFor: "permission prompt",
-			}),
+			JSON.stringify(
+				{
+					pid: 29232,
+					sessionId: "session-test-100",
+					cwd: PROJECT_PATH,
+					startedAt: 946_598_400_000,
+					procStart: "Fri Dec 31 00:00:00 1999",
+					version: "2.0.0",
+					peerProtocol: 1,
+					peerFeatures: ["notify_idle", "reply_across_default_dirs", "artifact_yield"],
+					kind: "interactive",
+					entrypoint: "cli",
+					pidDomain: "darwin",
+					messagingSocketPath: "/tmp/test/alice.sock",
+					name: "test-session",
+					nameSource: "auto",
+					nameSince: 946_598_400_000,
+					updatedAt: 946_598_402_000,
+					status: "waiting",
+					statusUpdatedAt: 946_598_402_000,
+					bridgeSessionId: "session_test0001",
+					waitingFor: "permission prompt",
+				},
+			),
 		);
-		await refreshSessionRegistry(dir, {isAlive: () => true, readStartTimes: async () => Promise.resolve(null)});
+		await refreshSessionRegistry(
+			dir,
+			{
+				isAlive: () => true,
+				readStartTimes: async () => Promise.resolve(null),
+			},
+		);
 
-		expect({
-			...stateOf(),
-			awaitingPermission: buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.awaitingPermission,
-		}).toStrictEqual({
-			state: "waiting",
-			bucket: "blocked",
-			blockedSince: "1999-12-31T00:00:02.000Z",
-			awaitingPermission: true,
-		});
+		expect(
+			{
+				...stateOf(),
+				awaitingPermission: buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.awaitingPermission,
+			},
+		).toStrictEqual(
+			{
+				state: "waiting",
+				bucket: "blocked",
+				blockedSince: "1999-12-31T00:00:02.000Z",
+				awaitingPermission: true,
+			},
+		);
 	});
 
-	it("flags no permission wait while the registry waits for input", async () => {
+	it("flags no permission wait while the registry waits for input", async () =>
+	{
 		await indexSession();
 		await registerProcess("waiting", 946_598_402_000);
 
@@ -460,9 +678,19 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		).toBe(false);
 	});
 
-	it("reads a stale busy registry status as idle once the transcript records the turn ending after it", async () => {
+	it("reads a stale busy registry status as idle once the transcript records the turn ending after it", async () =>
+	{
 		const turnEnd = (timestamp: string) =>
-			`${JSON.stringify({type: "system", subtype: "turn_duration", durationMs: 1000, timestamp, uuid: "u1", sessionId: "session-test-100"})}\n`;
+			`${JSON.stringify(
+				{
+					type: "system",
+					subtype: "turn_duration",
+					durationMs: 1000,
+					timestamp,
+					uuid: "u1",
+					sessionId: "session-test-100",
+				},
+			)}\n`;
 		await indexSession(turnEnd("1999-12-31T00:01:02.000Z"));
 		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
 		await registerProcess("busy", 946_598_402_000);
@@ -473,31 +701,72 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		expect([ended, stateOf().state]).toStrictEqual(["idle", "working"]);
 	});
 
-	it("flags an unseen error when the last turn ended in an API error, and clears it once the session is seen", async () => {
+	it("flags an unseen error when the last turn ended in an API error, and clears it once the session is seen", async () =>
+	{
 		const record = (fields: Record<string, unknown>) =>
-			`${JSON.stringify({sessionId: "session-test-100", uuid: `u-${String(fields["timestamp"])}`, ...fields})}\n`;
-		const prompt = record({
-			type: "user",
-			timestamp: "1999-12-31T00:00:01.000Z",
-			message: {role: "user", content: "Write the story"},
-		});
-		const apiError = record({
-			type: "assistant",
-			timestamp: "1999-12-31T00:00:02.000Z",
-			isApiErrorMessage: true,
-			error: "rate_limit",
-			message: {role: "assistant", content: [{type: "text", text: "You've hit your weekly limit"}]},
-		});
-		const reply = record({
-			type: "assistant",
-			timestamp: "1999-12-31T00:00:03.000Z",
-			message: {role: "assistant", content: [{type: "text", text: "Here is the story"}]},
-		});
-		const errorOf = () => {
+			`${JSON.stringify(
+				{
+					sessionId: "session-test-100",
+					uuid: `u-${String(fields["timestamp"])}`,
+					...fields,
+				},
+			)}\n`;
+		const prompt = record(
+			{
+				type: "user",
+				timestamp: "1999-12-31T00:00:01.000Z",
+				message:
+				{
+					role: "user",
+					content: "Write the story",
+				},
+			},
+		);
+		const apiError = record(
+			{
+				type: "assistant",
+				timestamp: "1999-12-31T00:00:02.000Z",
+				isApiErrorMessage: true,
+				error: "rate_limit",
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "You've hit your weekly limit",
+						},
+					],
+				},
+			},
+		);
+		const reply = record(
+			{
+				type: "assistant",
+				timestamp: "1999-12-31T00:00:03.000Z",
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "Here is the story",
+						},
+					],
+				},
+			},
+		);
+		const errorOf = () =>
+		{
 			const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
-			return {bucket: payload?.bucket, unseenError: payload?.unseenError, erroredAt: payload?.erroredAt};
+			return {
+				bucket: payload?.bucket,
+				unseenError: payload?.unseenError,
+				erroredAt: payload?.erroredAt,
+			};
 		};
-		const index = async (transcript: string) => {
+		const index = async (transcript: string) =>
+		{
 			await indexSession(transcript);
 			await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
 		};
@@ -510,105 +779,241 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		await index(prompt + apiError + reply);
 		markSessionUnreviewed(db.index, "session-test-100", 2);
 		const recovered = errorOf();
-		const retry = record({
-			type: "user",
-			timestamp: "1999-12-31T00:00:03.000Z",
-			message: {role: "user", content: "Try again"},
-		});
+		const retry = record(
+			{
+				type: "user",
+				timestamp: "1999-12-31T00:00:03.000Z",
+				message:
+				{
+					role: "user",
+					content: "Try again",
+				},
+			},
+		);
 		await index(prompt + apiError + retry);
 		markSessionUnreviewed(db.index, "session-test-100", 2);
 		const retried = errorOf();
 
-		expect({unseen, seen, recovered, retried}).toStrictEqual({
-			unseen: {bucket: "blocked", unseenError: true, erroredAt: "1999-12-31T00:00:02.000Z"},
-			seen: {bucket: "done", unseenError: undefined, erroredAt: undefined},
-			recovered: {bucket: "done", unseenError: undefined, erroredAt: undefined},
-			retried: {bucket: "done", unseenError: undefined, erroredAt: undefined},
-		});
+		expect(
+			{
+				unseen,
+				seen,
+				recovered,
+				retried,
+			},
+		).toStrictEqual(
+			{
+				unseen:
+				{
+					bucket: "blocked",
+					unseenError: true,
+					erroredAt: "1999-12-31T00:00:02.000Z",
+				},
+				seen:
+				{
+					bucket: "done",
+					unseenError: undefined,
+					erroredAt: undefined,
+				},
+				recovered:
+				{
+					bucket: "done",
+					unseenError: undefined,
+					erroredAt: undefined,
+				},
+				retried:
+				{
+					bucket: "done",
+					unseenError: undefined,
+					erroredAt: undefined,
+				},
+			},
+		);
 	});
 
-	it("titles a bridged session named only by its pane name from its conversation", async () => {
+	it("titles a bridged session named only by its pane name from its conversation", async () =>
+	{
 		// The worker skips sessions idle for more than two weeks, so the transcript was written a minute ago.
 		const timestamp = new Date(Date.now() - 60_000).toISOString();
 		const record = (fields: Record<string, unknown>) =>
-			`${JSON.stringify({sessionId: "session-test-100", timestamp, ...fields})}\n`;
+			`${JSON.stringify(
+				{
+					sessionId: "session-test-100",
+					timestamp,
+					...fields,
+				},
+			)}\n`;
 		await indexSession(
-			record({type: "custom-title", customTitle: "alice-project"}) +
-				record({type: "bridge-session", bridgeSessionId: "session_test_bridge", lastSequenceNum: 0}) +
-				record({type: "user", uuid: "u-1", message: {role: "user", content: "Review pull request 910"}}) +
-				record({
-					type: "assistant",
-					uuid: "a-1",
-					message: {role: "assistant", content: [{type: "text", text: "It looks good."}]},
-				}),
+			record(
+				{
+					type: "custom-title",
+					customTitle: "alice-project",
+				},
+			) +
+				record(
+					{
+						type: "bridge-session",
+						bridgeSessionId: "session_test_bridge",
+						lastSequenceNum: 0,
+					},
+				) +
+				record(
+					{
+						type: "user",
+						uuid: "u-1",
+						message:
+						{
+							role: "user",
+							content: "Review pull request 910",
+						},
+					},
+				) +
+				record(
+					{
+						type: "assistant",
+						uuid: "a-1",
+						message:
+						{
+							role: "assistant",
+							content: [
+								{
+									type: "text",
+									text: "It looks good.",
+								},
+							],
+						},
+					},
+				),
 		);
 		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
-		db.index.update(schema.sessions).set({cwd: PROJECT_PATH}).run();
-		let resolve = () => {};
-		const titled = new Promise<undefined>((done) => {
-			resolve = () => {
+		db.index
+			.update(schema.sessions)
+			.set(
+				{
+					cwd: PROJECT_PATH,
+				},
+			)
+			.run();
+		let resolve = () =>
+		{
+		};
+		const titled = new Promise<undefined>((done) =>
+		{
+			resolve = () =>
+			{
 				done(undefined);
 			};
 		});
-		const stop = startSessionTitleWorker({
-			summariesDb: db.summaries,
-			projectsDir: testDir,
-			runModel: async () => Promise.resolve("Alice project pull request 910"),
-			onTitle: () => {
-				resolve();
+		const stop = startSessionTitleWorker(
+			{
+				summariesDb: db.summaries,
+				projectsDir: testDir,
+				runModel: async () => Promise.resolve("Alice project pull request 910"),
+				onTitle: () =>
+				{
+					resolve();
+				},
 			},
-		});
-		try {
+		);
+		try
+		{
 			const titleOf = () => buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.title;
 			const before = titleOf();
 			await titled;
 
-			expect({before, after: titleOf()}).toStrictEqual({
-				before: "alice-project",
-				after: "Alice project pull request 910",
-			});
-		} finally {
+			expect(
+				{
+					before,
+					after: titleOf(),
+				},
+			).toStrictEqual(
+				{
+					before: "alice-project",
+					after: "Alice project pull request 910",
+				},
+			);
+		}
+		finally
+		{
 			stop();
 		}
 	});
 
-	it("puts an unread session in Needs input once its last turn's verdict asks for input", async () => {
+	it("puts an unread session in Needs input once its last turn's verdict asks for input", async () =>
+	{
 		// The worker skips turns older than two weeks, so this turn ends a minute ago.
 		const turnEndedAt = new Date(Date.now() - 60_000).toISOString();
 		const record = (fields: Record<string, unknown>) =>
-			`${JSON.stringify({sessionId: "session-test-100", ...fields})}\n`;
+			`${JSON.stringify(
+				{
+					sessionId: "session-test-100",
+					...fields,
+				},
+			)}\n`;
 		await indexSession(
-			record({type: "user", uuid: "u-1", timestamp: turnEndedAt, message: {role: "user", content: "Fix it"}}) +
-				record({
-					type: "assistant",
-					uuid: "a-1",
+			record(
+				{
+					type: "user",
+					uuid: "u-1",
 					timestamp: turnEndedAt,
-					message: {role: "assistant", content: [{type: "text", text: "Fixed. Your call: push it?"}]},
-				}) +
-				record({
-					type: "system",
-					subtype: "turn_duration",
-					durationMs: 1000,
-					uuid: "s-1",
-					timestamp: turnEndedAt,
-				}),
+					message:
+					{
+						role: "user",
+						content: "Fix it",
+					},
+				},
+			) +
+				record(
+					{
+						type: "assistant",
+						uuid: "a-1",
+						timestamp: turnEndedAt,
+						message:
+						{
+							role: "assistant",
+							content: [
+								{
+									type: "text",
+									text: "Fixed. Your call: push it?",
+								},
+							],
+						},
+					},
+				) +
+				record(
+					{
+						type: "system",
+						subtype: "turn_duration",
+						durationMs: 1000,
+						uuid: "s-1",
+						timestamp: turnEndedAt,
+					},
+				),
 		);
 		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
-		let resolve = () => {};
-		const judged = new Promise<undefined>((done) => {
-			resolve = () => {
+		let resolve = () =>
+		{
+		};
+		const judged = new Promise<undefined>((done) =>
+		{
+			resolve = () =>
+			{
 				done(undefined);
 			};
 		});
-		const stop = startTurnVerdictWorker({
-			summariesDb: db.summaries,
-			projectsDir: testDir,
-			runModel: async () => Promise.resolve("NEEDS_INPUT"),
-			onVerdict: () => {
-				resolve();
+		const stop = startTurnVerdictWorker(
+			{
+				summariesDb: db.summaries,
+				projectsDir: testDir,
+				runModel: async () => Promise.resolve("NEEDS_INPUT"),
+				onVerdict: () =>
+				{
+					resolve();
+				},
 			},
-		});
-		try {
+		);
+		try
+		{
 			const bucketOf = () => buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.bucket;
 			markSessionUnreviewed(db.index, "session-test-100", 1);
 			const beforeVerdict = bucketOf();
@@ -617,22 +1022,45 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 			markSessionReviewed(db.index, "session-test-100", 1);
 			const seen = bucketOf();
 
-			expect({beforeVerdict, unseen, seen}).toStrictEqual({
-				beforeVerdict: "done",
-				unseen: "blocked",
-				seen: "done",
-			});
-		} finally {
+			expect(
+				{
+					beforeVerdict,
+					unseen,
+					seen,
+				},
+			).toStrictEqual(
+				{
+					beforeVerdict: "done",
+					unseen: "blocked",
+					seen: "done",
+				},
+			);
+		}
+		finally
+		{
 			stop();
 		}
 	});
 
-	it("lets a hook state written after the registry status win", async () => {
+	it("lets a hook state written after the registry status win", async () =>
+	{
 		await indexSession();
 		await registerProcess("waiting", 946_598_402_000);
-		markSessionActive("session-test-100", {cwd: PROJECT_PATH, model: "claude-test-model"});
+		markSessionActive(
+			"session-test-100",
+			{
+				cwd: PROJECT_PATH,
+				model: "claude-test-model",
+			},
+		);
 		setSessionState("session-test-100", "working");
 
-		expect(stateOf()).toStrictEqual({state: "working", bucket: "working", blockedSince: null});
+		expect(stateOf()).toStrictEqual(
+			{
+				state: "working",
+				bucket: "working",
+				blockedSince: null,
+			},
+		);
 	});
 });

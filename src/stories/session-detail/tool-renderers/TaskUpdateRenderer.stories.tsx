@@ -2,7 +2,13 @@ import type {Meta, StoryObj} from "@storybook/react-vite";
 import {TaskChecklistRenderer} from "../../../components/tool-renderers/task-checklist-renderer";
 import type {ClientToolCall} from "../../../components/tool-renderers/types";
 
-function makeToolCall(overrides: Partial<ClientToolCall> & {input: ClientToolCall["input"]}): ClientToolCall {
+function makeToolCall(
+	overrides: Partial<ClientToolCall> &
+	{
+		input: ClientToolCall["input"];
+	},
+): ClientToolCall
+{
 	return {
 		id: "tool-task-update-1",
 		name: "TaskUpdate",
@@ -12,7 +18,8 @@ function makeToolCall(overrides: Partial<ClientToolCall> & {input: ClientToolCal
 	};
 }
 
-const meta = {
+const meta =
+{
 	title: "Session Detail/Tool Renderers/TaskUpdateRenderer",
 	component: TaskChecklistRenderer,
 } satisfies Meta<typeof TaskChecklistRenderer>;
@@ -20,34 +27,55 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Success: Story = {
-	args: {
-		toolCall: makeToolCall({
-			input: {taskId: "7", status: "completed"},
-			result: "Updated task #7 status",
-		}),
-	},
-};
-
-export const Error: Story = {
-	args: {
-		toolCall: makeToolCall({
-			input: {taskId: "999", status: "completed"},
-			result: "Error: Task #999 not found",
-			isError: true,
-		}),
-	},
-};
-
-export const InProgress: Story = {
-	args: {
-		toolCall: makeToolCall({
-			input: {
-				taskId: "3",
-				status: "in_progress",
-				activeForm: "Running database migrations",
+export const Success: Story =
+{
+	args:
+	{
+		toolCall: makeToolCall(
+			{
+				input:
+				{
+					taskId: "7",
+					status: "completed",
+				},
+				result: "Updated task #7 status",
 			},
-			result: "Updated task #3 status, activeForm",
-		}),
+		),
+	},
+};
+
+export const Error: Story =
+{
+	args:
+	{
+		toolCall: makeToolCall(
+			{
+				input:
+				{
+					taskId: "999",
+					status: "completed",
+				},
+				result: "Error: Task #999 not found",
+				isError: true,
+			},
+		),
+	},
+};
+
+export const InProgress: Story =
+{
+	args:
+	{
+		toolCall: makeToolCall(
+			{
+				input:
+				{
+					taskId: "3",
+					status: "in_progress",
+					activeForm: "Running database migrations",
+				},
+				result: "Updated task #3 status, activeForm",
+			},
+		),
 	},
 };

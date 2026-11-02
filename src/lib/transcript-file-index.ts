@@ -15,7 +15,8 @@ import {collectClaudeChapters, type ClaudeChapterEntry} from "./session-chapters
  * Lines are what `split("\n").filter((line) => line.trim())` would yield, so
  * record indices match the rest of the transcript API.
  */
-export interface TranscriptFileIndex {
+export interface TranscriptFileIndex
+{
 	/** File size, mtime and inode the index was built for. */
 	size: number;
 	mtimeMs: number;
@@ -46,7 +47,8 @@ export interface TranscriptFileIndex {
 	chapters: ClaudeChapterEntry[];
 }
 
-export interface OpenTranscriptFile {
+export interface OpenTranscriptFile
+{
 	fd: number;
 	index: TranscriptFileIndex;
 	/** The whole file, when the index was just built from it; saves rereading the window. */
@@ -57,15 +59,20 @@ const CACHE_LIMIT = 8;
 const cache = new Map<string, TranscriptFileIndex>();
 
 /** Drop every cached index. For tests and benchmarks that need a cold read. */
-export function clearTranscriptFileIndexCache(): void {
+export function clearTranscriptFileIndexCache(): void
+{
 	cache.clear();
 }
 
 /** One JSONL line as a record, or undefined when the line is not a valid JSON object. */
-export function parseTranscriptLine(line: string): Record<string, unknown> | undefined {
-	try {
+export function parseTranscriptLine(line: string): Record<string, unknown> | undefined
+{
+	try
+	{
 		return asRecord(JSON.parse(line));
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 }
@@ -73,13 +80,16 @@ export function parseTranscriptLine(line: string): Record<string, unknown> | und
 const NEWLINE = 0x0a;
 
 /** Append the lines in `buffer` (which starts at file offset `base`) to `index`. */
-function appendLines(index: TranscriptFileIndex, buffer: Buffer, base: number): void {
+function appendLines(index: TranscriptFileIndex, buffer: Buffer, base: number): void
+{
 	let position = 0;
-	while (position < buffer.length) {
+	while (position < buffer.length)
+	{
 		const newline = buffer.indexOf(NEWLINE, position);
 		const end = newline === -1 ? buffer.length : newline;
 		const line = buffer.toString("utf8", position, end);
-		if (line.trim()) {
+		if (line.trim())
+		{
 			const record = parseTranscriptLine(line);
 			index.starts.push(base + position);
 			index.ends.push(base + end);
@@ -94,30 +104,45 @@ function appendLines(index: TranscriptFileIndex, buffer: Buffer, base: number): 
 	}
 }
 
-function refreshChain(index: TranscriptFileIndex): void {
+function refreshChain(index: TranscriptFileIndex): void
+{
 	index.abandoned = computeAbandoned(index.skeletons.filter((skeleton) => skeleton !== undefined));
-	index.hidden = index.skeletons.map((skeleton) => {
+	index.hidden = index.skeletons.map((skeleton) =>
+	{
 		const uuid = skeleton?.["uuid"];
 		return typeof uuid === "string" && index.abandoned.hidden.has(uuid);
 	});
 	// A fork can hide lines anywhere in the file, so the prefix sums restart from zero.
 	let count = 0;
 	index.countableBefore = [0];
-	for (const [i, countable] of index.countable.entries()) {
+	for (const [i, countable] of index.countable.entries())
+	{
 		if (countable && index.hidden[i] !== true) count += 1;
 		index.countableBefore.push(count);
 	}
 }
 
 /** The up to `SIGNATURE_BYTES` bytes before `consumed`, from `buffer`, which starts at file offset `base`. */
-function signatureBefore(buffer: Buffer, base: number, consumed: number): Buffer {
+function signatureBefore(buffer: Buffer, base: number, consumed: number): Buffer
+{
 	const end = consumed - base;
 	return Buffer.from(buffer.subarray(Math.max(0, end - SIGNATURE_BYTES), end));
 }
 
-function build(fd: number, size: number, mtimeMs: number, ino: number): {index: TranscriptFileIndex; buffer: Buffer} {
+function build(
+	fd: number,
+	size: number,
+	mtimeMs: number,
+	ino: number,
+):
+{
+	index: TranscriptFileIndex;
+	buffer: Buffer;
+}
+{
 	const buffer = trackedReadRange(fd, 0, size, size);
-	const index: TranscriptFileIndex = {
+	const index: TranscriptFileIndex =
+	{
 		size,
 		mtimeMs,
 		ino,
@@ -129,14 +154,21 @@ function build(fd: number, size: number, mtimeMs: number, ino: number): {index: 
 		skeletons: [],
 		countable: [],
 		countableBefore: [0],
-		abandoned: {hidden: new Set(), cuts: []},
+		abandoned:
+		{
+			hidden: new Set(),
+			cuts: [],
+		},
 		hidden: [],
 		chapters: [],
 	};
 	appendLines(index, buffer, 0);
 	index.signature = signatureBefore(buffer, 0, index.consumed);
 	refreshChain(index);
-	return {index, buffer};
+	return {
+		index,
+		buffer,
+	};
 }
 
 /**
@@ -145,12 +177,14 @@ function build(fd: number, size: number, mtimeMs: number, ino: number): {index: 
  * inode, or the bytes before `consumed` differ from the stored signature (the
  * CLI removed a line in place, shifting every later byte).
  */
-function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: number, ino: number): boolean {
+function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: number, ino: number): boolean
+{
 	if (ino !== index.ino) return false;
 	const from = index.consumed - index.signature.length;
 	const appended = trackedReadRange(fd, from, size, size);
 	if (!appended.subarray(0, index.signature.length).equals(index.signature)) return false;
-	if (index.partialTail) {
+	if (index.partialTail)
+	{
 		index.starts.pop();
 		index.ends.pop();
 		index.skeletons.pop();
@@ -172,39 +206,65 @@ function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: n
  * size and mtime are unchanged and extending it when the file only grew. The
  * caller closes `fd`.
  */
-export function openTranscriptFile(filePath: string): OpenTranscriptFile {
+export function openTranscriptFile(filePath: string): OpenTranscriptFile
+{
 	const fd = openSync(filePath, "r");
-	try {
+	try
+	{
 		const {size, mtimeMs, ino} = fstatSync(fd);
 		const cached = cache.get(filePath);
 		cache.delete(filePath);
 		let result: OpenTranscriptFile;
-		if (cached?.size === size && cached.mtimeMs === mtimeMs && cached.ino === ino) {
-			result = {fd, index: cached, buffer: undefined};
-		} else if (cached !== undefined && size > cached.size && extend(fd, cached, size, mtimeMs, ino)) {
-			result = {fd, index: cached, buffer: undefined};
-		} else {
-			result = {fd, ...build(fd, size, mtimeMs, ino)};
+		if (cached?.size === size && cached.mtimeMs === mtimeMs && cached.ino === ino)
+		{
+			result =
+			{
+				fd,
+				index: cached,
+				buffer: undefined,
+			};
+		}
+		else if (cached !== undefined && size > cached.size && extend(fd, cached, size, mtimeMs, ino))
+		{
+			result =
+			{
+				fd,
+				index: cached,
+				buffer: undefined,
+			};
+		}
+		else
+		{
+			result =
+			{
+				fd,
+				...build(fd, size, mtimeMs, ino),
+			};
 		}
 		cache.set(filePath, result.index);
-		for (const key of cache.keys()) {
+		for (const key of cache.keys())
+		{
 			if (cache.size <= CACHE_LIMIT) break;
 			cache.delete(key);
 		}
 		return result;
-	} catch (error) {
+	}
+	catch (error)
+	{
 		closeSync(fd);
 		throw error;
 	}
 }
 
 /** Byte offset where line `i` starts. */
-export function lineStart(index: TranscriptFileIndex, i: number): number {
+export function lineStart(index: TranscriptFileIndex, i: number): number
+{
 	return index.starts[i] ?? index.size;
 }
 
 /** Byte offset where line `i` ends, line break excluded. */
-export function lineEnd(index: TranscriptFileIndex, i: number): number {
+export function lineEnd(index: TranscriptFileIndex, i: number): number
+{
 	return index.ends[i] ?? index.size;
 }
 
@@ -213,14 +273,16 @@ export function readTranscriptLines(
 	file: OpenTranscriptFile,
 	start: number,
 	end: number,
-): (Record<string, unknown> | undefined)[] {
+): (Record<string, unknown> | undefined)[]
+{
 	const {index} = file;
 	if (start >= end) return [];
 	const from = lineStart(index, start);
 	const to = lineEnd(index, end - 1);
 	const bytes = file.buffer?.subarray(from, to) ?? trackedReadRange(file.fd, from, to, index.size);
 	const lines: (Record<string, unknown> | undefined)[] = [];
-	for (let i = start; i < end; i += 1) {
+	for (let i = start; i < end; i += 1)
+	{
 		lines.push(parseTranscriptLine(bytes.toString("utf8", lineStart(index, i) - from, lineEnd(index, i) - from)));
 	}
 	return lines;

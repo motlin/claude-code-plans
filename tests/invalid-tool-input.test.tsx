@@ -9,83 +9,127 @@ import {buildClientToolCall, type ClientToolCall} from "../src/components/tool-r
 import {toolLabel} from "../src/lib/tool-labels";
 import {processTranscript} from "../src/lib/transcript";
 
-vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({
-		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+vi.mock("../src/components/settings-context", () => (
+{
+	useSettings: () => (
+	{
+		settings:
+		{
+			showDebug: false,
+			codeThemeLight: "claude-light",
+			codeThemeDark: "github-dark",
+		},
 	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({
+vi.mock("../src/lib/hmr-persist", () => (
+{
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
 }));
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useClaudeEvents: () => ({failedTools: new Map()}),
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useClaudeEvents: () => (
+	{
+		failedTools: new Map(),
+	}),
 }));
 
-class FakeResizeObserver {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-	takeRecords() {
+class FakeResizeObserver
+{
+	observe()
+	{
+	}
+	unobserve()
+	{
+	}
+	disconnect()
+	{
+	}
+	takeRecords()
+	{
 		return [];
 	}
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 	vi.stubGlobal("requestAnimationFrame", () => 0);
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
 	vi.stubGlobal("innerHeight", 10_000);
-	Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-		configurable: true,
-		value: vi.fn<HTMLElement["scrollIntoView"]>(),
-	});
+	Object.defineProperty(
+		HTMLElement.prototype,
+		"scrollIntoView",
+		{
+			configurable: true,
+			value: vi.fn<HTMLElement["scrollIntoView"]>(),
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
 
-const UNPARSED_READ_INPUT = {
-	__unparsedToolInput: {
+const UNPARSED_READ_INPUT =
+{
+	__unparsedToolInput:
+	{
 		raw: '{"file_path": "/Users/alice/projects/shop/packages/shared/src/index.ts", "offset": 280,330}',
 		len: 92,
 	},
 };
 
 /** An assistant record as Claude Code writes it: text, a Read whose JSON the model mangled, and a valid Bash. */
-function assistantWithMalformedRead(): Record<string, unknown> {
+function assistantWithMalformedRead(): Record<string, unknown>
+{
 	return {
 		parentUuid: "9dd365ce-ea48-4ba2-a8cb-5c927c3bec77",
 		isSidechain: false,
-		message: {
+		message:
+		{
 			model: "claude-sonnet-5",
 			id: "msg_011CeGVgxupUAWtSQHu3UryE",
 			type: "message",
 			role: "assistant",
 			content: [
-				{type: "text", text: "Checking the shared exports before the build."},
+				{
+					type: "text",
+					text: "Checking the shared exports before the build.",
+				},
 				{
 					type: "tool_use",
 					id: "toolu_01GECtMcdRzMwGeJZv8TgCu8",
 					name: "Read",
 					input: UNPARSED_READ_INPUT,
-					caller: {type: "direct"},
+					caller:
+					{
+						type: "direct",
+					},
 				},
 				{
 					type: "tool_use",
 					id: "toolu_01Bash00000000000000000",
 					name: "Bash",
-					input: {command: "pnpm build", description: "Build the shared package"},
-					caller: {type: "direct"},
+					input:
+					{
+						command: "pnpm build",
+						description: "Build the shared package",
+					},
+					caller:
+					{
+						type: "direct",
+					},
 				},
 			],
 			stop_reason: "tool_use",
 			stop_sequence: null,
 			stop_details: null,
-			usage: {
+			usage:
+			{
 				input_tokens: 2,
 				cache_creation_input_tokens: 697,
 				cache_read_input_tokens: 116045,
@@ -107,12 +151,14 @@ function assistantWithMalformedRead(): Record<string, unknown> {
 }
 
 /** The user record answering both calls: the mangled Read errored, the Bash ran. */
-function toolResults(): Record<string, unknown> {
+function toolResults(): Record<string, unknown>
+{
 	return {
 		parentUuid: "0c5e3c8f-12de-4838-b78e-d8418c0ddd81",
 		isSidechain: false,
 		type: "user",
-		message: {
+		message:
+		{
 			role: "user",
 			content: [
 				{
@@ -141,30 +187,56 @@ function toolResults(): Record<string, unknown> {
 	};
 }
 
-describe("a schema-invalid tool input in the transcript", () => {
-	it("keeps the assistant record and flags only the invalid call", () => {
+describe("a schema-invalid tool input in the transcript", () =>
+{
+	it("keeps the assistant record and flags only the invalid call", () =>
+	{
 		const [line] = processTranscript([assistantWithMalformedRead()]).lines;
 		if (line?.type !== "assistant") throw new Error(`expected an assistant line, got ${line?.type}`);
-		const fixture = assistantWithMalformedRead()["message"] as {content: unknown[]};
-		expect({content: line.message?.content, invalidToolInputIds: line.invalidToolInputIds}).toStrictEqual({
-			content: fixture.content,
-			invalidToolInputIds: ["toolu_01GECtMcdRzMwGeJZv8TgCu8"],
-		});
+		const fixture = assistantWithMalformedRead()["message"] as
+		{
+			content: unknown[];
+		};
+		expect(
+			{
+				content: line.message?.content,
+				invalidToolInputIds: line.invalidToolInputIds,
+			},
+		).toStrictEqual(
+			{
+				content: fixture.content,
+				invalidToolInputIds: ["toolu_01GECtMcdRzMwGeJZv8TgCu8"],
+			},
+		);
 	});
 
-	it("still rejects the whole record when anything besides a tool input is invalid", () => {
-		const record = {...assistantWithMalformedRead(), uuid: 1};
+	it("still rejects the whole record when anything besides a tool input is invalid", () =>
+	{
+		const record =
+		{
+			...assistantWithMalformedRead(),
+			uuid: 1,
+		};
 		expect(processTranscript([record]).lines.map((line) => line.type)).toStrictEqual(["unparsed"]);
 	});
 
-	it("still rejects a tool_use whose input is not an object", () => {
+	it("still rejects a tool_use whose input is not an object", () =>
+	{
 		const record = assistantWithMalformedRead();
-		const message = record["message"] as {content: Array<Record<string, unknown>>};
-		message.content[1] = {...message.content[1], input: "file_path=/tmp/x"};
+		const message = record["message"] as
+		{
+			content: Array<Record<string, unknown>>;
+		};
+		message.content[1] =
+		{
+			...message.content[1],
+			input: "file_path=/tmp/x",
+		};
 		expect(processTranscript([record]).lines.map((line) => line.type)).toStrictEqual(["unparsed"]);
 	});
 
-	it("renders the text and both calls instead of an unreadable record", () => {
+	it("renders the text and both calls instead of an unreadable record", () =>
+	{
 		const {lines, toolResultMap} = processTranscript([assistantWithMalformedRead(), toolResults()]);
 		const text = render(
 			<SessionChat
@@ -175,77 +247,141 @@ describe("a schema-invalid tool input in the transcript", () => {
 				transcriptMode="verbose"
 			/>,
 		).container.textContent;
-		expect({
-			unreadable: text.includes("Unreadable"),
-			prose: text.includes("Checking the shared exports before the build."),
-			// The invalid call errored, so upstream's failed step reads the generic label's running form.
-			read: text.includes("Using Read"),
-			bash: text.includes("Built the shared package"),
-		}).toStrictEqual({unreadable: false, prose: true, read: true, bash: true});
+		expect(
+			{
+				unreadable: text.includes("Unreadable"),
+				prose: text.includes("Checking the shared exports before the build."),
+				// The invalid call errored, so upstream's failed step reads the generic label's running form.
+				read: text.includes("Using Read"),
+				bash: text.includes("Built the shared package"),
+			},
+		).toStrictEqual(
+			{
+				unreadable: false,
+				prose: true,
+				read: true,
+				bash: true,
+			},
+		);
 	});
 });
 
-describe("a Workflow call with an args object", () => {
-	it("is not flagged as an invalid input", () => {
+describe("a Workflow call with an args object", () =>
+{
+	it("is not flagged as an invalid input", () =>
+	{
 		const record = assistantWithMalformedRead();
-		const message = record["message"] as {content: unknown[]};
+		const message = record["message"] as
+		{
+			content: unknown[];
+		};
 		message.content = [
 			{
 				type: "tool_use",
 				id: "toolu_01K9McttAeyyjhG4N5C27hVJ",
 				name: "Workflow",
-				input: {scriptPath: "/x/wf.js", args: {max: 60}},
-				caller: {type: "direct"},
+				input:
+				{
+					scriptPath: "/x/wf.js",
+					args:
+					{
+						max: 60,
+					},
+				},
+				caller:
+				{
+					type: "direct",
+				},
 			},
 		];
 		const [line] = processTranscript([record]).lines;
-		expect({
-			type: line?.type,
-			invalidToolInputIds: line?.type === "assistant" ? line.invalidToolInputIds : null,
-		}).toStrictEqual({
-			type: "assistant",
-			invalidToolInputIds: undefined,
-		});
+		expect(
+			{
+				type: line?.type,
+				invalidToolInputIds: line?.type === "assistant" ? line.invalidToolInputIds : null,
+			},
+		).toStrictEqual(
+			{
+				type: "assistant",
+				invalidToolInputIds: undefined,
+			},
+		);
 	});
 });
 
-describe("an invalid-input tool call", () => {
-	const block = {
+describe("an invalid-input tool call", () =>
+{
+	const block =
+	{
 		type: "tool_use" as const,
 		id: "toolu_01GECtMcdRzMwGeJZv8TgCu8",
 		name: "Read",
 		input: UNPARSED_READ_INPUT,
 	};
 
-	it("is built flagged, with no tool-specific param", () => {
+	it("is built flagged, with no tool-specific param", () =>
+	{
 		const call = buildClientToolCall(block, "src-uuid", new Map(), undefined, undefined, true);
-		expect(call).toStrictEqual({
-			id: "toolu_01GECtMcdRzMwGeJZv8TgCu8",
-			name: "Read",
-			input: UNPARSED_READ_INPUT,
-			param: "",
-			sourceUuid: "src-uuid",
-			invalidInput: true,
-		});
+		expect(call).toStrictEqual(
+			{
+				id: "toolu_01GECtMcdRzMwGeJZv8TgCu8",
+				name: "Read",
+				input: UNPARSED_READ_INPUT,
+				param: "",
+				sourceUuid: "src-uuid",
+				invalidInput: true,
+			},
+		);
 	});
 
-	it("takes the generic label from the tool name", () => {
-		expect(toolLabel({name: "Read", input: UNPARSED_READ_INPUT, invalidInput: true})).toStrictEqual({
-			verb: "Used Read",
-		});
+	it("takes the generic label from the tool name", () =>
+	{
+		expect(
+			toolLabel(
+				{
+					name: "Read",
+					input: UNPARSED_READ_INPUT,
+					invalidInput: true,
+				},
+			),
+		).toStrictEqual(
+			{
+				verb: "Used Read",
+			},
+		);
 	});
 
-	it("renders through the raw-input renderer, not the tool's own", () => {
+	it("renders through the raw-input renderer, not the tool's own", () =>
+	{
 		const call = buildClientToolCall(block, "src-uuid", new Map(), undefined, undefined, true);
-		const valid = buildClientToolCall({...block, input: {file_path: "/tmp/x"}}, "src-uuid", new Map());
-		expect({
-			invalid: getCallRenderer(call) === getToolRenderer("Read"),
-			valid: getCallRenderer(valid) === getToolRenderer("Read"),
-		}).toStrictEqual({invalid: false, valid: true});
+		const valid = buildClientToolCall(
+			{
+				...block,
+				input:
+				{
+					file_path: "/tmp/x",
+				},
+			},
+			"src-uuid",
+			new Map(),
+		);
+		expect(
+			{
+				invalid: getCallRenderer(call) === getToolRenderer("Read"),
+				valid: getCallRenderer(valid) === getToolRenderer("Read"),
+			},
+		).toStrictEqual(
+			{
+				invalid: false,
+				valid: true,
+			},
+		);
 	});
 
-	it("shows the raw input as formatted JSON", () => {
-		const call: ClientToolCall = {
+	it("shows the raw input as formatted JSON", () =>
+	{
+		const call: ClientToolCall =
+		{
 			id: "toolu_01GECtMcdRzMwGeJZv8TgCu8",
 			name: "Read",
 			input: UNPARSED_READ_INPUT,

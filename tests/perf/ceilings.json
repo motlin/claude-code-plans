@@ -1,1197 +1,1418 @@
 {
-	"browser.J1.layoutShift": {
+	"browser.J1.layoutShift":
+	{
 		"ceiling": 0,
 		"unit": "cls",
 		"tolerance": 0
 	},
-	"browser.J1.requests": {
+	"browser.J1.requests":
+	{
 		"ceiling": 664,
 		"unit": "requests",
 		"tolerance": 0.02,
 		"reason": "lowered from 667 (2026-11-02): HomeDock and ProjectCardCounts moved out of their route files and the pinned page title out of the pinned page, so code splitting no longer pins those components' imports to the route tree. The rest of the climb from 481 (c029659b5) is legitimate: ~170 new src modules in the root shell, sidebar and home composer, 7 new route files, newer Base UI dep chunks, and the idle ⌘K palette and Settings warm-ups growing from 31 to 57 modules. The lab now waits for the network to go quiet too, so the idle warm-ups always count here and the median reads 664 every run",
 		"raisedAt": "2026-11-02"
 	},
-	"browser.J2.layoutShift": {
+	"browser.J2.layoutShift":
+	{
 		"ceiling": 0,
 		"unit": "cls",
 		"tolerance": 0
 	},
-	"browser.J2.requests": {
+	"browser.J2.requests":
+	{
 		"ceiling": 987,
 		"unit": "requests",
 		"tolerance": 0,
 		"reason": "lowered from 996 (2026-11-02): the home composer no longer loads with the route tree on a session page (HomeDock moved out of routes/index.tsx) and the pinned page no longer loads with its route's head. The rest of the climb from 653 (c029659b5) is legitimate: the session page's split chunk grew from 140 to 181 modules, its idle pane warm-ups (background tasks 40, terminal 20, prompt cards 20, files, links, side chat, error recovery) replaced the old files pane's 44, plus J1's shell growth. The lab now waits for the network to go quiet, so those warm-ups always count here instead of 967 or 996 depending on timing",
 		"raisedAt": "2026-11-02"
 	},
-	"browser.J3.layoutShift": {
+	"browser.J3.layoutShift":
+	{
 		"ceiling": 0,
 		"unit": "cls",
 		"tolerance": 0
 	},
-	"browser.J4.layoutShift": {
+	"browser.J4.layoutShift":
+	{
 		"ceiling": 0.0001,
 		"unit": "cls",
 		"tolerance": 0
 	},
-	"browser.J5.layoutCount": {
+	"browser.J5.layoutCount":
+	{
 		"ceiling": 33,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"browser.J5.layoutShift": {
+	"browser.J5.layoutShift":
+	{
 		"ceiling": 0,
 		"unit": "cls",
 		"tolerance": 0
 	},
-	"browser.J6.layoutCount": {
+	"browser.J6.layoutCount":
+	{
 		"ceiling": 26,
 		"unit": "count",
 		"tolerance": 0.04,
 		"reason": "lowered from 42 (2026-11-02): the lab now asks for reduced motion, since the palette footer's grid-rows collapse (e4d95573a) and its list height transition (b3e0c4e02) laid out once per frame, doubling J6 and making it vary 39..43. The rest of the climb from 21 is palette parity work adding one or two layouts at a time (22..26 across the commits between). Medians still read 25 or 26 (per-run 24..26) with the same two requests every run, so it keeps a 4% tolerance",
 		"raisedAt": "2026-11-02"
 	},
-	"bundle.home.gzip": {
+	"bundle.home.gzip":
+	{
 		"ceiling": 484261,
 		"unit": "bytes",
 		"tolerance": 0.01,
 		"reason": "raised from 476760 (2026-11-11): the link policy follow-up to 87a95de06 ports upstream's href normalisers (`_0` open_in_browser strip and `cs` sanitiser with its invisible-lead and claude-host API/sign-out/account-linking route checks, src/lib/link-href.ts), the `wa`/`D6`/`sk` Claude-host and credential-route rules behind the external-link confirm (src/lib/claude-hosts.ts: the route prefix tables, destination-forwarding walk and host strictness), and moves user turns and option descriptions onto upstream's `xr` paint and `mr` policies in user-plain-text.tsx, which ships with the question card. Went to 484261; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
-	"bundle.home.raw": {
+	"bundle.home.raw":
+	{
 		"ceiling": 1452798,
 		"unit": "bytes",
 		"tolerance": 0.01,
 		"reason": "raised from 1436401 (2026-11-11): the link policy follow-up to 87a95de06 ports upstream's href normalisers (`_0` open_in_browser strip and `cs` sanitiser with its invisible-lead and claude-host API/sign-out/account-linking route checks, src/lib/link-href.ts), the `wa`/`D6`/`sk` Claude-host and credential-route rules behind the external-link confirm (src/lib/claude-hosts.ts: the route prefix tables, destination-forwarding walk and host strictness), and moves user turns and option descriptions onto upstream's `xr` paint and `mr` policies in user-plain-text.tsx, which ships with the question card. Went to 1452798; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
-	"bundle.session.gzip": {
+	"bundle.session.gzip":
+	{
 		"ceiling": 794161,
 		"unit": "bytes",
 		"tolerance": 0.01,
 		"reason": "raised from 786283 (2026-11-11): the terminal colours port replaces Claude Light (src/lib/claude-light-theme.ts, statically imported by the session page's @pierre/diffs registration) with upstream's live object, 31 editor/bracket/terminal colours and 36 token rules in place of 2 and 21 (+~1 KB gzip), and moves the terminal mapper onto upstream's `Ae` merge (foreground contrast pick, brightWhite raise, selection and cursor fallbacks). The intervening commits had already used most of the 1% headroom; this change took the measure over it. Went to 794161; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
-	"bundle.session.raw": {
+	"bundle.session.raw":
+	{
 		"ceiling": 2357913,
 		"unit": "bytes",
 		"tolerance": 0.01,
 		"reason": "raised from 2330036 (2026-11-11): the link policy follow-up to 87a95de06 ports upstream's href normalisers (`_0` open_in_browser strip and `cs` sanitiser with its invisible-lead and claude-host API/sign-out/account-linking route checks, src/lib/link-href.ts), the `wa`/`D6`/`sk` Claude-host and credential-route rules behind the external-link confirm (src/lib/claude-hosts.ts: the route prefix tables, destination-forwarding walk and host strictness), and moves user turns and option descriptions onto upstream's `xr` paint and `mr` policies in user-plain-text.tsx, which ships with the question card; earlier commits had already used most of the 1% headroom. Went to 2357913; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
-	"client.coldHome.default.commitsToRows": {
+	"client.coldHome.default.commitsToRows":
+	{
 		"ceiling": 9,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.coldHome.default.fetches": {
+	"client.coldHome.default.fetches":
+	{
 		"ceiling": 21,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The home composer reads the selected launch folder's project defaultMode (/api/composer-defaults?cwd=, upstream's repo_settings_default_mode) so a new draft resolves user default, then the folder's remembered mode, then the project default (folder-permission-mode-memory T4), +1 fetch (20 to 21); it runs only while a folder is selected. Before that: the folder's git status (/api/home/folder-status), +1 fetch (19 to 20).",
 		"raisedAt": "2026-11-09"
 	},
-	"client.coldHome.default.responseBytes": {
+	"client.coldHome.default.responseBytes":
+	{
 		"ceiling": 7485,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "/api/home/folder-status carries exists, so the home bar can say a selected folder no longer exists (environment-bar-line-and-last-chip T5): +14 bytes (7471 to 7485). Before that: /api/prompt-history returns {prompts, bashCommands} instead of a bare array, so bash mode's ↑/↓ walk the session's shell commands (composer-bash-mode T4): +30 bytes (7441 to 7471). Before that: the composer defaults carry repoDefaultMode, and the home composer also fetches them for the selected folder (folder-permission-mode-memory T4): +171 bytes (7270 to 7441). Before that: session list items carry lastUserMessage (sidebar-row-metadata-line T2), +663 bytes (6607 to 7270).",
 		"raisedAt": "2026-11-09"
 	},
-	"client.composer.home.slashMenu.claudeEventsConsumers": {
+	"client.composer.home.slashMenu.claudeEventsConsumers":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.home.slashMenu.commitsPerKeystroke": {
+	"client.composer.home.slashMenu.commitsPerKeystroke":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.home.slashMenu.componentsPerKeystroke": {
+	"client.composer.home.slashMenu.componentsPerKeystroke":
+	{
 		"ceiling": 8,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 7 to 8.",
 		"raisedAt": "2026-11-07"
 	},
-	"client.composer.home.slashMenu.localStorageWrites": {
+	"client.composer.home.slashMenu.localStorageWrites":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.home.slashMenu.queryCacheListeners": {
+	"client.composer.home.slashMenu.queryCacheListeners":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.home.typing.claudeEventsConsumers": {
+	"client.composer.home.typing.claudeEventsConsumers":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.home.typing.commitsPerKeystroke": {
+	"client.composer.home.typing.commitsPerKeystroke":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.home.typing.componentsPerKeystroke": {
+	"client.composer.home.typing.componentsPerKeystroke":
+	{
 		"ceiling": 1.5,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 1.4 to 1.5.",
 		"raisedAt": "2026-11-07"
 	},
-	"client.composer.home.typing.localStorageWrites": {
+	"client.composer.home.typing.localStorageWrites":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.home.typing.queryCacheListeners": {
+	"client.composer.home.typing.queryCacheListeners":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.mentionMenu.claudeEventsConsumers": {
+	"client.composer.session.mentionMenu.claudeEventsConsumers":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.mentionMenu.commitsPerKeystroke": {
+	"client.composer.session.mentionMenu.commitsPerKeystroke":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.mentionMenu.componentsPerKeystroke": {
+	"client.composer.session.mentionMenu.componentsPerKeystroke":
+	{
 		"ceiling": 11,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 10 to 11.",
 		"raisedAt": "2026-11-07"
 	},
-	"client.composer.session.mentionMenu.localStorageWrites": {
+	"client.composer.session.mentionMenu.localStorageWrites":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.mentionMenu.queryCacheListeners": {
+	"client.composer.session.mentionMenu.queryCacheListeners":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.mentionMenu.sessionChatRendersPerKeystroke": {
+	"client.composer.session.mentionMenu.sessionChatRendersPerKeystroke":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.slashMenu.claudeEventsConsumers": {
+	"client.composer.session.slashMenu.claudeEventsConsumers":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.slashMenu.commitsPerKeystroke": {
+	"client.composer.session.slashMenu.commitsPerKeystroke":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.slashMenu.componentsPerKeystroke": {
+	"client.composer.session.slashMenu.componentsPerKeystroke":
+	{
 		"ceiling": 8,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 7 to 8.",
 		"raisedAt": "2026-11-07"
 	},
-	"client.composer.session.slashMenu.localStorageWrites": {
+	"client.composer.session.slashMenu.localStorageWrites":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.slashMenu.queryCacheListeners": {
+	"client.composer.session.slashMenu.queryCacheListeners":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.slashMenu.sessionChatRendersPerKeystroke": {
+	"client.composer.session.slashMenu.sessionChatRendersPerKeystroke":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.typing.claudeEventsConsumers": {
+	"client.composer.session.typing.claudeEventsConsumers":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.typing.commitsPerKeystroke": {
+	"client.composer.session.typing.commitsPerKeystroke":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.typing.componentsPerKeystroke": {
+	"client.composer.session.typing.componentsPerKeystroke":
+	{
 		"ceiling": 1.5,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 1.4 to 1.5.",
 		"raisedAt": "2026-11-07"
 	},
-	"client.composer.session.typing.localStorageWrites": {
+	"client.composer.session.typing.localStorageWrites":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.typing.queryCacheListeners": {
+	"client.composer.session.typing.queryCacheListeners":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.composer.session.typing.sessionChatRendersPerKeystroke": {
+	"client.composer.session.typing.sessionChatRendersPerKeystroke":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveAppendMulti.appendOffScreen.commits": {
+	"client.liveAppendMulti.appendOffScreen.commits":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveAppendMulti.appendOffScreen.fetches": {
+	"client.liveAppendMulti.appendOffScreen.fetches":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveAppendMulti.appendOffScreen.hiddenReloads": {
+	"client.liveAppendMulti.appendOffScreen.hiddenReloads":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.appendOpen.commits": {
+	"client.liveEvent.appendOpen.commits":
+	{
 		"ceiling": 3,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.appendOpen.fetches": {
+	"client.liveEvent.appendOpen.fetches":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.appendOpen.hiddenReloads": {
+	"client.liveEvent.appendOpen.hiddenReloads":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.appendOpen.mutations": {
+	"client.liveEvent.appendOpen.mutations":
+	{
 		"ceiling": 10,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The chin's sr-only Fast mode on/off live status now mounts on every model, as upstream's, so it no longer mounts late once the model resolves, 11 to 10.",
 		"raisedAt": "2026-11-03"
 	},
-	"client.liveEvent.appendOther.commits": {
+	"client.liveEvent.appendOther.commits":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.appendOther.fetches": {
+	"client.liveEvent.appendOther.fetches":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.appendOther.hiddenReloads": {
+	"client.liveEvent.appendOther.hiddenReloads":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.appendOther.mutations": {
+	"client.liveEvent.appendOther.mutations":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.reconnect.commits": {
+	"client.liveEvent.reconnect.commits":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.reconnect.fetches": {
+	"client.liveEvent.reconnect.fetches":
+	{
 		"ceiling": 6,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.reconnect.hiddenReloads": {
+	"client.liveEvent.reconnect.hiddenReloads":
+	{
 		"ceiling": 6,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.reconnect.mutations": {
+	"client.liveEvent.reconnect.mutations":
+	{
 		"ceiling": 3,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
 		"raisedAt": "2026-10-11"
 	},
-	"client.liveEvent.sessionUpdated.commits": {
+	"client.liveEvent.sessionUpdated.commits":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.sessionUpdated.fetches": {
+	"client.liveEvent.sessionUpdated.fetches":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.sessionUpdated.hiddenReloads": {
+	"client.liveEvent.sessionUpdated.hiddenReloads":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.sessionUpdated.mutations": {
+	"client.liveEvent.sessionUpdated.mutations":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.toolPending.commits": {
+	"client.liveEvent.toolPending.commits":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
 		"raisedAt": "2026-10-11"
 	},
-	"client.liveEvent.toolPending.fetches": {
+	"client.liveEvent.toolPending.fetches":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.toolPending.hiddenReloads": {
+	"client.liveEvent.toolPending.hiddenReloads":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.liveEvent.toolPending.mutations": {
+	"client.liveEvent.toolPending.mutations":
+	{
 		"ceiling": 3,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
 		"raisedAt": "2026-10-11"
 	},
-	"client.palette.open.commits": {
+	"client.palette.open.commits":
+	{
 		"ceiling": 7,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.palette.open.fetches": {
+	"client.palette.open.fetches":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.palette.open.mutations": {
+	"client.palette.open.mutations":
+	{
 		"ceiling": 44,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The home dock mounts upstream's zero-height environment-bar line host before the composer card (environment-bar-line-and-last-chip T1), one more sibling for the palette to mark aria-hidden (43 to 44). Before that: the composer now always mounts upstream's skill-chip hint live region (role=status aria-live=polite). Base UI's markOthers keeps every [aria-live] element reachable when the palette opens, so it walks down to the twin and writes aria-hidden on the siblings along that path instead of on one composer ancestor. Upstream renders the row \"…\" button only on the selected row, so it mounts once cmdk settles the first selection instead of with every session row (42 to 43). Upstream shows the footer Actions ⌥⏎ hint only while the selected row supports actions, so it mounts once cmdk settles the first selection on a session row (43 to 44). Clawd moved from the home composer into the start card, so the composer has one less sibling to mark aria-hidden (44 to 43).",
 		"raisedAt": "2026-10-25"
 	},
-	"client.palette.search.commitsPerKeystroke": {
+	"client.palette.search.commitsPerKeystroke":
+	{
 		"ceiling": 3.3333333333333335,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "Upstream's cds Spinner delays its ring 150ms and mounts the sr-only Searching deeper... label 100ms after that, so a search adds two timed commits (ring, then label) inside the reserved slot. Upstream offers the Quick actions New session row only above 50 characters, so a short query no longer pins the selection to it and cmdk commits once more when the selection lands on the first search row (19 to 20 commits over 6 keystrokes).",
 		"raisedAt": "2026-10-25"
 	},
-	"client.palette.search.mutations": {
+	"client.palette.search.mutations":
+	{
 		"ceiling": 104,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "Upstream's cds Spinner delays its ring 150ms and mounts the sr-only Searching deeper... label 100ms after that, so a search adds two timed commits (ring, then label) inside the reserved slot. Plus one aria-activedescendant write when typing moves the selection to New session (upstream points the textarea at the selected row; cmdk does not for a controlled value). The footer now collapses like upstream instead of unmounting: typing writes the wrapper's class, aria-hidden and inert plus the card's --cp-footer-collapsed class (114 to 118). Upstream's aria-atomic live region stays mounted but empty while searching, so typing now mounts it once instead of after the search settles (118 to 119). Upstream's settling SkeletonGroup mounts as one block after the results group instead of three rows inside it, and See all results waits for the search to settle (119 to 106). The scroller now animates between its measured content height and the cap like upstream, so typing writes its inline height and toggles the sizer's min-h-full class when it enters and leaves the capped skeleton (106 to 109). Upstream's keyless jump actions (Jump to navigation, main content, input) join the matched actions, so the early keystrokes of \"sqlite\" fuzzy-match their \"sidebar\" and \"composer prompt\" hints and mount and unmount those rows (109 to 118). Upstream offers the Quick actions New session row only above 50 characters, so typing a short query no longer mounts that group and row (118 to 77). Upstream renders the row \"…\" button only on the selected row, so it remounts when the selection lands on a search result (77 to 78). Upstream shows the footer Actions ⌥⏎ hint only while the selected row supports actions, so the collapsed footer unmounts and remounts it as the selection moves off and back onto a session row while typing (78 to 80). Upstream's palette lists one Settings → section command per nav member (Ss()) and hides the plain Settings action, so the early keystrokes of \"sqlite\" fuzzy-match those \"Settings → …\" labels and mount and unmount their rows (80 to 104).",
 		"raisedAt": "2026-11-08"
 	},
-	"client.palette.search.serverSearchFetches": {
+	"client.palette.search.serverSearchFetches":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionOpen.small.commits": {
+	"client.sessionOpen.small.commits":
+	{
 		"ceiling": 12,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionOpen.small.commits.SessionChat": {
+	"client.sessionOpen.small.commits.SessionChat":
+	{
 		"ceiling": 5,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
 		"raisedAt": "2026-10-11"
 	},
-	"client.sessionOpen.small.commits.SessionPage": {
+	"client.sessionOpen.small.commits.SessionPage":
+	{
 		"ceiling": 7,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionOpen.small.fetches": {
+	"client.sessionOpen.small.fetches":
+	{
 		"ceiling": 13,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The session page fetches the ccb-context-mirror mod's context breakdown (/api/sessions/$id/context-breakdown) for the rail's Context card, one request per session opened.",
 		"raisedAt": "2026-10-11"
 	},
-	"client.sessionOpen.small.mountedRows": {
+	"client.sessionOpen.small.mountedRows":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionOpen.small.mutations": {
+	"client.sessionOpen.small.mutations":
+	{
 		"ceiling": 47,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The chat's content now lives in upstream's persistent tile content host (tile-host-guest-layer T1): the tile shell adopts a display:contents div[data-tile-host] that React portals the chat into, one more insertion on open. Before that (2026-11-07, 46), the session titlebar became upstream's Session tools roving toolbar: on mount the roving hook writes tabindex 0 to the title and -1 to each other titlebar item, one attribute mutation per item, and the working line mounts after the feed once jsdom re-windows the virtualizer: one more insertion.",
 		"raisedAt": "2026-11-11"
 	},
-	"client.sessionOpen.typical.commits": {
+	"client.sessionOpen.typical.commits":
+	{
 		"ceiling": 12,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionOpen.typical.commits.SessionChat": {
+	"client.sessionOpen.typical.commits.SessionChat":
+	{
 		"ceiling": 5,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The perf fixtures' cwd /repo encodes to their project id, so indexing now resolves the project path from the session's recorded cwd and the session composer mounts as it does on every real session: its slash-command, prompt-history and usage fetches, its chin and its re-renders on live events now count, and the home composer fetches slash commands for the latest project.",
 		"raisedAt": "2026-10-11"
 	},
-	"client.sessionOpen.typical.commits.SessionPage": {
+	"client.sessionOpen.typical.commits.SessionPage":
+	{
 		"ceiling": 7,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionOpen.typical.fetches": {
+	"client.sessionOpen.typical.fetches":
+	{
 		"ceiling": 14,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "A collapsed tool group whose last segment names its one file links that file in the header's meta slot (group-label-file-meta-slot), so the session page's batched POST /api/file-refs existence check now runs on open; one request per session opened.",
 		"raisedAt": "2026-11-09"
 	},
-	"client.sessionOpen.typical.mountedRows": {
+	"client.sessionOpen.typical.mountedRows":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionOpen.typical.mutations": {
+	"client.sessionOpen.typical.mutations":
+	{
 		"ceiling": 47,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The chat's content now lives in upstream's persistent tile content host (tile-host-guest-layer T1): the tile shell adopts a display:contents div[data-tile-host] that React portals the chat into, one more insertion on open. Before that (2026-11-07, 46), the session titlebar became upstream's Session tools roving toolbar: on mount the roving hook writes tabindex 0 to the title and -1 to each other titlebar item, one attribute mutation per item, and the working line mounts after the feed once jsdom re-windows the virtualizer: one more insertion.",
 		"raisedAt": "2026-11-11"
 	},
-	"client.sessionSwitch.small.commits": {
+	"client.sessionSwitch.small.commits":
+	{
 		"ceiling": 10,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionSwitch.small.commits.SessionChat": {
+	"client.sessionSwitch.small.commits.SessionChat":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionSwitch.small.commits.SessionPage": {
+	"client.sessionSwitch.small.commits.SessionPage":
+	{
 		"ceiling": 6,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionSwitch.small.fetches": {
+	"client.sessionSwitch.small.fetches":
+	{
 		"ceiling": 10,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The session page fetches the ccb-context-mirror mod's context breakdown (/api/sessions/$id/context-breakdown) for the rail's Context card, one request per session opened.",
 		"raisedAt": "2026-10-11"
 	},
-	"client.sessionSwitch.small.hoverPrefetch.fetches": {
+	"client.sessionSwitch.small.hoverPrefetch.fetches":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionSwitch.small.mountedRows": {
+	"client.sessionSwitch.small.mountedRows":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionSwitch.small.mutations": {
+	"client.sessionSwitch.small.mutations":
+	{
 		"ceiling": 49,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted. The sidebar section under the pointer carries data-hover-within (upstream G4), set from React onMouseOver: the lab's hover on the target row before the click adds that one attribute. The titlebar title sits in upstream's h2 named by the title (aria-label), so a switch rewrites that one more attribute.",
 		"raisedAt": "2026-11-02"
 	},
-	"client.sessionSwitch.typical.commits": {
+	"client.sessionSwitch.typical.commits":
+	{
 		"ceiling": 10,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionSwitch.typical.commits.SessionChat": {
+	"client.sessionSwitch.typical.commits.SessionChat":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionSwitch.typical.commits.SessionPage": {
+	"client.sessionSwitch.typical.commits.SessionPage":
+	{
 		"ceiling": 6,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionSwitch.typical.fetches": {
+	"client.sessionSwitch.typical.fetches":
+	{
 		"ceiling": 11,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "A collapsed tool group whose last segment names its one file links that file in the header's meta slot (group-label-file-meta-slot), so the session page's batched POST /api/file-refs existence check now runs on open; one request per session opened.",
 		"raisedAt": "2026-11-09"
 	},
-	"client.sessionSwitch.typical.hoverPrefetch.fetches": {
+	"client.sessionSwitch.typical.hoverPrefetch.fetches":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionSwitch.typical.mountedRows": {
+	"client.sessionSwitch.typical.mountedRows":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"client.sessionSwitch.typical.mutations": {
+	"client.sessionSwitch.typical.mutations":
+	{
 		"ceiling": 49,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted. The sidebar section under the pointer carries data-hover-within (upstream G4), set from React onMouseOver: the lab's hover on the target row before the click adds that one attribute. The titlebar title sits in upstream's h2 named by the title (aria-label), so a switch rewrites that one more attribute.",
 		"raisedAt": "2026-11-02"
 	},
-	"hot.claudeEventsReducer.replay-200.calls": {
+	"hot.claudeEventsReducer.replay-200.calls":
+	{
 		"ceiling": 300,
 		"unit": "calls",
 		"tolerance": 0
 	},
-	"hot.paletteRanking.500x5.calls": {
+	"hot.paletteRanking.500x5.calls":
+	{
 		"ceiling": 10282,
 		"unit": "calls",
 		"tolerance": 0
 	},
-	"hot.processTranscript.large-long.calls": {
+	"hot.processTranscript.large-long.calls":
+	{
 		"ceiling": 2274,
 		"unit": "calls",
 		"tolerance": 0
 	},
-	"hot.processTranscript.large-wide.calls": {
+	"hot.processTranscript.large-wide.calls":
+	{
 		"ceiling": 864,
 		"unit": "calls",
 		"tolerance": 0
 	},
-	"hot.processTranscript.small.calls": {
+	"hot.processTranscript.small.calls":
+	{
 		"reason": "Generic tool output shape (2026-11-10, tool-output-details-for-claude-fold / tool-output-body-kinds): every paired tool result goes through one addOutputShape call that screens for note, No output and JSON results before classifying, one extra call per fixture tool result. Ceiling raised to the measurement.",
 		"raisedAt": "2026-11-10",
 		"ceiling": 3656,
 		"unit": "calls",
 		"tolerance": 0
 	},
-	"hot.processTranscript.typical.calls": {
+	"hot.processTranscript.typical.calls":
+	{
 		"reason": "Generic tool output shape (2026-11-10, tool-output-details-for-claude-fold / tool-output-body-kinds): every paired tool result goes through one addOutputShape call that screens for note, No output and JSON results before classifying, one extra call per fixture tool result. Ceiling raised to the measurement.",
 		"raisedAt": "2026-11-10",
 		"ceiling": 2572,
 		"unit": "calls",
 		"tolerance": 0
 	},
-	"server.coldLoad.approvals.resp.bytes": {
+	"server.coldLoad.approvals.resp.bytes":
+	{
 		"ceiling": 16,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.coldLoad.approvals.sql.count": {
+	"server.coldLoad.approvals.sql.count":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.coldLoad.composerDefaults.resp.bytes": {
+	"server.coldLoad.composerDefaults.resp.bytes":
+	{
 		"ceiling": 148,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "The response carries repoDefaultMode (the ?cwd= project folder's permissions.defaultMode, null without one) for the per-folder mode resolver (folder-permission-mode-memory T4), +23 bytes (125 to 148). Before that: fastModeBlocked, +23 bytes (102 to 125).",
 		"raisedAt": "2026-11-09"
 	},
-	"server.coldLoad.composerDefaults.sql.count": {
+	"server.coldLoad.composerDefaults.sql.count":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.coldLoad.homeStats.resp.bytes": {
+	"server.coldLoad.homeStats.resp.bytes":
+	{
 		"ceiling": 328,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.coldLoad.homeStats.sql.count": {
+	"server.coldLoad.homeStats.sql.count":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.coldLoad.notifications.resp.bytes": {
+	"server.coldLoad.notifications.resp.bytes":
+	{
 		"ceiling": 20,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.coldLoad.notifications.sql.count": {
+	"server.coldLoad.notifications.sql.count":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.coldLoad.plans.resp.bytes": {
+	"server.coldLoad.plans.resp.bytes":
+	{
 		"ceiling": 2,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.coldLoad.plans.sql.count": {
+	"server.coldLoad.plans.sql.count":
+	{
 		"ceiling": 3,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.coldLoad.plugins.resp.bytes": {
+	"server.coldLoad.plugins.resp.bytes":
+	{
 		"ceiling": 2,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.coldLoad.plugins.sql.count": {
+	"server.coldLoad.plugins.sql.count":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.coldLoad.projects.resp.bytes": {
+	"server.coldLoad.projects.resp.bytes":
+	{
 		"ceiling": 1051,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.coldLoad.projects.sql.count": {
+	"server.coldLoad.projects.sql.count":
+	{
 		"ceiling": 11,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.coldLoad.promptHistory.resp.bytes": {
+	"server.coldLoad.promptHistory.resp.bytes":
+	{
 		"ceiling": 32,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "The empty response is {\"prompts\":[],\"bashCommands\":[]} instead of [], so bash mode's ↑/↓ walk the session's shell commands (composer-bash-mode T4): 2 to 32 bytes.",
 		"raisedAt": "2026-11-09"
 	},
-	"server.coldLoad.promptHistory.sql.count": {
+	"server.coldLoad.promptHistory.sql.count":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.coldLoad.sessionsActive.resp.bytes": {
+	"server.coldLoad.sessionsActive.resp.bytes":
+	{
 		"ceiling": 2,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.coldLoad.sessionsActive.sql.count": {
+	"server.coldLoad.sessionsActive.sql.count":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.coldLoad.sessionsGrouped.resp.bytes": {
+	"server.coldLoad.sessionsGrouped.resp.bytes":
+	{
 		"ceiling": 21172,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "Session list items carry lastUserMessage (the first line of the newest typed prompt, capped at 200 chars) for the described sidebar row's message (sidebar-row-metadata-line T2): +8348 bytes (12824 to 21172).",
 		"raisedAt": "2026-11-03"
 	},
-	"server.coldLoad.sessionsGrouped.sql.count": {
+	"server.coldLoad.sessionsGrouped.sql.count":
+	{
 		"ceiling": 6,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.coldLoad.sessionsRecent.resp.bytes": {
+	"server.coldLoad.sessionsRecent.resp.bytes":
+	{
 		"ceiling": 20729,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "Session list items carry lastUserMessage (the first line of the newest typed prompt, capped at 200 chars) for the described sidebar row's message (sidebar-row-metadata-line T2): +8348 bytes (12381 to 20729).",
 		"raisedAt": "2026-11-03"
 	},
-	"server.coldLoad.sessionsRecent.sql.count": {
+	"server.coldLoad.sessionsRecent.sql.count":
+	{
 		"ceiling": 4,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-long.1.jsonl.fullScans": {
+	"server.liveAppend.large-long.1.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-long.1.readAmplification": {
+	"server.liveAppend.large-long.1.readAmplification":
+	{
 		"ceiling": 93900,
 		"unit": "ratio",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-long.20.jsonl.fullScans": {
+	"server.liveAppend.large-long.20.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-long.20.readAmplification": {
+	"server.liveAppend.large-long.20.readAmplification":
+	{
 		"ceiling": 3,
 		"unit": "ratio",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-long.20.sql.count": {
+	"server.liveAppend.large-long.20.sql.count":
+	{
 		"ceiling": 23,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-long.20.sse.payloadBytes": {
+	"server.liveAppend.large-long.20.sse.payloadBytes":
+	{
 		"ceiling": 4837,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "Session list items carry lastUserMessage (the first line of the newest typed prompt, capped at 200 chars) for the described sidebar row's message (sidebar-row-metadata-line T2); kept at the pinned large-tier offset from typical: +69 bytes (4768 to 4837).",
 		"raisedAt": "2026-11-03"
 	},
-	"server.liveAppend.large-wide.1.jsonl.fullScans": {
+	"server.liveAppend.large-wide.1.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-wide.1.readAmplification": {
+	"server.liveAppend.large-wide.1.readAmplification":
+	{
 		"ceiling": 300473,
 		"unit": "ratio",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-wide.20.jsonl.fullScans": {
+	"server.liveAppend.large-wide.20.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-wide.20.readAmplification": {
+	"server.liveAppend.large-wide.20.readAmplification":
+	{
 		"ceiling": 3,
 		"unit": "ratio",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-wide.20.sql.count": {
+	"server.liveAppend.large-wide.20.sql.count":
+	{
 		"ceiling": 23,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.large-wide.20.sse.payloadBytes": {
+	"server.liveAppend.large-wide.20.sse.payloadBytes":
+	{
 		"ceiling": 4897,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "Session list items carry lastUserMessage (the first line of the newest typed prompt, capped at 200 chars) for the described sidebar row's message (sidebar-row-metadata-line T2); kept at the pinned large-tier offset from typical: +69 bytes (4828 to 4897).",
 		"raisedAt": "2026-11-03"
 	},
-	"server.liveAppend.small.1.jsonl.fullScans": {
+	"server.liveAppend.small.1.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.small.1.readAmplification": {
+	"server.liveAppend.small.1.readAmplification":
+	{
 		"ceiling": 2407,
 		"unit": "ratio",
 		"tolerance": 0
 	},
-	"server.liveAppend.small.20.jsonl.fullScans": {
+	"server.liveAppend.small.20.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.small.20.readAmplification": {
+	"server.liveAppend.small.20.readAmplification":
+	{
 		"ceiling": 3,
 		"unit": "ratio",
 		"tolerance": 0
 	},
-	"server.liveAppend.small.20.sql.count": {
+	"server.liveAppend.small.20.sql.count":
+	{
 		"ceiling": 23,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.small.20.sse.payloadBytes": {
+	"server.liveAppend.small.20.sse.payloadBytes":
+	{
 		"ceiling": 4700,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "Session list items carry lastUserMessage (the first line of the newest typed prompt, capped at 200 chars) for the described sidebar row's message (sidebar-row-metadata-line T2): +69 bytes (4631 to 4700).",
 		"raisedAt": "2026-11-03"
 	},
-	"server.liveAppend.typical.1.jsonl.fullScans": {
+	"server.liveAppend.typical.1.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.typical.1.readAmplification": {
+	"server.liveAppend.typical.1.readAmplification":
+	{
 		"ceiling": 21432,
 		"unit": "ratio",
 		"tolerance": 0
 	},
-	"server.liveAppend.typical.20.jsonl.fullScans": {
+	"server.liveAppend.typical.20.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.typical.20.readAmplification": {
+	"server.liveAppend.typical.20.readAmplification":
+	{
 		"ceiling": 3,
 		"unit": "ratio",
 		"tolerance": 0
 	},
-	"server.liveAppend.typical.20.sql.count": {
+	"server.liveAppend.typical.20.sql.count":
+	{
 		"ceiling": 23,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppend.typical.20.sse.payloadBytes": {
+	"server.liveAppend.typical.20.sse.payloadBytes":
+	{
 		"ceiling": 4736,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "Session list items carry lastUserMessage (the first line of the newest typed prompt, capped at 200 chars) for the described sidebar row's message (sidebar-row-metadata-line T2): +69 bytes (4667 to 4736).",
 		"raisedAt": "2026-11-03"
 	},
-	"server.liveAppendMulti.jsonl.bytesRead": {
+	"server.liveAppendMulti.jsonl.bytesRead":
+	{
 		"ceiling": 2512800,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.liveAppendMulti.jsonl.fullScans": {
+	"server.liveAppendMulti.jsonl.fullScans":
+	{
 		"ceiling": 5,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.liveAppendMulti.sse.deliveredBytes": {
+	"server.liveAppendMulti.sse.deliveredBytes":
+	{
 		"ceiling": 20292,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "Session list items carry lastUserMessage (the first line of the newest typed prompt, capped at 200 chars) for the described sidebar row's message (sidebar-row-metadata-line T2): +1020 bytes (19272 to 20292).",
 		"raisedAt": "2026-11-03"
 	},
-	"server.search.miss.sql.count": {
+	"server.search.miss.sql.count":
+	{
 		"ceiling": 5,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.search.phrase.sql.count": {
+	"server.search.phrase.sql.count":
+	{
 		"ceiling": 5,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.search.word.sql.count": {
+	"server.search.word.sql.count":
+	{
 		"ceiling": 5,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.detail.jsonl.bytesRead": {
+	"server.sessionOpen.large-long.detail.jsonl.bytesRead":
+	{
 		"ceiling": 20000000,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.detail.jsonl.fullScans": {
+	"server.sessionOpen.large-long.detail.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.detail.proc.spawned": {
+	"server.sessionOpen.large-long.detail.proc.spawned":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.detail.sql.count": {
+	"server.sessionOpen.large-long.detail.sql.count":
+	{
 		"ceiling": 12,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.subagents.jsonl.bytesRead": {
+	"server.sessionOpen.large-long.subagents.jsonl.bytesRead":
+	{
 		"ceiling": 0,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.subagents.jsonl.fullScans": {
+	"server.sessionOpen.large-long.subagents.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.subagents.proc.spawned": {
+	"server.sessionOpen.large-long.subagents.proc.spawned":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.subagents.resp.bytes": {
+	"server.sessionOpen.large-long.subagents.resp.bytes":
+	{
 		"ceiling": 2,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.subagents.sql.count": {
+	"server.sessionOpen.large-long.subagents.sql.count":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.transcript.jsonl.bytesRead": {
+	"server.sessionOpen.large-long.transcript.jsonl.bytesRead":
+	{
 		"ceiling": 20000000,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.transcript.jsonl.fullScans": {
+	"server.sessionOpen.large-long.transcript.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.transcript.proc.spawned": {
+	"server.sessionOpen.large-long.transcript.proc.spawned":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-long.transcript.resp.bytes": {
+	"server.sessionOpen.large-long.transcript.resp.bytes":
+	{
 		"ceiling": 523393,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "Transcript responses now carry hiddenUuids, cuts and chainVersion (active-chain paging task 2): +61 bytes of empty arrays and a 16-hex version",
 		"raisedAt": "2026-10-24"
 	},
-	"server.sessionOpen.large-long.transcript.sql.count": {
+	"server.sessionOpen.large-long.transcript.sql.count":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.detail.jsonl.bytesRead": {
+	"server.sessionOpen.large-wide.detail.jsonl.bytesRead":
+	{
 		"ceiling": 64000000,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.detail.jsonl.fullScans": {
+	"server.sessionOpen.large-wide.detail.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.detail.proc.spawned": {
+	"server.sessionOpen.large-wide.detail.proc.spawned":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.detail.sql.count": {
+	"server.sessionOpen.large-wide.detail.sql.count":
+	{
 		"ceiling": 12,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.subagents.jsonl.bytesRead": {
+	"server.sessionOpen.large-wide.subagents.jsonl.bytesRead":
+	{
 		"ceiling": 0,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.subagents.jsonl.fullScans": {
+	"server.sessionOpen.large-wide.subagents.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.subagents.proc.spawned": {
+	"server.sessionOpen.large-wide.subagents.proc.spawned":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.subagents.resp.bytes": {
+	"server.sessionOpen.large-wide.subagents.resp.bytes":
+	{
 		"ceiling": 2,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.subagents.sql.count": {
+	"server.sessionOpen.large-wide.subagents.sql.count":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.transcript.jsonl.bytesRead": {
+	"server.sessionOpen.large-wide.transcript.jsonl.bytesRead":
+	{
 		"ceiling": 64000000,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.transcript.jsonl.fullScans": {
+	"server.sessionOpen.large-wide.transcript.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.transcript.proc.spawned": {
+	"server.sessionOpen.large-wide.transcript.proc.spawned":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.large-wide.transcript.resp.bytes": {
+	"server.sessionOpen.large-wide.transcript.resp.bytes":
+	{
 		"ceiling": 485104,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "Transcript responses now carry hiddenUuids, cuts and chainVersion (active-chain paging task 2): +61 bytes of empty arrays and a 16-hex version",
 		"raisedAt": "2026-10-24"
 	},
-	"server.sessionOpen.large-wide.transcript.sql.count": {
+	"server.sessionOpen.large-wide.transcript.sql.count":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.detail.jsonl.bytesRead": {
+	"server.sessionOpen.small.detail.jsonl.bytesRead":
+	{
 		"ceiling": 500000,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.detail.jsonl.fullScans": {
+	"server.sessionOpen.small.detail.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.detail.proc.spawned": {
+	"server.sessionOpen.small.detail.proc.spawned":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.detail.sql.count": {
+	"server.sessionOpen.small.detail.sql.count":
+	{
 		"ceiling": 12,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.subagents.jsonl.bytesRead": {
+	"server.sessionOpen.small.subagents.jsonl.bytesRead":
+	{
 		"ceiling": 0,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.subagents.jsonl.fullScans": {
+	"server.sessionOpen.small.subagents.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.subagents.proc.spawned": {
+	"server.sessionOpen.small.subagents.proc.spawned":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.subagents.resp.bytes": {
+	"server.sessionOpen.small.subagents.resp.bytes":
+	{
 		"ceiling": 2,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.subagents.sql.count": {
+	"server.sessionOpen.small.subagents.sql.count":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.transcript.jsonl.bytesRead": {
+	"server.sessionOpen.small.transcript.jsonl.bytesRead":
+	{
 		"ceiling": 500000,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.transcript.jsonl.fullScans": {
+	"server.sessionOpen.small.transcript.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.transcript.proc.spawned": {
+	"server.sessionOpen.small.transcript.proc.spawned":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.small.transcript.resp.bytes": {
+	"server.sessionOpen.small.transcript.resp.bytes":
+	{
 		"ceiling": 500149,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "raised from 500135 (2026-11-09): transcript responses now carry the whole file's Claude chapters (session-chapters-toc T1), +14 bytes for an empty chapters array",
 		"raisedAt": "2026-11-09"
 	},
-	"server.sessionOpen.small.transcript.sql.count": {
+	"server.sessionOpen.small.transcript.sql.count":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.detail.jsonl.bytesRead": {
+	"server.sessionOpen.typical.detail.jsonl.bytesRead":
+	{
 		"ceiling": 4500000,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.detail.jsonl.fullScans": {
+	"server.sessionOpen.typical.detail.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.detail.proc.spawned": {
+	"server.sessionOpen.typical.detail.proc.spawned":
+	{
 		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.detail.sql.count": {
+	"server.sessionOpen.typical.detail.sql.count":
+	{
 		"ceiling": 12,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.subagents.jsonl.bytesRead": {
+	"server.sessionOpen.typical.subagents.jsonl.bytesRead":
+	{
 		"ceiling": 0,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.subagents.jsonl.fullScans": {
+	"server.sessionOpen.typical.subagents.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.subagents.proc.spawned": {
+	"server.sessionOpen.typical.subagents.proc.spawned":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.subagents.resp.bytes": {
+	"server.sessionOpen.typical.subagents.resp.bytes":
+	{
 		"ceiling": 2,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.subagents.sql.count": {
+	"server.sessionOpen.typical.subagents.sql.count":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.transcript.jsonl.bytesRead": {
+	"server.sessionOpen.typical.transcript.jsonl.bytesRead":
+	{
 		"ceiling": 4500000,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.transcript.jsonl.fullScans": {
+	"server.sessionOpen.typical.transcript.jsonl.fullScans":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.transcript.proc.spawned": {
+	"server.sessionOpen.typical.transcript.proc.spawned":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionOpen.typical.transcript.resp.bytes": {
+	"server.sessionOpen.typical.transcript.resp.bytes":
+	{
 		"ceiling": 495871,
 		"unit": "bytes",
 		"tolerance": 0,
 		"reason": "raised from 495857 (2026-11-09): transcript responses now carry the whole file's Claude chapters (session-chapters-toc T1), +14 bytes for an empty chapters array",
 		"raisedAt": "2026-11-09"
 	},
-	"server.sessionOpen.typical.transcript.sql.count": {
+	"server.sessionOpen.typical.transcript.sql.count":
+	{
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionReopen.large-long.detail.jsonl.bytesRead": {
+	"server.sessionReopen.large-long.detail.jsonl.bytesRead":
+	{
 		"ceiling": 64,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionReopen.large-long.detail.jsonl.fullScans": {
+	"server.sessionReopen.large-long.detail.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionReopen.large-wide.detail.jsonl.bytesRead": {
+	"server.sessionReopen.large-wide.detail.jsonl.bytesRead":
+	{
 		"ceiling": 64,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionReopen.large-wide.detail.jsonl.fullScans": {
+	"server.sessionReopen.large-wide.detail.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionReopen.small.detail.jsonl.bytesRead": {
+	"server.sessionReopen.small.detail.jsonl.bytesRead":
+	{
 		"ceiling": 64,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionReopen.small.detail.jsonl.fullScans": {
+	"server.sessionReopen.small.detail.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0
 	},
-	"server.sessionReopen.typical.detail.jsonl.bytesRead": {
+	"server.sessionReopen.typical.detail.jsonl.bytesRead":
+	{
 		"ceiling": 64,
 		"unit": "bytes",
 		"tolerance": 0
 	},
-	"server.sessionReopen.typical.detail.jsonl.fullScans": {
+	"server.sessionReopen.typical.detail.jsonl.fullScans":
+	{
 		"ceiling": 0,
 		"unit": "count",
 		"tolerance": 0

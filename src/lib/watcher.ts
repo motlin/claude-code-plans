@@ -7,7 +7,8 @@ import {awaitInitialIndexScan, awaitInitialScan, getDb} from "./db";
 import {retryWhileBusy} from "./db/busy";
 import {trackActivity, trackActivitySync} from "./perf/event-loop-stalls";
 import {broadcastAppendedJsonl, readAppendedJsonlLines, sharedJsonlOffsets} from "./jsonl-append-reader";
-import {
+import
+{
 	deleteFileContent,
 	deleteMemoryFile,
 	deleteTaskFile,
@@ -21,7 +22,8 @@ import {
 	liveJsonlIndexCache,
 	liveSubagentIndexCache,
 } from "./db/indexer";
-import {
+import
+{
 	listSessionsForProjectFromDb,
 	getArchivedSessionIds,
 	getSessionProjectId,
@@ -34,7 +36,8 @@ import {updatePendingApprovalForSession, removePendingApprovalForSession} from "
 import type * as dbSchema from "./db/schema";
 import {extractTitle} from "./markdown-utils.server";
 import {resolveProjectName} from "./memory";
-import {
+import
+{
 	DOMAIN_EVENTS,
 	SSE_EVENTS,
 	diffEntityMaps,
@@ -103,7 +106,8 @@ let gitIndexWatchPaths = new Set<string>();
 const trackedFileIndex = new TrackedFileIndex();
 // One queue per database, so a burst of change events indexes file by file instead of all at once.
 const fileContentQueues = new WeakMap<IndexDb, CooperativeQueue>();
-interface JsonlThrottleState {
+interface JsonlThrottleState
+{
 	timer?: ReturnType<typeof setTimeout>;
 	lastFired: number;
 }
@@ -120,8 +124,10 @@ const jsonlExpediteUntilBySession = new Map<string, number>();
  * throttled change fires at once. One-shot and per session: every other
  * session, and this one's later changes, stay throttled.
  */
-export function expediteSessionJsonlRead(sessionId: string): void {
-	for (const [path, state] of jsonlThrottleByPath) {
+export function expediteSessionJsonlRead(sessionId: string): void
+{
+	for (const [path, state] of jsonlThrottleByPath)
+	{
 		if (state.timer === undefined || basename(path, ".jsonl") !== sessionId) continue;
 		clearTimeout(state.timer);
 		delete state.timer;
@@ -132,7 +138,8 @@ export function expediteSessionJsonlRead(sessionId: string): void {
 }
 
 /** Consume the session's armed bypass, when one is armed and not lapsed. */
-function takeJsonlExpedite(path: string): boolean {
+function takeJsonlExpedite(path: string): boolean
+{
 	const sessionId = basename(path, ".jsonl");
 	const until = jsonlExpediteUntilBySession.get(sessionId);
 	if (until === undefined) return false;
@@ -140,7 +147,8 @@ function takeJsonlExpedite(path: string): boolean {
 	return Date.now() <= until;
 }
 
-async function fireJsonlAppend(path: string, state: JsonlThrottleState): Promise<void> {
+async function fireJsonlAppend(path: string, state: JsonlThrottleState): Promise<void>
+{
 	state.lastFired = Date.now();
 	delete state.timer;
 	await trackActivity(`jsonl append ${path}`, async () =>
@@ -158,17 +166,27 @@ const workflowThrottleBySession = new Map<string, JsonlThrottleState>();
  * session, throttled. True when the path is one, so callers know; the event
  * still flows on to the regular handlers (agent transcripts are indexed).
  */
-function handleWorkflowFileEvent(path: string, projectsRoot: string, broadcast: BroadcastFn): boolean {
+function handleWorkflowFileEvent(path: string, projectsRoot: string, broadcast: BroadcastFn): boolean
+{
 	if (!projectsRoot) return false;
 	const sessionId = workflowSessionIdForPath(path, projectsRoot);
 	if (sessionId === null) return false;
-	const state = workflowThrottleBySession.get(sessionId) ?? {lastFired: 0};
+	const state = workflowThrottleBySession.get(sessionId) ??
+	{
+		lastFired: 0,
+	};
 	workflowThrottleBySession.set(sessionId, state);
 	if (state.timer !== undefined) return true;
-	const fire = (): void => {
+	const fire = (): void =>
+	{
 		state.lastFired = Date.now();
 		delete state.timer;
-		broadcast(DOMAIN_EVENTS.WORKFLOWS_CHANGED, {sessionId});
+		broadcast(
+			DOMAIN_EVENTS.WORKFLOWS_CHANGED,
+			{
+				sessionId,
+			},
+		);
 	};
 	const elapsed = Date.now() - state.lastFired;
 	if (elapsed >= WORKFLOW_THROTTLE_MS) fire();
@@ -176,8 +194,10 @@ function handleWorkflowFileEvent(path: string, projectsRoot: string, broadcast: 
 	return true;
 }
 
-function resetWorkflowThrottle(): void {
-	for (const state of workflowThrottleBySession.values()) {
+function resetWorkflowThrottle(): void
+{
+	for (const state of workflowThrottleBySession.values())
+	{
 		if (state.timer !== undefined) clearTimeout(state.timer);
 	}
 	workflowThrottleBySession.clear();
@@ -186,10 +206,12 @@ function resetWorkflowThrottle(): void {
 hmrDispose(closeWatcher);
 
 /** Stop watching and drop pending throttled JSONL updates. */
-export async function closeWatcher(): Promise<void> {
+export async function closeWatcher(): Promise<void>
+{
 	const current = watcher;
 	watcher = null;
-	for (const state of jsonlThrottleByPath.values()) {
+	for (const state of jsonlThrottleByPath.values())
+	{
 		if (state.timer !== undefined) clearTimeout(state.timer);
 	}
 	jsonlThrottleByPath.clear();
@@ -203,8 +225,10 @@ const WATCHED_EXTENSIONS = new Set([".md", ".jsonl", ".json"]);
 /** Indexing that handleFileChange detaches from its caller, kept so tests can wait for it to finish. */
 const detachedWork = new Set<Promise<void>>();
 
-function detach(work: () => Promise<void>): void {
-	const promise = work().finally(() => {
+function detach(work: () => Promise<void>): void
+{
+	const promise = work().finally(() =>
+	{
 		detachedWork.delete(promise);
 	});
 	detachedWork.add(promise);
@@ -224,7 +248,8 @@ const JSONL_THROTTLE_MS = 2000;
  * is missing, unreadable, not valid JSON, fails strict schema validation, or
  * has no usable `ignored_dirs` array — callers fall back to the next source.
  */
-function readIgnoredDirsFromConfig(configPath: string): string[] | null {
+function readIgnoredDirsFromConfig(configPath: string): string[] | null
+{
 	const dirs = readConfig(configPath)?.ignored_dirs;
 	return dirs && dirs.length > 0 ? dirs : null;
 }
@@ -233,14 +258,16 @@ function readIgnoredDirsFromConfig(configPath: string): string[] | null {
  * Resolve the directory basenames to ignore from persisted application
  * settings, falling back to the built-in defaults.
  */
-export function resolveIgnoredDirNames(configPath: string = getConfigPath()): Set<string> {
+export function resolveIgnoredDirNames(configPath: string = getConfigPath()): Set<string>
+{
 	const fromConfig = readIgnoredDirsFromConfig(configPath);
 	if (fromConfig) return new Set(fromConfig);
 	return new Set(DEFAULT_IGNORED_DIR_NAMES);
 }
 
 /** Build the path-matching regex for a given set of ignored directory names. */
-export function buildIgnoredDirPattern(dirNames: Set<string>): RegExp {
+export function buildIgnoredDirPattern(dirNames: Set<string>): RegExp
+{
 	const escaped = [...dirNames].map((d) => d.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 	return new RegExp(`(?:^|/)(?:${escaped.join("|")})(?:/|$)`);
 }
@@ -256,14 +283,17 @@ let ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
  *   return early on those anyway, so watching them is pure waste.
  * - Defense in depth: skips non-regular files (sockets, FIFOs).
  */
-export function shouldIgnoreWatch(path: string, stats?: Stats): boolean {
+export function shouldIgnoreWatch(path: string, stats?: Stats): boolean
+{
 	if (gitIndexWatchPaths.has(resolve(path))) return false;
 	if (ignoredDirPattern.test(path)) return true;
 	if (stats && !stats.isFile() && !stats.isDirectory()) return true;
-	if (stats?.isFile() && fileContentRootForPath(path) !== undefined) {
+	if (stats?.isFile() && fileContentRootForPath(path) !== undefined)
+	{
 		return !isFileContentIndexable(path);
 	}
-	if (stats?.isFile()) {
+	if (stats?.isFile())
+	{
 		const dot = path.lastIndexOf(".");
 		const ext = dot >= 0 ? path.slice(dot) : "";
 		if (!WATCHED_EXTENSIONS.has(ext)) return true;
@@ -271,7 +301,8 @@ export function shouldIgnoreWatch(path: string, stats?: Stats): boolean {
 	return false;
 }
 
-function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayload): boolean {
+function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayload): boolean
+{
 	return (
 		a.id === b.id &&
 		a.title === b.title &&
@@ -292,7 +323,8 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
 	);
 }
 
-function toTaskSummaryPayload(row: TaskRow): TaskSummaryPayload {
+function toTaskSummaryPayload(row: TaskRow): TaskSummaryPayload
+{
 	return {
 		taskId: row.taskId,
 		projectDir: row.projectDir,
@@ -306,7 +338,8 @@ function toTaskSummaryPayload(row: TaskRow): TaskSummaryPayload {
 	};
 }
 
-function tasksEqual(a: TaskSummaryPayload, b: TaskSummaryPayload): boolean {
+function tasksEqual(a: TaskSummaryPayload, b: TaskSummaryPayload): boolean
+{
 	return (
 		a.subject === b.subject &&
 		a.description === b.description &&
@@ -323,59 +356,89 @@ function tasksEqual(a: TaskSummaryPayload, b: TaskSummaryPayload): boolean {
  * and broadcast domain-level session:added / session:removed / session:updated
  * events for each delta.
  */
-function diffAndBroadcastSessions(index: IndexDb, projectId: string, broadcast: BroadcastFn): void {
+function diffAndBroadcastSessions(index: IndexDb, projectId: string, broadcast: BroadcastFn): void
+{
 	// Archived sessions stay in the snapshot so archiving never reads as a removal.
-	const rows = listSessionsForProjectFromDb(index, projectId, {status: "all"});
+	const rows = listSessionsForProjectFromDb(
+		index,
+		projectId,
+		{
+			status: "all",
+		},
+	);
 	const unseenIds = getUnseenSessionIds(index);
 	const archivedIds = getArchivedSessionIds(index);
 	const terminalHosts = getSessionTerminalHosts();
 	const next = new Map<string, SessionSummaryPayload>();
-	for (const row of rows) {
+	for (const row of rows)
+	{
 		next.set(
 			row.id,
-			toSessionSummaryPayload(row, {
-				unseen: unseenIds.has(row.id),
-				archived: archivedIds.has(row.id),
-				terminalHost: terminalHosts.get(row.id) ?? null,
-			}),
+			toSessionSummaryPayload(
+				row,
+				{
+					unseen: unseenIds.has(row.id),
+					archived: archivedIds.has(row.id),
+					terminalHost: terminalHosts.get(row.id) ?? null,
+				},
+			),
 		);
 	}
 
 	const previous = lastSessionsByProject.get(projectId) ?? new Map<string, SessionSummaryPayload>();
 	const {added, removed, updated} = diffEntityMaps(previous, next, sessionSummariesEqual);
 
-	for (const session of added) {
+	for (const session of added)
+	{
 		const key = `${DOMAIN_EVENTS.SESSION_ADDED}:${session.id}:${session.mtime}`;
 		if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
-		broadcast(DOMAIN_EVENTS.SESSION_ADDED, {session});
+		broadcast(
+			DOMAIN_EVENTS.SESSION_ADDED,
+			{
+				session,
+			},
+		);
 	}
-	for (const sessionId of removed) {
+	for (const sessionId of removed)
+	{
 		const key = `${DOMAIN_EVENTS.SESSION_REMOVED}:${sessionId}:${projectId}`;
 		if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
-		broadcast(DOMAIN_EVENTS.SESSION_REMOVED, {
-			sessionId,
-			projectDir: projectId,
-		});
+		broadcast(
+			DOMAIN_EVENTS.SESSION_REMOVED,
+			{
+				sessionId,
+				projectDir: projectId,
+			},
+		);
 	}
-	for (const session of updated) {
+	for (const session of updated)
+	{
 		const key = sessionUpdatedDedupeKey(session);
 		if (recentlyBroadcast(key, DEDUPE_TTL_MS)) continue;
-		broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session});
+		broadcast(
+			DOMAIN_EVENTS.SESSION_UPDATED,
+			{
+				session,
+			},
+		);
 	}
 
 	lastSessionsByProject.set(projectId, next);
 }
 
-function readTaskSnapshot(projectId: string): Map<string, TaskSummaryPayload> {
+function readTaskSnapshot(projectId: string): Map<string, TaskSummaryPayload>
+{
 	const snapshot = new Map<string, TaskSummaryPayload>();
-	for (const {filePath, task} of getTaskFilesForProject(getDb().index, projectId)) {
+	for (const {filePath, task} of getTaskFilesForProject(getDb().index, projectId))
+	{
 		snapshot.set(filePath, toTaskSummaryPayload(task));
 	}
 	return snapshot;
 }
 
 /** Same key as the hook dispatcher's, so whichever path broadcasts first suppresses the other. */
-function taskChangedDedupeKey(filePath: string, status: string): string {
+function taskChangedDedupeKey(filePath: string, status: string): string
+{
 	return `${DOMAIN_EVENTS.TASK_CHANGED}:${filePath}:${status}`;
 }
 
@@ -384,28 +447,46 @@ function taskChangedDedupeKey(filePath: string, status: string): string {
  * and broadcast task:changed / task:completed / task:removed deltas. A task transitioning to
  * status 'completed' gets a task:completed event in addition to task:changed.
  */
-function diffAndBroadcastTasks(projectId: string): void {
+function diffAndBroadcastTasks(projectId: string): void
+{
 	const next = readTaskSnapshot(projectId);
 	const previous = lastTasksByProject.get(projectId) ?? new Map<string, TaskSummaryPayload>();
 	const {removed} = diffEntityMaps(previous, next, tasksEqual);
 
-	for (const [filePath, task] of next) {
+	for (const [filePath, task] of next)
+	{
 		const before = previous.get(filePath);
 		if (before !== undefined && tasksEqual(before, task)) continue;
 		// The dispatcher already broadcast this change, including its task:completed.
 		if (recentlyBroadcast(taskChangedDedupeKey(filePath, task.status), DEDUPE_TTL_MS)) continue;
-		broadcastTyped(DOMAIN_EVENTS.TASK_CHANGED, {task});
-		if (task.status === "completed" && before?.status !== "completed") {
-			broadcastTyped(DOMAIN_EVENTS.TASK_COMPLETED, {
-				taskId: task.taskId,
-				subject: task.subject,
-			});
+		broadcastTyped(
+			DOMAIN_EVENTS.TASK_CHANGED,
+			{
+				task,
+			},
+		);
+		if (task.status === "completed" && before?.status !== "completed")
+		{
+			broadcastTyped(
+				DOMAIN_EVENTS.TASK_COMPLETED,
+				{
+					taskId: task.taskId,
+					subject: task.subject,
+				},
+			);
 		}
 	}
-	for (const filePath of removed) {
+	for (const filePath of removed)
+	{
 		const task = previous.get(filePath);
 		if (task !== undefined)
-			broadcastTyped(DOMAIN_EVENTS.TASK_REMOVED, {taskId: task.taskId, projectDir: task.projectDir});
+			broadcastTyped(
+				DOMAIN_EVENTS.TASK_REMOVED,
+				{
+					taskId: task.taskId,
+					projectDir: task.projectDir,
+				},
+			);
 	}
 
 	lastTasksByProject.set(projectId, next);
@@ -416,15 +497,19 @@ function diffAndBroadcastTasks(projectId: string): void {
  * Falls through silently if the file has since disappeared. Accepts an
  * injectable broadcast callback so tests can capture emissions.
  */
-async function broadcastPlanChangedWith(filePath: string, broadcast: BroadcastFn): Promise<void> {
+async function broadcastPlanChangedWith(filePath: string, broadcast: BroadcastFn): Promise<void>
+{
 	const filename = basename(filePath);
 	let mtime: Date;
 	let mtimeMs: number;
-	try {
+	try
+	{
 		const fileStat = await stat(filePath);
 		mtime = fileStat.mtime;
 		mtimeMs = fileStat.mtimeMs;
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
 	// Key on the integer mtimeMs (truncated) rather than the ISO string. The
@@ -434,12 +519,21 @@ async function broadcastPlanChangedWith(filePath: string, broadcast: BroadcastFn
 	const key = `${DOMAIN_EVENTS.PLAN_CHANGED}:${filename}:${Math.floor(mtimeMs)}`;
 	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
 	const title = await extractTitle(filePath, filename);
-	broadcast(DOMAIN_EVENTS.PLAN_CHANGED, {
-		plan: {filename, title, mtime: mtime.toISOString()},
-	});
+	broadcast(
+		DOMAIN_EVENTS.PLAN_CHANGED,
+		{
+			plan:
+			{
+				filename,
+				title,
+				mtime: mtime.toISOString(),
+			},
+		},
+	);
 }
 
-async function broadcastPlanChanged(filePath: string): Promise<void> {
+async function broadcastPlanChanged(filePath: string): Promise<void>
+{
 	await broadcastPlanChangedWith(filePath, broadcastTyped);
 }
 
@@ -455,9 +549,14 @@ async function handleJsonlPlanLinks(
 	projectsDir: string,
 	plansDir: string,
 	broadcast: BroadcastFn,
-): Promise<{linkedPlans: string[]}> {
+): Promise<
+{
+	linkedPlans: string[];
+}>
+{
 	const result = await indexFile(db, jsonlPath, projectsDir, plansDir);
-	for (const planFilename of result.linkedPlans) {
+	for (const planFilename of result.linkedPlans)
+	{
 		await broadcastPlanChangedWith(join(plansDir, planFilename), broadcast);
 	}
 	return result;
@@ -475,7 +574,8 @@ async function handlePlanMdChange(
 	projectsDir: string,
 	plansDir: string,
 	broadcast: BroadcastFn,
-): Promise<void> {
+): Promise<void>
+{
 	await indexFile(db, mdPath, projectsDir, plansDir);
 	await broadcastPlanChangedWith(mdPath, broadcast);
 }
@@ -485,25 +585,35 @@ async function handlePlanMdChange(
  * table, then broadcast `plan:removed`. Idempotent at the DB level —
  * repeating is a no-op.
  */
-function handlePlanMdUnlink(db: IndexDb, mdPath: string, broadcast: BroadcastFn): void {
+function handlePlanMdUnlink(db: IndexDb, mdPath: string, broadcast: BroadcastFn): void
+{
 	const filename = basename(mdPath);
 	deletePlan(db, plansDir, filename);
-	broadcast(DOMAIN_EVENTS.PLAN_REMOVED, {filename});
+	broadcast(
+		DOMAIN_EVENTS.PLAN_REMOVED,
+		{
+			filename,
+		},
+	);
 }
 
 /**
  * Broadcast a memory:changed event with the memory's filename, title, mtime,
  * and owning project. Silently skips files that are missing on disk.
  */
-async function broadcastMemoryChanged(filePath: string, projectsDir: string): Promise<void> {
+async function broadcastMemoryChanged(filePath: string, projectsDir: string): Promise<void>
+{
 	const filename = basename(filePath);
 	let mtime: Date;
 	let mtimeMs: number;
-	try {
+	try
+	{
 		const fileStat = await stat(filePath);
 		mtime = fileStat.mtime;
 		mtimeMs = fileStat.mtimeMs;
-	} catch {
+	}
+	catch
+	{
 		return;
 	}
 	const relative = filePath.slice(projectsDir.length + 1);
@@ -515,15 +625,19 @@ async function broadcastMemoryChanged(filePath: string, projectsDir: string): Pr
 	if (recentlyBroadcast(key, DEDUPE_TTL_MS)) return;
 	const projectName = await resolveProjectName(project);
 	const title = filename.replace(/\.md$/, "");
-	broadcastTyped(DOMAIN_EVENTS.MEMORY_CHANGED, {
-		memory: {
-			filename,
-			title,
-			mtime: mtime.toISOString(),
-			project,
-			projectName,
+	broadcastTyped(
+		DOMAIN_EVENTS.MEMORY_CHANGED,
+		{
+			memory:
+			{
+				filename,
+				title,
+				mtime: mtime.toISOString(),
+				project,
+				projectName,
+			},
 		},
-	});
+	);
 }
 
 const JOB_FILES = new Set(["state.json", "timeline.jsonl"]);
@@ -534,29 +648,42 @@ const JOB_FILES = new Set(["state.json", "timeline.jsonl"]);
  * `timeline.jsonl` for a session transcript. Only a job's own `state.json` or
  * `timeline.jsonl` broadcasts `jobs:changed`.
  */
-function handleJobFileEvent(path: string, jobsRoot: string, broadcast: BroadcastFn): boolean {
+function handleJobFileEvent(path: string, jobsRoot: string, broadcast: BroadcastFn): boolean
+{
 	if (!jobsRoot || !path.startsWith(`${jobsRoot}/`)) return false;
 	const [jobId, file, ...rest] = path.slice(jobsRoot.length + 1).split("/");
-	if (jobId && file && rest.length === 0 && JOB_FILES.has(file)) {
-		broadcast(DOMAIN_EVENTS.JOBS_CHANGED, {jobId});
+	if (jobId && file && rest.length === 0 && JOB_FILES.has(file))
+	{
+		broadcast(
+			DOMAIN_EVENTS.JOBS_CHANGED,
+			{
+				jobId,
+			},
+		);
 	}
 	return true;
 }
 
 /** Safely diff and broadcast sessions for a project; swallow indexing races. */
-function safeDiffSessions(projectId: string, broadcast: BroadcastFn = broadcastTyped, db?: IndexDb): void {
+function safeDiffSessions(projectId: string, broadcast: BroadcastFn = broadcastTyped, db?: IndexDb): void
+{
 	if (!projectId) return;
-	try {
-		trackActivitySync(`session diff ${projectId}`, () => {
+	try
+	{
+		trackActivitySync(`session diff ${projectId}`, () =>
+		{
 			diffAndBroadcastSessions(db ?? getDb().index, projectId, broadcast);
 		});
-	} catch {
+	}
+	catch
+	{
 		// transient DB error; next file event will retry
 	}
 }
 
 /** Re-broadcast a project's session rows, e.g. after a PR status refresh. */
-export function rebroadcastProjectSessions(projectId: string): void {
+export function rebroadcastProjectSessions(projectId: string): void
+{
 	safeDiffSessions(projectId);
 }
 
@@ -568,15 +695,20 @@ export function rebroadcastSessionsById(
 	sessionIds: ReadonlySet<string>,
 	broadcast: BroadcastFn = broadcastTyped,
 	db?: IndexDb,
-): void {
+): void
+{
 	const projectIds = new Set<string>();
-	try {
+	try
+	{
 		const index = db ?? getDb().index;
-		for (const sessionId of sessionIds) {
+		for (const sessionId of sessionIds)
+		{
 			const projectId = getSessionProjectId(index, sessionId);
 			if (projectId) projectIds.add(projectId);
 		}
-	} catch {
+	}
+	catch
+	{
 		// transient DB error; the next registry change or poll retries
 		return;
 	}
@@ -588,38 +720,49 @@ export function rebroadcastSessionsById(
  * first diff after a restart compares against the indexed state instead of
  * nothing and broadcasts only what changed.
  */
-function seedTaskSnapshot(taskDir: string): void {
+function seedTaskSnapshot(taskDir: string): void
+{
 	if (!taskDir) return;
-	try {
+	try
+	{
 		const projectId = resolveTaskDirProjectId(getDb().index, taskDir);
 		if (!lastTasksByProject.has(projectId)) lastTasksByProject.set(projectId, readTaskSnapshot(projectId));
-	} catch {
+	}
+	catch
+	{
 		// transient DB error; the diff then treats the project as new
 	}
 }
 
 /** Safely diff and broadcast tasks for a task dir's project; swallow indexing races. */
-function safeDiffTasks(taskDir: string): void {
+function safeDiffTasks(taskDir: string): void
+{
 	if (!taskDir) return;
-	try {
+	try
+	{
 		const projectId = resolveTaskDirProjectId(getDb().index, taskDir);
-		trackActivitySync(`task diff ${projectId}`, () => {
+		trackActivitySync(`task diff ${projectId}`, () =>
+		{
 			diffAndBroadcastTasks(projectId);
 		});
-	} catch {
+	}
+	catch
+	{
 		// transient DB error; next file event will retry
 	}
 }
 
 /** Extract the first path segment under projectsDir, or '' if path is outside it. */
-function projectIdFromPath(path: string, projectsDir: string): string {
+function projectIdFromPath(path: string, projectsDir: string): string
+{
 	if (!projectsDir || !path.startsWith(projectsDir)) return "";
 	const relative = path.slice(projectsDir.length + 1);
 	return relative.split("/")[0] ?? "";
 }
 
 /** Extract session ID from a JSONL file path (filename minus .jsonl extension). */
-function sessionIdFromJsonlPath(path: string): string {
+function sessionIdFromJsonlPath(path: string): string
+{
 	return basename(path, ".jsonl");
 }
 
@@ -628,81 +771,112 @@ async function indexSilently(
 	projectsDir: string,
 	db?: IndexDb,
 	plansDirectory: string = plansDir,
-): Promise<{linkedPlans: string[]; subagentsChangedFor?: string}> {
-	try {
+): Promise<
+{
+	linkedPlans: string[];
+	subagentsChangedFor?: string;
+}>
+{
+	try
+	{
 		const index = db ?? getDb().index;
 		return await trackActivity(`index ${path}`, async () =>
 			retryWhileBusy(async () =>
-				indexFile(index, path, projectsDir, plansDirectory || undefined, {
-					jsonlCache: liveJsonlIndexCache,
-					subagentCache: liveSubagentIndexCache,
-				}),
+				indexFile(
+					index,
+					path,
+					projectsDir,
+					plansDirectory || undefined,
+					{
+						jsonlCache: liveJsonlIndexCache,
+						subagentCache: liveSubagentIndexCache,
+					},
+				),
 			),
 		);
-	} catch {
+	}
+	catch
+	{
 		// indexing error — deltas below still reflect prior DB state
-		return {linkedPlans: []};
+		return {
+			linkedPlans: [],
+		};
 	}
 }
 
-function fileContentQueue(db: IndexDb): CooperativeQueue {
+function fileContentQueue(db: IndexDb): CooperativeQueue
+{
 	let queue = fileContentQueues.get(db);
-	if (!queue) {
+	if (!queue)
+	{
 		queue = new CooperativeQueue();
 		fileContentQueues.set(db, queue);
 	}
 	return queue;
 }
 
-async function handleFileContentChange(db: IndexDb, path: string, roots: readonly string[]): Promise<void> {
-	await fileContentQueue(db).enqueue(path, async () => {
+async function handleFileContentChange(db: IndexDb, path: string, roots: readonly string[]): Promise<void>
+{
+	await fileContentQueue(db).enqueue(path, async () =>
+	{
 		await trackActivity(`file-content index ${path}`, async () =>
 			retryWhileBusy(async () => indexFileContent(db, path, roots)),
 		);
 	});
 }
 
-function handleFileContentUnlink(db: IndexDb, path: string): void {
+function handleFileContentUnlink(db: IndexDb, path: string): void
+{
 	deleteFileContent(db, path);
 }
 
 /** The file-content root holding `path`, found by walking its ancestors so the cost tracks depth, not root count. */
-function fileContentRootForPath(path: string): string | undefined {
-	for (let current = resolve(path); ; current = dirname(current)) {
+function fileContentRootForPath(path: string): string | undefined
+{
+	for (let current = resolve(path); ; current = dirname(current))
+	{
 		if (fileContentRootSet.has(current)) return current;
 		if (dirname(current) === current) return undefined;
 	}
 }
 
-function setFileContentRoots(roots: readonly string[]): void {
+function setFileContentRoots(roots: readonly string[]): void
+{
 	fileContentRoots = roots.map((root) => resolve(root));
 	fileContentRootSet = new Set(fileContentRoots);
 	fileContentRootByGitIndexPath = new Map(fileContentRoots.map((root) => [resolve(gitIndexPath(root)), root]));
 	gitIndexWatchPaths = new Set();
-	for (const indexPath of fileContentRootByGitIndexPath.keys()) {
-		for (let path = indexPath; !gitIndexWatchPaths.has(path); path = dirname(path)) {
+	for (const indexPath of fileContentRootByGitIndexPath.keys())
+	{
+		for (let path = indexPath; !gitIndexWatchPaths.has(path); path = dirname(path))
+		{
 			gitIndexWatchPaths.add(path);
 			if (dirname(path) === path) break;
 		}
 	}
 }
 
-async function refreshTrackedFileRoot(db: IndexDb, root: string): Promise<void> {
+async function refreshTrackedFileRoot(db: IndexDb, root: string): Promise<void>
+{
 	const previouslyTrackedPaths = trackedFileIndex.snapshot(root);
 	const currentlyTrackedPaths = await trackedFileIndex.refresh(root);
 
-	for (const path of currentlyTrackedPaths) {
-		if (!previouslyTrackedPaths.has(path)) {
+	for (const path of currentlyTrackedPaths)
+	{
+		if (!previouslyTrackedPaths.has(path))
+		{
 			await handleFileContentChange(db, path, fileContentRoots);
 		}
 	}
-	for (const path of previouslyTrackedPaths) {
+	for (const path of previouslyTrackedPaths)
+	{
 		if (!currentlyTrackedPaths.has(path)) handleFileContentUnlink(db, path);
 	}
 }
 
 /** Directories the JSONL append handler resolves projects and linked plans against. */
-export interface JsonlAppendDirs {
+export interface JsonlAppendDirs
+{
 	projectsDir: string;
 	plansDir: string;
 }
@@ -717,23 +891,39 @@ export async function processJsonlAppend(
 	path: string,
 	offsets: Map<string, number>,
 	broadcast: BroadcastFn,
-	dirs: JsonlAppendDirs = {projectsDir, plansDir},
-): Promise<void> {
-	try {
+	dirs: JsonlAppendDirs =
+	{
+		projectsDir,
+		plansDir,
+	},
+): Promise<void>
+{
+	try
+	{
 		const read = await readAppendedJsonlLines(db, path, offsets);
 		await broadcastAppendedJsonl(path, sessionIdFromJsonlPath(path), read, broadcast, DEDUPE_TTL_MS);
-	} catch {
+	}
+	catch
+	{
 		// File may have been deleted between the watcher event and this read.
 	}
 
 	const {linkedPlans, subagentsChangedFor} = await indexSilently(path, dirs.projectsDir, db, dirs.plansDir);
 	// A teammate's command started or ended: tabs refetch the subagents the running-tasks count reads.
-	if (subagentsChangedFor !== undefined) {
-		broadcast(DOMAIN_EVENTS.SUBAGENTS_CHANGED, {sessionId: subagentsChangedFor});
+	if (subagentsChangedFor !== undefined)
+	{
+		broadcast(
+			DOMAIN_EVENTS.SUBAGENTS_CHANGED,
+			{
+				sessionId: subagentsChangedFor,
+			},
+		);
 	}
 	const projectId = projectIdFromPath(path, dirs.projectsDir);
-	if (projectId) {
-		try {
+	if (projectId)
+	{
+		try
+		{
 			const projectName = await resolveProjectName(projectId);
 			await updatePendingApprovalForSession(
 				db,
@@ -743,13 +933,17 @@ export async function processJsonlAppend(
 				projectName,
 				broadcast,
 			);
-		} catch {
+		}
+		catch
+		{
 			// transient error scanning JSONL; next change will retry
 		}
 	}
 	safeDiffSessions(projectId, broadcast, db);
-	if (dirs.plansDir) {
-		for (const planFilename of linkedPlans) {
+	if (dirs.plansDir)
+	{
+		for (const planFilename of linkedPlans)
+		{
 			await broadcastPlanChangedWith(join(dirs.plansDir, planFilename), broadcast);
 		}
 	}
@@ -761,7 +955,8 @@ export async function processJsonlAppend(
  * `<pid>.<hash>.key` secrets) is left untouched. True when `path` is inside
  * the registry directory.
  */
-function handleSessionRegistryEvent(path: string): boolean {
+function handleSessionRegistryEvent(path: string): boolean
+{
 	if (!sessionRegistryDirs.has(dirname(path))) return false;
 	if (isRegistryFileName(basename(path))) scheduleSessionRegistryRefresh();
 	return true;
@@ -774,19 +969,24 @@ function handleSessionRegistryEvent(path: string): boolean {
  * of those as appended transcript lines -- from byte 0, as an unindexed file --
  * parsed it whole into the heap and ran the server out of memory.
  */
-function isTranscriptPath(path: string): boolean {
+function isTranscriptPath(path: string): boolean
+{
 	if (!projectsDir) return true;
 	const roots = [resolve(projectsDir)];
-	try {
+	try
+	{
 		roots.push(resolveProjectsDirectory(projectsDir));
-	} catch {
+	}
+	catch
+	{
 		// A missing projects directory has no resolved form; the configured one still applies.
 	}
 	const normalized = resolve(path);
 	return roots.some((root) => normalized.startsWith(`${root}/`));
 }
 
-async function handleFileChange(path: string): Promise<void> {
+async function handleFileChange(path: string): Promise<void>
+{
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
 	if (handleContextMirrorEvent(path, contextMirrorDir, broadcastTyped)) return;
@@ -795,36 +995,48 @@ async function handleFileChange(path: string): Promise<void> {
 	handleWorkflowFileEvent(path, projectsDir, broadcastTyped);
 	const normalizedPath = resolve(path);
 	const gitIndexRoot = fileContentRootByGitIndexPath.get(normalizedPath);
-	if (gitIndexRoot) {
+	if (gitIndexRoot)
+	{
 		await awaitInitialScan();
-		try {
+		try
+		{
 			await trackActivity(`git index refresh ${gitIndexRoot}`, async () =>
 				refreshTrackedFileRoot(getDb().index, gitIndexRoot),
 			);
-		} catch {
+		}
+		catch
+		{
 			// A later watcher event or startup scan retries transient indexing failures.
 		}
 		return;
 	}
 	const fileContentRoot = fileContentRootForPath(path);
-	if (fileContentRoot && trackedFileIndex.has(fileContentRoot, path)) {
+	if (fileContentRoot && trackedFileIndex.has(fileContentRoot, path))
+	{
 		await awaitInitialScan();
-		try {
+		try
+		{
 			await handleFileContentChange(getDb().index, path, fileContentRoots);
-		} catch {
+		}
+		catch
+		{
 			// A later watcher event or startup scan retries transient indexing failures.
 		}
 	}
 	const ext = path.slice(path.lastIndexOf("."));
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
-	if (ext === ".jsonl") {
+	if (ext === ".jsonl")
+	{
 		if (!isTranscriptPath(path)) return;
 		// Throttle: fire immediately on the first change, then at most once
 		// per JSONL_THROTTLE_MS. A trailing timer ensures the final batch of
 		// changes is always processed even after writes stop.
 		const now = Date.now();
-		const throttleState = jsonlThrottleByPath.get(path) ?? {lastFired: 0};
+		const throttleState = jsonlThrottleByPath.get(path) ??
+		{
+			lastFired: 0,
+		};
 		jsonlThrottleByPath.set(path, throttleState);
 		const elapsed = now - throttleState.lastFired;
 
@@ -832,42 +1044,68 @@ async function handleFileChange(path: string): Promise<void> {
 
 		if (throttleState.timer !== undefined) clearTimeout(throttleState.timer);
 
-		if (elapsed >= JSONL_THROTTLE_MS || takeJsonlExpedite(path)) {
+		if (elapsed >= JSONL_THROTTLE_MS || takeJsonlExpedite(path))
+		{
 			// Enough time has passed, or the app just answered this session -- fire immediately.
 			void fire();
-		} else {
+		}
+		else
+		{
 			// Schedule a trailing fire for the remaining interval.
 			throttleState.timer = setTimeout(() => void fire(), JSONL_THROTTLE_MS - elapsed);
 		}
-	} else if (ext === ".json" && statuslineDir && path.startsWith(statuslineDir)) {
+	}
+	else if (ext === ".json" && statuslineDir && path.startsWith(statuslineDir))
+	{
 		const filename = basename(path);
 		const sessionId = filename.replace(/\.json$/, "");
-		broadcastTyped(SSE_EVENTS.STATUSLINE_UPDATED, {sessionId});
-	} else if (ext === ".json" && path.includes("/tasks/")) {
+		broadcastTyped(
+			SSE_EVENTS.STATUSLINE_UPDATED,
+			{
+				sessionId,
+			},
+		);
+	}
+	else if (ext === ".json" && path.includes("/tasks/"))
+	{
 		// ~/.claude/tasks/{taskDir}/{taskId}.json
 		const taskDir = basename(dirname(path));
 		seedTaskSnapshot(taskDir);
-		detach(async () => {
+		detach(async () =>
+		{
 			await indexSilently(path, projectsDir);
 			safeDiffTasks(taskDir);
 		});
-	} else if (ext === ".json" && path.endsWith("sessions-index.json")) {
-		detach(async () => {
+	}
+	else if (ext === ".json" && path.endsWith("sessions-index.json"))
+	{
+		detach(async () =>
+		{
 			await indexSilently(path, projectsDir);
 			safeDiffSessions(basename(dirname(path)));
 		});
-	} else if (ext === ".md") {
-		if (plansDir && path.startsWith(plansDir)) {
-			detach(async () => {
-				try {
+	}
+	else if (ext === ".md")
+	{
+		if (plansDir && path.startsWith(plansDir))
+		{
+			detach(async () =>
+			{
+				try
+				{
 					await handlePlanMdChange(getDb().index, path, projectsDir, plansDir, broadcastTyped);
-				} catch {
+				}
+				catch
+				{
 					// transient indexing error
 					await broadcastPlanChanged(path);
 				}
 			});
-		} else if (projectsDir && path.startsWith(projectsDir)) {
-			detach(async () => {
+		}
+		else if (projectsDir && path.startsWith(projectsDir))
+		{
+			detach(async () =>
+			{
 				await indexSilently(path, projectsDir);
 				await broadcastMemoryChanged(path, projectsDir);
 			});
@@ -876,74 +1114,111 @@ async function handleFileChange(path: string): Promise<void> {
 }
 
 /** Watcher listeners: the emitter ignores returned promises, so these detach the async handlers explicitly. */
-function onFileChange(path: string): void {
+function onFileChange(path: string): void
+{
 	void handleFileChange(path);
 }
 
-function onFileUnlink(path: string): void {
+function onFileUnlink(path: string): void
+{
 	void handleFileUnlink(path);
 }
 
-async function handleFileUnlink(path: string): Promise<void> {
+async function handleFileUnlink(path: string): Promise<void>
+{
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
 	if (handleContextMirrorEvent(path, contextMirrorDir, broadcastTyped)) return;
 	await awaitInitialIndexScan();
-	if (isPathInsideFileContentRoots(path, fileContentRoots)) {
+	if (isPathInsideFileContentRoots(path, fileContentRoots))
+	{
 		await awaitInitialScan();
-		try {
+		try
+		{
 			handleFileContentUnlink(getDb().index, path);
-		} catch {
+		}
+		catch
+		{
 			// A later startup scan reconciles transient deletion failures.
 		}
 	}
 	const ext = path.slice(path.lastIndexOf("."));
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
-	if (ext === ".md" && plansDir && path.startsWith(plansDir)) {
-		try {
+	if (ext === ".md" && plansDir && path.startsWith(plansDir))
+	{
+		try
+		{
 			handlePlanMdUnlink(getDb().index, path, broadcastTyped);
-		} catch {
-			// transient DB error; ensure broadcast still fires
-			broadcastTyped(DOMAIN_EVENTS.PLAN_REMOVED, {filename: basename(path)});
 		}
-	} else if (ext === ".md" && projectsDir && path.startsWith(projectsDir)) {
+		catch
+		{
+			// transient DB error; ensure broadcast still fires
+			broadcastTyped(
+				DOMAIN_EVENTS.PLAN_REMOVED,
+				{
+					filename: basename(path),
+				},
+			);
+		}
+	}
+	else if (ext === ".md" && projectsDir && path.startsWith(projectsDir))
+	{
 		const relative = path.slice(projectsDir.length + 1);
 		const project = relative.split("/")[0] ?? "";
-		if (project) {
-			try {
+		if (project)
+		{
+			try
+			{
 				deleteMemoryFile(getDb().index, path);
-			} catch {
+			}
+			catch
+			{
 				// transient DB error; broadcast still fires
 			}
-			broadcastTyped(DOMAIN_EVENTS.MEMORY_REMOVED, {
-				project,
-				filename: basename(path),
-			});
+			broadcastTyped(
+				DOMAIN_EVENTS.MEMORY_REMOVED,
+				{
+					project,
+					filename: basename(path),
+				},
+			);
 		}
-	} else if (ext === ".jsonl") {
+	}
+	else if (ext === ".jsonl")
+	{
 		sharedJsonlOffsets.delete(path);
 		liveJsonlIndexCache.delete(path);
 		liveSubagentIndexCache.delete(path);
 		const throttleState = jsonlThrottleByPath.get(path);
 		if (throttleState?.timer !== undefined) clearTimeout(throttleState.timer);
 		jsonlThrottleByPath.delete(path);
-		try {
+		try
+		{
 			const db = getDb();
 			pruneDeletedTranscript(db.index, db.summaries, projectsDir, path);
-		} catch {
+		}
+		catch
+		{
 			// transient DB error; the next full scan prunes the session
 		}
 		safeDiffSessions(projectIdFromPath(path, projectsDir));
 		removePendingApprovalForSession(sessionIdFromJsonlPath(path));
-	} else if (ext === ".json" && path.endsWith("sessions-index.json")) {
+	}
+	else if (ext === ".json" && path.endsWith("sessions-index.json"))
+	{
 		safeDiffSessions(basename(dirname(path)));
-	} else if (ext === ".json" && path.includes("/tasks/")) {
+	}
+	else if (ext === ".json" && path.includes("/tasks/"))
+	{
 		const taskDir = basename(dirname(path));
 		seedTaskSnapshot(taskDir);
-		try {
+		try
+		{
 			deleteTaskFile(getDb().index, path);
-		} catch {
+		}
+		catch
+		{
 			// transient DB error; the diff below still runs
 		}
 		safeDiffTasks(taskDir);
@@ -959,10 +1234,12 @@ export async function createWatcher(
 	jbDir?: string,
 	registryDir?: string,
 	mirrorDir?: string,
-): Promise<RecursiveWatcher> {
+): Promise<RecursiveWatcher>
+{
 	// The recursive watcher reports real paths, so every directory compared
 	// against an event path is canonicalized once here (`~/.claude` may be a symlink).
-	if (projDir) {
+	if (projDir)
+	{
 		resolveProjectsDirectory(projDir);
 		projectsDir = canonicalPath(projDir);
 	}
@@ -974,10 +1251,14 @@ export async function createWatcher(
 	setFileContentRoots(configuredFileContentRoots);
 
 	await Promise.all(
-		fileContentRoots.map(async (root) => {
-			try {
+		fileContentRoots.map(async (root) =>
+		{
+			try
+			{
 				await trackedFileIndex.refresh(root);
-			} catch {
+			}
+			catch
+			{
 				// A later Git index event or startup scan retries transient discovery failures.
 			}
 		}),
@@ -989,7 +1270,8 @@ export async function createWatcher(
 	if (watcher) await watcher.close();
 
 	const watchedRoots = [...new Set([...dirs, ...fileContentRoots])];
-	for (const indexPath of fileContentRootByGitIndexPath.keys()) {
+	for (const indexPath of fileContentRootByGitIndexPath.keys())
+	{
 		const indexDirectory = dirname(indexPath);
 		if (!isPathInsideFileContentRoots(indexDirectory, watchedRoots)) watchedRoots.push(indexDirectory);
 	}
@@ -1007,7 +1289,8 @@ export async function createWatcher(
 // Exports for testing
 // ---------------------------------------------------------------------------
 
-export const __testing = {
+export const __testing =
+{
 	toSessionSummaryPayload,
 	sessionSummariesEqual,
 	toTaskSummaryPayload,
@@ -1020,7 +1303,8 @@ export const __testing = {
 	handleFileChange,
 	handleFileUnlink,
 	/** Resolve once every indexing job handleFileChange detached, including ones started meanwhile, has finished. */
-	async settleDetachedWork(): Promise<void> {
+	async settleDetachedWork(): Promise<void>
+	{
 		while (detachedWork.size > 0) await Promise.allSettled(detachedWork);
 	},
 	handleJobFileEvent,
@@ -1029,21 +1313,27 @@ export const __testing = {
 	readIgnoredDirsFromConfig,
 	DEFAULT_IGNORED_DIR_NAMES,
 	/** Override the resolved ignored-dir pattern so `shouldIgnoreWatch` is deterministic in tests. */
-	setIgnoredDirPattern(pattern: RegExp): void {
+	setIgnoredDirPattern(pattern: RegExp): void
+	{
 		ignoredDirPattern = pattern;
 	},
 	/** Restore the pattern derived purely from the hard-coded defaults. */
-	resetIgnoredDirPattern(): void {
+	resetIgnoredDirPattern(): void
+	{
 		ignoredDirPattern = buildIgnoredDirPattern(new Set(DEFAULT_IGNORED_DIR_NAMES));
 	},
-	setProjectsDir(dir: string): void {
+	setProjectsDir(dir: string): void
+	{
 		projectsDir = dir;
 	},
-	setFileContentRoots(roots: string[]): void {
+	setFileContentRoots(roots: string[]): void
+	{
 		setFileContentRoots(roots);
 	},
-	resetJsonlThrottle(): void {
-		for (const state of jsonlThrottleByPath.values()) {
+	resetJsonlThrottle(): void
+	{
+		for (const state of jsonlThrottleByPath.values())
+		{
 			if (state.timer !== undefined) clearTimeout(state.timer);
 		}
 		jsonlThrottleByPath.clear();

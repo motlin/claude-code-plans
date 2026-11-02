@@ -7,12 +7,23 @@
 import {formatKeys, keyPartLabel} from "./format";
 
 /** A recorded chord: `all` matches any row, `typed` only rows bound by `key` (no `code`). */
-export interface PressedChord {
+export interface PressedChord
+{
 	all: string[];
 	typed: string[];
 }
 
-export type ShortcutFind = {by: "text"; text: string} | {by: "press"; pressed: PressedChord | null};
+export type ShortcutFind =
+	|
+	  {
+			by: "text";
+			text: string;
+	  }
+	|
+	  {
+			by: "press";
+			pressed: PressedChord | null;
+	  };
 
 /** Matches one row by its label and keys strings; `typedOnly` rows match only typed chords. */
 export type ShortcutMatcher = (label: string, keys: readonly string[], typedOnly: boolean) => boolean;
@@ -59,20 +70,24 @@ const CODE_CHARS = new Map([
 const GLYPHS = /[⌘⌥⌃⇧⏎⌫⇥␣↑↓←→]/g;
 const ARROW_WORDS = /\barrow (up|down|left|right)\b|\b(up|down|left|right) arrow\b/g;
 
-function isModifier(part: string): boolean {
+function isModifier(part: string): boolean
+{
 	return MODIFIER_ORDER.some((modifier) => modifier === part);
 }
 
-function normalizePart(part: string, isMac: boolean): string {
+function normalizePart(part: string, isMac: boolean): string
+{
 	const name = KEY_ALIASES.get(part) ?? part;
 	return name === "cmd" && !isMac ? "ctrl" : name;
 }
 
-function joinChord(modifiers: ReadonlySet<string>, key: string): string {
+function joinChord(modifiers: ReadonlySet<string>, key: string): string
+{
 	return [...MODIFIER_ORDER.filter((modifier) => modifiers.has(modifier)), key].join("+");
 }
 
-function chordParts(keys: string, isMac: boolean): string[] {
+function chordParts(keys: string, isMac: boolean): string[]
+{
 	return keys
 		.toLowerCase()
 		.split("+")
@@ -80,15 +95,22 @@ function chordParts(keys: string, isMac: boolean): string[] {
 		.map((part) => normalizePart(part, isMac));
 }
 
-function expandRange(part: string): string[] {
+function expandRange(part: string): string[]
+{
 	const range = /^(\d)…(\d)$/.exec(part);
 	if (!range) return [part];
 	const start = Number(range[1]);
-	return Array.from({length: Number(range[2]) - start + 1}, (_, offset) => String(start + offset));
+	return Array.from(
+		{
+			length: Number(range[2]) - start + 1,
+		},
+		(_, offset) => String(start + offset),
+	);
 }
 
 /** Every normalised chord one step stands for, with ranges expanded. */
-function chordStrings(keys: string, isMac: boolean): string[] {
+function chordStrings(keys: string, isMac: boolean): string[]
+{
 	const parts = chordParts(keys, isMac);
 	const modifiers = new Set(parts.filter(isModifier));
 	return parts
@@ -97,7 +119,8 @@ function chordStrings(keys: string, isMac: boolean): string[] {
 		.map((key) => joinChord(modifiers, key));
 }
 
-function partAliases(part: string, isMac: boolean): string[] {
+function partAliases(part: string, isMac: boolean): string[]
+{
 	const label = keyPartLabel(part, isMac);
 	return [
 		...expandRange(part),
@@ -108,7 +131,8 @@ function partAliases(part: string, isMac: boolean): string[] {
 }
 
 /** Each token must prefix-match an alias of a different key part. */
-function matchesDistinctParts(tokens: readonly string[], parts: readonly (readonly string[])[]): boolean {
+function matchesDistinctParts(tokens: readonly string[], parts: readonly (readonly string[])[]): boolean
+{
 	const [first, ...rest] = tokens;
 	if (first === undefined) return true;
 	if (tokens.length > parts.length) return false;
@@ -119,11 +143,14 @@ function matchesDistinctParts(tokens: readonly string[], parts: readonly (readon
 }
 
 /** The row matcher for a find state, or null when nothing filters. */
-export function shortcutMatcher(find: ShortcutFind, isMac: boolean): ShortcutMatcher | null {
-	if (find.by === "press") {
+export function shortcutMatcher(find: ShortcutFind, isMac: boolean): ShortcutMatcher | null
+{
+	if (find.by === "press")
+	{
 		const {pressed} = find;
 		if (pressed === null) return null;
-		return (_label, keys, typedOnly) => {
+		return (_label, keys, typedOnly) =>
+		{
 			const chords = typedOnly ? pressed.typed : pressed.all;
 			return keys.some((keyString) =>
 				keyString
@@ -140,12 +167,14 @@ export function shortcutMatcher(find: ShortcutFind, isMac: boolean): ShortcutMat
 		.replace(GLYPHS, " $& ")
 		.split(/[\s+]+/)
 		.filter((token) => token !== "");
-	return (label, keys) => {
+	return (label, keys) =>
+	{
 		const lowerLabel = label.toLowerCase();
 		if (terms.every((term) => lowerLabel.includes(term))) return true;
 		return (
 			tokens.length > 0 &&
-			keys.some((keyString) => {
+			keys.some((keyString) =>
+			{
 				const parts = keyString
 					.split(/\s+/)
 					.flatMap((step) => chordParts(step, isMac))
@@ -156,16 +185,19 @@ export function shortcutMatcher(find: ShortcutFind, isMac: boolean): ShortcutMat
 	};
 }
 
-type ChordKeyEvent = Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey"> & {
+type ChordKeyEvent = Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey"> &
+{
 	keyCode?: number;
 };
 
-function unique(values: readonly string[]): string[] {
+function unique(values: readonly string[]): string[]
+{
 	return [...new Set(values)];
 }
 
 /** Layout-independent chords for a keydown (upstream `ct`), or null for modifier-only presses. */
-export function chordFromEvent(event: ChordKeyEvent, isMac: boolean): PressedChord | null {
+export function chordFromEvent(event: ChordKeyEvent, isMac: boolean): PressedChord | null
+{
 	if (MODIFIER_ONLY_KEYS.has(event.key) || (event.metaKey && !isMac)) return null;
 	const modifiers = new Set<string>();
 	if (event.ctrlKey) modifiers.add("ctrl");
@@ -183,16 +215,31 @@ export function chordFromEvent(event: ChordKeyEvent, isMac: boolean): PressedCho
 	const physical = [...new Set([optionLetter, codeKey])]
 		.filter((key) => key !== undefined)
 		.map((key) => joinChord(modifiers, key));
-	if (UNPRINTABLE_KEYS.has(event.key)) return physical.length === 0 ? null : {all: physical, typed: []};
+	if (UNPRINTABLE_KEYS.has(event.key))
+		return physical.length === 0
+			? null
+			:
+				{
+					all: physical,
+					typed: [],
+				};
 	const key = event.key === "Delete" ? "del" : normalizePart(event.key.toLowerCase(), isMac);
 	const typed = [key, ...(key === "=" ? ["plus"] : [])].map((name) => joinChord(modifiers, name));
-	if (event.key.length > 1) return {all: typed, typed};
+	if (event.key.length > 1)
+		return {
+			all: typed,
+			typed,
+		};
 	const plainLatin =
 		/^[\p{Script=Latin}\p{Script=Common}]$/u.test(event.key) &&
 		event.key.toUpperCase().length === 1 &&
 		!event.shiftKey &&
 		!event.altKey;
-	if (/^[a-z0-9]$/i.test(event.key) || plainLatin) return {all: unique([...typed, ...physical]), typed};
+	if (/^[a-z0-9]$/i.test(event.key) || plainLatin)
+		return {
+			all: unique([...typed, ...physical]),
+			typed,
+		};
 	const unshifted = new Set(modifiers);
 	unshifted.delete("shift");
 	return {
@@ -202,14 +249,16 @@ export function chordFromEvent(event: ChordKeyEvent, isMac: boolean): PressedCho
 }
 
 /** The chord as the field shows it: "⌘K" on mac, "Ctrl+K" elsewhere. */
-export function chordLabel(chord: string, isMac: boolean): string {
+export function chordLabel(chord: string, isMac: boolean): string
+{
 	return formatKeys(chord, isMac)
 		.map((label) => label.label)
 		.join(isMac ? "" : "+");
 }
 
 /** The text typed after a shown chord (upstream `lt`): drops the chord's common prefix up to the caret. */
-export function stripChordPrefix(value: string, chordText: string, end = value.length): string {
+export function stripChordPrefix(value: string, chordText: string, end = value.length): string
+{
 	if (chordText === "") return value;
 	let index = 0;
 	while (index < end && value[index] === chordText[index]) index += 1;

@@ -10,18 +10,21 @@ const REASON = "Choose an option or skip this question";
 const WRAPPER_CLASS =
 	"inline-flex rounded-r5 outline-none hide-focus-ring transition-shadow duration-[60ms] focus-visible:shadow-focus";
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 });
 
-function wrapperOf(container: HTMLElement): HTMLElement {
+function wrapperOf(container: HTMLElement): HTMLElement
+{
 	const wrapper = container.querySelector<HTMLElement>("[data-cds-disabled-reason-wrapper]");
 	if (wrapper === null) throw new Error("no disabled-reason wrapper");
 	return wrapper;
 }
 
 /** The text `aria-describedby` points at, joined like an accessible description. */
-function descriptionOf(element: HTMLElement): string {
+function descriptionOf(element: HTMLElement): string
+{
 	return (element.getAttribute("aria-describedby") ?? "")
 		.split(" ")
 		.filter(Boolean)
@@ -29,7 +32,8 @@ function descriptionOf(element: HTMLElement): string {
 		.join(" ");
 }
 
-function control(disabled: boolean) {
+function control(disabled: boolean)
+{
 	return (
 		<button type="button" disabled={disabled}>
 			Next
@@ -37,32 +41,39 @@ function control(disabled: boolean) {
 	);
 }
 
-describe("<DisabledReason>", () => {
-	it("makes the wrapper a tab stop described by a hidden reason span", () => {
+describe("<DisabledReason>", () =>
+{
+	it("makes the wrapper a tab stop described by a hidden reason span", () =>
+	{
 		const {container} = render(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
 
 		const wrapper = wrapperOf(container);
 		const reason = wrapper.querySelector<HTMLElement>("[data-cds-disabled-reason]");
-		expect({
-			tabIndex: wrapper.tabIndex,
-			className: wrapper.className,
-			describedBy: wrapper.getAttribute("aria-describedby"),
-			reasonId: reason?.id,
-			reasonHidden: reason?.hidden,
-			reasonText: reason?.textContent,
-			lastChild: wrapper.lastElementChild === reason,
-		}).toStrictEqual({
-			tabIndex: 0,
-			className: WRAPPER_CLASS,
-			describedBy: reason?.id,
-			reasonId: reason?.id,
-			reasonHidden: true,
-			reasonText: REASON,
-			lastChild: true,
-		});
+		expect(
+			{
+				tabIndex: wrapper.tabIndex,
+				className: wrapper.className,
+				describedBy: wrapper.getAttribute("aria-describedby"),
+				reasonId: reason?.id,
+				reasonHidden: reason?.hidden,
+				reasonText: reason?.textContent,
+				lastChild: wrapper.lastElementChild === reason,
+			},
+		).toStrictEqual(
+			{
+				tabIndex: 0,
+				className: WRAPPER_CLASS,
+				describedBy: reason?.id,
+				reasonId: reason?.id,
+				reasonHidden: true,
+				reasonText: REASON,
+				lastChild: true,
+			},
+		);
 	});
 
-	it("keeps the same wrapper with no tab stop, description or reason span while there is no reason", () => {
+	it("keeps the same wrapper with no tab stop, description or reason span while there is no reason", () =>
+	{
 		const {container, rerender} = render(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
 		const before = wrapperOf(container);
 		const button = screen.getByRole("button");
@@ -70,29 +81,43 @@ describe("<DisabledReason>", () => {
 		rerender(<DisabledReason reason={null}>{control(false)}</DisabledReason>);
 
 		const after = wrapperOf(container);
-		expect({
-			sameWrapper: after === before,
-			sameButton: screen.getByRole("button") === button,
-			tabIndex: after.tabIndex,
-			describedBy: after.getAttribute("aria-describedby"),
-			reasonSpan: after.querySelector("[data-cds-disabled-reason]"),
-		}).toStrictEqual({sameWrapper: true, sameButton: true, tabIndex: -1, describedBy: null, reasonSpan: null});
+		expect(
+			{
+				sameWrapper: after === before,
+				sameButton: screen.getByRole("button") === button,
+				tabIndex: after.tabIndex,
+				describedBy: after.getAttribute("aria-describedby"),
+				reasonSpan: after.querySelector("[data-cds-disabled-reason]"),
+			},
+		).toStrictEqual(
+			{
+				sameWrapper: true,
+				sameButton: true,
+				tabIndex: -1,
+				describedBy: null,
+				reasonSpan: null,
+			},
+		);
 	});
 
-	it("opens the reason tooltip at once when the wrapper takes focus", () => {
+	it("opens the reason tooltip at once when the wrapper takes focus", () =>
+	{
 		const {container} = render(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
 
-		act(() => {
+		act(() =>
+		{
 			wrapperOf(container).focus();
 		});
 
 		expect(screen.getByRole("tooltip").textContent).toBe(REASON);
 	});
 
-	it("keeps the reason tooltip open when the wrapper is clicked", () => {
+	it("keeps the reason tooltip open when the wrapper is clicked", () =>
+	{
 		const {container} = render(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
 		const wrapper = wrapperOf(container);
-		act(() => {
+		act(() =>
+		{
 			wrapper.focus();
 		});
 
@@ -101,9 +126,11 @@ describe("<DisabledReason>", () => {
 		expect(screen.getByRole("tooltip").textContent).toBe(REASON);
 	});
 
-	it("uses upstream's balanced 240px reason box", () => {
+	it("uses upstream's balanced 240px reason box", () =>
+	{
 		const {container} = render(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
-		act(() => {
+		act(() =>
+		{
 			wrapperOf(container).focus();
 		});
 
@@ -112,22 +139,33 @@ describe("<DisabledReason>", () => {
 		);
 	});
 
-	it("describes the wrapper, not the button, even while the tooltip is open", () => {
+	it("describes the wrapper, not the button, even while the tooltip is open", () =>
+	{
 		const {container} = render(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
 		const wrapper = wrapperOf(container);
 		const closed = descriptionOf(wrapper);
-		act(() => {
+		act(() =>
+		{
 			wrapper.focus();
 		});
 
-		expect({
-			closed,
-			open: descriptionOf(wrapper),
-			buttonDescribedBy: screen.getByRole("button").getAttribute("aria-describedby"),
-		}).toStrictEqual({closed: REASON, open: REASON, buttonDescribedBy: null});
+		expect(
+			{
+				closed,
+				open: descriptionOf(wrapper),
+				buttonDescribedBy: screen.getByRole("button").getAttribute("aria-describedby"),
+			},
+		).toStrictEqual(
+			{
+				closed: REASON,
+				open: REASON,
+				buttonDescribedBy: null,
+			},
+		);
 	});
 
-	it("never opens a tooltip without a reason", () => {
+	it("never opens a tooltip without a reason", () =>
+	{
 		const {container} = render(<DisabledReason reason={undefined}>{control(false)}</DisabledReason>);
 
 		fireEvent.focus(wrapperOf(container));
@@ -135,49 +173,71 @@ describe("<DisabledReason>", () => {
 		expect(screen.queryByRole("tooltip")).toBeNull();
 	});
 
-	it("hands focus to the wrapper and opens the reason when the focused control becomes disabled", () => {
+	it("hands focus to the wrapper and opens the reason when the focused control becomes disabled", () =>
+	{
 		const {container, rerender} = render(<DisabledReason reason={null}>{control(false)}</DisabledReason>);
-		act(() => {
+		act(() =>
+		{
 			screen.getByRole("button").focus();
 		});
 
 		rerender(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
 
-		expect({
-			focusedWrapper: document.activeElement === wrapperOf(container),
-			tooltip: screen.getByRole("tooltip").textContent,
-		}).toStrictEqual({focusedWrapper: true, tooltip: REASON});
+		expect(
+			{
+				focusedWrapper: document.activeElement === wrapperOf(container),
+				tooltip: screen.getByRole("tooltip").textContent,
+			},
+		).toStrictEqual(
+			{
+				focusedWrapper: true,
+				tooltip: REASON,
+			},
+		);
 	});
 
-	it("hands focus to the wrapper when the disabled control already dropped focus to the body", () => {
+	it("hands focus to the wrapper when the disabled control already dropped focus to the body", () =>
+	{
 		const {container, rerender} = render(<DisabledReason reason={null}>{control(false)}</DisabledReason>);
-		act(() => {
+		act(() =>
+		{
 			screen.getByRole("button").focus();
 		});
-		act(() => {
+		act(() =>
+		{
 			screen.getByRole("button").blur();
 		});
 
 		rerender(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
 
-		expect({
-			focusedWrapper: document.activeElement === wrapperOf(container),
-			tooltip: screen.getByRole("tooltip").textContent,
-		}).toStrictEqual({focusedWrapper: true, tooltip: REASON});
+		expect(
+			{
+				focusedWrapper: document.activeElement === wrapperOf(container),
+				tooltip: screen.getByRole("tooltip").textContent,
+			},
+		).toStrictEqual(
+			{
+				focusedWrapper: true,
+				tooltip: REASON,
+			},
+		);
 	});
 
-	it("leaves focus alone when it had moved elsewhere before the control became disabled", () => {
+	it("leaves focus alone when it had moved elsewhere before the control became disabled", () =>
+	{
 		const {rerender} = render(
 			<>
 				<DisabledReason reason={null}>{control(false)}</DisabledReason>
 				<input aria-label="elsewhere" />
 			</>,
 		);
-		act(() => {
+		act(() =>
+		{
 			screen.getByRole("button").focus();
 		});
 		const elsewhere = screen.getByRole("textbox");
-		act(() => {
+		act(() =>
+		{
 			elsewhere.focus();
 		});
 
@@ -188,27 +248,44 @@ describe("<DisabledReason>", () => {
 			</>,
 		);
 
-		expect({
-			focusedElsewhere: document.activeElement === elsewhere,
-			tooltip: screen.queryByRole("tooltip"),
-		}).toStrictEqual({focusedElsewhere: true, tooltip: null});
+		expect(
+			{
+				focusedElsewhere: document.activeElement === elsewhere,
+				tooltip: screen.queryByRole("tooltip"),
+			},
+		).toStrictEqual(
+			{
+				focusedElsewhere: true,
+				tooltip: null,
+			},
+		);
 	});
 
-	it("hands focus back to the control when the reason clears while the wrapper holds focus", () => {
+	it("hands focus back to the control when the reason clears while the wrapper holds focus", () =>
+	{
 		const {container, rerender} = render(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
-		act(() => {
+		act(() =>
+		{
 			wrapperOf(container).focus();
 		});
 
 		rerender(<DisabledReason reason={null}>{control(false)}</DisabledReason>);
 
-		expect({
-			focusedControl: document.activeElement === screen.getByRole("button"),
-			wrapperTabIndex: wrapperOf(container).tabIndex,
-		}).toStrictEqual({focusedControl: true, wrapperTabIndex: -1});
+		expect(
+			{
+				focusedControl: document.activeElement === screen.getByRole("button"),
+				wrapperTabIndex: wrapperOf(container).tabIndex,
+			},
+		).toStrictEqual(
+			{
+				focusedControl: true,
+				wrapperTabIndex: -1,
+			},
+		);
 	});
 
-	it("leaves focus where it was when the reason clears while focus is elsewhere", () => {
+	it("leaves focus where it was when the reason clears while focus is elsewhere", () =>
+	{
 		const ui = (reason: string | null) => (
 			<>
 				<DisabledReason reason={reason}>{control(reason !== null)}</DisabledReason>
@@ -217,7 +294,8 @@ describe("<DisabledReason>", () => {
 		);
 		const {rerender} = render(ui(REASON));
 		const elsewhere = screen.getByRole("textbox");
-		act(() => {
+		act(() =>
+		{
 			elsewhere.focus();
 		});
 
@@ -226,14 +304,25 @@ describe("<DisabledReason>", () => {
 		expect(document.activeElement === elsewhere).toBe(true);
 	});
 
-	it("places the reason on the requested side", () => {
-		function tooltipClass(side?: "left"): string {
+	it("places the reason on the requested side", () =>
+	{
+		function tooltipClass(side?: "left"): string
+		{
 			const {container, unmount} = render(
-				<DisabledReason reason={REASON} {...(side === undefined ? {} : {side})}>
+				<DisabledReason
+					reason={REASON}
+					{...(side === undefined
+						? {}
+						:
+							{
+								side,
+							})}
+				>
 					{control(true)}
 				</DisabledReason>,
 			);
-			act(() => {
+			act(() =>
+			{
 				wrapperOf(container).focus();
 			});
 			const className = screen.getByRole("tooltip").className;
@@ -241,9 +330,16 @@ describe("<DisabledReason>", () => {
 			return className.split(" ").slice(-4).join(" ");
 		}
 
-		expect({left: tooltipClass("left"), top: tooltipClass()}).toStrictEqual({
-			left: "right-full top-1/2 mr-1 -translate-y-1/2",
-			top: "bottom-full left-1/2 mb-1 -translate-x-1/2",
-		});
+		expect(
+			{
+				left: tooltipClass("left"),
+				top: tooltipClass(),
+			},
+		).toStrictEqual(
+			{
+				left: "right-full top-1/2 mr-1 -translate-y-1/2",
+				top: "bottom-full left-1/2 mb-1 -translate-x-1/2",
+			},
+		);
 	});
 });

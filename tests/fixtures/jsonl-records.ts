@@ -3,10 +3,16 @@ import type {JsonlRecordSchema} from "../../src/lib/schemas";
 
 type JsonlRecord = z.infer<typeof JsonlRecordSchema>;
 type JsonlRecordFixtures = {
-	[RecordType in JsonlRecord["type"]]: Extract<JsonlRecord, {type: RecordType}>;
+	[RecordType in JsonlRecord["type"]]: Extract<
+		JsonlRecord,
+		{
+			type: RecordType;
+		}
+	>;
 };
 
-const baseRecordFields = {
+const baseRecordFields =
+{
 	uuid: "message-alice-100",
 	timestamp: "2000-01-01T00:00:00.000Z",
 	sessionId: "session-alice-100",
@@ -19,113 +25,152 @@ const baseRecordFields = {
 	entrypoint: "cli",
 };
 
-export const jsonlRecordFixtures = {
-	user: {
+export const jsonlRecordFixtures =
+{
+	user:
+	{
 		type: "user",
 		...baseRecordFields,
-		message: {role: "user", content: "Inspect the example project."},
+		message:
+		{
+			role: "user",
+			content: "Inspect the example project.",
+		},
 	},
-	assistant: {
+	assistant:
+	{
 		type: "assistant",
 		...baseRecordFields,
 		requestId: "request-alice-100",
-		message: {
+		message:
+		{
 			role: "assistant",
 			model: "test-model",
-			content: [{type: "text", text: "I will inspect the example project."}],
+			content: [
+				{
+					type: "text",
+					text: "I will inspect the example project.",
+				},
+			],
 		},
 	},
-	"custom-title": {
+	"custom-title":
+	{
 		type: "custom-title",
 		customTitle: "Alice's Example Session",
 		sessionId: "session-alice-100",
 	},
-	"file-history-snapshot": {
+	"file-history-snapshot":
+	{
 		type: "file-history-snapshot",
 		messageId: "message-alice-100",
-		snapshot: {
+		snapshot:
+		{
 			messageId: "message-alice-100",
 			timestamp: "2000-01-01T00:00:00.000Z",
 			trackedFileBackups: {},
 		},
 	},
-	"file-history-delta": {
+	"file-history-delta":
+	{
 		type: "file-history-delta",
 		messageId: "message-alice-100",
 		snapshotMessageId: "message-alice-100",
 		trackingPath: "/tmp/test/alice-project/src/example.ts",
 		timestamp: "2000-01-01T00:00:00.000Z",
-		backup: {
+		backup:
+		{
 			backupFileName: "backup-alice-100@v2",
 			version: 2,
 			backupTime: "2000-01-01T00:00:00.000Z",
 			realParentDir: "/tmp/test/alice-project/src",
 		},
 	},
-	"fork-context-ref": {
+	"fork-context-ref":
+	{
 		type: "fork-context-ref",
 		agentId: "agent-alice-100",
 		parentSessionId: "session-alice-100",
 		parentLastUuid: "message-alice-100",
 		contextLength: 100,
 	},
-	attachment: {
+	attachment:
+	{
 		type: "attachment",
 		...baseRecordFields,
-		attachment: {type: "plan_mode", planFilePath: "/tmp/test/alice-plan.md"},
+		attachment:
+		{
+			type: "plan_mode",
+			planFilePath: "/tmp/test/alice-plan.md",
+		},
 	},
-	progress: {
+	progress:
+	{
 		type: "progress",
 		...baseRecordFields,
-		data: {type: "hook_progress", message: "Example progress"},
+		data:
+		{
+			type: "hook_progress",
+			message: "Example progress",
+		},
 	},
-	system: {
+	system:
+	{
 		type: "system",
 		...baseRecordFields,
 		subtype: "turn_duration",
 		durationMs: 1000,
 	},
-	"ai-title": {
+	"ai-title":
+	{
 		type: "ai-title",
 		aiTitle: "Alice's Generated Title",
 		sessionId: "session-alice-100",
 	},
-	"last-prompt": {
+	"last-prompt":
+	{
 		type: "last-prompt",
 		lastPrompt: "Inspect the example project.",
 		sessionId: "session-alice-100",
 	},
-	"queue-operation": {
+	"queue-operation":
+	{
 		type: "queue-operation",
 		operation: "enqueue",
 		timestamp: "2000-01-01T00:00:00.000Z",
 		sessionId: "session-alice-100",
 		content: "Run the example task.",
 	},
-	"agent-name": {
+	"agent-name":
+	{
 		type: "agent-name",
 		agentName: "Alice",
 		sessionId: "session-alice-100",
 	},
-	"agent-setting": {
+	"agent-setting":
+	{
 		type: "agent-setting",
 		agentSetting: "example-setting",
 		sessionId: "session-alice-100",
 	},
-	"agent-color": {
+	"agent-color":
+	{
 		type: "agent-color",
 		agentColor: "blue",
 		sessionId: "session-alice-100",
 	},
-	"permission-mode": {
+	"permission-mode":
+	{
 		type: "permission-mode",
 		permissionMode: "default",
 		sessionId: "session-alice-100",
 	},
-	"worktree-state": {
+	"worktree-state":
+	{
 		type: "worktree-state",
 		sessionId: "session-alice-100",
-		worktreeSession: {
+		worktreeSession:
+		{
 			originalCwd: "/tmp/test/alice-project",
 			worktreePath: "/tmp/test/alice-worktree",
 			worktreeName: "alice-worktree",
@@ -133,12 +178,14 @@ export const jsonlRecordFixtures = {
 			sessionId: "session-alice-100",
 		},
 	},
-	relocated: {
+	relocated:
+	{
 		type: "relocated",
 		sessionId: "session-alice-100",
 		relocatedCwd: "/tmp/test/alice-worktree",
 	},
-	"pr-link": {
+	"pr-link":
+	{
 		type: "pr-link",
 		prUrl: "https://example.com/alice/repository/pull/100",
 		prNumber: 100,
@@ -146,35 +193,49 @@ export const jsonlRecordFixtures = {
 		sessionId: "session-alice-100",
 		timestamp: "2000-01-01T00:00:00.000Z",
 	},
-	mode: {
+	mode:
+	{
 		type: "mode",
 		mode: "default",
 		sessionId: "session-alice-100",
 	},
-	"atis-latch": {
+	"atis-latch":
+	{
 		type: "atis-latch",
 		atis: "v1.test-latch",
 		sessionId: "session-alice-100",
 	},
-	"bridge-session": {
+	"bridge-session":
+	{
 		type: "bridge-session",
 		sessionId: "session-alice-100",
 		bridgeSessionId: "cse_alice_100",
 		lastSequenceNum: 100,
 	},
-	"history-suppression": {
+	"history-suppression":
+	{
 		type: "history-suppression",
 		sessionId: "session-alice-100",
 		cause: "migration",
 		ts: "2000-01-01T00:00:00.000Z",
 	},
-	"cost-state": {
+	"cost-state":
+	{
 		type: "cost-state",
 		sessionId: "session-alice-100",
 		totalCostUSD: 1,
-		modelUsage: {"claude-test": {inputTokens: 100, outputTokens: 100, costUSD: 1}},
+		modelUsage:
+		{
+			"claude-test":
+			{
+				inputTokens: 100,
+				outputTokens: 100,
+				costUSD: 1,
+			},
+		},
 	},
-	"frame-link": {
+	"frame-link":
+	{
 		type: "frame-link",
 		sessionId: "session-alice-100",
 		path: "/tmp/test/alice-page.html",
@@ -183,43 +244,62 @@ export const jsonlRecordFixtures = {
 		artifactCount: 1,
 		timestamp: "2000-01-01T00:00:00.000Z",
 	},
-	"artifact-comment-monitor": {
+	"artifact-comment-monitor":
+	{
 		type: "artifact-comment-monitor",
 		v: 1,
 		sessionId: "session-alice-100",
-		artifacts: {
-			"https://example.com/artifact/alice-100": {state: "armed", title: "Alice page"},
+		artifacts:
+		{
+			"https://example.com/artifact/alice-100":
+			{
+				state: "armed",
+				title: "Alice page",
+			},
 		},
 	},
-	"artifact-autoreact-ledger": {
+	"artifact-autoreact-ledger":
+	{
 		type: "artifact-autoreact-ledger",
 		v: 1,
 		sessionId: "session-alice-100",
-		artifacts: {"https://example.com/artifact/alice-100": {savedAt: 1, stampHighWater: null}},
+		artifacts:
+		{
+			"https://example.com/artifact/alice-100":
+			{
+				savedAt: 1,
+				stampHighWater: null,
+			},
+		},
 	},
-	"dev-mods": {
+	"dev-mods":
+	{
 		type: "dev-mods",
 		folder: "/tmp/test/dev-mods/session-alice-100",
 		sessionId: "session-alice-100",
 	},
-	"tools-used": {
+	"tools-used":
+	{
 		type: "tools-used",
 		tools: ["Bash", "Read"],
 		sessionId: "session-alice-100",
 	},
-	"session-owner": {
+	"session-owner":
+	{
 		type: "session-owner",
 		accountUuid: "account-alice",
 		organizationUuid: "org-alice",
 		sessionId: "session-alice-100",
 	},
-	"continued-in": {
+	"continued-in":
+	{
 		type: "continued-in",
 		timestamp: "2000-01-01T00:00:00.000Z",
 		sessionId: "session-alice-100",
 		continuedInSessionId: "session-alice-200",
 	},
-	"api-request": {
+	"api-request":
+	{
 		type: "api-request",
 		sessionId: "session-alice-100",
 		id: "request-alice-100",
@@ -227,51 +307,95 @@ export const jsonlRecordFixtures = {
 		version: "1.0.0-test",
 		querySource: "repl_main_thread",
 		shapeHash: "shape-alice-100",
-		params: {
+		params:
+		{
 			model: "test-model",
 			betas: ["test-beta"],
 			max_tokens: 100,
-			thinking: {type: "adaptive", display: "updates"},
-			context_management: {edits: [{type: "clear_thinking_test", keep: "all"}]},
+			thinking:
+			{
+				type: "adaptive",
+				display: "updates",
+			},
+			context_management:
+			{
+				edits: [
+					{
+						type: "clear_thinking_test",
+						keep: "all",
+					},
+				],
+			},
 			safeguards: [
 				{
 					type: "dangerous_tool_use",
-					classifier_context: {
+					classifier_context:
+					{
 						v: 1,
 						permission_mode: "auto",
 						platform: "macos",
 						live_cwd: "/tmp/test/alice-project",
 						home_dir: "/tmp/test",
-						rule_roots: {userSettings: "/tmp/test/.claude"},
-						trusted_directories: {
-							primary: {path: "/tmp/test/alice-project", resolved: ["/tmp/test/alice-project"]},
+						rule_roots:
+						{
+							userSettings: "/tmp/test/.claude",
+						},
+						trusted_directories:
+						{
+							primary:
+							{
+								path: "/tmp/test/alice-project",
+								resolved: ["/tmp/test/alice-project"],
+							},
 							additional: [],
 							network: [],
 							block_reads_outside_working_directories: false,
 						},
-						rules: {allow: [{rule: "Bash(ls:*)", source: "userSettings"}], deny: [], ask: []},
-						auto_mode: {allow: [], soft_deny: [], hard_deny: [], environment: []},
+						rules:
+						{
+							allow: [
+								{
+									rule: "Bash(ls:*)",
+									source: "userSettings",
+								},
+							],
+							deny: [],
+							ask: [],
+						},
+						auto_mode:
+						{
+							allow: [],
+							soft_deny: [],
+							hard_deny: [],
+							environment: [],
+						},
 						artifact_consent_holdback: false,
 						case_insensitive_paths: false,
 						restricted: false,
 						is_remote_mode: false,
 						classify_all_shell: false,
 						user_identity: "alice",
-						dropped: {allow: 0},
-						git_state: {
+						dropped:
+						{
+							allow: 0,
+						},
+						git_state:
+						{
 							cwd: "/tmp/test/alice-project",
 							root: null,
 							branch: null,
 							status: null,
 							visibility: null,
 						},
-						artifacts: {
+						artifacts:
+						{
 							by_slug: {},
 							by_path: {},
 							live_docs: [],
 							room_armed: [],
 							type_reads: {},
-							session: {
+							session:
+							{
 								frame_env: "prod",
 								viewer_origin: "https://example.com",
 								short_links: false,
@@ -297,25 +421,62 @@ export const jsonlRecordFixtures = {
 					},
 				},
 			],
-			output_config: {effort: "medium"},
+			output_config:
+			{
+				effort: "medium",
+			},
 		},
 		keep: 0,
 		tail: ["blob-alice-100"],
-		cacheControl: [{path: ["system", 1], value: {type: "ephemeral", ttl: "1h"}}],
+		cacheControl: [
+			{
+				path: ["system", 1],
+				value:
+				{
+					type: "ephemeral",
+					ttl: "1h",
+				},
+			},
+		],
 		requestDigest: "digest-alice-100",
 	},
-	"api-request-blob": {
+	"api-request-blob":
+	{
 		type: "api-request-blob",
 		sessionId: "session-alice-100",
 		hash: "blob-alice-100",
-		message: {role: "user", content: [{type: "text", text: "Inspect the example project."}]},
+		message:
+		{
+			role: "user",
+			content: [
+				{
+					type: "text",
+					text: "Inspect the example project.",
+				},
+			],
+		},
 	},
-	"api-request-shape": {
+	"api-request-shape":
+	{
 		type: "api-request-shape",
 		sessionId: "session-alice-100",
 		timestamp: "2000-01-01T00:00:00.000Z",
 		version: "1.0.0-test",
 		shapeHash: "shape-alice-100",
-		shape: {system: [{type: "text", text: "You are a test."}], tools: [{name: "Read", input_schema: {}}]},
+		shape:
+		{
+			system: [
+				{
+					type: "text",
+					text: "You are a test.",
+				},
+			],
+			tools: [
+				{
+					name: "Read",
+					input_schema: {},
+				},
+			],
+		},
 	},
 } satisfies JsonlRecordFixtures;

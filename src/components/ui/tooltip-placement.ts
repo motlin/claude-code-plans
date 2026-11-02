@@ -3,14 +3,16 @@ export type TooltipSide = "top" | "bottom" | "left" | "right";
 /** Where the tip sits along the trigger's cross axis: centred on it, or flush with its start edge. */
 export type TooltipAlign = "start" | "center";
 
-export interface TooltipRect {
+export interface TooltipRect
+{
 	left: number;
 	top: number;
 	width: number;
 	height: number;
 }
 
-export interface TooltipPlacement {
+export interface TooltipPlacement
+{
 	side: TooltipSide;
 	/** Pixels to move the tooltip along the x axis from its default spot on `side`. */
 	shiftX: number;
@@ -23,15 +25,31 @@ const OFFSET = 4;
 /** How far inside the viewport edges a tooltip is kept. */
 const EDGE_PADDING = 8;
 
-const OPPOSITE: Record<TooltipSide, TooltipSide> = {top: "bottom", bottom: "top", left: "right", right: "left"};
+const OPPOSITE: Record<TooltipSide, TooltipSide> =
+{
+	top: "bottom",
+	bottom: "top",
+	left: "right",
+	right: "left",
+};
 
 function fitsOnSide(
 	trigger: TooltipRect,
-	tip: {width: number; height: number},
-	viewport: {width: number; height: number},
+	tip:
+	{
+		width: number;
+		height: number;
+	},
+	viewport:
+	{
+		width: number;
+		height: number;
+	},
 	side: TooltipSide,
-) {
-	switch (side) {
+)
+{
+	switch (side)
+	{
 		case "top":
 			return trigger.top - OFFSET - tip.height >= 0;
 		case "bottom":
@@ -46,7 +64,8 @@ function fitsOnSide(
 }
 
 /** The shift that moves a span starting at `start` with `size` inside [EDGE_PADDING, limit - EDGE_PADDING]. */
-function clampShift(start: number, size: number, limit: number) {
+function clampShift(start: number, size: number, limit: number)
+{
 	if (start < EDGE_PADDING) return EDGE_PADDING - start;
 	const overflow = start + size - (limit - EDGE_PADDING);
 	return overflow > 0 ? Math.max(-overflow, EDGE_PADDING - start) : 0;
@@ -58,27 +77,46 @@ function clampShift(start: number, size: number, limit: number) {
  */
 export function placeTooltip(
 	trigger: TooltipRect,
-	tip: {width: number; height: number},
-	viewport: {width: number; height: number},
+	tip:
+	{
+		width: number;
+		height: number;
+	},
+	viewport:
+	{
+		width: number;
+		height: number;
+	},
 	side: TooltipSide,
 	align: TooltipAlign = "center",
-): TooltipPlacement {
+): TooltipPlacement
+{
 	const placed =
 		!fitsOnSide(trigger, tip, viewport, side) && fitsOnSide(trigger, tip, viewport, OPPOSITE[side])
 			? OPPOSITE[side]
 			: side;
-	if (placed === "top" || placed === "bottom") {
+	if (placed === "top" || placed === "bottom")
+	{
 		const left = align === "start" ? trigger.left : trigger.left + trigger.width / 2 - tip.width / 2;
-		return {side: placed, shiftX: clampShift(left, tip.width, viewport.width), shiftY: 0};
+		return {
+			side: placed,
+			shiftX: clampShift(left, tip.width, viewport.width),
+			shiftY: 0,
+		};
 	}
 	const top = align === "start" ? trigger.top : trigger.top + trigger.height / 2 - tip.height / 2;
-	return {side: placed, shiftX: 0, shiftY: clampShift(top, tip.height, viewport.height)};
+	return {
+		side: placed,
+		shiftX: 0,
+		shiftY: clampShift(top, tip.height, viewport.height),
+	};
 }
 
 /** The gap between a menu row and its side tooltip (upstream's `sideOffset: 8`). */
 const ROW_SIDE_OFFSET = 8;
 
-export interface RowTooltipPlacement {
+export interface RowTooltipPlacement
+{
 	/** Pixels from the popup's left edge. */
 	left: number;
 	/** Pixels from the popup's top edge, level with the row's top (`align: start`). */
@@ -92,7 +130,8 @@ export interface RowTooltipPlacement {
  * `align: start`, `sideOffset: 8`, anchored to the row element rather than the popup, with no side flip
  * (`fallbackAxisSide: "none"`). Both rects are viewport rects, so a scrolled row carries its scroll offset.
  */
-export function placeRowTooltip(row: TooltipRect, popup: TooltipRect): RowTooltipPlacement {
+export function placeRowTooltip(row: TooltipRect, popup: TooltipRect): RowTooltipPlacement
+{
 	const viewportLeft = row.left + row.width + ROW_SIDE_OFFSET;
 	return {
 		left: viewportLeft - popup.left,

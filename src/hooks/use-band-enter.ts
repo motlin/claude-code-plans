@@ -5,17 +5,22 @@ import {type RefCallback, useCallback} from "react";
  * two animation frames after mount, so a `.band-enter` band already there at first paint
  * stays put and only bands that mount into the slot later play the enter transition.
  */
-export function useBandEnter<T extends HTMLElement>(): RefCallback<T> {
-	return useCallback((element: T | null) => {
+export function useBandEnter<T extends HTMLElement>(): RefCallback<T>
+{
+	return useCallback((element: T | null) =>
+	{
 		const view = element?.ownerDocument.defaultView;
 		if (!element || !view) return undefined;
 		let second = 0;
-		const first = view.requestAnimationFrame(() => {
-			second = view.requestAnimationFrame(() => {
+		const first = view.requestAnimationFrame(() =>
+		{
+			second = view.requestAnimationFrame(() =>
+			{
 				element.dataset["bandEnter"] = "";
 			});
 		});
-		return () => {
+		return () =>
+		{
 			view.cancelAnimationFrame(first);
 			view.cancelAnimationFrame(second);
 			delete element.dataset["bandEnter"];

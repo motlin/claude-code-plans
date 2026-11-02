@@ -4,22 +4,33 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {coalescePerKey, forEachTranscriptLine} from "../src/lib/transcript-stream";
 
-describe("forEachTranscriptLine", () => {
+describe("forEachTranscriptLine", () =>
+{
 	let root: string;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		root = mkdtempSync(join(tmpdir(), "transcript-stream-"));
 	});
 
-	afterEach(() => {
-		rmSync(root, {recursive: true, force: true});
+	afterEach(() =>
+	{
+		rmSync(
+			root,
+			{
+				recursive: true,
+				force: true,
+			},
+		);
 	});
 
-	async function linesOf(path: string, chunkBytes?: number): Promise<string[]> {
+	async function linesOf(path: string, chunkBytes?: number): Promise<string[]>
+	{
 		const lines: string[] = [];
 		await forEachTranscriptLine(
 			path,
-			(line) => {
+			(line) =>
+			{
 				lines.push(line);
 			},
 			chunkBytes,
@@ -27,9 +38,15 @@ describe("forEachTranscriptLine", () => {
 		return lines;
 	}
 
-	it("yields every non-blank line, without api-request records, across chunk boundaries", async () => {
+	it("yields every non-blank line, without api-request records, across chunk boundaries", async () =>
+	{
 		const path = join(root, "session.jsonl");
-		const apiRequest = JSON.stringify({type: "api-request", body: "x".repeat(5000)});
+		const apiRequest = JSON.stringify(
+			{
+				type: "api-request",
+				body: "x".repeat(5000),
+			},
+		);
 		writeFileSync(
 			path,
 			[
@@ -50,24 +67,39 @@ describe("forEachTranscriptLine", () => {
 		]);
 	});
 
-	it("rejects when the file is missing", async () => {
+	it("rejects when the file is missing", async () =>
+	{
 		await expect(linesOf(join(root, "missing.jsonl"))).rejects.toThrow("ENOENT");
 	});
 });
 
-describe("coalescePerKey", () => {
-	function deferred(): {promise: Promise<void>; resolve: () => void} {
-		let resolve = () => {};
-		const promise = new Promise<void>((settle) => {
+describe("coalescePerKey", () =>
+{
+	function deferred():
+	{
+		promise: Promise<void>;
+		resolve: () => void;
+	}
+	{
+		let resolve = () =>
+		{
+		};
+		const promise = new Promise<void>((settle) =>
+		{
 			resolve = settle;
 		});
-		return {promise, resolve};
+		return {
+			promise,
+			resolve,
+		};
 	}
 
-	it("runs a key at most once at a time, folding every caller that arrives mid-run into one follow-up run", async () => {
+	it("runs a key at most once at a time, folding every caller that arrives mid-run into one follow-up run", async () =>
+	{
 		const gates = [deferred(), deferred()];
 		let runs = 0;
-		const read = coalescePerKey(async (key: string) => {
+		const read = coalescePerKey(async (key: string) =>
+		{
 			const run = runs++;
 			await gates[run]?.promise;
 			return `${key}#${run}`;
@@ -84,7 +116,8 @@ describe("coalescePerKey", () => {
 		expect(runs).toBe(2);
 	});
 
-	it("runs different keys independently and starts afresh once a key is idle", async () => {
+	it("runs different keys independently and starts afresh once a key is idle", async () =>
+	{
 		let runs = 0;
 		const read = coalescePerKey(async (key: string) => Promise.resolve(`${key}#${runs++}`));
 
@@ -92,9 +125,11 @@ describe("coalescePerKey", () => {
 		expect(await read("a")).toBe("a#2");
 	});
 
-	it("still runs the follow-up after the running call rejects", async () => {
+	it("still runs the follow-up after the running call rejects", async () =>
+	{
 		let runs = 0;
-		const read = coalescePerKey(async (key: string) => {
+		const read = coalescePerKey(async (key: string) =>
+		{
 			runs++;
 			if (runs === 1) throw new Error("boom");
 			return Promise.resolve(key);

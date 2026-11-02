@@ -6,7 +6,8 @@ import {type ReactNode, useEffect, useRef, useState} from "react";
 
 import {DialogPopup} from "./ui/dialog-popup";
 import {getCachedSessionIdentity} from "../lib/api/session-identity";
-import {
+import
+{
 	loadRecents,
 	resolveRecentSession,
 	resolveRecentSessions,
@@ -15,7 +16,8 @@ import {
 	type SwitcherEntry,
 	type SwitcherKind,
 } from "../lib/recents-history";
-import {
+import
+{
 	currentSwitcherPlatform,
 	initialIndex,
 	isSwitchTrigger,
@@ -26,17 +28,20 @@ import {
 import {isInKeystrokeSink} from "../lib/shortcuts/match";
 
 /** Upstream's codeSession `</>` and project glyphs. */
-const KIND_ICONS = {
+const KIND_ICONS =
+{
 	session: <CodeXml />,
 	project: <FolderOpen />,
 } as const satisfies Record<SwitcherKind, ReactNode>;
 
-interface SwitcherState {
+interface SwitcherState
+{
 	entries: SwitcherEntry[];
 	index: number;
 }
 
-function rowId(index: number): string {
+function rowId(index: number): string
+{
 	return `recents-switcher-row-${index}`;
 }
 
@@ -45,22 +50,40 @@ function rowId(index: number): string {
  * jump to the previous page, hold ⌃ and tap Q to walk further, ⇧ to reverse; releasing the modifier
  * or Enter commits, Esc or window blur cancels. Windows uses Alt+Q.
  */
-export function RecentsSwitcher() {
+export function RecentsSwitcher()
+{
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
-	const pathname = useRouterState({select: (state) => state.location.pathname});
-	const contextRef = useRef({queryClient, navigate, pathname});
-	contextRef.current = {queryClient, navigate, pathname};
+	const pathname = useRouterState(
+		{
+			select: (state) => state.location.pathname,
+		},
+	);
+	const contextRef = useRef(
+		{
+			queryClient,
+			navigate,
+			pathname,
+		},
+	);
+	contextRef.current =
+	{
+		queryClient,
+		navigate,
+		pathname,
+	};
 	const resolveAlias = (alias: string) => getCachedSessionIdentity(contextRef.current.queryClient, alias);
 	const [state, setState] = useState<SwitcherState | null>(null);
 	const stateRef = useRef<SwitcherState | null>(null);
 	const listboxRef = useRef<HTMLDivElement>(null);
 
-	const update = (next: SwitcherState | null) => {
+	const update = (next: SwitcherState | null) =>
+	{
 		stateRef.current = next;
 		setState(next);
 	};
-	const commitRef = useRef((index: number) => {
+	const commitRef = useRef((index: number) =>
+	{
 		const selected = stateRef.current?.entries[index];
 		update(null);
 		if (selected === undefined) return;
@@ -68,32 +91,50 @@ export function RecentsSwitcher() {
 		const entry = resolveRecentSession(selected, resolveAlias);
 		const currentKey = routeToRecent(contextRef.current.pathname, resolveAlias)?.key;
 		if (entry.key === currentKey) return;
-		void contextRef.current.navigate({to: entry.href});
+		void contextRef.current.navigate(
+			{
+				to: entry.href,
+			},
+		);
 	});
 
-	useEffect(() => {
-		const move = (direction: SwitchDirection) => {
+	useEffect(() =>
+	{
+		const move = (direction: SwitchDirection) =>
+		{
 			const current = stateRef.current;
 			if (current === null) return;
-			update({
-				...current,
-				index: step(current.index, direction, current.entries.length),
-			});
+			update(
+				{
+					...current,
+					index: step(current.index, direction, current.entries.length),
+				},
+			);
 		};
 
-		const onKeyDown = (event: KeyboardEvent) => {
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			const platform = currentSwitcherPlatform();
 			const current = stateRef.current;
-			if (isSwitchTrigger(event, platform)) {
+			if (isSwitchTrigger(event, platform))
+			{
 				const direction: SwitchDirection = event.shiftKey ? -1 : 1;
-				if (current === null) {
+				if (current === null)
+				{
 					// Upstream's `lt`: ⌃Q yields to the terminal (`[data-ccd-terminal]`, locally `[data-terminal]`) or any sink.
 					if (isInKeystrokeSink(event.target)) return;
 					const entries = switcherRecents(resolveRecentSessions(loadRecents(), resolveAlias));
 					if (entries.length === 0) return;
 					const currentKey = routeToRecent(contextRef.current.pathname, resolveAlias)?.key ?? null;
-					update({entries, index: initialIndex(entries, currentKey, direction)});
-				} else {
+					update(
+						{
+							entries,
+							index: initialIndex(entries, currentKey, direction),
+						},
+					);
+				}
+				else
+				{
 					move(direction);
 				}
 				event.preventDefault();
@@ -101,7 +142,8 @@ export function RecentsSwitcher() {
 				return;
 			}
 			if (current === null) return;
-			switch (event.key) {
+			switch (event.key)
+			{
 				case "ArrowDown":
 					move(1);
 					break;
@@ -121,7 +163,8 @@ export function RecentsSwitcher() {
 			event.stopPropagation();
 		};
 
-		const onKeyUp = (event: KeyboardEvent) => {
+		const onKeyUp = (event: KeyboardEvent) =>
+		{
 			const current = stateRef.current;
 			if (current === null) return;
 			const modifier = switchModifier(currentSwitcherPlatform());
@@ -129,34 +172,43 @@ export function RecentsSwitcher() {
 			if (event.key === modifier || !held) commitRef.current(current.index);
 		};
 
-		const onBlur = () => {
+		const onBlur = () =>
+		{
 			update(null);
 		};
 
 		document.addEventListener("keydown", onKeyDown, true);
 		window.addEventListener("keyup", onKeyUp);
 		window.addEventListener("blur", onBlur);
-		return () => {
+		return () =>
+		{
 			document.removeEventListener("keydown", onKeyDown, true);
 			window.removeEventListener("keyup", onKeyUp);
 			window.removeEventListener("blur", onBlur);
 		};
 	}, []);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (stateRef.current !== null) update(null);
 	}, [pathname]);
 
 	const index = state?.index;
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (index === undefined) return;
-		document.getElementById(rowId(index))?.scrollIntoView({block: "nearest"});
+		document.getElementById(rowId(index))?.scrollIntoView(
+			{
+				block: "nearest",
+			},
+		);
 	}, [index]);
 
 	return (
 		<Dialog.Root
 			open={state !== null}
-			onOpenChange={(open) => {
+			onOpenChange={(open) =>
+			{
 				if (!open) update(null);
 			}}
 		>
@@ -167,7 +219,10 @@ export function RecentsSwitcher() {
 					data-command-palette=""
 					initialFocus={listboxRef}
 					className="fixed left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 overflow-hidden rounded-[calc(var(--radius-composer)+0.375rem)] border-[0.5px] border-strong bg-surface-3 shadow-2xl outline-none md:w-[calc(100vw-5rem)]"
-					style={{top: "max(1rem, min(25vh, calc(50vh - 220px)))"}}
+					style={
+					{
+						top: "max(1rem, min(25vh, calc(50vh - 220px)))",
+					}}
 				>
 					<Dialog.Title className="sr-only">Recents</Dialog.Title>
 					{state === null ? null : (
@@ -179,7 +234,8 @@ export function RecentsSwitcher() {
 							tabIndex={-1}
 							className="max-h-[440px] scroll-py-2.5 overflow-y-auto p-2.5 outline-none"
 						>
-							{state.entries.map((entry, i) => {
+							{state.entries.map((entry, i) =>
+							{
 								const selected = i === state.index;
 								return (
 									<button
@@ -189,7 +245,8 @@ export function RecentsSwitcher() {
 										id={rowId(i)}
 										aria-selected={selected}
 										tabIndex={-1}
-										onClick={() => {
+										onClick={() =>
+										{
 											commitRef.current(i);
 										}}
 										className="flex w-full items-center justify-between gap-3 truncate rounded-lg px-3 py-2 text-left text-sm leading-5 text-secondary hover:bg-fill-ghost-hover aria-selected:bg-fill-ghost-hover aria-selected:text-primary"

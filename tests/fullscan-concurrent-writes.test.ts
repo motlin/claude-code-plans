@@ -10,26 +10,54 @@ import * as schema from "../src/lib/db/schema";
 const testDir = join(realpathSync(tmpdir()), "claude-fullscan-concurrent-test-" + process.pid);
 let db: AppDb;
 
-function transcript(content: string): string {
-	return JSON.stringify({type: "user", message: {role: "user", content}}) + "\n";
+function transcript(content: string): string
+{
+	return (
+		JSON.stringify(
+			{
+				type: "user",
+				message:
+				{
+					role: "user",
+					content,
+				},
+			},
+		) + "\n"
+	);
 }
 
-beforeEach(() => {
-	mkdirSync(testDir, {recursive: true});
+beforeEach(() =>
+{
+	mkdirSync(
+		testDir,
+		{
+			recursive: true,
+		},
+	);
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(testDir, {recursive: true, force: true});
+	rmSync(
+		testDir,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
 /** A readdir that runs `afterList` once, right after the scan has listed `target`. */
-function readDirectoryWithHook(target: string, afterList: () => Promise<void> | void) {
+function readDirectoryWithHook(target: string, afterList: () => Promise<void> | void)
+{
 	let fired = false;
-	return async (path: string): Promise<string[]> => {
+	return async (path: string): Promise<string[]> =>
+	{
 		const entries = await readdir(path);
-		if (!fired && path === target) {
+		if (!fired && path === target)
+		{
 			fired = true;
 			await afterList();
 		}
@@ -37,11 +65,18 @@ function readDirectoryWithHook(target: string, afterList: () => Promise<void> | 
 	};
 }
 
-describe("fullScan with transcripts written while it runs", () => {
-	it("indexes and lists a transcript created after its project directory was listed", async () => {
+describe("fullScan with transcripts written while it runs", () =>
+{
+	it("indexes and lists a transcript created after its project directory was listed", async () =>
+	{
 		const project = "-Users-alice-projects-app";
 		const projectDir = join(testDir, project);
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(join(projectDir, "sess-old.jsonl"), transcript("Old session"));
 
 		await fullScan(
@@ -50,7 +85,8 @@ describe("fullScan with transcripts written while it runs", () => {
 			testDir,
 			undefined,
 			undefined,
-			readDirectoryWithHook(projectDir, () => {
+			readDirectoryWithHook(projectDir, () =>
+			{
 				writeFileSync(join(projectDir, "sess-new.jsonl"), transcript("New session"));
 			}),
 		);
@@ -61,7 +97,8 @@ describe("fullScan with transcripts written while it runs", () => {
 		expect(ids).toStrictEqual(["sess-new", "sess-old"]);
 	});
 
-	it("indexes a transcript in a project directory created after the projects root was listed", async () => {
+	it("indexes a transcript in a project directory created after the projects root was listed", async () =>
+	{
 		const project = "-Users-alice-projects-fresh";
 		const projectDir = join(testDir, project);
 
@@ -71,8 +108,14 @@ describe("fullScan with transcripts written while it runs", () => {
 			testDir,
 			undefined,
 			undefined,
-			readDirectoryWithHook(testDir, () => {
-				mkdirSync(projectDir, {recursive: true});
+			readDirectoryWithHook(testDir, () =>
+			{
+				mkdirSync(
+					projectDir,
+					{
+						recursive: true,
+					},
+				);
 				writeFileSync(join(projectDir, "sess-fresh.jsonl"), transcript("Fresh session"));
 			}),
 		);
@@ -81,10 +124,16 @@ describe("fullScan with transcripts written while it runs", () => {
 		expect(ids).toStrictEqual(["sess-fresh"]);
 	});
 
-	it("keeps a transcript the session page indexed on demand mid-scan instead of pruning it", async () => {
+	it("keeps a transcript the session page indexed on demand mid-scan instead of pruning it", async () =>
+	{
 		const project = "-Users-alice-projects-app";
 		const projectDir = join(testDir, project);
-		mkdirSync(projectDir, {recursive: true});
+		mkdirSync(
+			projectDir,
+			{
+				recursive: true,
+			},
+		);
 		writeFileSync(join(projectDir, "sess-old.jsonl"), transcript("Old session"));
 
 		await fullScan(
@@ -93,19 +142,32 @@ describe("fullScan with transcripts written while it runs", () => {
 			testDir,
 			undefined,
 			undefined,
-			readDirectoryWithHook(projectDir, async () => {
+			readDirectoryWithHook(projectDir, async () =>
+			{
 				const newPath = join(projectDir, "sess-demand.jsonl");
 				writeFileSync(newPath, transcript("Opened while indexing"));
 				await indexFile(db.index, newPath, testDir);
 				db.summaries
 					.insert(schema.summaries)
-					.values({sessionId: "sess-demand", lastMessageId: "m1", summary: "Kept", generatedAt: 1})
+					.values(
+						{
+							sessionId: "sess-demand",
+							lastMessageId: "m1",
+							summary: "Kept",
+							generatedAt: 1,
+						},
+					)
 					.run();
 			}),
 		);
 
 		expect(db.summaries.select().from(schema.summaries).all()).toStrictEqual([
-			{sessionId: "sess-demand", lastMessageId: "m1", summary: "Kept", generatedAt: 1},
+			{
+				sessionId: "sess-demand",
+				lastMessageId: "m1",
+				summary: "Kept",
+				generatedAt: 1,
+			},
 		]);
 		const ids = listSessionsForProjectFromDb(db.index, project)
 			.map((session) => session.id)

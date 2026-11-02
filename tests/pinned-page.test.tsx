@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -19,7 +20,8 @@ import {movePin, pin, readPinState} from "../src/lib/pin-store";
 import {installLocalStorage} from "./fake-storage";
 import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 
-function session(id: string, title: string, mtime: string): SessionListItem {
+function session(id: string, title: string, mtime: string): SessionListItem
+{
 	return {
 		id,
 		title,
@@ -43,65 +45,107 @@ const SESSIONS = [
 	session("session-carol", "Carol session", "2000-01-01T00:00:00.000Z"),
 ];
 
-const fetchMock = vi.fn<(url: string) => Promise<Response>>(async (url: string) => {
+const fetchMock = vi.fn<(url: string) => Promise<Response>>(async (url: string) =>
+{
 	const ids = new URL(url, "http://localhost").searchParams.get("ids")?.split(",") ?? [];
 	return Promise.resolve(Response.json(SESSIONS.filter((s) => ids.includes(s.id))));
 });
 
-async function renderPage() {
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<Outlet />
-			</QueryClientProvider>
-		),
-	});
-	const pinnedRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: PinnedSessionsPage,
-	});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "session/$id",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([pinnedRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+async function renderPage()
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<Outlet />
+				</QueryClientProvider>
+			),
+		},
+	);
+	const pinnedRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: PinnedSessionsPage,
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "session/$id",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([pinnedRoute, sessionRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 }
 
-function titles(): string[] {
+function titles(): string[]
+{
 	return screen.queryAllByRole("listitem").map((item) => item.querySelector("a div")?.textContent ?? "");
 }
 
-describe("PinnedSessionsPage", () => {
-	beforeEach(() => {
+describe("PinnedSessionsPage", () =>
+{
+	beforeEach(() =>
+	{
 		installLocalStorage();
 		vi.stubGlobal("fetch", fetchMock);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.unstubAllGlobals();
 		fetchMock.mockClear();
 	});
 
-	it("shows the empty state without asking the server when nothing is pinned", async () => {
+	it("shows the empty state without asking the server when nothing is pinned", async () =>
+	{
 		await renderPage();
 
 		await screen.findByText("No pinned sessions. Drag a session to Pinned or use Pin (P) in its menu.");
-		expect({
-			heading: screen.getByRole("heading", {level: 1}).textContent,
-			fetches: fetchMock.mock.calls,
-		}).toStrictEqual({heading: "Pinned sessions", fetches: []});
+		expect(
+			{
+				heading: screen.getByRole(
+					"heading",
+					{
+						level: 1,
+					},
+				).textContent,
+				fetches: fetchMock.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				heading: "Pinned sessions",
+				fetches: [],
+			},
+		);
 	});
 
-	it("lists this browser's pins, user-ordered first, then newest first", async () => {
+	it("lists this browser's pins, user-ordered first, then newest first", async () =>
+	{
 		pin("session-carol");
 		pin("session-alice");
 		pin("session-bob");
@@ -109,52 +153,89 @@ describe("PinnedSessionsPage", () => {
 
 		await renderPage();
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(titles()).toStrictEqual(["Carol session", "Alice session", "Bob session"]);
 		});
 	});
 
-	it("reveals the hover-only unpin button on touch", async () => {
+	it("reveals the hover-only unpin button on touch", async () =>
+	{
 		pin("session-alice");
 		await renderPage();
-		const unpin = await screen.findByRole("button", {name: "Unpin"});
+		const unpin = await screen.findByRole(
+			"button",
+			{
+				name: "Unpin",
+			},
+		);
 
 		expect(unpin.className.includes(TOUCH_REVEAL)).toBe(true);
 	});
 
-	it("unpins from the hover button and follows other tabs", async () => {
+	it("unpins from the hover button and follows other tabs", async () =>
+	{
 		pin("session-alice");
 		pin("session-bob");
 		await renderPage();
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(titles()).toStrictEqual(["Alice session", "Bob session"]);
 		});
 
-		fireEvent.click(screen.getAllByRole("button", {name: "Unpin"})[0]!);
-		await waitFor(() => {
+		fireEvent.click(
+			screen.getAllByRole(
+				"button",
+				{
+					name: "Unpin",
+				},
+			)[0]!,
+		);
+		await waitFor(() =>
+		{
 			expect(titles()).toStrictEqual(["Bob session"]);
 		});
 		const afterUnpin = readPinState();
 
-		const otherTab = JSON.stringify({
-			pinnedIds: ["session-bob", "session-carol"],
-			pinnedOrder: [],
-		});
-		act(() => {
+		const otherTab = JSON.stringify(
+			{
+				pinnedIds: ["session-bob", "session-carol"],
+				pinnedOrder: [],
+			},
+		);
+		act(() =>
+		{
 			localStorage.setItem("ccp-pins", otherTab);
-			window.dispatchEvent(new StorageEvent("storage", {key: "ccp-pins", newValue: otherTab}));
+			window.dispatchEvent(
+				new StorageEvent(
+					"storage",
+					{
+						key: "ccp-pins",
+						newValue: otherTab,
+					},
+				),
+			);
 		});
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(titles()).toStrictEqual(["Bob session", "Carol session"]);
 		});
-		expect(afterUnpin).toStrictEqual({pinnedIds: ["session-bob"], pinnedOrder: []});
+		expect(afterUnpin).toStrictEqual(
+			{
+				pinnedIds: ["session-bob"],
+				pinnedOrder: [],
+			},
+		);
 	});
 });
 
-describe("pinned sessions routes", () => {
-	it("renders the same titled page at /pinned and the legacy /starred", () => {
-		const describeRoute = (route: typeof PinnedRoute | typeof StarredRoute) => ({
+describe("pinned sessions routes", () =>
+{
+	it("renders the same titled page at /pinned and the legacy /starred", () =>
+	{
+		const describeRoute = (route: typeof PinnedRoute | typeof StarredRoute) => (
+		{
 			component: route.options.component,
 			head: route.options.head?.({} as never),
 		});
@@ -162,11 +243,27 @@ describe("pinned sessions routes", () => {
 		expect([describeRoute(PinnedRoute), describeRoute(StarredRoute)]).toStrictEqual([
 			{
 				component: PinnedSessionsPage,
-				head: {meta: [{name: "ccb-page-title", content: "Pinned sessions"}]},
+				head:
+				{
+					meta: [
+						{
+							name: "ccb-page-title",
+							content: "Pinned sessions",
+						},
+					],
+				},
 			},
 			{
 				component: PinnedSessionsPage,
-				head: {meta: [{name: "ccb-page-title", content: "Pinned sessions"}]},
+				head:
+				{
+					meta: [
+						{
+							name: "ccb-page-title",
+							content: "Pinned sessions",
+						},
+					],
+				},
 			},
 		]);
 	});

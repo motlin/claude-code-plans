@@ -11,7 +11,12 @@ export const TITLEBAR_HEIGHT_PX = 32;
  * Below 640px the "Show sidebar" toggle sits in the titlebar's lead slot, as on claude.ai/code:
  * upstream's 32px square hit target at 8,8, beside the titlebar row 9px down.
  */
-export const PHONE_SIDEBAR_TOGGLE = {left: 8, top: 8, size: 32} as const;
+export const PHONE_SIDEBAR_TOGGLE =
+{
+	left: 8,
+	top: 8,
+	size: 32,
+} as const;
 
 /**
  * Space the main pane's top-left corner leaves for the sidebar toggle. Collapsed desktop: the
@@ -20,14 +25,26 @@ export const PHONE_SIDEBAR_TOGGLE = {left: 8, top: 8, size: 32} as const;
  * 1px after it at x=41 (the titlebar's 7px lead spacer then puts the title text at 48), and the
  * row sits 9px down as upstream's phone header.
  */
-export function topLeftClearance(layout: SidebarLayout): {start: number; top: number} | null {
-	switch (layout) {
+export function topLeftClearance(layout: SidebarLayout):
+{
+	start: number;
+	top: number;
+} | null
+{
+	switch (layout)
+	{
 		case "docked":
 			return null;
 		case "collapsed":
-			return {start: 41, top: 9};
+			return {
+				start: 41,
+				top: 9,
+			};
 		case "phone":
-			return {start: PHONE_SIDEBAR_TOGGLE.left + PHONE_SIDEBAR_TOGGLE.size + 1, top: 9};
+			return {
+				start: PHONE_SIDEBAR_TOGGLE.left + PHONE_SIDEBAR_TOGGLE.size + 1,
+				top: 9,
+			};
 		default:
 			return assertNever(layout);
 	}
@@ -41,12 +58,18 @@ const COLLAPSED_TOGGLE_RIGHT = 36;
  * shared-styles' `--cds-page-header-start-clearance: calc(var(--df-trigger-right) + 8px)`, the width a pinned page
  * header's tabs row slides inward to clear the toggle (code-page-header.tsx level-mark).
  */
-export function topLeftClearanceStyle(layout: SidebarLayout): CSSProperties | undefined {
+export function topLeftClearanceStyle(layout: SidebarLayout): CSSProperties | undefined
+{
 	const clearance = topLeftClearance(layout);
 	if (!clearance) return undefined;
 	return {
 		"--top-left-clearance-start": `${clearance.start}px`,
 		"--top-left-clearance-top": `${clearance.top}px`,
-		...(layout === "collapsed" ? {"--cds-page-header-start-clearance": `${COLLAPSED_TOGGLE_RIGHT + 8}px`} : {}),
+		...(layout === "collapsed"
+			?
+				{
+					"--cds-page-header-start-clearance": `${COLLAPSED_TOGGLE_RIGHT + 8}px`,
+				}
+			: {}),
 	};
 }

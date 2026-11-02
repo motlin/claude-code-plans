@@ -3,7 +3,8 @@ import {PaneHeaderRow} from "./pane-header-row";
 import type {PaneChrome} from "./pane-registry";
 
 /** The host's default header row, drawn for a custom-header pane while its own renderer is unavailable. */
-export function PaneChromeHeader({title, chrome}: {title: string; chrome: PaneChrome}) {
+export function PaneChromeHeader({title, chrome}: {title: string; chrome: PaneChrome})
+{
 	return (
 		<PaneHeaderRow
 			label={title}
@@ -30,7 +31,8 @@ export function DeferredPaneStatus({
 	title: string;
 	chrome: PaneChrome | undefined;
 	children: ReactNode;
-}) {
+})
+{
 	return (
 		<>
 			{chrome !== undefined && <PaneChromeHeader title={title} chrome={chrome} />}

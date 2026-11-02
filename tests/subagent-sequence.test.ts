@@ -5,7 +5,13 @@ import {SubagentSequence} from "../src/components/subagent-sequence";
 import {layoutSequence, type SequenceLayout} from "../src/components/subagent-sequence-layout";
 import type {DbSubagent} from "../src/lib/db/queries";
 
-function makeAgent(overrides: Partial<DbSubagent> & {id: string}): DbSubagent {
+function makeAgent(
+	overrides: Partial<DbSubagent> &
+	{
+		id: string;
+	},
+): DbSubagent
+{
 	return {
 		sessionId: "sess-1",
 		projectId: "proj-1",
@@ -23,9 +29,17 @@ function makeAgent(overrides: Partial<DbSubagent> & {id: string}): DbSubagent {
 	};
 }
 
-describe("layoutSequence", () => {
-	it("returns empty layout when no agents have timing", () => {
-		const layout = layoutSequence([makeAgent({id: "a"})]);
+describe("layoutSequence", () =>
+{
+	it("returns empty layout when no agents have timing", () =>
+	{
+		const layout = layoutSequence([
+			makeAgent(
+				{
+					id: "a",
+				},
+			),
+		]);
 		expect(layout.lifelines).toStrictEqual([]);
 		expect(layout.spawns).toStrictEqual([]);
 		expect(layout.returns).toStrictEqual([]);
@@ -33,23 +47,29 @@ describe("layoutSequence", () => {
 		expect(layout.endMs).toBe(0);
 	});
 
-	it("returns empty layout for empty input", () => {
+	it("returns empty layout for empty input", () =>
+	{
 		const layout = layoutSequence([]);
 		expect(layout.lifelines).toStrictEqual([]);
 	});
 
-	it("produces one lifeline per agent with timing, assigning columns by start time", () => {
+	it("produces one lifeline per agent with timing, assigning columns by start time", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "b",
-				startedAt: "1999-12-31T00:00:15.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
-			makeAgent({
-				id: "a",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:10.000Z",
-			}),
+			makeAgent(
+				{
+					id: "b",
+					startedAt: "1999-12-31T00:00:15.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "a",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:10.000Z",
+				},
+			),
 		];
 		const layout = layoutSequence(agents);
 		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(["a", "b"]);
@@ -57,18 +77,23 @@ describe("layoutSequence", () => {
 		expect(layout.lifelines[1]!.column).toBe(1);
 	});
 
-	it("computes overall time bounds", () => {
+	it("computes overall time bounds", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "a",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:10.000Z",
-			}),
-			makeAgent({
-				id: "b",
-				startedAt: "1999-12-31T00:00:15.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
+			makeAgent(
+				{
+					id: "a",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:10.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "b",
+					startedAt: "1999-12-31T00:00:15.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
 		];
 		const layout = layoutSequence(agents);
 		expect(layout.startMs).toBe(new Date("1999-12-31T00:00:00.000Z").getTime());
@@ -76,19 +101,24 @@ describe("layoutSequence", () => {
 		expect(layout.totalMs).toBe(25000);
 	});
 
-	it("emits a spawn arrow and a return arrow per parent-child relationship", () => {
+	it("emits a spawn arrow and a return arrow per parent-child relationship", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "parent",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:30.000Z",
-			}),
-			makeAgent({
-				id: "child",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:20.000Z",
-			}),
+			makeAgent(
+				{
+					id: "parent",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:30.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "child",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:20.000Z",
+				},
+			),
 		];
 		const layout = layoutSequence(agents);
 		expect(layout.spawns.length).toBe(1);
@@ -105,19 +135,24 @@ describe("layoutSequence", () => {
 		expect(ret.atMs).toBe(new Date("1999-12-31T00:00:20.000Z").getTime());
 	});
 
-	it("sets parent and child columns on arrows so they connect lifelines", () => {
+	it("sets parent and child columns on arrows so they connect lifelines", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "parent",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:30.000Z",
-			}),
-			makeAgent({
-				id: "child",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:20.000Z",
-			}),
+			makeAgent(
+				{
+					id: "parent",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:30.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "child",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:20.000Z",
+				},
+			),
 		];
 		const layout = layoutSequence(agents);
 		const parent = layout.lifelines.find((l) => l.agent.id === "parent")!;
@@ -128,15 +163,22 @@ describe("layoutSequence", () => {
 		expect(layout.returns[0]!.childColumn).toBe(child.column);
 	});
 
-	it("omits spawn/return arrows when parent has no timing", () => {
+	it("omits spawn/return arrows when parent has no timing", () =>
+	{
 		const agents = [
-			makeAgent({id: "orphan-parent"}), // no timing, will be skipped
-			makeAgent({
-				id: "child",
-				parentAgentId: "orphan-parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:20.000Z",
-			}),
+			makeAgent(
+				{
+					id: "orphan-parent",
+				},
+			), // no timing, will be skipped
+			makeAgent(
+				{
+					id: "child",
+					parentAgentId: "orphan-parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:20.000Z",
+				},
+			),
 		];
 		const layout = layoutSequence(agents);
 		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(["child"]);
@@ -144,19 +186,24 @@ describe("layoutSequence", () => {
 		expect(layout.returns).toStrictEqual([]);
 	});
 
-	it("marks parent waiting range while a child runs", () => {
+	it("marks parent waiting range while a child runs", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "parent",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:30.000Z",
-			}),
-			makeAgent({
-				id: "child",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:20.000Z",
-			}),
+			makeAgent(
+				{
+					id: "parent",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:30.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "child",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:20.000Z",
+				},
+			),
 		];
 		const layout = layoutSequence(agents);
 		const parent = layout.lifelines.find((l) => l.agent.id === "parent")!;
@@ -168,25 +215,32 @@ describe("layoutSequence", () => {
 		]);
 	});
 
-	it("merges overlapping waiting periods on parent", () => {
+	it("merges overlapping waiting periods on parent", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "parent",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:30.000Z",
-			}),
-			makeAgent({
-				id: "c1",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:05.000Z",
-				finishedAt: "1999-12-31T00:00:15.000Z",
-			}),
-			makeAgent({
-				id: "c2",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:20.000Z",
-			}),
+			makeAgent(
+				{
+					id: "parent",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:30.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "c1",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:05.000Z",
+					finishedAt: "1999-12-31T00:00:15.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "c2",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:20.000Z",
+				},
+			),
 		];
 		const layout = layoutSequence(agents);
 		const parent = layout.lifelines.find((l) => l.agent.id === "parent")!;
@@ -198,25 +252,32 @@ describe("layoutSequence", () => {
 		]);
 	});
 
-	it("records depth for nested agents", () => {
+	it("records depth for nested agents", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "root",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:01:00.000Z",
-			}),
-			makeAgent({
-				id: "mid",
-				parentAgentId: "root",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:40.000Z",
-			}),
-			makeAgent({
-				id: "leaf",
-				parentAgentId: "mid",
-				startedAt: "1999-12-31T00:00:15.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
+			makeAgent(
+				{
+					id: "root",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:01:00.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "mid",
+					parentAgentId: "root",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:40.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "leaf",
+					parentAgentId: "mid",
+					startedAt: "1999-12-31T00:00:15.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
 		];
 		const layout = layoutSequence(agents);
 		const root = layout.lifelines.find((l) => l.agent.id === "root")!;
@@ -227,31 +288,43 @@ describe("layoutSequence", () => {
 		expect(leaf.depth).toBe(2);
 	});
 
-	it("skips agents with missing timing but keeps siblings", () => {
+	it("skips agents with missing timing but keeps siblings", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "a",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:10.000Z",
-			}),
-			makeAgent({id: "b"}),
-			makeAgent({
-				id: "c",
-				startedAt: "1999-12-31T00:00:15.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
+			makeAgent(
+				{
+					id: "a",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:10.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "b",
+				},
+			),
+			makeAgent(
+				{
+					id: "c",
+					startedAt: "1999-12-31T00:00:15.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
 		];
 		const layout = layoutSequence(agents);
 		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(["a", "c"]);
 	});
 
-	it("produces tick marks proportional to total duration", () => {
+	it("produces tick marks proportional to total duration", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "a",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:01:00.000Z",
-			}),
+			makeAgent(
+				{
+					id: "a",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:01:00.000Z",
+				},
+			),
 		];
 		const layout: SequenceLayout = layoutSequence(agents);
 		expect(layout.ticks.length).toBeGreaterThanOrEqual(2);
@@ -259,50 +332,100 @@ describe("layoutSequence", () => {
 		expect(layout.ticks[layout.ticks.length - 1]!.offsetMs).toBeLessThanOrEqual(layout.totalMs);
 	});
 
-	it("orders parallel children by start time, then depth, then id", () => {
+	it("orders parallel children by start time, then depth, then id", () =>
+	{
 		const agents = [
-			makeAgent({
-				id: "parent",
-				startedAt: "1999-12-31T00:00:00.000Z",
-				finishedAt: "1999-12-31T00:00:30.000Z",
-			}),
-			makeAgent({
-				id: "p2",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:20.000Z",
-			}),
-			makeAgent({
-				id: "p1",
-				parentAgentId: "parent",
-				startedAt: "1999-12-31T00:00:10.000Z",
-				finishedAt: "1999-12-31T00:00:25.000Z",
-			}),
+			makeAgent(
+				{
+					id: "parent",
+					startedAt: "1999-12-31T00:00:00.000Z",
+					finishedAt: "1999-12-31T00:00:30.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "p2",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:20.000Z",
+				},
+			),
+			makeAgent(
+				{
+					id: "p1",
+					parentAgentId: "parent",
+					startedAt: "1999-12-31T00:00:10.000Z",
+					finishedAt: "1999-12-31T00:00:25.000Z",
+				},
+			),
 		];
 		const layout = layoutSequence(agents);
 		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(["parent", "p1", "p2"]);
 	});
 });
 
-describe("layoutSequence workflow runs", () => {
+describe("layoutSequence workflow runs", () =>
+{
 	const at = (seconds: number) => `1999-12-31T00:00:${String(seconds).padStart(2, "0")}.000Z`;
 	const workflowAgents = [
-		makeAgent({id: "b1", workflowRunId: "wf_b", startedAt: at(30), finishedAt: at(40)}),
-		makeAgent({id: "a3", workflowRunId: "wf_a", workflowPhaseIndex: 1, startedAt: at(20), finishedAt: at(25)}),
-		makeAgent({id: "x", startedAt: at(15), finishedAt: at(18)}),
-		makeAgent({
-			id: "a2",
-			workflowRunId: "wf_a",
-			workflowPhaseIndex: 2,
-			workflowPhase: "Diff",
-			startedAt: at(12),
-			finishedAt: at(14),
-		}),
-		makeAgent({id: "a1", workflowRunId: "wf_a", workflowPhaseIndex: 1, startedAt: at(10), finishedAt: at(11)}),
+		makeAgent(
+			{
+				id: "b1",
+				workflowRunId: "wf_b",
+				startedAt: at(30),
+				finishedAt: at(40),
+			},
+		),
+		makeAgent(
+			{
+				id: "a3",
+				workflowRunId: "wf_a",
+				workflowPhaseIndex: 1,
+				startedAt: at(20),
+				finishedAt: at(25),
+			},
+		),
+		makeAgent(
+			{
+				id: "x",
+				startedAt: at(15),
+				finishedAt: at(18),
+			},
+		),
+		makeAgent(
+			{
+				id: "a2",
+				workflowRunId: "wf_a",
+				workflowPhaseIndex: 2,
+				workflowPhase: "Diff",
+				startedAt: at(12),
+				finishedAt: at(14),
+			},
+		),
+		makeAgent(
+			{
+				id: "a1",
+				workflowRunId: "wf_a",
+				workflowPhaseIndex: 1,
+				startedAt: at(10),
+				finishedAt: at(11),
+			},
+		),
 	];
 
-	it("puts each run's agents in adjacent columns under a run header instead of interleaving", () => {
-		const layout = layoutSequence(workflowAgents, {workflowRuns: [{runId: "wf_a", workflowName: "poems"}]});
+	it("puts each run's agents in adjacent columns under a run header instead of interleaving", () =>
+	{
+		const layout = layoutSequence(
+			workflowAgents,
+			{
+				workflowRuns: [
+					{
+						runId: "wf_a",
+						workflowName: "poems",
+					},
+				],
+			},
+		);
 		expect(layout.lifelines.map((lane) => [lane.agent.id, lane.column])).toStrictEqual([
 			["a1", 0],
 			["a3", 1],
@@ -311,18 +434,45 @@ describe("layoutSequence workflow runs", () => {
 			["b1", 4],
 		]);
 		expect(layout.groups).toStrictEqual([
-			{runId: "wf_a", name: "poems", phaseTitle: "Phase 1", firstColumn: 0, columnCount: 2},
-			{runId: "wf_a", name: "poems", phaseTitle: "Diff", firstColumn: 2, columnCount: 1},
-			{runId: "wf_b", name: "wf_b", phaseTitle: "Agents", firstColumn: 4, columnCount: 1},
+			{
+				runId: "wf_a",
+				name: "poems",
+				phaseTitle: "Phase 1",
+				firstColumn: 0,
+				columnCount: 2,
+			},
+			{
+				runId: "wf_a",
+				name: "poems",
+				phaseTitle: "Diff",
+				firstColumn: 2,
+				columnCount: 1,
+			},
+			{
+				runId: "wf_b",
+				name: "wf_b",
+				phaseTitle: "Agents",
+				firstColumn: 4,
+				columnCount: 1,
+			},
 		]);
 	});
 
-	it("labels a run once above its columns and each phase above its own", () => {
+	it("labels a run once above its columns and each phase above its own", () =>
+	{
 		const html = renderToStaticMarkup(
-			createElement(SubagentSequence, {
-				agents: workflowAgents,
-				workflowRuns: [{runId: "wf_a", workflowName: "poems"}],
-			}),
+			createElement(
+				SubagentSequence,
+				{
+					agents: workflowAgents,
+					workflowRuns: [
+						{
+							runId: "wf_a",
+							workflowName: "poems",
+						},
+					],
+				},
+			),
 		);
 		expect(html.match(/>poems</g)).toStrictEqual([">poems<"]);
 		expect(html).toContain(">Phase 1<");
@@ -331,8 +481,17 @@ describe("layoutSequence workflow runs", () => {
 		expect(html).toContain(">Agents<");
 	});
 
-	it("has no groups without workflow agents", () => {
-		const layout = layoutSequence([makeAgent({id: "a", startedAt: at(1), finishedAt: at(2)})]);
+	it("has no groups without workflow agents", () =>
+	{
+		const layout = layoutSequence([
+			makeAgent(
+				{
+					id: "a",
+					startedAt: at(1),
+					finishedAt: at(2),
+				},
+			),
+		]);
 		expect(layout.groups).toStrictEqual([]);
 	});
 });

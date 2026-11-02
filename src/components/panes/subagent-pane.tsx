@@ -19,10 +19,12 @@ const GHOST_ICON_BUTTON =
 /** Upstream clamps the prompt bubble at 16rem and fades its last 3rem. */
 const PROMPT_CLAMP_CLASSES = "max-h-[16rem] [mask-image:linear-gradient(to_bottom,#000_calc(100%-3rem),transparent)]";
 
-function SubagentPrompt({prompt}: {prompt: string}) {
+function SubagentPrompt({prompt}: {prompt: string})
+{
 	const [overflowing, setOverflowing] = useState(false);
 	const [expanded, setExpanded] = useState(false);
-	const measureRef = useCallback((node: HTMLDivElement | null) => {
+	const measureRef = useCallback((node: HTMLDivElement | null) =>
+	{
 		if (node !== null) setOverflowing(node.scrollHeight > node.clientHeight);
 	}, []);
 	const clamped = overflowing && !expanded;
@@ -41,7 +43,8 @@ function SubagentPrompt({prompt}: {prompt: string}) {
 				<button
 					type="button"
 					aria-expanded={false}
-					onClick={() => {
+					onClick={() =>
+					{
 						setExpanded(true);
 					}}
 					className="h-5 cursor-pointer rounded-r5 px-1.5 text-xs text-primary transition-colors hover:bg-fill-ghost-hover"
@@ -53,13 +56,15 @@ function SubagentPrompt({prompt}: {prompt: string}) {
 	);
 }
 
-function SubagentActivity({agent, hasPrompt}: {agent: Subagent; hasPrompt: boolean}) {
+function SubagentActivity({agent, hasPrompt}: {agent: Subagent; hasPrompt: boolean})
+{
 	const transcript = useQuery(transcriptQueryOptions(agent.id)).data;
 	const processed = useMemo(
 		() => (transcript === undefined ? undefined : processTranscript(transcript.records, transcript.startIndex)),
 		[transcript],
 	);
-	if (processed === undefined) {
+	if (processed === undefined)
+	{
 		return (
 			<p role="status" className="text-xs text-t6">
 				Loading…
@@ -80,20 +85,23 @@ function SubagentActivity({agent, hasPrompt}: {agent: Subagent; hasPrompt: boole
 	);
 }
 
-interface SubagentPaneProps {
+interface SubagentPaneProps
+{
 	sessionId: string;
 	subagents: readonly Subagent[];
 	prompts: ReadonlyMap<string, string>;
 	chrome: PaneChrome;
 }
 
-export function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPaneProps) {
+export function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPaneProps)
+{
 	const [agentId, setAgentId] = useState<string | null>(
 		() => takePendingSubagentFocus(sessionId) ?? loadSubagentPaneAgent(sessionId),
 	);
 	useEffect(() => onSubagentFocusRequest(sessionId, setAgentId), [sessionId]);
 	const focus = useCallback(
-		(id: string | null) => {
+		(id: string | null) =>
+		{
 			setAgentId(id);
 			saveSubagentPaneAgent(sessionId, id);
 		},
@@ -107,7 +115,10 @@ export function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPa
 		<>
 			<PaneHeaderRow
 				label="Subagents"
-				rowAttributes={{"data-subagent-header": ""}}
+				rowAttributes={
+				{
+					"data-subagent-header": "",
+				}}
 				title={
 					<div className="flex min-w-0 flex-1 items-center gap-1">
 						{agent !== undefined && (
@@ -115,7 +126,8 @@ export function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPa
 								<button
 									type="button"
 									aria-label="Back"
-									onClick={() => {
+									onClick={() =>
+									{
 										focus(null);
 									}}
 									className={GHOST_ICON_BUTTON}
@@ -138,14 +150,16 @@ export function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPa
 						<p className="px-4 py-8 text-center text-xs text-t6">No subagents in this session.</p>
 					) : (
 						<ul className="flex flex-col p-1">
-							{subagents.map((candidate) => {
+							{subagents.map((candidate) =>
+							{
 								const label = candidate.description ?? candidate.id;
 								return (
 									<li key={candidate.id}>
 										<button
 											type="button"
 											aria-label={`Open subagent ${label}`}
-											onClick={() => {
+											onClick={() =>
+											{
 												focus(candidate.id);
 											}}
 											className="w-full cursor-pointer truncate rounded-r5 px-2 py-1.5 text-left text-body text-primary transition-colors hover:bg-fill-ghost-hover"

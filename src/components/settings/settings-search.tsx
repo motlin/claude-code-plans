@@ -3,7 +3,8 @@ import {Popover} from "@base-ui/react/popover";
 import {type MouseEvent, type RefObject, useEffect, useId, useMemo, useRef, useState} from "react";
 import {useShortcut} from "../../hooks/use-shortcut";
 import type {SettingsTab} from "../../lib/settings-hash";
-import {
+import
+{
 	buildSettingsResultRows,
 	normalizeSettingsQuery,
 	type SettingsResultRow,
@@ -20,7 +21,8 @@ import {overlayAttrs} from "../../lib/overlay";
  * `label` with the query's first word-start (else first) occurrence in the accent color. Like upstream,
  * each non-empty part is its own span, and an unmatched label is a single span.
  */
-function Highlighted({label, query}: {label: string; query: string}) {
+function Highlighted({label, query}: {label: string; query: string})
+{
 	const start = settingsMatchStart(label, query);
 	if (start === -1) return <span>{label}</span>;
 	const parts = splitMatch(label, start, query.trim().length);
@@ -43,16 +45,19 @@ const ROW_CLASS =
 const INDENT_CLASS = "ps-[32px]";
 
 /** Upstream's row mousedown: keep focus (and the open popover) in the search input. */
-function keepInputFocus(event: MouseEvent) {
+function keepInputFocus(event: MouseEvent)
+{
 	event.preventDefault();
 }
 
-function rowKey(row: SettingsResultRow): string {
+function rowKey(row: SettingsResultRow): string
+{
 	return row.kind === "child" ? `child/${row.tab}/${row.rowSlug}` : `${row.kind}/${row.tab}`;
 }
 
 /** "3 more matches in Claude Code": the "+N more" row's label and, after "Showing ", its announcement. */
-function moreMatches(count: number, section: string): string {
+function moreMatches(count: number, section: string): string
+{
 	return `${count} more ${count === 1 ? "match" : "matches"} in ${section}`;
 }
 
@@ -69,19 +74,23 @@ function ResultRow({
 	highlighted: boolean;
 	onChoose: (row: SettingsResultRow) => void;
 	onHighlight: () => void;
-}) {
+})
+{
 	const section = settingsSectionName(row.tab);
-	const rowProps = {
+	const rowProps =
+	{
 		type: "button",
 		"data-highlighted": highlighted ? "" : undefined,
 		onMouseDown: keepInputFocus,
 		onMouseMove: onHighlight,
-		onClick: () => {
+		onClick: () =>
+		{
 			onChoose(row);
 		},
 		className: ROW_CLASS,
 	} as const;
-	if (row.kind === "hit") {
+	if (row.kind === "hit")
+	{
 		const TabIcon = SETTINGS_TAB_ICONS[row.tab];
 		return (
 			<button {...rowProps}>
@@ -132,7 +141,8 @@ export function SettingsSearch({
 	onSelect: (tab: SettingsTab, row?: string) => void;
 	/** The dialog's handle on the input, for its initial focus. */
 	inputRef?: RefObject<HTMLInputElement | null>;
-}) {
+})
+{
 	const [query, setQuery] = useState("");
 	const [expanded, setExpanded] = useState<ReadonlySet<SettingsTab>>(() => new Set());
 	const [announcement, setAnnouncement] = useState("");
@@ -147,21 +157,29 @@ export function SettingsSearch({
 	const open = hasQuery;
 
 	// Upstream keeps the highlighted row in view as the arrows (or a re-ranked list) move it.
-	useEffect(() => {
-		scrollerRef.current?.querySelector("[data-highlighted]")?.scrollIntoView({block: "nearest"});
+	useEffect(() =>
+	{
+		scrollerRef.current?.querySelector("[data-highlighted]")?.scrollIntoView(
+			{
+				block: "nearest",
+			},
+		);
 	}, [active, rows]);
 
-	const collapse = () => {
+	const collapse = () =>
+	{
 		setExpanded(new Set());
 		setAnnouncement("");
 	};
-	const clear = () => {
+	const clear = () =>
+	{
 		setQuery("");
 		setActive(0);
 		collapse();
 	};
 	// Upstream's dismissal (Escape, outside press, select): clear, then blur so a second Escape reaches the dialog.
-	const reset = () => {
+	const reset = () =>
+	{
 		clear();
 		inputRef.current?.blur();
 	};
@@ -170,7 +188,8 @@ export function SettingsSearch({
 	// It yields inside a nested dialog (e.g. a confirm), and is unbound once Settings closes.
 	useShortcut(
 		"settings_search",
-		(event) => {
+		(event) =>
+		{
 			const input = inputRef.current;
 			const settings = input?.closest('[role="dialog"]');
 			const target = event.target instanceof Element ? event.target : null;
@@ -180,11 +199,16 @@ export function SettingsSearch({
 			input.select();
 			return true;
 		},
-		{allowInModal: true, priority: 1},
+		{
+			allowInModal: true,
+			priority: 1,
+		},
 	);
 
-	const choose = (row: SettingsResultRow) => {
-		if (row.kind === "more") {
+	const choose = (row: SettingsResultRow) =>
+	{
+		if (row.kind === "more")
+		{
 			setExpanded((previous) => new Set([...previous, row.tab]));
 			setAnnouncement(`Showing ${moreMatches(row.count, settingsSectionName(row.tab))}`);
 			return;
@@ -196,13 +220,12 @@ export function SettingsSearch({
 	return (
 		<Popover.Root
 			open={open}
-			onOpenChange={(next, details) => {
+			onOpenChange={(next, details) =>
+			{
 				if (next) return;
 				// Clicks back into the field keep the results open.
-				if (
-					details.event.target instanceof Node &&
-					anchorRef.current?.contains(details.event.target) === true
-				) {
+				if (details.event.target instanceof Node && anchorRef.current?.contains(details.event.target) === true)
+				{
 					return;
 				}
 				reset();
@@ -223,29 +246,40 @@ export function SettingsSearch({
 						aria-label="Search settings"
 						placeholder="Search"
 						value={query}
-						onChange={(event) => {
+						onChange={(event) =>
+						{
 							const next = event.target.value;
 							if (normalizeSettingsQuery(next) !== normalizeSettingsQuery(query)) collapse();
 							setQuery(next);
 							setActive(0);
 						}}
-						onKeyDown={(event) => {
+						onKeyDown={(event) =>
+						{
 							// Upstream ignores keys mid-composition and while the query is empty.
 							if (event.nativeEvent.isComposing || !hasQuery) return;
 							const count = rows.length;
-							if (event.key === "Tab") {
+							if (event.key === "Tab")
+							{
 								clear();
-							} else if (event.key === "ArrowDown") {
+							}
+							else if (event.key === "ArrowDown")
+							{
 								event.preventDefault();
 								setActive((index) => (count === 0 ? 0 : (index + 1) % count));
-							} else if (event.key === "ArrowUp") {
+							}
+							else if (event.key === "ArrowUp")
+							{
 								event.preventDefault();
 								setActive((index) => (count === 0 ? 0 : (index - 1 + count) % count));
-							} else if (event.key === "Enter") {
+							}
+							else if (event.key === "Enter")
+							{
 								event.preventDefault();
 								const row = rows[active];
 								if (row !== undefined && !event.repeat) choose(row);
-							} else if (event.key === "Escape") {
+							}
+							else if (event.key === "Escape")
+							{
 								event.preventDefault();
 								event.stopPropagation();
 								reset();
@@ -293,7 +327,8 @@ export function SettingsSearch({
 											query={query}
 											highlighted={index === active}
 											onChoose={choose}
-											onHighlight={() => {
+											onHighlight={() =>
+											{
 												setActive(index);
 											}}
 										/>

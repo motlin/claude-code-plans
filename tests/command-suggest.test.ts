@@ -1,7 +1,9 @@
 import {nearestCommand, osaDistance} from "../src/lib/command-suggest";
 
-describe("osaDistance", () => {
-	it("counts insertions, deletions, substitutions and adjacent transpositions", () => {
+describe("osaDistance", () =>
+{
+	it("counts insertions, deletions, substitutions and adjacent transpositions", () =>
+	{
 		expect([
 			osaDistance("statuss", "status"),
 			osaDistance("cmopact", "compact"),
@@ -15,12 +17,15 @@ describe("osaDistance", () => {
 	});
 });
 
-describe("nearestCommand", () => {
-	it("returns the closest candidate within the threshold", () => {
+describe("nearestCommand", () =>
+{
+	it("returns the closest candidate within the threshold", () =>
+	{
 		expect(nearestCommand("statuss", ["status", "stats"])).toBe("status");
 	});
 
-	it("uses threshold 1 for queries of four characters or fewer", () => {
+	it("uses threshold 1 for queries of four characters or fewer", () =>
+	{
 		expect([
 			nearestCommand("hlp", ["help"]),
 			nearestCommand("hep", ["help"]),
@@ -30,41 +35,49 @@ describe("nearestCommand", () => {
 		]).toStrictEqual(["help", "help", null, "help", null]);
 	});
 
-	it("uses threshold 2 for longer queries", () => {
+	it("uses threshold 2 for longer queries", () =>
+	{
 		expect([nearestCommand("stauts", ["status"]), nearestCommand("stxyzs", ["status"])]).toStrictEqual([
 			"status",
 			null,
 		]);
 	});
 
-	it("matches case-insensitively and returns the candidate casing", () => {
+	it("matches case-insensitively and returns the candidate casing", () =>
+	{
 		expect([nearestCommand("Statuss", ["status"]), nearestCommand("statuss", ["Status"])]).toStrictEqual([
 			"status",
 			"Status",
 		]);
 	});
 
-	it("excludes exact matches", () => {
+	it("excludes exact matches", () =>
+	{
 		expect(nearestCommand("status", ["status"])).toBeNull();
 	});
 
-	it("returns null on a tie at the minimum distance", () => {
+	it("returns null on a tie at the minimum distance", () =>
+	{
 		expect(nearestCommand("cat", ["bat", "hat"])).toBeNull();
 	});
 
-	it("prefers a strictly closer candidate over a tie at a larger distance", () => {
+	it("prefers a strictly closer candidate over a tie at a larger distance", () =>
+	{
 		expect(nearestCommand("compactt", ["compxxtt", "compayyt", "compact"])).toBe("compact");
 	});
 
-	it("does not count duplicate candidates as a tie", () => {
+	it("does not count duplicate candidates as a tie", () =>
+	{
 		expect(nearestCommand("compac", ["compact", "compact", "Compact"])).toBe("compact");
 	});
 
-	it("skips candidates whose length differs by more than the threshold", () => {
+	it("skips candidates whose length differs by more than the threshold", () =>
+	{
 		expect(nearestCommand("stat", ["status"])).toBeNull();
 	});
 
-	it("returns null with no candidates", () => {
+	it("returns null with no candidates", () =>
+	{
 		expect(nearestCommand("status", [])).toBeNull();
 	});
 });

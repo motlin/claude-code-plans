@@ -1,6 +1,7 @@
 import {describe, expect, it, vi} from "vite-plus/test";
 
-import {
+import
+{
 	type ComposerPaneState,
 	type ComposerSubmit,
 	dispatchComposerSubmit,
@@ -11,40 +12,76 @@ import {
 	routeComposerSubmit,
 } from "../src/lib/composer-fork-routing";
 
-describe("composer fork routing", () => {
-	it("routes live/idle/no-pane × Enter/⌥⌘⏎ to herdr prompt, fork stream or herdr launch", () => {
+describe("composer fork routing", () =>
+{
+	it("routes live/idle/no-pane × Enter/⌥⌘⏎ to herdr prompt, fork stream or herdr launch", () =>
+	{
 		const panes: ComposerPaneState[] = ["working", "idle", "none"];
 		const submits: ComposerSubmit[] = ["send", "fork"];
 		const matrix = panes.flatMap((pane) =>
-			submits.map((submit) => [`${pane} × ${submit}`, routeComposerSubmit({pane, writesEnabled: true, submit})]),
+			submits.map((submit) => [
+				`${pane} × ${submit}`,
+				routeComposerSubmit(
+					{
+						pane,
+						writesEnabled: true,
+						submit,
+					},
+				),
+			]),
 		);
 
-		expect(Object.fromEntries(matrix)).toStrictEqual({
-			"working × send": "herdr-prompt",
-			"working × fork": "herdr-launch",
-			"idle × send": "herdr-prompt",
-			"idle × fork": "herdr-launch",
-			"none × send": "fork-stream",
-			"none × fork": "fork-stream",
-		});
+		expect(Object.fromEntries(matrix)).toStrictEqual(
+			{
+				"working × send": "herdr-prompt",
+				"working × fork": "herdr-launch",
+				"idle × send": "herdr-prompt",
+				"idle × fork": "herdr-launch",
+				"none × send": "fork-stream",
+				"none × fork": "fork-stream",
+			},
+		);
 	});
 
-	it("falls back to the fork stream when herdr writes are disabled", () => {
+	it("falls back to the fork stream when herdr writes are disabled", () =>
+	{
 		expect([
-			routeComposerSubmit({pane: "idle", writesEnabled: false, submit: "send"}),
-			routeComposerSubmit({pane: "idle", writesEnabled: false, submit: "fork"}),
-			routeComposerSubmit({pane: "working", writesEnabled: false, submit: "fork"}),
+			routeComposerSubmit(
+				{
+					pane: "idle",
+					writesEnabled: false,
+					submit: "send",
+				},
+			),
+			routeComposerSubmit(
+				{
+					pane: "idle",
+					writesEnabled: false,
+					submit: "fork",
+				},
+			),
+			routeComposerSubmit(
+				{
+					pane: "working",
+					writesEnabled: false,
+					submit: "fork",
+				},
+			),
 		]).toStrictEqual(["fork-stream", "fork-stream", "fork-stream"]);
 	});
 
-	it("builds the fork argv as `--resume <id> --fork-session` plus the launch flags", () => {
+	it("builds the fork argv as `--resume <id> --fork-session` plus the launch flags", () =>
+	{
 		expect([
 			promptForkArgs("session-alice", {}),
-			promptForkArgs("session-alice", {
-				permissionMode: "plan",
-				model: "opus",
-				effort: "high",
-			}),
+			promptForkArgs(
+				"session-alice",
+				{
+					permissionMode: "plan",
+					model: "opus",
+					effort: "high",
+				},
+			),
 		]).toStrictEqual([
 			["--resume", "session-alice", "--fork-session"],
 			[
@@ -61,12 +98,33 @@ describe("composer fork routing", () => {
 		]);
 	});
 
-	it("labels the fork as a forked-session send only when a live pane cannot launch", () => {
+	it("labels the fork as a forked-session send only when a live pane cannot launch", () =>
+	{
 		expect([
-			forkSubmitLabel({pane: "idle", writesEnabled: true}),
-			forkSubmitLabel({pane: "working", writesEnabled: true}),
-			forkSubmitLabel({pane: "none", writesEnabled: true}),
-			forkSubmitLabel({pane: "idle", writesEnabled: false}),
+			forkSubmitLabel(
+				{
+					pane: "idle",
+					writesEnabled: true,
+				},
+			),
+			forkSubmitLabel(
+				{
+					pane: "working",
+					writesEnabled: true,
+				},
+			),
+			forkSubmitLabel(
+				{
+					pane: "none",
+					writesEnabled: true,
+				},
+			),
+			forkSubmitLabel(
+				{
+					pane: "idle",
+					writesEnabled: false,
+				},
+			),
 		]).toStrictEqual([
 			"Fork with this prompt",
 			"Fork with this prompt",
@@ -75,12 +133,15 @@ describe("composer fork routing", () => {
 		]);
 	});
 
-	it("dispatches each route to its target with the prompt, options and argv array", () => {
+	it("dispatches each route to its target with the prompt, options and argv array", () =>
+	{
 		const panes: ComposerPaneState[] = ["working", "idle", "none"];
 		const submits: ComposerSubmit[] = ["send", "fork"];
 		const calls = panes.flatMap((pane) =>
-			submits.map((submit) => {
-				const targets = {
+			submits.map((submit) =>
+			{
+				const targets =
+				{
 					sendLive: vi.fn<(prompt: string) => void>(),
 					sendForkStream: vi.fn<(prompt: string, options: object) => void>(),
 					launchFork: vi.fn<(launch: {cwd: string; prompt: string; args: string[]}) => void>(),
@@ -93,7 +154,10 @@ describe("composer fork routing", () => {
 						writesEnabled: true,
 						submit,
 						prompt: "Try Bob's idea",
-						launchOptions: {model: "sonnet"},
+						launchOptions:
+						{
+							model: "sonnet",
+						},
 					},
 					targets,
 				);
@@ -116,85 +180,156 @@ describe("composer fork routing", () => {
 				},
 			],
 		];
-		const stream = [["Try Bob's idea", {model: "sonnet"}]];
+		const stream = [
+			[
+				"Try Bob's idea",
+				{
+					model: "sonnet",
+				},
+			],
+		];
 		const live = [["Try Bob's idea"]];
 		expect(calls).toStrictEqual([
-			{case: "working × send", route: "herdr-prompt", live, stream: [], launch: []},
-			{case: "working × fork", route: "herdr-launch", live: [], stream: [], launch},
-			{case: "idle × send", route: "herdr-prompt", live, stream: [], launch: []},
-			{case: "idle × fork", route: "herdr-launch", live: [], stream: [], launch},
-			{case: "none × send", route: "fork-stream", live: [], stream, launch: []},
-			{case: "none × fork", route: "fork-stream", live: [], stream, launch: []},
+			{
+				case: "working × send",
+				route: "herdr-prompt",
+				live,
+				stream: [],
+				launch: [],
+			},
+			{
+				case: "working × fork",
+				route: "herdr-launch",
+				live: [],
+				stream: [],
+				launch,
+			},
+			{
+				case: "idle × send",
+				route: "herdr-prompt",
+				live,
+				stream: [],
+				launch: [],
+			},
+			{
+				case: "idle × fork",
+				route: "herdr-launch",
+				live: [],
+				stream: [],
+				launch,
+			},
+			{
+				case: "none × send",
+				route: "fork-stream",
+				live: [],
+				stream,
+				launch: [],
+			},
+			{
+				case: "none × fork",
+				route: "fork-stream",
+				live: [],
+				stream,
+				launch: [],
+			},
 		]);
 	});
 });
 
-describe("launchPromptFork", () => {
-	const launch = {
+describe("launchPromptFork", () =>
+{
+	const launch =
+	{
 		cwd: "/Users/alice/project",
 		prompt: "Try Alice's idea",
 		args: ["--resume", "session-alice", "--fork-session"],
 	};
 
-	it("launches the fork in herdr and navigates to it once it starts", async () => {
+	it("launches the fork in herdr and navigates to it once it starts", async () =>
+	{
 		const onLaunched = vi.fn<LaunchPromptForkDependencies["onLaunched"]>();
 		const toast = vi.fn<LaunchPromptForkDependencies["toast"]>();
-		const launcher = vi.fn<LaunchPromptForkDependencies["launch"]>().mockResolvedValue({sessionId: "session-fork"});
+		const launcher = vi.fn<LaunchPromptForkDependencies["launch"]>().mockResolvedValue(
+			{
+				sessionId: "session-fork",
+			},
+		);
 
-		const ok = await launchPromptFork(launch, "session-alice", {
-			launch: launcher,
-			onLaunched,
-			toast,
-			now: () => 1_000,
-		});
+		const ok = await launchPromptFork(
+			launch,
+			"session-alice",
+			{
+				launch: launcher,
+				onLaunched,
+				toast,
+				now: () => 1_000,
+			},
+		);
 
-		expect({
-			ok,
-			launched: launcher.mock.calls,
-			pending: onLaunched.mock.calls,
-			toasts: toast.mock.calls,
-		}).toStrictEqual({
-			ok: true,
-			launched: [[launch]],
-			pending: [
-				[
-					{
-						cwd: "/Users/alice/project",
-						since: 1_000,
-						sessionId: "session-fork",
-						parentSessionId: "session-alice",
-					},
+		expect(
+			{
+				ok,
+				launched: launcher.mock.calls,
+				pending: onLaunched.mock.calls,
+				toasts: toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				ok: true,
+				launched: [[launch]],
+				pending: [
+					[
+						{
+							cwd: "/Users/alice/project",
+							since: 1_000,
+							sessionId: "session-fork",
+							parentSessionId: "session-alice",
+						},
+					],
 				],
-			],
-			toasts: [],
-		});
+				toasts: [],
+			},
+		);
 	});
 
-	it("toasts the herdr error when the launch fails", async () => {
+	it("toasts the herdr error when the launch fails", async () =>
+	{
 		const onLaunched = vi.fn<LaunchPromptForkDependencies["onLaunched"]>();
 		const toast = vi.fn<LaunchPromptForkDependencies["toast"]>();
 
-		const ok = await launchPromptFork(launch, "session-alice", {
-			launch: vi
-				.fn<LaunchPromptForkDependencies["launch"]>()
-				.mockRejectedValue(new Error("herdr is not running")),
-			onLaunched,
-			toast,
-			now: () => 1_000,
-		});
+		const ok = await launchPromptFork(
+			launch,
+			"session-alice",
+			{
+				launch: vi
+					.fn<LaunchPromptForkDependencies["launch"]>()
+					.mockRejectedValue(new Error("herdr is not running")),
+				onLaunched,
+				toast,
+				now: () => 1_000,
+			},
+		);
 
-		expect({ok, pending: onLaunched.mock.calls, toasts: toast.mock.calls}).toStrictEqual({
-			ok: false,
-			pending: [],
-			toasts: [
-				[
-					{
-						kind: "error",
-						message: "Couldn’t fork the session. Try again.",
-						description: "herdr is not running",
-					},
+		expect(
+			{
+				ok,
+				pending: onLaunched.mock.calls,
+				toasts: toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				ok: false,
+				pending: [],
+				toasts: [
+					[
+						{
+							kind: "error",
+							message: "Couldn’t fork the session. Try again.",
+							description: "herdr is not running",
+						},
+					],
 				],
-			],
-		});
+			},
+		);
 	});
 });

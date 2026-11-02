@@ -7,7 +7,8 @@ type PreviewableArtifact = Pick<
 	"id" | "url" | "title" | "sourceExists" | "sourceModifiedAt" | "lastPublishedAt"
 >;
 
-function OpenOnClaudeLink({url}: {url: string}) {
+function OpenOnClaudeLink({url}: {url: string})
+{
 	return (
 		<a
 			href={url}
@@ -27,8 +28,10 @@ function OpenOnClaudeLink({url}: {url: string}) {
  * page gets an opaque origin and cannot reach this app. Without a local
  * source it links out to the published artifact instead.
  */
-export function ArtifactSourcePreview({artifact}: {artifact: PreviewableArtifact}) {
-	if (!artifact.sourceExists) {
+export function ArtifactSourcePreview({artifact}: {artifact: PreviewableArtifact})
+{
+	if (!artifact.sourceExists)
+	{
 		return (
 			<div className="flex flex-col items-start gap-2 p-6 text-body text-secondary">
 				<p>The local source file for this artifact no longer exists.</p>

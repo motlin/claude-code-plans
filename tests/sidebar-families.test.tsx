@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -28,8 +29,13 @@ function session(
 	title: string,
 	bucket: SessionBucket,
 	minutesAgo: number,
-	extra: {forkedFromSessionId?: string; unseen?: boolean} = {},
-) {
+	extra:
+	{
+		forkedFromSessionId?: string;
+		unseen?: boolean;
+	} = {},
+)
+{
 	const mtime = new Date(Date.now() - minutesAgo * MINUTE).toISOString();
 	return {
 		id,
@@ -45,77 +51,150 @@ function session(
 		liveAgentCount: 0,
 		unseen: extra.unseen ?? false,
 		blockedSince: null,
-		...(extra.forkedFromSessionId === undefined ? {} : {forkedFromSessionId: extra.forkedFromSessionId}),
+		...(extra.forkedFromSessionId === undefined
+			? {}
+			:
+				{
+					forkedFromSessionId: extra.forkedFromSessionId,
+				}),
 	};
 }
 
 // Head h1 is done, but its family takes the most urgent member bucket (Working).
 const FAMILY = [
 	session("h1", "Head one", "done", 10),
-	session("c1", "Child one", "working", 1, {forkedFromSessionId: "h1"}),
-	session("g1", "Grandchild one", "review", 2, {forkedFromSessionId: "c1", unseen: true}),
+	session(
+		"c1",
+		"Child one",
+		"working",
+		1,
+		{
+			forkedFromSessionId: "h1",
+		},
+	),
+	session(
+		"g1",
+		"Grandchild one",
+		"review",
+		2,
+		{
+			forkedFromSessionId: "c1",
+			unseen: true,
+		},
+	),
 	session("s1", "Solo one", "working", 3),
 ];
 
 const TWO_FAMILIES = [
 	...FAMILY,
 	session("h2", "Head two", "working", 4),
-	session("c2", "Child two", "working", 5, {forkedFromSessionId: "h2"}),
+	session(
+		"c2",
+		"Child two",
+		"working",
+		5,
+		{
+			forkedFromSessionId: "h2",
+		},
+	),
 ];
 
-async function renderGroups(sessions: unknown[]) {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+async function renderGroups(sessions: unknown[])
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [RecentSessionsResponse.parse({sessions, nextCursor: null})],
-		pageParams: [null],
-	});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<SessionGroups activeItemId={null} prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}} />
-					<Outlet />
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/session/$id",
-		component: () => null,
-	});
-	const homeRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	);
+	queryClient.setQueryData(
+		recentSessionsInfiniteQueryOptions().queryKey,
+		{
+			pages: [
+				RecentSessionsResponse.parse(
+					{
+						sessions,
+						nextCursor: null,
+					},
+				),
+			],
+			pageParams: [null],
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SessionGroups
+							activeItemId={null}
+							prefs={
+							{
+								...DEFAULT_SESSION_LIST_PREFS,
+								groupBy: "state",
+							}}
+						/>
+						<Outlet />
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/session/$id",
+			component: () => null,
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
 	});
 	return result;
 }
 
-function family(container: HTMLElement, headId: string): HTMLElement {
+function family(container: HTMLElement, headId: string): HTMLElement
+{
 	const element = container.querySelector(`.df-family[data-family-head="${headId}"]`);
 	if (!(element instanceof HTMLElement)) throw new Error(`no family for ${headId}`);
 	return element;
 }
 
-function rowTitles(element: Element): string[] {
+function rowTitles(element: Element): string[]
+{
 	return [...element.querySelectorAll("a[data-row-main-button] [data-row-label]")].map((label) => rowTitle(label));
 }
 
-function handle(container: HTMLElement, headId: string): HTMLElement {
+function handle(container: HTMLElement, headId: string): HTMLElement
+{
 	const element = family(container, headId).querySelector("button.df-family-handle");
 	if (!(element instanceof HTMLElement)) throw new Error(`no handle for ${headId}`);
 	return element;
@@ -123,12 +202,15 @@ function handle(container: HTMLElement, headId: string): HTMLElement {
 
 afterEach(cleanup);
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 });
 
-describe("sidebar session families", () => {
-	it("nests forks under their top ancestor in the family's most urgent group, indented 20px", async () => {
+describe("sidebar session families", () =>
+{
+	it("nests forks under their top ancestor in the family's most urgent group, indented 20px", async () =>
+	{
 		const {container} = await renderGroups(FAMILY);
 
 		const working = container.querySelector('[data-group-key="state-working"]');
@@ -151,7 +233,8 @@ describe("sidebar session families", () => {
 		]);
 	});
 
-	it("collapses a family to a stub row from its handle and persists collapsedFamilies", async () => {
+	it("collapses a family to a stub row from its handle and persists collapsedFamilies", async () =>
+	{
 		const first = await renderGroups(FAMILY);
 		const toggle = handle(first.container, "h1");
 		expect(toggle.getAttribute("aria-expanded")).toBe("true");
@@ -178,10 +261,19 @@ describe("sidebar session families", () => {
 		expect(rowTitles(family(second.container, "h1"))).toStrictEqual(["Child one", "Grandchild one"]);
 	});
 
-	it("singularizes the stub and uses the needs-input label for a blocked child", async () => {
+	it("singularizes the stub and uses the needs-input label for a blocked child", async () =>
+	{
 		const {container} = await renderGroups([
 			session("h1", "Head one", "done", 10),
-			session("c1", "Child one", "blocked", 1, {forkedFromSessionId: "h1"}),
+			session(
+				"c1",
+				"Child one",
+				"blocked",
+				1,
+				{
+					forkedFromSessionId: "h1",
+				},
+			),
 		]);
 
 		fireEvent.click(handle(container, "h1"));
@@ -191,22 +283,34 @@ describe("sidebar session families", () => {
 		expect(stub?.getAttribute("aria-label")).toBe("1 nested session needs input");
 	});
 
-	it("toggles every family on Alt-click", async () => {
+	it("toggles every family on Alt-click", async () =>
+	{
 		const {container} = await renderGroups(TWO_FAMILIES);
 
-		fireEvent.click(handle(container, "h2"), {altKey: true});
+		fireEvent.click(
+			handle(container, "h2"),
+			{
+				altKey: true,
+			},
+		);
 
 		expect([...readSidebarState().collapsedFamilies].toSorted()).toStrictEqual(["code:h1", "code:h2"]);
 		expect(rowTitles(family(container, "h1"))).toStrictEqual([]);
 		expect(rowTitles(family(container, "h2"))).toStrictEqual([]);
 
-		fireEvent.click(handle(container, "h1"), {altKey: true});
+		fireEvent.click(
+			handle(container, "h1"),
+			{
+				altKey: true,
+			},
+		);
 
 		expect(readSidebarState().collapsedFamilies).toStrictEqual([]);
 		expect(rowTitles(family(container, "h2"))).toStrictEqual(["Child two"]);
 	});
 
-	it("expands from the stub and focuses the first child", async () => {
+	it("expands from the stub and focuses the first child", async () =>
+	{
 		const {container} = await renderGroups(FAMILY);
 		fireEvent.click(handle(container, "h1"));
 
@@ -215,8 +319,14 @@ describe("sidebar session families", () => {
 		fireEvent.click(stub);
 
 		expect(readSidebarState().collapsedFamilies).toStrictEqual([]);
-		const firstChild = screen.getByRole("link", {name: /^Child one.*Forked from Head one$/});
-		await waitFor(() => {
+		const firstChild = screen.getByRole(
+			"link",
+			{
+				name: /^Child one.*Forked from Head one$/,
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(document.activeElement).toBe(firstChild);
 		});
 	});

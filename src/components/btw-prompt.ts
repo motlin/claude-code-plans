@@ -8,12 +8,28 @@ import type {ToastOptions} from "./toast-context";
  */
 export function handleBtwPrompt(
 	prompt: string,
-	{sessionId, messageCount, toast}: {sessionId: string; messageCount: number; toast: (options: ToastOptions) => void},
-): boolean {
+	{
+		sessionId,
+		messageCount,
+		toast,
+	}:
+	{
+		sessionId: string;
+		messageCount: number;
+		toast: (options: ToastOptions) => void;
+	},
+): boolean
+{
 	const command = parseBtwCommand(prompt);
 	if (command === null) return false;
-	if (messageCount === 0) {
-		toast({kind: "error", message: NOT_STARTED_MESSAGE});
+	if (messageCount === 0)
+	{
+		toast(
+			{
+				kind: "error",
+				message: NOT_STARTED_MESSAGE,
+			},
+		);
 		return true;
 	}
 	openSideChat(sessionId);

@@ -2,7 +2,8 @@ import {HERDR_EVENTS} from "../event-names";
 import {hmrPersist} from "../hmr-persist";
 import {broadcastTyped} from "../sse-broadcast";
 
-export interface HerdrReconnectState {
+export interface HerdrReconnectState
+{
 	/** Record whether the bridge for `socketPath` is resubscribing after losing herdr. */
 	set: (socketPath: string, reconnecting: boolean) => void;
 	/** True while any herdr server's bridge is resubscribing after losing herdr. */
@@ -17,14 +18,22 @@ export interface HerdrReconnectState {
 export function createHerdrReconnectState(
 	reconnectingSockets: Set<string>,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
-): HerdrReconnectState {
+): HerdrReconnectState
+{
 	return {
-		set: (socketPath, reconnecting) => {
+		set: (socketPath, reconnecting) =>
+		{
 			const before = reconnectingSockets.size > 0;
 			if (reconnecting) reconnectingSockets.add(socketPath);
 			else reconnectingSockets.delete(socketPath);
 			const after = reconnectingSockets.size > 0;
-			if (before !== after) broadcast(HERDR_EVENTS.CONNECTION_CHANGED, {reconnecting: after});
+			if (before !== after)
+				broadcast(
+					HERDR_EVENTS.CONNECTION_CHANGED,
+					{
+						reconnecting: after,
+					},
+				);
 		},
 		isReconnecting: () => reconnectingSockets.size > 0,
 	};

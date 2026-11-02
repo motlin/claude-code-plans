@@ -1,6 +1,7 @@
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import type {DurableSessionViewedState} from "../db/viewed-state";
-import {
+import
+{
 	getCurrentSessionMessageIndex,
 	getSessionViewedState,
 	linkHerdrTerminalToSession,
@@ -13,33 +14,40 @@ import {compareHerdrAttention} from "./viewed-state";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-interface HerdrPaneWithViewedState extends HerdrPaneLink {
+interface HerdrPaneWithViewedState extends HerdrPaneLink
+{
 	viewedState: DurableSessionViewedState;
 }
 
-export function addViewedStateToHerdrPanes(db: IndexDb, panes: HerdrPaneLink[]): HerdrPaneWithViewedState[] {
+export function addViewedStateToHerdrPanes(db: IndexDb, panes: HerdrPaneLink[]): HerdrPaneWithViewedState[]
+{
 	const currentMessageIndices = new Map<string, number>();
 	const viewedStates = new Map<string, DurableSessionViewedState>();
 	const terminalIdsBySessionId = new Map<string, string[]>();
 
-	for (const pane of panes) {
+	for (const pane of panes)
+	{
 		linkHerdrTerminalToSession(db, pane.terminalId, pane.sessionId);
 		const terminalIds = terminalIdsBySessionId.get(pane.sessionId);
 		if (terminalIds) terminalIds.push(pane.terminalId);
 		else terminalIdsBySessionId.set(pane.sessionId, [pane.terminalId]);
-		if (!currentMessageIndices.has(pane.sessionId)) {
+		if (!currentMessageIndices.has(pane.sessionId))
+		{
 			currentMessageIndices.set(pane.sessionId, getCurrentSessionMessageIndex(db, pane.sessionId));
 		}
 	}
 
-	for (const [sessionId, terminalIds] of terminalIdsBySessionId) {
+	for (const [sessionId, terminalIds] of terminalIdsBySessionId)
+	{
 		pruneHerdrTerminalLinks(db, sessionId, terminalIds);
 	}
 
 	return panes
-		.map((pane) => {
+		.map((pane) =>
+		{
 			let viewedState = viewedStates.get(pane.sessionId);
-			if (viewedState === undefined) {
+			if (viewedState === undefined)
+			{
 				const currentMessageIndex = defined(
 					currentMessageIndices.get(pane.sessionId),
 					"Every pane's session got a current message index above",
@@ -47,7 +55,10 @@ export function addViewedStateToHerdrPanes(db: IndexDb, panes: HerdrPaneLink[]):
 				viewedState = getSessionViewedState(db, pane.sessionId, currentMessageIndex);
 				viewedStates.set(pane.sessionId, viewedState);
 			}
-			return {...pane, viewedState};
+			return {
+				...pane,
+				viewedState,
+			};
 		})
 		.toSorted(compareHerdrAttention);
 }

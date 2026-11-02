@@ -5,7 +5,8 @@
 import type {QueryClient} from "@tanstack/react-query";
 import {sessionQueryKeys} from "../api/sessions";
 import type {JsonValue} from "../hook-events";
-import {
+import
+{
 	defaultJourneyTracker,
 	PERF_ANCHORS,
 	transcriptRowAt,
@@ -17,11 +18,13 @@ import {
 const SESSION_PATH = /^\/session\/([^/]+)\/?$/;
 
 /** Narrows `selector` to the session view of `sessionId`, so another session's rows never end its journey. */
-function sessionAnchor(sessionId: string, selector: string): string {
+function sessionAnchor(sessionId: string, selector: string): string
+{
 	return `${sessionView(sessionId)} ${selector}`;
 }
 
-function sessionView(sessionId: string): string {
+function sessionView(sessionId: string): string
+{
 	return `[data-perf-session=${JSON.stringify(sessionId)}]`;
 }
 
@@ -33,8 +36,14 @@ function startRenderedJourney(
 	id: string,
 	trigger: JourneyTrigger,
 	anchor: AnchorSelector,
-): void {
-	tracker.startJourney(id, {trigger});
+): void
+{
+	tracker.startJourney(
+		id,
+		{
+			trigger,
+		},
+	);
 	void tracker.endJourneyWhenRendered(id, anchor);
 }
 
@@ -46,9 +55,11 @@ function startRenderedJourney(
 export function startLaunchJourneys(
 	pathname: string,
 	tracker: JourneyTracker | undefined = defaultJourneyTracker(),
-): void {
+): void
+{
 	if (!tracker) return;
-	if (pathname === "/") {
+	if (pathname === "/")
+	{
 		startRenderedJourney(tracker, "F1", "navigation", [PERF_ANCHORS.sidebarRecentsRow, PERF_ANCHORS.homeSections]);
 		startRenderedJourney(tracker, "F2", "navigation", PERF_ANCHORS.main);
 		return;
@@ -70,7 +81,8 @@ export function startSessionSwitchJourney(
 	sessionId: string,
 	queryClient: QueryClient,
 	tracker: JourneyTracker | undefined = defaultJourneyTracker(),
-): void {
+): void
+{
 	if (!tracker) return;
 	if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 	const anchor = sessionAnchor(sessionId, PERF_ANCHORS.lastTranscriptRow);
@@ -78,11 +90,18 @@ export function startSessionSwitchJourney(
 	const prefetchHit =
 		queryClient.getQueryData(sessionQueryKeys.detail(sessionId)) !== undefined &&
 		queryClient.getQueryData(sessionQueryKeys.transcript(sessionId)) !== undefined;
-	tracker.startJourney("F5", {trigger: event, prefetchHit});
+	tracker.startJourney(
+		"F5",
+		{
+			trigger: event,
+			prefetchHit,
+		},
+	);
 	void tracker.endJourneyWhenRendered("F5", anchor);
 }
 
-export interface LinesAppended {
+export interface LinesAppended
+{
 	sessionId: string;
 	/** The JSONL mtime in epoch ms; absent from a payload sent by an older server. */
 	writtenAt?: number;
@@ -90,7 +109,8 @@ export interface LinesAppended {
 }
 
 /** A prompt the user typed, as opposed to a tool result or a meta line that rides on a user record. */
-function isTypedPrompt(line: Record<string, JsonValue>): boolean {
+function isTypedPrompt(line: Record<string, JsonValue>): boolean
+{
 	if (line["type"] !== "user" || line["isMeta"] === true) return false;
 	const message = line["message"];
 	if (message === null || typeof message !== "object" || Array.isArray(message)) return false;
@@ -99,7 +119,11 @@ function isTypedPrompt(line: Record<string, JsonValue>): boolean {
 	return Array.isArray(content) && content.some((block) => isObject(block) && block["type"] === "text");
 }
 
-function isObject(value: JsonValue): value is {[key: string]: JsonValue} {
+function isObject(value: JsonValue): value is
+{
+	[key: string]: JsonValue;
+}
+{
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
@@ -114,14 +138,24 @@ export function startLiveAppendJourneys(
 	appended: LinesAppended,
 	firstLine: number,
 	tracker: JourneyTracker | undefined = defaultJourneyTracker(),
-): void {
+): void
+{
 	if (!tracker || appended.lines.length === 0) return;
 	const {sessionId, writtenAt, lines} = appended;
 	if (!document.querySelector(sessionView(sessionId))) return;
 
 	const rows = lines.map((_, offset) => sessionAnchor(sessionId, transcriptRowAt(firstLine + offset))).join(", ");
-	if (writtenAt !== undefined) {
-		startRenderedJourney(tracker, "F6", {type: "jsonl-write", epochMs: writtenAt}, rows);
+	if (writtenAt !== undefined)
+	{
+		startRenderedJourney(
+			tracker,
+			"F6",
+			{
+				type: "jsonl-write",
+				epochMs: writtenAt,
+			},
+			rows,
+		);
 	}
 	startRenderedJourney(tracker, "F7", event, rows);
 
@@ -136,9 +170,15 @@ export function startLiveAppendJourneys(
 export function startComposerKeystrokeJourney(
 	event: KeyboardEvent,
 	tracker: JourneyTracker | undefined = defaultJourneyTracker(),
-): void {
+): void
+{
 	if (!tracker || event.isComposing) return;
-	tracker.startJourney("F8", {trigger: event});
+	tracker.startJourney(
+		"F8",
+		{
+			trigger: event,
+		},
+	);
 	void tracker.endJourneyAtNextPaint("F8");
 }
 
@@ -152,13 +192,20 @@ export function startComposerSubmitJourneys(
 	event: Event,
 	sessionId: string,
 	tracker: JourneyTracker | undefined = defaultJourneyTracker(),
-): void {
+): void
+{
 	if (!tracker) return;
 	const pending = sessionAnchor(sessionId, PERF_ANCHORS.pendingPrompt);
-	if (!document.querySelector(pending)) {
+	if (!document.querySelector(pending))
+	{
 		startRenderedJourney(tracker, "F9", event, pending);
 	}
-	tracker.startJourney("F10", {trigger: event});
+	tracker.startJourney(
+		"F10",
+		{
+			trigger: event,
+		},
+	);
 	awaitingPromptRow.set(tracker, sessionId);
 }
 
@@ -166,7 +213,8 @@ export function startComposerSubmitJourneys(
 export function startPaletteOpenJourney(
 	event: KeyboardEvent,
 	tracker: JourneyTracker | undefined = defaultJourneyTracker(),
-): void {
+): void
+{
 	if (!tracker || document.querySelector(PERF_ANCHORS.commandPalette)) return;
 	startRenderedJourney(tracker, "F11", event, PERF_ANCHORS.commandPaletteRow);
 }
@@ -178,7 +226,8 @@ export function startPaletteOpenJourney(
 export function startPaletteSearchJourney(
 	event: KeyboardEvent,
 	tracker: JourneyTracker | undefined = defaultJourneyTracker(),
-): void {
+): void
+{
 	if (!tracker || event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
 	if (event.key.length !== 1 && event.key !== "Backspace" && event.key !== "Delete") return;
 	startRenderedJourney(tracker, "F12", event, PERF_ANCHORS.commandPaletteResults);

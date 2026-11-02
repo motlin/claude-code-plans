@@ -6,12 +6,14 @@ import {resolveProjectName} from "./memory.js";
 import {nonEmpty} from "./non-empty";
 import {z} from "zod";
 
-export interface FileTreeNode {
+export interface FileTreeNode
+{
 	path: string;
 	children?: FileTreeNode[];
 }
 
-interface PluginFile {
+interface PluginFile
+{
 	filename: string;
 	name: string;
 	description: string;
@@ -19,7 +21,8 @@ interface PluginFile {
 	frontmatter: Record<string, string>;
 }
 
-interface PluginSkill {
+interface PluginSkill
+{
 	dirname: string;
 	name: string;
 	description: string;
@@ -28,7 +31,8 @@ interface PluginSkill {
 	examples: PluginFile[];
 }
 
-export interface PluginInfo {
+export interface PluginInfo
+{
 	id: string;
 	name: string;
 	version: string;
@@ -42,24 +46,36 @@ export interface PluginInfo {
 	skills: PluginSkill[];
 }
 
-export interface UserCommandGroup {
+export interface UserCommandGroup
+{
 	source: string;
 	sourceName: string;
 	commands: PluginFile[];
 }
 
-export function parseFrontmatter(content: string): {
+export function parseFrontmatter(content: string):
+{
 	frontmatter: Record<string, string>;
 	body: string;
-} {
+}
+{
 	const frontmatter: Record<string, string> = {};
-	if (!content.startsWith("---")) return {frontmatter, body: content};
+	if (!content.startsWith("---"))
+		return {
+			frontmatter,
+			body: content,
+		};
 
 	const endIdx = content.indexOf("\n---", 3);
-	if (endIdx === -1) return {frontmatter, body: content};
+	if (endIdx === -1)
+		return {
+			frontmatter,
+			body: content,
+		};
 
 	const fmBlock = content.slice(4, endIdx);
-	for (const line of fmBlock.split("\n")) {
+	for (const line of fmBlock.split("\n"))
+	{
 		const colonIdx = line.indexOf(":");
 		if (colonIdx === -1) continue;
 		const key = line.slice(0, colonIdx).trim();
@@ -68,28 +84,47 @@ export function parseFrontmatter(content: string): {
 	}
 
 	const body = content.slice(endIdx + 4).trimStart();
-	return {frontmatter, body};
+	return {
+		frontmatter,
+		body,
+	};
 }
 
-async function readMdFiles(dir: string, type: PluginFile["type"]): Promise<PluginFile[]> {
+async function readMdFiles(dir: string, type: PluginFile["type"]): Promise<PluginFile[]>
+{
 	let entries: string[];
-	try {
+	try
+	{
 		entries = await readdir(dir);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 
 	const mdFiles = entries.filter((f) => f.endsWith(".md"));
 	const files: PluginFile[] = [];
 
-	for (const filename of mdFiles) {
-		try {
+	for (const filename of mdFiles)
+	{
+		try
+		{
 			const content = await readFile(join(dir, filename), "utf-8");
 			const {frontmatter} = parseFrontmatter(content);
 			const name = nonEmpty(frontmatter["name"]) ?? (await extractTitle(join(dir, filename), filename));
 			const description = frontmatter["description"] ?? "";
-			files.push({filename, name, description, type, frontmatter});
-		} catch {
+			files.push(
+				{
+					filename,
+					name,
+					description,
+					type,
+					frontmatter,
+				},
+			);
+		}
+		catch
+		{
 			// skip unreadable files
 		}
 	}
@@ -97,37 +132,49 @@ async function readMdFiles(dir: string, type: PluginFile["type"]): Promise<Plugi
 	return files;
 }
 
-async function scanSkills(skillsDir: string): Promise<PluginSkill[]> {
+async function scanSkills(skillsDir: string): Promise<PluginSkill[]>
+{
 	let dirs: string[];
-	try {
+	try
+	{
 		dirs = await readdir(skillsDir);
-	} catch {
+	}
+	catch
+	{
 		return [];
 	}
 
 	const skills: PluginSkill[] = [];
 
-	for (const dirname of dirs) {
+	for (const dirname of dirs)
+	{
 		const skillPath = join(skillsDir, dirname);
-		try {
+		try
+		{
 			const s = await stat(skillPath);
 			if (!s.isDirectory()) continue;
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 
 		const skillMdPath = join(skillPath, "SKILL.md");
 		let content: string;
-		try {
+		try
+		{
 			content = await readFile(skillMdPath, "utf-8");
-		} catch {
+		}
+		catch
+		{
 			continue;
 		}
 
 		const {frontmatter} = parseFrontmatter(content);
 		const name = nonEmpty(frontmatter["name"]) ?? dirname;
 		const description = frontmatter["description"] ?? "";
-		const skillFile: PluginFile = {
+		const skillFile: PluginFile =
+		{
 			filename: "SKILL.md",
 			name,
 			description,
@@ -138,79 +185,113 @@ async function scanSkills(skillsDir: string): Promise<PluginSkill[]> {
 		const references = await readMdFiles(join(skillPath, "references"), "reference");
 		const examples = await readMdFiles(join(skillPath, "examples"), "example");
 
-		skills.push({
-			dirname,
-			name,
-			description,
-			skillFile,
-			references,
-			examples,
-		});
+		skills.push(
+			{
+				dirname,
+				name,
+				description,
+				skillFile,
+				references,
+				examples,
+			},
+		);
 	}
 
 	return skills;
 }
 
-export function extractMarketplace(pluginId: string): string {
+export function extractMarketplace(pluginId: string): string
+{
 	const atIdx = pluginId.indexOf("@");
 	if (atIdx === -1) return "unknown";
 	return pluginId.slice(atIdx + 1);
 }
 
-export function getPluginVersionKind(version: string): PluginInfo["versionKind"] {
+export function getPluginVersionKind(version: string): PluginInfo["versionKind"]
+{
 	return /^[0-9a-f]{7,40}$/i.test(version) ? "commit" : "release";
 }
 
-const PluginRegistrySchema = z.object({
-	plugins: z.record(z.string(), z.array(z.object({installPath: z.string(), version: z.string()}))),
-});
+const PluginRegistrySchema = z.object(
+	{
+		plugins: z.record(
+			z.string(),
+			z.array(
+				z.object(
+					{
+						installPath: z.string(),
+						version: z.string(),
+					},
+				),
+			),
+		),
+	},
+);
 
 /** The plugin.json fields listPlugins shows; a field of the wrong type reads as absent. */
-const PluginJsonSchema = z.object({
-	name: z.string().optional().catch(undefined),
-	version: z.string().optional().catch(undefined),
-	description: z.string().optional().catch(undefined),
-	author: z
-		.object({name: z.string().optional().catch(undefined)})
-		.optional()
-		.catch(undefined),
-});
+const PluginJsonSchema = z.object(
+	{
+		name: z.string().optional().catch(undefined),
+		version: z.string().optional().catch(undefined),
+		description: z.string().optional().catch(undefined),
+		author: z
+			.object(
+				{
+					name: z.string().optional().catch(undefined),
+				},
+			)
+			.optional()
+			.catch(undefined),
+	},
+);
 
 /** `plugins/installed_plugins.json`, or null when it is missing or unreadable. */
-export async function readPluginRegistry(claudeDir: string): Promise<z.infer<typeof PluginRegistrySchema> | null> {
-	try {
+export async function readPluginRegistry(claudeDir: string): Promise<z.infer<typeof PluginRegistrySchema> | null>
+{
+	try
+	{
 		const raw = await readFile(join(claudeDir, "plugins", "installed_plugins.json"), "utf-8");
 		return PluginRegistrySchema.safeParse(JSON.parse(raw)).data ?? null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-async function readPluginJson(installPath: string): Promise<z.infer<typeof PluginJsonSchema>> {
-	try {
+async function readPluginJson(installPath: string): Promise<z.infer<typeof PluginJsonSchema>>
+{
+	try
+	{
 		const raw = await readFile(join(installPath, ".claude-plugin", "plugin.json"), "utf-8");
 		return PluginJsonSchema.safeParse(JSON.parse(raw)).data ?? {};
-	} catch {
+	}
+	catch
+	{
 		return {};
 	}
 }
 
-function pluginName(id: string, pluginJson: z.infer<typeof PluginJsonSchema>): string {
+function pluginName(id: string, pluginJson: z.infer<typeof PluginJsonSchema>): string
+{
 	return nonEmpty(pluginJson.name) ?? nonEmpty(id.split("@")[0]) ?? id;
 }
 
 /** The name Claude Code knows a plugin by: plugin.json `name`, else the id before `@marketplace`. */
-export async function readPluginName(id: string, installPath: string): Promise<string> {
+export async function readPluginName(id: string, installPath: string): Promise<string>
+{
 	return pluginName(id, await readPluginJson(installPath));
 }
 
-export async function listPlugins(claudeDir: string = join(homedir(), ".claude")): Promise<PluginInfo[]> {
+export async function listPlugins(claudeDir: string = join(homedir(), ".claude")): Promise<PluginInfo[]>
+{
 	const registry = await readPluginRegistry(claudeDir);
 	if (registry === null) return [];
 
 	const plugins: PluginInfo[] = [];
 
-	for (const [id, installs] of Object.entries(registry.plugins)) {
+	for (const [id, installs] of Object.entries(registry.plugins))
+	{
 		const install = installs[0];
 		if (!install) continue;
 
@@ -222,68 +303,89 @@ export async function listPlugins(claudeDir: string = join(homedir(), ".claude")
 
 		const version = nonEmpty(pluginJson.version) ?? install.version;
 
-		plugins.push({
-			id,
-			name: pluginName(id, pluginJson),
-			version,
-			versionKind: getPluginVersionKind(version),
-			description: pluginJson.description ?? "",
-			author: pluginJson.author?.name ?? "",
-			marketplace: extractMarketplace(id),
-			installPath: install.installPath,
-			agents,
-			commands,
-			skills,
-		});
+		plugins.push(
+			{
+				id,
+				name: pluginName(id, pluginJson),
+				version,
+				versionKind: getPluginVersionKind(version),
+				description: pluginJson.description ?? "",
+				author: pluginJson.author?.name ?? "",
+				marketplace: extractMarketplace(id),
+				installPath: install.installPath,
+				agents,
+				commands,
+				skills,
+			},
+		);
 	}
 
 	plugins.sort((a, b) => a.name.localeCompare(b.name));
 	return plugins;
 }
 
-export interface ProjectCommandSource {
+export interface ProjectCommandSource
+{
 	id: string;
 	projectPath: string | null;
 }
 
-function projectCommandsDir(projectPath: string): string {
+function projectCommandsDir(projectPath: string): string
+{
 	return join(projectPath, ".claude", "commands");
 }
 
-export async function listUserCommands(projects: readonly ProjectCommandSource[]): Promise<UserCommandGroup[]> {
+export async function listUserCommands(projects: readonly ProjectCommandSource[]): Promise<UserCommandGroup[]>
+{
 	const globalDir = join(homedir(), ".claude", "commands");
 	const globalCmds = await readMdFiles(globalDir, "command");
 
 	const groups: UserCommandGroup[] = [];
-	if (globalCmds.length > 0) {
-		groups.push({
-			source: "global",
-			sourceName: "Global",
-			commands: globalCmds,
-		});
+	if (globalCmds.length > 0)
+	{
+		groups.push(
+			{
+				source: "global",
+				sourceName: "Global",
+				commands: globalCmds,
+			},
+		);
 	}
 
-	for (const project of projects) {
+	for (const project of projects)
+	{
 		if (project.projectPath === null) continue;
 		const cmds = await readMdFiles(projectCommandsDir(project.projectPath), "command");
-		if (cmds.length > 0) {
+		if (cmds.length > 0)
+		{
 			const projectName = await resolveProjectName(project.id, project.projectPath);
-			groups.push({source: project.id, sourceName: projectName, commands: cmds});
+			groups.push(
+				{
+					source: project.id,
+					sourceName: projectName,
+					commands: cmds,
+				},
+			);
 		}
 	}
 
 	return groups;
 }
 
-export async function readPluginFileContent(installPath: string, ...pathSegments: string[]): Promise<string | null> {
-	for (const seg of pathSegments) {
+export async function readPluginFileContent(installPath: string, ...pathSegments: string[]): Promise<string | null>
+{
+	for (const seg of pathSegments)
+	{
 		if (seg.includes("..")) return null;
 	}
 
-	try {
+	try
+	{
 		const filePath = join(installPath, ...pathSegments);
 		return await readFile(filePath, "utf-8");
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
@@ -292,13 +394,17 @@ export async function readUserCommandContent(
 	source: string,
 	filename: string,
 	projectPath: string | null = null,
-): Promise<string | null> {
+): Promise<string | null>
+{
 	if (filename.includes("..") || filename.includes("/") || !filename.endsWith(".md")) return null;
 
 	let dir: string;
-	if (source === "global") {
+	if (source === "global")
+	{
 		dir = join(homedir(), ".claude", "commands");
-	} else {
+	}
+	else
+	{
 		if (source.includes("..") || source.includes("/") || projectPath === null) return null;
 		dir = projectCommandsDir(projectPath);
 	}
@@ -306,53 +412,76 @@ export async function readUserCommandContent(
 	const filePath = resolve(dir, filename);
 	if (dirname(filePath) !== resolve(dir)) return null;
 
-	try {
+	try
+	{
 		return await readFile(filePath, "utf-8");
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
 const EXCLUDED_DIRS = new Set(["node_modules", ".git", "__pycache__", ".venv"]);
 
-export async function scanPluginTree(rootPath: string, relativePath = ""): Promise<FileTreeNode | null> {
+export async function scanPluginTree(rootPath: string, relativePath = ""): Promise<FileTreeNode | null>
+{
 	let entries: string[];
-	try {
+	try
+	{
 		entries = await readdir(rootPath);
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 
 	const children: FileTreeNode[] = [];
 
-	for (const entry of entries) {
+	for (const entry of entries)
+	{
 		const entryPath = join(rootPath, entry);
 		const entryRelative = relativePath ? `${relativePath}/${entry}` : entry;
 
-		try {
+		try
+		{
 			const s = await lstat(entryPath);
 			if (s.isSymbolicLink()) continue;
-			if (s.isDirectory()) {
+			if (s.isDirectory())
+			{
 				if (EXCLUDED_DIRS.has(entry)) continue;
 				const subtree = await scanPluginTree(entryPath, entryRelative);
-				if (subtree) {
+				if (subtree)
+				{
 					children.push(subtree);
 				}
-			} else {
-				children.push({path: entryRelative});
 			}
-		} catch {
+			else
+			{
+				children.push(
+					{
+						path: entryRelative,
+					},
+				);
+			}
+		}
+		catch
+		{
 			// skip unreadable entries
 		}
 	}
 
 	// Sort: directories first, then files, alphabetically within each group
-	children.sort((a, b) => {
+	children.sort((a, b) =>
+	{
 		const aDir = a.children !== undefined;
 		const bDir = b.children !== undefined;
 		if (aDir !== bDir) return aDir ? -1 : 1;
 		return a.path.localeCompare(b.path);
 	});
 
-	return {path: relativePath, children};
+	return {
+		path: relativePath,
+		children,
+	};
 }

@@ -17,7 +17,8 @@ type ProjectSubroute =
 	| "/project/$id/plans"
 	| "/project/$id/subagents";
 
-interface CountedTab {
+interface CountedTab
+{
 	section: Exclude<ProjectSection, "overview">;
 	to: ProjectSubroute;
 	label: string;
@@ -29,7 +30,8 @@ const BACK_LINK_CLASS =
 	"-ms-2 mb-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-primary no-underline hover:bg-fill-ghost-hover";
 
 /** Every project page's content-width column, the max width the Scheduled tasks page uses. */
-export function ProjectPage({children}: {children: ReactNode}) {
+export function ProjectPage({children}: {children: ReactNode})
+{
 	return <div className="mx-auto flex w-full max-w-5xl flex-col pb-12">{children}</div>;
 }
 
@@ -39,20 +41,49 @@ export function ProjectPage({children}: {children: ReactNode}) {
  * do. An empty section's tab is left out unless it is the page being shown. While Live terminal input is on, the
  * toolbar offers "Open terminal here": a herdr shell in the project's directory.
  */
-export function ProjectPageHeader({projectId, section}: {projectId: string; section: ProjectSection}) {
+export function ProjectPageHeader({projectId, section}: {projectId: string; section: ProjectSection})
+{
 	const {data: detail} = useSuspenseQuery(projectDetailQueryOptions(projectId));
 	const {data: projects} = useSuspenseQuery(projectsQueryOptions());
 	const writesEnabled = useTerminalWritesEnabled();
 	if (!detail) return null;
 	const summary = projects.find((project) => project.id === projectId);
 	const counted: CountedTab[] = [
-		{section: "sessions", to: "/project/$id/sessions", label: "Sessions", count: summary?.sessionCount ?? 0},
-		{section: "tasks", to: "/project/$id/tasks", label: "Tasks", count: summary?.taskCount ?? 0},
-		{section: "memories", to: "/project/$id/memories", label: "Memories", count: summary?.memoryCount ?? 0},
-		{section: "plans", to: "/project/$id/plans", label: "Plans", count: summary?.planCount ?? 0},
-		{section: "subagents", to: "/project/$id/subagents", label: "Subagents", count: detail.subagentCount},
+		{
+			section: "sessions",
+			to: "/project/$id/sessions",
+			label: "Sessions",
+			count: summary?.sessionCount ?? 0,
+		},
+		{
+			section: "tasks",
+			to: "/project/$id/tasks",
+			label: "Tasks",
+			count: summary?.taskCount ?? 0,
+		},
+		{
+			section: "memories",
+			to: "/project/$id/memories",
+			label: "Memories",
+			count: summary?.memoryCount ?? 0,
+		},
+		{
+			section: "plans",
+			to: "/project/$id/plans",
+			label: "Plans",
+			count: summary?.planCount ?? 0,
+		},
+		{
+			section: "subagents",
+			to: "/project/$id/subagents",
+			label: "Subagents",
+			count: detail.subagentCount,
+		},
 	];
-	const params = {id: detail.id};
+	const params =
+	{
+		id: detail.id,
+	};
 	return (
 		<>
 			<Link to="/projects" className={BACK_LINK_CLASS}>
@@ -61,9 +92,17 @@ export function ProjectPageHeader({projectId, section}: {projectId: string; sect
 			</Link>
 			<CodePageHeader
 				title={detail.name}
-				{...(detail.projectPath ? {subtitle: detail.projectPath} : {})}
+				{...(detail.projectPath
+					?
+						{
+							subtitle: detail.projectPath,
+						}
+					: {})}
 				{...(writesEnabled && detail.projectPath
-					? {toolbar: <OpenTerminalHereButton cwd={detail.projectPath} />}
+					?
+						{
+							toolbar: <OpenTerminalHereButton cwd={detail.projectPath} />,
+						}
 					: {})}
 			>
 				<div className="mt-4">
@@ -71,7 +110,10 @@ export function ProjectPageHeader({projectId, section}: {projectId: string; sect
 						<Link
 							to="/project/$id"
 							params={params}
-							activeOptions={{exact: true}}
+							activeOptions={
+							{
+								exact: true,
+							}}
 							className={DETAIL_TAB_CLASS}
 						>
 							<DetailTabLabel label="Overview" />

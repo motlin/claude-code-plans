@@ -25,10 +25,15 @@ import {rejectCrossSite} from "./same-origin-guard";
 import {isLoopbackAddress} from "./loopback-guard";
 import {nonEmpty} from "./non-empty";
 
-export interface PtyProcess {
+export interface PtyProcess
+{
 	readonly pid: number;
-	onData: (listener: (data: string) => void) => {dispose: () => void};
-	onExit: (listener: (event: {exitCode: number; signal?: number}) => void) => {
+	onData: (listener: (data: string) => void) =>
+	{
+		dispose: () => void;
+	};
+	onExit: (listener: (event: {exitCode: number; signal?: number}) => void) =>
+	{
 		dispose: () => void;
 	};
 	write: (data: string) => void;
@@ -39,7 +44,8 @@ export interface PtyProcess {
 export type SpawnPty = (
 	file: string,
 	arguments_: string[],
-	options: {
+	options:
+	{
 		name: string;
 		cols: number;
 		rows: number;
@@ -48,7 +54,8 @@ export type SpawnPty = (
 	},
 ) => PtyProcess;
 
-export interface ShellRegistryDependencies {
+export interface ShellRegistryDependencies
+{
 	resolveCwd: (sessionId: string) => string | null;
 	shell: () => string;
 	environment: () => Record<string, string | undefined>;
@@ -59,17 +66,37 @@ export interface ShellRegistryDependencies {
 	foregroundBusy: (pid: number) => boolean;
 }
 
-export type CreateShellResult = {ok: true; ptyKey: string} | {ok: false; status: number; error: string};
+export type CreateShellResult =
+	|
+	  {
+			ok: true;
+			ptyKey: string;
+	  }
+	|
+	  {
+			ok: false;
+			status: number;
+			error: string;
+	  };
 
-export interface ShellConnection {
+export interface ShellConnection
+{
 	/** Apply one client frame: `{type:"data"|"resize"|"close"}`. */
 	input: (message: string) => void;
 	/** The socket went away; the shell keeps running until the idle timeout. */
 	detach: () => void;
 }
 
-export interface ShellRegistry {
-	create: (sessionId: string, size: {cols: number; rows: number}) => CreateShellResult;
+export interface ShellRegistry
+{
+	create: (
+		sessionId: string,
+		size:
+		{
+			cols: number;
+			rows: number;
+		},
+	) => CreateShellResult;
 	attach: (ptyKey: string, socket: TerminalObserverSocket) => ShellConnection | null;
 	/** The given shells that are still running a foreground command. */
 	busy: (ptyKeys: readonly string[]) => string[];
@@ -80,19 +107,28 @@ export interface ShellRegistry {
 /** Output kept for replay when a tab reconnects, measured in UTF-16 code units. */
 const MAXIMUM_BUFFERED_OUTPUT = 512 * 1024;
 
-const TERMINAL_ENVIRONMENT = {TERM: "xterm-256color", COLORTERM: "truecolor"} as const;
+const TERMINAL_ENVIRONMENT =
+{
+	TERM: "xterm-256color",
+	COLORTERM: "truecolor",
+} as const;
 
-interface ShellEntry {
+interface ShellEntry
+{
 	pty: PtyProcess;
 	buffered: string;
 	socket: TerminalObserverSocket | null;
 	idleTimer: ReturnType<typeof setTimeout> | null;
 }
 
-function isDirectory(path: string): boolean {
-	try {
+function isDirectory(path: string): boolean
+{
+	try
+	{
 		return statSync(path).isDirectory();
-	} catch {
+	}
+	catch
+	{
 		return false;
 	}
 }
@@ -102,102 +138,173 @@ function isDirectory(path: string): boolean {
  * from a server running inside a herdr pane must not report itself as that
  * pane.
  */
-function shellEnvironment(source: Record<string, string | undefined>): Record<string, string> {
+function shellEnvironment(source: Record<string, string | undefined>): Record<string, string>
+{
 	const environment: Record<string, string> = {};
-	for (const [key, value] of Object.entries(source)) {
+	for (const [key, value] of Object.entries(source))
+	{
 		if (value === undefined || key.startsWith("HERDR_")) continue;
 		environment[key] = value;
 	}
-	return {...environment, ...TERMINAL_ENVIRONMENT};
+	return {
+		...environment,
+		...TERMINAL_ENVIRONMENT,
+	};
 }
 
-export function createShellRegistry(dependencies: ShellRegistryDependencies): ShellRegistry {
+export function createShellRegistry(dependencies: ShellRegistryDependencies): ShellRegistry
+{
 	const shells = new Map<string, ShellEntry>();
 
-	const remove = (ptyKey: string): void => {
+	const remove = (ptyKey: string): void =>
+	{
 		const entry = shells.get(ptyKey);
 		if (!entry) return;
 		if (entry.idleTimer) clearTimeout(entry.idleTimer);
 		shells.delete(ptyKey);
 	};
 
-	const kill = (ptyKey: string): void => {
+	const kill = (ptyKey: string): void =>
+	{
 		const entry = shells.get(ptyKey);
 		if (!entry) return;
 		remove(ptyKey);
 		entry.pty.kill();
 	};
 
-	const startIdleTimer = (ptyKey: string, entry: ShellEntry): void => {
+	const startIdleTimer = (ptyKey: string, entry: ShellEntry): void =>
+	{
 		if (entry.idleTimer) clearTimeout(entry.idleTimer);
-		entry.idleTimer = setTimeout(() => {
+		entry.idleTimer = setTimeout(() =>
+		{
 			kill(ptyKey);
 		}, dependencies.idleTimeoutMs);
 	};
 
-	const send = (entry: ShellEntry, frame: Record<string, unknown>): void => {
+	const send = (entry: ShellEntry, frame: Record<string, unknown>): void =>
+	{
 		entry.socket?.send(JSON.stringify(frame));
 	};
 
 	return {
-		create(sessionId, size) {
+		create(sessionId, size)
+		{
 			const cwd = dependencies.resolveCwd(sessionId);
-			if (cwd === null || !isDirectory(cwd)) {
-				return {ok: false, status: 409, error: "Session folder not found"};
+			if (cwd === null || !isDirectory(cwd))
+			{
+				return {
+					ok: false,
+					status: 409,
+					error: "Session folder not found",
+				};
 			}
 
 			let pty: PtyProcess;
-			try {
-				pty = dependencies.spawn(dependencies.shell(), ["-l"], {
-					name: TERMINAL_ENVIRONMENT.TERM,
-					cols: size.cols,
-					rows: size.rows,
-					cwd,
-					env: shellEnvironment(dependencies.environment()),
-				});
-			} catch {
-				return {ok: false, status: 500, error: "Failed to start shell"};
+			try
+			{
+				pty = dependencies.spawn(
+					dependencies.shell(),
+					["-l"],
+					{
+						name: TERMINAL_ENVIRONMENT.TERM,
+						cols: size.cols,
+						rows: size.rows,
+						cwd,
+						env: shellEnvironment(dependencies.environment()),
+					},
+				);
+			}
+			catch
+			{
+				return {
+					ok: false,
+					status: 500,
+					error: "Failed to start shell",
+				};
 			}
 
 			const ptyKey = crypto.randomUUID();
-			const entry: ShellEntry = {pty, buffered: "", socket: null, idleTimer: null};
+			const entry: ShellEntry =
+			{
+				pty,
+				buffered: "",
+				socket: null,
+				idleTimer: null,
+			};
 			shells.set(ptyKey, entry);
 			startIdleTimer(ptyKey, entry);
 
-			pty.onData((data) => {
+			pty.onData((data) =>
+			{
 				entry.buffered = (entry.buffered + data).slice(-MAXIMUM_BUFFERED_OUTPUT);
-				send(entry, {type: "data", data: encodeTerminalText(data)});
+				send(
+					entry,
+					{
+						type: "data",
+						data: encodeTerminalText(data),
+					},
+				);
 			});
-			pty.onExit(({exitCode, signal}) => {
+			pty.onExit(({exitCode, signal}) =>
+			{
 				remove(ptyKey);
-				send(entry, {type: "exit", exitCode, signal: signal !== undefined && signal !== 0 ? signal : null});
+				send(
+					entry,
+					{
+						type: "exit",
+						exitCode,
+						signal: signal !== undefined && signal !== 0 ? signal : null,
+					},
+				);
 				entry.socket?.close(1000, "shell exited");
 				entry.socket = null;
 			});
-			return {ok: true, ptyKey};
+			return {
+				ok: true,
+				ptyKey,
+			};
 		},
 
-		attach(ptyKey, socket) {
+		attach(ptyKey, socket)
+		{
 			const entry = shells.get(ptyKey);
 			if (!entry) return null;
 			if (entry.idleTimer) clearTimeout(entry.idleTimer);
 			entry.idleTimer = null;
 			entry.socket?.close(4001, "shell attached elsewhere");
 			entry.socket = socket;
-			send(entry, {type: "opened", buffered: encodeTerminalText(entry.buffered)});
+			send(
+				entry,
+				{
+					type: "opened",
+					buffered: encodeTerminalText(entry.buffered),
+				},
+			);
 
 			return {
-				input(message) {
+				input(message)
+				{
 					if (entry.socket !== socket || shells.get(ptyKey) !== entry) return;
 					let frame;
-					try {
+					try
+					{
 						frame = parseShellClientFrame(message);
-					} catch {
-						socket.send(JSON.stringify({type: "error", message: "Invalid shell frame"}));
+					}
+					catch
+					{
+						socket.send(
+							JSON.stringify(
+								{
+									type: "error",
+									message: "Invalid shell frame",
+								},
+							),
+						);
 						socket.close(1008, "invalid shell frame");
 						return;
 					}
-					switch (frame.type) {
+					switch (frame.type)
+					{
 						case "data":
 							entry.pty.write(decodeTerminalText(frame.data));
 							return;
@@ -210,7 +317,8 @@ export function createShellRegistry(dependencies: ShellRegistryDependencies): Sh
 							socket.close(1000, "shell closed");
 					}
 				},
-				detach() {
+				detach()
+				{
 					if (entry.socket !== socket) return;
 					entry.socket = null;
 					if (shells.get(ptyKey) === entry) startIdleTimer(ptyKey, entry);
@@ -218,14 +326,17 @@ export function createShellRegistry(dependencies: ShellRegistryDependencies): Sh
 			};
 		},
 
-		busy(ptyKeys) {
-			return ptyKeys.filter((ptyKey) => {
+		busy(ptyKeys)
+		{
+			return ptyKeys.filter((ptyKey) =>
+			{
 				const entry = shells.get(ptyKey);
 				return entry !== undefined && dependencies.foregroundBusy(entry.pty.pid);
 			});
 		},
 
-		shutdown() {
+		shutdown()
+		{
 			for (const ptyKey of [...shells.keys()]) kill(ptyKey);
 		},
 
@@ -238,14 +349,22 @@ export function createShellRegistry(dependencies: ShellRegistryDependencies): Sh
  * each foreground job's group, so the shell is busy exactly when the
  * terminal's foreground group (`tpgid`) is not the shell's own (`pgid`).
  */
-export function isForegroundBusy(pid: number): boolean {
+export function isForegroundBusy(pid: number): boolean
+{
 	let output: string;
-	try {
-		output = execFileSync("ps", ["-o", "tpgid=,pgid=", "-p", String(pid)], {
-			encoding: "utf8",
-			timeout: 2000,
-		});
-	} catch {
+	try
+	{
+		output = execFileSync(
+			"ps",
+			["-o", "tpgid=,pgid=", "-p", String(pid)],
+			{
+				encoding: "utf8",
+				timeout: 2000,
+			},
+		);
+	}
+	catch
+	{
 		return false;
 	}
 	const [foreground, own] = output.trim().split(/\s+/).map(Number);
@@ -262,20 +381,43 @@ const LOCAL_ONLY = "Shell tabs are only available from this computer";
  * socket route passes `peerCheckedLater` and checks the crossws peer address
  * in `open` instead; everywhere else a missing address is refused.
  */
-function rejectNonLoopback(request: Request, peerCheckedLater: boolean): Response | null {
-	const ip = (request as Request & {ip?: unknown}).ip;
+function rejectNonLoopback(request: Request, peerCheckedLater: boolean): Response | null
+{
+	const ip = (
+		request as Request &
+		{
+			ip?: unknown;
+		}
+	).ip;
 	const forwarded = request.headers.get("X-Forwarded-For");
 	const hops = forwarded === null ? [] : forwarded.split(",");
 	const peerAllowed = typeof ip === "string" ? isLoopbackAddress(ip) : ip === undefined && peerCheckedLater;
-	if (!peerAllowed || !hops.every(isLoopbackAddress)) {
-		return Response.json({error: LOCAL_ONLY}, {status: 403});
+	if (!peerAllowed || !hops.every(isLoopbackAddress))
+	{
+		return Response.json(
+			{
+				error: LOCAL_ONLY,
+			},
+			{
+				status: 403,
+			},
+		);
 	}
 	return null;
 }
 
-function authorizeShellRequest(request: Request, enabled: () => boolean, peerCheckedLater: boolean): Response | null {
-	if (!enabled()) {
-		return Response.json({error: "Shell tabs are disabled"}, {status: 403});
+function authorizeShellRequest(request: Request, enabled: () => boolean, peerCheckedLater: boolean): Response | null
+{
+	if (!enabled())
+	{
+		return Response.json(
+			{
+				error: "Shell tabs are disabled",
+			},
+			{
+				status: 403,
+			},
+		);
 	}
 	return rejectCrossSite(request) ?? rejectNonLoopback(request, peerCheckedLater);
 }
@@ -283,53 +425,112 @@ function authorizeShellRequest(request: Request, enabled: () => boolean, peerChe
 /** Upgrade gate for `/api/shell/$ptyKey`; pair it with `isLoopbackPeer` in `open`. */
 export function authorizeShellSocket(
 	request: Request,
-	dependencies: {enabled: () => boolean} = {enabled: shellPaneEnabled},
-): Response | null {
+	dependencies:
+	{
+		enabled: () => boolean;
+	} =
+	{
+		enabled: shellPaneEnabled,
+	},
+): Response | null
+{
 	return authorizeShellRequest(request, dependencies.enabled, true);
 }
 
 const CreateShellBodySchema = z
-	.object({
-		cols: z.number().int().positive().max(1000).default(80),
-		rows: z.number().int().positive().max(1000).default(24),
-	})
+	.object(
+		{
+			cols: z.number().int().positive().max(1000).default(80),
+			rows: z.number().int().positive().max(1000).default(24),
+		},
+	)
 	.strict();
 
 export async function handleCreateShellRequest(
 	request: Request,
 	sessionId: string,
-	dependencies: {
+	dependencies:
+	{
 		registry: Pick<ShellRegistry, "create">;
 		enabled: () => boolean;
-	} = {registry: getShellRegistry(), enabled: shellPaneEnabled},
-): Promise<Response> {
+	} =
+	{
+		registry: getShellRegistry(),
+		enabled: shellPaneEnabled,
+	},
+): Promise<Response>
+{
 	const rejection = authorizeShellRequest(request, dependencies.enabled, false);
 	if (rejection) return rejection;
 
 	const body = CreateShellBodySchema.safeParse(await request.json().catch(() => null));
-	if (!body.success) return Response.json({error: "Invalid shell request"}, {status: 400});
+	if (!body.success)
+		return Response.json(
+			{
+				error: "Invalid shell request",
+			},
+			{
+				status: 400,
+			},
+		);
 
 	const result = dependencies.registry.create(sessionId, body.data);
-	if (!result.ok) return Response.json({error: result.error}, {status: result.status});
-	return Response.json({ptyKey: result.ptyKey});
+	if (!result.ok)
+		return Response.json(
+			{
+				error: result.error,
+			},
+			{
+				status: result.status,
+			},
+		);
+	return Response.json(
+		{
+			ptyKey: result.ptyKey,
+		},
+	);
 }
 
-const ShellBusyBodySchema = z.object({ptyKeys: z.array(z.uuid()).max(64)}).strict();
+const ShellBusyBodySchema = z
+	.object(
+		{
+			ptyKeys: z.array(z.uuid()).max(64),
+		},
+	)
+	.strict();
 
 /** `POST /api/shell-busy {ptyKeys}` → `{busy}`: which tabs would stop a command if closed. */
 export async function handleShellBusyRequest(
 	request: Request,
-	dependencies: {
+	dependencies:
+	{
 		registry: Pick<ShellRegistry, "busy">;
 		enabled: () => boolean;
-	} = {registry: getShellRegistry(), enabled: shellPaneEnabled},
-): Promise<Response> {
+	} =
+	{
+		registry: getShellRegistry(),
+		enabled: shellPaneEnabled,
+	},
+): Promise<Response>
+{
 	const rejection = authorizeShellRequest(request, dependencies.enabled, false);
 	if (rejection) return rejection;
 
 	const body = ShellBusyBodySchema.safeParse(await request.json().catch(() => null));
-	if (!body.success) return Response.json({error: "Invalid shell request"}, {status: 400});
-	return Response.json({busy: dependencies.registry.busy(body.data.ptyKeys)});
+	if (!body.success)
+		return Response.json(
+			{
+				error: "Invalid shell request",
+			},
+			{
+				status: 400,
+			},
+		);
+	return Response.json(
+		{
+			busy: dependencies.registry.busy(body.data.ptyKeys),
+		},
+	);
 }
 
 const SHELL_IDLE_TIMEOUT_MS = 10 * 60 * 1000;
@@ -339,20 +540,30 @@ const REGISTRY_KEY = Symbol.for("claude-code-browser.shell-registry");
  * The POST route and the WebSocket route can load this module in separate
  * module graphs during dev, so the live registry hangs off `globalThis`.
  */
-export function getShellRegistry(): ShellRegistry {
-	const holder = globalThis as typeof globalThis & {[REGISTRY_KEY]?: ShellRegistry};
-	holder[REGISTRY_KEY] ??= createShellRegistry({
-		resolveCwd: (sessionId) => getSessionDirectory(getDb().index, sessionId),
-		shell: () => nonEmpty(process.env["SHELL"]) ?? "/bin/zsh",
-		environment: () => process.env,
-		spawn: spawnNodePty,
-		idleTimeoutMs: SHELL_IDLE_TIMEOUT_MS,
-		foregroundBusy: isForegroundBusy,
-	});
+export function getShellRegistry(): ShellRegistry
+{
+	const holder = globalThis as typeof globalThis &
+	{
+		[REGISTRY_KEY]?: ShellRegistry;
+	};
+	holder[REGISTRY_KEY] ??= createShellRegistry(
+		{
+			resolveCwd: (sessionId) => getSessionDirectory(getDb().index, sessionId),
+			shell: () => nonEmpty(process.env["SHELL"]) ?? "/bin/zsh",
+			environment: () => process.env,
+			spawn: spawnNodePty,
+			idleTimeoutMs: SHELL_IDLE_TIMEOUT_MS,
+			foregroundBusy: isForegroundBusy,
+		},
+	);
 	return holder[REGISTRY_KEY];
 }
 
-export function stopAllShells(): void {
-	const holder = globalThis as typeof globalThis & {[REGISTRY_KEY]?: ShellRegistry};
+export function stopAllShells(): void
+{
+	const holder = globalThis as typeof globalThis &
+	{
+		[REGISTRY_KEY]?: ShellRegistry;
+	};
 	holder[REGISTRY_KEY]?.shutdown();
 }

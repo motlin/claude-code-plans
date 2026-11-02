@@ -19,52 +19,113 @@ type Rec = Record<string, unknown>;
 
 const SESSION = "649c3fab-5700-45e7-924b-d2a1377079b0";
 
-function base(type: string, uuid: string, parentUuid: string | null, timestamp: string): Rec {
-	return {type, uuid, parentUuid, isSidechain: false, sessionId: SESSION, timestamp};
-}
-
-function prompt(uuid: string, parentUuid: string | null, text: string, timestamp: string): Rec {
-	return {...base("user", uuid, parentUuid, timestamp), message: {role: "user", content: text}};
-}
-
-function attachment(uuid: string, parentUuid: string, timestamp: string): Rec {
+function base(type: string, uuid: string, parentUuid: string | null, timestamp: string): Rec
+{
 	return {
-		...base("attachment", uuid, parentUuid, timestamp),
-		attachment: {type: "total_tokens_reminder", text: "<total_tokens>15000000 tokens left</total_tokens>"},
+		type,
+		uuid,
+		parentUuid,
+		isSidechain: false,
+		sessionId: SESSION,
+		timestamp,
 	};
 }
 
-function assistantText(uuid: string, parentUuid: string, text: string, timestamp: string, id = `msg_${uuid}`): Rec {
+function prompt(uuid: string, parentUuid: string | null, text: string, timestamp: string): Rec
+{
 	return {
-		...base("assistant", uuid, parentUuid, timestamp),
-		message: {id, role: "assistant", content: [{type: "text", text}]},
-	};
-}
-
-function assistantToolUse(uuid: string, parentUuid: string, toolUseId: string, timestamp: string, id: string): Rec {
-	return {
-		...base("assistant", uuid, parentUuid, timestamp),
-		message: {
-			id,
-			role: "assistant",
-			content: [{type: "tool_use", id: toolUseId, name: "Read", input: {file_path: "/tmp/x"}}],
+		...base("user", uuid, parentUuid, timestamp),
+		message:
+		{
+			role: "user",
+			content: text,
 		},
 	};
 }
 
-function toolResult(uuid: string, parentUuid: string, toolUseId: string, timestamp: string): Rec {
+function attachment(uuid: string, parentUuid: string, timestamp: string): Rec
+{
 	return {
-		...base("user", uuid, parentUuid, timestamp),
-		message: {role: "user", content: [{type: "tool_result", tool_use_id: toolUseId, content: "ok"}]},
+		...base("attachment", uuid, parentUuid, timestamp),
+		attachment:
+		{
+			type: "total_tokens_reminder",
+			text: "<total_tokens>15000000 tokens left</total_tokens>",
+		},
 	};
 }
 
-function system(uuid: string, parentUuid: string | null, timestamp: string): Rec {
-	return {...base("system", uuid, parentUuid, timestamp), subtype: "turn_duration", durationMs: 1000};
+function assistantText(uuid: string, parentUuid: string, text: string, timestamp: string, id = `msg_${uuid}`): Rec
+{
+	return {
+		...base("assistant", uuid, parentUuid, timestamp),
+		message:
+		{
+			id,
+			role: "assistant",
+			content: [
+				{
+					type: "text",
+					text,
+				},
+			],
+		},
+	};
+}
+
+function assistantToolUse(uuid: string, parentUuid: string, toolUseId: string, timestamp: string, id: string): Rec
+{
+	return {
+		...base("assistant", uuid, parentUuid, timestamp),
+		message:
+		{
+			id,
+			role: "assistant",
+			content: [
+				{
+					type: "tool_use",
+					id: toolUseId,
+					name: "Read",
+					input:
+					{
+						file_path: "/tmp/x",
+					},
+				},
+			],
+		},
+	};
+}
+
+function toolResult(uuid: string, parentUuid: string, toolUseId: string, timestamp: string): Rec
+{
+	return {
+		...base("user", uuid, parentUuid, timestamp),
+		message:
+		{
+			role: "user",
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: toolUseId,
+					content: "ok",
+				},
+			],
+		},
+	};
+}
+
+function system(uuid: string, parentUuid: string | null, timestamp: string): Rec
+{
+	return {
+		...base("system", uuid, parentUuid, timestamp),
+		subtype: "turn_duration",
+		durationMs: 1000,
+	};
 }
 
 /** The head of the 649c3fab session: a reply and the system rows that close its turn. */
-function chapterOneHead(): Rec[] {
+function chapterOneHead(): Rec[]
+{
 	return [
 		prompt("p1", null, "do chapter 1", "2026-09-30T13:00:00.000Z"),
 		assistantText("a1", "p1", "Chapter 1 is ready.", "2026-09-30T13:08:53.592Z"),
@@ -74,8 +135,10 @@ function chapterOneHead(): Rec[] {
 	];
 }
 
-describe("computeAbandoned", () => {
-	it("hides a prompt pulled back and resent, with its attachments (649c3fab L465/468)", () => {
+describe("computeAbandoned", () =>
+{
+	it("hides a prompt pulled back and resent, with its attachments (649c3fab L465/468)", () =>
+	{
 		const records = [
 			...chapterOneHead(),
 			prompt("ch2", "s3", "do chapter 2", "2026-09-30T13:52:07.635Z"),
@@ -88,21 +151,24 @@ describe("computeAbandoned", () => {
 
 		const result = computeAbandoned(records);
 
-		expect(result).toStrictEqual({
-			hidden: new Set(["ch2", "ch2-att1", "ch2-att2"]),
-			cuts: [
-				{
-					parentUuid: "s3",
-					replacementUuid: "ch3",
-					abandonedUuid: "ch2",
-					at: "2026-09-30T13:52:07.635Z",
-					count: 3,
-				},
-			],
-		});
+		expect(result).toStrictEqual(
+			{
+				hidden: new Set(["ch2", "ch2-att1", "ch2-att2"]),
+				cuts: [
+					{
+						parentUuid: "s3",
+						replacementUuid: "ch3",
+						abandonedUuid: "ch2",
+						at: "2026-09-30T13:52:07.635Z",
+						count: 3,
+					},
+				],
+			},
+		);
 	});
 
-	it("hides an interrupted branch whose replacement prompt was re-parented (2dda9ba6 L1928-1938)", () => {
+	it("hides an interrupted branch whose replacement prompt was re-parented (2dda9ba6 L1928-1938)", () =>
+	{
 		const records = [
 			...chapterOneHead(),
 			prompt("ab", "s3", "refactor the loader", "2026-10-01T09:00:00.000Z"),
@@ -121,32 +187,35 @@ describe("computeAbandoned", () => {
 
 		const result = computeAbandoned(records);
 
-		expect(result).toStrictEqual({
-			hidden: new Set([
-				"ab",
-				"ab-att1",
-				"ab-att2",
-				"ab-att3",
-				"ab-att4",
-				"ab-att5",
-				"ab-att6",
-				"ab-a1",
-				"ab-a2",
-				"ab-a3",
-			]),
-			cuts: [
-				{
-					parentUuid: "s3",
-					replacementUuid: "re",
-					abandonedUuid: "ab",
-					at: "2026-10-01T09:00:00.000Z",
-					count: 10,
-				},
-			],
-		});
+		expect(result).toStrictEqual(
+			{
+				hidden: new Set([
+					"ab",
+					"ab-att1",
+					"ab-att2",
+					"ab-att3",
+					"ab-att4",
+					"ab-att5",
+					"ab-att6",
+					"ab-a1",
+					"ab-a2",
+					"ab-a3",
+				]),
+				cuts: [
+					{
+						parentUuid: "s3",
+						replacementUuid: "re",
+						abandonedUuid: "ab",
+						at: "2026-10-01T09:00:00.000Z",
+						count: 10,
+					},
+				],
+			},
+		);
 	});
 
-	it("keeps parallel tool results, which are chain siblings by design (19713d22 L77-80)", () => {
+	it("keeps parallel tool results, which are chain siblings by design (19713d22 L77-80)", () =>
+	{
 		const records = [
 			prompt("p1", null, "read three files", "2026-10-02T10:00:00.000Z"),
 			assistantToolUse("t1", "p1", "toolu_1", "2026-10-02T10:00:01.000Z", "msg_par"),
@@ -158,10 +227,16 @@ describe("computeAbandoned", () => {
 			assistantText("a2", "r3", "All three read.", "2026-10-02T10:00:03.000Z"),
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(), cuts: []});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(),
+				cuts: [],
+			},
+		);
 	});
 
-	it("keeps a compact boundary's preserved segment and does not loop on logicalParentUuid (7e8c9305 L5408)", () => {
+	it("keeps a compact boundary's preserved segment and does not loop on logicalParentUuid (7e8c9305 L5408)", () =>
+	{
 		const records = [
 			prompt("p1", null, "start", "2026-10-03T08:00:00.000Z"),
 			assistantText("a1", "p1", "Started.", "2026-10-03T08:00:01.000Z"),
@@ -171,7 +246,11 @@ describe("computeAbandoned", () => {
 				...system("cb", null, "2026-10-03T08:20:00.000Z"),
 				subtype: "compact_boundary",
 				logicalParentUuid: "a2",
-				compactMetadata: {trigger: "auto", preTokens: 160000},
+				compactMetadata:
+				{
+					trigger: "auto",
+					preTokens: 160000,
+				},
 			},
 			{
 				...prompt(
@@ -186,10 +265,16 @@ describe("computeAbandoned", () => {
 			assistantText("a3", "p3", "Kept going.", "2026-10-03T08:30:01.000Z"),
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(), cuts: []});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(),
+				cuts: [],
+			},
+		);
 	});
 
-	it("terminates on a parentUuid cycle and hides nothing", () => {
+	it("terminates on a parentUuid cycle and hides nothing", () =>
+	{
 		const records = [
 			prompt("p1", "a2", "loop start", "2026-10-04T08:00:00.000Z"),
 			assistantText("a1", "p1", "One.", "2026-10-04T08:00:01.000Z"),
@@ -197,22 +282,39 @@ describe("computeAbandoned", () => {
 			assistantText("a2", "p2", "Two.", "2026-10-04T08:00:03.000Z"),
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(), cuts: []});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(),
+				cuts: [],
+			},
+		);
 	});
 
-	it("hides nothing in a linear session", () => {
+	it("hides nothing in a linear session", () =>
+	{
 		const records = [
 			...chapterOneHead(),
 			prompt("p2", "s3", "do chapter 2", "2026-09-30T13:52:07.635Z"),
 			attachment("p2-att1", "p2", "2026-09-30T13:52:07.635Z"),
 			assistantText("a2", "p2-att1", "Chapter 2 is ready.", "2026-09-30T14:00:00.000Z"),
-			{type: "last-prompt", lastPrompt: "do chapter 2", leafUuid: "a2", sessionId: SESSION},
+			{
+				type: "last-prompt",
+				lastPrompt: "do chapter 2",
+				leafUuid: "a2",
+				sessionId: SESSION,
+			},
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(), cuts: []});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(),
+				cuts: [],
+			},
+		);
 	});
 
-	it("follows a last-prompt leafUuid naming the older branch, hiding the newer one", () => {
+	it("follows a last-prompt leafUuid naming the older branch, hiding the newer one", () =>
+	{
 		const records = [
 			...chapterOneHead(),
 			prompt("ch2", "s3", "do chapter 2", "2026-09-30T13:52:07.635Z"),
@@ -220,83 +322,119 @@ describe("computeAbandoned", () => {
 			prompt("ch3", "s3", "do chapter 3", "2026-09-30T13:52:15.980Z"),
 			attachment("ch3-att1", "ch3", "2026-09-30T13:52:15.980Z"),
 			assistantText("a3", "ch3-att1", "Chapter 3 is ready.", "2026-09-30T14:00:00.000Z"),
-			{type: "last-prompt", lastPrompt: "do chapter 3", leafUuid: "a3", sessionId: SESSION},
-			{type: "last-prompt", lastPrompt: "do chapter 2", leafUuid: "ch2-att1", sessionId: SESSION},
+			{
+				type: "last-prompt",
+				lastPrompt: "do chapter 3",
+				leafUuid: "a3",
+				sessionId: SESSION,
+			},
+			{
+				type: "last-prompt",
+				lastPrompt: "do chapter 2",
+				leafUuid: "ch2-att1",
+				sessionId: SESSION,
+			},
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({
-			hidden: new Set(["ch3", "ch3-att1", "a3"]),
-			cuts: [
-				{
-					parentUuid: "s3",
-					replacementUuid: "ch2",
-					abandonedUuid: "ch3",
-					at: "2026-09-30T13:52:15.980Z",
-					count: 3,
-				},
-			],
-		});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(["ch3", "ch3-att1", "a3"]),
+				cuts: [
+					{
+						parentUuid: "s3",
+						replacementUuid: "ch2",
+						abandonedUuid: "ch3",
+						at: "2026-09-30T13:52:15.980Z",
+						count: 3,
+					},
+				],
+			},
+		);
 	});
 
-	it("ignores a last-prompt leafUuid that names no record", () => {
+	it("ignores a last-prompt leafUuid that names no record", () =>
+	{
 		const records = [
 			...chapterOneHead(),
 			prompt("ch2", "s3", "do chapter 2", "2026-09-30T13:52:07.635Z"),
 			prompt("ch3", "s3", "do chapter 3", "2026-09-30T13:52:15.980Z"),
-			{type: "last-prompt", lastPrompt: "gone", leafUuid: "missing", sessionId: SESSION},
+			{
+				type: "last-prompt",
+				lastPrompt: "gone",
+				leafUuid: "missing",
+				sessionId: SESSION,
+			},
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({
-			hidden: new Set(["ch2"]),
-			cuts: [
-				{
-					parentUuid: "s3",
-					replacementUuid: "ch3",
-					abandonedUuid: "ch2",
-					at: "2026-09-30T13:52:07.635Z",
-					count: 1,
-				},
-			],
-		});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(["ch2"]),
+				cuts: [
+					{
+						parentUuid: "s3",
+						replacementUuid: "ch3",
+						abandonedUuid: "ch2",
+						at: "2026-09-30T13:52:07.635Z",
+						count: 1,
+					},
+				],
+			},
+		);
 	});
 
-	it("does not treat meta, tool-result, or task-notification siblings as prompts", () => {
+	it("does not treat meta, tool-result, or task-notification siblings as prompts", () =>
+	{
 		const records = [
 			...chapterOneHead(),
-			{...prompt("meta", "s3", "Caveat: local command output", "2026-09-30T13:50:00.000Z"), isMeta: true},
+			{
+				...prompt("meta", "s3", "Caveat: local command output", "2026-09-30T13:50:00.000Z"),
+				isMeta: true,
+			},
 			prompt("notif", "s3", "<task-notification>done</task-notification>", "2026-09-30T13:51:00.000Z"),
 			prompt("ch2", "s3", "do chapter 2", "2026-09-30T13:52:07.635Z"),
 			assistantText("a2", "ch2", "Chapter 2 is ready.", "2026-09-30T14:00:00.000Z"),
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(), cuts: []});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(),
+				cuts: [],
+			},
+		);
 	});
 
-	it("never hides sidechain rows or the leaf when the last record is a sidechain", () => {
+	it("never hides sidechain rows or the leaf when the last record is a sidechain", () =>
+	{
 		const records = [
 			...chapterOneHead(),
 			prompt("ch2", "s3", "do chapter 2", "2026-09-30T13:52:07.635Z"),
 			prompt("ch3", "s3", "do chapter 3", "2026-09-30T13:52:15.980Z"),
-			{...prompt("side", "ch3", "subagent prompt", "2026-09-30T13:52:20.000Z"), isSidechain: true},
+			{
+				...prompt("side", "ch3", "subagent prompt", "2026-09-30T13:52:20.000Z"),
+				isSidechain: true,
+			},
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({
-			hidden: new Set(["ch2"]),
-			cuts: [
-				{
-					parentUuid: "s3",
-					replacementUuid: "ch3",
-					abandonedUuid: "ch2",
-					at: "2026-09-30T13:52:07.635Z",
-					count: 1,
-				},
-			],
-		});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(["ch2"]),
+				cuts: [
+					{
+						parentUuid: "s3",
+						replacementUuid: "ch3",
+						abandonedUuid: "ch2",
+						at: "2026-09-30T13:52:07.635Z",
+						count: 1,
+					},
+				],
+			},
+		);
 	});
 });
 
 /** P1 → A1 → P2 → A2: the turn a terminal rewind pulls back to A1. */
-function rewindHead(): Rec[] {
+function rewindHead(): Rec[]
+{
 	return [
 		prompt("P1", null, "do chapter 1", "2026-11-02T10:00:00.000Z"),
 		assistantText("A1", "P1", "Chapter 1 is ready.", "2026-11-02T10:01:00.000Z"),
@@ -306,18 +444,25 @@ function rewindHead(): Rec[] {
 }
 
 /** CLI 2.1.316 `nF`: the explicit leaf checkpoint a terminal rewind persists. */
-function rewoundCheckpoint(cutUuid?: string): Rec {
+function rewoundCheckpoint(cutUuid?: string): Rec
+{
 	return {
 		type: "last-prompt",
 		leafUuid: "A1",
 		explicit: true,
 		rewound: true,
-		...(cutUuid === undefined ? {} : {cutUuid}),
+		...(cutUuid === undefined
+			? {}
+			:
+				{
+					cutUuid,
+				}),
 		sessionId: SESSION,
 	};
 }
 
-const REWOUND_CUT = {
+const REWOUND_CUT =
+{
 	parentUuid: "A1",
 	replacementUuid: "A1",
 	abandonedUuid: "P2",
@@ -325,58 +470,112 @@ const REWOUND_CUT = {
 	count: 2,
 };
 
-describe("computeAbandoned with a rewind checkpoint (CLI 2.1.316)", () => {
-	it("(h) hides the pulled-back turn below the anchor, rooted at cutUuid", () => {
+describe("computeAbandoned with a rewind checkpoint (CLI 2.1.316)", () =>
+{
+	it("(h) hides the pulled-back turn below the anchor, rooted at cutUuid", () =>
+	{
 		const records = [...rewindHead(), rewoundCheckpoint("P2")];
 
-		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(["P2", "A2"]), cuts: [REWOUND_CUT]});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(["P2", "A2"]),
+				cuts: [REWOUND_CUT],
+			},
+		);
 	});
 
-	it("(i) keeps new work written after the checkpoint visible", () => {
+	it("(i) keeps new work written after the checkpoint visible", () =>
+	{
 		const records = [
 			...rewindHead(),
 			rewoundCheckpoint("P2"),
 			prompt("P3", "A1", "do chapter 3", "2026-11-02T10:05:00.000Z"),
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(["P2", "A2"]), cuts: [REWOUND_CUT]});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(["P2", "A2"]),
+				cuts: [REWOUND_CUT],
+			},
+		);
 	});
 
-	it("(i) gives one cut, at the replacement prompt, once a newer checkpoint puts it on the chain", () => {
+	it("(i) gives one cut, at the replacement prompt, once a newer checkpoint puts it on the chain", () =>
+	{
 		const records = [
 			...rewindHead(),
 			rewoundCheckpoint("P2"),
 			prompt("P3", "A1", "do chapter 3", "2026-11-02T10:05:00.000Z"),
 			assistantText("A3", "P3", "Chapter 3 is ready.", "2026-11-02T10:06:00.000Z"),
-			{type: "last-prompt", lastPrompt: "do chapter 3", leafUuid: "A3", sessionId: SESSION},
+			{
+				type: "last-prompt",
+				lastPrompt: "do chapter 3",
+				leafUuid: "A3",
+				sessionId: SESSION,
+			},
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({
-			hidden: new Set(["P2", "A2"]),
-			cuts: [{...REWOUND_CUT, replacementUuid: "P3"}],
-		});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(["P2", "A2"]),
+				cuts: [
+					{
+						...REWOUND_CUT,
+						replacementUuid: "P3",
+					},
+				],
+			},
+		);
 	});
 
-	it("(j) without cutUuid, hides every off-chain child of the anchor written before the checkpoint", () => {
+	it("(j) without cutUuid, hides every off-chain child of the anchor written before the checkpoint", () =>
+	{
 		const records = [...rewindHead(), rewoundCheckpoint()];
 
-		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(["P2", "A2"]), cuts: [REWOUND_CUT]});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(["P2", "A2"]),
+				cuts: [REWOUND_CUT],
+			},
+		);
 	});
 
-	it("(k) skips a leafUuid:null withdrawal and uses the older checkpoint", () => {
+	it("(k) skips a leafUuid:null withdrawal and uses the older checkpoint", () =>
+	{
 		const records = [
 			...rewindHead(),
-			{type: "last-prompt", lastPrompt: "do chapter 2", leafUuid: "A2", sessionId: SESSION},
-			{type: "last-prompt", leafUuid: null, explicit: true, sessionId: SESSION},
+			{
+				type: "last-prompt",
+				lastPrompt: "do chapter 2",
+				leafUuid: "A2",
+				sessionId: SESSION,
+			},
+			{
+				type: "last-prompt",
+				leafUuid: null,
+				explicit: true,
+				sessionId: SESSION,
+			},
 		];
 
-		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(), cuts: []});
+		expect(computeAbandoned(records)).toStrictEqual(
+			{
+				hidden: new Set(),
+				cuts: [],
+			},
+		);
 	});
 
-	it("(l) changes the chain version when the rewound checkpoint lands", () => {
+	it("(l) changes the chain version when the rewound checkpoint lands", () =>
+	{
 		const before = [
 			...rewindHead(),
-			{type: "last-prompt", lastPrompt: "do chapter 2", leafUuid: "A2", sessionId: SESSION},
+			{
+				type: "last-prompt",
+				lastPrompt: "do chapter 2",
+				leafUuid: "A2",
+				sessionId: SESSION,
+			},
 		];
 		const after = [...before, rewoundCheckpoint("P2")];
 
@@ -385,51 +584,83 @@ describe("computeAbandoned with a rewind checkpoint (CLI 2.1.316)", () => {
 		);
 	});
 
-	it("gives the same answer over chain skeletons", () => {
+	it("gives the same answer over chain skeletons", () =>
+	{
 		const records = [...rewindHead(), rewoundCheckpoint("P2")];
 
 		expect(computeAbandoned(records.map(chainSkeleton))).toStrictEqual(computeAbandoned(records));
 	});
 });
 
-describe("chainSkeleton", () => {
-	it("keeps a prompt's chain fields and text and drops every other message body", () => {
-		const promptRecord = {
+describe("chainSkeleton", () =>
+{
+	it("keeps a prompt's chain fields and text and drops every other message body", () =>
+	{
+		const promptRecord =
+		{
 			...prompt("p", "s3", "do it", "2026-09-30T13:52:07.635Z"),
-			message: {
+			message:
+			{
 				role: "user",
 				content: [
-					{type: "text", text: "do"},
-					{type: "text", text: "it"},
+					{
+						type: "text",
+						text: "do",
+					},
+					{
+						type: "text",
+						text: "it",
+					},
 				],
 			},
 		};
 
-		expect(chainSkeleton(promptRecord)).toStrictEqual({
-			type: "user",
-			uuid: "p",
-			parentUuid: "s3",
-			isSidechain: false,
-			timestamp: "2026-09-30T13:52:07.635Z",
-			message: {content: "do it"},
-		});
-		expect(chainSkeleton(toolResult("t", "a", "tool-1", "2026-09-30T13:00:00.000Z"))).toStrictEqual({
-			type: "user",
-			uuid: "t",
-			parentUuid: "a",
-			isSidechain: false,
-			timestamp: "2026-09-30T13:00:00.000Z",
-		});
-		expect(chainSkeleton({type: "last-prompt", leafUuid: "a2", sessionId: SESSION})).toStrictEqual({
-			type: "last-prompt",
-			leafUuid: "a2",
-		});
+		expect(chainSkeleton(promptRecord)).toStrictEqual(
+			{
+				type: "user",
+				uuid: "p",
+				parentUuid: "s3",
+				isSidechain: false,
+				timestamp: "2026-09-30T13:52:07.635Z",
+				message:
+				{
+					content: "do it",
+				},
+			},
+		);
+		expect(chainSkeleton(toolResult("t", "a", "tool-1", "2026-09-30T13:00:00.000Z"))).toStrictEqual(
+			{
+				type: "user",
+				uuid: "t",
+				parentUuid: "a",
+				isSidechain: false,
+				timestamp: "2026-09-30T13:00:00.000Z",
+			},
+		);
+		expect(
+			chainSkeleton(
+				{
+					type: "last-prompt",
+					leafUuid: "a2",
+					sessionId: SESSION,
+				},
+			),
+		).toStrictEqual(
+			{
+				type: "last-prompt",
+				leafUuid: "a2",
+			},
+		);
 	});
 
-	it("gives computeAbandoned the same answer as the full records", () => {
+	it("gives computeAbandoned the same answer as the full records", () =>
+	{
 		const records = [
 			...chapterOneHead(),
-			{...prompt("meta", "s3", "Caveat: local command output", "2026-09-30T13:50:00.000Z"), isMeta: true},
+			{
+				...prompt("meta", "s3", "Caveat: local command output", "2026-09-30T13:50:00.000Z"),
+				isMeta: true,
+			},
 			prompt("ch2", "s3", "do chapter 2", "2026-09-30T13:52:07.635Z"),
 			assistantToolUse("a2", "ch2", "tool-1", "2026-09-30T13:52:08.000Z", "msg_a2"),
 			toolResult("t2", "a2", "tool-1", "2026-09-30T13:52:09.000Z"),

@@ -1,7 +1,8 @@
 import type {Meta, StoryObj} from "@storybook/react-vite";
 import {useState} from "react";
 
-import {
+import
+{
 	ContextMenu,
 	ContextMenuTrigger,
 	Menu,
@@ -18,7 +19,8 @@ import {
 } from "../../components/ui/menu";
 import {withDarkTheme, withTheme} from "./decorators";
 
-function RowActions() {
+function RowActions()
+{
 	return (
 		<>
 			<MenuSub>
@@ -42,7 +44,8 @@ function RowActions() {
 	);
 }
 
-function FilterAndGroup() {
+function FilterAndGroup()
+{
 	const [status, setStatus] = useState("active");
 	const [groupBy, setGroupBy] = useState("state");
 	const [showPr, setShowPr] = useState(true);
@@ -82,7 +85,8 @@ function FilterAndGroup() {
 	);
 }
 
-function Demo() {
+function Demo()
+{
 	return (
 		<div className="flex flex-col gap-6 p-6">
 			<Menu>
@@ -104,7 +108,8 @@ function Demo() {
 	);
 }
 
-const meta = {
+const meta =
+{
 	title: "Layout/Menu",
 	component: Demo,
 	decorators: [withTheme],
@@ -115,6 +120,7 @@ type Story = StoryObj<typeof meta>;
 
 export const LightMode: Story = {};
 
-export const DarkMode: Story = {
+export const DarkMode: Story =
+{
 	decorators: [withDarkTheme],
 };

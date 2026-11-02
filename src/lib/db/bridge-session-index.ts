@@ -7,13 +7,21 @@ import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-const BridgeAliasesSchema = z.object({aliases: z.array(z.string()), canonical: z.string().nullable()}).strict();
+const BridgeAliasesSchema = z
+	.object(
+		{
+			aliases: z.array(z.string()),
+			canonical: z.string().nullable(),
+		},
+	)
+	.strict();
 type BridgeAliases = z.infer<typeof BridgeAliasesSchema>;
 const OwnersSchema = z.array(z.string());
 const LOCAL_PREFIX = "bridge:v1:local:";
 const ALIAS_PREFIX = "bridge:v1:alias:";
 
-export function sessionBridgeMetadataKey(sessionId: string): string {
+export function sessionBridgeMetadataKey(sessionId: string): string
+{
 	return `${LOCAL_PREFIX}${sessionId}`;
 }
 
@@ -25,9 +33,14 @@ export const sessionRemoteControlColumn = sql<number>`EXISTS (
 )`;
 
 /** Whether the indexed transcript bridged the session to claude.ai/code (Remote Control). */
-export function isSessionBridged(db: IndexDb, sessionId: string): boolean {
+export function isSessionBridged(db: IndexDb, sessionId: string): boolean
+{
 	const row = db
-		.select({bridged: sessionRemoteControlColumn})
+		.select(
+			{
+				bridged: sessionRemoteControlColumn,
+			},
+		)
 		.from(schema.sessions)
 		.where(eq(schema.sessions.id, sessionId))
 		.get();
@@ -35,9 +48,13 @@ export function isSessionBridged(db: IndexDb, sessionId: string): boolean {
 }
 
 /** Two surviving owners suffice to distinguish missing, unique and ambiguous indexed aliases. */
-export function getSessionBridgeOwners(db: IndexDb, routeId: string): string[] {
+export function getSessionBridgeOwners(db: IndexDb, routeId: string): string[]
+{
 	return db
-		.all<{sessionId: string}>(sql`
+		.all<
+		{
+			sessionId: string;
+		}>(sql`
 			SELECT DISTINCT ${schema.sessions.id} AS sessionId
 			FROM ${schema.metadata}, json_each(${schema.metadata.value}) AS bridge_owner
 			JOIN ${schema.sessions} ON ${schema.sessions.id} = bridge_owner.value
@@ -62,13 +79,15 @@ export const canonicalSessionRouteId = sql<string | null>`(
 )`;
 
 /** Bridge records travel with copied transcripts; only claim records belonging to this local session. */
-export class BridgeSessionCollector {
+export class BridgeSessionCollector
+{
 	private readonly aliases = new Set<string>();
 	private canonical: string | null = null;
 	private dirty = true;
 	private persistedDatabase: IndexDb | undefined;
 
-	add(record: unknown, localSessionId: string): void {
+	add(record: unknown, localSessionId: string): void
+	{
 		const parsed = BridgeSessionRecordSchema.safeParse(record);
 		if (!parsed.success) return;
 		const {sessionId, bridgeSessionId} = parsed.data;
@@ -81,36 +100,69 @@ export class BridgeSessionCollector {
 	}
 
 	/** Ordinary live appends do not change bridge identity and need no metadata query. */
-	persist(db: IndexDb, sessionId: string): void {
+	persist(db: IndexDb, sessionId: string): void
+	{
 		if (!this.dirty && this.persistedDatabase === db) return;
-		updateAliases(db, sessionId, {aliases: [...this.aliases].toSorted(), canonical: this.canonical});
+		updateAliases(
+			db,
+			sessionId,
+			{
+				aliases: [...this.aliases].toSorted(),
+				canonical: this.canonical,
+			},
+		);
 		this.persistedDatabase = db;
 		this.dirty = false;
 	}
 }
 
-function readMetadata(db: IndexDb, key: string): string | undefined {
-	return db.select({value: schema.metadata.value}).from(schema.metadata).where(eq(schema.metadata.key, key)).get()
-		?.value;
+function readMetadata(db: IndexDb, key: string): string | undefined
+{
+	return db
+		.select(
+			{
+				value: schema.metadata.value,
+			},
+		)
+		.from(schema.metadata)
+		.where(eq(schema.metadata.key, key))
+		.get()?.value;
 }
 
-function writeMetadata(db: IndexDb, key: string, value: string): void {
+function writeMetadata(db: IndexDb, key: string, value: string): void
+{
 	db.insert(schema.metadata)
-		.values({key, value})
-		.onConflictDoUpdate({target: schema.metadata.key, set: {value}})
+		.values(
+			{
+				key,
+				value,
+			},
+		)
+		.onConflictDoUpdate(
+			{
+				target: schema.metadata.key,
+				set:
+				{
+					value,
+				},
+			},
+		)
 		.run();
 }
 
 /** Keep every owner so an ambiguous remote alias can never silently select a different local transcript. */
-function updateAliases(db: IndexDb, sessionId: string, next: BridgeAliases | null): void {
-	db.transaction(() => {
+function updateAliases(db: IndexDb, sessionId: string, next: BridgeAliases | null): void
+{
+	db.transaction(() =>
+	{
 		const key = sessionBridgeMetadataKey(sessionId);
 		const previousValue = readMetadata(db, key);
 		const nextValue = next === null ? undefined : JSON.stringify(next);
 		if (previousValue === nextValue) return;
 		const previous = previousValue === undefined ? null : BridgeAliasesSchema.parse(JSON.parse(previousValue));
 		const nextAliases = new Set(next?.aliases);
-		for (const alias of new Set([...(previous?.aliases ?? []), ...nextAliases])) {
+		for (const alias of new Set([...(previous?.aliases ?? []), ...nextAliases]))
+		{
 			const aliasKey = `${ALIAS_PREFIX}${alias}`;
 			const ownerValue = readMetadata(db, aliasKey);
 			const owners = new Set(ownerValue === undefined ? [] : OwnersSchema.parse(JSON.parse(ownerValue)));
@@ -124,30 +176,45 @@ function updateAliases(db: IndexDb, sessionId: string, next: BridgeAliases | nul
 	});
 }
 
-export function replaceSessionBridgeAliases(db: IndexDb, sessionId: string, collector: BridgeSessionCollector): void {
+export function replaceSessionBridgeAliases(db: IndexDb, sessionId: string, collector: BridgeSessionCollector): void
+{
 	collector.persist(db, sessionId);
 }
 
-export function deleteSessionBridgeAliases(db: IndexDb, sessionId: string): void {
+export function deleteSessionBridgeAliases(db: IndexDb, sessionId: string): void
+{
 	updateAliases(db, sessionId, null);
 }
 
 /** Fill the missing marker for an unchanged transcript without rebuilding its messages or search rows. */
-export async function backfillSessionBridgeAliases(db: IndexDb, filePath: string, sessionId: string): Promise<void> {
-	const collector = await foldJsonl(filePath, {
-		create: () => new BridgeSessionCollector(),
-		add: (state, line) => {
-			if (!line.includes('"bridge-session"')) return;
-			try {
-				state.add(JSON.parse(line), sessionId);
-			} catch {
-				// Ignore malformed records, as the regular transcript fold does.
-			}
+export async function backfillSessionBridgeAliases(db: IndexDb, filePath: string, sessionId: string): Promise<void>
+{
+	const collector = await foldJsonl(
+		filePath,
+		{
+			create: () => new BridgeSessionCollector(),
+			add: (state, line) =>
+			{
+				if (!line.includes('"bridge-session"')) return;
+				try
+				{
+					state.add(JSON.parse(line), sessionId);
+				}
+				catch
+				{
+					// Ignore malformed records, as the regular transcript fold does.
+				}
+			},
 		},
-	});
+	);
 	// A watcher may have indexed this session, or moved it, while the stream yielded.
 	const session = db
-		.select({filePath: schema.sessions.filePath, bridgeMetadataKey: schema.metadata.key})
+		.select(
+			{
+				filePath: schema.sessions.filePath,
+				bridgeMetadataKey: schema.metadata.key,
+			},
+		)
 		.from(schema.sessions)
 		.leftJoin(schema.metadata, eq(schema.metadata.key, sessionBridgeMetadataKey(sessionId)))
 		.where(eq(schema.sessions.id, sessionId))

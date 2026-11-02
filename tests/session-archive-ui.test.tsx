@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -19,7 +20,8 @@ import {SessionTitleHeading} from "../src/components/session-title-heading";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
-import {
+import
+{
 	RecentSessionsResponse,
 	recentSessionsInfiniteQueryOptions,
 	type SessionListItem,
@@ -34,7 +36,8 @@ const ARCHIVED_URL = `/api/sessions/${SESSION_ID}/archived`;
 // One clock reading for every fixture: per-call Date.now() gives later rows a newer mtime whenever a millisecond ticks between calls, which reorders the activity sort.
 const FIXTURE_NOW = Date.now();
 
-function listItem(overrides: Partial<SessionListItem> = {}): SessionListItem {
+function listItem(overrides: Partial<SessionListItem> = {}): SessionListItem
+{
 	return {
 		id: SESSION_ID,
 		title: "Fix the flaky test",
@@ -55,155 +58,276 @@ function listItem(overrides: Partial<SessionListItem> = {}): SessionListItem {
 
 const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>();
 
-function archiveCalls(): Array<{url: string; method: string | undefined}> {
+function archiveCalls(): Array<
+{
+	url: string;
+	method: string | undefined;
+}>
+{
 	return fetchMock.mock.calls
-		.map(([input, init]) => ({url: input, method: init?.method}))
+		.map(([input, init]) => (
+		{
+			url: input,
+			method: init?.method,
+		}))
 		.filter((call) => call.url === ARCHIVED_URL);
 }
 
-async function flush() {
-	await act(async () => {
-		await new Promise((resolve) => {
+async function flush()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 0);
 		});
 	});
 }
 
-function newQueryClient(): QueryClient {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
-			mutations: {retry: false},
+function newQueryClient(): QueryClient
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+				mutations:
+				{
+					retry: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
+	);
+	queryClient.setQueryData(
+		herdrPanesQueryOptions.queryKey,
+		{
+			panes: [],
+			writesEnabled: false,
+		},
+	);
 	return queryClient;
 }
 
-async function renderWithRouter(content: ReactNode, queryClient: QueryClient = newQueryClient()) {
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					{content}
-					<Outlet />
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const homeRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: () => null,
-	});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/session/$id",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+async function renderWithRouter(content: ReactNode, queryClient: QueryClient = newQueryClient())
+{
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						{content}
+						<Outlet />
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/session/$id",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
 	await flush();
 	return result;
 }
 
-async function openRowMenu(session: SessionListItem): Promise<HTMLElement> {
+async function openRowMenu(session: SessionListItem): Promise<HTMLElement>
+{
 	await renderWithRouter(
 		<SessionActionsMenu session={session}>
 			<a href={`/session/${session.id}`}>Row title</a>
 		</SessionActionsMenu>,
 	);
-	fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+	fireEvent.contextMenu(
+		screen.getByText("Row title"),
+		{
+			clientX: 40,
+			clientY: 50,
+		},
+	);
 	await flush();
 	return screen.getByRole("menu");
 }
 
-function lifecycleItems(menu: HTMLElement): string[] {
+function lifecycleItems(menu: HTMLElement): string[]
+{
 	return [...menu.querySelectorAll('[role="menuitem"]')]
 		.filter((node) => node.getAttribute("aria-keyshortcuts") === "a")
 		.map((node) => node.textContent);
 }
 
-function toastTexts(): string[] {
+function toastTexts(): string[]
+{
 	return [...document.querySelectorAll("[data-toast]")].map((toast) => toast.textContent);
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 	fetchMock.mockReset();
 	fetchMock.mockImplementation(async (_input, init) =>
-		Promise.resolve(Response.json({archived: init?.method === "PUT"})),
+		Promise.resolve(
+			Response.json(
+				{
+					archived: init?.method === "PUT",
+				},
+			),
+		),
 	);
 	vi.stubGlobal("fetch", fetchMock);
 	__unreadStoreTesting.reset();
 	__unreadStoreTesting.setPersist(async () => Promise.resolve());
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	__unreadStoreTesting.reset();
 });
 
-describe("archive in the session row menu", () => {
-	it("offers Archive A for an active session", async () => {
+describe("archive in the session row menu", () =>
+{
+	it("offers Archive A for an active session", async () =>
+	{
 		const menu = await openRowMenu(listItem());
 
 		expect(lifecycleItems(menu)).toEqual(["ArchiveA"]);
 	});
 
-	it("offers Unarchive for an archived session", async () => {
-		const menu = await openRowMenu(listItem({archived: true}));
+	it("offers Unarchive for an archived session", async () =>
+	{
+		const menu = await openRowMenu(
+			listItem(
+				{
+					archived: true,
+				},
+			),
+		);
 
 		expect(lifecycleItems(menu)).toEqual(["UnarchiveA"]);
 	});
 
-	it("archives on a, toasts with Undo, and Undo unarchives", async () => {
+	it("archives on a, toasts with Undo, and Undo unarchives", async () =>
+	{
 		const menu = await openRowMenu(listItem());
 
-		fireEvent.keyDown(menu, {key: "a"});
-		await waitFor(() => {
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "a",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(toastTexts()).toEqual(["Archived 1 sessionUndo"]);
 		});
-		expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "PUT"}]);
+		expect(archiveCalls()).toEqual([
+			{
+				url: ARCHIVED_URL,
+				method: "PUT",
+			},
+		]);
 
-		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
-		await waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Undo",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(archiveCalls()).toEqual([
-				{url: ARCHIVED_URL, method: "PUT"},
-				{url: ARCHIVED_URL, method: "DELETE"},
+				{
+					url: ARCHIVED_URL,
+					method: "PUT",
+				},
+				{
+					url: ARCHIVED_URL,
+					method: "DELETE",
+				},
 			]);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(toastTexts()).toEqual([]);
 		});
 	});
 
-	it("unarchives on a and toasts Session unarchived without an Undo", async () => {
-		const menu = await openRowMenu(listItem({archived: true}));
+	it("unarchives on a and toasts Session unarchived without an Undo", async () =>
+	{
+		const menu = await openRowMenu(
+			listItem(
+				{
+					archived: true,
+				},
+			),
+		);
 
-		fireEvent.keyDown(menu, {key: "a"});
-		await waitFor(() => {
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "a",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(toastTexts()).toEqual(["Session unarchived"]);
 		});
-		expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]);
+		expect(archiveCalls()).toEqual([
+			{
+				url: ARCHIVED_URL,
+				method: "DELETE",
+			},
+		]);
 	});
 
-	it("shares one in-flight unarchive between the archived note and the row menu", async () => {
+	it("shares one in-flight unarchive between the archived note and the row menu", async () =>
+	{
 		let resolve: (response: Response) => void = () => undefined;
 		fetchMock.mockImplementation(async (input) =>
 			input === ARCHIVED_URL
-				? new Promise<Response>((r) => {
+				? new Promise<Response>((r) =>
+					{
 						resolve = r;
 					})
 				: new Promise<Response>(() => {}),
 		);
-		const session = listItem({archived: true});
+		const session = listItem(
+			{
+				archived: true,
+			},
+		);
 		await renderWithRouter(
 			<>
 				<ArchivedComposerNote sessionId={session.id} />
@@ -212,111 +336,277 @@ describe("archive in the session row menu", () => {
 				</SessionActionsMenu>
 			</>,
 		);
-		fireEvent.click(screen.getByRole("button", {name: "Unarchive"}));
-		fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Unarchive",
+				},
+			),
+		);
+		fireEvent.contextMenu(
+			screen.getByText("Row title"),
+			{
+				clientX: 40,
+				clientY: 50,
+			},
+		);
 		await flush();
-		fireEvent.keyDown(screen.getByRole("menu"), {key: "a"});
+		fireEvent.keyDown(
+			screen.getByRole("menu"),
+			{
+				key: "a",
+			},
+		);
 		await flush();
 
-		expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]);
+		expect(archiveCalls()).toEqual([
+			{
+				url: ARCHIVED_URL,
+				method: "DELETE",
+			},
+		]);
 
-		act(() => {
-			resolve(Response.json({archived: false}));
+		act(() =>
+		{
+			resolve(
+				Response.json(
+					{
+						archived: false,
+					},
+				),
+			);
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(toastTexts()).toEqual(["Session unarchived"]);
 		});
 		await flush();
-		expect({calls: archiveCalls(), toasts: toastTexts()}).toEqual({
-			calls: [{url: ARCHIVED_URL, method: "DELETE"}],
-			toasts: ["Session unarchived"],
-		});
+		expect(
+			{
+				calls: archiveCalls(),
+				toasts: toastTexts(),
+			},
+		).toEqual(
+			{
+				calls: [
+					{
+						url: ARCHIVED_URL,
+						method: "DELETE",
+					},
+				],
+				toasts: ["Session unarchived"],
+			},
+		);
 	});
 
-	it("toasts upstream's error when the unarchive request fails", async () => {
-		fetchMock.mockResolvedValue(Response.json({error: "boom"}, {status: 500}));
-		const menu = await openRowMenu(listItem({archived: true}));
+	it("toasts upstream's error when the unarchive request fails", async () =>
+	{
+		fetchMock.mockResolvedValue(
+			Response.json(
+				{
+					error: "boom",
+				},
+				{
+					status: 500,
+				},
+			),
+		);
+		const menu = await openRowMenu(
+			listItem(
+				{
+					archived: true,
+				},
+			),
+		);
 
-		fireEvent.keyDown(menu, {key: "a"});
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "a",
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(toastTexts()).toEqual(["Couldn’t unarchive this session. Try again."]);
 		});
 	});
 
-	it("toasts an error when the archive request fails", async () => {
-		fetchMock.mockResolvedValue(Response.json({error: "boom"}, {status: 500}));
+	it("toasts an error when the archive request fails", async () =>
+	{
+		fetchMock.mockResolvedValue(
+			Response.json(
+				{
+					error: "boom",
+				},
+				{
+					status: 500,
+				},
+			),
+		);
 		const menu = await openRowMenu(listItem());
 
-		fireEvent.keyDown(menu, {key: "a"});
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "a",
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(toastTexts()).toEqual(["Couldn’t archive this session. Try again."]);
 		});
 	});
 });
 
-describe("⌥⌘A on the session page", () => {
-	it("archives the session and toasts with Undo", async () => {
+describe("⌥⌘A on the session page", () =>
+{
+	it("archives the session and toasts with Undo", async () =>
+	{
 		await renderWithRouter(
 			<SessionTitleHeading sessionId={SESSION_ID} title="Fix the flaky test" archived={false} />,
 		);
 
-		fireEvent.keyDown(document.body, {key: "å", code: "KeyA", metaKey: true, altKey: true});
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "å",
+				code: "KeyA",
+				metaKey: true,
+				altKey: true,
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(toastTexts()).toEqual(["Archived 1 sessionUndo"]);
 		});
-		expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "PUT"}]);
+		expect(archiveCalls()).toEqual([
+			{
+				url: ARCHIVED_URL,
+				method: "PUT",
+			},
+		]);
 
-		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
-		await waitFor(() => {
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Undo",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
 			expect(archiveCalls()).toEqual([
-				{url: ARCHIVED_URL, method: "PUT"},
-				{url: ARCHIVED_URL, method: "DELETE"},
+				{
+					url: ARCHIVED_URL,
+					method: "PUT",
+				},
+				{
+					url: ARCHIVED_URL,
+					method: "DELETE",
+				},
 			]);
 		});
 	});
 
-	it("unarchives an archived session and shows its Archived badge", async () => {
+	it("unarchives an archived session and shows its Archived badge", async () =>
+	{
 		await renderWithRouter(<SessionTitleHeading sessionId={SESSION_ID} title="Fix the flaky test" archived />);
 		expect(screen.getByText("Archived").hasAttribute("data-archived-badge")).toBe(true);
 
-		fireEvent.keyDown(document.body, {key: "å", code: "KeyA", metaKey: true, altKey: true});
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "å",
+				code: "KeyA",
+				metaKey: true,
+				altKey: true,
+			},
+		);
 
-		await waitFor(() => {
-			expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]);
+		await waitFor(() =>
+		{
+			expect(archiveCalls()).toEqual([
+				{
+					url: ARCHIVED_URL,
+					method: "DELETE",
+				},
+			]);
 		});
 	});
 });
 
-describe("Status ▸ Archived in the sidebar", () => {
-	async function renderSidebar(statusFilter: SessionStatusFilter, sessions: SessionListItem[]) {
+describe("Status ▸ Archived in the sidebar", () =>
+{
+	async function renderSidebar(statusFilter: SessionStatusFilter, sessions: SessionListItem[])
+	{
 		const queryClient = newQueryClient();
-		queryClient.setQueryData(recentSessionsInfiniteQueryOptions(undefined, statusFilter).queryKey, {
-			pages: [RecentSessionsResponse.parse({sessions, nextCursor: null})],
-			pageParams: [null],
-		});
+		queryClient.setQueryData(
+			recentSessionsInfiniteQueryOptions(undefined, statusFilter).queryKey,
+			{
+				pages: [
+					RecentSessionsResponse.parse(
+						{
+							sessions,
+							nextCursor: null,
+						},
+					),
+				],
+				pageParams: [null],
+			},
+		);
 		return renderWithRouter(
-			<SessionGroups activeItemId={null} prefs={{...DEFAULT_SESSION_LIST_PREFS, statusFilter}} />,
+			<SessionGroups
+				activeItemId={null}
+				prefs={
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					statusFilter,
+				}}
+			/>,
 			queryClient,
 		);
 	}
 
-	function rows(container: HTMLElement): string[] {
+	function rows(container: HTMLElement): string[]
+	{
 		return [...container.querySelectorAll("a[data-row-main-button]")].map((row) => rowTitle(row));
 	}
 
-	it("marks archived rows with a sr-only Archived after the title", async () => {
-		const {container} = await renderSidebar("archived", [listItem({archived: true, title: "Old spike"})]);
+	it("marks archived rows with a sr-only Archived after the title", async () =>
+	{
+		const {container} = await renderSidebar("archived", [
+			listItem(
+				{
+					archived: true,
+					title: "Old spike",
+				},
+			),
+		]);
 
 		expect(rows(container)).toEqual(["Old spike Archived"]);
 	});
 
-	it("marks only the archived rows under All", async () => {
+	it("marks only the archived rows under All", async () =>
+	{
 		const {container} = await renderSidebar("all", [
-			listItem({id: "a1", title: "Still going"}),
-			listItem({id: "a2", archived: true, title: "Old spike"}),
+			listItem(
+				{
+					id: "a1",
+					title: "Still going",
+				},
+			),
+			listItem(
+				{
+					id: "a2",
+					archived: true,
+					title: "Old spike",
+				},
+			),
 		]);
 
 		expect(rows(container)).toEqual(["Still going", "Old spike Archived"]);

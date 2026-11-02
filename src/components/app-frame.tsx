@@ -19,18 +19,28 @@ export function AppFrame({
 	className,
 	tileShell = false,
 	children,
-}: Readonly<{collapsed: boolean; className?: string; tileShell?: boolean; children: ReactNode}>) {
+}: Readonly<
+{
+	collapsed: boolean;
+	className?: string;
+	tileShell?: boolean;
+	children: ReactNode;
+}>)
+{
 	const phoneSheet = usePhoneSheet();
 	const narrowViewport = useNarrowViewport();
 	const [sheetOpen, setSheetOpen] = useState(false);
-	const openSheet = useCallback(() => {
+	const openSheet = useCallback(() =>
+	{
 		setSheetOpen(true);
 	}, []);
-	const closeSheet = useCallback(() => {
+	const closeSheet = useCallback(() =>
+	{
 		setSheetOpen(false);
 	}, []);
 	const triggerRef = useRef<HTMLButtonElement>(null);
-	const dismissSheet = useCallback(() => {
+	const dismissSheet = useCallback(() =>
+	{
 		setSheetOpen(false);
 		window.setTimeout(() => triggerRef.current?.focus(), PHONE_SHEET_TRANSITION_MS);
 	}, []);

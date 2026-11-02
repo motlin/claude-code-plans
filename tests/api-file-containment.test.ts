@@ -1,4 +1,5 @@
-import {
+import
+{
 	mkdirSync,
 	mkdtempSync,
 	realpathSync,
@@ -20,21 +21,40 @@ let allowedRoot: string;
 let outsideRoot: string;
 let configPath: string;
 
-function writeConfig(fileRoots: string[]): void {
-	writeFileSync(configPath, JSON.stringify({file_roots: fileRoots}));
+function writeConfig(fileRoots: string[]): void
+{
+	writeFileSync(
+		configPath,
+		JSON.stringify(
+			{
+				file_roots: fileRoots,
+			},
+		),
+	);
 }
 
-function fileRequest(path: string, headers?: HeadersInit): Request {
+function fileRequest(path: string, headers?: HeadersInit): Request
+{
 	const token = encodeFilePath(path);
-	return new Request(`http://127.0.0.1:7526/api/file/${token}`, headers === undefined ? undefined : {headers});
+	return new Request(
+		`http://127.0.0.1:7526/api/file/${token}`,
+		headers === undefined
+			? undefined
+			:
+				{
+					headers,
+				},
+	);
 }
 
-async function describeJsonResponse(response: Response): Promise<{
+async function describeJsonResponse(response: Response): Promise<
+{
 	body: unknown;
 	cacheControl: string | null;
 	etag: string | null;
 	status: number;
-}> {
+}>
+{
 	return {
 		body: await response.json(),
 		cacheControl: response.headers.get("Cache-Control"),
@@ -43,7 +63,8 @@ async function describeJsonResponse(response: Response): Promise<{
 	};
 }
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	fixtureDirectory = mkdtempSync(join(tmpdir(), "api-file-test-"));
 	allowedRoot = join(fixtureDirectory, "allowed");
 	outsideRoot = join(fixtureDirectory, "outside");
@@ -55,12 +76,21 @@ beforeEach(() => {
 	writeConfig([allowedRoot]);
 });
 
-afterEach(() => {
-	rmSync(fixtureDirectory, {recursive: true, force: true});
+afterEach(() =>
+{
+	rmSync(
+		fixtureDirectory,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("file viewer API", () => {
-	it("returns a validated allow-listed text file with private revalidation metadata", async () => {
+describe("file viewer API", () =>
+{
+	it("returns a validated allow-listed text file with private revalidation metadata", async () =>
+	{
 		const filePath = join(allowedRoot, "alice.ts");
 		writeFileSync(filePath, "export const answer = 100;\n");
 		const fileStat = statSync(filePath);
@@ -68,22 +98,28 @@ describe("file viewer API", () => {
 		const response = await handleFileRequest(fileRequest(filePath), encodeFilePath(filePath), configPath);
 		const described = await describeJsonResponse(response);
 
-		expect({
-			...described,
-			schemaResult: FileViewerResponse.safeParse(described.body).success,
-		}).toStrictEqual({
-			body: {
-				content: "export const answer = 100;\n",
-				path: realpathSync(filePath),
+		expect(
+			{
+				...described,
+				schemaResult: FileViewerResponse.safeParse(described.body).success,
 			},
-			cacheControl: "private, max-age=0, must-revalidate",
-			etag: `"${fileStat.mtimeMs}-${fileStat.size}"`,
-			schemaResult: true,
-			status: 200,
-		});
+		).toStrictEqual(
+			{
+				body:
+				{
+					content: "export const answer = 100;\n",
+					path: realpathSync(filePath),
+				},
+				cacheControl: "private, max-age=0, must-revalidate",
+				etag: `"${fileStat.mtimeMs}-${fileStat.size}"`,
+				schemaResult: true,
+				status: 200,
+			},
+		);
 	});
 
-	it("opens a file under a default project root when file_roots is unset", async () => {
+	it("opens a file under a default project root when file_roots is unset", async () =>
+	{
 		writeFileSync(configPath, JSON.stringify({}));
 		const filePath = join(allowedRoot, "indexer.ts");
 		writeFileSync(filePath, "export const indexer = 'available';\n");
@@ -92,67 +128,101 @@ describe("file viewer API", () => {
 			allowedRoot,
 		]);
 
-		expect({body: await response.json(), status: response.status}).toStrictEqual({
-			body: {
-				content: "export const indexer = 'available';\n",
-				path: realpathSync(filePath),
+		expect(
+			{
+				body: await response.json(),
+				status: response.status,
 			},
-			status: 200,
-		});
+		).toStrictEqual(
+			{
+				body:
+				{
+					content: "export const indexer = 'available';\n",
+					path: realpathSync(filePath),
+				},
+				status: 200,
+			},
+		);
 	});
 
-	it("round-trips spaces and Unicode through one opaque splat segment", async () => {
+	it("round-trips spaces and Unicode through one opaque splat segment", async () =>
+	{
 		const filePath = join(allowedRoot, "alice notes-你好.ts");
 		writeFileSync(filePath, "const greeting = 'hello';\n");
 		const token = encodeFilePath(filePath);
 		const response = await handleFileRequest(fileRequest(filePath), token, configPath);
 		const body: unknown = await response.json();
 
-		expect({
-			token,
-			tokenHasOnlyRouteSafeCharacters: /^[A-Za-z0-9_-]+$/.test(token),
-			decodedPath: decodeFilePath(token),
-			routePath: fileViewerPath(filePath),
-			response: {body, status: response.status},
-		}).toStrictEqual({
-			token,
-			tokenHasOnlyRouteSafeCharacters: true,
-			decodedPath: filePath,
-			routePath: `/file/${token}`,
-			response: {
-				body: {content: "const greeting = 'hello';\n", path: realpathSync(filePath)},
-				status: 200,
+		expect(
+			{
+				token,
+				tokenHasOnlyRouteSafeCharacters: /^[A-Za-z0-9_-]+$/.test(token),
+				decodedPath: decodeFilePath(token),
+				routePath: fileViewerPath(filePath),
+				response:
+				{
+					body,
+					status: response.status,
+				},
 			},
-		});
+		).toStrictEqual(
+			{
+				token,
+				tokenHasOnlyRouteSafeCharacters: true,
+				decodedPath: filePath,
+				routePath: `/file/${token}`,
+				response:
+				{
+					body:
+					{
+						content: "const greeting = 'hello';\n",
+						path: realpathSync(filePath),
+					},
+					status: 200,
+				},
+			},
+		);
 	});
 
-	it("returns 304 with matching private cache metadata", async () => {
+	it("returns 304 with matching private cache metadata", async () =>
+	{
 		const filePath = join(allowedRoot, "alice.txt");
 		writeFileSync(filePath, "fabricated text\n");
 		const fileStat = statSync(filePath);
 		const etag = `"${fileStat.mtimeMs}-${fileStat.size}"`;
 
 		const response = await handleFileRequest(
-			fileRequest(filePath, {"If-None-Match": etag}),
+			fileRequest(
+				filePath,
+				{
+					"If-None-Match": etag,
+				},
+			),
 			encodeFilePath(filePath),
 			configPath,
 		);
 
-		expect({
-			body: await response.text(),
-			headers: Object.fromEntries(response.headers),
-			status: response.status,
-		}).toStrictEqual({
-			body: "",
-			headers: {
-				"cache-control": "private, max-age=0, must-revalidate",
-				etag,
+		expect(
+			{
+				body: await response.text(),
+				headers: Object.fromEntries(response.headers),
+				status: response.status,
 			},
-			status: 304,
-		});
+		).toStrictEqual(
+			{
+				body: "",
+				headers:
+				{
+					"cache-control": "private, max-age=0, must-revalidate",
+					etag,
+				},
+				status: 304,
+			},
+		);
 	});
 
-	it("rejects outside files and symlinks that escape after realpath resolution", async () => {
+	it("rejects outside files and symlinks that escape after realpath resolution", async () =>
+	{
 		const outsidePath = join(outsideRoot, "bob.txt");
 		const symlinkPath = join(allowedRoot, "bob-link.txt");
 		writeFileSync(outsidePath, "outside content\n");
@@ -165,16 +235,26 @@ describe("file viewer API", () => {
 		);
 
 		expect(await Promise.all(responses.map(describeJsonResponse))).toStrictEqual(
-			Array.from({length: 2}, () => ({
-				body: {error: "File path is not allowed"},
-				cacheControl: "private, max-age=0, must-revalidate",
-				etag: null,
-				status: 403,
-			})),
+			Array.from(
+				{
+					length: 2,
+				},
+				() => (
+				{
+					body:
+					{
+						error: "File path is not allowed",
+					},
+					cacheControl: "private, max-age=0, must-revalidate",
+					etag: null,
+					status: 403,
+				}),
+			),
 		);
 	});
 
-	it("returns deliberate statuses for directories, binary files, oversized files, and missing files", async () => {
+	it("returns deliberate statuses for directories, binary files, oversized files, and missing files", async () =>
+	{
 		const directoryPath = join(allowedRoot, "alice-directory");
 		const binaryPath = join(allowedRoot, "alice.bin");
 		const oversizedPath = join(allowedRoot, "alice-large.txt");
@@ -192,13 +272,17 @@ describe("file viewer API", () => {
 
 		expect(await Promise.all(responses.map(describeJsonResponse))).toStrictEqual([
 			{
-				body: {error: "File path is not a regular file"},
+				body:
+				{
+					error: "File path is not a regular file",
+				},
 				cacheControl: "private, max-age=0, must-revalidate",
 				etag: null,
 				status: 403,
 			},
 			{
-				body: {
+				body:
+				{
 					error: "Binary files are not supported",
 					kind: "binary",
 					size: 3,
@@ -209,7 +293,8 @@ describe("file viewer API", () => {
 				status: 415,
 			},
 			{
-				body: {
+				body:
+				{
 					error: "File exceeds the 5 MiB size limit",
 					kind: "too-large",
 					size: FILE_CONTENT_SIZE_CAP_BYTES + 1,
@@ -220,7 +305,10 @@ describe("file viewer API", () => {
 				status: 413,
 			},
 			{
-				body: {error: "File not found"},
+				body:
+				{
+					error: "File not found",
+				},
 				cacheControl: "private, max-age=0, must-revalidate",
 				etag: null,
 				status: 404,
@@ -228,7 +316,8 @@ describe("file viewer API", () => {
 		]);
 	});
 
-	it("serves a binary file as text when forced", async () => {
+	it("serves a binary file as text when forced", async () =>
+	{
 		const binaryPath = join(allowedRoot, "alice.bin");
 		writeFileSync(binaryPath, Buffer.from([65, 0, 66]));
 		const token = encodeFilePath(binaryPath);
@@ -239,13 +328,25 @@ describe("file viewer API", () => {
 			configPath,
 		);
 
-		expect({body: await response.json(), status: response.status}).toStrictEqual({
-			body: {content: "A\u0000B", path: realpathSync(binaryPath)},
-			status: 200,
-		});
+		expect(
+			{
+				body: await response.json(),
+				status: response.status,
+			},
+		).toStrictEqual(
+			{
+				body:
+				{
+					content: "A\u0000B",
+					path: realpathSync(binaryPath),
+				},
+				status: 200,
+			},
+		);
 	});
 
-	it("streams images with their content type and refuses them outside the roots", async () => {
+	it("streams images with their content type and refuses them outside the roots", async () =>
+	{
 		const imagePath = join(allowedRoot, "bg.png");
 		const outsideImage = join(outsideRoot, "bob.png");
 		const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2]);
@@ -258,26 +359,44 @@ describe("file viewer API", () => {
 			),
 		);
 
-		expect({
-			inside: {
-				body: [...new Uint8Array(await inside!.arrayBuffer())],
-				contentType: inside!.headers.get("Content-Type"),
-				nosniff: inside!.headers.get("X-Content-Type-Options"),
-				status: inside!.status,
+		expect(
+			{
+				inside:
+				{
+					body: [...new Uint8Array(await inside!.arrayBuffer())],
+					contentType: inside!.headers.get("Content-Type"),
+					nosniff: inside!.headers.get("X-Content-Type-Options"),
+					status: inside!.status,
+				},
+				outside:
+				{
+					body: await outside!.json(),
+					status: outside!.status,
+				},
 			},
-			outside: {body: await outside!.json(), status: outside!.status},
-		}).toStrictEqual({
-			inside: {
-				body: [...bytes],
-				contentType: "image/png",
-				nosniff: "nosniff",
-				status: 200,
+		).toStrictEqual(
+			{
+				inside:
+				{
+					body: [...bytes],
+					contentType: "image/png",
+					nosniff: "nosniff",
+					status: 200,
+				},
+				outside:
+				{
+					body:
+					{
+						error: "File path is not allowed",
+					},
+					status: 403,
+				},
 			},
-			outside: {body: {error: "File path is not allowed"}, status: 403},
-		});
+		);
 	});
 
-	it("downloads oversized files as attachments", async () => {
+	it("downloads oversized files as attachments", async () =>
+	{
 		const oversizedPath = join(allowedRoot, "alice large.txt");
 		writeFileSync(oversizedPath, "");
 		truncateSync(oversizedPath, FILE_CONTENT_SIZE_CAP_BYTES + 1);
@@ -289,20 +408,25 @@ describe("file viewer API", () => {
 			configPath,
 		);
 
-		expect({
-			disposition: response.headers.get("Content-Disposition"),
-			contentType: response.headers.get("Content-Type"),
-			length: (await response.arrayBuffer()).byteLength,
-			status: response.status,
-		}).toStrictEqual({
-			disposition: "attachment; filename*=UTF-8''alice%20large.txt",
-			contentType: "application/octet-stream",
-			length: FILE_CONTENT_SIZE_CAP_BYTES + 1,
-			status: 200,
-		});
+		expect(
+			{
+				disposition: response.headers.get("Content-Disposition"),
+				contentType: response.headers.get("Content-Type"),
+				length: (await response.arrayBuffer()).byteLength,
+				status: response.status,
+			},
+		).toStrictEqual(
+			{
+				disposition: "attachment; filename*=UTF-8''alice%20large.txt",
+				contentType: "application/octet-stream",
+				length: FILE_CONTENT_SIZE_CAP_BYTES + 1,
+				status: 200,
+			},
+		);
 	});
 
-	it("rejects relative paths and malformed path tokens without exposing a raw-path endpoint", async () => {
+	it("rejects relative paths and malformed path tokens without exposing a raw-path endpoint", async () =>
+	{
 		const relativeToken = encodeFilePath("alice.txt");
 		const responses = await Promise.all([
 			handleFileRequest(fileRequest("alice.txt"), relativeToken, configPath),
@@ -312,19 +436,28 @@ describe("file viewer API", () => {
 
 		expect(await Promise.all(responses.map(describeJsonResponse))).toStrictEqual([
 			{
-				body: {error: "An absolute file path is required"},
+				body:
+				{
+					error: "An absolute file path is required",
+				},
 				cacheControl: "private, max-age=0, must-revalidate",
 				etag: null,
 				status: 400,
 			},
 			{
-				body: {error: "A valid encoded file path is required"},
+				body:
+				{
+					error: "A valid encoded file path is required",
+				},
 				cacheControl: "private, max-age=0, must-revalidate",
 				etag: null,
 				status: 400,
 			},
 			{
-				body: {error: "A valid encoded file path is required"},
+				body:
+				{
+					error: "A valid encoded file path is required",
+				},
 				cacheControl: "private, max-age=0, must-revalidate",
 				etag: null,
 				status: 400,

@@ -4,7 +4,8 @@ import {familyKey, setSidebarGroupsCollapsed, useSidebarState} from "../../lib/s
 import {useSidebarSelection} from "./selection-context";
 
 /** Upstream's `RB` disabled reasons for a section header menu's bulk items. */
-export const BULK_REASONS = {
+export const BULK_REASONS =
+{
 	selectAll: "Select all needs at least two visible sessions in this group.",
 	collapseAll: "Everything shown is already collapsed.",
 	expandAll: "Everything is already expanded.",
@@ -13,11 +14,13 @@ export const BULK_REASONS = {
 		"Every item here is pinned, open in a pane or window, already archived, or can’t be archived from here.",
 } as const;
 
-interface HeaderRow extends SessionGroupRow {
+interface HeaderRow extends SessionGroupRow
+{
 	archived: boolean;
 }
 
-export interface GroupBulkActions {
+export interface GroupBulkActions
+{
 	canSelectAll: boolean;
 	selectAll: () => void;
 	allCollapsed: boolean;
@@ -39,7 +42,8 @@ export function useGroupBulkActions(
 	sectionKeys: readonly string[],
 	activeItemId: string | null,
 	pinned: boolean,
-): GroupBulkActions {
+): GroupBulkActions
+{
 	const selection = useSidebarSelection();
 	const {collapsedFamilies, collapsedGroups} = useSidebarState();
 	const archiveSessions = useArchiveSessions();
@@ -59,20 +63,24 @@ export function useGroupBulkActions(
 	const collapsed = new Set(collapsedGroups);
 	return {
 		canSelectAll: selection !== null && visibleIds.length >= 2,
-		selectAll: () => {
+		selectAll: () =>
+		{
 			selection?.selectAll(visibleIds);
 		},
 		allCollapsed: sectionKeys.every((key) => collapsed.has(key)),
 		noneCollapsed: !sectionKeys.some((key) => collapsed.has(key)),
-		collapseAll: () => {
+		collapseAll: () =>
+		{
 			setSidebarGroupsCollapsed(sectionKeys, true);
 		},
-		expandAll: () => {
+		expandAll: () =>
+		{
 			setSidebarGroupsCollapsed(sectionKeys, false);
 		},
 		archivableIds,
 		archiveAllReason: unarchived.length === 0 ? BULK_REASONS.archiveAllEmpty : BULK_REASONS.archiveAllNone,
-		archiveAll: () => {
+		archiveAll: () =>
+		{
 			archiveSessions(archivableIds);
 		},
 	};

@@ -13,41 +13,50 @@ import {TileHost} from "../src/components/panes/tile-host";
 import {TileContentHosts} from "../src/lib/tile-content-hosts";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 
-class FakeStorage implements Storage {
+class FakeStorage implements Storage
+{
 	readonly values = new Map<string, string>();
 
-	get length(): number {
+	get length(): number
+	{
 		return this.values.size;
 	}
 
-	clear(): void {
+	clear(): void
+	{
 		this.values.clear();
 	}
 
-	getItem(key: string): string | null {
+	getItem(key: string): string | null
+	{
 		return this.values.get(key) ?? null;
 	}
 
-	key(index: number): string | null {
+	key(index: number): string | null
+	{
 		return [...this.values.keys()][index] ?? null;
 	}
 
-	removeItem(key: string): void {
+	removeItem(key: string): void
+	{
 		this.values.delete(key);
 	}
 
-	setItem(key: string, value: string): void {
+	setItem(key: string, value: string): void
+	{
 		this.values.set(key, value);
 	}
 }
 
-function ChatContent() {
+function ChatContent()
+{
 	const host = usePaneHost();
 	return (
 		<>
 			<button
 				type="button"
-				onClick={() => {
+				onClick={() =>
+				{
 					host.openPane("plan");
 				}}
 			>
@@ -59,11 +68,18 @@ function ChatContent() {
 	);
 }
 
-function prompt(): HTMLElement {
-	return screen.getByRole("textbox", {name: "Prompt"});
+function prompt(): HTMLElement
+{
+	return screen.getByRole(
+		"textbox",
+		{
+			name: "Prompt",
+		},
+	);
 }
 
-function renderHost(sessionId: string, onExpandWithoutPane = vi.fn<() => void>()) {
+function renderHost(sessionId: string, onExpandWithoutPane = vi.fn<() => void>())
+{
 	return render(
 		<TileHost sessionId={sessionId} onExpandWithoutPane={onExpandWithoutPane}>
 			<ChatContent />
@@ -71,17 +87,36 @@ function renderHost(sessionId: string, onExpandWithoutPane = vi.fn<() => void>()
 	);
 }
 
-function openTestPane() {
-	fireEvent.click(screen.getByRole("button", {name: "Open test pane"}));
+function openTestPane()
+{
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: "Open test pane",
+			},
+		),
+	);
 }
 
-function press(init: KeyboardEventInit) {
-	act(() => {
-		document.dispatchEvent(new KeyboardEvent("keydown", {bubbles: true, ...init}));
+function press(init: KeyboardEventInit)
+{
+	act(() =>
+	{
+		document.dispatchEvent(
+			new KeyboardEvent(
+				"keydown",
+				{
+					bubbles: true,
+					...init,
+				},
+			),
+		);
 	});
 }
 
-function separatorState() {
+function separatorState()
+{
 	const separator = screen.getByRole("separator");
 	return {
 		label: separator.getAttribute("aria-label"),
@@ -92,13 +127,15 @@ function separatorState() {
 	};
 }
 
-function FilesOpener() {
+function FilesOpener()
+{
 	const host = usePaneHost();
 	return (
 		<>
 			<button
 				type="button"
-				onClick={() => {
+				onClick={() =>
+				{
 					host.openPane("files");
 				}}
 			>
@@ -106,7 +143,8 @@ function FilesOpener() {
 			</button>
 			<button
 				type="button"
-				onClick={() => {
+				onClick={() =>
+				{
 					host.togglePane("files");
 				}}
 			>
@@ -116,54 +154,118 @@ function FilesOpener() {
 	);
 }
 
-interface StoredLayouts {
-	"session-fit"?: {root: {children: Array<{tileId?: string; flex: number}>}};
+interface StoredLayouts
+{
+	"session-fit"?:
+	{
+		root:
+		{
+			children: Array<
+			{
+				tileId?: string;
+				flex: number;
+			}>;
+		};
+	};
 }
 
 /** Opens Files with the tile root measuring `width` and returns the saved root row's tiles and flexes. */
-function savedFlexesAfterOpeningFiles(width: number, button = "Open files"): unknown {
+function savedFlexesAfterOpeningFiles(width: number, button = "Open files"): unknown
+{
 	vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue(
-		DOMRect.fromRect({x: 0, y: 0, width, height: 800}),
+		DOMRect.fromRect(
+			{
+				x: 0,
+				y: 0,
+				width,
+				height: 800,
+			},
+		),
 	);
-	const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
+	const unregisterFiles = registerPane(
+		"files",
+		{
+			title: "Files",
+			render: () => <p>Files body</p>,
+		},
+	);
 	render(
 		<TileHost sessionId="session-fit" onExpandWithoutPane={vi.fn<() => void>()}>
 			<FilesOpener />
 		</TileHost>,
 	);
-	fireEvent.click(screen.getByRole("button", {name: button}));
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: button,
+			},
+		),
+	);
 	const stored = JSON.parse(localStorage.getItem("ccb.paneLayout.v1") ?? "null") as StoredLayouts | null;
 	unregisterFiles();
 	return stored?.["session-fit"]?.root.children.map((child) => [child.tileId, child.flex]);
 }
 
-let unregister: () => void = () => {};
+let unregister: () => void = () =>
+{
+};
 
 /** jsdom implements neither pointer capture nor, having no layout, `elementFromPoint`. */
 const UNIMPLEMENTED_POINTER_APIS = ["setPointerCapture", "releasePointerCapture"] as const;
 
-function stubElementFromPoint(element: Element | null) {
-	Object.defineProperty(document, "elementFromPoint", {configurable: true, value: () => element});
+function stubElementFromPoint(element: Element | null)
+{
+	Object.defineProperty(
+		document,
+		"elementFromPoint",
+		{
+			configurable: true,
+			value: () => element,
+		},
+	);
 }
 
-beforeEach(() => {
-	for (const name of UNIMPLEMENTED_POINTER_APIS) {
-		Object.defineProperty(Element.prototype, name, {configurable: true, value: () => {}});
+beforeEach(() =>
+{
+	for (const name of UNIMPLEMENTED_POINTER_APIS)
+	{
+		Object.defineProperty(
+			Element.prototype,
+			name,
+			{
+				configurable: true,
+				value: () =>
+				{
+				},
+			},
+		);
 	}
 	vi.stubGlobal("localStorage", new FakeStorage());
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
 		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
 	);
 	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-		DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+		DOMRect.fromRect(
+			{
+				x: 0,
+				y: 0,
+				width: 1200,
+				height: 800,
+			},
+		),
 	);
-	unregister = registerPane("plan", {
-		title: "Test pane",
-		render: () => <p>Test pane body</p>,
-	});
+	unregister = registerPane(
+		"plan",
+		{
+			title: "Test pane",
+			render: () => <p>Test pane body</p>,
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	Reflect.deleteProperty(document, "elementFromPoint");
 	for (const name of UNIMPLEMENTED_POINTER_APIS) Reflect.deleteProperty(Element.prototype, name);
 	unregister();
@@ -172,49 +274,82 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe("TileHost", () => {
-	it("marks an opened pane with the upstream side_pane region and its kind as the screen", () => {
+describe("TileHost", () =>
+{
+	it("marks an opened pane with the upstream side_pane region and its kind as the screen", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 
 		const root = screen.getByText("Test pane body").closest("[data-pane-root]");
-		expect({
-			region: root?.getAttribute("data-perf-region"),
-			screen: root?.getAttribute("data-perf-screen"),
-		}).toStrictEqual({region: "side_pane", screen: "plan"});
+		expect(
+			{
+				region: root?.getAttribute("data-perf-region"),
+				screen: root?.getAttribute("data-perf-screen"),
+			},
+		).toStrictEqual(
+			{
+				region: "side_pane",
+				screen: "plan",
+			},
+		);
 	});
 
-	it("enters upstream's flat line mode once a pane opens: no radius or shadow, primary-ink header buttons", () => {
+	it("enters upstream's flat line mode once a pane opens: no radius or shadow, primary-ink header buttons", () =>
+	{
 		renderHost("session-a");
 		expect(document.querySelector("[data-tiles-line]")).toBeNull();
 		openTestPane();
 
 		const root = screen.getByText("Test pane body").closest("section[data-pane-root]");
-		const classesOf = (name: string) => screen.getByRole("button", {name}).className.split(" ");
-		expect({
-			line: document.querySelector("[data-tile-stack]")?.hasAttribute("data-tiles-line"),
-			radius: root?.classList.contains("rounded-r7"),
-			shadow: root?.classList.contains("shadow-panel-sm"),
-			card: root?.classList.contains("rounded-card"),
-			expand: {
-				primary: classesOf("Expand").includes("text-primary"),
-				secondary: classesOf("Expand").includes("text-secondary"),
+		const classesOf = (name: string) =>
+			screen
+				.getByRole(
+					"button",
+					{
+						name,
+					},
+				)
+				.className.split(" ");
+		expect(
+			{
+				line: document.querySelector("[data-tile-stack]")?.hasAttribute("data-tiles-line"),
+				radius: root?.classList.contains("rounded-r7"),
+				shadow: root?.classList.contains("shadow-panel-sm"),
+				card: root?.classList.contains("rounded-card"),
+				expand:
+				{
+					primary: classesOf("Expand").includes("text-primary"),
+					secondary: classesOf("Expand").includes("text-secondary"),
+				},
+				close:
+				{
+					primary: classesOf("Close").includes("text-primary"),
+					secondary: classesOf("Close").includes("text-secondary"),
+				},
 			},
-			close: {
-				primary: classesOf("Close").includes("text-primary"),
-				secondary: classesOf("Close").includes("text-secondary"),
+		).toStrictEqual(
+			{
+				line: true,
+				radius: false,
+				shadow: false,
+				card: false,
+				expand:
+				{
+					primary: true,
+					secondary: false,
+				},
+				close:
+				{
+					primary: true,
+					secondary: false,
+				},
 			},
-		}).toStrictEqual({
-			line: true,
-			radius: false,
-			shadow: false,
-			card: false,
-			expand: {primary: true, secondary: false},
-			close: {primary: true, secondary: false},
-		});
+		);
 	});
 
-	it("scrolls pane bodies in upstream's scroller with 10px scroll padding for scrollIntoView", () => {
+	it("scrolls pane bodies in upstream's scroller with 10px scroll padding for scrollIntoView", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 
@@ -226,98 +361,131 @@ describe("TileHost", () => {
 		]);
 	});
 
-	it("frames a pane's header as upstream's corner-row toolbar: actions, Expand and Close, then Move", () => {
+	it("frames a pane's header as upstream's corner-row toolbar: actions, Expand and Close, then Move", () =>
+	{
 		unregister();
-		unregister = registerPane("plan", {
-			title: "Test pane",
-			headerActions: (
-				<button type="button" aria-label="Pane action">
-					A
-				</button>
-			),
-			render: () => <p>Test pane body</p>,
-		});
+		unregister = registerPane(
+			"plan",
+			{
+				title: "Test pane",
+				headerActions: (
+					<button type="button" aria-label="Pane action">
+						A
+					</button>
+				),
+				render: () => <p>Test pane body</p>,
+			},
+		);
 		renderHost("session-a");
 		openTestPane();
 
 		const root = screen.getByText("Test pane body").closest("[data-pane-root]");
 		const toolbar = root?.querySelector(":scope > [data-pane-corner-row] > [role=toolbar]");
-		expect({
-			cornerRow: [
-				...(root?.querySelector(":scope > [data-pane-corner-row]")?.querySelectorAll("button") ?? []),
-			].map((button) => button.getAttribute("aria-label")),
-			toolbar: {
-				label: toolbar?.getAttribute("aria-label"),
-				cds: toolbar?.getAttribute("data-cds"),
-				classes: toolbar?.className.split(" "),
+		expect(
+			{
+				cornerRow: [
+					...(root?.querySelector(":scope > [data-pane-corner-row]")?.querySelectorAll("button") ?? []),
+				].map((button) => button.getAttribute("aria-label")),
+				toolbar:
+				{
+					label: toolbar?.getAttribute("aria-label"),
+					cds: toolbar?.getAttribute("data-cds"),
+					classes: toolbar?.className.split(" "),
+				},
+				actions: [...(toolbar?.querySelectorAll("[data-pane-actions] button") ?? [])].map((button) =>
+					button.getAttribute("aria-label"),
+				),
+				closeControl: toolbar
+					?.querySelector("[data-pane-actions] button[aria-label=Close]")
+					?.classList.contains("epitaxy-pane-close-control"),
+				moveInToolbar: toolbar?.querySelector("[aria-label=Move]") !== null,
+				tabStops: [...(toolbar?.querySelectorAll("button") ?? [])].map((button) => button.tabIndex),
+				body: root?.querySelector("[data-pane-body]")?.textContent,
 			},
-			actions: [...(toolbar?.querySelectorAll("[data-pane-actions] button") ?? [])].map((button) =>
-				button.getAttribute("aria-label"),
-			),
-			closeControl: toolbar
-				?.querySelector("[data-pane-actions] button[aria-label=Close]")
-				?.classList.contains("epitaxy-pane-close-control"),
-			moveInToolbar: toolbar?.querySelector("[aria-label=Move]") !== null,
-			tabStops: [...(toolbar?.querySelectorAll("button") ?? [])].map((button) => button.tabIndex),
-			body: root?.querySelector("[data-pane-body]")?.textContent,
-		}).toStrictEqual({
-			cornerRow: ["Pane action", "Expand", "Close", "Move"],
-			toolbar: {
-				label: "Test pane controls",
-				cds: "Toolbar",
-				classes: [
-					"flex",
-					"shrink-0",
-					"items-center",
-					"gap-xs",
-					"px-[var(--cds-toolbar-pad-block)]",
-					"pt-[var(--cds-toolbar-pad-block,0.5rem)]",
-					"pb-[calc(var(--cds-toolbar-pad-block,0.5rem)+var(--cds-toolbar-strip,0px))]",
-					"outline-none",
-				],
+		).toStrictEqual(
+			{
+				cornerRow: ["Pane action", "Expand", "Close", "Move"],
+				toolbar:
+				{
+					label: "Test pane controls",
+					cds: "Toolbar",
+					classes: [
+						"flex",
+						"shrink-0",
+						"items-center",
+						"gap-xs",
+						"px-[var(--cds-toolbar-pad-block)]",
+						"pt-[var(--cds-toolbar-pad-block,0.5rem)]",
+						"pb-[calc(var(--cds-toolbar-pad-block,0.5rem)+var(--cds-toolbar-strip,0px))]",
+						"outline-none",
+					],
+				},
+				actions: ["Pane action", "Expand", "Close"],
+				closeControl: true,
+				moveInToolbar: false,
+				tabStops: [0, -1, -1],
+				body: "Test pane body",
 			},
-			actions: ["Pane action", "Expand", "Close"],
-			closeControl: true,
-			moveInToolbar: false,
-			tabStops: [0, -1, -1],
-			body: "Test pane body",
-		});
+		);
 	});
 
-	it("renders an opened pane with its surface header", () => {
+	it("renders an opened pane with its surface header", () =>
+	{
 		renderHost("session-a");
 		expect(screen.queryByText("Test pane body")).toBeNull();
 
 		openTestPane();
 
 		const root = screen.getByText("Test pane body").closest("[data-pane-root]");
-		expect({
-			title: root?.querySelector("[data-pane-title]")?.textContent,
-			buttons: screen.getAllByRole("button").map((button) => ({
-				name: button.getAttribute("aria-label") ?? button.textContent,
-				keys: button.getAttribute("aria-keyshortcuts"),
-			})),
-			separator: separatorState(),
-		}).toStrictEqual({
-			title: "Test pane",
-			buttons: [
-				{name: "Move", keys: null},
-				{name: "Open test pane", keys: null},
-				{name: "Expand", keys: "Shift+Meta+\\"},
-				{name: "Close", keys: "Meta+\\"},
-				{name: "Move", keys: null},
-			],
-			separator: {
-				label: "Resize Chat and Test pane",
-				orientation: "vertical",
-				now: "67",
-				min: "27",
-				max: "77",
+		expect(
+			{
+				title: root?.querySelector("[data-pane-title]")?.textContent,
+				buttons: screen.getAllByRole("button").map((button) => (
+				{
+					name: button.getAttribute("aria-label") ?? button.textContent,
+					keys: button.getAttribute("aria-keyshortcuts"),
+				})),
+				separator: separatorState(),
 			},
-		});
+		).toStrictEqual(
+			{
+				title: "Test pane",
+				buttons: [
+					{
+						name: "Move",
+						keys: null,
+					},
+					{
+						name: "Open test pane",
+						keys: null,
+					},
+					{
+						name: "Expand",
+						keys: "Shift+Meta+\\",
+					},
+					{
+						name: "Close",
+						keys: "Meta+\\",
+					},
+					{
+						name: "Move",
+						keys: null,
+					},
+				],
+				separator:
+				{
+					label: "Resize Chat and Test pane",
+					orientation: "vertical",
+					now: "67",
+					min: "27",
+					max: "77",
+				},
+			},
+		);
 	});
 
-	it("lights the line-mode divider like upstream: seam hairline, 2px accent line on hover or drag, accent grip only on keyboard focus", () => {
+	it("lights the line-mode divider like upstream: seam hairline, 2px accent line on hover or drag, accent grip only on keyboard focus", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 		const separator = screen.getByRole("separator");
@@ -326,106 +494,161 @@ describe("TileHost", () => {
 		const grip = classesOf(separator.querySelector("[data-tile-divider-grip]"));
 		const dragging = () => separator.hasAttribute("data-dragging");
 
-		expect({
-			divider: {
-				seam: classesOf(separator).includes("bg-seam"),
-				border: classesOf(separator).includes("bg-border"),
-				zIndex: separator.style.zIndex,
-				startsAtDivider: separator.hasAttribute("data-starts-at-divider"),
-				hitZone: classesOf(separator).filter((name) => name.startsWith("before:")),
+		expect(
+			{
+				divider:
+				{
+					seam: classesOf(separator).includes("bg-seam"),
+					border: classesOf(separator).includes("bg-border"),
+					zIndex: separator.style.zIndex,
+					startsAtDivider: separator.hasAttribute("data-starts-at-divider"),
+					hitZone: classesOf(separator).filter((name) => name.startsWith("before:")),
+				},
+				dragging: [
+					dragging(),
+					(fireEvent.pointerDown(
+						separator,
+						{
+							pointerId: 1,
+						},
+					),
+					dragging()),
+					(fireEvent.pointerUp(
+						separator,
+						{
+							pointerId: 1,
+						},
+					),
+					dragging()),
+				],
+				line: line.filter((name) => /opacity|bg-|w-|delay|duration|left/.test(name)),
+				grip: grip.filter((name) => /opacity|bg-|absolute|1\/2|pointer-events|^[hw]-/.test(name)),
 			},
-			dragging: [
-				dragging(),
-				(fireEvent.pointerDown(separator, {pointerId: 1}), dragging()),
-				(fireEvent.pointerUp(separator, {pointerId: 1}), dragging()),
-			],
-			line: line.filter((name) => /opacity|bg-|w-|delay|duration|left/.test(name)),
-			grip: grip.filter((name) => /opacity|bg-|absolute|1\/2|pointer-events|^[hw]-/.test(name)),
-		}).toStrictEqual({
-			divider: {
-				seam: true,
-				border: false,
-				zIndex: "4",
-				startsAtDivider: false,
-				hitZone: [
-					"before:absolute",
-					"before:inset-y-0",
-					"before:-left-px",
-					"before:-right-1.5",
-					"before:content-['']",
+		).toStrictEqual(
+			{
+				divider:
+				{
+					seam: true,
+					border: false,
+					zIndex: "4",
+					startsAtDivider: false,
+					hitZone: [
+						"before:absolute",
+						"before:inset-y-0",
+						"before:-left-px",
+						"before:-right-1.5",
+						"before:content-['']",
+					],
+				},
+				dragging: [false, true, false],
+				line: [
+					"left-[-0.5px]",
+					"w-[2px]",
+					"bg-fill-accent",
+					"opacity-0",
+					"transition-opacity",
+					"duration-200",
+					"delay-100",
+					"group-hover/divider:opacity-100",
+					"group-data-dragging/divider:opacity-100",
+					"group-data-dragging/divider:duration-[120ms]",
+					"group-data-dragging/divider:delay-0",
+					"group-focus-visible/divider:opacity-0",
+				],
+				grip: [
+					"pointer-events-none",
+					"absolute",
+					"left-1/2",
+					"top-1/2",
+					"-translate-x-1/2",
+					"-translate-y-1/2",
+					"bg-fill-accent",
+					"opacity-0",
+					"transition-opacity",
+					"group-focus-visible/divider:opacity-100",
+					"h-14",
+					"w-[3px]",
 				],
 			},
-			dragging: [false, true, false],
-			line: [
-				"left-[-0.5px]",
-				"w-[2px]",
-				"bg-fill-accent",
-				"opacity-0",
-				"transition-opacity",
-				"duration-200",
-				"delay-100",
-				"group-hover/divider:opacity-100",
-				"group-data-dragging/divider:opacity-100",
-				"group-data-dragging/divider:duration-[120ms]",
-				"group-data-dragging/divider:delay-0",
-				"group-focus-visible/divider:opacity-0",
-			],
-			grip: [
-				"pointer-events-none",
-				"absolute",
-				"left-1/2",
-				"top-1/2",
-				"-translate-x-1/2",
-				"-translate-y-1/2",
-				"bg-fill-accent",
-				"opacity-0",
-				"transition-opacity",
-				"group-focus-visible/divider:opacity-100",
-				"h-14",
-				"w-[3px]",
-			],
-		});
+		);
 	});
 
-	it("defines upstream's seam and border-line colours for light and dark", () => {
+	it("defines upstream's seam and border-line colours for light and dark", () =>
+	{
 		const styles = readFileSync("src/styles/globals.css", "utf8");
-		expect({
-			seam: [...styles.matchAll(/--upstream-seam: (#[0-9a-f]+);/g)].map((match) => match[1]),
-			line: [...styles.matchAll(/--upstream-border-line: (#[0-9a-f]+);/g)].map((match) => match[1]),
-			seamColor: styles.includes("--color-seam: var(--upstream-seam);"),
-			lineColor: styles.includes("--color-border-line: var(--upstream-border-line);"),
-		}).toStrictEqual({
-			seam: ["#0000001a", "#ffffff1a"],
-			line: ["#0000001f", "#ffffff1f"],
-			seamColor: true,
-			lineColor: true,
-		});
+		expect(
+			{
+				seam: [...styles.matchAll(/--upstream-seam: (#[0-9a-f]+);/g)].map((match) => match[1]),
+				line: [...styles.matchAll(/--upstream-border-line: (#[0-9a-f]+);/g)].map((match) => match[1]),
+				seamColor: styles.includes("--color-seam: var(--upstream-seam);"),
+				lineColor: styles.includes("--color-border-line: var(--upstream-border-line);"),
+			},
+		).toStrictEqual(
+			{
+				seam: ["#0000001a", "#ffffff1a"],
+				line: ["#0000001f", "#ffffff1f"],
+				seamColor: true,
+				lineColor: true,
+			},
+		);
 	});
 
-	it("resizes a narrow pane (chat 2 : pane 1) with the keyboard and clamps to the minimum tile sizes", () => {
+	it("resizes a narrow pane (chat 2 : pane 1) with the keyboard and clamps to the minimum tile sizes", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 		const separator = screen.getByRole("separator");
 
-		fireEvent.keyDown(separator, {key: "ArrowLeft"});
+		fireEvent.keyDown(
+			separator,
+			{
+				key: "ArrowLeft",
+			},
+		);
 		const afterOneLeft = separatorState().now;
-		for (let i = 0; i < 40; i++) fireEvent.keyDown(separator, {key: "ArrowRight"});
+		for (let i = 0; i < 40; i++)
+			fireEvent.keyDown(
+				separator,
+				{
+					key: "ArrowRight",
+				},
+			);
 		const afterManyRight = separatorState().now;
-		for (let i = 0; i < 80; i++) fireEvent.keyDown(separator, {key: "ArrowLeft"});
+		for (let i = 0; i < 80; i++)
+			fireEvent.keyDown(
+				separator,
+				{
+					key: "ArrowLeft",
+				},
+			);
 		const afterManyLeft = separatorState().now;
 
-		expect({afterOneLeft, afterManyRight, afterManyLeft}).toStrictEqual({
-			afterOneLeft: "65",
-			afterManyRight: "77",
-			afterManyLeft: "27",
-		});
+		expect(
+			{
+				afterOneLeft,
+				afterManyRight,
+				afterManyLeft,
+			},
+		).toStrictEqual(
+			{
+				afterOneLeft: "65",
+				afterManyRight: "77",
+				afterManyLeft: "27",
+			},
+		);
 	});
 
-	it("remembers a resized pane's flex per kind and opens it at that split on another session (upstream lastPaneFlexByKind)", () => {
+	it("remembers a resized pane's flex per kind and opens it at that split on another session (upstream lastPaneFlexByKind)", () =>
+	{
 		const first = renderHost("session-a");
 		openTestPane();
 		const before = separatorState().now;
-		fireEvent.keyDown(screen.getByRole("separator"), {key: "ArrowLeft"});
+		fireEvent.keyDown(
+			screen.getByRole("separator"),
+			{
+				key: "ArrowLeft",
+			},
+		);
 		const resized = separatorState().now;
 		const stored: unknown = JSON.parse(localStorage.getItem("ccb.lastPaneFlexByKind.v1") ?? "null");
 		first.unmount();
@@ -433,63 +656,149 @@ describe("TileHost", () => {
 		renderHost("session-b");
 		openTestPane();
 
-		expect({before, resized, stored, reopened: separatorState().now}).toStrictEqual({
-			before: "67",
-			resized: "65",
-			stored: {plan: 1.061278},
-			reopened: "65",
-		});
+		expect(
+			{
+				before,
+				resized,
+				stored,
+				reopened: separatorState().now,
+			},
+		).toStrictEqual(
+			{
+				before: "67",
+				resized: "65",
+				stored:
+				{
+					plan: 1.061278,
+				},
+				reopened: "65",
+			},
+		);
 	});
 
-	it("closes the focused pane with ⌘\\", () => {
+	it("closes the focused pane with ⌘\\", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 
-		press({key: "\\", code: "Backslash", metaKey: true});
+		press(
+			{
+				key: "\\",
+				code: "Backslash",
+				metaKey: true,
+			},
+		);
 
-		expect({
-			body: screen.queryByText("Test pane body"),
-			separators: screen.queryAllByRole("separator").length,
-		}).toStrictEqual({body: null, separators: 0});
+		expect(
+			{
+				body: screen.queryByText("Test pane body"),
+				separators: screen.queryAllByRole("separator").length,
+			},
+		).toStrictEqual(
+			{
+				body: null,
+				separators: 0,
+			},
+		);
 	});
 
-	it("hands focus to the chat's focus target when the pane holding it closes (upstream ca67f2c9d retain effect)", () => {
-		const closeFocusedPane = (close: () => void, expandFirst = false) => {
+	it("hands focus to the chat's focus target when the pane holding it closes (upstream ca67f2c9d retain effect)", () =>
+	{
+		const closeFocusedPane = (close: () => void, expandFirst = false) =>
+		{
 			const view = renderHost("session-a");
 			openTestPane();
-			if (expandFirst) fireEvent.click(screen.getByRole("button", {name: "Expand"}));
-			screen.getByRole("button", {name: "Close"}).focus();
+			if (expandFirst)
+				fireEvent.click(
+					screen.getByRole(
+						"button",
+						{
+							name: "Expand",
+						},
+					),
+				);
+			screen
+				.getByRole(
+					"button",
+					{
+						name: "Close",
+					},
+				)
+				.focus();
 			close();
 			const landed = document.activeElement === prompt() ? "Prompt" : document.activeElement?.tagName;
 			view.unmount();
 			return landed;
 		};
-		const closeButton = () => {
-			fireEvent.click(screen.getByRole("button", {name: "Close"}));
+		const closeButton = () =>
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Close",
+					},
+				),
+			);
 		};
 
-		expect({
-			click: closeFocusedPane(closeButton),
-			shortcut: closeFocusedPane(() => {
-				press({key: "\\", code: "Backslash", metaKey: true});
-			}),
-			expanded: closeFocusedPane(closeButton, true),
-		}).toStrictEqual({click: "Prompt", shortcut: "Prompt", expanded: "Prompt"});
+		expect(
+			{
+				click: closeFocusedPane(closeButton),
+				shortcut: closeFocusedPane(() =>
+				{
+					press(
+						{
+							key: "\\",
+							code: "Backslash",
+							metaKey: true,
+						},
+					);
+				}),
+				expanded: closeFocusedPane(closeButton, true),
+			},
+		).toStrictEqual(
+			{
+				click: "Prompt",
+				shortcut: "Prompt",
+				expanded: "Prompt",
+			},
+		);
 	});
 
-	it("leaves focus alone when a pane closes while focus is in another tile", () => {
+	it("leaves focus alone when a pane closes while focus is in another tile", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
-		const opener = screen.getByRole("button", {name: "Open test pane"});
+		const opener = screen.getByRole(
+			"button",
+			{
+				name: "Open test pane",
+			},
+		);
 		opener.focus();
 
-		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Close",
+				},
+			),
+		);
 
 		expect(document.activeElement).toBe(opener);
 	});
 
-	it("makes the closed pane's nearest neighbour the focused tile, so a second ⌘\\ closes it", () => {
-		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
+	it("makes the closed pane's nearest neighbour the focused tile, so a second ⌘\\ closes it", () =>
+	{
+		const unregisterFiles = registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <p>Files body</p>,
+			},
+		);
 		render(
 			<TileHost sessionId="session-a" onExpandWithoutPane={vi.fn<() => void>()}>
 				<ChatContent />
@@ -497,88 +806,177 @@ describe("TileHost", () => {
 			</TileHost>,
 		);
 		openTestPane();
-		fireEvent.click(screen.getByRole("button", {name: "Open files"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Open files",
+				},
+			),
+		);
 		const files = screen.getByText("Files body").closest<HTMLElement>("[data-pane-root]");
 		if (files === null) throw new Error("Files pane missing");
-		within(files).getByRole("button", {name: "Close"}).focus();
+		within(files)
+			.getByRole(
+				"button",
+				{
+					name: "Close",
+				},
+			)
+			.focus();
 
-		press({key: "\\", code: "Backslash", metaKey: true});
-		const afterFirst = {
+		press(
+			{
+				key: "\\",
+				code: "Backslash",
+				metaKey: true,
+			},
+		);
+		const afterFirst =
+		{
 			focus: document.activeElement === prompt(),
 			panes: [...document.querySelectorAll("[data-pane-kind]")].map((pane) =>
 				pane.getAttribute("data-pane-kind"),
 			),
 		};
-		press({key: "\\", code: "Backslash", metaKey: true});
+		press(
+			{
+				key: "\\",
+				code: "Backslash",
+				metaKey: true,
+			},
+		);
 		unregisterFiles();
 
-		expect({
-			afterFirst,
-			afterSecond: document.querySelectorAll("[data-pane-kind]").length,
-		}).toStrictEqual({afterFirst: {focus: true, panes: ["plan"]}, afterSecond: 0});
+		expect(
+			{
+				afterFirst,
+				afterSecond: document.querySelectorAll("[data-pane-kind]").length,
+			},
+		).toStrictEqual(
+			{
+				afterFirst:
+				{
+					focus: true,
+					panes: ["plan"],
+				},
+				afterSecond: 0,
+			},
+		);
 	});
 
-	it("toggles the expand overlay with ⇧⌘\\", () => {
+	it("toggles the expand overlay with ⇧⌘\\", () =>
+	{
 		const onExpandWithoutPane = vi.fn<() => void>();
 		renderHost("session-a", onExpandWithoutPane);
 
-		press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});
+		press(
+			{
+				key: "|",
+				code: "Backslash",
+				metaKey: true,
+				shiftKey: true,
+			},
+		);
 		const callsWithoutPane = onExpandWithoutPane.mock.calls.length;
 
 		openTestPane();
 		const chatTile = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
-		press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});
-		const chatState = () => ({
+		press(
+			{
+				key: "|",
+				code: "Backslash",
+				metaKey: true,
+				shiftKey: true,
+			},
+		);
+		const chatState = () => (
+		{
 			hidden: chatTile?.hidden,
 			inert: chatTile?.hasAttribute("inert"),
 			style: chatTile?.getAttribute("style"),
 		});
-		const expanded = {
+		const expanded =
+		{
 			chat: chatState(),
 			overlay: document.querySelector("[data-pane-overlay]") !== null,
-			toggle: screen.queryByRole("button", {name: "Collapse"}) !== null,
+			toggle:
+				screen.queryByRole(
+					"button",
+					{
+						name: "Collapse",
+					},
+				) !== null,
 		};
-		press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});
-		const collapsed = {
+		press(
+			{
+				key: "|",
+				code: "Backslash",
+				metaKey: true,
+				shiftKey: true,
+			},
+		);
+		const collapsed =
+		{
 			chat: chatState(),
 			overlay: document.querySelector("[data-pane-overlay]") !== null,
-			toggle: screen.queryByRole("button", {name: "Collapse"}) !== null,
+			toggle:
+				screen.queryByRole(
+					"button",
+					{
+						name: "Collapse",
+					},
+				) !== null,
 		};
 
-		expect({
-			callsWithoutPane,
-			expanded,
-			collapsed,
-			calls: onExpandWithoutPane.mock.calls.length,
-		}).toStrictEqual({
-			callsWithoutPane: 1,
-			expanded: {
-				chat: {
-					hidden: false,
-					inert: true,
-					style: "flex: 1.332777 1 0px; min-width: 0px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page); position: absolute; inset: 0px; visibility: hidden; content-visibility: hidden; pointer-events: none;",
-				},
-				overlay: true,
-				toggle: true,
+		expect(
+			{
+				callsWithoutPane,
+				expanded,
+				collapsed,
+				calls: onExpandWithoutPane.mock.calls.length,
 			},
-			collapsed: {
-				chat: {
-					hidden: false,
-					inert: false,
-					style: "flex: 1.332777 1 0px; min-width: 100px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page);",
+		).toStrictEqual(
+			{
+				callsWithoutPane: 1,
+				expanded:
+				{
+					chat:
+					{
+						hidden: false,
+						inert: true,
+						style: "flex: 1.332777 1 0px; min-width: 0px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page); position: absolute; inset: 0px; visibility: hidden; content-visibility: hidden; pointer-events: none;",
+					},
+					overlay: true,
+					toggle: true,
 				},
-				overlay: false,
-				toggle: false,
+				collapsed:
+				{
+					chat:
+					{
+						hidden: false,
+						inert: false,
+						style: "flex: 1.332777 1 0px; min-width: 100px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page);",
+					},
+					overlay: false,
+					toggle: false,
+				},
+				calls: 1,
 			},
-			calls: 1,
-		});
+		);
 	});
 
-	it("maximises the expanded pane over the whole window with a 9px inset", () => {
+	it("maximises the expanded pane over the whole window with a 9px inset", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 
-		const expand = screen.getByRole("button", {name: "Expand"});
+		const expand = screen.getByRole(
+			"button",
+			{
+				name: "Expand",
+			},
+		);
 		const haspopup = expand.getAttribute("aria-haspopup");
 		fireEvent.click(expand);
 		const overlayClasses =
@@ -588,94 +986,175 @@ describe("TileHost", () => {
 				?.closest("[data-pane-overlay]")
 				?.className.split(" ") ?? [];
 
-		expect({
-			haspopup,
-			fixed: overlayClasses.includes("fixed"),
-			inset: overlayClasses.includes("inset-[9px]"),
-		}).toStrictEqual({haspopup: "dialog", fixed: true, inset: true});
+		expect(
+			{
+				haspopup,
+				fixed: overlayClasses.includes("fixed"),
+				inset: overlayClasses.includes("inset-[9px]"),
+			},
+		).toStrictEqual(
+			{
+				haspopup: "dialog",
+				fixed: true,
+				inset: true,
+			},
+		);
 	});
 
-	it.each([false, true])("preserves the pane reader and local state through expansion (nested: %s)", (nested) => {
+	it.each([false, true])("preserves the pane reader and local state through expansion (nested: %s)", (nested) =>
+	{
 		unregister();
-		unregister = registerPane("plan", {
-			title: "Test pane",
-			render: () => (
-				<div data-testid="pane-reader" style={{overflow: "auto", height: 100}}>
-					<input aria-label="Draft comment" defaultValue="" />
-					<details>
-						<summary>Example file</summary>
-						<div style={{height: 1000}}>Example lines</div>
-					</details>
-				</div>
-			),
-		});
+		unregister = registerPane(
+			"plan",
+			{
+				title: "Test pane",
+				render: () => (
+					<div
+						data-testid="pane-reader"
+						style={
+						{
+							overflow: "auto",
+							height: 100,
+						}}
+					>
+						<input aria-label="Draft comment" defaultValue="" />
+						<details>
+							<summary>Example file</summary>
+							<div
+								style={
+								{
+									height: 1000,
+								}}
+							>
+								Example lines
+							</div>
+						</details>
+					</div>
+				),
+			},
+		);
 		localStorage.setItem(
 			"ccb.paneLayout.v1",
-			JSON.stringify({
-				"session-a": {
-					root: {
-						kind: "stack",
-						direction: "row",
-						flex: 1,
-						children: nested
-							? [
-									{
-										kind: "stack",
-										direction: "column",
-										flex: 1,
-										children: [
-											{kind: "tile", tileId: "chat", flex: 1},
-											{kind: "tile", tileId: "plan", flex: 1},
-										],
-									},
-								]
-							: [
-									{kind: "tile", tileId: "chat", flex: 1},
-									{kind: "tile", tileId: "plan", flex: 1},
-								],
+			JSON.stringify(
+				{
+					"session-a":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children: nested
+								? [
+										{
+											kind: "stack",
+											direction: "column",
+											flex: 1,
+											children: [
+												{
+													kind: "tile",
+													tileId: "chat",
+													flex: 1,
+												},
+												{
+													kind: "tile",
+													tileId: "plan",
+													flex: 1,
+												},
+											],
+										},
+									]
+								: [
+										{
+											kind: "tile",
+											tileId: "chat",
+											flex: 1,
+										},
+										{
+											kind: "tile",
+											tileId: "plan",
+											flex: 1,
+										},
+									],
+						},
+						expanded: null,
+						focused: "plan",
 					},
-					expanded: null,
-					focused: "plan",
 				},
-			}),
+			),
 		);
 		renderHost("session-a");
 		const reader = screen.getByTestId("pane-reader");
-		const draft = screen.getByRole<HTMLInputElement>("textbox", {name: "Draft comment"});
+		const draft = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Draft comment",
+			},
+		);
 		const disclosure = reader.querySelector("details")!;
 		const chat = document.querySelector<HTMLElement>("[data-tile-slot=chat]")!;
 		disclosure.open = true;
-		fireEvent.change(draft, {target: {value: "Alice's draft"}});
+		fireEvent.change(
+			draft,
+			{
+				target:
+				{
+					value: "Alice's draft",
+				},
+			},
+		);
 		reader.scrollTop = 300;
 		reader.scrollLeft = 100;
 
-		for (const toggle of ["Expand", "Collapse", "Expand", "Collapse"]) {
-			fireEvent.click(screen.getByRole("button", {name: toggle}));
+		for (const toggle of ["Expand", "Collapse", "Expand", "Collapse"])
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: toggle,
+					},
+				),
+			);
 			expect(screen.getByTestId("pane-reader")).toBe(reader);
 			expect(document.querySelector("[data-tile-slot=chat]")).toBe(chat);
-			expect({
-				top: reader.scrollTop,
-				left: reader.scrollLeft,
-				draft: draft.value,
-				open: disclosure.open,
-				chatInert: chat.hasAttribute("inert"),
-				readers: screen.getAllByTestId("pane-reader").length,
-			}).toStrictEqual({
-				top: 300,
-				left: 100,
-				draft: "Alice's draft",
-				open: true,
-				chatInert: toggle === "Expand",
-				readers: 1,
-			});
+			expect(
+				{
+					top: reader.scrollTop,
+					left: reader.scrollLeft,
+					draft: draft.value,
+					open: disclosure.open,
+					chatInert: chat.hasAttribute("inert"),
+					readers: screen.getAllByTestId("pane-reader").length,
+				},
+			).toStrictEqual(
+				{
+					top: 300,
+					left: 100,
+					draft: "Alice's draft",
+					open: true,
+					chatInert: toggle === "Expand",
+					readers: 1,
+				},
+			);
 		}
 	});
 
-	it("returns focus to Expand after collapsing, or to the tile an expand took it from (upstream ca67f2c9d hide effect)", () => {
-		const toggleShortcut = () => {
-			press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});
+	it("returns focus to Expand after collapsing, or to the tile an expand took it from (upstream ca67f2c9d hide effect)", () =>
+	{
+		const toggleShortcut = () =>
+		{
+			press(
+				{
+					key: "|",
+					code: "Backslash",
+					metaKey: true,
+					shiftKey: true,
+				},
+			);
 		};
-		const focusName = () => {
+		const focusName = () =>
+		{
 			const active = document.activeElement;
 			if (active === null || active === document.body) return "body";
 			if (active.classList.contains("tiles-drag-handle")) return "Move grip";
@@ -683,7 +1162,12 @@ describe("TileHost", () => {
 			return `${inPane}:${active.getAttribute("aria-label") ?? active.textContent}`;
 		};
 		/** Expands the pane with the composer focused, runs `between`, collapses, and names focus after each step. */
-		const expandFromPrompt = (between: () => void = () => {}) => {
+		const expandFromPrompt = (
+			between: () => void = () =>
+			{
+			},
+		) =>
+		{
 			const view = renderHost("session-a");
 			openTestPane();
 			prompt().focus();
@@ -693,85 +1177,151 @@ describe("TileHost", () => {
 			toggleShortcut();
 			const collapsed = focusName();
 			view.unmount();
-			return {expanded, collapsed};
+			return {
+				expanded,
+				collapsed,
+			};
 		};
 
 		renderHost("session-a");
 		openTestPane();
-		fireEvent.click(screen.getByRole("button", {name: "Expand"}));
-		fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Expand",
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Collapse",
+				},
+			),
+		);
 		const mouse = focusName();
 		cleanup();
 
-		expect({
-			mouse,
-			keyboard: expandFromPrompt(),
-			pointerCancels: expandFromPrompt(() => {
-				fireEvent.pointerDown(document.body);
-			}),
-			typingCancels: expandFromPrompt(() => {
-				press({key: "a"});
-			}),
-		}).toStrictEqual({
-			mouse: "pane:Expand",
-			keyboard: {expanded: "pane:Collapse", collapsed: "chat:Prompt"},
-			pointerCancels: {expanded: "pane:Collapse", collapsed: "pane:Expand"},
-			typingCancels: {expanded: "pane:Collapse", collapsed: "pane:Expand"},
-		});
+		expect(
+			{
+				mouse,
+				keyboard: expandFromPrompt(),
+				pointerCancels: expandFromPrompt(() =>
+				{
+					fireEvent.pointerDown(document.body);
+				}),
+				typingCancels: expandFromPrompt(() =>
+				{
+					press(
+						{
+							key: "a",
+						},
+					);
+				}),
+			},
+		).toStrictEqual(
+			{
+				mouse: "pane:Expand",
+				keyboard:
+				{
+					expanded: "pane:Collapse",
+					collapsed: "chat:Prompt",
+				},
+				pointerCancels:
+				{
+					expanded: "pane:Collapse",
+					collapsed: "pane:Expand",
+				},
+				typingCancels:
+				{
+					expanded: "pane:Collapse",
+					collapsed: "pane:Expand",
+				},
+			},
+		);
 	});
 
-	function paneMoveButton(): HTMLElement {
+	function paneMoveButton(): HTMLElement
+	{
 		const pane = screen.getByText("Test pane body").closest<HTMLElement>("[data-pane-root]");
 		if (pane === null) throw new Error("pane missing");
-		return within(pane).getByRole("button", {name: "Move"});
+		return within(pane).getByRole(
+			"button",
+			{
+				name: "Move",
+			},
+		);
 	}
 
-	function layoutShape() {
+	function layoutShape()
+	{
 		return {
 			columns: document.querySelectorAll("[data-tile-stack=column]").length,
 			tiles: [...document.querySelectorAll("[data-tile-slot]")].map((tile) =>
 				tile.getAttribute("data-tile-slot"),
 			),
-			preview: [...document.querySelectorAll("[data-tile-move-preview]")].map((preview) => ({
+			preview: [...document.querySelectorAll("[data-tile-move-preview]")].map((preview) => (
+			{
 				tile: preview.closest("[data-tile-slot]")?.getAttribute("data-tile-slot") ?? null,
 				side: preview.getAttribute("data-tile-move-preview"),
 			})),
 		};
 	}
 
-	it("shows upstream's Move tooltip on the move grip", () => {
+	it("shows upstream's Move tooltip on the move grip", () =>
+	{
 		vi.useFakeTimers();
-		try {
+		try
+		{
 			renderHost("session-a");
 			openTestPane();
 			const anchor = paneMoveButton().parentElement;
 			if (anchor === null) throw new Error("Move has no tooltip anchor");
 
 			fireEvent.pointerEnter(anchor);
-			act(() => {
+			act(() =>
+			{
 				vi.advanceTimersByTime(400);
 			});
 
 			expect(screen.queryByRole("tooltip")?.textContent ?? null).toBe("Move");
-		} finally {
+		}
+		finally
+		{
 			vi.useRealTimers();
 		}
 	});
 
-	it("gives the chat tile a Move grip once a side tile exists", () => {
+	it("gives the chat tile a Move grip once a side tile exists", () =>
+	{
 		renderHost("session-a");
 		const chatMoves = () =>
 			within(document.querySelector<HTMLElement>("[data-tile-slot=chat]") ?? document.body).queryAllByRole(
 				"button",
-				{name: "Move"},
+				{
+					name: "Move",
+				},
 			).length;
 		const before = chatMoves();
 		openTestPane();
 
-		expect({before, after: chatMoves()}).toStrictEqual({before: 0, after: 1});
+		expect(
+			{
+				before,
+				after: chatMoves(),
+			},
+		).toStrictEqual(
+			{
+				before: 0,
+				after: 1,
+			},
+		);
 	});
 
-	it("describes the move keys with upstream's full hint", () => {
+	it("describes the move keys with upstream's full hint", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 		const hintId = paneMoveButton().getAttribute("aria-describedby") ?? "";
@@ -781,58 +1331,165 @@ describe("TileHost", () => {
 		);
 	});
 
-	it("moves along the row immediately", () => {
+	it("moves along the row immediately", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 
-		fireEvent.keyDown(paneMoveButton(), {key: "ArrowLeft"});
+		fireEvent.keyDown(
+			paneMoveButton(),
+			{
+				key: "ArrowLeft",
+			},
+		);
 
-		expect(layoutShape()).toStrictEqual({columns: 0, tiles: ["plan", "chat"], preview: []});
+		expect(layoutShape()).toStrictEqual(
+			{
+				columns: 0,
+				tiles: ["plan", "chat"],
+				preview: [],
+			},
+		);
 	});
 
-	it("previews a perpendicular split and commits it with Enter", () => {
+	it("previews a perpendicular split and commits it with Enter", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 
-		fireEvent.keyDown(paneMoveButton(), {key: "ArrowDown"});
+		fireEvent.keyDown(
+			paneMoveButton(),
+			{
+				key: "ArrowDown",
+			},
+		);
 		const previewing = layoutShape();
-		fireEvent.keyDown(paneMoveButton(), {key: "Enter"});
+		fireEvent.keyDown(
+			paneMoveButton(),
+			{
+				key: "Enter",
+			},
+		);
 
-		expect({previewing, committed: layoutShape()}).toStrictEqual({
-			previewing: {columns: 0, tiles: ["chat", "plan"], preview: [{tile: "chat", side: "bottom"}]},
-			committed: {columns: 1, tiles: ["chat", "plan"], preview: []},
-		});
+		expect(
+			{
+				previewing,
+				committed: layoutShape(),
+			},
+		).toStrictEqual(
+			{
+				previewing:
+				{
+					columns: 0,
+					tiles: ["chat", "plan"],
+					preview: [
+						{
+							tile: "chat",
+							side: "bottom",
+						},
+					],
+				},
+				committed:
+				{
+					columns: 1,
+					tiles: ["chat", "plan"],
+					preview: [],
+				},
+			},
+		);
 	});
 
-	it("cancels a split preview with Escape", () => {
+	it("cancels a split preview with Escape", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 
-		fireEvent.keyDown(paneMoveButton(), {key: "ArrowDown"});
-		fireEvent.keyDown(paneMoveButton(), {key: "Escape"});
+		fireEvent.keyDown(
+			paneMoveButton(),
+			{
+				key: "ArrowDown",
+			},
+		);
+		fireEvent.keyDown(
+			paneMoveButton(),
+			{
+				key: "Escape",
+			},
+		);
 
-		expect(layoutShape()).toStrictEqual({columns: 0, tiles: ["chat", "plan"], preview: []});
+		expect(layoutShape()).toStrictEqual(
+			{
+				columns: 0,
+				tiles: ["chat", "plan"],
+				preview: [],
+			},
+		);
 	});
 
-	it("drags the Move grip over another tile to preview and commit a split", () => {
+	it("drags the Move grip over another tile to preview and commit a split", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 		const chatTile = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
 		stubElementFromPoint(chatTile);
 		const grip = paneMoveButton();
 
-		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
-		fireEvent.pointerMove(grip, {pointerId: 1, clientX: 600, clientY: 700});
+		fireEvent.pointerDown(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 900,
+				clientY: 10,
+			},
+		);
+		fireEvent.pointerMove(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 600,
+				clientY: 700,
+			},
+		);
 		const previewing = layoutShape();
-		fireEvent.pointerUp(grip, {pointerId: 1, clientX: 600, clientY: 700});
+		fireEvent.pointerUp(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 600,
+				clientY: 700,
+			},
+		);
 
-		expect({previewing, committed: layoutShape()}).toStrictEqual({
-			previewing: {columns: 0, tiles: ["chat", "plan"], preview: [{tile: "chat", side: "bottom"}]},
-			committed: {columns: 1, tiles: ["chat", "plan"], preview: []},
-		});
+		expect(
+			{
+				previewing,
+				committed: layoutShape(),
+			},
+		).toStrictEqual(
+			{
+				previewing:
+				{
+					columns: 0,
+					tiles: ["chat", "plan"],
+					preview: [
+						{
+							tile: "chat",
+							side: "bottom",
+						},
+					],
+				},
+				committed:
+				{
+					columns: 1,
+					tiles: ["chat", "plan"],
+					preview: [],
+				},
+			},
+		);
 	});
 
-	it("marks the tiles root data-tiles-moving only while a Move drag is under way, hiding the divider hairline as upstream", () => {
+	it("marks the tiles root data-tiles-moving only while a Move drag is under way, hiding the divider hairline as upstream", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-slot=chat]"));
@@ -840,33 +1497,82 @@ describe("TileHost", () => {
 		const moving = () => document.querySelector("[data-tile-stack]")?.hasAttribute("data-tiles-moving");
 
 		const states = [moving()];
-		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
+		fireEvent.pointerDown(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 900,
+				clientY: 10,
+			},
+		);
 		states.push(moving());
-		fireEvent.pointerMove(grip, {pointerId: 1, clientX: 600, clientY: 700});
+		fireEvent.pointerMove(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 600,
+				clientY: 700,
+			},
+		);
 		states.push(moving());
-		fireEvent.pointerUp(grip, {pointerId: 1, clientX: 600, clientY: 700});
+		fireEvent.pointerUp(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 600,
+				clientY: 700,
+			},
+		);
 		states.push(moving());
-		fireEvent.pointerDown(paneMoveButton(), {pointerId: 2, clientX: 900, clientY: 10});
-		fireEvent.pointerMove(paneMoveButton(), {pointerId: 2, clientX: 600, clientY: 300});
+		fireEvent.pointerDown(
+			paneMoveButton(),
+			{
+				pointerId: 2,
+				clientX: 900,
+				clientY: 10,
+			},
+		);
+		fireEvent.pointerMove(
+			paneMoveButton(),
+			{
+				pointerId: 2,
+				clientX: 600,
+				clientY: 300,
+			},
+		);
 		states.push(moving());
-		fireEvent.pointerCancel(paneMoveButton(), {pointerId: 2});
+		fireEvent.pointerCancel(
+			paneMoveButton(),
+			{
+				pointerId: 2,
+			},
+		);
 		states.push(moving());
 
-		expect({
-			states,
-			gapPainted: screen
-				.getByRole("separator")
-				.className.split(" ")
-				.includes("[[data-tiles-line][data-tiles-moving]_&]:bg-surface-2"),
-		}).toStrictEqual({states: [false, false, true, false, true, false], gapPainted: true});
+		expect(
+			{
+				states,
+				gapPainted: screen
+					.getByRole("separator")
+					.className.split(" ")
+					.includes("[[data-tiles-line][data-tiles-moving]_&]:bg-surface-2"),
+			},
+		).toStrictEqual(
+			{
+				states: [false, false, true, false, true, false],
+				gapPainted: true,
+			},
+		);
 	});
 
-	it("disables the dividers during a Move drag as upstream's isDisabled: isDraggingTile does", () => {
+	it("disables the dividers during a Move drag as upstream's isDisabled: isDraggingTile does", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-slot=chat]"));
 		const grip = paneMoveButton();
-		const state = () => {
+		const state = () =>
+		{
 			const separator = screen.getByRole("separator");
 			return {
 				tabIndex: separator.tabIndex,
@@ -875,26 +1581,81 @@ describe("TileHost", () => {
 			};
 		};
 
-		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
-		fireEvent.pointerMove(grip, {pointerId: 1, clientX: 600, clientY: 700});
+		fireEvent.pointerDown(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 900,
+				clientY: 10,
+			},
+		);
+		fireEvent.pointerMove(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 600,
+				clientY: 700,
+			},
+		);
 		const during = state();
 		const before = screen.getByRole("separator").getAttribute("aria-valuenow");
-		fireEvent.keyDown(screen.getByRole("separator"), {key: "ArrowLeft"});
-		fireEvent.pointerDown(screen.getByRole("separator"), {pointerId: 2});
-		const ignored = {
+		fireEvent.keyDown(
+			screen.getByRole("separator"),
+			{
+				key: "ArrowLeft",
+			},
+		);
+		fireEvent.pointerDown(
+			screen.getByRole("separator"),
+			{
+				pointerId: 2,
+			},
+		);
+		const ignored =
+		{
 			now: screen.getByRole("separator").getAttribute("aria-valuenow") === before,
 			dragging: screen.getByRole("separator").hasAttribute("data-dragging"),
 		};
-		fireEvent.pointerUp(grip, {pointerId: 1, clientX: 900, clientY: 10});
+		fireEvent.pointerUp(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 900,
+				clientY: 10,
+			},
+		);
 
-		expect({during, ignored, after: state()}).toStrictEqual({
-			during: {tabIndex: -1, disabled: "true", pointerEvents: "none"},
-			ignored: {now: true, dragging: false},
-			after: {tabIndex: 0, disabled: null, pointerEvents: ""},
-		});
+		expect(
+			{
+				during,
+				ignored,
+				after: state(),
+			},
+		).toStrictEqual(
+			{
+				during:
+				{
+					tabIndex: -1,
+					disabled: "true",
+					pointerEvents: "none",
+				},
+				ignored:
+				{
+					now: true,
+					dragging: false,
+				},
+				after:
+				{
+					tabIndex: 0,
+					disabled: null,
+					pointerEvents: "",
+				},
+			},
+		);
 	});
 
-	it("marks only the dragged tile data-tile-moving during a Move drag, for upstream's is-moving ring", () => {
+	it("marks only the dragged tile data-tile-moving during a Move drag, for upstream's is-moving ring", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-slot=chat]"));
@@ -903,66 +1664,131 @@ describe("TileHost", () => {
 			[...document.querySelectorAll<HTMLElement>("[data-tile-moving]")].map((el) => el.dataset["tileSlot"]);
 
 		const states = [marked()];
-		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
+		fireEvent.pointerDown(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 900,
+				clientY: 10,
+			},
+		);
 		states.push(marked());
-		fireEvent.pointerMove(grip, {pointerId: 1, clientX: 600, clientY: 300});
+		fireEvent.pointerMove(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 600,
+				clientY: 300,
+			},
+		);
 		states.push(marked());
-		fireEvent.pointerUp(grip, {pointerId: 1, clientX: 900, clientY: 10});
+		fireEvent.pointerUp(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 900,
+				clientY: 10,
+			},
+		);
 		states.push(marked());
 
 		expect(states).toStrictEqual([[], [], ["plan"], []]);
 	});
 
-	it("rings the moving tile with upstream's border-strong, shell-ground and shadow-md, and CanvasText in forced colours", () => {
+	it("rings the moving tile with upstream's border-strong, shell-ground and shadow-md, and CanvasText in forced colours", () =>
+	{
 		const css = readFileSync("src/styles/globals.css", "utf8");
-		expect({
-			ring: css.includes(
-				"[data-tiles-line] [data-tile-moving] {\n\tbox-shadow:\n\t\t0 0 0 1px var(--upstream-border-strong),\n\t\t0 0 0 1px var(--tile-shell-ground, transparent),\n\t\tvar(--cds-shadow-md);\n}",
-			),
-			forced: css.includes(
-				"@media (forced-colors: active) {\n\t[data-tiles-line] [data-tile-moving] {\n\t\toutline: 1px solid CanvasText;\n\t}\n}",
-			),
-			paneGround: css.includes("[data-tile-slot] {\n\t--tile-shell-ground: var(--color-surface-2);\n}"),
-			chatGround: css.includes('[data-tile-slot="chat"] {\n\t--tile-shell-ground: var(--color-surface-1);\n}'),
-		}).toStrictEqual({ring: true, forced: true, paneGround: true, chatGround: true});
+		expect(
+			{
+				ring: css.includes(
+					"[data-tiles-line] [data-tile-moving]\n{\n\tbox-shadow:\n\t\t0 0 0 1px var(--upstream-border-strong),\n\t\t0 0 0 1px var(--tile-shell-ground, transparent),\n\t\tvar(--cds-shadow-md);\n}",
+				),
+				forced: css.includes(
+					"@media (forced-colors: active)\n{\n\t[data-tiles-line] [data-tile-moving]\n\t{\n\t\toutline: 1px solid CanvasText;\n\t}\n}",
+				),
+				paneGround: css.includes("[data-tile-slot]\n{\n\t--tile-shell-ground: var(--color-surface-2);\n}"),
+				chatGround: css.includes(
+					'[data-tile-slot="chat"]\n{\n\t--tile-shell-ground: var(--color-surface-1);\n}',
+				),
+			},
+		).toStrictEqual(
+			{
+				ring: true,
+				forced: true,
+				paneGround: true,
+				chatGround: true,
+			},
+		);
 	});
 
-	it("ignores a Move grip press that does not leave the grip", () => {
+	it("ignores a Move grip press that does not leave the grip", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
 		const chatTile = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
 		stubElementFromPoint(chatTile);
 		const grip = paneMoveButton();
 
-		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
-		fireEvent.pointerMove(grip, {pointerId: 1, clientX: 901, clientY: 11});
-		fireEvent.pointerUp(grip, {pointerId: 1, clientX: 901, clientY: 11});
+		fireEvent.pointerDown(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 900,
+				clientY: 10,
+			},
+		);
+		fireEvent.pointerMove(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 901,
+				clientY: 11,
+			},
+		);
+		fireEvent.pointerUp(
+			grip,
+			{
+				pointerId: 1,
+				clientX: 901,
+				clientY: 11,
+			},
+		);
 
-		expect(layoutShape()).toStrictEqual({columns: 0, tiles: ["chat", "plan"], preview: []});
+		expect(layoutShape()).toStrictEqual(
+			{
+				columns: 0,
+				tiles: ["chat", "plan"],
+				preview: [],
+			},
+		);
 	});
 
-	it("fits an opened pane so the chat reaches 320px on a 700px tile root (upstream withRoomForChat)", () => {
+	it("fits an opened pane so the chat reaches 320px on a 700px tile root (upstream withRoomForChat)", () =>
+	{
 		expect(savedFlexesAfterOpeningFiles(700)).toStrictEqual([
 			["chat", 0.915594],
 			["files", 1.084406],
 		]);
 	});
 
-	it("fits a pane opened through togglePane too", () => {
+	it("fits a pane opened through togglePane too", () =>
+	{
 		expect(savedFlexesAfterOpeningFiles(700, "Toggle files")).toStrictEqual([
 			["chat", 0.915594],
 			["files", 1.084406],
 		]);
 	});
 
-	it("keeps the default 2:3 split when the chat already has 320px at 1272", () => {
+	it("keeps the default 2:3 split when the chat already has 320px at 1272", () =>
+	{
 		expect(savedFlexesAfterOpeningFiles(1272)).toStrictEqual([
 			["chat", 2],
 			["files", 3],
 		]);
 	});
 
-	it("persists the layout per session id across remounts", () => {
+	it("persists the layout per session id across remounts", () =>
+	{
 		const first = renderHost("session-a");
 		openTestPane();
 		first.unmount();
@@ -974,18 +1800,28 @@ describe("TileHost", () => {
 		renderHost("session-b");
 		const otherSession = screen.queryByText("Test pane body") !== null;
 
-		expect({restored, otherSession}).toStrictEqual({
-			restored: true,
-			otherSession: false,
-		});
+		expect(
+			{
+				restored,
+				otherSession,
+			},
+		).toStrictEqual(
+			{
+				restored: true,
+				otherSession: false,
+			},
+		);
 	});
 });
 
-describe("TileHost on a phone", () => {
-	function mockViewport(width: number) {
+describe("TileHost on a phone", () =>
+{
+	function mockViewport(width: number)
+	{
 		vi.stubGlobal(
 			"matchMedia",
-			vi.fn((query: string) => ({
+			vi.fn((query: string) => (
+			{
 				matches: query === PHONE_SHEET_QUERY ? width < 640 : false,
 				media: query,
 				onchange: null,
@@ -998,7 +1834,8 @@ describe("TileHost on a phone", () => {
 		);
 	}
 
-	function paneSlotState() {
+	function paneSlotState()
+	{
 		const slot = screen.getByText("Test pane body").closest("[data-tile-slot]");
 		if (slot === null) throw new Error("pane slot missing");
 		return {
@@ -1006,7 +1843,8 @@ describe("TileHost on a phone", () => {
 			fullWidth: ["fixed", "inset-0", "w-full"].every((name) => slot.classList.contains(name)),
 			paneMin: slot.classList.contains("min-w-[280px]"),
 			sticky: slot.classList.contains("sticky"),
-			separators: screen.queryAllByRole("separator").map((separator) => ({
+			separators: screen.queryAllByRole("separator").map((separator) => (
+			{
 				hairline: separator.classList.contains("w-px"),
 				ruled: separator.classList.contains("bg-seam"),
 				gap: separator.classList.contains("w-3"),
@@ -1014,7 +1852,8 @@ describe("TileHost on a phone", () => {
 		};
 	}
 
-	function chatSlotState() {
+	function chatSlotState()
+	{
 		const slot = document.querySelector("[data-tile-slot=chat]");
 		if (slot === null) throw new Error("chat slot missing");
 		return {
@@ -1023,24 +1862,44 @@ describe("TileHost on a phone", () => {
 		};
 	}
 
-	it("keeps the pane beside the chat at its 280px minimum, squeezing the chat to 100px, below 640px", () => {
+	it("keeps the pane beside the chat at its 280px minimum, squeezing the chat to 100px, below 640px", () =>
+	{
 		mockViewport(390);
 		renderHost("session-phone");
 		openTestPane();
 
-		expect({pane: paneSlotState(), chat: chatSlotState()}).toStrictEqual({
-			pane: {
-				phone: true,
-				fullWidth: false,
-				paneMin: true,
-				sticky: false,
-				separators: [{hairline: true, ruled: true, gap: false}],
+		expect(
+			{
+				pane: paneSlotState(),
+				chat: chatSlotState(),
 			},
-			chat: {fixed: false, chatMin: true},
-		});
+		).toStrictEqual(
+			{
+				pane:
+				{
+					phone: true,
+					fullWidth: false,
+					paneMin: true,
+					sticky: false,
+					separators: [
+						{
+							hairline: true,
+							ruled: true,
+							gap: false,
+						},
+					],
+				},
+				chat:
+				{
+					fixed: false,
+					chatMin: true,
+				},
+			},
+		);
 	});
 
-	it("skips the open fit on a phone, where edits keep the saved desktop columns", () => {
+	it("skips the open fit on a phone, where edits keep the saved desktop columns", () =>
+	{
 		mockViewport(390);
 		expect(savedFlexesAfterOpeningFiles(700)).toStrictEqual([
 			["chat", 2],
@@ -1048,63 +1907,110 @@ describe("TileHost on a phone", () => {
 		]);
 	});
 
-	it("leaves the phone chat slot without upstream's line-mode shell inset until a live 390px read confirms it", () => {
+	it("leaves the phone chat slot without upstream's line-mode shell inset until a live 390px read confirms it", () =>
+	{
 		mockViewport(390);
 		renderHost("session-phone");
 		openTestPane();
 
 		const slot = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
-		expect({
-			padding: slot?.style.padding,
-			end: slot?.getAttribute("data-chat-gutter-end"),
-		}).toStrictEqual({padding: "", end: null});
+		expect(
+			{
+				padding: slot?.style.padding,
+				end: slot?.getAttribute("data-chat-gutter-end"),
+			},
+		).toStrictEqual(
+			{
+				padding: "",
+				end: null,
+			},
+		);
 	});
 
-	it("hides non-owning stack wrappers with upstream rt, never inert, while a nested phone pane is expanded", () => {
+	it("hides non-owning stack wrappers with upstream rt, never inert, while a nested phone pane is expanded", () =>
+	{
 		mockViewport(390);
-		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
-		const unregisterTasks = registerPane("background-tasks", {title: "Tasks", render: () => <p>Tasks body</p>});
+		const unregisterFiles = registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <p>Files body</p>,
+			},
+		);
+		const unregisterTasks = registerPane(
+			"background-tasks",
+			{
+				title: "Tasks",
+				render: () => <p>Tasks body</p>,
+			},
+		);
 		localStorage.setItem(
 			"ccb.paneLayout.v1",
-			JSON.stringify({
-				"session-phone": {
-					root: {
-						kind: "stack",
-						direction: "row",
-						flex: 1,
-						children: [
-							{
-								kind: "stack",
-								direction: "column",
-								flex: 1,
-								children: [
-									{kind: "tile", tileId: "chat", flex: 1},
-									{kind: "tile", tileId: "plan", flex: 1},
-								],
-							},
-							{
-								kind: "stack",
-								direction: "column",
-								flex: 1,
-								children: [
-									{kind: "tile", tileId: "files", flex: 1},
-									{kind: "tile", tileId: "background-tasks", flex: 1},
-								],
-							},
-						],
+			JSON.stringify(
+				{
+					"session-phone":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children: [
+								{
+									kind: "stack",
+									direction: "column",
+									flex: 1,
+									children: [
+										{
+											kind: "tile",
+											tileId: "chat",
+											flex: 1,
+										},
+										{
+											kind: "tile",
+											tileId: "plan",
+											flex: 1,
+										},
+									],
+								},
+								{
+									kind: "stack",
+									direction: "column",
+									flex: 1,
+									children: [
+										{
+											kind: "tile",
+											tileId: "files",
+											flex: 1,
+										},
+										{
+											kind: "tile",
+											tileId: "background-tasks",
+											flex: 1,
+										},
+									],
+								},
+							],
+						},
+						expanded: null,
+						focused: "plan",
 					},
-					expanded: null,
-					focused: "plan",
 				},
-			}),
+			),
 		);
 		renderHost("session-phone");
-		const pane = screen.getByRole("region", {name: "Test pane"});
+		const pane = screen.getByRole(
+			"region",
+			{
+				name: "Test pane",
+			},
+		);
 		const wrappers = Array.from(document.querySelectorAll<HTMLElement>("[data-tile-stack=column]")).map(
 			(stack) => stack.parentElement!,
 		);
 		// Upstream ft: a fully hidden stack merges rt into its style but never takes `inert`; its tiles carry their own.
-		const wrapperState = (wrapper: HTMLElement) => ({
+		const wrapperState = (wrapper: HTMLElement) => (
+		{
 			fixed: wrapper.classList.contains("fixed"),
 			hidden: wrapper.hidden,
 			inert: wrapper.hasAttribute("inert"),
@@ -1114,70 +2020,150 @@ describe("TileHost on a phone", () => {
 				wrapper.style.contentVisibility === "hidden" &&
 				wrapper.style.pointerEvents === "none",
 		});
-		fireEvent.click(within(pane).getByRole("button", {name: "Expand"}));
-		expect({
-			wrappers: wrappers.map(wrapperState),
-			filesInert: document.querySelector("[data-tile-slot=files]")?.hasAttribute("inert"),
-		}).toStrictEqual({
-			wrappers: [
-				{fixed: false, hidden: false, inert: false, hiddenStyle: false},
-				{fixed: false, hidden: false, inert: false, hiddenStyle: true},
-			],
-			filesInert: true,
-		});
-		expect(screen.getByRole("region", {name: "Test pane"})).toBe(pane);
-		expect(paneSlotState()).toStrictEqual({
-			phone: true,
-			fullWidth: true,
-			paneMin: false,
-			sticky: false,
-			separators: [],
-		});
-		fireEvent.click(within(pane).getByRole("button", {name: "Collapse"}));
+		fireEvent.click(
+			within(pane).getByRole(
+				"button",
+				{
+					name: "Expand",
+				},
+			),
+		);
+		expect(
+			{
+				wrappers: wrappers.map(wrapperState),
+				filesInert: document.querySelector("[data-tile-slot=files]")?.hasAttribute("inert"),
+			},
+		).toStrictEqual(
+			{
+				wrappers: [
+					{
+						fixed: false,
+						hidden: false,
+						inert: false,
+						hiddenStyle: false,
+					},
+					{
+						fixed: false,
+						hidden: false,
+						inert: false,
+						hiddenStyle: true,
+					},
+				],
+				filesInert: true,
+			},
+		);
+		expect(
+			screen.getByRole(
+				"region",
+				{
+					name: "Test pane",
+				},
+			),
+		).toBe(pane);
+		expect(paneSlotState()).toStrictEqual(
+			{
+				phone: true,
+				fullWidth: true,
+				paneMin: false,
+				sticky: false,
+				separators: [],
+			},
+		);
+		fireEvent.click(
+			within(pane).getByRole(
+				"button",
+				{
+					name: "Collapse",
+				},
+			),
+		);
 		expect(wrappers.map(wrapperState)).toStrictEqual([
-			{fixed: false, hidden: false, inert: false, hiddenStyle: false},
-			{fixed: false, hidden: false, inert: false, hiddenStyle: false},
+			{
+				fixed: false,
+				hidden: false,
+				inert: false,
+				hiddenStyle: false,
+			},
+			{
+				fixed: false,
+				hidden: false,
+				inert: false,
+				hiddenStyle: false,
+			},
 		]);
 		unregisterFiles();
 		unregisterTasks();
 	});
 
-	it("drops the session card's inset at every width while a side pane shares the row, as upstream's line tiles run edge to edge", () => {
+	it("drops the session card's inset at every width while a side pane shares the row, as upstream's line tiles run edge to edge", () =>
+	{
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		const lastShellRule = styles.lastIndexOf("[data-route-tile-shell] {");
 		const lineRule = styles.indexOf(
 			'[data-route-tile-shell="session"]:has([data-tiles-line]) { border-width: 0; padding: 0;',
 		);
 
-		expect({
-			lineRule: lineRule !== -1,
-			afterDesktopShell: lineRule > lastShellRule,
-			phoneOnlyRule: styles.includes("[data-pane-phone])"),
-		}).toStrictEqual({lineRule: true, afterDesktopShell: true, phoneOnlyRule: false});
+		expect(
+			{
+				lineRule: lineRule !== -1,
+				afterDesktopShell: lineRule > lastShellRule,
+				phoneOnlyRule: styles.includes("[data-pane-phone])"),
+			},
+		).toStrictEqual(
+			{
+				lineRule: true,
+				afterDesktopShell: true,
+				phoneOnlyRule: false,
+			},
+		);
 	});
 
-	it("flattens the pane surface below 640px, as upstream's phone pane has no radius or card shadow", () => {
+	it("flattens the pane surface below 640px, as upstream's phone pane has no radius or card shadow", () =>
+	{
 		mockViewport(390);
 		renderHost("session-phone");
 		openTestPane();
 
-		const classes = screen.getByRole("region", {name: "Test pane"}).className.split(" ");
-		expect({radius: classes.includes("rounded-r7"), shadow: classes.includes("shadow-panel-sm")}).toStrictEqual({
-			radius: false,
-			shadow: false,
-		});
+		const classes = screen
+			.getByRole(
+				"region",
+				{
+					name: "Test pane",
+				},
+			)
+			.className.split(" ");
+		expect(
+			{
+				radius: classes.includes("rounded-r7"),
+				shadow: classes.includes("shadow-panel-sm"),
+			},
+		).toStrictEqual(
+			{
+				radius: false,
+				shadow: false,
+			},
+		);
 	});
 
-	it("stacks a second pane under the first in one 280px column below 640px, Changes included", () => {
+	it("stacks a second pane under the first in one 280px column below 640px, Changes included", () =>
+	{
 		mockViewport(390);
-		const unregisterChanges = registerPane("changes", {title: "Changes", render: () => <p>Changes body</p>});
-		function TwoPaneChat() {
+		const unregisterChanges = registerPane(
+			"changes",
+			{
+				title: "Changes",
+				render: () => <p>Changes body</p>,
+			},
+		);
+		function TwoPaneChat()
+		{
 			const host = usePaneHost();
 			return (
 				<>
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							host.openPane("plan");
 						}}
 					>
@@ -1185,7 +2171,8 @@ describe("TileHost on a phone", () => {
 					</button>
 					<button
 						type="button"
-						onClick={() => {
+						onClick={() =>
+						{
 							host.openPane("changes");
 						}}
 					>
@@ -1200,60 +2187,112 @@ describe("TileHost on a phone", () => {
 			</TileHost>,
 		);
 		openTestPane();
-		fireEvent.click(screen.getByRole("button", {name: "Open changes"}));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Open changes",
+				},
+			),
+		);
 
 		const root = document.querySelector("[data-tile-stack=row]");
 		const column = document.querySelector("[data-tile-stack=column]");
-		expect({
-			rootChildren: Array.from(root?.children ?? []).map((child) =>
-				child.matches("[role=separator]") ? "divider" : (child.getAttribute("data-tile-slot") ?? "stack"),
-			),
-			column: Array.from(column?.children ?? []).map((child) =>
-				child.matches("[role=separator]")
-					? {
-							divider: child.classList.contains("h-px") && !child.classList.contains("h-3"),
-							ruled: child.classList.contains("bg-border-line"),
-						}
-					: child.getAttribute("data-tile-slot"),
-			),
-			columnPhone: column?.parentElement?.hasAttribute("data-pane-phone"),
-			columnMin: column?.parentElement?.classList.contains("min-w-[280px]"),
-		}).toStrictEqual({
-			rootChildren: ["chat", "divider", "stack"],
-			column: ["plan", {divider: true, ruled: true}, "changes"],
-			columnPhone: true,
-			columnMin: true,
-		});
+		expect(
+			{
+				rootChildren: Array.from(root?.children ?? []).map((child) =>
+					child.matches("[role=separator]") ? "divider" : (child.getAttribute("data-tile-slot") ?? "stack"),
+				),
+				column: Array.from(column?.children ?? []).map((child) =>
+					child.matches("[role=separator]")
+						?
+							{
+								divider: child.classList.contains("h-px") && !child.classList.contains("h-3"),
+								ruled: child.classList.contains("bg-border-line"),
+							}
+						: child.getAttribute("data-tile-slot"),
+				),
+				columnPhone: column?.parentElement?.hasAttribute("data-pane-phone"),
+				columnMin: column?.parentElement?.classList.contains("min-w-[280px]"),
+			},
+		).toStrictEqual(
+			{
+				rootChildren: ["chat", "divider", "stack"],
+				column: [
+					"plan",
+					{
+						divider: true,
+						ruled: true,
+					},
+					"changes",
+				],
+				columnPhone: true,
+				columnMin: true,
+			},
+		);
 		unregisterChanges();
 	});
 
-	it("reflows a saved three-column layout into one stacked side column below 640px without overwriting it", () => {
-		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
-		const unregisterChanges = registerPane("changes", {title: "Changes", render: () => <p>Changes body</p>});
-		const saved = JSON.stringify({
-			"session-phone": {
-				root: {
-					kind: "stack",
-					direction: "row",
-					flex: 1,
-					children: [
-						{kind: "tile", tileId: "chat", flex: 2},
-						{
-							kind: "stack",
-							direction: "column",
-							flex: 1,
-							children: [
-								{kind: "tile", tileId: "files", flex: 1},
-								{kind: "tile", tileId: "plan", flex: 1},
-							],
-						},
-						{kind: "tile", tileId: "changes", flex: 1},
-					],
-				},
-				expanded: null,
-				focused: "changes",
+	it("reflows a saved three-column layout into one stacked side column below 640px without overwriting it", () =>
+	{
+		const unregisterFiles = registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <p>Files body</p>,
 			},
-		});
+		);
+		const unregisterChanges = registerPane(
+			"changes",
+			{
+				title: "Changes",
+				render: () => <p>Changes body</p>,
+			},
+		);
+		const saved = JSON.stringify(
+			{
+				"session-phone":
+				{
+					root:
+					{
+						kind: "stack",
+						direction: "row",
+						flex: 1,
+						children: [
+							{
+								kind: "tile",
+								tileId: "chat",
+								flex: 2,
+							},
+							{
+								kind: "stack",
+								direction: "column",
+								flex: 1,
+								children: [
+									{
+										kind: "tile",
+										tileId: "files",
+										flex: 1,
+									},
+									{
+										kind: "tile",
+										tileId: "plan",
+										flex: 1,
+									},
+								],
+							},
+							{
+								kind: "tile",
+								tileId: "changes",
+								flex: 1,
+							},
+						],
+					},
+					expanded: null,
+					focused: "changes",
+				},
+			},
+		);
 		localStorage.setItem("ccb.paneLayout.v1", saved);
 		mockViewport(390);
 		renderHost("session-phone");
@@ -1261,96 +2300,167 @@ describe("TileHost on a phone", () => {
 
 		const root = document.querySelector("[data-tile-stack=row]");
 		const column = document.querySelector("[data-tile-stack=column]");
-		expect({
-			rootChildren: Array.from(root?.children ?? []).map((child) =>
-				child.matches("[role=separator]") ? "divider" : (child.getAttribute("data-tile-slot") ?? "stack"),
-			),
-			column: Array.from(column?.children ?? []).map((child) =>
-				child.matches("[role=separator]") ? "divider" : child.getAttribute("data-tile-slot"),
-			),
-			stored: JSON.parse(localStorage.getItem("ccb.paneLayout.v1") ?? "null"),
-		}).toStrictEqual({
-			rootChildren: ["chat", "divider", "stack"],
-			column: ["files", "divider", "plan", "divider", "changes"],
-			stored: {"session-phone": {...JSON.parse(saved)["session-phone"], focused: "files"}},
-		});
+		expect(
+			{
+				rootChildren: Array.from(root?.children ?? []).map((child) =>
+					child.matches("[role=separator]") ? "divider" : (child.getAttribute("data-tile-slot") ?? "stack"),
+				),
+				column: Array.from(column?.children ?? []).map((child) =>
+					child.matches("[role=separator]") ? "divider" : child.getAttribute("data-tile-slot"),
+				),
+				stored: JSON.parse(localStorage.getItem("ccb.paneLayout.v1") ?? "null"),
+			},
+		).toStrictEqual(
+			{
+				rootChildren: ["chat", "divider", "stack"],
+				column: ["files", "divider", "plan", "divider", "changes"],
+				stored:
+				{
+					"session-phone":
+					{
+						...JSON.parse(saved)["session-phone"],
+						focused: "files",
+					},
+				},
+			},
+		);
 		unregisterFiles();
 		unregisterChanges();
 	});
 
-	it("flattens the chat card at every width while a side pane shares the row, as upstream's line tiles are square-cornered", () => {
+	it("flattens the chat card at every width while a side pane shares the row, as upstream's line tiles are square-cornered", () =>
+	{
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		const tileFrame = readFileSync("src/components/session-tile-frame.tsx", "utf8");
 		const fallback = readFileSync("src/components/app-shell-fallback.tsx", "utf8");
 
-		expect({
-			rule: styles.includes(
-				'[data-route-tile-shell="session"]:has([data-tiles-line]) [data-session-tile] { border-radius: 0; box-shadow: none; }',
-			),
-			frameMarked: tileFrame.includes("data-session-tile"),
-			fallbackMarked: fallback.includes("data-session-tile"),
-		}).toStrictEqual({rule: true, frameMarked: true, fallbackMarked: true});
+		expect(
+			{
+				rule: styles.includes(
+					'[data-route-tile-shell="session"]:has([data-tiles-line]) [data-session-tile] { border-radius: 0; box-shadow: none; }',
+				),
+				frameMarked: tileFrame.includes("data-session-tile"),
+				fallbackMarked: fallback.includes("data-session-tile"),
+			},
+		).toStrictEqual(
+			{
+				rule: true,
+				frameMarked: true,
+				fallbackMarked: true,
+			},
+		);
 	});
 
-	it("keeps the side-by-side tile with a hairline resize handle at 640px and up, as upstream's line mode does", () => {
+	it("keeps the side-by-side tile with a hairline resize handle at 640px and up, as upstream's line mode does", () =>
+	{
 		mockViewport(640);
 		renderHost("session-wide");
 		openTestPane();
 
-		expect({pane: paneSlotState(), chat: chatSlotState()}).toStrictEqual({
-			pane: {
-				phone: false,
-				fullWidth: false,
-				paneMin: false,
-				sticky: false,
-				separators: [{hairline: true, ruled: true, gap: false}],
+		expect(
+			{
+				pane: paneSlotState(),
+				chat: chatSlotState(),
 			},
-			chat: {fixed: false, chatMin: false},
-		});
+		).toStrictEqual(
+			{
+				pane:
+				{
+					phone: false,
+					fullWidth: false,
+					paneMin: false,
+					sticky: false,
+					separators: [
+						{
+							hairline: true,
+							ruled: true,
+							gap: false,
+						},
+					],
+				},
+				chat:
+				{
+					fixed: false,
+					chatMin: false,
+				},
+			},
+		);
 	});
 });
 
-describe("TileHost corner handle", () => {
+describe("TileHost corner handle", () =>
+{
 	let unregisterStacked: Array<() => void> = [];
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		unregisterStacked = [
-			registerPane("files", {title: "Files", render: () => <p>Files body</p>}),
-			registerPane("background-tasks", {title: "Background tasks", render: () => <p>Tasks body</p>}),
+			registerPane(
+				"files",
+				{
+					title: "Files",
+					render: () => <p>Files body</p>,
+				},
+			),
+			registerPane(
+				"background-tasks",
+				{
+					title: "Background tasks",
+					render: () => <p>Tasks body</p>,
+				},
+			),
 		];
 		localStorage.setItem(
 			"ccb.paneLayout.v1",
-			JSON.stringify({
-				"session-a": {
-					root: {
-						kind: "stack",
-						direction: "row",
-						flex: 1,
-						children: [
-							{kind: "tile", tileId: "chat", flex: 2},
-							{
-								kind: "stack",
-								direction: "column",
-								flex: 1,
-								children: [
-									{kind: "tile", tileId: "files", flex: 1},
-									{kind: "tile", tileId: "background-tasks", flex: 1},
-								],
-							},
-						],
+			JSON.stringify(
+				{
+					"session-a":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children: [
+								{
+									kind: "tile",
+									tileId: "chat",
+									flex: 2,
+								},
+								{
+									kind: "stack",
+									direction: "column",
+									flex: 1,
+									children: [
+										{
+											kind: "tile",
+											tileId: "files",
+											flex: 1,
+										},
+										{
+											kind: "tile",
+											tileId: "background-tasks",
+											flex: 1,
+										},
+									],
+								},
+							],
+						},
+						expanded: null,
+						focused: "files",
 					},
-					expanded: null,
-					focused: "files",
 				},
-			}),
+			),
 		);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		for (const fn of unregisterStacked) fn();
 	});
 
-	function flexes() {
+	function flexes()
+	{
 		const flexOf = (selector: string) =>
 			document.querySelector<HTMLElement>(selector)?.closest<HTMLElement>("[style]")?.style.flex ?? null;
 		return {
@@ -1361,42 +2471,145 @@ describe("TileHost corner handle", () => {
 		};
 	}
 
-	it("unmounts inactive pane contents while retaining the expanded sibling", () => {
+	it("unmounts inactive pane contents while retaining the expanded sibling", () =>
+	{
 		renderHost("session-a");
-		const files = screen.getByRole("region", {name: "Files"});
-		const tasks = screen.getByRole("region", {name: "Background tasks"});
-		fireEvent.click(within(files).getByRole("button", {name: "Expand"}));
-		expect(screen.getByRole("region", {name: "Files"})).toBe(files);
-		expect(screen.queryByRole("region", {name: "Background tasks"})).toBe(null);
-		expect({
-			connected: tasks.isConnected,
-			overlays: document.querySelectorAll("[data-pane-overlay]").length,
-		}).toStrictEqual({connected: false, overlays: 1});
-		fireEvent.click(within(files).getByRole("button", {name: "Collapse"}));
-		expect(screen.getByRole("region", {name: "Background tasks"})).not.toBe(tasks);
-		expect(screen.getByRole("region", {name: "Files"})).toBe(files);
+		const files = screen.getByRole(
+			"region",
+			{
+				name: "Files",
+			},
+		);
+		const tasks = screen.getByRole(
+			"region",
+			{
+				name: "Background tasks",
+			},
+		);
+		fireEvent.click(
+			within(files).getByRole(
+				"button",
+				{
+					name: "Expand",
+				},
+			),
+		);
+		expect(
+			screen.getByRole(
+				"region",
+				{
+					name: "Files",
+				},
+			),
+		).toBe(files);
+		expect(
+			screen.queryByRole(
+				"region",
+				{
+					name: "Background tasks",
+				},
+			),
+		).toBe(null);
+		expect(
+			{
+				connected: tasks.isConnected,
+				overlays: document.querySelectorAll("[data-pane-overlay]").length,
+			},
+		).toStrictEqual(
+			{
+				connected: false,
+				overlays: 1,
+			},
+		);
+		fireEvent.click(
+			within(files).getByRole(
+				"button",
+				{
+					name: "Collapse",
+				},
+			),
+		);
+		expect(
+			screen.getByRole(
+				"region",
+				{
+					name: "Background tasks",
+				},
+			),
+		).not.toBe(tasks);
+		expect(
+			screen.getByRole(
+				"region",
+				{
+					name: "Files",
+				},
+			),
+		).toBe(files);
 
 		// Upstream q9 keeps Files mounted, inert and hidden, while another pane is expanded.
-		const tasksAgain = screen.getByRole("region", {name: "Background tasks"});
-		fireEvent.click(within(tasksAgain).getByRole("button", {name: "Expand"}));
+		const tasksAgain = screen.getByRole(
+			"region",
+			{
+				name: "Background tasks",
+			},
+		);
+		fireEvent.click(
+			within(tasksAgain).getByRole(
+				"button",
+				{
+					name: "Expand",
+				},
+			),
+		);
 		const filesSlot = document.querySelector<HTMLElement>("[data-tile-slot=files]");
-		expect({
-			// Inert content has no accessible name, so find the same section through its slot.
-			files: filesSlot?.querySelector("[data-pane-root]") === files,
-			inert: filesSlot?.hasAttribute("inert"),
-			hidden: filesSlot?.hidden,
-			overlays: document.querySelectorAll("[data-pane-overlay]").length,
-		}).toStrictEqual({files: true, inert: true, hidden: false, overlays: 1});
-		fireEvent.click(within(tasksAgain).getByRole("button", {name: "Collapse"}));
-		expect({
-			files: screen.getByRole("region", {name: "Files"}) === files,
-			inert: filesSlot?.hasAttribute("inert"),
-		}).toStrictEqual({files: true, inert: false});
+		expect(
+			{
+				// Inert content has no accessible name, so find the same section through its slot.
+				files: filesSlot?.querySelector("[data-pane-root]") === files,
+				inert: filesSlot?.hasAttribute("inert"),
+				hidden: filesSlot?.hidden,
+				overlays: document.querySelectorAll("[data-pane-overlay]").length,
+			},
+		).toStrictEqual(
+			{
+				files: true,
+				inert: true,
+				hidden: false,
+				overlays: 1,
+			},
+		);
+		fireEvent.click(
+			within(tasksAgain).getByRole(
+				"button",
+				{
+					name: "Collapse",
+				},
+			),
+		);
+		expect(
+			{
+				files:
+					screen.getByRole(
+						"region",
+						{
+							name: "Files",
+						},
+					) === files,
+				inert: filesSlot?.hasAttribute("inert"),
+			},
+		).toStrictEqual(
+			{
+				files: true,
+				inert: false,
+			},
+		);
 	});
 
-	it("stacks a column divider one z-index above the root divider, marked data-starts-at-divider, with upstream's 7px upward hit zone", () => {
+	it("stacks a column divider one z-index above the root divider, marked data-starts-at-divider, with upstream's 7px upward hit zone", () =>
+	{
 		renderHost("session-a");
-		const describe = (orientation: string) => {
+		const describe = (orientation: string) =>
+		{
 			const separator = document.querySelector<HTMLElement>(`[role=separator][aria-orientation=${orientation}]`);
 			return {
 				zIndex: separator?.style.zIndex,
@@ -1405,88 +2618,148 @@ describe("TileHost corner handle", () => {
 			};
 		};
 
-		expect({vertical: describe("vertical"), horizontal: describe("horizontal")}).toStrictEqual({
-			vertical: {
-				zIndex: "4",
-				startsAtDivider: false,
-				hitZone: [
-					"before:absolute",
-					"before:inset-y-0",
-					"before:-left-px",
-					"before:-right-1.5",
-					"before:content-['']",
-				],
+		expect(
+			{
+				vertical: describe("vertical"),
+				horizontal: describe("horizontal"),
 			},
-			horizontal: {
-				zIndex: "5",
-				startsAtDivider: true,
-				hitZone: [
-					"before:absolute",
-					"before:inset-x-0",
-					"before:-top-1.5",
-					"before:bottom-0",
-					"before:content-['']",
-				],
+		).toStrictEqual(
+			{
+				vertical:
+				{
+					zIndex: "4",
+					startsAtDivider: false,
+					hitZone: [
+						"before:absolute",
+						"before:inset-y-0",
+						"before:-left-px",
+						"before:-right-1.5",
+						"before:content-['']",
+					],
+				},
+				horizontal:
+				{
+					zIndex: "5",
+					startsAtDivider: true,
+					hitZone: [
+						"before:absolute",
+						"before:inset-x-0",
+						"before:-top-1.5",
+						"before:bottom-0",
+						"before:content-['']",
+					],
+				},
 			},
-		});
+		);
 	});
 
-	it("resizes the row and the column together from the corner", () => {
+	it("resizes the row and the column together from the corner", () =>
+	{
 		renderHost("session-a");
 		const corner = document.querySelector<HTMLElement>("[data-tile-corner]");
 		if (corner === null) throw new Error("corner missing");
 		const before = flexes();
 
-		fireEvent.pointerDown(corner, {pointerId: 1, clientX: 800, clientY: 400});
-		fireEvent.pointerMove(corner, {pointerId: 1, clientX: 700, clientY: 300});
-		fireEvent.pointerUp(corner, {pointerId: 1, clientX: 700, clientY: 300});
+		fireEvent.pointerDown(
+			corner,
+			{
+				pointerId: 1,
+				clientX: 800,
+				clientY: 400,
+			},
+		);
+		fireEvent.pointerMove(
+			corner,
+			{
+				pointerId: 1,
+				clientX: 700,
+				clientY: 300,
+			},
+		);
+		fireEvent.pointerUp(
+			corner,
+			{
+				pointerId: 1,
+				clientX: 700,
+				clientY: 300,
+			},
+		);
 
-		expect({
-			before,
-			after: flexes(),
-			cursor: corner.classList.contains("cursor-all-scroll"),
-		}).toStrictEqual({
-			// Rendered (resolved) flexes: [chat 2, column 1] at 1199px is 799/400, [files 1, tasks 1] at 799px is 400/399.
-			before: {
-				chat: "1.332777 1 0px",
-				column: "0.667223 1 0px",
-				files: "1.001252 1 0px",
-				tasks: "0.998748 1 0px",
+		expect(
+			{
+				before,
+				after: flexes(),
+				cursor: corner.classList.contains("cursor-all-scroll"),
 			},
-			// Both boundaries move 100px from their rendered spots: chat 699 / column 500, files 299 / tasks 500.
-			after: {
-				chat: "1.165972 1 0px",
-				column: "0.834028 1 0px",
-				files: "0.748436 1 0px",
-				tasks: "1.251564 1 0px",
+		).toStrictEqual(
+			{
+				// Rendered (resolved) flexes: [chat 2, column 1] at 1199px is 799/400, [files 1, tasks 1] at 799px is 400/399.
+				before:
+				{
+					chat: "1.332777 1 0px",
+					column: "0.667223 1 0px",
+					files: "1.001252 1 0px",
+					tasks: "0.998748 1 0px",
+				},
+				// Both boundaries move 100px from their rendered spots: chat 699 / column 500, files 299 / tasks 500.
+				after:
+				{
+					chat: "1.165972 1 0px",
+					column: "0.834028 1 0px",
+					files: "0.748436 1 0px",
+					tasks: "1.251564 1 0px",
+				},
+				cursor: true,
 			},
-			cursor: true,
-		});
+		);
 	});
 });
 
-describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9 tileStyle)", () => {
-	function GutterProbe() {
+describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9 tileStyle)", () =>
+{
+	function GutterProbe()
+	{
 		return <output data-testid="gutter-probe">{JSON.stringify(useChatGutterAttributes())}</output>;
 	}
 
-	function seed(children: unknown[]) {
+	function seed(children: unknown[])
+	{
 		localStorage.setItem(
 			"ccb.paneLayout.v1",
-			JSON.stringify({
-				"session-inset": {
-					root: {kind: "stack", direction: "row", flex: 1, children},
-					expanded: null,
-					focused: "chat",
+			JSON.stringify(
+				{
+					"session-inset":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children,
+						},
+						expanded: null,
+						focused: "chat",
+					},
 				},
-			}),
+			),
 		);
 	}
 
-	const chatTile = {kind: "tile", tileId: "chat", flex: 1};
-	const planTile = {kind: "tile", tileId: "plan", flex: 1};
+	const chatTile =
+	{
+		kind: "tile",
+		tileId: "chat",
+		flex: 1,
+	};
+	const planTile =
+	{
+		kind: "tile",
+		tileId: "plan",
+		flex: 1,
+	};
 
-	function shellState() {
+	function shellState()
+	{
 		const slot = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
 		if (slot === null) throw new Error("chat slot missing");
 		// The inset and the ground sit on the overflow-anchored shell inside the slot (upstream .tiles-shell).
@@ -1505,7 +2778,8 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		};
 	}
 
-	function renderInset() {
+	function renderInset()
+	{
 		render(
 			<TileHost sessionId="session-inset">
 				<ChatContent />
@@ -1514,84 +2788,147 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		);
 	}
 
-	it("insets the chat 8px from the bottom and the sidebar, shaving its end, when a pane sits to its right", () => {
+	it("insets the chat 8px from the bottom and the sidebar, shaving its end, when a pane sits to its right", () =>
+	{
 		renderInset();
 		openTestPane();
 
-		expect(shellState()).toStrictEqual({
-			padding: "0px 0px 8px 8px",
-			start: null,
-			end: "shave",
-			tilesPadding: "8px",
-			ground: "var(--color-page)",
-			groundFill: true,
-			mirrored: JSON.stringify({"data-chat-gutter-end": "shave"}),
-			pane: "",
-		});
+		expect(shellState()).toStrictEqual(
+			{
+				padding: "0px 0px 8px 8px",
+				start: null,
+				end: "shave",
+				tilesPadding: "8px",
+				ground: "var(--color-page)",
+				groundFill: true,
+				mirrored: JSON.stringify(
+					{
+						"data-chat-gutter-end": "shave",
+					},
+				),
+				pane: "",
+			},
+		);
 	});
 
-	it("drops the start inset and bleeds the end when the chat is the top-right tile", () => {
+	it("drops the start inset and bleeds the end when the chat is the top-right tile", () =>
+	{
 		seed([planTile, chatTile]);
 		renderInset();
 
-		expect(shellState()).toMatchObject({
-			padding: "0px 0px 8px 0px",
-			start: "shave",
-			end: "bleed",
-			mirrored: JSON.stringify({"data-chat-gutter-start": "shave", "data-chat-gutter-end": "bleed"}),
-		});
+		expect(shellState()).toMatchObject(
+			{
+				padding: "0px 0px 8px 0px",
+				start: "shave",
+				end: "bleed",
+				mirrored: JSON.stringify(
+					{
+						"data-chat-gutter-start": "shave",
+						"data-chat-gutter-end": "bleed",
+					},
+				),
+			},
+		);
 	});
 
-	it("insets the end 8px with no end attribute when the chat sits under a pane in the right column", () => {
-		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
+	it("insets the end 8px with no end attribute when the chat sits under a pane in the right column", () =>
+	{
+		const unregisterFiles = registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <p>Files body</p>,
+			},
+		);
 		seed([
-			{kind: "tile", tileId: "files", flex: 1},
-			{kind: "stack", direction: "column", flex: 1, children: [planTile, chatTile]},
+			{
+				kind: "tile",
+				tileId: "files",
+				flex: 1,
+			},
+			{
+				kind: "stack",
+				direction: "column",
+				flex: 1,
+				children: [planTile, chatTile],
+			},
 		]);
 		renderInset();
 
-		expect(shellState()).toMatchObject({
-			padding: "0px 8px 8px 0px",
-			start: "shave",
-			end: null,
-			mirrored: JSON.stringify({"data-chat-gutter-start": "shave"}),
-		});
+		expect(shellState()).toMatchObject(
+			{
+				padding: "0px 8px 8px 0px",
+				start: "shave",
+				end: null,
+				mirrored: JSON.stringify(
+					{
+						"data-chat-gutter-start": "shave",
+					},
+				),
+			},
+		);
 		unregisterFiles();
 	});
 
-	it("keeps the chat alone without the shell inset while line mode stays pane-gated", () => {
+	it("keeps the chat alone without the shell inset while line mode stays pane-gated", () =>
+	{
 		renderInset();
 
-		expect(shellState()).toMatchObject({padding: "", start: null, end: null, mirrored: "{}"});
+		expect(shellState()).toMatchObject(
+			{
+				padding: "",
+				start: null,
+				end: null,
+				mirrored: "{}",
+			},
+		);
 	});
 
-	it("keeps the route shell's line-mode rule at padding 0, so the 8px comes only from the chat shell", () => {
+	it("keeps the route shell's line-mode rule at padding 0, so the 8px comes only from the chat shell", () =>
+	{
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		const rule = styles.indexOf(
 			'[data-route-tile-shell="session"]:has([data-tiles-line]) { border-width: 0; padding: 0;',
 		);
 		const comment = styles.lastIndexOf("/*", rule);
-		expect({
-			rule: rule !== -1,
-			commentNamesChatShell: styles.slice(comment, rule).includes("chat shell"),
-			chatSlotRule: styles.includes('[data-tile-slot="chat"] { padding'),
-		}).toStrictEqual({rule: true, commentNamesChatShell: true, chatSlotRule: false});
+		expect(
+			{
+				rule: rule !== -1,
+				commentNamesChatShell: styles.slice(comment, rule).includes("chat shell"),
+				chatSlotRule: styles.includes('[data-tile-slot="chat"] { padding'),
+			},
+		).toStrictEqual(
+			{
+				rule: true,
+				commentNamesChatShell: true,
+				chatSlotRule: false,
+			},
+		);
 	});
 
-	it("makes the inset chat slot upstream's tile-slot container, so a <=560px slot drops --chat-gutter to 16px", () => {
+	it("makes the inset chat slot upstream's tile-slot container, so a <=560px slot drops --chat-gutter to 16px", () =>
+	{
 		renderInset();
 		openTestPane();
 		const before = document.querySelector("[data-tile-slot=chat]")?.classList.contains("@container/tile-slot");
 		cleanup();
 		localStorage.clear();
 		renderInset();
-		expect({
-			lineMode: before,
-			alone: document.querySelector("[data-tile-slot=chat]")?.classList.contains("@container/tile-slot"),
-		}).toStrictEqual({lineMode: true, alone: false});
+		expect(
+			{
+				lineMode: before,
+				alone: document.querySelector("[data-tile-slot=chat]")?.classList.contains("@container/tile-slot"),
+			},
+		).toStrictEqual(
+			{
+				lineMode: true,
+				alone: false,
+			},
+		);
 	});
 
-	it("derives the chat column gutters from the gutter attributes, as upstream shared-38 MJ does", () => {
+	it("derives the chat column gutters from the gutter attributes, as upstream shared-38 MJ does", () =>
+	{
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		const tile = "[data-tiles-line] [data-session-tile]";
 		const shaved = "calc(var(--chat-gutter) - (var(--tiles-gap) - var(--tiles-padding)))";
@@ -1609,7 +2946,8 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		).toStrictEqual([]);
 	});
 
-	it("sets the docked rail's end inset by the end gutter attribute, as upstream shared-18 Z8 resolves it", () => {
+	it("sets the docked rail's end inset by the end gutter attribute, as upstream shared-18 Z8 resolves it", () =>
+	{
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		expect(
 			[
@@ -1622,15 +2960,27 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 	});
 });
 
-describe("TileHost titlebar bleed over the chat shell inset (upstream shared-41 w5 / Bb / g_)", () => {
+describe("TileHost titlebar bleed over the chat shell inset (upstream shared-41 w5 / Bb / g_)", () =>
+{
 	const tile = "[data-tiles-line] [data-session-tile]";
 	const header = `${tile} [data-transcript-sticky-header]`;
 	const startZero = `${tile}[data-chat-gutter-start="shave"] [data-transcript-sticky-header]`;
 	const endZero = `${tile}[data-chat-gutter-end] [data-transcript-sticky-header]`;
-	const chatTile = {kind: "tile", tileId: "chat", flex: 1};
-	const planTile = {kind: "tile", tileId: "plan", flex: 1};
+	const chatTile =
+	{
+		kind: "tile",
+		tileId: "chat",
+		flex: 1,
+	};
+	const planTile =
+	{
+		kind: "tile",
+		tileId: "plan",
+		flex: 1,
+	};
 
-	function SessionTileProbe() {
+	function SessionTileProbe()
+	{
 		return (
 			<div data-session-tile {...useChatGutterAttributes()}>
 				<div data-transcript-sticky-header data-testid="sticky-header" />
@@ -1638,20 +2988,31 @@ describe("TileHost titlebar bleed over the chat shell inset (upstream shared-41 
 		);
 	}
 
-	function seed(children: unknown[]) {
+	function seed(children: unknown[])
+	{
 		localStorage.setItem(
 			"ccb.paneLayout.v1",
-			JSON.stringify({
-				"session-bleed": {
-					root: {kind: "stack", direction: "row", flex: 1, children},
-					expanded: null,
-					focused: "chat",
+			JSON.stringify(
+				{
+					"session-bleed":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children,
+						},
+						expanded: null,
+						focused: "chat",
+					},
 				},
-			}),
+			),
 		);
 	}
 
-	function renderBleed() {
+	function renderBleed()
+	{
 		render(
 			<TileHost sessionId="session-bleed">
 				<ChatContent />
@@ -1660,7 +3021,8 @@ describe("TileHost titlebar bleed over the chat shell inset (upstream shared-41 
 		);
 	}
 
-	function bleed() {
+	function bleed()
+	{
 		const element = screen.getByTestId("sticky-header");
 		return {
 			bleeds: element.matches(header),
@@ -1669,39 +3031,83 @@ describe("TileHost titlebar bleed over the chat shell inset (upstream shared-41 
 		};
 	}
 
-	it("bleeds the start back over the 8px inset and zeroes the end when a pane sits to the chat's right", () => {
+	it("bleeds the start back over the 8px inset and zeroes the end when a pane sits to the chat's right", () =>
+	{
 		renderBleed();
 		openTestPane();
 
-		expect(bleed()).toStrictEqual({bleeds: true, startZero: false, endZero: true});
+		expect(bleed()).toStrictEqual(
+			{
+				bleeds: true,
+				startZero: false,
+				endZero: true,
+			},
+		);
 	});
 
-	it("zeroes both sides when the chat is the top-right tile", () => {
+	it("zeroes both sides when the chat is the top-right tile", () =>
+	{
 		seed([planTile, chatTile]);
 		renderBleed();
 
-		expect(bleed()).toStrictEqual({bleeds: true, startZero: true, endZero: true});
+		expect(bleed()).toStrictEqual(
+			{
+				bleeds: true,
+				startZero: true,
+				endZero: true,
+			},
+		);
 	});
 
-	it("bleeds the end and zeroes the start when the chat sits under a pane in the right column", () => {
-		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
+	it("bleeds the end and zeroes the start when the chat sits under a pane in the right column", () =>
+	{
+		const unregisterFiles = registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <p>Files body</p>,
+			},
+		);
 		seed([
-			{kind: "tile", tileId: "files", flex: 1},
-			{kind: "stack", direction: "column", flex: 1, children: [planTile, chatTile]},
+			{
+				kind: "tile",
+				tileId: "files",
+				flex: 1,
+			},
+			{
+				kind: "stack",
+				direction: "column",
+				flex: 1,
+				children: [planTile, chatTile],
+			},
 		]);
 		renderBleed();
 
-		expect(bleed()).toStrictEqual({bleeds: true, startZero: true, endZero: false});
+		expect(bleed()).toStrictEqual(
+			{
+				bleeds: true,
+				startZero: true,
+				endZero: false,
+			},
+		);
 		unregisterFiles();
 	});
 
-	it("leaves the chat alone (card mode) without the bleed", () => {
+	it("leaves the chat alone (card mode) without the bleed", () =>
+	{
 		renderBleed();
 
-		expect(bleed()).toStrictEqual({bleeds: false, startZero: false, endZero: false});
+		expect(bleed()).toStrictEqual(
+			{
+				bleeds: false,
+				startZero: false,
+				endZero: false,
+			},
+		);
 	});
 
-	it("copies upstream's titlebar margins and drag-backdrop insets, and lets the line-mode tile show the bleed", () => {
+	it("copies upstream's titlebar margins and drag-backdrop insets, and lets the line-mode tile show the bleed", () =>
+	{
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		expect(
 			[
@@ -1716,7 +3122,8 @@ describe("TileHost titlebar bleed over the chat shell inset (upstream shared-41 
 		).toStrictEqual([]);
 	});
 
-	it("keys the closed rail's end on the end gutter attribute and centres the docked column with it, as upstream g_ does", () => {
+	it("keys the closed rail's end on the end gutter attribute and centres the docked column with it, as upstream g_ does", () =>
+	{
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		const rail = "[data-tiles-line] [data-session-rail-docked]";
 		expect(
@@ -1731,40 +3138,74 @@ describe("TileHost titlebar bleed over the chat shell inset (upstream shared-41 
 	});
 });
 
-describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / tile Q)", () => {
+describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / tile Q)", () =>
+{
 	const unregisterExtra: Array<() => void> = [];
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		unregisterExtra.push(
-			registerPane("changes", {title: "Changes", render: () => <p>Changes body</p>}),
-			registerPane("files", {title: "Files", render: () => <p>Files body</p>}),
+			registerPane(
+				"changes",
+				{
+					title: "Changes",
+					render: () => <p>Changes body</p>,
+				},
+			),
+			registerPane(
+				"files",
+				{
+					title: "Files",
+					render: () => <p>Files body</p>,
+				},
+			),
 		);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		for (const fn of unregisterExtra.splice(0)) fn();
 	});
 
-	function seed(children: unknown[]) {
+	function seed(children: unknown[])
+	{
 		localStorage.setItem(
 			"ccb.paneLayout.v1",
-			JSON.stringify({
-				"session-floor": {
-					root: {kind: "stack", direction: "row", flex: 1, children},
-					expanded: null,
-					focused: "chat",
+			JSON.stringify(
+				{
+					"session-floor":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children,
+						},
+						expanded: null,
+						focused: "chat",
+					},
 				},
-			}),
+			),
 		);
 	}
 
-	function measure(width: number, height: number) {
+	function measure(width: number, height: number)
+	{
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-			DOMRect.fromRect({x: 0, y: 0, width, height}),
+			DOMRect.fromRect(
+				{
+					x: 0,
+					y: 0,
+					width,
+					height,
+				},
+			),
 		);
 	}
 
-	function renderFloor() {
+	function renderFloor()
+	{
 		render(
 			<TileHost sessionId="session-floor">
 				<ChatContent />
@@ -1772,67 +3213,144 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 		);
 	}
 
-	function wrap(tileId: string) {
+	function wrap(tileId: string)
+	{
 		const element = document.querySelector<HTMLElement>(`[data-tile-slot=${tileId}]`);
 		if (element === null) throw new Error(`${tileId} slot missing`);
-		return {flex: element.style.flex, minWidth: element.style.minWidth, minHeight: element.style.minHeight};
+		return {
+			flex: element.style.flex,
+			minWidth: element.style.minWidth,
+			minHeight: element.style.minHeight,
+		};
 	}
 
-	function columnWrap() {
+	function columnWrap()
+	{
 		const element = document.querySelector<HTMLElement>("[data-tile-stack=column]")?.parentElement;
 		if (element === null || element === undefined) throw new Error("column wrapper missing");
-		return {flex: element.style.flex, minWidth: element.style.minWidth, minHeight: element.style.minHeight};
+		return {
+			flex: element.style.flex,
+			minWidth: element.style.minWidth,
+			minHeight: element.style.minHeight,
+		};
 	}
 
-	const tile = (tileId: string, flex: number) => ({kind: "tile", tileId, flex});
+	const tile = (tileId: string, flex: number) => (
+	{
+		kind: "tile",
+		tileId,
+		flex,
+	});
 
-	it("renders resolved flexes and floors for a third root column at 984px", () => {
+	it("renders resolved flexes and floors for a third root column at 984px", () =>
+	{
 		measure(984, 800);
 		seed([
 			tile("chat", 2),
-			{kind: "stack", direction: "column", flex: 3, children: [tile("changes", 1), tile("files", 1)]},
+			{
+				kind: "stack",
+				direction: "column",
+				flex: 3,
+				children: [tile("changes", 1), tile("files", 1)],
+			},
 			tile("plan", 1),
 		]);
 		renderFloor();
 
-		expect({
-			chat: wrap("chat"),
-			column: columnWrap(),
-			changes: wrap("changes"),
-			files: wrap("files"),
-			plan: wrap("plan"),
-		}).toStrictEqual({
-			chat: {flex: "0.858452 1 0px", minWidth: "100px", minHeight: "100px"},
-			column: {flex: "1.286151 1 0px", minWidth: "280px", minHeight: ""},
-			changes: {flex: "1.001252 1 0px", minWidth: "280px", minHeight: "100px"},
-			files: {flex: "0.998748 1 0px", minWidth: "280px", minHeight: "100px"},
-			plan: {flex: "0.855397 1 0px", minWidth: "280px", minHeight: "100px"},
-		});
+		expect(
+			{
+				chat: wrap("chat"),
+				column: columnWrap(),
+				changes: wrap("changes"),
+				files: wrap("files"),
+				plan: wrap("plan"),
+			},
+		).toStrictEqual(
+			{
+				chat:
+				{
+					flex: "0.858452 1 0px",
+					minWidth: "100px",
+					minHeight: "100px",
+				},
+				column:
+				{
+					flex: "1.286151 1 0px",
+					minWidth: "280px",
+					minHeight: "",
+				},
+				changes:
+				{
+					flex: "1.001252 1 0px",
+					minWidth: "280px",
+					minHeight: "100px",
+				},
+				files:
+				{
+					flex: "0.998748 1 0px",
+					minWidth: "280px",
+					minHeight: "100px",
+				},
+				plan:
+				{
+					flex: "0.855397 1 0px",
+					minWidth: "280px",
+					minHeight: "100px",
+				},
+			},
+		);
 	});
 
-	it("floors the pane at 280px and shrinks the chat at 450px", () => {
+	it("floors the pane at 280px and shrinks the chat at 450px", () =>
+	{
 		measure(450, 800);
 		seed([tile("chat", 2), tile("plan", 1)]);
 		renderFloor();
 
-		expect({chat: wrap("chat").flex, plan: wrap("plan").flex}).toStrictEqual({
-			chat: "0.752784 1 0px",
-			plan: "1.247216 1 0px",
-		});
+		expect(
+			{
+				chat: wrap("chat").flex,
+				plan: wrap("plan").flex,
+			},
+		).toStrictEqual(
+			{
+				chat: "0.752784 1 0px",
+				plan: "1.247216 1 0px",
+			},
+		);
 	});
 
-	it("keeps raw flexes with the bare floors as min-width before the first measurement (upstream Ve)", () => {
+	it("keeps raw flexes with the bare floors as min-width before the first measurement (upstream Ve)", () =>
+	{
 		measure(0, 0);
 		seed([tile("chat", 2), tile("plan", 1)]);
 		renderFloor();
 
-		expect({chat: wrap("chat"), plan: wrap("plan")}).toStrictEqual({
-			chat: {flex: "2 1 0px", minWidth: "100px", minHeight: "100px"},
-			plan: {flex: "1 1 0px", minWidth: "280px", minHeight: "100px"},
-		});
+		expect(
+			{
+				chat: wrap("chat"),
+				plan: wrap("plan"),
+			},
+		).toStrictEqual(
+			{
+				chat:
+				{
+					flex: "2 1 0px",
+					minWidth: "100px",
+					minHeight: "100px",
+				},
+				plan:
+				{
+					flex: "1 1 0px",
+					minWidth: "280px",
+					minHeight: "100px",
+				},
+			},
+		);
 	});
 
-	function shell() {
+	function shell()
+	{
 		const element = document.querySelector<HTMLElement>("[data-tile-slot=chat] [data-tile-overflow-anchor]");
 		if (element === null) return null;
 		return {
@@ -1846,7 +3364,8 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 		};
 	}
 
-	function layers() {
+	function layers()
+	{
 		const classesOf = (tileId: string) =>
 			document.querySelector(`[data-tile-slot=${tileId}]`)?.className.split(" ") ?? [];
 		return {
@@ -1855,30 +3374,51 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 		};
 	}
 
-	it("anchors the chat's 320px overflow shell left when the chat leads the row, under a z-[1] pane", () => {
+	it("anchors the chat's 320px overflow shell left when the chat leads the row, under a z-[1] pane", () =>
+	{
 		seed([tile("chat", 2), tile("files", 3)]);
 		renderFloor();
 
-		expect({shell: shell(), layers: layers()}).toStrictEqual({
-			shell: {
-				anchor: "left",
-				classes: ["absolute", "inset-y-0", "w-full", "min-w-[320px]"],
-				left: "0px",
-				right: "",
-				overflowMin: "320px",
+		expect(
+			{
+				shell: shell(),
+				layers: layers(),
 			},
-			layers: {chat: ["@container/tile-slot", "z-0"], files: ["z-[1]"]},
-		});
+		).toStrictEqual(
+			{
+				shell:
+				{
+					anchor: "left",
+					classes: ["absolute", "inset-y-0", "w-full", "min-w-[320px]"],
+					left: "0px",
+					right: "",
+					overflowMin: "320px",
+				},
+				layers:
+				{
+					chat: ["@container/tile-slot", "z-0"],
+					files: ["z-[1]"],
+				},
+			},
+		);
 	});
 
-	it("anchors the shell right when a pane sits left of the chat", () => {
+	it("anchors the shell right when a pane sits left of the chat", () =>
+	{
 		seed([tile("files", 3), tile("chat", 2)]);
 		renderFloor();
 
-		expect(shell()).toMatchObject({anchor: "right", left: "", right: "0px"});
+		expect(shell()).toMatchObject(
+			{
+				anchor: "right",
+				left: "",
+				right: "0px",
+			},
+		);
 	});
 
-	it("renders the chat alone without the overflow shell", () => {
+	it("renders the chat alone without the overflow shell", () =>
+	{
 		renderFloor();
 
 		expect(shell()).toBe(null);
@@ -1886,13 +3426,15 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 });
 
 /** A stateful pane body: its node and counter survive only if the tile's content never remounts. */
-function Probe({label}: {label: string}) {
+function Probe({label}: {label: string})
+{
 	const [count, setCount] = useState(0);
 	return (
 		<button
 			type="button"
 			data-testid={label}
-			onClick={() => {
+			onClick={() =>
+			{
 				setCount((n) => n + 1);
 			}}
 		>
@@ -1901,21 +3443,37 @@ function Probe({label}: {label: string}) {
 	);
 }
 
-describe("TileHost persistent content hosts (upstream c9bc99274 data-tile-host / tiles-shell adopt)", () => {
+describe("TileHost persistent content hosts (upstream c9bc99274 data-tile-host / tiles-shell adopt)", () =>
+{
 	let unregisterProbes: Array<() => void> = [];
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		unregisterProbes = [
-			registerPane("files", {title: "Files", render: () => <Probe label="files-probe" />}),
-			registerPane("changes", {title: "Changes", render: () => <p>Changes body</p>}),
+			registerPane(
+				"files",
+				{
+					title: "Files",
+					render: () => <Probe label="files-probe" />,
+				},
+			),
+			registerPane(
+				"changes",
+				{
+					title: "Changes",
+					render: () => <p>Changes body</p>,
+				},
+			),
 		];
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		for (const fn of unregisterProbes) fn();
 	});
 
-	function hostShape(tileId: string) {
+	function hostShape(tileId: string)
+	{
 		const host = document.querySelector<HTMLElement>(`[data-tile-host=${tileId}]`);
 		return {
 			style: host?.getAttribute("style") ?? null,
@@ -1924,56 +3482,102 @@ describe("TileHost persistent content hosts (upstream c9bc99274 data-tile-host /
 		};
 	}
 
-	it("keeps a pane's content and state when its tile leaves a column for the row", () => {
+	it("keeps a pane's content and state when its tile leaves a column for the row", () =>
+	{
 		localStorage.setItem(
 			"ccb.paneLayout.v1",
-			JSON.stringify({
-				"session-a": {
-					root: {
-						kind: "stack",
-						direction: "row",
-						flex: 1,
-						children: [
-							{kind: "tile", tileId: "chat", flex: 2},
-							{
-								kind: "stack",
-								direction: "column",
-								flex: 1,
-								children: [
-									{kind: "tile", tileId: "files", flex: 1},
-									{kind: "tile", tileId: "changes", flex: 1},
-								],
-							},
-						],
+			JSON.stringify(
+				{
+					"session-a":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children: [
+								{
+									kind: "tile",
+									tileId: "chat",
+									flex: 2,
+								},
+								{
+									kind: "stack",
+									direction: "column",
+									flex: 1,
+									children: [
+										{
+											kind: "tile",
+											tileId: "files",
+											flex: 1,
+										},
+										{
+											kind: "tile",
+											tileId: "changes",
+											flex: 1,
+										},
+									],
+								},
+							],
+						},
+						expanded: null,
+						focused: "changes",
 					},
-					expanded: null,
-					focused: "changes",
 				},
-			}),
+			),
 		);
 		renderHost("session-a");
 		const probe = screen.getByTestId("files-probe");
 		fireEvent.click(probe);
 		const before = hostShape("files");
-		fireEvent.click(within(screen.getByRole("region", {name: "Changes"})).getByRole("button", {name: "Close"}));
-		expect({
-			before,
-			after: hostShape("files"),
-			same: screen.getByTestId("files-probe") === probe,
-			count: probe.textContent,
-			columns: document.querySelectorAll("[data-tile-stack=column]").length,
-			changesHost: document.querySelector("[data-tile-host=changes]"),
-		}).toStrictEqual({
-			before: {style: "display:contents", shell: true, slot: "files"},
-			after: {style: "display:contents", shell: true, slot: "files"},
-			same: true,
-			count: "1",
-			columns: 0,
-			changesHost: null,
-		});
+		fireEvent.click(
+			within(
+				screen.getByRole(
+					"region",
+					{
+						name: "Changes",
+					},
+				),
+			).getByRole(
+				"button",
+				{
+					name: "Close",
+				},
+			),
+		);
+		expect(
+			{
+				before,
+				after: hostShape("files"),
+				same: screen.getByTestId("files-probe") === probe,
+				count: probe.textContent,
+				columns: document.querySelectorAll("[data-tile-stack=column]").length,
+				changesHost: document.querySelector("[data-tile-host=changes]"),
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					style: "display:contents",
+					shell: true,
+					slot: "files",
+				},
+				after:
+				{
+					style: "display:contents",
+					shell: true,
+					slot: "files",
+				},
+				same: true,
+				count: "1",
+				columns: 0,
+				changesHost: null,
+			},
+		);
 	});
 
-	it("marks the viewport with its tile count and each line-mode shell with upstream's edge attributes", () => {
+	it("marks the viewport with its tile count and each line-mode shell with upstream's edge attributes", () =>
+	{
 		const shellAttributes = [
 			"data-after-line-x",
 			"data-after-line-y",
@@ -1981,7 +3585,8 @@ describe("TileHost persistent content hosts (upstream c9bc99274 data-tile-host /
 			"data-strip-over-foot",
 			"data-strip-over-end",
 		];
-		function viewportState() {
+		function viewportState()
+		{
 			const viewport = document.querySelector<HTMLElement>("[data-tiles-viewport]");
 			return {
 				viewport: viewport?.getAttribute("data-tiles-viewport") ?? null,
@@ -1996,101 +3601,229 @@ describe("TileHost persistent content hosts (upstream c9bc99274 data-tile-host /
 		}
 		localStorage.setItem(
 			"ccb.paneLayout.v1",
-			JSON.stringify({
-				"session-edges": {
-					root: {
-						kind: "stack",
-						direction: "row",
-						flex: 1,
-						children: [
-							{kind: "tile", tileId: "chat", flex: 2},
-							{
-								kind: "stack",
-								direction: "column",
-								flex: 1,
-								children: [
-									{kind: "tile", tileId: "files", flex: 1},
-									{kind: "tile", tileId: "changes", flex: 1},
-								],
-							},
-						],
+			JSON.stringify(
+				{
+					"session-edges":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children: [
+								{
+									kind: "tile",
+									tileId: "chat",
+									flex: 2,
+								},
+								{
+									kind: "stack",
+									direction: "column",
+									flex: 1,
+									children: [
+										{
+											kind: "tile",
+											tileId: "files",
+											flex: 1,
+										},
+										{
+											kind: "tile",
+											tileId: "changes",
+											flex: 1,
+										},
+									],
+								},
+							],
+						},
+						expanded: null,
+						focused: "changes",
 					},
-					expanded: null,
-					focused: "changes",
 				},
-			}),
+			),
 		);
 		renderHost("session-edges");
 		const resting = viewportState();
-		const changes = screen.getByRole("region", {name: "Changes"});
-		fireEvent.click(within(changes).getByRole("button", {name: "Expand"}));
+		const changes = screen.getByRole(
+			"region",
+			{
+				name: "Changes",
+			},
+		);
+		fireEvent.click(
+			within(changes).getByRole(
+				"button",
+				{
+					name: "Expand",
+				},
+			),
+		);
 		const expanded = viewportState();
-		fireEvent.click(within(changes).getByRole("button", {name: "Collapse"}));
+		fireEvent.click(
+			within(changes).getByRole(
+				"button",
+				{
+					name: "Collapse",
+				},
+			),
+		);
 		const collapsed = viewportState();
 		cleanup();
 		renderHost("session-chat-only");
-		expect({resting, expanded, collapsed, chatOnly: viewportState()}).toStrictEqual({
-			resting: {
-				viewport: "",
-				mounted: "3",
-				shells: {
-					chat: ["data-strip-over-end"],
-					files: ["data-after-line-x", "data-strip-over-start", "data-strip-over-foot"],
-					changes: ["data-after-line-x", "data-after-line-y", "data-strip-over-start"],
+		expect(
+			{
+				resting,
+				expanded,
+				collapsed,
+				chatOnly: viewportState(),
+			},
+		).toStrictEqual(
+			{
+				resting:
+				{
+					viewport: "",
+					mounted: "3",
+					shells:
+					{
+						chat: ["data-strip-over-end"],
+						files: ["data-after-line-x", "data-strip-over-start", "data-strip-over-foot"],
+						changes: ["data-after-line-x", "data-after-line-y", "data-strip-over-start"],
+					},
+				},
+				// Upstream recomputes the edges against out-of-flow neighbours: expanding drops every attribute.
+				expanded:
+				{
+					viewport: "",
+					mounted: "3",
+					shells:
+					{
+						chat: [],
+						files: [],
+						changes: [],
+					},
+				},
+				collapsed: resting,
+				chatOnly:
+				{
+					viewport: "",
+					mounted: "1",
+					shells:
+					{
+						chat: [],
+					},
 				},
 			},
-			// Upstream recomputes the edges against out-of-flow neighbours: expanding drops every attribute.
-			expanded: {viewport: "", mounted: "3", shells: {chat: [], files: [], changes: []}},
-			collapsed: resting,
-			chatOnly: {viewport: "", mounted: "1", shells: {chat: []}},
-		});
+		);
 	});
 
-	it("snapshots every tile whose sibling list changes, as upstream's orderKey / aheadKey effect", () => {
+	it("snapshots every tile whose sibling list changes, as upstream's orderKey / aheadKey effect", () =>
+	{
 		localStorage.setItem(
 			"ccb.paneLayout.v1",
-			JSON.stringify({
-				"session-a": {
-					root: {
-						kind: "stack",
-						direction: "row",
-						flex: 1,
-						children: [
-							{kind: "tile", tileId: "chat", flex: 2},
-							{kind: "tile", tileId: "files", flex: 1},
-							{kind: "tile", tileId: "changes", flex: 1},
-						],
+			JSON.stringify(
+				{
+					"session-a":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children: [
+								{
+									kind: "tile",
+									tileId: "chat",
+									flex: 2,
+								},
+								{
+									kind: "tile",
+									tileId: "files",
+									flex: 1,
+								},
+								{
+									kind: "tile",
+									tileId: "changes",
+									flex: 1,
+								},
+							],
+						},
+						expanded: null,
+						focused: "changes",
 					},
-					expanded: null,
-					focused: "changes",
 				},
-			}),
+			),
 		);
 		renderHost("session-a");
 		const willMove = vi.spyOn(TileContentHosts.prototype, "slotWillMove");
 		// Files keeps its index, so a path key would never see it move; upstream's sibling-list key does.
-		fireEvent.click(within(screen.getByRole("region", {name: "Changes"})).getByRole("button", {name: "Close"}));
-		expect({
-			count: willMove.mock.calls.length,
-			parkIframes: Object.fromEntries(willMove.mock.calls.map(([id, , parkIframes]) => [id, parkIframes])),
-		}).toStrictEqual({count: 3, parkIframes: {changes: false, chat: false, files: false}});
+		fireEvent.click(
+			within(
+				screen.getByRole(
+					"region",
+					{
+						name: "Changes",
+					},
+				),
+			).getByRole(
+				"button",
+				{
+					name: "Close",
+				},
+			),
+		);
+		expect(
+			{
+				count: willMove.mock.calls.length,
+				parkIframes: Object.fromEntries(willMove.mock.calls.map(([id, , parkIframes]) => [id, parkIframes])),
+			},
+		).toStrictEqual(
+			{
+				count: 3,
+				parkIframes:
+				{
+					changes: false,
+					chat: false,
+					files: false,
+				},
+			},
+		);
 	});
 
-	it("asks to park iframe hosts only for the tile a sibling moves ahead of (upstream yt)", () => {
+	it("asks to park iframe hosts only for the tile a sibling moves ahead of (upstream yt)", () =>
+	{
 		renderHost("session-a");
 		openTestPane();
-		const move = within(document.querySelector<HTMLElement>("[data-tile-host=plan]")!).getByRole("button", {
-			name: "Move",
-		});
+		const move = within(document.querySelector<HTMLElement>("[data-tile-host=plan]")!).getByRole(
+			"button",
+			{
+				name: "Move",
+			},
+		);
 		const willMove = vi.spyOn(TileContentHosts.prototype, "slotWillMove");
-		fireEvent.keyDown(move, {key: "ArrowLeft"});
-		expect({
-			count: willMove.mock.calls.length,
-			parkIframes: Object.fromEntries(willMove.mock.calls.map(([id, , parkIframes]) => [id, parkIframes])),
-		}).toStrictEqual({count: 2, parkIframes: {chat: true, plan: false}});
+		fireEvent.keyDown(
+			move,
+			{
+				key: "ArrowLeft",
+			},
+		);
+		expect(
+			{
+				count: willMove.mock.calls.length,
+				parkIframes: Object.fromEntries(willMove.mock.calls.map(([id, , parkIframes]) => [id, parkIframes])),
+			},
+		).toStrictEqual(
+			{
+				count: 2,
+				parkIframes:
+				{
+					chat: true,
+					plan: false,
+				},
+			},
+		);
 	});
 
-	it("keeps the chat's content and state when a split moves it into a column", () => {
+	it("keeps the chat's content and state when a split moves it into a column", () =>
+	{
 		render(
 			<TileHost sessionId="session-a" onExpandWithoutPane={vi.fn<() => void>()}>
 				<ChatContent />
@@ -2100,21 +3833,43 @@ describe("TileHost persistent content hosts (upstream c9bc99274 data-tile-host /
 		openTestPane();
 		const probe = screen.getByTestId("chat-probe");
 		fireEvent.click(probe);
-		const move = within(document.querySelector<HTMLElement>("[data-tile-host=plan]")!).getByRole("button", {
-			name: "Move",
-		});
-		fireEvent.keyDown(move, {key: "ArrowDown"});
-		fireEvent.keyDown(move, {key: "Enter"});
-		expect({
-			columns: document.querySelectorAll("[data-tile-stack=column]").length,
-			chat: hostShape("chat"),
-			same: screen.getByTestId("chat-probe") === probe,
-			count: probe.textContent,
-		}).toStrictEqual({
-			columns: 1,
-			chat: {style: "display:contents", shell: true, slot: "chat"},
-			same: true,
-			count: "1",
-		});
+		const move = within(document.querySelector<HTMLElement>("[data-tile-host=plan]")!).getByRole(
+			"button",
+			{
+				name: "Move",
+			},
+		);
+		fireEvent.keyDown(
+			move,
+			{
+				key: "ArrowDown",
+			},
+		);
+		fireEvent.keyDown(
+			move,
+			{
+				key: "Enter",
+			},
+		);
+		expect(
+			{
+				columns: document.querySelectorAll("[data-tile-stack=column]").length,
+				chat: hostShape("chat"),
+				same: screen.getByTestId("chat-probe") === probe,
+				count: probe.textContent,
+			},
+		).toStrictEqual(
+			{
+				columns: 1,
+				chat:
+				{
+					style: "display:contents",
+					shell: true,
+					slot: "chat",
+				},
+				same: true,
+				count: "1",
+			},
+		);
 	});
 });

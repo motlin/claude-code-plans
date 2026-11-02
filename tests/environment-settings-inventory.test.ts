@@ -33,12 +33,21 @@ const EXPECTED_INJECTED_RUNTIME_READS = [
 	"src/lib/terminal-host/selection.ts:TMUX",
 ];
 
-describe("environment settings inventory", () => {
-	it("keeps application policy out of environment-only switches", () => {
+describe("environment settings inventory", () =>
+{
+	it("keeps application policy out of environment-only switches", () =>
+	{
 		const reads: string[] = [];
-		for (const path of globSync("src/**/*.{ts,tsx}", {cwd: ROOT})) {
+		for (const path of globSync(
+			"src/**/*.{ts,tsx}",
+			{
+				cwd: ROOT,
+			},
+		))
+		{
 			const source = readFileSync(resolve(ROOT, path), "utf8");
-			for (const match of source.matchAll(/process\.env\["([A-Z0-9_]+)"\]/g)) {
+			for (const match of source.matchAll(/process\.env\["([A-Z0-9_]+)"\]/g))
+			{
 				reads.push(`${relative(ROOT, resolve(ROOT, path))}:${match[1]}`);
 			}
 		}
@@ -46,27 +55,39 @@ describe("environment settings inventory", () => {
 		expect(reads.toSorted()).toStrictEqual(EXPECTED_ENVIRONMENT_READS.toSorted());
 	});
 
-	it("documents injected Herdr runtime context and build-time context", () => {
+	it("documents injected Herdr runtime context and build-time context", () =>
+	{
 		const injectedReads: string[] = [];
-		for (const path of globSync("src/**/*.{ts,tsx}", {cwd: ROOT})) {
+		for (const path of globSync(
+			"src/**/*.{ts,tsx}",
+			{
+				cwd: ROOT,
+			},
+		))
+		{
 			const source = readFileSync(resolve(ROOT, path), "utf8");
-			for (const match of source.matchAll(/(?<!process\.)\benv\["([A-Z0-9_]+)"\]/g)) {
+			for (const match of source.matchAll(/(?<!process\.)\benv\["([A-Z0-9_]+)"\]/g))
+			{
 				injectedReads.push(`${relative(ROOT, resolve(ROOT, path))}:${match[1]}`);
 			}
 		}
 
-		expect({
-			injectedReads: injectedReads.toSorted(),
-			developmentBuildReads: readFileSync(resolve(ROOT, "src/routes/__root.tsx"), "utf8").match(
-				/import\.meta\.env\.DEV/g,
-			)?.length,
-			processEnvironmentPassThrough: readFileSync(resolve(ROOT, "src/lib/cli-runner.ts"), "utf8").includes(
-				"...process.env",
-			),
-		}).toStrictEqual({
-			injectedReads: EXPECTED_INJECTED_RUNTIME_READS.toSorted(),
-			developmentBuildReads: 1,
-			processEnvironmentPassThrough: true,
-		});
+		expect(
+			{
+				injectedReads: injectedReads.toSorted(),
+				developmentBuildReads: readFileSync(resolve(ROOT, "src/routes/__root.tsx"), "utf8").match(
+					/import\.meta\.env\.DEV/g,
+				)?.length,
+				processEnvironmentPassThrough: readFileSync(resolve(ROOT, "src/lib/cli-runner.ts"), "utf8").includes(
+					"...process.env",
+				),
+			},
+		).toStrictEqual(
+			{
+				injectedReads: EXPECTED_INJECTED_RUNTIME_READS.toSorted(),
+				developmentBuildReads: 1,
+				processEnvironmentPassThrough: true,
+			},
+		);
 	});
 });

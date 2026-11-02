@@ -11,21 +11,27 @@ const ID_TRAILER = /(?:^|\n)[ \t]*Request ID:[ \t]*(\S+)(?=(?:\n+Message ID:[ \t
 /** Upstream's `pW`: lines that each start an "API Error". */
 const API_ERROR_LINE = /(?:^|\n)\s*(?:Claude Code returned an error result:\s*)?API Error/gi;
 
-export interface ParsedApiErrorDetails {
+export interface ParsedApiErrorDetails
+{
 	body: string;
 	status?: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown>
+{
 	return typeof value === "object" && value !== null;
 }
 
 /** Upstream's `nv`: a JSON error body's message — `error.message`, a string `error`, or `message`. */
-function jsonMessage(line: string): string | undefined {
+function jsonMessage(line: string): string | undefined
+{
 	let parsed: unknown;
-	try {
+	try
+	{
 		parsed = JSON.parse(line);
-	} catch {
+	}
+	catch
+	{
 		return undefined;
 	}
 	if (!isRecord(parsed)) return undefined;
@@ -40,29 +46,43 @@ function jsonMessage(line: string): string | undefined {
  * strips the API Error prefix and takes its status, unwraps a JSON body to its
  * message, and drops a trailing Request ID / Message ID block.
  */
-export function parseApiErrorDetails(text: string): ParsedApiErrorDetails {
+export function parseApiErrorDetails(text: string): ParsedApiErrorDetails
+{
 	let rest = text;
 	const idTrailer = ID_TRAILER.exec(rest);
 	if (idTrailer !== null) rest = rest.slice(0, idTrailer.index);
 	let status: string | undefined;
-	if ((text.match(API_ERROR_LINE) ?? []).length <= 1) {
+	if ((text.match(API_ERROR_LINE) ?? []).length <= 1)
+	{
 		const prefix = ERROR_PREFIX.exec(rest);
-		if (prefix !== null) {
+		if (prefix !== null)
+		{
 			status = prefix[1];
 			rest = rest.slice(prefix[0].length);
 		}
 	}
 	const leading = LEADING_STATUS.exec(rest);
-	if (leading !== null) {
+	if (leading !== null)
+	{
 		status ??= leading[1];
 		rest = rest.slice(leading[0].length);
 	}
-	if (rest.startsWith("{") || rest.startsWith("[")) {
+	if (rest.startsWith("{") || rest.startsWith("["))
+	{
 		const newline = rest.indexOf("\n");
 		const [first, after] = newline === -1 ? [rest, ""] : [rest.slice(0, newline), rest.slice(newline)];
 		const message = jsonMessage(first);
 		if (message !== undefined) rest = message + after;
 	}
 	const body = rest.trim();
-	return status === undefined ? {body} : {body, status};
+	return status === undefined
+		?
+			{
+				body,
+			}
+		:
+			{
+				body,
+				status,
+			};
 }

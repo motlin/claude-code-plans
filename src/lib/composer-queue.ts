@@ -7,7 +7,8 @@ import {assertNever} from "./assert-never";
  * like claude.ai/code's frontend queue.
  */
 
-export interface QueuedPrompt {
+export interface QueuedPrompt
+{
 	id: string;
 	text: string;
 	/** Sent over a skipped question: delivered as soon as no dialog is open, even mid-turn. */
@@ -17,26 +18,59 @@ export interface QueuedPrompt {
 const EMPTY: readonly QueuedPrompt[] = [];
 
 export type ComposerQueueAction =
-	| {type: "enqueue"; item: QueuedPrompt; position?: "back" | "front"}
-	| {type: "edit"; id: string; text: string}
-	| {type: "remove"; id: string}
-	| {type: "clear"}
-	| {type: "reorder"; id: string; toIndex: number};
+	|
+	  {
+			type: "enqueue";
+			item: QueuedPrompt;
+			position?: "back" | "front";
+	  }
+	|
+	  {
+			type: "edit";
+			id: string;
+			text: string;
+	  }
+	|
+	  {
+			type: "remove";
+			id: string;
+	  }
+	|
+	  {
+			type: "clear";
+	  }
+	|
+	  {
+			type: "reorder";
+			id: string;
+			toIndex: number;
+	  };
 
 export function composerQueueReducer(
 	queue: readonly QueuedPrompt[],
 	action: ComposerQueueAction,
-): readonly QueuedPrompt[] {
-	switch (action.type) {
+): readonly QueuedPrompt[]
+{
+	switch (action.type)
+	{
 		case "enqueue":
 			return action.position === "front" ? [action.item, ...queue] : [...queue, action.item];
 		case "edit":
-			return queue.map((item) => (item.id === action.id ? {...item, text: action.text} : item));
+			return queue.map((item) =>
+				item.id === action.id
+					?
+						{
+							...item,
+							text: action.text,
+						}
+					: item,
+			);
 		case "remove":
 			return queue.filter((item) => item.id !== action.id);
 		case "clear":
 			return [];
-		case "reorder": {
+		case "reorder":
+		{
 			const item = queue.find((candidate) => candidate.id === action.id);
 			if (item === undefined) return queue;
 			const rest = queue.filter((candidate) => candidate.id !== action.id);
@@ -56,28 +90,33 @@ export function nextQueuedPrompt(
 	queue: readonly QueuedPrompt[],
 	busy: boolean,
 	dialogOpen = false,
-): QueuedPrompt | null {
+): QueuedPrompt | null
+{
 	const head = queue[0] ?? null;
 	if (head === null) return null;
 	return (head.midTurn === true ? dialogOpen : busy) ? null : head;
 }
 
 /** Steered prompts (Enter while working), which upstream draws as waiting rows in the transcript. */
-export function steeredPrompts(queue: readonly QueuedPrompt[]): readonly QueuedPrompt[] {
+export function steeredPrompts(queue: readonly QueuedPrompt[]): readonly QueuedPrompt[]
+{
 	return queue.every((item) => item.midTurn !== true) ? EMPTY : queue.filter((item) => item.midTurn === true);
 }
 
 /** Prompts queued for after the turn, the only ones upstream's QueuedMessageBar band lists. */
-export function queuedForLater(queue: readonly QueuedPrompt[]): readonly QueuedPrompt[] {
+export function queuedForLater(queue: readonly QueuedPrompt[]): readonly QueuedPrompt[]
+{
 	return queue.every((item) => item.midTurn !== true) ? queue : queue.filter((item) => item.midTurn !== true);
 }
 
-export function queuedStatusText(count: number): string {
+export function queuedStatusText(count: number): string
+{
 	return `${count} ${count === 1 ? "message" : "messages"} queued. Will send after the current response.`;
 }
 
 /** Upstream's flattened one-line preview: whitespace collapsed, "…" when nothing is left. */
-export function queuedPreview(text: string): string {
+export function queuedPreview(text: string): string
+{
 	const flat = text.replace(/\s+/g, " ").trim();
 	return flat === "" ? "…" : flat;
 }
@@ -86,17 +125,32 @@ let queues = new Map<string, readonly QueuedPrompt[]>();
 const listeners = new Set<() => void>();
 let nextId = 1;
 
-export function newQueuedPrompt(text: string, {midTurn = false}: {midTurn?: boolean} = {}): QueuedPrompt {
-	const item: QueuedPrompt = {id: `queued-${nextId++}`, text};
+export function newQueuedPrompt(
+	text: string,
+	{
+		midTurn = false,
+	}:
+	{
+		midTurn?: boolean;
+	} = {},
+): QueuedPrompt
+{
+	const item: QueuedPrompt =
+	{
+		id: `queued-${nextId++}`,
+		text,
+	};
 	if (midTurn) item.midTurn = true;
 	return item;
 }
 
-function getComposerQueue(sessionId: string): readonly QueuedPrompt[] {
+function getComposerQueue(sessionId: string): readonly QueuedPrompt[]
+{
 	return queues.get(sessionId) ?? EMPTY;
 }
 
-export function dispatchComposerQueue(sessionId: string, action: ComposerQueueAction): void {
+export function dispatchComposerQueue(sessionId: string, action: ComposerQueueAction): void
+{
 	const next = composerQueueReducer(getComposerQueue(sessionId), action);
 	queues = new Map(queues);
 	if (next.length === 0) queues.delete(sessionId);
@@ -107,27 +161,32 @@ export function dispatchComposerQueue(sessionId: string, action: ComposerQueueAc
 /** Sessions whose queued-message band the reader expanded; survives the band unmounting. */
 const expandedBands = new Set<string>();
 
-export function queueBandExpanded(sessionId: string): boolean {
+export function queueBandExpanded(sessionId: string): boolean
+{
 	return expandedBands.has(sessionId);
 }
 
-export function setQueueBandExpanded(sessionId: string, expanded: boolean): void {
+export function setQueueBandExpanded(sessionId: string, expanded: boolean): void
+{
 	if (expanded) expandedBands.add(sessionId);
 	else expandedBands.delete(sessionId);
 }
 
-export function clearComposerQueues(): void {
+export function clearComposerQueues(): void
+{
 	queues = new Map();
 	expandedBands.clear();
 	for (const listener of listeners) listener();
 }
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
 
-export function useComposerQueueItems(sessionId: string): readonly QueuedPrompt[] {
+export function useComposerQueueItems(sessionId: string): readonly QueuedPrompt[]
+{
 	return useSyncExternalStore(
 		subscribe,
 		() => getComposerQueue(sessionId),

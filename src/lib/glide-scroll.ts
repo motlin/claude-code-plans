@@ -11,7 +11,8 @@ const activeGlides = new WeakMap<Element, () => void>();
  * Upstream `R7`: "own" while scrollTop is within `slack` of the last write, "clamp" when the
  * write went past the end and the browser clamped it, else "foreign".
  */
-function scrollOwner(scroller: Element, lastWrite: number, slack: number): "own" | "clamp" | "foreign" {
+function scrollOwner(scroller: Element, lastWrite: number, slack: number): "own" | "clamp" | "foreign"
+{
 	const top = scroller.scrollTop;
 	if (Math.abs(top - lastWrite) <= slack) return "own";
 	const max = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
@@ -24,41 +25,55 @@ function scrollOwner(scroller: Element, lastWrite: number, slack: number): "own"
  * way (at least 1px) and lands once within 1px. A wheel, touch, pointer press or non-editing key,
  * another scroll moving scrollTop off the last write, a newer glide, or a null target stops it.
  */
-export function glideScrollTo(scroller: HTMLElement, target: () => number | null): void {
+export function glideScrollTo(scroller: HTMLElement, target: () => number | null): void
+{
 	activeGlides.get(scroller)?.();
 	const controller = new AbortController();
 	let frame = 0;
-	const stop = () => {
+	const stop = () =>
+	{
 		if (activeGlides.get(scroller) === stop) activeGlides.delete(scroller);
 		cancelAnimationFrame(frame);
 		controller.abort();
 	};
 	activeGlides.set(scroller, stop);
-	const listen = {passive: true, signal: controller.signal};
+	const listen =
+	{
+		passive: true,
+		signal: controller.signal,
+	};
 	scroller.addEventListener("wheel", stop, listen);
 	scroller.addEventListener("touchstart", stop, listen);
 	scroller.addEventListener("pointerdown", stop, listen);
 	scroller.ownerDocument.addEventListener(
 		"keydown",
-		(event) => {
+		(event) =>
+		{
 			if (!isEditableTarget(event.target)) stop();
 		},
-		{capture: true, signal: controller.signal},
+		{
+			capture: true,
+			signal: controller.signal,
+		},
 	);
 	let lastWrite = scroller.scrollTop;
-	const step = () => {
+	const step = () =>
+	{
 		if (controller.signal.aborted) return;
 		const current = scroller.scrollTop;
-		if (scrollOwner(scroller, lastWrite, OWN_SCROLL_SLACK) === "foreign") {
+		if (scrollOwner(scroller, lastWrite, OWN_SCROLL_SLACK) === "foreign")
+		{
 			stop();
 			return;
 		}
 		const goal = target();
-		if (goal === null) {
+		if (goal === null)
+		{
 			stop();
 			return;
 		}
-		if (Math.abs(goal - current) < 1) {
+		if (Math.abs(goal - current) < 1)
+		{
 			stop();
 			scroller.scrollTop = goal;
 			return;

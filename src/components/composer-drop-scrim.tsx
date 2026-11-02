@@ -3,11 +3,13 @@ import {splitDroppedItems} from "../lib/drop-collect";
 
 export type FileDropState = "idle" | "off-target" | "on-target";
 
-function hasFiles(e: DragEvent): boolean {
+function hasFiles(e: DragEvent): boolean
+{
 	return Array.from(e.dataTransfer?.types ?? []).includes("Files");
 }
 
-function inside(target: RefObject<HTMLElement | null> | undefined, node: EventTarget | null): boolean {
+function inside(target: RefObject<HTMLElement | null> | undefined, node: EventTarget | null): boolean
+{
 	const element = target?.current;
 	return element != null && node instanceof Node && element.contains(node);
 }
@@ -19,7 +21,8 @@ function inside(target: RefObject<HTMLElement | null> | undefined, node: EventTa
  */
 const owners: symbol[] = [];
 
-function claim(token: symbol) {
+function claim(token: symbol)
+{
 	const index = owners.indexOf(token);
 	if (index !== -1) owners.splice(index, 1);
 	owners.push(token);
@@ -40,38 +43,47 @@ export function useFileDropTarget({
 	onFileDrop: (files: readonly File[]) => void;
 	disabled?: boolean;
 	targetRef?: RefObject<HTMLElement | null>;
-}): FileDropState {
+}): FileDropState
+{
 	const [state, setState] = useState<FileDropState>("idle");
-	const drop = useEffectEvent((files: readonly File[]) => {
+	const drop = useEffectEvent((files: readonly File[]) =>
+	{
 		onFileDrop(files);
 	});
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (disabled) return undefined;
 		const body = targetRef?.current?.ownerDocument.body ?? document.body;
 		const token = Symbol("file-drop-target");
 		claim(token);
 		const owns = () => owners.at(-1) === token;
-		const reset = () => {
+		const reset = () =>
+		{
 			setState("idle");
 		};
-		const onFocusIn = (e: FocusEvent) => {
+		const onFocusIn = (e: FocusEvent) =>
+		{
 			if (inside(targetRef, e.target)) claim(token);
 		};
-		const onDragOver = (e: DragEvent) => {
+		const onDragOver = (e: DragEvent) =>
+		{
 			if (!hasFiles(e)) return;
-			if (!owns()) {
+			if (!owns())
+			{
 				reset();
 				return;
 			}
 			e.preventDefault();
 			setState(inside(targetRef, e.target) ? "on-target" : "off-target");
 		};
-		const onDragLeave = (e: DragEvent) => {
+		const onDragLeave = (e: DragEvent) =>
+		{
 			if (!hasFiles(e) || inside(targetRef, e.relatedTarget)) return;
 			if (e.relatedTarget === null || e.target === body) reset();
 		};
-		const onDrop = (e: DragEvent) => {
+		const onDrop = (e: DragEvent) =>
+		{
 			if (!hasFiles(e)) return;
 			reset();
 			if (!owns()) return;
@@ -85,7 +97,8 @@ export function useFileDropTarget({
 		body.addEventListener("pointerdown", reset, true);
 		body.addEventListener("drop", onDrop);
 		body.addEventListener("focusin", onFocusIn, true);
-		return () => {
+		return () =>
+		{
 			owners.splice(owners.indexOf(token), 1);
 			body.removeEventListener("focusin", onFocusIn, true);
 			body.removeEventListener("dragover", onDragOver, true);

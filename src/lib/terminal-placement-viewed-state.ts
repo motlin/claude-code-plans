@@ -8,12 +8,20 @@ import type {TmuxTerminalPlacement} from "./tmux-windows";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-export type ViewedTmuxTerminalPlacement = TmuxTerminalPlacement & {viewedState: DurableSessionViewedState};
-export type ViewedHerdrTerminalPlacement = Omit<HerdrTerminalPlacement, "herdrPane"> & {
-	herdrPane: HerdrPaneLink & {viewedState: DurableSessionViewedState};
+export type ViewedTmuxTerminalPlacement = TmuxTerminalPlacement &
+{
+	viewedState: DurableSessionViewedState;
+};
+export type ViewedHerdrTerminalPlacement = Omit<HerdrTerminalPlacement, "herdrPane"> &
+{
+	herdrPane: HerdrPaneLink &
+	{
+		viewedState: DurableSessionViewedState;
+	};
 };
 
-function herdrPlacementKey(sessionId: string, terminalId: string): string {
+function herdrPlacementKey(sessionId: string, terminalId: string): string
+{
 	return `${sessionId}\0${terminalId}`;
 }
 
@@ -25,10 +33,12 @@ function herdrPlacementKey(sessionId: string, terminalId: string): string {
 export function addViewedStateToTerminalPlacements(
 	db: IndexDb,
 	placements: readonly TerminalPlacement[],
-): Array<ViewedTmuxTerminalPlacement | ViewedHerdrTerminalPlacement> {
+): Array<ViewedTmuxTerminalPlacement | ViewedHerdrTerminalPlacement>
+{
 	const tmuxPlacements = placements
 		.filter((placement) => placement.provider === "tmux")
-		.map((placement) => ({
+		.map((placement) => (
+		{
 			...placement,
 			viewedState: getSessionViewedState(
 				db,
@@ -45,10 +55,14 @@ export function addViewedStateToTerminalPlacements(
 		db,
 		[...herdrPlacementsByKey.values()].map((placement) => placement.herdrPane),
 	);
-	const herdrPlacements = herdrPanes.map((pane) => {
+	const herdrPlacements = herdrPanes.map((pane) =>
+	{
 		const placement = herdrPlacementsByKey.get(herdrPlacementKey(pane.sessionId, pane.terminalId));
 		if (!placement) throw new Error("Herdr placement disappeared during enrichment");
-		return {...placement, herdrPane: pane};
+		return {
+			...placement,
+			herdrPane: pane,
+		};
 	});
 	return [...tmuxPlacements, ...herdrPlacements];
 }

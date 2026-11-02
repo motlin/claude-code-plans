@@ -4,7 +4,8 @@ import {useOptionalPaneHost} from "./panes/pane-host-context";
  * Upstream's "N running tasks" ghost button in muted 14/20 ink, drawn inside
  * the working line while a turn runs; it opens the Background tasks pane.
  */
-export function RunningTasksControl({count}: {count: number}) {
+export function RunningTasksControl({count}: {count: number})
+{
 	const host = useOptionalPaneHost();
 	if (count === 0) return null;
 	return (

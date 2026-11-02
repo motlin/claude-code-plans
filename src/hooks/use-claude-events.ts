@@ -2,7 +2,8 @@ import {createContext, useCallback, useContext, useEffect, useState, useSyncExte
 import {useQueryClient, type QueryClient} from "@tanstack/react-query";
 import {z} from "zod";
 import {DOMAIN_EVENTS, SSE_EVENTS} from "../lib/event-names";
-import type {
+import type
+{
 	HookSchemaDriftPayload,
 	MemorySummaryPayload,
 	NotificationPayload,
@@ -17,13 +18,15 @@ import type {
 	SessionToolFailedPayload,
 	SubagentStartedPayload,
 } from "../lib/hook-events";
-import {
+import
+{
 	reconcileLiveSubagents,
 	recordLiveSubagentStop,
 	sweepLiveSubagents,
 	type LiveSubagentNode,
 } from "../lib/live-subagent-store";
-import {
+import
+{
 	fetchTranscriptTail,
 	mergeTranscriptData,
 	type ActiveSessionListItem,
@@ -36,7 +39,8 @@ import {
 	transcriptEndIndex,
 	type TranscriptData,
 } from "../lib/api/sessions";
-import {
+import
+{
 	HookBackgroundTaskPayloadSchema,
 	HookSessionCronPayloadSchema,
 	LiveSubagentNodeSchema,
@@ -56,7 +60,8 @@ import {invalidateSessionIdentities} from "../lib/api/session-identity";
 // State types
 // ---------------------------------------------------------------------------
 
-export interface ActiveSessionInfo {
+export interface ActiveSessionInfo
+{
 	sessionId: string;
 	cwd: string;
 	model: string;
@@ -64,7 +69,8 @@ export interface ActiveSessionInfo {
 	lastActivity: number;
 }
 
-export interface ClaudeEventsState {
+export interface ClaudeEventsState
+{
 	activeSessions: Map<string, ActiveSessionInfo>;
 	/** Most recent turn settings and Stop-reported paused work for each session. */
 	hookContexts: Map<string, SessionHookContextPayload>;
@@ -120,15 +126,27 @@ export interface ClaudeEventsState {
 // ---------------------------------------------------------------------------
 
 export type ClaudeEventsAction =
-	| {
+	|
+	  {
 			type: "SSE_EVENT";
 			eventType: string;
 			data: Record<string, unknown>;
 			timestamp: number;
 	  }
-	| {type: "DISMISS_DRIFT"; hookEventName: string}
-	| {type: "SWEEP_LIVE_SUBAGENTS"; timestamp: number}
-	| {type: "RESET"};
+	|
+	  {
+			type: "DISMISS_DRIFT";
+			hookEventName: string;
+	  }
+	|
+	  {
+			type: "SWEEP_LIVE_SUBAGENTS";
+			timestamp: number;
+	  }
+	|
+	  {
+			type: "RESET";
+	  };
 
 // ---------------------------------------------------------------------------
 // Reducer (exported for testing)
@@ -139,7 +157,8 @@ export type ClaudeEventsAction =
 // ---------------------------------------------------------------------------
 
 /** A fresh state with every map and set empty: the provider's initial state and what RESET returns. */
-export function emptyClaudeEventsState(): ClaudeEventsState {
+export function emptyClaudeEventsState(): ClaudeEventsState
+{
 	return {
 		activeSessions: new Map(),
 		hookContexts: new Map(),
@@ -154,22 +173,35 @@ export function emptyClaudeEventsState(): ClaudeEventsState {
 	};
 }
 
-export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEventsAction): ClaudeEventsState {
+export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEventsAction): ClaudeEventsState
+{
 	if (action.type === "RESET") return emptyClaudeEventsState();
 
-	if (action.type === "SWEEP_LIVE_SUBAGENTS") {
+	if (action.type === "SWEEP_LIVE_SUBAGENTS")
+	{
 		const liveSubagents = new Map(state.liveSubagents);
 		sweepLiveSubagents(liveSubagents, action.timestamp);
-		return liveSubagents.size === state.liveSubagents.size ? state : {...state, liveSubagents};
+		return liveSubagents.size === state.liveSubagents.size
+			? state
+			:
+				{
+					...state,
+					liveSubagents,
+				};
 	}
 
-	if (action.type === "DISMISS_DRIFT") {
+	if (action.type === "DISMISS_DRIFT")
+	{
 		const dismissedDrifts = new Set(state.dismissedDrifts);
 		dismissedDrifts.add(action.hookEventName);
-		return {...state, dismissedDrifts};
+		return {
+			...state,
+			dismissedDrifts,
+		};
 	}
 
-	if (action.eventType === DOMAIN_EVENTS.HOOK_SCHEMA_DRIFT) {
+	if (action.eventType === DOMAIN_EVENTS.HOOK_SCHEMA_DRIFT)
+	{
 		const hookEventName =
 			typeof action.data["hookEventName"] === "string" ? action.data["hookEventName"] : undefined;
 		const count = typeof action.data["count"] === "number" ? action.data["count"] : 1;
@@ -181,51 +213,74 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			: [];
 		if (!hookEventName) return state;
 		const hookSchemaDrifts = new Map(state.hookSchemaDrifts);
-		hookSchemaDrifts.set(hookEventName, {
+		hookSchemaDrifts.set(
 			hookEventName,
-			missingFields,
-			unknownFields,
-			count,
-		});
+			{
+				hookEventName,
+				missingFields,
+				unknownFields,
+				count,
+			},
+		);
 		// A fresh drift re-surfaces the banner — clear the dismissal so the
 		// user sees the new unknown-field set.
 		const dismissedDrifts = new Set(state.dismissedDrifts);
 		dismissedDrifts.delete(hookEventName);
-		return {...state, hookSchemaDrifts, dismissedDrifts};
+		return {
+			...state,
+			hookSchemaDrifts,
+			dismissedDrifts,
+		};
 	}
 
-	if (action.eventType === DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT) {
+	if (action.eventType === DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT)
+	{
 		const nodes = action.data["subagents"];
 		if (!Array.isArray(nodes)) return state;
 		const liveSubagents = new Map<string, LiveSubagentNode>();
 		const runningSubagents = new Map<string, SubagentStartedPayload>();
-		for (const value of nodes) {
+		for (const value of nodes)
+		{
 			const node = LiveSubagentNodeSchema.safeParse(value).data;
 			if (node === undefined) continue;
 			liveSubagents.set(node.agentId, node);
-			if (node.endedAt === null) {
+			if (node.endedAt === null)
+			{
 				runningSubagents.set(getSubagentLifecycleKey(node.sessionId, node.agentId, node.agentType), node);
 			}
 		}
-		return {...state, liveSubagents, runningSubagents};
+		return {
+			...state,
+			liveSubagents,
+			runningSubagents,
+		};
 	}
 
 	const sessionId = typeof action.data["sessionId"] === "string" ? action.data["sessionId"] : undefined;
 
-	switch (action.eventType) {
-		case SSE_EVENTS.SESSION_START: {
+	switch (action.eventType)
+	{
+		case SSE_EVENTS.SESSION_START:
+		{
 			if (!sessionId) return state;
 			const activeSessions = new Map(state.activeSessions);
-			activeSessions.set(sessionId, {
+			activeSessions.set(
 				sessionId,
-				cwd: typeof action.data["cwd"] === "string" ? action.data["cwd"] : "",
-				model: typeof action.data["model"] === "string" ? action.data["model"] : "",
-				startedAt: action.timestamp,
-				lastActivity: action.timestamp,
-			});
-			return {...state, activeSessions};
+				{
+					sessionId,
+					cwd: typeof action.data["cwd"] === "string" ? action.data["cwd"] : "",
+					model: typeof action.data["model"] === "string" ? action.data["model"] : "",
+					startedAt: action.timestamp,
+					lastActivity: action.timestamp,
+				},
+			);
+			return {
+				...state,
+				activeSessions,
+			};
 		}
-		case SSE_EVENTS.SESSION_END: {
+		case SSE_EVENTS.SESSION_END:
+		{
 			if (!sessionId) return state;
 			const hadActive = state.activeSessions.has(sessionId);
 			const hadHookContext = state.hookContexts.has(sessionId);
@@ -255,11 +310,13 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			const notifications = new Map(state.notifications);
 			notifications.delete(sessionId);
 			const failedTools = new Map(state.failedTools);
-			for (const [key, failed] of failedTools) {
+			for (const [key, failed] of failedTools)
+			{
 				if (failed.sessionId === sessionId) failedTools.delete(key);
 			}
 			const runningSubagents = new Map(state.runningSubagents);
-			for (const [key, sub] of runningSubagents) {
+			for (const [key, sub] of runningSubagents)
+			{
 				if (sub.sessionId === sessionId) runningSubagents.delete(key);
 			}
 			const liveSubagents = new Map(state.liveSubagents);
@@ -276,7 +333,8 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 				liveSubagents,
 			};
 		}
-		case DOMAIN_EVENTS.SESSION_UPDATED: {
+		case DOMAIN_EVENTS.SESSION_UPDATED:
+		{
 			// Domain SESSION_UPDATED carries the full session summary; only the id
 			// is needed here to keep the active indicator alive.
 			const session = action.data["session"];
@@ -288,21 +346,40 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			const existing = state.activeSessions.get(id);
 			if (!existing) return state;
 			const activeSessions = new Map(state.activeSessions);
-			activeSessions.set(id, {...existing, lastActivity: action.timestamp});
-			return {...state, activeSessions};
+			activeSessions.set(
+				id,
+				{
+					...existing,
+					lastActivity: action.timestamp,
+				},
+			);
+			return {
+				...state,
+				activeSessions,
+			};
 		}
-		case DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED: {
+		case DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED:
+		{
 			if (!sessionId) return state;
-			const current = state.hookContexts.get(sessionId) ?? {sessionId};
-			const next: SessionHookContextPayload = {...current};
-			if (typeof action.data["sessionTitle"] === "string") {
+			const current = state.hookContexts.get(sessionId) ??
+			{
+				sessionId,
+			};
+			const next: SessionHookContextPayload =
+			{
+				...current,
+			};
+			if (typeof action.data["sessionTitle"] === "string")
+			{
 				next.sessionTitle = action.data["sessionTitle"];
 			}
 			if (typeof action.data["promptId"] === "string") next.promptId = action.data["promptId"];
-			if (typeof action.data["permissionMode"] === "string") {
+			if (typeof action.data["permissionMode"] === "string")
+			{
 				next.permissionMode = action.data["permissionMode"];
 			}
-			if (typeof action.data["effortLevel"] === "string") {
+			if (typeof action.data["effortLevel"] === "string")
+			{
 				next.effortLevel = action.data["effortLevel"];
 			}
 			if (typeof action.data["model"] === "string") next.model = action.data["model"];
@@ -312,34 +389,63 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			if (sessionCrons.success) next.sessionCrons = sessionCrons.data;
 			const hookContexts = new Map(state.hookContexts);
 			hookContexts.set(sessionId, next);
-			return {...state, hookContexts};
+			return {
+				...state,
+				hookContexts,
+			};
 		}
-		case DOMAIN_EVENTS.SESSION_TOOL_PENDING: {
+		case DOMAIN_EVENTS.SESSION_TOOL_PENDING:
+		{
 			if (!sessionId) return state;
 			const toolName = typeof action.data["toolName"] === "string" ? action.data["toolName"] : "";
 			const toolUseId = typeof action.data["toolUseId"] === "string" ? action.data["toolUseId"] : "";
 			const pendingTools = new Map(state.pendingTools);
-			pendingTools.set(sessionId, {sessionId, toolName, toolUseId});
-			return {...state, pendingTools};
+			pendingTools.set(
+				sessionId,
+				{
+					sessionId,
+					toolName,
+					toolUseId,
+				},
+			);
+			return {
+				...state,
+				pendingTools,
+			};
 		}
-		case DOMAIN_EVENTS.SESSION_TOOL_FAILED: {
+		case DOMAIN_EVENTS.SESSION_TOOL_FAILED:
+		{
 			if (!sessionId) return state;
 			const toolName = typeof action.data["toolName"] === "string" ? action.data["toolName"] : "";
 			const toolUseId = typeof action.data["toolUseId"] === "string" ? action.data["toolUseId"] : "";
 			const error = typeof action.data["error"] === "string" ? action.data["error"] : "";
 			const failedTools = new Map(state.failedTools);
 			const key = `${sessionId}:${toolUseId}`;
-			failedTools.set(key, {sessionId, toolName, toolUseId, error});
+			failedTools.set(
+				key,
+				{
+					sessionId,
+					toolName,
+					toolUseId,
+					error,
+				},
+			);
 			// A failed tool also clears any in-flight pending indicator for the
 			// same session — the tool is no longer in flight, it's errored.
 			const pendingTools = new Map(state.pendingTools);
 			const existingPending = pendingTools.get(sessionId);
-			if (existingPending?.toolUseId === toolUseId) {
+			if (existingPending?.toolUseId === toolUseId)
+			{
 				pendingTools.delete(sessionId);
 			}
-			return {...state, failedTools, pendingTools};
+			return {
+				...state,
+				failedTools,
+				pendingTools,
+			};
 		}
-		case DOMAIN_EVENTS.SESSION_LINES_APPENDED: {
+		case DOMAIN_EVENTS.SESSION_LINES_APPENDED:
+		{
 			// Once new lines land we can clear any pending-tool / compacting state
 			// for that session — the JSONL is the source of truth for what's
 			// actually been executed.
@@ -349,15 +455,24 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			pendingTools.delete(sessionId);
 			const compactingSessions = new Set(state.compactingSessions);
 			compactingSessions.delete(sessionId);
-			return {...state, pendingTools, compactingSessions};
+			return {
+				...state,
+				pendingTools,
+				compactingSessions,
+			};
 		}
-		case DOMAIN_EVENTS.SESSION_COMPACTING: {
+		case DOMAIN_EVENTS.SESSION_COMPACTING:
+		{
 			if (!sessionId) return state;
 			const compactingSessions = new Set(state.compactingSessions);
 			compactingSessions.add(sessionId);
-			return {...state, compactingSessions};
+			return {
+				...state,
+				compactingSessions,
+			};
 		}
-		case DOMAIN_EVENTS.SESSION_COMPACTED: {
+		case DOMAIN_EVENTS.SESSION_COMPACTED:
+		{
 			// Symmetric with SESSION_COMPACTING — Claude Code reports compaction is
 			// done, so clear the in-progress indicator without waiting for the next
 			// transcript line.
@@ -365,17 +480,32 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			if (!state.compactingSessions.has(sessionId)) return state;
 			const compactingSessions = new Set(state.compactingSessions);
 			compactingSessions.delete(sessionId);
-			return {...state, compactingSessions};
+			return {
+				...state,
+				compactingSessions,
+			};
 		}
-		case DOMAIN_EVENTS.NOTIFICATION: {
+		case DOMAIN_EVENTS.NOTIFICATION:
+		{
 			if (!sessionId) return state;
 			const message = typeof action.data["message"] === "string" ? action.data["message"] : "";
 			const title = typeof action.data["title"] === "string" ? action.data["title"] : undefined;
 			const notifications = new Map(state.notifications);
-			notifications.set(sessionId, {sessionId, message, title});
-			return {...state, notifications};
+			notifications.set(
+				sessionId,
+				{
+					sessionId,
+					message,
+					title,
+				},
+			);
+			return {
+				...state,
+				notifications,
+			};
 		}
-		case DOMAIN_EVENTS.SUBAGENT_STARTED: {
+		case DOMAIN_EVENTS.SUBAGENT_STARTED:
+		{
 			if (!sessionId) return state;
 			const agentType = typeof action.data["agentType"] === "string" ? action.data["agentType"] : "";
 			const rawAgentId = typeof action.data["agentId"] === "string" ? action.data["agentId"] : "";
@@ -388,7 +518,8 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 					: new Date(action.timestamp).toISOString();
 			if (rawAgentId === "") return state;
 			const agentId = toSubagentSessionId(rawAgentId);
-			const node: LiveSubagentNode = {
+			const node: LiveSubagentNode =
+			{
 				sessionId,
 				parentAgentId,
 				agentType,
@@ -402,9 +533,14 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			runningSubagents.set(key, node);
 			const liveSubagents = new Map(state.liveSubagents);
 			liveSubagents.set(agentId, node);
-			return {...state, runningSubagents, liveSubagents};
+			return {
+				...state,
+				runningSubagents,
+				liveSubagents,
+			};
 		}
-		case DOMAIN_EVENTS.SUBAGENT_STOPPED: {
+		case DOMAIN_EVENTS.SUBAGENT_STOPPED:
+		{
 			if (!sessionId) return state;
 			const agentType = typeof action.data["agentType"] === "string" ? action.data["agentType"] : "";
 			const rawAgentId = typeof action.data["agentId"] === "string" ? action.data["agentId"] : "";
@@ -418,9 +554,14 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			const endedAt =
 				typeof action.data["endedAt"] === "string" ? Date.parse(action.data["endedAt"]) : action.timestamp;
 			recordLiveSubagentStop(liveSubagents, agentId, endedAt);
-			return {...state, runningSubagents, liveSubagents};
+			return {
+				...state,
+				runningSubagents,
+				liveSubagents,
+			};
 		}
-		case DOMAIN_EVENTS.SESSION_ENDED: {
+		case DOMAIN_EVENTS.SESSION_ENDED:
+		{
 			// Domain SESSION_ENDED cleans up the same per-session state the
 			// legacy SESSION_END case above does, scoped to data not owned by
 			// the activeSessions map (which the legacy case already clears).
@@ -436,7 +577,8 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 				!state.notifications.has(sessionId) &&
 				!hasFailedForSession &&
 				!hasRunningSubagentForSession
-			) {
+			)
+			{
 				return state;
 			}
 			const pendingTools = new Map(state.pendingTools);
@@ -448,11 +590,13 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 			const notifications = new Map(state.notifications);
 			notifications.delete(sessionId);
 			const failedTools = new Map(state.failedTools);
-			for (const [key, failed] of failedTools) {
+			for (const [key, failed] of failedTools)
+			{
 				if (failed.sessionId === sessionId) failedTools.delete(key);
 			}
 			const runningSubagents = new Map(state.runningSubagents);
-			for (const [key, sub] of runningSubagents) {
+			for (const [key, sub] of runningSubagents)
+			{
 				if (sub.sessionId === sessionId) runningSubagents.delete(key);
 			}
 			const liveSubagents = new Map(state.liveSubagents);
@@ -477,7 +621,8 @@ export function claudeEventsReducer(state: ClaudeEventsState, action: ClaudeEven
 // Context
 // ---------------------------------------------------------------------------
 
-export interface ClaudeEventsContextValue {
+export interface ClaudeEventsContextValue
+{
 	state: ClaudeEventsState;
 	subscribeStatusline: (listener: (sessionId: string) => void) => () => void;
 	subscribeSessionStates: (listener: (session: SessionStateObservation) => void) => () => void;
@@ -486,14 +631,16 @@ export interface ClaudeEventsContextValue {
 	dismissHookSchemaDrift: (hookEventName: string) => void;
 }
 
-export interface SessionStateObservation {
+export interface SessionStateObservation
+{
 	sessionId: string;
 	label: string;
 	state: ActivityState;
 	archived: boolean;
 }
 
-export function toSessionStateObservation(summary: SessionSummaryPayload): SessionStateObservation | null {
+export function toSessionStateObservation(summary: SessionSummaryPayload): SessionStateObservation | null
+{
 	if (!isLiveSessionState(summary.state)) return null;
 	return {
 		sessionId: summary.id,
@@ -506,25 +653,30 @@ export function toSessionStateObservation(summary: SessionSummaryPayload): Sessi
 export const ClaudeEventsContext = createContext<ClaudeEventsContextValue | null>(null);
 
 /** How the shared `/api/events` stream is recovering from a drop, null while it is up. */
-export interface StreamDropStore {
+export interface StreamDropStore
+{
 	get: () => StreamDrop;
 	set: (drop: StreamDrop) => void;
 	subscribe: (listener: () => void) => () => void;
 }
 
-export function createStreamDropStore(initial: StreamDrop = null): StreamDropStore {
+export function createStreamDropStore(initial: StreamDrop = null): StreamDropStore
+{
 	let drop = initial;
 	const listeners = new Set<() => void>();
 	return {
 		get: () => drop,
-		set(next) {
+		set(next)
+		{
 			if (next === drop) return;
 			drop = next;
 			for (const listener of listeners) listener();
 		},
-		subscribe(listener) {
+		subscribe(listener)
+		{
 			listeners.add(listener);
-			return () => {
+			return () =>
+			{
 				listeners.delete(listener);
 			};
 		},
@@ -537,46 +689,56 @@ export function createStreamDropStore(initial: StreamDrop = null): StreamDropSto
  */
 export const EventStreamStatusContext = createContext<StreamDropStore>(createStreamDropStore());
 
-export function useEventStreamStatus(): StreamDrop {
+export function useEventStreamStatus(): StreamDrop
+{
 	const store = useContext(EventStreamStatusContext);
 	return useSyncExternalStore(store.subscribe, store.get, () => null);
 }
 
 /** Whether the stream is down, read only while `active`: an inactive reader never re-renders on a status change. */
-export function useEventStreamConnecting(active: boolean): boolean {
+export function useEventStreamConnecting(active: boolean): boolean
+{
 	const store = useContext(EventStreamStatusContext);
 	const connecting = () => active && store.get() !== null;
 	return useSyncExternalStore(store.subscribe, connecting, () => false);
 }
 
-export function useClaudeEvents(): ClaudeEventsState {
+export function useClaudeEvents(): ClaudeEventsState
+{
 	const ctx = useContext(ClaudeEventsContext);
-	if (!ctx) {
+	if (!ctx)
+	{
 		throw new Error("useClaudeEvents must be used within a ClaudeEventsProvider");
 	}
 	return ctx.state;
 }
 
-export function useSubscribeSessionStates(): ClaudeEventsContextValue["subscribeSessionStates"] {
+export function useSubscribeSessionStates(): ClaudeEventsContextValue["subscribeSessionStates"]
+{
 	const context = useContext(ClaudeEventsContext);
-	if (!context) {
+	if (!context)
+	{
 		throw new Error("useSubscribeSessionStates must be used within a ClaudeEventsProvider");
 	}
 	return context.subscribeSessionStates;
 }
 
-export function useSubscribeReviewOffers(): ClaudeEventsContextValue["subscribeReviewOffers"] {
+export function useSubscribeReviewOffers(): ClaudeEventsContextValue["subscribeReviewOffers"]
+{
 	const context = useContext(ClaudeEventsContext);
-	if (!context) {
+	if (!context)
+	{
 		throw new Error("useSubscribeReviewOffers must be used within a ClaudeEventsProvider");
 	}
 	return context.subscribeReviewOffers;
 }
 
 /** Notifies the listener with the id of every session the index drops (SSE `session-removed`). */
-export function useSubscribeSessionRemovals(): ClaudeEventsContextValue["subscribeSessionRemovals"] {
+export function useSubscribeSessionRemovals(): ClaudeEventsContextValue["subscribeSessionRemovals"]
+{
 	const context = useContext(ClaudeEventsContext);
-	if (!context) {
+	if (!context)
+	{
 		throw new Error("useSubscribeSessionRemovals must be used within a ClaudeEventsProvider");
 	}
 	return context.subscribeSessionRemovals;
@@ -585,25 +747,37 @@ export function useSubscribeSessionRemovals(): ClaudeEventsContextValue["subscri
 const NO_ACTIVE_SESSIONS: ReadonlyMap<string, ActiveSessionInfo> = new Map();
 
 /** Sessions seen starting over SSE, or none when rendered outside a ClaudeEventsProvider. */
-export function useActiveSessionsIfAvailable(): ReadonlyMap<string, ActiveSessionInfo> {
+export function useActiveSessionsIfAvailable(): ReadonlyMap<string, ActiveSessionInfo>
+{
 	return useContext(ClaudeEventsContext)?.state.activeSessions ?? NO_ACTIVE_SESSIONS;
 }
 
 /**
  * Convenience hook: returns true if the given session ID is in the active sessions map.
  */
-export function useIsSessionActive(sessionId: string): boolean {
+export function useIsSessionActive(sessionId: string): boolean
+{
 	const {activeSessions} = useClaudeEvents();
 	return activeSessions.has(sessionId);
 }
 
-type SessionListPage = {sessions: SessionSummaryPayload[]};
+type SessionListPage =
+{
+	sessions: SessionSummaryPayload[];
+};
 
 /** A cached session list's pages, in any of its shapes: infinite pages, one page, or project groups. */
-function cachedListPages(queryClient: QueryClient, queryKey: readonly unknown[]): readonly SessionListPage[] {
+function cachedListPages(queryClient: QueryClient, queryKey: readonly unknown[]): readonly SessionListPage[]
+{
 	if (queryKey[1] === "grouped") return queryClient.getQueryData<SessionListPage[]>(queryKey) ?? [];
-	if (queryKey[2] === "infinite") {
-		return queryClient.getQueryData<{pages: SessionListPage[]}>(queryKey)?.pages ?? [];
+	if (queryKey[2] === "infinite")
+	{
+		return (
+			queryClient.getQueryData<
+			{
+				pages: SessionListPage[];
+			}>(queryKey)?.pages ?? []
+		);
 	}
 	const page = queryClient.getQueryData<SessionListPage>(queryKey);
 	return page === undefined ? [] : [page];
@@ -614,18 +788,30 @@ function cachedListPages(queryClient: QueryClient, queryKey: readonly unknown[])
  * recently fetched copy wins: a list no view observes keeps the row it held when last fetched,
  * so a page reading it would hold a Needs input the sidebar's own list has since dropped.
  */
-export function cachedSessionSummary(queryClient: QueryClient, sessionId: string): SessionSummaryPayload | undefined {
+export function cachedSessionSummary(queryClient: QueryClient, sessionId: string): SessionSummaryPayload | undefined
+{
 	const cache = queryClient.getQueryCache();
 	let freshest: SessionSummaryPayload | undefined;
 	let freshestAt = Number.NEGATIVE_INFINITY;
 	for (const query of [
-		...cache.findAll({queryKey: sessionQueryKeys.recentLists()}),
-		...cache.findAll({queryKey: sessionQueryKeys.groupedLists()}),
-	]) {
+		...cache.findAll(
+			{
+				queryKey: sessionQueryKeys.recentLists(),
+			},
+		),
+		...cache.findAll(
+			{
+				queryKey: sessionQueryKeys.groupedLists(),
+			},
+		),
+	])
+	{
 		if (query.state.dataUpdatedAt <= freshestAt) continue;
-		for (const page of cachedListPages(queryClient, query.queryKey)) {
+		for (const page of cachedListPages(queryClient, query.queryKey))
+		{
 			const row = page.sessions.find((session) => session.id === sessionId);
-			if (row !== undefined) {
+			if (row !== undefined)
+			{
 				freshest = row;
 				freshestAt = query.state.dataUpdatedAt;
 				break;
@@ -639,7 +825,8 @@ export function cachedSessionSummary(queryClient: QueryClient, sessionId: string
  * The session's row from the SSE-patched session list caches, or undefined
  * when no loaded list includes it: one cache subscription for every field.
  */
-export function useCachedSessionSummary(sessionId: string): SessionSummaryPayload | undefined {
+export function useCachedSessionSummary(sessionId: string): SessionSummaryPayload | undefined
+{
 	const queryClient = useQueryClient();
 	const subscribe = useCallback(
 		(onChange: () => void) => queryClient.getQueryCache().subscribe(onChange),
@@ -657,20 +844,27 @@ export function useCachedSessionSummary(sessionId: string): SessionSummaryPayloa
  * dismiss callback. Components render a banner over this list and call
  * `dismiss(hookEventName)` to hide it until the next drift arrives.
  */
-export function useHookSchemaDrifts(): {
+export function useHookSchemaDrifts():
+{
 	drifts: HookSchemaDriftPayload[];
 	dismiss: (hookEventName: string) => void;
-} {
+}
+{
 	const ctx = useContext(ClaudeEventsContext);
-	if (!ctx) {
+	if (!ctx)
+	{
 		throw new Error("useHookSchemaDrifts must be used within a ClaudeEventsProvider");
 	}
 	const {hookSchemaDrifts, dismissedDrifts} = ctx.state;
 	const drifts: HookSchemaDriftPayload[] = [];
-	for (const [name, payload] of hookSchemaDrifts) {
+	for (const [name, payload] of hookSchemaDrifts)
+	{
 		if (!dismissedDrifts.has(name)) drifts.push(payload);
 	}
-	return {drifts, dismiss: ctx.dismissHookSchemaDrift};
+	return {
+		drifts,
+		dismiss: ctx.dismissHookSchemaDrift,
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -681,34 +875,55 @@ export function useHookSchemaDrifts(): {
 // avoids patching one cache with data that does not match another.
 // ---------------------------------------------------------------------------
 
-function invalidateSessionLists(queryClient: QueryClient): void {
-	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.groupedLists()});
-	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.recentLists()});
+function invalidateSessionLists(queryClient: QueryClient): void
+{
+	void queryClient.invalidateQueries(
+		{
+			queryKey: sessionQueryKeys.groupedLists(),
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: sessionQueryKeys.recentLists(),
+		},
+	);
 	// Session pages read their summary from the default recent list (it carries every live
 	// session), so it refetches even while the sidebar is hidden or shows another Status.
-	void queryClient.refetchQueries({
-		queryKey: recentSessionsInfiniteQueryOptions().queryKey,
-		exact: true,
-		type: "inactive",
-	});
+	void queryClient.refetchQueries(
+		{
+			queryKey: recentSessionsInfiniteQueryOptions().queryKey,
+			exact: true,
+			type: "inactive",
+		},
+	);
 }
 
-export function applySessionAdded(queryClient: QueryClient, session: SessionSummaryPayload): void {
+export function applySessionAdded(queryClient: QueryClient, session: SessionSummaryPayload): void
+{
 	void invalidateSessionIdentities(queryClient);
 	invalidateSessionLists(queryClient);
 	// Project session counts changed.
-	void queryClient.invalidateQueries({queryKey: ["projects"]});
-	void queryClient.invalidateQueries({
-		queryKey: ["project", session.project],
-	});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["projects"],
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["project", session.project],
+		},
+	);
 	// Plan links are derived from session JSONL content — a new session may
 	// reference a plan, so invalidate all plan link queries.
-	void queryClient.invalidateQueries({
-		predicate: (query) => query.queryKey[0] === "plans" && query.queryKey[2] === "links",
-	});
+	void queryClient.invalidateQueries(
+		{
+			predicate: (query) => query.queryKey[0] === "plans" && query.queryKey[2] === "links",
+		},
+	);
 }
 
-export function applySessionRemoved(queryClient: QueryClient, sessionId: string, projectDir: string): void {
+export function applySessionRemoved(queryClient: QueryClient, sessionId: string, projectDir: string): void
+{
 	void invalidateSessionIdentities(queryClient);
 	invalidateSessionLists(queryClient);
 	// Invalidate (don't remove) the session sub-caches so that any mounted
@@ -716,12 +931,25 @@ export function applySessionRemoved(queryClient: QueryClient, sessionId: string,
 	// background. Removing queries would cause useSuspenseQuery to re-suspend,
 	// which triggers the route loader. If the session is transiently missing
 	// (e.g. during a DB rebuild) this can create a suspend/refetch loop.
-	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.detail(sessionId)});
-	void queryClient.invalidateQueries({queryKey: ["projects"]});
-	void queryClient.invalidateQueries({queryKey: ["project", projectDir]});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: sessionQueryKeys.detail(sessionId),
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["projects"],
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["project", projectDir],
+		},
+	);
 }
 
-export function applySessionUpdated(queryClient: QueryClient, session: SessionSummaryPayload): void {
+export function applySessionUpdated(queryClient: QueryClient, session: SessionSummaryPayload): void
+{
 	void invalidateSessionIdentities(queryClient);
 	invalidateSessionLists(queryClient);
 	// Invalidate session detail metadata like messageCount, gitBranch, and summary.
@@ -729,81 +957,140 @@ export function applySessionUpdated(queryClient: QueryClient, session: SessionSu
 	// incremental transcript updates. Invalidating the transcript would cause a
 	// redundant full refetch that races with the incremental patch, potentially
 	// triggering render loops when combined with useSuspenseQuery.
-	void queryClient.invalidateQueries({
-		queryKey: sessionQueryKeys.detail(session.id),
-		exact: true,
-	});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: sessionQueryKeys.detail(session.id),
+			exact: true,
+		},
+	);
 	// The rail's Remote Control row reads the open-in data; refetch it only when
 	// the registry's bridge state moved (a `/remote-control` typed in the terminal).
 	const {queryKey: openInKey} = sessionOpenInQueryOptions(session.id);
 	const openIn = queryClient.getQueryData(openInKey);
-	if (openIn !== undefined && openIn.remoteControl?.state !== session.remoteControlState) {
-		void queryClient.invalidateQueries({queryKey: openInKey, exact: true});
+	if (openIn !== undefined && openIn.remoteControl?.state !== session.remoteControlState)
+	{
+		void queryClient.invalidateQueries(
+			{
+				queryKey: openInKey,
+				exact: true,
+			},
+		);
 	}
 }
 
-export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayload): void {
+export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayload): void
+{
 	// The flat plans list now carries projects[] per item which the SSE event
 	// does not — invalidate to refetch instead of patching a partial shape.
-	void queryClient.invalidateQueries({queryKey: ["plans"]});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["plans"],
+		},
+	);
 	// Plan detail and links queries must also be invalidated so the detail/edit
 	// pages reflect external edits without waiting for staleTime expiry. Those
 	// queries are keyed by the URL slug (no `.md`); the source viewer keeps the
 	// on-disk filename.
 	const slug = toMdSlug(plan.filename);
-	void queryClient.invalidateQueries({queryKey: ["plans", slug]});
-	void queryClient.invalidateQueries({
-		queryKey: ["plans", slug, "links"],
-	});
-	void queryClient.invalidateQueries({
-		queryKey: ["source", "plan", plan.filename],
-	});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["plans", slug],
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["plans", slug, "links"],
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["source", "plan", plan.filename],
+		},
+	);
 }
 
-export function applyPlanRemoved(queryClient: QueryClient, filename: string): void {
-	void queryClient.invalidateQueries({queryKey: ["plans"]});
+export function applyPlanRemoved(queryClient: QueryClient, filename: string): void
+{
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["plans"],
+		},
+	);
 	const slug = toMdSlug(filename);
-	queryClient.removeQueries({queryKey: ["plans", slug, "links"]});
-	queryClient.removeQueries({queryKey: ["plans", slug]});
-	queryClient.removeQueries({queryKey: ["source", "plan", filename]});
+	queryClient.removeQueries(
+		{
+			queryKey: ["plans", slug, "links"],
+		},
+	);
+	queryClient.removeQueries(
+		{
+			queryKey: ["plans", slug],
+		},
+	);
+	queryClient.removeQueries(
+		{
+			queryKey: ["source", "plan", filename],
+		},
+	);
 }
 
-export function applyMemoryChanged(queryClient: QueryClient, memory: MemorySummaryPayload): void {
+export function applyMemoryChanged(queryClient: QueryClient, memory: MemorySummaryPayload): void
+{
 	// Per-project memory list and detail are now keyed by project id. The detail
 	// query is keyed by the URL slug (no `.md`), so strip the extension to match.
-	void queryClient.invalidateQueries({
-		queryKey: ["projects", memory.project, "memories"],
-	});
-	void queryClient.invalidateQueries({
-		queryKey: ["projects", memory.project, "memories", toMdSlug(memory.filename)],
-	});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["projects", memory.project, "memories"],
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["projects", memory.project, "memories", toMdSlug(memory.filename)],
+		},
+	);
 }
 
-export function applyMemoryRemoved(queryClient: QueryClient, project: string, filename: string): void {
-	void queryClient.invalidateQueries({
-		queryKey: ["projects", project, "memories"],
-	});
-	queryClient.removeQueries({
-		queryKey: ["projects", project, "memories", toMdSlug(filename)],
-	});
+export function applyMemoryRemoved(queryClient: QueryClient, project: string, filename: string): void
+{
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["projects", project, "memories"],
+		},
+	);
+	queryClient.removeQueries(
+		{
+			queryKey: ["projects", project, "memories", toMdSlug(filename)],
+		},
+	);
 }
 
-export function applyTaskChanged(queryClient: QueryClient, projectDir: string): void {
+export function applyTaskChanged(queryClient: QueryClient, projectDir: string): void
+{
 	// SSE deltas only carry the changed task id — invalidate the affected
 	// queries so they refetch with up-to-date payloads rather than splicing
 	// partial data into the cache.
-	void queryClient.invalidateQueries({queryKey: ["tasks"]});
-	void queryClient.invalidateQueries({
-		queryKey: ["tasks", "project", projectDir],
-	});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["tasks"],
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["tasks", "project", projectDir],
+		},
+	);
 }
 
-type ApprovalsData = {approvals: PendingApprovalPayload[]};
+type ApprovalsData =
+{
+	approvals: PendingApprovalPayload[];
+};
 
 function upsertApproval(
 	approvals: PendingApprovalPayload[],
 	approval: PendingApprovalPayload,
-): PendingApprovalPayload[] {
+): PendingApprovalPayload[]
+{
 	const existingIndex = approvals.findIndex((a) => a.sessionId === approval.sessionId);
 	const next =
 		existingIndex >= 0 ? approvals.map((a, i) => (i === existingIndex ? approval : a)) : [...approvals, approval];
@@ -811,63 +1098,98 @@ function upsertApproval(
 	return next.toSorted((a, b) => (a.blockedSince < b.blockedSince ? -1 : a.blockedSince > b.blockedSince ? 1 : 0));
 }
 
-export function applyApprovalChanged(queryClient: QueryClient, approval: PendingApprovalPayload): void {
-	queryClient.setQueryData<ApprovalsData>(["approvals"], (old) => {
+export function applyApprovalChanged(queryClient: QueryClient, approval: PendingApprovalPayload): void
+{
+	queryClient.setQueryData<ApprovalsData>(["approvals"], (old) =>
+	{
 		if (!old) return old;
-		return {approvals: upsertApproval(old.approvals, approval)};
+		return {
+			approvals: upsertApproval(old.approvals, approval),
+		};
 	});
-	queryClient.setQueryData<ApprovalsData>(["approvals", approval.projectId], (old) => {
+	queryClient.setQueryData<ApprovalsData>(["approvals", approval.projectId], (old) =>
+	{
 		if (!old) return old;
-		return {approvals: upsertApproval(old.approvals, approval)};
+		return {
+			approvals: upsertApproval(old.approvals, approval),
+		};
 	});
 }
 
-export function applyApprovalResolved(queryClient: QueryClient, sessionId: string): void {
+export function applyApprovalResolved(queryClient: QueryClient, sessionId: string): void
+{
 	// The project-scoped cache is keyed by projectId, which the APPROVAL_RESOLVED
 	// payload does not carry. getQueriesData matches every cache whose key starts
 	// with ['approvals'] — both the global list and every per-project slice — so
 	// filter each in one pass.
-	for (const [key, data] of queryClient.getQueriesData<ApprovalsData>({
-		queryKey: ["approvals"],
-	})) {
+	for (const [key, data] of queryClient.getQueriesData<ApprovalsData>(
+		{
+			queryKey: ["approvals"],
+		},
+	))
+	{
 		if (!data) continue;
-		queryClient.setQueryData<ApprovalsData>(key, {
-			approvals: data.approvals.filter((a) => a.sessionId !== sessionId),
-		});
+		queryClient.setQueryData<ApprovalsData>(
+			key,
+			{
+				approvals: data.approvals.filter((a) => a.sessionId !== sessionId),
+			},
+		);
 	}
 }
 
-function upsertNotification(notifications: Notification[], notification: NotificationEntryPayload): Notification[] {
+function upsertNotification(notifications: Notification[], notification: NotificationEntryPayload): Notification[]
+{
 	// Newest-first: drop any existing entry with the same id, then prepend the
 	// fresh one so the list matches the store's newest-first ordering.
 	const rest = notifications.filter((n) => n.id !== notification.id);
-	return [{...notification, unread: true}, ...rest];
+	return [
+		{
+			...notification,
+			unread: true,
+		},
+		...rest,
+	];
 }
 
-export function applyNotificationAdded(queryClient: QueryClient, notification: NotificationEntryPayload): void {
-	queryClient.setQueryData<NotificationsData>(["notifications"], (old) => {
+export function applyNotificationAdded(queryClient: QueryClient, notification: NotificationEntryPayload): void
+{
+	queryClient.setQueryData<NotificationsData>(["notifications"], (old) =>
+	{
 		if (!old) return old;
-		return {notifications: upsertNotification(old.notifications, notification)};
+		return {
+			notifications: upsertNotification(old.notifications, notification),
+		};
 	});
-	queryClient.setQueryData<NotificationsData>(["notifications", notification.projectId], (old) => {
+	queryClient.setQueryData<NotificationsData>(["notifications", notification.projectId], (old) =>
+	{
 		if (!old) return old;
-		return {notifications: upsertNotification(old.notifications, notification)};
+		return {
+			notifications: upsertNotification(old.notifications, notification),
+		};
 	});
 }
 
-export function applyNotificationCleared(queryClient: QueryClient, payload: NotificationClearedPayload): void {
+export function applyNotificationCleared(queryClient: QueryClient, payload: NotificationClearedPayload): void
+{
 	// The project-scoped cache is keyed by projectId, which the NOTIFICATION_CLEARED
 	// payload does not carry. getQueriesData matches every cache whose key starts
 	// with ['notifications'] — both the global list and every per-project slice —
 	// so filter/empty each in one pass. `all` empties every slice; otherwise the
 	// single `id` is removed.
-	for (const [key, data] of queryClient.getQueriesData<NotificationsData>({
-		queryKey: ["notifications"],
-	})) {
+	for (const [key, data] of queryClient.getQueriesData<NotificationsData>(
+		{
+			queryKey: ["notifications"],
+		},
+	))
+	{
 		if (!data) continue;
-		queryClient.setQueryData<NotificationsData>(key, {
-			notifications: payload.all ? [] : data.notifications.filter((n) => n.id !== payload.id),
-		});
+		queryClient.setQueryData<NotificationsData>(
+			key,
+			{
+				notifications: payload.all ? [] : data.notifications.filter((n) => n.id !== payload.id),
+			},
+		);
 	}
 }
 
@@ -880,15 +1202,18 @@ export function applyNotificationCleared(queryClient: QueryClient, payload: Noti
  * two after it): a false positive costs one tail refetch, and the server's
  * `chainVersion` decides whether the cached pages are actually stale.
  */
-function appendForksChain(cached: TranscriptData, lines: readonly Record<string, unknown>[]): boolean {
+function appendForksChain(cached: TranscriptData, lines: readonly Record<string, unknown>[]): boolean
+{
 	const mainUuid = (record: Record<string, unknown>) =>
 		record["isSidechain"] === true || typeof record["uuid"] !== "string" ? undefined : record["uuid"];
 	let newest = cached.records.findLast((record) => mainUuid(record) !== undefined)?.["uuid"];
-	for (const record of lines) {
+	for (const record of lines)
+	{
 		const uuid = mainUuid(record);
 		if (uuid === undefined) continue;
 		const parentUuid = record["parentUuid"];
-		if (newest !== undefined && typeof parentUuid === "string" && parentUuid !== newest && isPrompt(record)) {
+		if (newest !== undefined && typeof parentUuid === "string" && parentUuid !== newest && isPrompt(record))
+		{
 			return true;
 		}
 		newest = uuid;
@@ -900,25 +1225,33 @@ function mergeAppendedLines(
 	queryClient: QueryClient,
 	queryKey: ReturnType<typeof sessionQueryKeys.transcript>,
 	lines: Record<string, unknown>[],
-): void {
-	queryClient.setQueryData<TranscriptData>(queryKey, (old) => {
+): void
+{
+	queryClient.setQueryData<TranscriptData>(queryKey, (old) =>
+	{
 		if (!old) return old;
 		// The cached window always runs to the end of the JSONL, so appended
 		// lines start exactly where it stops.
 		const startIndex = transcriptEndIndex(old);
-		const merged = mergeTranscriptData(old, {
-			records: lines,
-			byteOffset: old.byteOffset,
-			startIndex,
-			precedingMessageCount: old.precedingMessageCount,
-			// Only the server knows the whole file's chain, so an append hides
-			// nothing new until the next fetch recomputes it.
-			hiddenUuids: [],
-			cuts: [],
-			chainVersion: old.chainVersion,
-			chapters: [],
-		});
-		return {...merged, chapters: appendClaudeChapters(old.chapters, lines, startIndex)};
+		const merged = mergeTranscriptData(
+			old,
+			{
+				records: lines,
+				byteOffset: old.byteOffset,
+				startIndex,
+				precedingMessageCount: old.precedingMessageCount,
+				// Only the server knows the whole file's chain, so an append hides
+				// nothing new until the next fetch recomputes it.
+				hiddenUuids: [],
+				cuts: [],
+				chainVersion: old.chainVersion,
+				chapters: [],
+			},
+		);
+		return {
+			...merged,
+			chapters: appendClaudeChapters(old.chapters, lines, startIndex),
+		};
 	});
 }
 
@@ -937,7 +1270,8 @@ export function applySessionLinesAppended(
 	queryClient: QueryClient,
 	sessionId: string,
 	payload: Pick<SessionLinesAppendedPayload, "sessionId" | "lines">,
-): number | null {
+): number | null
+{
 	const queryKey = sessionQueryKeys.transcript(sessionId);
 	const cached = queryClient.getQueryData<TranscriptData>(queryKey);
 
@@ -949,9 +1283,16 @@ export function applySessionLinesAppended(
 	if (payload.lines.length === 0) return null;
 	const firstLine = transcriptEndIndex(cached);
 
-	if (appendForksChain(cached, payload.lines)) {
-		void queryClient.invalidateQueries({queryKey});
-	} else {
+	if (appendForksChain(cached, payload.lines))
+	{
+		void queryClient.invalidateQueries(
+			{
+				queryKey,
+			},
+		);
+	}
+	else
+	{
 		mergeAppendedLines(queryClient, queryKey, payload.lines);
 	}
 
@@ -959,9 +1300,18 @@ export function applySessionLinesAppended(
 	// stood, so appended lines make it stale. An open drawer refetches; a closed
 	// one only marks the query stale, so a live session costs nothing until
 	// somebody is actually looking at an inventory.
-	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.resources(sessionId)});
-	if (payload.lines.some((line) => line["type"] === "api-request" || line["type"] === "api-request-shape")) {
-		void queryClient.invalidateQueries({queryKey: sessionQueryKeys.apiRequests(sessionId)});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: sessionQueryKeys.resources(sessionId),
+		},
+	);
+	if (payload.lines.some((line) => line["type"] === "api-request" || line["type"] === "api-request-shape"))
+	{
+		void queryClient.invalidateQueries(
+			{
+				queryKey: sessionQueryKeys.apiRequests(sessionId),
+			},
+		);
 	}
 	return firstLine;
 }
@@ -979,23 +1329,42 @@ const rewritingSessions = new Map<string, symbol>();
  * since the fetched tail includes them. Nothing is fetched when no transcript
  * is cached.
  */
-export async function applySessionTranscriptRewritten(queryClient: QueryClient, sessionId: string): Promise<void> {
+export async function applySessionTranscriptRewritten(queryClient: QueryClient, sessionId: string): Promise<void>
+{
 	if (queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript(sessionId)) === undefined) return;
 	const token = Symbol(sessionId);
 	rewritingSessions.set(sessionId, token);
-	try {
+	try
+	{
 		const fresh = await fetchTranscriptTail(sessionId);
 		if (rewritingSessions.get(sessionId) === token) replaceTranscriptData(queryClient, sessionId, fresh);
-	} catch {
+	}
+	catch
+	{
 		// The replacement failed: refetch the usual way rather than keep a window with removed rows.
-		if (rewritingSessions.get(sessionId) === token) {
-			void queryClient.invalidateQueries({queryKey: sessionQueryKeys.transcript(sessionId)});
+		if (rewritingSessions.get(sessionId) === token)
+		{
+			void queryClient.invalidateQueries(
+				{
+					queryKey: sessionQueryKeys.transcript(sessionId),
+				},
+			);
 		}
-	} finally {
+	}
+	finally
+	{
 		if (rewritingSessions.get(sessionId) === token) rewritingSessions.delete(sessionId);
 	}
-	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.resources(sessionId)});
-	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.apiRequests(sessionId)});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: sessionQueryKeys.resources(sessionId),
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: sessionQueryKeys.apiRequests(sessionId),
+		},
+	);
 }
 
 /**
@@ -1007,37 +1376,74 @@ export async function applySessionTranscriptRewritten(queryClient: QueryClient, 
  * `transcriptQueryOptions` merges onto the cached window, so lines appended
  * during the gap land without discarding pages already scrolled back through.
  */
-export function applyReconnected(queryClient: QueryClient): void {
+export function applyReconnected(queryClient: QueryClient): void
+{
 	void invalidateSessionIdentities(queryClient);
 	invalidateSessionLists(queryClient);
 	invalidateActiveSessions(queryClient);
 	const [sessionRoot] = sessionQueryKeys.all();
-	void queryClient.invalidateQueries({
-		predicate: ({queryKey}) =>
-			queryKey[0] === sessionRoot &&
-			typeof queryKey[1] === "string" &&
-			(queryKey.length === 2 || (queryKey.length === 3 && queryKey[2] === "transcript")),
-	});
-	void queryClient.invalidateQueries({queryKey: ["approvals"]});
-	void queryClient.invalidateQueries({queryKey: ["notifications"]});
-	void queryClient.invalidateQueries({queryKey: ["pending-question"]});
+	void queryClient.invalidateQueries(
+		{
+			predicate: ({queryKey}) =>
+				queryKey[0] === sessionRoot &&
+				typeof queryKey[1] === "string" &&
+				(queryKey.length === 2 || (queryKey.length === 3 && queryKey[2] === "transcript")),
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["approvals"],
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["notifications"],
+		},
+	);
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["pending-question"],
+		},
+	);
 }
 
 /** The cached list row for a session from any recent, infinite recent or grouped session list. */
-function findCachedSessionListItem(queryClient: QueryClient, sessionId: string): SessionListItem | undefined {
-	type RecentListData = {sessions: SessionListItem[]} | {pages: Array<{sessions: SessionListItem[]}>};
-	for (const [, data] of queryClient.getQueriesData<RecentListData>({queryKey: sessionQueryKeys.recentLists()})) {
+function findCachedSessionListItem(queryClient: QueryClient, sessionId: string): SessionListItem | undefined
+{
+	type RecentListData =
+		|
+		  {
+				sessions: SessionListItem[];
+		  }
+		|
+		  {
+				pages: Array<
+				{
+					sessions: SessionListItem[];
+				}>;
+		  };
+	for (const [, data] of queryClient.getQueriesData<RecentListData>(
+		{
+			queryKey: sessionQueryKeys.recentLists(),
+		},
+	))
+	{
 		if (data === undefined) continue;
 		const pages = "pages" in data ? data.pages : [data];
-		for (const page of pages) {
+		for (const page of pages)
+		{
 			const found = page.sessions.find((session) => session.id === sessionId);
 			if (found) return found;
 		}
 	}
-	for (const [, groups] of queryClient.getQueriesData<ProjectSessionGroup[]>({
-		queryKey: sessionQueryKeys.groupedLists(),
-	})) {
-		for (const group of groups ?? []) {
+	for (const [, groups] of queryClient.getQueriesData<ProjectSessionGroup[]>(
+		{
+			queryKey: sessionQueryKeys.groupedLists(),
+		},
+	))
+	{
+		for (const group of groups ?? [])
+		{
 			const found = group.sessions.find((session) => session.id === sessionId);
 			if (found) return found;
 		}
@@ -1051,19 +1457,31 @@ function findCachedSessionListItem(queryClient: QueryClient, sessionId: string):
  * a newly active one built from its cached session-list row. Only a session no
  * cached list knows forces that active list to refetch.
  */
-export function applySessionActivity(queryClient: QueryClient, sessionId: string): void {
+export function applySessionActivity(queryClient: QueryClient, sessionId: string): void
+{
 	const now = Date.now();
 	const listItem = findCachedSessionListItem(queryClient, sessionId);
-	for (const [queryKey, sessions] of queryClient.getQueriesData<ActiveSessionListItem[]>({
-		queryKey: sessionQueryKeys.activeLists(),
-	})) {
+	for (const [queryKey, sessions] of queryClient.getQueriesData<ActiveSessionListItem[]>(
+		{
+			queryKey: sessionQueryKeys.activeLists(),
+		},
+	))
+	{
 		if (sessions === undefined) continue;
 		const existing = sessions.find((session) => session.sessionId === sessionId);
 		let updated: ActiveSessionListItem;
-		if (existing) {
-			updated = {...existing, lastModified: now};
-		} else if (listItem) {
-			updated = {
+		if (existing)
+		{
+			updated =
+			{
+				...existing,
+				lastModified: now,
+			};
+		}
+		else if (listItem)
+		{
+			updated =
+			{
 				sessionId,
 				projectDir: listItem.project,
 				projectName: listItem.projectName,
@@ -1074,8 +1492,15 @@ export function applySessionActivity(queryClient: QueryClient, sessionId: string
 				unseen: listItem.unseen,
 				blockedSince: listItem.blockedSince,
 			};
-		} else {
-			void queryClient.invalidateQueries({queryKey, exact: true});
+		}
+		else
+		{
+			void queryClient.invalidateQueries(
+				{
+					queryKey,
+					exact: true,
+				},
+			);
 			continue;
 		}
 		queryClient.setQueryData<ActiveSessionListItem[]>(queryKey, [
@@ -1085,16 +1510,26 @@ export function applySessionActivity(queryClient: QueryClient, sessionId: string
 	}
 }
 
-export function invalidateActiveSessions(queryClient: QueryClient): void {
+export function invalidateActiveSessions(queryClient: QueryClient): void
+{
 	// The reducer owns activeSessions state; we only invalidate the query cache
 	// here so components using the active-sessions query pick up changes.
-	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.activeLists()});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: sessionQueryKeys.activeLists(),
+		},
+	);
 }
 
-export function invalidateTerminalPlacements(queryClient: QueryClient): void {
+export function invalidateTerminalPlacements(queryClient: QueryClient): void
+{
 	// Terminal pane mappings change exactly when session lifecycle events fire
 	// (start/end re-panes; a prompt re-stamps the pane after a resume).
-	void queryClient.invalidateQueries({queryKey: ["terminal", "placements"]});
+	void queryClient.invalidateQueries(
+		{
+			queryKey: ["terminal", "placements"],
+		},
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -1103,12 +1538,15 @@ export function invalidateTerminalPlacements(queryClient: QueryClient): void {
 // a separate connection (which wastes resources and can cause instability).
 // ---------------------------------------------------------------------------
 
-export function useStatusline(sessionId: string): Statusline | null {
+export function useStatusline(sessionId: string): Statusline | null
+{
 	const ctx = useContext(ClaudeEventsContext);
 	const [data, setData] = useState<Statusline | null>(null);
 
-	const fetchStatusline = useCallback(async () => {
-		try {
+	const fetchStatusline = useCallback(async () =>
+	{
+		try
+		{
 			const {apiFetch} = await import("../lib/api/client");
 			const {StatuslineResponse} = await import("../lib/api/statusline");
 			const result = await apiFetch(
@@ -1116,21 +1554,27 @@ export function useStatusline(sessionId: string): Statusline | null {
 				StatuslineResponse,
 			);
 			if (result) setData(result);
-		} catch {
+		}
+		catch
+		{
 			// statusline not available
 		}
 	}, [sessionId]);
 
 	// Initial fetch
-	useEffect(() => {
+	useEffect(() =>
+	{
 		void fetchStatusline();
 	}, [fetchStatusline]);
 
 	// Subscribe to statusline updates via the shared provider EventSource
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!ctx) return undefined;
-		return ctx.subscribeStatusline((updatedSessionId) => {
-			if (updatedSessionId === sessionId) {
+		return ctx.subscribeStatusline((updatedSessionId) =>
+		{
+			if (updatedSessionId === sessionId)
+			{
 				void fetchStatusline();
 			}
 		});
@@ -1140,12 +1584,15 @@ export function useStatusline(sessionId: string): Statusline | null {
 }
 
 /** Settings defaults + statusline snapshot for the composer chin, refreshed with the statusline. */
-export function useComposerServerState(sessionId: string): ComposerServerState | null {
+export function useComposerServerState(sessionId: string): ComposerServerState | null
+{
 	const ctx = useContext(ClaudeEventsContext);
 	const [data, setData] = useState<ComposerServerState | null>(null);
 
-	const fetchState = useCallback(async () => {
-		try {
+	const fetchState = useCallback(async () =>
+	{
+		try
+		{
 			const {apiFetch} = await import("../lib/api/client");
 			const {ComposerServerStateResponse} = await import("../lib/composer-state");
 			setData(
@@ -1154,18 +1601,23 @@ export function useComposerServerState(sessionId: string): ComposerServerState |
 					ComposerServerStateResponse,
 				),
 			);
-		} catch {
+		}
+		catch
+		{
 			// chin readouts fall back to transcript and hook state
 		}
 	}, [sessionId]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		void fetchState();
 	}, [fetchState]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!ctx) return undefined;
-		return ctx.subscribeStatusline((updatedSessionId) => {
+		return ctx.subscribeStatusline((updatedSessionId) =>
+		{
 			if (updatedSessionId === sessionId) void fetchState();
 		});
 	}, [ctx, sessionId, fetchState]);

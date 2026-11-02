@@ -1,6 +1,7 @@
 import {useCallback, useLayoutEffect, useMemo, useRef, useState} from "react";
 
-import {
+import
+{
 	highlightMatches,
 	matchingAlias,
 	slashCommandLabel,
@@ -21,8 +22,10 @@ import {placeRowTooltip} from "./ui/tooltip-placement";
  * is `py-1` plus one footnote line per `whitespace-pre-line` line, a separator 1px plus `my-1`
  * (upstream's `mx-2.5` at every density since 2026-11-01), and the gutter is `p-1`/`p-1.5`.
  */
-const SLASH_DENSITY = {
-	compact: {
+const SLASH_DENSITY =
+{
+	compact:
+	{
 		popup: "rounded-r7",
 		scroller: "p-1",
 		row: "h-6 items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-[13px]/[19px]",
@@ -33,7 +36,8 @@ const SLASH_DENSITY = {
 		gutter: 4,
 		headerLineHeight: 15,
 	},
-	comfortable: {
+	comfortable:
+	{
 		popup: "rounded-menu-comfortable",
 		scroller: "p-1.5",
 		row: "h-7 items-center gap-2 rounded-r6 px-2.5 py-1 text-[14px]/[20px]",
@@ -65,7 +69,8 @@ const OVERSCAN = 8;
 const SCROLL_PADDING = 28;
 const SEPARATOR_HEIGHT = 9;
 
-function itemHeight(item: SlashMenuItem, sizing: SlashSizing): number {
+function itemHeight(item: SlashMenuItem, sizing: SlashSizing): number
+{
 	if (item.type === "section-header") return 8 + sizing.headerLineHeight * item.label.split("\n").length;
 	if (item.type === "separator") return SEPARATOR_HEIGHT;
 	return sizing.rowHeight;
@@ -76,20 +81,23 @@ const LOADING_BAR_CLASS = "max-w-full rounded bg-[var(--skeleton-base)]";
 /* The popup's `max-h-96`, used until the scroller has a measured height. */
 const FALLBACK_VIEWPORT_HEIGHT = 384;
 
-interface RowWindow {
+interface RowWindow
+{
 	start: number;
 	end: number;
 }
 
 /* Each item's top offset below the gutter, plus the total height as the last entry. */
-function itemOffsets(items: readonly SlashMenuItem[], sizing: SlashSizing): number[] {
+function itemOffsets(items: readonly SlashMenuItem[], sizing: SlashSizing): number[]
+{
 	const offsets = [0];
 	for (const item of items) offsets.push((offsets.at(-1) ?? 0) + itemHeight(item, sizing));
 	return offsets;
 }
 
 /* The items intersecting the viewport plus the overscan on each side, as an exclusive range. */
-function rowWindow(offsets: readonly number[], gutter: number, scrollTop: number, viewportHeight: number): RowWindow {
+function rowWindow(offsets: readonly number[], gutter: number, scrollTop: number, viewportHeight: number): RowWindow
+{
 	const count = offsets.length - 1;
 	const top = scrollTop - gutter;
 	const bottom = scrollTop + viewportHeight - gutter;
@@ -97,7 +105,10 @@ function rowWindow(offsets: readonly number[], gutter: number, scrollTop: number
 	while (first < count && (offsets[first + 1] ?? 0) <= top) first++;
 	let last = first;
 	while (last < count && (offsets[last] ?? 0) < bottom) last++;
-	return {start: Math.max(0, first - OVERSCAN), end: Math.min(count, last + OVERSCAN)};
+	return {
+		start: Math.max(0, first - OVERSCAN),
+		end: Math.min(count, last + OVERSCAN),
+	};
 }
 
 /* `scrollToIndex(index, {align: "auto"})` with the scroll padding: only scrolls when the row is within the padding of an edge. */
@@ -107,7 +118,8 @@ function scrollTopFor(
 	index: number,
 	scrollTop: number,
 	viewportHeight: number,
-): number {
+): number
+{
 	const rowTop = gutter + (offsets[index] ?? 0);
 	const rowBottom = gutter + (offsets[index + 1] ?? 0);
 	if (rowBottom >= scrollTop + viewportHeight - SCROLL_PADDING) return rowBottom - viewportHeight + SCROLL_PADDING;
@@ -124,7 +136,8 @@ function Highlighted({
 	text: string;
 	query: string;
 	highlightClassName?: string;
-}) {
+})
+{
 	return highlightMatches(text, query).map((segment, i) =>
 		segment.match ? (
 			<span key={i} className={highlightClassName}>
@@ -155,14 +168,20 @@ export function SlashCommandMenu({
 	highlighted: number;
 	onHighlight: (index: number) => void;
 	onAccept: (command: SlashCommand) => void;
-}) {
+})
+{
 	const popupRef = useRef<HTMLDivElement>(null);
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const tooltipRef = useRef<HTMLDivElement>(null);
 	/* Upstream's row tip is the cds Tooltip popup, which hugs its wrapped text before it is placed. */
-	const fitTooltip = useLazyShrinkwrap({immediate: true});
+	const fitTooltip = useLazyShrinkwrap(
+		{
+			immediate: true,
+		},
+	);
 	const tooltipCallbackRef = useCallback(
-		(el: HTMLDivElement | null) => {
+		(el: HTMLDivElement | null) =>
+		{
 			tooltipRef.current = el;
 			fitTooltip(el);
 		},
@@ -176,19 +195,25 @@ export function SlashCommandMenu({
 	const sizing = SLASH_DENSITY[useScopeDensity()];
 	const virtualized = items.length >= VIRTUALIZE_AT;
 	const offsets = useMemo(() => itemOffsets(items, sizing), [items, sizing]);
-	const viewportHeight = () => {
+	const viewportHeight = () =>
+	{
 		const height = scrollerRef.current?.clientHeight ?? 0;
 		return height > 0 ? height : FALLBACK_VIEWPORT_HEIGHT;
 	};
 	const range = virtualized
 		? rowWindow(offsets, sizing.gutter, scrollTop, viewportHeight())
-		: {start: 0, end: items.length};
+		:
+			{
+				start: 0,
+				end: items.length,
+			};
 	const activeItem = items[highlighted];
 	const active = activeItem?.type === "command" ? activeItem.command : undefined;
 	const activeDetail = active?.pluginName === undefined ? undefined : `${active.pluginName} plugin`;
 
 	/* Writes the tip's position straight to the DOM, like upstream's floating positioner, so following the row adds no React commit. */
-	const placeTooltip = () => {
+	const placeTooltip = () =>
+	{
 		const popup = popupRef.current;
 		const row = scrollerRef.current?.querySelector<HTMLElement>("[data-highlighted]");
 		const tooltip = tooltipRef.current;
@@ -201,16 +226,24 @@ export function SlashCommandMenu({
 		if (detailRef.current) detailRef.current.style.maxWidth = placement.maxWidth;
 	};
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const scroller = scrollerRef.current;
 		const hovered = hoverHighlightRef.current;
 		hoverHighlightRef.current = false;
-		if (!hovered && virtualized && scroller && highlighted >= 0) {
+		if (!hovered && virtualized && scroller && highlighted >= 0)
+		{
 			const next = scrollTopFor(offsets, sizing.gutter, highlighted, scroller.scrollTop, viewportHeight());
 			if (next !== scroller.scrollTop) scroller.scrollTop = next;
 			setScrollTop(scroller.scrollTop);
-		} else if (!hovered) {
-			scroller?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView({block: "nearest"});
+		}
+		else if (!hovered)
+		{
+			scroller?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView(
+				{
+					block: "nearest",
+				},
+			);
 		}
 		placeTooltip();
 	}, [highlighted, items, offsets, sizing.gutter, virtualized]);
@@ -223,7 +256,8 @@ export function SlashCommandMenu({
 		<div
 			ref={popupRef}
 			className={`${POPUP_CLASS} ${sizing.popup}`}
-			onMouseDown={(e) => {
+			onMouseDown={(e) =>
+			{
 				e.preventDefault();
 			}}
 		>
@@ -233,16 +267,28 @@ export function SlashCommandMenu({
 				role="menu"
 				aria-label="Slash commands"
 				className={`relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] ${sizing.scroller}`}
-				onScroll={(e) => {
+				onScroll={(e) =>
+				{
 					if (virtualized) setScrollTop(e.currentTarget.scrollTop);
 					placeTooltip();
 				}}
 			>
-				{virtualized && <div aria-hidden style={{height: offsets[range.start]}} className="shrink-0" />}
-				{items.slice(range.start, range.end).map((item, offset) => {
+				{virtualized && (
+					<div
+						aria-hidden
+						style={
+						{
+							height: offsets[range.start],
+						}}
+						className="shrink-0"
+					/>
+				)}
+				{items.slice(range.start, range.end).map((item, offset) =>
+				{
 					const index = range.start + offset;
 					/* Upstream draws headers and separators as plain divs: no role, not focusable. */
-					if (item.type === "section-header") {
+					if (item.type === "section-header")
+					{
 						return (
 							<div key={`header:${index}`} className={sizing.header}>
 								{item.label}
@@ -251,7 +297,8 @@ export function SlashCommandMenu({
 					}
 					if (item.type === "separator")
 						return <div key={`separator:${index}`} className={sizing.separator} />;
-					if (item.type === "loading") {
+					if (item.type === "loading")
+					{
 						return (
 							<div key={`loading:${index}`} data-testid="slash-loading-row">
 								<div
@@ -267,7 +314,11 @@ export function SlashCommandMenu({
 											<div
 												data-skeleton=""
 												className={LOADING_BAR_CLASS}
-												style={{width: "120px", height: "16px"}}
+												style={
+												{
+													width: "120px",
+													height: "16px",
+												}}
 											/>
 										</div>
 									</div>
@@ -285,12 +336,14 @@ export function SlashCommandMenu({
 							tabIndex={-1}
 							data-highlighted={index === highlighted ? "" : undefined}
 							className={`${ROW_CLASS} ${sizing.row}`}
-							onMouseMove={() => {
+							onMouseMove={() =>
+							{
 								if (index === highlighted) return;
 								hoverHighlightRef.current = true;
 								onHighlight(index);
 							}}
-							onMouseDown={(e) => {
+							onMouseDown={(e) =>
+							{
 								e.preventDefault();
 								onAccept(command);
 							}}
@@ -323,7 +376,10 @@ export function SlashCommandMenu({
 				{virtualized && (
 					<div
 						aria-hidden
-						style={{height: (offsets.at(-1) ?? 0) - (offsets[range.end] ?? 0)}}
+						style={
+						{
+							height: (offsets.at(-1) ?? 0) - (offsets[range.end] ?? 0),
+						}}
 						className="shrink-0"
 					/>
 				)}

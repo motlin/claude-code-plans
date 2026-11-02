@@ -1,7 +1,8 @@
 import type {z} from "zod";
 import type {GitOperation} from "./schemas";
 import {FileEditToolUseResultSchema, GitOperationSchema} from "./runtime-schemas";
-import {
+import
+{
 	exitWorktreeActionFailedVerbs,
 	exitWorktreeActionLabels,
 	gitBranchActionLabels,
@@ -22,18 +23,31 @@ import {workflowCallName} from "./workflow-name";
  * strict schemas when the transcript is read so the label can depend on the
  * outcome (a Write that created vs. updated a file, a Bash that committed).
  */
-export interface ToolResultMeta {
+export interface ToolResultMeta
+{
 	writeType?: "create" | "update";
 	/**
 	 * The lines a file edit added and removed, counted from the result's
 	 * `structuredPatch` when the result reports the call's own change.
 	 */
-	patchStats?: {added: number; removed: number};
+	patchStats?:
+	{
+		added: number;
+		removed: number;
+	};
 	gitOperation?: GitOperation;
 	/** The subagent an Agent call launched, which a later SendMessage can address. */
 	agentId?: string;
 	/** An AskUserQuestion call's answers keyed by question text, with any notes the user typed. */
-	answers?: Readonly<Record<string, {answer: string; notes: string | null}>>;
+	answers?: Readonly<
+		Record<
+			string,
+			{
+				answer: string;
+				notes: string | null;
+			}
+		>
+	>;
 	/** The lines a Read result reports it returned, for upstream's range suffix. */
 	readFile?: ReadFileLines;
 	/**
@@ -43,7 +57,8 @@ export interface ToolResultMeta {
 	taskFailed?: true;
 }
 
-export interface ToolLabelCall {
+export interface ToolLabelCall
+{
 	name: string;
 	input: Record<string, unknown>;
 	resultMeta?: ToolResultMeta | undefined;
@@ -70,7 +85,8 @@ export interface ToolLabelCall {
  * phrase that names a successful row on its own (a Bash call's past-tensed
  * description, a subagent's description) in place of verb + meta.
  */
-export interface ToolLabel {
+export interface ToolLabel
+{
 	verb: string;
 	meta?: string;
 	metaIsCode?: true;
@@ -90,14 +106,24 @@ export interface ToolLabel {
 type FileEditToolUseResult = z.infer<typeof FileEditToolUseResultSchema>;
 
 /** The tool_use a result answers, for checking the result reports that call's change. */
-export interface ToolResultCall {
+export interface ToolResultCall
+{
 	name: string;
 	input: Record<string, unknown>;
 }
 
-function sameEdits(reported: readonly {old_string: string; new_string: string}[], requested: unknown): boolean {
+function sameEdits(
+	reported: readonly
+	{
+		old_string: string;
+		new_string: string;
+	}[],
+	requested: unknown,
+): boolean
+{
 	if (!Array.isArray(requested) || reported.length === 0 || reported.length !== requested.length) return false;
-	return reported.every((edit, index) => {
+	return reported.every((edit, index) =>
+	{
 		const asked: unknown = requested[index];
 		return (
 			typeof asked === "object" &&
@@ -115,9 +141,11 @@ function sameEdits(reported: readonly {old_string: string; new_string: string}[]
  * upstream checks before trusting the result's patch: the same file and, for a
  * Write, the same content (or an update the CLI recorded with empty content).
  */
-function reportsCallChange(result: FileEditToolUseResult, call: ToolResultCall): boolean {
+function reportsCallChange(result: FileEditToolUseResult, call: ToolResultCall): boolean
+{
 	if (result.filePath !== call.input["file_path"]) return false;
-	switch (call.name) {
+	switch (call.name)
+	{
 		case "Write":
 			return (
 				"content" in result &&
@@ -137,21 +165,32 @@ function reportsCallChange(result: FileEditToolUseResult, call: ToolResultCall):
 }
 
 /** The patch's added and removed line counts, or null for an empty or marker-only patch. */
-function patchLineStats(hunks: FileEditToolUseResult["structuredPatch"]): {added: number; removed: number} | null {
+function patchLineStats(hunks: FileEditToolUseResult["structuredPatch"]):
+{
+	added: number;
+	removed: number;
+} | null
+{
 	if (hunks === undefined || hunks.length === 0) return null;
 	let added = 0;
 	let removed = 0;
-	for (const {lines} of hunks) {
+	for (const {lines} of hunks)
+	{
 		if (lines.every((line) => line.startsWith("\\"))) return null;
-		for (const line of lines) {
+		for (const line of lines)
+		{
 			if (line.startsWith("+")) added++;
 			else if (line.startsWith("-")) removed++;
 		}
 	}
-	return {added, removed};
+	return {
+		added,
+		removed,
+	};
 }
 
-function fileEditMeta(result: FileEditToolUseResult, call: ToolResultCall | undefined): ToolResultMeta | undefined {
+function fileEditMeta(result: FileEditToolUseResult, call: ToolResultCall | undefined): ToolResultMeta | undefined
+{
 	const meta: ToolResultMeta = {};
 	if ("type" in result) meta.writeType = result.type;
 	const patchStats =
@@ -161,54 +200,104 @@ function fileEditMeta(result: FileEditToolUseResult, call: ToolResultCall | unde
 }
 
 /** A Read result's `file` block: where the returned lines start and how many there are. */
-function readFileLines(file: unknown): ReadFileLines | undefined {
+function readFileLines(file: unknown): ReadFileLines | undefined
+{
 	if (!isRecord(file)) return undefined;
 	const {filePath, startLine, numLines, totalLines, content} = file;
 	if (typeof filePath !== "string" || typeof startLine !== "number" || typeof numLines !== "number") return undefined;
 	const endsWithNewline = typeof content === "string" && content.endsWith("\n");
 	return typeof totalLines === "number"
-		? {filePath, startLine, numLines, totalLines, endsWithNewline}
-		: {filePath, startLine, numLines, endsWithNewline};
+		?
+			{
+				filePath,
+				startLine,
+				numLines,
+				totalLines,
+				endsWithNewline,
+			}
+		:
+			{
+				filePath,
+				startLine,
+				numLines,
+				endsWithNewline,
+			};
 }
 
 /** Upstream's completed-but-failed task call: a TaskGet with `task: null`, a TaskUpdate with `success: false`. */
-function reportsTaskFailure(toolUseResult: Record<string, unknown>, call: ToolResultCall | undefined): boolean {
+function reportsTaskFailure(toolUseResult: Record<string, unknown>, call: ToolResultCall | undefined): boolean
+{
 	if (call?.name === "TaskGet") return "task" in toolUseResult && toolUseResult["task"] === null;
 	if (call?.name === "TaskUpdate") return toolUseResult["success"] === false;
 	return false;
 }
 
-export function toolResultMetaFrom(toolUseResult: unknown, call?: ToolResultCall): ToolResultMeta | undefined {
+export function toolResultMetaFrom(toolUseResult: unknown, call?: ToolResultCall): ToolResultMeta | undefined
+{
 	if (typeof toolUseResult !== "object" || toolUseResult === null) return undefined;
-	if (isRecord(toolUseResult) && reportsTaskFailure(toolUseResult, call)) return {taskFailed: true};
-	if ("type" in toolUseResult && toolUseResult.type === "text" && "file" in toolUseResult) {
+	if (isRecord(toolUseResult) && reportsTaskFailure(toolUseResult, call))
+		return {
+			taskFailed: true,
+		};
+	if ("type" in toolUseResult && toolUseResult.type === "text" && "file" in toolUseResult)
+	{
 		const readFile = readFileLines(toolUseResult.file);
-		return readFile === undefined ? undefined : {readFile};
+		return readFile === undefined
+			? undefined
+			:
+				{
+					readFile,
+				};
 	}
-	if ("gitOperation" in toolUseResult) {
+	if ("gitOperation" in toolUseResult)
+	{
 		const git = GitOperationSchema.safeParse(toolUseResult.gitOperation);
-		return git.success ? {gitOperation: git.data} : undefined;
+		return git.success
+			?
+				{
+					gitOperation: git.data,
+				}
+			: undefined;
 	}
-	if ("filePath" in toolUseResult) {
+	if ("filePath" in toolUseResult)
+	{
 		const file = FileEditToolUseResultSchema.safeParse(toolUseResult);
 		if (file.success) return fileEditMeta(file.data, call);
 	}
-	if ("agentId" in toolUseResult && typeof toolUseResult.agentId === "string" && toolUseResult.agentId !== "") {
-		return {agentId: toolUseResult.agentId};
+	if ("agentId" in toolUseResult && typeof toolUseResult.agentId === "string" && toolUseResult.agentId !== "")
+	{
+		return {
+			agentId: toolUseResult.agentId,
+		};
 	}
-	if ("answers" in toolUseResult) {
+	if ("answers" in toolUseResult)
+	{
 		const asked = AskUserQuestionResultSchema.safeParse(toolUseResult);
 		if (!asked.success) return undefined;
-		const answers: Record<string, {answer: string; notes: string | null}> = {};
-		for (const [question, answer] of Object.entries(asked.data.answers)) {
-			answers[question] = {answer, notes: asked.data.annotations?.[question]?.notes ?? null};
+		const answers: Record<
+			string,
+			{
+				answer: string;
+				notes: string | null;
+			}
+		> = {};
+		for (const [question, answer] of Object.entries(asked.data.answers))
+		{
+			answers[question] =
+			{
+				answer,
+				notes: asked.data.annotations?.[question]?.notes ?? null,
+			};
 		}
-		return {answers};
+		return {
+			answers,
+		};
 	}
 	return undefined;
 }
 
-function capitalizeFirst(text: string): string {
+function capitalizeFirst(text: string): string
+{
 	return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
@@ -216,61 +305,157 @@ function capitalizeFirst(text: string): string {
  * Tools whose label is a fixed phrase: upstream's per-tool table plus its
  * generic map.
  */
-const FIXED_LABELS: Record<string, {verb: string}> = {
-	Read: {verb: "Read"},
-	Edit: {verb: "Edited"},
-	MultiEdit: {verb: "Edited"},
-	NotebookEdit: {verb: "Edited"},
-	Grep: {verb: "Searched"},
-	Glob: {verb: "Searched"},
-	LS: {verb: "Listed"},
-	WebFetch: {verb: "Fetched"},
-	WebSearch: {verb: "Searched web"},
-	TaskGet: {verb: "Read task"},
-	TaskList: {verb: "Listed tasks"},
-	TaskCreate: {verb: "Added task"},
-	TaskStop: {verb: "Stopped task"},
-	EnterPlanMode: {verb: "Started planning"},
+const FIXED_LABELS: Record<
+	string,
+	{
+		verb: string;
+	}
+> =
+{
+	Read:
+	{
+		verb: "Read",
+	},
+	Edit:
+	{
+		verb: "Edited",
+	},
+	MultiEdit:
+	{
+		verb: "Edited",
+	},
+	NotebookEdit:
+	{
+		verb: "Edited",
+	},
+	Grep:
+	{
+		verb: "Searched",
+	},
+	Glob:
+	{
+		verb: "Searched",
+	},
+	LS:
+	{
+		verb: "Listed",
+	},
+	WebFetch:
+	{
+		verb: "Fetched",
+	},
+	WebSearch:
+	{
+		verb: "Searched web",
+	},
+	TaskGet:
+	{
+		verb: "Read task",
+	},
+	TaskList:
+	{
+		verb: "Listed tasks",
+	},
+	TaskCreate:
+	{
+		verb: "Added task",
+	},
+	TaskStop:
+	{
+		verb: "Stopped task",
+	},
+	EnterPlanMode:
+	{
+		verb: "Started planning",
+	},
 	// Upstream's generic map: tool_search reads "Loaded tools", with no parameter.
-	ToolSearch: {verb: "Loaded tools"},
-	ReportFindings: {
+	ToolSearch:
+	{
+		verb: "Loaded tools",
+	},
+	ReportFindings:
+	{
 		verb: "Reported review findings",
 	},
-	TaskOutput: {verb: "Read task output"},
+	TaskOutput:
+	{
+		verb: "Read task output",
+	},
 	// A subagent's final report to the agent that spawned it.
-	SubagentHandback: {verb: "Reported back"},
-	Monitor: {
+	SubagentHandback:
+	{
+		verb: "Reported back",
+	},
+	Monitor:
+	{
 		verb: "Started watching background command",
 	},
-	CronList: {verb: "Listed scheduled prompts"},
-	CronDelete: {verb: "Stopped scheduled prompt"},
-	LSP: {verb: "Inspected code"},
-	ListMcpResourcesTool: {verb: "Listed resources"},
-	ReadMcpResourceTool: {verb: "Read resource"},
-	ReadMcpResourceDirTool: {
+	CronList:
+	{
+		verb: "Listed scheduled prompts",
+	},
+	CronDelete:
+	{
+		verb: "Stopped scheduled prompt",
+	},
+	LSP:
+	{
+		verb: "Inspected code",
+	},
+	ListMcpResourcesTool:
+	{
+		verb: "Listed resources",
+	},
+	ReadMcpResourceTool:
+	{
+		verb: "Read resource",
+	},
+	ReadMcpResourceDirTool:
+	{
 		verb: "Listed resource folder",
 	},
-	WaitForMcpServers: {verb: "Loaded connectors"},
-	RefreshMcpTools: {verb: "Refreshed tools"},
-	SendFeedback: {verb: "Sent feedback"},
-	SendUserMessage: {verb: "Sent"},
-	SendUserFile: {verb: "Sent"},
-	PushNotification: {verb: "Sent notification"},
+	WaitForMcpServers:
+	{
+		verb: "Loaded connectors",
+	},
+	RefreshMcpTools:
+	{
+		verb: "Refreshed tools",
+	},
+	SendFeedback:
+	{
+		verb: "Sent feedback",
+	},
+	SendUserMessage:
+	{
+		verb: "Sent",
+	},
+	SendUserFile:
+	{
+		verb: "Sent",
+	},
+	PushNotification:
+	{
+		verb: "Sent notification",
+	},
 };
 
-const TASK_STATUS_VERBS: Record<string, string> = {
+const TASK_STATUS_VERBS: Record<string, string> =
+{
 	completed: "Completed task",
 	in_progress: "Started task",
 	pending: "Reset task to pending",
 	deleted: "Removed task",
 };
 
-function stringInput(input: Record<string, unknown>, key: string): string | null {
+function stringInput(input: Record<string, unknown>, key: string): string | null
+{
 	const value = input[key];
 	return typeof value === "string" && value !== "" ? value : null;
 }
 
-function taskUpdateVerb(input: Record<string, unknown>): string {
+function taskUpdateVerb(input: Record<string, unknown>): string
+{
 	const status = stringInput(input, "status");
 	if (status !== null) return TASK_STATUS_VERBS[status] ?? "Updated task status";
 	const changed = Object.keys(input).filter((key) => key !== "taskId" && key !== "task_id");
@@ -278,7 +463,8 @@ function taskUpdateVerb(input: Record<string, unknown>): string {
 	return "Updated task";
 }
 
-function askedMeta(input: Record<string, unknown>): string | null {
+function askedMeta(input: Record<string, unknown>): string | null
+{
 	const questions = input["questions"];
 	if (!Array.isArray(questions)) return null;
 	// Upstream counts several questions, else quotes the first one's trimmed header.
@@ -290,12 +476,20 @@ function askedMeta(input: Record<string, unknown>): string | null {
 	return header === "" ? null : `“${header}”`;
 }
 
-function withMeta(label: ToolLabel, meta: string | null): ToolLabel {
-	return meta === null ? label : {...label, meta};
+function withMeta(label: ToolLabel, meta: string | null): ToolLabel
+{
+	return meta === null
+		? label
+		:
+			{
+				...label,
+				meta,
+			};
 }
 
 /** Upstream's one-line meta: whitespace collapsed, at most 80 characters with an ellipsis. */
-function oneLineMeta(text: unknown): string | null {
+function oneLineMeta(text: unknown): string | null
+{
 	if (typeof text !== "string") return null;
 	const line = text.replaceAll(/\s+/g, " ").trim();
 	if (line === "") return null;
@@ -311,26 +505,31 @@ const SESSION_ADDRESS = /^(?:did:|uds:|bridge:|\/|local_[0-9a-f-]{8,}$)/;
 /** A bare agent id: a short teammate id or `a<16 hex>`, optionally with a name in between. */
 const AGENT_ID = /^(?:[a-z0-9]{9}|a(?:[\w-]{1,63}-)?[0-9a-f]{16})$/;
 
-function messageText(message: unknown): string | null {
+function messageText(message: unknown): string | null
+{
 	if (typeof message === "string") return message.trim() === "" ? null : message;
 	if (!isRecord(message)) return null;
-	for (const key of ["feedback", "reason"]) {
+	for (const key of ["feedback", "reason"])
+	{
 		const value = message[key];
 		if (typeof value === "string" && value.trim() !== "") return value;
 	}
 	return null;
 }
 
-function approval(value: unknown): boolean | undefined {
+function approval(value: unknown): boolean | undefined
+{
 	if (value === true || value === "true") return true;
 	if (value === false || value === "false") return false;
 	return undefined;
 }
 
 /** The verb a structured plan or shutdown message reads as, or null for a plain message. */
-function handshakeVerb(message: Record<string, unknown>, to: string): string | null {
+function handshakeVerb(message: Record<string, unknown>, to: string): string | null
+{
 	const approve = approval(message["approve"]);
-	switch (message["type"]) {
+	switch (message["type"])
+	{
 		case "plan_approval_response":
 			return approve === undefined ? null : `${approve ? "Approved" : "Rejected"} plan from @${to}`;
 		case "shutdown_request":
@@ -342,36 +541,72 @@ function handshakeVerb(message: Record<string, unknown>, to: string): string | n
 	}
 }
 
-function sendMessageLabel(call: ToolLabelCall): ToolLabel {
+function sendMessageLabel(call: ToolLabelCall): ToolLabel
+{
 	const {input} = call;
 	const to = stringInput(input, "to");
-	if (to === null || SESSION_ADDRESS.test(to)) return {verb: "Messaged another session"};
+	if (to === null || SESSION_ADDRESS.test(to))
+		return {
+			verb: "Messaged another session",
+		};
 	const message = input["message"];
 	const meta = oneLineMeta(messageText(message));
-	if (isRecord(message)) {
+	if (isRecord(message))
+	{
 		const verb = handshakeVerb(message, to);
-		if (verb !== null) return withMeta({verb}, meta);
+		if (verb !== null)
+			return withMeta(
+				{
+					verb,
+				},
+				meta,
+			);
 	}
 	const summaryMeta = oneLineMeta(input["summary"]) ?? meta;
 	const kind = input["recipient_kind"];
 	const description = call.recipientDescription ?? null;
-	if (description !== null || AGENT_ID.test(to) || kind === "agent") {
-		return withMeta({verb: "Messaged agent"}, oneLineMeta(description) ?? summaryMeta);
+	if (description !== null || AGENT_ID.test(to) || kind === "agent")
+	{
+		return withMeta(
+			{
+				verb: "Messaged agent",
+			},
+			oneLineMeta(description) ?? summaryMeta,
+		);
 	}
-	if (kind === "session") return {verb: "Messaged another session"};
-	return withMeta({verb: `Messaged @${to}`}, summaryMeta);
+	if (kind === "session")
+		return {
+			verb: "Messaged another session",
+		};
+	return withMeta(
+		{
+			verb: `Messaged @${to}`,
+		},
+		summaryMeta,
+	);
 }
 
-function basename(path: string): string {
+function basename(path: string): string
+{
 	return path.replace(/\/+$/, "").split("/").pop() ?? path;
 }
 
-function enterWorktreeLabel(input: Record<string, unknown>): ToolLabel {
+function enterWorktreeLabel(input: Record<string, unknown>): ToolLabel
+{
 	const path = stringInput(input, "path");
-	if (path !== null) {
-		return {verb: "Entered a worktree", meta: basename(path)};
+	if (path !== null)
+	{
+		return {
+			verb: "Entered a worktree",
+			meta: basename(path),
+		};
 	}
-	return withMeta({verb: "Created a worktree"}, stringInput(input, "name"));
+	return withMeta(
+		{
+			verb: "Created a worktree",
+		},
+		stringInput(input, "name"),
+	);
 }
 
 /** Upstream's ExitWorktree result when no EnterWorktree session was active: a harmless no-op. */
@@ -382,58 +617,127 @@ export function isBenignToolError(call: {
 	name: string;
 	isError?: boolean | undefined;
 	result?: string | undefined;
-}): boolean {
+}): boolean
+{
 	return call.isError === true && call.name === "ExitWorktree" && (call.result ?? "").startsWith(EXIT_WORKTREE_NO_OP);
 }
 
-function exitWorktreeLabel(call: ToolLabelCall): ToolLabel {
+function exitWorktreeLabel(call: ToolLabelCall): ToolLabel
+{
 	const action = ExitWorktreeActionSchema.safeParse(call.input["action"]);
 	const verb = exitWorktreeActionLabels[action.success ? action.data : "keep"];
-	return isBenignToolError(call) ? {verb, failedVerb: "No worktree to leave", errorIsBenign: true} : {verb};
+	return isBenignToolError(call)
+		?
+			{
+				verb,
+				failedVerb: "No worktree to leave",
+				errorIsBenign: true,
+			}
+		:
+			{
+				verb,
+			};
 }
 
-function scheduleWakeupLabel(input: Record<string, unknown>): ToolLabel {
-	if (input["stop"] === true) return {verb: "Stopped loop"};
-	return withMeta({verb: "Scheduled check-in"}, stringInput(input, "reason"));
+function scheduleWakeupLabel(input: Record<string, unknown>): ToolLabel
+{
+	if (input["stop"] === true)
+		return {
+			verb: "Stopped loop",
+		};
+	return withMeta(
+		{
+			verb: "Scheduled check-in",
+		},
+		stringInput(input, "reason"),
+	);
 }
 
 /** A `<<...>>` prompt is a loop sentinel, not text worth showing as meta. */
-function cronCreateLabel(input: Record<string, unknown>): ToolLabel {
+function cronCreateLabel(input: Record<string, unknown>): ToolLabel
+{
 	const prompt = stringInput(input, "prompt");
 	const meta = prompt !== null && /^<<[\s\S]*>>$/.test(prompt) ? null : prompt;
-	const label = {verb: input["recurring"] === false ? "Scheduled prompt" : "Started loop"};
+	const label =
+	{
+		verb: input["recurring"] === false ? "Scheduled prompt" : "Started loop",
+	};
 	return withMeta(label, meta);
 }
 
-function remoteTriggerLabel(input: Record<string, unknown>): ToolLabel {
+function remoteTriggerLabel(input: Record<string, unknown>): ToolLabel
+{
 	const action = RemoteTriggerActionSchema.safeParse(input["action"]);
-	if (!action.success) return {verb: "Used routines"};
-	return {verb: remoteTriggerActionLabels[action.data]};
+	if (!action.success)
+		return {
+			verb: "Used routines",
+		};
+	return {
+		verb: remoteTriggerActionLabels[action.data],
+	};
 }
 
-function gitLabel(git: GitOperation): ToolLabel | null {
-	if (git.pr) {
-		const label = {verb: gitPrActionLabels[git.pr.action], meta: `#${git.pr.number}`};
-		return git.pr.url === undefined ? label : {...label, metaHref: git.pr.url};
+function gitLabel(git: GitOperation): ToolLabel | null
+{
+	if (git.pr)
+	{
+		const label =
+		{
+			verb: gitPrActionLabels[git.pr.action],
+			meta: `#${git.pr.number}`,
+		};
+		return git.pr.url === undefined
+			? label
+			:
+				{
+					...label,
+					metaHref: git.pr.url,
+				};
 	}
-	if (git.commit) return {verb: gitCommitKindLabels[git.commit.kind], meta: git.commit.sha.slice(0, 7)};
-	if (git.push) return {verb: "Pushed", meta: git.push.branch};
-	if (git.branch) return {verb: gitBranchActionLabels[git.branch.action], meta: git.branch.ref};
+	if (git.commit)
+		return {
+			verb: gitCommitKindLabels[git.commit.kind],
+			meta: git.commit.sha.slice(0, 7),
+		};
+	if (git.push)
+		return {
+			verb: "Pushed",
+			meta: git.push.branch,
+		};
+	if (git.branch)
+		return {
+			verb: gitBranchActionLabels[git.branch.action],
+			meta: git.branch.ref,
+		};
 	return null;
 }
 
-function bashLabel(call: ToolLabelCall): ToolLabel {
+function bashLabel(call: ToolLabelCall): ToolLabel
+{
 	// Upstream reads no git action from an errored call's result.
 	const git = call.isError === true ? undefined : call.resultMeta?.gitOperation;
 	const gitVerb = git === undefined ? null : gitLabel(git);
 	if (gitVerb !== null) return gitVerb;
 	const description = stringInput(call.input, "description");
 	const command = stringInput(call.input, "command");
-	if (description !== null) {
-		return {verb: "Ran", meta: description, doneLabel: pastTense(description)};
+	if (description !== null)
+	{
+		return {
+			verb: "Ran",
+			meta: description,
+			doneLabel: pastTense(description),
+		};
 	}
-	if (command !== null) return {verb: "Ran", meta: command, doneLabel: command};
-	return {verb: "Ran", meta: "a command"};
+	if (command !== null)
+		return {
+			verb: "Ran",
+			meta: command,
+			doneLabel: command,
+		};
+	return {
+		verb: "Ran",
+		meta: "a command",
+	};
 }
 
 /**
@@ -441,21 +745,39 @@ function bashLabel(call: ToolLabelCall): ToolLabel {
  * "Pinned/Unpinned artifact", "Listed artifacts", and otherwise "Used artifact
  * tool" with the action as meta.
  */
-function artifactLabel(input: Record<string, unknown>): ToolLabel {
+function artifactLabel(input: Record<string, unknown>): ToolLabel
+{
 	const action = stringInput(input, "action");
-	switch (action) {
+	switch (action)
+	{
 		case null:
-		case "publish": {
+		case "publish":
+		{
 			const filePath = stringInput(input, "file_path");
-			const label = {verb: "Published artifact"};
-			return filePath === null ? label : {...label, meta: filePath.split("/").at(-1) ?? filePath};
+			const label =
+			{
+				verb: "Published artifact",
+			};
+			return filePath === null
+				? label
+				:
+					{
+						...label,
+						meta: filePath.split("/").at(-1) ?? filePath,
+					};
 		}
 		case "pin":
-			return {verb: "Pinned artifact"};
+			return {
+				verb: "Pinned artifact",
+			};
 		case "unpin":
-			return {verb: "Unpinned artifact"};
+			return {
+				verb: "Unpinned artifact",
+			};
 		case "list":
-			return {verb: "Listed artifacts"};
+			return {
+				verb: "Listed artifacts",
+			};
 		default:
 			return {
 				verb: "Used artifact tool",
@@ -469,7 +791,8 @@ function artifactLabel(input: Record<string, unknown>): ToolLabel {
  * reads "Used claude-in-chrome: computer"), dropping a `plugin_<pkg>_` prefix
  * from it and spacing the tool's underscores.
  */
-function mcpToolLabel(name: string): string {
+function mcpToolLabel(name: string): string
+{
 	const [server = "", ...toolParts] = name.slice("mcp__".length).split("__");
 	const serverName = server.startsWith("plugin_") ? (server.split("_").at(-1) ?? server) : server;
 	const tool = toolParts.join("__").replaceAll("_", " ");
@@ -481,7 +804,8 @@ function mcpToolLabel(name: string): string {
  * names it with the progressive verb ("Reading", "Running agent"). `label` is a
  * whole phrase in place of verb + meta, like `ToolLabel.doneLabel`.
  */
-export interface RunningToolLabel {
+export interface RunningToolLabel
+{
 	verb: string;
 	meta?: string;
 	metaIsCode?: true;
@@ -489,7 +813,8 @@ export interface RunningToolLabel {
 }
 
 /** Progressive forms of past-tense verbs that don't end in -ed. */
-const IRREGULAR_PAST_PROGRESSIVE: Record<string, string> = {
+const IRREGULAR_PAST_PROGRESSIVE: Record<string, string> =
+{
 	built: "building",
 	cut: "cutting",
 	found: "finding",
@@ -525,12 +850,14 @@ const DOUBLED_PROGRESSIVE = new Set([
 ]);
 
 /** Base verbs with a progressive form no suffix rule produces. */
-const IRREGULAR_BASE_PROGRESSIVE: Record<string, string> = {
+const IRREGULAR_BASE_PROGRESSIVE: Record<string, string> =
+{
 	be: "being",
 	see: "seeing",
 };
 
-function replaceLeadingWord(text: string, transform: (lower: string) => string | null): string {
+function replaceLeadingWord(text: string, transform: (lower: string) => string | null): string
+{
 	const [, word, rest] = /^([A-Za-z]+)([\s\S]*)$/.exec(text) ?? [];
 	if (word === undefined || rest === undefined) return text;
 	const replaced = transform(word.toLowerCase());
@@ -538,8 +865,10 @@ function replaceLeadingWord(text: string, transform: (lower: string) => string |
 }
 
 /** "Ran agent" -> "Running agent", "Searched web" -> "Searching web". */
-function progressiveOfPast(verb: string): string {
-	return replaceLeadingWord(verb, (word) => {
+function progressiveOfPast(verb: string): string
+{
+	return replaceLeadingWord(verb, (word) =>
+	{
 		const irregular = IRREGULAR_PAST_PROGRESSIVE[word];
 		if (irregular) return irregular;
 		if (word.endsWith("ied")) return `${word.slice(0, -3)}ying`;
@@ -554,8 +883,10 @@ function progressiveOfPast(verb: string): string {
  * tests", "Write config" -> "Writing config". A description already in -ing or
  * past tense is left verbatim.
  */
-function progressive(description: string): string {
-	return replaceLeadingWord(description, (word) => {
+function progressive(description: string): string
+{
+	return replaceLeadingWord(description, (word) =>
+	{
 		if (word.endsWith("ing") || (word.endsWith("ed") && !word.endsWith("eed"))) return null;
 		const irregular = IRREGULAR_BASE_PROGRESSIVE[word];
 		if (irregular) return irregular;
@@ -569,21 +900,29 @@ function progressive(description: string): string {
 }
 
 /** Upstream `runningVerb`s that are not the done verb's progressive form. */
-const RUNNING_VERBS: Readonly<Record<string, string>> = {
+const RUNNING_VERBS: Readonly<Record<string, string>> =
+{
 	EnterPlanMode: "Making a plan",
 	TodoWrite: "Updating todos",
 };
 
-export function runningToolLabel(call: ToolLabelCall): RunningToolLabel {
-	const done = toolLabel({
-		name: call.name,
-		input: call.input,
-		invalidInput: call.invalidInput,
-		recipientDescription: call.recipientDescription,
-	});
+export function runningToolLabel(call: ToolLabelCall): RunningToolLabel
+{
+	const done = toolLabel(
+		{
+			name: call.name,
+			input: call.input,
+			invalidInput: call.invalidInput,
+			recipientDescription: call.recipientDescription,
+		},
+	);
 	const verb = RUNNING_VERBS[call.name] ?? (call.name === "Write" ? "Writing" : progressiveOfPast(done.verb));
-	const running: RunningToolLabel = {verb};
-	if (done.doneLabel !== undefined) {
+	const running: RunningToolLabel =
+	{
+		verb,
+	};
+	if (done.doneLabel !== undefined)
+	{
 		const description = stringInput(call.input, "description");
 		// A call held at its permission prompt shows the description as written, and so
 		// does a running subagent whose description opens with no verb to inflect
@@ -599,7 +938,8 @@ export function runningToolLabel(call: ToolLabelCall): RunningToolLabel {
 }
 
 /** A running label as one phrase, for rows that show only the in-flight call. */
-export function runningToolLabelText(label: RunningToolLabel): string {
+export function runningToolLabelText(label: RunningToolLabel): string
+{
 	return label.label ?? (label.meta === undefined ? label.verb : `${label.verb} ${label.meta}`);
 }
 
@@ -608,17 +948,30 @@ export function runningToolLabelText(label: RunningToolLabel): string {
  * `failedVerb` (and, for a described Bash or subagent call, the `failedLabel`)
  * upstream names it with once it failed.
  */
-export function toolLabel(call: ToolLabelCall): ToolLabel {
+export function toolLabel(call: ToolLabelCall): ToolLabel
+{
 	const label = baseToolLabel(call);
 	if (call.isError !== true || label.failedVerb !== undefined) return label;
 	const failedVerb = failedVerbOf(call, label);
 	if (failedVerb === undefined) return label;
 	const failedLabel = failedLabelOf(call);
-	return failedLabel === undefined ? {...label, failedVerb} : {...label, failedVerb, failedLabel};
+	return failedLabel === undefined
+		?
+			{
+				...label,
+				failedVerb,
+			}
+		:
+			{
+				...label,
+				failedVerb,
+				failedLabel,
+			};
 }
 
 /** Upstream's failed verbs for tools whose failed name does not depend on the input. */
-const FIXED_FAILED_VERBS: Readonly<Record<string, string>> = {
+const FIXED_FAILED_VERBS: Readonly<Record<string, string>> =
+{
 	Bash: "Failed to run",
 	PowerShell: "Failed to run",
 	Read: "Failed to read",
@@ -660,8 +1013,10 @@ const FIXED_FAILED_VERBS: Readonly<Record<string, string>> = {
 	SendFeedback: "Failed to send feedback",
 };
 
-function artifactFailedVerb(input: Record<string, unknown>): string {
-	switch (stringInput(input, "action")) {
+function artifactFailedVerb(input: Record<string, unknown>): string
+{
+	switch (stringInput(input, "action"))
+	{
 		case null:
 		case "publish":
 			return "Failed to publish artifact";
@@ -676,23 +1031,27 @@ function artifactFailedVerb(input: Record<string, unknown>): string {
 	}
 }
 
-function sendMessageFailedVerb(call: ToolLabelCall, verb: string): string {
+function sendMessageFailedVerb(call: ToolLabelCall, verb: string): string
+{
 	if (verb === "Messaged agent") return "Failed to message agent";
 	if (verb === "Messaged another session") return "Failed to message another session";
 	return `Failed to message @${stringInput(call.input, "to") ?? ""}`;
 }
 
 /** Upstream's failed verb for an errored call, or undefined for a tool upstream gives none. */
-function failedVerbOf(call: ToolLabelCall, label: ToolLabel): string | undefined {
+function failedVerbOf(call: ToolLabelCall, label: ToolLabel): string | undefined
+{
 	const {name, input} = call;
 	const generic = label.verb.startsWith("Used ") ? `Failed to use ${label.verb.slice("Used ".length)}` : undefined;
 	if (call.invalidInput === true) return generic;
 	const fixed = FIXED_FAILED_VERBS[name];
 	if (fixed !== undefined) return fixed;
-	switch (name) {
+	switch (name)
+	{
 		case "EnterWorktree":
 			return stringInput(input, "path") === null ? "Failed to create a worktree" : "Failed to enter the worktree";
-		case "ExitWorktree": {
+		case "ExitWorktree":
+		{
 			const action = ExitWorktreeActionSchema.safeParse(input["action"]);
 			return exitWorktreeActionFailedVerbs[action.success ? action.data : "keep"];
 		}
@@ -704,7 +1063,8 @@ function failedVerbOf(call: ToolLabelCall, label: ToolLabel): string | undefined
 			return input["stop"] === true ? "Failed to stop loop" : "Failed to schedule check-in";
 		case "CronCreate":
 			return input["recurring"] === false ? "Failed to schedule prompt" : "Failed to start loop";
-		case "RemoteTrigger": {
+		case "RemoteTrigger":
+		{
 			const action = RemoteTriggerActionSchema.safeParse(input["action"]);
 			return action.success ? remoteTriggerActionFailedVerbs[action.data] : generic;
 		}
@@ -717,7 +1077,8 @@ function failedVerbOf(call: ToolLabelCall, label: ToolLabel): string | undefined
 }
 
 /** "Failed to run the tests" for a Bash or subagent description that opens with a known verb. */
-function failedLabelOf(call: ToolLabelCall): string | undefined {
+function failedLabelOf(call: ToolLabelCall): string | undefined
+{
 	if (call.invalidInput === true) return undefined;
 	if (!["Bash", "PowerShell", "Agent", "Task"].includes(call.name)) return undefined;
 	const description = stringInput(call.input, "description");
@@ -725,29 +1086,55 @@ function failedLabelOf(call: ToolLabelCall): string | undefined {
 	return action === undefined ? undefined : `Failed to ${action}`;
 }
 
-function baseToolLabel(call: ToolLabelCall): ToolLabel {
+function baseToolLabel(call: ToolLabelCall): ToolLabel
+{
 	const {name, input} = call;
 	if (call.invalidInput === true) return genericToolLabel(name);
-	if (name === "TaskGet" && call.resultMeta?.taskFailed === true) return {verb: "Failed to read task"};
+	if (name === "TaskGet" && call.resultMeta?.taskFailed === true)
+		return {
+			verb: "Failed to read task",
+		};
 	const fixed = FIXED_LABELS[name];
-	if (fixed) return {...fixed};
+	if (fixed)
+		return {
+			...fixed,
+		};
 
-	switch (name) {
+	switch (name)
+	{
 		case "Bash":
 		case "PowerShell":
 			return bashLabel(call);
 		case "Write":
-			return {verb: call.resultMeta?.writeType === "update" ? "Updated" : "Created"};
+			return {
+				verb: call.resultMeta?.writeType === "update" ? "Updated" : "Created",
+			};
 		case "Agent":
-		case "Task": {
+		case "Task":
+		{
 			const description = stringInput(input, "description");
-			if (description === null) return {verb: "Ran agent"};
-			return {verb: "Ran agent", meta: description, doneLabel: pastTense(description)};
+			if (description === null)
+				return {
+					verb: "Ran agent",
+				};
+			return {
+				verb: "Ran agent",
+				meta: description,
+				doneLabel: pastTense(description),
+			};
 		}
-		case "Skill": {
+		case "Skill":
+		{
 			const skill = stringInput(input, "skill");
-			if (skill === null) return {verb: "Ran skill"};
-			return {verb: "Ran skill", meta: `/${skill}`, metaIsCode: true};
+			if (skill === null)
+				return {
+					verb: "Ran skill",
+				};
+			return {
+				verb: "Ran skill",
+				meta: `/${skill}`,
+				metaIsCode: true,
+			};
 		}
 		case "EnterWorktree":
 			return enterWorktreeLabel(input);
@@ -760,34 +1147,59 @@ function baseToolLabel(call: ToolLabelCall): ToolLabel {
 		case "RemoteTrigger":
 			return remoteTriggerLabel(input);
 		case "TaskUpdate":
-			return {verb: call.resultMeta?.taskFailed === true ? "Failed to update task" : taskUpdateVerb(input)};
-		case "TodoWrite": {
+			return {
+				verb: call.resultMeta?.taskFailed === true ? "Failed to update task" : taskUpdateVerb(input),
+			};
+		case "TodoWrite":
+		{
 			const todos = input["todos"];
 			const cleared = Array.isArray(todos) && todos.length === 0;
-			return {verb: cleared ? "Cleared todos" : "Updated todos"};
+			return {
+				verb: cleared ? "Cleared todos" : "Updated todos",
+			};
 		}
 		case "Artifact":
 			return artifactLabel(input);
-		case "Workflow": {
+		case "Workflow":
+		{
 			// Upstream's settled row names the run beside the verb.
-			return withMeta({verb: "Ran workflow"}, workflowCallName(input) ?? null);
+			return withMeta(
+				{
+					verb: "Ran workflow",
+				},
+				workflowCallName(input) ?? null,
+			);
 		}
 		case "SendMessage":
 			return sendMessageLabel(call);
-		case "ExitPlanMode": {
+		case "ExitPlanMode":
+		{
 			// Upstream reads a planless call that completed cleanly as "Finished planning".
 			const finished = planText(input) === undefined && call.result !== undefined && call.isError !== true;
 			return withMeta(
-				{verb: finished ? "Finished planning" : "Proposed plan"},
+				{
+					verb: finished ? "Finished planning" : "Proposed plan",
+				},
 				planHeadingMeta(planText(input)) ?? null,
 			);
 		}
-		case "AskUserQuestion": {
+		case "AskUserQuestion":
+		{
 			const meta = askedMeta(input);
 			// Upstream draws "Asked “<header>”" / "Asked N questions" as one text run, not a verb and a param.
 			// A blocked question was never asked, so upstream's `neverAsked` label keeps the running verb.
 			const verb = call.blocked === true ? "Asking" : "Asked";
-			return meta === null ? {verb} : {verb, meta, doneLabel: `${verb} ${meta}`};
+			return meta === null
+				?
+					{
+						verb,
+					}
+				:
+					{
+						verb,
+						meta,
+						doneLabel: `${verb} ${meta}`,
+					};
 		}
 	}
 
@@ -795,7 +1207,10 @@ function baseToolLabel(call: ToolLabelCall): ToolLabel {
 }
 
 /** "Used Read", for a tool with no label of its own or a call it cannot read. */
-function genericToolLabel(name: string): ToolLabel {
+function genericToolLabel(name: string): ToolLabel
+{
 	const label = name.startsWith("mcp__") ? mcpToolLabel(name) : name;
-	return {verb: `Used ${label}`};
+	return {
+		verb: `Used ${label}`,
+	};
 }

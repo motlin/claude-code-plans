@@ -2,7 +2,8 @@ import {parseMemoryFrontmatter} from "../lib/memory-frontmatter";
 import {MarkdownView} from "./markdown-view";
 
 /** A memory file: frontmatter `name` as the h1, `description` muted beneath, then the body. */
-export function MemoryDocument({markdown, mdLinkBase}: {markdown: string; mdLinkBase?: string | undefined}) {
+export function MemoryDocument({markdown, mdLinkBase}: {markdown: string; mdLinkBase?: string | undefined})
+{
 	const {name, description, body} = parseMemoryFrontmatter(markdown);
 	return (
 		<>

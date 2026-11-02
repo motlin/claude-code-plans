@@ -17,14 +17,17 @@ const {default: viteConfig} = await import("../vite.config");
 const {default: vitestConfig} = await import("../vitest.config");
 const loadedTitle = process.title;
 
-afterAll(() => {
+afterAll(() =>
+{
 	process.title = originalTitle;
 	if (originalBuildSha === undefined) delete process.env["CCB_BUILD_SHA"];
 	else process.env["CCB_BUILD_SHA"] = originalBuildSha;
 });
 
-function pluginNames(option: unknown): string[] {
-	if (Array.isArray(option)) {
+function pluginNames(option: unknown): string[]
+{
+	if (Array.isArray(option))
+	{
 		return option.flatMap((entry: unknown) => pluginNames(entry));
 	}
 	return option !== null && typeof option === "object" && "name" in option && typeof option.name === "string"
@@ -32,12 +35,15 @@ function pluginNames(option: unknown): string[] {
 		: [];
 }
 
-describe("vite config", () => {
-	it("names the Vite dev process so it is identifiable in ps", () => {
+describe("vite config", () =>
+{
+	it("names the Vite dev process so it is identifiable in ps", () =>
+	{
 		expect(loadedTitle).toBe("claude-code-browser");
 	});
 
-	it("ignores non-source scratch directories in the Vite dev watcher", () => {
+	it("ignores non-source scratch directories in the Vite dev watcher", () =>
+	{
 		expect(viteConfig.server?.watch?.ignored).toStrictEqual([
 			"**/routeTree.gen.ts",
 			"**/.llm/**",
@@ -47,148 +53,218 @@ describe("vite config", () => {
 
 	// The Agentation server 403s any non-loopback Origin ("Origin not allowed"), so a page served through
 	// another host (the https reverse proxy) must reach it with the server's own origin.
-	it("proxies the Agentation endpoint to the local Agentation server", () => {
+	it("proxies the Agentation endpoint to the local Agentation server", () =>
+	{
 		const proxy = viteConfig.server?.proxy?.[AGENTATION_ENDPOINT];
-		if (proxy === undefined || typeof proxy === "string") {
+		if (proxy === undefined || typeof proxy === "string")
+		{
 			throw new Error("expected an object proxy entry for the Agentation endpoint");
 		}
 
-		expect({
-			target: proxy.target,
-			changeOrigin: proxy.changeOrigin,
-			headers: proxy.headers,
-			rewritten: proxy.rewrite?.("/__agentation/sessions/abc/events"),
-		}).toStrictEqual({
-			target: AGENTATION_SERVER,
-			changeOrigin: true,
-			headers: {origin: AGENTATION_SERVER},
-			rewritten: "/sessions/abc/events",
-		});
+		expect(
+			{
+				target: proxy.target,
+				changeOrigin: proxy.changeOrigin,
+				headers: proxy.headers,
+				rewritten: proxy.rewrite?.("/__agentation/sessions/abc/events"),
+			},
+		).toStrictEqual(
+			{
+				target: AGENTATION_SERVER,
+				changeOrigin: true,
+				headers:
+				{
+					origin: AGENTATION_SERVER,
+				},
+				rewritten: "/sessions/abc/events",
+			},
+		);
 	});
 
-	it("registers the dev env plugins, with the worker proxy last, after nitro", () => {
+	it("registers the dev env plugins, with the worker proxy last, after nitro", () =>
+	{
 		const names = pluginNames(viteConfig.plugins);
 
-		expect({
-			closesRunner: names.includes("ccp:close-nitro-env-runner"),
-			holdsRequests: names.includes("ccp:hold-nitro-requests-until-ready"),
-			serializesRestarts: names.includes("ccp:serialize-dev-server-restarts"),
-			last: names.slice(-2),
-			errorsAfterNitro:
-				names.indexOf("ccp:dev-request-errors") > names.findIndex((name) => name.startsWith("nitro")),
-		}).toStrictEqual({
-			closesRunner: true,
-			holdsRequests: true,
-			serializesRestarts: true,
-			last: ["ccp:dev-worker-connection-close", "ccp:dev-request-errors"],
-			errorsAfterNitro: true,
-		});
+		expect(
+			{
+				closesRunner: names.includes("ccp:close-nitro-env-runner"),
+				holdsRequests: names.includes("ccp:hold-nitro-requests-until-ready"),
+				serializesRestarts: names.includes("ccp:serialize-dev-server-restarts"),
+				last: names.slice(-2),
+				errorsAfterNitro:
+					names.indexOf("ccp:dev-request-errors") > names.findIndex((name) => name.startsWith("nitro")),
+			},
+		).toStrictEqual(
+			{
+				closesRunner: true,
+				holdsRequests: true,
+				serializesRestarts: true,
+				last: ["ccp:dev-worker-connection-close", "ccp:dev-request-errors"],
+				errorsAfterNitro: true,
+			},
+		);
 	});
 });
 
-describe("typecheck task cache", () => {
-	it("never caches tsc, whose native file reads vp's input tracking cannot see", () => {
-		expect(viteConfig.run?.tasks?.["typecheck"]).toStrictEqual({command: "tsc --noEmit", cache: false});
+describe("typecheck task cache", () =>
+{
+	it("never caches tsc, whose native file reads vp's input tracking cannot see", () =>
+	{
+		expect(viteConfig.run?.tasks?.["typecheck"]).toStrictEqual(
+			{
+				command: "tsc --noEmit",
+				cache: false,
+			},
+		);
 	});
 
-	it("leaves type-checking to `vp check` instead of repeating it in the build", () => {
+	it("leaves type-checking to `vp check` instead of repeating it in the build", () =>
+	{
 		const {scripts} = z
-			.object({scripts: z.record(z.string(), z.string())})
+			.object(
+				{
+					scripts: z.record(z.string(), z.string()),
+				},
+			)
 			.parse(JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")));
 
-		expect({
-			typeCheckedByVpCheck: viteConfig.lint?.options?.typeCheck,
-			build: scripts["build"],
-			scriptsCallingTsc: Object.keys(scripts).filter((name) => /\btsc\b/.test(scripts[name] ?? "")),
-		}).toStrictEqual({typeCheckedByVpCheck: true, build: "vp build", scriptsCallingTsc: []});
+		expect(
+			{
+				typeCheckedByVpCheck: viteConfig.lint?.options?.typeCheck,
+				build: scripts["build"],
+				scriptsCallingTsc: Object.keys(scripts).filter((name) => /\btsc\b/.test(scripts[name] ?? "")),
+			},
+		).toStrictEqual(
+			{
+				typeCheckedByVpCheck: true,
+				build: "vp build",
+				scriptsCallingTsc: [],
+			},
+		);
 	});
 });
 
-describe("test task cache", () => {
-	it("persists vitest's transforms across runs and keeps that cache out of the test:run task's inputs", () => {
-		expect({
-			fsModuleCache: vitestConfig.test?.fsModuleCache,
-			fsModuleCachePath: vitestConfig.test?.fsModuleCachePath,
-			testRun: viteConfig.run?.tasks?.["test:run"],
-		}).toStrictEqual({
-			fsModuleCache: true,
-			fsModuleCachePath: undefined,
-			testRun: {
-				command: "node node_modules/vitest/dist/cli.js run",
-				cache: {
-					env: ["PERF_LARGE", "FULL_JSONL_SCAN", "XDG_CACHE_HOME", "XDG_CONFIG_HOME"],
-					untrackedEnv: ["TMPDIR", "CCB_PERF_LOG"],
-					input: [
-						{auto: true},
-						"!node_modules/.vitest-cache/**",
-						"!.fallow/**",
-						"!node_modules/.cache/ccb-perf/**",
-					],
-					output: [],
+describe("test task cache", () =>
+{
+	it("persists vitest's transforms across runs and keeps that cache out of the test:run task's inputs", () =>
+	{
+		expect(
+			{
+				fsModuleCache: vitestConfig.test?.fsModuleCache,
+				fsModuleCachePath: vitestConfig.test?.fsModuleCachePath,
+				testRun: viteConfig.run?.tasks?.["test:run"],
+			},
+		).toStrictEqual(
+			{
+				fsModuleCache: true,
+				fsModuleCachePath: undefined,
+				testRun:
+				{
+					command: "node node_modules/vitest/dist/cli.js run",
+					cache:
+					{
+						env: ["PERF_LARGE", "FULL_JSONL_SCAN", "XDG_CACHE_HOME", "XDG_CONFIG_HOME"],
+						untrackedEnv: ["TMPDIR", "CCB_PERF_LOG"],
+						input: [
+							{
+								auto: true,
+							},
+							"!node_modules/.vitest-cache/**",
+							"!.fallow/**",
+							"!node_modules/.cache/ccb-perf/**",
+						],
+						output: [],
+					},
 				},
 			},
-		});
+		);
 	});
 });
 
-describe("build task cache", () => {
-	it("caches the app build with its outputs, keyed on the commit SHA the build stamps in", () => {
-		expect({
-			define: viteConfig.define,
-			buildApp: viteConfig.run?.tasks?.["build:app"],
-		}).toStrictEqual({
-			define: {__CCB_BUILD_SHA__: JSON.stringify("abc1234")},
-			buildApp: {
-				command: "node scripts/check-build-output.mjs vp build --logLevel warn",
-				cache: {
-					env: ["CCB_BUILD_SHA"],
-					input: [
-						{auto: true},
-						"!.fallow/**",
-						"!node_modules/.cache/ccb-perf/**",
-						"!.llm/**",
-						"!.playwright-mcp/**",
-						"!.serena/**",
-						"!.claude/worktrees/**",
-					],
-					output: [".output/**", "src/routeTree.gen.ts"],
+describe("build task cache", () =>
+{
+	it("caches the app build with its outputs, keyed on the commit SHA the build stamps in", () =>
+	{
+		expect(
+			{
+				define: viteConfig.define,
+				buildApp: viteConfig.run?.tasks?.["build:app"],
+			},
+		).toStrictEqual(
+			{
+				define:
+				{
+					__CCB_BUILD_SHA__: JSON.stringify("abc1234"),
+				},
+				buildApp:
+				{
+					command: "node scripts/check-build-output.mjs vp build --logLevel warn",
+					cache:
+					{
+						env: ["CCB_BUILD_SHA"],
+						input: [
+							{
+								auto: true,
+							},
+							"!.fallow/**",
+							"!node_modules/.cache/ccb-perf/**",
+							"!.llm/**",
+							"!.playwright-mcp/**",
+							"!.serena/**",
+							"!.claude/worktrees/**",
+						],
+						output: [".output/**", "src/routeTree.gen.ts"],
+					},
 				},
 			},
-		});
+		);
 	});
 });
 
-describe("quiet output", () => {
-	it("reports only failures from vitest and keeps the build's size table, dependency warnings and load-dependent plugin-timings report out of verify", () => {
-		expect({
-			reporters: vitestConfig.test?.reporters,
-			silent: vitestConfig.test?.silent,
-			projects: vitestConfig.test?.projects?.map((project): unknown =>
-				typeof project === "object" && "test" in project ? [project.test.name, project.test.isolate] : project,
-			),
-			reportCompressedSize: viteConfig.build?.reportCompressedSize,
-			chunkSizeWarningLimit: viteConfig.build?.chunkSizeWarningLimit,
-			filtersBundlerLogs: typeof viteConfig.build?.rolldownOptions?.onLog,
-			bundlerChecks: viteConfig.build?.rolldownOptions?.checks,
-		}).toStrictEqual({
-			reporters: process.env["GITHUB_ACTIONS"] === "true" ? ["minimal", "github-actions"] : ["minimal"],
-			silent: "passed-only",
-			projects: [
-				["shared", false],
-				["shared-dom", false],
-				["isolated", true],
-			],
-			reportCompressedSize: false,
-			chunkSizeWarningLimit: 800,
-			filtersBundlerLogs: "function",
-			bundlerChecks: {pluginTimings: false},
-		});
+describe("quiet output", () =>
+{
+	it("reports only failures from vitest and keeps the build's size table, dependency warnings and load-dependent plugin-timings report out of verify", () =>
+	{
+		expect(
+			{
+				reporters: vitestConfig.test?.reporters,
+				silent: vitestConfig.test?.silent,
+				projects: vitestConfig.test?.projects?.map((project): unknown =>
+					typeof project === "object" && "test" in project
+						? [project.test.name, project.test.isolate]
+						: project,
+				),
+				reportCompressedSize: viteConfig.build?.reportCompressedSize,
+				chunkSizeWarningLimit: viteConfig.build?.chunkSizeWarningLimit,
+				filtersBundlerLogs: typeof viteConfig.build?.rolldownOptions?.onLog,
+				bundlerChecks: viteConfig.build?.rolldownOptions?.checks,
+			},
+		).toStrictEqual(
+			{
+				reporters: process.env["GITHUB_ACTIONS"] === "true" ? ["minimal", "github-actions"] : ["minimal"],
+				silent: "passed-only",
+				projects: [
+					["shared", false],
+					["shared-dom", false],
+					["isolated", true],
+				],
+				reportCompressedSize: false,
+				chunkSizeWarningLimit: 800,
+				filtersBundlerLogs: "function",
+				bundlerChecks:
+				{
+					pluginTimings: false,
+				},
+			},
+		);
 	});
 });
 
-describe("css minify", () => {
+describe("css minify", () =>
+{
 	// Vite's minify pass converts build.cssTarget (baseline-widely-available) to these lightningcss targets.
-	const BASELINE_TARGETS = {
+	const BASELINE_TARGETS =
+	{
 		chrome: 111 << 16,
 		edge: 111 << 16,
 		firefox: 114 << 16,
@@ -196,20 +272,31 @@ describe("css minify", () => {
 		ios_saf: (16 << 16) | (4 << 8),
 	};
 
-	it("keeps :dir() out of lightningcss lowering, as Tailwind's own optimize pass does", () => {
-		expect(viteConfig.css).toStrictEqual({lightningcss: {exclude: Features.DirSelector}});
+	it("keeps :dir() out of lightningcss lowering, as Tailwind's own optimize pass does", () =>
+	{
+		expect(viteConfig.css).toStrictEqual(
+			{
+				lightningcss:
+				{
+					exclude: Features.DirSelector,
+				},
+			},
+		);
 	});
 
-	it("ships :dir() rules byte-for-byte like upstream through the baseline-target minify", () => {
+	it("ships :dir() rules byte-for-byte like upstream through the baseline-target minify", () =>
+	{
 		const source =
 			'.a:where(:root[dir="rtl"] :dir(rtl))::after{left:0}.b:dir(ltr){color:red}.rtl\\:-scale-x-100:where(:dir(rtl),[dir=rtl],[dir=rtl] *){scale:-1 1}';
-		const {code} = transform({
-			...viteConfig.css?.lightningcss,
-			filename: "x.css",
-			code: Buffer.from(source),
-			minify: true,
-			targets: BASELINE_TARGETS,
-		});
+		const {code} = transform(
+			{
+				...viteConfig.css?.lightningcss,
+				filename: "x.css",
+				code: Buffer.from(source),
+				minify: true,
+				targets: BASELINE_TARGETS,
+			},
+		);
 		expect(code.toString()).toBe(
 			".a:where(:root[dir=rtl] :dir(rtl)):after{left:0}.b:dir(ltr){color:red}.rtl\\:-scale-x-100:where(:dir(rtl),[dir=rtl],[dir=rtl] *){scale:-1 1}",
 		);

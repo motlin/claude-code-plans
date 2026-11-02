@@ -4,19 +4,22 @@ import type {SessionBucket} from "./session-state";
 export type MetaStatus = "idle" | "unread" | "working" | "blocked" | "error";
 
 /** Where a session runs (its folder); `spoken` leaves it in the row's accessible text. */
-export interface MetaPlace {
+export interface MetaPlace
+{
 	text: string;
 	spoken: boolean;
 }
 
 /** The second line of a "described" sidebar row (Show ▸ Metadata), upstream's `L2` result. */
-export interface SessionMetaLine {
+export interface SessionMetaLine
+{
 	word?: MetaStatus;
 	text?: string;
 	place?: MetaPlace;
 }
 
-export interface SessionMetaLineInput {
+export interface SessionMetaLineInput
+{
 	status: MetaStatus;
 	/** The row sits under a state-grouped heading, which already names its status. */
 	underStatusHeading: boolean;
@@ -28,7 +31,8 @@ export interface SessionMetaLineInput {
 }
 
 /** Upstream `Ia`: the group heading already names the place, so the line needn't repeat it. */
-function headingNamesPlace(heading: string, place: string): boolean {
+function headingNamesPlace(heading: string, place: string): boolean
+{
 	return heading === place || heading.startsWith(`${place} · `);
 }
 
@@ -40,20 +44,37 @@ export function sessionMetaLine({
 	message,
 	place,
 	heading,
-}: SessionMetaLineInput): SessionMetaLine {
+}: SessionMetaLineInput): SessionMetaLine
+{
 	const candidate = underStatusHeading ? undefined : status;
 	const blocked = status === "blocked" && (candidate !== undefined || reason !== undefined);
 	const text = blocked ? (reason ?? message) : message;
 	const word = blocked || text === undefined ? candidate : undefined;
 	const dropPlace = headingNamesPlace(heading, place.text) && (word !== undefined || text !== undefined);
 	return {
-		...(word === undefined ? {} : {word}),
-		...(text === undefined ? {} : {text}),
-		...(dropPlace ? {} : {place}),
+		...(word === undefined
+			? {}
+			:
+				{
+					word,
+				}),
+		...(text === undefined
+			? {}
+			:
+				{
+					text,
+				}),
+		...(dropPlace
+			? {}
+			:
+				{
+					place,
+				}),
 	};
 }
 
-const BUCKET_STATUS = {
+const BUCKET_STATUS =
+{
 	blocked: "blocked",
 	working: "working",
 	review: "unread",
@@ -65,7 +86,8 @@ export function metaStatus(session: {
 	bucket: SessionBucket;
 	archived: boolean;
 	unseenError?: true | undefined;
-}): MetaStatus {
+}): MetaStatus
+{
 	if (session.archived) return "idle";
 	if (session.unseenError === true) return "error";
 	return BUCKET_STATUS[session.bucket];
@@ -76,9 +98,14 @@ export function metaStatus(session: {
  * blocked row shows the last user message, and a settled row its summary first.
  */
 export function sessionMetaMessage(
-	session: {summary?: string | undefined; lastUserMessage?: string | undefined},
+	session:
+	{
+		summary?: string | undefined;
+		lastUserMessage?: string | undefined;
+	},
 	status: MetaStatus,
-): string | undefined {
+): string | undefined
+{
 	const settled = status === "idle" || status === "unread" || status === "error";
 	return (settled ? session.summary : undefined) ?? session.lastUserMessage;
 }

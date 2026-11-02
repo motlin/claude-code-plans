@@ -17,7 +17,8 @@ export function StoryWrapper({
 	queryClient?: QueryClient;
 	initialPath?: string;
 	children: React.ReactNode;
-}) {
+})
+{
 	const router = createStoryRouter(initialPath);
 	const qc = queryClient ?? createStoryQueryClient();
 

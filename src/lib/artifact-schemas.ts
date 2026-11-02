@@ -46,134 +46,192 @@ export const ArtifactAccessLevelSchema = z.enum(["view", "interact", "admin", "o
 /** Extra viewer details a page's `user` capability may resolve. */
 export const ArtifactUserScopeSchema = z.enum(["profile", "email"]);
 
-const ArtifactDbRuleSchema = z.strictObject({
-	path: z.string(),
-	read: ArtifactAccessLevelSchema.optional(),
-	write: ArtifactAccessLevelSchema.optional(),
-});
+const ArtifactDbRuleSchema = z.strictObject(
+	{
+		path: z.string(),
+		read: ArtifactAccessLevelSchema.optional(),
+		write: ArtifactAccessLevelSchema.optional(),
+	},
+);
 
-export const ArtifactCapabilitiesSchema = z.strictObject({
-	db: z.strictObject({rules: z.array(ArtifactDbRuleSchema).optional()}).optional(),
-	user: z.strictObject({scopes: z.array(ArtifactUserScopeSchema).optional()}).optional(),
-});
+export const ArtifactCapabilitiesSchema = z.strictObject(
+	{
+		db: z
+			.strictObject(
+				{
+					rules: z.array(ArtifactDbRuleSchema).optional(),
+				},
+			)
+			.optional(),
+		user: z
+			.strictObject(
+				{
+					scopes: z.array(ArtifactUserScopeSchema).optional(),
+				},
+			)
+			.optional(),
+	},
+);
 
-const ArtifactPublishResultSchema = z.strictObject({
-	url: z.string(),
-	path: z.string(),
-	artifact_id: z.string().optional(),
-	title: z.string(),
-	updated: z.boolean(),
-	icon: z.string().optional(),
-	audience: z.string().optional(),
-	seq: z.number().optional(),
-	version: z.string(),
-	capabilities: ArtifactCapabilitiesSchema.optional(),
-	stored: z
-		.strictObject({
-			contract: z.string(),
-			capabilities: ArtifactCapabilitiesSchema,
-			carried: z.boolean().optional(),
-			preferredContract: z.string(),
-			read: z.string(),
-		})
-		.optional(),
-	contract: z.string().optional(),
-	liveSubscription: ArtifactLiveSubscriptionSchema,
-});
+const ArtifactPublishResultSchema = z.strictObject(
+	{
+		url: z.string(),
+		path: z.string(),
+		artifact_id: z.string().optional(),
+		title: z.string(),
+		updated: z.boolean(),
+		icon: z.string().optional(),
+		audience: z.string().optional(),
+		seq: z.number().optional(),
+		version: z.string(),
+		capabilities: ArtifactCapabilitiesSchema.optional(),
+		stored: z
+			.strictObject(
+				{
+					contract: z.string(),
+					capabilities: ArtifactCapabilitiesSchema,
+					carried: z.boolean().optional(),
+					preferredContract: z.string(),
+					read: z.string(),
+				},
+			)
+			.optional(),
+		contract: z.string().optional(),
+		liveSubscription: ArtifactLiveSubscriptionSchema,
+	},
+);
 
-const ArtifactTypeCreateResultSchema = z.strictObject({
-	created_from_type: z.literal(true),
-	url: z.string(),
-	version: z.string(),
-	title: z.string(),
-	type: z.strictObject({url: z.string(), release: z.string()}),
-	own_files: z.array(z.string()),
-	type_files: z.array(z.string()),
-	provisioned: z
-		.strictObject({
-			store: z.string(),
-			project_id: z.string(),
-			file_id: z.string(),
-			node_id: z.string(),
-		})
-		.optional(),
-	auto_open: ArtifactAutoOpenSchema.optional(),
-	liveSubscription: ArtifactLiveSubscriptionSchema,
-	instructions: z.string(),
-	instructions_chars: z.number(),
-});
+const ArtifactTypeCreateResultSchema = z.strictObject(
+	{
+		created_from_type: z.literal(true),
+		url: z.string(),
+		version: z.string(),
+		title: z.string(),
+		type: z.strictObject(
+			{
+				url: z.string(),
+				release: z.string(),
+			},
+		),
+		own_files: z.array(z.string()),
+		type_files: z.array(z.string()),
+		provisioned: z
+			.strictObject(
+				{
+					store: z.string(),
+					project_id: z.string(),
+					file_id: z.string(),
+					node_id: z.string(),
+				},
+			)
+			.optional(),
+		auto_open: ArtifactAutoOpenSchema.optional(),
+		liveSubscription: ArtifactLiveSubscriptionSchema,
+		instructions: z.string(),
+		instructions_chars: z.number(),
+	},
+);
 
-const ArtifactListEntrySchema = z.strictObject({
-	title: z.string(),
-	url: z.string(),
-	favicon: z.string().optional(),
-	updatedAt: z.string(),
-});
+const ArtifactListEntrySchema = z.strictObject(
+	{
+		title: z.string(),
+		url: z.string(),
+		favicon: z.string().optional(),
+		updatedAt: z.string(),
+	},
+);
 
 /** One artifact returned by `Artifact` `action: "list"`. */
 export type ArtifactListEntry = z.infer<typeof ArtifactListEntrySchema>;
 
-const ArtifactListResultSchema = z.strictObject({
-	artifacts: z.array(ArtifactListEntrySchema),
-	truncated: z.boolean(),
-});
+const ArtifactListResultSchema = z.strictObject(
+	{
+		artifacts: z.array(ArtifactListEntrySchema),
+		truncated: z.boolean(),
+	},
+);
 
-const ArtifactReadResultSchema = z.strictObject({
-	read: z.strictObject({
-		bytes: z.number(),
-		code: z.number(),
-		codeText: z.string(),
-		result: z.string(),
-		durationMs: z.number(),
-		url: z.string(),
-	}),
-	artifactRead: z.strictObject({slug: z.string(), ver: z.string()}),
-});
-
-const ArtifactReadDbResultSchema = z.strictObject({
-	db_read: z.strictObject({
-		op: ArtifactDbOpSchema,
-		collection: z.string(),
-		doc_id: z.string().optional(),
-		found: z.boolean().optional(),
-		docs: z.array(
-			z.strictObject({
-				id: z.string(),
-				// Documents hold whatever the artifact page stored; the shape is the page's own.
-				data: z.record(z.string(), JsonDataSchema),
-				version: z.number(),
-				updatedAt: z.string(),
-			}),
+const ArtifactReadResultSchema = z.strictObject(
+	{
+		read: z.strictObject(
+			{
+				bytes: z.number(),
+				code: z.number(),
+				codeText: z.string(),
+				result: z.string(),
+				durationMs: z.number(),
+				url: z.string(),
+			},
 		),
-		saved: z
-			.strictObject({
-				dir: z.string(),
-				files: z.array(
-					z.strictObject({
-						id: z.string(),
-						path: z.string(),
-						bytes: z.number(),
-						version: z.number(),
-						updatedAt: z.string(),
-					}),
-				),
-				skipped: z.array(z.string()),
-			})
-			.optional(),
-	}),
-});
+		artifactRead: z.strictObject(
+			{
+				slug: z.string(),
+				ver: z.string(),
+			},
+		),
+	},
+);
 
-const ArtifactQuickstartResultSchema = z.strictObject({
-	quickstart: z.strictObject({
-		intent: ArtifactIntentSchema,
-		match: z.strictObject({
-			title: z.string(),
-			type_url: z.string(),
-			description: z.string(),
-			tier: z.string(),
-		}),
-	}),
-});
+const ArtifactReadDbResultSchema = z.strictObject(
+	{
+		db_read: z.strictObject(
+			{
+				op: ArtifactDbOpSchema,
+				collection: z.string(),
+				doc_id: z.string().optional(),
+				found: z.boolean().optional(),
+				docs: z.array(
+					z.strictObject(
+						{
+							id: z.string(),
+							// Documents hold whatever the artifact page stored; the shape is the page's own.
+							data: z.record(z.string(), JsonDataSchema),
+							version: z.number(),
+							updatedAt: z.string(),
+						},
+					),
+				),
+				saved: z
+					.strictObject(
+						{
+							dir: z.string(),
+							files: z.array(
+								z.strictObject(
+									{
+										id: z.string(),
+										path: z.string(),
+										bytes: z.number(),
+										version: z.number(),
+										updatedAt: z.string(),
+									},
+								),
+							),
+							skipped: z.array(z.string()),
+						},
+					)
+					.optional(),
+			},
+		),
+	},
+);
+
+const ArtifactQuickstartResultSchema = z.strictObject(
+	{
+		quickstart: z.strictObject(
+			{
+				intent: ArtifactIntentSchema,
+				match: z.strictObject(
+					{
+						title: z.string(),
+						type_url: z.string(),
+						description: z.string(),
+						tier: z.string(),
+					},
+				),
+			},
+		),
+	},
+);
 
 /** A failed call records its error message as a plain string. */
 const ArtifactErrorResultSchema = z.string();

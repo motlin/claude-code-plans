@@ -2,7 +2,8 @@ import {Link} from "@tanstack/react-router";
 import {Bot, ChevronDown, ChevronRight} from "lucide-react";
 import {useMemo, useState} from "react";
 import type {Subagent} from "../lib/subagents";
-import {
+import
+{
 	buildSubagentTree,
 	groupSubagentTreeByDate,
 	type ParallelSubagentGroup,
@@ -19,7 +20,8 @@ import {useClaudeEvents} from "../hooks/use-claude-events";
 import {mergeLiveSubagents} from "../lib/live-subagent-store";
 import {toSubagentSessionId} from "../lib/subagents";
 
-const AGENT_TYPE_STYLES: Record<string, string> = {
+const AGENT_TYPE_STYLES: Record<string, string> =
+{
 	Explore: "bg-blue-500/15 text-blue-400",
 	Plan: "bg-purple-500/15 text-purple-400",
 	"build:precommit-runner": "bg-yellow-500/15 text-yellow-400",
@@ -29,12 +31,14 @@ const AGENT_TYPE_STYLES: Record<string, string> = {
 	"general-purpose": "bg-gray-500/15 text-gray-400",
 };
 
-function getTypeStyle(agentType: string | null): string {
+function getTypeStyle(agentType: string | null): string
+{
 	if (agentType === null) return "bg-gray-500/15 text-gray-400";
 	return AGENT_TYPE_STYLES[agentType] ?? "bg-gray-500/15 text-gray-400";
 }
 
-function getShortType(agentType: string | null): string {
+function getShortType(agentType: string | null): string
+{
 	if (agentType === null) return "agent";
 	return agentType.split(":").at(-1) ?? agentType;
 }
@@ -47,7 +51,8 @@ export function SubagentTypeBadges({
 	agentType: string | null;
 	attributionAgent: string | null;
 	model: string | null;
-}) {
+})
+{
 	const modelLabel = formatModelName(model);
 	return (
 		<>
@@ -69,30 +74,41 @@ export function SubagentTypeBadges({
 	);
 }
 
-function getDurationMs(agent: Subagent): number | null {
+function getDurationMs(agent: Subagent): number | null
+{
 	if (agent.startedAt === null || agent.finishedAt === null) return null;
 	return new Date(agent.finishedAt).getTime() - new Date(agent.startedAt).getTime();
 }
 
-function formatTime(timestamp: string | null): string {
+function formatTime(timestamp: string | null): string
+{
 	if (timestamp === null) return "";
-	return new Date(timestamp).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"});
+	return new Date(timestamp).toLocaleTimeString(
+		[],
+		{
+			hour: "numeric",
+			minute: "2-digit",
+		},
+	);
 }
 
-interface TreePresentation {
+interface TreePresentation
+{
 	liveStatuses: Map<string, "running" | "ended">;
 	indexedAgentIds: Set<string>;
 }
 
 /** The keyboard-reachable chevron; the row's own click is a pointer shortcut for it. */
-function ExpandToggle({expanded, onToggle}: {expanded: boolean; onToggle: (next: boolean) => void}) {
+function ExpandToggle({expanded, onToggle}: {expanded: boolean; onToggle: (next: boolean) => void})
+{
 	return (
 		<button
 			type="button"
 			aria-expanded={expanded}
 			aria-label={expanded ? "Collapse" : "Expand"}
 			className="flex w-4 shrink-0 cursor-pointer text-t6"
-			onClick={(event) => {
+			onClick={(event) =>
+			{
 				event.stopPropagation();
 				onToggle(!expanded);
 			}}
@@ -102,7 +118,8 @@ function ExpandToggle({expanded, onToggle}: {expanded: boolean; onToggle: (next:
 	);
 }
 
-function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: TreePresentation}) {
+function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: TreePresentation})
+{
 	const hasChildren = node.children.length > 0;
 	const [expanded, setExpanded] = useState(true);
 	const agentDurationMs = getDurationMs(node.agent);
@@ -114,7 +131,8 @@ function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: T
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut for the chevron button, which is the keyboard control */}
 			<div
 				className={`group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0 ${liveStatus === "ended" ? "opacity-60" : ""}`}
-				onClick={() => {
+				onClick={() =>
+				{
 					if (hasChildren) setExpanded((current) => !current);
 				}}
 			>
@@ -147,9 +165,13 @@ function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: T
 				{presentation.indexedAgentIds.has(canonicalId) && (
 					<Link
 						to="/session/$id"
-						params={{id: node.agent.id}}
+						params={
+						{
+							id: node.agent.id,
+						}}
 						className="hidden shrink-0 items-center gap-1 text-[10px] text-accent-100 hover:underline group-hover:inline-flex"
-						onClick={(event) => {
+						onClick={(event) =>
+						{
 							event.stopPropagation();
 						}}
 					>
@@ -167,7 +189,8 @@ function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: T
 	);
 }
 
-function ParallelGroupNode({group, presentation}: {group: ParallelSubagentGroup; presentation: TreePresentation}) {
+function ParallelGroupNode({group, presentation}: {group: ParallelSubagentGroup; presentation: TreePresentation})
+{
 	const [expanded, setExpanded] = useState(true);
 
 	return (
@@ -175,7 +198,8 @@ function ParallelGroupNode({group, presentation}: {group: ParallelSubagentGroup;
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut for the chevron button, which is the keyboard control */}
 			<div
 				className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0"
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded((current) => !current);
 				}}
 			>
@@ -207,7 +231,8 @@ function WorkflowPhaseNode({
 	phase: WorkflowPhaseGroup;
 	settled: boolean;
 	presentation: TreePresentation;
-}) {
+})
+{
 	// Upstream's default: open while the run is running and the phase has agents.
 	const [expanded, setExpanded] = useState(!settled && phase.agents.length > 0);
 
@@ -218,7 +243,8 @@ function WorkflowPhaseNode({
 				aria-expanded={expanded}
 				aria-label={phaseAriaLabel(phase)}
 				className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 text-start hover:bg-surface-0"
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded((current) => !current);
 				}}
 			>
@@ -247,7 +273,8 @@ function WorkflowPhaseNode({
 }
 
 /** A resumed run's earlier-launch agents, which upstream hides; local-only, collapsed by default. */
-function EarlierAttempts({agents, presentation}: {agents: SubagentTreeNode[]; presentation: TreePresentation}) {
+function EarlierAttempts({agents, presentation}: {agents: SubagentTreeNode[]; presentation: TreePresentation})
+{
 	const [expanded, setExpanded] = useState(false);
 
 	return (
@@ -256,7 +283,8 @@ function EarlierAttempts({agents, presentation}: {agents: SubagentTreeNode[]; pr
 				type="button"
 				aria-expanded={expanded}
 				className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 text-start hover:bg-surface-0"
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded((current) => !current);
 				}}
 			>
@@ -278,7 +306,8 @@ function EarlierAttempts({agents, presentation}: {agents: SubagentTreeNode[]; pr
 	);
 }
 
-function WorkflowRunNode({run, presentation}: {run: WorkflowRunGroup; presentation: TreePresentation}) {
+function WorkflowRunNode({run, presentation}: {run: WorkflowRunGroup; presentation: TreePresentation})
+{
 	const [expanded, setExpanded] = useState(true);
 
 	return (
@@ -286,7 +315,8 @@ function WorkflowRunNode({run, presentation}: {run: WorkflowRunGroup; presentati
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut for the chevron button, which is the keyboard control */}
 			<div
 				className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0"
-				onClick={() => {
+				onClick={() =>
+				{
 					setExpanded((current) => !current);
 				}}
 			>
@@ -316,16 +346,20 @@ function WorkflowRunNode({run, presentation}: {run: WorkflowRunGroup; presentati
 	);
 }
 
-function summarizeParallelGroup(group: ParallelSubagentGroup): string {
+function summarizeParallelGroup(group: ParallelSubagentGroup): string
+{
 	const types = new Set(group.children.map((child) => getShortType(child.agent.agentType)));
 	const names = [...types].join(", ");
 	return types.size === 1 ? `${names} tasks` : names;
 }
 
-function TreeEntries({entries, presentation}: {entries: SubagentTreeEntry[]; presentation: TreePresentation}) {
-	return entries.map((entry, index) => {
+function TreeEntries({entries, presentation}: {entries: SubagentTreeEntry[]; presentation: TreePresentation})
+{
+	return entries.map((entry, index) =>
+	{
 		if (!("type" in entry)) return <TreeNode key={entry.agent.id} node={entry} presentation={presentation} />;
-		if (entry.type === "workflow-run") {
+		if (entry.type === "workflow-run")
+		{
 			return <WorkflowRunNode key={`run-${entry.runId}`} run={entry} presentation={presentation} />;
 		}
 		return <ParallelGroupNode key={`parallel-${index}`} group={entry} presentation={presentation} />;
@@ -342,7 +376,8 @@ export function SubagentTree({
 	agents: Subagent[];
 	sessionId?: string;
 	workflowRuns?: readonly WorkflowRunInfo[] | undefined;
-}) {
+})
+{
 	const {liveSubagents} = useClaudeEvents();
 	const indexedAgentIds = useMemo(() => new Set(agents.map((agent) => toSubagentSessionId(agent.id))), [agents]);
 	const indexedSessionIds = useMemo(() => new Set(agents.map((agent) => agent.sessionId)), [agents]);
@@ -364,11 +399,21 @@ export function SubagentTree({
 		[indexedAgentIds, relevantLiveNodes],
 	);
 	const tree = useMemo(
-		() => buildSubagentTree(mergedAgents, workflowRuns === undefined ? undefined : {workflowRuns}),
+		() =>
+			buildSubagentTree(
+				mergedAgents,
+				workflowRuns === undefined
+					? undefined
+					:
+						{
+							workflowRuns,
+						},
+			),
 		[mergedAgents, workflowRuns],
 	);
 	const dateGroups = useMemo(() => groupSubagentTreeByDate(tree), [tree]);
-	if (tree.length === 0) {
+	if (tree.length === 0)
+	{
 		return <p className="mt-4 text-sm text-t6">No subagents for this session.</p>;
 	}
 	return dateGroups.map((group) => (
@@ -377,7 +422,14 @@ export function SubagentTree({
 				{group.label}
 			</h2>
 			<div className="mb-4 mt-2">
-				<TreeEntries entries={group.entries} presentation={{indexedAgentIds, liveStatuses}} />
+				<TreeEntries
+					entries={group.entries}
+					presentation={
+					{
+						indexedAgentIds,
+						liveStatuses,
+					}}
+				/>
 			</div>
 		</section>
 	));

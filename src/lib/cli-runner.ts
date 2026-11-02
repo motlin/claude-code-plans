@@ -2,7 +2,8 @@ import {spawn, type ChildProcess} from "node:child_process";
 
 import {buildLaunchFlags, type LaunchOptions} from "./launch-options";
 
-interface SpawnOptions {
+interface SpawnOptions
+{
 	sessionId: string;
 	prompt: string;
 	projectDir: string;
@@ -22,10 +23,12 @@ export function spawnClaude({
 	environment,
 	ephemeral = false,
 	launchOptions = {},
-}: SpawnOptions): {
+}: SpawnOptions):
+{
 	stream: ReadableStream<Uint8Array>;
 	processId: string;
-} {
+}
+{
 	const processId = `${sessionId}-${Date.now()}`;
 
 	const args = [
@@ -43,11 +46,19 @@ export function spawnClaude({
 	if (ephemeral) args.push("--no-session-persistence");
 	args.push(...buildLaunchFlags(launchOptions));
 
-	const child = spawn("claude", args, {
-		cwd: projectDir,
-		stdio: ["pipe", "pipe", "pipe"],
-		env: {...process.env, ...environment},
-	});
+	const child = spawn(
+		"claude",
+		args,
+		{
+			cwd: projectDir,
+			stdio: ["pipe", "pipe", "pipe"],
+			env:
+			{
+				...process.env,
+				...environment,
+			},
+		},
+	);
 	// A spawn failure surfaces via the "error" event below; swallow EPIPE here.
 	child.stdin.on("error", () => {});
 	child.stdin.end(prompt);
@@ -59,81 +70,123 @@ export function spawnClaude({
 	// exit never land inside a partially written stream-json line.
 	let stdoutTail: Buffer = Buffer.alloc(0);
 
-	const stream = new ReadableStream<Uint8Array>({
-		start(controller) {
-			const flushStdoutTail = () => {
-				if (stdoutTail.length === 0) return;
-				const line = Buffer.concat([stdoutTail, Buffer.from("\n")]);
-				stdoutTail = Buffer.alloc(0);
-				controller.enqueue(new Uint8Array(line));
-			};
+	const stream = new ReadableStream<Uint8Array>(
+		{
+			start(controller)
+			{
+				const flushStdoutTail = () =>
+				{
+					if (stdoutTail.length === 0) return;
+					const line = Buffer.concat([stdoutTail, Buffer.from("\n")]);
+					stdoutTail = Buffer.alloc(0);
+					controller.enqueue(new Uint8Array(line));
+				};
 
-			child.stdout.on("data", (chunk: Buffer) => {
-				const pending = stdoutTail.length === 0 ? chunk : Buffer.concat([stdoutTail, chunk]);
-				const lastNewline = pending.lastIndexOf(0x0a);
-				if (lastNewline === -1) {
-					stdoutTail = pending;
-					return;
-				}
-				stdoutTail = pending.subarray(lastNewline + 1);
-				try {
-					controller.enqueue(new Uint8Array(pending.subarray(0, lastNewline + 1)));
-				} catch {
-					// stream closed
-				}
-			});
-
-			child.stderr.on("data", (chunk: Buffer) => {
-				const text = chunk.toString().trim();
-				if (text) {
-					try {
-						const errorEvent = JSON.stringify({type: "error", message: text}) + "\n";
-						controller.enqueue(encoder.encode(errorEvent));
-					} catch {
+				child.stdout.on("data", (chunk: Buffer) =>
+				{
+					const pending = stdoutTail.length === 0 ? chunk : Buffer.concat([stdoutTail, chunk]);
+					const lastNewline = pending.lastIndexOf(0x0a);
+					if (lastNewline === -1)
+					{
+						stdoutTail = pending;
+						return;
+					}
+					stdoutTail = pending.subarray(lastNewline + 1);
+					try
+					{
+						controller.enqueue(new Uint8Array(pending.subarray(0, lastNewline + 1)));
+					}
+					catch
+					{
 						// stream closed
 					}
-				}
-			});
+				});
 
-			child.on("close", (code) => {
-				activeProcesses.delete(processId);
-				try {
-					flushStdoutTail();
-					if (code !== 0 && code !== null) {
-						const errorEvent =
-							JSON.stringify({
-								type: "error",
-								message: `Process exited with code ${code}`,
-							}) + "\n";
-						controller.enqueue(encoder.encode(errorEvent));
+				child.stderr.on("data", (chunk: Buffer) =>
+				{
+					const text = chunk.toString().trim();
+					if (text)
+					{
+						try
+						{
+							const errorEvent =
+								JSON.stringify(
+									{
+										type: "error",
+										message: text,
+									},
+								) + "\n";
+							controller.enqueue(encoder.encode(errorEvent));
+						}
+						catch
+						{
+							// stream closed
+						}
 					}
-					controller.close();
-				} catch {
-					// already closed
-				}
-			});
+				});
 
-			child.on("error", (err) => {
-				activeProcesses.delete(processId);
-				try {
-					flushStdoutTail();
-					const errorEvent = JSON.stringify({type: "error", message: err.message}) + "\n";
-					controller.enqueue(encoder.encode(errorEvent));
-					controller.close();
-				} catch {
-					// already closed
-				}
-			});
-		},
-		cancel() {
-			killProcess(processId);
-		},
-	});
+				child.on("close", (code) =>
+				{
+					activeProcesses.delete(processId);
+					try
+					{
+						flushStdoutTail();
+						if (code !== 0 && code !== null)
+						{
+							const errorEvent =
+								JSON.stringify(
+									{
+										type: "error",
+										message: `Process exited with code ${code}`,
+									},
+								) + "\n";
+							controller.enqueue(encoder.encode(errorEvent));
+						}
+						controller.close();
+					}
+					catch
+					{
+						// already closed
+					}
+				});
 
-	return {stream, processId};
+				child.on("error", (err) =>
+				{
+					activeProcesses.delete(processId);
+					try
+					{
+						flushStdoutTail();
+						const errorEvent =
+							JSON.stringify(
+								{
+									type: "error",
+									message: err.message,
+								},
+							) + "\n";
+						controller.enqueue(encoder.encode(errorEvent));
+						controller.close();
+					}
+					catch
+					{
+						// already closed
+					}
+				});
+			},
+			cancel()
+			{
+				killProcess(processId);
+			},
+		},
+	);
+
+	return {
+		stream,
+		processId,
+	};
 }
 
-export function killProcess(processId: string): boolean {
+export function killProcess(processId: string): boolean
+{
 	const child = activeProcesses.get(processId);
 	if (!child) return false;
 	child.kill("SIGTERM");

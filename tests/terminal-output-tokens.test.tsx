@@ -8,7 +8,8 @@ afterEach(cleanup);
 
 const BODY_CLASS = "max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all";
 
-function layout(container: HTMLElement) {
+function layout(container: HTMLElement)
+{
 	const root = container.firstElementChild as HTMLElement;
 	const pre = container.querySelector("pre") as HTMLElement;
 	const exitCode = root.firstElementChild === pre ? null : (root.firstElementChild as HTMLElement);
@@ -21,44 +22,55 @@ function layout(container: HTMLElement) {
 	};
 }
 
-describe("TerminalOutput", () => {
-	it("renders a failing exit code as inline danger-red text beside a danger-red Bash-style body", () => {
+describe("TerminalOutput", () =>
+{
+	it("renders a failing exit code as inline danger-red text beside a danger-red Bash-style body", () =>
+	{
 		const {container} = render(<TerminalOutput content={"Exit code 1\nboom"} />);
 
-		expect(layout(container)).toStrictEqual({
-			rootClass: "text-code font-mono",
-			exitCodeClass: "text-danger-ink",
-			exitCodeText: "Exit code 1",
-			preClass: `${BODY_CLASS} text-danger-ink`,
-			preText: "boom",
-		});
+		expect(layout(container)).toStrictEqual(
+			{
+				rootClass: "text-code font-mono",
+				exitCodeClass: "text-danger-ink",
+				exitCodeText: "Exit code 1",
+				preClass: `${BODY_CLASS} text-danger-ink`,
+				preText: "boom",
+			},
+		);
 	});
 
-	it("renders output without an exit code as a secondary-ink Bash-style body", () => {
+	it("renders output without an exit code as a secondary-ink Bash-style body", () =>
+	{
 		const {container} = render(<TerminalOutput content={"Compiled 42 modules"} />);
 
-		expect(layout(container)).toStrictEqual({
-			rootClass: "text-code font-mono",
-			exitCodeClass: null,
-			exitCodeText: null,
-			preClass: `${BODY_CLASS} text-secondary`,
-			preText: "Compiled 42 modules",
-		});
+		expect(layout(container)).toStrictEqual(
+			{
+				rootClass: "text-code font-mono",
+				exitCodeClass: null,
+				exitCodeText: null,
+				preClass: `${BODY_CLASS} text-secondary`,
+				preText: "Compiled 42 modules",
+			},
+		);
 	});
 
-	it("keeps a zero exit code in secondary ink because it is not a failure", () => {
+	it("keeps a zero exit code in secondary ink because it is not a failure", () =>
+	{
 		const {container} = render(<TerminalOutput content={"Exit code 0\nall good"} />);
 
-		expect(layout(container)).toStrictEqual({
-			rootClass: "text-code font-mono",
-			exitCodeClass: "text-secondary",
-			exitCodeText: "Exit code 0",
-			preClass: `${BODY_CLASS} text-secondary`,
-			preText: "all good",
-		});
+		expect(layout(container)).toStrictEqual(
+			{
+				rootClass: "text-code font-mono",
+				exitCodeClass: "text-secondary",
+				exitCodeText: "Exit code 0",
+				preClass: `${BODY_CLASS} text-secondary`,
+				preText: "all good",
+			},
+		);
 	});
 
-	it("draws no exit-code pill and no filled code slab", () => {
+	it("draws no exit-code pill and no filled code slab", () =>
+	{
 		const {container} = render(<TerminalOutput content={"Exit code 127\ncommand not found"} />);
 		const html = container.innerHTML;
 

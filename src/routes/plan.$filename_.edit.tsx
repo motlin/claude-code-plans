@@ -7,25 +7,37 @@ import {apiFetch} from "../lib/api/client";
 import {lazy, Suspense, useCallback, useEffect, useRef, useState} from "react";
 
 const MarkdownEditor = lazy(async () =>
-	import("../components/markdown-editor").then((m) => ({
+	import("../components/markdown-editor").then((m) => (
+	{
 		default: m.MarkdownEditor,
 	})),
 );
 
-const PlanSaveResponse = z.object({
-	title: z.string(),
-});
+const PlanSaveResponse = z.object(
+	{
+		title: z.string(),
+	},
+);
 
-export const Route = createFileRoute("/plan/$filename_/edit")({
-	component: PlanEditPage,
-	loader: async ({context: {queryClient}, params}) =>
-		queryClient.query({...planQueryOptions(params.filename), staleTime: "static"}),
-	head: ({loaderData}) => ({
-		meta: [pageTitle(loaderData ? `Edit: ${loaderData.title}` : "Plan Not Found")],
-	}),
-});
+export const Route = createFileRoute("/plan/$filename_/edit")(
+	{
+		component: PlanEditPage,
+		loader: async ({context: {queryClient}, params}) =>
+			queryClient.query(
+				{
+					...planQueryOptions(params.filename),
+					staleTime: "static",
+				},
+			),
+		head: ({loaderData}) => (
+		{
+			meta: [pageTitle(loaderData ? `Edit: ${loaderData.title}` : "Plan Not Found")],
+		}),
+	},
+);
 
-function PlanEditPage() {
+function PlanEditPage()
+{
 	const {filename: slug} = Route.useParams();
 	const {data} = useSuspenseQuery(planQueryOptions(slug));
 	const queryClient = useQueryClient();
@@ -33,51 +45,88 @@ function PlanEditPage() {
 	const initialMarkdown = data?.markdown ?? "";
 	const draftRef = useRef(initialMarkdown);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		draftRef.current = initialMarkdown;
 	}, [initialMarkdown]);
 
 	const [feedback, setFeedback] = useState<string | null>(null);
 
-	const handleChange = useCallback((value: string) => {
+	const handleChange = useCallback((value: string) =>
+	{
 		draftRef.current = value;
 	}, []);
 
 	const navigate = useNavigate();
 
-	const saveMutation = useMutation({
-		mutationFn: async (markdown: string) =>
-			apiFetch(`/api/plans/${encodeURIComponent(slug)}`, PlanSaveResponse, {
-				method: "PUT",
-				headers: {"Content-Type": "text/plain"},
-				body: markdown,
-			}),
-		onSuccess: () => {
-			void queryClient.invalidateQueries({queryKey: ["plans"]});
-			void queryClient.invalidateQueries({queryKey: ["plans", slug]});
+	const saveMutation = useMutation(
+		{
+			mutationFn: async (markdown: string) =>
+				apiFetch(
+					`/api/plans/${encodeURIComponent(slug)}`,
+					PlanSaveResponse,
+					{
+						method: "PUT",
+						headers:
+						{
+							"Content-Type": "text/plain",
+						},
+						body: markdown,
+					},
+				),
+			onSuccess: () =>
+			{
+				void queryClient.invalidateQueries(
+					{
+						queryKey: ["plans"],
+					},
+				);
+				void queryClient.invalidateQueries(
+					{
+						queryKey: ["plans", slug],
+					},
+				);
+			},
 		},
-	});
+	);
 
-	const handleSave = useCallback(async () => {
+	const handleSave = useCallback(async () =>
+	{
 		setFeedback(null);
-		try {
+		try
+		{
 			await saveMutation.mutateAsync(draftRef.current);
 			setFeedback("Saved");
-		} catch {
+		}
+		catch
+		{
 			setFeedback("Failed to save");
 		}
 	}, [saveMutation]);
 
-	const handlePreview = useCallback(async () => {
-		try {
+	const handlePreview = useCallback(async () =>
+	{
+		try
+		{
 			await saveMutation.mutateAsync(draftRef.current);
-			void navigate({to: "/plan/$filename", params: {filename: slug}});
-		} catch {
+			void navigate(
+				{
+					to: "/plan/$filename",
+					params:
+					{
+						filename: slug,
+					},
+				},
+			);
+		}
+		catch
+		{
 			setFeedback("Failed to save");
 		}
 	}, [saveMutation, navigate, slug]);
 
-	if (!data) {
+	if (!data)
+	{
 		return (
 			<div>
 				<Link to="/plans" className="text-sm text-accent-100 hover:underline">
@@ -98,7 +147,8 @@ function PlanEditPage() {
 				</Link>
 				<button
 					type="button"
-					onClick={() => {
+					onClick={() =>
+					{
 						void handlePreview();
 					}}
 					className="text-sm text-accent-100 hover:underline"
@@ -107,7 +157,8 @@ function PlanEditPage() {
 				</button>
 				<button
 					type="button"
-					onClick={() => {
+					onClick={() =>
+					{
 						void handleSave();
 					}}
 					disabled={saving}

@@ -7,20 +7,24 @@ const listeners = new Set<() => void>();
 
 const NONE: ReadonlySet<string> = new Set();
 
-export function missingFileRefs(sessionId: string): ReadonlySet<string> {
+export function missingFileRefs(sessionId: string): ReadonlySet<string>
+{
 	return missingBySession.get(sessionId) ?? NONE;
 }
 
-export function markFileRefMissing(sessionId: string, path: string): void {
+export function markFileRefMissing(sessionId: string, path: string): void
+{
 	const current = missingFileRefs(sessionId);
 	if (current.has(path)) return;
 	missingBySession.set(sessionId, new Set([...current, path]));
 	for (const listener of listeners) listener();
 }
 
-export function subscribeMissingFileRefs(listener: () => void): () => void {
+export function subscribeMissingFileRefs(listener: () => void): () => void
+{
 	listeners.add(listener);
-	return () => {
+	return () =>
+	{
 		listeners.delete(listener);
 	};
 }

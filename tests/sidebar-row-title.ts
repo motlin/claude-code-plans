@@ -4,7 +4,8 @@
  */
 export function rowTitle(element: Element): string;
 export function rowTitle(element: Element | null | undefined): string | undefined;
-export function rowTitle(element: Element | null | undefined): string | undefined {
+export function rowTitle(element: Element | null | undefined): string | undefined
+{
 	if (element === null || element === undefined) return undefined;
 	const clone = element.cloneNode(true);
 	if (!(clone instanceof Element)) throw new Error("cloned a non-element");

@@ -11,14 +11,16 @@ import {getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-cha
 
 const SESSION = "bar-session";
 
-interface Rect {
+interface Rect
+{
 	left: number;
 	top: number;
 	width: number;
 	height: number;
 }
 
-function domRect({left, top, width, height}: Rect): DOMRect {
+function domRect({left, top, width, height}: Rect): DOMRect
+{
 	return {
 		left,
 		top,
@@ -32,39 +34,90 @@ function domRect({left, top, width, height}: Rect): DOMRect {
 	};
 }
 
-const SCROLLER_RECT: Rect = {left: 100, top: 50, width: 800, height: 750};
-const BAR_RECT: Rect = {left: 0, top: 0, width: 165, height: 24};
-let rangeRect: Rect = {left: 400, top: 368.5, width: 200, height: 19};
+const SCROLLER_RECT: Rect =
+{
+	left: 100,
+	top: 50,
+	width: 800,
+	height: 750,
+};
+const BAR_RECT: Rect =
+{
+	left: 0,
+	top: 0,
+	width: 165,
+	height: 24,
+};
+let rangeRect: Rect =
+{
+	left: 400,
+	top: 368.5,
+	width: 200,
+	height: 19,
+};
 
 let focus: ReturnType<typeof vi.fn<ComposerHandle["focus"]>>;
-let unregister: () => void = () => {};
+let unregister: () => void = () =>
+{
+};
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	vi.useFakeTimers();
-	rangeRect = {left: 400, top: 368.5, width: 200, height: 19};
-	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+	rangeRect =
+	{
+		left: 400,
+		top: 368.5,
+		width: 200,
+		height: 19,
+	};
+	vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+	{
 		callback(0);
 		return 0;
 	});
 	vi.stubGlobal("cancelAnimationFrame", vi.fn());
-	Object.defineProperty(Range.prototype, "getClientRects", {
-		configurable: true,
-		value: () => [domRect(rangeRect)],
-	});
-	Object.defineProperty(Range.prototype, "getBoundingClientRect", {
-		configurable: true,
-		value: () => domRect(rangeRect),
-	});
-	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+	Object.defineProperty(
+		Range.prototype,
+		"getClientRects",
+		{
+			configurable: true,
+			value: () => [domRect(rangeRect)],
+		},
+	);
+	Object.defineProperty(
+		Range.prototype,
+		"getBoundingClientRect",
+		{
+			configurable: true,
+			value: () => domRect(rangeRect),
+		},
+	);
+	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement)
+	{
 		if (this.dataset["testid"] === "scroller") return domRect(SCROLLER_RECT);
 		if (this.dataset["transcriptSelectionBar"] !== undefined) return domRect(BAR_RECT);
-		return domRect({left: 0, top: 0, width: 0, height: 0});
+		return domRect(
+			{
+				left: 0,
+				top: 0,
+				width: 0,
+				height: 0,
+			},
+		);
 	});
 	focus = vi.fn<ComposerHandle["focus"]>();
-	unregister = registerComposer(SESSION, {insertText: vi.fn<ComposerHandle["insertText"]>(), focus});
+	unregister = registerComposer(
+		SESSION,
+		{
+			insertText: vi.fn<ComposerHandle["insertText"]>(),
+			focus,
+		},
+	);
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	unregister();
 	cleanup();
 	window.getSelection()?.removeAllRanges();
@@ -77,10 +130,17 @@ afterEach(() => {
 	Reflect.deleteProperty(Range.prototype, "getBoundingClientRect");
 });
 
-function Harness({sideChatAvailable}: {sideChatAvailable: boolean}) {
+function Harness({sideChatAvailable}: {sideChatAvailable: boolean})
+{
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
-		<div data-testid="scroller" style={{overflowY: "auto"}}>
+		<div
+			data-testid="scroller"
+			style={
+			{
+				overflowY: "auto",
+			}}
+		>
 			<div ref={containerRef}>
 				<p>Hermit crabs live in tide pools.</p>
 				<p>Tide pools form in rocky hollows.</p>
@@ -94,19 +154,23 @@ function Harness({sideChatAvailable}: {sideChatAvailable: boolean}) {
 	);
 }
 
-function renderBar(sideChatAvailable = true): void {
+function renderBar(sideChatAvailable = true): void
+{
 	render(<Harness sideChatAvailable={sideChatAvailable} />);
 }
 
-function textNodeContaining(text: string): Text {
+function textNodeContaining(text: string): Text
+{
 	const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-	for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+	for (let node = walker.nextNode(); node !== null; node = walker.nextNode())
+	{
 		if (node.textContent?.includes(text) === true && node instanceof Text) return node;
 	}
 	throw new Error(`no text node containing ${text}`);
 }
 
-function select(text: string, length = text.length): void {
+function select(text: string, length = text.length): void
+{
 	const node = textNodeContaining(text);
 	const start = node.data.indexOf(text);
 	const range = document.createRange();
@@ -115,37 +179,46 @@ function select(text: string, length = text.length): void {
 	const selection = window.getSelection();
 	selection?.removeAllRanges();
 	selection?.addRange(range);
-	act(() => {
+	act(() =>
+	{
 		document.dispatchEvent(new Event("selectionchange"));
 	});
 }
 
-function advance(ms: number): void {
-	act(() => {
+function advance(ms: number): void
+{
+	act(() =>
+	{
 		vi.advanceTimersByTime(ms);
 	});
 }
 
-function host(): HTMLElement | null {
+function host(): HTMLElement | null
+{
 	return document.querySelector<HTMLElement>("[data-transcript-selection-host]");
 }
 
-function bar(): HTMLElement | null {
+function bar(): HTMLElement | null
+{
 	return document.querySelector<HTMLElement>("[data-transcript-selection-bar]");
 }
 
-function labels(): string[] {
+function labels(): string[]
+{
 	return [...(bar()?.querySelectorAll("button") ?? [])].map((button) => button.textContent);
 }
 
-function button(label: string): HTMLButtonElement {
+function button(label: string): HTMLButtonElement
+{
 	const found = [...(bar()?.querySelectorAll("button") ?? [])].find((each) => each.textContent === label);
 	if (found === undefined) throw new Error(`no ${label} button`);
 	return found;
 }
 
-describe("transcript selection hook", () => {
-	it("shows the bar 250ms after a selection of two or more characters, not before", () => {
+describe("transcript selection hook", () =>
+{
+	it("shows the bar 250ms after a selection of two or more characters, not before", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 
@@ -153,10 +226,21 @@ describe("transcript selection hook", () => {
 		const before = host();
 		advance(1);
 
-		expect({before, labels: labels()}).toStrictEqual({before: null, labels: ["Start a side chat", "Reply"]});
+		expect(
+			{
+				before,
+				labels: labels(),
+			},
+		).toStrictEqual(
+			{
+				before: null,
+				labels: ["Start a side chat", "Reply"],
+			},
+		);
 	});
 
-	it("ignores a selection shorter than two trimmed characters", () => {
+	it("ignores a selection shorter than two trimmed characters", () =>
+	{
 		renderBar();
 		select("Hermit", 1);
 		advance(300);
@@ -164,7 +248,8 @@ describe("transcript selection hook", () => {
 		expect(host()).toBeNull();
 	});
 
-	it("ignores a selection outside the container", () => {
+	it("ignores a selection outside the container", () =>
+	{
 		renderBar();
 		const outside = document.createElement("p");
 		outside.textContent = "Outside text";
@@ -176,12 +261,14 @@ describe("transcript selection hook", () => {
 		expect(host()).toBeNull();
 	});
 
-	it("hides at once when the selection collapses", () => {
+	it("hides at once when the selection collapses", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
 
-		act(() => {
+		act(() =>
+		{
 			window.getSelection()?.collapseToStart();
 			document.dispatchEvent(new Event("selectionchange"));
 		});
@@ -189,39 +276,64 @@ describe("transcript selection hook", () => {
 		expect(host()).toBeNull();
 	});
 
-	it("waits for mouseup during a drag", () => {
+	it("waits for mouseup during a drag", () =>
+	{
 		renderBar();
 		fireEvent.mouseDown(textNodeContaining("Hermit").parentElement ?? document.body);
 		select("Hermit crabs");
 		advance(500);
 		const duringDrag = host();
 
-		act(() => {
+		act(() =>
+		{
 			fireEvent.mouseUp(document.body);
 		});
 
-		expect({duringDrag, shown: host() !== null}).toStrictEqual({duringDrag: null, shown: true});
+		expect(
+			{
+				duringDrag,
+				shown: host() !== null,
+			},
+		).toStrictEqual(
+			{
+				duringDrag: null,
+				shown: true,
+			},
+		);
 	});
 
-	it("suppresses the bar after a touch pointerdown inside the transcript", () => {
+	it("suppresses the bar after a touch pointerdown inside the transcript", () =>
+	{
 		renderBar();
-		fireEvent.pointerDown(textNodeContaining("Hermit").parentElement ?? document.body, {pointerType: "touch"});
+		fireEvent.pointerDown(
+			textNodeContaining("Hermit").parentElement ?? document.body,
+			{
+				pointerType: "touch",
+			},
+		);
 		select("Hermit crabs");
 		advance(300);
 
 		expect(host()).toBeNull();
 	});
 
-	it("ignores a touch pointerdown outside the transcript", () => {
+	it("ignores a touch pointerdown outside the transcript", () =>
+	{
 		renderBar();
-		fireEvent.pointerDown(document.body, {pointerType: "touch"});
+		fireEvent.pointerDown(
+			document.body,
+			{
+				pointerType: "touch",
+			},
+		);
 		select("Hermit crabs");
 		advance(300);
 
 		expect(host() !== null).toBe(true);
 	});
 
-	it("hides at once when the selection changes mid-drag, and shows again on mouseup", () => {
+	it("hides at once when the selection changes mid-drag, and shows again on mouseup", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
@@ -230,39 +342,92 @@ describe("transcript selection hook", () => {
 		fireEvent.mouseDown(textNodeContaining("Tide pools form").parentElement ?? document.body);
 		select("Tide pools");
 		const duringDrag = host();
-		fireEvent.mouseUp(document.body, {detail: 1});
+		fireEvent.mouseUp(
+			document.body,
+			{
+				detail: 1,
+			},
+		);
 
-		expect({before, duringDrag, after: host() !== null}).toStrictEqual({
-			before: true,
-			duringDrag: null,
-			after: true,
-		});
+		expect(
+			{
+				before,
+				duringDrag,
+				after: host() !== null,
+			},
+		).toStrictEqual(
+			{
+				before: true,
+				duringDrag: null,
+				after: true,
+			},
+		);
 	});
 
-	it("counts a right-button press as a drag, ends it only once no button is held, and keeps an unchanged bar", () => {
+	it("counts a right-button press as a drag, ends it only once no button is held, and keeps an unchanged bar", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
 		const before = host();
 
-		fireEvent.mouseDown(textNodeContaining("Hermit").parentElement ?? document.body, {button: 2, buttons: 2});
-		fireEvent.mouseUp(document.body, {button: 2, buttons: 0});
+		fireEvent.mouseDown(
+			textNodeContaining("Hermit").parentElement ?? document.body,
+			{
+				button: 2,
+				buttons: 2,
+			},
+		);
+		fireEvent.mouseUp(
+			document.body,
+			{
+				button: 2,
+				buttons: 0,
+			},
+		);
 		const afterRightClick = host();
 
-		fireEvent.mouseDown(textNodeContaining("Hermit").parentElement ?? document.body, {button: 2, buttons: 2});
-		fireEvent.mouseUp(document.body, {button: 0, buttons: 2});
+		fireEvent.mouseDown(
+			textNodeContaining("Hermit").parentElement ?? document.body,
+			{
+				button: 2,
+				buttons: 2,
+			},
+		);
+		fireEvent.mouseUp(
+			document.body,
+			{
+				button: 0,
+				buttons: 2,
+			},
+		);
 		select("Tide pools");
 		const stillDragging = host();
-		fireEvent.mouseUp(document.body, {button: 2, buttons: 0});
+		fireEvent.mouseUp(
+			document.body,
+			{
+				button: 2,
+				buttons: 0,
+			},
+		);
 
-		expect({
-			same: before !== null && afterRightClick === before,
-			stillDragging,
-			after: host() !== null,
-		}).toStrictEqual({same: true, stillDragging: null, after: true});
+		expect(
+			{
+				same: before !== null && afterRightClick === before,
+				stillDragging,
+				after: host() !== null,
+			},
+		).toStrictEqual(
+			{
+				same: true,
+				stillDragging: null,
+				after: true,
+			},
+		);
 	});
 
-	it("hides on a mouseup that left the selection collapsed without a selectionchange", () => {
+	it("hides on a mouseup that left the selection collapsed without a selectionchange", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
@@ -274,7 +439,8 @@ describe("transcript selection hook", () => {
 		expect(host()).toBeNull();
 	});
 
-	it("re-debounces on mouseup when the settle timer fired mid-drag", () => {
+	it("re-debounces on mouseup when the settle timer fired mid-drag", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(100);
@@ -288,18 +454,29 @@ describe("transcript selection hook", () => {
 		const before = host();
 		advance(1);
 
-		expect({duringDrag, atMouseUp, before, after: host() !== null}).toStrictEqual({
-			duringDrag: null,
-			atMouseUp: null,
-			before: null,
-			after: true,
-		});
+		expect(
+			{
+				duringDrag,
+				atMouseUp,
+				before,
+				after: host() !== null,
+			},
+		).toStrictEqual(
+			{
+				duringDrag: null,
+				atMouseUp: null,
+				before: null,
+				after: true,
+			},
+		);
 	});
 
-	it("does not start a drag from a mousedown whose default was prevented", () => {
+	it("does not start a drag from a mousedown whose default was prevented", () =>
+	{
 		renderBar();
 		const target = textNodeContaining("Hermit").parentElement ?? document.body;
-		target.addEventListener("mousedown", (event) => {
+		target.addEventListener("mousedown", (event) =>
+		{
 			event.preventDefault();
 		});
 
@@ -311,49 +488,81 @@ describe("transcript selection hook", () => {
 	});
 });
 
-describe("useTranscriptSelection", () => {
-	it("keeps the same selection object when an unchanged selection is re-read", () => {
+describe("useTranscriptSelection", () =>
+{
+	it("keeps the same selection object when an unchanged selection is re-read", () =>
+	{
 		const container = document.createElement("div");
 		container.innerHTML = "<p>Hermit crabs live in tide pools.</p>";
 		document.body.append(container);
-		const {result} = renderHook(() => useTranscriptSelection({current: container}));
+		const {result} = renderHook(() =>
+			useTranscriptSelection(
+				{
+					current: container,
+				},
+			),
+		);
 
 		select("Hermit crabs");
 		advance(250);
 		const first = result.current.selection;
-		act(() => {
+		act(() =>
+		{
 			document.dispatchEvent(new Event("selectionchange"));
 		});
 		advance(250);
 		const second = result.current.selection;
 		container.remove();
 
-		expect({shown: first !== null, same: second === first}).toStrictEqual({shown: true, same: true});
+		expect(
+			{
+				shown: first !== null,
+				same: second === first,
+			},
+		).toStrictEqual(
+			{
+				shown: true,
+				same: true,
+			},
+		);
 	});
 });
 
-describe("transcript selection bar", () => {
-	it("portals a fixed host centred above the first selection line", () => {
+describe("transcript selection bar", () =>
+{
+	it("portals a fixed host centred above the first selection line", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
 
-		expect({
-			className: host()?.className,
-			zIndex: host()?.style.zIndex,
-			transform: host()?.style.transform,
-			parent: host()?.closest("[data-testid=scroller]") ?? null,
-		}).toStrictEqual({
-			className:
-				"text-body text-primary break-words pointer-events-auto fixed left-0 top-0 will-change-transform isolate draggable-none",
-			zIndex: "55",
-			transform: "translate(500px, 337px) translateX(-50%)",
-			parent: null,
-		});
+		expect(
+			{
+				className: host()?.className,
+				zIndex: host()?.style.zIndex,
+				transform: host()?.style.transform,
+				parent: host()?.closest("[data-testid=scroller]") ?? null,
+			},
+		).toStrictEqual(
+			{
+				className:
+					"text-body text-primary break-words pointer-events-auto fixed left-0 top-0 will-change-transform isolate draggable-none",
+				zIndex: "55",
+				transform: "translate(500px, 337px) translateX(-50%)",
+				parent: null,
+			},
+		);
 	});
 
-	it("clamps x inside the container and drops below when there is no room above", () => {
-		rangeRect = {left: 110, top: 60, width: 20, height: 19};
+	it("clamps x inside the container and drops below when there is no room above", () =>
+	{
+		rangeRect =
+		{
+			left: 110,
+			top: 60,
+			width: 20,
+			height: 19,
+		};
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
@@ -362,41 +571,48 @@ describe("transcript selection bar", () => {
 		expect(host()?.style.transform).toBe("translate(195px, 87px) translateX(-50%)");
 	});
 
-	it("renders upstream's bar, ghost buttons and separator", () => {
+	it("renders upstream's bar, ghost buttons and separator", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
 		const separator = bar()?.querySelector(":scope > span[aria-hidden]");
 
-		expect({
-			bar: bar()?.className,
-			surface: bar()?.getAttribute("data-surface"),
-			buttons: [...(bar()?.querySelectorAll("button") ?? [])].map((each) => ({
-				type: each.type,
-				className: each.className,
-			})),
-			separator: separator?.className,
-		}).toStrictEqual({
-			bar: "rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] group/split flex comfortable:rounded-r6",
-			surface: "popover",
-			buttons: [
+		expect(
+			{
+				bar: bar()?.className,
+				surface: bar()?.getAttribute("data-surface"),
+				buttons: [...(bar()?.querySelectorAll("button") ?? [])].map((each) => (
 				{
-					type: "button",
-					className:
-						"cds-reset group/btn relative isolate inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none focus-visible:shadow-focus comfortable:h-7 comfortable:px-3 comfortable:rounded-r6",
-				},
-				{
-					type: "button",
-					className:
-						"cds-reset group/btn relative isolate inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none focus-visible:shadow-focus comfortable:h-7 comfortable:px-3 comfortable:rounded-r6",
-				},
-			],
-			separator:
-				"w-px my-[7px] bg-alpha-2 shrink-0 transition-opacity motion-reduce:transition-none group-hover/split:opacity-0 group-focus-within/split:opacity-0",
-		});
+					type: each.type,
+					className: each.className,
+				})),
+				separator: separator?.className,
+			},
+		).toStrictEqual(
+			{
+				bar: "rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] group/split flex comfortable:rounded-r6",
+				surface: "popover",
+				buttons: [
+					{
+						type: "button",
+						className:
+							"cds-reset group/btn relative isolate inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none focus-visible:shadow-focus comfortable:h-7 comfortable:px-3 comfortable:rounded-r6",
+					},
+					{
+						type: "button",
+						className:
+							"cds-reset group/btn relative isolate inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none focus-visible:shadow-focus comfortable:h-7 comfortable:px-3 comfortable:rounded-r6",
+					},
+				],
+				separator:
+					"w-px my-[7px] bg-alpha-2 shrink-0 transition-opacity motion-reduce:transition-none group-hover/split:opacity-0 group-focus-within/split:opacity-0",
+			},
+		);
 	});
 
-	it("keeps the selection on button mousedown", () => {
+	it("keeps the selection on button mousedown", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
@@ -406,7 +622,8 @@ describe("transcript selection bar", () => {
 		expect(prevented).toBe(true);
 	});
 
-	it("says Send to side chat while the session's side chat is open", () => {
+	it("says Send to side chat while the session's side chat is open", () =>
+	{
 		openSideChat(SESSION);
 		renderBar();
 		select("Hermit crabs");
@@ -415,12 +632,18 @@ describe("transcript selection bar", () => {
 		expect(labels()).toStrictEqual(["Send to side chat", "Reply"]);
 	});
 
-	it("offers only Reply without a side chat", () => {
+	it("offers only Reply without a side chat", () =>
+	{
 		renderBar(false);
 		select("Hermit crabs");
 		advance(250);
 
-		expect({labels: labels(), separator: bar()?.querySelector(":scope > span[aria-hidden]") ?? null}).toStrictEqual(
+		expect(
+			{
+				labels: labels(),
+				separator: bar()?.querySelector(":scope > span[aria-hidden]") ?? null,
+			},
+		).toStrictEqual(
 			{
 				labels: ["Reply"],
 				separator: null,
@@ -428,7 +651,8 @@ describe("transcript selection bar", () => {
 		);
 	});
 
-	it("offers only the side chat without a composer", () => {
+	it("offers only the side chat without a composer", () =>
+	{
 		unregister();
 		renderBar();
 		select("Hermit crabs");
@@ -437,22 +661,38 @@ describe("transcript selection bar", () => {
 		expect(labels()).toStrictEqual(["Start a side chat"]);
 	});
 
-	it("Reply attaches the trimmed selection as an Excerpt, focuses the composer and clears the selection", () => {
+	it("Reply attaches the trimmed selection as an Excerpt, focuses the composer and clears the selection", () =>
+	{
 		renderBar();
 		select("Hermit crabs ");
 		advance(250);
 
 		fireEvent.click(button("Reply"));
 
-		expect({
-			chips: getContextChips(SESSION).map(({id: _id, ...chip}) => chip),
-			focused: focus.mock.calls.length,
-			ranges: window.getSelection()?.rangeCount,
-			host: host(),
-		}).toStrictEqual({chips: [{kind: "excerpt", text: "Hermit crabs"}], focused: 1, ranges: 0, host: null});
+		expect(
+			{
+				chips: getContextChips(SESSION).map(({id: _id, ...chip}) => chip),
+				focused: focus.mock.calls.length,
+				ranges: window.getSelection()?.rangeCount,
+				host: host(),
+			},
+		).toStrictEqual(
+			{
+				chips: [
+					{
+						kind: "excerpt",
+						text: "Hermit crabs",
+					},
+				],
+				focused: 1,
+				ranges: 0,
+				host: null,
+			},
+		);
 	});
 
-	it("Reply truncates a long selection to 1500 characters", () => {
+	it("Reply truncates a long selection to 1500 characters", () =>
+	{
 		const long = "x".repeat(1600);
 		render(<HarnessWithText text={long} />);
 		select(long);
@@ -463,77 +703,123 @@ describe("transcript selection bar", () => {
 		expect(getContextChips(SESSION).map(({text}) => text)).toStrictEqual([`${"x".repeat(1500)}…`]);
 	});
 
-	it("Start a side chat opens the side chat and clears the selection", () => {
+	it("Start a side chat opens the side chat and clears the selection", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
 
 		fireEvent.click(button("Start a side chat"));
 
-		expect({
-			open: getSideChat(SESSION).open,
-			excerpts: getSideChat(SESSION).excerpts.map(({text}) => text),
-			ranges: window.getSelection()?.rangeCount,
-		}).toStrictEqual({
-			open: true,
-			excerpts: ["Hermit crabs"],
-			ranges: 0,
-		});
+		expect(
+			{
+				open: getSideChat(SESSION).open,
+				excerpts: getSideChat(SESSION).excerpts.map(({text}) => text),
+				ranges: window.getSelection()?.rangeCount,
+			},
+		).toStrictEqual(
+			{
+				open: true,
+				excerpts: ["Hermit crabs"],
+				ranges: 0,
+			},
+		);
 	});
 
-	it("hides once a scroll moves the selection more than 100px", () => {
+	it("hides once a scroll moves the selection more than 100px", () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
 
-		rangeRect = {...rangeRect, top: rangeRect.top - 100};
-		act(() => {
+		rangeRect =
+		{
+			...rangeRect,
+			top: rangeRect.top - 100,
+		};
+		act(() =>
+		{
 			document.dispatchEvent(new Event("scroll"));
 		});
 		const within = host()?.style.transform;
-		rangeRect = {...rangeRect, top: rangeRect.top - 1};
-		act(() => {
+		rangeRect =
+		{
+			...rangeRect,
+			top: rangeRect.top - 1,
+		};
+		act(() =>
+		{
 			document.dispatchEvent(new Event("scroll"));
 		});
 
-		expect({within, after: host()}).toStrictEqual({
-			within: "translate(500px, 237px) translateX(-50%)",
-			after: null,
-		});
+		expect(
+			{
+				within,
+				after: host(),
+			},
+		).toStrictEqual(
+			{
+				within: "translate(500px, 237px) translateX(-50%)",
+				after: null,
+			},
+		);
 	});
 
-	it("stays mounted with visibility hidden while a menu is open", async () => {
+	it("stays mounted with visibility hidden while a menu is open", async () =>
+	{
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
 
 		const menu = document.createElement("div");
 		menu.setAttribute("role", "menu");
-		await act(async () => {
+		await act(async () =>
+		{
 			document.body.append(menu);
 			await Promise.resolve();
 		});
-		const whileOpen = {
+		const whileOpen =
+		{
 			bar: bar()?.style.visibility,
 			host: host()?.style.visibility,
 			transform: host()?.style.transform,
 		};
-		await act(async () => {
+		await act(async () =>
+		{
 			menu.remove();
 			await Promise.resolve();
 		});
 
-		expect({whileOpen, after: bar()?.style.visibility}).toStrictEqual({
-			whileOpen: {bar: "hidden", host: "", transform: "translate(500px, 337px) translateX(-50%)"},
-			after: "",
-		});
+		expect(
+			{
+				whileOpen,
+				after: bar()?.style.visibility,
+			},
+		).toStrictEqual(
+			{
+				whileOpen:
+				{
+					bar: "hidden",
+					host: "",
+					transform: "translate(500px, 337px) translateX(-50%)",
+				},
+				after: "",
+			},
+		);
 	});
 });
 
-function HarnessWithText({text}: {text: string}) {
+function HarnessWithText({text}: {text: string})
+{
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
-		<div data-testid="scroller" style={{overflowY: "auto"}}>
+		<div
+			data-testid="scroller"
+			style={
+			{
+				overflowY: "auto",
+			}}
+		>
 			<div ref={containerRef}>
 				<p>{text}</p>
 			</div>

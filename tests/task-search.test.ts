@@ -18,12 +18,15 @@ const tasks: SearchableTask[] = [
 	},
 ];
 
-describe("task search", () => {
-	it("matches task owner case-insensitively", () => {
+describe("task search", () =>
+{
+	it("matches task owner case-insensitively", () =>
+	{
 		expect(filterTasks(tasks, "ALICE")).toStrictEqual([tasks[0]]);
 	});
 
-	it("matches the other displayed task fields", () => {
+	it("matches the other displayed task fields", () =>
+	{
 		expect([
 			taskMatchesSearch(tasks[0]!, "task-1"),
 			taskMatchesSearch(tasks[0]!, "build"),
@@ -33,7 +36,8 @@ describe("task search", () => {
 		]).toStrictEqual([true, true, true, true, false]);
 	});
 
-	it("returns every task for an empty query", () => {
+	it("returns every task for an empty query", () =>
+	{
 		expect(filterTasks(tasks, "  ")).toStrictEqual(tasks);
 	});
 });

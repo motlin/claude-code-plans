@@ -11,85 +11,131 @@ import {createWorkingCopyReview} from "../src/lib/api/reviews";
 import type {Capabilities} from "../src/lib/capabilities";
 import {installLocalStorage} from "./fake-storage";
 
-const reviewOffers = vi.hoisted(() => ({listener: null as ((sessionId: string) => void) | null}));
+const reviewOffers = vi.hoisted(() => (
+{
+	listener: null as ((sessionId: string) => void) | null,
+}));
 
-vi.mock("../src/hooks/use-claude-events", () => ({
-	useSubscribeReviewOffers: () => (listener: (sessionId: string) => void) => {
+vi.mock("../src/hooks/use-claude-events", () => (
+{
+	useSubscribeReviewOffers: () => (listener: (sessionId: string) => void) =>
+	{
 		reviewOffers.listener = listener;
-		return () => {
+		return () =>
+		{
 			reviewOffers.listener = null;
 		};
 	},
 }));
-vi.mock("../src/lib/api/reviews", async (importOriginal) => ({
+vi.mock("../src/lib/api/reviews", async (importOriginal) => (
+{
 	...(await importOriginal<typeof import("../src/lib/api/reviews")>()),
 	createWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").createWorkingCopyReview>(async () =>
 		Promise.resolve("review-1"),
 	),
 	runWorkingCopyReview: vi.fn<typeof import("../src/lib/api/reviews").runWorkingCopyReview>(async () =>
-		Promise.resolve({processId: "process-1", completion: new Promise<string>(() => {})}),
+		Promise.resolve(
+			{
+				processId: "process-1",
+				completion: new Promise<string>(() => {}),
+			},
+		),
 	),
 }));
 
-const capability: Capabilities["workingCopyReview"] = {
+const capability: Capabilities["workingCopyReview"] =
+{
 	enabled: true,
-	config: {offerMode: "offer"},
+	config:
+	{
+		offerMode: "offer",
+	},
 	installed: true,
 	available: true,
 	unavailabilityReason: null,
 };
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 	reviewOffers.listener = null;
 	vi.mocked(createWorkingCopyReview).mockClear();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	cleanup();
 });
 
-function renderBanner() {
+function renderBanner()
+{
 	render(
 		<SettingsProvider>
 			<WorkingCopyReviewBanner capability={capability} />
 		</SettingsProvider>,
 	);
-	act(() => {
+	act(() =>
+	{
 		reviewOffers.listener?.("offer-session");
 	});
 }
 
-describe("Settings ▸ Sessions ▸ Offer to review uncommitted changes", () => {
-	it("defaults off and persists turning it on", async () => {
+describe("Settings ▸ Sessions ▸ Offer to review uncommitted changes", () =>
+{
+	it("defaults off and persists turning it on", async () =>
+	{
 		render(
 			<SettingsProvider>
 				<SessionsSettings />
 			</SettingsProvider>,
 		);
 		await act(async () => {});
-		const toggle = screen.getByRole("switch", {name: "Offer to review uncommitted changes"});
+		const toggle = screen.getByRole(
+			"switch",
+			{
+				name: "Offer to review uncommitted changes",
+			},
+		);
 		const before = toggle.getAttribute("aria-checked");
-		act(() => {
+		act(() =>
+		{
 			fireEvent.click(toggle);
 		});
-		expect({
-			before,
-			after: toggle.getAttribute("aria-checked"),
-			stored: localStorage.getItem(STORAGE_KEYS.offerWorkingCopyReview),
-		}).toStrictEqual({before: "false", after: "true", stored: "true"});
+		expect(
+			{
+				before,
+				after: toggle.getAttribute("aria-checked"),
+				stored: localStorage.getItem(STORAGE_KEYS.offerWorkingCopyReview),
+			},
+		).toStrictEqual(
+			{
+				before: "false",
+				after: "true",
+				stored: "true",
+			},
+		);
 	});
 
-	it("hides the banner and skips review work by default", () => {
+	it("hides the banner and skips review work by default", () =>
+	{
 		renderBanner();
-		expect({
-			subscribed: reviewOffers.listener !== null,
-			banner: screen.queryByText("Review this turn's uncommitted changes?"),
-			created: vi.mocked(createWorkingCopyReview).mock.calls.length,
-		}).toStrictEqual({subscribed: false, banner: null, created: 0});
+		expect(
+			{
+				subscribed: reviewOffers.listener !== null,
+				banner: screen.queryByText("Review this turn's uncommitted changes?"),
+				created: vi.mocked(createWorkingCopyReview).mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				subscribed: false,
+				banner: null,
+				created: 0,
+			},
+		);
 	});
 
-	it("shows the banner when the setting is on", () => {
+	it("shows the banner when the setting is on", () =>
+	{
 		localStorage.setItem(STORAGE_KEYS.offerWorkingCopyReview, "true");
 		renderBanner();
 		expect(screen.getByText("Review this turn's uncommitted changes?").textContent).toBe(

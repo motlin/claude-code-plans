@@ -2,7 +2,8 @@
 
 import type {HighlighterCore} from "@shikijs/core";
 import {beforeEach, vi} from "vite-plus/test";
-import {
+import
+{
 	renderInlineMarkdownToHtml,
 	renderMarkdownToHtml,
 	renderMarkdownWithHighlighting,
@@ -12,18 +13,21 @@ import {
 import type {FileRef} from "../src/lib/file-refs";
 import {ARTIFACT_ICON_SVG} from "../src/lib/icon-paths";
 
-const {requestLanguageMock, requestThemeMock} = vi.hoisted(() => ({
+const {requestLanguageMock, requestThemeMock} = vi.hoisted(() => (
+{
 	requestLanguageMock: vi.fn<typeof import("../src/hooks/use-shiki").requestLanguage>(async () => Promise.resolve()),
 	requestThemeMock: vi.fn<typeof import("../src/hooks/use-shiki").requestTheme>(async (_theme: string) =>
 		Promise.resolve(),
 	),
 }));
 
-vi.mock("../src/hooks/use-shiki", async () => {
+vi.mock("../src/hooks/use-shiki", async () =>
+{
 	const {loadedThemeOr} = await import("../src/lib/code-themes");
 	return {
 		requestLanguage: requestLanguageMock,
-		themeOrRequest: (...args: Parameters<typeof loadedThemeOr>) => {
+		themeOrRequest: (...args: Parameters<typeof loadedThemeOr>) =>
+		{
 			const usable = loadedThemeOr(...args);
 			if (usable !== args[1]) void requestThemeMock(args[1]);
 			return usable;
@@ -31,104 +35,133 @@ vi.mock("../src/hooks/use-shiki", async () => {
 	};
 });
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	requestLanguageMock.mockClear();
 	requestThemeMock.mockClear();
 });
 
 /** Drops the copy-button chrome the fence renderer wraps every code block in. */
-function withoutCopyChrome(html: string): string {
+function withoutCopyChrome(html: string): string
+{
 	return html
 		.replaceAll('<div class="markdown-codeblock epitaxy-codeblock">', "")
 		.replaceAll(/<div class="markdown-code-copy-rail">[\s\S]*?<\/div><\/div><\/div>/g, "");
 }
 
-describe("renderInlineMarkdownToHtml", () => {
-	it("renders inline markdown without a paragraph wrapper", () => {
+describe("renderInlineMarkdownToHtml", () =>
+{
+	it("renders inline markdown without a paragraph wrapper", () =>
+	{
 		expect(renderInlineMarkdownToHtml("**bold** text")).toBe("<strong>bold</strong> text");
 	});
 
-	it("renders blank input as an empty string", () => {
+	it("renders blank input as an empty string", () =>
+	{
 		expect([renderInlineMarkdownToHtml(""), renderInlineMarkdownToHtml("   \n")]).toStrictEqual(["", ""]);
 	});
 
-	it("linkifies URLs", () => {
+	it("linkifies URLs", () =>
+	{
 		expect(renderInlineMarkdownToHtml("see https://example.com")).toBe(
 			'see <a href="https://example.com" target="_blank" rel="noreferrer">https://example.com</a>',
 		);
 	});
 });
 
-describe("renderMarkdownToHtml", () => {
-	it("renders markdown headings to HTML", () => {
+describe("renderMarkdownToHtml", () =>
+{
+	it("renders markdown headings to HTML", () =>
+	{
 		const result = renderMarkdownToHtml("# Hello");
 		expect(result).toContain("<h1>Hello</h1>");
 	});
 
-	it("renders empty/whitespace-only input as empty string", () => {
+	it("renders empty/whitespace-only input as empty string", () =>
+	{
 		expect(renderMarkdownToHtml("")).toBe("");
 		expect(renderMarkdownToHtml("   ")).toBe("");
 		expect(renderMarkdownToHtml("\n")).toBe("");
 	});
 
-	it("renders inline formatting", () => {
+	it("renders inline formatting", () =>
+	{
 		const result = renderMarkdownToHtml("**bold** and *italic*");
 		expect(result).toContain("<strong>bold</strong>");
 		expect(result).toContain("<em>italic</em>");
 	});
 
-	it("renders code blocks with pre/code tags", () => {
+	it("renders code blocks with pre/code tags", () =>
+	{
 		const result = renderMarkdownToHtml("```js\nconst x = 1;\n```");
 		expect(result).toContain("<pre>");
 		expect(result).toContain("<code");
 		expect(result).toContain("const x = 1;");
 	});
 
-	it("renders code blocks when the language is unspecified", () => {
+	it("renders code blocks when the language is unspecified", () =>
+	{
 		expect(withoutCopyChrome(renderMarkdownToHtml("```\nplain code\n```"))).toBe(
 			"<pre><code>plain code\n</code></pre>\n",
 		);
 	});
 
-	it("renders task lists via markdown-it-task-lists plugin", () => {
+	it("renders task lists via markdown-it-task-lists plugin", () =>
+	{
 		const result = renderMarkdownToHtml("- [ ] unchecked\n- [x] checked");
 		expect(result).toContain('type="checkbox"');
 		expect(result).toContain("checked");
 	});
 
-	it("renders footnotes via markdown-it-footnote plugin", () => {
+	it("renders footnotes via markdown-it-footnote plugin", () =>
+	{
 		const result = renderMarkdownToHtml("Text[^1]\n\n[^1]: Footnote content");
 		expect(result).toContain("footnote");
 	});
 
-	it("linkifies URLs", () => {
+	it("linkifies URLs", () =>
+	{
 		const result = renderMarkdownToHtml("Visit https://example.com today");
 		expect(result).toContain('href="https://example.com"');
 	});
 
-	it("renders raw HTML as escaped text", () => {
+	it("renders raw HTML as escaped text", () =>
+	{
 		expect(renderMarkdownToHtml("<img src=x onerror=alert(1)>")).toBe(
 			"<p>&lt;img src=x onerror=alert(1)&gt;</p>\n",
 		);
 	});
 
-	it("returns the same instance on repeated calls (singleton)", () => {
+	it("returns the same instance on repeated calls (singleton)", () =>
+	{
 		const result1 = renderMarkdownToHtml("# Test");
 		const result2 = renderMarkdownToHtml("# Test");
 		expect(result1).toBe(result2);
 	});
 
-	it("enables typographer without changing the default", () => {
+	it("enables typographer without changing the default", () =>
+	{
 		expect([
-			renderMarkdownToHtml('He said "hi" -- ok', {typographer: true}),
+			renderMarkdownToHtml(
+				'He said "hi" -- ok',
+				{
+					typographer: true,
+				},
+			),
 			renderMarkdownToHtml('He said "hi" -- ok'),
 		]).toStrictEqual(["<p>He said “hi” – ok</p>\n", "<p>He said &quot;hi&quot; -- ok</p>\n"]);
 	});
 
-	it("caches plain markdown instances by typographer setting", () => {
+	it("caches plain markdown instances by typographer setting", () =>
+	{
 		expect([
 			renderMarkdownToHtml('He said "hi" -- ok'),
-			renderMarkdownToHtml('He said "hi" -- ok', {typographer: true}),
+			renderMarkdownToHtml(
+				'He said "hi" -- ok',
+				{
+					typographer: true,
+				},
+			),
 			renderMarkdownToHtml('He said "hi" -- ok'),
 		]).toStrictEqual([
 			"<p>He said &quot;hi&quot; -- ok</p>\n",
@@ -138,33 +171,54 @@ describe("renderMarkdownToHtml", () => {
 	});
 });
 
-describe("mdLinkBase rewriting", () => {
-	it("rewrites a relative .md link to the slug-based in-app route", () => {
+describe("mdLinkBase rewriting", () =>
+{
+	it("rewrites a relative .md link to the slug-based in-app route", () =>
+	{
 		expect(
-			renderMarkdownToHtml("[worktrees](always-work-in-worktree.md)", {
-				mdLinkBase: "/memory/proj",
-			}),
+			renderMarkdownToHtml(
+				"[worktrees](always-work-in-worktree.md)",
+				{
+					mdLinkBase: "/memory/proj",
+				},
+			),
 		).toBe('<p><a href="/memory/proj/always-work-in-worktree">worktrees</a></p>\n');
 	});
 
-	it("leaves an external https link untouched", () => {
+	it("leaves an external https link untouched", () =>
+	{
 		expect(
-			renderMarkdownToHtml("[spec](https://example.com/notes.md)", {
-				mdLinkBase: "/memory/proj",
-			}),
+			renderMarkdownToHtml(
+				"[spec](https://example.com/notes.md)",
+				{
+					mdLinkBase: "/memory/proj",
+				},
+			),
 		).toBe('<p><a href="https://example.com/notes.md" target="_blank" rel="noreferrer">spec</a></p>\n');
 	});
 
-	it("leaves relative .md links alone when no base is supplied", () => {
+	it("leaves relative .md links alone when no base is supplied", () =>
+	{
 		expect(renderMarkdownToHtml("[worktrees](always-work-in-worktree.md)")).toBe(
 			'<p><a href="always-work-in-worktree.md">worktrees</a></p>\n',
 		);
 	});
 
-	it("re-reads the base on every render instead of caching the first one", () => {
+	it("re-reads the base on every render instead of caching the first one", () =>
+	{
 		expect([
-			renderMarkdownToHtml("[n](notes.md)", {mdLinkBase: "/memory/a"}),
-			renderMarkdownToHtml("[n](notes.md)", {mdLinkBase: "/memory/b"}),
+			renderMarkdownToHtml(
+				"[n](notes.md)",
+				{
+					mdLinkBase: "/memory/a",
+				},
+			),
+			renderMarkdownToHtml(
+				"[n](notes.md)",
+				{
+					mdLinkBase: "/memory/b",
+				},
+			),
 			renderMarkdownToHtml("[n](notes.md)"),
 		]).toStrictEqual([
 			'<p><a href="/memory/a/notes">n</a></p>\n',
@@ -173,76 +227,121 @@ describe("mdLinkBase rewriting", () => {
 		]);
 	});
 
-	it("rewrites relative .md links when a highlighter is bound", () => {
-		const highlighter = {
+	it("rewrites relative .md links when a highlighter is bound", () =>
+	{
+		const highlighter =
+		{
 			getLoadedLanguages: () => [],
 			codeToHtml: () => "",
 		} as unknown as HighlighterCore;
 
 		expect(
-			renderMarkdownWithHighlighting("[n](notes.md)", highlighter, {
-				mdLinkBase: "/memory/proj",
-			}),
+			renderMarkdownWithHighlighting(
+				"[n](notes.md)",
+				highlighter,
+				{
+					mdLinkBase: "/memory/proj",
+				},
+			),
 		).toBe('<p><a href="/memory/proj/notes">n</a></p>\n');
 	});
 
-	it("links wiki-style cross references to sibling memories", () => {
+	it("links wiki-style cross references to sibling memories", () =>
+	{
 		expect(
-			renderMarkdownToHtml("See [[dotfiles-branch-topology]] and [[zsh-startup.md]].", {
-				mdLinkBase: "/memory/proj",
-			}),
+			renderMarkdownToHtml(
+				"See [[dotfiles-branch-topology]] and [[zsh-startup.md]].",
+				{
+					mdLinkBase: "/memory/proj",
+				},
+			),
 		).toBe(
 			'<p>See <a href="/memory/proj/dotfiles-branch-topology">dotfiles-branch-topology</a>' +
 				' and <a href="/memory/proj/zsh-startup">zsh-startup.md</a>.</p>\n',
 		);
 	});
 
-	it("leaves wiki-style references as literal text when no base is supplied", () => {
+	it("leaves wiki-style references as literal text when no base is supplied", () =>
+	{
 		expect(renderMarkdownToHtml("See [[dotfiles-branch-topology]].")).toBe(
 			"<p>See [[dotfiles-branch-topology]].</p>\n",
 		);
 	});
 
-	it("leaves bracket syntax inside code spans and fences alone", () => {
+	it("leaves bracket syntax inside code spans and fences alone", () =>
+	{
 		expect(
-			withoutCopyChrome(renderMarkdownToHtml("`[[raw]]`\n\n```\n[[fenced]]\n```", {mdLinkBase: "/memory/proj"})),
+			withoutCopyChrome(
+				renderMarkdownToHtml(
+					"`[[raw]]`\n\n```\n[[fenced]]\n```",
+					{
+						mdLinkBase: "/memory/proj",
+					},
+				),
+			),
 		).toBe("<p><code>[[raw]]</code></p>\n<pre><code>[[fenced]]\n</code></pre>\n");
 	});
 
-	it("ignores unterminated and empty wiki-style brackets", () => {
+	it("ignores unterminated and empty wiki-style brackets", () =>
+	{
 		expect([
-			renderMarkdownToHtml("[[unterminated", {mdLinkBase: "/memory/proj"}),
-			renderMarkdownToHtml("[[]]", {mdLinkBase: "/memory/proj"}),
+			renderMarkdownToHtml(
+				"[[unterminated",
+				{
+					mdLinkBase: "/memory/proj",
+				},
+			),
+			renderMarkdownToHtml(
+				"[[]]",
+				{
+					mdLinkBase: "/memory/proj",
+				},
+			),
 		]).toStrictEqual(["<p>[[unterminated</p>\n", "<p>[[]]</p>\n"]);
 	});
 });
 
-describe("renderMarkdownWithHighlighting", () => {
-	it("falls back to plain rendering when highlighter is null", () => {
+describe("renderMarkdownWithHighlighting", () =>
+{
+	it("falls back to plain rendering when highlighter is null", () =>
+	{
 		const markdown = "# Hello\n\n```js\nconst x = 1;\n```";
 		const result = renderMarkdownWithHighlighting(markdown, null);
 		const plainResult = renderMarkdownToHtml(markdown);
 		expect(result).toBe(plainResult);
 	});
 
-	it("returns empty string for empty input even with null highlighter", () => {
+	it("returns empty string for empty input even with null highlighter", () =>
+	{
 		expect(renderMarkdownWithHighlighting("", null)).toBe("");
 		expect(renderMarkdownWithHighlighting("   ", null)).toBe("");
 	});
 
-	it("forwards typographer options when the highlighter is null", () => {
-		expect(renderMarkdownWithHighlighting('a "b" -- c', null, {typographer: true})).toBe("<p>a “b” – c</p>\n");
+	it("forwards typographer options when the highlighter is null", () =>
+	{
+		expect(
+			renderMarkdownWithHighlighting(
+				'a "b" -- c',
+				null,
+				{
+					typographer: true,
+				},
+			),
+		).toBe("<p>a “b” – c</p>\n");
 	});
 
-	it("renders non-code markdown the same with or without highlighter", () => {
+	it("renders non-code markdown the same with or without highlighter", () =>
+	{
 		const markdown = "**bold** and *italic*";
 		const result = renderMarkdownWithHighlighting(markdown, null);
 		expect(result).toContain("<strong>bold</strong>");
 		expect(result).toContain("<em>italic</em>");
 	});
 
-	it("renders raw HTML as escaped text with a highlighter", () => {
-		const highlighter = {
+	it("renders raw HTML as escaped text with a highlighter", () =>
+	{
+		const highlighter =
+		{
 			getLoadedLanguages: () => [],
 			codeToHtml: () => "",
 		} as unknown as HighlighterCore;
@@ -252,12 +351,14 @@ describe("renderMarkdownWithHighlighting", () => {
 		);
 	});
 
-	it("uses a grammar loaded after the cached markdown instance was created", () => {
+	it("uses a grammar loaded after the cached markdown instance was created", () =>
+	{
 		const loadedLanguages: string[] = [];
 		const codeToHtml = vi.fn<HighlighterCore["codeToHtml"]>(
 			() => '<pre class="shiki"><code>highlighted</code></pre>',
 		);
-		const highlighter = {
+		const highlighter =
+		{
 			getLoadedLanguages: () => loadedLanguages,
 			codeToHtml,
 		} as unknown as HighlighterCore;
@@ -267,74 +368,123 @@ describe("renderMarkdownWithHighlighting", () => {
 		loadedLanguages.push("typescript");
 		const afterLoad = renderMarkdownWithHighlighting(markdown, highlighter);
 
-		expect({
-			beforeLoad: withoutCopyChrome(beforeLoad),
-			afterLoad: withoutCopyChrome(afterLoad),
-			languageRequests: requestLanguageMock.mock.calls,
-			highlightingCalls: codeToHtml.mock.calls,
-		}).toStrictEqual({
-			beforeLoad: '<pre><code class="language-typescript">const answer = 0;\n</code></pre>\n',
-			afterLoad: '<pre class="shiki"><code>highlighted</code></pre>\n',
-			languageRequests: [["typescript"]],
-			highlightingCalls: [
-				[
-					"const answer = 0;",
-					{
-						tokenizeTimeLimit: 0,
-						tokenizeMaxLineLength: 20_000,
-						lang: "typescript",
-						themes: {
-							light: "claude-light",
-							dark: "claude-dark",
+		expect(
+			{
+				beforeLoad: withoutCopyChrome(beforeLoad),
+				afterLoad: withoutCopyChrome(afterLoad),
+				languageRequests: requestLanguageMock.mock.calls,
+				highlightingCalls: codeToHtml.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				beforeLoad: '<pre><code class="language-typescript">const answer = 0;\n</code></pre>\n',
+				afterLoad: '<pre class="shiki"><code>highlighted</code></pre>\n',
+				languageRequests: [["typescript"]],
+				highlightingCalls: [
+					[
+						"const answer = 0;",
+						{
+							tokenizeTimeLimit: 0,
+							tokenizeMaxLineLength: 20_000,
+							lang: "typescript",
+							themes:
+							{
+								light: "claude-light",
+								dark: "claude-dark",
+							},
+							defaultColor: "light",
+							cssVariablePrefix: "--shiki-",
 						},
-						defaultColor: "light",
-						cssVariablePrefix: "--shiki-",
-					},
+					],
 				],
-			],
-		});
+			},
+		);
 	});
 
-	it("highlights with the chosen code themes once they are loaded, else the defaults", () => {
+	it("highlights with the chosen code themes once they are loaded, else the defaults", () =>
+	{
 		const loadedThemes = ["claude-light", "claude-dark"];
 		const codeToHtml = vi.fn<HighlighterCore["codeToHtml"]>(
 			() => '<pre class="shiki"><code>highlighted</code></pre>',
 		);
-		const highlighter = {
+		const highlighter =
+		{
 			getLoadedLanguages: () => ["typescript"],
 			getLoadedThemes: () => loadedThemes,
 			codeToHtml,
 		} as unknown as HighlighterCore;
 		const markdown = "```typescript\nconst answer = 0;\n```";
-		const codeThemes = {light: "min-light", dark: "nord"} as const;
+		const codeThemes =
+		{
+			light: "min-light",
+			dark: "nord",
+		} as const;
 
-		renderMarkdownWithHighlighting(markdown, highlighter, {codeThemes});
+		renderMarkdownWithHighlighting(
+			markdown,
+			highlighter,
+			{
+				codeThemes,
+			},
+		);
 		loadedThemes.push("min-light", "nord");
-		renderMarkdownWithHighlighting(markdown, highlighter, {codeThemes});
+		renderMarkdownWithHighlighting(
+			markdown,
+			highlighter,
+			{
+				codeThemes,
+			},
+		);
 
-		expect({
-			themes: codeToHtml.mock.calls.map((call) => (call as unknown as [string, {themes: unknown}])[1].themes),
-			themeRequests: requestThemeMock.mock.calls,
-		}).toStrictEqual({
-			themes: [
-				{light: "claude-light", dark: "claude-dark"},
-				{light: "min-light", dark: "nord"},
-			],
-			themeRequests: [["min-light"], ["nord"]],
-		});
+		expect(
+			{
+				themes: codeToHtml.mock.calls.map(
+					(call) =>
+						(
+							call as unknown as [
+								string,
+								{
+									themes: unknown;
+								},
+							]
+						)[1].themes,
+				),
+				themeRequests: requestThemeMock.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				themes: [
+					{
+						light: "claude-light",
+						dark: "claude-dark",
+					},
+					{
+						light: "min-light",
+						dark: "nord",
+					},
+				],
+				themeRequests: [["min-light"], ["nord"]],
+			},
+		);
 	});
 
-	it("caches highlighted markdown instances by typographer setting", () => {
-		const highlighter = {
+	it("caches highlighted markdown instances by typographer setting", () =>
+	{
+		const highlighter =
+		{
 			getLoadedLanguages: () => [],
 			codeToHtml: () => "",
 		} as unknown as HighlighterCore;
 
 		expect([
 			renderMarkdownWithHighlighting('He said "hi" -- ok', highlighter),
-			renderMarkdownWithHighlighting('He said "hi" -- ok', highlighter, {
-				typographer: true,
-			}),
+			renderMarkdownWithHighlighting(
+				'He said "hi" -- ok',
+				highlighter,
+				{
+					typographer: true,
+				},
+			),
 			renderMarkdownWithHighlighting('He said "hi" -- ok', highlighter),
 		]).toStrictEqual([
 			"<p>He said &quot;hi&quot; -- ok</p>\n",
@@ -344,50 +494,67 @@ describe("renderMarkdownWithHighlighting", () => {
 	});
 });
 
-describe("artifact link chips", () => {
+describe("artifact link chips", () =>
+{
 	const knownId = "0f8fad5b-d9cb-469f-a165-70867728950e";
 	const titles = new Map([[knownId, "Release Dashboard"]]);
 	const chip = (href: string, title: string) =>
 		`<a href="${href}" target="_blank" rel="noreferrer" class="artifact-link-chip" data-artifact-link="">${ARTIFACT_ICON_SVG}<span class="artifact-link-chip-title">${title}</span></a>`;
 
-	it("renders a known artifact link as an inline chip titled from the artifacts index", () => {
+	it("renders a known artifact link as an inline chip titled from the artifacts index", () =>
+	{
 		expect(
-			renderMarkdownToHtml(`See [the dashboard](https://claude.ai/code/artifact/${knownId}).`, {
-				artifactTitles: titles,
-			}),
+			renderMarkdownToHtml(
+				`See [the dashboard](https://claude.ai/code/artifact/${knownId}).`,
+				{
+					artifactTitles: titles,
+				},
+			),
 		).toBe(`<p>See ${chip(`https://claude.ai/code/artifact/${knownId}`, "Release Dashboard")}.</p>\n`);
 	});
 
-	it("renders an unknown artifact link as a chip titled with its link text", () => {
+	it("renders an unknown artifact link as a chip titled with its link text", () =>
+	{
 		expect(
-			renderMarkdownToHtml("[My **page**](https://claude.ai/artifact/some-slug)", {
-				artifactTitles: titles,
-			}),
+			renderMarkdownToHtml(
+				"[My **page**](https://claude.ai/artifact/some-slug)",
+				{
+					artifactTitles: titles,
+				},
+			),
 		).toBe(`<p>${chip("https://claude.ai/artifact/some-slug", "My page")}</p>\n`);
 	});
 
-	it("labels a bare linkified artifact URL with the URL when there is no index", () => {
+	it("labels a bare linkified artifact URL with the URL when there is no index", () =>
+	{
 		const href = `https://claude.ai/code/artifact/${knownId}`;
 		expect(renderMarkdownToHtml(href)).toBe(`<p>${chip(href, href)}</p>\n`);
 	});
 
-	it("escapes the chip title", () => {
+	it("escapes the chip title", () =>
+	{
 		expect(
-			renderMarkdownToHtml(`[x](https://claude.ai/code/artifact/${knownId})`, {
-				artifactTitles: new Map([[knownId, "A <b> page"]]),
-			}),
+			renderMarkdownToHtml(
+				`[x](https://claude.ai/code/artifact/${knownId})`,
+				{
+					artifactTitles: new Map([[knownId, "A <b> page"]]),
+				},
+			),
 		).toBe(`<p>${chip(`https://claude.ai/code/artifact/${knownId}`, "A &lt;b&gt; page")}</p>\n`);
 	});
 
-	it("leaves other claude.ai links as plain links", () => {
+	it("leaves other claude.ai links as plain links", () =>
+	{
 		expect(renderMarkdownToHtml("[chat](https://claude.ai/chat/abc)")).toBe(
 			'<p><a href="https://claude.ai/chat/abc" target="_blank" rel="noreferrer">chat</a></p>\n',
 		);
 	});
 });
 
-describe("renderArtifactLinkCard", () => {
-	it("renders the same link card markdown links to artifacts get", () => {
+describe("renderArtifactLinkCard", () =>
+{
+	it("renders the same link card markdown links to artifacts get", () =>
+	{
 		const href = "https://claude.ai/code/artifact/29d89ae8-e33b-4f55-bbbd-874d5d316169";
 		expect(renderArtifactLinkCard(href, "A <b> page")).toBe(
 			`<a href="${href}" target="_blank" rel="noopener noreferrer" class="artifact-link-card" data-artifact-link="" aria-label="Artifact: A &lt;b&gt; page" title="Artifact: A &lt;b&gt; page"><span class="artifact-link-card-title">A &lt;b&gt; page</span><span class="artifact-link-card-meta">Artifact · claude.ai</span></a>`,
@@ -395,30 +562,36 @@ describe("renderArtifactLinkCard", () => {
 	});
 });
 
-describe("external links", () => {
-	it("open a plain external link in a new tab without a referrer", () => {
+describe("external links", () =>
+{
+	it("open a plain external link in a new tab without a referrer", () =>
+	{
 		expect(renderMarkdownToHtml("[docs](https://example.com/a)")).toBe(
 			'<p><a href="https://example.com/a" target="_blank" rel="noreferrer">docs</a></p>\n',
 		);
 	});
 
-	it("leave in-app links in the same tab", () => {
+	it("leave in-app links in the same tab", () =>
+	{
 		expect(renderMarkdownToHtml("[home](/sessions) and [top](#top)")).toBe(
 			'<p><a href="/sessions">home</a> and <a href="#top">top</a></p>\n',
 		);
 	});
 });
 
-describe("GitHub PR chips", () => {
+describe("GitHub PR chips", () =>
+{
 	const href = "https://github.com/motlin/claude-code-plans/pull/1954";
 
-	it("render a linkified PR URL as a pr-chip reading owner/repo#n", () => {
+	it("render a linkified PR URL as a pr-chip reading owner/repo#n", () =>
+	{
 		const html = renderMarkdownToHtml(`See ${href} for details`);
 		const container = document.createElement("div");
 		container.innerHTML = html;
 		const chips = [...container.querySelectorAll("a.pr-chip")];
 		expect(
-			chips.map((chip) => ({
+			chips.map((chip) => (
+			{
 				href: chip.getAttribute("href"),
 				target: chip.getAttribute("target"),
 				rel: chip.getAttribute("rel"),
@@ -441,60 +614,99 @@ describe("GitHub PR chips", () => {
 		]);
 	});
 
-	it("preserve a written PR link's text", () => {
+	it("preserve a written PR link's text", () =>
+	{
 		const url = "https://github.com/example-owner/example-repo/pull/123";
 		expect(renderMarkdownToHtml(`[PR #123: Example sync](${url})`)).toBe(
 			`<p><a href="${url}" target="_blank" rel="noreferrer">PR #123: Example sync</a></p>\n`,
 		);
 	});
 
-	it("render a link labelled by its own URL, its #n, its owner/repo#n or nothing as a chip, as upstream does", () => {
+	it("render a link labelled by its own URL, its #n, its owner/repo#n or nothing as a chip, as upstream does", () =>
+	{
 		const url = "https://github.com/motlin/neighbors/pull/78";
-		const chipText = (markdown: string) => {
+		const chipText = (markdown: string) =>
+		{
 			const container = document.createElement("div");
 			container.innerHTML = renderMarkdownToHtml(markdown);
-			return [...container.querySelectorAll("a")].map((a) => ({className: a.className, text: a.textContent}));
+			return [...container.querySelectorAll("a")].map((a) => (
+			{
+				className: a.className,
+				text: a.textContent,
+			}));
 		};
 
-		expect({
-			url: chipText(`[${url}](${url})`),
-			number: chipText(`[#78](${url})`),
-			ownerRepo: chipText(`[motlin/neighbors#78](${url})`),
-			empty: chipText(`[](${url})`),
-		}).toStrictEqual({
-			url: [{className: "pr-chip", text: "motlin/neighbors#78"}],
-			number: [{className: "pr-chip", text: "motlin/neighbors#78"}],
-			ownerRepo: [{className: "pr-chip", text: "motlin/neighbors#78"}],
-			empty: [{className: "pr-chip", text: "motlin/neighbors#78"}],
-		});
+		expect(
+			{
+				url: chipText(`[${url}](${url})`),
+				number: chipText(`[#78](${url})`),
+				ownerRepo: chipText(`[motlin/neighbors#78](${url})`),
+				empty: chipText(`[](${url})`),
+			},
+		).toStrictEqual(
+			{
+				url: [
+					{
+						className: "pr-chip",
+						text: "motlin/neighbors#78",
+					},
+				],
+				number: [
+					{
+						className: "pr-chip",
+						text: "motlin/neighbors#78",
+					},
+				],
+				ownerRepo: [
+					{
+						className: "pr-chip",
+						text: "motlin/neighbors#78",
+					},
+				],
+				empty: [
+					{
+						className: "pr-chip",
+						text: "motlin/neighbors#78",
+					},
+				],
+			},
+		);
 	});
 
-	it("keep a PR link plain when its label is prose, another number or another repo", () => {
+	it("keep a PR link plain when its label is prose, another number or another repo", () =>
+	{
 		const url = "https://github.com/motlin/neighbors/pull/79";
-		expect({
-			prose: renderMarkdownToHtml(`[neighbors #79](${url})`),
-			otherNumber: renderMarkdownToHtml(`[#80](${url})`),
-			otherRepo: renderMarkdownToHtml(`[motlin/other#79](${url})`),
-		}).toStrictEqual({
-			prose: `<p><a href="${url}" target="_blank" rel="noreferrer">neighbors #79</a></p>\n`,
-			otherNumber: `<p><a href="${url}" target="_blank" rel="noreferrer">#80</a></p>\n`,
-			otherRepo: `<p><a href="${url}" target="_blank" rel="noreferrer">motlin/other#79</a></p>\n`,
-		});
+		expect(
+			{
+				prose: renderMarkdownToHtml(`[neighbors #79](${url})`),
+				otherNumber: renderMarkdownToHtml(`[#80](${url})`),
+				otherRepo: renderMarkdownToHtml(`[motlin/other#79](${url})`),
+			},
+		).toStrictEqual(
+			{
+				prose: `<p><a href="${url}" target="_blank" rel="noreferrer">neighbors #79</a></p>\n`,
+				otherNumber: `<p><a href="${url}" target="_blank" rel="noreferrer">#80</a></p>\n`,
+				otherRepo: `<p><a href="${url}" target="_blank" rel="noreferrer">motlin/other#79</a></p>\n`,
+			},
+		);
 	});
 
-	it("preserve formatting inside an authored PR label", () => {
+	it("preserve formatting inside an authored PR label", () =>
+	{
 		const url = "https://github.com/example-owner/example-repo/pull/123";
 		expect(renderMarkdownToHtml(`[**PR #123**: \`sync\`](${url})`)).toBe(
 			`<p><a href="${url}" target="_blank" rel="noreferrer"><strong>PR #123</strong>: <code>sync</code></a></p>\n`,
 		);
 	});
 
-	it("keep angle-bracket PR URLs as automatic chips", () => {
+	it("keep angle-bracket PR URLs as automatic chips", () =>
+	{
 		const url = "https://github.com/example-owner/example-repo/pull/123";
 		const container = document.createElement("div");
 		container.innerHTML = renderMarkdownToHtml(`<${url}>`);
 		expect(
-			[...container.querySelectorAll("a")].map((a) => ({
+			[...container.querySelectorAll("a")].map((a) => (
+			{
 				href: a.getAttribute("href"),
 				target: a.getAttribute("target"),
 				rel: a.getAttribute("rel"),
@@ -512,22 +724,48 @@ describe("GitHub PR chips", () => {
 		]);
 	});
 
-	it("leave other GitHub links as plain links", () => {
+	it("leave other GitHub links as plain links", () =>
+	{
 		expect(renderMarkdownToHtml("[repo](https://github.com/motlin/claude-code-plans)")).toBe(
 			'<p><a href="https://github.com/motlin/claude-code-plans" target="_blank" rel="noreferrer">repo</a></p>\n',
 		);
 	});
 });
 
-describe("markdown links to files", () => {
+describe("markdown links to files", () =>
+{
 	const refs: ReadonlyMap<string, FileRef> = new Map([
-		["docs/guide.md", {path: "/repo/docs/guide.md"}],
-		["src/a.ts:12", {path: "/repo/src/a.ts", line: 12}],
-		["/tmp/outside/notes.txt", {path: "/tmp/outside/notes.txt", block: "outside_roots"}],
-		["src/gone.ts", {path: "/repo/src/gone.ts", block: "missing"}],
+		[
+			"docs/guide.md",
+			{
+				path: "/repo/docs/guide.md",
+			},
+		],
+		[
+			"src/a.ts:12",
+			{
+				path: "/repo/src/a.ts",
+				line: 12,
+			},
+		],
+		[
+			"/tmp/outside/notes.txt",
+			{
+				path: "/tmp/outside/notes.txt",
+				block: "outside_roots",
+			},
+		],
+		[
+			"src/gone.ts",
+			{
+				path: "/repo/src/gone.ts",
+				block: "missing",
+			},
+		],
 	]);
 
-	it("collect a link's file path, decoded and without its fragment, beside inline code", () => {
+	it("collect a link's file path, decoded and without its fragment, beside inline code", () =>
+	{
 		expect(
 			fileRefTexts(
 				"See `src/b.ts` and [the guide](docs/guide.md#install), [x](src/%C3%A9.ts), [w](https://a.b/c.ts), [t](#top), [m](mailto:a@b.c).",
@@ -535,74 +773,142 @@ describe("markdown links to files", () => {
 		).toStrictEqual(["src/b.ts", "docs/guide.md", "src/é.ts"]);
 	});
 
-	it("render a link to a resolved file as the file-ref button around the link text", () => {
-		expect(renderMarkdownToHtml("[the guide](docs/guide.md#install)", {fileRefs: refs})).toBe(
+	it("render a link to a resolved file as the file-ref button around the link text", () =>
+	{
+		expect(
+			renderMarkdownToHtml(
+				"[the guide](docs/guide.md#install)",
+				{
+					fileRefs: refs,
+				},
+			),
+		).toBe(
 			'<p><span role="button" tabindex="0" class="prose-link" data-file-ref="" data-file-path="/repo/docs/guide.md">the guide</span></p>\n',
 		);
 	});
 
-	it("carry the line of a resolved file link", () => {
-		expect(renderMarkdownToHtml("[a](src/a.ts:12)", {fileRefs: refs})).toBe(
+	it("carry the line of a resolved file link", () =>
+	{
+		expect(
+			renderMarkdownToHtml(
+				"[a](src/a.ts:12)",
+				{
+					fileRefs: refs,
+				},
+			),
+		).toBe(
 			'<p><span role="button" tabindex="0" class="prose-link" data-file-ref="" data-file-path="/repo/src/a.ts" data-file-line="12">a</span></p>\n',
 		);
 	});
 
-	it("render a link to a blocked file as the disabled-reason wrapper around the link text", () => {
-		const html = renderMarkdownToHtml("[notes](/tmp/outside/notes.txt)", {fileRefs: refs});
+	it("render a link to a blocked file as the disabled-reason wrapper around the link text", () =>
+	{
+		const html = renderMarkdownToHtml(
+			"[notes](/tmp/outside/notes.txt)",
+			{
+				fileRefs: refs,
+			},
+		);
 		expect(html).toMatch(
 			/^<p><span tabindex="0" data-cds-disabled-reason-wrapper="" aria-describedby="(file-ref-reason-\w+)" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">notes<span id="\1" hidden data-cds-disabled-reason="">This file is outside this session’s folders, so it can’t be opened here.<\/span><\/span><\/p>\n$/,
 		);
 	});
 
-	it("give a missing file's wrapper upstream's hidden focus slot after its content", () => {
-		const html = renderMarkdownToHtml("[gone](src/gone.ts)", {fileRefs: refs});
+	it("give a missing file's wrapper upstream's hidden focus slot after its content", () =>
+	{
+		const html = renderMarkdownToHtml(
+			"[gone](src/gone.ts)",
+			{
+				fileRefs: refs,
+			},
+		);
 		expect(html).toMatch(
 			/^<p><span tabindex="0" data-cds-disabled-reason-wrapper="" aria-describedby="(file-ref-reason-\w+)" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">gone<span hidden><\/span><span id="\1" hidden data-cds-disabled-reason="">Couldn’t find this file, so it can’t be opened. You can ask Claude to create it or check the path.<\/span><\/span><\/p>\n$/,
 		);
 	});
 
-	it("render an unresolved relative file link as its text, not a dead link", () => {
-		expect(renderMarkdownToHtml("[other](lib/other.ts) **[b](lib/b.ts)**", {fileRefs: refs})).toBe(
-			"<p>other <strong>b</strong></p>\n",
-		);
+	it("render an unresolved relative file link as its text, not a dead link", () =>
+	{
+		expect(
+			renderMarkdownToHtml(
+				"[other](lib/other.ts) **[b](lib/b.ts)**",
+				{
+					fileRefs: refs,
+				},
+			),
+		).toBe("<p>other <strong>b</strong></p>\n");
 	});
 
-	it("keep external, in-app and fragment links as links", () => {
-		expect(renderMarkdownToHtml("[x](https://a.b/c.ts) [home](/sessions) [top](#top)", {fileRefs: refs})).toBe(
+	it("keep external, in-app and fragment links as links", () =>
+	{
+		expect(
+			renderMarkdownToHtml(
+				"[x](https://a.b/c.ts) [home](/sessions) [top](#top)",
+				{
+					fileRefs: refs,
+				},
+			),
+		).toBe(
 			'<p><a href="https://a.b/c.ts" target="_blank" rel="noreferrer">x</a> <a href="/sessions">home</a> <a href="#top">top</a></p>\n',
 		);
 	});
 
-	it("keep a relative file link as a link when the render resolves no file refs", () => {
+	it("keep a relative file link as a link when the render resolves no file refs", () =>
+	{
 		expect(renderMarkdownToHtml("[the guide](docs/guide.md#install)")).toBe(
 			'<p><a href="docs/guide.md#install">the guide</a></p>\n',
 		);
 	});
 });
 
-describe("headingsUnder (upstream na headingsUnder with c59c32499 Bi)", () => {
-	it("keeps each heading's tag and announces it below the page outline, one level per shallower level used", () => {
-		expect({
-			under: renderMarkdownToHtml("## A\n#### B\n## C", {headingsUnder: 3}),
-			plain: renderMarkdownToHtml("## A"),
-			deep: renderMarkdownToHtml("# A\n## B\n### C\n#### D", {headingsUnder: 3}),
-		}).toStrictEqual({
-			under: '<h2 aria-level="4">A</h2>\n<h4 aria-level="5">B</h4>\n<h2 aria-level="4">C</h2>\n',
-			plain: "<h2>A</h2>\n",
-			deep: '<h1 aria-level="4">A</h1>\n<h2 aria-level="5">B</h2>\n<h3 aria-level="6">C</h3>\n<h4 aria-level="6">D</h4>\n',
-		});
+describe("headingsUnder (upstream na headingsUnder with c59c32499 Bi)", () =>
+{
+	it("keeps each heading's tag and announces it below the page outline, one level per shallower level used", () =>
+	{
+		expect(
+			{
+				under: renderMarkdownToHtml(
+					"## A\n#### B\n## C",
+					{
+						headingsUnder: 3,
+					},
+				),
+				plain: renderMarkdownToHtml("## A"),
+				deep: renderMarkdownToHtml(
+					"# A\n## B\n### C\n#### D",
+					{
+						headingsUnder: 3,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				under: '<h2 aria-level="4">A</h2>\n<h4 aria-level="5">B</h4>\n<h2 aria-level="4">C</h2>\n',
+				plain: "<h2>A</h2>\n",
+				deep: '<h1 aria-level="4">A</h1>\n<h2 aria-level="5">B</h2>\n<h3 aria-level="6">C</h3>\n<h4 aria-level="6">D</h4>\n',
+			},
+		);
 	});
 });
 
-describe("mermaid fences in the diagram context (upstream c5071af19 dispatch)", () => {
-	function parse(html: string): HTMLTemplateElement {
+describe("mermaid fences in the diagram context (upstream c5071af19 dispatch)", () =>
+{
+	function parse(html: string): HTMLTemplateElement
+	{
 		const template = document.createElement("template");
 		template.innerHTML = html;
 		return template;
 	}
 
-	function fences(html: string): {index: string | null; source: string | null; firstChild: string | undefined}[] {
-		return [...parse(html).content.querySelectorAll("[data-mermaid-fence]")].map((fence) => ({
+	function fences(html: string):
+	{
+		index: string | null;
+		source: string | null;
+		firstChild: string | undefined;
+	}[]
+	{
+		return [...parse(html).content.querySelectorAll("[data-mermaid-fence]")].map((fence) => (
+		{
 			index: fence.getAttribute("data-mermaid-fence"),
 			source: fence.getAttribute("data-mermaid-source"),
 			firstChild: fence.firstElementChild?.className,
@@ -611,44 +917,80 @@ describe("mermaid fences in the diagram context (upstream c5071af19 dispatch)", 
 
 	const fence = "```mermaid\ngraph TD; A-->B\n```";
 
-	it("wraps the unchanged code block in a placeholder carrying the exact source", () => {
-		const html = renderMarkdownWithHighlighting(fence, null, {diagrams: true});
+	it("wraps the unchanged code block in a placeholder carrying the exact source", () =>
+	{
+		const html = renderMarkdownWithHighlighting(
+			fence,
+			null,
+			{
+				diagrams: true,
+			},
+		);
 		expect(fences(html)).toStrictEqual([
-			{index: "0", source: "graph TD; A-->B", firstChild: "markdown-codeblock epitaxy-codeblock"},
+			{
+				index: "0",
+				source: "graph TD; A-->B",
+				firstChild: "markdown-codeblock epitaxy-codeblock",
+			},
 		]);
 		const inner = parse(html).content.querySelector("[data-mermaid-fence]")?.innerHTML;
 		expect(inner).toStrictEqual(parse(renderMarkdownToHtml(fence)).innerHTML.trimEnd());
 	});
 
-	it("leaves the output byte-identical without the diagram context", () => {
+	it("leaves the output byte-identical without the diagram context", () =>
+	{
 		const plain = renderMarkdownToHtml(fence);
 		expect([
-			renderMarkdownWithHighlighting(fence, null, {diagrams: false}),
+			renderMarkdownWithHighlighting(
+				fence,
+				null,
+				{
+					diagrams: false,
+				},
+			),
 			renderMarkdownWithHighlighting(fence, null),
 		]).toStrictEqual([plain, plain]);
 		expect(plain).not.toContain("data-mermaid-fence");
 	});
 
-	it("matches the language case-insensitively and only the exact tag", () => {
+	it("matches the language case-insensitively and only the exact tag", () =>
+	{
 		const marked = (lang: string) =>
-			fences(renderMarkdownToHtml(`\`\`\`${lang}\ngraph TD\n\`\`\``, {diagrams: true})).length;
+			fences(
+				renderMarkdownToHtml(
+					`\`\`\`${lang}\ngraph TD\n\`\`\``,
+					{
+						diagrams: true,
+					},
+				),
+			).length;
 		expect(["Mermaid", "MERMAID", "mermaid title", "mmd", "mermaidjs", ""].map(marked)).toStrictEqual([
 			1, 1, 1, 0, 0, 0,
 		]);
 	});
 
-	it("numbers each fence in a render", () => {
-		const html = renderMarkdownToHtml(`${fence}\n\ntext\n\n\`\`\`mermaid\npie\n\`\`\``, {diagrams: true});
+	it("numbers each fence in a render", () =>
+	{
+		const html = renderMarkdownToHtml(
+			`${fence}\n\ntext\n\n\`\`\`mermaid\npie\n\`\`\``,
+			{
+				diagrams: true,
+			},
+		);
 		expect(fences(html).map(({index, source}) => [index, source])).toStrictEqual([
 			["0", "graph TD; A-->B"],
 			["1", "pie"],
 		]);
 	});
 
-	it("keeps a fence holding a secret as its masked code block (upstream pre-gate Z)", () => {
-		const html = renderMarkdownToHtml(`\`\`\`mermaid\ngraph TD; A[ghp_${"a".repeat(36)}]-->B\n\`\`\``, {
-			diagrams: true,
-		});
+	it("keeps a fence holding a secret as its masked code block (upstream pre-gate Z)", () =>
+	{
+		const html = renderMarkdownToHtml(
+			`\`\`\`mermaid\ngraph TD; A[ghp_${"a".repeat(36)}]-->B\n\`\`\``,
+			{
+				diagrams: true,
+			},
+		);
 		expect(fences(html)).toStrictEqual([]);
 	});
 });

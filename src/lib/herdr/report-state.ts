@@ -9,25 +9,29 @@ import {nonEmpty} from "../non-empty";
 
 export type HerdrReportedState = "idle" | "working" | "blocked" | "unknown";
 
-export interface HerdrHookState {
+export interface HerdrHookState
+{
 	state: HerdrReportedState;
 	message: string;
 }
 
-export interface HerdrReportObservation {
+export interface HerdrReportObservation
+{
 	outcome: "verified" | "metadata-fallback" | "request-error" | "verification-error";
 	method: "pane.report_agent" | "pane.report_metadata" | "pane.clear_agent_authority";
 	paneId: string | null;
 	message: string;
 }
 
-interface HerdrSequence {
+interface HerdrSequence
+{
 	timestamp: number;
 	ordinal: number;
 	value: number;
 }
 
-export interface HerdrHookStateDependencies {
+export interface HerdrHookStateDependencies
+{
 	writesEnabled: () => boolean;
 	resolveTarget: typeof resolveHerdrPromptTarget;
 	request: HerdrRequester;
@@ -49,52 +53,109 @@ const RETRY_DELAY_MS = 250;
 const TRANSIENT_LOG_INTERVAL_MS = 60_000;
 
 /** Build source-global sequence numbers that remain increasing across clock stalls and rewinds. */
-export function createHerdrSequence(clock: () => number = Date.now): () => HerdrSequence {
+export function createHerdrSequence(clock: () => number = Date.now): () => HerdrSequence
+{
 	let lastValue = -1;
 
-	return () => {
+	return () =>
+	{
 		const timestamp = clock();
 		const baseValue = timestamp * 1000;
 		const ordinal = Math.max(0, lastValue - baseValue + 1);
 		const value = baseValue + ordinal;
 		lastValue = value;
-		return {timestamp, ordinal, value};
+		return {
+			timestamp,
+			ordinal,
+			value,
+		};
 	};
 }
 
 /** Map hook lifecycle edges to the four states accepted by herdr's reporting API. */
-export function stateForHerdrHookEvent(event: HookEvent): HerdrHookState | null {
+export function stateForHerdrHookEvent(event: HookEvent): HerdrHookState | null
+{
 	// Subagent activity says nothing about whether the root pane is working.
 	if (isSubagentScopedEvent(event)) return null;
-	switch (event.hook_event_name) {
+	switch (event.hook_event_name)
+	{
 		case "UserPromptSubmit":
-			return {state: "working", message: "responding to prompt"};
+			return {
+				state: "working",
+				message: "responding to prompt",
+			};
 		case "PreToolUse":
-			if (event.tool_name === "AskUserQuestion" || event.tool_name === "ExitPlanMode") {
-				return {state: "blocked", message: `waiting for ${event.tool_name}`};
+			if (event.tool_name === "AskUserQuestion" || event.tool_name === "ExitPlanMode")
+			{
+				return {
+					state: "blocked",
+					message: `waiting for ${event.tool_name}`,
+				};
 			}
-			return {state: "working", message: `using ${event.tool_name}`};
+			return {
+				state: "working",
+				message: `using ${event.tool_name}`,
+			};
 		case "PostToolUse":
-			return {state: "working", message: `finished ${event.tool_name}`};
+			return {
+				state: "working",
+				message: `finished ${event.tool_name}`,
+			};
 		case "PostToolUseFailure":
-			return {state: "working", message: `${event.tool_name} failed`};
+			return {
+				state: "working",
+				message: `${event.tool_name} failed`,
+			};
 		case "MessageDisplay":
-			return {state: "working", message: "writing response"};
+			return {
+				state: "working",
+				message: "writing response",
+			};
 		case "PreCompact":
-			return event.trigger === "manual" ? {state: "working", message: "compacting context"} : null;
+			return event.trigger === "manual"
+				?
+					{
+						state: "working",
+						message: "compacting context",
+					}
+				: null;
 		case "PostCompact":
-			return event.reason === "manual" ? {state: "idle", message: "manual compaction complete"} : null;
+			return event.reason === "manual"
+				?
+					{
+						state: "idle",
+						message: "manual compaction complete",
+					}
+				: null;
 		case "Stop":
-			return {state: "idle", message: "ready"};
+			return {
+				state: "idle",
+				message: "ready",
+			};
 		case "StopFailure":
-			return {state: "idle", message: `turn failed: ${event.error}`};
+			return {
+				state: "idle",
+				message: `turn failed: ${event.error}`,
+			};
 		case "Notification":
 			// Claude Code sends idle_prompt after the prompt sits idle, which heals a lost Stop.
-			return event.notification_type === "idle_prompt" ? {state: "idle", message: "waiting for input"} : null;
+			return event.notification_type === "idle_prompt"
+				?
+					{
+						state: "idle",
+						message: "waiting for input",
+					}
+				: null;
 		case "Elicitation":
-			return {state: "blocked", message: `waiting for ${event.mcp_server_name} input`};
+			return {
+				state: "blocked",
+				message: `waiting for ${event.mcp_server_name} input`,
+			};
 		case "ElicitationResult":
-			return {state: "working", message: `answered ${event.mcp_server_name} input`};
+			return {
+				state: "working",
+				message: `answered ${event.mcp_server_name} input`,
+			};
 		default:
 			return null;
 	}
@@ -105,14 +166,16 @@ export function stateForHerdrHookEvent(event: HookEvent): HerdrHookState | null 
  * arrive after the Stop or AskUserQuestion PreToolUse that ended its stream, and
  * the idle prompt can fire while a dialog is still open.
  */
-function overridesReportedState(event: HookEvent, previous: HerdrReportedState | undefined): boolean {
+function overridesReportedState(event: HookEvent, previous: HerdrReportedState | undefined): boolean
+{
 	if (event.hook_event_name === "MessageDisplay") return previous === undefined || previous === "working";
 	if (event.hook_event_name === "Notification") return previous !== "blocked";
 	return true;
 }
 
 /** A session running outside herdr (plain terminal, scratch agent) has no pane to report to. */
-function isUnattachedSession(observation: HerdrReportObservation): boolean {
+function isUnattachedSession(observation: HerdrReportObservation): boolean
+{
 	return (
 		observation.outcome === "request-error" &&
 		observation.paneId === null &&
@@ -121,7 +184,8 @@ function isUnattachedSession(observation: HerdrReportObservation): boolean {
 }
 
 /** A pane can close between target resolution and the report; that race is expected, not a failure. */
-function isClosedPane(observation: HerdrReportObservation): boolean {
+function isClosedPane(observation: HerdrReportObservation): boolean
+{
 	return (
 		observation.outcome === "request-error" &&
 		(observation.method === "pane.report_agent" || observation.method === "pane.clear_agent_authority") &&
@@ -129,14 +193,16 @@ function isClosedPane(observation: HerdrReportObservation): boolean {
 	);
 }
 
-export function logHerdrReportObservation(observation: HerdrReportObservation): void {
+export function logHerdrReportObservation(observation: HerdrReportObservation): void
+{
 	if (observation.outcome === "verified" || observation.outcome === "metadata-fallback") return;
 	if (isUnattachedSession(observation)) return;
 	if (isClosedPane(observation)) return;
 	console.error("herdr hook-state report failed", observation);
 }
 
-const defaultDependencies: HerdrHookStateDependencies = {
+const defaultDependencies: HerdrHookStateDependencies =
+{
 	writesEnabled: herdrWritesEnabled,
 	resolveTarget: resolveHerdrPromptTarget,
 	request: herdrRequest,
@@ -146,7 +212,8 @@ const defaultDependencies: HerdrHookStateDependencies = {
 	reportGenerations: new Map(),
 	transientFailureLoggedAt: new Map(),
 	sleep: async (ms) =>
-		new Promise((resolve) => {
+		new Promise((resolve) =>
+		{
 			setTimeout(resolve, ms);
 		}),
 	now: Date.now,
@@ -156,7 +223,8 @@ const defaultDependencies: HerdrHookStateDependencies = {
  * A request that lost a race with host load rather than one herdr rejected. Each
  * herdrRequest opens a fresh connection, so retrying never reuses the dead socket.
  */
-function isTransientFailure(observation: HerdrReportObservation): boolean {
+function isTransientFailure(observation: HerdrReportObservation): boolean
+{
 	if (observation.outcome !== "request-error") return false;
 	if (observation.message.startsWith("timeout:")) return true;
 	return observation.message.startsWith("connect-failed:") && /\b(EPIPE|ECONNRESET)\b/.test(observation.message);
@@ -166,14 +234,22 @@ function observeRequestError(
 	dependencies: HerdrHookStateDependencies,
 	method: HerdrReportObservation["method"],
 	paneId: string | null,
-	result: Extract<HerdrResult<unknown>, {ok: false}>,
-): void {
-	dependencies.observe({
-		outcome: "request-error",
-		method,
-		paneId,
-		message: `${result.code}: ${result.message}`,
-	});
+	result: Extract<
+		HerdrResult<unknown>,
+		{
+			ok: false;
+		}
+	>,
+): void
+{
+	dependencies.observe(
+		{
+			outcome: "request-error",
+			method,
+			paneId,
+			message: `${result.code}: ${result.message}`,
+		},
+	);
 }
 
 async function verifyPane(
@@ -182,43 +258,59 @@ async function verifyPane(
 	expectedState: HerdrHookState | null,
 	dependencies: HerdrHookStateDependencies,
 	requestId: string,
-): Promise<void> {
-	const response = await dependencies.request({
-		id: `${requestId}:verify`,
-		method: "pane.get",
-		params: {pane_id: paneId},
-	});
-	if (!response.ok) {
+): Promise<void>
+{
+	const response = await dependencies.request(
+		{
+			id: `${requestId}:verify`,
+			method: "pane.get",
+			params:
+			{
+				pane_id: paneId,
+			},
+		},
+	);
+	if (!response.ok)
+	{
 		observeRequestError(dependencies, method, paneId, response);
 		return;
 	}
 
 	const parsed = HerdrPaneInfoResultSchema.safeParse(response.value);
-	if (!parsed.success) {
-		dependencies.observe({
-			outcome: "verification-error",
-			method,
-			paneId,
-			message: "herdr returned an invalid pane.get response",
-		});
+	if (!parsed.success)
+	{
+		dependencies.observe(
+			{
+				outcome: "verification-error",
+				method,
+				paneId,
+				message: "herdr returned an invalid pane.get response",
+			},
+		);
 		return;
 	}
 
 	const pane = parsed.data.pane;
-	if (method === "pane.report_agent" && expectedState) {
-		if (pane.agent_status !== expectedState.state || pane.agent !== AGENT || pane.agent_session != null) {
-			dependencies.observe({
-				outcome: "verification-error",
-				method,
-				paneId,
-				message: `readback did not confirm ${AGENT}/${expectedState.state} without an owner`,
-			});
+	if (method === "pane.report_agent" && expectedState)
+	{
+		if (pane.agent_status !== expectedState.state || pane.agent !== AGENT || pane.agent_session != null)
+		{
+			dependencies.observe(
+				{
+					outcome: "verification-error",
+					method,
+					paneId,
+					message: `readback did not confirm ${AGENT}/${expectedState.state} without an owner`,
+				},
+			);
 			return;
 		}
 	}
 
-	if (method === "pane.report_metadata" && expectedState) {
-		const expectedLabels = {
+	if (method === "pane.report_metadata" && expectedState)
+	{
+		const expectedLabels =
+		{
 			idle: "idle (ccp)",
 			working: "working (ccp)",
 			blocked: "blocked (ccp)",
@@ -235,46 +327,56 @@ async function verifyPane(
 			labels["blocked"] !== expectedLabels.blocked ||
 			labels["unknown"] !== expectedLabels.unknown ||
 			pane.tokens?.["ccp_state"] !== expectedState.state
-		) {
-			dependencies.observe({
-				outcome: "verification-error",
-				method,
-				paneId,
-				message: "readback did not confirm ccp display metadata",
-			});
+		)
+		{
+			dependencies.observe(
+				{
+					outcome: "verification-error",
+					method,
+					paneId,
+					message: "readback did not confirm ccp display metadata",
+				},
+			);
 			return;
 		}
 	}
 
-	if (method === "pane.clear_agent_authority" && pane.agent_session?.source === SOURCE) {
-		dependencies.observe({
-			outcome: "verification-error",
-			method,
-			paneId,
-			message: "readback still shows a ccp-owned agent session",
-		});
+	if (method === "pane.clear_agent_authority" && pane.agent_session?.source === SOURCE)
+	{
+		dependencies.observe(
+			{
+				outcome: "verification-error",
+				method,
+				paneId,
+				message: "readback still shows a ccp-owned agent session",
+			},
+		);
 		return;
 	}
 
-	dependencies.observe({
-		outcome: "verified",
-		method,
-		paneId,
-		message: "pane.get confirmed write",
-	});
+	dependencies.observe(
+		{
+			outcome: "verified",
+			method,
+			paneId,
+			message: "pane.get confirmed write",
+		},
+	);
 }
 
 async function sendHookState(
 	event: HookEvent,
 	entry: ActiveSessionEntry | null,
 	dependencies: HerdrHookStateDependencies,
-): Promise<void> {
+): Promise<void>
+{
 	const report = stateForHerdrHookEvent(event);
 	if (!report && event.hook_event_name !== "SessionEnd") return;
 	const sequence = dependencies.nextSequence();
 
 	const target = await dependencies.resolveTarget(event.session_id, entry ? [entry] : [], dependencies.request);
-	if (!target.ok) {
+	if (!target.ok)
+	{
 		observeRequestError(
 			dependencies,
 			event.hook_event_name === "SessionEnd" ? "pane.clear_agent_authority" : "pane.report_agent",
@@ -288,12 +390,18 @@ async function sendHookState(
 	// report_agent returns ok even when herdr silently rejects an owner conflict.
 	// Read the current pane before choosing authority, then read it again after
 	// the write so neither branch treats the response envelope as acceptance.
-	const paneResponse = await dependencies.request({
-		id: "ccp:hook-pane",
-		method: "pane.get",
-		params: {pane_id: paneId},
-	});
-	if (!paneResponse.ok) {
+	const paneResponse = await dependencies.request(
+		{
+			id: "ccp:hook-pane",
+			method: "pane.get",
+			params:
+			{
+				pane_id: paneId,
+			},
+		},
+	);
+	if (!paneResponse.ok)
+	{
 		observeRequestError(
 			dependencies,
 			event.hook_event_name === "SessionEnd" ? "pane.clear_agent_authority" : "pane.report_agent",
@@ -303,24 +411,36 @@ async function sendHookState(
 		return;
 	}
 	const pane = HerdrPaneInfoResultSchema.safeParse(paneResponse.value);
-	if (!pane.success) {
-		dependencies.observe({
-			outcome: "verification-error",
-			method: event.hook_event_name === "SessionEnd" ? "pane.clear_agent_authority" : "pane.report_agent",
-			paneId,
-			message: "herdr returned an invalid pane.get response",
-		});
+	if (!pane.success)
+	{
+		dependencies.observe(
+			{
+				outcome: "verification-error",
+				method: event.hook_event_name === "SessionEnd" ? "pane.clear_agent_authority" : "pane.report_agent",
+				paneId,
+				message: "herdr returned an invalid pane.get response",
+			},
+		);
 		return;
 	}
 
 	const requestId = `ccp:${sequence.timestamp}:${sequence.ordinal}`;
-	if (event.hook_event_name === "SessionEnd") {
-		const response = await dependencies.request({
-			id: requestId,
-			method: "pane.clear_agent_authority",
-			params: {pane_id: paneId, source: SOURCE, seq: sequence.value},
-		});
-		if (!response.ok) {
+	if (event.hook_event_name === "SessionEnd")
+	{
+		const response = await dependencies.request(
+			{
+				id: requestId,
+				method: "pane.clear_agent_authority",
+				params:
+				{
+					pane_id: paneId,
+					source: SOURCE,
+					seq: sequence.value,
+				},
+			},
+		);
+		if (!response.ok)
+		{
 			observeRequestError(dependencies, "pane.clear_agent_authority", paneId, response);
 			return;
 		}
@@ -329,32 +449,43 @@ async function sendHookState(
 	}
 
 	if (!report) return;
-	if (pane.data.pane.agent_session != null) {
-		dependencies.observe({
-			outcome: "metadata-fallback",
-			method: "pane.report_metadata",
-			paneId,
-			message: `agent session is owned by ${pane.data.pane.agent_session.source}`,
-		});
-		const response = await dependencies.request({
-			id: requestId,
-			method: "pane.report_metadata",
-			params: {
-				pane_id: paneId,
-				source: SOURCE,
-				title: report.message,
-				display_agent: "Claude (ccp)",
-				state_labels: {
-					idle: "idle (ccp)",
-					working: "working (ccp)",
-					blocked: "blocked (ccp)",
-					unknown: "unknown (ccp)",
-				},
-				tokens: {ccp_state: report.state},
-				seq: sequence.value,
+	if (pane.data.pane.agent_session != null)
+	{
+		dependencies.observe(
+			{
+				outcome: "metadata-fallback",
+				method: "pane.report_metadata",
+				paneId,
+				message: `agent session is owned by ${pane.data.pane.agent_session.source}`,
 			},
-		});
-		if (!response.ok) {
+		);
+		const response = await dependencies.request(
+			{
+				id: requestId,
+				method: "pane.report_metadata",
+				params:
+				{
+					pane_id: paneId,
+					source: SOURCE,
+					title: report.message,
+					display_agent: "Claude (ccp)",
+					state_labels:
+					{
+						idle: "idle (ccp)",
+						working: "working (ccp)",
+						blocked: "blocked (ccp)",
+						unknown: "unknown (ccp)",
+					},
+					tokens:
+					{
+						ccp_state: report.state,
+					},
+					seq: sequence.value,
+				},
+			},
+		);
+		if (!response.ok)
+		{
 			observeRequestError(dependencies, "pane.report_metadata", paneId, response);
 			return;
 		}
@@ -362,19 +493,23 @@ async function sendHookState(
 		return;
 	}
 
-	const response = await dependencies.request({
-		id: requestId,
-		method: "pane.report_agent",
-		params: {
-			pane_id: paneId,
-			source: SOURCE,
-			agent: AGENT,
-			state: report.state,
-			message: report.message,
-			seq: sequence.value,
+	const response = await dependencies.request(
+		{
+			id: requestId,
+			method: "pane.report_agent",
+			params:
+			{
+				pane_id: paneId,
+				source: SOURCE,
+				agent: AGENT,
+				state: report.state,
+				message: report.message,
+				seq: sequence.value,
+			},
 		},
-	});
-	if (!response.ok) {
+	);
+	if (!response.ok)
+	{
 		observeRequestError(dependencies, "pane.report_agent", paneId, response);
 		return;
 	}
@@ -391,17 +526,24 @@ async function sendHookStateWithRetry(
 	entry: ActiveSessionEntry | null,
 	dependencies: HerdrHookStateDependencies,
 	generation: number,
-): Promise<void> {
+): Promise<void>
+{
 	/** Run one attempt, forwarding settled observations and returning a transient failure. */
-	const attempt = async (): Promise<HerdrReportObservation | null> => {
+	const attempt = async (): Promise<HerdrReportObservation | null> =>
+	{
 		let transient: HerdrReportObservation | null = null;
-		await sendHookState(event, entry, {
-			...dependencies,
-			observe: (observation) => {
-				if (isTransientFailure(observation)) transient = observation;
-				else dependencies.observe(observation);
+		await sendHookState(
+			event,
+			entry,
+			{
+				...dependencies,
+				observe: (observation) =>
+				{
+					if (isTransientFailure(observation)) transient = observation;
+					else dependencies.observe(observation);
+				},
 			},
-		});
+		);
 		return transient;
 	};
 
@@ -415,7 +557,8 @@ async function sendHookStateWithRetry(
 	const now = dependencies.now();
 	const lastLogged = dependencies.transientFailureLoggedAt.get(key);
 	if (lastLogged !== undefined && now - lastLogged < TRANSIENT_LOG_INTERVAL_MS) return;
-	for (const [loggedKey, loggedAt] of dependencies.transientFailureLoggedAt) {
+	for (const [loggedKey, loggedAt] of dependencies.transientFailureLoggedAt)
+	{
 		if (now - loggedAt >= TRANSIENT_LOG_INTERVAL_MS) dependencies.transientFailureLoggedAt.delete(loggedKey);
 	}
 	dependencies.transientFailureLoggedAt.set(key, now);
@@ -427,11 +570,15 @@ export function reportHookStateToHerdr(
 	event: HookEvent,
 	entry: ActiveSessionEntry | null,
 	dependencies: HerdrHookStateDependencies = defaultDependencies,
-): void {
+): void
+{
 	if (!dependencies.writesEnabled()) return;
-	if (event.hook_event_name === "SessionEnd") {
+	if (event.hook_event_name === "SessionEnd")
+	{
 		dependencies.reportedStates.delete(event.session_id);
-	} else {
+	}
+	else
+	{
 		const report = stateForHerdrHookEvent(event);
 		if (!report) return;
 		if (!overridesReportedState(event, dependencies.reportedStates.get(event.session_id))) return;
@@ -439,12 +586,15 @@ export function reportHookStateToHerdr(
 	}
 	const generation = (dependencies.reportGenerations.get(event.session_id) ?? 0) + 1;
 	dependencies.reportGenerations.set(event.session_id, generation);
-	void sendHookStateWithRetry(event, entry, dependencies, generation).catch((error: unknown) => {
-		dependencies.observe({
-			outcome: "request-error",
-			method: event.hook_event_name === "SessionEnd" ? "pane.clear_agent_authority" : "pane.report_agent",
-			paneId: nonEmpty(entry?.herdrPane) ?? null,
-			message: error instanceof Error ? error.message : String(error),
-		});
+	void sendHookStateWithRetry(event, entry, dependencies, generation).catch((error: unknown) =>
+	{
+		dependencies.observe(
+			{
+				outcome: "request-error",
+				method: event.hook_event_name === "SessionEnd" ? "pane.clear_agent_authority" : "pane.report_agent",
+				paneId: nonEmpty(entry?.herdrPane) ?? null,
+				message: error instanceof Error ? error.message : String(error),
+			},
+		);
 	});
 }

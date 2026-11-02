@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -21,7 +22,8 @@ import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {ProjectListResponse, projectsQueryOptions} from "../src/lib/api/projects";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {ToastProvider} from "../src/components/toast";
-import {
+import
+{
 	activeSessionsQueryOptions,
 	RecentSessionsResponse,
 	recentSessionsInfiniteQueryOptions,
@@ -32,7 +34,8 @@ import {installLocalStorage} from "./fake-storage";
 
 const MINUTE = 60 * 1000;
 
-function session(id: string, title: string, minutesAgo: number) {
+function session(id: string, title: string, minutesAgo: number)
+{
 	const mtime = new Date(Date.now() - minutesAgo * MINUTE).toISOString();
 	return {
 		id,
@@ -53,80 +56,152 @@ function session(id: string, title: string, minutesAgo: number) {
 
 const FIXTURE = [session("s1", "First row", 1), session("s2", "Second row", 2), session("s3", "Third row", 3)];
 
-async function renderGroups(activeItemId: string | null = null) {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+async function renderGroups(activeItemId: string | null = null)
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [RecentSessionsResponse.parse({sessions: FIXTURE, nextCursor: null})],
-		pageParams: [null],
-	});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<div data-testid="list">
-						<SessionGroups
-							activeItemId={activeItemId}
-							prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}}
-						/>
-					</div>
-					<Outlet />
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/", component: () => null});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/session/$id",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+	);
+	queryClient.setQueryData(
+		recentSessionsInfiniteQueryOptions().queryKey,
+		{
+			pages: [
+				RecentSessionsResponse.parse(
+					{
+						sessions: FIXTURE,
+						nextCursor: null,
+					},
+				),
+			],
+			pageParams: [null],
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<div data-testid="list">
+							<SessionGroups
+								activeItemId={activeItemId}
+								prefs={
+								{
+									...DEFAULT_SESSION_LIST_PREFS,
+									groupBy: "state",
+								}}
+							/>
+						</div>
+						<Outlet />
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/session/$id",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(result.container.querySelector("a[data-row-main-button]")).toBeTruthy();
 	});
 	return result;
 }
 
-function rowLink(title: string): HTMLElement {
+function rowLink(title: string): HTMLElement
+{
 	const link = screen.getByText(title).closest("a[data-row-main-button]");
 	if (!(link instanceof HTMLElement)) throw new Error(`no row ${title}`);
 	return link;
 }
 
-function label(element: Element | null): string {
+function label(element: Element | null): string
+{
 	return element?.getAttribute("aria-label") ?? element?.textContent ?? "";
 }
 
-describe("sidebar session list roving focus", () => {
-	beforeEach(() => {
+describe("sidebar session list roving focus", () =>
+{
+	beforeEach(() =>
+	{
 		installLocalStorage();
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 	});
 
-	it("takes row kebabs out of the tab order but keeps them clickable, and draws unread marks as plain status", async () => {
+	it("takes row kebabs out of the tab order but keeps them clickable, and draws unread marks as plain status", async () =>
+	{
 		__unreadStoreTesting.reset();
-		syncUnseenFromSummaries(FIXTURE.map(({id}) => ({id, unseen: true})));
+		syncUnseenFromSummaries(
+			FIXTURE.map(({id}) => (
+			{
+				id,
+				unseen: true,
+			})),
+		);
 		await renderGroups();
 
-		const kebabs = screen.getAllByRole("button", {name: /^More options for /});
-		expect({
-			kebabs: kebabs.map((kebab) => kebab.getAttribute("tabindex")),
-			// Upstream's trailing mark is not interactive; the row menu marks a session read.
-			markButtons: screen.queryAllByRole("button", {name: "Click to mark as read"}).length,
-			unread: screen.getAllByRole("status").filter((status) => status.textContent === " Unread response").length,
-		}).toStrictEqual({kebabs: ["-1", "-1", "-1"], markButtons: 0, unread: 3});
+		const kebabs = screen.getAllByRole(
+			"button",
+			{
+				name: /^More options for /,
+			},
+		);
+		expect(
+			{
+				kebabs: kebabs.map((kebab) => kebab.getAttribute("tabindex")),
+				// Upstream's trailing mark is not interactive; the row menu marks a session read.
+				markButtons: screen.queryAllByRole(
+					"button",
+					{
+						name: "Click to mark as read",
+					},
+				).length,
+				unread: screen.getAllByRole("status").filter((status) => status.textContent === " Unread response")
+					.length,
+			},
+		).toStrictEqual(
+			{
+				kebabs: ["-1", "-1", "-1"],
+				markButtons: 0,
+				unread: 3,
+			},
+		);
 
 		fireEvent.click(kebabs[0]!);
 		expect(await screen.findByRole("menu")).toBeTruthy();
@@ -137,71 +212,131 @@ async function renderSidebar(
 	path = "/",
 	sessions: readonly ReturnType<typeof session>[] = FIXTURE,
 	projects: readonly unknown[] = [],
-) {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+)
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
+	);
 	queryClient.setQueryData(projectsQueryOptions().queryKey, ProjectListResponse.parse(projects));
-	queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
-	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+	queryClient.setQueryData(
+		approvalsQueryOptions().queryKey,
+		{
+			approvals: [],
+		},
+	);
+	queryClient.setQueryData(
+		notificationsQueryOptions().queryKey,
+		{
+			notifications: [],
+		},
+	);
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
-	queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
-		terminalWritesEnabled: false,
-		terminalHost: "auto",
-		shellPaneEnabled: true,
-		visibleNavSections: ["projects", "plans"],
-		ignoredDirs: ["node_modules"],
-	});
+	queryClient.setQueryData(
+		applicationSettingsQueryOptions.queryKey,
+		{
+			terminalWritesEnabled: false,
+			terminalHost: "auto",
+			shellPaneEnabled: true,
+			visibleNavSections: ["projects", "plans"],
+			ignoredDirs: ["node_modules"],
+		},
+	);
 	queryClient.setQueryData(
 		recentSessionsInfiniteQueryOptions(undefined, DEFAULTS.sessionListPrefs.statusFilter).queryKey,
-		{pages: [RecentSessionsResponse.parse({sessions, nextCursor: null})], pageParams: [null]},
+		{
+			pages: [
+				RecentSessionsResponse.parse(
+					{
+						sessions,
+						nextCursor: null,
+					},
+				),
+			],
+			pageParams: [null],
+		},
 	);
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<SettingsProvider>
-						<Sidebar collapsed={false} />
-						<Outlet />
-					</SettingsProvider>
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/", component: () => null});
-	const sessionRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/session/$id",
-		component: () => null,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: [path]}),
-	});
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SettingsProvider>
+							<Sidebar collapsed={false} />
+							<Outlet />
+						</SettingsProvider>
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const homeRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => null,
+		},
+	);
+	const sessionRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/session/$id",
+			component: () => null,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [path],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
-	await waitFor(() => {
+	await waitFor(() =>
+	{
 		expect(document.querySelector("a[data-row-main-button]")).toBeTruthy();
 	});
 }
 
 /** An element's label, or the title of the session row whose link it is. */
-function name(element: Element | null): string {
+function name(element: Element | null): string
+{
 	if (element?.matches("button[data-row-nav][data-row-main-button]") === true) return "Search";
 	const row = FIXTURE.find(({title}) => element === rowLink(title));
 	return row?.title ?? label(element);
 }
 
 /** The focused element's label, or the title of the session row whose link holds focus. */
-function focused(): string {
+function focused(): string
+{
 	return name(document.activeElement);
 }
 
 /** Every element Tab would stop on inside the sidebar body, in DOM order. */
-function bodyTabStops(): string[] {
-	const body = screen.getByRole("link", {name: "New"}).closest("[data-sidebar-body]");
+function bodyTabStops(): string[]
+{
+	const body = screen
+		.getByRole(
+			"link",
+			{
+				name: "New",
+			},
+		)
+		.closest("[data-sidebar-body]");
 	if (body === null) throw new Error("no sidebar body");
 	return [...body.querySelectorAll<HTMLElement>("a[href], button, input, [tabindex]")]
 		.filter(
@@ -212,58 +347,101 @@ function bodyTabStops(): string[] {
 }
 
 /** Every roving item's tabindex attribute, keyed by label. */
-function rovingTabIndexes(): Record<string, string | null> {
+function rovingTabIndexes(): Record<string, string | null>
+{
 	return Object.fromEntries(
 		[...document.querySelectorAll("[data-roving-item]")].map((item) => [name(item), item.getAttribute("tabindex")]),
 	);
 }
 
 /** Presses `key` on the focused element and returns the newly focused element's label. */
-function press(key: string, init: {shiftKey?: boolean; metaKey?: boolean} = {}): string {
-	fireEvent.keyDown(document.activeElement!, {key, ...init});
+function press(
+	key: string,
+	init:
+	{
+		shiftKey?: boolean;
+		metaKey?: boolean;
+	} = {},
+): string
+{
+	fireEvent.keyDown(
+		document.activeElement!,
+		{
+			key,
+			...init,
+		},
+	);
 	return focused();
 }
 
-describe("sidebar body roving focus", () => {
+describe("sidebar body roving focus", () =>
+{
 	const scrollIntoView = vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>();
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		installLocalStorage();
 		// These cases rove Status groups, so store the grouping a browser would have chosen.
 		localStorage.setItem(
 			"ccp-session-list-prefs",
-			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}),
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					groupBy: "state",
+				},
+			),
 		);
 		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
 			"ResizeObserver",
-			class {
-				observe() {}
-				unobserve() {}
-				disconnect() {}
+			class
+			{
+				observe()
+				{
+				}
+				unobserve()
+				{
+				}
+				disconnect()
+				{
+				}
 			},
 		);
 		scrollIntoView.mockClear();
 		Element.prototype.scrollIntoView = scrollIntoView;
 		// jsdom lays nothing out, so every element's offsetParent is null; treat attached elements as rendered.
-		Object.defineProperty(HTMLElement.prototype, "offsetParent", {
-			configurable: true,
-			get(this: HTMLElement) {
-				return this.parentElement;
+		Object.defineProperty(
+			HTMLElement.prototype,
+			"offsetParent",
+			{
+				configurable: true,
+				get(this: HTMLElement)
+				{
+					return this.parentElement;
+				},
 			},
-		});
+		);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.unstubAllGlobals();
 		Reflect.deleteProperty(HTMLElement.prototype, "offsetParent");
 	});
 
-	it("roves down from New through the nav rows and More into the session list", async () => {
+	it("roves down from New through the nav rows and More into the session list", async () =>
+	{
 		await renderSidebar();
 
-		screen.getByRole("link", {name: "New"}).focus();
+		screen
+			.getByRole(
+				"link",
+				{
+					name: "New",
+				},
+			)
+			.focus();
 		expect([
 			press("ArrowDown"),
 			press("ArrowDown"),
@@ -272,56 +450,100 @@ describe("sidebar body roving focus", () => {
 			press("ArrowDown"),
 			press("ArrowDown"),
 		]).toEqual(["Search", "Projects", "Plans", "More navigation items", "Idle", "First row"]);
-		expect(scrollIntoView).toHaveBeenLastCalledWith({block: "nearest"});
+		expect(scrollIntoView).toHaveBeenLastCalledWith(
+			{
+				block: "nearest",
+			},
+		);
 	});
 
-	it("roves up from the first group toggle to More", async () => {
+	it("roves up from the first group toggle to More", async () =>
+	{
 		await renderSidebar();
 
-		screen.getByRole("button", {name: "Idle"}).focus();
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "Idle",
+				},
+			)
+			.focus();
 		expect(press("ArrowUp")).toBe("More navigation items");
 	});
 
-	it("wraps around both ends and jumps with Home and End", async () => {
+	it("wraps around both ends and jumps with Home and End", async () =>
+	{
 		await renderSidebar();
 
 		rowLink("Second row").focus();
-		expect({
-			end: press("End"),
-			wrapDown: press("ArrowDown"),
-			down: press("ArrowDown"),
-			wrapUp: [press("ArrowUp"), press("ArrowUp")],
-			home: (rowLink("First row").focus(), press("Home")),
-		}).toStrictEqual({
-			end: "Third row",
-			wrapDown: "New",
-			down: "Search",
-			wrapUp: ["New", "Third row"],
-			home: "New",
-		});
+		expect(
+			{
+				end: press("End"),
+				wrapDown: press("ArrowDown"),
+				down: press("ArrowDown"),
+				wrapUp: [press("ArrowUp"), press("ArrowUp")],
+				home: (rowLink("First row").focus(), press("Home")),
+			},
+		).toStrictEqual(
+			{
+				end: "Third row",
+				wrapDown: "New",
+				down: "Search",
+				wrapUp: ["New", "Third row"],
+				home: "New",
+			},
+		);
 	});
 
-	it("roves with Shift held but not with Meta", async () => {
+	it("roves with Shift held but not with Meta", async () =>
+	{
 		await renderSidebar();
 
 		rowLink("First row").focus();
-		expect([press("ArrowDown", {shiftKey: true}), press("ArrowDown", {metaKey: true})]).toEqual([
-			"Second row",
-			"Second row",
-		]);
+		expect([
+			press(
+				"ArrowDown",
+				{
+					shiftKey: true,
+				},
+			),
+			press(
+				"ArrowDown",
+				{
+					metaKey: true,
+				},
+			),
+		]).toEqual(["Second row", "Second row"]);
 	});
 
-	it("roves from a row's kebab to the next row", async () => {
+	it("roves from a row's kebab to the next row", async () =>
+	{
 		await renderSidebar();
 
-		screen.getByRole("button", {name: "More options for First row"}).focus();
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "More options for First row",
+				},
+			)
+			.focus();
 		expect(press("ArrowDown")).toBe("Second row");
 	});
 
-	it("moves along a group header's buttons with ArrowRight and ArrowLeft, clamping at the end", async () => {
+	it("moves along a group header's buttons with ArrowRight and ArrowLeft, clamping at the end", async () =>
+	{
 		await renderSidebar();
 
-		screen.getByRole("button", {name: "Idle"}).focus();
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "Idle",
+				},
+			)
+			.focus();
 		expect([
 			press("ArrowRight"),
 			press("ArrowRight"),
@@ -331,15 +553,22 @@ describe("sidebar body roving focus", () => {
 		]).toEqual(["Group and sort", "Group and sort", "Group and sort", "Idle", "First row"]);
 	});
 
-	it("reaches a project header's New session in {group} + with ArrowRight, and Tab reaches only the focused header's buttons", async () => {
+	it("reaches a project header's New session in {group} + with ArrowRight, and Tab reaches only the focused header's buttons", async () =>
+	{
 		localStorage.setItem(
 			"ccp-session-list-prefs",
-			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"}),
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					groupBy: "project",
+				},
+			),
 		);
 		await renderSidebar(
 			"/",
 			FIXTURE,
-			FIXTURE.map(({id, project, projectName}) => ({
+			FIXTURE.map(({id, project, projectName}) => (
+			{
 				id: project,
 				name: projectName,
 				projectPath: `/p/${id}`,
@@ -352,34 +581,58 @@ describe("sidebar body roving focus", () => {
 			})),
 		);
 
-		screen.getByRole("button", {name: "project-s2"}).focus();
-		expect({
-			along: [press("ArrowRight"), press("ArrowRight"), press("ArrowRight"), press("ArrowRight")],
-			back: [press("ArrowLeft"), press("ArrowLeft"), press("ArrowLeft"), press("ArrowLeft")],
-			stops: bodyTabStops(),
-			pluses: Object.fromEntries(
-				screen
-					.getAllByRole("button", {name: /^New session in /})
-					.map((button) => [label(button), button.getAttribute("tabindex")]),
-			),
-		}).toStrictEqual({
-			along: [
-				"More options for project-s2",
-				"Group and sort",
-				"New session in project-s2",
-				"New session in project-s2",
-			],
-			back: ["Group and sort", "More options for project-s2", "project-s2", "project-s2"],
-			stops: ["New", "project-s2", "More options for project-s2", "Group and sort", "New session in project-s2"],
-			pluses: {
-				"New session in project-s1": "-1",
-				"New session in project-s2": "0",
-				"New session in project-s3": "-1",
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "project-s2",
+				},
+			)
+			.focus();
+		expect(
+			{
+				along: [press("ArrowRight"), press("ArrowRight"), press("ArrowRight"), press("ArrowRight")],
+				back: [press("ArrowLeft"), press("ArrowLeft"), press("ArrowLeft"), press("ArrowLeft")],
+				stops: bodyTabStops(),
+				pluses: Object.fromEntries(
+					screen
+						.getAllByRole(
+							"button",
+							{
+								name: /^New session in /,
+							},
+						)
+						.map((button) => [label(button), button.getAttribute("tabindex")]),
+				),
 			},
-		});
+		).toStrictEqual(
+			{
+				along: [
+					"More options for project-s2",
+					"Group and sort",
+					"New session in project-s2",
+					"New session in project-s2",
+				],
+				back: ["Group and sort", "More options for project-s2", "project-s2", "project-s2"],
+				stops: [
+					"New",
+					"project-s2",
+					"More options for project-s2",
+					"Group and sort",
+					"New session in project-s2",
+				],
+				pluses:
+				{
+					"New session in project-s1": "-1",
+					"New session in project-s2": "0",
+					"New session in project-s3": "-1",
+				},
+			},
+		);
 	});
 
-	it("moves between a session row's link and its kebab with ArrowRight and ArrowLeft", async () => {
+	it("moves between a session row's link and its kebab with ArrowRight and ArrowLeft", async () =>
+	{
 		await renderSidebar();
 
 		rowLink("Second row").focus();
@@ -390,61 +643,150 @@ describe("sidebar body roving focus", () => {
 		]);
 	});
 
-	it("leaves ArrowRight alone on a nav row without actions", async () => {
+	it("leaves ArrowRight alone on a nav row without actions", async () =>
+	{
 		await renderSidebar();
 
-		const projects = screen.getByRole("link", {name: "Projects"});
+		const projects = screen.getByRole(
+			"link",
+			{
+				name: "Projects",
+			},
+		);
 		projects.focus();
-		const notPrevented = fireEvent.keyDown(projects, {key: "ArrowRight"});
-		expect({focused: focused(), notPrevented}).toStrictEqual({focused: "Projects", notPrevented: true});
+		const notPrevented = fireEvent.keyDown(
+			projects,
+			{
+				key: "ArrowRight",
+			},
+		);
+		expect(
+			{
+				focused: focused(),
+				notPrevented,
+			},
+		).toStrictEqual(
+			{
+				focused: "Projects",
+				notPrevented: true,
+			},
+		);
 	});
 
-	it("leaves tabindexes alone until focus first enters the body", async () => {
+	it("leaves tabindexes alone until focus first enters the body", async () =>
+	{
 		await renderSidebar();
 
 		expect([
-			screen.getByRole("link", {name: "New"}).getAttribute("tabindex"),
-			screen.getByRole("link", {name: "Projects"}).getAttribute("tabindex"),
+			screen
+				.getByRole(
+					"link",
+					{
+						name: "New",
+					},
+				)
+				.getAttribute("tabindex"),
+			screen
+				.getByRole(
+					"link",
+					{
+						name: "Projects",
+					},
+				)
+				.getAttribute("tabindex"),
 		]).toEqual([null, null]);
 	});
 
-	it("gives the header and nav rows one tab stop and the session list another", async () => {
+	it("gives the header and nav rows one tab stop and the session list another", async () =>
+	{
 		await renderSidebar();
 
-		screen.getByRole("link", {name: "New"}).focus();
-		expect({
-			stops: bodyTabStops(),
-			groupAndSort: screen
-				.getAllByRole("button", {name: "Group and sort"})
-				.map((button) => button.getAttribute("tabindex")),
-		}).toStrictEqual({stops: ["New", "Idle"], groupAndSort: ["-1"]});
+		screen
+			.getByRole(
+				"link",
+				{
+					name: "New",
+				},
+			)
+			.focus();
+		expect(
+			{
+				stops: bodyTabStops(),
+				groupAndSort: screen
+					.getAllByRole(
+						"button",
+						{
+							name: "Group and sort",
+						},
+					)
+					.map((button) => button.getAttribute("tabindex")),
+			},
+		).toStrictEqual(
+			{
+				stops: ["New", "Idle"],
+				groupAndSort: ["-1"],
+			},
+		);
 	});
 
-	it("keeps every group header button out of the tab order across several groups", async () => {
+	it("keeps every group header button out of the tab order across several groups", async () =>
+	{
 		await renderSidebar("/", [
-			{...session("s1", "First row", 1), state: "waiting", bucket: "blocked"},
-			{...session("s2", "Second row", 2), state: "working", bucket: "working"},
+			{
+				...session("s1", "First row", 1),
+				state: "waiting",
+				bucket: "blocked",
+			},
+			{
+				...session("s2", "Second row", 2),
+				state: "working",
+				bucket: "working",
+			},
 			session("s3", "Third row", 3),
 		]);
 
-		screen.getByRole("link", {name: "New"}).focus();
-		expect({
-			toggles: [...document.querySelectorAll("[data-group-toggle]")].map(name),
-			stops: bodyTabStops(),
-			groupAndSort: screen
-				.getAllByRole("button", {name: "Group and sort"})
-				.map((button) => button.getAttribute("tabindex")),
-		}).toStrictEqual({
-			toggles: ["Pinned", "Needs input", "Working", "Idle"],
-			stops: ["New", "Needs input"],
-			groupAndSort: ["-1", "-1", "-1"],
-		});
+		screen
+			.getByRole(
+				"link",
+				{
+					name: "New",
+				},
+			)
+			.focus();
+		expect(
+			{
+				toggles: [...document.querySelectorAll("[data-group-toggle]")].map(name),
+				stops: bodyTabStops(),
+				groupAndSort: screen
+					.getAllByRole(
+						"button",
+						{
+							name: "Group and sort",
+						},
+					)
+					.map((button) => button.getAttribute("tabindex")),
+			},
+		).toStrictEqual(
+			{
+				toggles: ["Pinned", "Needs input", "Working", "Idle"],
+				stops: ["New", "Needs input"],
+				groupAndSort: ["-1", "-1", "-1"],
+			},
+		);
 	});
 
-	it("keeps the last focused nav row as the nav stop after focus moves into the list", async () => {
+	it("keeps the last focused nav row as the nav stop after focus moves into the list", async () =>
+	{
 		await renderSidebar();
 
-		screen.getByRole("link", {name: "New"}).focus();
+		screen
+			.getByRole(
+				"link",
+				{
+					name: "New",
+				},
+			)
+			.focus();
 		press("ArrowDown");
 		press("ArrowDown");
 		press("ArrowDown");
@@ -453,49 +795,122 @@ describe("sidebar body roving focus", () => {
 		expect(bodyTabStops()).toEqual(["More navigation items", "First row", "More options for First row"]);
 	});
 
-	it("keeps the first item as the tab stop when a row is selected", async () => {
+	it("keeps the first item as the tab stop when a row is selected", async () =>
+	{
 		await renderSidebar("/session/s2");
 
 		expect(rowLink("Second row").dataset["selected"]).toBe("focused");
-		screen.getByRole("link", {name: "New"}).focus();
+		screen
+			.getByRole(
+				"link",
+				{
+					name: "New",
+				},
+			)
+			.focus();
 		expect(bodyTabStops()).toEqual(["New", "Idle"]);
 	});
 
-	it("makes the Search row the nav stop once it holds focus, and roves from it to the first nav row", async () => {
+	it("makes the Search row the nav stop once it holds focus, and roves from it to the first nav row", async () =>
+	{
 		await renderSidebar();
 
-		screen.getByRole("link", {name: "New"}).focus();
+		screen
+			.getByRole(
+				"link",
+				{
+					name: "New",
+				},
+			)
+			.focus();
 		const fromNew = press("ArrowDown");
-		expect({
-			fromNew,
-			stops: bodyTabStops(),
-			newTabIndex: screen.getByRole("link", {name: "New"}).getAttribute("tabindex"),
-			down: press("ArrowDown"),
-		}).toStrictEqual({fromNew: "Search", stops: ["Search", "Idle"], newTabIndex: "-1", down: "Projects"});
+		expect(
+			{
+				fromNew,
+				stops: bodyTabStops(),
+				newTabIndex: screen
+					.getByRole(
+						"link",
+						{
+							name: "New",
+						},
+					)
+					.getAttribute("tabindex"),
+				down: press("ArrowDown"),
+			},
+		).toStrictEqual(
+			{
+				fromNew: "Search",
+				stops: ["Search", "Idle"],
+				newTabIndex: "-1",
+				down: "Projects",
+			},
+		);
 	});
 
-	it("puts the focused row's kebab in the tab order and takes it out again when focus moves on", async () => {
+	it("puts the focused row's kebab in the tab order and takes it out again when focus moves on", async () =>
+	{
 		await renderSidebar();
 
 		const kebabs = () =>
-			screen.getAllByRole("button", {name: /^More options for /}).map((kebab) => kebab.getAttribute("tabindex"));
+			screen
+				.getAllByRole(
+					"button",
+					{
+						name: /^More options for /,
+					},
+				)
+				.map((kebab) => kebab.getAttribute("tabindex"));
 		rowLink("First row").focus();
-		const first = {kebabs: kebabs(), stops: bodyTabStops()};
+		const first =
+		{
+			kebabs: kebabs(),
+			stops: bodyTabStops(),
+		};
 		rowLink("Second row").focus();
-		expect({first, second: kebabs()}).toStrictEqual({
-			first: {kebabs: ["0", "-1", "-1"], stops: ["New", "First row", "More options for First row"]},
-			second: ["-1", "0", "-1"],
-		});
+		expect(
+			{
+				first,
+				second: kebabs(),
+			},
+		).toStrictEqual(
+			{
+				first:
+				{
+					kebabs: ["0", "-1", "-1"],
+					stops: ["New", "First row", "More options for First row"],
+				},
+				second: ["-1", "0", "-1"],
+			},
+		);
 	});
 
-	it("puts a focused group toggle's Group and sort in the tab order", async () => {
+	it("puts a focused group toggle's Group and sort in the tab order", async () =>
+	{
 		await renderSidebar();
 
-		screen.getByRole("button", {name: "Idle"}).focus();
-		expect(screen.getByRole("button", {name: "Group and sort"}).getAttribute("tabindex")).toBe("0");
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "Idle",
+				},
+			)
+			.focus();
+		expect(
+			screen
+				.getByRole(
+					"button",
+					{
+						name: "Group and sort",
+					},
+				)
+				.getAttribute("tabindex"),
+		).toBe("0");
 	});
 
-	it("keeps an arrows-only control in the focused row out of the tab order", async () => {
+	it("keeps an arrows-only control in the focused row out of the tab order", async () =>
+	{
 		await renderSidebar();
 
 		const row = rowLink("First row").closest("[data-row]")!;
@@ -507,37 +922,72 @@ describe("sidebar body roving focus", () => {
 		arrowsOnly.append(glyph);
 		row.append(arrowsOnly);
 		rowLink("First row").focus();
-		expect({
-			glyph: glyph.getAttribute("tabindex"),
-			kebab: screen.getByRole("button", {name: "More options for First row"}).getAttribute("tabindex"),
-		}).toStrictEqual({glyph: "-1", kebab: "0"});
+		expect(
+			{
+				glyph: glyph.getAttribute("tabindex"),
+				kebab: screen
+					.getByRole(
+						"button",
+						{
+							name: "More options for First row",
+						},
+					)
+					.getAttribute("tabindex"),
+			},
+		).toStrictEqual(
+			{
+				glyph: "-1",
+				kebab: "0",
+			},
+		);
 	});
 
-	it("keeps the section's remembered row as its stop while a group header button holds focus", async () => {
+	it("keeps the section's remembered row as its stop while a group header button holds focus", async () =>
+	{
 		await renderSidebar();
 
-		const groupAndSort = screen.getByRole("button", {name: "Group and sort"});
+		const groupAndSort = screen.getByRole(
+			"button",
+			{
+				name: "Group and sort",
+			},
+		);
 		groupAndSort.focus();
 		const nothingRemembered = rovingTabIndexes()["Idle"];
 		rowLink("Second row").focus();
 		groupAndSort.focus();
 		const indexes = rovingTabIndexes();
-		expect({nothingRemembered, toggle: indexes["Idle"], row: indexes["Second row"]}).toStrictEqual({
-			nothingRemembered: "0",
-			toggle: "-1",
-			row: "0",
-		});
+		expect(
+			{
+				nothingRemembered,
+				toggle: indexes["Idle"],
+				row: indexes["Second row"],
+			},
+		).toStrictEqual(
+			{
+				nothingRemembered: "0",
+				toggle: "-1",
+				row: "0",
+			},
+		);
 	});
 
-	it("roves past a project header's kebab with ArrowDown instead of opening its menu", async () => {
+	it("roves past a project header's kebab with ArrowDown instead of opening its menu", async () =>
+	{
 		localStorage.setItem(
 			"ccp-session-list-prefs",
-			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"}),
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					groupBy: "project",
+				},
+			),
 		);
 		await renderSidebar(
 			"/",
 			FIXTURE,
-			FIXTURE.map(({id, project, projectName}) => ({
+			FIXTURE.map(({id, project, projectName}) => (
+			{
 				id: project,
 				name: projectName,
 				projectPath: `/p/${id}`,
@@ -550,161 +1000,327 @@ describe("sidebar body roving focus", () => {
 			})),
 		);
 
-		screen.getByRole("button", {name: "More options for project-s2"}).focus();
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "More options for project-s2",
+				},
+			)
+			.focus();
 		const moved = press("ArrowDown");
-		await new Promise((resolve) => {
+		await new Promise((resolve) =>
+		{
 			setTimeout(resolve, 50);
 		});
-		expect({moved, menu: screen.queryByRole("menu") !== null}).toStrictEqual({moved: "Second row", menu: false});
+		expect(
+			{
+				moved,
+				menu: screen.queryByRole("menu") !== null,
+			},
+		).toStrictEqual(
+			{
+				moved: "Second row",
+				menu: false,
+			},
+		);
 	});
 
-	it("re-chooses the tab stops when Tab is pressed", async () => {
+	it("re-chooses the tab stops when Tab is pressed", async () =>
+	{
 		await renderSidebar();
 
-		screen.getByRole("link", {name: "New"}).focus();
-		screen.getByRole("button", {name: "Idle"}).setAttribute("tabindex", "-1");
-		fireEvent.keyDown(document.activeElement!, {key: "Tab"});
+		screen
+			.getByRole(
+				"link",
+				{
+					name: "New",
+				},
+			)
+			.focus();
+		screen
+			.getByRole(
+				"button",
+				{
+					name: "Idle",
+				},
+			)
+			.setAttribute("tabindex", "-1");
+		fireEvent.keyDown(
+			document.activeElement!,
+			{
+				key: "Tab",
+			},
+		);
 		expect(bodyTabStops()).toEqual(["New", "Idle"]);
 	});
 
-	it("leaves the tab stops alone while rows are selected", async () => {
+	it("leaves the tab stops alone while rows are selected", async () =>
+	{
 		await renderSidebar();
 
-		screen.getByRole("link", {name: "New"}).focus();
-		fireEvent.click(rowLink("First row"), {metaKey: true});
+		screen
+			.getByRole(
+				"link",
+				{
+					name: "New",
+				},
+			)
+			.focus();
+		fireEvent.click(
+			rowLink("First row"),
+			{
+				metaKey: true,
+			},
+		);
 		const before = rovingTabIndexes();
 		rowLink("Second row").focus();
 		expect(rovingTabIndexes()).toStrictEqual(before);
 	});
 });
 
-describe("sidebar row context menu keys", () => {
+describe("sidebar row context menu keys", () =>
+{
 	const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 	const LINUX_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36";
 
-	function stubUserAgent(userAgent: string): void {
+	function stubUserAgent(userAgent: string): void
+	{
 		vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue(userAgent);
 	}
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		installLocalStorage();
 		// These cases rove Status groups, so store the grouping a browser would have chosen.
 		localStorage.setItem(
 			"ccp-session-list-prefs",
-			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}),
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					groupBy: "state",
+				},
+			),
 		);
 		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
 			"ResizeObserver",
-			class {
-				observe() {}
-				unobserve() {}
-				disconnect() {}
+			class
+			{
+				observe()
+				{
+				}
+				unobserve()
+				{
+				}
+				disconnect()
+				{
+				}
 			},
 		);
-		Element.prototype.scrollIntoView = () => {};
-		Object.defineProperty(HTMLElement.prototype, "offsetParent", {
-			configurable: true,
-			get(this: HTMLElement) {
-				return this.parentElement;
+		Element.prototype.scrollIntoView = () =>
+		{
+		};
+		Object.defineProperty(
+			HTMLElement.prototype,
+			"offsetParent",
+			{
+				configurable: true,
+				get(this: HTMLElement)
+				{
+					return this.parentElement;
+				},
 			},
-		});
+		);
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 		Reflect.deleteProperty(HTMLElement.prototype, "offsetParent");
 	});
 
-	async function contextMenuState(notPrevented: boolean) {
-		await waitFor(() => {
+	async function contextMenuState(notPrevented: boolean)
+	{
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("menu")).toBeTruthy();
 		});
 		return {
 			notPrevented,
 			menu: screen.queryByRole("menu") !== null,
 			kebabExpanded: screen
-				.getByRole("button", {name: "More options for Second row", hidden: true})
+				.getByRole(
+					"button",
+					{
+						name: "More options for Second row",
+						hidden: true,
+					},
+				)
 				.getAttribute("aria-expanded"),
 		};
 	}
 
-	it("opens the row's context menu, not its kebab menu, with Shift+F10 on macOS", async () => {
+	it("opens the row's context menu, not its kebab menu, with Shift+F10 on macOS", async () =>
+	{
 		stubUserAgent(MAC_UA);
 		await renderSidebar();
 
 		rowLink("Second row").focus();
-		const notPrevented = fireEvent.keyDown(document.activeElement!, {key: "F10", shiftKey: true});
-		expect(await contextMenuState(notPrevented)).toStrictEqual({
-			notPrevented: false,
-			menu: true,
-			kebabExpanded: "false",
-		});
+		const notPrevented = fireEvent.keyDown(
+			document.activeElement!,
+			{
+				key: "F10",
+				shiftKey: true,
+			},
+		);
+		expect(await contextMenuState(notPrevented)).toStrictEqual(
+			{
+				notPrevented: false,
+				menu: true,
+				kebabExpanded: "false",
+			},
+		);
 	});
 
-	it("opens the row's context menu with the Menu key on macOS", async () => {
+	it("opens the row's context menu with the Menu key on macOS", async () =>
+	{
 		stubUserAgent(MAC_UA);
 		await renderSidebar();
 
 		rowLink("Second row").focus();
-		const notPrevented = fireEvent.keyDown(document.activeElement!, {key: "ContextMenu"});
-		expect(await contextMenuState(notPrevented)).toStrictEqual({
-			notPrevented: false,
-			menu: true,
-			kebabExpanded: "false",
-		});
+		const notPrevented = fireEvent.keyDown(
+			document.activeElement!,
+			{
+				key: "ContextMenu",
+			},
+		);
+		expect(await contextMenuState(notPrevented)).toStrictEqual(
+			{
+				notPrevented: false,
+				menu: true,
+				kebabExpanded: "false",
+			},
+		);
 	});
 
-	it("leaves Shift+F10 to the browser's native contextmenu event off macOS", async () => {
+	it("leaves Shift+F10 to the browser's native contextmenu event off macOS", async () =>
+	{
 		stubUserAgent(LINUX_UA);
 		await renderSidebar();
 
 		rowLink("Second row").focus();
-		const notPrevented = fireEvent.keyDown(document.activeElement!, {key: "F10", shiftKey: true});
-		expect({notPrevented, menu: screen.queryByRole("menu") !== null, focused: focused()}).toStrictEqual({
-			notPrevented: true,
-			menu: false,
-			focused: "Second row",
-		});
+		const notPrevented = fireEvent.keyDown(
+			document.activeElement!,
+			{
+				key: "F10",
+				shiftKey: true,
+			},
+		);
+		expect(
+			{
+				notPrevented,
+				menu: screen.queryByRole("menu") !== null,
+				focused: focused(),
+			},
+		).toStrictEqual(
+			{
+				notPrevented: true,
+				menu: false,
+				focused: "Second row",
+			},
+		);
 	});
 
-	it("opens the row's context menu with Ctrl+Enter on macOS without following the link", async () => {
+	it("opens the row's context menu with Ctrl+Enter on macOS without following the link", async () =>
+	{
 		stubUserAgent(MAC_UA);
 		await renderSidebar();
 
 		rowLink("Second row").focus();
-		const notPrevented = fireEvent.keyDown(document.activeElement!, {key: "Enter", ctrlKey: true});
+		const notPrevented = fireEvent.keyDown(
+			document.activeElement!,
+			{
+				key: "Enter",
+				ctrlKey: true,
+			},
+		);
 		// Prevented, so the link's Enter activation doesn't follow it.
-		expect(await contextMenuState(notPrevented)).toStrictEqual({
-			notPrevented: false,
-			menu: true,
-			kebabExpanded: "false",
-		});
+		expect(await contextMenuState(notPrevented)).toStrictEqual(
+			{
+				notPrevented: false,
+				menu: true,
+				kebabExpanded: "false",
+			},
+		);
 	});
 
-	it("swallows a held Enter while a menu is open, and on its menu items, on macOS", async () => {
+	it("swallows a held Enter while a menu is open, and on its menu items, on macOS", async () =>
+	{
 		stubUserAgent(MAC_UA);
 		await renderSidebar();
 
 		rowLink("Second row").focus();
-		const withoutMenu = fireEvent.keyDown(document.activeElement!, {key: "Enter", repeat: true});
-		fireEvent.keyDown(document.activeElement!, {key: "Enter", ctrlKey: true});
+		const withoutMenu = fireEvent.keyDown(
+			document.activeElement!,
+			{
+				key: "Enter",
+				repeat: true,
+			},
+		);
+		fireEvent.keyDown(
+			document.activeElement!,
+			{
+				key: "Enter",
+				ctrlKey: true,
+			},
+		);
 		// Base UI moves focus into the menu a frame after it mounts; wait for that to settle.
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(document.activeElement?.getAttribute("role")).toBe("menu");
 		});
 		// The handler judges the focused element, as upstream does, so the held Enter must come from the row.
 		rowLink("Second row").focus();
-		const rowFocusedWithMenu = {focused: focused(), menu: screen.queryByRole("menu") !== null};
-		const withMenu = fireEvent.keyDown(document.activeElement!, {key: "Enter", repeat: true});
-		const onMenuItem = fireEvent.keyDown(screen.getAllByRole("menuitem")[0]!, {key: "Enter", repeat: true});
-		expect({withoutMenu, rowFocusedWithMenu, withMenu, onMenuItem}).toStrictEqual({
-			withoutMenu: true,
-			rowFocusedWithMenu: {focused: "Second row", menu: true},
-			withMenu: false,
-			onMenuItem: false,
-		});
+		const rowFocusedWithMenu =
+		{
+			focused: focused(),
+			menu: screen.queryByRole("menu") !== null,
+		};
+		const withMenu = fireEvent.keyDown(
+			document.activeElement!,
+			{
+				key: "Enter",
+				repeat: true,
+			},
+		);
+		const onMenuItem = fireEvent.keyDown(
+			screen.getAllByRole("menuitem")[0]!,
+			{
+				key: "Enter",
+				repeat: true,
+			},
+		);
+		expect(
+			{
+				withoutMenu,
+				rowFocusedWithMenu,
+				withMenu,
+				onMenuItem,
+			},
+		).toStrictEqual(
+			{
+				withoutMenu: true,
+				rowFocusedWithMenu:
+				{
+					focused: "Second row",
+					menu: true,
+				},
+				withMenu: false,
+				onMenuItem: false,
+			},
+		);
 	});
 });

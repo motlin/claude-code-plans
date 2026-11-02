@@ -1,13 +1,15 @@
 import type {ReactNode} from "react";
 
-import {
+import
+{
 	ENVIRONMENT_BAR_LINE_CLASS,
 	ENVIRONMENT_BAR_LINE_HOST_CLASS,
 	ENVIRONMENT_BAR_NOTE_CLASS,
 } from "../composer-tokens";
 
 /** Upstream's bar line value (`ma`): a blocking reason in danger ink, or a muted note. */
-export interface EnvironmentBarLine {
+export interface EnvironmentBarLine
+{
 	kind: "blocking" | "note";
 	content: ReactNode;
 }
@@ -17,7 +19,8 @@ export interface EnvironmentBarLine {
  * `bottom-1.5`, so it paints 6px above the card. A `line` wins; the custom-group `note` takes the line only when
  * there is none (upstream `zSe(ma)`), so callers pass the note only then.
  */
-export function EnvironmentBarLineHost({line, note}: {line: EnvironmentBarLine | null; note: ReactNode}) {
+export function EnvironmentBarLineHost({line, note}: {line: EnvironmentBarLine | null; note: ReactNode})
+{
 	const shown = line !== null || (note !== null && note !== undefined && note !== false);
 	return (
 		<div data-environment-bar-line-host="" className={ENVIRONMENT_BAR_LINE_HOST_CLASS}>

@@ -8,8 +8,10 @@ const HEADER_OPEN = '<header data-cds="PageHeader" data-band="tall" class="@cont
 const MOTION_OPEN =
 	'<div data-cds-part="page-title-motion" class="flex min-w-0 flex-col basis-full origin-left opacity-[var(--cds-page-header-title-opacity,1)] transition-opacity duration-150 rtl:origin-right"><div data-cds-part="title-row">';
 
-describe("ListPageHeader", () => {
-	it("sets upstream's 24/32 serif PageHeader title over a 13px muted count caption", () => {
+describe("ListPageHeader", () =>
+{
+	it("sets upstream's 24/32 serif PageHeader title over a 13px muted count caption", () =>
+	{
 		const markup = [0, 1, 100].map((count) =>
 			renderToStaticMarkup(<ListPageHeader title="Items" count={count} itemLabel="item" />),
 		);
@@ -22,7 +24,8 @@ describe("ListPageHeader", () => {
 		);
 	});
 
-	it("puts the actions on the toolbar row, right-aligned", () => {
+	it("puts the actions on the toolbar row, right-aligned", () =>
+	{
 		const markup = renderToStaticMarkup(
 			<ListPageHeader title="Tasks" count={2} itemLabel="task" actions={<button type="button">List</button>} />,
 		);
@@ -32,7 +35,8 @@ describe("ListPageHeader", () => {
 		);
 	});
 
-	it("pluralizes consonant-y labels with -ies", () => {
+	it("pluralizes consonant-y labels with -ies", () =>
+	{
 		const markup = renderToStaticMarkup(<ListPageHeader title="Claude Memories" count={2} itemLabel="memory" />);
 		expect(markup).toContain("2 memories");
 

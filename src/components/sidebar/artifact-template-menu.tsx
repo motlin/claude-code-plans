@@ -13,7 +13,13 @@ const LABEL = "New from a template";
  * Upstream's Artifacts row: the nav link plus a hover "+" that opens the "New from a template" menu. Locally a
  * pick opens home with `?create=<slug>`, prefilling the composer with a starter prompt; nothing is sent.
  */
-export function ArtifactsNavRow({children}: Readonly<{children: ReactNode}>) {
+export function ArtifactsNavRow({
+	children,
+}: Readonly<
+{
+	children: ReactNode;
+}>)
+{
 	const navigate = useNavigate();
 	const [open, setOpen] = useState(false);
 	return (
@@ -44,7 +50,10 @@ export function ArtifactsNavRow({children}: Readonly<{children: ReactNode}>) {
 						align="start"
 						sideOffset={4}
 						className="w-[240px]"
-						popupProps={{"aria-label": LABEL}}
+						popupProps={
+						{
+							"aria-label": LABEL,
+						}}
 					>
 						{ARTIFACT_TEMPLATES.map((template) => (
 							<Fragment key={template.slug}>
@@ -52,7 +61,17 @@ export function ArtifactsNavRow({children}: Readonly<{children: ReactNode}>) {
 								{template.slug === "dashboard" && <MenuSeparator />}
 								<MenuItem
 									icon={<ArtifactMark kind={template.markKind} size="menu" />}
-									onSelect={() => void navigate({to: "/", search: {create: template.slug}})}
+									onSelect={() =>
+										void navigate(
+											{
+												to: "/",
+												search:
+												{
+													create: template.slug,
+												},
+											},
+										)
+									}
 								>
 									<span className="flex min-w-0 items-center">
 										<span className="truncate">{template.label}</span>

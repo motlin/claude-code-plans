@@ -30,7 +30,8 @@ const PAINT_CLASS =
 const LABEL_CLASS = "inline-flex min-w-0 items-center gap-1";
 
 /** One action of the selection bar or diff chip: upstream's cds ghost `Button` with its paint layer and label. */
-export function SelectionBarButton({children, ...props}: Omit<ComponentProps<"button">, "type" | "className">) {
+export function SelectionBarButton({children, ...props}: Omit<ComponentProps<"button">, "type" | "className">)
+{
 	return (
 		<button type="button" data-cds="Button" data-cds-ghost="" className={SELECTION_BAR_BUTTON_CLASS} {...props}>
 			<span aria-hidden="true" className={PAINT_LAYER_CLASS}>
@@ -43,35 +44,63 @@ export function SelectionBarButton({children, ...props}: Omit<ComponentProps<"bu
 const SEPARATOR_CLASS =
 	"w-px my-[7px] bg-alpha-2 shrink-0 transition-opacity motion-reduce:transition-none group-hover/split:opacity-0 group-focus-within/split:opacity-0";
 
-interface BarAction {
+interface BarAction
+{
 	label: string;
 	run: (text: string) => void;
 }
 
-function truncateExcerpt(text: string): string {
+function truncateExcerpt(text: string): string
+{
 	return text.length > EXCERPT_MAX_LENGTH ? `${text.slice(0, EXCERPT_MAX_LENGTH)}…` : text;
 }
 
-function clearSelection(doc: Document): void {
+function clearSelection(doc: Document): void
+{
 	doc.getSelection()?.removeAllRanges();
 }
 
 /** The selection's first line, which the bar centres on like upstream `Ql`. */
-function firstLineRect(range: Range): DOMRect {
+function firstLineRect(range: Range): DOMRect
+{
 	return range.getClientRects()[0] ?? range.getBoundingClientRect();
 }
 
 /** The visible bounds the bar stays inside: the transcript scroller, or the viewport when the document scrolls. */
-function boundsOf(container: Element): {left: number; right: number; top: number} {
+function boundsOf(container: Element):
+{
+	left: number;
+	right: number;
+	top: number;
+}
+{
 	const scroller = findScrollContainer(container);
 	if (scroller === document.scrollingElement || scroller === document.documentElement)
-		return {left: 0, right: window.innerWidth, top: 0};
+		return {
+			left: 0,
+			right: window.innerWidth,
+			top: 0,
+		};
 	const {left, right, top} = scroller.getBoundingClientRect();
-	return {left, right, top};
+	return {
+		left,
+		right,
+		top,
+	};
 }
 
 /** Upstream `Ql`'s placement: centred on the first line, clamped inside the bounds, above when it fits. */
-function placeBar(range: Range, bar: Element, container: Element): {x: number; y: number; top: number} {
+function placeBar(
+	range: Range,
+	bar: Element,
+	container: Element,
+):
+{
+	x: number;
+	y: number;
+	top: number;
+}
+{
 	const line = firstLineRect(range);
 	const {width, height} = bar.getBoundingClientRect();
 	const bounds = boundsOf(container);
@@ -80,21 +109,35 @@ function placeBar(range: Range, bar: Element, container: Element): {x: number; y
 	const x = Math.min(Math.max(line.left + line.width / 2, min), Math.max(min, max));
 	const above = line.top - height - BAR_GAP;
 	const y = above >= bounds.top + EDGE_INSET ? above : line.bottom + BAR_GAP;
-	return {x: Math.round(x), y: Math.round(y), top: line.top};
+	return {
+		x: Math.round(x),
+		y: Math.round(y),
+		top: line.top,
+	};
 }
 
 /** Whether any menu popup is open, under which upstream hides the bar but keeps it mounted. */
-function useAnyMenuOpen(active: boolean): boolean {
+function useAnyMenuOpen(active: boolean): boolean
+{
 	const [open, setOpen] = useState(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!active) return undefined;
-		const check = () => {
+		const check = () =>
+		{
 			setOpen(document.querySelector('[role="menu"]') !== null);
 		};
 		check();
 		const observer = new MutationObserver(check);
-		observer.observe(document.body, {childList: true, subtree: true});
-		return () => {
+		observer.observe(
+			document.body,
+			{
+				childList: true,
+				subtree: true,
+			},
+		);
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [active]);
@@ -113,7 +156,8 @@ export function TranscriptSelectionBar({
 	sessionId: string;
 	containerRef: RefObject<Element | null>;
 	sideChatAvailable: boolean;
-}) {
+})
+{
 	const {selection: shown, hide} = useTranscriptSelection(containerRef);
 	const sideChat = useSideChat(sessionId);
 	const menuOpen = useAnyMenuOpen(shown !== null);
@@ -121,17 +165,29 @@ export function TranscriptSelectionBar({
 	const actions: BarAction[] = [];
 	const sideChatBusy = sideChat.entries.some((entry) => entry.status === "pending");
 	if (sideChatAvailable && !sideChatBusy)
-		actions.push({
-			label: sideChat.open ? "Send to side chat" : "Start a side chat",
-			run: (text) => {
-				openSideChatWithContext(sessionId, truncateExcerpt(text));
+		actions.push(
+			{
+				label: sideChat.open ? "Send to side chat" : "Start a side chat",
+				run: (text) =>
+				{
+					openSideChatWithContext(sessionId, truncateExcerpt(text));
+				},
 			},
-		});
+		);
 	if (hasComposer(sessionId))
-		actions.push({
-			label: "Reply",
-			run: (text) => attachContext(sessionId, {kind: "excerpt", text: truncateExcerpt(text)}),
-		});
+		actions.push(
+			{
+				label: "Reply",
+				run: (text) =>
+					attachContext(
+						sessionId,
+						{
+							kind: "excerpt",
+							text: truncateExcerpt(text),
+						},
+					),
+			},
+		);
 
 	if (shown === null || actions.length === 0) return null;
 	return (
@@ -159,13 +215,19 @@ function SelectionBarHost({
 	actions: readonly BarAction[];
 	hidden: boolean;
 	onHide: () => void;
-}) {
+})
+{
 	const barRef = useRef<HTMLDivElement>(null);
-	const [position, setPosition] = useState<{x: number; y: number} | null>(null);
+	const [position, setPosition] = useState<
+	{
+		x: number;
+		y: number;
+	} | null>(null);
 	const onHideRef = useRef(onHide);
 	onHideRef.current = onHide;
 
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		const bar = barRef.current;
 		const container = containerRef.current;
 		if (bar === null || container === null) return undefined;
@@ -173,26 +235,37 @@ function SelectionBarHost({
 		setPosition(initial);
 		let frame: number | undefined;
 		let scheduled = false;
-		const reposition = () => {
+		const reposition = () =>
+		{
 			if (scheduled) return;
 			scheduled = true;
-			frame = requestAnimationFrame(() => {
+			frame = requestAnimationFrame(() =>
+			{
 				scheduled = false;
 				const next = placeBar(selection.range, bar, container);
 				if (Math.abs(next.top - initial.top) > HIDE_AFTER_SCROLL) onHideRef.current();
 				else setPosition(next);
 			});
 		};
-		document.addEventListener("scroll", reposition, {capture: true, passive: true});
+		document.addEventListener(
+			"scroll",
+			reposition,
+			{
+				capture: true,
+				passive: true,
+			},
+		);
 		window.addEventListener("resize", reposition);
-		return () => {
+		return () =>
+		{
 			if (scheduled && frame !== undefined) cancelAnimationFrame(frame);
 			document.removeEventListener("scroll", reposition, true);
 			window.removeEventListener("resize", reposition);
 		};
 	}, [selection, containerRef]);
 
-	const run = (action: BarAction) => {
+	const run = (action: BarAction) =>
+	{
 		action.run(selection.text);
 		clearSelection(selection.range.startContainer.ownerDocument ?? document);
 		onHide();
@@ -202,11 +275,17 @@ function SelectionBarHost({
 		<div
 			data-transcript-selection-host=""
 			className={HOST_CLASS}
-			style={{
+			style={
+			{
 				zIndex: 55,
 				transform:
 					position === null ? undefined : `translate(${position.x}px, ${position.y}px) translateX(-50%)`,
-				...(position === null ? {visibility: "hidden"} : {}),
+				...(position === null
+					?
+						{
+							visibility: "hidden",
+						}
+					: {}),
 			}}
 		>
 			<div
@@ -214,16 +293,25 @@ function SelectionBarHost({
 				data-transcript-selection-bar=""
 				data-surface="popover"
 				className={SELECTION_BAR_CLASS}
-				style={hidden ? {visibility: "hidden"} : undefined}
+				style={
+					hidden
+						?
+							{
+								visibility: "hidden",
+							}
+						: undefined
+				}
 			>
 				{actions.map((action, index) => (
 					<Fragment key={action.label}>
 						{index > 0 && <span aria-hidden="true" className={SEPARATOR_CLASS} />}
 						<SelectionBarButton
-							onMouseDown={(event) => {
+							onMouseDown={(event) =>
+							{
 								event.preventDefault();
 							}}
-							onClick={() => {
+							onClick={() =>
+							{
 								run(action);
 							}}
 						>

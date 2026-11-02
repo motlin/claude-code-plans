@@ -13,26 +13,31 @@ export const DIALOG_BAND_BODY_CLASS =
 	"[scroll-timeline:--sc-dialog-scroll_block] [:where([data-cds-tall-window])_&]:has-[[data-cds-part=band]]:scroll-fade-hide-top [:where([data-cds-tall-window])_&]:scroll-pt-[56px] panels-fine:[:where([data-cds-tall-window])_&]:scroll-pt-[52px]";
 
 /** `DIALOG_BAND_BODY_CLASS` while panels renders the band, else nothing (upstream `Xn` alone). */
-export function useDialogBandBodyClass(): string {
+export function useDialogBandBodyClass(): string
+{
 	return useFizzyLake("panels") ? DIALOG_BAND_BODY_CLASS : "";
 }
 
 const TALL_WINDOW_QUERY = "(min-height: 30rem)";
 
 /** Upstream `An()`: `data-cds-tall-window` on the popup while the viewport is at least 30rem tall. */
-export function useTallWindowRef(): (element: HTMLElement | null) => void {
+export function useTallWindowRef(): (element: HTMLElement | null) => void
+{
 	const cleanupRef = useRef<(() => void) | null>(null);
-	return useCallback((element: HTMLElement | null) => {
+	return useCallback((element: HTMLElement | null) =>
+	{
 		cleanupRef.current?.();
 		cleanupRef.current = null;
 		if (element === null || typeof window.matchMedia !== "function") return;
 		const media = window.matchMedia(TALL_WINDOW_QUERY);
-		const sync = () => {
+		const sync = () =>
+		{
 			element.toggleAttribute("data-cds-tall-window", media.matches);
 		};
 		sync();
 		media.addEventListener("change", sync);
-		cleanupRef.current = () => {
+		cleanupRef.current = () =>
+		{
 			media.removeEventListener("change", sync);
 		};
 	}, []);

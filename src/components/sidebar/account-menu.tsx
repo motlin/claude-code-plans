@@ -1,6 +1,7 @@
 import {useQuery} from "@tanstack/react-query";
 import {useLocation, useNavigate} from "@tanstack/react-router";
-import {
+import
+{
 	BookOpen,
 	Bug,
 	ChevronDown,
@@ -18,7 +19,8 @@ import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {localAccountQueryOptions} from "../../lib/api/local-account";
 import {setKeyboardShortcutsOpen} from "../keyboard-shortcuts-open";
 import {useOpenSettings} from "../settings/open-settings";
-import {
+import
+{
 	Menu,
 	MenuContent,
 	MenuItem,
@@ -32,19 +34,41 @@ import {nonEmpty} from "../../lib/non-empty";
 
 /** Upstream's Learn more links; a separator sits between these two groups. */
 const UPSTREAM_PRODUCT_LINKS = [
-	{label: "Claude Platform", href: "https://platform.claude.com"},
-	{label: "About Anthropic", href: "https://www.anthropic.com/"},
+	{
+		label: "Claude Platform",
+		href: "https://platform.claude.com",
+	},
+	{
+		label: "About Anthropic",
+		href: "https://www.anthropic.com/",
+	},
 ] as const;
 
 const UPSTREAM_LEGAL_LINKS = [
-	{label: "Claude Academy", href: "https://claude.ai/learning"},
-	{label: "Usage policy", href: "https://www.anthropic.com/legal/aup"},
-	{label: "Privacy policy", href: "https://www.anthropic.com/legal/privacy"},
-	{label: "Terms of service", href: "https://www.anthropic.com/legal/consumer-terms"},
+	{
+		label: "Claude Academy",
+		href: "https://claude.ai/learning",
+	},
+	{
+		label: "Usage policy",
+		href: "https://www.anthropic.com/legal/aup",
+	},
+	{
+		label: "Privacy policy",
+		href: "https://www.anthropic.com/legal/privacy",
+	},
+	{
+		label: "Terms of service",
+		href: "https://www.anthropic.com/legal/consumer-terms",
+	},
 ] as const;
 
 const CLAUDE_CODE_LINKS = [
-	{label: "Claude Code docs", href: "https://code.claude.com/docs", icon: <BookOpen />},
+	{
+		label: "Claude Code docs",
+		href: "https://code.claude.com/docs",
+		icon: <BookOpen />,
+	},
 	{
 		label: "Changelog",
 		href: "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md",
@@ -62,11 +86,16 @@ const CLAUDE_CODE_LINKS = [
  * above itself. Cloud-only items (Language, View all plans, Get apps, Log out, Your privacy choices) are
  * omitted; Claude Config and Setup are local additions.
  */
-export function AccountMenu() {
+export function AccountMenu()
+{
 	const {data} = useQuery(localAccountQueryOptions);
 	const navigate = useNavigate();
 	const openSettings = useOpenSettings();
-	const pathname = useLocation({select: (location) => location.pathname});
+	const pathname = useLocation(
+		{
+			select: (location) => location.pathname,
+		},
+	);
 	const settingsTab = pathname === "/" || pathname.startsWith("/session/") ? "claude-code" : "general";
 	const settingsKeys = useShortcutKeys("settings").keys;
 	const shortcutsKeys = useShortcutKeys("shortcuts_modal").keys;
@@ -116,7 +145,8 @@ export function AccountMenu() {
 					data-testid="user-menu-settings"
 					icon={<Settings />}
 					shortcut={settingsKeys}
-					onSelect={() => {
+					onSelect={() =>
+					{
 						openSettings(settingsTab);
 					}}
 				>
@@ -125,7 +155,8 @@ export function AccountMenu() {
 				<MenuItem
 					data-testid="user-menu-usage"
 					icon={<Gauge />}
-					onSelect={() => {
+					onSelect={() =>
+					{
 						openSettings("usage");
 					}}
 				>
@@ -142,14 +173,26 @@ export function AccountMenu() {
 				<MenuItem
 					data-testid="user-menu-claude-config"
 					icon={<FileCog />}
-					onSelect={() => void navigate({to: "/settings/edit"})}
+					onSelect={() =>
+						void navigate(
+							{
+								to: "/settings/edit",
+							},
+						)
+					}
 				>
 					Claude Config
 				</MenuItem>
 				<MenuItem
 					data-testid="user-menu-setup"
 					icon={<Wrench />}
-					onSelect={() => void navigate({to: "/setup"})}
+					onSelect={() =>
+						void navigate(
+							{
+								to: "/setup",
+							},
+						)
+					}
 				>
 					Setup
 				</MenuItem>
@@ -182,7 +225,8 @@ export function AccountMenu() {
 						<MenuSeparator />
 						<MenuItem
 							shortcut={shortcutsKeys}
-							onSelect={() => {
+							onSelect={() =>
+							{
 								setKeyboardShortcutsOpen(true);
 							}}
 						>
@@ -195,7 +239,8 @@ export function AccountMenu() {
 	);
 }
 
-function ExternalLinkItem({href, children}: {href: string; children: ReactNode}) {
+function ExternalLinkItem({href, children}: {href: string; children: ReactNode})
+{
 	return (
 		<MenuItem render={<a href={href} target="_blank" rel="noreferrer" />}>
 			<ExternalLabel>{children}</ExternalLabel>
@@ -203,7 +248,8 @@ function ExternalLinkItem({href, children}: {href: string; children: ReactNode})
 	);
 }
 
-function ExternalLabel({children, compactGap = false}: {children: ReactNode; compactGap?: boolean}) {
+function ExternalLabel({children, compactGap = false}: {children: ReactNode; compactGap?: boolean})
+{
 	return (
 		<span className={`flex w-full min-w-0 items-center ${compactGap ? "gap-3" : "gap-6"}`}>
 			<span className="min-w-0 flex-1 truncate">{children}</span>

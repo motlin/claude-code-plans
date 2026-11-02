@@ -1,5 +1,6 @@
 import {Check, ChevronLeft, ChevronRight} from "lucide-react";
-import {
+import
+{
 	Fragment,
 	type KeyboardEvent as ReactKeyboardEvent,
 	type MouseEvent,
@@ -18,7 +19,8 @@ import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, onScreen} from "../li
 import {installLandingKeys, landingAllowsPick} from "../lib/approval-slot-landing";
 import type {QuestionAnswer} from "../lib/hook-events";
 import {OUTCOME_LABEL, type QuestionLike} from "../lib/ask-user-question";
-import {
+import
+{
 	clearQuestionCardState,
 	clearSentQuestionCard,
 	markQuestionCardSeen,
@@ -30,14 +32,16 @@ import {
 	writeQuestionCardState,
 } from "../lib/question-card-store";
 import {renderPreviewMarkdownToHtml} from "../lib/client-markdown";
-import {
+import
+{
 	isHtmlPreview,
 	type OptionPreview,
 	parseOptionPreview,
 	previewSanitizerLoaded,
 	subscribePreviewSanitizer,
 } from "../lib/question-option-preview";
-import {
+import
+{
 	chooseOther,
 	EMPTY_OTHER,
 	labelledAnswers,
@@ -63,20 +67,33 @@ const STACK_ACTIONS = "@max-[420px]:flex-col @max-[420px]:items-stretch @max-[42
 const PAGER_ARROW_CLASS = `flex h-control aspect-square cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] hover:bg-fill-ghost-hover ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED}`;
 
 /** Upstream opens a single-select question on its first option. */
-function initialDraft(question: QuestionLike): QuestionCardDraft {
+function initialDraft(question: QuestionLike): QuestionCardDraft
+{
 	const preselect = question.multiSelect !== true && question.options.length > 0;
-	return {selected: preselect ? [0] : [], other: "", otherChosen: false};
+	return {
+		selected: preselect ? [0] : [],
+		other: "",
+		otherChosen: false,
+	};
 }
 
-function isAnswered(draft: QuestionCardDraft): boolean {
+function isAnswered(draft: QuestionCardDraft): boolean
+{
 	return draft.selected.length > 0 || draft.otherChosen;
 }
 
-function answerOf(draft: QuestionCardDraft): QuestionAnswer {
+function answerOf(draft: QuestionCardDraft): QuestionAnswer
+{
 	const selected = draft.selected.toSorted((a, b) => a - b);
-	if (!draft.otherChosen) return {selected};
+	if (!draft.otherChosen)
+		return {
+			selected,
+		};
 	const other = draft.other.trim();
-	return {selected, other: other === "" ? EMPTY_OTHER : other};
+	return {
+		selected,
+		other: other === "" ? EMPTY_OTHER : other,
+	};
 }
 
 /** The receipt rows of a submitted card: each picked answer as upstream builds it, or Skipped. */
@@ -84,9 +101,11 @@ function sentReceiptRows(
 	questions: readonly QuestionLike[],
 	drafts: readonly QuestionCardDraft[],
 	skipped: readonly boolean[],
-): QuestionReceiptRow[] {
+): QuestionReceiptRow[]
+{
 	const answers = drafts.map((entry, at) => (skipped[at] === true ? null : answerOf(entry)));
-	return labelledAnswers(questions, answers).map(({question, answer}, at) => ({
+	return labelledAnswers(questions, answers).map(({question, answer}, at) => (
+	{
 		question,
 		answer: answers[at] === null ? OUTCOME_LABEL.skipped : answer,
 		notes: null,
@@ -97,12 +116,21 @@ function sentReceiptRows(
  * Upstream cds Checkbox / Radio indicator, sized by --cds-checkbox (20px comfortable, 16px compact) with a
  * --cds-checkbox-radius corner: unchecked, its edge reads --cds-checkbox-edge (hover -hover).
  */
-function Mark({checked, multi}: {checked: boolean; multi: boolean}) {
+function Mark({checked, multi}: {checked: boolean; multi: boolean})
+{
 	const shape = multi ? "rounded-[var(--cds-checkbox-radius)]" : "rounded-full";
 	return (
 		<span
 			aria-hidden="true"
-			{...(checked ? {"data-checked": ""} : {"data-unchecked": ""})}
+			{...(checked
+				?
+					{
+						"data-checked": "",
+					}
+				:
+					{
+						"data-unchecked": "",
+					})}
 			className={`mt-[calc((1lh-var(--cds-checkbox,1rem))/2)] flex size-[var(--cds-checkbox)] shrink-0 items-center justify-center ${shape} ${
 				checked
 					? "bg-fill-accent text-white"
@@ -143,7 +171,8 @@ const HAS_URL = /https?:\/\//;
  * Modified keys and IME composition pass through; the selection never changes.
  * On a card focus landed on, the root branch waits for a fresh pick.
  */
-function roveAnswers(event: ReactKeyboardEvent<HTMLDivElement>) {
+function roveAnswers(event: ReactKeyboardEvent<HTMLDivElement>)
+{
 	const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
 	if (step === 0 || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
 	// oxlint-disable-next-line typescript/no-deprecated -- Safari reports IME keydowns only as keyCode 229, as upstream checks
@@ -157,26 +186,37 @@ function roveAnswers(event: ReactKeyboardEvent<HTMLDivElement>) {
 	const at = stops.findIndex((stop) => stop === from);
 	if (stops.length === 0 || (!onRoot && at === -1)) return;
 	event.preventDefault();
-	if (!onRoot) {
-		stops[at + step]?.focus({focusVisible: true});
+	if (!onRoot)
+	{
+		stops[at + step]?.focus(
+			{
+				focusVisible: true,
+			},
+		);
 		return;
 	}
 	// Upstream's root branch moves only on a pick the landing allows (`d_`): none under 400ms after focus landed here.
 	if (!event.repeat && landingAllowsPick(event.nativeEvent, false))
-		stops.at(step === 1 ? 0 : -1)?.focus({focusVisible: true});
+		stops.at(step === 1 ? 0 : -1)?.focus(
+			{
+				focusVisible: true,
+			},
+		);
 }
 
 /**
  * Upstream's card `onKeyDown` guard: on a card focus landed on, an arrow runs only as a fresh pick, which it marks
  * picked (upstream marks it with the card's digit shortcuts on, as its inline card has them).
  */
-function onCardKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+function onCardKeyDown(event: ReactKeyboardEvent<HTMLDivElement>)
+{
 	if ((event.key === "ArrowDown" || event.key === "ArrowUp") && !landingAllowsPick(event.nativeEvent, true)) return;
 	roveAnswers(event);
 }
 
 /** Upstream's `dt()`: the click landed in the row and not on a link or another button inside it. */
-function clickPicksRow(event: MouseEvent<HTMLElement>): boolean {
+function clickPicksRow(event: MouseEvent<HTMLElement>): boolean
+{
 	const target = event.target instanceof Element ? event.target : null;
 	const control = target?.closest("a, button");
 	return (
@@ -187,12 +227,14 @@ function clickPicksRow(event: MouseEvent<HTMLElement>): boolean {
 }
 
 /** Upstream's onMouseDown preventDefault: clicking a card button never moves focus. */
-function keepFocus(event: MouseEvent) {
+function keepFocus(event: MouseEvent)
+{
 	event.preventDefault();
 }
 
 /** Upstream's gt(): a click that ends a drag-select within its own row is a selection, not a pick. */
-function selectionInside(event: MouseEvent<HTMLElement>): boolean {
+function selectionInside(event: MouseEvent<HTMLElement>): boolean
+{
 	const selection = event.currentTarget.ownerDocument.getSelection();
 	return (
 		selection !== null &&
@@ -211,12 +253,15 @@ function selectionInside(event: MouseEvent<HTMLElement>): boolean {
  * swallows the key without acting on repeat, within the arm grace, and with ⇧
  * (upstream's persistent allow, which questions don't have).
  */
-function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkeyRef: RefObject<(() => void) | null>) {
-	useEffect(() => {
+function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkeyRef: RefObject<(() => void) | null>)
+{
+	useEffect(() =>
+	{
 		const armedAt = performance.now();
 		// The landing keys go first, so a landed card's ⇧⌘⏎ is theirs to swallow.
 		installLandingKeys(window);
-		const onKeyDown = (event: KeyboardEvent) => {
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return;
 			const card = cardRootRef.current;
 			const run = hotkeyRef.current;
@@ -229,7 +274,8 @@ function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkey
 			run();
 		};
 		window.addEventListener("keydown", onKeyDown, true);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("keydown", onKeyDown, true);
 		};
 	}, [cardRootRef, hotkeyRef]);
@@ -239,21 +285,26 @@ function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkey
  * Upstream's seen-map filler: records `draftKey` once the card intersects the
  * viewport, or at once where IntersectionObserver is unavailable.
  */
-function useMarkSeen(cardRootRef: RefObject<HTMLDivElement | null>, draftKey: string | undefined) {
-	useEffect(() => {
+function useMarkSeen(cardRootRef: RefObject<HTMLDivElement | null>, draftKey: string | undefined)
+{
+	useEffect(() =>
+	{
 		const card = cardRootRef.current;
 		if (draftKey === undefined || card === null) return undefined;
-		if (typeof IntersectionObserver === "undefined") {
+		if (typeof IntersectionObserver === "undefined")
+		{
 			markQuestionCardSeen(draftKey);
 			return undefined;
 		}
-		const observer = new IntersectionObserver((entries) => {
+		const observer = new IntersectionObserver((entries) =>
+		{
 			if (!entries.some((entry) => entry.isIntersecting)) return;
 			markQuestionCardSeen(draftKey);
 			observer.disconnect();
 		});
 		observer.observe(card);
-		return () => {
+		return () =>
+		{
 			observer.disconnect();
 		};
 	}, [cardRootRef, draftKey]);
@@ -279,7 +330,8 @@ function AnswerOption({
 	multi: boolean;
 	disabled: boolean;
 	onPick: () => void;
-}) {
+})
+{
 	const textId = useId();
 	const pressStartedOnControl = useRef(false);
 	const linked = HAS_URL.test(description);
@@ -299,14 +351,19 @@ function AnswerOption({
 			{text}
 		</>
 	);
-	if (!linked) {
+	if (!linked)
+	{
 		return (
 			<button
 				type="button"
-				{...{[ANSWER_ATTR]: ""}}
+				{...
+				{
+					[ANSWER_ATTR]: "",
+				}}
 				aria-pressed={checked}
 				disabled={disabled}
-				onClick={(event) => {
+				onClick={(event) =>
+				{
 					if (selectionInside(event)) return;
 					onPick();
 				}}
@@ -320,11 +377,16 @@ function AnswerOption({
 		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's row: the inset button takes the keys, the row takes clicks on its text
 		<div
 			role="presentation"
-			{...{[ANSWER_ROW_ATTR]: ""}}
-			onMouseDown={(event) => {
+			{...
+			{
+				[ANSWER_ROW_ATTR]: "",
+			}}
+			onMouseDown={(event) =>
+			{
 				pressStartedOnControl.current = !clickPicksRow(event);
 			}}
-			onClick={(event) => {
+			onClick={(event) =>
+			{
 				const fromControl = event.detail !== 0 && pressStartedOnControl.current;
 				pressStartedOnControl.current = false;
 				if (disabled || fromControl || !clickPicksRow(event) || selectionInside(event)) return;
@@ -334,7 +396,10 @@ function AnswerOption({
 		>
 			<button
 				type="button"
-				{...{[ANSWER_ATTR]: ""}}
+				{...
+				{
+					[ANSWER_ATTR]: "",
+				}}
 				aria-pressed={checked}
 				aria-labelledby={textId}
 				disabled={disabled}
@@ -348,15 +413,19 @@ function AnswerOption({
 /** Upstream's `jt` then `max-h-[240px] overflow-y-auto pb-lg text-secondary`; `px-lg`/`pb-lg` are 12px here (16px in upstream's comfortable density). */
 const PREVIEW_CLASS = "px-lg max-h-[240px] overflow-y-auto pb-lg text-secondary";
 
-function subscribeNever(): () => void {
-	return () => {};
+function subscribeNever(): () => void
+{
+	return () =>
+	{
+	};
 }
 
 /**
  * Upstream's `wn` → `mU`: the option's parsed preview. An HTML preview waits for the sanitizer chunk
  * (upstream's preview renderer is lazy and client-only too), so the server draws none.
  */
-function useOptionPreview(value: unknown): OptionPreview | undefined {
+function useOptionPreview(value: unknown): OptionPreview | undefined
+{
 	const html = isHtmlPreview(value);
 	const ready = useSyncExternalStore(
 		html ? subscribePreviewSanitizer : subscribeNever,
@@ -371,23 +440,29 @@ function useOptionPreview(value: unknown): OptionPreview | undefined {
  * Upstream's question name (c2f6611a3 `xt`'s `name`, 2026-11-10) from the raw text (memory tags dropped by `ra`): secrets collapse to 7 bullets (`nF`), and a
  * name holding an unterminated private key is cut before it (`_h`) with a trailing ellipsis.
  */
-function questionName(raw: string): string {
+function questionName(raw: string): string
+{
 	const compact = maskSecretsCompact(raw);
 	const cut = cutUnterminatedPrivateKey(compact);
 	return cut === compact ? compact : `${cut.trimEnd()} \u2026`;
 }
 
 /** Upstream's `GF`: a text preview as its markdown, an HTML one as sanitized; both a focusable scroll region. */
-function OptionPreviewBlock({preview}: {preview: OptionPreview}) {
+function OptionPreviewBlock({preview}: {preview: OptionPreview})
+{
 	// `data-question-option-preview` is a local test hook; upstream's block has no attribute.
-	if (preview.kind === "html") {
+	if (preview.kind === "html")
+	{
 		return (
 			<div
 				// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's preview is a Tab stop so the keyboard can scroll it
 				tabIndex={0}
 				data-question-option-preview=""
 				className={`${PREVIEW_CLASS} font-sans text-body`}
-				dangerouslySetInnerHTML={{__html: preview.sanitizedHtml}}
+				dangerouslySetInnerHTML={
+				{
+					__html: preview.sanitizedHtml,
+				}}
 			/>
 		);
 	}
@@ -400,7 +475,10 @@ function OptionPreviewBlock({preview}: {preview: OptionPreview}) {
 		>
 			<div
 				className="[&_pre_code]:!whitespace-pre"
-				dangerouslySetInnerHTML={{__html: renderPreviewMarkdownToHtml(preview.text)}}
+				dangerouslySetInnerHTML={
+				{
+					__html: renderPreviewMarkdownToHtml(preview.text),
+				}}
 			/>
 		</div>
 	);
@@ -437,7 +515,8 @@ export function QuestionCard({
 	answered?: readonly QuestionReceiptRow[] | undefined;
 	/** The question's session: an answer holds it as answered, so every view draws it working at the click. */
 	sessionId?: string | undefined;
-}) {
+})
+{
 	const [wasSent] = useState(() =>
 		draftKey === undefined ? null : readSentQuestionCard(draftKey, questions.length),
 	);
@@ -460,20 +539,40 @@ export function QuestionCard({
 	useApprovalHotkey(cardRootRef, hotkeyRef);
 	useMarkSeen(cardRootRef, draftKey);
 	// Upstream saves the draft on every change and stops once the card has submitted.
-	const savedRef = useRef<{mounted: boolean; submitted: boolean}>({mounted: false, submitted: wasSent !== null});
-	useEffect(() => {
-		if (!savedRef.current.mounted) {
+	const savedRef = useRef<
+	{
+		mounted: boolean;
+		submitted: boolean;
+	}>(
+		{
+			mounted: false,
+			submitted: wasSent !== null,
+		},
+	);
+	useEffect(() =>
+	{
+		if (!savedRef.current.mounted)
+		{
 			savedRef.current.mounted = true;
 			return;
 		}
 		if (draftKey === undefined || savedRef.current.submitted) return;
-		writeQuestionCardState(draftKey, {page, drafts, skipped});
+		writeQuestionCardState(
+			draftKey,
+			{
+				page,
+				drafts,
+				skipped,
+			},
+		);
 	}, [draftKey, page, drafts, skipped]);
 	// A card remounted mid-send hears when the sending instance's send fails,
 	// and turns back into the restored, editable draft with the error.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (draftKey === undefined || wasSent === null) return undefined;
-		return subscribeSentQuestionCard(draftKey, (failure) => {
+		return subscribeSentQuestionCard(draftKey, (failure) =>
+		{
 			if (failure === null) return;
 			savedRef.current.submitted = false;
 			setError(failure);
@@ -482,10 +581,15 @@ export function QuestionCard({
 	}, [draftKey, wasSent]);
 	const index = Math.min(page, questions.length - 1);
 	// Upstream refocuses the card root after a page change that started with focus inside it.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!refocusRef.current) return;
 		refocusRef.current = false;
-		cardRootRef.current?.focus({preventScroll: true});
+		cardRootRef.current?.focus(
+			{
+				preventScroll: true,
+			},
+		);
 	}, [index]);
 	const question = questions[index];
 	const draft = drafts[index];
@@ -514,37 +618,60 @@ export function QuestionCard({
 				? `Question ${otherUnanswered + 1} is unanswered`
 				: "Choose an option or skip this question";
 
-	const goTo = (next: number) => {
+	const goTo = (next: number) =>
+	{
 		refocusRef.current = cardRootRef.current?.contains(document.activeElement) === true;
 		setPage(next);
 	};
 
-	const update = (next: QuestionCardDraft) => {
+	const update = (next: QuestionCardDraft) =>
+	{
 		setDrafts((current) => current.map((entry, at) => (at === index ? next : entry)));
 		setSkipped((current) => current.map((entry, at) => (at === index ? false : entry)));
 	};
 
-	const submit = async (finalDrafts: QuestionCardDraft[], finalSkipped: boolean[]) => {
+	const submit = async (finalDrafts: QuestionCardDraft[], finalSkipped: boolean[]) =>
+	{
 		if (onSubmit === undefined) return;
 		setError(null);
 		setSending(true);
 		setReceiptEnters(true);
 		savedRef.current.submitted = true;
-		if (draftKey !== undefined) {
+		if (draftKey !== undefined)
+		{
 			clearQuestionCardState(draftKey);
-			markQuestionCardSent(draftKey, {page, drafts: finalDrafts, skipped: finalSkipped}, sessionId);
+			markQuestionCardSent(
+				draftKey,
+				{
+					page,
+					drafts: finalDrafts,
+					skipped: finalSkipped,
+				},
+				sessionId,
+			);
 			if (sessionId !== undefined) holdAnswered(sessionId, draftKey);
 		}
-		try {
+		try
+		{
 			await onSubmit(finalDrafts.map((entry, at) => (finalSkipped[at] === true ? null : answerOf(entry))));
 			// Upstream's C1: a delivered live answer stays answered through a reload for 5 minutes.
 			if (draftKey !== undefined && sessionId !== undefined)
 				acknowledgeApproval(sessionId, draftKey, "AskUserQuestion");
-		} catch (err) {
+		}
+		catch (err)
+		{
 			const message = err instanceof Error ? err.message : "Failed to send the answer";
 			savedRef.current.submitted = false;
-			if (draftKey !== undefined) {
-				writeQuestionCardState(draftKey, {page, drafts: finalDrafts, skipped: finalSkipped});
+			if (draftKey !== undefined)
+			{
+				writeQuestionCardState(
+					draftKey,
+					{
+						page,
+						drafts: finalDrafts,
+						skipped: finalSkipped,
+					},
+				);
 				clearSentQuestionCard(draftKey, message);
 			}
 			if (sessionId !== undefined) releaseAnswered(sessionId);
@@ -553,34 +680,51 @@ export function QuestionCard({
 		}
 	};
 
-	const advance = () => {
+	const advance = () =>
+	{
 		if (!editable || !canAdvance) return;
 		if (isLast) void submit(drafts, skipped);
 		else goTo(index + 1);
 	};
 
-	const skip = () => {
+	const skip = () =>
+	{
 		if (!editable) return;
 		const nextSkipped = skipped.map((entry, at) => (at === index ? true : entry));
 		const nextDrafts = drafts.map((entry, at) =>
-			at === index ? {selected: [], other: "", otherChosen: false} : entry,
+			at === index
+				?
+					{
+						selected: [],
+						other: "",
+						otherChosen: false,
+					}
+				: entry,
 		);
 		setSkipped(nextSkipped);
 		setDrafts(nextDrafts);
 		// Upstream's Skip always moves to the next page; only the last page looks back or submits.
-		if (!isLast) {
+		if (!isLast)
+		{
 			goTo(index + 1);
 			return;
 		}
 		const remaining = questions.findIndex(
 			(_, at) => nextSkipped[at] !== true && !isAnswered(nextDrafts[at] ?? initialDraft(question)),
 		);
-		if (remaining === -1) {
-			if (otherRef.current !== null && document.activeElement === otherRef.current) {
-				cardRootRef.current?.focus({preventScroll: true});
+		if (remaining === -1)
+		{
+			if (otherRef.current !== null && document.activeElement === otherRef.current)
+			{
+				cardRootRef.current?.focus(
+					{
+						preventScroll: true,
+					},
+				);
 			}
 			void submit(nextDrafts, nextSkipped);
-		} else goTo(remaining);
+		}
+		else goTo(remaining);
 	};
 
 	hotkeyRef.current = editable && canAdvance ? advance : null;
@@ -609,11 +753,17 @@ export function QuestionCard({
 			data-approval-card-root=""
 			data-focus-region="question"
 			data-approval-presentation="card"
-			onClick={(event) => {
+			onClick={(event) =>
+			{
 				event.stopPropagation();
 			}}
 			onKeyDown={onCardKeyDown}
-			{...(skipEnter ? {"data-skip-approval-enter": ""} : {})}
+			{...(skipEnter
+				?
+					{
+						"data-skip-approval-enter": "",
+					}
+				: {})}
 			className={`card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-card outline-none${
 				skipEnter ? "" : " animate-approval-inline-enter motion-reduce:animate-none"
 			}`}
@@ -628,10 +778,12 @@ export function QuestionCard({
 							type="button"
 							aria-label="Show previous question"
 							disabled={index === 0}
-							onMouseDown={(event) => {
+							onMouseDown={(event) =>
+							{
 								event.preventDefault();
 							}}
-							onClick={() => {
+							onClick={() =>
+							{
 								goTo(index - 1);
 							}}
 							className={PAGER_ARROW_CLASS}
@@ -645,10 +797,12 @@ export function QuestionCard({
 							type="button"
 							aria-label="Show next question"
 							disabled={isLast}
-							onMouseDown={(event) => {
+							onMouseDown={(event) =>
+							{
 								event.preventDefault();
 							}}
-							onClick={() => {
+							onClick={() =>
+							{
 								goTo(index + 1);
 							}}
 							className={PAGER_ARROW_CLASS}
@@ -668,7 +822,8 @@ export function QuestionCard({
 								checked={draft.selected.includes(optionIndex)}
 								multi={multi}
 								disabled={!editable}
-								onPick={() => {
+								onPick={() =>
+								{
 									update(pickOption(question, draft, optionIndex));
 								}}
 							/>
@@ -681,14 +836,19 @@ export function QuestionCard({
 					<div className="epitaxy-answer-option group relative grid grid-cols-[auto_1fr] items-start gap-x-md gap-y-sm px-lg py-lg">
 						<button
 							type="button"
-							{...{[ANSWER_ATTR]: ""}}
+							{...
+							{
+								[ANSWER_ATTR]: "",
+							}}
 							aria-label="Other"
 							aria-pressed={draft.otherChosen}
 							disabled={!editable}
-							onClick={(event) => {
+							onClick={(event) =>
+							{
 								if (selectionInside(event)) return;
 								// Upstream commits the pick synchronously so the revealed box exists to focus.
-								flushSync(() => {
+								flushSync(() =>
+								{
 									update(chooseOther(question, draft));
 								});
 								otherRef.current?.focus();
@@ -708,14 +868,20 @@ export function QuestionCard({
 								rows={1}
 								value={editable ? draft.other : maskSecrets(draft.other)}
 								disabled={!editable}
-								onChange={(event) => {
+								onChange={(event) =>
+								{
 									update(typeOther(question, draft, event.target.value));
 								}}
-								onKeyDown={(event) => {
+								onKeyDown={(event) =>
+								{
 									// Upstream's ct(): Escape hands focus back to the card, keeping the text.
 									if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
 									event.preventDefault();
-									cardRootRef.current?.focus({preventScroll: true});
+									cardRootRef.current?.focus(
+										{
+											preventScroll: true,
+										},
+									);
 								}}
 								className="relative z-[1] col-start-2 row-start-2 min-h-[calc(1lh+2*var(--cds-pad-sm))] max-h-[calc(4lh+2*var(--cds-pad-sm))] w-full resize-none rounded-[var(--upstream-radius)] bg-fill-field px-md py-sm font-sans text-body text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-field-ring transition duration-150 hover:shadow-field-hover focus-visible:shadow-focus disabled:opacity-50"
 							/>

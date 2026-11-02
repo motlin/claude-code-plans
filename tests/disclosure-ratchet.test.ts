@@ -15,14 +15,16 @@ import {describe, expect, it} from "vite-plus/test";
 const DISCLOSURE_CEILING = 47;
 
 /** The opening tag around `index`: from the nearest `<Name` before it to the next `<` after it. */
-function enclosingTag(source: string, index: number): string {
+function enclosingTag(source: string, index: number): string
+{
 	const before = source.slice(0, index);
 	const start = Math.max(before.lastIndexOf("<"), 0);
 	const next = source.indexOf("<", index);
 	return source.slice(start, next === -1 ? source.length : next);
 }
 
-function handRolledDisclosures(source: string): number {
+function handRolledDisclosures(source: string): number
+{
 	const details = source.match(/<details[\s>]/g)?.length ?? 0;
 	const toggles = [...source.matchAll(/aria-expanded=\{/g)].filter(
 		(match) => !enclosingTag(source, match.index).includes("aria-haspopup"),
@@ -30,11 +32,17 @@ function handRolledDisclosures(source: string): number {
 	return details + toggles;
 }
 
-describe("hand-rolled disclosure ratchet", () => {
-	it(`keeps the hand-rolled disclosures in src/components at or below ${DISCLOSURE_CEILING}`, () => {
+describe("hand-rolled disclosure ratchet", () =>
+{
+	it(`keeps the hand-rolled disclosures in src/components at or below ${DISCLOSURE_CEILING}`, () =>
+	{
 		const counts = globSync("src/components/**/*.tsx")
 			.filter((path) => !path.startsWith("src/components/ui/"))
-			.map((path) => ({path, count: handRolledDisclosures(readFileSync(path, "utf8"))}))
+			.map((path) => (
+			{
+				path,
+				count: handRolledDisclosures(readFileSync(path, "utf8")),
+			}))
 			.filter(({count}) => count > 0)
 			.toSorted((a, b) => a.path.localeCompare(b.path));
 		const total = counts.reduce((sum, {count}) => sum + count, 0);
@@ -44,7 +52,8 @@ describe("hand-rolled disclosure ratchet", () => {
 		).toBeLessThanOrEqual(DISCLOSURE_CEILING);
 	});
 
-	it("counts details elements and expanded toggles but skips menu triggers", () => {
+	it("counts details elements and expanded toggles but skips menu triggers", () =>
+	{
 		expect(
 			handRolledDisclosures(
 				'<details open><summary/></details>\n<button aria-expanded={open} onClick={toggle}>x</button>\n<button aria-haspopup="menu" aria-expanded={menuOpen}>y</button>',

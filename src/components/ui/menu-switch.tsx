@@ -11,7 +11,8 @@ const TRACK_CLASS =
 const KNOB_CLASS =
 	"block size-[10px] rounded-full bg-white shadow-[0_1px_2px_0_rgb(11_11_11/0.06),0_2px_8px_0_rgb(0_0_0/0.24)] transition-transform duration-[120ms] ease-[cubic-bezier(0.34,1.3,0.64,1)] motion-reduce:transition-none forced-colors:bg-[CanvasText] forced-colors:data-[checked]:bg-[HighlightText] data-[checked]:translate-x-[11.2px] rtl:data-[checked]:-translate-x-[11.2px]";
 
-export interface MenuSwitchProps {
+export interface MenuSwitchProps
+{
 	checked: boolean;
 	disabled?: boolean | undefined;
 	/** Display-only switches (the row does something else on click). */
@@ -28,16 +29,41 @@ export function MenuSwitch({
 	readOnly = false,
 	size = "xs",
 	"aria-label": ariaLabel,
-}: MenuSwitchProps) {
-	const state = checked ? {"data-checked": ""} : {"data-unchecked": ""};
+}: MenuSwitchProps)
+{
+	const state = checked
+		?
+			{
+				"data-checked": "",
+			}
+		:
+			{
+				"data-unchecked": "",
+			};
 	return (
 		<span
 			role="switch"
 			tabIndex={-1}
 			aria-checked={checked}
-			{...(ariaLabel === undefined ? {} : {"aria-label": ariaLabel})}
-			{...(disabled ? {"aria-disabled": true, "data-disabled": ""} : {})}
-			{...(readOnly ? {"aria-readonly": true} : {})}
+			{...(ariaLabel === undefined
+				? {}
+				:
+					{
+						"aria-label": ariaLabel,
+					})}
+			{...(disabled
+				?
+					{
+						"aria-disabled": true,
+						"data-disabled": "",
+					}
+				: {})}
+			{...(readOnly
+				?
+					{
+						"aria-readonly": true,
+					}
+				: {})}
 			data-size={size}
 			{...state}
 			className={TRACK_CLASS}

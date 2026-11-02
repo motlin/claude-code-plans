@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -25,12 +26,27 @@ const LINUX_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36";
 const CHROMEOS_UA = "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36";
 
 const ENTRIES: RecentEntry[] = [
-	{key: "session:alpha", kind: "session", href: "/session/alpha", title: "Alpha session"},
-	{key: "session:beta", kind: "session", href: "/session/beta", title: "Beta session"},
-	{key: "project:proj", kind: "project", href: "/project/proj"},
+	{
+		key: "session:alpha",
+		kind: "session",
+		href: "/session/alpha",
+		title: "Alpha session",
+	},
+	{
+		key: "session:beta",
+		kind: "session",
+		href: "/session/beta",
+		title: "Beta session",
+	},
+	{
+		key: "project:proj",
+		kind: "project",
+		href: "/project/proj",
+	},
 ];
 
-function keyEvent(init: Partial<KeyboardEvent>) {
+function keyEvent(init: Partial<KeyboardEvent>)
+{
 	return {
 		key: "q",
 		code: "KeyQ",
@@ -42,8 +58,10 @@ function keyEvent(init: Partial<KeyboardEvent>) {
 	};
 }
 
-describe("platformFromUserAgent", () => {
-	it("classifies mac, windows, linux and ChromeOS", () => {
+describe("platformFromUserAgent", () =>
+{
+	it("classifies mac, windows, linux and ChromeOS", () =>
+	{
 		expect([MAC_UA, WINDOWS_UA, LINUX_UA, CHROMEOS_UA].map((ua) => platformFromUserAgent(ua))).toStrictEqual([
 			"mac",
 			"windows",
@@ -53,47 +71,159 @@ describe("platformFromUserAgent", () => {
 	});
 });
 
-describe("isSwitchTrigger", () => {
-	it("accepts ⌃Q and ⌃⇧Q on mac and linux", () => {
+describe("isSwitchTrigger", () =>
+{
+	it("accepts ⌃Q and ⌃⇧Q on mac and linux", () =>
+	{
 		expect([
-			isSwitchTrigger(keyEvent({ctrlKey: true}), "mac"),
-			isSwitchTrigger(keyEvent({ctrlKey: true, shiftKey: true, key: "Q"}), "mac"),
-			isSwitchTrigger(keyEvent({ctrlKey: true}), "linux"),
-			isSwitchTrigger(keyEvent({ctrlKey: true, shiftKey: true, key: "Q"}), "linux"),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+					},
+				),
+				"mac",
+			),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+						shiftKey: true,
+						key: "Q",
+					},
+				),
+				"mac",
+			),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+					},
+				),
+				"linux",
+			),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+						shiftKey: true,
+						key: "Q",
+					},
+				),
+				"linux",
+			),
 		]).toStrictEqual([true, true, true, true]);
 	});
 
-	it("rejects extra Alt or Meta, a bare Q and other letters", () => {
+	it("rejects extra Alt or Meta, a bare Q and other letters", () =>
+	{
 		expect([
-			isSwitchTrigger(keyEvent({ctrlKey: true, altKey: true}), "mac"),
-			isSwitchTrigger(keyEvent({ctrlKey: true, metaKey: true}), "mac"),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+						altKey: true,
+					},
+				),
+				"mac",
+			),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+						metaKey: true,
+					},
+				),
+				"mac",
+			),
 			isSwitchTrigger(keyEvent({}), "mac"),
-			isSwitchTrigger(keyEvent({ctrlKey: true, key: "w", code: "KeyW"}), "mac"),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+						key: "w",
+						code: "KeyW",
+					},
+				),
+				"mac",
+			),
 		]).toStrictEqual([false, false, false, false]);
 	});
 
-	it("matches the physical Q key on non-Latin layouts", () => {
-		expect(isSwitchTrigger(keyEvent({ctrlKey: true, key: "й"}), "linux")).toBe(true);
+	it("matches the physical Q key on non-Latin layouts", () =>
+	{
+		expect(
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+						key: "й",
+					},
+				),
+				"linux",
+			),
+		).toBe(true);
 	});
 
-	it("uses Alt+Q on windows and never takes ⇧ there", () => {
+	it("uses Alt+Q on windows and never takes ⇧ there", () =>
+	{
 		expect([
-			isSwitchTrigger(keyEvent({altKey: true}), "windows"),
-			isSwitchTrigger(keyEvent({ctrlKey: true}), "windows"),
-			isSwitchTrigger(keyEvent({altKey: true, shiftKey: true}), "windows"),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						altKey: true,
+					},
+				),
+				"windows",
+			),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+					},
+				),
+				"windows",
+			),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						altKey: true,
+						shiftKey: true,
+					},
+				),
+				"windows",
+			),
 		]).toStrictEqual([true, false, false]);
 	});
 
-	it("disables ⇧ on ChromeOS, where Ctrl+Shift+Q signs out", () => {
+	it("disables ⇧ on ChromeOS, where Ctrl+Shift+Q signs out", () =>
+	{
 		expect([
-			isSwitchTrigger(keyEvent({ctrlKey: true}), "chromeos"),
-			isSwitchTrigger(keyEvent({ctrlKey: true, shiftKey: true}), "chromeos"),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+					},
+				),
+				"chromeos",
+			),
+			isSwitchTrigger(
+				keyEvent(
+					{
+						ctrlKey: true,
+						shiftKey: true,
+					},
+				),
+				"chromeos",
+			),
 		]).toStrictEqual([true, false]);
 	});
 });
 
-describe("initialIndex and step", () => {
-	it("starts on the previous page when the current page leads the list", () => {
+describe("initialIndex and step", () =>
+{
+	it("starts on the previous page when the current page leads the list", () =>
+	{
 		expect([
 			initialIndex(ENTRIES, "session:alpha", 1),
 			initialIndex(ENTRIES, "session:alpha", -1),
@@ -103,44 +233,87 @@ describe("initialIndex and step", () => {
 		]).toStrictEqual([1, 2, 0, 2, 0]);
 	});
 
-	it("wraps in both directions", () => {
+	it("wraps in both directions", () =>
+	{
 		expect([step(1, 1, 3), step(2, 1, 3), step(0, -1, 3), step(1, -1, 3)]).toStrictEqual([2, 0, 2, 0]);
 	});
 });
 
-function renderApp(initialPath = "/session/alpha", queryClient = new QueryClient()) {
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<RecentsSwitcher />
-				<KeyboardShortcutsDialog />
-				<Outlet />
-			</QueryClientProvider>
-		),
-	});
-	const pageRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "$",
-		component: () => <div>page</div>,
-	});
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([pageRoute]),
-		history: createMemoryHistory({initialEntries: [initialPath]}),
-	});
+function renderApp(initialPath = "/session/alpha", queryClient = new QueryClient())
+{
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<RecentsSwitcher />
+					<KeyboardShortcutsDialog />
+					<Outlet />
+				</QueryClientProvider>
+			),
+		},
+	);
+	const pageRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "$",
+			component: () => <div>page</div>,
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute.addChildren([pageRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [initialPath],
+				},
+			),
+		},
+	);
 	render(<RouterProvider router={router} />);
 	return router;
 }
 
-function pressQ(init: KeyboardEventInit = {ctrlKey: true}, target: Element = document.body) {
-	fireEvent.keyDown(target, {key: "q", code: "KeyQ", ...init});
+function pressQ(
+	init: KeyboardEventInit =
+	{
+		ctrlKey: true,
+	},
+	target: Element = document.body,
+)
+{
+	fireEvent.keyDown(
+		target,
+		{
+			key: "q",
+			code: "KeyQ",
+			...init,
+		},
+	);
 }
 
-function releaseControl() {
-	fireEvent.keyUp(document.body, {key: "Control", code: "ControlLeft"});
+function releaseControl()
+{
+	fireEvent.keyUp(
+		document.body,
+		{
+			key: "Control",
+			code: "ControlLeft",
+		},
+	);
 }
 
-function selectedRow(): {active: string | null; title: string | null} {
-	const listbox = screen.getByRole("listbox", {name: "Recents"});
+function selectedRow():
+{
+	active: string | null;
+	title: string | null;
+}
+{
+	const listbox = screen.getByRole(
+		"listbox",
+		{
+			name: "Recents",
+		},
+	);
 	const selected = within(listbox)
 		.getAllByRole("option")
 		.find((option) => option.getAttribute("aria-selected") === "true");
@@ -150,54 +323,91 @@ function selectedRow(): {active: string | null; title: string | null} {
 	};
 }
 
-describe("RecentsSwitcher", () => {
-	beforeEach(() => {
+describe("RecentsSwitcher", () =>
+{
+	beforeEach(() =>
+	{
 		window.sessionStorage.clear();
 		saveRecents(ENTRIES);
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
-		Element.prototype.scrollIntoView = () => {};
+		Element.prototype.scrollIntoView = () =>
+		{
+		};
 	});
 
-	afterEach(() => {
-		act(() => {
+	afterEach(() =>
+	{
+		act(() =>
+		{
 			setKeyboardShortcutsOpen(false);
 		});
 		cleanup();
 		vi.restoreAllMocks();
 	});
 
-	it("deduplicates cached aliases and skips the current session's resolved identity", async () => {
+	it("deduplicates cached aliases and skips the current session's resolved identity", async () =>
+	{
 		const queryClient = new QueryClient();
-		queryClient.setQueryData(sessionQueryKeys.identity("session_example"), {sessionId: "alpha"});
+		queryClient.setQueryData(
+			sessionQueryKeys.identity("session_example"),
+			{
+				sessionId: "alpha",
+			},
+		);
 		saveRecents([
-			{key: "session:session_example", kind: "session", href: "/session/session_example", title: "Alias session"},
+			{
+				key: "session:session_example",
+				kind: "session",
+				href: "/session/session_example",
+				title: "Alias session",
+			},
 			...ENTRIES,
 		]);
 		const router = renderApp("/session/session_example", queryClient);
 		await screen.findByText("page");
 		pressQ();
-		const dialog = await screen.findByRole("dialog", {name: "Recents"});
-		expect({
-			rows: within(dialog)
-				.getAllByRole("option")
-				.map((option) => option.textContent),
-			selected: selectedRow(),
-		}).toStrictEqual({
-			rows: ["Alias session", "Beta session", "Untitled"],
-			selected: {active: "recents-switcher-row-1", title: "Beta session"},
-		});
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		expect(
+			{
+				rows: within(dialog)
+					.getAllByRole("option")
+					.map((option) => option.textContent),
+				selected: selectedRow(),
+			},
+		).toStrictEqual(
+			{
+				rows: ["Alias session", "Beta session", "Untitled"],
+				selected:
+				{
+					active: "recents-switcher-row-1",
+					title: "Beta session",
+				},
+			},
+		);
 		releaseControl();
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/session/beta");
 		});
 	});
 
 	it.each(["reassigned", "removed", "failed"])(
 		"keeps the selected local owner and gesture order when its alias is %s",
-		async (change) => {
+		async (change) =>
+		{
 			const queryClient = new QueryClient();
 			const queryKey = sessionQueryKeys.identity("session_example");
-			queryClient.setQueryData(queryKey, {sessionId: "alpha"});
+			queryClient.setQueryData(
+				queryKey,
+				{
+					sessionId: "alpha",
+				},
+			);
 			saveRecents([
 				{
 					key: "session:session_example",
@@ -211,35 +421,71 @@ describe("RecentsSwitcher", () => {
 			await screen.findByText("page");
 			const fetch = vi.spyOn(globalThis, "fetch");
 			pressQ();
-			const dialog = await screen.findByRole("dialog", {name: "Recents"});
-			act(() => {
-				if (change === "reassigned") queryClient.setQueryData(queryKey, {sessionId: "beta"});
-				else if (change === "removed") queryClient.removeQueries({queryKey});
+			const dialog = await screen.findByRole(
+				"dialog",
+				{
+					name: "Recents",
+				},
+			);
+			act(() =>
+			{
+				if (change === "reassigned")
+					queryClient.setQueryData(
+						queryKey,
+						{
+							sessionId: "beta",
+						},
+					);
+				else if (change === "removed")
+					queryClient.removeQueries(
+						{
+							queryKey,
+						},
+					);
 				else
 					queryClient
 						.getQueryCache()
-						.find({queryKey})!
-						.setState({status: "error", error: new Error("Ambiguous alias")});
+						.find(
+							{
+								queryKey,
+							},
+						)!
+						.setState(
+							{
+								status: "error",
+								error: new Error("Ambiguous alias"),
+							},
+						);
 				saveRecents(ENTRIES.toReversed());
 			});
-			expect({
-				rows: within(dialog)
-					.getAllByRole("option")
-					.map((option) => option.textContent),
-				selected: selectedRow(),
-			}).toStrictEqual({
-				rows: ["Alpha alias", "Beta session", "Untitled"],
-				selected: {active: "recents-switcher-row-0", title: "Alpha alias"},
-			});
+			expect(
+				{
+					rows: within(dialog)
+						.getAllByRole("option")
+						.map((option) => option.textContent),
+					selected: selectedRow(),
+				},
+			).toStrictEqual(
+				{
+					rows: ["Alpha alias", "Beta session", "Untitled"],
+					selected:
+					{
+						active: "recents-switcher-row-0",
+						title: "Alpha alias",
+					},
+				},
+			);
 			releaseControl();
-			await waitFor(() => {
+			await waitFor(() =>
+			{
 				expect(router.state.location.pathname).toBe("/session/alpha");
 			});
 			expect(fetch.mock.calls).toStrictEqual([]);
 		},
 	);
 
-	it("keeps an unresolved historical alias navigable without making identity requests", async () => {
+	it("keeps an unresolved historical alias navigable without making identity requests", async () =>
+	{
 		saveRecents([
 			{
 				key: "session:session_example",
@@ -252,97 +498,200 @@ describe("RecentsSwitcher", () => {
 		await screen.findByText("page");
 		const fetch = vi.spyOn(globalThis, "fetch");
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
-		expect(selectedRow()).toStrictEqual({active: "recents-switcher-row-0", title: "Unknown session"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		expect(selectedRow()).toStrictEqual(
+			{
+				active: "recents-switcher-row-0",
+				title: "Unknown session",
+			},
+		);
 		releaseControl();
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/session/session_example");
 		});
 		expect(fetch.mock.calls).toStrictEqual([]);
 	});
 
-	it("skips navigation when the current alias resolves to the selected session during the gesture", async () => {
+	it("skips navigation when the current alias resolves to the selected session during the gesture", async () =>
+	{
 		const queryClient = new QueryClient();
 		const router = renderApp("/session/session_example", queryClient);
 		await screen.findByText("page");
 		const navigate = vi.spyOn(router, "navigate");
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
-		act(() => {
-			queryClient.setQueryData(sessionQueryKeys.identity("session_example"), {sessionId: "alpha"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		act(() =>
+		{
+			queryClient.setQueryData(
+				sessionQueryKeys.identity("session_example"),
+				{
+					sessionId: "alpha",
+				},
+			);
 		});
-		expect(selectedRow()).toStrictEqual({active: "recents-switcher-row-0", title: "Alpha session"});
+		expect(selectedRow()).toStrictEqual(
+			{
+				active: "recents-switcher-row-0",
+				title: "Alpha session",
+			},
+		);
 		releaseControl();
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 		expect(navigate.mock.calls).toStrictEqual([]);
 	});
 
-	it("lists only sessions and projects, not plans, memories, commands or subagent views, each row a kind icon and a title", async () => {
+	it("lists only sessions and projects, not plans, memories, commands or subagent views, each row a kind icon and a title", async () =>
+	{
 		saveRecents([
-			{key: "session:alpha", kind: "session", href: "/session/alpha", title: "Alpha session"},
-			{key: "plan:big-plan", kind: "plan", href: "/plan/big-plan", title: "Big plan"},
-			{key: "subagents:alpha", kind: "subagents", href: "/session/alpha/subagents", title: "Subagents"},
-			{key: "project:proj", kind: "project", href: "/project/proj", title: "proj"},
-			{key: "memory:proj/notes", kind: "memory", href: "/memory/proj/notes", title: "Notes"},
-			{key: "command:user/deploy", kind: "command", href: "/command/user/deploy", title: "deploy"},
-			{key: "session:beta", kind: "session", href: "/session/beta"},
+			{
+				key: "session:alpha",
+				kind: "session",
+				href: "/session/alpha",
+				title: "Alpha session",
+			},
+			{
+				key: "plan:big-plan",
+				kind: "plan",
+				href: "/plan/big-plan",
+				title: "Big plan",
+			},
+			{
+				key: "subagents:alpha",
+				kind: "subagents",
+				href: "/session/alpha/subagents",
+				title: "Subagents",
+			},
+			{
+				key: "project:proj",
+				kind: "project",
+				href: "/project/proj",
+				title: "proj",
+			},
+			{
+				key: "memory:proj/notes",
+				kind: "memory",
+				href: "/memory/proj/notes",
+				title: "Notes",
+			},
+			{
+				key: "command:user/deploy",
+				kind: "command",
+				href: "/command/user/deploy",
+				title: "deploy",
+			},
+			{
+				key: "session:beta",
+				kind: "session",
+				href: "/session/beta",
+			},
 		]);
 		renderApp("/plan/big-plan");
 		await screen.findByText("page");
 
 		pressQ();
 
-		const dialog = await screen.findByRole("dialog", {name: "Recents"});
-		expect({
-			rows: within(dialog)
-				.getAllByRole("option")
-				.map((option) => [option.querySelector("svg")?.getAttribute("class"), option.textContent]),
-			selected: selectedRow(),
-		}).toStrictEqual({
-			rows: [
-				["lucide lucide-code-xml", "Alpha session"],
-				["lucide lucide-folder-open", "proj"],
-				["lucide lucide-code-xml", "Untitled"],
-			],
-			selected: {active: "recents-switcher-row-0", title: "Alpha session"},
-		});
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		expect(
+			{
+				rows: within(dialog)
+					.getAllByRole("option")
+					.map((option) => [option.querySelector("svg")?.getAttribute("class"), option.textContent]),
+				selected: selectedRow(),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					["lucide lucide-code-xml", "Alpha session"],
+					["lucide lucide-folder-open", "proj"],
+					["lucide lucide-code-xml", "Untitled"],
+				],
+				selected:
+				{
+					active: "recents-switcher-row-0",
+					title: "Alpha session",
+				},
+			},
+		);
 	});
 
-	it("selects exactly the previous entry on ⌃Q", async () => {
+	it("selects exactly the previous entry on ⌃Q", async () =>
+	{
 		renderApp();
 		await screen.findByText("page");
 
 		pressQ();
 
-		const dialog = await screen.findByRole("dialog", {name: "Recents"});
-		expect({
-			rows: within(dialog)
-				.getAllByRole("option")
-				.map((option) => [option.id, option.textContent]),
-			selected: selectedRow(),
-		}).toStrictEqual({
-			rows: [
-				["recents-switcher-row-0", "Alpha session"],
-				["recents-switcher-row-1", "Beta session"],
-				["recents-switcher-row-2", "Untitled"],
-			],
-			selected: {active: "recents-switcher-row-1", title: "Beta session"},
-		});
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		expect(
+			{
+				rows: within(dialog)
+					.getAllByRole("option")
+					.map((option) => [option.id, option.textContent]),
+				selected: selectedRow(),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					["recents-switcher-row-0", "Alpha session"],
+					["recents-switcher-row-1", "Beta session"],
+					["recents-switcher-row-2", "Untitled"],
+				],
+				selected:
+				{
+					active: "recents-switcher-row-1",
+					title: "Beta session",
+				},
+			},
+		);
 	});
 
-	it("walks to index 2 on a second ⌃Q and wraps both ways", async () => {
+	it("walks to index 2 on a second ⌃Q and wraps both ways", async () =>
+	{
 		renderApp();
 		await screen.findByText("page");
 
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
 		pressQ();
 		const second = selectedRow();
 		pressQ();
 		const wrapped = selectedRow();
-		pressQ({ctrlKey: true, shiftKey: true, key: "Q"});
+		pressQ(
+			{
+				ctrlKey: true,
+				shiftKey: true,
+				key: "Q",
+			},
+		);
 		const reversed = selectedRow();
 
 		expect([second.active, wrapped.active, reversed.active]).toStrictEqual([
@@ -352,177 +701,393 @@ describe("RecentsSwitcher", () => {
 		]);
 	});
 
-	it("opens on the oldest entry with ⌃⇧Q", async () => {
+	it("opens on the oldest entry with ⌃⇧Q", async () =>
+	{
 		renderApp();
 		await screen.findByText("page");
 
-		pressQ({ctrlKey: true, shiftKey: true, key: "Q"});
+		pressQ(
+			{
+				ctrlKey: true,
+				shiftKey: true,
+				key: "Q",
+			},
+		);
 
-		await screen.findByRole("dialog", {name: "Recents"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
 		expect(selectedRow().active).toBe("recents-switcher-row-2");
 	});
 
-	it("moves with ↑/↓ while open", async () => {
+	it("moves with ↑/↓ while open", async () =>
+	{
 		renderApp();
 		await screen.findByText("page");
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
 
-		fireEvent.keyDown(document.body, {key: "ArrowDown", ctrlKey: true});
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "ArrowDown",
+				ctrlKey: true,
+			},
+		);
 		const down = selectedRow().active;
-		fireEvent.keyDown(document.body, {key: "ArrowUp", ctrlKey: true});
-		fireEvent.keyDown(document.body, {key: "ArrowUp", ctrlKey: true});
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "ArrowUp",
+				ctrlKey: true,
+			},
+		);
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "ArrowUp",
+				ctrlKey: true,
+			},
+		);
 
 		expect([down, selectedRow().active]).toStrictEqual(["recents-switcher-row-2", "recents-switcher-row-0"]);
 	});
 
-	it("navigates to the exact href when Control is released", async () => {
+	it("navigates to the exact href when Control is released", async () =>
+	{
 		const router = renderApp();
 		await screen.findByText("page");
 
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
 		pressQ();
 		releaseControl();
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/project/proj");
 		});
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 	});
 
-	it("stays open across Q keyups while Control is held and commits only on Control up", async () => {
+	it("stays open across Q keyups while Control is held and commits only on Control up", async () =>
+	{
 		const router = renderApp();
 		await screen.findByText("page");
 
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
 		const focused = () => document.activeElement ?? document.body;
-		fireEvent.keyUp(focused(), {key: "q", code: "KeyQ", ctrlKey: true});
-		const afterFirstUp = {dialog: screen.queryByRole("dialog") !== null, selected: selectedRow().active};
-		pressQ({ctrlKey: true}, focused());
-		fireEvent.keyUp(focused(), {key: "q", code: "KeyQ", ctrlKey: true});
-		const afterSecondUp = {
+		fireEvent.keyUp(
+			focused(),
+			{
+				key: "q",
+				code: "KeyQ",
+				ctrlKey: true,
+			},
+		);
+		const afterFirstUp =
+		{
+			dialog: screen.queryByRole("dialog") !== null,
+			selected: selectedRow().active,
+		};
+		pressQ(
+			{
+				ctrlKey: true,
+			},
+			focused(),
+		);
+		fireEvent.keyUp(
+			focused(),
+			{
+				key: "q",
+				code: "KeyQ",
+				ctrlKey: true,
+			},
+		);
+		const afterSecondUp =
+		{
 			dialog: screen.queryByRole("dialog") !== null,
 			selected: selectedRow().active,
 			path: router.state.location.pathname,
 		};
-		fireEvent.keyUp(focused(), {key: "Control", code: "ControlLeft", ctrlKey: false});
+		fireEvent.keyUp(
+			focused(),
+			{
+				key: "Control",
+				code: "ControlLeft",
+				ctrlKey: false,
+			},
+		);
 
-		expect({afterFirstUp, afterSecondUp}).toStrictEqual({
-			afterFirstUp: {dialog: true, selected: "recents-switcher-row-1"},
-			afterSecondUp: {dialog: true, selected: "recents-switcher-row-2", path: "/session/alpha"},
-		});
-		await waitFor(() => {
+		expect(
+			{
+				afterFirstUp,
+				afterSecondUp,
+			},
+		).toStrictEqual(
+			{
+				afterFirstUp:
+				{
+					dialog: true,
+					selected: "recents-switcher-row-1",
+				},
+				afterSecondUp:
+				{
+					dialog: true,
+					selected: "recents-switcher-row-2",
+					path: "/session/alpha",
+				},
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/project/proj");
 		});
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
 
-	it("commits on any keyup that arrives without Control held", async () => {
+	it("commits on any keyup that arrives without Control held", async () =>
+	{
 		const router = renderApp();
 		await screen.findByText("page");
 
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
-		fireEvent.keyUp(document.activeElement ?? document.body, {key: "q", code: "KeyQ", ctrlKey: false});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		fireEvent.keyUp(
+			document.activeElement ?? document.body,
+			{
+				key: "q",
+				code: "KeyQ",
+				ctrlKey: false,
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/session/beta");
 		});
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
 
-	it("stays open across Q keyups while Alt is held on windows and commits on Alt up or an Alt-less keyup", async () => {
+	it("stays open across Q keyups while Alt is held on windows and commits on Alt up or an Alt-less keyup", async () =>
+	{
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(WINDOWS_UA);
 		const router = renderApp();
 		await screen.findByText("page");
 		const focused = () => document.activeElement ?? document.body;
 
-		pressQ({altKey: true});
-		await screen.findByRole("dialog", {name: "Recents"});
-		fireEvent.keyUp(focused(), {key: "q", code: "KeyQ", altKey: true});
-		pressQ({altKey: true}, focused());
-		fireEvent.keyUp(focused(), {key: "q", code: "KeyQ", altKey: true});
-		const held = {dialog: screen.queryByRole("dialog") !== null, selected: selectedRow().active};
-		fireEvent.keyUp(focused(), {key: "Alt", code: "AltLeft", altKey: false});
-		await waitFor(() => {
+		pressQ(
+			{
+				altKey: true,
+			},
+		);
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		fireEvent.keyUp(
+			focused(),
+			{
+				key: "q",
+				code: "KeyQ",
+				altKey: true,
+			},
+		);
+		pressQ(
+			{
+				altKey: true,
+			},
+			focused(),
+		);
+		fireEvent.keyUp(
+			focused(),
+			{
+				key: "q",
+				code: "KeyQ",
+				altKey: true,
+			},
+		);
+		const held =
+		{
+			dialog: screen.queryByRole("dialog") !== null,
+			selected: selectedRow().active,
+		};
+		fireEvent.keyUp(
+			focused(),
+			{
+				key: "Alt",
+				code: "AltLeft",
+				altKey: false,
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/project/proj");
 		});
 
-		pressQ({altKey: true});
-		await screen.findByRole("dialog", {name: "Recents"});
-		fireEvent.keyUp(focused(), {key: "q", code: "KeyQ", altKey: false});
+		pressQ(
+			{
+				altKey: true,
+			},
+		);
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		fireEvent.keyUp(
+			focused(),
+			{
+				key: "q",
+				code: "KeyQ",
+				altKey: false,
+			},
+		);
 
-		expect(held).toStrictEqual({dialog: true, selected: "recents-switcher-row-2"});
-		await waitFor(() => {
+		expect(held).toStrictEqual(
+			{
+				dialog: true,
+				selected: "recents-switcher-row-2",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/session/alpha");
 		});
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
 
-	it("commits on Enter", async () => {
+	it("commits on Enter", async () =>
+	{
 		const router = renderApp();
 		await screen.findByText("page");
 
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
-		fireEvent.keyDown(document.body, {key: "Enter", ctrlKey: true});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Enter",
+				ctrlKey: true,
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/session/beta");
 		});
 	});
 
-	it("closes without navigating on Esc", async () => {
+	it("closes without navigating on Esc", async () =>
+	{
 		const router = renderApp();
 		await screen.findByText("page");
 
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
-		fireEvent.keyDown(document.body, {key: "Escape", ctrlKey: true});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		fireEvent.keyDown(
+			document.body,
+			{
+				key: "Escape",
+				ctrlKey: true,
+			},
+		);
 		releaseControl();
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 		expect(router.state.location.pathname).toBe("/session/alpha");
 	});
 
-	it("closes without navigating on window blur", async () => {
+	it("closes without navigating on window blur", async () =>
+	{
 		const router = renderApp();
 		await screen.findByText("page");
 
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
 		fireEvent.blur(window);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 		expect(router.state.location.pathname).toBe("/session/alpha");
 	});
 
-	it("does not navigate when committing the current page", async () => {
+	it("does not navigate when committing the current page", async () =>
+	{
 		const router = renderApp();
 		await screen.findByText("page");
 		const navigate = vi.spyOn(router, "navigate");
 
 		pressQ();
-		await screen.findByRole("dialog", {name: "Recents"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
 		pressQ();
 		pressQ();
 		releaseControl();
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 		expect(navigate).not.toHaveBeenCalled();
 	});
 
-	it("shows no dialog when the history is empty", async () => {
+	it("shows no dialog when the history is empty", async () =>
+	{
 		window.sessionStorage.clear();
 		renderApp();
 		await screen.findByText("page");
@@ -532,7 +1097,8 @@ describe("RecentsSwitcher", () => {
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
 
-	it("ignores ⌃Q typed inside a terminal", async () => {
+	it("ignores ⌃Q typed inside a terminal", async () =>
+	{
 		renderApp();
 		await screen.findByText("page");
 		const terminal = document.createElement("div");
@@ -541,38 +1107,71 @@ describe("RecentsSwitcher", () => {
 		terminal.append(inner);
 		document.body.append(terminal);
 
-		pressQ({ctrlKey: true}, inner);
+		pressQ(
+			{
+				ctrlKey: true,
+			},
+			inner,
+		);
 
 		expect(screen.queryByRole("dialog")).toBeNull();
 		terminal.remove();
 	});
 
-	it("opens on Alt+Q and ignores Ctrl+Q on windows", async () => {
+	it("opens on Alt+Q and ignores Ctrl+Q on windows", async () =>
+	{
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(WINDOWS_UA);
 		const router = renderApp();
 		await screen.findByText("page");
 
-		pressQ({ctrlKey: true});
+		pressQ(
+			{
+				ctrlKey: true,
+			},
+		);
 		const afterCtrl = screen.queryByRole("dialog");
-		pressQ({altKey: true});
-		await screen.findByRole("dialog", {name: "Recents"});
-		fireEvent.keyUp(document.body, {key: "Alt", code: "AltLeft"});
+		pressQ(
+			{
+				altKey: true,
+			},
+		);
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Recents",
+			},
+		);
+		fireEvent.keyUp(
+			document.body,
+			{
+				key: "Alt",
+				code: "AltLeft",
+			},
+		);
 
 		expect(afterCtrl).toBeNull();
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.pathname).toBe("/session/beta");
 		});
 	});
 
-	it("is listed in the shortcuts dialog as Switch between recents ⌃Q", async () => {
+	it("is listed in the shortcuts dialog as Switch between recents ⌃Q", async () =>
+	{
 		renderApp();
 		await screen.findByText("page");
 
-		act(() => {
+		act(() =>
+		{
 			setKeyboardShortcutsOpen(true);
 		});
 
-		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Keyboard shortcuts",
+			},
+		);
 		const row = within(dialog).getByText("Switch between recents").parentElement;
 		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent)).toStrictEqual([
 			"⌃Control",
@@ -580,16 +1179,23 @@ describe("RecentsSwitcher", () => {
 		]);
 	});
 
-	it("is listed in the shortcuts dialog as Alt+Q on windows", async () => {
+	it("is listed in the shortcuts dialog as Alt+Q on windows", async () =>
+	{
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(WINDOWS_UA);
 		renderApp();
 		await screen.findByText("page");
 
-		act(() => {
+		act(() =>
+		{
 			setKeyboardShortcutsOpen(true);
 		});
 
-		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Keyboard shortcuts",
+			},
+		);
 		const row = within(dialog).getByText("Switch between recents").parentElement;
 		expect([...(row?.querySelectorAll("kbd") ?? [])].map((kbd) => kbd.textContent)).toStrictEqual(["Alt", "Q"]);
 	});

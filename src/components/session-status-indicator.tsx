@@ -1,7 +1,8 @@
 import {sessionStateKind, type ActivityState, type DisplayState, type WaitHeat} from "../lib/session-state";
 import {SessionStateIcon} from "./status-dot";
 
-const DISPLAY_STATE_STYLES: Record<DisplayState, string> = {
+const DISPLAY_STATE_STYLES: Record<DisplayState, string> =
+{
 	waiting: "text-amber-500",
 	review: "text-sky-500",
 	working: "text-green-500",
@@ -9,7 +10,8 @@ const DISPLAY_STATE_STYLES: Record<DisplayState, string> = {
 	unknown: "text-t6",
 };
 
-const WAIT_HEAT_STYLES: Record<Exclude<WaitHeat, "">, string> = {
+const WAIT_HEAT_STYLES: Record<Exclude<WaitHeat, "">, string> =
+{
 	warm: "text-amber-600",
 	hot: "text-red-500",
 };
@@ -28,7 +30,8 @@ export function SessionStatusIndicator({
 	displayState: DisplayState;
 	heat: WaitHeat;
 	state: ActivityState;
-}) {
+})
+{
 	const wordStyle = heat === "" ? DISPLAY_STATE_STYLES[state] : WAIT_HEAT_STYLES[heat];
 	return (
 		<span

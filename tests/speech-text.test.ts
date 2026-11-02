@@ -1,8 +1,10 @@
 import {describe, expect, it} from "vite-plus/test";
 import {speechText} from "../src/lib/speech-text";
 
-describe("speechText", () => {
-	it("prepares markdown as upstream does before reading it aloud", () => {
+describe("speechText", () =>
+{
+	it("prepares markdown as upstream does before reading it aloud", () =>
+	{
 		const markdown = [
 			"# Example **plan** for _the_ `src/a.ts` file",
 			"",
@@ -38,7 +40,8 @@ describe("speechText", () => {
 		);
 	});
 
-	it("is empty for whitespace-only markdown", () => {
+	it("is empty for whitespace-only markdown", () =>
+	{
 		expect(speechText("\n\n  \n")).toBe("");
 	});
 });

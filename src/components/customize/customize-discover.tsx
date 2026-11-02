@@ -3,7 +3,8 @@ import {Check, Plus, Puzzle, Scroll} from "lucide-react";
 import {customizeDiscoverQueryOptions, type DiscoverPlugin} from "../../lib/api/customize";
 import {Tooltip} from "../ui/tooltip";
 import {CustomizeNotice} from "./customize-empty";
-import {
+import
+{
 	ALL_CATEGORIES,
 	categoryLabel,
 	DISCOVER_SORT_OPTIONS,
@@ -23,7 +24,8 @@ import {useCopyInstallCommand} from "./use-copy-install-command";
 
 const CARD_LIMIT = 8;
 
-interface CustomizeDiscoverProps {
+interface CustomizeDiscoverProps
+{
 	section: "skills" | "plugins";
 	/** `?category=`: the Filter menu's choice; absent or "all" means every category. */
 	category: string | undefined;
@@ -32,9 +34,11 @@ interface CustomizeDiscoverProps {
 }
 
 /** "+" copies the install command; plugins already installed show "Installed ✓" instead. */
-function AddButton({plugin}: {plugin: DiscoverPlugin}) {
+function AddButton({plugin}: {plugin: DiscoverPlugin})
+{
 	const copyInstall = useCopyInstallCommand();
-	if (plugin.installed) {
+	if (plugin.installed)
+	{
 		return (
 			<span className="inline-flex shrink-0 items-center gap-1 text-footnote text-t6">
 				Installed
@@ -57,7 +61,8 @@ function AddButton({plugin}: {plugin: DiscoverPlugin}) {
 }
 
 /** "8.3M installs" with the exact count in a tooltip. */
-function Installs({count}: {count: number}) {
+function Installs({count}: {count: number})
+{
 	return (
 		<Tooltip content={formatExactInstalls(count)}>
 			{/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the exact-count tooltip */}
@@ -68,7 +73,8 @@ function Installs({count}: {count: number}) {
 	);
 }
 
-function CardMeta({plugin}: {plugin: DiscoverPlugin}) {
+function CardMeta({plugin}: {plugin: DiscoverPlugin})
+{
 	const by = plugin.author ?? plugin.marketplace;
 	return (
 		<span
@@ -86,7 +92,8 @@ function CardMeta({plugin}: {plugin: DiscoverPlugin}) {
 	);
 }
 
-function DiscoverCard({plugin, icon}: {plugin: DiscoverPlugin; icon: typeof Puzzle}) {
+function DiscoverCard({plugin, icon}: {plugin: DiscoverPlugin; icon: typeof Puzzle})
+{
 	return (
 		<li
 			data-testid="customize-discover-card"
@@ -113,7 +120,8 @@ function CardSection({
 	title: string;
 	plugins: readonly DiscoverPlugin[];
 	icon: typeof Puzzle;
-}) {
+})
+{
 	if (plugins.length === 0) return null;
 	return (
 		<section aria-labelledby={id} className="flex flex-col gap-3">
@@ -129,12 +137,16 @@ function CardSection({
 	);
 }
 
-function StaleBanner({fetchedAt}: {fetchedAt: string}) {
-	const date = new Date(fetchedAt).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-	});
+function StaleBanner({fetchedAt}: {fetchedAt: string})
+{
+	const date = new Date(fetchedAt).toLocaleDateString(
+		"en-US",
+		{
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+		},
+	);
 	return (
 		<div
 			role="status"
@@ -152,17 +164,20 @@ function StaleBanner({fetchedAt}: {fetchedAt: string}) {
  * plugin-catalog-cache.json plus every marketplace.json. Nothing installs from
  * here: "+" copies `claude plugin install <name>@<marketplace>`.
  */
-export function CustomizeDiscover({section, category, order}: CustomizeDiscoverProps) {
+export function CustomizeDiscover({section, category, order}: CustomizeDiscoverProps)
+{
 	const {data, isPending, isError} = useQuery(customizeDiscoverQueryOptions);
 	const icon = section === "skills" ? Scroll : Puzzle;
 
-	if (isError) {
+	if (isError)
+	{
 		return <CustomizeNotice title="Discover" body="The plugin catalog could not be read." />;
 	}
 	if (isPending) return <p className="text-body text-t6">Loading catalog…</p>;
 
 	const plugins = discoverForSection(data.plugins, section);
-	if (plugins.length === 0) {
+	if (plugins.length === 0)
+	{
 		return (
 			<CustomizeNotice
 				title="Nothing to discover yet"
@@ -175,7 +190,8 @@ export function CustomizeDiscover({section, category, order}: CustomizeDiscoverP
 	const chosenCategory = category === undefined || category === ALL_CATEGORIES ? undefined : category;
 	const sort = resolveOption(DISCOVER_SORT_OPTIONS, order).value;
 	const narrowed = chosenCategory !== undefined || sort !== DISCOVER_SORT_OPTIONS[0].value;
-	const filtered = {
+	const filtered =
+	{
 		categoryTitle: chosenCategory === undefined ? "All categories" : categoryLabel(chosenCategory),
 		plugins: sortDiscover(filterDiscover(plugins, chosenCategory), sort),
 	};

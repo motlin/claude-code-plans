@@ -2,12 +2,15 @@ import {describe, expect, it} from "vite-plus/test";
 import {parseJsonlRecord} from "../src/lib/schemas";
 import {aggregateSessionEdits} from "../src/lib/session-edits-diff";
 
-function jsonl(...lines: Record<string, unknown>[]): string {
+function jsonl(...lines: Record<string, unknown>[]): string
+{
 	return lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
 }
 
-function parseRecords(text: string) {
-	return text.split("\n").flatMap((line) => {
+function parseRecords(text: string)
+{
+	return text.split("\n").flatMap((line) =>
+	{
 		if (line.trim() === "") return [];
 		const record = parseJsonlRecord(line);
 		if (record === null) throw new Error(`Invalid JSONL fixture line: ${line}`);
@@ -19,16 +22,24 @@ function toolResult(
 	uuid: string,
 	assistantUuid: string,
 	toolUseResult: Record<string, unknown> | string,
-): Record<string, unknown> {
+): Record<string, unknown>
+{
 	return {
 		type: "user",
 		uuid,
 		parentUuid: assistantUuid,
 		sessionId: "session-1",
 		timestamp: "2026-09-29T00:00:00.000Z",
-		message: {
+		message:
+		{
 			role: "user",
-			content: [{type: "tool_result", tool_use_id: `toolu_${uuid}`, content: "ok"}],
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: `toolu_${uuid}`,
+					content: "ok",
+				},
+			],
 		},
 		toolUseResult,
 		sourceToolAssistantUUID: assistantUuid,
@@ -41,7 +52,8 @@ function editResult(
 	oldString: string,
 	newString: string,
 	extra: Record<string, unknown> = {},
-): Record<string, unknown> {
+): Record<string, unknown>
+{
 	return {
 		filePath,
 		oldString,
@@ -54,7 +66,8 @@ function editResult(
 	};
 }
 
-function writeResult(filePath: string, originalFile: string | null, content: string): Record<string, unknown> {
+function writeResult(filePath: string, originalFile: string | null, content: string): Record<string, unknown>
+{
 	return {
 		type: originalFile === null ? "create" : "update",
 		filePath,
@@ -65,8 +78,10 @@ function writeResult(filePath: string, originalFile: string | null, content: str
 	};
 }
 
-describe("aggregateSessionEdits", () => {
-	it("collapses sequential edits to one file into a single diff", () => {
+describe("aggregateSessionEdits", () =>
+{
+	it("collapses sequential edits to one file into a single diff", () =>
+	{
 		const original = "one\ntwo\nthree\n";
 		const records = parseRecords(
 			jsonl(
@@ -100,7 +115,8 @@ describe("aggregateSessionEdits", () => {
 		]);
 	});
 
-	it("applies an edit without an originalFile snapshot on top of tracked content", () => {
+	it("applies an edit without an originalFile snapshot on top of tracked content", () =>
+	{
 		const original = "alpha\nbeta\n";
 		const records = parseRecords(
 			jsonl(
@@ -114,7 +130,8 @@ describe("aggregateSessionEdits", () => {
 		expect(file?.complete).toBe(true);
 	});
 
-	it("combines a Write followed by an Edit", () => {
+	it("combines a Write followed by an Edit", () =>
+	{
 		const records = parseRecords(
 			jsonl(
 				toolResult("u1", "a1", writeResult("/repo/c.ts", "old\n", "first\nsecond\n")),
@@ -145,7 +162,8 @@ describe("aggregateSessionEdits", () => {
 		]);
 	});
 
-	it("reports a created file as added", () => {
+	it("reports a created file as added", () =>
+	{
 		const records = parseRecords(
 			jsonl(toolResult("u1", "a1", writeResult("/repo/new.md", null, "# Title\nbody\n"))),
 		);
@@ -173,10 +191,23 @@ describe("aggregateSessionEdits", () => {
 		]);
 	});
 
-	it("includes edits the user modified before accepting", () => {
+	it("includes edits the user modified before accepting", () =>
+	{
 		const records = parseRecords(
 			jsonl(
-				toolResult("u1", "a1", editResult("/repo/d.txt", "x = 1\n", "x = 1", "x = 42", {userModified: true})),
+				toolResult(
+					"u1",
+					"a1",
+					editResult(
+						"/repo/d.txt",
+						"x = 1\n",
+						"x = 1",
+						"x = 42",
+						{
+							userModified: true,
+						},
+					),
+				),
 			),
 		);
 
@@ -185,15 +216,31 @@ describe("aggregateSessionEdits", () => {
 		expect([file?.additions, file?.deletions]).toStrictEqual([1, 1]);
 	});
 
-	it("honors replaceAll", () => {
+	it("honors replaceAll", () =>
+	{
 		const records = parseRecords(
-			jsonl(toolResult("u1", "a1", editResult("/repo/e.txt", "a a\na\n", "a", "b", {replaceAll: true}))),
+			jsonl(
+				toolResult(
+					"u1",
+					"a1",
+					editResult(
+						"/repo/e.txt",
+						"a a\na\n",
+						"a",
+						"b",
+						{
+							replaceAll: true,
+						},
+					),
+				),
+			),
 		);
 
 		expect(aggregateSessionEdits(records)[0]?.newContent).toBe("b b\nb\n");
 	});
 
-	it("excludes a file that was edited and then reverted", () => {
+	it("excludes a file that was edited and then reverted", () =>
+	{
 		const records = parseRecords(
 			jsonl(
 				toolResult("u1", "a1", editResult("/repo/f.txt", "same\n", "same", "changed")),
@@ -205,18 +252,29 @@ describe("aggregateSessionEdits", () => {
 		expect(aggregateSessionEdits(records).map((file) => file.path)).toStrictEqual(["/repo/g.txt"]);
 	});
 
-	it("ignores failed tool results and non-edit tool results", () => {
+	it("ignores failed tool results and non-edit tool results", () =>
+	{
 		const records = parseRecords(
 			jsonl(
 				toolResult("u1", "a1", "Error: String to replace not found in file."),
-				toolResult("u2", "a2", {stdout: "hi", stderr: "", interrupted: false, isImage: false}),
+				toolResult(
+					"u2",
+					"a2",
+					{
+						stdout: "hi",
+						stderr: "",
+						interrupted: false,
+						isImage: false,
+					},
+				),
 			),
 		);
 
 		expect(aggregateSessionEdits(records)).toStrictEqual([]);
 	});
 
-	it("restricts the diff to the given turn uuids", () => {
+	it("restricts the diff to the given turn uuids", () =>
+	{
 		const records = parseRecords(
 			jsonl(
 				toolResult("u1", "a1", editResult("/repo/h.txt", "1\n2\n", "1", "one")),
@@ -225,7 +283,14 @@ describe("aggregateSessionEdits", () => {
 			),
 		);
 
-		expect(aggregateSessionEdits(records, {turnUuids: new Set(["a2"])})).toStrictEqual([
+		expect(
+			aggregateSessionEdits(
+				records,
+				{
+					turnUuids: new Set(["a2"]),
+				},
+			),
+		).toStrictEqual([
 			{
 				path: "/repo/h.txt",
 				status: "modified",
@@ -248,8 +313,14 @@ describe("aggregateSessionEdits", () => {
 		]);
 	});
 
-	it("limits context to three lines and splits distant changes into hunks", () => {
-		const lines = Array.from({length: 20}, (_, i) => `line${i + 1}`);
+	it("limits context to three lines and splits distant changes into hunks", () =>
+	{
+		const lines = Array.from(
+			{
+				length: 20,
+			},
+			(_, i) => `line${i + 1}`,
+		);
 		const original = lines.join("\n") + "\n";
 		const edited = original.replace("line2\n", "LINE2\n").replace("line19\n", "LINE19\n");
 		const records = parseRecords(jsonl(toolResult("u1", "a1", writeResult("/repo/long.txt", original, edited))));
@@ -278,23 +349,30 @@ describe("aggregateSessionEdits", () => {
 		);
 	});
 
-	it("falls back to the tool's structured patch when the starting content is unknown", () => {
+	it("falls back to the tool's structured patch when the starting content is unknown", () =>
+	{
 		const records = parseRecords(
 			jsonl(
 				toolResult(
 					"u1",
 					"a1",
-					editResult("/repo/big.ts", null, "foo", "bar", {
-						structuredPatch: [
-							{
-								oldStart: 10,
-								oldLines: 3,
-								newStart: 10,
-								newLines: 3,
-								lines: [" before", "-foo", "+bar", " after"],
-							},
-						],
-					}),
+					editResult(
+						"/repo/big.ts",
+						null,
+						"foo",
+						"bar",
+						{
+							structuredPatch: [
+								{
+									oldStart: 10,
+									oldLines: 3,
+									newStart: 10,
+									newLines: 3,
+									lines: [" before", "-foo", "+bar", " after"],
+								},
+							],
+						},
+					),
 				),
 			),
 		);

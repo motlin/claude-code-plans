@@ -15,12 +15,14 @@ export type TerminalAppearance = z.infer<typeof TerminalAppearanceSchema>;
 export const DEFAULT_TERMINAL_APPEARANCE: TerminalAppearance = "code-theme";
 
 /** The slice of a Shiki theme registration the mapper reads. */
-export interface CodeThemeColors {
+export interface CodeThemeColors
+{
 	colors?: Record<string, string>;
 }
 
 /** Upstream's key map `Y` (cf718f694): VS Code colour key → terminal theme field. */
-const THEME_KEYS = {
+const THEME_KEYS =
+{
 	background: "editor.background",
 	foreground: "terminal.foreground",
 	cursor: "terminalCursor.foreground",
@@ -51,7 +53,8 @@ const FOREGROUND_CONTRAST = 10;
 const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 /** `#rgb[a]` / `#rrggbb[aa]` as lowercase `#rrggbb[aa]`, or undefined for anything else. */
-function normalizeHex(color: string | undefined): string | undefined {
+function normalizeHex(color: string | undefined): string | undefined
+{
 	if (color === undefined || !HEX_COLOR.test(color)) return undefined;
 	const digits = color.slice(1).toLowerCase();
 	const expanded = digits.length <= 4 ? digits.replace(/./g, (digit) => digit + digit) : digits;
@@ -63,12 +66,14 @@ function normalizeHex(color: string | undefined): string | undefined {
  * integers, so those drop any alpha channel. Selection is only painted on
  * the canvas and keeps its translucency.
  */
-function opaqueHex(color: string | undefined): string | undefined {
+function opaqueHex(color: string | undefined): string | undefined
+{
 	return normalizeHex(color)?.slice(0, 7);
 }
 
 /** Upstream's colour parser `x`: `#rgb` and `#rrggbb` only, so a colour with alpha is unparseable. */
-function parseOpaqueHex(color: string | undefined): Rgb | undefined {
+function parseOpaqueHex(color: string | undefined): Rgb | undefined
+{
 	return color !== undefined && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(color) ? parseHexColor(color) : undefined;
 }
 
@@ -76,7 +81,8 @@ function parseOpaqueHex(color: string | undefined): Rgb | undefined {
  * Upstream's `Oe`: the terminal foreground, unless it reads below 10:1 on
  * the background and the editor foreground reads better.
  */
-function pickForeground(colors: Record<string, string>, background: string | undefined): string | undefined {
+function pickForeground(colors: Record<string, string>, background: string | undefined): string | undefined
+{
 	const terminal = colors["terminal.foreground"];
 	const editor = colors["editor.foreground"];
 	if (terminal === undefined || editor === undefined) return terminal ?? editor;
@@ -89,7 +95,8 @@ function pickForeground(colors: Record<string, string>, background: string | und
 }
 
 /** Upstream's `ke`: whether `color` is darker than `than`. */
-function isDarker(color: string | undefined, than: string): boolean {
+function isDarker(color: string | undefined, than: string): boolean
+{
 	const rgb = parseOpaqueHex(color);
 	const thanRgb = parseOpaqueHex(than);
 	return rgb !== undefined && thanRgb !== undefined && relativeLuminance(rgb) < relativeLuminance(thanRgb);
@@ -100,10 +107,12 @@ function isDarker(color: string | undefined, than: string): boolean {
  * Applied to Claude Light or Claude Dark, this is the base every other theme
  * of that mode is merged over.
  */
-export function terminalBaseFromCodeTheme(theme: CodeThemeColors): ITheme {
+export function terminalBaseFromCodeTheme(theme: CodeThemeColors): ITheme
+{
 	const colors = theme.colors ?? {};
 	const result: ITheme = {};
-	for (const field of objectKeys(THEME_KEYS)) {
+	for (const field of objectKeys(THEME_KEYS))
+	{
 		const raw = colors[THEME_KEYS[field]];
 		const color = field === "selectionBackground" ? normalizeHex(raw) : opaqueHex(raw);
 		if (color !== undefined) result[field] = color;
@@ -120,9 +129,14 @@ export function terminalBaseFromCodeTheme(theme: CodeThemeColors): ITheme {
  * paints selected text in `selectionForeground` regardless of the
  * background's alpha, so it follows the foreground unless the theme names one.
  */
-export function terminalThemeFromCodeTheme(theme: CodeThemeColors, base: ITheme = {}): ITheme {
+export function terminalThemeFromCodeTheme(theme: CodeThemeColors, base: ITheme = {}): ITheme
+{
 	const colors = theme.colors ?? {};
-	const result: ITheme = {...base, ...terminalBaseFromCodeTheme(theme)};
+	const result: ITheme =
+	{
+		...base,
+		...terminalBaseFromCodeTheme(theme),
+	};
 
 	// Upstream measures against the raw colour, so a background with alpha skips the pick.
 	const picked = pickForeground(colors, colors["editor.background"] ?? result.background);
@@ -135,12 +149,14 @@ export function terminalThemeFromCodeTheme(theme: CodeThemeColors, base: ITheme 
 		terminalForeground !== undefined &&
 		picked !== terminalForeground &&
 		isDarker(result.brightWhite, picked)
-	) {
+	)
+	{
 		result.brightWhite = foreground;
 	}
 
 	const editorSelection = normalizeHex(colors["editor.selectionBackground"]);
-	if (colors["terminal.selectionBackground"] === undefined && editorSelection !== undefined) {
+	if (colors["terminal.selectionBackground"] === undefined && editorSelection !== undefined)
+	{
 		result.selectionBackground = editorSelection;
 		const selectionForeground = opaqueHex(
 			colors["terminal.selectionForeground"] ?? colors["editor.selectionForeground"],
@@ -148,10 +164,12 @@ export function terminalThemeFromCodeTheme(theme: CodeThemeColors, base: ITheme 
 		if (selectionForeground === undefined) delete result.selectionForeground;
 		else result.selectionForeground = selectionForeground;
 	}
-	if (colors["terminalCursor.foreground"] === undefined && result.foreground !== undefined) {
+	if (colors["terminalCursor.foreground"] === undefined && result.foreground !== undefined)
+	{
 		result.cursor = result.foreground;
 	}
-	if (colors["terminalCursor.background"] === undefined && result.background !== undefined) {
+	if (colors["terminalCursor.background"] === undefined && result.background !== undefined)
+	{
 		result.cursorAccent = result.background;
 	}
 	if (result.foreground !== undefined) result.selectionForeground ??= result.foreground;
@@ -168,12 +186,21 @@ export function applyTerminalTheme(
 	appearance: GhosttyAppearance,
 	codeTheme: ITheme | null,
 	codeFontSize: number | null,
-): GhosttyAppearance {
-	const sized = codeFontSize === null ? appearance : {...appearance, fontSize: codeFontSize};
+): GhosttyAppearance
+{
+	const sized =
+		codeFontSize === null
+			? appearance
+			:
+				{
+					...appearance,
+					fontSize: codeFontSize,
+				};
 	if (codeTheme === null) return sized;
 	return {
 		...sized,
-		theme: {
+		theme:
+		{
 			...codeTheme,
 			background: codeTheme.background ?? appearance.theme.background,
 			foreground: codeTheme.foreground ?? appearance.theme.foreground,

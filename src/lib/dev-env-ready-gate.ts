@@ -14,21 +14,32 @@ export const DEV_ENV_READY_QUERY = "ccp:dev-env-ready?";
 const SERVER_ENVIRONMENTS = ["nitro", "ssr"] as const;
 const DEFAULT_TIMEOUT_MS = 15_000;
 
-interface HotChannelLike {
+interface HotChannelLike
+{
 	send(event: string): void;
 	on(event: string, listener: () => void): void;
 }
 
-interface NitroEnvironmentLike {
+interface NitroEnvironmentLike
+{
 	hot: HotChannelLike;
 	dispatchFetch(request: Request): Promise<Response>;
 }
 
-interface DevServerLike {
-	environments: {nitro?: NitroEnvironmentLike; ssr?: {hot: HotChannelLike}};
+interface DevServerLike
+{
+	environments:
+	{
+		nitro?: NitroEnvironmentLike;
+		ssr?:
+		{
+			hot: HotChannelLike;
+		};
+	};
 }
 
-interface DevPlugin {
+interface DevPlugin
+{
 	name: string;
 	apply: "serve";
 	configureServer(server: DevServerLike): void;
@@ -38,45 +49,69 @@ interface DevPlugin {
  * Call from module scope at the end of a server environment's entry: tells the dev server the entry has loaded,
  * and answers when a dev server that started listening later asks. A no-op outside dev, where there is no hot channel.
  */
-export function announceDevEnvReady(hot: HotChannelLike | undefined): void {
+export function announceDevEnvReady(hot: HotChannelLike | undefined): void
+{
 	if (hot === undefined) return;
 	hot.send(DEV_ENV_READY_EVENT);
-	hot.on(DEV_ENV_READY_QUERY, () => {
+	hot.on(DEV_ENV_READY_QUERY, () =>
+	{
 		hot.send(DEV_ENV_READY_EVENT);
 	});
 }
 
 /** {@link announceDevEnvReady} for whichever server environment loaded this module; each loads its own copy. */
-export function announceThisDevEnvReady(): void {
+export function announceThisDevEnvReady(): void
+{
 	announceDevEnvReady(import.meta.hot);
 }
 
-function unavailable(): Response {
-	return new Response("Dev server is starting; retry shortly.\n", {
-		status: 503,
-		headers: {"Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "Retry-After": "1"},
-	});
+function unavailable(): Response
+{
+	return new Response(
+		"Dev server is starting; retry shortly.\n",
+		{
+			status: 503,
+			headers:
+			{
+				"Content-Type": "text/plain; charset=utf-8",
+				"Cache-Control": "no-store",
+				"Retry-After": "1",
+			},
+		},
+	);
 }
 
 /** Holds requests bound for nitro's worker until every server environment's entry has loaded. */
-export function holdNitroRequestsUntilReady({timeoutMs = DEFAULT_TIMEOUT_MS}: {timeoutMs?: number} = {}): DevPlugin {
+export function holdNitroRequestsUntilReady({
+	timeoutMs = DEFAULT_TIMEOUT_MS,
+}:
+{
+	timeoutMs?: number;
+} = {}): DevPlugin
+{
 	return {
 		name: "ccp:hold-nitro-requests-until-ready",
 		apply: "serve",
-		configureServer(server) {
+		configureServer(server)
+		{
 			const nitro = server.environments.nitro;
 			if (nitro === undefined) return;
 
 			const waiting = new Set<string>();
-			let opened: () => void = () => {};
-			const ready = new Promise<void>((resolve) => {
+			let opened: () => void = () =>
+			{
+			};
+			const ready = new Promise<void>((resolve) =>
+			{
 				opened = resolve;
 			});
-			for (const name of SERVER_ENVIRONMENTS) {
+			for (const name of SERVER_ENVIRONMENTS)
+			{
 				const hot = server.environments[name]?.hot;
 				if (hot === undefined) continue;
 				waiting.add(name);
-				hot.on(DEV_ENV_READY_EVENT, () => {
+				hot.on(DEV_ENV_READY_EVENT, () =>
+				{
 					waiting.delete(name);
 					if (waiting.size === 0) opened();
 				});
@@ -87,17 +122,22 @@ export function holdNitroRequestsUntilReady({timeoutMs = DEFAULT_TIMEOUT_MS}: {t
 			// nitro reports itself), waiting longer would only put every request behind the same timeout.
 			let gaveUp = false;
 			const dispatchFetch = nitro.dispatchFetch.bind(nitro);
-			nitro.dispatchFetch = async (request) => {
-				if (waiting.size > 0 && !gaveUp) {
+			nitro.dispatchFetch = async (request) =>
+			{
+				if (waiting.size > 0 && !gaveUp)
+				{
 					let timer: ReturnType<typeof setTimeout> | undefined;
-					const timedOut = new Promise<true>((resolve) => {
-						timer = setTimeout(() => {
+					const timedOut = new Promise<true>((resolve) =>
+					{
+						timer = setTimeout(() =>
+						{
 							resolve(true);
 						}, timeoutMs);
 					});
 					const timeout = await Promise.race([ready.then(() => false), timedOut]);
 					clearTimeout(timer);
-					if (timeout) {
+					if (timeout)
+					{
 						gaveUp = true;
 						return unavailable();
 					}

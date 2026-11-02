@@ -11,16 +11,21 @@ import {READ_ONLY_ANSWER_HINT, type QuestionAnswerRoute} from "./question-answer
  * Upstream's `xt` for one question: each element matched to an option by its exact label, any other text as Other.
  * Unlike `xt`, `Something else` stays Other text: an empty Other types nothing into the pane, which would skip it.
  */
-function paneAnswer(question: QuestionLike, response: string | string[] | undefined): QuestionAnswer | null {
+function paneAnswer(question: QuestionLike, response: string | string[] | undefined): QuestionAnswer | null
+{
 	if (response === undefined || response === "" || response === NO_PREFERENCE_ANSWER) return null;
 	const selected: number[] = [];
 	let other: string | undefined;
-	for (const element of Array.isArray(response) ? response : [response]) {
+	for (const element of Array.isArray(response) ? response : [response])
+	{
 		const index = question.options.findIndex((option) => option.label === element);
 		if (index >= 0) selected.push(index);
 		else other = element;
 	}
-	const answer: QuestionAnswer = {selected: selected.toSorted((a, b) => a - b)};
+	const answer: QuestionAnswer =
+	{
+		selected: selected.toSorted((a, b) => a - b),
+	};
 	if (other !== undefined) answer.other = other;
 	return answer;
 }
@@ -29,11 +34,13 @@ function paneAnswer(question: QuestionLike, response: string | string[] | undefi
 export function responsesToPaneAnswers(
 	questions: readonly QuestionLike[],
 	responses: readonly QuestionResponse[],
-): Array<QuestionAnswer | null> {
+): Array<QuestionAnswer | null>
+{
 	return questions.map((question, index) => paneAnswer(question, responses[index]?.response));
 }
 
-interface SubmissionTarget {
+interface SubmissionTarget
+{
 	sessionId: string;
 	toolUseId: string;
 	questions: readonly QuestionLike[];
@@ -41,15 +48,26 @@ interface SubmissionTarget {
 
 /** A card's structured picks, or a typed reply's label responses. */
 export type QuestionAnswerSubmission = SubmissionTarget &
-	({picks: ReadonlyArray<QuestionAnswer | null>} | {responses: QuestionResponse[]});
+	(
+		|
+		  {
+				picks: ReadonlyArray<QuestionAnswer | null>;
+		  }
+		|
+		  {
+				responses: QuestionResponse[];
+		  }
+	);
 
 /** Send a question card's answer along its route; the read-only route refuses. */
 export async function submitQuestionAnswer(
 	route: QuestionAnswerRoute,
 	submission: QuestionAnswerSubmission,
-): Promise<void> {
+): Promise<void>
+{
 	const {sessionId, toolUseId, questions} = submission;
-	switch (route) {
+	switch (route)
+	{
 		case "live-pane":
 			await sendHerdrQuestionAnswer(
 				sessionId,
@@ -58,11 +76,14 @@ export async function submitQuestionAnswer(
 			);
 			return;
 		case "fork":
-			await postAnswerQuestion({
-				sessionId,
-				toolUseId,
-				answers: "picks" in submission ? questionResponses(questions, submission.picks) : submission.responses,
-			});
+			await postAnswerQuestion(
+				{
+					sessionId,
+					toolUseId,
+					answers:
+						"picks" in submission ? questionResponses(questions, submission.picks) : submission.responses,
+				},
+			);
 			return;
 		case "read-only":
 			throw new Error(READ_ONLY_ANSWER_HINT);

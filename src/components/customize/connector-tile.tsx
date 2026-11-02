@@ -1,13 +1,23 @@
 import {Terminal} from "lucide-react";
 
-const SIZE = {
+const SIZE =
+{
 	/** Table rows and the detail header: 24px tile, 16px glyph. */
-	sm: {tile: "size-6 rounded-[6.48px]", glyph: 16},
+	sm:
+	{
+		tile: "size-6 rounded-[6.48px]",
+		glyph: 16,
+	},
 	/** Detail header. */
-	lg: {tile: "size-9 rounded-r6", glyph: 20},
+	lg:
+	{
+		tile: "size-9 rounded-r6",
+		glyph: 20,
+	},
 } as const;
 
-interface ConnectorTileProps {
+interface ConnectorTileProps
+{
 	name: string;
 	domain: string | null;
 	size?: keyof typeof SIZE;
@@ -18,7 +28,8 @@ interface ConnectorTileProps {
  * favicon for the server's domain. Local stdio servers have no domain, so they
  * show a terminal glyph instead.
  */
-export function ConnectorTile({name, domain, size = "sm"}: ConnectorTileProps) {
+export function ConnectorTile({name, domain, size = "sm"}: ConnectorTileProps)
+{
 	const {tile, glyph} = SIZE[size];
 	return (
 		<div
@@ -32,7 +43,11 @@ export function ConnectorTile({name, domain, size = "sm"}: ConnectorTileProps) {
 					height={glyph}
 					alt={`${name} icon`}
 					src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`}
-					style={{maxWidth: glyph, maxHeight: glyph}}
+					style={
+					{
+						maxWidth: glyph,
+						maxHeight: glyph,
+					}}
 				/>
 			)}
 		</div>

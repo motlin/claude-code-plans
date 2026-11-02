@@ -1,6 +1,7 @@
 import {useSyncExternalStore} from "react";
 
-import {
+import
+{
 	EMPTY_TERMINAL_TABS,
 	reduceTerminalTabs,
 	restoreTerminalTabs,
@@ -20,23 +21,32 @@ import {
 const sessions = new Map<string, TerminalTabsState>();
 const listeners = new Set<() => void>();
 
-function readStored(sessionId: string): string | null {
-	try {
+function readStored(sessionId: string): string | null
+{
+	try
+	{
 		return localStorage.getItem(terminalTabsStorageKey(sessionId));
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-function writeStored(sessionId: string, state: TerminalTabsState): void {
-	try {
+function writeStored(sessionId: string, state: TerminalTabsState): void
+{
+	try
+	{
 		localStorage.setItem(terminalTabsStorageKey(sessionId), serializeTerminalTabs(state));
-	} catch {
+	}
+	catch
+	{
 		// Storage is a convenience; the in-memory list still works without it.
 	}
 }
 
-function current(sessionId: string): TerminalTabsState {
+function current(sessionId: string): TerminalTabsState
+{
 	const known = sessions.get(sessionId);
 	if (known) return known;
 	const restored = restoreTerminalTabs(readStored(sessionId));
@@ -44,7 +54,8 @@ function current(sessionId: string): TerminalTabsState {
 	return restored;
 }
 
-export function dispatchTerminalTabs(sessionId: string, action: TerminalTabsAction): void {
+export function dispatchTerminalTabs(sessionId: string, action: TerminalTabsAction): void
+{
 	const before = current(sessionId);
 	const next = reduceTerminalTabs(before, action);
 	if (next === before) return;
@@ -54,17 +65,20 @@ export function dispatchTerminalTabs(sessionId: string, action: TerminalTabsActi
 }
 
 /** Forget the in-memory lists (tests); stored lists are reread on next use. */
-export function clearShellTabs(): void {
+export function clearShellTabs(): void
+{
 	sessions.clear();
 	for (const listener of listeners) listener();
 }
 
-function subscribe(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void
+{
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
 
-export function useShellTabs(sessionId: string): TerminalTabsState {
+export function useShellTabs(sessionId: string): TerminalTabsState
+{
 	return useSyncExternalStore(
 		subscribe,
 		() => current(sessionId),

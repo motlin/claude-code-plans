@@ -1,4 +1,5 @@
-import {
+import
+{
 	useCallback,
 	useEffect,
 	useId,
@@ -12,7 +13,8 @@ import {
 import {useIsMac} from "../hooks/use-is-mac";
 import {assertNever} from "../lib/assert-never";
 import {useRowsReadGate} from "../hooks/use-rows-read-gate";
-import {
+import
+{
 	acknowledgeApproval,
 	clearApprovalAnswered,
 	markApprovalAnswered,
@@ -23,7 +25,8 @@ import {approvalEnterSeen, markApprovalEnterSeen} from "../lib/approval-enter-se
 import {installLandingKeys} from "../lib/approval-slot-landing";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScreen} from "../lib/dock-keys";
 import {storeLeadingAllow, useLeadingAllow} from "../lib/approval-leading-allow";
-import {
+import
+{
 	type FileChangeKind,
 	permissionDecisionForKey,
 	type PermissionDecision,
@@ -34,7 +37,8 @@ import type {PermissionDialogShape} from "../lib/herdr/permission-screen";
 import {allowMenuItems, AUTO_SWITCH_DESCRIPTION, AUTO_SWITCH_LABEL} from "../lib/permission-auto-switch";
 import type {PermissionRow} from "../lib/permission-rows";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
-import {
+import
+{
 	PERSISTENT_ALLOW_LABEL,
 	PERSISTENT_ALLOW_SCOPE,
 	type PersistentAllowKind,
@@ -42,7 +46,8 @@ import {
 } from "../lib/permission-suggestions";
 import {visibleSingleLine} from "../lib/visible-text";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
-import {
+import
+{
 	APPROVAL_ACTION_SHORTCUT_CLASS,
 	APPROVAL_SENDING_LABEL,
 	ApprovalActionButton,
@@ -57,7 +62,8 @@ import {Shortcut} from "./ui/shortcut";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 
 /** Upstream's "Allow and switch to Auto" (cc32965c2 `ei`/`$i`): whether it is offered, and the press. */
-export interface PermissionAutoSwitch {
+export interface PermissionAutoSwitch
+{
 	offered: boolean;
 	/** Allows the tool and switches the session to Auto; a rejection brings the card back with its message. */
 	onAllowAndSwitch: () => Promise<void>;
@@ -169,10 +175,12 @@ export function PermissionCard({
 	 * is cleared by its `ElicitationResult`, since the CLI can refuse an early Enter.
 	 */
 	hideOnDecision?: boolean;
-}) {
+})
+{
 	const isMac = useIsMac();
 	const [enter] = useState(() => enterKey === undefined || !approvalEnterSeen(enterKey));
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (enterKey !== undefined) markApprovalEnterSeen(enterKey);
 	}, [enterKey]);
 	const [sent, setSent] = useState<SentAnswer | null>(null);
@@ -188,16 +196,20 @@ export function PermissionCard({
 	const persistentAllow = denyFirst || dialog?.persistent === false ? null : hookPersistentAllow;
 
 	const decideWith = useCallback(
-		async (answer: SentAnswer, send: () => Promise<void>) => {
+		async (answer: SentAnswer, send: () => Promise<void>) =>
+		{
 			setError(null);
 			setSent(answer);
 			if (markSession !== undefined && markKey !== undefined) markApprovalAnswered(markSession, markKey);
 			if (sessionId !== undefined && answerKey !== undefined) holdAnswered(sessionId, answerKey);
-			try {
+			try
+			{
 				await send();
 				// The card carries no tool name, and nothing reads the stored one.
 				if (markSession !== undefined && markKey !== undefined) acknowledgeApproval(markSession, markKey, "");
-			} catch (err) {
+			}
+			catch (err)
+			{
 				if (markSession !== undefined && markKey !== undefined) clearApprovalAnswered(markSession, markKey);
 				if (sessionId !== undefined) releaseAnswered(sessionId);
 				setError(err instanceof Error ? err.message : "Failed to answer the permission request");
@@ -215,11 +227,13 @@ export function PermissionCard({
 	const [autoLatched, setAutoLatched] = useState<boolean | null>(null);
 	if (autoLatched === null && dialog !== "unknown") setAutoLatched(autoSwitch?.offered === true);
 	const mountedAtRef = useRef<number | null>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		mountedAtRef.current = performance.now();
 	}, []);
 	// Upstream's `$i`: swallowed within the arm grace, as the hotkeys are.
-	const allowAndSwitch = () => {
+	const allowAndSwitch = () =>
+	{
 		const mountedAt = mountedAtRef.current ?? performance.now();
 		if (autoSwitch === null || performance.now() - mountedAt < APPROVAL_ARM_GRACE_MS) return;
 		void decideWith("allowAuto", autoSwitch.onAllowAndSwitch);
@@ -227,11 +241,13 @@ export function PermissionCard({
 
 	const lead = useLeadingAllow();
 	// Upstream's `ui`: picking the non-leading option from the menu makes it the lead.
-	const allowOnceFromMenu = () => {
+	const allowOnceFromMenu = () =>
+	{
 		storeLeadingAllow("once");
 		void decide("allow");
 	};
-	const persistentFromMenu = () => {
+	const persistentFromMenu = () =>
+	{
 		storeLeadingAllow("always");
 		void decide("always");
 	};
@@ -241,26 +257,37 @@ export function PermissionCard({
 	const hasRows = rows !== null && rows.length > 0;
 	const rowsKey = hasRows ? JSON.stringify(rows) : "";
 	const rowsGated = rowsGate && rowsTrail && hasRows;
-	const rowsRead = useRowsReadGate({ref: rowsPanelRef, watched: rowsGated, gateKey: rowsKey});
+	const rowsRead = useRowsReadGate(
+		{
+			ref: rowsPanelRef,
+			watched: rowsGated,
+			gateKey: rowsKey,
+		},
+	);
 	const readHeld = rowsGated && (rowsRead.fits === false || rowsRead.state === "unlaid") && rowsRead.state !== "read";
 	// The hint mounts once the gate has held, then stays (invisible once read) so the card doesn't jump.
 	const [hinted, setHinted] = useState(false);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (readHeld) setHinted(true);
 	}, [readHeld]);
 	const [heldAttempts, setHeldAttempts] = useState(0);
-	const onHeldAttempt = useCallback(() => {
+	const onHeldAttempt = useCallback(() =>
+	{
 		setHeldAttempts((count) => count + 1);
 	}, []);
 
 	const cardRootRef = useRef<HTMLDivElement>(null);
-	usePermissionHotkeys(cardRootRef, {
-		enabled: enabled && !denyFirst,
-		persistent: persistentAllow !== null,
-		held: readHeld,
-		onHeldAttempt,
-		decide,
-	});
+	usePermissionHotkeys(
+		cardRootRef,
+		{
+			enabled: enabled && !denyFirst,
+			persistent: persistentAllow !== null,
+			held: readHeld,
+			onHeldAttempt,
+			decide,
+		},
+	);
 
 	if ((decided || answered) && hideOnDecision) return null;
 
@@ -319,22 +346,45 @@ export function PermissionCard({
 	const autoOffered = autoLatched === true && !readHeld && !denyFirst;
 	// Upstream's `Zr`: the persistent option's scope, dropped once the saves block lists what it adds (`Bn`).
 	const scopeTooltip = persistentAllowSaves === null ? PERSISTENT_ALLOW_SCOPE : undefined;
-	const menuItems = allowMenuItems({persistent: persistentAllow !== null, lead, autoOffered}).map(
-		(item): SplitItem => {
-			switch (item) {
-				case "once":
-					return {label: "Allow once", shortcut: "cmd+enter", onSelect: allowOnceFromMenu};
-				case "persistent":
-					return scopeTooltip === undefined
-						? {label: PERSISTENT_ALLOW_LABEL, onSelect: persistentFromMenu}
-						: {label: PERSISTENT_ALLOW_LABEL, description: scopeTooltip, onSelect: persistentFromMenu};
-				case "auto":
-					return {label: AUTO_SWITCH_LABEL, description: AUTO_SWITCH_DESCRIPTION, onSelect: allowAndSwitch};
-				default:
-					return assertNever(item);
-			}
+	const menuItems = allowMenuItems(
+		{
+			persistent: persistentAllow !== null,
+			lead,
+			autoOffered,
 		},
-	);
+	).map((item): SplitItem =>
+	{
+		switch (item)
+		{
+			case "once":
+				return {
+					label: "Allow once",
+					shortcut: "cmd+enter",
+					onSelect: allowOnceFromMenu,
+				};
+			case "persistent":
+				return scopeTooltip === undefined
+					?
+						{
+							label: PERSISTENT_ALLOW_LABEL,
+							onSelect: persistentFromMenu,
+						}
+					:
+						{
+							label: PERSISTENT_ALLOW_LABEL,
+							description: scopeTooltip,
+							onSelect: persistentFromMenu,
+						};
+			case "auto":
+				return {
+					label: AUTO_SWITCH_LABEL,
+					description: AUTO_SWITCH_DESCRIPTION,
+					onSelect: allowAndSwitch,
+				};
+			default:
+				return assertNever(item);
+		}
+	});
 	const leadsAlways = persistentAllow !== null && lead === "always";
 	const withAllowReason = (control: ReactElement) =>
 		rowsGated ? <DisabledReason reason={allowReason}>{control}</DisabledReason> : control;
@@ -417,7 +467,15 @@ export function PermissionCard({
 					<span className="contents">
 						<ApprovalActionButton
 							variant={denyFirst ? "primary" : "secondary"}
-							{...(denyFirst ? {"data-approval-primary": ""} : {"aria-keyshortcuts": "Escape"})}
+							{...(denyFirst
+								?
+									{
+										"data-approval-primary": "",
+									}
+								:
+									{
+										"aria-keyshortcuts": "Escape",
+									})}
 							busy={sent === "deny"}
 							busyLabel={APPROVAL_SENDING_LABEL}
 							disabled={!enabled && sent !== "deny"}
@@ -460,9 +518,15 @@ export function PermissionCard({
 									className="max-w-full min-w-0"
 									items={menuItems}
 									{...(leadsAlways
-										? {
+										?
+											{
 												groupLabel: PERSISTENT_ALLOW_LABEL,
-												...(scopeTooltip === undefined ? {} : {tooltip: scopeTooltip}),
+												...(scopeTooltip === undefined
+													? {}
+													:
+														{
+															tooltip: scopeTooltip,
+														}),
 												label: (
 													<span data-approval-digit="2" data-approval-primary="">
 														{PERSISTENT_ALLOW_LABEL}
@@ -470,7 +534,8 @@ export function PermissionCard({
 												),
 												onPrimaryClick: () => void decide("always"),
 											}
-										: {
+										:
+											{
 												groupLabel: "Allow once",
 												label: (
 													<span data-approval-digit="2" data-approval-primary="">
@@ -509,7 +574,8 @@ function usePermissionHotkeys(
 		held,
 		onHeldAttempt,
 		decide,
-	}: {
+	}:
+	{
 		enabled: boolean;
 		persistent: boolean;
 		/** A read gate holds the allow decisions: they are swallowed and reported as attempts. */
@@ -517,20 +583,25 @@ function usePermissionHotkeys(
 		onHeldAttempt: () => void;
 		decide: (decision: PermissionDecision) => unknown;
 	},
-) {
+)
+{
 	const armedAtRef = useRef<number | null>(null);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		armedAtRef.current = performance.now();
 	}, []);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!enabled) return undefined;
 		// The landing keys go first, so ⇧⌘⏎ on a card focus merely landed on never reaches this listener.
 		installLandingKeys(window);
-		const onKeyDown = (event: KeyboardEvent) => {
+		const onKeyDown = (event: KeyboardEvent) =>
+		{
 			const card = cardRootRef.current;
 			const decision = permissionDecisionForKey(event);
 			if (card === null || decision === null) return;
-			if (event.isComposing) {
+			if (event.isComposing)
+			{
 				if (decision === "deny") event.stopPropagation();
 				return;
 			}
@@ -542,14 +613,16 @@ function usePermissionHotkeys(
 			const armedAt = armedAtRef.current ?? performance.now();
 			if (event.repeat || performance.now() - armedAt < APPROVAL_ARM_GRACE_MS) return;
 			if (decision === "always" && !(persistent && (card.contains(active) || isIdleComposer(active)))) return;
-			if (held && decision !== "deny") {
+			if (held && decision !== "deny")
+			{
 				onHeldAttempt();
 				return;
 			}
 			decide(decision);
 		};
 		window.addEventListener("keydown", onKeyDown, true);
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("keydown", onKeyDown, true);
 		};
 	}, [cardRootRef, enabled, persistent, held, onHeldAttempt, decide]);
@@ -576,7 +649,8 @@ const READ_HINT_CLASS =
 	"epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center";
 
 /** Upstream's trail rows panel: the tinted "What Claude sent" block closing the card body. */
-function RowsPanel({rows, foldable, clamp}: {rows: readonly PermissionRow[]; foldable: boolean; clamp: boolean}) {
+function RowsPanel({rows, foldable, clamp}: {rows: readonly PermissionRow[]; foldable: boolean; clamp: boolean})
+{
 	return (
 		<div data-permission-rows-panel className="flex flex-col gap-1 rounded-lg bg-alpha-1 px-3 py-2">
 			<span aria-hidden className="text-footnote text-muted-as-secondary">
@@ -593,12 +667,15 @@ const ACCEPT_EDITS_MODE_SAVE =
 	"Accept edits mode (file edits, and file commands such as rm and mv, in this session\u2019s folders)";
 
 /** Upstream's rule code (`Xb`, now `Cx`): one line, its hidden characters shown. */
-function SaveCode({text}: {text: string}) {
+function SaveCode({text}: {text: string})
+{
 	return <code className="text-code-medium break-all [unicode-bidi:plaintext]">{visibleSingleLine(text)}</code>;
 }
 
-function saveItem(save: PersistentAllowSave): ReactNode {
-	switch (save.kind) {
+function saveItem(save: PersistentAllowSave): ReactNode
+{
+	switch (save.kind)
+	{
 		case "rule":
 			return save.ruleContent === undefined ? (
 				<>
@@ -619,10 +696,12 @@ function saveItem(save: PersistentAllowSave): ReactNode {
  * shares the lead's paragraph; otherwise the items are a list labelled by the lead, empty when nothing listable
  * is saved. `gap-xs` is 6px at the default density the local app copies.
  */
-function AlwaysAllowSaves({saves}: {saves: readonly PersistentAllowSave[]}) {
+function AlwaysAllowSaves({saves}: {saves: readonly PersistentAllowSave[]})
+{
 	const leadId = useId();
 	const items = saves.map(saveItem);
-	if (items.length === 1) {
+	if (items.length === 1)
+	{
 		return (
 			<p data-testid="approval-always-allow-saves" className="text-body text-secondary select-text">
 				{SAVES_LEAD} {items[0]}
@@ -646,7 +725,8 @@ function AlwaysAllowSaves({saves}: {saves: readonly PersistentAllowSave[]}) {
 }
 
 /** Upstream's Workflow callout (`PPAbdB`); "background tasks pane" opens the Background tasks pane where one can host it. */
-function TokenWarning() {
+function TokenWarning()
+{
 	const backgroundTasks = useBackgroundTasksOpener();
 	return (
 		<div className="rounded-lg bg-alpha-1 px-lg py-2.5 text-body text-secondary select-text break-words">
@@ -658,7 +738,8 @@ function TokenWarning() {
 				<button
 					type="button"
 					className="inline cursor-pointer underline"
-					onClick={() => {
+					onClick={() =>
+					{
 						backgroundTasks.open();
 					}}
 				>
@@ -676,11 +757,23 @@ const TITLE_PART = "text-primary [unicode-bidi:plaintext]";
  * Upstream's title: the action and meta are their own bidi-isolated spans inside the approval value,
  * which a clamped title (`clampTitle`) draws as a two-line `line-clamp-2` span instead.
  */
-function PermissionTitleText({title, clamp}: {title: PermissionTitle; clamp: boolean}) {
+function PermissionTitleText({title, clamp}: {title: PermissionTitle; clamp: boolean})
+{
 	if (!("action" in title)) return <span className={TITLE_PART}>{title.heading}</span>;
 	return (
 		<span className="min-w-0 break-words">
-			<span data-permission-title-value {...(clamp ? {className: "line-clamp-2"} : {"data-approval-value": ""})}>
+			<span
+				data-permission-title-value
+				{...(clamp
+					?
+						{
+							className: "line-clamp-2",
+						}
+					:
+						{
+							"data-approval-value": "",
+						})}
+			>
 				Allow Claude to <span className={TITLE_PART}>{title.action}</span>
 				{title.meta !== null && (
 					<>

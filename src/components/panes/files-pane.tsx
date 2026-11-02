@@ -23,7 +23,8 @@ import {FileTabsStrip} from "../files/file-tabs-strip";
 import {FilesTree, FilesTreeColumn} from "../files/files-tree";
 import {JumpTargetProvider, type JumpTargetWindow} from "../jump-target-context";
 import {useSettings} from "../settings-context";
-import {
+import
+{
 	Menu,
 	MenuCheckboxItem,
 	MenuContent,
@@ -44,7 +45,8 @@ import {consumePendingFilterFocus} from "./files-filter-focus";
 import {usePaneHost} from "./pane-host-context";
 import type {PaneChrome} from "./pane-registry";
 import {filesEmptyState} from "./files-empty-state";
-import {
+import
+{
 	FILE_SOURCE_OPTIONS,
 	type FileSourceSelection,
 	sessionFileLabel,
@@ -52,7 +54,8 @@ import {
 } from "./session-file-sources";
 import {SessionFilesList} from "./session-files-list";
 
-function TreeToggle({shown, onToggle}: {shown: boolean; onToggle: () => void}) {
+function TreeToggle({shown, onToggle}: {shown: boolean; onToggle: () => void})
+{
 	const keys = useShortcutKeys("toggle_changes_file_list");
 	const label = shown ? "Hide file tree" : "Show file tree";
 	return (
@@ -71,7 +74,8 @@ function TreeToggle({shown, onToggle}: {shown: boolean; onToggle: () => void}) {
 	);
 }
 
-interface FileSourcesMenuProps {
+interface FileSourcesMenuProps
+{
 	counts: SessionFiles["counts"];
 	sourceSelection: FileSourceSelection;
 	onSourceSelectedChange: (source: keyof FileSourceSelection, selected: boolean) => void;
@@ -86,7 +90,8 @@ function FilesSettingsMenu({
 	treeShown: boolean;
 	onTreeShownChange: (shown: boolean) => void;
 	sources: FileSourcesMenuProps;
-}) {
+})
+{
 	const treeKeys = useShortcutKeys("toggle_changes_file_list");
 	const {settings, setSetting} = useSettings();
 	return (
@@ -101,7 +106,8 @@ function FilesSettingsMenu({
 				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={settings.filesPreviewTabs}
-					onCheckedChange={(checked) => {
+					onCheckedChange={(checked) =>
+					{
 						setSetting("filesPreviewTabs", checked);
 					}}
 				>
@@ -110,7 +116,8 @@ function FilesSettingsMenu({
 				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={settings.filesWordWrap}
-					onCheckedChange={(checked) => {
+					onCheckedChange={(checked) =>
+					{
 						setSetting("filesWordWrap", checked);
 					}}
 				>
@@ -121,7 +128,8 @@ function FilesSettingsMenu({
 					<MenuSubContent>
 						<MenuRadioGroup
 							value={normalizeFileTabSize(settings.filesTabSize)}
-							onValueChange={(value: unknown) => {
+							onValueChange={(value: unknown) =>
+							{
 								setSetting("filesTabSize", normalizeFileTabSize(Number(value)));
 							}}
 						>
@@ -136,7 +144,8 @@ function FilesSettingsMenu({
 				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={settings.filesHideIgnored}
-					onCheckedChange={(checked) => {
+					onCheckedChange={(checked) =>
+					{
 						setSetting("filesHideIgnored", checked);
 					}}
 				>
@@ -149,7 +158,8 @@ function FilesSettingsMenu({
 							<MenuCheckboxItem
 								key={option.key}
 								checked={sources.sourceSelection[option.key]}
-								onCheckedChange={(checked) => {
+								onCheckedChange={(checked) =>
+								{
 									sources.onSourceSelectedChange(option.key, checked);
 								}}
 							>
@@ -165,7 +175,8 @@ function FilesSettingsMenu({
 	);
 }
 
-function FilesEmpty({hasTree, tabCount}: {hasTree: boolean; tabCount: number}) {
+function FilesEmpty({hasTree, tabCount}: {hasTree: boolean; tabCount: number})
+{
 	const copy = filesEmptyState(hasTree, tabCount);
 	return (
 		<div className="flex h-full flex-col items-center justify-center gap-3 px-4 py-4 text-center">
@@ -180,12 +191,23 @@ function FilesEmpty({hasTree, tabCount}: {hasTree: boolean; tabCount: number}) {
 
 type FilesListMode = "workspace" | "session";
 
-const FILES_LIST_MODES: ReadonlyArray<{mode: FilesListMode; label: string}> = [
-	{mode: "workspace", label: "Workspace"},
-	{mode: "session", label: "Session"},
+const FILES_LIST_MODES: ReadonlyArray<
+{
+	mode: FilesListMode;
+	label: string;
+}> = [
+	{
+		mode: "workspace",
+		label: "Workspace",
+	},
+	{
+		mode: "session",
+		label: "Session",
+	},
 ];
 
-function FilesModeSwitch({mode, onModeChange}: {mode: FilesListMode; onModeChange: (mode: FilesListMode) => void}) {
+function FilesModeSwitch({mode, onModeChange}: {mode: FilesListMode; onModeChange: (mode: FilesListMode) => void})
+{
 	return (
 		<div className="shrink-0 px-2 pt-1.5">
 			<div
@@ -199,7 +221,8 @@ function FilesModeSwitch({mode, onModeChange}: {mode: FilesListMode; onModeChang
 						type="button"
 						role="radio"
 						aria-checked={mode === option.mode}
-						onClick={() => {
+						onClick={() =>
+						{
 							onModeChange(option.mode);
 						}}
 						className="flex h-5 flex-1 cursor-pointer items-center justify-center rounded-r3 text-footnote text-secondary transition-colors hover:text-primary aria-checked:bg-surface-0 aria-checked:text-primary aria-checked:shadow-sm"
@@ -212,7 +235,8 @@ function FilesModeSwitch({mode, onModeChange}: {mode: FilesListMode; onModeChang
 	);
 }
 
-interface WorkspaceOrSessionListProps {
+interface WorkspaceOrSessionListProps
+{
 	sessionId: string;
 	mode: FilesListMode;
 	onModeChange: (mode: FilesListMode) => void;
@@ -247,15 +271,19 @@ function WorkspaceOrSessionList({
 	cwd,
 	onAttachContext,
 	onAsk,
-}: WorkspaceOrSessionListProps): ReactNode {
+}: WorkspaceOrSessionListProps): ReactNode
+{
 	const {settings} = useSettings();
 	// Same key as the tree's root listing, so this shares its request.
 	const root = useQuery(
-		sessionFilesQueryOptions(sessionId, {
-			dir: "",
-			query: "",
-			hideIgnored: settings.filesHideIgnored,
-		}),
+		sessionFilesQueryOptions(
+			sessionId,
+			{
+				dir: "",
+				query: "",
+				hideIgnored: settings.filesHideIgnored,
+			},
+		),
 	);
 	if (root.data?.kind === "no-cwd") return sessionList;
 	return (
@@ -287,34 +315,63 @@ function WorkspaceOrSessionList({
  * The pane's open tabs, persisted per session in the pane layout store once
  * hydrated. The layout store drops them when the Files pane closes.
  */
-function useFileTabs(sessionId: string | undefined): [FileTabsState, (action: FileTabsAction) => void] {
+function useFileTabs(sessionId: string | undefined): [FileTabsState, (action: FileTabsAction) => void]
+{
 	const {settings} = useSettings();
 	const previewTabs = settings.filesPreviewTabs;
-	const [entry, setEntry] = useState<{key: string | null; tabs: FileTabsState}>({
-		key: null,
-		tabs: EMPTY_FILE_TABS,
-	});
+	const [entry, setEntry] = useState<
+	{
+		key: string | null;
+		tabs: FileTabsState;
+	}>(
+		{
+			key: null,
+			tabs: EMPTY_FILE_TABS,
+		},
+	);
 	const loadedRef = useRef<FileTabsState | null>(null);
 	const key = sessionId ?? "";
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const tabs = sessionId === undefined ? EMPTY_FILE_TABS : loadFileTabs(sessionId);
 		loadedRef.current = tabs;
-		setEntry({key: sessionId ?? "", tabs});
+		setEntry(
+			{
+				key: sessionId ?? "",
+				tabs,
+			},
+		);
 	}, [sessionId]);
 
-	useEffect(() => {
-		if (sessionId === undefined || entry.key !== sessionId || entry.tabs === loadedRef.current) {
+	useEffect(() =>
+	{
+		if (sessionId === undefined || entry.key !== sessionId || entry.tabs === loadedRef.current)
+		{
 			return;
 		}
 		saveFileTabs(sessionId, entry.tabs);
 	}, [entry, sessionId]);
 
 	const dispatch = useCallback(
-		(action: FileTabsAction) => {
-			setEntry((prev) => {
-				const tabs = fileTabsReducer(prev.tabs, action, {previewTabs});
-				return tabs === prev.tabs ? prev : {...prev, tabs};
+		(action: FileTabsAction) =>
+		{
+			setEntry((prev) =>
+			{
+				const tabs = fileTabsReducer(
+					prev.tabs,
+					action,
+					{
+						previewTabs,
+					},
+				);
+				return tabs === prev.tabs
+					? prev
+					:
+						{
+							...prev,
+							tabs,
+						};
 			});
 		},
 		[previewTabs],
@@ -330,20 +387,24 @@ function useFileTabs(sessionId: string | undefined): [FileTabsState, (action: Fi
 function useEditGuard(
 	tabs: FileTabsState,
 	dispatchTabs: (action: FileTabsAction) => void,
-): {
+):
+{
 	dispatch: (action: FileTabsAction) => void;
 	reportDirty: (path: string, dirty: boolean) => void;
 	dialog: ReactNode;
-} {
+}
+{
 	const [guard, setGuard] = useState(EMPTY_EDIT_GUARD);
 	const guardRef = useRef(guard);
 	const tabsRef = useRef(tabs);
-	useEffect(() => {
+	useEffect(() =>
+	{
 		tabsRef.current = tabs;
 	}, [tabs]);
 
 	const apply = useCallback(
-		(event: EditGuardEvent) => {
+		(event: EditGuardEvent) =>
+		{
 			const {state, forward} = editGuardReducer(guardRef.current, event);
 			guardRef.current = state;
 			setGuard(state);
@@ -352,14 +413,28 @@ function useEditGuard(
 		[dispatchTabs],
 	);
 	const dispatch = useCallback(
-		(action: FileTabsAction) => {
-			apply({type: "request", action, tabs: tabsRef.current});
+		(action: FileTabsAction) =>
+		{
+			apply(
+				{
+					type: "request",
+					action,
+					tabs: tabsRef.current,
+				},
+			);
 		},
 		[apply],
 	);
 	const reportDirty = useCallback(
-		(path: string, dirty: boolean) => {
-			apply({type: "dirty", path, dirty});
+		(path: string, dirty: boolean) =>
+		{
+			apply(
+				{
+					type: "dirty",
+					path,
+					dirty,
+				},
+			);
 		},
 		[apply],
 	);
@@ -368,33 +443,51 @@ function useEditGuard(
 	const dialog = (
 		<ConfirmDialog
 			open={guard.pending !== null}
-			onOpenChange={(open) => {
-				if (!open && guardRef.current.pending !== null) apply({type: "keepEditing"});
+			onOpenChange={(open) =>
+			{
+				if (!open && guardRef.current.pending !== null)
+					apply(
+						{
+							type: "keepEditing",
+						},
+					);
 			}}
 			title="Discard unsaved changes?"
 			body={`Your edits to ${dirtyName} have not been saved. Leaving this tab discards them.`}
 			cancelLabel="Keep editing"
 			confirmLabel="Discard"
 			variant="danger"
-			onConfirm={() => {
-				apply({type: "discard"});
+			onConfirm={() =>
+			{
+				apply(
+					{
+						type: "discard",
+					},
+				);
 			}}
 		/>
 	);
-	return {dispatch, reportDirty, dialog};
+	return {
+		dispatch,
+		reportDirty,
+		dialog,
+	};
 }
 
-function absoluteFromCwd(cwd: string, relPath: string): string {
+function absoluteFromCwd(cwd: string, relPath: string): string
+{
 	return `${cwd.replace(/\/+$/, "")}/${relPath}`;
 }
 
 /** A tab's path relative to the working directory, or null outside it. */
-function relativeToCwd(cwd: string | undefined, path: string): string | null {
+function relativeToCwd(cwd: string | undefined, path: string): string | null
+{
 	const label = sessionFileLabel(path, cwd);
 	return label === path ? null : label;
 }
 
-interface FilesPaneViewProps {
+interface FilesPaneViewProps
+{
 	chrome: PaneChrome;
 	/**
 	 * Lists the session's working directory in the tree column. Without it, or
@@ -414,7 +507,8 @@ interface FilesPaneViewProps {
  * Go to file or search · Files settings · Expand · Close, over the tree column (the
  * workspace tree) and the viewer column.
  */
-export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRecordCount}: FilesPaneViewProps) {
+export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRecordCount}: FilesPaneViewProps)
+{
 	const host = usePaneHost();
 	const iconSet = useActiveFileTypeIconSet();
 	const [treeShown, setTreeShown] = useState(true);
@@ -426,32 +520,61 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 	const dispatchFileTabs = editGuard.dispatch;
 	const openPath = fileTabs.active;
 	const pinnedRelPaths = new Set(
-		fileTabs.tabs.flatMap((tab) => {
+		fileTabs.tabs.flatMap((tab) =>
+		{
 			const relPath = tab.preview ? null : relativeToCwd(cwd, tab.path);
 			return relPath === null ? [] : [relPath];
 		}),
 	);
-	const [lineTarget, setLineTarget] = useState<(FileRef & {findQuery?: string}) | null>(null);
+	const [lineTarget, setLineTarget] = useState<
+		| (FileRef &
+		  {
+				findQuery?: string;
+		  })
+		| null
+	>(null);
 	// A phone pane has room for one column, as upstream: the tree OR the open
 	// file. Opening (or switching to) a file there trades the tree for it.
 	const phone = usePhoneSheet();
 	const [shownPath, setShownPath] = useState(openPath);
-	if (shownPath !== openPath) {
+	if (shownPath !== openPath)
+	{
 		setShownPath(openPath);
 		if (phone && openPath !== null) setTreeShown(false);
 	}
-	const openFile = (path: string, options: {pin: boolean}): void => {
-		dispatchFileTabs({type: "open", path, pin: options.pin});
+	const openFile = (
+		path: string,
+		options:
+		{
+			pin: boolean;
+		},
+	): void =>
+	{
+		dispatchFileTabs(
+			{
+				type: "open",
+				path,
+				pin: options.pin,
+			},
+		);
 	};
 	const target = lineTarget?.path === openPath ? lineTarget : null;
 
 	// Transcript file refs open as a preview tab, including one clicked while
 	// the pane was closed. Declared after useFileTabs so a restored tab set
 	// lands before the requested open.
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (sessionId === undefined) return undefined;
-		const openRef = (ref: FileRef): void => {
-			dispatchFileTabs({type: "open", path: ref.path, pin: false});
+		const openRef = (ref: FileRef): void =>
+		{
+			dispatchFileTabs(
+				{
+					type: "open",
+					path: ref.path,
+					pin: false,
+				},
+			);
 			setLineTarget(ref);
 		};
 		const pending = takePendingFileOpen(sessionId);
@@ -476,31 +599,39 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 
 	useShortcut(
 		"toggle_changes_file_list",
-		() => {
+		() =>
+		{
 			if (host.layout.focused !== "files") return false;
 			setTreeShown((shown) => !shown);
 			return true;
 		},
-		{priority: 1},
+		{
+			priority: 1,
+		},
 	);
 
 	const goToFileKeys = useShortcutKeys("go_to_file_in_changes");
 	useShortcut(
 		"go_to_file_in_changes",
-		() => {
+		() =>
+		{
 			if (host.layout.focused !== "files") return false;
 			// Upstream KA's onMatch: consumed, but a no-op while any cds overlay is open (`zI(doc)`).
 			if (!isAnotherOverlayOpen(filterRef.current?.ownerDocument)) goToFileOrSearch();
 			return true;
 		},
-		{priority: 1},
+		{
+			priority: 1,
+		},
 	);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (consumePendingFilterFocus()) filterRef.current?.focus();
 	}, []);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (focusRequest === 0) return;
 		filterRef.current?.focus();
 		filterRef.current?.select();
@@ -509,17 +640,20 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 	const attachToChat: AttachContextHandler | undefined =
 		sessionId === undefined
 			? undefined
-			: (attachment) => {
+			: (attachment) =>
+				{
 					attachContext(sessionId, attachment);
 				};
 	const askInChat =
 		sessionId === undefined
 			? undefined
-			: (prompt: string) => {
+			: (prompt: string) =>
+				{
 					requestComposerInsert(sessionId, prompt);
 				};
 
-	function revealInTree(path: string): void {
+	function revealInTree(path: string): void
+	{
 		const relPath = relativeToCwd(cwd, path);
 		if (relPath === null) return;
 		const lastSlash = relPath.lastIndexOf("/");
@@ -528,7 +662,8 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		setQuery(lastSlash === -1 ? "" : `${relPath.slice(0, lastSlash)}/`);
 	}
 
-	function goToFileOrSearch(): void {
+	function goToFileOrSearch(): void
+	{
 		setTreeShown(true);
 		setFocusRequest((request) => request + 1);
 	}
@@ -537,12 +672,16 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		<FileTypeIconSetContext value={iconSet}>
 			<PaneHeaderRow
 				label="Files"
-				rowAttributes={{"data-files-header": ""}}
+				rowAttributes={
+				{
+					"data-files-header": "",
+				}}
 				title={
 					<div className="relative flex min-w-0 flex-1 items-center gap-1">
 						<TreeToggle
 							shown={treeShown}
-							onToggle={() => {
+							onToggle={() =>
+							{
 								setTreeShown((shown) => !shown);
 							}}
 						/>
@@ -577,7 +716,8 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 						<FilesSettingsMenu
 							treeShown={treeShown}
 							onTreeShownChange={setTreeShown}
-							sources={{
+							sources={
+							{
 								counts: sessionFiles.counts,
 								sourceSelection,
 								onSourceSelectedChange: setSourceSelected,
@@ -602,16 +742,30 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 							onQueryChange={setQuery}
 							filterRef={filterRef}
 							sessionList={sessionFilesList}
-							onOpenFile={(relPath, {pin, line, findQuery}) => {
+							onOpenFile={(relPath, {pin, line, findQuery}) =>
+							{
 								if (cwd === undefined) return;
 								const path = absoluteFromCwd(cwd, relPath);
-								openFile(path, {pin});
-								if (line !== undefined) {
-									setLineTarget({
-										path,
-										line,
-										...(findQuery === undefined ? {} : {findQuery}),
-									});
+								openFile(
+									path,
+									{
+										pin,
+									},
+								);
+								if (line !== undefined)
+								{
+									setLineTarget(
+										{
+											path,
+											line,
+											...(findQuery === undefined
+												? {}
+												:
+													{
+														findQuery,
+													}),
+										},
+									);
 								}
 							}}
 							activeRelPath={openPath === null ? null : relativeToCwd(cwd, openPath)}
@@ -633,14 +787,27 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 							line={target?.line}
 							endLine={target?.endLine}
 							findQuery={target?.findQuery}
-							onOpenFile={(path) => {
-								openFile(path, {pin: false});
+							onOpenFile={(path) =>
+							{
+								openFile(
+									path,
+									{
+										pin: false,
+									},
+								);
 							}}
 							onAttachContext={attachToChat}
-							onEditStart={() => {
-								dispatchTabs({type: "pin", path: openPath});
+							onEditStart={() =>
+							{
+								dispatchTabs(
+									{
+										type: "pin",
+										path: openPath,
+									},
+								);
 							}}
-							onDirtyChange={(dirty) => {
+							onDirtyChange={(dirty) =>
+							{
 								editGuard.reportDirty(openPath, dirty);
 							}}
 						/>
@@ -652,7 +819,8 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 	);
 }
 
-export interface FilesPaneProps {
+export interface FilesPaneProps
+{
 	sessionId: string;
 	/** The session's working directory, when known. */
 	cwd: string | undefined;
@@ -664,7 +832,8 @@ export interface FilesPaneProps {
 	jumpTargetWindow: JumpTargetWindow;
 }
 
-export function FilesPane({sessionId, cwd, chrome, windowFiles, windowStartIndex, jumpTargetWindow}: FilesPaneProps) {
+export function FilesPane({sessionId, cwd, chrome, windowFiles, windowStartIndex, jumpTargetWindow}: FilesPaneProps)
+{
 	// A whole-session inventory costs a full pass over the JSONL, so only an
 	// open Files pane asks for it.
 	const resources = useQuery(sessionResourcesQueryOptions(sessionId, true)).data;
@@ -673,7 +842,12 @@ export function FilesPane({sessionId, cwd, chrome, windowFiles, windowStartIndex
 			<FilesPaneView
 				chrome={chrome}
 				sessionId={sessionId}
-				{...(cwd === undefined ? {} : {cwd})}
+				{...(cwd === undefined
+					? {}
+					:
+						{
+							cwd,
+						})}
 				sessionFiles={resources?.files ?? windowFiles}
 				unscannedRecordCount={resources === undefined ? windowStartIndex : 0}
 			/>

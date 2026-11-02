@@ -11,18 +11,21 @@ export const TERMINAL_ATTACHED_MESSAGE = "Terminal output attached to chat";
 
 type SelectionKeyEvent = Pick<KeyboardEvent, "code" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">;
 
-export interface SelectableTerminal {
+export interface SelectableTerminal
+{
 	hasSelection(): boolean;
 	getSelection(): string;
 }
 
-export interface SelectionActions {
+export interface SelectionActions
+{
 	copy: (text: string) => void;
 	attach: (text: string) => void;
 }
 
 /** Drop the blank cells padding each selected row, and blank rows at either end. */
-export function trimTerminalSelection(text: string): string {
+export function trimTerminalSelection(text: string): string
+{
 	return text
 		.split(/\r?\n/)
 		.map((line) => line.trimEnd())
@@ -30,9 +33,11 @@ export function trimTerminalSelection(text: string): string {
 		.replace(/^\n+|\n+$/g, "");
 }
 
-function selectionChord(event: SelectionKeyEvent): keyof SelectionActions | null {
+function selectionChord(event: SelectionKeyEvent): keyof SelectionActions | null
+{
 	if (event.altKey) return null;
-	if (event.code === "KeyC") {
+	if (event.code === "KeyC")
+	{
 		if (event.metaKey && !event.ctrlKey && !event.shiftKey) return "copy";
 		if (event.ctrlKey && event.shiftKey && !event.metaKey) return "copy";
 	}
@@ -48,7 +53,8 @@ export function handleTerminalSelectionKey(
 	event: SelectionKeyEvent,
 	terminal: SelectableTerminal,
 	actions: SelectionActions,
-): boolean {
+): boolean
+{
 	const chord = selectionChord(event);
 	if (chord === null || !terminal.hasSelection()) return false;
 	const text = trimTerminalSelection(terminal.getSelection());
@@ -58,51 +64,73 @@ export function handleTerminalSelectionKey(
 }
 
 /** Send terminal output to the session's composer; false when none is mounted. */
-export function attachTerminalSelection(sessionId: string, text: string): boolean {
-	return attachContext(sessionId, {kind: "terminal", text});
+export function attachTerminalSelection(sessionId: string, text: string): boolean
+{
+	return attachContext(
+		sessionId,
+		{
+			kind: "terminal",
+			text,
+		},
+	);
 }
 
-function httpUrl(href: string): URL | null {
-	try {
+function httpUrl(href: string): URL | null
+{
+	try
+	{
 		const url = new URL(href);
 		return url.protocol === "http:" || url.protocol === "https:" ? url : null;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
-export function openLinkPrompt(url: URL): string {
+export function openLinkPrompt(url: URL): string
+{
 	return `Open link?\n\nHost: ${url.host}\n${url.href}`;
 }
 
-export interface LinkOpener {
+export interface LinkOpener
+{
 	confirm: (message: string) => boolean;
 	open: (href: string) => void;
 }
 
 /** Open an http(s) link once the user confirms; anything else is ignored. */
-export function openTerminalLink(href: string, opener: LinkOpener): boolean {
+export function openTerminalLink(href: string, opener: LinkOpener): boolean
+{
 	const url = httpUrl(href);
 	if (url === null || !opener.confirm(openLinkPrompt(url))) return false;
 	opener.open(url.href);
 	return true;
 }
 
-export const browserLinkOpener: LinkOpener = {
+export const browserLinkOpener: LinkOpener =
+{
 	confirm: (message) => window.confirm(message),
-	open: (href) => {
+	open: (href) =>
+	{
 		window.open(href, "_blank", "noopener,noreferrer");
 	},
 };
 
-function guardProvider(provider: ILinkProvider, activate: (href: string) => void): ILinkProvider {
-	const guarded: ILinkProvider = {
-		provideLinks: (y, callback) => {
-			provider.provideLinks(y, (links) => {
+function guardProvider(provider: ILinkProvider, activate: (href: string) => void): ILinkProvider
+{
+	const guarded: ILinkProvider =
+	{
+		provideLinks: (y, callback) =>
+		{
+			provider.provideLinks(y, (links) =>
+			{
 				callback(
-					links?.map((link): ILink => ({
+					links?.map((link): ILink => (
+					{
 						...link,
-						activate: () => {
+						activate: () =>
+						{
 							activate(link.text);
 						},
 					})),
@@ -114,12 +142,14 @@ function guardProvider(provider: ILinkProvider, activate: (href: string) => void
 	return guarded;
 }
 
-interface LinkDetector {
+interface LinkDetector
+{
 	providers: ILinkProvider[];
 	invalidateCache?: () => void;
 }
 
-function isLinkDetector(value: unknown): value is LinkDetector {
+function isLinkDetector(value: unknown): value is LinkDetector
+{
 	return typeof value === "object" && value !== null && Array.isArray(Reflect.get(value, "providers"));
 }
 
@@ -129,7 +159,8 @@ function isLinkDetector(value: unknown): value is LinkDetector {
  * wrapped to hand its link to `activate` instead. False when the terminal has
  * no link detector to guard.
  */
-export function guardTerminalLinks(terminal: object, activate: (href: string) => void): boolean {
+export function guardTerminalLinks(terminal: object, activate: (href: string) => void): boolean
+{
 	const detector: unknown = Reflect.get(terminal, "linkDetector");
 	if (!isLinkDetector(detector)) return false;
 	detector.providers = detector.providers.map((provider) => guardProvider(provider, activate));

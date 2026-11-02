@@ -6,7 +6,8 @@ import {toMdSlug} from "./md-slug";
  * (`/memory/<project>`, for instance), and the filename loses its extension
  * because those routes are keyed by slug, not by the on-disk name.
  */
-export function mdFileHref(basePath: string, filename: string): string {
+export function mdFileHref(basePath: string, filename: string): string
+{
 	return `${basePath}/${encodeURIComponent(toMdSlug(filename))}`;
 }
 
@@ -22,7 +23,8 @@ const ABSOLUTE_RE = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
  * Returns null for anything that is not a same-directory `.md` reference, which
  * leaves external links, absolute paths, and bare fragments untouched.
  */
-export function resolveRelativeMdHref(href: string, basePath: string): string | null {
+export function resolveRelativeMdHref(href: string, basePath: string): string | null
+{
 	if (!href || href.startsWith("#") || href.startsWith("/") || ABSOLUTE_RE.test(href)) return null;
 
 	const hashIndex = href.indexOf("#");

@@ -1,5 +1,6 @@
 /** One cds ResizeHandle pill's class parts: picked by orientation and by dragging vs resting. */
-export interface ResizePillParts {
+export interface ResizePillParts
+{
 	base: string;
 	vertical: string;
 	horizontal: string;
@@ -13,7 +14,8 @@ export interface ResizePillParts {
  * the handle that fades in 100ms after hover, stays lit while dragging, and goes 3px and rounded when
  * focus-visible. `duration-snap` is 120ms and `duration-base` 200ms.
  */
-export const RESIZE_LINE_PILL: ResizePillParts = {
+export const RESIZE_LINE_PILL: ResizePillParts =
+{
 	base: "absolute bg-fill-accent transition-opacity [--resize-line:2px]",
 	vertical: "inset-y-0 start-[calc(50%_-_var(--resize-line)_/_2)] my-auto w-[var(--resize-line)]",
 	horizontal: "inset-x-0 top-[calc(50%_-_var(--resize-line)_/_2)] mx-auto h-[var(--resize-line)]",
@@ -23,7 +25,8 @@ export const RESIZE_LINE_PILL: ResizePillParts = {
 };
 
 /** Upstream's pre-panels grip pill (shared-38 `Tw`): a 3x48 muted capsule, accent and full length on focus. */
-export const RESIZE_GRIP_PILL: ResizePillParts = {
+export const RESIZE_GRIP_PILL: ResizePillParts =
+{
 	base: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current transition-[opacity,color,background-color]",
 	vertical: "h-full max-h-12 w-[3px] group-focus-visible/resize:max-h-none",
 	horizontal: "h-[3px] w-full max-w-12 group-focus-visible/resize:max-w-none",
@@ -38,7 +41,8 @@ export function resizePillClass(
 	parts: ResizePillParts,
 	orientation: "vertical" | "horizontal",
 	dragging: boolean,
-): string {
+): string
+{
 	return [parts.base, parts[orientation], dragging ? parts.dragging : parts.resting, parts.focus].join(" ");
 }
 

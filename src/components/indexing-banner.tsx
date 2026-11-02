@@ -6,7 +6,8 @@ import {IndexingStatusResponse} from "../lib/api/indexing";
 import {invalidateSessionIdentities} from "../lib/api/session-identity";
 import {sessionQueryKeys} from "../lib/api/sessions";
 
-export function IndexingBannerView({onDismiss}: {onDismiss: () => void}) {
+export function IndexingBannerView({onDismiss}: {onDismiss: () => void})
+{
 	return (
 		<div className="mx-6 mt-4 flex items-center gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
 			<Loader2 className="h-4 w-4 animate-spin shrink-0" />
@@ -22,54 +23,74 @@ export function IndexingBannerView({onDismiss}: {onDismiss: () => void}) {
 	);
 }
 
-export function IndexingBanner() {
+export function IndexingBanner()
+{
 	const queryClient = useQueryClient();
 	const [isInitialBuild, setIsInitialBuild] = useState(false);
 	const [dismissed, setDismissed] = useState(false);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		let cancelled = false;
 		let previous: boolean | undefined;
 		const retried = new Set<string>();
 		const reconciledDetails = new Set<string>();
 
-		async function poll() {
-			try {
+		async function poll()
+		{
+			try
+			{
 				const result = await apiFetch("/api/indexing-status", IndexingStatusResponse);
 				if (cancelled) return;
 				setIsInitialBuild(result.isInitialBuild);
-				if (result.isIndexing) {
+				if (result.isIndexing)
+				{
 					retried.clear();
 					reconciledDetails.clear();
-				} else {
+				}
+				else
+				{
 					// Repeat this check on existing ready polls to catch a late pre-index response.
-					const details = queryClient.getQueryCache().findAll({
-						queryKey: sessionQueryKeys.all(),
-						type: "active",
-						predicate: (query) => {
-							const data = query.state.data;
-							return (
-								query.queryKey.length === 2 &&
-								!reconciledDetails.has(query.queryHash) &&
-								typeof data === "object" &&
-								data !== null &&
-								"canonicalRoutePending" in data &&
-								data.canonicalRoutePending === true
-							);
+					const details = queryClient.getQueryCache().findAll(
+						{
+							queryKey: sessionQueryKeys.all(),
+							type: "active",
+							predicate: (query) =>
+							{
+								const data = query.state.data;
+								return (
+									query.queryKey.length === 2 &&
+									!reconciledDetails.has(query.queryHash) &&
+									typeof data === "object" &&
+									data !== null &&
+									"canonicalRoutePending" in data &&
+									data.canonicalRoutePending === true
+								);
+							},
 						},
-					});
-					for (const query of details) {
+					);
+					for (const query of details)
+					{
 						reconciledDetails.add(query.queryHash);
-						const filters = {queryKey: query.queryKey, exact: true};
+						const filters =
+						{
+							queryKey: query.queryKey,
+							exact: true,
+						};
 						// Cancel the old retryer first so a late response cannot replace fresh detail.
-						void queryClient.cancelQueries(filters).then(async () => {
+						void queryClient.cancelQueries(filters).then(async () =>
+						{
 							if (!cancelled) await queryClient.invalidateQueries(filters);
 						});
 					}
 					const completed = previous === true;
 					const pending = queryClient
 						.getQueryCache()
-						.findAll({queryKey: sessionQueryKeys.identities()})
+						.findAll(
+							{
+								queryKey: sessionQueryKeys.identities(),
+							},
+						)
 						.filter(
 							(query) =>
 								completed ||
@@ -79,19 +100,23 @@ export function IndexingBanner() {
 						);
 					for (const query of pending) retried.add(query.queryHash);
 					// A 503 can precede the first poll: retry once even if no true sample was observed.
-					if (pending.length > 0) {
+					if (pending.length > 0)
+					{
 						void invalidateSessionIdentities(queryClient, (query) => pending.includes(query));
 					}
 				}
 				previous = result.isIndexing;
-			} catch {
+			}
+			catch
+			{
 				// Server function unavailable during HMR
 			}
 		}
 
 		void poll();
 		const interval = setInterval(() => void poll(), 3000);
-		return () => {
+		return () =>
+		{
 			cancelled = true;
 			clearInterval(interval);
 		};
@@ -102,7 +127,8 @@ export function IndexingBanner() {
 
 	return (
 		<IndexingBannerView
-			onDismiss={() => {
+			onDismiss={() =>
+			{
 				setDismissed(true);
 			}}
 		/>

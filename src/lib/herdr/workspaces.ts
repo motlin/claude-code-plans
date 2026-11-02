@@ -1,7 +1,8 @@
 import {herdrRequest} from "./client";
 import {splitHerdrId} from "./herdr-id";
 import {herdrPaneTable, type HerdrPaneReader} from "./pane-table";
-import {
+import
+{
 	claudeSessionId,
 	filterIndexedSessions,
 	herdrPaneDisplayName,
@@ -13,7 +14,8 @@ import {
 } from "./panes";
 import {compareHerdrAttention} from "./viewed-state";
 
-export interface HerdrWorkspacePane {
+export interface HerdrWorkspacePane
+{
 	paneId: string;
 	title: string;
 	/** `null` for a bare shell — the pane runs no agent herdr recognizes. */
@@ -23,7 +25,8 @@ export interface HerdrWorkspacePane {
 	sessionId: string | null;
 }
 
-export interface HerdrWorkspace {
+export interface HerdrWorkspace
+{
 	workspaceId: string;
 	number: number;
 	label: string;
@@ -38,7 +41,8 @@ export interface HerdrWorkspace {
 	shellPanes: HerdrWorkspacePane[];
 }
 
-function placeholderWorkspace(workspaceId: string): HerdrWorkspace {
+function placeholderWorkspace(workspaceId: string): HerdrWorkspace
+{
 	return {
 		workspaceId,
 		number: 0,
@@ -51,12 +55,14 @@ function placeholderWorkspace(workspaceId: string): HerdrWorkspace {
 }
 
 /** A named herdr session's workspaces carry the session name, since its labels can repeat the default server's. */
-export function workspaceLabel(workspaceId: string, label: string): string {
+export function workspaceLabel(workspaceId: string, label: string): string
+{
 	const {session} = splitHerdrId(workspaceId);
 	return session === null ? label : `${label} (${session})`;
 }
 
-function comparePanes(left: HerdrWorkspacePane, right: HerdrWorkspacePane): number {
+function comparePanes(left: HerdrWorkspacePane, right: HerdrWorkspacePane): number
+{
 	return compareHerdrAttention(left, right) || left.title.localeCompare(right.title);
 }
 
@@ -72,11 +78,13 @@ export async function getHerdrWorkspaces(
 	request: HerdrRequester = herdrRequest,
 	indexedSessionFilter: IndexedSessionFilter = filterIndexedSessions,
 	table: HerdrPaneReader = herdrPaneTable,
-): Promise<HerdrWorkspace[]> {
+): Promise<HerdrWorkspace[]>
+{
 	const snapshot = await readHerdrSnapshot(request, table);
 	if (snapshot === null) return [];
 
-	const panes = snapshot.panes.map((wirePane) => {
+	const panes = snapshot.panes.map((wirePane) =>
+	{
 		const pane = normalizePane(wirePane);
 		return {
 			workspaceId: pane.workspaceId,
@@ -106,14 +114,17 @@ export async function getHerdrWorkspaces(
 		]),
 	);
 
-	for (const {workspaceId, claudeSessionId: sessionId, ...rest} of panes) {
+	for (const {workspaceId, claudeSessionId: sessionId, ...rest} of panes)
+	{
 		let workspace = workspaces.get(workspaceId);
-		if (!workspace) {
+		if (!workspace)
+		{
 			workspace = placeholderWorkspace(workspaceId);
 			workspaces.set(workspaceId, workspace);
 		}
 
-		const pane: HerdrWorkspacePane = {
+		const pane: HerdrWorkspacePane =
+		{
 			...rest,
 			sessionId: sessionId !== null && indexedSessionIds.has(sessionId) ? sessionId : null,
 		};
@@ -121,7 +132,8 @@ export async function getHerdrWorkspaces(
 		else workspace.agentPanes.push(pane);
 	}
 
-	for (const workspace of workspaces.values()) {
+	for (const workspace of workspaces.values())
+	{
 		workspace.agentPanes.sort(comparePanes);
 		workspace.shellPanes.sort(comparePanes);
 	}

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {
+import
+{
 	createMemoryHistory,
 	createRootRoute,
 	createRoute,
@@ -19,7 +20,8 @@ import {SettingsTabSchema} from "../src/lib/settings-hash";
 import {SETTINGS_INDEX} from "../src/lib/settings-search";
 import {installLocalStorage} from "./fake-storage";
 
-const APPLICATION_SETTINGS = {
+const APPLICATION_SETTINGS =
+{
 	terminalWritesEnabled: false,
 	terminalHost: "auto",
 	shellPaneEnabled: false,
@@ -27,54 +29,95 @@ const APPLICATION_SETTINGS = {
 	ignoredDirs: ["node_modules"],
 };
 
-function stubBrowser() {
+function stubBrowser()
+{
 	installLocalStorage();
-	vi.stubGlobal("matchMedia", (query: string) => ({
+	vi.stubGlobal("matchMedia", (query: string) => (
+	{
 		matches: false,
 		media: query,
 		onchange: null,
-		addEventListener: () => {},
-		removeEventListener: () => {},
+		addEventListener: () =>
+		{
+		},
+		removeEventListener: () =>
+		{
+		},
 		dispatchEvent: () => false,
 	}));
 	vi.stubGlobal("fetch", async (input: string) =>
 		input.endsWith("/api/application-settings")
 			? Promise.resolve(
-					new Response(JSON.stringify(APPLICATION_SETTINGS), {
-						headers: {"Content-Type": "application/json"},
-					}),
+					new Response(
+						JSON.stringify(APPLICATION_SETTINGS),
+						{
+							headers:
+							{
+								"Content-Type": "application/json",
+							},
+						},
+					),
 				)
 			: new Promise(() => {}),
 	);
 }
 
-function buildRouter(initialEntry: string) {
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ThemeProvider>
-					<SettingsProvider>
-						<Outlet />
-						<ToolbarSearch label="Search page" placeholder="Search" search="" onSearch={() => {}} />
-						<SettingsDialog />
-					</SettingsProvider>
-				</ThemeProvider>
-			</QueryClientProvider>
-		),
-	});
-	const indexRoute = createRoute({
-		getParentRoute: () => rootRoute,
-		path: "/",
-		component: () => <div>Page</div>,
-	});
-	return createRouter({
-		routeTree: rootRoute.addChildren([indexRoute]),
-		history: createMemoryHistory({initialEntries: [initialEntry]}),
-	});
+function buildRouter(initialEntry: string)
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+				},
+			},
+		},
+	);
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ThemeProvider>
+						<SettingsProvider>
+							<Outlet />
+							<ToolbarSearch
+								label="Search page"
+								placeholder="Search"
+								search=""
+								onSearch={() =>
+								{
+								}}
+							/>
+							<SettingsDialog />
+						</SettingsProvider>
+					</ThemeProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const indexRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "/",
+			component: () => <div>Page</div>,
+		},
+	);
+	return createRouter(
+		{
+			routeTree: rootRoute.addChildren([indexRoute]),
+			history: createMemoryHistory(
+				{
+					initialEntries: [initialEntry],
+				},
+			),
+		},
+	);
 }
 
-async function renderAt(initialEntry: string) {
+async function renderAt(initialEntry: string)
+{
 	const router = buildRouter(initialEntry);
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -82,39 +125,61 @@ async function renderAt(initialEntry: string) {
 }
 
 /** Every titled row rendered in the open tab, as [slug, title]. */
-function renderedRows(dialog: HTMLElement): Array<[string, string]> {
-	return [...dialog.querySelectorAll<HTMLElement>("[data-settings-row][aria-labelledby]")].map((row) => {
+function renderedRows(dialog: HTMLElement): Array<[string, string]>
+{
+	return [...dialog.querySelectorAll<HTMLElement>("[data-settings-row][aria-labelledby]")].map((row) =>
+	{
 		const titleId = row.getAttribute("aria-labelledby") ?? "";
 		return [row.dataset["settingsRow"] ?? "", row.querySelector(`[id="${titleId}"]`)?.textContent ?? ""];
 	});
 }
 
 /** Each upstream-flashed row's slug and whether its title carries the wavy underline. */
-function flashingRows(): {row: string; title: boolean}[] {
-	return [...document.querySelectorAll<HTMLElement>(".feature-anchor-row-fill")].map((row) => ({
+function flashingRows():
+{
+	row: string;
+	title: boolean;
+}[]
+{
+	return [...document.querySelectorAll<HTMLElement>(".feature-anchor-row-fill")].map((row) => (
+	{
 		row: row.dataset["settingsRow"] ?? "",
 		title: row.querySelector(".settings-row-title")?.classList.contains("feature-anchor-highlight") ?? false,
 	}));
 }
 
-describe("settings search", () => {
+describe("settings search", () =>
+{
 	let scrolled: string[];
-	let highlightScrolls: Array<{row: string; options: unknown}>;
+	let highlightScrolls: Array<
+	{
+		row: string;
+		options: unknown;
+	}>;
 
-	beforeEach(() => {
+	beforeEach(() =>
+	{
 		stubBrowser();
 		scrolled = [];
 		highlightScrolls = [];
-		Element.prototype.scrollIntoView = function scrollIntoView(this: Element, options?: unknown) {
-			if (this.hasAttribute("data-highlighted")) {
-				highlightScrolls.push({row: this.getAttribute("aria-label") ?? `hit: ${this.textContent}`, options});
+		Element.prototype.scrollIntoView = function scrollIntoView(this: Element, options?: unknown)
+		{
+			if (this.hasAttribute("data-highlighted"))
+			{
+				highlightScrolls.push(
+					{
+						row: this.getAttribute("aria-label") ?? `hit: ${this.textContent}`,
+						options,
+					},
+				);
 				return;
 			}
 			scrolled.push(this.getAttribute("data-settings-row") ?? this.tagName);
 		};
 	});
 
-	afterEach(() => {
+	afterEach(() =>
+	{
 		cleanup();
 		vi.useRealTimers();
 		vi.unstubAllGlobals();
@@ -122,30 +187,46 @@ describe("settings search", () => {
 		Reflect.deleteProperty(Element.prototype, "scrollIntoView");
 	});
 
-	it.each(SettingsTabSchema.options)("indexes exactly the rows the %s tab renders", async (tab) => {
+	it.each(SettingsTabSchema.options)("indexes exactly the rows the %s tab renders", async (tab) =>
+	{
 		await renderAt(`/#settings/${tab}`);
-		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
 		const expected = SETTINGS_INDEX.filter((entry) => entry.tab === tab).map((entry): [string, string] => [
 			entry.rowSlug,
 			entry.title,
 		]);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(renderedRows(dialog)).toStrictEqual(expected);
 		});
 	});
 
-	it.each(SettingsTabSchema.options)("ids every %s row as setting-<tab>-<slug>", async (tab) => {
+	it.each(SettingsTabSchema.options)("ids every %s row as setting-<tab>-<slug>", async (tab) =>
+	{
 		await renderAt(`/#settings/${tab}`);
-		const dialog = await screen.findByRole("dialog", {name: "Settings"});
-		const expected = SETTINGS_INDEX.filter((entry) => entry.tab === tab).map((entry) => ({
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const expected = SETTINGS_INDEX.filter((entry) => entry.tab === tab).map((entry) => (
+		{
 			id: `setting-${tab}-${entry.rowSlug}`,
 			item: "",
 		}));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(
-				[...dialog.querySelectorAll<HTMLElement>("[data-settings-row][aria-labelledby]")].map((row) => ({
+				[...dialog.querySelectorAll<HTMLElement>("[data-settings-row][aria-labelledby]")].map((row) => (
+				{
 					id: row.id,
 					item: row.getAttribute("data-settings-item"),
 				})),
@@ -153,78 +234,155 @@ describe("settings search", () => {
 		});
 	});
 
-	it("deep links scroll at once, flash the row from 300ms for 1.95s, and collapse the hash", async () => {
+	it("deep links scroll at once, flash the row from 300ms for 1.95s, and collapse the hash", async () =>
+	{
 		const router = buildRouter("/#settings/general/code-font");
 		await router.load();
-		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
-		act(() => {
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		act(() =>
+		{
 			render(<RouterProvider router={router} />);
 		});
 
-		expect({hash: router.state.location.hash, flashing: flashingRows(), scrolled}).toStrictEqual({
-			hash: "settings/general",
-			flashing: [],
-			scrolled: ["code-font"],
-		});
+		expect(
+			{
+				hash: router.state.location.hash,
+				flashing: flashingRows(),
+				scrolled,
+			},
+		).toStrictEqual(
+			{
+				hash: "settings/general",
+				flashing: [],
+				scrolled: ["code-font"],
+			},
+		);
 
-		await act(async () => {
+		await act(async () =>
+		{
 			await vi.advanceTimersByTimeAsync(299);
 		});
 		expect(flashingRows()).toStrictEqual([]);
-		await act(async () => {
+		await act(async () =>
+		{
 			await vi.advanceTimersByTimeAsync(1);
 		});
-		expect(flashingRows()).toStrictEqual([{row: "code-font", title: true}]);
-		await act(async () => {
+		expect(flashingRows()).toStrictEqual([
+			{
+				row: "code-font",
+				title: true,
+			},
+		]);
+		await act(async () =>
+		{
 			await vi.advanceTimersByTimeAsync(1949);
 		});
-		expect(flashingRows()).toStrictEqual([{row: "code-font", title: true}]);
-		await act(async () => {
+		expect(flashingRows()).toStrictEqual([
+			{
+				row: "code-font",
+				title: true,
+			},
+		]);
+		await act(async () =>
+		{
 			await vi.advanceTimersByTimeAsync(1);
 		});
-		expect({flashing: flashingRows(), scrolled}).toStrictEqual({flashing: [], scrolled: ["code-font"]});
+		expect(
+			{
+				flashing: flashingRows(),
+				scrolled,
+			},
+		).toStrictEqual(
+			{
+				flashing: [],
+				scrolled: ["code-font"],
+			},
+		);
 	});
 
-	it("deep links to Interface font on General, its new home, and flashes setting-general-interface-font", async () => {
+	it("deep links to Interface font on General, its new home, and flashes setting-general-interface-font", async () =>
+	{
 		const router = buildRouter("/#settings/general/interface-font");
 		await router.load();
-		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
-		act(() => {
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		act(() =>
+		{
 			render(<RouterProvider router={router} />);
 		});
-		await act(async () => {
+		await act(async () =>
+		{
 			await vi.advanceTimersByTimeAsync(300);
 		});
 
-		expect({
-			hash: router.state.location.hash,
-			flashing: flashingRows(),
-			id: document.querySelector(".feature-anchor-row-fill")?.id,
-			scrolled,
-		}).toStrictEqual({
-			hash: "settings/general",
-			flashing: [{row: "interface-font", title: true}],
-			id: "setting-general-interface-font",
-			scrolled: ["interface-font"],
-		});
+		expect(
+			{
+				hash: router.state.location.hash,
+				flashing: flashingRows(),
+				id: document.querySelector(".feature-anchor-row-fill")?.id,
+				scrolled,
+			},
+		).toStrictEqual(
+			{
+				hash: "settings/general",
+				flashing: [
+					{
+						row: "interface-font",
+						title: true,
+					},
+				],
+				id: "setting-general-interface-font",
+				scrolled: ["interface-font"],
+			},
+		);
 	});
 
 	/** Each popover row's accessible name, or for hits (no aria-label) their visible text. */
-	function popoverRows(popover: HTMLElement): string[] {
+	function popoverRows(popover: HTMLElement): string[]
+	{
 		return within(popover)
 			.getAllByRole("button")
 			.map((button) => button.getAttribute("aria-label") ?? `hit: ${button.textContent}`);
 	}
 
-	it("shows section hits with child rows and deep links to the selected child", async () => {
+	it("shows section hits with child rows and deep links to the selected child", async () =>
+	{
 		const router = await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
 
-		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {
-			target: {value: "view"},
-		});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Search settings",
+				},
+			),
+			{
+				target:
+				{
+					value: "view",
+				},
+			},
+		);
 
-		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		expect(popoverRows(popover)).toStrictEqual([
 			"hit: CodeDefault transcript view",
 			"hit: Sessions",
@@ -242,55 +400,110 @@ describe("settings search", () => {
 			"view",
 		]);
 
-		fireEvent.click(within(popover).getByRole("button", {name: "Default view in Sessions"}));
+		fireEvent.click(
+			within(popover).getByRole(
+				"button",
+				{
+					name: "Default view in Sessions",
+				},
+			),
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.hash).toBe("settings/sessions");
 		});
 		expect(scrolled).toStrictEqual(["default-view"]);
-		await waitFor(() => {
-			expect(flashingRows()).toStrictEqual([{row: "default-view", title: true}]);
+		await waitFor(() =>
+		{
+			expect(flashingRows()).toStrictEqual([
+				{
+					row: "default-view",
+					title: true,
+				},
+			]);
 		});
-		expect(screen.queryByRole("dialog", {name: "Search results"})).toBeNull();
+		expect(
+			screen.queryByRole(
+				"dialog",
+				{
+					name: "Search results",
+				},
+			),
+		).toBeNull();
 	});
 
-	it("renders a section hit as the tab icon, the highlighted name and an optional via line", async () => {
+	it("renders a section hit as the tab icon, the highlighted name and an optional via line", async () =>
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
 
-		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {
-			target: {value: "theme"},
-		});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Search settings",
+				},
+			),
+			{
+				target:
+				{
+					value: "theme",
+				},
+			},
+		);
 
-		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		const [hit] = within(popover).getAllByRole("button");
 		const lines = hit.firstElementChild?.children ?? [];
-		expect({
-			rows: popoverRows(popover),
-			icon: lines[0]?.firstElementChild?.tagName.toLowerCase(),
-			iconClass: lines[0]?.firstElementChild?.getAttribute("class"),
-			name: lines[0]?.textContent,
-			via: shape(lines[1]),
-		}).toStrictEqual({
-			rows: ["hit: AppearanceTheme"],
-			icon: "svg",
-			iconClass: `lucide lucide-settings ${ICON}`,
-			name: "Appearance",
-			via: {
-				tag: "span",
-				className: "truncate ps-[32px] text-footnote text-[var(--settings-muted)]",
-				children: [accent("Theme")],
+		expect(
+			{
+				rows: popoverRows(popover),
+				icon: lines[0]?.firstElementChild?.tagName.toLowerCase(),
+				iconClass: lines[0]?.firstElementChild?.getAttribute("class"),
+				name: lines[0]?.textContent,
+				via: shape(lines[1]),
 			},
-		});
+		).toStrictEqual(
+			{
+				rows: ["hit: AppearanceTheme"],
+				icon: "svg",
+				iconClass: `lucide lucide-settings ${ICON}`,
+				name: "Appearance",
+				via:
+				{
+					tag: "span",
+					className: "truncate ps-[32px] text-footnote text-[var(--settings-muted)]",
+					children: [accent("Theme")],
+				},
+			},
+		);
 	});
 
 	/** An element's tag, classes and children (text for leaves), for anatomy comparisons. */
-	type Shape = {tag: string; className: string; children: Array<Shape | string>};
-	function shape(element: Element): Shape {
+	type Shape =
+	{
+		tag: string;
+		className: string;
+		children: Array<Shape | string>;
+	};
+	function shape(element: Element): Shape
+	{
 		return {
 			tag: element.tagName.toLowerCase(),
 			className: element.getAttribute("class") ?? "",
-			children: [...element.childNodes].flatMap((node): Array<Shape | string> => {
+			children: [...element.childNodes].flatMap((node): Array<Shape | string> =>
+			{
 				if (node instanceof Element) return [node.tagName.toLowerCase() === "svg" ? "svg" : shape(node)];
 				return node.textContent === "" ? [] : [node.textContent ?? ""];
 			}),
@@ -302,105 +515,171 @@ describe("settings search", () => {
 	const ICON = "size-5 shrink-0 text-primary";
 	const TRUNCATE = "min-w-0 flex-1 truncate";
 	const INDENTED = "flex min-w-0 flex-1 items-center gap-3 ps-[32px]";
-	const accent = (text: string): Shape => ({tag: "span", className: "text-upstream-accent", children: [text]});
+	const accent = (text: string): Shape => (
+	{
+		tag: "span",
+		className: "text-upstream-accent",
+		children: [text],
+	});
 	// Upstream wraps every non-empty unhighlighted part of a label in a bare span.
-	const plain = (text: string): Shape => ({tag: "span", className: "", children: [text]});
+	const plain = (text: string): Shape => (
+	{
+		tag: "span",
+		className: "",
+		children: [text],
+	});
 	const BODY =
 		"[display:inherit] [flex-direction:inherit] [flex-wrap:inherit] [align-items:inherit] [justify-content:inherit] [justify-items:inherit] [gap:inherit] [grid-template-columns:inherit] [grid-template-rows:inherit] [grid-auto-flow:inherit] [grid-auto-columns:inherit] [grid-auto-rows:inherit] col-span-full row-span-full self-stretch justify-self-stretch max-h-[inherit] min-h-0 min-w-0 flex-auto overflow-y-auto rounded-[inherit] outline-none focus-visible:outline-hidden scroll-fade-y p-0";
 
-	it("renders upstream's comfortable hit, child and more anatomy in a text-body popup", async () => {
+	it("renders upstream's comfortable hit, child and more anatomy in a text-body popup", async () =>
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
 
-		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "ho"}});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Search settings",
+				},
+			),
+			{
+				target:
+				{
+					value: "ho",
+				},
+			},
+		);
 
-		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		const [body] = [...popover.children];
 		const [status, scroller] = [...body.children];
-		expect({
-			popupChildren: popover.children.length,
-			body: {
-				tabIndex: body.getAttribute("tabindex"),
-				popoverBody: body.hasAttribute("data-cds-popover-body"),
-				sheetScroll: body.hasAttribute("data-cds-sheet-scroll"),
-				className: body.className,
-				children: body.children.length,
+		expect(
+			{
+				popupChildren: popover.children.length,
+				body:
+				{
+					tabIndex: body.getAttribute("tabindex"),
+					popoverBody: body.hasAttribute("data-cds-popover-body"),
+					sheetScroll: body.hasAttribute("data-cds-sheet-scroll"),
+					className: body.className,
+					children: body.children.length,
+				},
+				popup: popover.className,
+				status: shape(status),
+				statusRole: status.getAttribute("role"),
+				scroller: scroller.className,
+				rows: within(popover)
+					.getAllByRole("button")
+					.slice(0, 5)
+					.map((button) => (
+					{
+						label: button.getAttribute("aria-label"),
+						...shape(button),
+					})),
 			},
-			popup: popover.className,
-			status: shape(status),
-			statusRole: status.getAttribute("role"),
-			scroller: scroller.className,
-			rows: within(popover)
-				.getAllByRole("button")
-				.slice(0, 5)
-				.map((button) => ({label: button.getAttribute("aria-label"), ...shape(button)})),
-		}).toStrictEqual({
-			popupChildren: 1,
-			body: {tabIndex: "-1", popoverBody: true, sheetScroll: true, className: BODY, children: 2},
-			popup: "w-[280px] rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none",
-			status: {tag: "p", className: "sr-only", children: []},
-			statusRole: "status",
-			scroller: "max-h-[min(320px,var(--available-height))] overflow-y-auto p-1",
-			rows: [
+		).toStrictEqual(
+			{
+				popupChildren: 1,
+				body:
 				{
-					label: null,
-					tag: "button",
-					className: ROW,
-					children: [
-						{
-							tag: "span",
-							className: "flex min-w-0 flex-1 flex-col",
-							children: [
-								{
-									tag: "span",
-									className: "flex items-center gap-3",
-									children: [
-										"svg",
-										{tag: "span", className: TRUNCATE, children: [plain("Transcript")]},
-									],
-								},
-							],
-						},
-					],
+					tabIndex: "-1",
+					popoverBody: true,
+					sheetScroll: true,
+					className: BODY,
+					children: 2,
 				},
-				...(
-					[
-						["Hook warnings", [accent("Ho"), plain("ok warnings")]],
-						["Hook errors", [accent("Ho"), plain("ok errors")]],
-						["Passed hooks", [plain("Passed "), accent("ho"), plain("oks")]],
-					] satisfies Array<[string, Array<Shape | string>]>
-				).map(([title, text]) => ({
-					label: `${title} in Transcript`,
-					tag: "button",
-					className: ROW,
-					children: [
-						{
-							tag: "span",
-							className: INDENTED,
-							children: [{tag: "span", className: TRUNCATE, children: text}],
-						},
-					],
-				})),
+				popup: "w-[280px] rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none",
+				status:
 				{
-					label: "2 more matches in Transcript",
-					tag: "button",
-					className: ROW,
-					children: [
-						{
-							tag: "span",
-							className: INDENTED,
-							children: [
-								{
-									tag: "span",
-									className: `${TRUNCATE} text-[var(--settings-muted)]`,
-									children: ["+2 more"],
-								},
-							],
-						},
-					],
+					tag: "p",
+					className: "sr-only",
+					children: [],
 				},
-			],
-		});
+				statusRole: "status",
+				scroller: "max-h-[min(320px,var(--available-height))] overflow-y-auto p-1",
+				rows: [
+					{
+						label: null,
+						tag: "button",
+						className: ROW,
+						children: [
+							{
+								tag: "span",
+								className: "flex min-w-0 flex-1 flex-col",
+								children: [
+									{
+										tag: "span",
+										className: "flex items-center gap-3",
+										children: [
+											"svg",
+											{
+												tag: "span",
+												className: TRUNCATE,
+												children: [plain("Transcript")],
+											},
+										],
+									},
+								],
+							},
+						],
+					},
+					...(
+						[
+							["Hook warnings", [accent("Ho"), plain("ok warnings")]],
+							["Hook errors", [accent("Ho"), plain("ok errors")]],
+							["Passed hooks", [plain("Passed "), accent("ho"), plain("oks")]],
+						] satisfies Array<[string, Array<Shape | string>]>
+					).map(([title, text]) => (
+					{
+						label: `${title} in Transcript`,
+						tag: "button",
+						className: ROW,
+						children: [
+							{
+								tag: "span",
+								className: INDENTED,
+								children: [
+									{
+										tag: "span",
+										className: TRUNCATE,
+										children: text,
+									},
+								],
+							},
+						],
+					})),
+					{
+						label: "2 more matches in Transcript",
+						tag: "button",
+						className: ROW,
+						children: [
+							{
+								tag: "span",
+								className: INDENTED,
+								children: [
+									{
+										tag: "span",
+										className: `${TRUNCATE} text-[var(--settings-muted)]`,
+										children: ["+2 more"],
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+		);
 	});
 
 	const HO_COLLAPSED = [
@@ -428,94 +707,219 @@ describe("settings search", () => {
 	];
 
 	/** The popover rows, the sr-only status text, and whether the field kept focus. */
-	function moreState(): {rows: string[]; status: string; inputFocused: boolean} {
-		const popover = screen.getByRole("dialog", {name: "Search results"});
+	function moreState():
+	{
+		rows: string[];
+		status: string;
+		inputFocused: boolean;
+	}
+	{
+		const popover = screen.getByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		return {
 			rows: popoverRows(popover),
 			status: within(popover).getByRole("status").textContent,
-			inputFocused: document.activeElement === screen.getByRole("textbox", {name: "Search settings"}),
+			inputFocused:
+				document.activeElement ===
+				screen.getByRole(
+					"textbox",
+					{
+						name: "Search settings",
+					},
+				),
 		};
 	}
 
 	it.each<[string, (input: HTMLElement) => void]>([
 		[
 			"click",
-			() => {
-				fireEvent.click(screen.getByRole("button", {name: "2 more matches in Transcript"}));
+			() =>
+			{
+				fireEvent.click(
+					screen.getByRole(
+						"button",
+						{
+							name: "2 more matches in Transcript",
+						},
+					),
+				);
 			},
 		],
 		[
 			"Enter",
-			(input) => {
-				for (let i = 0; i < 4; i++) fireEvent.keyDown(input, {key: "ArrowDown"});
-				fireEvent.keyDown(input, {key: "Enter"});
+			(input) =>
+			{
+				for (let i = 0; i < 4; i++)
+					fireEvent.keyDown(
+						input,
+						{
+							key: "ArrowDown",
+						},
+					);
+				fireEvent.keyDown(
+					input,
+					{
+						key: "Enter",
+					},
+				);
 			},
 		],
-	])("%s on +N more expands the section in place and announces it", async (_how, expand) => {
+	])("%s on +N more expands the section in place and announces it", async (_how, expand) =>
+	{
 		const router = await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 		input.focus();
 
-		fireEvent.change(input, {target: {value: "ho"}});
-		await screen.findByRole("dialog", {name: "Search results"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "ho",
+				},
+			},
+		);
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		const before = moreState();
 		expand(input);
 
-		expect({before, after: moreState(), hash: router.state.location.hash}).toStrictEqual({
-			before: {rows: HO_COLLAPSED, status: "", inputFocused: true},
-			after: {
-				rows: HO_EXPANDED,
-				status: "Showing 2 more matches in Transcript",
-				inputFocused: true,
+		expect(
+			{
+				before,
+				after: moreState(),
+				hash: router.state.location.hash,
 			},
-			hash: "settings/general",
-		});
+		).toStrictEqual(
+			{
+				before:
+				{
+					rows: HO_COLLAPSED,
+					status: "",
+					inputFocused: true,
+				},
+				after:
+				{
+					rows: HO_EXPANDED,
+					status: "Showing 2 more matches in Transcript",
+					inputFocused: true,
+				},
+				hash: "settings/general",
+			},
+		);
 	});
 
-	it("renders upstream's comfortable empty state when nothing matches", async () => {
+	it("renders upstream's comfortable empty state when nothing matches", async () =>
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
 
-		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "zzzq"}});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Search settings",
+				},
+			),
+			{
+				target:
+				{
+					value: "zzzq",
+				},
+			},
+		);
 
-		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		const empty = popover.querySelector("[data-cds-popover-body] > div")?.firstElementChild ?? null;
 		const icon = empty?.querySelector("svg");
-		expect({
-			empty: empty === null ? null : shape(empty),
-			icon: {
-				ariaHidden: icon?.getAttribute("aria-hidden"),
-				className: icon?.getAttribute("class"),
-				cds: icon?.getAttribute("data-cds"),
-				stroke: icon?.getAttribute("stroke-width"),
-				fontSize: icon?.style.fontSize,
+		expect(
+			{
+				empty: empty === null ? null : shape(empty),
+				icon:
+				{
+					ariaHidden: icon?.getAttribute("aria-hidden"),
+					className: icon?.getAttribute("class"),
+					cds: icon?.getAttribute("data-cds"),
+					stroke: icon?.getAttribute("stroke-width"),
+					fontSize: icon?.style.fontSize,
+				},
+				buttons: within(popover).queryAllByRole("button").length,
 			},
-			buttons: within(popover).queryAllByRole("button").length,
-		}).toStrictEqual({
-			// gap-sm and px-md at comfortable density are both 12px.
-			empty: {
-				tag: "div",
-				className:
-					"flex min-h-[120px] flex-col items-center justify-center gap-3 px-3 text-center text-[var(--settings-muted)]",
-				children: ["svg", {tag: "span", className: "text-body", children: ["No matching settings"]}],
+		).toStrictEqual(
+			{
+				// gap-sm and px-md at comfortable density are both 12px.
+				empty:
+				{
+					tag: "div",
+					className:
+						"flex min-h-[120px] flex-col items-center justify-center gap-3 px-3 text-center text-[var(--settings-muted)]",
+					children: [
+						"svg",
+						{
+							tag: "span",
+							className: "text-body",
+							children: ["No matching settings"],
+						},
+					],
+				},
+				// Upstream's xl Search glyph: 28px at a 1.6667px stroke (wght 407.9).
+				icon:
+				{
+					ariaHidden: "true",
+					className: "lucide lucide-search",
+					cds: "Icon",
+					stroke: String((1.6667 * 24) / 28),
+					fontSize: "calc(1.75rem * var(--cds-rem-scale, 1))",
+				},
+				buttons: 0,
 			},
-			// Upstream's xl Search glyph: 28px at a 1.6667px stroke (wght 407.9).
-			icon: {
-				ariaHidden: "true",
-				className: "lucide lucide-search",
-				cds: "Icon",
-				stroke: String((1.6667 * 24) / 28),
-				fontSize: "calc(1.75rem * var(--cds-rem-scale, 1))",
-			},
-			buttons: 0,
-		});
+		);
 	});
 
-	it("renders upstream's comfortable field: a Popover.Trigger div around a plain input, focused by a click anywhere", async () => {
+	it("renders upstream's comfortable field: a Popover.Trigger div around a plain input, focused by a click anywhere", async () =>
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 		const field = input.parentElement;
 		const trigger = field?.parentElement;
 		const icon = field?.querySelector("svg");
@@ -523,171 +927,415 @@ describe("settings search", () => {
 		if (field !== null) fireEvent.click(field);
 		const focusedByClick = document.activeElement === input;
 
-		fireEvent.change(input, {target: {value: "font"}});
-		const popover = await screen.findByRole("dialog", {name: "Search results"});
-		const space = fireEvent.keyDown(input, {key: " "});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font",
+				},
+			},
+		);
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
+		const space = fireEvent.keyDown(
+			input,
+			{
+				key: " ",
+			},
+		);
 
-		expect({
-			trigger: {
-				tag: trigger?.tagName.toLowerCase(),
-				role: trigger?.getAttribute("role"),
-				hasPopup: trigger?.getAttribute("aria-haspopup"),
-				expanded: trigger?.getAttribute("aria-expanded"),
-				controls: trigger?.getAttribute("aria-controls") === popover.id,
+		expect(
+			{
+				trigger:
+				{
+					tag: trigger?.tagName.toLowerCase(),
+					role: trigger?.getAttribute("role"),
+					hasPopup: trigger?.getAttribute("aria-haspopup"),
+					expanded: trigger?.getAttribute("aria-expanded"),
+					controls: trigger?.getAttribute("aria-controls") === popover.id,
+				},
+				field: field?.getAttribute("class"),
+				icon:
+				{
+					ariaHidden: icon?.getAttribute("aria-hidden"),
+					className: icon?.getAttribute("class"),
+					cds: icon?.getAttribute("data-cds"),
+					stroke: icon?.getAttribute("stroke-width"),
+					fontSize: icon?.style.fontSize,
+				},
+				input:
+				{
+					type: input.getAttribute("type"),
+					role: input.getAttribute("role"),
+					expanded: input.getAttribute("aria-expanded"),
+					autocomplete: input.getAttribute("aria-autocomplete"),
+					className: input.className,
+				},
+				focusedByClick,
+				spaceTypes: space,
 			},
-			field: field?.getAttribute("class"),
-			icon: {
-				ariaHidden: icon?.getAttribute("aria-hidden"),
-				className: icon?.getAttribute("class"),
-				cds: icon?.getAttribute("data-cds"),
-				stroke: icon?.getAttribute("stroke-width"),
-				fontSize: icon?.style.fontSize,
+		).toStrictEqual(
+			{
+				trigger:
+				{
+					tag: "div",
+					role: "button",
+					hasPopup: "dialog",
+					expanded: "true",
+					controls: true,
+				},
+				// Upstream's own field shell (not the cds TextInput), on the density tokens: h-control, gap-sm, px-sm, rounded.
+				field: "flex h-control w-full cursor-text items-center gap-sm rounded px-sm bg-fill-field shadow-field-ring transition duration-fast [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus",
+				// Upstream's md Search glyph: 20px at a 1.25px stroke (wght 433.3).
+				icon:
+				{
+					ariaHidden: "true",
+					className: "lucide lucide-search shrink-0 text-muted-as-secondary",
+					cds: "Icon",
+					stroke: "1.5",
+					fontSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
+				},
+				input:
+				{
+					type: "text",
+					role: null,
+					expanded: null,
+					autocomplete: null,
+					className:
+						"cds-input hide-focus-ring min-w-0 flex-1 border-0 bg-transparent p-0 text-body text-primary outline-none placeholder:text-ink-muted focus-visible:!shadow-none",
+				},
+				focusedByClick: true,
+				spaceTypes: true,
 			},
-			input: {
-				type: input.getAttribute("type"),
-				role: input.getAttribute("role"),
-				expanded: input.getAttribute("aria-expanded"),
-				autocomplete: input.getAttribute("aria-autocomplete"),
-				className: input.className,
-			},
-			focusedByClick,
-			spaceTypes: space,
-		}).toStrictEqual({
-			trigger: {tag: "div", role: "button", hasPopup: "dialog", expanded: "true", controls: true},
-			// Upstream's own field shell (not the cds TextInput), on the density tokens: h-control, gap-sm, px-sm, rounded.
-			field: "flex h-control w-full cursor-text items-center gap-sm rounded px-sm bg-fill-field shadow-field-ring transition duration-fast [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus",
-			// Upstream's md Search glyph: 20px at a 1.25px stroke (wght 433.3).
-			icon: {
-				ariaHidden: "true",
-				className: "lucide lucide-search shrink-0 text-muted-as-secondary",
-				cds: "Icon",
-				stroke: "1.5",
-				fontSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
-			},
-			input: {
-				type: "text",
-				role: null,
-				expanded: null,
-				autocomplete: null,
-				className:
-					"cds-input hide-focus-ring min-w-0 flex-1 border-0 bg-transparent p-0 text-body text-primary outline-none placeholder:text-ink-muted focus-visible:!shadow-none",
-			},
-			focusedByClick: true,
-			spaceTypes: true,
-		});
+		);
 	});
 
-	it("collapses +N more when the normalised query changes, not on a whitespace-only edit", async () => {
+	it("collapses +N more when the normalised query changes, not on a whitespace-only edit", async () =>
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 		input.focus();
 
-		fireEvent.change(input, {target: {value: "ho"}});
-		fireEvent.click(await screen.findByRole("button", {name: "2 more matches in Transcript"}));
-		fireEvent.change(input, {target: {value: "ho "}});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "ho",
+				},
+			},
+		);
+		fireEvent.click(
+			await screen.findByRole(
+				"button",
+				{
+					name: "2 more matches in Transcript",
+				},
+			),
+		);
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "ho ",
+				},
+			},
+		);
 		const sameQuery = moreState();
-		fireEvent.change(input, {target: {value: "h"}});
-		fireEvent.change(input, {target: {value: "ho"}});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "h",
+				},
+			},
+		);
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "ho",
+				},
+			},
+		);
 
-		expect({sameQuery: sameQuery.rows, changed: moreState()}).toStrictEqual({
-			sameQuery: HO_EXPANDED,
-			changed: {rows: HO_COLLAPSED, status: "", inputFocused: true},
-		});
+		expect(
+			{
+				sameQuery: sameQuery.rows,
+				changed: moreState(),
+			},
+		).toStrictEqual(
+			{
+				sameQuery: HO_EXPANDED,
+				changed:
+				{
+					rows: HO_COLLAPSED,
+					status: "",
+					inputFocused: true,
+				},
+			},
+		);
 	});
 
 	it.each<[string, string, string]>([
 		// Section-name-only and keyword-only hits get rows of their own and switch the tab only.
 		["appearance", "hit: Appearance", "settings/general"],
 		["tmux", "hit: Applicationtmux", "settings/application"],
-	])("gives %j a hit row that opens its tab", async (query, row, hash) => {
+	])("gives %j a hit row that opens its tab", async (query, row, hash) =>
+	{
 		const router = await renderAt("/#settings/claude-code");
-		await screen.findByRole("dialog", {name: "Settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
 
-		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: query}});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Search settings",
+				},
+			),
+			{
+				target:
+				{
+					value: query,
+				},
+			},
+		);
 
-		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		expect(popoverRows(popover)).toStrictEqual([row]);
 		fireEvent.click(within(popover).getByRole("button"));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.hash).toBe(hash);
 		});
-		expect({scrolled, flashing: flashingRows()}).toStrictEqual({scrolled: [], flashing: []});
+		expect(
+			{
+				scrolled,
+				flashing: flashingRows(),
+			},
+		).toStrictEqual(
+			{
+				scrolled: [],
+				flashing: [],
+			},
+		);
 	});
 
-	it("renders an alias match as the renamed name over an accented alias via line, and Enter opens the member", async () => {
+	it("renders an alias match as the renamed name over an accented alias via line, and Enter opens the member", async () =>
+	{
 		const router = await renderAt("/#settings/claude-code");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 
-		fireEvent.change(input, {target: {value: "general"}});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "general",
+				},
+			},
+		);
 
-		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		const hits = within(popover).getAllByRole("button");
 		const lines = hits[0]?.firstElementChild?.children ?? [];
-		expect({
-			rows: popoverRows(popover),
-			ariaLabel: hits[0]?.getAttribute("aria-label"),
-			name: shape(lines[0]?.lastElementChild ?? document.body),
-			via: shape(lines[1] ?? document.body),
-		}).toStrictEqual({
-			rows: ["hit: AppearanceGeneral"],
-			ariaLabel: null,
-			name: {tag: "span", className: TRUNCATE, children: [plain("Appearance")]},
-			via: {
-				tag: "span",
-				className: "truncate ps-[32px] text-footnote text-[var(--settings-muted)]",
-				children: [accent("General")],
+		expect(
+			{
+				rows: popoverRows(popover),
+				ariaLabel: hits[0]?.getAttribute("aria-label"),
+				name: shape(lines[0]?.lastElementChild ?? document.body),
+				via: shape(lines[1] ?? document.body),
 			},
-		});
+		).toStrictEqual(
+			{
+				rows: ["hit: AppearanceGeneral"],
+				ariaLabel: null,
+				name:
+				{
+					tag: "span",
+					className: TRUNCATE,
+					children: [plain("Appearance")],
+				},
+				via:
+				{
+					tag: "span",
+					className: "truncate ps-[32px] text-footnote text-[var(--settings-muted)]",
+					children: [accent("General")],
+				},
+			},
+		);
 
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.hash).toBe("settings/general");
 		});
-		expect({scrolled, flashing: flashingRows()}).toStrictEqual({scrolled: [], flashing: []});
+		expect(
+			{
+				scrolled,
+				flashing: flashingRows(),
+			},
+		).toStrictEqual(
+			{
+				scrolled: [],
+				flashing: [],
+			},
+		);
 	});
 
-	it("deep links a via-hit to its matched row and flashes it", async () => {
+	it("deep links a via-hit to its matched row and flashes it", async () =>
+	{
 		const router = await renderAt("/#settings/claude-code");
-		await screen.findByRole("dialog", {name: "Settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
 
-		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "theme"}});
+		fireEvent.change(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Search settings",
+				},
+			),
+			{
+				target:
+				{
+					value: "theme",
+				},
+			},
+		);
 
-		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		expect(popoverRows(popover)).toStrictEqual(["hit: AppearanceTheme"]);
 		fireEvent.click(within(popover).getByRole("button"));
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.hash).toBe("settings/general");
 		});
 		expect(scrolled).toStrictEqual(["theme"]);
-		await waitFor(() => {
-			expect(flashingRows()).toStrictEqual([{row: "theme", title: true}]);
+		await waitFor(() =>
+		{
+			expect(flashingRows()).toStrictEqual([
+				{
+					row: "theme",
+					title: true,
+				},
+			]);
 		});
 	});
 
-	it("Enter picks the first row, even a keyword-only hit", async () => {
+	it("Enter picks the first row, even a keyword-only hit", async () =>
+	{
 		const router = await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 
-		fireEvent.change(input, {target: {value: "herdr"}});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "herdr",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.hash).toBe("settings/application");
 		});
 	});
 
 	/** The popover rows, with the highlighted one marked. */
-	function highlightedRows(): string[] {
-		const popover = screen.getByRole("dialog", {name: "Search results"});
+	function highlightedRows(): string[]
+	{
+		const popover = screen.getByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		return within(popover)
 			.getAllByRole("button")
-			.map((button) => {
+			.map((button) =>
+			{
 				const name = button.getAttribute("aria-label") ?? `hit: ${button.textContent}`;
 				return button.getAttribute("data-highlighted") === "" ? `> ${name}` : name;
 			});
@@ -702,13 +1350,37 @@ describe("settings search", () => {
 	];
 	const marked = (index: number) => FONT_ROWS.map((row, i) => (i === index ? `> ${row}` : row));
 
-	it("highlights the first row, and the arrows move the highlight with wrap-around", async () => {
+	it("highlights the first row, and the arrows move the highlight with wrap-around", async () =>
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 
-		fireEvent.change(input, {target: {value: "font"}});
-		await screen.findByRole("dialog", {name: "Search results"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font",
+				},
+			},
+		);
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 		const seen = [highlightedRows()];
 		for (const key of [
 			"ArrowDown",
@@ -719,8 +1391,14 @@ describe("settings search", () => {
 			"ArrowDown",
 			"ArrowUp",
 			"ArrowUp",
-		]) {
-			fireEvent.keyDown(input, {key});
+		])
+		{
+			fireEvent.keyDown(
+				input,
+				{
+					key,
+				},
+			);
 			seen.push(highlightedRows());
 		}
 
@@ -735,134 +1413,411 @@ describe("settings search", () => {
 			marked(0),
 			marked(4),
 		]);
-		expect(highlightScrolls.at(-1)).toStrictEqual({
-			row: "1 more match in Appearance",
-			options: {block: "nearest"},
-		});
+		expect(highlightScrolls.at(-1)).toStrictEqual(
+			{
+				row: "1 more match in Appearance",
+				options:
+				{
+					block: "nearest",
+				},
+			},
+		);
 	});
 
-	it("resets the highlight to the first row whenever the query changes", async () => {
+	it("resets the highlight to the first row whenever the query changes", async () =>
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 
-		fireEvent.change(input, {target: {value: "font"}});
-		fireEvent.keyDown(input, {key: "ArrowDown"});
-		fireEvent.keyDown(input, {key: "ArrowDown"});
-		fireEvent.change(input, {target: {value: "font "}});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowDown",
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowDown",
+			},
+		);
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font ",
+				},
+			},
+		);
 
 		expect(highlightedRows()).toStrictEqual(marked(0));
 	});
 
-	it("ignores keys while an IME is composing", async () => {
+	it("ignores keys while an IME is composing", async () =>
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 
-		fireEvent.change(input, {target: {value: "font"}});
-		fireEvent.keyDown(input, {key: "ArrowDown", isComposing: true});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowDown",
+				isComposing: true,
+			},
+		);
 
 		expect(highlightedRows()).toStrictEqual(marked(0));
 	});
 
-	it("Enter picks the highlighted row and ignores key repeat", async () => {
+	it("Enter picks the highlighted row and ignores key repeat", async () =>
+	{
 		const router = await renderAt("/#settings/claude-code");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 
-		fireEvent.change(input, {target: {value: "font"}});
-		fireEvent.keyDown(input, {key: "ArrowUp"});
-		fireEvent.keyDown(input, {key: "Enter", repeat: true});
-		expect({hash: router.state.location.hash, rows: highlightedRows()}).toStrictEqual({
-			hash: "settings/claude-code",
-			rows: marked(4),
-		});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowUp",
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+				repeat: true,
+			},
+		);
+		expect(
+			{
+				hash: router.state.location.hash,
+				rows: highlightedRows(),
+			},
+		).toStrictEqual(
+			{
+				hash: "settings/claude-code",
+				rows: marked(4),
+			},
+		);
 
-		fireEvent.keyDown(input, {key: "ArrowUp"});
-		fireEvent.keyDown(input, {key: "Enter"});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "ArrowUp",
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
 
-		await waitFor(() => {
+		await waitFor(() =>
+		{
 			expect(router.state.location.hash).toBe("settings/general");
 		});
 		expect(scrolled).toStrictEqual(["code-font-size"]);
 	});
 
-	it("moves the single highlight with the pointer and keeps focus in the input on mousedown", async () => {
+	it("moves the single highlight with the pointer and keeps focus in the input on mousedown", async () =>
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 		input.focus();
 
-		fireEvent.change(input, {target: {value: "font"}});
-		const popover = await screen.findByRole("dialog", {name: "Search results"});
-		const second = within(popover).getByRole("button", {name: "Code font size in Appearance"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font",
+				},
+			},
+		);
+		const popover = await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
+		const second = within(popover).getByRole(
+			"button",
+			{
+				name: "Code font size in Appearance",
+			},
+		);
 		fireEvent.mouseMove(second);
 		const rows = highlightedRows();
 		const notPrevented = fireEvent.mouseDown(second);
 
-		expect({rows, notPrevented, focused: document.activeElement === input}).toStrictEqual({
-			rows: marked(3),
-			notPrevented: false,
-			focused: true,
-		});
+		expect(
+			{
+				rows,
+				notPrevented,
+				focused: document.activeElement === input,
+			},
+		).toStrictEqual(
+			{
+				rows: marked(3),
+				notPrevented: false,
+				focused: true,
+			},
+		);
 	});
 
 	/** The search field's value, whether it holds focus, and which dialogs are open. */
-	function searchState(input: HTMLInputElement) {
+	function searchState(input: HTMLInputElement)
+	{
 		return {
 			value: input.value,
 			focused: document.activeElement === input,
-			results: screen.queryByRole("dialog", {name: "Search results"}) !== null,
-			settings: screen.queryByRole("dialog", {name: "Settings"}) !== null,
+			results:
+				screen.queryByRole(
+					"dialog",
+					{
+						name: "Search results",
+					},
+				) !== null,
+			settings:
+				screen.queryByRole(
+					"dialog",
+					{
+						name: "Settings",
+					},
+				) !== null,
 		};
 	}
 
-	it("Escape clears the query and blurs the field without closing Settings; a second Escape closes it", async () => {
+	it("Escape clears the query and blurs the field without closing Settings; a second Escape closes it", async () =>
+	{
 		const router = await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 		input.focus();
-		fireEvent.change(input, {target: {value: "font"}});
-		await screen.findByRole("dialog", {name: "Search results"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font",
+				},
+			},
+		);
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 
-		const notPrevented = fireEvent.keyDown(input, {key: "Escape", code: "Escape"});
-		const afterFirst = {...searchState(input), notPrevented, hash: router.state.location.hash};
+		const notPrevented = fireEvent.keyDown(
+			input,
+			{
+				key: "Escape",
+				code: "Escape",
+			},
+		);
+		const afterFirst =
+		{
+			...searchState(input),
+			notPrevented,
+			hash: router.state.location.hash,
+		};
 
-		fireEvent.keyDown(document.activeElement ?? document.body, {key: "Escape", code: "Escape"});
-		await waitFor(() => {
-			expect(screen.queryByRole("dialog", {name: "Settings"})).toBeNull();
+		fireEvent.keyDown(
+			document.activeElement ?? document.body,
+			{
+				key: "Escape",
+				code: "Escape",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(
+				screen.queryByRole(
+					"dialog",
+					{
+						name: "Settings",
+					},
+				),
+			).toBeNull();
 		});
 
-		expect(afterFirst).toStrictEqual({
-			value: "",
-			focused: false,
-			results: false,
-			settings: true,
-			notPrevented: false,
-			hash: "settings/general",
-		});
+		expect(afterFirst).toStrictEqual(
+			{
+				value: "",
+				focused: false,
+				results: false,
+				settings: true,
+				notPrevented: false,
+				hash: "settings/general",
+			},
+		);
 	});
 
-	it("Tab clears the query", async () => {
+	it("Tab clears the query", async () =>
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 		input.focus();
-		fireEvent.change(input, {target: {value: "font"}});
-		await screen.findByRole("dialog", {name: "Search results"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font",
+				},
+			},
+		);
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 
-		fireEvent.keyDown(input, {key: "Tab", code: "Tab"});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Tab",
+				code: "Tab",
+			},
+		);
 
-		expect(searchState(input)).toStrictEqual({value: "", focused: true, results: false, settings: true});
+		expect(searchState(input)).toStrictEqual(
+			{
+				value: "",
+				focused: true,
+				results: false,
+				settings: true,
+			},
+		);
 	});
 
-	it("an outside press closes and clears the results; a press in the field keeps them open", async () => {
+	it("an outside press closes and clears the results; a press in the field keeps them open", async () =>
+	{
 		await renderAt("/#settings/general");
-		const dialog = await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 		input.focus();
-		fireEvent.change(input, {target: {value: "font"}});
-		await screen.findByRole("dialog", {name: "Search results"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font",
+				},
+			},
+		);
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 
 		fireEvent.pointerDown(input);
 		fireEvent.mouseDown(input);
@@ -872,101 +1827,244 @@ describe("settings search", () => {
 		fireEvent.pointerDown(heading);
 		fireEvent.mouseDown(heading);
 		fireEvent.click(heading);
-		await waitFor(() => {
-			expect(screen.queryByRole("dialog", {name: "Search results"})).toBeNull();
+		await waitFor(() =>
+		{
+			expect(
+				screen.queryByRole(
+					"dialog",
+					{
+						name: "Search results",
+					},
+				),
+			).toBeNull();
 		});
 
-		expect({afterInside, afterOutside: searchState(input)}).toStrictEqual({
-			afterInside: {value: "font", focused: true, results: true, settings: true},
-			afterOutside: {value: "", focused: false, results: false, settings: true},
-		});
+		expect(
+			{
+				afterInside,
+				afterOutside: searchState(input),
+			},
+		).toStrictEqual(
+			{
+				afterInside:
+				{
+					value: "font",
+					focused: true,
+					results: true,
+					settings: true,
+				},
+				afterOutside:
+				{
+					value: "",
+					focused: false,
+					results: false,
+					settings: true,
+				},
+			},
+		);
 	});
 
-	it("selecting a result clears the query and blurs the field", async () => {
+	it("selecting a result clears the query and blurs the field", async () =>
+	{
 		const router = await renderAt("/#settings/claude-code");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
 		input.focus();
-		fireEvent.change(input, {target: {value: "font"}});
-		await screen.findByRole("dialog", {name: "Search results"});
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "font",
+				},
+			},
+		);
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Search results",
+			},
+		);
 
-		fireEvent.keyDown(input, {key: "Enter"});
-		await waitFor(() => {
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
+		await waitFor(() =>
+		{
 			expect(router.state.location.hash).toBe("settings/general");
 		});
 
-		expect(searchState(input)).toStrictEqual({value: "", focused: false, results: false, settings: true});
+		expect(searchState(input)).toStrictEqual(
+			{
+				value: "",
+				focused: false,
+				results: false,
+				settings: true,
+			},
+		);
 	});
 
 	const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)";
 
 	/** Fill the field, then blur it so focus is back on the body. */
-	async function blurredQuery(value: string) {
+	async function blurredQuery(value: string)
+	{
 		await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
-		fireEvent.change(input, {target: {value}});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		const input = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Search settings",
+			},
+		);
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value,
+				},
+			},
+		);
 		input.blur();
 		return input;
 	}
 
-	function findState(input: HTMLInputElement, notPrevented: boolean) {
+	function findState(input: HTMLInputElement, notPrevented: boolean)
+	{
 		return {
 			notPrevented,
 			focused: document.activeElement === input,
 			selection: [input.selectionStart, input.selectionEnd],
-			pageSearchExpanded: screen.queryByRole("button", {name: "Search page", hidden: true}) === null,
+			pageSearchExpanded:
+				screen.queryByRole(
+					"button",
+					{
+						name: "Search page",
+						hidden: true,
+					},
+				) === null,
 		};
 	}
 
-	it("Ctrl+F from the body focuses and selects the field, and the page's ⌘F search stays closed", async () => {
+	it("Ctrl+F from the body focuses and selects the field, and the page's ⌘F search stays closed", async () =>
+	{
 		const input = await blurredQuery("font");
 		input.setSelectionRange(4, 4);
 
-		const notPrevented = fireEvent.keyDown(document.body, {key: "f", code: "KeyF", ctrlKey: true});
+		const notPrevented = fireEvent.keyDown(
+			document.body,
+			{
+				key: "f",
+				code: "KeyF",
+				ctrlKey: true,
+			},
+		);
 
-		expect(findState(input, notPrevented)).toStrictEqual({
-			notPrevented: false,
-			focused: true,
-			selection: [0, 4],
-			pageSearchExpanded: false,
-		});
+		expect(findState(input, notPrevented)).toStrictEqual(
+			{
+				notPrevented: false,
+				focused: true,
+				selection: [0, 4],
+				pageSearchExpanded: false,
+			},
+		);
 	});
 
-	it("⌘F focuses and selects the field on mac", async () => {
+	it("⌘F focuses and selects the field on mac", async () =>
+	{
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 		const input = await blurredQuery("font");
 		input.setSelectionRange(4, 4);
 
-		const notPrevented = fireEvent.keyDown(document.body, {key: "f", code: "KeyF", metaKey: true});
+		const notPrevented = fireEvent.keyDown(
+			document.body,
+			{
+				key: "f",
+				code: "KeyF",
+				metaKey: true,
+			},
+		);
 
-		expect(findState(input, notPrevented)).toStrictEqual({
-			notPrevented: false,
-			focused: true,
-			selection: [0, 4],
-			pageSearchExpanded: false,
-		});
+		expect(findState(input, notPrevented)).toStrictEqual(
+			{
+				notPrevented: false,
+				focused: true,
+				selection: [0, 4],
+				pageSearchExpanded: false,
+			},
+		);
 	});
 
 	it.each([
-		{name: "⌘ and Ctrl together", modifiers: {metaKey: true, ctrlKey: true}},
-		{name: "Ctrl+Alt", modifiers: {ctrlKey: true, altKey: true}},
-		{name: "Ctrl+Shift", modifiers: {ctrlKey: true, shiftKey: true}},
-	])("leaves $name+F to the browser", async ({modifiers}) => {
+		{
+			name: "⌘ and Ctrl together",
+			modifiers:
+			{
+				metaKey: true,
+				ctrlKey: true,
+			},
+		},
+		{
+			name: "Ctrl+Alt",
+			modifiers:
+			{
+				ctrlKey: true,
+				altKey: true,
+			},
+		},
+		{
+			name: "Ctrl+Shift",
+			modifiers:
+			{
+				ctrlKey: true,
+				shiftKey: true,
+			},
+		},
+	])("leaves $name+F to the browser", async ({modifiers}) =>
+	{
 		const input = await blurredQuery("font");
 		input.setSelectionRange(4, 4);
 
-		const notPrevented = fireEvent.keyDown(document.body, {key: "f", code: "KeyF", ...modifiers});
+		const notPrevented = fireEvent.keyDown(
+			document.body,
+			{
+				key: "f",
+				code: "KeyF",
+				...modifiers,
+			},
+		);
 
-		expect(findState(input, notPrevented)).toStrictEqual({
-			notPrevented: true,
-			focused: false,
-			selection: [4, 4],
-			pageSearchExpanded: false,
-		});
+		expect(findState(input, notPrevented)).toStrictEqual(
+			{
+				notPrevented: true,
+				focused: false,
+				selection: [4, 4],
+				pageSearchExpanded: false,
+			},
+		);
 	});
 
-	it("leaves Ctrl+F to the browser inside a nested dialog", async () => {
+	it("leaves Ctrl+F to the browser inside a nested dialog", async () =>
+	{
 		const input = await blurredQuery("font");
 		input.setSelectionRange(4, 4);
 		const nested = document.createElement("div");
@@ -976,32 +2074,75 @@ describe("settings search", () => {
 		document.body.append(nested);
 		confirm.focus();
 
-		const notPrevented = fireEvent.keyDown(confirm, {key: "f", code: "KeyF", ctrlKey: true});
+		const notPrevented = fireEvent.keyDown(
+			confirm,
+			{
+				key: "f",
+				code: "KeyF",
+				ctrlKey: true,
+			},
+		);
 		nested.remove();
 
-		expect(findState(input, notPrevented)).toStrictEqual({
-			notPrevented: true,
-			focused: false,
-			selection: [4, 4],
-			pageSearchExpanded: false,
-		});
+		expect(findState(input, notPrevented)).toStrictEqual(
+			{
+				notPrevented: true,
+				focused: false,
+				selection: [4, 4],
+				pageSearchExpanded: false,
+			},
+		);
 	});
 
-	it("releases Ctrl+F once Settings closes, so the page's search claims it again", async () => {
+	it("releases Ctrl+F once Settings closes, so the page's search claims it again", async () =>
+	{
 		const router = await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-		await act(async () => {
-			await router.navigate({to: "/", hash: ""});
+		await screen.findByRole(
+			"dialog",
+			{
+				name: "Settings",
+			},
+		);
+		await act(async () =>
+		{
+			await router.navigate(
+				{
+					to: "/",
+					hash: "",
+				},
+			);
 		});
-		await waitFor(() => {
-			expect(screen.queryByRole("dialog", {name: "Settings"})).toBeNull();
+		await waitFor(() =>
+		{
+			expect(
+				screen.queryByRole(
+					"dialog",
+					{
+						name: "Settings",
+					},
+				),
+			).toBeNull();
 		});
 
-		const notPrevented = fireEvent.keyDown(document.body, {key: "f", code: "KeyF", ctrlKey: true});
+		const notPrevented = fireEvent.keyDown(
+			document.body,
+			{
+				key: "f",
+				code: "KeyF",
+				ctrlKey: true,
+			},
+		);
 
-		expect({notPrevented, pageSearch: screen.queryByRole("searchbox") !== null}).toStrictEqual({
-			notPrevented: false,
-			pageSearch: true,
-		});
+		expect(
+			{
+				notPrevented,
+				pageSearch: screen.queryByRole("searchbox") !== null,
+			},
+		).toStrictEqual(
+			{
+				notPrevented: false,
+				pageSearch: true,
+			},
+		);
 	});
 });

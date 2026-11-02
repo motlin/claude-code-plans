@@ -10,23 +10,48 @@ const CLEAR_DELAY_MS = 3500;
  * render announces `words` 500ms later and clears it 3.5s after the change. Opening the palette
  * and re-renders with the same filters announce nothing.
  */
-export function PaletteFilterSpoken({filterKey, words}: {filterKey: string; words: string}) {
-	const [change, setChange] = useState({filterKey, count: 0});
-	if (change.filterKey !== filterKey) setChange({filterKey, count: change.count + 1});
-	const [spoken, setSpoken] = useState<{count: number; words: string} | null>(null);
+export function PaletteFilterSpoken({filterKey, words}: {filterKey: string; words: string})
+{
+	const [change, setChange] = useState(
+		{
+			filterKey,
+			count: 0,
+		},
+	);
+	if (change.filterKey !== filterKey)
+		setChange(
+			{
+				filterKey,
+				count: change.count + 1,
+			},
+		);
+	const [spoken, setSpoken] = useState<
+	{
+		count: number;
+		words: string;
+	} | null>(null);
 	const latestWords = useRef(words);
 	latestWords.current = words;
 	const {count} = change;
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (count === 0) return undefined;
-		const speak = setTimeout(() => {
-			setSpoken({count, words: latestWords.current});
+		const speak = setTimeout(() =>
+		{
+			setSpoken(
+				{
+					count,
+					words: latestWords.current,
+				},
+			);
 		}, SPEAK_DELAY_MS);
-		const clear = setTimeout(() => {
+		const clear = setTimeout(() =>
+		{
 			setSpoken(null);
 		}, CLEAR_DELAY_MS);
-		return () => {
+		return () =>
+		{
 			clearTimeout(speak);
 			clearTimeout(clear);
 		};

@@ -1,6 +1,7 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
-import {
+import
+{
 	AppWindow,
 	ArrowLeft,
 	Bot,
@@ -38,7 +39,8 @@ import {useSessionTitleShortcuts} from "./use-session-title-shortcuts";
 import {TitlebarHiddenCountContext} from "./titlebar-fold-context";
 import {useTitlebarFold} from "./use-titlebar-fold";
 import {useToast} from "./toast-context";
-import {
+import
+{
 	ContextMenu,
 	ContextMenuTrigger,
 	Menu,
@@ -76,7 +78,8 @@ const TOOLBAR_LOOK_CLASS =
 	"relative min-h-[min(var(--cds-h-control,0px)_+_2_*_var(--cds-toolbar-pad-block,0.25rem),var(--cds-toolbar-line,0px)_*_1000)] border-[color:var(--color-border-line)] border-b-[length:var(--cds-toolbar-line,0px)] pb-[calc(var(--cds-toolbar-pad-block,0.25rem)_-_var(--cds-toolbar-line,0px))]";
 
 /* Upstream `MY`'s chevron: `lu("text-secondary")`, where `lu = Hj` drops the ink under fizzy-lake panels and the ghost button's text-primary shows. */
-function chevronClass(panels: boolean): string {
+function chevronClass(panels: boolean): string
+{
 	return `flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 ${panels ? "text-primary" : "text-secondary"} transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover comfortable:rounded-r6 comfortable:size-7`;
 }
 
@@ -95,10 +98,16 @@ const PILL_CLASS =
 
 /** `https://github.com/owner/repo` from the session's `pr-link`, the one remote URL the index knows. */
 const MENU_TOOLTIP_MAX_GRAPHEMES = 80;
-const GRAPHEMES = new Intl.Segmenter(undefined, {granularity: "grapheme"});
+const GRAPHEMES = new Intl.Segmenter(
+	undefined,
+	{
+		granularity: "grapheme",
+	},
+);
 
 /** Upstream's chevron tooltip: titles over 80 graphemes are cut to 79 plus an ellipsis; an empty title gives "More options". */
-function menuTooltipLabel(title: string): string {
+function menuTooltipLabel(title: string): string
+{
 	if (title.trim() === "") return "More options";
 	const graphemes = Array.from(GRAPHEMES.segment(title), ({segment}) => segment);
 	if (graphemes.length <= MENU_TOOLTIP_MAX_GRAPHEMES) return `More options for ${title}`;
@@ -108,43 +117,56 @@ function menuTooltipLabel(title: string): string {
 		.trimEnd()}…`;
 }
 
-function repositoryUrl(pr: SessionDetailData["pr"]): string | null {
+function repositoryUrl(pr: SessionDetailData["pr"]): string | null
+{
 	if (pr === undefined) return null;
-	try {
+	try
+	{
 		return `${new URL(pr.url).origin}/${pr.repository}`;
-	} catch {
+	}
+	catch
+	{
 		return null;
 	}
 }
 
 type Toast = ReturnType<typeof useToast>;
 
-async function copyWithToast(toast: Toast, text: string, what: string): Promise<void> {
+async function copyWithToast(toast: Toast, text: string, what: string): Promise<void>
+{
 	const copied = await writeClipboardText(text);
 	toast(
 		copied
-			? {kind: "success", message: `${what} copied to clipboard.`}
-			: {
+			?
+				{
+					kind: "success",
+					message: `${what} copied to clipboard.`,
+				}
+			:
+				{
 					kind: "error",
 					message: `Couldn’t copy the ${what.toLowerCase()}. Try again.`,
 				},
 	);
 }
 
-function downloadUrl(href: string): void {
+function downloadUrl(href: string): void
+{
 	const anchor = document.createElement("a");
 	anchor.href = href;
 	anchor.download = "";
 	anchor.click();
 }
 
-type PillIcon = React.ComponentType<{
+type PillIcon = React.ComponentType<
+{
 	className?: string;
 	"aria-hidden"?: boolean;
 }>;
 
 /** Icon + label; the label turns sr-only when the titlebar is narrow. */
-function PillContent({icon: Icon, label, compact}: {icon: PillIcon; label: string; compact: boolean}) {
+function PillContent({icon: Icon, label, compact}: {icon: PillIcon; label: string; compact: boolean})
+{
 	return (
 		<>
 			{compact && <Icon aria-hidden className="size-3 shrink-0" />}
@@ -167,7 +189,8 @@ function OriginPill({
 	label: string;
 	title?: string;
 	compact: boolean;
-}) {
+})
+{
 	return (
 		<span data-origin-pill={kind} title={title ?? label} className={PILL_CLASS}>
 			<PillContent icon={icon} label={label} compact={compact} />
@@ -182,7 +205,8 @@ export type ProjectMenuSession = Pick<SessionDetailData, "projectPath" | "cwd" |
  * The project menu's items: the composer branch strip's project button, and the header menu's
  * Project submenu, which keeps them reachable while the strip is hidden.
  */
-export function ProjectMenuItems({sessionId, session}: {sessionId: string; session: ProjectMenuSession}) {
+export function ProjectMenuItems({sessionId, session}: {sessionId: string; session: ProjectMenuSession})
+{
 	const toast = useToast();
 	const path = session.projectPath ?? session.cwd;
 	const originUrl = useQuery(sessionOpenInQueryOptions(sessionId)).data?.githubUrl ?? null;
@@ -195,12 +219,16 @@ export function ProjectMenuItems({sessionId, session}: {sessionId: string; sessi
 		<>
 			{path !== null && (
 				<MenuItem
-					onSelect={() => {
-						openSessionInFinder(sessionId).catch(() => {
-							toast({
-								kind: "error",
-								message: "Couldn’t open the folder in Finder.",
-							});
+					onSelect={() =>
+					{
+						openSessionInFinder(sessionId).catch(() =>
+						{
+							toast(
+								{
+									kind: "error",
+									message: "Couldn’t open the folder in Finder.",
+								},
+							);
 						});
 					}}
 				>
@@ -219,7 +247,8 @@ export function ProjectMenuItems({sessionId, session}: {sessionId: string; sessi
 }
 
 /** Local-only session actions, offered in the header menu after upstream's items. */
-export interface SessionHeaderLocalActions {
+export interface SessionHeaderLocalActions
+{
 	resumeCommand: string;
 	forkCommand: string;
 	/** Absent when there is nothing to generate: a summary exists or the setting hides it. */
@@ -235,7 +264,8 @@ function HeaderLocalSection({
 	sessionId: string;
 	project: ProjectMenuSession;
 	local: SessionHeaderLocalActions;
-}) {
+})
+{
 	const toast = useToast();
 	return (
 		<>
@@ -255,7 +285,8 @@ function HeaderLocalSection({
 					Copy fork command
 				</MenuItem>
 				<MenuItem
-					onSelect={() => {
+					onSelect={() =>
+					{
 						downloadUrl(`/api/raw?sessionId=${sessionId}`);
 					}}
 				>
@@ -289,7 +320,8 @@ function HeaderMenuBody({
 	requestRename: () => void;
 	local: SessionHeaderLocalActions | undefined;
 	transcriptView: SessionHeaderTranscriptView | undefined;
-}) {
+})
+{
 	const {data: herdr} = useQuery(herdrPanesQueryOptions);
 	const {data: openIn} = useQuery(sessionOpenInQueryOptions(sessionId));
 	const pins = usePins();
@@ -298,38 +330,57 @@ function HeaderMenuBody({
 	const prUrl = data.pr?.url ?? null;
 	const pinned = pins.isPinned(sessionId);
 	const hasLiveTerminal = sessionHasLiveTerminal(herdr?.panes, sessionId);
-	const menuSession: SessionMenuSession = {
+	const menuSession: SessionMenuSession =
+	{
 		title,
 		pinned,
 		readState: "read",
 		archived: data.archived,
 		prUrl,
 		hasLiveTerminal,
-		forkDisabledReason: forkDisabledReason({working: isActive, cwd}),
+		forkDisabledReason: forkDisabledReason(
+			{
+				working: isActive,
+				cwd,
+			},
+		),
 		cwd,
 		bridgeSessionId,
 	};
-	if (transcriptView !== undefined) {
-		menuSession.transcriptView = {
+	if (transcriptView !== undefined)
+	{
+		menuSession.transcriptView =
+		{
 			mode: transcriptView.mode,
 			defaultMode: transcriptView.defaultMode,
 			hasThinking: transcriptView.hasThinking,
 		};
 	}
-	const run = useSessionMenuRunner({
-		sessionId,
-		cwd,
-		bridgeSessionId,
-		prUrl,
-		requestRename,
-		...(transcriptView === undefined ? {} : {transcriptView}),
-	});
+	const run = useSessionMenuRunner(
+		{
+			sessionId,
+			cwd,
+			bridgeSessionId,
+			prUrl,
+			requestRename,
+			...(transcriptView === undefined
+				? {}
+				:
+					{
+						transcriptView,
+					}),
+		},
+	);
 	return (
 		<>
 			<MenuEntries
-				entries={getSessionMenuItems(menuSession, SESSION_MENU_CAPABILITIES, {
-					surface: "header",
-				})}
+				entries={getSessionMenuItems(
+					menuSession,
+					SESSION_MENU_CAPABILITIES,
+					{
+						surface: "header",
+					},
+				)}
 				run={run}
 			/>
 			{local !== undefined && <HeaderLocalSection sessionId={sessionId} project={data} local={local} />}
@@ -338,11 +389,13 @@ function HeaderMenuBody({
 }
 
 /** The session's transcript view, which the header's Transcript view submenu shows and sets. */
-export interface SessionHeaderTranscriptView extends TranscriptViewActions {
+export interface SessionHeaderTranscriptView extends TranscriptViewActions
+{
 	hasThinking: boolean;
 }
 
-export interface SessionTitlebarProps {
+export interface SessionTitlebarProps
+{
 	sessionId: string;
 	data: SessionDetailData;
 	isActive: boolean;
@@ -380,31 +433,47 @@ export function SessionTitlebar({
 	transcriptView,
 	railToggleFoldable = false,
 	titlePending = false,
-}: SessionTitlebarProps) {
+}: SessionTitlebarProps)
+{
 	const rename = useSessionRename(sessionId, data.title, data.titleIsStandIn === true);
 	const panels = useFizzyLake("panels");
 	const cwd = data.cwd ?? data.projectPath;
-	useSessionTitleShortcuts({
-		sessionId,
-		archived: data.archived,
-		prUrl: data.pr?.url,
-		cwd,
-		// No rename while the title is still pending, as upstream's preview has none.
-		startEditing: titlePending ? () => {} : rename.startEditing,
-	});
+	useSessionTitleShortcuts(
+		{
+			sessionId,
+			archived: data.archived,
+			prUrl: data.pr?.url,
+			cwd,
+			// No rename while the title is still pending, as upstream's preview has none.
+			startEditing: titlePending
+				? () =>
+					{
+					}
+				: rename.startEditing,
+		},
+	);
 	const menuRename = useRenameAfterMenuClose(rename.startEditing);
 	const contextRename = useRenameAfterMenuClose(rename.startEditing);
-	const {
+	const
+	{
 		ref: foldRef,
 		hiddenCount,
 		pillsCompact: compact,
-	} = useTitlebarFold(foldBudget({railToggleFoldable, hiddenCount: 0}).maxHidden);
+	} = useTitlebarFold(
+		foldBudget(
+			{
+				railToggleFoldable,
+				hiddenCount: 0,
+			},
+		).maxHidden,
+	);
 	const modelLabel = formatModelName(data.model);
 	const repositoryName = data.pr?.repository.slice(data.pr.repository.lastIndexOf("/") + 1).trim();
 	const roving = useRovingToolbar(TOOLBAR_ROVING_OPTIONS);
 	const rovingRef = roving.ref;
 	const ref = useCallback(
-		(element: HTMLDivElement | null) => {
+		(element: HTMLDivElement | null) =>
+		{
 			foldRef.current = element;
 			rovingRef(element);
 		},
@@ -421,14 +490,24 @@ export function SessionTitlebar({
 			data-cds="Toolbar"
 			onFocus={roving.onFocus}
 			onKeyDown={roving.onKeyDown}
-			{...(panels ? {} : {"data-flush": ""})}
+			{...(panels
+				? {}
+				:
+					{
+						"data-flush": "",
+					})}
 			data-testid="session-titlebar"
 			data-perf-region="header"
 			className={`${panels ? `${TOOLBAR_PADDED_CLASS} ${TOOLBAR_INSIDE_CLASS}` : `${TOOLBAR_FLUSH_CLASS} ${TOOLBAR_LOOK_CLASS}`} ${TOOLBAR_FOCUS_RING_CLASS} min-w-0`}
 		>
 			<div
 				data-titlebar-lead=""
-				{...(compact ? {"data-pills-compact": ""} : {})}
+				{...(compact
+					?
+						{
+							"data-pills-compact": "",
+						}
+					: {})}
 				className={`group/lead flex min-w-0 items-center ${panels ? CONTROL_ROW_CLASS : ""}`}
 			>
 				{/* Upstream's lead spacer at every width, max(0px, 1rem - tiles-padding - tiles-border): 7px, so the title text clears the chat card edge (x=48 at 390). */}
@@ -437,7 +516,10 @@ export function SessionTitlebar({
 					{data.parentSessionId !== undefined && (
 						<Link
 							to="/session/$id"
-							params={{id: data.parentSessionId}}
+							params={
+							{
+								id: data.parentSessionId,
+							}}
 							className={`${PILL_CLASS} cursor-pointer`}
 						>
 							<ArrowLeft aria-hidden className="size-3 shrink-0" />
@@ -560,7 +642,10 @@ export function SessionTitlebar({
 						{data.forkedFromSessionId !== undefined && (
 							<Link
 								to="/session/$id"
-								params={{id: data.forkedFromSessionId}}
+								params={
+								{
+									id: data.forkedFromSessionId,
+								}}
 								data-origin-pill="forked-from"
 								title={`Forked from ${data.forkedFromSessionId}`}
 								className={`${PILL_CLASS} cursor-pointer`}

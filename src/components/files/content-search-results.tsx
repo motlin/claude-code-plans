@@ -5,7 +5,8 @@ import {type KeyboardEvent, type RefObject, useEffect, useRef} from "react";
 import {useDebouncedValue} from "../../hooks/use-debounced-value";
 import {fileSearchQueryOptions} from "../../lib/api/search";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
-import {
+import
+{
 	askAboutPrompt,
 	type ContentSearchMatch,
 	groupContentSearchResults,
@@ -15,13 +16,15 @@ import {FileTypeIcon} from "../file-type-icon";
 
 const QUERY_DEBOUNCE_MS = 120;
 
-export interface ContentMatchOpenOptions {
+export interface ContentMatchOpenOptions
+{
 	pin: boolean;
 	line?: number;
 	findQuery?: string;
 }
 
-interface ContentSearchResultsProps {
+interface ContentSearchResultsProps
+{
 	/** The content query, without the leading "?". */
 	query: string;
 	cwd: string;
@@ -33,7 +36,8 @@ interface ContentSearchResultsProps {
 	onAsk?: ((prompt: string) => void) | undefined;
 }
 
-function Snippet({snippet}: {snippet: MarkedText}) {
+function Snippet({snippet}: {snippet: MarkedText})
+{
 	const {text, match} = snippet;
 	if (match === null) return <>{text}</>;
 	return (
@@ -45,11 +49,13 @@ function Snippet({snippet}: {snippet: MarkedText}) {
 	);
 }
 
-function fileName(relPath: string): string {
+function fileName(relPath: string): string
+{
 	return relPath.slice(relPath.lastIndexOf("/") + 1);
 }
 
-function parentDir(relPath: string): string {
+function parentDir(relPath: string): string
+{
 	const lastSlash = relPath.lastIndexOf("/");
 	return lastSlash === -1 ? "" : relPath.slice(0, lastSlash);
 }
@@ -65,54 +71,89 @@ export function ContentSearchResults({
 	focusFirstRef,
 	onOpenFile,
 	onAsk,
-}: ContentSearchResultsProps) {
+}: ContentSearchResultsProps)
+{
 	const debouncedQuery = useDebouncedValue(query, QUERY_DEBOUNCE_MS);
-	const search = useQuery({
-		...fileSearchQueryOptions(debouncedQuery, cwd),
-		enabled: debouncedQuery !== "",
-		placeholderData: keepPreviousData,
-	});
+	const search = useQuery(
+		{
+			...fileSearchQueryOptions(debouncedQuery, cwd),
+			enabled: debouncedQuery !== "",
+			placeholderData: keepPreviousData,
+		},
+	);
 	const listRef = useRef<HTMLDivElement>(null);
 
 	const results = search.data === undefined ? null : groupContentSearchResults(search.data, cwd, debouncedQuery);
-	const rows: Array<{relPath: string; match: ContentSearchMatch}> =
-		results?.groups.flatMap((group) => group.matches.map((match) => ({relPath: group.relPath, match}))) ?? [];
+	const rows: Array<
+	{
+		relPath: string;
+		match: ContentSearchMatch;
+	}> =
+		results?.groups.flatMap((group) =>
+			group.matches.map((match) => (
+			{
+				relPath: group.relPath,
+				match,
+			})),
+		) ?? [];
 
-	function focusRow(index: number): void {
+	function focusRow(index: number): void
+	{
 		listRef.current?.querySelector<HTMLElement>(`[data-row-index="${index}"]`)?.focus();
 	}
 
-	useEffect(() => {
-		focusFirstRef.current = () => {
+	useEffect(() =>
+	{
+		focusFirstRef.current = () =>
+		{
 			if (rows.length === 0) return false;
 			focusRow(0);
 			return true;
 		};
-		return () => {
+		return () =>
+		{
 			focusFirstRef.current = null;
 		};
 	});
 
-	function openMatch(relPath: string, match: ContentSearchMatch): void {
-		onOpenFile?.(relPath, {pin: false, line: match.line, findQuery: debouncedQuery});
+	function openMatch(relPath: string, match: ContentSearchMatch): void
+	{
+		onOpenFile?.(
+			relPath,
+			{
+				pin: false,
+				line: match.line,
+				findQuery: debouncedQuery,
+			},
+		);
 	}
 
-	function handleRowKeyDown(event: KeyboardEvent<HTMLDivElement>, index: number): void {
+	function handleRowKeyDown(event: KeyboardEvent<HTMLDivElement>, index: number): void
+	{
 		if (event.target !== event.currentTarget) return;
-		if (event.key === "ArrowDown") {
+		if (event.key === "ArrowDown")
+		{
 			event.preventDefault();
 			focusRow(Math.min(rows.length - 1, index + 1));
-		} else if (event.key === "ArrowUp") {
+		}
+		else if (event.key === "ArrowUp")
+		{
 			event.preventDefault();
 			if (index === 0) inputRef.current?.focus();
 			else focusRow(index - 1);
-		} else if (event.key === "Home") {
+		}
+		else if (event.key === "Home")
+		{
 			event.preventDefault();
 			focusRow(0);
-		} else if (event.key === "End") {
+		}
+		else if (event.key === "End")
+		{
 			event.preventDefault();
 			focusRow(rows.length - 1);
-		} else if (event.key === "Enter") {
+		}
+		else if (event.key === "Enter")
+		{
 			const row = rows[index];
 			if (row === undefined) return;
 			event.preventDefault();
@@ -126,7 +167,8 @@ export function ContentSearchResults({
 	else if (results === null) message = "Searching files";
 	else if (results.groups.length === 0) message = "No matches in file contents";
 
-	if (message !== null) {
+	if (message !== null)
+	{
 		return (
 			<div className="min-h-0 flex-1 overflow-y-auto px-1 py-1.25">
 				<p className="px-2 py-1.5 text-footnote text-ink-muted select-none">{message}</p>
@@ -142,7 +184,8 @@ export function ContentSearchResults({
 			aria-label="File content matches"
 			className="min-h-0 flex-1 overflow-y-auto px-1 py-1.25 outline-none"
 		>
-			{results?.groups.map((group) => {
+			{results?.groups.map((group) =>
+			{
 				const dir = parentDir(group.relPath);
 				return (
 					<div key={group.path} role="group" aria-label={group.relPath} className="pb-1">
@@ -151,15 +194,30 @@ export function ContentSearchResults({
 							tabIndex={-1}
 							data-content-file
 							title={group.relPath}
-							onClick={() => onOpenFile?.(group.relPath, {pin: false})}
-							onDoubleClick={() => onOpenFile?.(group.relPath, {pin: true})}
+							onClick={() =>
+								onOpenFile?.(
+									group.relPath,
+									{
+										pin: false,
+									},
+								)
+							}
+							onDoubleClick={() =>
+								onOpenFile?.(
+									group.relPath,
+									{
+										pin: true,
+									},
+								)
+							}
 							className="flex h-6 w-full min-w-0 cursor-pointer items-baseline gap-1 rounded-r5 border-0 bg-transparent pr-2 pl-2 text-left text-body outline-none select-none hover:bg-fill-ghost-hover"
 						>
 							<FileTypeIcon fileName={group.relPath} size="xs" className="self-center text-ink-muted" />
 							<span className="truncate text-primary">{fileName(group.relPath)}</span>
 							{dir !== "" && <span className="min-w-0 truncate text-footnote text-ink-muted">{dir}</span>}
 						</button>
-						{group.matches.map((match) => {
+						{group.matches.map((match) =>
+						{
 							const index = rowIndex;
 							rowIndex += 1;
 							return (
@@ -171,10 +229,12 @@ export function ContentSearchResults({
 									tabIndex={-1}
 									data-content-match
 									data-row-index={index}
-									onKeyDown={(event) => {
+									onKeyDown={(event) =>
+									{
 										handleRowKeyDown(event, index);
 									}}
-									onClick={() => {
+									onClick={() =>
+									{
 										openMatch(group.relPath, match);
 									}}
 									className="group/match flex min-h-6 cursor-pointer items-baseline gap-2 rounded-r5 py-0.5 pr-1 pl-6 text-footnote outline-none hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover"
@@ -189,7 +249,8 @@ export function ContentSearchResults({
 											tabIndex={-1}
 											aria-label="Ask about this"
 											title="Ask about this"
-											onClick={(event) => {
+											onClick={(event) =>
+											{
 												event.stopPropagation();
 												onAsk(askAboutPrompt(group.relPath, match.line, match.text));
 											}}

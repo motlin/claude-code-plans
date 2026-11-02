@@ -18,121 +18,247 @@ import {PanelsOff} from "./fizzy-lake-off";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
 
-function seedQueryClient(): QueryClient {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+function seedQueryClient(): QueryClient
+{
+	const queryClient = new QueryClient(
+		{
+			defaultOptions:
+			{
+				queries:
+				{
+					retry: false,
+					staleTime: Infinity,
+					gcTime: Infinity,
+					refetchOnMount: false,
+				},
+			},
 		},
-	});
-	queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
-	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+	);
+	queryClient.setQueryData(
+		approvalsQueryOptions().queryKey,
+		{
+			approvals: [],
+		},
+	);
+	queryClient.setQueryData(
+		notificationsQueryOptions().queryKey,
+		{
+			notifications: [],
+		},
+	);
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
-	queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
-		terminalWritesEnabled: false,
-		terminalHost: "auto",
-		shellPaneEnabled: true,
-		visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr"),
-		ignoredDirs: ["node_modules"],
-	});
+	queryClient.setQueryData(
+		applicationSettingsQueryOptions.queryKey,
+		{
+			terminalWritesEnabled: false,
+			terminalHost: "auto",
+			shellPaneEnabled: true,
+			visibleNavSections: NAV_SECTIONS.filter((section) => section !== "herdr"),
+			ignoredDirs: ["node_modules"],
+		},
+	);
 	return queryClient;
 }
 
-async function renderSidebar({panelsOff = false}: {panelsOff?: boolean} = {}) {
+async function renderSidebar({
+	panelsOff = false,
+}:
+{
+	panelsOff?: boolean;
+} = {})
+{
 	const queryClient = seedQueryClient();
-	const rootRoute = createRootRoute({
-		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<SettingsProvider>
-						{panelsOff ? (
-							<PanelsOff>
+	const rootRoute = createRootRoute(
+		{
+			component: () => (
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SettingsProvider>
+							{panelsOff ? (
+								<PanelsOff>
+									<Sidebar collapsed={false} />
+								</PanelsOff>
+							) : (
 								<Sidebar collapsed={false} />
-							</PanelsOff>
-						) : (
-							<Sidebar collapsed={false} />
-						)}
-						<Outlet />
-					</SettingsProvider>
-				</ToastProvider>
-			</QueryClientProvider>
-		),
-	});
-	const router = createRouter({
-		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: ["/"]}),
-	});
+							)}
+							<Outlet />
+						</SettingsProvider>
+					</ToastProvider>
+				</QueryClientProvider>
+			),
+		},
+	);
+	const router = createRouter(
+		{
+			routeTree: rootRoute,
+			history: createMemoryHistory(
+				{
+					initialEntries: ["/"],
+				},
+			),
+		},
+	);
 	await router.load();
 	render(<RouterProvider router={router} />);
 }
 
 afterEach(cleanup);
 
-beforeEach(() => {
+beforeEach(() =>
+{
 	installLocalStorage();
 });
 
-describe("sidebar header", () => {
-	it("puts the Hide sidebar toggle first, followed by the wordmark linking home", async () => {
+describe("sidebar header", () =>
+{
+	it("puts the Hide sidebar toggle first, followed by the wordmark linking home", async () =>
+	{
 		await renderSidebar();
 
-		const toggle = await waitFor(() => screen.getByRole("button", {name: "Hide sidebar"}));
+		const toggle = await waitFor(() =>
+			screen.getByRole(
+				"button",
+				{
+					name: "Hide sidebar",
+				},
+			),
+		);
 		const header = screen.getByTestId("sidebar-titlebar");
-		const wordmark = screen.getByRole("link", {name: "Claude Code Browser"});
+		const wordmark = screen.getByRole(
+			"link",
+			{
+				name: "Claude Code Browser",
+			},
+		);
 
 		expect(header.firstElementChild?.contains(toggle)).toBe(true);
 		expect(header.children[1]?.contains(wordmark)).toBe(true);
-		expect({text: wordmark.textContent, href: wordmark.getAttribute("href")}).toEqual({
-			text: "Claude Code Browser",
-			href: "/",
-		});
+		expect(
+			{
+				text: wordmark.textContent,
+				href: wordmark.getAttribute("href"),
+			},
+		).toEqual(
+			{
+				text: "Claude Code Browser",
+				href: "/",
+			},
+		);
 	});
 });
 
-describe("sidebar resize handle", () => {
-	it.each([{panelsOff: false}, {panelsOff: true}])(
+describe("sidebar resize handle", () =>
+{
+	it.each([
+		{
+			panelsOff: false,
+		},
+		{
+			panelsOff: true,
+		},
+	])(
 		"renders no tooltip on hover whatever fizzy-lake parts are on (panelsOff: $panelsOff), marked data-trigger-disabled",
-		async ({panelsOff}) => {
-			await renderSidebar({panelsOff});
-			const handle = await waitFor(() => screen.getByRole("separator", {name: "Resize sidebar"}));
+		async ({panelsOff}) =>
+		{
+			await renderSidebar(
+				{
+					panelsOff,
+				},
+			);
+			const handle = await waitFor(() =>
+				screen.getByRole(
+					"separator",
+					{
+						name: "Resize sidebar",
+					},
+				),
+			);
 			vi.useFakeTimers();
-			try {
+			try
+			{
 				fireEvent.pointerEnter(handle);
-				act(() => {
+				act(() =>
+				{
 					vi.advanceTimersByTime(1000);
 				});
-				expect({
-					tooltip: screen.queryByRole("tooltip"),
-					triggerDisabled: handle.getAttribute("data-trigger-disabled"),
-				}).toStrictEqual({tooltip: null, triggerDisabled: ""});
-			} finally {
+				expect(
+					{
+						tooltip: screen.queryByRole("tooltip"),
+						triggerDisabled: handle.getAttribute("data-trigger-disabled"),
+					},
+				).toStrictEqual(
+					{
+						tooltip: null,
+						triggerDisabled: "",
+					},
+				);
+			}
+			finally
+			{
 				vi.useRealTimers();
 			}
 		},
 	);
 
-	it("persists the width to the sidebar store and exposes it as --sidebar-width", async () => {
+	it("persists the width to the sidebar store and exposes it as --sidebar-width", async () =>
+	{
 		await renderSidebar();
-		const handle = await waitFor(() => screen.getByRole("separator", {name: "Resize sidebar"}));
-		const nav = screen.getByRole("navigation", {name: "Sidebar"});
+		const handle = await waitFor(() =>
+			screen.getByRole(
+				"separator",
+				{
+					name: "Resize sidebar",
+				},
+			),
+		);
+		const nav = screen.getByRole(
+			"navigation",
+			{
+				name: "Sidebar",
+			},
+		);
 
-		expect({
-			now: handle.getAttribute("aria-valuenow"),
-			cssVar: nav.style.getPropertyValue("--sidebar-width"),
-			insideNav: nav.contains(handle),
-		}).toStrictEqual({now: "288", cssVar: "288px", insideNav: true});
+		expect(
+			{
+				now: handle.getAttribute("aria-valuenow"),
+				cssVar: nav.style.getPropertyValue("--sidebar-width"),
+				insideNav: nav.contains(handle),
+			},
+		).toStrictEqual(
+			{
+				now: "288",
+				cssVar: "288px",
+				insideNav: true,
+			},
+		);
 
-		fireEvent.keyDown(handle, {key: "ArrowRight"});
+		fireEvent.keyDown(
+			handle,
+			{
+				key: "ArrowRight",
+			},
+		);
 
-		expect({
-			now: handle.getAttribute("aria-valuenow"),
-			cssVar: nav.style.getPropertyValue("--sidebar-width"),
-			stored: readSidebarState().width,
-		}).toStrictEqual({now: "296", cssVar: "296px", stored: 296});
+		expect(
+			{
+				now: handle.getAttribute("aria-valuenow"),
+				cssVar: nav.style.getPropertyValue("--sidebar-width"),
+				stored: readSidebarState().width,
+			},
+		).toStrictEqual(
+			{
+				now: "296",
+				cssVar: "296px",
+				stored: 296,
+			},
+		);
 	});
 });
 
-describe("nav scroll", () => {
-	it("keeps a stable thin scrollbar gutter like upstream", () => {
+describe("nav scroll", () =>
+{
+	it("keeps a stable thin scrollbar gutter like upstream", () =>
+	{
 		render(
 			<NavScroll>
 				<div>content</div>
@@ -146,7 +272,8 @@ describe("nav scroll", () => {
 		]);
 	});
 
-	it("sets data-scrolled only once scrolled more than 2px, like upstream's L$", () => {
+	it("sets data-scrolled only once scrolled more than 2px, like upstream's L$", () =>
+	{
 		render(
 			<NavScroll>
 				<div>content</div>
@@ -155,25 +282,29 @@ describe("nav scroll", () => {
 		const scroller = screen.getByTestId("nav-scroll");
 		expect(scroller.hasAttribute("data-scrolled")).toBe(false);
 
-		act(() => {
+		act(() =>
+		{
 			scroller.scrollTop = 2;
 			fireEvent.scroll(scroller);
 		});
 		expect(scroller.hasAttribute("data-scrolled")).toBe(false);
 
-		act(() => {
+		act(() =>
+		{
 			scroller.scrollTop = 3;
 			fireEvent.scroll(scroller);
 		});
 		expect(scroller.hasAttribute("data-scrolled")).toBe(true);
 
-		act(() => {
+		act(() =>
+		{
 			scroller.scrollTop = 40;
 			fireEvent.scroll(scroller);
 		});
 		expect(scroller.hasAttribute("data-scrolled")).toBe(true);
 
-		act(() => {
+		act(() =>
+		{
 			scroller.scrollTop = 0;
 			fireEvent.scroll(scroller);
 		});

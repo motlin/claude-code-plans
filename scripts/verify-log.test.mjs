@@ -2,8 +2,10 @@ import {describe, expect, test} from "vite-plus/test";
 
 import {summarizeFailure} from "./verify-log.mjs";
 
-describe("summarizeFailure", () => {
-	test("names the failing vitest files, tests and just recipes", () => {
+describe("summarizeFailure", () =>
+{
+	test("names the failing vitest files, tests and just recipes", () =>
+	{
 		const log = [
 			"fallow...................................................................Passed",
 			" ✓  shared  tests/db.test.ts (12 tests) 120ms",
@@ -27,13 +29,24 @@ describe("summarizeFailure", () => {
 		]);
 	});
 
-	test("ends with the failing tests so a caller's tail above git test's BAD COMMIT trailer still names them", () => {
+	test("ends with the failing tests so a caller's tail above git test's BAD COMMIT trailer still names them", () =>
+	{
 		const log = [
-			...Array.from({length: 14}, (_, index) => [
-				` ❯  isolated  tests/t${index}.test.tsx (3 tests | 1 failed) 900ms`,
-				`       × case ${index} 899ms`,
-			]).flat(),
-			...Array.from({length: 14}, (_, index) => ` FAIL   isolated  tests/t${index}.test.tsx > case ${index}`),
+			...Array.from(
+				{
+					length: 14,
+				},
+				(_, index) => [
+					` ❯  isolated  tests/t${index}.test.tsx (3 tests | 1 failed) 900ms`,
+					`       × case ${index} 899ms`,
+				],
+			).flat(),
+			...Array.from(
+				{
+					length: 14,
+				},
+				(_, index) => ` FAIL   isolated  tests/t${index}.test.tsx > case ${index}`,
+			),
 			" Test Files  14 failed | 700 passed (714)",
 			"      Tests  14 failed | 9000 passed (9014)",
 			"error: recipe `_test` failed on line 75 with exit code 1",
@@ -44,13 +57,16 @@ describe("summarizeFailure", () => {
 			"      Tests  14 failed | 9000 passed (9014)",
 			"… 2 more failing tests in the log",
 			...Array.from(
-				{length: 12},
+				{
+					length: 12,
+				},
 				(_, index) => ` FAIL   isolated  tests/t${index + 2}.test.tsx > case ${index + 2}`,
 			),
 		]);
 	});
 
-	test("names lint diagnostics and failing checks", () => {
+	test("names lint diagnostics and failing checks", () =>
+	{
 		const log = [
 			"  × typescript(TS2550): Property 'withResolvers' does not exist on type 'PromiseConstructor'.",
 			"Found 4 errors and 14 warnings in 1855 files (12.7s, 16 threads)",
@@ -63,19 +79,36 @@ describe("summarizeFailure", () => {
 		]);
 	});
 
-	test("falls back to the last lines when nothing names the failure", () => {
-		const lines = Array.from({length: 30}, (_, index) => `line ${index}`);
+	test("falls back to the last lines when nothing names the failure", () =>
+	{
+		const lines = Array.from(
+			{
+				length: 30,
+			},
+			(_, index) => `line ${index}`,
+		);
 		expect(summarizeFailure([...lines, "", "Killed: 9", ""].join("\n"))).toStrictEqual([
 			...lines.slice(-14),
 			"Killed: 9",
 		]);
 	});
 
-	test("caps a long list of failures and says how many were left out", () => {
-		const log = Array.from({length: 50}, (_, index) => `       × test ${index}`).join("\n");
+	test("caps a long list of failures and says how many were left out", () =>
+	{
+		const log = Array.from(
+			{
+				length: 50,
+			},
+			(_, index) => `       × test ${index}`,
+		).join("\n");
 		expect(summarizeFailure(log)).toStrictEqual([
 			"… 38 more failing tests in the log",
-			...Array.from({length: 12}, (_, index) => `       × test ${index + 38}`),
+			...Array.from(
+				{
+					length: 12,
+				},
+				(_, index) => `       × test ${index + 38}`,
+			),
 		]);
 	});
 });

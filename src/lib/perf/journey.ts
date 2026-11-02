@@ -9,7 +9,8 @@
  * `data-perf-row` (human, assistant_text, assistant_tool, assistant_thinking, assistant, marker); the "Initialized
  * session" row is a `marker` too, so the working marker is the one outside the transcript rows.
  */
-export const PERF_ANCHORS = {
+export const PERF_ANCHORS =
+{
 	main: '[data-perf-region="main"]',
 	header: '[data-perf-region="header"]',
 	sidebarRecents: '[data-perf-region="sidebar_recents"]',
@@ -28,7 +29,8 @@ export const PERF_ANCHORS = {
 } as const;
 
 /** The transcript row whose first JSONL record is the one at index `line`. */
-export function transcriptRowAt(line: number): string {
+export function transcriptRowAt(line: number): string
+{
 	return `${PERF_ANCHORS.transcriptRow}[data-perf-line="${line}"]`;
 }
 
@@ -44,7 +46,8 @@ export type FormFactor = "phone" | "desktop";
 export type SizeBucket = "S" | "M" | "L";
 export type EndSource = "element-timing" | "event-timing" | "raf";
 
-export interface ResourceSample {
+export interface ResourceSample
+{
 	name: string;
 	initiatorType: string;
 	startTime: number;
@@ -53,23 +56,37 @@ export interface ResourceSample {
 	responseStart: number;
 	responseEnd: number;
 	transferSize: number;
-	serverTiming: {name: string; duration: number; description: string}[];
+	serverTiming:
+	{
+		name: string;
+		duration: number;
+		description: string;
+	}[];
 }
 
-export interface LongAnimationFrameSample {
+export interface LongAnimationFrameSample
+{
 	startTime: number;
 	duration: number;
 	blockingDuration: number;
-	scripts: {invoker: string; sourceURL: string; sourceFunctionName: string; duration: number}[];
+	scripts:
+	{
+		invoker: string;
+		sourceURL: string;
+		sourceFunctionName: string;
+		duration: number;
+	}[];
 }
 
-export interface LayoutShiftSample {
+export interface LayoutShiftSample
+{
 	startTime: number;
 	value: number;
 	hadRecentInput: boolean;
 }
 
-export interface EventTimingSample {
+export interface EventTimingSample
+{
 	name: string;
 	startTime: number;
 	duration: number;
@@ -78,7 +95,8 @@ export interface EventTimingSample {
 	interactionId: number;
 }
 
-export interface JourneySample {
+export interface JourneySample
+{
 	journey: string;
 	trigger: string;
 	start: number;
@@ -102,20 +120,41 @@ export interface JourneySample {
 }
 
 /** The slice of `performance` the tracker uses. */
-export interface JourneyPerformance {
+export interface JourneyPerformance
+{
 	readonly timeOrigin: number;
 	now(): number;
-	mark(name: string, options?: {startTime?: number}): unknown;
-	measure(name: string, options: {start: number; end: number}): unknown;
+	mark(
+		name: string,
+		options?:
+		{
+			startTime?: number;
+		},
+	): unknown;
+	measure(
+		name: string,
+		options:
+		{
+			start: number;
+			end: number;
+		},
+	): unknown;
 }
 
 /** The one field every observed entry shares; the type guards narrow the rest. */
-export interface ObservedEntry {
+export interface ObservedEntry
+{
 	readonly startTime: number;
 }
 
-export interface JourneyObserver {
-	observe(options: PerformanceObserverInit & {durationThreshold?: number}): void;
+export interface JourneyObserver
+{
+	observe(
+		options: PerformanceObserverInit &
+		{
+			durationThreshold?: number;
+		},
+	): void;
 	disconnect(): void;
 }
 
@@ -124,7 +163,8 @@ export type JourneyObserverConstructor = new (
 	callback: (list: {getEntries(): readonly ObservedEntry[]}) => void,
 ) => JourneyObserver;
 
-export interface JourneyEnvironment {
+export interface JourneyEnvironment
+{
 	document: Document;
 	performance: JourneyPerformance;
 	PerformanceObserver: JourneyObserverConstructor | undefined;
@@ -146,9 +186,17 @@ export interface JourneyEnvironment {
  * What a journey is timed from: the interaction that caused it (its `timeStamp`), a server-side moment in epoch ms
  * (such as the JSONL write behind an SSE append), or "navigation" for navigation start.
  */
-export type JourneyTrigger = Pick<Event, "type" | "timeStamp"> | {type: string; epochMs: number} | "navigation";
+export type JourneyTrigger =
+	| Pick<Event, "type" | "timeStamp">
+	|
+	  {
+			type: string;
+			epochMs: number;
+	  }
+	| "navigation";
 
-export interface StartJourneyOptions {
+export interface StartJourneyOptions
+{
 	trigger: JourneyTrigger;
 	/** Session JSONL bytes, bucketed into S (< 1 MB), M (1–10 MB) and L (> 10 MB). */
 	sizeBytes?: number;
@@ -159,7 +207,8 @@ export interface StartJourneyOptions {
 /** One anchor selector, or several that must all match an element with data before the journey ends. */
 export type AnchorSelector = string | readonly string[];
 
-export interface JourneyTracker {
+export interface JourneyTracker
+{
 	startJourney(id: string, options: StartJourneyOptions): void;
 	/** Resolves with the queued sample, or null when the journey was hidden, unknown, superseded or timed out. */
 	endJourneyWhenRendered(id: string, anchorSelector: AnchorSelector): Promise<JourneySample | null>;
@@ -173,7 +222,8 @@ export interface JourneyTracker {
 	dispose(): void;
 }
 
-interface ActiveJourney {
+interface ActiveJourney
+{
 	trigger: string;
 	start: number;
 	route: string;
@@ -182,7 +232,8 @@ interface ActiveJourney {
 	hidden: boolean;
 }
 
-export function deriveOrigin(hostname: string): Origin {
+export function deriveOrigin(hostname: string): Origin
+{
 	const host = hostname.replace(/^\[|\]$/g, "");
 	const loopback =
 		host === "localhost" || host.endsWith(".localhost") || host === "::1" || /^127(?:\.\d{1,3}){3}$/.test(host);
@@ -195,27 +246,33 @@ export function deriveFormFactor({
 }: {
 	coarsePointer: boolean;
 	viewportWidth: number;
-}): FormFactor {
+}): FormFactor
+{
 	return coarsePointer || viewportWidth < PHONE_MAX_WIDTH ? "phone" : "desktop";
 }
 
-function sizeBucket(bytes: number): SizeBucket {
+function sizeBucket(bytes: number): SizeBucket
+{
 	if (bytes < 1_000_000) return "S";
 	return bytes <= 10_000_000 ? "M" : "L";
 }
 
-function hasData(element: Element): boolean {
+function hasData(element: Element): boolean
+{
 	return element.childElementCount > 0 || element.textContent.trim() !== "";
 }
 
-function findAnchor(document: Document, selector: string): Element | null {
-	for (const element of document.querySelectorAll(selector)) {
+function findAnchor(document: Document, selector: string): Element | null
+{
+	for (const element of document.querySelectorAll(selector))
+	{
 		if (hasData(element)) return element;
 	}
 	return null;
 }
 
-function toResource(entry: PerformanceResourceTiming): ResourceSample {
+function toResource(entry: PerformanceResourceTiming): ResourceSample
+{
 	return {
 		name: entry.name,
 		initiatorType: entry.initiatorType,
@@ -225,7 +282,8 @@ function toResource(entry: PerformanceResourceTiming): ResourceSample {
 		responseStart: entry.responseStart,
 		responseEnd: entry.responseEnd,
 		transferSize: entry.transferSize,
-		serverTiming: entry.serverTiming.map(({name, duration, description}) => ({
+		serverTiming: entry.serverTiming.map(({name, duration, description}) => (
+		{
 			name,
 			duration,
 			description,
@@ -233,19 +291,28 @@ function toResource(entry: PerformanceResourceTiming): ResourceSample {
 	};
 }
 
-interface RawLongAnimationFrame {
+interface RawLongAnimationFrame
+{
 	startTime: number;
 	duration: number;
 	blockingDuration: number;
-	scripts?: {invoker: string; sourceURL: string; sourceFunctionName: string; duration: number}[];
+	scripts?:
+	{
+		invoker: string;
+		sourceURL: string;
+		sourceFunctionName: string;
+		duration: number;
+	}[];
 }
 
-function toLongAnimationFrame(entry: RawLongAnimationFrame): LongAnimationFrameSample {
+function toLongAnimationFrame(entry: RawLongAnimationFrame): LongAnimationFrameSample
+{
 	return {
 		startTime: entry.startTime,
 		duration: entry.duration,
 		blockingDuration: entry.blockingDuration,
-		scripts: (entry.scripts ?? []).map(({invoker, sourceURL, sourceFunctionName, duration}) => ({
+		scripts: (entry.scripts ?? []).map(({invoker, sourceURL, sourceFunctionName, duration}) => (
+		{
 			invoker,
 			sourceURL,
 			sourceFunctionName,
@@ -254,11 +321,17 @@ function toLongAnimationFrame(entry: RawLongAnimationFrame): LongAnimationFrameS
 	};
 }
 
-function toLayoutShift(entry: LayoutShiftSample): LayoutShiftSample {
-	return {startTime: entry.startTime, value: entry.value, hadRecentInput: entry.hadRecentInput};
+function toLayoutShift(entry: LayoutShiftSample): LayoutShiftSample
+{
+	return {
+		startTime: entry.startTime,
+		value: entry.value,
+		hadRecentInput: entry.hadRecentInput,
+	};
 }
 
-function toEventTiming(entry: PerformanceEventTiming): EventTimingSample {
+function toEventTiming(entry: PerformanceEventTiming): EventTimingSample
+{
 	return {
 		name: entry.name,
 		startTime: entry.startTime,
@@ -269,37 +342,45 @@ function toEventTiming(entry: PerformanceEventTiming): EventTimingSample {
 	};
 }
 
-interface ElementTimingEntry {
+interface ElementTimingEntry
+{
 	element: Element | null;
 	renderTime: number;
 }
 
-function isResourceTiming(entry: ObservedEntry): entry is PerformanceResourceTiming {
+function isResourceTiming(entry: ObservedEntry): entry is PerformanceResourceTiming
+{
 	return "initiatorType" in entry && "serverTiming" in entry;
 }
 
-function isLongAnimationFrame(entry: ObservedEntry): entry is ObservedEntry & RawLongAnimationFrame {
+function isLongAnimationFrame(entry: ObservedEntry): entry is ObservedEntry & RawLongAnimationFrame
+{
 	return "blockingDuration" in entry;
 }
 
-function isLayoutShift(entry: ObservedEntry): entry is ObservedEntry & LayoutShiftSample {
+function isLayoutShift(entry: ObservedEntry): entry is ObservedEntry & LayoutShiftSample
+{
 	return "value" in entry && "hadRecentInput" in entry;
 }
 
-function isEventTiming(entry: ObservedEntry): entry is PerformanceEventTiming {
+function isEventTiming(entry: ObservedEntry): entry is PerformanceEventTiming
+{
 	return "processingStart" in entry && "interactionId" in entry;
 }
 
-function isElementTiming(entry: ObservedEntry): entry is ObservedEntry & ElementTimingEntry {
+function isElementTiming(entry: ObservedEntry): entry is ObservedEntry & ElementTimingEntry
+{
 	return "element" in entry && "renderTime" in entry;
 }
 
 const OBSERVED_TYPES = ["resource", "long-animation-frame", "layout-shift", "event", "element"] as const;
 type ObservedType = (typeof OBSERVED_TYPES)[number];
 
-export function createJourneyTracker(environment: JourneyEnvironment): JourneyTracker {
+export function createJourneyTracker(environment: JourneyEnvironment): JourneyTracker
+{
 	const {document, performance} = environment;
-	const buffers: Record<ObservedType, ObservedEntry[]> = {
+	const buffers: Record<ObservedType, ObservedEntry[]> =
+	{
 		resource: [],
 		"long-animation-frame": [],
 		"layout-shift": [],
@@ -313,37 +394,57 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 	let flushTimer: unknown;
 	let disposed = false;
 
-	if (environment.PerformanceObserver) {
-		for (const type of OBSERVED_TYPES) {
-			try {
-				const observer = new environment.PerformanceObserver((list) => {
+	if (environment.PerformanceObserver)
+	{
+		for (const type of OBSERVED_TYPES)
+		{
+			try
+			{
+				const observer = new environment.PerformanceObserver((list) =>
+				{
 					const buffer = buffers[type];
 					buffer.push(...list.getEntries());
 					if (buffer.length > ENTRY_BUFFER_LIMIT) buffer.splice(0, buffer.length - ENTRY_BUFFER_LIMIT);
 				});
-				observer.observe({type, buffered: true, ...(type === "event" ? {durationThreshold: 16} : {})});
+				observer.observe(
+					{
+						type,
+						buffered: true,
+						...(type === "event"
+							?
+								{
+									durationThreshold: 16,
+								}
+							: {}),
+					},
+				);
 				observers.push(observer);
-			} catch {
+			}
+			catch
+			{
 				// Entry types this browser does not support are simply missing from the samples.
 			}
 		}
 	}
 
-	function flush(): void {
+	function flush(): void
+	{
 		if (queue.length === 0) return;
 		const batch = queue;
 		queue = [];
 		environment.send(batch);
 	}
 
-	function onVisibilityChange(): void {
+	function onVisibilityChange(): void
+	{
 		if (document.visibilityState !== "hidden") return;
 		for (const journey of active.values()) journey.hidden = true;
 		flush();
 	}
 	document.addEventListener("visibilitychange", onVisibilityChange);
 
-	function enqueue(sample: JourneySample): void {
+	function enqueue(sample: JourneySample): void
+	{
 		queue.push(sample);
 		flushTimer ??= environment.setInterval(flush, FLUSH_INTERVAL_MS);
 	}
@@ -353,23 +454,27 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		isType: (entry: ObservedEntry) => entry is T,
 		start: number,
 		end: number,
-	): T[] {
+	): T[]
+	{
 		return buffers[type].filter(isType).filter((entry) => entry.startTime >= start && entry.startTime <= end);
 	}
 
-	function eventTimingEnd(journey: ActiveJourney): number | undefined {
+	function eventTimingEnd(journey: ActiveJourney): number | undefined
+	{
 		const entry = buffers.event
 			.filter(isEventTiming)
 			.find((candidate) => candidate.name === journey.trigger && candidate.startTime === journey.start);
 		return entry === undefined ? undefined : entry.startTime + entry.duration;
 	}
 
-	function elementRenderTime(anchor: Element): number | undefined {
+	function elementRenderTime(anchor: Element): number | undefined
+	{
 		return buffers.element.filter(isElementTiming).find((entry) => entry.element === anchor && entry.renderTime > 0)
 			?.renderTime;
 	}
 
-	function buildSample(id: string, journey: ActiveJourney, end: number, endSource: EndSource): JourneySample {
+	function buildSample(id: string, journey: ActiveJourney, end: number, endSource: EndSource): JourneySample
+	{
 		const layoutShifts = entriesBetween("layout-shift", isLayoutShift, journey.start, end).map(toLayoutShift);
 		return {
 			journey: id,
@@ -379,15 +484,27 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 			duration: end - journey.start,
 			endSource,
 			route: journey.route,
-			...(journey.sizeBucket ? {sizeBucket: journey.sizeBucket} : {}),
-			...(journey.prefetchHit === undefined ? {} : {prefetchHit: journey.prefetchHit}),
+			...(journey.sizeBucket
+				?
+					{
+						sizeBucket: journey.sizeBucket,
+					}
+				: {}),
+			...(journey.prefetchHit === undefined
+				? {}
+				:
+					{
+						prefetchHit: journey.prefetchHit,
+					}),
 			buildSha: environment.buildSha,
 			mode: environment.mode,
 			origin: deriveOrigin(environment.hostname),
-			formFactor: deriveFormFactor({
-				coarsePointer: environment.matchesCoarsePointer(),
-				viewportWidth: environment.viewportWidth(),
-			}),
+			formFactor: deriveFormFactor(
+				{
+					coarsePointer: environment.matchesCoarsePointer(),
+					viewportWidth: environment.viewportWidth(),
+				},
+			),
 			hardwareConcurrency: environment.hardwareConcurrency,
 			resources: entriesBetween("resource", isResourceTiming, journey.start, end).map(toResource),
 			longAnimationFrames: entriesBetween("long-animation-frame", isLongAnimationFrame, journey.start, end).map(
@@ -399,9 +516,11 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		};
 	}
 
-	function findAnchors(selectors: readonly string[]): Element[] | null {
+	function findAnchors(selectors: readonly string[]): Element[] | null
+	{
 		const anchors: Element[] = [];
-		for (const selector of selectors) {
+		for (const selector of selectors)
+		{
 			const anchor = findAnchor(document, selector);
 			if (!anchor) return null;
 			anchors.push(anchor);
@@ -409,39 +528,51 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		return anchors;
 	}
 
-	async function waitForAnchors(selectors: readonly string[]): Promise<Element[] | null> {
+	async function waitForAnchors(selectors: readonly string[]): Promise<Element[] | null>
+	{
 		const existing = findAnchors(selectors);
 		if (existing) return Promise.resolve(existing);
-		return new Promise((resolve) => {
-			const mutationObserver = new MutationObserver(() => {
+		return new Promise((resolve) =>
+		{
+			const mutationObserver = new MutationObserver(() =>
+			{
 				const anchors = findAnchors(selectors);
 				if (anchors) finish(anchors);
 			});
-			function finish(anchors: Element[] | null): void {
+			function finish(anchors: Element[] | null): void
+			{
 				mutationObserver.disconnect();
 				cancelWaits.delete(cancel);
 				resolve(anchors);
 			}
-			function cancel(): void {
+			function cancel(): void
+			{
 				finish(null);
 			}
 			cancelWaits.add(cancel);
 			environment.setTimeout(cancel, ANCHOR_TIMEOUT_MS);
-			mutationObserver.observe(document, {
-				childList: true,
-				subtree: true,
-				characterData: true,
-				attributes: true,
-			});
+			mutationObserver.observe(
+				document,
+				{
+					childList: true,
+					subtree: true,
+					characterData: true,
+					attributes: true,
+				},
+			);
 		});
 	}
 
 	/** Never resolves once the tracker is disposed, so no journey continuation runs after teardown. */
-	async function afterPaint(): Promise<number> {
-		return new Promise((resolve) => {
-			environment.requestAnimationFrame(() => {
+	async function afterPaint(): Promise<number>
+	{
+		return new Promise((resolve) =>
+		{
+			environment.requestAnimationFrame(() =>
+			{
 				if (disposed) return;
-				environment.setTimeout(() => {
+				environment.setTimeout(() =>
+				{
 					if (!disposed) resolve(performance.now());
 				}, 0);
 			});
@@ -449,40 +580,64 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 	}
 
 	/** Claims journey `id` after a wait: false when another start superseded it or the tab was hidden meanwhile. */
-	function settle(id: string, journey: ActiveJourney): boolean {
+	function settle(id: string, journey: ActiveJourney): boolean
+	{
 		if (active.get(id) !== journey) return false;
 		active.delete(id);
 		return !journey.hidden;
 	}
 
-	function complete(id: string, journey: ActiveJourney, end: number, endSource: EndSource): JourneySample {
-		performance.mark(`ccb:${id}:end`, {startTime: end});
-		performance.measure(`ccb:${id}`, {start: journey.start, end});
+	function complete(id: string, journey: ActiveJourney, end: number, endSource: EndSource): JourneySample
+	{
+		performance.mark(
+			`ccb:${id}:end`,
+			{
+				startTime: end,
+			},
+		);
+		performance.measure(
+			`ccb:${id}`,
+			{
+				start: journey.start,
+				end,
+			},
+		);
 		const sample = buildSample(id, journey, end, endSource);
 		enqueue(sample);
 		return sample;
 	}
 
-	function triggerStart(trigger: JourneyTrigger): number {
+	function triggerStart(trigger: JourneyTrigger): number
+	{
 		if (trigger === "navigation") return 0;
 		return "epochMs" in trigger ? trigger.epochMs - performance.timeOrigin : trigger.timeStamp;
 	}
 
 	return {
-		startJourney(id, {trigger, sizeBytes, prefetchHit}) {
+		startJourney(id, {trigger, sizeBytes, prefetchHit})
+		{
 			const start = triggerStart(trigger);
-			active.set(id, {
-				trigger: trigger === "navigation" ? "navigation" : trigger.type,
-				start,
-				route: environment.pathname,
-				sizeBucket: sizeBytes === undefined ? undefined : sizeBucket(sizeBytes),
-				prefetchHit,
-				hidden: document.visibilityState === "hidden",
-			});
-			performance.mark(`ccb:${id}:start`, {startTime: start});
+			active.set(
+				id,
+				{
+					trigger: trigger === "navigation" ? "navigation" : trigger.type,
+					start,
+					route: environment.pathname,
+					sizeBucket: sizeBytes === undefined ? undefined : sizeBucket(sizeBytes),
+					prefetchHit,
+					hidden: document.visibilityState === "hidden",
+				},
+			);
+			performance.mark(
+				`ccb:${id}:start`,
+				{
+					startTime: start,
+				},
+			);
 		},
 
-		async endJourneyWhenRendered(id, anchorSelector) {
+		async endJourneyWhenRendered(id, anchorSelector)
+		{
 			const journey = active.get(id);
 			if (!journey) return null;
 			const anchors = await waitForAnchors(
@@ -499,7 +654,8 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 				: complete(id, journey, renderTime, "element-timing");
 		},
 
-		async endJourneyAtNextPaint(id) {
+		async endJourneyAtNextPaint(id)
+		{
 			const journey = active.get(id);
 			if (!journey) return null;
 			const paintedAt = await afterPaint();
@@ -512,7 +668,8 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 
 		flush,
 
-		dispose() {
+		dispose()
+		{
 			disposed = true;
 			document.removeEventListener("visibilitychange", onVisibilityChange);
 			for (const observer of observers) observer.disconnect();
@@ -527,24 +684,29 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 declare const __CCB_BUILD_SHA__: string | undefined;
 
 /** Whether the browser window still exists: test environments tear it down while frames and timers are pending. */
-function hasWindow(): boolean {
+function hasWindow(): boolean
+{
 	return typeof window !== "undefined";
 }
 
 /** Wraps a scheduled callback so it is skipped when it fires after the window was torn down. */
-function whileWindowExists<A extends unknown[]>(callback: (...args: A) => void): (...args: A) => void {
-	return (...args) => {
+function whileWindowExists<A extends unknown[]>(callback: (...args: A) => void): (...args: A) => void
+{
+	return (...args) =>
+	{
 		if (hasWindow()) callback(...args);
 	};
 }
 
-export function browserEnvironment(): JourneyEnvironment {
+export function browserEnvironment(): JourneyEnvironment
+{
 	return {
 		document,
 		performance,
 		PerformanceObserver: typeof PerformanceObserver === "undefined" ? undefined : PerformanceObserver,
 		hostname: location.hostname,
-		get pathname() {
+		get pathname()
+		{
 			return location.pathname;
 		},
 		matchesCoarsePointer: () =>
@@ -557,11 +719,20 @@ export function browserEnvironment(): JourneyEnvironment {
 			hasWindow() ? window.requestAnimationFrame(whileWindowExists(callback)) : 0,
 		setTimeout: (callback, ms) => (hasWindow() ? window.setTimeout(whileWindowExists(callback), ms) : undefined),
 		setInterval: (callback, ms) => (hasWindow() ? window.setInterval(whileWindowExists(callback), ms) : undefined),
-		clearInterval: (handle) => {
+		clearInterval: (handle) =>
+		{
 			if (hasWindow() && typeof handle === "number") window.clearInterval(handle);
 		},
-		send: (batch) => {
-			navigator.sendBeacon(PERF_BEACON_PATH, JSON.stringify({samples: batch}));
+		send: (batch) =>
+		{
+			navigator.sendBeacon(
+				PERF_BEACON_PATH,
+				JSON.stringify(
+					{
+						samples: batch,
+					},
+				),
+			);
 		},
 	};
 }
@@ -569,21 +740,21 @@ export function browserEnvironment(): JourneyEnvironment {
 let defaultTracker: JourneyTracker | undefined;
 
 /** The browser's shared tracker, created on first use; undefined during SSR. */
-export function defaultJourneyTracker(): JourneyTracker | undefined {
+export function defaultJourneyTracker(): JourneyTracker | undefined
+{
 	if (typeof window === "undefined") return undefined;
 	defaultTracker ??= createJourneyTracker(browserEnvironment());
 	return defaultTracker;
 }
 
 /** Starts timing journey `id` from `trigger`'s timeStamp (or navigation start). A no-op during SSR. */
-export function startJourney(id: string, options: StartJourneyOptions): void {
+export function startJourney(id: string, options: StartJourneyOptions): void
+{
 	defaultJourneyTracker()?.startJourney(id, options);
 }
 
 /** Ends journey `id` at the paint after `anchorSelector` matches an element with data, and queues the sample. */
-export async function endJourneyWhenRendered(
-	id: string,
-	anchorSelector: AnchorSelector,
-): Promise<JourneySample | null> {
+export async function endJourneyWhenRendered(id: string, anchorSelector: AnchorSelector): Promise<JourneySample | null>
+{
 	return defaultJourneyTracker()?.endJourneyWhenRendered(id, anchorSelector) ?? Promise.resolve(null);
 }

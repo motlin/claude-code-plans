@@ -7,7 +7,8 @@ import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {indexJsonlFile} from "../src/lib/db/indexer";
 import {getLastSubstantiveAssistantText} from "../src/lib/db/queries";
 import * as schema from "../src/lib/db/schema";
-import {
+import
+{
 	buildWorkingCopyReviewPrompt,
 	handleCreateReviewRequest,
 	handleGetReviewRequest,
@@ -22,177 +23,311 @@ const TEST_ROOT = join(tmpdir(), `working-copy-review-test-${process.pid}`);
 const SESSION_ID = "session-test-100";
 let db: AppDb;
 
-function insertSession(cwd: string): void {
+function insertSession(cwd: string): void
+{
 	db.index
 		.insert(schema.projects)
-		.values({id: "project-test-100", name: "example", projectPath: cwd, updatedAt: 0})
+		.values(
+			{
+				id: "project-test-100",
+				name: "example",
+				projectPath: cwd,
+				updatedAt: 0,
+			},
+		)
 		.run();
 	db.index
 		.insert(schema.sessions)
-		.values({
-			id: SESSION_ID,
-			projectId: "project-test-100",
-			title: "Review example",
-			firstPrompt: null,
-			summary: "Stale session summary",
-			customTitle: null,
-			messageCount: 4,
-			gitBranch: "main",
-			cwd,
-			isSidechain: 0,
-			createdAt: 946_598_400_000,
-			mtimeMs: 946_684_800_000,
-			filePath: join(cwd, `${SESSION_ID}.jsonl`),
-		})
+		.values(
+			{
+				id: SESSION_ID,
+				projectId: "project-test-100",
+				title: "Review example",
+				firstPrompt: null,
+				summary: "Stale session summary",
+				customTitle: null,
+				messageCount: 4,
+				gitBranch: "main",
+				cwd,
+				isSidechain: 0,
+				createdAt: 946_598_400_000,
+				mtimeMs: 946_684_800_000,
+				filePath: join(cwd, `${SESSION_ID}.jsonl`),
+			},
+		)
 		.run();
 }
 
-beforeEach(() => {
-	rmSync(TEST_ROOT, {recursive: true, force: true});
-	mkdirSync(TEST_ROOT, {recursive: true});
+beforeEach(() =>
+{
+	rmSync(
+		TEST_ROOT,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
+	mkdirSync(
+		TEST_ROOT,
+		{
+			recursive: true,
+		},
+	);
 	db = openTestDb();
 });
 
-afterEach(() => {
+afterEach(() =>
+{
 	db.close();
-	rmSync(TEST_ROOT, {recursive: true, force: true});
+	rmSync(
+		TEST_ROOT,
+		{
+			recursive: true,
+			force: true,
+		},
+	);
 });
 
-describe("indexed review summary", () => {
-	it("returns the last assistant text with content and skips tool-only turns", async () => {
+describe("indexed review summary", () =>
+{
+	it("returns the last assistant text with content and skips tool-only turns", async () =>
+	{
 		const project = "-tmp-example";
 		const transcript = join(TEST_ROOT, `${SESSION_ID}.jsonl`);
 		const records = [
-			{type: "user", cwd: TEST_ROOT, message: {content: "Please fix it"}},
 			{
-				type: "assistant",
+				type: "user",
 				cwd: TEST_ROOT,
-				message: {content: [{type: "text", text: "Implemented the safe path."}]},
+				message:
+				{
+					content: "Please fix it",
+				},
 			},
 			{
 				type: "assistant",
 				cwd: TEST_ROOT,
-				message: {content: [{type: "tool_use", id: "tool-test-100", name: "Read"}]},
+				message:
+				{
+					content: [
+						{
+							type: "text",
+							text: "Implemented the safe path.",
+						},
+					],
+				},
 			},
 			{
 				type: "assistant",
 				cwd: TEST_ROOT,
-				message: {content: [{type: "text", text: "  "}]},
+				message:
+				{
+					content: [
+						{
+							type: "tool_use",
+							id: "tool-test-100",
+							name: "Read",
+						},
+					],
+				},
+			},
+			{
+				type: "assistant",
+				cwd: TEST_ROOT,
+				message:
+				{
+					content: [
+						{
+							type: "text",
+							text: "  ",
+						},
+					],
+				},
 			},
 		];
 		writeFileSync(transcript, records.map((record) => JSON.stringify(record)).join("\n"));
 
 		await indexJsonlFile(db.index, transcript, project);
 
-		expect({
-			rows: db.index.select().from(schema.sessionMessages).orderBy(schema.sessionMessages.messageIndex).all(),
-			summary: getLastSubstantiveAssistantText(db.index, SESSION_ID),
-		}).toStrictEqual({
-			rows: [
-				{sessionId: SESSION_ID, messageIndex: 0, role: "user", text: "Please fix it"},
-				{
-					sessionId: SESSION_ID,
-					messageIndex: 1,
-					role: "assistant",
-					text: "Implemented the safe path.",
-				},
-				{sessionId: SESSION_ID, messageIndex: 2, role: "assistant", text: null},
-				{sessionId: SESSION_ID, messageIndex: 3, role: "assistant", text: null},
-			],
-			summary: "Implemented the safe path.",
-		});
+		expect(
+			{
+				rows: db.index.select().from(schema.sessionMessages).orderBy(schema.sessionMessages.messageIndex).all(),
+				summary: getLastSubstantiveAssistantText(db.index, SESSION_ID),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						sessionId: SESSION_ID,
+						messageIndex: 0,
+						role: "user",
+						text: "Please fix it",
+					},
+					{
+						sessionId: SESSION_ID,
+						messageIndex: 1,
+						role: "assistant",
+						text: "Implemented the safe path.",
+					},
+					{
+						sessionId: SESSION_ID,
+						messageIndex: 2,
+						role: "assistant",
+						text: null,
+					},
+					{
+						sessionId: SESSION_ID,
+						messageIndex: 3,
+						role: "assistant",
+						text: null,
+					},
+				],
+				summary: "Implemented the safe path.",
+			},
+		);
 	});
 
-	it("indexes transcripts that exceed SQLite's variable limit", async () => {
+	it("indexes transcripts that exceed SQLite's variable limit", async () =>
+	{
 		const project = "-tmp-example";
 		const transcript = join(TEST_ROOT, `${SESSION_ID}.jsonl`);
 		const messageCount = 8_200;
-		const records = Array.from({length: messageCount}, (_, messageIndex) => ({
-			type: messageIndex % 2 === 0 ? "user" : "assistant",
-			message: {content: `Message ${messageIndex}`},
-		}));
+		const records = Array.from(
+			{
+				length: messageCount,
+			},
+			(_, messageIndex) => (
+			{
+				type: messageIndex % 2 === 0 ? "user" : "assistant",
+				message:
+				{
+					content: `Message ${messageIndex}`,
+				},
+			}),
+		);
 		writeFileSync(transcript, records.map((record) => JSON.stringify(record)).join("\n"));
 
 		await indexJsonlFile(db.index, transcript, project);
 
-		expect({
-			aggregate: db.index
-				.select({
-					messageCount: sql<number>`count(*)`,
-					firstMessageIndex: sql<number>`min(${schema.sessionMessages.messageIndex})`,
-					lastMessageIndex: sql<number>`max(${schema.sessionMessages.messageIndex})`,
-				})
-				.from(schema.sessionMessages)
-				.get(),
-			lastAssistantText: getLastSubstantiveAssistantText(db.index, SESSION_ID),
-		}).toStrictEqual({
-			aggregate: {
-				messageCount,
-				firstMessageIndex: 0,
-				lastMessageIndex: messageCount - 1,
+		expect(
+			{
+				aggregate: db.index
+					.select(
+						{
+							messageCount: sql<number>`count(*)`,
+							firstMessageIndex: sql<number>`min(${schema.sessionMessages.messageIndex})`,
+							lastMessageIndex: sql<number>`max(${schema.sessionMessages.messageIndex})`,
+						},
+					)
+					.from(schema.sessionMessages)
+					.get(),
+				lastAssistantText: getLastSubstantiveAssistantText(db.index, SESSION_ID),
 			},
-			lastAssistantText: `Message ${messageCount - 1}`,
-		});
+		).toStrictEqual(
+			{
+				aggregate:
+				{
+					messageCount,
+					firstMessageIndex: 0,
+					lastMessageIndex: messageCount - 1,
+				},
+				lastAssistantText: `Message ${messageCount - 1}`,
+			},
+		);
 	});
 });
 
-describe("review skill runner", () => {
-	it("rejects malformed cancellation JSON without throwing", async () => {
+describe("review skill runner", () =>
+{
+	it("rejects malformed cancellation JSON without throwing", async () =>
+	{
 		const response = await handleRunReviewRequest(
-			new Request("http://127.0.0.1:7526/api/reviews/review-test-100/run", {
-				method: "POST",
-				body: "oops",
-			}),
+			new Request(
+				"http://127.0.0.1:7526/api/reviews/review-test-100/run",
+				{
+					method: "POST",
+					body: "oops",
+				},
+			),
 			"review-test-100",
 			{
 				index: db.index,
-				spawn: () => {
+				spawn: () =>
+				{
 					throw new Error("invalid cancellation must not spawn");
 				},
-				kill: () => {
+				kill: () =>
+				{
 					throw new Error("invalid cancellation must not kill");
 				},
 				origin: "http://127.0.0.1:7526",
 			},
 		);
 
-		expect({body: await response.json(), status: response.status}).toStrictEqual({
-			body: {error: "Invalid review run payload"},
-			status: 400,
-		});
+		expect(
+			{
+				body: await response.json(),
+				status: response.status,
+			},
+		).toStrictEqual(
+			{
+				body:
+				{
+					error: "Invalid review run payload",
+				},
+				status: 400,
+			},
+		);
 	});
 
-	it("spawns a marked Claude fork with the ccp review prompt and supports cancellation", async () => {
+	it("spawns a marked Claude fork with the ccp review prompt and supports cancellation", async () =>
+	{
 		insertSession(TEST_ROOT);
 		db.index
 			.insert(schema.sessionMessages)
-			.values({sessionId: SESSION_ID, messageIndex: 0, role: "assistant", text: "Ready."})
+			.values(
+				{
+					sessionId: SESSION_ID,
+					messageIndex: 0,
+					role: "assistant",
+					text: "Ready.",
+				},
+			)
 			.run();
-		await handleCreateReviewRequest(SESSION_ID, {
-			index: db.index,
-			buildDiff: async () => Promise.resolve("diff --git a/example.ts b/example.ts"),
-			resolveDirectory: async () => Promise.resolve(TEST_ROOT),
-			now: () => new Date("2000-01-01T00:00:00.000Z"),
-		});
+		await handleCreateReviewRequest(
+			SESSION_ID,
+			{
+				index: db.index,
+				buildDiff: async () => Promise.resolve("diff --git a/example.ts b/example.ts"),
+				resolveDirectory: async () => Promise.resolve(TEST_ROOT),
+				now: () => new Date("2000-01-01T00:00:00.000Z"),
+			},
+		);
 
 		const spawned: unknown[] = [];
 		const response = await handleRunReviewRequest(
-			new Request("http://127.0.0.1:7526/api/reviews/local-session-test-100/run", {
-				method: "POST",
-			}),
+			new Request(
+				"http://127.0.0.1:7526/api/reviews/local-session-test-100/run",
+				{
+					method: "POST",
+				},
+			),
 			`local-${SESSION_ID}`,
 			{
 				index: db.index,
-				spawn: (options) => {
+				spawn: (options) =>
+				{
 					spawned.push(options);
 					return {
 						processId: "process-test-100",
-						stream: new ReadableStream({
-							start(controller) {
-								controller.enqueue(new TextEncoder().encode('{"type":"result"}\n'));
-								controller.close();
+						stream: new ReadableStream(
+							{
+								start(controller)
+								{
+									controller.enqueue(new TextEncoder().encode('{"type":"result"}\n'));
+									controller.close();
+								},
 							},
-						}),
+						),
 					};
 				},
 				kill: (processId) => processId === "process-test-100",
@@ -201,14 +336,23 @@ describe("review skill runner", () => {
 		);
 
 		const cancelResponse = await handleRunReviewRequest(
-			new Request("http://127.0.0.1:7526/api/reviews/local-session-test-100/run", {
-				method: "POST",
-				body: JSON.stringify({action: "cancel", processId: "process-test-100"}),
-			}),
+			new Request(
+				"http://127.0.0.1:7526/api/reviews/local-session-test-100/run",
+				{
+					method: "POST",
+					body: JSON.stringify(
+						{
+							action: "cancel",
+							processId: "process-test-100",
+						},
+					),
+				},
+			),
 			`local-${SESSION_ID}`,
 			{
 				index: db.index,
-				spawn: () => {
+				spawn: () =>
+				{
 					throw new Error("cancel must not spawn");
 				},
 				kill: (processId) => processId === "process-test-100",
@@ -216,31 +360,43 @@ describe("review skill runner", () => {
 			},
 		);
 
-		expect({
-			status: response.status,
-			processId: response.headers.get("X-Process-Id"),
-			output: await response.text(),
-			spawned,
-			cancelled: await cancelResponse.json(),
-		}).toStrictEqual({
-			status: 200,
-			processId: "process-test-100",
-			output: '{"type":"result"}\n',
-			spawned: [
+		expect(
+			{
+				status: response.status,
+				processId: response.headers.get("X-Process-Id"),
+				output: await response.text(),
+				spawned,
+				cancelled: await cancelResponse.json(),
+			},
+		).toStrictEqual(
+			{
+				status: 200,
+				processId: "process-test-100",
+				output: '{"type":"result"}\n',
+				spawned: [
+					{
+						sessionId: SESSION_ID,
+						prompt: buildWorkingCopyReviewPrompt(`local-${SESSION_ID}`, "http://127.0.0.1:7526"),
+						projectDir: TEST_ROOT,
+						environment:
+						{
+							CLAUDE_CCP_REVIEW_RUN: "1",
+						},
+					},
+				],
+				cancelled:
 				{
-					sessionId: SESSION_ID,
-					prompt: buildWorkingCopyReviewPrompt(`local-${SESSION_ID}`, "http://127.0.0.1:7526"),
-					projectDir: TEST_ROOT,
-					environment: {CLAUDE_CCP_REVIEW_RUN: "1"},
+					ok: true,
 				},
-			],
-			cancelled: {ok: true},
-		});
+			},
+		);
 	});
 });
 
-describe("review diff parser", () => {
-	it("keeps header-like diff body lines attributed and numbered", () => {
+describe("review diff parser", () =>
+{
+	it("keeps header-like diff body lines attributed and numbered", () =>
+	{
 		const [file] = parseReviewDiff(
 			[
 				"diff --git a/example.sql b/example.sql",
@@ -255,7 +411,8 @@ describe("review diff parser", () => {
 		);
 		if (!file) throw new Error("Expected a changed file");
 
-		const finding = {
+		const finding =
+		{
 			id: "finding-test-100",
 			file: "example.sql",
 			side: "new" as const,
@@ -266,32 +423,54 @@ describe("review diff parser", () => {
 			resolved: false,
 		};
 
-		expect({
-			file,
-			findings: findingsForDiffLine([finding], file.file, file.lines[2]!),
-		}).toStrictEqual({
-			file: {
-				file: "example.sql",
-				header: [
-					"diff --git a/example.sql b/example.sql",
-					"index 1111111..2222222 100644",
-					"--- a/example.sql",
-					"+++ b/example.sql",
-					"@@ -10,3 +10,3 @@",
-				],
-				lines: [
-					{content: "-- comment", oldLine: 10, newLine: null, prefix: "-"},
-					{content: "++ comment", oldLine: null, newLine: 10, prefix: "+"},
-					{content: "SELECT 1;", oldLine: 11, newLine: 11, prefix: " "},
-				],
+		expect(
+			{
+				file,
+				findings: findingsForDiffLine([finding], file.file, file.lines[2]!),
 			},
-			findings: [finding],
-		});
+		).toStrictEqual(
+			{
+				file:
+				{
+					file: "example.sql",
+					header: [
+						"diff --git a/example.sql b/example.sql",
+						"index 1111111..2222222 100644",
+						"--- a/example.sql",
+						"+++ b/example.sql",
+						"@@ -10,3 +10,3 @@",
+					],
+					lines: [
+						{
+							content: "-- comment",
+							oldLine: 10,
+							newLine: null,
+							prefix: "-",
+						},
+						{
+							content: "++ comment",
+							oldLine: null,
+							newLine: 10,
+							prefix: "+",
+						},
+						{
+							content: "SELECT 1;",
+							oldLine: 11,
+							newLine: 11,
+							prefix: " ",
+						},
+					],
+				},
+				findings: [finding],
+			},
+		);
 	});
 });
 
-describe("deterministic working-copy review forward test", () => {
-	it("pins a fake review finding to the deliberately buggy changed line", async () => {
+describe("deterministic working-copy review forward test", () =>
+{
+	it("pins a fake review finding to the deliberately buggy changed line", async () =>
+	{
 		const repository = join(TEST_ROOT, "repository");
 		mkdirSync(repository);
 		runGit(repository, ["init", "--quiet", "--initial-branch=main"]);
@@ -308,23 +487,33 @@ describe("deterministic working-copy review forward test", () => {
 		insertSession(repository);
 		db.index
 			.insert(schema.sessionMessages)
-			.values({
-				sessionId: SESSION_ID,
-				messageIndex: 0,
-				role: "assistant",
-				text: "Changed the average helper.",
-			})
+			.values(
+				{
+					sessionId: SESSION_ID,
+					messageIndex: 0,
+					role: "assistant",
+					text: "Changed the average helper.",
+				},
+			)
 			.run();
 
-		const createResponse = await handleCreateReviewRequest(SESSION_ID, {
-			index: db.index,
-			buildDiff: buildWorkingCopyDiff,
-			resolveDirectory: async () => Promise.resolve(repository),
-			now: () => new Date("2000-01-01T00:00:00.000Z"),
-		});
-		expect(await createResponse.json()).toStrictEqual({reviewId: `local-${SESSION_ID}`});
+		const createResponse = await handleCreateReviewRequest(
+			SESSION_ID,
+			{
+				index: db.index,
+				buildDiff: buildWorkingCopyDiff,
+				resolveDirectory: async () => Promise.resolve(repository),
+				now: () => new Date("2000-01-01T00:00:00.000Z"),
+			},
+		);
+		expect(await createResponse.json()).toStrictEqual(
+			{
+				reviewId: `local-${SESSION_ID}`,
+			},
+		);
 
-		const fakeFinding = {
+		const fakeFinding =
+		{
 			id: "finding-test-100",
 			file: "average.ts",
 			side: "new" as const,
@@ -335,18 +524,29 @@ describe("deterministic working-copy review forward test", () => {
 			resolved: false,
 		};
 		const postResponse = await handleReplaceReviewFindingsRequest(
-			new Request("http://127.0.0.1:7526/api/reviews/local-session-test-100/findings", {
-				method: "POST",
-				headers: {"Content-Type": "application/json"},
-				body: JSON.stringify({findings: [fakeFinding]}),
-			}),
+			new Request(
+				"http://127.0.0.1:7526/api/reviews/local-session-test-100/findings",
+				{
+					method: "POST",
+					headers:
+					{
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(
+						{
+							findings: [fakeFinding],
+						},
+					),
+				},
+			),
 			`local-${SESSION_ID}`,
 			db.index,
 		);
 		expect(postResponse.status).toBe(200);
 
 		const reviewResponse = handleGetReviewRequest(`local-${SESSION_ID}`, db.index);
-		const review = (await reviewResponse.json()) as {
+		const review = (await reviewResponse.json()) as
+		{
 			diff: string;
 			findings: (typeof fakeFinding)[];
 			summary: string;
@@ -356,40 +556,60 @@ describe("deterministic working-copy review forward test", () => {
 		const line = file.lines.find((candidate) => candidate.newLine === 2);
 		if (!line) throw new Error("Expected changed line 2");
 
-		expect({
-			summary: review.summary,
-			line: {file: file.file, content: line.content, newLine: line.newLine},
-			findings: findingsForDiffLine(review.findings, file.file, line),
-		}).toStrictEqual({
-			summary: "Changed the average helper.",
-			line: {file: "average.ts", content: "  return total / items.length;", newLine: 2},
-			findings: [fakeFinding],
-		});
+		expect(
+			{
+				summary: review.summary,
+				line:
+				{
+					file: file.file,
+					content: line.content,
+					newLine: line.newLine,
+				},
+				findings: findingsForDiffLine(review.findings, file.file, line),
+			},
+		).toStrictEqual(
+			{
+				summary: "Changed the average helper.",
+				line:
+				{
+					file: "average.ts",
+					content: "  return total / items.length;",
+					newLine: 2,
+				},
+				findings: [fakeFinding],
+			},
+		);
 	});
 });
 
-describe("review-working-copy skill instructions", () => {
-	it("keeps the backend-only and diff-first rules explicit and ordered", () => {
+describe("review-working-copy skill instructions", () =>
+{
+	it("keeps the backend-only and diff-first rules explicit and ordered", () =>
+	{
 		const skill = readFileSync(join(process.cwd(), ".claude", "skills", "review-working-copy", "SKILL.md"), "utf8");
 		const diffPass = skill.indexOf("## Review the diff in isolation");
 		const reconcilePass = skill.indexOf("## Reconcile after discovery");
 
-		expect({
-			frontmatterKeys: skill
-				.split("---")[1]!
-				.trim()
-				.split("\n")
-				.map((line) => line.split(":")[0]),
-			forbidsGit: skill.includes("Do not run `git`, `gh`, or a code-review MCP"),
-			getRoute: skill.includes("/api/reviews/<review-id>"),
-			postRoute: skill.includes("/api/reviews/<review-id>/findings"),
-			diffBeforeReconcile: diffPass > 0 && diffPass < reconcilePass,
-		}).toStrictEqual({
-			frontmatterKeys: ["name", "description"],
-			forbidsGit: true,
-			getRoute: true,
-			postRoute: true,
-			diffBeforeReconcile: true,
-		});
+		expect(
+			{
+				frontmatterKeys: skill
+					.split("---")[1]!
+					.trim()
+					.split("\n")
+					.map((line) => line.split(":")[0]),
+				forbidsGit: skill.includes("Do not run `git`, `gh`, or a code-review MCP"),
+				getRoute: skill.includes("/api/reviews/<review-id>"),
+				postRoute: skill.includes("/api/reviews/<review-id>/findings"),
+				diffBeforeReconcile: diffPass > 0 && diffPass < reconcilePass,
+			},
+		).toStrictEqual(
+			{
+				frontmatterKeys: ["name", "description"],
+				forbidsGit: true,
+				getRoute: true,
+				postRoute: true,
+				diffBeforeReconcile: true,
+			},
+		);
 	});
 });

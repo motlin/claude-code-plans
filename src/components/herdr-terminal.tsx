@@ -13,9 +13,20 @@ import {loadGhostty} from "./load-ghostty";
 export type ConnectionStatus = "connecting" | "live" | "reconnecting" | "closed" | "error";
 
 /** What a live terminal streams: a Claude session's pane, or any herdr pane by id (a plain shell, say). */
-type HerdrTerminalTarget = {sessionId: string; paneId?: undefined} | {paneId: string; sessionId?: undefined};
+type HerdrTerminalTarget =
+	|
+	  {
+			sessionId: string;
+			paneId?: undefined;
+	  }
+	|
+	  {
+			paneId: string;
+			sessionId?: undefined;
+	  };
 
-function streamUrl(interactive: boolean, target: HerdrTerminalTarget, columns: number, rows: number): string {
+function streamUrl(interactive: boolean, target: HerdrTerminalTarget, columns: number, rows: number): string
+{
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 	const path = interactive ? "/api/herdr/control" : "/api/herdr/observe";
 	const url = new URL(path, `${protocol}//${window.location.host}`);
@@ -45,11 +56,13 @@ export function HerdrTerminal({
 	variant = "page",
 	interactive = false,
 	onStatusChange,
-}: HerdrTerminalTarget & {
+}: HerdrTerminalTarget &
+{
 	variant?: "page" | "pane";
 	interactive?: boolean;
 	onStatusChange?: (status: ConnectionStatus) => void;
-}) {
+})
+{
 	const container = useRef<HTMLDivElement>(null);
 	const [status, setStatus] = useState<ConnectionStatus>("connecting");
 	const [error, setError] = useState("");
@@ -57,7 +70,8 @@ export function HerdrTerminal({
 	const {actions: selectionActions, announcement} = useTerminalSelectionActions(sessionId ?? null);
 	const {ready: themeReady, theme: codeTheme, fontSize: codeFontSize} = useTerminalTheme();
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const element = container.current;
 		if (!element || !themeReady) return undefined;
 
@@ -69,16 +83,19 @@ export function HerdrTerminal({
 		 * instantiating before a terminal can be constructed. Everything below runs
 		 * once that resolves, and is skipped outright if the view unmounted first.
 		 */
-		const start = (ghostty: typeof import("ghostty-web"), ghosttyAppearance: GhosttyAppearance): (() => void) => {
-			const terminal = new ghostty.Terminal({
-				convertEol: false,
-				cursorBlink: false,
-				disableStdin: !interactive,
-				fontFamily: ghosttyAppearance.fontFamily,
-				fontSize: ghosttyAppearance.fontSize,
-				scrollback: 0,
-				theme: ghosttyAppearance.theme,
-			});
+		const start = (ghostty: typeof import("ghostty-web"), ghosttyAppearance: GhosttyAppearance): (() => void) =>
+		{
+			const terminal = new ghostty.Terminal(
+				{
+					convertEol: false,
+					cursorBlink: false,
+					disableStdin: !interactive,
+					fontFamily: ghosttyAppearance.fontFamily,
+					fontSize: ghosttyAppearance.fontSize,
+					scrollback: 0,
+					theme: ghosttyAppearance.theme,
+				},
+			);
 			const fitAddon = new ghostty.FitAddon();
 			terminal.loadAddon(fitAddon);
 			terminal.open(element);
@@ -89,61 +106,99 @@ export function HerdrTerminal({
 			let retry: ReturnType<typeof setTimeout> | null = null;
 			let reconnectForResize: ReturnType<typeof setTimeout> | null = null;
 			let stopped = false;
-			let viewport = {columns: 0, rows: 0};
+			let viewport =
+			{
+				columns: 0,
+				rows: 0,
+			};
 
-			const sendFrame = (frame: Record<string, unknown>): void => {
+			const sendFrame = (frame: Record<string, unknown>): void =>
+			{
 				if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(frame));
 			};
 			const dataSubscription = interactive
-				? terminal.onData((data) => {
-						sendFrame({type: "data", data});
+				? terminal.onData((data) =>
+					{
+						sendFrame(
+							{
+								type: "data",
+								data,
+							},
+						);
 					})
 				: null;
 
-			const connect = (): void => {
+			const connect = (): void =>
+			{
 				if (stopped) return;
-				if (retry) {
+				if (retry)
+				{
 					clearTimeout(retry);
 					retry = null;
 				}
 				fitAddon.fit();
-				viewport = {columns: terminal.cols, rows: terminal.rows};
+				viewport =
+				{
+					columns: terminal.cols,
+					rows: terminal.rows,
+				};
 				const nextSocket = new WebSocket(
 					streamUrl(
 						interactive,
-						paneId === undefined ? {sessionId} : {paneId},
+						paneId === undefined
+							?
+								{
+									sessionId,
+								}
+							:
+								{
+									paneId,
+								},
 						viewport.columns,
 						viewport.rows,
 					),
 				);
 				const oscFilter = createOscFilter();
-				const consumer = createTerminalFrameConsumer({
-					reset: () => {
-						terminal.reset();
+				const consumer = createTerminalFrameConsumer(
+					{
+						reset: () =>
+						{
+							terminal.reset();
+						},
+						resize: (columns, rows) =>
+						{
+							terminal.resize(columns, rows);
+						},
+						write: (bytes) =>
+						{
+							terminal.write(oscFilter(bytes));
+						},
 					},
-					resize: (columns, rows) => {
-						terminal.resize(columns, rows);
-					},
-					write: (bytes) => {
-						terminal.write(oscFilter(bytes));
-					},
-				});
+				);
 				socket = nextSocket;
 				setStatus((current) => (current === "connecting" ? "connecting" : "reconnecting"));
 
-				nextSocket.addEventListener("message", (event) => {
-					try {
+				nextSocket.addEventListener("message", (event) =>
+				{
+					try
+					{
 						const record = consumer.consume(String(event.data));
 						if (record.type === "connected") return;
-						if (record.type === "observer.error") {
+						if (record.type === "observer.error")
+						{
 							stopped = true;
 							setError(record.message);
 							setStatus("error");
-						} else if (record.type === "terminal.frame") {
+						}
+						else if (record.type === "terminal.frame")
+						{
 							setError("");
 							setStatus("live");
-						} else setStatus("closed");
-					} catch (cause) {
+						}
+						else setStatus("closed");
+					}
+					catch (cause)
+					{
 						stopped = true;
 						setError(cause instanceof Error ? cause.message : String(cause));
 						setStatus("error");
@@ -152,32 +207,58 @@ export function HerdrTerminal({
 				});
 				// The control session sizes the herdr pane from the URL; a resize while connecting was dropped.
 				const attached = viewport;
-				nextSocket.addEventListener("open", () => {
+				nextSocket.addEventListener("open", () =>
+				{
 					if (!interactive || socket !== nextSocket) return;
 					fitAddon.fit();
-					viewport = {columns: terminal.cols, rows: terminal.rows};
+					viewport =
+					{
+						columns: terminal.cols,
+						rows: terminal.rows,
+					};
 					if (viewport.columns === attached.columns && viewport.rows === attached.rows) return;
-					sendFrame({type: "resize", cols: viewport.columns, rows: viewport.rows});
+					sendFrame(
+						{
+							type: "resize",
+							cols: viewport.columns,
+							rows: viewport.rows,
+						},
+					);
 				});
-				nextSocket.addEventListener("close", (event) => {
+				nextSocket.addEventListener("close", (event) =>
+				{
 					if (stopped || socket !== nextSocket || event.code === 1000) return;
 					setStatus("reconnecting");
 					retry = setTimeout(connect, 750);
 				});
-				nextSocket.addEventListener("error", () => {
+				nextSocket.addEventListener("error", () =>
+				{
 					setStatus("reconnecting");
 				});
 			};
 
-			const resizeObserver = new ResizeObserver(() => {
+			const resizeObserver = new ResizeObserver(() =>
+			{
 				if (stopped) return;
 				if (reconnectForResize) clearTimeout(reconnectForResize);
-				reconnectForResize = setTimeout(() => {
+				reconnectForResize = setTimeout(() =>
+				{
 					fitAddon.fit();
 					if (terminal.cols === viewport.columns && terminal.rows === viewport.rows) return;
-					if (interactive) {
-						viewport = {columns: terminal.cols, rows: terminal.rows};
-						sendFrame({type: "resize", cols: viewport.columns, rows: viewport.rows});
+					if (interactive)
+					{
+						viewport =
+						{
+							columns: terminal.cols,
+							rows: terminal.rows,
+						};
+						sendFrame(
+							{
+								type: "resize",
+								cols: viewport.columns,
+								rows: viewport.rows,
+							},
+						);
 						return;
 					}
 					socket?.close(1000, "observer viewport resized");
@@ -189,7 +270,8 @@ export function HerdrTerminal({
 			resizeObserver.observe(element);
 			connect();
 
-			return () => {
+			return () =>
+			{
 				stopped = true;
 				if (retry) clearTimeout(retry);
 				if (reconnectForResize) clearTimeout(reconnectForResize);
@@ -201,31 +283,41 @@ export function HerdrTerminal({
 			};
 		};
 
-		void (async () => {
+		void (async () =>
+		{
 			const loaded = await loadGhostty();
 			if (disposed) return;
 			const ghosttyAppearance = applyTerminalTheme(loaded.appearance, codeTheme, codeFontSize);
 			setAppearance(ghosttyAppearance);
 			teardown = start(loaded.ghostty, ghosttyAppearance);
-		})().catch((cause: unknown) => {
+		})().catch((cause: unknown) =>
+		{
 			if (disposed) return;
 			setError(cause instanceof Error ? cause.message : String(cause));
 			setStatus("error");
 		});
 
-		return () => {
+		return () =>
+		{
 			disposed = true;
 			teardown?.();
 		};
 	}, [sessionId, paneId, interactive, selectionActions, themeReady, codeTheme, codeFontSize]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		onStatusChange?.(status);
 	}, [onStatusChange, status]);
 
-	const background = appearance ? {backgroundColor: appearance.theme.background} : undefined;
+	const background = appearance
+		?
+			{
+				backgroundColor: appearance.theme.background,
+			}
+		: undefined;
 
-	if (variant === "pane") {
+	if (variant === "pane")
+	{
 		return (
 			<div className="relative flex h-full min-h-0 flex-col">
 				{error && <p className="px-3 py-1 text-caption text-danger-000">{error}</p>}

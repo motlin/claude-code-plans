@@ -3,17 +3,20 @@ import {createContext, type ReactNode, useContext, useLayoutEffect} from "react"
 import type {Notice, NoticeSlot} from "../lib/composer-notices";
 
 /** A band's descriptor for the region: its id (keying the item) and what it draws. */
-export interface ComposerNotice extends Notice {
+export interface ComposerNotice extends Notice
+{
 	readonly content: ReactNode;
 }
 
-export interface RegionEntry extends Notice {
+export interface RegionEntry extends Notice
+{
 	readonly content: ReactNode;
 	/** Registered before the region mounted, so it shows without the reveal (upstream's `early` → `skipEnter`). */
 	readonly early: boolean;
 }
 
-export interface Registry {
+export interface Registry
+{
 	register: (slot: NoticeSlot, notice: ComposerNotice) => void;
 	unregister: (slot: NoticeSlot) => void;
 	setRegionMounted: (mounted: boolean) => void;
@@ -27,7 +30,8 @@ export const EntriesContext = createContext<ReadonlyMap<NoticeSlot, RegionEntry>
 export const InRegionContext = createContext(false);
 
 /** Whether this band draws inside the region's polite status list rather than as its own live band. */
-export function useInNoticeRegion(): boolean {
+export function useInNoticeRegion(): boolean
+{
 	return useContext(InRegionContext);
 }
 
@@ -36,9 +40,11 @@ export function useInNoticeRegion(): boolean {
  * and returns true so the band renders nothing inline; with no provider it returns false and the
  * band draws its own legacy markup in place.
  */
-export function useComposerNotice(slot: NoticeSlot, notice: ComposerNotice | null): boolean {
+export function useComposerNotice(slot: NoticeSlot, notice: ComposerNotice | null): boolean
+{
 	const registry = useContext(RegistryContext);
-	useLayoutEffect(() => {
+	useLayoutEffect(() =>
+	{
 		if (registry === null) return;
 		if (notice === null) registry.unregister(slot);
 		else registry.register(slot, notice);
@@ -47,7 +53,8 @@ export function useComposerNotice(slot: NoticeSlot, notice: ComposerNotice | nul
 		() =>
 			registry === null
 				? undefined
-				: () => {
+				: () =>
+					{
 						registry.unregister(slot);
 					},
 		[registry, slot],

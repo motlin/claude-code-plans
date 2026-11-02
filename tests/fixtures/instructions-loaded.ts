@@ -3,7 +3,8 @@
  * CLAUDE.md or `.claude/rules/*.md` file into the session context. This is the
  * common case — top-level CLAUDE.md picked up at session start.
  */
-export const instructionsLoadedFixture = {
+export const instructionsLoadedFixture =
+{
 	session_id: "abc-123",
 	transcript_path: "/Users/u/.claude/projects/-Users-u-projects-app/abc-123.jsonl",
 	cwd: "/Users/u/projects/app",

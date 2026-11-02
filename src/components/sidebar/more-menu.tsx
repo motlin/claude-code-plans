@@ -16,7 +16,8 @@ import {navItems, type NavItem} from "./navigation";
 import type {Section} from "./types";
 import {DIALOG_BODY_CLASS} from "../ui/dialog-classes";
 
-export interface NavBadge {
+export interface NavBadge
+{
 	count: number;
 	title: string;
 }
@@ -39,7 +40,8 @@ export function MoreNavMenu({
 	badgeFor: (section: Section) => NavBadge | null;
 	/** The page on screen; when it is a More item, the row shows it selected, as upstream does. */
 	activeSection?: Section | null;
-}) {
+})
+{
 	// A session page highlights its own row in the list below, not the More row.
 	const active = overflow.find((item) => item.section === activeSection && item.section !== "sessions");
 	const navigate = useNavigate();
@@ -68,14 +70,21 @@ export function MoreNavMenu({
 						)}
 					</MenuTrigger>
 					<MenuContent density="comfortable" side="right" align="start">
-						{overflow.map((item) => {
+						{overflow.map((item) =>
+						{
 							const Glyph = item.icon;
 							const badge = badgeFor(item.section);
 							return (
 								<MenuItem
 									key={item.section}
 									icon={<Glyph aria-hidden="true" />}
-									onSelect={() => void navigate({to: item.to})}
+									onSelect={() =>
+										void navigate(
+											{
+												to: item.to,
+											},
+										)
+									}
 								>
 									<span className="flex min-w-0 items-center">
 										<span className="truncate">{item.label}</span>
@@ -95,7 +104,8 @@ export function MoreNavMenu({
 						{/* Upstream keeps an empty icon slot here so the label lines up with the items above. */}
 						<MenuItem
 							icon={null}
-							onSelect={() => {
+							onSelect={() =>
+							{
 								setEditing(true);
 							}}
 						>
@@ -118,7 +128,8 @@ function EditSidebarDialog({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	visibleNavSections: readonly NavSection[];
-}) {
+})
+{
 	const setPinned = useSetNavSectionPinned();
 	const visible = new Set(visibleNavSections);
 	const panels = useFizzyLake("panels");
@@ -143,13 +154,15 @@ function EditSidebarDialog({
 							offTitleClassName="text-[17px] leading-6 font-semibold break-words text-primary"
 						/>
 						<div className={panels ? "flex flex-col" : "mt-2 flex flex-col"}>
-							{navItems.map((item) => {
+							{navItems.map((item) =>
+							{
 								const Glyph = item.icon;
 								return (
 									<Checkbox.Root
 										key={item.section}
 										checked={visible.has(item.section)}
-										onCheckedChange={(checked) => {
+										onCheckedChange={(checked) =>
+										{
 											setPinned(item.section, checked);
 										}}
 										className="group/cb -mx-2 inline-flex w-auto items-start gap-2 rounded-r6 px-2 py-1 text-left text-body text-primary outline-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"

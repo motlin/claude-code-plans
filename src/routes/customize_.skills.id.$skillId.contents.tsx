@@ -4,12 +4,18 @@ import {createFileRoute} from "@tanstack/react-router";
 import {ContentsViewer} from "../components/customize/contents-viewer";
 import {customizeSkillDetailQueryOptions, customizeSkillFileQueryOptions} from "../lib/api/customize";
 
-export const Route = createFileRoute("/customize_/skills/id/$skillId/contents")({
-	component: SkillContentsTab,
-	head: () => ({meta: [pageTitle("Skill contents · Customize")]}),
-});
+export const Route = createFileRoute("/customize_/skills/id/$skillId/contents")(
+	{
+		component: SkillContentsTab,
+		head: () => (
+		{
+			meta: [pageTitle("Skill contents · Customize")],
+		}),
+	},
+);
 
-function SkillContentsTab() {
+function SkillContentsTab()
+{
 	const {skillId} = Route.useParams();
 	const {data} = useQuery(customizeSkillDetailQueryOptions(skillId));
 	if (data === undefined) return null;

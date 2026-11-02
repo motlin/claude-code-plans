@@ -5,6 +5,7 @@
 export const pinnedHeightCache = new Map<string, number>();
 
 /** Test hook: forget every cached pinned height. */
-export function resetPinnedHeightCache(): void {
+export function resetPinnedHeightCache(): void
+{
 	pinnedHeightCache.clear();
 }

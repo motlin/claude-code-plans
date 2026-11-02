@@ -4,7 +4,16 @@
 
 import {isRecord} from "./narrow";
 
-export type ToolOutputNote = {kind: "wholeResultShown"} | {kind: "preview" | "cappedPreview" | "saved"; path: string};
+export type ToolOutputNote =
+	|
+	  {
+			kind: "wholeResultShown";
+	  }
+	|
+	  {
+			kind: "preview" | "cappedPreview" | "saved";
+			path: string;
+	  };
 
 /**
  * What a generic tool body shows for its output: nothing, "No output", "Waiting for the result", a note with a
@@ -12,12 +21,27 @@ export type ToolOutputNote = {kind: "wholeResultShown"} | {kind: "preview" | "ca
  */
 export type ToolOutputShape =
 	| Record<string, never>
-	| {status: "waiting" | "empty"}
-	| {note: ToolOutputNote; body: string}
-	| {note: ToolOutputNote; toldClaude: string}
-	| {body: string};
+	|
+	  {
+			status: "waiting" | "empty";
+	  }
+	|
+	  {
+			note: ToolOutputNote;
+			body: string;
+	  }
+	|
+	  {
+			note: ToolOutputNote;
+			toldClaude: string;
+	  }
+	|
+	  {
+			body: string;
+	  };
 
-export interface ToolOutputInput {
+export interface ToolOutputInput
+{
 	name: string;
 	/** The call is still in flight (upstream `status === "running"`); otherwise it completed. */
 	running: boolean;
@@ -49,15 +73,18 @@ const SAVED_RE = new RegExp(
 const NOTE_TOOLS = new Set(["Glob", "Grep", "LSP", "ListMcpResourcesTool", "Read", "ToolSearch", "WebSearch"]);
 
 /** Vs: a path with a `..` segment is never shown. */
-function hasDotDot(path: string): boolean {
+function hasDotDot(path: string): boolean
+{
 	return path.split(/[/\\]/).includes("..");
 }
 
 /** Wg: a non-empty all-text block array, joined by newlines. */
-function joinedTextBlocks(value: unknown): string | undefined {
+function joinedTextBlocks(value: unknown): string | undefined
+{
 	if (!Array.isArray(value) || value.length === 0) return undefined;
 	const texts: string[] = [];
-	for (const block of value) {
+	for (const block of value)
+	{
 		if (!isRecord(block) || block["type"] !== "text" || typeof block["text"] !== "string") return undefined;
 		texts.push(block["text"]);
 	}
@@ -65,38 +92,66 @@ function joinedTextBlocks(value: unknown): string | undefined {
 }
 
 /** s_ */
-function previewStartsResult(toolUseResult: unknown, blocks: string, rest: string): boolean {
+function previewStartsResult(toolUseResult: unknown, blocks: string, rest: string): boolean
+{
 	return rest !== "" && (blocks.startsWith(rest) || JSON.stringify(toolUseResult, null, 2).startsWith(rest));
 }
 
 /** c_: the status gate; undefined when the output has real text. */
-function statusShape(input: ToolOutputInput): ToolOutputShape | undefined {
+function statusShape(input: ToolOutputInput): ToolOutputShape | undefined
+{
 	const {name, output, toolUseResult} = input;
-	if (input.running && !output) return {status: "waiting"};
+	if (input.running && !output)
+		return {
+			status: "waiting",
+		};
 	const noOutput = output === `(${name} completed with no output)`;
 	if (output && !noOutput) return undefined;
-	return (noOutput || !isRecord(toolUseResult)) && !input.running && !input.hasImages ? {status: "empty"} : {};
+	return (noOutput || !isRecord(toolUseResult)) && !input.running && !input.hasImages
+		?
+			{
+				status: "empty",
+			}
+		: {};
 }
 
 /** l_ */
-export function classifyToolOutput(input: ToolOutputInput): ToolOutputShape {
+export function classifyToolOutput(input: ToolOutputInput): ToolOutputShape
+{
 	const status = statusShape(input);
 	const {name, output, toolUseResult} = input;
 	if (status !== undefined || !output) return status ?? {};
 
 	const preview = PREVIEW_RE.exec(output);
 	const previewFile = preview?.groups?.["file"];
-	if (preview !== null && previewFile !== undefined && !hasDotDot(previewFile)) {
+	if (preview !== null && previewFile !== undefined && !hasDotDot(previewFile))
+	{
 		const blocks = joinedTextBlocks(toolUseResult);
 		const rest = output.slice(preview[0].length).replace(/\n\.\.\.$/, "");
 		// Gg, simplified: upstream compares the blocks' MCP-rendered text (`Oi`); the joined text stands in for it.
-		if (blocks === undefined || blocks.trim() !== output.trim()) {
-			if (blocks !== undefined && previewStartsResult(toolUseResult, blocks, rest)) {
-				return {note: {kind: "wholeResultShown"}, body: blocks};
+		if (blocks === undefined || blocks.trim() !== output.trim())
+		{
+			if (blocks !== undefined && previewStartsResult(toolUseResult, blocks, rest))
+			{
+				return {
+					note:
+					{
+						kind: "wholeResultShown",
+					},
+					body: blocks,
+				};
 			}
-			if (NOTE_TOOLS.has(name)) {
+			if (NOTE_TOOLS.has(name))
+			{
 				const kind = preview.groups?.["capped"] === undefined ? "preview" : "cappedPreview";
-				return {note: {kind, path: previewFile}, body: rest};
+				return {
+					note:
+					{
+						kind,
+						path: previewFile,
+					},
+					body: rest,
+				};
 			}
 		}
 	}
@@ -107,6 +162,15 @@ export function classifyToolOutput(input: ToolOutputInput): ToolOutputShape {
 		toolUseResult.trim() === output.trim();
 	const savedFile = savable ? SAVED_RE.exec(output)?.groups?.["file"] : undefined;
 	if (savedFile !== undefined && !hasDotDot(savedFile))
-		return {note: {kind: "saved", path: savedFile}, toldClaude: output};
-	return {body: output};
+		return {
+			note:
+			{
+				kind: "saved",
+				path: savedFile,
+			},
+			toldClaude: output,
+		};
+	return {
+		body: output,
+	};
 }

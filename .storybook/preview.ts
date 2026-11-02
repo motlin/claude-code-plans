@@ -1,15 +1,20 @@
 import type {Preview} from "@storybook/react-vite";
 import "./styles.css";
 
-const preview: Preview = {
-	parameters: {
-		controls: {
-			matchers: {
+const preview: Preview =
+{
+	parameters:
+	{
+		controls:
+		{
+			matchers:
+			{
 				color: /(background|color)$/i,
 				date: /Date$/i,
 			},
 		},
-		backgrounds: {
+		backgrounds:
+		{
 			default: "light",
 			values: [
 				{
@@ -23,12 +28,15 @@ const preview: Preview = {
 			],
 		},
 	},
-	globalTypes: {
-		theme: {
+	globalTypes:
+	{
+		theme:
+		{
 			name: "Theme",
 			description: "Global theme for components",
 			defaultValue: "light",
-			toolbar: {
+			toolbar:
+			{
 				icon: "circlehollow",
 				items: ["light", "dark"],
 				title: "Theme",

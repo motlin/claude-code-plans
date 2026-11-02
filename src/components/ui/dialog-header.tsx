@@ -62,10 +62,12 @@ export function DialogHeader({
 	band?: boolean;
 	offHeaderClassName?: string;
 	offTitleClassName?: string;
-}) {
+})
+{
 	const panels = useFizzyLake("panels");
 	const icon = <X aria-hidden="true" className="h-5 w-5" />;
-	if (band ?? panels) {
+	if (band ?? panels)
+	{
 		return (
 			<>
 				<div data-cds-part="band" className={BAND_CLASS}>

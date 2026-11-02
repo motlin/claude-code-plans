@@ -19,22 +19,30 @@
  */
 export function withHeadBodyCancel(
 	fetchImpl: (request: Request) => Response | Promise<Response>,
-): (request: Request) => Promise<Response> {
-	return async (request) => {
+): (request: Request) => Promise<Response>
+{
+	return async (request) =>
+	{
 		const response = await fetchImpl(request);
 		if (request.method !== "HEAD" || response.body === null) return response;
 
-		try {
+		try
+		{
 			await response.body.cancel();
-		} catch {
+		}
+		catch
+		{
 			// A body whose cancel() rejects is already unusable; the HEAD response
 			// still owes the client only headers.
 		}
 
-		return new Response(null, {
-			status: response.status,
-			statusText: response.statusText,
-			headers: response.headers,
-		});
+		return new Response(
+			null,
+			{
+				status: response.status,
+				statusText: response.statusText,
+				headers: response.headers,
+			},
+		);
 	};
 }

@@ -14,14 +14,22 @@ import {updateSessionViewedState} from "../lib/api/viewed-state";
 import {splitHerdrId} from "../lib/herdr/herdr-id";
 import {splitTerminalTitleGlyph} from "../lib/herdr/terminal-title";
 
-export const Route = createFileRoute("/terminals/")({
-	component: TerminalsPage,
-	loader: async ({context: {queryClient}}) =>
-		queryClient.query({...terminalPlacementsQueryOptions, staleTime: "static"}),
-	head: () => ({
-		meta: [pageTitle("Terminals")],
-	}),
-});
+export const Route = createFileRoute("/terminals/")(
+	{
+		component: TerminalsPage,
+		loader: async ({context: {queryClient}}) =>
+			queryClient.query(
+				{
+					...terminalPlacementsQueryOptions,
+					staleTime: "static",
+				},
+			),
+		head: () => (
+		{
+			meta: [pageTitle("Terminals")],
+		}),
+	},
+);
 
 const TRACKED_CLAUDE_SCOPE =
 	"This page lists herdr and tmux panes linked to indexed Claude transcripts. It intentionally excludes Codex sessions and shell panes that are not linked to a Claude transcript.";
@@ -50,7 +58,8 @@ const TMUX_ROW_COLUMNS =
 
 const HOST_BADGE = "rounded bg-surface-0/60 px-1.5 py-0.5 text-center text-[10px] text-t6";
 
-function TerminalsEmptyState() {
+function TerminalsEmptyState()
+{
 	return (
 		<div className="mx-auto mt-8 max-w-lg rounded-md border border-border p-6 text-sm text-t6">
 			<p className="text-primary">No terminal placements are linked to Claude sessions yet.</p>
@@ -86,13 +95,15 @@ function CapabilityBadges({
 	capabilities,
 	writesEnabled,
 }: {
-	capabilities: {
+	capabilities:
+	{
 		supportsWrite: boolean;
 		supportsEvents: boolean;
 		supportsObserve: boolean;
 	};
 	writesEnabled: boolean;
-}) {
+})
+{
 	const labels = [
 		capabilities.supportsWrite ? (writesEnabled ? "write" : "write disabled") : null,
 		capabilities.supportsEvents ? "events" : null,
@@ -112,29 +123,53 @@ function CapabilityBadges({
 	);
 }
 
-function TerminalsPage() {
+function TerminalsPage()
+{
 	const {data} = useSuspenseQuery(terminalPlacementsQueryOptions);
 	const queryClient = useQueryClient();
 	const placements = data.placements;
 	const terminals = useQuery(herdrTerminalsQueryOptions).data;
 
-	const markReviewed = async (sessionId: string, messageIndex: number): Promise<void> => {
+	const markReviewed = async (sessionId: string, messageIndex: number): Promise<void> =>
+	{
 		const viewedState = await updateSessionViewedState(sessionId, "reviewed", messageIndex);
-		queryClient.setQueryData(terminalPlacementsQueryOptions.queryKey, (previous) => {
+		queryClient.setQueryData(terminalPlacementsQueryOptions.queryKey, (previous) =>
+		{
 			if (!previous) return previous;
 			return {
 				...previous,
-				placements: previous.placements.map((placement) => {
+				placements: previous.placements.map((placement) =>
+				{
 					if (placement.sessionId !== sessionId) return placement;
 					return placement.provider === "herdr"
-						? {...placement, herdrPane: {...placement.herdrPane, viewedState}}
-						: {...placement, viewedState};
+						?
+							{
+								...placement,
+								herdrPane:
+								{
+									...placement.herdrPane,
+									viewedState,
+								},
+							}
+						:
+							{
+								...placement,
+								viewedState,
+							};
 				}),
 			};
 		});
 		await Promise.all([
-			queryClient.invalidateQueries({queryKey: ["terminal", "placements"]}),
-			queryClient.invalidateQueries({queryKey: sessionQueryKeys.detail(sessionId)}),
+			queryClient.invalidateQueries(
+				{
+					queryKey: ["terminal", "placements"],
+				},
+			),
+			queryClient.invalidateQueries(
+				{
+					queryKey: sessionQueryKeys.detail(sessionId),
+				},
+			),
 		]);
 	};
 
@@ -158,13 +193,18 @@ function TerminalsPage() {
 				<TerminalsEmptyState />
 			) : (
 				<div className="mt-4 space-y-1">
-					{placements.map((placement) => {
-						if (placement.provider === "tmux") {
+					{placements.map((placement) =>
+					{
+						if (placement.provider === "tmux")
+						{
 							return (
 								<Link
 									key={`tmux:${placement.scopeHandle}:${placement.paneHandle}:${placement.sessionId}`}
 									to="/session/$id"
-									params={{id: placement.sessionId}}
+									params={
+									{
+										id: placement.sessionId,
+									}}
 									className={TMUX_ROW_COLUMNS}
 								>
 									<StatusDot active={placement.active} />
@@ -212,7 +252,10 @@ function TerminalsPage() {
 								<span className={`${HOST_BADGE} ml-3`}>herdr</span>
 								<Link
 									to="/terminals/$sessionId"
-									params={{sessionId: placement.sessionId}}
+									params={
+									{
+										sessionId: placement.sessionId,
+									}}
 									aria-label={`Open live read-only terminal for ${placement.displayName}`}
 									title={`Open live read-only terminal for ${placement.displayName}. ${technicalDetails}`}
 									className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:order-first max-sm:basis-full max-sm:pb-1"
@@ -239,7 +282,10 @@ function TerminalsPage() {
 								/>
 								<Link
 									to="/session/$id"
-									params={{id: placement.sessionId}}
+									params={
+									{
+										id: placement.sessionId,
+									}}
 									className="flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0 hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 									title={`Open session transcript for ${placement.displayName}`}
 									aria-label={`Open session transcript for ${placement.displayName}`}

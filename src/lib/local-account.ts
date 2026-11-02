@@ -17,7 +17,8 @@ const OAUTH_ACCOUNT_KEYS = [
 ] as const;
 
 /** The signed-in Claude account as recorded locally by the CLI. */
-export interface LocalAccount {
+export interface LocalAccount
+{
 	name: string;
 	firstName: string;
 	initial: string;
@@ -28,54 +29,81 @@ export interface LocalAccount {
 	planDetail?: string;
 }
 
-export interface ReadLocalAccountOptions {
+export interface ReadLocalAccountOptions
+{
 	/** Directory holding .claude.json. Defaults to the user's home. */
 	home?: string;
 	/** Fallback name when .claude.json has no display or full name. */
 	username?: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: unknown): value is Record<string, unknown>
+{
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function osUsername(): string {
-	try {
+function osUsername(): string
+{
+	try
+	{
 		return userInfo().username;
-	} catch {
+	}
+	catch
+	{
 		return "";
 	}
 }
 
-async function readOauthAccount(home: string): Promise<OauthAccount> {
+async function readOauthAccount(home: string): Promise<OauthAccount>
+{
 	let raw: unknown;
-	try {
+	try
+	{
 		raw = JSON.parse(await readFile(join(home, ".claude.json"), "utf-8"));
-	} catch {
+	}
+	catch
+	{
 		return {};
 	}
 	if (!isRecord(raw) || !isRecord(raw["oauthAccount"])) return {};
 	const account = raw["oauthAccount"];
 	const picked: Record<string, unknown> = {};
-	for (const key of OAUTH_ACCOUNT_KEYS) {
+	for (const key of OAUTH_ACCOUNT_KEYS)
+	{
 		if (key in account) picked[key] = account[key];
 	}
 	const parsed = ClaudeJsonOauthAccountSchema.safeParse(picked);
 	return parsed.success ? parsed.data : {};
 }
 
-function nonEmptyTrimmed(value: string | undefined): string | undefined {
+function nonEmptyTrimmed(value: string | undefined): string | undefined
+{
 	return nonEmpty(value?.trim());
 }
 
-function plan(account: OauthAccount): {label: string; detail: string} | undefined {
-	switch (account.organizationType) {
-		case "claude_max": {
+function plan(account: OauthAccount):
+	|
+	  {
+			label: string;
+			detail: string;
+	  }
+	| undefined
+{
+	switch (account.organizationType)
+	{
+		case "claude_max":
+		{
 			const multiplier = /_(\d+x)$/.exec(account.organizationRateLimitTier ?? "")?.[1];
-			return {label: "Max", detail: multiplier ? `Max (${multiplier})` : "Max"};
+			return {
+				label: "Max",
+				detail: multiplier ? `Max (${multiplier})` : "Max",
+			};
 		}
 		case "claude_pro":
-			return {label: "Pro", detail: "Pro"};
+			return {
+				label: "Pro",
+				detail: "Pro",
+			};
 		default:
 			return undefined;
 	}
@@ -84,14 +112,16 @@ function plan(account: OauthAccount): {label: string; detail: string} | undefine
 export async function readLocalAccount({
 	home = homedir(),
 	username = osUsername(),
-}: ReadLocalAccountOptions = {}): Promise<LocalAccount> {
+}: ReadLocalAccountOptions = {}): Promise<LocalAccount>
+{
 	const account = await readOauthAccount(home);
 	const displayName = nonEmptyTrimmed(account.displayName);
 	const fullName = nonEmptyTrimmed(account.fullName);
 	const name = displayName ?? fullName ?? username;
 	const firstName = displayName ?? fullName?.split(/\s+/)[0] ?? name;
 
-	const result: LocalAccount = {
+	const result: LocalAccount =
+	{
 		name,
 		firstName,
 		initial: name.charAt(0).toUpperCase(),
@@ -99,11 +129,16 @@ export async function readLocalAccount({
 	const email = nonEmptyTrimmed(account.emailAddress);
 	if (email !== undefined) result.email = email;
 	const planInfo = plan(account);
-	if (planInfo !== undefined) {
+	if (planInfo !== undefined)
+	{
 		result.planLabel = planInfo.label;
 		result.planDetail = planInfo.detail;
 	}
 	return result;
 }
 
-export const getLocalAccount = createServerFn({method: "GET"}).handler(async () => readLocalAccount());
+export const getLocalAccount = createServerFn(
+	{
+		method: "GET",
+	},
+).handler(async () => readLocalAccount());
